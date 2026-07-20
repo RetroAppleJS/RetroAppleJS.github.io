@@ -16,6 +16,31 @@ function AppleBoard()
 {
     this.id    = {"PCODE":"A2BO", "icon":"fa fa-home", "slotLock":true};
     this.state = {"active":true};
+
+    // Actual child-device instances are attached here by Apple2IO.attach().
+    // Keep the array non-enumerable so slot JSON remains serialisable.
+    Object.defineProperty(this,"devices",{
+         "value":[]
+        ,"writable":true
+        ,"configurable":true
+        ,"enumerable":false
+    });
+
+    // Declarative device wiring owned by this peripheral.
+    this.deviceConfig = [
+        {
+             "DCODE":"A2SPK"
+            ,"hostPCODE":"A2BO"
+            ,"coID":"AppleSpeaker"
+            ,"alias":"AppleSpeaker"
+            ,"icon":"fa fa-volume-up"
+            ,"description":"Apple II speaker"
+            ,"range":"HostIO"
+            ,"action":{"RD":{"0x30":"toggle"}}
+        }
+    ];
+
+
     this.action = 
     { 
          "HostIO" :{ "RD":{"callback":read.bind(this)}
@@ -34,7 +59,7 @@ function AppleBoard()
         const IOMAP_CALLS = {
             "KBD":      function(ctx2){ return isRO(ctx2) ? ctx2.keys.lastkey : ctx2.keys.polling(ctx2.keys.lastkey); },
             "KBDSTRB":  function(ctx2){ if(!isRO(ctx2)) ctx2.keys.strobe();       return 0x00; },
-            "SPKR":     function(ctx2){ if(!isRO(ctx2)) ctx2.snd.toggle();        return 0x00; },
+            //"SPKR":     function(ctx2){ if(!isRO(ctx2)) ctx2.snd.toggle();        return 0x00; },
 
             "TXTCLR":   function(ctx){ if(!isRO(ctx)) ctx.vid.setGfx(true);       return 0x00; },
             "TXTSET":   function(ctx){ if(!isRO(ctx)) ctx.vid.setGfx(false);      return 0x00; },
@@ -171,7 +196,7 @@ function AppleBoard()
             {
                  0x00: function(rel_addr,ctx) { return IOMAP_CALLS["KBD"](ctx) }
                 ,0x10: function(rel_addr,ctx) { return IOMAP_CALLS["KBDSTRB"](ctx) }
-                ,0x30: function(rel_addr,ctx) { return IOMAP_CALLS["SPKR"](ctx) }
+                //,0x30: function(rel_addr,ctx) { return IOMAP_CALLS["SPKR"](ctx) }
                 ,0x50: function(rel_addr,ctx)
                 {
                     const fn = SOFTSWITCH_50[rel_addr];

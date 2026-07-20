@@ -43,7 +43,7 @@ function Apple2Plus(context)
     
     //var keys = oEMU.component.Keyboard;
     var keys = oCOM.default(oEMU.component.Keyboard,{cycle:function(){}},"A2Pkeys");
-    var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{cycle:function(){},play:function(){}},"AppleSpeaker");
+    //var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{cycle:function(){},play:function(){}},"AppleSpeaker");
     var disk2;
 
     if(typeof(COM_PopupHTML)=="undefined") var COM_PopupHTML = function() { console.log("COM_PopupHTML unavailable") }
@@ -112,12 +112,14 @@ function Apple2Plus(context)
             //hw.cycle();
             video.cycle();
             cpu.cycle();
-            snd.cycle(n);
+            //snd.cycle(n);
+            hw.io.cycle(n);
         }
         // TODO optimise speed!!!!!!!
         if(!oCOM.POPUP.states["cpuDbg_popup"]) // only cycles if POPUP ≠ hidden
             oEMU.component.CPU.Apple2Debug.cycle({"cpu":cpu});
-        snd.play();
+        //snd.play();
+        hw.io.frame();
         keys.cycle(this);
 
         // display dashboard parameters

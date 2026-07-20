@@ -18,6 +18,7 @@ function Apple2IO(vid)
 
     this.slot_ctx = {};
     this.slots = [];
+    this.attachments = {};
 
     // restart() installs the real empty-bus filler; live remounts reuse it.
     var refillEmptyIOActions = function(){};
@@ -57,14 +58,14 @@ function Apple2IO(vid)
     // MAP 80 COLUMN CARD I/O TO SLOT#3 MEMORY
     var MEM_COL80CARD_IO =  SLOT_IO[3], MEM_COL80CARD_IO_SIZE =  SLT_IO_SIZE;
     
-    // HOST_IO callbacks (keyboard, speaker, gfx) 
+    // HOST_IO callback context owned directly by Apple2IO.
 
     if(typeof(oEMU.component.IO)!="undefined")
     {
         // TODO: autosearch for self-declared oEMU.component.IO objects ?
         //var keys = oCOM.default(oEMU.component.Keyboard,{keystroke:function(){},reset:function(){},lastkey:0x00},"Keyboard");
         var keys = oCOM.default(oEMU.component.Keyboard,{"KbdHover":function(){},"cycle":function(){},"keystroke":function(){},"strobe":function(){},"polling":function(){},"events":function(){},"KbdHTML":function(){},"reset":function(){},"lastkey":0x00},"A2Pkeys");
-        var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{"toggle":function(){}},"AppleSpeaker");
+        //var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{"toggle":function(){}},"AppleSpeaker");
         //this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{"state":{"active":false}},"RamCard");
         //this.col80card = oCOM.default(oEMU.component.IO.col80card,{"state":{"active":false}},"col80card");
         //this.disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{"reset":function(){},"state":{"active":false,"diskData":[]}},"AppleDisk");
@@ -89,6 +90,13 @@ function Apple2IO(vid)
 
         var ramcard = this.PCODE2obj("MS16K")[0];
         if(ramcard) ramcard.reset();
+
+        for(var deviceKey in this.attachments)
+        {
+            var device = this.attachments[deviceKey].device;
+            if(device && typeof(device.reset)=="function")
+                device.reset();
+        }
     }
 
     this.restart = function()
@@ -130,12 +138,22 @@ function Apple2IO(vid)
             for(var so in o.sInfo) slotObj[so] = o.sInfo[so];
             slotObj.peripheral = o.pObj;
 
-            if(o.pObj.id?.PCODE == "A2BO" && typeof(o.pObj.IO_map)=="function")
-            {
-                mergeActionMap(CIO.ACTION_MAP,o.pObj.IO_map(model));
-            }
-
             if(bDebug) console.log("EMU_apple2io.js - mount(<"+pinfo.PCODE+" in "+slotN2name(slotN)+">)" );
+        }
+
+        // Peripherals may expose host maps and declarative attached devices.
+        // Re-run this on every restart, including when the mounted object is reused.
+        for(var mountedSlotN in this.slots)
+        {
+            var owner = this.slots[mountedSlotN].peripheral;
+            if(!owner) continue;
+
+            if(typeof(owner.IO_map)=="function")
+                mergeActionMap(CIO.ACTION_MAP,owner.IO_map(model));
+
+            var deviceConfig = Array.isArray(owner.deviceConfig) ? owner.deviceConfig : [];
+            for(var deviceN=0;deviceN<deviceConfig.length;deviceN++)
+                this.attach(owner,deviceConfig[deviceN]);
         }
 
         refillEmptyIOActions = installEmptyIOActions;
@@ -265,6 +283,16 @@ this.slots[3] =
             }
         }
 
+        for(var deviceKey in this.attachments)
+        {
+            var device = this.attachments[deviceKey].device;
+            if(device && typeof(device.restart)=="function")
+            {
+                device.restart();
+                if(bDebug) console.log("EMU_apple2io.js - restart device <"+device.id.DCODE+" on "+device.id.hostPCODE+">");
+            }
+        }
+
         // legacy adaptation
         var ramcard = this.PCODE2obj("MS16K")[0];
         if(ramcard) ramcard.restart();
@@ -311,7 +339,23 @@ function mergeActionMap(dst,src)
         return obj_arr;
     }
 
+    this.DCODE2obj = function(DCODE,hostPCODE)
+    {
+        var obj_arr = [];
 
+        for(var slotN in this.slots)
+        {
+            var owner = this.slots[slotN].peripheral;
+            if(!owner || (hostPCODE && owner.id?.PCODE != hostPCODE)) continue;
+
+            var devices = Array.isArray(owner.devices) ? owner.devices : [];
+            for(var i=0;i<devices.length;i++)
+                if(devices[i]?.id?.DCODE == DCODE)
+                    obj_arr.push(devices[i]);
+        }
+
+        return obj_arr;
+    }
 
     function emptyActionMap()
     {
@@ -345,6 +389,24 @@ function mergeActionMap(dst,src)
                 if(CIO.ACTION_MAP[op][addr] === callback)
                     delete CIO.ACTION_MAP[op][addr];
         }
+    }
+
+
+    function unmapAttachedActions(entry)
+    {
+        var bindings = entry && Array.isArray(entry.bindings) ? entry.bindings : [];
+
+        for(var i=0;i<bindings.length;i++)
+        {
+            var binding = bindings[i];
+            var map = CIO.ACTION_MAP[binding.op];
+            if(!map || map[binding.addr] !== binding.callback) continue;
+
+            if(typeof(binding.previous)=="function") map[binding.addr] = binding.previous;
+            else delete map[binding.addr];
+        }
+
+        if(entry) entry.bindings = [];
     }
 
     function update_IORANGES(sys_model)
@@ -398,7 +460,7 @@ function mergeActionMap(dst,src)
         const ctx2 =
         {
             "keys": keys,
-            "snd": snd,
+            //"snd": snd,
             "vid": vid,
             "io": this,
             "bRO": (typeof(apple2plus) == "object" && apple2plus && apple2plus.hwObj().bRO === true)
@@ -430,7 +492,7 @@ this.write = function(rel_addr,d8)
     const ctx2 =
     {
         "keys": keys,
-        "snd": snd,
+        //"snd": snd,
         "vid": vid,
         "io": this,
         "bRO": (typeof(apple2plus) == "object" && apple2plus && apple2plus.hwObj().bRO === true)
@@ -455,7 +517,174 @@ this.write = function(rel_addr,d8)
     return 0x00;
 }
 
-    this.cycle = function() {}
+    this.cycle = function(n)
+    {
+        for(var key in this.attachments)
+        {
+            var device = this.attachments[key].device;
+            if(device && typeof(device.cycle)=="function")
+                device.cycle(n);
+        }
+    }
+
+    this.frame = function()
+    {
+        for(var key in this.attachments)
+        {
+            var device = this.attachments[key].device;
+            if(device && typeof(device.frame)=="function")
+                device.frame();
+        }
+    }
+
+    this.attach = function(owner,device_info)
+    {
+        if(!owner || !owner.id?.PCODE || !device_info || !device_info.coID) return null;
+
+        var hostPCODE = owner.id.PCODE;
+        var dcode = device_info.DCODE || device_info.coID;
+        if(device_info.hostPCODE && device_info.hostPCODE != hostPCODE) return null;
+
+        var ownerHash = owner.mount && owner.mount.hash!==undefined
+            ? owner.mount.hash
+            : hostPCODE;
+        var key = String(ownerHash)+":"+dcode;
+        var entry = this.attachments[key];
+        var device = entry && entry.device;
+
+        if(entry) unmapAttachedActions(entry);
+
+        if(!device)
+        {
+            var Device = globalThis[device_info.coID];
+            if(typeof(Device)!="function") return null;
+
+            device = new Device();
+            if(!device.id) device.id = {};
+            if(device.id.DCODE && device.id.DCODE != dcode) return null;
+            if(device.id.hostPCODE && device.id.hostPCODE != hostPCODE) return null;
+
+            entry = {"owner":owner,"device":device,"info":device_info,"bindings":[]};
+            this.attachments[key] = entry;
+        }
+
+        device.id.DCODE = dcode;
+        device.id.hostPCODE = hostPCODE;
+        device.id.coID = device_info.coID;
+        if(device_info.icon!==undefined) device.id.icon = device_info.icon;
+        if(device_info.description!==undefined) device.id.description = device_info.description;
+
+        if(!Array.isArray(owner.devices))
+            Object.defineProperty(owner,"devices",{
+                 "value":[]
+                ,"writable":true
+                ,"configurable":true
+                ,"enumerable":false
+            });
+        if(owner.devices.indexOf(device)<0) owner.devices.push(device);
+
+        entry.owner = owner;
+        entry.info = device_info;
+        entry.bindings = [];
+
+        var attachHash = oCOM.crc16(new TextEncoder("utf-8").encode(key));
+        device.attach = {
+             "hostPCODE":hostPCODE
+            ,"ownerHash":ownerHash
+            ,"range":device_info.range || "HostIO"
+            ,"hash":attachHash
+            ,"actions":[]
+        };
+
+        var actionMap = device_info.action || {};
+        for(var op in actionMap)
+        {
+            op = String(op).toUpperCase();
+            if(!CIO.ACTION_MAP[op]) continue;
+
+            for(var address in actionMap[op])
+            {
+                var addr = Number(address);
+                var handler = actionMap[op][address];
+                var method = typeof(handler)=="string"
+                    ? device[handler]
+                    : (handler && typeof(handler.handler)=="string"
+                        ? device[handler.handler]
+                        : (handler && handler.callback ? handler.callback : handler));
+
+                if(!Number.isInteger(addr) || typeof(method)!="function") continue;
+
+                var callback = function(target,fn)
+                {
+                    return function()
+                    {
+                        var args = Array.prototype.slice.call(arguments);
+                        var ctx = args[args.length-1];
+                        if(ctx && ctx.bRO===true) return 0x00;
+
+                        var result = fn.apply(target,args);
+                        return result===undefined ? 0x00 : result;
+                    };
+                }(device,method);
+
+                callback._ioReport = {
+                     "DCODE":dcode
+                    ,"hostPCODE":hostPCODE
+                    ,"slotTitle":owner.mount ? slotN2name(owner.mount.slotN) : "attached"
+                    ,"range":device.attach.range
+                    ,"op":op
+                    ,"hash":attachHash
+                };
+
+                var previous = CIO.ACTION_MAP[op][addr];
+                CIO.ACTION_MAP[op][addr] = callback;
+                entry.bindings.push({"op":op,"addr":addr,"callback":callback,"previous":previous});
+                device.attach.actions.push({"op":op,"addr":addr,"handler":typeof(handler)=="string" ? handler : (handler.handler || method.name || "callback")});
+            }
+        }
+
+        // Transitional reference for existing UI/debug code. It is invisible to peripheral discovery.
+        if(device_info.alias && oEMU.component && oEMU.component.IO)
+            Object.defineProperty(oEMU.component.IO,device_info.alias,{
+                 "value":device
+                ,"writable":true
+                ,"configurable":true
+                ,"enumerable":false
+            });
+
+        if(bDebug)
+            console.log("EMU_apple2io.js - attach(<"+dcode+" to "+hostPCODE+">)");
+
+        return device;
+    }
+
+    this.detach = function(owner,DCODE)
+    {
+        if(!owner) return false;
+        var removed = false;
+
+        for(var key in this.attachments)
+        {
+            var entry = this.attachments[key];
+            var device = entry.device;
+            if(entry.owner !== owner || (DCODE && device?.id?.DCODE != DCODE)) continue;
+
+            unmapAttachedActions(entry);
+            if(entry.info.alias && oEMU.component.IO[entry.info.alias] === device)
+                delete oEMU.component.IO[entry.info.alias];
+
+            if(Array.isArray(owner.devices))
+            {
+                var idx = owner.devices.indexOf(device);
+                if(idx>=0) owner.devices.splice(idx,1);
+            }
+
+            delete this.attachments[key];
+            removed = true;
+        }
+
+        return removed;
+    }
 
     this.unmount = function(slotN)
     {
@@ -466,6 +695,7 @@ this.write = function(rel_addr,d8)
             return false;
 
         var peripheral_obj = slot.peripheral;
+        this.detach(peripheral_obj);
 
         unmapPeripheralActions(peripheral_obj);
 

@@ -11,11 +11,10 @@
 //
 // EMU_apple2spk.js  (Apple II Speaker)
 
-if(oEMU===undefined) var oEMU = {"component":{"IO":{"AppleSpeaker":new AppleSpeaker()}}}
-else oEMU.component.IO.AppleSpeaker = new AppleSpeaker();
-
 function AppleSpeaker()
 {
+    this.id = {"DCODE":"A2SPK", "hostPCODE":"A2BO", "icon":"fa fa-volume-up"};
+
     var bDebug = false;
     var state  = 0;
 
@@ -204,10 +203,9 @@ function AppleSpeaker()
         state ^= 1;
     };
 
-    this.play = function()
+    this.frame = function()
     {
         if(!this.enabled || !this.audio || !this.gain) return;
-
         
         if(bDebug && cnt == 1)
         {
@@ -289,5 +287,9 @@ function AppleSpeaker()
             this.activeSources = this.activeSources.filter(function(x) { return x !== src; });
         };
     };
+
+    // Backward-compatible alias for the stand-alone speaker tester.
+    this.play = this.frame;
+
 }
 
