@@ -9239,6 +9239,7 @@ function EMU_init()
         disk2.diskMenu_detail({id:"softwareCat"});
     }
 
+    keys = apple2plus.keysObj();
     if(!keys)
     {
         console.error("A2KBD device is not attached to A2BO");
@@ -11289,8 +11290,18 @@ function Apple2Debug()
         URL.revokeObjectURL(url);
     }    
 
+    this.isReady = function()
+    {
+        return typeof(window)!="undefined"
+            && window.oTextScroll1
+            && typeof(window.oTextScroll1.move)=="function";
+    }
+
     this.cycle = function(obj)
     {
+        if(!obj || !obj.cpu || typeof(obj.cpu.watch)!="function" || !this.isReady())
+            return false;
+
         //var el = document.getElementById( oEMU.component.CPU.Apple2Debug.disp_id );
         var watch = obj.cpu.watch();
         var jmp_adr = watch.pc - prev_adr;
@@ -11300,8 +11311,9 @@ function Apple2Debug()
         if(prev_adr==-1000) jmp_adr = watch.pc; // TODO: can we do better than just -1000 to indicate start position?
         //document.getElementById("debug").value = oCOM.getHexWord(watch.pc);
 
-        oTextScroll1.move(jmp_adr);
+        window.oTextScroll1.move(jmp_adr);
         prev_adr = watch.pc;
+        return true;
     }
 
     this.play = function(bPlay)
@@ -22230,7 +22242,7 @@ this.write = function(rel_addr,d8)
                     {
                         var args = Array.prototype.slice.call(arguments);
                         var ctx = args[args.length-1];
-                        if(ctx && ctx.bRO===true) return 0x00;
+                        if(ctx && ctx.bRO===true && !readOnly) return 0x00;
 
                         var result = fn.apply(target,args);
                         return result===undefined ? 0x00 : result;
@@ -25429,8 +25441,15 @@ function Apple2Plus(context)
             hw.io.cycle(n);
         }
         // TODO optimise speed!!!!!!!
-        if(!oCOM.POPUP.states["cpuDbg_popup"]) // only cycles if POPUP ≠ hidden
-            oEMU.component.CPU.Apple2Debug.cycle({"cpu":cpu});
+        var debug = oEMU.component.CPU.Apple2Debug;
+        var debugPopup = typeof(document)!="undefined"
+            ? document.getElementById("cpuDbg_popup")
+            : null;
+
+        if(debugPopup && debugPopup.hidden===false
+            && debug && typeof(debug.cycle)=="function")
+            debug.cycle({"cpu":cpu});
+
         //snd.play();
         hw.io.frame();
         //keys.cycle(this);
