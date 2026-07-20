@@ -233,6 +233,7 @@ var disk_seq =
 }
 
 var s_audio,s_gain,s_buffers={},s_player,s_data = new Array(20*128).fill(0);
+var s_buffer_ready;
 for(var i=0;i<s_data.length;i++) s_data[i] = Math.sin(i/10)*0.1;
 
 async function s_init(action) 
@@ -240,29 +241,48 @@ async function s_init(action)
     switch(action)
     {
         case "audio_ctx":
+
           if(s_audio===undefined)
           {
             s_audio = new AudioContext({ latencyHint: 'interactive', sampleRate: 21760 },"apple_speaker");
             s_gain  = s_audio.createGain();
             s_gain.gain.value = 0.1;
             s_audio.audioWorklet.addModule(s_worklet_js); // Load an s_audio worklet
-          } else s_audio.resume();
-        break;
+          }
+          
+          if(s_audio.state=="suspended")
+            await s_audio.resume();
+
+          return s_audio;
 
         case "audio_buffer":
-          for(var sample in samples_struct) // check if any data is already loaded -> if so, skip!
-              if( typeof(samples_struct[sample].audio) != "undefined") return;
 
-          s_load_all(samples_struct).then((response) => 
-          { 
-            var i = 0;
-            for(var name in samples_struct)
-            {
-              samples_struct[name].audio = response[i++];
-              samples_struct[name].audio.sampleRate = this.sampleRate;
-              delete samples_struct[sample].src;    // free .wav file memory space (keep audio)
-            }
-          });
+          await s_init("audio_ctx");
+          var bLoaded = true;
+          for(var sample in samples_struct)
+              if(typeof(samples_struct[sample].audio)=="undefined")
+              {
+                bLoaded = false;
+                break;
+              }
+
+          if(bLoaded) return samples_struct;
+
+          if(!s_buffer_ready)
+          {
+            s_buffer_ready = s_load_all(samples_struct).then((response) => 
+            { 
+              var i = 0;
+              for(var name in samples_struct)
+              {
+                samples_struct[name].audio = response[i++];
+                delete samples_struct[name].src;    // free .wav file memory space (keep audio)
+              }
+              return samples_struct;
+            });
+          }
+          return s_buffer_ready;
+
           // fill buffer ( ctx.createBufferSource )
         break;
 
@@ -307,8 +327,11 @@ function s_beep()   // BEEP
   }
 }
 
-function s_play(name)
+
+async function s_play(name)
 {
+  await s_init("audio_buffer");
+
   s_buffers[name]         = s_audio.createBufferSource();         // create buffers
   //s_buffers[name].onended = onEnded;
   s_buffers[name].buffer  = samples_struct[name].audio;           // fill buffers
@@ -319,9 +342,10 @@ function s_play(name)
   //  s_buffers[name].addEventListener("ended", s_sequence(seq));
 
   s_buffers[name].start(s_audio.currentTime);
+  return s_buffers[name];
 }
 
-function s_sequence(seq)
+async function s_sequence(seq)
 {
   switch(seq)
   {
@@ -329,15 +353,16 @@ function s_sequence(seq)
       switch(s_inc(seq))
       {
         case 0: 
-          s_play("DiskII_spinup");
-          s_buffers["DiskII_spinup"].addEventListener("ended", function()
+          var spinup = await s_play("DiskII_spinup");
+          spinup.addEventListener("ended", function()
           { 
             s_play("DiskII_spin");
           });
         break;
        case 1:
-          s_buffers["DiskII_spin"].stop(0);
-          s_play("DiskII_spindown");
+          if(s_buffers["DiskII_spin"])
+            s_buffers["DiskII_spin"].stop(0);
+          await s_play("DiskII_spindown");
           delete disk_seq["spin"].idx
        break;
       }
