@@ -343,24 +343,34 @@
 
             function onBoardPaste()
             {
+              var keyboard = keys;
+              if(!keyboard && apple2plus && typeof(apple2plus.keysObj)=="function")
+                keyboard = apple2plus.keysObj();
+
+              if(!keyboard)
+              {
+                console.error("A2KBD device is not attached to A2BO");
+                return false;
+              }
+
               var e = EMUboard.boardText.value;
               e = e.replace(/\r\n/g,"\r");
               e = e.replace(/\n/g,"\r");
-              oEMU.component.Keyboard.pastebuffer = e;
-              oEMU.component.Keyboard._i = 0;
+              keyboard.pastebuffer = e;
+              keyboard._i = 0;
 
               // temporarily override polling function (super fast paste function!)
-              oEMU.component.Keyboard.polling = function(key)
+              keyboard.polling = function(key)
               {
                  if(key & 0x80)                   return key;   // keyboard strobe: someone is typing!
                  if(this._i < this.pastebuffer.length)
                  {
                    const k = this.pastebuffer.charCodeAt(this._i++); 
-                   oEMU.component.Keyboard.keystroke( {"charCode":false,"metaKey":false,"altKey":false,"keyCode":k} );
+                   this.keystroke( {"charCode":false,"metaKey":false,"altKey":false,"keyCode":k} );
                    return k;
                  }
                  this._i = 0;
-                 return oEMU.component.Keyboard.stop_polling();  // self-destroy override
+                 return this.stop_polling();  // self-destroy override
               }
 
               /*
