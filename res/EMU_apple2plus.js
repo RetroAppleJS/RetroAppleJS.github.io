@@ -116,8 +116,15 @@ function Apple2Plus(context)
             hw.io.cycle(n);
         }
         // TODO optimise speed!!!!!!!
-        if(!oCOM.POPUP.states["cpuDbg_popup"]) // only cycles if POPUP ≠ hidden
-            oEMU.component.CPU.Apple2Debug.cycle({"cpu":cpu});
+        var debug = oEMU.component.CPU.Apple2Debug;
+        var debugPopup = typeof(document)!="undefined"
+            ? document.getElementById("cpuDbg_popup")
+            : null;
+
+        if(debugPopup && debugPopup.hidden===false
+            && debug && typeof(debug.cycle)=="function")
+            debug.cycle({"cpu":cpu});
+
         //snd.play();
         hw.io.frame();
         //keys.cycle(this);

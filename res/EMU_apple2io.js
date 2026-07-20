@@ -620,7 +620,7 @@ this.write = function(rel_addr,d8)
                     {
                         var args = Array.prototype.slice.call(arguments);
                         var ctx = args[args.length-1];
-                        if(ctx && ctx.bRO===true) return 0x00;
+                        if(ctx && ctx.bRO===true && !readOnly) return 0x00;
 
                         var result = fn.apply(target,args);
                         return result===undefined ? 0x00 : result;

@@ -101,8 +101,18 @@ function Apple2Debug()
         URL.revokeObjectURL(url);
     }    
 
+    this.isReady = function()
+    {
+        return typeof(window)!="undefined"
+            && window.oTextScroll1
+            && typeof(window.oTextScroll1.move)=="function";
+    }
+
     this.cycle = function(obj)
     {
+        if(!obj || !obj.cpu || typeof(obj.cpu.watch)!="function" || !this.isReady())
+            return false;
+
         //var el = document.getElementById( oEMU.component.CPU.Apple2Debug.disp_id );
         var watch = obj.cpu.watch();
         var jmp_adr = watch.pc - prev_adr;
@@ -112,8 +122,9 @@ function Apple2Debug()
         if(prev_adr==-1000) jmp_adr = watch.pc; // TODO: can we do better than just -1000 to indicate start position?
         //document.getElementById("debug").value = oCOM.getHexWord(watch.pc);
 
-        oTextScroll1.move(jmp_adr);
+        window.oTextScroll1.move(jmp_adr);
         prev_adr = watch.pc;
+        return true;
     }
 
     this.play = function(bPlay)

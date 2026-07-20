@@ -289,6 +289,7 @@ function EMU_init()
         disk2.diskMenu_detail({id:"softwareCat"});
     }
 
+    keys = apple2plus.keysObj();
     if(!keys)
     {
         console.error("A2KBD device is not attached to A2BO");
