@@ -521,7 +521,18 @@ this.write = function(rel_addr,d8)
         {
             var device = this.attachments[key].device;
             if(device && typeof(device.tick)=="function")
-                device.cycle(n);
+                device.tick(n);
+        }
+    }
+
+    // Processing-cycle hook, called once after the configured CPU-tick group.
+    this.cycle = function()
+    {
+        for(var key in this.attachments)
+        {
+            var device = this.attachments[key].device;
+            if(device && typeof(device.cycle)=="function")
+                device.cycle();
         }
     }
 
