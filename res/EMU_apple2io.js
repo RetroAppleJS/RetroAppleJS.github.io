@@ -57,14 +57,11 @@ function Apple2IO(vid)
 
     // MAP 80 COLUMN CARD I/O TO SLOT#3 MEMORY
     var MEM_COL80CARD_IO =  SLOT_IO[3], MEM_COL80CARD_IO_SIZE =  SLT_IO_SIZE;
-    
-    // HOST_IO callback context owned directly by Apple2IO.
 
     if(typeof(oEMU.component.IO)!="undefined")
     {
-        // TODO: autosearch for self-declared oEMU.component.IO objects ?
-        //var keys = oCOM.default(oEMU.component.Keyboard,{keystroke:function(){},reset:function(){},lastkey:0x00},"Keyboard");
-        var keys = oCOM.default(oEMU.component.Keyboard,{"KbdHover":function(){},"cycle":function(){},"keystroke":function(){},"strobe":function(){},"polling":function(){},"events":function(){},"KbdHTML":function(){},"reset":function(){},"lastkey":0x00},"A2Pkeys");
+        //var keys = oCOM.default(oEMU.component.Keyboard,{"KbdHover":function(){},"cycle":function(){},"keystroke":function(){},"strobe":function(){},"polling":function(){},"events":function(){},"KbdHTML":function(){},"reset":function(){},"lastkey":0x00},"A2Pkeys");
+        //var keys = oCOM.default(oEMU.component.Keyboard,{"KbdHover":function(){},"cycle":function(){},"keystroke":function(){},"strobe":function(){},"polling":function(){},"events":function(){},"KbdHTML":function(){},"reset":function(){},"lastkey":0x00},"A2Pkeys");
         //var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{"toggle":function(){}},"AppleSpeaker");
         //this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{"state":{"active":false}},"RamCard");
         //this.col80card = oCOM.default(oEMU.component.IO.col80card,{"state":{"active":false}},"col80card");
@@ -84,7 +81,7 @@ function Apple2IO(vid)
     
     this.reset = function()
     {
-        keys.reset();
+        //keys.reset();
         var disk2 = this.PCODE2obj("DISKII")[0];
         if(disk2) disk2.reset();
 
@@ -459,7 +456,7 @@ function mergeActionMap(dst,src)
 
         const ctx2 =
         {
-            "keys": keys,
+            //"keys": keys,
             //"snd": snd,
             "vid": vid,
             "io": this,
@@ -491,7 +488,7 @@ this.write = function(rel_addr,d8)
 
     const ctx2 =
     {
-        "keys": keys,
+        //"keys": keys,
         //"snd": snd,
         "vid": vid,
         "io": this,
@@ -611,10 +608,13 @@ this.write = function(rel_addr,d8)
                     : (handler && typeof(handler.handler)=="string"
                         ? device[handler.handler]
                         : (handler && handler.callback ? handler.callback : handler));
+                var allowReadOnly = !!(
+                    handler && typeof(handler)=="object" && handler.readOnly===true
+                );
 
                 if(!Number.isInteger(addr) || typeof(method)!="function") continue;
 
-                var callback = function(target,fn)
+                var callback = function(target,fn,readOnly)
                 {
                     return function()
                     {
@@ -625,7 +625,7 @@ this.write = function(rel_addr,d8)
                         var result = fn.apply(target,args);
                         return result===undefined ? 0x00 : result;
                     };
-                }(device,method);
+                }(device,method,allowReadOnly);
 
                 callback._ioReport = {
                      "DCODE":dcode

@@ -59,7 +59,7 @@ var oEMU =
          "CPU":{}
         ,"Hardware":{}
         ,"Video":{}
-        ,"Keyboard":{}
+        //,"Keyboard":{}
         ,"RAM":{}
         ,"ROM":{}
         ,"IO":{}
@@ -289,7 +289,11 @@ function EMU_init()
         disk2.diskMenu_detail({id:"softwareCat"});
     }
 
-    keys = oCOM.default(oEMU.component.Keyboard,{KbdHover:function(){},keystroke:function(){},events:function(){},KbdHTML:function(){}},"A2Pkeys");
+    if(!keys)
+    {
+        console.error("A2KBD device is not attached to A2BO");
+        return;
+    }
     keys.init();
 
     // override keyboard hover callbacks
@@ -370,11 +374,11 @@ function EMU_init()
     
     // overrides function that defines conditions for having an active emulator keyboard
     // (should stop capture emulator keyboard events when focused on tabs other than the emulator)
-    oEMU.component.Keyboard.isActive = function(bool)  // override
+
+    keys.isActive = function(bool)
     {
-        if(bool===undefined) return document.getElementById("tab1").checked;
-        else var b = bool;
-        return b;
+        if(bool!==undefined) this.active = !!bool;
+        return this.active && document.getElementById("tab1").checked;
     }
 
     disk2.getState().DSK_led[0] = document.getElementById("dskLED_D1");        // required for GUI_update
@@ -553,12 +557,12 @@ function EMUI()
         if(bPause == (appleIntervalHandle == null)) return;     // do not toggle unnecessarily
 
         if (bPause) {
-            oEMU.component.Keyboard.isActive(false);
+            if(keys) keys.isActive(false);
             window.clearInterval(appleIntervalHandle); appleIntervalHandle = null;
             document.getElementById(arg.id).value = 'Pause ';
             document.getElementById(arg.id).innerHTML = '<i class="fa '+arg.class2+'"></i>';
         } else {
-            oEMU.component.Keyboard.isActive(true);
+            if(keys) keys.isActive(true);
             appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
             document.getElementById(arg.id).value = 'Resume';
             document.getElementById(arg.id).innerHTML = '<i class="fa '+arg.class1+'"></i>';

@@ -4,23 +4,20 @@
 //
 // EMU_A2Pkeys.js
 
-// TODO: CAPTURE PHYSICAL ESCAPE KEY
-
-if(oEMU===undefined) var oEMU =
-    {"component":{"Keyboard":
-        { keystroke:function(){alert("missing A2Pkeys -> keystroke()")}
-         ,KbdHover:function(){COM_PopupHTML("missing A2Pkeys -> KbdHover()",3)}
-         ,KbdHTML:function(){COM_PopupHTML("missing A2Pkeys -> KbdHTML()",3)}
-        }
-    }}
-else oEMU.component.Keyboard = new A2Pkeys();
-
+// The emulator attaches A2Pkeys as an AppleBoard child device.
+// Keep automatic construction only for stand-alone keyboard tools.
+if(typeof(oEMU)=="undefined")
+    var oEMU = {"component":{"Keyboard":new A2Pkeys()}};
 var keycap_over,keycap_out,keycap_click;
 
 function A2Pkeys()
 {
+    this.id = {"DCODE":"A2KBD", "hostPCODE":"A2BO", "icon":"fa fa-keyboard"};
+
     //this.hw = hw;
     this.bDebug = false;
+    this.active = true;
+    this.keypress_handler = null;
     this.lastkey = 0x00;
     this.o = typeof(_o)=="undefined"?
     {"EMU_keyb_timer":false
@@ -39,17 +36,26 @@ function A2Pkeys()
 
     this.init = function(arg)
     {
-        keycap_over  = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"over"});    // function overload
-        keycap_out   = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"out"});     // function overload
-        keycap_click = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"click"});   // function overload
+        if(this.keypress_handler==null)
+            this.keypress_handler = this.keystroke.bind(this);
+
+        keycap_over  = this.events({"srcElement":{"id":"keycap"},"type":"over"});    // function overload
+        keycap_out   = this.events({"srcElement":{"id":"keycap"},"type":"out"});     // function overload
+        keycap_click = this.events({"srcElement":{"id":"keycap"},"type":"click"});   // function overload
     }
 
-    this.isActive = function(bool) { return bool } // always active by default
-
-    this.cycle = function(systemObj,bEnable)
+    this.isActive = function(bool)
     {
-        if(this.isActive()) window.onkeypress  = systemObj.keystroke;
-        else window.onkeypress  = null;
+        if(bool!==undefined) this.active = !!bool;
+        return this.active;
+    }
+
+    // Attached-device frame hook. Keyboard capture does not run per CPU cycle.
+    this.frame = function()
+    {
+        if(typeof(window)=="undefined") return;
+        var handler = this.isActive() ? this.keypress_handler : null;
+        if(window.onkeypress !== handler) window.onkeypress = handler;
     }
 
     this.reset = function()
@@ -66,6 +72,13 @@ function A2Pkeys()
     {
         // pasteboard
         this.lastkey = data.keyCode | 0x80;
+    }
+
+    this.read = function(rel_addr,ctx)
+    {
+        return ctx && ctx.bRO===true
+            ? this.lastkey
+            : this.polling(this.lastkey);
     }
 
     this.polling = function(key){ return key }    // override me if you need to take over the keyboard  

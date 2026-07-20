@@ -28,7 +28,22 @@ function AppleBoard()
 
     // Declarative device wiring owned by this peripheral.
     this.deviceConfig = [
-        {
+         {
+             "DCODE":"A2KBD"
+            ,"hostPCODE":"A2BO"
+            ,"coID":"A2Pkeys"
+            ,"icon":"fa fa-keyboard"
+            ,"description":"Apple II keyboard"
+            ,"range":"HostIO"
+            ,"action":{
+                 "RD":{
+                     "0x00":{"handler":"read","readOnly":true}
+                    ,"0x10":"strobe"
+                 }
+                ,"WR":{"0x10":"strobe"}
+             }
+         }
+        ,{
              "DCODE":"A2SPK"
             ,"hostPCODE":"A2BO"
             ,"coID":"AppleSpeaker"
@@ -57,8 +72,8 @@ function AppleBoard()
 
         // hack - TODO: find a permanent fix
         const IOMAP_CALLS = {
-            "KBD":      function(ctx2){ return isRO(ctx2) ? ctx2.keys.lastkey : ctx2.keys.polling(ctx2.keys.lastkey); },
-            "KBDSTRB":  function(ctx2){ if(!isRO(ctx2)) ctx2.keys.strobe();       return 0x00; },
+            //"KBD":      function(ctx2){ return isRO(ctx2) ? ctx2.keys.lastkey : ctx2.keys.polling(ctx2.keys.lastkey); },
+            //"KBDSTRB":  function(ctx2){ if(!isRO(ctx2)) ctx2.keys.strobe();       return 0x00; },
             //"SPKR":     function(ctx2){ if(!isRO(ctx2)) ctx2.snd.toggle();        return 0x00; },
 
             "TXTCLR":   function(ctx){ if(!isRO(ctx)) ctx.vid.setGfx(true);       return 0x00; },
@@ -194,10 +209,7 @@ function AppleBoard()
             "BT":{},
             "RD":
             {
-                 0x00: function(rel_addr,ctx) { return IOMAP_CALLS["KBD"](ctx) }
-                ,0x10: function(rel_addr,ctx) { return IOMAP_CALLS["KBDSTRB"](ctx) }
-                //,0x30: function(rel_addr,ctx) { return IOMAP_CALLS["SPKR"](ctx) }
-                ,0x50: function(rel_addr,ctx)
+                0x50: function(rel_addr,ctx)
                 {
                     const fn = SOFTSWITCH_50[rel_addr];
                     return fn ? fn(ctx) : 0x00;
@@ -209,12 +221,11 @@ function AppleBoard()
             "VA":{},
             "WR":
             {
-                 0x10: function(rel_addr,d8,ctx) { return IOMAP_CALLS["KBDSTRB"](ctx) }
-            ,0x50: function(rel_addr,d8,ctx)
-            {
-                const fn = SOFTSWITCH_50[rel_addr];
-                return fn ? fn(ctx) : 0x00;
-            }
+                0x50: function(rel_addr,d8,ctx)
+                {
+                    const fn = SOFTSWITCH_50[rel_addr];
+                    return fn ? fn(ctx) : 0x00;
+                }
             }
         }
 

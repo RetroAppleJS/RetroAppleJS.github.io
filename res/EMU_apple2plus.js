@@ -42,7 +42,7 @@ function Apple2Plus(context)
     const hw = this.hw
     
     //var keys = oEMU.component.Keyboard;
-    var keys = oCOM.default(oEMU.component.Keyboard,{cycle:function(){}},"A2Pkeys");
+    //var keys = oCOM.default(oEMU.component.Keyboard,{cycle:function(){}},"A2Pkeys");
     //var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{cycle:function(){},play:function(){}},"AppleSpeaker");
     //var disk2;
 
@@ -120,7 +120,7 @@ function Apple2Plus(context)
             oEMU.component.CPU.Apple2Debug.cycle({"cpu":cpu});
         //snd.play();
         hw.io.frame();
-        keys.cycle(this);
+        //keys.cycle(this);
 
         // display dashboard parameters
         if(oCOM.bRefreshEvent)
@@ -133,7 +133,7 @@ function Apple2Plus(context)
     }
 
     this.keysObj = function() {
-        return keys;
+        return this.hw.io.DCODE2obj("A2KBD","A2BO")[0];
     }
 
     this.hwObj = function() {
