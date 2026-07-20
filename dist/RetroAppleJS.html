@@ -11545,7 +11545,7 @@ function AppleSpeaker()
         }
     };
 
-    this.cycle = function(n)
+    this.tick = function(n)
     {
         var m = n % this.tickCycle;
 
@@ -11586,7 +11586,7 @@ function AppleSpeaker()
         state ^= 1;
     };
 
-    this.frame = function()
+    this.cycle = function()
     {
         if(!this.enabled || !this.audio || !this.gain) return;
         
@@ -11672,7 +11672,7 @@ function AppleSpeaker()
     };
 
     // Backward-compatible alias for the stand-alone speaker tester.
-    this.play = this.frame;
+    this.play = this.cycle;
 
 }
 
@@ -22136,23 +22136,14 @@ this.write = function(rel_addr,d8)
     return 0x00;
 }
 
-    this.cycle = function(n)
+    // CPU-tick hook for devices that need sub-cycle sampling, such as the speaker.
+    this.tick = function(n)
     {
         for(var key in this.attachments)
         {
             var device = this.attachments[key].device;
-            if(device && typeof(device.cycle)=="function")
+            if(device && typeof(device.tick)=="function")
                 device.cycle(n);
-        }
-    }
-
-    this.frame = function()
-    {
-        for(var key in this.attachments)
-        {
-            var device = this.attachments[key].device;
-            if(device && typeof(device.frame)=="function")
-                device.frame();
         }
     }
 
@@ -24617,8 +24608,8 @@ function A2Pkeys()
         return this.active;
     }
 
-    // Attached-device frame hook. Keyboard capture does not run per CPU cycle.
-    this.frame = function()
+    // Attached-device cycle hook. Keyboard capture is refreshed once per processing cycle.
+    this.cycle = function()
     {
         if(typeof(window)=="undefined") return;
         var handler = this.isActive() ? this.keypress_handler : null;
@@ -25170,6 +25161,7 @@ padding: 0;
 
     this.events = function(arg)
     {
+        var keyboard = this;
         if(this.events_data.metabits[0]==null && arg.getModifierState)     // init metabits (in case program starts while control is pressed or capslock active)
         {
             this.events_data.metabits[0] = 0;
@@ -25197,7 +25189,7 @@ padding: 0;
             case "keycap_click":
                 return function(t)
                 {
-                    var _this  = oEMU.component.Keyboard;
+                    var _this  = keyboard;
                     var Hash16 = _this.getKeyHash16(_this.getKeyContent(t));
                     var lookup = _this.events_data.HTMLmap_A2_US[Hash16];
                     if(lookup===undefined) return console.warn("event "+id_type+" no mapping for "+_this.getKeyContent(t)+"("+Hash16+")");
@@ -25438,7 +25430,7 @@ function Apple2Plus(context)
             video.cycle();
             cpu.cycle();
             //snd.cycle(n);
-            hw.io.cycle(n);
+            hw.io.tick(n);
         }
         // TODO optimise speed!!!!!!!
         var debug = oEMU.component.CPU.Apple2Debug;
@@ -25451,7 +25443,7 @@ function Apple2Plus(context)
             debug.cycle({"cpu":cpu});
 
         //snd.play();
-        hw.io.frame();
+        hw.io.cycle();
         //keys.cycle(this);
 
         // display dashboard parameters
@@ -25867,7 +25859,7 @@ function Apple2Plus(context)
             </script>
             
             <!--input id=foo type=text oninput="apple2plus.keystroke(event)"    onclick=document.getElementById('foo').focus()-->
-            <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;padding:0px 0px 0px 0px;" onclick="EMU_audio_event_unlock();" onkeydown="EMU_audio_event_unlock();oEMU.component.Keyboard.events(event);/*keys.keystroke(event)*/"  onkeyup=oEMU.component.Keyboard.events(event)></canvas>
+            <canvas class="appvid" id="applescreen" width="560" height="384" tabindex="0" style="outline: none !important;padding:0px 0px 0px 0px;" onclick="EMU_audio_event_unlock();" onkeydown="EMU_audio_event_unlock();if(keys) keys.events(event);" onkeyup="if(keys) keys.events(event);"></canvas>
             <!--/input-->
 
 <!--button onclick="onSnapshot()">SNAP</button-->
@@ -25878,7 +25870,7 @@ function Apple2Plus(context)
             <div class="appdskLID" id="dskLID_D1" style="left:250px;top:652px;z-index:0"></div>
             <div class="appdskLID" id="dskLID_D2" style="left:685px;top:652px;z-index:0"></div>
 
-            <div id="kbd" style="position:relative; z-index:1;" onload="oEMU.component?.Keyboard.init({elid:'kbd'})"></div>
+            <div id="kbd" style="position:relative; z-index:1;"></div>
 
 
             <!--
