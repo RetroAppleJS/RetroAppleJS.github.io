@@ -9009,7 +9009,7 @@ var oEMU =
          "CPU":{}
         ,"Hardware":{}
         ,"Video":{}
-        ,"Keyboard":{}
+        //,"Keyboard":{}
         ,"RAM":{}
         ,"ROM":{}
         ,"IO":{}
@@ -9239,7 +9239,11 @@ function EMU_init()
         disk2.diskMenu_detail({id:"softwareCat"});
     }
 
-    keys = oCOM.default(oEMU.component.Keyboard,{KbdHover:function(){},keystroke:function(){},events:function(){},KbdHTML:function(){}},"A2Pkeys");
+    if(!keys)
+    {
+        console.error("A2KBD device is not attached to A2BO");
+        return;
+    }
     keys.init();
 
     // override keyboard hover callbacks
@@ -9320,11 +9324,11 @@ function EMU_init()
     
     // overrides function that defines conditions for having an active emulator keyboard
     // (should stop capture emulator keyboard events when focused on tabs other than the emulator)
-    oEMU.component.Keyboard.isActive = function(bool)  // override
+
+    keys.isActive = function(bool)
     {
-        if(bool===undefined) return document.getElementById("tab1").checked;
-        else var b = bool;
-        return b;
+        if(bool!==undefined) this.active = !!bool;
+        return this.active && document.getElementById("tab1").checked;
     }
 
     disk2.getState().DSK_led[0] = document.getElementById("dskLED_D1");        // required for GUI_update
@@ -9503,12 +9507,12 @@ function EMUI()
         if(bPause == (appleIntervalHandle == null)) return;     // do not toggle unnecessarily
 
         if (bPause) {
-            oEMU.component.Keyboard.isActive(false);
+            if(keys) keys.isActive(false);
             window.clearInterval(appleIntervalHandle); appleIntervalHandle = null;
             document.getElementById(arg.id).value = 'Pause ';
             document.getElementById(arg.id).innerHTML = '<i class="fa '+arg.class2+'"></i>';
         } else {
-            oEMU.component.Keyboard.isActive(true);
+            if(keys) keys.isActive(true);
             appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
             document.getElementById(arg.id).value = 'Resume';
             document.getElementById(arg.id).innerHTML = '<i class="fa '+arg.class1+'"></i>';
@@ -21265,7 +21269,22 @@ function AppleBoard()
 
     // Declarative device wiring owned by this peripheral.
     this.deviceConfig = [
-        {
+         {
+             "DCODE":"A2KBD"
+            ,"hostPCODE":"A2BO"
+            ,"coID":"A2Pkeys"
+            ,"icon":"fa fa-keyboard"
+            ,"description":"Apple II keyboard"
+            ,"range":"HostIO"
+            ,"action":{
+                 "RD":{
+                     "0x00":{"handler":"read","readOnly":true}
+                    ,"0x10":"strobe"
+                 }
+                ,"WR":{"0x10":"strobe"}
+             }
+         }
+        ,{
              "DCODE":"A2SPK"
             ,"hostPCODE":"A2BO"
             ,"coID":"AppleSpeaker"
@@ -21294,8 +21313,8 @@ function AppleBoard()
 
         // hack - TODO: find a permanent fix
         const IOMAP_CALLS = {
-            "KBD":      function(ctx2){ return isRO(ctx2) ? ctx2.keys.lastkey : ctx2.keys.polling(ctx2.keys.lastkey); },
-            "KBDSTRB":  function(ctx2){ if(!isRO(ctx2)) ctx2.keys.strobe();       return 0x00; },
+            //"KBD":      function(ctx2){ return isRO(ctx2) ? ctx2.keys.lastkey : ctx2.keys.polling(ctx2.keys.lastkey); },
+            //"KBDSTRB":  function(ctx2){ if(!isRO(ctx2)) ctx2.keys.strobe();       return 0x00; },
             //"SPKR":     function(ctx2){ if(!isRO(ctx2)) ctx2.snd.toggle();        return 0x00; },
 
             "TXTCLR":   function(ctx){ if(!isRO(ctx)) ctx.vid.setGfx(true);       return 0x00; },
@@ -21431,10 +21450,7 @@ function AppleBoard()
             "BT":{},
             "RD":
             {
-                 0x00: function(rel_addr,ctx) { return IOMAP_CALLS["KBD"](ctx) }
-                ,0x10: function(rel_addr,ctx) { return IOMAP_CALLS["KBDSTRB"](ctx) }
-                //,0x30: function(rel_addr,ctx) { return IOMAP_CALLS["SPKR"](ctx) }
-                ,0x50: function(rel_addr,ctx)
+                0x50: function(rel_addr,ctx)
                 {
                     const fn = SOFTSWITCH_50[rel_addr];
                     return fn ? fn(ctx) : 0x00;
@@ -21446,12 +21462,11 @@ function AppleBoard()
             "VA":{},
             "WR":
             {
-                 0x10: function(rel_addr,d8,ctx) { return IOMAP_CALLS["KBDSTRB"](ctx) }
-            ,0x50: function(rel_addr,d8,ctx)
-            {
-                const fn = SOFTSWITCH_50[rel_addr];
-                return fn ? fn(ctx) : 0x00;
-            }
+                0x50: function(rel_addr,d8,ctx)
+                {
+                    const fn = SOFTSWITCH_50[rel_addr];
+                    return fn ? fn(ctx) : 0x00;
+                }
             }
         }
 
@@ -21652,14 +21667,11 @@ function Apple2IO(vid)
 
     // MAP 80 COLUMN CARD I/O TO SLOT#3 MEMORY
     var MEM_COL80CARD_IO =  SLOT_IO[3], MEM_COL80CARD_IO_SIZE =  SLT_IO_SIZE;
-    
-    // HOST_IO callback context owned directly by Apple2IO.
 
     if(typeof(oEMU.component.IO)!="undefined")
     {
-        // TODO: autosearch for self-declared oEMU.component.IO objects ?
-        //var keys = oCOM.default(oEMU.component.Keyboard,{keystroke:function(){},reset:function(){},lastkey:0x00},"Keyboard");
-        var keys = oCOM.default(oEMU.component.Keyboard,{"KbdHover":function(){},"cycle":function(){},"keystroke":function(){},"strobe":function(){},"polling":function(){},"events":function(){},"KbdHTML":function(){},"reset":function(){},"lastkey":0x00},"A2Pkeys");
+        //var keys = oCOM.default(oEMU.component.Keyboard,{"KbdHover":function(){},"cycle":function(){},"keystroke":function(){},"strobe":function(){},"polling":function(){},"events":function(){},"KbdHTML":function(){},"reset":function(){},"lastkey":0x00},"A2Pkeys");
+        //var keys = oCOM.default(oEMU.component.Keyboard,{"KbdHover":function(){},"cycle":function(){},"keystroke":function(){},"strobe":function(){},"polling":function(){},"events":function(){},"KbdHTML":function(){},"reset":function(){},"lastkey":0x00},"A2Pkeys");
         //var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{"toggle":function(){}},"AppleSpeaker");
         //this.ramcard = oCOM.default(oEMU.component.IO.RamCard,{"state":{"active":false}},"RamCard");
         //this.col80card = oCOM.default(oEMU.component.IO.col80card,{"state":{"active":false}},"col80card");
@@ -21679,7 +21691,7 @@ function Apple2IO(vid)
     
     this.reset = function()
     {
-        keys.reset();
+        //keys.reset();
         var disk2 = this.PCODE2obj("DISKII")[0];
         if(disk2) disk2.reset();
 
@@ -22054,7 +22066,7 @@ function mergeActionMap(dst,src)
 
         const ctx2 =
         {
-            "keys": keys,
+            //"keys": keys,
             //"snd": snd,
             "vid": vid,
             "io": this,
@@ -22086,7 +22098,7 @@ this.write = function(rel_addr,d8)
 
     const ctx2 =
     {
-        "keys": keys,
+        //"keys": keys,
         //"snd": snd,
         "vid": vid,
         "io": this,
@@ -22206,10 +22218,13 @@ this.write = function(rel_addr,d8)
                     : (handler && typeof(handler.handler)=="string"
                         ? device[handler.handler]
                         : (handler && handler.callback ? handler.callback : handler));
+                var allowReadOnly = !!(
+                    handler && typeof(handler)=="object" && handler.readOnly===true
+                );
 
                 if(!Number.isInteger(addr) || typeof(method)!="function") continue;
 
-                var callback = function(target,fn)
+                var callback = function(target,fn,readOnly)
                 {
                     return function()
                     {
@@ -22220,7 +22235,7 @@ this.write = function(rel_addr,d8)
                         var result = fn.apply(target,args);
                         return result===undefined ? 0x00 : result;
                     };
-                }(device,method);
+                }(device,method,allowReadOnly);
 
                 callback._ioReport = {
                      "DCODE":dcode
@@ -24544,23 +24559,20 @@ this.write = function(rel_addr,d8)
 //
 // EMU_A2Pkeys.js
 
-// TODO: CAPTURE PHYSICAL ESCAPE KEY
-
-if(oEMU===undefined) var oEMU =
-    {"component":{"Keyboard":
-        { keystroke:function(){alert("missing A2Pkeys -> keystroke()")}
-         ,KbdHover:function(){COM_PopupHTML("missing A2Pkeys -> KbdHover()",3)}
-         ,KbdHTML:function(){COM_PopupHTML("missing A2Pkeys -> KbdHTML()",3)}
-        }
-    }}
-else oEMU.component.Keyboard = new A2Pkeys();
-
+// The emulator attaches A2Pkeys as an AppleBoard child device.
+// Keep automatic construction only for stand-alone keyboard tools.
+if(typeof(oEMU)=="undefined")
+    var oEMU = {"component":{"Keyboard":new A2Pkeys()}};
 var keycap_over,keycap_out,keycap_click;
 
 function A2Pkeys()
 {
+    this.id = {"DCODE":"A2KBD", "hostPCODE":"A2BO", "icon":"fa fa-keyboard"};
+
     //this.hw = hw;
     this.bDebug = false;
+    this.active = true;
+    this.keypress_handler = null;
     this.lastkey = 0x00;
     this.o = typeof(_o)=="undefined"?
     {"EMU_keyb_timer":false
@@ -24579,17 +24591,26 @@ function A2Pkeys()
 
     this.init = function(arg)
     {
-        keycap_over  = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"over"});    // function overload
-        keycap_out   = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"out"});     // function overload
-        keycap_click = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"click"});   // function overload
+        if(this.keypress_handler==null)
+            this.keypress_handler = this.keystroke.bind(this);
+
+        keycap_over  = this.events({"srcElement":{"id":"keycap"},"type":"over"});    // function overload
+        keycap_out   = this.events({"srcElement":{"id":"keycap"},"type":"out"});     // function overload
+        keycap_click = this.events({"srcElement":{"id":"keycap"},"type":"click"});   // function overload
     }
 
-    this.isActive = function(bool) { return bool } // always active by default
-
-    this.cycle = function(systemObj,bEnable)
+    this.isActive = function(bool)
     {
-        if(this.isActive()) window.onkeypress  = systemObj.keystroke;
-        else window.onkeypress  = null;
+        if(bool!==undefined) this.active = !!bool;
+        return this.active;
+    }
+
+    // Attached-device frame hook. Keyboard capture does not run per CPU cycle.
+    this.frame = function()
+    {
+        if(typeof(window)=="undefined") return;
+        var handler = this.isActive() ? this.keypress_handler : null;
+        if(window.onkeypress !== handler) window.onkeypress = handler;
     }
 
     this.reset = function()
@@ -24606,6 +24627,13 @@ function A2Pkeys()
     {
         // pasteboard
         this.lastkey = data.keyCode | 0x80;
+    }
+
+    this.read = function(rel_addr,ctx)
+    {
+        return ctx && ctx.bRO===true
+            ? this.lastkey
+            : this.polling(this.lastkey);
     }
 
     this.polling = function(key){ return key }    // override me if you need to take over the keyboard  
@@ -25327,7 +25355,7 @@ function Apple2Plus(context)
     const hw = this.hw
     
     //var keys = oEMU.component.Keyboard;
-    var keys = oCOM.default(oEMU.component.Keyboard,{cycle:function(){}},"A2Pkeys");
+    //var keys = oCOM.default(oEMU.component.Keyboard,{cycle:function(){}},"A2Pkeys");
     //var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{cycle:function(){},play:function(){}},"AppleSpeaker");
     //var disk2;
 
@@ -25405,7 +25433,7 @@ function Apple2Plus(context)
             oEMU.component.CPU.Apple2Debug.cycle({"cpu":cpu});
         //snd.play();
         hw.io.frame();
-        keys.cycle(this);
+        //keys.cycle(this);
 
         // display dashboard parameters
         if(oCOM.bRefreshEvent)
@@ -25418,7 +25446,7 @@ function Apple2Plus(context)
     }
 
     this.keysObj = function() {
-        return keys;
+        return this.hw.io.DCODE2obj("A2KBD","A2BO")[0];
     }
 
     this.hwObj = function() {
