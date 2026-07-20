@@ -332,10 +332,45 @@ function AppleBoard()
 
     this.deviceList_html = function(model)
     {
+        var devices = Array.isArray(this.devices) ? this.devices : [];
         var modes = oApple2Video && typeof(oApple2Video.getRenderModes) == "function"
             ? oApple2Video.getRenderModes()
             : [];
         var labels = [];
+
+        // List actual attached child-device instances, not merely deviceConfig entries.
+        for(var d=0;d<devices.length;d++)
+        {
+            var device = devices[d];
+            if(!device) continue;
+
+            var id = device.id || {};
+            var deviceCode = String(
+                id.DCODE ||
+                id.coID ||
+                (device.constructor && device.constructor.name) ||
+                "device"
+            );
+            var description = String(id.description || deviceCode);
+            var icon = String(id.icon || "fa fa-microchip");
+            var range = device.attach && device.attach.range
+                ? String(device.attach.range)
+                : "";
+            var title = description + (range ? " ["+range+"]" : "");
+
+            labels.push(
+                 "<div class=\"appbut label\""
+                +" data-dcode=\""+oCOM.escapeHTML(deviceCode)+"\""
+                +" style=\"cursor:default;white-space:nowrap;\""
+                +" title=\""+oCOM.escapeHTML(title)+"\">"
+                +"<i class=\""+oCOM.escapeHTML(icon)+"\" aria-hidden=\"true\"></i>&nbsp;"
+                +oCOM.escapeHTML(deviceCode)
+                +"</div>"
+            );
+        }
+
+        // Video render modes are host facilities with their own controls.
+
 
         for(var m=0;m<modes.length;m++)
         {

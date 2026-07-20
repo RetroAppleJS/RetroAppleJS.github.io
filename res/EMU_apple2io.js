@@ -2529,10 +2529,20 @@ this.write = function(rel_addr,d8)
         {
             var s = slots[i];
             var slotN = s==="H" ? 0 : slotID2n(s);
-            var pcode = s==="H"
-                ? "HostIO"
-            : peripheralPCODE(this.slots[slotN] && this.slots[slotN].peripheral);
-            sig.push(String(s)+":"+pcode);
+            var peripheral = this.slots[slotN] && this.slots[slotN].peripheral;
+            var pcode = s==="H" ? "HostIO" : peripheralPCODE(peripheral);
+            var deviceCodes = [];
+            var devices = peripheral && Array.isArray(peripheral.devices)
+                ? peripheral.devices
+                : [];
+
+            for(var d=0;d<devices.length;d++)
+            {
+                var id = devices[d] && devices[d].id;
+                if(id && id.DCODE) deviceCodes.push(String(id.DCODE));
+            }
+
+            sig.push(String(s)+":"+pcode+":"+deviceCodes.join(","));
         }
 
         return sig.join("|");
