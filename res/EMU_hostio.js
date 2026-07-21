@@ -27,6 +27,7 @@ function AppleBoard()
     });
 
     // Declarative device wiring owned by this peripheral.
+    // TODO: we should instead discover the objects A2BO owns and get the data from there!
     this.deviceConfig = [
          {
              "DCODE":"A2KBD"
@@ -52,6 +53,21 @@ function AppleBoard()
             ,"description":"Apple II speaker"
             ,"range":"HostIO"
             ,"action":{"RD":{"0x30":"toggle"}}
+        }
+        ,{
+             "DCODE":"A2GAM"
+            ,"hostPCODE":"A2BO"
+            ,"coID":"GamePort"
+            ,"icon":"fa fa-gamepad"
+            ,"description":"Apple II game I/O port"
+            ,"range":"HostIO"
+            ,"action":{
+                 "RD":{
+                     "0x60":{"handler":"read","readOnly":true}
+                    ,"0x70":"trigger"
+                 }
+                ,"WR":{"0x70":"trigger"}
+             }
         }
     ];
 
@@ -275,10 +291,10 @@ function AppleBoard()
         return s;
     }
 
-    this.deviceControls_popup = function(modeName)
+    this.deviceControls_popup = function(deviceRef)
     {
         var popup_id = "hostDeviceControls_popup";
-        modeName = String(modeName || "");
+        deviceRef = String(deviceRef || "");
         var host = document.getElementById("tab1.2") || document.body;
         var popup = document.getElementById(popup_id);
 
@@ -295,19 +311,61 @@ function AppleBoard()
         if(popup.parentNode !== host)
             host.appendChild(popup);
 
-        var currentMode = popup.getAttribute("data-mode") || "";
+        var currentDevice = popup.getAttribute("data-device") || "";
 
         // Clicking the sliders icon for the currently open device closes it.
         // Selecting another device keeps the popup open and replaces its body.
-        if(!popup.hidden && currentMode === modeName)
+        if(!popup.hidden && currentDevice === deviceRef)
         {
             oCOM.POPUP.toggle(popup_id);
             return;
         }
 
-        var controls = oApple2Video && typeof(oApple2Video.getRendererControlHTML) == "function"
-            ? oApple2Video.getRendererControlHTML(modeName)
-            : "";
+        var controls = "";
+        var controlTitle = deviceRef || "device";
+        var device = null;
+
+        for(var d=0;d<this.devices.length;d++)
+        {
+            var candidate = this.devices[d];
+            var id = candidate && candidate.id ? candidate.id : {};
+
+            if(id.DCODE == deviceRef || id.coID == deviceRef)
+            {
+                device = candidate;
+                break;
+            }
+        }
+
+        if(device)
+        {
+            controlTitle = device.id.description || device.id.DCODE || deviceRef;
+
+            if(typeof(device.ctrl_dlg)=="function")
+                controls = device.ctrl_dlg();
+        }
+        else if(oApple2Video)
+        {
+            var modeName = deviceRef;
+            var videoDevices = typeof(oApple2Video.getRegisteredDevices)=="function"
+                ? oApple2Video.getRegisteredDevices()
+                : [];
+
+            for(var v=0;v<videoDevices.length;v++)
+            {
+                var videoID = videoDevices[v].id || {};
+
+                if(videoID.DCODE == deviceRef || videoID.mode == deviceRef)
+                {
+                    modeName = videoID.mode || deviceRef;
+                    controlTitle = videoID.description || modeName;
+                    break;
+                }
+            }
+
+            if(typeof(oApple2Video.getRendererControlHTML)=="function")
+                controls = oApple2Video.getRendererControlHTML(modeName);
+        }
 
         if(!controls)
             controls = "<div style=\"padding:8px\">No controls are available for this device.</div>";
@@ -315,10 +373,10 @@ function AppleBoard()
         var closeBtn = "<div class=\"appbut\" "
             +"onclick=\"oCOM.POPUP.toggle('"+popup_id+"');event.stopPropagation();\" "
             +"style=\"text-align:center;float:right;\">x</div>";
-        var title = "<span>"+oCOM.escapeHTML((modeName || "device").toUpperCase())+" CONTROLS</span>";
+        var title = "<span>"+oCOM.escapeHTML(String(controlTitle).toUpperCase())+" CONTROLS</span>";
         var wasHidden = popup.hidden;
 
-        popup.setAttribute("data-mode",modeName);
+        popup.setAttribute("data-device",deviceRef);
         popup.innerHTML = oCOM.POPUP.title_body_html(
              title + closeBtn
             ,"<div style=\"padding:8px;min-width:0px;\">"+controls+"</div>"
@@ -386,6 +444,11 @@ function AppleBoard()
             );
             var description = String(id.description || deviceCode);
             var icon = String(id.icon || "");
+            var hasControls = typeof(device.ctrl_dlg)=="function";
+            var codeArg = JSON.stringify(deviceCode);
+            var openControls = "event.stopPropagation();"
+                +"var b=apple2plus.hwObj().io.PCODE2obj(\"A2BO\")[0];"
+                +"if(b)b.deviceControls_popup("+codeArg+");";
 
             var range = device.attach && device.attach.range
                 ? String(device.attach.range)
@@ -399,6 +462,11 @@ function AppleBoard()
                 +" title=\""+oCOM.escapeHTML(title)+"\">"
                 +(icon ? "<i class=\""+icon+"\" aria-hidden=\"true\"></i>&nbsp;" : "")
                 +oCOM.escapeHTML(deviceCode)
+                +(hasControls
+                    ? "&nbsp;<i class=\"fa fa fa-sliders-h\""
+                        +" title=\"Open "+oCOM.escapeHTML(deviceCode)+" controls\""
+                        +" style=\"cursor:pointer\" onclick='"+openControls+"'></i>"
+                    : "")
                 +"</div>"
             );
         }
