@@ -17585,8 +17585,16 @@ function Apple2VideoMUX(canvas)
         r.vidram = this.vidram;
         r.hw = this.hw;
 
-        if(forceReset && typeof(r.reset) == "function")
+        /*
+         * Registration only constructs the renderer.  A registered renderer
+         * still needs its own reset() before its first activation.
+         */
+        var needsInitialisation = forceReset || r._muxInitialised !== true;
+
+        if(needsInitialisation && typeof(r.reset) == "function")        
             r.reset();
+
+        r._muxInitialised = true;
 
         this.applyState(r);
         return r;
@@ -17799,6 +17807,13 @@ function Apple2VideoMUX(canvas)
     {
         // Register every video device once; activation remains a separate state.
         this.registerDevices();
+
+        /*
+         * A machine reset invalidates renderer-specific setup.  Reset the
+         * active renderer below; the others reset lazily when selected.
+         */
+        for(var d=0;d<this.devices.length;d++)
+            this.devices[d]._muxInitialised = false;
 
         this.state.gfx = false;
         this.state.mix = false;
