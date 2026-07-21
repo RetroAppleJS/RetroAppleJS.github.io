@@ -330,22 +330,25 @@ function AppleBoard()
         if(wasHidden) oCOM.POPUP.toggle(popup_id);
     }
 
-    this.videoDeviceEnableToggle = function(DCODE)
+    this.videoDeviceSelect = function(DCODE)
     {
         if(typeof(oApple2Video)=="undefined" ||
            !oApple2Video ||
-           typeof(oApple2Video.toggleDeviceEnable)!="function")
+           typeof(oApple2Video.setModeByDCODE)!="function")
             return false;
 
-        var enabled = oApple2Video.toggleDeviceEnable(DCODE);
+        var selected = oApple2Video.setModeByDCODE(DCODE,null,false);
         var hostTool = document.getElementById("device_tool_H");
         var hostBox = hostTool ? hostTool.querySelector(".appbox") : null;
 
         if(hostBox)
             hostBox.innerHTML = this.deviceList_html();
 
-        return enabled;
+        return !!selected;
     };
+
+    // Compatibility for callers created by the preceding transitional model.
+    this.videoDeviceEnableToggle = this.videoDeviceSelect;
 
     this.deviceList_html = function(model)
     {
@@ -354,6 +357,19 @@ function AppleBoard()
             ? oApple2Video.getRegisteredDevices()
             : [];
         var labels = [];
+        var overlapCount = {};
+
+        function overlapKey(id)
+        {
+            if(!id || !id.coID || !id.hostPCODE) return "";
+            return String(id.coID)+"@"+String(id.hostPCODE);
+        }
+
+        for(var g=0;g<videoDevices.length;g++)
+        {
+            var key = overlapKey(videoDevices[g].id);
+            if(key) overlapCount[key] = (overlapCount[key] || 0) + 1;
+        }
 
         // List actual attached child-device instances, not merely deviceConfig entries.
         for(var d=0;d<devices.length;d++)
@@ -395,24 +411,33 @@ function AppleBoard()
             var videoCode = String(videoID.DCODE || "");
             var modeName = String(videoID.mode || videoCode);
             var icon = String(videoID.icon || "");
-            var enabled = videoID.deviceEnable !== false;
+            var groupKey = overlapKey(videoID);
+            var overlapping = groupKey && overlapCount[groupKey]>1;
+            var selected = videoID.deviceEnable !== false;            
             var modeArg = JSON.stringify(modeName);
             var codeArg = JSON.stringify(videoCode);
             var openControls = "event.stopPropagation();"
                 +"var b=apple2plus.hwObj().io.PCODE2obj(\"A2BO\")[0];"
                 +"if(b)b.deviceControls_popup("+modeArg+");";
-            var toggleDevice = "event.stopPropagation();"
+            var selectDevice = "event.stopPropagation();"
                 +"var b=apple2plus.hwObj().io.PCODE2obj(\"A2BO\")[0];"
-                +"if(b)b.videoDeviceEnableToggle("+codeArg+");";
+                +"if(b)b.videoDeviceSelect("+codeArg+");";
 
             labels.push(
-                 "<div class=\"appbut label device-label"+(enabled ? "" : " greyed")+"\""
+                 "<div class=\"appbut label device-label"+(overlapping && !selected ? " greyed" : "")+"\""
                 +" data-dcode=\""+videoCode+"\""
-                +" style=\"cursor:default;white-space:nowrap;\""
-                +" title=\""+oCOM.escapeHTML(String(videoID.description || modeName))+"\">"
-                +"<i class=\""+icon+" device-enable\""
-                +" title=\""+(enabled ? "Disable " : "Enable ")+oCOM.escapeHTML(modeName)+"\""
-                +" aria-hidden=\"true\" onclick='"+toggleDevice+"'></i>&nbsp;"
+                +" data-container=\""+String(videoID.coID || "")+"\""
+                +" data-host-pcode=\""+String(videoID.hostPCODE || "")+"\""
+                +(overlapping
+                    ? " role=\"radio\" aria-checked=\""+(selected ? "true" : "false")+"\" onclick='"+selectDevice+"'"
+                    : "")
+                +" style=\"cursor:"+(overlapping ? "pointer" : "default")+";white-space:nowrap;\""
+                +" title=\""+oCOM.escapeHTML(
+                    overlapping
+                        ? (selected ? "Selected: " : "Select: ")+String(videoID.description || modeName)
+                        : String(videoID.description || modeName)
+                  )+"\">"
+                +"<i class=\""+icon+" device-enable\" aria-hidden=\"true\"></i>&nbsp;"               
                 +oCOM.escapeHTML(modeName)
                 +"&nbsp;<i class=\"fa fa-sliders-h\""           
                 +" title=\"Open "+oCOM.escapeHTML(modeName)+" controls\""

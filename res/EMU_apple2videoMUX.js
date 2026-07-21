@@ -80,6 +80,7 @@ function Apple2VideoMUX(canvas)
     this.renderers = {};
     this.canvases = {};
     this.devices = [];
+    this.deviceSelectionInitialised = false;
 
     this.initGPU = function()
     {
@@ -159,23 +160,79 @@ function Apple2VideoMUX(canvas)
         for(var i=0;i<this.renderModes.length;i++)
             this.registerRenderer(this.renderModes[i]);
 
+        /*
+         * All video renderers overlap: they have the same coID and hostPCODE.
+         * At first registration, select only the configured/default renderer.
+         */
+        if(!this.deviceSelectionInitialised)
+        {
+            var selectedSpec = this.renderModes[this.modeIndex];
+            var selected = selectedSpec ? this.renderers[selectedSpec.name] : null;
+
+            if(selected)
+            {
+                for(var d=0;d<this.devices.length;d++)
+                {
+                    var device = this.devices[d];
+                    var sameGroup =
+                        device.id.coID == selected.id.coID &&
+                        device.id.hostPCODE == selected.id.hostPCODE;
+
+                    if(sameGroup)
+                        device.id.deviceEnable = device === selected;
+                }
+            }
+
+            this.deviceSelectionInitialised = true;
+        }
+
         return this.devices.slice();
     };
 
-    this.getRegisteredDevices = function()
+    this.getRegisteredDevices = function(coID,hostPCODE)
     {
-        return this.registerDevices();
+        var devices = this.registerDevices().filter(function(device)
+        {
+            if(!device || !device.id) return false;
+            if(coID!==undefined && device.id.coID != coID) return false;
+            if(hostPCODE!==undefined && device.id.hostPCODE != hostPCODE) return false;
+            return true;
+        });
+
+        devices.sort(function(a,b)
+        {
+            var ai = Number(a.id.deviceIdx);
+            var bi = Number(b.id.deviceIdx);
+
+            if(!Number.isFinite(ai)) ai = Number.MAX_SAFE_INTEGER;
+            if(!Number.isFinite(bi)) bi = Number.MAX_SAFE_INTEGER;
+            if(ai != bi) return ai-bi;
+
+            return String(a.id.DCODE || "").localeCompare(String(b.id.DCODE || ""));
+        });
+
+        return devices;
     };
 
     this.getRegisteredDevice = function(DCODE)
     {
-        var devices = this.registerDevices();
+        var devices = this.getRegisteredDevices();
 
         for(var i=0;i<devices.length;i++)
             if(devices[i].id.DCODE == DCODE) return devices[i];
 
         return null;
      };
+
+    this.getDeviceGroup = function(device)
+    {
+        if(!device || !device.id) return [];
+
+        return this.getRegisteredDevices(
+             device.id.coID
+            ,device.id.hostPCODE
+        );
+    };
 
     this.attachCanvas = function(c)
     {
@@ -260,10 +317,47 @@ function Apple2VideoMUX(canvas)
         return -1;
     };
 
+    this.setModeByDCODE = function(DCODE,uiEl,forceReset)
+    {
+        var renderer = this.getRegisteredDevice(DCODE);
+        if(!renderer || !renderer.id.mode) return false;
+
+        /*
+         * Radio-button semantics: selecting one registered device disables all
+         * devices with the same registered container and host.
+         */
+        var group = this.getDeviceGroup(renderer);
+        for(var i=0;i<group.length;i++)
+            group[i].id.deviceEnable = group[i] === renderer;
+
+        this.setMode(
+             this.getRenderModeIndexByName(renderer.id.mode)
+            ,uiEl
+            ,!!forceReset
+        );
+
+        return renderer;
+    };
+
     this.setDeviceEnable = function(DCODE,enabled)
     {
         var renderer = this.getRegisteredDevice(DCODE);
         if(!renderer) return false;
+
+        var group = this.getDeviceGroup(renderer);
+
+        /*
+         * An overlapping group cannot have two enabled devices or no selected
+         * device. Enabling means selecting; disabling the selected radio item
+         * is therefore a no-op.
+         */
+        if(group.length>1)
+        {
+            if(enabled)
+                return !!this.setModeByDCODE(DCODE,null,false);
+
+            return renderer.id.deviceEnable !== false;
+        }
 
         renderer.id.deviceEnable = !!enabled;
 
@@ -271,10 +365,6 @@ function Apple2VideoMUX(canvas)
         {
             this.active = null;
             this.activeName = "";
-
-            var nextIndex = this.getEnabledModeIndex(this.modeIndex + 1);
-            if(nextIndex >= 0)
-                this.setMode(nextIndex,null,false);
         }
         else if(renderer.id.deviceEnable === true && !this.active)
         {
@@ -287,9 +377,13 @@ function Apple2VideoMUX(canvas)
     this.toggleDeviceEnable = function(DCODE)
     {
         var renderer = this.getRegisteredDevice(DCODE);
-        return renderer
-            ? this.setDeviceEnable(DCODE,renderer.id.deviceEnable === false)
-            : false;
+        if(!renderer) return false;
+
+        var group = this.getDeviceGroup(renderer);
+        return group.length>1
+            ? !!this.setModeByDCODE(DCODE,null,false)
+            : this.setDeviceEnable(DCODE,renderer.id.deviceEnable === false);
+
     };
 
     this.getRendererControlHTML = function(mode)
@@ -339,9 +433,36 @@ function Apple2VideoMUX(canvas)
         return this;
     };
 
+    this.nextDevice = function(coID,hostPCODE,uiEl)
+    {
+        var devices = this.getRegisteredDevices(coID,hostPCODE);
+        if(devices.length==0) return false;
+
+        var currentCode =
+            this.active && this.active.id
+                ? this.active.id.DCODE
+                : "";
+
+        var currentIndex = -1;
+        for(var i=0;i<devices.length;i++)
+        {
+            if(devices[i].id.DCODE == currentCode)
+            {
+                currentIndex = i;
+                break;
+            }
+
+            if(currentIndex<0 && devices[i].id.deviceEnable !== false)
+                currentIndex = i;
+        }
+
+        var nextDevice = devices[(currentIndex+1)%devices.length];
+        return this.setModeByDCODE(nextDevice.id.DCODE,uiEl,false);
+    };
+
     this.nextMode = function(uiEl)
     {
-        return this.setMode(this.modeIndex + 1, uiEl, false);
+        return this.nextDevice("Apple2Video","A2BO",uiEl);
     };
 
     this.getRenderMode = function()

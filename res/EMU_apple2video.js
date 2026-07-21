@@ -12,7 +12,9 @@ function Apple2Video(ctx)
 {
     this.id = {
          "DCODE":"A2CAN"
+        ,"coID":"Apple2Video"
         ,"hostPCODE":"A2BO"
+        ,"deviceIdx":3
         ,"icon":"fa fa-eye"
         ,"description":"Apple II canvas video"
         ,"deviceEnable":true

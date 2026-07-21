@@ -133,7 +133,9 @@ function Apple2Video(ctx)
 {
     this.id = {
          "DCODE":"A2GPU"
+        ,"coID":"Apple2Video"
         ,"hostPCODE":"A2BO"
+        ,"deviceIdx":0
         ,"icon":"fa fa-eye"
         ,"description":"Apple II GPU video"
         ,"deviceEnable":true

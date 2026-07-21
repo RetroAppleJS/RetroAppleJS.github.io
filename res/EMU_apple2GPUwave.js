@@ -153,7 +153,9 @@ function Apple2Video(ctx)
 {
     this.id = {
          "DCODE":"A2WAV"
+        ,"coID":"Apple2Video"
         ,"hostPCODE":"A2BO"
+        ,"deviceIdx":1
         ,"icon":"fa fa-eye"
         ,"description":"Apple II waveform video"
         ,"deviceEnable":true

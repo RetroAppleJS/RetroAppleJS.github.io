@@ -356,7 +356,9 @@ var APPLE2_THREE_CFG_DEFAULT =
     {
         this.id = {
              "DCODE":"A2THR"
+            ,"coID":"Apple2Video"
             ,"hostPCODE":"A2BO"
+            ,"deviceIdx":2
             ,"icon":"fa fa-eye"
             ,"description":"Apple II Three.js video"
             ,"deviceEnable":true
