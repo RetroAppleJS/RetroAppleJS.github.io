@@ -354,6 +354,15 @@ var APPLE2_THREE_CFG_DEFAULT =
 
     function Apple2VideoTHREE(canvas)
     {
+        this.id = {
+             "DCODE":"A2THR"
+            ,"hostPCODE":"A2BO"
+            ,"icon":"fa fa-eye"
+            ,"description":"Apple II Three.js video"
+            ,"deviceEnable":true
+        };
+
+
         const DISPLAY_W = 560;
         const DISPLAY_H = 384;
 
@@ -366,7 +375,6 @@ var APPLE2_THREE_CFG_DEFAULT =
         var lastRenderUpdate = 0;
         var sceneLoadStarted = false;
 
-        this.id = "THREE";
         this.ctx = canvas || null;            // For Apple2Plus this is the visible canvas.
         this.canvas = canvas || null;
         this.vidram = null;                  // Apple2Hw assigns this after construction.

@@ -10,6 +10,14 @@ else oEMU.component.Video.Apple2Video = new Apple2Video();
 
 function Apple2Video(ctx)
 {
+    this.id = {
+         "DCODE":"A2CAN"
+        ,"hostPCODE":"A2BO"
+        ,"icon":"fa fa-eye"
+        ,"description":"Apple II canvas video"
+        ,"deviceEnable":true
+    };
+
     const bDebug_snd = false;
 
     var LORES1_ADDR =   0x0400,

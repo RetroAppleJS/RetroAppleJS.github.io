@@ -330,11 +330,28 @@ function AppleBoard()
         if(wasHidden) oCOM.POPUP.toggle(popup_id);
     }
 
+    this.videoDeviceEnableToggle = function(DCODE)
+    {
+        if(typeof(oApple2Video)=="undefined" ||
+           !oApple2Video ||
+           typeof(oApple2Video.toggleDeviceEnable)!="function")
+            return false;
+
+        var enabled = oApple2Video.toggleDeviceEnable(DCODE);
+        var hostTool = document.getElementById("device_tool_H");
+        var hostBox = hostTool ? hostTool.querySelector(".appbox") : null;
+
+        if(hostBox)
+            hostBox.innerHTML = this.deviceList_html();
+
+        return enabled;
+    };
+
     this.deviceList_html = function(model)
     {
         var devices = Array.isArray(this.devices) ? this.devices : [];
-        var modes = oApple2Video && typeof(oApple2Video.getRenderModes) == "function"
-            ? oApple2Video.getRenderModes()
+        var videoDevices = oApple2Video && typeof(oApple2Video.getRegisteredDevices) == "function"
+            ? oApple2Video.getRegisteredDevices()
             : [];
         var labels = [];
 
@@ -370,25 +387,34 @@ function AppleBoard()
             );
         }
 
-        // Video render modes are host facilities with their own controls.
-
-
-        for(var m=0;m<modes.length;m++)
+        // Video labels are generated from registered renderer device objects.
+        for(var v=0;v<videoDevices.length;v++)
         {
-            var mode = modes[m];
-            var modeName = String(mode.name || "");
+            var videoDevice = videoDevices[v];
+            var videoID = videoDevice.id || {};
+            var videoCode = String(videoID.DCODE || "");
+            var modeName = String(videoID.mode || videoCode);
+            var icon = String(videoID.icon || "");
+            var enabled = videoID.deviceEnable !== false;
             var modeArg = JSON.stringify(modeName);
+            var codeArg = JSON.stringify(videoCode);
             var openControls = "event.stopPropagation();"
                 +"var b=apple2plus.hwObj().io.PCODE2obj(\"A2BO\")[0];"
                 +"if(b)b.deviceControls_popup("+modeArg+");";
+            var toggleDevice = "event.stopPropagation();"
+                +"var b=apple2plus.hwObj().io.PCODE2obj(\"A2BO\")[0];"
+                +"if(b)b.videoDeviceEnableToggle("+codeArg+");";
 
             labels.push(
-                 "<div class=\"appbut label\""
+                 "<div class=\"appbut label device-label"+(enabled ? "" : " greyed")+"\""
+                +" data-dcode=\""+videoCode+"\""
                 +" style=\"cursor:default;white-space:nowrap;\""
-                +" title=\""+oCOM.escapeHTML(modeName)+" display\">"
-                +"<i class=\"fa fa-eye\" aria-hidden=\"true\"></i>&nbsp;"
+                +" title=\""+oCOM.escapeHTML(String(videoID.description || modeName))+"\">"
+                +"<i class=\""+icon+" device-enable\""
+                +" title=\""+(enabled ? "Disable " : "Enable ")+oCOM.escapeHTML(modeName)+"\""
+                +" aria-hidden=\"true\" onclick='"+toggleDevice+"'></i>&nbsp;"
                 +oCOM.escapeHTML(modeName)
-                +"&nbsp;<i class=\"fa fa-sliders-h\""            
+                +"&nbsp;<i class=\"fa fa-sliders-h\""           
                 +" title=\"Open "+oCOM.escapeHTML(modeName)+" controls\""
                 +" style=\"cursor:pointer\" onclick='"+openControls+"'></i>"
                 +"</div>"

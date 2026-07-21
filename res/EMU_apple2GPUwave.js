@@ -151,6 +151,14 @@ oEMU.component.Video.Apple2Video = new Apple2Video();
 
 function Apple2Video(ctx)
 {
+    this.id = {
+         "DCODE":"A2WAV"
+        ,"hostPCODE":"A2BO"
+        ,"icon":"fa fa-eye"
+        ,"description":"Apple II waveform video"
+        ,"deviceEnable":true
+    };
+
     const bDebug_snd = false;
     var renderCfg = Apple2VideoWave_copyConfig();
 

@@ -131,6 +131,14 @@ else oEMU.component.Video.Apple2Video = new Apple2Video();
 
 function Apple2Video(ctx)
 {
+    this.id = {
+         "DCODE":"A2GPU"
+        ,"hostPCODE":"A2BO"
+        ,"icon":"fa fa-eye"
+        ,"description":"Apple II GPU video"
+        ,"deviceEnable":true
+    };
+
     var bDebug_snd = false;
     var renderCfg = Apple2VideoGPU_copyConfig();
 

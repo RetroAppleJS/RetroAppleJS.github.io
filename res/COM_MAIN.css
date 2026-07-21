@@ -398,6 +398,19 @@ table { border-collapse: collapse; position: relative;}
     background: rgba(128,128,128,0.08);
   }
 
+  /* A disabled device remains registered, so its enable icon stays clickable. */
+  .appbut.label.greyed
+  {
+    pointer-events:auto;
+    cursor:default;
+  }
+
+  .appbut.label .device-enable
+  {
+    cursor:pointer;
+  }
+
+
   .appbut.skinny
   {
     display: inline-block;

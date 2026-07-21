@@ -79,6 +79,7 @@ function Apple2VideoMUX(canvas)
 
     this.renderers = {};
     this.canvases = {};
+    this.devices = [];
 
     this.initGPU = function()
     {
@@ -127,6 +128,55 @@ function Apple2VideoMUX(canvas)
         return c;
     };
 
+    this.registerRenderer = function(spec)
+    {
+        if(!spec) return null;
+
+        var renderer = this.renderers[spec.name];
+        if(renderer) return renderer;
+
+        var canvas = this.getCanvasFor(spec);
+        var context = spec.context == "2d" ? canvas.getContext("2d") : canvas;
+        renderer = new spec.ctor(context);
+
+        if(!renderer || !renderer.id || !renderer.id.DCODE)
+        {
+            console.warn("Video renderer '"+spec.name+"' has no device identity");
+            return null;
+        }
+
+        renderer.id.mode = spec.name;
+        renderer.vidram = this.vidram;
+        renderer.hw = this.hw;
+
+        this.renderers[spec.name] = renderer;
+        this.devices.push(renderer);
+        return renderer;
+    };
+
+    this.registerDevices = function()
+    {
+        for(var i=0;i<this.renderModes.length;i++)
+            this.registerRenderer(this.renderModes[i]);
+
+        return this.devices.slice();
+    };
+
+    this.getRegisteredDevices = function()
+    {
+        return this.registerDevices();
+    };
+
+    this.getRegisteredDevice = function(DCODE)
+    {
+        var devices = this.registerDevices();
+
+        for(var i=0;i<devices.length;i++)
+            if(devices[i].id.DCODE == DCODE) return devices[i];
+
+        return null;
+     };
+
     this.attachCanvas = function(c)
     {
         var visible = document.getElementById("applescreen");
@@ -161,13 +211,11 @@ function Apple2VideoMUX(canvas)
 
         if(!r)
         {
-            var c = this.getCanvasFor(spec);
-            var arg = spec.context == "2d" ? c.getContext("2d") : c;
-
-            r = new spec.ctor(arg);
-            this.renderers[spec.name] = r;
+            r = this.registerRenderer(spec);
             forceReset = true;
         }
+
+        if(!r) return null;
 
         r.vidram = this.vidram;
         r.hw = this.hw;
@@ -196,6 +244,54 @@ function Apple2VideoMUX(canvas)
         return this.ensureActive() ? this.active : null;
     };
 
+    this.getEnabledModeIndex = function(startIndex)
+    {
+        this.registerDevices();
+
+        for(var offset=0;offset<this.renderModes.length;offset++)
+        {
+            var index = ((startIndex + offset) % this.renderModes.length + this.renderModes.length) % this.renderModes.length;
+            var renderer = this.renderers[this.renderModes[index].name];
+
+            if(renderer && renderer.id.deviceEnable !== false)
+                return index;
+        }
+
+        return -1;
+    };
+
+    this.setDeviceEnable = function(DCODE,enabled)
+    {
+        var renderer = this.getRegisteredDevice(DCODE);
+        if(!renderer) return false;
+
+        renderer.id.deviceEnable = !!enabled;
+
+        if(renderer.id.deviceEnable === false && this.active === renderer)
+        {
+            this.active = null;
+            this.activeName = "";
+
+            var nextIndex = this.getEnabledModeIndex(this.modeIndex + 1);
+            if(nextIndex >= 0)
+                this.setMode(nextIndex,null,false);
+        }
+        else if(renderer.id.deviceEnable === true && !this.active)
+        {
+            this.setMode(this.getRenderModeIndexByName(renderer.id.mode),null,false);
+        }
+
+        return renderer.id.deviceEnable;
+    };
+
+    this.toggleDeviceEnable = function(DCODE)
+    {
+        var renderer = this.getRegisteredDevice(DCODE);
+        return renderer
+            ? this.setDeviceEnable(DCODE,renderer.id.deviceEnable === false)
+            : false;
+    };
+
     this.getRendererControlHTML = function(mode)
     {
         var spec = this.getRenderModeSpec(mode);
@@ -216,7 +312,17 @@ function Apple2VideoMUX(canvas)
 
     this.setMode = function(idx, uiEl, forceReset)
     {
-        this.modeIndex = ((idx % this.renderModes.length) + this.renderModes.length) % this.renderModes.length;
+        var enabledIndex = this.getEnabledModeIndex(idx);
+
+        if(enabledIndex < 0)
+        {
+            this.active = null;
+            this.activeName = "";
+            this.updateRenderModeUI(uiEl);
+            return this;
+        }
+
+        this.modeIndex = enabledIndex;
 
         var spec = this.renderModes[this.modeIndex];
         var c = this.getCanvasFor(spec);
@@ -240,7 +346,7 @@ function Apple2VideoMUX(canvas)
 
     this.getRenderMode = function()
     {
-        return this.activeName || this.this.renderModes[0].name;
+        return this.activeName || "";
     };
 
     this.updateRenderModeUI = function(uiEl)
@@ -251,6 +357,9 @@ function Apple2VideoMUX(canvas)
 
     this.ensureActive = function()
     {
+        if(this.active && this.active.id && this.active.id.deviceEnable === false)
+            this.active = null;
+
         if(!this.active)
             this.setMode(this.modeIndex, null, false);
 
@@ -259,6 +368,9 @@ function Apple2VideoMUX(canvas)
 
     this.reset = function()
     {
+        // Register every video device once; activation remains a separate state.
+        this.registerDevices();
+
         this.state.gfx = false;
         this.state.mix = false;
         this.state.page2 = false;
