@@ -19,6 +19,7 @@ function Apple2IO(vid)
     this.slot_ctx = {};
     this.slots = [];
     this.attachments = {};
+    this.registeredPeripherals = {};
 
     // restart() installs the real empty-bus filler; live remounts reuse it.
     var refillEmptyIOActions = function(){};
@@ -96,6 +97,20 @@ function Apple2IO(vid)
         }
     }
 
+    this.provisionPeripheral = function(owner,model)
+    {
+        if(!owner) return false;
+
+        if(typeof(owner.IO_map)=="function")
+            mergeActionMap(CIO.ACTION_MAP,owner.IO_map(model));
+
+        var deviceConfig = Array.isArray(owner.deviceConfig) ? owner.deviceConfig : [];
+        for(var deviceN=0;deviceN<deviceConfig.length;deviceN++)
+            this.attach(owner,deviceConfig[deviceN]);
+
+        return true;
+    }    
+
     this.restart = function()
     {
         console.assert(Array.isArray(this.slots), "Apple2IO.slots must be initialized");
@@ -112,8 +127,11 @@ function Apple2IO(vid)
         update_IORANGES(model);
         if(!CIO.ACTION_MAP) CIO.ACTION_MAP = emptyActionMap();
 
-        // discover object containers
-        var pContainers = this.scanPeripheralContainers();
+        // Discover and register peripheral types once, before default mounting.
+        if(Object.keys(this.registeredPeripherals).length==0)
+            this.registerPeripherals();
+
+        var pContainers = this.getRegisteredPeripherals();
 
         // mount peripherals according to default configuration _CFG_PSLOT
         for(var slotN in slotR.slotMap)
@@ -144,13 +162,7 @@ function Apple2IO(vid)
         {
             var owner = this.slots[mountedSlotN].peripheral;
             if(!owner) continue;
-
-            if(typeof(owner.IO_map)=="function")
-                mergeActionMap(CIO.ACTION_MAP,owner.IO_map(model));
-
-            var deviceConfig = Array.isArray(owner.deviceConfig) ? owner.deviceConfig : [];
-            for(var deviceN=0;deviceN<deviceConfig.length;deviceN++)
-                this.attach(owner,deviceConfig[deviceN]);
+            this.provisionPeripheral(owner,model);
         }
 
         refillEmptyIOActions = installEmptyIOActions;
@@ -728,6 +740,10 @@ this.write = function(rel_addr,d8)
         if(!Number.isInteger(slotIdx))
             return {"sInfo":slot_info,"pObj":null};
 
+        if(Array.isArray(slotFit) && slotFit.length>0 &&
+           slotFit.indexOf(peripheral_info.PCODE)<0)
+            return {"sInfo":slot_info,"pObj":null};
+
         if(oEMU.system["IORANGES"] && peripheral_info)
         {
             const bHostROM = typeof(oEMU.system.IORANGES.HostROM)!="undefined" && cinfo.HostROM == "X";
@@ -1127,6 +1143,38 @@ this.write = function(rel_addr,d8)
     }
 
     // SLOT MAPPING
+    // scanPeripheralContainers() discovers peripheral types. Only
+    // registerPeripherals() commits that discovery to the stable registry.
+    this.registerPeripherals = function()
+    {
+        var scanned = this.scanPeripheralContainers();
+        var registered = {};
+
+        for(var PCODE in scanned)
+        {
+            var id = Object.assign({},scanned[PCODE]);
+            var cinfo = typeof(_CFG_PSLOT)!="undefined" ? _CFG_PSLOT[PCODE] : null;
+
+            if(id.description===undefined && cinfo && cinfo.NAME)
+                id.description = cinfo.NAME;
+
+            registered[PCODE] = id;
+        }
+
+        this.registeredPeripherals = registered;
+        return registered;
+    }
+
+    this.getRegisteredPeripherals = function()
+    {
+        return this.registeredPeripherals;
+    }
+
+    this.getRegisteredPeripheral = function(PCODE)
+    {
+        return this.registeredPeripherals[PCODE] || null;
+    }
+
     // TODO: make sure we do not skip DISKII
     this.scanPeripheralContainers = function()
     {
@@ -1136,9 +1184,7 @@ this.write = function(rel_addr,d8)
         {
             var PCODE = obj?.id?.PCODE;
             if(PCODE===undefined) return;
-
-            names[PCODE] = obj.id;
-            names[PCODE]["coID"] = coID;
+            names[PCODE] = Object.assign({},obj.id,{"coID":coID});
         }
 
         for(var o in oEMU.component.IO)
@@ -1780,11 +1826,9 @@ this.write = function(rel_addr,d8)
                 to.peripheral)
                 return false;
 
-            to.peripheral = from.peripheral;
             var peripheral = from.peripheral;
             var pcode = peripheralPCODE(peripheral);
-            var containers = emui.scanPeripheralContainers();
-            var pinfo = containers[pcode];
+            var pinfo = emui.getRegisteredPeripheral(pcode);
             var cinfo = typeof(_CFG_PSLOT)!="undefined" ? _CFG_PSLOT[pcode] : null;
             var toSlotN = slotName2n(toSlotId);
             var mounted = emui.mount(
@@ -1799,6 +1843,11 @@ this.write = function(rel_addr,d8)
 
             for(var key in mounted.sInfo) to[key] = mounted.sInfo[key];
             to.peripheral = mounted.pObj;
+
+            var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
+            emui.provisionPeripheral(mounted.pObj,model);
+            refillEmptyIOActions();
+
             delete from.peripheral;
             return true;
         }
@@ -2364,7 +2413,7 @@ this.write = function(rel_addr,d8)
         var close   = "<button class='appbut' style='float:right' onclick=\"oCOM.POPUP.toggle('" + popupId + "');document.getElementById('"+anchorId+"').style=''\">x</button>";
         var html = "";
         
-        html += "<div style=\"float:left\">ADD / REMOVE PERIPHERAL</div>" //+" FROM " + slotTitle;
+        html += "<div style=\"float:left\">ADD PERIPHERAL</div>";
         html += close;
         html += "<br><br>";
 
@@ -2385,28 +2434,50 @@ this.write = function(rel_addr,d8)
             "unexpected number of internal slot records"
         );
 
-        var names = io && io.scanPeripheralContainers ? io.scanPeripheralContainers() : {};
+        var slotN = slotName2n(slotTitle);
+        var targetSlot = io.slots[slotN];
+        var slotFit = slotR.slotFit && Array.isArray(slotR.slotFit[slotN])
+            ? slotR.slotFit[slotN]
+            : [];
+        var names = io.getRegisteredPeripherals();
+        var pcodes = Object.keys(names).sort();
         
-        for (var pcode in names) 
-        {
-            var id = names[pcode];
-            html +=
-                 "<button class='appbut' onclick=\"apple2plus.hwObj().io.slotPicker_select('" + ctx.hostId + "','" + slotTitle + "','" + id.PCODE + "')\">"
-                +"<div class='slot-add' style='float:left'>"
-                +"<i class='fa fa-plus dots dots1'></i>&nbsp;"
-                +"</div>"
-                +"<i class='" + (id.icon || "fa fa-cube") + "'></i> "
-                + id.PCODE
-                + "</button>"
-        }
+        html += "<div style='display:flex;flex-wrap:wrap;gap:2px'>";
 
-        html += "<button class='appbut' onclick=\"apple2plus.hwObj().io.slotPicker_select('" + ctx.hostId + "','" + slotTitle + "','" + id.PCODE + "')\">"
-            +"<div class='slot-add' style='float:left'>"
-            +"<i class='fa fa-minus dots dots1'></i>&nbsp;"
-            +"</div>"
-            +"<i class='" + (id.icon || "fa fa-cube") + "'></i> "
-            + id.PCODE
-            + "</button>"
+        for(var i=0;i<pcodes.length;i++)        
+        {
+            var id = names[pcodes[i]];
+            var cinfo = typeof(_CFG_PSLOT)!="undefined" ? _CFG_PSLOT[id.PCODE] : null;
+            var compatible = slotFit.indexOf(id.PCODE)>=0;
+            var addable = !!(
+                targetSlot &&
+                !targetSlot.lock &&
+                !targetSlot.peripheral &&
+                id.slotLock!==true &&
+                compatible &&
+                cinfo
+            );
+            var title = id.description || id.PCODE;
+
+            if(id.slotLock===true)
+                title += " — fixed peripheral";
+            else if(!compatible)
+                title += " — not compatible with "+slotTitle;
+
+            html += "<div class='appbut label"+(addable ? "" : " greyed")+"'"
+                +" style='cursor:default;white-space:nowrap;'"
+                +" title='"+slotEscapeHTML(title)+"'>"
+                +"<button class='appbut skinny' type='button'"
+                +(addable
+                    ? " title='Add to "+slotTitle+"' onclick=\"event.stopPropagation();apple2plus.hwObj().io.slotPicker_select('" + ctx.hostId + "','" + slotTitle + "','" + id.PCODE + "')\""
+                    : " disabled")
+                +"><i class='fa fa-plus'></i></button>&nbsp;"
+                +"<i class='" + (id.icon || "fa fa-cube") + "'></i>&nbsp;"
+                +slotEscapeHTML(id.PCODE)
+                +"</div>";
+        }
+        html += "</div>";
+
         
 
         /*
@@ -2431,24 +2502,38 @@ this.write = function(rel_addr,d8)
         var ctx = this.slot_ctx[hostId];
         var slots = ctx && Array.isArray(ctx.slots) ? ctx.slots : this.slots;
         var slot = slots.find(function(s) { return s.slotTitle === slotTitle; });
-        if (!slot || slot.lock || slot.peripheral) return;
+        if (!slot || slot.lock || slot.peripheral) return false;
 
         var io = oEMU.component.IO.self;
-        var names = io && io.scanPeripheralContainers ? io.scanPeripheralContainers() : {};
-        var id = names[pcode];
-
+        var id = io ? io.getRegisteredPeripheral(pcode) : null;
         var cinfo = typeof(_CFG_PSLOT) !== "undefined" && _CFG_PSLOT[pcode] ? _CFG_PSLOT[pcode] : null;
-        if (!id || !cinfo) return;
-
         var slotN = slotName2n(slotTitle);
-        var o = io.mount( cinfo, id, slotN, slotR.slotFit ? slotR.slotFit[slotN] : [] );
-        if (!o || !o.pObj) return;
+        var slotFit = slotR.slotFit && Array.isArray(slotR.slotFit[slotN])
+            ? slotR.slotFit[slotN]
+            : [];
+        if(!id || !cinfo || id.slotLock===true || slotFit.indexOf(pcode)<0)
+            return false;
 
-        for (var so in o.sInfo) slot[so] = o.sInfo[so];
+        var o = io.mount(cinfo,id,slotN,slotFit);
+        if(!o || !o.pObj) return false;
+
+        for(var so in o.sInfo) slot[so] = o.sInfo[so];
         slot.peripheral = o.pObj;
+
+        var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
+        io.provisionPeripheral(o.pObj,model);
+        refillEmptyIOActions();
+
+        if(typeof(o.pObj.restart)=="function")
+            o.pObj.restart();
 
         oCOM.POPUP.toggle("slotConfig_popup");
         this.slotsRender(hostId);
+
+        if(typeof(this.refreshDeviceToolboxes)=="function")
+            this.refreshDeviceToolboxes({"id":"devices"});
+
+        return true;
     };
 
     this.slotPicker_info = function() {
