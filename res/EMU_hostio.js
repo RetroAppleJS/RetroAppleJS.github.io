@@ -447,7 +447,7 @@ function AppleBoard()
             var hasControls = typeof(device.ctrl_dlg)=="function";
             var codeArg = JSON.stringify(deviceCode);
             var openControls = "event.stopPropagation();"
-                +"var b=apple2plus.hwObj().io.PCODE2obj(\"A2BO\")[0];"
+                +"var b=apple2plus.hwObj().io.SLOT2obj(0);"
                 +"if(b)b.deviceControls_popup("+codeArg+");";
 
             var range = device.attach && device.attach.range
@@ -485,10 +485,10 @@ function AppleBoard()
             var modeArg = JSON.stringify(modeName);
             var codeArg = JSON.stringify(videoCode);
             var openControls = "event.stopPropagation();"
-                +"var b=apple2plus.hwObj().io.PCODE2obj(\"A2BO\")[0];"
+                +"var b=apple2plus.hwObj().io.SLOT2obj(0);"
                 +"if(b)b.deviceControls_popup("+modeArg+");";
             var selectDevice = "event.stopPropagation();"
-                +"var b=apple2plus.hwObj().io.PCODE2obj(\"A2BO\")[0];"
+                +"var b=apple2plus.hwObj().io.SLOT2obj(0);"
                 +"if(b)b.videoDeviceSelect("+codeArg+");";
 
             labels.push(

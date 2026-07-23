@@ -40,7 +40,15 @@ function Apple2Plus(context)
     this.hw = oCOM.default(new Apple2Hw(video),{},"Apple2Hw");       // Apple2plus owns Apple2Hw object instance
     video.hw = this.hw;
     const hw = this.hw
-    
+
+    function slotPeripheral(slotN,PCODE)
+    {
+        var peripheral = hw.io.SLOT2obj(slotN);
+        return peripheral && peripheral.id?.PCODE == PCODE
+            ? peripheral
+            : null;
+    }
+
     //var keys = oEMU.component.Keyboard;
     //var keys = oCOM.default(oEMU.component.Keyboard,{cycle:function(){}},"A2Pkeys");
     //var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{cycle:function(){},play:function(){}},"AppleSpeaker");
@@ -80,11 +88,14 @@ function Apple2Plus(context)
 
 
     // TODO: move to DISK2
-    this.DSK_monitoring = function()
+    this.DSK_monitoring = function(slotN)
     {
-        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
+        var disk2 = this.DiskObj(slotN);
+        if(!disk2) return false;
+
         var o = disk2.getState().hw;
         disk2.GUI_update(o);
+        return true;
     }
 
 
@@ -134,9 +145,9 @@ function Apple2Plus(context)
             dashboard_refresh(args);
     }
 
-    this.DiskObj = function() // TODO: deprecated -> phase out
+    this.DiskObj = function(slotN)
     {
-        return this.hw.io.PCODE2obj("DISKII")[0];
+        return slotPeripheral(slotN,"DISKII");
     }
 
     this.keysObj = function() {
@@ -152,18 +163,25 @@ function Apple2Plus(context)
     }
 
     // TODO: move this to EMU_appledisk2.js
-    this.loadDisk = function(bytes,drive) 
+    this.loadDisk = function(bytes,drive,slotN) 
     {
+        var disk2 = this.DiskObj(slotN);
+        if(!disk2) return false;
+
         var drv = Number(drive.slice(1))-1;
-        var disk2 = this.hwObj().io.PCODE2obj("DISKII")[0];
-        disk2.getState().diskData[ drv ] = bytes;
+        disk2.getState().diskData[drv] = bytes;
+        return true;
     }  
 
     // TODO: move this to EMU_appledisk2.js
-    this.dumpDisk = function(drive) {
+    this.dumpDisk = function(drive,slotN)
+    {
+        var disk2 = this.DiskObj(slotN);
+        if(!disk2) return false;
+
         var drv = Number(drive.slice(1))-1;
-        var disk2 = this.PCODE2obj("DISKII")[0];
         disk2.dump(drv);
+        return true;
     }
 
     this.monitor = function(type) {

@@ -82,12 +82,13 @@ function Apple2IO(vid)
     
     this.reset = function()
     {
-        //keys.reset();
-        var disk2 = this.PCODE2obj("DISKII")[0];
-        if(disk2) disk2.reset();
-
-        var ramcard = this.PCODE2obj("MS16K")[0];
-        if(ramcard) ramcard.reset();
+        // Reset every mounted peripheral by its unique slot ownership.
+        for(var slotN in this.slots)
+        {
+            var peripheral = this.SLOT2obj(slotN);
+            if(peripheral && typeof(peripheral.reset)=="function")
+                peripheral.reset();
+        }
 
         for(var deviceKey in this.attachments)
         {
@@ -302,10 +303,10 @@ this.slots[3] =
             }
         }
 
-        // legacy adaptation
-        var ramcard = this.PCODE2obj("MS16K")[0];
-        if(ramcard) ramcard.restart();
-        //if(this.disk2 && this.disk2.restart) this.disk2.restart();
+        /*
+         * Every mounted peripheral was restarted in the slot loop above.
+         * Do not restart one arbitrarily selected PCODE match a second time.
+         */
 
 
         //if(typeof(CIO)=="undefined") var CIO = {ACTION_MAP:{}};
@@ -337,13 +338,17 @@ function mergeActionMap(dst,src)
         } 
     }
 
+    /*
+     * Type query: intentionally returns every matching instance.
+     * Never select obj_arr[0] when the caller means a particular slot.
+     */
     this.PCODE2obj = function(PCODE)
     {
         var obj_arr = [];
         for(var o in this.slots)
         {
             if(this.slots[o].peripheral?.id.PCODE == PCODE)
-                obj_arr.push(this.slots[o].peripheral);         // we can have multiple matches, since we do not specify slotN
+                obj_arr.push(this.slots[o].peripheral);
         }
         return obj_arr;
     }
@@ -1338,7 +1343,15 @@ this.write = function(rel_addr,d8)
 
     this.SLOT2obj = function(slotN)
     {
-        if(this.slots[slotN].peripheral===undefined) return null;
+        slotN = Number(slotN);
+
+        if(
+            !Number.isInteger(slotN) ||
+            !this.slots[slotN] ||
+            !this.slots[slotN].peripheral
+        )
+            return null;
+
         return this.slots[slotN].peripheral;
     }
 
@@ -1347,7 +1360,7 @@ this.write = function(rel_addr,d8)
 
     }
 
-    this.deviceID2obj = function(str)
+    this.deviceID2obj = function(str,slotN)
     {
         if(typeof str !== "string") return null;
 
@@ -1361,19 +1374,32 @@ this.write = function(rel_addr,d8)
                 script: function(arg)
                 {
                     var deviceN = Number(arg.deviceID.slice(1)) - 1;
+                    var resolvedSlotN = Number(arg.slotN);
 
-                    var slotN = null;
-                    if(typeof _CFG_PSLOT !== "undefined" &&
-                    _CFG_PSLOT[arg.periID] &&
-                    _CFG_PSLOT[arg.periID].SLOTrange)
+                    if(!Number.isInteger(resolvedSlotN))
                     {
-                        var slotRange = extract_slotrange(_CFG_PSLOT[arg.periID].SLOTrange);
-                        slotN = slotRange.slotPut[0];   // starred/default slot, e.g. 6*
+                        resolvedSlotN = null;
+
+                        if(typeof _CFG_PSLOT !== "undefined" &&
+                        _CFG_PSLOT[arg.periID] &&
+                        _CFG_PSLOT[arg.periID].SLOTrange)
+                        {
+                            var slotRange = extract_slotrange(_CFG_PSLOT[arg.periID].SLOTrange);
+                            var defaultSlotID = slotRange.slotPut[0];
+
+                            /*
+                             * Configuration uses physical Apple slot IDs.
+                             * SLOT2obj() uses the internal slot-array index.
+                             * Example: Apple slot 6 -> internal slotN 7.
+                             */
+                            if(defaultSlotID!==undefined)
+                                resolvedSlotN = slotID2n(defaultSlotID);
+                        }
                     }
 
                     return {
                         "deviceN": deviceN,
-                        "slotN": slotN
+                        "slotN": resolvedSlotN
                     };
                 }
             }
@@ -1417,14 +1443,16 @@ this.write = function(rel_addr,d8)
                         "raw": raw,
                         "match": match,
                         "periID": obj.periID,
-                        "deviceID": obj.deviceID
+                        "deviceID": obj.deviceID,
+                        "slotN": slotN
                     }) || {};
                 }
 
                 for(var k in extra)
                     if(extra.hasOwnProperty(k)) obj[k] = extra[k];
 
-                if(typeof obj.slotN === "number") { obj.slotID = "PR#" + obj.slotN; }
+                if(typeof obj.slotN === "number")
+                    obj.slotID = slotN2name(obj.slotN);
 
                 return orderedDeviceObj(obj);
             }
@@ -1924,7 +1952,7 @@ this.write = function(rel_addr,d8)
         {
             html += "<div style='overflow-y:scroll;height:350px'>"
             var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
-            var board = this.PCODE2obj("A2BO")[0];
+            var board = this.SLOT2obj(0);
             html += "<div class='appbox' style='float:none;'>"+(board && typeof(board.boardIO_html)=="function" ? board.boardIO_html(model) : "") +"</div>";
             html += "</div>"
         }
@@ -2726,7 +2754,7 @@ this.write = function(rel_addr,d8)
         {
             case "HostIO":
                 var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
-                var board = this.PCODE2obj("A2BO")[0];
+                var board = this.SLOT2obj(0);
                 return ""
                     + "<div class=toolbox id=\"device_tool_H\" style=\"width:352px;max-width:80vw;overflow-y:auto;overflow-x:hidden;padding:0px\" hidden>"
                         +"<div class='appbox' style='float:none;width:350px;max-width:100%;box-sizing:border-box;text-align:left;padding:2px'>"
@@ -2742,7 +2770,7 @@ this.write = function(rel_addr,d8)
                         +"var bMEM_monitoring=oCOM.toggleRefreshEvent('MEM_monitoring');"
                         +"apple2plus.hwObj().enable_MEM_monitoring(bMEM_monitoring);"
                         +"oCOM.enableRefreshEvent('MEM_monitoring_MS16K',bMEM_monitoring);"
-                        +"apple2plus.hwObj().io.PCODE2obj('MS16K')[0]?.enable_MEM_monitoring(bMEM_monitoring);"
+                        +"apple2plus.hwObj().io.SLOT2obj("+slotN+")?.enable_MEM_monitoring(bMEM_monitoring);"
                         +"\"></i></button></div>"
                 + "    <div id=\"EMU_mem_map\" style=\"margin-left:30px;white-space:nowrap\"></div>"
                 + "  </div>"
@@ -2765,7 +2793,7 @@ this.write = function(rel_addr,d8)
                     
                     + "        <input type=button method=get class=appbut id=\"but_D1\" value=\"Drive1\""
                     + " data-empty=\"Drive1\" data-loaded=\"\" title=\"Drive1: no disk\"  "
-                    + " onclick=\"ejectDisk(this,'D1')\""
+                    + " onclick=\"ejectDisk(this,"+slotN+",'D1')\""
 
                     + " onmouseover=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,true)\""
                     + "  onmouseout=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,false)\">"
@@ -2785,7 +2813,7 @@ this.write = function(rel_addr,d8)
 
                     + "        <input type=button method=get class=appbut id=\"but_D2\" value=\"Drive2\""
                     + " data-empty=\"Drive2\" data-loaded=\"\" title=\"Drive2: no disk\"  "
-                    + " onclick=\"ejectDisk(this,'D2')\""
+                    + " onclick=\"ejectDisk(this,"+slotN+",'D2')\""
                     + " onmouseover=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,true)\""
                     + " onmouseout=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,false)\">"
                 
