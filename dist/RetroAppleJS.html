@@ -9042,6 +9042,41 @@ console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms
 
 var appleIntervalHandle,apple2plus,KeyboardFocus,keys;
 
+function EMU_slotPeripheral(slotN,PCODE)
+{
+    if(typeof(apple2plus)!="object" || !apple2plus) return null;
+
+    var peripheral = apple2plus.hwObj().io.SLOT2obj(slotN);
+    return peripheral && peripheral.id?.PCODE == PCODE
+        ? peripheral
+        : null;
+}
+
+function EMU_defaultDiskIISlot()
+{
+    if(typeof(apple2plus)!="object" || !apple2plus) return null;
+
+    var device = apple2plus.hwObj().io.deviceID2obj("D1");
+    return device ? device.slotN : null;
+}
+
+function EMU_diskIIObjects()
+{
+    if(typeof(apple2plus)!="object" || !apple2plus) return [];
+
+    var io = apple2plus.hwObj().io;
+    var disks = [];
+
+    for(var slotN=0;slotN<io.slots.length;slotN++)
+    {
+        var disk2 = io.SLOT2obj(slotN);
+        if(disk2 && disk2.id?.PCODE == "DISKII")
+            disks.push(disk2);
+    }
+
+    return disks;
+}
+
 function EMU_init()
 {
     document.getElementById("LEDS").innerHTML =
@@ -9204,7 +9239,11 @@ function EMU_init()
         if(_o.D1_buffer===undefined); 
         else
         {
-            loadDisk_fromBuffer(_o.D1_buffer,"D1");
+            loadDisk_fromBuffer(
+                 _o.D1_buffer
+                ,EMU_defaultDiskIISlot()
+                ,"D1"
+            );
             delete _o.D1_buffer;
             //oCOM.POPUP.html("loadDisk success");
         }
@@ -9218,7 +9257,11 @@ function EMU_init()
             {               
                 oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
                 if(_o.D1_buffer===undefined) return;        
-                loadDisk_fromBuffer(_o.D1_buffer,"D1");
+                loadDisk_fromBuffer(
+                     _o.D1_buffer
+                    ,EMU_defaultDiskIISlot()
+                    ,"D1"
+                );
                 delete _o.D1_buffer;
             }
             catch(e)
@@ -9241,11 +9284,11 @@ function EMU_init()
     //}
 
 
+    
 
-
-    //var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{reset:function(){},DSK_led:null,state:{active:false}},"AppleDisk");
-    var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
-    if(disk2===undefined) console.error("disk2 not found ??")
+    var diskSlotN = EMU_defaultDiskIISlot();
+    var disk2 = EMU_slotPeripheral(diskSlotN,"DISKII");
+    if(!disk2) console.error("DISKII not found in slotN="+diskSlotN);
 
     if(_o.EMU_disk_cat === true && disk2 && typeof(disk2.diskMenu_detail) == "function")
     {
@@ -9264,15 +9307,13 @@ function EMU_init()
     keys.onHover_in = function()
     {
         //console.log("keys.onHover_in");
-        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
-        disk2.GUI_update('kbd');
+        if(disk2) disk2.GUI_update('kbd');
     }
 
     keys.onHover_out = function()
     {
         //console.log("keys.onHover_out");
-        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
-        disk2.GUI_update('kbd');
+        if(disk2) disk2.GUI_update('kbd');
     }
 
     keys.KbdHTML({id:"kbd",path:"res/"
@@ -9286,13 +9327,15 @@ function EMU_init()
     }
 
 
-    disk2.dN_speed_update = function(pct)  // override
+    EMU_diskIIObjects().forEach(function(disk2)
     {
-        //var dsk = oEMU.component.IO.AppleDisk;
-        var cent = 1200 * Math.log2(pct/100);
-        this.dNd.detune = cent;
-        //console.log("pct="+pct+" cent="+cent);
-    }
+        disk2.dN_speed_update = function(pct)  // override
+        {
+            var cent = 1200 * Math.log2(pct/100);
+            this.dNd.detune = cent;
+            //console.log("pct="+pct+" cent="+cent);
+        };
+    });
 
     disk2.GUI_update = function(cmd)  // override (called continuously from oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);)
     {
@@ -9302,8 +9345,7 @@ function EMU_init()
         {
             var b1 =  oCOM.POPUP.get_state("surfaceMap_popup")   == false;  // is popup not hidden ?
             var b2 =  oCOM.POPUP.get_class(el,1)  == "fa-stop-circle";      // is sync button active ? 
-            var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
-            if(b1 && b2) disk2.surfaceMap_update("surfaceMap_popup");
+            if(b1 && b2) this.surfaceMap_update("surfaceMap_popup");
         }
 
         // CATCH CHANGES ONLY
@@ -9355,11 +9397,15 @@ function EMU_init()
     oCOM.addRefreshEvent(apple2plus.hwObj().MEM_monitoring,"MEM_monitoring",false);
     //oCOM.addRefreshEvent(oEMUI.MEM_monitoring,"MEM_monitoring",false);
     
-    // TODO: move to DISK2 peripheral driver (but make sure we can handle multiple slots with a disk object)
-    oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);
-   
+    // The default dashboard explicitly monitors the configured Disk II slot.
+    oCOM.addRefreshEvent(
+        function(){ apple2plus.DSK_monitoring(diskSlotN); },
+        "DSK_monitoring",
+        true
+    );
 
-    
+
+
     //oCOM.addRefreshEvent(apple2plus.SND_monitoring,"SND_monitoring",false);
 
     // TODO: this is probably where we need to provide surfaceMap_update the surfaceMap_popup identifier
@@ -9463,9 +9509,10 @@ function EMUI()
         _o.CPU_ClockTicks = Math.round( _o.CPU_TargetTicks_s / _o.EMU_Updates_s );
         window.clearInterval(appleIntervalHandle);
         appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
-        //oEMU.component.IO.AppleDisk.dN_speed_update(pct*100);
-        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
-        disk2.dN_speed_update(pct*100);
+        EMU_diskIIObjects().forEach(function(disk2)
+        {
+            disk2.dN_speed_update(pct*100);
+        });
         console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s");       
     }
 
@@ -9496,22 +9543,28 @@ function EMUI()
     this.muteAct = function(arg)
     {
         if(arg===undefined) arg = this.muteArg;
-        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
+
+        var disks = EMU_diskIIObjects();
         var b = arg.override===undefined?(oCOM.POPUP.states[arg.id]==arg.class1):arg.override
+
         if(b)
         {
             oEMU.component.IO.AppleSpeaker.init("audio_ctx")
                 .then(()=>{  oEMU.component.IO.AppleSpeaker.init("audio_on")  });
 
-            disk2.init("audio_ctx").then(()=>{  
-                    var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
-                    disk2.init("audio_buffer") 
-                });
+            disks.forEach(function(disk2)
+            {
+                disk2.init("audio_ctx")
+                    .then(function(){ return disk2.init("audio_buffer"); });
+            });
         }
         else
         {
             oEMU.component.IO.AppleSpeaker.init("audio_off").then(()=>{});
-            disk2.init("audio_off").then(()=>{});
+            disks.forEach(function(disk2)
+            {
+                disk2.init("audio_off").then(()=>{});
+            });
         }
     }
 
@@ -9803,8 +9856,12 @@ async function EMU_audio_prepare()
         // Create contexts early. This may still leave them suspended.
         await oEMU.component.IO.AppleSpeaker.init("audio_ctx");
 
-        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
-        await disk2.init("audio_ctx");
+        await Promise.all(
+            EMU_diskIIObjects().map(function(disk2)
+            {
+                return disk2.init("audio_ctx");
+            })
+        );
 
         _o.EMU_audio.prepared = true;
         return true;
@@ -9826,12 +9883,15 @@ async function EMU_audio_try_unlock(forceButtonState)
         await EMU_audio_prepare();
 
         const spk = oEMU.component.IO.AppleSpeaker;
-        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
+        var disks = EMU_diskIIObjects();
 
         const spkRunning = spk.audio && spk.audio.state === "running";
-        const dskRunning = disk2.audio && disk2.audio.state === "running";
+        const dskRunning = disks.every(function(disk2)
+        {
+            return disk2.audio && disk2.audio.state === "running";
+        });
 
-        // If both are already running, cold-start worked.
+        // If all audio contexts are already running, cold-start worked.
         if (spkRunning && dskRunning)
         {
             _o.EMU_audio.unlocked = true;
@@ -9842,14 +9902,21 @@ async function EMU_audio_try_unlock(forceButtonState)
             if (spk.audio && spk.audio.state !== "running")
                 await spk.audio.resume();
 
-            if (disk2.audio && disk2.audio.state !== "running")
-                await disk2.audio.resume();
+            await Promise.all(disks.map(async function(disk2)
+            {
+                if(disk2.audio && disk2.audio.state !== "running")
+                    await disk2.audio.resume();
 
-            if (disk2.init) await disk2.init("audio_buffer");
+                if(disk2.init)
+                    await disk2.init("audio_buffer");
+            }));
 
             _o.EMU_audio.unlocked =
                 spk.audio && spk.audio.state === "running" &&
-                disk2.audio && disk2.audio.state === "running";
+                disks.every(function(disk2)
+                {
+                    return disk2.audio && disk2.audio.state === "running";
+                });
         }
 
         if (_o.EMU_audio.unlocked)
@@ -9867,7 +9934,10 @@ async function EMU_audio_try_unlock(forceButtonState)
 
             // Ensure normal sound-on logic is active.
             await oEMU.component.IO.AppleSpeaker.init("audio_on");
-            await apple2plus.hwObj().io.PCODE2obj("DISKII")[0].init("audio_buffer");
+            await Promise.all(disks.map(function(disk2)
+            {
+                return disk2.init("audio_buffer");
+            }));
         }
 
         return _o.EMU_audio.unlocked;
@@ -9889,19 +9959,20 @@ function EMU_audio_event_unlock()
     EMU_audio_try_unlock(true);
 }
 
-// TODO: extend eject disk in different slots.  Add slot inside DeviceID ?
-function loadDisk_fromBuffer(arr_buffer,deviceID)
+function loadDisk_fromBuffer(arr_buffer,slotN,deviceID)
 {
-    //oCOM.POPUP.html("disk2.getState().active==true");
-
     try
     {
-        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];   
-        if(disk2.getState().active==false) return;
+        var disk2 = EMU_slotPeripheral(slotN,"DISKII");
+        if(!disk2 || disk2.getState().active==false) return false;
+
         var bytes = Array.from(arr_buffer);
         if (bytes.length == 143360) bytes = disk2.convertDsk2Nib(bytes);
-        apple2plus.loadDisk(bytes,deviceID);
+
+        if(!apple2plus.loadDisk(bytes,deviceID,slotN)) return false;
+
         highlight_appbut(document.getElementById("file_"+deviceID),true);
+        return true;
     }
     catch({ name, message })
     {
@@ -9910,10 +9981,10 @@ function loadDisk_fromBuffer(arr_buffer,deviceID)
 }
 
 
-// TODO: extend eject disk in different slots.  Add slot inside DeviceID ?
-function ejectDisk(el,deviceID)
+function ejectDisk(el,slotN,deviceID)
 {
-  const oDevice = apple2plus.hwObj().io.deviceID2obj(deviceID);
+  var io = apple2plus.hwObj().io;
+  const oDevice = io.deviceID2obj(deviceID,slotN);
   if(!oDevice) return;
 
   var fe = document.getElementById("file_"+oDevice.deviceID);
@@ -9921,8 +9992,13 @@ function ejectDisk(el,deviceID)
 
   oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
 
-  var o = apple2plus.hwObj().io.PCODE2obj("DISKII")[0]; // temporary patch
-  if(!o || typeof(o.getState)!="function") return;
+  var o = io.SLOT2obj(slotN);
+  if(
+      !o ||
+      o.id?.PCODE != "DISKII" ||
+      typeof(o.getState)!="function"
+  )
+      return;
 
   var st = o.getState();
   if(st.diskData && oDevice.deviceN !== undefined)
@@ -22734,7 +22810,7 @@ function AppleBoard()
             var hasControls = typeof(device.ctrl_dlg)=="function";
             var codeArg = JSON.stringify(deviceCode);
             var openControls = "event.stopPropagation();"
-                +"var b=apple2plus.hwObj().io.PCODE2obj(\"A2BO\")[0];"
+                +"var b=apple2plus.hwObj().io.SLOT2obj(0);"
                 +"if(b)b.deviceControls_popup("+codeArg+");";
 
             var range = device.attach && device.attach.range
@@ -22772,10 +22848,10 @@ function AppleBoard()
             var modeArg = JSON.stringify(modeName);
             var codeArg = JSON.stringify(videoCode);
             var openControls = "event.stopPropagation();"
-                +"var b=apple2plus.hwObj().io.PCODE2obj(\"A2BO\")[0];"
+                +"var b=apple2plus.hwObj().io.SLOT2obj(0);"
                 +"if(b)b.deviceControls_popup("+modeArg+");";
             var selectDevice = "event.stopPropagation();"
-                +"var b=apple2plus.hwObj().io.PCODE2obj(\"A2BO\")[0];"
+                +"var b=apple2plus.hwObj().io.SLOT2obj(0);"
                 +"if(b)b.videoDeviceSelect("+codeArg+");";
 
             labels.push(
@@ -22893,12 +22969,13 @@ function Apple2IO(vid)
     
     this.reset = function()
     {
-        //keys.reset();
-        var disk2 = this.PCODE2obj("DISKII")[0];
-        if(disk2) disk2.reset();
-
-        var ramcard = this.PCODE2obj("MS16K")[0];
-        if(ramcard) ramcard.reset();
+        // Reset every mounted peripheral by its unique slot ownership.
+        for(var slotN in this.slots)
+        {
+            var peripheral = this.SLOT2obj(slotN);
+            if(peripheral && typeof(peripheral.reset)=="function")
+                peripheral.reset();
+        }
 
         for(var deviceKey in this.attachments)
         {
@@ -23113,10 +23190,10 @@ this.slots[3] =
             }
         }
 
-        // legacy adaptation
-        var ramcard = this.PCODE2obj("MS16K")[0];
-        if(ramcard) ramcard.restart();
-        //if(this.disk2 && this.disk2.restart) this.disk2.restart();
+        /*
+         * Every mounted peripheral was restarted in the slot loop above.
+         * Do not restart one arbitrarily selected PCODE match a second time.
+         */
 
 
         //if(typeof(CIO)=="undefined") var CIO = {ACTION_MAP:{}};
@@ -23148,13 +23225,17 @@ function mergeActionMap(dst,src)
         } 
     }
 
+    /*
+     * Type query: intentionally returns every matching instance.
+     * Never select obj_arr[0] when the caller means a particular slot.
+     */
     this.PCODE2obj = function(PCODE)
     {
         var obj_arr = [];
         for(var o in this.slots)
         {
             if(this.slots[o].peripheral?.id.PCODE == PCODE)
-                obj_arr.push(this.slots[o].peripheral);         // we can have multiple matches, since we do not specify slotN
+                obj_arr.push(this.slots[o].peripheral);
         }
         return obj_arr;
     }
@@ -24149,7 +24230,15 @@ this.write = function(rel_addr,d8)
 
     this.SLOT2obj = function(slotN)
     {
-        if(this.slots[slotN].peripheral===undefined) return null;
+        slotN = Number(slotN);
+
+        if(
+            !Number.isInteger(slotN) ||
+            !this.slots[slotN] ||
+            !this.slots[slotN].peripheral
+        )
+            return null;
+
         return this.slots[slotN].peripheral;
     }
 
@@ -24158,7 +24247,7 @@ this.write = function(rel_addr,d8)
 
     }
 
-    this.deviceID2obj = function(str)
+    this.deviceID2obj = function(str,slotN)
     {
         if(typeof str !== "string") return null;
 
@@ -24172,19 +24261,32 @@ this.write = function(rel_addr,d8)
                 script: function(arg)
                 {
                     var deviceN = Number(arg.deviceID.slice(1)) - 1;
+                    var resolvedSlotN = Number(arg.slotN);
 
-                    var slotN = null;
-                    if(typeof _CFG_PSLOT !== "undefined" &&
-                    _CFG_PSLOT[arg.periID] &&
-                    _CFG_PSLOT[arg.periID].SLOTrange)
+                    if(!Number.isInteger(resolvedSlotN))
                     {
-                        var slotRange = extract_slotrange(_CFG_PSLOT[arg.periID].SLOTrange);
-                        slotN = slotRange.slotPut[0];   // starred/default slot, e.g. 6*
+                        resolvedSlotN = null;
+
+                        if(typeof _CFG_PSLOT !== "undefined" &&
+                        _CFG_PSLOT[arg.periID] &&
+                        _CFG_PSLOT[arg.periID].SLOTrange)
+                        {
+                            var slotRange = extract_slotrange(_CFG_PSLOT[arg.periID].SLOTrange);
+                            var defaultSlotID = slotRange.slotPut[0];
+
+                            /*
+                             * Configuration uses physical Apple slot IDs.
+                             * SLOT2obj() uses the internal slot-array index.
+                             * Example: Apple slot 6 -> internal slotN 7.
+                             */
+                            if(defaultSlotID!==undefined)
+                                resolvedSlotN = slotID2n(defaultSlotID);
+                        }
                     }
 
                     return {
                         "deviceN": deviceN,
-                        "slotN": slotN
+                        "slotN": resolvedSlotN
                     };
                 }
             }
@@ -24228,14 +24330,16 @@ this.write = function(rel_addr,d8)
                         "raw": raw,
                         "match": match,
                         "periID": obj.periID,
-                        "deviceID": obj.deviceID
+                        "deviceID": obj.deviceID,
+                        "slotN": slotN
                     }) || {};
                 }
 
                 for(var k in extra)
                     if(extra.hasOwnProperty(k)) obj[k] = extra[k];
 
-                if(typeof obj.slotN === "number") { obj.slotID = "PR#" + obj.slotN; }
+                if(typeof obj.slotN === "number")
+                    obj.slotID = slotN2name(obj.slotN);
 
                 return orderedDeviceObj(obj);
             }
@@ -24735,7 +24839,7 @@ this.write = function(rel_addr,d8)
         {
             html += "<div style='overflow-y:scroll;height:350px'>"
             var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
-            var board = this.PCODE2obj("A2BO")[0];
+            var board = this.SLOT2obj(0);
             html += "<div class='appbox' style='float:none;'>"+(board && typeof(board.boardIO_html)=="function" ? board.boardIO_html(model) : "") +"</div>";
             html += "</div>"
         }
@@ -25537,7 +25641,7 @@ this.write = function(rel_addr,d8)
         {
             case "HostIO":
                 var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
-                var board = this.PCODE2obj("A2BO")[0];
+                var board = this.SLOT2obj(0);
                 return ""
                     + "<div class=toolbox id=\"device_tool_H\" style=\"width:352px;max-width:80vw;overflow-y:auto;overflow-x:hidden;padding:0px\" hidden>"
                         +"<div class='appbox' style='float:none;width:350px;max-width:100%;box-sizing:border-box;text-align:left;padding:2px'>"
@@ -25553,7 +25657,7 @@ this.write = function(rel_addr,d8)
                         +"var bMEM_monitoring=oCOM.toggleRefreshEvent('MEM_monitoring');"
                         +"apple2plus.hwObj().enable_MEM_monitoring(bMEM_monitoring);"
                         +"oCOM.enableRefreshEvent('MEM_monitoring_MS16K',bMEM_monitoring);"
-                        +"apple2plus.hwObj().io.PCODE2obj('MS16K')[0]?.enable_MEM_monitoring(bMEM_monitoring);"
+                        +"apple2plus.hwObj().io.SLOT2obj("+slotN+")?.enable_MEM_monitoring(bMEM_monitoring);"
                         +"\"></i></button></div>"
                 + "    <div id=\"EMU_mem_map\" style=\"margin-left:30px;white-space:nowrap\"></div>"
                 + "  </div>"
@@ -25576,7 +25680,7 @@ this.write = function(rel_addr,d8)
                     
                     + "        <input type=button method=get class=appbut id=\"but_D1\" value=\"Drive1\""
                     + " data-empty=\"Drive1\" data-loaded=\"\" title=\"Drive1: no disk\"  "
-                    + " onclick=\"ejectDisk(this,'D1')\""
+                    + " onclick=\"ejectDisk(this,"+slotN+",'D1')\""
 
                     + " onmouseover=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,true)\""
                     + "  onmouseout=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,false)\">"
@@ -25596,7 +25700,7 @@ this.write = function(rel_addr,d8)
 
                     + "        <input type=button method=get class=appbut id=\"but_D2\" value=\"Drive2\""
                     + " data-empty=\"Drive2\" data-loaded=\"\" title=\"Drive2: no disk\"  "
-                    + " onclick=\"ejectDisk(this,'D2')\""
+                    + " onclick=\"ejectDisk(this,"+slotN+",'D2')\""
                     + " onmouseover=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,true)\""
                     + " onmouseout=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,false)\">"
                 
@@ -26652,7 +26756,15 @@ function Apple2Plus(context)
     this.hw = oCOM.default(new Apple2Hw(video),{},"Apple2Hw");       // Apple2plus owns Apple2Hw object instance
     video.hw = this.hw;
     const hw = this.hw
-    
+
+    function slotPeripheral(slotN,PCODE)
+    {
+        var peripheral = hw.io.SLOT2obj(slotN);
+        return peripheral && peripheral.id?.PCODE == PCODE
+            ? peripheral
+            : null;
+    }
+
     //var keys = oEMU.component.Keyboard;
     //var keys = oCOM.default(oEMU.component.Keyboard,{cycle:function(){}},"A2Pkeys");
     //var snd = oCOM.default(oEMU.component.IO.AppleSpeaker,{cycle:function(){},play:function(){}},"AppleSpeaker");
@@ -26692,11 +26804,14 @@ function Apple2Plus(context)
 
 
     // TODO: move to DISK2
-    this.DSK_monitoring = function()
+    this.DSK_monitoring = function(slotN)
     {
-        var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
+        var disk2 = this.DiskObj(slotN);
+        if(!disk2) return false;
+
         var o = disk2.getState().hw;
         disk2.GUI_update(o);
+        return true;
     }
 
 
@@ -26746,9 +26861,9 @@ function Apple2Plus(context)
             dashboard_refresh(args);
     }
 
-    this.DiskObj = function() // TODO: deprecated -> phase out
+    this.DiskObj = function(slotN)
     {
-        return this.hw.io.PCODE2obj("DISKII")[0];
+        return slotPeripheral(slotN,"DISKII");
     }
 
     this.keysObj = function() {
@@ -26764,18 +26879,25 @@ function Apple2Plus(context)
     }
 
     // TODO: move this to EMU_appledisk2.js
-    this.loadDisk = function(bytes,drive) 
+    this.loadDisk = function(bytes,drive,slotN) 
     {
+        var disk2 = this.DiskObj(slotN);
+        if(!disk2) return false;
+
         var drv = Number(drive.slice(1))-1;
-        var disk2 = this.hwObj().io.PCODE2obj("DISKII")[0];
-        disk2.getState().diskData[ drv ] = bytes;
+        disk2.getState().diskData[drv] = bytes;
+        return true;
     }  
 
     // TODO: move this to EMU_appledisk2.js
-    this.dumpDisk = function(drive) {
+    this.dumpDisk = function(drive,slotN)
+    {
+        var disk2 = this.DiskObj(slotN);
+        if(!disk2) return false;
+
         var drv = Number(drive.slice(1))-1;
-        var disk2 = this.PCODE2obj("DISKII")[0];
         disk2.dump(drv);
+        return true;
     }
 
     this.monitor = function(type) {
@@ -26941,10 +27063,13 @@ function Apple2Plus(context)
  
               var linestep = 4096;
               var cnf = {id_prefix:"m",digits:4};
-              //var lc = apple2plus.hwObj().io.ramcard;
-              var ramcard = apple2plus.hwObj().io.PCODE2obj( "MS16K"  )[0];
+              // Apple slot 0 is internal slot-array index 1.
+              var ramcard = apple2plus.hwObj().io.SLOT2obj(1);
 
-              var bLC = ramcard && ramcard.state && ramcard.state.active && ramcard.MEM_grid && typeof(ramcard.build_MEM_map)=="function";
+              var bLC = ramcard && ramcard.id?.PCODE=="MS16K"
+                    && ramcard.state && ramcard.state.active
+                    && ramcard.MEM_grid
+                    && typeof(ramcard.build_MEM_map)=="function";
               el.innerHTML =
                 "<div style='display:flex;'>"
               +   oMEMGRID.build_grid(7*linestep,8,-linestep,cnf)
