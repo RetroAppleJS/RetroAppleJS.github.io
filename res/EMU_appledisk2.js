@@ -112,6 +112,32 @@ function AppleDisk2()
     var ssTraceLimitWarned = false;
     var ssDataRun = null;
 
+    function ssSlotNumber()
+    {
+        if(disk2.mount && Number.isInteger(Number(disk2.mount.slotN)))
+            return Number(disk2.mount.slotN);
+
+        var from = disk2.mount &&
+                   disk2.mount.ranges &&
+                   disk2.mount.ranges.SlotIO
+            ? Number(disk2.mount.ranges.SlotIO.from)
+            : NaN;
+
+        if(Number.isFinite(from))
+        {
+            if(from>=0xC080) return Math.floor((from-0xC080)/0x10);
+            if(from>=0x80) return Math.floor((from-0x80)/0x10);
+        }
+
+        return null;
+    }
+
+    function ssSlotLabel()
+    {
+        var slotN = ssSlotNumber();
+        return slotN===null ? "S?" : "S"+slotN;
+    }
+
     function ssHex(value,width)
     {
         if(value===undefined || value===null || !Number.isFinite(Number(value)))
@@ -206,9 +232,12 @@ function AppleDisk2()
 
     this.softSwitchSnapshot = function(ctx)
     {
+        var slot = ssSlotLabel();
+
         return {
-             "drv":Number(state.drv)
-            ,"selected":"D"+(Number(state.drv)+1)
+             "slot":slot
+            ,"drv":Number(state.drv)
+            ,"selected":slot+".D"+(Number(state.drv)+1)
             ,"drive_enable":Number(state.drive_enable)
             ,"bRO":!!(ctx && ctx.bRO===true)
             ,"drives":[ssDriveSnapshot(0),ssDriveSnapshot(1)]
@@ -221,12 +250,14 @@ function AppleDisk2()
 
         if(!before || !after) return changes;
 
+        var slot = after.slot || before.slot || ssSlotLabel();
+
         if(before.drv != after.drv)
-            changes.push("drv:"+before.drv+"->"+after.drv);
+            changes.push(slot+".drv:"+before.drv+"->"+after.drv);
 
         if(before.drive_enable != after.drive_enable)
-            changes.push("drive_enable:"+before.drive_enable+"->"+after.drive_enable);
-
+            changes.push(slot+".drive_enable:"+before.drive_enable+"->"+after.drive_enable);
+ 
         var fields = [
              "track","phase","motor","q6","q7","offset"
             ,"data_latch","disk_loaded","disk_bytes"
@@ -243,7 +274,7 @@ function AppleDisk2()
 
                 if(b[field] != a[field])
                     changes.push(
-                        "D"+(d+1)+"."+field+":"+b[field]+"->"+a[field]
+                        slot+".D"+(d+1)+"."+field+":"+b[field]+"->"+a[field]
                     );
             }
         }
@@ -270,8 +301,8 @@ function AppleDisk2()
             return;
         }
 
+        // Keep high-volume diagnostics in memory; download them from Surface Map.
         ssTrace.push(entry);
-        console.log("AppleDisk2 SS "+JSON.stringify(entry));
     }
 
     function ssFlushDataRun(reason)
@@ -324,6 +355,7 @@ function AppleDisk2()
 
         var entry = {
              "type":"SOFT_SWITCH"
+             ,"slot":before && before.slot ? before.slot : ssSlotLabel()
             ,"seq":seq
             ,"op":op
             ,"switch":SS_NAME[addr] || ("SS_"+addr)
@@ -362,6 +394,7 @@ function AppleDisk2()
 
                 ssDataRun = {
                      "type":"Q6L_RUN"
+                    ,"slot":entry.slot
                     ,"key":key
                     ,"op":op
                     ,"switch":"Q6L"
@@ -410,6 +443,7 @@ function AppleDisk2()
         ssFlushDataRun("marker");
         ssAppend({
              "type":"MARKER"
+            ,"slot":ssSlotLabel()
             ,"seq":++ssTraceSeq
             ,"name":String(name || "MARKER")
             ,"pc":(ssCPUSnapshot() || {}).pc || null
@@ -419,8 +453,7 @@ function AppleDisk2()
 
     this.setSoftSwitchDebug = function(enabled)
     {
-        if(!enabled) ssFlushDataRun("debug-disabled");
-        bDebug_SS = !!enabled;
+        // bDebug_SS is intentionally a compile-time constant.
         return bDebug_SS;
     };
 
@@ -448,9 +481,32 @@ function AppleDisk2()
     {
         return JSON.stringify({
              "enabled":bDebug_SS
+            ,"slot":ssSlotLabel()
             ,"records":this.getSoftSwitchTrace()
             ,"dropped":ssTraceDropped
         },null,2);
+    };
+
+    this.downloadSoftSwitchTrace = function()
+    {
+        if(!bDebug_SS || typeof(document)=="undefined") return false;
+
+        var slot = ssSlotLabel();
+        var blob = new Blob(
+             [this.exportSoftSwitchTrace()]
+            ,{"type":"application/json;charset=utf-8"}
+        );
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement("a");
+
+        link.href = url;
+        link.download = "DiskII_"+slot+"_softswitch_log.json";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setTimeout(function(){ URL.revokeObjectURL(url); },0);
+        return true;
     };
 
     this.applyDriveEnable = function(reason)
@@ -535,8 +591,8 @@ function AppleDisk2()
 
     this.restart = function()
     {
-        // TODO: -> in future, handle DSK_monitoring, but first have a DSK object per slot where it is installed
-        
+        // Start every emulator run with a fresh diagnostic buffer.
+        this.clearSoftSwitchTrace();            
     }
 
     // Do not reset hw[n].track here.
@@ -3168,6 +3224,13 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
     {
         var closeBtn = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+popup_id+"');\" "
         +"style=\"width:25px;text-align:center;\">x</div>";
+        var slotN = ssSlotNumber();
+        var diskLogBtn = bDebug_SS && slotN!==null
+            ? "<div class=\"appbut skinny\" "
+                +"onclick=\"apple2plus.hwObj().io.slots["+slotN+"].peripheral.downloadSoftSwitchTrace();event.stopPropagation();\">"
+                +"<i class=\"fa fa-shoe-prints\" title=\"download disklog\"></i>"
+                +"</div>"
+            : "";
 
         var ret = "<div>"
         + "  <div style=\"display:flex;align-items:center;gap:6px;white-space:nowrap;min-width:0px;\">"
@@ -3177,6 +3240,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
         +           "\">"
         + "         </i>"
         + "      </button>"
+        +        diskLogBtn
         + "      <div style=\"padding:5px 5px;flex:1;\"><b>Disk surface map</b></div>"
         +        closeBtn
         + "  </div>"
