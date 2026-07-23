@@ -13,8 +13,9 @@ else oEMU.component.IO.AppleDisk2 = null;
 
 function AppleDisk2()
 {
-    var bDebug   = true;
-    var bDebug_N = false;   // debug disk noise only 
+    const bDebug   = true;
+    const bDebug_N = false;   // debug disk noise only 
+    const bDebug_SS = true;   // comprehensive Disk II soft-switch trace
 
     this.id = {"PCODE":"DISKII", "icon":"fa fa-save"};
     var state = 
@@ -92,6 +93,365 @@ function AppleDisk2()
     const TRACK_SIZE =  6656;
 
     var disk2       = this;       // stand-in in areas where 'this' is absent e.g. inside mapping functions
+
+    const SS_TRACE_LIMIT = 50000;
+    const SS_DATA_RUN_LIMIT = 4096;
+    const SS_NAME = [
+         "PH0_OFF","PH0_ON"
+        ,"PH1_OFF","PH1_ON"
+        ,"PH2_OFF","PH2_ON"
+        ,"PH3_OFF","PH3_ON"
+        ,"MOTOR_OFF","MOTOR_ON"
+        ,"DRIVE_1","DRIVE_2"
+        ,"Q6L","Q6H","Q7L","Q7H"
+    ];
+
+    var ssTrace = [];
+    var ssTraceSeq = 0;
+    var ssTraceDropped = 0;
+    var ssTraceLimitWarned = false;
+    var ssDataRun = null;
+
+    function ssHex(value,width)
+    {
+        if(value===undefined || value===null || !Number.isFinite(Number(value)))
+            return null;
+
+        var n = Number(value);
+        var mask = width<=2 ? 0xFF : 0xFFFF;
+        return "$" + ((n & mask).toString(16).toUpperCase()).padStart(width,"0");
+    }
+
+    function ssCPUValue(source,names)
+    {
+        if(!source) return null;
+
+        for(var i=0;i<names.length;i++)
+        {
+            var value = source[names[i]];
+
+            if(typeof(value)=="function")
+            {
+                try { value = value.call(source); }
+                catch(e) { value = null; }
+            }
+
+            if(Number.isFinite(Number(value)))
+                return Number(value);
+        }
+
+        return null;
+    }
+
+    function ssCPUSnapshot()
+    {
+        var cpu = null;
+
+        try
+        {
+            if(typeof(apple2plus)=="object" &&
+               apple2plus &&
+               typeof(apple2plus.cpuObj)=="function")
+                cpu = apple2plus.cpuObj();
+        }
+        catch(e) {}
+
+        if(!cpu) return null;
+
+        var source = cpu;
+
+        try
+        {
+            if(typeof(cpu.getState)=="function")
+                source = cpu.getState() || cpu;
+        }
+        catch(e) {}
+
+        var pc = ssCPUValue(source,["pc","PC","instr_pc","last_pc"]);
+        var a  = ssCPUValue(source,["a","A","acc","AC"]);
+        var x  = ssCPUValue(source,["x","X","xr","XR"]);
+        var y  = ssCPUValue(source,["y","Y","yr","YR"]);
+        var sp = ssCPUValue(source,["sp","SP","s","S"]);
+        var p  = ssCPUValue(source,["p","P","status","flags"]);
+
+        return {
+             "pc":ssHex(pc,4)
+            ,"a":ssHex(a,2)
+            ,"x":ssHex(x,2)
+            ,"y":ssHex(y,2)
+            ,"sp":ssHex(sp,2)
+            ,"p":ssHex(p,2)
+        };
+    }
+
+    function ssDriveSnapshot(deviceN)
+    {
+        var hw = state.hw[deviceN] || {};
+        var diskData = state.diskData[deviceN];
+
+        return {
+             "track":Number(hw.track)
+            ,"phase":Number(hw.phase)
+            ,"motor":Number(hw.motor)
+            ,"q6":Number(hw.q6)
+            ,"q7":Number(hw.q7)
+            ,"offset":Number(hw.offset)
+            ,"data_latch":Number(hw.data_latch) & 0xFF
+            ,"disk_loaded":diskData!=null
+            ,"disk_bytes":diskData && Number.isFinite(Number(diskData.length))
+                ? Number(diskData.length)
+                : 0
+        };
+    }
+
+    this.softSwitchSnapshot = function(ctx)
+    {
+        return {
+             "drv":Number(state.drv)
+            ,"selected":"D"+(Number(state.drv)+1)
+            ,"drive_enable":Number(state.drive_enable)
+            ,"bRO":!!(ctx && ctx.bRO===true)
+            ,"drives":[ssDriveSnapshot(0),ssDriveSnapshot(1)]
+        };
+    };
+
+    function ssStateChanges(before,after)
+    {
+        var changes = [];
+
+        if(!before || !after) return changes;
+
+        if(before.drv != after.drv)
+            changes.push("drv:"+before.drv+"->"+after.drv);
+
+        if(before.drive_enable != after.drive_enable)
+            changes.push("drive_enable:"+before.drive_enable+"->"+after.drive_enable);
+
+        var fields = [
+             "track","phase","motor","q6","q7","offset"
+            ,"data_latch","disk_loaded","disk_bytes"
+        ];
+
+        for(var d=0;d<2;d++)
+        {
+            var b = before.drives[d] || {};
+            var a = after.drives[d] || {};
+
+            for(var f=0;f<fields.length;f++)
+            {
+                var field = fields[f];
+
+                if(b[field] != a[field])
+                    changes.push(
+                        "D"+(d+1)+"."+field+":"+b[field]+"->"+a[field]
+                    );
+            }
+        }
+
+        return changes;
+    }
+
+    function ssAppend(entry)
+    {
+        if(!bDebug_SS) return;
+
+        if(ssTrace.length>=SS_TRACE_LIMIT)
+        {
+            ssTraceDropped++;
+
+            if(!ssTraceLimitWarned)
+            {
+                ssTraceLimitWarned = true;
+                console.warn(
+                    "AppleDisk2 SS: trace limit reached; additional records are dropped"
+                );
+            }
+
+            return;
+        }
+
+        ssTrace.push(entry);
+        console.log("AppleDisk2 SS "+JSON.stringify(entry));
+    }
+
+    function ssFlushDataRun(reason)
+    {
+        if(!ssDataRun) return;
+
+        ssDataRun.flush_reason = reason || "flush";
+        delete ssDataRun.key;
+        ssAppend(ssDataRun);
+        ssDataRun = null;
+    }
+
+    function ssDataRunKey(op,after,note)
+    {
+        var d = after && after.drives
+            ? after.drives[after.drv] || {}
+            : {};
+
+        return [
+             op
+            ,after ? after.drv : -1
+            ,d.track
+            ,d.phase
+            ,d.motor
+            ,d.q6
+            ,d.q7
+            ,note || ""
+        ].join("|");
+    }
+
+    this.traceSoftSwitch = function(op,addr,d8,ctx,before,after,result,note)
+    {
+        if(!bDebug_SS) return;
+
+        addr = Number(addr) & 0x0F;
+        var seq = ++ssTraceSeq;
+        var cpu = ssCPUSnapshot();
+        var base = 0xE0;
+
+        if(this.mount &&
+           this.mount.ranges &&
+           this.mount.ranges.SlotIO &&
+           Number.isFinite(Number(this.mount.ranges.SlotIO.from)))
+            base = Number(this.mount.ranges.SlotIO.from);
+
+        var absoluteAddress =
+            base>=0xC000
+                ? base + addr
+                : 0xC000 + base + addr;
+
+        var entry = {
+             "type":"SOFT_SWITCH"
+            ,"seq":seq
+            ,"op":op
+            ,"switch":SS_NAME[addr] || ("SS_"+addr)
+            ,"address":ssHex(absoluteAddress,4)
+            ,"relative":ssHex(addr,2)
+            ,"pc":cpu ? cpu.pc : null
+            ,"cpu":cpu
+            ,"data":op=="WR" ? ssHex(d8,2) : null
+            ,"result":ssHex(result,2)
+            ,"note":note || null
+            ,"before":before
+            ,"after":after
+            ,"changes":ssStateChanges(before,after)
+        };
+
+        /*
+         * Q6L can be accessed millions of times while DOS scans a track.
+         * Preserve every access as a counted run with exact first/last
+         * sequence, PC, offset and result, rather than flooding the console.
+         */
+        if(addr==Q6L)
+        {
+            var key = ssDataRunKey(op,after,note);
+            var selectedBefore =
+                before && before.drives
+                    ? before.drives[before.drv] || {}
+                    : {};
+            var selectedAfter =
+                after && after.drives
+                    ? after.drives[after.drv] || {}
+                    : {};
+
+            if(!ssDataRun || ssDataRun.key!=key)
+            {
+                ssFlushDataRun("key-change");
+
+                ssDataRun = {
+                     "type":"Q6L_RUN"
+                    ,"key":key
+                    ,"op":op
+                    ,"switch":"Q6L"
+                    ,"address":entry.address
+                    ,"first_seq":seq
+                    ,"last_seq":seq
+                    ,"count":1
+                    ,"first_pc":entry.pc
+                    ,"last_pc":entry.pc
+                    ,"data":entry.data
+                    ,"first_result":entry.result
+                    ,"last_result":entry.result
+                    ,"first_offset":selectedBefore.offset
+                    ,"last_offset":selectedAfter.offset
+                    ,"note":entry.note
+                    ,"before":before
+                    ,"after":after
+                    ,"changes":entry.changes
+                };
+            }
+            else
+            {
+                ssDataRun.last_seq = seq;
+                ssDataRun.count++;
+                ssDataRun.last_pc = entry.pc;
+                ssDataRun.last_result = entry.result;
+                ssDataRun.last_offset = selectedAfter.offset;
+                ssDataRun.after = after;
+                ssDataRun.changes = ssStateChanges(ssDataRun.before,after);
+            }
+
+            if(ssDataRun.count>=SS_DATA_RUN_LIMIT)
+                ssFlushDataRun("chunk-limit");
+
+            return;
+        }
+
+        ssFlushDataRun("control-access");
+        ssAppend(entry);
+    };
+
+    this.traceSoftSwitchMarker = function(name,ctx)
+    {
+        if(!bDebug_SS) return;
+
+        ssFlushDataRun("marker");
+        ssAppend({
+             "type":"MARKER"
+            ,"seq":++ssTraceSeq
+            ,"name":String(name || "MARKER")
+            ,"pc":(ssCPUSnapshot() || {}).pc || null
+            ,"state":this.softSwitchSnapshot(ctx)
+        });
+    };
+
+    this.setSoftSwitchDebug = function(enabled)
+    {
+        if(!enabled) ssFlushDataRun("debug-disabled");
+        bDebug_SS = !!enabled;
+        return bDebug_SS;
+    };
+
+    this.getSoftSwitchDebug = function()
+    {
+        return bDebug_SS;
+    };
+
+    this.clearSoftSwitchTrace = function()
+    {
+        ssDataRun = null;
+        ssTrace = [];
+        ssTraceSeq = 0;
+        ssTraceDropped = 0;
+        ssTraceLimitWarned = false;
+    };
+
+    this.getSoftSwitchTrace = function()
+    {
+        ssFlushDataRun("trace-request");
+        return ssTrace.slice();
+    };
+
+    this.exportSoftSwitchTrace = function()
+    {
+        return JSON.stringify({
+             "enabled":bDebug_SS
+            ,"records":this.getSoftSwitchTrace()
+            ,"dropped":ssTraceDropped
+        },null,2);
+    };
 
     this.applyDriveEnable = function(reason)
     {
@@ -199,6 +559,7 @@ function AppleDisk2()
         state.drv = 0;
         this.cancelTrackStatsFlush(0);
         this.cancelTrackStatsFlush(1);
+        this.traceSoftSwitchMarker("RESET");
     }
 
     this.getState = function() { return state }
@@ -302,9 +663,36 @@ function AppleDisk2()
     }
     */
 
-    this.read = function(addr,ctx) 
+    this.read = function(addr,ctx,access)  // access is only there for SS trace log purposes
     {
         //if(apple2plus.hwObj().bRO == true) return status_nibble;                // skip soft switch manupulation; just return status when hardware is in Read-Only mode
+
+        var ssOp = access && access.op ? access.op : "RD";
+        var ssData = access ? access.d8 : undefined;
+        var ssBefore =
+            bDebug_SS
+                ? (access && access.before
+                    ? access.before
+                    : this.softSwitchSnapshot(ctx))
+                : null;
+        var disk2Ref = this;
+
+        function finish(result,note)
+        {
+            if(bDebug_SS)
+                disk2Ref.traceSoftSwitch(
+                     ssOp
+                    ,addr
+                    ,ssData
+                    ,ctx
+                    ,ssBefore
+                    ,disk2Ref.softSwitchSnapshot(ctx)
+                    ,result
+                    ,note
+                );
+
+            return result;
+        }
 
         //console.log("AppleDisk2: read %s", addr.toString(16));
         const deviceN = state.drv
@@ -400,13 +788,13 @@ function AppleDisk2()
                 if (!state.diskData[deviceN])
                 {
                     this.traceUnavailable(deviceN, "diskData=null");
-                    return 0xff;
+                    return finish(0xff,"diskData=null");
                 }
 
                 if (!state.hw[deviceN].motor)
                 {
                     this.traceUnavailable(deviceN, "motor=0");
-                    return 0xff;
+                    return finish(0xff,"motor=0");
                 }
 
                 this.trace.lastUnavailable = "";
@@ -425,7 +813,7 @@ function AppleDisk2()
                     state.diskData[deviceN][loc] = state.hw[deviceN].data_latch;
                     if (state.hw[deviceN].stats) state.hw[deviceN].stats.write++;
                     this.traceDataByte("WRITE", deviceN, loc, state.hw[deviceN].data_latch);
-                    return state.hw[deviceN].data_latch;
+                    return finish(state.hw[deviceN].data_latch,"disk-write");
                 }
                 else
                 {
@@ -433,7 +821,7 @@ function AppleDisk2()
                     var d8 = state.diskData[deviceN][loc];
                     if (state.hw[deviceN].stats) state.hw[deviceN].stats.read++;
                     this.traceDataByte("READ", deviceN, loc, d8);
-                    return d8;
+                    return finish(d8,"disk-read");
                 }
                 // NOTREACHED
             case Q6H:
@@ -461,7 +849,7 @@ function AppleDisk2()
             }
         }
 
-        return 0x00;
+        return finish(0x00);
     } // read
 
 
@@ -472,7 +860,7 @@ function AppleDisk2()
     //   ███ ███  ██   ██ ██    ██    ███████ 
 
 
-    this.write = function(addr, d8)
+    this.write = function(addr, d8, ctx)  // ctx is only there for SS trace log purposes
     {
         /*
             Disk II soft-switches react to accesses, not only reads.
@@ -482,10 +870,16 @@ function AppleDisk2()
             then the normal soft-switch side effect must still happen.
         */
 
+        var ssBefore = bDebug_SS ? this.softSwitchSnapshot(ctx) : null;
+
         if (addr == Q6H)
             state.hw[state.drv].data_latch = d8 & 0xff;
 
-        return this.read(addr);
+        return this.read(addr,ctx,{
+             "op":"WR"
+            ,"d8":d8
+            ,"before":ssBefore
+        });
     };
 
 
