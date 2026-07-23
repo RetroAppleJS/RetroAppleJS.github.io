@@ -2716,6 +2716,13 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
 
     this.getSoftwareCatRows = function(arg)
     {
+        var slotN = ssSlotNumber();
+
+        if(slotN===null)
+        {
+            console.warn("Software Catalog: Disk II slot is unavailable");
+            return false;
+        }
 
         function GH_listDir(arg, callback)
         {
@@ -2860,12 +2867,12 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
                 arg_cpy.path = parentpath.join("/");
                 arg_cpy.path = arg_cpy.path.substring(0,arg_cpy.path.length-1);
 
-                var parentDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.DiskObj().getSoftwareCatRows("+JSON.stringify(arg_cpy)+")'>","</div>"];
-                    
+                var parentDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.hwObj().io.SLOT2obj("+slotN+").getSoftwareCatRows("+JSON.stringify(arg_cpy)+")'>","</div>"];
+
                 // TABLE HEAD
                 var head = "" 
                     //+ parentDir[0]+"<i class=\"fa fa-arrow-alt-circle-up\"></i>"+parentDir[0];
-                    +(bParentDir?"<div class=appbut style=width:25px title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.DiskObj().getSoftwareCatRows("+JSON.stringify(arg_cpy)+")'>"
+                    +(bParentDir?"<div class=appbut style=width:25px title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.hwObj().io.SLOT2obj("+slotN+").getSoftwareCatRows("+JSON.stringify(arg_cpy)+")'>"
                     +"<i class=\"fa fa-arrow-alt-circle-up\"></i></div>":"")
                     +'<div style="margin-top:6px;">'
                     + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
@@ -2887,8 +2894,8 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
                     var icon = bDir?"<i class=\"fa fa-folder\"></i> ":"<i class=\"fa fa-cloud-upload-alt\"></i>";
                     var audioWakeup = "EMU_audio_event_unlock();"
                     var cmd  = bDir
-                        ?"var o=apple2plus.hwObj().io.PCODE2obj(\"DISKII\")[0];o.getSoftwareCatRows("+JSON.stringify(arg_cpy)+");"+audioWakeup     // FOLDER CLICK
-                        :"var o=apple2plus.hwObj().io.PCODE2obj(\"DISKII\")[0];o.getFile("+JSON.stringify(arg_cpy)+");"+audioWakeup;               // FILE CLICK
+                        ?"var o=apple2plus.hwObj().io.SLOT2obj("+slotN+");if(o)o.getSoftwareCatRows("+JSON.stringify(arg_cpy)+");"+audioWakeup     // FOLDER CLICK
+                        :"var o=apple2plus.hwObj().io.SLOT2obj("+slotN+");if(o)o.getFile("+JSON.stringify(arg_cpy)+");"+audioWakeup;               // FILE CLICK
                     var subDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='"+cmd+"'>"+icon,"</div>"];
                     
                     head += '<tr>'
@@ -2916,10 +2923,12 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
     {
         try
         {
-            //var disk2 = oCOM.default( oEMU.component.IO.AppleDisk, {state:{active:false}}, "AppleDisk");
-            var disk2 = apple2plus.hwObj().io.PCODE2obj("DISKII")[0];
+            var disk2 = this;
+            var slotN = ssSlotNumber();
 
-            if(disk2.getState().active == false) return;
+            if(slotN===null || disk2.getState().active == false)
+                return false;
+
             arg.ref = arg.ref || "main";
 
             // Default to D1, but allow catalog entries to pass arg.drv = "D2" or 2 later.
@@ -2958,7 +2967,11 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
 
                 if(nibBytes.length != 232960) throw new Error( "unsupported mounted image size " + nibBytes.length + " bytes for " + arg.path );
 
-                apple2plus.loadDisk(nibBytes, deviceID);
+                if(!apple2plus.loadDisk(nibBytes,deviceID,slotN))
+                    throw new Error(
+                        "DISKII is not mounted in slotN="
+                        + slotN
+                    );
 
                 var fileName = arg.name || (arg.path || "").split("/").pop() || "disk image";
                 disk2.setDriveCatalogFile(deviceID, fileName);

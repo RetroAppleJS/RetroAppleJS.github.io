@@ -663,7 +663,7 @@ padding: 0;
                             {
                                 d.meta &= ~(_this.events_data.metabitsEn[lo.val]); // pop out radio button
                                 var opacity = "1";
-                                var el_arr = document.querySelectorAll('#'+tt.lastElementChild.id);
+                                var el_arr = document.querySelectorAll('[id="'+tt.lastElementChild.id+'"]');
                                 for(var e=0; e<el_arr.length; e++) el_arr[e].parentNode.style.opacity = opacity;  // update all nodes with same id
                                 _this.events_data.postEvent.splice(i,1);
                             }
@@ -672,13 +672,13 @@ padding: 0;
                     if(lookup.act == "toggle") 
                     {
                         var opacity = _this.events_data.metabits[1] &  _this.events_data.metabitsEn[lookup.val] ?  "1" : "0.5";  // opacity according to toggle status
-                        var el_arr = document.querySelectorAll('#'+t.lastElementChild.id);                // query all elements with same id
+                        var el_arr = document.querySelectorAll('[id="'+t.lastElementChild.id+'"]');       // query all elements with same id
                         for(var e=0; e<el_arr.length; e++) el_arr[e].parentNode.style.opacity = opacity;  // update all nodes with same id
                     }
                     if(lookup.act == "radio")
                     { 
                         var opacity = _this.events_data.metabits[1] &  _this.events_data.metabitsEn[lookup.val] ?  "1" : "0.5";  // opacity according to toggle status
-                        var el_arr = document.querySelectorAll('#'+t.lastElementChild.id);                // query all elements with same id
+                        var el_arr = document.querySelectorAll('[id="'+t.lastElementChild.id+'"]');       // query all elements with same id
                         for(var e=0; e<el_arr.length; e++) el_arr[e].parentNode.style.opacity = opacity;  // update all nodes with same id
                         _this.events_data.postEvent.push(t);        // push in postevent queue for popping the radio button at next action
                     }
