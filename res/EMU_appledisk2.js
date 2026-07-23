@@ -13,7 +13,7 @@ else oEMU.component.IO.AppleDisk2 = null;
 
 function AppleDisk2()
 {
-    const bDebug   = false;
+    const bDebug   = true;
     const bDebug_N = false;   // debug disk noise only 
     const bDebug_SS = true;   // comprehensive Disk II soft-switch trace
 
