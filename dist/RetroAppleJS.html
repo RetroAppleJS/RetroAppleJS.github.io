@@ -18170,7 +18170,7 @@ else oEMU.component.IO.AppleDisk2 = null;
 
 function AppleDisk2()
 {
-    const bDebug   = true;
+    const bDebug   = false;
     const bDebug_N = false;   // debug disk noise only 
     const bDebug_SS = true;   // comprehensive Disk II soft-switch trace
 
@@ -18263,11 +18263,17 @@ function AppleDisk2()
         ,"Q6L","Q6H","Q7L","Q7H"
     ];
 
+    // One bounded buffer for bDebug, bDebug_N, semantic trace and soft switches.
     var ssTrace = [];
     var ssTraceSeq = 0;
     var ssTraceDropped = 0;
     var ssTraceLimitWarned = false;
     var ssDataRun = null;
+
+    function diskLogEnabled()
+    {
+        return bDebug || bDebug_N || bDebug_SS;
+    }
 
     function ssSlotNumber()
     {
@@ -18439,9 +18445,13 @@ function AppleDisk2()
         return changes;
     }
 
-    function ssAppend(entry)
+    function diskLogAppend(entry,enabled,preserveDataRun)
     {
-        if(!bDebug_SS) return;
+        if(!enabled) return false;
+
+        // Keep an active Q6L aggregate in chronological order with other events.
+        if(!preserveDataRun && ssDataRun)
+            ssFlushDataRun("interleaved-log");
 
         if(ssTrace.length>=SS_TRACE_LIMIT)
         {
@@ -18451,15 +18461,35 @@ function AppleDisk2()
             {
                 ssTraceLimitWarned = true;
                 console.warn(
-                    "AppleDisk2 SS: trace limit reached; additional records are dropped"
+                    "AppleDisk2: disk log limit reached; additional records are dropped"
                 );
             }
 
-            return;
+            return false;
         }
 
-        // Keep high-volume diagnostics in memory; download them from Surface Map.
+        if(entry.slot===undefined) entry.slot = ssSlotLabel();
+        if(entry.seq===undefined) entry.seq = ++ssTraceSeq;
+
         ssTrace.push(entry);
+        return true;
+    }
+
+    function diskLogEvent(type,data,enabled)
+    {
+        var entry = {"type":type,"slot":ssSlotLabel()};
+        data = data || {};
+
+        for(var key in data)
+            if(
+                Object.prototype.hasOwnProperty.call(data,key) &&
+                key!="type" &&
+                key!="slot" &&
+                key!="seq"
+            )
+                entry[key] = data[key];
+
+        return diskLogAppend(entry,enabled,false);
     }
 
     function ssFlushDataRun(reason)
@@ -18468,7 +18498,7 @@ function AppleDisk2()
 
         ssDataRun.flush_reason = reason || "flush";
         delete ssDataRun.key;
-        ssAppend(ssDataRun);
+        diskLogAppend(ssDataRun,bDebug_SS,true);
         ssDataRun = null;
     }
 
@@ -18552,6 +18582,7 @@ function AppleDisk2()
                 ssDataRun = {
                      "type":"Q6L_RUN"
                     ,"slot":entry.slot
+                    ,"seq":seq
                     ,"key":key
                     ,"op":op
                     ,"switch":"Q6L"
@@ -18590,7 +18621,7 @@ function AppleDisk2()
         }
 
         ssFlushDataRun("control-access");
-        ssAppend(entry);
+        diskLogAppend(entry,bDebug_SS,true);
     };
 
     this.traceSoftSwitchMarker = function(name,ctx)
@@ -18598,71 +18629,59 @@ function AppleDisk2()
         if(!bDebug_SS) return;
 
         ssFlushDataRun("marker");
-        ssAppend({
+        diskLogAppend({
              "type":"MARKER"
             ,"slot":ssSlotLabel()
             ,"seq":++ssTraceSeq
             ,"name":String(name || "MARKER")
             ,"pc":(ssCPUSnapshot() || {}).pc || null
             ,"state":this.softSwitchSnapshot(ctx)
-        });
+        },bDebug_SS,true);
     };
 
-    this.setSoftSwitchDebug = function(enabled)
-    {
-        // bDebug_SS is intentionally a compile-time constant.
-        return bDebug_SS;
-    };
-
-    this.getSoftSwitchDebug = function()
-    {
-        return bDebug_SS;
-    };
-
-    this.clearSoftSwitchTrace = function()
+    this.clearDiskLog = function()
     {
         ssDataRun = null;
         ssTrace = [];
         ssTraceSeq = 0;
         ssTraceDropped = 0;
         ssTraceLimitWarned = false;
+
+        if(this.trace)
+        {
+            this.trace.pendingArm = null;
+            this.trace.pendingData = null;
+            this.trace.lastUnavailable = "";
+        }
     };
 
-    this.getSoftSwitchTrace = function()
+    this.downloadDiskLog = function()
     {
-        ssFlushDataRun("trace-request");
-        return ssTrace.slice();
-    };
+        if(
+            !diskLogEnabled() ||
+            typeof(oCOM)!="object" ||
+            typeof(oCOM.Download)!="function"
+        )
+            return false;
 
-    this.exportSoftSwitchTrace = function()
-    {
-        return JSON.stringify({
-             "enabled":bDebug_SS
-            ,"slot":ssSlotLabel()
-            ,"records":this.getSoftSwitchTrace()
-            ,"dropped":ssTraceDropped
-        },null,2);
-    };
+        if(this.trace && this.trace.enabled)
+            this.traceFlush("download");
 
-    this.downloadSoftSwitchTrace = function()
-    {
-        if(!bDebug_SS || typeof(document)=="undefined") return false;
+        ssFlushDataRun("download");
 
         var slot = ssSlotLabel();
-        var blob = new Blob(
-             [this.exportSoftSwitchTrace()]
-            ,{"type":"application/json;charset=utf-8"}
+        var json = JSON.stringify({
+             "enabled":diskLogEnabled()
+            ,"slot":slot
+            ,"records":ssTrace.slice()
+            ,"dropped":ssTraceDropped
+        }).replace( /\},\{/g , "},\n{" );
+
+        oCOM.Download(
+             "DiskII_"+slot+"_disklog.json"
+            ,new TextEncoder("utf-8").encode(json)
         );
-        var url = URL.createObjectURL(blob);
-        var link = document.createElement("a");
 
-        link.href = url;
-        link.download = "DiskII_"+slot+"_softswitch_log.json";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        setTimeout(function(){ URL.revokeObjectURL(url); },0);
         return true;
     };
 
@@ -18749,7 +18768,7 @@ function AppleDisk2()
     this.restart = function()
     {
         // Start every emulator run with a fresh diagnostic buffer.
-        this.clearSoftSwitchTrace();            
+        this.clearDiskLog();
     }
 
     // Do not reset hw[n].track here.
@@ -18791,12 +18810,33 @@ function AppleDisk2()
 
         var stats = hw.stats;
         var track = stats.track;
+        var read = stats.read || 0;
+        var write = stats.write || 0;
 
         // Avoid noisy empty messages.
-        if ((stats.read || 0) == 0 && (stats.write || 0) == 0)
+        if (read == 0 && write == 0)
             return;
 
-        console.log("AppleDisk2: D%d track %d - bytes R/W %d / %d %s",deviceN + 1,track,stats.read || 0,stats.write || 0,reason ? "("+reason+")":"");
+        diskLogEvent("TRACK_STATS",{
+             "source":"bDebug"
+            ,"drive":ssSlotLabel()+".D"+(deviceN+1)
+            ,"drv":deviceN
+            ,"track":track
+            ,"read":read
+            ,"write":write
+            ,"reason":reason || null
+        },bDebug);
+
+        // Preserve the existing console diagnostic.
+        console.log(
+             "AppleDisk2: D%d track %d - bytes R/W %d / %d %s"
+            ,deviceN + 1
+            ,track
+            ,read
+            ,write
+            ,reason ? "("+reason+")":""
+        );
+
         stats.read = 0;
         stats.write = 0;
         stats.track = hw.track;
@@ -20049,13 +20089,37 @@ this.detectDiskImageType = function(imageBytes, filepath)
 
     var set_action = function(o) { if(o.bRep) o.rept++; else o.rept = 0; }
 
+    function dN_log(event,message,data)
+    {
+        if(!bDebug_N) return;
+
+        // Preserve the existing console diagnostics.
+        console.log(message);
+
+        data = data || {};
+        data.source = "bDebug_N";
+        data.event = event;
+        diskLogEvent("DISK_NOISE",data,true);
+    }
+
     this.dN_spindown = function(t)
     {
-        if(bDebug_N) console.log("TIMER EXP ("+t.dNd.motor+") - "+t.dNd.state);
+        dN_log(
+             "TIMER_EXPIRED"
+            ,"TIMER EXP ("+t.dNd.motor+") - "+t.dNd.state
+            ,{"motor":t.dNd.motor,"state":t.dNd.state}
+        );
+
         if(t.dNd.state=="MOTOR_OFF")
         {
             t.dNd.motor="OFF";
-            if(bDebug_N) console.log("dN_spindown: dNd.motor="+t.dNd.motor);
+
+            dN_log(
+                 "SPINDOWN"
+                ,"dN_spindown: dNd.motor="+t.dNd.motor
+                ,{"motor":t.dNd.motor,"state":t.dNd.state}
+            );
+
             t.dN_update("SPINDOWN");
         }
     }
@@ -20065,7 +20129,13 @@ this.detectDiskImageType = function(imageBytes, filepath)
     this.dN_play = function(name)
     {
         if(this.audio===undefined || name==null) return;
-        if(bDebug_N) { console.log("play('"+name+"')") }
+
+        dN_log(
+             "PLAY"
+            ,"play('"+name+"')"
+            ,{"sample":name}
+        );
+
         this.AUD_buffer[name]               = this.audio.createBufferSource();  // create buffers
         this.AUD_buffer[name].buffer        = dN_samples[name].audio;           // fill buffers
         this.AUD_buffer[name].connect(this.gain).connect(this.audio.destination); // connect buffers -> gain -> destination (patch cables)
@@ -20077,7 +20147,13 @@ this.detectDiskImageType = function(imageBytes, filepath)
     this.dN_stop = function(name)
     {
       if(name==null) return;
-      if(bDebug_N) { console.log("stop('"+name+"')") }
+
+      dN_log(
+           "STOP"
+          ,"stop('"+name+"')"
+          ,{"sample":name}
+      );
+
       this.AUD_buffer[name].loop = false;
       this.AUD_buffer[name].stop();
     }
@@ -20161,10 +20237,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
     {
         enabled: false,
         echo: true,
-        maxEvents: 1000,
         maxBytes: 24,
-        seq: 0,
-        events: [],
         pendingArm: null,
         pendingData: null,
         lastUnavailable: ""
@@ -20173,16 +20246,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
     this.traceEnable = function(enabled, clear)
     {
         this.trace.enabled = !!enabled;
-        if (clear) this.traceClear();
-    }
-
-    this.traceClear = function()
-    {
-        this.trace.seq = 0;
-        this.trace.events = [];
-        this.trace.pendingArm = null;
-        this.trace.pendingData = null;
-        this.trace.lastUnavailable = "";
+        if (clear) this.clearDiskLog();
     }
 
     this.traceFlush = function(reason)
@@ -20241,9 +20305,10 @@ this.detectDiskImageType = function(imageBytes, filepath)
         var hw = state.hw[deviceN] || {};
 
         var e = {
-            seq: ++this.trace.seq,
             event: eventName,
+            source: "semantic_trace",
             time: (typeof performance != "undefined") ? Math.round(performance.now() * 1000) / 1000 : Date.now(),
+            drive: ssSlotLabel()+".D"+(deviceN+1),
             drv: deviceN,
             track: hw.track,
             phase: hw.phase,
@@ -20255,9 +20320,11 @@ this.detectDiskImageType = function(imageBytes, filepath)
 
         for (var k in data) e[k] = data[k];
 
-        this.trace.events[this.trace.events.length] = e;
-        if (this.trace.events.length > this.trace.maxEvents) this.trace.events.shift();
-        if (this.trace.echo && typeof console != "undefined") console.log(this.traceFormat(e));
+        diskLogEvent("TRACE",e,true);
+
+        // Preserve the existing semantic trace console output.
+        if (this.trace.echo && typeof console != "undefined")
+            console.log(this.traceFormat(e));
     }
 
     this.traceFormat = function(e)
@@ -21382,9 +21449,9 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
         var closeBtn = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+popup_id+"');\" "
         +"style=\"width:25px;text-align:center;\">x</div>";
         var slotN = ssSlotNumber();
-        var diskLogBtn = bDebug_SS && slotN!==null
+        var diskLogBtn = diskLogEnabled() && slotN!==null
             ? "<div class=\"appbut skinny\" "
-                +"onclick=\"apple2plus.hwObj().io.slots["+slotN+"].peripheral.downloadSoftSwitchTrace();event.stopPropagation();\">"
+                +"onclick=\"apple2plus.hwObj().io.slots["+slotN+"].peripheral.downloadDiskLog();event.stopPropagation();\">"
                 +"<i class=\"fa fa-shoe-prints\" title=\"download disklog\"></i>"
                 +"</div>"
             : "";
