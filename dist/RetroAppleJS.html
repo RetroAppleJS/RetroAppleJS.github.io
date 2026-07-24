@@ -20694,10 +20694,14 @@ this.detectDiskImageType = function(imageBytes, filepath)
                     ,"path":"disks"
                     ,"ref":"main"
                 });
-                io.setDiskCatalogContext(slotN,arg.DCODE || "D1",arg);
-                if(oCOM.POPUP.get_state(popup_id)==false)
-                    oCOM.POPUP.toggle(popup_id);
-                io.diskCatalogNavigate(arg);
+                var opening = popup.hidden;
+                oCOM.POPUP.toggle(popup_id);
+
+                if(opening)
+                {
+                    io.setDiskCatalogContext(slotN,arg.DCODE || "D1",arg);
+                    io.diskCatalogNavigate(arg);
+                }
             break;
             case "surfaceMap":
                 var popup_id = arg.id + "_popup";
