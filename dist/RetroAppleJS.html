@@ -18799,7 +18799,6 @@ function AppleDisk2()
                     this.audio = new AudioContext(audioOptions);
                     this.gain  =  this.audio.createGain();
                     this.gain.gain.value = 0.1;
-                    //this.audio.audioWorklet.addModule(s_worklet_js); // Load an this.audio worklet
                 } else await this.audio.resume();
                 this.dNd.enable = true;
             break;
@@ -18816,7 +18815,6 @@ function AppleDisk2()
                     for (const item of response)
                     {
                         dN_samples[item.name].audio = item.audio;
-                        // Do not assign sampleRate; AudioBuffer.sampleRate is read-only in practice.
                         delete dN_samples[item.name].src;
                     }
                 }
@@ -21658,9 +21656,6 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
         this.surfaceMap_headCell[deviceN] = id;
     };
 }
-
-globalThis.Apple2IO_PeripheralRegistry = globalThis.Apple2IO_PeripheralRegistry || {};
-globalThis.Apple2IO_PeripheralRegistry["DISKII"] = {"ctor":AppleDisk2,"icon":"fa fa-save"};
 
 </script>
             <script type="text/javascript">
