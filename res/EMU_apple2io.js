@@ -2718,7 +2718,14 @@ this.write = function(rel_addr,d8)
             var slots = this.deviceSlots();
             for(var slotN=0,html_arr=[];slotN<slots.length;slotN++)
                 html_arr.push(this.deviceToolSlotHTML( slots[slotN] ));
-            box.innerHTML = html_arr.join("");
+
+            /*
+             * Shared popup host.  Keep this outside the per-slot toolboxes so
+             * multiple Disk II cards do not generate duplicate softwareCat
+             * IDs, while preserving the original toolbox positioning context.
+             */
+            box.innerHTML = html_arr.join("")
+                + "<div class=toolbox id=softwareCat></div>";
             box.setAttribute("data-topology",sig);
 
             if(typeof(EMU_mem_map)=="function" && typeof(apple2plus)=="object" && apple2plus!=null)

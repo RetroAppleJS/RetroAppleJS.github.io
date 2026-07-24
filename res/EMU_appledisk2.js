@@ -2438,8 +2438,8 @@ this.detectDiskImageType = function(imageBytes, filepath)
                 var slotN = ssSlotNumber();
                 if(slotN===null) return false;
 
-                var popup_id = "softwareCat_popup";
-                var popup = document.getElementById(popup_id);
+                var popup_host = document.getElementById("softwareCat");
+                if(!popup_host) return false;
 
                 if(!popup)
                 {
@@ -2448,9 +2448,10 @@ this.detectDiskImageType = function(imageBytes, filepath)
                     popup.hidden = true;
                     popup.className = "appbox com_popup_frame";
                     popup.style.cssText =
-                        "position:absolute;left:800px;width:450px;height:450px;"
-                        +"text-align:left;padding:0px;margin:0px";
-                    document.body.appendChild(popup);
+                        "position:absolute;z-index:3;left:800px;top:120px;"
+                        +"width:450px;height:450px;text-align:left;"
+                        +"padding:0px;margin:0px";
+                    popup_host.appendChild(popup);
                 }
                 arg = Object.assign({},arg,{
                      "id":"softwareCat"
