@@ -3,12 +3,9 @@
 //
 // EMU_apple2disk2.js
 
-// Add object to device registry
-//if(oEMU===undefined) var oEMU = {"component":{"IO":{"AppleDisk":new AppleDisk2()}}}  // AppleDisk = IO card, AppleDisk2 = drive #1
-//else oEMU.component.IO.AppleDisk = new AppleDisk2();
-
-if(oEMU===undefined) var oEMU = {"component":{"IO":{"AppleDisk2":null}}}  // AppleDisk = IO card, AppleDisk2 = drive #1
-else oEMU.component.IO.AppleDisk2 = null;
+// Discovery container. Apple2IO mounts a separate live instance.
+if(oEMU===undefined) var oEMU = {"component":{"IO":{"AppleDisk2":new AppleDisk2()}}}
+else oEMU.component.IO.AppleDisk2 = new AppleDisk2();
 
 
 function AppleDisk2()

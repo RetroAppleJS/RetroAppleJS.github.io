@@ -99,6 +99,3 @@ function col80card()
         // TODO: THE VIDEX HAS TO DO SOMETHING WITH WHAT THE PERIPHERAL RECEIVES FROM THE BUS
     }
 }
-
-globalThis.Apple2IO_PeripheralRegistry = globalThis.Apple2IO_PeripheralRegistry || {};
-globalThis.Apple2IO_PeripheralRegistry["VIDEX"] = {"ctor":col80card,"icon":"fa fa-tv"};

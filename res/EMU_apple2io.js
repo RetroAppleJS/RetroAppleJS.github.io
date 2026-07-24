@@ -19,7 +19,6 @@ function Apple2IO(vid)
     this.slot_ctx = {};
     this.slots = [];
     this.attachments = {};
-    this.registeredPeripherals = {};
 
     // restart() installs the real empty-bus filler; live remounts reuse it.
     var refillEmptyIOActions = function(){};
@@ -128,11 +127,8 @@ function Apple2IO(vid)
         update_IORANGES(model);
         if(!CIO.ACTION_MAP) CIO.ACTION_MAP = emptyActionMap();
 
-        // Discover and register peripheral types once, before default mounting.
-        if(Object.keys(this.registeredPeripherals).length==0)
-            this.registerPeripherals();
-
-        var pContainers = this.getRegisteredPeripherals();
+        // _CFG_PSLOT is the whitelist; eligible IO containers are discovered.
+        var pContainers = this.scanPeripheralContainers();
 
         // mount peripherals according to default configuration _CFG_PSLOT
         for(var slotN in slotR.slotMap)
@@ -738,7 +734,7 @@ this.write = function(rel_addr,d8)
         if(oEMU.system===undefined) return {"sInfo":slot_info,"pObj":null};
         if(!cinfo || !peripheral_info) return {"sInfo":slot_info,"pObj":null};
         if(!oEMU.system["IORANGES"]) return {"sInfo":slot_info,"pObj":null};
-        if(!remounting && typeof(globalThis[peripheral_info.coID])!="function")
+        if(!remounting && typeof(peripheral_info.ctor)!="function")
             return {"sInfo":slot_info,"pObj":null};
 
         slotIdx = Number(slotIdx);
@@ -766,7 +762,7 @@ this.write = function(rel_addr,d8)
 
             // Reuse a live object when moving it; constructing a new one would lose device state.
             if(remounting) unmapPeripheralActions(peripheral_obj);
-            else peripheral_obj = new globalThis[peripheral_info.coID]();
+            else peripheral_obj = new peripheral_info.ctor();
             //if(cinfo!=null)  peripheral_obj.bFirstConfig = true;
 
             if(peripheral_obj)
@@ -1148,85 +1144,48 @@ this.write = function(rel_addr,d8)
     }
 
     // SLOT MAPPING
-    // scanPeripheralContainers() discovers peripheral types. Only
-    // registerPeripherals() commits that discovery to the stable registry.
-    this.registerPeripherals = function()
-    {
-        var scanned = this.scanPeripheralContainers();
-        var registered = {};
-
-        for(var PCODE in scanned)
-        {
-            var id = Object.assign({},scanned[PCODE]);
-            var cinfo = typeof(_CFG_PSLOT)!="undefined" ? _CFG_PSLOT[PCODE] : null;
-
-            if(id.description===undefined && cinfo && cinfo.NAME)
-                id.description = cinfo.NAME;
-
-            registered[PCODE] = id;
-        }
-
-        this.registeredPeripherals = registered;
-        return registered;
-    }
-
-    this.getRegisteredPeripherals = function()
-    {
-        return this.registeredPeripherals;
-    }
-
-    this.getRegisteredPeripheral = function(PCODE)
-    {
-        return this.registeredPeripherals[PCODE] || null;
-    }
-
-    // TODO: make sure we do not skip DISKII
+    /*
+     * Discover peripheral types from the existing IO containers.
+     *
+     * _CFG_PSLOT defines which PCODEs are eligible. Merely being present in
+     * oEMU.component.IO is not sufficient: the container must expose
+     * id.PCODE, and that PCODE must occur in _CFG_PSLOT.
+     *
+     * The constructor is retained directly. No parallel registry and no
+     * globalThis constructor lookup are required.
+     */
     this.scanPeripheralContainers = function()
     {
-        var names = {};
+        var discovered = {};
 
-        function registerPeripheralObj(obj, coID)
+        if(typeof(_CFG_PSLOT)=="undefined" ||
+           !oEMU.component ||
+           !oEMU.component.IO)
+            return discovered;
+
+        for(var coID in oEMU.component.IO)
         {
-            var PCODE = obj?.id?.PCODE;
-            if(PCODE===undefined) return;
-            names[PCODE] = Object.assign({},obj.id,{"coID":coID});
+            var container = oEMU.component.IO[coID];
+            var PCODE = container?.id?.PCODE;
+
+            if(!PCODE || !_CFG_PSLOT[PCODE]) continue;
+            if(typeof(container.constructor)!="function") continue;
+            if(container.constructor===Object) continue;
+
+            var info = Object.assign({},container.id,{
+                 "PCODE":PCODE
+                ,"coID":coID
+                ,"ctor":container.constructor
+            });
+
+            if(info.description===undefined)
+                info.description = _CFG_PSLOT[PCODE].NAME;
+
+            discovered[PCODE] = info;
         }
 
-        for(var o in oEMU.component.IO)
-        {
-            var obj = oEMU.component.IO[o];
-
-            if(obj?.id?.PCODE!==undefined)
-            {
-                registerPeripheralObj(obj, obj.constructor.name);
-                continue;
-            }
-
-            /*
-                oEMU.component.IO.board is intentionally null.
-                The container key is "board", but the constructor is AppleBoard().
-                This keeps board ownership in slot_cfg while still allowing discovery.
-            */
-            if(o=="board" && typeof(globalThis.AppleBoard)=="function")
-            {
-                try { registerPeripheralObj(new globalThis.AppleBoard(), "AppleBoard"); }
-                catch(e) {}
-            }
-        }
-
-        for(var o in oEMU.component.IO)
-        {
-            try
-            {
-                if(typeof(globalThis[o])=="function")
-                    registerPeripheralObj(new globalThis[o](), o);
-            }
-            catch(e) {}
-        }
-
-        return names;
+        return discovered;
     }
-
     function extract_slotrange_mask(str)
     {
         var mask = new Uint16Array(2);

@@ -4,12 +4,9 @@
 //
 // EMU_hostio.js
 
-if(oEMU===undefined) var oEMU = {"component":{"IO":{"board":null}}}
-else 
-{
-    //oEMU.component.IO.board= new AppleBoard();
-    oEMU.component.IO.board = null;
-}
+// Discovery container. Apple2IO mounts a separate live instance.
+if(oEMU===undefined) var oEMU = {"component":{"IO":{"board":new AppleBoard()}}}
+else oEMU.component.IO.board = new AppleBoard();
 
 
 function AppleBoard()

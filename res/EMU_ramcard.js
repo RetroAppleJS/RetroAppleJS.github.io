@@ -9,8 +9,9 @@
 //
 // EMU_ramcard.js
 
-if(oEMU===undefined) var oEMU = {"component":{"IO":{"RamCard":null}}}
-else oEMU.component.IO["RamCard"] = null;
+// Discovery container. Apple2IO mounts a separate live instance.
+if(oEMU===undefined) var oEMU = {"component":{"IO":{"RamCard":new RamCard()}}}
+else oEMU.component.IO.RamCard = new RamCard();
 
 function RamCard()
 {
