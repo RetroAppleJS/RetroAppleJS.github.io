@@ -7,6 +7,12 @@
 if(oEMU===undefined) var oEMU = {"component":{"IO":{"AppleDisk2":new AppleDisk2()}}}
 else oEMU.component.IO.AppleDisk2 = new AppleDisk2();
 
+function DiskIIDrive()
+{
+    this.id = {"hostPCODE":"DISKII"};
+    this.state = {"active":true};
+}
+
 
 function AppleDisk2()
 {
@@ -15,6 +21,33 @@ function AppleDisk2()
     const bDebug_SS = true;   // comprehensive Disk II soft-switch trace
 
     this.id = {"PCODE":"DISKII", "icon":"fa fa-save"};
+
+    /*
+     * The controller owns two attached devices. D1 and D2 are DCODEs, not
+     * special keys interpreted by Apple2IO.
+     */
+    this.deviceConfig =
+    [
+         {
+             "DCODE":"D1"
+            ,"hostPCODE":"DISKII"
+            ,"coID":"DiskIIDrive"
+            ,"deviceN":0
+            ,"icon":"fa fa-hdd"
+            ,"description":"Disk II drive 1"
+            ,"range":"Peripheral"
+         }
+        ,{
+             "DCODE":"D2"
+            ,"hostPCODE":"DISKII"
+            ,"coID":"DiskIIDrive"
+            ,"deviceN":1
+            ,"icon":"fa fa-hdd"
+            ,"description":"Disk II drive 2"
+            ,"range":"Peripheral"
+         }
+    ];
+
     var state = 
     {
         "active":true
@@ -139,6 +172,24 @@ function AppleDisk2()
     {
         var slotN = ssSlotNumber();
         return slotN===null ? "S?" : "S"+slotN;
+    }
+
+    function diskDeviceRef(deviceID)
+    {
+        if(typeof(apple2plus)!="object" || !apple2plus) return null;
+
+        var io = apple2plus.hwObj().io;
+        var ref = io.deviceID2obj(deviceID,ssSlotNumber());
+
+        return ref && ref.periID=="DISKII" ? ref : null;
+    }
+
+    function diskDeviceN(deviceID)
+    {
+        var ref = diskDeviceRef(deviceID);
+        return ref && Number.isInteger(Number(ref.deviceN))
+            ? Number(ref.deviceN)
+            : null;
     }
 
     function ssHex(value,width)
@@ -982,7 +1033,8 @@ function AppleDisk2()
     {
         if (imageBytes === undefined || deviceID === undefined) return;
 
-        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
+        const deviceN = diskDeviceN(deviceID);
+        if(deviceN===null) return;
         var info = this.detectDiskImageType(imageBytes, filepath);
 
         console.log("DISK info = " + JSON.stringify(info));
@@ -1029,7 +1081,8 @@ function AppleDisk2()
     this.getDiskData = function(deviceID)
     {
         if(deviceID===undefined) return;
-        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
+        const deviceN = diskDeviceN(deviceID);
+        if(deviceN===null) return null;
         this.traceFlush("getDiskData");
         var nibBytes = state.diskData[deviceN];
         if(nibBytes==null) return null;
@@ -1049,7 +1102,8 @@ function AppleDisk2()
     this.isDiskData = function(deviceID)
     {
         if(deviceID===undefined) return;
-        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
+        const deviceN = diskDeviceN(deviceID);
+        if(deviceN===null) return false;
         return state.diskData[deviceN]!=null;
     }
 
@@ -1068,14 +1122,16 @@ function AppleDisk2()
     this.setDiskName = function(deviceID, filepath)
     {
         if(deviceID===undefined) return;
-        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
+        const deviceN = diskDeviceN(deviceID);
+        if(deviceN===null) return;
         state.diskName[deviceN] = normalizeDiskFileName(filepath, "dump.dsk");
     }
 
     this.getDiskName = function(deviceID)
     {
         if(deviceID===undefined) return "dump.dsk";
-        const deviceN = apple2plus.hwObj().io.deviceID2N(deviceID, "DISKII");
+        const deviceN = diskDeviceN(deviceID);
+        if(deviceN===null) return "dump.dsk";
         return normalizeDiskFileName(state.diskName[deviceN], "dump.dsk");
     }
 
@@ -2378,23 +2434,37 @@ this.detectDiskImageType = function(imageBytes, filepath)
         switch(arg.id)
         {
             case "softwareCat":
-                var popup_id = arg.id + "_popup";
-                if(document.getElementById(arg.id).innerHTML=="")   // first time. (class='appbox com_popup_frame' is the bug)
+                var io = apple2plus.hwObj().io;
+                var slotN = ssSlotNumber();
+                if(slotN===null) return false;
+
+                var popup_id = "softwareCat_popup";
+                var popup = document.getElementById(popup_id);
+
+                if(!popup)
                 {
-                    document.getElementById(arg.id).innerHTML =
-                    "<div  id='"+popup_id+"' hidden='' class='appbox com_popup_frame' style='position:absolute;left:800px;width:450px;height:450px;text-align:left;padding:0px;margin:0px'></div>";
+                    popup = document.createElement("div");
+                    popup.id = popup_id;
+                    popup.hidden = true;
+                    popup.className = "appbox com_popup_frame";
+                    popup.style.cssText =
+                        "position:absolute;left:800px;width:450px;height:450px;"
+                        +"text-align:left;padding:0px;margin:0px";
+                    document.body.appendChild(popup);
                 }
-                oCOM.POPUP.toggle(popup_id);
-
-                arg.owner = "RetroAppleJS";
-                arg.repo  = "RetroAppleJS.github.io";
-                arg.basepath = "disks";
-                arg.path  = "disks";
-                arg.ref   = "main";
-
-                this.getSoftwareCatRows(arg);
+                arg = Object.assign({},arg,{
+                     "id":"softwareCat"
+                    ,"owner":"RetroAppleJS"
+                    ,"repo":"RetroAppleJS.github.io"
+                    ,"basepath":"disks"
+                    ,"path":"disks"
+                    ,"ref":"main"
+                });
+                io.setDiskCatalogContext(slotN,arg.DCODE || "D1",arg);
+                if(oCOM.POPUP.get_state(popup_id)==false)
+                    oCOM.POPUP.toggle(popup_id);
+                io.diskCatalogNavigate(arg);
             break;
-
             case "surfaceMap":
                 var popup_id = arg.id + "_popup";
                 if(document.getElementById(arg.id).innerHTML=="")   // first time. (class='appbox com_popup_frame' is the bug)
@@ -2639,19 +2709,6 @@ data:"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
-"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"+
@@ -2711,13 +2768,17 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
 
     this.getSoftwareCatRows = function(arg)
     {
-        var slotN = ssSlotNumber();
+        var io = apple2plus.hwObj().io;
+        var catalog = io.getDiskCatalogContext();
+        var slotN = catalog ? catalog.slotN : ssSlotNumber();
 
-        if(slotN===null)
+        if(slotN===null || io.SLOT2obj(slotN)!==this)
         {
             console.warn("Software Catalog: Disk II slot is unavailable");
             return false;
         }
+
+        io.setDiskCatalogPath(arg);
 
         function GH_listDir(arg, callback)
         {
@@ -2862,12 +2923,12 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
                 arg_cpy.path = parentpath.join("/");
                 arg_cpy.path = arg_cpy.path.substring(0,arg_cpy.path.length-1);
 
-                var parentDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.hwObj().io.SLOT2obj("+slotN+").getSoftwareCatRows("+JSON.stringify(arg_cpy)+")'>","</div>"];
+                var parentDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.hwObj().io.diskCatalogNavigate("+JSON.stringify(arg_cpy)+")'>","</div>"];
 
                 // TABLE HEAD
                 var head = "" 
                     //+ parentDir[0]+"<i class=\"fa fa-arrow-alt-circle-up\"></i>"+parentDir[0];
-                    +(bParentDir?"<div class=appbut style=width:25px title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.hwObj().io.SLOT2obj("+slotN+").getSoftwareCatRows("+JSON.stringify(arg_cpy)+")'>"
+                    +(bParentDir?"<div class=appbut style=width:25px title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.hwObj().io.diskCatalogNavigate("+JSON.stringify(arg_cpy)+")'>"
                     +"<i class=\"fa fa-arrow-alt-circle-up\"></i></div>":"")
                     +'<div style="margin-top:6px;">'
                     + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
@@ -2889,10 +2950,10 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
                     var icon = bDir?"<i class=\"fa fa-folder\"></i> ":"<i class=\"fa fa-cloud-upload-alt\"></i>";
                     var audioWakeup = "EMU_audio_event_unlock();"
                     var cmd  = bDir
-                        ?"var o=apple2plus.hwObj().io.SLOT2obj("+slotN+");if(o)o.getSoftwareCatRows("+JSON.stringify(arg_cpy)+");"+audioWakeup     // FOLDER CLICK
-                        :"var o=apple2plus.hwObj().io.SLOT2obj("+slotN+");if(o)o.getFile("+JSON.stringify(arg_cpy)+");"+audioWakeup;               // FILE CLICK
+                        ?"apple2plus.hwObj().io.diskCatalogNavigate("+JSON.stringify(arg_cpy)+");"+audioWakeup
+                        :"apple2plus.hwObj().io.diskCatalogLoad("+JSON.stringify(arg_cpy)+");"+audioWakeup;
                     var subDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='"+cmd+"'>"+icon,"</div>"];
-                    
+
                     head += '<tr>'
                     + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+subDir[0]+oCOM.escapeHTML(rows[i].name)+subDir[1]+'</td>'
                     + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(bDir ? "-" : rows[i].size)+'</td>'                    
@@ -2907,8 +2968,26 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
                         +"onclick=\"oCOM.POPUP.toggle('"+popup_id+"');event.stopPropagation();\" "
                         +"style=\"text-align:center;float:right;\">x</div>";
 
+                var current = io.getDiskCatalogContext();
+                if(!current || current.slotN!==slotN) return;
+
+                var slotID = io.slot2ID(current.slotN);
+                var title =
+                      "<span>SOFTWARE CATALOG</span>"
+                    + "<button class=\"appbut\" type=\"button\""
+                    + " title=\"Target Disk II slot; click to select the next mounted Disk II\""
+                    + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.diskCatalogCycleSlot()\">"
+                    + "S" + slotID
+                    + "</button>"
+                    + "<button class=\"appbut\" type=\"button\""
+                    + " title=\"Target attached drive; click to select the next drive\""
+                    + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.diskCatalogCycleDrive()\">"
+                    + oCOM.escapeHTML(current.DCODE)
+                    + "</button>"
+                    + closeBtn;
+
                 document.getElementById(popup_id).innerHTML =
-                    oCOM.POPUP.title_body_html("<span>SOFTWARE CATALOG</span>" + closeBtn, head, body_id, "com_popup_body com_scroll_xy");
+                    oCOM.POPUP.title_body_html(title, head, body_id, "com_popup_body com_scroll_xy");
             }
         );
     }
@@ -2919,6 +2998,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
         try
         {
             var disk2 = this;
+            var io = apple2plus.hwObj().io;
             var slotN = ssSlotNumber();
 
             if(slotN===null || disk2.getState().active == false)
@@ -2926,9 +3006,20 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
 
             arg.ref = arg.ref || "main";
 
-            // Default to D1, but allow catalog entries to pass arg.drv = "D2" or 2 later.
-            // if D1 is occupied, switch to D2, if D2 is occupied, switch to D1
-            var deviceID = (this.isDiskData("D1") && !this.isDiskData("D2") || arg.drv == "D2" ? "D2" : "D1");
+            /*
+             * The destination is explicit catalog context. Do not silently
+             * redirect an occupied D1 selection to D2.
+             */
+            var context = io.getDiskCatalogContext();
+            var deviceID = arg.DCODE
+                || (context && context.slotN===slotN ? context.DCODE : null)
+                || io.deviceN2ID(0,"DISKII",slotN);
+            var deviceRef = io.deviceID2obj(deviceID,slotN);
+
+            if(!deviceRef || deviceRef.periID!="DISKII")
+                return false;
+
+            deviceID = deviceRef.DCODE;
 
             // Only disk images should be mounted here.
             var ext = (arg.path || "").split(".").pop().toLowerCase();
@@ -3132,20 +3223,33 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
         return Array.from(bytes);
     }
 
+    this.driveElementID = function(prefix,drv)
+    {
+        if(typeof drv == "number") drv = "D" + drv;
+        var slotN = ssSlotNumber();
+    }
+
+    this.driveElementID = function(prefix,drv)
+    {
+        if(typeof drv == "number") drv = "D" + drv;
+        var slotN = ssSlotNumber();
+        return String(prefix)+"_"+(slotN===null ? "X" : slotN)+"_"+String(drv).toUpperCase();
+    }
+
     this.diskInputEl = function(drv)
     {
         if(typeof drv == "number") drv = "D" + drv;
-        return document.getElementById("file_" + drv);
+        return document.getElementById(this.driveElementID("file",drv));
     }
 
     this.diskButtonEl = function(drv)
     {
         if(typeof drv == "number") drv = "D" + drv;
 
-        var btn = document.getElementById("but_" + drv);
+        var btn = document.getElementById(this.driveElementID("but",drv));
         if(btn != null) return btn;
 
-        var form = document.getElementById("f_" + drv);
+        var form = document.getElementById(this.driveElementID("f",drv));
         if(form == null) return null;
 
         return form.querySelector("input[type=button]");
@@ -3161,14 +3265,18 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
     this.diskMiddleEl = function(drv)
     {
         if(typeof drv == "number") drv = "D" + drv;
-        return document.getElementById("f_" + drv);
+        return document.getElementById(this.driveElementID("f",drv));
     }
 
     this.diskFileInputHTML = function(drv)
     {
         if(typeof drv == "number") drv = "D" + drv;
         var slotN = (this.mount && this.mount.slotN !== undefined) ? this.mount.slotN : 7;
-        return "        <input type=\"file\" name=\"" + drv + "\" id=\"file_" + drv + "\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this," + slotN + ",'" + drv + "')\">"
+        return "        <input type=\"file\""
+            +" name=\"" + drv + "\""
+            +" id=\"" + this.driveElementID("file",drv) + "\""
+            +" style=\"display:inline-block\""
+            +" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this," + slotN + ",'" + drv + "')\">"
     }
 
     this.diskCatalogLabelHTML = function(drv, fileName)
@@ -3179,7 +3287,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
 
         return "<button disabled style=\"padding:1px 5px 1px 5px;opacity:0.5\">Choose File</button>"
             +"<div class=\"fileBox\" "
-            + " id=\"file_" + drv + "\""
+            + " id=\"" + this.driveElementID("file",drv) + "\""
             + " title=\"" + safeName + "\">"
             +safeName
             +"</div>"
@@ -3194,7 +3302,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
             var el = this.diskMiddleEl(drv);
             if(el == null) return;
             el.innerHTML = this.diskCatalogLabelHTML(drv, fileName);
-            var btn = document.getElementById("but_" + drv);
+            var btn = this.diskButtonEl(drv);
             if(btn != null)
             {
                 btn.value = btn.dataset.empty || drv;
@@ -3219,7 +3327,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
 
             el.innerHTML = this.diskFileInputHTML(drv);
 
-            var btn = document.getElementById("but_" + drv);
+            var btn = this.diskButtonEl(drv);
             if(btn != null)
             {
                 btn.value = btn.dataset.empty || drv;
@@ -3334,7 +3442,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
 
         for(var deviceN=0; deviceN<2; deviceN++)
         {
-            var deviceID = apple2plus.hwObj().io.deviceN2ID(deviceN,"DISKII");
+            var deviceID = apple2plus.hwObj().io.deviceN2ID(deviceN,"DISKII",ssSlotNumber());
 
             var status = document.getElementById("surfaceMap_status_"+deviceID);
             if(state.diskData[deviceN] == null)

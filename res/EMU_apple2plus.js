@@ -168,8 +168,10 @@ function Apple2Plus(context)
         var disk2 = this.DiskObj(slotN);
         if(!disk2) return false;
 
-        var drv = Number(drive.slice(1))-1;
-        disk2.getState().diskData[drv] = bytes;
+        var device = this.hw.io.deviceID2obj(drive,slotN);
+        if(!device || device.periID!="DISKII") return false;
+
+        disk2.getState().diskData[device.deviceN] = bytes;
         return true;
     }  
 
@@ -179,8 +181,11 @@ function Apple2Plus(context)
         var disk2 = this.DiskObj(slotN);
         if(!disk2) return false;
 
-        var drv = Number(drive.slice(1))-1;
-        disk2.dump(drv);
+        var device = this.hw.io.deviceID2obj(drive,slotN);
+        if(!device || device.periID!="DISKII") return false;
+
+        disk2.dump(device.deviceN);
+
         return true;
     }
 

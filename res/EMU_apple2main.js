@@ -846,7 +846,7 @@ function loadDisk_fromFile(file_obj,slotN,deviceID)
 
     if(file_obj==null || disk2.getState().active==false)
     { 
-        var drv = io.deviceID2N(deviceID,disk2.id.PCODE);
+        var drv = io.deviceID2N(deviceID,disk2.id.PCODE,slotN);
         disk2.getState().diskData[ drv ] = [];
         return;
     }
@@ -1008,7 +1008,8 @@ function loadDisk_fromBuffer(arr_buffer,slotN,deviceID)
 
         if(!apple2plus.loadDisk(bytes,deviceID,slotN)) return false;
 
-        highlight_appbut(document.getElementById("file_"+deviceID),true);
+        var input = disk2.diskInputEl(deviceID);
+        if(input) highlight_appbut(input,true);
         return true;
     }
     catch({ name, message })
@@ -1024,9 +1025,6 @@ function ejectDisk(el,slotN,deviceID)
   const oDevice = io.deviceID2obj(deviceID,slotN);
   if(!oDevice) return;
 
-  var fe = document.getElementById("file_"+oDevice.deviceID);
-  if(fe) fe.value = "";
-
   oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut_flash","appbut",false);
 
   var o = io.SLOT2obj(slotN);
@@ -1037,6 +1035,9 @@ function ejectDisk(el,slotN,deviceID)
   )
       return;
 
+  var fe = o.diskInputEl(oDevice.DCODE);
+  if(fe) fe.value = "";
+
   var st = o.getState();
   if(st.diskData && oDevice.deviceN !== undefined)
       st.diskData[oDevice.deviceN] = null;
@@ -1045,9 +1046,9 @@ function ejectDisk(el,slotN,deviceID)
       o.GUI_update();
 
   if(typeof(o.restoreDriveFileInput)=="function")
-      o.restoreDriveFileInput(oDevice.deviceID);
+      o.restoreDriveFileInput(oDevice.DCODE);
 
-  var d = oCOM.URL.uri[oDevice.deviceID];
+  var d = oCOM.URL.uri[oDevice.DCODE];
   if(d)
   {
     // URI is filled
