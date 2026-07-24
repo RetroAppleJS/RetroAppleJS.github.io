@@ -2441,6 +2441,9 @@ this.detectDiskImageType = function(imageBytes, filepath)
                 var popup_host = document.getElementById("softwareCat");
                 if(!popup_host) return false;
 
+                var popup_id = "softwareCat_popup";
+                var popup = document.getElementById(popup_id);
+
                 if(!popup)
                 {
                     popup = document.createElement("div");
