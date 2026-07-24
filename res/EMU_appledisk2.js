@@ -2460,14 +2460,32 @@ this.detectDiskImageType = function(imageBytes, filepath)
                     ,"path":"disks"
                     ,"ref":"main"
                 });
-                var opening = popup.hidden;
-                oCOM.POPUP.toggle(popup_id);
 
-                if(opening)
+                /*
+                 * One global catalog popup is shared by all Disk II cards.
+                 * Clicking the same card toggles it closed; clicking another
+                 * card retargets the visible popup instead of closing it or
+                 * creating a competing popup.
+                 */
+                var previousContext = io.getDiskCatalogContext();
+                var sameSlot = previousContext &&
+                    Number(previousContext.slotN)===Number(slotN);
+
+                if(popup.hidden===false && sameSlot)
                 {
-                    io.setDiskCatalogContext(slotN,arg.DCODE || "D1",arg);
-                    io.diskCatalogNavigate(arg);
+                    oCOM.POPUP.off(popup_id);
+                    break;
                 }
+
+                io.setDiskCatalogContext(
+                     slotN
+                    ,arg.DCODE || (previousContext && previousContext.DCODE) || "D1"
+                    ,arg
+                );
+                oCOM.POPUP.on(popup_id);
+                io.diskCatalogNavigate(arg);
+
+
             break;
             case "surfaceMap":
                 var popup_id = arg.id + "_popup";
