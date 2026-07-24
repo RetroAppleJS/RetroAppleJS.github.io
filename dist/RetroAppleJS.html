@@ -25315,7 +25315,7 @@ this.write = function(rel_addr,d8)
         var slotFit = slotR.slotFit && Array.isArray(slotR.slotFit[slotN])
             ? slotR.slotFit[slotN]
             : [];
-        var names = io.getRegisteredPeripherals();
+        var names = io.scanPeripheralContainers();
         var pcodes = Object.keys(names).sort();
         
         html += "<div style='display:flex;flex-wrap:wrap;gap:2px'>";
@@ -25381,7 +25381,9 @@ this.write = function(rel_addr,d8)
         if (!slot || slot.lock || slot.peripheral) return false;
 
         var io = oEMU.component.IO.self;
-        var id = io ? io.getRegisteredPeripheral(pcode) : null;
+        var discovered = io ? io.scanPeripheralContainers() : {};
+        var id = discovered[pcode] || null;
+        
         var cinfo = typeof(_CFG_PSLOT) !== "undefined" && _CFG_PSLOT[pcode] ? _CFG_PSLOT[pcode] : null;
         var slotN = slotName2n(slotTitle);
         var slotFit = slotR.slotFit && Array.isArray(slotR.slotFit[slotN])
