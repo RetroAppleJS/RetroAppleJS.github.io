@@ -2492,17 +2492,48 @@ this.detectDiskImageType = function(imageBytes, filepath)
 
             break;
             case "surfaceMap":
-                var popup_id = arg.id + "_popup";
-                if(document.getElementById(arg.id).innerHTML=="")   // first time. (class='appbox com_popup_frame' is the bug)
+                var io = apple2plus.hwObj().io;
+                var slotN = ssSlotNumber();
+                if(slotN===null) return false;
+
+                var popup_host = document.getElementById("surfaceMap");
+                if(!popup_host) return false;
+
+                var popup_id = "surfaceMap_popup";
+                var popup = document.getElementById(popup_id);
+
+                if(!popup)
                 {
-                    document.getElementById(arg.id).innerHTML =
-                        "<div  id='"+popup_id+"' hidden='' class='appbox com_popup_frame' style='position:absolute;left:800px;width:450px;height:450px;text-align:left;padding:0px;margin:0px'>"
-                        +this.surfaceMap_html(popup_id)
-                        +"</div>";
+                    popup = document.createElement("div");
+                    popup.id = popup_id;
+                    popup.hidden = true;
+                    popup.className = "appbox com_popup_frame";
+                    popup.style.cssText =
+                        "position:absolute;left:800px;width:450px;height:450px;"
+                        +"text-align:left;padding:0px;margin:0px";
+                    popup_host.appendChild(popup);
                 }
-                oCOM.POPUP.toggle(popup_id);                         // Open/close through the requested popup mechanism.
-                this.surfaceMap_update(popup_id);                    // Do one immediate draw so the popup is not empty before the next 2 Hz refresh.            }
-            break;
+          
+
+                /*
+                 * Clicking the same controller toggles the shared map closed.
+                 * Clicking another controller retargets the visible map.
+                 */
+                var previousContext = io.getSurfaceMapContext();
+                var sameSlot = previousContext &&
+                    Number(previousContext.slotN)===Number(slotN);
+
+                if(popup.hidden===false && sameSlot)
+                {
+                    oCOM.POPUP.off(popup_id);
+                    break;
+                }
+
+                io.setSurfaceMapContext(slotN);
+                oCOM.POPUP.on(popup_id);
+                io.surfaceMapRender();
+
+          break;
         }
     }
 
@@ -3431,14 +3462,25 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
 
     this.surfaceMap_html = function(popup_id)
     {
+        var io = apple2plus.hwObj().io;
+        var context = io.getSurfaceMapContext();
+        var slotN = context ? context.slotN : ssSlotNumber();
+        var slotID = slotN===null ? "?" : io.slot2ID(slotN);
         var closeBtn = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+popup_id+"');\" "
         +"style=\"width:25px;text-align:center;\">x</div>";
-        var slotN = ssSlotNumber();
         var diskLogBtn = diskLogEnabled() && slotN!==null
             ? "<div class=\"appbut skinny\" "
                 +"onclick=\"apple2plus.hwObj().io.slots["+slotN+"].peripheral.downloadDiskLog();event.stopPropagation();\">"
                 +"<i class=\"fa fa-shoe-prints\" title=\"download disklog\"></i>"
                 +"</div>"
+            : "";
+
+        var slotBtn = slotN!==null
+            ? "<button class=\"appbut\" type=\"button\""
+                +" title=\"Target Disk II slot; click to select the next mounted Disk II\""
+                +" onclick=\"event.stopPropagation();apple2plus.hwObj().io.surfaceMapCycleSlot()\">"
+                +"S"+slotID
+                +"</button>"
             : "";
 
         var ret = "<div>"
@@ -3451,6 +3493,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
         + "      </button>"
         +        diskLogBtn
         + "      <div style=\"padding:5px 5px;flex:1;\"><b>Disk surface map</b></div>"
+        +        slotBtn
         +        closeBtn
         + "  </div>"
         + "  <div id=\"surfaceMap_body\" style=\"margin-left:48px;white-space:nowrap\">"
@@ -3462,13 +3505,46 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
         return ret;
     }
 
+    this.surfaceMap_render = function(popup_id)
+    {
+        var popup = document.getElementById(popup_id);
+        if(!popup) return false;
+
+        /*
+         * Rebuilding the header changes its slot button and disk-log target.
+         * Preserve the user's live-sync choice across that rebuild.
+         */
+        var oldMonitor = document.getElementById("surfaceMap_monitoring");
+        var monitoring = oldMonitor &&
+            oCOM.POPUP.get_class(oldMonitor,1)=="fa-stop-circle";
+
+        popup.innerHTML = this.surfaceMap_html(popup_id);
+
+        var monitor = document.getElementById("surfaceMap_monitoring");
+        if(monitoring && monitor)
+            oCOM.POPUP.set_class(
+                 monitor
+                ,"fa-stop-circle"
+                ,"fa-sync-alt"
+                ,true
+            );
+
+        this.surfaceMap_update(popup_id);
+        return true;
+    }
+
+
     this.surfaceMap_update = function(popup_id)
     {
         var pal = this.surfaceMap_build_palette();
 
         for(var deviceN=0; deviceN<2; deviceN++)
         {
-            var deviceID = apple2plus.hwObj().io.deviceN2ID(deviceN,"DISKII",ssSlotNumber());
+            var deviceID = apple2plus.hwObj().io.deviceN2ID(
+                 deviceN
+                ,"DISKII"
+                ,ssSlotNumber()
+            );
 
             var status = document.getElementById("surfaceMap_status_"+deviceID);
             if(state.diskData[deviceN] == null)
@@ -3523,7 +3599,11 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
 
     this.surfaceMap_clear_drive = function(deviceN)
     {
-        const deviceID = apple2plus.hwObj().io.deviceN2ID(deviceN,"DISKII");
+        const deviceID = apple2plus.hwObj().io.deviceN2ID(
+             deviceN
+            ,"DISKII"
+            ,ssSlotNumber()
+        );
 
         for(var track=0; track<35; track++)
         {
@@ -3542,7 +3622,11 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
 
     this.surfaceMap_mark_head = function(deviceN)
     {
-        const deviceID = apple2plus.hwObj().io.deviceN2ID(deviceN,"DISKII");
+        const deviceID = apple2plus.hwObj().io.deviceN2ID(
+             deviceN
+            ,"DISKII"
+            ,ssSlotNumber()
+        );        
         if(this.surfaceMap_headCell[deviceN] != null)
         {
             var old = document.getElementById(this.surfaceMap_headCell[deviceN]);

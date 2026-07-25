@@ -20,6 +20,7 @@ function Apple2IO(vid)
     this.slots = [];
     this.attachments = {};
     this.diskCatalogState = {"slotN":null,"DCODE":null,"arg":null};
+    this.surfaceMapState = {"slotN":null};
 
     // restart() installs the real empty-bus filler; live remounts reuse it.
     var refillEmptyIOActions = function(){};
@@ -1558,6 +1559,76 @@ this.write = function(rel_addr,d8)
         return this.diskCatalogRender();
     }
 
+    /*
+     * The Surface Map is one shared view.  Its context identifies only the
+     * owning Disk II controller; D1 and D2 are always displayed together.
+     */
+    this.getSurfaceMapContext = function()
+    {
+        var slots = this.diskIISlots();
+        if(slots.length==0) return null;
+
+        var slotN = Number(this.surfaceMapState.slotN);
+        if(!Number.isInteger(slotN) || slots.indexOf(slotN)<0)
+        {
+            slotN = slots[0];
+            this.surfaceMapState.slotN = slotN;
+        }
+
+        return {
+             "slotN":slotN
+            ,"slotID":this.slot2ID(slotN)
+        };
+    }
+
+    this.setSurfaceMapContext = function(slotN)
+    {
+        var slots = this.diskIISlots();
+        if(slots.length==0) return null;
+
+        slotN = Number(slotN);
+        if(!Number.isInteger(slotN) || slots.indexOf(slotN)<0)
+            slotN = slots[0];
+
+        this.surfaceMapState.slotN = slotN;
+
+        /*
+         * Keep Peripheral Controls synchronized with the controller displayed
+         * by the shared Surface Map.
+         */
+        this.refreshDeviceToolboxes({
+             "id":"devices"
+            ,"default_slot":this.slot2ID(slotN)
+        });
+
+        return this.getSurfaceMapContext();
+    }
+
+    this.surfaceMapRender = function()
+    {
+        var context = this.getSurfaceMapContext();
+        if(!context) return false;
+
+        var disk2 = this.SLOT2obj(context.slotN);
+        if(!disk2 || typeof(disk2.surfaceMap_render)!="function")
+            return false;
+
+        return disk2.surfaceMap_render("surfaceMap_popup");
+    }
+
+    this.surfaceMapCycleSlot = function()
+    {
+        var slots = this.diskIISlots();
+        if(slots.length==0) return false;
+
+        var context = this.getSurfaceMapContext();
+        var current = context ? slots.indexOf(context.slotN) : -1;
+        var nextSlotN = slots[(current+1)%slots.length];
+
+        this.setSurfaceMapContext(nextSlotN);
+        return this.surfaceMapRender();
+    }
+
     this.config_slotAvail = function(cfg)        // HOW MANY SLOTS CAN WE FILL?
     {
         var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
@@ -2720,12 +2791,14 @@ this.write = function(rel_addr,d8)
                 html_arr.push(this.deviceToolSlotHTML( slots[slotN] ));
 
             /*
-             * Shared popup host.  Keep this outside the per-slot toolboxes so
-             * multiple Disk II cards do not generate duplicate softwareCat
-             * IDs, while preserving the original toolbox positioning context.
+             * Shared popup hosts. Keep these outside the per-slot toolboxes so
+             * multiple Disk II cards do not generate duplicate popup host IDs,
+             * while preserving the original toolbox positioning context.
              */
             box.innerHTML = html_arr.join("")
                 + "<div class=toolbox id=softwareCat></div>";
+                + "<div class=toolbox id=softwareCat></div>"
+                + "<div class=toolbox id=surfaceMap></div>";
             box.setAttribute("data-topology",sig);
 
             if(typeof(EMU_mem_map)=="function" && typeof(apple2plus)=="object" && apple2plus!=null)
@@ -2888,10 +2961,7 @@ this.write = function(rel_addr,d8)
                     //+ "      <button class=appbut onclick=\"\" id=\"surfaceMap\" title=\"Surface Map\"><i class=\"fa fa-chart-pie\"></i></button>"
                     //+ "      <button class=appbut id=\"surfaceMap\" title=\"Surface Map\" onclick=\"apple2plus.DiskObj().diskMenu_detail({id:'surfaceMap'});\"><i class=\"fa fa-th\"></i></button>"
                     + "  </div>"
-                    + "</div>"
-
-                    // LIST BOXES
-                    + "<div class=toolbox id=surfaceMap></div>";
+                    + "</div>";
         }
 
         return ""

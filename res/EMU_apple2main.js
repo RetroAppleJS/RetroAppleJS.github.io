@@ -363,6 +363,27 @@ function EMU_init()
         document.getElementById("cpu_pct").value = Math.round(oEMU.component.CPU.dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
     }
 
+    /*
+     * The Surface Map has its own selected Disk II context. Do not refresh it
+     * through the startup/default disk2 object.
+     */
+    apple2plus.surfaceMap_monitoring = function()
+    {
+        var io = this.hwObj().io;
+        var context = io.getSurfaceMapContext();
+        var popup = document.getElementById("surfaceMap_popup");
+        var monitor = document.getElementById("surfaceMap_monitoring");
+
+        if(!context || !popup || popup.hidden!==false || !monitor)
+            return;
+
+        if(oCOM.POPUP.get_class(monitor,1)!="fa-stop-circle")
+            return;
+
+        var target = io.SLOT2obj(context.slotN);
+        if(target && typeof(target.surfaceMap_update)=="function")
+            target.surfaceMap_update("surfaceMap_popup");
+    }
 
     EMU_diskIIObjects().forEach(function(disk2)
     {
@@ -376,15 +397,6 @@ function EMU_init()
 
     disk2.GUI_update = function(cmd)  // override (called continuously from oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);)
     {
-        // CONTINUOUS UPDATES
-        el = document.getElementById("surfaceMap_monitoring");
-        if(el!=null)
-        {
-            var b1 =  oCOM.POPUP.get_state("surfaceMap_popup")   == false;  // is popup not hidden ?
-            var b2 =  oCOM.POPUP.get_class(el,1)  == "fa-stop-circle";      // is sync button active ? 
-            if(b1 && b2) this.surfaceMap_update("surfaceMap_popup");
-        }
-
         // CATCH CHANGES ONLY
         var state = this.getState();
         if(this.Pstate 
@@ -432,6 +444,11 @@ function EMU_init()
 
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.hwObj().MEM_monitoring,"MEM_monitoring",false);
+    oCOM.addRefreshEvent(
+        function(){ apple2plus.surfaceMap_monitoring(); },
+        "surfaceMap_refresh",
+        true
+    );
     //oCOM.addRefreshEvent(oEMUI.MEM_monitoring,"MEM_monitoring",false);
     
     // The default dashboard explicitly monitors the configured Disk II slot.
@@ -441,13 +458,8 @@ function EMU_init()
         true
     );
 
-
-
     //oCOM.addRefreshEvent(apple2plus.SND_monitoring,"SND_monitoring",false);
-
-    // TODO: this is probably where we need to provide surfaceMap_update the surfaceMap_popup identifier
-    // TODO: also consider building in this event as a branch within DSK_monitoring
-    
+  
     var bBOOTmon = false;
     if(bBOOTmon)
     {
