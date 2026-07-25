@@ -2791,14 +2791,11 @@ this.write = function(rel_addr,d8)
                 html_arr.push(this.deviceToolSlotHTML( slots[slotN] ));
 
             /*
-             * Shared popup hosts. Keep these outside the per-slot toolboxes so
-             * multiple Disk II cards do not generate duplicate popup host IDs,
-             * while preserving the original toolbox positioning context.
+             * Disk II dialogs are body-level singleton overlays.  Do not put
+             * their hosts inside this replaceable Peripheral Controls body.
              */
-            box.innerHTML = html_arr.join("")
-                + "<div class=toolbox id=softwareCat></div>";
-                + "<div class=toolbox id=softwareCat></div>"
-                + "<div class=toolbox id=surfaceMap></div>";
+            
+            box.innerHTML = html_arr.join("");
             box.setAttribute("data-topology",sig);
 
             if(typeof(EMU_mem_map)=="function" && typeof(apple2plus)=="object" && apple2plus!=null)
