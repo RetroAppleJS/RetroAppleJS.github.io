@@ -2444,7 +2444,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
         popup.hidden = true;
         popup.className = "appbox com_popup_frame";
         popup.style.cssText =
-            "position:absolute;z-index:3;left:800px;top:120px;"
+            "position:absolute;z-index:3;left:800px;top:32px;"
             +"width:450px;height:450px;text-align:left;"
             +"padding:0px;margin:0px";
         document.body.appendChild(popup);
