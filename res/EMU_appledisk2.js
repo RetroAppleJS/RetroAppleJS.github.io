@@ -2429,6 +2429,28 @@ this.detectDiskImageType = function(imageBytes, filepath)
         });
     }
 
+    /*
+     * All Disk II feature dialogs use the same page-level overlay geometry.
+     * Keeping them outside device_toolbox_body prevents nested positioning,
+     * accidental clipping and removal during a topology rebuild.
+     */
+    function diskOverlayPopup(popup_id)
+    {
+        var popup = document.getElementById(popup_id);
+        if(popup) return popup;
+
+        popup = document.createElement("div");
+        popup.id = popup_id;
+        popup.hidden = true;
+        popup.className = "appbox com_popup_frame";
+        popup.style.cssText =
+            "position:absolute;z-index:3;left:800px;top:120px;"
+            +"width:450px;height:450px;text-align:left;"
+            +"padding:0px;margin:0px";
+        document.body.appendChild(popup);
+        return popup;
+    }
+
     this.diskMenu_detail = function(arg)
     {
         switch(arg.id)
@@ -2438,24 +2460,8 @@ this.detectDiskImageType = function(imageBytes, filepath)
                 var slotN = ssSlotNumber();
                 if(slotN===null) return false;
 
-                var popup_host = document.getElementById("softwareCat");
-                if(!popup_host) return false;
-
                 var popup_id = "softwareCat_popup";
-                var popup = document.getElementById(popup_id);
-
-                if(!popup)
-                {
-                    popup = document.createElement("div");
-                    popup.id = popup_id;
-                    popup.hidden = true;
-                    popup.className = "appbox com_popup_frame";
-                    popup.style.cssText =
-                        "position:absolute;z-index:3;left:800px;top:120px;"
-                        +"width:450px;height:450px;text-align:left;"
-                        +"padding:0px;margin:0px";
-                    popup_host.appendChild(popup);
-                }
+                var popup = diskOverlayPopup(popup_id);
                 arg = Object.assign({},arg,{
                      "id":"softwareCat"
                     ,"owner":"RetroAppleJS"
@@ -2496,24 +2502,8 @@ this.detectDiskImageType = function(imageBytes, filepath)
                 var slotN = ssSlotNumber();
                 if(slotN===null) return false;
 
-                var popup_host = document.getElementById("surfaceMap");
-                if(!popup_host) return false;
-
                 var popup_id = "surfaceMap_popup";
-                var popup = document.getElementById(popup_id);
-
-                if(!popup)
-                {
-                    popup = document.createElement("div");
-                    popup.id = popup_id;
-                    popup.hidden = true;
-                    popup.className = "appbox com_popup_frame";
-                    popup.style.cssText =
-                        "position:absolute;left:800px;width:450px;height:450px;"
-                        +"text-align:left;padding:0px;margin:0px";
-                    popup_host.appendChild(popup);
-                }
-          
+                var popup = diskOverlayPopup(popup_id);
 
                 /*
                  * Clicking the same controller toggles the shared map closed.
