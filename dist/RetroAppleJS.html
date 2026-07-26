@@ -9474,12 +9474,53 @@ function EMU_system_get()
 function EMUI()
 {
     // CPU SPEED SLIDER
-    this.cpuSld = function(el,id,freezeHTML)
+    this.cpuSld = function(el,id)
     {
-        var max = el.max;
-        var pct = 2*el.value/max;
-        document.getElementById(id).innerHTML = pct!=0 ? Math.round(pct*10)*10+"%" : freezeHTML;
-        this.cpuSpd(pct);
+        var speedPct = Math.round(Number(el.value));
+        if(!Number.isFinite(speedPct)) return;
+
+        var indicator = document.getElementById(id);
+        if(indicator)
+        {
+            indicator.innerHTML = speedPct+"%";
+            if(speedPct==0)
+                indicator.innerHTML += " <i class='fa fa-bug' title='Step trace'></i>";
+
+            var nextMax = Number(el.max)>100 ? 100 : 400;
+            indicator.title = "CPU speed: "+speedPct+"%. Click to switch to 0-"+nextMax+"%.";
+            indicator.setAttribute("aria-label",indicator.title);
+        }
+
+        this.cpuSpd(speedPct/100);
+    }
+
+    // CLICKABLE CPU PERCENTAGE / RANGE TOGGLE
+    this.cpuSldIndicator = function(event,indicator,sliderId,debugId)
+    {
+        if(event && event.target && event.target.classList
+            && event.target.classList.contains("fa-bug"))
+        {
+            this.cpuDbg(debugId);
+            return;
+        }
+
+        this.cpuSldRange(indicator,sliderId);
+    }
+
+    // TOGGLE BETWEEN 0-100%/5% AND 0-400%/20%
+    this.cpuSldRange = function(indicator,sliderId)
+    {
+        var el = document.getElementById(sliderId);
+        if(!el) return;
+
+        var useWideRange = Number(el.max)<=100;
+        el.max = useWideRange ? 400 : 100;
+        el.step = useWideRange ? 20 : 5;
+
+        if(Number(el.value)>Number(el.max))
+            el.value = el.max;
+
+        this.cpuSld(el,indicator.id);       
     }
 
     // PROCESSING FRAME RATE SLIDER
@@ -27333,8 +27374,13 @@ function Apple2Plus(context)
                           <input id="cpu_pct" value="" size="4" style="background:transparent;border: none;">
                         </div>
                         <br>
-                        <div id="slider_1v" style="float:left;border:0px solid;padding:0px 0px 0px 0px;width:35px;">Speed</div>
-                        <input id="myRange" type="range" min="0" max="70" value="35" class="slider" onchange="oEMUI.cpuSld(this,'slider_1v','<div class=\'appbut skinny\'><i class=\'fa fa-bug\' onclick=oEMUI.cpuDbg(\'feature_box\') title=\'Step trace\'></i></div>&nbsp;')" style="width:65px">
+                        <button type="button" id="slider_1v" class="appbut skinny"
+                          style="float:left;padding:0px;width:45px;font-family:arial;font-size:11px;"
+                          onclick="oEMUI.cpuSldIndicator(event,this,'myRange','feature_box')"
+                          title="CPU speed: 100%. Click to switch to 0-100%."
+                          aria-label="CPU speed: 100%. Click to switch to 0-100%.">100%</button>
+                        <input id="myRange" type="range" min="0" max="400" value="100" step="20" class="slider"
+                          onchange="oEMUI.cpuSld(this,'slider_1v')" style="width:55px">                       
                         <br>
                         <div id="slider_fps_v" style="float:left;border:0px solid;padding:0px 0px 0px 0px;width:35px;">10fps</div>
                         <input id="fpsRange" type="range" min="10" max="100" value="10" step="1" class="slider" oninput="document.getElementById('slider_fps_v').innerHTML=this.value+'fps'" onchange="oEMUI.fpsSld(this,'slider_fps_v')" title="Processing frames per second" style="width:65px">
