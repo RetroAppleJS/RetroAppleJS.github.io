@@ -511,12 +511,53 @@ function EMU_system_get()
 function EMUI()
 {
     // CPU SPEED SLIDER
-    this.cpuSld = function(el,id,freezeHTML)
+    this.cpuSld = function(el,id)
     {
-        var max = el.max;
-        var pct = 2*el.value/max;
-        document.getElementById(id).innerHTML = pct!=0 ? Math.round(pct*10)*10+"%" : freezeHTML;
-        this.cpuSpd(pct);
+        var speedPct = Math.round(Number(el.value));
+        if(!Number.isFinite(speedPct)) return;
+
+        var indicator = document.getElementById(id);
+        if(indicator)
+        {
+            indicator.innerHTML = speedPct+"%";
+            if(speedPct==0)
+                indicator.innerHTML += " <i class='fa fa-bug' title='Step trace'></i>";
+
+            var nextMax = Number(el.max)>100 ? 100 : 400;
+            indicator.title = "CPU speed: "+speedPct+"%. Click to switch to 0-"+nextMax+"%.";
+            indicator.setAttribute("aria-label",indicator.title);
+        }
+
+        this.cpuSpd(speedPct/100);
+    }
+
+    // CLICKABLE CPU PERCENTAGE / RANGE TOGGLE
+    this.cpuSldIndicator = function(event,indicator,sliderId,debugId)
+    {
+        if(event && event.target && event.target.classList
+            && event.target.classList.contains("fa-bug"))
+        {
+            this.cpuDbg(debugId);
+            return;
+        }
+
+        this.cpuSldRange(indicator,sliderId);
+    }
+
+    // TOGGLE BETWEEN 0-100%/5% AND 0-400%/20%
+    this.cpuSldRange = function(indicator,sliderId)
+    {
+        var el = document.getElementById(sliderId);
+        if(!el) return;
+
+        var useWideRange = Number(el.max)<=100;
+        el.max = useWideRange ? 400 : 100;
+        el.step = useWideRange ? 20 : 5;
+
+        if(Number(el.value)>Number(el.max))
+            el.value = el.max;
+
+        this.cpuSld(el,indicator.id);       
     }
 
     // PROCESSING FRAME RATE SLIDER
