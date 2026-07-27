@@ -1602,6 +1602,8 @@ function prettyJsonAllman(value, indent) {
           this.switchTabContent(group,this.linkTarget(link));
         }
       }
+      if(_COM_this.POPUP && typeof(_COM_this.POPUP.syncScopes) == "function")
+        _COM_this.POPUP.syncScopes();
 
       return true;
     };
@@ -1677,24 +1679,109 @@ function prettyJsonAllman(value, indent) {
       obj.id="";
       obj.states={};
       obj.rules={};
+      obj.scopes={};
       this.el(obj.target_id.dest).innerHTML = obj.target_html();
       return obj 
     },
     id:"",
     states:{},
     rules:{},
+    scopes:{},
     target_id:{"html":"COM_popup","html_txt":"COM_popup_text","class":"appbut","float":false},
     target_html:function(){return "<div class=appbox id=\""+this.target_id.html+"\" style=\""+(this.target_id.float?"position: absolute; z-index: 3; left: 0px; top: 120px;":"")+"\" hidden=\"\"><div id=\""+this.target_id.html_txt+"\"></div></div>"},
     target_btn:function(arg){return "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+this.target_id.html+"');document.getElementById('"+this.target_id.html_txt+"').innerHTML='';"+(arg===undefined?"":arg.onclick)+"\" style=\"text-align:center;float:right;\">x</div>"},
     el: function(id) { return document.getElementById(id) },
     addRule: function(id,function_obj) { this.rules[id] = function_obj },
     runRule: function(id) { this.id = id; this.rules[id](this) },
-    set_state: function(id,val){ this.states[id] = val },
+    set_state: function(id,val) { this.states[id] = val; this.syncScope(id); },    
     get_state: function(id){ return this.states[id]===undefined?this.el(id).classList.item(1):this.states[id]},
     update_state: function(id,el){ this.states[id] = el.hidden },
-    on: function(id) { var el = this.el(id); this.states[id] = false; el.hidden = false; return el; },
-    off: function(id) { var el = this.el(id); this.states[id] = true; el.hidden = true; return el; },
-    toggle: function(id) { var el = this.el(id); el.hidden = !el.hidden; this.states[id] = el.hidden; return el; },
+
+    addScope: function(id,owner_id)
+    {
+      this.scopes[id] = owner_id;
+
+      var el = this.el(id);
+      if(el && this.states[id]===undefined)
+        this.states[id] = !!el.hidden;
+
+      this.syncScope(id);
+    },
+    scopeActive: function(owner_id)
+    {
+      var owner = this.el(owner_id);
+      if(!owner || owner.hidden) return false;
+
+      /*
+       * A popupHost can be visible itself while its top-level tab is inactive.
+       * Find the direct child of a .tabs container and require its active class.
+       */
+      var node = owner;
+      while(node && node.parentElement)
+      {
+        if(node.parentElement.classList &&
+           node.parentElement.classList.contains("tabs"))
+          return node.classList.contains("active");
+
+        node = node.parentElement;
+      }
+
+      return true;
+    },
+    syncScope: function(id)
+    {
+      var owner_id = this.scopes[id];
+      if(owner_id===undefined) return this.el(id);
+
+      var el = this.el(id);
+      if(!el) return null;
+
+      if(this.states[id]===undefined)
+        this.states[id] = !!el.hidden;
+
+      /*
+       * states[id] is the user's requested state.
+       * el.hidden may additionally be forced while the owner toolbox/tab is
+       * inactive, without overwriting that requested state.
+       */
+      el.hidden = !!this.states[id] || !this.scopeActive(owner_id);
+      return el;
+    },
+    syncScopes: function()
+    {
+      for(var id in this.scopes)
+        if(Object.prototype.hasOwnProperty.call(this.scopes,id))
+          this.syncScope(id);
+    },
+    on: function(id)
+    { var el = this.el(id);
+      if(!el) return null;
+      this.states[id] = false; el.hidden = false; this.syncScopes(); return el;
+    },
+    off: function(id)
+    { var el = this.el(id);
+      if(!el) return null;
+      this.states[id] = true; el.hidden = true; this.syncScopes(); return el;
+    },
+    toggle: function(id)
+    {
+      var el = this.el(id);
+      if(!el) return null;
+
+      /*
+       * A scoped popup may be physically hidden because its owner is inactive
+       * while remaining logically open. Toggle that logical state.
+       */
+      var hidden = this.scopes[id]!==undefined && this.states[id]!==undefined
+          ? !!this.states[id]
+          : !!el.hidden;
+
+      this.states[id] = !hidden;
+      el.hidden = this.states[id];
+      this.syncScopes();
+      return el;
+    },
+
     title_body_html: function(title_html, body_html, body_id, body_class)
     {
         return ""
