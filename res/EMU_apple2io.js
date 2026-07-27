@@ -2019,8 +2019,6 @@ this.write = function(rel_addr,d8)
       wireEvents(this, ctx);
     };
 
-
-
     this.onSlotClick = function(ctx, ev)
     {
       var parent  = ev.currentTarget.closest(".slot");
@@ -2302,8 +2300,7 @@ this.write = function(rel_addr,d8)
             + "<th style='padding:4px 6px'>R/W</th>"
             + "</tr></thead>"
             + "<tbody>"+body+"</tbody>"
-            + "</table></div>"
-            
+            + "</table></div>" 
     }
 
     function mappingRow_html(row,headerID)
@@ -2800,13 +2797,6 @@ this.write = function(rel_addr,d8)
         return slot;
     }
 
-/*
-    this.renderDeviceTool = function(slot)
-    {
-      this.refreshDeviceToolboxes({"id":"devices","default_slot":slot});
-    }
-*/
-
     this.showDeviceTool = function(slot)
     {
         var all = document.querySelectorAll("[id^='device_tool_']");
@@ -2818,19 +2808,6 @@ this.write = function(rel_addr,d8)
         var el = document.getElementById("device_tool_" + (slot==="H" ? "H" : slot));
         if(el) el.hidden = false;
     }
-
-    /*
-    this.deviceToolHTML = function()
-    {
-        var slots = this.deviceSlots();
-        var out = [];
-
-        for(var i=0;i<slots.length;i++)
-            out.push(this.deviceToolSlotHTML(slots[i]));
-
-        return out.join("");
-    }
-    */
 
     this.deviceToolSlotHTML = function(slotID)
     {
@@ -2943,16 +2920,6 @@ this.write = function(rel_addr,d8)
             + "  </div>"
             + "</div>";
     }
-
-
-
-
-
-
-
-
-
-
 
 
     function actionMapEntryCount(map)
