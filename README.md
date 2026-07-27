@@ -99,7 +99,7 @@ It took a while to find a good generic framework to support keyboard emulation. 
 So, here's the new Apple II+ keyboard HTML basis:
 https://www.keyboard-layout-editor.com/#/gists/ba23f9cdc666b5d2a61cf5408f062a96
 
-The new version of EMU_A2Pkeys.js, besides HTML, covers the action logic and mapping logic for 3 use-cases:
+The new version of EMU_DEVICE_keyboard.js, besides HTML, covers the action logic and mapping logic for 3 use-cases:
 
 - virtual keyboard: for mouse/trackpad/screen tapping
 - real keyboard: type as you go (after click/tapping the screen canvas)

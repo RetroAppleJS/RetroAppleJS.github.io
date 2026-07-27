@@ -2,7 +2,7 @@
 // Copyright (c) 2025 Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 //
-// EMU_A2Pkeys.js
+// EMU_DEVICE_keyboard.js
 
 // The emulator attaches A2Pkeys as an AppleBoard child device.
 // Keep automatic construction only for stand-alone keyboard tools.

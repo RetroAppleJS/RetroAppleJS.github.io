@@ -50,7 +50,7 @@ switch(RangeID)
 | -------------- | :---------: | :---------------- | :--------------------------------------------- | :---------: |
 | 1a             | $0400>$0BFF |                   | EMU_apple2GPU.js / EMU_apple2video.js          | $100        |        
 | 1b             | $2000>$5FFF |                   | EMU_apple2GPU.js / EMU_apple2video.js          | $100        |
-| 2              | $C000>$C07F | EMU_apple2io.js   | EMU_apple2spk.js / EMU_A2Pkeys.js              | $1          |
+| 2              | $C000>$C07F | EMU_apple2io.js   | EMU_apple2spk.js / EMU_DEVICE_keyboard.js              | $1          |
 | 3              | $C080>$CFFF | EMU_apple2io.js   | any peripheral driver (e.g. EMU_CARD_appledisk2.js) | $1          |
 | 4              | $D000>$FFFF | EMU_apple2roms.js | Optionally routed to EMU_CARD_ramcard.js / EMU_saturnRAM.js | $1000       |
 
