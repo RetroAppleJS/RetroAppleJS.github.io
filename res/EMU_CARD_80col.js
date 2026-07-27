@@ -2,7 +2,7 @@
 // Copyright (c) 2024 Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 //
-// EMU_80colcard.js
+// EMU_CARD_80col.js
 
 
 // ABOUT SPECIAL SOFT SWITCH OPERATION
