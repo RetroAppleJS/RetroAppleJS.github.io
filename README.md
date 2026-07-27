@@ -75,14 +75,13 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [x] EMULATOR .NIB to .DSK converter [DiskJS](https://retroapplejs.github.io/tools/DiskJS.html)
 - [ ] EMULATOR: paddle/mouse capture
 - [ ] ASSEMBLER: Step Assembler completion (currently in alpha release)
-- [ ] ASSEMBLER: Disassembler to standard assembly listings
-- [ ] ASSEMBLER: Transpiler from 6502 assembler to JavaScript (followed by a JavaScript->6502 assembler transpiler)
-- [ ] ASSEMBLER: Extend pragma's (pick a few useful ideas from Merlin assembler)
-- [ ] ASSEMBLER: complete memory-map (incl. zero-page) documentation -> share memorymap data with assembler/disassembler to generate extra context
-- [ ] ASSEMBLER: better compatibility with listings from different Apple II assemblers (except virtual mnemonics)
+- [x] ASSEMBLER: Disassembler to standard assembly listings
+- [x] ASSEMBLER: Extend pragma's (pick a few useful ideas from Merlin assembler)
+- [x] ASSEMBLER: complete memory-map (incl. zero-page) documentation -> share memorymap data with assembler/disassembler to generate extra context
+- [x] ASSEMBLER: better compatibility with listings from different Apple II assemblers (except virtual mnemonics)
 - [x] RETRO LAB: realtime dithering in CameraJS
 - [ ] RETRO LAB: GPT completion
-- [ ] RETRO LAB: real-time camera capture tool - lo-res through software color-approximation (QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17)
+- [x] RETRO LAB: real-time camera capture tool - lo-res through software color-approximation (QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17)
 - [ ] RETRO LAB: lo-res and hi-res graphics conversion tool (including dithering and color optimization algorithms)
 - [ ] OTHER: better document assembler code located in asm_code_examples
       
