@@ -2285,8 +2285,8 @@ this.write = function(rel_addr,d8)
             + "</button>";
 
         return "<div class='appbox' style='float:none;width:440px;max-width:80vw;overflow:auto;margin-top:8px;padding:8px'>"
-            + "<div><b>"+slotEscapeHTML(peripheralPCODE(peripheral))+"</b>"
-            + (peripheralDescription(peripheral) ? " &mdash; "+slotEscapeHTML(peripheralDescription(peripheral)) : "")
+            + "<div><b>"+oCOM.escapeHTML(peripheralPCODE(peripheral))+"</b>"
+            + (peripheralDescription(peripheral) ? " &mdash; "+oCOM.escapeHTML(peripheralDescription(peripheral)) : "")
             + " &mdash; " + slotN2name(slot.peripheral.mount.slotN)
             + "&nbsp;<button class=\"appbut\" type=\"button\""
             + " title=\"Download slot JSON\""
@@ -2310,7 +2310,7 @@ this.write = function(rel_addr,d8)
     {
         return ""
             + "<tr>"
-            + "<td style='padding:4px 6px'>"+slotEscapeHTML(row.space)+"</td>"
+            + "<td style='padding:4px 6px'>"+oCOM.escapeHTML(row.space)+"</td>"
             + "<td style='padding:4px 6px'>"+mappingAddress_html(row,headerID)+"</td>"
             + "<td style='padding:4px 6px'>"+mappingOperations_html(row.operations)+"</td>"
             + "</tr>";
@@ -2342,9 +2342,9 @@ this.write = function(rel_addr,d8)
         {
             var operation = operations[i];
             html += "<div class=\"appbut skinny\""
-                + (operation.title ? " title=\""+slotEscapeHTML(operation.title)+"\"" : "")
+                + (operation.title ? " title=\""+oCOM.escapeHTML(operation.title)+"\"" : "")
                 + (operation.enabled===false ? " style=\"opacity:.55\"" : "")
-                + ">"+slotEscapeHTML(operation.op)+"</div>";
+                + ">"+oCOM.escapeHTML(operation.op)+"</div>";
         }
         return html+"</div>";
     }
@@ -2357,20 +2357,6 @@ this.write = function(rel_addr,d8)
         if(mapping.enabled===false) parts.push("disabled by current soft-switch state");
         if(mapping.source) parts.push(mapping.source);
         return parts.join("; ");
-    }
-
-    function slotEscapeHTML(value)
-    {
-        return String(value)
-            .replace(/&/g,"&amp;")
-            .replace(/</g,"&lt;")
-            .replace(/>/g,"&gt;")
-            .replace(/"/g,"&quot;")
-            .replace(/'/g,"&#39;");
-
-
-
-
     }
 
     /*
@@ -2517,23 +2503,12 @@ this.write = function(rel_addr,d8)
          */
         var name = callbackLabel(fn).replace(/^bound\s+/,"");
 
-        return escapeHTML(
+        return oCOM.escapeHTML(
             name == "(anonymous)"
                 ? name
                 : name+"()"
         );
     }
-
-    function escapeHTML(value)
-    {
-        return String(value)
-            .replace(/&/g,"&amp;")
-            .replace(/</g,"&lt;")
-            .replace(/>/g,"&gt;")
-            .replace(/"/g,"&quot;")
-            .replace(/'/g,"&#39;");
-    }
-
 
     /////////////////////////////////////////////////////////////////
 
@@ -2601,14 +2576,14 @@ this.write = function(rel_addr,d8)
 
             html += "<div class='appbut label"+(addable ? "" : " greyed")+"'"
                 +" style='cursor:default;white-space:nowrap;'"
-                +" title='"+slotEscapeHTML(title)+"'>"
+                +" title='"+oCOM.escapeHTML(title)+"'>"
                 +"<button class='appbut skinny' type='button'"
                 +(addable
                     ? " title='Add to "+slotTitle+"' onclick=\"event.stopPropagation();apple2plus.hwObj().io.slotPicker_select('" + ctx.hostId + "','" + slotTitle + "','" + id.PCODE + "')\""
                     : " disabled")
                 +"><i class='fa fa-plus'></i></button>&nbsp;"
                 +"<i class='" + (id.icon || "fa fa-cube") + "'></i>&nbsp;"
-                +slotEscapeHTML(id.PCODE)
+                +oCOM.escapeHTML(id.PCODE)
                 +"</div>";
         }
         html += "</div>";
