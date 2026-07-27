@@ -162,7 +162,7 @@ function Apple2Plus(context)
         return video;
     }
 
-    // TODO: move this to EMU_appledisk2.js
+    // TODO: move this to EMU_CARD_appledisk2.js
     this.loadDisk = function(bytes,drive,slotN) 
     {
         var disk2 = this.DiskObj(slotN);
@@ -175,7 +175,7 @@ function Apple2Plus(context)
         return true;
     }  
 
-    // TODO: move this to EMU_appledisk2.js
+    // TODO: move this to EMU_CARD_appledisk2.js
     this.dumpDisk = function(drive,slotN)
     {
         var disk2 = this.DiskObj(slotN);
