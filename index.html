@@ -262,6 +262,15 @@
                         oCOM.POPUP.addRule("tab1.1", function(o) { o.toggle("tab1.1"); o.off("tab1.2") });
                         oCOM.POPUP.addRule("tab1.2", function(o) { o.toggle("tab1.2"); o.off("tab1.1") });
 
+                        /*
+                         * Floating feature dialogs belong to one emulator
+                         * toolbox. They are suspended outside that toolbox,
+                         * but return in the open/closed state the user left.
+                         */
+                        oCOM.POPUP.addScope("slotConfig_popup","tab1.1");
+                        oCOM.POPUP.addScope("softwareCat_popup","tab1.2");
+                        oCOM.POPUP.addScope("surfaceMap_popup","tab1.2");
+
                         function system_tab_update()
                         {
                           document.getElementById("cpu_component").innerHTML = _CFG_SYSCODE["A2P"].CPU;
