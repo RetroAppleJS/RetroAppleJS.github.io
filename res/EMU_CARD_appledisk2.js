@@ -16,9 +16,9 @@ function DiskIIDrive()
 
 function AppleDisk2()
 {
-    const bDebug   = true;
-    const bDebug_N = false;   // debug disk noise only 
-    const bDebug_SS = true;   // comprehensive Disk II soft-switch trace
+    const bDebug    = false;
+    const bDebug_N  = false;   // debug disk noise only 
+    const bDebug_SS = false;   // comprehensive Disk II soft-switch trace
 
     this.id = {"PCODE":"DISKII", "icon":"fa fa-save"};
 
