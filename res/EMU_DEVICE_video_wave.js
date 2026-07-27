@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 //
-// EMU_apple2GPUwave.js
+// EMU_DEVICE_video_wave.js
 //
 // First-phase Apple II HGR GPU renderer using the waveform/YIQ method from
 // ScreenGPU_HGR_NTSC_stepE_v10_2.html.
@@ -298,7 +298,7 @@ function Apple2Video(ctx)
     {
         frame_count++;
 
-        // Keep the same redraw cadence as EMU_apple2GPU.js.
+        // Keep the same redraw cadence as EMU_DEVICE_video_GPU.js.
         // The extra flash branch matters for TEXT mode, because flashing chars
         // must redraw even when RAM is otherwise unchanged.
         if (frame_count > 20000)
@@ -662,7 +662,7 @@ function Apple2Video(ctx)
             // - bottom 32 native scanlines are deterministic TEXT
             //
             // The old deterministic logic is kept in the non-HIRES branch so
-            // the mixed-mode decision follows EMU_apple2GPU.js exactly.
+            // the mixed-mode decision follows EMU_DEVICE_video_GPU.js exactly.
             const xp = this.thread.x >> 2;
             const yp = 191 - (this.thread.y >> 2);
 
@@ -735,7 +735,7 @@ function Apple2Video(ctx)
 
         this.deterministicKernel = this.gpu.createKernel(function(mem, rom, pal, GFX_FLG, CHROME_MODE, FLASH)
         {
-            // Deterministic TEXT/LORES renderer, adapted from EMU_apple2GPU.js
+            // Deterministic TEXT/LORES renderer, adapted from EMU_DEVICE_video_GPU.js
             // but using the same 1120x768 v10_2 output geometry as the wave
             // HGR path.
             const xp = this.thread.x >> 2;

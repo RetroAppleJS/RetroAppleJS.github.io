@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 //
-// EMU_apple2THREE.js
+// EMU_DEVICE_video_THREE.js
 //
 // First-phase Apple II 3D monitor renderer for RetroAppleJS.
 //
@@ -382,7 +382,7 @@ var APPLE2_THREE_CFG_DEFAULT =
         this.vidram = null;                  // Apple2Hw assigns this after construction.
         this.hw = null;
 
-        this.video2D = null;                 // Previous renderer, usually EMU_apple2GPU.js.
+        this.video2D = null;                 // Previous renderer, usually EMU_DEVICE_video_GPU.js.
         this.serial8 = new Uint8Array();
 
         this.renderer = null;
@@ -469,7 +469,7 @@ var APPLE2_THREE_CFG_DEFAULT =
             if (this.video2D) return true;
             if (typeof(Apple2VideoTHREE_2D) !== "function" || Apple2VideoTHREE_2D === Apple2VideoTHREE)
             {
-                console.warn("Apple2VideoTHREE: Apple2VideoGPU is unavailable. Load EMU_apple2GPU.js before EMU_apple2THREE.js.");
+                console.warn("Apple2VideoTHREE: Apple2VideoGPU is unavailable. Load EMU_DEVICE_video_GPU.js before EMU_DEVICE_video_THREE.js.");
                 return false;
             }
 
@@ -524,7 +524,7 @@ var APPLE2_THREE_CFG_DEFAULT =
             {
                 this.video2D.cycle();
 
-                // Since EMU_apple2GPU.js now calls its own kernel directly,
+                // Since EMU_DEVICE_video_GPU.js now calls its own kernel directly,
                 // Apple2VideoTHREE no longer sees the kernel call.
                 // Keep the Three texture upload loop alive while this renderer is active.
                 this.textureDirty = true;
@@ -635,7 +635,7 @@ var APPLE2_THREE_CFG_DEFAULT =
 
             if (typeof(THREE) === "undefined")
             {
-                console.warn("Apple2VideoTHREE: THREE is not loaded. Add three.min.js before EMU_apple2THREE.js.");
+                console.warn("Apple2VideoTHREE: THREE is not loaded. Add three.min.js before EMU_DEVICE_video_THREE.js.");
                 return false;
             }
 

@@ -15,7 +15,7 @@ this.monitor = function(type) {
       return video.setMonitor(type);
 }
 ```
-[EMU_apple2video.js](/res/EMU_apple2video.js)
+[EMU_DEVICE_video_canvas.js](/res/EMU_DEVICE_video_canvas.js)
 ```javascript
 this.setMonitor = function(mode) {
     chrome_mode = mode & 3;
@@ -41,7 +41,7 @@ const _CFG_CHROMA = {
 
 The physical screen output color is calculated here:
 
-[EMU_apple2video.js](/res/EMU_apple2video.js)
+[EMU_DEVICE_video_canvas.js](/res/EMU_DEVICE_video_canvas.js)
 ```javascript
 
 const INTCols = new Uint8Array([

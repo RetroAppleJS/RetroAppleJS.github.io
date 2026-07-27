@@ -13,7 +13,7 @@ Check documentation here : [CONFIG.md](CONFIG.md)
 The emulator's display offers an easy switching capability to render color, black&white, green and amber as some graphics really look nicer in color or monochrome.  e.g. fonts rendered on a hires screen produce very disturbing color fringing artifacts, which make the letters unreadable in color mode; any monochrome setting is more appropriate in this case. 
 
 This tool was made to test and assure the best image rendering approximation with these respective monitors.
-It produces a Javascript snippet that seamlessly maps the Apple II colors to the different monochrome versions.  This snippet is located in [EMU_apple2video.js](..f/res/EMU_apple2video.js).
+It produces a Javascript snippet that seamlessly maps the Apple II colors to the different monochrome versions.  This snippet is located in [EMU_DEVICE_video_canvas.js](..f/res/EMU_DEVICE_video_canvas.js).
 
 
 ### HGRpatternJS.html
