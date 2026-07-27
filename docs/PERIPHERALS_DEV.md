@@ -52,7 +52,7 @@ switch(RangeID)
 | 1b             | $2000>$5FFF |                   | EMU_apple2GPU.js / EMU_apple2video.js          | $100        |
 | 2              | $C000>$C07F | EMU_apple2io.js   | EMU_apple2spk.js / EMU_A2Pkeys.js              | $1          |
 | 3              | $C080>$CFFF | EMU_apple2io.js   | any peripheral driver (e.g. EMU_CARD_appledisk2.js) | $1          |
-| 4              | $D000>$FFFF | EMU_apple2roms.js | Optionally routed to EMU_ramcard.js / EMU_saturnRAM.js | $1000       |
+| 4              | $D000>$FFFF | EMU_apple2roms.js | Optionally routed to EMU_CARD_ramcard.js / EMU_saturnRAM.js | $1000       |
 
 The methods inside the hardware component **EMU_apple2hw.js** demonstrates a few simple functions: read(addr) and write(addr) the databus at a specific address, reset() and restart() respectively acting upon warm and cold boot (randomizing RAM registers).
 

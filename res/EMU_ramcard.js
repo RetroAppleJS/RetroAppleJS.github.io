@@ -7,7 +7,7 @@
 // Copyright (c) 2026 Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 //
-// EMU_ramcard.js
+// EMU_CARD_ramcard.js
 
 // Discovery container. Apple2IO mounts a separate live instance.
 if(oEMU===undefined) var oEMU = {"component":{"IO":{"RamCard":new RamCard()}}}
@@ -85,8 +85,8 @@ function RamCard()
 
     this.updateMemoryMap = function(bRamcardActive)
     {
-        if(hw===undefined) { hw = apple2plus.hwObj(); console.warn("EMU_ramcard.js lost hw from scope") }
-        if(io===undefined) { io = apple2plus.hwObj().io; console.warn("EMU_ramcard.js lost io from scope") }
+        if(hw===undefined) { hw = apple2plus.hwObj(); console.warn("EMU_CARD_ramcard.js lost hw from scope") }
+        if(io===undefined) { io = apple2plus.hwObj().io; console.warn("EMU_CARD_ramcard.js lost io from scope") }
 
         if(this.bMEM_monitoring != hw.bMEM_monitoring)
             this.enable_MEM_monitoring(hw.bMEM_monitoring);  // follow mem monitoring flag from hardware
@@ -172,7 +172,7 @@ function RamCard()
 
     this.soft_switch = function(rel_io_addr)
     {
-        if(io===undefined) { io = apple2plus.hwObj().io;  console.warn("EMU_ramcard.js lost io from scope") }
+        if(io===undefined) { io = apple2plus.hwObj().io;  console.warn("EMU_CARD_ramcard.js lost io from scope") }
 
         const slot = 0;                                                         // TODO: take fromthis.state.slot
         const pre_sw = softswitch[sw_mask(this.state.softswitch_pos)];          // previous switch state

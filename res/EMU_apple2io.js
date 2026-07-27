@@ -798,7 +798,7 @@ this.write = function(rel_addr,d8)
                 //    alert("mounted DISKII "+peripheral_obj.mount.hash)
 
                 /*
-                if (peripheral_obj.id && peripheral_obj.id.PCODE == "MS16K")  // temporary patch!!!  making sure oEMU.component.IO.RamCard (old) remains in sync with peripheral_obj, so that mem monitoring uses the same object between apple ram updates in EMU_apple2hw.js and ramcard ram updates in EMU_ramcard.js
+                if (peripheral_obj.id && peripheral_obj.id.PCODE == "MS16K")  // temporary patch!!!  making sure oEMU.component.IO.RamCard (old) remains in sync with peripheral_obj, so that mem monitoring uses the same object between apple ram updates in EMU_apple2hw.js and ramcard ram updates in EMU_CARD_ramcard.js
                 {
                     this.ramcard = peripheral_obj;
                     oEMU.component.IO.RamCard = peripheral_obj;
