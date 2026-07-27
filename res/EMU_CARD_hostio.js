@@ -515,4 +515,17 @@ function AppleBoard()
             + '</div>';
 
     }
+
+
+    this.deviceToolSlotHTML = function(ctx)
+    {
+        ctx = ctx || {};
+        return ""
+            + "<div class=toolbox id=\""+(ctx.toolboxID || "device_tool_H")+"\" style=\"width:352px;max-width:80vw;overflow-y:auto;overflow-x:hidden;padding:0px\" hidden>"
+            + "  <div class='appbox' style='float:none;width:350px;max-width:100%;box-sizing:border-box;text-align:left;padding:2px'>"
+            +      this.deviceList_html(ctx.model)
+            + "  </div>"
+            + "</div>";
+    };
+
 }

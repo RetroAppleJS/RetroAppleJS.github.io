@@ -370,7 +370,11 @@ function EMU_init()
     apple2plus.surfaceMap_monitoring = function()
     {
         var io = this.hwObj().io;
-        var context = io.getSurfaceMapContext();
+        var diskControllers = EMU_diskIIObjects();
+        var context = diskControllers.length>0
+            && typeof(diskControllers[0].getSurfaceMapContext)=="function"
+                ? diskControllers[0].getSurfaceMapContext()
+                : null;
         var popup = document.getElementById("surfaceMap_popup");
         var monitor = document.getElementById("surfaceMap_monitoring");
 

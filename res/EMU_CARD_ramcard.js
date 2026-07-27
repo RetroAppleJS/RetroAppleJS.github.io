@@ -473,6 +473,26 @@ function RamCard()
         }
         else console.log(PCODE+": SOFTSWITCH $"+oCOM.getHexByte(addr)+" -> "+JSON.stringify(sw));
     }
+
+    this.deviceToolSlotHTML = function(ctx)
+    {
+        ctx = ctx || {};
+        var slotN = Number(ctx.slotN);
+        return ""
+            + "<div class=toolbox id=\""+(ctx.toolboxID || ("device_tool_"+ctx.slotID))+"\" hidden>"
+            + "  <div class=appbox style=\"height:76px;padding:0px 6px 0px 6px;\" title=\"Memory map\">"
+            + "    <div style=\"float:left;width:28px;text-align:center\">MEM<br><button class=appbut><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\""
+            + "oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');"
+            + "var bMEM_monitoring=oCOM.toggleRefreshEvent('MEM_monitoring');"
+            + "apple2plus.hwObj().enable_MEM_monitoring(bMEM_monitoring);"
+            + "oCOM.enableRefreshEvent('MEM_monitoring_MS16K',bMEM_monitoring);"
+            + "apple2plus.hwObj().io.SLOT2obj("+slotN+")?.enable_MEM_monitoring(bMEM_monitoring);"
+            + "\"></i></button></div>"
+            + "    <div id=\"EMU_mem_map\" style=\"margin-left:30px;white-space:nowrap\"></div>"
+            + "  </div>"
+            + "</div>";
+    };
+
 }
 
 

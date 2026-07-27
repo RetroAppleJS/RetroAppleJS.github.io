@@ -19,46 +19,9 @@ function Apple2IO(vid)
     this.slot_ctx = {};
     this.slots = [];
     this.attachments = {};
-    this.diskCatalogState = {"slotN":null,"DCODE":null,"arg":null};
-    this.surfaceMapState = {"slotN":null};
 
     // restart() installs the real empty-bus filler; live remounts reuse it.
     var refillEmptyIOActions = function(){};
-
-    // Slot I/O addresses
-    const SLOT_IO =    [0x80,
-                        0x90,
-                        0xA0,
-                        0xB0,
-                        0xC0,
-                        0xD0, 
-                        0xE0,
-                        0xF0];
-    const SLT_IO_SIZE = 0x10;
-
-    // Slot RAM/ROM spaces
-    const SLOT_ROM =  [0,   // SLOT0_PROM does not exist
-                        0x100,
-                        0x200,
-                        0x300,
-                        0x400,
-                        0x500,
-                        0x600,
-                        0x700];
-    const SLT_ROM_SIZE = 0x100;     
-
-
-    // MAP DISK I/O TO SLOT#6 MEMORY
-    var DISK_IO =       SLOT_IO[6],
-        DISK_IO_SIZE =  SLT_IO_SIZE,
-        DISK_PROM =     SLOT_ROM[6],
-        DISK_PROM_SIZE = SLT_ROM_SIZE;
- 
-    // MAP RAMCARD I/O TO SLOT#0 MEMORY
-    var MEM_RAMCARD_IO =  SLOT_IO[0], MEM_RAMCARD_IO_SIZE =  SLT_IO_SIZE;
-
-    // MAP 80 COLUMN CARD I/O TO SLOT#3 MEMORY
-    var MEM_COL80CARD_IO =  SLOT_IO[3], MEM_COL80CARD_IO_SIZE =  SLT_IO_SIZE;
 
     if(typeof(oEMU.component.IO)!="undefined")
     {
@@ -1106,47 +1069,6 @@ this.write = function(rel_addr,d8)
         }
     }
 
-
-
-
-    this.mapRead = function(addr)
-    {
-        return card.read(abs2rel(addr));
-    };
-
-    this.mapWrite = function(addr,d8)
-    {
-        var rel_addr = abs2rel(addr);
-        var sw = softswitch[card.state.softswitch_pos] || {};
-
-        card.write(rel_addr,d8);
-
-        card.mark_MEM_monitoring(
-            rel_addr < BANK_SIZE
-                ? (sw.BANK == 0 ? "bankA" : "bankB")
-                : "cont",
-            rel_addr
-        );
-    };
-
-
-
-
-
-    // _CFG_PSLOT[pinfo.PCODE] =    {"MOCK":{"NAME":"Mockingboard C" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"1,2,3,4*,5,6,7" ,"SYScode":"A2,A2P,A2E"}
-
-    // TODO: let apple2keys.js itself intercept keypress events   or eventually make a generic event dispatcher in io
-    this.keypress = function(code)
-    {
-        keys.lastkey = code;
-    }
-
-    // TODO: belongs in oEMUI -> stand-in for peripheral operations triggered by UI elements
-    this.loadDisk = function(bytes,drv)
-    {
-        alert("AppleDisk2() does not have a method called loadDisk")
-    }
-
     // SLOT MAPPING
     /*
      * Discover peripheral types from the existing IO containers.
@@ -1416,217 +1338,6 @@ this.write = function(rel_addr,d8)
     {
         var ref = this.deviceID2obj(str,slotN);
         return ref && (!PCODE || ref.periID===PCODE) ? ref.deviceN : undefined;
-    }
-
-    this.diskIISlots = function()
-    {
-        var out = [];
-
-        for(var slotN=0;slotN<this.slots.length;slotN++)
-        {
-            var owner = this.SLOT2obj(slotN);
-            if(peripheralPCODE(owner)=="DISKII") out.push(slotN);
-        }
-
-        return out;
-    }
-
-    this.diskCatalogDevices = function(slotN)
-    {
-        var owner = this.SLOT2obj(slotN);
-        if(peripheralPCODE(owner)!="DISKII") return [];
-
-        return (Array.isArray(owner.devices) ? owner.devices : []).filter(function(device)
-        {
-            return !!(device && device.id && device.id.DCODE);
-        });
-    }
-
-    this.getDiskCatalogContext = function()
-    {
-        if(!Number.isInteger(Number(this.diskCatalogState.slotN))) return null;
-
-        return {
-             "slotN":Number(this.diskCatalogState.slotN)
-            ,"slotID":this.slot2ID(Number(this.diskCatalogState.slotN))
-            ,"DCODE":this.diskCatalogState.DCODE
-            ,"arg":this.diskCatalogState.arg
-        };
-    }
-
-    this.setDiskCatalogContext = function(slotN,DCODE,arg)
-    {
-        var slots = this.diskIISlots();
-        if(slots.length==0) return null;
-
-        slotN = Number(slotN);
-        if(!Number.isInteger(slotN) || slots.indexOf(slotN)<0)
-            slotN = slots[0];
-
-        var devices = this.diskCatalogDevices(slotN);
-        if(devices.length==0) return null;
-
-        DCODE = this.obj2deviceID(DCODE);
-        var selected = devices.find(function(device)
-        {
-            return String(device.id.DCODE).toUpperCase()===DCODE;
-        }) || devices[0];
-
-        this.diskCatalogState.slotN = slotN;
-        this.diskCatalogState.DCODE = this.obj2deviceID(selected);
-        if(arg!==undefined) this.diskCatalogState.arg = Object.assign({},arg);
-
-        /*
-         * The catalog and Peripheral Controls must always describe the same
-         * mounted controller.
-         */
-        this.refreshDeviceToolboxes({
-             "id":"devices"
-            ,"default_slot":this.slot2ID(slotN)
-        });
-
-        return this.getDiskCatalogContext();
-    }
-
-    this.setDiskCatalogPath = function(arg)
-    {
-        this.diskCatalogState.arg = Object.assign({},arg || {});
-        return this.diskCatalogState.arg;
-    }
-
-    this.diskCatalogRender = function()
-    {
-        var context = this.getDiskCatalogContext();
-        if(!context) return false;
-
-        var disk2 = this.SLOT2obj(context.slotN);
-        if(!disk2 || typeof(disk2.getSoftwareCatRows)!="function") return false;
-
-        return disk2.getSoftwareCatRows(Object.assign({},context.arg || {}));
-    }
-
-    this.diskCatalogNavigate = function(arg)
-    {
-        this.setDiskCatalogPath(arg);
-        return this.diskCatalogRender();
-    }
-
-    this.diskCatalogLoad = function(arg)
-    {
-        var context = this.getDiskCatalogContext();
-        if(!context) return false;
-
-        var disk2 = this.SLOT2obj(context.slotN);
-        if(!disk2 || typeof(disk2.getFile)!="function") return false;
-
-        return disk2.getFile(Object.assign({},arg || {},{
-            "DCODE":context.DCODE
-        }));
-    }
-
-    this.diskCatalogCycleSlot = function()
-    {
-        var slots = this.diskIISlots();
-        if(slots.length==0) return false;
-
-        var context = this.getDiskCatalogContext();
-        var current = context ? slots.indexOf(context.slotN) : -1;
-        var nextSlotN = slots[(current+1)%slots.length];
-
-        this.setDiskCatalogContext(
-             nextSlotN
-            ,context ? context.DCODE : null
-        );
-
-        return this.diskCatalogRender();
-    }
-
-    this.diskCatalogCycleDrive = function()
-    {
-        var context = this.getDiskCatalogContext();
-        if(!context) return false;
-
-        var devices = this.diskCatalogDevices(context.slotN);
-        if(devices.length==0) return false;
-
-        var current = -1;
-        for(var i=0;i<devices.length;i++)
-            if(this.obj2deviceID(devices[i])===context.DCODE) current = i;
-
-        var next = devices[(current+1)%devices.length];
-        this.setDiskCatalogContext(context.slotN,this.obj2deviceID(next));
-
-        return this.diskCatalogRender();
-    }
-
-    /*
-     * The Surface Map is one shared view.  Its context identifies only the
-     * owning Disk II controller; D1 and D2 are always displayed together.
-     */
-    this.getSurfaceMapContext = function()
-    {
-        var slots = this.diskIISlots();
-        if(slots.length==0) return null;
-
-        var slotN = Number(this.surfaceMapState.slotN);
-        if(!Number.isInteger(slotN) || slots.indexOf(slotN)<0)
-        {
-            slotN = slots[0];
-            this.surfaceMapState.slotN = slotN;
-        }
-
-        return {
-             "slotN":slotN
-            ,"slotID":this.slot2ID(slotN)
-        };
-    }
-
-    this.setSurfaceMapContext = function(slotN)
-    {
-        var slots = this.diskIISlots();
-        if(slots.length==0) return null;
-
-        slotN = Number(slotN);
-        if(!Number.isInteger(slotN) || slots.indexOf(slotN)<0)
-            slotN = slots[0];
-
-        this.surfaceMapState.slotN = slotN;
-
-        /*
-         * Keep Peripheral Controls synchronized with the controller displayed
-         * by the shared Surface Map.
-         */
-        this.refreshDeviceToolboxes({
-             "id":"devices"
-            ,"default_slot":this.slot2ID(slotN)
-        });
-
-        return this.getSurfaceMapContext();
-    }
-
-    this.surfaceMapRender = function()
-    {
-        var context = this.getSurfaceMapContext();
-        if(!context) return false;
-
-        var disk2 = this.SLOT2obj(context.slotN);
-        if(!disk2 || typeof(disk2.surfaceMap_render)!="function")
-            return false;
-
-        return disk2.surfaceMap_render("surfaceMap_popup");
-    }
-
-    this.surfaceMapCycleSlot = function()
-    {
-        var slots = this.diskIISlots();
-        if(slots.length==0) return false;
-
-        var context = this.getSurfaceMapContext();
-        var current = context ? slots.indexOf(context.slotN) : -1;
-        var nextSlotN = slots[(current+1)%slots.length];
-
-        this.setSurfaceMapContext(nextSlotN);
-        return this.surfaceMapRender();
     }
 
     this.config_slotAvail = function(cfg)        // HOW MANY SLOTS CAN WE FILL?
@@ -2695,16 +2406,15 @@ this.write = function(rel_addr,d8)
         else slot = slots[(slots.indexOf(slot)+1)%slots.length];
 
         this.refreshDeviceToolboxes({"id":arg.id,"default_slot":slot});       
-     }
+    }
 
     this.deviceSlots = function()
     {
-        var slots = ["H"];
-        for(var slotID=0;slotID<8;slotID++)
+        var slots = [];
+        for(var slotN=0;slotN<this.slots.length;slotN++)
         {
-            var slotN = slotID2n(slotID);
-            if(this.slots[slotN] && this.slots[slotN].peripheral)
-                slots.push(slotID);
+            if(this.SLOT2obj(slotN))
+                slots.push(this.slot2ID(slotN));
         }
         return slots;
     }
@@ -2722,9 +2432,10 @@ this.write = function(rel_addr,d8)
         for(var i=0;i<slots.length;i++)
         {
             var s = slots[i];
-            var slotN = s==="H" ? 0 : slotID2n(s);
-            var peripheral = this.slots[slotN] && this.slots[slotN].peripheral;
-            var pcode = s==="H" ? "HostIO" : peripheralPCODE(peripheral);
+            var slotN = slotID2n(s);
+            var peripheral = this.SLOT2obj(slotN);
+            var pcode = peripheralPCODE(peripheral);
+            var instance = peripheral && peripheral.mount ? peripheral.mount.hash : "";
             var deviceCodes = [];
             var devices = peripheral && Array.isArray(peripheral.devices)
                 ? peripheral.devices
@@ -2736,7 +2447,7 @@ this.write = function(rel_addr,d8)
                 if(id && id.DCODE) deviceCodes.push(String(id.DCODE));
             }
 
-            sig.push(String(s)+":"+pcode+":"+deviceCodes.join(","));
+            sig.push(String(s)+":"+pcode+":"+instance+":"+deviceCodes.join(","));
         }
 
         return sig.join("|");
@@ -2761,11 +2472,6 @@ this.write = function(rel_addr,d8)
             var slots = this.deviceSlots();
             for(var slotN=0,html_arr=[];slotN<slots.length;slotN++)
                 html_arr.push(this.deviceToolSlotHTML( slots[slotN] ));
-
-            /*
-             * Disk II dialogs are body-level singleton overlays.  Do not put
-             * their hosts inside this replaceable Peripheral Controls body.
-             */
             
             box.innerHTML = html_arr.join("");
             box.setAttribute("data-topology",sig);
@@ -2813,110 +2519,48 @@ this.write = function(rel_addr,d8)
     {
         var slotN = slotID2n(slotID);
 
-        var pcode = slotID==="H"
-            ? "HostIO"
-            : peripheralPCODE(this.slots[slotN] && this.slots[slotN].peripheral);
- 
-        switch(pcode)
+        var peripheral = this.SLOT2obj(slotN);
+        var pcode = peripheralPCODE(peripheral);
+        var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
+        var ctx =
         {
-            case "HostIO":
-                var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
-                var board = this.SLOT2obj(0);
-                return ""
-                    + "<div class=toolbox id=\"device_tool_H\" style=\"width:352px;max-width:80vw;overflow-y:auto;overflow-x:hidden;padding:0px\" hidden>"
-                        +"<div class='appbox' style='float:none;width:350px;max-width:100%;box-sizing:border-box;text-align:left;padding:2px'>"
-                        +(board && typeof(board.deviceList_html)=="function" ? board.deviceList_html(model) : "")
-                        +"</div>"
-                    + "</div>";
-            case "MS16K":
-                return ""
-                + "<div class=toolbox id=\"device_tool_"+slotID+"\" hidden>"
-                + "  <div class=appbox style=\"height:76px;padding:0px 6px 0px 6px;\" title=\"Memory map\">"
-                + "    <div style=\"float:left;width:28px;text-align:center\">MEM<br><button class=appbut><i class=\"fa fa-sync-alt\" id=\"MEM_monitoring\" onclick=\""
-                        +"oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');"
-                        +"var bMEM_monitoring=oCOM.toggleRefreshEvent('MEM_monitoring');"
-                        +"apple2plus.hwObj().enable_MEM_monitoring(bMEM_monitoring);"
-                        +"oCOM.enableRefreshEvent('MEM_monitoring_MS16K',bMEM_monitoring);"
-                        +"apple2plus.hwObj().io.SLOT2obj("+slotN+")?.enable_MEM_monitoring(bMEM_monitoring);"
-                        +"\"></i></button></div>"
-                + "    <div id=\"EMU_mem_map\" style=\"margin-left:30px;white-space:nowrap\"></div>"
-                + "  </div>"
-                + "</div>";
+             "io":this
+            ,"peripheral":peripheral
+            ,"slotN":slotN
+            ,"slotID":slotID
+            ,"model":model
+            ,"toolboxID":"device_tool_"+slotID
+            ,"devices":peripheral && Array.isArray(peripheral.devices)
+                ? peripheral.devices
+                : []
+        };
 
-            case "VIDEX":
-                return ""
-                    + "<div class=toolbox id=\"device_tool_"+slotID+"\" hidden>"
-                    + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
-                    + "    <b>#"+slotID+" VIDEX</b><br>80-column toolbox is under construction."
-                    + "  </div>"
-                    + "</div>";
-            case "DISKII":
-                var disk2 = this.SLOT2obj(slotN);
-                var butD1  = disk2.driveElementID("but","D1");
-                var formD1 = disk2.driveElementID("f","D1");
-                var fileD1 = disk2.driveElementID("file","D1");
-                var dumpD1 = disk2.driveElementID("dump","D1");
-                var butD2  = disk2.driveElementID("but","D2");
-                var formD2 = disk2.driveElementID("f","D2");
-                var fileD2 = disk2.driveElementID("file","D2");
-                var dumpD2 = disk2.driveElementID("dump","D2");
+        if(peripheral && typeof(peripheral.deviceToolSlotHTML)=="function")
+        {
+            try
+            {
+                var html = peripheral.deviceToolSlotHTML(ctx);
+                if(typeof(html)=="string" && html.length>0) return html;
+            }
+            catch(e)
+            {
+                console.error(
+                    "Peripheral toolbox failed for "+(pcode || slotID),
+                    e
+                );
+            }
+         }
+ 
+        var label = pcode || "EMPTY";
+        var description = peripheralDescription(peripheral);
 
-                return ""
-                    + "<div class=toolbox id=\"device_tool_"+slotID+"\" hidden>"
-                    + "  <div class=appbox style=\"height:63px;padding:0px 6px 0px 6px;\">"
-
-                    // FILE BOX D1
-                    + "    <div class=appbut style=\"padding:5px 0px 0px 0px;text-align:left;\">"
-
-                    + "        <input type=button method=get class=appbut id=\""+butD1+"\" value=\"Drive1\""
-                    + " data-empty=\"Drive1\" data-loaded=\"\" title=\"Drive1: no disk\"  "
-                    + " onclick=\"ejectDisk(this,"+slotN+",'D1')\""
-
-                    + " onmouseover=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,true)\""
-                    + "  onmouseout=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,false)\">"
-                    //+ " onmouseover=\"apple2plus.DiskObj().driveButtonHover(this,true)\""
-                    //+ " onmouseout=\"apple2plus.DiskObj().driveButtonHover(this,false)\">"
-
-                    + "      <form action=\"index.html\" id=\""+formD1+"\" style=\"display:inline;\">"
-                    + "        <input type=\"file\" name=\"D1\" id=\""+fileD1+"\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'D1')\">"
-                    + "      </form>"
-
-                    + "      <button class=appbut value=\"Download\" onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").downloadDisk('D1')\" id=\""+dumpD1+"\" title=\"Save disk\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
-
-                    + "    </div>"
-
-                    // FILE BOX D2
-                    + "    <div class=appbut style=\"padding:5px 0px 0px 0px;text-align:left\">"
-
-                    + "        <input type=button method=get class=appbut id=\""+butD2+"\" value=\"Drive2\""
-                    + " data-empty=\"Drive2\" data-loaded=\"\" title=\"Drive2: no disk\"  "
-                    + " onclick=\"ejectDisk(this,"+slotN+",'D2')\""
-                    + " onmouseover=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,true)\""
-                    + " onmouseout=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,false)\">"
-
-                    + "      <form action=\"index.html\" id=\""+formD2+"\" style=\"display:inline;\">"
-                    + "        <input type=\"file\" name=\"D2\" id=\""+fileD2+"\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'D2')\">"
-                    + "      </form>"
-                    + "      <button class=appbut value=\"Download\" onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").downloadDisk('D2')\" id=\""+dumpD2+"\" title=\"Save disk\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
-                    + "    </div>"
-
-                    + "  </div>"
-
-                    // BUTTON BOX
-                    + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
-                    + "      <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'softwareCat'})\" title=\"Software Catalog\"><i class=\"fa fa-cat\"></i></button>"
-                    + "      <br>"
-                    + "      <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'surfaceMap'})\" title=\"Disk Surface Map\"><i class=\"fa fa-th\"></i></button>"
-                    //+ "      <button class=appbut onclick=\"\" id=\"surfaceMap\" title=\"Surface Map\"><i class=\"fa fa-chart-pie\"></i></button>"
-                    //+ "      <button class=appbut id=\"surfaceMap\" title=\"Surface Map\" onclick=\"apple2plus.DiskObj().diskMenu_detail({id:'surfaceMap'});\"><i class=\"fa fa-th\"></i></button>"
-                    + "  </div>"
-                    + "</div>";
-        }
 
         return ""
             + "<div class=toolbox id=\"device_tool_"+slotID+"\" hidden>"
             + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
-            + "    <b>#"+slotID+" "+pcode+"</b><br>No toolbox is available yet."
+            + "    <b>#"+slotID+" "+oCOM.escapeHTML(label)+"</b><br>"
+            +      (description ? oCOM.escapeHTML(description)+"<br>" : "")
+            + "    No toolbox is available yet."
             + "  </div>"
             + "</div>";
     }

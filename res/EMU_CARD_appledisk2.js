@@ -13,6 +13,206 @@ function DiskIIDrive()
     this.state = {"active":true};
 }
 
+function createDiskIIUI()
+{
+    var catalogState = {"slotN":null,"DCODE":null,"arg":null};
+    var surfaceMapState = {"slotN":null};
+
+    function diskSlots(io)
+    {
+        var out = [];
+        if(!io || !Array.isArray(io.slots)) return out;
+
+        for(var slotN=0;slotN<io.slots.length;slotN++)
+        {
+            var owner = io.SLOT2obj(slotN);
+            if(owner && owner.id && owner.id.PCODE=="DISKII") out.push(slotN);
+        }
+        return out;
+    }
+
+    function diskDevices(io,slotN)
+    {
+        var owner = io && io.SLOT2obj(slotN);
+        if(!owner || !owner.id || owner.id.PCODE!="DISKII") return [];
+
+        return (Array.isArray(owner.devices) ? owner.devices : []).filter(function(device)
+        {
+            return !!(device && device.id && device.id.DCODE);
+        });
+    }
+
+    function getCatalogContext(io)
+    {
+        var slots = diskSlots(io);
+        var slotN = Number(catalogState.slotN);
+        if(!Number.isInteger(slotN) || slots.indexOf(slotN)<0) return null;
+
+        return {
+             "slotN":slotN
+            ,"slotID":io.slot2ID(slotN)
+            ,"DCODE":catalogState.DCODE
+            ,"arg":catalogState.arg
+        };
+    }
+
+    function setCatalogContext(io,slotN,DCODE,arg)
+    {
+        var slots = diskSlots(io);
+        if(slots.length==0) return null;
+
+        slotN = Number(slotN);
+        if(!Number.isInteger(slotN) || slots.indexOf(slotN)<0) slotN = slots[0];
+
+        var devices = diskDevices(io,slotN);
+        if(devices.length==0) return null;
+
+        DCODE = io.obj2deviceID(DCODE);
+        var selected = devices.find(function(device)
+        {
+            return String(device.id.DCODE).toUpperCase()===DCODE;
+        }) || devices[0];
+
+        catalogState.slotN = slotN;
+        catalogState.DCODE = io.obj2deviceID(selected);
+        if(arg!==undefined) catalogState.arg = Object.assign({},arg);
+
+        io.refreshDeviceToolboxes({
+             "id":"devices"
+            ,"default_slot":io.slot2ID(slotN)
+        });
+
+        return getCatalogContext(io);
+    }
+
+    function setCatalogPath(arg)
+    {
+        catalogState.arg = Object.assign({},arg || {});
+        return catalogState.arg;
+    }
+
+    function catalogRender(io)
+    {
+        var context = getCatalogContext(io);
+        if(!context) return false;
+
+        var disk2 = io.SLOT2obj(context.slotN);
+        if(!disk2 || typeof(disk2.getSoftwareCatRows)!="function") return false;
+        return disk2.getSoftwareCatRows(Object.assign({},context.arg || {}));
+    }
+
+    function catalogNavigate(io,arg)
+    {
+        setCatalogPath(arg);
+        return catalogRender(io);
+    }
+
+    function catalogLoad(io,arg)
+    {
+        var context = getCatalogContext(io);
+        if(!context) return false;
+
+        var disk2 = io.SLOT2obj(context.slotN);
+        if(!disk2 || typeof(disk2.getFile)!="function") return false;
+        return disk2.getFile(Object.assign({},arg || {},{"DCODE":context.DCODE}));
+    }
+
+    function catalogCycleSlot(io)
+    {
+        var slots = diskSlots(io);
+        if(slots.length==0) return false;
+
+        var context = getCatalogContext(io);
+        var current = context ? slots.indexOf(context.slotN) : -1;
+        var nextSlotN = slots[(current+1)%slots.length];
+        setCatalogContext(io,nextSlotN,context ? context.DCODE : null);
+        return catalogRender(io);
+    }
+
+    function catalogCycleDrive(io)
+    {
+        var context = getCatalogContext(io);
+        if(!context) return false;
+
+        var devices = diskDevices(io,context.slotN);
+        if(devices.length==0) return false;
+
+        var current = -1;
+        for(var i=0;i<devices.length;i++)
+            if(io.obj2deviceID(devices[i])===context.DCODE) current = i;
+
+        var next = devices[(current+1)%devices.length];
+        setCatalogContext(io,context.slotN,io.obj2deviceID(next));
+        return catalogRender(io);
+    }
+
+    function getSurfaceMapContext(io)
+    {
+        var slots = diskSlots(io);
+        if(slots.length==0) return null;
+
+        var slotN = Number(surfaceMapState.slotN);
+        if(!Number.isInteger(slotN) || slots.indexOf(slotN)<0)
+        {
+            slotN = slots[0];
+            surfaceMapState.slotN = slotN;
+        }
+        return {"slotN":slotN,"slotID":io.slot2ID(slotN)};
+    }
+
+    function setSurfaceMapContext(io,slotN)
+    {
+        var slots = diskSlots(io);
+        if(slots.length==0) return null;
+
+        slotN = Number(slotN);
+        if(!Number.isInteger(slotN) || slots.indexOf(slotN)<0) slotN = slots[0];
+        surfaceMapState.slotN = slotN;
+
+        io.refreshDeviceToolboxes({
+             "id":"devices"
+            ,"default_slot":io.slot2ID(slotN)
+        });
+        return getSurfaceMapContext(io);
+    }
+
+    function surfaceMapRender(io)
+    {
+        var context = getSurfaceMapContext(io);
+        if(!context) return false;
+
+        var disk2 = io.SLOT2obj(context.slotN);
+        if(!disk2 || typeof(disk2.surfaceMap_render)!="function") return false;
+        return disk2.surfaceMap_render("surfaceMap_popup");
+    }
+
+    function surfaceMapCycleSlot(io)
+    {
+        var slots = diskSlots(io);
+        if(slots.length==0) return false;
+
+        var context = getSurfaceMapContext(io);
+        var current = context ? slots.indexOf(context.slotN) : -1;
+        setSurfaceMapContext(io,slots[(current+1)%slots.length]);
+        return surfaceMapRender(io);
+    }
+
+    return {
+         "getCatalogContext":getCatalogContext
+        ,"setCatalogContext":setCatalogContext
+        ,"setCatalogPath":setCatalogPath
+        ,"catalogRender":catalogRender
+        ,"catalogNavigate":catalogNavigate
+        ,"catalogLoad":catalogLoad
+        ,"catalogCycleSlot":catalogCycleSlot
+        ,"catalogCycleDrive":catalogCycleDrive
+        ,"getSurfaceMapContext":getSurfaceMapContext
+        ,"setSurfaceMapContext":setSurfaceMapContext
+        ,"surfaceMapRender":surfaceMapRender
+        ,"surfaceMapCycleSlot":surfaceMapCycleSlot
+    };
+}
+
 
 function AppleDisk2()
 {
@@ -21,6 +221,9 @@ function AppleDisk2()
     const bDebug_SS = false;   // comprehensive Disk II soft-switch trace
 
     this.id = {"PCODE":"DISKII", "icon":"fa fa-save"};
+
+    if(!AppleDisk2.UI) AppleDisk2.UI = createDiskIIUI();
+    var diskUI = AppleDisk2.UI;
 
     /*
      * The controller owns two attached devices. D1 and D2 are DCODEs, not
@@ -123,6 +326,122 @@ function AppleDisk2()
     const TRACK_SIZE =  6656;
 
     var disk2       = this;       // stand-in in areas where 'this' is absent e.g. inside mapping functions
+
+    function mountedIO()
+    {
+        if(typeof(apple2plus)!="object" || !apple2plus) return null;
+        return apple2plus.hwObj().io;
+    }
+
+    this.getDiskCatalogContext = function()
+    {
+        var io = mountedIO();
+        return io ? diskUI.getCatalogContext(io) : null;
+    };
+
+    this.setDiskCatalogContext = function(slotN,DCODE,arg)
+    {
+        var io = mountedIO();
+        return io ? diskUI.setCatalogContext(io,slotN,DCODE,arg) : null;
+    };
+
+    this.setDiskCatalogPath = function(arg)
+    {
+        return diskUI.setCatalogPath(arg);
+    };
+
+    this.diskCatalogRender = function()
+    {
+        var io = mountedIO();
+        return io ? diskUI.catalogRender(io) : false;
+    };
+
+    this.diskCatalogNavigate = function(arg)
+    {
+        var io = mountedIO();
+        return io ? diskUI.catalogNavigate(io,arg) : false;
+    };
+
+    this.diskCatalogLoad = function(arg)
+    {
+        var io = mountedIO();
+        return io ? diskUI.catalogLoad(io,arg) : false;
+    };
+
+    this.diskCatalogCycleSlot = function()
+    {
+        var io = mountedIO();
+        return io ? diskUI.catalogCycleSlot(io) : false;
+    };
+
+    this.diskCatalogCycleDrive = function()
+    {
+        var io = mountedIO();
+        return io ? diskUI.catalogCycleDrive(io) : false;
+    };
+
+    this.getSurfaceMapContext = function()
+    {
+        var io = mountedIO();
+        return io ? diskUI.getSurfaceMapContext(io) : null;
+    };
+
+    this.setSurfaceMapContext = function(slotN)
+    {
+        var io = mountedIO();
+        return io ? diskUI.setSurfaceMapContext(io,slotN) : null;
+    };
+
+    this.surfaceMapRender = function()
+    {
+        var io = mountedIO();
+        return io ? diskUI.surfaceMapRender(io) : false;
+    };
+
+    this.surfaceMapCycleSlot = function()
+    {
+        var io = mountedIO();
+        return io ? diskUI.surfaceMapCycleSlot(io) : false;
+    };
+
+    this.deviceToolSlotHTML = function(ctx)
+    {
+        ctx = ctx || {};
+        var slotN = Number(ctx.slotN);
+        var slotID = ctx.slotID;
+        var butD1  = this.driveElementID("but","D1");
+        var formD1 = this.driveElementID("f","D1");
+        var fileD1 = this.driveElementID("file","D1");
+        var dumpD1 = this.driveElementID("dump","D1");
+        var butD2  = this.driveElementID("but","D2");
+        var formD2 = this.driveElementID("f","D2");
+        var fileD2 = this.driveElementID("file","D2");
+        var dumpD2 = this.driveElementID("dump","D2");
+
+        return ""
+            + "<div class=toolbox id=\""+(ctx.toolboxID || ("device_tool_"+slotID))+"\" hidden>"
+            + "  <div class=appbox style=\"height:63px;padding:0px 6px 0px 6px;\">"
+            + "    <div class=appbut style=\"padding:5px 0px 0px 0px;text-align:left;\">"
+            + "      <input type=button method=get class=appbut id=\""+butD1+"\" value=\"Drive1\" data-empty=\"Drive1\" data-loaded=\"\" title=\"Drive1: no disk\" onclick=\"ejectDisk(this,"+slotN+",'D1')\" onmouseover=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,true)\" onmouseout=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,false)\">"
+            + "      <form action=\"index.html\" id=\""+formD1+"\" style=\"display:inline;\">"
+            + "        <input type=\"file\" name=\"D1\" id=\""+fileD1+"\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'D1')\">"
+            + "      </form>"
+            + "      <button class=appbut value=\"Download\" onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").downloadDisk('D1')\" id=\""+dumpD1+"\" title=\"Save disk\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+            + "    </div>"
+            + "    <div class=appbut style=\"padding:5px 0px 0px 0px;text-align:left\">"
+            + "      <input type=button method=get class=appbut id=\""+butD2+"\" value=\"Drive2\" data-empty=\"Drive2\" data-loaded=\"\" title=\"Drive2: no disk\" onclick=\"ejectDisk(this,"+slotN+",'D2')\" onmouseover=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,true)\" onmouseout=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,false)\">"
+            + "      <form action=\"index.html\" id=\""+formD2+"\" style=\"display:inline;\">"
+            + "        <input type=\"file\" name=\"D2\" id=\""+fileD2+"\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'D2')\">"
+            + "      </form>"
+            + "      <button class=appbut value=\"Download\" onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").downloadDisk('D2')\" id=\""+dumpD2+"\" title=\"Save disk\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
+            + "    </div>"
+            + "  </div>"
+            + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
+            + "    <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'softwareCat'})\" title=\"Software Catalog\"><i class=\"fa fa-cat\"></i></button><br>"
+            + "    <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'surfaceMap'})\" title=\"Disk Surface Map\"><i class=\"fa fa-th\"></i></button>"
+            + "  </div>"
+            + "</div>";
+    };
 
     const SS_TRACE_LIMIT = 50000;
     const SS_DATA_RUN_LIMIT = 4096;
@@ -2477,7 +2796,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
                  * card retargets the visible popup instead of closing it or
                  * creating a competing popup.
                  */
-                var previousContext = io.getDiskCatalogContext();
+                var previousContext = this.getDiskCatalogContext();
                 var sameSlot = previousContext &&
                     Number(previousContext.slotN)===Number(slotN);
 
@@ -2487,13 +2806,13 @@ this.detectDiskImageType = function(imageBytes, filepath)
                     break;
                 }
 
-                io.setDiskCatalogContext(
+                this.setDiskCatalogContext(
                      slotN
                     ,arg.DCODE || (previousContext && previousContext.DCODE) || "D1"
                     ,arg
                 );
                 oCOM.POPUP.on(popup_id);
-                io.diskCatalogNavigate(arg);
+                this.diskCatalogNavigate(arg);
 
 
             break;
@@ -2509,7 +2828,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
                  * Clicking the same controller toggles the shared map closed.
                  * Clicking another controller retargets the visible map.
                  */
-                var previousContext = io.getSurfaceMapContext();
+                var previousContext = this.getSurfaceMapContext();
                 var sameSlot = previousContext &&
                     Number(previousContext.slotN)===Number(slotN);
 
@@ -2519,9 +2838,9 @@ this.detectDiskImageType = function(imageBytes, filepath)
                     break;
                 }
 
-                io.setSurfaceMapContext(slotN);
+                this.setSurfaceMapContext(slotN);
                 oCOM.POPUP.on(popup_id);
-                io.surfaceMapRender();
+                this.surfaceMapRender();
 
           break;
         }
@@ -2816,7 +3135,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
     this.getSoftwareCatRows = function(arg)
     {
         var io = apple2plus.hwObj().io;
-        var catalog = io.getDiskCatalogContext();
+        var catalog = this.getDiskCatalogContext();
         var slotN = catalog ? catalog.slotN : ssSlotNumber();
 
         if(slotN===null || io.SLOT2obj(slotN)!==this)
@@ -2825,7 +3144,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
             return false;
         }
 
-        io.setDiskCatalogPath(arg);
+        this.setDiskCatalogPath(arg);
 
         function GH_listDir(arg, callback)
         {
@@ -2970,12 +3289,12 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
                 arg_cpy.path = parentpath.join("/");
                 arg_cpy.path = arg_cpy.path.substring(0,arg_cpy.path.length-1);
 
-                var parentDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.hwObj().io.diskCatalogNavigate("+JSON.stringify(arg_cpy)+")'>","</div>"];
+                var parentDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.hwObj().io.SLOT2obj("+slotN+").diskCatalogNavigate("+JSON.stringify(arg_cpy)+")'>","</div>"];
 
                 // TABLE HEAD
                 var head = "" 
                     //+ parentDir[0]+"<i class=\"fa fa-arrow-alt-circle-up\"></i>"+parentDir[0];
-                    +(bParentDir?"<div class=appbut style=width:25px title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.hwObj().io.diskCatalogNavigate("+JSON.stringify(arg_cpy)+")'>"
+                    +(bParentDir?"<div class=appbut style=width:25px title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.hwObj().io.SLOT2obj("+slotN+").diskCatalogNavigate("+JSON.stringify(arg_cpy)+")'>"
                     +"<i class=\"fa fa-arrow-alt-circle-up\"></i></div>":"")
                     +'<div style="margin-top:6px;">'
                     + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
@@ -2997,8 +3316,8 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
                     var icon = bDir?"<i class=\"fa fa-folder\"></i> ":"<i class=\"fa fa-cloud-upload-alt\"></i>";
                     var audioWakeup = "EMU_audio_event_unlock();"
                     var cmd  = bDir
-                        ?"apple2plus.hwObj().io.diskCatalogNavigate("+JSON.stringify(arg_cpy)+");"+audioWakeup
-                        :"apple2plus.hwObj().io.diskCatalogLoad("+JSON.stringify(arg_cpy)+");"+audioWakeup;
+                        ?"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskCatalogNavigate("+JSON.stringify(arg_cpy)+");"+audioWakeup
+                        :"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskCatalogLoad("+JSON.stringify(arg_cpy)+");"+audioWakeup;
                     var subDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='"+cmd+"'>"+icon,"</div>"];
 
                     head += '<tr>'
@@ -3015,7 +3334,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
                         +"onclick=\"oCOM.POPUP.toggle('"+popup_id+"');event.stopPropagation();\" "
                         +"style=\"text-align:center;float:right;\">x</div>";
 
-                var current = io.getDiskCatalogContext();
+                var current = disk2.getDiskCatalogContext();
                 if(!current || current.slotN!==slotN) return;
 
                 var slotID = io.slot2ID(current.slotN);
@@ -3023,12 +3342,12 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
                       "<span>SOFTWARE CATALOG</span>"
                     + "<button class=\"appbut\" type=\"button\""
                     + " title=\"Target Disk II slot; click to select the next mounted Disk II\""
-                    + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.diskCatalogCycleSlot()\">"
+                    + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.SLOT2obj("+slotN+").diskCatalogCycleSlot()\">"
                     + "S" + slotID
                     + "</button>"
                     + "<button class=\"appbut\" type=\"button\""
                     + " title=\"Target attached drive; click to select the next drive\""
-                    + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.diskCatalogCycleDrive()\">"
+                    + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.SLOT2obj("+slotN+").diskCatalogCycleDrive()\">"
                     + oCOM.escapeHTML(current.DCODE)
                     + "</button>"
                     + closeBtn;
@@ -3057,7 +3376,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
              * The destination is explicit catalog context. Do not silently
              * redirect an occupied D1 selection to D2.
              */
-            var context = io.getDiskCatalogContext();
+            var context = disk2.getDiskCatalogContext();
             var deviceID = arg.DCODE
                 || (context && context.slotN===slotN ? context.DCODE : null)
                 || io.deviceN2ID(0,"DISKII",slotN);
@@ -3453,7 +3772,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
     this.surfaceMap_html = function(popup_id)
     {
         var io = apple2plus.hwObj().io;
-        var context = io.getSurfaceMapContext();
+        var context = disk2.getDiskCatalogContext();
         var slotN = context ? context.slotN : ssSlotNumber();
         var slotID = slotN===null ? "?" : io.slot2ID(slotN);
         var closeBtn = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+popup_id+"');\" "

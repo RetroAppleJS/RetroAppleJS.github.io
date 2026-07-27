@@ -98,4 +98,15 @@ function col80card()
         console.log("col80card","read(0x"+oCOM.getHexMulti(addr+0xC000,4)+" -> "+idxAddr+")");
         // TODO: THE VIDEX HAS TO DO SOMETHING WITH WHAT THE PERIPHERAL RECEIVES FROM THE BUS
     }
+    this.deviceToolSlotHTML = function(ctx)
+    {
+        ctx = ctx || {};
+        return ""
+            + "<div class=toolbox id=\""+(ctx.toolboxID || ("device_tool_"+ctx.slotID))+"\" hidden>"
+            + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
+            + "    <b>#"+ctx.slotID+" VIDEX</b><br>80-column toolbox is under construction."
+            + "  </div>"
+            + "</div>";
+    };
+
 }
