@@ -27813,7 +27813,7 @@ function ASM(options)
     var root = (typeof globalThis !== "undefined") ? globalThis : ((typeof window !== "undefined") ? window : this);
     var self = this;
 
-    this.version = "0.6.5";
+    this.version = "0.6.6";
     this.maxNumBytes = options.maxNumBytes || 2;
     // Retained for callers that still inspect it. Symbol identity is no longer truncated.
     this.label_len = options.label_len || 8;
@@ -28116,8 +28116,7 @@ function ASM(options)
                         localMap[key] = this.makeSCLocalLabelID(key, anchorLine, salt);
                     out += localMap[key] || m[0];
                     i += m[0].length - 1;
-                // Do not continue: "START BNE .1" starts the scope and contains
-                // a valid forward local reference on the same source line.
+                    continue;
                 }
             }
             out += ch;
@@ -28143,7 +28142,8 @@ function ASM(options)
                 };
                 localMap = {};
                 defined = {};
-                continue;
+                // Keep processing this row: a labelled instruction such as
+                // "START BNE .1" opens the scope and may reference it immediately.
             }
 
             if (!anchor) {
@@ -28172,7 +28172,8 @@ function ASM(options)
                 };
             }
 
-            for (var s = labelIsLocal ? 1 : 0; s < row.sym.length; s++) {
+            var firstReference = row.tag[0] === "LBL" ? 1 : 0;
+            for (var s = firstReference; s < row.sym.length; s++) {
                 row.sym[s] = this.replaceSCLocalReferences(
                     row.sym[s], localMap, anchor.line, salt
                 );
@@ -28501,14 +28502,13 @@ function ASM(options)
         if (!text) return { val: NaN, err: "empty number" };
 
         var hiLo = text.charAt(0);
-        if (hiLo === ">" || hiLo === "<") {
-            var rest = text.substring(1);
-            var atom = this.parseExpressionAtom(rest, symtab);
-            if (atom.err) return atom;
-            var v = hiLo === ">" ? ((atom.val >> 8) & 0xff) : (atom.val & 0xff);
-            var tail = rest.substring(atom.consumed).trim();
-            if (tail) return this.getExpression(String(v) + tail, symtab);
-            return { val: v, bytes: 1, fmt: hiLo === ">" ? "HI" : "LO" };
+        if (hiLo === ">" || hiLo === "<" || hiLo === "/") {
+            var selected = this.getExpression(text.substring(1), symtab);
+            if (selected.err) return selected;
+            var selectedValue = hiLo === "<"
+                ? (selected.val & 0xff)
+                : ((selected.val >> 8) & 0xff);
+            return { val: selectedValue, bytes: 1, fmt: hiLo === "<" ? "LO" : "HI" };
         }
 
         if (/^\$[0-9a-f]+$/i.test(text)) {
@@ -28538,43 +28538,300 @@ function ASM(options)
         return { val: NaN, err: "identifier does not exist: " + text };
     };
 
-    this.getExpression = function (text, symtab) {
+    /*
+     * Convert an assembly expression into simple tokens.  Character literals
+     * are converted through appleCharCode(), keeping the Apple II high-bit
+     * policy in one place for both plain and compound expressions.
+     */
+    this.tokenizeExpression = function (text) {
+        text = String(text == null ? "" : text);
+        var tokens = [];
+        var i = 0;
+        var expectValue = true;
+        var asm = this;
+
+        function push(type, value, raw) {
+            tokens.push({ type: type, value: value, raw: raw });
+            if (type === "value" || type === "identifier" || type === "rparen") expectValue = false;
+            else if (type === "lparen" || type === "operator") expectValue = true;
+        }
+
+        while (i < text.length) {
+            var ch = text.charAt(i);
+            if (/\s/.test(ch)) { i++; continue; }
+
+            if (ch === "\"" || ch === "'") {
+                var quote = ch;
+                i++;
+                var chars = [];
+                var closed = false;
+
+                while (i < text.length) {
+                    ch = text.charAt(i++);
+                    if (ch === quote) { closed = true; break; }
+                    if (ch !== "\\") { chars.push(ch); continue; }
+                    if (i >= text.length)
+                        return { tokens: tokens, err: "unterminated escape in character literal" };
+
+                    var escaped = text.charAt(i++);
+                    switch (escaped) {
+                        case "n": chars.push("\n"); break;
+                        case "r": chars.push("\r"); break;
+                        case "t": chars.push("\t"); break;
+                        case "0": chars.push("\0"); break;
+                        case "x":
+                            var hexEscape = text.substring(i, i + 2);
+                            if (!/^[0-9a-f]{2}$/i.test(hexEscape))
+                                return { tokens: tokens, err: "invalid hexadecimal escape in character literal" };
+                            chars.push(String.fromCharCode(parseInt(hexEscape, 16)));
+                            i += 2;
+                            break;
+                        default:
+                            chars.push(escaped);
+                            break;
+                    }
+                }
+
+                if (!closed) return { tokens: tokens, err: "unterminated character literal" };
+                if (chars.length !== 1)
+                    return { tokens: tokens, err: "character literal in expression must contain exactly one character" };
+
+                push("value", asm.appleCharCode(chars[0], quote), quote + chars[0] + quote);
+                continue;
+            }
+
+            if (ch === "$") {
+                var hex = text.substring(i).match(/^\$[0-9a-f]+/i);
+                if (hex) {
+                    push("value", parseInt(hex[0].substring(1), 16), hex[0]);
+                    i += hex[0].length;
+                    continue;
+                }
+            }
+
+            // '%' is a binary-number prefix only where an operand is expected;
+            // otherwise it remains the modulo operator (for example 5%2).
+            if (ch === "%" && expectValue) {
+                var bin = text.substring(i).match(/^%[01]+/);
+                if (bin) {
+                    push("value", parseInt(bin[0].substring(1), 2), bin[0]);
+                    i += bin[0].length;
+                    continue;
+                }
+            }
+
+            if (/[0-9]/.test(ch)) {
+                var dec = text.substring(i).match(/^[0-9]+/)[0];
+                push("value", parseInt(dec, 10), dec);
+                i += dec.length;
+                continue;
+            }
+
+            if (/[A-Za-z_.$]/.test(ch)) {
+                var id = text.substring(i).match(/^[A-Za-z_.$][A-Za-z0-9_.$]*/)[0];
+                push("identifier", id, id);
+                i += id.length;
+                continue;
+            }
+
+            if (ch === "(") { push("lparen", ch, ch); i++; continue; }
+            if (ch === ")") { push("rparen", ch, ch); i++; continue; }
+
+            var pair = text.substring(i, i + 2);
+            if (pair === "<<" || pair === ">>") {
+                push("operator", pair, pair);
+                i += 2;
+                continue;
+            }
+
+            if (/[+\-*\/%&|^~<>]/.test(ch)) {
+                push("operator", ch, ch);
+                i++;
+                continue;
+            }
+
+            return { tokens: tokens, err: "invalid expression character: " + ch };
+        }
+
+        return { tokens: tokens };
+    };
+
+    this.expressionPrecedence = function (operator) {
+        switch (operator) {
+            case "|": return 1;
+            case "^": return 2;
+            case "&": return 3;
+            case "<<":
+            case ">>": return 4;
+            case "+":
+            case "-": return 5;
+            case "*":
+            case "/":
+            case "%": return 6;
+            default: return -1;
+        }
+    };
+
+    this.applyExpressionBinary = function (operator, left, right) {
+        switch (operator) {
+            case "+": return left + right;
+            case "-": return left - right;
+            case "*": return left * right;
+            case "/":
+                if (right === 0) throw new Error("division by zero");
+                return Math.trunc(left / right);
+            case "%":
+                if (right === 0) throw new Error("division by zero");
+                return left % right;
+            case "<<": return left << right;
+            case ">>": return left >> right;
+            case "&": return left & right;
+            case "^": return left ^ right;
+            case "|": return left | right;
+            default: throw new Error("unsupported operator: " + operator);
+        }
+    };
+
+    this.getExpression = function (text, symtab) 
+    {
         text = String(text == null ? "" : text).trim();
         symtab = symtab || this.symtab;
         if (!text) return { val: NaN, err: "empty expression" };
 
-        // Single number/symbol/string fast path.  A minus sign is treated as
-        // arithmetic, not as part of an identifier, so LABEL-1 parses as LABEL minus 1.
-        if (/^(>|<)?(\$[0-9a-f]+|%[01]+|[+-]?[0-9]+|[A-Za-z_.$][A-Za-z0-9_.$]*|"[^"]*"|'[^']*')$/i.test(text)) {
-            return this.getNumber(text, symtab);
+        /*
+         * S-C byte selectors apply to the complete expression to their right.
+         * Thus /T.NTBL-$100 means high-byte(T.NTBL-$100), not
+         * high-byte(T.NTBL)-$100.  '>' remains a high-byte alias and '<' the
+         * low-byte alias used by the other supported assembler dialects.
+         */
+        switch (text.charAt(0)) {
+            case "<":
+            case ">":
+            case "/":
+                var selected = this.getExpression(text.substring(1), symtab);
+                if (selected.err) return selected;
+                var selectedValue = text.charAt(0) === "<"
+                    ? (selected.val & 0xff)
+                    : ((selected.val >> 8) & 0xff);
+                return {
+                    val: selectedValue,
+                    bytes: 1,
+                    fmt: text.charAt(0) === "<" ? "LO" : "HI"
+                };
+
+            case "\"":
+            case "'":
+                // Preserve the existing full-string result used by data pragmas.
+                if (text.charAt(text.length - 1) === text.charAt(0)
+                    && text.indexOf(text.charAt(0), 1) === text.length - 1) {
+                    return this.getNumber(text, symtab);
+                }
+                break;
+         }
+ 
+        var lexed = this.tokenizeExpression(text);
+        if (lexed.err) return { val: NaN, err: lexed.err };
+
+        var tokens = lexed.tokens;
+        var position = 0;
+        var unresolved = [];
+        var parseError = "";
+        var asm = this;
+
+        function peek() {
+            return tokens[position] || { type: "eof", value: "", raw: "" };
         }
 
-        var unresolved = [];
-        text = this.applyHiLoOperators(text, symtab, unresolved);
-        var js = text.replace(/\$[0-9a-f]+|%[01]+|[A-Za-z_.$][A-Za-z0-9_.$]*/gi, function (tok) {
-            if (tok.charAt(0) === "$") return "0x" + tok.substring(1);
-            if (tok.charAt(0) === "%") return "0b" + tok.substring(1);
-            var id = self.getID(tok);
-            if (Object.prototype.hasOwnProperty.call(symtab, id)) return String(symtab[id]);
-            if (/^(and|or|not)$/i.test(tok)) return tok;
-            unresolved.push(tok);
-            return "NaN";
-        });
-        if (unresolved.length) return { val: NaN, err: "unresolved identifier(s): " + unresolved.join(", ") };
-        if (!/^[0-9a-fxobA-FXOB+\-*/%&|^~()<> \t.]+$/.test(js)) return { val: NaN, err: "unsafe expression: " + text };
-        try {
-            /* eslint no-new-func: 0 */
-            var val;
-            if (root.oCOM && typeof root.oCOM.MathParser === "function") {
-                try { val = new root.oCOM.MathParser().parse(js); }
-                catch (_ignore) { val = Function("return (" + js + ")")(); }
-            } else {
-                val = Function("return (" + js + ")")();
-            }
-            return { val: Number(val), bytes: this.operandByteSizeFromValue(Number(val)), fmt: "EXP" };
-        } catch (err) {
-            return { val: NaN, err: "expression error: " + err.message };
+        function take() {
+            return tokens[position++] || { type: "eof", value: "", raw: "" };
         }
+
+        function parsePrimary() {
+            var token = take();
+            switch (token.type) {
+                case "value":
+                    return token.value;
+
+                case "identifier":
+                    var id = asm.getID(token.value);
+                    if (Object.prototype.hasOwnProperty.call(symtab, id)) return Number(symtab[id]);
+                    unresolved.push(token.value);
+                    return 0;
+
+                case "lparen":
+                    var nested = parseBinary(0);
+                    if (peek().type !== "rparen") {
+                        parseError = parseError || "missing ')'";
+                        return nested;
+                    }
+                    take();
+                    return nested;
+
+                default:
+                    parseError = parseError || "expected value, found "
+                        + (token.raw || token.value || "end of expression");
+                    return 0;
+            }
+        }
+
+        function parseUnary() {
+            var token = peek();
+            if (token.type !== "operator") return parsePrimary();
+
+            switch (token.value) {
+                case "+": take(); return +parseUnary();
+                case "-": take(); return -parseUnary();
+                case "~": take(); return ~parseUnary();
+                case "<": take(); return parseUnary() & 0xff;
+                case ">": take(); return (parseUnary() >> 8) & 0xff;
+                case "/": take(); return (parseUnary() >> 8) & 0xff;
+
+                // At a value position '*' is the current program counter.
+                // Between two values it remains multiplication in parseBinary().
+                case "*": take(); return asm.pc & 0xffff;
+                default: return parsePrimary();
+            }
+        }
+
+        function parseBinary(minPrecedence) 
+        {
+            var left = parseUnary();
+            while (true) 
+            {
+                var token = peek();
+                if (token.type !== "operator") break;
+
+                var precedence = asm.expressionPrecedence(token.value);
+                if (precedence < minPrecedence) break;
+
+                take();
+                var right = parseBinary(precedence + 1);
+                try {
+                    left = asm.applyExpressionBinary(token.value, left, right);
+                } catch (err) {
+                    parseError = parseError || err.message;
+                }
+            }
+            return left;
+        }        
+
+        var value = parseBinary(0);
+        if (!parseError && peek().type !== "eof")
+            parseError = "unexpected token: " + (peek().raw || peek().value);
+
+        if (unresolved.length) {
+            var uniqueUnresolved = unresolved.filter(function (name, index, arr) {
+                return arr.indexOf(name) === index;
+            });
+            return { val: NaN, err: "unresolved identifier(s): " + uniqueUnresolved.join(", ") };
+        }
+        if (parseError) return { val: NaN, err: "expression error: " + parseError };
+
+        return {
+            val: Number(value),
+            bytes: this.operandByteSizeFromValue(Number(value)),
+            fmt: "EXP"
+        };
     };
 
     this.isValidMode = function (entry, mode) {
@@ -28801,7 +29058,7 @@ function ASM(options)
         for (var i = 0; i < rows.length; i++) {
             var row = rows[i] || {};
             var tag = row.tag || [];
-            var sym = row.sourceSym || row.sym || [];
+            var sym = row.sym || row.sourceSym || [];
             if (tag[0] !== "LBL" || !sym[0]) continue;
             var lbl = this.getID(sym[0]);
             if (!lbl) continue;
