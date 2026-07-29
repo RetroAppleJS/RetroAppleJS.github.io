@@ -3,6 +3,172 @@
 
 ORG $D000
 
+
+;*--------------------------------
+;*   ZERO PAGE LOCATIONS:
+;*--------------------------------
+GOWARM         .EQ $00,$01,$02  ;GETS "JMP RESTART"
+GOSTROUT       .EQ $03,$04,$05  ;GETS "JMP STROUT"
+USR            .EQ $0A,$0B,$0C  ;GETS "JMP <USER ADDR>"
+;*                             (INITIALLY $E199)
+CHARAC         .EQ $0D        ;ALTERNATE STRING TERMINATOR
+ENDCHR         .EQ $0E        ;STRING TERMINATOR
+TKN.CNTR       .EQ $0F        ;USED IN PARSE
+EOL.PNTR       .EQ $0F        ;USED IN NXLIN
+NUMDIM         .EQ $0F        ;USED IN ARRAY ROUTINES
+DIMFLG         .EQ $10
+VALTYP         .EQ $11,$12     ;$:VALTYP=$FF; %:VALTYP+1=$80
+DATAFLG        .EQ $13        ;USED IN PARSE
+GARFLG         .EQ $13        ;USED IN GARBAG
+SUBFLG         .EQ $14
+INPUTFLG       .EQ $15        ;= $40 FOR GET, $98 FOR READ
+CPRMASK        .EQ $16        ;RECEIVES CPRTYP IN FRMEVL
+SIGNFLG        .EQ $16        ;FLAGS SIGN IN TAN
+HGR.SHAPE      .EQ $1A,$1B
+HGR.BITS       .EQ $1C
+HGR.COUNT      .EQ $1D
+MON.CH         .EQ $24
+MON.GBASL      .EQ $26
+MON.GBASH      .EQ $27
+MON.H2         .EQ $2C
+MON.V2         .EQ $2D
+MON.HMASK      .EQ $30
+MON.INVFLG     .EQ $32
+MON.PROMPT     .EQ $33
+MON.A1L        .EQ $3C        ;USED BY TAPE I/O ROUTINES
+MON.A1H        .EQ $3D        ;  "
+MON.A2L        .EQ $3E        ;  "
+MON.A2H        .EQ $3F        ;  "
+LINNUM         .EQ $50,$51     ;CONVERTED LINE #
+TEMPPT         .EQ $52        ;LAST USED TEMP STRING DESC
+LASTPT         .EQ $53,$54     ;LAST USED TEMP STRING PNTR
+TEMPST         .EQ $55 - $5D   ;HOLDS UP TO 3 DESCRIPTORS
+INDEX          .EQ $5E,$5F
+DEST           .EQ $60,$61
+RESULT         .EQ $62 - $66   ;RESULT OF LAST * OR /
+TXTTAB         .EQ $67,$68     ;START OF PROGRAM TEXT
+VARTAB         .EQ $69,$6A     ;START OF VARIABLE STORAGE
+ARYTAB         .EQ $6B,$6C     ;START OF ARRAY STORAGE
+STREND         .EQ $6D,$6E     ;END OF ARRAY STORAGE
+FRETOP         .EQ $6F,$70     ;START OF STRING STORAGE
+FRESPC         .EQ $71,$72     ;TEMP PNTR, STRING ROUTINES
+MEMSIZ         .EQ $73,$74     ;END OF STRING SPACE (HIMEM)
+CURLIN         .EQ $75,$76     ;CURRENT LINE NUMBER
+;*                             ( = $FFXX IF IN DIRECT MODE)
+OLDLIN         .EQ $77,$78     ;ADDR. OF LAST LINE EXECUTED
+OLDTEXT        .EQ $79,$7A   
+DATLIN         .EQ $7B,$7C     ;LINE # OF CURRENT DATA STT.
+DATPTR         .EQ $7D,$7E     ;ADDR OF CURRENT DATA STT.
+INPTR          .EQ $7F,$80
+VARNAM         .EQ $81,$82     ;NAME OF VARIABLE
+VARPNT         .EQ $83,$84     ;ADDR OF VARIABLE
+FORPNT         .EQ $85,$86
+TXPSV          .EQ $87,$88     ;USED IN INPUT
+LASTOP         .EQ $87        ;SCRATCH FLAG USED IN FRMEVL
+CPRTYP         .EQ $89        ;>,=,< FLAG IN FRMEVL
+TEMP3          .EQ $8A - $8E
+FNCNAM         .EQ $8A
+DSCPTR         .EQ $8C
+DSCLEN         .EQ $8F        ;USED IN GARBAG
+JMPADRS        .EQ $90,$91,$92  ;GETS "JMP ...."
+LENGTH         .EQ $91        ;USED IN GARBAG
+ARG.EXTENSION  .EQ $92        ;FP EXTRA PRECISION
+TEMP1          .EQ $93 - $97   ;SAVE AREAS FOR FAC
+ARYPNT         .EQ $94        ;USED IN GARBAG
+HIGHDS         .EQ $94,$     ;PNTR FOR BLTU
+HIGHTR         .EQ $96,$97     ;PNTR FOR BLTU
+TEMP2          .EQ $98 - $9C
+TMPEXP         .EQ $99        ;USED IN FIN (EVAL)
+INDX           .EQ $99        ;USED BY ARRAY RTNS
+EXPON          .EQ $9A        ;  "
+DPFLG          .EQ $9B        ;FLAGS DEC PNT IN FIN
+LOWTR          .EQ $9B,$9C
+EXPSGN         .EQ $9C
+FAC            .EQ $9D - $A1   ;MAIN FLT PT ACCUMULATOR
+DSCTMP         .EQ $9D,$9E,$9F
+VPNT           .EQ $A0,$A1     ;TEMP VAR PTR
+FAC.SIGN       .EQ $A2        ;HOLDS UNPACKED SIGN
+SERLEN         .EQ $A3        ;HOLDS LENGTH OF SERIES-1
+SHIFT.SIGN.EXT .EQ $A4        ;SIGN EXTENSION, RIGHT SHIFTS
+ARG            .EQ $A5 - $A9   ;SECONDARY FP ACC
+ARG.SIGN       .EQ $AA
+SGNCPR         .EQ $AB        ;FLAGS OPP SIGN IN FP ROUT.
+FAC.EXTENSION  .EQ $AC        ;FAC EXTENSION BYTE
+SERPNT         .EQ $AD        ;PNTR TO SERIES DATA IN FP
+STRNG1         .EQ $AB,$AC
+STRNG2         .EQ $AD,$AE
+PRGEND         .EQ $AF,$B0
+CHRGET         .EQ $B1 - $C8
+CHRGOT         .EQ $B7
+TXTPTR         .EQ $B8,$B9
+RNDSEED        .EQ $C9 - $CD
+HGR.DX         .EQ $D0,$D1
+HGR.DY         .EQ $D2
+HGR.QUADRANT   .EQ $D3
+HGR.E          .EQ $D4,$D5
+LOCK           .EQ $D6        ;NO USER ACCESS IF > 127
+ERRFLG         .EQ $D8        ;$80 IF ON ERR ACTIVE
+ERRLIN         .EQ $DA,$DB     ;LINE # WHERE ERROR OCCURRED
+ERRPOS         .EQ $DC,$DD     ;TXTPTR SAVE FOR HANDLERR
+ERRNUM         .EQ $DE        ;WHICH ERROR OCCURRED
+ERRSTK         .EQ $DF        ;STACK PNTR BEFORE ERROR
+HGR.X          .EQ $E0,$E1
+HGR.Y          .EQ $E2
+HGR.COLOR      .EQ $E4
+HGR.HORIZ      .EQ $E5        ;BYTE INDEX FROM GBASH,L
+HGR.PAGE       .EQ $E6        ;HGR=$20, HGR2=$40
+HGR.SCALE      .EQ $E7
+HGR.SHAPE.PNTR .EQ $E8,$E9
+HGR.COLLISIONS .EQ $EA
+FIRST          .EQ $F0
+SPEEDZ         .EQ $F1        ;OUTPUT SPEED
+TRCFLG         .EQ $F2
+FLASH.BIT      .EQ $F3        ;= $40 FOR FLASH, ELSE =$00
+TXTPSV         .EQ $F4,$F5
+CURLSV         .EQ $F6,$F7
+REMSTK         .EQ $F8        ;STACK PNTR BEFORE EACH STT.
+HGR.ROTATION   .EQ $F9
+;* $FF IS ALSO USED BY THE STRING OUT ROUTINES
+;*--------------------------------
+STACK            .EQ $100
+INPUT.BUFFER     .EQ $200
+AMPERSAND.VECTOR .EQ $3F5 - 3F7   ;GETS "JMP; ...."
+;*--------------------------------
+;*      I/O & SOFT SWITCHES
+;*--------------------------------
+KEYBOARD         .EQ $C000
+SW.TXTCLR        .EQ $C050
+SW.MIXCLR        .EQ $C052
+SW.MIXSET        .EQ $C053
+SW.LOWSCR        .EQ $C054
+SW.HISCR         .EQ $C055
+SW.LORES         .EQ $C056
+SW.HIRES         .EQ $C057
+;*--------------------------------
+;*      MONITOR SUBROUTINES
+;*--------------------------------
+MON.PLOT         .EQ $F800
+MON.HLINE        .EQ $F819
+MON.VLINE        .EQ $F828
+MON.SETCOL       .EQ $F864
+MON.SCRN         .EQ $F871
+MON.PREAD        .EQ $FB1E
+MON.SETTXT       .EQ $FB39
+MON.SETGR        .EQ $FB40
+MON.TABV         .EQ $FB5B
+MON.HOME         .EQ $FC58
+MON.WAIT         .EQ $FCA8
+MON.RD2BIT       .EQ $FCFA
+MON.RDKEY        .EQ $FD0C
+MON.GETLN        .EQ $FD6A
+MON.COUT         .EQ $FDED
+MON.INPORT       .EQ $FE8B
+MON.OUTPORT      .EQ $FE95
+MON.WRITE        .EQ $FECD
+MON.READ         .EQ $FEFD
+MON.READ2        .EQ $FF02
+;*--------------------------------
+
 ;--------------------------------
 ;   APPLESOFT TOKENS
 ;--------------------------------
@@ -542,7 +708,7 @@ REASON CPY FRETOP+1         ;HIGH BYTE
        PLA
        TAY
        PLA          ;DID WE FIND ENOUGH ROOM?
-       CPY FRETOP+1 HIGH BYTE
+       CPY FRETOP+1 ;HIGH BYTE
        BCC .4       ;YES, AT LEAST A PAGE
        BNE MEMERR   ;NO, MEM FULL ERR
        CMP FRETOP   ;LOW BYTE
@@ -589,7 +755,7 @@ PRINT.ERROR.LINNUM
 ;--------------------------------
 RESTART
        JSR CRDO             ;PRINT <RETURN>
-       LDX #']+$80          ;PROMPT CHARACTER
+       LDX #']'+$80          ;PROMPT CHARACTER
        JSR INLIN2           ;READ A LINE
        STX TXTPTR           ;SET UP CHRGET TO SCAN THE LINE
        STY TXTPTR+1
@@ -614,7 +780,7 @@ NUMBERED.LINE
        JSR PARSE.INPUT.LINE ;AND PARSE THE INPUT LINE
        STY EOL.PNTR         ;SAVE INDEX TO INPUT BUFFER
        JSR FNDLIN           ;IS THIS LINE # ALREADY IN PROGRAM?
-       BCC PUT.NEW.LINE NO
+       BCC PUT.NEW.LINE     ;NO
        LDY #1               ;YES, SO DELETE IT
        LDA (LOWTR),Y        ;LOWTR POINTS AT LINE
        STA INDEX+1          ;GET HIGH BYTE OF FORWARD PNTR
@@ -776,14 +942,14 @@ PARSE  INX          ;NEXT INPUT CHARACTER
        CMP #' '     ;IGNORE BLANKS
        BEQ PARSE
 .2     STA ENDCHR
-       CMP #'"      ;START OF QUOTATION?
+       CMP #'"'     ;START OF QUOTATION?
        BEQ .13
        BVS .9       ;BRANCH IF IN "DATA" STATEMENT
-       CMP #'?      ;SHORTHAND FOR "PRINT"?
+       CMP #'?'     ;SHORTHAND FOR "PRINT"?
        BNE .3       ;NO
        LDA #T.PRINT  ;YES, REPLACE WITH "PRINT" TOKEN
        BNE .9       ;...ALWAYS
-.3     CMP #'0      ;IS IT A DIGIT, COLON, OR SEMI-COLON?
+.3     CMP #'0'     ;IS IT A DIGIT, COLON, OR SEMI-COLON?
        BCC .4       ;NO, PUNCTUATION !"#$%&'()*+,-./
        CMP #' '+1
        BCC .9       ;YES, NOT A TOKEN
@@ -811,16 +977,16 @@ PARSE  INX          ;NEXT INPUT CHARACTER
        SEC          ;NO, COMPARE TO CHAR IN TABLE
        SBC (FAC),Y  ;SAME AS NEXT CHAR OF TOKEN NAME?
        BEQ .5       ;YES, CONTINUE MATCHING
-       CMP #$80     MAYBE; WAS IT SAME EXCEPT FOR BIT 7?
-       BNE .14      NO, SKIP TO NEXT TOKEN
+       CMP #$80     ;MAYBE WAS IT SAME EXCEPT FOR BIT 7?
+       BNE .14      ;NO, SKIP TO NEXT TOKEN
        ORA TKN.CNTR     ;YES, END OF TOKEN; GET TOKEN #
        CMP #T.AT    ;DID WE MATCH "AT"?
        BNE .8       ;NO, SO NO AMBIGUITY
        LDA INPUT.BUFFER+1,X  ;"AT" COULD BE "ATN" OR "A TO"
-       CMP #'N      ;"ATN" HAS PRECEDENCE OVER "AT"
-       BEQ .14      IT IS "ATN", FIND IT THE HARD WAY
-       CMP #'O      ;"TO" HAS PRECEDENCE OVER "AT"
-       BEQ .14      IT IS "A TO", FIN IT THE HARD WAY
+       CMP #'N'      ;"ATN" HAS PRECEDENCE OVER "AT"
+       BEQ .14      ;IT IS "ATN", FIND IT THE HARD WAY
+       CMP #'O'      ;"TO" HAS PRECEDENCE OVER "AT"
+       BEQ .14      ;IT IS "A TO", FIN IT THE HARD WAY
        LDA #T.AT    ;NOT "ATN" OR "A TO", SO USE "AT"
 ;--------------------------------
 ;      STORE CHARACTER OR TOKEN IN OUTPUT LINE
@@ -830,12 +996,12 @@ PARSE  INX          ;NEXT INPUT CHARACTER
        INY          ;ADVANCE OUTPUT INDEX
        STA INPUT.BUFFER-5,Y   ;STORE CHAR OR TOKEN
        LDA INPUT.BUFFER-5,Y   ;TEST FOR EOL OR EOS
-       BEQ .17      END OF LINE
+       BEQ .17      ;END OF LINE
        SEC
-       SBC #':      ;END OF STATEMENT?
-       BEQ .10      YES, CLEAR DATAFLG
+       SBC #':'      ;END OF STATEMENT?
+       BEQ .10      ;YES, CLEAR DATAFLG
        CMP #T.DATA-':'   ;"DATA" TOKEN?
-       BNE .11      NO, LEAVE DATAFLG ALONE
+       BNE .11      ;NO, LEAVE DATAFLG ALONE
 .10    STA DATAFLG  ;DATAFLG = 0 OR $83-$3A = $49
 .11    SEC          ;IS IT A "REM" TOKEN?
        SBC #T.REM-':'
@@ -852,7 +1018,7 @@ PARSE  INX          ;NEXT INPUT CHARACTER
 .13    INY          ;NEXT OUTPUT CHAR
        STA INPUT.BUFFER-5,Y
        INX          ;NEXT INPUT CHAR
-       BNE .12      ...ALWAYS
+       BNE .12      ;...ALWAYS
 ;--------------------------------
 ;      ADVANCE POINTER TO NEXT TOKEN NAME
 ;--------------------------------
@@ -981,7 +1147,7 @@ LIST   BCC .1       ;NO LINE # SPECIFIED
        BEQ .1       ;---DITTO---
        CMP #T.MINUS  ;IF DASH OR COMMA, START AT LINE 0
        BEQ .1            ;IS IS A DASH
-       CMP #',           ;COMMA?
+       CMP #','           ;COMMA?
        BNE RTS.2         ;NO, ERROR
 .1     JSR LINGET   ;CONVERT LINE NUMBER IF ANY
        JSR FNDLIN   ;POINT LOWTR TO 1ST LINE
@@ -989,7 +1155,7 @@ LIST   BCC .1       ;NO LINE # SPECIFIED
        BEQ .3       ;NO
        CMP #T.MINUS
        BEQ .2
-       CMP #',
+       CMP #','
        BNE RTS.1
 .2     JSR CHRGET   ;GET NEXT CHAR
        JSR LINGET   ;CONVERT SECOND LINE #
@@ -4402,9 +4568,9 @@ SIGN   LDA FAC      ;CHECK SIGN OF FAC AND
 SIGN1  LDA FAC.SIGN
 ;--------------------------------
 SIGN2  ROL          ;MSBIT TO CARRY
-       LDA #$FF     -1
-       BCS RTS.15   MSBIT = 1
-       LDA #1       +1
+       LDA #$FF     ;-1
+       BCS RTS.15   ;MSBIT = 1
+       LDA #1       ;+1
 RTS.15 RTS
 ;--------------------------------
 ;      "SGN" FUNCTION
@@ -5206,7 +5372,7 @@ SIN    JSR COPY.FAC.TO.ARG.ROUNDED
        BPL SIN.1         ;ALREADY 0...1/4
        JSR FADDH         ;ADD 1/2 TO SHIFT TO -1/4...1/2
        LDA FAC.SIGN      ;TEST SIGN
-       BMI SIN.2         -1/4...0
+       BMI SIN.2         ;-1/4...0
 ;                        0...1/2
        LDA SIGNFLG       ;SIGNFLG INITIALIZED = 0 IN "TAN"
        EOR #$FF          ;FUNCTION
