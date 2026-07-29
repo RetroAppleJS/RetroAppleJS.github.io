@@ -28911,6 +28911,7 @@ function ASM(options)
             case "WORD_BE":
                 arr = this.splitCSV(operandText);
                 return { bytes: arr.length * 2, oby: 2 };
+            case "HEX":
             case "SC_HEX":
                 n = operandText.replace(/[^A-Fa-f0-9]/g, "").length >> 1;
                 return { bytes: n, oby: n };
