@@ -642,6 +642,7 @@ ERROR  BIT ERRFLG    ;"ON ERR" TURNED ON?
        JSR STKINI    ;FIX STACK, ET AL
        LDA #QT.ERROR ;PRINT " ERROR" AND BELL
        LDY /QT.ERROR
+;S.D431
 ;--------------------------------
 ;      PRINT STRING AT (Y,A)
 ;      PRINT CURRENT LINE # UNLESS IN DIRECT MODE
@@ -856,7 +857,7 @@ PARSE  INX          ;NEXT INPUT CHARACTER
        BNE .9       ;...ALWAYS
 .3     CMP #'0'     ;IS IT A DIGIT, COLON, OR SEMI-COLON?
        BCC .4       ;NO, PUNCTUATION !"#$%&'()*+,-./
-       CMP #' '+1
+       CMP #';'+1
        BCC .9       ;YES, NOT A TOKEN
 ;--------------------------------
 ;      SEARCH TOKEN NAME TABLE FOR MATCH STARTING
@@ -1364,6 +1365,8 @@ CONT   BNE RTS.4    ;IF NOT END OF STATEMENT, DO NOTHING
        STA CURLIN
        STY CURLIN+1
 RTS.4  RTS
+
+;S.D8B0
 ;--------------------------------
 ;      "SAVE" COMMAND
 ;      WRITES PROGRAM ON CASSETTE TAPE
@@ -1435,6 +1438,9 @@ RUN    PHP          ;SAVE STATUS WHILE SUBTRACTING
        JMP SETPTRS  ;START AT BEGINNING OF PROGRAM
 .1     JSR CLEARC   ;CLEAR VARIABLES
        JMP GO.TO.LINE   ;JOIN GOSUB STATEMENT
+
+
+;S.D921
 ;--------------------------------
 ;      "GOSUB" STATEMENT
 ;
@@ -1460,6 +1466,8 @@ GO.TO.LINE
        JSR CHRGOT
        JSR GOTO
        JMP NEWSTT
+
+;S.D93E
 ;--------------------------------
 ;      "GOTO" STATEMENT
 ;      ALSO USED BY "RUN" AND "GOSUB"
@@ -1487,6 +1495,8 @@ GOTO   JSR LINGET   ;GET GOTO LINE
        SBC #0
        STA TXTPTR+1
 RTS.5  RTS          ;RETURN TO NEWSTT OR GOSUB
+
+;S.D96B
 ;--------------------------------
 ;      "POP" AND "RETURN" STATEMENTS
 ;--------------------------------
@@ -1532,6 +1542,8 @@ ADDON  TYA
        INC TXTPTR+1
 .1
 RTS.6  RTS
+
+;D9A3
 ;--------------------------------
 ;      SCAN AHEAD TO NEXT ":" OR EOL
 ;--------------------------------
@@ -1559,6 +1571,8 @@ PULL3  PLA
        PLA
        PLA
        RTS
+
+;S.D9C9
 ;--------------------------------
 ;      "IF" STATEMENT
 ;--------------------------------
@@ -1602,7 +1616,7 @@ ON.2   DEC FAC+4    ;COUNTED TO RIGHT ONE YET?
        CMP #','     ;TERMINATE WITH COMMA?
        BEQ ON.2     ;YES
        PLA          ;NO, END OF LIST, SO IGNORE
-RTS.7  ;RTS
+RTS.7  RTS
 ;--------------------------------
 ;      CONVERT LINE NUMBER
 ;--------------------------------
@@ -1649,6 +1663,8 @@ LINGET LDX #0       ;ASC # TO HEX ADDRESS
        INC LINNUM+1
 .2     JSR CHRGET   ;GET NEXT CHAR
        JMP .1       ;MORE CONVERTING
+
+;S.DA46
 ;--------------------------------
 ;      "LET" STATEMENT
 ;
@@ -1671,7 +1687,7 @@ LET    JSR PTRGET   ;GET <VAR>
        BNE LET.STRING
        PLA
 ;--------------------------------
-LET2   ;BPL .1       ;REAL VARIABLE
+LET2   BPL .1       ;REAL VARIABLE
        JSR ROUND.FAC     ;INTEGER VAR: ROUND TO 32 BITS
        JSR AYINT         ;TRUNCATE TO 16-BITS
        LDY #0
@@ -1929,6 +1945,8 @@ READ   LDX DATPTR   ;Y,X POINTS AT NEXT DATA STATEMENT
 ;--------------------------------
 INPUT.FLAG.ZERO
        LDA #0       ;SET INPUTFLG = $00
+
+;S.DBEB
 ;--------------------------------
 ;      PROCESS INPUT LIST
 ;
@@ -2175,7 +2193,7 @@ CHKVAL BIT VALTYP   ;$00 IF NUMERIC, $FF IF STRING
 JERROR JMP ERROR
 
 
-;S.DEF9
+ORG $DEF9
 ;--------------------------------
 ;      "SCRN(" FUNCTION
 ;--------------------------------
@@ -2190,7 +2208,7 @@ SCREEN JSR CHRGET
 ;--------------------------------
 ;      PROCESS UNARY OPERATORS (FUNCTIONS)
 ;--------------------------------
-UNARY  ;CMP #T.SCRN     ;NOT UNARY, DO SPECIAL
+UNARY  CMP #T.SCRN     ;NOT UNARY, DO SPECIAL
        BEQ SCREEN
        ASL          ;DOUBLE TOKEN TO GET INDEX
        PHA
@@ -2255,6 +2273,7 @@ RELOPS JSR CHKVAL   ;MAKE SURE FAC IS CORRECT TYPE
        JSR FCOMP    ;RETURN A-REG = -1,0,1
        TAX           ;AS ARG <,=,> FAC
        JMP NUMCMP
+;S.DF7D
 ;--------------------------------
 ;      STRING COMPARISON
 ;--------------------------------
@@ -2623,6 +2642,7 @@ ARRAY  LDA SUBFLG   ;SUBSCRIPTS GIVEN?
        STA VALTYP+1
        AND #$7F         ;ISOLATE DIMFLG
        STA DIMFLG
+;S.E169
 ;--------------------------------
 ;      SEARCH ARRAY TABLE FOR THIS ARRAY NAME
 ;--------------------------------
@@ -2780,6 +2800,7 @@ MAKE.NEW.ARRAY
        LDA DIMFLG   ;WAS THIS CALLED FROM "DIM" STATEMENT?
        BNE RTS.9    ;YES, WE ARE FINISHED
        INY          ;NO, NOW NEED TO FIND THE ELEMENT
+;S.E24B
 ;--------------------------------
 ;      FIND SPECIFIED ARRAY ELEMENT
 ;
@@ -2806,8 +2827,8 @@ FAE.1  STA STRNG2+1
        CMP (LOWTR),Y
        BCC FAE.3    ;NOT TOO LARGE
 ;--------------------------------
-GSE    ;JMP SUBERR   ;BAD SUBSCRIPTS ERROR
-GME    ;JMP MEMERR   ;MEM FULL ERROR
+GSE    JMP SUBERR   ;BAD SUBSCRIPTS ERROR
+GME    JMP MEMERR   ;MEM FULL ERROR
 ;--------------------------------
 FAE.2  INY          ;BUMP POINTER INTO DESCRIPTOR
 FAE.3  LDA STRNG2+1 ;BYPASS MULTIPLICATION IF VALUE SO
@@ -2844,7 +2865,9 @@ FAE.3  LDA STRNG2+1 ;BYPASS MULTIPLICATION IF VALUE SO
        STA VARPNT+1
        TAY          ;RETURN WITH ADDR IN VARPNT
        LDA VARPNT        ;AND IN Y,A
-RTS.9  ;RTS
+RTS.9  RTS
+
+;S.E2AD
 ;--------------------------------
 ;      MULTIPLY (STRNG2) BY ((LOWTR),Y)
 ;      LEAVING PRODUCT IN A,X.  (HI-BYTE ALSO IN Y.)
@@ -3628,7 +3651,7 @@ ASC_   JSR GETSTR   ;GET STRING, GET LENGTH IN Y-REG
        TAY
        JMP SNGFLT        ;FLOAT Y-REG INTO FAC
 ;--------------------------------
-GOIQ   ;JMP IQERR    ;ILLEGAL QUANTITY ERROR
+GOIQ   JMP IQERR    ;ILLEGAL QUANTITY ERROR
 ;--------------------------------
 ;      SCAN TO NEXT CHARACTER AND CONVERT EXPRESSION
 ;      TO SINGLE BYTE IN X-REG
@@ -3846,6 +3869,7 @@ FADD.3 BIT SGNCPR   ;DO FAC AND ARG HAVE SAME SIGNS?
        LDA 1,Y
        SBC 1,X
        STA FAC+1
+;S.E829
 ;--------------------------------
 ;      NORMALIZE VALUE IN FAC
 ;--------------------------------
@@ -4011,7 +4035,7 @@ SHIFT.RIGHT
        LDA FAC.EXTENSION
        BCS SHIFT.RIGHT.5 ;FINISHED SHIFTING
 SHIFT.RIGHT.3
-L      ;ASL 1,X           ;SIGN -> CARRY (SIGN EXTENSION)
+L      ASL 1,X           ;SIGN -> CARRY (SIGN EXTENSION)
        BCC .1            ;SIGN +
        INC 1,X           ;PUT SIGN IN LSB
 .1     ROR 1,X          ;RESTORE VALUE, SIGN STILL IN CARRY
@@ -4039,7 +4063,8 @@ SHIFT.RIGHT.5
 
 CON.ONE .HS 8100000000
 ;--------------------------------
-POLY.LOG  .WORD #3      ;# OF COEFFICIENTS - 1
+
+POLY.LOG     .DA #3         ;# OF COEFFICIENTS - 1
 
              .HS 7F5E56CB79 ;* X^7 +
 
@@ -4057,6 +4082,7 @@ CON.SQR.TWO  .HS 813504F334
 CON.NEG.HALF .HS 8080000000
 
 CON.LOG.TWO  .HS 80317217F8
+;S.E941
 ;--------------------------------
 ;      "LOG" FUNCTION
 ;--------------------------------
@@ -4225,7 +4251,7 @@ ZERO   PLA
        PLA
        JMP ZERO.FAC
 ;--------------------------------
-JOV    ;JMP OVERFLOW
+JOV    JMP OVERFLOW
 ;--------------------------------
 ;      MULTIPLY FAC BY 10
 ;--------------------------------
@@ -5603,7 +5629,7 @@ PLOTFNS
        STX MON.V2
        RTS          ;SECOND VALUE STILL IN X-REG
 ;--------------------------------
-GOERR  ;JMP IQERR    ;ILLEGAL QUANTITY ERROR
+GOERR  JMP IQERR    ;ILLEGAL QUANTITY ERROR
 ;--------------------------------
 ;      GET "A,B AT C" VALUES FOR "HLIN" AND "VLIN"
 ;
@@ -5723,7 +5749,7 @@ HIMEM  JSR FRMNUM   ;GET VALUE SPECIFIED FOR HIMEM
        LDA LINNUM+1
        SBC STREND+1
        BCS SETHI    ;IT IS ABOVE THEM
-JMM    ;JMP MEMERR   ;NOT ENOUGH MEMORY
+JMM    JMP MEMERR   ;NOT ENOUGH MEMORY
 SETHI  LDA LINNUM   ;STORE NEW HIMEM: VALUE
        STA MEMSIZ
        STA FRETOP   ;<<<NOTE THAT "HIMEM:" DOES NOT>>>
@@ -5814,7 +5840,7 @@ RESUME LDA ERRLIN   ;RESTORE LINE # AND TXTPTR
        TXS          ;BEFORE STATEMENT SCANNED
        JMP NEWSTT   ;DO STATEMENT AGAIN
 ;--------------------------------
-JSYN   ;JMP SYNERR
+JSYN   JMP SYNERR
 ;--------------------------------
 ;      "DEL" STATEMENT
 ;--------------------------------
@@ -5920,7 +5946,7 @@ RECALL JSR GETARYPT   ;FIND ARRAY IN MEMORY
 ;--------------------------------
 ;      "HGR" AND "HGR2" STATEMENTS
 ;--------------------------------
-HGR2   ;BIT SW.HISCR      ;SELECT PAGE 2 ($4000-5FFF)
+HGR2   BIT SW.HISCR      ;SELECT PAGE 2 ($4000-5FFF)
        BIT SW.MIXCLR     ;DEFAULT TO FULL SCREEN
        LDA /$4000        ;SET STARTING PAGE FOR HIRES
        BNE SETHPG        ;...ALWAYS
@@ -6035,7 +6061,7 @@ MOVE.LEFT.OR.RIGHT
        EOR #$C0     ;MOVE SIGN BIT BACK WHERE IT WAS
 LR.1   STA MON.HMASK     ;NEW MASK VALUE
        RTS
-LR.2   ;DEY          ;MOVED TO NEXT BYTE, SO DECR INDEX
+LR.2   DEY          ;MOVED TO NEXT BYTE, SO DECR INDEX
        BPL LR.3     ;STILL NOT PAST EDGE
        LDY #39      ;OFF LEFT EDGE, SO WRAP AROUND SCREEN
 LR.3   LDA #$C0     ;NEW HMASK, RIGHTMOST BIT ON SCREEN
@@ -6261,7 +6287,7 @@ HGLIN  PHA          ;COMPUTE DX = X- X0
 ;      MOVE LEFT OR RIGHT ONE PIXEL
 ;      (A) BIT 6 HAS DIRECTION
 ;--------------------------------
-MOVEX  ;ASL          ;PUT BIT 6 INTO SIGN POSITION
+MOVEX  ASL          ;PUT BIT 6 INTO SIGN POSITION
        JSR MOVE.LEFT.OR.RIGHT
        SEC
 ;--------------------------------
@@ -6373,7 +6399,7 @@ DRAW0  STX HGR.SHAPE   ;SAVE SHAPE ADDRESS
 ;--------------------------------
 ;      APPLESOFT ENTERS HERE
 ;--------------------------------
-DRAW1  ;TAX          ;SAVE ROTATION (0-$3F)
+DRAW1  TAX          ;SAVE ROTATION (0-$3F)
        LSR          ;DIVIDE ROTATION BY 16 TO GET
        LSR          ;QUADRANT (0=UP, 1=RT, 2=DWN, 3=LFT)
        LSR
@@ -6518,7 +6544,7 @@ HFNS   JSR FRMNUM   ;EVALUATE EXPRESSION, MUST BE NUMERIC
        LDA FAC      ;AND VERTICAL COORDINATE
        RTS
 ;--------------------------------
-GGERR  ;JMP GOERR    ;ILLEGAL QUANTITY ERROR
+GGERR  JMP GOERR    ;ILLEGAL QUANTITY ERROR
 ;--------------------------------
 ;      "HCOLOR=" STATEMENT
 ;--------------------------------
@@ -6539,7 +6565,7 @@ COLORTBL .HS 002A557F80AAD5FF
 ;      HPLOT TO X,Y
 ;      HPLOT X1,Y1 TO X2,Y2
 ;--------------------------------
-HPLOT  ;CMP #T.TO     "PLOT TO" FORM?
+HPLOT  CMP #T.TO     "PLOT TO" FORM?
        BEQ .2            ;YES, START FROM CURRENT LOCATION
        JSR HFNS          ;NO, GET STARTING POINT OF LINE
        JSR HPLOT0   ;PLOT THE POINT, AND SET UP FOR
@@ -6704,3 +6730,4 @@ HTAB   JSR GETBYT
 .2     STA MON.CH
        RTS
 ;--------------------------------
+       .AS -/KRW/   ;SOMEONE'S INITIALS?
