@@ -27761,14 +27761,40 @@ function Apple2Plus(context)
             <!--form name="tab2" class="tabdata"><input name="tabdata" value='{"SYS":"A2P"}'></form!-->
             <script type="text/javascript">
 /*
- * ASM_core_v6_3.js
+ * ASM_core_v6_4.js
  *
- * v6.3 architecture:
- * - Pragmas/directives keep their parser functions inside this.pragma entries.
- * - 6502 mnemonics keep their parser functions inside this.mnemonics entries.
- * - Metadata/unclassified statement handling is dispatched through this.metadata entries.
- * - This makes tokenisation/parsing consistently table-driven.
- * - Adds compile(tokenisedRows) to generate byte code, listing lines, and byte-code dump lines.
+ * v6.4 architecture:
+
+     * S-C Macro Assembler local-label policy
+     * ----------------------------------------
+     *
+     * The S-C Macro Assembler manual calls labels of the form .0 through .99
+     * "local labels".  They are not directives, even though their spelling
+     * begins with a period.  Each local label is associated with the preceding
+     * normal (non-local) label.  The same numeric local label may therefore be
+     * reused after another normal label starts a new local-label scope.
+     *
+     * A reference such as BNE .4 binds to .4 in the scope owned by the most
+     * recent preceding normal label.  Forward references inside that scope are
+     * legal.  A local label or reference before any normal label is invalid.
+     *
+     * S-C also restricts a local label's value to no more than 255 bytes above
+     * the value of its owning normal label.  This assembler validates that
+     * policy when the local label location is registered.
+     *
+     * ASM_core cannot store the source spelling ".1" directly in the global
+     * symbol table because another routine may also define ".1".  During
+     * preparsing, every local definition and reference is therefore rewritten
+     * to a deterministic private identifier:
+     *
+     *     .SCLOCAL_<number>_L<anchor-line>_<salt>
+     *
+     * The leading period keeps the identifier outside the normal user-label
+     * namespace.  The anchor line identifies the owning normal-label scope,
+     * while the per-assembly salt prevents accidental collisions when rows or
+     * symbol tables from separate assembly runs are combined.  sourceSym keeps
+     * the original spelling for listings and diagnostics.
+
  */
 
 "use strict";
@@ -27797,6 +27823,8 @@ function ASM(options)
     this.errors = [];
     this.warnings = [];
     this.passNo = 0;
+    this.scLocalLabelSalt = 0;
+    this.scLocalLabelPrefix = ".SCLOCAL_";
 
     /*
      * Backward compatibility:
@@ -27972,6 +28000,7 @@ function ASM(options)
         this.errors = [];
         this.warnings = [];
         this.passNo = 0;
+        this.scLocalLabelSalt = 0;
         return this;
     };
 
@@ -28032,9 +28061,114 @@ function ASM(options)
         return this.metadata[String(tagName || "").toUpperCase()] || null;
     };
 
+    this.isSCLocalLabel = function (text) {
+        return /^\.(?:[0-9]|[1-9][0-9])$/.test(String(text == null ? "" : text).trim());
+    };
+
+    this.makeSCLocalLabelID = function (numberText, anchorLine, salt) {
+        return this.scLocalLabelPrefix
+            + String(parseInt(numberText, 10))
+            + "_L" + String(anchorLine)
+            + "_" + String(salt);
+    };
+
+    this.replaceSCLocalReferences = function (text, localMap) {
+        text = String(text == null ? "" : text);
+        localMap = localMap || {};
+        var out = "";
+        var quote = "";
+        var escaped = false;
+
+        for (var i = 0; i < text.length; i++) {
+            var ch = text.charAt(i);
+            if (escaped) { out += ch; escaped = false; continue; }
+            if (ch === "\\") { out += ch; escaped = true; continue; }
+            if (quote) {
+                out += ch;
+                if (ch === quote) quote = "";
+                continue;
+            }
+            if (ch === "'" || ch === '"') { quote = ch; out += ch; continue; }
+
+            if (ch === ".") {
+                var m = text.substring(i).match(/^\.(?:[0-9]|[1-9][0-9])(?![A-Za-z0-9_.$])/);
+                if (m) {
+                    var key = String(parseInt(m[0].substring(1), 10));
+                    out += localMap[key] || m[0];
+                    i += m[0].length - 1;
+                    continue;
+                }
+            }
+            out += ch;
+        }
+        return out;
+    };
+
+    this.normaliseSCLocalLabels = function (statements) {
+        statements = statements || [];
+        var salt = ++this.scLocalLabelSalt;
+        var anchor = null;
+        var localMap = null;
+        var defined = null;
+
+        for (var i = 0; i < statements.length; i++) {
+            var row = statements[i];
+            row.sourceSym = row.sym.slice();
+
+            if (row.tag[0] === "LBL" && row.sym[0] && !this.isSCLocalLabel(row.sym[0])) {
+                anchor = {
+                    line: row.line,
+                    id: this.getID(row.sym[0])
+                };
+                localMap = {};
+                defined = {};
+                continue;
+            }
+
+            if (!anchor) {
+                for (var b = 0; b < row.sym.length; b++) {
+                    if (this.isSCLocalLabel(row.sym[b])) {
+                        row.err = row.err || "S-C local label " + row.sym[b] + " has no preceding normal label";
+                    }
+                }
+                continue;
+            }
+
+            var labelIsLocal = row.tag[0] === "LBL" && this.isSCLocalLabel(row.sym[0]);
+            if (labelIsLocal) {
+                var labelNumber = String(parseInt(row.sym[0].substring(1), 10));
+                if (!localMap[labelNumber])
+                    localMap[labelNumber] = this.makeSCLocalLabelID(labelNumber, anchor.line, salt);
+                if (defined[labelNumber])
+                    row.err = row.err || "duplicate S-C local label ." + labelNumber + " in scope " + anchor.id;
+                defined[labelNumber] = true;
+                row.sym[0] = localMap[labelNumber];
+                row.scLocalLabel = {
+                    source: "." + labelNumber,
+                    anchor: anchor.id,
+                    anchorLine: anchor.line,
+                    internal: localMap[labelNumber]
+                };
+            }
+
+            for (var s = labelIsLocal ? 1 : 0; s < row.sym.length; s++) {
+                var token = row.sym[s];
+                var refs = String(token).match(/\.(?:[0-9]|[1-9][0-9])(?![A-Za-z0-9_.$])/g) || [];
+                for (var r = 0; r < refs.length; r++) {
+                    var number = String(parseInt(refs[r].substring(1), 10));
+                    if (!localMap[number])
+                        localMap[number] = this.makeSCLocalLabelID(number, anchor.line, salt);
+                }
+                row.sym[s] = this.replaceSCLocalReferences(token, localMap);
+            }
+        }
+        return statements;
+    };
+
     this.getID = function (text) {
         text = String(text || "").trim();
         text = text.split("+")[0].split("-")[0];
+        if (text.indexOf(this.scLocalLabelPrefix) === 0) return text;
         return text.substring(0, this.label_len);
     };
 
@@ -28162,11 +28296,24 @@ function ASM(options)
     };
 
     this.registerLabelLocation = function (row, passNo) {
-        if (passNo !== 1 || row.tag[0] !== "LBL") return;
+        if (row.tag[0] !== "LBL") return;
         var label = this.getID(row.sym[0]);
         if (!label) return;
-        this.symtab[label] = this.pc;
-        this.symlink[label] = { type: "loc", pc: this.pc };
+        if (row.scLocalLabel) {
+            var anchorValue = this.symtab[row.scLocalLabel.anchor];
+            if (typeof anchorValue === "number") {
+                var delta = this.pc - anchorValue;
+                if (delta < 0 || delta > 255) {
+                    row.err = row.err || "S-C local label " + row.scLocalLabel.source
+                        + " must be within 0..255 bytes above " + row.scLocalLabel.anchor;
+                }
+            }
+        }
+
+        if (passNo === 1) {
+            this.symtab[label] = this.pc;
+            this.symlink[label] = { type: "loc", pc: this.pc };
+        }
     };
 
     this.registerLabelDefinition = function (row, passNo, value) {
@@ -28438,6 +28585,7 @@ function ASM(options)
             // v0.5 keeps one row per source line so the assembly listing can align 1:1 with the source pane.
             statements.push({ line: i + 1, source: raw, statement: statement, sym: sym, tag: tag });
         }
+        this.normaliseSCLocalLabels(statements);
         return statements;
     };
 
@@ -28457,10 +28605,13 @@ function ASM(options)
                 line: base.line,
                 pc: this.pc,
                 source: base.source,
+                sourceSym: base.sourceSym ? base.sourceSym.slice() : base.sym.slice(),
                 statement: base.statement,
                 tag: base.tag.slice(),
                 sym: base.sym.slice()
             };
+            if (base.scLocalLabel) row.scLocalLabel = Object.assign({}, base.scLocalLabel);
+            if (base.err) row.err = base.err;
 
             this.dispatchRow(row, passNo);
             if (passNo === 2) out.push(row);
@@ -28511,7 +28662,7 @@ function ASM(options)
         for (var i = 0; i < rows.length; i++) {
             var row = rows[i] || {};
             var tag = row.tag || [];
-            var sym = row.sym || [];
+            var sym = row.sourceSym || row.sym || [];
             if (tag[0] !== "LBL" || !sym[0]) continue;
             var lbl = this.getID(sym[0]);
             if (!lbl) continue;
