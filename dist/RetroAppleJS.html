@@ -30216,7 +30216,8 @@ function DASM()
                 --ASM_string: #a5d6ff;
                 --ASM_number: #f2cc60;
                 --ASM_bool: #ffab70;
-
+                --ASM_monoFont: "DejaVu Sans Mono","Menlo","Consolas","Courier New",monospace;
+ 
                 width: 1300px;
                 margin: 0px;
                 padding: 0px 0px 0px 0px;
@@ -30274,7 +30275,7 @@ function DASM()
                 color: #000000;
                 -webkit-text-fill-color: #000000;
                 caret-color: #000000;
-                font-family: "DejaVu Sans Mono","Menlo","Consolas","Courier New",monospace;
+                font-family: var(--ASM_monoFont);
                 font-size: 12px;
                 font-weight: 500;
                 line-height: 21px;
@@ -30299,12 +30300,11 @@ function DASM()
                 scrollbar-width: thin;
               }
 
-              .ASM_jsonMount:empty::before {
-                content: attr(data-placeholder);
+              .ASM_jsonMount::placeholder {
                 color: rgba(0,0,0,0.55);
                 font: inherit;
-                line-height: inherit;      
-               pointer-events: none;
+                line-height: inherit;
+                opacity: 1;
               }
 
 
@@ -30545,7 +30545,7 @@ function DASM()
               .ASM_root .com-pane-fr-wrap .com-pane-fr-layer,
               .ASM_root .com-pane-fr-wrap .com-pane-fr-text,
               .ASM_root .com-pane-fr-wrap .com-pane-fr-match-layer {
-                font-family: courier, monospace !important;
+                font-family: var(--ASM_monoFont) !important;
                 font-size: 12px !important;
                 font-weight: 500 !important;
                 line-height: 21px !important;
@@ -30556,7 +30556,10 @@ function DASM()
               }
 
               .ASM_root .com-pane-fr-wrap #ASM_sourcePane {
-                font: 500 12px/21px courier, monospace !important;
+                 font-family: var(--ASM_monoFont) !important;
+                 font-size: 12px !important;
+                 font-weight: 500 !important;
+                 line-height: 21px !important;
               }
 
 
@@ -30631,8 +30634,9 @@ function DASM()
   caret-color: #e6edf3;
 }
 
-.ASM_root.ASM_paneDark .ASM_jsonMount:empty::before {
+.ASM_root.ASM_paneDark .ASM_jsonMount::placeholder {
   color: rgba(230,237,243,0.58);
+  opacity: 1;
 }
 
 .ASM_root.ASM_paneDark .ASM_jsonMount *,
@@ -30823,7 +30827,13 @@ Label1 TXA
                       </button>
                     </span>
                   </div>
-                  <div id="ASM_jsonMount" class="ASM_jsonMount dotmatrix_bck" data-placeholder="Parser output (JSON)" aria-label="Parser output (JSON)" tabindex="0"></div>
+                   <textarea id="ASM_jsonMount"
+                             class="ASM_jsonMount dotmatrix_bck"
+                             aria-label="Parser output (JSON)"
+                             readonly="readonly"
+                             spellcheck="false"
+                             wrap="off"
+                             placeholder="Parser output (JSON)"></textarea>
                 </section>
                 
               </div>
@@ -31354,6 +31364,33 @@ Label1 TXA
               return true;
             }
 
+             function ASM_scrollJsonTextareaToKey(key)
+             {
+               var mount = ASM_el("ASM_jsonMount");
+               if(!mount || !("value" in mount)) return false;
+
+               var text = mount.value || ASM_currentJsonText || "";
+               var re = new RegExp("(^|\\n)\\s*[\\\"']" + key + "[\\\"']\\s*:", "m");
+               var m = re.exec(text);
+               if(!m) return false;
+
+               var targetOffset = m.index + (m[1] ? m[1].length : 0);
+               var before = text.slice(0,targetOffset);
+               var line = before.split(/\r\n|\r|\n/).length - 1;
+               var lh = parseFloat(window.getComputedStyle(mount).lineHeight) || 21;
+
+               mount.scrollTop = Math.max(0,(line - 2) * lh);
+               mount.focus();
+
+               try
+               {
+                 mount.setSelectionRange(targetOffset,Math.min(text.length,targetOffset + key.length + 2));
+               }
+               catch(_ignore) {}
+
+               return true;
+             }
+
             function ASM_scrollJsonToErrors()
             {
               ASM_toggleJsonPane(true);
@@ -31361,6 +31398,8 @@ Label1 TXA
               window.setTimeout(function(){
                 var mount = ASM_el("ASM_jsonMount");
                 if(!mount) return;
+
+                if(ASM_scrollJsonTextareaToKey("errors")) return;
 
                 var target = ASM_findJsonKeyElement("errors") || ASM_findJsonTextRangeForKey("errors");
 
@@ -31412,6 +31451,17 @@ Label1 TXA
               var mountEl = ASM_el("ASM_jsonMount");
               if(!mountEl) return;
 
+               /*
+                * The JSON output pane is now a real textarea so users can select
+                * and copy arbitrary portions of the JSON. A textarea cannot host
+                * syntax-highlight spans, so keep the raw pretty-printed JSON text.
+                */
+               if("value" in mountEl)
+               {
+                 mountEl.value = ASM_currentJsonText || mountEl.value || "";
+                 return;
+               }
+
               var styleMap = {
                 "{}": "color:#000000;font-weight:800",
                 "[]": "color:#000000;font-weight:800"
@@ -31425,6 +31475,24 @@ Label1 TXA
 
               mountEl.innerHTML = "<pre class=\"ASM_jsonView\">" + ASM_escapeHTML(mountEl.textContent) + "</pre>";
             }
+
+             function ASM_setJsonText(text)
+             {
+               ASM_currentJsonText = String(text || "");
+
+               var mountEl = ASM_el("ASM_jsonMount");
+               if(!mountEl) return;
+
+               if("value" in mountEl)
+               {
+                 mountEl.value = ASM_currentJsonText;
+                 mountEl.scrollTop = 0;
+                 return;
+               }
+
+               mountEl.textContent = ASM_currentJsonText;
+               ASM_prettifyJSON();
+             }
 
             function ASM_consoleTable(rows)
             {
@@ -31459,7 +31527,12 @@ Label1 TXA
               ASM_setErrorButtonState(0);
 
               if(ASM_el("ASM_listingPane"))  ASM_el("ASM_listingPane").value  = "";
-              if(ASM_el("ASM_jsonMount"))    ASM_el("ASM_jsonMount").replaceChildren();
+              var jsonMount = ASM_el("ASM_jsonMount");
+              if(jsonMount)
+              {
+                if("value" in jsonMount) jsonMount.value = "";
+                else jsonMount.replaceChildren();
+              }
               //ASM_setPaneInfos("", "not assembled");
               ASM_resizeSourceListingPanes();
               ASM_refreshFindReplaceOverlay();
@@ -31473,9 +31546,7 @@ Label1 TXA
               {
                 var msg = "ASM() was not found. Check res/ASM_core.js.";
                 ASM_setStatus(msg,"bad");
-                ASM_currentJsonText = JSON.stringify({error:msg},null,2);
-                ASM_el("ASM_jsonMount").textContent = ASM_currentJsonText;
-                ASM_prettifyJSON();
+                ASM_setJsonText(JSON.stringify({error:msg},null,2));
                 ASM_setPaneInfos("", "error");
                 return false;
               }
@@ -31504,9 +31575,7 @@ Label1 TXA
 
                 listingPane.value = compiled.listingText || "";
 
-                ASM_currentJsonText = JSON.stringify(compiled,null,2);
-                jsonMount.textContent = ASM_currentJsonText;
-                ASM_prettifyJSON();
+                ASM_setJsonText(JSON.stringify(compiled,null,2));
                 //ASM_setPaneInfos(listingPane.value, "interactive JSON");
 
                 console.table(ASM_consoleTable(compiled.rows || []));
@@ -31538,9 +31607,7 @@ Label1 TXA
                 ASM_resizeSourceListingPanes();
                 ASM_refreshFindReplaceOverlay();
                 ASM_setByteCodeOutput("",0);
-                ASM_currentJsonText = JSON.stringify({error:err && err.stack ? err.stack : String(err)},null,2);
-                ASM_el("ASM_jsonMount").textContent = ASM_currentJsonText;
-                ASM_prettifyJSON();
+                ASM_setJsonText(JSON.stringify({error:err && err.stack ? err.stack : String(err)},null,2));
                 ASM_currentErrorCount = 0;
                 ASM_setErrorButtonState(0);
                 ASM_setPaneInfos("", "error");
