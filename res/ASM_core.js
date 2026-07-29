@@ -665,7 +665,7 @@ function ASM(options)
     this.cleanOperandValue = function (operand, mode) {
         var s = String(operand == null ? "" : operand).trim();
         var u = s.toUpperCase();
-        if (mode === 2) return s.substring(1); // #value
+        if (mode === 2) return s.charAt(0) === "#" ? s.substring(1) : s;
         if (mode === 6 || mode === 7 || mode === 8) s = s.charAt(0) === "*" ? s.substring(1) : s;
         u = s.toUpperCase();
         if (mode === 7 || mode === 4) return s.substring(0, u.lastIndexOf(",X"));
@@ -1077,7 +1077,8 @@ function ASM(options)
         return !!opctab && mode >= 0 && mode < opctab.length && opctab[mode] >= 0;
     };
 
-    this.inferAddressMode = function (mnemonic, operand, symtab) {
+    this.inferAddressMode = function (mnemonic, operand, symtab) 
+    {
         var mne = String(mnemonic || "").toUpperCase();
         var entry = this.mnemonicInfo(mne);
         var opctab = entry && entry.opcodes;
@@ -1097,6 +1098,7 @@ function ASM(options)
 
         if (upper === "A" && this.isValidMode(entry, 1)) mode = 1;
         else if (addr.charAt(0) === "#") mode = 2;
+        else if (addr.charAt(0) === "/" && this.isValidMode(entry, 2)) mode = 2;
         else if (addr.charAt(0) === "*") {
             forcedZeroPage = true;
             if (upper.indexOf(",X") > 0) mode = 7;
