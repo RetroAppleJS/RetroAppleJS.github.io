@@ -7,9 +7,9 @@ ORG $D000
 ;*--------------------------------
 ;*   ZERO PAGE LOCATIONS:
 ;*--------------------------------
-GOWARM         .EQ $00,$01,$02  ;GETS "JMP RESTART"
-GOSTROUT       .EQ $03,$04,$05  ;GETS "JMP STROUT"
-USR            .EQ $0A,$0B,$0C  ;GETS "JMP <USER ADDR>"
+GOWARM         .EQ $00  ;GETS "JMP RESTART"
+GOSTROUT       .EQ $03  ;GETS "JMP STROUT"
+USR            .EQ $0A  ;GETS "JMP <USER ADDR>"
 ;*                             (INITIALLY $E199)
 CHARAC         .EQ $0D        ;ALTERNATE STRING TERMINATOR
 ENDCHR         .EQ $0E        ;STRING TERMINATOR
@@ -17,14 +17,14 @@ TKN.CNTR       .EQ $0F        ;USED IN PARSE
 EOL.PNTR       .EQ $0F        ;USED IN NXLIN
 NUMDIM         .EQ $0F        ;USED IN ARRAY ROUTINES
 DIMFLG         .EQ $10
-VALTYP         .EQ $11,$12     ;$:VALTYP=$FF; %:VALTYP+1=$80
+VALTYP         .EQ $11     ;$:VALTYP=$FF; %:VALTYP+1=$80
 DATAFLG        .EQ $13        ;USED IN PARSE
 GARFLG         .EQ $13        ;USED IN GARBAG
 SUBFLG         .EQ $14
 INPUTFLG       .EQ $15        ;= $40 FOR GET, $98 FOR READ
 CPRMASK        .EQ $16        ;RECEIVES CPRTYP IN FRMEVL
 SIGNFLG        .EQ $16        ;FLAGS SIGN IN TAN
-HGR.SHAPE      .EQ $1A,$1B
+HGR.SHAPE      .EQ $1A
 HGR.BITS       .EQ $1C
 HGR.COUNT      .EQ $1D
 MON.CH         .EQ $24
@@ -39,100 +39,100 @@ MON.A1L        .EQ $3C        ;USED BY TAPE I/O ROUTINES
 MON.A1H        .EQ $3D        ;  "
 MON.A2L        .EQ $3E        ;  "
 MON.A2H        .EQ $3F        ;  "
-LINNUM         .EQ $50,$51     ;CONVERTED LINE #
+LINNUM         .EQ $50     ;CONVERTED LINE #
 TEMPPT         .EQ $52        ;LAST USED TEMP STRING DESC
-LASTPT         .EQ $53,$54     ;LAST USED TEMP STRING PNTR
-TEMPST         .EQ $55 - $5D   ;HOLDS UP TO 3 DESCRIPTORS
-INDEX          .EQ $5E,$5F
-DEST           .EQ $60,$61
-RESULT         .EQ $62 - $66   ;RESULT OF LAST * OR /
-TXTTAB         .EQ $67,$68     ;START OF PROGRAM TEXT
-VARTAB         .EQ $69,$6A     ;START OF VARIABLE STORAGE
-ARYTAB         .EQ $6B,$6C     ;START OF ARRAY STORAGE
-STREND         .EQ $6D,$6E     ;END OF ARRAY STORAGE
-FRETOP         .EQ $6F,$70     ;START OF STRING STORAGE
-FRESPC         .EQ $71,$72     ;TEMP PNTR, STRING ROUTINES
-MEMSIZ         .EQ $73,$74     ;END OF STRING SPACE (HIMEM)
-CURLIN         .EQ $75,$76     ;CURRENT LINE NUMBER
+LASTPT         .EQ $53     ;LAST USED TEMP STRING PNTR
+TEMPST         .EQ $55     ;HOLDS UP TO 3 DESCRIPTORS
+INDEX          .EQ $5E
+DEST           .EQ $60
+RESULT         .EQ $62     ;RESULT OF LAST * OR /
+TXTTAB         .EQ $67     ;START OF PROGRAM TEXT
+VARTAB         .EQ $69     ;START OF VARIABLE STORAGE
+ARYTAB         .EQ $6B     ;START OF ARRAY STORAGE
+STREND         .EQ $6D     ;END OF ARRAY STORAGE
+FRETOP         .EQ $6F     ;START OF STRING STORAGE
+FRESPC         .EQ $71     ;TEMP PNTR, STRING ROUTINES
+MEMSIZ         .EQ $73     ;END OF STRING SPACE (HIMEM)
+CURLIN         .EQ $75     ;CURRENT LINE NUMBER
 ;*                             ( = $FFXX IF IN DIRECT MODE)
-OLDLIN         .EQ $77,$78     ;ADDR. OF LAST LINE EXECUTED
-OLDTEXT        .EQ $79,$7A   
-DATLIN         .EQ $7B,$7C     ;LINE # OF CURRENT DATA STT.
-DATPTR         .EQ $7D,$7E     ;ADDR OF CURRENT DATA STT.
-INPTR          .EQ $7F,$80
-VARNAM         .EQ $81,$82     ;NAME OF VARIABLE
-VARPNT         .EQ $83,$84     ;ADDR OF VARIABLE
-FORPNT         .EQ $85,$86
-TXPSV          .EQ $87,$88     ;USED IN INPUT
+OLDLIN         .EQ $77     ;ADDR. OF LAST LINE EXECUTED
+OLDTEXT        .EQ $79   
+DATLIN         .EQ $7B     ;LINE # OF CURRENT DATA STT.
+DATPTR         .EQ $7D     ;ADDR OF CURRENT DATA STT.
+INPTR          .EQ $7F
+VARNAM         .EQ $81     ;NAME OF VARIABLE
+VARPNT         .EQ $83     ;ADDR OF VARIABLE
+FORPNT         .EQ $85
+TXPSV          .EQ $87     ;USED IN INPUT
 LASTOP         .EQ $87        ;SCRATCH FLAG USED IN FRMEVL
 CPRTYP         .EQ $89        ;>,=,< FLAG IN FRMEVL
-TEMP3          .EQ $8A - $8E
+TEMP3          .EQ $8A
 FNCNAM         .EQ $8A
 DSCPTR         .EQ $8C
 DSCLEN         .EQ $8F        ;USED IN GARBAG
-JMPADRS        .EQ $90,$91,$92  ;GETS "JMP ...."
+JMPADRS        .EQ $90  ;GETS "JMP ...."
 LENGTH         .EQ $91        ;USED IN GARBAG
 ARG.EXTENSION  .EQ $92        ;FP EXTRA PRECISION
-TEMP1          .EQ $93 - $97   ;SAVE AREAS FOR FAC
+TEMP1          .EQ $93   ;SAVE AREAS FOR FAC
 ARYPNT         .EQ $94        ;USED IN GARBAG
-HIGHDS         .EQ $94,$     ;PNTR FOR BLTU
-HIGHTR         .EQ $96,$97     ;PNTR FOR BLTU
-TEMP2          .EQ $98 - $9C
+HIGHDS         .EQ $94     ;PNTR FOR BLTU
+HIGHTR         .EQ $96     ;PNTR FOR BLTU
+TEMP2          .EQ $98
 TMPEXP         .EQ $99        ;USED IN FIN (EVAL)
 INDX           .EQ $99        ;USED BY ARRAY RTNS
 EXPON          .EQ $9A        ;  "
 DPFLG          .EQ $9B        ;FLAGS DEC PNT IN FIN
-LOWTR          .EQ $9B,$9C
+LOWTR          .EQ $9B
 EXPSGN         .EQ $9C
-FAC            .EQ $9D - $A1   ;MAIN FLT PT ACCUMULATOR
-DSCTMP         .EQ $9D,$9E,$9F
-VPNT           .EQ $A0,$A1     ;TEMP VAR PTR
+FAC            .EQ $9D        ;MAIN FLT PT ACCUMULATOR
+DSCTMP         .EQ $9D
+VPNT           .EQ $A0        ;TEMP VAR PTR
 FAC.SIGN       .EQ $A2        ;HOLDS UNPACKED SIGN
 SERLEN         .EQ $A3        ;HOLDS LENGTH OF SERIES-1
 SHIFT.SIGN.EXT .EQ $A4        ;SIGN EXTENSION, RIGHT SHIFTS
-ARG            .EQ $A5 - $A9   ;SECONDARY FP ACC
+ARG            .EQ $A5        ;SECONDARY FP ACC
 ARG.SIGN       .EQ $AA
 SGNCPR         .EQ $AB        ;FLAGS OPP SIGN IN FP ROUT.
 FAC.EXTENSION  .EQ $AC        ;FAC EXTENSION BYTE
 SERPNT         .EQ $AD        ;PNTR TO SERIES DATA IN FP
-STRNG1         .EQ $AB,$AC
-STRNG2         .EQ $AD,$AE
-PRGEND         .EQ $AF,$B0
-CHRGET         .EQ $B1 - $C8
+STRNG1         .EQ $AB
+STRNG2         .EQ $AD
+PRGEND         .EQ $AF
+CHRGET         .EQ $B1
 CHRGOT         .EQ $B7
-TXTPTR         .EQ $B8,$B9
-RNDSEED        .EQ $C9 - $CD
-HGR.DX         .EQ $D0,$D1
+TXTPTR         .EQ $B8
+RNDSEED        .EQ $C9
+HGR.DX         .EQ $D0
 HGR.DY         .EQ $D2
 HGR.QUADRANT   .EQ $D3
-HGR.E          .EQ $D4,$D5
+HGR.E          .EQ $D4
 LOCK           .EQ $D6        ;NO USER ACCESS IF > 127
 ERRFLG         .EQ $D8        ;$80 IF ON ERR ACTIVE
-ERRLIN         .EQ $DA,$DB     ;LINE # WHERE ERROR OCCURRED
-ERRPOS         .EQ $DC,$DD     ;TXTPTR SAVE FOR HANDLERR
+ERRLIN         .EQ $DA     ;LINE # WHERE ERROR OCCURRED
+ERRPOS         .EQ $DC     ;TXTPTR SAVE FOR HANDLERR
 ERRNUM         .EQ $DE        ;WHICH ERROR OCCURRED
 ERRSTK         .EQ $DF        ;STACK PNTR BEFORE ERROR
-HGR.X          .EQ $E0,$E1
+HGR.X          .EQ $E0
 HGR.Y          .EQ $E2
 HGR.COLOR      .EQ $E4
 HGR.HORIZ      .EQ $E5        ;BYTE INDEX FROM GBASH,L
 HGR.PAGE       .EQ $E6        ;HGR=$20, HGR2=$40
 HGR.SCALE      .EQ $E7
-HGR.SHAPE.PNTR .EQ $E8,$E9
+HGR.SHAPE.PNTR .EQ $E8
 HGR.COLLISIONS .EQ $EA
 FIRST          .EQ $F0
 SPEEDZ         .EQ $F1        ;OUTPUT SPEED
 TRCFLG         .EQ $F2
 FLASH.BIT      .EQ $F3        ;= $40 FOR FLASH, ELSE =$00
-TXTPSV         .EQ $F4,$F5
-CURLSV         .EQ $F6,$F7
+TXTPSV         .EQ $F4
+CURLSV         .EQ $F6
 REMSTK         .EQ $F8        ;STACK PNTR BEFORE EACH STT.
 HGR.ROTATION   .EQ $F9
 ;* $FF IS ALSO USED BY THE STRING OUT ROUTINES
 ;*--------------------------------
 STACK            .EQ $100
 INPUT.BUFFER     .EQ $200
-AMPERSAND.VECTOR .EQ $3F5 - 3F7   ;GETS "JMP; ...."
+AMPERSAND.VECTOR .EQ $3F5    ;GETS "JMP; ...."
 ;*--------------------------------
 ;*      I/O & SOFT SWITCHES
 ;*--------------------------------
