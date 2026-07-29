@@ -68,7 +68,7 @@ function ASM(options)
     this.warnings = [];
     this.passNo = 0;
     this.scLocalLabelSalt = 0;
-    this.scLocalLabelPrefix = ".SCLOCAL_";
+    this.scLocalLabelPrefix = ".";
 
     /*
      * Backward compatibility:
@@ -319,8 +319,8 @@ function ASM(options)
 
     this.makeSCLocalLabelID = function (numberText, anchorLine, salt) {
         return this.scLocalLabelPrefix
-            + String(parseInt(numberText, 10))
-            + "_L" + String(anchorLine)
+            + oCOM.getHexByte(parseInt(numberText, 10))
+            + "L" + String(anchorLine)
             + "_" + String(salt);
     };
 
