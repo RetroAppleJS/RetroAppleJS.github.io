@@ -1,7 +1,7 @@
 /*
- * ASM_core_v6_4.js
+ * ASM_core_v6_5.js
  *
- * v6.4 architecture:
+ * v6.5 architecture:
 
      * S-C Macro Assembler local-label policy
      * ----------------------------------------
@@ -51,9 +51,15 @@ function ASM(options)
     var root = (typeof globalThis !== "undefined") ? globalThis : ((typeof window !== "undefined") ? window : this);
     var self = this;
 
-    this.version = "0.6.3";
+    this.version = "0.6.5";
     this.maxNumBytes = options.maxNumBytes || 2;
+    // Retained for callers that still inspect it. Symbol identity is no longer truncated.
     this.label_len = options.label_len || 8;
+    this.maxLayoutPasses = Math.max(2, Number(options.maxLayoutPasses) || 32);
+    this.maxIncludeDepth = Math.max(1, Number(options.maxIncludeDepth) || 16);
+    this.includes = options.includes || {};
+    this.includeResolver = typeof options.includeResolver === "function" ? options.includeResolver : null;
+    this.sourceName = options.sourceName || "<source>";
     this.pc = 0;
     this.symtab = {};
     this.symlink = {};
@@ -207,7 +213,15 @@ function ASM(options)
         "HEX":   mkPragma("HEX",     ["raJS", "Merlin"], parsePragmaData),
         "BIN":   mkPragma("BIN",     ["raJS"], parsePragmaData),
         "ASC":   mkPragma("ASC",     ["raJS", "Merlin"], parsePragmaData),
-        ".AT":   mkPragma("ASC",     ["raJS", "S-C"], parsePragmaData),
+
+        // S-C Macro Assembler data/include pragmas. Keep the dialect tag exclusive
+        // so the listing's assembler column identifies their source syntax.
+        ".HS":   mkPragma("SC_HEX",     ["S-C"], parsePragmaData),
+        ".AS":   mkPragma("SC_ASC",     ["S-C"], parsePragmaData),
+        ".AT":   mkPragma("SC_AT",      ["S-C"], parsePragmaData),
+        ".DA":   mkPragma("SC_DA",      ["S-C"], parsePragmaData),
+        ".BS":   mkPragma("SC_RES",     ["S-C"], parsePragmaData),
+        ".IN":   mkPragma("SC_INCLUDE", ["S-C"], parsePragmaNoop),
 
         ".WORD": mkPragma("WORD",    ["raJS", "ca65", "S-C"], parsePragmaData),
         "DA":    mkPragma("WORD",    ["raJS", "Merlin"], parsePragmaData),
@@ -310,7 +324,8 @@ function ASM(options)
             + "_" + String(salt);
     };
 
-    this.replaceSCLocalReferences = function (text, localMap) {
+    this.replaceSCLocalReferences = function (text, localMap, anchorLine, salt) 
+    {
         text = String(text == null ? "" : text);
         localMap = localMap || {};
         var out = "";
@@ -328,13 +343,19 @@ function ASM(options)
             }
             if (ch === "'" || ch === '"') { quote = ch; out += ch; continue; }
 
-            if (ch === ".") {
+            // A local reference starts at an identifier boundary. Thus .1 is local,
+            // while RTS.1, LIST.0 and NORMALIZE.FAC.2 remain ordinary identifiers.
+            var prev = i > 0 ? text.charAt(i - 1) : "";
+            if (ch === "." && (i === 0 || !/[A-Za-z0-9_.$]/.test(prev))) {
                 var m = text.substring(i).match(/^\.(?:[0-9]|[1-9][0-9])(?![A-Za-z0-9_.$])/);
                 if (m) {
                     var key = String(parseInt(m[0].substring(1), 10));
+                    if (!localMap[key] && anchorLine != null)
+                        localMap[key] = this.makeSCLocalLabelID(key, anchorLine, salt);
                     out += localMap[key] || m[0];
                     i += m[0].length - 1;
-                    continue;
+                // Do not continue: "START BNE .1" starts the scope and contains
+                // a valid forward local reference on the same source line.
                 }
             }
             out += ch;
@@ -390,14 +411,9 @@ function ASM(options)
             }
 
             for (var s = labelIsLocal ? 1 : 0; s < row.sym.length; s++) {
-                var token = row.sym[s];
-                var refs = String(token).match(/\.(?:[0-9]|[1-9][0-9])(?![A-Za-z0-9_.$])/g) || [];
-                for (var r = 0; r < refs.length; r++) {
-                    var number = String(parseInt(refs[r].substring(1), 10));
-                    if (!localMap[number])
-                        localMap[number] = this.makeSCLocalLabelID(number, anchor.line, salt);
-                }
-                row.sym[s] = this.replaceSCLocalReferences(token, localMap);
+                row.sym[s] = this.replaceSCLocalReferences(
+                    row.sym[s], localMap, anchor.line, salt
+                );
             }
         }
         return statements;
@@ -406,13 +422,96 @@ function ASM(options)
     this.getID = function (text) {
         text = String(text || "").trim();
         text = text.split("+")[0].split("-")[0];
-        if (text.indexOf(this.scLocalLabelPrefix) === 0) return text;
-        return text.substring(0, this.label_len);
+        return text;
     };
 
     this.splitSource = function (sourceText) {
         return String(sourceText == null ? "" : sourceText).replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
     };
+
+    this.decodeSCDelimitedText = function (text) {
+        text = String(text == null ? "" : text).trim();
+        if (text.length >= 2) {
+            var first = text.charAt(0);
+            var last = text.charAt(text.length - 1);
+            if ((first === '"' || first === "'" || first === "/") && last === first)
+                return text.substring(1, text.length - 1);
+        }
+        return text;
+    };
+
+    this.resolveSCInclude = function (includeName, fromSource) {
+        includeName = String(includeName == null ? "" : includeName).trim();
+        var resolved;
+        if (this.includeResolver) resolved = this.includeResolver(includeName, fromSource || this.sourceName);
+        if (resolved == null && this.includes) {
+            if (Object.prototype.hasOwnProperty.call(this.includes, includeName)) resolved = this.includes[includeName];
+            else {
+                var wanted = includeName.toUpperCase();
+                for (var key in this.includes) {
+                    if (Object.prototype.hasOwnProperty.call(this.includes, key) && String(key).toUpperCase() === wanted) {
+                        resolved = this.includes[key];
+                        break;
+                    }
+                }
+            }
+        }
+        if (resolved && typeof resolved === "object") {
+            return {
+                source: String(resolved.source == null ? "" : resolved.source),
+                sourceName: resolved.sourceName || resolved.name || includeName
+            };
+        }
+        if (typeof resolved === "string") return { source: resolved, sourceName: includeName };
+        return null;
+    };
+
+    this.expandSCIncludes = function (sourceText, sourceName) {
+        var asm = this;
+        var records = [];
+
+        function visit(text, name, depth, stack) {
+            var lines = asm.splitSource(text);
+            for (var i = 0; i < lines.length; i++) {
+                var raw = lines[i];
+                var record = { source: raw, sourceName: name, sourceLine: i + 1 };
+                records.push(record);
+
+                var sym = asm.statement_splitter(raw);
+                var tag = sym.length ? asm.statement_tagger(sym) : [];
+                var pgmIndex = asm.getTokenIndexByTag(tag, "PGM");
+                if (pgmIndex < 0) continue;
+                var pinfo = asm.pragmaInfo(sym[pgmIndex]);
+                if (!pinfo || pinfo.ref !== "SC_INCLUDE") continue;
+
+                var includeName = asm.decodeSCDelimitedText(sym.slice(pgmIndex + 1).join(" "));
+                if (!includeName) {
+                    record.err = "S-C .IN requires an include name";
+                    continue;
+                }
+                if (depth >= asm.maxIncludeDepth) {
+                    record.err = "S-C include depth exceeds " + asm.maxIncludeDepth + ": " + includeName;
+                    continue;
+                }
+                var resolved = asm.resolveSCInclude(includeName, name);
+                if (!resolved) {
+                    record.err = "S-C include not found: " + includeName;
+                    continue;
+                }
+                var identity = String(resolved.sourceName || includeName).toUpperCase();
+                if (stack.indexOf(identity) >= 0) {
+                    record.err = "S-C include cycle: " + stack.concat([identity]).join(" -> ");
+                    continue;
+                }
+                visit(resolved.source, resolved.sourceName || includeName, depth + 1, stack.concat([identity]));
+            }
+        }
+
+        var rootName = sourceName || this.sourceName;
+        visit(sourceText, rootName, 0, [String(rootName).toUpperCase()]);
+        return records;
+    };
+
 
     this.stripRightComment = function (line) {
         var text = String(line || "").replace(/[“”]/g, "\"");
@@ -721,10 +820,11 @@ function ASM(options)
         return !!opctab && mode >= 0 && mode < opctab.length && opctab[mode] >= 0;
     };
 
-    this.inferAddressMode = function (mnemonic, operand) {
+    this.inferAddressMode = function (mnemonic, operand, symtab) {
         var mne = String(mnemonic || "").toUpperCase();
         var entry = this.mnemonicInfo(mne);
         var opctab = entry && entry.opcodes;
+        symtab = symtab || this.symtab;
         if (!opctab) return { mode: null, mod: undefined, bytes: 0, oby: undefined, opc: undefined, err: "unknown mnemonic" };
 
         if (operand === undefined || operand === null || String(operand).trim() === "") {
@@ -736,10 +836,12 @@ function ASM(options)
         var addr = String(operand).trim();
         var upper = addr.toUpperCase();
         var mode = null;
+        var forcedZeroPage = false;
 
         if (upper === "A" && this.isValidMode(entry, 1)) mode = 1;
         else if (addr.charAt(0) === "#") mode = 2;
         else if (addr.charAt(0) === "*") {
+            forcedZeroPage = true;
             if (upper.indexOf(",X") > 0) mode = 7;
             else if (upper.indexOf(",Y") > 0) mode = 8;
             else mode = 6;
@@ -747,16 +849,29 @@ function ASM(options)
             if (upper.indexOf(",X)") > 0 && upper.indexOf(",X)") === upper.length - 3) mode = 10;
             else if (upper.indexOf("),Y") > 0 && upper.indexOf("),Y") === upper.length - 3) mode = 11;
             else if (upper.indexOf(")") > 0) mode = 9;
+        } else if (this.isValidMode(entry, 12)) {
+            mode = 12;
         } else {
-            if (upper.indexOf(",X") > 0) mode = 4;
-            else if (upper.indexOf(",Y") > 0) mode = 5;
-            else if (this.isValidMode(entry, 12)) mode = 12;
-            else mode = 3;
+            var absoluteMode = upper.indexOf(",X") > 0 ? 4 : (upper.indexOf(",Y") > 0 ? 5 : 3);
+            var zeroPageMode = absoluteMode === 4 ? 7 : (absoluteMode === 5 ? 8 : 6);
+            var exprText = this.cleanOperandValue(addr, absoluteMode);
+            var expr = this.getExpression(exprText, symtab);
+            var resolved = !expr.err && typeof expr.val === "number" && !isNaN(expr.val);
+            var fitsZeroPage = resolved && expr.val >= 0 && expr.val <= 0xff;
+
+            if (this.isValidMode(entry, zeroPageMode)
+                && (fitsZeroPage || (!resolved && !this.isValidMode(entry, absoluteMode)))) {
+                mode = zeroPageMode;
+            } else {
+                mode = absoluteMode;
+            }            
         }
 
         if (mode == null) return { mode: null, mod: undefined, bytes: 0, oby: undefined, opc: undefined, err: "invalid addressing syntax" };
         if (!this.isValidMode(entry, mode)) return { mode: mode, mod: this.addrModeName[mode], bytes: this.steptab[mode], oby: Math.max(0, this.steptab[mode] - 1), opc: undefined, err: "invalid address mode for " + mne };
-        return this.modeInfo(mode, opctab[mode]);
+        var ret = this.modeInfo(mode, opctab[mode]);
+        if (forcedZeroPage) ret.forcedZeroPage = true;
+        return ret;
     };
 
     this.modeInfo = function (mode, opcode) {
@@ -777,15 +892,26 @@ function ASM(options)
             case "WORD_BE":
                 arr = this.splitCSV(operandText);
                 return { bytes: arr.length * 2, oby: 2 };
-            case "HEX":
+            case "SC_HEX":
                 n = operandText.replace(/[^A-Fa-f0-9]/g, "").length >> 1;
                 return { bytes: n, oby: n };
             case "BIN":
                 n = operandText.replace(/[^01]/g, "").length >> 3;
                 return { bytes: n, oby: n };
             case "ASC":
+            case "SC_ASC":
+            case "SC_AT":
                 return { bytes: this.stringByteLength(operandText), oby: this.stringByteLength(operandText) };
+            case "SC_DA":
+                arr = this.splitCSV(operandText);
+                n = 0;
+                for (i = 0; i < arr.length; i++) {
+                    var item = String(arr[i] || "").trim();
+                    n += (item.charAt(0) === "#" || item.charAt(0) === "/") ? 1 : 2;
+                }
+                return { bytes: n, oby: n };
             case "RES":
+            case "SC_RES":
                 arr = this.splitCSV(operandText);
                 e = this.getExpression(arr[0] || "0", symtab);
                 n = isNaN(e.val) ? 0 : Math.max(0, e.val | 0);
@@ -812,27 +938,38 @@ function ASM(options)
         return text.length;
     };
 
-    this.preparse = function (sourceText) {
-        var lines = this.splitSource(sourceText);
+    this.preparse = function (sourceText, sourceName) {
+        var lines = this.expandSCIncludes(sourceText, sourceName || this.sourceName);
         var statements = [];
         for (var i = 0; i < lines.length; i++) {
-            var raw = lines[i];
+            var raw = lines[i].source;
             var statement = String(raw || "").trim();
             var sym = this.statement_splitter(raw);
             var tag = sym.length ? this.statement_tagger(sym) : [];
-            // v0.5 keeps one row per source line so the assembly listing can align 1:1 with the source pane.
-            statements.push({ line: i + 1, source: raw, statement: statement, sym: sym, tag: tag });
+            // Without includes, line remains 1:1 with the source pane. Included rows
+            // additionally retain their original sourceName/sourceLine.
+            var row = {
+                line: i + 1,
+                sourceLine: lines[i].sourceLine,
+                sourceName: lines[i].sourceName,
+                source: raw,
+                statement: statement,
+                sym: sym,
+                tag: tag
+            };
+            if (lines[i].err) row.err = lines[i].err;
+            statements.push(row);
         }
         this.normaliseSCLocalLabels(statements);
         return statements;
     };
 
-    this.pass = function (statements, passNo) {
+    this.pass = function (statements, passNo, seedSymtab, emitRows) {
         var out = [];
         this.passNo = passNo;
         this.set_pc(0);
         if (passNo === 1) {
-            this.symtab = {};
+            this.symtab = Object.assign({}, seedSymtab || {});
             this.symlink = {};
             this.code_pc = [];
         }
@@ -841,6 +978,8 @@ function ASM(options)
             var base = statements[i];
             var row = {
                 line: base.line,
+                sourceLine: base.sourceLine,
+                sourceName: base.sourceName,
                 pc: this.pc,
                 source: base.source,
                 sourceSym: base.sourceSym ? base.sourceSym.slice() : base.sym.slice(),
@@ -852,7 +991,7 @@ function ASM(options)
             if (base.err) row.err = base.err;
 
             this.dispatchRow(row, passNo);
-            if (passNo === 2) out.push(row);
+            if (passNo === 2 || emitRows) out.push(row);
         }
         return out;
     };
@@ -958,7 +1097,9 @@ function ASM(options)
             listingLines: listingLines,
             listingText: listingLines.join("\n"),
             errors: errors.concat((tokenisedRows && tokenisedRows.errors) || []),
-            warnings: warnings.concat((tokenisedRows && tokenisedRows.warnings) || [])
+            warnings: warnings.concat((tokenisedRows && tokenisedRows.warnings) || []),
+            layoutPasses: tokenisedRows && tokenisedRows.layoutPasses,
+            layoutConverged: tokenisedRows && tokenisedRows.layoutConverged
         };
     };
 
@@ -977,7 +1118,7 @@ function ASM(options)
         var oprIndex = this.getTokenIndexByTag(tag, "OPR");
         var mnemonic = sym[mneIndex];
         var operand = oprIndex >= 0 ? sym.slice(oprIndex).join(" ") : undefined;
-        var info = this.inferAddressMode(mnemonic, operand);
+        var info = this.inferAddressMode(mnemonic, operand, symtab);
         row.mnemonic = String(mnemonic || "").toUpperCase();
         row.addrMode = this.addrModeName[info.mode] || "";
         var bytes = [];
@@ -998,6 +1139,11 @@ function ASM(options)
 
         var value = e.val & 0xffff;
         row.val = value;
+        if ((info.mode === this.addrtab.zpg || info.mode === this.addrtab.zpx || info.mode === this.addrtab.zpy)
+            && (e.val < 0 || e.val > 0xff)) {
+            row.err = row.err || "zero-page operand out of range";
+            return [];
+        }
         if (info.mode === this.addrtab.rel) {
             var rel = value - ((row.pc + 2) & 0xffff);
             if (rel < -128 || rel > 127) {
@@ -1026,10 +1172,15 @@ function ASM(options)
             case "BYTE": return this.compileByteData(operands, symtab);
             case "WORD": return this.compileWordData(operands, symtab, false);
             case "WORD_BE": return this.compileWordData(operands, symtab, true);
-            case "HEX": return this.compileHexData(operands);
+            case "HEX":
+            case "SC_HEX": return this.compileHexData(operands);
             case "BIN": return this.compileBinData(operands);
             case "ASC": return this.compileAsciiData(operands);
-            case "RES": return this.compileReserveData(operands, symtab);
+            case "SC_ASC": return this.compileSCAsciiData(operands, false);
+            case "SC_AT": return this.compileSCAsciiData(operands, true);
+            case "SC_DA": return this.compileSCAddressData(operands, symtab);
+            case "RES":
+            case "SC_RES": return this.compileReserveData(operands, symtab);
             case "ORG":
             case "EQU":
             case "END":
@@ -1082,6 +1233,30 @@ function ASM(options)
         var text = quoted ? quoted[2] : (slash ? slash[1] : operandText);
         var out = [];
         for (var i = 0; i < text.length; i++) out.push(this.appleCharCode(text.charAt(i), quoted ? quoted[1] : ""));
+        return out;
+    };
+
+    this.compileSCAsciiData = function (operandText, terminateLastCharacter) {
+        var text = this.decodeSCDelimitedText(operandText);
+        var out = [];
+        for (var i = 0; i < text.length; i++) out.push(text.charCodeAt(i) & 0x7f);
+        if (terminateLastCharacter && out.length) out[out.length - 1] |= 0x80;
+        return out;
+    };
+
+    this.compileSCAddressData = function (operandText, symtab) {
+        var arr = this.splitCSV(operandText);
+        var out = [];
+        for (var i = 0; i < arr.length; i++) {
+            var item = String(arr[i] || "").trim();
+            var selector = item.charAt(0);
+            var expression = (selector === "#" || selector === "/") ? item.substring(1).trim() : item;
+            var e = this.getExpression(expression, symtab);
+            var value = (!e.err && typeof e.val === "number" && !isNaN(e.val)) ? (e.val & 0xffff) : 0;
+            if (selector === "#") out.push(value & 0xff);
+            else if (selector === "/") out.push((value >> 8) & 0xff);
+            else out.push(value & 0xff, (value >> 8) & 0xff);
+        }
         return out;
     };
 
@@ -1626,18 +1801,50 @@ function ASM(options)
         return lines;
     };
 
-    this.compileSource = function (sourceText) {
-        return this.compile(this.tokenise(sourceText));
+    this.compileSource = function (sourceText, sourceName) {
+        return this.compile(this.tokenise(sourceText, sourceName));
     };
 
-    this.tokenise = function (sourceText) {
+    this.layoutSignature = function (rows, symtab) {
+        var keys = Object.keys(symtab || {}).sort();
+        var symbols = keys.map(function (key) { return key + "=" + String(symtab[key]); });
+        var layout = (rows || []).map(function (row) {
+            return String(row.pc) + ":" + String(row.mod || "") + ":" + String(row.oby || 0);
+        });
+        return symbols.join("|") + "||" + layout.join("|");
+    };
+
+    this.tokenise = function (sourceText, sourceName) {
         this.reset();
-        var statements = this.preparse(sourceText);
-        this.pass(statements, 1);
+        var statements = this.preparse(sourceText, sourceName || this.sourceName);
+        var seed = {};
+        var previousSignature = null;
+        var layoutRows = [];
+        var converged = false;
+        var passCount = 0;
+
+        for (var i = 0; i < this.maxLayoutPasses; i++) {
+            passCount = i + 1;
+            layoutRows = this.pass(statements, 1, seed, true);
+            var signature = this.layoutSignature(layoutRows, this.symtab);
+            if (signature === previousSignature) {
+                converged = true;
+                break;
+            }
+            previousSignature = signature;
+            seed = Object.assign({}, this.symtab);
+        }        
         var result = this.pass(statements, 2);
         result.symtab = Object.assign({}, this.symtab);
         result.errors = this.errors.slice();
         result.warnings = this.warnings.slice();
+        result.layoutPasses = passCount;
+        result.layoutConverged = converged;
+        if (!converged) result.warnings.push({
+            line: 0,
+            statement: "",
+            warn: "assembly layout did not stabilise after " + this.maxLayoutPasses + " passes"
+        });
         return result;
     };
 
@@ -1662,7 +1869,7 @@ function ASM(options)
         var oprIndex = asm.getTokenIndexByTag(row.tag, "OPR");
         var mnemonic = row.sym[mneIndex];
         var operand = oprIndex >= 0 ? row.sym.slice(oprIndex).join(" ") : undefined;
-        var info = asm.inferAddressMode(mnemonic, operand);
+        var info = asm.inferAddressMode(mnemonic, operand, asm.symtab);
 
         if (row.tag[0] === "LBL") asm.registerLabelLocation(row, passNo);
 
