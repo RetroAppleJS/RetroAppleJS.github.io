@@ -1,6 +1,6 @@
 ## EMULATOR User Instructions
 
-<img src="../res/appleIIplus_bck_650.png?raw=true" width=35% align="left" />
+<img src="../res/appleIIplus_bck_650_v3.png?raw=true" width=35% align="left" />
 
 While the end-user experience with this emulator hardly differs from the real hardware, there are some essential adaptations, mostly to accomodate contemporary user expecations, like copy-paste.  There is no point in creating an emulator that is completely offline like it was mostly the case in it's pre-internet era.  
 
