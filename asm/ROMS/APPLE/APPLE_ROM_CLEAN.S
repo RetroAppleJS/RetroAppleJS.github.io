@@ -172,29 +172,42 @@ MON.READ2        .EQ $FF02
 ;--------------------------------
 ;   APPLESOFT TOKENS
 ;--------------------------------
-T.FOR        ;EQU $81
-T.DATA       ;EQU $83
-T.POP        ;EQU $A1
-T.GOTO       ;EQU $AB
-T.GOSUB      ;EQU $B0
-T.REM        ;EQU $B2
-T.PRINT      ;EQU $BA
-T.TAB        ;EQU $C0
-T.TO         ;EQU $C1
-T.FN         ;EQU $C2
-T.SPC        ;EQU $C3
-T.THEN       ;EQU $C4
-T.AT         ;EQU $C5
-T.NOT        ;EQU $C6
-T.STEP       ;EQU $C7
-T.PLUS       ;EQU $C8
-T.MINUS      ;EQU $C9
-T.GREATER    ;EQU $CF
-T.EQUAL      ;EQU $D0
-T.SGN        ;EQU $D2
-T.SCRN       ;EQU $D7
-T.LSTR       ;EQU $E8
+T.FOR        EQU $81
+T.DATA       EQU $83
+T.POP        EQU $A1
+T.GOTO       EQU $AB
+T.GOSUB      EQU $B0
+T.REM        EQU $B2
+T.PRINT      EQU $BA
+T.TAB        EQU $C0
+T.TO         EQU $C1
+T.FN         EQU $C2
+T.SPC        EQU $C3
+T.THEN       EQU $C4
+T.AT         EQU $C5
+T.NOT        EQU $C6
+T.STEP       EQU $C7
+T.PLUS       EQU $C8
+T.MINUS      EQU $C9
+T.GREATER    EQU $CF
+T.EQUAL      EQU $D0
+T.SGN        EQU $D2
+T.SCRN       EQU $D7
+T.LSTR       EQU $E8
 
+SYNCHR        EQU $DEC0
+SYNERR        EQU $DEC9
+FRMEVL        EQU $DD7B  
+CHKCOM        EQU $DEBE 
+CHKCLS        EQU $DEB8
+CHKOPN        EQU $DEBB
+PARCHK        EQU $DEB2
+FRM.STACK.3   EQU $DE20
+FRM.STACK.2   EQU $DE15
+STRTXT        EQU $DE81
+FRM.VARIABLE.CALL   EQU $DED7
+FRM.ELEMENT   EQU $DE60
+FRMEVL.2      EQU $DD95
 
 ; --- TEMP ---
 ; TODO !!!!!! example: END EQU $0000 >>> expression is not 2 bytes long !!!!!
@@ -1709,7 +1722,7 @@ LINGET LDX #0       ;ASC # TO HEX ADDRESS
        STA CHARAC   ;SAVE THE DIGIT
        LDA LINNUM+1 ;CHECK RANGE
        STA INDEX
-       CMP /6400    LINE # TOO LARGE?
+       CMP /6400    ;LINE # TOO LARGE?
        BCS ON.1     ;YES, > 63999, GO INDIRECTLY TO
 ;                   "SYNTAX ERROR".
 ;<<<<<DANGEROUS CODE>>>>>
@@ -1971,7 +1984,7 @@ INPERR PLA
 RESPERR
        BIT ERRFLG   ;"ON ERR" TURNED ON?
        BPL .1       ;NO, GIVE REENTRY A TRY
-       LDX #254     ERROR CODE = 254
+       LDX #254     ;ERROR CODE = 254
        JMP HANDLERR
 .1     LDA #ERR.REENTRY ;"?REENTER"
        LDY /ERR.REENTRY
@@ -2004,11 +2017,11 @@ INPUT  CMP #'"'     ;CHECK FOR OPTIONAL PROMPT STRING
        JMP .2
 .1     JSR OUTQUES  ;NO STRING, PRINT "?"
 .2     JSR ERRDIR   ;ILLEGAL IF IN DIRECT MODE
-       LDA #','     PRIME THE BUFFER
+       LDA #','     ;PRIME THE BUFFER
        STA INPUT.BUFFER-1
        JSR INLIN
        LDA INPUT.BUFFER
-       CMP #$03     CONTROL C?
+       CMP #$03     ;CONTROL C?
        BNE INPUT.FLAG.ZERO   ;NO
        JMP CONTROL.C.TYPED
 ;--------------------------------
@@ -2819,7 +2832,7 @@ MAKE.NEW.ARRAY
        BIT DIMFLG   ;DIMENSIONED ARRAY?
        BVC .5       ;NO, USE DEFAULT VALUE
        PLA          ;GET SPECIFIED DIM IN A,X
-       CLC          # ELEMENTS IS 1 LARGER THAN
+       CLC          ;# ELEMENTS IS 1 LARGER THAN
        ADC #1       ;DIMENSION VALUE
        TAX
        PLA
@@ -2854,7 +2867,7 @@ MAKE.NEW.ARRAY
        STY STREND+1      ;AND ZERO THE ARRAY
        LDA #0
        INC STRNG2+1 ;PREPARE FOR FAST ZEROING LOOP
-       LDY STRNG2   # BYTES MOD 256
+       LDY STRNG2   ;# BYTES MOD 256
        BEQ .8       ;FULL PAGE
 .7     DEY          ;CLEAR PAGE FULL
        STA (ARYPNT),Y
@@ -3362,7 +3375,7 @@ FIND.HIGHEST.STRING
        TXA               ;SET STATUS WITH 1ST CHAR OF NAME
        BMI .6            ;NOT A STRING ARRAY
        INY
-       LDA (INDEX),Y     # OF DIMENSIONS FOR THIS ARRAY
+       LDA (INDEX),Y     ;# OF DIMENSIONS FOR THIS ARRAY
        LDY #0
        ASL          ;PREAMBLE SIZE = 2*#DIMS + 5
        ADC #5
@@ -6284,11 +6297,11 @@ CON.04 EQU *-1   ;(( CONSTANT ))
 ;                   0000 --> 0101
 ;                   0101 --> 1010
 ;                   1010 --> WRAP AROUND TO LINE 0
-       LDA MON.GBASL     0000  0101  1010
-       ADC #$50          0101  1010  1111
-       EOR #$F0          1010  0101  0000
+       LDA MON.GBASL     ;0000  0101  1010
+       ADC #$50          ;0101  1010  1111
+       EOR #$F0          ;1010  0101  0000
        BEQ .1
-       EOR #$F0          0101  1010
+       EOR #$F0          ;0101  1010
 .1     STA MON.GBASL     ;NEW ABAB0000
        LDA HGR.PAGE     ;WRAP AROUND TO LINE ZERO OF GROUP
        BCC .3            ;...ALWAYS
