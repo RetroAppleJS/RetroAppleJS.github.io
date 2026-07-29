@@ -1427,7 +1427,7 @@ PROGIO LDA TXTTAB   ;SET UP TO READ/WRITE PROGRAM
 ;--------------------------------
 ;      "RUN" COMMAND
 ;--------------------------------
-RUN    ;PHP          ;SAVE STATUS WHILE SUBTRACTING
+RUN    PHP          ;SAVE STATUS WHILE SUBTRACTING
        DEC CURLIN+1 ;IF WAS $FF (MEANING DIRECT MODE)
 ;                   MAKE IT "RUNNING MODE"
        PLP          ;GET STATUS AGAIN (FROM CHRGET)
