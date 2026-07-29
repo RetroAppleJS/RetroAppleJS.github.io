@@ -334,11 +334,11 @@ MATHTBL
     .BYTE P.OR
     .WORD OR-1     ;$CE...206...OR
 M.NEG .BYTE P.NEQ
-    .WORD NEGOP-1  ;$CF...207...>
-MEQU .BYTE P.NEQ
-    .WORD EQUOP-1  ;$D0...208...=
+      .WORD NEGOP-1  ;$CF...207...>
+MEQU  .BYTE P.NEQ
+      .WORD EQUOP-1  ;$D0...208...=
 M.REL .BYTE P.REL
-    .WORD RELOPS-1 ;$D1...209...<
+      .WORD RELOPS-1 ;$D1...209...<
 ;--------------------------------
 ;      TOKEN NAME TABLE
 ;--------------------------------
@@ -458,23 +458,40 @@ T.NTBL
 ;      ERROR MESSAGES
 ;--------------------------------
 ER.MSG
-ERR.NOFOR      .AT "NEXT WITHOUT FOR"
-ERR.SYNTAX     .AT "SYNTAX"
-ERR.NOGOSUB    .AT "RETURN WITHOUT GOSUB"
-ERR.NODATA     .AT "OUT OF DATA"
-ERR.ILLQTY     .AT "ILLEGAL QUANTITY"
-ERR.OVERFLOW   .AT "OVERFLOW"
-ERR.MEMFULL    .AT "OUT OF MEMORY"
-ERR.UNDEFSTAT  .AT "UNDEF'D STATEMENT"
-ERR.BADSUBS    .AT "BAD SUBSCRIPT"
-ERR.REDIMD     .AT "REDIM'D ARRAY"
-ERR.ZERODIV    .AT "DIVISION BY ZERO"
-ERR.ILLDIR     .AT "ILLEGAL DIRECT"
-ERR.BADTYPE    .AT "TYPE MISMATCH"
-ERR.STRLONG    .AT "STRING TOO LONG"
-ERR.FRMCPX     .AT "FORMULA TOO COMPLEX"
-ERR.CANTCONT   .AT "CAN'T CONTINUE"
-ERR.UNDEFFUNC  .AT "UNDEF'D FUNCTION"
+ERR.NOFOR      .EQ *-ER.MSG
+               .AT "NEXT WITHOUT FOR"
+ERR.SYNTAX     .EQ *-ER.MSG
+               .AT "SYNTAX"
+ERR.NOGOSUB    .EQ *-ER.MSG
+               .AT "RETURN WITHOUT GOSUB"
+ERR.NODATA     .EQ *-ER.MSG
+               .AT "OUT OF DATA"
+ERR.ILLQTY     .EQ *-ER.MSG
+               .AT "ILLEGAL QUANTITY"
+ERR.OVERFLOW   .EQ *-ER.MSG
+               .AT "OVERFLOW"
+ERR.MEMFULL    .EQ *-ER.MSG
+               .AT "OUT OF MEMORY"
+ERR.UNDEFSTAT  .EQ *-ER.MSG
+               .AT "UNDEF'D STATEMENT"
+ERR.BADSUBS    .EQ *-ER.MSG
+               .AT "BAD SUBSCRIPT"
+ERR.REDIMD     .EQ *-ER.MSG
+               .AT "REDIM'D ARRAY"
+ERR.ZERODIV    .EQ *-ER.MSG
+               .AT "DIVISION BY ZERO"
+ERR.ILLDIR     .EQ *-ER.MSG
+               .AT "ILLEGAL DIRECT"
+ERR.BADTYPE    .EQ *-ER.MSG
+               .AT "TYPE MISMATCH"
+ERR.STRLONG    .EQ *-ER.MSG
+               .AT "STRING TOO LONG"
+ERR.FRMCPX     .EQ *-ER.MSG
+               .AT "FORMULA TOO COMPLEX"
+ERR.CANTCONT   .EQ *-ER.MSG
+               .AT "CAN'T CONTINUE"
+ERR.UNDEFFUNC. .EQ *-ER.MSG
+               .AT "UNDEF'D FUNCTION"
 ;--------------------------------
 
 QT.ERROR   .AS / ERROR/
@@ -2192,6 +2209,8 @@ CHKVAL BIT VALTYP   ;$00 IF NUMERIC, $FF IF STRING
 .3     LDX #ERR.BADTYPE  ;TYPE MISMATCH
 JERROR JMP ERROR
 
+ORG $DE98
+EQUOP
 
 ORG $DEF9
 ;--------------------------------
@@ -6730,4 +6749,4 @@ HTAB   JSR GETBYT
 .2     STA MON.CH
        RTS
 ;--------------------------------
-       .AS -/KRW/   ;SOMEONE'S INITIALS?
+       HEX CB D2 D7  ;SOMEONE'S INITIALS?
