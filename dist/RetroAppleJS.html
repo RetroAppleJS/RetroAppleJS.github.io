@@ -27813,7 +27813,7 @@ function ASM(options)
     var root = (typeof globalThis !== "undefined") ? globalThis : ((typeof window !== "undefined") ? window : this);
     var self = this;
 
-    this.version = "0.6.6";
+    this.version = "0.6.7";
     this.maxNumBytes = options.maxNumBytes || 2;
     // Retained for callers that still inspect it. Symbol identity is no longer truncated.
     this.label_len = options.label_len || 8;
@@ -29092,14 +29092,29 @@ function ASM(options)
             row.bytes = bytes;
             row.hex = this.bytesToHex(bytes);
 
-
-            if (row.err) errors.push({ line: row.line, statement: row.statement, err: row.err });
-            if (row.warn) warnings.push({ line: row.line, statement: row.statement, warn: row.warn });
-
             for (var j = 0; j < bytes.length; j++) {
                 byteRecords.push({ pc: (row.pc + j) & 0xffff, val: bytes[j] & 0xff });
             }
         }
+
+        /*
+         * num is a compiled-line sequence, not a source-line sequence.
+         * It advances once for every row that actually emitted byte code.
+         */
+        this.applyListingNumberColumn(rows);
+        this.finaliseListingJsonLineReferences(rows);
+
+        for (var di = 0; di < rows.length; di++) {
+            if (rows[di].err) errors.push(this.makeListingDiagnostic(rows[di], "err"));
+           if (rows[di].warn) warnings.push(this.makeListingDiagnostic(rows[di], "warn"));
+        }
+
+        var inheritedErrors = ((tokenisedRows && tokenisedRows.errors) || []).map(function (diagnostic) {
+            return self.normaliseListingDiagnostic(diagnostic, rows);
+       });
+        var inheritedWarnings = ((tokenisedRows && tokenisedRows.warnings) || []).map(function (diagnostic) {
+            return self.normaliseListingDiagnostic(diagnostic, rows);
+        });
 
         this.applyListingLineColumn(rows);
         var listingColumns = this.getEffectiveListingColumns(rows);
@@ -29118,8 +29133,8 @@ function ASM(options)
             byteCodeText: byteCodeLines.join("\n"),
             listingLines: listingLines,
             listingText: listingLines.join("\n"),
-            errors: errors.concat((tokenisedRows && tokenisedRows.errors) || []),
-            warnings: warnings.concat((tokenisedRows && tokenisedRows.warnings) || []),
+            errors: errors.concat(inheritedErrors),
+            warnings: warnings.concat(inheritedWarnings),
             layoutPasses: tokenisedRows && tokenisedRows.layoutPasses,
             layoutConverged: tokenisedRows && tokenisedRows.layoutConverged
         };
@@ -29314,8 +29329,105 @@ function ASM(options)
     };
 
     this.getListingColumnOrder = function () {
-        return ["adr", "code", "lin", "lbl", "ins", "opr", "asm", "com"];
+        return ["adr", "code", "lin", "num", "lbl", "ins", "opr", "asm", "com"];
     };
+
+    this.formatListingNumber = function (value) {
+        value = Math.max(0, Number(value) | 0);
+        return String(value).padStart(6, "0");
+    };
+
+    this.applyListingNumberColumn = function (rows) {
+        rows = rows || [];
+        var number = 0;
+
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i] || {};
+            var hasCode = Array.isArray(row.bytes) && row.bytes.length > 0;
+            row.num = hasCode ? this.formatListingNumber(++number) : "";
+        }
+
+        return rows;
+    };
+
+    this.finaliseListingJsonLineReferences = function (rows) {
+        rows = rows || [];
+        var numByExpandedLine = {};
+
+        /* Build the map before row.line is converted from source to listing num. */
+        for (var i = 0; i < rows.length; i++) {
+            var originalLine = rows[i] && rows[i].line;
+            if (originalLine != null) numByExpandedLine[String(originalLine)] = rows[i].num || "";
+        }
+
+        for (var r = 0; r < rows.length; r++) {
+            var row = rows[r] || {};
+            var expandedLine = row.line;
+
+            row.expandedLine = expandedLine;
+            if (row.sourceLine == null) row.sourceLine = expandedLine;
+            row.line = row.num || "";
+
+            /*
+             * scLocalLabel.anchorLine was formerly an expanded source line.
+             * Keep that coordinate explicitly and expose the public anchorLine
+             * through the same compiled-line numbering used by num.
+             */
+            if (row.scLocalLabel && row.scLocalLabel.anchorLine != null) {
+                var sourceAnchorLine = row.scLocalLabel.anchorLine;
+                row.scLocalLabel.sourceAnchorLine = sourceAnchorLine;
+                row.scLocalLabel.anchorLine = numByExpandedLine[String(sourceAnchorLine)] || "";
+            }
+        }
+
+        return rows;
+    };
+
+    this.makeListingDiagnostic = function (row, kind) {
+        row = row || {};
+        var diagnostic = {
+            line: row.num || "",
+            num: row.num || "",
+            sourceLine: row.sourceLine,
+            expandedLine: row.expandedLine,
+            sourceName: row.sourceName,
+            statement: row.statement
+        };
+        diagnostic[kind] = row[kind];
+        return diagnostic;
+    };
+
+    this.normaliseListingDiagnostic = function (diagnostic, rows) {
+        diagnostic = Object.assign({}, diagnostic || {});
+        rows = rows || [];
+
+        var originalLine = diagnostic.line;
+        var matchedRow = null;
+
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i] || {};
+            if (Number(row.expandedLine) === Number(originalLine)) {
+                matchedRow = row;
+                break;
+            }
+        }
+
+        if (matchedRow) {
+            diagnostic.line = matchedRow.num || "";
+            diagnostic.num = matchedRow.num || "";
+            diagnostic.sourceLine = matchedRow.sourceLine;
+            diagnostic.expandedLine = matchedRow.expandedLine;
+            diagnostic.sourceName = matchedRow.sourceName;
+        } else {
+            /* Global diagnostics, such as a non-converging layout, have no num. */
+            diagnostic.line = "";
+            diagnostic.num = "";
+            if (diagnostic.sourceLine == null) diagnostic.sourceLine = originalLine;
+            diagnostic.expandedLine = originalLine;
+        }
+
+        return diagnostic;
+}
 
     this.getListingLineLayout = function (columns) {
         columns = columns || this.listingColumns || this.defaultListingColumns || {};
@@ -29641,12 +29753,14 @@ function ASM(options)
         if (parsed.bytes != null) parsed.code = parsed.bytes;
         if (parsed.line != null) parsed.lin = parsed.line;
         if (parsed.jump != null) parsed.lin = parsed.jump;
+        if (parsed.number != null) parsed.num = parsed.number;
+        if (parsed.lineNumber != null) parsed.num = parsed.lineNumber;
         if (parsed.label != null) parsed.lbl = parsed.label;
         if (parsed.instruction != null) parsed.ins = parsed.instruction;
         if (parsed.operand != null) parsed.opr = parsed.operand;
         if (parsed.comment != null) parsed.com = parsed.comment;
 
-        ["adr", "code", "lin", "lbl", "ins", "opr", "asm", "com"].forEach(function (k) {
+        ["adr", "code", "lin", "num", "lbl", "ins", "opr", "asm", "com"].forEach(function (k) {
             if (parsed[k] != null) out[k] = Number(parsed[k]) | 0;
         });
 
@@ -29730,7 +29844,7 @@ function ASM(options)
         bytes = bytes || [];
         var tag = row.tag || [];
         var sym = row.sym || [];
-        var parts = { adr: "", code: "", lin: row.lin || "", lbl: "", ins: "", opr: "", asm: "", com: "" };
+        var parts = { adr: "", code: "", lin: row.lin || "", num: row.num || "", lbl: "", ins: "", opr: "", asm: "", com: "" };
         var split = this.splitStatementAndComment(row.source != null ? row.source : row.statement);
         parts.com = split.comment || "";
 
@@ -29783,6 +29897,8 @@ function ASM(options)
         var visibleOrder = order.filter(function (k) { return columns[k] != null; });
         var nonEmpty = visibleOrder.filter(function (k) { return parts[k] != null && String(parts[k]) !== ""; });
         var singleColumnRaw = !(nonEmpty.length === 1 && nonEmpty[0] === "lin");
+        var singleColumnRaw = !(nonEmpty.length === 1
+            && (nonEmpty[0] === "lin" || nonEmpty[0] === "num"));
 
         if (root.oCOM && typeof root.oCOM.renderTextTableRows === "function") {
             return root.oCOM.renderTextTableRows([parts], columns, {
@@ -29801,7 +29917,8 @@ function ASM(options)
          * source line crossed by active jump lanes, so it must still be
          * padded to the configured lin column.
          */
-        if (nonEmpty.length === 1 && nonEmpty[0] !== "lin") return String(parts[nonEmpty[0]]);
+        if (nonEmpty.length === 1 && nonEmpty[0] !== "lin" && nonEmpty[0] !== "num")
+            return String(parts[nonEmpty[0]]);
         for (var i = 0; i < visibleOrder.length; i++) {
             var key = visibleOrder[i];
             if (!parts[key]) continue;
@@ -30450,6 +30567,49 @@ function DASM()
                 border-color: #0078d4;
               }
 
+              .ASM_listingPresetList {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 2px;
+                margin-top: 5px;
+                min-width: 190px;
+              }
+
+              .ASM_listingPreset {
+               display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                min-height: 22px;
+                padding: 1px 3px 1px 6px;
+                border: 1px solid rgba(0,0,0,0.16);
+               border-radius: 4px;
+                background: rgba(255,255,255,0.55);
+                color: #000000;
+                font: 11px/1.2 arial, sans-serif;
+              }
+
+             .ASM_listingPresetButton {
+              -webkit-appearance: none;
+                appearance: none;
+                width: 25px;
+                min-width: 25px;
+                height: 20px;
+                border: 1px solid rgba(0,0,0,0.28);
+                border-radius: 3px;
+                background: #f4f4f4;
+                color: #000000;
+                cursor: pointer;
+               padding: 0;
+                line-height: 18px;
+             }
+
+              .ASM_listingPresetButton:hover,
+              .ASM_listingPresetButton:focus {
+                border-color: #0078d4;
+                outline: none;
+              }
+
               .ASM_paneInfo {
                 color: rgba(0,0,0,0.70);
                 font-family: arial, sans-serif;
@@ -30713,8 +30873,22 @@ function DASM()
                   <div class=appbox title="Assembler settings" style="min-height:63px;height:auto;padding:0px 6px 0px 6px;color:black;text-align: left;">
                     LISTING<br>
                     <label>
-                      Columns <input id="ASM_settingsListingColumnsInput" type="text" size=28 value="{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,asm:51,com:60}" title="Listing columns: address, code bytes, jump lines, label, instruction, operand, compatible assemblers for pragmas, comment" spellcheck="false" style="font-family:monospace;font-size:11px">
+                      Columns <input id="ASM_settingsListingColumnsInput" type="text" size=28 value="{adr:0,code:6,lin:15,num:23,lbl:30,ins:40,opr:45,com:61}" title="Listing columns: address, code bytes, jump lines, compiled line number, label, instruction, operand, compatible assemblers for pragmas, comment" spellcheck="false" style="font-family:monospace;font-size:11px">
                     </label>
+                    <div class="ASM_listingPresetList" aria-label="Listing column presets">
+                      <label class="ASM_listingPreset">
+                        <span>default</span>
+                        <button type="button" class="ASM_listingPresetButton" data-listing-preset="default" title="Use default listing columns"><i class="fa fa-table"></i></button>
+                      </label>
+                      <label class="ASM_listingPreset">
+                        <span>print</span>
+                        <button type="button" class="ASM_listingPresetButton" data-listing-preset="print" title="Use print listing columns"><i class="fa fa-table"></i></button>
+                      </label>
+                      <label class="ASM_listingPreset">
+                        <span>compile</span>
+                        <button type="button" class="ASM_listingPresetButton" data-listing-preset="compile" title="Use compact compile listing columns"><i class="fa fa-table"></i></button>
+                      </label>
+                    </div>
                   </div>
                 </div>
 
@@ -30888,6 +31062,12 @@ Label1 TXA
               max: 100
             };
             var ASM_headerThemeDark = false;
+
+            var ASM_listingColumnPresets = {
+              "default":"{adr:0,code:6,lin:15,num:23,lbl:30,ins:40,opr:45,com:61}",
+              "print":"{adr:0,code:6,lin:15,num:25,lbl:32,ins:40,opr:45,asm:61,com:70}",
+              "compile":"{adr:0,code:6,lbl:15,ins:25,opr:30,com:55}"
+            };
 
             function ASM_el(id) { return document.getElementById(id); }
 
@@ -31266,6 +31446,21 @@ Label1 TXA
 
               if(headerInput && headerInput !== sourceInput)     headerInput.value = value;
               if(settingsInput && settingsInput !== sourceInput) settingsInput.value = value;
+            }
+
+            function ASM_applyListingColumnPreset(name)
+            {
+              var spec = ASM_listingColumnPresets[name];
+              if(!spec) return false;
+
+              var settingsInput = ASM_el("ASM_settingsListingColumnsInput");
+              var headerInput   = ASM_el("ASM_listingColumnsInput");
+
+              if(settingsInput) settingsInput.value = spec;
+              if(headerInput) headerInput.value = spec;
+              ASM_syncListingColumns(settingsInput || headerInput);
+              ASM_clearOutputs("Listing preset '" + name + "' selected. Click assemble to regenerate output.","warn");
+              return true;
             }
 
             function ASM_setPaneInfos(listingText, jsonState)
@@ -32641,6 +32836,7 @@ Label1 TXA
               var boardText = ASM_el("ASM_boardText");
               var listingColumnsInput = ASM_el("ASM_listingColumnsInput");
               var settingsListingColumnsInput = ASM_el("ASM_settingsListingColumnsInput");
+              var listingPresetButtons = document.querySelectorAll(".ASM_listingPresetButton[data-listing-preset]");
               var dQuoteLegacyInput = ASM_el("ASM_dQuoteLegacyInput");
 
               if(fileInput) fileInput.addEventListener("change",function(){ ASM_loadFile(fileInput.files && fileInput.files[0]); });
@@ -32729,6 +32925,13 @@ Label1 TXA
                 ASM_syncListingColumns(settingsListingColumnsInput);
                 ASM_clearOutputs("Listing columns changed. Click assemble to regenerate output.","warn");
               });
+
+              for(var p = 0; p < listingPresetButtons.length; p++)
+              {
+                listingPresetButtons[p].addEventListener("click",function(){
+                  ASM_applyListingColumnPreset(this.getAttribute("data-listing-preset"));
+                });
+              }
 
               if(dQuoteLegacyInput) dQuoteLegacyInput.addEventListener("change",function(){
                 ASM_clearOutputs("dQuoteLegacy changed. Click assemble to regenerate output.","warn");
@@ -33118,7 +33321,7 @@ Label1 TXA
     var DBG_listingRowByByteAddress = new Int32Array(DBG_RAM_SIZE);
     var DBG_listingCurrentPC = null;
     var DBG_listingScrollBehavior = "auto";
-    var DBG_defaultListingColumns = {adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51};
+    var DBG_defaultListingColumns = {adr:0,code:6,lin:15,num:23,lbl:30,ins:40,opr:45,com:61};
     var DBG_darkMode = false;
     var DBG_symbolTables = [];
     var DBG_symbolTablesById = {};
