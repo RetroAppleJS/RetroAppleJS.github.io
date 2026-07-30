@@ -1,3 +1,4 @@
+; LAST BUILD 30-JUL-2026
 ; https://www.txbobsc.com/scsc/scdocumentor/index.html#toc
 ; S-C Macro Assembler cheat sheet:  https://gswv.apple2.org.za/a2zine/Docs/SCMacroAssembler.txt
 
