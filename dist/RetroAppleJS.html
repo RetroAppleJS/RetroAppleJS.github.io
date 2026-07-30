@@ -29671,8 +29671,35 @@ function ASM(options)
         return width === 1 ? "…" : text.substring(0, width - 1) + "…";
     };
 
-    this.truncateListingLabel = function (label) {
-        return this.cropListingField(label, this.listingLabelLen);
+    this.getListingColumnWidth = function (columns, key) {
+        columns = columns || this.listingColumns || this.defaultListingColumns || {};
+        if (columns[key] == null) return undefined;
+
+        var col = Number(columns[key]) | 0;
+        var order = this.getListingColumnOrder();
+        var width = undefined;
+
+        for (var i = 0; i < order.length; i++) {
+            var nextKey = order[i];
+            if (nextKey === key || columns[nextKey] == null) continue;
+
+            var nextCol = Number(columns[nextKey]) | 0;
+            if (nextCol <= col) continue;
+
+            var candidate = nextCol - col;
+            if (width === undefined || candidate < width) width = candidate;
+        }
+
+        return width;
+    };
+
+    this.truncateListingLabel = function (label, columns) {
+        /*
+         * Label display width must follow the active listing column map.
+         * The old fixed listingLabelLen default of 8 made wider user settings
+         * such as {lbl:21,ins:35} ineffective.
+         */
+        return this.cropListingField(label, this.getListingColumnWidth(columns, "lbl"));
     };
 
     this.normaliseListingInstruction = function (row, token, isPragma) {
@@ -29698,7 +29725,7 @@ function ASM(options)
         return token.toUpperCase();
     };
 
-    this.getListingParts = function (row, bytes) {
+    this.getListingParts = function (row, bytes, columns) {
         row = row || {};
         bytes = bytes || [];
         var tag = row.tag || [];
@@ -29717,7 +29744,7 @@ function ASM(options)
         var pgmIndex = this.getTokenIndexByTag(tag, "PGM");
         var oprIndex = this.getTokenIndexByTag(tag, "OPR");
 
-        if (lblIndex >= 0) parts.lbl = this.truncateListingLabel(sym[lblIndex]);
+        if (lblIndex >= 0) parts.lbl = this.truncateListingLabel(sym[lblIndex], columns);
         if (mneIndex >= 0) {
             parts.ins = this.normaliseListingInstruction(row, sym[mneIndex], false);
         }
@@ -29750,8 +29777,8 @@ function ASM(options)
 
     this.formatListingLine = function (row, bytes, columnsOverride) 
     {
-        var parts = this.getListingParts(row, bytes || []);
         var columns = columnsOverride || this.listingColumns || this.defaultListingColumns;
+        var parts = this.getListingParts(row, bytes || [], columns);
         var order = this.getListingColumnOrder();
         var visibleOrder = order.filter(function (k) { return columns[k] != null; });
         var nonEmpty = visibleOrder.filter(function (k) { return parts[k] != null && String(parts[k]) !== ""; });
