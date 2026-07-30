@@ -822,6 +822,49 @@
                 border-color: #0078d4;
               }
 
+              .ASM_listingPresetList {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 2px;
+                margin-top: 5px;
+                min-width: 190px;
+              }
+
+              .ASM_listingPreset {
+               display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                min-height: 22px;
+                padding: 1px 3px 1px 6px;
+                border: 1px solid rgba(0,0,0,0.16);
+               border-radius: 4px;
+                background: rgba(255,255,255,0.55);
+                color: #000000;
+                font: 11px/1.2 arial, sans-serif;
+              }
+
+             .ASM_listingPresetButton {
+              -webkit-appearance: none;
+                appearance: none;
+                width: 25px;
+                min-width: 25px;
+                height: 20px;
+                border: 1px solid rgba(0,0,0,0.28);
+                border-radius: 3px;
+                background: #f4f4f4;
+                color: #000000;
+                cursor: pointer;
+               padding: 0;
+                line-height: 18px;
+             }
+
+              .ASM_listingPresetButton:hover,
+              .ASM_listingPresetButton:focus {
+                border-color: #0078d4;
+                outline: none;
+              }
+
               .ASM_paneInfo {
                 color: rgba(0,0,0,0.70);
                 font-family: arial, sans-serif;
@@ -1085,8 +1128,22 @@
                   <div class=appbox title="Assembler settings" style="min-height:63px;height:auto;padding:0px 6px 0px 6px;color:black;text-align: left;">
                     LISTING<br>
                     <label>
-                      Columns <input id="ASM_settingsListingColumnsInput" type="text" size=28 value="{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,asm:51,com:60}" title="Listing columns: address, code bytes, jump lines, label, instruction, operand, compatible assemblers for pragmas, comment" spellcheck="false" style="font-family:monospace;font-size:11px">
+                      Columns <input id="ASM_settingsListingColumnsInput" type="text" size=28 value="{adr:0,code:6,lin:15,num:23,lbl:30,ins:40,opr:45,com:61}" title="Listing columns: address, code bytes, jump lines, compiled line number, label, instruction, operand, compatible assemblers for pragmas, comment" spellcheck="false" style="font-family:monospace;font-size:11px">
                     </label>
+                    <div class="ASM_listingPresetList" aria-label="Listing column presets">
+                      <label class="ASM_listingPreset">
+                        <span>default</span>
+                        <button type="button" class="ASM_listingPresetButton" data-listing-preset="default" title="Use default listing columns"><i class="fa fa-table"></i></button>
+                      </label>
+                      <label class="ASM_listingPreset">
+                        <span>print</span>
+                        <button type="button" class="ASM_listingPresetButton" data-listing-preset="print" title="Use print listing columns"><i class="fa fa-table"></i></button>
+                      </label>
+                      <label class="ASM_listingPreset">
+                        <span>compile</span>
+                        <button type="button" class="ASM_listingPresetButton" data-listing-preset="compile" title="Use compact compile listing columns"><i class="fa fa-table"></i></button>
+                      </label>
+                    </div>
                   </div>
                 </div>
 
@@ -1260,6 +1317,12 @@ Label1 TXA
               max: 100
             };
             var ASM_headerThemeDark = false;
+
+            var ASM_listingColumnPresets = {
+              "default":"{adr:0,code:6,lin:15,num:23,lbl:30,ins:40,opr:45,com:61}",
+              "print":"{adr:0,code:6,lin:15,num:25,lbl:32,ins:40,opr:45,asm:61,com:70}",
+              "compile":"{adr:0,code:6,lbl:15,ins:25,opr:30,com:55}"
+            };
 
             function ASM_el(id) { return document.getElementById(id); }
 
@@ -1638,6 +1701,21 @@ Label1 TXA
 
               if(headerInput && headerInput !== sourceInput)     headerInput.value = value;
               if(settingsInput && settingsInput !== sourceInput) settingsInput.value = value;
+            }
+
+            function ASM_applyListingColumnPreset(name)
+            {
+              var spec = ASM_listingColumnPresets[name];
+              if(!spec) return false;
+
+              var settingsInput = ASM_el("ASM_settingsListingColumnsInput");
+              var headerInput   = ASM_el("ASM_listingColumnsInput");
+
+              if(settingsInput) settingsInput.value = spec;
+              if(headerInput) headerInput.value = spec;
+              ASM_syncListingColumns(settingsInput || headerInput);
+              ASM_clearOutputs("Listing preset '" + name + "' selected. Click assemble to regenerate output.","warn");
+              return true;
             }
 
             function ASM_setPaneInfos(listingText, jsonState)
@@ -3013,6 +3091,7 @@ Label1 TXA
               var boardText = ASM_el("ASM_boardText");
               var listingColumnsInput = ASM_el("ASM_listingColumnsInput");
               var settingsListingColumnsInput = ASM_el("ASM_settingsListingColumnsInput");
+              var listingPresetButtons = document.querySelectorAll(".ASM_listingPresetButton[data-listing-preset]");
               var dQuoteLegacyInput = ASM_el("ASM_dQuoteLegacyInput");
 
               if(fileInput) fileInput.addEventListener("change",function(){ ASM_loadFile(fileInput.files && fileInput.files[0]); });
@@ -3101,6 +3180,13 @@ Label1 TXA
                 ASM_syncListingColumns(settingsListingColumnsInput);
                 ASM_clearOutputs("Listing columns changed. Click assemble to regenerate output.","warn");
               });
+
+              for(var p = 0; p < listingPresetButtons.length; p++)
+              {
+                listingPresetButtons[p].addEventListener("click",function(){
+                  ASM_applyListingColumnPreset(this.getAttribute("data-listing-preset"));
+                });
+              }
 
               if(dQuoteLegacyInput) dQuoteLegacyInput.addEventListener("change",function(){
                 ASM_clearOutputs("dQuoteLegacy changed. Click assemble to regenerate output.","warn");
@@ -3490,7 +3576,7 @@ Label1 TXA
     var DBG_listingRowByByteAddress = new Int32Array(DBG_RAM_SIZE);
     var DBG_listingCurrentPC = null;
     var DBG_listingScrollBehavior = "auto";
-    var DBG_defaultListingColumns = {adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51};
+    var DBG_defaultListingColumns = {adr:0,code:6,lin:15,num:23,lbl:30,ins:40,opr:45,com:61};
     var DBG_darkMode = false;
     var DBG_symbolTables = [];
     var DBG_symbolTablesById = {};
