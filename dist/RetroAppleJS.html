@@ -29332,19 +29332,55 @@ function ASM(options)
         return ["adr", "code", "lin", "num", "lbl", "ins", "opr", "asm", "com"];
     };
 
-    this.formatListingNumber = function (value) {
+    this.getListingColumnPosition = function (columns, key) {
+        columns = columns || this.listingColumns || this.defaultListingColumns || {};
+        var value = columns[key];
+
+        /*
+         * Most columns are expressed directly as a number.  Columns that need
+         * additional presentation metadata may use an object with a col member,
+         * for example num:{col:23,dig:6}.
+         */
+        if (value && typeof value === "object") value = value.col;
+        value = Number(value);
+        return isFinite(value) ? (value | 0) : undefined;
+    };
+
+    this.getRenderableListingColumns = function (columns) {
+        columns = columns || this.listingColumns || this.defaultListingColumns || {};
+        var out = {};
+
+        for (var key in columns) {
+            var col = this.getListingColumnPosition(columns, key);
+            if (col !== undefined) out[key] = col;
+        }
+
+        return out;
+    };
+
+    this.getListingNumberDigits = function (columns) {
+        columns = columns || this.listingColumns || this.defaultListingColumns || {};
+        var value = columns.num;
+        var digits = value && typeof value === "object" ? Number(value.dig) : 6;
+
+        if (!isFinite(digits)) digits = 6;
+        return Math.max(1, digits | 0);
+    };
+
+    this.formatListingNumber = function (value, columns) {
         value = Math.max(0, Number(value) | 0);
-        return String(value).padStart(6, "0");
+        return String(value).padStart(this.getListingNumberDigits(columns), "0");
     };
 
     this.applyListingNumberColumn = function (rows) {
         rows = rows || [];
+        var columns = this.listingColumns || this.defaultListingColumns || {};
         var number = 0;
 
         for (var i = 0; i < rows.length; i++) {
             var row = rows[i] || {};
             var hasCode = Array.isArray(row.bytes) && row.bytes.length > 0;
-            row.num = hasCode ? this.formatListingNumber(++number) : "";
+            row.num = hasCode ? this.formatListingNumber(++number, columns) : "";
         }
 
         return rows;
@@ -29433,14 +29469,16 @@ function ASM(options)
         columns = columns || this.listingColumns || this.defaultListingColumns || {};
         if (columns.lin == null) return { linCol: null, nextCol: null, width: 0, laneCount: 0, arrowCol: 0 };
 
-        var linCol = Number(columns.lin) | 0;
+        var linCol = this.getListingColumnPosition(columns, "lin");
+        if (linCol === undefined) return { linCol: null, nextCol: null, width: 0, laneCount: 0, arrowCol: 0 };
         var nextCol = null;
         var order = this.getListingColumnOrder();
 
         for (var i = 0; i < order.length; i++) {
             var key = order[i];
             if (key === "lin" || columns[key] == null) continue;
-            var col = Number(columns[key]) | 0;
+            var col = this.getListingColumnPosition(columns, key);
+            if (col === undefined) continue;
             if (col > linCol && (nextCol == null || col < nextCol)) nextCol = col;
         }
 
@@ -29712,20 +29750,48 @@ function ASM(options)
         };
     };
 
-    this.defaultListingColumns = { adr: 0, code: 6, lin: 15, lbl: 21, ins: 30, opr: 35, asm: 51, com: 60 };
-    this.listingColumns = Object.assign({}, this.defaultListingColumns);
+    this.defaultListingColumns = {
+        adr: 0,
+        code: 6,
+        lin: 15,
+        num: { col: 23, dig: 6 },
+        lbl: 30,
+        ins: 40,
+        opr: 45,
+        com: 61
+    };
+    this.listingColumns = Object.assign({}, this.defaultListingColumns, {
+        num: Object.assign({}, this.defaultListingColumns.num)
+    });
     this.listingLabelLen = options.listingLabelLen || 8;
 
     this.parseListingColumns = function (spec) 
     {
-        var defaults = this.defaultListingColumns || { adr: 0, code: 6, lin: 15, lbl: 21, ins: 30, opr: 35, asm: 51, com: 60 };
+        var defaults = this.defaultListingColumns || {
+            adr: 0, code: 6, lin: 15, num: { col: 23, dig: 6 },
+            lbl: 30, ins: 40, opr: 45, com: 61
+        };
         var parsed = {};
         var out = {};
 
         function put(k, v) {
+            k = String(k);
+
+            if (v && typeof v === "object") {
+                var col = Number(v.col);
+                if (!isFinite(col)) return;
+
+               var dig = Number(v.dig);
+                parsed[k] = {
+                    col: col | 0,
+                    dig: isFinite(dig) ? Math.max(1, dig | 0) : 6
+                };
+                return;
+            }
+
             v = Number(v);
             if (!isFinite(v)) return;
-            parsed[String(k)] = v | 0;
+            parsed[k] = v | 0;
         }
 
         if (spec == null || spec === "") {
@@ -29733,13 +29799,36 @@ function ASM(options)
         }
         else if (typeof spec === "object") {
             for (var ok in spec) put(ok, spec[ok]);
-        } else if (root.oCOM && typeof root.oCOM.parseColumnSpec === "function") {
-            parsed = root.oCOM.parseColumnSpec(spec, {});
         }
         else {
-            var text = String(spec);
-            var re = /([A-Za-z_$][A-Za-z0-9_$-]*)\s*[:=]\s*(-?\d+)/g, m;
-            while ((m = re.exec(text))) put(m[1], m[2]);
+            var text = String(spec).trim();
+            var objectSpec = null;
+
+            /*
+             * Parse compact JavaScript-style object notation locally so nested
+             * metadata survives.  COM_MAIN.parseColumnSpec() intentionally
+             * flattens every value to a number and therefore cannot retain dig.
+             */
+            try {
+                var jsonish = text.replace(
+                    /([{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)\s*:/g,
+                    '$1"$2":'
+                );
+                objectSpec = JSON.parse(jsonish);
+            }
+            catch (_ignore) {}
+
+            if (objectSpec && typeof objectSpec === "object") {
+                for (var sk in objectSpec) put(sk, objectSpec[sk]);
+            }
+            else if (root.oCOM && typeof root.oCOM.parseColumnSpec === "function") {
+                var flat = root.oCOM.parseColumnSpec(text, {});
+                for (var fk in flat) put(fk, flat[fk]);
+            }
+            else {
+                var re = /([A-Za-z_$][A-Za-z0-9_$-]*)\s*[:=]\s*(-?\d+)/g, m;
+                while ((m = re.exec(text))) put(m[1], m[2]);
+            }
         }
 
         /*
@@ -29761,7 +29850,15 @@ function ASM(options)
         if (parsed.comment != null) parsed.com = parsed.comment;
 
         ["adr", "code", "lin", "num", "lbl", "ins", "opr", "asm", "com"].forEach(function (k) {
-            if (parsed[k] != null) out[k] = Number(parsed[k]) | 0;
+            if (parsed[k] == null) return;
+
+            if (k === "num" && parsed[k] && typeof parsed[k] === "object") {
+                out[k] = {
+                    col: Number(parsed[k].col) | 0,
+                    dig: Math.max(1, Number(parsed[k].dig) | 0)
+                };
+            }
+            else out[k] = Number(parsed[k]) | 0;
         });
 
         return out;
@@ -29789,7 +29886,8 @@ function ASM(options)
         columns = columns || this.listingColumns || this.defaultListingColumns || {};
         if (columns[key] == null) return undefined;
 
-        var col = Number(columns[key]) | 0;
+        var col = this.getListingColumnPosition(columns, key);
+        if (col === undefined) return undefined;
         var order = this.getListingColumnOrder();
         var width = undefined;
 
@@ -29797,7 +29895,8 @@ function ASM(options)
             var nextKey = order[i];
             if (nextKey === key || columns[nextKey] == null) continue;
 
-            var nextCol = Number(columns[nextKey]) | 0;
+            var nextCol = this.getListingColumnPosition(columns, nextKey);
+            if (nextCol === undefined) continue;
             if (nextCol <= col) continue;
 
             var candidate = nextCol - col;
@@ -29879,7 +29978,10 @@ function ASM(options)
     this.getEffectiveListingColumns = function (rows) {
         var base = this.listingColumns || this.defaultListingColumns || {};
         var columns = {};
-        for (var k in base) columns[k] = base[k];
+        for (var k in base)
+            columns[k] = base[k] && typeof base[k] === "object"
+                ? Object.assign({}, base[k])
+                : base[k];
 
         /*
          * Do not auto-shift columns after lin.  The configured gap between
@@ -29892,16 +29994,16 @@ function ASM(options)
     this.formatListingLine = function (row, bytes, columnsOverride) 
     {
         var columns = columnsOverride || this.listingColumns || this.defaultListingColumns;
+        var renderColumns = this.getRenderableListingColumns(columns);
         var parts = this.getListingParts(row, bytes || [], columns);
         var order = this.getListingColumnOrder();
-        var visibleOrder = order.filter(function (k) { return columns[k] != null; });
+        var visibleOrder = order.filter(function (k) { return renderColumns[k] != null; });
         var nonEmpty = visibleOrder.filter(function (k) { return parts[k] != null && String(parts[k]) !== ""; });
-        var singleColumnRaw = !(nonEmpty.length === 1 && nonEmpty[0] === "lin");
         var singleColumnRaw = !(nonEmpty.length === 1
             && (nonEmpty[0] === "lin" || nonEmpty[0] === "num"));
 
         if (root.oCOM && typeof root.oCOM.renderTextTableRows === "function") {
-            return root.oCOM.renderTextTableRows([parts], columns, {
+            return root.oCOM.renderTextTableRows([parts], renderColumns, {
                 order: order,
                 trimRight: true,
                 singleColumnRaw: singleColumnRaw,
@@ -29922,10 +30024,10 @@ function ASM(options)
         for (var i = 0; i < visibleOrder.length; i++) {
             var key = visibleOrder[i];
             if (!parts[key]) continue;
-            var col = columns[key] | 0;
+            var col = renderColumns[key] | 0;
             var width = undefined;
             for (var j = i + 1; j < visibleOrder.length; j++) {
-                if ((columns[visibleOrder[j]] | 0) > col) { width = (columns[visibleOrder[j]] | 0) - col; break; }
+                if ((renderColumns[visibleOrder[j]] | 0) > col) { width = (renderColumns[visibleOrder[j]] | 0) - col; break; }
             }
             var text = this.cropListingField(parts[key], width);
             if (line.length < col) line = line.padEnd(col, " ");
@@ -30568,46 +30670,44 @@ function DASM()
               }
 
               .ASM_listingPresetList {
-                display: grid;
-                grid-template-columns: 1fr;
-                gap: 2px;
+                display: flex;
+                flex-flow: row wrap;
+                align-items: flex-start;
+                align-content: flex-start;
+                gap: 4px;
                 margin-top: 5px;
-                min-width: 190px;
+                width: 100%;
+                min-width: 0;
+                max-width: 100%;
               }
 
               .ASM_listingPreset {
-               display: flex;
+                -webkit-appearance: none;
+                appearance: none;
+                display: inline-flex;
                 align-items: center;
-                justify-content: space-between;
-                gap: 12px;
+                justify-content: flex-start;
+                flex: 0 0 auto;
+                gap: 6px;
                 min-height: 22px;
-                padding: 1px 3px 1px 6px;
-                border: 1px solid rgba(0,0,0,0.16);
-               border-radius: 4px;
+                padding: 2px 6px;
+                border: 1px solid rgba(0,0,0,0.24);
+                border-radius: 4px;               
                 background: rgba(255,255,255,0.55);
                 color: #000000;
                 font: 11px/1.2 arial, sans-serif;
+                cursor: pointer;
               }
 
-             .ASM_listingPresetButton {
-              -webkit-appearance: none;
-                appearance: none;
-                width: 25px;
-                min-width: 25px;
-                height: 20px;
-                border: 1px solid rgba(0,0,0,0.28);
-                border-radius: 3px;
-                background: #f4f4f4;
-                color: #000000;
-                cursor: pointer;
-               padding: 0;
-                line-height: 18px;
-             }
-
-              .ASM_listingPresetButton:hover,
-              .ASM_listingPresetButton:focus {
+              .ASM_listingPreset:hover,
+              .ASM_listingPreset:focus {
                 border-color: #0078d4;
                 outline: none;
+              }
+
+              .ASM_listingPreset i {
+                width: 14px;
+                text-align: center;
               }
 
               .ASM_paneInfo {
@@ -30873,21 +30973,21 @@ function DASM()
                   <div class=appbox title="Assembler settings" style="min-height:63px;height:auto;padding:0px 6px 0px 6px;color:black;text-align: left;">
                     LISTING<br>
                     <label>
-                      Columns <input id="ASM_settingsListingColumnsInput" type="text" size=28 value="{adr:0,code:6,lin:15,num:23,lbl:30,ins:40,opr:45,com:61}" title="Listing columns: address, code bytes, jump lines, compiled line number, label, instruction, operand, compatible assemblers for pragmas, comment" spellcheck="false" style="font-family:monospace;font-size:11px">
+                      Columns <input id="ASM_settingsListingColumnsInput" type="text" size=42 value="{adr:0,code:6,lin:15,num:{col:23,dig:6},lbl:30,ins:40,opr:45,com:61}" title="Listing columns: address, code bytes, jump lines, num:{col,dig}, label, instruction, operand, compatible assemblers for pragmas, comment" spellcheck="false" style="font-family:monospace;font-size:11px">
                     </label>
                     <div class="ASM_listingPresetList" aria-label="Listing column presets">
-                      <label class="ASM_listingPreset">
+                      <button type="button" class="ASM_listingPreset" data-listing-preset="default" title="Use default listing columns and assemble">
                         <span>default</span>
-                        <button type="button" class="ASM_listingPresetButton" data-listing-preset="default" title="Use default listing columns"><i class="fa fa-table"></i></button>
-                      </label>
-                      <label class="ASM_listingPreset">
+                        <i class="fa fa-table"></i>
+                      </button>
+                      <button type="button" class="ASM_listingPreset" data-listing-preset="print" title="Use print listing columns and assemble">
                         <span>print</span>
-                        <button type="button" class="ASM_listingPresetButton" data-listing-preset="print" title="Use print listing columns"><i class="fa fa-table"></i></button>
-                      </label>
-                      <label class="ASM_listingPreset">
+                        <i class="fa fa-table"></i>
+                      </button>
+                      <button type="button" class="ASM_listingPreset" data-listing-preset="compile" title="Use compact compile listing columns and assemble">
                         <span>compile</span>
-                        <button type="button" class="ASM_listingPresetButton" data-listing-preset="compile" title="Use compact compile listing columns"><i class="fa fa-table"></i></button>
-                      </label>
+                        <i class="fa fa-table"></i>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -31064,8 +31164,8 @@ Label1 TXA
             var ASM_headerThemeDark = false;
 
             var ASM_listingColumnPresets = {
-              "default":"{adr:0,code:6,lin:15,num:23,lbl:30,ins:40,opr:45,com:61}",
-              "print":"{adr:0,code:6,lin:15,num:25,lbl:32,ins:40,opr:45,asm:61,com:70}",
+              "default":"{adr:0,code:6,lin:15,num:{col:23,dig:6},lbl:30,ins:40,opr:45,com:61}",
+              "print":"{adr:0,code:6,lin:15,num:{col:25,dig:6},lbl:32,ins:40,opr:45,asm:61,com:70}",
               "compile":"{adr:0,code:6,lbl:15,ins:25,opr:30,com:55}"
             };
 
@@ -31459,8 +31559,7 @@ Label1 TXA
               if(settingsInput) settingsInput.value = spec;
               if(headerInput) headerInput.value = spec;
               ASM_syncListingColumns(settingsInput || headerInput);
-              ASM_clearOutputs("Listing preset '" + name + "' selected. Click assemble to regenerate output.","warn");
-              return true;
+              return ASM_assembleCurrentSource();
             }
 
             function ASM_setPaneInfos(listingText, jsonState)
@@ -32836,9 +32935,9 @@ Label1 TXA
               var boardText = ASM_el("ASM_boardText");
               var listingColumnsInput = ASM_el("ASM_listingColumnsInput");
               var settingsListingColumnsInput = ASM_el("ASM_settingsListingColumnsInput");
-              var listingPresetButtons = document.querySelectorAll(".ASM_listingPresetButton[data-listing-preset]");
-              var dQuoteLegacyInput = ASM_el("ASM_dQuoteLegacyInput");
 
+              var dQuoteLegacyInput = ASM_el("ASM_dQuoteLegacyInput");
+              var listingPresetButtons = document.querySelectorAll(".ASM_listingPreset[data-listing-preset]");
               if(fileInput) fileInput.addEventListener("change",function(){ ASM_loadFile(fileInput.files && fileInput.files[0]); });
               if(assembleButton) assembleButton.addEventListener("click",function(ev){ ev.preventDefault(); ASM_assembleCurrentSource(); });
               if(toggleJsonButton) toggleJsonButton.addEventListener("click",function(){ ASM_toggleJsonPane(); });
