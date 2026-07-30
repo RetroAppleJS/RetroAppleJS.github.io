@@ -490,7 +490,7 @@ ERR.FRMCPX     .EQ *-ER.MSG
                .AT "FORMULA TOO COMPLEX"
 ERR.CANTCONT   .EQ *-ER.MSG
                .AT "CAN'T CONTINUE"
-ERR.UNDEFFUNC. .EQ *-ER.MSG
+ERR.UNDEFFUNC  .EQ *-ER.MSG
                .AT "UNDEF'D FUNCTION"
 ;--------------------------------
 
@@ -6584,7 +6584,7 @@ COLORTBL .HS 002A557F80AAD5FF
 ;      HPLOT TO X,Y
 ;      HPLOT X1,Y1 TO X2,Y2
 ;--------------------------------
-HPLOT  CMP #T.TO     "PLOT TO" FORM?
+HPLOT  CMP #T.TO     ;"PLOT TO" FORM?
        BEQ .2            ;YES, START FROM CURRENT LOCATION
        JSR HFNS          ;NO, GET STARTING POINT OF LINE
        JSR HPLOT0   ;PLOT THE POINT, AND SET UP FOR
