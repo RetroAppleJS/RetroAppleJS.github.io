@@ -3,7 +3,6 @@
 
 ORG $D000
 
-
 ;*--------------------------------
 ;*   ZERO PAGE LOCATIONS:
 ;*--------------------------------
@@ -167,8 +166,6 @@ MON.OUTPORT      .EQ $FE95
 MON.WRITE        .EQ $FECD
 MON.READ         .EQ $FEFD
 MON.READ2        .EQ $FF02
-;*--------------------------------
-
 ;--------------------------------
 ;   APPLESOFT TOKENS
 ;--------------------------------
@@ -208,7 +205,6 @@ STRTXT        EQU $DE81
 FRM.VARIABLE.CALL   EQU $DED7
 FRM.ELEMENT   EQU $DE60
 FRMEVL.2      EQU $DD95
-
 ;--------------------------------
 ;      BRANCH TABLE FOR TOKENS
 ;--------------------------------
@@ -6344,9 +6340,6 @@ MSKTBL .HS 8182848890A0C0
 ;--------------------------------
 CON.1C .HS 1C       ;MASK FOR "FGH" BITS
 ;--------------------------------
-
-
-
 
 
 ;S.F5BA
