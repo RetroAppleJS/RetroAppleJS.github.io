@@ -616,7 +616,10 @@
                 --ASM_number: #f2cc60;
                 --ASM_bool: #ffab70;
                 --ASM_monoFont: "DejaVu Sans Mono","Menlo","Consolas","Courier New",monospace;
- 
+                --ASM_monoSize: 14px;
+                --ASM_monoLineHeight: 21px;
+                --ASM_paneBodyGap: 4px;
+
                 width: 1300px;
                 margin: 0px;
                 padding: 0px 0px 0px 0px;
@@ -654,7 +657,7 @@
               .ASM_pane {
                 display: flex;
                 flex-direction: column;
-                gap: 2px;
+                gap: var(--ASM_paneBodyGap);
                 min-width: 0;
                 max-width: 100%;
                 line-height: normal;
@@ -675,9 +678,9 @@
                 -webkit-text-fill-color: #000000;
                 caret-color: #000000;
                 font-family: var(--ASM_monoFont);
-                font-size: 12px;
+                font-size: var(--ASM_monoSize);
                 font-weight: 500;
-                line-height: 21px;
+                line-height: var(--ASM_monoLineHeight);
                 tab-size: 4;
                 white-space: pre;
                 resize: none;
@@ -780,7 +783,7 @@
                 justify-content: space-between;
                 gap: 10px;
                 min-height: 34px;
-                margin: 0px 0px 2px 0px;
+                margin: 0px;
                 padding: 4px 8px;
                 border-radius: 10px;
                 border: 1px solid rgba(0,0,0,0.18);
@@ -791,6 +794,11 @@
                 line-height: 20px;
                 overflow: visible;
                 position: relative;
+              }
+
+              .ASM_root .ASM_paneTitle.com-pane-title-equalized {
+                height: var(--com-pane-title-height, auto);
+                min-height: var(--com-pane-title-height, 34px);
               }
 
               .ASM_paneTitle strong {
@@ -927,7 +935,7 @@
                 max-width: 100%;
                 min-height: 420px;
                 padding: 0px;
-                overflow: visible;
+                overflow: hidden;
               }
 
               .ASM_root .com-pane-fr-wrap textarea {
@@ -986,9 +994,9 @@
               .ASM_root .com-pane-fr-wrap .com-pane-fr-text,
               .ASM_root .com-pane-fr-wrap .com-pane-fr-match-layer {
                 font-family: var(--ASM_monoFont) !important;
-                font-size: 12px !important;
+                font-size: var(--ASM_monoSize) !important;
                 font-weight: 500 !important;
-                line-height: 21px !important;
+                line-height: var(--ASM_monoLineHeight) !important;
                 letter-spacing: normal !important;
                 font-kerning: none;
                 font-variant-ligatures: none;
@@ -997,9 +1005,9 @@
 
               .ASM_root .com-pane-fr-wrap #ASM_sourcePane {
                  font-family: var(--ASM_monoFont) !important;
-                 font-size: 12px !important;
+                 font-size: var(--ASM_monoSize) !important;
                  font-weight: 500 !important;
-                 line-height: 21px !important;
+                 line-height: var(--ASM_monoLineHeight) !important;
               }
 
 
@@ -1100,6 +1108,19 @@
 .ASM_root.ASM_paneDark .com-pane-fr-current {
   color: #000000 !important;
   -webkit-text-fill-color: #000000 !important;
+}
+
+/*
+ * The find/replace overlay should paint highlights only.  ASM_sourcePane is
+ * deliberately visible so Source and Listing are both rendered by a native
+ * textarea with exactly the same font metrics.  Leaving the overlay glyphs
+ * visible draws every source character twice and produces the heavier,
+ * slightly displaced text visible in the regression screenshot.
+ */
+.ASM_root .com-pane-fr-wrap > .com-pane-fr-overlay,
+.ASM_root .com-pane-fr-wrap > .com-pane-fr-overlay * {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
 }
 
             </style>
@@ -2682,6 +2703,7 @@ Label1 TXA
             function ASM_resizeTextAreaToContent(el)
             {
               if(!el) return;
+              var horizontalScroll = el.scrollLeft || 0;
 
               var wrap = el.closest ? el.closest(".com-pane-fr-wrap") : null;
 
@@ -2691,12 +2713,32 @@ Label1 TXA
               if(wrap)
               {
                 wrap.style.height = "auto";
-                wrap.style.overflow = "visible";
+                wrap.style.overflow = "hidden";
               }
 
               var h = Math.max(420, el.scrollHeight);
               el.style.height = h + "px";
               if(wrap) wrap.style.height = h + "px";
+
+              /*
+               * These editors grow to their complete content height, so a
+               * vertical textarea scroll offset is always stale.  An editable
+               * source textarea can retain such an offset after caret/focus
+               * activity; the find overlay copies it and shifts Source almost
+               * one printer line above Listing.  Preserve horizontal scrolling,
+               * but anchor both text origins at the top of their pane bodies.
+               */
+              el.scrollTop = 0;
+              el.scrollLeft = horizontalScroll;
+              if(wrap) {
+                var overlay = wrap.querySelector(".com-pane-fr-overlay");
+                if(overlay) {
+                  overlay.scrollTop = 0;
+                  overlay.scrollLeft = horizontalScroll;
+                }
+              }
+
+
             }
 
             function ASM_resizeSourceListingPanes()
@@ -2933,7 +2975,7 @@ Label1 TXA
             function ASM_equalizePaneHeaders()
             {
               if(ASM_oPANE && typeof ASM_oPANE.equalizePaneHeaderHeights == "function")
-                ASM_oPANE.equalizePaneHeaderHeights("#ASM_root");
+                ASM_oPANE.equalizePaneHeaderHeights("#ASM_root .ASM_paneTitle");
             }
 
             function ASM_toggleJsonPane(forceShow)
@@ -3153,6 +3195,15 @@ Label1 TXA
 
               if(sourcePane)
               {
+                /*
+                 * Source is an auto-growing editor.  It must never retain a
+                 * vertical internal scroll offset; page scrolling owns the
+                 * vertical navigation for these side-by-side panes.
+                 */
+                sourcePane.addEventListener("scroll",function(){
+                  if(sourcePane.scrollTop) sourcePane.scrollTop = 0;
+                });
+
                 sourcePane.addEventListener("input",function(){
                   ASM_resizeSourceListingPanes();
                   ASM_refreshFindReplaceOverlay();
