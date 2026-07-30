@@ -1570,19 +1570,55 @@ function ASM(options)
         return ["adr", "code", "lin", "num", "lbl", "ins", "opr", "asm", "com"];
     };
 
-    this.formatListingNumber = function (value) {
+    this.getListingColumnPosition = function (columns, key) {
+        columns = columns || this.listingColumns || this.defaultListingColumns || {};
+        var value = columns[key];
+
+        /*
+         * Most columns are expressed directly as a number.  Columns that need
+         * additional presentation metadata may use an object with a col member,
+         * for example num:{col:23,dig:6}.
+         */
+        if (value && typeof value === "object") value = value.col;
+        value = Number(value);
+        return isFinite(value) ? (value | 0) : undefined;
+    };
+
+    this.getRenderableListingColumns = function (columns) {
+        columns = columns || this.listingColumns || this.defaultListingColumns || {};
+        var out = {};
+
+        for (var key in columns) {
+            var col = this.getListingColumnPosition(columns, key);
+            if (col !== undefined) out[key] = col;
+        }
+
+        return out;
+    };
+
+    this.getListingNumberDigits = function (columns) {
+        columns = columns || this.listingColumns || this.defaultListingColumns || {};
+        var value = columns.num;
+        var digits = value && typeof value === "object" ? Number(value.dig) : 6;
+
+        if (!isFinite(digits)) digits = 6;
+        return Math.max(1, digits | 0);
+    };
+
+    this.formatListingNumber = function (value, columns) {
         value = Math.max(0, Number(value) | 0);
-        return String(value).padStart(6, "0");
+        return String(value).padStart(this.getListingNumberDigits(columns), "0");
     };
 
     this.applyListingNumberColumn = function (rows) {
         rows = rows || [];
+        var columns = this.listingColumns || this.defaultListingColumns || {};
         var number = 0;
 
         for (var i = 0; i < rows.length; i++) {
             var row = rows[i] || {};
             var hasCode = Array.isArray(row.bytes) && row.bytes.length > 0;
-            row.num = hasCode ? this.formatListingNumber(++number) : "";
+            row.num = hasCode ? this.formatListingNumber(++number, columns) : "";
         }
 
         return rows;
@@ -1671,14 +1707,16 @@ function ASM(options)
         columns = columns || this.listingColumns || this.defaultListingColumns || {};
         if (columns.lin == null) return { linCol: null, nextCol: null, width: 0, laneCount: 0, arrowCol: 0 };
 
-        var linCol = Number(columns.lin) | 0;
+        var linCol = this.getListingColumnPosition(columns, "lin");
+        if (linCol === undefined) return { linCol: null, nextCol: null, width: 0, laneCount: 0, arrowCol: 0 };
         var nextCol = null;
         var order = this.getListingColumnOrder();
 
         for (var i = 0; i < order.length; i++) {
             var key = order[i];
             if (key === "lin" || columns[key] == null) continue;
-            var col = Number(columns[key]) | 0;
+            var col = this.getListingColumnPosition(columns, key);
+            if (col === undefined) continue;
             if (col > linCol && (nextCol == null || col < nextCol)) nextCol = col;
         }
 
@@ -1950,20 +1988,48 @@ function ASM(options)
         };
     };
 
-    this.defaultListingColumns = { adr: 0, code: 6, lin: 15, lbl: 21, ins: 30, opr: 35, asm: 51, com: 60 };
-    this.listingColumns = Object.assign({}, this.defaultListingColumns);
+    this.defaultListingColumns = {
+        adr: 0,
+        code: 6,
+        lin: 15,
+        num: { col: 23, dig: 6 },
+        lbl: 30,
+        ins: 40,
+        opr: 45,
+        com: 61
+    };
+    this.listingColumns = Object.assign({}, this.defaultListingColumns, {
+        num: Object.assign({}, this.defaultListingColumns.num)
+    });
     this.listingLabelLen = options.listingLabelLen || 8;
 
     this.parseListingColumns = function (spec) 
     {
-        var defaults = this.defaultListingColumns || { adr: 0, code: 6, lin: 15, lbl: 21, ins: 30, opr: 35, asm: 51, com: 60 };
+        var defaults = this.defaultListingColumns || {
+            adr: 0, code: 6, lin: 15, num: { col: 23, dig: 6 },
+            lbl: 30, ins: 40, opr: 45, com: 61
+        };
         var parsed = {};
         var out = {};
 
         function put(k, v) {
+            k = String(k);
+
+            if (v && typeof v === "object") {
+                var col = Number(v.col);
+                if (!isFinite(col)) return;
+
+               var dig = Number(v.dig);
+                parsed[k] = {
+                    col: col | 0,
+                    dig: isFinite(dig) ? Math.max(1, dig | 0) : 6
+                };
+                return;
+            }
+
             v = Number(v);
             if (!isFinite(v)) return;
-            parsed[String(k)] = v | 0;
+            parsed[k] = v | 0;
         }
 
         if (spec == null || spec === "") {
@@ -1971,13 +2037,36 @@ function ASM(options)
         }
         else if (typeof spec === "object") {
             for (var ok in spec) put(ok, spec[ok]);
-        } else if (root.oCOM && typeof root.oCOM.parseColumnSpec === "function") {
-            parsed = root.oCOM.parseColumnSpec(spec, {});
         }
         else {
-            var text = String(spec);
-            var re = /([A-Za-z_$][A-Za-z0-9_$-]*)\s*[:=]\s*(-?\d+)/g, m;
-            while ((m = re.exec(text))) put(m[1], m[2]);
+            var text = String(spec).trim();
+            var objectSpec = null;
+
+            /*
+             * Parse compact JavaScript-style object notation locally so nested
+             * metadata survives.  COM_MAIN.parseColumnSpec() intentionally
+             * flattens every value to a number and therefore cannot retain dig.
+             */
+            try {
+                var jsonish = text.replace(
+                    /([{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)\s*:/g,
+                    '$1"$2":'
+                );
+                objectSpec = JSON.parse(jsonish);
+            }
+            catch (_ignore) {}
+
+            if (objectSpec && typeof objectSpec === "object") {
+                for (var sk in objectSpec) put(sk, objectSpec[sk]);
+            }
+            else if (root.oCOM && typeof root.oCOM.parseColumnSpec === "function") {
+                var flat = root.oCOM.parseColumnSpec(text, {});
+                for (var fk in flat) put(fk, flat[fk]);
+            }
+            else {
+                var re = /([A-Za-z_$][A-Za-z0-9_$-]*)\s*[:=]\s*(-?\d+)/g, m;
+                while ((m = re.exec(text))) put(m[1], m[2]);
+            }
         }
 
         /*
@@ -1999,7 +2088,15 @@ function ASM(options)
         if (parsed.comment != null) parsed.com = parsed.comment;
 
         ["adr", "code", "lin", "num", "lbl", "ins", "opr", "asm", "com"].forEach(function (k) {
-            if (parsed[k] != null) out[k] = Number(parsed[k]) | 0;
+            if (parsed[k] == null) return;
+
+            if (k === "num" && parsed[k] && typeof parsed[k] === "object") {
+                out[k] = {
+                    col: Number(parsed[k].col) | 0,
+                    dig: Math.max(1, Number(parsed[k].dig) | 0)
+                };
+            }
+            else out[k] = Number(parsed[k]) | 0;
         });
 
         return out;
@@ -2027,7 +2124,8 @@ function ASM(options)
         columns = columns || this.listingColumns || this.defaultListingColumns || {};
         if (columns[key] == null) return undefined;
 
-        var col = Number(columns[key]) | 0;
+        var col = this.getListingColumnPosition(columns, key);
+        if (col === undefined) return undefined;
         var order = this.getListingColumnOrder();
         var width = undefined;
 
@@ -2035,7 +2133,8 @@ function ASM(options)
             var nextKey = order[i];
             if (nextKey === key || columns[nextKey] == null) continue;
 
-            var nextCol = Number(columns[nextKey]) | 0;
+            var nextCol = this.getListingColumnPosition(columns, nextKey);
+            if (nextCol === undefined) continue;
             if (nextCol <= col) continue;
 
             var candidate = nextCol - col;
@@ -2117,7 +2216,10 @@ function ASM(options)
     this.getEffectiveListingColumns = function (rows) {
         var base = this.listingColumns || this.defaultListingColumns || {};
         var columns = {};
-        for (var k in base) columns[k] = base[k];
+        for (var k in base)
+            columns[k] = base[k] && typeof base[k] === "object"
+                ? Object.assign({}, base[k])
+                : base[k];
 
         /*
          * Do not auto-shift columns after lin.  The configured gap between
@@ -2130,16 +2232,16 @@ function ASM(options)
     this.formatListingLine = function (row, bytes, columnsOverride) 
     {
         var columns = columnsOverride || this.listingColumns || this.defaultListingColumns;
+        var renderColumns = this.getRenderableListingColumns(columns);
         var parts = this.getListingParts(row, bytes || [], columns);
         var order = this.getListingColumnOrder();
-        var visibleOrder = order.filter(function (k) { return columns[k] != null; });
+        var visibleOrder = order.filter(function (k) { return renderColumns[k] != null; });
         var nonEmpty = visibleOrder.filter(function (k) { return parts[k] != null && String(parts[k]) !== ""; });
-        var singleColumnRaw = !(nonEmpty.length === 1 && nonEmpty[0] === "lin");
         var singleColumnRaw = !(nonEmpty.length === 1
             && (nonEmpty[0] === "lin" || nonEmpty[0] === "num"));
 
         if (root.oCOM && typeof root.oCOM.renderTextTableRows === "function") {
-            return root.oCOM.renderTextTableRows([parts], columns, {
+            return root.oCOM.renderTextTableRows([parts], renderColumns, {
                 order: order,
                 trimRight: true,
                 singleColumnRaw: singleColumnRaw,
@@ -2160,10 +2262,10 @@ function ASM(options)
         for (var i = 0; i < visibleOrder.length; i++) {
             var key = visibleOrder[i];
             if (!parts[key]) continue;
-            var col = columns[key] | 0;
+            var col = renderColumns[key] | 0;
             var width = undefined;
             for (var j = i + 1; j < visibleOrder.length; j++) {
-                if ((columns[visibleOrder[j]] | 0) > col) { width = (columns[visibleOrder[j]] | 0) - col; break; }
+                if ((renderColumns[visibleOrder[j]] | 0) > col) { width = (renderColumns[visibleOrder[j]] | 0) - col; break; }
             }
             var text = this.cropListingField(parts[key], width);
             if (line.length < col) line = line.padEnd(col, " ");
