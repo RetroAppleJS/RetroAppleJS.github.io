@@ -51,7 +51,7 @@ function ASM(options)
     var root = (typeof globalThis !== "undefined") ? globalThis : ((typeof window !== "undefined") ? window : this);
     var self = this;
 
-    this.version = "0.6.6";
+    this.version = "0.6.7";
     this.maxNumBytes = options.maxNumBytes || 2;
     // Retained for callers that still inspect it. Symbol identity is no longer truncated.
     this.label_len = options.label_len || 8;
@@ -1330,14 +1330,29 @@ function ASM(options)
             row.bytes = bytes;
             row.hex = this.bytesToHex(bytes);
 
-
-            if (row.err) errors.push({ line: row.line, statement: row.statement, err: row.err });
-            if (row.warn) warnings.push({ line: row.line, statement: row.statement, warn: row.warn });
-
             for (var j = 0; j < bytes.length; j++) {
                 byteRecords.push({ pc: (row.pc + j) & 0xffff, val: bytes[j] & 0xff });
             }
         }
+
+        /*
+         * num is a compiled-line sequence, not a source-line sequence.
+         * It advances once for every row that actually emitted byte code.
+         */
+        this.applyListingNumberColumn(rows);
+        this.finaliseListingJsonLineReferences(rows);
+
+        for (var di = 0; di < rows.length; di++) {
+            if (rows[di].err) errors.push(this.makeListingDiagnostic(rows[di], "err"));
+           if (rows[di].warn) warnings.push(this.makeListingDiagnostic(rows[di], "warn"));
+        }
+
+        var inheritedErrors = ((tokenisedRows && tokenisedRows.errors) || []).map(function (diagnostic) {
+            return self.normaliseListingDiagnostic(diagnostic, rows);
+       });
+        var inheritedWarnings = ((tokenisedRows && tokenisedRows.warnings) || []).map(function (diagnostic) {
+            return self.normaliseListingDiagnostic(diagnostic, rows);
+        });
 
         this.applyListingLineColumn(rows);
         var listingColumns = this.getEffectiveListingColumns(rows);
@@ -1356,8 +1371,8 @@ function ASM(options)
             byteCodeText: byteCodeLines.join("\n"),
             listingLines: listingLines,
             listingText: listingLines.join("\n"),
-            errors: errors.concat((tokenisedRows && tokenisedRows.errors) || []),
-            warnings: warnings.concat((tokenisedRows && tokenisedRows.warnings) || []),
+            errors: errors.concat(inheritedErrors),
+            warnings: warnings.concat(inheritedWarnings),
             layoutPasses: tokenisedRows && tokenisedRows.layoutPasses,
             layoutConverged: tokenisedRows && tokenisedRows.layoutConverged
         };
@@ -1552,8 +1567,105 @@ function ASM(options)
     };
 
     this.getListingColumnOrder = function () {
-        return ["adr", "code", "lin", "lbl", "ins", "opr", "asm", "com"];
+        return ["adr", "code", "lin", "num", "lbl", "ins", "opr", "asm", "com"];
     };
+
+    this.formatListingNumber = function (value) {
+        value = Math.max(0, Number(value) | 0);
+        return String(value).padStart(6, "0");
+    };
+
+    this.applyListingNumberColumn = function (rows) {
+        rows = rows || [];
+        var number = 0;
+
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i] || {};
+            var hasCode = Array.isArray(row.bytes) && row.bytes.length > 0;
+            row.num = hasCode ? this.formatListingNumber(++number) : "";
+        }
+
+        return rows;
+    };
+
+    this.finaliseListingJsonLineReferences = function (rows) {
+        rows = rows || [];
+        var numByExpandedLine = {};
+
+        /* Build the map before row.line is converted from source to listing num. */
+        for (var i = 0; i < rows.length; i++) {
+            var originalLine = rows[i] && rows[i].line;
+            if (originalLine != null) numByExpandedLine[String(originalLine)] = rows[i].num || "";
+        }
+
+        for (var r = 0; r < rows.length; r++) {
+            var row = rows[r] || {};
+            var expandedLine = row.line;
+
+            row.expandedLine = expandedLine;
+            if (row.sourceLine == null) row.sourceLine = expandedLine;
+            row.line = row.num || "";
+
+            /*
+             * scLocalLabel.anchorLine was formerly an expanded source line.
+             * Keep that coordinate explicitly and expose the public anchorLine
+             * through the same compiled-line numbering used by num.
+             */
+            if (row.scLocalLabel && row.scLocalLabel.anchorLine != null) {
+                var sourceAnchorLine = row.scLocalLabel.anchorLine;
+                row.scLocalLabel.sourceAnchorLine = sourceAnchorLine;
+                row.scLocalLabel.anchorLine = numByExpandedLine[String(sourceAnchorLine)] || "";
+            }
+        }
+
+        return rows;
+    };
+
+    this.makeListingDiagnostic = function (row, kind) {
+        row = row || {};
+        var diagnostic = {
+            line: row.num || "",
+            num: row.num || "",
+            sourceLine: row.sourceLine,
+            expandedLine: row.expandedLine,
+            sourceName: row.sourceName,
+            statement: row.statement
+        };
+        diagnostic[kind] = row[kind];
+        return diagnostic;
+    };
+
+    this.normaliseListingDiagnostic = function (diagnostic, rows) {
+        diagnostic = Object.assign({}, diagnostic || {});
+        rows = rows || [];
+
+        var originalLine = diagnostic.line;
+        var matchedRow = null;
+
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i] || {};
+            if (Number(row.expandedLine) === Number(originalLine)) {
+                matchedRow = row;
+                break;
+            }
+        }
+
+        if (matchedRow) {
+            diagnostic.line = matchedRow.num || "";
+            diagnostic.num = matchedRow.num || "";
+            diagnostic.sourceLine = matchedRow.sourceLine;
+            diagnostic.expandedLine = matchedRow.expandedLine;
+            diagnostic.sourceName = matchedRow.sourceName;
+        } else {
+            /* Global diagnostics, such as a non-converging layout, have no num. */
+            diagnostic.line = "";
+            diagnostic.num = "";
+            if (diagnostic.sourceLine == null) diagnostic.sourceLine = originalLine;
+            diagnostic.expandedLine = originalLine;
+        }
+
+        return diagnostic;
+}
 
     this.getListingLineLayout = function (columns) {
         columns = columns || this.listingColumns || this.defaultListingColumns || {};
@@ -1879,12 +1991,14 @@ function ASM(options)
         if (parsed.bytes != null) parsed.code = parsed.bytes;
         if (parsed.line != null) parsed.lin = parsed.line;
         if (parsed.jump != null) parsed.lin = parsed.jump;
+        if (parsed.number != null) parsed.num = parsed.number;
+        if (parsed.lineNumber != null) parsed.num = parsed.lineNumber;
         if (parsed.label != null) parsed.lbl = parsed.label;
         if (parsed.instruction != null) parsed.ins = parsed.instruction;
         if (parsed.operand != null) parsed.opr = parsed.operand;
         if (parsed.comment != null) parsed.com = parsed.comment;
 
-        ["adr", "code", "lin", "lbl", "ins", "opr", "asm", "com"].forEach(function (k) {
+        ["adr", "code", "lin", "num", "lbl", "ins", "opr", "asm", "com"].forEach(function (k) {
             if (parsed[k] != null) out[k] = Number(parsed[k]) | 0;
         });
 
@@ -1968,7 +2082,7 @@ function ASM(options)
         bytes = bytes || [];
         var tag = row.tag || [];
         var sym = row.sym || [];
-        var parts = { adr: "", code: "", lin: row.lin || "", lbl: "", ins: "", opr: "", asm: "", com: "" };
+        var parts = { adr: "", code: "", lin: row.lin || "", num: row.num || "", lbl: "", ins: "", opr: "", asm: "", com: "" };
         var split = this.splitStatementAndComment(row.source != null ? row.source : row.statement);
         parts.com = split.comment || "";
 
@@ -2021,6 +2135,8 @@ function ASM(options)
         var visibleOrder = order.filter(function (k) { return columns[k] != null; });
         var nonEmpty = visibleOrder.filter(function (k) { return parts[k] != null && String(parts[k]) !== ""; });
         var singleColumnRaw = !(nonEmpty.length === 1 && nonEmpty[0] === "lin");
+        var singleColumnRaw = !(nonEmpty.length === 1
+            && (nonEmpty[0] === "lin" || nonEmpty[0] === "num"));
 
         if (root.oCOM && typeof root.oCOM.renderTextTableRows === "function") {
             return root.oCOM.renderTextTableRows([parts], columns, {
@@ -2039,7 +2155,8 @@ function ASM(options)
          * source line crossed by active jump lanes, so it must still be
          * padded to the configured lin column.
          */
-        if (nonEmpty.length === 1 && nonEmpty[0] !== "lin") return String(parts[nonEmpty[0]]);
+        if (nonEmpty.length === 1 && nonEmpty[0] !== "lin" && nonEmpty[0] !== "num")
+            return String(parts[nonEmpty[0]]);
         for (var i = 0; i < visibleOrder.length; i++) {
             var key = visibleOrder[i];
             if (!parts[key]) continue;
