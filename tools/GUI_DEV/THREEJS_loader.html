@@ -298,7 +298,14 @@
 
     input.addEventListener("change", loadSelectedFile);
     
-    if (loadStandardButton) loadStandardButton.addEventListener("click", () => loadStandardProject(true));
+    //if (loadStandardButton) loadStandardButton.addEventListener("click", () => loadStandardProject(true));
+
+    if (loadStandardButton) {
+      loadStandardButton.addEventListener(
+        "click",
+        applyAllTextures
+      );
+    }
     for (const slot of Object.keys(slotInputs)) {
       const inputEl = slotInputs[slot];
       const buttonEl = slotButtons[slot];
