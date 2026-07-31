@@ -75,7 +75,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [ ] EMULATOR: swap between multiple virtual keyboards (start with A2_US vs A2_JP)
 - [ ] ASSEMBLER: Step Assembler completion (currently in alpha release)
 - [x] ASSEMBLER: Extend pragma's (pick a few more useful ideas from Merlin assembler)
-- [x] RETRO LAB: realtime dithering in CameraJS ((QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17))
+- [x] RETRO LAB: realtime dithering in CameraJS (QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17)
 - [ ] RETRO LAB: lo-res and hi-res graphics conversion tool (including dithering and color optimization algorithms)
 - [ ] OTHER: better document assembler code located in asm_code_examples
 - [ ] OTHER: popup tool with overlay tools like DEC-HEX-BIN-BASE64 converter, binary file converter and byte stream generator for Apple II pasteboard
