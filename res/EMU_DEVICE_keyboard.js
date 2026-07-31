@@ -70,8 +70,13 @@ function A2Pkeys()
 
     this.keystroke = function(data)
     {
-        // pasteboard
-        this.lastkey = data.keyCode | 0x80;
+        // Host keyboard input is translated by events() on keydown.  A later
+        // browser keypress must not overwrite that Apple II-specific result.
+        // Pasteboard injection uses a synthetic object with keyCode and no
+        // DOM event type, so that path remains available.
+        if(data && data.type=="keypress") return;
+        if(data && typeof(data.keyCode)=="number")
+            this.lastkey = data.keyCode | 0x80;
     }
 
     this.read = function(rel_addr,ctx)
@@ -89,6 +94,9 @@ function A2Pkeys()
     {
         var from = arg.type;
         var val  = arg.key;  if(val===undefined) return null;
+        var meta = this.events_data.metabits[0] || 0;
+        var control = arg.ctrlKey===true || (meta & this.events_data.metabitsEn["Control"])>0;
+        var shift   = arg.shiftKey===true || (meta & this.events_data.metabitsEn["Shift"])>0; 
 
         if(from=="keydown" && to=="A2_US"  // event -- _CFG_SYSCODE ==> keyfont
            || from=="click" && to=="A2_US")  // event -- _CFG_SYSCODE ==> keyfont
@@ -97,8 +105,33 @@ function A2Pkeys()
 
             if(arg.repeat==true) this.events_data.metabits[0] |= 0b100
 
-            if(val.length==1 && (this.events_data.metabits[0] & this.events_data.metabitsEn["Control"])>0)
-                return (val.codePointAt(0)-0x60) | 0x80;
+            if(val.length==1 && control)
+            {
+                // Use the physical host key where possible.  KeyboardEvent.key
+                // reflects the host layout and can become "M", while the Apple
+                // ][ key in that position is M / ] and therefore produces
+                // CTRL-] ($1D) when Shift and Control are both down.
+                var physicalKey = typeof(arg.code)=="string" && /^Key[A-Z]$/.test(arg.code)
+                    ? arg.code.slice(3)
+                    : val.toUpperCase();
+
+                // Reuse the Apple II virtual-key table so host and virtual
+                // keyboard modifier combinations cannot diverge.
+                var map = this.events_data.HTMLmap_A2_US;
+                for(var hash in map)
+                {
+                    var lookup = map[hash];
+                    if(lookup.val != physicalKey) continue;
+
+                    if(shift && typeof(lookup["Shift-Control"])=="number")
+                        return lookup["Shift-Control"] | 0x80;
+                    if(typeof(lookup["Control"])=="number")
+                        return lookup["Control"] | 0x80;
+                    break;
+                }
+
+                return (physicalKey.codePointAt(0) & 0x1F) | 0x80;
+            }
             else if(val.length==1 && val.match(/[a-z]/))
                 return (val.codePointAt(0)-0x20) | 0x80;
             else if(val.length==1 && val.match(/[A-Z1-9$*#!()'"%&-_ ]/))
@@ -742,7 +775,7 @@ padding: 0;
         ,"7E3F":{"val":"V","Control":0x16}
         ,"713F":{"val":"B","Control":0x02}
         ,"E4B9":{"val":"N","Shift":"^","Control":0x0E,"Shift-Control":0x1E}
-        ,"757F":{"val":"M","Shift":"]","Control":0x0D}
+        ,"757F":{"val":"M","Shift":"]","Control":0x0D,"Shift-Control":0x1D}
  
         ,"935E":{"val":";","Shift":"+"}
         ,"6062":{"val":",","Shift":"<"}
