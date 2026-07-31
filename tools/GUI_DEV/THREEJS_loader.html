@@ -96,6 +96,7 @@
     <label title="Base color / material.map image." class="lblbox">
       scene <input type="file" id="fileInput" accept=".json,application/json" title="Load Three.js editor JSON" />
 
+      <button id="loadStandardButton" class="secondary" type="button">LOAD STANDARD</button>
       <button id="frameButton" class="secondary" type="button">FRAME OBJECT</button>
       <button id="jsonCameraButton" class="neutral" type="button">JSON CAMERA</button>
       <button id="dumpMaterialButton" type="button">DUMP SCREEN MATERIAL</button>
@@ -111,7 +112,7 @@
     <label title="Shared roughness/metalness image; applied to material.roughnessMap and material.metalnessMap using the same texture object." class="lblbox">rough/metal <input type="file" id="roughMetalInput" accept="image/*" />
     <button id="applyRoughMetalButton" type="button">APPLY ROUGH/METAL</button></label>
 
-
+    <button id="applyAllButton" class="active" type="button">APPLY ALL</button>
 
           <label><input type="checkbox" id="helpersToggle" checked /> 3D grid</label>
       <label title="Lower FOV reduces perspective warping; the camera distance is adjusted to keep the object framed.">
@@ -127,12 +128,14 @@
       <button id="moveLightButton" class="neutral" type="button" aria-pressed="false">MOVE LIGHT: OFF</button>
       <span id="lightCoords" title="Cartesian coordinates of the scene point light">light: —</span>
 
-      <span id="status">Load a Three.js editor JSON project, then upload/apply base, rough/metal, and emissive textures for the screen material.</span>
- 
+      <span id="status">Load a JSON project or the built-in standard scene. Uploaded textures override the built-in maps.</span>
+  
 
   </div>
 
   <pre id="output"></pre>
+
+  <script src="../../res/THREEJS_loader_standard_scene.js"></script>
 
   <!--
     Three.js r184 dependency bridge, without import maps.
@@ -240,6 +243,7 @@
     };
 
     const input = document.getElementById("fileInput");
+    const loadStandardButton = document.getElementById("loadStandardButton");
     const slotInputs = {
       map: document.getElementById("baseColorInput"),
       emissiveMap: document.getElementById("emissiveInput")
@@ -250,6 +254,7 @@
     };
     const roughMetalInput = document.getElementById("roughMetalInput");
     const applyRoughMetalButton = document.getElementById("applyRoughMetalButton");
+    const applyAllButton = document.getElementById("applyAllButton");
     const frameButton = document.getElementById("frameButton");
     const jsonCameraButton = document.getElementById("jsonCameraButton");
     const dumpMaterialButton = document.getElementById("dumpMaterialButton");
@@ -289,6 +294,8 @@
     animate();
 
     input.addEventListener("change", loadSelectedFile);
+    
+    if (loadStandardButton) loadStandardButton.addEventListener("click", () => loadStandardProject(true));
     for (const slot of Object.keys(slotInputs)) {
       const inputEl = slotInputs[slot];
       const buttonEl = slotButtons[slot];
@@ -308,6 +315,7 @@
       });
     }
     if (applyRoughMetalButton) applyRoughMetalButton.addEventListener("click", applyRoughMetalTexture);
+    if (applyAllButton) applyAllButton.addEventListener("click", applyAllTextures);
     frameButton.addEventListener("click", () => frameLoadedObject(true));
     jsonCameraButton.addEventListener("click", restoreProjectCamera);
     dumpMaterialButton.addEventListener("click", dumpScreenMaterial);
@@ -367,6 +375,34 @@
         console.error(err);
         setStatus("Could not load project. See console.");
         writeOutput(String(err && err.stack ? err.stack : err));
+      }
+    }
+
+    function getStandardProject() {
+      const project = window.THREEJS_LOADER_STANDARD_SCENE;
+      if (!project || !project.scene) {
+        throw new Error("The built-in standard scene is unavailable or invalid.");
+      }
+      return cloneJson(project);
+    }
+
+    async function loadStandardProject(reportStatus) {
+      const showStatus = reportStatus !== false;
+      try {
+        lastFilename = "THREEJS_scene.json (built-in)";
+        if (showStatus) setStatus("Loading the built-in standard scene...");
+        await loadProject(getStandardProject());
+        if (showStatus) {
+          setStatus("Loaded the built-in standard scene. Click APPLY ALL to apply uploaded textures or the built-in maps.");
+        }
+        return true;
+      } catch (err) {
+        console.error(err);
+        if (showStatus) {
+          setStatus("Could not load the built-in standard scene. See console.");
+          writeOutput(String(err && err.stack ? err.stack : err));
+        }
+        return false;
       }
     }
 
@@ -496,6 +532,75 @@
         image.onerror = () => reject(new Error("Could not decode texture image."));
         image.src = url;
       });
+    }
+
+    async function applyAllTextures() {
+      if (applyAllButton) applyAllButton.disabled = true;
+
+      try {
+        if (!scene) {
+          setStatus("No scene is loaded; loading the built-in standard scene...");
+          const loaded = await loadStandardProject(false);
+          if (!loaded || !scene) {
+            throw new Error("Could not load the built-in standard scene.");
+          }
+        }
+
+        const baseSelection = await getSelectedOrDefaultImageUrl(
+          slotInputs.map,
+          "map",
+          TEXTURE_SLOT_PROFILES.map.label
+        );
+        const roughMetalSelection = await getSelectedOrDefaultImageUrl(
+          roughMetalInput,
+          "roughMetal",
+          "roughness/metalness"
+        );
+        const emissiveSelection = await getSelectedOrDefaultImageUrl(
+          slotInputs.emissiveMap,
+          "emissiveMap",
+          TEXTURE_SLOT_PROFILES.emissiveMap.label
+        );
+
+        const missing = [];
+        if (!baseSelection) missing.push("base color");
+        if (!roughMetalSelection) missing.push("roughness/metalness");
+        if (!emissiveSelection) missing.push("emissive");
+        if (missing.length > 0) {
+          throw new Error("Missing uploaded or built-in texture data for: " + missing.join(", ") + ".");
+        }
+
+        setStatus("Loading and applying base, roughness/metalness, and emissive textures...");
+
+        const textures = await Promise.all([
+          makeTextureFromUrl(baseSelection.url, baseSelection.label, "map"),
+          makeTextureFromUrl(roughMetalSelection.url, roughMetalSelection.label, "roughnessMap"),
+          makeTextureFromUrl(emissiveSelection.url, emissiveSelection.label, "emissiveMap")
+        ]);
+
+        const baseCount = applyTextureToTargetSlot(textures[0], baseSelection.label, "map");
+        const roughMetalCount = applySharedRoughMetalTexture(textures[1], roughMetalSelection.label);
+        const emissiveCount = applyTextureToTargetSlot(textures[2], emissiveSelection.label, "emissiveMap");
+
+        if (baseCount + roughMetalCount + emissiveCount === 0) {
+          throw new Error("No mesh/material target was found for the standard texture set.");
+        }
+
+        updateApplyButtonStates();
+        if (renderer && scene && camera) renderer.render(scene, camera);
+        setStatus(
+          "Applied all maps: " +
+          baseSelection.source + " base, " +
+          roughMetalSelection.source + " roughness/metalness, and " +
+          emissiveSelection.source + " emissive."
+        );
+      } catch (err) {
+        console.error(err);
+        setStatus("Could not apply the complete texture set. See console.");
+        writeOutput(String(err && err.stack ? err.stack : err));
+      } finally {
+        if (applyAllButton) applyAllButton.disabled = false;
+      }
     }
 
     async function applySelectedSlotTexture(slot) {
