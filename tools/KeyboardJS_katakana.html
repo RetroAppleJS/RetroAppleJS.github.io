@@ -1,0 +1,51 @@
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<link rel='stylesheet' href='https://retroapplejs.github.io/tools/../res/kb_new.css'>
+<script type="text/javascript" src="../res/COM_MAIN.js"></script>
+<script type="text/javascript" src="../res/pako.min.js"></script>    <!-- compression/decompression library -->
+<style>
+@import url(http://fonts.googleapis.com/css?family=Fragment+Mono);
+#keyboard .keycap .keylabel, #glyphScroller .keylabel { font-family: 'Fragment Mono'; font-weight: 400; }
+#keyboard .keycap .slightup, #glyphScroller .slightup { font-weight: 600; position: relative; top: -5px; }
+#keyboard .keycap .altfont, #glyphScroller .altfont { font-family: 'Arial'; position: relative; top: -3px; }
+</style>
+<script>
+var c_body =
+ "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"
++"2A==";
+const inflator = new pako.Inflate();
+inflator.push( Uint8Array.from(window.atob(c_body),(v)=>v.charCodeAt(0)));
+function doit()
+{
+var s = "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n"
+       //+"<meta http-equiv="Content-Type" content="text/html; charset=utf-8">\n"
+       //+"<style>\n"+custom_css+"\n</style>\n"
+       +"<div id=\"glyphScroller\">"
+       +new TextDecoder().decode(inflator.result)
+       +"</div>"
+document.getElementById("body").innerHTML = s;
+document.getElementById("code").value = s;
+}
+var keycapmap = {"keylabel0":"top-left","keylabel1":"top-center","keylabel2":"top-right","keylabel3":"center-left","keylabel4":"center-center","keylabel5":"center-right","keylabel6":"bottom-left","keylabel7":"bottom-center","keylabel8":"bottom-right","keylabel9":"front-left","keylabel10":"front-center","keylabel11":"front-right"}
+function stripHTML(str) { return str.replace(/(&nbsp;|<([^>]+)>)/ig,"") }
+function keycap_over(t) { t.classList.replace("keycap","selected") }
+function keycap_out(t) { t.classList.replace("selected","keycap") }
+function keycap_click(t)
+{
+   console.log("");const matches = t.innerHTML.matchAll(/keylabel (keylabel[0-9]{1,2})/gm);s=""
+   for(const match of matches)
+   {
+      var el = t.getElementsByClassName(match[1]);
+      var child = el[0].firstElementChild.innerHTML;
+      var log = [keycapmap[match[1]],stripHTML(child),child];
+      console.log(log[0]+" "+log[1],log[2]);
+      s+= log[0]+" "+log[1]+"<br>";
+   }
+  oCOM.POPUP.html(s);
+}
+</script>
+<body onload="doit()">
+<div id="body"></div>
+<textarea id="code" style=width:600px;height:150px></textarea>
+</body>
