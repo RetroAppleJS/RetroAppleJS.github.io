@@ -73,6 +73,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [x] EMULATOR: paddle/mouse capture
 - [ ] EMULATOR: vapor lock compliance (requires elaborate real-time debugger)
 - [ ] EMULATOR: swap between multiple virtual keyboards (start with A2_US vs A2_JP)
+- [ ] EMULATOR: more peripherals: Mockingboard card, Videx card, saturnRAM card, and what not...
 - [ ] ASSEMBLER: Step Assembler completion (currently in alpha release)
 - [x] ASSEMBLER: Extend pragma's (pick a few more useful ideas from Merlin assembler)
 - [x] RETRO LAB: realtime dithering in CameraJS (QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17)
