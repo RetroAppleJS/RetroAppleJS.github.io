@@ -107,41 +107,10 @@
         "metalness": 0,
         "emissive": 45930,
         "emissiveIntensity": 7.74,
-        "emissiveMap": "2fd50e10-42dd-477d-8504-24e7d2b27b08",
         "envMapRotation": [0,0,0,"XYZ"],
         "envMapIntensity": 1,
         "blendColor": 0
       }
-    ],
-    "textures": [
-      {
-        "uuid": "2fd50e10-42dd-477d-8504-24e7d2b27b08",
-        "name": "",
-        "image": "c22f5acf-8e3a-40ce-a194-c16f7a0dd275",
-        "mapping": 300,
-        "channel": 0,
-        "repeat": [1,1],
-        "offset": [2,0],
-        "center": [0,0],
-        "rotation": 0,
-        "wrap": [1001,1001],
-        "format": 1023,
-        "internalFormat": null,
-        "type": 1009,
-        "colorSpace": "srgb",
-        "minFilter": 1008,
-        "magFilter": 1006,
-        "anisotropy": 1,
-        "flipY": true,
-        "generateMipmaps": true,
-        "premultiplyAlpha": false,
-        "unpackAlignment": 4
-      }
-    ],
-    "images": [
-      {
-        "uuid": "c22f5acf-8e3a-40ce-a194-c16f7a0dd275",
-        "url": ""}
     ],
     "object": {
       "uuid": "f8f04c68-7363-4afc-b835-d89a6e53b8c6",
