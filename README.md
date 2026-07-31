@@ -15,9 +15,9 @@ Back in 1980, a few young curious minds like me were passionate about coding on 
 
 ## Getting started
 
-1) Inside the assembler, tap the **'assemble'** button
-2) Tap the **'to emulator'** button
-3) Inside the emulator, tap the **'paste'** button
+1) Inside the assembler, tap the **'Assemble'** button
+2) Tap the **'send byte code to emulator'** button
+3) Inside the emulator (boot a disk or hit the reset button), tap the **'paste'** button
 4) Type **6000G** to run the code at address 6000h, that's it !
 
 <a href=https://retroapplejs.github.io/index.html#tab2><img src="/res/Start_Step12.png?raw=true" width=100% /></a>
