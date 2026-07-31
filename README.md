@@ -70,7 +70,6 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 
 - [ ] EMULATOR: Step debugger (decommission or extend the current debugger ?)
 - [ ] EMULATOR: pasteboard macro scripting supporting keyboard/paddle/mouse recording, playback events and conditional stops
-- [ ] EMULATOR: popup tool with DEC-HEX-BIN-BASE64 converter, binary file converter and byte stream generator for Apple II pasteboard
 - [x] EMULATOR: paddle/mouse capture
 - [ ] EMULATOR: vapor lock compliance (requires elaborate real-time debugger)
 - [ ] EMULATOR: swap between multiple virtual keyboards (start with A2_US vs A2_JP)
@@ -79,6 +78,7 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 - [x] RETRO LAB: realtime dithering in CameraJS ((QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17))
 - [ ] RETRO LAB: lo-res and hi-res graphics conversion tool (including dithering and color optimization algorithms)
 - [ ] OTHER: better document assembler code located in asm_code_examples
+- [ ] OTHER: popup tool with overlay tools like DEC-HEX-BIN-BASE64 converter, binary file converter and byte stream generator for Apple II pasteboard
       
 ## Contribute
 
