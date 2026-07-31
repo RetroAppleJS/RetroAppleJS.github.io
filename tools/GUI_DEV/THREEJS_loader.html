@@ -17,35 +17,38 @@
 
     canvas { display: block; }
 
-    #toolbar {
-      position: fixed;
-      top: 12px;
-      left: 12px;
-      right: 12px;
-      z-index: 10;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-      padding: 8px;
-      border-radius: 6px;
-      background: rgba(0, 0, 0, 0.74);
-      color: #fff;
-      font-size: 13px;
-      user-select: none;
-    }
+  #toolbar input[type="file"] {
+    color: #fff;
+    font-size: 9.75px;
+    max-width: 180px;
+  }
 
-    #toolbar input[type="file"] { color: #fff; }
+  #toolbar input[type="file"]::file-selector-button {
+    padding: 4.5px 9px;
+    border: none;
+    border-radius: 3px;
+    font-size: 9.75px;
+    cursor: pointer;
+  }
+
     #toolbar input[type="range"] { width: 120px; }
 
-    button {
+  /* All ordinary buttons: 25% smaller. */
+  button {
+    padding: 4.5px 9px;
+    border: none;
+    border-radius: 3px;
+    font-size: 9.75px;
+    cursor: pointer;
+    background: #ff9940;
+    color: #fff;
+  }
+
+    /* Keep LOAD ALL at its existing size. */
+    #loadStandardButton {
       padding: 6px 12px;
-      border: none;
       border-radius: 4px;
       font-size: 13px;
-      cursor: pointer;
-      background: #ff9940;
-      color: #fff;
     }
 
     button:hover { opacity: 0.85; }
@@ -94,7 +97,7 @@
 <body>
   <div id="toolbar">
 
-      <button id="loadStandardButton" class="secondary" type="button">LOAD ALL</button>
+    <button id="loadStandardButton" class="secondary" type="button">LOAD ALL</button>
 
     <label title="Base color / material.map image." class="lblbox">
 
