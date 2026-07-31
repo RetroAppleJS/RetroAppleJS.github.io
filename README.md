@@ -70,20 +70,16 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 
 - [ ] EMULATOR: Step debugger (decommission or extend the current debugger ?)
 - [ ] EMULATOR: pasteboard macro scripting supporting keyboard/paddle/mouse recording, playback events and conditional stops
-- [ ] EMULATOR: popup tool with DEC-HEX-BIN-BASE64 converter, binary file converter and byte stream generator for Apple II pasteboard
-- [x] EMULATOR: slot configurator & activity monitor + tool to operate soft-switches e.g. SPKR and hard-switches e.g. USER1 jumper manually
-- [x] EMULATOR .NIB to .DSK converter [DiskJS](https://retroapplejs.github.io/tools/DiskJS.html)
-- [ ] EMULATOR: paddle/mouse capture
+- [x] EMULATOR: paddle/mouse capture
+- [ ] EMULATOR: vapor lock compliance (requires elaborate real-time debugger)
+- [ ] EMULATOR: swap between multiple virtual keyboards (start with A2_US vs A2_JP)
+- [ ] EMULATOR: more peripherals: Mockingboard card, Videx card, saturnRAM card, and what not...
 - [ ] ASSEMBLER: Step Assembler completion (currently in alpha release)
-- [x] ASSEMBLER: Disassembler to standard assembly listings
-- [x] ASSEMBLER: Extend pragma's (pick a few useful ideas from Merlin assembler)
-- [x] ASSEMBLER: complete memory-map (incl. zero-page) documentation -> share memorymap data with assembler/disassembler to generate extra context
-- [x] ASSEMBLER: better compatibility with listings from different Apple II assemblers (except virtual mnemonics)
-- [x] RETRO LAB: realtime dithering in CameraJS
-- [ ] RETRO LAB: GPT completion
-- [x] RETRO LAB: real-time camera capture tool - lo-res through software color-approximation (QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17)
+- [x] ASSEMBLER: Extend pragma's (pick a few more useful ideas from Merlin assembler)
+- [x] RETRO LAB: realtime dithering in CameraJS (QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17)
 - [ ] RETRO LAB: lo-res and hi-res graphics conversion tool (including dithering and color optimization algorithms)
 - [ ] OTHER: better document assembler code located in asm_code_examples
+- [ ] OTHER: popup tool with overlay tools like DEC-HEX-BIN-BASE64 converter, binary file converter and byte stream generator for Apple II pasteboard
       
 ## Contribute
 
