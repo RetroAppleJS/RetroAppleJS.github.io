@@ -6,6 +6,12 @@ function Apple2VideoMUX(canvas)
     const DISPLAY_H = 384;
 
     var mux = this;
+    var defaultCharRomKey =
+    typeof(_CFG_SYSCODE) != "undefined" &&
+    _CFG_SYSCODE.A2P &&
+    _CFG_SYSCODE.A2P.KeyFont
+        ? _CFG_SYSCODE.A2P.KeyFont
+        : "A2_US";
 
     this.id = "MUX";
     this.baseCanvas = canvas || null;
@@ -22,6 +28,9 @@ function Apple2VideoMUX(canvas)
         hires: false,
         chrome: 0
     };
+
+    this.state.charRomKey = defaultCharRomKey;
+    this.state.charRom = Apple2CharROM_get(defaultCharRomKey);
 
     this.renderModes = [
         { name: "gpu",     ctor: Apple2VideoGPU,    context: "canvas" },
@@ -635,4 +644,84 @@ function Apple2VideoMUX(canvas)
 
         return true;
     };
+
+    this.getCharRomKey = function()
+    {
+        return this.state.charRomKey;
+    };
+
+    this.getCharRom = function()
+    {
+        return this.state.charRom;
+    };
+
+    this.setCharRom = function(key, uiEl)
+    {
+        if (!apple2CharRom[key])
+        {
+            console.warn("Unknown Apple II character ROM: " + key);
+            return false;
+        }
+
+        this.state.charRomKey = key;
+        this.state.charRom = apple2CharRom[key];
+
+        /*
+        * Update every renderer that already exists. This prevents the selected
+        * ROM from changing back when the user selects another video mode.
+        */
+        for (var name in this.renderers)
+        {
+            var renderer = this.renderers[name];
+
+            if (renderer && typeof(renderer.setCharRom) == "function")
+                renderer.setCharRom(this.state.charRom, key);
+        }
+
+        this.redraw();
+        this.updateCharRomUI(uiEl);
+
+        return key;
+    };
+
+    this.nextCharRom = function(uiEl)
+    {
+        var keys = Apple2CharROM_keys();
+        var index = keys.indexOf(this.state.charRomKey);
+
+        index = index < 0 ? 0 : (index + 1) % keys.length;
+
+        return this.setCharRom(keys[index], uiEl);
+    };
+
+    this.updateCharRomUI = function(uiEl)
+    {
+        var el = uiEl || document.getElementById("char_rom");
+
+        if (!el) return;
+
+        el.title = "Character ROM: " + this.state.charRomKey;
+        el.setAttribute("data-char-rom", this.state.charRomKey);
+    };
+
+    this.applyState = function(r)
+    {
+        if (!r) return;
+
+        r.vidram = this.vidram;
+        r.hw = this.hw;
+
+        if (typeof(r.setCharRom) == "function")
+            r.setCharRom(this.state.charRom, this.state.charRomKey);
+
+        if (typeof(r.setGfx) == "function")     r.setGfx(this.state.gfx);
+        if (typeof(r.setMix) == "function")     r.setMix(this.state.mix);
+        if (typeof(r.setPage2) == "function")   r.setPage2(this.state.page2);
+        if (typeof(r.setHires) == "function")   r.setHires(this.state.hires);
+        if (typeof(r.setMonitor) == "function") r.setMonitor(this.state.chrome);
+
+        if (typeof(r.sync2DLinks) == "function")
+            r.sync2DLinks();
+    };
+
 }

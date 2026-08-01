@@ -803,7 +803,8 @@ function Apple2Video(ctx)
 
         const mode = this.register_mode();
         const mem = this.getVideoMemory();
-        const chr = (typeof(apple2CharRom) !== "undefined") ? apple2CharRom : new Uint8Array(2048);
+        const chr = this.charRom instanceof Uint8Array ? this.charRom : Apple2CharROM_get("A2_US");
+
         const flash = flash_on ? 1 : 0;
 
         if (gfx_mode && hires_mode)

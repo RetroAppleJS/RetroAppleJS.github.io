@@ -165,6 +165,10 @@ function Apple2Video(ctx)
     var hiresCols = transformColors(INTCols,ColNames,[0,3,6,9,12,15]);
     var loresCols = transformColors(INTCols,ColNames);
 
+    var charRom = Apple2CharROM_get("A2_US");
+    this.charRomKey = "A2_US";
+    this.setCharRom = function(rom, key) { charRom = rom; this.charRomKey = key; return key; };
+
     // Draw a text character from character ROM.
     // col is [0..39], row is [0..23], d8 is video memory contents
     function text_Draw(col, row, d8) 
@@ -178,7 +182,7 @@ function Apple2Video(ctx)
 
         var offs = 8 * ((d8 & 0x3f) ^ 0x20);
         for (var y = 0; y < 8; y++) {
-            var bits = apple2CharRom[offs + y];
+            var bits = charRom[offs + y];
             
             // Inverse or flashing?
             if ((d8 & 0xc0) == 0x00 ||

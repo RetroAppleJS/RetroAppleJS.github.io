@@ -164,11 +164,10 @@ function Apple2Video(ctx)
 
     if(ctx) this.ctx = ctx;
 
-    this.ctrl_dlg = function()
-    {
-        return Apple2VideoGPU_controls(this);
-    };
-
+    this.charRom = Apple2CharROM_get("A2_US");
+    this.charRomKey = "A2_US";
+    this.ctrl_dlg = function() { return Apple2VideoGPU_controls(this); };
+    this.setCharRom = function(rom, key) { this.charRom = rom; this.charRomKey = key; frame_redraw = true; return key; };
     this.vidram = null; // apple2hw.js sets this to give me reference to ram
     this.hw = null;     // apple2hw provides its reference during initialisation
 
@@ -353,23 +352,22 @@ function Apple2Video(ctx)
 
       const video = this;
 
-      window.requestAnimationFrame(function(rafNow)
-      {
-          if (!video.hw || typeof(video.hw.safe_videodump) !== "function") return;
-          if (typeof(video.kernel) !== "function") return;
+window.requestAnimationFrame(function(rafNow)
+{
+    if (!video.hw || typeof(video.hw.safe_videodump) !== "function") return;
+    if (typeof(video.kernel) !== "function") return;
 
-          video.kernel(
-              video.hw.safe_videodump(),
-              apple2CharRom,
-              video.serial8
-          );
+    video.kernel(
+        video.hw.safe_videodump(),
+        video.charRom,
+        video.serial8
+    );
 
-          video.recordFrameSubmit(Number(rafNow));
-          if(bDebug_snd && oEMU && oEMU.component && oEMU.component.IO &&
-             oEMU.component.IO.AppleSpeaker &&
-             typeof(oEMU.component.IO.AppleSpeaker.toggle) === "function")
-              oEMU.component.IO.AppleSpeaker.toggle();
-      });
+    video.recordFrameSubmit(Number(rafNow));
+    if(bDebug_snd && oEMU && oEMU.component && oEMU.component.IO && oEMU.component.IO.AppleSpeaker
+     && typeof(oEMU.component.IO.AppleSpeaker.toggle) === "function")
+        oEMU.component.IO.AppleSpeaker.toggle();
+});
 
       frame_redraw = false;
   }
