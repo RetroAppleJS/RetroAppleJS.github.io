@@ -1,4 +1,5 @@
 ; =====================================================================
+; SHA256_DGST - SHA-256 preparation stage for Apple II+
 ; ASM_core.js compatible, load address $6000
 ;
 ; Run under DOS 3.3:
