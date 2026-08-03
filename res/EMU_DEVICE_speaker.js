@@ -13,6 +13,7 @@
 
 function AppleSpeaker()
 {
+    var speaker = this;
     this.id = {"DCODE":"A2SPK", "hostPCODE":"A2BO", "icon":"fa fa-volume-up"};
 
     var bDebug = false;
@@ -109,6 +110,19 @@ function AppleSpeaker()
     this.nextStartTime = 0;
     this.activeSources = [];
 
+    this.isTickActive = function()
+    {
+        return this.enabled===true;
+    }
+
+    this.isCycleActive = this.isTickActive;
+
+    function refreshIOHooks()
+    {
+        if(typeof(speaker._ioRefreshHooks)=="function")
+            speaker._ioRefreshHooks();
+    }
+
     this.init = async function(action)
     {
         switch(action)
@@ -133,6 +147,7 @@ function AppleSpeaker()
 
             case "audio_on":
                 this.enabled = true;
+                refreshIOHooks();
 
                 if(this.audio && this.audio.state === "suspended")
                     await this.audio.resume();
@@ -147,6 +162,7 @@ function AppleSpeaker()
 
             case "audio_off":
                 this.enabled = false;
+                refreshIOHooks();
 
                 for(var i = 0; i < this.activeSources.length; i++)
                 {
@@ -164,6 +180,9 @@ function AppleSpeaker()
 
     this.tick = function(n)
     {
+        // Defensive guard for stand-alone use; Apple2IO normally removes this
+        // callback from its precomputed tick list while audio is muted.
+        if(!this.enabled) return;
         var m = n % this.tickCycle;
 
         if(m == 0)

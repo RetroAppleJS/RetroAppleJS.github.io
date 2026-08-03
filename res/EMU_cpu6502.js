@@ -16,8 +16,8 @@ else oEMU.component.CPU["6502"] = new Cpu6502();
 function Cpu6502(hwobj)
 {
     var self = this;
+    const bDebug_boot = false;       // opt-in CPU boot tracking
 
-    const bDebug_boot = true;        // debug CPU boot
     //const BOOTsiz = 1024;
     const BOOTsiz = 32768;
     //const BOOTsiz = 65536;
@@ -496,12 +496,9 @@ function Cpu6502(hwobj)
                 break;
         }
 
-        logBootInstruction(instr_pc & 0xffff, opcode, operand);
-
-        if(BOOTcnt == 7547)
-        {
-            //alert("BOOT STOP");
-        }
+        if(bDebug_boot)
+            logBootInstruction(instr_pc & 0xffff, opcode, operand);
+ 
 
         // Execute!
         switch (opcode) {

@@ -10,6 +10,8 @@ else oEMU.component.Video.Apple2Video = new Apple2Video();
 
 function Apple2Video(ctx)
 {
+    var video = this;
+
     this.id = {
          "DCODE":"A2CAN"
         ,"coID":"Apple2Video"
@@ -39,10 +41,141 @@ function Apple2Video(ctx)
     var flash_on = true; // boolean toggled 6 hz or so.
     var flash_count = 0;
     var charFlow = {"prev":{}};
+
+    /*
+     * RAM writes only collect unique visible cells/bytes.  The lists are
+     * drained once by cycle(), which is already called at the configured
+     * emulator processing-frame cadence.
+     */
+    var dirty_text_flags = new Uint8Array(40*24);
+    var dirty_hires_flags = new Uint8Array(40*192);
+    var dirty_text_list = [];
+    var dirty_hires_list = [];
+
     if(ctx) this.ctx = ctx;
 
     this.vidram = null; // apple2hw.js sets this to give me reference to ram
     this.hw = null;     // apple2hw provides its reference during initialisation
+
+
+    function clearDirty()
+    {
+        var i;
+
+        for(i=0;i<dirty_text_list.length;i++)
+            dirty_text_flags[dirty_text_list[i]] = 0;
+
+       for(i=0;i<dirty_hires_list.length;i++)
+            dirty_hires_flags[dirty_hires_list[i]] = 0;
+
+        dirty_text_list.length = 0;
+        dirty_hires_list.length = 0;
+    }
+
+    function markTextDirty(col,row)
+    {
+        var idx = row*40+col;
+        if(dirty_text_flags[idx]) return;
+
+         dirty_text_flags[idx] = 1;
+        dirty_text_list.push(idx);
+    }
+
+    function markHiresDirty(col,y)
+    {
+        var idx = y*40+col;
+        if(dirty_hires_flags[idx]) return;
+
+        dirty_hires_flags[idx] = 1;
+        dirty_hires_list.push(idx);
+    }
+
+    function textAddress(col,row)
+    {
+        return (page2_mode ? LORES2_ADDR : LORES1_ADDR)
+             + ((row&0x07)<<7)
+             + ((row&0x18)*5)
+             + col;
+    }
+
+    function hiresAddress(col,y)
+    {
+        return (page2_mode ? HIRES2_ADDR : HIRES1_ADDR)
+             + ((y&0x07)<<10)
+             + ((y&0x38)<<4)
+             + ((y&0xC0)>>1)
+             + ((y&0xC0)>>3)
+             + col;
+    }
+
+    function markFlashingDirty()
+    {
+        if(!video.vidram || (gfx_mode && !mix_mode)) return;
+
+        var firstRow = gfx_mode && mix_mode ? 20 : 0;
+        for(var row=firstRow;row<24;row++)
+        {
+            for(var col=0;col<40;col++)
+            {
+                var addr = textAddress(col,row);
+                if((video.vidram[addr]&0xC0)==0x40)
+                    markTextDirty(col,row);
+            }
+        }
+    }
+
+    function flushDirty()
+    {
+        if(ctx===undefined || !video.vidram)
+        {
+            clearDirty();
+            return;
+        }
+
+        var i, idx, col, row, y, addr, d8, d8_l, d8_r;
+
+        for(i=0;i<dirty_hires_list.length;i++)
+        {
+            idx = dirty_hires_list[i];
+            dirty_hires_flags[idx] = 0;
+
+            if(!gfx_mode || !hires_mode) continue;
+
+            y = Math.floor(idx/40);
+            col = idx-y*40;
+            if(mix_mode && y>=160) continue;
+
+            addr = hiresAddress(col,y);
+            d8 = video.vidram[addr];
+            d8_l = col>0  ? video.vidram[addr-1] : 0;
+            d8_r = col<39 ? video.vidram[addr+1] : 0;
+
+            video.hgr_Draw(col,y,d8_l,d8,d8_r,video.modes);
+        }
+        dirty_hires_list.length = 0;
+
+        for(i=0;i<dirty_text_list.length;i++)
+        {
+            idx = dirty_text_list[i];
+            dirty_text_flags[idx] = 0;
+
+            row = Math.floor(idx/40);
+            col = idx-row*40;
+            addr = textAddress(col,row);
+            d8 = video.vidram[addr];
+
+            if(gfx_mode && (!mix_mode || row<20))
+            {
+                if(!hires_mode) lores_Draw(col,row,d8);
+            }
+            else
+            {
+                text_Draw(col,row,d8);
+                charFlow.prev = {"col":col,"row":row,"d8":d8};
+            }
+        }
+        dirty_text_list.length = 0;
+    }
 
     this.reset = function() {
         gfx_mode = false;
@@ -62,9 +195,8 @@ function Apple2Video(ctx)
 
     /*
      * Advance the flashing-character timer with batched base-speed-equivalent
-     * ticks supplied by Apple2Plus. At the default 1.0218 MHz clock, 250000
-     * ticks is approximately 245 ms, matching the previous normal-speed
-     * behaviour without calling this function for every CPU clock.
+     * ticks supplied by Apple2Plus.  Dirty video RAM is then painted once for
+     * this processing frame, independently of the number of writes collected.
      */
     this.cycle = function(ticks)
     {
@@ -73,16 +205,20 @@ function Apple2Video(ctx)
 
         flash_count += ticks;
         var toggles = Math.floor(flash_count/FLASH_TICKS);
-        if(toggles<=0) return;
+        if(toggles>0)
+        {
+            flash_count -= toggles*FLASH_TICKS;
 
-        flash_count -= toggles*FLASH_TICKS;
+            // Only the final visible state matters when a very large batch
+            // crosses more than one flash boundary.
+            if((toggles&1)!=0)
+            {
+                flash_on = !flash_on;
+                markFlashingDirty();
+            }
+        }
 
-        // Only the final visible state matters when a very large batch crosses
-        // more than one flash boundary.
-        if((toggles&1)==0) return;
-
-        flash_on = !flash_on;
-        this.reflash();
+        flushDirty();
     }
 
     this.setGfx = function(flag) {
@@ -258,37 +394,31 @@ function Apple2Video(ctx)
     this.write = function(addr, d8)
     {
         if (this.vidram[addr] == d8) return;   // biggest cheap win
-        this.vidram[addr] == d8;
         if(this.ctx === undefined) return;
 
         if (gfx_mode && hires_mode &&
             addr >= (page2_mode ? HIRES2_ADDR : HIRES1_ADDR) &&
-            addr < (page2_mode ? HIRES2_ADDR : HIRES1_ADDR) + HPAGE_SIZE) {
+            addr < (page2_mode ? HIRES2_ADDR : HIRES1_ADDR) + HPAGE_SIZE) 
+        {
 
             // HIRES graphics.
             // Calculate column [0..39] and y [0..191] from address.
             var col = (addr & 0x07f) % 40;
             var y = ((addr & 0x380) >> 4) | ((addr & 0x1c00) >> 10);
-            var d8_l = 0, d8_r = 0;
-
-            // Hidden by text in mix-mode?
-            if (y >= 160 && mix_mode) return;
 
             if ((addr & 0x07f) < 40);
             else if ((addr & 0x07f) < 80) y |= 0x40;
             else if ((addr & 0x07f) < 120) y |= 0x80;
             else return; // off-screen bytes
 
-            // Get bytes to the left and right of this byte (if they exist).
-            if (col > 0) d8_l = this.vidram[addr - 1];
-            if (col < 39) d8_r = this.vidram[addr + 1];
+            // Hidden by text in mix-mode?
+            if (y >= 160 && mix_mode) return;
 
-            this.hgr_Draw(col, y, d8_l, d8, d8_r, this.modes);
-            if(bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
+            markHiresDirty(col,y);
         }
         else if (addr >= (page2_mode ? LORES2_ADDR : LORES1_ADDR) &&
-                addr < (page2_mode ? LORES2_ADDR : LORES1_ADDR) + LPAGE_SIZE) {
-
+                addr < (page2_mode ? LORES2_ADDR : LORES1_ADDR) + LPAGE_SIZE) 
+        {
             // LORES or TEXT.
             // Calculate column [0..39] and row [0..23] from address.
             var col = (addr & 0x07f) % 40;
@@ -301,47 +431,32 @@ function Apple2Video(ctx)
 
             if (gfx_mode && (!mix_mode || row < 20))
             {
-                // LO-RES Graphics.
-                if (!hires_mode) lores_Draw(col, row, d8);
-                if(bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
+                // LORES graphics is visible here; HGR ignores text-page writes.
+                if (!hires_mode) markTextDirty(col,row);
             }
             else
             {
-                // Text mode
-                text_Draw(col, row, d8);
-                charFlow.prev = {"col":col,"row":row,"d8":d8};
-                if(bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
+                markTextDirty(col,row);
             }
         }
     } // write()
 
-    // Redraw flashing characters only (including cursor).  Called every time flash_on toggles.
+    // Mark flashing characters dirty; cycle() paints them with the frame.
     this.reflash = function()
     {
-        if(this.ctx === undefined) return;
-
-        if (!gfx_mode || mix_mode) {            
-            for (var col = 0; col < 40; col++)
-               for (var row = (gfx_mode && mix_mode) ? 20 : 0; row < 24; row++)
-               {
-                    var addr = (((row & 0x07) << 7) | (row & 0x18) | ((row & 0x18) << 2) |
-                        (page2_mode ? LORES2_ADDR : LORES1_ADDR)) + col;
-
-                    var d8 = this.vidram[addr];
-
-                    // Redraw flashing characters.
-                    if ((d8 & 0xc0) == 0x40) 
-                        text_Draw(col, row, d8);
-                }
-        }
-        if(bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();  // toggle speaker at each key frame
+       markFlashingDirty(); 
     }
 
     // Redraw everything.  Called whenever the graphics modes change.
     this.redraw = function()
     {
-        if(this.ctx === undefined) return;
-
+        if(this.ctx === undefined)
+        {
+            clearDirty();
+            return;
+        }
+ 
+        clearDirty();
         this.register_mode();
         for (var row = 0; row < 24; row++)
             for (var col = 0; col < 40; col++)

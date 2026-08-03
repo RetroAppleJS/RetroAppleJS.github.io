@@ -15,10 +15,45 @@ if(oEMUI===undefined) var oEMUI = {"slotConfig":function(){},"slotsRender":funct
 function Apple2IO(vid)
 {
     const bDebug = true;
+    var io = this;
 
     this.slot_ctx = {};
     this.slots = [];
     this.attachments = {};
+
+    /*
+     * Device hook lists are rebuilt only when attachments or their active
+     * state change.  The CPU hot path then performs direct callback calls
+     * without rescanning attachments or testing method types.
+     */
+    var tickCallbacks = [];
+    var cycleCallbacks = [];
+
+    function hookActive(device,hook)
+    {
+        var predicate = hook=="tick" ? device.isTickActive : device.isCycleActive;
+        return typeof(predicate)!="function" || predicate.call(device)!==false;
+    }
+
+    function rebuildDeviceHooks()
+    {
+        tickCallbacks.length = 0;
+        cycleCallbacks.length = 0;
+
+        for(var key in io.attachments)
+        {
+            var device = io.attachments[key].device;
+            if(!device) continue;
+
+            if(typeof(device.tick)=="function" && hookActive(device,"tick"))
+                tickCallbacks.push(device.tick.bind(device));
+
+            if(typeof(device.cycle)=="function" && hookActive(device,"cycle"))
+                cycleCallbacks.push(device.cycle.bind(device));
+        }
+    }
+
+    this.refreshDeviceHooks = rebuildDeviceHooks;    
 
     // restart() installs the real empty-bus filler; live remounts reuse it.
     var refillEmptyIOActions = function(){};
@@ -60,6 +95,8 @@ function Apple2IO(vid)
             if(device && typeof(device.reset)=="function")
                 device.reset();
         }
+
+        rebuildDeviceHooks();
     }
 
     this.provisionPeripheral = function(owner,model)
@@ -264,6 +301,7 @@ this.slots[3] =
             }
         }
 
+        rebuildDeviceHooks();
         /*
          * Every mounted peripheral was restarted in the slot loop above.
          * Do not restart one arbitrarily selected PCODE match a second time.
@@ -495,23 +533,15 @@ this.write = function(rel_addr,d8)
     // CPU-tick hook for devices that need sub-cycle sampling, such as the speaker.
     this.tick = function(n)
     {
-        for(var key in this.attachments)
-        {
-            var device = this.attachments[key].device;
-            if(device && typeof(device.tick)=="function")
-                device.tick(n);
-        }
+        for(var i=0;i<tickCallbacks.length;i++)
+            tickCallbacks[i](n);
     }
 
     // Processing-cycle hook, called once after the configured CPU-tick group.
     this.cycle = function()
     {
-        for(var key in this.attachments)
-        {
-            var device = this.attachments[key].device;
-            if(device && typeof(device.cycle)=="function")
-                device.cycle();
-        }
+        for(var i=0;i<cycleCallbacks.length;i++)
+            cycleCallbacks[i]();
     }
 
     this.attach = function(owner,device_info)
@@ -634,6 +664,18 @@ this.write = function(rel_addr,d8)
                 ,"enumerable":false
             });
 
+        /*
+         * A device can request a hook-list rebuild when its runtime activity
+         * changes, for example when the speaker is muted or unmuted.
+         */
+        Object.defineProperty(device,"_ioRefreshHooks",{
+             "value":rebuildDeviceHooks
+            ,"writable":true
+            ,"configurable":true
+            ,"enumerable":false
+        });
+        rebuildDeviceHooks();
+
         if(bDebug)
             console.log("EMU_apple2io.js - attach(<"+dcode+" to "+hostPCODE+">)");
 
@@ -665,6 +707,7 @@ this.write = function(rel_addr,d8)
             removed = true;
         }
 
+        if(removed) rebuildDeviceHooks();
         return removed;
     }
 

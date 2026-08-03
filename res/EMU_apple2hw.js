@@ -214,6 +214,20 @@ function Apple2Hw(vid,keys)
 
     this.mark_MEM_monitoring = function(addr)
     {
+        /*
+         * The refresh event is the UI's source of truth.  Avoid collecting
+         * write-page evidence while that event is disabled; enable_MEM_monitoring()
+         * remains available to non-UI callers.
+         */
+        var refreshEvent = typeof(oCOM)!="undefined"
+           && oCOM.RefreshEvent_arr
+                ? oCOM.RefreshEvent_arr.MEM_monitoring
+                : null;
+
+        if(!this.bMEM_monitoring
+            && (!refreshEvent || refreshEvent.active!==true))
+            return;
+
         this.mem_mon[ addr>>oMEMGRID.mem_gran ] = true;     // update memory monitoring grid 
     }
 
