@@ -182,6 +182,8 @@ function Apple2Video(ctx)
     var hires_mode;
     var chrome_mode = 0;
     var flash_on = false;
+    const FRAME_TICKS = 20000;
+    const FLASH_TICKS = 200000;
     var flash_count = 0;
     var frame_count = 0;
     var frame_redraw = true;
@@ -294,30 +296,36 @@ function Apple2Video(ctx)
         return (gfx_mode?1:2) + (mix_mode?8:4) + (page2_mode?32:16) + (hires_mode?128:64);
     };
 
-    this.cycle = function()
+    this.cycle = function(ticks)
     {
-        frame_count++;
+        ticks = Number(ticks);
+        if(!Number.isFinite(ticks) || ticks<=0) return;
 
-        // Keep the same redraw cadence as EMU_DEVICE_video_GPU.js.
-        // The extra flash branch matters for TEXT mode, because flashing chars
-        // must redraw even when RAM is otherwise unchanged.
-        if (frame_count > 20000)
+        frame_count += ticks;
+        flash_count += ticks;
+        var flashToggles = Math.floor(flash_count/FLASH_TICKS);
+        if(flashToggles>0)
         {
-            if (frame_redraw)
-            {
-                frame_count = 0;
-                this.redraw();
-                if (bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();
-            }
-            else if (frame_count > 200000)
+            flash_count -= flashToggles*FLASH_TICKS;
+
+            if((flashToggles&1)!=0)
             {
                 flash_on = !flash_on;
-                frame_count = 0;
                 frame_redraw = true;
-                this.redraw();
-                if (bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();
             }
         }
+
+        // The old thresholds were CPU-cycle counts. They now consume the same
+        // base-speed-equivalent ticks in one batch, so turbo no longer raises
+        // either the redraw-check rate or the text-flash rate.
+        if(frame_redraw && frame_count>=FRAME_TICKS)
+        {
+            frame_count %= FRAME_TICKS;
+            this.redraw();
+            if(bDebug_snd) oEMU.component.IO.AppleSpeaker.toggle();
+        }
+
+
     };
 
     this.markDirty = function()

@@ -525,10 +525,11 @@ function Apple2VideoMUX(canvas)
         this.setMode(this.modeIndex, null, true);
     };
 
-    this.cycle = function()
+    // TODO: refactoring suggestion: do we need typeof(...) == "function" when it's clear it will be always a function ?  If not, identify the edge cases!
+    this.cycle = function(ticks)
     {
         if(this.ensureActive() && typeof(this.active.cycle) == "function")
-            return this.active.cycle();
+            return this.active.cycle(ticks);
     };
 
     this.redraw = function()

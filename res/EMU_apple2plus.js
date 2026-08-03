@@ -248,6 +248,7 @@ function Apple2Plus(context)
         if(!Number.isFinite(requestedTicks) || requestedTicks<0)
             requestedTicks = 0;
         var remainingTicks = requestedTicks;
+        var completedTicks = 0;
 
         // Turbo targets can exceed the host's capacity by many orders of
         // magnitude. Keep each interval cooperative and discard the part of
@@ -262,7 +263,7 @@ function Apple2Plus(context)
         while (remainingTicks>0) {
             remainingTicks--;
             //hw.cycle();
-            video.cycle();
+            //video.cycle();
             cpu.cycle();
 
             //snd.cycle(remainingTicks);
@@ -273,8 +274,37 @@ function Apple2Plus(context)
                 if(performance.now()>=deadline) break;
                 timeCheck = 4096;
             }
-            var completedTicks = requestedTicks-remainingTicks;
+            //var completedTicks = requestedTicks-remainingTicks;
         }
+
+        completedTicks = requestedTicks-remainingTicks;
+
+        /*
+         * Video timing is advanced once per processing slice, not once per CPU
+         * clock. The value passed to video.cycle() is expressed in base-speed
+         * equivalent ticks:
+         *
+         *     completed CPU ticks * base clock / selected target clock
+         *
+         * Thus x16 contributes one video-timing tick for every sixteen CPU
+         * ticks, while 50% contributes two. Video timers remain tied to the
+         * emulated clock and keep approximately the same cadence at every
+         * selected speed. If the host cannot attain the requested CPU pace,
+         * video timing slows with the CPU rather than advancing artificially.
+         */
+        if(completedTicks>0 && video && typeof(video.cycle)=="function")
+        {
+            var baseTicks_s = Number(_o.CPU_ClocksTicks_s);
+            var targetTicks_s = Number(_o.CPU_TargetTicks_s);
+            var videoTicks = baseTicks_s>0 && targetTicks_s>0
+                ? completedTicks*baseTicks_s/targetTicks_s
+                : 0;
+
+            if(Number.isFinite(videoTicks) && videoTicks>0)
+                video.cycle(videoTicks);
+        }
+
+
         // TODO optimise speed!!!!!!!
         var debug = oEMU.component.CPU.Apple2Debug;
         var debugPopup = typeof(document)!="undefined"

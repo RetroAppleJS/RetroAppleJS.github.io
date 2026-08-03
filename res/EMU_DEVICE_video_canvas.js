@@ -59,13 +59,29 @@ function Apple2Video(ctx)
         this.modes = {"gfx":gfx_mode,"mix":mix_mode,"page2":page2_mode,"hires":hires_mode,"chrome":chrome_mode};
     }
 
-    this.cycle = function() 
+    /*
+     * Advance the flashing-character timer with batched base-speed-equivalent
+     * ticks supplied by Apple2Plus. At the default 1.0218 MHz clock, 250000
+     * ticks is approximately 245 ms, matching the previous normal-speed
+     * behaviour without calling this function for every CPU clock.
+     */
+    this.cycle = function(ticks)
     {
-        if (++flash_count > 250000) {
-            flash_on = ! flash_on;
-            flash_count = 0;
-            this.reflash();
-        }
+        ticks = Number(ticks);
+        if(!Number.isFinite(ticks) || ticks<=0) return;
+
+        flash_count += ticks;
+        var toggles = Math.floor(flash_count/FLASH_TICKS);
+        if(toggles<=0) return;
+
+        flash_count -= toggles*FLASH_TICKS;
+
+        // Only the final visible state matters when a very large batch crosses
+        // more than one flash boundary.
+        if((toggles&1)==0) return;
+
+        flash_on = !flash_on;
+        this.reflash();
     }
 
     this.setGfx = function(flag) {

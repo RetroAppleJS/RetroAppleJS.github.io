@@ -151,13 +151,19 @@ function Apple2Video(ctx)
     var chrome_mode = 0;
     var flash_on = false;
     var flash_count = 0;
-    var frame_count = 0; // kept for compatibility/debugging; timing is wall-clock based.
+    var frame_count = 0;
     var frame_redraw = true;
     var frame_rate = Apple2VideoGPU_clampFrameRate(renderCfg.frameRate);
     var frame_interval_ms = 1000/frame_rate;
-    var flash_interval_ms = 250;
-    var last_frame_submit_ms = 0;
-    var last_flash_toggle_ms = 0;
+    function videoClockHz()
+    {
+        return typeof(_o)!="undefined" && Number.isFinite(_o.CPU_ClocksTicks_s)
+            ? _o.CPU_ClocksTicks_s
+            : APPLE2_GPU_FRAME_RATE_SPEC.cpuClockHz;
+    }
+    var video_clock_hz = videoClockHz();
+    var frame_interval_ticks = video_clock_hz/frame_rate;
+    var flash_interval_ticks = video_clock_hz/4;
     var frame_submit_count = 0;
     var frame_measurement_start_ms = 0;
     var frame_rate_measured = 0;
@@ -204,7 +210,7 @@ function Apple2Video(ctx)
     {
         // Backward-compatible alias from the first control implementation.
         // Timing is no longer cycle-based.
-        return frame_interval_ms;
+        return frame_interval_ticks;
     };
 
     this.getFrameRateMeasured = function()
@@ -230,8 +236,8 @@ function Apple2Video(ctx)
         frame_rate = Apple2VideoGPU_clampFrameRate(value);
         renderCfg.frameRate = frame_rate;
         frame_interval_ms = 1000/frame_rate;
+        frame_interval_ticks = video_clock_hz/frame_rate;
 
-        last_frame_submit_ms = 0;
         frame_count = 0;
         frame_redraw = true;
         return frame_rate;
@@ -246,6 +252,7 @@ function Apple2Video(ctx)
             frame_measurement_start_ms = now;
 
         frame_submit_count++;
+        this.updateFrameRateMeasurement(now);
     };
 
     this.updateFrameRateMeasurement = function(now)
@@ -279,10 +286,11 @@ function Apple2Video(ctx)
         flash_on    = true;
         flash_count = 0;
         frame_count = 0;
-        last_frame_submit_ms = 0;
-        last_flash_toggle_ms = this.nowMs();
+        video_clock_hz = videoClockHz();
+        frame_interval_ticks = video_clock_hz/frame_rate;
+        flash_interval_ticks = video_clock_hz/4;
         frame_submit_count = 0;
-        frame_measurement_start_ms = last_flash_toggle_ms;
+        frame_measurement_start_ms = this.nowMs();
         frame_rate_measured = 0;
         chrome_mode = 0;
         this.register_mode();
@@ -308,29 +316,29 @@ function Apple2Video(ctx)
       return ret;
     }
 
-    this.cycle = function()
+    this.cycle = function(ticks)
     {
-      var now = this.nowMs();
-      frame_count++;
-      this.updateFrameRateMeasurement(now);
-
-      if(frame_redraw==true)
+      ticks = Number(ticks);
+      if(!Number.isFinite(ticks) || ticks<=0) return;   
+      frame_count += ticks;
+      flash_count += ticks;
+      
+      var flashToggles = Math.floor(flash_count/flash_interval_ticks);
+      if(flashToggles>0)
       {
-        if(last_frame_submit_ms == 0 || now - last_frame_submit_ms >= frame_interval_ms)
+        flash_count -= flashToggles*flash_interval_ticks;
+
+        if((flashToggles&1)!=0)
         {
-          frame_count = 0;
-          this.redraw(now);  // redraw only if flag is set
+          flash_on = !flash_on;
+          frame_redraw = true;
         }
       }
-      else if(now - last_flash_toggle_ms >= flash_interval_ms)
+      
+      if(frame_redraw && frame_count>=frame_interval_ticks)
       {
-          flash_on = ! flash_on;
-          last_flash_toggle_ms = now;
-          frame_count = 0;
-          frame_redraw = true;
-
-          if(last_frame_submit_ms == 0 || now - last_frame_submit_ms >= frame_interval_ms)
-              this.redraw(now);
+        frame_count %= frame_interval_ticks;
+        this.redraw();
       }
 
     }
@@ -338,14 +346,8 @@ function Apple2Video(ctx)
     // Redraw flashing characters only (including cursor).  Called every time flash_on toggles.
     //this.reflash = function() { frame_redraw = true; this.redraw() }
 
-  this.redraw = function(now)
+  this.redraw = function()
   {
-      now = Number(now);
-      if (!isFinite(now))
-          now = this.nowMs();
-
-      last_frame_submit_ms = now;
-
       this.serial8[ this.idx8("CHROME_MODE") ] = chrome_mode;
       this.serial8[ this.idx8("GFX_FLG") ]     = this.register_mode();
       this.serial8[ this.idx8("FLASH") ]       = flash_on ? 1 : 0;

@@ -518,11 +518,11 @@ var APPLE2_THREE_CFG_DEFAULT =
             this.ensureTHREE();
         };
 
-        this.cycle = function()
+        this.cycle = function(ticks)
         {
             if (this.video2D && typeof(this.video2D.cycle) === "function")
             {
-                this.video2D.cycle();
+                this.video2D.cycle(ticks);
 
                 // Since EMU_DEVICE_video_GPU.js now calls its own kernel directly,
                 // Apple2VideoTHREE no longer sees the kernel call.
