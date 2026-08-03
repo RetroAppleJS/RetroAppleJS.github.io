@@ -9573,10 +9573,18 @@ function EMUI()
 {
     // 20-position turbo scale. The 256 -> 1K jump is intentional.
     var CPU_SLD_FACTORS = [
-         0,2,4,8,16,32,64,128,256
+         0,1.4,2,2.8,4
+        ,5.6,8,11.2,16,24
+        ,32,44,64,90,125
+        ,177,255,355,500,708
+        ,1000
+    ];
+
+    /*
+             0,2,4,8,16,32,64,128,256
         ,1024,2048,4096,8192,16384,32768,65536
         ,131072,262144,524288,1048576
-    ];
+    */
 
     var CPU_SLD_MODES =
     {
@@ -28029,7 +28037,7 @@ function Apple2Plus(context)
             : 0;
     }
 
-    this.CPU_pace_reset = function()
+    function cpuPaceReset()
     {
         cpuPace.window_start_ms = performance.now();
         cpuPace.requested_ticks = 0;
@@ -28043,13 +28051,15 @@ function Apple2Plus(context)
         cpuPace.pass_windows = 0;
     }
 
+    this.CPU_pace_reset = cpuPaceReset;
+
     function cpuPaceAccumulate(requestedTicks,completedTicks)
     {
         // Browser timer throttling in a background tab is not evidence that
         // the host CPU cannot sustain the selected foreground pace.
         if(typeof(document)!="undefined" && document.hidden)
         {
-            this.CPU_pace_reset();
+            cpuPaceReset();
             return;
         }
 
@@ -28069,7 +28079,7 @@ function Apple2Plus(context)
 
         if(typeof(document)!="undefined" && document.hidden)
         {
-            this.CPU_pace_reset();
+            cpuPaceReset();
             return null;
         }
 
@@ -28078,7 +28088,7 @@ function Apple2Plus(context)
         if(!Number.isFinite(elapsedMs) || elapsedMs<=0
             || elapsedMs>nominalWindowMs*5)
         {
-            this.CPU_pace_reset();
+            cpuPaceReset();
             return null;
         }
 
@@ -28162,6 +28172,7 @@ function Apple2Plus(context)
     }
 
     this.CPU_pace_reset();
+    cpuPaceReset();
     // TODO: move to DISK2
     this.DSK_monitoring = function(slotN)
     {
@@ -28268,7 +28279,7 @@ function Apple2Plus(context)
         //snd.play();
         hw.io.cycle();
         //keys.cycle(this);
-        cpuPaceAccumulate.call(this,requestedTicks,completedTicks);
+        cpuPaceAccumulate(requestedTicks,completedTicks);
 
         // display dashboard parameters
         if(oCOM.bRefreshEvent)
