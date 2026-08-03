@@ -96,7 +96,7 @@ function Apple2Plus(context)
             : 0;
     }
 
-    this.CPU_pace_reset = function()
+    function cpuPaceReset()
     {
         cpuPace.window_start_ms = performance.now();
         cpuPace.requested_ticks = 0;
@@ -110,13 +110,15 @@ function Apple2Plus(context)
         cpuPace.pass_windows = 0;
     }
 
+    this.CPU_pace_reset = cpuPaceReset;
+
     function cpuPaceAccumulate(requestedTicks,completedTicks)
     {
         // Browser timer throttling in a background tab is not evidence that
         // the host CPU cannot sustain the selected foreground pace.
         if(typeof(document)!="undefined" && document.hidden)
         {
-            this.CPU_pace_reset();
+            cpuPaceReset();
             return;
         }
 
@@ -136,7 +138,7 @@ function Apple2Plus(context)
 
         if(typeof(document)!="undefined" && document.hidden)
         {
-            this.CPU_pace_reset();
+            cpuPaceReset();
             return null;
         }
 
@@ -145,7 +147,7 @@ function Apple2Plus(context)
         if(!Number.isFinite(elapsedMs) || elapsedMs<=0
             || elapsedMs>nominalWindowMs*5)
         {
-            this.CPU_pace_reset();
+            cpuPaceReset();
             return null;
         }
 
@@ -229,6 +231,7 @@ function Apple2Plus(context)
     }
 
     this.CPU_pace_reset();
+    cpuPaceReset();
     // TODO: move to DISK2
     this.DSK_monitoring = function(slotN)
     {
@@ -335,7 +338,7 @@ function Apple2Plus(context)
         //snd.play();
         hw.io.cycle();
         //keys.cycle(this);
-        cpuPaceAccumulate.call(this,requestedTicks,completedTicks);
+        cpuPaceAccumulate(requestedTicks,completedTicks);
 
         // display dashboard parameters
         if(oCOM.bRefreshEvent)
