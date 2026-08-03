@@ -363,6 +363,12 @@ function EMU_init()
         document.getElementById("cpu_pct").value = Math.round(oEMU.component.CPU.dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
     }
 
+    // The common UI refresh cycle samples and displays requested-versus-real pace.
+    apple2plus.CPU_pace_monitoring = function()
+    {
+        oEMUI.cpuPaceIndicator(apple2plus.CPU_pace_sample());
+    }
+
     /*
      * The Surface Map has its own selected Disk II context. Do not refresh it
      * through the startup/default disk2 object.
@@ -447,6 +453,7 @@ function EMU_init()
     disk2.getState().DSK_lid[1] = document.getElementById("dskLID_D2");
 
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
+    oCOM.addRefreshEvent(apple2plus.CPU_pace_monitoring,"CPU_pace_monitoring",true);
     oCOM.addRefreshEvent(apple2plus.hwObj().MEM_monitoring,"MEM_monitoring",false);
     oCOM.addRefreshEvent(
         function(){ apple2plus.surfaceMap_monitoring(); },
@@ -555,6 +562,84 @@ function EMUI()
         return String(factor);
     }
 
+    function cpuPaceMultiplierText(multiplier)
+    {
+        multiplier = Math.max(0,Number(multiplier)||0);
+
+        var scaled = multiplier;
+        var suffix = "";
+        if(multiplier>=1048576)
+        {
+            scaled = multiplier/1048576;
+            suffix = "M";
+        }
+        else if(multiplier>=1024)
+        {
+            scaled = multiplier/1024;
+            suffix = "K";
+        }
+
+        if(scaled>=10) scaled = Math.round(scaled);
+        else if(scaled>=1) scaled = Math.round(scaled*10)/10;
+        else scaled = Math.round(scaled*100)/100;
+
+        return "x"+scaled+suffix;
+    }
+
+    function cpuPaceRatioText(ratio)
+    {
+        var pct = Math.max(0,Math.min(100,(Number(ratio)||0)*100));
+
+        if(pct>=10) return Math.round(pct)+"%";
+        if(pct>=1) return pct.toFixed(1)+"%";
+        if(pct>=0.01) return pct.toFixed(2)+"%";
+        return pct.toExponential(1)+"%";
+    }
+
+    this.cpuPaceIndicator = function(pace)
+    {
+        var indicator = document.getElementById("slider_1v");
+        if(!indicator) return;
+
+        var baseTitle = indicator.getAttribute("data-speed-title");
+        if(!baseTitle)
+        {
+            baseTitle = indicator.title || "CPU speed";
+            indicator.setAttribute("data-speed-title",baseTitle);
+        }
+
+        indicator.style.backgroundColor = "";
+        indicator.style.color = "";
+        indicator.style.borderColor = "";
+        indicator.removeAttribute("data-speed-unattainable");
+
+        if(!pace)
+        {
+            indicator.title = baseTitle+" Measuring host pace.";
+            indicator.setAttribute("aria-label",indicator.title);
+            return;
+        }
+
+        var baseTicks = Number(_o.CPU_ClocksTicks_s)||1;
+        var actualMultiplier = pace.actual_ticks_s/baseTicks;
+        var status = pace.achievable
+            ? "Host is keeping pace"
+            : "Host cannot keep pace";
+
+        if(!pace.achievable)
+        {
+            indicator.style.backgroundColor = "#b00020";
+            indicator.style.color = "#ffffff";
+            indicator.style.borderColor = "#ff6b81";
+            indicator.setAttribute("data-speed-unattainable","true");
+        }
+
+        indicator.title = baseTitle+" "+status+": "
+            +cpuPaceRatioText(pace.ratio)+" of target; about "
+            +cpuPaceMultiplierText(actualMultiplier)+" achieved.";
+        indicator.setAttribute("aria-label",indicator.title);
+    }
+
     function cpuSldFactorIndex(multiplier)
     {
         if(multiplier<=0) return 0;
@@ -603,8 +688,10 @@ function EMUI()
             if(multiplier==0)
                 indicator.innerHTML += " <i class='fa fa-bug' title='Step trace'></i>";
 
-            indicator.title = "CPU speed: "+label+". Click to switch to "
+            var baseTitle = "CPU speed: "+label+". Click to switch to "
                 +CPU_SLD_MODES[mode].nextName+".";
+            indicator.setAttribute("data-speed-title",baseTitle);
+            indicator.title = baseTitle;
             indicator.setAttribute("aria-label",indicator.title);
         }
 
@@ -675,6 +762,11 @@ function EMUI()
             appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
         }
 
+        if(typeof(apple2plus)=="object" && apple2plus
+            && typeof(apple2plus.CPU_pace_reset)=="function")
+            apple2plus.CPU_pace_reset();
+        this.cpuPaceIndicator(null);
+
         console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s");
     }
 
@@ -685,6 +777,12 @@ function EMUI()
         _o.CPU_ClockTicks = Math.round( _o.CPU_TargetTicks_s / _o.EMU_Updates_s );
         window.clearInterval(appleIntervalHandle);
         appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
+        
+        if(typeof(apple2plus)=="object" && apple2plus
+            && typeof(apple2plus.CPU_pace_reset)=="function")
+            apple2plus.CPU_pace_reset();
+        this.cpuPaceIndicator(null);        
+        
         EMU_diskIIObjects().forEach(function(disk2)
         {
             disk2.dN_speed_update(pct*100);
@@ -760,6 +858,10 @@ function EMUI()
             document.getElementById(arg.id).value = 'Resume';
             document.getElementById(arg.id).innerHTML = '<i class="fa '+arg.class1+'"></i>';
         }
+
+        if(typeof(apple2plus.CPU_pace_reset)=="function")
+            apple2plus.CPU_pace_reset();
+        this.cpuPaceIndicator(null);
 
         var bMuted = oCOM.POPUP.get_state("mutebutton")=="fa-volume-mute";
         if (bPause) {
