@@ -102,6 +102,7 @@ function Apple2Plus(context)
         cpuPace.requested_ticks = 0;
         cpuPace.completed_ticks = 0;
         cpuPace.ratio = 1;
+        cpuPace.wall_ratio = 1;
         cpuPace.actual_ticks_s = 0;
         cpuPace.target_ticks_s = cpuPaceTarget();
         cpuPace.achievable = true;
@@ -156,11 +157,26 @@ function Apple2Plus(context)
         var wallRatio = targetWallTicks>0
             ? cpuPace.completed_ticks/targetWallTicks
             : 1;
-        var ratio = Math.max(0,Math.min(1,completionRatio,wallRatio));
+        /*
+         * Attainability is a processing-capacity question: did the emulator
+         * finish the CPU ticks that were actually requested by the callbacks?
+         *
+         * wallRatio also includes browser timer delivery, rendering contention
+         * and setInterval jitter. Using it for the red state makes every speed
+         * fail by the same percentage whenever callbacks arrive slightly late,
+         * even when the CPU loop completes every requested tick.
+         *
+         * Keep wallRatio as diagnostic information, but base the warning and
+         * hysteresis on completionRatio.
+         */
+        var capacityRatio = Math.max(0,Math.min(1,completionRatio));
+        wallRatio = Math.max(0,Math.min(1,wallRatio));
 
-        if(!Number.isFinite(ratio)) ratio = 1;
+        if(!Number.isFinite(capacityRatio)) capacityRatio = 1;
+        if(!Number.isFinite(wallRatio)) wallRatio = 1;
 
-        cpuPace.ratio = ratio;
+        cpuPace.ratio = capacityRatio;
+        cpuPace.wall_ratio = wallRatio;
         cpuPace.actual_ticks_s = cpuPace.completed_ticks*1000/elapsedMs;
         cpuPace.target_ticks_s = targetTicks_s;
 
@@ -174,7 +190,7 @@ function Apple2Plus(context)
         }
         else if(cpuPace.achievable)
         {
-            cpuPace.fail_windows = ratio<0.95
+            cpuPace.fail_windows = capacityRatio<0.95
                 ? cpuPace.fail_windows+1
                 : 0;
 
@@ -186,7 +202,7 @@ function Apple2Plus(context)
         }
         else
         {
-            cpuPace.pass_windows = ratio>=0.98
+            cpuPace.pass_windows = capacityRatio>=0.98
                 ? cpuPace.pass_windows+1
                 : 0;
 
@@ -199,6 +215,7 @@ function Apple2Plus(context)
 
         var sample = {
              "ratio":cpuPace.ratio
+            ,"wall_ratio":cpuPace.wall_ratio
             ,"actual_ticks_s":cpuPace.actual_ticks_s
             ,"target_ticks_s":cpuPace.target_ticks_s
             ,"achievable":cpuPace.achievable
