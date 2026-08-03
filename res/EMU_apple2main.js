@@ -634,9 +634,17 @@ function EMUI()
             indicator.setAttribute("data-speed-unattainable","true");
         }
 
-        indicator.title = baseTitle+" "+status+": "
-            +cpuPaceRatioText(pace.ratio)+" of target; about "
+        var wallRatio = Number(pace.wall_ratio);
+        if(!Number.isFinite(wallRatio))
+            wallRatio = Number(pace.ratio);
+
+        indicator.title = baseTitle+" "+status+": completed "
+            +cpuPaceRatioText(pace.ratio)
+            +" of scheduled CPU work; wall pace "
+            +cpuPaceRatioText(wallRatio)
+            +" of selected rate; about "
             +cpuPaceMultiplierText(actualMultiplier)+" achieved.";
+
         indicator.setAttribute("aria-label",indicator.title);
     }
 
