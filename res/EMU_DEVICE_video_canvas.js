@@ -34,6 +34,7 @@ function Apple2Video(ctx)
     var page2_mode;
     var hires_mode;
     var chrome_mode;
+    const FLASH_TICKS = 250000; // approximately 245 ms at the 1.0218 MHz base clock
 
     var flash_on = true; // boolean toggled 6 hz or so.
     var flash_count = 0;
