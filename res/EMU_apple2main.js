@@ -514,25 +514,101 @@ function EMU_system_get()
 
 function EMUI()
 {
+    // 20-position turbo scale. The 256 -> 1K jump is intentional.
+    var CPU_SLD_FACTORS = [
+         0,2,4,8,16,32,64,128,256
+        ,1024,2048,4096,8192,16384,32768,65536
+        ,131072,262144,524288,1048576
+    ];
+
+    var CPU_SLD_MODES =
+    {
+         "pct400":{"min":0,"max":400,"step":20,"next":"pct100","nextName":"0-100%"}
+        ,"pct100":{"min":0,"max":100,"step":5,"next":"factor","nextName":"factor range"}
+        ,"factor":{"min":0,"max":CPU_SLD_FACTORS.length-1,"step":1,"next":"pct400","nextName":"0-400%"}
+    };
+
+    function cpuSldMode(el)
+    {
+        var mode = el.getAttribute("data-speed-mode");
+        if(CPU_SLD_MODES[mode]===undefined)
+            mode = Number(el.max)>100 ? "pct400" : "pct100";
+        return mode;
+    }
+
+    function cpuSldMultiplier(el,mode)
+    {
+        var value = Number(el.value);
+        if(!Number.isFinite(value)) return null;
+
+        var multiplier = mode=="factor"
+            ? CPU_SLD_FACTORS[value]
+            : value/100;
+
+        return Number.isFinite(multiplier) ? multiplier : null;
+    }
+
+    function cpuSldFactorText(factor)
+    {
+        if(factor>=1048576) return (factor/1048576)+"M";
+        if(factor>=1024) return (factor/1024)+"K";
+        return String(factor);
+    }
+
+    function cpuSldFactorIndex(multiplier)
+    {
+        if(multiplier<=0) return 0;
+
+        var bestIdx = 1;
+        var bestDistance = Infinity;
+
+        for(var idx=1;idx<CPU_SLD_FACTORS.length;idx++)
+        {
+            var distance = Math.abs(Math.log(multiplier/CPU_SLD_FACTORS[idx]));
+            if(distance<bestDistance)
+            {
+                bestIdx = idx;
+                bestDistance = distance;
+            }
+        }
+        return bestIdx;
+    }
+
+    function cpuSldValue(mode,multiplier)
+    {
+        var cfg = CPU_SLD_MODES[mode];
+
+        if(mode=="factor")
+            return cpuSldFactorIndex(multiplier);
+
+        return Math.max(cfg.min,Math.min(cfg.max,
+            Math.round(multiplier*100/cfg.step)*cfg.step));
+    }
+
     // CPU SPEED SLIDER
     this.cpuSld = function(el,id)
     {
-        var speedPct = Math.round(Number(el.value));
-        if(!Number.isFinite(speedPct)) return;
+        var mode = cpuSldMode(el);
+        var multiplier = cpuSldMultiplier(el,mode);
+        if(multiplier===null) return;
+
+        var label = mode=="factor"
+            ? "x"+cpuSldFactorText(multiplier)
+            : Math.round(Number(el.value))+"%";
 
         var indicator = document.getElementById(id);
         if(indicator)
         {
-            indicator.innerHTML = speedPct+"%";
-            if(speedPct==0)
+            indicator.innerHTML = label;
+            if(multiplier==0)
                 indicator.innerHTML += " <i class='fa fa-bug' title='Step trace'></i>";
 
-            var nextMax = Number(el.max)>100 ? 100 : 400;
-            indicator.title = "CPU speed: "+speedPct+"%. Click to switch to 0-"+nextMax+"%.";
+            indicator.title = "CPU speed: "+label+". Click to switch to "
+                +CPU_SLD_MODES[mode].nextName+".";
             indicator.setAttribute("aria-label",indicator.title);
         }
 
-        this.cpuSpd(speedPct/100);
+        this.cpuSpd(multiplier);
     }
 
     // CLICKABLE CPU PERCENTAGE / RANGE TOGGLE
@@ -548,18 +624,24 @@ function EMUI()
         this.cpuSldRange(indicator,sliderId);
     }
 
-    // TOGGLE BETWEEN 0-100%/5% AND 0-400%/20%
+    // CYCLE 0-400%/20%, 0-100%/5%, AND THE 20-POSITION FACTOR SCALE
     this.cpuSldRange = function(indicator,sliderId)
     {
         var el = document.getElementById(sliderId);
-        if(!el) return;
+        if(!el || !indicator) return;
 
-        var useWideRange = Number(el.max)<=100;
-        el.max = useWideRange ? 400 : 100;
-        el.step = useWideRange ? 20 : 5;
+        var mode = cpuSldMode(el);
+        var multiplier = cpuSldMultiplier(el,mode);
+        if(multiplier===null) return;
 
-        if(Number(el.value)>Number(el.max))
-            el.value = el.max;
+        var nextMode = CPU_SLD_MODES[mode].next;
+        var cfg = CPU_SLD_MODES[nextMode];
+
+        el.setAttribute("data-speed-mode",nextMode);
+        el.min = cfg.min;
+        el.max = cfg.max;
+        el.step = cfg.step;
+        el.value = cpuSldValue(nextMode,multiplier);
 
         this.cpuSld(el,indicator.id);       
     }

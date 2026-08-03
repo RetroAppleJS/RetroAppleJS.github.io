@@ -119,12 +119,32 @@ function Apple2Plus(context)
     this.cycle = function(n)
     {
         var args = {"cpu_chrono":performance.now()};
+
+        // Turbo targets can exceed the host's capacity by many orders of
+        // magnitude. Keep each interval cooperative and discard the part of
+        // the requested burst that cannot fit into its wall-clock budget.
+        var maxSliceMs = typeof(_o)!="undefined"
+            && Number.isFinite(_o.EMU_IntervalTime_ms)
+            ? Math.max(1,_o.EMU_IntervalTime_ms*0.8)
+            : Infinity;
+        var deadline = args.cpu_chrono+maxSliceMs;
+        var timeCheck = 4096;
+
         while (n-- > 0) {
             //hw.cycle();
             video.cycle();
             cpu.cycle();
             //snd.cycle(n);
             hw.io.tick(n);
+
+
+            if(--timeCheck==0)
+            {
+                if(performance.now()>=deadline) break;
+                timeCheck = 4096;
+            }
+
+
         }
         // TODO optimise speed!!!!!!!
         var debug = oEMU.component.CPU.Apple2Debug;
