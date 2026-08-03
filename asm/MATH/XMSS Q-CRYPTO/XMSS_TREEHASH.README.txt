@@ -1,0 +1,78 @@
+XMSS_TREEHASH for Apple II+
+===========================
+
+Purpose
+-------
+This standalone ASM_core.js-compatible module extends XMSS_LTREE with the
+Merkle TreeHash and authentication-path layer required by XMSS signing and
+verification.
+
+Run self-test
+-------------
+BRUN XMSS_TREEHASH
+
+The built-in test uses a height-3 tree with eight deterministic diagnostic
+leaves. It verifies:
+  - XMSS per-leaf WOTS seed derivation;
+  - the TreeHash root;
+  - the authentication path for leaf 5;
+  - reconstruction of the same root from that leaf and path.
+
+Public routines
+---------------
+XMSS_DERIVE_WOTS_SEED
+    Input:
+      XMSS_MASTER_SK_SEED       32-byte master secret S
+      XMSS_TREE_LEAF_INDEX_LO/HI
+    Output:
+      WOTS_SK_SEED              S_ots for this WOTS+ key pair
+
+XMSS_GEN_LEAF
+    Generates one real XMSS leaf through:
+      S_ots derivation -> WOTS_GEN_PK -> XMSS_LTREE
+    Output:
+      XMSS_TREE_NODE            32-byte leaf
+
+XMSS_TREEHASH
+    Inputs:
+      XMSS_TREE_START_LO/HI
+      XMSS_TREE_HEIGHT_TARGET   0..10
+      XMSS_TREE_LEAF_MODE       0 synthetic, 1 real
+      XMSS_TREE_CAPTURE_AUTH    0 root only, nonzero capture
+      XMSS_TREE_TARGET_LO/HI    target leaf when capturing
+    Outputs:
+      XMSS_TREE_ROOT            32-byte root
+      XMSS_AUTH_PATH            up to 10 * 32 bytes
+    Status:
+      carry clear success
+      carry set invalid parameters or leaf-generation failure
+
+XMSS_COMPUTE_ROOT_FROM_AUTH
+    Inputs:
+      XMSS_AUTH_LEAF            32-byte leaf
+      XMSS_AUTH_PATH            height * 32 bytes
+      XMSS_TREE_TARGET_LO/HI
+      XMSS_TREE_HEIGHT_TARGET
+      WOTS_PUB_SEED
+    Output:
+      XMSS_TREE_ROOT
+
+Real XMSS-SHA2_10_256 setup
+----------------------------
+  XMSS_TREE_START_LO    = $00
+  XMSS_TREE_START_HI    = $00
+  XMSS_TREE_HEIGHT_TARGET = 10
+  XMSS_TREE_LEAF_MODE   = 1
+
+To capture the authentication path for a signing index, set
+XMSS_TREE_CAPTURE_AUTH nonzero and put the index in XMSS_TREE_TARGET.
+
+Memory
+------
+Load:   $6000
+End:    $9548 exclusive
+Length: $3548 / 13640 bytes
+
+The image stops only 184 bytes below $9600. Later signing modules should
+therefore be split into overlays or loadable components rather than appended
+to this monolithic diagnostic image.

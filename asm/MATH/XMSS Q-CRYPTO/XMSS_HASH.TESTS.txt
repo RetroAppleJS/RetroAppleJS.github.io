@@ -1,0 +1,81 @@
+XMSS_HASH validation report
+===========================
+
+Image
+-----
+Load address: $6000
+Last byte:    $6F52
+End address: $6F53
+Length:      $0F53 (3923 bytes)
+Symbols:     223
+
+Assembly checks
+---------------
+Unresolved symbols: 0
+Out-of-range branches: 0
+ASM_core-compatible label syntax: labels have no trailing colons
+Floating-point operations: none
+Decimal-mode protection: CLD used by SHA-256 entry points
+
+Reference constructions
+-----------------------
+F       = SHA-256(toByte(0,32) || KEY32 || M32)
+H       = SHA-256(toByte(1,32) || KEY32 || M64)
+H_msg   = SHA-256(toByte(2,32) || KEY96 || MESSAGE)
+PRF     = SHA-256(toByte(3,32) || KEY32 || M32)
+
+Deterministic vector inputs
+---------------------------
+KEY32:      00 01 ... 1F
+M32:        20 21 ... 3F
+M64:        20 21 ... 5F
+HMSG_KEY96: 00 01 ... 5F
+H_msg test message: ASCII "abc"
+OTS ADRS: type=0, ots=5, chain=7, hash=9, keyAndMask=1
+
+Expected / executed machine-code results
+----------------------------------------
+ADRS:
+00000000000000000000000000000000
+00000005000000070000000900000001
+PASS
+
+F:
+DC7A48014FC1FAC8B52AF39BC7EA5CAF
+AFABF8BB81FB8F880FDF3B4A4566795C
+PASS
+
+H:
+44446EC9624F654B1492E0F56726F5D0
+34902E05F7BF8231A7152AD52158D365
+PASS
+
+PRF(KEY,M32):
+0FFD9934FD5CE69376A7BF31D450B6EC
+0D4E90DFD97031D1050EBBD4B9712DD5
+PASS
+
+PRF(KEY,ADRS):
+563ACE8DC3417F2DED7F4BEB0A023874
+E653FBA5C80FA7365C567BA3A77C9B52
+PASS
+
+H_msg(KEY96,"abc"):
+39183A51AB7EA70ED6081BFDAA5B8909
+F25DA08182C3F284D33F15CD0EAD28D6
+PASS
+
+Additional execution tests
+--------------------------
+H_msg with empty message: PASS
+H_msg with 100-byte message: PASS
+H_msg streamed in five chunks totalling 700 bytes: PASS
+setType preserves layer/tree and clears all four following words: PASS
+All 32-bit and 64-bit ADRS setters preserve big-endian byte order: PASS
+
+Notes
+-----
+The vectors above are deterministic development vectors derived independently
+from the RFC 8391 SHA2-256 constructions. They are not quoted RFC appendix
+vectors. The assembled 6502 machine code was executed instruction by
+instruction and compared against Python hashlib SHA-256 results.

@@ -1,0 +1,37 @@
+WOTS_PLUS_STAGE1
+================
+
+Apple II+ / 6502 implementation of the first WOTS+ layer for
+WOTSP-SHA2_256 and XMSS-SHA2_10_256.
+
+Run:
+  BRUN WOTS_PLUS_STAGE1
+
+Public routines:
+  WOTS_BASE_W
+  WOTS_CHECKSUM
+  WOTS_PREPARE_DIGITS
+  WOTS_GEN_SK_ELEMENT
+  WOTS_CHAIN
+
+Parameters:
+  n=32, w=16, len_1=64, len_2=3, len=67
+
+WOTS_CHAIN interface:
+  Input:
+    WOTS_CHAIN_INPUT[32]
+    WOTS_CHAIN_START
+    WOTS_CHAIN_STEPS
+    WOTS_PUB_SEED[32]
+    XMSS_ADRS[32], preconfigured as an OTS address
+  Output:
+    WOTS_CHAIN_OUTPUT[32]
+    carry clear on success
+    carry set when start + steps > 15
+
+Build:
+  load $6000
+  end  $741B exclusive
+  size $141B (5147 bytes)
+
+The source embeds XMSS_HASH and SHA256_STREAM so it is standalone.

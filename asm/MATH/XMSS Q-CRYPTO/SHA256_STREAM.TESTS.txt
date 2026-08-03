@@ -1,0 +1,44 @@
+SHA256_STREAM validation report
+=================================
+
+Source: SHA256_STREAM.S
+Load address: $6000
+End address: $6D9E
+Length: 3487 bytes ($0D9F)
+Symbols: 185
+
+Validated features
+------------------
+- ASM_core-compatible label style: no trailing colons.
+- No unresolved symbols.
+- No relative branch outside -128..+127.
+- CLD at public arithmetic entry points.
+- Streaming SHA256_INIT / SHA256_UPDATE_BYTE / SHA256_UPDATE / SHA256_FINAL API.
+- 64-bit byte count and derived 64-bit SHA-256 bit length.
+- One- and two-block final padding.
+- Big-endian 32-byte digest exported to SHA_DIGEST.
+- Transactional hex-line validation before state mutation.
+- Safe DOS warm-start / Monitor fallback and page-$0200 restoration.
+
+Machine-code test output
+------------------------
+0 True e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 data 0 pad 1 total 1 steps 127532
+3 True ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad data 0 pad 1 total 1 steps 127597
+55 True 02779466cdec163811d078815c633f21901413081449002f24aa3e80f0b88ef7 data 0 pad 1 total 1 steps 127972
+56 True d4817aa5497628e7c77e6b606107042bbba3130888c5f47a375e6179be789fbb data 0 pad 2 total 2 steps 255482
+63 True c7723fa1e0127975e49e62e753db53924c1bd84b8ac1ac08df78d09270f3d971 data 0 pad 2 total 2 steps 254854
+64 True f5a5fd42d16a20302798ef6ed309979b43003d2320d9f0e8ea9831a92759fb4b data 1 pad 1 total 2 steps 255661
+65 True 98ce42deef51d40269d542f5314bef2c7468d401ad5d85168bfab4c0108f75f7 data 1 pad 1 total 2 steps 254896
+96 True 08359b108fa567f5dcf319fa3434da6abbc1d595f426372666447f09cc5a87dc data 1 pad 1 total 2 steps 256301
+128 True 471fb943aa23c511f6f72f8d1652d9c880cfa392ad80503120547703e56a2be5 data 2 pad 1 total 3 steps 382244
+255 True 3c835ac0bba7147eaa568a76183d465e72ac456df24b55e01d44dc87be05a971 data 3 pad 2 total 5 steps 639987
+ALL PASS
+IMAGE 6000-6D9E LEN 3487
+HEX LINE PARSER PASS 96 08359b108fa567f5dcf319fa3434da6abbc1d595f426372666447f09cc5a87dc
+VALIDATION TRANSACTION PASS
+
+Note
+----
+The listing and binary were produced by a deterministic 6502 compatibility
+assembler implementing the addressing and directive forms used by this source.
+ASM_core.js remains the definitive compiler in RetroAppleJS.

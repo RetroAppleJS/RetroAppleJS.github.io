@@ -1,0 +1,64 @@
+WOTS_PLUS_STAGE2.S
+==================
+
+Apple II+ / NMOS 6502 implementation of WOTS+ Stage 2 for the
+WOTSP-SHA2_256 parameter set used by XMSS-SHA2_10_256.
+
+Load address
+------------
+$6000
+
+Run the built-in quick self-test under DOS 3.3 / ProntoDOS:
+
+    BRUN WOTS_PLUS_STAGE2
+
+Public Stage 2 routines
+-----------------------
+
+WOTS_SIGN
+    Input:
+      WOTS_MESSAGE          32-byte digest
+      WOTS_SK_SEED          32-byte secret seed
+      WOTS_PUB_SEED         32-byte public seed
+      XMSS_ADRS             OTS address (type 0, OTS index configured)
+      WOTS_SIGNATURE_PTR    little-endian output address
+
+    Output:
+      67 * 32 = 2144 signature bytes
+      carry clear on success
+
+WOTS_GEN_PK
+    Input:
+      WOTS_SK_SEED, WOTS_PUB_SEED, XMSS_ADRS
+      WOTS_PUBLIC_KEY_PTR   little-endian output address
+
+    Output:
+      67 uncompressed 32-byte WOTS+ public-key elements
+      carry clear on success
+
+WOTS_PK_FROM_SIG
+    Input:
+      WOTS_MESSAGE, WOTS_PUB_SEED, XMSS_ADRS
+      WOTS_SIGNATURE_PTR    signature source
+      WOTS_PUBLIC_KEY_PTR   recovered public-key destination
+
+    Output:
+      67 recovered public-key elements
+      carry clear on success
+
+Internal default buffers
+------------------------
+WOTS_SIGNATURE and WOTS_PUBLIC_KEY are provided inside the binary. The pointer
+variables are initialized to those buffers. Call WOTS_USE_INTERNAL_BUFFERS to
+restore those defaults after changing the pointers.
+
+Important
+---------
+The 67 public-key elements are not yet the final WOTS+ public key. The next
+module must compress them to one 32-byte leaf using the XMSS L-tree and
+RAND_HASH construction.
+
+The BRUN test intentionally checks one complete sign/recovery element rather
+than running the full 67-element cycle on a 1 MHz Apple II. The full routines
+were executed and compared against independent reference calculations; see
+WOTS_PLUS_STAGE2.TESTS.txt.

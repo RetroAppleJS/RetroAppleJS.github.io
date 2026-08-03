@@ -1,0 +1,102 @@
+WOTS_PLUS_STAGE1 validation report
+==================================
+
+Build
+-----
+Load address: $6000
+End address:  $741B exclusive
+Length:       $141B / 5147 bytes
+Symbols:      286
+Unresolved:   0
+Branch errors:0
+
+Reference basis
+---------------
+RFC 8391 with verified errata:
+- WOTSP-SHA2_256: n=32, w=16, len=67
+- base_w specialization for w=16
+- checksum csum << 4, represented as three base-16 digits
+- chain(X,i,s,SEED,ADRS)
+- deterministic sk[i] = PRF(SK_SEED,toByte(i,32))
+
+Machine-code execution
+----------------------
+The assembled 6502 binary was executed instruction-by-instruction.
+
+Built-in BRUN self-test:
+- XMSS ADRS setType clearing                 PASS
+- XMSS OTS address serialization             PASS
+- XMSS F                                     PASS
+- XMSS H                                     PASS
+- XMSS PRF(SEED,ADRS)                        PASS
+- XMSS H_msg(KEY96,"abc")                    PASS
+- WOTS base-w + checksum                     PASS
+- WOTS private-key element index 5           PASS
+- WOTS chain, zero steps                     PASS
+- WOTS chain, one step                       PASS
+- DOS return path and balanced stack         PASS
+
+Additional direct routine tests:
+- WOTS chain, 15 steps                       PASS
+- Split-chain identity, 7 steps + 8 steps    PASS
+- Invalid range start=8, steps=8             PASS (carry set)
+- 20 randomized base-w/checksum messages     PASS
+
+Expected development vectors
+----------------------------
+sk[5]:
+E79D79A3 1DA33839 EE6ABF37 D6260FA9
+2AA89787 78A1C49E D0E6376A 90E41C93
+
+chain(X,0,1):
+1BDFF67C 41AD39A2 968C8D12 CEAE6AFB
+3A52DC30 3684D040 9E608936 0DE389AA
+
+chain(X,0,15):
+A81355BF C1876645 08DD63B3 A0E3B834
+D02CE656 A3E66115 DB949B96 9910CCF9
+
+Built-in self-test output
+-------------------------
+
+[HOME]
+WOTS+ STAGE 1 / SHA2-256
+RFC 8391 / APPLE II+
+
+ADRS SETTYPE CLEAR: PASS
+
+ADRS OTS:
+00000000 00000000 00000000 00000000 
+00000005 00000007 00000009 00000001 
+PASS
+
+F:
+DC7A4801 4FC1FAC8 B52AF39B C7EA5CAF 
+AFABF8BB 81FB8F88 0FDF3B4A 4566795C 
+PASS
+
+H:
+44446EC9 624F654B 1492E0F5 6726F5D0 
+34902E05 F7BF8231 A7152AD5 2158D365 
+PASS
+
+PRF(SEED,ADRS):
+563ACE8D C3417F2D ED7F4BEB 0A023874 
+E653FBA5 C80FA736 5C567BA3 A77C9B52 
+PASS
+
+H_MSG(KEY96,ABC):
+39183A51 AB7EA70E D6081BFD AA5B8909 
+F25DA081 82C3F284 D33F15CD 0EAD28D6 
+PASS
+
+WOTS BASE-W + CHECKSUM: PASS
+
+WOTS SK ELEMENT 5: PASS
+
+WOTS CHAIN 0 STEPS: PASS
+
+WOTS CHAIN 1 STEP: PASS
+
+WOTS+ STAGE 1 SELF-TEST COMPLETE
+

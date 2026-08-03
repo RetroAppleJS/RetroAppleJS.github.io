@@ -1,0 +1,18 @@
+XMSS_HASH for Apple II+
+=======================
+
+BRUN XMSS_HASH runs the built-in address and hash primitive self-tests.
+
+Load:   $6000
+Length: $0F53
+
+The public API and fixed buffers are documented at the top of XMSS_HASH.S.
+Use XMSS_H_MSG_BEGIN / UPDATE / FINAL for messages split across multiple
+chunks. XMSS_H_MSG is a one-shot 16-bit-length convenience wrapper.
+
+Files:
+  XMSS_HASH.S
+  XMSS_HASH.LISTING
+  XMSS_HASH.BIN
+  XMSS_HASH.SYM
+  XMSS_HASH.TESTS.txt

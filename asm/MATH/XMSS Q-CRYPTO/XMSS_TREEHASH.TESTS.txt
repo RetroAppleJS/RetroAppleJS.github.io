@@ -1,0 +1,93 @@
+XMSS_TREEHASH validation report
+===============================
+
+Build
+-----
+Load address: $6000
+End address:  $9548 exclusive
+Length:       $3548 / 13640 bytes
+Symbols:      513
+Unresolved:   0
+Branch errors: 0
+
+Memory note
+-----------
+The image ends at $9547, leaving $00B8 (184) bytes before the usual
+DOS 3.3 $9600 boundary. The module therefore fits, but the remaining
+space is intentionally treated as exhausted for later modules.
+
+New routines
+------------
+XMSS_DERIVE_WOTS_SEED
+    Computes S_ots[index] = PRF(master S, toByte(index,32)).
+
+XMSS_GEN_LEAF
+    Reference real-leaf path:
+      derive S_ots -> WOTS_GEN_PK -> XMSS_LTREE.
+
+XMSS_TREEHASH
+    Height-parameterized stack TreeHash for heights 0..10.
+    Supports synthetic diagnostic leaves or real XMSS leaves.
+
+XMSS_COMPUTE_ROOT_FROM_AUTH
+    Recomputes a root from one 32-byte leaf and an authentication path.
+
+Native 6502 machine-code execution
+----------------------------------
+Per-leaf seed derivation, index 5:
+  Expected:
+    E79D79A31DA33839EE6ABF37D6260FA9
+    2AA8978778A1C49ED0E6376A90E41C93
+  Result: PASS
+  Instructions: 257,039
+
+Synthetic TreeHash, height 3, leaves 0..7:
+  Target authentication leaf: 5
+  Expected root:
+    D4FB8AEA7C100E6A5AF49B155C14285C
+    AD35FF6ED2CFE994EA54E112B3FE4F50
+  Root result: PASS
+  Authentication path, 3 nodes: PASS
+  Instructions: 8,098,688
+
+Root reconstruction from leaf 5 and its authentication path:
+  Result: PASS
+  Instructions: 3,468,720
+
+Synthetic TreeHash, height 5, leaves 0..31:
+  Target authentication leaf: 21
+  Expected root:
+    6267EE49E7FDB62A2C340BC3C68FB2D5
+    1826490B5CB81EE1ACFC02F2FC6BA850
+  Root result: PASS
+  Authentication path, 5 nodes: PASS
+  Instructions: 35,861,398
+
+Invalid alignment test:
+  start=1, height=3
+  Carry set / rejected: PASS
+
+Algorithm checks
+----------------
+16-bit start and leaf indices: PASS
+Start alignment requirement s mod 2^t = 0: PASS
+Height-tagged stack merging: PASS
+Hash-tree ADRS type 2: PASS
+Tree-height addressing: PASS
+Tree-index addressing: PASS
+Authentication sibling selection: PASS
+Left/right ordering during root reconstruction: PASS
+Carry clear on success: PASS
+Carry set on invalid alignment: PASS
+
+Scope and limitation
+--------------------
+The complete real-leaf path is present, but a full real WOTS+ leaf was not
+executed end-to-end in this build validation because it is exceptionally
+expensive in the instruction-level emulator. Its newly introduced step,
+per-leaf S_ots derivation, was machine-tested. WOTS_GEN_PK and XMSS_LTREE
+were independently machine-tested in the preceding validated modules.
+
+The BRUN self-test deliberately uses a height-3 synthetic tree. Synthetic
+leaves test TreeHash and authentication-path logic only; they are not
+cryptographic XMSS leaves.

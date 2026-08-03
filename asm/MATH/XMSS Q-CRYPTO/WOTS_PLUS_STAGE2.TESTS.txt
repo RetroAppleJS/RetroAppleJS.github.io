@@ -1,0 +1,79 @@
+WOTS_PLUS_STAGE2 validation report
+==================================
+
+Build
+-----
+Load address : $6000
+End address  : $8774 exclusive
+Length       : $2774 / 10100 bytes
+Symbols      : 337
+Unresolved   : 0
+Branch errors: 0
+
+Assembler consistency
+---------------------
+The deterministic assembler used for this build was first verified by
+reassembling WOTS_PLUS_STAGE1.S. Its output matched the previously supplied
+WOTS_PLUS_STAGE1.BIN byte for byte.
+
+Stage 2 machine-code tests
+--------------------------
+Test data:
+  WOTS_MESSAGE = bytes $00 through $1F
+  WOTS_SK_SEED = bytes $80 through $9F
+  WOTS_PUB_SEED = bytes $40 through $5F
+  OTS address = 2
+
+WOTS_SIGN
+  Carry returned clear.
+  67 elements / 2144 bytes emitted.
+  Machine instructions executed: 225413222
+  Signature SHA-256: 49541d9f3a3074be80e9c10d89f62564a0521f6967a9f6554bdf83d5b2e4d325
+  Independent reference comparison: PASS
+
+WOTS_GEN_PK
+  Carry returned clear.
+  67 elements / 2144 bytes emitted.
+  Machine instructions executed: 792050703
+  Public-key array SHA-256: 8f0c2c56b3d8bbadd6a46c0c94a70e5fa6f5f050efa6eecf4a6e67c3e4dc744a
+  Independent reference comparison: PASS
+
+WOTS_PK_FROM_SIG
+  Carry returned clear.
+  67 elements / 2144 bytes recovered.
+  Machine instructions executed: 566678132
+  Recovered public-key array SHA-256: 8f0c2c56b3d8bbadd6a46c0c94a70e5fa6f5f050efa6eecf4a6e67c3e4dc744a
+  Independent reference comparison: PASS
+
+Direct and recovered public-key arrays: MATCH
+
+Representative elements
+-----------------------
+First signature element:
+  4DA3632AA690936AA977BC5C8E3F66D65D8A651197EE9FA37CC4A2D2488B7A21
+
+Last signature element:
+  6B931AE973CDC49D048154B5BC634E01A97354CB130CEE4DE24BA22CE0435F25
+
+First public-key element:
+  7E2F2AB39332864658D87E169255CB786D6D1DFD9AE1D0A208D73B25DD3BB573
+
+Last public-key element:
+  4E56D2FC89A45738784EE853AADD18E2ACC90A806EE0E4C96DB685EB194D4693
+
+Built-in BRUN self-test
+-----------------------
+The self-test entry at $6000 was executed with Apple II Monitor ROM calls
+simulated and DOS warm start at $03D0. It completed with:
+
+  WOTS SIGN ELEMENT 5: PASS
+  WOTS RECOVER PK ELEMENT 5: PASS
+  WOTS+ STAGE 2 SELF-TEST COMPLETE
+
+The stack pointer returned to its entry value and execution transferred to
+DOS warm start.
+
+File hashes
+-----------
+Source SHA-256: c39a6890e0c0dd15a88979525e50758fe492a3cef35dccb628338644e0f995d2
+Binary SHA-256: f151b91fae1772ad41619dc6679b2cc018c048d3743b3d807735c91707e8dcfb
