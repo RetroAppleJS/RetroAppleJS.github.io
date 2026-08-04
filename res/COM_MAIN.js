@@ -28,7 +28,12 @@ function COM()
   this.hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']; // TODO: remove from entire codebase
   this.getHexByte    = function(v)   { return hex2tab[v&0xFF] }
   this.getHexWord    = function(v)   { return hex2tab[v>>8] + hex2tab[v&0xFF] }
-  this.getHexMulti   = function(v,m) { return ("0".repeat(m)+v.toString(16)).slice(-m).toUpperCase() }
+  this.getHexMulti = function(v,m)
+  {
+      if(m === 2) return hex2tab[v & 0xFF];
+      if(m === 4) return hex2tab[(v >> 8) & 0xFF] + hex2tab[v & 0xFF];
+      return v.toString(16).padStart(m,"0").slice(-m).toUpperCase();
+  }
   this.getBinMulti   = function(v,m) { return ("0".repeat(m)+v.toString(2)).slice(-m).toUpperCase() }
   //this.getNumByteArr = function(v)   { let y= Math.floor(v/2**32); return [y,(y<<8),(y<<16),(y<<24), v,(v<<8),(v<<16),(v<<24)].map(z=> z>>>24) } // convert JS number to byte array
   this.getNumByteArr = function(v)   { let y= Math.floor(v/2**32); return [(v<<24),(v<<16),(v<<8),v,(y<<24),(y<<16),(y<<8),y].map(z=> z>>>24) } // convert JS number to byte array
