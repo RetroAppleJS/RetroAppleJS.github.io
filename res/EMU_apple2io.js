@@ -642,11 +642,16 @@ function mergeActionMap(dst,src)
                         };
                     }
 
-                    return function(rel_addr,ctx) {
+                    return function(rel_addr,ctx) 
+                    {
                         if(ctx && ctx.bRO===true && !readOnly) return 0x00;
+
+                        var result = fn.call(target,rel_addr,ctx);
                         return result===undefined ? 0x00 : result;
-                        }(device,method,allowReadOnly,op=="WR");
-                }
+                        var result = fn.call(target,rel_addr,ctx);
+                    };
+                }(device,method,allowReadOnly,op=="WR");
+
 
                 callback._ioReport = {
                      "DCODE":dcode
