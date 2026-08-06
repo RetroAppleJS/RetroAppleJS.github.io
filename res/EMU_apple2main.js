@@ -30,7 +30,7 @@ const _o = {"tools":{}
         ,"EMU_kbd_id":"kbdimg"
         ,"EMU_key_id":"keybox"
         ,"EMU_legacyJS":false
-        ,"EMU_vid_mode":""
+        ,"EMU_vid_mode":"canvas"
         ,"EMU_disk_cat":false
         ,"KBD_Xoff":-6
         ,"KBD_Yoff":0       
