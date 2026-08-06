@@ -468,7 +468,6 @@ function mergeActionMap(dst,src)
     this.read = function(rel_addr)
     {
         var line = line_decode(rel_addr);
-        var xline = oCOM.getHexMulti(line,4);
 
         const ctx2 =
         {
@@ -497,38 +496,37 @@ function mergeActionMap(dst,src)
         return fn(rel_addr-line,ctx2);
     }
 
-this.write = function(rel_addr,d8)
-{
-    var line = line_decode(rel_addr);
-    var xline = oCOM.getHexMulti(line,4);
-
-    const ctx2 =
+    this.write = function(rel_addr,d8)
     {
-        //"keys": keys,
-        //"snd": snd,
-        "vid": vid,
-        "io": this,
-        "bRO": (typeof(apple2plus) == "object" && apple2plus && apple2plus.hwObj().bRO === true)
-    };
+        var line = line_decode(rel_addr);
 
-    var fn = CIO.ACTION_MAP.WR[line];
-    if(fn) return fn(rel_addr-line,d8,ctx2);
+        const ctx2 =
+        {
+            //"keys": keys,
+            //"snd": snd,
+            "vid": vid,
+            "io": this,
+            "bRO": (typeof(apple2plus) == "object" && apple2plus && apple2plus.hwObj().bRO === true)
+        };
 
-    /*
-     * Some Apple II soft-switches are triggered by the address access itself.
-     * The 16K language card / ramcard is the important case here:
-     * DOS 3.3 may write to $C080-$C08F, while the peripheral historically
-     * exposed only a read-side SlotIO callback.
-     *
-     * Keep this fallback so write accesses can still trigger RD-style
-     * soft-switch side effects when no explicit WR handler exists.
-     */
-    var rd = CIO.ACTION_MAP.RD[line];
-    if(rd) return rd(rel_addr-line,ctx2);
-    if(!ctx2.bRO) console.warn("CIO.ACTION_MAP.WR["+oCOM.getHexWord(line)+"] I/O call out of bounds (0x"+oCOM.getHexWord(line+0xC000)+")");
+        var fn = CIO.ACTION_MAP.WR[line];
+        if(fn) return fn(rel_addr-line,d8,ctx2);
 
-    return 0x00;
-}
+        /*
+        * Some Apple II soft-switches are triggered by the address access itself.
+        * The 16K language card / ramcard is the important case here:
+        * DOS 3.3 may write to $C080-$C08F, while the peripheral historically
+        * exposed only a read-side SlotIO callback.
+        *
+        * Keep this fallback so write accesses can still trigger RD-style
+        * soft-switch side effects when no explicit WR handler exists.
+        */
+        var rd = CIO.ACTION_MAP.RD[line];
+        if(rd) return rd(rel_addr-line,ctx2);
+        if(!ctx2.bRO) console.warn("CIO.ACTION_MAP.WR["+oCOM.getHexWord(line)+"] I/O call out of bounds (0x"+oCOM.getHexWord(line+0xC000)+")");
+
+        return 0x00;
+    }
 
     // CPU-tick hook for devices that need sub-cycle sampling, such as the speaker.
     this.tick = function(n)
@@ -626,18 +624,29 @@ this.write = function(rel_addr,d8)
 
                 if(!Number.isInteger(addr) || typeof(method)!="function") continue;
 
-                var callback = function(target,fn,readOnly)
+                /*
+                 * Attached device callbacks are on the CPU I/O hot path.
+                 * Keep fixed read/write signatures so polling does not allocate
+                 * a temporary arguments array for every bus access.
+                 */
+                var callback = function(target,fn,readOnly,writeAction)
                 {
-                    return function()
+                    if(writeAction)
                     {
-                        var args = Array.prototype.slice.call(arguments);
-                        var ctx = args[args.length-1];
-                        if(ctx && ctx.bRO===true && !readOnly) return 0x00;
+                        return function(rel_addr,d8,ctx)
+                        {
+                            if(ctx && ctx.bRO===true && !readOnly) return 0x00;
 
-                        var result = fn.apply(target,args);
+                            var result = fn.call(target,rel_addr,d8,ctx);
+                            return result===undefined ? 0x00 : result;
+                        };
+                    }
+
+                    return function(rel_addr,ctx) {
+                        if(ctx && ctx.bRO===true && !readOnly) return 0x00;
                         return result===undefined ? 0x00 : result;
-                    };
-                }(device,method,allowReadOnly);
+                        }(device,method,allowReadOnly,op=="WR");
+                }
 
                 callback._ioReport = {
                      "DCODE":dcode
