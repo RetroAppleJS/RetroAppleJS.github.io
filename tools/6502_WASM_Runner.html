@@ -13,7 +13,8 @@ p { color:#aaa; line-height:1.45; }
 .panel { border:1px solid #333; border-radius:10px; padding:16px; margin:14px 0; background:#181818; }
 .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:10px; }
 label { display:flex; flex-direction:column; gap:5px; font-size:.82rem; color:#aaa; }
-input,button,select { font:inherit; background:#0f0f0f; color:#eee; border:1px solid #444; border-radius:6px; padding:8px; }
+input,button,select,textarea { font:inherit; background:#0f0f0f; color:#eee; border:1px solid #444; border-radius:6px; padding:8px; }
+textarea { box-sizing:border-box; width:100%; min-height:145px; resize:vertical; line-height:1.4; }
 button { cursor:pointer; }
 button:disabled { opacity:.45; cursor:default; }
 .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
@@ -37,6 +38,22 @@ table { border-collapse:collapse; width:100%; } td,th { border-bottom:1px solid 
     <button id="save">Save RAM</button>
   </div>
   <small id="ramInfo">RAM image: blank 65536 bytes</small>
+</div>
+
+<div class="panel">
+  <strong>Apple II Monitor byte code</strong>
+  <p>Compatible with the RetroAppleJS tab 1.2 paste/memory-capture format. Import addressed monitor lines directly into RAM, or export any RAM range as <code>CALL-151</code> text with eight bytes per line.</p>
+  <textarea id="monitorText" spellcheck="false" placeholder="CALL-151
+6000: 4C 58 8B EA 20 58 FC A9
+6008: 26 85 06 A9 70 85 07 20"></textarea>
+  <div class="row" style="margin-top:10px">
+    <button id="monitorImport">Import byte code</button>
+    <label style="flex-direction:row;align-items:center;gap:5px">From <input id="captureFrom" value="6000" size="5"></label>
+    <label style="flex-direction:row;align-items:center;gap:5px">To <input id="captureTo" value="600F" size="5"></label>
+    <button id="monitorExport">Export range</button>
+    <button id="monitorCopy">Copy text</button>
+  </div>
+  <small id="monitorInfo">Monitor text has not been imported yet.</small>
 </div>
 
 <div class="panel">
@@ -77,6 +94,8 @@ table { border-collapse:collapse; width:100%; } td,th { border-bottom:1px solid 
 <tr><td><code>maxInstructions</code></td><td>0/omitted = unlimited</td></tr>
 <tr><td><code>shouldStop</code></td><td>optional callback checked between chunks</td></tr>
 <tr><td><code>yieldBetweenChunks</code></td><td>default true; lets browser process UI events</td></tr>
+<tr><td><code>CPU6502.importMonitorText(text, ram)</code></td><td>imports RetroAppleJS/Apple II Monitor deposit lines into a copy of RAM</td></tr>
+<tr><td><code>CPU6502.exportMonitorText(ram, from, to)</code></td><td>exports an inclusive RAM range as <code>CALL-151</code> plus eight-byte monitor lines</td></tr>
 </table>
 </div>
 </main>
@@ -161,7 +180,68 @@ async function run6502(config={}, inputRAM) {
   return { ram:new Uint8Array(wr), state, reason:REASONS[reasonCode] || 'unknown', reasonCode, instructions:total };
 }
 
-window.CPU6502 = Object.freeze({run:run6502, wasmBytes});
+function parseMonitorAddress(text) {
+  const s=String(text ?? '').trim().replace(/^\$/,'').replace(/^0x/i,'');
+  if(!/^[0-9a-f]{1,4}$/i.test(s)) throw new Error(`Invalid 6502 address: ${text}`);
+  return parseInt(s,16) & 0xffff;
+}
+
+function importMonitorText(text, inputRAM) {
+  const source = inputRAM === undefined ? new Uint8Array(65536) : normalizeRAM(inputRAM);
+  const out = new Uint8Array(source);
+  const lines = String(text ?? '').replace(/\r/g,'').split('\n');
+  let firstAddress = null, lastAddress = null, bytesWritten = 0, records = 0;
+  const ignoredLines = [];
+
+  for(let lineNo=0; lineNo<lines.length; lineNo++) {
+    const raw=lines[lineNo], line=raw.trim();
+    if(!line) continue;
+    if(/^CALL\s*-?\s*151$/i.test(line)) continue;
+
+    // Apple II monitor deposit syntax: AAAA: XX XX XX ...
+    const m=line.match(/^\$?([0-9a-f]{1,4})\s*:\s*(.*)$/i);
+    if(!m) { ignoredLines.push({line:lineNo+1,text:raw}); continue; }
+
+    const start=parseInt(m[1],16) & 0xffff;
+    const tail=m[2].trim();
+    if(!tail) { ignoredLines.push({line:lineNo+1,text:raw}); continue; }
+    const tokens=tail.split(/\s+/);
+    let addr=start, count=0;
+    for(const token of tokens) {
+      if(!/^[0-9a-f]{2}$/i.test(token))
+        throw new Error(`Invalid byte "${token}" on monitor line ${lineNo+1}`);
+      if(addr > 0xffff) throw new Error(`Monitor data crosses $FFFF on line ${lineNo+1}`);
+      out[addr]=parseInt(token,16);
+      if(firstAddress === null || addr < firstAddress) firstAddress=addr;
+      if(lastAddress === null || addr > lastAddress) lastAddress=addr;
+      addr++; count++; bytesWritten++;
+    }
+    if(count) records++;
+  }
+
+  if(bytesWritten === 0) throw new Error('No Apple II monitor byte-code lines were found. Expected e.g. 6000: 4C 58 8B ...');
+  return {ram:out, firstAddress, lastAddress, bytesWritten, records, ignoredLines};
+}
+
+function exportMonitorText(inputRAM, startAddress=0, endAddress=0xffff, options={}) {
+  const ram=normalizeRAM(inputRAM);
+  const start=u16(startAddress,0), end=u16(endAddress,0xffff);
+  if(end < start) throw new RangeError('Export end address must be greater than or equal to start address');
+  const bytesPerLine=Math.max(1,Math.min(32,Math.floor(Number(options.bytesPerLine ?? 8)) || 8));
+  const includeCall151=options.includeCall151 !== false;
+  const lines=[];
+  if(includeCall151) lines.push('CALL-151');
+  for(let addr=start; addr<=end;) {
+    const lineAddr=addr;
+    const row=[];
+    for(let i=0;i<bytesPerLine && addr<=end;i++,addr++)
+      row.push(ram[addr].toString(16).toUpperCase().padStart(2,'0'));
+    lines.push(lineAddr.toString(16).toUpperCase().padStart(4,'0')+': '+row.join(' '));
+  }
+  return lines.join('\n');
+}
+
+window.CPU6502 = Object.freeze({run:run6502, importMonitorText, exportMonitorText, wasmBytes});
 
 // ---------------- Demo UI ----------------
 const $ = id => document.getElementById(id);
@@ -177,6 +257,39 @@ function parseHex(id,bits) {
 }
 function setStatus(text, cls='') { $('status').className='status '+cls; $('status').textContent=text; }
 function setRunning(v) { running=v; $('run').disabled=v; $('stop').disabled=!v; }
+
+$('monitorImport').onclick=()=>{
+  try {
+    const result=importMonitorText($('monitorText').value, ramImage);
+    ramImage=result.ram;
+    $('pc').value=result.firstAddress.toString(16).toUpperCase().padStart(4,'0');
+    $('captureFrom').value=result.firstAddress.toString(16).toUpperCase().padStart(4,'0');
+    $('captureTo').value=result.lastAddress.toString(16).toUpperCase().padStart(4,'0');
+    $('ramInfo').textContent=`RAM image: monitor byte code imported — ${result.bytesWritten} bytes`;
+    const ignored=result.ignoredLines.length ? `; ${result.ignoredLines.length} non-deposit line(s) ignored` : '';
+    $('monitorInfo').textContent=`Imported ${result.bytesWritten} bytes in ${result.records} record(s), ${hex(result.firstAddress,4)}–${hex(result.lastAddress,4)}${ignored}. Start PC set to ${hex(result.firstAddress,4)}.`;
+    setStatus(`Monitor byte code imported into RAM at ${hex(result.firstAddress,4)}–${hex(result.lastAddress,4)}.`, 'good');
+  } catch(err) { setStatus(err.message||String(err),'bad'); }
+};
+$('monitorExport').onclick=()=>{
+  try {
+    const from=parseMonitorAddress($('captureFrom').value), to=parseMonitorAddress($('captureTo').value);
+    const text=exportMonitorText(ramImage,from,to,{includeCall151:true,bytesPerLine:8});
+    $('monitorText').value=text;
+    $('monitorInfo').textContent=`Exported ${to-from+1} bytes, ${hex(from,4)}–${hex(to,4)}, in RetroAppleJS monitor format.`;
+    setStatus('RAM range exported as Apple II Monitor byte code.','good');
+  } catch(err) { setStatus(err.message||String(err),'bad'); }
+};
+$('monitorCopy').onclick=async()=>{
+  try {
+    if(!$('monitorText').value) throw new Error('There is no monitor text to copy.');
+    await navigator.clipboard.writeText($('monitorText').value);
+    setStatus('Monitor byte code copied to the clipboard.','good');
+  } catch(err) {
+    $('monitorText').focus(); $('monitorText').select();
+    setStatus('Clipboard access was unavailable; monitor text has been selected for manual copy.','warn');
+  }
+};
 
 $('ramFile').addEventListener('change', async ev => {
   const f=ev.target.files[0]; if(!f)return;
