@@ -117,6 +117,37 @@ function Apple2Hw(vid,keys)
     this.safe_flashdump = function() { return new Uint8Array(ram); }
     this.safe_videodump = function() { return ram.slice(0,0x6000); } // 0xC100
 
+
+    /*
+     * Import a flat 64 KiB runner image into real Apple II main RAM.
+     *
+     * Apple2Hw owns 48 KiB at $0000-$BFFF.  $C000-$CFFF is I/O/slot space
+     * and $D000-$FFFF is ROM/language-card mapped space, so a flat 64 KiB
+     * image must not be written through the CPU bus.  We deliberately copy
+     * only the physical main-RAM portion.  video.vidram is a subarray of ram,
+     * therefore text/lores/hires memory is updated by the same copy.
+     */
+    this.load_ram64k = function(bytes)
+    {
+        if(!(bytes instanceof Uint8Array))
+            throw new TypeError("64K RAM image must be a Uint8Array");
+        if(bytes.length != 0x10000)
+            throw new RangeError("64K RAM image must contain exactly 65536 bytes");
+
+        ram.set(bytes.subarray(0,RAM_SIZE),0);
+        this.mem_mon = {};
+        this.mem_mon_trigger = {};
+
+        return {
+             "sourceBytes":bytes.length
+            ,"loadedBytes":RAM_SIZE
+            ,"from":0x0000
+            ,"to":RAM_SIZE-1
+            ,"ignoredFrom":RAM_SIZE
+            ,"ignoredTo":0xFFFF
+        };
+    }
+
     /*
      * Safe CPU-bus read.
      *

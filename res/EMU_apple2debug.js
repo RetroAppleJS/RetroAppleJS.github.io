@@ -68,8 +68,10 @@ function Apple2Debug()
                         +"<i class='fa fa-sign-in-alt' title='step in'></i>&nbsp;"
                         +"<i class='fa fa-paw' title='step over'></i>&nbsp;"
                         +"<i class='fa fa-sign-out-alt' title='step out'></i>&nbsp;"
-                        +(apple2plus.cpuObj().BOOTparam().bDebug_boot==true?"<div class='appbut skinny' onclick=oEMU.component.CPU.Apple2Debug.downloadBootLog()><i class='fa fa-shoe-prints' title='download bootlog'></i></div>":"")
-                        //+"<i class='fa fa-cloud-download-alt' title='download bootlog'></i>"
+                        +"<div class='appbut skinny' onclick=oEMU.component.CPU.Apple2Debug.downloadBootLog()><i class='fa fa-shoe-prints' title='download bootlog'></i></div>&nbsp;"
+                        +"<div class='appbut skinny'>"
+                        +"<i id='cpuDbg_bootTrigger' class='fa fa-coffee' style='opacity:.35' title='bootlog trigger disabled'"
+                        +" onclick='oEMU.component.CPU.Apple2Debug.toggleBootLogTrigger(this)'></i></div>"
                         +"<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+wrapper_id+"');\" style=\"text-align:center;float:right;\">x</div>"
                         +"<div id='"+body_id+"' class=marginless style='width:299px;height:180px;border:0px solid #FFFFFF;font-family:Arcade;font-size:7px;color:#000000;white-space:normal;word-break:break-all;overflow-wrap:anywhere;overflow-y:scroll;'></div>"
                     +"</div>"
@@ -100,6 +102,67 @@ function Apple2Debug()
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }    
+
+    function DBG_parseBootAddress(value)
+    {
+        var s = String(value==null ? "" : value).trim();
+        s = s.replace(/^\$/,"").replace(/^0x/i,"");
+        if(!/^[0-9a-f]{1,4}$/i.test(s)) return null;
+        return parseInt(s,16) & 0xffff;
+    }
+
+    function DBG_updateBootTriggerIcon(el,state)
+    {
+        if(!el) return;
+
+        if(state && state.bDebug_boot)
+        {
+            el.style.opacity = "1";
+            el.title = "bootlog enabled; trigger $"
+                     + oCOM.getHexWord(state.triggerAddress)
+                     + (state.triggerArmed ? " armed" : " reached / logging");
+        }
+        else
+        {
+            el.style.opacity = ".35";
+            el.title = "bootlog trigger disabled";
+        }
+    }
+
+    this.toggleBootLogTrigger = function(el)
+    {
+        var cpu = apple2plus.cpuObj();
+        if(!cpu || typeof(cpu.BOOTparam)!="function"
+                || typeof(cpu.setBootLogTrigger)!="function")
+        {
+            alert("Bootlog trigger is unavailable in this CPU build.");
+            return;
+        }
+
+        var state = cpu.BOOTparam();
+
+        // Enabled -> disabled. Keep the already captured log downloadable.
+        if(state.bDebug_boot)
+        {
+            state = cpu.setBootLogTrigger(state.triggerAddress,false);
+            DBG_updateBootTriggerIcon(el,state);
+            return;
+        }
+
+        var def = "$" + oCOM.getHexWord(state.triggerAddress==null ? 0x6000 : state.triggerAddress);
+        var value = prompt("Clear bootlog and start logging when PC reaches:",def);
+        if(value===null) return;
+
+        var addr = DBG_parseBootAddress(value);
+        if(addr===null)
+        {
+            alert("Invalid 6502 address. Use for example $6000.");
+            return;
+        }
+
+        state = cpu.setBootLogTrigger(addr,true);
+        DBG_updateBootTriggerIcon(el,state);
+    }
 
     this.isReady = function()
     {

@@ -77,6 +77,22 @@ table { border-collapse:collapse; width:100%; } td,th { border-bottom:1px solid 
 </div>
 
 <div class="panel">
+  <strong>CPU activity log</strong>
+  <p>Optional diagnostic logging compatible with the JavaScript emulator bootlog record format: 10 bytes per record containing pre-execution PC, opcode/operand, A, X, Y, P and SP. Logging uses single-instruction WASM calls and is therefore intentionally slower than a normal run.</p>
+  <div class="row">
+    <label style="flex-direction:row;align-items:center;gap:5px">Logger
+      <select id="logEnabled"><option value="0" selected>disabled</option><option value="1">enabled</option></select>
+    </label>
+    <label style="flex-direction:row;align-items:center;gap:5px">Max records
+      <input id="logSize" value="32768" size="8">
+    </label>
+    <button id="downloadLog" disabled>Download bootlog</button>
+    <button id="clearLog" disabled>Clear log</button>
+  </div>
+  <small id="logInfo">No CPU activity log captured.</small>
+</div>
+
+<div class="panel">
   <strong>Status</strong>
   <div id="status" class="status">Ready.</div>
 </div>
@@ -94,6 +110,8 @@ table { border-collapse:collapse; width:100%; } td,th { border-bottom:1px solid 
 <tr><td><code>maxInstructions</code></td><td>0/omitted = unlimited</td></tr>
 <tr><td><code>shouldStop</code></td><td>optional callback checked between chunks</td></tr>
 <tr><td><code>yieldBetweenChunks</code></td><td>default true; lets browser process UI events</td></tr>
+<tr><td><code>activityLog</code></td><td>default false; when true, captures a JavaScript-emulator-compatible pre-execution CPU activity log</td></tr>
+<tr><td><code>activityLogSize</code></td><td>maximum activity-log records; default 32,768</td></tr>
 <tr><td><code>CPU6502.importMonitorText(text, ram)</code></td><td>imports RetroAppleJS/Apple II Monitor deposit lines into a copy of RAM</td></tr>
 <tr><td><code>CPU6502.exportMonitorText(ram, from, to)</code></td><td>exports an inclusive RAM range as <code>CALL-151</code> plus eight-byte monitor lines</td></tr>
 </table>
@@ -128,6 +146,166 @@ function nextTick() { return new Promise(r => setTimeout(r,0)); }
 
 const REASONS = {0:'chunk',1:'escape',2:'stop',3:'illegal-opcode',4:'instruction-limit'};
 
+const ACTIVITY_RECORD_BYTES = 10;
+const ACTIVITY_GROUP_MARKER_ADR = 0xFFFF;
+
+// Same instruction-length table used by EMU_cpu6502.js. It lets the wrapper
+// capture the two operand bytes before asking WASM to execute the instruction.
+const INSTRLEN = new Uint8Array([
+  2,2,2,1,2,2,2,2, 1,2,1,1,3,3,3,3,
+  2,2,2,1,2,2,2,2, 1,3,1,1,3,3,3,3,
+  3,2,2,1,2,2,2,2, 1,2,1,1,3,3,3,3,
+  2,2,2,1,2,2,2,2, 1,3,1,1,3,3,3,3,
+
+  1,2,2,1,2,2,2,2, 1,2,1,1,3,3,3,3,
+  2,2,2,1,2,2,2,2, 1,3,1,1,3,3,3,3,
+  1,2,2,1,2,2,2,2, 1,2,1,1,3,3,3,3,
+  2,2,2,1,2,2,2,2, 1,3,1,1,3,3,3,3,
+
+  2,2,2,1,2,2,2,2, 1,2,1,1,3,3,3,3,
+  2,2,2,1,2,2,2,2, 1,3,1,1,3,3,3,3,
+  2,2,2,1,2,2,2,2, 1,2,1,1,3,3,3,3,
+  2,2,2,1,2,2,2,2, 1,3,1,1,3,3,3,3,
+
+  2,2,2,1,2,2,2,2, 1,2,1,1,3,3,3,3,
+  2,2,2,1,2,2,2,2, 1,3,1,1,3,3,3,3,
+  2,2,2,1,2,2,2,2, 1,2,1,1,3,3,3,3,
+  2,2,2,1,2,2,2,2, 1,3,1,1,3,3,3,3
+]);
+
+// Same compression groups as EMU_cpu6502.js, so ROM delay/key-input loops
+// remain directly comparable between the JavaScript emulator and WASM runner.
+const ACTIVITY_MEMBER_TABLE = [
+  {group:1,step:0,pc:0xFD1B},{group:1,step:1,pc:0xFD1D},{group:1,step:2,pc:0xFD21},{group:1,step:3,pc:0xFD24},
+  {group:2,step:0,pc:0xFCAA},{group:2,step:1,pc:0xFCAC},
+  {group:3,step:0,pc:0xFCA0},{group:3,step:1,pc:0xFCA2},{group:3,step:2,pc:0xFCA3},{group:3,step:3,pc:0xFCA5},
+  {group:4,step:0,pc:0xF181},{group:4,step:1,pc:0xF183},{group:4,step:2,pc:0xF185},{group:4,step:3,pc:0xF187},
+  {group:4,step:4,pc:0xF189},{group:4,step:5,pc:0xF18B},{group:4,step:6,pc:0xF18D},{group:4,step:7,pc:0xF18F},
+  {group:4,step:8,pc:0xF191},{group:4,step:9,pc:0xF193},
+  {group:5,step:0,pc:0xF152},{group:5,step:1,pc:0xF155},{group:5,step:2,pc:0xF157},{group:5,step:3,pc:0xF159},{group:5,step:4,pc:0xF15A},
+  {group:6,step:0,pc:0xFB65},{group:6,step:1,pc:0xFB68},{group:6,step:2,pc:0xFB6B},{group:6,step:3,pc:0xFB6C},
+  {group:7,step:0,pc:0xFACE},{group:7,step:1,pc:0xFACF},{group:7,step:2,pc:0xFAD0},{group:7,step:3,pc:0xFAC7},{group:7,step:4,pc:0xFAC9},{group:7,step:5,pc:0xFACC},
+  {group:8,step:0,pc:0xFCAE},{group:8,step:1,pc:0xFCAF},{group:8,step:2,pc:0xFCB1},{group:8,step:3,pc:0xFCA9}
+];
+
+function bytesToBase64(bytes) {
+  let s='', step=0x8000;
+  for(let i=0;i<bytes.length;i+=step)
+    s += String.fromCharCode(...bytes.subarray(i,Math.min(i+step,bytes.length)));
+  return btoa(s);
+}
+
+function createActivityLogger(maxRecords=32768) {
+  maxRecords=Math.max(1,Math.floor(Number(maxRecords)||32768));
+  const lookup=Object.create(null), sequences=Object.create(null), records=[];
+  for(const m of ACTIVITY_MEMBER_TABLE) {
+    lookup[m.pc]=m;
+    (sequences[m.group] ||= []).push(m);
+  }
+  for(const key of Object.keys(sequences))
+    sequences[key].sort((a,b)=>a.step-b.step);
+
+  let groupId=0, groupNextStep=0, groupCount=0, groupRecord=-1, groupPending=[];
+
+  function resetGroup() {
+    groupId=0; groupNextStep=0; groupCount=0; groupRecord=-1; groupPending=[];
+  }
+  function emitRaw(rec) {
+    if(records.length>=maxRecords) return false;
+    records.push(rec);
+    return true;
+  }
+  function emitOrUpdateGroupMarker() {
+    if(groupCount<=0) return;
+    if(groupRecord<0) {
+      if(records.length>=maxRecords) return;
+      groupRecord=records.length;
+      records.push({marker:true,adr:ACTIVITY_GROUP_MARKER_ADR,group:groupId,repeat:groupCount});
+    } else records[groupRecord].repeat=groupCount;
+  }
+  function flushPending() {
+    for(const rec of groupPending) emitRaw(rec);
+    resetGroup();
+  }
+  function startGroup(member,rec) {
+    const seq=sequences[member.group];
+    if(!seq || !seq.length || member.step!==0) return false;
+    groupId=member.group;
+    groupNextStep=1%seq.length;
+    groupCount=0;
+    groupRecord=-1;
+    groupPending=[rec];
+    if(seq.length===1) {
+      groupCount=1;
+      groupPending=[];
+      emitOrUpdateGroupMarker();
+    }
+    return true;
+  }
+  function log(rec) {
+    if(records.length>=maxRecords) return;
+    const member=lookup[rec.adr&0xffff];
+    if(!member) {
+      flushPending();
+      emitRaw(rec);
+      return;
+    }
+    if(!groupId) {
+      if(!startGroup(member,rec)) emitRaw(rec);
+      return;
+    }
+    const seq=sequences[groupId], seqLen=seq?seq.length:0;
+    if(member.group===groupId && member.step===groupNextStep && seqLen>0) {
+      groupPending.push(rec);
+      groupNextStep=(groupNextStep+1)%seqLen;
+      if(groupNextStep===0) {
+        groupCount++;
+        groupPending=[];
+        emitOrUpdateGroupMarker();
+      }
+      return;
+    }
+    flushPending();
+    if(!startGroup(member,rec)) emitRaw(rec);
+  }
+  function toBytes() {
+    flushPending();
+    const bytes=new Uint8Array(records.length*ACTIVITY_RECORD_BYTES);
+    for(let i=0,o=0;i<records.length;i++,o+=ACTIVITY_RECORD_BYTES) {
+      const r=records[i];
+      bytes[o]=r.adr&0xff;
+      bytes[o+1]=(r.adr>>>8)&0xff;
+      if(r.marker) {
+        const repeat=r.repeat>>>0;
+        bytes[o+2]=r.group&0xff;
+        bytes[o+3]=(r.group>>>8)&0xff;
+        bytes[o+4]=repeat&0xff;
+        bytes[o+5]=(repeat>>>8)&0xff;
+        bytes[o+6]=(repeat>>>16)&0xff;
+        bytes[o+7]=(repeat>>>24)&0xff;
+      } else {
+        bytes[o+2]=r.opcode&0xff;
+        bytes[o+3]=r.operand&0xff;
+        bytes[o+4]=(r.operand>>>8)&0xff;
+        bytes[o+5]=r.a&0xff;
+        bytes[o+6]=r.x&0xff;
+        bytes[o+7]=r.y&0xff;
+        bytes[o+8]=r.p&0xff;
+        bytes[o+9]=r.sp&0xff;
+      }
+    }
+    return bytes;
+  }
+  return {
+    log,
+    get count(){ return records.length; },
+    get full(){ return records.length>=maxRecords; },
+    get maxRecords(){ return maxRecords; },
+    toBytes,
+    toBase64(){ return bytesToBase64(toBytes()); }
+  };
+}
+
 async function run6502(config={}, inputRAM) {
   const sourceRAM = normalizeRAM(inputRAM);
   const module = await wasmModulePromise;
@@ -155,10 +333,41 @@ async function run6502(config={}, inputRAM) {
   const maxInstructions = Math.max(0, Number(config.maxInstructions || 0));
   const shouldStop = typeof config.shouldStop === 'function' ? config.shouldStop : null;
   const doYield = config.yieldBetweenChunks !== false;
-  let total = 0, reasonCode = 0;
+  const activityLogger = config.activityLog ? createActivityLogger(config.activityLogSize ?? 32768) : null;
+  let total = 0, reasonCode = 0, loggedSinceYield = 0;
 
   while (true) {
     if (shouldStop && shouldStop()) { reasonCode=2; break; }
+    if (maxInstructions > 0 && total >= maxInstructions) { reasonCode=4; break; }
+
+    if(activityLogger && !activityLogger.full) {
+      // Capture the same pre-execution state as EMU_cpu6502.js. Skip the
+      // escape address because WASM stops before fetching an opcode there.
+      const pc=e.cpu_get_pc()&0xffff;
+      if(!(escapeEnabled && pc===escapeAddress)) {
+        const opcode=wr[pc]&0xff;
+        const len=INSTRLEN[opcode] || 1;
+        let operand=0;
+        if(len>1) operand=wr[(pc+1)&0xffff];
+        if(len>2) operand|=wr[(pc+2)&0xffff]<<8;
+        activityLogger.log({
+          adr:pc, opcode, operand,
+          a:e.cpu_get_a()&0xff, x:e.cpu_get_x()&0xff, y:e.cpu_get_y()&0xff,
+          p:e.cpu_get_p()&0xff, sp:e.cpu_get_sp()&0xff
+        });
+      }
+
+      reasonCode=e.cpu_run_chunk(1)>>>0;
+      total += e.cpu_get_last_executed()>>>0;
+      loggedSinceYield++;
+      if(reasonCode!==0) break;
+      if(doYield && loggedSinceYield>=4096) {
+        loggedSinceYield=0;
+        await nextTick();
+      }
+      continue;
+    }
+
     let thisChunk = chunk;
     if (maxInstructions > 0) {
       const left = maxInstructions - total;
@@ -177,7 +386,12 @@ async function run6502(config={}, inputRAM) {
     sp:e.cpu_get_sp()&0xff, p:e.cpu_get_p()&0xff,
     lastOpcode:e.cpu_get_last_opcode()&0xff, lastOpcodePC:e.cpu_get_last_opcode_pc()&0xffff
   };
-  return { ram:new Uint8Array(wr), state, reason:REASONS[reasonCode] || 'unknown', reasonCode, instructions:total };
+  let activityLog=null;
+  if(activityLogger) {
+    const bytes=activityLogger.toBytes();
+    activityLog={records:bytes.length/ACTIVITY_RECORD_BYTES, bytes, base64:bytesToBase64(bytes)};
+  }
+  return { ram:new Uint8Array(wr), state, reason:REASONS[reasonCode] || 'unknown', reasonCode, instructions:total, activityLog };
 }
 
 function parseMonitorAddress(text) {
@@ -249,6 +463,7 @@ let ramImage = new Uint8Array(65536);
 let stopRequested = false;
 let running = false;
 let useResetVector = false;
+let lastActivityLog = null;
 const hex = (n,w) => '$'+(n>>>0).toString(16).toUpperCase().padStart(w,'0');
 function parseHex(id,bits) {
   let s=$(id).value.trim().replace(/^\$/,'').replace(/^0x/i,'');
@@ -309,6 +524,21 @@ $('save').onclick=()=>{
   const blob=new Blob([ramImage],{type:'application/octet-stream'}), url=URL.createObjectURL(blob), a=document.createElement('a');
   a.href=url;a.download='ram-64k.bin';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
+$('downloadLog').onclick=()=>{
+  if(!lastActivityLog || !lastActivityLog.base64) return;
+  const blob=new Blob([lastActivityLog.base64],{type:'text/plain;charset=utf-8'}), url=URL.createObjectURL(blob), a=document.createElement('a');
+  a.href=url;
+  a.download='wasm_6502_bootlog_'+new Date().toISOString().replace(/[:.]/g,'-')+'.txt';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+$('clearLog').onclick=()=>{
+  lastActivityLog=null;
+  $('downloadLog').disabled=true;
+  $('clearLog').disabled=true;
+  $('logInfo').textContent='No CPU activity log captured.';
+  setStatus('CPU activity log cleared.','good');
+};
 $('resetVector').onclick=()=>{useResetVector=true;setStatus('Next Run will initialize from the RESET vector at $FFFC/$FFFD.','warn');};
 $('stop').onclick=()=>{stopRequested=true;setStatus('Stop requested; execution will stop at the next chunk boundary.','warn');};
 
@@ -322,16 +552,25 @@ $('run').onclick=async()=>{
     const result=await run6502({
       pc:parseHex('pc',16), a:parseHex('a',8), x:parseHex('x',8), y:parseHex('y',8), sp:parseHex('sp',8), p:parseHex('p',8),
       useResetVector, escapeAddress:parseHex('escape',16), escapeEnabled:$('escapeEnabled').value==='1',
-      instructionsPerChunk:chunk, maxInstructions:limit, shouldStop:()=>stopRequested, yieldBetweenChunks:true
+      instructionsPerChunk:chunk, maxInstructions:limit, shouldStop:()=>stopRequested, yieldBetweenChunks:true,
+      activityLog:$('logEnabled').value==='1',
+      activityLogSize:Math.max(1,Math.floor(Number($('logSize').value)||32768))
     }, ramImage);
     useResetVector=false; ramImage=result.ram;
+    lastActivityLog=result.activityLog;
+    $('downloadLog').disabled=!lastActivityLog;
+    $('clearLog').disabled=!lastActivityLog;
+    $('logInfo').textContent=lastActivityLog
+      ? `Captured ${lastActivityLog.records.toLocaleString()} bootlog record(s), ${lastActivityLog.bytes.length.toLocaleString()} binary bytes; download is Base64 text compatible with the JavaScript emulator.`
+      : 'Logger disabled for this run.';
     const s=result.state;
     $('pc').value=s.pc.toString(16).toUpperCase().padStart(4,'0'); $('a').value=s.a.toString(16).toUpperCase().padStart(2,'0'); $('x').value=s.x.toString(16).toUpperCase().padStart(2,'0'); $('y').value=s.y.toString(16).toUpperCase().padStart(2,'0'); $('sp').value=s.sp.toString(16).toUpperCase().padStart(2,'0'); $('p').value=s.p.toString(16).toUpperCase().padStart(2,'0');
     let extra='';
     if(result.reason==='illegal-opcode') extra=`
 Illegal opcode ${hex(s.lastOpcode,2)} encountered at ${hex(s.lastOpcodePC,4)}.`;
+    const logLine=result.activityLog ? `\nActivity-log records: ${result.activityLog.records.toLocaleString()}` : '';
     setStatus(`Stopped: ${result.reason}
-Instructions executed: ${result.instructions.toLocaleString()}
+Instructions executed: ${result.instructions.toLocaleString()}${logLine}
 PC=${hex(s.pc,4)}  A=${hex(s.a,2)}  X=${hex(s.x,2)}  Y=${hex(s.y,2)}  SP=${hex(s.sp,2)}  P=${hex(s.p,2)}${extra}`, result.reason==='illegal-opcode'?'bad':'good');
   } catch(err) { setStatus(err.stack||String(err),'bad'); } finally { setRunning(false); }
 };

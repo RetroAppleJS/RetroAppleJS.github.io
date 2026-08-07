@@ -487,7 +487,12 @@ function RamCard()
             + "apple2plus.hwObj().enable_MEM_monitoring(bMEM_monitoring);"
             + "oCOM.enableRefreshEvent('MEM_monitoring_MS16K',bMEM_monitoring);"
             + "apple2plus.hwObj().io.SLOT2obj("+slotN+")?.enable_MEM_monitoring(bMEM_monitoring);"
-            + "\"></i></button></div>"
+            + "\"></i></button><br>"
+            + "      <button class=appbut id=\"RAM64K_import\""
+            + " title=\"Load ram-64k.bin into Apple II main RAM $0000-$BFFF\""
+            + " onclick=\"document.getElementById('RAM64K_file').click()\">"
+            + "        <i class=\"fa fa-cloud-upload-alt\"></i></button>"
+            + "      <input id=\"RAM64K_file\" type=\"file\" accept=\".bin,application/octet-stream\" hidden onchange=\"EMU_loadRAM64KFile(this)\"></div>"
             + "    <div id=\"EMU_mem_map\" style=\"margin-left:30px;white-space:nowrap\"></div>"
             + "  </div>"
             + "</div>";

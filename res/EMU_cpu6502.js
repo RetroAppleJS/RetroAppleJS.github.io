@@ -16,7 +16,10 @@ else oEMU.component.CPU["6502"] = new Cpu6502();
 function Cpu6502(hwobj)
 {
     var self = this;
-    const bDebug_boot = false;       // opt-in CPU boot tracking
+    var bDebug_boot = false;         // runtime opt-in CPU activity tracking
+    var BOOTtrigger_adr = 0x6000;    // address that clears/starts the next capture
+    var BOOTtrigger_armed = false;   // wait for BOOTtrigger_adr before logging
+ 
 
     //const BOOTsiz = 1024;
     const BOOTsiz = 32768;
@@ -94,7 +97,27 @@ function Cpu6502(hwobj)
     var BOOTgroup_pending = [];
     this.BOOTparam = function()
     {
-        return {"bDebug_boot":bDebug_boot }  
+        return {
+             "bDebug_boot":bDebug_boot
+            ,"triggerAddress":BOOTtrigger_adr
+            ,"triggerArmed":BOOTtrigger_armed
+            ,"count":BOOTcnt
+        };
+    }
+
+    this.setBootLogTrigger = function(addr,enabled)
+    {
+        BOOTtrigger_adr = Number(addr) & 0xffff;
+        bDebug_boot = !!enabled;
+        BOOTtrigger_armed = bDebug_boot;
+        return this.BOOTparam();
+    }
+
+    this.armBootLogTrigger = function(addr)
+    {
+        if(addr!==undefined) BOOTtrigger_adr = Number(addr) & 0xffff;
+        if(bDebug_boot) BOOTtrigger_armed = true;
+        return this.BOOTparam(); 
     }
 
     // 6502 reserved addresses.
@@ -314,7 +337,7 @@ function Cpu6502(hwobj)
 
     function emitBootPacked(adr, packed)
     {
-        if (!bDebug_boot || BOOTcnt >= BOOTsiz) return false;
+        if (BOOTcnt >= BOOTsiz) return false;
 
         BOOTlog_adr[BOOTcnt] = adr & 0xffff;
         BOOTlog_cpu[BOOTcnt] = packed;
@@ -444,11 +467,9 @@ function Cpu6502(hwobj)
         pc = readWord(RESET_VECTOR);
         cycle_delay = 0;
 
-        if (bDebug_boot)
-        {
-            BOOTcnt = 0;
-            resetBootGroupState();
-        }
+        // A reset re-arms an enabled trigger; the buffer itself is cleared
+        // only when execution actually reaches the configured trigger PC.
+        if (bDebug_boot) BOOTtrigger_armed = true;
     }
 
     this.cycle = function()
@@ -497,9 +518,22 @@ function Cpu6502(hwobj)
         }
 
         if(bDebug_boot)
-            logBootInstruction(instr_pc & 0xffff, opcode, operand);
- 
+        {
+            var boot_pc = instr_pc & 0xffff;
 
+            if(BOOTtrigger_armed && boot_pc == BOOTtrigger_adr)
+            {
+                // One-shot trigger: discard the previous capture and include
+                // this very instruction as record zero of the new capture.
+                self.clearBootLog();
+                BOOTtrigger_armed = false;
+            }
+
+            // Nothing before the trigger address is recorded.
+            if(!BOOTtrigger_armed)
+                logBootInstruction(boot_pc, opcode, operand);
+        }
+ 
         // Execute!
         switch (opcode) {
         case 0x00:   push(pc >> 8);  push(pc & 0xff);  push(p | P_B);  p |= P_I;  pc = readWord(IRQ_VECTOR);  break; // BRK
