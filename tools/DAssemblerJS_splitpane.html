@@ -63,22 +63,40 @@
     .filebut { display:inline-block; }
     .hidden-file-input { display:none; }
     .check { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-weight:500; }
-    pre {
-        margin:0;
-        white-space:pre;
-        overflow:visible;
+    .output-split { align-items:start; }
+    .output-split .panel { overflow:hidden; }
+    .virtual-output {
+        position:relative;
+        height:min(68vh,760px);
+        min-height:360px;
+        overflow:auto;
         background:#0b0e14;
         color:var(--text);
         border:1px solid var(--border);
         border-radius:8px;
-        padding:12px;
-        min-height:0;
-        max-height:none;
-        font:13px/1.35 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+        font:13px/18px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+        contain:strict;
     }
-    .output-split { align-items:start; }
-    .output-split .panel { overflow:visible; }
-    .output-split pre { height:auto; }
+    .virtual-spacer { position:relative; min-width:100%; }
+    .virtual-lines {
+        position:absolute;
+        top:0;
+        left:0;
+        width:max-content;
+        min-width:100%;
+    }
+    .virtual-record { width:max-content; min-width:100%; }
+    .dasm-line {
+        display:block;
+        width:max-content;
+        min-width:100%;
+        height:18px;
+        padding:0 12px;
+        white-space:pre;
+    }
+    .diff-instruction { background:rgba(255,159,10,0.20); }
+    .cpu-register { display:inline-block; border-radius:2px; }
+    .diff-register { background:rgba(64,156,255,0.24); }
     .status { color:var(--muted); min-height:20px; }
     .error { color:var(--bad); }
     .ok { color:var(--good); }
@@ -475,11 +493,15 @@ SUBTBL EQU $FFE3
     <div class="split output-split">
         <div class="panel">
             <div class="pane-title"><h2>Disassembly A</h2><span>from Input A</span></div>
-            <pre id="outputA"></pre>
+            <div id="outputA" class="virtual-output" aria-label="Disassembly A">
+                <div class="virtual-spacer"><div class="virtual-lines"></div></div>
+            </div>
         </div>
         <div class="panel">
             <div class="pane-title"><h2>Disassembly B</h2><span>from Input B</span></div>
-            <pre id="outputB"></pre>
+            <div id="outputB" class="virtual-output" aria-label="Disassembly B">
+                <div class="virtual-spacer"><div class="virtual-lines"></div></div>
+            </div>
         </div>
     </div>
 </div>
@@ -943,7 +965,7 @@ SUBTBL EQU $FFE3
         return parts.join(' ');
     }
 
-    function renderCpuState(row) {
+    function renderCpuStateText(row) {
         if (!row || !row.has_cpu_state) return '';
         return 'A=' + getHexByte(row.a) +
             ' X=' + getHexByte(row.x) +
@@ -964,14 +986,15 @@ SUBTBL EQU $FFE3
         var showCpuState = document.getElementById('showCpuState').checked;
         var localOpctab = patchUnofficial ? applyUnofficialOpcodeNames(cloneOpctab()) : cloneOpctab();
         var dasm = makeDasm(symbolMap, useDefaultSymbols);
-        var lines = [];
+        var records = new Array(rows.length);
+        var hasCpuLines = false;
 
         for (var i = 0; i < rows.length; i++) {
             var row = rows[i];
 
             if (row.is_group_marker) {
                 var markerIdx = showIdx ? (String(row.idx).padStart(4, '0') + '  ') : '';
-                lines.push(markerIdx + renderGroupState(row));
+                records[i] = markerIdx + renderGroupState(row);
                 continue;
             }
 
@@ -989,14 +1012,234 @@ SUBTBL EQU $FFE3
             var addr = normalizeHtmlSpaces(ret.adr_lst || getHexWord(row.adr));
             var bytes = renderBytes(row).padEnd(8, ' ');
             var asm = normalizeHtmlSpaces(ret.mnemonic);
-            var cpuState = showCpuState ? renderCpuState(row) : '';
 
             if (dasm.last_symbol_comment) asm += '   ; ' + dasm.last_symbol_comment;
-            if (cpuState) lines.push(cpuState);
-            lines.push(idx + addr + '  ' + bytes + '  ' + asm);
+            records[i] = idx + addr + '  ' + bytes + '  ' + asm;
+            if (showCpuState && row.has_cpu_state) hasCpuLines = true;
         }
 
-        return lines.join('\n');
+        return {
+            records:records,
+            hasCpuLines:hasCpuLines
+        };
+    }
+
+    var DIFF_INSTRUCTION = 0x01;
+    var DIFF_A           = 0x02;
+    var DIFF_X           = 0x04;
+    var DIFF_Y           = 0x08;
+    var DIFF_P           = 0x10;
+    var DIFF_SP          = 0x20;
+    var VIRTUAL_LINE_HEIGHT = 18;
+    var VIRTUAL_BUFFER_RECORDS = 60;
+
+    var comparisonState = { A:null, B:null };
+    var comparisonDiff = null;
+    var renderPending = { A:false, B:false };
+
+    function instructionRowsDiffer(a, b) {
+        if (!a || !b) return true;
+        if (!!a.is_group_marker !== !!b.is_group_marker) return true;
+
+        if (a.is_group_marker) {
+            return a.group !== b.group || a.repeat_count !== b.repeat_count;
+        }
+
+        if (a.adr !== b.adr || a.opcode !== b.opcode) return true;
+
+        var haveA = a.byte_len != null ? a.byte_len : (a.len || 1);
+        var haveB = b.byte_len != null ? b.byte_len : (b.len || 1);
+        if (haveA !== haveB) return true;
+        if (haveA > 1 && a.op1 !== b.op1) return true;
+        if (haveA > 2 && a.op2 !== b.op2) return true;
+        return false;
+    }
+
+    function buildComparisonDiff() {
+        var left = comparisonState.A;
+        var right = comparisonState.B;
+
+        if (!left || !right) {
+            comparisonDiff = null;
+            return;
+        }
+
+        var aRows = left.parsed.rows;
+        var bRows = right.parsed.rows;
+        var count = Math.max(aRows.length, bRows.length);
+        var diff = new Uint8Array(count);
+
+        for (var i = 0; i < count; i++) {
+            var a = aRows[i];
+            var b = bRows[i];
+            var mask = 0;
+
+            if (instructionRowsDiffer(a, b)) mask |= DIFF_INSTRUCTION;
+
+            if (a && b && a.has_cpu_state && b.has_cpu_state) {
+                if (a.a  !== b.a)  mask |= DIFF_A;
+                if (a.x  !== b.x)  mask |= DIFF_X;
+                if (a.y  !== b.y)  mask |= DIFF_Y;
+                if (a.p  !== b.p)  mask |= DIFF_P;
+                if (a.sp !== b.sp) mask |= DIFF_SP;
+            }
+
+            diff[i] = mask;
+        }
+
+        comparisonDiff = diff;
+    }
+
+    function getVirtualParts(output) {
+        var spacer = output.firstElementChild;
+        return {
+            spacer:spacer,
+            lines:spacer ? spacer.firstElementChild : null
+        };
+    }
+
+    function renderCpuLine(row, diffMask) {
+        var line = document.createElement('span');
+        line.className = 'dasm-line cpu-state-line';
+        if (!row || !row.has_cpu_state) return line;
+
+        var regs = [
+            ['A', 'a', DIFF_A],
+            ['X', 'x', DIFF_X],
+            ['Y', 'y', DIFF_Y],
+            ['P', 'p', DIFF_P],
+            ['SP', 'sp', DIFF_SP]
+        ];
+
+        for (var i = 0; i < regs.length; i++) {
+            if (i) line.appendChild(document.createTextNode(' '));
+
+            var spec = regs[i];
+            var token = document.createElement('span');
+            token.className = 'cpu-register' + ((diffMask & spec[2]) ? ' diff-register' : '');
+            token.textContent = spec[0] + '=' + getHexByte(row[spec[1]]);
+            line.appendChild(token);
+        }
+
+        return line;
+    }
+
+    function renderInstructionLine(text, differs) {
+        var line = document.createElement('span');
+        line.className = 'dasm-line' + (differs ? ' diff-instruction' : '');
+        line.textContent = text;
+        return line;
+    }
+
+    function renderVirtualPane(side, force) {
+        var state = comparisonState[side];
+        var output = pane(side).output;
+        var parts = getVirtualParts(output);
+        if (!parts.spacer || !parts.lines) return;
+
+        if (!state) {
+            parts.spacer.style.height = '0px';
+            parts.lines.textContent = '';
+            return;
+        }
+
+        var count = state.records.length;
+        var recordHeight = state.recordHeight;
+        parts.spacer.style.height = (count * recordHeight) + 'px';
+
+        var viewportHeight = output.clientHeight || 600;
+        var firstVisible = Math.floor(output.scrollTop / recordHeight);
+        var lastVisible = Math.ceil((output.scrollTop + viewportHeight) / recordHeight);
+        var start = Math.max(0, firstVisible - VIRTUAL_BUFFER_RECORDS);
+        var end = Math.min(count, lastVisible + VIRTUAL_BUFFER_RECORDS);
+
+        if (!force && state.viewStart === start && state.viewEnd === end) return;
+        state.viewStart = start;
+        state.viewEnd = end;
+
+        var fragment = document.createDocumentFragment();
+        for (var i = start; i < end; i++) {
+            var row = state.parsed.rows[i];
+            var diffMask = comparisonDiff && i < comparisonDiff.length ? comparisonDiff[i] : 0;
+            var block = document.createElement('div');
+            block.className = 'virtual-record';
+            block.style.height = recordHeight + 'px';
+
+            if (state.hasCpuLines) block.appendChild(renderCpuLine(row, diffMask));
+            block.appendChild(renderInstructionLine(state.records[i], !!(diffMask & DIFF_INSTRUCTION)));
+            fragment.appendChild(block);
+        }
+
+        parts.lines.style.transform = 'translateY(' + (start * recordHeight) + 'px)';
+        parts.lines.textContent = '';
+        parts.lines.appendChild(fragment);
+    }
+
+    function scheduleVirtualRender(side) {
+        if (renderPending[side]) return;
+        renderPending[side] = true;
+
+        var raf = window.requestAnimationFrame || function (fn) { return setTimeout(fn, 0); };
+        raf(function () {
+            renderPending[side] = false;
+            renderVirtualPane(side, false);
+        });
+    }
+
+    function syncPeerScroll(side) {
+        var current = comparisonState[side];
+        var peerSide = side === 'A' ? 'B' : 'A';
+        var peer = comparisonState[peerSide];
+        if (!current || !peer) return;
+
+        var output = pane(side).output;
+        var peerOutput = pane(peerSide).output;
+        var recordPosition = output.scrollTop / current.recordHeight;
+        var targetTop = recordPosition * peer.recordHeight;
+
+        if (Math.abs(peerOutput.scrollTop - targetTop) > 1) peerOutput.scrollTop = targetTop;
+        if (Math.abs(peerOutput.scrollLeft - output.scrollLeft) > 1) peerOutput.scrollLeft = output.scrollLeft;
+    }
+
+    function onOutputScroll(side) {
+        scheduleVirtualRender(side);
+        syncPeerScroll(side);
+    }
+
+    function refreshVirtualOutputs(resetScroll) {
+        ['A', 'B'].forEach(function (side) {
+            var state = comparisonState[side];
+            var output = pane(side).output;
+
+            if (resetScroll) {
+                output.scrollTop = 0;
+                output.scrollLeft = 0;
+            }
+            if (state) {
+                state.viewStart = -1;
+                state.viewEnd = -1;
+            }
+            renderVirtualPane(side, true);
+        });
+    }
+
+    function renderComparison(resetScroll) {
+        buildComparisonDiff();
+        refreshVirtualOutputs(!!resetScroll);
+    }
+
+    function buildPlainText(state) {
+        if (!state) return '';
+        if (state.plainText != null) return state.plainText;
+
+        var lines = [];
+        for (var i = 0; i < state.records.length; i++) {
+            var row = state.parsed.rows[i];
+            if (state.hasCpuLines && row && row.has_cpu_state) lines.push(renderCpuStateText(row));
+            lines.push(state.records[i]);
+        }
+        state.plainText = lines.join('\n');
+        return state.plainText;
     }
 
     function pane(side) {
@@ -1023,28 +1266,50 @@ SUBTBL EQU $FFE3
         return true;
     }
 
-    function runPane(side) {
+    function preparePane(side) {
         var p = pane(side);
         p.status.className = 'status';
 
         try {
-            if (!assertRuntimeReady(p.status)) return false;
+            if (!assertRuntimeReady(p.status)) return null;
 
             var parsed = parseInput(p.input.value, p.mode.value);
-            p.output.textContent = disassembleRows(parsed.rows);
+            var disassembly = disassembleRows(parsed.rows);
+            var state = {
+                parsed:parsed,
+                records:disassembly.records,
+                hasCpuLines:disassembly.hasCpuLines,
+                recordHeight:VIRTUAL_LINE_HEIGHT * (disassembly.hasCpuLines ? 2 : 1),
+                plainText:null,
+                viewStart:-1,
+                viewEnd:-1
+            };
+
             p.status.className = 'status ok';
             p.status.textContent = parsed.status;
-            return true;
+            return state;
         } catch (e) {
             p.status.className = 'status error';
             p.status.textContent = e.message;
-            return false;
+            return null;
         }
     }
 
+    function runPane(side) {
+        comparisonState[side] = preparePane(side);
+        renderComparison(true);
+        return !!comparisonState[side];
+    }
+
     function runBoth() {
-        runPane('A');
-        runPane('B');
+        // Prepare both complete states first. This avoids rendering A against an
+        // old B and then immediately rebuilding the DOM again after B finishes.
+        var stateA = preparePane('A');
+        var stateB = preparePane('B');
+        comparisonState.A = stateA;
+        comparisonState.B = stateB;
+        renderComparison(true);
+        return !!(stateA && stateB);
     }
 
     function sampleBase64() {
@@ -1081,20 +1346,21 @@ SUBTBL EQU $FFE3
     function clearPane(side) {
         var p = pane(side);
         p.input.value = '';
-        p.output.textContent = '';
         p.status.textContent = '';
         p.status.className = 'status';
+        comparisonState[side] = null;
+        renderComparison(false);
     }
 
     function copyPane(side) {
-        var text = pane(side).output.textContent || '';
+        var text = buildPlainText(comparisonState[side]);
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(text);
         }
     }
 
     function downloadPane(side) {
-        var text = pane(side).output.textContent || '';
+        var text = buildPlainText(comparisonState[side]);
         var blob = new Blob([text], {type:'text/plain'});
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -1154,11 +1420,18 @@ SUBTBL EQU $FFE3
             loadTextFile(this.files && this.files[0], side);
             this.value = '';
         });
+        document.getElementById('output' + side).addEventListener('scroll', function () {
+            onOutputScroll(side);
+        });
     }
 
     document.getElementById('decodeBothBtn').addEventListener('click', runBoth);
     bindPane('A');
     bindPane('B');
+
+    window.addEventListener('resize', function () {
+        refreshVirtualOutputs(false);
+    });
 
     window.addEventListener('load', function () {
         pane('A').mode.value = 'bootlog10';
