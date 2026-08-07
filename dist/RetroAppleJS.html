@@ -9085,7 +9085,7 @@ const _o = {"tools":{}
         ,"EMU_kbd_id":"kbdimg"
         ,"EMU_key_id":"keybox"
         ,"EMU_legacyJS":false
-        ,"EMU_vid_mode":""
+        ,"EMU_vid_mode":"canvas"
         ,"EMU_disk_cat":false
         ,"KBD_Xoff":-6
         ,"KBD_Yoff":0       
@@ -10508,6 +10508,37 @@ function Apple2Hw(vid,keys)
     this.safe_flashdump = function() { return new Uint8Array(ram); }
     this.safe_videodump = function() { return ram.slice(0,0x6000); } // 0xC100
 
+
+    /*
+     * Import a flat 64 KiB runner image into real Apple II main RAM.
+     *
+     * Apple2Hw owns 48 KiB at $0000-$BFFF.  $C000-$CFFF is I/O/slot space
+     * and $D000-$FFFF is ROM/language-card mapped space, so a flat 64 KiB
+     * image must not be written through the CPU bus.  We deliberately copy
+     * only the physical main-RAM portion.  video.vidram is a subarray of ram,
+     * therefore text/lores/hires memory is updated by the same copy.
+     */
+    this.load_ram64k = function(bytes)
+    {
+        if(!(bytes instanceof Uint8Array))
+            throw new TypeError("64K RAM image must be a Uint8Array");
+        if(bytes.length != 0x10000)
+            throw new RangeError("64K RAM image must contain exactly 65536 bytes");
+
+        ram.set(bytes.subarray(0,RAM_SIZE),0);
+        this.mem_mon = {};
+        this.mem_mon_trigger = {};
+
+        return {
+             "sourceBytes":bytes.length
+            ,"loadedBytes":RAM_SIZE
+            ,"from":0x0000
+            ,"to":RAM_SIZE-1
+            ,"ignoredFrom":RAM_SIZE
+            ,"ignoredTo":0xFFFF
+        };
+    }
+
     /*
      * Safe CPU-bus read.
      *
@@ -10671,7 +10702,10 @@ else oEMU.component.CPU["6502"] = new Cpu6502();
 function Cpu6502(hwobj)
 {
     var self = this;
-    const bDebug_boot = false;       // opt-in CPU boot tracking
+    var bDebug_boot = false;         // runtime opt-in CPU activity tracking
+    var BOOTtrigger_adr = 0x6000;    // address that clears/starts the next capture
+    var BOOTtrigger_armed = false;   // wait for BOOTtrigger_adr before logging
+ 
 
     //const BOOTsiz = 1024;
     const BOOTsiz = 32768;
@@ -10749,7 +10783,27 @@ function Cpu6502(hwobj)
     var BOOTgroup_pending = [];
     this.BOOTparam = function()
     {
-        return {"bDebug_boot":bDebug_boot }  
+        return {
+             "bDebug_boot":bDebug_boot
+            ,"triggerAddress":BOOTtrigger_adr
+            ,"triggerArmed":BOOTtrigger_armed
+            ,"count":BOOTcnt
+        };
+    }
+
+    this.setBootLogTrigger = function(addr,enabled)
+    {
+        BOOTtrigger_adr = Number(addr) & 0xffff;
+        bDebug_boot = !!enabled;
+        BOOTtrigger_armed = bDebug_boot;
+        return this.BOOTparam();
+    }
+
+    this.armBootLogTrigger = function(addr)
+    {
+        if(addr!==undefined) BOOTtrigger_adr = Number(addr) & 0xffff;
+        if(bDebug_boot) BOOTtrigger_armed = true;
+        return this.BOOTparam(); 
     }
 
     // 6502 reserved addresses.
@@ -10969,7 +11023,7 @@ function Cpu6502(hwobj)
 
     function emitBootPacked(adr, packed)
     {
-        if (!bDebug_boot || BOOTcnt >= BOOTsiz) return false;
+        if (BOOTcnt >= BOOTsiz) return false;
 
         BOOTlog_adr[BOOTcnt] = adr & 0xffff;
         BOOTlog_cpu[BOOTcnt] = packed;
@@ -11099,11 +11153,9 @@ function Cpu6502(hwobj)
         pc = readWord(RESET_VECTOR);
         cycle_delay = 0;
 
-        if (bDebug_boot)
-        {
-            BOOTcnt = 0;
-            resetBootGroupState();
-        }
+        // A reset re-arms an enabled trigger; the buffer itself is cleared
+        // only when execution actually reaches the configured trigger PC.
+        if (bDebug_boot) BOOTtrigger_armed = true;
     }
 
     this.cycle = function()
@@ -11152,9 +11204,22 @@ function Cpu6502(hwobj)
         }
 
         if(bDebug_boot)
-            logBootInstruction(instr_pc & 0xffff, opcode, operand);
- 
+        {
+            var boot_pc = instr_pc & 0xffff;
 
+            if(BOOTtrigger_armed && boot_pc == BOOTtrigger_adr)
+            {
+                // One-shot trigger: discard the previous capture and include
+                // this very instruction as record zero of the new capture.
+                self.clearBootLog();
+                BOOTtrigger_armed = false;
+            }
+
+            // Nothing before the trigger address is recorded.
+            if(!BOOTtrigger_armed)
+                logBootInstruction(boot_pc, opcode, operand);
+        }
+ 
         // Execute!
         switch (opcode) {
         case 0x00:   push(pc >> 8);  push(pc & 0xff);  push(p | P_B);  p |= P_I;  pc = readWord(IRQ_VECTOR);  break; // BRK
@@ -11713,8 +11778,10 @@ function Apple2Debug()
                         +"<i class='fa fa-sign-in-alt' title='step in'></i>&nbsp;"
                         +"<i class='fa fa-paw' title='step over'></i>&nbsp;"
                         +"<i class='fa fa-sign-out-alt' title='step out'></i>&nbsp;"
-                        +(apple2plus.cpuObj().BOOTparam().bDebug_boot==true?"<div class='appbut skinny' onclick=oEMU.component.CPU.Apple2Debug.downloadBootLog()><i class='fa fa-shoe-prints' title='download bootlog'></i></div>":"")
-                        //+"<i class='fa fa-cloud-download-alt' title='download bootlog'></i>"
+                        +"<div class='appbut skinny' onclick=oEMU.component.CPU.Apple2Debug.downloadBootLog()><i class='fa fa-shoe-prints' title='download bootlog'></i></div>&nbsp;"
+                        +"<div class='appbut skinny'>"
+                        +"<i id='cpuDbg_bootTrigger' class='fa fa-coffee' style='opacity:.35' title='bootlog trigger disabled'"
+                        +" onclick='oEMU.component.CPU.Apple2Debug.toggleBootLogTrigger(this)'></i></div>"
                         +"<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+wrapper_id+"');\" style=\"text-align:center;float:right;\">x</div>"
                         +"<div id='"+body_id+"' class=marginless style='width:299px;height:180px;border:0px solid #FFFFFF;font-family:Arcade;font-size:7px;color:#000000;white-space:normal;word-break:break-all;overflow-wrap:anywhere;overflow-y:scroll;'></div>"
                     +"</div>"
@@ -11745,6 +11812,67 @@ function Apple2Debug()
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     }    
+
+    function DBG_parseBootAddress(value)
+    {
+        var s = String(value==null ? "" : value).trim();
+        s = s.replace(/^\$/,"").replace(/^0x/i,"");
+        if(!/^[0-9a-f]{1,4}$/i.test(s)) return null;
+        return parseInt(s,16) & 0xffff;
+    }
+
+    function DBG_updateBootTriggerIcon(el,state)
+    {
+        if(!el) return;
+
+        if(state && state.bDebug_boot)
+        {
+            el.style.opacity = "1";
+            el.title = "bootlog enabled; trigger $"
+                     + oCOM.getHexWord(state.triggerAddress)
+                     + (state.triggerArmed ? " armed" : " reached / logging");
+        }
+        else
+        {
+            el.style.opacity = ".35";
+            el.title = "bootlog trigger disabled";
+        }
+    }
+
+    this.toggleBootLogTrigger = function(el)
+    {
+        var cpu = apple2plus.cpuObj();
+        if(!cpu || typeof(cpu.BOOTparam)!="function"
+                || typeof(cpu.setBootLogTrigger)!="function")
+        {
+            alert("Bootlog trigger is unavailable in this CPU build.");
+            return;
+        }
+
+        var state = cpu.BOOTparam();
+
+        // Enabled -> disabled. Keep the already captured log downloadable.
+        if(state.bDebug_boot)
+        {
+            state = cpu.setBootLogTrigger(state.triggerAddress,false);
+            DBG_updateBootTriggerIcon(el,state);
+            return;
+        }
+
+        var def = "$" + oCOM.getHexWord(state.triggerAddress==null ? 0x6000 : state.triggerAddress);
+        var value = prompt("Clear bootlog and start logging when PC reaches:",def);
+        if(value===null) return;
+
+        var addr = DBG_parseBootAddress(value);
+        if(addr===null)
+        {
+            alert("Invalid 6502 address. Use for example $6000.");
+            return;
+        }
+
+        state = cpu.setBootLogTrigger(addr,true);
+        DBG_updateBootTriggerIcon(el,state);
+    }
 
     this.isReady = function()
     {
@@ -23560,7 +23688,12 @@ function RamCard()
             + "apple2plus.hwObj().enable_MEM_monitoring(bMEM_monitoring);"
             + "oCOM.enableRefreshEvent('MEM_monitoring_MS16K',bMEM_monitoring);"
             + "apple2plus.hwObj().io.SLOT2obj("+slotN+")?.enable_MEM_monitoring(bMEM_monitoring);"
-            + "\"></i></button></div>"
+            + "\"></i></button><br>"
+            + "      <button class=appbut id=\"RAM64K_import\""
+            + " title=\"Load ram-64k.bin into Apple II main RAM $0000-$BFFF\""
+            + " onclick=\"document.getElementById('RAM64K_file').click()\">"
+            + "        <i class=\"fa fa-cloud-upload-alt\"></i></button>"
+            + "      <input id=\"RAM64K_file\" type=\"file\" accept=\".bin,application/octet-stream\" hidden onchange=\"EMU_loadRAM64KFile(this)\"></div>"
             + "    <div id=\"EMU_mem_map\" style=\"margin-left:30px;white-space:nowrap\"></div>"
             + "  </div>"
             + "</div>";
@@ -24808,7 +24941,6 @@ function mergeActionMap(dst,src)
     this.read = function(rel_addr)
     {
         var line = line_decode(rel_addr);
-        var xline = oCOM.getHexMulti(line,4);
 
         const ctx2 =
         {
@@ -24837,38 +24969,37 @@ function mergeActionMap(dst,src)
         return fn(rel_addr-line,ctx2);
     }
 
-this.write = function(rel_addr,d8)
-{
-    var line = line_decode(rel_addr);
-    var xline = oCOM.getHexMulti(line,4);
-
-    const ctx2 =
+    this.write = function(rel_addr,d8)
     {
-        //"keys": keys,
-        //"snd": snd,
-        "vid": vid,
-        "io": this,
-        "bRO": (typeof(apple2plus) == "object" && apple2plus && apple2plus.hwObj().bRO === true)
-    };
+        var line = line_decode(rel_addr);
 
-    var fn = CIO.ACTION_MAP.WR[line];
-    if(fn) return fn(rel_addr-line,d8,ctx2);
+        const ctx2 =
+        {
+            //"keys": keys,
+            //"snd": snd,
+            "vid": vid,
+            "io": this,
+            "bRO": (typeof(apple2plus) == "object" && apple2plus && apple2plus.hwObj().bRO === true)
+        };
 
-    /*
-     * Some Apple II soft-switches are triggered by the address access itself.
-     * The 16K language card / ramcard is the important case here:
-     * DOS 3.3 may write to $C080-$C08F, while the peripheral historically
-     * exposed only a read-side SlotIO callback.
-     *
-     * Keep this fallback so write accesses can still trigger RD-style
-     * soft-switch side effects when no explicit WR handler exists.
-     */
-    var rd = CIO.ACTION_MAP.RD[line];
-    if(rd) return rd(rel_addr-line,ctx2);
-    if(!ctx2.bRO) console.warn("CIO.ACTION_MAP.WR["+oCOM.getHexWord(line)+"] I/O call out of bounds (0x"+oCOM.getHexWord(line+0xC000)+")");
+        var fn = CIO.ACTION_MAP.WR[line];
+        if(fn) return fn(rel_addr-line,d8,ctx2);
 
-    return 0x00;
-}
+        /*
+        * Some Apple II soft-switches are triggered by the address access itself.
+        * The 16K language card / ramcard is the important case here:
+        * DOS 3.3 may write to $C080-$C08F, while the peripheral historically
+        * exposed only a read-side SlotIO callback.
+        *
+        * Keep this fallback so write accesses can still trigger RD-style
+        * soft-switch side effects when no explicit WR handler exists.
+        */
+        var rd = CIO.ACTION_MAP.RD[line];
+        if(rd) return rd(rel_addr-line,ctx2);
+        if(!ctx2.bRO) console.warn("CIO.ACTION_MAP.WR["+oCOM.getHexWord(line)+"] I/O call out of bounds (0x"+oCOM.getHexWord(line+0xC000)+")");
+
+        return 0x00;
+    }
 
     // CPU-tick hook for devices that need sub-cycle sampling, such as the speaker.
     this.tick = function(n)
@@ -24966,18 +25097,34 @@ this.write = function(rel_addr,d8)
 
                 if(!Number.isInteger(addr) || typeof(method)!="function") continue;
 
-                var callback = function(target,fn,readOnly)
+                /*
+                 * Attached device callbacks are on the CPU I/O hot path.
+                 * Keep fixed read/write signatures so polling does not allocate
+                 * a temporary arguments array for every bus access.
+                 */
+                var callback = function(target,fn,readOnly,writeAction)
                 {
-                    return function()
+                    if(writeAction)
                     {
-                        var args = Array.prototype.slice.call(arguments);
-                        var ctx = args[args.length-1];
+                        return function(rel_addr,d8,ctx)
+                        {
+                            if(ctx && ctx.bRO===true && !readOnly) return 0x00;
+
+                            var result = fn.call(target,rel_addr,d8,ctx);
+                            return result===undefined ? 0x00 : result;
+                        };
+                    }
+
+                    return function(rel_addr,ctx) 
+                    {
                         if(ctx && ctx.bRO===true && !readOnly) return 0x00;
 
-                        var result = fn.apply(target,args);
+                        var result = fn.call(target,rel_addr,ctx);
                         return result===undefined ? 0x00 : result;
+                        var result = fn.call(target,rel_addr,ctx);
                     };
-                }(device,method,allowReadOnly);
+                }(device,method,allowReadOnly,op=="WR");
+
 
                 callback._ioReport = {
                      "DCODE":dcode
