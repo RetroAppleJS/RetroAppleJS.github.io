@@ -9169,6 +9169,79 @@ function EMU_diskIIObjects()
     return disks;
 }
 
+/*
+ * Browser-facing handler used by the RAM64K file input created by
+ * EMU_CARD_ramcard.js.  Keep this function at top level because the input
+ * uses an inline onchange="EMU_loadRAM64KFile(this)" handler.
+ */
+function EMU_loadRAM64KFile(input)
+{
+    var file = input && input.files && input.files[0];
+    if(!file) return;
+
+    function clearInput()
+    {
+        // Allow the same file to be selected again after either success or
+        // failure; otherwise many browsers do not fire change a second time.
+        try { input.value = ""; } catch(e) {}
+    }
+
+    if(file.size != 0x10000)
+    {
+        alert("64K RAM image must contain exactly 65536 bytes; selected file contains " + file.size + " bytes.");
+        clearInput();
+        return;
+    }
+
+    var reader = new FileReader();
+
+    reader.onload = function(ev)
+    {
+        try
+        {
+            if(typeof(apple2plus)!="object" || !apple2plus)
+                throw new Error("Apple II emulator is not initialized.");
+
+            var hw = apple2plus.hwObj();
+            if(!hw || typeof(hw.load_ram64k)!="function")
+                throw new Error("This emulator build does not provide load_ram64k().");
+
+            var bytes = new Uint8Array(ev.target.result);
+            if(bytes.length != 0x10000)
+                throw new Error("64K RAM image must contain exactly 65536 bytes.");
+
+            var result = hw.load_ram64k(bytes);
+
+            console.log(
+                "RAM64K import: loaded " + result.loadedBytes +
+                " bytes into $" + oCOM.getHexWord(result.from) +
+                "-$" + oCOM.getHexWord(result.to) +
+                "; ignored $" + oCOM.getHexWord(result.ignoredFrom) +
+                "-$" + oCOM.getHexWord(result.ignoredTo)
+            );
+        }
+        catch(err)
+        {
+            console.error("RAM64K import failed",err);
+            alert("RAM64K import failed: " + (err && err.message ? err.message : err));
+        }
+        finally
+        {
+            clearInput();
+        }
+    };
+
+    reader.onerror = function()
+    {
+        var msg = reader.error && reader.error.message ? reader.error.message : "Unable to read file.";
+        console.error("RAM64K import failed: " + msg);
+        alert("RAM64K import failed: " + msg);
+        clearInput();
+    };
+
+    reader.readAsArrayBuffer(file);
+}
+
 function EMU_init()
 {
     document.getElementById("LEDS").innerHTML =
