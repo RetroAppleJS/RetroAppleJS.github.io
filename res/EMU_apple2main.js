@@ -157,6 +157,17 @@ function EMU_loadRAM64KFile(input)
 
             var result = hw.load_ram64k(bytes);
 
+            /*
+             * The imported image may replace text/lores/hires display memory.
+             * Ask the currently active renderer to repaint immediately instead
+             * of waiting for subsequent CPU/video activity to make the change
+             * visible.  Do not reset the video subsystem: that would also reset
+             * the current graphics/mixed/page/hires state.
+             */
+            var video = typeof(apple2plus.vidObj)=="function" ? apple2plus.vidObj() : null;
+            var renderer = video && typeof(video.getActiveRenderer)=="function" ? video.getActiveRenderer() : video;
+            if(renderer && typeof(renderer.redraw)=="function") renderer.redraw();
+
             console.log(
                 "RAM64K import: loaded " + result.loadedBytes +
                 " bytes into $" + oCOM.getHexWord(result.from) +
