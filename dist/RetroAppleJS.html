@@ -11995,6 +11995,10 @@ function EMU_WASMcpu6502()
     var stopRequested=false;
     var pauseRequested=false;
     var sessionInstructions=0;
+    // Chunk size used by the currently executing WASM segment.
+    // It is latched when Run/Resume starts, so editing the UI cannot alter
+    // an in-flight run.  A new value is picked up after Pause -> Resume.
+    var runChunkInstructions=50000000;
     var sourceImage=null;
     var lastActivityLog=null;
     var activityLogger=null;
@@ -12049,6 +12053,23 @@ function EMU_WASMcpu6502()
         var el=$(id),v=Number(el?el.value:def);
         if(!Number.isFinite(v)||v<1) return def;
         return Math.min(0xffffffff,Math.floor(v));
+    }
+
+    // Human-facing chunk configuration is expressed in millions of
+    // instructions.  Keep cpu_run_chunk() itself in exact instruction units.
+    function parseChunkInstructions()
+    {
+        var el=$("wasm_chunk"),millions=Number(el?el.value:50);
+        if(!Number.isFinite(millions)||millions<=0) millions=50;
+        return Math.min(0xffffffff,Math.max(1,Math.floor(millions*1000000)));
+    }
+
+    function updateUiFpsLabel()
+    {
+        var el=$("wasm_ui_fps");
+        if(!el) return;
+        var hz=typeof(_o)!="undefined"?Number(_o.EMU_DashboardRefresh_s):0;
+        el.textContent=(Number.isFinite(hz)&&hz>0?hz:2)+" fps";
     }
 
     function parseLimit()
@@ -12234,6 +12255,7 @@ function EMU_WASMcpu6502()
         var now=performance.now();
         if(!force && now-lastUiRefreshMs<uiRefreshIntervalMs()) return;
         lastUiRefreshMs=now;
+        updateUiFpsLabel();
         setCurrentFields(readWasmState());
         updateProgressMonitor();
         updateElapsedTimer();
@@ -12556,17 +12578,21 @@ function EMU_WASMcpu6502()
 
     function updateButtons()
     {
-        var play=$("wasm_play"),pause=$("wasm_pause"),stop=$("wasm_stop_btn"),latch=$("wasm_latch"),copy=$("wasm_copy_regs");
+        var play=$("wasm_play"),pause=$("wasm_pause"),stop=$("wasm_stop_btn"),latch=$("wasm_latch"),copy=$("wasm_copy_regs"),chunk=$("wasm_chunk");
         if(play){play.disabled=phase==="running"||phase==="armed";play.title=phase==="paused"?"Resume WASM":"Run / arm WASM";}
         if(pause) pause.disabled=phase!=="running";
         if(stop) stop.disabled=phase==="idle";
         if(latch) latch.disabled=phase==="running"||phase==="armed";
         if(copy) copy.disabled=phase==="running"||phase==="armed";
+        // Chunk changes are intentionally accepted only while idle or paused.
+        // Resume will latch the edited value into runChunkInstructions.
+        if(chunk) chunk.disabled=phase==="running"||phase==="armed";
     }
 
     async function runLoop()
     {
         phase="running";pauseRequested=false;stopRequested=false;updateButtons();
+        runChunkInstructions=parseChunkInstructions();
         startRunTimer();
         resetProgressEstimate();
         setWasmSpeedIndicator(true);
@@ -12622,7 +12648,7 @@ function EMU_WASMcpu6502()
             }
             else
             {
-                var chunk=parsePositive("wasm_chunk",1000000);
+                var chunk=runChunkInstructions;
                 var thisChunk=chunk;
                 if(maxInstructions>0) thisChunk=Math.min(thisChunk,Math.max(0,maxInstructions-sessionInstructions));
                 if(thisChunk<=0){await finishHandoff("instruction limit");return;}
@@ -12641,7 +12667,7 @@ function EMU_WASMcpu6502()
             if(reason===2){await finishHandoff("WASM stop");return;}
             if(reason===3){var s=readWasmState();await finishHandoff("illegal opcode "+hex(s.lastOpcode,2)+" at "+hex(s.lastOpcodePC,4),true);return;}
 
-            var yieldEvery=parsePositive("wasm_chunk",1000000);
+            var yieldEvery=runChunkInstructions;
             if(loggedSinceYield>=yieldEvery)
             {
                 loggedSinceYield=0;
@@ -12720,7 +12746,7 @@ function EMU_WASMcpu6502()
             +"<div style='display:flex;gap:3px;align-items:end;margin-top:4px'>"
               +"<label>Start<br><input id='wasm_start' size='5' placeholder='immediate' style='width:55px;padding:2px'></label>"
               +"<label>Stop/escape<br><input id='wasm_stop' size='5' placeholder='manual' style='width:55px;padding:2px'></label>"
-              +"<label>Chunk<br><input id='wasm_chunk' size='7' value='1000000' style='width:65px;padding:2px'></label>"
+              +"<label>Chunk (M)<br><span style='display:flex;gap:3px;align-items:center'><input id='wasm_chunk' size='5' value='50' title='Millions of instructions per WASM chunk. Editable while idle or paused; Resume applies the new value.' style='width:42px;padding:2px'><span id='wasm_ui_fps' title='WASM register/progress UI refresh rate' style='font-size:9px;white-space:nowrap'>2 fps</span></span></label>"
               +"<label>Limit<br><input id='wasm_limit' size='6' value='0' title='0 = unlimited' style='width:52px;padding:2px'></label>"
             +"</div>"
             +"<div style='display:grid;grid-template-columns:62px 1fr;gap:4px;align-items:end;margin-top:4px'>"
