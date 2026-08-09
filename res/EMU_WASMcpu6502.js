@@ -83,6 +83,7 @@ function EMU_WASMcpu6502()
     var runSegmentStartMs=null;
     var progressBaseValue=null;
     var progressBaseElapsedMs=0;
+    var progressLastValue=null;
 
     function $(id) { return typeof(document)!="undefined" ? document.getElementById(id) : null; }
     function hex(v,n) { return "$"+(Number(v)>>>0).toString(16).toUpperCase().padStart(n,"0"); }
@@ -198,6 +199,7 @@ function EMU_WASMcpu6502()
         runSegmentStartMs=null;
         progressBaseValue=null;
         progressBaseElapsedMs=0;
+        progressLastValue=null;
         updateElapsedTimer();
         var eta=$("wasm_eta");
         if(eta) eta.textContent="ETA --:--:--";
@@ -206,6 +208,7 @@ function EMU_WASMcpu6502()
     function resetProgressEstimate()
     {
         progressBaseValue=null;
+        progressLastValue=null;
         progressBaseElapsedMs=currentRunElapsedMs();
         try
         {
@@ -256,6 +259,7 @@ function EMU_WASMcpu6502()
             if(bar) bar.value=0;
             if(text) text.textContent="invalid address";
             if(eta) eta.textContent="ETA --:--:--";
+            progressLastValue=null;
             return;
         }
 
@@ -264,6 +268,7 @@ function EMU_WASMcpu6502()
             if(bar) bar.value=0;
             if(text) text.textContent="--.-%";
             if(eta) eta.textContent="ETA --:--:--";
+            progressLastValue=null;
             return;
         }
 
@@ -276,9 +281,22 @@ function EMU_WASMcpu6502()
             bar.title=hex(addr,4)+" = "+toHex(value,2)+" ("+pct.toFixed(1)+"%)";
         }
         if(text) text.textContent=pct.toFixed(1)+"%";
-        if(eta) {
-            var etaMs=estimateProgressEtaMs(value);
-            eta.textContent="ETA "+(etaMs===null?"--:--:--":formatHMS(etaMs));
+        // ETA is derived from observed progress, not from the UI refresh
+        // cadence.  Keep the previous estimate unchanged until this byte
+        // actually changes.
+        if(eta)
+        {
+            if(progressLastValue===null)
+            {
+                progressLastValue=value;
+                eta.textContent=value>=255 ? "ETA 00:00:00" : "ETA --:--:--";
+            }
+            else if(value!==progressLastValue)
+            {
+                progressLastValue=value;
+                var etaMs=estimateProgressEtaMs(value);
+                eta.textContent="ETA "+(etaMs===null?"--:--:--":formatHMS(etaMs));
+            }
         }
     }
 
