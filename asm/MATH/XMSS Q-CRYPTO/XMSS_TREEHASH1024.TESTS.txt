@@ -1,0 +1,60 @@
+XMSS_TREEHASH1024 static/reference validation
+=============================================
+
+Basis:
+  Original module: asm/MATH/XMSS Q-CRYPTO/XMSS_TREEHASH.S
+  Repository: RetroAppleJS/RetroAppleJS.github.io
+  Commit: 258d2931b0317474ae51b9da9ed6c332884539ff
+
+Assembler compatibility check:
+  The deterministic two-pass 6502 assembler used for this build was first
+  run against the previously validated XMSS_TREEHASH.S and reproduced the
+  existing XMSS_TREEHASH.BIN byte-for-byte.
+
+XMSS_TREEHASH1024 assembly:
+  Origin:              $6000
+  End (exclusive):     $98DD
+  Length:              $38DD = 14557 bytes
+  Symbols:             539
+  Unresolved symbols:  0
+  Relative branches:   all in range
+
+Key addresses:
+  WASM stop/escape:        $6003
+  Driver start:            $6006
+  Compute-only entry:      $6048
+  Report entry:            $6065
+  Progress low/high:       $95C3/$95C4
+  Root:                    $95F2
+  Authentication path:     $9632
+
+Reference-validation chain:
+  1. Independent SHA-256/XMSS reference reproduced the pre-existing known
+     S_ots[5] vector.
+  2. Independent reference reproduced the pre-existing WOTS chain-step vector.
+  3. Independent reference reproduced the pre-existing synthetic height-3
+     TreeHash root and authentication path.
+  4. The same reference was then used to calculate all 1024 REAL WOTS+/L-tree
+     leaves and the height-10 tree.
+
+Expected height-10 root:
+  DFBDCAEF D5C37FA3 63D274E3 69121FE9
+  52822D80 72DDAD7A D6A36B63 9A96DA87
+
+Authentication path for leaf 0:
+  level 0: 67C8B32B010257231C1DCE190657674C67EF6F458698B30E2B7CDCE880902B7C
+  level 1: A3779262A965E3703B7FE3C62FD88497434B268A53B9BFA6C303B97D969644C1
+  level 2: 023C0CC543B668BF32E60C93438506525FD64A006F4A378A9A9194150059B68A
+  level 3: 93833FEC32379125EC2761EEC05B0B1F4FC2DD725CCE021E0F009B26634B48AD
+  level 4: 3F168AC61C7F16E9BE381486E47156D559FD4B90962948C3531781BFAF7C0A94
+  level 5: BCFF6347C4EC9FF571BEADB1E75C87EC78B1205FF7F3387AE32884AF25F6DE1A
+  level 6: 3E6D62CF0D28CE69448C58757D2CEF2EF0D8A95A9CD4A12EB8146AD6491C06E3
+  level 7: 6A4B24D3A8A193CBAF715F36A86F4D2399912F24A9382AD9A798C774709C266D
+  level 8: 91A64369561EDBAD2EBFBDEB88DFF3CBD41E97A87B8FE120BD34527007698E39
+  level 9: ECC012DF74B1C6DB0F279D0803F788EC526F3E3E2DB7559F517BDD9A034D215E
+
+Important runtime validation still required:
+  Run the assembled program in RetroAppleJS with the WASM accelerator and
+  confirm that the program reports PASS for both the height-10 root and the
+  320-byte authentication path.  This is intentionally the first full
+  instruction-level 1024-real-leaf endurance test.

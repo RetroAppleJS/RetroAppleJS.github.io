@@ -1,0 +1,91 @@
+XMSS_TREEHASH1024.S
+===================
+
+Purpose
+-------
+Full height-10 XMSS-SHA2-256 development tree build on Apple II+ / 6502.
+The source is ASM_core.js compatible and extends the validated XMSS_TREEHASH
+implementation with a production-style 1024-real-leaf driver.
+
+Load address
+------------
+$6000
+
+WASM integration
+----------------
+The compute-only region deliberately performs no ROM, screen, sound, DOS,
+or $C000-$CFFF device I/O.
+
+WASM Stop/escape address: $6003
+
+The WASM accelerator stops BEFORE fetching the instruction at $6003.  It
+hands the private 64K RAM image and CPU registers back to the JavaScript
+emulator.  The JavaScript CPU then executes the JMP at $6003 and enters the
+normal report/print path.
+
+Recommended emulator procedure
+------------------------------
+1. BRUN XMSS_TREEHASH1024
+2. Wait for:
+
+       BUILDING HEIGHT-10 TREE...
+       ENGAGE WASM ACCELERATOR NOW
+
+3. Open the WASM accelerator.
+4. Leave Start blank (handoff immediately at the current CPU state).
+5. Set Stop/escape to 6003.
+6. Disable trace/logging.
+7. Set Limit = 0 (unlimited).
+8. Start with Chunk = 1000000. Larger chunks reduce UI handoff/yield overhead
+   but make pause/stop less responsive.
+9. Press Play.
+10. When PC reaches $6003 the accelerator hands control back automatically.
+    The JavaScript CPU prints and validates the root and authentication path.
+
+Progress
+--------
+The current 16-bit completed-leaf offset can be inspected at:
+
+  XMSS_TREE_OFFSET_LO  $95C3
+  XMSS_TREE_OFFSET_HI  $95C4
+
+It advances from $0000 to $0400 (1024 leaves).
+
+Results
+-------
+  XMSS_TREE_ROOT       $95F2, 32 bytes
+  XMSS_AUTH_PATH       $9632, 320 bytes (10 x 32-byte nodes)
+
+Development key material
+------------------------
+The BRUN shell intentionally uses deterministic DEVELOPMENT seeds:
+
+  PUB_SEED = $40,$41,...,$5F
+  MASTER S = $80,$81,...,$9F
+
+These seeds are NOT FOR SIGNING. They make the 1024-leaf build reproducible.
+The source contains an independently calculated expected root and expected
+10-node authentication path for leaf 0 and reports PASS/FAIL after handback.
+
+Expected height-10 root
+-----------------------
+DFBDCAEF D5C37FA3 63D274E3 69121FE9
+52822D80 72DDAD7A D6A36B63 9A96DA87
+
+Public compute entry
+--------------------
+XMSS_TREEHASH1024_RUN = $6048
+
+Inputs before calling it:
+  XMSS_MASTER_SK_SEED      32 bytes
+  WOTS_PUB_SEED            32 bytes
+  XMSS_TREE_TARGET_LO/HI   leaf 0..1023 for auth-path capture
+
+Outputs:
+  XMSS_TREE_ROOT           32 bytes
+  XMSS_AUTH_PATH           320 bytes
+  carry clear              success
+  carry set                invalid/internal failure
+
+The caller is responsible for supplying cryptographically appropriate seeds
+for any non-development use.
