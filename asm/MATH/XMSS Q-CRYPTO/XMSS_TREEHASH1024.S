@@ -2,9 +2,8 @@
 ; XMSS_TREEHASH1024 - full height-10 XMSS tree generator
 ; Apple II+ / 6502, ASM_core.js compatible
 ;
-; Load address: A$4000 L$38DD
-; EXIT_PROGRAM: $50CB
-; 
+; Load address: $4000
+; The assembled image must remain below XMSS_WASM_PROGRESS at $7FFF.
 ;
 ; This standalone module embeds XMSS_HASH and WOTS+ Stages 1-2, and adds:
 ;
@@ -91,6 +90,11 @@ WOTS_DST_PTR    = $0C
 BLOCK_SIZE      = 64
 XMSS_N          = 32
 
+; Reserved host-visible progress byte for the WASM runner.
+; The program image remains below this address and ProntoDOS starts at $9000.
+; Values $00..$FF represent 0..100% of a full 1024-leaf build.
+XMSS_WASM_PROGRESS = $7FFF
+
 ; =====================================================================
 ; XMSS TREEHASH1024 ENTRY
 ;
@@ -101,9 +105,9 @@ XMSS_N          = 32
 ;   - authentication path for selected target leaf (default 0)
 ;
 ; WASM integration:
-;   TREEHASH1024_WASM_ESCAPE is deliberately fixed at $6003.
-;   When using the emulator's WASM accelerator, set Stop/escape to 6003.
-;   The accelerated region performs no ROM or $C000-$CFFF I/O.  At $6003
+;   TREEHASH1024_WASM_ESCAPE is deliberately fixed at $4003.
+;   When using the emulator's WASM accelerator, set Stop/escape to 4003.
+;   The accelerated region performs no ROM or $C000-$CFFF I/O.  At $4003
 ;   the WASM bridge hands RAM/registers back to the JavaScript CPU, which
 ;   then executes TREEHASH1024_REPORT and prints the result normally.
 ;
@@ -144,6 +148,7 @@ TREEHASH1024_START
                 LDA #$00
                 STA XMSS_TREE_TARGET_LO
                 STA XMSS_TREE_TARGET_HI
+                STA XMSS_WASM_PROGRESS
 
                 LDA #$FF
                 STA XMSS1024_STATUS
@@ -165,6 +170,8 @@ TREEHASH1024_START
                 JMP TREEHASH1024_WASM_ESCAPE
 
 TREEHASH1024_COMPUTE_OK
+                LDA #$FF
+                STA XMSS_WASM_PROGRESS
                 LDA #$00
                 STA XMSS1024_STATUS
                 JMP TREEHASH1024_WASM_ESCAPE
@@ -182,13 +189,15 @@ TREEHASH1024_COMPUTE_OK
 ;   Carry clear            success
 ;   Carry set              parameter/internal failure
 ;
-; Progress while running is visible in XMSS_TREE_OFFSET_HI/LO, which
-; advances from $0000 to $0400.
+; Progress while running is exported in XMSS_WASM_PROGRESS at $7FFF.
+; It advances from $00 to $FF, one step per four completed leaves, and
+; therefore maps directly to a generic 0..255 progress monitor.
 
 XMSS_TREEHASH1024_RUN
                 CLD
 
                 LDA #$00
+                STA XMSS_WASM_PROGRESS
                 STA XMSS_TREE_START_LO
                 STA XMSS_TREE_START_HI
 
@@ -4065,12 +4074,36 @@ XMSS_TREEHASH_PUSH
                 JSR XMSS_STACK_PUSH_NODE
 
                 INC XMSS_TREE_OFFSET_LO
-                BEQ XMSS_TREEHASH_INC_OFFSET_HI
+                BNE XMSS_TREEHASH_OFFSET_READY
+                INC XMSS_TREE_OFFSET_HI
+
+XMSS_TREEHASH_OFFSET_READY
+                JSR XMSS_TREEHASH_UPDATE_PROGRESS
                 JMP XMSS_TREEHASH_LEAF_LOOP
 
-XMSS_TREEHASH_INC_OFFSET_HI
-                INC XMSS_TREE_OFFSET_HI
-                JMP XMSS_TREEHASH_LEAF_LOOP
+; Export height-10 real-tree progress as a generic byte.  A full run has
+; 1024 leaves, so every four completed leaves advance the 0..255 cell by
+; one.  Saturation avoids wrapping $FF to $00 on the final $0400 offset.
+
+XMSS_TREEHASH_UPDATE_PROGRESS
+                LDA XMSS_TREE_HEIGHT_TARGET
+                CMP #10
+                BNE XMSS_TREEHASH_PROGRESS_DONE
+
+                LDA XMSS_TREE_LEAF_MODE
+                BEQ XMSS_TREEHASH_PROGRESS_DONE
+
+                LDA XMSS_TREE_OFFSET_LO
+                AND #$03
+                BNE XMSS_TREEHASH_PROGRESS_DONE
+
+                LDA XMSS_WASM_PROGRESS
+                CMP #$FF
+                BEQ XMSS_TREEHASH_PROGRESS_DONE
+                INC XMSS_WASM_PROGRESS
+
+XMSS_TREEHASH_PROGRESS_DONE
+                RTS
 
 XMSS_TREEHASH_FINISH
                 LDA XMSS_TREE_STACK_TOP
@@ -4387,7 +4420,8 @@ TREEHASH1024_TITLE_TEXT
                 .BYTE "XMSS TREEHASH 1024 / SHA2-256",13
                 .BYTE "1024 REAL WOTS+/L-TREE LEAVES",13
                 .BYTE "DEVELOPMENT SEEDS - NOT FOR SIGNING",13
-                .BYTE "WASM STOP/ESCAPE: $6003",13,13,0
+                .BYTE "WASM STOP/ESCAPE: $4003",13
+                .BYTE "WASM PROGRESS BYTE: $7FFF",13,13,0
 
 TREEHASH1024_BEGIN_TEXT
                 .BYTE "BUILDING HEIGHT-10 TREE...",13
