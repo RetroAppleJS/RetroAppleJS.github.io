@@ -2,7 +2,8 @@
 ; XMSS_TREEHASH1024 - full height-10 XMSS tree generator
 ; Apple II+ / 6502, ASM_core.js compatible
 ;
-; Load address: $4000
+; Load address: A$4000 L$3920
+; Exit address: $50D6
 ; The assembled image must remain below XMSS_WASM_PROGRESS at $7FFF.
 ;
 ; This standalone module embeds XMSS_HASH and WOTS+ Stages 1-2, and adds:
