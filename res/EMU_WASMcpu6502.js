@@ -69,7 +69,7 @@ function EMU_WASMcpu6502()
     // Chunk size used by the currently executing WASM segment.
     // It is latched when Run/Resume starts, so editing the UI cannot alter
     // an in-flight run.  A new value is picked up after Pause -> Resume.
-    var runChunkInstructions=50000000;
+    var runChunkInstructions=500000000;
     var sourceImage=null;
     var lastActivityLog=null;
     var activityLogger=null;
