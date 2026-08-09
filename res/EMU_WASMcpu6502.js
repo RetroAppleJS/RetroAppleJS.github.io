@@ -79,6 +79,10 @@ function EMU_WASMcpu6502()
     var dynamicEscape=null;
     var lastUiRefreshMs=0;
     var speedIndicatorBackup=null;
+    var runElapsedMs=0;
+    var runSegmentStartMs=null;
+    var progressBaseValue=null;
+    var progressBaseElapsedMs=0;
 
     function $(id) { return typeof(document)!="undefined" ? document.getElementById(id) : null; }
     function hex(v,n) { return "$"+(Number(v)>>>0).toString(16).toUpperCase().padStart(n,"0"); }
@@ -149,6 +153,91 @@ function EMU_WASMcpu6502()
         return Number.isFinite(hz)&&hz>0?1000/hz:500;
     }
 
+    function formatHMS(ms)
+    {
+        var total=Math.max(0,Math.floor((Number(ms)||0)/1000));
+        var h=Math.floor(total/3600);
+        var m=Math.floor((total%3600)/60);
+        var s=total%60;
+        return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+    }
+
+    function currentRunElapsedMs()
+    {
+        var elapsed=runElapsedMs;
+        if(runSegmentStartMs!==null)
+            elapsed+=Math.max(0,performance.now()-runSegmentStartMs);
+        return elapsed;
+    }
+
+    function updateElapsedTimer()
+    {
+        var el=$("wasm_elapsed");
+        if(el) el.textContent=formatHMS(currentRunElapsedMs());
+    }
+
+    function startRunTimer()
+    {
+        if(runSegmentStartMs===null) runSegmentStartMs=performance.now();
+        updateElapsedTimer();
+    }
+
+    function pauseRunTimer()
+    {
+        if(runSegmentStartMs!==null)
+        {
+            runElapsedMs+=Math.max(0,performance.now()-runSegmentStartMs);
+            runSegmentStartMs=null;
+        }
+        updateElapsedTimer();
+    }
+
+    function resetRunTimer()
+    {
+        runElapsedMs=0;
+        runSegmentStartMs=null;
+        progressBaseValue=null;
+        progressBaseElapsedMs=0;
+        updateElapsedTimer();
+        var eta=$("wasm_eta");
+        if(eta) eta.textContent="ETA --:--:--";
+    }
+
+    function resetProgressEstimate()
+    {
+        progressBaseValue=null;
+        progressBaseElapsedMs=currentRunElapsedMs();
+        try
+        {
+            var addr=progressAddressFromUI();
+            if(addr!==null&&wr) progressBaseValue=wr[addr]&0xff;
+        }
+        catch(err) {}
+    }
+
+    function estimateProgressEtaMs(value)
+    {
+        value=Number(value)&0xff;
+        if(value>=255) return 0;
+        if(progressBaseValue===null) return null;
+
+        // If the monitored byte moved backwards, treat it as a new progress
+        // epoch instead of producing a nonsensical negative ETA.
+        if(value<progressBaseValue)
+        {
+            progressBaseValue=value;
+            progressBaseElapsedMs=currentRunElapsedMs();
+            return null;
+        }
+
+        var advanced=value-progressBaseValue;
+        var elapsed=currentRunElapsedMs()-progressBaseElapsedMs;
+        if(advanced<=0||elapsed<=0) return null;
+
+        var unitsPerMs=advanced/elapsed;
+        return unitsPerMs>0 ? (255-value)/unitsPerMs : null;
+    }
+
     function progressAddressFromUI()
     {
         var el=$("wasm_progress_addr");
@@ -157,8 +246,8 @@ function EMU_WASMcpu6502()
 
     function updateProgressMonitor()
     {
-        var bar=$("wasm_progress_bar"),text=$("wasm_progress_text");
-        if(!bar&&!text) return;
+        var bar=$("wasm_progress_bar"),text=$("wasm_progress_text"),eta=$("wasm_eta");
+        if(!bar&&!text&&!eta) return;
 
         var addr=null;
         try { addr=progressAddressFromUI(); }
@@ -166,6 +255,7 @@ function EMU_WASMcpu6502()
         {
             if(bar) bar.value=0;
             if(text) text.textContent="invalid address";
+            if(eta) eta.textContent="ETA --:--:--";
             return;
         }
 
@@ -173,6 +263,7 @@ function EMU_WASMcpu6502()
         {
             if(bar) bar.value=0;
             if(text) text.textContent="--.-%";
+            if(eta) eta.textContent="ETA --:--:--";
             return;
         }
 
@@ -185,6 +276,10 @@ function EMU_WASMcpu6502()
             bar.title=hex(addr,4)+" = "+toHex(value,2)+" ("+pct.toFixed(1)+"%)";
         }
         if(text) text.textContent=pct.toFixed(1)+"%";
+        if(eta) {
+            var etaMs=estimateProgressEtaMs(value);
+            eta.textContent="ETA "+(etaMs===null?"--:--:--":formatHMS(etaMs));
+        }
     }
 
     function refreshWasmUi(force)
@@ -194,6 +289,7 @@ function EMU_WASMcpu6502()
         lastUiRefreshMs=now;
         setCurrentFields(readWasmState());
         updateProgressMonitor();
+        updateElapsedTimer();
         updateLogInfo();
     }
 
@@ -524,6 +620,8 @@ function EMU_WASMcpu6502()
     async function runLoop()
     {
         phase="running";pauseRequested=false;stopRequested=false;updateButtons();
+        startRunTimer();
+        resetProgressEstimate();
         setWasmSpeedIndicator(true);
         lastUiRefreshMs=0;
         refreshWasmUi(true);
@@ -533,7 +631,17 @@ function EMU_WASMcpu6502()
         while(phase==="running")
         {
             if(stopRequested){await finishHandoff("manual stop");return;}
-            if(pauseRequested){phase="paused";pauseRequested=false;refreshWasmUi(true);setWasmSpeedIndicator(false);updateButtons();setStatus("WASM paused after "+sessionInstructions.toLocaleString()+" instruction(s).");return;}
+            if(pauseRequested)
+            {
+                pauseRunTimer();
+                phase="paused";
+                pauseRequested=false;
+                refreshWasmUi(true);
+                setWasmSpeedIndicator(false);
+                updateButtons();
+                setStatus("WASM paused after "+sessionInstructions.toLocaleString()+" instruction(s).");
+                return;
+            }
             if(maxInstructions>0&&sessionInstructions>=maxInstructions){await finishHandoff("instruction limit");return;}
 
             // Observe all wrapper-level addresses before opcode fetch.  The
@@ -608,6 +716,7 @@ function EMU_WASMcpu6502()
             wr.set(sourceImage);
             sessionInstructions=0;
             dynamicEscape=null;
+            resetRunTimer();
             loggerConfigFromUI(true);
 
             var runStop=currentRunStop();
@@ -620,6 +729,8 @@ function EMU_WASMcpu6502()
         {
             console.error("WASM accelerator failed",err);
             setWasmSpeedIndicator(false);
+            pauseRunTimer();
+            resetRunTimer();
             phase="idle";updateButtons();setStatus(err&&err.stack?err.stack:String(err),"bad");
             setJsPaused(false);
         }
@@ -628,6 +739,7 @@ function EMU_WASMcpu6502()
     async function finishHandoff(reason,isError)
     {
         if(phase==="idle") return;
+        pauseRunTimer();
         phase="idle";pauseRequested=false;stopRequested=false;
         var state=readWasmState();
         var copy=handBackRam();
@@ -646,6 +758,7 @@ function EMU_WASMcpu6502()
 
         if(typeof(apple2plus.CPU_pace_reset)==="function") apple2plus.CPU_pace_reset();
         setJsPaused(false);
+        resetRunTimer();
         closePopup();
     }
 
@@ -665,7 +778,10 @@ function EMU_WASMcpu6502()
             +"</div>"
             +"<div style='display:grid;grid-template-columns:62px 1fr;gap:4px;align-items:end;margin-top:4px'>"
               +"<label>Progress addr<br><input id='wasm_progress_addr' size='5' value='7FFF' onchange='oEMU.component.CPU.WASM6502.progressChanged()' title='optional 6502 byte address, interpreted as 0..255' style='width:55px;padding:2px'></label>"
-              +"<div><progress id='wasm_progress_bar' max='255' value='0' style='width:180px;height:12px'></progress> <span id='wasm_progress_text' style='font-variant-numeric:tabular-nums'>0.0%</span></div>"
+              +"<div>"
+                +"<div style='display:flex;gap:4px;align-items:center;white-space:nowrap'><progress id='wasm_progress_bar' max='255' value='0' style='width:120px;height:12px'></progress><span id='wasm_progress_text' style='font-variant-numeric:tabular-nums'>0.0%</span><span id='wasm_eta' style='font-size:9px;font-variant-numeric:tabular-nums'>ETA --:--:--</span></div>"
+                +"<div style='margin-top:1px;font-size:9px;font-variant-numeric:tabular-nums'>Time <span id='wasm_elapsed'>00:00:00</span></div>"
+              +"</div>"
             +"</div>"
             +"<div style='margin-top:5px'><b>Latch</b><div style='display:grid;grid-template-columns:repeat(6,1fr);gap:2px'>"
               +reg("wasm_set_pc","PC",false)+reg("wasm_set_a","A",false)+reg("wasm_set_x","X",false)+reg("wasm_set_y","Y",false)+reg("wasm_set_sp","SP",false)+reg("wasm_set_p","P",false)+"</div></div>"
@@ -678,13 +794,17 @@ function EMU_WASMcpu6502()
               +"<button class='appbut skinny' id='wasm_pause' onclick='oEMU.component.CPU.WASM6502.pause()' title='pause WASM'><i class='fa fa-pause'></i></button> "
               +"<button class='appbut skinny' id='wasm_stop_btn' onclick='oEMU.component.CPU.WASM6502.stop()' title='stop WASM and return to JavaScript CPU'><i class='fa fa-stop'></i></button>"
             +"</div>"
-            +"<div style='border-top:1px solid #aaa;margin-top:5px;padding-top:4px'>"
-              +"<label style='display:inline'><input id='wasm_log_enabled' type='checkbox' onchange='oEMU.component.CPU.WASM6502.loggerChanged()'> <i class='fa fa-coffee' title='WASM CPU trace'></i> trace</label> "
-              +"<label>start <input id='wasm_log_start' size='5' placeholder='now' style='width:48px;padding:2px'></label> "
-              +"<label>stop <input id='wasm_log_stop' size='5' placeholder='full' style='width:48px;padding:2px'></label> "
-              +"<label>records <input id='wasm_log_size' size='6' value='32768' style='width:55px;padding:2px'></label> "
-              +"<button class='appbut skinny' id='wasm_download_log' disabled onclick='oEMU.component.CPU.WASM6502.downloadLog()' title='download WASM bootlog'><i class='fa fa-shoe-prints'></i></button>"
-              +"<div id='wasm_log_info' style='font-size:9px;margin-top:2px'>Logger disabled.</div>"
+            +"<div style='border-top:1px solid #aaa;margin-top:5px;padding-top:4px;display:grid;grid-template-columns:1fr auto;gap:3px 6px;align-items:center'>"
+              +"<label style='display:inline-flex;align-items:center;gap:2px;white-space:nowrap'><input id='wasm_log_enabled' type='checkbox' onchange='oEMU.component.CPU.WASM6502.loggerChanged()'> <i class='fa fa-coffee' title='WASM CPU trace'></i> trace</label>"
+              +"<div style='display:flex;gap:4px;align-items:center;justify-content:flex-end'>"
+                +"<label style='display:inline-flex;align-items:center;gap:2px;white-space:nowrap'>start <input id='wasm_log_start' size='5' placeholder='now' style='width:44px;padding:2px'></label>"
+                +"<label style='display:inline-flex;align-items:center;gap:2px;white-space:nowrap'>stop <input id='wasm_log_stop' size='5' placeholder='full' style='width:44px;padding:2px'></label>"
+              +"</div>"
+              +"<div id='wasm_log_info' style='font-size:9px;line-height:1.15'>Logger disabled.</div>"
+              +"<div style='display:flex;gap:4px;align-items:center;justify-content:flex-end'>"
+                +"<label style='display:inline-flex;align-items:center;gap:2px;white-space:nowrap'>records <input id='wasm_log_size' size='6' value='32768' style='width:50px;padding:2px'></label>"
+                +"<button class='appbut skinny' id='wasm_download_log' disabled onclick='oEMU.component.CPU.WASM6502.downloadLog()' title='download WASM bootlog'><i class='fa fa-shoe-prints'></i></button>"
+              +"</div>"
             +"</div>"
             +"<div id='wasm_status' style='margin-top:5px;min-height:24px;font-size:9px;white-space:pre-wrap'>Ready.</div>"
             +"</div>";
@@ -699,6 +819,7 @@ function EMU_WASMcpu6502()
             setCurrentFields(state);
             updateProgressMonitor();
             this.copyCurrentToLatch();
+            resetRunTimer();
             phase="idle";updateButtons();updateLogInfo();
             setStatus("JavaScript CPU halted. Press play to start immediately, or enter a Start address to arm the handoff.");
         }
@@ -712,7 +833,9 @@ function EMU_WASMcpu6502()
         if(phase==="running"){stopRequested=true;return;}
         if(phase==="paused"){this.stop();return;}
         setWasmSpeedIndicator(false);
-        phase="idle";updateButtons();setJsPaused(false);closePopup();
+        phase="idle";updateButtons();setJsPaused(false);
+        resetRunTimer();
+        closePopup();
     };
 
     this.play=function()
@@ -760,7 +883,7 @@ function EMU_WASMcpu6502()
             phase="idle";updateButtons();setJsPaused(false);closePopup();return;
         }
         if(phase==="running"){stopRequested=true;setStatus("Stop requested; waiting for current WASM chunk to finish…");return;}
-        if(phase==="paused") finishHandoff("manual stop");
+        phase="idle";updateButtons();setJsPaused(false);resetRunTimer();closePopup();return;
     };
 
     this.copyCurrentToLatch=function()
@@ -807,6 +930,7 @@ function EMU_WASMcpu6502()
 
     this.progressChanged=function()
     {
+        resetProgressEstimate();
         updateProgressMonitor();
     };
 
