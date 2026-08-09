@@ -17,9 +17,15 @@ function Cpu6502(hwobj)
 {
     var self = this;
     var bDebug_boot = false;         // runtime opt-in CPU activity tracking
-    var BOOTtrigger_adr = 0x6000;    // address that clears/starts the next capture
+    var BOOTtrigger_adr = 0x6000;    // null = start logging immediately
+    var BOOTstop_adr = null;         // null = stop only when buffer is full / disabled
     var BOOTtrigger_armed = false;   // wait for BOOTtrigger_adr before logging
- 
+    var BOOTlogging = false;
+    var BOOTcomplete = false;
+
+    // Optional one-shot instruction-boundary trap used by the WASM accelerator.
+    // It is checked only when cycle_delay is zero, before opcode fetch.
+    var executionTrap = null;
 
     //const BOOTsiz = 1024;
     const BOOTsiz = 32768;
@@ -100,24 +106,75 @@ function Cpu6502(hwobj)
         return {
              "bDebug_boot":bDebug_boot
             ,"triggerAddress":BOOTtrigger_adr
+            ,"stopAddress":BOOTstop_adr
             ,"triggerArmed":BOOTtrigger_armed
+            ,"logging":BOOTlogging
+            ,"complete":BOOTcomplete
+            ,"full":BOOTcnt>=BOOTsiz
             ,"count":BOOTcnt
+            ,"capacity":BOOTsiz
         };
     }
 
-    this.setBootLogTrigger = function(addr,enabled)
+    // startAddr == null: clear and log immediately.
+    // stopAddr  == null: keep logging until the fixed buffer is full.
+    // Two-argument form (addr,enabled) is retained for older callers.
+    this.setBootLogTrigger = function(startAddr,stopAddr,enabled)
     {
-        BOOTtrigger_adr = Number(addr) & 0xffff;
+        if(arguments.length<3)
+        {
+            enabled = stopAddr;
+            stopAddr = null;
+        }
+
+        BOOTtrigger_adr = startAddr==null ? null : (Number(startAddr) & 0xffff);
+        BOOTstop_adr = stopAddr==null ? null : (Number(stopAddr) & 0xffff);
         bDebug_boot = !!enabled;
-        BOOTtrigger_armed = bDebug_boot;
+        BOOTcomplete = false;
+
+        if(!bDebug_boot)
+        {
+            BOOTtrigger_armed = false;
+            BOOTlogging = false;
+            return this.BOOTparam();
+        }
+
+        BOOTtrigger_armed = BOOTtrigger_adr!==null;
+        BOOTlogging = !BOOTtrigger_armed;
+
+        if(BOOTlogging)
+            this.clearBootLog();
+
         return this.BOOTparam();
     }
 
     this.armBootLogTrigger = function(addr)
     {
-        if(addr!==undefined) BOOTtrigger_adr = Number(addr) & 0xffff;
-        if(bDebug_boot) BOOTtrigger_armed = true;
+        if(addr!==undefined)
+            BOOTtrigger_adr = addr==null ? null : (Number(addr) & 0xffff);
+
+        if(bDebug_boot)
+        {
+            BOOTcomplete = false;
+            BOOTtrigger_armed = BOOTtrigger_adr!==null;
+            BOOTlogging = !BOOTtrigger_armed;
+            if(BOOTlogging) this.clearBootLog();
+        }
         return this.BOOTparam(); 
+    }
+
+    this.setExecutionTrap = function(addr,callback)
+    {
+        executionTrap = {
+             "address":Number(addr) & 0xffff
+            ,"callback":typeof(callback)=="function" ? callback : null
+        };
+        return executionTrap.address;
+    }
+
+    this.clearExecutionTrap = function()
+    {
+        executionTrap = null;
     }
 
     // 6502 reserved addresses.
@@ -467,9 +524,15 @@ function Cpu6502(hwobj)
         pc = readWord(RESET_VECTOR);
         cycle_delay = 0;
 
-        // A reset re-arms an enabled trigger; the buffer itself is cleared
-        // only when execution actually reaches the configured trigger PC.
-        if (bDebug_boot) BOOTtrigger_armed = true;
+        // Re-arm an address-triggered capture. With a blank start address,
+        // reset begins a new immediate capture instead.
+        if (bDebug_boot)
+        {
+            BOOTcomplete = false;
+            BOOTtrigger_armed = BOOTtrigger_adr!==null;
+            BOOTlogging = !BOOTtrigger_armed;
+            if(BOOTlogging) self.clearBootLog();
+        }
     }
 
     this.cycle = function()
@@ -480,6 +543,16 @@ function Cpu6502(hwobj)
         var     d8;
 
         if (cycle_delay > 0) { cycle_delay--; return }
+
+        // The accelerator trap is deliberately before interrupt dispatch and
+        // opcode fetch: handoff therefore observes a clean instruction boundary.
+        if(executionTrap && (pc & 0xffff)==executionTrap.address)
+        {
+            var trap = executionTrap;
+            executionTrap = null;
+            if(!trap.callback || trap.callback(self.watch())!==false)
+                return true;
+        }
 
         // interrupt handling
         if (hw.nmi_signal || (hw.irq_signal && (p & P_I) == 0))
@@ -523,15 +596,32 @@ function Cpu6502(hwobj)
 
             if(BOOTtrigger_armed && boot_pc == BOOTtrigger_adr)
             {
-                // One-shot trigger: discard the previous capture and include
-                // this very instruction as record zero of the new capture.
+                // One-shot start trigger: discard the previous capture and
+                // include this very instruction as record zero.
                 self.clearBootLog();
                 BOOTtrigger_armed = false;
+                BOOTlogging = true;
+                BOOTcomplete = false;
             }
 
-            // Nothing before the trigger address is recorded.
-            if(!BOOTtrigger_armed)
-                logBootInstruction(boot_pc, opcode, operand);
+            if(BOOTlogging)
+            {
+                // Stop is exclusive: the stop-address instruction is not logged.
+                if(BOOTstop_adr!==null && boot_pc==BOOTstop_adr)
+                {
+                    BOOTlogging = false;
+                    BOOTcomplete = true;
+                }
+                else
+                {
+                    logBootInstruction(boot_pc, opcode, operand);
+                    if(BOOTcnt>=BOOTsiz)
+                    {
+                        BOOTlogging = false;
+                        BOOTcomplete = true;
+                    }
+                }
+            }
         }
  
         // Execute!
@@ -875,6 +965,27 @@ function Cpu6502(hwobj)
         sp = parseInt(l[3], 16) & 0xff;
         p =  (parseInt(l[4], 16) & ~P_B) | P_1;
         pc = parseInt(l[5], 16) & 0xffff;
+        cycle_delay = 0;
+    }
+
+    // Exact architectural-state import used when the flat WASM accelerator
+    // hands execution back at an instruction boundary.
+    this.setState = function(state)
+    {
+        if(!state) return this.watch();
+
+        if(state.a!==undefined)  a  = Number(state.a)  & 0xff;
+        if(state.x!==undefined)  x  = Number(state.x)  & 0xff;
+        if(state.y!==undefined)  y  = Number(state.y)  & 0xff;
+        if(state.sp!==undefined) sp = Number(state.sp) & 0xff;
+        if(state.p!==undefined)  p  = (Number(state.p) & ~P_B) | P_1;
+        if(state.pc!==undefined) pc = Number(state.pc) & 0xffff;
+
+        cycle_delay = state.cycle_delay===undefined
+            ? 0
+            : Math.max(0,Number(state.cycle_delay)|0);
+
+        return this.watch();
     }
 
     this.save = function()

@@ -12,6 +12,11 @@ h1 { font-size:1.45rem; margin:0 0 8px; }
 p { color:#aaa; line-height:1.45; }
 .panel { border:1px solid #333; border-radius:10px; padding:16px; margin:14px 0; background:#181818; }
 .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(145px,1fr)); gap:10px; }
+.register-row { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px; }
+.register-row + .register-row { margin-top:12px; }
+.register-row input[readonly] { background:#191919; color:#9ed0ff; border-color:#333; cursor:default; }
+.register-row-title { margin:10px 0 6px; font-size:.82rem; color:#aaa; font-weight:600; }
+@media (max-width:760px) { .register-row { grid-template-columns:repeat(3,minmax(0,1fr)); } }
 label { display:flex; flex-direction:column; gap:5px; font-size:.82rem; color:#aaa; }
 input,button,select,textarea { font:inherit; background:#0f0f0f; color:#eee; border:1px solid #444; border-radius:6px; padding:8px; }
 textarea { box-sizing:border-box; width:100%; min-height:145px; resize:vertical; line-height:1.4; }
@@ -57,23 +62,44 @@ table { border-collapse:collapse; width:100%; } td,th { border-bottom:1px solid 
 </div>
 
 <div class="panel">
-  <div class="grid">
-    <label>Start PC (hex)<input id="pc" value="8000"></label>
-    <label>A (hex)<input id="a" value="00"></label>
-    <label>X (hex)<input id="x" value="00"></label>
-    <label>Y (hex)<input id="y" value="00"></label>
-    <label>SP (hex)<input id="sp" value="FD"></label>
-    <label>P (hex)<input id="p" value="24"></label>
+  <strong>CPU registers</strong>
+  <p>The first row contains the editable latch values. The second row shows the current CPU state and is read-only. Latch values are preserved while the CPU runs, so the original setup remains available for reuse or modification.</p>
+  <div class="register-row-title">Latch values — editable</div>
+  <div class="register-row">
+    <label>PC<input id="pc" value="8000"></label>
+    <label>A<input id="a" value="00"></label>
+    <label>X<input id="x" value="00"></label>
+    <label>Y<input id="y" value="00"></label>
+    <label>SP<input id="sp" value="FD"></label>
+    <label>P<input id="p" value="24"></label>
+  </div>
+  <div class="register-row-title">CPU values — current / read-only</div>
+  <div class="register-row">
+    <label>PC<input id="pcLive" value="8000" readonly></label>
+    <label>A<input id="aLive" value="00" readonly></label>
+    <label>X<input id="xLive" value="00" readonly></label>
+    <label>Y<input id="yLive" value="00" readonly></label>
+    <label>SP<input id="spLive" value="FD" readonly></label>
+    <label>P<input id="pLive" value="24" readonly></label>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button id="copyRegs">Copy current → latch values</button>
+    <button id="latchRegs">Latch values → CPU</button>
+    <button id="resetVector">Use RESET vector</button>
+  </div>
+
+  <div class="grid" style="margin-top:14px">
     <label>Escape address<input id="escape" value="FF69"></label>
     <label>Escape enabled<select id="escapeEnabled"><option value="1" selected>yes</option><option value="0">no</option></select></label>
-    <label>Instructions / WASM chunk<input id="chunk" value="1000000"></label>
-    <label>Total instruction limit<input id="limit" value="0" title="0 means unlimited"></label>
+    <label>Instructions / WASM chunk<input id="chunk" value="1000000" title="Pause/stop requests are observed at this polling interval"></label>
+    <label>Total instruction limit<input id="limit" value="0" title="0 means unlimited; while resuming, this is the total for the current session"></label>
   </div>
   <div class="row" style="margin-top:12px">
     <button id="run">Run</button>
+    <button id="pause" disabled>Pause</button>
     <button id="stop" disabled>Stop</button>
-    <button id="resetVector">Use RESET vector</button>
   </div>
+  <small id="runInfo">Idle. Register latch values are ready for a new run.</small>
 </div>
 
 <div class="panel">
@@ -108,7 +134,9 @@ table { border-collapse:collapse; width:100%; } td,th { border-bottom:1px solid 
 <tr><td><code>escapeEnabled</code></td><td>default true</td></tr>
 <tr><td><code>instructionsPerChunk</code></td><td>default 1,000,000; may be 100,000,000 for infrequent polling</td></tr>
 <tr><td><code>maxInstructions</code></td><td>0/omitted = unlimited</td></tr>
-<tr><td><code>shouldStop</code></td><td>optional callback checked between chunks</td></tr>
+<tr><td><code>shouldStop</code></td><td>optional callback checked between chunks; ends the run with reason <code>stop</code></td></tr>
+<tr><td><code>shouldPause</code></td><td>optional callback checked between chunks; returns the current RAM/register state with reason <code>pause</code></td></tr>
+<tr><td><code>onProgress</code></td><td>optional callback receiving the current CPU state and executed-instruction count at polling boundaries</td></tr>
 <tr><td><code>yieldBetweenChunks</code></td><td>default true; lets browser process UI events</td></tr>
 <tr><td><code>activityLog</code></td><td>default false; when true, captures a JavaScript-emulator-compatible pre-execution CPU activity log</td></tr>
 <tr><td><code>activityLogSize</code></td><td>maximum activity-log records; default 32,768</td></tr>
@@ -144,7 +172,7 @@ function u32Positive(v,d) {
 }
 function nextTick() { return new Promise(r => setTimeout(r,0)); }
 
-const REASONS = {0:'chunk',1:'escape',2:'stop',3:'illegal-opcode',4:'instruction-limit'};
+const REASONS = {0:'chunk',1:'escape',2:'stop',3:'illegal-opcode',4:'instruction-limit',5:'pause'};
 
 const ACTIVITY_RECORD_BYTES = 10;
 const ACTIVITY_GROUP_MARKER_ADR = 0xFFFF;
@@ -332,12 +360,20 @@ async function run6502(config={}, inputRAM) {
   const chunk = u32Positive(config.instructionsPerChunk, 1000000);
   const maxInstructions = Math.max(0, Number(config.maxInstructions || 0));
   const shouldStop = typeof config.shouldStop === 'function' ? config.shouldStop : null;
+  const shouldPause = typeof config.shouldPause === 'function' ? config.shouldPause : null;
+  const onProgress = typeof config.onProgress === 'function' ? config.onProgress : null;
   const doYield = config.yieldBetweenChunks !== false;
   const activityLogger = config.activityLog ? createActivityLogger(config.activityLogSize ?? 32768) : null;
   let total = 0, reasonCode = 0, loggedSinceYield = 0;
+  const readState = () => ({
+    pc:e.cpu_get_pc()&0xffff, a:e.cpu_get_a()&0xff, x:e.cpu_get_x()&0xff, y:e.cpu_get_y()&0xff,
+    sp:e.cpu_get_sp()&0xff, p:e.cpu_get_p()&0xff,
+    lastOpcode:e.cpu_get_last_opcode()&0xff, lastOpcodePC:e.cpu_get_last_opcode_pc()&0xffff
+  });
 
   while (true) {
     if (shouldStop && shouldStop()) { reasonCode=2; break; }
+    if (shouldPause && shouldPause()) { reasonCode=5; break; }
     if (maxInstructions > 0 && total >= maxInstructions) { reasonCode=4; break; }
 
     if(activityLogger && !activityLogger.full) {
@@ -361,9 +397,10 @@ async function run6502(config={}, inputRAM) {
       total += e.cpu_get_last_executed()>>>0;
       loggedSinceYield++;
       if(reasonCode!==0) break;
-      if(doYield && loggedSinceYield>=4096) {
+      if(loggedSinceYield>=chunk) {
         loggedSinceYield=0;
-        await nextTick();
+        if(onProgress) onProgress(readState(),total);
+        if(doYield) await nextTick();
       }
       continue;
     }
@@ -377,15 +414,12 @@ async function run6502(config={}, inputRAM) {
     reasonCode = e.cpu_run_chunk(thisChunk) >>> 0;
     total += e.cpu_get_last_executed() >>> 0;
     if (reasonCode !== 0) break;
+    if (onProgress) onProgress(readState(),total);
     if (maxInstructions > 0 && total >= maxInstructions) { reasonCode=4; break; }
     if (doYield) await nextTick();
   }
 
-  const state = {
-    pc:e.cpu_get_pc()&0xffff, a:e.cpu_get_a()&0xff, x:e.cpu_get_x()&0xff, y:e.cpu_get_y()&0xff,
-    sp:e.cpu_get_sp()&0xff, p:e.cpu_get_p()&0xff,
-    lastOpcode:e.cpu_get_last_opcode()&0xff, lastOpcodePC:e.cpu_get_last_opcode_pc()&0xffff
-  };
+  const state = readState();
   let activityLog=null;
   if(activityLogger) {
     const bytes=activityLogger.toBytes();
@@ -461,9 +495,15 @@ window.CPU6502 = Object.freeze({run:run6502, importMonitorText, exportMonitorTex
 const $ = id => document.getElementById(id);
 let ramImage = new Uint8Array(65536);
 let stopRequested = false;
+let pauseRequested = false;
 let running = false;
+let paused = false;
+let sessionContinuing = false;
+let sessionInstructions = 0;
 let useResetVector = false;
 let lastActivityLog = null;
+let activeLoggerMode = false;
+let liveState = {pc:0x8000,a:0x00,x:0x00,y:0x00,sp:0xFD,p:0x24,lastOpcode:0,lastOpcodePC:0};
 const hex = (n,w) => '$'+(n>>>0).toString(16).toUpperCase().padStart(w,'0');
 function parseHex(id,bits) {
   let s=$(id).value.trim().replace(/^\$/,'').replace(/^0x/i,'');
@@ -471,7 +511,52 @@ function parseHex(id,bits) {
   return n & (bits===8?0xff:0xffff);
 }
 function setStatus(text, cls='') { $('status').className='status '+cls; $('status').textContent=text; }
-function setRunning(v) { running=v; $('run').disabled=v; $('stop').disabled=!v; }
+function setLiveState(s) {
+  liveState={...liveState,...s};
+  $('pcLive').value=liveState.pc.toString(16).toUpperCase().padStart(4,'0');
+  for(const id of ['a','x','y','sp','p']) $(''+id+'Live').value=liveState[id].toString(16).toUpperCase().padStart(2,'0');
+}
+function copyLiveToLatch() {
+  $('pc').value=liveState.pc.toString(16).toUpperCase().padStart(4,'0');
+  for(const id of ['a','x','y','sp','p']) $(id).value=liveState[id].toString(16).toUpperCase().padStart(2,'0');
+}
+function latchInputsToLive() {
+  setLiveState({pc:parseHex('pc',16),a:parseHex('a',8),x:parseHex('x',8),y:parseHex('y',8),sp:parseHex('sp',8),p:parseHex('p',8)});
+}
+function setRunning(v) {
+  running=v;
+  $('run').disabled=v;
+  $('pause').disabled=!v;
+  $('stop').disabled=!v;
+  for(const id of ['copyRegs','latchRegs','resetVector','escape','escapeEnabled','chunk','limit','logEnabled','logSize','ramFile','blank','sample','monitorImport']) $(id).disabled=v;
+  $('clearLog').disabled=v || !lastActivityLog;
+}
+function updateRunUI() {
+  $('run').textContent=paused?'Resume':'Run';
+  $('runInfo').textContent=running
+    ? `Running — pause/stop polling every ${Math.max(1,Math.floor(Number($('chunk').value)||1000000)).toLocaleString()} instruction(s).`
+    : paused
+      ? `Paused after ${sessionInstructions.toLocaleString()} instruction(s). Edit/latch registers, escape settings or logger options, then Resume.`
+      : `Idle. Current session state is shown at left; latch values remain unchanged until copied or edited.`;
+}
+function resetActivityLog(silent=false) {
+  lastActivityLog=null;
+  $('downloadLog').disabled=true;
+  $('clearLog').disabled=true;
+  $('logInfo').textContent='No CPU activity log captured.';
+  if(!silent) setStatus('CPU activity log cleared.','good');
+}
+function appendActivityLog(segment) {
+  if(!segment || !segment.bytes || !segment.bytes.length) return;
+  const old=lastActivityLog?.bytes || new Uint8Array(0);
+  const bytes=new Uint8Array(old.length+segment.bytes.length);
+  bytes.set(old,0); bytes.set(segment.bytes,old.length);
+  lastActivityLog={records:bytes.length/ACTIVITY_RECORD_BYTES,bytes,base64:bytesToBase64(bytes)};
+  $('downloadLog').disabled=false;
+  $('clearLog').disabled=false;
+}
+setLiveState(liveState);
+updateRunUI();
 
 $('monitorImport').onclick=()=>{
   try {
@@ -482,7 +567,7 @@ $('monitorImport').onclick=()=>{
     $('captureTo').value=result.lastAddress.toString(16).toUpperCase().padStart(4,'0');
     $('ramInfo').textContent=`RAM image: monitor byte code imported — ${result.bytesWritten} bytes`;
     const ignored=result.ignoredLines.length ? `; ${result.ignoredLines.length} non-deposit line(s) ignored` : '';
-    $('monitorInfo').textContent=`Imported ${result.bytesWritten} bytes in ${result.records} record(s), ${hex(result.firstAddress,4)}–${hex(result.lastAddress,4)}${ignored}. Start PC set to ${hex(result.firstAddress,4)}.`;
+    $('monitorInfo').textContent=`Imported ${result.bytesWritten} bytes in ${result.records} record(s), ${hex(result.firstAddress,4)}–${hex(result.lastAddress,4)}${ignored}. PC latch value set to ${hex(result.firstAddress,4)}.`;
     setStatus(`Monitor byte code imported into RAM at ${hex(result.firstAddress,4)}–${hex(result.lastAddress,4)}.`, 'good');
   } catch(err) { setStatus(err.message||String(err),'bad'); }
 };
@@ -517,7 +602,9 @@ $('sample').onclick=()=>{
   ramImage=new Uint8Array(65536);
   // $8000: LDA #$2A / STA $0200 / INX / JMP $FF69
   ramImage.set([0xA9,0x2A,0x8D,0x00,0x02,0xE8,0x4C,0x69,0xFF],0x8000);
-  $('pc').value='8000'; $('a').value='00'; $('x').value='00'; $('y').value='00'; useResetVector=false;
+  $('pc').value='8000'; $('a').value='00'; $('x').value='00'; $('y').value='00'; $('sp').value='FD'; $('p').value='24';
+  setLiveState({pc:0x8000,a:0,x:0,y:0,sp:0xFD,p:0x24});
+  paused=false; sessionContinuing=false; sessionInstructions=0; useResetVector=false; updateRunUI();
   $('ramInfo').textContent='RAM image: built-in sample at $8000'; setStatus('Sample loaded. Expected result: RAM[$0200]=$2A and X=$01.','good');
 };
 $('save').onclick=()=>{
@@ -532,47 +619,125 @@ $('downloadLog').onclick=()=>{
   a.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
-$('clearLog').onclick=()=>{
-  lastActivityLog=null;
-  $('downloadLog').disabled=true;
-  $('clearLog').disabled=true;
-  $('logInfo').textContent='No CPU activity log captured.';
-  setStatus('CPU activity log cleared.','good');
+$('clearLog').onclick=()=>resetActivityLog();
+$('logEnabled').onchange=()=>{
+  if(running)return;
+  const enabled=$('logEnabled').value==='1';
+  if(enabled && !activeLoggerMode) {
+    resetActivityLog(true);
+    activeLoggerMode=true;
+    setStatus('CPU activity logger enabled; the trace has been restarted from scratch.','good');
+  } else if(!enabled && activeLoggerMode) {
+    activeLoggerMode=false;
+    setStatus('CPU activity logger disabled; any captured trace is retained for download.','warn');
+  }
 };
-$('resetVector').onclick=()=>{useResetVector=true;setStatus('Next Run will initialize from the RESET vector at $FFFC/$FFFD.','warn');};
-$('stop').onclick=()=>{stopRequested=true;setStatus('Stop requested; execution will stop at the next chunk boundary.','warn');};
+$('copyRegs').onclick=()=>{
+  if(running)return;
+  copyLiveToLatch();
+  setStatus('Current CPU registers copied to the editable latch values.','good');
+};
+$('latchRegs').onclick=()=>{
+  if(running)return;
+  latchInputsToLive();
+  useResetVector=false;
+  setStatus(`Register values latched: PC=${hex(liveState.pc,4)} A=${hex(liveState.a,2)} X=${hex(liveState.x,2)} Y=${hex(liveState.y,2)} SP=${hex(liveState.sp,2)} P=${hex(liveState.p,2)}.`, 'good');
+  updateRunUI();
+};
+$('resetVector').onclick=()=>{
+  if(running)return;
+  useResetVector=true;
+  setStatus('Next Run/Resume will initialize from the RESET vector at $FFFC/$FFFD.','warn');
+};
+$('pause').onclick=()=>{
+  pauseRequested=true;
+  setStatus('Pause requested; execution will pause at the next WASM chunk boundary.','warn');
+};
+$('stop').onclick=()=>{
+  stopRequested=true;
+  setStatus('Stop requested; execution will stop at the next WASM chunk boundary.','warn');
+};
 
 $('run').onclick=async()=>{
   if(running)return;
-  stopRequested=false;setRunning(true);
+
+  const continuing=sessionContinuing;
+  if(!continuing) sessionInstructions=0;
+
+  stopRequested=false;
+  pauseRequested=false;
+  paused=false;
+  setRunning(true);
+  updateRunUI();
+
   try {
     const chunk=Math.max(1,Math.floor(Number($('chunk').value)||1000000));
-    const limit=Math.max(0,Math.floor(Number($('limit').value)||0));
-    setStatus(`Running… chunk size ${chunk.toLocaleString()} instructions.`);
+    const totalLimit=Math.max(0,Math.floor(Number($('limit').value)||0));
+    const remainingLimit=totalLimit>0 ? Math.max(0,totalLimit-sessionInstructions) : 0;
+    if(totalLimit>0 && remainingLimit===0) {
+      paused=continuing;
+      sessionContinuing=continuing;
+      setStatus(`Instruction limit already reached (${sessionInstructions.toLocaleString()}). Increase the total limit${continuing?' and Resume':' or latch a new state and Run'}.`, 'warn');
+      return;
+    }
+
+    const wantLogger=$('logEnabled').value==='1';
+    if(!continuing) {
+      activeLoggerMode=wantLogger;
+      if(wantLogger) resetActivityLog(true);
+    } else if(wantLogger && !activeLoggerMode) {
+      // Explicitly enabling the logger while paused starts a fresh trace.
+      resetActivityLog(true);
+      activeLoggerMode=true;
+    } else if(!wantLogger) activeLoggerMode=false;
+
+    const maxLogRecords=Math.max(1,Math.floor(Number($('logSize').value)||32768));
+    const existingRecords=lastActivityLog?.records || 0;
+    const logRoom=Math.max(0,maxLogRecords-existingRecords);
+    const captureLog=wantLogger && logRoom>0;
+
+    setStatus(`${continuing?'Resuming':'Running'}… chunk size ${chunk.toLocaleString()} instructions.${wantLogger?' Logger enabled.':''}`);
     const result=await run6502({
-      pc:parseHex('pc',16), a:parseHex('a',8), x:parseHex('x',8), y:parseHex('y',8), sp:parseHex('sp',8), p:parseHex('p',8),
+      pc:liveState.pc, a:liveState.a, x:liveState.x, y:liveState.y, sp:liveState.sp, p:liveState.p,
       useResetVector, escapeAddress:parseHex('escape',16), escapeEnabled:$('escapeEnabled').value==='1',
-      instructionsPerChunk:chunk, maxInstructions:limit, shouldStop:()=>stopRequested, yieldBetweenChunks:true,
-      activityLog:$('logEnabled').value==='1',
-      activityLogSize:Math.max(1,Math.floor(Number($('logSize').value)||32768))
+      instructionsPerChunk:chunk, maxInstructions:remainingLimit,
+      shouldStop:()=>stopRequested, shouldPause:()=>pauseRequested, yieldBetweenChunks:true,
+      onProgress:(s,segmentInstructions)=>{
+        setLiveState(s);
+        $('runInfo').textContent=`Running — ${(sessionInstructions+segmentInstructions).toLocaleString()} instruction(s); polling every ${chunk.toLocaleString()}.`;
+      },
+      activityLog:captureLog,
+      activityLogSize:Math.max(1,logRoom)
     }, ramImage);
-    useResetVector=false; ramImage=result.ram;
-    lastActivityLog=result.activityLog;
-    $('downloadLog').disabled=!lastActivityLog;
-    $('clearLog').disabled=!lastActivityLog;
-    $('logInfo').textContent=lastActivityLog
-      ? `Captured ${lastActivityLog.records.toLocaleString()} bootlog record(s), ${lastActivityLog.bytes.length.toLocaleString()} binary bytes; download is Base64 text compatible with the JavaScript emulator.`
-      : 'Logger disabled for this run.';
-    const s=result.state;
-    $('pc').value=s.pc.toString(16).toUpperCase().padStart(4,'0'); $('a').value=s.a.toString(16).toUpperCase().padStart(2,'0'); $('x').value=s.x.toString(16).toUpperCase().padStart(2,'0'); $('y').value=s.y.toString(16).toUpperCase().padStart(2,'0'); $('sp').value=s.sp.toString(16).toUpperCase().padStart(2,'0'); $('p').value=s.p.toString(16).toUpperCase().padStart(2,'0');
+
+    useResetVector=false;
+    ramImage=result.ram;
+    sessionInstructions+=result.instructions;
+    setLiveState(result.state);
+    appendActivityLog(result.activityLog);
+
+    if(lastActivityLog) {
+      $('logInfo').textContent=`${wantLogger?'Captured':'Logger disabled; retained'} ${lastActivityLog.records.toLocaleString()} bootlog record(s), ${lastActivityLog.bytes.length.toLocaleString()} binary bytes; download is Base64 text compatible with the JavaScript emulator.`;
+    } else if(wantLogger && logRoom===0) {
+      $('logInfo').textContent=`Logger enabled, but the ${maxLogRecords.toLocaleString()}-record limit has already been reached.`;
+    } else $('logInfo').textContent=wantLogger?'Logger enabled; no records captured in this segment.':'Logger disabled.';
+
+    paused=result.reason==='pause';
+    sessionContinuing=paused;
+
     let extra='';
-    if(result.reason==='illegal-opcode') extra=`
-Illegal opcode ${hex(s.lastOpcode,2)} encountered at ${hex(s.lastOpcodePC,4)}.`;
-    const logLine=result.activityLog ? `\nActivity-log records: ${result.activityLog.records.toLocaleString()}` : '';
-    setStatus(`Stopped: ${result.reason}
-Instructions executed: ${result.instructions.toLocaleString()}${logLine}
-PC=${hex(s.pc,4)}  A=${hex(s.a,2)}  X=${hex(s.x,2)}  Y=${hex(s.y,2)}  SP=${hex(s.sp,2)}  P=${hex(s.p,2)}${extra}`, result.reason==='illegal-opcode'?'bad':'good');
-  } catch(err) { setStatus(err.stack||String(err),'bad'); } finally { setRunning(false); }
+    if(result.reason==='illegal-opcode') extra=`\nIllegal opcode ${hex(result.state.lastOpcode,2)} encountered at ${hex(result.state.lastOpcodePC,4)}.`;
+    const logLine=lastActivityLog ? `\nActivity-log records: ${lastActivityLog.records.toLocaleString()}` : '';
+    const verb=paused?'Paused':'Stopped';
+    setStatus(`${verb}: ${result.reason}\nSession instructions: ${sessionInstructions.toLocaleString()}${logLine}\nPC=${hex(liveState.pc,4)}  A=${hex(liveState.a,2)}  X=${hex(liveState.x,2)}  Y=${hex(liveState.y,2)}  SP=${hex(liveState.sp,2)}  P=${hex(liveState.p,2)}${extra}`, result.reason==='illegal-opcode'?'bad':paused?'warn':'good');
+  } catch(err) {
+    paused=false;
+    sessionContinuing=false;
+    setStatus(err.stack||String(err),'bad');
+  } finally {
+    setRunning(false);
+    updateRunUI();
+  }
 };
 </script>
 </body>

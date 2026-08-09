@@ -284,7 +284,13 @@ function Apple2Plus(context)
             remainingTicks--;
             //hw.cycle();
             //video.cycle();
-            cpu.cycle();
+            // A one-shot CPU execution trap (used by the WASM accelerator)
+            // stops this JavaScript burst before the selected opcode is fetched.
+            if(cpu.cycle()===true)
+            {
+                remainingTicks++;       // the trap consumed no emulated CPU tick
+                break;
+            }
 
             //snd.cycle(remainingTicks);
             hw.io.tick(remainingTicks);

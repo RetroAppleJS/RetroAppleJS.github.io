@@ -117,10 +117,24 @@ function Apple2Debug()
 
         if(state && state.bDebug_boot)
         {
+            var startText = state.triggerAddress==null
+                ? "immediately"
+                : "$"+oCOM.getHexWord(state.triggerAddress);
+            var stopText = state.stopAddress==null
+                ? "when buffer is full"
+                : "before $"+oCOM.getHexWord(state.stopAddress);
+            var mode = state.triggerArmed
+                ? "armed"
+                : state.logging
+                    ? "logging"
+                    : state.full
+                        ? "buffer full"
+                        : state.complete
+                            ? "complete"
+                            : "enabled";
+
             el.style.opacity = "1";
-            el.title = "bootlog enabled; trigger $"
-                     + oCOM.getHexWord(state.triggerAddress)
-                     + (state.triggerArmed ? " armed" : " reached / logging");
+            el.title = "bootlog "+mode+"; start "+startText+"; stop "+stopText;
         }
         else
         {
@@ -144,23 +158,45 @@ function Apple2Debug()
         // Enabled -> disabled. Keep the already captured log downloadable.
         if(state.bDebug_boot)
         {
-            state = cpu.setBootLogTrigger(state.triggerAddress,false);
+            state = cpu.setBootLogTrigger(state.triggerAddress,state.stopAddress,false);
             DBG_updateBootTriggerIcon(el,state);
             return;
         }
 
-        var def = "$" + oCOM.getHexWord(state.triggerAddress==null ? 0x6000 : state.triggerAddress);
-        var value = prompt("Clear bootlog and start logging when PC reaches:",def);
-        if(value===null) return;
+        var startDef = state.triggerAddress==null
+            ? ""
+            : "$"+oCOM.getHexWord(state.triggerAddress);
+        var startValue = prompt("Bootlog start address (blank = immediately):",startDef);
+        if(startValue===null) return;
 
-        var addr = DBG_parseBootAddress(value);
-        if(addr===null)
+        var startAddr = null;
+        if(String(startValue).trim()!=="")
         {
-            alert("Invalid 6502 address. Use for example $6000.");
-            return;
+            startAddr = DBG_parseBootAddress(startValue);
+            if(startAddr===null)
+            {
+                alert("Invalid start address. Use for example $6000, or leave blank.");
+                return;
+            }
+        }
+        var stopDef = state.stopAddress==null
+            ? ""
+            : "$"+oCOM.getHexWord(state.stopAddress);
+        var stopValue = prompt("Bootlog stop address (blank = when buffer is full):",stopDef);
+        if(stopValue===null) return;
+
+        var stopAddr = null;
+        if(String(stopValue).trim()!=="")
+        {
+            stopAddr = DBG_parseBootAddress(stopValue);
+            if(stopAddr===null)
+            {
+                alert("Invalid stop address. Use for example $FF69, or leave blank.");
+                return;
+            }
         }
 
-        state = cpu.setBootLogTrigger(addr,true);
+        state = cpu.setBootLogTrigger(startAddr,stopAddr,true);
         DBG_updateBootTriggerIcon(el,state);
     }
 
@@ -175,6 +211,12 @@ function Apple2Debug()
     {
         if(!obj || !obj.cpu || typeof(obj.cpu.watch)!="function" || !this.isReady())
             return false;
+
+        if(typeof(obj.cpu.BOOTparam)=="function")
+            DBG_updateBootTriggerIcon(
+                document.getElementById("cpuDbg_bootTrigger"),
+                obj.cpu.BOOTparam()
+            );
 
         //var el = document.getElementById( oEMU.component.CPU.Apple2Debug.disp_id );
         var watch = obj.cpu.watch();

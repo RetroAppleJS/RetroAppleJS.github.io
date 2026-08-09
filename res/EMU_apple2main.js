@@ -592,6 +592,7 @@ function EMU_init()
     // PREP FEATURE POPUP HTML CONTENT
     document.getElementById("feature_box").innerHTML += 
         "<div class=appbox  id=\"cpuDbg_popup\"     hidden=\"\">"+oEMU.component.CPU.Apple2Debug.html("cpuDbg_body","cpuDbg_popup")+"</div>\n\n"
+        +"<div class=appbox id=\"cpuWasm_popup\" hidden=\"\">"+oEMU.component.CPU.WASM6502.html("cpuWasm_body","cpuWasm_popup")+"</div>\n"
         +"<div class=appbox id=\"slotConfig_popup\" hidden=\"\"></div>\n"
     // all other slots are configured in EMU_apple2io.js --> this.mount()
     
@@ -793,6 +794,8 @@ function EMUI()
             indicator.innerHTML = label;
             if(multiplier==0)
                 indicator.innerHTML += " <i class='fa fa-bug' title='Step trace'></i>";
+            else if(mode=="factor" && Number(el.value)==CPU_SLD_MODES.factor.max)
+                indicator.innerHTML += " <i class='fa fa-fighter-jet' title='WASM accelerator'></i>";
 
             var baseTitle = "CPU speed: "+label+". Click to switch to "
                 +CPU_SLD_MODES[mode].nextName+".";
@@ -807,14 +810,19 @@ function EMUI()
     // CLICKABLE CPU PERCENTAGE / RANGE TOGGLE
     this.cpuSldIndicator = function(event,indicator,sliderId,debugId)
     {
-        if(event && event.target && event.target.classList
-            && event.target.classList.contains("fa-bug"))
+        if(event && event.target && event.target.classList)
         {
-            this.cpuDbg(debugId);
-            return;
+            if(event.target.classList.contains("fa-bug"))
+            {
+                this.cpuDbg(debugId);
+                return;
+            }
+            if(event.target.classList.contains("fa-fighter-jet"))
+            {
+                this.cpuWasm(debugId);
+                return;
+            }
         }
-
-        this.cpuSldRange(indicator,sliderId);
     }
 
     // CYCLE 0-400%/20%, 0-100%/5%, AND THE 20-POSITION FACTOR SCALE
@@ -906,6 +914,21 @@ function EMUI()
         window.oTextScroll1 = new oEMUI.TextScroll(cfg1);
     }
 
+    this.cpuWasm = function(id)
+    {
+        var accel = oEMU.component.CPU.WASM6502;
+        var popup = document.getElementById("cpuWasm_popup");
+        if(!accel || !popup) return;
+
+        if(popup.hidden===false)
+        {
+            accel.cancel();
+            return;
+        }
+
+        oCOM.POPUP.toggle("cpuWasm_popup");
+        accel.open();
+    }
 
     this.muteBtn = function(arg)
     {
