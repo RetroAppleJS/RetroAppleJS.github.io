@@ -88,6 +88,8 @@ function EMU_WASMcpu6502()
     var progressBaseValue=null;
     var progressBaseElapsedMs=0;
     var progressLastValue=null;
+    var chunkFps=0;
+    var chunkFpsLastMs=null;
 
     function $(id) { return typeof(document)!="undefined" ? document.getElementById(id) : null; }
     function hex(v,n) { return "$"+(Number(v)>>>0).toString(16).toUpperCase().padStart(n,"0"); }
@@ -135,12 +137,40 @@ function EMU_WASMcpu6502()
         return Math.min(0xffffffff,Math.max(1,Math.floor(millions*1000000)));
     }
 
+    function resetChunkFps()
+    {
+        chunkFps=0;
+        chunkFpsLastMs=phase==="running" ? performance.now() : null;
+        updateUiFpsLabel();
+    }
+
+    function recordChunkFrame()
+    {
+        if(phase!=="running") return;
+
+        var now=performance.now();
+        if(chunkFpsLastMs!==null)
+        {
+            var elapsed=now-chunkFpsLastMs;
+            if(Number.isFinite(elapsed)&&elapsed>0)
+                chunkFps=1000/elapsed;
+        }
+        chunkFpsLastMs=now;
+        updateUiFpsLabel();
+    }
+
     function updateUiFpsLabel()
     {
         var el=$("wasm_ui_fps");
         if(!el) return;
-        var hz=typeof(_o)!="undefined"?Number(_o.EMU_DashboardRefresh_s):0;
-        el.textContent=(Number.isFinite(hz)&&hz>0?hz:2)+" fps";
+        if(phase!=="running")
+        {
+            el.textContent="0 fps";
+            return;
+        }
+
+        var fps=Number.isFinite(chunkFps)&&chunkFps>0?chunkFps:0;
+        el.textContent=(fps>=10?Math.round(fps):Math.round(fps*10)/10)+" fps";
     }
 
     function parseLimit()
@@ -664,6 +694,7 @@ function EMU_WASMcpu6502()
     {
         phase="running";pauseRequested=false;stopRequested=false;updateButtons();
         runChunkInstructions=parseChunkInstructions();
+        resetChunkFps();
         startRunTimer();
         resetProgressEstimate();
         setWasmSpeedIndicator(true);
@@ -679,6 +710,7 @@ function EMU_WASMcpu6502()
             {
                 pauseRunTimer();
                 phase="paused";
+                resetChunkFps();
                 pauseRequested=false;
                 refreshWasmUi(true);
                 setWasmSpeedIndicator(false);
@@ -742,6 +774,7 @@ function EMU_WASMcpu6502()
             if(loggedSinceYield>=yieldEvery)
             {
                 loggedSinceYield=0;
+                recordChunkFrame();
                 refreshWasmUi(false);
                 await nextTick();
             }
@@ -785,6 +818,7 @@ function EMU_WASMcpu6502()
         if(phase==="idle") return;
         pauseRunTimer();
         phase="idle";pauseRequested=false;stopRequested=false;
+        resetChunkFps();
         var state=readWasmState();
         var copy=handBackRam();
         var cpu=apple2plus.cpuObj();
