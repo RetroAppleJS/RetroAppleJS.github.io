@@ -823,6 +823,7 @@ function EMUI()
                 return;
             }
         }
+        this.cpuSldRange(indicator,sliderId);
     }
 
     // CYCLE 0-400%/20%, 0-100%/5%, AND THE 20-POSITION FACTOR SCALE
