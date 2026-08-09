@@ -12006,6 +12006,8 @@ function EMU_WASMcpu6502()
     var loggerStop=null;
     var loggedSinceYield=0;
     var dynamicEscape=null;
+    var lastUiRefreshMs=0;
+    var speedIndicatorBackup=null;
 
     function $(id) { return typeof(document)!="undefined" ? document.getElementById(id) : null; }
     function hex(v,n) { return "$"+(Number(v)>>>0).toString(16).toUpperCase().padStart(n,"0"); }
@@ -12063,6 +12065,111 @@ function EMU_WASMcpu6502()
         if(!state) return;
         var vals={pc:[state.pc,4],a:[state.a,2],x:[state.x,2],y:[state.y,2],sp:[state.sp,2],p:[state.p,2]};
         Object.keys(vals).forEach(function(k){ var el=$("wasm_cur_"+k); if(el) el.value=toHex(vals[k][0],vals[k][1]); });
+    }
+
+    // The normal dashboard and Disk II surface-map monitor use
+    // _o.EMU_DashboardRefresh_s. The JavaScript CPU is paused during a WASM
+    // handoff, so its RefreshEvent dispatcher is not ticking; use the same
+    // configured wall-clock cadence here rather than updating the DOM after
+    // every WASM chunk.
+    function uiRefreshIntervalMs()
+    {
+        var hz=typeof(_o)!="undefined"?Number(_o.EMU_DashboardRefresh_s):0;
+        return Number.isFinite(hz)&&hz>0?1000/hz:500;
+    }
+
+    function progressAddressFromUI()
+    {
+        var el=$("wasm_progress_addr");
+        return parseOptionalAddress(el?el.value:"");
+    }
+
+    function updateProgressMonitor()
+    {
+        var bar=$("wasm_progress_bar"),text=$("wasm_progress_text");
+        if(!bar&&!text) return;
+
+        var addr=null;
+        try { addr=progressAddressFromUI(); }
+        catch(err)
+        {
+            if(bar) bar.value=0;
+            if(text) text.textContent="invalid address";
+            return;
+        }
+
+        if(addr===null||!wr)
+        {
+            if(bar) bar.value=0;
+            if(text) text.textContent="--.-%";
+            return;
+        }
+
+        var value=wr[addr]&0xff;
+        var pct=Math.round(value*1000/255)/10;
+        if(bar)
+        {
+            bar.max=255;
+            bar.value=value;
+            bar.title=hex(addr,4)+" = "+toHex(value,2)+" ("+pct.toFixed(1)+"%)";
+        }
+        if(text) text.textContent=pct.toFixed(1)+"%";
+    }
+
+    function refreshWasmUi(force)
+    {
+        var now=performance.now();
+        if(!force && now-lastUiRefreshMs<uiRefreshIntervalMs()) return;
+        lastUiRefreshMs=now;
+        setCurrentFields(readWasmState());
+        updateProgressMonitor();
+        updateLogInfo();
+    }
+
+    // x72 remains meaningful for the paced JavaScript emulator. While WASM
+    // owns the CPU there is no selected-clock throttle, so show infinity and
+    // restore the exact previous indicator state on pause/handback.
+    function setWasmSpeedIndicator(active)
+    {
+        var indicator=$("slider_1v");
+        if(!indicator) return;
+
+        if(active)
+        {
+            if(!speedIndicatorBackup)
+            {
+                speedIndicatorBackup={
+                    html:indicator.innerHTML,
+                    title:indicator.title||"",
+                    aria:indicator.getAttribute("aria-label"),
+                    backgroundColor:indicator.style.backgroundColor,
+                    color:indicator.style.color,
+                    borderColor:indicator.style.borderColor,
+                    unattainable:indicator.getAttribute("data-speed-unattainable")
+                };
+            }
+
+            indicator.innerHTML="&infin; <i class='fa fa-fighter-jet' title='WASM accelerator'></i>";
+            indicator.title="CPU speed: "+String.fromCharCode(0x221e)+". WASM accelerator is running unthrottled.";
+            indicator.setAttribute("aria-label",indicator.title);
+            indicator.style.backgroundColor="";
+            indicator.style.color="";
+            indicator.style.borderColor="";
+            indicator.removeAttribute("data-speed-unattainable");
+            return;
+        }
+
+        if(!speedIndicatorBackup) return;
+        indicator.innerHTML=speedIndicatorBackup.html;
+        indicator.title=speedIndicatorBackup.title;
+        if(speedIndicatorBackup.aria===null) indicator.removeAttribute("aria-label");
+        else indicator.setAttribute("aria-label",speedIndicatorBackup.aria);
+        indicator.style.backgroundColor=speedIndicatorBackup.backgroundColor;
+        indicator.style.color=speedIndicatorBackup.color;
+        indicator.style.borderColor=speedIndicatorBackup.borderColor;
+        if(speedIndicatorBackup.unattainable===null) indicator.removeAttribute("data-speed-unattainable");
+        else indicator.setAttribute("data-speed-unattainable",speedIndicatorBackup.unattainable);
+        speedIndicatorBackup=null;
     }
 
     function readJsState()
@@ -12346,13 +12453,16 @@ function EMU_WASMcpu6502()
     async function runLoop()
     {
         phase="running";pauseRequested=false;stopRequested=false;updateButtons();
+        setWasmSpeedIndicator(true);
+        lastUiRefreshMs=0;
+        refreshWasmUi(true);
         setStatus("WASM running…");
         var maxInstructions=parseLimit();
 
         while(phase==="running")
         {
             if(stopRequested){await finishHandoff("manual stop");return;}
-            if(pauseRequested){phase="paused";pauseRequested=false;setCurrentFields(readWasmState());updateButtons();setStatus("WASM paused after "+sessionInstructions.toLocaleString()+" instruction(s).");return;}
+            if(pauseRequested){phase="paused";pauseRequested=false;refreshWasmUi(true);setWasmSpeedIndicator(false);updateButtons();setStatus("WASM paused after "+sessionInstructions.toLocaleString()+" instruction(s).");return;}
             if(maxInstructions>0&&sessionInstructions>=maxInstructions){await finishHandoff("instruction limit");return;}
 
             // Observe all wrapper-level addresses before opcode fetch.  The
@@ -12409,7 +12519,7 @@ function EMU_WASMcpu6502()
             if(loggedSinceYield>=yieldEvery)
             {
                 loggedSinceYield=0;
-                setCurrentFields(readWasmState());updateLogInfo();
+                refreshWasmUi(false);
                 await nextTick();
             }
         }
@@ -12438,6 +12548,7 @@ function EMU_WASMcpu6502()
         catch(err)
         {
             console.error("WASM accelerator failed",err);
+            setWasmSpeedIndicator(false);
             phase="idle";updateButtons();setStatus(err&&err.stack?err.stack:String(err),"bad");
             setJsPaused(false);
         }
@@ -12452,7 +12563,9 @@ function EMU_WASMcpu6502()
         var cpu=apple2plus.cpuObj();
         if(typeof(cpu.setState)==="function") cpu.setState(state);
         else if(typeof(cpu.load)==="function") cpu.load([state.a,state.x,state.y,state.sp,state.p,state.pc].map(function(v){return v.toString(16);}).join(','));
+        setWasmSpeedIndicator(false);
         setCurrentFields(state);
+        updateProgressMonitor();
         updateLogInfo();updateButtons();
 
         var msg="WASM finished: "+reason+"; "+sessionInstructions.toLocaleString()+" instruction(s).";
@@ -12478,6 +12591,10 @@ function EMU_WASMcpu6502()
               +"<label>Stop/escape<br><input id='wasm_stop' size='5' placeholder='manual' style='width:55px;padding:2px'></label>"
               +"<label>Chunk<br><input id='wasm_chunk' size='7' value='1000000' style='width:65px;padding:2px'></label>"
               +"<label>Limit<br><input id='wasm_limit' size='6' value='0' title='0 = unlimited' style='width:52px;padding:2px'></label>"
+            +"</div>"
+            +"<div style='display:grid;grid-template-columns:62px 1fr;gap:4px;align-items:end;margin-top:4px'>"
+              +"<label>Progress addr<br><input id='wasm_progress_addr' size='5' value='7FFF' onchange='oEMU.component.CPU.WASM6502.progressChanged()' title='optional 6502 byte address, interpreted as 0..255' style='width:55px;padding:2px'></label>"
+              +"<div><progress id='wasm_progress_bar' max='255' value='0' style='width:180px;height:12px'></progress> <span id='wasm_progress_text' style='font-variant-numeric:tabular-nums'>0.0%</span></div>"
             +"</div>"
             +"<div style='margin-top:5px'><b>Latch</b><div style='display:grid;grid-template-columns:repeat(6,1fr);gap:2px'>"
               +reg("wasm_set_pc","PC",false)+reg("wasm_set_a","A",false)+reg("wasm_set_x","X",false)+reg("wasm_set_y","Y",false)+reg("wasm_set_sp","SP",false)+reg("wasm_set_p","P",false)+"</div></div>"
@@ -12509,6 +12626,7 @@ function EMU_WASMcpu6502()
             setJsPaused(true);
             var state=readJsState();
             setCurrentFields(state);
+            updateProgressMonitor();
             this.copyCurrentToLatch();
             phase="idle";updateButtons();updateLogInfo();
             setStatus("JavaScript CPU halted. Press play to start immediately, or enter a Start address to arm the handoff.");
@@ -12522,6 +12640,7 @@ function EMU_WASMcpu6502()
         if(cpu&&typeof(cpu.clearExecutionTrap)==="function") cpu.clearExecutionTrap();
         if(phase==="running"){stopRequested=true;return;}
         if(phase==="paused"){this.stop();return;}
+        setWasmSpeedIndicator(false);
         phase="idle";updateButtons();setJsPaused(false);closePopup();
     };
 
@@ -12613,6 +12732,11 @@ function EMU_WASMcpu6502()
             else updateLogInfo();
         }
         catch(err){setStatus(String(err),"bad");}
+    };
+
+    this.progressChanged=function()
+    {
+        updateProgressMonitor();
     };
 
     this.downloadLog=function()
