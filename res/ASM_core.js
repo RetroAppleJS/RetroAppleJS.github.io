@@ -420,9 +420,17 @@ function ASM(options)
         return statements;
     };
 
-    this.getID = function (text) {
+    this.getID = function (text)
+    {
         text = String(text || "").trim();
+
+        // Conventional assembler label terminator.
+        // "START:" and "START" denote the same symbol.
+        text = text.replace(/:$/, "");
+
+        // Historical expression stripping retained for compatibility.
         text = text.split("+")[0].split("-")[0];
+
         return text;
     };
 
@@ -1206,8 +1214,8 @@ function ASM(options)
             var statement = String(raw || "").trim();
             var sym = this.statement_splitter(raw);
             var tag = sym.length ? this.statement_tagger(sym) : [];
-            // Without includes, line remains 1:1 with the source pane. Included rows
-            // additionally retain their original sourceName/sourceLine.
+            if (tag[0] === "LBL" && sym[0])
+                sym[0] = sym[0].replace(/:$/, "");
             var row = {
                 line: i + 1,
                 sourceLine: lines[i].sourceLine,
