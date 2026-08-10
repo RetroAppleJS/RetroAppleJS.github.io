@@ -877,7 +877,7 @@ function EMU_WASMcpu6502()
             +"<div><b>WASM ACCELERATOR</b> <i class='fa fa-fighter-jet'></i>"
             +"<div class='appbut' onclick=\"oEMU.component.CPU.WASM6502.cancel();\" style='text-align:center;float:right'>x</div></div>"
             +"<div style='display:flex;gap:3px;align-items:end;margin-top:4px'>"
-              +"<label>Engage<br><input id='wasm_start' size='5' placeholder='immediate' style='width:55px;padding:2px'></label>"
+              +"<label>Engage<br><input id='wasm_start' size='5' value='FD1D' placeholder='immediate' style='width:55px;padding:2px'></label>"
               +"<label>Escape<br><input id='wasm_stop' size='5' placeholder='manual' style='width:55px;padding:2px'></label>"
               +"<label>Chunk (M)<br><span style='display:flex;gap:3px;align-items:center'><input id='wasm_chunk' size='5' value='50' title='Millions of instructions per WASM chunk. Editable while idle or paused; Resume applies the new value.' style='width:42px;padding:2px'><span id='wasm_ui_fps' title='WASM register/progress UI refresh rate' style='font-size:9px;white-space:nowrap'>2 fps</span></span></label>"
               +"<label>Limit<br><input id='wasm_limit' size='6' value='0' title='0 = unlimited' style='width:52px;padding:2px'></label>"
