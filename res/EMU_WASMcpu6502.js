@@ -69,7 +69,7 @@ function EMU_WASMcpu6502()
     // Chunk size used by the currently executing WASM segment.
     // It is latched when Run/Resume starts, so editing the UI cannot alter
     // an in-flight run.  A new value is picked up after Pause -> Resume.
-    var runChunkInstructions=500000000;
+    var runChunkInstructions=50000000;
     var sourceImage=null;
     var lastActivityLog=null;
     var activityLogger=null;
@@ -90,6 +90,7 @@ function EMU_WASMcpu6502()
     var progressLastValue=null;
     var chunkFps=0;
     var chunkFpsLastMs=null;
+    const APPLE2_6502_MIPS=0.43;
 
     function $(id) { return typeof(document)!="undefined" ? document.getElementById(id) : null; }
     function hex(v,n) { return "$"+(Number(v)>>>0).toString(16).toUpperCase().padStart(n,"0"); }
@@ -142,6 +143,7 @@ function EMU_WASMcpu6502()
         chunkFps=0;
         chunkFpsLastMs=phase==="running" ? performance.now() : null;
         updateUiFpsLabel();
+        if(phase==="running") updateWasmSpeedFactorIndicator();
     }
 
     function recordChunkFrame()
@@ -157,6 +159,7 @@ function EMU_WASMcpu6502()
         }
         chunkFpsLastMs=now;
         updateUiFpsLabel();
+        updateWasmSpeedFactorIndicator();
     }
 
     function updateUiFpsLabel()
@@ -366,6 +369,33 @@ function EMU_WASMcpu6502()
     // x72 remains meaningful for the paced JavaScript emulator. While WASM
     // owns the CPU there is no selected-clock throttle, so show infinity and
     // restore the exact previous indicator state on pause/handback.
+
+    function updateWasmSpeedFactorIndicator()
+    {
+        if(phase!=="running") return;
+        var indicator=$("slider_1v");
+        if(!indicator) return;
+
+        var fps=Number.isFinite(chunkFps)&&chunkFps>0?chunkFps:0;
+        var mips=(runChunkInstructions/1000000)*fps;
+        var factor=mips/APPLE2_6502_MIPS;
+
+        if(fps<=0||!Number.isFinite(factor))
+        {
+            indicator.innerHTML="x-- <i class='fa fa-fighter-jet' title='WASM accelerator'></i>";
+            indicator.title="WASM accelerator running; waiting for the first completed chunk to estimate CPU speed.";
+        }
+        else
+        {
+            var shown=Math.max(1,Math.round(factor));
+            indicator.innerHTML="x"+shown+" <i class='fa fa-fighter-jet' title='WASM accelerator'></i>";
+            indicator.title="Estimated WASM CPU speed: x"+shown
+                +" ("+mips.toFixed(1)+" MIPS from "+(runChunkInstructions/1000000).toFixed(0)
+                +"M instructions/chunk × "+fps.toFixed(2)+" fps; Apple II baseline "+APPLE2_6502_MIPS+" MIPS).";
+        }
+        indicator.setAttribute("aria-label",indicator.title);
+    }
+
     function setWasmSpeedIndicator(active)
     {
         var indicator=$("slider_1v");
@@ -386,9 +416,7 @@ function EMU_WASMcpu6502()
                 };
             }
 
-            indicator.innerHTML="&infin; <i class='fa fa-fighter-jet' title='WASM accelerator'></i>";
-            indicator.title="CPU speed: "+String.fromCharCode(0x221e)+". WASM accelerator is running unthrottled.";
-            indicator.setAttribute("aria-label",indicator.title);
+            updateWasmSpeedFactorIndicator();
             indicator.style.backgroundColor="";
             indicator.style.color="";
             indicator.style.borderColor="";
@@ -851,7 +879,7 @@ function EMU_WASMcpu6502()
             +"<div style='display:flex;gap:3px;align-items:end;margin-top:4px'>"
               +"<label>Start<br><input id='wasm_start' size='5' placeholder='immediate' style='width:55px;padding:2px'></label>"
               +"<label>Stop/escape<br><input id='wasm_stop' size='5' placeholder='manual' style='width:55px;padding:2px'></label>"
-              +"<label>Chunk (M)<br><span style='display:flex;gap:3px;align-items:center'><input id='wasm_chunk' size='5' value='500' title='Millions of instructions per WASM chunk. Editable while idle or paused; Resume applies the new value.' style='width:42px;padding:2px'><span id='wasm_ui_fps' title='WASM register/progress UI refresh rate' style='font-size:9px;white-space:nowrap'>2 fps</span></span></label>"
+              +"<label>Chunk (M)<br><span style='display:flex;gap:3px;align-items:center'><input id='wasm_chunk' size='5' value='50' title='Millions of instructions per WASM chunk. Editable while idle or paused; Resume applies the new value.' style='width:42px;padding:2px'><span id='wasm_ui_fps' title='WASM register/progress UI refresh rate' style='font-size:9px;white-space:nowrap'>2 fps</span></span></label>"
               +"<label>Limit<br><input id='wasm_limit' size='6' value='0' title='0 = unlimited' style='width:52px;padding:2px'></label>"
             +"</div>"
             +"<div style='display:grid;grid-template-columns:62px 1fr;gap:4px;align-items:end;margin-top:4px'>"
