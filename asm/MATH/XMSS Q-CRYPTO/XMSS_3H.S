@@ -2,7 +2,7 @@
 ; XMSS_TREEHASH - XMSS randomized tree hashing and L-tree compression
 ; Apple II+ / 6502, ASM_core.js compatible
 ;
-; Load address: $6000
+; Load address: $4000
 ;
 ; This standalone module embeds XMSS_HASH and WOTS+ Stages 1-2, and adds:
 ;
@@ -70,7 +70,7 @@
 ; need to stream messages larger than 65535 bytes in several chunks.
 ; =====================================================================
 
-                .ORG $6000
+                .ORG $4000
 
 HOME            = $FC58
 COUT            = $FDED
