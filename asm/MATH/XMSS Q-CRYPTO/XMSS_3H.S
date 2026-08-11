@@ -1,5 +1,5 @@
 ; =====================================================================
-; XMSS_LTREEHASH - XMSS randomized tree hashing and L-tree compression
+; XMSS_TREEHASH - XMSS randomized tree hashing and L-tree compression
 ; Apple II+ / 6502, ASM_core.js compatible
 ;
 ; Load address: $6000

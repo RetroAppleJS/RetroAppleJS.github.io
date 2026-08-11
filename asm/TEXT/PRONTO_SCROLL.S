@@ -2,7 +2,7 @@
 ; PRONTO_SCROLL V0.23
 ; Apple II / II+ + DOS 3.3 / ProntoDOS resident text scrollback experiment
 ;
-; BRUN load address: $8000
+; BRUN load address: $8D2F (L$2D1)
 ;
 ; USER INTERFACE
 ;   Normal Apple II editing is unchanged.
@@ -38,6 +38,7 @@
 ;     invalidate the installation.
 ; ============================================================================
 
+                ORG $8D2F
                 ORG $8000
 
 ; ----------------------------------------------------------------------------
