@@ -2,7 +2,7 @@
 ; PRONTO_SCROLL V0.23
 ; Apple II / II+ + DOS 3.3 / ProntoDOS resident text scrollback experiment
 ;
-; BRUN load address: $8D2F (L$2D1)
+; BRUN load address: $8D00 (L$2D1)
 ;
 ; USER INTERFACE
 ;   Normal Apple II editing is unchanged.
@@ -21,7 +21,7 @@
 ;   $0BE8-$0BEE   Resident state variables
 ;   $0BEE-$0BFF   Unused
 ;   $0C01-...     Applesoft program text (relocated from $0801)
-;   $8000-...     resident patch code
+;   $8D00-...     resident patch code
 ;
 ; TEXT page 1 itself is the 24-line viewport.  While browsing, each ring slot
 ; temporarily holds the live row displaced from the opposite edge.  I and M
@@ -38,8 +38,7 @@
 ;     invalidate the installation.
 ; ============================================================================
 
-                ORG $8D2F
-                ORG $8000
+                ORG $8D00
 
 ; ----------------------------------------------------------------------------
 ; Apple II monitor / Applesoft zero-page variables
