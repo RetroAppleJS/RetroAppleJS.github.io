@@ -2,8 +2,8 @@
 ; XMSS_TREEHASH1024_O - full height-10 XMSS tree generator
 ; Apple II+ / 6502, ASM_core.js compatible
 ;
-; Load address: A$4000 L$3920
-; Exit address: $52C7
+; Load address: A$4000 L$3C34
+; Exit address: $5357
 ; The assembled image must remain below XMSS_WASM_PROGRESS at $7FFF.
 ;
 ; This standalone module embeds XMSS_HASH and WOTS+ Stages 1-2, and adds:
@@ -96,6 +96,49 @@ XMSS_N          = 32
 ; Values $00..$FF represent 0..100% of a full 1024-leaf build.
 XMSS_WASM_PROGRESS = $7FFF
 
+; ---------------------------------------------------------------------
+; Fixed XMSS key/signing-state handoff ABI.
+;
+; These addresses deliberately live outside the assembled program image.
+; A separately BRUN signature generator may therefore use the same fixed
+; addresses without depending on this program's internal symbol layout.
+;
+; Immutable key record: $8C00..$8C8F
+; Dedicated mutable idx: $8CF0..$8CF3 (big-endian, RFC serialization)
+;
+; $8C00..$8C03  magic "XMSS"
+; $8C04..$8C07  RFC 8391 parameter identifier $00000001
+; $8C08          local ABI version ($01)
+; $8C09          flags; bit 0 = complete/ready
+; $8C0A..$8C0F  reserved, zero
+; $8C10..$8C2F  MASTER_SK_SEED / S
+; $8C30..$8C4F  SK_PRF
+; $8C50..$8C6F  PUB_SEED
+; $8C70..$8C8F  ROOT
+;
+; idx is intentionally not part of the immutable key record.  A future
+; persistence helper can save/restore the key and idx as separate objects.
+; ---------------------------------------------------------------------
+
+XMSS_KEY_BASE           = $8C00
+XMSS_KEY_MAGIC          = $8C00
+XMSS_KEY_OID            = $8C04
+XMSS_KEY_ABI_VERSION    = $8C08
+XMSS_KEY_FLAGS          = $8C09
+XMSS_KEY_RESERVED       = $8C0A
+XMSS_KEY_MASTER_SK_SEED = $8C10
+XMSS_KEY_SK_PRF         = $8C30
+XMSS_KEY_PUB_SEED       = $8C50
+XMSS_KEY_ROOT           = $8C70
+XMSS_KEY_END            = $8C90
+XMSS_KEY_READY          = $01
+
+XMSS_IDX                = $8CF0
+XMSS_IDX_0              = $8CF0
+XMSS_IDX_1              = $8CF1
+XMSS_IDX_2              = $8CF2
+XMSS_IDX_3              = $8CF3
+
 ; =====================================================================
 ; XMSS TREEHASH1024 ENTRY
 ;
@@ -181,6 +224,7 @@ TREEHASH1024_COMPUTE_OK
 ;
 ; Inputs:
 ;   XMSS_MASTER_SK_SEED    32 bytes
+;   XMSS_SK_PRF            32 bytes (not used by TreeHash, exported for signer)
 ;   WOTS_PUB_SEED          32 bytes
 ;   XMSS_TREE_TARGET_LO/HI target leaf, 0..1023
 ;
@@ -194,8 +238,15 @@ TREEHASH1024_COMPUTE_OK
 ; It advances from $00 to $FF, one step per four completed leaves, and
 ; therefore maps directly to a generic 0..255 progress monitor.
 
+XMSS_KEYGEN_RUN
 XMSS_TREEHASH1024_RUN
                 CLD
+
+                ; Invalidate any prior RAM handoff before starting a new key.
+                ; XMSS_KEY_EXPORT_FIXED sets READY only after the root and all
+                ; immutable key fields have been copied successfully.
+                LDA #$00
+                STA XMSS_KEY_FLAGS
 
                 LDA #$00
                 STA XMSS_WASM_PROGRESS
@@ -228,6 +279,79 @@ XMSS_TREEHASH1024_RUN
 XMSS_TREEHASH1024_RUN_FAST_OK
                 LDA #$00
                 STA XMSS_FAST_MODE
+                JSR XMSS_KEY_EXPORT_FIXED
+                CLC
+                RTS
+
+; ---------------------------------------------------------------------
+; Export the completed immutable XMSS key to the fixed RAM handoff block
+; and initialize the dedicated signing index.  READY is written last.
+;
+; The signature generator only needs this stable ABI; it must not depend
+; on XMSS_MASTER_SK_SEED, WOTS_PUB_SEED or XMSS_TREE_ROOT moving when this
+; source is edited/reassembled.
+; ---------------------------------------------------------------------
+
+XMSS_KEY_EXPORT_FIXED
+                LDA #$00
+                STA XMSS_KEY_FLAGS
+
+                ; Magic "XMSS".
+                LDA #$58
+                STA XMSS_KEY_MAGIC
+                LDA #$4D
+                STA XMSS_KEY_MAGIC+1
+                LDA #$53
+                STA XMSS_KEY_MAGIC+2
+                STA XMSS_KEY_MAGIC+3
+
+                ; RFC 8391 identifier 0x00000001 = XMSS-SHA2_10_256.
+                LDA #$00
+                STA XMSS_KEY_OID
+                STA XMSS_KEY_OID+1
+                STA XMSS_KEY_OID+2
+                LDA #$01
+                STA XMSS_KEY_OID+3
+
+                LDA #$01
+                STA XMSS_KEY_ABI_VERSION
+
+                ; Keep the reserved bytes deterministic for RAM/disk images.
+                LDX #$00
+                LDA #$00
+XMSS_KEY_EXPORT_CLEAR_RESERVED
+                STA XMSS_KEY_RESERVED,X
+                INX
+                CPX #$06
+                BNE XMSS_KEY_EXPORT_CLEAR_RESERVED
+
+                ; Copy all immutable material in one 32-byte pass.
+                LDX #$00
+XMSS_KEY_EXPORT_COPY
+                LDA XMSS_MASTER_SK_SEED,X
+                STA XMSS_KEY_MASTER_SK_SEED,X
+                LDA XMSS_SK_PRF,X
+                STA XMSS_KEY_SK_PRF,X
+                LDA WOTS_PUB_SEED,X
+                STA XMSS_KEY_PUB_SEED,X
+                LDA XMSS_TREE_ROOT,X
+                STA XMSS_KEY_ROOT,X
+                INX
+                CPX #32
+                BNE XMSS_KEY_EXPORT_COPY
+
+                ; Dedicated RFC-sized signing index, big-endian.
+                ; $00000000 selects WOTS leaf 0 for the first signature.
+                LDA #$00
+                STA XMSS_IDX_0
+                STA XMSS_IDX_1
+                STA XMSS_IDX_2
+                STA XMSS_IDX_3
+
+                ; Commit/ready marker is deliberately the final write.
+                LDA #XMSS_KEY_READY
+                STA XMSS_KEY_FLAGS
+
                 CLC
                 RTS
 
@@ -319,9 +443,14 @@ XMSS1024_COMPARE_AUTH_FAIL
                 STA TEST_STATUS
                 RTS
 
-; Print all ten authentication nodes.  Each node is copied temporarily to
-; XMSS_RESULT so the existing 32-byte formatter remains the single output
-; implementation.
+; Print all ten authentication nodes compactly.  Each 32-byte node uses
+; two 16-byte rows.  The level marker is appended to the second row:
+;
+;   67C8B32B 01025723 1C1DCE19 0657674C
+;   67EF6F45 8698B30E 2B7CDCE8 80902B7C L00
+;
+; This saves one screen row per authentication node while leaving the
+; generic PRINT_RESULT formatter unchanged for roots and diagnostics.
 
 XMSS1024_PRINT_AUTH_PATH
                 LDA #<TREEHASH1024_AUTH_TEXT
@@ -334,16 +463,6 @@ XMSS1024_PRINT_AUTH_PATH
                 STA XMSS1024_PRINT_LEVEL
 
 XMSS1024_PRINT_AUTH_LOOP
-                LDA #<TREEHASH1024_LEVEL_TEXT
-                STA STR_PTR
-                LDA #>TREEHASH1024_LEVEL_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-
-                LDA XMSS1024_PRINT_LEVEL
-                JSR PRBYTE
-                JSR CROUT
-
                 LDA XMSS1024_PRINT_LEVEL
                 JSR XMSS_AUTH_SET_SOURCE
                 LDY #$00
@@ -355,12 +474,47 @@ XMSS1024_PRINT_AUTH_COPY
                 CPY #32
                 BNE XMSS1024_PRINT_AUTH_COPY
 
-                JSR PRINT_RESULT
+                JSR XMSS1024_PRINT_AUTH_RESULT
                 INC XMSS1024_PRINT_LEVEL
                 LDA XMSS1024_PRINT_LEVEL
                 CMP #10
                 BNE XMSS1024_PRINT_AUTH_LOOP
                 RTS
+
+; Compact 32-byte formatter used only for authentication nodes.
+; The existing byte grouping leaves column 37 free after byte 32, so
+; appending "L" plus PRBYTE(level) fills the Apple II 40-column row.
+
+XMSS1024_PRINT_AUTH_RESULT
+                LDX #$00
+
+XMSS1024_PRINT_AUTH_RESULT_LOOP
+                LDA XMSS_RESULT,X
+                JSR PRBYTE
+                INX
+
+                TXA
+                AND #$03
+                BNE XMSS1024_PRINT_AUTH_NO_SPACE
+                LDA #$A0
+                JSR COUT
+
+XMSS1024_PRINT_AUTH_NO_SPACE
+                CPX #$10
+                BEQ XMSS1024_PRINT_AUTH_NEW_ROW
+                CPX #$20
+                BNE XMSS1024_PRINT_AUTH_RESULT_LOOP
+
+                LDA #$CC
+                JSR COUT
+                LDA XMSS1024_PRINT_LEVEL
+                JSR PRBYTE
+                JSR CROUT
+                RTS
+
+XMSS1024_PRINT_AUTH_NEW_ROW
+                JSR CROUT
+                JMP XMSS1024_PRINT_AUTH_RESULT_LOOP
 
 
 ; =====================================================================
@@ -4642,6 +4796,10 @@ INIT_TREEHASH_SEED_LOOP
                 CLC
                 ADC #$80
                 STA XMSS_MASTER_SK_SEED,X
+                TXA
+                CLC
+                ADC #$A0
+                STA XMSS_SK_PRF,X
                 INX
                 CPX #32
                 BNE INIT_TREEHASH_SEED_LOOP
@@ -4822,9 +4980,6 @@ TREEHASH1024_AUTH_CHECK_TEXT
 TREEHASH1024_AUTH_TEXT
                 .BYTE 13,"AUTHENTICATION PATH (10 NODES):",13,0
 
-TREEHASH1024_LEVEL_TEXT
-                .BYTE "LEVEL $",0
-
 TREEHASH1024_FAIL_TEXT
                 .BYTE 13,"TREEHASH1024 FAILED",13,0
 
@@ -4918,6 +5073,12 @@ XMSS1024_PRINT_LEVEL
                 .BYTE $00
 
 XMSS_MASTER_SK_SEED
+                .RES 32
+
+; Signature-randomization secret.  It does not affect TreeHash, but key
+; generation exports it so the later signature generator has the complete
+; immutable private-key material available through the fixed RAM ABI.
+XMSS_SK_PRF
                 .RES 32
 
 XMSS_TREE_START_LO
