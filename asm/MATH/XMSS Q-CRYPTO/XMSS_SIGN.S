@@ -1,5 +1,5 @@
 ; =====================================================================
-; XMSS_TREEHASH1024_O - full height-10 XMSS tree generator
+; XMSS_SIGN - full height-10 XMSS tree generator
 ; Apple II+ / 6502, ASM_core.js compatible
 ;
 ; Load address: A$4000 L$3C20
