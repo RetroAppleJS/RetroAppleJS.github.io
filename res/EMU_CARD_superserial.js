@@ -29,6 +29,7 @@ function SuperSerialCard()
     this.id = {
          "PCODE":"SSC"
         ,"icon":"fa fa-terminal"
+        //,"icon":"fa fa-exchange-alt"
         ,"description":"Apple II Super Serial Card"
     };
 
