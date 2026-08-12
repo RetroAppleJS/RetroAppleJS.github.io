@@ -1,9 +1,12 @@
 ; =====================================================================
-; XMSS_SIGN - full height-10 XMSS tree generator
+; XMSS_SIGN - XMSS-SHA2_10_256 signature generator
 ; Apple II+ / 6502, ASM_core.js compatible
 ;
-; Load address: A$4000 L$3E1C
+; Load address: A$4000
 ; The assembled image must remain below XMSS_WASM_PROGRESS at $7FFF.
+;
+; This signer does NOT rebuild the 1024-leaf XMSS tree.  It consumes
+; the fixed key/state ABI, a preloaded 320-byte AUTH[idx], and a message.
 ;
 ; This standalone module embeds XMSS_HASH and WOTS+ Stages 1-2, and adds:
 ;
@@ -52,7 +55,7 @@
 ; The implementation targets n=32, as used by XMSS-SHA2_10_256.
 ; All externally serialized XMSS fields are big-endian byte strings.
 ;
-; BRUN XMSS_TREEHASH1024 builds a deterministic 1024-leaf development tree.
+; BRUN XMSS_SIGN signs the embedded development message "abc".
 ;
 ; Public fixed buffers:
 ;
@@ -96,47 +99,60 @@ XMSS_N          = 32
 XMSS_WASM_PROGRESS = $7FFF
 
 ; ---------------------------------------------------------------------
-; Fixed XMSS key/signing-state handoff ABI.
+; Fixed XMSS key/signing-state handoff ABI v2.
 ;
-; These addresses deliberately live outside the assembled program image.
-; A separately BRUN signature generator may therefore use the same fixed
-; addresses without depending on this program's internal symbol layout.
+; The complete 512-byte state image occupies $8B00..$8CFF:
 ;
-; Immutable key record: $8C00..$8C8F
-; Dedicated mutable idx: $8CF0..$8CF3 (big-endian, RFC serialization)
+;   BSAVE KEY,A$8B00,L$200
 ;
-; $8C00..$8C03  magic "XMSS"
-; $8C04..$8C07  RFC 8391 parameter identifier $00000001
-; $8C08          local ABI version ($01)
-; $8C09          flags; bit 0 = complete/ready
-; $8C0A..$8C0F  reserved, zero
-; $8C10..$8C2F  MASTER_SK_SEED / S
-; $8C30..$8C4F  SK_PRF
-; $8C50..$8C6F  PUB_SEED
-; $8C70..$8C8F  ROOT
-;
-; idx is intentionally not part of the immutable key record.  A future
-; persistence helper can save/restore the key and idx as separate objects.
+; $8B00..$8B03  magic "XMSS"
+; $8B04..$8B07  RFC 8391 parameter identifier $00000001
+; $8B08          local ABI version ($02)
+; $8B09          flags: bit 0 KEY_READY, bit 1 AUTH_READY
+; $8B0A..$8B0F  reserved, zero
+; $8B10..$8B2F  MASTER_SK_SEED / S
+; $8B30..$8B4F  SK_PRF
+; $8B50..$8B6F  PUB_SEED
+; $8B70..$8B8F  ROOT
+; $8B90..$8CCF  authentication path, 10 * 32 bytes
+; $8CD0..$8CD3  AUTH_IDX, big-endian
+; $8CD4..$8CEF  reserved
+; $8CF0..$8CF3  next signing idx, big-endian
+; $8CF4..$8CFF  reserved
 ; ---------------------------------------------------------------------
 
-XMSS_KEY_BASE           = $8C00
-XMSS_KEY_MAGIC          = $8C00
-XMSS_KEY_OID            = $8C04
-XMSS_KEY_ABI_VERSION    = $8C08
-XMSS_KEY_FLAGS          = $8C09
-XMSS_KEY_RESERVED       = $8C0A
-XMSS_KEY_MASTER_SK_SEED = $8C10
-XMSS_KEY_SK_PRF         = $8C30
-XMSS_KEY_PUB_SEED       = $8C50
-XMSS_KEY_ROOT           = $8C70
-XMSS_KEY_END            = $8C90
+XMSS_KEY_BASE           = $8B00
+XMSS_KEY_MAGIC          = $8B00
+XMSS_KEY_OID            = $8B04
+XMSS_KEY_ABI_VERSION    = $8B08
+XMSS_KEY_FLAGS          = $8B09
+XMSS_KEY_RESERVED       = $8B0A
+XMSS_KEY_MASTER_SK_SEED = $8B10
+XMSS_KEY_SK_PRF         = $8B30
+XMSS_KEY_PUB_SEED       = $8B50
+XMSS_KEY_ROOT           = $8B70
+
+XMSS_AUTH_PATH_ABI      = $8B90
+XMSS_AUTH_IDX           = $8CD0
+XMSS_AUTH_IDX_0         = $8CD0
+XMSS_AUTH_IDX_1         = $8CD1
+XMSS_AUTH_IDX_2         = $8CD2
+XMSS_AUTH_IDX_3         = $8CD3
+XMSS_STATE_RESERVED     = $8CD4
+
 XMSS_KEY_READY          = $01
+XMSS_AUTH_READY         = $02
 
 XMSS_IDX                = $8CF0
 XMSS_IDX_0              = $8CF0
 XMSS_IDX_1              = $8CF1
 XMSS_IDX_2              = $8CF2
 XMSS_IDX_3              = $8CF3
+XMSS_TAIL_RESERVED      = $8CF4
+
+XMSS_ABI_END            = $8D00
+XMSS_ABI_LENGTH_LO      = $00
+XMSS_ABI_LENGTH_HI      = $02
 
 ; ---------------------------------------------------------------------
 ; Fixed serialized XMSS-SHA2_10_256 signature output.
@@ -149,17 +165,17 @@ XMSS_IDX_3              = $8CF3
 ;          ----
 ;          2500 bytes = $09C4
 ;
-; This lives immediately below the fixed $8C00 key ABI page.  WOTS_SIGN
+; This lives below the fixed $8B00-$8CFF ABI block.  WOTS_SIGN
 ; is pointed directly at XMSS_SIGNATURE_WOTS so its 2144-byte result does
 ; not need to be copied after generation.
 ; ---------------------------------------------------------------------
 
-XMSS_SIGNATURE_BASE      = $8200
-XMSS_SIGNATURE_IDX       = $8200
-XMSS_SIGNATURE_R         = $8204
-XMSS_SIGNATURE_WOTS      = $8224
-XMSS_SIGNATURE_AUTH      = $8A84
-XMSS_SIGNATURE_END       = $8BC4
+XMSS_SIGNATURE_BASE      = $8000
+XMSS_SIGNATURE_IDX       = $8000
+XMSS_SIGNATURE_R         = $8004
+XMSS_SIGNATURE_WOTS      = $8024
+XMSS_SIGNATURE_AUTH      = $8884
+XMSS_SIGNATURE_END       = $89C4
 XMSS_SIGNATURE_LEN_LO    = $C4
 XMSS_SIGNATURE_LEN_HI    = $09
 
@@ -169,14 +185,14 @@ XMSS_SIGN_ERR_OID        = $02
 XMSS_SIGN_ERR_VERSION    = $03
 XMSS_SIGN_ERR_NOT_READY  = $04
 XMSS_SIGN_ERR_EXHAUSTED  = $05
-XMSS_SIGN_ERR_TREEHASH   = $06
-XMSS_SIGN_ERR_ROOT       = $07
+XMSS_SIGN_ERR_AUTH_READY = $06
+XMSS_SIGN_ERR_AUTH_IDX   = $07
 XMSS_SIGN_ERR_WOTS       = $08
 
 ; =====================================================================
 ; XMSS SIGNATURE GENERATOR ENTRY
 ;
-; Standalone signer consuming only the fixed RAM handoff ABI at $8C00
+; Standalone signer consuming only the fixed RAM handoff ABI at $8B00
 ; and the dedicated mutable idx at $8CF0.  It does not regenerate or
 ; modify immutable key material.
 ;
@@ -188,21 +204,20 @@ XMSS_SIGN_ERR_WOTS       = $08
 ;   Caller supplies XMSS_MSG_PTR and XMSS_MSG_COUNT.
 ;
 ; Output:
-;   $8200..$8BC3 = 2500-byte RFC 8391 XMSS signature
+;   $8000..$89C3 = 2500-byte RFC 8391 XMSS signature
 ;   carry clear  = success
 ;   carry set    = failure, XMSS_SIGN_STATUS contains error code
 ;
 ; Stateful rule:
 ;   the current idx is copied to XMSS_SIGN_IDX and incremented in the
-;   fixed ABI BEFORE TreeHash/WOTS signing begins.  A later disk helper
+;   fixed ABI BEFORE WOTS signing begins.  A later disk helper
 ;   must persist the updated $8CF0 state at the marked commit hook before
 ;   a signature is externally released.
 ;
-; Authentication-path note:
-;   this first separated signer recomputes the height-10 tree to obtain
-;   AUTH[idx].  That is correct but intentionally expensive.  A later
-;   traversal/disk layer can replace only that part without changing the
-;   fixed key ABI or serialized signature layout.
+; Authentication-path input:
+;   AUTH[idx] must already be present at $8B90..$8CCF.  The signer never
+;   invokes TreeHash.  A disk/tree/traversal helper may populate that
+;   transient input without changing this signer or the persistent ABI.
 ; =====================================================================
 
 START
@@ -251,13 +266,13 @@ XMSS_SIGN_START
 ; XMSS_SIGN_RUN
 ;
 ; Inputs:
-;   fixed key ABI       $8C00..$8C8F
+;   fixed ABI           $8B00..$8CFF
 ;   mutable idx         $8CF0..$8CF3, big-endian
 ;   XMSS_MSG_PTR        message pointer
 ;   XMSS_MSG_COUNT      16-bit little-endian message length
 ;
 ; Output:
-;   fixed signature     $8200..$8BC3
+;   fixed signature     $8000..$89C3
 ;   XMSS_SIGN_STATUS    zero on success
 ;   carry clear         success
 ;   carry set           failure
@@ -289,49 +304,25 @@ XMSS_SIGN_ABI_OK
                 ; before the resulting signature may be released.
                 ; -----------------------------------------------------------------
 
-                JSR XMSS_SIGN_LOAD_TREE_KEY
+                JSR XMSS_SIGN_LOAD_KEY
 
-                ; Recompute AUTH[idx] with the existing optimized real TreeHash.
-                ; This is the only deliberately expensive part of the first signer.
-                LDA #$00
-                STA XMSS_TREE_START_LO
-                STA XMSS_TREE_START_HI
-                LDA #10
-                STA XMSS_TREE_HEIGHT_TARGET
-                LDA #$01
-                STA XMSS_TREE_LEAF_MODE
-                STA XMSS_TREE_CAPTURE_AUTH
-                LDA XMSS_SIGN_IDX+3
-                STA XMSS_TREE_TARGET_LO
-                LDA XMSS_SIGN_IDX+2
-                STA XMSS_TREE_TARGET_HI
-
-                JSR XMSS_ADRS_CLEAR
+                ; Enable cached PRF states for PUB_SEED, MASTER_SK_SEED
+                ; and the current per-leaf WOTS seed.
                 LDA #$01
                 STA XMSS_FAST_MODE
-                JSR XMSS_FAST_PRECOMPUTE_TREE_STATES
-                JSR XMSS_TREEHASH
-                BCC XMSS_SIGN_TREE_OK
+                JSR XMSS_FAST_PRECOMPUTE_SIGN_STATES
 
-                LDA #XMSS_SIGN_ERR_TREEHASH
-                JMP XMSS_SIGN_FAIL
+                LDA #$20
+                STA XMSS_WASM_PROGRESS
 
-XMSS_SIGN_TREE_OK
-                JSR XMSS_SIGN_COMPARE_ROOT
-                BCC XMSS_SIGN_ROOT_OK
-                LDA #XMSS_SIGN_ERR_ROOT
-                JMP XMSS_SIGN_FAIL
-
-XMSS_SIGN_ROOT_OK
-                ; Compute R = PRF(SK_PRF, toByte(idx,32)).
+                ; R = PRF(SK_PRF, toByte(idx,32)).
                 JSR XMSS_SIGN_COMPUTE_R
 
-                ; Compute M' = H_msg(R || ROOT || toByte(idx,32), message).
+                ; M' = H_msg(R || ROOT || toByte(idx,32), message).
                 JSR XMSS_SIGN_BUILD_HMSG_KEY
                 JSR XMSS_H_MSG
 
-                ; WOTS+ signs M'.  Preserve the digest before deriving S_ots,
-                ; because the derivation uses XMSS_RESULT as its PRF result.
+                ; Preserve M' because S_ots derivation reuses XMSS_RESULT.
                 LDX #$00
 XMSS_SIGN_COPY_DIGEST
                 LDA XMSS_RESULT,X
@@ -340,23 +331,21 @@ XMSS_SIGN_COPY_DIGEST
                 CPX #32
                 BNE XMSS_SIGN_COPY_DIGEST
 
-                ; Derive S_ots for the reserved leaf.  With FAST_MODE still set,
-                ; this also installs the per-leaf cached WOTS PRF state.
+                ; Existing WOTS/ADRS helpers use a 16-bit leaf index.
                 LDA XMSS_SIGN_IDX+3
                 STA XMSS_TREE_LEAF_INDEX_LO
                 LDA XMSS_SIGN_IDX+2
                 STA XMSS_TREE_LEAF_INDEX_HI
-                JSR XMSS_DERIVE_WOTS_SEED
 
-                ; Install OTS address = idx.
+                JSR XMSS_SIGN_DERIVE_WOTS_SEED
+
                 JSR XMSS_ADRS_CLEAR
                 LDA #$00
                 JSR XMSS_ADRS_SET_TYPE
                 JSR XMSS_VALUE32_SET_LEAF_INDEX
                 JSR XMSS_ADRS_SET_OTS
 
-                ; Write the WOTS signature directly into its final serialized
-                ; position at $8224; no 2144-byte post-copy is required.
+                ; Write WOTS directly into the final signature image.
                 LDA #<XMSS_SIGNATURE_WOTS
                 STA WOTS_SIGNATURE_PTR
                 LDA #>XMSS_SIGNATURE_WOTS
@@ -368,18 +357,20 @@ XMSS_SIGN_COPY_DIGEST
                 JMP XMSS_SIGN_FAIL
 
 XMSS_SIGN_WOTS_OK
-                ; Copy the already-captured 320-byte auth path into the final
-                ; signature image: 256 bytes followed by 64 bytes.
+                LDA #$E0
+                STA XMSS_WASM_PROGRESS
+
+                ; Copy preloaded AUTH[idx] directly into final signature.
                 LDX #$00
 XMSS_SIGN_COPY_AUTH_0_255
-                LDA XMSS_AUTH_PATH,X
+                LDA XMSS_AUTH_PATH_ABI,X
                 STA XMSS_SIGNATURE_AUTH,X
                 INX
                 BNE XMSS_SIGN_COPY_AUTH_0_255
 
                 LDX #$00
 XMSS_SIGN_COPY_AUTH_256_319
-                LDA XMSS_AUTH_PATH+256,X
+                LDA XMSS_AUTH_PATH_ABI+256,X
                 STA XMSS_SIGNATURE_AUTH+256,X
                 INX
                 CPX #64
@@ -428,7 +419,7 @@ XMSS_SIGN_VALIDATE_ABI
                 BNE XMSS_SIGN_BAD_OID
 
                 LDA XMSS_KEY_ABI_VERSION
-                CMP #$01
+                CMP #$02
                 BNE XMSS_SIGN_BAD_VERSION
 
                 LDA XMSS_KEY_FLAGS
@@ -442,6 +433,24 @@ XMSS_SIGN_VALIDATE_ABI
                 LDA XMSS_IDX_2
                 CMP #$04
                 BCS XMSS_SIGN_EXHAUSTED
+
+                LDA XMSS_KEY_FLAGS
+                AND #XMSS_AUTH_READY
+                BEQ XMSS_SIGN_AUTH_NOT_READY
+
+                ; AUTH_IDX must match the exact idx being consumed.
+                LDA XMSS_AUTH_IDX_0
+                CMP XMSS_IDX_0
+                BNE XMSS_SIGN_AUTH_IDX_BAD
+                LDA XMSS_AUTH_IDX_1
+                CMP XMSS_IDX_1
+                BNE XMSS_SIGN_AUTH_IDX_BAD
+                LDA XMSS_AUTH_IDX_2
+                CMP XMSS_IDX_2
+                BNE XMSS_SIGN_AUTH_IDX_BAD
+                LDA XMSS_AUTH_IDX_3
+                CMP XMSS_IDX_3
+                BNE XMSS_SIGN_AUTH_IDX_BAD
 
                 CLC
                 RTS
@@ -464,6 +473,14 @@ XMSS_SIGN_NOT_READY
 
 XMSS_SIGN_EXHAUSTED
                 LDA #XMSS_SIGN_ERR_EXHAUSTED
+                JMP XMSS_SIGN_VALIDATE_FAIL
+
+XMSS_SIGN_AUTH_NOT_READY
+                LDA #XMSS_SIGN_ERR_AUTH_READY
+                JMP XMSS_SIGN_VALIDATE_FAIL
+
+XMSS_SIGN_AUTH_IDX_BAD
+                LDA #XMSS_SIGN_ERR_AUTH_IDX
 
 XMSS_SIGN_VALIDATE_FAIL
                 STA XMSS_SIGN_STATUS
@@ -496,6 +513,11 @@ XMSS_SIGN_RESERVE_COPY
                 INC XMSS_IDX_0
 
 XMSS_SIGN_RESERVE_DONE
+                ; The bundled auth path has now been consumed.  Its bytes remain
+                ; intact for this signature, but it is stale for the next idx.
+                LDA XMSS_KEY_FLAGS
+                AND #$FD
+                STA XMSS_KEY_FLAGS
                 RTS
 
 ; ---------------------------------------------------------------------
@@ -503,36 +525,50 @@ XMSS_SIGN_RESERVE_DONE
 ; cryptographic work buffers.
 ; ---------------------------------------------------------------------
 
-XMSS_SIGN_LOAD_TREE_KEY
+XMSS_SIGN_LOAD_KEY
                 LDX #$00
-XMSS_SIGN_LOAD_TREE_KEY_LOOP
+XMSS_SIGN_LOAD_KEY_LOOP
                 LDA XMSS_KEY_MASTER_SK_SEED,X
                 STA XMSS_MASTER_SK_SEED,X
                 LDA XMSS_KEY_PUB_SEED,X
                 STA WOTS_PUB_SEED,X
                 INX
                 CPX #32
-                BNE XMSS_SIGN_LOAD_TREE_KEY_LOOP
+                BNE XMSS_SIGN_LOAD_KEY_LOOP
                 RTS
 
 ; ---------------------------------------------------------------------
-; Compare recomputed root with the immutable root stored in the key ABI.
+; Convert the current signer leaf index to the 4-byte big-endian value
+; expected by the existing ADRS setters.
 ; ---------------------------------------------------------------------
 
-XMSS_SIGN_COMPARE_ROOT
+XMSS_VALUE32_SET_LEAF_INDEX
+                LDA #$00
+                STA XMSS_VALUE32
+                STA XMSS_VALUE32+1
+                LDA XMSS_TREE_LEAF_INDEX_HI
+                STA XMSS_VALUE32+2
+                LDA XMSS_TREE_LEAF_INDEX_LO
+                STA XMSS_VALUE32+3
+                RTS
+
+; ---------------------------------------------------------------------
+; S_ots[idx] = PRF(MASTER_SK_SEED, toByte(idx,32)).
+; MASTER_SK_SEED's first SHA block is already cached.
+; ---------------------------------------------------------------------
+
+XMSS_SIGN_DERIVE_WOTS_SEED
+                JSR XMSS_PRF_MASTER_LEAF_FAST
+
                 LDX #$00
-XMSS_SIGN_COMPARE_ROOT_LOOP
-                LDA XMSS_TREE_ROOT,X
-                CMP XMSS_KEY_ROOT,X
-                BNE XMSS_SIGN_COMPARE_ROOT_FAIL
+XMSS_SIGN_DERIVE_COPY_LOOP
+                LDA XMSS_RESULT,X
+                STA WOTS_SK_SEED,X
                 INX
                 CPX #32
-                BNE XMSS_SIGN_COMPARE_ROOT_LOOP
-                CLC
-                RTS
+                BNE XMSS_SIGN_DERIVE_COPY_LOOP
 
-XMSS_SIGN_COMPARE_ROOT_FAIL
-                SEC
+                JSR XMSS_FAST_PRECOMPUTE_WOTS_STATE
                 RTS
 
 ; ---------------------------------------------------------------------
@@ -599,7 +635,7 @@ XMSS_SIGN_HMSG_COPY_INDEX
 
 ; ---------------------------------------------------------------------
 ; Development/report shell.  No signature bytes are printed in full; the
-; 2500-byte result remains at $8200 for monitor/emulator inspection.
+; 2500-byte result remains at $8000 for monitor/emulator inspection.
 ; ---------------------------------------------------------------------
 
 XMSS_SIGN_REPORT
@@ -675,13 +711,13 @@ XMSS_SIGN_REPORT_NEXT_IDX_LOOP
 
 XMSS_SIGN_TITLE_TEXT
                 .BYTE "XMSS SIGN / SHA2-10-256",13
-                .BYTE "FIXED KEY ABI $8C00 / IDX $8CF0",13
-                .BYTE "SIGNATURE $8200-$8BC3",13
+                .BYTE "KEY $8B00 IDX $8CF0 AUTH $8B90",13
+                .BYTE "SIGNATURE $8000-$89C3",13
                 .BYTE "WASM STOP/ESCAPE: $4003",13,13,0
 
 XMSS_SIGN_BEGIN_TEXT
                 .BYTE "SIGNING MESSAGE ABC...",13
-                .BYTE "RECOMPUTING AUTH PATH",13
+                .BYTE "USING ABI AUTH PATH",13
                 .BYTE "ENGAGE WASM ACCELERATOR NOW",13,0
 
 XMSS_SIGN_FAIL_TEXT
@@ -700,7 +736,7 @@ XMSS_SIGN_NEXT_IDX_TEXT
                 .BYTE "NEXT IDX $",0
 
 XMSS_SIGN_LOCATION_TEXT
-                .BYTE "2500 BYTES AT $8200-$8BC3",13,0
+                .BYTE "2500 BYTES AT $8000-$89C3",13,0
 
 XMSS_SIGN_TEST_MESSAGE
                 .BYTE $61,$62,$63
@@ -996,8 +1032,8 @@ XMSS_PRF_ADRS
                 JMP XMSS_SHA96_FINAL_PTR
 
 ; ---------------------------------------------------------------------
-; Cached PRF first-block states used only while XMSS_FAST_MODE is set.
-; The first block of these PRFs is constant over large parts of TreeHash:
+; Cached PRF first-block states used while XMSS_FAST_MODE is set.
+; The signer reuses these constant first blocks throughout WOTS signing:
 ;
 ;   PUB cache    = compress(IV, toByte(3,32) || PUB_SEED)
 ;   MASTER cache = compress(IV, toByte(3,32) || MASTER_SK_SEED)
@@ -1007,6 +1043,7 @@ XMSS_PRF_ADRS
 ; from two SHA-256 compressions to one.
 ; ---------------------------------------------------------------------
 
+XMSS_FAST_PRECOMPUTE_SIGN_STATES
 XMSS_FAST_PRECOMPUTE_TREE_STATES
                 JSR WOTS_COPY_PUB_SEED_TO_KEY
                 LDA #$03
@@ -1850,898 +1887,6 @@ WOTS_PK_FROM_SIG_LOOP
 
 WOTS_PK_FROM_SIG_FAILED
                 SEC
-                RTS
-
-; =====================================================================
-; XMSS RANDOMIZED TREE HASH AND L-TREE
-;
-; RFC 8391 Algorithm 7:
-;
-;   KEY  = PRF(PUB_SEED, ADRS with keyAndMask = 0)
-;   BM_0 = PRF(PUB_SEED, ADRS with keyAndMask = 1)
-;   BM_1 = PRF(PUB_SEED, ADRS with keyAndMask = 2)
-;   result = H(KEY, (LEFT XOR BM_0) || (RIGHT XOR BM_1))
-;
-; Input:
-;   XMSS_RAND_LEFT      32-byte left node
-;   XMSS_RAND_RIGHT     32-byte right node
-;   WOTS_PUB_SEED       32-byte public seed
-;   XMSS_ADRS           L-tree or hash-tree address
-;
-; Output:
-;   XMSS_RAND_RESULT    32-byte randomized hash
-;   XMSS_RESULT         same 32-byte value
-;
-; The caller selects ADRS type and the tree-specific fields. This routine
-; only changes keyAndMask.
-; =====================================================================
-
-XMSS_RAND_HASH
-                CLD
-
-                LDA #$00
-                JSR XMSS_VALUE32_SET_A
-                JSR XMSS_ADRS_SET_KEY_MASK
-                JSR XMSS_PRF_ADRS_DISPATCH
-
-                LDX #$00
-
-XMSS_RAND_SAVE_KEY_LOOP
-                LDA XMSS_RESULT,X
-                STA XMSS_RAND_KEY,X
-                INX
-                CPX #32
-                BNE XMSS_RAND_SAVE_KEY_LOOP
-
-                LDA #$01
-                JSR XMSS_VALUE32_SET_A
-                JSR XMSS_ADRS_SET_KEY_MASK
-                JSR XMSS_PRF_ADRS_DISPATCH
-
-                LDX #$00
-
-XMSS_RAND_MASK_LEFT_LOOP
-                LDA XMSS_RAND_LEFT,X
-                EOR XMSS_RESULT,X
-                STA XMSS_M64,X
-                INX
-                CPX #32
-                BNE XMSS_RAND_MASK_LEFT_LOOP
-
-                LDA #$02
-                JSR XMSS_VALUE32_SET_A
-                JSR XMSS_ADRS_SET_KEY_MASK
-                JSR XMSS_PRF_ADRS_DISPATCH
-
-                LDX #$00
-
-XMSS_RAND_MASK_RIGHT_LOOP
-                LDA XMSS_RAND_RIGHT,X
-                EOR XMSS_RESULT,X
-                STA XMSS_M64+32,X
-                INX
-                CPX #32
-                BNE XMSS_RAND_MASK_RIGHT_LOOP
-
-                LDX #$00
-
-XMSS_RAND_RESTORE_KEY_LOOP
-                LDA XMSS_RAND_KEY,X
-                STA XMSS_KEY,X
-                INX
-                CPX #32
-                BNE XMSS_RAND_RESTORE_KEY_LOOP
-
-                JSR XMSS_H
-
-                LDX #$00
-
-XMSS_RAND_COPY_RESULT_LOOP
-                LDA XMSS_RESULT,X
-                STA XMSS_RAND_RESULT,X
-                INX
-                CPX #32
-                BNE XMSS_RAND_COPY_RESULT_LOOP
-
-                CLC
-                RTS
-
-; Point XMSS_LTREE_PTR at the WOTS+ public-key element array selected by
-; WOTS_PUBLIC_KEY_PTR.
-
-XMSS_LTREE_USE_WOTS_PUBLIC_KEY
-                LDA WOTS_PUBLIC_KEY_PTR
-                STA XMSS_LTREE_PTR
-                LDA WOTS_PUBLIC_KEY_PTR+1
-                STA XMSS_LTREE_PTR+1
-                RTS
-
-; RFC 8391 Algorithm 8 for the fixed WOTSP-SHA2_256 length of 67.
-;
-; Input:
-;   WOTS_PUBLIC_KEY_PTR  points to 67 consecutive 32-byte PK elements
-;   WOTS_PUB_SEED        public seed
-;   XMSS_ADRS            type 1, with L-tree address already selected
-;
-; Output:
-;   XMSS_LTREE_LEAF      32-byte compressed leaf
-;   first 32 bytes at WOTS_PUBLIC_KEY_PTR also contain the leaf
-;
-; The public-key array is compressed in place.
-
-XMSS_LTREE
-                JSR XMSS_LTREE_USE_WOTS_PUBLIC_KEY
-                LDA #67
-                STA XMSS_LTREE_LEN
-                JMP XMSS_LTREE_CORE
-
-; General in-place L-tree compressor used by the self-test and by callers
-; that need to validate smaller trees.
-;
-; Input:
-;   XMSS_LTREE_PTR       points to XMSS_LTREE_LEN consecutive nodes
-;   XMSS_LTREE_LEN       node count, 1..255
-;   WOTS_PUB_SEED
-;   XMSS_ADRS            configured L-tree address
-;
-; Output:
-;   XMSS_LTREE_LEAF
-;   first node at XMSS_LTREE_PTR
-;   carry clear = success
-;   carry set   = zero input length
-
-XMSS_LTREE_CORE
-                CLD
-
-                LDA XMSS_LTREE_LEN
-                BNE XMSS_LTREE_LENGTH_OK
-                SEC
-                RTS
-
-XMSS_LTREE_LENGTH_OK
-                LDA #$00
-                STA XMSS_LTREE_HEIGHT
-                JSR XMSS_VALUE32_SET_A
-                JSR XMSS_ADRS_SET_TREE_HEIGHT
-
-XMSS_LTREE_LEVEL_LOOP
-                LDA XMSS_LTREE_LEN
-                CMP #$02
-                BCC XMSS_LTREE_DONE
-
-                LDA XMSS_LTREE_PTR
-                STA WOTS_SRC_PTR
-                STA WOTS_DST_PTR
-                LDA XMSS_LTREE_PTR+1
-                STA WOTS_SRC_PTR+1
-                STA WOTS_DST_PTR+1
-
-                LDA XMSS_LTREE_LEN
-                LSR
-                STA XMSS_LTREE_PAIR_COUNT
-
-                LDA #$00
-                STA XMSS_LTREE_PAIR_INDEX
-
-XMSS_LTREE_PAIR_LOOP
-                LDA XMSS_LTREE_PAIR_INDEX
-                CMP XMSS_LTREE_PAIR_COUNT
-                BEQ XMSS_LTREE_PAIRS_DONE
-
-                JSR XMSS_LTREE_LOAD_LEFT
-                JSR WOTS_ADVANCE_SOURCE_32
-                JSR XMSS_LTREE_LOAD_RIGHT
-                JSR WOTS_ADVANCE_SOURCE_32
-
-                LDA XMSS_LTREE_PAIR_INDEX
-                JSR XMSS_VALUE32_SET_A
-                JSR XMSS_ADRS_SET_TREE_INDEX
-
-                JSR XMSS_RAND_HASH
-                BCS XMSS_LTREE_FAIL
-
-                JSR XMSS_LTREE_STORE_RESULT
-                JSR WOTS_ADVANCE_DEST_32
-
-                INC XMSS_LTREE_PAIR_INDEX
-                JMP XMSS_LTREE_PAIR_LOOP
-
-XMSS_LTREE_PAIRS_DONE
-                LDA XMSS_LTREE_LEN
-                AND #$01
-                BEQ XMSS_LTREE_NO_ODD_NODE
-
-                JSR XMSS_LTREE_COPY_ODD_NODE
-                JSR WOTS_ADVANCE_DEST_32
-
-XMSS_LTREE_NO_ODD_NODE
-                LDA XMSS_LTREE_LEN
-                CLC
-                ADC #$01
-                LSR
-                STA XMSS_LTREE_LEN
-
-                INC XMSS_LTREE_HEIGHT
-                LDA XMSS_LTREE_HEIGHT
-                JSR XMSS_VALUE32_SET_A
-                JSR XMSS_ADRS_SET_TREE_HEIGHT
-                JMP XMSS_LTREE_LEVEL_LOOP
-
-XMSS_LTREE_DONE
-                LDA XMSS_LTREE_PTR
-                STA WOTS_SRC_PTR
-                LDA XMSS_LTREE_PTR+1
-                STA WOTS_SRC_PTR+1
-
-                LDY #$00
-
-XMSS_LTREE_COPY_LEAF_LOOP
-                LDA (WOTS_SRC_PTR),Y
-                STA XMSS_LTREE_LEAF,Y
-                INY
-                CPY #32
-                BNE XMSS_LTREE_COPY_LEAF_LOOP
-
-                CLC
-                RTS
-
-XMSS_LTREE_FAIL
-                SEC
-                RTS
-
-XMSS_LTREE_LOAD_LEFT
-                LDY #$00
-
-XMSS_LTREE_LOAD_LEFT_LOOP
-                LDA (WOTS_SRC_PTR),Y
-                STA XMSS_RAND_LEFT,Y
-                INY
-                CPY #32
-                BNE XMSS_LTREE_LOAD_LEFT_LOOP
-                RTS
-
-XMSS_LTREE_LOAD_RIGHT
-                LDY #$00
-
-XMSS_LTREE_LOAD_RIGHT_LOOP
-                LDA (WOTS_SRC_PTR),Y
-                STA XMSS_RAND_RIGHT,Y
-                INY
-                CPY #32
-                BNE XMSS_LTREE_LOAD_RIGHT_LOOP
-                RTS
-
-XMSS_LTREE_STORE_RESULT
-                LDY #$00
-
-XMSS_LTREE_STORE_RESULT_LOOP
-                LDA XMSS_RAND_RESULT,Y
-                STA (WOTS_DST_PTR),Y
-                INY
-                CPY #32
-                BNE XMSS_LTREE_STORE_RESULT_LOOP
-                RTS
-
-; The odd node is copied upward unchanged, as required by Algorithm 8.
-
-XMSS_LTREE_COPY_ODD_NODE
-                LDY #$00
-
-XMSS_LTREE_COPY_ODD_LOOP
-                LDA (WOTS_SRC_PTR),Y
-                STA (WOTS_DST_PTR),Y
-                INY
-                CPY #32
-                BNE XMSS_LTREE_COPY_ODD_LOOP
-                RTS
-
-
-; =====================================================================
-; WOTS+ BUILT-IN TESTS
-; =====================================================================
-
-INIT_WOTS_TEST_DATA
-                LDX #$00
-
-INIT_WOTS_MESSAGE_LOOP
-                TXA
-                STA WOTS_MESSAGE,X
-
-                CLC
-                ADC #$40
-                STA WOTS_PUB_SEED,X
-
-                TXA
-                CLC
-                ADC #$80
-                STA WOTS_SK_SEED,X
-
-                TXA
-                CLC
-                ADC #$A0
-                STA WOTS_CHAIN_INPUT,X
-
-                INX
-                CPX #32
-                BNE INIT_WOTS_MESSAGE_LOOP
-
-                LDA #$05
-                STA WOTS_SK_INDEX
-
-                LDA #$00
-                STA WOTS_CHAIN_START
-                STA WOTS_CHAIN_STEPS
-
-                JSR BUILD_WOTS_TEST_ADRS
-                RTS
-
-BUILD_WOTS_TEST_ADRS
-                JSR XMSS_ADRS_CLEAR
-                LDA #$00
-                JSR XMSS_ADRS_SET_TYPE
-
-                LDA #$02
-                JSR XMSS_VALUE32_SET_A
-                JSR XMSS_ADRS_SET_OTS
-
-                LDA #$03
-                JSR XMSS_VALUE32_SET_A
-                JSR XMSS_ADRS_SET_CHAIN
-                RTS
-
-TEST_WOTS_DIGITS
-                JSR WOTS_PREPARE_DIGITS
-
-                LDA #<TEST_WOTS_DIGITS_TEXT
-                STA STR_PTR
-                LDA #>TEST_WOTS_DIGITS_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-
-                LDA #<EXPECTED_WOTS_DIGITS
-                STA STR_PTR
-                LDA #>EXPECTED_WOTS_DIGITS
-                STA STR_PTR+1
-                JSR COMPARE_WOTS_DIGITS
-                JSR PRINT_STATUS
-                RTS
-
-TEST_WOTS_SK_ELEMENT
-                JSR WOTS_GEN_SK_ELEMENT
-
-                LDA #<TEST_WOTS_SK_TEXT
-                STA STR_PTR
-                LDA #>TEST_WOTS_SK_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-
-                LDA #<EXPECTED_WOTS_SK5
-                STA STR_PTR
-                LDA #>EXPECTED_WOTS_SK5
-                STA STR_PTR+1
-                JSR COMPARE_WOTS_SK_ELEMENT
-                JSR PRINT_STATUS
-                RTS
-
-TEST_WOTS_CHAIN_ZERO
-                JSR BUILD_WOTS_TEST_ADRS
-                LDA #$00
-                STA WOTS_CHAIN_START
-                STA WOTS_CHAIN_STEPS
-                JSR WOTS_CHAIN
-                BCS TEST_WOTS_CHAIN_ZERO_FAIL
-
-                LDA #<TEST_WOTS_CHAIN0_TEXT
-                STA STR_PTR
-                LDA #>TEST_WOTS_CHAIN0_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-
-                LDA #<WOTS_CHAIN_INPUT
-                STA STR_PTR
-                LDA #>WOTS_CHAIN_INPUT
-                STA STR_PTR+1
-                JSR COMPARE_WOTS_CHAIN_OUTPUT
-                JSR PRINT_STATUS
-                RTS
-
-TEST_WOTS_CHAIN_ZERO_FAIL
-                LDA #$00
-                STA TEST_STATUS
-                JSR PRINT_STATUS
-                RTS
-
-TEST_WOTS_CHAIN_ONE
-                JSR BUILD_WOTS_TEST_ADRS
-                LDA #$00
-                STA WOTS_CHAIN_START
-                LDA #$01
-                STA WOTS_CHAIN_STEPS
-                JSR WOTS_CHAIN
-                BCS TEST_WOTS_CHAIN_ONE_FAIL
-
-                LDA #<TEST_WOTS_CHAIN1_TEXT
-                STA STR_PTR
-                LDA #>TEST_WOTS_CHAIN1_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-
-                LDA #<EXPECTED_WOTS_CHAIN1
-                STA STR_PTR
-                LDA #>EXPECTED_WOTS_CHAIN1
-                STA STR_PTR+1
-                JSR COMPARE_WOTS_CHAIN_OUTPUT
-                JSR PRINT_STATUS
-                RTS
-
-TEST_WOTS_CHAIN_ONE_FAIL
-                LDA #$00
-                STA TEST_STATUS
-                JSR PRINT_STATUS
-                RTS
-
-COMPARE_WOTS_DIGITS
-                LDY #$00
-
-COMPARE_WOTS_DIGITS_LOOP
-                LDA WOTS_DIGITS,Y
-                CMP (STR_PTR),Y
-                BNE COMPARE_WOTS_FAIL
-                INY
-                CPY #67
-                BNE COMPARE_WOTS_DIGITS_LOOP
-
-                LDA #$01
-                STA TEST_STATUS
-                RTS
-
-COMPARE_WOTS_SK_ELEMENT
-                LDY #$00
-
-COMPARE_WOTS_SK_LOOP
-                LDA WOTS_SK_ELEMENT,Y
-                CMP (STR_PTR),Y
-                BNE COMPARE_WOTS_FAIL
-                INY
-                CPY #32
-                BNE COMPARE_WOTS_SK_LOOP
-
-                LDA #$01
-                STA TEST_STATUS
-                RTS
-
-COMPARE_WOTS_CHAIN_OUTPUT
-                LDY #$00
-
-COMPARE_WOTS_CHAIN_LOOP
-                LDA WOTS_CHAIN_OUTPUT,Y
-                CMP (STR_PTR),Y
-                BNE COMPARE_WOTS_FAIL
-                INY
-                CPY #32
-                BNE COMPARE_WOTS_CHAIN_LOOP
-
-                LDA #$01
-                STA TEST_STATUS
-                RTS
-
-COMPARE_WOTS_FAIL
-                LDA #$00
-                STA TEST_STATUS
-                RTS
-
-
-; =====================================================================
-; WOTS+ STAGE 2 QUICK SELF-TEST
-;
-; A full 67-element sign/generate/recover cycle is intentionally not
-; run by BRUN because it requires thousands of SHA-256 evaluations on a
-; 1 MHz machine. The built-in test exercises the exact per-element code:
-;
-;   digit[5] = 2
-;   signature element = chain(sk[5], 0, 2)
-;   recovered PK       = chain(signature, 2, 13)
-;
-; The full loops are validated by the companion machine-code tests.
-; =====================================================================
-
-TEST_WOTS_SIGN_ONE
-                JSR WOTS_PREPARE_DIGITS
-                JSR BUILD_WOTS_TEST_ADRS
-
-                LDA #$05
-                STA WOTS_ELEMENT_INDEX
-                JSR WOTS_SIGN_ONE
-                BCS TEST_WOTS_SIGN_ONE_FAIL
-
-                LDX #$00
-
-SAVE_TEST_SIGNATURE_LOOP
-                LDA WOTS_CHAIN_OUTPUT,X
-                STA WOTS_TEST_SIGNATURE_ELEMENT,X
-                INX
-                CPX #32
-                BNE SAVE_TEST_SIGNATURE_LOOP
-
-                LDA #<TEST_WOTS_SIGN_ONE_TEXT
-                STA STR_PTR
-                LDA #>TEST_WOTS_SIGN_ONE_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-
-                LDA #<EXPECTED_WOTS_SIGNATURE5
-                STA STR_PTR
-                LDA #>EXPECTED_WOTS_SIGNATURE5
-                STA STR_PTR+1
-                JSR COMPARE_WOTS_CHAIN_OUTPUT
-                JSR PRINT_STATUS
-                RTS
-
-TEST_WOTS_SIGN_ONE_FAIL
-                LDA #$00
-                STA TEST_STATUS
-                JSR PRINT_STATUS
-                RTS
-
-TEST_WOTS_RECOVER_ONE
-                JSR BUILD_WOTS_TEST_ADRS
-
-                LDX #$00
-
-LOAD_TEST_SIGNATURE_LOOP
-                LDA WOTS_TEST_SIGNATURE_ELEMENT,X
-                STA WOTS_CHAIN_INPUT,X
-                INX
-                CPX #32
-                BNE LOAD_TEST_SIGNATURE_LOOP
-
-                LDA #$05
-                STA WOTS_ELEMENT_INDEX
-                JSR WOTS_PK_FROM_SIG_ONE
-                BCS TEST_WOTS_RECOVER_ONE_FAIL
-
-                LDA #<TEST_WOTS_RECOVER_ONE_TEXT
-                STA STR_PTR
-                LDA #>TEST_WOTS_RECOVER_ONE_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-
-                LDA #<EXPECTED_WOTS_PUBLIC_KEY5
-                STA STR_PTR
-                LDA #>EXPECTED_WOTS_PUBLIC_KEY5
-                STA STR_PTR+1
-                JSR COMPARE_WOTS_CHAIN_OUTPUT
-                JSR PRINT_STATUS
-                RTS
-
-TEST_WOTS_RECOVER_ONE_FAIL
-                LDA #$00
-                STA TEST_STATUS
-                JSR PRINT_STATUS
-                RTS
-
-; =====================================================================
-; XMSS RAND_HASH AND L-TREE QUICK SELF-TESTS
-;
-; The L-tree self-test uses three nodes. This exercises both randomized
-; hashing and the RFC odd-node copy rule without running the full 67-node
-; compression on a 1 MHz machine.
-; =====================================================================
-
-BUILD_LTREE_TEST_ADRS
-                JSR XMSS_ADRS_CLEAR
-                LDA #$01
-                JSR XMSS_ADRS_SET_TYPE
-
-                LDA #$05
-                JSR XMSS_VALUE32_SET_A
-                JSR XMSS_ADRS_SET_LTREE
-
-                LDA #$00
-                JSR XMSS_VALUE32_SET_A
-                JSR XMSS_ADRS_SET_TREE_HEIGHT
-                JSR XMSS_ADRS_SET_TREE_INDEX
-                RTS
-
-INIT_RAND_HASH_TEST_NODES
-                LDX #$00
-
-INIT_RAND_HASH_TEST_LOOP
-                TXA
-                STA XMSS_RAND_LEFT,X
-                CLC
-                ADC #$20
-                STA XMSS_RAND_RIGHT,X
-                INX
-                CPX #32
-                BNE INIT_RAND_HASH_TEST_LOOP
-                RTS
-
-TEST_XMSS_RAND_HASH
-                JSR BUILD_LTREE_TEST_ADRS
-                JSR INIT_RAND_HASH_TEST_NODES
-                JSR XMSS_RAND_HASH
-
-                LDA #<TEST_RAND_HASH_TEXT
-                STA STR_PTR
-                LDA #>TEST_RAND_HASH_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-                JSR PRINT_RESULT
-
-                LDA #<EXPECTED_RAND_HASH
-                STA STR_PTR
-                LDA #>EXPECTED_RAND_HASH
-                STA STR_PTR+1
-                JSR COMPARE_RESULT
-                JSR PRINT_STATUS
-                RTS
-
-INIT_LTREE_TEST_NODES
-                LDX #$00
-
-INIT_LTREE_TEST_NODES_LOOP
-                LDA LTREE_TEST_NODES_SOURCE,X
-                STA LTREE_TEST_NODES,X
-                INX
-                CPX #96
-                BNE INIT_LTREE_TEST_NODES_LOOP
-                RTS
-
-TEST_XMSS_LTREE_SMALL
-                JSR INIT_LTREE_TEST_NODES
-                JSR BUILD_LTREE_TEST_ADRS
-
-                LDA #<LTREE_TEST_NODES
-                STA XMSS_LTREE_PTR
-                LDA #>LTREE_TEST_NODES
-                STA XMSS_LTREE_PTR+1
-                LDA #$03
-                STA XMSS_LTREE_LEN
-
-                JSR XMSS_LTREE_CORE
-                BCS TEST_XMSS_LTREE_SMALL_FAIL
-
-                LDX #$00
-
-TEST_XMSS_LTREE_COPY_RESULT_LOOP
-                LDA XMSS_LTREE_LEAF,X
-                STA XMSS_RESULT,X
-                INX
-                CPX #32
-                BNE TEST_XMSS_LTREE_COPY_RESULT_LOOP
-
-                LDA #<TEST_LTREE_TEXT
-                STA STR_PTR
-                LDA #>TEST_LTREE_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-                JSR PRINT_RESULT
-
-                LDA #<EXPECTED_LTREE3
-                STA STR_PTR
-                LDA #>EXPECTED_LTREE3
-                STA STR_PTR+1
-                JSR COMPARE_RESULT
-                JSR PRINT_STATUS
-                RTS
-
-TEST_XMSS_LTREE_SMALL_FAIL
-                LDA #$00
-                STA TEST_STATUS
-                JSR PRINT_STATUS
-                RTS
-
-
-; =====================================================================
-; BUILT-IN TESTS
-; =====================================================================
-
-INIT_TEST_DATA
-                LDX #$00
-
-INIT_TEST_KEY_LOOP
-                TXA
-                STA XMSS_KEY,X
-                CLC
-                ADC #$20
-                STA XMSS_M32,X
-                INX
-                CPX #32
-                BNE INIT_TEST_KEY_LOOP
-
-                LDX #$00
-
-INIT_TEST_M64_LOOP
-                TXA
-                CLC
-                ADC #$20
-                STA XMSS_M64,X
-                INX
-                CPX #64
-                BNE INIT_TEST_M64_LOOP
-
-                LDX #$00
-
-INIT_TEST_HMSG_KEY_LOOP
-                TXA
-                STA XMSS_HMSG_KEY,X
-                INX
-                CPX #96
-                BNE INIT_TEST_HMSG_KEY_LOOP
-
-                LDA #<TEST_MESSAGE
-                STA XMSS_MSG_PTR
-                LDA #>TEST_MESSAGE
-                STA XMSS_MSG_PTR+1
-                LDA #TEST_MESSAGE_LENGTH
-                STA XMSS_MSG_COUNT
-                LDA #$00
-                STA XMSS_MSG_COUNT+1
-                RTS
-
-BUILD_TEST_OTS_ADRS
-                JSR XMSS_ADRS_CLEAR
-                LDA #$00
-                JSR XMSS_ADRS_SET_TYPE
-
-                LDA #$05
-                JSR XMSS_VALUE32_SET_A
-                JSR XMSS_ADRS_SET_OTS
-
-                LDA #$07
-                JSR XMSS_VALUE32_SET_A
-                JSR XMSS_ADRS_SET_CHAIN
-
-                LDA #$09
-                JSR XMSS_VALUE32_SET_A
-                JSR XMSS_ADRS_SET_HASH
-
-                LDA #$01
-                JSR XMSS_VALUE32_SET_A
-                JSR XMSS_ADRS_SET_KEY_MASK
-                RTS
-
-TEST_ADRS_TYPE_CLEAR
-                JSR BUILD_TEST_OTS_ADRS
-                LDA #$01
-                JSR XMSS_ADRS_SET_TYPE
-
-                LDA #<TEST_ADRS_CLEAR_TEXT
-                STA STR_PTR
-                LDA #>TEST_ADRS_CLEAR_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-
-                LDA #<EXPECTED_ADRS_TYPE1
-                STA STR_PTR
-                LDA #>EXPECTED_ADRS_TYPE1
-                STA STR_PTR+1
-                JSR COMPARE_ADRS
-                JSR PRINT_STATUS
-                RTS
-
-TEST_ADRS_OTS
-                JSR BUILD_TEST_OTS_ADRS
-
-                LDA #<TEST_ADRS_TEXT
-                STA STR_PTR
-                LDA #>TEST_ADRS_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-                JSR PRINT_ADRS
-
-                LDA #<EXPECTED_ADRS_OTS
-                STA STR_PTR
-                LDA #>EXPECTED_ADRS_OTS
-                STA STR_PTR+1
-                JSR COMPARE_ADRS
-                JSR PRINT_STATUS
-                RTS
-
-TEST_XMSS_F
-                JSR XMSS_F
-                LDA #<TEST_F_TEXT
-                STA STR_PTR
-                LDA #>TEST_F_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-                JSR PRINT_RESULT
-
-                LDA #<EXPECTED_F
-                STA STR_PTR
-                LDA #>EXPECTED_F
-                STA STR_PTR+1
-                JSR COMPARE_RESULT
-                JSR PRINT_STATUS
-                RTS
-
-TEST_XMSS_H
-                JSR XMSS_H
-                LDA #<TEST_H_TEXT
-                STA STR_PTR
-                LDA #>TEST_H_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-                JSR PRINT_RESULT
-
-                LDA #<EXPECTED_H
-                STA STR_PTR
-                LDA #>EXPECTED_H
-                STA STR_PTR+1
-                JSR COMPARE_RESULT
-                JSR PRINT_STATUS
-                RTS
-
-TEST_XMSS_PRF_ADRS
-                JSR BUILD_TEST_OTS_ADRS
-                JSR XMSS_PRF_ADRS
-
-                LDA #<TEST_PRF_TEXT
-                STA STR_PTR
-                LDA #>TEST_PRF_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-                JSR PRINT_RESULT
-
-                LDA #<EXPECTED_PRF_ADRS
-                STA STR_PTR
-                LDA #>EXPECTED_PRF_ADRS
-                STA STR_PTR+1
-                JSR COMPARE_RESULT
-                JSR PRINT_STATUS
-                RTS
-
-TEST_XMSS_H_MSG
-                JSR XMSS_H_MSG
-                LDA #<TEST_HMSG_TEXT
-                STA STR_PTR
-                LDA #>TEST_HMSG_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-                JSR PRINT_RESULT
-
-                LDA #<EXPECTED_HMSG
-                STA STR_PTR
-                LDA #>EXPECTED_HMSG
-                STA STR_PTR+1
-                JSR COMPARE_RESULT
-                JSR PRINT_STATUS
-                RTS
-
-COMPARE_RESULT
-                LDY #$00
-
-COMPARE_RESULT_LOOP
-                LDA XMSS_RESULT,Y
-                CMP (STR_PTR),Y
-                BNE COMPARE_FAIL
-                INY
-                CPY #32
-                BNE COMPARE_RESULT_LOOP
-
-                LDA #$01
-                STA TEST_STATUS
-                RTS
-
-COMPARE_ADRS
-                LDY #$00
-
-COMPARE_ADRS_LOOP
-                LDA XMSS_ADRS,Y
-                CMP (STR_PTR),Y
-                BNE COMPARE_FAIL
-                INY
-                CPY #32
-                BNE COMPARE_ADRS_LOOP
-
-                LDA #$01
-                STA TEST_STATUS
-                RTS
-
-COMPARE_FAIL
-                LDA #$00
-                STA TEST_STATUS
                 RTS
 
 ; =====================================================================
@@ -3658,51 +2803,6 @@ PRINT_RESULT_NEW_ROW
                 JSR CROUT
                 JMP PRINT_RESULT_LOOP
 
-PRINT_ADRS
-                LDX #$00
-
-PRINT_ADRS_LOOP
-                LDA XMSS_ADRS,X
-                JSR PRBYTE
-                INX
-
-                TXA
-                AND #$03
-                BNE PRINT_ADRS_NO_SPACE
-                LDA #$A0
-                JSR COUT
-
-PRINT_ADRS_NO_SPACE
-                CPX #$10
-                BEQ PRINT_ADRS_NEW_ROW
-                CPX #$20
-                BNE PRINT_ADRS_LOOP
-                JSR CROUT
-                RTS
-
-PRINT_ADRS_NEW_ROW
-                JSR CROUT
-                JMP PRINT_ADRS_LOOP
-
-PRINT_STATUS
-                LDA TEST_STATUS
-                BEQ PRINT_STATUS_FAIL
-
-                LDA #<PASS_TEXT
-                STA STR_PTR
-                LDA #>PASS_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-                RTS
-
-PRINT_STATUS_FAIL
-                LDA #<FAIL_TEXT
-                STA STR_PTR
-                LDA #>FAIL_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-                RTS
-
 PRINT_STRING
                 LDY #$00
 
@@ -3766,141 +2866,6 @@ EXIT_PROGRAM
 
 EXIT_TO_MONITOR
                 JMP MONITOR
-
-; =====================================================================
-; TEXT AND DETERMINISTIC TEST VECTORS
-; =====================================================================
-
-TITLE_TEXT
-                .BYTE "XMSS L-TREE / SHA2-256",13
-                .BYTE "RFC 8391 / APPLE II+",13,13,0
-
-TEST_ADRS_CLEAR_TEXT
-                .BYTE "ADRS SETTYPE CLEAR: ",0
-
-TEST_ADRS_TEXT
-                .BYTE "ADRS OTS:",13,0
-
-TEST_F_TEXT
-                .BYTE "F:",13,0
-
-TEST_H_TEXT
-                .BYTE "H:",13,0
-
-TEST_PRF_TEXT
-                .BYTE "PRF(SEED,ADRS):",13,0
-
-TEST_HMSG_TEXT
-                .BYTE "H_MSG(KEY96,ABC):",13,0
-
-PASS_TEXT
-                .BYTE "PASS",13,13,0
-
-FAIL_TEXT
-                .BYTE "FAIL",13,13,0
-
-DONE_TEXT
-                .BYTE "XMSS L-TREE SELF-TEST COMPLETE",13,0
-
-TEST_MESSAGE
-                .BYTE $61,$62,$63
-TEST_MESSAGE_END
-TEST_MESSAGE_LENGTH = TEST_MESSAGE_END-TEST_MESSAGE
-
-EXPECTED_ADRS_TYPE1
-                .BYTE $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$01
-                .BYTE $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-
-EXPECTED_ADRS_OTS
-                .BYTE $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
-                .BYTE $00,$00,$00,$05,$00,$00,$00,$07,$00,$00,$00,$09,$00,$00,$00,$01
-
-EXPECTED_F
-                .BYTE $DC,$7A,$48,$01,$4F,$C1,$FA,$C8,$B5,$2A,$F3,$9B,$C7,$EA,$5C,$AF
-                .BYTE $AF,$AB,$F8,$BB,$81,$FB,$8F,$88,$0F,$DF,$3B,$4A,$45,$66,$79,$5C
-
-EXPECTED_H
-                .BYTE $44,$44,$6E,$C9,$62,$4F,$65,$4B,$14,$92,$E0,$F5,$67,$26,$F5,$D0
-                .BYTE $34,$90,$2E,$05,$F7,$BF,$82,$31,$A7,$15,$2A,$D5,$21,$58,$D3,$65
-
-EXPECTED_PRF_ADRS
-                .BYTE $56,$3A,$CE,$8D,$C3,$41,$7F,$2D,$ED,$7F,$4B,$EB,$0A,$02,$38,$74
-                .BYTE $E6,$53,$FB,$A5,$C8,$0F,$A7,$36,$5C,$56,$7B,$A3,$A7,$7C,$9B,$52
-
-EXPECTED_HMSG
-                .BYTE $39,$18,$3A,$51,$AB,$7E,$A7,$0E,$D6,$08,$1B,$FD,$AA,$5B,$89,$09
-                .BYTE $F2,$5D,$A0,$81,$82,$C3,$F2,$84,$D3,$3F,$15,$CD,$0E,$AD,$28,$D6
-
-
-TEST_WOTS_DIGITS_TEXT
-                .BYTE "WOTS BASE-W + CHECKSUM: ",0
-
-TEST_WOTS_SK_TEXT
-                .BYTE "WOTS SK ELEMENT 5: ",0
-
-TEST_WOTS_CHAIN0_TEXT
-                .BYTE "WOTS CHAIN 0 STEPS: ",0
-
-TEST_WOTS_CHAIN1_TEXT
-                .BYTE "WOTS CHAIN 1 STEP: ",0
-
-TEST_WOTS_SIGN_ONE_TEXT
-                .BYTE "WOTS SIGN ELEMENT 5: ",0
-
-TEST_WOTS_RECOVER_ONE_TEXT
-                .BYTE "WOTS RECOVER PK ELEMENT 5: ",0
-
-EXPECTED_WOTS_DIGITS
-                .BYTE $00,$00,$00,$01,$00,$02,$00,$03,$00,$04,$00,$05,$00,$06,$00,$07
-                .BYTE $00,$08,$00,$09,$00,$0A,$00,$0B,$00,$0C,$00,$0D,$00,$0E,$00,$0F
-                .BYTE $01,$00,$01,$01,$01,$02,$01,$03,$01,$04,$01,$05,$01,$06,$01,$07
-                .BYTE $01,$08,$01,$09,$01,$0A,$01,$0B,$01,$0C,$01,$0D,$01,$0E,$01,$0F
-                .BYTE $02,$0C,$00
-
-EXPECTED_WOTS_SK5
-                .BYTE $E7,$9D,$79,$A3,$1D,$A3,$38,$39,$EE,$6A,$BF,$37,$D6,$26,$0F,$A9
-                .BYTE $2A,$A8,$97,$87,$78,$A1,$C4,$9E,$D0,$E6,$37,$6A,$90,$E4,$1C,$93
-
-EXPECTED_WOTS_CHAIN1
-                .BYTE $1B,$DF,$F6,$7C,$41,$AD,$39,$A2,$96,$8C,$8D,$12,$CE,$AE,$6A,$FB
-                .BYTE $3A,$52,$DC,$30,$36,$84,$D0,$40,$9E,$60,$89,$36,$0D,$E3,$89,$AA
-
-EXPECTED_WOTS_CHAIN15
-                .BYTE $A8,$13,$55,$BF,$C1,$87,$66,$45,$08,$DD,$63,$B3,$A0,$E3,$B8,$34
-                .BYTE $D0,$2C,$E6,$56,$A3,$E6,$61,$15,$DB,$94,$9B,$96,$99,$10,$CC,$F9
-
-EXPECTED_WOTS_SIGNATURE5
-                .BYTE $D2,$98,$D8,$94,$35,$B5,$F8,$D5,$46,$20,$72,$10,$8D,$B9,$2A,$B8
-                .BYTE $1D,$7F,$3B,$99,$AF,$34,$7C,$51,$A0,$D7,$C2,$E3,$83,$3E,$BD,$A7
-
-EXPECTED_WOTS_PUBLIC_KEY5
-                .BYTE $D1,$87,$A4,$04,$FF,$6F,$A1,$26,$C4,$64,$C3,$3D,$C9,$07,$B4,$93
-                .BYTE $E7,$51,$3A,$1A,$E1,$41,$8D,$08,$16,$20,$03,$67,$B1,$1F,$16,$F1
-
-
-
-TEST_RAND_HASH_TEXT
-                .BYTE "XMSS RAND_HASH:",13,0
-
-TEST_LTREE_TEXT
-                .BYTE "XMSS L-TREE (3 NODES):",13,0
-
-EXPECTED_RAND_HASH
-                .BYTE $31,$A8,$6F,$D0,$64,$94,$3D,$EA,$0D,$29,$60,$43,$FC,$9A,$3F,$19
-                .BYTE $4F,$EA,$C3,$81,$04,$BC,$ED,$5F,$B9,$62,$ED,$88,$0D,$38,$97,$BA
-
-EXPECTED_LTREE3
-                .BYTE $38,$7F,$07,$0C,$C3,$10,$C1,$AE,$7E,$65,$A3,$A4,$49,$5E,$91,$77
-                .BYTE $78,$E0,$84,$75,$A8,$91,$D1,$77,$97,$15,$B8,$1A,$38,$90,$B9,$09
-
-LTREE_TEST_NODES_SOURCE
-                .BYTE $00,$01,$02,$03,$04,$05,$06,$07,$08,$09,$0A,$0B,$0C,$0D,$0E,$0F
-                .BYTE $10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$1A,$1B,$1C,$1D,$1E,$1F
-                .BYTE $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$2A,$2B,$2C,$2D,$2E,$2F
-                .BYTE $30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$3A,$3B,$3C,$3D,$3E,$3F
-                .BYTE $40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$4A,$4B,$4C,$4D,$4E,$4F
-                .BYTE $50,$51,$52,$53,$54,$55,$56,$57,$58,$59,$5A,$5B,$5C,$5D,$5E,$5F
-
 
 ; =====================================================================
 ; SHA-256 CONSTANTS
@@ -4116,62 +3081,15 @@ WOTS_ELEMENT_INDEX
                 .BYTE $00
 
 WOTS_SIGNATURE_PTR
-                .BYTE <WOTS_SIGNATURE,>WOTS_SIGNATURE
+                .BYTE <XMSS_SIGNATURE_WOTS,>XMSS_SIGNATURE_WOTS
 
 WOTS_PUBLIC_KEY_PTR
-                .BYTE <WOTS_PUBLIC_KEY,>WOTS_PUBLIC_KEY
+                .BYTE <XMSS_SIGNATURE_WOTS,>XMSS_SIGNATURE_WOTS
 
-WOTS_TEST_SIGNATURE_ELEMENT
-                .RES 32
-
-; Default internal Stage 2 buffers. Callers may point the public pointer
-; variables elsewhere before invoking the full routines.
-
-WOTS_SIGNATURE
-                .RES 2144
-
-WOTS_PUBLIC_KEY
-                .RES 2144
-
-
-
-; XMSS randomized hash and L-tree workspace
-
-XMSS_RAND_LEFT
-                .RES 32
-
-XMSS_RAND_RIGHT
-                .RES 32
-
-XMSS_RAND_KEY
-                .RES 32
-
-XMSS_RAND_RESULT
-                .RES 32
-
-XMSS_LTREE_PTR
-                .BYTE <WOTS_PUBLIC_KEY,>WOTS_PUBLIC_KEY
-
-XMSS_LTREE_LEN
-                .BYTE $00
-
-XMSS_LTREE_HEIGHT
-                .BYTE $00
-
-XMSS_LTREE_PAIR_COUNT
-                .BYTE $00
-
-XMSS_LTREE_PAIR_INDEX
-                .BYTE $00
-
-XMSS_LTREE_LEAF
-                .RES 32
-
-LTREE_TEST_NODES
-                .RES 96
-
-TEST_STATUS
-                .BYTE $00
+; Dedicated signer image: no internal 2144-byte WOTS/PK buffers.
+; Compatibility labels remain available for unused helper entry points.
+WOTS_SIGNATURE          = XMSS_SIGNATURE_WOTS
+WOTS_PUBLIC_KEY         = XMSS_SIGNATURE_WOTS
 
 SAVED_PROMPT
                 .BYTE $00
@@ -4201,1151 +3119,22 @@ XMSS_FAST_WOTS_STATE
                 .RES 32
 
 ; =====================================================================
-; XMSS TREEHASH, AUTHENTICATION PATH, AND REAL LEAF GENERATION
-;
-; RFC 8391 Algorithm 9 is implemented by XMSS_TREEHASH. The core uses
-; a compact height-tagged stack and supports target heights 0 through 10.
-;
-; XMSS_TREE_LEAF_MODE:
-;   0 = deterministic synthetic leaves for fast diagnostics
-;   1 = real XMSS leaves: derive S_ots, WOTS_GEN_PK, then XMSS_LTREE
-;
-; XMSS_TREE_CAPTURE_AUTH:
-;   0 = root only
-;   non-zero = capture the authentication path for XMSS_TREE_TARGET
-;
-; For real XMSS leaves, XMSS_MASTER_SK_SEED is the master secret S from
-; RFC 8391 section 4.1.11. XMSS_DERIVE_WOTS_SEED computes
-;
-;   S_ots[index] = PRF(S, toByte(index,32))
-;
-; and the existing WOTS+ key generator derives its 67 secret elements
-; from this per-leaf S_ots value.
-; =====================================================================
-
-TREEHASH_START
-                CLD
-                JSR SAVE_ENVIRONMENT
-                JSR HOME
-
-                LDA #<TREEHASH_TITLE_TEXT
-                STA STR_PTR
-                LDA #>TREEHASH_TITLE_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-
-                JSR INIT_TREEHASH_TEST_DATA
-                JSR TEST_XMSS_DERIVE_WOTS_SEED
-                JSR TEST_XMSS_TREEHASH_SMALL
-                JSR TEST_XMSS_AUTH_PATH
-                JSR TEST_XMSS_ROOT_FROM_AUTH
-
-                LDA #<TREEHASH_DONE_TEXT
-                STA STR_PTR
-                LDA #>TREEHASH_DONE_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-                JMP EXIT_PROGRAM
-
-; ---------------------------------------------------------------------
-; Convert the current 16-bit leaf index to big-endian 00 00 HI LO.
-; ---------------------------------------------------------------------
-
-XMSS_VALUE32_SET_LEAF_INDEX
-                LDA #$00
-                STA XMSS_VALUE32
-                STA XMSS_VALUE32+1
-                LDA XMSS_TREE_LEAF_INDEX_HI
-                STA XMSS_VALUE32+2
-                LDA XMSS_TREE_LEAF_INDEX_LO
-                STA XMSS_VALUE32+3
-                RTS
-
-XMSS_VALUE32_SET_NODE_INDEX
-                LDA #$00
-                STA XMSS_VALUE32
-                STA XMSS_VALUE32+1
-                LDA XMSS_TREE_NODE_INDEX_HI
-                STA XMSS_VALUE32+2
-                LDA XMSS_TREE_NODE_INDEX_LO
-                STA XMSS_VALUE32+3
-                RTS
-
-; ---------------------------------------------------------------------
-; Derive the WOTS+ seed for the current XMSS leaf.
-;
-; Input:
-;   XMSS_MASTER_SK_SEED       32 bytes
-;   XMSS_TREE_LEAF_INDEX      16-bit, little-endian variables
-;
-; Output:
-;   WOTS_SK_SEED              32-byte S_ots value
-; ---------------------------------------------------------------------
-
-XMSS_DERIVE_WOTS_SEED
-                CLD
-                LDA XMSS_FAST_MODE
-                BEQ XMSS_DERIVE_WOTS_SEED_SLOW
-
-                JSR XMSS_PRF_MASTER_LEAF_FAST
-                JMP XMSS_DERIVE_WOTS_SEED_COPY_FAST
-
-XMSS_DERIVE_WOTS_SEED_SLOW
-                LDX #$00
-
-XMSS_DERIVE_COPY_MASTER_LOOP
-                LDA XMSS_MASTER_SK_SEED,X
-                STA XMSS_KEY,X
-                LDA #$00
-                STA XMSS_M32,X
-                INX
-                CPX #32
-                BNE XMSS_DERIVE_COPY_MASTER_LOOP
-
-                LDA XMSS_TREE_LEAF_INDEX_HI
-                STA XMSS_M32+30
-                LDA XMSS_TREE_LEAF_INDEX_LO
-                STA XMSS_M32+31
-
-                JSR XMSS_PRF
-
-XMSS_DERIVE_WOTS_SEED_COPY_FAST
-                LDX #$00
-
-XMSS_DERIVE_COPY_RESULT_LOOP
-                LDA XMSS_RESULT,X
-                STA WOTS_SK_SEED,X
-                INX
-                CPX #32
-                BNE XMSS_DERIVE_COPY_RESULT_LOOP
-
-                LDA XMSS_FAST_MODE
-                BEQ XMSS_DERIVE_WOTS_SEED_DONE
-                JSR XMSS_FAST_PRECOMPUTE_WOTS_STATE
-
-XMSS_DERIVE_WOTS_SEED_DONE
-                CLC
-                RTS
-
-; ---------------------------------------------------------------------
-; Generate one real XMSS leaf at XMSS_TREE_LEAF_INDEX.
-;
-; This is deliberately a slow reference implementation:
-;   derive S_ots -> WOTS_GEN_PK -> L-tree -> 32-byte leaf.
-;
-; Output:
-;   XMSS_TREE_NODE             32-byte leaf
-;   carry clear                success
-;   carry set                  WOTS/L-tree failure
-; ---------------------------------------------------------------------
-
-XMSS_GEN_LEAF
-                JSR XMSS_DERIVE_WOTS_SEED
-                JSR WOTS_USE_INTERNAL_BUFFERS
-
-                LDA #$00
-                JSR XMSS_ADRS_SET_TYPE
-                JSR XMSS_VALUE32_SET_LEAF_INDEX
-                JSR XMSS_ADRS_SET_OTS
-
-                JSR WOTS_GEN_PK
-                BCC XMSS_GEN_LEAF_WOTS_OK
-                SEC
-                RTS
-
-XMSS_GEN_LEAF_WOTS_OK
-                LDA #$01
-                JSR XMSS_ADRS_SET_TYPE
-                JSR XMSS_VALUE32_SET_LEAF_INDEX
-                JSR XMSS_ADRS_SET_LTREE
-
-                JSR XMSS_LTREE
-                BCC XMSS_GEN_LEAF_LTREE_OK
-                SEC
-                RTS
-
-XMSS_GEN_LEAF_LTREE_OK
-                LDX #$00
-
-XMSS_GEN_LEAF_COPY_LOOP
-                LDA XMSS_LTREE_LEAF,X
-                STA XMSS_TREE_NODE,X
-                INX
-                CPX #32
-                BNE XMSS_GEN_LEAF_COPY_LOOP
-                CLC
-                RTS
-
-; ---------------------------------------------------------------------
-; Deterministic diagnostic leaf generator.
-;
-; For leaf index j, byte i is (j*32+i) modulo 256. This is not an XMSS
-; cryptographic leaf and is used only to test TreeHash control flow.
-; ---------------------------------------------------------------------
-
-XMSS_GEN_SYNTHETIC_LEAF
-                LDA XMSS_TREE_LEAF_INDEX_LO
-                STA XMSS_TREE_TEMP_LO
-                LDA #$00
-                STA XMSS_TREE_TEMP_HI
-
-                ASL XMSS_TREE_TEMP_LO
-                ROL XMSS_TREE_TEMP_HI
-                ASL XMSS_TREE_TEMP_LO
-                ROL XMSS_TREE_TEMP_HI
-                ASL XMSS_TREE_TEMP_LO
-                ROL XMSS_TREE_TEMP_HI
-                ASL XMSS_TREE_TEMP_LO
-                ROL XMSS_TREE_TEMP_HI
-                ASL XMSS_TREE_TEMP_LO
-                ROL XMSS_TREE_TEMP_HI
-
-                LDX #$00
-
-XMSS_GEN_SYNTHETIC_LOOP
-                TXA
-                CLC
-                ADC XMSS_TREE_TEMP_LO
-                STA XMSS_TREE_NODE,X
-                INX
-                CPX #32
-                BNE XMSS_GEN_SYNTHETIC_LOOP
-                CLC
-                RTS
-
-XMSS_GENERATE_SELECTED_LEAF
-                LDA XMSS_TREE_LEAF_MODE
-                BEQ XMSS_GENERATE_SYNTHETIC
-                JMP XMSS_GEN_LEAF
-
-XMSS_GENERATE_SYNTHETIC
-                JMP XMSS_GEN_SYNTHETIC_LEAF
-
-; ---------------------------------------------------------------------
-; TreeHash stack pointer helpers. A contains stack entry number 0..10.
-; ---------------------------------------------------------------------
-
-XMSS_STACK_CALC_PTR
-                STA XMSS_TREE_PTR_TEMP
-                LDA #$00
-                STA XMSS_TREE_PTR_TEMP+1
-                LDX #$05
-
-XMSS_STACK_SHIFT_LOOP
-                ASL XMSS_TREE_PTR_TEMP
-                ROL XMSS_TREE_PTR_TEMP+1
-                DEX
-                BNE XMSS_STACK_SHIFT_LOOP
-
-                CLC
-                LDA XMSS_TREE_PTR_TEMP
-                ADC #<XMSS_TREE_STACK_NODES
-                STA XMSS_TREE_PTR_TEMP
-                LDA XMSS_TREE_PTR_TEMP+1
-                ADC #>XMSS_TREE_STACK_NODES
-                STA XMSS_TREE_PTR_TEMP+1
-                RTS
-
-XMSS_STACK_SET_SOURCE
-                JSR XMSS_STACK_CALC_PTR
-                LDA XMSS_TREE_PTR_TEMP
-                STA WOTS_SRC_PTR
-                LDA XMSS_TREE_PTR_TEMP+1
-                STA WOTS_SRC_PTR+1
-                RTS
-
-XMSS_STACK_SET_DEST
-                JSR XMSS_STACK_CALC_PTR
-                LDA XMSS_TREE_PTR_TEMP
-                STA WOTS_DST_PTR
-                LDA XMSS_TREE_PTR_TEMP+1
-                STA WOTS_DST_PTR+1
-                RTS
-
-XMSS_STACK_PUSH_NODE
-                LDA XMSS_TREE_STACK_TOP
-                JSR XMSS_STACK_SET_DEST
-                LDY #$00
-
-XMSS_STACK_PUSH_COPY_LOOP
-                LDA XMSS_TREE_NODE,Y
-                STA (WOTS_DST_PTR),Y
-                INY
-                CPY #32
-                BNE XMSS_STACK_PUSH_COPY_LOOP
-
-                LDX XMSS_TREE_STACK_TOP
-                LDA XMSS_TREE_NODE_HEIGHT
-                STA XMSS_TREE_STACK_HEIGHTS,X
-                INC XMSS_TREE_STACK_TOP
-                CLC
-                RTS
-
-XMSS_STACK_POP_LEFT
-                LDA XMSS_TREE_STACK_TOP
-                BEQ XMSS_STACK_POP_FAIL
-                DEC XMSS_TREE_STACK_TOP
-                LDA XMSS_TREE_STACK_TOP
-                JSR XMSS_STACK_SET_SOURCE
-                LDY #$00
-
-XMSS_STACK_POP_COPY_LOOP
-                LDA (WOTS_SRC_PTR),Y
-                STA XMSS_RAND_LEFT,Y
-                INY
-                CPY #32
-                BNE XMSS_STACK_POP_COPY_LOOP
-                CLC
-                RTS
-
-XMSS_STACK_POP_FAIL
-                SEC
-                RTS
-
-XMSS_COPY_NODE_TO_RIGHT
-                LDX #$00
-
-XMSS_COPY_NODE_TO_RIGHT_LOOP
-                LDA XMSS_TREE_NODE,X
-                STA XMSS_RAND_RIGHT,X
-                INX
-                CPX #32
-                BNE XMSS_COPY_NODE_TO_RIGHT_LOOP
-                RTS
-
-XMSS_COPY_RAND_TO_NODE
-                LDX #$00
-
-XMSS_COPY_RAND_TO_NODE_LOOP
-                LDA XMSS_RAND_RESULT,X
-                STA XMSS_TREE_NODE,X
-                INX
-                CPX #32
-                BNE XMSS_COPY_RAND_TO_NODE_LOOP
-                RTS
-
-; ---------------------------------------------------------------------
-; Authentication-path pointer helper. A contains level 0..9.
-; ---------------------------------------------------------------------
-
-XMSS_AUTH_CALC_PTR
-                STA XMSS_TREE_PTR_TEMP
-                LDA #$00
-                STA XMSS_TREE_PTR_TEMP+1
-                LDX #$05
-
-XMSS_AUTH_SHIFT_LOOP
-                ASL XMSS_TREE_PTR_TEMP
-                ROL XMSS_TREE_PTR_TEMP+1
-                DEX
-                BNE XMSS_AUTH_SHIFT_LOOP
-
-                CLC
-                LDA XMSS_TREE_PTR_TEMP
-                ADC #<XMSS_AUTH_PATH
-                STA XMSS_TREE_PTR_TEMP
-                LDA XMSS_TREE_PTR_TEMP+1
-                ADC #>XMSS_AUTH_PATH
-                STA XMSS_TREE_PTR_TEMP+1
-                RTS
-
-XMSS_AUTH_SET_SOURCE
-                JSR XMSS_AUTH_CALC_PTR
-                LDA XMSS_TREE_PTR_TEMP
-                STA WOTS_SRC_PTR
-                LDA XMSS_TREE_PTR_TEMP+1
-                STA WOTS_SRC_PTR+1
-                RTS
-
-XMSS_AUTH_SET_DEST
-                JSR XMSS_AUTH_CALC_PTR
-                LDA XMSS_TREE_PTR_TEMP
-                STA WOTS_DST_PTR
-                LDA XMSS_TREE_PTR_TEMP+1
-                STA WOTS_DST_PTR+1
-                RTS
-
-; Capture XMSS_TREE_NODE when it is the sibling required at its height.
-
-XMSS_TREE_CAPTURE_NODE
-                LDA XMSS_TREE_CAPTURE_AUTH
-                BNE XMSS_CAPTURE_ENABLED
-                RTS
-
-XMSS_CAPTURE_ENABLED
-                LDA XMSS_TREE_NODE_HEIGHT
-                CMP XMSS_TREE_HEIGHT_TARGET
-                BCC XMSS_CAPTURE_HEIGHT_OK
-                RTS
-
-XMSS_CAPTURE_HEIGHT_OK
-                LDA XMSS_TREE_TARGET_LO
-                STA XMSS_TREE_TEMP_LO
-                LDA XMSS_TREE_TARGET_HI
-                STA XMSS_TREE_TEMP_HI
-                LDX XMSS_TREE_NODE_HEIGHT
-
-XMSS_CAPTURE_SHIFT_TARGET_LOOP
-                CPX #$00
-                BEQ XMSS_CAPTURE_TARGET_SHIFTED
-                LSR XMSS_TREE_TEMP_HI
-                ROR XMSS_TREE_TEMP_LO
-                DEX
-                JMP XMSS_CAPTURE_SHIFT_TARGET_LOOP
-
-XMSS_CAPTURE_TARGET_SHIFTED
-                LDA XMSS_TREE_TEMP_LO
-                EOR #$01
-                STA XMSS_TREE_TEMP_LO
-
-                LDA XMSS_TREE_NODE_INDEX_HI
-                CMP XMSS_TREE_TEMP_HI
-                BNE XMSS_CAPTURE_NOT_MATCH
-                LDA XMSS_TREE_NODE_INDEX_LO
-                CMP XMSS_TREE_TEMP_LO
-                BNE XMSS_CAPTURE_NOT_MATCH
-
-                LDA XMSS_TREE_NODE_HEIGHT
-                JSR XMSS_AUTH_SET_DEST
-                LDY #$00
-
-XMSS_CAPTURE_COPY_LOOP
-                LDA XMSS_TREE_NODE,Y
-                STA (WOTS_DST_PTR),Y
-                INY
-                CPY #32
-                BNE XMSS_CAPTURE_COPY_LOOP
-
-XMSS_CAPTURE_NOT_MATCH
-                RTS
-
-; ---------------------------------------------------------------------
-; Validate start alignment and optional authentication target range.
-; ---------------------------------------------------------------------
-
-XMSS_TREE_VALIDATE
-                LDA XMSS_TREE_HEIGHT_TARGET
-                CMP #11
-                BCC XMSS_TREE_HEIGHT_VALID
-                SEC
-                RTS
-
-XMSS_TREE_HEIGHT_VALID
-                LDA XMSS_TREE_START_LO
-                STA XMSS_TREE_TEMP_LO
-                LDA XMSS_TREE_START_HI
-                STA XMSS_TREE_TEMP_HI
-                LDX XMSS_TREE_HEIGHT_TARGET
-
-XMSS_TREE_ALIGN_LOOP
-                CPX #$00
-                BEQ XMSS_TREE_ALIGNMENT_OK
-                LDA XMSS_TREE_TEMP_LO
-                AND #$01
-                BNE XMSS_TREE_VALIDATE_FAIL
-                LSR XMSS_TREE_TEMP_HI
-                ROR XMSS_TREE_TEMP_LO
-                DEX
-                JMP XMSS_TREE_ALIGN_LOOP
-
-XMSS_TREE_ALIGNMENT_OK
-                LDA #$01
-                STA XMSS_TREE_LEAF_COUNT_LO
-                LDA #$00
-                STA XMSS_TREE_LEAF_COUNT_HI
-                LDX XMSS_TREE_HEIGHT_TARGET
-
-XMSS_TREE_COUNT_LOOP
-                CPX #$00
-                BEQ XMSS_TREE_COUNT_READY
-                ASL XMSS_TREE_LEAF_COUNT_LO
-                ROL XMSS_TREE_LEAF_COUNT_HI
-                DEX
-                JMP XMSS_TREE_COUNT_LOOP
-
-XMSS_TREE_COUNT_READY
-                LDA XMSS_TREE_CAPTURE_AUTH
-                BNE XMSS_TREE_VALIDATE_TARGET
-                CLC
-                RTS
-
-XMSS_TREE_VALIDATE_TARGET
-                LDA XMSS_TREE_TARGET_HI
-                CMP XMSS_TREE_START_HI
-                BCC XMSS_TREE_VALIDATE_FAIL
-                BNE XMSS_TREE_TARGET_ABOVE_START
-                LDA XMSS_TREE_TARGET_LO
-                CMP XMSS_TREE_START_LO
-                BCC XMSS_TREE_VALIDATE_FAIL
-
-XMSS_TREE_TARGET_ABOVE_START
-                CLC
-                LDA XMSS_TREE_START_LO
-                ADC XMSS_TREE_LEAF_COUNT_LO
-                STA XMSS_TREE_END_LO
-                LDA XMSS_TREE_START_HI
-                ADC XMSS_TREE_LEAF_COUNT_HI
-                STA XMSS_TREE_END_HI
-
-                LDA XMSS_TREE_TARGET_HI
-                CMP XMSS_TREE_END_HI
-                BCC XMSS_TREE_TARGET_IN_RANGE
-                BNE XMSS_TREE_VALIDATE_FAIL
-                LDA XMSS_TREE_TARGET_LO
-                CMP XMSS_TREE_END_LO
-                BCC XMSS_TREE_TARGET_IN_RANGE
-
-XMSS_TREE_VALIDATE_FAIL
-                SEC
-                RTS
-
-XMSS_TREE_TARGET_IN_RANGE
-                CLC
-                RTS
-
-; ---------------------------------------------------------------------
-; RFC 8391 Algorithm 9, target heights 0..10.
-;
-; Inputs:
-;   XMSS_TREE_START             16-bit start leaf
-;   XMSS_TREE_HEIGHT_TARGET     target node height
-;   XMSS_TREE_LEAF_MODE         synthetic or real
-;   XMSS_TREE_CAPTURE_AUTH      capture flag
-;   XMSS_TREE_TARGET            target leaf for auth path
-;
-; Output:
-;   XMSS_TREE_ROOT              32-byte root
-;   XMSS_AUTH_PATH              up to 10 nodes when capture enabled
-;   carry clear                 success
-;   carry set                   invalid parameters or leaf failure
-; ---------------------------------------------------------------------
-
-XMSS_TREEHASH
-                CLD
-                JSR XMSS_TREE_VALIDATE
-                BCC XMSS_TREEHASH_VALID
-                SEC
-                RTS
-
-XMSS_TREEHASH_VALID
-                LDA #$00
-                STA XMSS_TREE_STACK_TOP
-                STA XMSS_TREE_OFFSET_LO
-                STA XMSS_TREE_OFFSET_HI
-
-XMSS_TREEHASH_LEAF_LOOP
-                LDA XMSS_TREE_OFFSET_HI
-                CMP XMSS_TREE_LEAF_COUNT_HI
-                BNE XMSS_TREEHASH_HAVE_LEAF
-                LDA XMSS_TREE_OFFSET_LO
-                CMP XMSS_TREE_LEAF_COUNT_LO
-                BNE XMSS_TREEHASH_HAVE_LEAF
-                JMP XMSS_TREEHASH_FINISH
-
-XMSS_TREEHASH_HAVE_LEAF
-                CLC
-                LDA XMSS_TREE_START_LO
-                ADC XMSS_TREE_OFFSET_LO
-                STA XMSS_TREE_LEAF_INDEX_LO
-                LDA XMSS_TREE_START_HI
-                ADC XMSS_TREE_OFFSET_HI
-                STA XMSS_TREE_LEAF_INDEX_HI
-
-                JSR XMSS_GENERATE_SELECTED_LEAF
-                BCC XMSS_TREEHASH_LEAF_OK
-                SEC
-                RTS
-
-XMSS_TREEHASH_LEAF_OK
-                LDA #$00
-                STA XMSS_TREE_NODE_HEIGHT
-                LDA XMSS_TREE_LEAF_INDEX_LO
-                STA XMSS_TREE_NODE_INDEX_LO
-                LDA XMSS_TREE_LEAF_INDEX_HI
-                STA XMSS_TREE_NODE_INDEX_HI
-                JSR XMSS_TREE_CAPTURE_NODE
-
-XMSS_TREEHASH_COMBINE_LOOP
-                LDA XMSS_TREE_STACK_TOP
-                BEQ XMSS_TREEHASH_PUSH
-
-                TAX
-                DEX
-                LDA XMSS_TREE_STACK_HEIGHTS,X
-                CMP XMSS_TREE_NODE_HEIGHT
-                BNE XMSS_TREEHASH_PUSH
-
-                JSR XMSS_STACK_POP_LEFT
-                BCC XMSS_TREEHASH_LEFT_READY
-                SEC
-                RTS
-
-XMSS_TREEHASH_LEFT_READY
-                JSR XMSS_COPY_NODE_TO_RIGHT
-
-                LDA #$02
-                JSR XMSS_ADRS_SET_TYPE
-
-                LDA XMSS_TREE_NODE_HEIGHT
-                JSR XMSS_VALUE32_SET_A
-                JSR XMSS_ADRS_SET_TREE_HEIGHT
-
-                LSR XMSS_TREE_NODE_INDEX_HI
-                ROR XMSS_TREE_NODE_INDEX_LO
-                JSR XMSS_VALUE32_SET_NODE_INDEX
-                JSR XMSS_ADRS_SET_TREE_INDEX
-
-                JSR XMSS_RAND_HASH
-                JSR XMSS_COPY_RAND_TO_NODE
-                INC XMSS_TREE_NODE_HEIGHT
-                JSR XMSS_TREE_CAPTURE_NODE
-                JMP XMSS_TREEHASH_COMBINE_LOOP
-
-XMSS_TREEHASH_PUSH
-                JSR XMSS_STACK_PUSH_NODE
-
-                INC XMSS_TREE_OFFSET_LO
-                BNE XMSS_TREEHASH_OFFSET_READY
-                INC XMSS_TREE_OFFSET_HI
-
-XMSS_TREEHASH_OFFSET_READY
-                JSR XMSS_TREEHASH_UPDATE_PROGRESS
-                JMP XMSS_TREEHASH_LEAF_LOOP
-
-; Export height-10 real-tree progress as a generic byte.  A full run has
-; 1024 leaves, so every four completed leaves advance the 0..255 cell by
-; one.  Saturation avoids wrapping $FF to $00 on the final $0400 offset.
-
-XMSS_TREEHASH_UPDATE_PROGRESS
-                LDA XMSS_TREE_HEIGHT_TARGET
-                CMP #10
-                BNE XMSS_TREEHASH_PROGRESS_DONE
-
-                LDA XMSS_TREE_LEAF_MODE
-                BEQ XMSS_TREEHASH_PROGRESS_DONE
-
-                LDA XMSS_TREE_OFFSET_LO
-                AND #$03
-                BNE XMSS_TREEHASH_PROGRESS_DONE
-
-                LDA XMSS_WASM_PROGRESS
-                CMP #$FF
-                BEQ XMSS_TREEHASH_PROGRESS_DONE
-                INC XMSS_WASM_PROGRESS
-
-XMSS_TREEHASH_PROGRESS_DONE
-                RTS
-
-XMSS_TREEHASH_FINISH
-                LDA XMSS_TREE_STACK_TOP
-                CMP #$01
-                BEQ XMSS_TREEHASH_ONE_ROOT
-                SEC
-                RTS
-
-XMSS_TREEHASH_ONE_ROOT
-                LDA XMSS_TREE_STACK_HEIGHTS
-                CMP XMSS_TREE_HEIGHT_TARGET
-                BEQ XMSS_TREEHASH_ROOT_HEIGHT_OK
-                SEC
-                RTS
-
-XMSS_TREEHASH_ROOT_HEIGHT_OK
-                LDA #$00
-                JSR XMSS_STACK_SET_SOURCE
-                LDY #$00
-
-XMSS_TREEHASH_COPY_ROOT_LOOP
-                LDA (WOTS_SRC_PTR),Y
-                STA XMSS_TREE_ROOT,Y
-                INY
-                CPY #32
-                BNE XMSS_TREEHASH_COPY_ROOT_LOOP
-                CLC
-                RTS
-
-; ---------------------------------------------------------------------
-; Recompute a root from a leaf and authentication path (RFC Algorithm 13
-; tree portion). WOTS public-key recovery and L-tree compression are
-; intentionally separate and feed XMSS_AUTH_LEAF.
-; ---------------------------------------------------------------------
-
-XMSS_COMPUTE_ROOT_FROM_AUTH
-                CLD
-                LDX #$00
-
-XMSS_AUTH_COPY_LEAF_LOOP
-                LDA XMSS_AUTH_LEAF,X
-                STA XMSS_TREE_NODE,X
-                INX
-                CPX #32
-                BNE XMSS_AUTH_COPY_LEAF_LOOP
-
-                LDA XMSS_TREE_TARGET_LO
-                STA XMSS_TREE_NODE_INDEX_LO
-                LDA XMSS_TREE_TARGET_HI
-                STA XMSS_TREE_NODE_INDEX_HI
-                LDA #$00
-                STA XMSS_AUTH_LEVEL
-
-XMSS_AUTH_ROOT_LOOP
-                LDA XMSS_AUTH_LEVEL
-                CMP XMSS_TREE_HEIGHT_TARGET
-                BEQ XMSS_AUTH_ROOT_DONE
-
-                LDA #$02
-                JSR XMSS_ADRS_SET_TYPE
-
-                LDA XMSS_AUTH_LEVEL
-                JSR XMSS_VALUE32_SET_A
-                JSR XMSS_ADRS_SET_TREE_HEIGHT
-
-                LSR XMSS_TREE_NODE_INDEX_HI
-                ROR XMSS_TREE_NODE_INDEX_LO
-                JSR XMSS_VALUE32_SET_NODE_INDEX
-                JSR XMSS_ADRS_SET_TREE_INDEX
-
-                LDA XMSS_AUTH_LEVEL
-                JSR XMSS_AUTH_SET_SOURCE
-
-                LDA XMSS_TREE_TARGET_LO
-                STA XMSS_TREE_TEMP_LO
-                LDA XMSS_TREE_TARGET_HI
-                STA XMSS_TREE_TEMP_HI
-                LDX XMSS_AUTH_LEVEL
-
-XMSS_AUTH_PARITY_SHIFT_LOOP
-                CPX #$00
-                BEQ XMSS_AUTH_PARITY_READY
-                LSR XMSS_TREE_TEMP_HI
-                ROR XMSS_TREE_TEMP_LO
-                DEX
-                JMP XMSS_AUTH_PARITY_SHIFT_LOOP
-
-XMSS_AUTH_PARITY_READY
-                LDA XMSS_TREE_TEMP_LO
-                AND #$01
-                BEQ XMSS_AUTH_NODE_IS_LEFT
-
-; Target node is right: authentication node is left.
-                LDY #$00
-
-XMSS_AUTH_LOAD_LEFT_LOOP
-                LDA (WOTS_SRC_PTR),Y
-                STA XMSS_RAND_LEFT,Y
-                LDA XMSS_TREE_NODE,Y
-                STA XMSS_RAND_RIGHT,Y
-                INY
-                CPY #32
-                BNE XMSS_AUTH_LOAD_LEFT_LOOP
-                JMP XMSS_AUTH_HASH_PAIR
-
-; Target node is left: authentication node is right.
-XMSS_AUTH_NODE_IS_LEFT
-                LDY #$00
-
-XMSS_AUTH_LOAD_RIGHT_LOOP
-                LDA XMSS_TREE_NODE,Y
-                STA XMSS_RAND_LEFT,Y
-                LDA (WOTS_SRC_PTR),Y
-                STA XMSS_RAND_RIGHT,Y
-                INY
-                CPY #32
-                BNE XMSS_AUTH_LOAD_RIGHT_LOOP
-
-XMSS_AUTH_HASH_PAIR
-                JSR XMSS_RAND_HASH
-                JSR XMSS_COPY_RAND_TO_NODE
-                INC XMSS_AUTH_LEVEL
-                JMP XMSS_AUTH_ROOT_LOOP
-
-XMSS_AUTH_ROOT_DONE
-                LDX #$00
-
-XMSS_AUTH_COPY_ROOT_LOOP
-                LDA XMSS_TREE_NODE,X
-                STA XMSS_TREE_ROOT,X
-                INX
-                CPX #32
-                BNE XMSS_AUTH_COPY_ROOT_LOOP
-                CLC
-                RTS
-
-; =====================================================================
-; TREEHASH SELF-TESTS
-; =====================================================================
-
-INIT_TREEHASH_TEST_DATA
-                LDX #$00
-
-INIT_TREEHASH_SEED_LOOP
-                TXA
-                CLC
-                ADC #$40
-                STA WOTS_PUB_SEED,X
-                TXA
-                CLC
-                ADC #$80
-                STA XMSS_MASTER_SK_SEED,X
-                TXA
-                CLC
-                ADC #$A0
-                STA XMSS_SK_PRF,X
-                INX
-                CPX #32
-                BNE INIT_TREEHASH_SEED_LOOP
-
-                JSR XMSS_ADRS_CLEAR
-                RTS
-
-TEST_XMSS_DERIVE_WOTS_SEED
-                LDA #$05
-                STA XMSS_TREE_LEAF_INDEX_LO
-                LDA #$00
-                STA XMSS_TREE_LEAF_INDEX_HI
-                JSR XMSS_DERIVE_WOTS_SEED
-
-                LDX #$00
-
-TEST_DERIVE_COPY_RESULT_LOOP
-                LDA WOTS_SK_SEED,X
-                STA XMSS_RESULT,X
-                INX
-                CPX #32
-                BNE TEST_DERIVE_COPY_RESULT_LOOP
-
-                LDA #<TEST_DERIVE_TEXT
-                STA STR_PTR
-                LDA #>TEST_DERIVE_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-                JSR PRINT_RESULT
-
-                LDA #<EXPECTED_WOTS_SEED_5
-                STA STR_PTR
-                LDA #>EXPECTED_WOTS_SEED_5
-                STA STR_PTR+1
-                JSR COMPARE_RESULT
-                JSR PRINT_STATUS
-                RTS
-
-TEST_XMSS_TREEHASH_SMALL
-                LDA #$00
-                STA XMSS_TREE_START_LO
-                STA XMSS_TREE_START_HI
-                STA XMSS_TREE_LEAF_MODE
-                LDA #$03
-                STA XMSS_TREE_HEIGHT_TARGET
-                LDA #$01
-                STA XMSS_TREE_CAPTURE_AUTH
-                LDA #$05
-                STA XMSS_TREE_TARGET_LO
-                LDA #$00
-                STA XMSS_TREE_TARGET_HI
-
-                JSR XMSS_ADRS_CLEAR
-                JSR XMSS_TREEHASH
-                BCC TEST_TREEHASH_COPY_RESULT
-                LDA #$00
-                STA TEST_STATUS
-                JMP TEST_TREEHASH_PRINT_STATUS
-
-TEST_TREEHASH_COPY_RESULT
-                LDX #$00
-
-TEST_TREEHASH_COPY_RESULT_LOOP
-                LDA XMSS_TREE_ROOT,X
-                STA XMSS_RESULT,X
-                INX
-                CPX #32
-                BNE TEST_TREEHASH_COPY_RESULT_LOOP
-
-                LDA #<EXPECTED_TREEHASH_ROOT
-                STA STR_PTR
-                LDA #>EXPECTED_TREEHASH_ROOT
-                STA STR_PTR+1
-                JSR COMPARE_RESULT
-
-TEST_TREEHASH_PRINT_STATUS
-                LDA #<TEST_TREEHASH_TEXT
-                STA STR_PTR
-                LDA #>TEST_TREEHASH_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-                JSR PRINT_RESULT
-                JSR PRINT_STATUS
-                RTS
-
-TEST_XMSS_AUTH_PATH
-                LDX #$00
-
-TEST_AUTH_COMPARE_LOOP
-                LDA XMSS_AUTH_PATH,X
-                CMP EXPECTED_AUTH_PATH,X
-                BNE TEST_AUTH_COMPARE_FAIL
-                INX
-                CPX #96
-                BNE TEST_AUTH_COMPARE_LOOP
-                LDA #$01
-                STA TEST_STATUS
-                JMP TEST_AUTH_PRINT_STATUS
-
-TEST_AUTH_COMPARE_FAIL
-                LDA #$00
-                STA TEST_STATUS
-
-TEST_AUTH_PRINT_STATUS
-                LDA #<TEST_AUTH_TEXT
-                STA STR_PTR
-                LDA #>TEST_AUTH_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-                JSR PRINT_STATUS
-                RTS
-
-TEST_XMSS_ROOT_FROM_AUTH
-                LDA #$05
-                STA XMSS_TREE_LEAF_INDEX_LO
-                LDA #$00
-                STA XMSS_TREE_LEAF_INDEX_HI
-                JSR XMSS_GEN_SYNTHETIC_LEAF
-
-                LDX #$00
-
-TEST_AUTH_LEAF_COPY_LOOP
-                LDA XMSS_TREE_NODE,X
-                STA XMSS_AUTH_LEAF,X
-                INX
-                CPX #32
-                BNE TEST_AUTH_LEAF_COPY_LOOP
-
-                JSR XMSS_ADRS_CLEAR
-                JSR XMSS_COMPUTE_ROOT_FROM_AUTH
-
-                LDX #$00
-
-TEST_AUTH_ROOT_COPY_LOOP
-                LDA XMSS_TREE_ROOT,X
-                STA XMSS_RESULT,X
-                INX
-                CPX #32
-                BNE TEST_AUTH_ROOT_COPY_LOOP
-
-                LDA #<EXPECTED_TREEHASH_ROOT
-                STA STR_PTR
-                LDA #>EXPECTED_TREEHASH_ROOT
-                STA STR_PTR+1
-                JSR COMPARE_RESULT
-
-                LDA #<TEST_ROOT_AUTH_TEXT
-                STA STR_PTR
-                LDA #>TEST_ROOT_AUTH_TEXT
-                STA STR_PTR+1
-                JSR PRINT_STRING
-                JSR PRINT_RESULT
-                JSR PRINT_STATUS
-                RTS
-
-
-; =====================================================================
-; HEIGHT-10 / 1024-LEAF DEVELOPMENT VECTORS
-; =====================================================================
-
-TREEHASH1024_TITLE_TEXT
-                .BYTE "XMSS TREEHASH 1024 / SHA2-256",13
-                .BYTE "1024 REAL WOTS+/L-TREE LEAVES",13
-                .BYTE "DEVELOPMENT SEEDS - NOT FOR SIGNING",13
-                .BYTE "WASM STOP/ESCAPE: $4003",13
-                .BYTE "WASM PROGRESS BYTE: $7FFF",13,13,0
-
-TREEHASH1024_BEGIN_TEXT
-                .BYTE "BUILDING HEIGHT-10 TREE...",13
-                .BYTE "ENGAGE WASM ACCELERATOR NOW",13,0
-
-TREEHASH1024_ROOT_TEXT
-                .BYTE 13,"HEIGHT-10 ROOT:",13,0
-
-TREEHASH1024_AUTH_CHECK_TEXT
-                .BYTE "AUTH PATH FOR LEAF 0000: ",0
-
-TREEHASH1024_AUTH_TEXT
-                .BYTE 13,"AUTHENTICATION PATH (10 NODES):",13,0
-
-TREEHASH1024_FAIL_TEXT
-                .BYTE 13,"TREEHASH1024 FAILED",13,0
-
-TREEHASH1024_DONE_TEXT
-                .BYTE 13,"1024-LEAF TREE COMPLETE",13
-                .BYTE "ROOT + AUTH PATH VALIDATED",13,0
-
-EXPECTED_TREEHASH1024_ROOT
-                .BYTE $DF,$BD,$CA,$EF,$D5,$C3,$7F,$A3,$63,$D2,$74,$E3,$69,$12,$1F,$E9
-                .BYTE $52,$82,$2D,$80,$72,$DD,$AD,$7A,$D6,$A3,$6B,$63,$9A,$96,$DA,$87
-
-EXPECTED_TREEHASH1024_AUTH
-                .BYTE $67,$C8,$B3,$2B,$01,$02,$57,$23,$1C,$1D,$CE,$19,$06,$57,$67,$4C
-                .BYTE $67,$EF,$6F,$45,$86,$98,$B3,$0E,$2B,$7C,$DC,$E8,$80,$90,$2B,$7C
-                .BYTE $A3,$77,$92,$62,$A9,$65,$E3,$70,$3B,$7F,$E3,$C6,$2F,$D8,$84,$97
-                .BYTE $43,$4B,$26,$8A,$53,$B9,$BF,$A6,$C3,$03,$B9,$7D,$96,$96,$44,$C1
-                .BYTE $02,$3C,$0C,$C5,$43,$B6,$68,$BF,$32,$E6,$0C,$93,$43,$85,$06,$52
-                .BYTE $5F,$D6,$4A,$00,$6F,$4A,$37,$8A,$9A,$91,$94,$15,$00,$59,$B6,$8A
-                .BYTE $93,$83,$3F,$EC,$32,$37,$91,$25,$EC,$27,$61,$EE,$C0,$5B,$0B,$1F
-                .BYTE $4F,$C2,$DD,$72,$5C,$CE,$02,$1E,$0F,$00,$9B,$26,$63,$4B,$48,$AD
-                .BYTE $3F,$16,$8A,$C6,$1C,$7F,$16,$E9,$BE,$38,$14,$86,$E4,$71,$56,$D5
-                .BYTE $59,$FD,$4B,$90,$96,$29,$48,$C3,$53,$17,$81,$BF,$AF,$7C,$0A,$94
-                .BYTE $BC,$FF,$63,$47,$C4,$EC,$9F,$F5,$71,$BE,$AD,$B1,$E7,$5C,$87,$EC
-                .BYTE $78,$B1,$20,$5F,$F7,$F3,$38,$7A,$E3,$28,$84,$AF,$25,$F6,$DE,$1A
-                .BYTE $3E,$6D,$62,$CF,$0D,$28,$CE,$69,$44,$8C,$58,$75,$7D,$2C,$EF,$2E
-                .BYTE $F0,$D8,$A9,$5A,$9C,$D4,$A1,$2E,$B8,$14,$6A,$D6,$49,$1C,$06,$E3
-                .BYTE $6A,$4B,$24,$D3,$A8,$A1,$93,$CB,$AF,$71,$5F,$36,$A8,$6F,$4D,$23
-                .BYTE $99,$91,$2F,$24,$A9,$38,$2A,$D9,$A7,$98,$C7,$74,$70,$9C,$26,$6D
-                .BYTE $91,$A6,$43,$69,$56,$1E,$DB,$AD,$2E,$BF,$BD,$EB,$88,$DF,$F3,$CB
-                .BYTE $D4,$1E,$97,$A8,$7B,$8F,$E1,$20,$BD,$34,$52,$70,$07,$69,$8E,$39
-                .BYTE $EC,$C0,$12,$DF,$74,$B1,$C6,$DB,$0F,$27,$9D,$08,$03,$F7,$88,$EC
-                .BYTE $52,$6F,$3E,$3E,$2D,$B7,$55,$9F,$51,$7B,$DD,$9A,$03,$4D,$21,$5E
-
-; =====================================================================
-; TREEHASH TEXT AND EXPECTED DEVELOPMENT VECTORS
-; =====================================================================
-
-TREEHASH_TITLE_TEXT
-                .BYTE "XMSS TREEHASH / SHA2-256",13
-                .BYTE "RFC 8391 / APPLE II+",13,13,0
-
-TEST_DERIVE_TEXT
-                .BYTE "WOTS SEED FOR LEAF 5:",13,0
-
-TEST_TREEHASH_TEXT
-                .BYTE "TREEHASH HEIGHT 3 ROOT:",13,0
-
-TEST_AUTH_TEXT
-                .BYTE "AUTH PATH FOR LEAF 5: ",0
-
-TEST_ROOT_AUTH_TEXT
-                .BYTE "ROOT FROM AUTH PATH:",13,0
-
-TREEHASH_DONE_TEXT
-                .BYTE 13,"XMSS TREEHASH SELF-TEST COMPLETE",13,0
-
-EXPECTED_WOTS_SEED_5
-                .BYTE $E7,$9D,$79,$A3,$1D,$A3,$38,$39
-                .BYTE $EE,$6A,$BF,$37,$D6,$26,$0F,$A9
-                .BYTE $2A,$A8,$97,$87,$78,$A1,$C4,$9E
-                .BYTE $D0,$E6,$37,$6A,$90,$E4,$1C,$93
-
-EXPECTED_TREEHASH_ROOT
-                .BYTE $D4,$FB,$8A,$EA,$7C,$10,$0E,$6A
-                .BYTE $5A,$F4,$9B,$15,$5C,$14,$28,$5C
-                .BYTE $AD,$35,$FF,$6E,$D2,$CF,$E9,$94
-                .BYTE $EA,$54,$E1,$12,$B3,$FE,$4F,$50
-
-EXPECTED_AUTH_PATH
-                .BYTE $80,$81,$82,$83,$84,$85,$86,$87
-                .BYTE $88,$89,$8A,$8B,$8C,$8D,$8E,$8F
-                .BYTE $90,$91,$92,$93,$94,$95,$96,$97
-                .BYTE $98,$99,$9A,$9B,$9C,$9D,$9E,$9F
-                .BYTE $5E,$33,$37,$EA,$3C,$88,$9A,$C1
-                .BYTE $EC,$46,$6C,$4E,$1F,$95,$85,$F8
-                .BYTE $73,$1D,$0B,$99,$11,$43,$D0,$0F
-                .BYTE $DA,$C5,$CB,$4A,$4A,$DB,$F0,$D8
-                .BYTE $01,$19,$14,$23,$15,$EE,$BA,$3E
-                .BYTE $D1,$A7,$8D,$A8,$1B,$36,$47,$6E
-                .BYTE $FA,$D9,$25,$A3,$31,$8F,$42,$5A
-                .BYTE $D9,$1E,$D3,$F8,$CF,$ED,$53,$74
-
-; =====================================================================
 ; SIGNER WORKSPACE
 ; =====================================================================
 
 XMSS_SIGN_STATUS
                 .BYTE $FF
 
-; Index reserved for the in-progress signature.  This remains unchanged
-; after the fixed ABI idx at $8CF0 is advanced.
 XMSS_SIGN_IDX
                 .RES 4
 
-; =====================================================================
-; TREEHASH PUBLIC PARAMETERS AND WORKSPACE
-; =====================================================================
-
-XMSS1024_STATUS
-                .BYTE $FF
-
-XMSS1024_PRINT_LEVEL
-                .BYTE $00
-
 XMSS_MASTER_SK_SEED
                 .RES 32
-
-; Signature-randomization secret.  It does not affect TreeHash, but key
-; generation exports it so the later signature generator has the complete
-; immutable private-key material available through the fixed RAM ABI.
-XMSS_SK_PRF
-                .RES 32
-
-XMSS_TREE_START_LO
-                .BYTE $00
-XMSS_TREE_START_HI
-                .BYTE $00
-XMSS_TREE_HEIGHT_TARGET
-                .BYTE $00
-XMSS_TREE_LEAF_MODE
-                .BYTE $00
-XMSS_TREE_CAPTURE_AUTH
-                .BYTE $00
-XMSS_TREE_TARGET_LO
-                .BYTE $00
-XMSS_TREE_TARGET_HI
-                .BYTE $00
-
-XMSS_TREE_LEAF_COUNT_LO
-                .BYTE $00
-XMSS_TREE_LEAF_COUNT_HI
-                .BYTE $00
-XMSS_TREE_OFFSET_LO
-                .BYTE $00
-XMSS_TREE_OFFSET_HI
-                .BYTE $00
-XMSS_TREE_END_LO
-                .BYTE $00
-XMSS_TREE_END_HI
-                .BYTE $00
 
 XMSS_TREE_LEAF_INDEX_LO
                 .BYTE $00
 XMSS_TREE_LEAF_INDEX_HI
                 .BYTE $00
-XMSS_TREE_NODE_INDEX_LO
-                .BYTE $00
-XMSS_TREE_NODE_INDEX_HI
-                .BYTE $00
-XMSS_TREE_NODE_HEIGHT
-                .BYTE $00
-XMSS_TREE_STACK_TOP
-                .BYTE $00
-XMSS_AUTH_LEVEL
-                .BYTE $00
 
-XMSS_TREE_TEMP_LO
-                .BYTE $00
-XMSS_TREE_TEMP_HI
-                .BYTE $00
-XMSS_TREE_PTR_TEMP
-                .BYTE $00,$00
-
-XMSS_TREE_NODE
-                .RES 32
-XMSS_TREE_ROOT
-                .RES 32
-XMSS_AUTH_LEAF
-                .RES 32
-XMSS_AUTH_PATH
-                .RES 320
-XMSS_TREE_STACK_HEIGHTS
-                .RES 11
-XMSS_TREE_STACK_NODES
-                .RES 352
-
-TREEHASH_PROGRAM_END
+XMSS_SIGN_PROGRAM_END
                 .END

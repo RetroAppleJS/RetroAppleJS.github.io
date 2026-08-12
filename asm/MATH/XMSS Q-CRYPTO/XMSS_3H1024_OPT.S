@@ -2,8 +2,8 @@
 ; XMSS_TREEHASH1024_O - full height-10 XMSS tree generator
 ; Apple II+ / 6502, ASM_core.js compatible
 ;
-; Load address: A$4000 L$3C34
-; Exit address: $5357
+; Load address: A$4000 L$3C20
+; Exit address: $533B
 ; The assembled image must remain below XMSS_WASM_PROGRESS at $7FFF.
 ;
 ; This standalone module embeds XMSS_HASH and WOTS+ Stages 1-2, and adds:
@@ -97,47 +97,60 @@ XMSS_N          = 32
 XMSS_WASM_PROGRESS = $7FFF
 
 ; ---------------------------------------------------------------------
-; Fixed XMSS key/signing-state handoff ABI.
+; Fixed XMSS key/signing-state handoff ABI v2.
 ;
-; These addresses deliberately live outside the assembled program image.
-; A separately BRUN signature generator may therefore use the same fixed
-; addresses without depending on this program's internal symbol layout.
+; The complete 512-byte state image occupies $8B00..$8CFF:
 ;
-; Immutable key record: $8C00..$8C8F
-; Dedicated mutable idx: $8CF0..$8CF3 (big-endian, RFC serialization)
+;   BSAVE KEY,A$8B00,L$200
 ;
-; $8C00..$8C03  magic "XMSS"
-; $8C04..$8C07  RFC 8391 parameter identifier $00000001
-; $8C08          local ABI version ($01)
-; $8C09          flags; bit 0 = complete/ready
-; $8C0A..$8C0F  reserved, zero
-; $8C10..$8C2F  MASTER_SK_SEED / S
-; $8C30..$8C4F  SK_PRF
-; $8C50..$8C6F  PUB_SEED
-; $8C70..$8C8F  ROOT
-;
-; idx is intentionally not part of the immutable key record.  A future
-; persistence helper can save/restore the key and idx as separate objects.
+; $8B00..$8B03  magic "XMSS"
+; $8B04..$8B07  RFC 8391 parameter identifier $00000001
+; $8B08          local ABI version ($02)
+; $8B09          flags: bit 0 KEY_READY, bit 1 AUTH_READY
+; $8B0A..$8B0F  reserved, zero
+; $8B10..$8B2F  MASTER_SK_SEED / S
+; $8B30..$8B4F  SK_PRF
+; $8B50..$8B6F  PUB_SEED
+; $8B70..$8B8F  ROOT
+; $8B90..$8CCF  authentication path, 10 * 32 bytes
+; $8CD0..$8CD3  AUTH_IDX, big-endian
+; $8CD4..$8CEF  reserved
+; $8CF0..$8CF3  next signing idx, big-endian
+; $8CF4..$8CFF  reserved
 ; ---------------------------------------------------------------------
 
-XMSS_KEY_BASE           = $8C00
-XMSS_KEY_MAGIC          = $8C00
-XMSS_KEY_OID            = $8C04
-XMSS_KEY_ABI_VERSION    = $8C08
-XMSS_KEY_FLAGS          = $8C09
-XMSS_KEY_RESERVED       = $8C0A
-XMSS_KEY_MASTER_SK_SEED = $8C10
-XMSS_KEY_SK_PRF         = $8C30
-XMSS_KEY_PUB_SEED       = $8C50
-XMSS_KEY_ROOT           = $8C70
-XMSS_KEY_END            = $8C90
+XMSS_KEY_BASE           = $8B00
+XMSS_KEY_MAGIC          = $8B00
+XMSS_KEY_OID            = $8B04
+XMSS_KEY_ABI_VERSION    = $8B08
+XMSS_KEY_FLAGS          = $8B09
+XMSS_KEY_RESERVED       = $8B0A
+XMSS_KEY_MASTER_SK_SEED = $8B10
+XMSS_KEY_SK_PRF         = $8B30
+XMSS_KEY_PUB_SEED       = $8B50
+XMSS_KEY_ROOT           = $8B70
+
+XMSS_AUTH_PATH_ABI      = $8B90
+XMSS_AUTH_IDX           = $8CD0
+XMSS_AUTH_IDX_0         = $8CD0
+XMSS_AUTH_IDX_1         = $8CD1
+XMSS_AUTH_IDX_2         = $8CD2
+XMSS_AUTH_IDX_3         = $8CD3
+XMSS_STATE_RESERVED     = $8CD4
+
 XMSS_KEY_READY          = $01
+XMSS_AUTH_READY         = $02
 
 XMSS_IDX                = $8CF0
 XMSS_IDX_0              = $8CF0
 XMSS_IDX_1              = $8CF1
 XMSS_IDX_2              = $8CF2
 XMSS_IDX_3              = $8CF3
+XMSS_TAIL_RESERVED      = $8CF4
+
+XMSS_ABI_END            = $8D00
+XMSS_ABI_LENGTH_LO      = $00
+XMSS_ABI_LENGTH_HI      = $02
 
 ; =====================================================================
 ; XMSS TREEHASH1024 ENTRY
@@ -313,7 +326,7 @@ XMSS_KEY_EXPORT_FIXED
                 LDA #$01
                 STA XMSS_KEY_OID+3
 
-                LDA #$01
+                LDA #$02
                 STA XMSS_KEY_ABI_VERSION
 
                 ; Keep the reserved bytes deterministic for RAM/disk images.
@@ -340,16 +353,59 @@ XMSS_KEY_EXPORT_COPY
                 CPX #32
                 BNE XMSS_KEY_EXPORT_COPY
 
-                ; Dedicated RFC-sized signing index, big-endian.
-                ; $00000000 selects WOTS leaf 0 for the first signature.
+                ; Export the 320-byte authentication path.
+                LDX #$00
+XMSS_KEY_EXPORT_AUTH_0_255
+                LDA XMSS_AUTH_PATH,X
+                STA XMSS_AUTH_PATH_ABI,X
+                INX
+                BNE XMSS_KEY_EXPORT_AUTH_0_255
+
+                LDX #$00
+XMSS_KEY_EXPORT_AUTH_256_319
+                LDA XMSS_AUTH_PATH+256,X
+                STA XMSS_AUTH_PATH_ABI+256,X
+                INX
+                CPX #64
+                BNE XMSS_KEY_EXPORT_AUTH_256_319
+
+                ; Tag the path with the target leaf.
+                LDA #$00
+                STA XMSS_AUTH_IDX_0
+                STA XMSS_AUTH_IDX_1
+                LDA XMSS_TREE_TARGET_HI
+                STA XMSS_AUTH_IDX_2
+                LDA XMSS_TREE_TARGET_LO
+                STA XMSS_AUTH_IDX_3
+
+                ; Clear $8CD4..$8CEF.
+                LDX #$00
+                LDA #$00
+XMSS_KEY_EXPORT_CLEAR_STATE_RESERVED
+                STA XMSS_STATE_RESERVED,X
+                INX
+                CPX #28
+                BNE XMSS_KEY_EXPORT_CLEAR_STATE_RESERVED
+
+                ; First signature uses idx 0.
                 LDA #$00
                 STA XMSS_IDX_0
                 STA XMSS_IDX_1
                 STA XMSS_IDX_2
                 STA XMSS_IDX_3
 
-                ; Commit/ready marker is deliberately the final write.
-                LDA #XMSS_KEY_READY
+                ; Clear $8CF4..$8CFF so the full $0200-byte disk image is
+                ; deterministic.
+                LDX #$00
+                LDA #$00
+XMSS_KEY_EXPORT_CLEAR_TAIL_RESERVED
+                STA XMSS_TAIL_RESERVED,X
+                INX
+                CPX #12
+                BNE XMSS_KEY_EXPORT_CLEAR_TAIL_RESERVED
+
+                ; Commit both key and auth-path readiness last.
+                LDA #$03
                 STA XMSS_KEY_FLAGS
 
                 CLC
