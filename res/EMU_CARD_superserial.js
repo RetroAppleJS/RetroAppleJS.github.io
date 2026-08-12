@@ -278,7 +278,7 @@ else oEMU.component.IO.SuperSerial = new SuperSerialCard();
 
 function SuperSerialCard()
 {
-    const bDebug = false;
+    const bDebug = true;
 
     this.id = {"PCODE":"SSC", "icon":"fa fa-terminal"};
 
