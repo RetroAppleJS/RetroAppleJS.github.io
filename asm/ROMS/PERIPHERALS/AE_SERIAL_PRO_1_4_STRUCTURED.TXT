@@ -1,0 +1,1360 @@
+; ============================================================================
+; Applied Engineering Serial Pro v1.4 - structured disassembly (work in progress)
+; ============================================================================
+;
+; Source basis:
+;   Raw linear disassembly supplied from an AE Serial Pro 1.4 ROM image.
+;   Hardware/firmware-interface annotations have now also been cross-checked
+;   against the supplied Serial Pro User's Manual v2.0 transcription.
+;
+; IMPORTANT ADDRESS-MAPPING NOTE:
+;   ORG $C800 is retained only to reproduce the supplied v1.4 raw-disassembly
+;   byte stream. It is NOT a claim that all physical EPROM bytes are
+;   simultaneously mapped linearly at Apple II $C800-$CFFF.
+;
+;   The v2.0 manual explicitly documents the same hardware register locations
+;   used by this v1.4 byte code:
+;       $C086 + $s0  EPROM Bank Register Clear (write only)
+;       $C087 + $s0  EPROM Bank Register       (write only)
+;       $C084 + $s0  6818 Clock/RAM address register
+;       $C085 + $s0  6818 Clock/RAM data register
+;       $C088-$C08B + $s0  6551 DATA/STATUS/COMMAND/CONTROL
+;
+;   The v1.4 BankSelect routine writes $C087,Y and intentionally has no RTS.
+;   Under a fixed linear view it would fall into BaseInit and recurse via
+;   LoadCfg -> BankCall. The documented EPROM-bank register therefore confirms
+;   our earlier inference that subsequent instruction fetches can come from a
+;   different EPROM view.
+;
+;   The v2.0 manual also documents slot-page firmware entry points $Cs00,
+;   $Cs05, $Cs07 and $Cs11. The v1.4 code constructs dynamic RTS trampolines
+;   into the same $Cnxx page and uses the same $05/$07 BASIC vector offsets.
+;   Those ABI names are therefore applied here where the v1.4 address and code
+;   pattern match exactly, while the physical EPROM-to-$Cnxx mapping remains
+;   unresolved.
+;
+; Supplied byte range reconstructed here:
+;   ROM-image offset $000-$71F -> provisional CPU $C800-$CF1F
+;   1824 bytes total.
+;   The remaining $E0 bytes of a 2 KiB provisional view were not present in the
+;   supplied v1.4 raw disassembly and are therefore not invented here.
+;
+; ASM_core.js compatibility:
+;   Uses only EQU, ORG, standard legal 6502 mnemonics, HEX and .END.
+;   Overlapping instruction entry points are represented with EQU so their
+;   underlying bytes are emitted once.
+;
+; Validation:
+;   The original structured v1.4 source was independently re-encoded and matched
+;   the supplied raw listing byte-for-byte over $C800-$CF1F (1824/1824 bytes).
+;   This revision changes labels, EQU symbols and comments only; instruction/data
+;   values and layout are unchanged.
+;
+; Slot-2 hardware addresses:
+;   The firmware saves X as slot-page high byte $Cn. With X=$C2, four ASLs yield
+;   Y=$20, so indexed card I/O becomes:
+;       RTCSEL,Y   = $C0A4      6818 Clock/RAM address
+;       RTCDATA,Y  = $C0A5      6818 Clock/RAM data
+;       BANKCLR,Y  = $C0A6      EPROM Bank Register Clear
+;       BANKREG,Y  = $C0A7      EPROM Bank Register
+;       ACIADATA,Y = $C0A8      6551 DATA
+;       ACIASTAT,Y = $C0A9      6551 STATUS/RESET
+;       ACIACMD,Y  = $C0AA      6551 COMMAND
+;       ACIACTRL,Y = $C0AB      6551 CONTROL
+;
+; Confidence wording:
+;   Register and battery-RAM meanings below are documented by the v2.0 manual
+;   and are adopted for v1.4 where the byte code uses the same addresses and
+;   behavior. Comments marked provisional/likely/inferred remain hypotheses.
+; ============================================================================
+
+; ---------------------------------------------------------------------------
+; Apple II / Serial Pro hardware symbols
+; ---------------------------------------------------------------------------
+KBD       EQU $C000
+KBDSTRB   EQU $C010
+RTCSEL    EQU $C084
+RTCDATA   EQU $C085
+BANKCLR   EQU $C086
+BANKREG   EQU $C087
+ACIADATA  EQU $C088
+ACIASTAT  EQU $C089
+ACIACMD   EQU $C08A
+ACIACTRL  EQU $C08B
+
+; ---------------------------------------------------------------------------
+; Battery-backed 6818 RAM allocations documented by Serial Pro v2.0.
+; v1.4 accesses the same locations for the same apparent purposes.
+; ---------------------------------------------------------------------------
+BR_MODE       EQU $22       ; device type: communications/P8/printer/P8A
+BR_CONTROL    EQU $23       ; saved 6551 CONTROL-register image
+BR_COMMAND    EQU $24       ; saved 6551 COMMAND-register image
+BR_LINE       EQU $25       ; printer line length
+BR_DELAYCASE  EQU $26       ; case translation + CR/LF/FF delay flags
+BR_HANDSHAKE  EQU $28       ; local echo, XON/XOFF, LF-after-CR
+BR_GRAPHICS   EQU $29       ; graphics printer selection
+BR_GFXCTL0    EQU $2B       ; graphics-print control / firmware scratch
+BR_GFXCTL1    EQU $2C       ; graphics-print control / firmware scratch
+
+; ---------------------------------------------------------------------------
+; Apple II workspace / monitor symbols
+; ---------------------------------------------------------------------------
+SLOTOFF  EQU $26        ; slot I/O offset, slot 2 => $20
+CHARBUF  EQU $27        ; current character scratch
+CH       EQU $24        ; Apple text cursor column
+BASL     EQU $28        ; Apple screen-line base pointer
+CSWL     EQU $36
+CSWH     EQU $37
+KSWL     EQU $38
+KSWH     EQU $39
+A1L      EQU $3C        ; Apple Monitor A1 pointer
+CNTLO    EQU $4E
+CNTHI    EQU $4F
+SLOTSAVE EQU $07F8      ; saved slot-page high byte $Cn
+NXTA1    EQU $FCBA
+COUT1    EQU $FDF6
+
+; Overlapping-code entry points. These addresses fall inside another valid
+; instruction stream, so EQU is used instead of emitting the bytes twice.
+AltLoad1 EQU $C8A0      ; alternate decode: LDA #$01
+AltC8FA  EQU $C8FA      ; alternate entry observed from BVC; semantics unresolved
+AltLoad0 EQU $CE07      ; alternate decode: LDA #$00
+
+        ORG $C800
+
+
+; ============================================================================
+; SECTION 1 - EARLY ENTRY POINTS, EPROM BANKING, SLOT CONTEXT AND CONFIGURATION
+; ============================================================================
+
+;
+; Pascal 1.0 initialization entry. The v2.0 manual documents $C800 for this
+; interface, and the v1.4 image contains the same entry at the same address.
+; The physical EPROM view selected at runtime is still treated separately.
+PascalInit
+        JMP BaseInit
+;
+; EPROM-bank wrapper. The v2.0 manual identifies $C087+$s0 as the EPROM Bank
+; Register and $C086+$s0 as its clear register. This routine selects a bank through
+; BankSelect, then restores bank-register value $00. The PAL's exact mapping of
+; each bank value onto EPROM address lines remains to be decoded.
+BankCall
+        PHP
+        SEI
+        LDA #$00
+        PHA
+        JSR BankSelect
+        PLA
+        LDY SLOTOFF
+        STA BANKREG,Y              ; slot 2: $C0A7; restore EPROM bank register to $00
+        PLP
+        RTS
+;
+; Write X to the documented EPROM Bank Register at $C087,Y. There is intentionally
+; no RTS in this byte stream; subsequent instruction fetches depend on the selected
+; EPROM bank/view.
+BankSelect
+        TXA
+        LDY SLOTOFF
+        STA BANKREG,Y              ; slot 2: $C0A7; select EPROM bank/view X
+;
+; Base/default-bank code visible at provisional $C819. Entered directly by PascalInit.
+; Do not assume a BankSelect fall-through sees these same bytes after changing BANKREG.
+BaseInit
+        JSR SaveCtx
+        LDA #$16
+        JSR LoadCfg
+        LDX #$00
+        RTS
+;
+; Status/secondary entry. Saves the slot context and asks AciaTest for a status
+; condition selected through carry. Exact external calling convention is unresolved.
+StatusEnt
+        JSR SaveCtx
+        LSR A
+        JSR AciaTest
+        LDA $05B8,X
+        TAX
+        RTS
+;
+; Update a per-slot column/count value from CHARBUF. Printable characters advance
+; the count; $88/backspace-like input and $FF-like input take the decrement path.
+TrackCol
+        LDA CHARBUF
+        ORA #$80
+        CMP #$A0
+        BCC LC840
+        EOR #$FF
+        BEQ LC844
+        INC $06B8,X
+        RTS
+LC840
+        EOR #$88
+        BNE LC84C
+LC844
+        DEC $06B8,X
+        BPL LC84C
+        STA $06B8,X
+LC84C
+        RTS
+;
+; Pascal 1.0 read entry. The v2.0 manual documents this routine at $C84D; v1.4
+; contains the same entry address and closely matching implementation.
+PascalRead
+        JSR ReadEntry
+        LDX SLOTSAVE
+        STA $05B8,X
+        RTS
+;
+; Save card context. Y is retained as the slot I/O offset and X as the slot-page
+; high byte ($Cn). For slot 2, X=$C2 later converts to Y=$20.
+SaveCtx
+        PHA
+        STY SLOTOFF               ; save current Y; later used as slot I/O offset
+        STX SLOTSAVE              ; save slot-page high byte $Cn (slot 2 => $C2)
+        LDA #$00
+        STA $05B8,X
+        PLA
+        RTS
+;
+; Load Serial Pro defaults from 6818 battery RAM and program the 6551. The v2.0
+; manual documents RAM $22-$29; the v1.4 code accesses the same locations in the
+; same roles, so those documented field names are used here.
+LoadCfg
+        PHA
+        LDX #$01
+        JSR BankCall
+        LDX SLOTSAVE
+        LDA #BR_HANDSHAKE            ; battery RAM $28 = handshake/default flags
+        JSR RtcRead
+        STA $0738,X
+        LDA #BR_DELAYCASE            ; battery RAM $26 = CR/LF/FF delay + case-translation flags
+        JSR RtcRead
+        STA $03B8,X
+        LDA #BR_MODE                 ; battery RAM $22 = device/mode byte
+        JSR RtcRead
+        BEQ AltLoad1
+        LSR A
+        BCC LC891
+        LSR A
+        LDA #$03
+        BCS LC88E
+        LDA #$80
+LC88E
+        STA $04B8,X
+LC891
+        LDA #BR_LINE                 ; battery RAM $25 = printer line length
+        JSR RtcRead
+        STA $0638,X
+        PLA
+        AND #$95
+        PHA
+        LDA #$09
+        BIT $01A9                 ; bytes $C8A0-$C8A1 also decode as LDA #$01
+        STA $0538,X
+        PLA
+        ORA $0738,X
+        STA $0738,X
+        LDA #BR_CONTROL              ; battery RAM $23 -> 6551 CONTROL image
+        JSR RtcRead
+        STA ACIACTRL,Y            ; slot 2: write $C0AB (6551 CONTROL)
+        LDA #BR_COMMAND              ; battery RAM $24 -> 6551 COMMAND image
+        JSR RtcRead
+        STA ACIACMD,Y             ; slot 2: write $C0AA (6551 COMMAND)
+        LDA ACIADATA,Y            ; slot 2: read $C0A8, likely clear/prime ACIA receive state
+        RTS
+;
+; Character-input entry (provisional name): obtain an input character, strip bit 7
+; and pass it through the flow/setup processing path.
+ReadEntry
+        JSR SaveCtx
+        JSR WaitInput
+        AND #$7F
+        BCS LC8D2
+LC8CA
+        STA CHARBUF
+        JSR SaveCtx
+        JSR CheckFlow
+LC8D2
+        LDY SLOTSAVE
+        LDX $05B8,Y
+        RTS
+
+; ============================================================================
+; SECTION 2 - APPLE I/O VECTOR AND TERMINAL MODE SETUP
+; ============================================================================
+
+;
+; Vector/mode setup path (provisional). It inspects Apple CSW/KSW vectors and can
+; force their low bytes to $07 and $05 when their high byte matches this slot.
+HookIO
+        BVC LC908
+        LDA $0538,X
+        AND #$7F
+        STA $0538,X
+        LDA #$1F
+        AND ACIACMD,Y
+        BNE LC8EF
+        LDA #$66
+        JSR LoadCfg
+LC8EF
+        CPX CSWH                  ; compare current slot high byte with CSWH
+        BNE LC8FD
+        LDA #$07
+        CMP CSWL
+        BEQ LC8FD
+        STA CSWL                  ; force CSWL=$07 for this card
+        BNE LC90A
+LC8FD
+        CPX KSWH                  ; compare current slot high byte with KSWH
+        BNE LC90A
+        LDA #$05
+        STA KSWL                  ; force KSWL=$05 for this card
+LC905
+        JMP InputLoop
+LC908
+        BCS LC905
+LC90A
+        JMP TermCore
+;
+; Update per-slot flow/mode flags from the current character in CHARBUF.
+; Exact meanings of $92/$94 remain to be identified.
+FlowFlags
+        LDA $0738,X
+        AND #$0A
+        CMP #$0A
+        BNE LC92A
+        LDY CHARBUF
+        LDA $04B8,X
+        AND #$7F
+        CPY #$92
+        BEQ LC927
+        ORA #$80
+        CPY #$94
+        BNE LC92A
+LC927
+        STA $04B8,X
+LC92A
+        RTS
+;
+; 18 zero bytes; likely alignment/unused ROM space.
+PadC92B
+        HEX 00000000000000000000000000000000
+        HEX 0000
+
+
+; ============================================================================
+; SECTION 3 - BLOCK SERIAL TRANSFER
+; ============================================================================
+
+;
+; Block-transfer entry. After rebuilding the slot I/O offset, V selects between
+; serial->memory and memory->serial loops using Apple Monitor A1 and NXTA1.
+BlockIO
+        BIT $FF58                 ; machine/firmware environment test; branch target overlaps code stream
+        BVC AltC8FA
+        LDA #$00
+        LDX SLOTSAVE              ; recover saved slot-page high byte $Cn
+        STA $05B8,X
+        TXA                       ; convert $Cn to slot I/O offset
+        ASL A                     ; for slot 2: $C2 << 4 -> $20
+        ASL A
+        ASL A
+        ASL A
+        STA SLOTOFF               ; slot 2: SLOTOFF=$20
+        BVC LC962
+LC953
+        JSR TryRx
+        BCC LC953
+        LDY #$00
+        STA (A1L),Y               ; serial byte -> memory at A1
+        JSR NXTA1                 ; advance A1 and compare against A2
+        BCC LC953
+        RTS
+LC962
+        LDY #$00
+        LDA (A1L),Y               ; memory at A1 -> serial output path
+        STA CHARBUF
+        JSR WaitTx                ; wait/transmit CHARBUF
+        JSR NXTA1
+        BCC LC962
+        RTS
+
+; ============================================================================
+; SECTION 4 - TERMINAL CHARACTER STATE MACHINE
+; ============================================================================
+
+;
+; Main terminal/character state machine. Handles mode bits, flow control and
+; dispatch into input/output formatting paths.
+TermCore
+        LDA $04B8,X
+        ASL A
+        BPL LC989
+        ROR A
+        AND #$BF
+        STA $04B8,X
+        PLA
+        PHA
+        TAX
+        LDA CHARBUF
+        ORA #$20
+        STA $0200,X
+        STA CHARBUF
+LC989
+        JSR TestFlag2
+        BEQ OutputFmt
+        JSR CheckFlow
+LC991
+        JSR TestFlag2
+        BEQ LC99E
+        LDA $04B8,X
+        BPL LC99E
+        JSR LineMode
+LC99E
+        PLA
+        TAX
+LC9A0
+        PLA
+        TAY
+        LDA CHARBUF
+        RTS
+;
+; 5 zero bytes; likely alignment/unused ROM space.
+PadC9A5
+        HEX 0000000000
+
+ResumeIn
+        JMP LC8CA
+;
+; Input-side loop/state machine. Waits for input/control conditions and maintains
+; per-slot terminal state before returning through TermCore.
+InputLoop
+        JSR TestFlag2
+        BEQ LC9C1
+        LDA $06B8,X
+        BPL LC9BC
+        LSR $06B8,X
+        BNE LC9C6
+LC9BC
+        JSR SetupCheck
+        BCS LC9CC
+LC9C1
+        JSR TryInput
+        BCC LC9BC
+LC9C6
+        JSR StoreChar
+        JSR FlowFlags
+LC9CC
+        LDA CHARBUF
+        CMP #$E0
+        BCC LC991
+        LDA $03B8,X
+        AND #$C0
+        BEQ LC991
+        LDA $04B8,X
+        ORA #$40
+        STA $04B8,X
+        BNE LC991
+;
+; Output formatting path. Tracks cursor/line state and feeds characters through
+; CharOut, flow processing and terminal formatting.
+OutputFmt
+        JSR FlowCtrl
+        BCS LC99E
+        LDA CHARBUF
+        PHA
+        LDA $0738,X
+        AND #$C0
+        BNE LCA08
+        LDA CH
+        BEQ LCA29
+        CMP #$08
+        BEQ LC9FE
+        CMP #$10
+        BNE LCA08
+LC9FE
+        ORA #$F0
+        AND $06B8,X
+        CLC
+        ADC CH
+        STA CH
+LCA08
+        LDA $06B8,X
+        CMP CH
+        BEQ LCA29
+        LDA #$A0
+        BCC LCA1B
+        LDA $0738,X
+        ASL A
+        BPL LCA29
+        LDA #$88
+LCA1B
+        STA CHARBUF
+        JSR TrackCol
+        JSR ProcessOut
+        JSR LCA60
+        JMP LCA08
+LCA29
+        PLA
+        JSR CharOut
+        LDA $0738,X
+        BMI LCA48
+        LDY $06B8,X
+        ASL A
+        BMI LCA46
+        TYA
+        LDY #$00
+        SEC
+        SBC $0638,X
+        CMP #$F8
+        BCC LCA46
+        ADC #$27
+        TAY
+LCA46
+        STY CH
+LCA48
+        JMP LC99E
+;
+; Store current character in CHARBUF and update CR/column state before further
+; output processing.
+CharOut
+        STA CHARBUF
+        PHA
+        JSR OutPrep
+        JSR TrackCol
+        PLA
+        EOR #$8D
+        ASL A
+        BNE LCA60
+        STA $06B8,X
+        STA CH
+        RTS
+LCA60
+        LDA $04B8,X
+        BPL LCA72
+        LDA $0638,X
+        BEQ LCA72
+        CLC
+        SBC $06B8,X
+        LDA #$8D
+        BCC CharOut
+LCA72
+        RTS
+;
+; Return Z according to bit 1 of the per-slot mode byte at $0738,X.
+TestFlag2
+        LDX SLOTSAVE
+        LDA $0738,X
+        AND #$02
+        RTS
+;
+; Dispatch EPROM-bank operations according to incoming processor flags. Values
+; $02, $0A and $12 are passed through BankCall. The register function is now
+; confirmed; the meaning of these particular bank-selector values remains TBD.
+CtlDispatch
+        BVS LCA91
+        BCC LCA88
+        LDX #$02
+        JSR BankCall
+        JMP LC99E
+LCA88
+        LDX #$0A
+        JSR BankCall
+        PLA
+        JMP LC9A0
+LCA91
+        LDX #$12
+        JSR BankCall
+        JMP LC99E
+;
+; Issue EPROM-bank operation $09 through BankCall; selected view remains TBD.
+Cmd09
+        LDX #$09
+        JSR BankCall
+        RTS
+;
+; Screen/buffer processing path used by the terminal state machine.
+LineMode
+        LDA #$7F
+        AND $0738,X
+        STA $0738,X
+        LDA #$00
+LCAA9
+        PHA
+LCAAA
+        JSR NextBuf
+        PLA
+        BCC LCABE
+        TAY
+        JSR Translate
+        TYA
+        BCC LCAA9
+        PHA
+        JSR OutPrep
+        JMP LCAAA
+LCABE
+        JSR StoreChar
+        LDA #$8D
+        STA CHARBUF
+        RTS
+;
+; Fetch the current screen/buffer character through BASL/CH and apply output/flow
+; processing. Re-enters itself until the surrounding state machine finishes.
+NextBuf
+        LDY CH
+        LDA (BASL),Y
+        STA CHARBUF
+LCACC
+        LDA CNTHI
+        AND #$03
+        BNE LCAE0
+        LDY CH
+        LDA #$DF
+        CMP (BASL),Y
+        BNE LCADC
+        LDA CHARBUF
+LCADC
+        STA (BASL),Y
+        INC CNTHI
+LCAE0
+        LDA $04B8,X
+        ASL A
+        BCC LCAF2
+        JSR TryInput
+        BCS LCAF3
+        JSR SetupCheck
+        BCC LCACC
+        BVS NextBuf
+LCAF2
+        RTS
+LCAF3
+        JSR StoreChar
+        JSR FlowFlags
+        JSR DisplayChar
+        JMP NextBuf
+;
+; Translate escape/control input. The table at CharMap maps several special
+; characters; normal alphabetic input may be folded to lowercase.
+Translate
+        LDA $0738,X
+        ASL A
+        BPL LCB32
+        LDA CHARBUF
+        CMP #$9B
+        BNE LCB12
+        DEY
+        BPL LCB10
+        LDY #$02
+LCB10
+        CLC
+        RTS
+LCB12
+        CPY #$01
+        BCC LCB32
+        BEQ LCB24
+        CMP #$C1
+        BCC LCB32
+        CMP #$DB
+        BCS LCB32
+        ORA #$20
+        BNE LCB2E
+LCB24
+        EOR #$B0
+        CMP #$0B
+        BCS LCB30
+        TAY
+        LDA $CB34,Y               ; lookup special control/escape translation byte
+LCB2E
+        STA CHARBUF
+LCB30
+        LDY #$02
+LCB32
+        SEC
+        RTS
+;
+; Special control/escape translation table used by Translate.
+CharMap
+        HEX 9B9C9FDBDCDF
+        HEX FBFCFDFEFF
+
+;
+; Try to obtain a serial character. On success set bit 7 and return C=1;
+; on failure return C=0. Special handling exists for line-feed $8A.
+TryInput
+        JSR TryRx
+        BCC LCB55
+        ORA #$80
+        CMP #$8A
+        BNE LCB54
+        CLC
+        LDA $0738,X
+        AND #$20
+        BNE LCB55
+        LDA #$8A
+LCB54
+        SEC
+LCB55
+        RTS
+;
+; Flow/control recognizer using battery-RAM mode byte $22 (BR_MODE).
+; Handles configured control characters and terminal flow state.
+FlowCtrl
+        LDA #BR_MODE
+        JSR RtcRead
+        LSR A
+        BCS LCB98
+        LDA $04B8,X
+        AND #$07
+        BEQ LCB6A
+        JSR CfgCommand
+        SEC
+        RTS
+LCB6A
+        LDA CHARBUF
+        AND #$7F
+        CMP $0538,X
+        BNE LCB7C
+        INC $04B8,X
+        TXA
+        PHA                       ; push $Cn as dynamic target high byte
+        LDA #$8F                  ; $8F + RTS increment => slot entry $Cn90
+        PHA
+        RTS
+LCB7C
+        LDA $0738,X
+        AND #$08
+        BEQ LCB98
+        JSR TryInput
+        BCC LCB98
+        CMP #$93
+        BEQ WaitCtl91
+        PHA
+        LDA $0738,X
+        LSR A
+        LSR A
+        PLA
+        BCC LCB99
+        STA $06B8,X
+LCB98
+        CLC
+LCB99
+        RTS
+;
+; Wait until input character $91 is seen; used while resolving flow-control state.
+WaitCtl91
+        JSR WaitInput
+        CMP #$91
+        BNE WaitCtl91
+        CLC
+LCBA2
+        RTS
+;
+; Flow-control gate used by both input and output paths.
+CheckFlow
+        JSR FlowCtrl
+        BCS LCBA2
+;
+; Output pre-processing. In one mode it first routes CHARBUF through DisplayChar.
+OutPrep
+        LDA $0738,X
+        BPL ProcessOut
+        JSR DisplayChar
+;
+; Main output-character processor: terminal mode handling, CR processing, screen
+; echo and optional post-character delay.
+ProcessOut
+        LDA CHARBUF
+        PHA
+        LDA #BR_MODE
+        JSR RtcRead
+        CMP #$03
+        BNE LCC01
+        LDA $0438,X
+        CMP #$99
+        BCS LCBD3
+        CMP #$95
+        BCC LCBE9
+        CMP #$96
+        PLA
+        PHA
+        AND #$7F
+        EOR #$1B
+        BNE LCBE9
+        BCC LCBEC
+LCBD3
+        LDA $04B8,X
+        AND #$1F
+        ORA #$80
+        STA CHARBUF
+LCBDC
+        JSR WaitTx
+        JSR WaitInput
+        EOR #$86
+        BNE LCBDC
+        STA $0438,X
+LCBE9
+        INC $0438,X
+LCBEC
+        PLA
+        PHA
+        STA CHARBUF
+        EOR #$8D
+        ASL A
+        BNE LCC01
+        LDA $03B8,X
+        AND #$30
+        BEQ LCC01
+        LDA #$C8
+        STA $0438,X
+LCC01
+        JSR WaitTx
+        JSR PostDelay
+        LDA $0738,X
+        LSR A
+        LDA CHARBUF
+        ROL A
+        CMP #$1B
+        BNE LCC19
+        LDA #$8A
+        STA CHARBUF
+        JSR ProcessOut
+LCC19
+        PLA
+        STA CHARBUF
+        RTS
+;
+; Store CHARBUF into the current screen line and normalize selected control
+; characters according to per-slot terminal mode.
+StoreChar
+        PHA
+        LDY CH
+        LDA CHARBUF
+        STA (BASL),Y
+        PLA
+        CMP #$95
+        BNE LCC3C
+        LDA CHARBUF
+        CMP #$20
+        BCS LCC3C
+        LDY $03B8,X
+        BPL LCC3C
+        EOR #$C0
+        CPY #$C0
+        BCS LCC3C
+        EOR #$20
+LCC3C
+        STA CHARBUF
+        RTS
+
+; ============================================================================
+; SECTION 5 - LOW-LEVEL SERIAL, RTC AND KEYBOARD PRIMITIVES
+; ============================================================================
+
+;
+; Blocking input multiplexer: poll serial first, then Apple keyboard when enabled,
+; until one source returns a character.
+WaitInput
+        JSR TryInput
+        BCS LCC49
+        JSR KeyPoll
+        BCC WaitInput
+LCC49
+        RTS
+;
+; Read one Serial Pro 6818 clock/battery-RAM register. A is the register number;
+; $C084,Y as selector and $C085,Y as data. Slot 2 (Y=$20) -> $C0A4/$C0A5.
+RtcRead
+        PHP
+        SEI
+        LDY SLOTOFF
+        STA RTCSEL,Y              ; select 6818 clock/RAM register A
+        LDA RTCDATA,Y             ; read selected 6818 clock/RAM register
+        PLP
+        ORA #$00
+        RTS
+;
+; Wait for the transmitter-ready condition, then construct an RTS trampoline to
+; $Cn8C by pushing slot high byte X and low byte $8B (= target-1).
+WaitTx
+        CLC
+        JSR AciaTest
+        BCC WaitTx
+        TXA                       ; push $Cn as dynamic target high byte
+        PHA
+        LDA #$8B                  ; $8B + RTS increment => slot entry $Cn8C
+        PHA
+        LDA CHARBUF
+        RTS
+;
+; Non-blocking receive primitive. C=1 on entry selects the receive-ready test;
+; if ready, read ACIA DATA at $C088,Y and return C=1.
+TryRx
+        SEC
+        JSR AciaTest
+        BCC LCC6F
+        LDA ACIADATA,Y            ; slot 2: read $C0A8 (6551 DATA)
+LCC6F
+        RTS
+;
+; Read and interpret ACIA STATUS at $C089,Y. Incoming carry selects one of two
+; tests: receive status when C=1, transmit/other status when C=0.
+AciaTest
+        LDY SLOTOFF
+        LDA ACIASTAT,Y            ; slot 2: read $C0A9 (6551 STATUS)
+        BCC LCC8F
+        AND #$2F
+        CMP #$20
+        BCC LCC83
+        CMP #$28
+        ORA #$08
+        BNE LCC8B
+LCC83
+        CMP #$08
+        AND #$07
+        BEQ LCC8E
+        ORA #$20
+LCC8B
+        STA $05B8,X
+LCC8E
+        RTS
+LCC8F
+        AND #$70
+        CMP #$10
+        BEQ LCC96
+        CLC
+LCC96
+        RTS
+;
+; Optional Apple keyboard poll. If enabled in per-slot state, read $C000 and
+; clear the keyboard strobe through $C010; C=1 means a key was obtained.
+KeyPoll
+        CLC
+        LDA $0738,X
+        AND #$04
+        BEQ LCCA8
+        LDA KBD                   ; Apple keyboard data/strobe at $C000
+        BPL LCCA8
+        STA KBDSTRB               ; clear Apple keyboard strobe
+        SEC
+LCCA8
+        RTS
+
+; ============================================================================
+; SECTION 6 - BUILT-IN SETUP / CONFIGURATION
+; ============================================================================
+
+;
+; Built-in setup/configuration path. Detects the configured setup trigger, emits
+; the reverse-stored 'AE PRO:' prompt and runs a keyboard-driven command loop.
+SetupCheck
+        INC CNTLO
+        BNE LCCAF
+        INC CNTHI
+LCCAF
+        JSR KeyPoll
+        CLV
+        BCC LCD03
+        JSR StoreChar
+        AND #$7F
+        CMP $0538,X
+        BNE LCD02
+        LDA #BR_MODE
+        JSR RtcRead
+        LSR A
+        BCS LCD02
+LCCC7
+        LDY #$07
+LCCC9
+        LDA $CD04,Y               ; read reverse-stored 'AE PRO:' prompt
+        STA CHARBUF
+        TYA
+        STA KBDSTRB
+        PHA
+        JSR DisplayChar
+        PLA
+        TAY
+        DEY
+        BPL LCCC9
+        LDA #$01
+        JSR SetMode
+LCCE0
+        LDA KBD
+        BPL LCCE0
+        STA KBDSTRB
+        CMP #$88
+        BEQ LCCC7
+        STA CHARBUF
+        JSR DisplayChar
+        JSR FlowCtrl
+        LDA $04B8,X
+        AND #$07
+        BNE LCCE0
+        LDA #$8D
+        STA CHARBUF
+        BIT $FF58
+LCD02
+        SEC
+LCD03
+        RTS
+;
+; Reverse-stored high-bit Apple text. Read from end to start it is:
+;   $8D,$C1,$C5,$A0,$D0,$D2,$CF,$BA  => <CR>AE PRO:
+AePrompt
+        HEX BACFD2D0A0C5C18D
+
+;
+; Display/echo CHARBUF. In one mode construct an RTS trampoline to $Cn68;
+; otherwise apply character conversion and tail-jump to Apple Monitor COUT1.
+DisplayChar
+        LDA $0738,X
+        AND #$02
+        BEQ LCD20
+        LDA $04B8,X
+        AND #$38
+        BEQ LCD20
+        TXA                       ; push $Cn as dynamic target high byte
+        PHA
+        LDA #$67                  ; $67 + RTS increment => slot entry $Cn68
+        PHA
+        RTS
+LCD20
+        LDA $03B8,X
+        ROL A
+        ROL A
+        ROL A
+        AND #$03
+        TAY
+        LDA CHARBUF
+        ORA #$80
+        CPY #$01
+        BEQ LCD47
+        CMP #$C0
+        BCC LCD47
+        CMP #$E0
+        BCC LCD41
+        EOR #$20
+        CPY #$02
+        BNE LCD47
+        BEQ LCD45
+LCD41
+        CPY #$03
+        BNE LCD47
+LCD45
+        AND #$1F
+LCD47
+        JMP COUT1                 ; tail-call Apple Monitor output routine
+;
+; Reconstruct and install the Apple CSW output vector from per-slot saved state.
+InstallCsw
+        LDX SLOTSAVE
+        LDA $0638,X
+        STA CSWL
+        LDA $04B8,X
+        LSR A
+        LSR A
+        LSR A
+        AND #$07
+        ORA #$C0
+        STA CSWH
+        RTS
+;
+; Save the current CSWL value and restore CSW/KSW bytes previously pushed on stack.
+RestoreVec
+        LDA CSWL
+        STA $0638,X
+        PLA
+        STA CSWL
+        PLA
+        STA CSWH
+        PLA
+        STA KSWL
+        PLA
+        STA KSWH
+        RTS
+
+; ============================================================================
+; SECTION 7 - SETUP COMMAND PARSER
+; ============================================================================
+
+;
+; Configuration command parser. Handles CR, spaces, decimal digits and command
+; characters before looking up actions in SetupTab.
+CfgCommand
+        TAY
+        LDA CHARBUF
+        AND #$7F
+        CMP #$20
+        BEQ LCD9D
+        CMP #$0D
+        BNE LCD91
+        JSR AltLoad0
+        CPY #$04
+        BEQ LCD89
+        CPY #$05
+        BNE LCD9D
+LCD89
+        LDA #BR_GFXCTL1
+        JSR RtcRead
+        JMP CfgAction
+LCD91
+        DEY
+        BEQ LCD9E
+        DEY
+        BEQ LCDC4
+        DEY
+        BEQ LCDE9
+        DEY
+        BEQ CfgHotkey
+LCD9D
+        RTS
+LCD9E
+        CMP #$20
+        BCS LCDB2
+        CMP $0538,X
+        BNE LCDAD
+        DEC $04B8,X
+        JMP WaitTx
+LCDAD
+        STA $0538,X
+        BNE AltLoad0
+LCDB2
+        EOR #$30
+        CMP #$0A
+        BCS LCDC0
+        INC $04B8,X
+        LDY #BR_GFXCTL0
+        JMP LCE7B
+LCDC0
+        LDY #$FD
+        BNE CfgLookup
+LCDC4
+        EOR #$30
+        CMP #$0A
+        BCS LCDE5
+        PHA
+        LDA #BR_GFXCTL0
+        JSR RtcRead
+        ASL A
+        TSX
+        PHA
+        ASL A
+        ASL A
+        ADC $0100,X
+        INX
+        ADC $0100,X
+        TXS
+        LDX SLOTSAVE
+        LDY #BR_GFXCTL0
+        JMP LCE7B
+LCDE5
+        LDY #$31
+        BNE CfgLookup
+LCDE9
+        AND #$5F
+        LSR A
+        EOR #$22
+        BNE LCE2B
+        LDA #BR_GFXCTL1
+        JSR RtcRead
+        BCC LCDFC
+        ORA $0738,X
+        BNE LCE01
+LCDFC
+        EOR #$FF
+        AND $0738,X
+LCE01
+        STA $0738,X
+LCE04
+        LDA #$06
+        BIT $00A9                 ; bytes $CE07-$CE08 also decode as LDA #$00
+;
+; Replace the low three bits of per-slot state $04B8,X with bits from A.
+SetMode
+        LDX SLOTSAVE
+        EOR $04B8,X
+        AND #$07
+        EOR $04B8,X
+        STA $04B8,X
+        RTS
+;
+; Recognize one of five configuration hotkeys in SetupKeys. On match, trampoline
+; to slot-page routine $Cn94.
+CfgHotkey
+        LDY #$04
+LCE1A
+        CMP $CEDC,Y
+        BEQ LCE23
+        DEY
+        BPL LCE1A
+        RTS
+LCE23
+        LDA SLOTSAVE              ; load $Cn for dynamic slot-page trampoline
+        PHA
+        LDA #$93                  ; $93 + RTS increment => slot entry $Cn94
+        PHA
+        RTS
+LCE2B
+        LDA #$20
+        STA $05B8,X
+        JMP LCE04
+;
+; Search three-byte configuration records in SetupTab. Record layout is inferred
+; as key / flags / action; exact meanings of all flag bits remain provisional.
+CfgLookup
+        LDA CHARBUF
+        AND #$7F
+        CMP #$60
+        BCC LCE3D
+        AND #$5F
+LCE3D
+        STA CHARBUF
+LCE3F
+        INY
+        INY
+        INY
+        LDA $CE8C,Y               ; record byte 0: command/key
+        BEQ LCE2B
+        EOR CHARBUF
+        ASL A
+        BNE LCE3F
+        LDA $CE8D,Y               ; record byte 1: flags (inferred)
+        AND #$20
+        BNE LCE5A
+        LDA $0738,X
+        AND #$10
+        BNE LCE3F
+LCE5A
+        LDA $0738,X
+        LSR A
+        LSR A
+        LDA $CE8D,Y
+        BCC LCE65
+        ASL A
+LCE65
+        BPL LCE3F
+        LDA $CE8D,Y
+        JSR SetMode
+        LDA $CE8D,Y
+        AND #$10
+        CMP #$10
+        LDA $CE8E,Y               ; record byte 2: action/value (inferred)
+        BCS CfgAction
+        LDY #BR_GFXCTL1
+LCE7B
+        PHA
+        LDA SLOTSAVE              ; load $Cn for dynamic slot-page trampoline
+        PHA
+        LDA #$83                  ; $83 + RTS increment => slot entry $Cn84
+        PHA
+        RTS
+;
+; Execute a configuration action by selecting the corresponding EPROM bank/view through BankCall.
+CfgAction
+        TAX
+        JSR BankCall
+        LDX SLOTSAVE
+        RTS
+;
+; Three-byte setup records searched by CfgLookup:
+;   byte 0 = command/key, byte 1 = flags (inferred), byte 2 = action/value (inferred).
+; Record semantics are not yet fully decoded.
+SetupTab
+        HEX 3FF009      ; +$00: key '?'
+        HEX 426569      ; +$03: key 'B'
+        HEX 438551      ; +$06: key 'C'
+        HEX 45E380      ; +$09: key 'E'
+        HEX 46E304      ; +$0C: key 'F'
+        HEX 47A41A      ; +$0F: key 'G'
+        HEX 499071      ; +$12: key 'I'
+        HEX 4B9079      ; +$15: key 'K'
+        HEX 4CE301      ; +$18: key 'L'
+        HEX 4DE320      ; +$1B: key 'M'
+        HEX 514561      ; +$1E: key 'Q'
+        HEX 52C559      ; +$21: key 'R'
+        HEX 534340      ; +$24: key 'S'
+        HEX 544551      ; +$27: key 'T'
+        HEX 548340      ; +$2A: key 'T'
+        HEX 58E308      ; +$2D: key 'X'
+        HEX 5AE589      ; +$30: key 'Z'
+        HEX 0042F6      ; +$33: key $00
+        HEX 3943F6      ; +$36: key '9'
+        HEX 1944F6      ; +$39: key $19
+        HEX 4946F6      ; +$3C: key 'I'
+        HEX 294CF6      ; +$3F: key ')'
+        HEX 214E90      ; +$42: key '!'
+        HEX 8150F6      ; +$45: key $81
+        HEX 415356      ; +$48: key 'A'
+        HEX 3154D6      ; +$4B: key '1'
+        HEX 1100        ; +$4E: key $11
+
+;
+; Two adjacent five-byte tables. CfgHotkey directly compares against the first.
+; First table decodes as ASCII 'SI2MR'; the following bytes look like masks/values.
+SetupKeys
+        HEX 5349324D52          ; ASCII: S I 2 M R
+SetupMask
+        HEX 8040200201          ; likely paired masks/values
+
+
+; ============================================================================
+; SECTION 8 - POST-CHARACTER DELAY
+; ============================================================================
+
+;
+; Optional post-character delay. CR/LF/form-feed-like characters select one of
+; four delay counts from DelayTab according to the BR_DELAYCASE-derived state.
+PostDelay
+        ORA #$80
+        TAY
+        LDA $03B8,X
+        CPY #$8C
+        BEQ LCEFC
+        CPY #$8A
+        BEQ LCEFA
+        CPY #$8D
+        BNE LCF0D
+        LSR A
+        LSR A
+LCEFA
+        LSR A
+        LSR A
+LCEFC
+        AND #$03
+        TAY
+        LDA $CF0E,Y               ; delay table indexed by configured mode
+        BEQ LCF0D
+        TAY
+LCF05
+        LDA #$08
+        JSR DelayLoop             ; run one delay quantum
+        DEY
+        BNE LCF05
+LCF0D
+        RTS
+;
+; Delay-count table indexed by PostDelay: $00,$04,$20,$FA.
+DelayTab
+        HEX 000420FA
+
+;
+; Busy-wait delay primitive. A/Y supply nested counts; exact timing depends on
+; the Apple II CPU clock and is intentionally left as firmware behavior.
+DelayLoop
+        PHA
+        LDA #$90
+LCF15
+        SEC
+        SBC #$01
+        BNE LCF15
+        PLA
+        SBC #$01
+        BNE DelayLoop
+        RTS
+
+; ============================================================================
+; End of supplied v1.4 byte range. The v2.0 manual confirms that $C087+$s0 is the
+; EPROM Bank Register, but the missing v1.4 bytes and bank-value-to-EPROM mapping
+; still need to be recovered before this becomes a complete physical-ROM map.
+; ============================================================================
+        .END
