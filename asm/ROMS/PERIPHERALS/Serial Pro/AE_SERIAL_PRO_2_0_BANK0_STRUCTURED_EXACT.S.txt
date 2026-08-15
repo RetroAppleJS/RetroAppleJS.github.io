@@ -1,0 +1,1111 @@
+; ============================================================================
+; APPLIED ENGINEERING SERIAL PRO V2.0
+; HOSTROM BANK 0 - RESIDENT / CORE HOSTROM
+; BYTE-EXACT STRUCTURED DISASSEMBLY
+; ============================================================================
+;
+; PHYSICAL 27C64 OFFSET : $0000-$07FF
+; LOGICAL APPLE II VIEW : $C800-$CFFF WHEN THIS BANK IS SELECTED
+; BANK SHA1             : 1c30e7d4063e03452f2f96093b4178f78ece7989
+;
+; SOURCE OF TRUTH:
+;   Complete 8192-byte Serial Pro v2.0 27C64 dump supplied by the user.
+;
+; ASSEMBLY POLICY:
+;   - ORG $C800 reproduces this ONE 2KB logical bank image.
+;   - CODE is emitted as legal NMOS 6502 mnemonics where control-flow analysis
+;     identifies instruction boundaries.
+;   - Unreached, table, text and intentionally ambiguous bytes are emitted with
+;     HEX so that no unsupported interpretation changes the ROM.
+;   - Deliberate overlapping entry points are represented with EQU aliases.
+;   - All symbolic identifiers use UPPERCASE_WITH_UNDERSCORES.
+;
+; IMPORTANT:
+;   BANKS 0, 1 AND 2 ALL OCCUPY LOGICAL $C800-$CFFF.  Assemble each bank
+;   separately.  The physical EPROM concatenates them at offsets $0000, $0800
+;   and $1000 respectively.
+; ============================================================================
+
+; ---------------------------------------------------------------------------
+; COMMON APPLE II / SERIAL PRO SYMBOLS
+; ---------------------------------------------------------------------------
+KBD          EQU $C000      ; Apple II keyboard data
+KBDSTRB      EQU $C010      ; Apple II keyboard strobe
+RTCSEL       EQU $C084      ; 6818 clock/RAM address register base
+RTCDATA      EQU $C085      ; 6818 clock/RAM data register base
+BANKCLR      EQU $C086      ; Serial Pro EPROM bank-register clear base
+BANKREG      EQU $C087      ; Serial Pro EPROM bank register base
+ACIADATA     EQU $C088      ; 6551 data register base
+ACIASTAT     EQU $C089      ; 6551 status/reset register base
+ACIACMD      EQU $C08A      ; 6551 command register base
+ACIACTRL     EQU $C08B      ; 6551 control register base
+SLOTOFF      EQU $0026      ; slot I/O offset ($10 * slot)
+CHARBUF      EQU $0027      ; firmware character buffer
+SLOTSAVE     EQU $07F8      ; saved slot-page high byte ($Cn)
+
+; ---------------------------------------------------------------------------
+; COMBINED EPROM BANK / OPERATION SELECTORS OBSERVED IN BANK 0
+; ---------------------------------------------------------------------------
+BANKSEL_NVRAM_INITIALIZE               EQU $01
+BANKSEL_CLOCK_FORMAT_STORE             EQU $02
+BANKSEL_CONTROL_PANEL                  EQU $09
+BANKSEL_CLOCK_FORMAT_OUTPUT            EQU $0A
+BANKSEL_SET_CASE_TRANSLATION           EQU $11
+BANKSEL_BASIC_CLOCK_ACCESS             EQU $12
+BANKSEL_SET_CR_DELAY                   EQU $19
+BANKSEL_PRINT_HIRES_GRAPHICS           EQU $1A
+BANKSEL_SET_LF_DELAY                   EQU $21
+BANKSEL_PRINT_40_COLUMN_SCREEN         EQU $22
+BANKSEL_SET_FF_DELAY                   EQU $29
+BANKSEL_PRINT_80_COLUMN_SCREEN         EQU $2A
+BANKSEL_REDIRECT_OUTPUT_SLOT           EQU $31
+BANKSEL_CLEAR_OUTPUT_BIT7_MODE         EQU $32
+BANKSEL_SET_BAUD_RATE                  EQU $39
+BANKSEL_SET_OUTPUT_BIT7_MODE           EQU $3A
+BANKSEL_SET_PARITY                     EQU $41
+BANKSEL_SET_DATA_FORMAT                EQU $49
+BANKSEL_ENABLE_COLUMN_OVERFLOW         EQU $51
+BANKSEL_RESET_SERIAL_PRO               EQU $59
+BANKSEL_DISABLE_COLUMN_OVERFLOW        EQU $61
+BANKSEL_TRANSMIT_BREAK                 EQU $69
+BANKSEL_ENABLE_LOCAL_ECHO_LINE40       EQU $71
+BANKSEL_DISABLE_LF_AFTER_CR            EQU $79
+BANKSEL_SET_LINE_LENGTH                EQU $81
+BANKSEL_IGNORE_CONTROL_CHARACTERS      EQU $89
+
+; ---------------------------------------------------------------------------
+; DELIBERATE / USEFUL ALTERNATE ENTRY ALIASES
+; ---------------------------------------------------------------------------
+B0_ALT_LOAD_01   EQU $C8A0      ; bytes A9 01 inside BIT $01A9 -> LDA #$01
+B0_ALT_BIT_ZERO  EQU $CE10      ; entering at $CE10 decodes 2C A9 00 -> BIT $00A9
+B0_ALT_LOAD_00   EQU $CE11      ; byte-aligned alternate entry -> LDA #$00
+
+        ORG $C800
+
+
+; ============================================================================
+; BANK ENTRY, BANK SWITCHING AND RESIDENT CORE
+; ============================================================================
+
+;
+; Pascal/host initialization entry in resident Bank 0.
+B0_PASCAL_INIT
+        JMP B0_BASE_INIT                   ; $C800
+;
+; Bank-switch wrapper. X carries the combined physical-bank/operation selector; Bank 0 is restored on return.
+B0_BANK_CALL
+        PHP                                ; $C803
+        SEI                                ; $C804
+        LDA #$00                           ; $C805
+        PHA                                ; $C807
+        JSR B0_BANK_SELECT                 ; $C808
+        PLA                                ; $C80B
+        LDY SLOTOFF                        ; $C80C
+        STA BANKREG,Y                      ; $C80E
+        PLP                                ; $C811
+        RTS                                ; $C812
+;
+; Write X to the EPROM bank register. Execution continues at the same logical address in the newly mapped bank.
+B0_BANK_SELECT
+        TXA                                ; $C813
+        LDY SLOTOFF                        ; $C814
+        STA BANKREG,Y                      ; $C816
+;
+; Resident initialization after Bank 0 is selected.
+B0_BASE_INIT
+        JSR B0_LC857                       ; $C819
+        LDA #$16                           ; $C81C
+        JSR B0_LC864                       ; $C81E
+        LDX #$00                           ; $C821
+        RTS                                ; $C823
+;
+; SlotROM status target at logical $C824.
+B0_SLOT_TARGET_C824
+        JSR B0_LC857                       ; $C824
+        LSR A                              ; $C827
+        JSR B0_LCC85                       ; $C828
+        LDA $05B8,X                        ; $C82B
+        TAX                                ; $C82E
+        RTS                                ; $C82F
+B0_LC830
+        LDA CHARBUF                        ; $C830
+        ORA #$80                           ; $C832
+        CMP #$A0                           ; $C834
+        BCC B0_LC840                       ; $C836
+        EOR #$FF                           ; $C838
+        BEQ B0_LC844                       ; $C83A
+        INC $06B8,X                        ; $C83C
+        RTS                                ; $C83F
+B0_LC840
+        EOR #$88                           ; $C840
+        BNE B0_LC84C                       ; $C842
+B0_LC844
+        DEC $06B8,X                        ; $C844
+        BPL B0_LC84C                       ; $C847
+        STA $06B8,X                        ; $C849
+B0_LC84C
+        RTS                                ; $C84C
+
+; ============================================================================
+; PASCAL / SLOT SERVICES AND SERIAL CONFIGURATION
+; ============================================================================
+
+        HEX 20C0C8AEF8079DB80560 ; $C84D  | @H.x..8.`|
+B0_LC857
+        PHA                                ; $C857
+        STY SLOTOFF                        ; $C858
+        STX SLOTSAVE                       ; $C85A
+        LDA #$00                           ; $C85D
+        STA $05B8,X                        ; $C85F
+        PLA                                ; $C862
+        RTS                                ; $C863
+B0_LC864
+        PHA                                ; $C864
+        LDX #BANKSEL_NVRAM_INITIALIZE      ; $C865
+        JSR B0_BANK_CALL                   ; $C867
+        LDX SLOTSAVE                       ; $C86A
+        LDA #$28                           ; $C86D
+        JSR B0_LCC5F                       ; $C86F
+        STA $0738,X                        ; $C872
+        LDA #SLOTOFF                       ; $C875
+        JSR B0_LCC5F                       ; $C877
+        STA $03B8,X                        ; $C87A
+        LDA #$22                           ; $C87D
+        JSR B0_LCC5F                       ; $C87F
+        BEQ B0_ALT_LOAD_01                 ; $C882
+        LSR A                              ; $C884
+        BCC B0_LC891                       ; $C885
+        LSR A                              ; $C887
+        LDA #$03                           ; $C888
+        BCS B0_LC88E                       ; $C88A
+        LDA #$80                           ; $C88C
+B0_LC88E
+        STA $04B8,X                        ; $C88E
+B0_LC891
+        LDA #$25                           ; $C891
+        JSR B0_LCC5F                       ; $C893
+        STA $0638,X                        ; $C896
+        PLA                                ; $C899
+        AND #$95                           ; $C89A
+        PHA                                ; $C89C
+        LDA #$09                           ; $C89D
+        BIT $01A9                          ; $C89F
+        STA $0538,X                        ; $C8A2
+        PLA                                ; $C8A5
+        ORA $0738,X                        ; $C8A6
+        STA $0738,X                        ; $C8A9
+        LDA #$23                           ; $C8AC
+        JSR B0_LCC5F                       ; $C8AE
+        STA ACIACTRL,Y                     ; $C8B1
+        LDA #$24                           ; $C8B4
+        JSR B0_LCC5F                       ; $C8B6
+        STA ACIACMD,Y                      ; $C8B9
+        LDA ACIADATA,Y                     ; $C8BC
+        RTS                                ; $C8BF
+;
+; SlotROM target at logical $C8C0.
+B0_SLOT_TARGET_C8C0
+        JSR B0_LC857                       ; $C8C0
+        JSR B0_LCC54                       ; $C8C3
+        AND #$7F                           ; $C8C6
+        BCS B0_LC8D2                       ; $C8C8
+;
+; SlotROM target at logical $C8CA.
+B0_SLOT_TARGET_C8CA
+        STA CHARBUF                        ; $C8CA
+        JSR B0_LC857                       ; $C8CC
+        JSR B0_LCBB8                       ; $C8CF
+B0_LC8D2
+        LDY SLOTSAVE                       ; $C8D2
+        LDX $05B8,Y                        ; $C8D5
+        RTS                                ; $C8D8
+
+; ============================================================================
+; BASIC I/O HOOKS AND CHARACTER FLOW
+; ============================================================================
+
+;
+; SlotROM target at logical $C8D9.
+B0_SLOT_TARGET_C8D9
+        BVC B0_LC908                       ; $C8D9
+        LDA $0538,X                        ; $C8DB
+        AND #$7F                           ; $C8DE
+        STA $0538,X                        ; $C8E0
+        LDA #$1F                           ; $C8E3
+        AND ACIACMD,Y                      ; $C8E5
+        BNE B0_LC8EF                       ; $C8E8
+        LDA #$66                           ; $C8EA
+        JSR B0_LC864                       ; $C8EC
+B0_LC8EF
+        CPX $37                            ; $C8EF
+        BNE B0_LC8FD                       ; $C8F1
+        LDA #$07                           ; $C8F3
+        CMP $36                            ; $C8F5
+        BEQ B0_LC8FD                       ; $C8F7
+        STA $36                            ; $C8F9
+        BNE B0_LC90A                       ; $C8FB
+B0_LC8FD
+        CPX $39                            ; $C8FD
+        BNE B0_LC90A                       ; $C8FF
+        LDA #$05                           ; $C901
+        STA $38                            ; $C903
+B0_LC905
+        JMP B0_LC9AD                       ; $C905
+B0_LC908
+        BCS B0_LC905                       ; $C908
+B0_LC90A
+        JMP B0_LC971                       ; $C90A
+B0_LC90D
+        LDA $0738,X                        ; $C90D
+        AND #$0A                           ; $C910
+        CMP #$0A                           ; $C912
+        BNE B0_LC92A                       ; $C914
+        LDY CHARBUF                        ; $C916
+        LDA $04B8,X                        ; $C918
+        AND #$7F                           ; $C91B
+        CPY #$92                           ; $C91D
+        BEQ B0_LC927                       ; $C91F
+        ORA #$80                           ; $C921
+        CPY #$94                           ; $C923
+        BNE B0_LC92A                       ; $C925
+B0_LC927
+        STA $04B8,X                        ; $C927
+B0_LC92A
+        RTS                                ; $C92A
+; UNREACHED BY CURRENT RECURSIVE PASS; PRESERVED AS RAW DATA.
+        HEX 00000000000000000000000000000000 ; $C92B  |................|
+        HEX 00002C58FF50B8A900AEF8079DB8058A ; $C93B  |..,X.P8)..x..8..|
+        HEX 0A0A0A0A8526500F207BCC90FBA00091 ; $C94B  |.....&P. {L.{ ..|
+        HEX 3C20BAFC90F260A000B13C8527206DCC ; $C95B  |< :|.r` .1<.' mL|
+        HEX 20BAFC90F260 ; $C96B  | :|.r`|
+B0_LC971
+        LDA $04B8,X                        ; $C971
+        ASL A                              ; $C974
+        BPL B0_LC989                       ; $C975
+        ROR A                              ; $C977
+        AND #$BF                           ; $C978
+        STA $04B8,X                        ; $C97A
+        PLA                                ; $C97D
+        PHA                                ; $C97E
+        TAX                                ; $C97F
+        LDA CHARBUF                        ; $C980
+        ORA #$20                           ; $C982
+        STA $0200,X                        ; $C984
+        STA CHARBUF                        ; $C987
+B0_LC989
+        JSR B0_LCA88                       ; $C989
+        BEQ B0_LC9E3                       ; $C98C
+        JSR B0_LCBB8                       ; $C98E
+B0_LC991
+        JSR B0_LCA88                       ; $C991
+        BEQ B0_LC99E                       ; $C994
+        LDA $04B8,X                        ; $C996
+        BPL B0_LC99E                       ; $C999
+        JSR B0_LCAB4                       ; $C99B
+B0_LC99E
+        PLA                                ; $C99E
+        TAX                                ; $C99F
+B0_LC9A0
+        PLA                                ; $C9A0
+        TAY                                ; $C9A1
+        LDA CHARBUF                        ; $C9A2
+        RTS                                ; $C9A4
+        HEX 00000000004CCAC8 ; $C9A5  |.....LJH|
+B0_LC9AD
+        JSR B0_LCA88                       ; $C9AD
+        BEQ B0_LC9C1                       ; $C9B0
+        LDA $06B8,X                        ; $C9B2
+        BPL B0_LC9BC                       ; $C9B5
+        LSR $06B8,X                        ; $C9B7
+        BNE B0_LC9C6                       ; $C9BA
+B0_LC9BC
+        JSR B0_LCCBE                       ; $C9BC
+        BCS B0_LC9CC                       ; $C9BF
+B0_LC9C1
+        JSR B0_LCB54                       ; $C9C1
+        BCC B0_LC9BC                       ; $C9C4
+B0_LC9C6
+        JSR B0_LCC32                       ; $C9C6
+        JSR B0_LC90D                       ; $C9C9
+B0_LC9CC
+        LDA CHARBUF                        ; $C9CC
+        CMP #$E0                           ; $C9CE
+        BCC B0_LC991                       ; $C9D0
+        LDA $03B8,X                        ; $C9D2
+        AND #$C0                           ; $C9D5
+        BEQ B0_LC991                       ; $C9D7
+        LDA $04B8,X                        ; $C9D9
+        ORA #$40                           ; $C9DC
+        STA $04B8,X                        ; $C9DE
+        BNE B0_LC991                       ; $C9E1
+B0_LC9E3
+        JSR B0_LCB6B                       ; $C9E3
+        BCS B0_LC99E                       ; $C9E6
+        LDA CHARBUF                        ; $C9E8
+        PHA                                ; $C9EA
+        LDA $0738,X                        ; $C9EB
+        AND #$C0                           ; $C9EE
+        BNE B0_LCA08                       ; $C9F0
+        LDA $24                            ; $C9F2
+        BEQ B0_LCA29                       ; $C9F4
+        CMP #$08                           ; $C9F6
+        BEQ B0_LC9FE                       ; $C9F8
+        CMP #$10                           ; $C9FA
+        BNE B0_LCA08                       ; $C9FC
+B0_LC9FE
+        ORA #$F0                           ; $C9FE
+
+; ============================================================================
+; OUTPUT / COMMAND PROCESSING
+; ============================================================================
+
+        AND $06B8,X                        ; $CA00
+        CLC                                ; $CA03
+        ADC $24                            ; $CA04
+        STA $24                            ; $CA06
+B0_LCA08
+        LDA $06B8,X                        ; $CA08
+        CMP $24                            ; $CA0B
+        BEQ B0_LCA29                       ; $CA0D
+        LDA #$A0                           ; $CA0F
+        BCC B0_LCA1B                       ; $CA11
+        LDA $0738,X                        ; $CA13
+        ASL A                              ; $CA16
+        BPL B0_LCA29                       ; $CA17
+        LDA #$88                           ; $CA19
+B0_LCA1B
+        STA CHARBUF                        ; $CA1B
+        JSR B0_LC830                       ; $CA1D
+        JSR B0_LCBC5                       ; $CA20
+        JSR B0_LCA75                       ; $CA23
+        JMP B0_LCA08                       ; $CA26
+B0_LCA29
+        PLA                                ; $CA29
+        JSR B0_LCA4B                       ; $CA2A
+        LDA $0738,X                        ; $CA2D
+        BMI B0_LCA48                       ; $CA30
+        LDY $06B8,X                        ; $CA32
+        ASL A                              ; $CA35
+        BMI B0_LCA46                       ; $CA36
+        TYA                                ; $CA38
+        LDY #$00                           ; $CA39
+        SEC                                ; $CA3B
+        SBC $0638,X                        ; $CA3C
+        CMP #$F8                           ; $CA3F
+        BCC B0_LCA46                       ; $CA41
+        ADC #CHARBUF                       ; $CA43
+        TAY                                ; $CA45
+B0_LCA46
+        STY $24                            ; $CA46
+B0_LCA48
+        JMP B0_LC99E                       ; $CA48
+B0_LCA4B
+        STA CHARBUF                        ; $CA4B
+        PHA                                ; $CA4D
+        LDA $04B8,X                        ; $CA4E
+        AND #$30                           ; $CA51
+        BEQ B0_LCA61                       ; $CA53
+        CMP #$20                           ; $CA55
+        LDA CHARBUF                        ; $CA57
+        AND #$7F                           ; $CA59
+        BCC B0_LCA5F                       ; $CA5B
+        ORA #$80                           ; $CA5D
+B0_LCA5F
+        STA CHARBUF                        ; $CA5F
+B0_LCA61
+        JSR B0_LCBBD                       ; $CA61
+        JSR B0_LC830                       ; $CA64
+        PLA                                ; $CA67
+        STA CHARBUF                        ; $CA68
+        EOR #$8D                           ; $CA6A
+        ASL A                              ; $CA6C
+        BNE B0_LCA75                       ; $CA6D
+        STA $06B8,X                        ; $CA6F
+        STA $24                            ; $CA72
+        RTS                                ; $CA74
+B0_LCA75
+        LDA $04B8,X                        ; $CA75
+        BPL B0_LCA87                       ; $CA78
+        LDA $0638,X                        ; $CA7A
+        BEQ B0_LCA87                       ; $CA7D
+        CLC                                ; $CA7F
+        SBC $06B8,X                        ; $CA80
+        LDA #$8D                           ; $CA83
+        BCC B0_LCA4B                       ; $CA85
+B0_LCA87
+        RTS                                ; $CA87
+B0_LCA88
+        LDX SLOTSAVE                       ; $CA88
+        LDA $0738,X                        ; $CA8B
+        AND #$02                           ; $CA8E
+        RTS                                ; $CA90
+B0_CTL_DISPATCH
+        BVS B0_LCAA6                       ; $CA91
+        BCC B0_LCA9D                       ; $CA93
+        LDX #BANKSEL_CLOCK_FORMAT_STORE    ; $CA95
+        JSR B0_BANK_CALL                   ; $CA97
+        JMP B0_LC99E                       ; $CA9A
+B0_LCA9D
+        LDX #BANKSEL_CLOCK_FORMAT_OUTPUT   ; $CA9D
+        JSR B0_BANK_CALL                   ; $CA9F
+        PLA                                ; $CAA2
+        JMP B0_LC9A0                       ; $CAA3
+B0_LCAA6
+        LDX #BANKSEL_BASIC_CLOCK_ACCESS    ; $CAA6
+        JSR B0_BANK_CALL                   ; $CAA8
+        JMP B0_LC99E                       ; $CAAB
+B0_CMD09
+        LDX #BANKSEL_CONTROL_PANEL         ; $CAAE
+        JSR B0_BANK_CALL                   ; $CAB0
+        RTS                                ; $CAB3
+B0_LCAB4
+        LDA #$7F                           ; $CAB4
+        AND $0738,X                        ; $CAB6
+        STA $0738,X                        ; $CAB9
+        LDA #$00                           ; $CABC
+B0_LCABE
+        PHA                                ; $CABE
+B0_LCABF
+        JSR B0_LCADB                       ; $CABF
+        PLA                                ; $CAC2
+        BCC B0_LCAD3                       ; $CAC3
+        TAY                                ; $CAC5
+        JSR B0_LCB14                       ; $CAC6
+        TYA                                ; $CAC9
+        BCC B0_LCABE                       ; $CACA
+        PHA                                ; $CACC
+        JSR B0_LCBBD                       ; $CACD
+        JMP B0_LCABF                       ; $CAD0
+B0_LCAD3
+        JSR B0_LCC32                       ; $CAD3
+        LDA #$8D                           ; $CAD6
+        STA CHARBUF                        ; $CAD8
+        RTS                                ; $CADA
+B0_LCADB
+        LDY $24                            ; $CADB
+        LDA ($28),Y                        ; $CADD
+        STA CHARBUF                        ; $CADF
+B0_LCAE1
+        LDA $4F                            ; $CAE1
+        AND #$03                           ; $CAE3
+        BNE B0_LCAF5                       ; $CAE5
+        LDY $24                            ; $CAE7
+        LDA #$DF                           ; $CAE9
+        CMP ($28),Y                        ; $CAEB
+        BNE B0_LCAF1                       ; $CAED
+        LDA CHARBUF                        ; $CAEF
+B0_LCAF1
+        STA ($28),Y                        ; $CAF1
+        INC $4F                            ; $CAF3
+B0_LCAF5
+        LDA $04B8,X                        ; $CAF5
+        ASL A                              ; $CAF8
+        BCC B0_LCB07                       ; $CAF9
+        JSR B0_LCB54                       ; $CAFB
+        BCS B0_LCB08                       ; $CAFE
+        JSR B0_LCCBE                       ; $CB00
+        BCC B0_LCAE1                       ; $CB03
+        BVS B0_LCADB                       ; $CB05
+B0_LCB07
+        RTS                                ; $CB07
+B0_LCB08
+        JSR B0_LCC32                       ; $CB08
+        JSR B0_LC90D                       ; $CB0B
+        JSR B0_LCD12                       ; $CB0E
+        JMP B0_LCADB                       ; $CB11
+B0_LCB14
+        LDA $0738,X                        ; $CB14
+        ASL A                              ; $CB17
+        BPL B0_LCB47                       ; $CB18
+        LDA CHARBUF                        ; $CB1A
+        CMP #$9B                           ; $CB1C
+        BNE B0_LCB27                       ; $CB1E
+        DEY                                ; $CB20
+        BPL B0_LCB25                       ; $CB21
+        LDY #$02                           ; $CB23
+B0_LCB25
+        CLC                                ; $CB25
+        RTS                                ; $CB26
+B0_LCB27
+        CPY #$01                           ; $CB27
+        BCC B0_LCB47                       ; $CB29
+        BEQ B0_LCB39                       ; $CB2B
+        CMP #$C1                           ; $CB2D
+        BCC B0_LCB47                       ; $CB2F
+        CMP #$DB                           ; $CB31
+        BCS B0_LCB47                       ; $CB33
+        ORA #$20                           ; $CB35
+        BNE B0_LCB43                       ; $CB37
+B0_LCB39
+        EOR #$B0                           ; $CB39
+        CMP #$0B                           ; $CB3B
+        BCS B0_LCB45                       ; $CB3D
+        TAY                                ; $CB3F
+        LDA $CB49,Y                        ; $CB40
+B0_LCB43
+        STA CHARBUF                        ; $CB43
+B0_LCB45
+        LDY #$02                           ; $CB45
+B0_LCB47
+        SEC                                ; $CB47
+        RTS                                ; $CB48
+        HEX 9B9C9FDBDCDFFBFCFDFEFF ; $CB49  |...[\_{|}~.|
+B0_LCB54
+        JSR B0_LCC7B                       ; $CB54
+        BCC B0_LCB6A                       ; $CB57
+        ORA #$80                           ; $CB59
+        CMP #$8A                           ; $CB5B
+        BNE B0_LCB69                       ; $CB5D
+        CLC                                ; $CB5F
+        LDA $0738,X                        ; $CB60
+        AND #$20                           ; $CB63
+        BNE B0_LCB6A                       ; $CB65
+        LDA #$8A                           ; $CB67
+B0_LCB69
+        SEC                                ; $CB69
+B0_LCB6A
+        RTS                                ; $CB6A
+B0_LCB6B
+        LDA #$22                           ; $CB6B
+        JSR B0_LCC5F                       ; $CB6D
+        LSR A                              ; $CB70
+        BCS B0_LCBAD                       ; $CB71
+        LDA $04B8,X                        ; $CB73
+        AND #$07                           ; $CB76
+        BEQ B0_LCB7F                       ; $CB78
+        JSR B0_LCD77                       ; $CB7A
+        SEC                                ; $CB7D
+        RTS                                ; $CB7E
+B0_LCB7F
+        LDA CHARBUF                        ; $CB7F
+        AND #$7F                           ; $CB81
+        CMP $0538,X                        ; $CB83
+        BNE B0_LCB91                       ; $CB86
+        INC $04B8,X                        ; $CB88
+        TXA                                ; $CB8B
+        PHA                                ; $CB8C
+        LDA #$8F                           ; $CB8D
+        PHA                                ; $CB8F
+        RTS                                ; $CB90
+B0_LCB91
+        LDA $0738,X                        ; $CB91
+        AND #$08                           ; $CB94
+        BEQ B0_LCBAD                       ; $CB96
+        JSR B0_LCB54                       ; $CB98
+        BCC B0_LCBAD                       ; $CB9B
+        CMP #$93                           ; $CB9D
+        BEQ B0_LCBAF                       ; $CB9F
+        PHA                                ; $CBA1
+        LDA $0738,X                        ; $CBA2
+        LSR A                              ; $CBA5
+        LSR A                              ; $CBA6
+        PLA                                ; $CBA7
+        BCC B0_LCBAE                       ; $CBA8
+        STA $06B8,X                        ; $CBAA
+B0_LCBAD
+        CLC                                ; $CBAD
+B0_LCBAE
+        RTS                                ; $CBAE
+B0_LCBAF
+        JSR B0_LCC54                       ; $CBAF
+        CMP #$91                           ; $CBB2
+        BNE B0_LCBAF                       ; $CBB4
+        CLC                                ; $CBB6
+B0_LCBB7
+        RTS                                ; $CBB7
+B0_LCBB8
+        JSR B0_LCB6B                       ; $CBB8
+        BCS B0_LCBB7                       ; $CBBB
+B0_LCBBD
+        LDA $0738,X                        ; $CBBD
+        BPL B0_LCBC5                       ; $CBC0
+        JSR B0_LCD12                       ; $CBC2
+B0_LCBC5
+        LDA CHARBUF                        ; $CBC5
+        PHA                                ; $CBC7
+        LDA #$22                           ; $CBC8
+        JSR B0_LCC5F                       ; $CBCA
+        CMP #$03                           ; $CBCD
+        BNE B0_LCC16                       ; $CBCF
+        LDA $0438,X                        ; $CBD1
+        CMP #$99                           ; $CBD4
+        BCS B0_LCBE8                       ; $CBD6
+        CMP #$95                           ; $CBD8
+        BCC B0_LCBFE                       ; $CBDA
+        CMP #$96                           ; $CBDC
+        PLA                                ; $CBDE
+        PHA                                ; $CBDF
+        AND #$7F                           ; $CBE0
+        EOR #$1B                           ; $CBE2
+        BNE B0_LCBFE                       ; $CBE4
+        BCC B0_LCC01                       ; $CBE6
+B0_LCBE8
+        LDA $04B8,X                        ; $CBE8
+        AND #$1F                           ; $CBEB
+        ORA #$80                           ; $CBED
+        STA CHARBUF                        ; $CBEF
+B0_LCBF1
+        JSR B0_LCC6D                       ; $CBF1
+        JSR B0_LCC54                       ; $CBF4
+        EOR #$86                           ; $CBF7
+        BNE B0_LCBF1                       ; $CBF9
+        STA $0438,X                        ; $CBFB
+B0_LCBFE
+        INC $0438,X                        ; $CBFE
+B0_LCC01
+        PLA                                ; $CC01
+        PHA                                ; $CC02
+        STA CHARBUF                        ; $CC03
+        EOR #$8D                           ; $CC05
+        ASL A                              ; $CC07
+        BNE B0_LCC16                       ; $CC08
+        LDA $03B8,X                        ; $CC0A
+        AND #$30                           ; $CC0D
+        BEQ B0_LCC16                       ; $CC0F
+        LDA #$C8                           ; $CC11
+        STA $0438,X                        ; $CC13
+B0_LCC16
+        JSR B0_LCC6D                       ; $CC16
+        JSR B0_LCEFC                       ; $CC19
+        LDA $0738,X                        ; $CC1C
+        LSR A                              ; $CC1F
+        LDA CHARBUF                        ; $CC20
+        ROL A                              ; $CC22
+        CMP #$1B                           ; $CC23
+        BNE B0_LCC2E                       ; $CC25
+        LDA #$8A                           ; $CC27
+        STA CHARBUF                        ; $CC29
+        JSR B0_LCBC5                       ; $CC2B
+B0_LCC2E
+        PLA                                ; $CC2E
+        STA CHARBUF                        ; $CC2F
+        RTS                                ; $CC31
+B0_LCC32
+        PHA                                ; $CC32
+        LDY $24                            ; $CC33
+        LDA CHARBUF                        ; $CC35
+        STA ($28),Y                        ; $CC37
+        PLA                                ; $CC39
+        CMP #$95                           ; $CC3A
+        BNE B0_LCC51                       ; $CC3C
+        LDA CHARBUF                        ; $CC3E
+        CMP #$20                           ; $CC40
+        BCS B0_LCC51                       ; $CC42
+        LDY $03B8,X                        ; $CC44
+        BPL B0_LCC51                       ; $CC47
+        EOR #$C0                           ; $CC49
+        CPY #$C0                           ; $CC4B
+        BCS B0_LCC51                       ; $CC4D
+        EOR #$20                           ; $CC4F
+B0_LCC51
+        STA CHARBUF                        ; $CC51
+        RTS                                ; $CC53
+B0_LCC54
+        JSR B0_LCB54                       ; $CC54
+        BCS B0_LCC5E                       ; $CC57
+        JSR B0_LCCAC                       ; $CC59
+        BCC B0_LCC54                       ; $CC5C
+B0_LCC5E
+        RTS                                ; $CC5E
+B0_LCC5F
+        PHP                                ; $CC5F
+        SEI                                ; $CC60
+        LDY SLOTOFF                        ; $CC61
+        STA RTCSEL,Y                       ; $CC63
+        LDA RTCDATA,Y                      ; $CC66
+        PLP                                ; $CC69
+        ORA #$00                           ; $CC6A
+        RTS                                ; $CC6C
+B0_LCC6D
+        CLC                                ; $CC6D
+        JSR B0_LCC85                       ; $CC6E
+        BCC B0_LCC6D                       ; $CC71
+        TXA                                ; $CC73
+        PHA                                ; $CC74
+        LDA #$8B                           ; $CC75
+        PHA                                ; $CC77
+        LDA CHARBUF                        ; $CC78
+        RTS                                ; $CC7A
+B0_LCC7B
+        SEC                                ; $CC7B
+        JSR B0_LCC85                       ; $CC7C
+        BCC B0_LCC84                       ; $CC7F
+        LDA ACIADATA,Y                     ; $CC81
+B0_LCC84
+        RTS                                ; $CC84
+B0_LCC85
+        LDY SLOTOFF                        ; $CC85
+        LDA ACIASTAT,Y                     ; $CC87
+        BCC B0_LCCA4                       ; $CC8A
+        AND #$2F                           ; $CC8C
+        CMP #$20                           ; $CC8E
+        BCC B0_LCC98                       ; $CC90
+        CMP #$28                           ; $CC92
+        ORA #$08                           ; $CC94
+        BNE B0_LCCA0                       ; $CC96
+B0_LCC98
+        CMP #$08                           ; $CC98
+        AND #$07                           ; $CC9A
+        BEQ B0_LCCA3                       ; $CC9C
+        ORA #$20                           ; $CC9E
+B0_LCCA0
+        STA $05B8,X                        ; $CCA0
+B0_LCCA3
+        RTS                                ; $CCA3
+B0_LCCA4
+        AND #$70                           ; $CCA4
+        CMP #$10                           ; $CCA6
+        BEQ B0_LCCAB                       ; $CCA8
+        CLC                                ; $CCAA
+B0_LCCAB
+        RTS                                ; $CCAB
+B0_LCCAC
+        CLC                                ; $CCAC
+        LDA $0738,X                        ; $CCAD
+        AND #$04                           ; $CCB0
+        BEQ B0_LCCBD                       ; $CCB2
+        LDA KBD                            ; $CCB4
+        BPL B0_LCCBD                       ; $CCB7
+        STA KBDSTRB                        ; $CCB9
+        SEC                                ; $CCBC
+B0_LCCBD
+        RTS                                ; $CCBD
+B0_LCCBE
+        INC $4E                            ; $CCBE
+        BNE B0_LCCC4                       ; $CCC0
+        INC $4F                            ; $CCC2
+B0_LCCC4
+        JSR B0_LCCAC                       ; $CCC4
+        CLV                                ; $CCC7
+        BCC B0_LCD09                       ; $CCC8
+        JSR B0_LCC32                       ; $CCCA
+        JSR B0_LCB6B                       ; $CCCD
+        BCC B0_LCD08                       ; $CCD0
+B0_LCCD2
+        LDY #$07                           ; $CCD2
+B0_LCCD4
+        LDA $CD0A,Y                        ; $CCD4
+        STA CHARBUF                        ; $CCD7
+        TYA                                ; $CCD9
+        STA KBDSTRB                        ; $CCDA
+        PHA                                ; $CCDD
+        JSR B0_LCD12                       ; $CCDE
+        PLA                                ; $CCE1
+        TAY                                ; $CCE2
+        DEY                                ; $CCE3
+        BPL B0_LCCD4                       ; $CCE4
+B0_LCCE6
+        LDA KBD                            ; $CCE6
+        BPL B0_LCCE6                       ; $CCE9
+        STA KBDSTRB                        ; $CCEB
+        CMP #$88                           ; $CCEE
+        BEQ B0_LCCD2                       ; $CCF0
+        STA CHARBUF                        ; $CCF2
+        JSR B0_LCD12                       ; $CCF4
+        JSR B0_LCB6B                       ; $CCF7
+        LDA $04B8,X                        ; $CCFA
+        AND #$07                           ; $CCFD
+        BNE B0_LCCE6                       ; $CCFF
+        LDA #$8D                           ; $CD01
+        STA CHARBUF                        ; $CD03
+        BIT $FF58                          ; $CD05
+B0_LCD08
+        SEC                                ; $CD08
+B0_LCD09
+        RTS                                ; $CD09
+        HEX BACFD2D0A0C5C18D ; $CD0A  |:ORP EA.|
+B0_LCD12
+        LDA $0738,X                        ; $CD12
+        AND #$02                           ; $CD15
+        BEQ B0_LCD26                       ; $CD17
+        LDA $04B8,X                        ; $CD19
+        AND #$38                           ; $CD1C
+        BEQ B0_LCD26                       ; $CD1E
+        TXA                                ; $CD20
+        PHA                                ; $CD21
+        LDA #$67                           ; $CD22
+        PHA                                ; $CD24
+        RTS                                ; $CD25
+B0_LCD26
+        LDA $03B8,X                        ; $CD26
+        ROL A                              ; $CD29
+        ROL A                              ; $CD2A
+        ROL A                              ; $CD2B
+        AND #$03                           ; $CD2C
+        TAY                                ; $CD2E
+        LDA CHARBUF                        ; $CD2F
+        ORA #$80                           ; $CD31
+        CPY #$01                           ; $CD33
+        BEQ B0_LCD4D                       ; $CD35
+        CMP #$C0                           ; $CD37
+        BCC B0_LCD4D                       ; $CD39
+        CMP #$E0                           ; $CD3B
+        BCC B0_LCD47                       ; $CD3D
+        EOR #$20                           ; $CD3F
+        CPY #$02                           ; $CD41
+        BNE B0_LCD4D                       ; $CD43
+        BEQ B0_LCD4B                       ; $CD45
+B0_LCD47
+        CPY #$03                           ; $CD47
+        BNE B0_LCD4D                       ; $CD49
+B0_LCD4B
+        AND #$1F                           ; $CD4B
+B0_LCD4D
+        JMP $FDF6                          ; $CD4D
+B0_EXTERNAL_HELPER_CD50
+        LDX SLOTSAVE                       ; $CD50
+        LDA $0638,X                        ; $CD53
+        STA $36                            ; $CD56
+        LDA $04B8,X                        ; $CD58
+        LSR A                              ; $CD5B
+        LSR A                              ; $CD5C
+        LSR A                              ; $CD5D
+        AND #$07                           ; $CD5E
+        ORA #$C0                           ; $CD60
+        STA $37                            ; $CD62
+        RTS                                ; $CD64
+B0_EXTERNAL_HELPER_CD65
+        LDA $36                            ; $CD65
+        STA $0638,X                        ; $CD67
+        PLA                                ; $CD6A
+        STA $36                            ; $CD6B
+        PLA                                ; $CD6D
+        STA $37                            ; $CD6E
+        PLA                                ; $CD70
+        STA $38                            ; $CD71
+        PLA                                ; $CD73
+        STA $39                            ; $CD74
+        RTS                                ; $CD76
+B0_LCD77
+        TAY                                ; $CD77
+        LDA CHARBUF                        ; $CD78
+        AND #$7F                           ; $CD7A
+        CMP #$20                           ; $CD7C
+        BEQ B0_LCDA9                       ; $CD7E
+        CMP #$0D                           ; $CD80
+        BNE B0_LCD97                       ; $CD82
+        JSR B0_LCE11                       ; $CD84
+        CPY #$04                           ; $CD87
+        BEQ B0_LCD8F                       ; $CD89
+        CPY #$05                           ; $CD8B
+        BNE B0_LCDA9                       ; $CD8D
+B0_LCD8F
+        LDA #$2C                           ; $CD8F
+        JSR B0_LCC5F                       ; $CD91
+        JMP B0_LCE8E                       ; $CD94
+B0_LCD97
+        CMP #$60                           ; $CD97
+        BCC B0_LCD9D                       ; $CD99
+        AND #$5F                           ; $CD9B
+B0_LCD9D
+        DEY                                ; $CD9D
+        BEQ B0_LCDAA                       ; $CD9E
+        DEY                                ; $CDA0
+        BEQ B0_LCDD0                       ; $CDA1
+        DEY                                ; $CDA3
+        BEQ B0_LCDF5                       ; $CDA4
+        DEY                                ; $CDA6
+        BEQ B0_LCE22                       ; $CDA7
+B0_LCDA9
+        RTS                                ; $CDA9
+B0_LCDAA
+        CMP #$20                           ; $CDAA
+        BCS B0_LCDBE                       ; $CDAC
+        CMP $0538,X                        ; $CDAE
+        BNE B0_LCDB9                       ; $CDB1
+        DEC $04B8,X                        ; $CDB3
+        JMP B0_LCC6D                       ; $CDB6
+B0_LCDB9
+        STA $0538,X                        ; $CDB9
+        BNE B0_LCE11                       ; $CDBC
+B0_LCDBE
+        EOR #$30                           ; $CDBE
+        CMP #$0A                           ; $CDC0
+        BCS B0_LCDCC                       ; $CDC2
+        INC $04B8,X                        ; $CDC4
+        LDY #$2B                           ; $CDC7
+        JMP B0_LCE85                       ; $CDC9
+B0_LCDCC
+        LDY #$FD                           ; $CDCC
+        BNE B0_LCE3D                       ; $CDCE
+B0_LCDD0
+        EOR #$30                           ; $CDD0
+        CMP #$0A                           ; $CDD2
+        BCS B0_LCDF1                       ; $CDD4
+        PHA                                ; $CDD6
+        LDA #$2B                           ; $CDD7
+        JSR B0_LCC5F                       ; $CDD9
+        ASL A                              ; $CDDC
+        TSX                                ; $CDDD
+        PHA                                ; $CDDE
+        ASL A                              ; $CDDF
+        ASL A                              ; $CDE0
+        ADC $0100,X                        ; $CDE1
+        INX                                ; $CDE4
+        ADC $0100,X                        ; $CDE5
+        TXS                                ; $CDE8
+        LDX SLOTSAVE                       ; $CDE9
+        LDY #$2B                           ; $CDEC
+        JMP B0_LCE85                       ; $CDEE
+B0_LCDF1
+        LDY #$3A                           ; $CDF1
+        BNE B0_LCE3D                       ; $CDF3
+B0_LCDF5
+        LSR A                              ; $CDF5
+        EOR #$22                           ; $CDF6
+        BNE B0_LCE35                       ; $CDF8
+        LDA #$2C                           ; $CDFA
+        JSR B0_LCC5F                       ; $CDFC
+        BCC B0_LCE06                       ; $CDFF
+        ORA $0738,X                        ; $CE01
+        BNE B0_LCE0B                       ; $CE04
+B0_LCE06
+        EOR #$FF                           ; $CE06
+        AND $0738,X                        ; $CE08
+B0_LCE0B
+        STA $0738,X                        ; $CE0B
+B0_LCE0E
+        LDA #$06                           ; $CE0E
+; BYTE ALSO FORMS THE FIRST OPCODE OF ALTERNATE BIT $00A9 ENTRY.
+        HEX 2C ; $CE10  |,|
+B0_LCE11
+        LDA #$00                           ; $CE11
+B0_LCE13
+        LDX SLOTSAVE                       ; $CE13
+        EOR $04B8,X                        ; $CE16
+        AND #$07                           ; $CE19
+        EOR $04B8,X                        ; $CE1B
+        STA $04B8,X                        ; $CE1E
+        RTS                                ; $CE21
+B0_LCE22
+        LDY #$04                           ; $CE22
+B0_LCE24
+        CMP $CEF2,Y                        ; $CE24
+        BEQ B0_LCE2D                       ; $CE27
+        DEY                                ; $CE29
+        BPL B0_LCE24                       ; $CE2A
+        RTS                                ; $CE2C
+B0_LCE2D
+        LDA SLOTSAVE                       ; $CE2D
+        PHA                                ; $CE30
+        LDA #$93                           ; $CE31
+        PHA                                ; $CE33
+        RTS                                ; $CE34
+B0_LCE35
+        LDA #$20                           ; $CE35
+        STA $05B8,X                        ; $CE37
+        JMP B0_LCE0E                       ; $CE3A
+B0_LCE3D
+        LDA CHARBUF                        ; $CE3D
+        AND #$7F                           ; $CE3F
+        CMP #$60                           ; $CE41
+        BCC B0_LCE47                       ; $CE43
+        AND #$5F                           ; $CE45
+B0_LCE47
+        STA CHARBUF                        ; $CE47
+B0_LCE49
+        INY                                ; $CE49
+        INY                                ; $CE4A
+        INY                                ; $CE4B
+        LDA $CE96,Y                        ; $CE4C
+        BEQ B0_LCE35                       ; $CE4F
+        EOR CHARBUF                        ; $CE51
+        ASL A                              ; $CE53
+        BNE B0_LCE49                       ; $CE54
+        LDA $CE97,Y                        ; $CE56
+        AND #$20                           ; $CE59
+        BNE B0_LCE64                       ; $CE5B
+        LDA $0738,X                        ; $CE5D
+        AND #$10                           ; $CE60
+        BNE B0_LCE49                       ; $CE62
+B0_LCE64
+        LDA $0738,X                        ; $CE64
+        LSR A                              ; $CE67
+        LSR A                              ; $CE68
+        LDA $CE97,Y                        ; $CE69
+        BCC B0_LCE6F                       ; $CE6C
+        ASL A                              ; $CE6E
+B0_LCE6F
+        BPL B0_LCE49                       ; $CE6F
+        LDA $CE97,Y                        ; $CE71
+        JSR B0_LCE13                       ; $CE74
+        LDA $CE97,Y                        ; $CE77
+        AND #$10                           ; $CE7A
+        CMP #$10                           ; $CE7C
+        LDA $CE98,Y                        ; $CE7E
+        BCS B0_LCE8E                       ; $CE81
+        LDY #$2C                           ; $CE83
+B0_LCE85
+        PHA                                ; $CE85
+        LDA SLOTSAVE                       ; $CE86
+        PHA                                ; $CE89
+        LDA #$83                           ; $CE8A
+        PHA                                ; $CE8C
+        RTS                                ; $CE8D
+B0_LCE8E
+        TAX                                ; $CE8E
+        JSR B0_BANK_CALL                   ; $CE8F
+        LDX SLOTSAVE                       ; $CE92
+        RTS                                ; $CE95
+        HEX 3FF00942656943855145E38046E30447 ; $CE96  |?p.BeiC.QEc.Fc.G|
+        HEX A41A4890324990714B90794CE3014DE3 ; $CEA6  |$.H.2I.qK.yLc.Mc|
+        HEX 2051456152C559534340539022544551 ; $CEB6  | QEaREYSC@S."TEQ|
+        HEX 54834057902A58E3085AE5890042F639 ; $CEC6  |T.@W.*Xc.Ze..Bv9|
+        HEX 43F61944F64946F62948903A4CF6214E ; $CED6  |Cv.DvIFv)H.:Lv!N|
+        HEX 908150F64153563154D611005349324D ; $CEE6  |..PvASV1TV..SI2M|
+        HEX 528040200201 ; $CEF6  |R.@ ..|
+B0_LCEFC
+        ORA #$80                           ; $CEFC
+        TAY                                ; $CEFE
+        LDA $03B8,X                        ; $CEFF
+        CPY #$8C                           ; $CF02
+        BEQ B0_LCF12                       ; $CF04
+        CPY #$8A                           ; $CF06
+        BEQ B0_LCF10                       ; $CF08
+        CPY #$8D                           ; $CF0A
+        BNE B0_LCF23                       ; $CF0C
+        LSR A                              ; $CF0E
+        LSR A                              ; $CF0F
+B0_LCF10
+        LSR A                              ; $CF10
+        LSR A                              ; $CF11
+B0_LCF12
+        AND #$03                           ; $CF12
+        TAY                                ; $CF14
+        LDA $CF24,Y                        ; $CF15
+        BEQ B0_LCF23                       ; $CF18
+        TAY                                ; $CF1A
+B0_LCF1B
+        LDA #$08                           ; $CF1B
+        JSR B0_LCF28                       ; $CF1D
+        DEY                                ; $CF20
+        BNE B0_LCF1B                       ; $CF21
+B0_LCF23
+        RTS                                ; $CF23
+        HEX 000420FA ; $CF24  |.. z|
+B0_LCF28
+        PHA                                ; $CF28
+        LDA #$90                           ; $CF29
+B0_LCF2B
+        SEC                                ; $CF2B
+        SBC #$01                           ; $CF2C
+        BNE B0_LCF2B                       ; $CF2E
+        PLA                                ; $CF30
+        SBC #$01                           ; $CF31
+        BNE B0_LCF28                       ; $CF33
+        RTS                                ; $CF35
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CF36  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CF46  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CF56  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CF66  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CF76  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CF86  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CF96  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CFA6  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CFB6  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CFC6  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CFD6  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CFE6  |................|
+        HEX FFFFFFFFFFFFFFFFFFFF ; $CFF6  |..........|
+
+        .END

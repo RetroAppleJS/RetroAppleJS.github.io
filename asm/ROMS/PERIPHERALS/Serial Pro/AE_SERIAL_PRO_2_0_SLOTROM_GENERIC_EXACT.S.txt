@@ -1,0 +1,252 @@
+; ============================================================================
+; APPLIED ENGINEERING SERIAL PRO V2.0
+; GENERIC 256-BYTE SLOTROM - BYTE-EXACT FOR SLOTS 1 THROUGH 7
+; ============================================================================
+;
+; The complete 27C64 contains seven separately assembled copies at physical
+; EPROM offsets $1900-$1FFF.  Their only differences are the slot-dependent
+; $Cnxx and $C0sX address bytes.  Setting SLOT to 1..7 reproduces the
+; corresponding physical 256-byte page exactly.
+;
+; SLOT=2:
+;   PHYSICAL EPROM $1A00-$1AFF
+;   LOGICAL CPU    $C200-$C2FF
+;   SHA1           e27a66e59979e923bd8bb5ad0d701a406a4cc443
+;
+; All symbolic identifiers use UPPERCASE_WITH_UNDERSCORES.
+; ============================================================================
+
+SLOT              EQU 2
+SLOTROM           EQU $C000 + $100*SLOT
+SLOT_HI           EQU $C0 + SLOT
+SLOT_IO           EQU $10*SLOT
+
+RTCSEL            EQU $C084 + SLOT_IO
+RTCDATA           EQU $C085 + SLOT_IO
+BANKCLR           EQU $C086 + SLOT_IO
+BANKREG           EQU $C087 + SLOT_IO
+ACIADATA          EQU $C088 + SLOT_IO
+
+SLOTOFF           EQU $26
+CHARBUF           EQU $27
+CSWL              EQU $36
+SLOTSAVE          EQU $07F8
+
+XROMOFF           EQU $CFFF
+MON_COUT          EQU $FDED
+
+HOST_BASE_INIT    EQU $C819
+HOST_STATUS       EQU $C824
+HOST_READ         EQU $C8C0
+HOST_WRITE        EQU $C8CA
+HOST_HOOK_IO      EQU $C8D9
+HOST_CTL_DISPATCH EQU $CA91
+HOST_CMD09        EQU $CAAE
+HOST_INSTALL_CSW  EQU $CD50
+HOST_RESTORE_VEC  EQU $CD65
+HOST_GFX_MASK_TAB EQU $CEF7
+
+        ORG SLOTROM
+
+; ============================================================================
+; BASIC / PASCAL ENTRY VENEER
+; ============================================================================
+
+BASIC_INIT
+        BIT $FF58
+        BVS BASIC_IO_BRIDGE
+
+BASIC_INPUT
+        SEC
+        BCC CTL_BANK02              ; byte at $Cs07 is also BASIC_OUTPUT = CLC
+BASIC_OUTPUT EQU SLOTROM+$07
+
+        CLV
+        BVC BASIC_IO_BRIDGE
+
+PASCAL11_SIGNATURE
+        HEX 0131
+PASCAL11_INIT_OFFSET
+        HEX 2E
+PASCAL11_READ_OFFSET
+        HEX 34
+PASCAL11_WRITE_OFFSET
+        HEX 3A
+PASCAL11_STATUS_OFFSET
+        HEX 40
+
+; ============================================================================
+; CONTROL / PASCAL 1.1 TRAMPOLINES
+; ============================================================================
+
+CONTROL_PANEL
+        JSR SLOT_CONTEXT
+        JMP HOST_CMD09
+
+BANK_VIEW_WAIT
+        JSR SLOT_CONTEXT
+BANK_VIEW_WAIT_LOOP
+        JMP BANK_VIEW_WAIT_LOOP
+
+CTL_BANK0A
+        CLC
+        BCC CTL_FLAGS_READY
+
+CTL_BANK02
+        SEC
+CTL_FLAGS_READY
+        CLV
+CTL_DISPATCH_COMMON
+        STA CHARBUF
+        TYA
+        PHA
+        TXA
+        PHA
+        JSR SLOT_CONTEXT
+        JMP HOST_CTL_DISPATCH
+
+PASCAL11_INIT
+        JSR SLOT_CONTEXT
+        JMP HOST_BASE_INIT
+
+PASCAL11_READ
+        JSR SLOT_CONTEXT
+        JMP HOST_READ
+
+PASCAL11_WRITE
+        JSR SLOT_CONTEXT
+        JMP HOST_WRITE
+
+PASCAL11_STATUS
+        JSR SLOT_CONTEXT
+        JMP HOST_STATUS
+
+; ============================================================================
+; FIXED SLOT CONTEXT AND BASIC I/O BRIDGE
+; ============================================================================
+
+SLOT_CONTEXT
+        PHP
+        SEI
+        STA XROMOFF
+        STA BANKCLR
+        LDX RTCDATA                 ; authentic dummy/side-effect read; X overwritten next
+        LDX #SLOT_HI
+        LDY #SLOT_IO
+        STX SLOTSAVE
+        STY SLOTOFF
+        PLP
+        RTS
+
+BASIC_IO_BRIDGE
+        STA CHARBUF
+        TYA
+        PHA
+        TXA
+        PHA
+        JSR SLOT_CONTEXT
+        JMP HOST_HOOK_IO
+
+; ============================================================================
+; DISPLAY / RTC / ACIA HELPERS
+; ============================================================================
+
+DISPLAY_BUFFERED_CHAR
+        LDX #$03
+DISPLAY_SAVE_VECTORS
+        LDA CSWL,X
+        PHA
+        DEX
+        BPL DISPLAY_SAVE_VECTORS
+        JSR HOST_INSTALL_CSW
+        LDA CHARBUF
+        PHA
+        ORA #$80
+        JSR MON_COUT
+        PLA
+        STA CHARBUF
+        JSR SLOT_CONTEXT
+        JMP HOST_RESTORE_VEC
+
+RTC_WRITE_STACKED
+        STY RTCSEL
+        PLA
+        STA RTCDATA
+        RTS
+
+ACIA_WRITE_DATA
+        STA ACIADATA
+        RTS
+
+; ============================================================================
+; GRAPHICS-CONTROL BYTE IN BATTERY RAM $2A
+; ============================================================================
+
+GRAPHICS_CONTROL_CLEAR
+        LDA #$00
+        BEQ GRAPHICS_CONTROL_STORE
+
+GRAPHICS_CONTROL_OR_OPTION
+        LDA #$2A
+        STA RTCSEL
+        LDA RTCDATA
+        ORA HOST_GFX_MASK_TAB,Y
+GRAPHICS_CONTROL_STORE
+        LDY #$2A
+        STY RTCSEL
+        STA RTCDATA
+        SEC
+        RTS
+
+; ============================================================================
+; DOCUMENTED CLOCK IMAGE UPDATE: RTC $00-$09 -> BATTERY RAM $10-$19
+; ============================================================================
+
+CLOCK_IMAGE_UPDATE
+        LDX #$19
+        LDY #$0A
+CLOCK_WAIT_UPDATE
+        STY RTCSEL
+        LDA RTCDATA
+        BMI CLOCK_WAIT_UPDATE
+        DEY
+CLOCK_COPY_LOOP
+        STY RTCSEL
+        LDA RTCDATA
+        STX RTCSEL
+        STA RTCDATA
+        DEX
+        DEY
+        BPL CLOCK_COPY_LOOP
+CLOCK_IMAGE_RTS
+        RTS
+
+; ============================================================================
+; CROSS-SLOT EXPANSION-ROM READ / BANK-2 RESTORE
+; ============================================================================
+
+CROSS_SLOT_ROM_READ
+        JSR $003A                  ; Bank 2 temporarily installs this helper in zero page
+
+RESTORE_BANK2_PRESERVE_A
+        PHA
+        JSR SLOT_CONTEXT
+        LDA #$02
+        STA BANKREG
+        PLA
+        RTS
+
+UNUSED_FF
+        .RES $22,$FF              ; $CsD5-$CsF6
+
+CTL_BANK12
+        BIT CLOCK_IMAGE_RTS
+        JMP CTL_DISPATCH_COMMON
+
+AE_SIGNATURE
+        HEX C1C5                  ; high-bit ASCII "AE"
+
+FIRMWARE_REVISION
+        HEX 20                    ; BCD v2.0
+
+        .END

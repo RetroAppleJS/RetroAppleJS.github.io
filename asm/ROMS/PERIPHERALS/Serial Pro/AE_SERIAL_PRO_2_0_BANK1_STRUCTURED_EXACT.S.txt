@@ -1,0 +1,845 @@
+; ============================================================================
+; APPLIED ENGINEERING SERIAL PRO V2.0
+; HOSTROM BANK 1 - CONFIGURATION / CONTROL-PANEL HOSTROM
+; BYTE-EXACT STRUCTURED DISASSEMBLY
+; ============================================================================
+;
+; PHYSICAL 27C64 OFFSET : $0800-$0FFF
+; LOGICAL APPLE II VIEW : $C800-$CFFF WHEN THIS BANK IS SELECTED
+; BANK SHA1             : 436062de7f9b15afac2074ec4d5f8498ac92e51e
+;
+; SOURCE OF TRUTH:
+;   Complete 8192-byte Serial Pro v2.0 27C64 dump supplied by the user.
+;
+; ASSEMBLY POLICY:
+;   - ORG $C800 reproduces this ONE 2KB logical bank image.
+;   - CODE is emitted as legal NMOS 6502 mnemonics where control-flow analysis
+;     identifies instruction boundaries.
+;   - Unreached, table, text and intentionally ambiguous bytes are emitted with
+;     HEX so that no unsupported interpretation changes the ROM.
+;   - Deliberate overlapping entry points are represented with EQU aliases.
+;   - All symbolic identifiers use UPPERCASE_WITH_UNDERSCORES.
+;
+; IMPORTANT:
+;   BANKS 0, 1 AND 2 ALL OCCUPY LOGICAL $C800-$CFFF.  Assemble each bank
+;   separately.  The physical EPROM concatenates them at offsets $0000, $0800
+;   and $1000 respectively.
+; ============================================================================
+
+; ---------------------------------------------------------------------------
+; COMMON APPLE II / SERIAL PRO SYMBOLS
+; ---------------------------------------------------------------------------
+KBD          EQU $C000      ; Apple II keyboard data
+KBDSTRB      EQU $C010      ; Apple II keyboard strobe
+RTCSEL       EQU $C084      ; 6818 clock/RAM address register base
+RTCDATA      EQU $C085      ; 6818 clock/RAM data register base
+BANKCLR      EQU $C086      ; Serial Pro EPROM bank-register clear base
+BANKREG      EQU $C087      ; Serial Pro EPROM bank register base
+ACIADATA     EQU $C088      ; 6551 data register base
+ACIASTAT     EQU $C089      ; 6551 status/reset register base
+ACIACMD      EQU $C08A      ; 6551 command register base
+ACIACTRL     EQU $C08B      ; 6551 control register base
+SLOTOFF      EQU $0026      ; slot I/O offset ($10 * slot)
+CHARBUF      EQU $0027      ; firmware character buffer
+SLOTSAVE     EQU $07F8      ; saved slot-page high byte ($Cn)
+
+
+; ---------------------------------------------------------------------------
+; BANK-1 EPROM / OPERATION SELECTORS
+; ---------------------------------------------------------------------------
+BANKSEL_NVRAM_INITIALIZE             EQU $01
+BANKSEL_CONTROL_PANEL                EQU $09
+BANKSEL_SET_CASE_TRANSLATION         EQU $11
+BANKSEL_SET_CR_DELAY                 EQU $19
+BANKSEL_SET_LF_DELAY                 EQU $21
+BANKSEL_SET_FF_DELAY                 EQU $29
+BANKSEL_REDIRECT_OUTPUT_SLOT         EQU $31
+BANKSEL_SET_BAUD_RATE                EQU $39
+BANKSEL_SET_PARITY                   EQU $41
+BANKSEL_SET_DATA_FORMAT              EQU $49
+BANKSEL_ENABLE_COLUMN_OVERFLOW       EQU $51
+BANKSEL_RESET_SERIAL_PRO             EQU $59
+BANKSEL_DISABLE_COLUMN_OVERFLOW      EQU $61
+BANKSEL_TRANSMIT_BREAK               EQU $69
+BANKSEL_ENABLE_LOCAL_ECHO_LINE40     EQU $71
+BANKSEL_DISABLE_LF_AFTER_CR          EQU $79
+BANKSEL_SET_LINE_LENGTH              EQU $81
+BANKSEL_IGNORE_CONTROL_CHARACTERS    EQU $89
+
+; ---------------------------------------------------------------------------
+; DELIBERATE / USEFUL ALTERNATE ENTRY ALIASES
+; ---------------------------------------------------------------------------
+; No overlapping instruction entry is currently required in this bank.
+
+        ORG $C800
+
+
+; ============================================================================
+; BANK-1 DISPATCH AND NVRAM INITIALIZATION
+; ============================================================================
+
+        HEX 000000 ; $C800  |...|
+;
+; Bank-1 copy of the bank-switch wrapper tail. It restores bank-register value $01 before returning.
+B1_BANK_CALL_TAILSAFE
+        PHP                                ; $C803
+        SEI                                ; $C804
+        LDA #$01                           ; $C805
+        PHA                                ; $C807
+        JSR B1_BANK_SELECT_AND_DISPATCH    ; $C808
+        PLA                                ; $C80B
+        LDY SLOTOFF                        ; $C80C
+        STA BANKREG,Y                      ; $C80E
+        PLP                                ; $C811
+        RTS                                ; $C812
+;
+; Write the selector to BANKREG. The following fetch at $C819 is from Bank 1.
+B1_BANK_SELECT_AND_DISPATCH
+        TXA                                ; $C813
+        LDY SLOTOFF                        ; $C814
+        STA BANKREG,Y                      ; $C816
+;
+; Dispatch on selector bits 3..; bits 0..1 selected the physical EPROM bank.
+B1_DISPATCH
+        TXA                                ; $C819
+        LSR A                              ; $C81A
+        LSR A                              ; $C81B
+        AND #$FE                           ; $C81C
+        TAX                                ; $C81E
+        LDA $C82C,X                        ; $C81F
+        PHA                                ; $C822
+        LDA B1_DISPATCH_TABLE,X            ; $C823
+        PHA                                ; $C826
+        LDX SLOTSAVE                       ; $C827
+        RTS                                ; $C82A
+;
+; 18 entry-1 return addresses used by RTS dispatch.
+B1_DISPATCH_TABLE
+; DISPATCH TABLE: EACH WORD IS (TARGET-1) FOR RTS-BASED DISPATCH.
+;   $01 -> B1_NVRAM_INITIALIZE
+;   $09 -> B1_CONTROL_PANEL
+;   $11 -> B1_SET_CASE_TRANSLATION
+;   $19 -> B1_SET_CR_DELAY
+;   $21 -> B1_SET_LF_DELAY
+;   $29 -> B1_SET_FF_DELAY
+;   $31 -> B1_REDIRECT_OUTPUT_SLOT
+;   $39 -> B1_SET_BAUD_RATE
+;   $41 -> B1_SET_PARITY
+;   $49 -> B1_SET_DATA_FORMAT
+;   $51 -> B1_ENABLE_COLUMN_OVERFLOW
+;   $59 -> B1_RESET_SERIAL_PRO
+;   $61 -> B1_DISABLE_COLUMN_OVERFLOW
+;   $69 -> B1_TRANSMIT_BREAK
+;   $71 -> B1_ENABLE_LOCAL_ECHO_LINE40
+;   $79 -> B1_DISABLE_LF_AFTER_CR
+;   $81 -> B1_SET_LINE_LENGTH
+;   $89 -> B1_IGNORE_CONTROL_CHARACTERS
+        HEX 4EC8AFC80ACF14CF1FCF28CF3ACF59CF ; $C82B  |NH/H.O.O.O(O:OYO|
+        HEX 75CF7CCF8FCF96CFA2CFABCFC8CFD4CF ; $C83B  |uO|O.O.O"O+OHOTO|
+        HEX DDCFEBCF ; $C84B  |]OkO|
+;
+; Validate the AE/55 battery-RAM signature and install firmware defaults when absent.
+B1_NVRAM_INITIALIZE
+        LDA #$20                           ; $C84F
+        JSR B1_RTC_READ_ADDR_IN_A          ; $C851
+        CMP #$AE                           ; $C854
+        BNE B1_LC861                       ; $C856
+        LDA #$21                           ; $C858
+        JSR B1_RTC_READ_ADDR_IN_A          ; $C85A
+        CMP #$55                           ; $C85D
+        BEQ B1_LC87D                       ; $C85F
+B1_LC861
+        LDY #$20                           ; $C861
+B1_LC863
+        LDA $C87A,Y                        ; $C863
+        JSR B1_SLOT_RTC_WRITE_TRAMPOLINE   ; $C866
+        INY                                ; $C869
+        CPY #$2D                           ; $C86A
+        BCC B1_LC863                       ; $C86C
+        LDY #$0A                           ; $C86E
+        LDA #$20                           ; $C870
+        JSR B1_SLOT_RTC_WRITE_TRAMPOLINE   ; $C872
+        INY                                ; $C875
+        LDA #$02                           ; $C876
+        JSR B1_SLOT_RTC_WRITE_TRAMPOLINE   ; $C878
+        LDY SLOTOFF                        ; $C87B
+B1_LC87D
+        LDA #$00                           ; $C87D
+        STA $04B8,X                        ; $C87F
+        STA $0438,X                        ; $C882
+        STA $05B8,X                        ; $C885
+        STA $0638,X                        ; $C888
+        STA $06B8,X                        ; $C88B
+        RTS                                ; $C88E
+B1_RTC_READ_2B
+        LDA #$2B                           ; $C88F
+;
+; Read one 6818 clock/RAM register whose address is supplied in A.
+B1_RTC_READ_ADDR_IN_A
+        LDY SLOTOFF                        ; $C891
+        STA RTCSEL,Y                       ; $C893
+        LDA RTCDATA,Y                      ; $C896
+        RTS                                ; $C899
+;
+; Default battery-RAM bytes for addresses $20-$2C.
+B1_DEFAULT_BATTERY_RAM_20_2C
+; BATTERY RAM DEFAULTS FOR $20-$2C: AE 55 02 1E 0B 50 00 00 09 06 00 00 00.
+        HEX AE55021E0B5000000906000000 ; $C89A  |.U...P.......|
+;
+; Build an RTS target for SlotROM $Cn84, which writes A to RTC/RAM address Y.
+B1_SLOT_RTC_WRITE_TRAMPOLINE
+        PHA                                ; $C8A7
+        LDA SLOTSAVE                       ; $C8A8
+        PHA                                ; $C8AB
+        LDA #$83                           ; $C8AC
+        PHA                                ; $C8AE
+        RTS                                ; $C8AF
+
+; ============================================================================
+; CONTROL PANEL EXECUTIVE
+; ============================================================================
+
+;
+; Interactive Serial Pro control-panel/configuration entry.
+B1_CONTROL_PANEL
+        STA $C00C                          ; $C8B0
+        STA KBD                            ; $C8B3
+        STA $C00E                          ; $C8B6
+        JSR $FB2F                          ; $C8B9
+        LDY SLOTOFF                        ; $C8BC
+        LDA #$00                           ; $C8BE
+        STA ACIACMD,Y                      ; $C8C0
+        JSR B1_RESET_SERIAL_PRO            ; $C8C3
+        JSR $FE84                          ; $C8C6
+        JSR $FC58                          ; $C8C9
+        JSR B1_NVRAM_INITIALIZE            ; $C8CC
+        LDA #$00                           ; $C8CF
+        STA CHARBUF                        ; $C8D1
+        LDA #$9C                           ; $C8D3
+        LDY #$CC                           ; $C8D5
+        JSR B1_LCB54                       ; $C8D7
+        LDA SLOTSAVE                       ; $C8DA
+        EOR #$70                           ; $C8DD
+        JSR $FDED                          ; $C8DF
+        LDA #$14                           ; $C8E2
+        STA $25                            ; $C8E4
+        LDA #$C2                           ; $C8E6
+        LDY #$CC                           ; $C8E8
+        JSR B1_LCB54                       ; $C8EA
+B1_LC8ED
+        JSR B1_LC9B1                       ; $C8ED
+B1_LC8F0
+        LDA KBD                            ; $C8F0
+        BPL B1_LC8ED                       ; $C8F3
+        STA KBDSTRB                        ; $C8F5
+        CMP #$E0                           ; $C8F8
+        BCC B1_LC8FE                       ; $C8FA
+        AND #$DF                           ; $C8FC
+B1_LC8FE
+        LDY CHARBUF                        ; $C8FE
+        CMP #$C9                           ; $C900
+        BEQ B1_LC96C                       ; $C902
+        CMP #$8B                           ; $C904
+        BEQ B1_LC96C                       ; $C906
+        CMP #$CD                           ; $C908
+        BEQ B1_LC97E                       ; $C90A
+        CMP #$8D                           ; $C90C
+        BEQ B1_LC97E                       ; $C90E
+        CMP #$8A                           ; $C910
+        BEQ B1_LC97E                       ; $C912
+        CMP #$CA                           ; $C914
+        BEQ B1_LC988                       ; $C916
+        CMP #$88                           ; $C918
+        BEQ B1_LC988                       ; $C91A
+        CMP #$CB                           ; $C91C
+        BEQ B1_LC991                       ; $C91E
+        CMP #$95                           ; $C920
+        BEQ B1_LC991                       ; $C922
+        CMP #$A0                           ; $C924
+        BNE B1_LC945                       ; $C926
+        CPY #$1E                           ; $C928
+        BNE B1_LC945                       ; $C92A
+        JSR B1_LCAE8                       ; $C92C
+        JSR B1_LCA2D                       ; $C92F
+        JSR B1_LCB47                       ; $C932
+        PHA                                ; $C935
+        LDA #$00                           ; $C936
+        JSR B1_LCAD6                       ; $C938
+        PLA                                ; $C93B
+        CMP #$30                           ; $C93C
+        BCC B1_LC945                       ; $C93E
+        LDY #$1C                           ; $C940
+        JMP B1_LC994                       ; $C942
+B1_LC945
+        CMP #$9B                           ; $C945
+        BNE B1_LC8F0                       ; $C947
+        STA CHARBUF                        ; $C949
+        LDY #$0B                           ; $C94B
+        LDA #$02                           ; $C94D
+        JSR B1_SLOT_RTC_WRITE_TRAMPOLINE   ; $C94F
+        JSR $FC58                          ; $C952
+        LDA #$F3                           ; $C955
+        LDY #$CE                           ; $C957
+        JSR B1_LCB54                       ; $C959
+        LDA $03F3                          ; $C95C
+        EOR $03F4                          ; $C95F
+        CMP #$A5                           ; $C962
+        BNE B1_LC969                       ; $C964
+        JMP ($03F2)                        ; $C966
+B1_LC969
+        JMP ($FFFC)                        ; $C969
+B1_LC96C
+        DEY                                ; $C96C
+        DEY                                ; $C96D
+        BPL B1_LC972                       ; $C96E
+        LDY #$1E                           ; $C970
+B1_LC972
+        STY CHARBUF                        ; $C972
+        CPY #$1E                           ; $C974
+        BEQ B1_LC97B                       ; $C976
+        JSR B1_LC99A                       ; $C978
+B1_LC97B
+        JMP B1_LC8ED                       ; $C97B
+B1_LC97E
+        INY                                ; $C97E
+        INY                                ; $C97F
+        CPY #$20                           ; $C980
+        BCC B1_LC972                       ; $C982
+        LDY #$00                           ; $C984
+        BEQ B1_LC972                       ; $C986
+B1_LC988
+        JSR B1_LC99A                       ; $C988
+        JSR B1_LCA5B                       ; $C98B
+        JMP B1_LC8ED                       ; $C98E
+B1_LC991
+        JSR B1_LC99A                       ; $C991
+B1_LC994
+        JSR B1_LCA77                       ; $C994
+        JMP B1_LC8ED                       ; $C997
+
+; ============================================================================
+; CONTROL PANEL INPUT, CURSOR AND FIELD HANDLING
+; ============================================================================
+
+B1_LC99A
+        TYA                                ; $C99A
+        PHA                                ; $C99B
+        LDY CHARBUF                        ; $C99C
+        JSR B1_LCAE8                       ; $C99E
+        LDA #$02                           ; $C9A1
+        CPY #$1E                           ; $C9A3
+        BNE B1_LC9A9                       ; $C9A5
+        LDA #$82                           ; $C9A7
+B1_LC9A9
+        LDY #$0B                           ; $C9A9
+        JSR B1_SLOT_RTC_WRITE_TRAMPOLINE   ; $C9AB
+        PLA                                ; $C9AE
+        TAY                                ; $C9AF
+        RTS                                ; $C9B0
+B1_LC9B1
+        LDA #$01                           ; $C9B1
+        STA $25                            ; $C9B3
+        LDY #$00                           ; $C9B5
+B1_LC9B7
+        STY $40                            ; $C9B7
+        CPY #$12                           ; $C9B9
+        BNE B1_LC9C0                       ; $C9BB
+        JSR $FD8E                          ; $C9BD
+B1_LC9C0
+        JSR B1_LCA2D                       ; $C9C0
+        PHP                                ; $C9C3
+        JSR B1_LC9F7                       ; $C9C4
+        PLP                                ; $C9C7
+        BCC B1_LC9E9                       ; $C9C8
+        JSR B1_LCAE8                       ; $C9CA
+        JSR B1_LCB47                       ; $C9CD
+        PHA                                ; $C9D0
+        LDA #$FF                           ; $C9D1
+        LDY $40                            ; $C9D3
+        CPY CHARBUF                        ; $C9D5
+        BNE B1_LC9DB                       ; $C9D7
+        LDA #$3F                           ; $C9D9
+B1_LC9DB
+        STA $32                            ; $C9DB
+        PLA                                ; $C9DD
+        JSR $FDDA                          ; $C9DE
+        LDY #$01                           ; $C9E1
+        JSR B1_LCB38                       ; $C9E3
+        JMP B1_LC9EC                       ; $C9E6
+B1_LC9E9
+        JSR B1_LCB12                       ; $C9E9
+B1_LC9EC
+        LDY $40                            ; $C9EC
+        INY                                ; $C9EE
+        INY                                ; $C9EF
+        CPY #$20                           ; $C9F0
+        BCC B1_LC9B7                       ; $C9F2
+        JMP $FE84                          ; $C9F4
+B1_LC9F7
+        LDA #$FF                           ; $C9F7
+        STA $32                            ; $C9F9
+        JSR $FD8E                          ; $C9FB
+        LDY #$00                           ; $C9FE
+        LDA ($3C),Y                        ; $CA00
+        STA $3E                            ; $CA02
+        INY                                ; $CA04
+        LDA ($3C),Y                        ; $CA05
+        STA $3F                            ; $CA07
+        LDY #$00                           ; $CA09
+        LDX #$11                           ; $CA0B
+B1_LCA0D
+        LDA ($3E),Y                        ; $CA0D
+        BMI B1_LCA15                       ; $CA0F
+        DEX                                ; $CA11
+        INY                                ; $CA12
+        BNE B1_LCA0D                       ; $CA13
+B1_LCA15
+        LDA #$A0                           ; $CA15
+        JSR $FDED                          ; $CA17
+        DEX                                ; $CA1A
+        BPL B1_LCA15                       ; $CA1B
+        JSR B1_LCB58                       ; $CA1D
+        LDA #$BA                           ; $CA20
+        JSR $FDED                          ; $CA22
+        LDA #$A0                           ; $CA25
+        JSR $FDED                          ; $CA27
+        JMP $FDED                          ; $CA2A
+B1_LCA2D
+        STY $3C                            ; $CA2D
+        CPY #$0E                           ; $CA2F
+        BEQ B1_LCA48                       ; $CA31
+        CPY #$10                           ; $CA33
+        BEQ B1_LCA48                       ; $CA35
+B1_LCA37
+        LDY $3C                            ; $CA37
+        LDA $CB67,Y                        ; $CA39
+        STA $3C                            ; $CA3C
+        LDA $CB68,Y                        ; $CA3E
+B1_LCA41
+        CMP #$80                           ; $CA41
+        ORA #$C0                           ; $CA43
+        STA $3D                            ; $CA45
+        RTS                                ; $CA47
+B1_LCA48
+        LDA #$22                           ; $CA48
+        JSR B1_RTC_READ_ADDR_IN_A          ; $CA4A
+        BNE B1_LCA37                       ; $CA4D
+        LDY $3C                            ; $CA4F
+        LDA $CB79,Y                        ; $CA51
+        STA $3C                            ; $CA54
+        LDA $CB7A,Y                        ; $CA56
+        BNE B1_LCA41                       ; $CA59
+B1_LCA5B
+        JSR B1_LCA2D                       ; $CA5B
+        BCS B1_LCAAE                       ; $CA5E
+        JSR B1_LCAF5                       ; $CA60
+        BCC B1_LCA8A                       ; $CA63
+        DEY                                ; $CA65
+        DEY                                ; $CA66
+        DEY                                ; $CA67
+        CPY #$05                           ; $CA68
+        BCS B1_LCA8C                       ; $CA6A
+        TXA                                ; $CA6C
+        ASL A                              ; $CA6D
+        STX $3E                            ; $CA6E
+        ADC $3E                            ; $CA70
+        ADC #$02                           ; $CA72
+        TAY                                ; $CA74
+        BNE B1_LCA8C                       ; $CA75
+B1_LCA77
+        JSR B1_LCA2D                       ; $CA77
+        BCS B1_LCAC3                       ; $CA7A
+        JSR B1_LCAF5                       ; $CA7C
+        BCC B1_LCA8A                       ; $CA7F
+        CPX #$01                           ; $CA81
+        BEQ B1_LCA8A                       ; $CA83
+        INY                                ; $CA85
+        INY                                ; $CA86
+        INY                                ; $CA87
+        BNE B1_LCA8C                       ; $CA88
+B1_LCA8A
+        LDY #$05                           ; $CA8A
+B1_LCA8C
+        LDA ($3C),Y                        ; $CA8C
+        PHA                                ; $CA8E
+        LDY #$02                           ; $CA8F
+        LDX SLOTOFF                        ; $CA91
+        LDA ($3C),Y                        ; $CA93
+        STA RTCSEL,X                       ; $CA95
+        PLA                                ; $CA98
+        EOR RTCDATA,X                      ; $CA99
+        INY                                ; $CA9C
+        AND ($3C),Y                        ; $CA9D
+        PHA                                ; $CA9F
+        DEY                                ; $CAA0
+        LDA ($3C),Y                        ; $CAA1
+        STA RTCSEL,X                       ; $CAA3
+        PLA                                ; $CAA6
+        EOR RTCDATA,X                      ; $CAA7
+        PHA                                ; $CAAA
+        JMP B1_LCADB                       ; $CAAB
+B1_LCAAE
+        JSR B1_LCB47                       ; $CAAE
+        CMP #$00                           ; $CAB1
+        BEQ B1_LCABF                       ; $CAB3
+        SED                                ; $CAB5
+        SEC                                ; $CAB6
+        SBC #$01                           ; $CAB7
+        LDY #$03                           ; $CAB9
+        CMP ($3C),Y                        ; $CABB
+        BCS B1_LCAD6                       ; $CABD
+B1_LCABF
+        LDY #$04                           ; $CABF
+        BNE B1_LCAD4                       ; $CAC1
+B1_LCAC3
+        JSR B1_LCB47                       ; $CAC3
+        SED                                ; $CAC6
+        CLC                                ; $CAC7
+        ADC #$01                           ; $CAC8
+        LDY #$04                           ; $CACA
+        CMP ($3C),Y                        ; $CACC
+        BCC B1_LCAD6                       ; $CACE
+        BEQ B1_LCAD6                       ; $CAD0
+        LDY #$03                           ; $CAD2
+B1_LCAD4
+        LDA ($3C),Y                        ; $CAD4
+B1_LCAD6
+        CLD                                ; $CAD6
+        PHA                                ; $CAD7
+        JSR B1_LCAE8                       ; $CAD8
+B1_LCADB
+        LDY #$02                           ; $CADB
+        LDA ($3C),Y                        ; $CADD
+        TAY                                ; $CADF
+        LDA SLOTSAVE                       ; $CAE0
+        PHA                                ; $CAE3
+        LDA #$83                           ; $CAE4
+        PHA                                ; $CAE6
+        RTS                                ; $CAE7
+B1_LCAE8
+        LDA #$0A                           ; $CAE8
+        LDX SLOTOFF                        ; $CAEA
+        STA RTCSEL,X                       ; $CAEC
+        LDA RTCDATA,X                      ; $CAEF
+        BMI B1_LCAE8                       ; $CAF2
+        RTS                                ; $CAF4
+B1_LCAF5
+        JSR B1_LCAE8                       ; $CAF5
+        JSR B1_LCB47                       ; $CAF8
+        LDY #$03                           ; $CAFB
+        AND ($3C),Y                        ; $CAFD
+        PHA                                ; $CAFF
+
+; ============================================================================
+; CONTROL PANEL DATA-DRIVEN MENU HELPERS
+; ============================================================================
+
+        LDY #$04                           ; $CB00
+        LDA ($3C),Y                        ; $CB02
+        TAX                                ; $CB04
+        PLA                                ; $CB05
+B1_LCB06
+        INY                                ; $CB06
+        CMP ($3C),Y                        ; $CB07
+        BEQ B1_LCB11                       ; $CB09
+        INY                                ; $CB0B
+        INY                                ; $CB0C
+        DEX                                ; $CB0D
+        BNE B1_LCB06                       ; $CB0E
+        CLC                                ; $CB10
+B1_LCB11
+        RTS                                ; $CB11
+B1_LCB12
+        LDA #$FF                           ; $CB12
+        LDY $40                            ; $CB14
+        CPY CHARBUF                        ; $CB16
+        BNE B1_LCB1C                       ; $CB18
+        LDA #$3F                           ; $CB1A
+B1_LCB1C
+        STA $32                            ; $CB1C
+        JSR B1_LCAF5                       ; $CB1E
+        BCS B1_LCB2B                       ; $CB21
+        LDA #$2F                           ; $CB23
+        STA $3E                            ; $CB25
+        LDA #$CE                           ; $CB27
+        BNE B1_LCB33                       ; $CB29
+B1_LCB2B
+        INY                                ; $CB2B
+        LDA ($3C),Y                        ; $CB2C
+        STA $3E                            ; $CB2E
+        INY                                ; $CB30
+        LDA ($3C),Y                        ; $CB31
+B1_LCB33
+        STA $3F                            ; $CB33
+        JSR B1_LCB58                       ; $CB35
+B1_LCB38
+        LDA #$FF                           ; $CB38
+        STA $32                            ; $CB3A
+        LDA #$A0                           ; $CB3C
+B1_LCB3E
+        JSR $FDED                          ; $CB3E
+        INY                                ; $CB41
+        CPY #$0F                           ; $CB42
+        BCC B1_LCB3E                       ; $CB44
+        RTS                                ; $CB46
+B1_LCB47
+        LDY #$02                           ; $CB47
+        LDA ($3C),Y                        ; $CB49
+        LDX SLOTOFF                        ; $CB4B
+        STA RTCSEL,X                       ; $CB4D
+        LDA RTCDATA,X                      ; $CB50
+        RTS                                ; $CB53
+B1_LCB54
+        STA $3E                            ; $CB54
+        STY $3F                            ; $CB56
+B1_LCB58
+        LDY #$FF                           ; $CB58
+B1_LCB5A
+        INY                                ; $CB5A
+        LDA ($3E),Y                        ; $CB5B
+        ORA #$80                           ; $CB5D
+        JSR $FDED                          ; $CB5F
+        LDA ($3E),Y                        ; $CB62
+        BPL B1_LCB5A                       ; $CB64
+        RTS                                ; $CB66
+        HEX 8B4B9C4BCE4BDF4BEA4B284C394CFE4B ; $CB67  |.K.KNK_KjK(L9L~K|
+        HEX 444C7ECC83CC88CC644C8DCC92CC97CC ; $CB77  |DL~L.L.LdL.L.L.L|
+        HEX 124C1D4C12CD22FF04007FCD0298CD01 ; $CB87  |.L.L.M"....M..M.|
+        HEX 8CCD039FCD1DCD231F0F11ACCD12AECD ; $CB97  |.M..M.M#...,M..M|
+        HEX 13B0CD14B3CD15B8CD16BBCD17BECD18 ; $CBA7  |.0M.3M.8M.,M.>M.|
+        HEX C1CD19C5CD1AC9CD1BCDCD1CD1CD1DD5 ; $CBB7  |AM.EM.IM.MM.QM.U|
+        HEX CD1ED9CD1FDDCD26CD23600400E2CD20 ; $CBC7  |M.YM.]M&M#`..bM |
+        HEX E3CD40E4CD60E5CD2FCD23800200E6CD ; $CBD7  |cM@dM`eM/M#...fM|
+        HEX 80E7CD38CD24E00500E8CD20ECCD60EF ; $CBE7  |.gM8M$`..hM lM`o|
+        HEX CDA0F3CDE0F7CD3ECD25FF0500FCCD28 ; $CBF7  |M sM`wM>M%...|M(|
+        HEX 05CE4807CE5009CE840BCEC8CE280802 ; $CC07  |.NH.NP.N..NHN(..|
+        HEX 00EBCE08E4CEDACE28800200EBCE80E4 ; $CC17  |.kN.dNZN(...kN.d|
+        HEX CE49CD263004000ECE1016CE201DCE30 ; $CC27  |NIM&0...N..N .N0|
+        HEX 25CE51CD280102002ACE012CCE34CE29 ; $CC37  |%NQM(...*N.,N4N)|
+        HEX FF090675CE0180CE088FCE0344CE026F ; $CC47  |...uN..N..N.DN.o|
+        HEX CE0456CE054DCE00 ; $CC57  |N.VN.MN.|
+B1_LCC5F
+        RTS                                ; $CC5F
+        HEX CE0765CE68CD06FF070196CE029CCE03 ; $CC60  |N.eNhM.....N..N.|
+        HEX A2CE04A9CE05B2CE06BACE07C0CE5CCD ; $CC70  |"N.)N.2N.:N.@N\M|
+        HEX 09019960CD08011265CD0701316FCD04 ; $CC80  |...`M...eM..1oM.|
+        HEX 002373CD02005979CD0000 ; $CC90  |.#sM..YyM..|
+
+; ============================================================================
+; CONTROL PANEL TEXT AND OPTION TABLES
+; ============================================================================
+
+;
+; High-bit-terminated control-panel labels, option strings, printer names and weekdays.
+B1_CONTROL_PANEL_TEXT
+; CONTROL-PANEL TEXT / HIGH-BIT-TERMINATED STRINGS BEGIN HERE.
+        HEX 594150504C49454420454E47494E4545 ; $CC9B  |YAPPLIED ENGINEE|
+        HEX 52494E472053455249414C2050524F2E ; $CCAB  |RING SERIAL PRO.|
+        HEX 2E2E534C4F54A00D555345204152524F ; $CCBB  |..SLOT .USE ARRO|
+        HEX 5753204F52203C52455455524E3E2054 ; $CCCB  |WS OR <RETURN> T|
+        HEX 4F2053454C4543542F4D4F444946590D ; $CCDB  |O SELECT/MODIFY.|
+        HEX 555345203C4553434150453E20544F20 ; $CCEB  |USE <ESCAPE> TO |
+        HEX 4558495420434F4E4649475552415449 ; $CCFB  |EXIT CONFIGURATI|
+        HEX 4F4E204D454ED5444556494345205459 ; $CD0B  |ON MENUDEVICE TY|
+        HEX 50C54241554420524154C54441544120 ; $CD1B  |PEBAUD RATEDATA |
+        HEX 424954D353544F5020424954D3504152 ; $CD2B  |BITSSTOP BITSPAR|
+        HEX 4954D94C494E45204C454E4754C84352 ; $CD3B  |ITYLINE LENGTHCR|
+        HEX 2044454C41D947454E4552415445204C ; $CD4B  | DELAYGENERATE L|
+        HEX C6594541D24D4F4E54C84441D9574545 ; $CD5B  |FYEARMONTHDAYWEE|
+        HEX 4B4441D9484F55D24D494E5554C55345 ; $CD6B  |KDAYHOURMINUTESE|
+        HEX 434F4EC4434F4D4D554E49434154494F ; $CD7B  |CONDCOMMUNICATIO|
+        HEX CE503820454D554C4154494FCE505249 ; $CD8B  |NP8 EMULATIONPRI|
+        HEX 4E5445D250384120454D554C4154494F ; $CD9B  |NTERP8A EMULATIO|
+        HEX CE35B037B53131B03133342EB53135B0 ; $CDAB  |N5075110134.5150|
+        HEX 3330B03630B0313230B0313830B03234 ; $CDBB  |3006001200180024|
+        HEX 30B0333630B0343830B0373230B03936 ; $CDCB  |0036004800720096|
+        HEX 30B031393230B0B8B7B6B5B1B24E4F4E ; $CDDB  |0019200876512NON|
+        HEX C54F44C4455645CE4D4152CB53504143 ; $CDEB  |EODDEVENMARKSPAC|
+        HEX C5554E4C494D495445C434B037B238B0 ; $CDFB  |EUNLIMITED407280|
+        HEX 3133B24E4F2044454C41D93332204D53 ; $CE0B  |132NO DELAY32 MS|
+        HEX 45C3323530204D5345C332205345C34E ; $CE1B  |EC250 MSEC2 SECN|
+        HEX CF5945D34552524FD25052494E544552 ; $CE2B  |OYESERRORPRINTER|
+        HEX 2047524150484943D34F544845522049 ; $CE3B  | GRAPHICSOTHER I|
+        HEX 44D34F54484552204F4BC94F4B494441 ; $CE4B  |DSOTHER OKIOKIDA|
+        HEX 54412038B44550534FCE4D414E4E4553 ; $CE5B  |TA 84EPSONMANNES|
+        HEX 4D414ECE414E414445D8494D41474557 ; $CE6B  |MANNANADEXIMAGEW|
+        HEX 52495445D24E4543383032332C20432E ; $CE7B  |RITERNEC8023, C.|
+        HEX 49544FC8494453203434B053554E4441 ; $CE8B  |ITOHIDS 440SUNDA|
+        HEX D94D4F4E4441D9545545534441D95745 ; $CE9B  |YMONDAYTUESDAYWE|
+        HEX 444E45534441D954485552534441D946 ; $CEAB  |DNESDAYTHURSDAYF|
+        HEX 52494441D953415455524441D9584F4E ; $CEBB  |RIDAYSATURDAYXON|
+        HEX 2F584F46462048414E445348414BC54C ; $CECB  |/XOFF HANDSHAKEL|
+        HEX 4F43414C20454348CF454E41424C45C4 ; $CEDB  |OCAL ECHOENABLED|
+        HEX 44495341424C45C4434F4E4649475552 ; $CEEB  |DISABLEDCONFIGUR|
+        HEX 4154494F4E20434F4D504C455445448D ; $CEFB  |ATION COMPLETED.|
+
+; ============================================================================
+; BANK-1 NUMERIC COMMAND HANDLERS
+; ============================================================================
+
+;
+; Numeric nT handler: update case-translation bits.
+B1_SET_CASE_TRANSLATION
+        JSR B1_RTC_READ_2B                 ; $CF0B
+        LSR A                              ; $CF0E
+        ROR A                              ; $CF0F
+        ROR A                              ; $CF10
+        LDY #$03                           ; $CF11
+        BNE B1_LCF2E                       ; $CF13
+;
+; Numeric nC handler: update CR delay bits.
+B1_SET_CR_DELAY
+        JSR B1_RTC_READ_2B                 ; $CF15
+        ASL A                              ; $CF18
+        ASL A                              ; $CF19
+        ASL A                              ; $CF1A
+        ASL A                              ; $CF1B
+        LDY #$02                           ; $CF1C
+        BNE B1_LCF2E                       ; $CF1E
+;
+; Numeric nL handler: update LF delay bits.
+B1_SET_LF_DELAY
+        JSR B1_RTC_READ_2B                 ; $CF20
+        ASL A                              ; $CF23
+        ASL A                              ; $CF24
+        LDY #$01                           ; $CF25
+        BNE B1_LCF2E                       ; $CF27
+;
+; Numeric nF handler: update form-feed delay bits.
+B1_SET_FF_DELAY
+        JSR B1_RTC_READ_2B                 ; $CF29
+        LDY #$00                           ; $CF2C
+B1_LCF2E
+        EOR $03B8,X                        ; $CF2E
+        AND $CFF5,Y                        ; $CF31
+        EOR $03B8,X                        ; $CF34
+        STA $03B8,X                        ; $CF37
+        RTS                                ; $CF3A
+;
+; Numeric nS handler: update output-slot redirection state.
+B1_REDIRECT_OUTPUT_SLOT
+        JSR B1_RTC_READ_2B                 ; $CF3B
+        AND #$07                           ; $CF3E
+        ASL A                              ; $CF40
+        ASL A                              ; $CF41
+        ASL A                              ; $CF42
+        ASL A                              ; $CF43
+        CMP SLOTOFF                        ; $CF44
+        BEQ B1_LCF59                       ; $CF46
+        LSR A                              ; $CF48
+        EOR $04B8,X                        ; $CF49
+        AND #$38                           ; $CF4C
+        EOR $04B8,X                        ; $CF4E
+        STA $04B8,X                        ; $CF51
+        LDA #$00                           ; $CF54
+        STA $0638,X                        ; $CF56
+B1_LCF59
+        RTS                                ; $CF59
+;
+; Numeric nB handler: update 6551 baud/control bits.
+B1_SET_BAUD_RATE
+        JSR B1_RTC_READ_2B                 ; $CF5A
+        AND #$0F                           ; $CF5D
+        BNE B1_LCF68                       ; $CF5F
+        LDA #$23                           ; $CF61
+        JSR B1_LCC5F                       ; $CF63
+        AND #$0F                           ; $CF66
+B1_LCF68
+        ORA #$10                           ; $CF68
+        EOR ACIACTRL,Y                     ; $CF6A
+        AND #$1F                           ; $CF6D
+        EOR ACIACTRL,Y                     ; $CF6F
+        STA ACIACTRL,Y                     ; $CF72
+        RTS                                ; $CF75
+;
+; Numeric nP handler: update 6551 parity bits.
+B1_SET_PARITY
+        JSR B1_RTC_READ_2B                 ; $CF76
+        DEY                                ; $CF79
+        JMP B1_LCF80                       ; $CF7A
+;
+; Numeric nD handler: update 6551 data/stop-bit format.
+B1_SET_DATA_FORMAT
+        JSR B1_RTC_READ_2B                 ; $CF7D
+B1_LCF80
+        LSR A                              ; $CF80
+        ROR A                              ; $CF81
+        ROR A                              ; $CF82
+        ROR A                              ; $CF83
+        EOR ACIACTRL,Y                     ; $CF84
+        AND #$E0                           ; $CF87
+        EOR ACIACTRL,Y                     ; $CF89
+        STA ACIACTRL,Y                     ; $CF8C
+        RTS                                ; $CF8F
+B1_ENABLE_COLUMN_OVERFLOW
+        LDA $04B8,X                        ; $CF90
+        ORA #$80                           ; $CF93
+        BNE B1_LCFA8                       ; $CF95
+;
+; Reset/reinitialize the serial interface.
+B1_RESET_SERIAL_PRO
+        STA ACIASTAT,Y                     ; $CF97
+        JSR $FE93                          ; $CF9A
+        JSR $FE89                          ; $CF9D
+        LDX SLOTSAVE                       ; $CFA0
+B1_DISABLE_COLUMN_OVERFLOW
+        LDA $04B8,X                        ; $CFA3
+        AND #$7F                           ; $CFA6
+B1_LCFA8
+        STA $04B8,X                        ; $CFA8
+        RTS                                ; $CFAB
+;
+; Temporarily assert the 6551 transmit BREAK condition.
+B1_TRANSMIT_BREAK
+        LDA ACIACMD,Y                      ; $CFAC
+        PHA                                ; $CFAF
+        ORA #$0C                           ; $CFB0
+        STA ACIACMD,Y                      ; $CFB2
+        LDA #$E9                           ; $CFB5
+B1_LCFB7
+        PHA                                ; $CFB7
+        LDA #$90                           ; $CFB8
+B1_LCFBA
+        SEC                                ; $CFBA
+        SBC #$01                           ; $CFBB
+        BNE B1_LCFBA                       ; $CFBD
+        PLA                                ; $CFBF
+        SBC #$01                           ; $CFC0
+        BNE B1_LCFB7                       ; $CFC2
+        PLA                                ; $CFC4
+        STA ACIACMD,Y                      ; $CFC5
+        RTS                                ; $CFC8
+B1_ENABLE_LOCAL_ECHO_LINE40
+        LDA #$28                           ; $CFC9
+        STA $0638,X                        ; $CFCB
+        LDA $0738,X                        ; $CFCE
+        ORA #$80                           ; $CFD1
+        BNE B1_LCFDA                       ; $CFD3
+B1_DISABLE_LF_AFTER_CR
+        LDA #$FE                           ; $CFD5
+B1_LCFD7
+        AND $0738,X                        ; $CFD7
+B1_LCFDA
+        STA $0738,X                        ; $CFDA
+B1_LCFDD
+        RTS                                ; $CFDD
+;
+; Numeric nN handler: set printer line length.
+B1_SET_LINE_LENGTH
+        JSR B1_RTC_READ_2B                 ; $CFDE
+        CMP #$28                           ; $CFE1
+        BCC B1_LCFDD                       ; $CFE3
+        STA $0638,X                        ; $CFE5
+        LDA #$3F                           ; $CFE8
+        BNE B1_LCFD7                       ; $CFEA
+;
+; Disable command-character recognition by setting the stored command byte high bit.
+B1_IGNORE_CONTROL_CHARACTERS
+        LDA $0538,X                        ; $CFEC
+        ORA #$80                           ; $CFEF
+        STA $0538,X                        ; $CFF1
+        RTS                                ; $CFF4
+; BIT MASK TABLE USED BY CASE/CR/LF/FF DELAY HANDLERS.
+        HEX 030C30C0FFFFFFFFFFFFFF ; $CFF5  |..0@.......|
+
+        .END

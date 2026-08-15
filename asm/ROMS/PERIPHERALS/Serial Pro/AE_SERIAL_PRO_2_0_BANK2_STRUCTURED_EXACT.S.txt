@@ -1,0 +1,1064 @@
+; ============================================================================
+; APPLIED ENGINEERING SERIAL PRO V2.0
+; HOSTROM BANK 2 - CLOCK / GRAPHICS / SCREEN HOSTROM
+; BYTE-EXACT STRUCTURED DISASSEMBLY
+; ============================================================================
+;
+; PHYSICAL 27C64 OFFSET : $1000-$17FF
+; LOGICAL APPLE II VIEW : $C800-$CFFF WHEN THIS BANK IS SELECTED
+; BANK SHA1             : 8340bbfe501e285622567bca6969428e1f4ad82c
+;
+; SOURCE OF TRUTH:
+;   Complete 8192-byte Serial Pro v2.0 27C64 dump supplied by the user.
+;
+; ASSEMBLY POLICY:
+;   - ORG $C800 reproduces this ONE 2KB logical bank image.
+;   - CODE is emitted as legal NMOS 6502 mnemonics where control-flow analysis
+;     identifies instruction boundaries.
+;   - Unreached, table, text and intentionally ambiguous bytes are emitted with
+;     HEX so that no unsupported interpretation changes the ROM.
+;   - Deliberate overlapping entry points are represented with EQU aliases.
+;   - All symbolic identifiers use UPPERCASE_WITH_UNDERSCORES.
+;
+; IMPORTANT:
+;   BANKS 0, 1 AND 2 ALL OCCUPY LOGICAL $C800-$CFFF.  Assemble each bank
+;   separately.  The physical EPROM concatenates them at offsets $0000, $0800
+;   and $1000 respectively.
+; ============================================================================
+
+; ---------------------------------------------------------------------------
+; COMMON APPLE II / SERIAL PRO SYMBOLS
+; ---------------------------------------------------------------------------
+KBD          EQU $C000      ; Apple II keyboard data
+KBDSTRB      EQU $C010      ; Apple II keyboard strobe
+RTCSEL       EQU $C084      ; 6818 clock/RAM address register base
+RTCDATA      EQU $C085      ; 6818 clock/RAM data register base
+BANKCLR      EQU $C086      ; Serial Pro EPROM bank-register clear base
+BANKREG      EQU $C087      ; Serial Pro EPROM bank register base
+ACIADATA     EQU $C088      ; 6551 data register base
+ACIASTAT     EQU $C089      ; 6551 status/reset register base
+ACIACMD      EQU $C08A      ; 6551 command register base
+ACIACTRL     EQU $C08B      ; 6551 control register base
+SLOTOFF      EQU $0026      ; slot I/O offset ($10 * slot)
+CHARBUF      EQU $0027      ; firmware character buffer
+SLOTSAVE     EQU $07F8      ; saved slot-page high byte ($Cn)
+
+
+; ---------------------------------------------------------------------------
+; BANK-2 EPROM / OPERATION SELECTORS
+; ---------------------------------------------------------------------------
+BANKSEL_CLOCK_FORMAT_STORE           EQU $02
+BANKSEL_CLOCK_FORMAT_OUTPUT          EQU $0A
+BANKSEL_BASIC_CLOCK_ACCESS           EQU $12
+BANKSEL_PRINT_HIRES_GRAPHICS         EQU $1A
+BANKSEL_PRINT_40_COLUMN_SCREEN       EQU $22
+BANKSEL_PRINT_80_COLUMN_SCREEN       EQU $2A
+BANKSEL_CLEAR_OUTPUT_BIT7_MODE       EQU $32
+BANKSEL_SET_OUTPUT_BIT7_MODE         EQU $3A
+
+; ---------------------------------------------------------------------------
+; PRINTER-GRAPHICS TABLE ADDRESSES
+; ---------------------------------------------------------------------------
+B2_PRINTER_GRAPHICS_INIT_INDEX          EQU $CD41      ; profile -> graphics initialization sequence
+B2_PRINTER_GRAPHICS_ROW_SETUP_INDEX     EQU $CD4A      ; profile -> per-row setup sequence
+B2_PRINTER_GRAPHICS_DATA_PREFIX_INDEX   EQU $CD53      ; profile -> raster-data prefix sequence
+B2_PRINTER_GRAPHICS_ROW_END_INDEX       EQU $CD5C      ; profile -> row terminator sequence
+B2_PRINTER_GRAPHICS_FINISH_INDEX        EQU $CD65      ; profile -> graphics-finish sequence
+B2_PRINTER_GRAPHICS_SEQUENCE_DATA       EQU $CD6E      ; high-bit-terminated command-sequence pool
+B2_PRINTER_GRAPHICS_COUNT_INDEX         EQU $CDB5      ; 4 widths x 9 printer profiles
+B2_PRINTER_GRAPHICS_COUNT_DATA          EQU $CDD9      ; printer-specific encodings for widths 280/560/192/384
+B2_PRINTER_GRAPHICS_SPECIAL_BYTE        EQU $CE01      ; per-profile special byte table
+B2_PRINTER_GRAPHICS_BIT_WIDTH_FLAGS     EQU $CE0A      ; per-profile bit-width/packing flags
+B2_PRINTER_GRAPHICS_DATA_OR_MASK        EQU $CE13      ; per-profile raster OR mask
+B2_PRINTER_GRAPHICS_DATA_AND_MASK       EQU $CE1C      ; per-profile raster AND mask
+
+; ---------------------------------------------------------------------------
+; DELIBERATE / USEFUL ALTERNATE ENTRY ALIASES
+; ---------------------------------------------------------------------------
+B2_ALT_LOAD_3F   EQU $C955      ; bytes A9 3F inside BIT $3FA9 -> LDA #$3F
+B2_ALT_LOAD_FF   EQU $CC78      ; bytes A9 FF inside BIT $FFA9 -> LDA #$FF
+
+        ORG $C800
+
+
+; ============================================================================
+; BANK-2 DISPATCH AND CLOCK SERVICES
+; ============================================================================
+
+        HEX 000000 ; $C800  |...|
+;
+; Bank-2 copy of the bank-switch wrapper tail. It restores bank-register value $01 after dispatch return.
+B2_BANK_CALL_TAILSAFE
+        PHP                                ; $C803
+        SEI                                ; $C804
+        LDA #$01                           ; $C805
+        PHA                                ; $C807
+        JSR B2_BANK_SELECT_AND_DISPATCH    ; $C808
+        PLA                                ; $C80B
+        LDY SLOTOFF                        ; $C80C
+        STA BANKREG,Y                      ; $C80E
+        PLP                                ; $C811
+        RTS                                ; $C812
+;
+; Write the selector to BANKREG. The following fetch at $C819 is from Bank 2.
+B2_BANK_SELECT_AND_DISPATCH
+        TXA                                ; $C813
+        LDY SLOTOFF                        ; $C814
+        STA BANKREG,Y                      ; $C816
+;
+; Dispatch Bank-2 clock/graphics/screen services from the selector retained in X.
+B2_DISPATCH
+        TXA                                ; $C819
+        LSR A                              ; $C81A
+        LSR A                              ; $C81B
+        AND #$FE                           ; $C81C
+        TAX                                ; $C81E
+        LDA $C82C,X                        ; $C81F
+        PHA                                ; $C822
+        LDA B2_DISPATCH_TABLE,X            ; $C823
+        PHA                                ; $C826
+        LDX SLOTSAVE                       ; $C827
+        RTS                                ; $C82A
+;
+; Eight entry-1 return addresses for Bank-2 services.
+B2_DISPATCH_TABLE
+; DISPATCH TABLE: EACH WORD IS (TARGET-1) FOR RTS-BASED DISPATCH.
+;   $02 -> B2_STORE_CLOCK_FORMAT_SELECTOR
+;   $0A -> B2_FORMAT_CLOCK_OUTPUT
+;   $12 -> B2_BASIC_CLOCK_ACCESS
+;   $1A -> B2_PRINT_HIRES_GRAPHICS
+;   $22 -> B2_PRINT_40_COLUMN_SCREEN
+;   $2A -> B2_PRINT_80_COLUMN_SCREEN
+;   $32 -> B2_CLEAR_OUTPUT_BIT7_MODE
+;   $3A -> B2_SET_OUTPUT_BIT7_MODE
+        HEX 2CC97EC94AC8E4CA24CE82CE2ECF37CF ; $C82B  |,I~IJHdJ$N.N.O7O|
+;
+; Read one 6818 clock/RAM register whose address is supplied in A.
+B2_RTC_READ_ADDR_IN_A
+        LDY SLOTOFF                        ; $C83B
+        STA RTCSEL,Y                       ; $C83D
+        LDA RTCDATA,Y                      ; $C840
+        RTS                                ; $C843
+;
+; Build an RTS target for SlotROM $Cn84.
+B2_SLOT_RTC_WRITE_TRAMPOLINE
+        PHA                                ; $C844
+        TXA                                ; $C845
+        PHA                                ; $C846
+        LDA #$83                           ; $C847
+        PHA                                ; $C849
+        RTS                                ; $C84A
+;
+; BASIC-facing clock service reached by selector $12.
+B2_BASIC_CLOCK_ACCESS
+        JSR $DEBE                          ; $C84B
+        JSR $DD7B                          ; $C84E
+        JSR $E5FD                          ; $C851
+        LDY #$00                           ; $C854
+        LDA ($5E),Y                        ; $C856
+        AND #$7F                           ; $C858
+        CMP #$21                           ; $C85A
+        BEQ B2_LC8B5                       ; $C85C
+        STA CHARBUF                        ; $C85E
+        LDX SLOTSAVE                       ; $C860
+        JSR B2_STORE_CLOCK_FORMAT_SELECTOR ; $C863
+        JSR $DEBE                          ; $C866
+        JSR $DFE3                          ; $C869
+        JSR $DD6C                          ; $C86C
+        LDX SLOTSAVE                       ; $C86F
+        JSR B2_FORMAT_CLOCK_OUTPUT         ; $C872
+        LDX #$00                           ; $C875
+        LDY #$00                           ; $C877
+B2_LC879
+        LDA $0200,X                        ; $C879
+        AND #$7F                           ; $C87C
+        CMP #$22                           ; $C87E
+        BEQ B2_LC88A                       ; $C880
+        CMP #$0D                           ; $C882
+        BEQ B2_LC88F                       ; $C884
+        STA $0200,Y                        ; $C886
+        INY                                ; $C889
+B2_LC88A
+        INX                                ; $C88A
+        CPX #$19                           ; $C88B
+        BCC B2_LC879                       ; $C88D
+B2_LC88F
+        LDA #$00                           ; $C88F
+        STA $0200,Y                        ; $C891
+        STY $9D                            ; $C894
+        TYA                                ; $C896
+        JSR $E452                          ; $C897
+        LDY #$00                           ; $C89A
+        STA ($83),Y                        ; $C89C
+        INY                                ; $C89E
+        LDA $71                            ; $C89F
+        STA ($83),Y                        ; $C8A1
+        INY                                ; $C8A3
+        LDA $72                            ; $C8A4
+        STA ($83),Y                        ; $C8A6
+        LDY #$02                           ; $C8A8
+        LDX #$00                           ; $C8AA
+        LDA $9D                            ; $C8AC
+        JSR $E5E2                          ; $C8AE
+        LDX SLOTSAVE                       ; $C8B1
+        RTS                                ; $C8B4
+B2_LC8B5
+        JSR $DEBE                          ; $C8B5
+        JSR $DD7B                          ; $C8B8
+        JSR $E5FD                          ; $C8BB
+        STA $9D                            ; $C8BE
+        LDY #$00                           ; $C8C0
+        STY $83                            ; $C8C2
+B2_LC8C4
+        STY $84                            ; $C8C4
+        LDA $C90A,Y                        ; $C8C6
+        BEQ B2_LC8E6                       ; $C8C9
+        BMI B2_LC8F3                       ; $C8CB
+        AND #$0F                           ; $C8CD
+        TAY                                ; $C8CF
+        LDA CHARBUF                        ; $C8D0
+        CPY #$06                           ; $C8D2
+        BNE B2_LC8D8                       ; $C8D4
+        ADC #$00                           ; $C8D6
+B2_LC8D8
+        LDX SLOTSAVE                       ; $C8D8
+        JSR B2_SLOT_RTC_WRITE_TRAMPOLINE   ; $C8DB
+B2_LC8DE
+        LDY $84                            ; $C8DE
+        INY                                ; $C8E0
+        CPY #$14                           ; $C8E1
+        BCC B2_LC8C4                       ; $C8E3
+B2_LC8E5
+        RTS                                ; $C8E5
+B2_LC8E6
+        JSR B2_LC91E                       ; $C8E6
+        BCS B2_LC8E5                       ; $C8E9
+        CMP #$0A                           ; $C8EB
+        BCS B2_LC8E6                       ; $C8ED
+        STA CHARBUF                        ; $C8EF
+        BCC B2_LC8DE                       ; $C8F1
+B2_LC8F3
+        LDA CHARBUF                        ; $C8F3
+        ASL A                              ; $C8F5
+        ASL A                              ; $C8F6
+        ASL A                              ; $C8F7
+        ASL A                              ; $C8F8
+        STA CHARBUF                        ; $C8F9
+        JSR B2_LC91E                       ; $C8FB
+        BCS B2_LC8E5                       ; $C8FE
+        CMP #$0A                           ; $C900
+        BCS B2_LC8E5                       ; $C902
+        ORA CHARBUF                        ; $C904
+        STA CHARBUF                        ; $C906
+        BCC B2_LC8DE                       ; $C908
+        BRK                                ; $C90A
+; CLOCK-FORMAT PARSER / FIELD TABLE DATA.
+        HEX FF4900FF4800FF47004600FF4400FF42 ; $C90B  |.I..H..G.F..D..B|
+        HEX 00FF40 ; $C91B  |..@|
+B2_LC91E
+        LDY $83                            ; $C91E
+        CPY $9D                            ; $C920
+        BCS B2_LC92C                       ; $C922
+        INC $83                            ; $C924
+        LDA ($5E),Y                        ; $C926
+        AND #$7F                           ; $C928
+        EOR #$30                           ; $C92A
+B2_LC92C
+        RTS                                ; $C92C
+
+; ============================================================================
+; CLOCK FORMAT STORE / OUTPUT SERVICES
+; ============================================================================
+
+;
+; Store the clock-format selector through SlotROM RTC/RAM glue.
+B2_STORE_CLOCK_FORMAT_SELECTOR
+        LDA CHARBUF                        ; $C92D
+        LDY #$1A                           ; $C92F
+        JMP B2_SLOT_RTC_WRITE_TRAMPOLINE   ; $C931
+B2_LC934
+        TXA                                ; $C934
+        PHA                                ; $C935
+        LDA #$A8                           ; $C936
+        PHA                                ; $C938
+        RTS                                ; $C939
+B2_LC93A
+        LDA RTCDATA,Y                      ; $C93A
+        SEC                                ; $C93D
+        SBC #$01                           ; $C93E
+        JSR B2_LCA54                       ; $C940
+        BNE B2_LC98B                       ; $C943
+B2_LC945
+        LDY SLOTOFF                        ; $C945
+        STA RTCSEL,Y                       ; $C947
+        CMP #$16                           ; $C94A
+        BEQ B2_LC93A                       ; $C94C
+        CMP #$14                           ; $C94E
+        BEQ B2_ALT_LOAD_3F                 ; $C950
+        LDA #$FF                           ; $C952
+        BIT $3FA9                          ; $C954
+        AND RTCDATA,Y                      ; $C957
+        JSR B2_LCA4B                       ; $C95A
+        BNE B2_LC98B                       ; $C95D
+B2_LC95F
+        TYA                                ; $C95F
+        PHA                                ; $C960
+        CLC                                ; $C961
+        ADC $CA60,Y                        ; $C962
+        SBC #$3F                           ; $C965
+        BNE B2_LC98F                       ; $C967
+B2_LC969
+        PLA                                ; $C969
+        TAY                                ; $C96A
+        BNE B2_LC98D                       ; $C96B
+B2_LC96D
+        DEY                                ; $C96D
+        BEQ B2_LC969                       ; $C96E
+        JSR B2_LC9C3                       ; $C970
+B2_LC973
+        JSR B2_LCA58                       ; $C973
+        CMP #$8D                           ; $C976
+        BNE B2_LC98B                       ; $C978
+        STA CHARBUF                        ; $C97A
+        TYA                                ; $C97C
+        TAX                                ; $C97D
+        RTS                                ; $C97E
+;
+; Format the battery-backed clock image for BASIC output.
+B2_FORMAT_CLOCK_OUTPUT
+        JSR B2_LC934                       ; $C97F
+        LDA #$00                           ; $C982
+        STA CHARBUF                        ; $C984
+        JSR B2_LC9A6                       ; $C986
+        BNE B2_LC98F                       ; $C989
+B2_LC98B
+        LDY $2A                            ; $C98B
+B2_LC98D
+        INY                                ; $C98D
+        TYA                                ; $C98E
+B2_LC98F
+        STA $2A                            ; $C98F
+        TAY                                ; $C991
+        LDA $CA60,Y                        ; $C992
+        BMI B2_LC973                       ; $C995
+        CMP #$40                           ; $C997
+        BCS B2_LC95F                       ; $C999
+        CMP #$10                           ; $C99B
+        BCS B2_LC945                       ; $C99D
+        TAY                                ; $C99F
+        BNE B2_LC96D                       ; $C9A0
+        LDA #$8D                           ; $C9A2
+        BNE B2_LC973                       ; $C9A4
+B2_LC9A6
+        LDA #$1A                           ; $C9A6
+        JSR B2_RTC_READ_ADDR_IN_A          ; $C9A8
+        AND #$7F                           ; $C9AB
+        LDY #$06                           ; $C9AD
+B2_LC9AF
+        CMP $C9BC,Y                        ; $C9AF
+        BEQ B2_LC9B8                       ; $C9B2
+        DEY                                ; $C9B4
+        BPL B2_LC9AF                       ; $C9B5
+        INY                                ; $C9B7
+B2_LC9B8
+        LDA $CA60,Y                        ; $C9B8
+        RTS                                ; $C9BB
+        HEX 3A3C3E20232526 ; $C9BC  |:<> #%&|
+B2_LC9C3
+        DEY                                ; $C9C3
+        BEQ B2_LCA19                       ; $C9C4
+        DEY                                ; $C9C6
+        BEQ B2_LCA2E                       ; $C9C7
+        LDA #$0B                           ; $C9C9
+        JSR B2_RTC_READ_ADDR_IN_A          ; $C9CB
+        AND #$02                           ; $C9CE
+        BNE B2_LC9DF                       ; $C9D0
+        LDA #$04                           ; $C9D2
+        JSR B2_RTC_READ_ADDR_IN_A          ; $C9D4
+        BMI B2_LC9DC                       ; $C9D7
+        LDA #$C1                           ; $C9D9
+        RTS                                ; $C9DB
+B2_LC9DC
+        LDA #$D0                           ; $C9DC
+        RTS                                ; $C9DE
+B2_LC9DF
+        LDY #$C1                           ; $C9DF
+        LDA $020C                          ; $C9E1
+        ASL A                              ; $C9E4
+        ASL A                              ; $C9E5
+        ASL A                              ; $C9E6
+        ASL A                              ; $C9E7
+        EOR #$B0                           ; $C9E8
+        EOR $020D                          ; $C9EA
+        BNE B2_LC9F3                       ; $C9ED
+        LDA #$12                           ; $C9EF
+        BNE B2_LCA01                       ; $C9F1
+B2_LC9F3
+        CMP #$12                           ; $C9F3
+        BCC B2_LCA01                       ; $C9F5
+        LDY #$D0                           ; $C9F7
+        CMP #$13                           ; $C9F9
+        BCC B2_LCA01                       ; $C9FB
+        SED                                ; $C9FD
+        SBC #$12                           ; $C9FE
+        CLD                                ; $CA00
+B2_LCA01
+        PHA                                ; $CA01
+        LSR A                              ; $CA02
+        LSR A                              ; $CA03
+        LSR A                              ; $CA04
+        LSR A                              ; $CA05
+        BNE B2_LCA0A                       ; $CA06
+        EOR #$10                           ; $CA08
+B2_LCA0A
+        EOR #$B0                           ; $CA0A
+        STA $020C                          ; $CA0C
+        PLA                                ; $CA0F
+        AND #$0F                           ; $CA10
+        ORA #$B0                           ; $CA12
+        STA $020D                          ; $CA14
+        TYA                                ; $CA17
+        RTS                                ; $CA18
+B2_LCA19
+        INC CHARBUF                        ; $CA19
+        LDY $0201                          ; $CA1B
+        LDA $C9FC,Y                        ; $CA1E
+        STA $0201                          ; $CA21
+        LDA $CA03,Y                        ; $CA24
+        STA $0202                          ; $CA27
+        LDA B2_LCA0A,Y                     ; $CA2A
+        RTS                                ; $CA2D
+B2_LCA2E
+        LDA $0206                          ; $CA2E
+        LDY $0205                          ; $CA31
+        CPY #$B1                           ; $CA34
+        BCC B2_LCA3A                       ; $CA36
+        ADC #$09                           ; $CA38
+B2_LCA3A
+        TAY                                ; $CA3A
+        LDA $CA10,Y                        ; $CA3B
+        STA $0205                          ; $CA3E
+        LDA $CA1C,Y                        ; $CA41
+        STA $0206                          ; $CA44
+        LDA $CA28,Y                        ; $CA47
+        RTS                                ; $CA4A
+B2_LCA4B
+        PHA                                ; $CA4B
+        LSR A                              ; $CA4C
+        LSR A                              ; $CA4D
+        LSR A                              ; $CA4E
+        LSR A                              ; $CA4F
+        JSR B2_LCA54                       ; $CA50
+        PLA                                ; $CA53
+B2_LCA54
+        AND #$0F                           ; $CA54
+        ORA #$B0                           ; $CA56
+B2_LCA58
+        LDY CHARBUF                        ; $CA58
+        STA $0200,Y                        ; $CA5A
+        INC CHARBUF                        ; $CA5D
+        RTS                                ; $CA5F
+        HEX 1B392E1407273518ACB016AC17AC14AC ; $CA60  |.9...'5.,0.,.,.,|
+        HEX 12AC1000A24E6FAE161900A216A045AF ; $CA70  |.,.."No....". E/|
+        HEX 19640018AF1701A2555CA004CD00A04E ; $CA80  |.d../.."U\ .M. N|
+        HEX 55A004CD00A2474E00A0434A001602A0 ; $CA90  |U .M."GN. CJ... |
+        HEX 1803A01701A014BA12BA1001D3CDD4D7 ; $CAA0  |.. .. .:.:..SMTW|
+        HEX D4C6D3D5CFD5C5C8D2C1CECEC5C4D5C9 ; $CAB0  |TFSUOUEHRANNEDUI|
+        HEX D4CAC6CDC1CDCACAC1D3CFCEC4C1C5C1 ; $CAC0  |TJFMAMJJASONDAEA|
+        HEX D0C1D5D5D5C5C3CFC5CEC2D2D2D9CECC ; $CAD0  |PAUUUECOENBRRYNL|
+        HEX C7D0D4D6C3 ; $CAE0  |GPTVC|
+
+; ============================================================================
+; HI-RES GRAPHICS PRINTER ENGINE
+; ============================================================================
+
+;
+; Hi-res graphics printer engine; profile $29 selects printer command tables and $2A supplies graphics options.
+B2_PRINT_HIRES_GRAPHICS
+        LDX #$00                           ; $CAE5
+B2_LCAE7
+        LDA $00,X                          ; $CAE7
+        PHA                                ; $CAE9
+        INX                                ; $CAEA
+        CPX #$0C                           ; $CAEB
+        BCC B2_LCAE7                       ; $CAED
+        LDA #$2A                           ; $CAEF
+        JSR B2_RTC_READ_ADDR_IN_A          ; $CAF1
+        AND #$EF                           ; $CAF4
+        STA $08                            ; $CAF6
+        LDA #$29                           ; $CAF8
+        JSR B2_RTC_READ_ADDR_IN_A          ; $CAFA
+        STA $06                            ; $CAFD
+        TAX                                ; $CAFF
+        LDA #$00                           ; $CB00
+        STA $00                            ; $CB02
+        LDA $CE0A,X                        ; $CB04
+        AND #$07                           ; $CB07
+        STA $04                            ; $CB09
+        LDA #$01                           ; $CB0B
+        STA $09                            ; $CB0D
+        JSR B2_LCC0E                       ; $CB0F
+        LDA $08                            ; $CB12
+        LSR A                              ; $CB14
+        BCS B2_LCB72                       ; $CB15
+        LDA #$00                           ; $CB17
+B2_LCB19
+        STA $00                            ; $CB19
+        JSR B2_LCC13                       ; $CB1B
+B2_LCB1E
+        LDY #$00                           ; $CB1E
+B2_LCB20
+        STY $02                            ; $CB20
+        LDA #$FF                           ; $CB22
+        PHA                                ; $CB24
+        LDA $04                            ; $CB25
+        STA $01                            ; $CB27
+B2_LCB29
+        JSR B2_LCD02                       ; $CB29
+        PHA                                ; $CB2C
+        DEC $01                            ; $CB2D
+        BPL B2_LCB29                       ; $CB2F
+        LDA #$07                           ; $CB31
+        STA $03                            ; $CB33
+B2_LCB35
+        LDA #$00                           ; $CB35
+        LDY $04                            ; $CB37
+        TSX                                ; $CB39
+B2_LCB3A
+        INX                                ; $CB3A
+        LSR $0100,X                        ; $CB3B
+        ROL A                              ; $CB3E
+        DEY                                ; $CB3F
+        BPL B2_LCB3A                       ; $CB40
+        JSR B2_LCCBB                       ; $CB42
+        DEC $03                            ; $CB45
+        BNE B2_LCB35                       ; $CB47
+B2_LCB49
+        PLA                                ; $CB49
+        BPL B2_LCB49                       ; $CB4A
+        LDY $02                            ; $CB4C
+        INY                                ; $CB4E
+        CPY #$28                           ; $CB4F
+        BCC B2_LCB20                       ; $CB51
+        JSR B2_LCC3E                       ; $CB53
+        BCS B2_LCB1E                       ; $CB56
+        SEC                                ; $CB58
+        LDA $00                            ; $CB59
+        ADC $04                            ; $CB5B
+        CMP #$A0                           ; $CB5D
+        BCC B2_LCB19                       ; $CB5F
+        TAY                                ; $CB61
+        LDA $08                            ; $CB62
+        AND #$A2                           ; $CB64
+        CMP #$02                           ; $CB66
+        BEQ B2_LCB6F                       ; $CB68
+        TYA                                ; $CB6A
+        CMP #$C0                           ; $CB6B
+        BCC B2_LCB19                       ; $CB6D
+B2_LCB6F
+        JMP B2_LCBC0                       ; $CB6F
+B2_LCB72
+        LDY #$01                           ; $CB72
+        STY $03                            ; $CB74
+        DEY                                ; $CB76
+        STY $02                            ; $CB77
+B2_LCB79
+        JSR B2_LCC13                       ; $CB79
+B2_LCB7C
+        LDA #$C0                           ; $CB7C
+        STA $01                            ; $CB7E
+B2_LCB80
+        DEC $01                            ; $CB80
+        INC $02                            ; $CB82
+        JSR B2_LCD02                       ; $CB84
+        PHA                                ; $CB87
+        DEC $02                            ; $CB88
+        JSR B2_LCD02                       ; $CB8A
+        ASL A                              ; $CB8D
+        STA $05                            ; $CB8E
+        PLA                                ; $CB90
+        LDX $03                            ; $CB91
+B2_LCB93
+        LSR A                              ; $CB93
+        ROR $05                            ; $CB94
+        DEX                                ; $CB96
+        BNE B2_LCB93                       ; $CB97
+        JSR B2_LCCE2                       ; $CB99
+        JSR B2_LCCBB                       ; $CB9C
+        LDA $01                            ; $CB9F
+        BNE B2_LCB80                       ; $CBA1
+        JSR B2_LCC3E                       ; $CBA3
+        BCS B2_LCB7C                       ; $CBA6
+        LDX $04                            ; $CBA8
+        LDY $03                            ; $CBAA
+B2_LCBAC
+        INY                                ; $CBAC
+        CPY #$08                           ; $CBAD
+        BCC B2_LCBB5                       ; $CBAF
+        INC $02                            ; $CBB1
+        LDY #$01                           ; $CBB3
+B2_LCBB5
+        DEX                                ; $CBB5
+        BPL B2_LCBAC                       ; $CBB6
+        STY $03                            ; $CBB8
+        LDY $02                            ; $CBBA
+        CPY #$28                           ; $CBBC
+        BCC B2_LCB79                       ; $CBBE
+B2_LCBC0
+        LDA #$24                           ; $CBC0
+        JSR B2_LCC9F                       ; $CBC2
+        LDA $08                            ; $CBC5
+        AND #$02                           ; $CBC7
+        BEQ B2_LCBF9                       ; $CBC9
+        JSR B2_LCC01                       ; $CBCB
+        LDX #$00                           ; $CBCE
+B2_LCBD0
+        LDA $0650,X                        ; $CBD0
+        CPX #$28                           ; $CBD3
+        BCC B2_LCBF1                       ; $CBD5
+        JSR B2_LCC0B                       ; $CBD7
+        LDA $06A8,X                        ; $CBDA
+        CPX #$50                           ; $CBDD
+        BCC B2_LCBF1                       ; $CBDF
+        JSR B2_LCC0B                       ; $CBE1
+        LDA $0700,X                        ; $CBE4
+        CPX #$78                           ; $CBE7
+        BCC B2_LCBF1                       ; $CBE9
+        JSR B2_LCC0B                       ; $CBEB
+        LDA $0758,X                        ; $CBEE
+B2_LCBF1
+        JSR B2_LCCEB                       ; $CBF1
+        INX                                ; $CBF4
+        CPX #$A0                           ; $CBF5
+        BCC B2_LCBD0                       ; $CBF7
+B2_LCBF9
+        LDX #$0B                           ; $CBF9
+B2_LCBFB
+        PLA                                ; $CBFB
+        STA $00,X                          ; $CBFC
+        DEX                                ; $CBFE
+        BPL B2_LCBFB                       ; $CBFF
+B2_LCC01
+        LDA #$0D                           ; $CC01
+        JSR B2_LCCEB                       ; $CC03
+        LDA #$0A                           ; $CC06
+        JMP B2_LCCEB                       ; $CC08
+B2_LCC0B
+        BEQ B2_LCC01                       ; $CC0B
+        RTS                                ; $CC0D
+B2_LCC0E
+        LDA #$00                           ; $CC0E
+        JMP B2_LCC9F                       ; $CC10
+B2_LCC13
+        LDA #$09                           ; $CC13
+        JSR B2_LCC9F                       ; $CC15
+        JSR B2_LCC53                       ; $CC18
+        LDA #$12                           ; $CC1B
+        JSR B2_LCC9F                       ; $CC1D
+        LDA $08                            ; $CC20
+        LSR A                              ; $CC22
+        LDA $06                            ; $CC23
+        ROL A                              ; $CC25
+        ASL A                              ; $CC26
+        TAY                                ; $CC27
+        LDA $08                            ; $CC28
+        BPL B2_LCC2D                       ; $CC2A
+        INY                                ; $CC2C
+B2_LCC2D
+        LDX $CDB5,Y                        ; $CC2D
+B2_LCC30
+        LDA $CDD9,X                        ; $CC30
+        CMP #$FF                           ; $CC33
+        BEQ B2_LCC3D                       ; $CC35
+        JSR B2_LCCEB                       ; $CC37
+        INX                                ; $CC3A
+        BNE B2_LCC30                       ; $CC3B
+B2_LCC3D
+        RTS                                ; $CC3D
+B2_LCC3E
+        LDA $08                            ; $CC3E
+        BPL B2_LCC4C                       ; $CC40
+        EOR #$30                           ; $CC42
+        STA $08                            ; $CC44
+        AND #$10                           ; $CC46
+        BEQ B2_LCC4C                       ; $CC48
+        SEC                                ; $CC4A
+        RTS                                ; $CC4B
+B2_LCC4C
+        LDA #$1B                           ; $CC4C
+        JSR B2_LCC9F                       ; $CC4E
+        CLC                                ; $CC51
+        RTS                                ; $CC52
+B2_LCC53
+        LDA $06                            ; $CC53
+        CMP #$02                           ; $CC55
+        BEQ B2_LCC66                       ; $CC57
+        LDX $09                            ; $CC59
+        BEQ B2_LCC65                       ; $CC5B
+        LDA #$20                           ; $CC5D
+B2_LCC5F
+        JSR B2_LCCEB                       ; $CC5F
+        DEX                                ; $CC62
+        BNE B2_LCC5F                       ; $CC63
+B2_LCC65
+        RTS                                ; $CC65
+B2_LCC66
+        LDA #$3B                           ; $CC66
+        JSR B2_LCCEB                       ; $CC68
+        LDA $09                            ; $CC6B
+        LSR A                              ; $CC6D
+        LDY #$06                           ; $CC6E
+B2_LCC70
+        ADC $09                            ; $CC70
+        BCS B2_ALT_LOAD_FF                 ; $CC72
+        DEY                                ; $CC74
+        BPL B2_LCC70                       ; $CC75
+        BIT $FFA9                          ; $CC77
+        LDX #$00                           ; $CC7A
+        JSR B2_LCC89                       ; $CC7C
+        LDX #$01                           ; $CC7F
+        JSR B2_LCC89                       ; $CC81
+        ORA #$30                           ; $CC84
+        JMP B2_LCCEB                       ; $CC86
+B2_LCC89
+        LDY #$2F                           ; $CC89
+        BNE B2_LCC90                       ; $CC8B
+B2_LCC8D
+        SBC $CC9D,X                        ; $CC8D
+B2_LCC90
+        CMP $CC9D,X                        ; $CC90
+        INY                                ; $CC93
+        BCS B2_LCC8D                       ; $CC94
+        PHA                                ; $CC96
+        TYA                                ; $CC97
+        JSR B2_LCCEB                       ; $CC98
+        PLA                                ; $CC9B
+        RTS                                ; $CC9C
+        HEX 640A ; $CC9D  |d.|
+B2_LCC9F
+        CLC                                ; $CC9F
+        ADC $06                            ; $CCA0
+        TAY                                ; $CCA2
+        LDA $CD41,Y                        ; $CCA3
+        TAY                                ; $CCA6
+B2_LCCA7
+        LDA $CD6E,Y                        ; $CCA7
+        PHA                                ; $CCAA
+        AND #$7F                           ; $CCAB
+        BEQ B2_LCCB7                       ; $CCAD
+        STY $07                            ; $CCAF
+        JSR B2_LCCEB                       ; $CCB1
+        LDY $07                            ; $CCB4
+        INY                                ; $CCB6
+B2_LCCB7
+        PLA                                ; $CCB7
+        BPL B2_LCCA7                       ; $CCB8
+        RTS                                ; $CCBA
+B2_LCCBB
+        LDY $06                            ; $CCBB
+        LDX $CE0A,Y                        ; $CCBD
+        BPL B2_LCCC7                       ; $CCC0
+        STA $05                            ; $CCC2
+        JSR B2_LCCE2                       ; $CCC4
+B2_LCCC7
+        BIT $08                            ; $CCC7
+        BVC B2_LCCCD                       ; $CCC9
+        EOR #$FF                           ; $CCCB
+B2_LCCCD
+        AND $CE1C,Y                        ; $CCCD
+        ORA $CE13,Y                        ; $CCD0
+        CMP #$03                           ; $CCD3
+        BNE B2_LCCDF                       ; $CCD5
+        LDX $CE01,Y                        ; $CCD7
+        BEQ B2_LCCDF                       ; $CCDA
+        JSR B2_LCCEB                       ; $CCDC
+B2_LCCDF
+        JMP B2_LCCEB                       ; $CCDF
+B2_LCCE2
+        LDX $04                            ; $CCE2
+B2_LCCE4
+        LSR $05                            ; $CCE4
+        ROL A                              ; $CCE6
+        DEX                                ; $CCE7
+        BPL B2_LCCE4                       ; $CCE8
+        RTS                                ; $CCEA
+B2_LCCEB
+        STA CHARBUF                        ; $CCEB
+        LDY SLOTOFF                        ; $CCED
+B2_LCCEF
+        LDA ACIASTAT,Y                     ; $CCEF
+        AND #$70                           ; $CCF2
+        CMP #$10                           ; $CCF4
+        BNE B2_LCCEF                       ; $CCF6
+        LDA SLOTSAVE                       ; $CCF8
+        PHA                                ; $CCFB
+        LDA #$8B                           ; $CCFC
+        PHA                                ; $CCFE
+        LDA CHARBUF                        ; $CCFF
+        RTS                                ; $CD01
+B2_LCD02
+        LDY $02                            ; $CD02
+        CPY #$28                           ; $CD04
+        BCS B2_LCD38                       ; $CD06
+        LDA $00                            ; $CD08
+        ADC $01                            ; $CD0A
+        CMP #$C0                           ; $CD0C
+        BCS B2_LCD38                       ; $CD0E
+        PHA                                ; $CD10
+        AND #$C7                           ; $CD11
+        STA $0A                            ; $CD13
+        ORA #$08                           ; $CD15
+        STA $0B                            ; $CD17
+        PLA                                ; $CD19
+        ASL A                              ; $CD1A
+        ASL A                              ; $CD1B
+        ROR $0A                            ; $CD1C
+        ASL A                              ; $CD1E
+        ROL $0B                            ; $CD1F
+        ROR $0A                            ; $CD21
+        ASL A                              ; $CD23
+        ROL $0B                            ; $CD24
+        ASL A                              ; $CD26
+        ROR $0A                            ; $CD27
+        LDA $08                            ; $CD29
+        AND #$20                           ; $CD2B
+        BEQ B2_LCD35                       ; $CD2D
+        LDA $0B                            ; $CD2F
+        EOR #$60                           ; $CD31
+        STA $0B                            ; $CD33
+B2_LCD35
+        LDA ($0A),Y                        ; $CD35
+        RTS                                ; $CD37
+B2_LCD38
+        LDA #$FF                           ; $CD38
+        BIT $08                            ; $CD3A
+        BVS B2_LCD40                       ; $CD3C
+        LDA #$00                           ; $CD3E
+B2_LCD40
+        RTS                                ; $CD40
+
+; ============================================================================
+; PRINTER-SPECIFIC GRAPHICS TABLES
+; ============================================================================
+
+; FIVE GROUPS OF NINE PRINTER-PROFILE OFFSETS BEGIN HERE.
+        HEX 02060C0110010401012327282B272C27 ; $CD41  |.........#'(+','|
+        HEX 27001416001C191C1D201C0101303101 ; $CD51  |'........ ...01.|
+        HEX 31010134383A3D3E403E420000808D1B ; $CD61  |1..48:=>@>B.....|
+        HEX A31B3E1B4E1B5431B6120D1CC01B2539 ; $CD71  |#.>.N.T16...@.%9|
+        HEX 8E1BCB1B53B01B25B2831B47B01B25B5 ; $CD81  |..K.S0.%2..G0.%5|
+        HEX 1B41088A8A3040B68E030E0382B00302 ; $CD91  |.A...0@6.....0..|
+        HEX 8D030B03821BB20F1BC19D03821BB60F ; $CDA1  |......2..A....6.|
+        HEX 1B411BBC000306090C10141827272727 ; $CDB1  |.A.<........''''|
+        HEX 272727271C1F2225272727270C101418 ; $CDC1  |''''.."%''''....|
+        HEX 00030609272727271801FF3002FFC000 ; $CDD1  |....''''...0..@.|
+        HEX FF8001FF323830FF353630FF313932FF ; $CDE1  |....280.560.192.|
+        HEX 333834FF0218FF0430FF0140FF0300FF ; $CDF1  |384.....0..@....|
+        HEX 00000003000300000307870586068687 ; $CE01  |................|
+        HEX 07850000C0000000000000FFFF3F7F7F ; $CE11  |....@........?..|
+        HEX 7FFFFF3F ; $CE21  |...?|
+
+; ============================================================================
+; 40-COLUMN AND 80-COLUMN SCREEN PRINTING
+; ============================================================================
+
+;
+; Print 24 rows of the 40-column text screen.
+B2_PRINT_40_COLUMN_SCREEN
+        LDA $29                            ; $CE25
+        PHA                                ; $CE27
+        LDA $28                            ; $CE28
+        PHA                                ; $CE2A
+        LDA #$00                           ; $CE2B
+        STA $28                            ; $CE2D
+        LDA #$04                           ; $CE2F
+        STA $29                            ; $CE31
+B2_LCE33
+        JSR B2_LCC01                       ; $CE33
+        LDY #$00                           ; $CE36
+B2_LCE38
+        JSR B2_LCF1C                       ; $CE38
+        ROR A                              ; $CE3B
+        BPL B2_LCE41                       ; $CE3C
+        STA $C055                          ; $CE3E
+B2_LCE41
+        PHA                                ; $CE41
+        STY $3C                            ; $CE42
+        LDA ($28),Y                        ; $CE44
+        STA $C054                          ; $CE46
+        PHA                                ; $CE49
+        JSR B2_LCF1C                       ; $CE4A
+        ASL A                              ; $CE4D
+        PLA                                ; $CE4E
+        BCC B2_LCE53                       ; $CE4F
+        ORA #$80                           ; $CE51
+B2_LCE53
+        CMP #$FF                           ; $CE53
+        BNE B2_LCE59                       ; $CE55
+        LDA #$A0                           ; $CE57
+B2_LCE59
+        CMP #$E0                           ; $CE59
+        BCS B2_LCE65                       ; $CE5B
+        ORA #$C0                           ; $CE5D
+        CMP #$E0                           ; $CE5F
+        BCC B2_LCE65                       ; $CE61
+        EOR #$40                           ; $CE63
+B2_LCE65
+        JSR B2_LCCEB                       ; $CE65
+        LDY $3C                            ; $CE68
+        PLA                                ; $CE6A
+        EOR #$80                           ; $CE6B
+        BPL B2_LCE41                       ; $CE6D
+        INY                                ; $CE6F
+        CPY #$28                           ; $CE70
+        BCC B2_LCE38                       ; $CE72
+        JSR B2_LCEFF                       ; $CE74
+        BCC B2_LCE33                       ; $CE77
+        JSR B2_LCC01                       ; $CE79
+        PLA                                ; $CE7C
+        STA $28                            ; $CE7D
+        PLA                                ; $CE7F
+        STA $29                            ; $CE80
+        RTS                                ; $CE82
+;
+; Print the 80-column text screen, including the cross-slot expansion-ROM helper path.
+B2_PRINT_80_COLUMN_SCREEN
+        LDX #$0A                           ; $CE83
+B2_LCE85
+        LDA $3A,X                          ; $CE85
+        PHA                                ; $CE87
+        LDA $CEF5,X                        ; $CE88
+        STA $3A,X                          ; $CE8B
+        DEX                                ; $CE8D
+        BPL B2_LCE85                       ; $CE8E
+        LDX #$0D                           ; $CE90
+        STX $C0B0                          ; $CE92
+        LDA $C0B1                          ; $CE95
+        STA $41                            ; $CE98
+        DEX                                ; $CE9A
+        STX $C0B0                          ; $CE9B
+        LDA $C0B1                          ; $CE9E
+        STA $44                            ; $CEA1
+        LDA #$18                           ; $CEA3
+B2_LCEA5
+        PHA                                ; $CEA5
+        LDX SLOTSAVE                       ; $CEA6
+        JSR B2_LCC01                       ; $CEA9
+        LDA #$50                           ; $CEAC
+B2_LCEAE
+        PHA                                ; $CEAE
+        JSR B2_LCEDD                       ; $CEAF
+        ORA #$80                           ; $CEB2
+        CMP #$A0                           ; $CEB4
+        BCS B2_LCEBA                       ; $CEB6
+        ORA #$C0                           ; $CEB8
+B2_LCEBA
+        JSR B2_LCCEB                       ; $CEBA
+        INC $41                            ; $CEBD
+        BNE B2_LCEC3                       ; $CEBF
+        INC $44                            ; $CEC1
+B2_LCEC3
+        PLA                                ; $CEC3
+        SEC                                ; $CEC4
+        SBC #$01                           ; $CEC5
+        BNE B2_LCEAE                       ; $CEC7
+        PLA                                ; $CEC9
+        SEC                                ; $CECA
+        SBC #$01                           ; $CECB
+        BNE B2_LCEA5                       ; $CECD
+        JSR B2_LCC01                       ; $CECF
+        LDX #$00                           ; $CED2
+B2_LCED4
+        PLA                                ; $CED4
+        STA $3A,X                          ; $CED5
+        INX                                ; $CED7
+        CPX #$0B                           ; $CED8
+        BCC B2_LCED4                       ; $CEDA
+        RTS                                ; $CEDC
+B2_LCEDD
+        LDA $44                            ; $CEDD
+        ASL A                              ; $CEDF
+        AND #$0C                           ; $CEE0
+        TAX                                ; $CEE2
+        LDA $C0B0,X                        ; $CEE3
+        LSR $42                            ; $CEE6
+        LDA $44                            ; $CEE8
+        LSR A                              ; $CEEA
+        ROL $42                            ; $CEEB
+        LDA SLOTSAVE                       ; $CEED
+        PHA                                ; $CEF0
+        LDA #$C6                           ; $CEF1
+        PHA                                ; $CEF3
+        RTS                                ; $CEF4
+        HEX ADFFCFAD00C3AD00CC60 ; $CEF5  |-.O-.C-.L`|
+B2_LCEFF
+        CLC                                ; $CEFF
+        LDA $28                            ; $CF00
+        EOR #$80                           ; $CF02
+        STA $28                            ; $CF04
+        BMI B2_LCF1B                       ; $CF06
+        INC $29                            ; $CF08
+        LDA $29                            ; $CF0A
+        CMP #$08                           ; $CF0C
+        BCC B2_LCF1B                       ; $CF0E
+        LSR A                              ; $CF10
+        STA $29                            ; $CF11
+        LDA $28                            ; $CF13
+        ADC #$28                           ; $CF15
+        STA $28                            ; $CF17
+        CMP #$78                           ; $CF19
+B2_LCF1B
+        RTS                                ; $CF1B
+B2_LCF1C
+        LDA $FBB3                          ; $CF1C
+        EOR #$06                           ; $CF1F
+        BNE B2_LCF2B                       ; $CF21
+        LDA $C01F                          ; $CF23
+        ASL A                              ; $CF26
+        LDA $C01E                          ; $CF27
+        RTS                                ; $CF2A
+B2_LCF2B
+        LDA #$00                           ; $CF2B
+        CLC                                ; $CF2D
+        RTS                                ; $CF2E
+
+; ============================================================================
+; OUTPUT BIT-7 MODE HANDLERS AND ERASED TAIL
+; ============================================================================
+
+;
+; Clear runtime output bit-7 formatting mode.
+B2_CLEAR_OUTPUT_BIT7_MODE
+        LDA $04B8,X                        ; $CF2F
+        AND #$CF                           ; $CF32
+        STA $04B8,X                        ; $CF34
+        RTS                                ; $CF37
+;
+; Numeric nH handler; set runtime output bit-7 formatting mode.
+B2_SET_OUTPUT_BIT7_MODE
+        LDA #$2B                           ; $CF38
+        JSR B2_RTC_READ_ADDR_IN_A          ; $CF3A
+        AND #$01                           ; $CF3D
+        CLC                                ; $CF3F
+        ADC #$01                           ; $CF40
+        ASL A                              ; $CF42
+        ASL A                              ; $CF43
+        ASL A                              ; $CF44
+        ASL A                              ; $CF45
+        ORA $04B8,X                        ; $CF46
+        STA $04B8,X                        ; $CF49
+        RTS                                ; $CF4C
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CF4D  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CF5D  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CF6D  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CF7D  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CF8D  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CF9D  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CFAD  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CFBD  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CFCD  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CFDD  |................|
+        HEX FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ; $CFED  |................|
+        HEX FFFFFF ; $CFFD  |...|
+
+        .END

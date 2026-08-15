@@ -1,0 +1,51 @@
+APPLIED ENGINEERING SERIAL PRO V2.0
+BYTE-EXACT STRUCTURED SOURCE MANIFEST
+
+FULL 27C64 IMAGE
+  SIZE    : 8192 BYTES
+  SHA1    : 4f878637ef7f5fa83713482f85369fa72121f898
+  SHA256  : b2346ad096bbfddfb1fac5ad353e325b892fb248d7719714b245560e51e6dc35
+
+LOGICAL HOSTROM BANK SOURCES
+  BANK 0: AE_SERIAL_PRO_2_0_BANK0_STRUCTURED_EXACT.S
+          LOGICAL ORG $C800, 2048 BYTES
+          SHA1   1c30e7d4063e03452f2f96093b4178f78ece7989
+          SHA256 bfcbbb872382ce27c83c66a255417e7f9f18ae4558120788df3dfc6c9c0085e1
+  BANK 1: AE_SERIAL_PRO_2_0_BANK1_STRUCTURED_EXACT.S
+          LOGICAL ORG $C800, 2048 BYTES
+          SHA1   436062de7f9b15afac2074ec4d5f8498ac92e51e
+          SHA256 e95ba56580000e392bb81940fe2995a4df39d2b8c2fee0901d73c560e8f2734e
+  BANK 2: AE_SERIAL_PRO_2_0_BANK2_STRUCTURED_EXACT.S
+          LOGICAL ORG $C800, 2048 BYTES
+          SHA1   8340bbfe501e285622567bca6969428e1f4ad82c
+          SHA256 4f50e1beb5097d7beaf69295d8d1d9ee459d0c9bb266926bb7ba26cf3e794b83
+
+GENERIC SLOTROM SOURCE
+  AE_SERIAL_PRO_2_0_SLOTROM_GENERIC_EXACT.S
+  SLOT EQU 1..7 reproduces the seven physical SlotROM pages exactly.
+  SLOT 1: EPROM $1900-$19FF -> $C100-$C1FF  SHA1 a3092a6b2e65812df1d54a26090a7f3f6aec69b4
+  SLOT 2: EPROM $1A00-$1AFF -> $C200-$C2FF  SHA1 e27a66e59979e923bd8bb5ad0d701a406a4cc443
+  SLOT 3: EPROM $1B00-$1BFF -> $C300-$C3FF  SHA1 96b6cdef827fa55bc358d1b7341a02f1beb493c8
+  SLOT 4: EPROM $1C00-$1CFF -> $C400-$C4FF  SHA1 f68b4326d2c475ec002f1a770598067509687406
+  SLOT 5: EPROM $1D00-$1DFF -> $C500-$C5FF  SHA1 f127ac399af28f371338a1842d75a6daaf2b151f
+  SLOT 6: EPROM $1E00-$1EFF -> $C600-$C6FF  SHA1 87f402d15c60e6304d5315436a16522d320a86d1
+  SLOT 7: EPROM $1F00-$1FFF -> $C700-$C7FF  SHA1 3d5b76e39db72e5d9196f38c64e75714cbafc945
+
+PHYSICAL EPROM BUILD SOURCE
+  AE_SERIAL_PRO_2_0_EPROM_8K_PHYSICAL_EXACT.S
+  ORG $0000; reproduces all 8192 physical EPROM bytes exactly.
+
+VALIDATION
+  The three HostROM sources were assembled with an independent local 6502
+  verifier and compared byte-for-byte with physical EPROM offsets:
+    BANK 0 -> $0000-$07FF : 0 mismatches
+    BANK 1 -> $0800-$0FFF : 0 mismatches
+    BANK 2 -> $1000-$17FF : 0 mismatches
+  The generic SlotROM source was assembled for SLOT=1 through SLOT=7:
+    all seven 256-byte results match their physical EPROM pages exactly.
+  The physical EPROM source reproduces all 8192 bytes exactly.
+
+NAMING
+  Symbolic identifiers are UPPERCASE_WITH_UNDERSCORES throughout.
+  Unknown/unreached regions remain HEX rather than being forced into code.
+  Known overlapping instruction entries are represented with EQU aliases.
