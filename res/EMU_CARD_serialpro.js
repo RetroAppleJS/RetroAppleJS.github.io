@@ -281,6 +281,7 @@ const SERIALPRO_HOST_ROM = new Uint8Array([
 ]);
 
 
+
 // Discovery container. Apple2IO mounts a separate live instance.
 if(oEMU===undefined) var oEMU = {"component":{"IO":{"SerialPro":new SerialProCard()}}}
 else oEMU.component.IO.SerialPro = new SerialProCard();
