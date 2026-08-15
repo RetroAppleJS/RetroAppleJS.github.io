@@ -200,7 +200,7 @@ const _CFG_PSLOT = {
 }
 
 const _CFG_KEYFONT = {
- "A2_US":{"MAP_FORMULA":"ch" ,"MAP_JSON":"0x80" ,"":"{"é": [0x45],"“": [0x22],"”": [0x22],"…": [0x2E, 0x2E, 0x2E]}"}
+ "A2_US":{"MAP_FORMULA":"ch" ,"MAP_JSON":"0x80" ,"":"{\"é\": [0x45],\"“\": [0x22],\"”\": [0x22],\"…\": [0x2E, 0x2E, 0x2E]}"}
 }
 
 const _CFG_CHROMA = {

@@ -475,7 +475,10 @@ function mergeActionMap(dst,src)
             //"snd": snd,
             "vid": vid,
             "io": this,
-            "bRO": (typeof(apple2plus) == "object" && apple2plus && apple2plus.hwObj().bRO === true)
+            "bRO": (typeof(apple2plus) == "object" && apple2plus && apple2plus.hwObj().bRO === true),
+            "rel_addr": rel_addr,
+            "line": line,
+            "abs_addr": 0xC000 + rel_addr
         };
 
         var fn = CIO.ACTION_MAP.RD[line];
@@ -506,7 +509,10 @@ function mergeActionMap(dst,src)
             //"snd": snd,
             "vid": vid,
             "io": this,
-            "bRO": (typeof(apple2plus) == "object" && apple2plus && apple2plus.hwObj().bRO === true)
+            "bRO": (typeof(apple2plus) == "object" && apple2plus && apple2plus.hwObj().bRO === true),
+            "rel_addr": rel_addr,
+            "line": line,
+            "abs_addr": 0xC000 + rel_addr
         };
 
         var fn = CIO.ACTION_MAP.WR[line];
