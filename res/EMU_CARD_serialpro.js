@@ -1589,28 +1589,31 @@ function SerialProCard()
     };
 
     /*
-     * Peripheral controls: compact RTC / battery-RAM editor.
+     * Peripheral controls: compact live RTC editor.
      *
-     * Apple2IO calls deviceToolSlotHTML(ctx) when it builds the small
-     * "Peripheral controls" toolbox.  Keep this UI deliberately compact:
+     * The RTC display uses the same dashboard refresh sequencer and visual
+     * sync convention as the Disk II surface map: fa-sync-alt when stopped,
+     * fa-stop-circle while live updates are active.
      *
-     *   line 1  card / RTC heading
-     *   line 2  date + time + refresh/set/host controls
-     *   line 3  raw battery-RAM address/value + read/write controls
-     *
-     * The toolbox accesses this card instance directly rather than generating
-     * synthetic $C084/$C085 CPU accesses.  Consequently opening or refreshing
-     * the UI does not disturb the 6818 address latch that running firmware may
-     * currently be using.
+     * Input fields remain editable while live sync is active.  The refresh
+     * callback never rewrites the field that currently owns keyboard focus,
+     * so the user's cursor/selection remains undisturbed.  Invalid input
+     * temporarily pauses visual sync and marks only the invalid field red;
+     * when both fields become valid, live sync resumes automatically if the
+     * user had requested it.
      */
+
+    var rtcUI =
+    {
+         "syncRequested":false
+        ,"invalid":false
+        ,"controlID":""
+        ,"refreshEvent":""
+    };
+
     function rtcUIPad2(value)
     {
         return String(value).padStart(2,"0");
-    }
-
-    function rtcUIHex(value)
-    {
-        return ("0"+(value & 0xFF).toString(16).toUpperCase()).slice(-2);
     }
 
     function rtcUIValues()
@@ -1627,103 +1630,215 @@ function SerialProCard()
         };
     }
 
-    function rtcUIElement(toolboxID,suffix)
+    function rtcUIElement(controlID,suffix)
     {
-        return document.getElementById(toolboxID+"_"+suffix);
+        return document.getElementById(controlID+"_"+suffix);
     }
 
-    function rtcUIParseHex(text)
+    function rtcUIFieldValidity(element,valid)
     {
-        text = String(text==null ? "" : text).trim().toUpperCase();
-        text = text.replace(/^\$/,"").replace(/^0X/,"");
-
-        if(!/^[0-9A-F]{1,2}$/.test(text)) return null;
-        return parseInt(text,16);
+        if(element)
+            element.style.borderColor = valid ? "transparent" : "#D00000";
     }
 
-    this.deviceToolRTCRefresh = function(toolboxID)
+    function rtcUIParse(controlID,markValidity)
     {
-        var values = rtcUIValues();
-        var dateEl = rtcUIElement(toolboxID,"rtc_date");
-        var timeEl = rtcUIElement(toolboxID,"rtc_time");
-
-        if(dateEl) dateEl.value = values.date;
-        if(timeEl) timeEl.value = values.time;
-        return true;
-    };
-
-    this.deviceToolRTCSet = function(toolboxID)
-    {
-        var dateEl = rtcUIElement(toolboxID,"rtc_date");
-        var timeEl = rtcUIElement(toolboxID,"rtc_time");
-        if(!dateEl || !timeEl) return false;
+        var dateEl = rtcUIElement(controlID,"rtc_date");
+        var timeEl = rtcUIElement(controlID,"rtc_time");
+        if(!dateEl || !timeEl)
+            return {"valid":false,"dateValid":false,"timeValid":false,"date":null};
 
         var dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateEl.value);
-        var tm = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(timeEl.value);
-        if(!dm || !tm) return false;
+        var tm = /^(\d{2}):(\d{2}):(\d{2})$/.exec(timeEl.value);
 
-        var year   = Number(dm[1]);
-        var month  = Number(dm[2]);
-        var day    = Number(dm[3]);
-        var hour   = Number(tm[1]);
-        var minute = Number(tm[2]);
-        var second = tm[3]===undefined ? 0 : Number(tm[3]);
+        var dateValid = !!dm;
+        var timeValid = !!tm;
+        var year,month,day,hour,minute,second;
 
-        var date = new Date(year,month-1,day,hour,minute,second,0);
+        if(dateValid)
+        {
+            year  = Number(dm[1]);
+            month = Number(dm[2]);
+            day   = Number(dm[3]);
 
-        // JavaScript Date silently normalises impossible calendar values.
-        // Reject those instead of silently changing what the user entered.
-        if(
-            date.getFullYear()!=year ||
-            date.getMonth()!=month-1 ||
-            date.getDate()!=day ||
-            date.getHours()!=hour ||
-            date.getMinutes()!=minute ||
-            date.getSeconds()!=second
-        )
-            return false;
+            var calendar = new Date(0);
+            calendar.setFullYear(year,month-1,day);
+            calendar.setHours(12,0,0,0);
 
-        rtc.weekdayOffset = 0;
-        rtcRebase(date);
-        serialpro.deviceToolRTCRefresh(toolboxID);
+            dateValid =
+                month>=1 && month<=12 &&
+                day>=1 && day<=31 &&
+                calendar.getFullYear()==year &&
+                calendar.getMonth()==month-1 &&
+                calendar.getDate()==day;
+        }
+
+        if(timeValid)
+        {
+            hour   = Number(tm[1]);
+            minute = Number(tm[2]);
+            second = Number(tm[3]);
+
+            timeValid =
+                hour>=0 && hour<=23 &&
+                minute>=0 && minute<=59 &&
+                second>=0 && second<=59;
+        }
+
+        if(markValidity)
+        {
+            rtcUIFieldValidity(dateEl,dateValid);
+            rtcUIFieldValidity(timeEl,timeValid);
+        }
+
+        if(!dateValid || !timeValid)
+            return {
+                 "valid":false
+                ,"dateValid":dateValid
+                ,"timeValid":timeValid
+                ,"date":null
+            };
+
+        var date = new Date(0);
+        date.setFullYear(year,month-1,day);
+        date.setHours(hour,minute,second,0);
+
+        // Also reject a local time which JavaScript normalised, for example a
+        // non-existent wall-clock time inside a daylight-saving transition.
+        var valid =
+            date.getFullYear()==year &&
+            date.getMonth()==month-1 &&
+            date.getDate()==day &&
+            date.getHours()==hour &&
+            date.getMinutes()==minute &&
+            date.getSeconds()==second;
+
+        if(markValidity && !valid)
+        {
+            rtcUIFieldValidity(dateEl,false);
+            rtcUIFieldValidity(timeEl,false);
+        }
+
+        return {
+             "valid":valid
+            ,"dateValid":valid && dateValid
+            ,"timeValid":valid && timeValid
+            ,"date":valid ? date : null
+        };
+    }
+
+    function rtcUIUpdateSyncButton()
+    {
+        if(!rtcUI.controlID) return false;
+
+        var monitor = rtcUIElement(rtcUI.controlID,"rtc_monitoring");
+        if(!monitor) return false;
+
+        var active = rtcUI.syncRequested && !rtcUI.invalid;
+
+        oCOM.POPUP.set_class(
+             monitor
+            ,"fa-stop-circle"
+            ,"fa-sync-alt"
+            ,active
+        );
+
+        monitor.title = rtcUI.invalid && rtcUI.syncRequested
+            ? "Date/time sync paused: invalid input"
+            : (active ? "Stop date/time sync" : "Start date/time sync");
+
+        return active;
+    }
+
+    function rtcUIRefresh(controlID,preserveFocus)
+    {
+        var values = rtcUIValues();
+        var dateEl = rtcUIElement(controlID,"rtc_date");
+        var timeEl = rtcUIElement(controlID,"rtc_time");
+        var activeEl = document.activeElement;
+
+        if(dateEl && (!preserveFocus || activeEl!==dateEl))
+            dateEl.value = values.date;
+
+        if(timeEl && (!preserveFocus || activeEl!==timeEl))
+            timeEl.value = values.time;
         return true;
     };
 
-    this.deviceToolRTCHost = function(toolboxID)
+
+    this.deviceToolRTCInput = function(controlID)
     {
+        rtcUI.controlID = controlID;
+
+        var parsed = rtcUIParse(controlID,true);
+        rtcUI.invalid = !parsed.valid;
+        rtcUIUpdateSyncButton();
+
+        return parsed.valid;
+    };
+
+    this.deviceToolRTCSyncToggle = function(controlID)
+    {
+        rtcUI.controlID = controlID;
+        rtcUI.syncRequested = !rtcUI.syncRequested;
+
+        var parsed = rtcUIParse(controlID,true);
+        rtcUI.invalid = !parsed.valid;
+        var active = rtcUIUpdateSyncButton();
+
+        if(active)
+            rtcUIRefresh(controlID,true);
+
+        return active;
+    };
+
+    this.deviceToolRTCMonitoring = function()
+    {
+        if(!rtcUI.controlID || !rtcUI.syncRequested) return false;
+
+        var parsed = rtcUIParse(rtcUI.controlID,true);
+        rtcUI.invalid = !parsed.valid;
+
+        if(!rtcUIUpdateSyncButton())
+             return false;
+ 
+        // Do not touch the field currently being edited.  The other field may
+        // continue to follow the live RTC while the focused field stays valid.
+        rtcUIRefresh(rtcUI.controlID,true);
+        return true;
+    };
+
+    this.deviceToolRTCSet = function(controlID)
+    {
+        rtcUI.controlID = controlID;
+
+        var parsed = rtcUIParse(controlID,true);
+        rtcUI.invalid = !parsed.valid;
+        rtcUIUpdateSyncButton();
+
+        if(!parsed.valid) return false;
+        rtc.weekdayOffset = 0;
+        rtcRebase(parsed.date);
+        rtcUIRefresh(controlID,false);
+
+        rtcUI.invalid = false;
+        rtcUIFieldValidity(rtcUIElement(controlID,"rtc_date"),true);
+        rtcUIFieldValidity(rtcUIElement(controlID,"rtc_time"),true);
+        rtcUIUpdateSyncButton();        
+        return true;
+    };
+
+    this.deviceToolRTCHost = function(controlID)
+    {
+        rtcUI.controlID = controlID;
         rtc.weekdayOffset = 0;
         rtcRebase(new Date());
-        serialpro.deviceToolRTCRefresh(toolboxID);
-        return true;
-    };
+        rtcUIRefresh(controlID,false);
 
-    this.deviceToolRAMRead = function(toolboxID)
-    {
-        var addrEl = rtcUIElement(toolboxID,"ram_addr");
-        var dataEl = rtcUIElement(toolboxID,"ram_data");
-        if(!addrEl || !dataEl) return false;
-
-        var addr = rtcUIParseHex(addrEl.value);
-        if(addr===null || addr<0x0E || addr>0x3F) return false;
-
-        addrEl.value = rtcUIHex(addr);
-        dataEl.value = rtcUIHex(rtc.ram[addr]);
-        return true;
-    };
-
-    this.deviceToolRAMWrite = function(toolboxID)
-    {
-        var addrEl = rtcUIElement(toolboxID,"ram_addr");
-        var dataEl = rtcUIElement(toolboxID,"ram_data");
-        if(!addrEl || !dataEl) return false;
-
-        var addr = rtcUIParseHex(addrEl.value);
-        var data = rtcUIParseHex(dataEl.value);
-        if(addr===null || addr<0x0E || addr>0x3F || data===null) return false;
-
-        rtc.ram[addr] = data & 0xFF;
-        addrEl.value = rtcUIHex(addr);
-        dataEl.value = rtcUIHex(data);
+        rtcUI.invalid = false;
+        rtcUIFieldValidity(rtcUIElement(controlID,"rtc_date"),true);
+        rtcUIFieldValidity(rtcUIElement(controlID,"rtc_time"),true);
+        rtcUIUpdateSyncButton();        
         return true;
     };
 
@@ -1741,38 +1856,46 @@ function SerialProCard()
         // when switching the visible peripheral.
         var controlID = "spc_ctrl_"+slotID;
 
-        // The raw editor intentionally starts at $2D: the first currently
-        // unallocated Serial Pro battery-RAM byte in the recovered v2.0 map.
-        var ramAddr = 0x2D;
+
         var call = "apple2plus.hwObj().io.SLOT2obj("+slotN+")";
+
+
+        rtcUI.controlID = controlID;
+        rtcUI.invalid = false;
+        rtcUI.refreshEvent = "SPC_RTC_monitoring_"+slotID;
+
+        // The dashboard refresh sequencer is already paced by
+        // EMU_DashboardRefresh_s.  Keep the event registered and let the card's
+        // requested/validation state decide whether a visual update is made.
+        oCOM.addRefreshEvent(
+            function(){ serialpro.deviceToolRTCMonitoring(); },
+            rtcUI.refreshEvent,
+            true
+        );
+
+        var syncClass = rtcUI.syncRequested ? "fa-stop-circle" : "fa-sync-alt";
+ 
 
         return ""
             + "<div class=toolbox id=\""+toolboxID+"\" hidden>"
-            + " <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px;line-height:20px;font-size:11px;white-space:nowrap;\">"
-            + "  <b>#"+slotID+" SPC</b>&nbsp; RTC / BATTERY RAM<br>"
-            + "  RTC <input id=\""+controlID+"_rtc_date\" type=text value=\""+values.date+"\" maxlength=10"
-            + "             title=\"RTC date YYYY-MM-DD; edit and press SET\""
-            + "             style=\"display:inline-block;width:72px;height:16px;font:11px monospace;padding:0px 2px\">"
-            + " <input id=\""+controlID+"_rtc_time\" type=text value=\""+values.time+"\" maxlength=8"
-            + "        title=\"RTC time HH:MM:SS; edit and press SET\""
-            + "        style=\"display:inline-block;width:58px;height:16px;font:11px monospace;padding:0px 2px\">"
-            + "  <button class=\"appbut skinny\" type=button title=\"Read current RTC\""
-            + "          onclick=\""+call+".deviceToolRTCRefresh('"+controlID+"')\">&#8635;</button>"
+            + " <div class=appbox style=\"text-align:left;height:31px;padding:0px 6px;display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap;\">"
+            + "  <input id=\""+controlID+"_rtc_date\" type=text value=\""+values.date+"\" maxlength=10"
+            + "         title=\"Date YYYY-MM-DD; edit and press SET\""
+            + "         oninput=\""+call+".deviceToolRTCInput('"+controlID+"')\""
+            + "         style=\"box-sizing:border-box;width:76px;height:19px;font:11px monospace;padding:0px 2px;border:1px solid transparent;\">"
+            + "  <input id=\""+controlID+"_rtc_time\" type=text value=\""+values.time+"\" maxlength=8"
+            + "         title=\"Time HH:MM:SS; edit and press SET\""
+            + "         oninput=\""+call+".deviceToolRTCInput('"+controlID+"')\""
+            + "         style=\"box-sizing:border-box;width:62px;height:19px;font:11px monospace;padding:0px 2px;border:1px solid transparent;\">"
+            + "  <button class=\"appbut\" type=button style=\"text-align:center;margin-left:0px;padding:4px\" title=\"Date/time sync\">"
+            + "    <i class=\"fa "+syncClass+"\" id=\""+controlID+"_rtc_monitoring\""
+            + "       title=\""+(rtcUI.syncRequested ? "Stop date/time sync" : "Start date/time sync")+"\""
+            + "       onclick=\""+call+".deviceToolRTCSyncToggle('"+controlID+"')\"></i>"
+            + "  </button>"            
             + "  <button class=\"appbut skinny\" type=button title=\"Set RTC from fields\""
             + "          onclick=\""+call+".deviceToolRTCSet('"+controlID+"')\">SET</button>"
             + "  <button class=\"appbut skinny\" type=button title=\"Set RTC from browser host time\""
-            + "          onclick=\""+call+".deviceToolRTCHost('"+controlID+"')\">HOST</button><br>"
-            + "  RAM $<input id=\""+controlID+"_ram_addr\" type=text value=\""+rtcUIHex(ramAddr)+"\" maxlength=2"
-            + "              title=\"Battery RAM address $0E-$3F\""
-            + "              style=\"display:inline-block;width:24px;height:16px;font:11px monospace;padding:0px 2px\">"
-            + " = $<input id=\""+controlID+"_ram_data\" type=text value=\""+rtcUIHex(rtc.ram[ramAddr])+"\" maxlength=2"
-            + "             title=\"Battery RAM byte\""
-            + "             style=\"display:inline-block;width:24px;height:16px;font:11px monospace;padding:0px 2px\">"
-            + "  <button class=\"appbut skinny\" type=button title=\"Read battery RAM\""
-            + "          onclick=\""+call+".deviceToolRAMRead('"+controlID+"')\">R</button>"
-            + "  <button class=\"appbut skinny\" type=button title=\"Write battery RAM\""
-            + "          onclick=\""+call+".deviceToolRAMWrite('"+controlID+"')\">W</button>"
-            + "  <span title=\"Raw editor: $0E-$3F; firmware-owned bytes can alter Serial Pro configuration\">$0E-$3F</span>"
+            + "          onclick=\""+call+".deviceToolRTCHost('"+controlID+"')\">HOST</button>"
             + " </div>"
             + "</div>";
     };
