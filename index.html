@@ -4791,17 +4791,26 @@ Label1 TXA
       var rowTop = Math.max(0, Math.round(rowIndex * lineH));
       var targetTop = Math.max(0, Math.round(rowTop - ((body.clientHeight - lineH) / 2)));
       var behavior = opts && opts.behavior ? opts.behavior : DBG_listingScrollBehavior;
+      var doScroll = !opts || opts.scroll !== false;
 
-      if (typeof body.scrollTo === "function")
-        body.scrollTo({top:targetTop,behavior:behavior});
-      else
-        body.scrollTop = targetTop;
+      if (doScroll) {
+        if (typeof body.scrollTo === "function")
+          body.scrollTo({top:targetTop,behavior:behavior});
+        else
+          body.scrollTop = targetTop;
+      }
 
       DBG_listingCurrentPC = pc;
       DBG_positionListingPcOverlay(rowIndex);
       return true;
     }
 
+    function DBG_updateListingPC(pc) {
+      return DBG_scrollListingToPC(pc,{
+        behavior: DBG_listingScrollBehavior,
+        scroll: DBG_scrollListingEnabled()
+      });
+    }
 
     function DBG_disassembleRAM() {
       var rows = [];
@@ -5139,6 +5148,14 @@ Label1 TXA
         return DBG_settingChecked("DBG_showCyclesInput",true);
       }
 
+      function DBG_scrollListingEnabled() {
+        return DBG_settingChecked("DBG_followPcInput",true);
+      }
+
+      function DBG_scrollCpuTraceEnabled() {
+        return DBG_settingChecked("DBG_autoScrollTraceInput",true);
+      }
+
       function DBG_traceDepthLimit() {
         var input = DBG_el("DBG_traceDepthInput");
         var n = input ? parseInt(input.value,10) : 2048;
@@ -5335,12 +5352,10 @@ Label1 TXA
      function DBG_renderTraceView() {
        var trace = DBG_el("DBG_traceView");
        if (!trace) return;
- 
-       //var header = DBG_formatTraceParts({stp:"; #", pc:"PC", byt:"bytes", opc:"opcode", rA:"A", rX:"X", rY:"Y", rP:"P", rSP:"SP"});
-       //var ruler  = DBG_formatTraceParts({stp:"; ----", pc:"----", byt:"----------", opc:"-------------------", rA:"--", rX:"--", rY:"--", rP:"--", rSP:"--"});
-       //var text = header + "\n" + ruler;
+
        trace.value = DBG_traceLines.join("\n") + (DBG_traceLines.length ? "\n" : "");
-       trace.scrollTop = trace.scrollHeight;
+      if (DBG_scrollCpuTraceEnabled())
+        trace.scrollTop = trace.scrollHeight;
      }
  
      function DBG_startCpuTraceAtPC(startPC) {
@@ -5361,8 +5376,7 @@ Label1 TXA
 
        DBG_renderTraceView();
        DBG_updateRegisterDisplays(DBG_traceCPU.watch());
-       DBG_scrollListingToPC(startPC,{behavior:DBG_listingScrollBehavior});
- 
+       DBG_updateListingPC(startPC);
        return true;
      }
  
@@ -5420,8 +5434,8 @@ Label1 TXA
  
        DBG_renderTraceView();
        DBG_updateRegisterDisplays(after,before);
-       if (after) DBG_scrollListingToPC(after.pc & 0xffff,{behavior:DBG_listingScrollBehavior});
- 
+       if (after) DBG_updateListingPC(after.pc & 0xffff);
+       DBG_updateListingPC(startPC);
        return true;
      }
  
@@ -5460,7 +5474,7 @@ Label1 TXA
         DBG_rebuildTraceLines();
         DBG_renderTraceView();
         DBG_updateRegisterDisplays(record.before,record.after);
-        DBG_scrollListingToPC(record.before.pc & 0xffff,{behavior:DBG_listingScrollBehavior});
+        DBG_updateListingPC(record.before.pc & 0xffff);
         DBG_statusText("Stepped backward to $" + DBG_hexWord(record.before.pc) + ".");
         return true;
       }      
