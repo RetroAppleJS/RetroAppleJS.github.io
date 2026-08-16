@@ -5435,7 +5435,6 @@ Label1 TXA
        DBG_renderTraceView();
        DBG_updateRegisterDisplays(after,before);
        if (after) DBG_updateListingPC(after.pc & 0xffff);
-       DBG_updateListingPC(startPC);
        return true;
      }
  
