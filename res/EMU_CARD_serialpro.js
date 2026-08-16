@@ -1598,15 +1598,13 @@ function SerialProCard()
      * Input fields remain editable while live sync is active.  The refresh
      * callback never rewrites the field that currently owns keyboard focus,
      * so the user's cursor/selection remains undisturbed.  Invalid input
-     * temporarily pauses visual sync and marks only the invalid field red;
-     * when both fields become valid, live sync resumes automatically if the
-     * user had requested it.
+     * marks only the invalid field red and disables SET; the user's live-sync
+     * state remains unchanged while editing.
      */
 
     var rtcUI =
     {
          "syncRequested":false
-        ,"invalid":false
         ,"controlID":""
         ,"refreshEvent":""
     };
@@ -1743,13 +1741,15 @@ function SerialProCard()
             ,active
         );
         monitor.title = active ? "Stop date/time sync" : "Start date/time sync";
-        function rtcUIUpdateSetButton(controlID,valid)
-        {
-            var setButton = rtcUIElement(controlID,"rtc_set");
-            if(setButton) setButton.disabled = !valid;
-            return !!valid;
-        }
+        return active;
     }
+
+    function rtcUIUpdateSetButton(controlID,valid)
+    {
+        var setButton = rtcUIElement(controlID,"rtc_set");
+        if(setButton) setButton.disabled = !valid;
+        return !!valid;
+     }
 
     function rtcUIRefresh(controlID,preserveFocus)
     {
@@ -1858,7 +1858,6 @@ function SerialProCard()
 
 
         rtcUI.controlID = controlID;
-        rtcUI.invalid = false;
         rtcUI.refreshEvent = "SPC_RTC_monitoring_"+slotID;
 
         // The dashboard refresh sequencer is already paced by
