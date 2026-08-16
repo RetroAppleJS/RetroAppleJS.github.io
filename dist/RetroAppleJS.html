@@ -26991,6 +26991,11 @@ function SerialProCard()
         var slotN = Number(ctx.slotN);
         var values = rtcUIValues();
 
+        // Child controls must not use the "device_tool_" prefix: Apple2IO
+        // reserves that prefix for whole toolbox containers and hides them
+        // when switching the visible peripheral.
+        var controlID = "spc_ctrl_"+slotID;
+
         // The raw editor intentionally starts at $2D: the first currently
         // unallocated Serial Pro battery-RAM byte in the recovered v2.0 map.
         var ramAddr = 0x2D;
@@ -27000,26 +27005,28 @@ function SerialProCard()
             + "<div class=toolbox id=\""+toolboxID+"\" hidden>"
             + " <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px;line-height:20px;font-size:11px;white-space:nowrap;\">"
             + "  <b>#"+slotID+" SPC</b>&nbsp; RTC / BATTERY RAM<br>"
-            + "  <input id=\""+toolboxID+"_rtc_date\" type=date value=\""+values.date+"\""
-            + "         style=\"width:108px;height:17px;font-size:11px;padding:0px\">"
-            + "  <input id=\""+toolboxID+"_rtc_time\" type=time step=1 value=\""+values.time+"\""
-            + "         style=\"width:82px;height:17px;font-size:11px;padding:0px\">"
+            + "  RTC <input id=\""+controlID+"_rtc_date\" type=text value=\""+values.date+"\" maxlength=10"
+            + "             title=\"RTC date YYYY-MM-DD; edit and press SET\""
+            + "             style=\"display:inline-block;width:72px;height:16px;font:11px monospace;padding:0px 2px\">"
+            + " <input id=\""+controlID+"_rtc_time\" type=text value=\""+values.time+"\" maxlength=8"
+            + "        title=\"RTC time HH:MM:SS; edit and press SET\""
+            + "        style=\"display:inline-block;width:58px;height:16px;font:11px monospace;padding:0px 2px\">"
             + "  <button class=\"appbut skinny\" type=button title=\"Read current RTC\""
-            + "          onclick=\""+call+".deviceToolRTCRefresh('"+toolboxID+"')\">&#8635;</button>"
+            + "          onclick=\""+call+".deviceToolRTCRefresh('"+controlID+"')\">&#8635;</button>"
             + "  <button class=\"appbut skinny\" type=button title=\"Set RTC from fields\""
-            + "          onclick=\""+call+".deviceToolRTCSet('"+toolboxID+"')\">SET</button>"
+            + "          onclick=\""+call+".deviceToolRTCSet('"+controlID+"')\">SET</button>"
             + "  <button class=\"appbut skinny\" type=button title=\"Set RTC from browser host time\""
-            + "          onclick=\""+call+".deviceToolRTCHost('"+toolboxID+"')\">HOST</button><br>"
-            + "  RAM $<input id=\""+toolboxID+"_ram_addr\" type=text value=\""+rtcUIHex(ramAddr)+"\" maxlength=2"
+            + "          onclick=\""+call+".deviceToolRTCHost('"+controlID+"')\">HOST</button><br>"
+            + "  RAM $<input id=\""+controlID+"_ram_addr\" type=text value=\""+rtcUIHex(ramAddr)+"\" maxlength=2"
             + "              title=\"Battery RAM address $0E-$3F\""
-            + "              style=\"width:24px;height:16px;font:11px monospace;padding:0px 2px\">"
-            + " = $<input id=\""+toolboxID+"_ram_data\" type=text value=\""+rtcUIHex(rtc.ram[ramAddr])+"\" maxlength=2"
+            + "              style=\"display:inline-block;width:24px;height:16px;font:11px monospace;padding:0px 2px\">"
+            + " = $<input id=\""+controlID+"_ram_data\" type=text value=\""+rtcUIHex(rtc.ram[ramAddr])+"\" maxlength=2"
             + "             title=\"Battery RAM byte\""
-            + "             style=\"width:24px;height:16px;font:11px monospace;padding:0px 2px\">"
+            + "             style=\"display:inline-block;width:24px;height:16px;font:11px monospace;padding:0px 2px\">"
             + "  <button class=\"appbut skinny\" type=button title=\"Read battery RAM\""
-            + "          onclick=\""+call+".deviceToolRAMRead('"+toolboxID+"')\">R</button>"
+            + "          onclick=\""+call+".deviceToolRAMRead('"+controlID+"')\">R</button>"
             + "  <button class=\"appbut skinny\" type=button title=\"Write battery RAM\""
-            + "          onclick=\""+call+".deviceToolRAMWrite('"+toolboxID+"')\">W</button>"
+            + "          onclick=\""+call+".deviceToolRAMWrite('"+controlID+"')\">W</button>"
             + "  <span title=\"Raw editor: $0E-$3F; firmware-owned bytes can alter Serial Pro configuration\">$0E-$3F</span>"
             + " </div>"
             + "</div>";
