@@ -38504,7 +38504,6 @@ Label1 TXA
          return {
            followPC: DBG_settingChecked("DBG_followPcInput",true),
            autoScrollTrace: DBG_settingChecked("DBG_autoScrollTraceInput",true),
-           highlightChangedValues: DBG_highlightChangedValuesEnabled(),
            listingColumns: DBG_listingColumnsValue(),
            traceDepth: DBG_traceDepthLimit(),
            traceColumns: DBG_traceColumnsValue(),
@@ -38522,7 +38521,6 @@ Label1 TXA
 
          DBG_setElementChecked("DBG_followPcInput",settings.followPC);
          DBG_setElementChecked("DBG_autoScrollTraceInput",settings.autoScrollTrace);
-         DBG_setElementChecked("DBG_highlightChangedValuesInput",settings.highlightChangedValues);
          DBG_setElementValue("DBG_listingColumnsInput",settings.listingColumns);
          DBG_setElementValue("DBG_traceDepthInput",settings.traceDepth);
          DBG_setElementValue("DBG_traceColumnsInput",settings.traceColumns);
@@ -38648,11 +38646,6 @@ Label1 TXA
            if(input) input.value = "";
          }
        }
-
-
-      function DBG_highlightChangedValuesEnabled() {
-        return DBG_settingChecked("DBG_highlightChangedValuesInput",true);
-      }
 
       function DBG_showCyclesEnabled() {
         return DBG_settingChecked("DBG_showCyclesInput",true);
@@ -38830,14 +38823,7 @@ Label1 TXA
        var p  = state.p  & 0xff;
        var sp = state.sp & 0xff;
  
-       var highlight = DBG_highlightChangedValuesEnabled() && !!compareState;
-       var cpc = compareState ? (compareState.pc & 0xffff) : pc;
-       var ca  = compareState ? (compareState.a  & 0xff) : a;
-       var cx  = compareState ? (compareState.x  & 0xff) : x;
-       var cy  = compareState ? (compareState.y  & 0xff) : y;
-       var cp  = compareState ? (compareState.p  & 0xff) : p;
-       var csp = compareState ? (compareState.sp & 0xff) : sp;
-
+       var highlight = !!compareState;
        DBG_renderWatchView({pc:pc,a:a,x:x,y:y,p:p,sp:sp},compareState);
  
        var info = DBG_el("DBG_traceRegisterInfo");
@@ -39392,7 +39378,6 @@ Label1 TXA
                 LISTING<br>
                 <label>Follow PC <input id="DBG_followPcInput" type="checkbox" checked onchange="DBG_stub('Follow PC')"></label>
                 <label>Auto-scroll trace <input id="DBG_autoScrollTraceInput" type="checkbox" checked onchange="DBG_stub('Auto-scroll trace')"></label>
-                <label>Highlight changed values <input id="DBG_highlightChangedValuesInput" type="checkbox" checked onchange="DBG_updateRegisterDisplays()"></label>
                 <label>
                   Columns 
                   <input id="DBG_listingColumnsInput" type="text" value="{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}" title="Listing columns: address, code bytes, jump lines, label, instruction, operand, comment" spellcheck="false" onchange="DBG_disassembleRAM()">
