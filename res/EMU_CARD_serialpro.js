@@ -1734,7 +1734,7 @@ function SerialProCard()
         var monitor = rtcUIElement(rtcUI.controlID,"rtc_monitoring");
         if(!monitor) return false;
 
-        var active = rtcUI.syncRequested && !rtcUI.invalid;
+        var active = rtcUI.syncRequested;
 
         oCOM.POPUP.set_class(
              monitor
@@ -1742,12 +1742,13 @@ function SerialProCard()
             ,"fa-sync-alt"
             ,active
         );
-
-        monitor.title = rtcUI.invalid && rtcUI.syncRequested
-            ? "Date/time sync paused: invalid input"
-            : (active ? "Stop date/time sync" : "Start date/time sync");
-
-        return active;
+        monitor.title = active ? "Stop date/time sync" : "Start date/time sync";
+        function rtcUIUpdateSetButton(controlID,valid)
+        {
+            var setButton = rtcUIElement(controlID,"rtc_set");
+            if(setButton) setButton.disabled = !valid;
+            return !!valid;
+        }
     }
 
     function rtcUIRefresh(controlID,preserveFocus)
@@ -1771,8 +1772,7 @@ function SerialProCard()
         rtcUI.controlID = controlID;
 
         var parsed = rtcUIParse(controlID,true);
-        rtcUI.invalid = !parsed.valid;
-        rtcUIUpdateSyncButton();
+        rtcUIUpdateSetButton(controlID,parsed.valid);
 
         return parsed.valid;
     };
@@ -1782,12 +1782,14 @@ function SerialProCard()
         rtcUI.controlID = controlID;
         rtcUI.syncRequested = !rtcUI.syncRequested;
 
-        var parsed = rtcUIParse(controlID,true);
-        rtcUI.invalid = !parsed.valid;
         var active = rtcUIUpdateSyncButton();
 
-        if(active)
-            rtcUIRefresh(controlID,true);
+         if(active)
+        {
+             rtcUIRefresh(controlID,true);
+            var parsed = rtcUIParse(controlID,true);
+            rtcUIUpdateSetButton(controlID,parsed.valid);
+        }
 
         return active;
     };
@@ -1796,15 +1798,13 @@ function SerialProCard()
     {
         if(!rtcUI.controlID || !rtcUI.syncRequested) return false;
 
-        var parsed = rtcUIParse(rtcUI.controlID,true);
-        rtcUI.invalid = !parsed.valid;
-
-        if(!rtcUIUpdateSyncButton())
-             return false;
- 
-        // Do not touch the field currently being edited.  The other field may
-        // continue to follow the live RTC while the focused field stays valid.
+        // Keep the sync state visually stable while the user edits a field.
+        // The focused field is never rewritten, so its cursor/selection stays
+        // intact.  The other field may continue following the live RTC.
         rtcUIRefresh(rtcUI.controlID,true);
+
+        var parsed = rtcUIParse(rtcUI.controlID,true);
+        rtcUIUpdateSetButton(rtcUI.controlID,parsed.valid);
         return true;
     };
 
@@ -1813,18 +1813,16 @@ function SerialProCard()
         rtcUI.controlID = controlID;
 
         var parsed = rtcUIParse(controlID,true);
-        rtcUI.invalid = !parsed.valid;
-        rtcUIUpdateSyncButton();
+        rtcUIUpdateSetButton(controlID,parsed.valid);
 
         if(!parsed.valid) return false;
         rtc.weekdayOffset = 0;
         rtcRebase(parsed.date);
         rtcUIRefresh(controlID,false);
 
-        rtcUI.invalid = false;
         rtcUIFieldValidity(rtcUIElement(controlID,"rtc_date"),true);
         rtcUIFieldValidity(rtcUIElement(controlID,"rtc_time"),true);
-        rtcUIUpdateSyncButton();        
+        rtcUIUpdateSetButton(controlID,true);
         return true;
     };
 
@@ -1835,10 +1833,9 @@ function SerialProCard()
         rtcRebase(new Date());
         rtcUIRefresh(controlID,false);
 
-        rtcUI.invalid = false;
         rtcUIFieldValidity(rtcUIElement(controlID,"rtc_date"),true);
         rtcUIFieldValidity(rtcUIElement(controlID,"rtc_time"),true);
-        rtcUIUpdateSyncButton();        
+        rtcUIUpdateSetButton(controlID,true);        
         return true;
     };
 
@@ -1892,7 +1889,7 @@ function SerialProCard()
             + "       title=\""+(rtcUI.syncRequested ? "Stop date/time sync" : "Start date/time sync")+"\""
             + "       onclick=\""+call+".deviceToolRTCSyncToggle('"+controlID+"')\"></i>"
             + "  </button>"            
-            + "  <button class=\"appbut skinny\" type=button title=\"Set RTC from fields\""
+            + "  <button class=\"appbut skinny\" id=\""+controlID+"_rtc_set\" type=button title=\"Set RTC from fields\""
             + "          onclick=\""+call+".deviceToolRTCSet('"+controlID+"')\">SET</button>"
             + "  <button class=\"appbut skinny\" type=button title=\"Set RTC from browser host time\""
             + "          onclick=\""+call+".deviceToolRTCHost('"+controlID+"')\">HOST</button>"
