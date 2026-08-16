@@ -8,9 +8,12 @@
 //   - slot-dependent $Cn00-$CnFF ROM directly from that EPROM
 //   - shared $C800-$CFFF expansion-ROM ownership/release behavior
 //   - Applied Engineering EPROM bank-register clear/write switches
+//   - 6818-compatible RTC / battery RAM address-data interface
+//   - live clock initialized from the browser host's local date/time
 //
 // Still intentionally deferred:
-//   - 6818 RTC / battery RAM behavior ($C084+$s0, $C085+$s0)
+//   - 6818 periodic/alarm/update IRQ/NMI generation
+//   - browser-persistent battery RAM across page reloads
 //   - 6551 serial controller behavior ($C088+$s0-$C08B+$s0)
 //
 // The physical EPROM layout recovered from the Serial Pro v2.0 27C64 is:
@@ -1094,6 +1097,38 @@ function SerialProCard()
 
     this.state = state;
 
+    /*
+     * Serial Pro clock/RAM device.
+     *
+     * AE documents a 6818-compatible register map behind two slot-I/O ports:
+     *   $C084+$s0  address register (write only)
+     *   $C085+$s0  selected register/RAM data (read/write)
+     *
+     * Registers $00-$0D follow the 6818 clock map; $0E-$3F are battery RAM.
+     * The real card's firmware normally programs Register A=$20 (32.768 kHz)
+     * and Register B=$02 (24-hour, BCD, running), so those are our power-up
+     * defaults.  Battery RAM starts clear and is then initialized by the real
+     * Serial Pro firmware when its $20/$21 signature is absent.
+     *
+     * This object survives reset()/restart() for as long as the mounted card
+     * instance exists, modeling battery-backed RAM within an emulator session.
+     * Browser-persistent NVRAM across page reloads is intentionally a later step.
+     */
+    var rtcStartMs = Date.now();
+    var rtc =
+    {
+         "address":0x00
+        ,"ram":new Uint8Array(0x40)
+        ,"baseTimeMs":rtcStartMs
+        ,"hostBaseMs":rtcStartMs
+        ,"weekdayOffset":0
+    };
+
+    rtc.ram[0x0A] = 0x20;       // Register A: 32.768 kHz, UIP clear on read
+    rtc.ram[0x0B] = 0x02;       // Register B: 24-hour, BCD, clock running
+    rtc.ram[0x0D] = 0x80;       // Register D: valid time/RAM
+
+
     var serialpro = this;       // stand-in where 'this' is absent inside callbacks
 
 
@@ -1107,6 +1142,9 @@ function SerialProCard()
         },
         "SlotIO":
         {
+            "RD":{"callback":function(addr,ctx) {
+                return serialpro.readSlotIO(addr,ctx);
+            }},
             "WR":{"callback":function(addr,d8,ctx) {
                 return serialpro.writeSlotIO(addr,d8,ctx);
             }}
@@ -1188,6 +1226,234 @@ function SerialProCard()
         return state.romSelector & 0x03;
     }    
 
+    function rtcIsBinary()
+    {
+        return (rtc.ram[0x0B] & 0x04) != 0;
+    }
+
+    function rtcIs24Hour()
+    {
+        return (rtc.ram[0x0B] & 0x02) != 0;
+    }
+
+    function rtcToBCD(value)
+    {
+        value = Math.max(0,Math.floor(value));
+        return (((Math.floor(value/10) % 10) << 4) | (value % 10)) & 0xFF;
+    }
+
+    function rtcFromBCD(value)
+    {
+        return (((value >> 4) & 0x0F) * 10) + (value & 0x0F);
+    }
+
+    function rtcEncode(value)
+    {
+        return rtcIsBinary() ? (value & 0xFF) : rtcToBCD(value);
+    }
+
+    function rtcDecode(value)
+    {
+        return rtcIsBinary() ? (value & 0xFF) : rtcFromBCD(value);
+    }
+
+    function rtcCurrentDate()
+    {
+        var timeMs = rtc.baseTimeMs;
+
+        // Register B bit 7 is SET/HOLD.  While clear the clock advances at
+        // wall-clock speed; while set it remains frozen for coherent updates.
+        if((rtc.ram[0x0B] & 0x80)==0)
+            timeMs += Date.now() - rtc.hostBaseMs;
+
+        return new Date(timeMs);
+    }
+
+    function rtcRebase(date)
+    {
+        rtc.baseTimeMs = date.getTime();
+        rtc.hostBaseMs = Date.now();
+    }
+
+    function rtcEncodeHour(date)
+    {
+        var hour = date.getHours();
+
+        if(rtcIs24Hour())
+            return rtcEncode(hour);
+
+        var pm = hour >= 12;
+        hour %= 12;
+        if(hour==0) hour = 12;
+        return rtcEncode(hour) | (pm ? 0x80 : 0x00);
+    }
+
+    function rtcDecodeHour(value)
+    {
+        if(rtcIs24Hour())
+            return Math.min(23,rtcDecode(value & 0x7F));
+
+        var pm = (value & 0x80) != 0;
+        var hour = rtcDecode(value & 0x7F);
+        if(hour<1) hour = 1;
+        if(hour>12) hour = 12;
+        if(hour==12) hour = 0;
+        return hour + (pm ? 12 : 0);
+    }
+
+    function rtcReadData()
+    {
+        var reg = rtc.address & 0x3F;
+        var date = rtcCurrentDate();
+
+        switch(reg)
+        {
+            case 0x00: return rtcEncode(date.getSeconds());
+            case 0x01: return rtc.ram[reg];                 // seconds alarm
+            case 0x02: return rtcEncode(date.getMinutes());
+            case 0x03: return rtc.ram[reg];                 // minutes alarm
+            case 0x04: return rtcEncodeHour(date);
+            case 0x05: return rtc.ram[reg];                 // hours alarm
+            case 0x06:
+            {
+                // 6818 day-of-week range is 1..7.  JavaScript uses Sunday=0.
+                var weekday = ((date.getDay() + rtc.weekdayOffset) % 7) + 1;
+                return rtcEncode(weekday);
+            }
+            case 0x07: return rtcEncode(date.getDate());
+            case 0x08: return rtcEncode(date.getMonth()+1);
+            case 0x09: return rtcEncode(date.getFullYear()%100);
+
+            case 0x0A:
+                /*
+                 * Register A bit 7 is Update-In-Progress.  RetroAppleJS does not
+                 * model the 1.984 ms ripple/update interval cycle-accurately; a
+                 * JavaScript Date snapshot is atomic for our purposes, so UIP is
+                 * deliberately reported clear.  This is sufficient for the AE
+                 * firmware's $CsA9 safe-clock-image loop.
+                 */
+                return rtc.ram[0x0A] & 0x7F;
+
+            case 0x0B:
+                return rtc.ram[0x0B];
+
+            case 0x0C:
+            {
+                // Register C interrupt flags clear on read.  Interrupt generation
+                // is deferred, therefore this is normally zero in this stage.
+                var flags = rtc.ram[0x0C] & 0xF0;
+                rtc.ram[0x0C] = 0x00;
+                return flags;
+            }
+
+            case 0x0D:
+                return 0x80;                                // valid time/RAM
+        }
+
+        // $0E-$3F are battery-backed RAM and are not affected by RTC updates.
+        return rtc.ram[reg] & 0xFF;
+    }
+
+    function rtcWriteData(value)
+    {
+        var reg = rtc.address & 0x3F;
+        value &= 0xFF;
+
+        if(reg==0x01 || reg==0x03 || reg==0x05)
+        {
+            rtc.ram[reg] = value;                           // alarm registers
+            return;
+        }
+
+        if(reg==0x0A)
+        {
+            rtc.ram[0x0A] = value & 0x7F;                  // UIP is read only
+            return;
+        }
+
+        if(reg==0x0B)
+        {
+            var wasHeld = (rtc.ram[0x0B] & 0x80) != 0;
+            var willHold = (value & 0x80) != 0;
+
+            // Freeze the exact current emulated clock before asserting SET.
+            if(!wasHeld && willHold)
+                rtcRebase(rtcCurrentDate());
+
+            rtc.ram[0x0B] = value;
+
+            // Clearing SET restarts elapsed-time accumulation from the frozen
+            // value rather than jumping by the amount of time spent halted.
+            if(wasHeld && !willHold)
+                rtc.hostBaseMs = Date.now();
+            return;
+        }
+
+        if(reg==0x0C || reg==0x0D)
+            return;                                         // read-only registers
+
+        if(reg>=0x0E)
+        {
+            rtc.ram[reg] = value;                           // battery RAM
+            return;
+        }
+
+        var date = rtcCurrentDate();
+        var decoded = rtcDecode(value);
+
+        switch(reg)
+        {
+            case 0x00:
+                date.setSeconds(Math.max(0,Math.min(59,decoded)),0);
+                break;
+            case 0x02:
+                date.setMinutes(Math.max(0,Math.min(59,decoded)));
+                break;
+            case 0x04:
+                date.setHours(rtcDecodeHour(value));
+                break;
+            case 0x06:
+            {
+                // The DOW counter is independently writable on the 6818.  Keep
+                // an offset from JavaScript's calendar weekday so it advances
+                // naturally while still honoring a value explicitly written.
+                var requested = Math.max(1,Math.min(7,decoded));
+                var actual = date.getDay()+1;
+                rtc.weekdayOffset = (requested - actual + 7) % 7;
+                return;
+            }
+            case 0x07:
+                date.setDate(Math.max(1,Math.min(31,decoded)));
+                break;
+            case 0x08:
+                date.setMonth(Math.max(1,Math.min(12,decoded))-1);
+                break;
+            case 0x09:
+            {
+                var year = Math.max(0,Math.min(99,decoded));
+                var century = Math.floor(date.getFullYear()/100)*100;
+                date.setFullYear(century + year);
+                break;
+            }
+        }
+
+        rtcRebase(date);
+    }
+
+    this.readSlotIO = function(addr,ctx)
+    {
+        addr &= 0x0F;
+
+        switch(addr)
+        {
+            case 0x05:      // $C085+$s0: selected 6818 Clock/RAM data
+                return rtcReadData();
+        }
+
+        // $x4, $x6 and $x7 are write-only; 6551 reads are a later stage.
+        return 0x00;
+    };
+
     this.readROM = function(addr,ctx)
     {
         /*
@@ -1229,8 +1495,8 @@ function SerialProCard()
         /*
          * AE Serial Pro Programmer's Reference register map:
          *
-         *   $C084+$s0  6818 Clock/RAM Address       (write only; later stage)
-         *   $C085+$s0  6818 Clock/RAM Data          (later stage)
+         *   $C084+$s0  6818 Clock/RAM Address       (write only)
+         *   $C085+$s0  6818 Clock/RAM Data          (read/write)
          *   $C086+$s0  EPROM Bank Register Clear    (write only)
          *   $C087+$s0  EPROM Bank Register          (write only)
          *   $C088+$s0  6551 Data                    (later stage)
@@ -1251,6 +1517,13 @@ function SerialProCard()
 
         switch(addr)
         {
+            case 0x04:      // $C084+$s0: 6818 Clock/RAM address register
+                rtc.address = d8 & 0x3F;
+                return 0x00;
+
+            case 0x05:      // $C085+$s0: selected 6818 Clock/RAM data
+                rtcWriteData(d8);
+                return 0x00;            
             case 0x06:      // $C086+$s0: EPROM Bank Register Clear
                 // The hardware operation is selected by the address; the byte
                 // written is irrelevant.  Return to the resident HostROM bank 0.
@@ -1270,7 +1543,7 @@ function SerialProCard()
                 return 0x00;
         }
 
-        // RTC and 6551 writes deliberately remain unimplemented in this stage.
+        // 6551 writes deliberately remain unimplemented in this stage.
         return 0x00;
     };
 
