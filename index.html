@@ -5216,7 +5216,7 @@ Label1 TXA
         state = state || {};
         compareState = compareState || null;
 
-        var highlight = DBG_highlightChangedValuesEnabled() && !!compareState;
+        var highlight = !!compareState;
         var cpc = compareState ? (compareState.pc & 0xffff) : (state.pc & 0xffff);
         var ca  = compareState ? (compareState.a  & 0xff)   : (state.a  & 0xff);
         var cx  = compareState ? (compareState.x  & 0xff)   : (state.x  & 0xff);
@@ -5311,7 +5311,6 @@ Label1 TXA
        var p  = state.p  & 0xff;
        var sp = state.sp & 0xff;
  
-       var highlight = !!compareState;
        DBG_renderWatchView({pc:pc,a:a,x:x,y:y,p:p,sp:sp},compareState);
  
        var info = DBG_el("DBG_traceRegisterInfo");
