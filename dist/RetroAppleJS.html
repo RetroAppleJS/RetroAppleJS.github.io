@@ -39388,8 +39388,13 @@ Label1 TXA
             <div class="toolbox">
               <div class="appbox" title="Debugger display">
                 LISTING<br>
-                <label>Follow PC <input id="DBG_followPcInput" type="checkbox" checked onchange="DBG_stub('Follow PC')"></label>
-                <label>Auto-scroll trace <input id="DBG_autoScrollTraceInput" type="checkbox" checked onchange="DBG_stub('Auto-scroll trace')"></label>
+                <label style="white-space:nowrap"></label>
+                  Scroll Listing
+                  <input id="DBG_followPcInput" type="checkbox" checked>
+                  &nbsp;&nbsp;
+                  Scroll Trace
+                  <input id="DBG_autoScrollTraceInput" type="checkbox" checked>
+              </label>
                 <label>
                   Columns 
                   <input id="DBG_listingColumnsInput" type="text" value="{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}" title="Listing columns: address, code bytes, jump lines, label, instruction, operand, comment" spellcheck="false" onchange="DBG_disassembleRAM()">
