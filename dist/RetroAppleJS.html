@@ -26843,6 +26843,188 @@ function SerialProCard()
         return d8 & 0xFF;
     };
 
+    /*
+     * Peripheral controls: compact RTC / battery-RAM editor.
+     *
+     * Apple2IO calls deviceToolSlotHTML(ctx) when it builds the small
+     * "Peripheral controls" toolbox.  Keep this UI deliberately compact:
+     *
+     *   line 1  card / RTC heading
+     *   line 2  date + time + refresh/set/host controls
+     *   line 3  raw battery-RAM address/value + read/write controls
+     *
+     * The toolbox accesses this card instance directly rather than generating
+     * synthetic $C084/$C085 CPU accesses.  Consequently opening or refreshing
+     * the UI does not disturb the 6818 address latch that running firmware may
+     * currently be using.
+     */
+    function rtcUIPad2(value)
+    {
+        return String(value).padStart(2,"0");
+    }
+
+    function rtcUIHex(value)
+    {
+        return ("0"+(value & 0xFF).toString(16).toUpperCase()).slice(-2);
+    }
+
+    function rtcUIValues()
+    {
+        var date = rtcCurrentDate();
+
+        return {
+             "date": date.getFullYear()
+                    + "-" + rtcUIPad2(date.getMonth()+1)
+                    + "-" + rtcUIPad2(date.getDate())
+            ,"time": rtcUIPad2(date.getHours())
+                    + ":" + rtcUIPad2(date.getMinutes())
+                    + ":" + rtcUIPad2(date.getSeconds())
+        };
+    }
+
+    function rtcUIElement(toolboxID,suffix)
+    {
+        return document.getElementById(toolboxID+"_"+suffix);
+    }
+
+    function rtcUIParseHex(text)
+    {
+        text = String(text==null ? "" : text).trim().toUpperCase();
+        text = text.replace(/^\$/,"").replace(/^0X/,"");
+
+        if(!/^[0-9A-F]{1,2}$/.test(text)) return null;
+        return parseInt(text,16);
+    }
+
+    this.deviceToolRTCRefresh = function(toolboxID)
+    {
+        var values = rtcUIValues();
+        var dateEl = rtcUIElement(toolboxID,"rtc_date");
+        var timeEl = rtcUIElement(toolboxID,"rtc_time");
+
+        if(dateEl) dateEl.value = values.date;
+        if(timeEl) timeEl.value = values.time;
+        return true;
+    };
+
+    this.deviceToolRTCSet = function(toolboxID)
+    {
+        var dateEl = rtcUIElement(toolboxID,"rtc_date");
+        var timeEl = rtcUIElement(toolboxID,"rtc_time");
+        if(!dateEl || !timeEl) return false;
+
+        var dm = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateEl.value);
+        var tm = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(timeEl.value);
+        if(!dm || !tm) return false;
+
+        var year   = Number(dm[1]);
+        var month  = Number(dm[2]);
+        var day    = Number(dm[3]);
+        var hour   = Number(tm[1]);
+        var minute = Number(tm[2]);
+        var second = tm[3]===undefined ? 0 : Number(tm[3]);
+
+        var date = new Date(year,month-1,day,hour,minute,second,0);
+
+        // JavaScript Date silently normalises impossible calendar values.
+        // Reject those instead of silently changing what the user entered.
+        if(
+            date.getFullYear()!=year ||
+            date.getMonth()!=month-1 ||
+            date.getDate()!=day ||
+            date.getHours()!=hour ||
+            date.getMinutes()!=minute ||
+            date.getSeconds()!=second
+        )
+            return false;
+
+        rtc.weekdayOffset = 0;
+        rtcRebase(date);
+        serialpro.deviceToolRTCRefresh(toolboxID);
+        return true;
+    };
+
+    this.deviceToolRTCHost = function(toolboxID)
+    {
+        rtc.weekdayOffset = 0;
+        rtcRebase(new Date());
+        serialpro.deviceToolRTCRefresh(toolboxID);
+        return true;
+    };
+
+    this.deviceToolRAMRead = function(toolboxID)
+    {
+        var addrEl = rtcUIElement(toolboxID,"ram_addr");
+        var dataEl = rtcUIElement(toolboxID,"ram_data");
+        if(!addrEl || !dataEl) return false;
+
+        var addr = rtcUIParseHex(addrEl.value);
+        if(addr===null || addr<0x0E || addr>0x3F) return false;
+
+        addrEl.value = rtcUIHex(addr);
+        dataEl.value = rtcUIHex(rtc.ram[addr]);
+        return true;
+    };
+
+    this.deviceToolRAMWrite = function(toolboxID)
+    {
+        var addrEl = rtcUIElement(toolboxID,"ram_addr");
+        var dataEl = rtcUIElement(toolboxID,"ram_data");
+        if(!addrEl || !dataEl) return false;
+
+        var addr = rtcUIParseHex(addrEl.value);
+        var data = rtcUIParseHex(dataEl.value);
+        if(addr===null || addr<0x0E || addr>0x3F || data===null) return false;
+
+        rtc.ram[addr] = data & 0xFF;
+        addrEl.value = rtcUIHex(addr);
+        dataEl.value = rtcUIHex(data);
+        return true;
+    };
+
+    this.deviceToolSlotHTML = function(ctx)
+    {
+        ctx = ctx || {};
+
+        var toolboxID = ctx.toolboxID || ("device_tool_"+ctx.slotID);
+        var slotID = ctx.slotID==null ? "?" : String(ctx.slotID);
+        var slotN = Number(ctx.slotN);
+        var values = rtcUIValues();
+
+        // The raw editor intentionally starts at $2D: the first currently
+        // unallocated Serial Pro battery-RAM byte in the recovered v2.0 map.
+        var ramAddr = 0x2D;
+        var call = "apple2plus.hwObj().io.SLOT2obj("+slotN+")";
+
+        return ""
+            + "<div class=toolbox id=\""+toolboxID+"\" hidden>"
+            + " <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px;line-height:20px;font-size:11px;white-space:nowrap;\">"
+            + "  <b>#"+slotID+" SPC</b>&nbsp; RTC / BATTERY RAM<br>"
+            + "  <input id=\""+toolboxID+"_rtc_date\" type=date value=\""+values.date+"\""
+            + "         style=\"width:108px;height:17px;font-size:11px;padding:0px\">"
+            + "  <input id=\""+toolboxID+"_rtc_time\" type=time step=1 value=\""+values.time+"\""
+            + "         style=\"width:82px;height:17px;font-size:11px;padding:0px\">"
+            + "  <button class=\"appbut skinny\" type=button title=\"Read current RTC\""
+            + "          onclick=\""+call+".deviceToolRTCRefresh('"+toolboxID+"')\">&#8635;</button>"
+            + "  <button class=\"appbut skinny\" type=button title=\"Set RTC from fields\""
+            + "          onclick=\""+call+".deviceToolRTCSet('"+toolboxID+"')\">SET</button>"
+            + "  <button class=\"appbut skinny\" type=button title=\"Set RTC from browser host time\""
+            + "          onclick=\""+call+".deviceToolRTCHost('"+toolboxID+"')\">HOST</button><br>"
+            + "  RAM $<input id=\""+toolboxID+"_ram_addr\" type=text value=\""+rtcUIHex(ramAddr)+"\" maxlength=2"
+            + "              title=\"Battery RAM address $0E-$3F\""
+            + "              style=\"width:24px;height:16px;font:11px monospace;padding:0px 2px\">"
+            + " = $<input id=\""+toolboxID+"_ram_data\" type=text value=\""+rtcUIHex(rtc.ram[ramAddr])+"\" maxlength=2"
+            + "             title=\"Battery RAM byte\""
+            + "             style=\"width:24px;height:16px;font:11px monospace;padding:0px 2px\">"
+            + "  <button class=\"appbut skinny\" type=button title=\"Read battery RAM\""
+            + "          onclick=\""+call+".deviceToolRAMRead('"+toolboxID+"')\">R</button>"
+            + "  <button class=\"appbut skinny\" type=button title=\"Write battery RAM\""
+            + "          onclick=\""+call+".deviceToolRAMWrite('"+toolboxID+"')\">W</button>"
+            + "  <span title=\"Raw editor: $0E-$3F; firmware-owned bytes can alter Serial Pro configuration\">$0E-$3F</span>"
+            + " </div>"
+            + "</div>";
+    };
+
     function resetROMState()
     {
         state.romSelector = 0x00;
