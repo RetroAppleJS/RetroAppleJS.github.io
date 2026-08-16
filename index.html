@@ -570,12 +570,12 @@
 
             function onCaptureAddr(el)
             {
-              var template = {16:"\\$([0-9A-F]{1,4})",
-                              10:"([0-9]{1,5})"};
-              var base = el.value.charAt(1)=="$"?16:10;
-              var bValid = el.value.match(template[base])==null?false:el.value;
-
-              document.getElementById('MemCapture').disabled = !bValid
+              var s = el.value.toUpperCase();
+              var base = s.charAt(0)=="$" ? 16 : 10;
+              if(base==16) s = s.substring(1);
+              var n = oCOM.base_convert(s,[oCOM.getsymbols(base)],[oCOM.getsymbols(10)]);
+              var bValid = n!==null && Number(n)<=0xFFFF;
+              document.getElementById('MemCapture').disabled = !bValid;
               return bValid;
             }
 
