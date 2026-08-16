@@ -34354,7 +34354,8 @@ function DASM()
                 min-width: 0;
               }
 
-              .ASM_listingPresetList {
+              .ASM_listingPresetList,
+              .DBG_listingPresetList {
                 display: flex;
                 flex-flow: row wrap;
                 align-items: flex-start;
@@ -34366,7 +34367,8 @@ function DASM()
                 max-width: 100%;
               }
 
-              .ASM_listingPreset {
+              .ASM_listingPreset,
+              .DBG_listingPreset {
                 -webkit-appearance: none;
                 appearance: none;
                 display: inline-flex;
@@ -34385,12 +34387,15 @@ function DASM()
               }
 
               .ASM_listingPreset:hover,
-              .ASM_listingPreset:focus {
+              .ASM_listingPreset:focus,
+              .DBG_listingPreset:hover,
+              .DBG_listingPreset:focus {
                 border-color: #0078d4;
                 outline: none;
               }
 
-              .ASM_listingPreset i {
+              .ASM_listingPreset i,
+              .DBG_listingPreset i {
                 width: 14px;
                 text-align: center;
               }
@@ -34671,7 +34676,7 @@ function DASM()
                   <div class=appbox title="Assembler settings" style="min-height:63px;height:auto;padding:0px 6px 0px 6px;color:black;text-align: left;">
                     LISTING<br>
                     <label>
-                      Columns <input id="ASM_settingsListingColumnsInput" class=ASM_listingColumnsInput type="text" value="{adr:0,code:6,lin:15,num:{col:23,dig:6},lbl:30,ins:40,opr:45,com:61}" title="Listing columns: address, code bytes, jump lines, num:{col,dig}, label, instruction, operand, compatible assemblers for pragmas, comment" spellcheck="false" style="font-family:monospace;font-size:11px">
+                      Columns <input id="ASM_settingsListingColumnsInput" type="text" value="{adr:0,code:6,lin:15,num:{col:23,dig:6},lbl:30,ins:40,opr:45,com:61}" title="Listing columns: address, code bytes, jump lines, num:{col,dig}, label, instruction, operand, compatible assemblers for pragmas, comment" spellcheck="false" style="font-family:monospace;font-size:11px">
                     </label>
                     <div class="ASM_listingPresetList" aria-label="Listing column presets">
                       <button type="button" class="ASM_listingPreset" data-listing-preset="default" title="Use default listing columns and assemble">
@@ -37150,6 +37155,11 @@ Label1 TXA
     var DBG_listingCurrentPC = null;
     var DBG_listingScrollBehavior = "auto";
     var DBG_defaultListingColumns = {adr:0,code:6,lin:15,num:23,lbl:30,ins:40,opr:45,com:61};
+    var DBG_listingColumnPresets = {
+      "default":"{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}",
+      "wide":"{adr:0,code:6,lin:17,lbl:24,ins:34,opr:40,com:60}",
+      "compact":"{adr:0,code:6,lbl:15,ins:24,opr:29,com:45}"
+    };
     var DBG_darkMode = false;
     var DBG_symbolTables = [];
     var DBG_symbolTablesById = {};
@@ -37322,6 +37332,16 @@ Label1 TXA
     function DBG_listingColumnsValue() {
       var input = DBG_el("DBG_listingColumnsInput");
       return input ? input.value : "{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}";
+    }
+
+    function DBG_applyListingColumnPreset(name) {
+      var input = DBG_el("DBG_listingColumnsInput");
+      var spec = DBG_listingColumnPresets[name];
+      if (!input || !spec) return false;
+
+      input.value = spec;
+      DBG_disassembleRAM();
+      return true;
     }
 
     function DBG_cropListingField(text, width) {
@@ -39375,8 +39395,22 @@ Label1 TXA
                 <label>Highlight changed values <input id="DBG_highlightChangedValuesInput" type="checkbox" checked onchange="DBG_updateRegisterDisplays()"></label>
                 <label>
                   Columns 
-                  <input id="DBG_listingColumnsInput" class="DBG_listingColumnsInput" type="text" value="{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}" title="Listing columns: address, code bytes, jump lines, label, instruction, operand, comment" spellcheck="false" onchange="DBG_disassembleRAM()">
+                  <input id="DBG_listingColumnsInput" type="text" value="{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}" title="Listing columns: address, code bytes, jump lines, label, instruction, operand, comment" spellcheck="false" onchange="DBG_disassembleRAM()">
                 </label>
+                <div class="DBG_listingPresetList" aria-label="Listing column presets">
+                  <button type="button" class="DBG_listingPreset" onclick="DBG_applyListingColumnPreset('default')" title="Use default debugger listing columns">
+                    <span>default</span>
+                    <i class="fa fa-table"></i>
+                  </button>
+                  <button type="button" class="DBG_listingPreset" onclick="DBG_applyListingColumnPreset('wide')" title="Use wider debugger listing columns">
+                    <span>wide</span>
+                    <i class="fa fa-table"></i>
+                  </button>
+                  <button type="button" class="DBG_listingPreset" onclick="DBG_applyListingColumnPreset('compact')" title="Use compact debugger listing columns">
+                    <span>compact</span>
+                    <i class="fa fa-table"></i>
+                  </button>
+                </div>
               </div>
             </div>
 
