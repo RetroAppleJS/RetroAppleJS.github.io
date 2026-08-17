@@ -28326,10 +28326,13 @@ function SerialProCard()
         ,"refreshEvent":""
     };
 
-    function rtcUIPad2(value)
+    var serialUI =
     {
-        return String(value).padStart(2,"0");
-    }
+         "controlID":""
+        ,"refreshEvent":""
+    };
+
+    function rtcUIPad2(value) { return String(value).padStart(2,"0"); }
 
     function rtcUIValues()
     {
@@ -28523,6 +28526,207 @@ function SerialProCard()
         var parsed = rtcUIParse(rtcUI.controlID,true);
         rtcUIUpdateSetButton(rtcUI.controlID,parsed.valid);
         return true;
+    };
+
+    function serialUIElement(controlID,suffix)
+    {
+        return document.getElementById(controlID+"_"+suffix);
+    }
+
+    function serialUISetSelect(controlID,suffix,value)
+    {
+        var el = serialUIElement(controlID,suffix);
+        if(el && document.activeElement!==el)
+            el.value = String(value);
+    }
+
+    function serialUISetChecked(controlID,suffix,value)
+    {
+        var el = serialUIElement(controlID,suffix);
+        if(el && document.activeElement!==el)
+            el.checked = !!value;
+    }
+
+    function serialUISetSignal(controlID,suffix,value,known)
+    {
+        var el = serialUIElement(controlID,suffix);
+        if(!el) return;
+
+        el.textContent = "●";
+        el.style.color = !known ? "#999999" : (value ? "#008000" : "#A0A0A0");
+    }
+
+    function serialUIPhysicalTitle()
+    {
+        if(!serialPhysical.connected)
+            return "Connect a physical USB serial adapter through Web Serial";
+
+        var label = serialPhysical.openConfig ? serialPhysical.openConfig.label : "serial";
+        var title = "Physical USB serial connected @ "+label;
+
+        if(serialPhysical.configStale)
+            title += "; ACIA format changed — disconnect and reconnect to apply it";
+
+        if(serialPhysical.port && typeof(serialPhysical.port.getInfo)=="function")
+        {
+            var info = serialPhysical.port.getInfo() || {};
+            if(Number.isFinite(info.usbVendorId))
+                title += " VID $"+Number(info.usbVendorId).toString(16).toUpperCase().padStart(4,"0");
+            if(Number.isFinite(info.usbProductId))
+                title += " PID $"+Number(info.usbProductId).toString(16).toUpperCase().padStart(4,"0");
+        }
+
+        return title;
+    }
+
+    function serialUIRefresh(controlID)
+    {
+        if(!controlID) return false;
+
+        serialUISetSelect(controlID,"serial_baud",aciaBaudRate());
+        serialUISetSelect(controlID,"serial_data",aciaWordLength());
+        serialUISetSelect(controlID,"serial_parity",aciaParity());
+        serialUISetSelect(controlID,"serial_stop",aciaStopBits());
+        serialUISetChecked(controlID,"serial_rxclock",(acia.control & 0x10)!=0);
+        serialUISetChecked(controlID,"physical_dtr",aciaDTRAsserted());
+        serialUISetChecked(controlID,"physical_rts",aciaRTSAsserted());
+
+        var button = serialUIElement(controlID,"physical_toggle");
+        if(button)
+        {
+            button.disabled = typeof(navigator)=="undefined" || !navigator.serial;
+            button.textContent = serialPhysical.connected ? "DISCONNECT" : "CONNECT";
+            button.title = serialUIPhysicalTitle();
+            button.style.color = serialPhysical.connected
+                ? (serialPhysical.configStale ? "#C07000" : "#008000")
+                : "";
+        }
+
+        var signals = serialPhysical.signals;
+        var known = serialPhysical.connected && !!signals;
+        serialUISetSignal(controlID,"physical_cts",known && signals.cts,known);
+        serialUISetSignal(controlID,"physical_dcd",known && signals.dcd,known);
+        serialUISetSignal(controlID,"physical_dsr",known && signals.dsr,known);
+        serialUISetSignal(controlID,"physical_ri", known && signals.ri, known);
+
+        var physicalLabel = serialUIElement(controlID,"physical_status");
+        if(physicalLabel)
+        {
+            physicalLabel.textContent = serialPhysical.connected
+                ? (serialPhysical.configStale ? "STALE" : "ONLINE")
+                : "OFFLINE";
+            physicalLabel.style.color = serialPhysical.connected
+                ? (serialPhysical.configStale ? "#C07000" : "#008000")
+                : "#777777";
+            physicalLabel.title = serialUIPhysicalTitle();
+        }
+
+        return true;
+    }
+
+    this.deviceToolSerialSetting = function(controlID,setting,value)
+    {
+        controlID = String(controlID || "");
+        setting = String(setting || "");
+
+        if(setting=="baud")
+        {
+            var baud = Number(value);
+            var index = -1;
+            for(var i=1;i<ACIA_BAUD_TABLE.length;i++)
+                if(ACIA_BAUD_TABLE[i]===baud) { index=i; break; }
+
+            if(index<0) return false;
+            aciaWriteControl((acia.control & 0xF0) | index);
+        }
+        else if(setting=="data")
+        {
+            var bits = Number(value);
+            if(bits<5 || bits>8) return false;
+            aciaWriteControl((acia.control & 0x9F) | (((8-bits) & 0x03) << 5));
+        }
+        else if(setting=="parity")
+        {
+            var parityBits = {
+                 "none":0x00
+                ,"odd":0x20
+                ,"even":0x60
+                ,"mark":0xA0
+                ,"space":0xE0
+            }[String(value)];
+
+            if(parityBits===undefined) return false;
+            aciaWriteCommand((acia.command & 0x1F) | parityBits);
+        }
+        else if(setting=="stop")
+        {
+            var stop = Number(value);
+            if(stop!=1 && stop!=1.5 && stop!=2) return false;
+
+            // The 6551 has one SBN bit. With SBN=1 the effective result is
+            // 1, 1.5 or 2 stop bits depending on word length/parity.
+            aciaWriteControl(stop==1 ? (acia.control & 0x7F) : (acia.control | 0x80));
+        }
+        else return false;
+
+        serialUIRefresh(controlID);
+        return true;
+    };
+
+    this.deviceToolSerialFlag = function(controlID,setting,enabled)
+    {
+        enabled = !!enabled;
+
+        if(setting=="rxclock")
+        {
+            aciaWriteControl(enabled
+                ? (acia.control | 0x10)
+                : (acia.control & 0xEF));
+        }
+        else if(setting=="dtr")
+        {
+            aciaWriteCommand(enabled
+                ? (acia.command | 0x01)
+                : (acia.command & 0xFE));
+        }
+        else if(setting=="rts")
+        {
+            /*
+             * Manual RTS control chooses the non-IRQ transmitter mode TIC=10
+             * when asserted and TIC=00 when released. Clear echo mode because
+             * echo forces RTS asserted regardless of TIC.
+             */
+            var command = acia.command & ~0x1C;
+            if(enabled) command |= 0x08;
+            aciaWriteCommand(command);
+        }
+        else return false;
+
+        serialUIRefresh(controlID);
+        return true;
+    };
+
+    this.deviceToolPhysicalToggle = async function(controlID)
+    {
+        try
+        {
+            if(serialPhysical.connected)
+                await serialPhysicalDisconnect(false);
+            else
+                await serialPhysicalConnect();
+        }
+        finally
+        {
+            serialUIRefresh(controlID);
+        }
+
+        return serialPhysical.connected;
+    };
+
+    this.deviceToolSerialMonitoring = function()
+    {
+        if(!serialUI.controlID) return false;
+        return serialUIRefresh(serialUI.controlID);
     };
 
     /*
@@ -29469,6 +29673,8 @@ function SerialProCard()
 
         rtcUI.controlID = controlID;
         rtcUI.refreshEvent = "SPC_RTC_monitoring_"+slotID;
+        serialUI.controlID = controlID;
+        serialUI.refreshEvent = "SPC_SERIAL_monitoring_"+slotID;
 
         // The dashboard refresh sequencer is already paced by
         // EMU_DashboardRefresh_s.  Keep the event registered and let the card's
@@ -29479,12 +29685,55 @@ function SerialProCard()
             true
         );
 
+        oCOM.addRefreshEvent(
+            function(){ serialpro.deviceToolSerialMonitoring(); },
+            serialUI.refreshEvent,
+            true
+        );
+
         var syncClass = rtcUI.syncRequested ? "fa-stop-circle" : "fa-sync-alt";
  
+        var baudOptions = "";
+        for(var b=1;b<ACIA_BAUD_TABLE.length;b++)
+        {
+            var rate = ACIA_BAUD_TABLE[b];
+            baudOptions += "<option value=\""+rate+"\""
+                +(aciaBaudRate()===rate ? " selected" : "")+">"+rate+"</option>";
+        }
+
+        function option(value,label,current)
+        {
+            return "<option value=\""+value+"\""
+                +(String(value)===String(current) ? " selected" : "")+">"+label+"</option>";
+        }
+
+        var dataOptions = ""
+            + option(8,"8 BIT",aciaWordLength())
+            + option(7,"7 BIT",aciaWordLength())
+            + option(6,"6 BIT",aciaWordLength())
+            + option(5,"5 BIT",aciaWordLength());
+
+        var parityOptions = ""
+            + option("none","NONE",aciaParity())
+            + option("odd","ODD",aciaParity())
+            + option("even","EVEN",aciaParity())
+            + option("mark","MARK",aciaParity())
+            + option("space","SPACE",aciaParity());
+
+        var stopOptions = ""
+            + option(1,"1 STOP",aciaStopBits())
+            + option(1.5,"1.5 STOP",aciaStopBits())
+            + option(2,"2 STOP",aciaStopBits());
+
+        var rxClockChecked = (acia.control & 0x10)!=0 ? " checked" : "";
+        var dtrChecked = aciaDTRAsserted() ? " checked" : "";
+        var rtsChecked = aciaRTSAsserted() ? " checked" : "";
 
         return ""
             + "<div class=toolbox id=\""+toolboxID+"\" hidden>"
-            + " <div class=appbox style=\"text-align:left;height:31px;padding:0px 6px;display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap;\">"
+            + " <div class=appbox style=\"box-sizing:border-box;text-align:left;height:76px;padding:3px 6px;display:flex;flex-direction:column;gap:2px;font-size:11px;white-space:nowrap;\">"
+            + "  <div style=\"height:21px;display:flex;align-items:center;gap:4px;\">"
+            + "   <b style=\"display:inline-block;width:28px;\">RTC</b>"
             + "  <input id=\""+controlID+"_rtc_date\" type=text value=\""+values.date+"\" maxlength=10"
             + "         title=\"Date YYYY-MM-DD; edit and press SET\""
             + "         oninput=\""+call+".deviceToolRTCInput('"+controlID+"')\""
@@ -29502,8 +29751,50 @@ function SerialProCard()
             + "          onclick=\""+call+".deviceToolRTCSet('"+controlID+"')\">SET</button>"
             + "  <button class=\"appbut skinny\" type=button title=\"Set RTC from browser host time\""
             + "          onclick=\""+call+".deviceToolRTCHost('"+controlID+"')\">HOST</button>"
-            + "  <button class=\"appbut skinny\" type=button title=\"Open serial terminal\""
-            + "          onclick=\""+call+".serialTerminalToggle()\"><i class=\"fa fa-terminal\"></i></button>"
+            + "  </div>"
+
+            + "  <div style=\"height:21px;display:flex;align-items:center;gap:4px;\">"
+            + "   <b style=\"display:inline-block;width:28px;\">SER</b>"
+            + "   <select id=\""+controlID+"_serial_baud\" title=\"6551 baud rate; physical Web Serial uses this rate on next connection\""
+            + "           onchange=\""+call+".deviceToolSerialSetting('"+controlID+"','baud',this.value)\""
+            + "           style=\"height:19px;font:11px monospace;padding:0px 1px;\">"+baudOptions+"</select>"
+            + "   <select id=\""+controlID+"_serial_data\" title=\"6551 data word length\""
+            + "           onchange=\""+call+".deviceToolSerialSetting('"+controlID+"','data',this.value)\""
+            + "           style=\"height:19px;font:11px monospace;padding:0px 1px;\">"+dataOptions+"</select>"
+            + "   <select id=\""+controlID+"_serial_parity\" title=\"6551 parity mode\""
+            + "           onchange=\""+call+".deviceToolSerialSetting('"+controlID+"','parity',this.value)\""
+            + "           style=\"height:19px;font:11px monospace;padding:0px 1px;\">"+parityOptions+"</select>"
+            + "   <select id=\""+controlID+"_serial_stop\" title=\"6551 effective stop-bit selection; SBN=1 depends on word length/parity\""
+            + "           onchange=\""+call+".deviceToolSerialSetting('"+controlID+"','stop',this.value)\""
+            + "           style=\"height:19px;font:11px monospace;padding:0px 1px;\">"+stopOptions+"</select>"
+            + "   <label title=\"Use transmit baud as the 6551 receiver clock; required by physical Web Serial\" style=\"display:flex;align-items:center;gap:2px;\">"
+            + "    <input id=\""+controlID+"_serial_rxclock\" type=checkbox"+rxClockChecked
+            + "           onchange=\""+call+".deviceToolSerialFlag('"+controlID+"','rxclock',this.checked)\">RX=TX"
+            + "   </label>"
+            + "  </div>"
+
+            + "  <div style=\"height:21px;display:flex;align-items:center;gap:4px;\">"
+            + "   <b style=\"display:inline-block;width:28px;\">USB</b>"
+            + "   <button class=\"appbut skinny\" id=\""+controlID+"_physical_toggle\" type=button"
+            + "           title=\"Connect a physical USB serial adapter through Web Serial\""
+            + "           onclick=\""+call+".deviceToolPhysicalToggle('"+controlID+"')\">CONNECT</button>"
+            + "   <span id=\""+controlID+"_physical_status\" style=\"display:inline-block;width:41px;font-size:10px;color:#777;\">OFFLINE</span>"
+            + "   <label title=\"6551 DTR output; synchronized live to Web Serial DTR when connected\" style=\"display:flex;align-items:center;gap:1px;\">"
+            + "    <input id=\""+controlID+"_physical_dtr\" type=checkbox"+dtrChecked
+            + "           onchange=\""+call+".deviceToolSerialFlag('"+controlID+"','dtr',this.checked)\">DTR"
+            + "   </label>"
+            + "   <label title=\"Manual 6551 RTS output; selects non-IRQ transmit mode and synchronizes live to Web Serial RTS\" style=\"display:flex;align-items:center;gap:1px;\">"
+            + "    <input id=\""+controlID+"_physical_rts\" type=checkbox"+rtsChecked
+            + "           onchange=\""+call+".deviceToolSerialFlag('"+controlID+"','rts',this.checked)\">RTS"
+            + "   </label>"
+            + "   <span title=\"Physical Clear To Send (diagnostic only)\">CTS<span id=\""+controlID+"_physical_cts\" style=\"color:#999\">●</span></span>"
+            + "   <span title=\"Physical Data Carrier Detect (diagnostic only)\">DCD<span id=\""+controlID+"_physical_dcd\" style=\"color:#999\">●</span></span>"
+            + "   <span title=\"Physical Data Set Ready (diagnostic only)\">DSR<span id=\""+controlID+"_physical_dsr\" style=\"color:#999\">●</span></span>"
+            + "   <span title=\"Physical Ring Indicator (diagnostic only)\">RI<span id=\""+controlID+"_physical_ri\" style=\"color:#999\">●</span></span>"
+            + "   <span style=\"flex:1 1 auto\"></span>"
+            + "   <button class=\"appbut skinny\" type=button title=\"Open serial terminal\""
+            + "           onclick=\""+call+".serialTerminalToggle()\"><i class=\"fa fa-terminal\"></i></button>"
+            + " </div>"
             + " </div>"
             + "</div>";
     };
