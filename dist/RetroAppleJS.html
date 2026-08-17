@@ -5884,6 +5884,8 @@ function TERMINAL(props)
 
   function handleKeyUp(event) 
   {
+    // Keep terminal editing keys inside the terminal itself.
+    event.stopPropagation();
     var key = event.key || "";
     var code = event.keyCode;
 
@@ -5898,6 +5900,7 @@ function TERMINAL(props)
     var isUp   = key === "ArrowUp"   || code === 38;
     var isDown = key === "ArrowDown" || code === 40;
     if (!isUp && !isDown) return;
+    event.preventDefault();
 
     if (isUp && self._o.historyCursor > 0) self._o.historyCursor -= 1;
     if (isDown && self._o.historyCursor < self._o.history.length - 1) self._o.historyCursor += 1;
@@ -5908,6 +5911,8 @@ function TERMINAL(props)
 
   function handleKeyDown(event) 
   {
+    // Stop bubbling only once the terminal's own handler is actually running.
+    event.stopPropagation();
     var key = event.key || "";
     var code = event.keyCode;
 
@@ -5960,6 +5965,7 @@ function TERMINAL(props)
 
     var isEnter = key === "Enter" || code === 13;
     if (!isEnter) return;
+    event.preventDefault();
 
     var rawLine = self._o.DOM.input.value;
     var commandLine = preserveWhitespace ? rawLine : rawLine.trim();
@@ -6615,16 +6621,13 @@ function TERMINAL(props)
     false
   );
 
-  function isolateTerminalKeyboard(event)
-  {
-    event.stopPropagation();
-  }
-
-  this._o.DOM.input.addEventListener("keydown", isolateTerminalKeyboard, true);
-  this._o.DOM.input.addEventListener("keyup", isolateTerminalKeyboard, true);
-  this._o.DOM.input.addEventListener("keypress", isolateTerminalKeyboard, true);
+  // Do not stop keydown/keyup during the capture phase.  A capture listener
+  // can prevent the terminal's normal target listener from running in some
+  // browser event implementations.  The handlers above isolate the event
+  // after they have received it instead.
   this._o.DOM.input.addEventListener("keyup", handleKeyUp, false);
   this._o.DOM.input.addEventListener("keydown", handleKeyDown, false);
+  this._o.DOM.input.addEventListener("keypress", function(event){ event.stopPropagation(); }, false);
 
   // ---- initial output ------------------------------------------------------
 
