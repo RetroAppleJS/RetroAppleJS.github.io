@@ -2136,6 +2136,15 @@ table { border-collapse: collapse; position: relative;}
     background-repeat:repeat;
   }
 
+  .dotmatrix_bck2
+  {
+    background-color:#f4f4f4;
+    background-image:url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA48AAAA0AgMAAABX4uW3AAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAASdJREFUeJztmUEOgjAQRRu7l+sQY+QUXoaQ2Et079I03gHOoxuXLIyVNgTKASYT/sxbdflfaDPtx5gJG1B5mAXb9xGTcZU8DM5Acq7XtUruGZVEQZyk7R1bDlKaYoTY4NhykHIqLgMCtuvlDi35yas4Ikse32lhsSWb32CSZISWjM7AS8Y4GDGSX+Q52WRJM0kC33hmyWpA3q5VnNfIkgsquWdUEoXNo5m7AyajLJdDz90C0/DaPJr9FZKuVkkMVBIFcZJWhGTw3HFoaDd/mj13HBpuo6gzmRp0zx2HhknSPrNkKpc9dxwaulQu5wMJLrn2rp47Dg1d6l2dBMn5SyKPkKJB99xxaGiLBh15u87lcmrQPXccGtKc/Mq58ajkvlFJFDpBDfoflKypIPcCpisAAAAASUVORK5CYII=");
+    background-size:530px 26px;
+    background-attachment:local;
+    background-repeat:repeat;
+  }
+
   .appdskLED 
   {
     /*background-image:url('../res/LED_ON.png');*/
@@ -2621,6 +2630,51 @@ table { border-collapse: collapse; position: relative;}
 .VanillaTerm .command.hidden .prompt { display: none; }
 .VanillaTerm .command.hidden .input { max-width: 1px; }
 .VanillaTerm .command .input { background-color: transparent; border: none; color: inherit; font: inherit; flex: 1; margin: 0; outline: none; padding: 0; }
+
+/*
+ * Serial Pro terminal presentation modes.
+ *
+ * Dark is the normal terminal view. Light deliberately reuses the shared
+ * COM_MAIN.css .dotmatrix_bck paper skin so printer/text-stream output can be
+ * read as continuous paper rather than as a CRT-like terminal.
+ */
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm {
+  background-color:#f4f4f4;
+  color:#111111;
+}
+
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm .container {
+  scrollbar-color:#9a9a9a transparent;
+}
+
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm output span {
+  color:#111111;
+}
+
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm output span.serial-rx {
+  color:#111111;
+}
+
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm output span.serial-tx,
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm .prompt,
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm a {
+  color:#6b4e16;
+}
+
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm output span.serial-meta {
+  color:#606060;
+}
+
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm .command .input {
+  color:#111111;
+}
+
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm .container ::selection {
+  background-color:#6b4e16;
+  color:#ffffff;
+}
+
+
 .VanillaTerm .command .spinner:before { display: inline-block; content: "\280B"; animation: VanillaTerm_spin 1s linear infinite; vertical-align: middle; margin-right: 10px; }
 @keyframes VanillaTerm_spin { 0% { content: "\280B" } 10% { content: "\2819" } 20% { content: "\2839" } 30% { content: "\2838" } 40% { content: "\283C" }
 50% { content: "\2834" } 60% { content: "\2826" } 70% { content: "\2827" } 80% { content: "\2807" } 90% { content: "\280F" } }
@@ -28035,6 +28089,7 @@ function SerialProCard()
         ,"transcript":[]
         ,"transcriptChars":0
         ,"lastRxCR":false
+        ,"theme":"dark"
     };
 
     function serialTerminalHexByte(d8)
@@ -28179,6 +28234,47 @@ function SerialProCard()
         return true;
     };
 
+    function serialTerminalApplyTheme()
+    {
+        var popup = document.getElementById("serialProTerminal_popup");
+        if(!popup) return false;
+
+        var terminal = popup._terminal;
+        var root = terminal && terminal._o && terminal._o.DOM
+            ? terminal._o.DOM.root
+            : document.getElementById("serialProTerminal_host");
+        if(!root) return false;
+
+        var light = serialTerminalState.theme==="light";
+        root.classList.toggle("serialpro_terminal_light",light);
+        root.classList.toggle("dotmatrix_bck2",light);
+
+        var icon = popup.querySelector("[data-serial-terminal-theme]");
+        if(icon)
+        {
+            icon.title = light
+                ? "Switch terminal to dark mode"
+                : "Switch terminal to light dot-matrix paper mode";
+            icon.setAttribute("aria-label",icon.title);
+        }
+
+        return light;
+    }
+
+    this.serialTerminalThemeToggle = function()
+    {
+        serialTerminalState.theme =
+            serialTerminalState.theme==="light" ? "dark" : "light";
+
+        serialTerminalApplyTheme();
+
+        var terminal = serialTerminalLive();
+        if(terminal && terminal._o && terminal._o.DOM && terminal._o.DOM.input)
+            terminal._o.DOM.input.focus();
+
+        return serialTerminalState.theme;
+    };
+
     this.serialTerminalHelp = function()
     {
         var terminal = serialTerminalLive();
@@ -28189,6 +28285,7 @@ function SerialProCard()
             +"Type a line and press Enter to send its 8-bit bytes followed by CR ($0D).<br>"
             +"A bare Enter sends CR. Arrow Up/Down recalls terminal history; Escape clears the input line.<br>"
             +"Incoming bytes from the Serial Pro appear in this window.<br><br>"
+            +"Use <i class=\"fa fa-adjust\"></i> to switch between dark terminal mode and light dot-matrix paper mode.<br>"
             +"<i>Current stage:</i> the terminal endpoint is ready; the 6551 bridge is not connected yet."
         );
         return true;
@@ -28230,6 +28327,11 @@ function SerialProCard()
             + "<div class=\"com_popup_title\" style=\"height:30px;padding:0px 6px;display:flex;align-items:center;gap:6px;\">"
             + "  <b>Serial Pro #"+slotID+" terminal</b>"
             + "  <span style=\"flex:1 1 auto\"></span>"
+            + "  <button class=\"appbut skinny\" type=button"
+            + "          title=\"Switch terminal to light dot-matrix paper mode\""
+            + "          onclick=\""+call+".serialTerminalThemeToggle()\">"
+            + "    <i class=\"fa fa-adjust\" data-serial-terminal-theme></i>"
+            + "  </button>"
             + "  <button class=\"appbut skinny\" type=button title=\"Terminal help\""
             + "          onclick=\""+call+".serialTerminalHelp()\">?</button>"
             + "  <button class=\"appbut skinny\" type=button title=\"Clear terminal display\""
@@ -28254,6 +28356,7 @@ function SerialProCard()
         });
 
         popup._terminal = terminal;
+        serialTerminalApplyTheme();
 
         terminal.onInput(function(command,parameters,commandLine,rawLine)
         {
