@@ -41,7 +41,36 @@ function Apple2Hw(vid,keys)
     var ram = new Uint8Array(RAM_SIZE);      // HARDWARE RAM SPACE //
     /////////////////////////////////////////////////////////////////
 
-    this.irq_signal = 0;        // can be used in the future (currently unused)
+    /*
+     * Shared Apple II IRQ line.
+     *
+     * IRQ-capable peripherals drive a common active-low line in real hardware.
+     * Keep named logical sources here so one device cannot accidentally clear
+     * another device's still-active request.  Cpu6502 already treats any
+     * non-zero irq_signal as asserted.
+     */
+    this.irq_signal = 0;
+    this.irq_sources = Object.create(null);
+
+    this.setIRQSource = function(source,active)
+    {
+        source = String(source || "unknown");
+
+        if(active)
+            this.irq_sources[source] = true;
+        else
+            delete this.irq_sources[source];
+
+        this.irq_signal = Object.keys(this.irq_sources).length ? 1 : 0;
+        return this.irq_signal;
+    };
+
+    this.clearIRQSources = function()
+    {
+        this.irq_sources = Object.create(null);
+        this.irq_signal = 0;
+    };
+
     this.nmi_signal = 0;
 
     this.mem_mon = {};
@@ -51,11 +80,13 @@ function Apple2Hw(vid,keys)
 
     this.reset = function()
     {
+        this.clearIRQSources();
         hw.io.reset();
     }
 
     this.restart = function()
     {
+        this.clearIRQSources();
         for (var i = 0; i < RAM_SIZE; i++)
             ram[i] = Math.floor(Math.random() * 256.0);
         this.mount();       // mount hardware callbacks
