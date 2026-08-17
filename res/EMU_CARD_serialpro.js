@@ -12,13 +12,15 @@
 //   - live clock initialized from the browser host's local date/time
 //   - Stage 2A minimal legacy-6551 ACIA register interface
 //   - byte-stream bridge between the 6551 and the Serial Pro oTERM endpoint
+//   - Stage 2C one-byte 6551 receiver holding register / RDRF behavior
+//   - Stage 2D command/control decoding, modem lines and IRQ generation
 //
 // Still intentionally deferred:
 //   - 6818 periodic/alarm/update IRQ/NMI generation
 //   - browser-persistent battery RAM across page reloads
-//   - 6551 serial controller behavior ($C088+$s0-$C08B+$s0)
-//   - 6551 baud/character timing, IRQ generation and receiver overrun timing
-//   - 6551 parity/framing validation, echo/break behavior and modem-line UI
+//   - 6551 baud/character timing and receiver overrun timing
+//   - parity/framing error injection/validation against an external endpoint
+//   - serial echo/break waveform timing and modem-line UI controls
 //
 // The physical EPROM layout recovered from the Serial Pro v2.0 27C64 is:
 //   $0000-$07FF  HostROM bank 0
@@ -1137,7 +1139,7 @@ function SerialProCard()
 
 
     /*
-     * Stage 2A: minimal legacy 6551 ACIA.
+     * Stage 2D: legacy 6551 ACIA.
      *
      * Serial Pro firmware polls the legacy 6551 TDRE bit before transmitting,
      * therefore model the classic 6551/W65C51S register semantics rather than
@@ -1153,10 +1155,18 @@ function SerialProCard()
      * an immediate byte sink/source, so TDRE is effectively always ready after
      * a write.  DSR, DCD and CTS are held in their asserted/ready states.
      *
-     * The terminal's toCard[] queue acts as the pre-timing receive stream for
-     * this stage.  A normal DATA read consumes one byte; a safe debugger read
-     * (ctx.bRO) only peeks and therefore cannot steal incoming serial data.
+     * Stage 2D interprets Command/Control, applies the selected data word length,
+     * exposes modem-control state and drives the shared Apple II IRQ line for
+     * enabled RX, TX and DCD/DSR-change conditions.  Actual character/bit timing
+     * remains deferred; configured baud/parity/stop-bit values are decoded now
+     * but transfers between the ACIA and oTERM remain immediate.
      */
+    const ACIA_IRQ_RX    = 0x01;
+    const ACIA_IRQ_TX    = 0x02;
+    const ACIA_IRQ_MODEM = 0x04;
+    const ACIA_BAUD_TABLE =
+        [null,50,75,109.92,134.58,150,300,600,1200,1800,2400,3600,4800,7200,9600,19200];
+
     var acia =
     {
          "command":0x00
@@ -1164,12 +1174,142 @@ function SerialProCard()
         ,"rxData":0x00
         ,"rxFull":false
         ,"rxErrors":0x00
+        ,"txData":0x00
         ,"txEmpty":true
         ,"irq":false
+        ,"irqReasons":0x00
         ,"dsrReady":true
         ,"dcdDetected":true
         ,"ctsClear":true
+        ,"dsrStatusReady":true
+        ,"dcdStatusDetected":true
+        ,"modemStatusLatched":false
     };
+
+    function aciaIRQSourceID()
+    {
+        var slot = serialpro.mount ? Number(serialpro.mount.slotN)-1 : "?";
+        return "SerialPro:"+slot;
+    }
+
+    function aciaDriveIRQ()
+    {
+        if(typeof(apple2plus)!="object" || !apple2plus ||
+           typeof(apple2plus.hwObj)!="function")
+            return false;
+
+        var hw = apple2plus.hwObj();
+        if(!hw) return false;
+
+        if(typeof(hw.setIRQSource)=="function")
+            hw.setIRQSource(aciaIRQSourceID(),acia.irq);
+        else
+            hw.irq_signal = acia.irq ? 1 : 0;       // compatibility fallback
+
+        return acia.irq;
+    }
+
+    function aciaAssertIRQ(reason)
+    {
+        acia.irqReasons |= reason & 0xFF;
+        acia.irq = true;
+        aciaDriveIRQ();
+    }
+
+    function aciaClearIRQ()
+    {
+        acia.irqReasons = 0x00;
+        acia.irq = false;
+        aciaDriveIRQ();
+    }
+
+    function aciaWordLength()
+    {
+        return 8 - ((acia.control >> 5) & 0x03);
+    }
+
+    function aciaDataMask()
+    {
+        return (0xFF >> (8-aciaWordLength())) & 0xFF;
+    }
+
+    function aciaParity()
+    {
+        if((acia.command & 0x20)==0) return "none";
+        return ["odd","even","mark","space"][(acia.command >> 6) & 0x03];
+    }
+
+    function aciaParityChecked()
+    {
+        if((acia.command & 0x20)==0) return false;
+        return ((acia.command >> 6) & 0x03) < 2;    // odd/even only
+    }
+
+    function aciaStopBits()
+    {
+        if((acia.control & 0x80)==0) return 1;
+
+        var bits = aciaWordLength();
+        var parity = aciaParity();
+        if(bits==5 && parity=="none") return 1.5;
+        if(bits==8 && parity!="none") return 1;
+        return 2;
+    }
+
+    function aciaBaudRate()
+    {
+        return ACIA_BAUD_TABLE[acia.control & 0x0F];
+    }
+
+    function aciaDTRAsserted()
+    {
+        return (acia.command & 0x01)!=0;             // DTRB low
+    }
+
+    function aciaReceiverIRQEnabled()
+    {
+        return aciaDTRAsserted() && (acia.command & 0x02)==0;
+    }
+
+    function aciaTransmitMode()
+    {
+        return (acia.command >> 2) & 0x03;
+    }
+
+    function aciaEchoMode()
+    {
+        return (acia.command & 0x10)!=0;
+    }
+
+    function aciaRTSAsserted()
+    {
+        if(aciaEchoMode()) return true;              // echo mode forces RTSB low
+        return aciaTransmitMode()!=0;                // TIC 00 is RTSB high
+    }
+
+    function aciaTransmitIRQEnabled()
+    {
+        return aciaDTRAsserted() && !aciaEchoMode() && aciaTransmitMode()==1;
+    }
+
+    function aciaBreakActive()
+    {
+        return !aciaEchoMode() && aciaTransmitMode()==3;
+    }
+
+    function aciaEvaluateEnabledInterrupts()
+    {
+        if(aciaReceiverIRQEnabled())
+        {
+            if(acia.rxFull)
+                aciaAssertIRQ(ACIA_IRQ_RX);
+            if(acia.modemStatusLatched)
+                aciaAssertIRQ(ACIA_IRQ_MODEM);
+        }
+
+        if(aciaTransmitIRQEnabled() && acia.txEmpty)
+            aciaAssertIRQ(ACIA_IRQ_TX);
+    }
 
     function aciaHardwareReset()
     {
@@ -1178,11 +1318,12 @@ function SerialProCard()
         acia.rxData = 0x00;
         acia.rxFull = false;
         acia.rxErrors = 0x00;
+        acia.txData = 0x00;
         acia.txEmpty = true;
-        acia.irq = false;
-        acia.dsrReady = true;
-        acia.dcdDetected = true;
-        acia.ctsClear = true;
+        acia.dsrStatusReady = acia.dsrReady;
+        acia.dcdStatusDetected = acia.dcdDetected;
+        acia.modemStatusLatched = false;
+        aciaClearIRQ();        
     }
 
     function aciaProgramReset()
@@ -1191,7 +1332,22 @@ function SerialProCard()
         // overrun.  Parity selection bits 7..5 and Control are unchanged.
         acia.command &= 0xE0;
         acia.rxErrors &= ~0x04;
-        acia.irq = false;
+        aciaClearIRQ();
+    }
+
+    function aciaWriteCommand(value)
+    {
+        acia.command = value & 0xFF;
+
+        // Leaving a blocked condition may allow a waiting transmitter byte to
+        // complete immediately in the no-timing Stage 2D model.
+        aciaTryTransmit();
+        aciaEvaluateEnabledInterrupts();
+    }
+
+    function aciaWriteControl(value)
+    {
+        acia.control = value & 0xFF;
     }
 
     /*
@@ -1211,7 +1367,10 @@ function SerialProCard()
             return false;
 
         acia.rxData = serialTerminalState.toCard.shift() & 0xFF;
+        acia.rxData &= aciaDataMask();              // unused high data bits read as zero
         acia.rxFull = true;
+        if(aciaReceiverIRQEnabled())
+            aciaAssertIRQ(ACIA_IRQ_RX);
         return true;
     }
 
@@ -1244,27 +1403,114 @@ function SerialProCard()
 
         if(acia.rxFull)           status |= 0x08;  // RDRF
         if(acia.txEmpty)          status |= 0x10;  // TDRE
-        if(!acia.dcdDetected)     status |= 0x20;  // DCD high/not detected
-        if(!acia.dsrReady)        status |= 0x40;  // DSR high/not ready
+        if(!acia.dcdStatusDetected) status |= 0x20;// DCD high/not detected
+        if(!acia.dsrStatusReady)    status |= 0x40;// DSR high/not ready
         if(acia.irq)              status |= 0x80;
 
-        // Reading Status clears the IRQ indication on the real part.  Stage 2A
-        // does not generate IRQs yet, but preserve the read-side semantics.
         if(!(ctx && ctx.bRO===true))
-            acia.irq = false;
+        {
+            var hadModemLatch = acia.modemStatusLatched;
+            aciaClearIRQ();                         // Status read clears IRQ bit
+
+            /*
+             * DCD/DSR status is latched on the first transition.  If either
+             * physical input changed again before Status was read, expose the
+             * new level now and immediately generate the next modem interrupt.
+             */
+            if(hadModemLatch)
+            {
+                acia.modemStatusLatched = false;
+
+                if(acia.dcdStatusDetected!=acia.dcdDetected ||
+                   acia.dsrStatusReady!=acia.dsrReady)
+                {
+                    acia.dcdStatusDetected = acia.dcdDetected;
+                    acia.dsrStatusReady = acia.dsrReady;
+                    acia.modemStatusLatched = true;
+
+                    if(aciaReceiverIRQEnabled())
+                        aciaAssertIRQ(ACIA_IRQ_MODEM);
+                }
+            }
+        }
 
         return status & 0xFF;
     }
 
-    function aciaWriteData(d8)
+    function aciaTryTransmit()
     {
-        acia.txEmpty = false;
+        if(acia.txEmpty || !acia.ctsClear)
+            return false;
 
-        // CTS is held asserted in Stage 2A, therefore delivery is immediate.
-        if(acia.ctsClear && typeof(serialpro.serialTerminalWriteByte)=="function")
-            serialpro.serialTerminalWriteByte(d8 & 0xFF);
+        /*
+         * Continuous BREAK is a line-level condition.  Stage 2D does not yet
+         * synthesize serial waveforms; consume the pending data-register byte
+         * without rendering it as ordinary remote data while BREAK is active.
+         */
+        if(!aciaBreakActive() &&
+           typeof(serialpro.serialTerminalWriteByte)=="function")
+            serialpro.serialTerminalWriteByte(acia.txData & aciaDataMask());
 
         acia.txEmpty = true;
+
+        if(aciaTransmitIRQEnabled())
+            aciaAssertIRQ(ACIA_IRQ_TX);
+
+        return true;
+    }
+
+    function aciaWriteData(d8)
+    {
+        acia.txData = d8 & 0xFF;
+        acia.txEmpty = false;
+        aciaTryTransmit();
+    }
+    function aciaLatchModemStatusChange()
+    {
+        if(acia.modemStatusLatched)
+            return;
+
+        acia.dcdStatusDetected = acia.dcdDetected;
+        acia.dsrStatusReady = acia.dsrReady;
+        acia.modemStatusLatched = true;
+
+        if(aciaReceiverIRQEnabled())
+            aciaAssertIRQ(ACIA_IRQ_MODEM);
+    }
+
+    function aciaDescribe()
+    {
+        var baud = aciaBaudRate();
+        var receiverInternal = (acia.control & 0x10)!=0;
+
+        return {
+             "command":acia.command & 0xFF
+            ,"control":acia.control & 0xFF
+            ,"status":aciaReadStatus({"bRO":true})
+            ,"wordLength":aciaWordLength()
+            ,"dataMask":aciaDataMask()
+            ,"parity":aciaParity()
+            ,"parityCheck":aciaParityChecked()
+            ,"stopBits":aciaStopBits()
+            ,"txBaud":baud
+            ,"txClock":baud==null ? "external/16" : "internal"
+            ,"rxBaud":receiverInternal ? baud : null
+            ,"rxClock":receiverInternal ? "transmit-rate" : "external/16"
+            ,"dtr":aciaDTRAsserted()
+            ,"rts":aciaRTSAsserted()
+            ,"cts":acia.ctsClear
+            ,"dcd":acia.dcdDetected
+            ,"dsr":acia.dsrReady
+            ,"echo":aciaEchoMode()
+            ,"break":aciaBreakActive()
+            ,"rxIRQEnabled":aciaReceiverIRQEnabled()
+            ,"txIRQEnabled":aciaTransmitIRQEnabled()
+            ,"irq":acia.irq
+            ,"irqReasons":acia.irqReasons & 0xFF
+            ,"rxFull":acia.rxFull
+            ,"txEmpty":acia.txEmpty
+        };
+
     }
 
 
@@ -1697,11 +1943,11 @@ function SerialProCard()
                 return 0x00;
 
             case 0x0A:      // $C08A+$s0: 6551 Command Register
-                acia.command = d8;
+                aciaWriteCommand(d8);
                 return 0x00;
 
             case 0x0B:      // $C08B+$s0: 6551 Control Register
-                acia.control = d8;
+                aciaWriteControl(d8);
                 return 0x00;
         }
         return 0x00;
@@ -2094,6 +2340,52 @@ function SerialProCard()
         return serialTerminalState.toCard.length + (acia.rxFull ? 1 : 0);
     };
 
+    /*
+     * Diagnostic/configuration API for the simulated modem side.
+     * Boolean line names use their logical meaning, hiding the 6551's active-low
+     * pin names: cts=true means CTSB low/clear-to-send, dcd=true means carrier
+     * detected, and dsr=true means data set ready.
+     */
+    this.serialTerminalACIAState = function()
+    {
+        return aciaDescribe();
+    };
+
+    this.serialTerminalSetModemLines = function(lines)
+    {
+        lines = lines || {};
+
+        var oldCTS = acia.ctsClear;
+        var modemChanged = false;
+
+        if(Object.prototype.hasOwnProperty.call(lines,"cts"))
+            acia.ctsClear = !!lines.cts;
+
+        if(Object.prototype.hasOwnProperty.call(lines,"dcd"))
+        {
+            var nextDCD = !!lines.dcd;
+            modemChanged = modemChanged || nextDCD!=acia.dcdDetected;
+            acia.dcdDetected = nextDCD;
+        }
+
+        if(Object.prototype.hasOwnProperty.call(lines,"dsr"))
+        {
+            var nextDSR = !!lines.dsr;
+            modemChanged = modemChanged || nextDSR!=acia.dsrReady;
+            acia.dsrReady = nextDSR;
+        }
+
+        if(modemChanged)
+            aciaLatchModemStatusChange();
+
+        // CTSB returning low allows a byte held in the transmitter register to
+        // move out immediately in the Stage 2D no-timing model.
+        if(!oldCTS && acia.ctsClear)
+            aciaTryTransmit();
+
+        return aciaDescribe();
+    };
+
     this.serialTerminalReadByte = function()
     {
         // Diagnostic helper: consume through the same receive-register path
@@ -2188,7 +2480,7 @@ function SerialProCard()
             +"A bare Enter sends CR. Arrow Up/Down recalls terminal history; Escape clears the input line.<br>"
             +"Incoming bytes from the Serial Pro appear in this window.<br><br>"
             +"Use <i class=\"fa fa-adjust\"></i> to switch between dark terminal mode and light dot-matrix paper mode.<br>"
-            +"<i>Current stage:</i> Stage 2C RX is active with a one-byte 6551 receive register; timing and interrupts are not modeled yet."
+            +"<i>Current stage:</i> Stage 2D ACIA format, modem-control and IRQ behavior is active; serial bit timing is not modeled yet."
         );
         return true;
     };
@@ -2275,7 +2567,7 @@ function SerialProCard()
         else
         {
             terminal.write(
-                "Serial terminal endpoint ready; 6551 RX/TX bridge connected (Stage 2C).\n",
+                "Serial terminal endpoint ready; 6551 ACIA Stage 2D connected.\n",
                 "meta"
             );
         }
