@@ -1808,6 +1808,267 @@ function SerialProCard()
         return true;
     };
 
+    /*
+     * Serial-terminal endpoint.
+     *
+     * This UI exists before the 6551 implementation so Stage 2 has a stable
+     * browser endpoint to attach to:
+     *
+     *   serialTerminalReadByte()   terminal -> future 6551 RX
+     *   serialTerminalWriteByte()  future 6551 TX -> terminal
+     *
+     * Enter queues the exact 8-bit input line followed by CR ($0D).
+     */
+    var serialTerminalState =
+    {
+         "toCard":[]
+        ,"transcript":[]
+        ,"transcriptChars":0
+        ,"lastRxCR":false
+    };
+
+    function serialTerminalHexByte(d8)
+    {
+        return ("0"+((d8 & 0xFF).toString(16).toUpperCase())).slice(-2);
+    }
+
+    function serialTerminalPopup()
+    {
+        var popup = document.getElementById("serialProTerminal_popup");
+        if(popup) return popup;
+
+        popup = document.createElement("div");
+        popup.id = "serialProTerminal_popup";
+        popup.hidden = true;
+        popup.className = "appbox com_popup_frame serialpro_terminal_popup";
+        popup.style.cssText =
+            "position:absolute;z-index:3;left:800px;top:32px;"
+            +"width:450px;height:450px;text-align:left;"
+            +"padding:0px;margin:0px";
+        document.body.appendChild(popup);
+        return popup;
+    }
+
+    function serialTerminalSlotN()
+    {
+        return serialpro.mount ? Number(serialpro.mount.slotN) : null;
+    }
+
+    function serialTerminalLive()
+    {
+        var popup = document.getElementById("serialProTerminal_popup");
+        var slotN = serialTerminalSlotN();
+
+        if(!popup || popup.hidden!==false || slotN===null) return null;
+        if(Number(popup.getAttribute("data-slotN"))!==slotN) return null;
+        return popup._terminal || null;
+    }
+
+    function serialTerminalRemember(kind,text)
+    {
+        text = String(text===undefined ? "" : text);
+        if(!text.length) return;
+
+        var rows = serialTerminalState.transcript;
+        var last = rows.length ? rows[rows.length-1] : null;
+
+        if(last && last.kind===kind && last.text.length<4096)
+            last.text += text;
+        else
+            rows.push({"kind":kind,"text":text});
+
+        serialTerminalState.transcriptChars += text.length;
+        while(serialTerminalState.transcriptChars>65536 && rows.length>1)
+        {
+            var dropped = rows.shift();
+            serialTerminalState.transcriptChars -= dropped.text.length;
+        }
+    }
+
+    function serialTerminalDisplayByte(d8)
+    {
+        d8 &= 0xFF;
+
+        if(d8===0x0D)
+        {
+            serialTerminalState.lastRxCR = true;
+            return "\n";
+        }
+
+        if(d8===0x0A)
+        {
+            if(serialTerminalState.lastRxCR)
+            {
+                serialTerminalState.lastRxCR = false;
+                return "";
+            }
+            return "\n";
+        }
+
+        serialTerminalState.lastRxCR = false;
+        if(d8===0x09) return "\t";
+        if(d8>=0x20 && d8<=0x7E) return String.fromCharCode(d8);
+
+        // Keep otherwise non-printing octets visible in the terminal.
+        return "[$"+serialTerminalHexByte(d8)+"]";
+    }
+
+    this.serialTerminalQueueLine = function(line)
+    {
+        line = String(line===undefined ? "" : line);
+
+        for(var i=0;i<line.length;i++)
+            serialTerminalState.toCard.push(line.charCodeAt(i) & 0xFF);
+
+        serialTerminalState.toCard.push(0x0D);
+        serialTerminalRemember("tx",">"+line+"\n");
+        return line.length + 1;
+    };
+
+    this.serialTerminalPending = function()
+    {
+        return serialTerminalState.toCard.length;
+    };
+
+    this.serialTerminalReadByte = function()
+    {
+        return serialTerminalState.toCard.length
+            ? (serialTerminalState.toCard.shift() & 0xFF)
+            : null;
+    };
+
+    this.serialTerminalWriteByte = function(d8)
+    {
+        var text = serialTerminalDisplayByte(d8);
+        if(!text.length) return d8 & 0xFF;
+
+        serialTerminalRemember("rx",text);
+
+        var terminal = serialTerminalLive();
+        if(terminal) terminal.write(text,"rx");
+
+        return d8 & 0xFF;
+    };
+
+    this.serialTerminalWriteText = function(text)
+    {
+        text = String(text===undefined ? "" : text);
+        for(var i=0;i<text.length;i++)
+            serialpro.serialTerminalWriteByte(text.charCodeAt(i) & 0xFF);
+        return text.length;
+    };
+
+    this.serialTerminalClear = function()
+    {
+        serialTerminalState.transcript = [];
+        serialTerminalState.transcriptChars = 0;
+        serialTerminalState.lastRxCR = false;
+
+        var terminal = serialTerminalLive();
+        if(terminal) terminal.clear();
+        return true;
+    };
+
+    this.serialTerminalHelp = function()
+    {
+        var terminal = serialTerminalLive();
+        if(!terminal) return false;
+
+        terminal.output(
+            "<b>Serial Pro terminal</b><br>"
+            +"Type a line and press Enter to send its 8-bit bytes followed by CR ($0D).<br>"
+            +"A bare Enter sends CR. Arrow Up/Down recalls terminal history; Escape clears the input line.<br>"
+            +"Incoming bytes from the Serial Pro appear in this window.<br><br>"
+            +"<i>Current stage:</i> the terminal endpoint is ready; the 6551 bridge is not connected yet."
+        );
+        return true;
+    };
+
+    this.serialTerminalToggle = function()
+    {
+        if(typeof(TERMINAL)!="function")
+        {
+            console.error("Serial Pro terminal requires COM_oTERM.js");
+            return false;
+        }
+
+        var slotN = serialTerminalSlotN();
+        if(slotN===null) return false;
+
+        var io = apple2plus.hwObj().io;
+        var slotID = io.slot2ID(slotN);
+        var popup = serialTerminalPopup();
+        var sameSlot = Number(popup.getAttribute("data-slotN"))===slotN;
+
+        if(popup.hidden===false && sameSlot)
+        {
+            oCOM.POPUP.off("serialProTerminal_popup");
+            return false;
+        }
+
+        // Reopening the same slot keeps the live oTERM instance and its DOM.
+        if(sameSlot && popup._terminal)
+        {
+            oCOM.POPUP.on("serialProTerminal_popup");
+            setTimeout(function(){ popup._terminal._o.DOM.input.focus(); },0);
+            return true;
+        }
+
+        var call = "apple2plus.hwObj().io.SLOT2obj("+slotN+")";
+        popup.setAttribute("data-slotN",String(slotN));
+        popup.innerHTML = ""
+            + "<div class=\"com_popup_title\" style=\"height:30px;padding:0px 6px;display:flex;align-items:center;gap:6px;\">"
+            + "  <b>Serial Pro #"+slotID+" terminal</b>"
+            + "  <span style=\"flex:1 1 auto\"></span>"
+            + "  <button class=\"appbut skinny\" type=button title=\"Terminal help\""
+            + "          onclick=\""+call+".serialTerminalHelp()\">?</button>"
+            + "  <button class=\"appbut skinny\" type=button title=\"Clear terminal display\""
+            + "          onclick=\""+call+".serialTerminalClear()\">CLEAR</button>"
+            + "  <button class=\"appbut skinny\" type=button title=\"Close serial terminal\""
+            + "          onclick=\"oCOM.POPUP.off('serialProTerminal_popup')\">X</button>"
+            + "</div>"
+            + "<div class=\"com_popup_body\">"
+            + "  <div id=\"serialProTerminal_host\" class=\"serialpro_terminal_host\"></div>"
+            + "</div>";
+
+        oCOM.POPUP.on("serialProTerminal_popup");
+
+        var terminal = new TERMINAL({
+             "container":"serialProTerminal_host"
+            ,"welcome":""
+            ,"prompt":""
+            ,"separator":">"
+            ,"storageKey":"SerialProTerminal_"+slotID
+            ,"preserveWhitespace":true
+            ,"allowEmptyInput":true
+        });
+
+        popup._terminal = terminal;
+
+        terminal.onInput(function(command,parameters,commandLine,rawLine)
+        {
+            serialpro.serialTerminalQueueLine(rawLine);
+            return true;
+        });
+
+        var rows = serialTerminalState.transcript;
+        if(rows.length)
+        {
+            for(var i=0;i<rows.length;i++)
+                terminal.write(rows[i].text,rows[i].kind);
+        }
+        else
+        {
+            terminal.write(
+                "Serial terminal endpoint ready; 6551 bridge not connected yet.\n",
+                "meta"
+            );
+        }
+
+        setTimeout(function(){ terminal._o.DOM.input.focus(); },0);
+        return true;
+    };
+
     this.deviceToolRTCSet = function(controlID)
     {
         rtcUI.controlID = controlID;
@@ -1892,6 +2153,8 @@ function SerialProCard()
             + "          onclick=\""+call+".deviceToolRTCSet('"+controlID+"')\">SET</button>"
             + "  <button class=\"appbut skinny\" type=button title=\"Set RTC from browser host time\""
             + "          onclick=\""+call+".deviceToolRTCHost('"+controlID+"')\">HOST</button>"
+            + "  <button class=\"appbut skinny\" type=button title=\"Open serial terminal\""
+            + "          onclick=\""+call+".serialTerminalToggle()\"><i class=\"fa fa-terminal\"></i></button>"
             + " </div>"
             + "</div>";
     };

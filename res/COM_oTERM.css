@@ -1,0 +1,49 @@
+/*
+ * COM_oTERM.css
+ *
+ * Terminal rules extracted from the VanillaTerm section of AsciiCAD.css,
+ * scoped for RetroAppleJS.  Page-global AsciiCAD styles are intentionally
+ * excluded.
+ */
+
+.VanillaTerm { background-color: #222222; color: white; font-family: "Inconsolata", "Courier New", Courier, monospace; text-underline-offset: 0.2em; font-weight: bold; font-size:80%; overflow: hidden; padding: 0.1em 0.1em; }
+.VanillaTerm .container { width: 100%; height: 100%; overflow-y: auto; }
+.VanillaTerm .container ::selection { background-color: #f3e5ab; text-shadow: none !important; }
+.VanillaTerm .container { scrollbar-color: #808080 #222; }
+.VanillaTerm output { clear: both; line-height: 1.25em; width: 100%; }
+.VanillaTerm output pre { margin: 0; padding: 0; }
+.VanillaTerm output span { display: block; font-weight: normal; color: #dddddd; }
+.VanillaTerm .prompt,
+.VanillaTerm a { color: #f3e5ab; font-weight: bold; }
+.VanillaTerm .prompt { line-height: 1.25em; margin-right: 0.5em; }
+.VanillaTerm .command { display: flex; }
+.VanillaTerm .command.input .prompt { color: grey; font-weight: normal; }
+.VanillaTerm .command.idle .input { display: none; }
+.VanillaTerm .command.hidden .prompt { display: none; }
+.VanillaTerm .command.hidden .input { max-width: 1px; }
+.VanillaTerm .command .input { background-color: transparent; border: none; color: inherit; font: inherit; flex: 1; margin: 0; outline: none; padding: 0; }
+.VanillaTerm .command .spinner:before { display: inline-block; content: "\280B"; animation: VanillaTerm_spin 1s linear infinite; vertical-align: middle; margin-right: 10px; }
+@keyframes VanillaTerm_spin { 0% { content: "\280B" } 10% { content: "\2819" } 20% { content: "\2839" } 30% { content: "\2838" } 40% { content: "\283C" }
+50% { content: "\2834" } 60% { content: "\2826" } 70% { content: "\2827" } 80% { content: "\2807" } 90% { content: "\280F" } }
+
+.VanillaTerm output span.serial-stream {
+  display:inline;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+}
+
+.VanillaTerm output span.serial-rx { color:#dddddd; }
+.VanillaTerm output span.serial-tx { color:#f3e5ab; }
+.VanillaTerm output span.serial-meta { color:#9aa3aa; font-style:italic; }
+
+.serialpro_terminal_popup .com_popup_body {
+  background:#222222;
+  padding:0;
+  overflow:hidden;
+}
+
+.serialpro_terminal_host {
+  width:100%;
+  height:100%;
+  min-height:0;
+}
