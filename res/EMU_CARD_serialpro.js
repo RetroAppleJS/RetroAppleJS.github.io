@@ -10,11 +10,15 @@
 //   - Applied Engineering EPROM bank-register clear/write switches
 //   - 6818-compatible RTC / battery RAM address-data interface
 //   - live clock initialized from the browser host's local date/time
+//   - Stage 2A minimal legacy-6551 ACIA register interface
+//   - byte-stream bridge between the 6551 and the Serial Pro oTERM endpoint
 //
 // Still intentionally deferred:
 //   - 6818 periodic/alarm/update IRQ/NMI generation
 //   - browser-persistent battery RAM across page reloads
 //   - 6551 serial controller behavior ($C088+$s0-$C08B+$s0)
+//   - 6551 baud/character timing, IRQ generation and receiver overrun timing
+//   - 6551 parity/framing validation, echo/break behavior and modem-line UI
 //
 // The physical EPROM layout recovered from the Serial Pro v2.0 27C64 is:
 //   $0000-$07FF  HostROM bank 0
@@ -1132,6 +1136,115 @@ function SerialProCard()
     var serialpro = this;       // stand-in where 'this' is absent inside callbacks
 
 
+    /*
+     * Stage 2A: minimal legacy 6551 ACIA.
+     *
+     * Serial Pro firmware polls the legacy 6551 TDRE bit before transmitting,
+     * therefore model the classic 6551/W65C51S register semantics rather than
+     * the later W65C51N transmitter behavior.
+     *
+     * Register offsets within SlotIO:
+     *   $08  data       read RX / write TX
+     *   $09  status     read / programmed reset on write
+     *   $0A  command    read/write
+     *   $0B  control    read/write
+     *
+     * Stage 2A intentionally has no serial bit timing.  The oTERM endpoint is
+     * an immediate byte sink/source, so TDRE is effectively always ready after
+     * a write.  DSR, DCD and CTS are held in their asserted/ready states.
+     *
+     * The terminal's toCard[] queue acts as the pre-timing receive stream for
+     * this stage.  A normal DATA read consumes one byte; a safe debugger read
+     * (ctx.bRO) only peeks and therefore cannot steal incoming serial data.
+     */
+    var acia =
+    {
+         "command":0x00
+        ,"control":0x00
+        ,"rxData":0x00
+        ,"rxErrors":0x00
+        ,"txEmpty":true
+        ,"irq":false
+        ,"dsrReady":true
+        ,"dcdDetected":true
+        ,"ctsClear":true
+    };
+
+    function aciaHardwareReset()
+    {
+        acia.command = 0x00;
+        acia.control = 0x00;
+        acia.rxData = 0x00;
+        acia.rxErrors = 0x00;
+        acia.txEmpty = true;
+        acia.irq = false;
+        acia.dsrReady = true;
+        acia.dcdDetected = true;
+        acia.ctsClear = true;
+    }
+
+    function aciaProgramReset()
+    {
+        // Legacy 6551 programmed reset: clear Command bits 4..0 and Status
+        // overrun.  Parity selection bits 7..5 and Control are unchanged.
+        acia.command &= 0xE0;
+        acia.rxErrors &= ~0x04;
+        acia.irq = false;
+    }
+
+    function aciaRXPending()
+    {
+        return !!(
+            serialTerminalState &&
+            serialTerminalState.toCard &&
+            serialTerminalState.toCard.length
+        );
+    }
+
+    function aciaReadData(ctx)
+    {
+        if(!aciaRXPending())
+            return acia.rxData & 0xFF;
+
+        // Safe debugger/memory inspection must not consume the receive stream.
+        if(ctx && ctx.bRO===true)
+            return serialTerminalState.toCard[0] & 0xFF;
+
+        acia.rxData = serialTerminalState.toCard.shift() & 0xFF;
+        acia.rxErrors = 0x00;       // PE/FE/OVRN clear after DATA read
+        return acia.rxData;
+    }
+
+    function aciaReadStatus(ctx)
+    {
+        var status = acia.rxErrors & 0x07;
+
+        if(aciaRXPending())       status |= 0x08;  // RDRF
+        if(acia.txEmpty)          status |= 0x10;  // TDRE
+        if(!acia.dcdDetected)     status |= 0x20;  // DCD high/not detected
+        if(!acia.dsrReady)        status |= 0x40;  // DSR high/not ready
+        if(acia.irq)              status |= 0x80;
+
+        // Reading Status clears the IRQ indication on the real part.  Stage 2A
+        // does not generate IRQs yet, but preserve the read-side semantics.
+        if(!(ctx && ctx.bRO===true))
+            acia.irq = false;
+
+        return status & 0xFF;
+    }
+
+    function aciaWriteData(d8)
+    {
+        acia.txEmpty = false;
+
+        // CTS is held asserted in Stage 2A, therefore delivery is immediate.
+        if(acia.ctsClear && typeof(serialpro.serialTerminalWriteByte)=="function")
+            serialpro.serialTerminalWriteByte(d8 & 0xFF);
+
+        acia.txEmpty = true;
+    }
+
+
     this.action =
     {
         "SlotROM":
@@ -1448,9 +1561,20 @@ function SerialProCard()
         {
             case 0x05:      // $C085+$s0: selected 6818 Clock/RAM data
                 return rtcReadData();
+            case 0x08:      // $C088+$s0: 6551 Receiver Data Register
+                return aciaReadData(ctx);
+
+            case 0x09:      // $C089+$s0: 6551 Status Register
+                return aciaReadStatus(ctx);
+
+            case 0x0A:      // $C08A+$s0: 6551 Command Register
+                return acia.command & 0xFF;
+
+            case 0x0B:      // $C08B+$s0: 6551 Control Register
+                return acia.control & 0xFF;
         }
 
-        // $x4, $x6 and $x7 are write-only; 6551 reads are a later stage.
+        // $x4, $x6 and $x7 are write-only.
         return 0x00;
     };
 
@@ -1499,10 +1623,10 @@ function SerialProCard()
          *   $C085+$s0  6818 Clock/RAM Data          (read/write)
          *   $C086+$s0  EPROM Bank Register Clear    (write only)
          *   $C087+$s0  EPROM Bank Register          (write only)
-         *   $C088+$s0  6551 Data                    (later stage)
-         *   $C089+$s0  6551 Status/Reset            (later stage)
-         *   $C08A+$s0  6551 Command                 (later stage)
-         *   $C08B+$s0  6551 Control                 (later stage)
+         *   $C088+$s0  6551 Data                    (read/write)
+         *   $C089+$s0  6551 Status / Program Reset  (read/write)
+         *   $C08A+$s0  6551 Command                 (read/write)
+         *   $C08B+$s0  6551 Control                 (read/write)
          *
          * Apple2IO passes SlotIO as an offset $0..$F within the mounted slot's
          * $C0s0-$C0sF range, hence BANKCLR/BANKREG are offsets $06/$07.
@@ -1541,9 +1665,22 @@ function SerialProCard()
                         " (physical bank "+physicalHostROMBank()+")"
                     );
                 return 0x00;
-        }
+            case 0x08:      // $C088+$s0: 6551 Transmitter Data Register
+                aciaWriteData(d8);
+                return 0x00;
 
-        // 6551 writes deliberately remain unimplemented in this stage.
+            case 0x09:      // $C089+$s0: 6551 programmed reset; d8 is don't-care
+                aciaProgramReset();
+                return 0x00;
+
+            case 0x0A:      // $C08A+$s0: 6551 Command Register
+                acia.command = d8;
+                return 0x00;
+
+            case 0x0B:      // $C08B+$s0: 6551 Control Register
+                acia.control = d8;
+                return 0x00;
+        }
         return 0x00;
     };
 
@@ -2022,7 +2159,7 @@ function SerialProCard()
             +"A bare Enter sends CR. Arrow Up/Down recalls terminal history; Escape clears the input line.<br>"
             +"Incoming bytes from the Serial Pro appear in this window.<br><br>"
             +"Use <i class=\"fa fa-adjust\"></i> to switch between dark terminal mode and light dot-matrix paper mode.<br>"
-            +"<i>Current stage:</i> the terminal endpoint is ready; the 6551 bridge is not connected yet."
+            +"<i>Current stage:</i> the 6551 byte bridge is connected (Stage 2A); timing and interrupts are not modeled yet."
         );
         return true;
     };
@@ -2109,7 +2246,7 @@ function SerialProCard()
         else
         {
             terminal.write(
-                "Serial terminal endpoint ready; 6551 bridge not connected yet.\n",
+                "Serial terminal endpoint ready; 6551 byte bridge connected (Stage 2A).\n",
                 "meta"
             );
         }
@@ -2217,10 +2354,12 @@ function SerialProCard()
     this.reset = function()
     {
         resetROMState();
+        aciaHardwareReset();
     };
 
     this.restart = function()
     {
         resetROMState();
+        aciaHardwareReset();
     };
 }
