@@ -1162,6 +1162,7 @@ function SerialProCard()
          "command":0x00
         ,"control":0x00
         ,"rxData":0x00
+        ,"rxFull":false
         ,"rxErrors":0x00
         ,"txEmpty":true
         ,"irq":false
@@ -1175,6 +1176,7 @@ function SerialProCard()
         acia.command = 0x00;
         acia.control = 0x00;
         acia.rxData = 0x00;
+        acia.rxFull = false;
         acia.rxErrors = 0x00;
         acia.txEmpty = true;
         acia.irq = false;
@@ -1192,13 +1194,30 @@ function SerialProCard()
         acia.irq = false;
     }
 
+    /*
+     * Stage 2C receiver bridge.
+     *
+     * serialTerminalState.toCard[] is the remote-end byte stream waiting to
+     * arrive.  The 6551 itself exposes only one receive holding register to
+     * the CPU.  Without baud timing yet, prime exactly one queued byte whenever
+     * that holding register becomes empty.
+     */
+    function aciaPrimeReceiver()
+    {
+        if(acia.rxFull) return true;
+        if(!serialTerminalState || !serialTerminalState.toCard)
+            return false;
+        if(!serialTerminalState.toCard.length)
+            return false;
+
+        acia.rxData = serialTerminalState.toCard.shift() & 0xFF;
+        acia.rxFull = true;
+        return true;
+    }
+
     function aciaRXPending()
     {
-        return !!(
-            serialTerminalState &&
-            serialTerminalState.toCard &&
-            serialTerminalState.toCard.length
-        );
+        return !!acia.rxFull;
     }
 
     function aciaReadData(ctx)
@@ -1206,20 +1225,24 @@ function SerialProCard()
         if(!aciaRXPending())
             return acia.rxData & 0xFF;
 
-        // Safe debugger/memory inspection must not consume the receive stream.
+        // Safe debugger/memory inspection must not consume the receive register.
         if(ctx && ctx.bRO===true)
-            return serialTerminalState.toCard[0] & 0xFF;
+            return acia.rxData & 0xFF;
 
-        acia.rxData = serialTerminalState.toCard.shift() & 0xFF;
+        var value = acia.rxData & 0xFF;
+        acia.rxFull = false;        
         acia.rxErrors = 0x00;       // PE/FE/OVRN clear after DATA read
-        return acia.rxData;
+        // Timing is still deferred, so make the next already-queued remote byte
+        // available immediately after the CPU consumes this one.
+        aciaPrimeReceiver();
+        return value;
     }
 
     function aciaReadStatus(ctx)
     {
         var status = acia.rxErrors & 0x07;
 
-        if(aciaRXPending())       status |= 0x08;  // RDRF
+        if(acia.rxFull)           status |= 0x08;  // RDRF
         if(acia.txEmpty)          status |= 0x10;  // TDRE
         if(!acia.dcdDetected)     status |= 0x20;  // DCD high/not detected
         if(!acia.dsrReady)        status |= 0x40;  // DSR high/not ready
@@ -2060,19 +2083,25 @@ function SerialProCard()
 
         serialTerminalState.toCard.push(0x0D);
         serialTerminalRemember("tx",">"+line+"\n");
+        // Present only the first waiting serial byte to the 6551 receiver.
+        // Further bytes remain on the simulated wire until DATA is consumed.
+        aciaPrimeReceiver();
         return line.length + 1;
     };
 
     this.serialTerminalPending = function()
     {
-        return serialTerminalState.toCard.length;
+        return serialTerminalState.toCard.length + (acia.rxFull ? 1 : 0);
     };
 
     this.serialTerminalReadByte = function()
     {
-        return serialTerminalState.toCard.length
-            ? (serialTerminalState.toCard.shift() & 0xFF)
-            : null;
+        // Diagnostic helper: consume through the same receive-register path
+        // used by CPU reads so console tests cannot bypass Stage 2C semantics.
+        if(!acia.rxFull)
+            aciaPrimeReceiver();
+
+        return acia.rxFull ? aciaReadData(null) : null;
     };
 
     this.serialTerminalWriteByte = function(d8)
@@ -2159,7 +2188,7 @@ function SerialProCard()
             +"A bare Enter sends CR. Arrow Up/Down recalls terminal history; Escape clears the input line.<br>"
             +"Incoming bytes from the Serial Pro appear in this window.<br><br>"
             +"Use <i class=\"fa fa-adjust\"></i> to switch between dark terminal mode and light dot-matrix paper mode.<br>"
-            +"<i>Current stage:</i> the 6551 byte bridge is connected (Stage 2A); timing and interrupts are not modeled yet."
+            +"<i>Current stage:</i> Stage 2C RX is active with a one-byte 6551 receive register; timing and interrupts are not modeled yet."
         );
         return true;
     };
@@ -2246,7 +2275,7 @@ function SerialProCard()
         else
         {
             terminal.write(
-                "Serial terminal endpoint ready; 6551 byte bridge connected (Stage 2A).\n",
+                "Serial terminal endpoint ready; 6551 RX/TX bridge connected (Stage 2C).\n",
                 "meta"
             );
         }
@@ -2355,11 +2384,15 @@ function SerialProCard()
     {
         resetROMState();
         aciaHardwareReset();
+        // Bytes already typed at the remote end remain on the simulated line.
+        aciaPrimeReceiver();
     };
 
     this.restart = function()
     {
         resetROMState();
         aciaHardwareReset();
+        // Bytes already typed at the remote end remain on the simulated line.
+        aciaPrimeReceiver();
     };
 }
