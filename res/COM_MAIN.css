@@ -486,6 +486,15 @@ table { border-collapse: collapse; position: relative;}
     background-repeat:repeat;
   }
 
+  .dotmatrix_bck2
+  {
+    background-color:#f4f4f4;
+    background-image:url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA48AAAA0AgMAAABX4uW3AAAAAXNSR0IB2cksfwAAAAlwSFlzAAAewgAAHsIBbtB1PgAAAAxQTFRF9PT04PDr2NrX4uXjoOJ1gwAAASdJREFUeJztmUEOgjAQRRu7l+sQY+QUXoaQ2Et079I03gHOoxuXLIyVNgTKASYT/sxbdflfaDPtx5gJG1B5mAXb9xGTcZU8DM5Acq7XtUruGZVEQZyk7R1bDlKaYoTY4NhykHIqLgMCtuvlDi35yas4Ikse32lhsSWb32CSZISWjM7AS8Y4GDGSX+Q52WRJM0kC33hmyWpA3q5VnNfIkgsquWdUEoXNo5m7AyajLJdDz90C0/DaPJr9FZKuVkkMVBIFcZJWhGTw3HFoaDd/mj13HBpuo6gzmRp0zx2HhknSPrNkKpc9dxwaulQu5wMJLrn2rp47Dg1d6l2dBMn5SyKPkKJB99xxaGiLBh15u87lcmrQPXccGtKc/Mq58ajkvlFJFDpBDfoflKypIPcCpisAAAAASUVORK5CYII=");
+    background-size:530px 26px;
+    background-attachment:local;
+    background-repeat:repeat;
+  }
+
   .appdskLED 
   {
     /*background-image:url('../res/LED_ON.png');*/

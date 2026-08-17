@@ -22,6 +22,51 @@
 .VanillaTerm .command.hidden .prompt { display: none; }
 .VanillaTerm .command.hidden .input { max-width: 1px; }
 .VanillaTerm .command .input { background-color: transparent; border: none; color: inherit; font: inherit; flex: 1; margin: 0; outline: none; padding: 0; }
+
+/*
+ * Serial Pro terminal presentation modes.
+ *
+ * Dark is the normal terminal view. Light deliberately reuses the shared
+ * COM_MAIN.css .dotmatrix_bck paper skin so printer/text-stream output can be
+ * read as continuous paper rather than as a CRT-like terminal.
+ */
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm {
+  background-color:#f4f4f4;
+  color:#111111;
+}
+
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm .container {
+  scrollbar-color:#9a9a9a transparent;
+}
+
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm output span {
+  color:#111111;
+}
+
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm output span.serial-rx {
+  color:#111111;
+}
+
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm output span.serial-tx,
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm .prompt,
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm a {
+  color:#6b4e16;
+}
+
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm output span.serial-meta {
+  color:#606060;
+}
+
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm .command .input {
+  color:#111111;
+}
+
+.serialpro_terminal_host.serialpro_terminal_light.VanillaTerm .container ::selection {
+  background-color:#6b4e16;
+  color:#ffffff;
+}
+
+
 .VanillaTerm .command .spinner:before { display: inline-block; content: "\280B"; animation: VanillaTerm_spin 1s linear infinite; vertical-align: middle; margin-right: 10px; }
 @keyframes VanillaTerm_spin { 0% { content: "\280B" } 10% { content: "\2819" } 20% { content: "\2839" } 30% { content: "\2838" } 40% { content: "\283C" }
 50% { content: "\2834" } 60% { content: "\2826" } 70% { content: "\2827" } 80% { content: "\2807" } 90% { content: "\280F" } }

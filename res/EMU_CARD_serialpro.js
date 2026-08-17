@@ -1825,6 +1825,7 @@ function SerialProCard()
         ,"transcript":[]
         ,"transcriptChars":0
         ,"lastRxCR":false
+        ,"theme":"dark"
     };
 
     function serialTerminalHexByte(d8)
@@ -1969,6 +1970,47 @@ function SerialProCard()
         return true;
     };
 
+    function serialTerminalApplyTheme()
+    {
+        var popup = document.getElementById("serialProTerminal_popup");
+        if(!popup) return false;
+
+        var terminal = popup._terminal;
+        var root = terminal && terminal._o && terminal._o.DOM
+            ? terminal._o.DOM.root
+            : document.getElementById("serialProTerminal_host");
+        if(!root) return false;
+
+        var light = serialTerminalState.theme==="light";
+        root.classList.toggle("serialpro_terminal_light",light);
+        root.classList.toggle("dotmatrix_bck2",light);
+
+        var icon = popup.querySelector("[data-serial-terminal-theme]");
+        if(icon)
+        {
+            icon.title = light
+                ? "Switch terminal to dark mode"
+                : "Switch terminal to light dot-matrix paper mode";
+            icon.setAttribute("aria-label",icon.title);
+        }
+
+        return light;
+    }
+
+    this.serialTerminalThemeToggle = function()
+    {
+        serialTerminalState.theme =
+            serialTerminalState.theme==="light" ? "dark" : "light";
+
+        serialTerminalApplyTheme();
+
+        var terminal = serialTerminalLive();
+        if(terminal && terminal._o && terminal._o.DOM && terminal._o.DOM.input)
+            terminal._o.DOM.input.focus();
+
+        return serialTerminalState.theme;
+    };
+
     this.serialTerminalHelp = function()
     {
         var terminal = serialTerminalLive();
@@ -1979,6 +2021,7 @@ function SerialProCard()
             +"Type a line and press Enter to send its 8-bit bytes followed by CR ($0D).<br>"
             +"A bare Enter sends CR. Arrow Up/Down recalls terminal history; Escape clears the input line.<br>"
             +"Incoming bytes from the Serial Pro appear in this window.<br><br>"
+            +"Use <i class=\"fa fa-adjust\"></i> to switch between dark terminal mode and light dot-matrix paper mode.<br>"
             +"<i>Current stage:</i> the terminal endpoint is ready; the 6551 bridge is not connected yet."
         );
         return true;
@@ -2020,6 +2063,11 @@ function SerialProCard()
             + "<div class=\"com_popup_title\" style=\"height:30px;padding:0px 6px;display:flex;align-items:center;gap:6px;\">"
             + "  <b>Serial Pro #"+slotID+" terminal</b>"
             + "  <span style=\"flex:1 1 auto\"></span>"
+            + "  <button class=\"appbut skinny\" type=button"
+            + "          title=\"Switch terminal to light dot-matrix paper mode\""
+            + "          onclick=\""+call+".serialTerminalThemeToggle()\">"
+            + "    <i class=\"fa fa-adjust\" data-serial-terminal-theme></i>"
+            + "  </button>"
             + "  <button class=\"appbut skinny\" type=button title=\"Terminal help\""
             + "          onclick=\""+call+".serialTerminalHelp()\">?</button>"
             + "  <button class=\"appbut skinny\" type=button title=\"Clear terminal display\""
@@ -2044,6 +2092,7 @@ function SerialProCard()
         });
 
         popup._terminal = terminal;
+        serialTerminalApplyTheme();
 
         terminal.onInput(function(command,parameters,commandLine,rawLine)
         {
