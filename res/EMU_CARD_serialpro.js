@@ -14,6 +14,7 @@
 //   - byte-stream bridge between the 6551 and the Serial Pro oTERM endpoint
 //   - Stage 2C one-byte 6551 receiver holding register / RDRF behavior
 //   - Stage 2D command/control decoding, modem lines and IRQ generation
+//   - Stage 3A optional browser Web Serial transport for physical USB-UARTs
 //
 // Still intentionally deferred:
 //   - 6818 periodic/alarm/update IRQ/NMI generation
@@ -1323,7 +1324,11 @@ function SerialProCard()
         acia.dsrStatusReady = acia.dsrReady;
         acia.dcdStatusDetected = acia.dcdDetected;
         acia.modemStatusLatched = false;
-        aciaClearIRQ();        
+        aciaClearIRQ();
+
+        // A browser serial port stays physically open across Apple II RESET.
+        serialPhysicalCheckConfiguration();
+        serialPhysicalSyncOutputs();     
     }
 
     function aciaProgramReset()
@@ -1333,6 +1338,8 @@ function SerialProCard()
         acia.command &= 0xE0;
         acia.rxErrors &= ~0x04;
         aciaClearIRQ();
+        serialPhysicalCheckConfiguration();
+        serialPhysicalSyncOutputs();
     }
 
     function aciaWriteCommand(value)
@@ -1343,11 +1350,14 @@ function SerialProCard()
         // complete immediately in the no-timing Stage 2D model.
         aciaTryTransmit();
         aciaEvaluateEnabledInterrupts();
+        serialPhysicalCheckConfiguration();
+        serialPhysicalSyncOutputs();
     }
 
     function aciaWriteControl(value)
     {
         acia.control = value & 0xFF;
+        serialPhysicalCheckConfiguration();
     }
 
     /*
@@ -1442,15 +1452,21 @@ function SerialProCard()
         if(acia.txEmpty || !acia.ctsClear)
             return false;
 
+        var txByte = acia.txData & aciaDataMask();
+
         /*
          * Continuous BREAK is a line-level condition.  Stage 2D does not yet
          * synthesize serial waveforms; consume the pending data-register byte
          * without rendering it as ordinary remote data while BREAK is active.
          */
-        if(!aciaBreakActive() &&
-           typeof(serialpro.serialTerminalWriteByte)=="function")
-            serialpro.serialTerminalWriteByte(acia.txData & aciaDataMask());
+        if(!aciaBreakActive())
+        {
+            if(typeof(serialpro.serialTerminalWriteByte)=="function")
+                serialpro.serialTerminalWriteByte(txByte);
 
+            // Stage 3A: optionally send the same byte to a physical USB-UART.
+            serialPhysicalWriteByte(txByte);
+        }
         acia.txEmpty = true;
 
         if(aciaTransmitIRQEnabled())
@@ -2234,10 +2250,532 @@ function SerialProCard()
         ,"theme":"dark"
     };
 
+    /*
+     * Stage 3A: optional physical Web Serial transport.
+     *
+     * This is deliberately a transport beside oTERM, not part of the 6551
+     * register model. The ACIA remains synchronous from the Apple II's point
+     * of view while the browser/OS/USB-UART serializes bytes in real time.
+     *
+     * The physical port is opened using the ACIA format that exists at connect
+     * time. Web Serial can represent 7/8 data bits, 1/2 stop bits and
+     * none/even/odd parity. Unsupported 6551 formats are rejected rather than
+     * silently approximated. ACIA format changes while connected mark the
+     * physical link stale; disconnect/reconnect applies the new format.
+     *
+     * DTR, RTS and BREAK are synchronized live with setSignals(). CTS/DCD/DSR
+     * are sampled for diagnostics, but Stage 3A intentionally does not feed
+     * them into the emulated ACIA. Many cheap USB-UART modules expose only
+     * TXD/RXD and would otherwise appear permanently blocked by unused modem
+     * inputs. A later stage can make modem-line bridging explicit/optional.
+     */
+    var serialPhysical =
+    {
+         "port":null
+        ,"reader":null
+        ,"writer":null
+        ,"readTask":null
+        ,"txTask":null
+        ,"txBusy":false
+        ,"txQueue":[]
+        ,"connected":false
+        ,"closing":false
+        ,"openConfig":null
+        ,"configStale":false
+        ,"signals":null
+        ,"signalTimer":null
+        ,"lastIncomingCR":false
+        ,"lastError":""
+        ,"lastSignalError":""
+    };
+
+    function serialPhysicalErrorText(error)
+    {
+        if(!error) return "Unknown error";
+        return error.name && error.message
+            ? error.name+": "+error.message
+            : (error.message || String(error));
+    }
+
+    function serialPhysicalMeta(text)
+    {
+        text = String(text===undefined ? "" : text);
+        if(!text.length) return;
+        if(text.charAt(text.length-1)!="\n") text += "\n";
+
+        serialTerminalRemember("meta",text);
+        var terminal = serialTerminalLive();
+        if(terminal) terminal.write(text,"meta");
+    }
+
+    function serialPhysicalConfiguration()
+    {
+        var baud = aciaBaudRate();
+        var dataBits = aciaWordLength();
+        var stopBits = aciaStopBits();
+        var parity = aciaParity();
+        var receiverInternal = (acia.control & 0x10)!=0;
+
+        if(!Number.isFinite(baud) || baud<=0 || Math.floor(baud)!=baud)
+            return {"ok":false,
+                    "reason":"Web Serial requires a positive integer baud rate; ACIA baud is "+String(baud)};
+
+        if(!receiverInternal)
+            return {"ok":false,
+                    "reason":"Web Serial cannot reproduce the ACIA external receive clock; select the internal receive rate"};
+
+        if(dataBits!=7 && dataBits!=8)
+            return {"ok":false,
+                    "reason":"Web Serial supports 7 or 8 data bits; ACIA is configured for "+dataBits};
+
+        if(stopBits!=1 && stopBits!=2)
+            return {"ok":false,
+                    "reason":"Web Serial supports 1 or 2 stop bits; ACIA is configured for "+stopBits};
+
+        if(parity!="none" && parity!="even" && parity!="odd")
+            return {"ok":false,
+                    "reason":"Web Serial supports none/even/odd parity; ACIA parity is "+parity};
+
+        var parityLetter = parity=="none" ? "N" : (parity=="even" ? "E" : "O");
+        var signature = [baud,dataBits,parity,stopBits].join("/");
+
+        return {
+             "ok":true
+            ,"signature":signature
+            ,"label":baud+" "+dataBits+parityLetter+stopBits
+            ,"options":{
+                 "baudRate":baud
+                ,"dataBits":dataBits
+                ,"stopBits":stopBits
+                ,"parity":parity
+                ,"flowControl":"none"
+            }
+        };
+    }
+
+    function serialPhysicalUpdateButton()
+    {
+        var popup = document.getElementById("serialProTerminal_popup");
+        if(!popup) return false;
+
+        var icon = popup.querySelector("[data-serial-webserial]");
+        if(!icon) return false;
+
+        var title;
+        if(serialPhysical.connected && serialPhysical.configStale)
+        {
+            title = "USB serial connected, but ACIA format changed; reconnect to apply it";
+            icon.style.color = "#C07000";
+        }
+        else if(serialPhysical.connected)
+        {
+            title = "Disconnect physical USB serial port";
+            icon.style.color = "#008000";
+        }
+        else
+        {
+            title = "Connect physical USB serial port (Web Serial)";
+            icon.style.color = "";
+        }
+
+        icon.title = title;
+        if(icon.parentElement) icon.parentElement.title = title;
+        return serialPhysical.connected;
+    }
+
+    function serialPhysicalCheckConfiguration()
+    {
+        if(!serialPhysical || !serialPhysical.connected)
+            return false;
+
+        var config = serialPhysicalConfiguration();
+        var stale = !config.ok || !serialPhysical.openConfig ||
+                    config.signature!=serialPhysical.openConfig.signature;
+        var changed = stale!=serialPhysical.configStale;
+
+        serialPhysical.configStale = stale;
+        serialPhysicalUpdateButton();
+
+        if(changed && stale)
+            serialPhysicalMeta(
+                "Web Serial ACIA format changed; reconnect the USB serial port before physical byte transfer continues."
+            );
+
+        return stale;
+    }
+
+    async function serialPhysicalSyncOutputs()
+    {
+        if(!serialPhysical || !serialPhysical.connected || !serialPhysical.port)
+            return false;
+
+        try
+        {
+            await serialPhysical.port.setSignals({
+                 "dataTerminalReady":aciaDTRAsserted()
+                ,"requestToSend":aciaRTSAsserted()
+                ,"break":aciaBreakActive()
+            });
+            serialPhysical.lastSignalError = "";
+            return true;
+        }
+        catch(error)
+        {
+            var message = serialPhysicalErrorText(error);
+            if(message!=serialPhysical.lastSignalError)
+            {
+                serialPhysical.lastSignalError = message;
+                serialPhysicalMeta("Web Serial output-signal warning: "+message);
+            }
+            return false;
+        }
+    }
+
+    async function serialPhysicalPollSignals()
+    {
+        if(!serialPhysical.connected || !serialPhysical.port)
+            return null;
+
+        try
+        {
+            var signals = await serialPhysical.port.getSignals();
+            serialPhysical.signals = {
+                 "cts":!!signals.clearToSend
+                ,"dcd":!!signals.dataCarrierDetect
+                ,"dsr":!!signals.dataSetReady
+                ,"ri":!!signals.ringIndicator
+            };
+            serialPhysical.lastSignalError = "";
+            return serialPhysical.signals;
+        }
+        catch(error)
+        {
+            var message = serialPhysicalErrorText(error);
+            if(message!=serialPhysical.lastSignalError)
+            {
+                serialPhysical.lastSignalError = message;
+                serialPhysicalMeta("Web Serial input-signal warning: "+message);
+            }
+            return null;
+        }
+    }
+
+    function serialPhysicalDisplayByte(d8)
+    {
+        d8 &= 0xFF;
+        if(d8==0x0D)
+        {
+            serialPhysical.lastIncomingCR = true;
+            return "\n";
+        }
+        if(d8==0x0A)
+        {
+            if(serialPhysical.lastIncomingCR)
+            {
+                serialPhysical.lastIncomingCR = false;
+                return "";
+            }
+            return "\n";
+        }
+
+        serialPhysical.lastIncomingCR = false;
+        if(d8==0x09) return "\t";
+        if(d8>=0x20 && d8<=0x7E) return String.fromCharCode(d8);
+        return "[$"+serialTerminalHexByte(d8)+"]";
+    }
+
+    function serialPhysicalReceiveChunk(chunk)
+    {
+        if(!chunk || !chunk.length || serialPhysical.configStale)
+            return 0;
+
+        var display = "";
+        for(var i=0;i<chunk.length;i++)
+        {
+            var d8 = chunk[i] & 0xFF;
+            serialTerminalState.toCard.push(d8);
+            display += serialPhysicalDisplayByte(d8);
+        }
+
+        if(display.length)
+        {
+            serialTerminalRemember("tx",display);
+            var terminal = serialTerminalLive();
+            if(terminal) terminal.write(display,"tx");
+        }
+
+        aciaPrimeReceiver();
+        return chunk.length;
+    }
+
+    async function serialPhysicalReadLoop(port)
+    {
+        while(serialPhysical.connected && serialPhysical.port===port && port.readable)
+        {
+            var reader = port.readable.getReader();
+            serialPhysical.reader = reader;
+            try
+            {
+                while(serialPhysical.connected)
+                {
+                    var result = await reader.read();
+                    if(result.done) break;
+                    if(result.value) serialPhysicalReceiveChunk(result.value);
+                }
+            }
+            catch(error)
+            {
+                if(serialPhysical.connected && !serialPhysical.closing)
+                    serialPhysicalMeta("Web Serial read event: "+serialPhysicalErrorText(error));
+            }
+            finally
+            {
+                try { reader.releaseLock(); } catch(ignore) {}
+                if(serialPhysical.reader===reader) serialPhysical.reader = null;
+            }
+
+            if(!serialPhysical.connected || !port.readable) break;
+        }
+
+        if(serialPhysical.connected && !serialPhysical.closing)
+            setTimeout(function(){ serialPhysicalDisconnect(true); },0);
+    }
+
+    function serialPhysicalFlushTX()
+    {
+        if(serialPhysical.txBusy || !serialPhysical.connected ||
+           !serialPhysical.writer || serialPhysical.configStale)
+            return serialPhysical.txTask;
+
+        serialPhysical.txBusy = true;
+        serialPhysical.txTask = (async function()
+        {
+            try
+            {
+                while(serialPhysical.connected && serialPhysical.writer &&
+                      !serialPhysical.configStale && serialPhysical.txQueue.length)
+                {
+                    var count = Math.min(256,serialPhysical.txQueue.length);
+                    var bytes = new Uint8Array(serialPhysical.txQueue.splice(0,count));
+                    await serialPhysical.writer.write(bytes);
+                }
+            }
+            catch(error)
+            {
+                serialPhysical.lastError = serialPhysicalErrorText(error);
+                serialPhysicalMeta("Web Serial write failed: "+serialPhysical.lastError);
+                setTimeout(function(){ serialPhysicalDisconnect(true); },0);
+            }
+            finally { serialPhysical.txBusy = false; }
+        })();
+
+        return serialPhysical.txTask;
+    }
+
+    function serialPhysicalWriteByte(d8)
+    {
+        if(!serialPhysical || !serialPhysical.connected ||
+           !serialPhysical.writer || serialPhysical.configStale)
+            return false;
+
+        serialPhysical.txQueue.push(d8 & 0xFF);
+        serialPhysicalFlushTX();
+        return true;
+    }
+
+    function serialPhysicalPortLabel(port)
+    {
+        if(!port || typeof(port.getInfo)!="function") return "USB serial port";
+
+        var info = port.getInfo() || {};
+        var parts = [];
+        if(Number.isFinite(info.usbVendorId))
+            parts.push("VID $"+Number(info.usbVendorId).toString(16).toUpperCase().padStart(4,"0"));
+        if(Number.isFinite(info.usbProductId))
+            parts.push("PID $"+Number(info.usbProductId).toString(16).toUpperCase().padStart(4,"0"));
+        return parts.length ? parts.join(" ") : "USB serial port";
+    }
+
+    async function serialPhysicalConnect()
+    {
+        if(serialPhysical.connected) return true;
+
+        if(typeof(navigator)=="undefined" || !navigator.serial)
+        {
+            serialPhysicalMeta(
+                "Web Serial is unavailable. Use a supported Chromium browser in a secure context (HTTPS)."
+            );
+            return false;
+        }
+
+        var config = serialPhysicalConfiguration();
+        if(!config.ok)
+        {
+            serialPhysicalMeta("Web Serial cannot open this ACIA format: "+config.reason+".");
+            return false;
+        }
+
+        var port = null;
+        try
+        {
+            // Deliberately unfiltered: let the browser chooser select the CH340
+            // or another compatible USB serial adapter explicitly.
+            port = await navigator.serial.requestPort();
+            await port.open(config.options);
+
+            if(!port.writable)
+                throw new Error("Selected serial port has no writable stream");
+
+            serialPhysical.port = port;
+            serialPhysical.writer = port.writable.getWriter();
+            serialPhysical.connected = true;
+            serialPhysical.closing = false;
+            serialPhysical.openConfig = config;
+            serialPhysical.configStale = false;
+            serialPhysical.lastError = "";
+            serialPhysical.txQueue = [];
+
+            serialPhysicalUpdateButton();
+            await serialPhysicalSyncOutputs();
+            await serialPhysicalPollSignals();
+
+            serialPhysical.readTask = serialPhysicalReadLoop(port);
+            serialPhysical.signalTimer = setInterval(serialPhysicalPollSignals,500);
+
+            serialPhysicalMeta(
+                "Web Serial connected: "+serialPhysicalPortLabel(port)+" @ "+config.label+"."
+            );
+            return true;
+        }
+        catch(error)
+        {
+            serialPhysical.lastError = serialPhysicalErrorText(error);
+            if(port)
+            {
+                try { await port.close(); } catch(ignore) {}
+            }
+
+            serialPhysical.port = null;
+            serialPhysical.writer = null;
+            serialPhysical.connected = false;
+            serialPhysical.openConfig = null;
+            serialPhysicalUpdateButton();
+
+            if(error && error.name=="NotFoundError")
+                serialPhysicalMeta("Web Serial device selection cancelled.");
+            else
+                serialPhysicalMeta("Web Serial connection failed: "+serialPhysical.lastError);
+            return false;
+        }
+    }
+
+    async function serialPhysicalDisconnect(silent)
+    {
+        if(serialPhysical.closing) return false;
+        if(!serialPhysical.port && !serialPhysical.connected) return false;
+
+        serialPhysical.closing = true;
+        serialPhysical.connected = false;
+        serialPhysicalUpdateButton();
+
+        if(serialPhysical.signalTimer)
+        {
+            clearInterval(serialPhysical.signalTimer);
+            serialPhysical.signalTimer = null;
+        }
+
+        var reader = serialPhysical.reader;
+        if(reader)
+        {
+            try { await reader.cancel(); } catch(ignore) {}
+        }
+
+        if(serialPhysical.readTask)
+        {
+            try { await serialPhysical.readTask; } catch(ignore) {}
+        }
+        if(serialPhysical.txTask)
+        {
+            try { await serialPhysical.txTask; } catch(ignore) {}
+        }
+        if(serialPhysical.writer)
+        {
+            try { serialPhysical.writer.releaseLock(); } catch(ignore) {}
+        }
+
+        var port = serialPhysical.port;
+        if(port)
+        {
+            try { await port.close(); } catch(ignore) {}
+        }
+
+        serialPhysical.port = null;
+        serialPhysical.reader = null;
+        serialPhysical.writer = null;
+        serialPhysical.readTask = null;
+        serialPhysical.txTask = null;
+        serialPhysical.txBusy = false;
+        serialPhysical.txQueue = [];
+        serialPhysical.openConfig = null;
+        serialPhysical.configStale = false;
+        serialPhysical.signals = null;
+        serialPhysical.closing = false;
+        serialPhysicalUpdateButton();
+
+        if(!silent) serialPhysicalMeta("Web Serial disconnected.");
+        return true;
+    }
+
     function serialTerminalHexByte(d8)
     {
         return ("0"+((d8 & 0xFF).toString(16).toUpperCase())).slice(-2);
     }
+
+    this.serialPhysicalState = function()
+    {
+        var info = serialPhysical.port && typeof(serialPhysical.port.getInfo)=="function"
+            ? serialPhysical.port.getInfo()
+            : {};
+
+        return {
+             "supported":typeof(navigator)!="undefined" && !!navigator.serial
+            ,"connected":serialPhysical.connected
+            ,"configuration":serialPhysical.openConfig
+                ? serialPhysical.openConfig.options
+                : null
+            ,"configurationLabel":serialPhysical.openConfig
+                ? serialPhysical.openConfig.label
+                : null
+            ,"configurationStale":serialPhysical.configStale
+            ,"usbVendorId":Number.isFinite(info.usbVendorId) ? info.usbVendorId : null
+            ,"usbProductId":Number.isFinite(info.usbProductId) ? info.usbProductId : null
+            ,"signals":serialPhysical.signals
+            ,"txQueued":serialPhysical.txQueue.length
+            ,"lastError":serialPhysical.lastError
+        };
+    };
+
+    this.serialPhysicalConnect = function()
+    {
+        return serialPhysicalConnect();
+    };
+
+    this.serialPhysicalDisconnect = function()
+    {
+        return serialPhysicalDisconnect(false);
+    };
+
+    this.serialPhysicalToggle = function()
+    {
+        return serialPhysical.connected
+            ? serialPhysicalDisconnect(false)
+            : serialPhysicalConnect();
+    };
+
+    this.serialPhysicalPollSignals = function()
+    {
+        return serialPhysicalPollSignals();
+    };
 
     function serialTerminalPopup()
     {
@@ -2480,7 +3018,9 @@ function SerialProCard()
             +"A bare Enter sends CR. Arrow Up/Down recalls terminal history; Escape clears the input line.<br>"
             +"Incoming bytes from the Serial Pro appear in this window.<br><br>"
             +"Use <i class=\"fa fa-adjust\"></i> to switch between dark terminal mode and light dot-matrix paper mode.<br>"
-            +"<i>Current stage:</i> Stage 2D ACIA format, modem-control and IRQ behavior is active; serial bit timing is not modeled yet."
+            +"Use <i class=\"fa fa-plug\"></i> to connect/disconnect an optional physical USB serial port through Web Serial.<br>"
+            +"Physical RX/TX shares the same 6551 endpoint; modem inputs are diagnostic-only in Stage 3A.<br>"
+            +"<i>Current stage:</i> Stage 3A physical byte transport is available; emulated serial bit timing is still deferred."
         );
         return true;
     };
@@ -2511,6 +3051,7 @@ function SerialProCard()
         if(sameSlot && popup._terminal)
         {
             oCOM.POPUP.on("serialProTerminal_popup");
+            serialPhysicalUpdateButton();
             setTimeout(function(){ popup._terminal._o.DOM.input.focus(); },0);
             return true;
         }
@@ -2521,6 +3062,11 @@ function SerialProCard()
             + "<div class=\"com_popup_title\" style=\"height:30px;padding:0px 6px;display:flex;align-items:center;gap:6px;\">"
             + "  <b>Serial Pro #"+slotID+" terminal</b>"
             + "  <span style=\"flex:1 1 auto\"></span>"
+            + "  <button class=\"appbut skinny\" type=button"
+            + "          title=\"Connect physical USB serial port (Web Serial)\""
+            + "          onclick=\""+call+".serialPhysicalToggle()\">"
+            + "    <i class=\"fa fa-plug\" data-serial-webserial></i>"
+            + "  </button>"
             + "  <button class=\"appbut skinny\" type=button"
             + "          title=\"Switch terminal to light dot-matrix paper mode\""
             + "          onclick=\""+call+".serialTerminalThemeToggle()\">"
@@ -2551,6 +3097,7 @@ function SerialProCard()
 
         popup._terminal = terminal;
         serialTerminalApplyTheme();
+        serialPhysicalUpdateButton();
 
         terminal.onInput(function(command,parameters,commandLine,rawLine)
         {
@@ -2567,7 +3114,7 @@ function SerialProCard()
         else
         {
             terminal.write(
-                "Serial terminal endpoint ready; 6551 ACIA Stage 2D connected.\n",
+                "Serial terminal endpoint ready; 6551 ACIA Stage 2D + optional Web Serial Stage 3A.\n",
                 "meta"
             );
         }
