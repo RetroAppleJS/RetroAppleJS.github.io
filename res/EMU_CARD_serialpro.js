@@ -3302,7 +3302,10 @@ function SerialProCard()
             if(input)
             {
                 input.value = inputValue;
-                if(inputActive)
++                // Never refocus the live command field across a streamed write
++                // while browser output text is selected; focus would collapse
++                // the Range the user is trying to keep/copy.
++                if(inputActive && !preserveSelection)
                 {
                     try { input.focus({"preventScroll":true}); }
                     catch(ignore) { input.focus(); }
@@ -3361,15 +3364,8 @@ function SerialProCard()
     {
         var terminal = serialTerminalLive();
         if(!terminal || !terminal._o || !terminal._o.DOM) return "";
-
-        if(serialTerminalSelectionInsideOutput(terminal))
-        {
-            var selection = window.getSelection();
-            var selected = selection ? selection.toString() : "";
-            if(selected.length) return selected;
-        }
-
-        // No explicit selection: COPY is also a convenient copy-all action.
++        // The toolbar pictogram is deliberately COPY ALL.  A user's explicit
++        // selection remains available to the browser's normal Cmd/Ctrl-C.
         var output = terminal._o.DOM.output;
         return output.innerText!==undefined ? output.innerText : output.textContent;
     }
@@ -3458,7 +3454,7 @@ function SerialProCard()
             +"A bare Enter sends CR. Arrow Up/Down recalls terminal history; Escape clears the input line.<br>"
             +"Incoming bytes from the Serial Pro appear in this window.<br><br>"
             +"ASCII mode strips the Apple II text high bit, making PR# / LIST and printer streams directly readable; RAW preserves diagnostic byte notation.<br>"
-            +"Select terminal output normally and use the browser copy command, or press COPY. With no selection, COPY copies the complete visible transcript.<br>"
++            +"Select terminal output normally and use Cmd/Ctrl-C for that selection. The copy pictogram always copies the complete terminal transcript.<br>"
             +"A live stream continues while text is selected without forcing the view back to the newest output.<br>"            
             +"Use <i class=\"fa fa-adjust\"></i> to switch between dark terminal mode and light dot-matrix paper mode.<br>"
             +"Use <i class=\"fa fa-plug\"></i> to connect/disconnect an optional physical USB serial port through Web Serial.<br>"
@@ -3509,7 +3505,7 @@ function SerialProCard()
             + "  <button class=\"appbut skinny\" type=button data-serial-terminal-display"
             + "          title=\"APPLE ASCII display: bit 7 stripped; click for raw byte display\""
             + "          onclick=\""+call+".serialTerminalDisplayToggle()\">ASCII</button>"
-            + "  <button class=\"appbut skinny\" type=button title=\"Copy selected terminal text; copy all when nothing is selected\""
+            + "  <button class=\"appbut skinny\" type=button title=\"Copy complete terminal transcript to clipboard\""
             + "          onmousedown=\"event.preventDefault()\""
             + "          onclick=\""+call+".serialTerminalCopy()\"><i class=\"fa fa-copy\"></i></button>"
             + "  <button class=\"appbut skinny\" type=button"
