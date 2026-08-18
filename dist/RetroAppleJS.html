@@ -25970,6 +25970,7 @@ function SerialProCard()
         ,"transcriptChars":0
         ,"lastRxCR":false
         ,"theme":"dark"
+        ,"displayMode":"ascii"
     };
 
     /*
@@ -26539,7 +26540,7 @@ function SerialProCard()
         var rows = serialTerminalState.transcript;
         var last = rows.length ? rows[rows.length-1] : null;
 
-        if(last && last.kind===kind && last.text.length<4096)
+        if(last && last.kind===kind && !last.bytes && last.text.length<4096)
             last.text += text;
         else
             rows.push({"kind":kind,"text":text});
@@ -26548,7 +26549,31 @@ function SerialProCard()
         while(serialTerminalState.transcriptChars>65536 && rows.length>1)
         {
             var dropped = rows.shift();
-            serialTerminalState.transcriptChars -= dropped.text.length;
+            serialTerminalState.transcriptChars -= dropped.bytes
+                ? dropped.bytes.length
+                : dropped.text.length;
+        }
+    }
+
+    function serialTerminalRememberByte(d8)
+    {
+        d8 &= 0xFF;
+
+        var rows = serialTerminalState.transcript;
+        var last = rows.length ? rows[rows.length-1] : null;
+
+        if(last && last.kind==="rx" && last.bytes && last.bytes.length<4096)
+            last.bytes.push(d8);
+        else
+            rows.push({"kind":"rx","bytes":[d8]});
+
+        serialTerminalState.transcriptChars++;
+        while(serialTerminalState.transcriptChars>65536 && rows.length>1)
+        {
+            var dropped = rows.shift();
+            serialTerminalState.transcriptChars -= dropped.bytes
+                ? dropped.bytes.length
+                : dropped.text.length;
         }
     }
 
@@ -26556,13 +26581,22 @@ function SerialProCard()
     {
         d8 &= 0xFF;
 
-        if(d8===0x0D)
+        /*
+         * Apple II text normally travels with bit 7 set. APPLE ASCII mode is
+         * intended for LIST/PR# capture and printer-like output: strip bit 7
+         * before interpreting CR/LF/TAB and printable ASCII. RAW mode retains
+         * the original diagnostic rendering of non-printing 8-bit values.
+         */
+        var ascii = serialTerminalState.displayMode==="ascii";
+        var c = ascii ? (d8 & 0x7F) : d8;
+
+        if(c===0x0D)
         {
             serialTerminalState.lastRxCR = true;
             return "\n";
         }
 
-        if(d8===0x0A)
+        if(c===0x0A)
         {
             if(serialTerminalState.lastRxCR)
             {
@@ -26573,11 +26607,51 @@ function SerialProCard()
         }
 
         serialTerminalState.lastRxCR = false;
-        if(d8===0x09) return "\t";
-        if(d8>=0x20 && d8<=0x7E) return String.fromCharCode(d8);
+        if(c===0x09) return "\t";
+
+        if(ascii)
+        {
+            // Backspace/NUL and other Apple control traffic should not turn a
+            // human-readable printer/listing stream back into byte notation.
+            if(c===0x0C) return "\n";              // form feed: readable break
+            if(c>=0x20 && c<=0x7E) return String.fromCharCode(c);
+            return "";
+        }
+
+        if(c>=0x20 && c<=0x7E) return String.fromCharCode(c);
 
         // Keep otherwise non-printing octets visible in the terminal.
         return "[$"+serialTerminalHexByte(d8)+"]";
+    }
+
+    function serialTerminalRenderRow(row)
+    {
+        if(row && row.bytes)
+        {
+            var text = "";
+            for(var i=0;i<row.bytes.length;i++)
+                text += serialTerminalDisplayByte(row.bytes[i]);
+            return text;
+        }
+
+        return row && row.text ? row.text : "";
+    }
+
+    function serialTerminalRenderTranscript(terminal)
+    {
+        if(!terminal || !terminal._o || !terminal._o.DOM) return false;
+
+        terminal._o.DOM.output.innerHTML = "";
+        serialTerminalState.lastRxCR = false;
+
+        var rows = serialTerminalState.transcript;
+        for(var i=0;i<rows.length;i++)
+        {
+            var text = serialTerminalRenderRow(rows[i]);
+            if(text.length) terminal.write(text,rows[i].kind);
+        }
+
+        return true;
     }
 
     this.serialTerminalQueueLine = function(line)
@@ -26658,10 +26732,11 @@ function SerialProCard()
 
     this.serialTerminalWriteByte = function(d8)
     {
+        d8 &= 0xFF;
+        serialTerminalRememberByte(d8);
+
         var text = serialTerminalDisplayByte(d8);
         if(!text.length) return d8 & 0xFF;
-
-        serialTerminalRemember("rx",text);
 
         var terminal = serialTerminalLive();
         if(terminal) terminal.write(text,"rx");
@@ -26686,6 +26761,167 @@ function SerialProCard()
         var terminal = serialTerminalLive();
         if(terminal) terminal.clear();
         return true;
+    };
+
+    function serialTerminalSelectionInsideOutput(terminal)
+    {
+        if(!terminal || !terminal._o || !terminal._o.DOM ||
+           typeof(window)==="undefined" || typeof(window.getSelection)!="function")
+            return false;
+
+        var selection = window.getSelection();
+        if(!selection || selection.rangeCount<1 || selection.isCollapsed)
+            return false;
+
+        var output = terminal._o.DOM.output;
+        function inside(node)
+        {
+            if(!node) return false;
+            if(node.nodeType===3) node = node.parentNode;
+            return node===output || output.contains(node);
+        }
+
+        return inside(selection.anchorNode) || inside(selection.focusNode);
+    }
+
+    function serialTerminalProtectStreaming(terminal)
+    {
+        if(!terminal || terminal._serialProWriteWrapped) return false;
+
+        var dom = terminal._o && terminal._o.DOM;
+        if(!dom) return false;
+
+        // Some emulator-level UI styles disable text selection. Override that
+        // locally: the Serial Pro output is intentionally printer-like text.
+        if(dom.output && dom.output.style)
+        {
+            dom.output.style.userSelect = "text";
+            dom.output.style.webkitUserSelect = "text";
+        }
+
+        var baseWrite = terminal.write.bind(terminal);
+        terminal.write = function(text,channel)
+        {
+            var input = dom.input;
+            var preserveSelection = serialTerminalSelectionInsideOutput(terminal);
+            var scrollTop = dom.container.scrollTop;
+            var scrollLeft = dom.container.scrollLeft;
+
+            // oTERM write() currently calls resetCommand(). Preserve an input
+            // line being typed while asynchronous serial bytes continue to
+            // arrive; this also prevents a stream from stealing edit state.
+            var inputValue = input ? input.value : "";
+            var inputActive = input && document.activeElement===input;
+            var selectionStart = input ? input.selectionStart : 0;
+            var selectionEnd = input ? input.selectionEnd : 0;
+
+            var result = baseWrite(text,channel);
+
+            if(input)
+            {
+                input.value = inputValue;
+                if(inputActive)
+                {
+                    try { input.focus({"preventScroll":true}); }
+                    catch(ignore) { input.focus(); }
+                    try { input.setSelectionRange(selectionStart,selectionEnd); }
+                    catch(ignore) {}
+                }
+            }
+
+            /*
+             * Appending new Text nodes does not invalidate the browser Range.
+             * Suppress oTERM's automatic scroll-to-input while a non-collapsed
+             * output selection exists so the selected visual scope stays put
+             * even though the stream continues growing below it.
+             */
+            if(preserveSelection)
+            {
+                dom.container.scrollTop = scrollTop;
+                dom.container.scrollLeft = scrollLeft;
+            }
+
+            return result;
+        };
+
+        terminal._serialProWriteWrapped = true;
+        return true;
+    }
+
+    function serialTerminalApplyDisplayMode()
+    {
+        var popup = document.getElementById("serialProTerminal_popup");
+        if(!popup) return false;
+
+        var button = popup.querySelector("[data-serial-terminal-display]");
+        if(!button) return false;
+
+        var ascii = serialTerminalState.displayMode==="ascii";
+        button.textContent = ascii ? "ASCII" : "RAW";
+        button.title = ascii
+            ? "APPLE ASCII display: bit 7 stripped; click for raw byte display"
+            : "Raw 8-bit byte display; click for APPLE ASCII";
+        return ascii;
+    }
+
+    this.serialTerminalDisplayToggle = function()
+    {
+        serialTerminalState.displayMode =
+            serialTerminalState.displayMode==="ascii" ? "raw" : "ascii";
+
+        var terminal = serialTerminalLive();
+        if(terminal) serialTerminalRenderTranscript(terminal);
+        serialTerminalApplyDisplayMode();
+        return serialTerminalState.displayMode;
+    };
+
+    function serialTerminalCopyText()
+    {
+        var terminal = serialTerminalLive();
+        if(!terminal || !terminal._o || !terminal._o.DOM) return "";
+
+        if(serialTerminalSelectionInsideOutput(terminal))
+        {
+            var selection = window.getSelection();
+            var selected = selection ? selection.toString() : "";
+            if(selected.length) return selected;
+        }
+
+        // No explicit selection: COPY is also a convenient copy-all action.
+        var output = terminal._o.DOM.output;
+        return output.innerText!==undefined ? output.innerText : output.textContent;
+    }
+
+    this.serialTerminalCopy = async function()
+    {
+        var text = serialTerminalCopyText();
+        if(!text.length) return 0;
+
+        var copied = false;
+        try
+        {
+            if(typeof(navigator)!=="undefined" && navigator.clipboard &&
+               typeof(navigator.clipboard.writeText)==="function")
+            {
+                await navigator.clipboard.writeText(text);
+                copied = true;
+            }
+        }
+        catch(ignore) {}
+
+        if(!copied)
+        {
+            var area = document.createElement("textarea");
+            area.value = text;
+            area.setAttribute("readonly","");
+            area.style.cssText = "position:fixed;left:-10000px;top:-10000px;";
+            document.body.appendChild(area);
+            area.select();
+            try { copied = document.execCommand("copy"); } catch(ignore) {}
+            document.body.removeChild(area);
+        }
+
+        return copied ? text.length : 0;
     };
 
     function serialTerminalApplyTheme()
@@ -26739,6 +26975,9 @@ function SerialProCard()
             +"Type a line and press Enter to send its 8-bit bytes followed by CR ($0D).<br>"
             +"A bare Enter sends CR. Arrow Up/Down recalls terminal history; Escape clears the input line.<br>"
             +"Incoming bytes from the Serial Pro appear in this window.<br><br>"
+            +"ASCII mode strips the Apple II text high bit, making PR# / LIST and printer streams directly readable; RAW preserves diagnostic byte notation.<br>"
+            +"Select terminal output normally and use the browser copy command, or press COPY. With no selection, COPY copies the complete visible transcript.<br>"
+            +"A live stream continues while text is selected without forcing the view back to the newest output.<br>"            
             +"Use <i class=\"fa fa-adjust\"></i> to switch between dark terminal mode and light dot-matrix paper mode.<br>"
             +"Use <i class=\"fa fa-plug\"></i> to connect/disconnect an optional physical USB serial port through Web Serial.<br>"
             +"Physical RX/TX shares the same 6551 endpoint; modem inputs are diagnostic-only in Stage 3A.<br>"
@@ -26774,6 +27013,7 @@ function SerialProCard()
         {
             oCOM.POPUP.on("serialProTerminal_popup");
             serialPhysicalUpdateButton();
+            serialTerminalApplyDisplayMode();
             setTimeout(function(){ popup._terminal._o.DOM.input.focus(); },0);
             return true;
         }
@@ -26784,6 +27024,12 @@ function SerialProCard()
             + "<div class=\"com_popup_title\" style=\"height:30px;padding:0px 6px;display:flex;align-items:center;gap:6px;\">"
             + "  <b>Serial Pro #"+slotID+" terminal</b>"
             + "  <span style=\"flex:1 1 auto\"></span>"
+            + "  <button class=\"appbut skinny\" type=button data-serial-terminal-display"
+            + "          title=\"APPLE ASCII display: bit 7 stripped; click for raw byte display\""
+            + "          onclick=\""+call+".serialTerminalDisplayToggle()\">ASCII</button>"
+            + "  <button class=\"appbut skinny\" type=button title=\"Copy selected terminal text; copy all when nothing is selected\""
+            + "          onmousedown=\"event.preventDefault()\""
+            + "          onclick=\""+call+".serialTerminalCopy()\"><i class=\"fa fa-copy\"></i></button>"
             + "  <button class=\"appbut skinny\" type=button"
             + "          title=\"Connect physical USB serial port (Web Serial)\""
             + "          onclick=\""+call+".serialPhysicalToggle()\">"
@@ -26818,7 +27064,9 @@ function SerialProCard()
         });
 
         popup._terminal = terminal;
+        serialTerminalProtectStreaming(terminal);
         serialTerminalApplyTheme();
+        serialTerminalApplyDisplayMode();
         serialPhysicalUpdateButton();
 
         terminal.onInput(function(command,parameters,commandLine,rawLine)
@@ -26830,8 +27078,7 @@ function SerialProCard()
         var rows = serialTerminalState.transcript;
         if(rows.length)
         {
-            for(var i=0;i<rows.length;i++)
-                terminal.write(rows[i].text,rows[i].kind);
+            serialTerminalRenderTranscript(terminal);
         }
         else
         {
