@@ -855,10 +855,42 @@ function TERMINAL(props)
 
   // ---- listeners -----------------------------------------------------------
 
+  /*
+   * A browser text selection in <output> must be allowed to survive the
+   * mouse/pointer release which completed it.  In particular, the resulting
+   * click can be targeted at the surrounding terminal container when a drag
+   * ends in whitespace rather than directly on a text node.  Refocusing the
+   * command input at that point collapses the just-completed selection.
+   *
+   * Keep this helper in generic oTERM because it also governs the generic
+   * MutationObserver auto-scroll below, not only the Serial Pro endpoint.
+   */
+  function outputSelectionActive()
+  {
+    if (typeof window.getSelection !== "function") return false;
+
+    var selection = window.getSelection();
+    if (!selection || selection.rangeCount < 1 || selection.isCollapsed)
+      return false;
+
+    var output = self._o.DOM.output;
+    function inside(node)
+    {
+      if (!node) return false;
+      if (node.nodeType === 3) node = node.parentNode;
+      return node === output || output.contains(node);
+    }
+
+    return inside(selection.anchorNode) || inside(selection.focusNode);
+  }
+
   // Auto-scroll when new output is appended.
   var observer = new MutationObserver(function () 
   {
     setTimeout(function () {
+      // A live stream may continue below a user's selection.  Do not pull the
+      // viewport back to the command line until that selection is released.
+      if (outputSelectionActive()) return;
       self._o.DOM.input.scrollIntoView({ block: "nearest" });
     }, 0);
   });
@@ -871,8 +903,16 @@ function TERMINAL(props)
     function (ev) {
       // Ignore clicks outside the terminal root
       if (!self._o.DOM.root.contains(ev.target)) return;
-      // Don't steal focus when the user is interacting with the output area (selection/copy)
+
+      // Don't steal focus when the user is interacting with the output area.
       if (self._o.DOM.output.contains(ev.target)) return;
+
+      // A selection drag may finish over terminal whitespace, in which case
+      // the click target is the container rather than <output>.  The browser
+      // selection is already complete by click time; preserve it instead of
+      // focusing the input and collapsing the selected range.
+      if (outputSelectionActive()) return;
+
       self._o.DOM.input.focus();
     },
     false
@@ -881,6 +921,7 @@ function TERMINAL(props)
   self._o.DOM.command.addEventListener(
     "click",
     function () {
+      if (outputSelectionActive()) return;
       self._o.DOM.input.focus();
     },
     false
