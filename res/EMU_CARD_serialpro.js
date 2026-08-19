@@ -14,13 +14,14 @@
 //   - byte-stream bridge between the 6551 and the Serial Pro oTERM endpoint
 //   - Stage 2C one-byte 6551 receiver holding register / RDRF behavior
 //   - Stage 2D command/control decoding, modem lines and IRQ generation
+//   - cycle-paced 6551 character timing with optional CPU-speed synchronization
 //   - Stage 3A optional browser Web Serial transport for physical USB-UARTs
 //
 // Still intentionally deferred:
 //   - 6818 periodic/alarm/update IRQ/NMI generation
 //   - browser-persistent battery RAM across page reloads
-//   - 6551 baud/character timing and receiver overrun timing
-//   - parity/framing error injection/validation against an external endpoint
+//   - detailed 6551 receiver-overrun timing
+//   - bit-level parity/framing error injection/validation against an external endpoint
 //   - serial echo/break waveform timing and modem-line UI controls
 //
 // The physical EPROM layout recovered from the Serial Pro v2.0 27C64 is:
@@ -1100,6 +1101,7 @@ function SerialProCard()
         // low two bits choose the physical 2 KiB EPROM quarter while higher
         // bits remain meaningful to the software dispatcher in the selected bank.
         ,"romSelector":0x00
+        ,"cpuSync":true
     };
 
     this.state = state;
@@ -1152,15 +1154,16 @@ function SerialProCard()
      *   $0A  command    read/write
      *   $0B  control    read/write
      *
-     * Stage 2A intentionally has no serial bit timing.  The oTERM endpoint is
-     * an immediate byte sink/source, so TDRE is effectively always ready after
-     * a write.  DSR, DCD and CTS are held in their asserted/ready states.
-     *
      * Stage 2D interprets Command/Control, applies the selected data word length,
      * exposes modem-control state and drives the shared Apple II IRQ line for
-     * enabled RX, TX and DCD/DSR-change conditions.  Actual character/bit timing
-     * remains deferred; configured baud/parity/stop-bit values are decoded now
-     * but transfers between the ACIA and oTERM remain immediate.
+     * enabled RX, TX and DCD/DSR-change conditions.
+     *
+     * Character transfers are paced from the emulator's completed 6502-cycle
+     * counter.  With CPU sync enabled (default), turbo CPU speed accelerates the
+     * UART by the same factor.  With CPU sync disabled, completed CPU cycles are
+     * normalized by baseClock/targetClock so the selected baud remains close to
+     * real-world x1 timing without using Date.now()/performance.now().  We pace
+     * complete serial frames rather than individual TXD/RXD waveform edges.
      */
     const ACIA_IRQ_RX    = 0x01;
     const ACIA_IRQ_TX    = 0x02;
@@ -1175,10 +1178,16 @@ function SerialProCard()
         ,"rxData":0x00
         ,"rxFull":false
         ,"rxErrors":0x00
+        ,"rxShift":0x00
+        ,"rxBusy":false
+        ,"rxTicks":0
         ,"txData":0x00
         ,"txEmpty":true
+        ,"txBusy":false
+        ,"txTicks":0
         ,"irq":false
         ,"irqReasons":0x00
+        ,"lastClockTick":0
         ,"dsrReady":true
         ,"dcdDetected":true
         ,"ctsClear":true
@@ -1262,6 +1271,123 @@ function SerialProCard()
         return ACIA_BAUD_TABLE[acia.control & 0x0F];
     }
 
+    function aciaCPUMultiplier()
+    {
+        var base = typeof(_o)!="undefined" ? Number(_o.CPU_ClocksTicks_s) : NaN;
+        var target = typeof(_o)!="undefined" ? Number(_o.CPU_TargetTicks_s) : NaN;
+        return Number.isFinite(base) && base>0 && Number.isFinite(target) && target>0
+            ? target/base
+            : 1;
+    }
+
+    function aciaEffectiveBaudRate()
+    {
+        var baud = aciaBaudRate();
+        if(!Number.isFinite(baud)) return baud;
+        return state.cpuSync ? baud*aciaCPUMultiplier() : baud;
+    }
+
+    function aciaFrameBits()
+    {
+        return 1                                  // start bit
+            + aciaWordLength()
+            + (aciaParity()=="none" ? 0 : 1)
+            + aciaStopBits();
+    }
+
+    function aciaFrameTicks()
+    {
+        var baud = aciaBaudRate();
+        var base = typeof(_o)!="undefined" ? Number(_o.CPU_ClocksTicks_s) : NaN;
+        if(!Number.isFinite(baud) || baud<=0 || !Number.isFinite(base) || base<=0)
+            return Infinity;
+        return base*aciaFrameBits()/baud;
+    }
+
+    function aciaClockScale()
+    {
+        if(state.cpuSync) return 1;
+        var multiplier = aciaCPUMultiplier();
+        return multiplier>0 ? 1/multiplier : 1;
+    }
+
+    function aciaClockNow(ctx)
+    {
+        if(ctx && ctx.io && typeof(ctx.io.getClockTicks)=="function")
+            return Number(ctx.io.getClockTicks());
+
+        if(typeof(apple2plus)=="object" && apple2plus &&
+           typeof(apple2plus.hwObj)=="function")
+        {
+            var hw = apple2plus.hwObj();
+            if(hw && hw.io && typeof(hw.io.getClockTicks)=="function")
+                return Number(hw.io.getClockTicks());
+        }
+        return Number(acia.lastClockTick) || 0;
+    }
+
+    function aciaAdvanceTiming(serialTicks)
+    {
+        var frameTicks = aciaFrameTicks();
+        if(!Number.isFinite(frameTicks) || frameTicks<=0 ||
+           !Number.isFinite(serialTicks) || serialTicks<=0)
+            return false;
+
+        if(acia.txBusy)
+        {
+            acia.txTicks += serialTicks;
+            if(acia.txTicks>=frameTicks)
+            {
+                var txByte = acia.txData & aciaDataMask();
+                acia.txTicks = 0;
+                acia.txBusy = false;
+
+                if(!aciaBreakActive())
+                {
+                    if(typeof(serialpro.serialTerminalWriteByte)=="function")
+                        serialpro.serialTerminalWriteByte(txByte);
+                    serialPhysicalWriteByte(txByte);
+                }
+
+                acia.txEmpty = true;
+                if(aciaTransmitIRQEnabled())
+                    aciaAssertIRQ(ACIA_IRQ_TX);
+            }
+        }
+
+        if(acia.rxBusy)
+        {
+            acia.rxTicks += serialTicks;
+            if(acia.rxTicks>=frameTicks)
+            {
+                acia.rxTicks = 0;
+                acia.rxBusy = false;
+                acia.rxData = acia.rxShift & aciaDataMask();
+                acia.rxFull = true;
+                if(aciaReceiverIRQEnabled())
+                    aciaAssertIRQ(ACIA_IRQ_RX);
+            }
+        }
+        return true;
+    }
+
+    function aciaSyncClock(clockTick)
+    {
+        clockTick = Number(clockTick);
+        if(!Number.isFinite(clockTick)) return false;
+
+        var previous = Number(acia.lastClockTick);
+        acia.lastClockTick = clockTick;
+        if(!Number.isFinite(previous) || clockTick<=previous) return true;
+
+        return aciaAdvanceTiming((clockTick-previous)*aciaClockScale());
+    }
+
+    function aciaSyncNow(ctx)
+    {
+        return aciaSyncClock(aciaClockNow(ctx));
+    }
+
     function aciaDTRAsserted()
     {
         return (acia.command & 0x01)!=0;             // DTRB low
@@ -1319,8 +1445,14 @@ function SerialProCard()
         acia.rxData = 0x00;
         acia.rxFull = false;
         acia.rxErrors = 0x00;
+        acia.rxShift = 0x00;
+        acia.rxBusy = false;
+        acia.rxTicks = 0;
         acia.txData = 0x00;
         acia.txEmpty = true;
+        acia.txBusy = false;
+        acia.txTicks = 0;
+        acia.lastClockTick = aciaClockNow();
         acia.dsrStatusReady = acia.dsrReady;
         acia.dcdStatusDetected = acia.dcdDetected;
         acia.modemStatusLatched = false;
@@ -1346,8 +1478,7 @@ function SerialProCard()
     {
         acia.command = value & 0xFF;
 
-        // Leaving a blocked condition may allow a waiting transmitter byte to
-        // complete immediately in the no-timing Stage 2D model.
+        // Leaving a blocked condition may start a waiting transmitter frame.
         aciaTryTransmit();
         aciaEvaluateEnabledInterrupts();
         serialPhysicalCheckConfiguration();
@@ -1357,30 +1488,32 @@ function SerialProCard()
     function aciaWriteControl(value)
     {
         acia.control = value & 0xFF;
+        aciaTryTransmit();
+        aciaPrimeReceiver();
         serialPhysicalCheckConfiguration();
     }
 
     /*
-     * Stage 2C receiver bridge.
+     * Receiver bridge. serialTerminalState.toCard[] is the remote-end byte
+     * stream waiting on the simulated line.  A byte first occupies a simple
+     * receive-shift stage for one configured frame time; only then does RDRF
+     * become visible to the CPU.
      *
-     * serialTerminalState.toCard[] is the remote-end byte stream waiting to
-     * arrive.  The 6551 itself exposes only one receive holding register to
-     * the CPU.  Without baud timing yet, prime exactly one queued byte whenever
-     * that holding register becomes empty.
+     * This stage deliberately retains the existing one-byte receive holding
+     * model: the next queued frame starts after DATA is consumed.  Detailed
+     * overrun behavior remains a later refinement.
      */
     function aciaPrimeReceiver()
     {
-        if(acia.rxFull) return true;
-        if(!serialTerminalState || !serialTerminalState.toCard)
-            return false;
-        if(!serialTerminalState.toCard.length)
-            return false;
+        if(acia.rxFull || acia.rxBusy) return true;
+        if(!serialTerminalState || !serialTerminalState.toCard) return false;
+        if(!serialTerminalState.toCard.length) return false;
+        if((acia.control & 0x10)==0)  return false;     // external receiver clock
+        if(!Number.isFinite(aciaBaudRate())) return false;
 
-        acia.rxData = serialTerminalState.toCard.shift() & 0xFF;
-        acia.rxData &= aciaDataMask();              // unused high data bits read as zero
-        acia.rxFull = true;
-        if(aciaReceiverIRQEnabled())
-            aciaAssertIRQ(ACIA_IRQ_RX);
+        acia.rxShift = serialTerminalState.toCard.shift() & aciaDataMask();
+        acia.rxTicks = 0;
+        acia.rxBusy = true;       
         return true;
     }
 
@@ -1401,8 +1534,7 @@ function SerialProCard()
         var value = acia.rxData & 0xFF;
         acia.rxFull = false;        
         acia.rxErrors = 0x00;       // PE/FE/OVRN clear after DATA read
-        // Timing is still deferred, so make the next already-queued remote byte
-        // available immediately after the CPU consumes this one.
+        // Start, but do not instantly complete, the next queued remote frame.
         aciaPrimeReceiver();
         return value;
     }
@@ -1449,29 +1581,13 @@ function SerialProCard()
 
     function aciaTryTransmit()
     {
-        if(acia.txEmpty || !acia.ctsClear)
+        if(acia.txEmpty || acia.txBusy || !acia.ctsClear)
+            return false;
+        if(!Number.isFinite(aciaBaudRate()))
             return false;
 
-        var txByte = acia.txData & aciaDataMask();
-
-        /*
-         * Continuous BREAK is a line-level condition.  Stage 2D does not yet
-         * synthesize serial waveforms; consume the pending data-register byte
-         * without rendering it as ordinary remote data while BREAK is active.
-         */
-        if(!aciaBreakActive())
-        {
-            if(typeof(serialpro.serialTerminalWriteByte)=="function")
-                serialpro.serialTerminalWriteByte(txByte);
-
-            // Stage 3A: optionally send the same byte to a physical USB-UART.
-            serialPhysicalWriteByte(txByte);
-        }
-        acia.txEmpty = true;
-
-        if(aciaTransmitIRQEnabled())
-            aciaAssertIRQ(ACIA_IRQ_TX);
-
+        acia.txTicks = 0;
+        acia.txBusy = true;
         return true;
     }
 
@@ -1509,9 +1625,14 @@ function SerialProCard()
             ,"parityCheck":aciaParityChecked()
             ,"stopBits":aciaStopBits()
             ,"txBaud":baud
+            ,"effectiveTxBaud":aciaEffectiveBaudRate()
+            ,"cpuSync":state.cpuSync
+            ,"cpuMultiplier":aciaCPUMultiplier()
             ,"txClock":baud==null ? "external/16" : "internal"
             ,"rxBaud":receiverInternal ? baud : null
             ,"rxClock":receiverInternal ? "transmit-rate" : "external/16"
+            ,"txBusy":acia.txBusy
+            ,"rxBusy":acia.rxBusy
             ,"dtr":aciaDTRAsserted()
             ,"rts":aciaRTSAsserted()
             ,"cts":acia.ctsClear
@@ -1842,6 +1963,9 @@ function SerialProCard()
     {
         addr &= 0x0F;
 
+        if(addr>=0x08 && addr<=0x0B)
+            aciaSyncNow(ctx);
+
         switch(addr)
         {
             case 0x05:      // $C085+$s0: selected 6818 Clock/RAM data
@@ -1923,6 +2047,9 @@ function SerialProCard()
          */
         addr &= 0x0F;
         d8 &= 0xFF;
+
+        if(addr>=0x08 && addr<=0x0B)
+            aciaSyncNow(ctx);
 
         switch(addr)
         {
@@ -2293,6 +2420,7 @@ function SerialProCard()
         serialUISetSelect(controlID,"serial_parity",aciaParity());
         serialUISetSelect(controlID,"serial_stop",aciaStopBits());
         serialUISetChecked(controlID,"serial_rxclock",(acia.control & 0x10)!=0);
+        serialUISetChecked(controlID,"serial_cpu_sync",state.cpuSync);
         serialUISetChecked(controlID,"physical_dtr",aciaDTRAsserted());
         serialUISetChecked(controlID,"physical_rts",aciaRTSAsserted());
 
@@ -2326,6 +2454,22 @@ function SerialProCard()
             physicalLabel.title = serialUIPhysicalTitle();
         }
 
+        var baudSelect = serialUIElement(controlID,"serial_baud");
+        if(baudSelect)
+        {
+            var programmed = aciaBaudRate();
+            var effective = aciaEffectiveBaudRate();
+            baudSelect.title = state.cpuSync
+                ? "6551 programmed baud "+programmed+"; CPU sync gives effective baud "+effective
+                : "6551 baud "+programmed+"; CPU sync is off so serial timing remains approximately x1";
+        }
+
+        var cpuSync = serialUIElement(controlID,"serial_cpu_sync");
+        if(cpuSync)
+            cpuSync.title = state.cpuSync
+                ? "CPU sync ON: serial timing follows the CPU speed multiplier"
+                : "CPU sync OFF: serial timing is normalized to approximately x1 regardless of CPU acceleration";
+
         return true;
     }
 
@@ -2333,6 +2477,9 @@ function SerialProCard()
     {
         controlID = String(controlID || "");
         setting = String(setting || "");
+
+        // Apply elapsed cycles using the old serial format before changing it.
+        aciaSyncNow();
 
         if(setting=="baud")
         {
@@ -2381,8 +2528,16 @@ function SerialProCard()
     this.deviceToolSerialFlag = function(controlID,setting,enabled)
     {
         enabled = !!enabled;
+        // Preserve elapsed timing under the mode/register state that existed
+        // before this UI-originated change.
+        aciaSyncNow();
 
-        if(setting=="rxclock")
+        if(setting=="cpusync")
+        {
+            state.cpuSync = enabled;
+            serialPhysicalCheckConfiguration();
+        }
+        else if(setting=="rxclock")
         {
             aciaWriteControl(enabled
                 ? (acia.control | 0x10)
@@ -2431,6 +2586,10 @@ function SerialProCard()
     this.deviceToolSerialMonitoring = function()
     {
         if(!serialUI.controlID) return false;
+
+        // CPU target speed may change without touching an ACIA register.  If a
+        // physical port is CPU-synchronized, that changes its effective baud.
+        if(serialPhysical.connected) serialPhysicalCheckConfiguration();
         return serialUIRefresh(serialUI.controlID);
     };
 
@@ -2515,15 +2674,19 @@ function SerialProCard()
 
     function serialPhysicalConfiguration()
     {
-        var baud = aciaBaudRate();
+        var programmedBaud = aciaBaudRate();
+        var baud = aciaEffectiveBaudRate();
         var dataBits = aciaWordLength();
         var stopBits = aciaStopBits();
         var parity = aciaParity();
         var receiverInternal = (acia.control & 0x10)!=0;
 
         if(!Number.isFinite(baud) || baud<=0 || Math.floor(baud)!=baud)
-            return {"ok":false,
-                    "reason":"Web Serial requires a positive integer baud rate; ACIA baud is "+String(baud)};
+            return {
+                 "ok":false
+                ,"reason":"Web Serial requires a positive integer effective baud rate; ACIA baud is "
+                    +String(programmedBaud)+", effective baud is "+String(baud)
+            };
 
         if(!receiverInternal)
             return {"ok":false,
@@ -2542,12 +2705,16 @@ function SerialProCard()
                     "reason":"Web Serial supports none/even/odd parity; ACIA parity is "+parity};
 
         var parityLetter = parity=="none" ? "N" : (parity=="even" ? "E" : "O");
+        var multiplier = aciaCPUMultiplier();
         var signature = [baud,dataBits,parity,stopBits].join("/");
+        var label = baud+" "+dataBits+parityLetter+stopBits;
+        if(state.cpuSync && Math.abs(multiplier-1)>1e-9)
+            label += " (ACIA "+programmedBaud+" x"+multiplier+")";
 
         return {
              "ok":true
             ,"signature":signature
-            ,"label":baud+" "+dataBits+parityLetter+stopBits
+            ,"label":label
             ,"options":{
                  "baudRate":baud
                 ,"dataBits":dataBits
@@ -2693,6 +2860,10 @@ function SerialProCard()
     {
         if(!chunk || !chunk.length || serialPhysical.configStale)
             return 0;
+
+        // Do not credit a newly arrived physical byte with cycles that elapsed
+        // before the browser/USB UART delivered it.
+        aciaSyncNow();
 
         var display = "";
         for(var i=0;i<chunk.length;i++)
@@ -3139,21 +3310,23 @@ function SerialProCard()
     this.serialTerminalQueueLine = function(line)
     {
         line = String(line===undefined ? "" : line);
+        // Start remote input at the current emulated-cycle boundary.
+        aciaSyncNow();
 
         for(var i=0;i<line.length;i++)
             serialTerminalState.toCard.push(line.charCodeAt(i) & 0xFF);
-
+        // Start only the first waiting serial frame.  Further bytes remain on
+        // the simulated line until DATA is consumed and another frame begins.
         serialTerminalState.toCard.push(0x0D);
         serialTerminalRemember("tx",">"+line+"\n");
-        // Present only the first waiting serial byte to the 6551 receiver.
-        // Further bytes remain on the simulated wire until DATA is consumed.
+
         aciaPrimeReceiver();
         return line.length + 1;
     };
 
     this.serialTerminalPending = function()
     {
-        return serialTerminalState.toCard.length + (acia.rxFull ? 1 : 0);
+        return serialTerminalState.toCard.length + (acia.rxFull ? 1 : 0) + (acia.rxBusy ? 1 : 0);
     };
 
     /*
@@ -3164,11 +3337,13 @@ function SerialProCard()
      */
     this.serialTerminalACIAState = function()
     {
+        aciaSyncNow();
         return aciaDescribe();
     };
 
     this.serialTerminalSetModemLines = function(lines)
     {
+        aciaSyncNow();
         lines = lines || {};
 
         var oldCTS = acia.ctsClear;
@@ -3194,8 +3369,7 @@ function SerialProCard()
         if(modemChanged)
             aciaLatchModemStatusChange();
 
-        // CTSB returning low allows a byte held in the transmitter register to
-        // move out immediately in the Stage 2D no-timing model.
+        // CTSB returning low allows a held transmitter frame to begin.
         if(!oldCTS && acia.ctsClear)
             aciaTryTransmit();
 
@@ -3204,6 +3378,7 @@ function SerialProCard()
 
     this.serialTerminalReadByte = function()
     {
+        aciaSyncNow();
         // Diagnostic helper: consume through the same receive-register path
         // used by CPU reads so console tests cannot bypass Stage 2C semantics.
         if(!acia.rxFull)
@@ -3459,7 +3634,8 @@ function SerialProCard()
             +"Use <i class=\"fa fa-adjust\"></i> to switch between dark terminal mode and light dot-matrix paper mode.<br>"
             +"Use <i class=\"fa fa-plug\"></i> to connect/disconnect an optional physical USB serial port through Web Serial.<br>"
             +"Physical RX/TX shares the same 6551 endpoint; modem inputs are diagnostic-only in Stage 3A.<br>"
-            +"<i>Current stage:</i> Stage 3A physical byte transport is available; emulated serial bit timing is still deferred."
+            +"CPU sync makes serial timing follow CPU acceleration; uncheck it to keep the selected baud approximately at x1 timing.<br>"
+            +"<i>Current stage:</i> cycle-paced 6551 character timing + Stage 3A physical byte transport; individual serial waveform edges remain deferred."
         );
         return true;
     };
@@ -3676,6 +3852,7 @@ function SerialProCard()
         var rxClockChecked = (acia.control & 0x10)!=0 ? " checked" : "";
         var dtrChecked = aciaDTRAsserted() ? " checked" : "";
         var rtsChecked = aciaRTSAsserted() ? " checked" : "";
+        var cpuSyncChecked = state.cpuSync ? " checked" : "";
 
         return ""
             + "<div class=toolbox id=\""+toolboxID+"\" hidden>"
@@ -3699,6 +3876,10 @@ function SerialProCard()
             + "          onclick=\""+call+".deviceToolRTCSet('"+controlID+"')\">SET</button>"
             + "  <button class=\"appbut skinny\" type=button title=\"Set RTC from browser host time\""
             + "          onclick=\""+call+".deviceToolRTCHost('"+controlID+"')\">HOST</button>"
+            + "  <label title=\"Follow CPU speed; uncheck to keep selected baud approximately at x1 timing\" style=\"display:flex;align-items:center;gap:2px;margin-left:auto;\">"
+            + "    <input id=\""+controlID+"_serial_cpu_sync\" type=checkbox"+cpuSyncChecked
+            + "           onchange=\""+call+".deviceToolSerialFlag('"+controlID+"','cpusync',this.checked)\">CPU sync"
+            + "  </label>"
             + "  </div>"
 
             + "  <div style=\"height:21px;display:flex;align-items:center;gap:4px;\">"
@@ -3752,6 +3933,11 @@ function SerialProCard()
         state.romSelector = 0x00;
         releaseExpansionROM();
     }
+
+    this.syncClock = function(clockTick)
+    {
+        return aciaSyncClock(clockTick);
+    };
 
     this.reset = function()
     {

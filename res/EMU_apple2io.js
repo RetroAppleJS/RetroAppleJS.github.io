@@ -29,6 +29,14 @@ function Apple2IO(vid)
     var tickCallbacks = [];
     var cycleCallbacks = [];
 
+    /*
+     * Monotonic emulated CPU-cycle timebase.  This advances only when a 6502
+     * tick actually completes; it is deliberately independent of host RTC.
+     * Slow peripherals can sample it lazily instead of adding another callback
+     * to the one-call-per-CPU-tick hot path.
+     */
+    var clockTicks = 0;
+
     function hookActive(device,hook)
     {
         var predicate = hook=="tick" ? device.isTickActive : device.isCycleActive;
@@ -537,8 +545,14 @@ function mergeActionMap(dst,src)
     // CPU-tick hook for devices that need sub-cycle sampling, such as the speaker.
     this.tick = function(n)
     {
+        clockTicks++;
         for(var i=0;i<tickCallbacks.length;i++)
             tickCallbacks[i](n);
+    }
+
+    this.getClockTicks = function()
+    {
+        return clockTicks;
     }
 
     // Processing-cycle hook, called once after the configured CPU-tick group.
@@ -546,6 +560,22 @@ function mergeActionMap(dst,src)
     {
         for(var i=0;i<cycleCallbacks.length;i++)
             cycleCallbacks[i]();
+
+
+
+        /*
+         * Mounted peripherals with slow independent timing domains (UARTs,
+         * timers, etc.) can synchronize once per processing slice as well as
+         * lazily on their own register accesses.  Passing the absolute counter
+         * avoids loss of time when processing slices are shortened by turbo
+         * host-capacity limits.
+         */
+        for(var slotN in this.slots)
+        {
+            var peripheral = this.slots[slotN] && this.slots[slotN].peripheral;
+            if(peripheral && typeof(peripheral.syncClock)=="function")
+                peripheral.syncClock(clockTicks);
+        }
     }
 
     this.attach = function(owner,device_info)
