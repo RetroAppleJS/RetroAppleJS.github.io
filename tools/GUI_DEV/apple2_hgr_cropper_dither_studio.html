@@ -1,0 +1,2088 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Apple II HGR Cropper and Pixel Inspector</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111418;
+      --panel: #1a1f25;
+      --panel-2: #151a20;
+      --border: #38414b;
+      --text: #f2f4f7;
+      --muted: #aeb8c2;
+      --accent: #79d2ff;
+      --button: #27313a;
+      --button-hover: #34414d;
+      --danger: #ffb4b4;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(1200px, calc(100% - 24px));
+      margin: 0 auto;
+      padding: 20px 0 32px;
+    }
+
+    h1, h2 {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 4px;
+      font-size: clamp(1.35rem, 3vw, 2rem);
+    }
+
+    h2 {
+      margin-bottom: 10px;
+      font-size: 1.12rem;
+    }
+
+    .subtitle {
+      margin: 0 0 18px;
+      color: var(--muted);
+    }
+
+    .panel {
+      margin-bottom: 16px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel);
+      box-shadow: 0 10px 30px rgb(0 0 0 / 20%);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr);
+      gap: 12px 18px;
+      align-items: end;
+      margin-bottom: 14px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    label {
+      font-weight: 650;
+    }
+
+    input[type="file"],
+    input[type="range"],
+    select {
+      width: 100%;
+    }
+
+    input[type="range"] {
+      accent-color: var(--accent);
+    }
+
+    select {
+      min-height: 38px;
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--button);
+      color: var(--text);
+      font: inherit;
+    }
+
+    .buttons {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    button {
+      min-height: 38px;
+      padding: 8px 13px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--button);
+      color: var(--text);
+      font: inherit;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    button:hover:not(:disabled) {
+      background: var(--button-hover);
+    }
+
+    button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .primary {
+      border-color: #5089a5;
+      background: #21485b;
+    }
+
+    .primary:hover:not(:disabled) {
+      background: #2a5a70;
+    }
+
+    .canvas-wrap {
+      display: grid;
+      place-items: center;
+      min-height: 260px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background:
+        linear-gradient(45deg, #151a1f 25%, transparent 25%),
+        linear-gradient(-45deg, #151a1f 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #151a1f 75%),
+        linear-gradient(-45deg, transparent 75%, #151a1f 75%);
+      background-size: 24px 24px;
+      background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+    }
+
+    canvas {
+      display: block;
+      max-width: 100%;
+      outline: none;
+    }
+
+    #preview {
+      touch-action: none;
+      cursor: grab;
+    }
+
+    #preview.dragging {
+      cursor: grabbing;
+    }
+
+    .status {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      margin-top: 12px;
+      color: var(--muted);
+    }
+
+    .status strong {
+      color: var(--text);
+    }
+
+    .note {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: .92rem;
+    }
+
+    .error {
+      color: var(--danger);
+    }
+
+    .result-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(220px, 290px);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .result-area {
+      min-width: 0;
+    }
+
+    .result-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .result-stage {
+      position: relative;
+      width: min(100%, 840px);
+      aspect-ratio: 280 / 192;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #000;
+      line-height: 0;
+    }
+
+    #resultCanvas,
+    #pixelOverlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+    }
+
+    #pixelOverlay {
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .inspector {
+      display: grid;
+      gap: 12px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel-2);
+    }
+
+    .inspector-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 7px 12px;
+      align-items: baseline;
+    }
+
+    .inspector-grid dt {
+      color: var(--muted);
+    }
+
+    .inspector-grid dd {
+      margin: 0;
+      font: 650 0.98rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      word-break: break-word;
+    }
+
+    .colour-row {
+      display: grid;
+      grid-template-columns: 62px 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+
+    #colourSwatch,
+    #ditherColourSwatch {
+      width: 62px;
+      height: 62px;
+      border: 1px solid #65717c;
+      border-radius: 8px;
+      background: transparent;
+      box-shadow: inset 0 0 0 1px rgb(255 255 255 / 12%);
+    }
+
+    .inspector-help {
+      margin: 0;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .placeholder {
+      display: grid;
+      place-items: center;
+      min-height: 160px;
+      color: var(--muted);
+      text-align: center;
+      padding: 20px;
+    }
+
+    .progress-row {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      margin: 4px 0 12px;
+    }
+
+    progress {
+      width: 100%;
+      height: 18px;
+      accent-color: var(--accent);
+    }
+
+    .hgr-stage {
+      position: relative;
+      width: min(100%, 840px);
+      aspect-ratio: 280 / 192;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #000;
+      line-height: 0;
+    }
+
+    #ditherCanvas,
+    #ditherOverlay {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+    }
+
+    #ditherOverlay {
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .algorithm-summary {
+      display: grid;
+      gap: 4px;
+      margin: 10px 0 0;
+      padding: 10px 12px;
+      border-left: 3px solid var(--accent);
+      background: rgb(121 210 255 / 7%);
+      color: var(--muted);
+    }
+
+    .algorithm-summary strong {
+      color: var(--text);
+    }
+
+    @media (max-width: 800px) {
+      .result-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .inspector {
+        grid-template-columns: minmax(150px, 220px) 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      .buttons {
+        grid-column: 1;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .inspector {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Apple II HGR Cropper and Pixel Inspector</h1>
+    <p class="subtitle">
+      Crop to the exact Apple II HGR ratio, then resample the selected area to a true 280 × 192 pixel image.
+    </p>
+
+    <section class="panel">
+      <h2>1. Select the crop</h2>
+
+      <div class="controls">
+        <div class="field">
+          <label for="fileInput">Choose an image</label>
+          <input id="fileInput" type="file" accept="image/*">
+        </div>
+
+        <div class="field">
+          <label for="sizeSlider">
+            Crop size: <span id="sizeLabel">—</span>
+          </label>
+          <input id="sizeSlider" type="range" min="1" max="1" value="1" disabled>
+        </div>
+
+        <div class="buttons">
+          <button id="centerButton" disabled>Center crop</button>
+          <button id="maximumButton" disabled>Use maximum crop</button>
+          <button id="cropPngButton" disabled>Save native crop PNG</button>
+          <button id="cropJpegButton" disabled>Save native crop JPEG</button>
+        </div>
+      </div>
+
+      <div id="canvasWrap" class="canvas-wrap">
+        <canvas id="preview" tabindex="0" aria-label="Image crop preview"></canvas>
+      </div>
+
+      <div class="status" aria-live="polite">
+        <span>Source: <strong id="sourceInfo">No image loaded</strong></span>
+        <span>Crop: <strong id="cropInfo">—</strong></span>
+        <span>Ratio: <strong>35:24 = 280:192</strong></span>
+      </div>
+
+      <p id="message" class="note">
+        Load an image, drag the crop rectangle to reposition it, and use the slider to change its size.
+        Arrow keys move the crop by one source pixel; Shift + Arrow moves it by ten.
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2>2. Resize to 280 × 192 and inspect pixels</h2>
+
+      <div class="controls">
+        <div class="field">
+          <label for="resamplingMode">Resampling method</label>
+          <select id="resamplingMode">
+            <option value="smooth" selected>Smooth, high-quality scaling</option>
+            <option value="nearest">Nearest-neighbour / pixelated</option>
+          </select>
+        </div>
+
+        <div class="buttons">
+          <button id="resizeButton" class="primary" disabled>Resize crop to 280 × 192</button>
+          <button id="resultPngButton" disabled>Save 280 × 192 PNG</button>
+          <button id="resultJpegButton" disabled>Save 280 × 192 JPEG</button>
+        </div>
+      </div>
+
+      <div class="result-layout">
+        <div class="result-area">
+          <div id="resultPlaceholder" class="placeholder">
+            Generate the 280 × 192 image to activate the pixel inspector.
+          </div>
+
+          <div id="resultContent" hidden>
+            <div class="result-stage" id="resultStage">
+              <canvas id="resultCanvas" width="280" height="192" aria-label="Resized Apple II HGR image"></canvas>
+              <canvas id="pixelOverlay" width="280" height="192" tabindex="0"
+                      aria-label="Pixel inspection overlay"></canvas>
+            </div>
+
+            <div class="status" aria-live="polite">
+              <span>Output: <strong>280 × 192 px</strong></span>
+              <span>Displayed enlarged: <strong>pixelated preview only</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <aside class="inspector" aria-label="Pixel inspector">
+          <div class="colour-row">
+            <div id="colourSwatch" aria-hidden="true"></div>
+            <div>
+              <strong>Pixel colour</strong>
+              <p class="inspector-help">Move over the image to inspect. Click to lock a pixel.</p>
+            </div>
+          </div>
+
+          <dl class="inspector-grid">
+            <dt>State</dt>
+            <dd id="pixelState">No output</dd>
+
+            <dt>X</dt>
+            <dd id="pixelX">—</dd>
+
+            <dt>Y</dt>
+            <dd id="pixelY">—</dd>
+
+            <dt>Red</dt>
+            <dd id="pixelR">—</dd>
+
+            <dt>Green</dt>
+            <dd id="pixelG">—</dd>
+
+            <dt>Blue</dt>
+            <dd id="pixelB">—</dd>
+
+            <dt>Alpha</dt>
+            <dd id="pixelA">—</dd>
+
+            <dt>RGB</dt>
+            <dd id="pixelRgb">—</dd>
+
+            <dt>Hex</dt>
+            <dd id="pixelHex">—</dd>
+
+            <dt>Linear index</dt>
+            <dd id="pixelIndex">—</dd>
+          </dl>
+
+          <button id="unlockPixelButton" disabled>Unlock selected pixel</button>
+
+          <p class="inspector-help">
+            Coordinates use the usual canvas convention: X = 0…279 from left to right,
+            Y = 0…191 from top to bottom.
+          </p>
+        </aside>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>3. Optimize Apple II HGR byte patterns</h2>
+
+      <div class="controls">
+        <div class="field">
+          <label for="ditherPasses">Byte-refinement passes</label>
+          <select id="ditherPasses">
+            <option value="1">1 — fast</option>
+            <option value="2">2</option>
+            <option value="3" selected>3 — balanced</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6 — strongest refinement</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="diffusionStrength">
+            Vertical diffusion: <span id="diffusionStrengthLabel">75%</span>
+          </label>
+          <input id="diffusionStrength" type="range"
+                 min="0" max="100" step="5" value="75">
+        </div>
+
+        <div class="field">
+          <label for="artifactParity">Artifact-colour parity</label>
+          <select id="artifactParity">
+            <option value="standard" selected>
+              Standard: even purple/blue, odd green/orange
+            </option>
+            <option value="reversed">
+              Reversed: even green/orange, odd purple/blue
+            </option>
+          </select>
+        </div>
+
+        <div class="buttons">
+          <button id="ditherButton" class="primary" disabled>
+            Optimize HGR byte patterns
+          </button>
+          <button id="ditherPngButton" disabled>Save HGR preview PNG</button>
+          <button id="hgrBinaryButton" disabled>Save 8 KB HGR binary</button>
+        </div>
+      </div>
+
+      <div class="progress-row">
+        <progress id="ditherProgress" max="192" value="0"></progress>
+        <span id="ditherStatus">Generate the 280 × 192 source image first.</span>
+      </div>
+
+      <div id="ditherPlaceholder" class="placeholder">
+        The optimized HGR rendering will appear here.
+      </div>
+
+      <div id="ditherContent" class="result-layout" hidden>
+        <div class="result-area">
+          <div class="hgr-stage">
+            <canvas id="ditherCanvas" width="280" height="192"
+                    aria-label="Optimized Apple II HGR preview"></canvas>
+            <canvas id="ditherOverlay" width="280" height="192" tabindex="0"
+                    aria-label="HGR byte and pixel inspection overlay"></canvas>
+          </div>
+
+          <div class="status" aria-live="polite">
+            <span>HGR data: <strong>40 bytes × 192 rows</strong></span>
+            <span>Page image: <strong>8192 bytes</strong></span>
+            <span>Mean OKLab error: <strong id="ditherError">—</strong></span>
+          </div>
+        </div>
+
+        <aside class="inspector" aria-label="HGR pattern inspector">
+          <div class="colour-row">
+            <div id="ditherColourSwatch" aria-hidden="true"></div>
+            <div>
+              <strong>Rendered HGR pixel</strong>
+              <p class="inspector-help">
+                Move over the preview to inspect. Click to lock a position.
+              </p>
+            </div>
+          </div>
+
+          <dl class="inspector-grid">
+            <dt>State</dt><dd id="ditherPixelState">No output</dd>
+            <dt>X / Y</dt><dd id="ditherPixelXY">—</dd>
+            <dt>RGB</dt><dd id="ditherPixelRgb">—</dd>
+            <dt>Byte column</dt><dd id="ditherByteColumn">—</dd>
+            <dt>Byte value</dt><dd id="ditherByteValue">—</dd>
+            <dt>Data bits x0→x6</dt><dd id="ditherByteBits">—</dd>
+            <dt>Phase bit</dt><dd id="ditherPhaseBit">—</dd>
+            <dt>Selected data bit</dt><dd id="ditherSelectedBit">—</dd>
+            <dt>HGR page offset</dt><dd id="ditherPageOffset">—</dd>
+          </dl>
+
+          <button id="unlockDitherPixelButton" disabled>
+            Unlock HGR position
+          </button>
+        </aside>
+      </div>
+
+      <div class="algorithm-summary">
+        <strong>How this version works</strong>
+        <span>
+          Every byte position tests all 256 possible values: seven bitmap bits plus
+          the shared phase bit. Candidates are scored in OKLab over the complete
+          seven-pixel block and its immediate left/right boundary. Alternating
+          refinement passes can replace earlier choices. Only the final row residual
+          is diffused vertically.
+        </span>
+        <span>
+          The preview uses an idealized six-colour HGR artifact model. It is suitable
+          for pattern optimization, but a composite NTSC renderer may produce somewhat
+          different RGB values.
+        </span>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    "use strict";
+
+    (() => {
+      const ASPECT_W = 35;
+      const ASPECT_H = 24;
+      const HGR_WIDTH = 280;
+      const HGR_HEIGHT = 192;
+      const HGR_BYTES_PER_ROW = 40;
+      const HGR_PAGE_BYTES = 8192;
+      const HGR_PALETTE = Object.freeze([
+        Object.freeze([0, 0, 0]),
+        Object.freeze([255, 255, 255]),
+        Object.freeze([202, 51, 255]),
+        Object.freeze([51, 255, 51]),
+        Object.freeze([51, 153, 255]),
+        Object.freeze([255, 153, 51])
+      ]);
+      const HGR_BLACK = 0;
+      const HGR_WHITE = 1;
+      const HGR_PURPLE = 2;
+      const HGR_GREEN = 3;
+      const HGR_BLUE = 4;
+      const HGR_ORANGE = 5;
+
+      const fileInput = document.getElementById("fileInput");
+      const sizeSlider = document.getElementById("sizeSlider");
+      const sizeLabel = document.getElementById("sizeLabel");
+      const centerButton = document.getElementById("centerButton");
+      const maximumButton = document.getElementById("maximumButton");
+      const cropPngButton = document.getElementById("cropPngButton");
+      const cropJpegButton = document.getElementById("cropJpegButton");
+      const resizeButton = document.getElementById("resizeButton");
+      const resultPngButton = document.getElementById("resultPngButton");
+      const resultJpegButton = document.getElementById("resultJpegButton");
+      const resamplingMode = document.getElementById("resamplingMode");
+
+      const canvasWrap = document.getElementById("canvasWrap");
+      const preview = document.getElementById("preview");
+      const previewContext = preview.getContext("2d");
+
+      const resultPlaceholder = document.getElementById("resultPlaceholder");
+      const resultContent = document.getElementById("resultContent");
+      const resultCanvas = document.getElementById("resultCanvas");
+      const resultContext = resultCanvas.getContext("2d", { willReadFrequently: true });
+      const pixelOverlay = document.getElementById("pixelOverlay");
+      const overlayContext = pixelOverlay.getContext("2d");
+
+      const sourceInfo = document.getElementById("sourceInfo");
+      const cropInfo = document.getElementById("cropInfo");
+      const message = document.getElementById("message");
+
+      const colourSwatch = document.getElementById("colourSwatch");
+      const pixelState = document.getElementById("pixelState");
+      const pixelX = document.getElementById("pixelX");
+      const pixelY = document.getElementById("pixelY");
+      const pixelR = document.getElementById("pixelR");
+      const pixelG = document.getElementById("pixelG");
+      const pixelB = document.getElementById("pixelB");
+      const pixelA = document.getElementById("pixelA");
+      const pixelRgb = document.getElementById("pixelRgb");
+      const pixelHex = document.getElementById("pixelHex");
+      const pixelIndex = document.getElementById("pixelIndex");
+      const unlockPixelButton = document.getElementById("unlockPixelButton");
+      const ditherPasses = document.getElementById("ditherPasses");
+      const diffusionStrength = document.getElementById("diffusionStrength");
+      const diffusionStrengthLabel = document.getElementById("diffusionStrengthLabel");
+      const artifactParity = document.getElementById("artifactParity");
+      const ditherButton = document.getElementById("ditherButton");
+      const ditherPngButton = document.getElementById("ditherPngButton");
+      const hgrBinaryButton = document.getElementById("hgrBinaryButton");
+      const ditherProgress = document.getElementById("ditherProgress");
+      const ditherStatus = document.getElementById("ditherStatus");
+      const ditherPlaceholder = document.getElementById("ditherPlaceholder");
+      const ditherContent = document.getElementById("ditherContent");
+      const ditherCanvas = document.getElementById("ditherCanvas");
+      const ditherContext = ditherCanvas.getContext("2d", { willReadFrequently: true });
+      const ditherOverlay = document.getElementById("ditherOverlay");
+      const ditherOverlayContext = ditherOverlay.getContext("2d");
+      const ditherError = document.getElementById("ditherError");
+      const ditherColourSwatch = document.getElementById("ditherColourSwatch");
+      const ditherPixelState = document.getElementById("ditherPixelState");
+      const ditherPixelXY = document.getElementById("ditherPixelXY");
+      const ditherPixelRgb = document.getElementById("ditherPixelRgb");
+      const ditherByteColumn = document.getElementById("ditherByteColumn");
+      const ditherByteValue = document.getElementById("ditherByteValue");
+      const ditherByteBits = document.getElementById("ditherByteBits");
+      const ditherPhaseBit = document.getElementById("ditherPhaseBit");
+      const ditherSelectedBit = document.getElementById("ditherSelectedBit");
+      const ditherPageOffset = document.getElementById("ditherPageOffset");
+      const unlockDitherPixelButton = document.getElementById("unlockDitherPixelButton");
+
+      const image = new Image();
+      let objectUrl = null;
+      let fileBaseName = "apple2-hgr";
+
+      let sourceWidth = 0;
+      let sourceHeight = 0;
+      let maxUnits = 0;
+      let resultReady = false;
+      let resultImageData = null;
+      let lockedPixel = null;
+      let hoverPixel = null;
+      let ditherReady = false;
+      let ditherRunning = false;
+      let ditherBytes = null;
+      let ditherImageData = null;
+      let ditherLockedPixel = null;
+      let ditherHoverPixel = null;
+      let ditherGeneration = 0;
+
+      const crop = { x: 0, y: 0, w: 0, h: 0 };
+
+      const previewView = {
+        cssWidth: 1,
+        cssHeight: 1,
+        imageX: 0,
+        imageY: 0,
+        scale: 1
+      };
+
+      const drag = {
+        active: false,
+        pointerId: null,
+        startClientX: 0,
+        startClientY: 0,
+        startCropX: 0,
+        startCropY: 0
+      };
+
+      function setCropControlsEnabled(enabled) {
+        sizeSlider.disabled = !enabled;
+        centerButton.disabled = !enabled;
+        maximumButton.disabled = !enabled;
+        cropPngButton.disabled = !enabled;
+        cropJpegButton.disabled = !enabled;
+        resizeButton.disabled = !enabled;
+      }
+
+      function setResultControlsEnabled(enabled) {
+        resultPngButton.disabled = !enabled;
+        resultJpegButton.disabled = !enabled;
+        unlockPixelButton.disabled = !enabled || !lockedPixel;
+        ditherButton.disabled = !enabled || ditherRunning;
+      }
+
+      function setMessage(text, isError = false) {
+        message.textContent = text;
+        message.classList.toggle("error", isError);
+      }
+
+      function clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+      }
+
+      function cleanBaseName(name) {
+        const withoutExtension = name.replace(/\.[^.]+$/, "");
+        const safe = withoutExtension
+          .replace(/[^\w.-]+/g, "-")
+          .replace(/^-+|-+$/g, "");
+        return safe || "apple2-hgr";
+      }
+
+      function invalidateResult() {
+        invalidateDither("Source image changed");
+        resultReady = false;
+        resultImageData = null;
+        lockedPixel = null;
+        hoverPixel = null;
+        setResultControlsEnabled(false);
+        resultPlaceholder.hidden = false;
+        resultContent.hidden = true;
+        clearInspector("Crop changed");
+        clearOverlay();
+      }
+
+      function centerCrop() {
+        crop.x = Math.floor((sourceWidth - crop.w) / 2);
+        crop.y = Math.floor((sourceHeight - crop.h) / 2);
+        invalidateResult();
+        updateCropStatus();
+        drawPreview();
+      }
+
+      function setCropUnits(units, preserveCenter = true) {
+        units = clamp(Math.round(units), 1, maxUnits);
+
+        const oldCenterX = crop.x + crop.w / 2;
+        const oldCenterY = crop.y + crop.h / 2;
+
+        crop.w = units * ASPECT_W;
+        crop.h = units * ASPECT_H;
+
+        if (preserveCenter) {
+          crop.x = Math.round(oldCenterX - crop.w / 2);
+          crop.y = Math.round(oldCenterY - crop.h / 2);
+        }
+
+        crop.x = clamp(crop.x, 0, sourceWidth - crop.w);
+        crop.y = clamp(crop.y, 0, sourceHeight - crop.h);
+
+        sizeSlider.value = String(units);
+        invalidateResult();
+        updateCropStatus();
+        drawPreview();
+      }
+
+      function updateCropStatus() {
+        if (!sourceWidth || !sourceHeight) {
+          sourceInfo.textContent = "No image loaded";
+          cropInfo.textContent = "—";
+          sizeLabel.textContent = "—";
+          return;
+        }
+
+        const units = crop.w / ASPECT_W;
+        sourceInfo.textContent = `${sourceWidth} × ${sourceHeight} px`;
+        cropInfo.textContent = `${crop.w} × ${crop.h} px at (${crop.x}, ${crop.y})`;
+        sizeLabel.textContent =
+          `${Math.round(units)} unit${units === 1 ? "" : "s"} · ${crop.w} × ${crop.h} px`;
+      }
+
+      function resizePreviewCanvas() {
+        const availableWidth = Math.max(260, canvasWrap.clientWidth);
+        const availableHeight = Math.max(
+          260,
+          Math.min(window.innerHeight * 0.66, 720)
+        );
+
+        let cssWidth = availableWidth;
+        let cssHeight = availableHeight;
+
+        if (sourceWidth && sourceHeight) {
+          const fit = Math.min(
+            availableWidth / sourceWidth,
+            availableHeight / sourceHeight
+          );
+          cssWidth = Math.max(1, Math.round(sourceWidth * fit));
+          cssHeight = Math.max(1, Math.round(sourceHeight * fit));
+        }
+
+        const deviceScale = Math.max(1, window.devicePixelRatio || 1);
+
+        preview.style.width = `${cssWidth}px`;
+        preview.style.height = `${cssHeight}px`;
+        preview.width = Math.max(1, Math.round(cssWidth * deviceScale));
+        preview.height = Math.max(1, Math.round(cssHeight * deviceScale));
+
+        previewContext.setTransform(
+          deviceScale, 0, 0, deviceScale, 0, 0
+        );
+
+        previewView.cssWidth = cssWidth;
+        previewView.cssHeight = cssHeight;
+        previewView.imageX = 0;
+        previewView.imageY = 0;
+        previewView.scale = sourceWidth ? cssWidth / sourceWidth : 1;
+
+        drawPreview();
+      }
+
+      function drawRuleOfThirds(context, x, y, width, height) {
+        context.save();
+        context.strokeStyle = "rgba(255,255,255,.50)";
+        context.lineWidth = 1;
+        context.beginPath();
+        context.moveTo(x + width / 3, y);
+        context.lineTo(x + width / 3, y + height);
+        context.moveTo(x + (2 * width) / 3, y);
+        context.lineTo(x + (2 * width) / 3, y + height);
+        context.moveTo(x, y + height / 3);
+        context.lineTo(x + width, y + height / 3);
+        context.moveTo(x, y + (2 * height) / 3);
+        context.lineTo(x + width, y + (2 * height) / 3);
+        context.stroke();
+        context.restore();
+      }
+
+      function drawPreview() {
+        previewContext.clearRect(
+          0, 0, previewView.cssWidth, previewView.cssHeight
+        );
+
+        if (!sourceWidth || !sourceHeight) {
+          previewContext.save();
+          previewContext.fillStyle = "#aeb8c2";
+          previewContext.font = "600 16px system-ui, sans-serif";
+          previewContext.textAlign = "center";
+          previewContext.textBaseline = "middle";
+          previewContext.fillText(
+            "Choose an image to begin",
+            previewView.cssWidth / 2,
+            previewView.cssHeight / 2
+          );
+          previewContext.restore();
+          return;
+        }
+
+        previewContext.imageSmoothingEnabled = true;
+        previewContext.drawImage(
+          image,
+          previewView.imageX,
+          previewView.imageY,
+          sourceWidth * previewView.scale,
+          sourceHeight * previewView.scale
+        );
+
+        const x = previewView.imageX + crop.x * previewView.scale;
+        const y = previewView.imageY + crop.y * previewView.scale;
+        const width = crop.w * previewView.scale;
+        const height = crop.h * previewView.scale;
+
+        previewContext.save();
+        previewContext.fillStyle = "rgba(0,0,0,.58)";
+        previewContext.beginPath();
+        previewContext.rect(
+          previewView.imageX,
+          previewView.imageY,
+          sourceWidth * previewView.scale,
+          sourceHeight * previewView.scale
+        );
+        previewContext.rect(x, y, width, height);
+        previewContext.fill("evenodd");
+        previewContext.restore();
+
+        previewContext.save();
+        previewContext.strokeStyle = "#79d2ff";
+        previewContext.lineWidth = 2;
+        previewContext.strokeRect(
+          x + 1,
+          y + 1,
+          Math.max(0, width - 2),
+          Math.max(0, height - 2)
+        );
+        previewContext.restore();
+
+        drawRuleOfThirds(previewContext, x, y, width, height);
+      }
+
+      function pointIsInsideCrop(clientX, clientY) {
+        const rectangle = preview.getBoundingClientRect();
+        const px = clientX - rectangle.left;
+        const py = clientY - rectangle.top;
+
+        const x = previewView.imageX + crop.x * previewView.scale;
+        const y = previewView.imageY + crop.y * previewView.scale;
+        const width = crop.w * previewView.scale;
+        const height = crop.h * previewView.scale;
+
+        return (
+          px >= x &&
+          px <= x + width &&
+          py >= y &&
+          py <= y + height
+        );
+      }
+
+      function moveCrop(deltaX, deltaY) {
+        const newX = clamp(
+          Math.round(crop.x + deltaX),
+          0,
+          sourceWidth - crop.w
+        );
+        const newY = clamp(
+          Math.round(crop.y + deltaY),
+          0,
+          sourceHeight - crop.h
+        );
+
+        if (newX === crop.x && newY === crop.y) {
+          return;
+        }
+
+        crop.x = newX;
+        crop.y = newY;
+        invalidateResult();
+        updateCropStatus();
+        drawPreview();
+      }
+
+      function loadFile(file) {
+        if (!file) {
+          return;
+        }
+
+        if (!file.type.startsWith("image/")) {
+          setCropControlsEnabled(false);
+          invalidateResult();
+          setMessage(
+            "The selected file is not recognized as an image.",
+            true
+          );
+          return;
+        }
+
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+        }
+
+        objectUrl = URL.createObjectURL(file);
+        fileBaseName = cleanBaseName(file.name);
+
+        image.onload = () => {
+          sourceWidth = image.naturalWidth;
+          sourceHeight = image.naturalHeight;
+          maxUnits = Math.floor(
+            Math.min(
+              sourceWidth / ASPECT_W,
+              sourceHeight / ASPECT_H
+            )
+          );
+
+          if (maxUnits < 1) {
+            setCropControlsEnabled(false);
+            invalidateResult();
+            sourceInfo.textContent =
+              `${sourceWidth} × ${sourceHeight} px`;
+            cropInfo.textContent = "Impossible";
+            sizeLabel.textContent = "—";
+            setMessage(
+              "This image is too small for an exact integer-pixel 35:24 crop. " +
+              "It must be at least 35 × 24 pixels.",
+              true
+            );
+            resizePreviewCanvas();
+            return;
+          }
+
+          crop.w = maxUnits * ASPECT_W;
+          crop.h = maxUnits * ASPECT_H;
+          crop.x = Math.floor((sourceWidth - crop.w) / 2);
+          crop.y = Math.floor((sourceHeight - crop.h) / 2);
+
+          sizeSlider.min = "1";
+          sizeSlider.max = String(maxUnits);
+          sizeSlider.value = String(maxUnits);
+
+          setCropControlsEnabled(true);
+          invalidateResult();
+          setMessage(
+            "Drag the crop rectangle to reposition it. " +
+            "The native crop is not resized; the second section can resample it to 280 × 192."
+          );
+          updateCropStatus();
+          resizePreviewCanvas();
+          preview.focus({ preventScroll: true });
+        };
+
+        image.onerror = () => {
+          setCropControlsEnabled(false);
+          invalidateResult();
+          setMessage(
+            "The browser could not decode this image.",
+            true
+          );
+        };
+
+        image.src = objectUrl;
+      }
+
+      function makeNativeCropCanvas(type) {
+        const output = document.createElement("canvas");
+        output.width = crop.w;
+        output.height = crop.h;
+
+        const outputContext = output.getContext(
+          "2d",
+          { alpha: type === "image/png" }
+        );
+
+        outputContext.imageSmoothingEnabled = false;
+
+        if (type === "image/jpeg") {
+          outputContext.fillStyle = "#ffffff";
+          outputContext.fillRect(0, 0, output.width, output.height);
+        }
+
+        outputContext.drawImage(
+          image,
+          crop.x, crop.y, crop.w, crop.h,
+          0, 0, crop.w, crop.h
+        );
+
+        return output;
+      }
+
+      function downloadCanvas(canvas, type, fileName) {
+        const quality = type === "image/jpeg" ? 0.95 : undefined;
+
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            setMessage(
+              "The browser could not create the output file.",
+              true
+            );
+            return;
+          }
+
+          const downloadUrl = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = downloadUrl;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+
+          setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+        }, type, quality);
+      }
+
+      function exportNativeCrop(type) {
+        if (!sourceWidth || !crop.w || !crop.h) {
+          return;
+        }
+
+        const extension = type === "image/png" ? "png" : "jpg";
+        const output = makeNativeCropCanvas(type);
+
+        downloadCanvas(
+          output,
+          type,
+          `${fileBaseName}-crop-${crop.w}x${crop.h}.${extension}`
+        );
+      }
+
+      function setDitherExportControls(enabled) {
+        ditherPngButton.disabled = !enabled;
+        hgrBinaryButton.disabled = !enabled;
+        unlockDitherPixelButton.disabled = !enabled || !ditherLockedPixel;
+      }
+
+      function invalidateDither(reason = "Generate HGR output") {
+        ditherGeneration++;
+        ditherReady = false;
+        ditherBytes = null;
+        ditherImageData = null;
+        ditherLockedPixel = null;
+        ditherHoverPixel = null;
+        ditherProgress.value = 0;
+        ditherError.textContent = "—";
+        ditherPlaceholder.hidden = false;
+        ditherContent.hidden = true;
+        ditherStatus.textContent = reason;
+        setDitherExportControls(false);
+        clearDitherInspector(reason);
+        clearDitherOverlay();
+      }
+
+      function srgb8ToLinear(value) {
+        const channel = value / 255;
+        return channel <= 0.04045
+          ? channel / 12.92
+          : Math.pow((channel + 0.055) / 1.055, 2.4);
+      }
+
+      function linearRgbToOklab(red, green, blue) {
+        const l = 0.4122214708 * red + 0.5363325363 * green + 0.0514459929 * blue;
+        const m = 0.2119034982 * red + 0.6806995451 * green + 0.1073969566 * blue;
+        const s = 0.0883024619 * red + 0.2817188376 * green + 0.6299787005 * blue;
+        const lRoot = Math.cbrt(l);
+        const mRoot = Math.cbrt(m);
+        const sRoot = Math.cbrt(s);
+        return [
+          0.2104542553 * lRoot + 0.7936177850 * mRoot - 0.0040720468 * sRoot,
+          1.9779984951 * lRoot - 2.4285922050 * mRoot + 0.4505937099 * sRoot,
+          0.0259040371 * lRoot + 0.7827717662 * mRoot - 0.8086757660 * sRoot
+        ];
+      }
+
+      function rgb8ToOklab(red, green, blue) {
+        return linearRgbToOklab(
+          srgb8ToLinear(red),
+          srgb8ToLinear(green),
+          srgb8ToLinear(blue)
+        );
+      }
+
+      const paletteLab = HGR_PALETTE.map(
+        ([red, green, blue]) => rgb8ToOklab(red, green, blue)
+      );
+
+      function getHgrDataBit(rowBytes, x) {
+        if (x < 0 || x >= HGR_WIDTH) return 0;
+        const byteColumn = Math.floor(x / 7);
+        const bit = x % 7;
+        return (rowBytes[byteColumn] >> bit) & 1;
+      }
+
+      function renderHgrPaletteIndex(rowBytes, x, parityMode) {
+        const bit = getHgrDataBit(rowBytes, x);
+        if (!bit) return HGR_BLACK;
+
+        const left = getHgrDataBit(rowBytes, x - 1);
+        const right = getHgrDataBit(rowBytes, x + 1);
+        if (left || right) return HGR_WHITE;
+
+        const byteColumn = Math.floor(x / 7);
+        const phase = (rowBytes[byteColumn] >> 7) & 1;
+        let odd = x & 1;
+        if (parityMode === "reversed") odd ^= 1;
+
+        if (phase === 0) return odd ? HGR_GREEN : HGR_PURPLE;
+        return odd ? HGR_ORANGE : HGR_BLUE;
+      }
+
+      function oklabSquaredError(targetL, targetA, targetB, paletteIndex) {
+        const colour = paletteLab[paletteIndex];
+        const deltaL = targetL - colour[0];
+        const deltaA = targetA - colour[1];
+        const deltaB = targetB - colour[2];
+        return 2.0 * deltaL * deltaL + deltaA * deltaA + deltaB * deltaB;
+      }
+
+      function scoreCandidateByte(rowBytes, byteColumn, candidate, adjustedTarget, parityMode) {
+        const oldValue = rowBytes[byteColumn];
+        rowBytes[byteColumn] = candidate;
+        const firstX = Math.max(0, byteColumn * 7 - 1);
+        const lastX = Math.min(HGR_WIDTH - 1, byteColumn * 7 + 7);
+        let error = 0;
+
+        for (let x = firstX; x <= lastX; x++) {
+          const targetOffset = x * 3;
+          const paletteIndex = renderHgrPaletteIndex(rowBytes, x, parityMode);
+          error += oklabSquaredError(
+            adjustedTarget[targetOffset],
+            adjustedTarget[targetOffset + 1],
+            adjustedTarget[targetOffset + 2],
+            paletteIndex
+          );
+        }
+
+        rowBytes[byteColumn] = oldValue;
+        return error;
+      }
+
+      function optimizeHgrRow(adjustedTarget, seedBytes, passCount, parityMode) {
+        const rowBytes = seedBytes ? seedBytes.slice() : new Uint8Array(HGR_BYTES_PER_ROW);
+
+        for (let pass = 0; pass < passCount; pass++) {
+          const leftToRight = (pass & 1) === 0;
+          const start = leftToRight ? 0 : HGR_BYTES_PER_ROW - 1;
+          const end = leftToRight ? HGR_BYTES_PER_ROW : -1;
+          const step = leftToRight ? 1 : -1;
+          let changes = 0;
+
+          for (let byteColumn = start; byteColumn !== end; byteColumn += step) {
+            const original = rowBytes[byteColumn];
+            let bestByte = original;
+            let bestError = scoreCandidateByte(
+              rowBytes, byteColumn, original, adjustedTarget, parityMode
+            );
+
+            for (let candidate = 0; candidate < 256; candidate++) {
+              if (candidate === original) continue;
+              const error = scoreCandidateByte(
+                rowBytes, byteColumn, candidate, adjustedTarget, parityMode
+              );
+              if (error < bestError) {
+                bestError = error;
+                bestByte = candidate;
+              }
+            }
+
+            if (bestByte !== original) {
+              rowBytes[byteColumn] = bestByte;
+              changes++;
+            }
+          }
+
+          if (changes === 0) break;
+        }
+
+        return rowBytes;
+      }
+
+      function makeTargetLab(imageData) {
+        const output = new Float32Array(HGR_WIDTH * HGR_HEIGHT * 3);
+        const source = imageData.data;
+
+        for (let pixel = 0; pixel < HGR_WIDTH * HGR_HEIGHT; pixel++) {
+          const sourceOffset = pixel * 4;
+          const alpha = source[sourceOffset + 3] / 255;
+          const lab = rgb8ToOklab(
+            Math.round(source[sourceOffset] * alpha),
+            Math.round(source[sourceOffset + 1] * alpha),
+            Math.round(source[sourceOffset + 2] * alpha)
+          );
+          const targetOffset = pixel * 3;
+          output[targetOffset] = lab[0];
+          output[targetOffset + 1] = lab[1];
+          output[targetOffset + 2] = lab[2];
+        }
+        return output;
+      }
+
+      function clampLab(value, component) {
+        return component === 0 ? clamp(value, 0, 1) : clamp(value, -0.5, 0.5);
+      }
+      function renderOptimizedRow(rowBytes, y, adjustedTarget, nextError, diffusion, parityMode, outputData) {
+        let rowError = 0;
+
+        for (let x = 0; x < HGR_WIDTH; x++) {
+          const paletteIndex = renderHgrPaletteIndex(rowBytes, x, parityMode);
+          const rgb = HGR_PALETTE[paletteIndex];
+          const lab = paletteLab[paletteIndex];
+          const imageOffset = (y * HGR_WIDTH + x) * 4;
+          const targetOffset = x * 3;
+
+          outputData[imageOffset] = rgb[0];
+          outputData[imageOffset + 1] = rgb[1];
+          outputData[imageOffset + 2] = rgb[2];
+          outputData[imageOffset + 3] = 255;
+
+          const errorL = adjustedTarget[targetOffset] - lab[0];
+          const errorA = adjustedTarget[targetOffset + 1] - lab[1];
+          const errorB = adjustedTarget[targetOffset + 2] - lab[2];
+          rowError += 2.0 * errorL * errorL + errorA * errorA + errorB * errorB;
+
+          if (diffusion <= 0) continue;
+          const distribute = (targetX, weight) => {
+            if (targetX < 0 || targetX >= HGR_WIDTH) return;
+            const offset = targetX * 3;
+            nextError[offset] += errorL * weight * diffusion;
+            nextError[offset + 1] += errorA * weight * diffusion;
+            nextError[offset + 2] += errorB * weight * diffusion;
+          };
+          distribute(x - 1, 0.25);
+          distribute(x, 0.50);
+          distribute(x + 1, 0.25);
+        }
+
+        return rowError;
+      }
+
+      function nextAnimationFrame() {
+        return new Promise(resolve => requestAnimationFrame(resolve));
+      }
+
+      async function optimizeHgrImage() {
+        if (!resultReady || ditherRunning) return;
+
+        const generation = ++ditherGeneration;
+        ditherRunning = true;
+        ditherButton.disabled = true;
+        setDitherExportControls(false);
+        ditherProgress.value = 0;
+        ditherError.textContent = "—";
+        ditherStatus.textContent = "Preparing target colours…";
+
+        const passCount = Number(ditherPasses.value);
+        const diffusion = Number(diffusionStrength.value) / 100;
+        const parityMode = artifactParity.value;
+        const targetLab = makeTargetLab(resultImageData);
+        const pageRows = new Uint8Array(HGR_BYTES_PER_ROW * HGR_HEIGHT);
+        const outputImageData = ditherContext.createImageData(HGR_WIDTH, HGR_HEIGHT);
+        let currentError = new Float32Array(HGR_WIDTH * 3);
+        let nextError = new Float32Array(HGR_WIDTH * 3);
+        let previousRow = null;
+        let totalError = 0;
+
+        ditherPlaceholder.hidden = true;
+        ditherContent.hidden = false;
+        clearDitherInspector("Processing");
+        clearDitherOverlay();
+
+        for (let y = 0; y < HGR_HEIGHT; y++) {
+          if (generation !== ditherGeneration || !resultReady) {
+            ditherRunning = false;
+            setResultControlsEnabled(resultReady);
+            return;
+          }
+
+          const adjustedTarget = new Float32Array(HGR_WIDTH * 3);
+          const rowSourceOffset = y * HGR_WIDTH * 3;
+          for (let x = 0; x < HGR_WIDTH; x++) {
+            const targetOffset = x * 3;
+            adjustedTarget[targetOffset] = clampLab(
+              targetLab[rowSourceOffset + targetOffset] + currentError[targetOffset], 0
+            );
+            adjustedTarget[targetOffset + 1] = clampLab(
+              targetLab[rowSourceOffset + targetOffset + 1] + currentError[targetOffset + 1], 1
+            );
+            adjustedTarget[targetOffset + 2] = clampLab(
+              targetLab[rowSourceOffset + targetOffset + 2] + currentError[targetOffset + 2], 2
+            );
+          }
+
+          const rowBytes = optimizeHgrRow(adjustedTarget, previousRow, passCount, parityMode);
+          pageRows.set(rowBytes, y * HGR_BYTES_PER_ROW);
+          nextError.fill(0);
+          totalError += renderOptimizedRow(
+            rowBytes, y, adjustedTarget, nextError, diffusion, parityMode, outputImageData.data
+          );
+          previousRow = rowBytes;
+          [currentError, nextError] = [nextError, currentError];
+
+          ditherProgress.value = y + 1;
+          ditherStatus.textContent = `Optimizing row ${y + 1} of ${HGR_HEIGHT}…`;
+          if ((y & 7) === 7) {
+            ditherContext.putImageData(outputImageData, 0, 0);
+            await nextAnimationFrame();
+          }
+        }
+
+        if (generation !== ditherGeneration) {
+          ditherRunning = false;
+          setResultControlsEnabled(resultReady);
+          return;
+        }
+
+        ditherContext.putImageData(outputImageData, 0, 0);
+        ditherBytes = pageRows;
+        ditherImageData = outputImageData;
+        ditherReady = true;
+        ditherRunning = false;
+        ditherLockedPixel = null;
+        ditherHoverPixel = null;
+        const meanError = totalError / (HGR_WIDTH * HGR_HEIGHT);
+        ditherError.textContent = meanError.toFixed(6);
+        ditherStatus.textContent = `Complete: ${passCount} refinement pass${passCount === 1 ? "" : "es"}, ${Math.round(diffusion * 100)}% vertical diffusion.`;
+        setResultControlsEnabled(true);
+        setDitherExportControls(true);
+        clearDitherInspector("Move over image");
+      }
+
+      function hgrPageOffset(y, byteColumn) {
+        return (
+          ((y & 0x07) << 10) +
+          (((y >> 3) & 0x07) << 7) +
+          ((y >> 6) * 0x28) +
+          byteColumn
+        );
+      }
+
+      function buildHgrPageImage() {
+        const page = new Uint8Array(HGR_PAGE_BYTES);
+        for (let y = 0; y < HGR_HEIGHT; y++) {
+          for (let byteColumn = 0; byteColumn < HGR_BYTES_PER_ROW; byteColumn++) {
+            page[hgrPageOffset(y, byteColumn)] = ditherBytes[y * HGR_BYTES_PER_ROW + byteColumn];
+          }
+        }
+        return page;
+      }
+
+      function downloadBytes(bytes, fileName) {
+        const blob = new Blob([bytes], { type: "application/octet-stream" });
+        const downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+      }
+      function eventToDitherPixel(event) {
+        const rectangle = ditherOverlay.getBoundingClientRect();
+        return {
+          x: clamp(Math.floor((event.clientX - rectangle.left) * HGR_WIDTH / rectangle.width), 0, HGR_WIDTH - 1),
+          y: clamp(Math.floor((event.clientY - rectangle.top) * HGR_HEIGHT / rectangle.height), 0, HGR_HEIGHT - 1)
+        };
+      }
+
+      function inspectDitherPixel(x, y) {
+        if (!ditherReady || !ditherBytes || !ditherImageData) return null;
+        const byteColumn = Math.floor(x / 7);
+        const bitIndex = x % 7;
+        const byteValue = ditherBytes[y * HGR_BYTES_PER_ROW + byteColumn];
+        const imageOffset = (y * HGR_WIDTH + x) * 4;
+        const data = ditherImageData.data;
+        return {
+          x, y,
+          r: data[imageOffset],
+          g: data[imageOffset + 1],
+          b: data[imageOffset + 2],
+          byteColumn,
+          bitIndex,
+          byteValue,
+          phase: (byteValue >> 7) & 1,
+          selectedBit: (byteValue >> bitIndex) & 1,
+          dataBits: Array.from({ length: 7 }, (_, bit) => (byteValue >> bit) & 1).join(""),
+          pageOffset: hgrPageOffset(y, byteColumn)
+        };
+      }
+
+      function showDitherInspector(pixel, stateLabel) {
+        if (!pixel) {
+          clearDitherInspector(stateLabel || "No position");
+          return;
+        }
+        ditherPixelState.textContent = stateLabel;
+        ditherPixelXY.textContent = `${pixel.x}, ${pixel.y}`;
+        ditherPixelRgb.textContent = `rgb(${pixel.r}, ${pixel.g}, ${pixel.b})`;
+        ditherByteColumn.textContent = String(pixel.byteColumn);
+        ditherByteValue.textContent = `$${byteToHex(pixel.byteValue)} / ${pixel.byteValue}`;
+        ditherByteBits.textContent = pixel.dataBits;
+        ditherPhaseBit.textContent = String(pixel.phase);
+        ditherSelectedBit.textContent = `bit ${pixel.bitIndex} = ${pixel.selectedBit}`;
+        ditherPageOffset.textContent = `$${pixel.pageOffset.toString(16).padStart(4, "0").toUpperCase()}`;
+        ditherColourSwatch.style.background = `rgb(${pixel.r}, ${pixel.g}, ${pixel.b})`;
+      }
+
+      function clearDitherInspector(stateLabel) {
+        ditherPixelState.textContent = stateLabel;
+        ditherPixelXY.textContent = "—";
+        ditherPixelRgb.textContent = "—";
+        ditherByteColumn.textContent = "—";
+        ditherByteValue.textContent = "—";
+        ditherByteBits.textContent = "—";
+        ditherPhaseBit.textContent = "—";
+        ditherSelectedBit.textContent = "—";
+        ditherPageOffset.textContent = "—";
+        ditherColourSwatch.style.background = "transparent";
+      }
+
+      function clearDitherOverlay() {
+        ditherOverlayContext.clearRect(0, 0, HGR_WIDTH, HGR_HEIGHT);
+      }
+
+      function drawDitherMarker(pixel, locked) {
+        clearDitherOverlay();
+        if (!pixel) return;
+        ditherOverlayContext.save();
+        ditherOverlayContext.fillStyle = locked ? "rgba(255, 215, 0, .38)" : "rgba(121, 210, 255, .30)";
+        ditherOverlayContext.fillRect(pixel.x, pixel.y, 1, 1);
+        ditherOverlayContext.strokeStyle = locked ? "#FFD700" : "#79D2FF";
+        ditherOverlayContext.lineWidth = 1;
+        ditherOverlayContext.strokeRect(pixel.x - 1.5, pixel.y - 1.5, 4, 4);
+        ditherOverlayContext.restore();
+      }
+
+      function generateHgrImage() {
+        if (!sourceWidth || !crop.w || !crop.h) {
+          return;
+        }
+
+        invalidateDither("280 × 192 source regenerated");
+
+        resultContext.save();
+        resultContext.clearRect(0, 0, HGR_WIDTH, HGR_HEIGHT);
+
+        const smooth = resamplingMode.value === "smooth";
+        resultContext.imageSmoothingEnabled = smooth;
+
+        if ("imageSmoothingQuality" in resultContext) {
+          resultContext.imageSmoothingQuality = smooth ? "high" : "low";
+        }
+
+        resultContext.drawImage(
+          image,
+          crop.x, crop.y, crop.w, crop.h,
+          0, 0, HGR_WIDTH, HGR_HEIGHT
+        );
+        resultContext.restore();
+
+        resultImageData = resultContext.getImageData(
+          0, 0, HGR_WIDTH, HGR_HEIGHT
+        );
+        resultReady = true;
+        lockedPixel = null;
+        hoverPixel = null;
+
+        resultPlaceholder.hidden = true;
+        resultContent.hidden = false;
+        setResultControlsEnabled(true);
+        clearInspector("Move over image");
+        clearOverlay();
+
+        setMessage(
+          `Generated a ${HGR_WIDTH} × ${HGR_HEIGHT} image using ` +
+          `${smooth ? "smooth high-quality" : "nearest-neighbour"} scaling.`
+        );
+      }
+
+      function exportHgr(type) {
+        if (!resultReady) {
+          return;
+        }
+
+        const extension = type === "image/png" ? "png" : "jpg";
+
+        if (type === "image/png") {
+          downloadCanvas(
+            resultCanvas,
+            type,
+            `${fileBaseName}-hgr-280x192.png`
+          );
+          return;
+        }
+
+        const jpegCanvas = document.createElement("canvas");
+        jpegCanvas.width = HGR_WIDTH;
+        jpegCanvas.height = HGR_HEIGHT;
+        const jpegContext = jpegCanvas.getContext("2d");
+        jpegContext.fillStyle = "#ffffff";
+        jpegContext.fillRect(0, 0, HGR_WIDTH, HGR_HEIGHT);
+        jpegContext.drawImage(resultCanvas, 0, 0);
+
+        downloadCanvas(
+          jpegCanvas,
+          type,
+          `${fileBaseName}-hgr-280x192.${extension}`
+        );
+      }
+
+      function eventToHgrPixel(event) {
+        const rectangle = pixelOverlay.getBoundingClientRect();
+
+        const x = clamp(
+          Math.floor(
+            (event.clientX - rectangle.left) *
+            HGR_WIDTH / rectangle.width
+          ),
+          0,
+          HGR_WIDTH - 1
+        );
+
+        const y = clamp(
+          Math.floor(
+            (event.clientY - rectangle.top) *
+            HGR_HEIGHT / rectangle.height
+          ),
+          0,
+          HGR_HEIGHT - 1
+        );
+
+        return { x, y };
+      }
+
+      function readPixel(x, y) {
+        if (!resultReady || !resultImageData) {
+          return null;
+        }
+
+        const linearIndex = y * HGR_WIDTH + x;
+        const dataIndex = linearIndex * 4;
+        const data = resultImageData.data;
+
+        return {
+          x,
+          y,
+          r: data[dataIndex],
+          g: data[dataIndex + 1],
+          b: data[dataIndex + 2],
+          a: data[dataIndex + 3],
+          linearIndex
+        };
+      }
+
+      function byteToHex(value) {
+        return value.toString(16).padStart(2, "0").toUpperCase();
+      }
+
+      function showPixel(pixel, stateLabel) {
+        if (!pixel) {
+          clearInspector(stateLabel || "No pixel");
+          return;
+        }
+
+        const hex =
+          `#${byteToHex(pixel.r)}` +
+          `${byteToHex(pixel.g)}` +
+          `${byteToHex(pixel.b)}`;
+
+        pixelState.textContent = stateLabel;
+        pixelX.textContent = String(pixel.x);
+        pixelY.textContent = String(pixel.y);
+        pixelR.textContent = String(pixel.r);
+        pixelG.textContent = String(pixel.g);
+        pixelB.textContent = String(pixel.b);
+        pixelA.textContent = String(pixel.a);
+        pixelRgb.textContent =
+          `rgb(${pixel.r}, ${pixel.g}, ${pixel.b})`;
+        pixelHex.textContent = hex;
+        pixelIndex.textContent = String(pixel.linearIndex);
+        colourSwatch.style.background =
+          `rgba(${pixel.r}, ${pixel.g}, ${pixel.b}, ${pixel.a / 255})`;
+      }
+
+      function clearInspector(stateLabel) {
+        pixelState.textContent = stateLabel;
+        pixelX.textContent = "—";
+        pixelY.textContent = "—";
+        pixelR.textContent = "—";
+        pixelG.textContent = "—";
+        pixelB.textContent = "—";
+        pixelA.textContent = "—";
+        pixelRgb.textContent = "—";
+        pixelHex.textContent = "—";
+        pixelIndex.textContent = "—";
+        colourSwatch.style.background = "transparent";
+      }
+
+      function clearOverlay() {
+        overlayContext.clearRect(
+          0, 0, HGR_WIDTH, HGR_HEIGHT
+        );
+      }
+
+      function drawPixelMarker(pixel, locked) {
+        clearOverlay();
+
+        if (!pixel) {
+          return;
+        }
+
+        overlayContext.save();
+
+        overlayContext.fillStyle = locked
+          ? "rgba(255, 215, 0, .32)"
+          : "rgba(121, 210, 255, .28)";
+        overlayContext.fillRect(pixel.x, pixel.y, 1, 1);
+
+        overlayContext.strokeStyle = locked
+          ? "#FFD700"
+          : "#79D2FF";
+        overlayContext.lineWidth = 1;
+        overlayContext.strokeRect(
+          pixel.x - 1.5,
+          pixel.y - 1.5,
+          4,
+          4
+        );
+
+        overlayContext.restore();
+      }
+
+      fileInput.addEventListener("change", () => {
+        loadFile(fileInput.files && fileInput.files[0]);
+      });
+
+      sizeSlider.addEventListener("input", () => {
+        setCropUnits(Number(sizeSlider.value), true);
+      });
+
+      centerButton.addEventListener("click", centerCrop);
+
+      maximumButton.addEventListener("click", () => {
+        setCropUnits(maxUnits, false);
+        centerCrop();
+      });
+
+      cropPngButton.addEventListener(
+        "click",
+        () => exportNativeCrop("image/png")
+      );
+
+      cropJpegButton.addEventListener(
+        "click",
+        () => exportNativeCrop("image/jpeg")
+      );
+
+      resizeButton.addEventListener("click", generateHgrImage);
+
+      resultPngButton.addEventListener(
+        "click",
+        () => exportHgr("image/png")
+      );
+
+      resultJpegButton.addEventListener(
+        "click",
+        () => exportHgr("image/jpeg")
+      );
+
+      resamplingMode.addEventListener("change", () => {
+        if (resultReady) {
+          generateHgrImage();
+        }
+      });
+
+      preview.addEventListener("pointerdown", (event) => {
+        if (
+          !sourceWidth ||
+          !pointIsInsideCrop(event.clientX, event.clientY)
+        ) {
+          return;
+        }
+
+        drag.active = true;
+        drag.pointerId = event.pointerId;
+        drag.startClientX = event.clientX;
+        drag.startClientY = event.clientY;
+        drag.startCropX = crop.x;
+        drag.startCropY = crop.y;
+
+        preview.setPointerCapture(event.pointerId);
+        preview.classList.add("dragging");
+        event.preventDefault();
+      });
+
+      preview.addEventListener("pointermove", (event) => {
+        if (
+          !drag.active ||
+          event.pointerId !== drag.pointerId
+        ) {
+          return;
+        }
+
+        const deltaX =
+          (event.clientX - drag.startClientX) /
+          previewView.scale;
+        const deltaY =
+          (event.clientY - drag.startClientY) /
+          previewView.scale;
+
+        const newX = clamp(
+          Math.round(drag.startCropX + deltaX),
+          0,
+          sourceWidth - crop.w
+        );
+        const newY = clamp(
+          Math.round(drag.startCropY + deltaY),
+          0,
+          sourceHeight - crop.h
+        );
+
+        if (newX !== crop.x || newY !== crop.y) {
+          crop.x = newX;
+          crop.y = newY;
+          invalidateResult();
+          updateCropStatus();
+          drawPreview();
+        }
+      });
+
+      function stopDragging(event) {
+        if (
+          !drag.active ||
+          event.pointerId !== drag.pointerId
+        ) {
+          return;
+        }
+
+        drag.active = false;
+        drag.pointerId = null;
+        preview.classList.remove("dragging");
+      }
+
+      preview.addEventListener("pointerup", stopDragging);
+      preview.addEventListener("pointercancel", stopDragging);
+
+      preview.addEventListener("keydown", (event) => {
+        if (!sourceWidth) {
+          return;
+        }
+
+        const step = event.shiftKey ? 10 : 1;
+        const moves = {
+          ArrowLeft: [-step, 0],
+          ArrowRight: [step, 0],
+          ArrowUp: [0, -step],
+          ArrowDown: [0, step]
+        };
+
+        const movement = moves[event.key];
+
+        if (!movement) {
+          return;
+        }
+
+        moveCrop(movement[0], movement[1]);
+        event.preventDefault();
+      });
+
+      pixelOverlay.addEventListener("pointermove", (event) => {
+        if (!resultReady || lockedPixel) {
+          return;
+        }
+
+        const coordinate = eventToHgrPixel(event);
+        hoverPixel = readPixel(coordinate.x, coordinate.y);
+        showPixel(hoverPixel, "Hover");
+        drawPixelMarker(hoverPixel, false);
+      });
+
+      pixelOverlay.addEventListener("pointerleave", () => {
+        hoverPixel = null;
+
+        if (lockedPixel) {
+          showPixel(lockedPixel, "Locked");
+          drawPixelMarker(lockedPixel, true);
+        } else if (resultReady) {
+          clearInspector("Move over image");
+          clearOverlay();
+        }
+      });
+
+      pixelOverlay.addEventListener("click", (event) => {
+        if (!resultReady) {
+          return;
+        }
+
+        const coordinate = eventToHgrPixel(event);
+        lockedPixel = readPixel(coordinate.x, coordinate.y);
+        hoverPixel = null;
+        showPixel(lockedPixel, "Locked");
+        drawPixelMarker(lockedPixel, true);
+        setResultControlsEnabled(true);
+        pixelOverlay.focus({ preventScroll: true });
+      });
+
+      pixelOverlay.addEventListener("keydown", (event) => {
+        if (!resultReady) {
+          return;
+        }
+
+        const step = event.shiftKey ? 10 : 1;
+        const basePixel =
+          lockedPixel ||
+          hoverPixel ||
+          readPixel(0, 0);
+
+        const moves = {
+          ArrowLeft: [-step, 0],
+          ArrowRight: [step, 0],
+          ArrowUp: [0, -step],
+          ArrowDown: [0, step]
+        };
+
+        const movement = moves[event.key];
+
+        if (!movement) {
+          return;
+        }
+
+        lockedPixel = readPixel(
+          clamp(basePixel.x + movement[0], 0, HGR_WIDTH - 1),
+          clamp(basePixel.y + movement[1], 0, HGR_HEIGHT - 1)
+        );
+
+        showPixel(lockedPixel, "Locked");
+        drawPixelMarker(lockedPixel, true);
+        setResultControlsEnabled(true);
+        event.preventDefault();
+      });
+
+      unlockPixelButton.addEventListener("click", () => {
+        lockedPixel = null;
+        hoverPixel = null;
+        unlockPixelButton.disabled = true;
+        clearInspector("Move over image");
+        clearOverlay();
+        pixelOverlay.focus({ preventScroll: true });
+      });
+
+      diffusionStrength.addEventListener("input", () => {
+        diffusionStrengthLabel.textContent = `${diffusionStrength.value}%`;
+        if (ditherReady) {
+          invalidateDither("Dithering settings changed");
+          setResultControlsEnabled(resultReady);
+        }
+      });
+
+      ditherPasses.addEventListener("change", () => {
+        if (ditherReady) {
+          invalidateDither("Dithering settings changed");
+          setResultControlsEnabled(resultReady);
+        }
+      });
+
+      artifactParity.addEventListener("change", () => {
+        if (ditherReady) {
+          invalidateDither("Artifact parity changed");
+          setResultControlsEnabled(resultReady);
+        }
+      });
+
+      ditherButton.addEventListener("click", optimizeHgrImage);
+
+      ditherPngButton.addEventListener("click", () => {
+        if (!ditherReady) return;
+        downloadCanvas(ditherCanvas, "image/png", `${fileBaseName}-optimized-hgr-280x192.png`);
+      });
+
+      hgrBinaryButton.addEventListener("click", () => {
+        if (!ditherReady) return;
+        downloadBytes(buildHgrPageImage(), `${fileBaseName}-hgr-page.bin`);
+      });
+
+      ditherOverlay.addEventListener("pointermove", event => {
+        if (!ditherReady || ditherLockedPixel) return;
+        const coordinate = eventToDitherPixel(event);
+        ditherHoverPixel = inspectDitherPixel(coordinate.x, coordinate.y);
+        showDitherInspector(ditherHoverPixel, "Hover");
+        drawDitherMarker(ditherHoverPixel, false);
+      });
+
+      ditherOverlay.addEventListener("pointerleave", () => {
+        ditherHoverPixel = null;
+        if (ditherLockedPixel) {
+          showDitherInspector(ditherLockedPixel, "Locked");
+          drawDitherMarker(ditherLockedPixel, true);
+        } else if (ditherReady) {
+          clearDitherInspector("Move over image");
+          clearDitherOverlay();
+        }
+      });
+
+      ditherOverlay.addEventListener("click", event => {
+        if (!ditherReady) return;
+        const coordinate = eventToDitherPixel(event);
+        ditherLockedPixel = inspectDitherPixel(coordinate.x, coordinate.y);
+        ditherHoverPixel = null;
+        showDitherInspector(ditherLockedPixel, "Locked");
+        drawDitherMarker(ditherLockedPixel, true);
+        setDitherExportControls(true);
+        ditherOverlay.focus({ preventScroll: true });
+      });
+
+      ditherOverlay.addEventListener("keydown", event => {
+        if (!ditherReady) return;
+        const step = event.shiftKey ? 10 : 1;
+        const basePixel = ditherLockedPixel || ditherHoverPixel || inspectDitherPixel(0, 0);
+        const moves = {
+          ArrowLeft: [-step, 0], ArrowRight: [step, 0],
+          ArrowUp: [0, -step], ArrowDown: [0, step]
+        };
+        const movement = moves[event.key];
+        if (!movement) return;
+        ditherLockedPixel = inspectDitherPixel(
+          clamp(basePixel.x + movement[0], 0, HGR_WIDTH - 1),
+          clamp(basePixel.y + movement[1], 0, HGR_HEIGHT - 1)
+        );
+        showDitherInspector(ditherLockedPixel, "Locked");
+        drawDitherMarker(ditherLockedPixel, true);
+        setDitherExportControls(true);
+        event.preventDefault();
+      });
+
+      unlockDitherPixelButton.addEventListener("click", () => {
+        ditherLockedPixel = null;
+        ditherHoverPixel = null;
+        unlockDitherPixelButton.disabled = true;
+        clearDitherInspector("Move over image");
+        clearDitherOverlay();
+        ditherOverlay.focus({ preventScroll: true });
+      });
+
+      window.addEventListener(
+        "resize",
+        resizePreviewCanvas
+      );
+
+      if ("ResizeObserver" in window) {
+        new ResizeObserver(
+          resizePreviewCanvas
+        ).observe(canvasWrap);
+      }
+
+      setCropControlsEnabled(false);
+      setResultControlsEnabled(false);
+      setDitherExportControls(false);
+      clearInspector("No output");
+      clearDitherInspector("No output");
+      resizePreviewCanvas();
+    })();
+  </script>
+</body>
+</html>
