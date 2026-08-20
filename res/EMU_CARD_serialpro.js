@@ -1233,9 +1233,25 @@ function SerialProCard()
         aciaDriveIRQ();
     }
 
+    /*
+     * Keep 6551 register decoding independent from the source of the register
+     * bytes.  The Serial Pro has two related serial states:
+     *
+     *   RTC battery RAM $23/$24  = saved/configured CONTROL + COMMAND
+     *   acia.control/command     = live 6551 hardware registers
+     *
+     * The ROM control panel edits the saved bytes first; firmware subsequently
+     * copies them into the live 6551 when it (re)initializes the interface.
+     */
+    function serialWordLengthFromControl(control)
+    {
+        return 8 - (((control & 0xFF) >> 5) & 0x03);
+    }
+    
+
     function aciaWordLength()
     {
-        return 8 - ((acia.control >> 5) & 0x03);
+        return serialWordLengthFromControl(acia.control);
     }
 
     function aciaDataMask()
@@ -1243,10 +1259,16 @@ function SerialProCard()
         return (0xFF >> (8-aciaWordLength())) & 0xFF;
     }
 
+    function serialParityFromCommand(command)
+    {
+        command &= 0xFF;
+        if((command & 0x20)==0) return "none";
+        return ["odd","even","mark","space"][(command >> 6) & 0x03];
+    }
+
     function aciaParity()
     {
-        if((acia.command & 0x20)==0) return "none";
-        return ["odd","even","mark","space"][(acia.command >> 6) & 0x03];
+        return serialParityFromCommand(acia.command);
     }
 
     function aciaParityChecked()
@@ -1255,20 +1277,82 @@ function SerialProCard()
         return ((acia.command >> 6) & 0x03) < 2;    // odd/even only
     }
 
-    function aciaStopBits()
+    function serialStopBitsFromRegisters(control,command)
     {
-        if((acia.control & 0x80)==0) return 1;
+        control &= 0xFF;
+        command &= 0xFF;
+        if((control & 0x80)==0) return 1;
 
-        var bits = aciaWordLength();
-        var parity = aciaParity();
+        var bits = serialWordLengthFromControl(control);
+        var parity = serialParityFromCommand(command);
         if(bits==5 && parity=="none") return 1.5;
         if(bits==8 && parity!="none") return 1;
         return 2;
     }
 
+    function aciaStopBits()
+    {
+        return serialStopBitsFromRegisters(acia.control,acia.command);
+    }
+
+    function serialBaudFromControl(control)
+    {
+        return ACIA_BAUD_TABLE[control & 0x0F];
+    }
+
     function aciaBaudRate()
     {
-        return ACIA_BAUD_TABLE[acia.control & 0x0F];
+        return serialBaudFromControl(acia.control);
+    }
+
+    function serialFormatSignature(control,command)
+    {
+        return [
+             serialBaudFromControl(control)
+            ,serialWordLengthFromControl(control)
+            ,serialParityFromCommand(command)
+            ,serialStopBitsFromRegisters(control,command)
+            ,(control & 0x10)!=0 ? "rx=tx" : "rx=ext"
+        ].join("/");
+    }
+
+    function serialFormatLabel(control,command)
+    {
+        var baud = serialBaudFromControl(control);
+        var parity = serialParityFromCommand(command);
+        var parityLetter = {
+             "none":"N"
+            ,"odd":"O"
+            ,"even":"E"
+            ,"mark":"M"
+            ,"space":"S"
+        }[parity] || "?";
+
+        return String(baud==null ? "EXT" : baud)
+            +" "+serialWordLengthFromControl(control)
+            +parityLetter
+            +String(serialStopBitsFromRegisters(control,command));
+    }
+
+    function serialConfiguredState()
+    {
+        // Until the AE/$55 NVRAM signature exists, preserve the pre-existing
+        // browser behavior by presenting the live ACIA state.  Once firmware
+        // initializes the battery RAM, $23/$24 become authoritative for SER.
+        var nvramValid = rtc.ram[0x20]==0xAE && rtc.ram[0x21]==0x55;
+        var control = nvramValid ? (rtc.ram[0x23] & 0xFF) : (acia.control & 0xFF);
+        var command = nvramValid ? (rtc.ram[0x24] & 0xFF) : (acia.command & 0xFF);
+
+        return {
+             "valid":nvramValid
+            ,"control":control
+            ,"command":command
+            ,"baud":serialBaudFromControl(control)
+            ,"dataBits":serialWordLengthFromControl(control)
+            ,"parity":serialParityFromCommand(command)
+            ,"stopBits":serialStopBitsFromRegisters(control,command)
+            ,"rxClockInternal":(control & 0x10)!=0
+        };
     }
 
     function aciaCPUMultiplier()
@@ -1914,6 +1998,12 @@ function SerialProCard()
         if(reg>=0x0E)
         {
             rtc.ram[reg] = value;                           // battery RAM
+
+            // The ROM control panel stores the saved 6551 configuration in
+            // battery RAM $23/$24.  Defer DOM work to the dashboard refresh
+            // sequencer; merely flag that the configured SER controls changed.
+            if(serialUI && (reg==0x23 || reg==0x24))
+                serialUI.configDirty = true;            
             return;
         }
 
@@ -2162,7 +2252,23 @@ function SerialProCard()
     {
          "controlID":""
         ,"refreshEvent":""
+        ,"configDirty":true
     };
+
+
+    function serialConfigWriteControl(value)
+    {
+        rtc.ram[0x23] = value & 0xFF;
+        serialUI.configDirty = true;
+        return rtc.ram[0x23];
+    }
+
+    function serialConfigWriteCommand(value)
+    {
+        rtc.ram[0x24] = value & 0xFF;
+        serialUI.configDirty = true;
+        return rtc.ram[0x24];
+    }
 
     function rtcUIPad2(value) { return String(value).padStart(2,"0"); }
 
@@ -2365,17 +2471,17 @@ function SerialProCard()
         return document.getElementById(controlID+"_"+suffix);
     }
 
-    function serialUISetSelect(controlID,suffix,value)
+    function serialUISetSelect(controlID,suffix,value,force)
     {
         var el = serialUIElement(controlID,suffix);
-        if(el && document.activeElement!==el)
+        if(el && (force || document.activeElement!==el))
             el.value = String(value);
     }
 
-    function serialUISetChecked(controlID,suffix,value)
+    function serialUISetChecked(controlID,suffix,value,force)
     {
         var el = serialUIElement(controlID,suffix);
-        if(el && document.activeElement!==el)
+        if(el && (force || document.activeElement!==el))
             el.checked = !!value;
     }
 
@@ -2415,11 +2521,26 @@ function SerialProCard()
     {
         if(!controlID) return false;
 
-        serialUISetSelect(controlID,"serial_baud",aciaBaudRate());
-        serialUISetSelect(controlID,"serial_data",aciaWordLength());
-        serialUISetSelect(controlID,"serial_parity",aciaParity());
-        serialUISetSelect(controlID,"serial_stop",aciaStopBits());
-        serialUISetChecked(controlID,"serial_rxclock",(acia.control & 0x10)!=0);
+        /*
+         * The SER row represents the configuration saved by the Serial Pro ROM,
+         * not necessarily the live 6551 registers.  This is what makes changes
+         * made in the Bank-1 control panel appear in the browser immediately.
+         *
+         * If the ROM changed $23/$24 since the previous dashboard tick, force
+         * these finite-choice controls even if one still owns browser focus.
+         * Normal monitoring keeps the original focus-preservation behavior.
+         */
+        var configured = serialConfiguredState();
+        var forceConfigured = !!serialUI.configDirty;
+
+        serialUISetSelect(controlID,"serial_baud",configured.baud,forceConfigured);
+        serialUISetSelect(controlID,"serial_data",configured.dataBits,forceConfigured);
+        serialUISetSelect(controlID,"serial_parity",configured.parity,forceConfigured);
+        serialUISetSelect(controlID,"serial_stop",configured.stopBits,forceConfigured);
+        serialUISetChecked(controlID,"serial_rxclock",configured.rxClockInternal,forceConfigured);
+        serialUI.configDirty = false;
+
+        // CPU sync and modem outputs are live emulator/6551 state, not NVRAM.
         serialUISetChecked(controlID,"serial_cpu_sync",state.cpuSync);
         serialUISetChecked(controlID,"physical_dtr",aciaDTRAsserted());
         serialUISetChecked(controlID,"physical_rts",aciaRTSAsserted());
@@ -2459,9 +2580,7 @@ function SerialProCard()
         {
             var programmed = aciaBaudRate();
             var effective = aciaEffectiveBaudRate();
-            baudSelect.title = state.cpuSync
-                ? "6551 programmed baud "+programmed+"; CPU sync gives effective baud "+effective
-                : "6551 baud "+programmed+"; CPU sync is off so serial timing remains approximately x1";
+
         }
 
         var cpuSync = serialUIElement(controlID,"serial_cpu_sync");
@@ -2469,7 +2588,18 @@ function SerialProCard()
             cpuSync.title = state.cpuSync
                 ? "CPU sync ON: serial timing follows the CPU speed multiplier"
                 : "CPU sync OFF: serial timing is normalized to approximately x1 regardless of CPU acceleration";
+            var configuredLabel = serialFormatLabel(configured.control,configured.command);
+            var activeLabel = serialFormatLabel(acia.control,acia.command);
+            var pending = serialFormatSignature(configured.control,configured.command)
+                != serialFormatSignature(acia.control,acia.command);
 
+            baudSelect.title =
+                "Serial Pro configured "+configuredLabel
+                +"; live 6551 "+activeLabel
+                +(pending ? " (pending/reinitialization differs)" : "")
+                +(state.cpuSync
+                    ? "; effective live baud "+effective
+                    : "; CPU sync is off so live serial timing remains approximately x1");
         return true;
     }
 
@@ -2481,6 +2611,16 @@ function SerialProCard()
         // Apply elapsed cycles using the old serial format before changing it.
         aciaSyncNow();
 
+        /*
+         * Browser-originated format changes update BOTH layers:
+         *   - RTC RAM $23/$24, so the ROM control panel sees the same setting;
+         *   - the live 6551, preserving the browser UI's immediate behavior.
+         *
+         * Each layer preserves its own unrelated bits.  This is important for
+         * live DTR/RTS state, which must not be overwritten by a parity edit.
+         */
+        var configured = serialConfiguredState();
+
         if(setting=="baud")
         {
             var baud = Number(value);
@@ -2489,13 +2629,16 @@ function SerialProCard()
                 if(ACIA_BAUD_TABLE[i]===baud) { index=i; break; }
 
             if(index<0) return false;
+            serialConfigWriteControl((configured.control & 0xF0) | index);
             aciaWriteControl((acia.control & 0xF0) | index);
         }
         else if(setting=="data")
         {
             var bits = Number(value);
             if(bits<5 || bits>8) return false;
-            aciaWriteControl((acia.control & 0x9F) | (((8-bits) & 0x03) << 5));
+            var dataBits = (((8-bits) & 0x03) << 5);
+            serialConfigWriteControl((configured.control & 0x9F) | dataBits);
+            aciaWriteControl((acia.control & 0x9F) | dataBits);
         }
         else if(setting=="parity")
         {
@@ -2508,6 +2651,7 @@ function SerialProCard()
             }[String(value)];
 
             if(parityBits===undefined) return false;
+            serialConfigWriteCommand((configured.command & 0x1F) | parityBits);
             aciaWriteCommand((acia.command & 0x1F) | parityBits);
         }
         else if(setting=="stop")
@@ -2517,7 +2661,12 @@ function SerialProCard()
 
             // The 6551 has one SBN bit. With SBN=1 the effective result is
             // 1, 1.5 or 2 stop bits depending on word length/parity.
-            aciaWriteControl(stop==1 ? (acia.control & 0x7F) : (acia.control | 0x80));
+            serialConfigWriteControl(
+                stop==1 ? (configured.control & 0x7F) : (configured.control | 0x80)
+            );
+            aciaWriteControl(
+                stop==1 ? (acia.control & 0x7F) : (acia.control | 0x80)
+            );
         }
         else return false;
 
@@ -2539,6 +2688,10 @@ function SerialProCard()
         }
         else if(setting=="rxclock")
         {
+            var configured = serialConfiguredState();
+            serialConfigWriteControl(enabled
+                ? (configured.control | 0x10)
+                : (configured.control & 0xEF));
             aciaWriteControl(enabled
                 ? (acia.control | 0x10)
                 : (acia.control & 0xEF));
@@ -2587,8 +2740,9 @@ function SerialProCard()
     {
         if(!serialUI.controlID) return false;
 
-        // CPU target speed may change without touching an ACIA register.  If a
-        // physical port is CPU-synchronized, that changes its effective baud.
+        // ROM writes to RTC RAM $23/$24 set serialUI.configDirty.  The normal
+        // dashboard cadence then propagates the saved format into the SER row.
+        // CPU target speed may also change without touching an ACIA register.
         if(serialPhysical.connected) serialPhysicalCheckConfiguration();
         return serialUIRefresh(serialUI.controlID);
     };
@@ -3816,13 +3970,14 @@ function SerialProCard()
         );
 
         var syncClass = rtcUI.syncRequested ? "fa-stop-circle" : "fa-sync-alt";
- 
+        var configured = serialConfiguredState();
+
         var baudOptions = "";
         for(var b=1;b<ACIA_BAUD_TABLE.length;b++)
         {
             var rate = ACIA_BAUD_TABLE[b];
             baudOptions += "<option value=\""+rate+"\""
-                +(aciaBaudRate()===rate ? " selected" : "")+">"+rate+"</option>";
+                +(configured.baud===rate ? " selected" : "")+">"+rate+"</option>";
         }
 
         function option(value,label,current)
@@ -3832,24 +3987,24 @@ function SerialProCard()
         }
 
         var dataOptions = ""
-            + option(8,"8 BIT",aciaWordLength())
-            + option(7,"7 BIT",aciaWordLength())
-            + option(6,"6 BIT",aciaWordLength())
-            + option(5,"5 BIT",aciaWordLength());
+            + option(8,"8 BIT",configured.dataBits)
+            + option(7,"7 BIT",configured.dataBits)
+            + option(6,"6 BIT",configured.dataBits)
+            + option(5,"5 BIT",configured.dataBits);
 
         var parityOptions = ""
-            + option("none","NONE",aciaParity())
-            + option("odd","ODD",aciaParity())
-            + option("even","EVEN",aciaParity())
-            + option("mark","MARK",aciaParity())
-            + option("space","SPACE",aciaParity());
+            + option("none","NONE",configured.parity)
+            + option("odd","ODD",configured.parity)
+            + option("even","EVEN",configured.parity)
+            + option("mark","MARK",configured.parity)
+            + option("space","SPACE",configured.parity);
 
         var stopOptions = ""
-            + option(1,"1 STOP",aciaStopBits())
-            + option(1.5,"1.5 STOP",aciaStopBits())
-            + option(2,"2 STOP",aciaStopBits());
+            + option(1,"1 STOP",configured.stopBits)
+            + option(1.5,"1.5 STOP",configured.stopBits)
+            + option(2,"2 STOP",configured.stopBits);        
 
-        var rxClockChecked = (acia.control & 0x10)!=0 ? " checked" : "";
+        var rxClockChecked = configured.rxClockInternal ? " checked" : "";
         var dtrChecked = aciaDTRAsserted() ? " checked" : "";
         var rtsChecked = aciaRTSAsserted() ? " checked" : "";
         var cpuSyncChecked = state.cpuSync ? " checked" : "";
