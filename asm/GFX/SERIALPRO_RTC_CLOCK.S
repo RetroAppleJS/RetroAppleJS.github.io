@@ -51,8 +51,8 @@
 ; * Edge intersection uses an unsigned 8x8 multiply plus 16/8 divide.
 ; * Horizontal spans are emitted byte-wise into HGR, rather than plotting each
 ;   pixel individually.
-; * The intersection buffer has 128 entries.  The attached Friend Bestie
-;   dataset's largest glyph has 107 contour vertices, so 128 entries is sufficient.
+; * The intersection buffer has 128 entries.  The attached edited Friend Bestie
+;   dataset's largest glyph has 75 contour vertices, so 128 entries is sufficient.
 ;
 ; =============================================================================
 
@@ -139,10 +139,9 @@ AMPM_C1_W       EQU     $07          ; 7
 ; "SERIAL PRO" is rendered with the same Friend Bestie vector font and is then
 ; converted from white to Apple II HGR orange in-place.
 ;
-; Friend Bestie was exported using TIGHT GLYPH normalization.  That is why the
-; I outline itself spans normalized X=0..255 even though its original advance
-; is much narrower (VF_ADV for 'I' = $51).  INSCR_I_W/INSCR_I_XOFF restore the
-; intended narrow visual width while preserving a fixed branding cell.
+; The current Friend Bestie dataset contains manual normalized-point edits.
+; In particular, the 'I' contour is already narrowed and centered inside its
+; normalized 0..255 cell, so no character-specific runtime scaling is needed.
 ;
 ; X=140 is an HGR-byte boundary (20*7).  The color rectangle extends through
 ; X=279, so all branding glyphs share the orange phase without touching the
@@ -152,8 +151,6 @@ INSCR_X0H       EQU     $00
 INSCR_Y         EQU     $8D          ; top Y = 141
 INSCR_H         EQU     $10          ; glyph / color height = 16
 INSCR_CHAR_W    EQU     $0D          ; normal glyph cell / width = 13
-INSCR_I_W       EQU     $07          ; Friend Bestie I: render ~50% narrower
-INSCR_I_XOFF    EQU     $03          ; center 7-pixel I inside 13-pixel cell
 INSCR_GAP       EQU     $02          ; 2 pixels between character cells
 INSCR_SPACE     EQU     $04          ; blank advance for spaces
 INSCR_RECT_W    EQU     $8C          ; 140 pixels, X=140..279
@@ -952,38 +949,16 @@ DI_NEXT     LDX     INS_IDX
 
 ; Render one character in a fixed-width cell.
 ;
-; The exported Friend Bestie dataset uses tight-glyph normalization: every
-; outline is normalized independently to X=0..255.  The original proportional
-; advance width is retained separately in VF_ADV.  Therefore a uniform VF_X1
-; makes naturally narrow glyphs (especially 'I') fill the complete cell.
-;
-; For the branding, keep a simple fixed 13-pixel cell but render 'I' narrower
-; and centered within that cell.
+; The edited Friend Bestie dataset already contains the desired per-glyph
+; normalized geometry (including the narrow, centered 'I'), so every character
+; can use the same cell width here.
             PHA
-            CMP     #'I'
-            BNE     DI_NORMAL_GLYPH
-
-; Center the narrow I at cellX + INSCR_I_XOFF.
-            LDA     INS_XL
-            CLC
-            ADC     #INSCR_I_XOFF
-            STA     VF_X0L
-            LDA     INS_XH
-            ADC     #$00
-            STA     VF_X0H
-            LDA     #INSCR_I_W
-            STA     VF_X1
-            JMP     DI_GLYPH_GEOM
-
-DI_NORMAL_GLYPH
             LDA     INS_XL
             STA     VF_X0L
             LDA     INS_XH
             STA     VF_X0H
             LDA     #INSCR_CHAR_W
             STA     VF_X1
-
-DI_GLYPH_GEOM
             LDA     #INSCR_Y
             STA     VF_Y0
             LDA     #INSCR_H
@@ -991,10 +966,8 @@ DI_GLYPH_GEOM
             PLA
             JSR     VF_DRAW
 
-; Advance by the NORMAL CELL width, not by the rendered outline width.
-; Thus the narrow I remains centered without changing the alignment of the
-; following letters.  Update the high byte after each add so crossing
-; X=$00FF->$0100 is handled correctly.
+; Advance by the fixed cell width. Update the high byte after each add so
+; crossing X=$00FF->$0100 is handled correctly.
             LDA     INS_XL
             CLC
             ADC     #INSCR_CHAR_W
@@ -1263,6 +1236,72 @@ CLOCK_TICKMARKS
             JSR     VF_DRAW_POLY
             RTS
 
+; Draw only the 5-minute tick nearest a given minute-hand position.
+; Input A = minute 0..59.
+;
+; Adding 2 before dividing by 5 gives the nearest 5-minute mark.  58/59 wrap
+; naturally to the 00-minute tick.  This is used after erasing the old minute
+; hand so only the potentially damaged tick is repaired.
+CLOCK_RESTORE_MINUTE_TICK
+            CLC
+            ADC     #$02
+            CMP     #$3C
+            BCC     CRMT_NOWRAP
+            SEC
+            SBC     #$3C
+CRMT_NOWRAP
+            LDX     #$00
+CRMT_DIV5   CMP     #$05
+            BCC     CRMT_INDEX
+            SEC
+            SBC     #$05
+            INX
+            BNE     CRMT_DIV5
+CRMT_INDEX  TXA
+            JMP     CLOCK_DRAW_ONE_TICK
+
+; Input A = tick index 0..11.
+; Copy the selected 9-byte contour (point count + 4 X/Y pairs) into a tiny
+; one-contour polygon stream, then render it with the normal vector engine.
+CLOCK_DRAW_ONE_TICK
+            TAX
+            LDA     CLOCK_TICK_OFF,X
+            CLC
+            ADC     #<CLOCK_TICK_POLY
+            STA     VF_DPL
+            LDA     #>CLOCK_TICK_POLY
+            ADC     #$00
+            STA     VF_DPH
+
+            LDY     #$00
+            LDX     #$00
+CDOT_COPY   LDA     (VF_DPL),Y
+            STA     CLOCK_ONE_TICK_POLY+1,X
+            INY
+            INX
+            CPX     #$09
+            BNE     CDOT_COPY
+
+            JSR     CLOCK_SETUP_BOX
+            LDA     CLOCK_LEFTL
+            STA     VF_X0L
+            LDA     CLOCK_LEFTH
+            STA     VF_X0H
+            LDA     CLOCK_TOP
+            STA     VF_Y0
+            LDA     CLOCK_X1
+            STA     VF_X1
+            LDA     CLOCK_Y1
+            STA     VF_Y1
+            LDA     #$00
+            STA     VF_CLIPON
+            STA     VF_ERASE
+            LDA     #<CLOCK_ONE_TICK_POLY
+            STA     VF_POLYLO
+            LDA     #>CLOCK_ONE_TICK_POLY
+            STA     VF_POLYHI
+            JMP     VF_DRAW_POLY
+
 ; =============================================================================
 ; Analog clock hands / animation
 ; =============================================================================
@@ -1283,12 +1322,16 @@ CLOCK_TICKMARKS
 ; Bresenham line.  Redrawing the same old line erases it, so each second costs
 ; only two thin line passes instead of clearing/rasterizing the complete clock.
 ; It starts a few pixels away from the center, leaving a fixed two-pixel pivot.
-; At seconds=0 the old seconds line is erased, the clock box is cleared, and the
-; static tickmarks + hour/minute polygons are redrawn once for the new minute.
+; At seconds=0 the old seconds line is erased.  The old hour/minute polygons
+; are then erased individually; the complete clock box is NOT cleared.
+; Only the single 5-minute tick nearest the OLD minute-hand position is redrawn
+; to repair any tick pixels that the old minute-hand erase may have removed.
+; The new hour/minute polygons are then drawn.  Thus the other eleven tickmarks
+; remain untouched after startup.
 ; -----------------------------------------------------------------------------
 
 CLOCK_UPDATE
-; First good RTC sample: construct the full clock regardless of current second.
+; First good RTC sample: construct the complete analog clock once.
             LDA     CLOCK_INIT
             BNE     CLKU_RUNNING
             JSR     CLOCK_REDRAW_STATIC
@@ -1305,9 +1348,10 @@ CLKU_RUNNING
 
 CLKU_AFTER_ERASE
 ; Hour/minute geometry changes only on the minute boundary.
+; Do NOT clear/redraw the complete tick ring here.
             LDA     RTC_SEC
             BNE     CLKU_DRAWSEC
-            JSR     CLOCK_REDRAW_STATIC
+            JSR     CLOCK_REFRESH_MINUTE
 
 CLKU_DRAWSEC
             LDA     RTC_SEC
@@ -1317,14 +1361,50 @@ CLKU_DRAWSEC
             JSR     CLOCK_DRAW_PIVOT
             RTS
 
-; Clear only the clock's shared layout box, then reconstruct the static analog
-; layer. This happens at startup and once per minute.
+; Full reconstruction is only needed for the first coherent RTC sample.
 CLOCK_REDRAW_STATIC
+            LDA     #$00
+            STA     VF_ERASE
             JSR     CLOCK_CLEAR_BOX
             JSR     CLOCK_TICKMARKS
             JSR     CLOCK_DRAW_HOUR
             JSR     CLOCK_DRAW_MINUTE
             JSR     CLOCK_DRAW_PIVOT
+            JSR     CLOCK_SAVE_HAND_STATE
+            RTS
+
+; Minute-boundary update without disturbing all twelve 5-minute tickmarks.
+;
+; 1. erase the OLD minute and hour polygons using the same vector rasterizer,
+; 2. redraw only the one tick nearest the old minute hand,
+; 3. draw the NEW hour/minute polygons,
+; 4. restore the pivot and remember the new hand state.
+;
+; The hour hand ends well inside the tick ring, so only the minute-hand segment
+; can damage a tick during polygon erasure.
+CLOCK_REFRESH_MINUTE
+            LDA     #$01
+            STA     VF_ERASE
+            JSR     CLOCK_DRAW_LAST_MINUTE
+            JSR     CLOCK_DRAW_LAST_HOUR
+
+            LDA     #$00
+            STA     VF_ERASE
+
+            LDA     CLOCK_LAST_MIN
+            JSR     CLOCK_RESTORE_MINUTE_TICK
+
+            JSR     CLOCK_DRAW_HOUR
+            JSR     CLOCK_DRAW_MINUTE
+            JSR     CLOCK_DRAW_PIVOT
+            JSR     CLOCK_SAVE_HAND_STATE
+            RTS
+
+CLOCK_SAVE_HAND_STATE
+            LDA     RTC_MIN
+            STA     CLOCK_LAST_MIN
+            LDA     RTC_HOUR
+            STA     CLOCK_LAST_HOUR
             RTS
 
 ; Derive and cache top-left from the shared center/size parameters.
@@ -1401,7 +1481,12 @@ CLKP_NOCARRY
 ; -----------------------------------------------------------------------------
 
 CLOCK_DRAW_MINUTE
-            LDX     RTC_MIN
+            LDA     RTC_MIN
+            JMP     CLOCK_DRAW_MINUTE_A
+
+; A = minute 0..59.
+CLOCK_DRAW_MINUTE_A
+            TAX
             LDA     CLOCK_MIN_X,X
             STA     CLOCK_TIPX
             LDA     CLOCK_MIN_Y,X
@@ -1411,9 +1496,26 @@ CLOCK_DRAW_MINUTE
             JSR     CLOCK_BUILD_HAND
             JMP     CLOCK_DRAW_HAND_POLY
 
+CLOCK_DRAW_LAST_MINUTE
+            LDA     CLOCK_LAST_MIN
+            JMP     CLOCK_DRAW_MINUTE_A
+
 CLOCK_DRAW_HOUR
-; index = (hour mod 12)*60 + minute, range 0..719.
             LDA     RTC_HOUR
+            STA     CLOCK_HOUR_WORK
+            LDA     RTC_MIN
+            STA     CLOCK_MIN_WORK
+            JMP     CLOCK_DRAW_HOUR_WORK
+
+CLOCK_DRAW_LAST_HOUR
+            LDA     CLOCK_LAST_HOUR
+            STA     CLOCK_HOUR_WORK
+            LDA     CLOCK_LAST_MIN
+            STA     CLOCK_MIN_WORK
+
+CLOCK_DRAW_HOUR_WORK
+; index = (hour mod 12)*60 + minute, range 0..719.
+            LDA     CLOCK_HOUR_WORK
             CMP     #$0C
             BCC     CLKH_HOUROK
             SEC
@@ -1425,7 +1527,7 @@ CLKH_HOUROK
             JSR     VF_MUL8
             LDA     VF_PRODL
             CLC
-            ADC     RTC_MIN
+            ADC     CLOCK_MIN_WORK
             STA     CLOCK_HIDXLO
             LDA     VF_PRODH
             ADC     #$00
@@ -1930,6 +2032,16 @@ CLOCK_TICK_POLY
 ; 55 minutes / 330 degrees
             .BYTE   $04,$51,$3A,$40,$1D,$4A,$17,$5B,$34
 
+; Byte offset from CLOCK_TICK_POLY to each contour's point-count byte.
+; Each tick contour occupies 9 bytes: $04 followed by four X/Y pairs.
+CLOCK_TICK_OFF
+            .BYTE   $01,$0A,$13,$1C,$25,$2E,$37,$40,$49,$52,$5B,$64
+
+; Mutable stream used when just one tick must be repaired.
+; byte 0 = one contour; bytes 1..9 are replaced by CLOCK_DRAW_ONE_TICK.
+CLOCK_ONE_TICK_POLY
+            .BYTE   $01,$04,$00,$00,$00,$00,$00,$00,$00,$00
+
 ; =============================================================================
 ; VF_DRAW
 ; =============================================================================
@@ -2341,7 +2453,11 @@ VFFP_LOOP   LDA     VF_PAIRIDX
             LDA     VF_SCALEH
             STA     VF_SPANX1H
 
-            JSR     VF_HSPAN
+            LDA     VF_ERASE
+            BEQ     VFFP_DRAW
+            JSR     VF_HSPAN_CLEAR
+            JMP     VFFP_NEXT
+VFFP_DRAW   JSR     VF_HSPAN
 
 VFFP_NEXT   LDA     VF_PAIRIDX
             CLC
@@ -2732,6 +2848,10 @@ VF_Y1       .BYTE   $2E
 VF_CHAR_LO  .BYTE   $00
 VF_CHAR_HI  .BYTE   $00
 
+; 0 = OR/fill pixels, nonzero = clear filled polygon pixels.
+; Used to erase only the old hour/minute hand polygons at minute boundaries.
+VF_ERASE    .BYTE   $00
+
 VF_GLYPHLO  .BYTE   $00
 VF_GLYPHHI  .BYTE   $00
 
@@ -2753,6 +2873,10 @@ CLOCK_TOP    .BYTE   $00
 CLOCK_INIT   .BYTE   $00
 CLOCK_SECIDX .BYTE   $FF
 CLOCK_SEC_WORK .BYTE $00
+CLOCK_LAST_MIN .BYTE $00
+CLOCK_LAST_HOUR .BYTE $00
+CLOCK_MIN_WORK .BYTE $00
+CLOCK_HOUR_WORK .BYTE $00
 CLOCK_TIPX   .BYTE   $80
 CLOCK_TIPY   .BYTE   $20
 CLOCK_DX     .BYTE   $00
@@ -3006,7 +3130,7 @@ XMOD1         .BYTE   $04,$05,$06,$00,$01,$02,$03,$04,$05,$06,$00,$01,$02,$03,$0
 ; Generated locally in the browser by OTF -> 6502 Vector Font Tables
 ; Flatten tolerance: 8 font units; max curve segment: 64
 ; Normalization: tight glyph bounds; Y inverted (0=top)
-; Manual normalized-point edits: 0 glyph(s)
+; Manual normalized-point edits: 36 glyph(s)
 ;
 ; Stream format at VF_DATA + offset:
 ;   byte 0             contour count
@@ -3018,7 +3142,7 @@ XMOD1         .BYTE   $04,$05,$06,$00,$01,$02,$03,$04,$05,$06,$00,$01,$02,$03,$0
 ; -----------------------------------------------------------------------------
 
 VF_GLYPH_COUNT EQU     $0024
-VF_DATA_BYTES  EQU     $12EE
+VF_DATA_BYTES  EQU     $0CBE
 
 VF_CODE_LO
             .BYTE   $30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$41,$42,$43,$44,$45,$46
@@ -3029,13 +3153,13 @@ VF_CODE_HI
             .BYTE   $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
             .BYTE   $00,$00,$00,$00
 VF_OFF_LO
-            .BYTE   $00,$7F,$CD,$4F,$F3,$8A,$2E,$E3,$4D,$F3,$A8,$2D,$C1,$4F,$CA,$28
-            .BYTE   $72,$20,$92,$C4,$36,$D2,$12,$AE,$3E,$C5,$2A,$D9,$62,$2C,$62,$F0
-            .BYTE   $86,$5E,$0E,$8A
+            .BYTE   $00,$61,$9D,$FF,$7B,$D2,$4E,$D7,$13,$91,$F8,$45,$B5,$21,$7E,$B4
+            .BYTE   $EC,$50,$A6,$CC,$0E,$68,$8C,$E6,$38,$9F,$EC,$71,$D8,$70,$9A,$EC
+            .BYTE   $5E,$D8,$3C,$84
 VF_OFF_HI
-            .BYTE   $00,$00,$00,$01,$01,$02,$03,$03,$04,$04,$05,$06,$06,$07,$07,$08
-            .BYTE   $08,$09,$09,$09,$0A,$0A,$0B,$0B,$0C,$0C,$0D,$0D,$0E,$0F,$0F,$0F
-            .BYTE   $10,$11,$12,$12
+            .BYTE   $00,$00,$00,$00,$01,$01,$02,$02,$03,$03,$03,$04,$04,$05,$05,$05
+            .BYTE   $05,$06,$06,$06,$07,$07,$07,$07,$08,$08,$08,$09,$09,$0A,$0A,$0A
+            .BYTE   $0B,$0B,$0C,$0C
 VF_ADV
             .BYTE   $A7,$6E,$9B,$9E,$A8,$9E,$A9,$95,$A5,$A9,$BD,$AF,$BD,$BD,$9A,$91
             .BYTE   $BE,$BA,$51,$A1,$B3,$8F,$D7,$B9,$BE,$AE,$BE,$B0,$B4,$A0,$B0,$BD
@@ -3043,525 +3167,429 @@ VF_ADV
 
 VF_DATA
 
-; U+0030 0  glyph=zero  contours=2 points=62 offset=$0000
+; U+0030 0  glyph=zero  contours=2 points=47 offset=$0000 edited
 VF_G_0030
             .BYTE   $02
 ; contour 0
-            .BYTE   $2C,$FD,$99,$FF,$86,$FF,$72,$FD,$62,$F9,$52,$F4,$43,$EC,$34,$E2
-            .BYTE   $26,$D5,$1A,$C7,$10,$B6,$09,$A9,$05,$9B,$02,$8E,$01,$80,$00,$66
-            .BYTE   $02,$4F,$08,$3B,$11,$2A,$1E,$1C,$2D,$10,$3E,$08,$51,$02,$66,$01
-            .BYTE   $78,$00,$89,$02,$9C,$06,$AF,$0D,$C1,$18,$D2,$22,$DD,$2D,$E7,$39
-            .BYTE   $EF,$45,$F5,$53,$FA,$62,$FD,$71,$FE,$82,$FF,$9C,$FD,$B2,$F7,$C6
-            .BYTE   $EE,$D7,$E1,$E5,$D2,$EF,$C1,$F8,$AE
+            .BYTE   $20,$FD,$99,$FF,$72,$FD,$62,$F4,$43,$E2,$26,$C7,$10,$B6,$09,$9B
+            .BYTE   $02,$80,$00,$66,$02,$4F,$08,$3B,$11,$2A,$1E,$1C,$2D,$10,$3E,$08
+            .BYTE   $51,$02,$66,$00,$89,$06,$AF,$0D,$C1,$18,$D2,$2D,$E7,$39,$EF,$53
+            .BYTE   $FA,$62,$FD,$82,$FF,$9C,$FD,$B2,$F7,$C6,$EE,$D7,$E1,$E5,$D2,$F8
+            .BYTE   $AE
 ; contour 1
-            .BYTE   $12,$78,$B1,$6B,$A4,$66,$93,$64,$87,$65,$7B,$68,$67,$70,$54,$81
-            .BYTE   $4C,$86,$4D,$91,$56,$97,$63,$98,$68,$9A,$79,$9A,$8A,$98,$96,$93
-            .BYTE   $A3,$8B,$AE,$7E,$B2
+            .BYTE   $0F,$78,$B1,$6B,$A4,$64,$87,$68,$67,$70,$54,$81,$4C,$86,$4D,$91
+            .BYTE   $56,$97,$63,$9A,$79,$9A,$8A,$98,$96,$93,$A3,$8B,$AE,$7E,$B2
 
-; U+0031 1  glyph=one  contours=1 points=38 offset=$007F
+; U+0031 1  glyph=one  contours=1 points=29 offset=$0061 edited
 VF_G_0031
             .BYTE   $01
 ; contour 0
-            .BYTE   $26,$D6,$FF,$EF,$FC,$FA,$F6,$FE,$E7,$FE,$38,$FF,$26,$FF,$13,$FB
-            .BYTE   $0A,$F3,$04,$E1,$01,$C7,$00,$8B,$00,$78,$03,$67,$08,$53,$11,$3F
-            .BYTE   $18,$2B,$20,$15,$27,$0B,$2A,$08,$2C,$01,$33,$00,$3A,$01,$49,$03
-            .BYTE   $58,$03,$5F,$06,$68,$07,$68,$08,$6A,$0E,$6C,$27,$65,$3D,$5E,$4A
-            .BYTE   $59,$56,$59,$57,$5A,$57,$E7,$5A,$F6,$6B,$FD,$7F,$FF
+            .BYTE   $1D,$D6,$FF,$EF,$FC,$FA,$F6,$FE,$E7,$FE,$38,$FF,$13,$FB,$0A,$F3
+            .BYTE   $04,$E1,$01,$8B,$00,$78,$03,$67,$08,$53,$11,$2B,$20,$0B,$2A,$01
+            .BYTE   $33,$00,$3A,$03,$5F,$06,$68,$08,$6A,$0E,$6C,$3D,$5E,$4A,$59,$56
+            .BYTE   $59,$57,$5A,$57,$E7,$5A,$F6,$6B,$FD,$7F,$FF
 
-; U+0032 2  glyph=two  contours=1 points=64 offset=$00CD
+; U+0032 2  glyph=two  contours=1 points=48 offset=$009D edited
 VF_G_0032
             .BYTE   $01
 ; contour 0
-            .BYTE   $40,$FB,$FA,$FE,$F2,$FF,$E5,$FF,$D4,$FE,$C0,$FB,$B8,$EC,$B3,$AB
-            .BYTE   $B3,$AA,$AF,$AF,$A9,$BF,$9E,$D2,$91,$E0,$86,$EC,$7B,$F6,$6D,$FC
-            .BYTE   $60,$FD,$5D,$FF,$4B,$FC,$38,$F4,$28,$E9,$1B,$D9,$11,$C7,$09,$B3
-            .BYTE   $04,$9D,$01,$85,$00,$6A,$01,$52,$06,$3E,$0D,$2C,$17,$1D,$23,$11
-            .BYTE   $33,$07,$44,$01,$58,$00,$65,$08,$6B,$40,$6B,$4D,$69,$51,$67,$55
-            .BYTE   $62,$61,$56,$63,$55,$6F,$52,$7D,$54,$82,$56,$87,$59,$87,$67,$7B
-            .BYTE   $78,$6A,$85,$59,$91,$4D,$99,$40,$A0,$33,$A8,$27,$AF,$1B,$B7,$0F
-            .BYTE   $C0,$06,$CA,$04,$D7,$05,$E7,$05,$ED,$08,$F8,$0D,$FD,$1C,$FF,$EC
+            .BYTE   $30,$FB,$FA,$FE,$F2,$FE,$C0,$FB,$B8,$EC,$B3,$AB,$B3,$AA,$AF,$AF
+            .BYTE   $A9,$D2,$91,$EC,$7B,$F6,$6D,$FD,$5D,$FF,$4B,$FC,$38,$F4,$28,$E9
+            .BYTE   $1B,$D9,$11,$C7,$09,$B3,$04,$9D,$01,$6A,$01,$52,$06,$3E,$0D,$2C
+            .BYTE   $17,$1D,$23,$11,$33,$07,$44,$01,$58,$00,$65,$08,$6B,$40,$6B,$51
+            .BYTE   $67,$61,$56,$6F,$52,$7D,$54,$87,$59,$87,$67,$7B,$78,$4D,$99,$27
+            .BYTE   $AF,$0F,$C0,$06,$CA,$04,$D7,$05,$ED,$08,$F8,$0D,$FD,$1C,$FF,$EC
             .BYTE   $FF
 
-; U+0033 3  glyph=three  contours=1 points=81 offset=$014F
+; U+0033 3  glyph=three  contours=1 points=61 offset=$00FF edited
 VF_G_0033
             .BYTE   $01
 ; contour 0
-            .BYTE   $51,$EF,$DF,$FA,$CD,$FF,$B9,$FD,$A5,$F5,$94,$E5,$87,$D6,$7E,$D2
-            .BYTE   $79,$D3,$75,$D7,$71,$E5,$66,$F4,$54,$FA,$3F,$FA,$39,$F7,$29,$EE
-            .BYTE   $1C,$E0,$12,$D0,$0A,$BD,$05,$A9,$02,$95,$00,$82,$00,$6C,$01,$57
-            .BYTE   $03,$44,$08,$32,$0E,$22,$17,$14,$22,$09,$30,$02,$41,$01,$4A,$09
-            .BYTE   $4E,$1F,$4F,$49,$4F,$51,$4B,$5B,$44,$6C,$3F,$86,$44,$8C,$49,$8F
-            .BYTE   $4F,$90,$56,$85,$60,$74,$63,$66,$63,$55,$66,$54,$69,$54,$8A,$55
-            .BYTE   $8F,$5A,$93,$62,$94,$7A,$96,$7B,$96,$83,$98,$8B,$9E,$8D,$A4,$8C
-            .BYTE   $AF,$81,$B9,$6E,$BD,$5B,$B8,$51,$B1,$49,$AD,$3C,$AC,$2F,$AD,$08
+            .BYTE   $3D,$EF,$DF,$FA,$CD,$FF,$B9,$FD,$A5,$F5,$94,$E5,$87,$D6,$7E,$D2
+            .BYTE   $79,$D3,$75,$E5,$66,$F4,$54,$FA,$3F,$F7,$29,$EE,$1C,$E0,$12,$D0
+            .BYTE   $0A,$BD,$05,$95,$00,$57,$03,$32,$0E,$22,$17,$14,$22,$09,$30,$02
+            .BYTE   $41,$01,$4A,$09,$4E,$49,$4F,$5B,$44,$6C,$3F,$86,$44,$8C,$49,$8F
+            .BYTE   $4F,$90,$56,$85,$60,$74,$63,$66,$63,$55,$66,$55,$8F,$5A,$93,$83
+            .BYTE   $98,$8B,$9E,$8D,$A4,$8C,$AF,$81,$B9,$6E,$BD,$5B,$B8,$49,$AD,$08
             .BYTE   $AD,$00,$B2,$01,$BB,$08,$CD,$13,$DB,$21,$E7,$31,$F0,$43,$F7,$56
-            .BYTE   $FC,$6B,$FE,$82,$FF,$90,$FF,$9F,$FE,$AF,$FC,$BE,$F9,$CD,$F5,$DB
-            .BYTE   $EF,$E6,$E8
+            .BYTE   $FC,$90,$FF,$AF,$FC,$CD,$F5,$DB,$EF,$E6,$E8
 
-; U+0034 4  glyph=four  contours=2 points=74 offset=$01F3
+; U+0034 4  glyph=four  contours=2 points=42 offset=$017B edited
 VF_G_0034
             .BYTE   $02
 ; contour 0
-            .BYTE   $3A,$C7,$FF,$D3,$FD,$DD,$F7,$E0,$E7,$DF,$DF,$DF,$DB,$E1,$DA,$E7
-            .BYTE   $D9,$F4,$D8,$F7,$D7,$FD,$D3,$FE,$CC,$FF,$C0,$FF,$B4,$FE,$A5,$FB
-            .BYTE   $9F,$F6,$9C,$E6,$9C,$E1,$9A,$DF,$94,$DF,$39,$E0,$27,$E0,$14,$DE
-            .BYTE   $0B,$D9,$05,$CD,$02,$BF,$01,$B1,$01,$AC,$00,$75,$00,$65,$05,$5A
-            .BYTE   $11,$53,$1D,$47,$2E,$40,$39,$39,$45,$33,$50,$2C,$5B,$25,$65,$1F
-            .BYTE   $70,$18,$7A,$11,$85,$07,$97,$01,$AA,$00,$B6,$00,$C3,$04,$D1,$0A
-            .BYTE   $D5,$13,$D7,$43,$D7,$5A,$D5,$71,$D5,$77,$D6,$78,$D7,$78,$E7,$7A
-            .BYTE   $F6,$81,$FC,$99,$FF
+            .BYTE   $23,$C7,$FF,$D3,$FD,$DD,$F7,$E0,$E7,$DF,$DB,$F4,$D8,$FD,$D3,$FF
+            .BYTE   $C0,$FE,$A5,$FB,$9F,$F6,$9C,$E6,$9C,$E1,$9A,$DF,$94,$E0,$14,$DE
+            .BYTE   $0B,$D9,$05,$CD,$02,$AC,$00,$75,$00,$65,$05,$5A,$11,$40,$39,$07
+            .BYTE   $97,$01,$AA,$00,$C3,$04,$D1,$0A,$D5,$13,$D7,$71,$D5,$78,$D7,$78
+            .BYTE   $E7,$7A,$F6,$81,$FC,$99,$FF
 ; contour 1
-            .BYTE   $10,$55,$9E,$4D,$9D,$4C,$9C,$4C,$9B,$52,$8E,$5A,$80,$63,$73,$6C
-            .BYTE   $67,$6F,$62,$75,$5B,$77,$5A,$78,$5F,$78,$95,$75,$9B,$73,$9D,$70
-            .BYTE   $9E
+            .BYTE   $07,$55,$9E,$4C,$9C,$5A,$80,$6F,$62,$77,$5A,$78,$95,$73,$9D
 
-; U+0035 5  glyph=five  contours=1 points=81 offset=$028A
+; U+0035 5  glyph=five  contours=1 points=61 offset=$01D2 edited
 VF_G_0035
             .BYTE   $01
 ; contour 0
-            .BYTE   $51,$93,$FE,$A9,$FD,$BD,$F8,$D0,$EF,$E0,$E4,$EE,$D7,$F8,$C7,$FE
-            .BYTE   $B6,$FF,$A5,$FB,$8F,$F3,$7C,$E6,$6C,$D2,$5E,$C8,$5A,$B5,$54,$A1
-            .BYTE   $52,$90,$53,$80,$57,$70,$5C,$62,$64,$5F,$64,$5D,$62,$5D,$5C,$5F
-            .BYTE   $46,$BD,$46,$CC,$47,$DC,$46,$E8,$42,$EB,$3A,$EC,$2E,$EC,$22,$EB
-            .BYTE   $1F,$EB,$0D,$E8,$05,$DC,$00,$CC,$00,$BD,$01,$40,$01,$35,$00,$2D
-            .BYTE   $00,$1A,$02,$16,$06,$15,$0F,$14,$1E,$12,$36,$10,$41,$0F,$4D,$0D
-            .BYTE   $5E,$0C,$6D,$0B,$7F,$0A,$8B,$0A,$92,$0D,$95,$18,$97,$39,$97,$4E
+            .BYTE   $3D,$A9,$FD,$BD,$F8,$D0,$EF,$E0,$E4,$EE,$D7,$F8,$C7,$FE,$B6,$FF
+            .BYTE   $A5,$FB,$8F,$F3,$7C,$E6,$6C,$D2,$5E,$B5,$54,$A1,$52,$90,$53,$70
+            .BYTE   $5C,$62,$64,$5F,$64,$5D,$62,$5F,$46,$BD,$46,$CC,$47,$DC,$46,$E8
+            .BYTE   $42,$EB,$3A,$EC,$22,$EB,$0D,$E8,$05,$DC,$00,$40,$01,$2D,$00,$1A
+            .BYTE   $02,$16,$06,$12,$36,$0D,$5E,$0A,$92,$0D,$95,$18,$97,$39,$97,$4E
             .BYTE   $94,$5D,$90,$71,$8D,$8C,$93,$9A,$9D,$9B,$AA,$8F,$B7,$7A,$BA,$67
-            .BYTE   $B9,$64,$B8,$62,$B7,$56,$AF,$4C,$AB,$1F,$AB,$08,$AC,$00,$B0,$01
-            .BYTE   $BA,$07,$C9,$0F,$D6,$1A,$E1,$27,$EB,$35,$F2,$45,$F8,$57,$FC,$69
-            .BYTE   $FE,$7E,$FF
+            .BYTE   $B9,$56,$AF,$4C,$AB,$08,$AC,$00,$B0,$01,$BA,$07,$C9,$0F,$D6,$1A
+            .BYTE   $E1,$27,$EB,$35,$F2,$45,$F8,$57,$FC,$7E,$FF
 
-; U+0036 6  glyph=six  contours=2 points=89 offset=$032E
+; U+0036 6  glyph=six  contours=2 points=67 offset=$024E edited
 VF_G_0036
             .BYTE   $02
 ; contour 0
-            .BYTE   $4C,$E4,$DD,$EE,$D3,$F5,$C7,$FA,$BD,$FD,$B2,$FF,$A7,$FF,$9C,$FC
-            .BYTE   $8C,$F7,$7F,$EE,$73,$E3,$6A,$D5,$62,$C6,$5C,$B5,$59,$A3,$58,$95
-            .BYTE   $59,$87,$5B,$7A,$5F,$6D,$64,$65,$68,$60,$69,$5E,$67,$5E,$5F,$60
-            .BYTE   $58,$69,$4E,$75,$46,$83,$42,$93,$40,$A1,$41,$AE,$44,$D8,$52,$E6
-            .BYTE   $56,$ED,$53,$F0,$50,$F4,$42,$F6,$32,$F9,$22,$F9,$16,$F7,$12,$F2
-            .BYTE   $0E,$DE,$09,$B6,$03,$A2,$01,$8E,$00,$7D,$01,$6B,$03,$5A,$06,$4A
-            .BYTE   $0B,$3B,$12,$2D,$1B,$21,$25,$18,$32,$0D,$45,$06,$59,$02,$69,$00
-            .BYTE   $79,$00,$88,$02,$98,$03,$A3,$06,$AF,$0A,$B9,$0E,$C4,$15,$CE,$1C
-            .BYTE   $D7,$25,$E0,$2F,$E7,$43,$F2,$57,$F9,$6D,$FE,$84,$FF,$9E,$FD,$AB
-            .BYTE   $FA,$B8,$F6,$C5,$F1,$D1,$EC,$DB,$E5
+            .BYTE   $36,$EE,$D3,$FA,$BD,$FF,$A7,$FF,$9C,$FC,$8C,$F7,$7F,$EE,$73,$E3
+            .BYTE   $6A,$D5,$62,$C6,$5C,$B5,$59,$A3,$58,$87,$5B,$60,$69,$5E,$67,$5E
+            .BYTE   $5F,$60,$58,$69,$4E,$75,$46,$83,$42,$93,$40,$A1,$41,$D7,$4A,$E7
+            .BYTE   $50,$F0,$50,$F4,$42,$F9,$22,$F9,$16,$F7,$12,$F2,$0E,$DE,$09,$B6
+            .BYTE   $03,$8E,$00,$6B,$03,$5A,$06,$4A,$0B,$3B,$12,$2D,$1B,$21,$25,$0D
+            .BYTE   $45,$02,$69,$00,$88,$03,$A3,$0E,$C4,$1C,$D7,$25,$E0,$43,$F2,$57
+            .BYTE   $F9,$6D,$FE,$84,$FF,$9E,$FD,$B8,$F6,$D1,$EC,$DB,$E5
 ; contour 1
             .BYTE   $0D,$5B,$AE,$5D,$9D,$69,$90,$7E,$8A,$8C,$8C,$98,$92,$9F,$9C,$A2
             .BYTE   $A8,$9F,$B4,$97,$BE,$8C,$C4,$7E,$C6,$68,$BF
 
-; U+0037 7  glyph=seven  contours=1 points=52 offset=$03E3
+; U+0037 7  glyph=seven  contours=1 points=29 offset=$02D7 edited
 VF_G_0037
             .BYTE   $01
 ; contour 0
-            .BYTE   $34,$6B,$FF,$6F,$FE,$76,$FD,$77,$FD,$82,$F9,$8A,$EF,$96,$DB,$9F
-            .BYTE   $CD,$A8,$BE,$B2,$B0,$BB,$A1,$C9,$8B,$D0,$7F,$D7,$74,$DE,$68,$E6
-            .BYTE   $5C,$ED,$50,$F5,$44,$FC,$35,$FF,$26,$FF,$17,$FC,$0B,$F7,$04,$ED
-            .BYTE   $01,$EB,$01,$D2,$00,$17,$00,$08,$02,$03,$07,$00,$12,$00,$3A,$03
-            .BYTE   $45,$08,$4B,$17,$4C,$4B,$4C,$61,$4E,$63,$4F,$63,$50,$62,$54,$5D
-            .BYTE   $60,$56,$6C,$4F,$77,$47,$83,$3B,$97,$30,$AA,$29,$B6,$23,$C2,$0E
-            .BYTE   $E6,$08,$F2,$07,$F8,$0C,$FD,$1A,$FF
+            .BYTE   $1D,$6B,$FF,$77,$FD,$82,$F9,$8A,$EF,$A8,$BE,$B2,$B0,$F5,$44,$FC
+            .BYTE   $35,$FF,$26,$FF,$17,$FC,$0B,$F7,$04,$ED,$01,$D2,$00,$17,$00,$08
+            .BYTE   $02,$03,$07,$00,$12,$00,$3A,$03,$45,$08,$4B,$4B,$4C,$63,$4F,$5D
+            .BYTE   $60,$29,$B6,$08,$F2,$07,$F8,$0C,$FD,$1A,$FF
 
-; U+0038 8  glyph=eight  contours=3 points=81 offset=$044D
+; U+0038 8  glyph=eight  contours=3 points=61 offset=$0313 edited
 VF_G_0038
             .BYTE   $03
 ; contour 0
-            .BYTE   $3A,$89,$FF,$9E,$FE,$B2,$FA,$C5,$F5,$D7,$ED,$EC,$E0,$FA,$CD,$FF
-            .BYTE   $BB,$FE,$A8,$F6,$98,$E9,$8A,$DF,$82,$D4,$7B,$D0,$78,$CE,$76,$D1
-            .BYTE   $73,$DD,$6B,$E6,$63,$EC,$59,$F1,$49,$EF,$34,$E8,$26,$E0,$1C,$D6
-            .BYTE   $14,$CA,$0E,$BC,$08,$AF,$05,$A0,$02,$92,$00,$84,$00,$64,$02,$54
-            .BYTE   $04,$44,$07,$35,$0C,$27,$13,$1B,$1B,$11,$26,$0A,$36,$07,$47,$0A
-            .BYTE   $54,$10,$5F,$19,$69,$24,$72,$2B,$7B,$2A,$7D,$24,$82,$13,$8F,$05
-            .BYTE   $A1,$00,$B6,$01,$C1,$04,$CC,$0D,$DB,$1B,$E7,$2C,$F1,$3E,$F7,$50
-            .BYTE   $FB,$63,$FE,$76,$FF
+            .BYTE   $27,$9E,$FE,$C5,$F5,$D7,$ED,$EC,$E0,$FA,$CD,$FF,$BB,$FE,$A8,$F6
+            .BYTE   $98,$E9,$8A,$CE,$76,$E6,$63,$EC,$59,$F1,$49,$EF,$34,$E8,$26,$E0
+            .BYTE   $1C,$D6,$14,$BC,$08,$92,$00,$64,$02,$44,$07,$35,$0C,$1B,$1B,$11
+            .BYTE   $26,$0A,$36,$07,$47,$0A,$54,$10,$5F,$24,$72,$2B,$7B,$13,$8F,$05
+            .BYTE   $A1,$00,$B6,$04,$CC,$0D,$DB,$1B,$E7,$2C,$F1,$3E,$F7,$63,$FE
 ; contour 1
-            .BYTE   $0B,$62,$4F,$65,$41,$6C,$38,$77,$33,$7D,$32,$85,$33,$94,$40,$97
-            .BYTE   $52,$8E,$60,$7D,$66,$6B,$5F
+            .BYTE   $0A,$62,$4F,$65,$41,$6C,$38,$77,$33,$85,$33,$94,$40,$97,$52,$8E
+            .BYTE   $60,$7D,$66,$6B,$5F
 ; contour 2
             .BYTE   $0C,$6E,$C9,$61,$BE,$5F,$B3,$64,$A4,$72,$9B,$7F,$99,$8E,$9D,$98
             .BYTE   $A7,$9C,$B2,$98,$C0,$8B,$CA,$7E,$CD
 
-; U+0039 9  glyph=nine  contours=2 points=89 offset=$04F3
+; U+0039 9  glyph=nine  contours=2 points=50 offset=$0391 edited
 VF_G_0039
             .BYTE   $02
 ; contour 0
-            .BYTE   $4C,$F9,$A5,$FD,$96,$FF,$86,$FF,$76,$FE,$67,$FC,$5A,$F8,$4C,$F3
-            .BYTE   $3F,$EC,$33,$E3,$27,$D8,$1D,$CB,$14,$BC,$0D,$AD,$07,$9D,$03,$8C
-            .BYTE   $01,$7C,$00,$6A,$01,$59,$04,$48,$08,$38,$0E,$2A,$16,$1D,$1F,$13
-            .BYTE   $2B,$0A,$38,$05,$42,$02,$4D,$00,$58,$00,$63,$03,$72,$08,$80,$11
-            .BYTE   $8B,$1C,$95,$2A,$9D,$39,$A2,$49,$A6,$5B,$A7,$6A,$A6,$78,$A4,$85
-            .BYTE   $A0,$92,$9B,$9A,$97,$9F,$96,$A0,$98,$A1,$9F,$9F,$A6,$96,$B1,$8A
-            .BYTE   $B9,$7C,$BD,$6D,$BF,$5F,$BE,$51,$BB,$3C,$B4,$27,$AC,$19,$A9,$12
-            .BYTE   $AB,$0F,$AF,$0B,$BC,$09,$CD,$06,$DD,$06,$E9,$07,$ED,$0D,$F0,$23
-            .BYTE   $F6,$30,$F9,$4C,$FD,$5A,$FE,$71,$FF,$7F,$FF,$8C,$FE,$A4,$F9,$B9
-            .BYTE   $F2,$CB,$E8,$DB,$DC,$E8,$CC,$F2,$BA
+            .BYTE   $25,$FD,$96,$FF,$86,$FC,$5A,$F3,$3F,$E3,$27,$CB,$14,$AD,$07,$7C
+            .BYTE   $00,$48,$08,$38,$0E,$1D,$1F,$05,$42,$00,$63,$08,$80,$1C,$95,$2A
+            .BYTE   $9D,$49,$A6,$78,$A4,$9F,$96,$A1,$9F,$9F,$A6,$96,$B1,$8A,$B9,$6D
+            .BYTE   $BF,$51,$BB,$19,$A9,$12,$AB,$0B,$BC,$06,$DD,$07,$ED,$30,$F9,$71
+            .BYTE   $FF,$8C,$FE,$B9,$F2,$DB,$DC,$E8,$CC,$F2,$BA
 ; contour 1
             .BYTE   $0D,$5D,$56,$60,$4B,$68,$41,$73,$3B,$81,$39,$97,$40,$A4,$51,$A2
             .BYTE   $62,$96,$6F,$81,$75,$73,$73,$67,$6C,$60,$62
 
-; U+0041 A  glyph=A  contours=2 points=65 offset=$05A8
+; U+0041 A  glyph=A  contours=2 points=37 offset=$03F8 edited
 VF_G_0041
             .BYTE   $02
 ; contour 0
-            .BYTE   $3B,$4C,$FE,$54,$FC,$5B,$F5,$5E,$EB,$61,$DF,$9F,$DF,$A1,$EA,$A8
-            .BYTE   $F9,$AB,$FB,$B4,$FD,$EB,$FD,$F9,$FB,$FC,$FB,$FF,$F8,$FE,$ED,$FC
-            .BYTE   $E1,$F9,$D6,$F7,$CA,$F4,$BF,$EE,$A7,$E8,$91,$E4,$85,$E1,$7A,$DD
-            .BYTE   $6E,$DA,$63,$D6,$58,$D2,$4C,$CF,$41,$CB,$36,$C6,$27,$C0,$19,$B6
-            .BYTE   $08,$AE,$02,$A4,$01,$93,$00,$6E,$00,$59,$01,$4F,$03,$48,$0A,$3F
-            .BYTE   $1B,$35,$35,$31,$40,$2E,$4C,$2A,$57,$26,$63,$22,$6E,$1F,$7A,$1B
-            .BYTE   $85,$18,$91,$15,$9C,$12,$A8,$0E,$B4,$0C,$BF,$03,$E3,$01,$EF,$00
-            .BYTE   $F8,$07,$FD,$18,$FF,$3A,$FF
+            .BYTE   $21,$4C,$FE,$54,$FC,$5B,$F5,$61,$DF,$9F,$DF,$A1,$EA,$A8,$F9,$AB
+            .BYTE   $FB,$B4,$FD,$EB,$FD,$FC,$FB,$FF,$F8,$FC,$E1,$F7,$CA,$E8,$91,$DA
+            .BYTE   $63,$C6,$27,$C0,$19,$B6,$08,$AE,$02,$93,$00,$59,$01,$4F,$03,$48
+            .BYTE   $0A,$3F,$1B,$31,$40,$2E,$4C,$22,$6E,$0E,$B4,$03,$E3,$00,$F8,$07
+            .BYTE   $FD,$18,$FF
 ; contour 1
-            .BYTE   $06,$6F,$A1,$7B,$6E,$80,$5E,$84,$6E,$89,$7F,$91,$A1
+            .BYTE   $04,$6F,$A1,$7B,$6E,$80,$5E,$91,$A1
 
-; U+0042 B  glyph=B  contours=3 points=72 offset=$062D
+; U+0042 B  glyph=B  contours=3 points=54 offset=$0445 edited
 VF_G_0042
             .BYTE   $03
 ; contour 0
-            .BYTE   $32,$59,$FE,$86,$FE,$9C,$FD,$B1,$FB,$BF,$F9,$CD,$F6,$DA,$F0,$E5
-            .BYTE   $E9,$EF,$E1,$F6,$D7,$FC,$CB,$FF,$BE,$FF,$B0,$FB,$9F,$F3,$92,$E7
-            .BYTE   $87,$D9,$7D,$D2,$79,$D2,$78,$D4,$73,$DA,$6F,$DA,$6E,$E3,$69,$E4
-            .BYTE   $69,$F0,$5D,$F6,$50,$F9,$41,$F6,$32,$F1,$27,$E9,$1E,$D7,$0F,$C0
-            .BYTE   $05,$B4,$02,$A7,$01,$92,$00,$1F,$00,$12,$01,$07,$04,$02,$0A,$00
-            .BYTE   $13,$00,$26,$01,$38,$01,$DE,$00,$E6,$03,$F6,$0C,$FC,$18,$FE,$1B
-            .BYTE   $FE,$32,$FF,$45,$FF
+            .BYTE   $23,$9C,$FD,$BF,$F9,$CD,$F6,$DA,$F0,$EF,$E1,$FC,$CB,$FF,$BE,$FF
+            .BYTE   $B0,$FB,$9F,$F3,$92,$E7,$87,$D2,$79,$D4,$73,$DA,$6E,$E4,$69,$F0
+            .BYTE   $5D,$F6,$50,$F9,$41,$F6,$32,$F1,$27,$E9,$1E,$D7,$0F,$C0,$05,$B4
+            .BYTE   $02,$92,$00,$12,$01,$07,$04,$02,$0A,$00,$13,$01,$DE,$00,$E6,$03
+            .BYTE   $F6,$0C,$FC,$18,$FE,$45,$FF
 ; contour 1
-            .BYTE   $0B,$67,$6A,$66,$68,$66,$43,$68,$41,$74,$41,$85,$42,$92,$4B,$95
-            .BYTE   $58,$92,$60,$8C,$66,$79,$6A
+            .BYTE   $09,$67,$6A,$66,$43,$68,$41,$85,$42,$92,$4B,$95,$58,$92,$60,$8C
+            .BYTE   $66,$79,$6A
 ; contour 2
-            .BYTE   $0B,$67,$BD,$66,$BB,$66,$91,$69,$90,$7B,$90,$8D,$92,$9A,$9E,$9C
-            .BYTE   $A8,$99,$B2,$8E,$BB,$80,$BD
+            .BYTE   $0A,$67,$BD,$66,$BB,$66,$91,$7B,$90,$8D,$92,$9A,$9E,$9C,$A8,$99
+            .BYTE   $B2,$8E,$BB,$80,$BD
 
-; U+0043 C  glyph=C  contours=1 points=70 offset=$06C1
+; U+0043 C  glyph=C  contours=1 points=53 offset=$04B5 edited
 VF_G_0043
             .BYTE   $01
 ; contour 0
-            .BYTE   $46,$FA,$B0,$FF,$A2,$FF,$98,$F9,$91,$EC,$8E,$E0,$8F,$C5,$8F,$B6
-            .BYTE   $90,$AD,$91,$AA,$94,$9F,$A5,$96,$AB,$89,$AE,$7B,$AC,$6E,$A7,$65
-            .BYTE   $9D,$5F,$91,$5D,$80,$5F,$6F,$67,$5D,$7A,$51,$90,$4F,$A1,$57,$AD
-            .BYTE   $65,$B1,$67,$BF,$69,$F7,$69,$FF,$63,$FE,$57,$F7,$42,$ED,$30,$E0
-            .BYTE   $21,$D0,$15,$BF,$0C,$AC,$05,$97,$01,$81,$00,$72,$01,$63,$03,$55
-            .BYTE   $06,$47,$0B,$3A,$12,$2E,$1A,$23,$24,$19,$30,$11,$3D,$0B,$4A,$06
-            .BYTE   $58,$03,$66,$00,$77,$00,$89,$01,$97,$04,$A6,$09,$B5,$0F,$C3,$17
-            .BYTE   $D0,$21,$DC,$2C,$E6,$39,$EE,$4A,$F5,$5B,$FB,$6E,$FE,$80,$FF,$95
-            .BYTE   $FE,$A9,$FA,$BB,$F4,$CB,$EB,$DA,$E0,$E7,$D2,$F2,$C2
+            .BYTE   $35,$FF,$A2,$FF,$98,$F9,$91,$EC,$8E,$AD,$91,$9F,$A5,$96,$AB,$89
+            .BYTE   $AE,$7B,$AC,$6E,$A7,$65,$9D,$5F,$91,$5D,$80,$5F,$6F,$67,$5D,$7A
+            .BYTE   $51,$90,$4F,$A1,$57,$AD,$65,$BF,$69,$F7,$69,$FF,$63,$FE,$57,$F7
+            .BYTE   $42,$ED,$30,$E0,$21,$D0,$15,$BF,$0C,$AC,$05,$97,$01,$81,$00,$63
+            .BYTE   $03,$47,$0B,$2E,$1A,$19,$30,$11,$3D,$06,$58,$00,$77,$01,$97,$04
+            .BYTE   $A6,$0F,$C3,$17,$D0,$2C,$E6,$39,$EE,$5B,$FB,$80,$FF,$95,$FE,$A9
+            .BYTE   $FA,$BB,$F4,$CB,$EB,$DA,$E0,$E7,$D2,$F2,$C2
 
-; U+0044 D  glyph=D  contours=2 points=60 offset=$074F
+; U+0044 D  glyph=D  contours=2 points=45 offset=$0521 edited
 VF_G_0044
             .BYTE   $02
 ; contour 0
-            .BYTE   $28,$87,$FF,$99,$FD,$AD,$F8,$BF,$F0,$CF,$E7,$DC,$DB,$E8,$CD,$F1
-            .BYTE   $BD,$F8,$AC,$FD,$99,$FF,$85,$FF,$71,$FD,$60,$F9,$50,$F2,$40,$EA
-            .BYTE   $31,$DF,$24,$D3,$18,$C4,$0F,$B3,$08,$A3,$04,$93,$01,$82,$00,$5C
-            .BYTE   $00,$4C,$01,$3A,$01,$29,$02,$1A,$04,$07,$08,$02,$0E,$00,$17,$00
-            .BYTE   $E5,$02,$F4,$0B,$FA,$17,$FB,$24,$FC,$32,$FD,$3F,$FE,$4D,$FE,$5B
-            .BYTE   $FF
+            .BYTE   $1C,$87,$FF,$99,$FD,$AD,$F8,$BF,$F0,$CF,$E7,$DC,$DB,$E8,$CD,$F1
+            .BYTE   $BD,$F8,$AC,$FD,$99,$FF,$85,$FF,$71,$FD,$60,$F9,$50,$EA,$31,$D3
+            .BYTE   $18,$C4,$0F,$B3,$08,$93,$01,$5C,$00,$29,$02,$07,$08,$02,$0E,$00
+            .BYTE   $17,$00,$E5,$02,$F4,$0B,$FA,$3F,$FE
 ; contour 1
-            .BYTE   $14,$6F,$AF,$63,$AF,$5F,$AC,$5E,$AA,$5E,$80,$5F,$76,$5E,$69,$5E
-            .BYTE   $54,$60,$4F,$62,$4D,$6E,$4D,$82,$4E,$93,$57,$9D,$66,$9F,$6E,$A1
-            .BYTE   $7F,$9E,$91,$99,$9C,$91,$A5,$81,$AD
+            .BYTE   $11,$6F,$AF,$63,$AF,$5E,$AA,$5E,$80,$5F,$76,$5E,$54,$60,$4F,$62
+            .BYTE   $4D,$82,$4E,$93,$57,$9D,$66,$9F,$6E,$A1,$7F,$9E,$91,$99,$9C,$91
+            .BYTE   $A5,$81,$AD
 
-; U+0045 E  glyph=E  contours=1 points=46 offset=$07CA
+; U+0045 E  glyph=E  contours=1 points=26 offset=$057E edited
 VF_G_0045
             .BYTE   $01
 ; contour 0
-            .BYTE   $2E,$5B,$FF,$67,$FE,$EC,$FE,$FB,$F9,$FE,$F1,$FF,$E3,$FF,$D3,$FE
-            .BYTE   $BF,$FA,$B7,$EC,$B1,$78,$B1,$77,$AF,$77,$9B,$79,$9A,$E1,$9A,$EF
-            .BYTE   $96,$F3,$90,$F4,$7D,$F4,$7A,$EF,$66,$E1,$62,$7C,$62,$77,$60,$77
-            .BYTE   $4F,$79,$4D,$E5,$4D,$F7,$4B,$FE,$40,$FF,$32,$FF,$21,$FE,$0E,$FB
-            .BYTE   $06,$EC,$00,$1D,$00,$0E,$02,$0C,$03,$08,$04,$02,$0A,$00,$14,$00
-            .BYTE   $27,$01,$38,$01,$DF,$00,$E7,$03,$F7,$0E,$FD,$1D,$FF
+            .BYTE   $1A,$EC,$FE,$FB,$F9,$FE,$F1,$FE,$BF,$FA,$B7,$EC,$B1,$78,$B1,$77
+            .BYTE   $94,$E1,$96,$EB,$94,$F1,$8E,$F4,$7A,$EF,$66,$E1,$62,$77,$61,$78
+            .BYTE   $4A,$F7,$4B,$FE,$40,$FB,$06,$EC,$00,$1D,$00,$08,$04,$02,$0A,$00
+            .BYTE   $E7,$03,$F7,$0E,$FD
 
-; U+0046 F  glyph=F  contours=1 points=36 offset=$0828
+; U+0046 F  glyph=F  contours=1 points=27 offset=$05B4 edited
 VF_G_0046
             .BYTE   $01
 ; contour 0
-            .BYTE   $24,$5E,$FF,$71,$FC,$79,$F7,$7C,$E7,$7C,$A1,$DF,$A1,$EE,$9D,$F0
-            .BYTE   $97,$F1,$84,$F1,$81,$F0,$73,$ED,$6D,$DF,$69,$7C,$69,$7C,$4D,$EC
-            .BYTE   $4D,$FB,$48,$FE,$40,$FF,$32,$FF,$21,$FE,$0E,$FB,$06,$EC,$00,$1D
-            .BYTE   $00,$0E,$02,$0C,$03,$09,$04,$03,$0A,$00,$14,$00,$27,$01,$38,$01
-            .BYTE   $DF,$00,$E7,$03,$F7,$0F,$FD,$1E,$FF
+            .BYTE   $1B,$5E,$FF,$71,$FC,$79,$F7,$7C,$E7,$7C,$A1,$DF,$A1,$EE,$9D,$F0
+            .BYTE   $97,$F0,$73,$ED,$6D,$DF,$69,$7C,$69,$7C,$4D,$EC,$4D,$FB,$48,$FE
+            .BYTE   $40,$FE,$0E,$FB,$06,$EC,$00,$1D,$00,$09,$04,$03,$0A,$00,$14,$00
+            .BYTE   $E7,$03,$F7,$0F,$FD,$1E,$FF
 
-; U+0047 G  glyph=G  contours=1 points=86 offset=$0872
+; U+0047 G  glyph=G  contours=1 points=49 offset=$05EC edited
 VF_G_0047
             .BYTE   $01
 ; contour 0
-            .BYTE   $56,$EC,$C5,$F5,$B6,$FB,$A5,$FE,$93,$FF,$81,$FD,$73,$FB,$6D,$F7
-            .BYTE   $6B,$94,$6B,$89,$6C,$85,$70,$84,$77,$84,$81,$83,$81,$83,$94,$85
-            .BYTE   $9C,$89,$A0,$94,$A1,$A1,$A1,$A3,$A2,$A3,$A4,$95,$B1,$83,$B7,$75
-            .BYTE   $B4,$6A,$AC,$62,$A0,$5D,$93,$5B,$80,$5E,$6C,$62,$5E,$6A,$51,$75
-            .BYTE   $49,$84,$46,$92,$49,$9E,$50,$A4,$57,$A6,$5B,$AC,$5E,$B9,$5F,$CA
-            .BYTE   $5E,$DE,$5D,$EF,$5A,$F6,$57,$F7,$54,$F7,$50,$F2,$3F,$E8,$2E,$DA
-            .BYTE   $1F,$CB,$13,$BA,$0B,$A7,$05,$93,$01,$80,$00,$71,$01,$62,$03,$54
-            .BYTE   $06,$46,$0B,$39,$12,$2D,$1A,$22,$24,$19,$30,$11,$3D,$0B,$4A,$06
-            .BYTE   $58,$03,$66,$00,$77,$00,$89,$01,$97,$04,$A6,$09,$B5,$0F,$C3,$17
-            .BYTE   $D0,$21,$DC,$2C,$E6,$38,$EE,$49,$F5,$5A,$FB,$6C,$FE,$7E,$FF,$8F
-            .BYTE   $FE,$A0,$FC,$AF,$F7,$BE,$F1,$CC,$E9,$D8,$DF,$E3,$D3
+            .BYTE   $31,$F5,$B6,$FB,$A5,$FF,$81,$FB,$6D,$F7,$6B,$89,$6C,$85,$70,$83
+            .BYTE   $94,$89,$A0,$A3,$A2,$95,$B1,$83,$B7,$75,$B4,$6A,$AC,$5D,$93,$5B
+            .BYTE   $80,$62,$5E,$6A,$51,$75,$49,$84,$46,$92,$49,$9E,$50,$A6,$5B,$AC
+            .BYTE   $5E,$DE,$5D,$F6,$57,$F7,$50,$F2,$3F,$E8,$2E,$CB,$13,$BA,$0B,$93
+            .BYTE   $01,$62,$03,$46,$0B,$2D,$1A,$22,$24,$11,$3D,$06,$58,$00,$77,$01
+            .BYTE   $97,$0F,$C3,$17,$D0,$2C,$E6,$38,$EE,$5A,$FB,$7E,$FF,$A0,$FC,$CC
+            .BYTE   $E9,$E3,$D3
 
-; U+0048 H  glyph=H  contours=1 points=56 offset=$0920
+; U+0048 H  glyph=H  contours=1 points=42 offset=$0650 edited
 VF_G_0048
             .BYTE   $01
 ; contour 0
-            .BYTE   $38,$38,$FE,$4C,$FF,$57,$FD,$61,$F7,$63,$E7,$63,$A4,$9A,$A4,$9A
-            .BYTE   $A5,$9C,$A8,$9C,$E7,$9E,$F6,$A5,$FC,$B3,$FE,$C7,$FE,$DB,$FF,$EF
-            .BYTE   $FE,$F8,$FB,$FD,$F2,$FD,$E7,$FE,$D6,$FD,$C5,$FD,$5E,$FE,$4B,$FF
-            .BYTE   $39,$FF,$15,$FD,$0A,$F7,$02,$E9,$00,$BE,$00,$AD,$01,$A2,$04,$9E
-            .BYTE   $0A,$9C,$14,$9C,$54,$9B,$55,$64,$55,$63,$52,$63,$13,$61,$0A,$5D
-            .BYTE   $04,$52,$01,$41,$00,$16,$00,$08,$02,$02,$0A,$00,$14,$00,$39,$01
-            .BYTE   $4B,$02,$5E,$02,$C5,$01,$D6,$01,$E7,$03,$F4,$07,$FC,$10,$FE,$24
-            .BYTE   $FF
+            .BYTE   $2A,$38,$FE,$4C,$FF,$57,$FD,$61,$F7,$63,$E7,$63,$A4,$9A,$A4,$9C
+            .BYTE   $A8,$9C,$E7,$9E,$F6,$A5,$FC,$B3,$FE,$DB,$FF,$EF,$FE,$F8,$FB,$FD
+            .BYTE   $F2,$FE,$D6,$FD,$5E,$FF,$15,$FD,$0A,$F7,$02,$E9,$00,$AD,$01,$A2
+            .BYTE   $04,$9E,$0A,$9C,$14,$9C,$54,$64,$55,$63,$13,$61,$0A,$5D,$04,$52
+            .BYTE   $01,$16,$00,$08,$02,$02,$0A,$00,$14,$02,$5E,$01,$E7,$03,$F4,$07
+            .BYTE   $FC,$10,$FE,$24,$FF
 
-; U+0049 I  glyph=I  contours=1 points=24 offset=$0992
+; U+0049 I  glyph=I  contours=1 points=18 offset=$06A6 edited
 VF_G_0049
             .BYTE   $01
 ; contour 0
-            .BYTE   $18,$C2,$FF,$E7,$FC,$F8,$F7,$FE,$E7,$FD,$DF,$FD,$38,$FF,$27,$FF
-            .BYTE   $14,$FA,$0A,$ED,$04,$D1,$01,$A6,$00,$4E,$00,$2D,$01,$12,$04,$05
-            .BYTE   $0A,$00,$14,$00,$27,$01,$39,$01,$DF,$00,$E7,$06,$F7,$1F,$FD,$3D
-            .BYTE   $FF
+            .BYTE   $12,$A0,$FF,$A9,$FA,$AB,$F1,$AC,$D8,$AB,$51,$AB,$31,$A7,$20,$A0
+            .BYTE   $12,$9B,$06,$95,$01,$59,$02,$4F,$07,$4C,$0F,$49,$1E,$49,$DA,$4B
+            .BYTE   $EA,$4F,$F5,$55,$FF
 
-; U+004A J  glyph=J  contours=1 points=56 offset=$09C4
+; U+004A J  glyph=J  contours=1 points=32 offset=$06CC edited
 VF_G_004A
             .BYTE   $01
 ; contour 0
-            .BYTE   $38,$FB,$97,$FD,$84,$FD,$74,$FE,$63,$FE,$45,$FF,$37,$FF,$13,$FD
-            .BYTE   $0A,$F7,$04,$F1,$02,$DC,$00,$C0,$00,$AB,$01,$30,$01,$29,$00,$1B
-            .BYTE   $02,$16,$07,$13,$13,$13,$3A,$16,$45,$1B,$4A,$29,$4C,$8C,$4C,$90
-            .BYTE   $4E,$92,$55,$92,$6E,$8F,$92,$8B,$9F,$83,$A8,$75,$AC,$63,$A5,$5E
-            .BYTE   $9E,$5A,$95,$56,$90,$4D,$8E,$32,$8F,$17,$8F,$0B,$90,$00,$92,$01
-            .BYTE   $A4,$01,$A6,$08,$BA,$11,$CC,$1D,$DC,$2C,$E8,$3D,$F2,$51,$F9,$67
-            .BYTE   $FE,$80,$FF,$9A,$FD,$B1,$F7,$C5,$ED,$D6,$E0,$E3,$D1,$EE,$BF,$F6
+            .BYTE   $20,$FD,$84,$FF,$13,$FD,$0A,$F7,$04,$DC,$00,$1B,$02,$16,$07,$13
+            .BYTE   $13,$13,$3A,$16,$45,$1B,$4A,$90,$4E,$92,$55,$8F,$92,$8B,$9F,$83
+            .BYTE   $A8,$75,$AC,$63,$A5,$56,$90,$4D,$8E,$00,$92,$01,$A6,$11,$CC,$1D
+            .BYTE   $DC,$3D,$F2,$67,$FE,$9A,$FD,$B1,$F7,$C5,$ED,$D6,$E0,$E3,$D1,$F6
             .BYTE   $AC
 
-; U+004B K  glyph=K  contours=1 points=77 offset=$0A36
+; U+004B K  glyph=K  contours=1 points=44 offset=$070E edited
 VF_G_004B
             .BYTE   $01
 ; contour 0
-            .BYTE   $4D,$BD,$FF,$CA,$FE,$E3,$FE,$F0,$FD,$FA,$FB,$FE,$F8,$FF,$F5,$FC
-            .BYTE   $E8,$F7,$D9,$EA,$BF,$E1,$AE,$D8,$9C,$CF,$8B,$C6,$79,$D6,$5B,$DE
-            .BYTE   $4B,$E6,$3C,$EE,$2A,$F6,$17,$F8,$0F,$F8,$08,$F2,$03,$EA,$02,$D3
-            .BYTE   $01,$BC,$01,$AD,$00,$A3,$01,$9D,$03,$97,$07,$92,$0F,$89,$20,$80
-            .BYTE   $32,$79,$42,$73,$4F,$6F,$57,$69,$5D,$66,$5D,$64,$55,$64,$38,$65
-            .BYTE   $26,$65,$13,$63,$0A,$5E,$04,$53,$01,$42,$00,$17,$00,$08,$02,$02
-            .BYTE   $0A,$00,$14,$00,$39,$01,$4B,$02,$5E,$02,$C5,$01,$D6,$01,$E7,$03
-            .BYTE   $F4,$08,$FB,$10,$FE,$4D,$FE,$59,$FC,$62,$F6,$65,$E7,$64,$DF,$64
-            .BYTE   $9F,$65,$9C,$67,$9A,$6A,$9C,$6F,$A2,$7A,$B5,$81,$C2,$85,$C9,$87
-            .BYTE   $CD,$8F,$DE,$98,$EF,$9E,$F9,$A5,$FD,$B1,$FF
+            .BYTE   $2C,$F0,$FD,$FA,$FB,$FE,$F8,$FF,$F5,$F7,$D9,$C6,$79,$E6,$3C,$F6
+            .BYTE   $17,$F8,$0F,$F8,$08,$F2,$03,$AD,$00,$9D,$03,$97,$07,$80,$32,$6F
+            .BYTE   $57,$69,$5D,$66,$5D,$64,$55,$65,$13,$63,$0A,$5E,$04,$53,$01,$17
+            .BYTE   $00,$08,$02,$02,$0A,$00,$14,$00,$39,$02,$5E,$01,$E7,$03,$F4,$08
+            .BYTE   $FB,$10,$FE,$4D,$FE,$59,$FC,$62,$F6,$65,$E7,$64,$DF,$64,$9F,$67
+            .BYTE   $9A,$6F,$A2,$9E,$F9,$A5,$FD,$B1,$FF
 
-; U+004C L  glyph=L  contours=1 points=31 offset=$0AD2
+; U+004C L  glyph=L  contours=1 points=17 offset=$0768 edited
 VF_G_004C
             .BYTE   $01
 ; contour 0
-            .BYTE   $1F,$FB,$F9,$FE,$F1,$FF,$DC,$FF,$CB,$FE,$BE,$FB,$B5,$EC,$B0,$82
-            .BYTE   $B0,$7F,$AC,$7F,$18,$7C,$08,$74,$03,$61,$00,$1E,$00,$0F,$02,$03
-            .BYTE   $09,$00,$18,$01,$20,$01,$C6,$00,$D8,$00,$EB,$03,$F5,$09,$FB,$0D
-            .BYTE   $FC,$0E,$FD,$1E,$FF,$5F,$FF,$78,$FE,$C6,$FE,$E5,$FF,$F2,$FE
+            .BYTE   $11,$FB,$F9,$FE,$F1,$FE,$BE,$FB,$B5,$EC,$B0,$82,$B0,$7F,$AC,$7F
+            .BYTE   $18,$7C,$08,$61,$00,$0F,$02,$03,$09,$00,$18,$00,$EB,$09,$FB,$1E
+            .BYTE   $FF,$F2,$FE
 
-; U+004D M  glyph=M  contours=1 points=77 offset=$0B12
+; U+004D M  glyph=M  contours=1 points=44 offset=$078C edited
 VF_G_004D
             .BYTE   $01
 ; contour 0
-            .BYTE   $4D,$8A,$FF,$93,$FA,$96,$EF,$98,$E3,$9A,$D6,$9C,$CA,$9E,$BF,$9F
-            .BYTE   $B4,$A1,$A8,$A4,$9C,$A9,$91,$AA,$94,$AA,$AF,$AB,$BD,$AB,$E6,$AD
-            .BYTE   $F5,$B2,$FB,$BF,$FE,$EB,$FE,$F5,$FC,$FD,$F5,$FF,$E6,$FF,$15,$FD
-            .BYTE   $0C,$F9,$06,$F0,$03,$E5,$02,$C5,$02,$B9,$01,$A8,$00,$9C,$03,$96
-            .BYTE   $0E,$92,$20,$90,$32,$84,$76,$82,$79,$7F,$7A,$7C,$75,$76,$5B,$75
-            .BYTE   $52,$71,$3F,$6E,$2B,$6C,$1B,$68,$0B,$66,$06,$61,$01,$56,$00,$45
-            .BYTE   $01,$1A,$01,$0F,$02,$06,$05,$02,$0B,$00,$14,$00,$E6,$02,$F5,$0A
-            .BYTE   $FB,$14,$FD,$40,$FD,$4D,$FA,$52,$F5,$54,$E6,$54,$D9,$55,$CB,$55
-            .BYTE   $94,$56,$91,$57,$91,$58,$93,$5C,$9F,$5E,$A8,$60,$B3,$61,$BF,$63
-            .BYTE   $CA,$67,$E2,$69,$EF,$6E,$FC,$74,$FE,$76,$FF
+            .BYTE   $2C,$8A,$FF,$93,$FA,$A4,$9C,$A9,$91,$AB,$E6,$AD,$F5,$B2,$FB,$BF
+            .BYTE   $FE,$EB,$FE,$F5,$FC,$FD,$F5,$FF,$E6,$FF,$15,$FD,$0C,$F9,$06,$F0
+            .BYTE   $03,$A8,$00,$9C,$03,$96,$0E,$84,$76,$7F,$7A,$7C,$75,$76,$5B,$6C
+            .BYTE   $1B,$66,$06,$61,$01,$0F,$02,$06,$05,$02,$0B,$00,$14,$00,$E6,$02
+            .BYTE   $F5,$0A,$FB,$14,$FD,$40,$FD,$4D,$FA,$52,$F5,$54,$E6,$55,$94,$57
+            .BYTE   $91,$5C,$9F,$69,$EF,$6E,$FC,$76,$FF
 
-; U+004E N  glyph=N  contours=1 points=71 offset=$0BAE
+; U+004E N  glyph=N  contours=1 points=40 offset=$07E6 edited
 VF_G_004E
             .BYTE   $01
 ; contour 0
-            .BYTE   $47,$C2,$FF,$D1,$FE,$E1,$FE,$EF,$FD,$F8,$FA,$FC,$F4,$FE,$E6,$FE
-            .BYTE   $D5,$FD,$C5,$FD,$5E,$FE,$50,$FE,$42,$FF,$34,$FF,$14,$FD,$0A,$F7
-            .BYTE   $03,$E9,$01,$DC,$00,$BD,$00,$AD,$01,$A2,$04,$9D,$0A,$9B,$14,$9B
-            .BYTE   $26,$9C,$38,$9C,$5E,$9B,$65,$9A,$67,$99,$66,$92,$60,$8C,$59,$8B
-            .BYTE   $57,$80,$47,$78,$3D,$71,$33,$6B,$28,$64,$1D,$58,$09,$52,$03,$4A
-            .BYTE   $00,$23,$00,$16,$01,$08,$03,$02,$0A,$00,$14,$00,$39,$01,$4B,$02
-            .BYTE   $5E,$02,$C5,$01,$D5,$01,$E6,$03,$F4,$07,$FB,$10,$FE,$4C,$FE,$58
-            .BYTE   $FC,$62,$F6,$64,$E6,$63,$DE,$63,$A6,$65,$97,$66,$95,$74,$A5,$7E
-            .BYTE   $B1,$8E,$C7,$96,$D3,$9E,$DE,$A6,$EA,$AF,$F6,$B5,$FD,$B9,$FF
+            .BYTE   $28,$EF,$FD,$F8,$FA,$FC,$F4,$FE,$E6,$FD,$5E,$FF,$14,$FD,$0A,$F7
+            .BYTE   $03,$DC,$00,$AD,$01,$A2,$04,$9D,$0A,$9B,$14,$9C,$5E,$9A,$67,$92
+            .BYTE   $60,$71,$33,$58,$09,$52,$03,$4A,$00,$23,$00,$08,$03,$02,$0A,$00
+            .BYTE   $14,$00,$39,$02,$5E,$01,$E6,$03,$F4,$07,$FB,$10,$FE,$4C,$FE,$58
+            .BYTE   $FC,$62,$F6,$64,$E6,$63,$A6,$66,$95,$7E,$B1,$A6,$EA,$B5,$FD,$B9
+            .BYTE   $FF
 
-; U+004F O  glyph=O  contours=2 points=66 offset=$0C3E
+; U+004F O  glyph=O  contours=2 points=50 offset=$0838 edited
 VF_G_004F
             .BYTE   $02
 ; contour 0
-            .BYTE   $30,$FD,$99,$FF,$86,$FF,$72,$FD,$61,$F9,$50,$F2,$41,$EA,$32,$E0
-            .BYTE   $25,$D4,$19,$C6,$10,$B6,$09,$A9,$05,$9B,$02,$8E,$01,$80,$00,$74
-            .BYTE   $00,$68,$02,$5D,$04,$52,$07,$3E,$0F,$2D,$1B,$1E,$2A,$12,$3B,$09
-            .BYTE   $4F,$05,$5A,$00,$78,$00,$89,$01,$98,$04,$A7,$09,$B5,$0F,$C4,$17
-            .BYTE   $D1,$21,$DD,$2C,$E7,$38,$EF,$4A,$F7,$5C,$FC,$6F,$FE,$82,$FF,$8E
-            .BYTE   $FF,$99,$FD,$AF,$F8,$C2,$EF,$D4,$E4,$E2,$D5,$EE,$C4,$F7,$B0,$FA
-            .BYTE   $A5
+            .BYTE   $21,$FD,$99,$FF,$72,$F9,$50,$EA,$32,$E0,$25,$D4,$19,$C6,$10,$B6
+            .BYTE   $09,$9B,$02,$74,$00,$52,$07,$3E,$0F,$2D,$1B,$1E,$2A,$12,$3B,$05
+            .BYTE   $5A,$00,$78,$01,$98,$04,$A7,$0F,$C4,$17,$D1,$21,$DD,$2C,$E7,$38
+            .BYTE   $EF,$4A,$F7,$5C,$FC,$8E,$FF,$AF,$F8,$C2,$EF,$D4,$E4,$E2,$D5,$EE
+            .BYTE   $C4,$F7,$B0
 ; contour 1
-            .BYTE   $12,$5D,$91,$5B,$7B,$60,$66,$6D,$55,$81,$4F,$89,$50,$96,$57,$9F
-            .BYTE   $64,$A2,$69,$A4,$79,$A3,$89,$9F,$97,$98,$A3,$8D,$AC,$7E,$AF,$72
-            .BYTE   $AC,$68,$A6,$61,$9C
+            .BYTE   $11,$5D,$91,$5B,$7B,$60,$66,$6D,$55,$81,$4F,$89,$50,$96,$57,$A2
+            .BYTE   $69,$A4,$79,$A3,$89,$9F,$97,$98,$A3,$8D,$AC,$7E,$AF,$72,$AC,$68
+            .BYTE   $A6,$61,$9C
 
-; U+0050 P  glyph=P  contours=2 points=49 offset=$0CC5
+; U+0050 P  glyph=P  contours=2 points=37 offset=$089F edited
 VF_G_0050
             .BYTE   $02
 ; contour 0
-            .BYTE   $25,$4F,$FF,$5E,$FC,$65,$F7,$67,$E8,$67,$BB,$97,$BB,$A8,$BA,$B7
-            .BYTE   $B7,$C5,$B3,$D2,$AD,$DE,$A6,$E8,$9C,$F1,$91,$F7,$83,$FD,$6E,$FF
-            .BYTE   $58,$FC,$44,$F5,$30,$E8,$1E,$D7,$11,$C3,$09,$AF,$04,$99,$01,$84
-            .BYTE   $00,$4D,$00,$38,$01,$20,$02,$09,$07,$07,$08,$00,$17,$00,$29,$01
-            .BYTE   $3B,$01,$E0,$00,$E8,$03,$F7,$0D,$FD,$19,$FF
+            .BYTE   $1B,$4F,$FF,$5E,$FC,$65,$F7,$67,$E8,$67,$BB,$A8,$BA,$C5,$B3,$DE
+            .BYTE   $A6,$F1,$91,$F7,$83,$FD,$6E,$FF,$58,$FC,$44,$F5,$30,$E8,$1E,$D7
+            .BYTE   $11,$C3,$09,$AF,$04,$99,$01,$4D,$00,$20,$02,$07,$08,$00,$17,$00
+            .BYTE   $E8,$03,$F7,$0D,$FD,$19,$FF
 ; contour 1
-            .BYTE   $0C,$6A,$76,$68,$75,$67,$73,$67,$4F,$6B,$4E,$78,$4E,$87,$50,$92
-            .BYTE   $56,$96,$66,$92,$6D,$8B,$73,$79,$76
+            .BYTE   $0A,$6A,$76,$67,$73,$67,$4F,$78,$4E,$87,$50,$92,$56,$96,$66,$92
+            .BYTE   $6D,$8B,$73,$79,$76
 
-; U+0051 Q  glyph=Q  contours=2 points=86 offset=$0D2A
+; U+0051 Q  glyph=Q  contours=2 points=65 offset=$08EC edited
 VF_G_0051
             .BYTE   $02
 ; contour 0
-            .BYTE   $3E,$DE,$FF,$E7,$FE,$EB,$FC,$EC,$FB,$EC,$F9,$E8,$F1,$DE,$E5,$D3
-            .BYTE   $D9,$D3,$D8,$D5,$D5,$E3,$C7,$EF,$B6,$F7,$A3,$FD,$90,$FF,$7D,$FF
-            .BYTE   $6B,$FD,$5B,$F9,$4B,$F2,$3C,$EA,$2E,$E0,$22,$D4,$17,$C6,$0E,$B6
-            .BYTE   $08,$A8,$04,$9A,$02,$8B,$00,$7D,$00,$6E,$01,$60,$03,$52,$06,$44
-            .BYTE   $0B,$38,$11,$2C,$18,$22,$22,$19,$2D,$11,$38,$0B,$45,$06,$52,$03
-            .BYTE   $5F,$00,$70,$00,$81,$01,$8F,$04,$9D,$09,$AA,$0F,$B8,$17,$C4,$21
-            .BYTE   $CF,$2C,$D9,$38,$E1,$4A,$E8,$5C,$ED,$6F,$EF,$82,$F0,$94,$EF,$A5
-            .BYTE   $EC,$A6,$EC,$A8,$ED,$AB,$EF,$AE,$F4,$B8,$FD,$C5,$FF
+            .BYTE   $2B,$E7,$FE,$EC,$FB,$EC,$F9,$E8,$F1,$D3,$D9,$D5,$D5,$E3,$C7,$EF
+            .BYTE   $B6,$F7,$A3,$FD,$90,$FF,$7D,$FF,$6B,$FD,$5B,$F9,$4B,$EA,$2E,$E0
+            .BYTE   $22,$D4,$17,$C6,$0E,$A8,$04,$8B,$00,$6E,$01,$52,$06,$44,$0B,$2C
+            .BYTE   $18,$22,$22,$11,$38,$06,$52,$00,$70,$01,$8F,$04,$9D,$0F,$B8,$17
+            .BYTE   $C4,$2C,$D9,$38,$E1,$4A,$E8,$5C,$ED,$82,$F0,$94,$EF,$A6,$EC,$AB
+            .BYTE   $EF,$AE,$F4,$B8,$FD,$C5,$FF
 ; contour 1
-            .BYTE   $18,$75,$A3,$65,$98,$5D,$88,$5B,$73,$60,$5F,$6D,$4F,$81,$49,$89
-            .BYTE   $4A,$96,$51,$9F,$5D,$A2,$62,$A4,$71,$A3,$80,$9D,$92,$9B,$92,$95
-            .BYTE   $8C,$8A,$8A,$74,$8A,$70,$8B,$6E,$8D,$6F,$90,$71,$95,$7A,$A3,$79
-            .BYTE   $A4
+            .BYTE   $16,$75,$A3,$65,$98,$5D,$88,$5B,$73,$60,$5F,$6D,$4F,$81,$49,$89
+            .BYTE   $4A,$96,$51,$A2,$62,$A4,$71,$A3,$80,$9D,$92,$9B,$92,$95,$8C,$8A
+            .BYTE   $8A,$74,$8A,$70,$8B,$6E,$8D,$71,$95,$7A,$A3,$79,$A4
 
-; U+0052 R  glyph=R  contours=2 points=67 offset=$0DD9
+; U+0052 R  glyph=R  contours=2 points=50 offset=$0971 edited
 VF_G_0052
             .BYTE   $02
 ; contour 0
-            .BYTE   $37,$F4,$FF,$FA,$FE,$FD,$FC,$FF,$F8,$FA,$EB,$F2,$DE,$EA,$D0,$D2
-            .BYTE   $A9,$C9,$9C,$C7,$99,$D4,$93,$DF,$8C,$E8,$84,$EF,$7A,$F4,$70,$F8
-            .BYTE   $64,$FB,$58,$FB,$4C,$F9,$39,$F1,$28,$E4,$1A,$D4,$0F,$C0,$07,$AC
-            .BYTE   $03,$97,$01,$82,$00,$4C,$00,$37,$01,$1F,$01,$08,$06,$06,$08,$00
-            .BYTE   $17,$00,$29,$01,$3A,$01,$DD,$00,$E5,$03,$F4,$0C,$FA,$18,$FB,$2A
-            .BYTE   $FC,$4E,$FC,$5C,$F9,$63,$F4,$66,$E6,$66,$C0,$67,$B0,$68,$AE,$6D
-            .BYTE   $B2,$75,$C3,$7D,$D6,$88,$EA,$90,$F5,$9B,$FC,$AA,$FE,$CE,$FF
+            .BYTE   $28,$F4,$FF,$FA,$FE,$FD,$FC,$FF,$F8,$FA,$EB,$D2,$A9,$C7,$99,$D4
+            .BYTE   $93,$DF,$8C,$E8,$84,$F4,$70,$FB,$58,$F9,$39,$F1,$28,$E4,$1A,$D4
+            .BYTE   $0F,$C0,$07,$AC,$03,$82,$00,$1F,$01,$08,$06,$06,$08,$00,$17,$01
+            .BYTE   $DD,$00,$E5,$03,$F4,$0C,$FA,$2A,$FC,$4E,$FC,$5C,$F9,$63,$F4,$66
+            .BYTE   $E6,$67,$B0,$68,$AE,$6D,$B2,$7D,$D6,$88,$EA,$90,$F5,$9B,$FC,$AA
+            .BYTE   $FE
 ; contour 1
-            .BYTE   $0C,$68,$74,$66,$71,$65,$6F,$65,$4E,$69,$4D,$76,$4D,$85,$4E,$90
-            .BYTE   $54,$94,$65,$90,$6C,$89,$71,$78,$74
+            .BYTE   $0A,$68,$74,$65,$6F,$65,$4E,$69,$4D,$85,$4E,$90,$54,$94,$65,$90
+            .BYTE   $6C,$89,$71,$78,$74
 
-; U+0053 S  glyph=S  contours=1 points=100 offset=$0E62
+; U+0053 S  glyph=S  contours=1 points=75 offset=$09D8 edited
 VF_G_0053
             .BYTE   $01
 ; contour 0
-            .BYTE   $64,$F7,$CC,$FC,$C0,$FF,$B4,$FF,$A6,$FC,$9A,$F5,$8F,$EA,$83,$DE
-            .BYTE   $7A,$D0,$73,$C1,$6E,$A1,$68,$9E,$68,$82,$62,$75,$5C,$71,$58,$71
-            .BYTE   $55,$79,$4F,$83,$4D,$8C,$4D,$98,$4F,$A4,$54,$B0,$5D,$BA,$61,$C4
-            .BYTE   $61,$D1,$5F,$DD,$5E,$E2,$5D,$F6,$5B,$FB,$59,$FD,$56,$FD,$4C,$FC
-            .BYTE   $4A,$F7,$3B,$EF,$2E,$E5,$23,$DA,$19,$CD,$11,$C0,$0B,$B1,$06,$A2
-            .BYTE   $03,$93,$01,$83,$00,$74,$00,$64,$02,$55,$05,$46,$09,$38,$0F,$2B
-            .BYTE   $16,$1F,$1E,$15,$29,$0D,$36,$09,$45,$08,$57,$0A,$63,$0F,$6E,$12
-            .BYTE   $74,$1E,$82,$2D,$8C,$3E,$93,$51,$98,$65,$9B,$78,$9E,$8D,$A3,$95
-            .BYTE   $A6,$98,$AA,$98,$AC,$93,$B1,$86,$B5,$78,$B7,$68,$B4,$5C,$AB,$56
-            .BYTE   $A3,$52,$9F,$45,$9F,$38,$A0,$2C,$A1,$20,$A1,$13,$A2,$0F,$A2,$06
-            .BYTE   $A3,$02,$A5,$00,$A9,$01,$AE,$09,$C0,$0D,$C6,$17,$D3,$24,$DF,$31
-            .BYTE   $E9,$40,$F1,$50,$F7,$61,$FB,$72,$FE,$84,$FF,$93,$FE,$A3,$FC,$B4
-            .BYTE   $F8,$C5,$F2,$D5,$EB,$E3,$E2,$EF,$D8
+            .BYTE   $4B,$F7,$CC,$FC,$C0,$FF,$B4,$FF,$A6,$FC,$9A,$F5,$8F,$EA,$83,$DE
+            .BYTE   $7A,$D0,$73,$C1,$6E,$82,$62,$75,$5C,$71,$58,$71,$55,$79,$4F,$83
+            .BYTE   $4D,$8C,$4D,$98,$4F,$A4,$54,$B0,$5D,$BA,$61,$C4,$61,$F6,$5B,$FB
+            .BYTE   $59,$FD,$56,$FD,$4C,$F7,$3B,$EF,$2E,$DA,$19,$CD,$11,$C0,$0B,$B1
+            .BYTE   $06,$93,$01,$74,$00,$64,$02,$46,$09,$2B,$16,$1F,$1E,$15,$29,$0D
+            .BYTE   $36,$09,$45,$08,$57,$0A,$63,$12,$74,$1E,$82,$2D,$8C,$3E,$93,$51
+            .BYTE   $98,$78,$9E,$8D,$A3,$95,$A6,$98,$AA,$98,$AC,$93,$B1,$86,$B5,$78
+            .BYTE   $B7,$68,$B4,$5C,$AB,$52,$9F,$06,$A3,$02,$A5,$00,$A9,$01,$AE,$09
+            .BYTE   $C0,$17,$D3,$31,$E9,$40,$F1,$50,$F7,$72,$FE,$84,$FF,$A3,$FC,$B4
+            .BYTE   $F8,$D5,$EB,$E3,$E2,$EF,$D8
 
-; U+0054 T  glyph=T  contours=1 points=26 offset=$0F2C
+; U+0054 T  glyph=T  contours=1 points=20 offset=$0A70 edited
 VF_G_0054
             .BYTE   $01
 ; contour 0
-            .BYTE   $1A,$9A,$FF,$A7,$FD,$B1,$F7,$B3,$E7,$B3,$50,$EC,$50,$FB,$4B,$FE
-            .BYTE   $42,$FF,$35,$FF,$23,$FE,$0E,$FB,$06,$EB,$00,$18,$00,$08,$02,$03
-            .BYTE   $08,$00,$13,$00,$3D,$06,$4D,$18,$50,$4B,$50,$4B,$DF,$4A,$E7,$4D
-            .BYTE   $F7,$57,$FD,$63,$FF
+            .BYTE   $14,$A7,$FD,$B1,$F7,$B3,$50,$EC,$50,$FB,$4B,$FE,$42,$FE,$0E,$FB
+            .BYTE   $06,$EB,$00,$08,$02,$03,$08,$00,$13,$00,$3D,$06,$4D,$18,$50,$4B
+            .BYTE   $50,$4A,$E7,$4D,$F7,$57,$FD,$63,$FF
 
-; U+0055 U  glyph=U  contours=1 points=70 offset=$0F62
+; U+0055 U  glyph=U  contours=1 points=40 offset=$0A9A edited
 VF_G_0055
             .BYTE   $01
 ; contour 0
-            .BYTE   $46,$DD,$DA,$E8,$CB,$F1,$BB,$F7,$A9,$FB,$97,$FC,$8E,$FD,$81,$FE
-            .BYTE   $71,$FE,$37,$FF,$26,$FF,$13,$FD,$0A,$F8,$04,$ED,$01,$DC,$00,$B9
-            .BYTE   $00,$AC,$01,$A1,$04,$9C,$0A,$9A,$13,$9A,$4B,$9B,$5F,$9B,$73,$9A
-            .BYTE   $86,$98,$92,$95,$9D,$8C,$A9,$81,$AC,$77,$AA,$70,$A5,$6A,$9B,$66
-            .BYTE   $8F,$64,$7A,$64,$64,$65,$4E,$65,$38,$66,$26,$66,$13,$64,$0A,$5F
-            .BYTE   $04,$54,$01,$43,$00,$1F,$00,$12,$01,$07,$04,$02,$0A,$00,$13,$00
-            .BYTE   $26,$01,$38,$01,$55,$00,$62,$00,$7E,$01,$8B,$03,$98,$05,$A6,$0C
-            .BYTE   $BB,$16,$CD,$22,$DD,$31,$E9,$42,$F3,$55,$FA,$6B,$FE,$82,$FF,$8F
-            .BYTE   $FE,$9B,$FD,$A8,$FA,$B4,$F6,$BF,$F1,$CA,$EA,$D4,$E3
+            .BYTE   $28,$DD,$DA,$F1,$BB,$FB,$97,$FE,$71,$FF,$13,$FD,$0A,$F8,$04,$ED
+            .BYTE   $01,$AC,$01,$A1,$04,$9C,$0A,$9A,$13,$9A,$86,$95,$9D,$8C,$A9,$81
+            .BYTE   $AC,$77,$AA,$70,$A5,$66,$8F,$64,$7A,$66,$13,$64,$0A,$5F,$04,$54
+            .BYTE   $01,$12,$01,$07,$04,$02,$0A,$00,$13,$00,$7E,$05,$A6,$0C,$BB,$22
+            .BYTE   $DD,$31,$E9,$42,$F3,$55,$FA,$6B,$FE,$82,$FF,$9B,$FD,$BF,$F1,$D4
+            .BYTE   $E3
 
-; U+0056 V  glyph=V  contours=1 points=74 offset=$0FF0
+; U+0056 V  glyph=V  contours=1 points=56 offset=$0AEC edited
 VF_G_0056
             .BYTE   $01
 ; contour 0
-            .BYTE   $4A,$B1,$FC,$BE,$EA,$C3,$DE,$C7,$D4,$DF,$8C,$E2,$80,$E6,$74,$E9
-            .BYTE   $68,$ED,$5B,$F3,$43,$F6,$36,$F9,$2A,$FB,$1E,$FE,$11,$FF,$07,$FD
-            .BYTE   $04,$F9,$03,$F2,$02,$C9,$02,$BD,$01,$B0,$02,$AA,$03,$A3,$0B,$A1
-            .BYTE   $16,$9E,$20,$97,$43,$92,$58,$8D,$6C,$89,$7F,$82,$93,$80,$95,$7E
-            .BYTE   $94,$7B,$8E,$7A,$89,$76,$7B,$72,$6C,$6F,$5D,$6B,$4E,$68,$40,$65
-            .BYTE   $31,$61,$22,$5E,$13,$5A,$07,$53,$01,$4B,$00,$3E,$00,$30,$01,$1C
-            .BYTE   $00,$07,$01,$03,$02,$00,$05,$01,$10,$03,$1C,$06,$28,$08,$34,$11
-            .BYTE   $58,$15,$63,$18,$6F,$1C,$7B,$1F,$87,$23,$93,$27,$9E,$2A,$AA,$32
-            .BYTE   $C2,$36,$CD,$3C,$DF,$43,$EE,$4D,$FA,$53,$FC,$65,$FE,$73,$FD,$80
-            .BYTE   $FE,$8C,$FF,$A5,$FF
+            .BYTE   $38,$B1,$FC,$BE,$EA,$C7,$D4,$DF,$8C,$ED,$5B,$F9,$2A,$FE,$11,$FF
+            .BYTE   $07,$FD,$04,$F2,$02,$C9,$02,$BD,$01,$AA,$03,$A3,$0B,$A1,$16,$9E
+            .BYTE   $20,$97,$43,$89,$7F,$82,$93,$80,$95,$7E,$94,$7B,$8E,$72,$6C,$6F
+            .BYTE   $5D,$6B,$4E,$65,$31,$61,$22,$5E,$13,$5A,$07,$53,$01,$4B,$00,$3E
+            .BYTE   $00,$30,$01,$1C,$00,$07,$01,$03,$02,$00,$05,$01,$10,$03,$1C,$06
+            .BYTE   $28,$08,$34,$11,$58,$15,$63,$18,$6F,$1C,$7B,$1F,$87,$27,$9E,$2A
+            .BYTE   $AA,$3C,$DF,$43,$EE,$4D,$FA,$53,$FC,$65,$FE,$73,$FD,$8C,$FF,$A5
+            .BYTE   $FF
 
-; U+0057 W  glyph=W  contours=1 points=107 offset=$1086
+; U+0057 W  glyph=W  contours=1 points=60 offset=$0B5E edited
 VF_G_0057
             .BYTE   $01
 ; contour 0
-            .BYTE   $6B,$D3,$F7,$D9,$E9,$DF,$D4,$E4,$BF,$E7,$AE,$EA,$9E,$F6,$5A,$F8
-            .BYTE   $49,$FB,$38,$FD,$2C,$FF,$21,$FF,$0E,$FA,$06,$F0,$02,$DC,$00,$D2
-            .BYTE   $01,$C8,$00,$C2,$01,$BE,$04,$BC,$0A,$BA,$13,$B4,$4F,$B2,$62,$B0
-            .BYTE   $73,$AE,$77,$AC,$76,$AA,$71,$A5,$60,$A2,$4F,$9F,$3F,$9C,$2E,$9A
-            .BYTE   $1D,$98,$10,$94,$05,$91,$02,$8A,$00,$82,$00,$72,$01,$6C,$03,$6A
-            .BYTE   $07,$67,$11,$65,$21,$63,$30,$60,$40,$5E,$4F,$5B,$5E,$55,$72,$53
-            .BYTE   $76,$50,$76,$4F,$71,$4D,$63,$4B,$4D,$49,$38,$47,$26,$45,$13,$42
-            .BYTE   $06,$3F,$02,$3A,$01,$2C,$01,$1F,$00,$12,$01,$09,$03,$02,$09,$00
-            .BYTE   $11,$00,$1B,$02,$2D,$04,$39,$06,$44,$0A,$5C,$0C,$67,$10,$7F,$11
-            .BYTE   $8A,$13,$94,$16,$A2,$19,$B2,$1C,$C3,$20,$D4,$24,$E3,$28,$F0,$2C
-            .BYTE   $F8,$32,$FC,$42,$FF,$4F,$FE,$5E,$FD,$64,$FC,$69,$F6,$6F,$E8,$75
-            .BYTE   $CE,$77,$C1,$79,$B5,$7C,$A8,$7D,$A6,$7E,$A3,$80,$A2,$82,$A4,$83
-            .BYTE   $A7,$85,$B2,$88,$BD,$8B,$CE,$8E,$DE,$93,$EF,$97,$F8,$9C,$FC,$A3
-            .BYTE   $FE,$B1,$FF,$BF,$FF,$CA,$FD
+            .BYTE   $3C,$D3,$F7,$D9,$E9,$E4,$BF,$FF,$21,$FF,$0E,$FA,$06,$F0,$02,$DC
+            .BYTE   $00,$D2,$01,$C8,$00,$C2,$01,$BE,$04,$BA,$13,$B0,$73,$AE,$77,$AC
+            .BYTE   $76,$A5,$60,$9C,$2E,$98,$10,$94,$05,$91,$02,$8A,$00,$72,$01,$6C
+            .BYTE   $03,$67,$11,$63,$30,$5B,$5E,$53,$76,$50,$76,$4D,$63,$45,$13,$42
+            .BYTE   $06,$3F,$02,$1F,$00,$09,$03,$02,$09,$00,$11,$02,$2D,$11,$8A,$1C
+            .BYTE   $C3,$28,$F0,$2C,$F8,$32,$FC,$42,$FF,$64,$FC,$69,$F6,$6F,$E8,$75
+            .BYTE   $CE,$79,$B5,$7E,$A3,$80,$A2,$82,$A4,$88,$BD,$8E,$DE,$93,$EF,$97
+            .BYTE   $F8,$9C,$FC,$A3,$FE,$BF,$FF,$CA,$FD
 
-; U+0058 X  glyph=X  contours=1 points=87 offset=$115E
+; U+0058 X  glyph=X  contours=1 points=49 offset=$0BD8 edited
 VF_G_0058
             .BYTE   $01
 ; contour 0
-            .BYTE   $57,$53,$FE,$5C,$F5,$66,$E2,$6F,$CE,$76,$BD,$7D,$AD,$7E,$AB,$80
-            .BYTE   $AB,$81,$AD,$85,$B4,$8B,$C0,$90,$CD,$A0,$EF,$A6,$F9,$AC,$FD,$B7
-            .BYTE   $FF,$C2,$FF,$CE,$FE,$E5,$FE,$F1,$FD,$FA,$FB,$FE,$F8,$FF,$F5,$FD
-            .BYTE   $E9,$F7,$D9,$F1,$CA,$EC,$BF,$E4,$B0,$CF,$83,$CE,$80,$CD,$76,$D1
-            .BYTE   $6B,$D3,$66,$D9,$5C,$E8,$3B,$F0,$29,$F7,$17,$F9,$0E,$F9,$08,$F3
-            .BYTE   $03,$EB,$02,$C1,$00,$B3,$00,$AA,$01,$A4,$03,$9F,$07,$9B,$0E,$92
-            .BYTE   $20,$8A,$32,$84,$3F,$84,$41,$7F,$46,$7B,$42,$78,$39,$6E,$23,$6A
-            .BYTE   $19,$64,$0E,$5B,$03,$56,$01,$4A,$00,$3E,$01,$29,$01,$14,$02,$0B
-            .BYTE   $04,$06,$07,$06,$0A,$0A,$1A,$12,$30,$16,$3A,$1B,$45,$20,$4F,$25
-            .BYTE   $5A,$2A,$64,$2F,$6F,$31,$7B,$2E,$86,$25,$9B,$17,$B7,$11,$C4,$09
-            .BYTE   $D6,$03,$E8,$00,$F2,$01,$F8,$05,$FC,$0E,$FD,$38,$FF,$48,$FF
+            .BYTE   $31,$53,$FE,$5C,$F5,$66,$E2,$7E,$AB,$80,$AB,$8B,$C0,$A0,$EF,$A6
+            .BYTE   $F9,$AC,$FD,$B7,$FF,$F1,$FD,$FA,$FB,$FE,$F8,$FF,$F5,$FD,$E9,$F1
+            .BYTE   $CA,$CE,$80,$CD,$76,$D3,$66,$D9,$5C,$F7,$17,$F9,$0E,$F9,$08,$F3
+            .BYTE   $03,$B3,$00,$A4,$03,$9F,$07,$92,$20,$84,$41,$7F,$46,$7B,$42,$6A
+            .BYTE   $19,$64,$0E,$5B,$03,$56,$01,$4A,$00,$14,$02,$0B,$04,$06,$07,$0A
+            .BYTE   $1A,$16,$3A,$2F,$6F,$31,$7B,$2E,$86,$09,$D6,$00,$F2,$01,$F8,$05
+            .BYTE   $FC,$38,$FF
 
-; U+0059 Y  glyph=Y  contours=1 points=61 offset=$120E
+; U+0059 Y  glyph=Y  contours=1 points=35 offset=$0C3C edited
 VF_G_0059
             .BYTE   $01
 ; contour 0
-            .BYTE   $3D,$9A,$FF,$A5,$FD,$AF,$F7,$B1,$E7,$B1,$B8,$B2,$AC,$B5,$A0,$B9
-            .BYTE   $93,$BE,$87,$C3,$7A,$C9,$6E,$CE,$63,$D4,$58,$DF,$44,$E9,$30,$F4
-            .BYTE   $1C,$FE,$09,$FF,$06,$FF,$04,$FB,$01,$F3,$00,$E0,$00,$CD,$01,$BC
-            .BYTE   $00,$AB,$01,$A2,$04,$9D,$08,$95,$19,$91,$26,$8C,$33,$88,$40,$84
-            .BYTE   $4E,$81,$52,$7E,$52,$7B,$4C,$77,$3D,$71,$2A,$6A,$18,$62,$0A,$5F
-            .BYTE   $05,$54,$01,$35,$01,$20,$00,$0C,$00,$05,$01,$00,$04,$00,$06,$01
-            .BYTE   $09,$0F,$23,$16,$31,$2B,$58,$32,$66,$39,$73,$41,$86,$48,$99,$4D
-            .BYTE   $AC,$4F,$C1,$4F,$E7,$51,$F7,$5B,$FD,$66,$FF
+            .BYTE   $23,$9A,$FF,$A5,$FD,$AF,$F7,$B1,$E7,$B2,$AC,$B9,$93,$CE,$63,$FE
+            .BYTE   $09,$FF,$04,$FB,$01,$F3,$00,$CD,$01,$BC,$00,$AB,$01,$A2,$04,$9D
+            .BYTE   $08,$95,$19,$84,$4E,$81,$52,$7E,$52,$6A,$18,$5F,$05,$54,$01,$0C
+            .BYTE   $00,$05,$01,$00,$04,$01,$09,$39,$73,$48,$99,$4D,$AC,$4F,$C1,$4F
+            .BYTE   $E7,$51,$F7,$5B,$FD,$66,$FF
 
-; U+005A Z  glyph=Z  contours=1 points=49 offset=$128A
+; U+005A Z  glyph=Z  contours=1 points=28 offset=$0C84 edited
 VF_G_005A
             .BYTE   $01
 ; contour 0
-            .BYTE   $31,$FB,$FA,$FE,$F1,$FF,$E4,$FF,$D3,$FE,$BF,$FB,$B7,$EC,$B2,$8E
-            .BYTE   $B2,$8B,$B1,$8B,$AE,$94,$A4,$95,$A4,$DF,$61,$EC,$56,$F6,$4A,$F6
-            .BYTE   $49,$F7,$48,$FA,$40,$FB,$32,$FB,$21,$FA,$0E,$F7,$06,$E8,$00,$1D
-            .BYTE   $00,$0E,$02,$09,$07,$06,$13,$06,$3B,$09,$46,$0E,$4B,$1D,$4D,$6A
-            .BYTE   $4D,$6F,$4F,$6F,$50,$69,$59,$62,$60,$39,$85,$28,$93,$18,$A2,$09
-            .BYTE   $B0,$02,$BE,$00,$CD,$00,$E0,$01,$E7,$01,$ED,$04,$F8,$09,$FD,$19
-            .BYTE   $FF,$EC,$FF
+            .BYTE   $1C,$FB,$FA,$FE,$F1,$FE,$BF,$FB,$B7,$EC,$B2,$8B,$B1,$8B,$AE,$EC
+            .BYTE   $56,$F6,$4A,$FA,$40,$FA,$0E,$F7,$06,$E8,$00,$1D,$00,$0E,$02,$09
+            .BYTE   $07,$06,$13,$06,$3B,$09,$46,$0E,$4B,$6F,$4F,$69,$59,$09,$B0,$02
+            .BYTE   $BE,$01,$ED,$04,$F8,$09,$FD,$EC,$FF
 
 ; End of vector font dataset
 
