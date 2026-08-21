@@ -555,11 +555,17 @@ function Cpu6502(hwobj)
         }
 
         // interrupt handling
-        if (hw.nmi_signal || (hw.irq_signal && (p & P_I) == 0))
+        // NMI is edge-triggered on a real 6502.  nmi_signal is therefore a
+        // latched pending edge, not a level that remains active throughout
+        // the handler.  Consume it when the CPU accepts the NMI.
+        var takingNMI = !!hw.nmi_signal;
+        if (takingNMI || (hw.irq_signal && (p & P_I) == 0))
         {
+            if(takingNMI)
+                hw.nmi_signal = 0;
             push(pc >> 8); push(pc & 0xff); push(p);
             p |= P_I;
-            pc = readWord(hw.nmi_signal ? NMI_VECTOR : IRQ_VECTOR);
+            pc = readWord(takingNMI ? NMI_VECTOR : IRQ_VECTOR);
             cycle_delay = 6;
             return;
         }
