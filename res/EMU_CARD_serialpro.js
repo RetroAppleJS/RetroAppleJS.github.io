@@ -1133,17 +1133,23 @@ function SerialProCard()
         ,"hostBaseMs":rtcStartMs
         ,"weekdayOffset":0
         ,"irq":false
+        ,"nmi":false
         ,"lastUpdateSecond":Math.floor(rtcStartMs/1000)
         ,"lastIRQSampleTick":0
     };
 
     // Minimal interrupt stage required by the resident HGR clock.
     // Register B: UIE=$10, SET/HOLD=$80.
-    // Register C: UF=$10, IRQF=$80. Reading C clears both and releases IRQ.
+    // Register C: UF=$10, IRQF=$80. Reading C acknowledges the RTC request.
     const RTC_B_UIE  = 0x10;
     const RTC_B_SET  = 0x80;
     const RTC_C_UF   = 0x10;
     const RTC_C_IRQF = 0x80;
+
+    // Diagnostic route for the Apple II+ resident-clock experiment.
+    // The physical Serial Pro can route the 6818 interrupt to NMI.
+    // Keep the 6551 ACIA on IRQ; only the RTC update-ended source uses NMI.
+    const RTC_UPDATE_INTERRUPT_ROUTE = "nmi";
 
     rtc.ram[0x0A] = 0x20;       // Register A: 32.768 kHz, UIP clear on read
     rtc.ram[0x0B] = 0x02;       // Register B: 24-hour, BCD, clock running
@@ -1263,6 +1269,56 @@ function SerialProCard()
     {
         rtc.irq = false;
         return serialProDriveIRQ();
+    }
+
+    function rtcDriveNMI(active)
+    {
+        if(typeof(apple2plus)!="object" || !apple2plus ||
+           typeof(apple2plus.hwObj)!="function")
+            return false;
+
+        var hw = apple2plus.hwObj();
+        if(!hw) return false;
+
+        // EMU_cpu6502.js consumes nmi_signal when the NMI edge is accepted.
+        // Clearing Register C before CPU acceptance also cancels the pending edge.
+        hw.nmi_signal = active ? 1 : 0;
+        return !!active;
+    }
+
+    function rtcAssertNMI()
+    {
+        // Do not manufacture a new edge while the same RTC request is pending.
+        if(rtc.nmi) return true;
+
+        rtc.nmi = true;
+
+        // RTC is routed away from the shared IRQ line. Preserve any ACIA IRQ.
+        rtc.irq = false;
+        serialProDriveIRQ();
+
+        return rtcDriveNMI(true);
+    }
+
+    function rtcClearNMI()
+    {
+        rtc.nmi = false;
+        rtcDriveNMI(false);
+        return true;
+    }
+
+    function rtcAssertInterrupt()
+    {
+        return RTC_UPDATE_INTERRUPT_ROUTE=="nmi"
+            ? rtcAssertNMI()
+            : rtcAssertIRQ();
+    }
+
+    function rtcClearInterrupt()
+    {
+        return RTC_UPDATE_INTERRUPT_ROUTE=="nmi"
+            ? rtcClearNMI()
+            : rtcClearIRQ();
     }
 
     /*
@@ -1943,7 +1999,7 @@ function SerialProCard()
         if((rtc.ram[0x0B] & RTC_B_UIE)!=0)
         {
             rtc.ram[0x0C] |= RTC_C_IRQF;
-            rtcAssertIRQ();
+            rtcAssertInterrupt();
         }
         return true;
     }
@@ -2050,7 +2106,7 @@ function SerialProCard()
                 if(!(ctx && ctx.bRO===true))
                 {
                     rtc.ram[0x0C] = 0x00;
-                    rtcClearIRQ();
+                    rtcClearInterrupt();
                 }
                 return flags;
             }
