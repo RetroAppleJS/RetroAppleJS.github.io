@@ -9,13 +9,15 @@
 ; RESIDENT ENTRY POINTS
 ; ---------------------
 ;   CALL 24576 ($6000)  install / redraw resident clock
-;   CALL 24579 ($6003)  remove clock and restore prior IRQ/text window
+;   CALL 24579 ($6003)  remove clock, disable RTC UIE, restore prior NMI/text window
 ;   CALL 24582 ($6006)  force a complete clock redraw
 ;
-; The resident service uses the Apple II user IRQ vector at $03FE/$03FF and the
-; Serial Pro 6818 update-ended interrupt (Register B UIE).  The Serial Pro must
-; route its RTC interrupt to IRQ.  RetroAppleJS also needs 6818 IRQ generation
-; enabled in EMU_CARD_serialpro.js for this resident service to tick there.
+; The Apple II+ ROM hardware NMI vector ($FFFA/$FFFB) lands directly at RAM
+; $03FB.  The resident service saves the three bytes at $03FB-$03FD and installs
+; a JMP RESIDENT_NMI trampoline there.  The Serial Pro 6818 update-ended
+; interrupt (Register B UIE) must be routed to NMI.
+; On removal UIE is always left disabled; restoring a previously-set UIE bit
+; is unsafe if the previous $03FB trampoline belonged to overwritten code.
 ;
 ; FONT DATA FORMAT
 ; ----------------
@@ -77,15 +79,14 @@ MIXED       EQU     $C053
 PAGE1       EQU     $C054
 HIRES       EQU     $C057
 
-; Apple II Monitor text-window / IRQ state.
+; Apple II Monitor text-window / NMI state.
 WNDLFT      EQU     $20
 WNDWDTH     EQU     $21
 WNDTOP      EQU     $22
 WNDBTM      EQU     $23
 CH          EQU     $24
 CV          EQU     $25
-ACC         EQU     $45          ; original accumulator saved by Monitor IRQ code
-IRQLOC      EQU     $03FE        ; user IRQ vector, low/high
+NMI_RAM     EQU     $03FB        ; ROM NMI vector lands directly at these 3 RAM bytes
 VTAB        EQU     $FC22
 HOME        EQU     $FC58
 
@@ -102,7 +103,7 @@ FIELD_DOW   EQU     $03
 FIELD_AMPM  EQU     $04
 
 ; Zero-page pointers used by the renderer.  Applesoft/DOS may use these while
-; the clock is resident, so the IRQ wrapper saves/restores all four bytes.
+; the clock is resident, so the NMI wrapper saves/restores all four bytes.
 VF_DPL      EQU     $F0
 VF_DPH      EQU     $F1
 VF_HPL      EQU     $F2
@@ -264,33 +265,32 @@ REFRESH     JMP     RESIDENT_REFRESH
 ; Resident installer / remover
 ; =============================================================================
 ;
-; CALL $6000 installs the clock as a 1 Hz IRQ service and returns immediately
+; CALL $6000 installs the clock as a 1 Hz NMI service and returns immediately
 ; to Applesoft/DOS.  The bottom four text rows remain a normal scrolling Monitor
 ; window.  CALL $6003 removes the service; CALL $6006 forces a full redraw.
 ;
-; The Apple II Monitor saves the interrupted A register at ACC ($45) before
-; jumping through IRQLOC ($03FE/$03FF).  The resident ISR therefore restores A
-; from ACC, and explicitly saves/restores X, Y and renderer zero page $F0-$F3.
+; Unlike the Monitor IRQ path, NMI enters our RAM trampoline directly.  The NMI
+; handler therefore preserves A, X and Y itself, together with renderer zero
+; page $F0-$F3, and returns to the interrupted foreground code with RTI.
 ; -----------------------------------------------------------------------------
 
 RESIDENT_INSTALL
             PHP
-            PLA
-            STA     RES_CALLP
             SEI
+            LDA     #$01
+            STA     RES_BUSY
             CLD
 
             LDA     RES_ACTIVE
             BNE     RES_INSTALL_REDRAW
 
 ; Preserve caller/environment state only on the first installation.
-            LDA     RES_CALLP
-            STA     RES_OLDP
-
-            LDA     IRQLOC
-            STA     RES_OLDIRQ
-            LDA     IRQLOC+1
-            STA     RES_OLDIRQ+1
+            LDA     NMI_RAM
+            STA     RES_OLDNMI
+            LDA     NMI_RAM+1
+            STA     RES_OLDNMI+1
+            LDA     NMI_RAM+2
+            STA     RES_OLDNMI+2
 
             LDA     WNDLFT
             STA     RES_OLD_WNDLFT
@@ -305,30 +305,41 @@ RESIDENT_INSTALL
             LDA     CV
             STA     RES_OLD_CV
 
-; Initial graphics construction occurs with IRQs disabled.  Protect $F0-$F3 so
-; CALL returns transparently to Applesoft/DOS.
-            JSR     RES_SAVE_ZP
-            JSR     RES_DRAW_FULL
-            JSR     RES_SETUP_WINDOW
-            JSR     RES_RESTORE_ZP
-
-; Save the existing RTC mode/interrupt-enable register before adding UIE.
+; Save the existing RTC mode/interrupt-enable register.  Temporarily remove UIE
+; while the initial image and NMI trampoline are being installed.
             LDY     #SERIALOFF
             LDA     #$0B
             JSR     RTC_REG
             STA     RES_OLD_RTC_B
 
-; Install the user IRQ vector before enabling the 6818 update-ended interrupt.
-            LDA     #<RESIDENT_IRQ
-            STA     IRQLOC
-            LDA     #>RESIDENT_IRQ
-            STA     IRQLOC+1
+            LDA     #$0B
+            STA     RTCADR,Y
+            LDA     RES_OLD_RTC_B
+            AND     #$EF
+            STA     RTCDATA,Y
 
-; Reading Register C clears any stale RTC interrupt flags.
+; Reading Register C clears any stale RTC interrupt flags / pending NMI.
             LDA     #$0C
             JSR     RTC_REG
 
+; Initial graphics construction occurs while RTC UIE is disabled.  Protect
+; $F0-$F3 so CALL returns transparently to Applesoft/DOS.
+            JSR     RES_SAVE_ZP
+            JSR     RES_DRAW_FULL
+            JSR     RES_SETUP_WINDOW
+            JSR     RES_RESTORE_ZP
+
+; Install JMP RESIDENT_NMI at the RAM address reached directly by hardware NMI.
+; Write the operand before the opcode so $03FB becomes the new trampoline last.
+            LDA     #<RESIDENT_NMI
+            STA     NMI_RAM+1
+            LDA     #>RESIDENT_NMI
+            STA     NMI_RAM+2
+            LDA     #$4C
+            STA     NMI_RAM
+
 ; Preserve binary/BCD, 12/24-hour, SET and other mode bits; add UIE (bit 4).
+            LDY     #SERIALOFF
             LDA     #$0B
             STA     RTCADR,Y
             LDA     RES_OLD_RTC_B
@@ -338,18 +349,22 @@ RESIDENT_INSTALL
             LDA     #$A5
             STA     RES_ACTIVE
 
-; The resident service requires maskable IRQs to be enabled.
-            CLI
+            LDA     #$00
+            STA     RES_BUSY
+            PLP
             RTS
 
 RES_INSTALL_REDRAW
 ; Re-running CALL $6000 does not replace the saved vector/window state.  It only
-; reconstructs the display and reasserts the four-line text window.
+; reconstructs the display and reasserts the four-line text window. RES_BUSY
+; makes any RTC NMI that arrives during the foreground redraw acknowledge-only.
             JSR     RES_SAVE_ZP
             JSR     RES_DRAW_FULL
             JSR     RES_SETUP_WINDOW
             JSR     RES_RESTORE_ZP
-            CLI
+            LDA     #$00
+            STA     RES_BUSY
+            PLP
             RTS
 
 RESIDENT_REFRESH
@@ -358,46 +373,68 @@ RESIDENT_REFRESH
             JMP     RESIDENT_INSTALL
 
 RES_REFRESH_ACTIVE
+            PHP
             SEI
+            LDA     #$01
+            STA     RES_BUSY
             CLD
             JSR     RES_SAVE_ZP
             JSR     RES_DRAW_FULL
             JSR     RES_SETUP_WINDOW
             JSR     RES_RESTORE_ZP
-            CLI
+            LDA     #$00
+            STA     RES_BUSY
+            PLP
             RTS
 
 RESIDENT_REMOVE
             PHP
-            PLA
-            STA     RES_CALLP
             SEI
+            LDA     #$01
+            STA     RES_BUSY
             CLD
 
             LDA     RES_ACTIVE
             BNE     RES_REMOVE_ACTIVE
 
-; Not installed: restore the interrupt-enable state that existed on entry.
-            LDA     RES_CALLP
-            JMP     RES_RESTORE_I
+; Not installed: leave all processor flags exactly as they were on entry.
+            LDA     #$00
+            STA     RES_BUSY
+            PLP
+            RTS
 
 RES_REMOVE_ACTIVE
             LDY     #SERIALOFF
 
-; Restore the exact RTC Register-B value that preceded installation.
+; First suppress RTC-generated NMI while our trampoline still owns $03FB.
             LDA     #$0B
             STA     RTCADR,Y
             LDA     RES_OLD_RTC_B
+            AND     #$EF
             STA     RTCDATA,Y
 
-; Clear a pending RTC interrupt before handing IRQ ownership back.
+; Clear a pending update-ended request before handing NMI ownership back.
             LDA     #$0C
             JSR     RTC_REG
 
-            LDA     RES_OLDIRQ
-            STA     IRQLOC
-            LDA     RES_OLDIRQ+1
-            STA     IRQLOC+1
+; Restore the original three-byte RAM NMI trampoline.  Restore its opcode last.
+            LDA     RES_OLDNMI+1
+            STA     NMI_RAM+1
+            LDA     RES_OLDNMI+2
+            STA     NMI_RAM+2
+            LDA     RES_OLDNMI
+            STA     NMI_RAM
+
+; Restore the saved RTC mode bits, but deliberately leave UIE disabled.
+; CALL $6003 means this resident RTC service is gone; re-enabling a previously
+; set UIE bit could immediately generate NMI through a stale/restored $03FB
+; trampoline (for example after replacing the earlier NMI test program at $6000).
+; A future owner of RTC NMI must install its own trampoline before enabling UIE.
+            LDA     #$0B
+            STA     RTCADR,Y
+            LDA     RES_OLD_RTC_B
+            AND     #$EF            ; UIE off after uninstall
+            STA     RTCDATA,Y
 
 ; Restore the Monitor text window and cursor position.
             LDA     RES_OLD_WNDLFT
@@ -421,18 +458,8 @@ RES_REMOVE_ACTIVE
 
             LDA     #$00
             STA     RES_ACTIVE
-
-; Restore the IRQ-enable state from before the clock was originally installed.
-            LDA     RES_OLDP
-
-RES_RESTORE_I
-            AND     #$04
-            BEQ     RES_I_ENABLE
-            SEI
-            RTS
-
-RES_I_ENABLE
-            CLI
+            STA     RES_BUSY
+            PLP
             RTS
 
 ; Configure rows 20..23 as a normal 40-column Monitor text window.  HOME honors
@@ -474,7 +501,7 @@ RES_RESTORE_ZP
             RTS
 
 ; Build a complete HGR clock image.  This is used only at install/reinstall or
-; an explicit CALL $6006; normal IRQ service is incremental.
+; an explicit CALL $6006; normal NMI service is incremental.
 RES_DRAW_FULL
             LDA     GFXON
             LDA     MIXED
@@ -519,32 +546,47 @@ RES_DRAW_FULL
             RTS
 
 ; If the RTC is invalid, leave a useful static clock ring rather than a blank
-; left-hand area.  A later valid IRQ or explicit refresh can populate the hands.
+; left-hand area.  A later valid NMI or explicit refresh can populate the hands.
 RES_DRAW_NO_RTC
             JSR     CLOCK_TICKMARKS
             RTS
 
 ; =============================================================================
-; Resident IRQ service
+; Resident NMI service
 ; =============================================================================
 ;
 ; MC146818/6818 Register C:
 ;   bit 7 IRQF  interrupt request flag
 ;   bit 4 UF    update-ended flag
 ;
-; Reading Register C acknowledges/clears the RTC interrupt.  If this was not our
-; update-ended interrupt, all foreground registers/workspace are restored and
-; control chains to the IRQ vector that existed before installation.
+; Reading Register C acknowledges/clears the RTC request and releases the
+; emulated RTC NMI latch.  Because NMI is not maskable, RES_BUSY also protects
+; foreground redraw/remove operations and prevents a second RTC edge from
+; re-entering the vector renderer while an outer NMI is still active.
 ; -----------------------------------------------------------------------------
 
-RESIDENT_IRQ
-; The Apple II Monitor has already saved the interrupted A at $45.
-            LDA     ACC
+RESIDENT_NMI
+; NMI enters directly; preserve the interrupted foreground A/X/Y ourselves.
             PHA
             TXA
             PHA
             TYA
             PHA
+
+; If the renderer is already active (foreground refresh/remove or an outer NMI),
+; acknowledge this RTC edge only.  Do not touch renderer zero page/state.
+            LDA     RES_BUSY
+            BEQ     RES_NMI_ENTER
+
+            LDY     #SERIALOFF
+            LDA     #$0C
+            JSR     RTC_REG
+            STA     RES_NMI_FLAGS
+            JMP     RES_NMI_RETURN_REGS
+
+RES_NMI_ENTER
+            LDA     #$01
+            STA     RES_BUSY
 
 ; Applesoft/DOS may own these locations at the interrupted instant.
             LDA     VF_DPL
@@ -556,34 +598,34 @@ RESIDENT_IRQ
             LDA     VF_HPH
             PHA
 
-; NMOS 6502 IRQ does not clear decimal mode.  The clock arithmetic requires
+; NMOS 6502 NMI does not clear decimal mode.  The clock arithmetic requires
 ; binary mode; RTI later restores the interrupted processor status.
             CLD
 
             LDY     #SERIALOFF
             LDA     #$0C
             JSR     RTC_REG
-            STA     RES_IRQ_FLAGS
+            STA     RES_NMI_FLAGS
 
 ; We own only an asserted update-ended interrupt: IRQF|UF = $90.
             AND     #$90
             CMP     #$90
-            BNE     RES_IRQ_CHAIN
+            BNE     RES_NMI_DONE
 
             JSR     RTC_SNAPSHOT
-            BCC     RES_IRQ_DONE
+            BCC     RES_NMI_DONE
 
-; Interrupts can be delayed while DOS performs timing-critical disk I/O.  Use
-; the current RTC image, not an assumed one-second progression.
+; Always use the current RTC image, not an assumed one-second progression.
+; A busy/nested RTC edge may have been acknowledged without repainting.
             LDA     RTC_SEC_RAW
             CMP     LAST_SEC
-            BEQ     RES_IRQ_DONE
+            BEQ     RES_NMI_DONE
             STA     LAST_SEC
 
             JSR     CLOCK_UPDATE
             JSR     CAL_UPDATE
 
-RES_IRQ_DONE
+RES_NMI_DONE
             PLA
             STA     VF_HPH
             PLA
@@ -592,28 +634,17 @@ RES_IRQ_DONE
             STA     VF_DPH
             PLA
             STA     VF_DPL
+
+            LDA     #$00
+            STA     RES_BUSY
+
+RES_NMI_RETURN_REGS
             PLA
             TAY
             PLA
             TAX
             PLA
             RTI
-
-RES_IRQ_CHAIN
-            PLA
-            STA     VF_HPH
-            PLA
-            STA     VF_HPL
-            PLA
-            STA     VF_DPH
-            PLA
-            STA     VF_DPL
-            PLA
-            TAY
-            PLA
-            TAX
-            PLA
-            JMP     (RES_OLDIRQ)
 
 
 ; =============================================================================
@@ -1438,7 +1469,7 @@ CCR_RET     RTS
 ; Roughly 35-45 ms per phase on a 1 MHz Apple II.  On a turbo emulator the
 ; animation intentionally speeds up together with the CPU.
 ; Resident mode deliberately omits the foreground animation delay.  Calendar
-; fields still redraw as upper/lower halves, but the IRQ must return to
+; fields still redraw as upper/lower halves, but the NMI must return to
 ; Applesoft/DOS as quickly as practical.
 FLIP_DELAY  RTS
 
@@ -1653,9 +1684,9 @@ CLKU_RUNNING
             JSR     CLOCK_SECOND_XOR
 
 CLKU_AFTER_ERASE
-; Detect a real minute change instead of assuming the IRQ arrived at second 00.
-; DOS may defer IRQ delivery during timing-critical disk I/O, so the first
-; service after a boundary may occur at second 01, 02, ... .
+; Detect a real minute change instead of assuming every serviced NMI corresponds
+; to a perfectly consecutive second.  Busy/nested edges may be acknowledged
+; without repainting, so the next full service must derive state from the RTC.
             LDA     RTC_MIN
             CMP     CLOCK_LAST_MIN
             BEQ     CLKU_DRAWSEC
@@ -3147,11 +3178,10 @@ HCLR_BYTE   STA     (VF_HPL),Y
 ; =============================================================================
 
 RES_ACTIVE      .BYTE   $00        ; $A5 while installed
-RES_CALLP       .BYTE   $00        ; temporary caller processor status
-RES_OLDP        .BYTE   $00        ; processor status before first install
-RES_OLDIRQ      .BYTE   $00,$00    ; previous $03FE/$03FF vector
+RES_BUSY        .BYTE   $00        ; nonzero while renderer/remove owns shared state
+RES_OLDNMI      .BYTE   $00,$00,$00 ; previous $03FB-$03FD RAM NMI trampoline
 RES_OLD_RTC_B   .BYTE   $00        ; 6818 Register B before UIE was added
-RES_IRQ_FLAGS   .BYTE   $00
+RES_NMI_FLAGS   .BYTE   $00        ; last acknowledged 6818 Register C value
 
 ; Monitor text-window state restored by CALL $6003.
 RES_OLD_WNDLFT  .BYTE   $00
