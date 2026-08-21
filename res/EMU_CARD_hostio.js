@@ -13,6 +13,9 @@ function AppleBoard()
 {
     this.id    = {"PCODE":"A2BO", "icon":"fa fa-home", "slotLock":true};
     this.state = {"active":true};
+    var board = this;
+    var subscribedVideo = null;
+    var unsubscribeVideoSelection = null;
 
     // Actual child-device instances are attached here by Apple2IO.attach().
     // Keep the array non-enumerable so slot JSON remains serialisable.
@@ -247,6 +250,15 @@ function AppleBoard()
         
     }
 
+    this.restart = function()
+    {
+        var video =
+            typeof(oApple2Video)!="undefined"
+                ? oApple2Video
+                : null;
+
+        this.bindVideoSelection(video);
+    };
 
     this.getBoardIORows = function(model)
     {
@@ -385,6 +397,42 @@ function AppleBoard()
         if(wasHidden) oCOM.POPUP.toggle(popup_id);
     }
 
+    this.bindVideoSelection = function(video)
+    {
+        if(subscribedVideo === video && unsubscribeVideoSelection)
+            return true;
+
+        if(unsubscribeVideoSelection)
+        {
+            unsubscribeVideoSelection();
+            unsubscribeVideoSelection = null;
+        }
+
+        subscribedVideo = null;
+
+        if(!video || typeof(video.subscribeDeviceSelection)!="function")
+            return false;
+
+        subscribedVideo = video;
+
+        unsubscribeVideoSelection =
+            video.subscribeDeviceSelection(function(change)
+            {
+                /*
+                * Ignore selections belonging to a different host should the
+                * MUX later manage more than one device group.
+                */
+                if(change &&
+                change.hostPCODE &&
+                change.hostPCODE != board.id.PCODE)
+                    return;
+
+                board.refreshDeviceListUI();
+            });
+
+        return true;
+    };
+
     this.refreshDeviceListUI = function()
     {
         var hostTool = document.getElementById("device_tool_H");
@@ -397,29 +445,11 @@ function AppleBoard()
     this.videoDeviceSelect = function(DCODE)
     {
         if(typeof(oApple2Video)=="undefined" ||
-           !oApple2Video ||
-           typeof(oApple2Video.setModeByDCODE)!="function")
+        !oApple2Video ||
+        typeof(oApple2Video.setModeByDCODE)!="function")
             return false;
 
-        var selected = oApple2Video.setModeByDCODE(DCODE,null,false);
-
-        this.refreshDeviceListUI();
-
-        return !!selected;
-    };
-
-    this.videoDeviceNext = function(uiEl)
-    {
-        if(typeof(oApple2Video)=="undefined" ||
-           !oApple2Video ||
-           typeof(oApple2Video.nextMode)!="function")
-            return false;
-
-        var selected = oApple2Video.nextMode(uiEl);
-
-        this.refreshDeviceListUI();
-
-        return !!selected;
+        return !!oApple2Video.setModeByDCODE(DCODE,null,false);
     };
 
     // Compatibility for callers created by the preceding transitional model.

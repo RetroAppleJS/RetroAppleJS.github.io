@@ -91,6 +91,65 @@ function Apple2VideoMUX(canvas)
     this.devices = [];
     this.deviceSelectionInitialised = false;
 
+    var deviceSelectionListeners = [];
+
+    this.subscribeDeviceSelection = function(callback)
+    {
+        if(typeof(callback)!="function")
+            return function(){};
+
+        if(deviceSelectionListeners.indexOf(callback)<0)
+            deviceSelectionListeners.push(callback);
+
+        var subscribed = true;
+
+        return function()
+        {
+            if(!subscribed) return;
+            subscribed = false;
+
+            var index = deviceSelectionListeners.indexOf(callback);
+            if(index>=0)
+                deviceSelectionListeners.splice(index,1);
+        };
+    };
+
+    function emitDeviceSelectionChanged(previousDevice,device)
+    {
+        if(!device || !device.id) return;
+
+        var event = {
+            type: "device-selection-changed"
+            ,device: device
+            ,previousDevice: previousDevice || null
+            ,DCODE: String(device.id.DCODE || "")
+            ,previousDCODE: previousDevice && previousDevice.id
+                ? String(previousDevice.id.DCODE || "")
+                : ""
+            ,mode: String(device.id.mode || "")
+            ,previousMode: previousDevice && previousDevice.id
+                ? String(previousDevice.id.mode || "")
+                : ""
+            ,coID: String(device.id.coID || "")
+            ,hostPCODE: String(device.id.hostPCODE || "")
+        };
+
+        // Snapshot protects iteration if a listener unsubscribes while notified.
+        var listeners = deviceSelectionListeners.slice();
+
+        for(var i=0;i<listeners.length;i++)
+        {
+            try
+            {
+                listeners[i](event);
+            }
+            catch(err)
+            {
+                console.error("Video device-selection listener failed",err);
+            }
+        }
+    }
+
     this.initGPU = function()
     {
         return true;
@@ -339,19 +398,41 @@ function Apple2VideoMUX(canvas)
         var renderer = this.getRegisteredDevice(DCODE);
         if(!renderer || !renderer.id.mode) return false;
 
-        /*
-         * Radio-button semantics: selecting one registered device disables all
-         * devices with the same registered container and host.
-         */
         var group = this.getDeviceGroup(renderer);
+        var previousDevice = null;
+
+        /*
+        * Capture the selected device before modifying the radio group.
+        */
+        for(var i=0;i<group.length;i++)
+        {
+            if(group[i].id.deviceEnable !== false)
+            {
+                previousDevice = group[i];
+                break;
+            }
+        }
+
+        /*
+        * Radio-button semantics: exactly one renderer in the overlapping
+        * device group is enabled.
+        */
         for(var i=0;i<group.length;i++)
             group[i].id.deviceEnable = group[i] === renderer;
 
         this.setMode(
-             this.getRenderModeIndexByName(renderer.id.mode)
+            this.getRenderModeIndexByName(renderer.id.mode)
             ,uiEl
             ,!!forceReset
         );
+
+        /*
+        * Notify only after the complete state transition. Subscribers therefore
+        * see activeName, modeIndex, deviceEnable and render_mode UI in their
+        * final consistent state.
+        */
+        if(previousDevice !== renderer)
+            emitDeviceSelectionChanged(previousDevice,renderer);
 
         return renderer;
     };

@@ -299,10 +299,7 @@
                                 + "</div>"
                                 + "<div class=\"appbut skinny\" style=\"display:inline\">"
                                 +   "<i class=\"fa fa-eye\" id=\"render_mode\" title=\"GPU\""
-                                +   " onclick=\"if(typeof(apple2plus)=='object'){"
-                                +   " var b=apple2plus.hwObj().io.SLOT2obj(0);"
-                                +   " if(b&&typeof(b.videoDeviceNext)=='function') b.videoDeviceNext(this);"
-                                +   "}\"></i>"
+                                +   " onclick=\"if(typeof(apple2plus)=='object') apple2plus.vidObj().nextMode(this);\"></i>"
                                 + "</div><br>"
                                 + charRomKey
                                 + " ROM "
