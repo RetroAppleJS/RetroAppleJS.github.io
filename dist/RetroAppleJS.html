@@ -18231,6 +18231,65 @@ function Apple2VideoMUX(canvas)
     this.devices = [];
     this.deviceSelectionInitialised = false;
 
+    var deviceSelectionListeners = [];
+
+    this.subscribeDeviceSelection = function(callback)
+    {
+        if(typeof(callback)!="function")
+            return function(){};
+
+        if(deviceSelectionListeners.indexOf(callback)<0)
+            deviceSelectionListeners.push(callback);
+
+        var subscribed = true;
+
+        return function()
+        {
+            if(!subscribed) return;
+            subscribed = false;
+
+            var index = deviceSelectionListeners.indexOf(callback);
+            if(index>=0)
+                deviceSelectionListeners.splice(index,1);
+        };
+    };
+
+    function emitDeviceSelectionChanged(previousDevice,device)
+    {
+        if(!device || !device.id) return;
+
+        var event = {
+            type: "device-selection-changed"
+            ,device: device
+            ,previousDevice: previousDevice || null
+            ,DCODE: String(device.id.DCODE || "")
+            ,previousDCODE: previousDevice && previousDevice.id
+                ? String(previousDevice.id.DCODE || "")
+                : ""
+            ,mode: String(device.id.mode || "")
+            ,previousMode: previousDevice && previousDevice.id
+                ? String(previousDevice.id.mode || "")
+                : ""
+            ,coID: String(device.id.coID || "")
+            ,hostPCODE: String(device.id.hostPCODE || "")
+        };
+
+        // Snapshot protects iteration if a listener unsubscribes while notified.
+        var listeners = deviceSelectionListeners.slice();
+
+        for(var i=0;i<listeners.length;i++)
+        {
+            try
+            {
+                listeners[i](event);
+            }
+            catch(err)
+            {
+                console.error("Video device-selection listener failed",err);
+            }
+        }
+    }
+
     this.initGPU = function()
     {
         return true;
@@ -18479,19 +18538,41 @@ function Apple2VideoMUX(canvas)
         var renderer = this.getRegisteredDevice(DCODE);
         if(!renderer || !renderer.id.mode) return false;
 
-        /*
-         * Radio-button semantics: selecting one registered device disables all
-         * devices with the same registered container and host.
-         */
         var group = this.getDeviceGroup(renderer);
+        var previousDevice = null;
+
+        /*
+        * Capture the selected device before modifying the radio group.
+        */
+        for(var i=0;i<group.length;i++)
+        {
+            if(group[i].id.deviceEnable !== false)
+            {
+                previousDevice = group[i];
+                break;
+            }
+        }
+
+        /*
+        * Radio-button semantics: exactly one renderer in the overlapping
+        * device group is enabled.
+        */
         for(var i=0;i<group.length;i++)
             group[i].id.deviceEnable = group[i] === renderer;
 
         this.setMode(
-             this.getRenderModeIndexByName(renderer.id.mode)
+            this.getRenderModeIndexByName(renderer.id.mode)
             ,uiEl
             ,!!forceReset
         );
+
+        /*
+        * Notify only after the complete state transition. Subscribers therefore
+        * see activeName, modeIndex, deviceEnable and render_mode UI in their
+        * final consistent state.
+        */
+        if(previousDevice !== renderer)
+            emitDeviceSelectionChanged(previousDevice,renderer);
 
         return renderer;
     };
@@ -28980,6 +29061,9 @@ function AppleBoard()
 {
     this.id    = {"PCODE":"A2BO", "icon":"fa fa-home", "slotLock":true};
     this.state = {"active":true};
+    var board = this;
+    var subscribedVideo = null;
+    var unsubscribeVideoSelection = null;
 
     // Actual child-device instances are attached here by Apple2IO.attach().
     // Keep the array non-enumerable so slot JSON remains serialisable.
@@ -29214,6 +29298,15 @@ function AppleBoard()
         
     }
 
+    this.restart = function()
+    {
+        var video =
+            typeof(oApple2Video)!="undefined"
+                ? oApple2Video
+                : null;
+
+        this.bindVideoSelection(video);
+    };
 
     this.getBoardIORows = function(model)
     {
@@ -29352,6 +29445,42 @@ function AppleBoard()
         if(wasHidden) oCOM.POPUP.toggle(popup_id);
     }
 
+    this.bindVideoSelection = function(video)
+    {
+        if(subscribedVideo === video && unsubscribeVideoSelection)
+            return true;
+
+        if(unsubscribeVideoSelection)
+        {
+            unsubscribeVideoSelection();
+            unsubscribeVideoSelection = null;
+        }
+
+        subscribedVideo = null;
+
+        if(!video || typeof(video.subscribeDeviceSelection)!="function")
+            return false;
+
+        subscribedVideo = video;
+
+        unsubscribeVideoSelection =
+            video.subscribeDeviceSelection(function(change)
+            {
+                /*
+                * Ignore selections belonging to a different host should the
+                * MUX later manage more than one device group.
+                */
+                if(change &&
+                change.hostPCODE &&
+                change.hostPCODE != board.id.PCODE)
+                    return;
+
+                board.refreshDeviceListUI();
+            });
+
+        return true;
+    };
+
     this.refreshDeviceListUI = function()
     {
         var hostTool = document.getElementById("device_tool_H");
@@ -29364,29 +29493,11 @@ function AppleBoard()
     this.videoDeviceSelect = function(DCODE)
     {
         if(typeof(oApple2Video)=="undefined" ||
-           !oApple2Video ||
-           typeof(oApple2Video.setModeByDCODE)!="function")
+        !oApple2Video ||
+        typeof(oApple2Video.setModeByDCODE)!="function")
             return false;
 
-        var selected = oApple2Video.setModeByDCODE(DCODE,null,false);
-
-        this.refreshDeviceListUI();
-
-        return !!selected;
-    };
-
-    this.videoDeviceNext = function(uiEl)
-    {
-        if(typeof(oApple2Video)=="undefined" ||
-           !oApple2Video ||
-           typeof(oApple2Video.nextMode)!="function")
-            return false;
-
-        var selected = oApple2Video.nextMode(uiEl);
-
-        this.refreshDeviceListUI();
-
-        return !!selected;
+        return !!oApple2Video.setModeByDCODE(DCODE,null,false);
     };
 
     // Compatibility for callers created by the preceding transitional model.
@@ -33713,10 +33824,7 @@ function Apple2Plus(context)
                                 + "</div>"
                                 + "<div class=\"appbut skinny\" style=\"display:inline\">"
                                 +   "<i class=\"fa fa-eye\" id=\"render_mode\" title=\"GPU\""
-                                +   " onclick=\"if(typeof(apple2plus)=='object'){"
-                                +   " var b=apple2plus.hwObj().io.SLOT2obj(0);"
-                                +   " if(b&&typeof(b.videoDeviceNext)=='function') b.videoDeviceNext(this);"
-                                +   "}\"></i>"
+                                +   " onclick=\"if(typeof(apple2plus)=='object') apple2plus.vidObj().nextMode(this);\"></i>"
                                 + "</div><br>"
                                 + charRomKey
                                 + " ROM "
