@@ -385,6 +385,15 @@ function AppleBoard()
         if(wasHidden) oCOM.POPUP.toggle(popup_id);
     }
 
+    this.refreshDeviceListUI = function()
+    {
+        var hostTool = document.getElementById("device_tool_H");
+        var hostBox = hostTool ? hostTool.querySelector(".appbox") : null;
+
+        if(hostBox)
+            hostBox.innerHTML = this.deviceList_html();
+    };
+
     this.videoDeviceSelect = function(DCODE)
     {
         if(typeof(oApple2Video)=="undefined" ||
@@ -393,11 +402,22 @@ function AppleBoard()
             return false;
 
         var selected = oApple2Video.setModeByDCODE(DCODE,null,false);
-        var hostTool = document.getElementById("device_tool_H");
-        var hostBox = hostTool ? hostTool.querySelector(".appbox") : null;
 
-        if(hostBox)
-            hostBox.innerHTML = this.deviceList_html();
+        this.refreshDeviceListUI();
+
+        return !!selected;
+    };
+
+    this.videoDeviceNext = function(uiEl)
+    {
+        if(typeof(oApple2Video)=="undefined" ||
+           !oApple2Video ||
+           typeof(oApple2Video.nextMode)!="function")
+            return false;
+
+        var selected = oApple2Video.nextMode(uiEl);
+
+        this.refreshDeviceListUI();
 
         return !!selected;
     };
