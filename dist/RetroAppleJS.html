@@ -29352,6 +29352,15 @@ function AppleBoard()
         if(wasHidden) oCOM.POPUP.toggle(popup_id);
     }
 
+    this.refreshDeviceListUI = function()
+    {
+        var hostTool = document.getElementById("device_tool_H");
+        var hostBox = hostTool ? hostTool.querySelector(".appbox") : null;
+
+        if(hostBox)
+            hostBox.innerHTML = this.deviceList_html();
+    };
+
     this.videoDeviceSelect = function(DCODE)
     {
         if(typeof(oApple2Video)=="undefined" ||
@@ -29360,11 +29369,22 @@ function AppleBoard()
             return false;
 
         var selected = oApple2Video.setModeByDCODE(DCODE,null,false);
-        var hostTool = document.getElementById("device_tool_H");
-        var hostBox = hostTool ? hostTool.querySelector(".appbox") : null;
 
-        if(hostBox)
-            hostBox.innerHTML = this.deviceList_html();
+        this.refreshDeviceListUI();
+
+        return !!selected;
+    };
+
+    this.videoDeviceNext = function(uiEl)
+    {
+        if(typeof(oApple2Video)=="undefined" ||
+           !oApple2Video ||
+           typeof(oApple2Video.nextMode)!="function")
+            return false;
+
+        var selected = oApple2Video.nextMode(uiEl);
+
+        this.refreshDeviceListUI();
 
         return !!selected;
     };
@@ -33693,8 +33713,10 @@ function Apple2Plus(context)
                                 + "</div>"
                                 + "<div class=\"appbut skinny\" style=\"display:inline\">"
                                 +   "<i class=\"fa fa-eye\" id=\"render_mode\" title=\"GPU\""
-                                +   " onclick=\"if(typeof(apple2plus)=='object')"
-                                +   " apple2plus.vidObj().nextMode(this);\"></i>"
+                                +   " onclick=\"if(typeof(apple2plus)=='object'){"
+                                +   " var b=apple2plus.hwObj().io.SLOT2obj(0);"
+                                +   " if(b&&typeof(b.videoDeviceNext)=='function') b.videoDeviceNext(this);"
+                                +   "}\"></i>"
                                 + "</div><br>"
                                 + charRomKey
                                 + " ROM "
