@@ -16,9 +16,10 @@
 //   - Stage 2D command/control decoding, modem lines and IRQ generation
 //   - cycle-paced 6551 character timing with optional CPU-speed synchronization
 //   - Stage 3A optional browser Web Serial transport for physical USB-UARTs
+//   - 6818 update-ended interrupt generation (UIE/UF/IRQF) on Apple II IRQ
 //
 // Still intentionally deferred:
-//   - 6818 periodic/alarm/update IRQ/NMI generation
+//   - 6818 periodic/alarm interrupts and NMI routing
 //   - browser-persistent battery RAM across page reloads
 //   - detailed 6551 receiver-overrun timing
 //   - bit-level parity/framing error injection/validation against an external endpoint
@@ -1131,7 +1132,18 @@ function SerialProCard()
         ,"baseTimeMs":rtcStartMs
         ,"hostBaseMs":rtcStartMs
         ,"weekdayOffset":0
+        ,"irq":false
+        ,"lastUpdateSecond":Math.floor(rtcStartMs/1000)
+        ,"lastIRQSampleTick":0
     };
+
+    // Minimal interrupt stage required by the resident HGR clock.
+    // Register B: UIE=$10, SET/HOLD=$80.
+    // Register C: UF=$10, IRQF=$80. Reading C clears both and releases IRQ.
+    const RTC_B_UIE  = 0x10;
+    const RTC_B_SET  = 0x80;
+    const RTC_C_UF   = 0x10;
+    const RTC_C_IRQF = 0x80;
 
     rtc.ram[0x0A] = 0x20;       // Register A: 32.768 kHz, UIP clear on read
     rtc.ram[0x0B] = 0x02;       // Register B: 24-hour, BCD, clock running
@@ -1196,14 +1208,18 @@ function SerialProCard()
         ,"modemStatusLatched":false
     };
 
-    function aciaIRQSourceID()
+    function serialProIRQSourceID()
     {
         var slot = serialpro.mount ? Number(serialpro.mount.slotN)-1 : "?";
         return "SerialPro:"+slot;
     }
 
-    function aciaDriveIRQ()
-    {
+    // The physical card ORs its interrupt-capable devices onto the selected
+    // Apple II interrupt line.  Keep one emulator IRQ source asserted while
+    // either the 6551 ACIA or the 6818 RTC still has a pending request.
+    function serialProDriveIRQ()
+     {
+        var asserted = !!(acia.irq || rtc.irq);
         if(typeof(apple2plus)!="object" || !apple2plus ||
            typeof(apple2plus.hwObj)!="function")
             return false;
@@ -1212,11 +1228,15 @@ function SerialProCard()
         if(!hw) return false;
 
         if(typeof(hw.setIRQSource)=="function")
-            hw.setIRQSource(aciaIRQSourceID(),acia.irq);
+            hw.setIRQSource(serialProIRQSourceID(),asserted);
         else
-            hw.irq_signal = acia.irq ? 1 : 0;       // compatibility fallback
+            hw.irq_signal = asserted ? 1 : 0;       // compatibility fallback
+        return asserted;
+    }
 
-        return acia.irq;
+    function aciaDriveIRQ()
+    {
+        return serialProDriveIRQ();
     }
 
     function aciaAssertIRQ(reason)
@@ -1231,6 +1251,18 @@ function SerialProCard()
         acia.irqReasons = 0x00;
         acia.irq = false;
         aciaDriveIRQ();
+    }
+
+    function rtcAssertIRQ()
+    {
+        rtc.irq = true;
+        return serialProDriveIRQ();
+    }
+
+    function rtcClearIRQ()
+    {
+        rtc.irq = false;
+        return serialProDriveIRQ();
     }
 
     /*
@@ -1876,6 +1908,75 @@ function SerialProCard()
     {
         rtc.baseTimeMs = date.getTime();
         rtc.hostBaseMs = Date.now();
+
+        // A programmed clock jump must not be mistaken for a natural
+        // update-ended boundary on the next peripheral timing sample.
+        rtc.lastUpdateSecond = Math.floor(rtc.baseTimeMs/1000);
+    }
+
+    function rtcUpdateEndedPoll()
+    {
+        var second = Math.floor(rtcCurrentDate().getTime()/1000);
+
+        // SET/HOLD suppresses time updates. Keep the detector aligned with the
+        // frozen image so releasing SET waits for the next real second edge.
+        if((rtc.ram[0x0B] & RTC_B_SET)!=0)
+        {
+            rtc.lastUpdateSecond = second;
+            return false;
+        }
+
+        if(!Number.isFinite(rtc.lastUpdateSecond))
+        {
+            rtc.lastUpdateSecond = second;
+            return false;
+        }
+
+        if(second==rtc.lastUpdateSecond)
+            return false;
+
+        // A delayed emulator slice can cross more than one wall-clock second.
+        // Register C is level/flag based, so one pending UF is sufficient.
+        rtc.lastUpdateSecond = second;
+        rtc.ram[0x0C] |= RTC_C_UF;
+
+        if((rtc.ram[0x0B] & RTC_B_UIE)!=0)
+        {
+            rtc.ram[0x0C] |= RTC_C_IRQF;
+            rtcAssertIRQ();
+        }
+        return true;
+    }
+
+    function rtcIRQSampleTicks()
+    {
+        var base = typeof(_o)!="undefined" ? Number(_o.CPU_ClocksTicks_s) : NaN;
+        return Number.isFinite(base) && base>0
+            ? Math.max(1,Math.floor(base/32))       // about 32 polls/sec at x1
+            : 32768;
+    }
+
+    function rtcSyncClock(clockTick)
+    {
+        clockTick = Number(clockTick);
+        if(!Number.isFinite(clockTick)) return false;
+
+        var previous = Number(rtc.lastIRQSampleTick);
+
+        // CPU RESET/restart can move the completed-cycle counter backwards.
+        if(!Number.isFinite(previous) || clockTick<previous)
+        {
+            rtc.lastIRQSampleTick = clockTick;
+            rtc.lastUpdateSecond = Math.floor(rtcCurrentDate().getTime()/1000);
+            return true;
+        }
+
+        if(clockTick-previous < rtcIRQSampleTicks())
+            return true;
+
+        rtc.lastIRQSampleTick = clockTick;
+        rtcUpdateEndedPoll();
+        return true;
     }
 
     function rtcEncodeHour(date)
@@ -1904,7 +2005,7 @@ function SerialProCard()
         return hour + (pm ? 12 : 0);
     }
 
-    function rtcReadData()
+    function rtcReadData(ctx)
     {
         var reg = rtc.address & 0x3F;
         var date = rtcCurrentDate();
@@ -1942,10 +2043,15 @@ function SerialProCard()
 
             case 0x0C:
             {
-                // Register C interrupt flags clear on read.  Interrupt generation
-                // is deferred, therefore this is normally zero in this stage.
+                // Register C reports the latched interrupt flags. A real CPU read
+                // acknowledges all RTC sources and releases the RTC IRQ request.
+                // Debugger/read-only inspection must remain side-effect free.
                 var flags = rtc.ram[0x0C] & 0xF0;
-                rtc.ram[0x0C] = 0x00;
+                if(!(ctx && ctx.bRO===true))
+                {
+                    rtc.ram[0x0C] = 0x00;
+                    rtcClearIRQ();
+                }
                 return flags;
             }
 
@@ -1988,7 +2094,10 @@ function SerialProCard()
             // Clearing SET restarts elapsed-time accumulation from the frozen
             // value rather than jumping by the amount of time spent halted.
             if(wasHeld && !willHold)
+            {
                 rtc.hostBaseMs = Date.now();
+                rtc.lastUpdateSecond = Math.floor(rtc.baseTimeMs/1000);
+            }
             return;
         }
 
@@ -2059,7 +2168,7 @@ function SerialProCard()
         switch(addr)
         {
             case 0x05:      // $C085+$s0: selected 6818 Clock/RAM data
-                return rtcReadData();
+                return rtcReadData(ctx);
             case 0x08:      // $C088+$s0: 6551 Receiver Data Register
                 return aciaReadData(ctx);
 
@@ -4091,7 +4200,12 @@ function SerialProCard()
 
     this.syncClock = function(clockTick)
     {
-        return aciaSyncClock(clockTick);
+        // Keep RTC wall-clock interrupt detection beside the existing
+        // cycle-paced ACIA timing.  The RTC itself remains tied to host time;
+        // clockTick is used only to throttle Date.now() sampling.
+        var rtcResult = rtcSyncClock(clockTick);
+        var aciaResult = aciaSyncClock(clockTick);
+        return rtcResult || aciaResult;
     };
 
     this.reset = function()
