@@ -107,30 +107,25 @@ function A2Pkeys()
 
             if(val.length==1 && control)
             {
-                // Use the physical host key where possible.  KeyboardEvent.key
-                // reflects the host layout and can become "M", while the Apple
-                // ][ key in that position is M / ] and therefore produces
-                // CTRL-] ($1D) when Shift and Control are both down.
-                var physicalKey = typeof(arg.code)=="string" && /^Key[A-Z]$/.test(arg.code)
-                    ? arg.code.slice(3)
-                    : val.toUpperCase();
-
-                // Reuse the Apple II virtual-key table so host and virtual
-                // keyboard modifier combinations cannot diverge.
-                var map = this.events_data.HTMLmap_A2_US;
-                for(var hash in map)
-                {
-                    var lookup = map[hash];
-                    if(lookup.val != physicalKey) continue;
-
-                    if(shift && typeof(lookup["Shift-Control"])=="number")
-                        return lookup["Shift-Control"] | 0x80;
-                    if(typeof(lookup["Control"])=="number")
-                        return lookup["Control"] | 0x80;
-                    break;
-                }
-
-                return (physicalKey.codePointAt(0) & 0x1F) | 0x80;
+                /*
+                 * Host keyboard control combinations are character-oriented,
+                 * not physical-key-position-oriented.
+                 *
+                 * KeyboardEvent.code is tied to the US physical key position;
+                 * on AZERTY/QWERTZ layouts a host CTRL-Z can therefore report
+                 * code="KeyW"/"KeyY" even though event.key is "z".  Using code
+                 * here made CTRL-Z become CTRL-W/CTRL-Y.
+                 *
+                 * The virtual Apple II keyboard still uses HTMLmap_A2_US and
+                 * therefore retains authentic Shift-Control key combinations.
+                 * For the host keyboard, ASCII control-character semantics are
+                 * both layout-independent and intuitive:
+                 *
+                 *   CTRL-A .. CTRL-Z -> $01 .. $1A
+                 *   CTRL-@           -> $00
+                 *   CTRL-[ .. CTRL-_ -> $1B .. $1F
+                 */
+                return (val.toUpperCase().codePointAt(0) & 0x1F) | 0x80;
             }
             else if(val.length==1 && val.match(/[a-z]/))
                 return (val.codePointAt(0)-0x20) | 0x80;
