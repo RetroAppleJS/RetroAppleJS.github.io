@@ -14716,6 +14716,7 @@ function GamePort()
     this.state = {
          "paddles":[127,127,0,0]
         ,"switches":[false,false,false]
+        ,"shiftKeyMod":true
     };
 
     /*
@@ -14763,6 +14764,33 @@ function GamePort()
     function isAppleScreen(target)
     {
         return target && target.id == "applescreen";
+    }
+
+    function shiftKeyPressed()
+    {
+        /*
+         * The classic Apple II one-wire Shift-key modification feeds the
+         * keyboard Shift state to PB2/SW2 ($C063). VideoTerm firmware 2.4 uses
+         * that line while its CTRL-A lower-case mode is active.
+         *
+         * Both host and virtual keyboards keep their modifier state in the
+         * live A2KBD device; combine both modifier banks here.
+         */
+        if(typeof(apple2plus)!=="object" || !apple2plus
+            || typeof(apple2plus.keysObj)!=="function")
+            return false;
+
+        var keyboard = apple2plus.keysObj();
+        var ed = keyboard && keyboard.events_data;
+        if(!ed || !ed.metabitsEn || !Array.isArray(ed.metabits))
+            return false;
+
+        var shiftBit = Number(ed.metabitsEn["Shift"]) || 0;
+        var modifiers =
+              (Number(ed.metabits[0]) || 0)
+            | (Number(ed.metabits[1]) || 0);
+
+        return shiftBit!==0 && (modifiers & shiftBit)!==0;
     }
 
     function updatePointer(event)
@@ -14842,6 +14870,18 @@ function GamePort()
     {
         var input = Number(rel_addr) & 0x0F;
 
+        /*
+         * $C063 / SW2 is occupied by the traditional one-wire Shift-key
+         * modification when enabled.
+         *
+         * VideoTerm's KEYSTA routine treats bit 7 high as "Shift released"
+         * and bit 7 low as "Shift held". Without this wiring RetroAppleJS
+         * leaves SW2 low, so CTRL-A can toggle FLAGS bit 6 correctly while
+         * subsequent letters still look permanently shifted/upper-case.
+         */
+        if(input===0x03 && gameport.state.shiftKeyMod)
+            return shiftKeyPressed() ? 0x00 : 0x80;
+
         // $C061-$C063: SW0-SW2. The input state is returned in bit 7.
         if(input>=0x01 && input<=0x03)
             return gameport.state.switches[input-1] ? 0x80 : 0x00;
@@ -14868,6 +14908,12 @@ function GamePort()
         this.reset();
     };
 
+    this.setShiftKeyMod = function(flag)
+    {
+        gameport.state.shiftKeyMod = !!flag;
+        return gameport.state.shiftKeyMod;
+    };
+
     this.ctrl_dlg = function()
     {
         return ""
@@ -14885,6 +14931,7 @@ function GamePort()
             +"X → PDL0 ($C064)<br>"
             +"Y → PDL1 ($C065)<br>"
             +"B → SW0 ($C061, bit 7)<br>"
+            +"SHIFT → SW2 ($C063, one-wire shift-key mod)<br>"
             +"PTRIG ($C070) starts the paddle timers"
             +"</div>"
             +"</div>";
@@ -33353,6 +33400,58 @@ function SerialProCard()
         return parts.join("");
     }
 
+    function serialGPTRequestId(response)
+    {
+        if(!response || !response.headers || typeof(response.headers.get)!=="function")
+            return null;
+
+        return response.headers.get("x-request-id")
+            || response.headers.get("openai-request-id")
+            || null;
+    }
+
+    function serialGPTWarn(label,response,data,raw)
+    {
+        /*
+         * Never include request headers or state.apiKey in diagnostics.
+         * The response body is retained because status/incomplete_details,
+         * output and usage are exactly what is needed to diagnose successful
+         * HTTP responses that nevertheless contain no output_text.
+         */
+        console.warn("[SerialPro GPT] "+label,{
+             httpStatus:response ? response.status : null
+            ,httpStatusText:response ? response.statusText : null
+            ,requestId:serialGPTRequestId(response)
+            ,responseId:data && data.id ? data.id : null
+            ,status:data && data.status ? data.status : null
+            ,incompleteDetails:data ? data.incomplete_details || null : null
+            ,error:data ? data.error || null : null
+            ,usage:data ? data.usage || null : null
+            ,output:data ? data.output || null : null
+            ,raw:data ? null : raw
+            ,response:data || null
+        });
+    }
+
+    function serialGPTNoTextMessage(data)
+    {
+        var details = [];
+
+        if(data && data.status)
+            details.push("status="+String(data.status));
+
+        var incomplete = data && data.incomplete_details;
+        if(incomplete && incomplete.reason)
+            details.push("reason="+String(incomplete.reason));
+
+        if(data && data.error && data.error.message)
+            details.push("error="+String(data.error.message));
+
+        return "OpenAI returned no text output"
+            +(details.length ? " ("+details.join(", ")+")" : "")
+            +".";
+    }
+
     async function serialGPTRequest(card,message)
     {
         var state = serialGPTState(card);
@@ -33383,6 +33482,8 @@ function SerialProCard()
 
         if(!response.ok)
         {
+            serialGPTWarn("OpenAI HTTP request failed",response,data,raw);
+
             var messageText = data && data.error && data.error.message
                 ? data.error.message
                 : (raw || ("HTTP "+response.status));
@@ -33390,11 +33491,16 @@ function SerialProCard()
         }
 
         if(!data)
+        {
+            serialGPTWarn("OpenAI returned a non-JSON response",response,null,raw);
             throw new Error("OpenAI returned a non-JSON response.");
-
+        }
         var answer = serialGPTExtractText(data);
         if(!answer.length)
-            throw new Error("OpenAI returned no text output.");
+        {
+            serialGPTWarn("OpenAI response contained no text output",response,data,raw);
+            throw new Error(serialGPTNoTextMessage(data));
+        }    
 
         return answer;
     }
@@ -33436,6 +33542,14 @@ function SerialProCard()
     {
         var state = serialGPTState(card);
         if(!state.enabled) return;
+
+        /*
+         * This also catches browser/network failures that occur before an HTTP
+         * response exists. Server-response failures already have a structured
+         * warning from serialGPTRequest(); keeping the Error object here adds
+         * its JavaScript stack without exposing the API key.
+         */
+        console.warn("[SerialPro GPT] request failed",err);
 
         var detail = err && err.message ? err.message : String(err);
         serialGPTStatus(card,"request failed: "+detail);
