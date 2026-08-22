@@ -26319,8 +26319,19 @@ function col80card()
     // Hitachi HD46505 / Motorola MC6845-compatible register file.
     var crtc = new Uint8Array(18);
 
+    /*
+     * One physical 1 KiB U3 firmware ROM is decoded into two CPU-visible views:
+     *
+     *   $C800-$CBFF -> ROM offsets $000-$3FF  (complete image, while C8 owned)
+     *   $C300-$C3FF -> ROM offsets $300-$3FF  (slot-3 alias; also claims C8)
+     */
+    const VIDEX_FIRMWARE_ROM_SIZE    = 0x400;
+    const VIDEX_C8_ROM_PHYS_OFFSET   = 0x000;
+    const VIDEX_C8_ROM_WINDOW_SIZE   = 0x400;
+    const VIDEX_SLOT_ROM_PHYS_OFFSET = 0x300;
+    const VIDEX_SLOT_ROM_WINDOW_SIZE = 0x100;
 
-    const VIDEX_ROM = new Uint8Array([
+    const VIDEX_FIRMWARE_ROM = new Uint8Array([
     0xAD,0x7B,0x07,0x29,0xF8,0xC9,0x30,0xF0,
     0x21,0xA9,0x30,0x8D,0x7B,0x07,0x8D,0xFB,
     0x07,0xA9,0x00,0x8D,0xFB,0x06,0x20,0x61,
@@ -26451,7 +26462,8 @@ function col80card()
     0x48,0x66,0xC4,0xC2,0xC1,0xFF,0xC3,0xEA
     ]);
 
-    const CHAR_ROM_APL = new Uint8Array([
+    // Video-side 2 KiB character-generator ROM; not CPU-addressable.
+    const VIDEX_CHAR_ROM_APL = new Uint8Array([
     0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
     0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
     0xFF,0xFF,0xFF,0x00,0x00,0x00,0x00,0x00,
@@ -26804,12 +26816,15 @@ function col80card()
     };
     
     /*
-     * The 256-byte $C300-$C3FF slot page is not a second ROM image. For the
-     * factory slot-3 configuration it is the final page ($0300-$03FF) of the
-     * same 1 KiB U3 firmware ROM exposed at $C800-$CBFF.
+     * In this peripheral API, "SlotROM" and "HostROM" name CPU address-space
+     * mappings; they are not separate physical ROM arrays.
      *
-     * The U20 character-generator ROM is a video-side asset and deliberately
-     * remains for the next EMU_DEVICE_videx_* stage.
+     * The character-generator ROM is a video-side asset for the later
+     * EMU_DEVICE_videx_* renderer and is not mapped into the 6502 address space.
+     *
+     * The old HostROM byte array below is retained temporarily only as a
+     * byte-for-byte validation copy. No bus path should read from it after this
+     * mapping cleanup; it can be deleted once the equality assertion passes.
      */
 
     // Videx Videoterm expansion ROM 2.4
@@ -26817,6 +26832,20 @@ function col80card()
     console.assert(
         HostROM.length==0x400,
         "Videx VideoTerm firmware ROM must be exactly 1 KiB"
+    );
+
+    console.assert(
+        VIDEX_FIRMWARE_ROM.length==VIDEX_FIRMWARE_ROM_SIZE,
+        "VIDEX_FIRMWARE_ROM must be exactly 1 KiB"
+    );
+    console.assert(
+        VIDEX_CHAR_ROM_APL.length==0x800,
+        "VIDEX_CHAR_ROM_APL must be exactly 2 KiB"
+    );
+    console.assert(
+        HostROM.length==VIDEX_FIRMWARE_ROM.length &&
+        HostROM.every(function(d8,i) { return d8==VIDEX_FIRMWARE_ROM[i]; }),
+        "Legacy HostROM copy differs from VIDEX_FIRMWARE_ROM"
     );
 
     function ownsExpansionROM()
@@ -26909,9 +26938,12 @@ function col80card()
 
         /*
          * VideoTerm is currently constrained by _CFG_PSLOT to Apple slot 3.
-         * Its $C300 page is U3 firmware offset $0300-$03FF.
+         * $C300-$C3FF aliases physical U3 offsets $0300-$03FF.
          */
-        return HostROM[0x300 + (addr & 0xFF)] & 0xFF;
+        var slotOffset = addr & (VIDEX_SLOT_ROM_WINDOW_SIZE-1);
+        return VIDEX_FIRMWARE_ROM[
+            VIDEX_SLOT_ROM_PHYS_OFFSET + slotOffset
+        ] & 0xFF;  
     };
 
     this.writeSlotROM = function(addr,d8,ctx)
@@ -26976,9 +27008,10 @@ function col80card()
         var d8 = 0x00;
 
         // $C800-$CBFF: complete 1 KiB U3 resident firmware.
-        if(windowAddr>=0x000 && windowAddr<0x400)
+        if(windowAddr>=0x000 && windowAddr<VIDEX_C8_ROM_WINDOW_SIZE)
         {
-            d8 = HostROM[windowAddr] & 0xFF;
+            var firmwareOffset = VIDEX_C8_ROM_PHYS_OFFSET + windowAddr;
+            d8 = VIDEX_FIRMWARE_ROM[firmwareOffset] & 0xFF;
         }
         // $CC00-$CDFF: selected 512-byte page of 2 KiB VideoTerm RAM.
         else if(windowAddr>=0x400 && windowAddr<0x600)
@@ -27033,7 +27066,8 @@ function col80card()
      */
     this.getVideoRAM = function() { return vram; };
     this.getCRTCRegisters = function() { return crtc; };
-    this.getFirmwareROM = function() { return HostROM; };
+    this.getFirmwareROM = function() { return VIDEX_FIRMWARE_ROM; };
+    this.getAPLCharacterROM = function() { return VIDEX_CHAR_ROM_APL; };
     this.getVideoState = function()
     {
         return {
