@@ -690,6 +690,14 @@ function mergeActionMap(dst,src)
             ,"actions":[]
         };
 
+        /*
+         * Some attached devices consume state owned by their host peripheral
+         * without owning any CPU address range themselves (video renderers are
+         * the important case). Give them the mounted owner explicitly.
+         */
+        if(typeof(device.bindHost)=="function")
+            device.bindHost(owner);
+
         var actionMap = device_info.action || {};
         for(var op in actionMap)
         {
