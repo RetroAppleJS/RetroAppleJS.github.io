@@ -4,8 +4,8 @@
 // First renderer stage:
 // - MC6845 drives geometry/start/cursor.
 // - VideoTerm VRAM remains authoritative.
-// - The currently embedded APL character ROM is used as the diagnostic
-//   character source until the standard U20 ROM is added.
+// - The standard U20 character ROM is the sole character source in this stage.
+// - VRAM bit 7 is ignored until an alternate character ROM is deliberately added.
 //
 
 function VidexVideoNormal(ctx)
@@ -26,8 +26,7 @@ function VidexVideoNormal(ctx)
     var host = null;
     var vram = null;
     var crtc = null;
-    var normalRom = null;
-    var alternateRom = null;
+    var charRom = null;
 
     var displayCtx = ctx || null;
     var logicalCanvas = null;
@@ -146,17 +145,11 @@ function VidexVideoNormal(ctx)
         var code = vram[address] & 0xFF;
 
         /*
-         * VideoTerm stores character-set selection in VRAM bit 7:
-         *
-         *   0 = standard U20 character generator
-         *   1 = alternate U17 character generator
-         *
-         * Bits 0-6 select one of 128 glyphs.  The resident firmware creates
-         * this bit while writing each character, so changing CTRL-Z 2/3 only
-         * affects subsequently written characters, just like the real card.
+         * The standard U20 ROM contains 128 glyphs x 16 raster bytes.
+         * Use VRAM bits 0-6 as the glyph index. Bit 7 is deliberately ignored
+         * in this stage because no alternate character ROM is installed.
          */
         var glyphBase = (code & 0x7F) << 4;
-        var charRom = (code & 0x80) ? alternateRom : normalRom;
         var isCursor = cursorVisible(g) && address == g.cursor;
 
         logicalCtx.fillStyle = "#FFFFFF";
@@ -201,10 +194,10 @@ function VidexVideoNormal(ctx)
         return true;
     }
 
-    function flush()
-    {
-        if(!host || !vram || !crtc || !normalRom || !alternateRom) return false;
 
+    function flush(forcePresent)
+    {
+        if(!host || !vram || !crtc || !charRom) return false;
         var g = geometry();
         if(!ensureLogicalCanvas(g)) return false;
 
@@ -255,10 +248,10 @@ function VidexVideoNormal(ctx)
             dirtyList.length = 0;
         }
 
-        if(changed || needsPresent)
+        if(changed || needsPresent || forcePresent===true)
             present();
 
-        return changed;
+        return changed || forcePresent===true;
     }
 
     this.setContext = function(ctx2)
@@ -280,19 +273,16 @@ function VidexVideoNormal(ctx)
             ? host.getCRTCRegisters()
             : null;
 
-        normalRom = host && typeof(host.getNormalCharacterROM)=="function"
+        charRom = host && typeof(host.getNormalCharacterROM)=="function"
             ? host.getNormalCharacterROM()
             : null;
 
-        alternateRom = host && typeof(host.getAPLCharacterROM)=="function"
-            ? host.getAPLCharacterROM()
-            : null;
 
         dirtyAll = true;
         needsPresent = true;
         lastGeometryKey = "";
 
-        return !!(vram && crtc && normalRom && alternateRom);
+        return !!(vram && crtc && charRom);
     };
 
     this.onVideoChange = function(change)
@@ -312,9 +302,9 @@ function VidexVideoNormal(ctx)
         needsPresent = true;
     };
 
-    this.cycle = function()
+    this.cycle = function(forcePresent)
     {
-        return flush();
+        return flush(forcePresent===true);
     };
 
     this.redraw = function()
@@ -340,6 +330,6 @@ function VidexVideoNormal(ctx)
 
     this.getCharacterROMKind = function()
     {
-        return "VRAM bit 7: standard U20 / alternate APL U17";
+        return "standard U20 character ROM";
     };
 }
