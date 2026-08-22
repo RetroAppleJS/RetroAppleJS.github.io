@@ -26,7 +26,13 @@ function Apple2VideoMUX(canvas)
         mix: false,
         page2: false,
         hires: false,
-        chrome: 0
+        chrome: 0,
+
+        /*
+         * Apple annunciator zero is an input to the optional Videx Soft Video
+         * Switch. Firmware 2.4 drives it through $C058/$C059.
+         */
+        annunciator0: false
     };
 
     this.state.charRomKey = defaultCharRomKey;
@@ -92,6 +98,61 @@ function Apple2VideoMUX(canvas)
     this.deviceSelectionInitialised = false;
 
     var deviceSelectionListeners = [];
+
+    var outputSignalListeners = [];
+
+    /*
+     * Output-signal observers are intentionally separate from renderer-device
+     * selection. They describe motherboard signals seen by external hardware
+     * such as the Videx Soft Video Switch.
+     */
+    this.subscribeOutputSignals = function(callback)
+    {
+        if(typeof(callback)!="function")
+            return function(){};
+
+        if(outputSignalListeners.indexOf(callback)<0)
+            outputSignalListeners.push(callback);
+
+        var subscribed = true;
+
+        return function()
+        {
+            if(!subscribed) return;
+            subscribed = false;
+
+            var index = outputSignalListeners.indexOf(callback);
+            if(index>=0) outputSignalListeners.splice(index,1);
+        };
+    };
+
+    function emitOutputSignalsChanged(reason)
+    {
+        var event = {
+             "type":"video-output-signals-changed"
+            ,"reason":reason || ""
+            ,"annunciator0":!!mux.state.annunciator0
+            ,"gfx":!!mux.state.gfx
+        };
+
+        var listeners = outputSignalListeners.slice();
+        for(var i=0;i<listeners.length;i++)
+        {
+            try { listeners[i](event); }
+            catch(err) { console.error("Video output-signal listener failed",err); }
+        }
+    }
+
+    this.setAnnunciator0 = function(flag)
+    {
+        var next = !!flag;
+        if(this.state.annunciator0 === next)
+            return this.state.annunciator0;
+
+        this.state.annunciator0 = next;
+        emitOutputSignalsChanged("annunciator0");
+        return this.state.annunciator0;
+    };
 
     this.subscribeDeviceSelection = function(callback)
     {
@@ -640,9 +701,23 @@ function Apple2VideoMUX(canvas)
 
     this.setGfx = function(flag)
     {
-        this.state.gfx = !!flag;
+        var next = !!flag;
+        var changed = this.state.gfx !== next;
+        this.state.gfx = next;
+
+        var result;
         if(this.ensureActive() && typeof(this.active.setGfx) == "function")
-            return this.active.setGfx(this.state.gfx);
+            result = this.active.setGfx(this.state.gfx);
+
+        /*
+         * The Videx Soft Video Switch's color-killer input forces motherboard
+         * video whenever Apple color graphics is active. Notify observers only
+         * when the motherboard graphics state actually changes.
+         */
+        if(changed)
+            emitOutputSignalsChanged("gfx");
+
+        return result;
     };
 
     this.setMix = function(flag)

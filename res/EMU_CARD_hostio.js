@@ -99,7 +99,19 @@ function AppleBoard()
             "TXTPAGE1": function(ctx){ if(!isRO(ctx)) ctx.vid.setPage2(false);    return 0x00; },
             "TXTPAGE2": function(ctx){ if(!isRO(ctx)) ctx.vid.setPage2(true);     return 0x00; },
             "LORES":    function(ctx){ if(!isRO(ctx)) ctx.vid.setHires(false);    return 0x00; },
-            "HIRES":    function(ctx){ if(!isRO(ctx)) ctx.vid.setHires(true);     return 0x00; }
+            "HIRES":    function(ctx){ if(!isRO(ctx)) ctx.vid.setHires(true);     return 0x00; },
+
+            /*
+             * $C058 clears annunciator zero and selects motherboard video.
+             * $C059 sets annunciator zero and selects VideoTerm whenever the
+             * Apple color-killer permits monochrome output.
+             *
+             * Keep this as motherboard state. The optional VideoTerm output
+             * selector subscribes to the video MUX signal instead of decoding
+             * PR#3/PR#0 commands.
+             */
+            "AN0OFF":   function(ctx){ if(!isRO(ctx) && ctx.vid && typeof(ctx.vid.setAnnunciator0)=="function") ctx.vid.setAnnunciator0(false); return 0x00; },
+            "AN0ON":    function(ctx){ if(!isRO(ctx) && ctx.vid && typeof(ctx.vid.setAnnunciator0)=="function") ctx.vid.setAnnunciator0(true);  return 0x00; }
         };
   
         var IOMAP_ID = null;
@@ -218,7 +230,9 @@ function AppleBoard()
             0x4: IOMAP_CALLS["TXTPAGE1"],
             0x5: IOMAP_CALLS["TXTPAGE2"],
             0x6: IOMAP_CALLS["LORES"],
-            0x7: IOMAP_CALLS["HIRES"]
+            0x7: IOMAP_CALLS["HIRES"],
+            0x8: IOMAP_CALLS["AN0OFF"],
+            0x9: IOMAP_CALLS["AN0ON"]
         };
 
         var output = {
@@ -250,6 +264,23 @@ function AppleBoard()
         
     }
 
+    function resetAnnunciator0()
+    {
+        var video =
+            typeof(oApple2Video)!="undefined"
+                ? oApple2Video
+                : null;
+
+        if(video && typeof(video.setAnnunciator0)=="function")
+            video.setAnnunciator0(false);
+    }
+
+    this.reset = function()
+    {
+        resetAnnunciator0();
+        return true;
+    };
+
     this.restart = function()
     {
         var video =
@@ -258,6 +289,8 @@ function AppleBoard()
                 : null;
 
         this.bindVideoSelection(video);
+        resetAnnunciator0();
+        return true;
     };
 
     this.getBoardIORows = function(model)

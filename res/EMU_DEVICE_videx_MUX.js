@@ -26,6 +26,58 @@ function VidexVideoMUX()
     var renderer = null;
     var outputVisible = false;
 
+    var appleVideo = null;
+    var unsubscribeOutputSignals = null;
+
+    /*
+     * Videx Soft Video Switch truth table from the VideoTerm manual:
+     *
+     *   Apple color graphics active -> motherboard video
+     *   otherwise AN0 off          -> motherboard video
+     *   otherwise AN0 on           -> VideoTerm video
+     */
+    function applySoftVideoSwitch(signals)
+    {
+        signals = signals || (appleVideo ? appleVideo.state : null) || {};
+
+        var selectVidex =
+            signals.annunciator0 === true &&
+            signals.gfx !== true;
+
+        return selectVidex ? mux.show() : mux.hide();
+    }
+
+    function bindAppleVideoSignals()
+    {
+        var video =
+            typeof(oApple2Video)!="undefined"
+                ? oApple2Video
+                : null;
+
+        if(appleVideo === video && unsubscribeOutputSignals)
+        {
+            applySoftVideoSwitch();
+            return true;
+        }
+
+        if(unsubscribeOutputSignals)
+        {
+            unsubscribeOutputSignals();
+            unsubscribeOutputSignals = null;
+        }
+
+        appleVideo = video;
+
+        if(!appleVideo || typeof(appleVideo.subscribeOutputSignals)!="function")
+            return false;
+
+        unsubscribeOutputSignals =
+            appleVideo.subscribeOutputSignals(applySoftVideoSwitch);
+
+        applySoftVideoSwitch();
+        return true;
+    }
+
     function ensureCanvas()
     {
         if(typeof(document)=="undefined") return null;
@@ -94,6 +146,8 @@ function VidexVideoMUX()
         if(r && typeof(r.bindHost)=="function")
             r.bindHost(host);
 
+        bindAppleVideoSignals();
+
         if(outputVisible && r && typeof(r.redraw)=="function")
             r.redraw();
 
@@ -135,6 +189,9 @@ function VidexVideoMUX()
         if(typeof(r.setContext)=="function")
             r.setContext(c.getContext("2d"));
 
+        if(outputVisible)
+            return true;
+
         outputVisible = true;
 
         if(typeof(mux._ioRefreshHooks)=="function")
@@ -146,6 +203,8 @@ function VidexVideoMUX()
 
     this.hide = function()
     {
+        if(!outputVisible)
+            return true;
         outputVisible = false;
 
         if(typeof(mux._ioRefreshHooks)=="function")
@@ -179,6 +238,13 @@ function VidexVideoMUX()
     this.reset = function()
     {
         var r = ensureRenderer();
+        /*
+         * Apple reset clears annunciator zero. AppleBoard publishes that state,
+         * but resynchronise here as well so restart/reset ordering cannot leave
+         * a stale VideoTerm selection.
+         */
+        bindAppleVideoSignals();
+        applySoftVideoSwitch();
 
         if(!r) return true;
 
@@ -221,7 +287,7 @@ function VidexVideoMUX()
     {
         return ""
             +"<div style=\"padding:4px\">"
-            +"VideoTerm output is separate from motherboard video.<br><br>"
+            +"Videx Soft Video Switch follows $C058/$C059 and Apple graphics mode.<br><br>"
             +"<button class=\"appbut\" "
             +"onclick=\"oEMU.component.IO.VidexVideo.show()\">Show VideoTerm</button> "
             +"<button class=\"appbut\" "
