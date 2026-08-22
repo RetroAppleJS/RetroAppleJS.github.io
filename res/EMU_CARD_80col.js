@@ -584,10 +584,6 @@ function col80card()
         "VIDEX_FIRMWARE_ROM must be exactly 1 KiB"
     );
     console.assert(
-        VIDEX_CHAR_ROM_APL.length==0x800,
-        "VIDEX_CHAR_ROM_APL must be exactly 2 KiB"
-    );
-    console.assert(
         HostROM.length==VIDEX_FIRMWARE_ROM.length &&
         HostROM.every(function(d8,i) { return d8==VIDEX_FIRMWARE_ROM[i]; }),
         "Legacy HostROM copy differs from VIDEX_FIRMWARE_ROM"
@@ -813,7 +809,6 @@ function col80card()
     this.getCRTCRegisters = function() { return crtc; };
     this.getFirmwareROM = function() { return VIDEX_FIRMWARE_ROM; };
     this.getNormalCharacterROM = function() { return VIDEX_CHAR_ROM_NORMAL; };
-    this.getAPLCharacterROM = function() { return VIDEX_CHAR_ROM_APL; };
     this.getVideoState = function()
     {
         return {
