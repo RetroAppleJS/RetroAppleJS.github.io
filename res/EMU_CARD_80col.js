@@ -35,6 +35,7 @@ function col80card()
         ,"cellWidth":9
         ,"crtcIndex":0
         ,"charRomKey":"VIDEX:NORMAL"
+        ,"inverseVideoModification":false
         ,"videoRevision":0
     };
     this.state = state;
@@ -1340,8 +1341,7 @@ function col80card()
      *   1 -> 8-dot cell
      *
      * A later real slot-I/O access remains authoritative and may therefore
-     * change this setting again. 8-dot mode is especially useful with fully
-     * inverse character ROMs because there is no unpainted ninth separator dot.
+     * change this setting again.
      */
     this.setCharacterCellWidth = function(width)
     {
@@ -1355,6 +1355,30 @@ function col80card()
         state.cellWidth = width;
         emitVideoChange("cell-width",-1,width);
         return width;
+    };
+
+    /*
+     * Optional VideoTerm inverse-video hardware modification.
+     *
+     * Firmware 2.4 already stores FLAGS bit 0 in each character's VRAM bit 7.
+     * With this modification installed that bit controls video polarity:
+     *
+     *   CTRL-Z 2 -> FLAGS bit 0 clear -> normal subsequently written chars
+     *   CTRL-Z 3 -> FLAGS bit 0 set   -> inverse subsequently written chars
+     *
+     * No firmware interception is needed; the renderer only models the
+     * different hardware interpretation of the existing VRAM bit.
+     */
+    this.setInverseVideoModification = function(flag)
+    {
+        flag = !!flag;
+
+        if(state.inverseVideoModification===flag)
+            return flag;
+
+        state.inverseVideoModification = flag;
+        emitVideoChange("inverse-video-mod",-1,flag ? 1 : 0);
+        return flag;
     };
 
     function videoOutputDevice()
@@ -1404,6 +1428,7 @@ function col80card()
             ,"cellWidth":state.cellWidth
             ,"crtcIndex":state.crtcIndex
             ,"charRomKey":state.charRomKey
+            ,"inverseVideoModification":state.inverseVideoModification
             ,"revision":state.videoRevision
         };
     };
@@ -1472,7 +1497,7 @@ function col80card()
 
         return ""
             + "<div class=toolbox id=\""+(ctx.toolboxID || ("device_tool_"+ctx.slotID))+"\" hidden>"
-            + "  <div class=appbox style=\"text-align:left;min-height:182px;padding:4px 6px;\">"
+            + "  <div class=appbox style=\"text-align:left;min-height:204px;padding:4px 6px;\">"
             + "    <b>#"+ctx.slotID+" VIDEX VideoTerm</b>"
             + "    <div style=\"display:grid;grid-template-columns:112px minmax(110px,1fr) 46px;gap:5px 6px;align-items:center;margin-top:7px;font-size:11px\">"
 
@@ -1480,6 +1505,12 @@ function col80card()
             + "      <select style=\"min-width:0;width:100%\" onchange=\""+target+".setCharacterROM(this.value)\">"
             +            options
             + "      </select><span></span>"
+
+            + "      <label>Inverse video mod</label>"
+            + "      <span><input type=\"checkbox\" "
+            +            (state.inverseVideoModification ? "checked " : "")
+            + "       onchange=\""+target+".setInverseVideoModification(this.checked)\"> installed</span><span></span>"
+
 
             + "      <label>Contrast</label>"
             + "      <input type=\"range\" min=\"0\" max=\"200\" step=\"1\" value=\""+Number(display.contrast)+"\""
@@ -1490,7 +1521,7 @@ function col80card()
             + "      <select style=\"min-width:0;width:100%\""
             + "       onchange=\""+target+".setCharacterCellWidth(this.value);document.getElementById('"+cellWidthID+"').textContent=this.value+'-dot'\">"
             + "        <option value=\"9\""+(state.cellWidth==9 ? " selected" : "")+">9-dot (normal)</option>"
-            + "        <option value=\"8\""+(state.cellWidth==8 ? " selected" : "")+">8-dot (inverse)</option>"
+            + "        <option value=\"8\""+(state.cellWidth==8 ? " selected" : "")+">8-dot</option>"
             + "      </select><span id=\""+cellWidthID+"\">"+state.cellWidth+"-dot</span>"
 
             + "      <label>Phosphor</label>"

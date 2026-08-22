@@ -5,7 +5,7 @@
 // - MC6845 drives geometry/start/cursor.
 // - VideoTerm VRAM remains authoritative.
 // - The installed character-generator ROM is selected by peripheral config.
-// - VRAM bit 7 remains ignored; ROM selection models replacing the installed ROM.
+// - Optional inverse-video hardware uses VRAM bit 7 as the polarity selector.
 //
 
 function VidexVideoNormal(ctx)
@@ -125,6 +125,8 @@ function VidexVideoNormal(ctx)
         var rows = crtc ? crtc[6] & 0x7F : 24;
         var scanlines = crtc ? ((crtc[9] & 0x1F) + 1) : 9;
         var cellWidth = state.cellWidth == 8 ? 8 : 9;
+        var inverseVideoModification =
+            state.inverseVideoModification === true;
 
         // Defensive limits only; normal VideoTerm firmware gives 80x24x9.
         if(columns<1 || columns>132) columns = 80;
@@ -141,6 +143,7 @@ function VidexVideoNormal(ctx)
             ,"cursorStart":crtc ? (crtc[10] & 0x1F) : 0
             ,"cursorEnd":crtc ? (crtc[11] & 0x1F) : 8
             ,"cursorMode":crtc ? ((crtc[10] >> 5) & 0x03) : 0
+            ,"inverseVideoModification":inverseVideoModification
         };
     }
 
@@ -156,6 +159,7 @@ function VidexVideoNormal(ctx)
             ,g.cursorStart
             ,g.cursorEnd
             ,g.cursorMode
+            ,g.inverseVideoModification ? 1 : 0
         ].join(":");
     }
 
@@ -199,10 +203,25 @@ function VidexVideoNormal(ctx)
         var x0 = col * g.cellWidth;
         var y0 = row * g.scanlines;
 
-        logicalCtx.fillStyle = "#000000";
+        var code = vram[address] & 0xFF;
+
+        /*
+         * With the documented inverse-video hardware modification installed,
+         * firmware FLAGS bit 0 is stored in VRAM bit 7 for every character.
+         * The hardware then interprets that bit as character polarity instead
+         * of as an alternate-character-set selector.
+         *
+         * Fill the complete character cell with the selected background so a
+         * 9-dot cell in inverse mode also inverts the ninth spacing column.
+         */
+        var inverseCell =
+            g.inverseVideoModification &&
+            ((code & 0x80) != 0);
+
+        var phosphor = foregroundStyle();
+        logicalCtx.fillStyle = inverseCell ? phosphor : "#000000";
         logicalCtx.fillRect(x0,y0,g.cellWidth,g.scanlines);
 
-        var code = vram[address] & 0xFF;
 
         /*
          * Character ROM metadata follows the ROM viewer: dsize describes one
@@ -210,19 +229,24 @@ function VidexVideoNormal(ctx)
          * Current VideoTerm sets are 8x16, but keeping the metadata here avoids
          * hard-wiring the renderer to one ROM image.
          *
-         * VRAM bit 7 remains ignored in this stage; the UI models replacing
-         * the installed character-generator ROM, not U17/U20 per-character
-         * switching.
          */
         var dsize = charRomInfo && Array.isArray(charRomInfo.dsize)
             ? charRomInfo.dsize
             : [8,16];
         var glyphWidth = Math.max(1,Math.min(8,Number(dsize[0]) || 8));
         var glyphHeight = Math.max(1,Number(dsize[1]) || 16);
-        var glyphBase = (code & 0x7F) * glyphHeight;   
-        var isCursor = cursorVisible(g) && address == g.cursor;
+        var glyphBase = (code & 0x7F) * glyphHeight;
 
-        logicalCtx.fillStyle = foregroundStyle();
+        /*
+         * The VideoTerm manual notes that the character-bit inverse-video
+         * modification sacrifices the hardware cursor.
+         */
+        var isCursor =
+            !g.inverseVideoModification &&
+            cursorVisible(g) &&
+            address == g.cursor;
+
+        logicalCtx.fillStyle = inverseCell ? "#000000" : phosphor;
 
         for(var raster=0;raster<g.scanlines;raster++)
         {
@@ -449,7 +473,7 @@ function VidexVideoNormal(ctx)
             return value;
 
         displaySettings.contrast = value;
-        
+
         // Contrast/gain is a presentation-stage property; glyphs need no rebuild.
         needsPresent = true;
         return value;
