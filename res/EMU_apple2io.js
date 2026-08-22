@@ -389,7 +389,9 @@ function mergeActionMap(dst,src)
         var actions = peripheral_obj && peripheral_obj.action ? peripheral_obj.action : {};
         var bindings = [
              ["HostROM","RD"]
+            ,["HostROM","WR"]
             ,["SlotROM","RD"]
+            ,["SlotROM","WR"]
             ,["SlotIO","RD"]
             ,["SlotIO","WR"]
             ,["HostIO","RD"]
@@ -525,6 +527,30 @@ function mergeActionMap(dst,src)
 
         var fn = CIO.ACTION_MAP.WR[line];
         if(fn) return fn(rel_addr-line,d8,ctx2);
+
+        /*
+         * $C800-$CFFF is a shared expansion window. Its write target must follow
+         * the same Hslot owner as its read target; permanently installing one
+         * card's HostROM.WR callback would become stale as soon as another card
+         * claims C8 space.
+         *
+         * Peripheral mount.slotN uses RetroAppleJS' internal +1 convention while
+         * ACTION_MAP.Hslot stores the real Apple slot number, hence +1 here.
+         */
+        if(line>=0x800 && line<=0xF00 &&
+           CIO.ACTION_MAP.Hslot!==null &&
+           CIO.ACTION_MAP.Hslot!==undefined)
+        {
+            var hostOwner = this.SLOT2obj(Number(CIO.ACTION_MAP.Hslot)+1);
+            var hostWrite =
+                hostOwner &&
+                hostOwner.action &&
+                hostOwner.action.HostROM &&
+                hostOwner.action.HostROM.WR;
+
+            if(hostWrite && typeof(hostWrite.callback)=="function")
+                return hostWrite.callback(rel_addr-line,d8,ctx2);
+        }
 
         /*
         * Some Apple II soft-switches are triggered by the address access itself.
@@ -881,14 +907,21 @@ function mergeActionMap(dst,src)
                     // Add non-functional metadata to callbacks so diagnostics can show
                     // the actual mounted owner behind each ACTION_MAP span.
                     tagActionCallback(_act.HostROM && _act.HostROM.RD, "HostROM", "RD");
+                    tagActionCallback(_act.HostROM && _act.HostROM.WR, "HostROM", "WR");
                     tagActionCallback(_act.SlotROM && _act.SlotROM.RD, "SlotROM", "RD");
+                    tagActionCallback(_act.SlotROM && _act.SlotROM.WR, "SlotROM", "WR");
                     tagActionCallback(_act.SlotIO  && _act.SlotIO.RD,  "SlotIO",  "RD");
                     tagActionCallback(_act.SlotIO  && _act.SlotIO.WR,  "SlotIO",  "WR");
                     tagActionCallback(_act.HostIO  && _act.HostIO.RD,  "HostIO",  "RD");
                     tagActionCallback(_act.HostIO  && _act.HostIO.WR,  "HostIO",  "WR");
-
+                    /*
+                     * HostROM.WR is deliberately not installed here: HostROM is a
+                     * shared C8 window and write dispatch follows ACTION_MAP.Hslot
+                     * dynamically in Apple2IO.write().
+                     */
                     if(_bHostROM && _act.HostROM.RD && ranges.HostROM) { for(var i=ranges.HostROM.from;i<=ranges.HostROM.to;i++) CIO.ACTION_MAP.RD[i] = _act.HostROM.RD.callback; }
                     if(_bSlotROM && _act.SlotROM.RD && ranges.SlotROM) { for(var i=ranges.SlotROM.from;i<=ranges.SlotROM.to;i++) CIO.ACTION_MAP.RD[i] = _act.SlotROM.RD.callback; }
+                    if(_bSlotROM && _act.SlotROM.WR && ranges.SlotROM) { for(var i=ranges.SlotROM.from;i<=ranges.SlotROM.to;i++) CIO.ACTION_MAP.WR[i] = _act.SlotROM.WR.callback; }
                     if(_bSlotIO  && _act.SlotIO.RD  && ranges.SlotIO)  { for(var i=ranges.SlotIO.from; i<=ranges.SlotIO.to;i++)  CIO.ACTION_MAP.RD[i] = _act.SlotIO.RD.callback; }
                     if(_bSlotIO  && _act.SlotIO.WR  && ranges.SlotIO)  { for(var i=ranges.SlotIO.from; i<=ranges.SlotIO.to;i++)  CIO.ACTION_MAP.WR[i] = _act.SlotIO.WR.callback; }
                     if(_bHostIO && _act.HostIO.RD   && ranges.HostIO)  { for(var i=ranges.HostIO.from;i<=ranges.HostIO.to;i++)   CIO.ACTION_MAP.RD[i] = _act.HostIO.RD.callback; }
