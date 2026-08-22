@@ -4,14 +4,6 @@
 **Edition:** Third Edition, January 1982  
 **Document number:** 001053 VT-MAN-OOO
 
-> **Transcription note.** This Markdown transcription is based on the searchable text layer of the supplied scan. Embedded figures, graphical tables, the ASCII chart, board photograph, and schematic are preserved as image assets. Obvious page-layout artifacts were cleaned, but the source text layer contains OCR errors, especially in program and firmware listings; verify byte-for-byte code against the original scan before using it as executable source.
-
-![Original cover](assets/pdf-page-001-image.jpg)
-
----
-
-<!-- Source PDF page 3; manual page ii -->
-
 First Printing: March, 1 980
 Second Printing: August, 1 980
 Third Printing: January, 1 982
