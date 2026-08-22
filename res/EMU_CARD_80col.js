@@ -1512,7 +1512,7 @@ function col80card()
          */
         return ""
             + "<div class=toolbox id=\""+(ctx.toolboxID || ("device_tool_"+ctx.slotID))+"\" hidden>"
-            + "  <div class=appbox style=\"text-align:left;width:580px;max-width:calc(100vw - 24px);min-height:112px;padding:4px 6px;\">"
+            + "  <div class=appbox style=\"text-align:left;width:580px;max-width:calc(100vw - 24px);min-height:75px;padding:4px 6px;\">"
             + "    <div style=\"display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:5px 12px;align-items:center;font-size:11px\">"
 
             // Row 1: character generator and inverse-video hardware.
@@ -1550,7 +1550,7 @@ function col80card()
             + "        </select>"
             + "      </div>"
 
-            // Row 3: contrast and Soft Video Switch.
+            // Row 3: contrast and read-only display status.
             + "      <div style=\"display:grid;grid-template-columns:88px minmax(0,1fr) 38px;gap:5px;align-items:center\">"
             + "        <label>Contrast</label>"
             + "        <input id=\""+contrastSliderID+"\" style=\"min-width:0;width:100%\" type=\"range\" min=\"0\" max=\"200\" step=\"1\" value=\""+Number(display.contrast)+"\""
@@ -1561,14 +1561,8 @@ function col80card()
             + "      </div>"
 
             + "      <div style=\"display:grid;grid-template-columns:78px minmax(0,1fr);gap:5px;align-items:center\">"
-            + "        <label>Soft switch</label>"
-            + "        <span><input type=\"checkbox\" "
-            +              (display.softVideoSwitchInstalled ? "checked " : "")
-            + "         onchange=\""+target+".setSoftVideoSwitchInstalled(this.checked)\"> installed</span>"
-            + "      </div>"
-
-            + "      <div style=\"grid-column:1/-1;margin-top:1px;font-size:10px;opacity:.75\">"
-            +           columns+"×"+rows+" · Normal Sync"
+            + "        <label>Status</label>"
+            + "        <span style=\"font-size:10px;opacity:.75\">"+columns+"×"+rows+" · Normal Sync</span>"            
             + "      </div>"
             + "    </div>"
 
