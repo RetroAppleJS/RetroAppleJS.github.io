@@ -1,11 +1,11 @@
 //
 // Videx VideoTerm - Normal Sync renderer
 //
-// First renderer stage:
+// Normal Sync renderer:
 // - MC6845 drives geometry/start/cursor.
 // - VideoTerm VRAM remains authoritative.
-// - The standard U20 character ROM is the sole character source in this stage.
-// - VRAM bit 7 is ignored until an alternate character ROM is deliberately added.
+// - The installed character-generator ROM is selected by peripheral config.
+// - VRAM bit 7 remains ignored; ROM selection models replacing the installed ROM.
 //
 
 function VidexVideoNormal(ctx)
@@ -27,6 +27,61 @@ function VidexVideoNormal(ctx)
     var vram = null;
     var crtc = null;
     var charRom = null;
+
+    var charRomInfo = null;
+
+    var displaySettings = {
+         "contrast":100
+        ,"phosphor":"white"
+    };
+
+    const PHOSPHOR_RGB = {
+         "white":[255,255,255]
+        ,"green":[128,255,160]
+        ,"amber":[255,190,96]
+    };
+
+    function refreshCharacterROM()
+    {
+        var info = host && typeof(host.getCharacterROM)=="function"
+            ? host.getCharacterROM()
+            : null;
+
+        if(info && info.data instanceof Uint8Array)
+        {
+            charRomInfo = info;
+            charRom = info.data;
+            return true;
+        }
+
+        charRom = host && typeof(host.getNormalCharacterROM)=="function"
+            ? host.getNormalCharacterROM()
+            : null;
+
+        charRomInfo = charRom
+            ? {
+                 "key":"VIDEX:NORMAL"
+                ,"label":"Normal"
+                ,"mirror":false
+                ,"dsize":[8,16]
+                ,"data":charRom
+              }
+            : null;
+
+        return !!charRom;
+    }
+
+    function foregroundStyle()
+    {
+        var rgb = PHOSPHOR_RGB[displaySettings.phosphor]
+            || PHOSPHOR_RGB.white;
+        var factor = Math.max(0,Math.min(100,displaySettings.contrast)) / 100;
+
+        return "rgb("
+            +Math.round(rgb[0]*factor)+","
+            +Math.round(rgb[1]*factor)+","
+            +Math.round(rgb[2]*factor)+")";
+    }
 
     var displayCtx = ctx || null;
     var logicalCanvas = null;
@@ -145,18 +200,30 @@ function VidexVideoNormal(ctx)
         var code = vram[address] & 0xFF;
 
         /*
-         * The standard U20 ROM contains 128 glyphs x 16 raster bytes.
-         * Use VRAM bits 0-6 as the glyph index. Bit 7 is deliberately ignored
-         * in this stage because no alternate character ROM is installed.
+         * Character ROM metadata follows the ROM viewer: dsize describes one
+         * glyph raster and mirror describes its horizontal bit orientation.
+         * Current VideoTerm sets are 8x16, but keeping the metadata here avoids
+         * hard-wiring the renderer to one ROM image.
+         *
+         * VRAM bit 7 remains ignored in this stage; the UI models replacing
+         * the installed character-generator ROM, not U17/U20 per-character
+         * switching.
          */
-        var glyphBase = (code & 0x7F) << 4;
+        var dsize = charRomInfo && Array.isArray(charRomInfo.dsize)
+            ? charRomInfo.dsize
+            : [8,16];
+        var glyphWidth = Math.max(1,Math.min(8,Number(dsize[0]) || 8));
+        var glyphHeight = Math.max(1,Number(dsize[1]) || 16);
+        var glyphBase = (code & 0x7F) * glyphHeight;   
         var isCursor = cursorVisible(g) && address == g.cursor;
 
-        logicalCtx.fillStyle = "#FFFFFF";
+        logicalCtx.fillStyle = foregroundStyle();
 
         for(var raster=0;raster<g.scanlines;raster++)
         {
-            var bits = charRom[glyphBase + (raster & 0x0F)] & 0xFF;
+            var bits = charRom[
+                glyphBase + (raster % glyphHeight)
+            ] & 0xFF;
 
             if(isCursor &&
                raster>=g.cursorStart &&
@@ -165,12 +232,18 @@ function VidexVideoNormal(ctx)
                 bits ^= 0xFF;
             }
 
-            var pixels = Math.min(8,g.cellWidth);
+            var pixels = Math.min(glyphWidth,g.cellWidth);
 
-            // Videx ROM glyphs use the high-order bit at the left edge.
+
             for(var x=0;x<pixels;x++)
-                if(bits & (0x80 >> x))
+            {
+                var mask = charRomInfo && charRomInfo.mirror
+                    ? (1 << x)
+                    : (0x80 >> x);
+
+                if(bits & mask)
                     logicalCtx.fillRect(x0+x,y0+raster,1,1);
+            }
         }
     }
 
@@ -280,10 +353,7 @@ function VidexVideoNormal(ctx)
         crtc = host && typeof(host.getCRTCRegisters)=="function"
             ? host.getCRTCRegisters()
             : null;
-
-        charRom = host && typeof(host.getNormalCharacterROM)=="function"
-            ? host.getNormalCharacterROM()
-            : null;
+        refreshCharacterROM();
 
 
         dirtyAll = true;
@@ -302,7 +372,12 @@ function VidexVideoNormal(ctx)
             return;
         }
 
-        if(change.type=="vram" && Number.isFinite(change.address))
+        if(change.type=="charrom")
+        {
+            refreshCharacterROM();
+            dirtyAll = true;
+        }
+        else if(change.type=="vram" && Number.isFinite(change.address))
             markAddress(change.address);
         else
             dirtyAll = true;
@@ -331,6 +406,42 @@ function VidexVideoNormal(ctx)
         return flush();
     };
 
+    this.setContrast = function(value)
+    {
+        value = Math.max(0,Math.min(100,Number(value)));
+        if(!Number.isFinite(value)) value = 100;
+
+        if(displaySettings.contrast == value)
+            return value;
+
+        displaySettings.contrast = value;
+        dirtyAll = true;
+        needsPresent = true;
+        return value;
+    };
+
+    this.setPhosphor = function(value)
+    {
+        value = String(value || "").toLowerCase();
+        if(!PHOSPHOR_RGB[value]) value = "white";
+
+        if(displaySettings.phosphor == value)
+            return value;
+
+        displaySettings.phosphor = value;
+        dirtyAll = true;
+        needsPresent = true;
+        return value;
+    };
+
+    this.getDisplaySettings = function()
+    {
+        return {
+             "contrast":displaySettings.contrast
+            ,"phosphor":displaySettings.phosphor
+        };
+    };
+
     this.getGeometry = function()
     {
         return geometry();
@@ -338,6 +449,8 @@ function VidexVideoNormal(ctx)
 
     this.getCharacterROMKind = function()
     {
-        return "standard U20 character ROM";
+        return charRomInfo
+            ? charRomInfo.label+" ("+charRomInfo.key+")"
+            : "character ROM unavailable";
     };
 }

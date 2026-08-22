@@ -26,6 +26,13 @@ function VidexVideoMUX()
     var renderer = null;
     var outputVisible = false;
 
+    var state = {
+         "contrast":100
+        ,"phosphor":"white"
+        ,"softVideoSwitchInstalled":true
+    };
+    this.state = state;
+
     var appleVideo = null;
     var unsubscribeOutputSignals = null;
 
@@ -114,6 +121,10 @@ function VidexVideoMUX()
 
         if(host && typeof(renderer.bindHost)=="function")
             renderer.bindHost(host);
+        if(typeof(renderer.setContrast)=="function")
+            renderer.setContrast(state.contrast);
+        if(typeof(renderer.setPhosphor)=="function")
+            renderer.setPhosphor(state.phosphor);
 
         return renderer;
     }
@@ -173,6 +184,67 @@ function VidexVideoMUX()
     this.isVisible = function()
     {
         return outputVisible;
+    };
+
+    this.getDisplaySettings = function()
+    {
+        return {
+             "contrast":state.contrast
+            ,"phosphor":state.phosphor
+            ,"softVideoSwitchInstalled":state.softVideoSwitchInstalled
+            ,"outputVisible":outputVisible
+        };
+    };
+
+    this.setContrast = function(value)
+    {
+        value = Math.max(0,Math.min(100,Number(value)));
+        if(!Number.isFinite(value)) value = 100;
+        state.contrast = value;
+
+        var r = ensureRenderer();
+        if(r && typeof(r.setContrast)=="function")
+            r.setContrast(value);
+        if(outputVisible && r && typeof(r.redraw)=="function")
+            r.redraw();
+
+        return value;
+    };
+
+    this.setPhosphor = function(value)
+    {
+        value = String(value || "").toLowerCase();
+        if(["white","green","amber"].indexOf(value)<0)
+            value = "white";
+
+        state.phosphor = value;
+
+        var r = ensureRenderer();
+        if(r && typeof(r.setPhosphor)=="function")
+            r.setPhosphor(value);
+        if(outputVisible && r && typeof(r.redraw)=="function")
+            r.redraw();
+
+        return value;
+    };
+
+    this.setSoftVideoSwitchInstalled = function(flag)
+    {
+        state.softVideoSwitchInstalled = !!flag;
+
+        if(state.softVideoSwitchInstalled)
+        {
+            bindAppleVideoSignals();
+            applySoftVideoSwitch();
+        }
+        else
+        {
+            // A one-monitor RetroAppleJS setup falls back to motherboard video.
+            // Manual show()/hide() remain available as diagnostic selectors.
+            mux.hide();
+        }
+
+        return state.softVideoSwitchInstalled;
     };
 
     /*
@@ -287,7 +359,7 @@ function VidexVideoMUX()
     {
         return ""
             +"<div style=\"padding:4px\">"
-            +"Videx Soft Video Switch follows $C058/$C059 and Apple graphics mode.<br><br>"
+            +"VideoTerm output diagnostics. Display characteristics are available in Peripheral controls.<br><br>"
             +"<button class=\"appbut\" "
             +"onclick=\"oEMU.component.IO.VidexVideo.show()\">Show VideoTerm</button> "
             +"<button class=\"appbut\" "
