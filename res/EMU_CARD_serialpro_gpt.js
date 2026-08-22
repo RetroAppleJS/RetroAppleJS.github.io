@@ -210,6 +210,58 @@
         return parts.join("");
     }
 
+    function serialGPTRequestId(response)
+    {
+        if(!response || !response.headers || typeof(response.headers.get)!=="function")
+            return null;
+
+        return response.headers.get("x-request-id")
+            || response.headers.get("openai-request-id")
+            || null;
+    }
+
+    function serialGPTWarn(label,response,data,raw)
+    {
+        /*
+         * Never include request headers or state.apiKey in diagnostics.
+         * The response body is retained because status/incomplete_details,
+         * output and usage are exactly what is needed to diagnose successful
+         * HTTP responses that nevertheless contain no output_text.
+         */
+        console.warn("[SerialPro GPT] "+label,{
+             httpStatus:response ? response.status : null
+            ,httpStatusText:response ? response.statusText : null
+            ,requestId:serialGPTRequestId(response)
+            ,responseId:data && data.id ? data.id : null
+            ,status:data && data.status ? data.status : null
+            ,incompleteDetails:data ? data.incomplete_details || null : null
+            ,error:data ? data.error || null : null
+            ,usage:data ? data.usage || null : null
+            ,output:data ? data.output || null : null
+            ,raw:data ? null : raw
+            ,response:data || null
+        });
+    }
+
+    function serialGPTNoTextMessage(data)
+    {
+        var details = [];
+
+        if(data && data.status)
+            details.push("status="+String(data.status));
+
+        var incomplete = data && data.incomplete_details;
+        if(incomplete && incomplete.reason)
+            details.push("reason="+String(incomplete.reason));
+
+        if(data && data.error && data.error.message)
+            details.push("error="+String(data.error.message));
+
+        return "OpenAI returned no text output"
+            +(details.length ? " ("+details.join(", ")+")" : "")
+            +".";
+    }
+
     async function serialGPTRequest(card,message)
     {
         var state = serialGPTState(card);
@@ -240,6 +292,8 @@
 
         if(!response.ok)
         {
+            serialGPTWarn("OpenAI HTTP request failed",response,data,raw);
+
             var messageText = data && data.error && data.error.message
                 ? data.error.message
                 : (raw || ("HTTP "+response.status));
@@ -247,11 +301,16 @@
         }
 
         if(!data)
+        {
+            serialGPTWarn("OpenAI returned a non-JSON response",response,null,raw);
             throw new Error("OpenAI returned a non-JSON response.");
-
+        }
         var answer = serialGPTExtractText(data);
         if(!answer.length)
-            throw new Error("OpenAI returned no text output.");
+        {
+            serialGPTWarn("OpenAI response contained no text output",response,data,raw);
+            throw new Error(serialGPTNoTextMessage(data));
+        }    
 
         return answer;
     }
@@ -293,6 +352,14 @@
     {
         var state = serialGPTState(card);
         if(!state.enabled) return;
+
+        /*
+         * This also catches browser/network failures that occur before an HTTP
+         * response exists. Server-response failures already have a structured
+         * warning from serialGPTRequest(); keeping the Error object here adds
+         * its JavaScript stack without exposing the API key.
+         */
+        console.warn("[SerialPro GPT] request failed",err);
 
         var detail = err && err.message ? err.message : String(err);
         serialGPTStatus(card,"request failed: "+detail);
