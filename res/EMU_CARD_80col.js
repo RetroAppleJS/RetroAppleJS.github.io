@@ -35,7 +35,7 @@ function col80card()
         ,"cellWidth":9
         ,"crtcIndex":0
         ,"charRomKey":"VIDEX:NORMAL"
-        ,"inverseVideoModification":false
+        ,"inverseVideoMode":"off"
         ,"videoRevision":0
     };
     this.state = state;
@@ -1358,27 +1358,36 @@ function col80card()
     };
 
     /*
-     * Optional VideoTerm inverse-video hardware modification.
+     * Optional VideoTerm inverse-video hardware configurations.
      *
-     * Firmware 2.4 already stores FLAGS bit 0 in each character's VRAM bit 7.
-     * With this modification installed that bit controls video polarity:
+     * "off"
+     *      Normal VideoTerm polarity. VRAM bit 7 does not affect polarity.
      *
-     *   CTRL-Z 2 -> FLAGS bit 0 clear -> normal subsequently written chars
-     *   CTRL-Z 3 -> FLAGS bit 0 set   -> inverse subsequently written chars
+     * "screen"
+     *      Whole-screen inverse modification: the complete VideoTerm raster is
+     *      rendered with reversed foreground/background polarity.
      *
-     * No firmware interception is needed; the renderer only models the
-     * different hardware interpretation of the existing VRAM bit.
+     * "char-bit7"
+     *      Character-bit inverse modification. Firmware 2.4 already stores
+     *      FLAGS bit 0 in each character's VRAM bit 7:
+     *
+     *          CTRL-Z 2 -> FLAGS bit 0 clear -> normal subsequent characters
+     *          CTRL-Z 3 -> FLAGS bit 0 set   -> inverse subsequent characters
+     *
+     * No firmware interception or character-ROM substitution is performed.
      */
-    this.setInverseVideoModification = function(flag)
+    this.setInverseVideoMode = function(mode)
     {
-        flag = !!flag;
+        mode = String(mode || "off").toLowerCase();
+        if(["off","screen","char-bit7"].indexOf(mode)<0)
+            return false;
 
-        if(state.inverseVideoModification===flag)
-            return flag;
+        if(state.inverseVideoMode===mode)
+            return mode;
 
-        state.inverseVideoModification = flag;
-        emitVideoChange("inverse-video-mod",-1,flag ? 1 : 0);
-        return flag;
+        state.inverseVideoMode = mode;
+        emitVideoChange("inverse-video-mode",-1,mode);
+        return mode;
     };
 
     function videoOutputDevice()
@@ -1428,7 +1437,7 @@ function col80card()
             ,"cellWidth":state.cellWidth
             ,"crtcIndex":state.crtcIndex
             ,"charRomKey":state.charRomKey
-            ,"inverseVideoModification":state.inverseVideoModification
+            ,"inverseVideoMode":state.inverseVideoMode
             ,"revision":state.videoRevision
         };
     };
@@ -1493,6 +1502,7 @@ function col80card()
         if(rows<1 || rows>64) rows = 24;
 
         var contrastID = "videx_contrast_value_"+slotN;
+        var contrastSliderID = "videx_contrast_slider_"+slotN;
         var cellWidthID = "videx_cell_width_value_"+slotN;
 
         return ""
@@ -1506,16 +1516,19 @@ function col80card()
             +            options
             + "      </select><span></span>"
 
-            + "      <label>Inverse video mod</label>"
-            + "      <span><input type=\"checkbox\" "
-            +            (state.inverseVideoModification ? "checked " : "")
-            + "       onchange=\""+target+".setInverseVideoModification(this.checked)\"> installed</span><span></span>"
-
+            + "      <label>Inverse video</label>"
+            + "      <select style=\"min-width:0;width:100%\" onchange=\""+target+".setInverseVideoMode(this.value)\">"
+            + "        <option value=\"off\""+(state.inverseVideoMode=="off" ? " selected" : "")+">Off</option>"
+            + "        <option value=\"screen\""+(state.inverseVideoMode=="screen" ? " selected" : "")+">Whole screen</option>"
+            + "        <option value=\"char-bit7\""+(state.inverseVideoMode=="char-bit7" ? " selected" : "")+">Character bit 7 (CTRL-Z 2/3)</option>"
+            + "      </select><span></span>"
 
             + "      <label>Contrast</label>"
-            + "      <input type=\"range\" min=\"0\" max=\"200\" step=\"1\" value=\""+Number(display.contrast)+"\""
+            + "      <input id=\""+contrastSliderID+"\" type=\"range\" min=\"0\" max=\"200\" step=\"1\" value=\""+Number(display.contrast)+"\""
             + "       oninput=\""+target+".setDisplayContrast(this.value);document.getElementById('"+contrastID+"').textContent=this.value+'%'\">"
-            + "      <span id=\""+contrastID+"\">"+Number(display.contrast)+"%</span>"
+            + "      <span id=\""+contrastID+"\" title=\"Reset contrast to 100%\" style=\"cursor:pointer\""
+            + "       onclick=\""+target+".setDisplayContrast(100);document.getElementById('"+contrastSliderID+"').value=100;this.textContent='100%'\">"
+            +         Number(display.contrast)+"%</span>"
 
             + "      <label>Character cell</label>"
             + "      <select style=\"min-width:0;width:100%\""
