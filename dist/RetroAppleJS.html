@@ -21810,7 +21810,7 @@ function Apple2VideoMUX(canvas)
 // - MC6845 drives geometry/start/cursor.
 // - VideoTerm VRAM remains authoritative.
 // - The installed character-generator ROM is selected by peripheral config.
-// - Optional inverse-video hardware uses VRAM bit 7 as the polarity selector.
+// - Optional inverse-video hardware supports whole-screen or VRAM-bit-7 polarity.
 //
 
 function VidexVideoNormal(ctx)
@@ -21930,8 +21930,12 @@ function VidexVideoNormal(ctx)
         var rows = crtc ? crtc[6] & 0x7F : 24;
         var scanlines = crtc ? ((crtc[9] & 0x1F) + 1) : 9;
         var cellWidth = state.cellWidth == 8 ? 8 : 9;
-        var inverseVideoModification =
-            state.inverseVideoModification === true;
+        var inverseVideoMode = String(
+            state.inverseVideoMode || "off"
+        ).toLowerCase();
+
+        if(["off","screen","char-bit7"].indexOf(inverseVideoMode)<0)
+            inverseVideoMode = "off";
 
         // Defensive limits only; normal VideoTerm firmware gives 80x24x9.
         if(columns<1 || columns>132) columns = 80;
@@ -21948,7 +21952,7 @@ function VidexVideoNormal(ctx)
             ,"cursorStart":crtc ? (crtc[10] & 0x1F) : 0
             ,"cursorEnd":crtc ? (crtc[11] & 0x1F) : 8
             ,"cursorMode":crtc ? ((crtc[10] >> 5) & 0x03) : 0
-            ,"inverseVideoModification":inverseVideoModification
+            ,"inverseVideoMode":inverseVideoMode
         };
     }
 
@@ -21964,7 +21968,7 @@ function VidexVideoNormal(ctx)
             ,g.cursorStart
             ,g.cursorEnd
             ,g.cursorMode
-            ,g.inverseVideoModification ? 1 : 0
+            ,g.inverseVideoMode
         ].join(":");
     }
 
@@ -22011,17 +22015,20 @@ function VidexVideoNormal(ctx)
         var code = vram[address] & 0xFF;
 
         /*
-         * With the documented inverse-video hardware modification installed,
-         * firmware FLAGS bit 0 is stored in VRAM bit 7 for every character.
-         * The hardware then interprets that bit as character polarity instead
-         * of as an alternate-character-set selector.
+         * Inverse-video hardware is independent of the installed character ROM.
          *
-         * Fill the complete character cell with the selected background so a
-         * 9-dot cell in inverse mode also inverts the ninth spacing column.
+         * "screen" inverts every character cell, including the ninth spacing
+         * dot in 9-dot mode.
+         *
+         * "char-bit7" uses the polarity bit already written by firmware 2.4
+         * into VRAM bit 7. CTRL-Z 2/3 therefore work without interception.
          */
         var inverseCell =
-            g.inverseVideoModification &&
-            ((code & 0x80) != 0);
+            g.inverseVideoMode=="screen" ||
+            (
+                g.inverseVideoMode=="char-bit7" &&
+                ((code & 0x80) != 0)
+            );
 
         var phosphor = foregroundStyle();
         logicalCtx.fillStyle = inverseCell ? phosphor : "#000000";
@@ -22043,11 +22050,11 @@ function VidexVideoNormal(ctx)
         var glyphBase = (code & 0x7F) * glyphHeight;
 
         /*
-         * The VideoTerm manual notes that the character-bit inverse-video
-         * modification sacrifices the hardware cursor.
+         * Only the character-bit-7 inverse modification sacrifices the
+         * hardware cursor. Whole-screen inverse retains the normal CRTC cursor.
          */
         var isCursor =
-            !g.inverseVideoModification &&
+            g.inverseVideoMode!="char-bit7" &&
             cursorVisible(g) &&
             address == g.cursor;
 
@@ -27275,7 +27282,7 @@ function col80card()
         ,"cellWidth":9
         ,"crtcIndex":0
         ,"charRomKey":"VIDEX:NORMAL"
-        ,"inverseVideoModification":false
+        ,"inverseVideoMode":"off"
         ,"videoRevision":0
     };
     this.state = state;
@@ -28598,27 +28605,36 @@ function col80card()
     };
 
     /*
-     * Optional VideoTerm inverse-video hardware modification.
+     * Optional VideoTerm inverse-video hardware configurations.
      *
-     * Firmware 2.4 already stores FLAGS bit 0 in each character's VRAM bit 7.
-     * With this modification installed that bit controls video polarity:
+     * "off"
+     *      Normal VideoTerm polarity. VRAM bit 7 does not affect polarity.
      *
-     *   CTRL-Z 2 -> FLAGS bit 0 clear -> normal subsequently written chars
-     *   CTRL-Z 3 -> FLAGS bit 0 set   -> inverse subsequently written chars
+     * "screen"
+     *      Whole-screen inverse modification: the complete VideoTerm raster is
+     *      rendered with reversed foreground/background polarity.
      *
-     * No firmware interception is needed; the renderer only models the
-     * different hardware interpretation of the existing VRAM bit.
+     * "char-bit7"
+     *      Character-bit inverse modification. Firmware 2.4 already stores
+     *      FLAGS bit 0 in each character's VRAM bit 7:
+     *
+     *          CTRL-Z 2 -> FLAGS bit 0 clear -> normal subsequent characters
+     *          CTRL-Z 3 -> FLAGS bit 0 set   -> inverse subsequent characters
+     *
+     * No firmware interception or character-ROM substitution is performed.
      */
-    this.setInverseVideoModification = function(flag)
+    this.setInverseVideoMode = function(mode)
     {
-        flag = !!flag;
+        mode = String(mode || "off").toLowerCase();
+        if(["off","screen","char-bit7"].indexOf(mode)<0)
+            return false;
 
-        if(state.inverseVideoModification===flag)
-            return flag;
+        if(state.inverseVideoMode===mode)
+            return mode;
 
-        state.inverseVideoModification = flag;
-        emitVideoChange("inverse-video-mod",-1,flag ? 1 : 0);
-        return flag;
+        state.inverseVideoMode = mode;
+        emitVideoChange("inverse-video-mode",-1,mode);
+        return mode;
     };
 
     function videoOutputDevice()
@@ -28668,7 +28684,7 @@ function col80card()
             ,"cellWidth":state.cellWidth
             ,"crtcIndex":state.crtcIndex
             ,"charRomKey":state.charRomKey
-            ,"inverseVideoModification":state.inverseVideoModification
+            ,"inverseVideoMode":state.inverseVideoMode
             ,"revision":state.videoRevision
         };
     };
@@ -28733,6 +28749,7 @@ function col80card()
         if(rows<1 || rows>64) rows = 24;
 
         var contrastID = "videx_contrast_value_"+slotN;
+        var contrastSliderID = "videx_contrast_slider_"+slotN;
         var cellWidthID = "videx_cell_width_value_"+slotN;
 
         return ""
@@ -28746,16 +28763,19 @@ function col80card()
             +            options
             + "      </select><span></span>"
 
-            + "      <label>Inverse video mod</label>"
-            + "      <span><input type=\"checkbox\" "
-            +            (state.inverseVideoModification ? "checked " : "")
-            + "       onchange=\""+target+".setInverseVideoModification(this.checked)\"> installed</span><span></span>"
-
+            + "      <label>Inverse video</label>"
+            + "      <select style=\"min-width:0;width:100%\" onchange=\""+target+".setInverseVideoMode(this.value)\">"
+            + "        <option value=\"off\""+(state.inverseVideoMode=="off" ? " selected" : "")+">Off</option>"
+            + "        <option value=\"screen\""+(state.inverseVideoMode=="screen" ? " selected" : "")+">Whole screen</option>"
+            + "        <option value=\"char-bit7\""+(state.inverseVideoMode=="char-bit7" ? " selected" : "")+">Character bit 7 (CTRL-Z 2/3)</option>"
+            + "      </select><span></span>"
 
             + "      <label>Contrast</label>"
-            + "      <input type=\"range\" min=\"0\" max=\"200\" step=\"1\" value=\""+Number(display.contrast)+"\""
+            + "      <input id=\""+contrastSliderID+"\" type=\"range\" min=\"0\" max=\"200\" step=\"1\" value=\""+Number(display.contrast)+"\""
             + "       oninput=\""+target+".setDisplayContrast(this.value);document.getElementById('"+contrastID+"').textContent=this.value+'%'\">"
-            + "      <span id=\""+contrastID+"\">"+Number(display.contrast)+"%</span>"
+            + "      <span id=\""+contrastID+"\" title=\"Reset contrast to 100%\" style=\"cursor:pointer\""
+            + "       onclick=\""+target+".setDisplayContrast(100);document.getElementById('"+contrastSliderID+"').value=100;this.textContent='100%'\">"
+            +         Number(display.contrast)+"%</span>"
 
             + "      <label>Character cell</label>"
             + "      <select style=\"min-width:0;width:100%\""
