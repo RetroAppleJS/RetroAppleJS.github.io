@@ -75,12 +75,17 @@ function VidexVideoNormal(ctx)
     {
         var rgb = PHOSPHOR_RGB[displaySettings.phosphor]
             || PHOSPHOR_RGB.white;
-        var factor = Math.max(0,Math.min(100,displaySettings.contrast)) / 100;
+        /*
+         * Keep the logical glyph raster at full phosphor intensity.
+         * Display contrast/gain is applied after resampling in present(), where
+         * it can also brighten the gray edge pixels produced by 720->display
+         * interpolation.
+         */
 
         return "rgb("
-            +Math.round(rgb[0]*factor)+","
-            +Math.round(rgb[1]*factor)+","
-            +Math.round(rgb[2]*factor)+")";
+            +rgb[0]+","
+            +rgb[1]+","
+            +rgb[2]+")";
     }
 
     var displayCtx = ctx || null;
@@ -264,11 +269,40 @@ function VidexVideoNormal(ctx)
             displayCtx.imageSmoothingQuality = "high";
         displayCtx.fillStyle = "#000000";
         displayCtx.fillRect(0,0,canvas.width,canvas.height);
+
+        /*
+         * Treat the control as display gain:
+         *
+         *   0..100%   -> attenuate the resampled VideoTerm image.
+         *   100%      -> neutral.
+         *   100..200% -> draw the resampled image a second time with additive
+         *                blending. Full-white pixels saturate at white while
+         *                gray interpolation pixels become brighter.
+         *
+         * Applying gain here, rather than making logical RGB values exceed
+         * 255, is what allows values above 100% to have a visible effect.
+         */
+        var gain = Math.max(0,Math.min(200,displaySettings.contrast)) / 100;
+
+        displayCtx.globalCompositeOperation = "source-over";
+        displayCtx.globalAlpha = Math.min(1,gain);
         displayCtx.drawImage(
              logicalCanvas
             ,0,0,logicalCanvas.width,logicalCanvas.height
             ,0,0,canvas.width,canvas.height
         );
+
+        if(gain>1)
+        {
+            displayCtx.globalCompositeOperation = "lighter";
+            displayCtx.globalAlpha = gain-1;
+            displayCtx.drawImage(
+                 logicalCanvas
+                ,0,0,logicalCanvas.width,logicalCanvas.height
+                ,0,0,canvas.width,canvas.height
+            );
+        }
+
         displayCtx.restore();
 
         needsPresent = false;
@@ -408,14 +442,15 @@ function VidexVideoNormal(ctx)
 
     this.setContrast = function(value)
     {
-        value = Math.max(0,Math.min(100,Number(value)));
+        value = Math.max(0,Math.min(200,Number(value)));
         if(!Number.isFinite(value)) value = 100;
 
         if(displaySettings.contrast == value)
             return value;
 
         displaySettings.contrast = value;
-        dirtyAll = true;
+        
+        // Contrast/gain is a presentation-stage property; glyphs need no rebuild.
         needsPresent = true;
         return value;
     };

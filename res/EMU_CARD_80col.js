@@ -1332,6 +1332,31 @@ function col80card()
         return true;
     };
 
+    /*
+     * Manual peripheral control for the VideoTerm character-cell width.
+     *
+     * This is the same state normally selected by slot-I/O device-select bit 1:
+     *   0 -> 9-dot cell
+     *   1 -> 8-dot cell
+     *
+     * A later real slot-I/O access remains authoritative and may therefore
+     * change this setting again. 8-dot mode is especially useful with fully
+     * inverse character ROMs because there is no unpainted ninth separator dot.
+     */
+    this.setCharacterCellWidth = function(width)
+    {
+        width = Number(width);
+        if(width!==8 && width!==9)
+            return false;
+
+        if(state.cellWidth===width)
+            return width;
+
+        state.cellWidth = width;
+        emitVideoChange("cell-width",-1,width);
+        return width;
+    };
+
     function videoOutputDevice()
     {
         var devices = Array.isArray(videx.devices) ? videx.devices : [];
@@ -1443,10 +1468,11 @@ function col80card()
         if(rows<1 || rows>64) rows = 24;
 
         var contrastID = "videx_contrast_value_"+slotN;
+        var cellWidthID = "videx_cell_width_value_"+slotN;
 
         return ""
             + "<div class=toolbox id=\""+(ctx.toolboxID || ("device_tool_"+ctx.slotID))+"\" hidden>"
-            + "  <div class=appbox style=\"text-align:left;min-height:156px;padding:4px 6px;\">"
+            + "  <div class=appbox style=\"text-align:left;min-height:182px;padding:4px 6px;\">"
             + "    <b>#"+ctx.slotID+" VIDEX VideoTerm</b>"
             + "    <div style=\"display:grid;grid-template-columns:112px minmax(110px,1fr) 46px;gap:5px 6px;align-items:center;margin-top:7px;font-size:11px\">"
 
@@ -1456,9 +1482,16 @@ function col80card()
             + "      </select><span></span>"
 
             + "      <label>Contrast</label>"
-            + "      <input type=\"range\" min=\"0\" max=\"100\" step=\"1\" value=\""+Number(display.contrast)+"\""
+            + "      <input type=\"range\" min=\"0\" max=\"200\" step=\"1\" value=\""+Number(display.contrast)+"\""
             + "       oninput=\""+target+".setDisplayContrast(this.value);document.getElementById('"+contrastID+"').textContent=this.value+'%'\">"
             + "      <span id=\""+contrastID+"\">"+Number(display.contrast)+"%</span>"
+
+            + "      <label>Character cell</label>"
+            + "      <select style=\"min-width:0;width:100%\""
+            + "       onchange=\""+target+".setCharacterCellWidth(this.value);document.getElementById('"+cellWidthID+"').textContent=this.value+'-dot'\">"
+            + "        <option value=\"9\""+(state.cellWidth==9 ? " selected" : "")+">9-dot (normal)</option>"
+            + "        <option value=\"8\""+(state.cellWidth==8 ? " selected" : "")+">8-dot (inverse)</option>"
+            + "      </select><span id=\""+cellWidthID+"\">"+state.cellWidth+"-dot</span>"
 
             + "      <label>Phosphor</label>"
             + "      <select style=\"min-width:0;width:100%\" onchange=\""+target+".setDisplayPhosphor(this.value)\">"
@@ -1472,7 +1505,7 @@ function col80card()
             + "    </div>"
 
             + "    <div style=\"margin-top:7px;font-size:10px;opacity:.75\">"
-            +         columns+"×"+rows+" · "+state.cellWidth+"-dot · Normal Sync"
+            +         columns+"×"+rows+" · Normal Sync"
             + "    </div>"
 
             + "  </div>"

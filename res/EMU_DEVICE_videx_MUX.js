@@ -198,7 +198,7 @@ function VidexVideoMUX()
 
     this.setContrast = function(value)
     {
-        value = Math.max(0,Math.min(100,Number(value)));
+        value = Math.max(0,Math.min(200,Number(value)));
         if(!Number.isFinite(value)) value = 100;
         state.contrast = value;
 
