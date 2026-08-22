@@ -26,7 +26,8 @@ function VidexVideoNormal(ctx)
     var host = null;
     var vram = null;
     var crtc = null;
-    var charRom = null;
+    var normalRom = null;
+    var alternateRom = null;
 
     var displayCtx = ctx || null;
     var logicalCanvas = null;
@@ -145,14 +146,17 @@ function VidexVideoNormal(ctx)
         var code = vram[address] & 0xFF;
 
         /*
-         * The 2716 layout is 128 characters x 16 raster addresses.
-         * A0-A3 are the raster address and the character contributes seven
-         * address bits. The currently available ROM is the APL image.
+         * VideoTerm stores character-set selection in VRAM bit 7:
          *
-         * Optional/main character-ROM selection by character bit 7 is kept
-         * outside this routine for the next ROM-completion stage.
+         *   0 = standard U20 character generator
+         *   1 = alternate U17 character generator
+         *
+         * Bits 0-6 select one of 128 glyphs.  The resident firmware creates
+         * this bit while writing each character, so changing CTRL-Z 2/3 only
+         * affects subsequently written characters, just like the real card.
          */
         var glyphBase = (code & 0x7F) << 4;
+        var charRom = (code & 0x80) ? alternateRom : normalRom;
         var isCursor = cursorVisible(g) && address == g.cursor;
 
         logicalCtx.fillStyle = "#FFFFFF";
@@ -199,7 +203,7 @@ function VidexVideoNormal(ctx)
 
     function flush()
     {
-        if(!host || !vram || !crtc || !charRom) return false;
+        if(!host || !vram || !crtc || !normalRom || !alternateRom) return false;
 
         var g = geometry();
         if(!ensureLogicalCanvas(g)) return false;
@@ -276,7 +280,11 @@ function VidexVideoNormal(ctx)
             ? host.getCRTCRegisters()
             : null;
 
-        charRom = host && typeof(host.getAPLCharacterROM)=="function"
+        normalRom = host && typeof(host.getNormalCharacterROM)=="function"
+            ? host.getNormalCharacterROM()
+            : null;
+
+        alternateRom = host && typeof(host.getAPLCharacterROM)=="function"
             ? host.getAPLCharacterROM()
             : null;
 
@@ -284,7 +292,7 @@ function VidexVideoNormal(ctx)
         needsPresent = true;
         lastGeometryKey = "";
 
-        return !!(vram && crtc && charRom);
+        return !!(vram && crtc && normalRom && alternateRom);
     };
 
     this.onVideoChange = function(change)
@@ -332,6 +340,6 @@ function VidexVideoNormal(ctx)
 
     this.getCharacterROMKind = function()
     {
-        return "APL diagnostic ROM";
+        return "VRAM bit 7: standard U20 / alternate APL U17";
     };
 }
