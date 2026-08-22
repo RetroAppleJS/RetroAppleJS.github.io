@@ -5,7 +5,7 @@
 // - MC6845 drives geometry/start/cursor.
 // - VideoTerm VRAM remains authoritative.
 // - The installed character-generator ROM is selected by peripheral config.
-// - Optional inverse-video hardware uses VRAM bit 7 as the polarity selector.
+// - Optional inverse-video hardware supports whole-screen or VRAM-bit-7 polarity.
 //
 
 function VidexVideoNormal(ctx)
@@ -125,8 +125,12 @@ function VidexVideoNormal(ctx)
         var rows = crtc ? crtc[6] & 0x7F : 24;
         var scanlines = crtc ? ((crtc[9] & 0x1F) + 1) : 9;
         var cellWidth = state.cellWidth == 8 ? 8 : 9;
-        var inverseVideoModification =
-            state.inverseVideoModification === true;
+        var inverseVideoMode = String(
+            state.inverseVideoMode || "off"
+        ).toLowerCase();
+
+        if(["off","screen","char-bit7"].indexOf(inverseVideoMode)<0)
+            inverseVideoMode = "off";
 
         // Defensive limits only; normal VideoTerm firmware gives 80x24x9.
         if(columns<1 || columns>132) columns = 80;
@@ -143,7 +147,7 @@ function VidexVideoNormal(ctx)
             ,"cursorStart":crtc ? (crtc[10] & 0x1F) : 0
             ,"cursorEnd":crtc ? (crtc[11] & 0x1F) : 8
             ,"cursorMode":crtc ? ((crtc[10] >> 5) & 0x03) : 0
-            ,"inverseVideoModification":inverseVideoModification
+            ,"inverseVideoMode":inverseVideoMode
         };
     }
 
@@ -159,7 +163,7 @@ function VidexVideoNormal(ctx)
             ,g.cursorStart
             ,g.cursorEnd
             ,g.cursorMode
-            ,g.inverseVideoModification ? 1 : 0
+            ,g.inverseVideoMode
         ].join(":");
     }
 
@@ -206,17 +210,20 @@ function VidexVideoNormal(ctx)
         var code = vram[address] & 0xFF;
 
         /*
-         * With the documented inverse-video hardware modification installed,
-         * firmware FLAGS bit 0 is stored in VRAM bit 7 for every character.
-         * The hardware then interprets that bit as character polarity instead
-         * of as an alternate-character-set selector.
+         * Inverse-video hardware is independent of the installed character ROM.
          *
-         * Fill the complete character cell with the selected background so a
-         * 9-dot cell in inverse mode also inverts the ninth spacing column.
+         * "screen" inverts every character cell, including the ninth spacing
+         * dot in 9-dot mode.
+         *
+         * "char-bit7" uses the polarity bit already written by firmware 2.4
+         * into VRAM bit 7. CTRL-Z 2/3 therefore work without interception.
          */
         var inverseCell =
-            g.inverseVideoModification &&
-            ((code & 0x80) != 0);
+            g.inverseVideoMode=="screen" ||
+            (
+                g.inverseVideoMode=="char-bit7" &&
+                ((code & 0x80) != 0)
+            );
 
         var phosphor = foregroundStyle();
         logicalCtx.fillStyle = inverseCell ? phosphor : "#000000";
@@ -238,11 +245,11 @@ function VidexVideoNormal(ctx)
         var glyphBase = (code & 0x7F) * glyphHeight;
 
         /*
-         * The VideoTerm manual notes that the character-bit inverse-video
-         * modification sacrifices the hardware cursor.
+         * Only the character-bit-7 inverse modification sacrifices the
+         * hardware cursor. Whole-screen inverse retains the normal CRTC cursor.
          */
         var isCursor =
-            !g.inverseVideoModification &&
+            g.inverseVideoMode!="char-bit7" &&
             cursorVisible(g) &&
             address == g.cursor;
 
