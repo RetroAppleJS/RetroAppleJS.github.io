@@ -1,10 +1,9 @@
 //
 // Videx VideoTerm video-device MUX
 //
-// The VideoTerm has its own video output. This object keeps that output
-// separate from the Apple motherboard video MUX. Stage 4 can formalise
-// display-source arbitration; show()/hide() are deliberately explicit for
-// this renderer-integration test.
+// The VideoTerm has its own video output. Stage 3 exposes that output on the
+// existing initialized RetroAppleJS display surface without replacing its DOM
+// canvas. Stage 4 can formalise a persistent Apple/VideoTerm output selector.
 //
 
 function VidexVideoMUX()
@@ -25,28 +24,27 @@ function VidexVideoMUX()
 
     var canvas = null;
     var renderer = null;
-    var savedAppleCanvas = null;
+    var outputVisible = false;
 
     function ensureCanvas()
     {
-        if(canvas) return canvas;
         if(typeof(document)=="undefined") return null;
 
-        var base = document.getElementById("applescreen");
-
         /*
-         * cloneNode(false) preserves the screen class, tabindex and inline
-         * keyboard/audio handlers without copying pixels or child state.
+         * Never replace or clone the initialized Apple display node here.
+         * RetroAppleJS keeps renderer/event references to that live canvas.
+         * VideoTerm temporarily shares the current display surface instead.
          */
-        canvas = base ? base.cloneNode(false) : document.createElement("canvas");
-        canvas.id = "videxscreen";
-        canvas.width = 560;
-        canvas.height = 384;
+        var live = document.getElementById("applescreen");
+        if(!live || typeof(live.getContext)!="function")
+            return null;
 
-        if(canvas.style)
+        if(canvas !== live)
         {
-            canvas.style.display = "block";
-            canvas.style.outline = "none";
+            canvas = live;
+
+            if(renderer && typeof(renderer.setContext)=="function")
+                renderer.setContext(canvas.getContext("2d"));
         }
 
         return canvas;
@@ -96,7 +94,7 @@ function VidexVideoMUX()
         if(r && typeof(r.bindHost)=="function")
             r.bindHost(host);
 
-        if(r && typeof(r.redraw)=="function")
+        if(outputVisible && r && typeof(r.redraw)=="function")
             r.redraw();
 
         return !!r;
@@ -120,11 +118,7 @@ function VidexVideoMUX()
 
     this.isVisible = function()
     {
-        return !!(
-            canvas &&
-            typeof(document)!="undefined" &&
-            document.getElementById("applescreen") === canvas
-        );
+        return outputVisible;
     };
 
     /*
@@ -136,23 +130,15 @@ function VidexVideoMUX()
     {
         var c = ensureCanvas();
         var r = ensureRenderer();
-        if(!c || !r || typeof(document)=="undefined") return false;
+        if(!c || !r) return false;
 
-        var visible = document.getElementById("applescreen");
+        if(typeof(r.setContext)=="function")
+            r.setContext(c.getContext("2d"));
 
-        if(visible === c)
-        {
-            r.redraw();
-            return true;
-        }
+        outputVisible = true;
 
-        if(!visible || !visible.parentNode) return false;
-
-        savedAppleCanvas = visible;
-        savedAppleCanvas.id = "applescreen_apple";
-        c.id = "applescreen";
-
-        visible.parentNode.replaceChild(c,visible);
+        if(typeof(mux._ioRefreshHooks)=="function")
+            mux._ioRefreshHooks();
         r.redraw();
 
         return true;
@@ -160,24 +146,15 @@ function VidexVideoMUX()
 
     this.hide = function()
     {
-        if(!canvas || typeof(document)=="undefined") return false;
+        outputVisible = false;
 
-        var visible = document.getElementById("applescreen");
+        if(typeof(mux._ioRefreshHooks)=="function")
+            mux._ioRefreshHooks();
 
         /*
-         * The motherboard MUX may already have replaced the Videx canvas.
-         * In that case there is nothing for this MUX to restore.
+         * Motherboard video already owns the live canvas. Ask it to repaint
+         * once now that VideoTerm no longer presents on top of it.
          */
-        if(visible !== canvas || !canvas.parentNode || !savedAppleCanvas)
-            return false;
-
-        var parent = canvas.parentNode;
-
-        canvas.id = "videxscreen";
-        savedAppleCanvas.id = "applescreen";
-
-        parent.replaceChild(savedAppleCanvas,canvas);
-        savedAppleCanvas = null;
 
         if(typeof(oApple2Video)!="undefined" &&
            oApple2Video &&
@@ -191,6 +168,8 @@ function VidexVideoMUX()
 
     this.redraw = function()
     {
+        if(!outputVisible) return false;
+
         var r = ensureRenderer();
         return r && typeof(r.redraw)=="function"
             ? r.redraw()
@@ -201,8 +180,12 @@ function VidexVideoMUX()
     {
         var r = ensureRenderer();
 
-        if(r && typeof(r.reset)=="function")
+        if(!r) return true;
+
+        if(outputVisible && typeof(r.reset)=="function")
             r.reset();
+        else if(typeof(r.onVideoChange)=="function")
+            r.onVideoChange(null);
 
         return true;
     };
@@ -214,15 +197,24 @@ function VidexVideoMUX()
      */
     this.cycle = function()
     {
-        var r = ensureRenderer();
+        if(!outputVisible) return false;
 
-        if(r && typeof(r.cycle)=="function")
-            return r.cycle();
+        /*
+         * Apple motherboard video runs earlier in Apple2Plus.cycle(). Since
+         * VideoTerm intentionally shares the same stable canvas in this stage,
+         * present its logical framebuffer once more at the end of the I/O slice.
+         */
+        var c = ensureCanvas();
+        var r = ensureRenderer();
+        if(!c || !r || typeof(r.cycle)!="function")
+            return false;
+
+        return r.cycle(true);
     };
 
     this.isCycleActive = function()
     {
-        return true;
+        return outputVisible;
     };
 
     this.ctrl_dlg = function()
