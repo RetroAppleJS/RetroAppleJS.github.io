@@ -21880,12 +21880,17 @@ function VidexVideoNormal(ctx)
     {
         var rgb = PHOSPHOR_RGB[displaySettings.phosphor]
             || PHOSPHOR_RGB.white;
-        var factor = Math.max(0,Math.min(100,displaySettings.contrast)) / 100;
+        /*
+         * Keep the logical glyph raster at full phosphor intensity.
+         * Display contrast/gain is applied after resampling in present(), where
+         * it can also brighten the gray edge pixels produced by 720->display
+         * interpolation.
+         */
 
         return "rgb("
-            +Math.round(rgb[0]*factor)+","
-            +Math.round(rgb[1]*factor)+","
-            +Math.round(rgb[2]*factor)+")";
+            +rgb[0]+","
+            +rgb[1]+","
+            +rgb[2]+")";
     }
 
     var displayCtx = ctx || null;
@@ -22069,11 +22074,40 @@ function VidexVideoNormal(ctx)
             displayCtx.imageSmoothingQuality = "high";
         displayCtx.fillStyle = "#000000";
         displayCtx.fillRect(0,0,canvas.width,canvas.height);
+
+        /*
+         * Treat the control as display gain:
+         *
+         *   0..100%   -> attenuate the resampled VideoTerm image.
+         *   100%      -> neutral.
+         *   100..200% -> draw the resampled image a second time with additive
+         *                blending. Full-white pixels saturate at white while
+         *                gray interpolation pixels become brighter.
+         *
+         * Applying gain here, rather than making logical RGB values exceed
+         * 255, is what allows values above 100% to have a visible effect.
+         */
+        var gain = Math.max(0,Math.min(200,displaySettings.contrast)) / 100;
+
+        displayCtx.globalCompositeOperation = "source-over";
+        displayCtx.globalAlpha = Math.min(1,gain);
         displayCtx.drawImage(
              logicalCanvas
             ,0,0,logicalCanvas.width,logicalCanvas.height
             ,0,0,canvas.width,canvas.height
         );
+
+        if(gain>1)
+        {
+            displayCtx.globalCompositeOperation = "lighter";
+            displayCtx.globalAlpha = gain-1;
+            displayCtx.drawImage(
+                 logicalCanvas
+                ,0,0,logicalCanvas.width,logicalCanvas.height
+                ,0,0,canvas.width,canvas.height
+            );
+        }
+
         displayCtx.restore();
 
         needsPresent = false;
@@ -22213,14 +22247,15 @@ function VidexVideoNormal(ctx)
 
     this.setContrast = function(value)
     {
-        value = Math.max(0,Math.min(100,Number(value)));
+        value = Math.max(0,Math.min(200,Number(value)));
         if(!Number.isFinite(value)) value = 100;
 
         if(displaySettings.contrast == value)
             return value;
 
         displaySettings.contrast = value;
-        dirtyAll = true;
+        
+        // Contrast/gain is a presentation-stage property; glyphs need no rebuild.
         needsPresent = true;
         return value;
     };
@@ -22462,7 +22497,7 @@ function VidexVideoMUX()
 
     this.setContrast = function(value)
     {
-        value = Math.max(0,Math.min(100,Number(value)));
+        value = Math.max(0,Math.min(200,Number(value)));
         if(!Number.isFinite(value)) value = 100;
         state.contrast = value;
 
@@ -28513,6 +28548,31 @@ function col80card()
         return true;
     };
 
+    /*
+     * Manual peripheral control for the VideoTerm character-cell width.
+     *
+     * This is the same state normally selected by slot-I/O device-select bit 1:
+     *   0 -> 9-dot cell
+     *   1 -> 8-dot cell
+     *
+     * A later real slot-I/O access remains authoritative and may therefore
+     * change this setting again. 8-dot mode is especially useful with fully
+     * inverse character ROMs because there is no unpainted ninth separator dot.
+     */
+    this.setCharacterCellWidth = function(width)
+    {
+        width = Number(width);
+        if(width!==8 && width!==9)
+            return false;
+
+        if(state.cellWidth===width)
+            return width;
+
+        state.cellWidth = width;
+        emitVideoChange("cell-width",-1,width);
+        return width;
+    };
+
     function videoOutputDevice()
     {
         var devices = Array.isArray(videx.devices) ? videx.devices : [];
@@ -28624,10 +28684,11 @@ function col80card()
         if(rows<1 || rows>64) rows = 24;
 
         var contrastID = "videx_contrast_value_"+slotN;
+        var cellWidthID = "videx_cell_width_value_"+slotN;
 
         return ""
             + "<div class=toolbox id=\""+(ctx.toolboxID || ("device_tool_"+ctx.slotID))+"\" hidden>"
-            + "  <div class=appbox style=\"text-align:left;min-height:156px;padding:4px 6px;\">"
+            + "  <div class=appbox style=\"text-align:left;min-height:182px;padding:4px 6px;\">"
             + "    <b>#"+ctx.slotID+" VIDEX VideoTerm</b>"
             + "    <div style=\"display:grid;grid-template-columns:112px minmax(110px,1fr) 46px;gap:5px 6px;align-items:center;margin-top:7px;font-size:11px\">"
 
@@ -28637,9 +28698,16 @@ function col80card()
             + "      </select><span></span>"
 
             + "      <label>Contrast</label>"
-            + "      <input type=\"range\" min=\"0\" max=\"100\" step=\"1\" value=\""+Number(display.contrast)+"\""
+            + "      <input type=\"range\" min=\"0\" max=\"200\" step=\"1\" value=\""+Number(display.contrast)+"\""
             + "       oninput=\""+target+".setDisplayContrast(this.value);document.getElementById('"+contrastID+"').textContent=this.value+'%'\">"
             + "      <span id=\""+contrastID+"\">"+Number(display.contrast)+"%</span>"
+
+            + "      <label>Character cell</label>"
+            + "      <select style=\"min-width:0;width:100%\""
+            + "       onchange=\""+target+".setCharacterCellWidth(this.value);document.getElementById('"+cellWidthID+"').textContent=this.value+'-dot'\">"
+            + "        <option value=\"9\""+(state.cellWidth==9 ? " selected" : "")+">9-dot (normal)</option>"
+            + "        <option value=\"8\""+(state.cellWidth==8 ? " selected" : "")+">8-dot (inverse)</option>"
+            + "      </select><span id=\""+cellWidthID+"\">"+state.cellWidth+"-dot</span>"
 
             + "      <label>Phosphor</label>"
             + "      <select style=\"min-width:0;width:100%\" onchange=\""+target+".setDisplayPhosphor(this.value)\">"
@@ -28653,7 +28721,7 @@ function col80card()
             + "    </div>"
 
             + "    <div style=\"margin-top:7px;font-size:10px;opacity:.75\">"
-            +         columns+"×"+rows+" · "+state.cellWidth+"-dot · Normal Sync"
+            +         columns+"×"+rows+" · Normal Sync"
             + "    </div>"
 
             + "  </div>"
