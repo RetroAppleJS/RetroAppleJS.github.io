@@ -33317,23 +33317,36 @@ function Apple2IO(vid)
 
             function rd_empty(base,label)
             {
-                return function(rel_addr,ctx)
+                var fn = function(rel_addr,ctx)
                 {
-                    if(!isSafeRead(ctx) && bDebug)  //Empty bus / unmapped I/O read. During safe memory scans, stay silent.
-                        console.warn(label + ": RD unmapped address at $" + oCOM.getHexWord(0xC000 + base + rel_addr));
+                    if(!isSafeRead(ctx) && bDebug)
+                        console.warn(
+                            label + ": RD unmapped address at $" +
+                            oCOM.getHexWord(0xC000 + base + rel_addr)
+                        );
+
                     return 0x00;
                 };
+
+                fn._ioEmpty = true;
+                return fn;
             }
 
             function wr_empty(base,label)
             {
-                return function(rel_addr,d8,ctx)
+                var fn = function(rel_addr,d8,ctx)
                 {
                     if(!isSafeRead(ctx) && bDebug)
-                        console.warn(label + ": WR unmapped address at $" + oCOM.getHexWord(0xC000 + base + rel_addr));
+                        console.warn(
+                            label + ": WR unmapped address at $" +
+                            oCOM.getHexWord(0xC000 + base + rel_addr)
+                        );
 
                     return 0x00;
                 };
+
+                fn._ioEmpty = true;
+                return fn;
             }
 
             /*
@@ -33662,7 +33675,13 @@ function mergeActionMap(dst,src)
         };
 
         var fn = CIO.ACTION_MAP.WR[line];
-        if(fn) return fn(rel_addr-line,d8,ctx2);
+
+        /*
+        * Empty-bus WR fillers must not hide a peripheral's dynamic HostROM
+        * write handler or an RD-style soft-switch fallback.
+        */
+        if(fn && fn._ioEmpty!==true)
+            return fn(rel_addr-line,d8,ctx2);
 
         /*
          * $C800-$CFFF is a shared expansion window. Its write target must follow
@@ -33698,7 +33717,13 @@ function mergeActionMap(dst,src)
         * soft-switch side effects when no explicit WR handler exists.
         */
         var rd = CIO.ACTION_MAP.RD[line];
-        if(rd) return rd(rel_addr-line,ctx2);
+        if(rd && rd._ioEmpty!==true) return rd(rel_addr-line,ctx2);
+
+        /*
+        * Nothing real handled the write. Use the installed empty-WR callback
+        * now, so diagnostics remain unchanged for genuinely unmapped writes.
+        */
+        if(fn) return fn(rel_addr-line,d8,ctx2);
         if(!ctx2.bRO) console.warn("CIO.ACTION_MAP.WR["+oCOM.getHexWord(line)+"] I/O call out of bounds (0x"+oCOM.getHexWord(line+0xC000)+")");
 
         return 0x00;
