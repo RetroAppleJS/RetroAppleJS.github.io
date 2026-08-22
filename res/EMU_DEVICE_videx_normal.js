@@ -180,7 +180,15 @@ function VidexVideoNormal(ctx)
 
         var canvas = displayCtx.canvas;
         displayCtx.save();
-        displayCtx.imageSmoothingEnabled = false;
+        /*
+         * The native Normal Sync raster is 720x216 (80 x 9-dot cells).
+         * RetroAppleJS' shared display canvas is smaller, so nearest-neighbour
+         * downscaling can entirely drop one-pixel glyph strokes. Match the
+         * proven Videx ROM viewer and use high-quality resampling here.
+         */
+        displayCtx.imageSmoothingEnabled = true;
+        if(displayCtx.imageSmoothingQuality !== undefined)
+            displayCtx.imageSmoothingQuality = "high";
         displayCtx.fillStyle = "#000000";
         displayCtx.fillRect(0,0,canvas.width,canvas.height);
         displayCtx.drawImage(
