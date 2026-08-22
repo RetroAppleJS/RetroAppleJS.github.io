@@ -28,6 +28,7 @@ function GamePort()
     this.state = {
          "paddles":[127,127,0,0]
         ,"switches":[false,false,false]
+        ,"shiftKeyMod":true
     };
 
     /*
@@ -75,6 +76,33 @@ function GamePort()
     function isAppleScreen(target)
     {
         return target && target.id == "applescreen";
+    }
+
+    function shiftKeyPressed()
+    {
+        /*
+         * The classic Apple II one-wire Shift-key modification feeds the
+         * keyboard Shift state to PB2/SW2 ($C063). VideoTerm firmware 2.4 uses
+         * that line while its CTRL-A lower-case mode is active.
+         *
+         * Both host and virtual keyboards keep their modifier state in the
+         * live A2KBD device; combine both modifier banks here.
+         */
+        if(typeof(apple2plus)!=="object" || !apple2plus
+            || typeof(apple2plus.keysObj)!=="function")
+            return false;
+
+        var keyboard = apple2plus.keysObj();
+        var ed = keyboard && keyboard.events_data;
+        if(!ed || !ed.metabitsEn || !Array.isArray(ed.metabits))
+            return false;
+
+        var shiftBit = Number(ed.metabitsEn["Shift"]) || 0;
+        var modifiers =
+              (Number(ed.metabits[0]) || 0)
+            | (Number(ed.metabits[1]) || 0);
+
+        return shiftBit!==0 && (modifiers & shiftBit)!==0;
     }
 
     function updatePointer(event)
@@ -154,6 +182,18 @@ function GamePort()
     {
         var input = Number(rel_addr) & 0x0F;
 
+        /*
+         * $C063 / SW2 is occupied by the traditional one-wire Shift-key
+         * modification when enabled.
+         *
+         * VideoTerm's KEYSTA routine treats bit 7 high as "Shift released"
+         * and bit 7 low as "Shift held". Without this wiring RetroAppleJS
+         * leaves SW2 low, so CTRL-A can toggle FLAGS bit 6 correctly while
+         * subsequent letters still look permanently shifted/upper-case.
+         */
+        if(input===0x03 && gameport.state.shiftKeyMod)
+            return shiftKeyPressed() ? 0x00 : 0x80;
+
         // $C061-$C063: SW0-SW2. The input state is returned in bit 7.
         if(input>=0x01 && input<=0x03)
             return gameport.state.switches[input-1] ? 0x80 : 0x00;
@@ -180,6 +220,12 @@ function GamePort()
         this.reset();
     };
 
+    this.setShiftKeyMod = function(flag)
+    {
+        gameport.state.shiftKeyMod = !!flag;
+        return gameport.state.shiftKeyMod;
+    };
+
     this.ctrl_dlg = function()
     {
         return ""
@@ -197,6 +243,7 @@ function GamePort()
             +"X → PDL0 ($C064)<br>"
             +"Y → PDL1 ($C065)<br>"
             +"B → SW0 ($C061, bit 7)<br>"
+            +"SHIFT → SW2 ($C063, one-wire shift-key mod)<br>"
             +"PTRIG ($C070) starts the paddle timers"
             +"</div>"
             +"</div>";
