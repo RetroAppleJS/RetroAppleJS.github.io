@@ -20945,7 +20945,13 @@ function Apple2VideoMUX(canvas)
         mix: false,
         page2: false,
         hires: false,
-        chrome: 0
+        chrome: 0,
+
+        /*
+         * Apple annunciator zero is an input to the optional Videx Soft Video
+         * Switch. Firmware 2.4 drives it through $C058/$C059.
+         */
+        annunciator0: false
     };
 
     this.state.charRomKey = defaultCharRomKey;
@@ -21011,6 +21017,61 @@ function Apple2VideoMUX(canvas)
     this.deviceSelectionInitialised = false;
 
     var deviceSelectionListeners = [];
+
+    var outputSignalListeners = [];
+
+    /*
+     * Output-signal observers are intentionally separate from renderer-device
+     * selection. They describe motherboard signals seen by external hardware
+     * such as the Videx Soft Video Switch.
+     */
+    this.subscribeOutputSignals = function(callback)
+    {
+        if(typeof(callback)!="function")
+            return function(){};
+
+        if(outputSignalListeners.indexOf(callback)<0)
+            outputSignalListeners.push(callback);
+
+        var subscribed = true;
+
+        return function()
+        {
+            if(!subscribed) return;
+            subscribed = false;
+
+            var index = outputSignalListeners.indexOf(callback);
+            if(index>=0) outputSignalListeners.splice(index,1);
+        };
+    };
+
+    function emitOutputSignalsChanged(reason)
+    {
+        var event = {
+             "type":"video-output-signals-changed"
+            ,"reason":reason || ""
+            ,"annunciator0":!!mux.state.annunciator0
+            ,"gfx":!!mux.state.gfx
+        };
+
+        var listeners = outputSignalListeners.slice();
+        for(var i=0;i<listeners.length;i++)
+        {
+            try { listeners[i](event); }
+            catch(err) { console.error("Video output-signal listener failed",err); }
+        }
+    }
+
+    this.setAnnunciator0 = function(flag)
+    {
+        var next = !!flag;
+        if(this.state.annunciator0 === next)
+            return this.state.annunciator0;
+
+        this.state.annunciator0 = next;
+        emitOutputSignalsChanged("annunciator0");
+        return this.state.annunciator0;
+    };
 
     this.subscribeDeviceSelection = function(callback)
     {
@@ -21559,9 +21620,23 @@ function Apple2VideoMUX(canvas)
 
     this.setGfx = function(flag)
     {
-        this.state.gfx = !!flag;
+        var next = !!flag;
+        var changed = this.state.gfx !== next;
+        this.state.gfx = next;
+
+        var result;
         if(this.ensureActive() && typeof(this.active.setGfx) == "function")
-            return this.active.setGfx(this.state.gfx);
+            result = this.active.setGfx(this.state.gfx);
+
+        /*
+         * The Videx Soft Video Switch's color-killer input forces motherboard
+         * video whenever Apple color graphics is active. Notify observers only
+         * when the motherboard graphics state actually changes.
+         */
+        if(changed)
+            emitOutputSignalsChanged("gfx");
+
+        return result;
     };
 
     this.setMix = function(flag)
@@ -22102,6 +22177,58 @@ function VidexVideoMUX()
     var renderer = null;
     var outputVisible = false;
 
+    var appleVideo = null;
+    var unsubscribeOutputSignals = null;
+
+    /*
+     * Videx Soft Video Switch truth table from the VideoTerm manual:
+     *
+     *   Apple color graphics active -> motherboard video
+     *   otherwise AN0 off          -> motherboard video
+     *   otherwise AN0 on           -> VideoTerm video
+     */
+    function applySoftVideoSwitch(signals)
+    {
+        signals = signals || (appleVideo ? appleVideo.state : null) || {};
+
+        var selectVidex =
+            signals.annunciator0 === true &&
+            signals.gfx !== true;
+
+        return selectVidex ? mux.show() : mux.hide();
+    }
+
+    function bindAppleVideoSignals()
+    {
+        var video =
+            typeof(oApple2Video)!="undefined"
+                ? oApple2Video
+                : null;
+
+        if(appleVideo === video && unsubscribeOutputSignals)
+        {
+            applySoftVideoSwitch();
+            return true;
+        }
+
+        if(unsubscribeOutputSignals)
+        {
+            unsubscribeOutputSignals();
+            unsubscribeOutputSignals = null;
+        }
+
+        appleVideo = video;
+
+        if(!appleVideo || typeof(appleVideo.subscribeOutputSignals)!="function")
+            return false;
+
+        unsubscribeOutputSignals =
+            appleVideo.subscribeOutputSignals(applySoftVideoSwitch);
+
+        applySoftVideoSwitch();
+        return true;
+    }
+
     function ensureCanvas()
     {
         if(typeof(document)=="undefined") return null;
@@ -22170,6 +22297,8 @@ function VidexVideoMUX()
         if(r && typeof(r.bindHost)=="function")
             r.bindHost(host);
 
+        bindAppleVideoSignals();
+
         if(outputVisible && r && typeof(r.redraw)=="function")
             r.redraw();
 
@@ -22211,6 +22340,9 @@ function VidexVideoMUX()
         if(typeof(r.setContext)=="function")
             r.setContext(c.getContext("2d"));
 
+        if(outputVisible)
+            return true;
+
         outputVisible = true;
 
         if(typeof(mux._ioRefreshHooks)=="function")
@@ -22222,6 +22354,8 @@ function VidexVideoMUX()
 
     this.hide = function()
     {
+        if(!outputVisible)
+            return true;
         outputVisible = false;
 
         if(typeof(mux._ioRefreshHooks)=="function")
@@ -22255,6 +22389,13 @@ function VidexVideoMUX()
     this.reset = function()
     {
         var r = ensureRenderer();
+        /*
+         * Apple reset clears annunciator zero. AppleBoard publishes that state,
+         * but resynchronise here as well so restart/reset ordering cannot leave
+         * a stale VideoTerm selection.
+         */
+        bindAppleVideoSignals();
+        applySoftVideoSwitch();
 
         if(!r) return true;
 
@@ -22297,7 +22438,7 @@ function VidexVideoMUX()
     {
         return ""
             +"<div style=\"padding:4px\">"
-            +"VideoTerm output is separate from motherboard video.<br><br>"
+            +"Videx Soft Video Switch follows $C058/$C059 and Apple graphics mode.<br><br>"
             +"<button class=\"appbut\" "
             +"onclick=\"oEMU.component.IO.VidexVideo.show()\">Show VideoTerm</button> "
             +"<button class=\"appbut\" "
@@ -33247,7 +33388,19 @@ function AppleBoard()
             "TXTPAGE1": function(ctx){ if(!isRO(ctx)) ctx.vid.setPage2(false);    return 0x00; },
             "TXTPAGE2": function(ctx){ if(!isRO(ctx)) ctx.vid.setPage2(true);     return 0x00; },
             "LORES":    function(ctx){ if(!isRO(ctx)) ctx.vid.setHires(false);    return 0x00; },
-            "HIRES":    function(ctx){ if(!isRO(ctx)) ctx.vid.setHires(true);     return 0x00; }
+            "HIRES":    function(ctx){ if(!isRO(ctx)) ctx.vid.setHires(true);     return 0x00; },
+
+            /*
+             * $C058 clears annunciator zero and selects motherboard video.
+             * $C059 sets annunciator zero and selects VideoTerm whenever the
+             * Apple color-killer permits monochrome output.
+             *
+             * Keep this as motherboard state. The optional VideoTerm output
+             * selector subscribes to the video MUX signal instead of decoding
+             * PR#3/PR#0 commands.
+             */
+            "AN0OFF":   function(ctx){ if(!isRO(ctx) && ctx.vid && typeof(ctx.vid.setAnnunciator0)=="function") ctx.vid.setAnnunciator0(false); return 0x00; },
+            "AN0ON":    function(ctx){ if(!isRO(ctx) && ctx.vid && typeof(ctx.vid.setAnnunciator0)=="function") ctx.vid.setAnnunciator0(true);  return 0x00; }
         };
   
         var IOMAP_ID = null;
@@ -33366,7 +33519,9 @@ function AppleBoard()
             0x4: IOMAP_CALLS["TXTPAGE1"],
             0x5: IOMAP_CALLS["TXTPAGE2"],
             0x6: IOMAP_CALLS["LORES"],
-            0x7: IOMAP_CALLS["HIRES"]
+            0x7: IOMAP_CALLS["HIRES"],
+            0x8: IOMAP_CALLS["AN0OFF"],
+            0x9: IOMAP_CALLS["AN0ON"]
         };
 
         var output = {
@@ -33398,6 +33553,23 @@ function AppleBoard()
         
     }
 
+    function resetAnnunciator0()
+    {
+        var video =
+            typeof(oApple2Video)!="undefined"
+                ? oApple2Video
+                : null;
+
+        if(video && typeof(video.setAnnunciator0)=="function")
+            video.setAnnunciator0(false);
+    }
+
+    this.reset = function()
+    {
+        resetAnnunciator0();
+        return true;
+    };
+
     this.restart = function()
     {
         var video =
@@ -33406,6 +33578,8 @@ function AppleBoard()
                 : null;
 
         this.bindVideoSelection(video);
+        resetAnnunciator0();
+        return true;
     };
 
     this.getBoardIORows = function(model)
