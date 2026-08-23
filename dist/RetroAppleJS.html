@@ -22402,9 +22402,228 @@ function VidexVideoNormal(ctx)
 // canvas. Stage 4 can formalise a persistent Apple/VideoTerm output selector.
 //
 
-function VidexVideoMUX()
+function VidexVideoMUX(deviceInfo)
 {
     var mux = this;
+
+    deviceInfo = deviceInfo || {};
+
+    /*
+     * VidexVideoMUX is the common constructor for two declarative Videx
+     * devices:
+     *
+     *   VIDEXVID  - existing VideoTerm video-output MUX
+     *   VIDEXTXT  - Unicode text input / active-character-ROM glyph mapper
+     *
+     * Apple2IO passes deviceConfig to the constructor and then applies the
+     * authoritative id metadata after construction.
+     */
+    var configuredDCODE =
+        String(deviceInfo.DCODE || "VIDEXVID").toUpperCase();
+
+    /*
+     * Text-input role. Keep this deliberately separate from the video-output
+     * machinery below: accepting text must not instantiate a renderer, claim a
+     * canvas, subscribe to display signals, or write directly to VideoTerm
+     * VRAM.
+     */
+    if(configuredDCODE=="VIDEXTXT")
+    {
+        var textHost = null;
+        var glyphQueue = [];
+        var lastMapping = {
+             "romKey":null
+            ,"glyphs":[]
+            ,"unsupported":[]
+        };
+
+        this.id = {
+             "DCODE":"VIDEXTXT"
+            ,"coID":"VidexVideoMUX"
+            ,"hostPCODE":"VIDEX"
+            ,"icon":"fa fa-keyboard"
+            ,"description":"Videx VideoTerm Unicode text input"
+            ,"deviceEnable":true
+        };
+
+        this.ports = {
+            "text":{
+                 "direction":"in"
+                ,"mime":["text/plain"]
+                ,"handler":"receiveText"
+                ,"description":"Unicode text mapped through the active VideoTerm character ROM"
+            }
+        };
+
+        this.bindHost = function(card)
+        {
+            textHost = card || null;
+            return !!textHost;
+        };
+
+        function reverseUnicodeMap(rom)
+        {
+            var reverse = Object.create(null);
+            var unicode =
+                rom && Array.isArray(rom.unicode)
+                    ? rom.unicode
+                    : [];
+
+            /*
+             * Prefer the identity code where possible. Several VideoTerm ROMs
+             * contain duplicate visual mappings (SPACE is the obvious case);
+             * U+0020 should resolve to glyph $20 rather than an unrelated blank
+             * line-drawing/control cell.
+             */
+            for(var i=0;i<unicode.length;i++)
+            {
+                var cp = unicode[i];
+                if(Number.isInteger(cp) && cp==i)
+                    reverse[cp] = i;
+            }
+
+            /*
+             * Fill every remaining Unicode scalar from the first glyph that
+             * represents it. Existing identity choices are intentionally kept.
+             */
+            for(var j=0;j<unicode.length;j++)
+            {
+                var cp2 = unicode[j];
+                if(!Number.isInteger(cp2)) continue;
+                if(reverse[cp2]===undefined)
+                    reverse[cp2] = j;
+            }
+
+            return reverse;
+        }
+
+        this.mapTextToGlyphs = function(text)
+        {
+            text = String(text==null ? "" : text)
+                .replace(/\r\n/g,"\n")
+                .replace(/\r/g,"\n");
+
+            var rom =
+                textHost && typeof(textHost.getCharacterROM)=="function"
+                    ? textHost.getCharacterROM()
+                    : null;
+
+            var reverse = reverseUnicodeMap(rom);
+            var glyphs = [];
+            var unsupported = [];
+
+            for(var offset=0;offset<text.length;offset++)
+            {
+                var cp = text.codePointAt(offset);
+                var charLength = cp>0xFFFF ? 2 : 1;
+                var glyph;
+
+                /*
+                 * A host newline represents the VideoTerm RETURN input code.
+                 * All printable characters are resolved strictly through the
+                 * active character-ROM Unicode metadata.
+                 */
+                if(cp==0x0A)
+                    glyph = 0x0D;
+                else
+                    glyph = reverse[cp];
+
+                if(glyph===undefined)
+                {
+                    unsupported.push({
+                         "offset":offset
+                        ,"codePoint":cp
+                        ,"character":String.fromCodePoint(cp)
+                    });
+                }
+                else
+                    glyphs.push(glyph & 0x7F);
+
+                offset += charLength-1;
+            }
+
+            return {
+                 "romKey":rom && rom.key ? rom.key : null
+                ,"glyphs":glyphs
+                ,"unsupported":unsupported
+            };
+        };
+
+        this.receiveText = function(message)
+        {
+            var result = this.mapTextToGlyphs(
+                message && message.data!==undefined
+                    ? message.data
+                    : ""
+            );
+
+            for(var i=0;i<result.glyphs.length;i++)
+                glyphQueue.push(result.glyphs[i]);
+
+            lastMapping = {
+                 "romKey":result.romKey
+                ,"glyphs":result.glyphs.slice()
+                ,"unsupported":result.unsupported.slice()
+            };
+
+            if(result.unsupported.length &&
+               typeof(console)!="undefined" &&
+               console.warn)
+            {
+                console.warn(
+                    "VIDEXTXT:text skipped " +
+                    result.unsupported.length +
+                    " character" +
+                    (result.unsupported.length==1 ? "" : "s") +
+                    " not present in " +
+                    (result.romKey || "the active VideoTerm character ROM"),
+                    result.unsupported
+                );
+            }
+
+            return true;
+        };
+
+        this.getGlyphQueue = function()
+        {
+            return glyphQueue.slice();
+        };
+
+        this.drainGlyphQueue = function(count)
+        {
+            if(count===undefined || count===null)
+                count = glyphQueue.length;
+
+            count = Math.max(0,Math.min(
+                glyphQueue.length,
+                Number(count) || 0
+            ));
+
+            return glyphQueue.splice(0,count);
+        };
+
+        this.getLastTextMapping = function()
+        {
+            return {
+                 "romKey":lastMapping.romKey
+                ,"glyphs":lastMapping.glyphs.slice()
+                ,"unsupported":lastMapping.unsupported.slice()
+            };
+        };
+
+        this.reset = function()
+        {
+            glyphQueue.length = 0;
+            lastMapping = {
+                 "romKey":null
+                ,"glyphs":[]
+                ,"unsupported":[]
+            };
+            return true;
+        };
+
+        return;
+    }
 
     this.id = {
          "DCODE":"VIDEXVID"
@@ -27397,6 +27616,13 @@ function col80card()
             ,"description":"Videx VideoTerm video output"
             ,"range":"HostROM"
             ,"action":{}
+        }
+        ,{
+             "DCODE":"VIDEXTXT"
+            ,"hostPCODE":"VIDEX"
+            ,"coID":"VidexVideoMUX"
+            ,"icon":"fa fa-keyboard"
+            ,"description":"Videx VideoTerm Unicode text input"
         }
     ];
 
@@ -36841,7 +37067,12 @@ function mergeActionMap(dst,src)
             var Device = globalThis[device_info.coID];
             if(typeof(Device)!="function") return null;
 
-            device = new Device();
+            /*
+             * Pass the declarative device metadata to the constructor.
+             * Existing constructors may ignore it; multi-role constructors such
+             * as VidexVideoMUX can use DCODE to instantiate the correct role.
+             */
+            device = new Device(device_info);
             if(!device.id) device.id = {};
             if(device.id.DCODE && device.id.DCODE != dcode) return null;
             if(device.id.hostPCODE && device.id.hostPCODE != hostPCODE) return null;
