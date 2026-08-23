@@ -55,6 +55,7 @@ function VidexVideoMUX(deviceInfo)
                  "direction":"in"
                 ,"mime":["text/plain"]
                 ,"handler":"receiveText"
+                ,"open":"isTextPortOpen"
                 ,"description":"Unicode text mapped through the active VideoTerm character ROM"
             }
         };
@@ -64,6 +65,12 @@ function VidexVideoMUX(deviceInfo)
             textHost = card || null;
             return !!textHost;
         };
+
+        this.isTextPortOpen = function()
+        {
+            return !!textHost &&
+                (!textHost.state || textHost.state.active!==false);
+        }
 
         function reverseUnicodeMap(rom)
         {

@@ -181,15 +181,14 @@
 
               <div style="height:30px;padding:0px 90px 0px 0px;">
                 <button class=appbut value="Settings" onclick="javascript:oCOM.POPUP.runRule('tab1.1');" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
-                <button class=appbut value="Tools"    onclick="javascript:oCOM.POPUP.runRule('tab1.2');" title="Tools"><i class="fa fa-toolbox"></i></button>
-              </div>
+                <button class=appbut value="Tools"    onclick="javascript:oCOM.POPUP.runRule('tab1.2');onBoardPasteRefresh();" title="Tools"><i class="fa fa-toolbox"></i></button>              </div>
   
               <!--  TOOLS TAB WINDOW -->
               <div class="popupHost" id="tab1.2">
                 <!--  PASTE-BOARD TOOLBOX -->
                 <div class=toolbox>
                 <form name="EMUboard">
-                  <textarea cols=40 rows=4 placeholder="Paste here" name=boardText style="float:left"></textarea><br>
+                  <textarea id="EMUboardText" cols=40 rows=4 placeholder="Paste here → 0:A2KBD:text" name=boardText style="float:left"></textarea><br>
                   <input type="button"  value="Paste"              onclick="javascript:oCOM.POPUP.toggle('tab1.2');oEMUI.pauseBtn({id:'pausebutton',class1:'fa-play',class2:'fa-pause',pause:false});onBoardPaste()">
                   <input type="button"  value="TxtCap" id=TxtCapture onclick="javascript:onTxtCapture(this)">
                   <input type="button"  value="MemCap" id=MemCapture onclick="javascript:onMemCapture('CapF','CapT')">
@@ -392,26 +391,69 @@
               return (style.display === 'none')
             }
 
+            function onBoardPasteIO()
+            {
+              return typeof(apple2plus)=="object" && apple2plus
+                  ? apple2plus.hwObj().io
+                  : null;
+            }
+
+            function onBoardPasteDevice(io)
+            {
+              if(!io || typeof(io.pipeResolve)!="function") return null;
+
+              var source = io.pipeResolve("0:PASTEBO:text");
+              return source ? source.device : null;
+            }
+
+            function onBoardPasteTarget()
+            {
+              var io = onBoardPasteIO();
+              var pasteboard = onBoardPasteDevice(io);
+
+              return pasteboard && typeof(pasteboard.getTargetAddress)=="function"
+                  ? pasteboard.getTargetAddress(io)
+                  : "0:A2KBD:text";
+            }
+
+            function onBoardPasteRefresh()
+            {
+              var target = onBoardPasteTarget();
+              var textarea = document.getElementById("EMUboardText");
+
+              if(textarea)
+              {
+                textarea.placeholder = "Paste here → " + target;
+                textarea.title = "Pasteboard pipe: 0:PASTEBO:text → " + target;
+              }
+
+              return target;
+            }
+
+            oCOM.addToEventStack("onload",onBoardPasteRefresh);
+
             function onBoardPaste()
             {
-              var io =
-                typeof(apple2plus)=="object" && apple2plus
-                    ? apple2plus.hwObj().io
-                    : null;
+              var io = onBoardPasteIO();
+              var pasteboard = onBoardPasteDevice(io); 
 
               if(!io || typeof(io.pipeSend)!="function")
               {
                 console.error("Apple2IO pipe router is not available");
                 return false;
               }
+              if(!pasteboard || typeof(pasteboard.sendText)!="function")
+              {
+                console.error("PASTEBO device is not attached to A2BO");
+                return false;
+              }
 
-              return io.pipeSend(
-                  "0:PASTEBO:text",
-                  "0:A2KBD:text",
-                  {
-                      "mime":"text/plain",
-                      "data":EMUboard.boardText.value
-                  }
+              onBoardPasteRefresh();
+
+              return pasteboard.sendText(
+                  io,
+                  EMUboard.boardText.value
+
               );
             }
 

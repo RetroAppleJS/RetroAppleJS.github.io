@@ -456,6 +456,71 @@ function mergeActionMap(dst,src)
         return false;
     }
 
+    function pipeDevice(owner,DCODE)
+    {
+        var devices = owner && Array.isArray(owner.devices) ? owner.devices : [];
+
+        for(var i=0;i<devices.length;i++)
+            if(String(devices[i]?.id?.DCODE || "").toUpperCase()==DCODE)
+                return devices[i];
+
+        return null;
+    }
+
+    function pipeDeviceAtSlot(slotAddress,DCODE)
+    {
+        slotAddress = Number(slotAddress);
+        if(!Number.isInteger(slotAddress) || slotAddress<0) return null;
+
+        if(slotAddress==0)
+        {
+            var board = io.SLOT2obj(0);
+            var boardDevice = pipeDevice(board,DCODE);
+
+            if(boardDevice)
+                return {
+                     "slotIndex":0
+                    ,"owner":board
+                    ,"device":boardDevice
+                };
+        }
+
+        var slotIndex = slotAddress + 1;
+        var owner = io.SLOT2obj(slotIndex);
+        var device = pipeDevice(owner,DCODE);
+
+        return device
+            ? {
+                 "slotIndex":slotIndex
+                ,"owner":owner
+                ,"device":device
+              }
+            : null;
+    }
+
+    function pipeEndpointOpen(endpoint)
+    {
+        if(!endpoint || !endpoint.port) return false;
+
+        var open = endpoint.port.open;
+
+        if(open===undefined || open===null) return true;
+        if(typeof(open)=="boolean") return open;
+
+        if(typeof(open)=="string")
+        {
+            var method = endpoint.device && endpoint.device[open];
+            return typeof(method)=="function"
+                ? method.call(endpoint.device,endpoint)!==false
+                : false;
+        }
+
+        if(typeof(open)=="function")
+            return open.call(endpoint.device,endpoint)!==false;
+
+        return !!open;
+    }
+
     this.pipeResolve = function(address)
     {
         var match =
@@ -467,20 +532,14 @@ function mergeActionMap(dst,src)
         var slotN = Number(match[1]);
         var DCODE = match[2].toUpperCase();
         var requestedPort = match[3];
-        var owner = this.SLOT2obj(slotN);
-        var devices = owner && Array.isArray(owner.devices) ? owner.devices : [];
-        var device = null;
+        var resolved = pipeDeviceAtSlot(slotN,DCODE);
+        if(!resolved) return null;
+        
+        var owner = resolved.owner;
+        var device = resolved.device;
 
-        for(var i=0;i<devices.length;i++)
-        {
-            if(String(devices[i]?.id?.DCODE || "").toUpperCase()==DCODE)
-            {
-                device = devices[i];
-                break;
-            }
-        }
+        if(!device.ports) return null;
 
-        if(!device || !device.ports) return null;
 
         var portName = null;
         var requestedLower = requestedPort.toLowerCase();
@@ -499,6 +558,7 @@ function mergeActionMap(dst,src)
         return {
              "address":slotN+":"+DCODE+":"+portName
             ,"slotN":slotN
+            ,"slotIndex":resolved.slotIndex
             ,"owner":owner
             ,"device":device
             ,"DCODE":DCODE
@@ -506,6 +566,11 @@ function mergeActionMap(dst,src)
             ,"port":device.ports[portName]
         };
     };
+
+    this.pipeIsOpen = function(address)
+    {
+        return pipeEndpointOpen(this.pipeResolve(address));
+    }
 
     this.pipeSend = function(sourceAddress,targetAddress,message)
     {
@@ -519,6 +584,18 @@ function mergeActionMap(dst,src)
                 sourceAddress,
                 targetAddress
             );
+            return false;
+        }
+
+        if(!pipeEndpointOpen(source))
+        {
+            console.error("Apple2IO.pipeSend: source port is closed",source.address);
+            return false;
+        }
+
+        if(!pipeEndpointOpen(target))
+        {
+            console.error("Apple2IO.pipeSend: target port is closed",target.address);
             return false;
         }
 
