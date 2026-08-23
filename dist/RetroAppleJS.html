@@ -22765,6 +22765,36 @@ function VidexVideoMUX()
 }
 
 </script>
+            <script type="text/javascript">
+//
+// Copyright (c) 2026 Freddy Vandriessche.
+// All rights reserved.
+//
+// EMU_DEVICE_pasteboard.js
+//
+// Host-side pasteboard device owned by A2BO.
+// The HTML textarea is only a UI for this device; data leaves the device
+// through its published text/plain output port.
+//
+
+function PasteBoard()
+{
+    this.id = {
+         "DCODE":"PASTEBO"
+        ,"hostPCODE":"A2BO"
+        ,"icon":"fa fa-clipboard"
+    };
+
+    this.ports = {
+        "text":{
+             "direction":"out"
+            ,"mime":["text/plain"]
+            ,"description":"Host pasteboard text"
+        }
+    };
+}
+</script>
+
 
             <script type="text/javascript">
 // 2022 Adaptation by Freddy Vandriessche, from Thomas Skibo.
@@ -35047,6 +35077,13 @@ function AppleBoard()
              }
          }
         ,{
+             "DCODE":"PASTEBO"
+            ,"hostPCODE":"A2BO"
+            ,"coID":"PasteBoard"
+            ,"icon":"fa fa-clipboard"
+            ,"description":"Host pasteboard"
+         }
+        ,{
              "DCODE":"A2SPK"
             ,"hostPCODE":"A2BO"
             ,"coID":"AppleSpeaker"
@@ -36009,6 +36046,202 @@ function mergeActionMap(dst,src)
 
         return obj_arr;
     }
+
+    /*
+     * Pipe addresses identify one named port on one child device:
+     *
+     *     <slot>:<DCODE>:<port>
+     *
+     * The first live connection is:
+     *
+     *     0:PASTEBO:text  ->  0:A2KBD:text
+     *
+     * Apple2IO only resolves endpoints and validates their contracts.  Payload
+     * interpretation belongs to the destination device.
+     */
+    function pipeMimeBase(mime)
+    {
+        return String(mime || "")
+            .split(";")[0]
+            .trim()
+            .toLowerCase();
+    }
+
+    function pipeMimeList(port)
+    {
+        if(!port || port.mime===undefined || port.mime===null) return [];
+
+        var list = Array.isArray(port.mime) ? port.mime : [port.mime];
+        var out = [];
+
+        for(var i=0;i<list.length;i++)
+        {
+            var mime = pipeMimeBase(list[i]);
+            if(mime) out.push(mime);
+        }
+
+        return out;
+    }
+
+    function pipeMimeSupported(port,mime)
+    {
+        mime = pipeMimeBase(mime);
+        if(!mime) return false;
+
+        var list = pipeMimeList(port);
+        var slash = mime.indexOf("/");
+        var major = slash>=0 ? mime.substring(0,slash) : mime;
+
+        for(var i=0;i<list.length;i++)
+        {
+            if(list[i]=="*/*" || list[i]==mime) return true;
+            if(list[i]==major+"/*") return true;
+        }
+
+        return false;
+    }
+
+    function pipeDirectionAllows(port,flow)
+    {
+        var direction = String(port && port.direction || "").toLowerCase();
+
+        if(direction=="duplex") return true;
+        if(flow=="in")  return direction=="in"  || direction=="input";
+        if(flow=="out") return direction=="out" || direction=="output";
+
+        return false;
+    }
+
+    this.pipeResolve = function(address)
+    {
+        var match =
+            /^(\d+):([A-Za-z0-9_-]+):([A-Za-z0-9_.-]+)$/
+            .exec(String(address || "").trim());
+
+        if(!match) return null;
+
+        var slotN = Number(match[1]);
+        var DCODE = match[2].toUpperCase();
+        var requestedPort = match[3];
+        var owner = this.SLOT2obj(slotN);
+        var devices = owner && Array.isArray(owner.devices) ? owner.devices : [];
+        var device = null;
+
+        for(var i=0;i<devices.length;i++)
+        {
+            if(String(devices[i]?.id?.DCODE || "").toUpperCase()==DCODE)
+            {
+                device = devices[i];
+                break;
+            }
+        }
+
+        if(!device || !device.ports) return null;
+
+        var portName = null;
+        var requestedLower = requestedPort.toLowerCase();
+
+        for(var name in device.ports)
+        {
+            if(String(name).toLowerCase()==requestedLower)
+            {
+                portName = name;
+                break;
+            }
+        }
+
+        if(portName===null) return null;
+
+        return {
+             "address":slotN+":"+DCODE+":"+portName
+            ,"slotN":slotN
+            ,"owner":owner
+            ,"device":device
+            ,"DCODE":DCODE
+            ,"portName":portName
+            ,"port":device.ports[portName]
+        };
+    };
+
+    this.pipeSend = function(sourceAddress,targetAddress,message)
+    {
+        var source = this.pipeResolve(sourceAddress);
+        var target = this.pipeResolve(targetAddress);
+
+        if(!source || !target)
+        {
+            console.error(
+                "Apple2IO.pipeSend: unresolved pipe endpoint",
+                sourceAddress,
+                targetAddress
+            );
+            return false;
+        }
+
+        if(!pipeDirectionAllows(source.port,"out"))
+        {
+            console.error("Apple2IO.pipeSend: source port is not an output",source.address);
+            return false;
+        }
+
+        if(!pipeDirectionAllows(target.port,"in"))
+        {
+            console.error("Apple2IO.pipeSend: target port is not an input",target.address);
+            return false;
+        }
+
+        var envelope = Object.assign({},message || {});
+        var mime = pipeMimeBase(envelope.mime);
+
+        if(!mime)
+        {
+            var sourceMimes = pipeMimeList(source.port);
+            mime = sourceMimes.length ? sourceMimes[0] : "";
+        }
+
+        if(!pipeMimeSupported(source.port,mime) ||
+           !pipeMimeSupported(target.port,mime))
+        {
+            console.error(
+                "Apple2IO.pipeSend: incompatible MIME type",
+                mime,
+                source.address,
+                target.address
+            );
+            return false;
+        }
+
+        envelope.mime = mime;
+
+        var handler = target.port.handler;
+
+        if(typeof(handler)=="string")
+            handler = target.device[handler];
+
+        if(typeof(handler)!="function" && typeof(target.device.pipeReceive)=="function")
+            handler = target.device.pipeReceive;
+
+        if(typeof(handler)!="function")
+        {
+            console.error(
+                "Apple2IO.pipeSend: target port has no receiver",
+                target.address
+            );
+            return false;
+        }
+
+        var result = handler.call(
+            target.device,
+            envelope,
+            {
+                 "io":this
+                ,"source":source
+                ,"target":target
+            }
+        );
+
+        return result===undefined ? true : result;
+    };
 
     function emptyActionMap()
     {
@@ -38539,6 +38772,20 @@ function A2Pkeys()
 {
     this.id = {"DCODE":"A2KBD", "hostPCODE":"A2BO", "icon":"fa fa-keyboard"};
 
+    this.ports = {
+        "text":{
+             "direction":"in"
+            ,"mime":["text/plain"]
+            ,"handler":"receiveText"
+            ,"description":"Apple II keyboard text input"
+        }
+    };
+
+    // Text arriving through 0:A2KBD:text is translated when accepted and then
+    // delivered through the normal keyboard latch/strobe path.
+    this._pipeQueue = [];
+    this._pipePos = 0;
+
     //this.hw = hw;
     this.bDebug = false;
     this.active = true;
@@ -38586,6 +38833,8 @@ function A2Pkeys()
     this.reset = function()
     {
         this.lastkey = 0x00;
+        this._pipeQueue.length = 0;
+        this._pipePos = 0;
         this.events_data.metabits = [0,0];  // trigger init of keyboard modifier states (capslock, shift, control...)
 
         //window.keycap_over  = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"over"});    // function overload
@@ -38604,6 +38853,50 @@ function A2Pkeys()
             this.lastkey = data.keyCode | 0x80;
     }
 
+    this.receiveText = function(message)
+    {
+        var text =
+            message && message.data!==undefined
+                ? String(message.data)
+                : "";
+
+        // Keep the pipe payload as Unicode up to the destination.  A2KBD owns
+        // the Apple II+ keyboard mapping: normalize host line endings, turn
+        // lowercase ASCII into the uppercase keys available on the Apple II+
+        // keyboard, and reject characters that have no 7-bit keyboard code.
+        text = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n");
+
+        if(this._pipePos >= this._pipeQueue.length)
+        {
+            this._pipeQueue.length = 0;
+            this._pipePos = 0;
+        }
+
+        var skipped = 0;
+
+        for(var i=0;i<text.length;i++)
+        {
+            var code = text.codePointAt(i);
+            if(code>0xFFFF) i++;
+
+            if(code==0x0A) code = 0x0D;               // LF -> RETURN
+            if(code>=0x61 && code<=0x7A) code -= 0x20; // a-z -> A-Z
+
+            if(code>=0x00 && code<=0x7F)
+                this._pipeQueue.push(code);
+            else
+                skipped++;
+        }
+
+        if(skipped && typeof(console)!="undefined" && console.warn)
+            console.warn(
+                "A2KBD:text skipped " + skipped +
+                " unsupported Unicode character" + (skipped==1 ? "" : "s")
+            );
+
+        return true;
+    }
+
     this.read = function(rel_addr,ctx)
     {
         return ctx && ctx.bRO===true
@@ -38611,8 +38904,38 @@ function A2Pkeys()
             : this.polling(this.lastkey);
     }
 
-    this.polling = function(key){ return key }    // override me if you need to take over the keyboard  
-    this.stop_polling = function(){ this.polling = function(key){ return key } }    // override me if you need to take over the keyboard  
+    this.polling = function(key)
+    {
+        // A physical/host keystroke already in the latch always wins.
+        if(key & 0x80) return key;
+
+        if(this._pipePos < this._pipeQueue.length)
+        {
+            var k = this._pipeQueue[this._pipePos++];
+            this.keystroke(
+                {"charCode":false,"metaKey":false,"altKey":false,"keyCode":k}
+            );
+
+            if(this._pipePos >= this._pipeQueue.length)
+            {
+                this._pipeQueue.length = 0;
+                this._pipePos = 0;
+            }
+
+            // Preserve the former pasteboard polling timing: keystroke() has
+            // armed lastkey with bit 7, while this read returns the raw code.
+            return k;
+        }
+
+        return key;
+    }
+
+    this.stop_polling = function()
+    {
+        this._pipeQueue.length = 0;
+        this._pipePos = 0;
+        return this.lastkey;
+    }
     this.strobe = function(){ this.lastkey &= 0x7f; return 0x00 } 
 
     this.KeyCodeHandler = function(arg,to)
@@ -39935,46 +40258,25 @@ function Apple2Plus(context)
 
             function onBoardPaste()
             {
-              var keyboard = keys;
-              if(!keyboard && apple2plus && typeof(apple2plus.keysObj)=="function")
-                keyboard = apple2plus.keysObj();
+              var io =
+                typeof(apple2plus)=="object" && apple2plus
+                    ? apple2plus.hwObj().io
+                    : null;
 
-              if(!keyboard)
+              if(!io || typeof(io.pipeSend)!="function")
               {
-                console.error("A2KBD device is not attached to A2BO");
+                console.error("Apple2IO pipe router is not available");
                 return false;
               }
 
-              var e = EMUboard.boardText.value;
-              e = e.replace(/\r\n/g,"\r");
-              e = e.replace(/\n/g,"\r");
-              keyboard.pastebuffer = e;
-              keyboard._i = 0;
-
-              // temporarily override polling function (super fast paste function!)
-              keyboard.polling = function(key)
-              {
-                 if(key & 0x80)                   return key;   // keyboard strobe: someone is typing!
-                 if(this._i < this.pastebuffer.length)
-                 {
-                   const k = this.pastebuffer.charCodeAt(this._i++); 
-                   this.keystroke( {"charCode":false,"metaKey":false,"altKey":false,"keyCode":k} );
-                   return k;
-                 }
-                 this._i = 0;
-                 return this.stop_polling();  // self-destroy override
-              }
-
-              /*
-              for(var _i=0;_i<e.length;_i++)
-              {
-                  //var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)}
-                  //apple2OnKeyPress(event);
-                  var code = oEMU.component.Keyboard.keystroke( {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)} );
-                  if(e.charCodeAt(_i)==13) apple2plus.cycle(10000 * _o.EMU_IntervalTime_ms);  // carriage return takes more cycle time
-                  apple2plus.cycle(1000 * _o.EMU_IntervalTime_ms);
-              }
-              */
+              return io.pipeSend(
+                  "0:PASTEBO:text",
+                  "0:A2KBD:text",
+                  {
+                      "mime":"text/plain",
+                      "data":EMUboard.boardText.value
+                  }
+              );
             }
 
             function onTxtCapture(el)
