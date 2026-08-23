@@ -68,8 +68,35 @@ function VidexVideoMUX(deviceInfo)
 
         this.isTextPortOpen = function()
         {
-            return !!textHost &&
-                (!textHost.state || textHost.state.active!==false);
+            /*
+             * A mounted VideoTerm is not automatically the active text target.
+             * Keep VIDEXTXT closed while motherboard video is selected, so the
+             * pasteboard default remains 0:A2KBD:text.
+             *
+             * VIDEXVID is the authoritative runtime selector: its isVisible()
+             * state follows the VideoTerm soft-video-switch/show()/hide() path.
+             * Open this text port only while that sibling device is visible.
+             */
+            if(!textHost ||
+               (textHost.state && textHost.state.active===false))
+                return false;
+
+            var devices =
+                Array.isArray(textHost.devices)
+                    ? textHost.devices
+                    : [];
+
+            for(var i=0;i<devices.length;i++)
+            {
+                var device = devices[i];
+                if(String(device?.id?.DCODE || "").toUpperCase()!="VIDEXVID")
+                    continue;
+
+                return typeof(device.isVisible)=="function" &&
+                    device.isVisible()===true;
+            }
+
+            return false;
         }
 
         function reverseUnicodeMap(rom)
