@@ -1936,23 +1936,6 @@ function mergeActionMap(dst,src)
         oCOM.POPUP.toggle("slotConfig_popup");
     }
 
-    this.slotConfig_addressToggle = function(element,headerID,showOffset)
-    {
-        if(!element) return;
-
-        var header = document.getElementById(headerID);
-        if(showOffset && element.dataset.ioOffset)
-        {
-            element.textContent = element.dataset.ioOffset;
-            if(header) header.textContent = "I/O offset";
-        }
-        else
-        {
-            element.textContent = element.dataset.cpuAddress || "";
-            if(header) header.textContent = "CPU address";
-        }
-    }
-
     this.slotConfig_download = function(slotN)
     {
         slotN = Number(slotN);
@@ -2070,8 +2053,6 @@ function mergeActionMap(dst,src)
         if(!peripheral)
             return "<div class='appbox' style='margin-top:8px;padding:8px'>No peripheral mounted.</div>";
 
-        var hash = peripheral.mount && peripheral.mount.hash!==undefined ? peripheral.mount.hash : "unknown";
-        var headerID = "slotConfig_address_header_"+String(hash).replace(/[^a-zA-Z0-9_-]/g,"_");
         var rows = [];
         var rangeNames = ["HostIO","SlotIO","SlotROM","HostROM"];
 
@@ -2139,9 +2120,9 @@ function mergeActionMap(dst,src)
         }
 
         var body = "";
-        for(var r=0;r<rows.length;r++) body += mappingRow_html(rows[r],headerID);
-        if(!body) body = "<tr><td colspan='3' style='padding:8px'>No mappings registered.</td></tr>";
-
+        for(var r=0;r<rows.length;r++) body += mappingRow_html(rows[r]);
+        if(!body) body = "<tr><td colspan='4' style='padding:8px'>No mappings registered.</td></tr>";
+ 
         var slotN = Number(peripheral.mount.slotN);
         var ejectButton = "<button class=\"appbut\" type=\"button\""
             + (slot.lock
@@ -2151,8 +2132,7 @@ function mergeActionMap(dst,src)
             + ">"
             + "<i class=\"fa fa-eject\"></i>"
             + "</button>";
-
-        return "<div class='appbox' style='float:none;width:440px;max-width:80vw;overflow:auto;margin-top:8px;padding:8px'>"
+        return "<div class='appbox' style='float:none;width:520px;max-width:80vw;overflow:auto;margin-top:8px;padding:8px'>"
             + "<div><b>"+oCOM.escapeHTML(peripheralPCODE(peripheral))+"</b>"
             + (peripheralDescription(peripheral) ? " &mdash; "+oCOM.escapeHTML(peripheralDescription(peripheral)) : "")
             + " &mdash; " + slotN2name(slot.peripheral.mount.slotN)
@@ -2166,38 +2146,29 @@ function mergeActionMap(dst,src)
             + "<table style='width:100%;border-collapse:collapse;margin-top:8px;text-align:left'>"
             + "<thead><tr style='border-bottom:1px solid #888'>"
             + "<th style='padding:4px 6px'>Space</th>"
-            + "<th id='"+headerID+"' style='padding:4px 6px'>CPU address</th>"
+            + "<th style='padding:4px 6px'>CPU address</th>"
+            + "<th style='padding:4px 6px'>I/O offset</th>"
             + "<th style='padding:4px 6px'>R/W</th>"
             + "</tr></thead>"
             + "<tbody>"+body+"</tbody>"
             + "</table></div>" 
     }
 
-    function mappingRow_html(row,headerID)
+    function mappingRow_html(row)
     {
         return ""
             + "<tr>"
             + "<td style='padding:4px 6px'>"+oCOM.escapeHTML(row.space)+"</td>"
-            + "<td style='padding:4px 6px'>"+mappingAddress_html(row,headerID)+"</td>"
+            + "<td style='padding:4px 6px'>"+mappingRange_html(row.cpuFrom,row.cpuTo)+"</td>"
+            + "<td style='padding:4px 6px'>"+mappingRange_html(row.offsetFrom,row.offsetTo)+"</td>"
             + "<td style='padding:4px 6px'>"+mappingOperations_html(row.operations)+"</td>"
             + "</tr>";
     }
 
-    function mappingAddress_html(row,headerID)
+    function mappingRange_html(from,to)
     {
-        var cpuRange = fmtRange(row.cpuFrom,row.cpuTo,0);
-        if(row.offsetFrom===undefined || row.offsetTo===undefined)
-            return "<div class=\"appbut skinny\">"+cpuRange+"</div>";
-
-        var offsetRange = fmtRange(row.offsetFrom,row.offsetTo,0);
-        return ""
-            + "<div class=\"appbut skinny\""
-            + " data-cpu-address=\""+cpuRange+"\""
-            + " data-io-offset=\""+offsetRange+"\""
-            + " onmouseenter=\"apple2plus.hwObj().io.slotConfig_addressToggle(this,'"+headerID+"',true)\""
-            + " onmouseleave=\"apple2plus.hwObj().io.slotConfig_addressToggle(this,'"+headerID+"',false)\">"
-            + cpuRange
-            + "</div>";
+        if(from===undefined || to===undefined) return "&mdash;";
+        return "<div class=\"appbut skinny\">"+fmtRange(from,to,0)+"</div>";
     }
 
     function mappingOperations_html(operations)
