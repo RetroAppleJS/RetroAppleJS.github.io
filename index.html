@@ -430,7 +430,26 @@
               return target;
             }
 
-            oCOM.addToEventStack("onload",onBoardPasteRefresh);
+            var onBoardPasteRouteUnsubscribe = null;
+
+            function onBoardPasteBindRouteState()
+            {
+              var io = onBoardPasteIO();
+
+              if(onBoardPasteRouteUnsubscribe)
+              {
+                onBoardPasteRouteUnsubscribe();
+                onBoardPasteRouteUnsubscribe = null;
+              }
+
+              if(io && typeof(io.subscribePipeStateChange)=="function")
+                onBoardPasteRouteUnsubscribe =
+                    io.subscribePipeStateChange(onBoardPasteRefresh);
+
+              return onBoardPasteRefresh();
+            }
+
+            oCOM.addToEventStack("onload",onBoardPasteBindRouteState);
 
             function onBoardPaste()
             {

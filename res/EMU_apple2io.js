@@ -572,6 +572,45 @@ function mergeActionMap(dst,src)
         return pipeEndpointOpen(this.pipeResolve(address));
     }
 
+    /*
+     * Pipe availability is runtime state, not merely topology. Consumers such
+     * as the pasteboard UI can subscribe once and recompute their preferred
+     * route whenever a device reports that one of its routing conditions
+     * changed.
+     */
+    var pipeStateListeners = [];
+
+    this.subscribePipeStateChange = function(callback)
+    {
+        if(typeof(callback)!="function") return function(){};
+
+        pipeStateListeners.push(callback);
+        var subscribed = true;
+
+        return function()
+        {
+            if(!subscribed) return;
+            subscribed = false;
+
+            var index = pipeStateListeners.indexOf(callback);
+            if(index>=0) pipeStateListeners.splice(index,1);
+        };
+    };
+
+    this.notifyPipeStateChange = function(change)
+    {
+        var listeners = pipeStateListeners.slice();
+
+        for(var i=0;i<listeners.length;i++)
+        {
+            try { listeners[i](change || {}); }
+            catch(err)
+            {
+                console.error("Apple2IO pipe-state listener failed",err);
+            }
+        }
+    };
+
     this.pipeSend = function(sourceAddress,targetAddress,message)
     {
         var source = this.pipeResolve(sourceAddress);
@@ -1061,7 +1100,31 @@ function mergeActionMap(dst,src)
             ,"configurable":true
             ,"enumerable":false
         });
+
+        /*
+         * Devices must not know which UI or source is interested in a port
+         * becoming available. They only announce that routing state changed.
+         */
+        Object.defineProperty(device,"_ioPipeStateChanged",{
+             "value":function(change)
+             {
+                 io.notifyPipeStateChange(Object.assign({
+                      "type":"device-state"
+                     ,"DCODE":device.id?.DCODE || ""
+                 },change || {}));
+             }
+            ,"writable":true
+            ,"configurable":true
+            ,"enumerable":false
+        });
+
         rebuildDeviceHooks();
+
+        this.notifyPipeStateChange({
+             "type":"attach"
+            ,"DCODE":dcode
+            ,"hostPCODE":hostPCODE
+        });
 
         if(bDebug)
             console.log("EMU_apple2io.js - attach(<"+dcode+" to "+hostPCODE+">)");
@@ -1094,7 +1157,14 @@ function mergeActionMap(dst,src)
             removed = true;
         }
 
-        if(removed) rebuildDeviceHooks();
+        if(removed)
+        {
+            rebuildDeviceHooks();
+            this.notifyPipeStateChange({
+                 "type":"detach"
+                ,"DCODE":DCODE || ""
+            });
+        }
         return removed;
     }
 

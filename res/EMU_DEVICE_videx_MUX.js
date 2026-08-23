@@ -521,6 +521,11 @@ function VidexVideoMUX(deviceInfo)
 
         if(typeof(mux._ioRefreshHooks)=="function")
             mux._ioRefreshHooks();
+        if(typeof(mux._ioPipeStateChanged)=="function")
+            mux._ioPipeStateChanged({
+                 "reason":"videx-output"
+                ,"visible":true
+            });
         r.redraw();
 
         return true;
@@ -534,7 +539,11 @@ function VidexVideoMUX(deviceInfo)
 
         if(typeof(mux._ioRefreshHooks)=="function")
             mux._ioRefreshHooks();
-
+        if(typeof(mux._ioPipeStateChanged)=="function")
+            mux._ioPipeStateChanged({
+                 "reason":"videx-output"
+                ,"visible":false
+            });
         /*
          * Motherboard video already owns the live canvas. Ask it to repaint
          * once now that VideoTerm no longer presents on top of it.
