@@ -491,6 +491,216 @@ function col80card()
         return out;
     }
 
+    /*
+     * Unicode metadata for character-generator ROMs.
+     *
+     * Each 128-entry array is indexed directly by the 7-bit character code
+     * selected by the VideoTerm renderer. Values are Unicode scalar values;
+     * null means that no sufficiently reliable one-character mapping is known.
+     *
+     * The blank low-resolution/line-drawing cells map to SPACE. Control-code
+     * mnemonics use Unicode Control Pictures. The national sets are derived
+     * from the normal map and replace only the glyph positions that differ.
+     */
+    function emptyCharacterUnicodeMap()
+    {
+        var map = new Array(0x80);
+        for(var i=0;i<map.length;i++)
+            map[i] = null;
+        return map;
+    }
+
+    function unicodeMapWithOverrides(base,overrides)
+    {
+        var map = base ? base.slice() : emptyCharacterUnicodeMap();
+
+        for(var i=0;overrides && i<overrides.length;i++)
+        {
+            var pair = overrides[i];
+            map[pair[0] & 0x7F] = pair[1];
+        }
+
+        return map;
+    }
+
+    function makeNormalUnicodeMap()
+    {
+        var map = emptyCharacterUnicodeMap();
+
+        // CTRL-@..CTRL-G: VideoTerm low-resolution graphics.
+        map[0x00] = 0x0020;     // blank cell -> SPACE
+        map[0x01] = 0x1FB02;    // upper one third block
+        map[0x02] = 0x1FB0B;    // middle one third block
+        map[0x03] = 0x1FB0E;    // upper two thirds block
+        map[0x04] = 0x1FB2D;    // lower one third block
+        map[0x05] = 0x1FB30;    // upper and lower one third block
+        map[0x06] = 0x1FB39;    // lower two thirds block
+        map[0x07] = 0x2588;     // full block
+
+        // CTRL-H..CTRL-O: the ROM displays the control abbreviation.
+        for(var i=0x08;i<=0x0F;i++)
+            map[i] = 0x2400 + i;
+
+        // CTRL-P..CTRL-_ line-drawing set.
+        map[0x10] = 0x0020;     // blank line-drawing cell -> SPACE
+        map[0x11] = 0x2575;     // box drawings light up
+        map[0x12] = 0x2576;     // box drawings light right
+        map[0x13] = 0x2514;     // box drawings light up and right
+        map[0x14] = 0x2577;     // box drawings light down
+        map[0x15] = 0x2502;     // box drawings light vertical
+        map[0x16] = 0x250C;     // box drawings light down and right
+        map[0x17] = 0x251C;     // box drawings light vertical and right
+        map[0x18] = 0x2574;     // box drawings light left
+        map[0x19] = 0x2518;     // box drawings light up and left
+        map[0x1A] = 0x2500;     // box drawings light horizontal
+        map[0x1B] = 0x2534;     // box drawings light up and horizontal
+        map[0x1C] = 0x2510;     // box drawings light down and left
+        map[0x1D] = 0x2524;     // box drawings light vertical and left
+        map[0x1E] = 0x252C;     // box drawings light down and horizontal
+        map[0x1F] = 0x253C;     // box drawings light vertical and horizontal
+
+        for(var code=0x20;code<=0x7E;code++)
+            map[code] = code;
+
+        map[0x7F] = 0x1FB95;    // checker board fill
+        return map;
+    }
+
+    function makeSupSubUnicodeMap()
+    {
+        var map = emptyCharacterUnicodeMap();
+
+        /*
+         * The ROM contains many special symbols in $00-$1F. Keep uncertain
+         * symbols null, but map the ones whose bitmap identity is unambiguous.
+         */
+        map[0x00] = 0x25A1;     // white square
+        map[0x09] = 0x2192;     // rightwards arrow
+        map[0x0A] = 0x2261;     // identical to
+        map[0x0B] = 0x2193;     // downwards arrow
+        map[0x0D] = 0x2190;     // leftwards arrow
+        map[0x17] = 0x22A3;     // left tack
+        map[0x1B] = 0x0398;     // Greek capital theta
+
+        var superscriptDigits = [
+             0x2070,0x00B9,0x00B2,0x00B3,0x2074
+            ,0x2075,0x2076,0x2077,0x2078,0x2079
+        ];
+        var subscriptDigits = [
+             0x2080,0x2081,0x2082,0x2083,0x2084
+            ,0x2085,0x2086,0x2087,0x2088,0x2089
+        ];
+
+        for(var digit=0;digit<10;digit++)
+        {
+            map[0x20+digit] = superscriptDigits[digit];
+            map[0x30+digit] = subscriptDigits[digit];
+        }
+
+        // Punctuation is vertically displaced in the ROM; use its semantics.
+        map[0x2A] = 0x003A;     // :
+        map[0x2B] = 0x003B;     // ;
+        map[0x2C] = 0x002C;     // ,
+        map[0x2D] = 0x207B;     // superscript minus
+        map[0x2E] = 0x002E;     // .
+        map[0x2F] = 0x002F;     // /
+        map[0x3A] = 0x003A;     // :
+        map[0x3B] = 0x003B;     // ;
+        map[0x3C] = 0x002C;     // ,
+        map[0x3D] = 0x208B;     // subscript minus
+        map[0x3E] = 0x002E;     // .
+        map[0x3F] = 0x002F;     // /
+
+        map[0x40] = 0x2033;     // double prime
+
+        /*
+         * Unicode has no complete superscript/subscript Latin alphabet.
+         * Preserve the letter identity with base Latin capitals; the ROM
+         * bitmap remains authoritative for its vertical presentation.
+         */
+        for(var letter=0;letter<26;letter++)
+        {
+            map[0x41+letter] = 0x0041 + letter;
+            map[0x61+letter] = 0x0041 + letter;
+        }
+
+        map[0x5B] = 0x222B;     // integral
+        map[0x5C] = 0x00AE;     // registered sign
+        map[0x5D] = 0x007C;     // vertical line
+        map[0x5E] = 0x00A9;     // copyright sign
+        map[0x5F] = 0x005F;     // low line
+        map[0x60] = 0x00B0;     // degree sign
+        map[0x7B] = 0x00A7;     // section sign
+        map[0x7C] = 0x00B6;     // pilcrow sign
+        map[0x7D] = 0x2020;     // dagger
+        map[0x7E] = 0x2122;     // trade mark sign
+        map[0x7F] = 0x208C;     // subscript equals sign
+
+        return map;
+    }
+
+    const VIDEX_UNICODE_NORMAL = makeNormalUnicodeMap();
+
+    const VIDEX_UNICODE_NORMAL_UP = VIDEX_UNICODE_NORMAL.slice();
+    for(var normalUpLetter=0;normalUpLetter<26;normalUpLetter++)
+        VIDEX_UNICODE_NORMAL_UP[0x61+normalUpLetter] =
+            0x41+normalUpLetter;
+
+    const VIDEX_UNICODE_FRENCH =
+        unicodeMapWithOverrides(VIDEX_UNICODE_NORMAL,[
+             [0x23,0x00A3]     // £
+            ,[0x3C,0x00B2]     // ²
+            ,[0x3E,0x00B3]     // ³
+            ,[0x40,0x00E0]     // à
+            ,[0x5C,0x00E7]     // ç
+            ,[0x7B,0x00E9]     // é
+            ,[0x7C,0x00F9]     // ù
+            ,[0x7D,0x00E8]     // è
+            ,[0x7E,0x00A8]     // ¨
+            ,[0x7F,0x00B0]     // °
+        ]);
+
+    const VIDEX_UNICODE_GERMAN =
+        unicodeMapWithOverrides(VIDEX_UNICODE_NORMAL,[
+             [0x40,0x00A7]     // §
+            ,[0x5B,0x00C4]     // Ä
+            ,[0x5C,0x00D6]     // Ö
+            ,[0x5D,0x00DC]     // Ü
+            ,[0x7B,0x00E4]     // ä
+            ,[0x7C,0x00F6]     // ö
+            ,[0x7D,0x00FC]     // ü
+            ,[0x7E,0x00DF]     // ß
+        ]);
+
+    const VIDEX_UNICODE_SPANISH =
+        unicodeMapWithOverrides(VIDEX_UNICODE_NORMAL,[
+             [0x40,0x00BF]     // ¿
+            ,[0x5C,0x00FC]     // ü
+            ,[0x5F,0x00A1]     // ¡
+            ,[0x60,0x00F1]     // ñ
+            ,[0x7B,0x00E1]     // á
+            ,[0x7C,0x00E9]     // é
+            ,[0x7D,0x00ED]     // í
+            ,[0x7E,0x00F3]     // ó
+            ,[0x7F,0x00FA]     // ú
+        ]);
+
+    const VIDEX_UNICODE_SUPSUB = makeSupSubUnicodeMap();
+
+    /*
+     * Katakana, APL and Symbol are intentionally omitted until their complete
+     * glyph repertoires have been identified against authoritative tables.
+     */
+    const VIDEX_UNICODE_BY_ROM = {
+         "VIDEX:NORMAL":VIDEX_UNICODE_NORMAL
+        ,"VIDEX:NORMAL_UP":VIDEX_UNICODE_NORMAL_UP
+        ,"VIDEX:FRENCH":VIDEX_UNICODE_FRENCH
+        ,"VIDEX:GERMAN":VIDEX_UNICODE_GERMAN
+        ,"VIDEX:SPANISH":VIDEX_UNICODE_SPANISH
+        ,"VIDEX:SUP&SUB":VIDEX_UNICODE_SUPSUB
+        ,"VIDEX:INVERSE":VIDEX_UNICODE_NORMAL
+    };
+
     const VIDEX_CHAR_ROMS =
     [
         {
@@ -914,6 +1124,21 @@ function col80card()
         }
     ];
 
+    /*
+     * Attach Unicode maps after the ROM catalogue is built. Keeping the large
+     * ROM byte strings untouched makes the metadata patch easy to audit.
+     */
+    for(var unicodeROMIndex=0;
+        unicodeROMIndex<VIDEX_CHAR_ROMS.length;
+        unicodeROMIndex++)
+    {
+        var unicodeROM = VIDEX_CHAR_ROMS[unicodeROMIndex];
+        var unicodeMap = VIDEX_UNICODE_BY_ROM[unicodeROM.key];
+
+        if(unicodeMap)
+            unicodeROM.unicode = unicodeMap;
+    }
+
     function findCharacterROM(key)
     {
         key = String(key || "");
@@ -1290,6 +1515,7 @@ function col80card()
                 ,"dsize":entry.dsize.slice()
                 ,"size":entry.size
                 ,"crc32":entry.crc32
+                ,"unicode":entry.unicode ? entry.unicode.slice() : null
             };
         });
     };
@@ -1312,6 +1538,7 @@ function col80card()
                 ,"dsize":entry.dsize.slice()
                 ,"size":entry.size
                 ,"crc32":entry.crc32
+                ,"unicode":entry.unicode ? entry.unicode.slice() : null
                 ,"data":characterROMData(entry)
               }
             : null;
