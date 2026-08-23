@@ -237,9 +237,18 @@ function Apple2VideoMUX(canvas)
         var base = this.getBaseCanvas();
         var c;
 
-        if(spec.name == this.renderModes[0].name && base)
-            c = base;
-        else if(base)
+        /*
+         * The bootstrap #applescreen canvas is shared with code that may run
+         * before the video renderer is activated (notably attached video
+         * devices).  If any of that code calls getContext("2d"), the canvas is
+         * permanently bound to the 2D context family and GPU.js can no longer
+         * obtain WebGL from it.
+         *
+         * Give every renderer, including GPU, its own context-clean clone.
+         * cloneNode(false) copies the canvas element/attributes, but not its
+         * drawing context or backing bitmap.
+         */
+        if(base)
             c = base.cloneNode(false);
         else
             c = document.createElement("canvas");

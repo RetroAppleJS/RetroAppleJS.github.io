@@ -176,6 +176,7 @@ function Apple2Video(ctx)
     this.setCharRom = function(rom, key) { this.charRom = rom; this.charRomKey = key; frame_redraw = true; return key; };
     this.vidram = null; // apple2hw.js sets this to give me reference to ram
     this.hw = null;     // apple2hw provides its reference during initialisation
+    this.gpu = null;    // keep one GPU.js/WebGL owner for the lifetime of this renderer
 
     // BYTE ARRAY SERIALISATION
     this.serial8 = new Uint8Array();
@@ -298,14 +299,17 @@ function Apple2Video(ctx)
         // INSTANTIATE CREATE GPU & KERNEL + CONFIGURE DATA SERIALISATION
         const video = this;
         const vidContext = ctx;
-        video.initGPU(
-            { canvas:  vidContext, mode: 'gpu'}
-            ,{ kernel: video.kProcess_v6, output: [vidContext.width,vidContext.height], graphical: true }
-            ,{"CHROME_MODE":[video.getChromeMode(),"cfg[","]<<2"]
-            ,"DIM_H":[vidContext.height>>1]
-            ,"GFX_FLG":[video.register_mode()]
-            ,"FLASH":[false]
-            ,"PALETTE":[video.INTCols]});
+        if(!video.gpu)
+        {
+            video.initGPU(
+                { canvas:  vidContext, mode: 'gpu'}
+                ,{ kernel: video.kProcess_v6, output: [vidContext.width,vidContext.height], graphical: true }
+                ,{"CHROME_MODE":[video.getChromeMode(),"cfg[","]<<2"]
+                ,"DIM_H":[vidContext.height>>1]
+                ,"GFX_FLG":[video.register_mode()]
+                ,"FLASH":[false]
+                ,"PALETTE":[video.INTCols]});
+        }
             //console.log( video.ser8_map() )
     }
 
@@ -528,6 +532,9 @@ window.requestAnimationFrame(function(rafNow)
 
   this.initGPU = function(GPUarg,KERNELarg,config)
   { 
+    if(this.gpu && typeof(this.kernel) === "function")
+        return this.kernel;
+
     // CONFIGURE DATA SERIALISATION
     for(var i in config)
     {
@@ -539,7 +546,10 @@ window.requestAnimationFrame(function(rafNow)
     try { var gpu = new window.GPU.GPU(GPUarg) } catch (e) { var gpu = new GPU(GPUarg) }
 
     // TRANSPILE CHOSEN KERNEL SCRIPT
-    this.kernel = gpu.createKernel(KERNELarg.kernel,KERNELarg)
+    var kernel = gpu.createKernel(KERNELarg.kernel,KERNELarg)
+    this.gpu = gpu;
+    this.kernel = kernel;
+    return kernel;
   }
 
   this.kernel = function() { alert.warn("initialise first with initGPU()") }
