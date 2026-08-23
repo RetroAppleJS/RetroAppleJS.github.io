@@ -22451,6 +22451,7 @@ function VidexVideoMUX(deviceInfo)
                  "direction":"in"
                 ,"mime":["text/plain"]
                 ,"handler":"receiveText"
+                ,"open":"isTextPortOpen"
                 ,"description":"Unicode text mapped through the active VideoTerm character ROM"
             }
         };
@@ -22460,6 +22461,12 @@ function VidexVideoMUX(deviceInfo)
             textHost = card || null;
             return !!textHost;
         };
+
+        this.isTextPortOpen = function()
+        {
+            return !!textHost &&
+                (!textHost.state || textHost.state.active!==false);
+        }
 
         function reverseUnicodeMap(rom)
         {
@@ -23011,6 +23018,58 @@ function PasteBoard()
             ,"description":"Host pasteboard text"
         }
     };
+
+    this.getTargetAddress = function(io)
+    {
+        const fallback = "0:A2KBD:text";
+
+        if(!io || !Array.isArray(io.slots) ||
+           typeof(io.SLOT2obj)!="function")
+            return fallback;
+
+        for(var slotIndex=1;slotIndex<io.slots.length;slotIndex++)
+        {
+            var owner = io.SLOT2obj(slotIndex);
+            if(!owner || String(owner.id?.PCODE || "").toUpperCase()!="VIDEX")
+                continue;
+
+            if(owner.state && owner.state.active===false)
+                continue;
+
+            var slotID =
+                typeof(io.slot2ID)=="function"
+                    ? io.slot2ID(slotIndex)
+                    : String(slotIndex-1);
+
+            var address = slotID + ":VIDEXTXT:text";
+
+            if(typeof(io.pipeIsOpen)=="function")
+            {
+                if(io.pipeIsOpen(address)) return address;
+            }
+            else if(typeof(io.pipeResolve)=="function" &&
+                    io.pipeResolve(address))
+                return address;
+        }
+
+        return fallback;
+    };
+
+    this.sendText = function(io,text)
+    {
+        if(!io || typeof(io.pipeSend)!="function")
+            return false;
+
+        return io.pipeSend(
+            "0:PASTEBO:text",
+            this.getTargetAddress(io),
+            {
+                 "mime":"text/plain"
+                ,"data":String(text==null ? "" : text)
+            }
+        );
+    };
+
 }
 </script>
 
@@ -36676,6 +36735,71 @@ function mergeActionMap(dst,src)
         return false;
     }
 
+    function pipeDevice(owner,DCODE)
+    {
+        var devices = owner && Array.isArray(owner.devices) ? owner.devices : [];
+
+        for(var i=0;i<devices.length;i++)
+            if(String(devices[i]?.id?.DCODE || "").toUpperCase()==DCODE)
+                return devices[i];
+
+        return null;
+    }
+
+    function pipeDeviceAtSlot(slotAddress,DCODE)
+    {
+        slotAddress = Number(slotAddress);
+        if(!Number.isInteger(slotAddress) || slotAddress<0) return null;
+
+        if(slotAddress==0)
+        {
+            var board = io.SLOT2obj(0);
+            var boardDevice = pipeDevice(board,DCODE);
+
+            if(boardDevice)
+                return {
+                     "slotIndex":0
+                    ,"owner":board
+                    ,"device":boardDevice
+                };
+        }
+
+        var slotIndex = slotAddress + 1;
+        var owner = io.SLOT2obj(slotIndex);
+        var device = pipeDevice(owner,DCODE);
+
+        return device
+            ? {
+                 "slotIndex":slotIndex
+                ,"owner":owner
+                ,"device":device
+              }
+            : null;
+    }
+
+    function pipeEndpointOpen(endpoint)
+    {
+        if(!endpoint || !endpoint.port) return false;
+
+        var open = endpoint.port.open;
+
+        if(open===undefined || open===null) return true;
+        if(typeof(open)=="boolean") return open;
+
+        if(typeof(open)=="string")
+        {
+            var method = endpoint.device && endpoint.device[open];
+            return typeof(method)=="function"
+                ? method.call(endpoint.device,endpoint)!==false
+                : false;
+        }
+
+        if(typeof(open)=="function")
+            return open.call(endpoint.device,endpoint)!==false;
+
+        return !!open;
+    }
+
     this.pipeResolve = function(address)
     {
         var match =
@@ -36687,20 +36811,14 @@ function mergeActionMap(dst,src)
         var slotN = Number(match[1]);
         var DCODE = match[2].toUpperCase();
         var requestedPort = match[3];
-        var owner = this.SLOT2obj(slotN);
-        var devices = owner && Array.isArray(owner.devices) ? owner.devices : [];
-        var device = null;
+        var resolved = pipeDeviceAtSlot(slotN,DCODE);
+        if(!resolved) return null;
+        
+        var owner = resolved.owner;
+        var device = resolved.device;
 
-        for(var i=0;i<devices.length;i++)
-        {
-            if(String(devices[i]?.id?.DCODE || "").toUpperCase()==DCODE)
-            {
-                device = devices[i];
-                break;
-            }
-        }
+        if(!device.ports) return null;
 
-        if(!device || !device.ports) return null;
 
         var portName = null;
         var requestedLower = requestedPort.toLowerCase();
@@ -36719,6 +36837,7 @@ function mergeActionMap(dst,src)
         return {
              "address":slotN+":"+DCODE+":"+portName
             ,"slotN":slotN
+            ,"slotIndex":resolved.slotIndex
             ,"owner":owner
             ,"device":device
             ,"DCODE":DCODE
@@ -36726,6 +36845,11 @@ function mergeActionMap(dst,src)
             ,"port":device.ports[portName]
         };
     };
+
+    this.pipeIsOpen = function(address)
+    {
+        return pipeEndpointOpen(this.pipeResolve(address));
+    }
 
     this.pipeSend = function(sourceAddress,targetAddress,message)
     {
@@ -36739,6 +36863,18 @@ function mergeActionMap(dst,src)
                 sourceAddress,
                 targetAddress
             );
+            return false;
+        }
+
+        if(!pipeEndpointOpen(source))
+        {
+            console.error("Apple2IO.pipeSend: source port is closed",source.address);
+            return false;
+        }
+
+        if(!pipeEndpointOpen(target))
+        {
+            console.error("Apple2IO.pipeSend: target port is closed",target.address);
             return false;
         }
 
@@ -40759,15 +40895,14 @@ function Apple2Plus(context)
 
               <div style="height:30px;padding:0px 90px 0px 0px;">
                 <button class=appbut value="Settings" onclick="javascript:oCOM.POPUP.runRule('tab1.1');" title="Settings"><i class="fa fa fa-sliders-h"></i></button>
-                <button class=appbut value="Tools"    onclick="javascript:oCOM.POPUP.runRule('tab1.2');" title="Tools"><i class="fa fa-toolbox"></i></button>
-              </div>
+                <button class=appbut value="Tools"    onclick="javascript:oCOM.POPUP.runRule('tab1.2');onBoardPasteRefresh();" title="Tools"><i class="fa fa-toolbox"></i></button>              </div>
   
               <!--  TOOLS TAB WINDOW -->
               <div class="popupHost" id="tab1.2">
                 <!--  PASTE-BOARD TOOLBOX -->
                 <div class=toolbox>
                 <form name="EMUboard">
-                  <textarea cols=40 rows=4 placeholder="Paste here" name=boardText style="float:left"></textarea><br>
+                  <textarea id="EMUboardText" cols=40 rows=4 placeholder="Paste here → 0:A2KBD:text" name=boardText style="float:left"></textarea><br>
                   <input type="button"  value="Paste"              onclick="javascript:oCOM.POPUP.toggle('tab1.2');oEMUI.pauseBtn({id:'pausebutton',class1:'fa-play',class2:'fa-pause',pause:false});onBoardPaste()">
                   <input type="button"  value="TxtCap" id=TxtCapture onclick="javascript:onTxtCapture(this)">
                   <input type="button"  value="MemCap" id=MemCapture onclick="javascript:onMemCapture('CapF','CapT')">
@@ -40970,26 +41105,69 @@ function Apple2Plus(context)
               return (style.display === 'none')
             }
 
+            function onBoardPasteIO()
+            {
+              return typeof(apple2plus)=="object" && apple2plus
+                  ? apple2plus.hwObj().io
+                  : null;
+            }
+
+            function onBoardPasteDevice(io)
+            {
+              if(!io || typeof(io.pipeResolve)!="function") return null;
+
+              var source = io.pipeResolve("0:PASTEBO:text");
+              return source ? source.device : null;
+            }
+
+            function onBoardPasteTarget()
+            {
+              var io = onBoardPasteIO();
+              var pasteboard = onBoardPasteDevice(io);
+
+              return pasteboard && typeof(pasteboard.getTargetAddress)=="function"
+                  ? pasteboard.getTargetAddress(io)
+                  : "0:A2KBD:text";
+            }
+
+            function onBoardPasteRefresh()
+            {
+              var target = onBoardPasteTarget();
+              var textarea = document.getElementById("EMUboardText");
+
+              if(textarea)
+              {
+                textarea.placeholder = "Paste here → " + target;
+                textarea.title = "Pasteboard pipe: 0:PASTEBO:text → " + target;
+              }
+
+              return target;
+            }
+
+            oCOM.addToEventStack("onload",onBoardPasteRefresh);
+
             function onBoardPaste()
             {
-              var io =
-                typeof(apple2plus)=="object" && apple2plus
-                    ? apple2plus.hwObj().io
-                    : null;
+              var io = onBoardPasteIO();
+              var pasteboard = onBoardPasteDevice(io); 
 
               if(!io || typeof(io.pipeSend)!="function")
               {
                 console.error("Apple2IO pipe router is not available");
                 return false;
               }
+              if(!pasteboard || typeof(pasteboard.sendText)!="function")
+              {
+                console.error("PASTEBO device is not attached to A2BO");
+                return false;
+              }
 
-              return io.pipeSend(
-                  "0:PASTEBO:text",
-                  "0:A2KBD:text",
-                  {
-                      "mime":"text/plain",
-                      "data":EMUboard.boardText.value
-                  }
+              onBoardPasteRefresh();
+
+              return pasteboard.sendText(
+                  io,
+                  EMUboard.boardText.value
+
               );
             }
 
