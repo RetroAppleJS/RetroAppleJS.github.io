@@ -37765,10 +37765,14 @@ function mergeActionMap(dst,src)
             + "</tr>";
     }
 
-    function mappingRange_html(from,to)
+    function mappingRange_html(from,to,digits)
     {
         if(from===undefined || to===undefined) return "&mdash;";
-        return "<div class=\"appbut skinny\">"+fmtRange(from,to,0)+"</div>";
+        var range = digits===undefined
+            ? fmtRange(from,to,0)
+            : "$"+oCOM.getHexMulti(from,digits)+"-$"+oCOM.getHexMulti(to,digits);
+
+        return "<div class=\"appbut skinny\">"+range+"</div>";
     }
 
     function mappingOperations_html(operations)
@@ -38462,12 +38466,7 @@ function mergeActionMap(dst,src)
 
     function fmtRange(from,to,base)
     {
-        return fmtAddr(from+base)+"-"+fmtAddr(to+base);
-    }
-
-    function fmtAddr(addr)
-    {
-        return "$"+("0000"+Number(addr).toString(16).toUpperCase()).slice(-4);
+        return "$"+(base+from).toString(16).toUpperCase()+"-$"+(base+to).toString(16).toUpperCase();
     }
 
     function ioSpaceLabel(from,to)
