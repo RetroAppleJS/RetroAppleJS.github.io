@@ -93,6 +93,12 @@ function GamePort()
             return false;
 
         var keyboard = apple2plus.keysObj();
+
+        if(keyboard &&
+           typeof(keyboard.isPipeShiftPressed)=="function" &&
+           keyboard.isPipeShiftPressed())
+            return true;
+
         var ed = keyboard && keyboard.events_data;
         if(!ed || !ed.metabitsEn || !Array.isArray(ed.metabits))
             return false;

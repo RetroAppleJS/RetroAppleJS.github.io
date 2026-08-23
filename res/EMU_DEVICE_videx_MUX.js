@@ -41,6 +41,19 @@ function VidexVideoMUX(deviceInfo)
             ,"unsupported":[]
         };
 
+        var lastKeyTranslation = {
+             "initialLowerCase":false
+            ,"finalLowerCase":false
+            ,"caseModeKnown":false
+            ,"flagsAddress":null
+            ,"events":[]
+            ,"unreachable":[]
+            ,"sent":false
+        };
+
+        const VIDEX_KEYEVENT_MIME =
+            "application/x-retroapple-keyevent";
+
         this.id = {
              "DCODE":"VIDEXTXT"
             ,"coID":"VidexVideoMUX"
@@ -57,6 +70,12 @@ function VidexVideoMUX(deviceInfo)
                 ,"handler":"receiveText"
                 ,"open":"isTextPortOpen"
                 ,"description":"Unicode text mapped through the active VideoTerm character ROM"
+            }
+            ,"key":{
+                 "direction":"out"
+                ,"mime":[VIDEX_KEYEVENT_MIME]
+                ,"open":"isTextPortOpen"
+                ,"description":"VideoTerm glyphs translated to Apple II keyboard events"
             }
         };
 
@@ -187,7 +206,207 @@ function VidexVideoMUX(deviceInfo)
             };
         };
 
-        this.receiveText = function(message)
+        /*
+         * Model the input transformation performed by VideoTerm firmware 2.4
+         * KEYSTA. The assembled slot-3 ROM tests FLAGS bit 6 for lower-case
+         * mode and reads the one-wire Shift modification at $C063.
+         *
+         * rawCode is the 7-bit Apple II keyboard encoder value; A2KBD adds the
+         * keyboard-strobe high bit when it places the code in the latch.
+         */
+        function videoTermKeyResult(rawCode,shiftPressed,lowerCaseMode)
+        {
+            var a = (Number(rawCode) & 0x7F) | 0x80;
+
+            // Firmware maps CTRL-K to the bracket key before case conversion.
+            if(a==0x8B) a = 0xDB;
+
+            // CTRL-A toggles case mode and is consumed by KEYSTA.
+            if(a==0x81) return null;
+
+            /*
+             * The ROM binary compares against $B0 here. This deliberately uses
+             * the assembled firmware behavior rather than the older manual
+             * listing's OCR/transcription of that compare.
+             */
+            if(lowerCaseMode && a>=0xB0)
+            {
+                if(!shiftPressed)
+                    a |= 0x20;
+                else if(a==0xB0)
+                    a = 0xFD;
+                else
+                {
+                    if(a==0xC0) a = 0xD0;
+
+                    if(a>=0xDB)
+                    {
+                        a &= 0xCF;
+                        if(a==0x00) a = 0xFD;
+                    }
+                }
+            }
+
+            return a & 0x7F;
+        }
+
+        /*
+         * Find a physical Apple II-class keyboard code for one desired
+         * VideoTerm character code. Restrict raw codes to $00-$5F: lowercase
+         * and the upper half of the VideoTerm character set must therefore be
+         * obtained through VideoTerm's own CTRL-A/Shift processing rather than
+         * by injecting impossible lowercase Apple II+ key codes.
+         */
+        function keyEventForGlyph(glyph,lowerCaseMode)
+        {
+            glyph = Number(glyph) & 0x7F;
+
+            if(glyph!=0x0D && (glyph<0x20 || glyph>0x7F))
+                return null;
+
+            var best = null;
+            var bestScore = Infinity;
+
+            for(var raw=0x00;raw<=0x5F;raw++)
+            {
+                if(raw==0x01) continue; // reserved CTRL-A case toggle
+
+                for(var shiftN=0;shiftN<2;shiftN++)
+                {
+                    var shift = shiftN===1;
+
+                    if(videoTermKeyResult(raw,shift,lowerCaseMode)!==glyph)
+                        continue;
+
+                    // Prefer the same encoder code, then unshifted, then low raw.
+                    var score =
+                          (raw==glyph ? 0 : 0x100)
+                        + (shift ? 0x80 : 0)
+                        + raw;
+
+                    if(score<bestScore)
+                    {
+                        bestScore = score;
+                        best = {
+                             "keyCode":raw
+                            ,"shift":shift
+                            ,"glyph":glyph
+                        };
+                    }
+                }
+            }
+
+            return best;
+        }
+
+        function readVideoTermCaseMode(context)
+        {
+            var slotN =
+                context && context.target
+                    ? Number(context.target.slotN)
+                    : NaN;
+
+            var flagsAddress =
+                Number.isInteger(slotN)
+                    ? 0x07F8 + (slotN & 0x07)
+                    : null;
+
+            var hw = context && context.hw;
+
+            if(flagsAddress===null ||
+               !hw ||
+               typeof(hw.safe_read)!="function")
+            {
+                return {
+                     "known":false
+                    ,"lowerCase":false
+                    ,"flagsAddress":flagsAddress
+                };
+            }
+
+            return {
+                 "known":true
+                ,"lowerCase":(hw.safe_read(flagsAddress) & 0x40)!==0
+                ,"flagsAddress":flagsAddress
+            };
+        }
+
+        function translateGlyphsToKeyEvents(glyphs,context)
+        {
+            var mode = readVideoTermCaseMode(context);
+            var initialLowerCase = mode.lowerCase;
+            var lowerCase = initialLowerCase;
+            var events = [];
+            var unreachable = [];
+
+            for(var i=0;i<glyphs.length;i++)
+            {
+                var glyph = Number(glyphs[i]) & 0x7F;
+                var event = keyEventForGlyph(glyph,lowerCase);
+
+                /*
+                 * Some glyph positions are reachable only in the opposite
+                 * VideoTerm case mode. CTRL-A changes that firmware mode without
+                 * producing an input character.
+                 */
+                if(!event && mode.known)
+                {
+                    var alternate = keyEventForGlyph(glyph,!lowerCase);
+
+                    if(alternate)
+                    {
+                        events.push({
+                             "keyCode":0x01
+                            ,"shift":false
+                            ,"control":"CTRL-A"
+                            ,"purpose":"case-toggle"
+                        });
+                        lowerCase = !lowerCase;
+                        event = alternate;
+                    }
+                }
+
+                if(!event)
+                {
+                    unreachable.push({
+                         "index":i
+                        ,"glyph":glyph
+                        ,"reason":mode.known
+                            ? "not keyboard-reachable"
+                            : "VideoTerm case state unavailable"
+                    });
+                    continue;
+                }
+
+                events.push(event);
+            }
+
+            /*
+             * Paste must not leave the user's VideoTerm in a different
+             * upper/lower-case mode from the one that was active beforehand.
+             */
+            if(mode.known && lowerCase!==initialLowerCase)
+            {
+                events.push({
+                     "keyCode":0x01
+                    ,"shift":false
+                    ,"control":"CTRL-A"
+                    ,"purpose":"restore-case-mode"
+                });
+                lowerCase = initialLowerCase;
+            }
+
+            return {
+                 "initialLowerCase":initialLowerCase
+                ,"finalLowerCase":lowerCase
+                ,"caseModeKnown":mode.known
+                ,"flagsAddress":mode.flagsAddress
+                ,"events":events
+                ,"unreachable":unreachable
+            };
+        }
+
+        this.receiveText = function(message,context)
         {
             var result = this.mapTextToGlyphs(
                 message && message.data!==undefined
@@ -219,7 +438,65 @@ function VidexVideoMUX(deviceInfo)
                 );
             }
 
-            return true;
+            var translation =
+                translateGlyphsToKeyEvents(glyphQueue,context);
+
+            var sent = translation.events.length===0;
+
+            if(translation.events.length>0 &&
+               context &&
+               context.io &&
+               context.target &&
+               typeof(context.io.pipeSend)=="function")
+            {
+                var keySource =
+                    context.target.slotN + ":VIDEXTXT:key";
+
+                sent = context.io.pipeSend(
+                    keySource,
+                    "0:A2KBD:key",
+                    {
+                         "mime":VIDEX_KEYEVENT_MIME
+                        ,"data":translation.events
+                    }
+                );
+            }
+
+            lastKeyTranslation = {
+                 "initialLowerCase":translation.initialLowerCase
+                ,"finalLowerCase":translation.finalLowerCase
+                ,"caseModeKnown":translation.caseModeKnown
+                ,"flagsAddress":translation.flagsAddress
+                ,"events":translation.events.map(function(event)
+                    { return Object.assign({},event); })
+                ,"unreachable":translation.unreachable.map(function(item)
+                    { return Object.assign({},item); })
+                ,"sent":sent===true
+            };
+
+            if(translation.unreachable.length &&
+               typeof(console)!="undefined" &&
+               console.warn)
+            {
+                console.warn(
+                    "VIDEXTXT:key skipped " +
+                    translation.unreachable.length +
+                    " glyph" +
+                    (translation.unreachable.length==1 ? "" : "s") +
+                    " that cannot be generated through VideoTerm keyboard input",
+                    translation.unreachable
+                );
+            }
+
+            /*
+             * The glyph queue represents pending downstream work. Once A2KBD
+             * has accepted the translated key sequence it owns delivery through
+             * the keyboard latch, so these glyphs have been consumed.
+             */
+            if(sent===true)
+                glyphQueue.length = 0;
+
+            return sent===true;
         };
 
         this.getGlyphQueue = function()
@@ -249,6 +526,21 @@ function VidexVideoMUX(deviceInfo)
             };
         };
 
+        this.getLastKeyTranslation = function()
+        {
+            return {
+                 "initialLowerCase":lastKeyTranslation.initialLowerCase
+                ,"finalLowerCase":lastKeyTranslation.finalLowerCase
+                ,"caseModeKnown":lastKeyTranslation.caseModeKnown
+                ,"flagsAddress":lastKeyTranslation.flagsAddress
+                ,"events":lastKeyTranslation.events.map(function(event)
+                    { return Object.assign({},event); })
+                ,"unreachable":lastKeyTranslation.unreachable.map(function(item)
+                    { return Object.assign({},item); })
+                ,"sent":lastKeyTranslation.sent
+            };
+        };
+
         this.reset = function()
         {
             glyphQueue.length = 0;
@@ -256,6 +548,15 @@ function VidexVideoMUX(deviceInfo)
                  "romKey":null
                 ,"glyphs":[]
                 ,"unsupported":[]
+            };
+            lastKeyTranslation = {
+                 "initialLowerCase":false
+                ,"finalLowerCase":false
+                ,"caseModeKnown":false
+                ,"flagsAddress":null
+                ,"events":[]
+                ,"unreachable":[]
+                ,"sent":false
             };
             return true;
         };

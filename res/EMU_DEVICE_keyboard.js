@@ -21,12 +21,19 @@ function A2Pkeys()
             ,"handler":"receiveText"
             ,"description":"Apple II keyboard text input"
         }
+        ,"key":{
+             "direction":"in"
+            ,"mime":["application/x-retroapple-keyevent"]
+            ,"handler":"receiveKeyEvents"
+            ,"description":"Raw Apple II keyboard latch input with Shift-wire state"
+        }
     };
 
-    // Text arriving through 0:A2KBD:text is translated when accepted and then
-    // delivered through the normal keyboard latch/strobe path.
+    // Both semantic text and translated low-level key events are serialized
+    // through the normal Apple II keyboard latch/strobe path.
     this._pipeQueue = [];
     this._pipePos = 0;
+    this._pipeShift = false;
 
     //this.hw = hw;
     this.bDebug = false;
@@ -77,6 +84,7 @@ function A2Pkeys()
         this.lastkey = 0x00;
         this._pipeQueue.length = 0;
         this._pipePos = 0;
+        this._pipeShift = false;
         this.events_data.metabits = [0,0];  // trigger init of keyboard modifier states (capslock, shift, control...)
 
         //window.keycap_over  = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"over"});    // function overload
@@ -139,6 +147,53 @@ function A2Pkeys()
         return true;
     }
 
+    this.receiveKeyEvents = function(message)
+    {
+        var data = message && message.data!==undefined
+            ? message.data
+            : [];
+
+        var events = Array.isArray(data) ? data : [data];
+
+        if(this._pipePos >= this._pipeQueue.length)
+        {
+            this._pipeQueue.length = 0;
+            this._pipePos = 0;
+        }
+
+        var accepted = 0;
+
+        for(var i=0;i<events.length;i++)
+        {
+            var event = events[i];
+            var code =
+                typeof(event)=="number"
+                    ? Number(event)
+                    : Number(event && event.keyCode);
+
+            if(!Number.isInteger(code) || code<0x00 || code>0x7F)
+                continue;
+
+            this._pipeQueue.push({
+                 "keyCode":code
+                ,"shift":!!(event && typeof(event)=="object" && event.shift===true)
+            });
+            accepted++;
+        }
+
+        return accepted==events.length;
+    };
+
+    /*
+     * The one-wire Shift-key modification is read by A2GAM at $C063.
+     * A translated key keeps its synthetic Shift state asserted for exactly
+     * as long as that key remains in the Apple II keyboard latch.
+     */
+    this.isPipeShiftPressed = function()
+    {
+        return this._pipeShift===true;
+    };
+
     this.read = function(rel_addr,ctx)
     {
         return ctx && ctx.bRO===true
@@ -153,7 +208,14 @@ function A2Pkeys()
 
         if(this._pipePos < this._pipeQueue.length)
         {
-            var k = this._pipeQueue[this._pipePos++];
+            var entry = this._pipeQueue[this._pipePos++];
+            var k =
+                typeof(entry)=="number"
+                    ? entry
+                    : Number(entry.keyCode);
+
+            this._pipeShift =
+                !!(entry && typeof(entry)=="object" && entry.shift===true);
             this.keystroke(
                 {"charCode":false,"metaKey":false,"altKey":false,"keyCode":k}
             );
@@ -176,9 +238,15 @@ function A2Pkeys()
     {
         this._pipeQueue.length = 0;
         this._pipePos = 0;
+        this._pipeShift = false;
         return this.lastkey;
     }
-    this.strobe = function(){ this.lastkey &= 0x7f; return 0x00 } 
+    this.strobe = function()
+    {
+        this.lastkey &= 0x7f;
+        this._pipeShift = false;
+        return 0x00;
+    }
 
     this.KeyCodeHandler = function(arg,to)
     {

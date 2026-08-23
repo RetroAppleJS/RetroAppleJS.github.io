@@ -12,10 +12,11 @@ if(oEMU===undefined) var oEMU = {"component":{"IO":{"ACTION_MAP":[]}},"system":{
 
 if(oEMUI===undefined) var oEMUI = {"slotConfig":function(){},"slotsRender":function(){},"deviceBtn":function(){}} // allow tools to include apple2io.js without apple2main.js
 
-function Apple2IO(vid)
+function Apple2IO(vid,hostHardware)
 {
     const bDebug = true;
     var io = this;
+    hostHardware = hostHardware || null;
 
     this.slot_ctx = {};
     this.slots = [];
@@ -695,6 +696,7 @@ function mergeActionMap(dst,src)
             envelope,
             {
                  "io":this
+                ,"hw":hostHardware
                 ,"source":source
                 ,"target":target
             }

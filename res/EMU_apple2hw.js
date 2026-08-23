@@ -24,7 +24,7 @@ function Apple2Hw(vid,keys)
     this.default_map = null;
 
     var video = vid;                        
-    this.io = new Apple2IO(video);      // HARDWARE OBJECT OWNS IO (always call 'io' methods via hardware)
+    this.io = new Apple2IO(video,hw);   // HARDWARE OBJECT OWNS IO (always call 'io' methods via hardware)
     this.children   = {}                // TODO: deprecate ?
 
     var RAM_SIZE =  0xc000,
