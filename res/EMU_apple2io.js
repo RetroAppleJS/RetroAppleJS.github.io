@@ -2455,18 +2455,17 @@ function mergeActionMap(dst,src)
             (device && device.constructor && device.constructor.name) ||
             "device"
         );
-        var description = String(id.description || deviceCode);
+        var description = id.description ? String(id.description) : "";
         var icon = String(id.icon || "fa fa-cube");
-        var range = device && device.attach && device.attach.range
-            ? String(device.attach.range)
-            : "";
-        var title = description + (range ? " ["+range+"]" : "");
 
         return ""
             + "<div class=\"appbut label\""
             + " data-dcode=\""+oCOM.escapeHTML(deviceCode)+"\""
             + " style=\"display:inline-block;cursor:default;white-space:nowrap;\""
-            + " title=\""+oCOM.escapeHTML(title)+"\">"
+            + (description
+                ? " title=\""+oCOM.escapeHTML(description)+"\""
+                : "")
+            + ">"
             + "<i class=\""+oCOM.escapeHTML(icon)+"\" aria-hidden=\"true\"></i>&nbsp;"
             + oCOM.escapeHTML(deviceCode)
             + "</div>";
@@ -2488,39 +2487,40 @@ function mergeActionMap(dst,src)
         {
             var name = names[i];
             var port = ports[name] || {};
-            var title = slotDevicePortTitle(name,port);
+            var label = slotDevicePortLabel(name,port);
+            var description = port.description ? String(port.description) : "";
 
             html += ""
                 + "<div class=\"appbut label\""
                 + " style=\"display:inline-block;cursor:default;white-space:nowrap;"
                 + "background:rgba(192,192,192,.35);\""
-                + " title=\""+oCOM.escapeHTML(title)+"\">"
-                + oCOM.escapeHTML(String(name))
+                + (description
+                    ? " title=\""+oCOM.escapeHTML(description)+"\""
+                    : "")
+                + ">"
+                + oCOM.escapeHTML(label)
                 + "</div>";
         }
 
         return html+"</div>";
     }
 
-    function slotDevicePortTitle(name,port)
+    function slotDevicePortLabel(name,port)
     {
-        var details = [];
+        var parts = [String(name)];
 
         if(port && port.direction)
-            details.push(String(port.direction));
+            parts.push(String(port.direction));
 
         if(port && port.mime)
         {
             var mime = Array.isArray(port.mime)
                 ? port.mime.join(", ")
                 : String(port.mime);
-            if(mime) details.push(mime);
+            if(mime) parts.push(mime);
         }
 
-        if(port && port.description)
-            details.push(String(port.description));
-
-        return String(name) + (details.length ? " — "+details.join(" · ") : "");
+       return parts.join(" · ");
     }
 
     /*
