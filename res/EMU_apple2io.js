@@ -847,7 +847,12 @@ function mergeActionMap(dst,src)
             var Device = globalThis[device_info.coID];
             if(typeof(Device)!="function") return null;
 
-            device = new Device();
+            /*
+             * Pass the declarative device metadata to the constructor.
+             * Existing constructors may ignore it; multi-role constructors such
+             * as VidexVideoMUX can use DCODE to instantiate the correct role.
+             */
+            device = new Device(device_info);
             if(!device.id) device.id = {};
             if(device.id.DCODE && device.id.DCODE != dcode) return null;
             if(device.id.hostPCODE && device.id.hostPCODE != hostPCODE) return null;

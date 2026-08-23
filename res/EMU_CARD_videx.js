@@ -55,6 +55,13 @@ function col80card()
             ,"range":"HostROM"
             ,"action":{}
         }
+        ,{
+             "DCODE":"VIDEXTXT"
+            ,"hostPCODE":"VIDEX"
+            ,"coID":"VidexVideoMUX"
+            ,"icon":"fa fa-keyboard"
+            ,"description":"Videx VideoTerm Unicode text input"
+        }
     ];
 
 
