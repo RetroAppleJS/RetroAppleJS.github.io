@@ -45,6 +45,13 @@ function AppleBoard()
              }
          }
         ,{
+             "DCODE":"PASTEBO"
+            ,"hostPCODE":"A2BO"
+            ,"coID":"PasteBoard"
+            ,"icon":"fa fa-clipboard"
+            ,"description":"Host pasteboard"
+         }
+        ,{
              "DCODE":"A2SPK"
             ,"hostPCODE":"A2BO"
             ,"coID":"AppleSpeaker"

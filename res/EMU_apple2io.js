@@ -391,6 +391,202 @@ function mergeActionMap(dst,src)
         return obj_arr;
     }
 
+    /*
+     * Pipe addresses identify one named port on one child device:
+     *
+     *     <slot>:<DCODE>:<port>
+     *
+     * The first live connection is:
+     *
+     *     0:PASTEBO:text  ->  0:A2KBD:text
+     *
+     * Apple2IO only resolves endpoints and validates their contracts.  Payload
+     * interpretation belongs to the destination device.
+     */
+    function pipeMimeBase(mime)
+    {
+        return String(mime || "")
+            .split(";")[0]
+            .trim()
+            .toLowerCase();
+    }
+
+    function pipeMimeList(port)
+    {
+        if(!port || port.mime===undefined || port.mime===null) return [];
+
+        var list = Array.isArray(port.mime) ? port.mime : [port.mime];
+        var out = [];
+
+        for(var i=0;i<list.length;i++)
+        {
+            var mime = pipeMimeBase(list[i]);
+            if(mime) out.push(mime);
+        }
+
+        return out;
+    }
+
+    function pipeMimeSupported(port,mime)
+    {
+        mime = pipeMimeBase(mime);
+        if(!mime) return false;
+
+        var list = pipeMimeList(port);
+        var slash = mime.indexOf("/");
+        var major = slash>=0 ? mime.substring(0,slash) : mime;
+
+        for(var i=0;i<list.length;i++)
+        {
+            if(list[i]=="*/*" || list[i]==mime) return true;
+            if(list[i]==major+"/*") return true;
+        }
+
+        return false;
+    }
+
+    function pipeDirectionAllows(port,flow)
+    {
+        var direction = String(port && port.direction || "").toLowerCase();
+
+        if(direction=="duplex") return true;
+        if(flow=="in")  return direction=="in"  || direction=="input";
+        if(flow=="out") return direction=="out" || direction=="output";
+
+        return false;
+    }
+
+    this.pipeResolve = function(address)
+    {
+        var match =
+            /^(\d+):([A-Za-z0-9_-]+):([A-Za-z0-9_.-]+)$/
+            .exec(String(address || "").trim());
+
+        if(!match) return null;
+
+        var slotN = Number(match[1]);
+        var DCODE = match[2].toUpperCase();
+        var requestedPort = match[3];
+        var owner = this.SLOT2obj(slotN);
+        var devices = owner && Array.isArray(owner.devices) ? owner.devices : [];
+        var device = null;
+
+        for(var i=0;i<devices.length;i++)
+        {
+            if(String(devices[i]?.id?.DCODE || "").toUpperCase()==DCODE)
+            {
+                device = devices[i];
+                break;
+            }
+        }
+
+        if(!device || !device.ports) return null;
+
+        var portName = null;
+        var requestedLower = requestedPort.toLowerCase();
+
+        for(var name in device.ports)
+        {
+            if(String(name).toLowerCase()==requestedLower)
+            {
+                portName = name;
+                break;
+            }
+        }
+
+        if(portName===null) return null;
+
+        return {
+             "address":slotN+":"+DCODE+":"+portName
+            ,"slotN":slotN
+            ,"owner":owner
+            ,"device":device
+            ,"DCODE":DCODE
+            ,"portName":portName
+            ,"port":device.ports[portName]
+        };
+    };
+
+    this.pipeSend = function(sourceAddress,targetAddress,message)
+    {
+        var source = this.pipeResolve(sourceAddress);
+        var target = this.pipeResolve(targetAddress);
+
+        if(!source || !target)
+        {
+            console.error(
+                "Apple2IO.pipeSend: unresolved pipe endpoint",
+                sourceAddress,
+                targetAddress
+            );
+            return false;
+        }
+
+        if(!pipeDirectionAllows(source.port,"out"))
+        {
+            console.error("Apple2IO.pipeSend: source port is not an output",source.address);
+            return false;
+        }
+
+        if(!pipeDirectionAllows(target.port,"in"))
+        {
+            console.error("Apple2IO.pipeSend: target port is not an input",target.address);
+            return false;
+        }
+
+        var envelope = Object.assign({},message || {});
+        var mime = pipeMimeBase(envelope.mime);
+
+        if(!mime)
+        {
+            var sourceMimes = pipeMimeList(source.port);
+            mime = sourceMimes.length ? sourceMimes[0] : "";
+        }
+
+        if(!pipeMimeSupported(source.port,mime) ||
+           !pipeMimeSupported(target.port,mime))
+        {
+            console.error(
+                "Apple2IO.pipeSend: incompatible MIME type",
+                mime,
+                source.address,
+                target.address
+            );
+            return false;
+        }
+
+        envelope.mime = mime;
+
+        var handler = target.port.handler;
+
+        if(typeof(handler)=="string")
+            handler = target.device[handler];
+
+        if(typeof(handler)!="function" && typeof(target.device.pipeReceive)=="function")
+            handler = target.device.pipeReceive;
+
+        if(typeof(handler)!="function")
+        {
+            console.error(
+                "Apple2IO.pipeSend: target port has no receiver",
+                target.address
+            );
+            return false;
+        }
+
+        var result = handler.call(
+            target.device,
+            envelope,
+            {
+                 "io":this
+                ,"source":source
+                ,"target":target
+            }
+        );
+
+        return result===undefined ? true : result;
+    };
+
     function emptyActionMap()
     {
         return {"WR":{},"RD":{},"RR":{},"SV":{},"VA":{},"BT":{},"RG":{}};

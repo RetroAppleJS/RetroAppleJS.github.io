@@ -14,6 +14,20 @@ function A2Pkeys()
 {
     this.id = {"DCODE":"A2KBD", "hostPCODE":"A2BO", "icon":"fa fa-keyboard"};
 
+    this.ports = {
+        "text":{
+             "direction":"in"
+            ,"mime":["text/plain"]
+            ,"handler":"receiveText"
+            ,"description":"Apple II keyboard text input"
+        }
+    };
+
+    // Text arriving through 0:A2KBD:text is translated when accepted and then
+    // delivered through the normal keyboard latch/strobe path.
+    this._pipeQueue = [];
+    this._pipePos = 0;
+
     //this.hw = hw;
     this.bDebug = false;
     this.active = true;
@@ -61,6 +75,8 @@ function A2Pkeys()
     this.reset = function()
     {
         this.lastkey = 0x00;
+        this._pipeQueue.length = 0;
+        this._pipePos = 0;
         this.events_data.metabits = [0,0];  // trigger init of keyboard modifier states (capslock, shift, control...)
 
         //window.keycap_over  = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"over"});    // function overload
@@ -79,6 +95,50 @@ function A2Pkeys()
             this.lastkey = data.keyCode | 0x80;
     }
 
+    this.receiveText = function(message)
+    {
+        var text =
+            message && message.data!==undefined
+                ? String(message.data)
+                : "";
+
+        // Keep the pipe payload as Unicode up to the destination.  A2KBD owns
+        // the Apple II+ keyboard mapping: normalize host line endings, turn
+        // lowercase ASCII into the uppercase keys available on the Apple II+
+        // keyboard, and reject characters that have no 7-bit keyboard code.
+        text = text.replace(/\r\n/g,"\n").replace(/\r/g,"\n");
+
+        if(this._pipePos >= this._pipeQueue.length)
+        {
+            this._pipeQueue.length = 0;
+            this._pipePos = 0;
+        }
+
+        var skipped = 0;
+
+        for(var i=0;i<text.length;i++)
+        {
+            var code = text.codePointAt(i);
+            if(code>0xFFFF) i++;
+
+            if(code==0x0A) code = 0x0D;               // LF -> RETURN
+            if(code>=0x61 && code<=0x7A) code -= 0x20; // a-z -> A-Z
+
+            if(code>=0x00 && code<=0x7F)
+                this._pipeQueue.push(code);
+            else
+                skipped++;
+        }
+
+        if(skipped && typeof(console)!="undefined" && console.warn)
+            console.warn(
+                "A2KBD:text skipped " + skipped +
+                " unsupported Unicode character" + (skipped==1 ? "" : "s")
+            );
+
+        return true;
+    }
+
     this.read = function(rel_addr,ctx)
     {
         return ctx && ctx.bRO===true
@@ -86,8 +146,38 @@ function A2Pkeys()
             : this.polling(this.lastkey);
     }
 
-    this.polling = function(key){ return key }    // override me if you need to take over the keyboard  
-    this.stop_polling = function(){ this.polling = function(key){ return key } }    // override me if you need to take over the keyboard  
+    this.polling = function(key)
+    {
+        // A physical/host keystroke already in the latch always wins.
+        if(key & 0x80) return key;
+
+        if(this._pipePos < this._pipeQueue.length)
+        {
+            var k = this._pipeQueue[this._pipePos++];
+            this.keystroke(
+                {"charCode":false,"metaKey":false,"altKey":false,"keyCode":k}
+            );
+
+            if(this._pipePos >= this._pipeQueue.length)
+            {
+                this._pipeQueue.length = 0;
+                this._pipePos = 0;
+            }
+
+            // Preserve the former pasteboard polling timing: keystroke() has
+            // armed lastkey with bit 7, while this read returns the raw code.
+            return k;
+        }
+
+        return key;
+    }
+
+    this.stop_polling = function()
+    {
+        this._pipeQueue.length = 0;
+        this._pipePos = 0;
+        return this.lastkey;
+    }
     this.strobe = function(){ this.lastkey &= 0x7f; return 0x00 } 
 
     this.KeyCodeHandler = function(arg,to)

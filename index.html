@@ -159,6 +159,8 @@
             <script type="text/javascript" src="res/EMU_DEVICE_video_MUX.js"></script>
             <script type="text/javascript" src="res/EMU_DEVICE_videx_normal.js"></script>
             <script type="text/javascript" src="res/EMU_DEVICE_videx_MUX.js"></script>
+            <script type="text/javascript" src="res/EMU_DEVICE_pasteboard.js"></script>
+
 
             <script type="text/javascript" src="res/EMU_CARD_appledisk2.js"></script>
             <script type="text/javascript" src="res/EMU_CARD_ramcard.js"></script>
@@ -395,46 +397,25 @@
 
             function onBoardPaste()
             {
-              var keyboard = keys;
-              if(!keyboard && apple2plus && typeof(apple2plus.keysObj)=="function")
-                keyboard = apple2plus.keysObj();
+              var io =
+                typeof(apple2plus)=="object" && apple2plus
+                    ? apple2plus.hwObj().io
+                    : null;
 
-              if(!keyboard)
+              if(!io || typeof(io.pipeSend)!="function")
               {
-                console.error("A2KBD device is not attached to A2BO");
+                console.error("Apple2IO pipe router is not available");
                 return false;
               }
 
-              var e = EMUboard.boardText.value;
-              e = e.replace(/\r\n/g,"\r");
-              e = e.replace(/\n/g,"\r");
-              keyboard.pastebuffer = e;
-              keyboard._i = 0;
-
-              // temporarily override polling function (super fast paste function!)
-              keyboard.polling = function(key)
-              {
-                 if(key & 0x80)                   return key;   // keyboard strobe: someone is typing!
-                 if(this._i < this.pastebuffer.length)
-                 {
-                   const k = this.pastebuffer.charCodeAt(this._i++); 
-                   this.keystroke( {"charCode":false,"metaKey":false,"altKey":false,"keyCode":k} );
-                   return k;
-                 }
-                 this._i = 0;
-                 return this.stop_polling();  // self-destroy override
-              }
-
-              /*
-              for(var _i=0;_i<e.length;_i++)
-              {
-                  //var event = {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)}
-                  //apple2OnKeyPress(event);
-                  var code = oEMU.component.Keyboard.keystroke( {"charCode":false,"metaKey":false,"altKey":false,"keyCode":e.charCodeAt(_i)} );
-                  if(e.charCodeAt(_i)==13) apple2plus.cycle(10000 * _o.EMU_IntervalTime_ms);  // carriage return takes more cycle time
-                  apple2plus.cycle(1000 * _o.EMU_IntervalTime_ms);
-              }
-              */
+              return io.pipeSend(
+                  "0:PASTEBO:text",
+                  "0:A2KBD:text",
+                  {
+                      "mime":"text/plain",
+                      "data":EMUboard.boardText.value
+                  }
+              );
             }
 
             function onTxtCapture(el)
