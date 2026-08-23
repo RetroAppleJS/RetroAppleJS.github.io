@@ -2347,7 +2347,9 @@ function mergeActionMap(dst,src)
             + "<th style='padding:4px 6px'>R/W</th>"
             + "</tr></thead>"
             + "<tbody>"+body+"</tbody>"
-            + "</table></div>" 
+            + "</table>"
+            + slotDeviceTable_html(peripheral)
+            + "</div>"
     }
 
     function mappingRow_html(row)
@@ -2395,6 +2397,130 @@ function mergeActionMap(dst,src)
         if(mapping.enabled===false) parts.push("disabled by current soft-switch state");
         if(mapping.source) parts.push(mapping.source);
         return parts.join("; ");
+    }
+
+    /*
+     * Render the live child devices attached to one peripheral.
+     *
+     * Use peripheral.devices rather than deviceConfig: Apple2IO.attach()
+     * populates peripheral.devices only after a child device was actually
+     * instantiated and attached.
+     */
+    function slotDeviceTable_html(peripheral)
+    {
+        var devices = peripheral && Array.isArray(peripheral.devices)
+            ? peripheral.devices
+            : [];
+        var body = "";
+
+        for(var i=0;i<devices.length;i++)
+        {
+            var device = devices[i];
+            if(!device) continue;
+
+            body += ""
+                + "<tr>"
+                + "<td style='padding:4px 6px;vertical-align:top'>"
+                + slotDeviceLabel_html(device)
+                + "</td>"
+                + "<td style='padding:4px 6px;vertical-align:top'>"
+                + slotDevicePorts_html(device)
+                + "</td>"
+                + "</tr>";
+        }
+
+        if(!body)
+            body = "<tr><td colspan='2' style='padding:8px'>No devices attached.</td></tr>";
+
+        return ""
+            + "<table style='width:100%;border-collapse:collapse;margin-top:10px;text-align:left'>"
+            + "<thead><tr style='border-bottom:1px solid #888'>"
+            + "<th style='padding:4px 6px'>Device</th>"
+            + "<th style='padding:4px 6px'>Ports</th>"
+            + "</tr></thead>"
+            + "<tbody>"+body+"</tbody>"
+            + "</table>";
+    }
+
+    /*
+     * Match the labels used by Peripheral controls: appbut + label,
+     * pictogram, DCODE and description/range in the tooltip.
+     */
+    function slotDeviceLabel_html(device)
+    {
+        var id = device && device.id ? device.id : {};
+        var deviceCode = String(
+            id.DCODE ||
+            id.coID ||
+            (device && device.constructor && device.constructor.name) ||
+            "device"
+        );
+        var description = String(id.description || deviceCode);
+        var icon = String(id.icon || "fa fa-cube");
+        var range = device && device.attach && device.attach.range
+            ? String(device.attach.range)
+            : "";
+        var title = description + (range ? " ["+range+"]" : "");
+
+        return ""
+            + "<div class=\"appbut label\""
+            + " data-dcode=\""+oCOM.escapeHTML(deviceCode)+"\""
+            + " style=\"display:inline-block;cursor:default;white-space:nowrap;\""
+            + " title=\""+oCOM.escapeHTML(title)+"\">"
+            + "<i class=\""+oCOM.escapeHTML(icon)+"\" aria-hidden=\"true\"></i>&nbsp;"
+            + oCOM.escapeHTML(deviceCode)
+            + "</div>";
+    }
+
+    function slotDevicePorts_html(device)
+    {
+        var ports = device && device.ports;
+        if(!ports || typeof(ports)!="object")
+            return "&mdash;";
+
+        var names = Object.keys(ports);
+        if(!names.length)
+            return "&mdash;";
+
+        var html = "<div style='display:flex;flex-wrap:wrap;gap:3px'>";
+
+        for(var i=0;i<names.length;i++)
+        {
+            var name = names[i];
+            var port = ports[name] || {};
+            var title = slotDevicePortTitle(name,port);
+
+            html += ""
+                + "<div class=\"appbut label\""
+                + " style=\"display:inline-block;cursor:default;white-space:nowrap;"
+                + "background:rgba(192,192,192,.35);\""
+                + " title=\""+oCOM.escapeHTML(title)+"\">"
+                + oCOM.escapeHTML(String(name))
+                + "</div>";
+        }
+
+        return html+"</div>";
+    }
+
+    function slotDevicePortTitle(name,port)
+    {
+        var details = [];
+
+        if(port && port.direction)
+            details.push(String(port.direction));
+
+        if(port && port.mime)
+        {
+            var mime = Array.isArray(port.mime)
+                ? port.mime.join(", ")
+                : String(port.mime);
+            if(mime) details.push(mime);
+        }
+
+        if(port && port.description)
+            details.push(String(port.description));
+
+        return String(name) + (details.length ? " — "+details.join(" · ") : "");
     }
 
     /*
