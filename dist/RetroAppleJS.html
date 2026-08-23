@@ -28028,18 +28028,170 @@ function col80card()
             ,[0x7F,0x00FA]     // ú
         ]);
 
+    /*
+     * The Katakana EPROM is a mixed Latin/Katakana character set rather than
+     * JIS X 0201 byte order. Start with the normal VideoTerm semantics and
+     * replace only cells whose actual ROM glyph differs.
+     *
+     * Use the Unicode halfwidth Katakana forms because they represent the
+     * narrow single-cell repertoire of this ROM without implying a fullwidth
+     * presentation. A few ASCII punctuation glyphs are relocated by the ROM.
+     *
+     * Note that $40 and $67 contain effectively the same KA glyph in this ROM;
+     * both therefore map to HALFWIDTH KATAKANA LETTER KA.
+     */
+    const VIDEX_UNICODE_KATAKANA =
+        unicodeMapWithOverrides(VIDEX_UNICODE_NORMAL,[
+             [0x21,0xFF8A]     // ﾊ  halfwidth HA
+            ,[0x22,0xFF9E]     // ﾞ   halfwidth voiced sound mark
+            ,[0x23,0x0029]     // )   right parenthesis
+            ,[0x26,0xFF7E]     // ｾ  halfwidth SE
+            ,[0x27,0xFF9F]     // ﾟ   halfwidth semi-voiced sound mark
+            ,[0x28,0xFF8B]     // ﾋ  halfwidth HI
+            ,[0x29,0xFF92]     // ﾒ  halfwidth ME
+            ,[0x2A,0xFF8C]     // ﾌ  halfwidth HU/FU
+            ,[0x2F,0xFF99]     // ﾙ  halfwidth RU
+            ,[0x3A,0xFF6F]     // ｯ  halfwidth small TU/TSU
+            ,[0x3C,0xFF8F]     // ﾏ  halfwidth MA
+            ,[0x3D,0x00A5]     // ¥   yen sign
+            ,[0x3E,0xFF88]     // ﾈ  halfwidth NE
+            ,[0x3F,0xFF7D]     // ｽ  halfwidth SU
+            ,[0x40,0xFF76]     // ｶ  halfwidth KA
+            ,[0x5B,0xFF90]     // ﾐ  halfwidth MI
+            ,[0x5C,0xFF71]     // ｱ  halfwidth A
+            ,[0x5D,0xFF9B]     // ﾛ  halfwidth RO
+            ,[0x5E,0xFF89]     // ﾉ  halfwidth NO
+            ,[0x5F,0xFF9F]     // ﾟ   halfwidth semi-voiced sound mark
+            ,[0x60,0xFF9A]     // ﾚ  halfwidth RE
+            ,[0x61,0xFF78]     // ｸ  halfwidth KU
+            ,[0x62,0xFF96]     // ﾖ  halfwidth YO
+            ,[0x63,0xFF73]     // ｳ  halfwidth U
+            ,[0x64,0xFF83]     // ﾃ  halfwidth TE
+            ,[0x65,0xFF86]     // ﾆ  halfwidth NI
+            ,[0x66,0xFF93]     // ﾓ  halfwidth MO
+            ,[0x67,0xFF76]     // ｶ  halfwidth KA (duplicate ROM glyph)
+            ,[0x68,0xFF85]     // ﾅ  halfwidth NA
+            ,[0x69,0xFF95]     // ﾕ  halfwidth YU
+            ,[0x6A,0xFF87]     // ﾇ  halfwidth NU
+            ,[0x6B,0xFF7F]     // ｿ  halfwidth SO
+            ,[0x6C,0xFF7C]     // ｼ  halfwidth SI/SHI
+            ,[0x6D,0xFF82]     // ﾂ  halfwidth TU/TSU
+            ,[0x6E,0xFF7A]     // ｺ  halfwidth KO
+            ,[0x6F,0xFF84]     // ﾄ  halfwidth TO
+            ,[0x70,0xFF8E]     // ﾎ  halfwidth HO
+            ,[0x71,0xFF9C]     // ﾜ  halfwidth WA
+            ,[0x72,0xFF77]     // ｷ  halfwidth KI
+            ,[0x73,0xFF81]     // ﾁ  halfwidth TI/CHI
+            ,[0x74,0xFF75]     // ｵ  halfwidth O
+            ,[0x75,0xFF98]     // ﾘ  halfwidth RI
+            ,[0x76,0xFF9D]     // ﾝ  halfwidth N
+            ,[0x77,0xFF91]     // ﾑ  halfwidth MU
+            ,[0x78,0xFF72]     // ｲ  halfwidth I
+            ,[0x79,0xFF94]     // ﾔ  halfwidth YA
+            ,[0x7A,0xFF74]     // ｴ  halfwidth E
+            ,[0x7B,0xFF66]     // ｦ  halfwidth WO
+            ,[0x7C,0xFF97]     // ﾗ  halfwidth RA
+            ,[0x7D,0xFF79]     // ｹ  halfwidth KE
+            ,[0x7E,0x0028]     // (   left parenthesis
+            ,[0x7F,0xFF8D]     // ﾍ  halfwidth HE
+        ]);
+
+    function makeAplUnicodeMap()
+    {
+        /*
+         * The APL EPROM retains the normal VideoTerm graphics/control glyphs
+         * in $00-$1F. The printable half follows the traditional APL layout,
+         * with character positions taken from the glyphs actually in this ROM.
+         */
+        var map = VIDEX_UNICODE_NORMAL.slice();
+
+        // Bit-paired punctuation and arithmetic/logical operators.
+        map[0x21] = 0x00A8;     // ¨ diaeresis
+        map[0x22] = 0x0029;     // )
+        map[0x23] = 0x003C;     // <
+        map[0x24] = 0x2264;     // ≤ less-than or equal
+        map[0x25] = 0x003D;     // =
+        map[0x26] = 0x003E;     // >
+        map[0x27] = 0x005D;     // ]
+        map[0x28] = 0x2228;     // ∨ logical or
+        map[0x29] = 0x2227;     // ∧ logical and
+        map[0x2A] = 0x2260;     // ≠
+        map[0x2B] = 0x00F7;     // ÷
+        map[0x2D] = 0x002B;     // +
+
+        map[0x3A] = 0x0028;     // (
+        map[0x3B] = 0x005B;     // [
+        map[0x3C] = 0x003B;     // ;
+        map[0x3D] = 0x00D7;     // ×
+        map[0x3E] = 0x003A;     // :
+        map[0x3F] = 0x005C;     // backslash
+
+        // Core APL symbols.
+        map[0x40] = 0x00AF;     // ¯ high minus / overbar
+        map[0x41] = 0x237A;     // ⍺ alpha
+        map[0x42] = 0x22A5;     // ⊥ up tack / decode
+        map[0x43] = 0x2229;     // ∩ cap
+        map[0x44] = 0x230A;     // ⌊ floor
+        map[0x45] = 0x220A;     // ∊ epsilon
+        map[0x46] = 0x005F;     // _ underbar
+        map[0x47] = 0x2207;     // ∇ del
+        map[0x48] = 0x2206;     // ∆ delta
+        map[0x49] = 0x2373;     // ⍳ iota
+        map[0x4A] = 0x2218;     // ∘ jot
+        map[0x4B] = 0x0027;     // apostrophe
+        map[0x4C] = 0x2395;     // ⎕ quad
+        map[0x4D] = 0x007C;     // | stile
+        map[0x4E] = 0x22A4;     // ⊤ down tack / encode
+        map[0x4F] = 0x25CB;     // ○ circle
+        map[0x50] = 0x002A;     // * star
+        map[0x51] = 0x003F;     // ?
+        map[0x52] = 0x2374;     // ⍴ rho
+        map[0x53] = 0x2308;     // ⌈ ceiling
+        map[0x54] = 0x007E;     // ~ not
+        map[0x55] = 0x2193;     // ↓ drop
+        map[0x56] = 0x222A;     // ∪ cup
+        map[0x57] = 0x2375;     // ⍵ omega
+        map[0x58] = 0x2283;     // ⊃ right shoe
+        map[0x59] = 0x2191;     // ↑ take
+        map[0x5A] = 0x2282;     // ⊂ left shoe
+        map[0x5B] = 0x2190;     // ← assignment
+        map[0x5C] = 0x22A2;     // ⊢ right tack
+        map[0x5D] = 0x2192;     // → branch
+        map[0x5E] = 0x2265;     // ≥ greater-than or equal
+        map[0x5F] = 0x002D;     // - minus
+        map[0x60] = 0x22C4;     // ⋄ diamond
+
+        /*
+         * This Videx ROM stores uppercase Latin glyphs at $61-$7A rather than
+         * the lowercase ASCII glyphs used by the normal character ROM.
+         */
+        for(var letter=0;letter<26;letter++)
+            map[0x61+letter] = 0x0041 + letter;
+
+        // Final APL/punctuation positions; $7B and $7D remain { and }.
+        map[0x7C] = 0x22A3;     // ⊣ left tack
+        map[0x7E] = 0x0024;     // $
+        map[0x7F] = 0x236A;     // ⍪ comma bar
+
+        return map;
+    }
+
     const VIDEX_UNICODE_SUPSUB = makeSupSubUnicodeMap();
+    const VIDEX_UNICODE_APL = makeAplUnicodeMap();
 
     /*
-     * Katakana, APL and Symbol are intentionally omitted until their complete
-     * glyph repertoires have been identified against authoritative tables.
+     * APL and Symbol are intentionally omitted until their complete glyph
+     * Katakana and Symbol are intentionally omitted until their complete
+     * repertoires have been identified against authoritative tables.
      */
     const VIDEX_UNICODE_BY_ROM = {
          "VIDEX:NORMAL":VIDEX_UNICODE_NORMAL
         ,"VIDEX:NORMAL_UP":VIDEX_UNICODE_NORMAL_UP
+        ,"VIDEX:APL":VIDEX_UNICODE_APL
         ,"VIDEX:FRENCH":VIDEX_UNICODE_FRENCH
         ,"VIDEX:GERMAN":VIDEX_UNICODE_GERMAN
         ,"VIDEX:SPANISH":VIDEX_UNICODE_SPANISH
+        ,"VIDEX:KATAKANA":VIDEX_UNICODE_KATAKANA
         ,"VIDEX:SUP&SUB":VIDEX_UNICODE_SUPSUB
         ,"VIDEX:INVERSE":VIDEX_UNICODE_NORMAL
     };
