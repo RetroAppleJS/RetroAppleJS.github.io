@@ -38112,7 +38112,7 @@ function mergeActionMap(dst,src)
             "device"
         );
         var description = id.description ? String(id.description) : "";
-        var icon = String(id.icon || "fa fa-cube");
+        var icon = slotDeviceIconClass(id.icon);
 
         return ""
             + "<div class=\"appbut label\""
@@ -38122,9 +38122,31 @@ function mergeActionMap(dst,src)
                 ? " title=\""+oCOM.escapeHTML(description)+"\""
                 : "")
             + ">"
-            + "<i class=\""+oCOM.escapeHTML(icon)+"\" aria-hidden=\"true\"></i>&nbsp;"
+            + "<i class=\""+icon+"\" aria-hidden=\"true\"></i>&nbsp;"
             + oCOM.escapeHTML(deviceCode)
             + "</div>";
+    }
+
+    /*
+     * Font Awesome icon identifiers are CSS class lists such as
+     * "fa fa-keyboard".  Do not pass the complete class list through
+     * oCOM.escapeHTML(): that helper intentionally converts spaces to
+     * &nbsp;, which turns the list into one invalid CSS class token.
+     *
+     * Instead, accept only ordinary CSS class-name characters in each token
+     * and join the validated tokens with real spaces.
+     */
+    function slotDeviceIconClass(value)
+    {
+        var tokens = String(value || "fa fa-cube")
+            .trim()
+            .split(/\s+/)
+            .filter(function(token)
+            {
+                return /^[A-Za-z0-9_-]+$/.test(token);
+            });
+
+        return tokens.length ? tokens.join(" ") : "fa fa-cube";
     }
 
     function slotDevicePorts_html(device)
@@ -38163,10 +38185,10 @@ function mergeActionMap(dst,src)
 
     function slotDevicePortLabel(name,port)
     {
-        var parts = [String(name)];
+        var parts = [String("<b>"+name+"</b>")];
 
         if(port && port.direction)
-            parts.push(String(port.direction));
+            parts.push(String(port.direction.toUpperCase()));
 
         if(port && port.mime)
         {
@@ -38176,7 +38198,7 @@ function mergeActionMap(dst,src)
             if(mime) parts.push(mime);
         }
 
-       return parts.join(" · ");
+       return parts.join("·");
     }
 
     /*
