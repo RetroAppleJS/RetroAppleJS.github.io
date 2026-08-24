@@ -1,38 +1,5 @@
 # VIDEX VIDEOTERM - Installation and Operation Manual
 
-**Authors:** Curtis White; Darrell Aldrich  
-**Edition:** Third Edition, January 1982  
-**Document number:** 001053 VT-MAN-OOO
-
-> **Transcription note.** This revised Markdown transcription is based on the supplied scan and its searchable text layer. Page-break separators have been removed; prose has been reflowed into the paragraph structure of the original manual; the contents pages are preserved in monospaced form; and clear OCR/typographic anomalies have been corrected where the intended reading is unambiguous. Figures and graphical tables are preserved as image assets. Program and firmware listings received a conservative OCR cleanup, but byte-for-byte use should still be checked against the scan.
-
-![Original cover](assets/pdf-page-001-image.jpg)
-
-First Printing: March, 1980  
-Second Printing: August, 1980  
-Third Printing: January, 1982
-
-Published by:  
-VIDEX  
-897 N.W. Grant Ave.  
-Corvallis, Oregon 97330  
-Phone: [503] 758-0521
-
-All rights reserved. No part of this publication may be reproduced without prior written permission of VIDEX. Please call for more information.
-
-Copyright © 1980 by VIDEX.
-
-Apple ][® Apple Computer, Inc.  
-Micromodem ][® D.C. Hayes Associate, Inc.  
-ROMWriter® Mountain Hardware, Inc.  
-EasyWriter® Information Unlimited Software, Inc.  
-Softcard® Microsoft
-
-Apple PIE® Programma International, Inc.  
-Video 100 is a product of Leedex Corporation
-
-Videx is a trademark of Videx, Inc.
-
 # TABLE OF CONTENTS
 
 ```text
@@ -437,8 +404,6 @@ The VIDEOTERM board starts in upper case mode.
 | Character | Displays that character |
 
 Low-resolution graphics characters each occupy one character position on the screen display.
-
-![Low-resolution graphics character table from the source manual](assets/pdf-page-040-image.jpg)
 
 ## Upper and Lower Case
 
@@ -1286,753 +1251,729 @@ For Integer Basic, subtract the value 69536 from the above decimal address equiv
 
 ```text
 :AIM
-       1    *************************************
-       2    *                                   *
-       3    *        VIDEOTERM INTERFACE        *
-       4    *         FIRMWARE V. 2.4           *
-       5    *                                   *
-       8    *    WRITTEN 8Y DARRELL ALDRICH     *
-       7    *         (Cl 1981 VIDEO            *
-       8    *************************************
-       10   *
-       II   * ZERO PAGE EQUATES
-       12   *
-       13   CH     EQU $24
-       14   CV     EQU $25
-       15   BASL   EQU $28
-       16   OSAVE EQU $33
-       17   CSWL   EQU $36
-       18   CSWH   EQU $37
-       19   KSWL   EQU $38
-       20   XSWH   EQU $39
-       21   RNOL   EQU $4E
-       22   RNON   EQO $4F
-       23
-       24   * TEMPORARIES
-       25
-       26   CRFLAG EQU $478
-       27   ASAV1    EQU $4F8
-       28   XSAV1    EQU $578
-       29   TEMPX    EQU SIFO
-       30   OLOCHAR EQU $618
-       31   NO       EQU $6F8
-       32   MSLOT    EQU $778
-       33   *
-       34   * MISC EQUATES
-       35   *
-       36   IN     EQU $200
-       37   IORTS EQU $FFCB
-       38   *
-       39      SLOT N PERMANENTS
-       40   *
-       41   EASEL EQU $478 ;SCREEN BASE ADDRESS LOW
-       42   BASEM EQU $4FB    ;SCREEN BASE ADDRESS HIGH
-       43   CHORZ EQU $578    ;CURSOR HORIZONTAL POSITION
-       44   CVERT EQU $SFB    ;CURSOR VERTICAL POSITION
-       45   BYTE EQU $678     ;1/0 BYTE FOR PASCAL ENTRIES
-       46   START EQU $6FB    ;SCREEN START ADDRESS
-       47   POFF EQU $778     ;POWER OFF AND LEAD IN COUNTER
-       48
-       49   * B0,61 15 GO TO IV LEAD IN COUNTER
-       38   * B2 15 CONTROL 7 LEADIN COUNTER
-       31   * B3—B? IS POWER OFF FLAG
-       32   *
-       53   FLAGS EQU $?F8        VIDEO SET UP FLAGS
-       34   *
-       55   * B0 ALTERNATE CHARACTER SET I=OH O=OFF
-       56   * B1
-       57   * B2
-       58   * B3
-```
-```text
-                  59 * 84 ROWS OF CHARACTERS 1=24 0=18
-                  60 * 85
-                  61 * 86 LOWER / UPPER CASE CONVERSION FLAG 1=ON 0=OFF
-                  62 * 67 GETLN FLAG I=INPUT CAME FROM GETLN ROUTINE
-                  63 *
-                  64 *
-                  65 * I0 DEVICES
-                  66 *
-                  67 K80       EQU $0000
-                  68 KBDSTR8   EQU SCOIO
-                  69 SPKR      EQU $0030
-                  70 DEVO      EQU SCOBO
-                  71 DEV1      EQU $0081
-                  72 DISP0     EQU $CC0O
-                  73 DISP1     EQU $0000
-                  74 *
-                  75 *         ORG SC80O
-                  76 *         08J $6800
-                  77 *
-                  78 *
-                  79 * SET UP CRTC AND CLEAR SCREEN
-                  80 *
-                  81 *
-C800: AD 78 07    82 SETUP     LDA POFF             ;GET POWER OFF FLAG
-C805: 29 F8        83 AND     #$F8                ;STRIP OFF LEAD IN COUNTERS
-C807: C9 30       84           CMP #$30             ;HAS POWER BEEN TURNED OFF?
-C809: FO 21       85           BEQ SETEXIT        ;RETURN IF NOT
-C803: A9 30       86 RESTART LDA #$30
-C808: 80 78 07    87           STA POFF           ;SET DEFAULTS FOR FLAGS
-C80E: BD FB 07    88           STA FLAGS
-C811: A9 00       89           LDA #$00
-C813: 80 FB 06    90           STA START
-C816: 20 61 09    91           JSR CLSCRN
-C819: A2 00       92           LDX #$00
-C818: 8A          93 LOOP      TXA
-C810: 80 80 C0    94           STA DEV0           ;FOR THE CRTC ADDRESS
-C81F: 80 Al C8    95           LDA TABLE,X        ;GET PARAMETER
-C822: 80 81C00    96           STA DEV1           ;STXRE INTO CRTC
-C825: E8          97           INX
-C826: CO 10       98           CPX #$10
-C828: 00 Fl       99           8NE LOOP           ;CONTINUE LOOP UNTIL DONE
-C82A: 80 59 C0   100 SETEXIT STA $C059
-C82D: 60         101           RTS
-                 102
-                 103
-C82E: AD F8 07   104           LDA FLAGS
-C831: 29 08      105           AND #$08
-C833: FO 09      106           BEQ NORMOUT
-C835: 20 93 FE   107           JSR $FE93
-C838: 20 22 FC   108           JSR $FC22
-C838: 20 89 FE   109           JSR $FE89
-C83E: 68         110 NORMOUT PLA                    ;RECOVER REGISTERS
-C83F: A8         111           TAY
-C840: 68         112           PLA
-C841: AA         113           TAX
-C842: 68         114           PLA
-C843: 60         115           RTS
-                 116 *
-                 117 *
-                 118 *              ;GET CHARACTER FROM KEYBOARD
-```
-```text
-                       119   *
-C844:   20   DI   CO   120   RDKEY   JSR   CSRMOV    ;POSITION CURSOR
-C847:   E6   4E        121   KEYIN   INC   RNOL      ;UPDATE BASIC RANDOM NUMBER
-C849:   DO   02        122           8NE   KEYIN2
-C840:   E6   4F        123           INC   RNOH
-C84B:   AD   00   CO   124   KEYIN2  LDA    KBD     ;POLL KEYBOARD
-C85O:   10   FO        125           BPL    KEY[I] ;LOOP UNTIL KEY IS STRUCK
-C852:   20   SC   CO   126           JSR   KEYSTAT
-C855:   90   FO        127           8CC    KEYIN
-C857:   2C   10   CO   128   NOKEY   BIT    K8OSTR8 ;CLEAR KEYBOARD STROBE
-C85A:   10             129           CLC
-C85B:   60             130           RTS
-                       131   *
-C85C:   CV   00        132 KEYSTAT  CMP #$8B        ;CHECK FOR CONTROL K
-C85E:   DO   02        133           8NE NOTK        ;SKIP IF NOT
-C860:   A9   00        134           LDA #$D8        ;SUOSTITUTE A RIGHT BRACKET
-C862:   C9   81        135   NOTK    CMP #$81        ;CHECK FOR CONTROL A
-C864    DO   OA        136           8NE NTSHFT      ;SKIP IF NOT
-C866:   AD   FB 07     137           LDA FLAGS
-C869:   49   40        138           EOR #$40
-C86B:   00   FO 07     139           STA FLAGS       ;TOGGLE UPR/LWR CASE FLAG
-C86E:   00   El        140           8GE NOKEY       ;GET NEXT KEY
-C870:   40             141   NTSHFT  PHA             ;SAVE CHARACTER
-C87l:   AD   FR 07     142           LDA FLAGS
-C874:   OA             143           ASL
-C875:   0A             144           ASL             ;CHECK UPR/LWR CASE CONVERSION FLAG
+                    1 *************************************
+                    2 *                                   *
+                    3 *        VIDEOTERM INTERFACE        *
+                    4 *         FIRMWARE V. 2.4           *
+                    5 *                                   *
+                    8 *    WRITTEN 8Y DARRELL ALDRICH     *
+                    7 *         (Cl 1981 VIDEO            *
+                    8 *************************************
+                   10 *
+                   II * ZERO PAGE EQUATES
+                   12 *
+                   13 CH       EQU   $24
+                   14 CV       EQU   $25
+                   15 BASL     EQU   $28
+                   16 OSAVE    EQU   $33
+                   17 CSWL     EQU   $36
+                   18 CSWH     EQU   $37
+                   19 KSWL     EQU   $38
+                   20 XSWH     EQU   $39
+                   21 RNOL     EQU   $4E
+                   22 RNON     EQO   $4F
+                   23
+                   24 * TEMPORARIES
+                   25
+                   26 CRFLAG   EQU   $478
+                   27 ASAV1    EQU   $4F8
+                   28 XSAV1    EQU   $578
+                   29 TEMPX    EQU   SIFO
+                   30 OLOCHAR  EQU   $618
+                   31 NO       EQU   $6F8
+                   32 MSLOT    EQU   $778
+                   33 *
+                   34 * MISC EQUATES
+                   35 *
+                   36 IN       EQU   $200
+                   37 IORTS    EQU   $FFCB
+                   38 *
+                   39 SLOT N PERMANENTS
+                   40 *
+                   41 EASEL    EQU   $478              ;SCREEN BASE ADDRESS LOW
+                   42 BASEM    EQU   $4FB              ;SCREEN BASE ADDRESS HIGH
+                   43 CHORZ    EQU   $578              ;CURSOR HORIZONTAL POSITION
+                   44 CVERT    EQU   $SFB              ;CURSOR VERTICAL POSITION
+                   45 BYTE     EQU   $678              ;1/0 BYTE FOR PASCAL ENTRIES
+                   46 START    EQU   $6FB              ;SCREEN START ADDRESS
+                   47 POFF     EQU   $778              ;POWER OFF AND LEAD IN COUNTER
+                   48
+                   49 * B0,61 15 GO TO IV LEAD IN COUNTER
+                   38 * B2 15 CONTROL 7 LEADIN COUNTER
+                   31 * B3—B? IS POWER OFF FLAG
+                   32 *
+                   53 FLAGS    EQU   $?F8 VIDEO SET UP FLAGS
+                   34 *
+                   55 * B0 ALTERNATE CHARACTER SET I=OH O=OFF
+                   56 * B1
+                   57 * B2
+                   58 * B3
+                   59 * 84 ROWS OF CHARACTERS 1=24 0=18
+                   60 * 85
+                   61 * 86 LOWER / UPPER CASE CONVERSION FLAG 1=ON 0=OFF
+                   62 * 67 GETLN FLAG I=INPUT CAME FROM GETLN ROUTINE
+                   63 *
+                   64 *
+                   65 * I0 DEVICES
+                   66 *
+                   67 K80      EQU   $0000
+                   68 KBDSTR8  EQU   SCOIO
+                   69 SPKR     EQU   $0030
+                   70 DEVO     EQU   SCOBO
+                   71 DEV1     EQU   $0081
+                   72 DISP0    EQU   $CC0O
+                   73 DISP1    EQU   $0000
+                   74 *
+                   75 *         ORG SC80O
+                   76 *         08J $6800
+                   77 *
+                   78 *
+                   79 * SET UP CRTC AND CLEAR SCREEN
+                   80 *
+                   81 *
+C800: AD 78 07     82 SETUP    LDA   POFF              ;GET POWER OFF FLAG
+C805: 29 F8        83          AND   #$F8              ;STRIP OFF LEAD IN COUNTERS
+C807: C9 30        84          CMP   #$30              ;HAS POWER BEEN TURNED OFF?
+C809: FO 21        85          BEQ   SETEXIT           ;RETURN IF NOT
+C803: A9 30        86 RESTART  LDA   #$30
+C808: 80 78 07     87          STA   POFF              ;SET DEFAULTS FOR FLAGS
+C80E: BD FB 07     88          STA   FLAGS
+C811: A9 00        89          LDA   #$00
+C813: 80 FB 06     90          STA   START
+C816: 20 61 09     91          JSR   CLSCRN
+C819: A2 00        92          LDX   #$00
+C818: 8A           93 LOOP     TXA
+C810: 80 80 C0     94          STA   DEV0              ;FOR THE CRTC ADDRESS
+C81F: 80 Al C8     95          LDA   TABLE,X           ;GET PARAMETER
+C822: 80 81C00     96          STA   DEV1              ;STXRE INTO CRTC
+C825: E8           97          INX
+C826: CO 10        98          CPX   #$10
+C828: 00 Fl        99          8NE   LOOP              ;CONTINUE LOOP UNTIL DONE
+C82A: 80 59 C0    100 SETEXIT  STA   $C059
+C82D: 60          101          RTS
+                  102
+                  103
+C82E: AD F8 07    104          LDA   FLAGS
+C831: 29 08       105          AND   #$08
+C833: FO 09       106          BEQ   NORMOUT
+C835: 20 93 FE    107          JSR   $FE93
+C838: 20 22 FC    108          JSR   $FC22
+C838: 20 89 FE    109          JSR   $FE89
+C83E: 68          110 NORMOUT  PLA                     ;RECOVER REGISTERS
+C83F: A8          111          TAY
+C840: 68          112          PLA
+C841: AA          113          TAX
+C842: 68          114          PLA
+C843: 60          115          RTS
+                  116 *
+                  117 *
+                  118 *              ;GET CHARACTER FROM KEYBOARD
+                  119 *
+C844: 20 DI CO    120 RDKEY    JSR   CSRMOV            ;POSITION CURSOR
+C847: E6 4E       121 KEYIN    INC   RNOL              ;UPDATE BASIC RANDOM NUMBER
+C849: DO 02       122          8NE   KEYIN2
+C840: E6 4F       123          INC   RNOH
+C84B: AD 00 CO    124 KEYIN2   LDA   KBD               ;POLL KEYBOARD
+C85O: 10 FO       125          BPL   KEY[I]            ;LOOP UNTIL KEY IS STRUCK
+C852: 20 SC CO    126          JSR   KEYSTAT
+C855: 90 FO       127          8CC   KEYIN
+C857: 2C 10 CO    128 NOKEY    BIT   K8OSTR8           ;CLEAR KEYBOARD STROBE
+C85A: 10          129          CLC
+C85B: 60          130          RTS
+                  131 *
+C85C: CV 00       132 KEYSTAT  CMP   #$8B              ;CHECK FOR CONTROL K
+C85E: DO 02       133          8NE   NOTK              ;SKIP IF NOT
+C860: A9 00       134          LDA   #$D8              ;SUOSTITUTE A RIGHT BRACKET
+C862: C9 81       135 NOTK     CMP   #$81              ;CHECK FOR CONTROL A
+C864  DO OA       136          8NE   NTSHFT            ;SKIP IF NOT
+C866: AD FB 07    137          LDA   FLAGS
+C869: 49 40       138          EOR   #$40
+C86B: 00 FO 07    139          STA   FLAGS             ;TOGGLE UPR/LWR CASE FLAG
+C86E: 00 El       140          8GE   NOKEY             ;GET NEXT KEY
+C870: 40          141 NTSHFT   PHA                     ;SAVE CHARACTER
+C87l: AD FR 07    142          LDA   FLAGS
+C874: OA          143          ASL
+C875: 0A          144          ASL                     ;CHECK UPR/LWR CASE CONVERSION FLAG
 
-C876:   60             145           PLA            ;RESTXRE CHARACTER
-C877:   90   IF        146           8CC INDONE     ;DON’T CONVERT IF FLAG CLEAR
-C879:   C9   80        147           CMP #$80
-C87B:   90   1F        148           8LT INDONE     ;DON’T CONVERT SPECIAL CHARACTERS
-C87D:   2C   63 CO     149           8IT $C063
-C880:   30   14        150           8MI NOSHIFT
-C882:   C9   80        151           CMP #"0"
-C884:   F0   0E        152           BEQ ZERO
-C886:   C9   CO        153           CMP #"@"
-C888:   DO   02        154           8NE NOT@
-C88A:   A9   DO        155           LDA #"P"
-C88C:   C9   C8        156 NOT@      CMP #"["
-C88E:   90   08        157           8LT INOONE
-C89O:   29   CF        158           AND #$CF
-C892:   D0   04        159           8NE INDONE
-C894:   A9   DO        160 ZERO      LDA #"]"
-C896:   09   20        161 NOSHIFT   ORA #$20
-C898:   48             162 INDONE    PHA            ;DUPLICATE CHARACTER
-C899:   29   7F        163           AND #$7F       ;STRIP OFF HIGH BIT
-C89B:   8D   78 06     164           STA BYTE       ;SAVE FOR PASCAL
-C89E:   68             165           PLA            ;RECOVER FOR BASIC
-C89F:   38             166           SEC
-C8A0:   60             167           RTS
-                       168   *
-C8Al:   78   50 5E
-C8A4:   29   18 0B
-C8A7:   18   19        169 TABLE     HEX 78505E2918081819
-C8A9:   00   08 E0
-C8AC:   08   00 0O
-C8AF:   00   00        170           HEX 0008EO0800000000
-                       171 *
-                       172
-                       173 * SECONDARY BASIC OUTPUT ROUTINE
-```
-```text
-                     174    *
-                     175    *
-C881:   8D   78 06   176    BASOUT1   STA BYTE           ;SAVE CHARACTER
-C884:   A5   25      177              LDA CV             ;PERFORM VTAB
-C886:   C0   F8 05   178              CMP CVERT
-C889:   F0   06      179              BEQ CVOK
-C888    80   PB 05   180              STA CVERT
-C88E    20   04 CA   181              JSR VTAB
-C8C1    AS   24      182    CV0K      LDA CH             ;PERFORM HTAB
-C8C3    CD   70 05   183              CMP CHORZ
-C8C6    90   03      184              8CC PSCLOUT
-C8C8    80   78 05   885              8TA CHORZ
-C8CB    AD   78 06   886   PSCLOUT    LDA BYTE           ;GET CHARACTER
-C8CE    28   89 CA   887              JSR OUTPTI         ;OUTPUT CHARACTER
-C8D1    A9   OF      188   CSRMOV     LDA #$0F           ;SET UP CRTC ADDRESS
-C8D3    80   80 CO   189              STA DEVO           ;FOR CURSOR LOW ADDRESS
-C8D6    AD   78 05   190              LDA CHORZ          ;CALCULATE ADDRESS
-C8D9    C9   50      191              CMP #80
-C8D8    00   13      192              BCS RTS6
-C8DD    AD   70 04   193              ADC BASEL
-C8E0    80   01 CO   194              STA DEV1           ;SAVE ADDRESS
-C8E3    A9   OE      195              LDA #$OE           ;SET UP CRTC ADDRESS
-C8E5    80   80 CO   196              STA DEVO           ;FOR CURSOR HIGH ADDRESS
-C8E8    A9   00      197              LOA #$00           ;CALCULATE ADDRESS
-C8EA    60   F8 04   198              ADC BASEH
-C8E0    80   81 CO   199              STA DEV1           ;SAVE ADDRESS
-C8FO    60           200    RTS6      RTS
-                     201    *
-                     202    *
-                     203    * PERFORM ESCAPE FUNCTIONS
-                     204    *
-C8F1    49   CO      205    ESC1    EOR #$CO
-C8F3    C?   08      206            CMP #$08
-C8F5    80   10      207            OGE RTS3
-C8F7    A8           208            TAY
-C8F8    A9   C9      209            LOA #>BELL
-C8FA    48           210            PHA
-C8FB    89   P2 CO   211            LOA ESCT8L,Y
-C8FE    48           212            PHA
-C8FF    60           213            RTS
-                     214    *
-C900    EA           215            NOP
-                     216    *
-C901    AC   78 05   217    CLREOL  LOY CHORZ            ;PUT CURSOR HORIZONTAL ONTO Y
-C904    A?   AO      218    CLEOLZ  LDA #$A0             ;USE A SPACE
-C906    20   71 CA   219    CLEOLO  JSR CHRPUT           ;PUT CHARACTER ON SCREEN
-C909    C8           220            INY
-C90A    CO   50      221            CPY #80              ;CONTINUE UNTIL
-C90C    90   P8      222            8LT CLEOL2           ;Y>=80
-C90E    60           223            RTS
-                     224    *
-C90F    A9 34        225    LEADIN  LDA #$34             ;SET LEAO IN BIT
-C911    80 78 07     226    PSAVE   STA POFF
-C914    60           227    RTS3    RTS
-C915    A9 32        228    GOXYI   LOA #$32             ;SET LEADIN COUNT TO 2
-C917    00 P8        229            8NE PSAVE
-                     230    *
-C919    AO   CO      231    BELL    LOY #$C0             ;BEEP THE SPEAKER
-C91B    A2   80      232    BELLI   LDX #$80
-C91D    CA           233    BELL2   DEX
-```
-```text
-C9lE:   00   FO         234           BNE   BELL2
-C020:   AD   30    CO   235           LDA   SPKR
-C023:   88              236           DEY
-C024:   DO        FS    237           BNE   BELL1
-C926:   60              238           RTS
-                        239
-                        240
-                        241 * STXRE CHARACTER ON SCREEN AND ADVANCE CURSOR
-                        242 *
-C027:   AC   70 05      243 STXADV   LOY    CHORZ
-CO2A:   CO   50         244          CPY    #80
-C92C:   90   05         245          BCC    NOT8I
-CO2E:   48              246          PHA
-CO2F:   20   80 CO      247          JSR    CRLF
-C032:   60              248          PLA
-C933:   AC   78 05      249 NOT8I    LDY    CHORZ
-C936:   20   71 CA      250          JSR    CHRPUT    ; PLACE CHARACTER ON SCREEN
-C939:   EE   78 05      251 ADVANCE INC     CHORZ     ; INCREMENT CURSOR HORIZONTAL INDEX
-CO3C:   2C   70 04      252          BIT    CRFLAG
-C93F:   10   07         253          BPL    RTS8
-C941:   AD   72 05      254          LDA    CHORZ
-C044:   C9   50         255          CMP    #80
-C946:   80   68         256          BCS    CRLF
-C048:   60              257 RTS8     RTS
-                        258 *
-                        259 * CLEAR TO END OF PAGE
-                        260 *
-C040:   AC   78 05      261 CLREOP   LOY    CHORZ     ; GET CURSOR HORIZONTAL INTO Y
-C94C;   AD   FO 05      262          LDA    CVERT     ; GET CURSOR VERTICAL INTO A
-C94F:   48              263 CLEOP1   PHA              ; SAVE CURRENT LINE ON STACK
-COSO:   20   07 CA      264          JSR    VTABZ     ; CALCULATE BASE ADDRESS
-C953:   20   04 C?      265          JSR    CLEOLZ    ; CLEAR TO END OF LINE, SET CARRY
-C056:   AO   00         266          LDY    #$00      ; CLEAR FROM HORIZONTAL INDEX 0
-COSO:   60              267          PLA
-C959:   69   00         268          ADC    #%00      ; INCREMENT CURRENT LINE (C=I)
-C95B    CO   18         269          CMP    #24       ; DONE TO BOTTOM OF WINDOW?
-CO5D:   90   F0         270          BCC    CLEOP1    ; IF NOT KEEP CLEARING LINES
-C95F:   80   23         271          BCS    JVTAB     ; VERTICAL TAB TO CURSOR POSITION
-                        272 *
-                        273 *
-                        274 * CLEAR SCREEN
-                        275 *
-C960:   20   67 CO      276 CLSCRN   JSR    HOME     ; HOME CURSOR
-C064:   98              277          TYA
-C965:   FO   ES         278          BEQ    CLEOP1 ; CLEAR TO END OF PAGE
-                        279 *
-                        280 *        HOME   CURSOR
-                        281 *
-C067:   A9   00         202 HOME     LOA    #$00    ; SET CURSOR POSITION TO 0,0
-C969:   OD   78 05      283          STA    CHORZ
-C96C:   80   F8 05      284          STA    CVERT
-C96F:   AS              205          TAY
-C970:   FO   12         286          BEQ    JVTAB   ; VERTICAL TAB TO CURSOR POSITION
-                        287 *
-C972:   CE   78 05      288 BS       DEC    CHURZ   ; DECREMENT CURSOR HORIZONTAL INDEX
-C075:   10   OD         289          8PL    RTS3    ; IF POS, OK. ELSE MOVE UP
-C077:   A9   4F         290          LDA    #79     ; SET CURSOR HORIZONTAL TO
-C070:   8D   78 05      291          STA    CHORZ   ; RIGHTMOST SCREEN POSITION
-                               292 *
-                               293 * MOVE CURSOR UP
-```
-```text
-               294   *
-C97C: AD EB 05 295   UP           LDA    CVERT      ; GET CURSOR VERTICAL INDEX
-CO7F: FO 93    296                BEQ    RTS3       ; IF TOP LINE THEN RETURN
-C981: CE PB 05 297                DEC    CVERT      ; DECREMENT CURSOR VERTICAL INDEX
-C984: 4C 04 CA 298   JYTAB        JMP    VTA8       ; VERTICAL TAB TO CURSOR POSITION
-               299   *
-               200   *
-C987: A9 30    301   NOTGOXY      LDA    #$30       ; CLEAR LEAD IN BRTS
-C989: 80 78 07 302                STA    POFF
-C98C: 68       303                PLA               ; RECOVER CHARACTER
-C980: 09 80    304                ORA    #$80
-C98F: C9 81    305                CMP    #"1"
-C991: 00 67    306                BNE    NOTO
-C993: A9 08    307                LDA    #$O8
-C995: 80 58 CO 308                STA    $CO58
-C998: 00 50    309                BNE    FLGSET
-               310   *
-CO9A: C9 82    311   NOT1         CMP    #"2"
-C99C: DO 51    312                8NE    NOT2
-C99E: A9 FE    313   LOLITE       LDA    #$FE
-C9AO: 20 FO07 314    FLOCLO       AND    FLAGS
-C9A3: 80 PB07 315    FLGSAV       STA    FLAGS
-C9A6: 60       316                RTS
-               317   *
-               318   *
-               319   *
-               320   * PASCAL OUTPUT ENTRY POINT
-               321   *
-               322   *
-C9A7: 80 78 06 323   PSOUT         STA    BYTE
-C9AA: 4E 78 04 324                 LSR    CRFLAG
-C9AD: 4C C8 C8 325                 JMP    PSOLOUT     ; JUMP FOR PASCAL ENTRY
-               326   *
-               327   *
-               328   * CR LF ROUTINE
-               329   *
-C980: 20 27 CA 330   CRLF          JSR    CR
-C983: EE F8 05 331   LF            INC    CVERT      ; INCREMENT CURSOR VERTICAL
-C9B£: AD FB 05 332                 LDA    CVERT
-C9B9: C9 18    333                 CMP    #24        ; OFF SCREEN?
-C988: 90 4A    334                 8CC    VTABZ      ; IF NOT MOVE CURSOR
-C980: CE FB 05 335                 DEC    CVERT      ; IF SO DECREMENT CURSOR VERTICAL
-               336   *
-C9CO: AD FR 06 337                 LDA    START      ; INCREMENT THE START ADDRESS
-C9C3: 69 04    338                 ADC    #$04       ; BY ONE LINE
-C9CS: 29 7F    339                 AND    #$7F
-C9C7: 80 F8 06 340                 STA    START
-C9CA: 20 12 CA 341                 JSR    BASCLC1    ; CALCULATE THE START ADDRESS
-COCO: A9 00    342                 LDA    #$0D       ; SET UP CRTC ADDRESS
-C9CF: 80 80 CO 343                 STA    DEVO       ; FOR START LOW ADDRESS
-C9D2: AD 78 04 344                 LDA    BASEL      ; GET START LOW
-C905: 80 81 CO 345                 STA    DEV1       ; SAVE START LOW
-CODO: A9 OC    346                 LDA    #$OC       ; SET UP CRTC ADDRESS
-CODA: 80 BO CO 347                 STA    DEVO       ; FOR START HIGH ADDRESS
-CODO: AD FB 04 348                 LDA    BASEH      ; GET START HIGH
-C9EO: 80 RI CO 349                 STA    DEV1       ; SAVE START HIGH
-C9E3: A9 17    358                 LDA    #23        ; PUT WINDOW BOTTOM—1 INTO A
-COES: 20 87 CA 351                 JSR    VTABZ      ; CALCULATE BASE ADDRESS
-C9E8: AO 08    352                 LDY    #$00
-C9EA: 20 84 C9 353                 JSR    CLEOLZ     ; CLEAR BOTTOM LINE
-```
-```text
-COED:   80 95  354           BCC    JVTAB ;MOVE CURSOR BACK
-               355 *
-COEF: C9 B3 356 NOT2         CMP    #"3"
-C9F1: DO 0E 357              BNE    JST0ADV
-COF3: A9 01 358 HILITE       LOA    #$0l
-COPS: 0D F8 359 FLGSET       ORA    FLAGS
-C9P8: D0 A     360           BNE    FLGSAV
-               361 *
-               362 *
-               363 * BASIC INITIAL I/O ENTRY POINT
-               364 *
-               365 *
-               366 *
-C9FA: C9 B0    367 NOTO      CMP    #"0"
-C9FC: DO 9C    368           BNE    NOT1
-C9FE: 4C 09 C8 369           JMP    RESTART
-               370 *
-CAO1: 4C 27 CO 371 JSTDADV   JMP    STXADV
-               372 *
-CAO4: AD PB 05 373 VTAB      LDA    CVERT         ;GET CURSOR VERTICAL
-CAB7: 8D P8 04 374 VTABZ     STA    ASAV1         ;MULTIPLY A BY 5
-CAOA: OA       375           ASL
-CAOA: OA       376           ASL
-CADC: 6D P8 04 377           ADC    ASAV1
-CA0E: 6D P8 06 378           ADC    START         ;ADD START
-CA12: 48       379 BASCLCI   PHA                  ;SAVE A
-CA13: 4A       380           LSR                  ;CALCULATE BASEH
-CA14: 4A       381           LSR
-CAIS: 4A       382           LSR
-CA16: 4A       383           LSR
-CA17: 8D PB 04 384           STA    BASEH
-CA1A: 68       385           PLA                  ;RECOVER A
-CA1B: OA       386           ASL                  ;CALCULATE BAGEL
-CA1C: OA       387           ASL
-CA1D: OA       388           ASL
-CA1E: OA       389           ASL
-CAlF: 8D 78 04 390           STA    BAGEL
-CA22: 60       391 RTS2      RTS
-               392 *
-               393 *
-CA23: C9 00    394 VIDOUT    CMP    #$OD
-CA25: DO 06    395 BNE VDOUT1
-CA27: A9 00    396 CR LOA    11000
-CA29: 80 78 05 397           STA    CHDRZ
-CA2C: 60       398           RTS
-CA2D: 09 80    399 VDOUT1    ORA    #$80          ;SET HIGH BIT
-CA2F: C9 AO    400           CMP    #$A0
-CA31: 00 CE    401           BGE    JSTXADV       ;IF NOT CONTROL PRINT IT
-CA33: CO 87    402           CMP    #$87
-CA3S: 90 08    403           BLT    RTS4          CTRL @ — F
-CA37: A8       404           TAY
-CA38: AO C9    405           LDA    #>BELL
-CA3A: 48       406           PHA
-CA3B: 09 89 CO 407           LDA    CTLTBL—$87,Y
-CA3E: 48       408           PHA
-CA3F: 60       409 RTS4      RTS
-               410 *
-CA40:          411 CTLTBL    DFB BELL—1
-CA41:          412           DFB 85—1
-CA42:          413           DFB RTS3—I
-```
-```text
-CA43: 82         414              DF8      LF—1
-CA44: 48         415              DF8      CLREOP—l
-CA4S: 60         416              DF8      CLSCRN—1
-CA46: AF         417              DF8      CRLF—I
-CA47: 90         418              DF8      LOLITE—l
-CA48: E2         419              DF8      HILITE—1
-CA49: 13         420              DF8      RTS3—1
-CA4A: 13         421              DF8      RTS3—1
-CA4E: 13         422              DF8      RTS3—1
-CA4C: 13         423              DF8      RTS3—1
-CA4D: 13         424              DF8      RTS3—l
-CA4E: 13         425              DF8      RTS3-1
-CA4E: 83         426              DF8      RTS3—1
-CA50: 13         427              DF8      RTS3—1
-CA5I: 13         428              DF8      RTS3—1
-CA52: 66         429              DF8      HOME—1
-CA53: 0E         430              DF8      LEAD1N—1
-CA54: 13         431              DF8      RTS3—1
-CA55: 38         432              DF8      ADVANCE-1
-CA56: 00         433              DF8      CLREOL—1
-CA57: 14         434              DF8      GOKY1—1
-CA58: 78         435              DF8      UP—1
-                 436   *
-                 437   * CALCULATE SCREEN ADDRESS AND SWITCH IN CORRECT PAGE
-                 438   *
-                 439   *
-CA59: 18         440 PSNCALC      CLC
-CA5A: 98         441              TYA
-CA5E: 60 78 04   442              ADC      BASEL1
-CA5E: 48         443              PHA
-CA5F: A9 00      444              LDA      #S00    ; CALCULATE SCREEN ADDRESS HIGH
-CA6l: 60 F8 04   445              ADC      BASEN
-CA64: 48         446              PHA
-CA65: 0A         447              ASL
-CA66: 29 OC      448              AND      #$0C    ; USE BIT 0 AND I FOR PAGING
-CA68: AA         449              TAX
-CA69: 80 80 CO   450              LDA      DEVO,X ;SET CORRECT SCREEN PAGE
-CA6C: 68         451              PLA
-CA6O: 4A         452              LSR
-CA6E: 68         453              PLA
-CA6F: AA         454              TAX
-CA7O: 60         455              RIS
-                 456   *
-                 457   *
-                 458   * PUT A CHARACTER AT CVERT, CHORZ
-                 459   *
-                 460   *
-CA7I: OA         461   CHRPUT     ASL
-CA72: 48         462              PHA              ; SAVE SHIFTED CHARACTER
-CA73: AD FO 07   463              LDA FLAGS        ; GET CHARACTER SET FLAG
-CA76: 4A         464              LSR              ; SHIFT IT INTO CARRY
-CA77: 68         465              PLA              ; RECOVER SHIFTED CHARACTER
-CA78: 6A         466              ROR              ; ROTATE CARRY INTO CHARACTER
-CA79: 48         467              PHA              ; SAVE CHARACTER
-CA7A: 20 59 CA   468              JSR PSNCALC      ; SET UP SCREEN ADDRESS
-CA7D: 68         469              PLA              ; RECOVER CHARACTER
-CA7E: 80 05      470              ECS WRITE1       ; SELECT MEMORY RANGE
-CA8O: 90 00 CC   471              STA DISPO,X      ; STXRE CHARACTER ON SCREEN
-CA83: 90 03      472              BCC WSKIP        ; SKIP
-CA85: 90 00 CD    473 WRITEl      STA DISPl,X      ; STXRE CHARACTER ON SCREEN
-```
-```text
-CA88:60          474 WSKIP       RTS                ;RECOVER X REGISTER
-                 475    *
-                 476    *
-                 477    * GENERAL OUTPUT ROUTINE
-                 478    *
-                 479    *
-CA89: 48         480    OUTPT1 PHA                  ; SAVE CHARACTER
-CA8AtA9F?        481             LDA      #$F7
-CA8C:20A8   C9   482             JSR      FLGCLR
-CA8F:8059   CO   483             STA      $CO59
-CA92:AD78   07   484             LDA      POFF
-CA95:2907        485             AND      #$07      ; CHECK FOR LEAD IN
-CA970004         486             BNE      LEAD      ; BRANCH IF LEAD IN
-CA99:68          487             PLA                ; RECOVER CHARACTER
-CA9A:4C23   CA   488             JMP      VI DOUT   ; OUTPUT CHARACTER
-                 489    *
-CA9D:2904        490    LEAD     AND      #$04      ; CHECK FOR GO TO KY
-CA9F:FR03        491             BEQ      GOXY3     ; IF NOT SKIP
-CAAI:4C87   C9   492             JMP      NOT GOXY
-CAA4:68          493    GOXY3 PLA                   ; RECOVER CHARACTER
-CAA5:38          494             SEC
-CAA6:E920        495             S8C      #$20      ; SUBTRACT 32
-CAA8:297F        496    GOTOXY AND        #$7F      ;STRIP OFF UNEEDED BRTS
-CAAA:48          497             PHA                ; SAVE A
-CAAO:CE78   07   498             DEC      POFF      ; DECREMENT LEAD IN COUNTER
-CAAE:AD78   07   499             LDA      POFF
-CABI:2903        500             AND      #S03      ; GET COUNT
-CAO3:0015        501             8NE      GOXY2     ; SKIP IF COUNT NOT ZERO
-CABS:68          502             PLA                ; RECOVER A
-CAO6:C918        503             CMP      #24       ; IF A > WINDOW BOTTOM
-CAO8:8803        504             BGE      BADY      ; THEN DON’T MOVE CURSOR VERTICAL
-CABA:80FO   05   505             STA      CVERT
-CABO:ADF8   05   506    BADY     LDA      TEMPX     ; GET CURSOR HORIZONTAL PARAMETER
-CACO:C950        507             CMP      #80       ; IF A > 80 THEN
-CAC2:0003        508             OGE      BADX      ; DON’T MOVE CURSOR HORIZONTAL
-CAC4:8078   05   509             STA      CHORZ
-CAC7:4C04   CA   510    BADO     JMP      VTAB      ; VERTICAL TAB TO CURSOR POSITION
-CACA:68          511    ODKY2 PLA                   ; RECOVER A
-CACO:80F8   05   512             STA      TEMPX     ; SAVE CURSOR HORIZONTAL PARAMETER
-CACE:60          513             RTS
-                 514    *
-                 515    *
-                 516    * STXP LIST ROUTINE
-                 517    *
-                 518    *
-CACFzAD00   CO   519    STPLST LDA        K80
-CAD2:C993        520             CMP      #$93
-CAO4:00OF        521             BNE      STPDONE
-CAD6:2C10   CO   522             BIT      KBOSTRB
-CAD9:AD00   CO   523    STPLOOP LDA       KB0
-CADC:10PB        524             BPL      STPLOOP
-CADEiC983        525             CMP      #$83
-CAEO:F803        526             BEQ      STPDONE
-CAE2:2C10   CO   527             BIT      KBDSTRB
-CAE5:60          520    STPDONE RTS
-                 529    *
-CAE6:A8          530    ESCNOW TAY
-CAE7:8931   CO   531             LDA      KLTBL—$C9,Y
-CAEA:20Fl   C8   532             SR       ESCI
-CAED:2044   CS   533 ESCHEW      JSR      RDKEY
-```
-```text
-CAF0:   C9   CE      534             CMP       #$CE
-CAF2:   B0   08      535             ODE       ESC 2
-CAE4:   C9   C9      536             ClMP      8$C9
-CAF6:   90   04      537             BLT       ESC2
-CAFS:   C9   CC      538             ClMP      #$CC
-CAFA:   DO   EA      539             BNE       ESCNOW
-CAFC:   4C   Fl C8   540   ESC2      JMP       ESC1
-CAFF:   EA           541             NOP
-                     542   *
-                     543   *
-                     544   *
-                     545   *
-                     546   *
-                     547   * BASIC INITIAL I/O ENTRY POINT
-                     548
-                     549   *
-CB00:   2C   CB FF   550             BIT       IORTS         ; SET VFLAG ON INITIAL ENTRY
-CB03:   70   31      551             BVS       ENTR
-CB05:   38           552   INFAKE    SEC                     ; FAKE INPUT ENTRY C=0
-CB06:   90           553             HEX       90
-CB07:   18           554   OUTENTR   CLC                     ; OUTPUT ENTRY C=l
-CB08:   B8           555             CLV
-CB09:   50   28      556             BYC       ENTR
-CB0B:   01   82      557             HEX       0182
-CB0D:   11           558             DEB       INIT
-CB0E:   14           559             DFB       READ
-CB0F:   1C           560             DFB       WRITE
-CB10:   22           561             DFB       STATUS
-                     562   *
-CB11:   4C   00 C8   563   INIT      JMP       SETUP
-                     564   *
-CB14:   20   44 C8   565   READ      JSO       RDKEY
-CB17:   29   7F      566             AND       #$7F
-CB19:   A2   00      567             LDX       #$00
-CB1B:   60           568             RTS
-                     569   *
-CB1C:   20   A7 C9   570   WRITE     JSR       PSOUT
-CB1F:   A2   00      571             LDX       #$00
-CB21:   60           572             RTS
-                     573   *
-CB22:   C9   00      574   STATUS    CMP       #$00
-CB24:   F0   09      575             BEQ       STEXIT
-CB26:   AD   00 C0   576             LDA       KBD
-CB29:   0A           577             ASL
-CB2A:   90   03      578             BCC       STEXIT
-CB2C:   20   SC C8   579             JSR       KEYSTAT
-CB2F:   A2   00      580   STEX IT   LDX       #$00
-CB31:   60           581             RTS
-                     582   *
-                     583   * BASIC INPUT ENTRY POINT
-                     584   *
-CB32:   91   28      585   INENTR    STA      (BASL),Y ; REPLACE FLASHING CURSOR
-CB34:   38           586             SEC
-CB35:   B8           587             CLV
-CB36:   8D   FE CF   588   ENTR      STA      $CFFF     ; TURN OFF CO-RESIDENT MEMORY
-                     559   *
-                     590   *
-                     591   *
-                     592   * SAVE REGISTERS SET UP NO AND CN
-                     593   *
-```
-```text
-                       594   *
-CB39:   48             595   WHERE     PHA                 ; SAVE REGISTERS OH STACK
-CB3A:   85   35        596             STA     XSAVE
-CB3C:   4A             597             T XA
-CB3D:   48             598             PHA
-CB3E:   98             599             TYA
-CB3F:   48             600             PHA
-CB40:   A5   35        601             LDA     XSAVE       ; SAVE CHARACTER
-CB42:   86   35        602             STX     XSAVE       ; SAVE INPUT BUFFER INDEX
-CB44:   A2   C3        603             LDX     #$C3
-CB46:   BE   78 04     604             STX     CRFLAG
-CB49:   4B             605             PHA
-CB4A:   50   10        606             BVC     10          ; GO TO ID IF NOT INITIAL ENTRY
-                       607   *
-                       608   *
-                       609   * BASIC   INITIALIZE
-                       610   *
-                       611   *
-CB4C:   A9   32        612             LOA     #<INENTR    ; SET UP INPUT AND OUTPUT HOOKS
-CB4E:   85   38        613             STA     K SWL
-CB50:   86   39        614             STX     K SWH
-CB52:   A9   07        615             LDA     #<OUTENTR
-CB54:   85   36        616             STA     CSWL
-CB56:   86   37        617             STX     CSWH
-CB5B:   20   00   CB   618             JSR     SETUP       ; SET UP CRTC
-CB5B:   18             619             CLC
-                       620   *
-                       621   *
-CB5C:   90   6F        622   10         BCC    BASOUT
-                       623   *
-                       624   *
-                       625   * BASIC INPUT ROUTINE
-                       626   *
-                       627   *
-CB5E:   68             628   B ASI NP   PLA                ; POP STACK
-CB5F:   A4   35        629              LDY XSAVE          ; GET INPUT BUFFER INDEX
-CB61:   F0   1F        630              BEQ GETLN          ; IF ZERO ASSUME GETLN
-CB63:   88             631              DEY
-CB64:   AD   78   06   632              LDA   OLdCHAR      ; GET LAST CHARACTER FROM GETLN
-CB67:   C9   88        633              CMP #$I88          ; IF 85 ASSUME GETLN
-CB69:   F0   17        634              BEQ GETLN
-CB6B:   D9   00   02   635              CMP IN ,Y
-CB6E:   F0   12        636              BEQ   GETLN
-CB70:   49   20        637              EOR   #$20
-CB72:   D9   00   02   638   SKIP       CMP IN,Y           ; IF SAME AS CHARACTER IN INPUT
-CB75:   DO   38        639              BNE   NTGETLN      ; BUFFER THEN ASSUME GETLN
-CB77:   AD   78   06   640              LDA OLOCHAR        ; GET LAST CHARACTER FROM GETLN
-CB7A:   99   00   02   641              STA   IN,Y         ; FIX INPUT BUFFER
-CB7D:   80   03        642              BGE   GETLN        ; GO TO GETLN
-CB7F:   20   ED   CA   643   ESC        JSR   ESCNEW       ; PERFORM ESCAPE FUNCTION
-CB82:   A9   80        644   GETLN      LDA #$80           ; SET GETLN FLAG
-CB84:   20   F5   C9   645              JSR   FLGSET
-CB87:   20   44   C8   646              JSR   RDKEY        ; GET CHARACTER FROM KEYBOARD
-CB8A:   C9   98        647              CMP #$98           ; CHECK FOR ESCAPE
-CB8C:   Fl   Fl        648              BEQ   ESIC
-CB8E:   C9   80        649              CMP #$80           ; CHECK FOR CR
-CB90:   D0   05        650              BNE   NOTCR        ; IF NOT SKIP
-CB92:   48             651              PHA                ; SAVE CHARACTER
-CB93:   20   01   C9   652              JSR   CLREOL       ; CLEAR TO END OF LINE
-CB96:   68             653              PLA                ; RECOVER CHARACTER
-```
-```text
-CB97: C9     95        654   NOTCR     CMP   #$95             ; CHECK FOR PICK
-CB99: D0     12        655             BNE   NOTPICK          ; IF NOT SKIP
-CB9B: AC     78   05   656   CHRGET    LDY   CHORZ            ; GET CURSOR HORIZONTAL POSITION
-CB9E: 20     59   CA   657             JSR   PSHCALC          ; SET UP SCREEN ADDRESS
-CBAl: 80     05        658             BCS   READ1            ; READ CHARACTER FROM SCREEN
-CBA3: BD     00   CC   659             LDA   DISPO,X
-CBA6: 90     03        660             BCC   RSKIP
-CBA8: BD     00   CO   661   READ1     LDA   DISP1,X
-CBAB: 09     80        662   RSK IP    ORA   #$80             ; SET HIGH BIT
-CBAD: 80     78   16   663   NOTPICK   STA   OLDCHAR          ; SAVE CHARACTER IN OLDCHAR
-CBB0: D0     08        664             BNE   DONE             ; EXIT
-CB02: 20     44   CR   665   NTGETLN   JSR   RDKEY            ; GET CHARACTER FROM KEYBOARD
-CB05: AO     00        666             LDY   #$00             ; CLEAR CHACHARACTER
-CBB7: 8C     78   10   667             STY   OLDCHAR
-                       668   *
-CBBA: BA               669   DONE     TSX                     ; PUT CHARACTER INTO STACK
-CBBB: E8               670            INX
-CBBC: E8               671            INX
-CBBD: E8               672            INX
-CBBE: 9D     00 01     673            STA     $100,X
-CBC1: A9     00        674   OUTDONE1 LDA     #100            ; SET CH = 00
-CBC2: B5     24        675   OUTDONE STA      CH
-CBC5: A0     F8 05     676            LDA     CVERT           ; SET CV = CVERT
-CBC8: B5     25        677            STA     CV
-CBCA: 4C     2E CR     678            JMP     EXIT
-                       679   *
-                       680   *
-                       681   * PRIMARY BASIC OUTPUT ROUTINE
-                       682   *
-                       683   *
-CBCD: 68               684   BASOUT   PLA                     ; RECOVER CHARACTER
-CBCC: AC     FB 07     685            LDY     FLAGS           ; CHECK GETLN FLAG
-CB01: 10     08        686            BPL     BOUT            ; IF CLEAR THEN SKIP
-CB03: AC     78 06     687            LDY     OLDCHAR         ; GET LAST CHARACTER FROM GETLN
-CB06: C0     E0        688            CPY     #$E0            ; IF IT IS LOWER CASE THEN USE IT
-CB08: 90     01        689            BLT     BOUT
-CBDA: 98               690            TYA
-CBOB: 20     B1 C8     691   BOUT     JSR     BASOUT 1        ; OUTPUT CHARACTER
-CBDE: 20     CF CA     692            JSR     STPLST
-CBE1: A9     7F        693            LDA     #$7F            ; CLEAR THE GETLN FLAG
-CBE3: 20     A0 C9     694            JSR     FLGCLR
-CBE6: AD     78 05     695            LDA     CHORZ           ; GET CURSOR HORIZONTAL
+C876: 60          145          PLA                     ;RESTXRE CHARACTER
+C877: 90 IF       146          8CC   INDONE            ;DON’T CONVERT IF FLAG CLEAR
+C879: C9 80       147          CMP   #$80
+C87B: 90 1F       148          8LT   INDONE            ;DON’T CONVERT SPECIAL CHARACTERS
+C87D: 2C 63 CO    149 8IT $C063
+C880: 30 14       150          8MI   NOSHIFT
+C882: C9 80       151          CMP   #"0"
+C884: F0 0E       152          BEQ   ZERO
+C886: C9 CO       153          CMP   #"@"
+C888: DO 02       154          8NE   NOT@
+C88A: A9 DO       155          LDA   #"P"
+C88C: C9 C8       156 NOT@     CMP   #"["
+C88E: 90 08       157          8LT   INOONE
+C89O: 29 CF       158          AND   #$CF
+C892: D0 04       159          8NE   INDONE
+C894: A9 DO       160 ZERO     LDA   #"]"
+C896: 09 20       161 NOSHIFT  ORA   #$20
+C898: 48          162 INDONE   PHA                     ;DUPLICATE CHARACTER
+C899: 29 7F       163          AND   #$7F              ;STRIP OFF HIGH BIT
+C89B: 8D 78 06    164          STA   BYTE              ;SAVE FOR PASCAL
+C89E: 68          165          PLA                     ;RECOVER FOR BASIC
+C89F: 38          166          SEC
+C8A0: 60          167          RTS
+                  168 *
+C8Al: 78 50 5E
+C8A4: 29 18 0B
+C8A7: 18 19       169 TABLE    HEX   78505E2918081819
+C8A9: 00 08 E0
+C8AC: 08 00 0O
+C8AF: 00 00       170          HEX   0008EO0800000000
+                  171 *
+                  172
+                  173 * SECONDARY BASIC OUTPUT ROUTINE
+                  174 *
+                  175 *
+C881: 8D 78 06    176 BASOUT1  STA   BYTE              ;SAVE CHARACTER
+C884: A5 25       177          LDA   CV                ;PERFORM VTAB
+C886: C0 F8 05    178          CMP   CVERT
+C889: F0 06       179          BEQ   CVOK
+C888  80 PB 05    180          STA   CVERT
+C88E  20 04 CA    181          JSR   VTAB
+C8C1  AS 24       182 CV0K     LDA   CH                ;PERFORM HTAB
+C8C3  CD 70 05    183          CMP   CHORZ
+C8C6  90 03       184          8CC   PSCLOUT
+C8C8  80 78 05    885 8TA CHORZ
+C8CB  AD 78 06    886 PSCLOUT  LDA   BYTE              ;GET CHARACTER
+C8CE  28 89 CA    887          JSR   OUTPTI            ;OUTPUT CHARACTER
+C8D1  A9 OF       188 CSRMOV   LDA   #$0F              ;SET UP CRTC ADDRESS
+C8D3  80 80 CO    189          STA   DEVO              ;FOR CURSOR LOW ADDRESS
+C8D6  AD 78 05    190          LDA   CHORZ             ;CALCULATE ADDRESS
+C8D9  C9 50       191          CMP   #80
+C8D8  00 13       192          BCS   RTS6
+C8DD  AD 70 04    193          ADC   BASEL
+C8E0  80 01 CO    194          STA   DEV1              ;SAVE ADDRESS
+C8E3  A9 OE       195          LDA   #$OE              ;SET UP CRTC ADDRESS
+C8E5  80 80 CO    196          STA   DEVO              ;FOR CURSOR HIGH ADDRESS
+C8E8  A9 00       197          LOA   #$00              ;CALCULATE ADDRESS
+C8EA  60 F8 04    198          ADC   BASEH
+C8E0  80 81 CO    199          STA   DEV1              ;SAVE ADDRESS
+C8FO  60          200 RTS6     RTS
+                  201 *
+                  202 *
+                  203 * PERFORM ESCAPE FUNCTIONS
+                  204 *
+C8F1  49 CO       205 ESC1     EOR   #$CO
+C8F3  C? 08       206          CMP   #$08
+C8F5  80 10       207 OGE RTS3
+C8F7  A8          208          TAY
+C8F8  A9 C9       209          LOA   #>BELL
+C8FA  48          210          PHA
+C8FB  89 P2 CO    211          LOA   ESCT8L,Y
+C8FE  48          212          PHA
+C8FF  60          213          RTS
+                  214 *
+C900  EA          215          NOP
+                  216 *
+C901  AC 78 05    217 CLREOL   LOY   CHORZ             ;PUT CURSOR HORIZONTAL ONTO Y
+C904  A? AO       218 CLEOLZ   LDA   #$A0              ;USE A SPACE
+C906  20 71 CA    219 CLEOLO   JSR   CHRPUT            ;PUT CHARACTER ON SCREEN
+C909  C8          220          INY
+C90A  CO 50       221          CPY   #80               ;CONTINUE UNTIL
+C90C  90 P8       222          8LT   CLEOL2            ;Y>=80
+C90E  60          223          RTS
+                  224 *
+C90F  A9 34       225 LEADIN   LDA   #$34              ;SET LEAO IN BIT
+C911  80 78 07    226 PSAVE    STA   POFF
+C914  60          227 RTS3     RTS
+C915  A9 32       228 GOXYI    LOA   #$32              ;SET LEADIN COUNT TO 2
+C917  00 P8       229          8NE   PSAVE
+                  230 *
+C919  AO CO       231 BELL     LOY   #$C0              ;BEEP THE SPEAKER
+C91B  A2 80       232 BELLI    LDX   #$80
+C91D  CA          233 BELL2    DEX
+C9lE: 00 FO       234          BNE   BELL2
+C020: AD 30 CO    235          LDA   SPKR
+C023: 88          236          DEY
+C024: DO FS       237          BNE   BELL1
+C926: 60          238          RTS
+                  239
+                  240
+                  241 * STXRE CHARACTER ON SCREEN AND ADVANCE CURSOR
+                  242 *
+C027: AC 70 05    243 STXADV   LOY   CHORZ
+CO2A: CO 50       244          CPY   #80
+C92C: 90 05       245          BCC   NOT8I
+CO2E: 48          246          PHA
+CO2F: 20 80 CO    247          JSR   CRLF
+C032: 60          248          PLA
+C933: AC 78 05    249 NOT8I    LDY   CHORZ
+C936: 20 71 CA    250          JSR   CHRPUT            ;PLACE CHARACTER ON SCREEN
+C939: EE 78 05    251 ADVANCE  INC   CHORZ             ;INCREMENT CURSOR HORIZONTAL INDEX
+CO3C: 2C 70 04    252          BIT   CRFLAG
+C93F: 10 07       253          BPL   RTS8
+C941: AD 72 05    254          LDA   CHORZ
+C044: C9 50       255          CMP   #80
+C946: 80 68       256          BCS   CRLF
+C048: 60          257 RTS8     RTS
+                  258 *
+                  259 * CLEAR TO END OF PAGE
+                  260 *
+C040: AC 78 05    261 CLREOP   LOY   CHORZ             ;GET CURSOR HORIZONTAL INTO Y
+C94C; AD FO 05    262          LDA   CVERT             ;GET CURSOR VERTICAL INTO A
+C94F: 48          263 CLEOP1   PHA                     ;SAVE CURRENT LINE ON STACK
+COSO: 20 07 CA    264          JSR   VTABZ             ;CALCULATE BASE ADDRESS
+C953: 20 04 C?    265          JSR   CLEOLZ            ;CLEAR TO END OF LINE, SET CARRY
+C056: AO 00       266          LDY   #$00              ;CLEAR FROM HORIZONTAL INDEX 0
+COSO: 60          267          PLA
+C959: 69 00       268          ADC   #%00              ;INCREMENT CURRENT LINE (C=I)
+C95B  CO 18       269          CMP   #24               ;DONE TO BOTTOM OF WINDOW?
+CO5D: 90 F0       270          BCC   CLEOP1            ;IF NOT KEEP CLEARING LINES
+C95F: 80 23       271          BCS   JVTAB             ;VERTICAL TAB TO CURSOR POSITION
+                  272 *
+                  273 *
+                  274 * CLEAR SCREEN
+                  275 *
+C960: 20 67 CO    276 CLSCRN   JSR   HOME              ;HOME CURSOR
+C064: 98          277          TYA
+C965: FO ES       278          BEQ   CLEOP1            ;CLEAR TO END OF PAGE
+                  279 *
+                  280 *        HOME   CURSOR
+                  281 *
+C067: A9 00       202 HOME     LOA   #$00              ;SET CURSOR POSITION TO 0,0
+C969: OD 78 05    283          STA   CHORZ
+C96C: 80 F8 05    284          STA   CVERT
+C96F: AS          205          TAY
+C970: FO 12       286          BEQ   JVTAB             ;VERTICAL TAB TO CURSOR POSITION
+                  287 *
+C972: CE 78 05    288 BS       DEC   CHURZ             ;DECREMENT CURSOR HORIZONTAL INDEX
+C075: 10 OD       289          8PL   RTS3              ;IF POS, OK. ELSE MOVE UP
+C077: A9 4F       290          LDA   #79               ;SET CURSOR HORIZONTAL TO
+C070: 8D 78 05    291          STA   CHORZ             ;RIGHTMOST SCREEN POSITION
+                  292 *
+                  293 * MOVE CURSOR UP
+                  294 *
+C97C: AD EB 05    295 UP       LDA   CVERT             ;GET CURSOR VERTICAL INDEX
+CO7F: FO 93       296          BEQ   RTS3              ;IF TOP LINE THEN RETURN
+C981: CE PB 05    297          DEC   CVERT             ;DECREMENT CURSOR VERTICAL INDEX
+C984: 4C 04 CA    298 JYTAB    JMP   VTA8              ;VERTICAL TAB TO CURSOR POSITION
+                  299 *
+                  200 *
+C987: A9 30       301 NOTGOXY  LDA   #$30              ;CLEAR LEAD IN BRTS
+C989: 80 78 07    302          STA   POFF
+C98C: 68          303          PLA                     ;RECOVER CHARACTER
+C980: 09 80       304          ORA   #$80
+C98F: C9 81       305          CMP   #"1"
+C991: 00 67       306          BNE   NOTO
+C993: A9 08       307          LDA   #$O8
+C995: 80 58 CO    308          STA   $CO58
+C998: 00 50       309          BNE   FLGSET
+                  310 *
+CO9A: C9 82       311 NOT1     CMP   #"2"
+C99C: DO 51       312          8NE   NOT2
+C99E: A9 FE       313 LOLITE   LDA   #$FE
+C9AO: 20 FO07     314 FLOCLO   AND   FLAGS
+C9A3: 80 PB07     315 FLGSAV   STA   FLAGS
+C9A6: 60          316          RTS
+                  317 *
+                  318 *
+                  319 *
+                  320 * PASCAL OUTPUT ENTRY POINT
+                  321 *
+                  322 *
+C9A7: 80 78 06    323 PSOUT    STA   BYTE
+C9AA: 4E 78 04    324          LSR   CRFLAG
+C9AD: 4C C8 C8    325          JMP   PSOLOUT           ;JUMP FOR PASCAL ENTRY
+                  326 *
+                  327 *
+                  328 * CR LF ROUTINE
+                  329 *
+C980: 20 27 CA    330 CRLF     JSR   CR
+C983: EE F8 05    331 LF       INC   CVERT             ;INCREMENT CURSOR VERTICAL
+C9B£: AD FB 05    332          LDA   CVERT
+C9B9: C9 18       333          CMP   #24               ;OFF SCREEN?
+C988: 90 4A       334          8CC   VTABZ             ;IF NOT MOVE CURSOR
+C980: CE FB 05    335          DEC   CVERT             ;IF SO DECREMENT CURSOR VERTICAL
+                  336 *
+C9CO: AD FR 06    337          LDA   START             ;INCREMENT THE START ADDRESS
+C9C3: 69 04       338          ADC   #$04              ;BY ONE LINE
+C9CS: 29 7F       339          AND   #$7F
+C9C7: 80 F8 06    340          STA   START
+C9CA: 20 12 CA    341          JSR   BASCLC1           ;CALCULATE THE START ADDRESS
+COCO: A9 00       342          LDA   #$0D              ;SET UP CRTC ADDRESS
+C9CF: 80 80 CO    343          STA   DEVO              ;FOR START LOW ADDRESS
+C9D2: AD 78 04    344          LDA   BASEL             ;GET START LOW
+C905: 80 81 CO    345          STA   DEV1              ;SAVE START LOW
+CODO: A9 OC       346          LDA   #$OC              ;SET UP CRTC ADDRESS
+CODA: 80 BO CO    347          STA   DEVO              ;FOR START HIGH ADDRESS
+CODO: AD FB 04    348          LDA   BASEH             ;GET START HIGH
+C9EO: 80 RI CO    349          STA   DEV1              ;SAVE START HIGH
+C9E3: A9 17       358          LDA   #23               ;PUT WINDOW BOTTOM—1 INTO A
+COES: 20 87 CA    351          JSR   VTABZ             ;CALCULATE BASE ADDRESS
+C9E8: AO 08       352          LDY   #$00
+C9EA: 20 84 C9    353          JSR   CLEOLZ            ;CLEAR BOTTOM LINE
+COED: 80 95       354          BCC   JVTAB             ;MOVE CURSOR BACK
+                  355 *
+COEF: C9 B3       356 NOT2     CMP   #"3"
+C9F1: DO 0E       357          BNE   JST0ADV
+COF3: A9 01       358 HILITE   LOA   #$0l
+COPS: 0D F8       359 FLGSET   ORA   FLAGS
+C9P8: D0 A        360          BNE   FLGSAV
+                  361 *
+                  362 *
+                  363 * BASIC INITIAL I/O ENTRY POINT
+                  364 *
+                  365 *
+                  366 *
+C9FA: C9 B0       367 NOTO     CMP   #"0"
+C9FC: DO 9C       368          BNE   NOT1
+C9FE: 4C 09 C8    369          JMP   RESTART
+                  370 *
+CAO1: 4C 27 CO    371 JSTDADV  JMP   STXADV
+                  372 *
+CAO4: AD PB 05    373 VTAB     LDA   CVERT             ;GET CURSOR VERTICAL
+CAB7: 8D P8 04    374 VTABZ    STA   ASAV1             ;MULTIPLY A BY 5
+CAOA: OA          375          ASL
+CAOA: OA          376          ASL
+CADC: 6D P8 04    377          ADC   ASAV1
+CA0E: 6D P8 06    378          ADC   START             ;ADD START
+CA12: 48          379 BASCLCI  PHA                     ;SAVE A
+CA13: 4A          380          LSR                     ;CALCULATE BASEH
+CA14: 4A          381          LSR
+CAIS: 4A          382          LSR
+CA16: 4A          383          LSR
+CA17: 8D PB 04    384          STA   BASEH
+CA1A: 68          385          PLA                     ;RECOVER A
+CA1B: OA          386          ASL                     ;CALCULATE BAGEL
+CA1C: OA          387          ASL
+CA1D: OA          388          ASL
+CA1E: OA          389          ASL
+CAlF: 8D 78 04    390          STA   BAGEL
+CA22: 60          391 RTS2     RTS
+                  392 *
+                  393 *
+CA23: C9 00       394 VIDOUT   CMP   #$OD
+CA25: DO 06       395          BNE   VDOUT1
+CA27: A9 00       396 CR       LOA   11000
+CA29: 80 78 05    397          STA   CHDRZ
+CA2C: 60          398          RTS
+CA2D: 09 80       399 VDOUT1   ORA   #$80              ;SET HIGH BIT
+CA2F: C9 AO       400          CMP   #$A0
+CA31: 00 CE       401          BGE   JSTXADV           ;IF NOT CONTROL PRINT IT
+CA33: CO 87       402          CMP   #$87
+CA3S: 90 08       403          BLT   RTS4 CTRL @ — F
+CA37: A8          404          TAY
+CA38: AO C9       405          LDA   #>BELL
+CA3A: 48          406          PHA
+CA3B: 09 89 CO    407          LDA   CTLTBL—$87,Y
+CA3E: 48          408          PHA
+CA3F: 60          409 RTS4     RTS
+                  410 *
+CA40:             411 CTLTBL   DFB   BELL—1
+CA41:             412          DFB   85—1
+CA42:             413          DFB   RTS3—I
+CA43: 82          414          DF8   LF—1
+CA44: 48          415          DF8   CLREOP—l
+CA4S: 60          416          DF8   CLSCRN—1
+CA46: AF          417          DF8   CRLF—I
+CA47: 90          418          DF8   LOLITE—l
+CA48: E2          419          DF8   HILITE—1
+CA49: 13          420          DF8   RTS3—1
+CA4A: 13          421          DF8   RTS3—1
+CA4E: 13          422          DF8   RTS3—1
+CA4C: 13          423          DF8   RTS3—1
+CA4D: 13          424          DF8   RTS3—l
+CA4E: 13          425          DF8   RTS3-1
+CA4E: 83          426          DF8   RTS3—1
+CA50: 13          427          DF8   RTS3—1
+CA5I: 13          428          DF8   RTS3—1
+CA52: 66          429          DF8   HOME—1
+CA53: 0E          430          DF8   LEAD1N—1
+CA54: 13          431          DF8   RTS3—1
+CA55: 38          432          DF8   ADVANCE-1
+CA56: 00          433          DF8   CLREOL—1
+CA57: 14          434          DF8   GOKY1—1
+CA58: 78          435          DF8   UP—1
+                  436 *
+                  437 * CALCULATE SCREEN ADDRESS AND SWITCH IN CORRECT PAGE
+                  438 *
+                  439 *
+CA59: 18          440 PSNCALC  CLC
+CA5A: 98          441          TYA
+CA5E: 60 78 04    442          ADC   BASEL1
+CA5E: 48          443          PHA
+CA5F: A9 00       444          LDA   #S00              ;CALCULATE SCREEN ADDRESS HIGH
+CA6l: 60 F8 04    445          ADC   BASEN
+CA64: 48          446          PHA
+CA65: 0A          447          ASL
+CA66: 29 OC       448          AND   #$0C              ;USE BIT 0 AND I FOR PAGING
+CA68: AA          449          TAX
+CA69: 80 80 CO    450          LDA   DEVO,X            ;SET CORRECT SCREEN PAGE
+CA6C: 68          451          PLA
+CA6O: 4A          452          LSR
+CA6E: 68          453          PLA
+CA6F: AA          454          TAX
+CA7O: 60          455          RIS
+                  456 *
+                  457 *
+                  458 * PUT A CHARACTER AT CVERT, CHORZ
+                  459 *
+                  460 *
+CA7I: OA          461 CHRPUT   ASL
+CA72: 48          462          PHA                     ;SAVE SHIFTED CHARACTER
+CA73: AD FO 07    463          LDA   FLAGS             ;GET CHARACTER SET FLAG
+CA76: 4A          464          LSR                     ;SHIFT IT INTO CARRY
+CA77: 68          465          PLA                     ;RECOVER SHIFTED CHARACTER
+CA78: 6A          466          ROR                     ;ROTATE CARRY INTO CHARACTER
+CA79: 48          467          PHA                     ;SAVE CHARACTER
+CA7A: 20 59 CA    468          JSR   PSNCALC           ;SET UP SCREEN ADDRESS
+CA7D: 68          469          PLA                     ;RECOVER CHARACTER
+CA7E: 80 05       470          ECS   WRITE1            ;SELECT MEMORY RANGE
+CA8O: 90 00 CC    471          STA   DISPO,X           ;STXRE CHARACTER ON SCREEN
+CA83: 90 03       472          BCC   WSKIP             ;SKIP
+CA85: 90 00 CD    473 WRITEl   STA   DISPl,X           ;STXRE CHARACTER ON SCREEN
+CA88: 60          474 WSKIP    RTS                     ;RECOVER X REGISTER
+                  475 *
+                  476 *
+                  477 * GENERAL OUTPUT ROUTINE
+                  478 *
+                  479 *
+CA89: 48          480 OUTPT1   PHA                     ;SAVE CHARACTER
+CA8A  tA9F?       481          LDA   #$F7
+CA8C: 20A8 C9     482          JSR   FLGCLR
+CA8F: 8059 CO     483          STA   $CO59
+CA92: AD78 07     484          LDA   POFF
+CA95: 2907        485          AND   #$07              ;CHECK FOR LEAD IN
+CA97  0004        486          BNE   LEAD              ;BRANCH IF LEAD IN
+CA99: 68          487          PLA                     ;RECOVER CHARACTER
+CA9A: 4C23 CA     488          JMP   VI DOUT           ;OUTPUT CHARACTER
+                  489 *
+CA9D: 2904        490 LEAD     AND   #$04              ;CHECK FOR GO TO KY
+CA9F: FR03        491          BEQ   GOXY3             ;IF NOT SKIP
+CAAI: 4C87 C9     492          JMP   NOT GOXY
+CAA4: 68          493 GOXY3    PLA                     ;RECOVER CHARACTER
+CAA5: 38          494          SEC
+CAA6: E920        495          S8C   #$20              ;SUBTRACT 32
+CAA8: 297F        496 GOTOXY   AND   #$7F              ;STRIP OFF UNEEDED BRTS
+CAAA: 48          497          PHA                     ;SAVE A
+CAAO: CE78 07     498          DEC   POFF              ;DECREMENT LEAD IN COUNTER
+CAAE: AD78 07     499          LDA   POFF
+CABI: 2903        500          AND   #S03              ;GET COUNT
+CAO3: 0015        501          8NE   GOXY2             ;SKIP IF COUNT NOT ZERO
+CABS: 68          502          PLA                     ;RECOVER A
+CAO6: C918        503          CMP   #24               ;IF A > WINDOW BOTTOM
+CAO8: 8803        504          BGE   BADY              ;THEN DON’T MOVE CURSOR VERTICAL
+CABA: 80FO 05     505          STA   CVERT
+CABO: ADF8 05     506 BADY     LDA   TEMPX             ;GET CURSOR HORIZONTAL PARAMETER
+CACO: C950        507          CMP   #80               ;IF A > 80 THEN
+CAC2: 0003        508          OGE   BADX              ;DON’T MOVE CURSOR HORIZONTAL
+CAC4: 8078 05     509          STA   CHORZ
+CAC7: 4C04 CA     510 BADO     JMP   VTAB              ;VERTICAL TAB TO CURSOR POSITION
+CACA: 68          511 ODKY2    PLA                     ;RECOVER A
+CACO: 80F8 05     512          STA   TEMPX             ;SAVE CURSOR HORIZONTAL PARAMETER
+CACE: 60          513          RTS
+                  514 *
+                  515 *
+                  516 * STXP LIST ROUTINE
+                  517 *
+                  518 *
+CACF  zAD00 CO    519 STPLST   LDA   K80
+CAD2: C993        520          CMP   #$93
+CAO4: 00OF        521          BNE   STPDONE
+CAD6: 2C10 CO     522          BIT   KBOSTRB
+CAD9: AD00 CO     523 STPLOOP  LDA   KB0
+CADC: 10PB        524          BPL   STPLOOP
+CADE  iC983       525          CMP   #$83
+CAEO: F803        526          BEQ   STPDONE
+CAE2: 2C10 CO     527          BIT   KBDSTRB
+CAE5: 60          520 STPDONE  RTS
+                  529 *
+CAE6: A8          530 ESCNOW   TAY
+CAE7: 8931 CO     531          LDA   KLTBL—$C9,Y
+CAEA: 20Fl C8     532          SR    ESCI
+CAED: 2044 CS     533 ESCHEW   JSR   RDKEY
+CAF0: C9 CE       534          CMP   #$CE
+CAF2: B0 08       535          ODE   ESC 2
+CAE4: C9 C9       536          ClMP  8$C9
+CAF6: 90 04       537          BLT   ESC2
+CAFS: C9 CC       538          ClMP  #$CC
+CAFA: DO EA       539          BNE   ESCNOW
+CAFC: 4C Fl C8    540 ESC2     JMP   ESC1
+CAFF: EA          541          NOP
+                  542 *
+                  543 *
+                  544 *
+                  545 *
+                  546 *
+                  547 * BASIC INITIAL I/O ENTRY POINT
+                  548
+                  549 *
+CB00: 2C CB FF    550          BIT   IORTS             ;SET VFLAG ON INITIAL ENTRY
+CB03: 70 31       551          BVS   ENTR
+CB05: 38          552 INFAKE   SEC                     ;FAKE INPUT ENTRY C=0
+CB06: 90          553          HEX   90
+CB07: 18          554 OUTENTR  CLC                     ;OUTPUT ENTRY C=l
+CB08: B8          555          CLV
+CB09: 50 28       556          BYC   ENTR
+CB0B: 01 82       557          HEX   0182
+CB0D: 11          558          DEB   INIT
+CB0E: 14          559          DFB   READ
+CB0F: 1C          560          DFB   WRITE
+CB10: 22          561          DFB   STATUS
+                  562 *
+CB11: 4C 00 C8    563 INIT     JMP   SETUP
+                  564 *
+CB14: 20 44 C8    565 READ     JSO   RDKEY
+CB17: 29 7F       566          AND   #$7F
+CB19: A2 00       567          LDX   #$00
+CB1B: 60          568          RTS
+                  569 *
+CB1C: 20 A7 C9    570 WRITE    JSR   PSOUT
+CB1F: A2 00       571          LDX   #$00
+CB21: 60          572          RTS
+                  573 *
+CB22: C9 00       574 STATUS   CMP   #$00
+CB24: F0 09       575          BEQ   STEXIT
+CB26: AD 00 C0    576          LDA   KBD
+CB29: 0A          577          ASL
+CB2A: 90 03       578          BCC   STEXIT
+CB2C: 20 SC C8    579          JSR   KEYSTAT
+CB2F: A2 00       580 STEX IT   LDX       #$00
+CB31: 60          581          RTS
+                  582 *
+                  583 * BASIC INPUT ENTRY POINT
+                  584 *
+CB32: 91 28       585 INENTR   STA   (BASL),Y          ;REPLACE FLASHING CURSOR
+CB34: 38          586          SEC
+CB35: B8          587          CLV
+CB36: 8D FE CF    588 ENTR     STA   $CFFF             ;TURN OFF CO-RESIDENT MEMORY
+                  559 *
+                  590 *
+                  591 *
+                  592 * SAVE REGISTERS SET UP NO AND CN
+                  593 *
+                  594 *
+CB39: 48          595 WHERE    PHA                     ;SAVE REGISTERS OH STACK
+CB3A: 85 35       596          STA   XSAVE
+CB3C: 4A          597 T XA
+CB3D: 48          598          PHA
+CB3E: 98          599          TYA
+CB3F: 48          600          PHA
+CB40: A5 35       601          LDA   XSAVE             ;SAVE CHARACTER
+CB42: 86 35       602          STX   XSAVE             ;SAVE INPUT BUFFER INDEX
+CB44: A2 C3       603          LDX   #$C3
+CB46: BE 78 04    604          STX   CRFLAG
+CB49: 4B          605          PHA
+CB4A: 50 10       606          BVC   10                ;GO TO ID IF NOT INITIAL ENTRY
+                  607 *
+                  608 *
+                  609 * BASIC   INITIALIZE
+                  610 *
+                  611 *
+CB4C: A9 32       612          LOA   #<INENTR          ;SET UP INPUT AND OUTPUT HOOKS
+CB4E: 85 38       613          STA   K SWL
+CB50: 86 39       614          STX   K SWH
+CB52: A9 07       615          LDA   #<OUTENTR
+CB54: 85 36       616          STA   CSWL
+CB56: 86 37       617          STX   CSWH
+CB5B: 20 00 CB    618          JSR   SETUP             ;SET UP CRTC
+CB5B: 18          619          CLC
+                  620 *
+                  621 *
+CB5C: 90 6F       622 10       BCC   BASOUT
+                  623 *
+                  624 *
+                  625 * BASIC INPUT ROUTINE
+                  626 *
+                  627 *
+CB5E: 68          628 B ASI NP   PLA                ; POP STACK
+CB5F: A4 35       629          LDY   XSAVE             ;GET INPUT BUFFER INDEX
+CB61: F0 1F       630          BEQ   GETLN             ;IF ZERO ASSUME GETLN
+CB63: 88          631          DEY
+CB64: AD 78 06    632          LDA   OLdCHAR           ;GET LAST CHARACTER FROM GETLN
+CB67: C9 88       633          CMP   #$I88             ;IF 85 ASSUME GETLN
+CB69: F0 17       634          BEQ   GETLN
+CB6B: D9 00 02    635          CMP   IN ,Y
+CB6E: F0 12       636          BEQ   GETLN
+CB70: 49 20       637          EOR   #$20
+CB72: D9 00 02    638 SKIP     CMP   IN,Y              ;IF SAME AS CHARACTER IN INPUT
+CB75: DO 38       639          BNE   NTGETLN           ;BUFFER THEN ASSUME GETLN
+CB77: AD 78 06    640          LDA   OLOCHAR           ;GET LAST CHARACTER FROM GETLN
+CB7A: 99 00 02    641          STA   IN,Y              ;FIX INPUT BUFFER
+CB7D: 80 03       642          BGE   GETLN             ;GO TO GETLN
+CB7F: 20 ED CA    643 ESC      JSR   ESCNEW            ;PERFORM ESCAPE FUNCTION
+CB82: A9 80       644 GETLN    LDA   #$80              ;SET GETLN FLAG
+CB84: 20 F5 C9    645          JSR   FLGSET
+CB87: 20 44 C8    646          JSR   RDKEY             ;GET CHARACTER FROM KEYBOARD
+CB8A: C9 98       647          CMP   #$98              ;CHECK FOR ESCAPE
+CB8C: Fl Fl       648          BEQ   ESIC
+CB8E: C9 80       649          CMP   #$80              ;CHECK FOR CR
+CB90: D0 05       650          BNE   NOTCR             ;IF NOT SKIP
+CB92: 48          651          PHA                     ;SAVE CHARACTER
+CB93: 20 01 C9    652          JSR   CLREOL            ;CLEAR TO END OF LINE
+CB96: 68          653          PLA                     ;RECOVER CHARACTER
+CB97: C9 95       654 NOTCR    CMP   #$95              ;CHECK FOR PICK
+CB99: D0 12       655          BNE   NOTPICK           ;IF NOT SKIP
+CB9B: AC 78 05    656 CHRGET   LDY   CHORZ             ;GET CURSOR HORIZONTAL POSITION
+CB9E: 20 59 CA    657          JSR   PSHCALC           ;SET UP SCREEN ADDRESS
+CBAl: 80 05       658          BCS   READ1             ;READ CHARACTER FROM SCREEN
+CBA3: BD 00 CC    659          LDA   DISPO,X
+CBA6: 90 03       660          BCC   RSKIP
+CBA8: BD 00 CO    661 READ1    LDA   DISP1,X
+CBAB: 09 80       662 RSK IP    ORA   #$80             ; SET HIGH BIT
+CBAD: 80 78 16    663 NOTPICK  STA   OLDCHAR           ;SAVE CHARACTER IN OLDCHAR
+CBB0: D0 08       664          BNE   DONE              ;EXIT
+CB02: 20 44 CR    665 NTGETLN  JSR   RDKEY             ;GET CHARACTER FROM KEYBOARD
+CB05: AO 00       666          LDY   #$00              ;CLEAR CHACHARACTER
+CBB7: 8C 78 10    667          STY   OLDCHAR
+                  668 *
+CBBA: BA          669 DONE     TSX                     ;PUT CHARACTER INTO STACK
+CBBB: E8          670          INX
+CBBC: E8          671          INX
+CBBD: E8          672          INX
+CBBE: 9D 00 01    673          STA   $100,X
+CBC1: A9 00       674 OUTDONE1 LDA   #100              ;SET CH = 00
+CBC2: B5 24       675 OUTDONE  STA   CH
+CBC5: A0 F8 05    676          LDA   CVERT             ;SET CV = CVERT
+CBC8: B5 25       677          STA   CV
+CBCA: 4C 2E CR    678          JMP   EXIT
+                  679 *
+                  680 *
+                  681 * PRIMARY BASIC OUTPUT ROUTINE
+                  682 *
+                  683 *
+CBCD: 68          684 BASOUT   PLA                     ;RECOVER CHARACTER
+CBCC: AC FB 07    685          LDY   FLAGS             ;CHECK GETLN FLAG
+CB01: 10 08       686          BPL   BOUT              ;IF CLEAR THEN SKIP
+CB03: AC 78 06    687          LDY   OLDCHAR           ;GET LAST CHARACTER FROM GETLN
+CB06: C0 E0       688          CPY   #$E0              ;IF IT IS LOWER CASE THEN USE IT
+CB08: 90 01       689          BLT   BOUT
+CBDA: 98          690          TYA
+CBOB: 20 B1 C8    691 BOUT     JSR   BASOUT 1          ;OUTPUT CHARACTER
+CBDE: 20 CF CA    692          JSR   STPLST
+CBE1: A9 7F       693          LDA   #$7F              ;CLEAR THE GETLN FLAG
+CBE3: 20 A0 C9    694          JSR   FLGCLR
+CBE6: AD 78 05    695          LDA   CHORZ             ;GET CURSOR HORIZONTAL
 
-CBE9: E9     47        696             SBC   #$47
-CBEB: 90     D4        697             BCC   OUTDONE1
-CBEQ: 69     1F        698             ADC   #$lF
-CBEF: 18               699   FIXCH     CLC
-CBF0: 90     D1        700             BCC   OUTDONE
-                       701   *
-CBF2:   60             702   ESCTBL    DF8   CLSCRN-l
-CBF3:   38             703             DF8   ADVANCE-I
-CBF4:   72             704             DF8   BS-I
-CBF5:   82             705             DF8   LF- I
-CBF6:   78             706             DF8   UP - I
-CBF7:   00             707             DF8   CLREOL-I
-CBF8:   48             708             DF8   CLREOP—I
-CBF9:   66             709             DF8   HOME-l
-                       710   *
-CBFA: C4     C2 CI
-CBFD: FF     C3        711 XLTBL       HEX   C4C2C1FFC3
-                       712 *
-```
-```text
-CBFF:         EA        713                  NOP
-                     714
-CC00:         80     FF CF      715          ROMSW      STA      5CFFF
-CC03;         80     00 C3      716               STA   $C300
-CC06:         60        717                  RTS
+CBE9: E9 47       696          SBC   #$47
+CBEB: 90 D4       697          BCC   OUTDONE1
+CBEQ: 69 1F       698          ADC   #$lF
+CBEF: 18          699 FIXCH    CLC
+CBF0: 90 D1       700          BCC   OUTDONE
+                  701 *
+CBF2: 60          702 ESCTBL   DF8   CLSCRN-l
+CBF3: 38          703          DF8   ADVANCE-I
+CBF4: 72          704          DF8   BS-I
+CBF5: 82          705          DF8   LF- I
+CBF6: 78          706          DF8   UP - I
+CBF7: 00          707          DF8   CLREOL-I
+CBF8: 48          708          DF8   CLREOP—I
+CBF9: 66          709          DF8   HOME-l
+                  710 *
+CBFA: C4 C2 CI
+CBFD: FF C3       711 XLTBL    HEX   C4C2C1FFC3
+                  712 *
+CBFF: EA          713          NOP
+                  714
+CC00: 80 FF CF    715 ROMSW    STA   5CFFF
+CC03; 80 00 C3    716          STA   $C300
+CC06: 60          717          RTS
 
 ——END ASSEMBLY—-
 
@@ -2084,9 +2025,6 @@ SYMBOL TABLE — NUMERICAL ORDER:
 
     CH       =$24             CV      =$25            BASL      =$28             XSAVE    =$35
     CSWL     =$36             CSWH    =$37            KSWL      =$38             KSWH     =$39
-```
-
-```text
     RNDL    =$4E       RNDH       =$4F         IN        =$0200     CRFLAG =$0478
     BASEL   =$B47B     ASAV1      =$04FB       BASEH     =$O4FB ?   XSAVI   =$05?8
     CHORZ   =$B57B     TEMPX      =$05FB       CVERT     =$O5FB     OLDCHAR =$06Z8
