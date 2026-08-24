@@ -34751,6 +34751,172 @@ function SerialProCard()
         "When source code is requested, return plain source text suitable for a serial terminal."
     ].join(" ");
 
+    /*
+     * SPGPT is the remote serial peer, not part of the Serial Pro logic board.
+     * Its public boundary intentionally uses the same byte-stream contract as
+     * SPSERIAL. Unicode remains internal to the GPT/API side.
+     */
+    function SerialProGPTDevice()
+    {
+        var device = this;
+        var host = null;
+        var listeners = [];
+
+        this.id = {
+             "DCODE":"SPGPT"
+            ,"hostPCODE":"SPC"
+            ,"icon":"fa fa-robot"
+            ,"description":"Serial Pro GPT serial peer"
+        };
+
+        this.ports = {
+            "serial":{
+                 "direction":"duplex"
+                ,"mime":["application/octet-stream"]
+                ,"handler":"receive"
+                ,"description":"GPT peer 8-bit serial byte stream"
+            }
+        };
+
+        function normalizeBytes(data)
+        {
+            if(data instanceof Uint8Array) return data;
+            if(data instanceof ArrayBuffer) return new Uint8Array(data);
+
+            if(ArrayBuffer.isView(data))
+                return new Uint8Array(data.buffer,data.byteOffset,data.byteLength);
+
+            if(Array.isArray(data))
+            {
+                var bytes = new Uint8Array(data.length);
+                for(var i=0;i<data.length;i++)
+                    bytes[i] = Number(data[i]) & 0xFF;
+                return bytes;
+            }
+
+            if(Number.isInteger(Number(data)))
+                return new Uint8Array([Number(data) & 0xFF]);
+
+            return null;
+        }
+
+        this.bindHost = function(card)
+        {
+            host = card || null;
+
+            if(host)
+                Object.defineProperty(host,"_serialGPTDevice",{
+                     "configurable":true
+                    ,"enumerable":false
+                    ,"writable":true
+                    ,"value":device
+                });
+
+            return !!host;
+        };
+
+        /*
+         * Bytes received from SPSERIAL are Apple II -> GPT traffic.
+         */
+        this.receive = function(message,context)
+        {
+            var bytes = normalizeBytes(
+                message && message.data!==undefined
+                    ? message.data
+                    : message
+            );
+
+            if(!bytes || !host) return false;
+
+            for(var i=0;i<bytes.length;i++)
+                serialGPTCaptureByte(host,bytes[i]);
+
+            return true;
+        };
+
+        this.receiveBytes = function(data)
+        {
+            var bytes = normalizeBytes(data);
+            if(!bytes || !host) return 0;
+
+            for(var i=0;i<bytes.length;i++)
+                serialGPTCaptureByte(host,bytes[i]);
+
+            return bytes.length;
+        };
+
+        /*
+         * GPT -> serial traffic. Unicode is normalized to 7-bit ASCII before
+         * crossing the serial boundary; CR terminates each transmitted line.
+         */
+        this.transmitText = function(text)
+        {
+            var ascii = serialGPTASCII(text)
+                .replace(/\r\n/g,"\n")
+                .replace(/\r/g,"\n")
+                .replace(/\n+$/g,"");
+
+            var bytes = [];
+            var lines = ascii.split("\n");
+            if(!lines.length) lines = [""];
+
+            for(var i=0;i<lines.length;i++)
+            {
+                for(var j=0;j<lines[i].length;j++)
+                    bytes.push(lines[i].charCodeAt(j) & 0x7F);
+                bytes.push(0x0D);
+            }
+
+            this.transmitBytes(new Uint8Array(bytes),{"source":"gpt"});
+            return ascii;
+        };
+
+        this.subscribe = function(callback)
+        {
+            if(typeof(callback)!="function") return function(){};
+
+            if(listeners.indexOf(callback)<0)
+                listeners.push(callback);
+
+            var subscribed = true;
+
+            return function()
+            {
+                if(!subscribed) return;
+                subscribed = false;
+
+                var index = listeners.indexOf(callback);
+                if(index>=0) listeners.splice(index,1);
+            };
+        };
+
+        this.transmitBytes = function(data,meta)
+        {
+            var bytes = normalizeBytes(data);
+            if(!bytes) return false;
+
+            var snapshot = listeners.slice();
+
+            for(var i=0;i<snapshot.length;i++)
+            {
+                try { snapshot[i](bytes,meta || {}); }
+                catch(error)
+                {
+                    console.error("SPGPT serial subscriber failed",error);
+                }
+            }
+
+            return bytes.length;
+        };
+
+        this.reset = function()
+        {
+            return true;
+        };
+    }
+
+    global.SerialProGPTDevice = SerialProGPTDevice;
+
     function serialGPTState(card)
     {
         if(card._serialGPT) return card._serialGPT;
@@ -35267,6 +35433,23 @@ function SerialProCard()
         if(typeof(card.serialTerminalWriteByte)!=="function" ||
            typeof(card.serialTerminalQueueLine)!=="function")
             return card;
+
+        if(!Array.isArray(card.deviceConfig))
+            card.deviceConfig = [];
+
+        var hasSPGPT = card.deviceConfig.some(function(info)
+        {
+            return String(info && info.DCODE || "").toUpperCase()=="SPGPT";
+        });
+
+        if(!hasSPGPT)
+            card.deviceConfig.push({
+                 "DCODE":"SPGPT"
+                ,"hostPCODE":"SPC"
+                ,"coID":"SerialProGPTDevice"
+                ,"icon":"fa fa-robot"
+                ,"description":"Serial Pro GPT serial peer"
+            });
 
         Object.defineProperty(card,"_serialGPTInstalled",{
             configurable:true,
