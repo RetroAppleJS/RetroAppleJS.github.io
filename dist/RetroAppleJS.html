@@ -23670,7 +23670,170 @@ function PasteBoard()
 
 }
 </script>
+            <script type="text/javascript">
+//
+// Copyright (c) 2026 Freddy Vandriessche.
+// All rights reserved.
+//
+// EMU_DEVICE_serialpro_line.js
+//
+// External byte-stream line owned by the Applied Engineering Serial Pro card.
+// The card/firmware/6551 remain the SPC peripheral; this device models the
+// external serial connection presented by the UART.
+//
 
+function SerialProLine()
+{
+    var line = this;
+    var host = null;
+    var listeners = [];
+
+    this.id = {
+         "DCODE":"SPCLINE"
+        ,"hostPCODE":"SPC"
+        ,"icon":"fa fa-exchange-alt"
+        ,"description":"Serial Pro external serial line"
+    };
+
+    this.ports = {
+        "serial":{
+             "direction":"duplex"
+            ,"mime":["application/octet-stream"]
+            ,"handler":"receive"
+            ,"description":"Serial Pro external 8-bit serial byte stream"
+        }
+    };
+
+    function normalizeBytes(data)
+    {
+        if(data instanceof Uint8Array)
+            return data;
+
+        if(data instanceof ArrayBuffer)
+            return new Uint8Array(data);
+
+        if(ArrayBuffer.isView(data))
+            return new Uint8Array(
+                data.buffer,
+                data.byteOffset,
+                data.byteLength
+            );
+
+        if(Array.isArray(data))
+        {
+            var bytes = new Uint8Array(data.length);
+            for(var i=0;i<data.length;i++)
+                bytes[i] = Number(data[i]) & 0xFF;
+            return bytes;
+        }
+
+        if(Number.isInteger(Number(data)))
+            return new Uint8Array([Number(data) & 0xFF]);
+
+        return null;
+    }
+
+    this.bindHost = function(card)
+    {
+        host = card || null;
+
+        if(host && typeof(host.bindSerialLineDevice)=="function")
+            host.bindSerialLineDevice(line);
+
+        return !!host;
+    };
+
+    /*
+     * Bytes entering the public duplex port are remote -> Serial Pro traffic.
+     * The owning SPC card is responsible for applying 6551 receive timing,
+     * word length, RDRF and IRQ behavior.
+     */
+    this.receive = function(message,context)
+    {
+        var bytes = normalizeBytes(
+            message && message.data!==undefined
+                ? message.data
+                : message
+        );
+
+        if(!bytes || !host ||
+           typeof(host.serialLineReceiveBytes)!="function")
+            return false;
+
+        return host.serialLineReceiveBytes(
+            bytes,
+            {
+                 "source":"pipe"
+                ,"context":context || null
+            }
+        )==bytes.length;
+    };
+
+    this.receiveBytes = function(data,meta)
+    {
+        var bytes = normalizeBytes(data);
+
+        if(!bytes || !host ||
+           typeof(host.serialLineReceiveBytes)!="function")
+            return 0;
+
+        return host.serialLineReceiveBytes(bytes,meta || {});
+    };
+
+    /*
+     * ACIA -> external-line traffic is streaming/event-driven. Until the
+     * generic pipe layer grows persistent pipeConnect()/pipeDisconnect(),
+     * subscribers are the adapter boundary used by oTERM and Web Serial.
+     */
+    this.subscribe = function(callback)
+    {
+        if(typeof(callback)!="function")
+            return function(){};
+
+        if(listeners.indexOf(callback)<0)
+            listeners.push(callback);
+
+        var subscribed = true;
+
+        return function()
+        {
+            if(!subscribed) return;
+            subscribed = false;
+
+            var index = listeners.indexOf(callback);
+            if(index>=0) listeners.splice(index,1);
+        };
+    };
+
+    this.transmitBytes = function(data,meta)
+    {
+        var bytes = normalizeBytes(data);
+        if(!bytes) return false;
+
+        var snapshot = listeners.slice();
+
+        for(var i=0;i<snapshot.length;i++)
+        {
+            try
+            {
+                snapshot[i](bytes,meta || {});
+            }
+            catch(error)
+            {
+                console.error("SPCLINE serial subscriber failed",error);
+            }
+        }
+
+        return bytes.length;
+    };
+
+    this.reset = function()
+    {
+        // The external cable/line remains present across Apple II RESET.
+        return true;
+    };
+}
+</script>
 
             <script type="text/javascript">
 // 2022 Adaptation by Freddy Vandriessche, from Thomas Skibo.
@@ -31269,6 +31432,20 @@ function SerialProCard()
 
     this.id = {"PCODE":"SPC", "icon":"fa fa-terminal"};
 
+    /*
+     * SPC remains the Apple II slot peripheral. SPCLINE is the one external
+     * serial connection presented by its 6551 UART.
+     */
+    this.deviceConfig = [
+        {
+             "DCODE":"SPCLINE"
+            ,"hostPCODE":"SPC"
+            ,"coID":"SerialProLine"
+            ,"icon":"fa fa-exchange-alt"
+            ,"description":"Serial Pro external serial line"
+        }
+    ];
+
     var state =
     {
          "active":true
@@ -31333,6 +31510,97 @@ function SerialProCard()
 
     var serialpro = this;       // stand-in where 'this' is absent inside callbacks
 
+
+    var serialLineDevice = null;
+    var serialLineUnsubscribe = null;
+
+    /*
+     * Apple2IO.attach() calls SPCLINE.bindHost(), which in turn binds the line
+     * device here. Existing browser endpoints become adapters subscribed to the
+     * line instead of being called directly from the 6551 timing code.
+     */
+    this.bindSerialLineDevice = function(device)
+    {
+        if(serialLineUnsubscribe)
+        {
+            serialLineUnsubscribe();
+            serialLineUnsubscribe = null;
+        }
+
+        serialLineDevice = device || null;
+
+        if(serialLineDevice &&
+           typeof(serialLineDevice.subscribe)=="function")
+        {
+            serialLineUnsubscribe =
+                serialLineDevice.subscribe(function(bytes,meta)
+                {
+                    for(var i=0;i<bytes.length;i++)
+                    {
+                        var d8 = bytes[i] & 0xFF;
+
+                        if(typeof(serialpro.serialTerminalWriteByte)=="function")
+                            serialpro.serialTerminalWriteByte(d8);
+
+                        serialPhysicalWriteByte(d8);
+                    }
+                });
+        }
+
+        return !!serialLineDevice;
+    };
+
+    /*
+     * Remote/external bytes arrive here only through SPCLINE. Keep receive
+     * framing/timing inside the card: this queue is the simulated line feeding
+     * the 6551 receive-shift register.
+     */
+    this.serialLineReceiveBytes = function(bytes,meta)
+    {
+        if(!bytes || !bytes.length)
+            return 0;
+
+        aciaSyncNow();
+
+        for(var i=0;i<bytes.length;i++)
+            serialTerminalState.toCard.push(bytes[i] & 0xFF);
+
+        aciaPrimeReceiver();
+        return bytes.length;
+    };
+
+    function serialLineInjectBytes(bytes,meta)
+    {
+        if(serialLineDevice &&
+           typeof(serialLineDevice.receiveBytes)=="function")
+            return serialLineDevice.receiveBytes(bytes,meta || {});
+
+        // Defensive bootstrap fallback before attached devices are provisioned.
+        return serialpro.serialLineReceiveBytes(bytes,meta || {});
+    }
+
+    function serialLineTransmitByte(d8)
+    {
+        d8 &= 0xFF;
+
+        if(serialLineDevice &&
+           typeof(serialLineDevice.transmitBytes)=="function")
+        {
+            return serialLineDevice.transmitBytes(
+                new Uint8Array([d8]),
+                {"source":"acia"}
+            );
+        }
+
+        /*
+         * Defensive fallback for tools that construct SerialProCard without
+         * running Apple2IO.provisionPeripheral().
+         */
+        if(typeof(serialpro.serialTerminalWriteByte)=="function")
+            serialpro.serialTerminalWriteByte(d8);
+        serialPhysicalWriteByte(d8);
+        return 1;
+    }
 
     /*
      * Stage 2D: legacy 6551 ACIA.
@@ -31690,11 +31958,8 @@ function SerialProCard()
                 acia.txBusy = false;
 
                 if(!aciaBreakActive())
-                {
-                    if(typeof(serialpro.serialTerminalWriteByte)=="function")
-                        serialpro.serialTerminalWriteByte(txByte);
-                    serialPhysicalWriteByte(txByte);
-                }
+                    serialLineTransmitByte(txByte);
+
 
                 acia.txEmpty = true;
                 if(aciaTransmitIRQEnabled())
@@ -33355,17 +33620,14 @@ function SerialProCard()
         if(!chunk || !chunk.length || serialPhysical.configStale)
             return 0;
 
-        // Do not credit a newly arrived physical byte with cycles that elapsed
-        // before the browser/USB UART delivered it.
-        aciaSyncNow();
-
         var display = "";
         for(var i=0;i<chunk.length;i++)
-        {
-            var d8 = chunk[i] & 0xFF;
-            serialTerminalState.toCard.push(d8);
-            display += serialPhysicalDisplayByte(d8);
-        }
+            display += serialPhysicalDisplayByte(chunk[i] & 0xFF);
+
+        var accepted = serialLineInjectBytes(
+            chunk,
+            {"source":"webserial"}
+        );        
 
         if(display.length)
         {
@@ -33373,9 +33635,7 @@ function SerialProCard()
             var terminal = serialTerminalLive();
             if(terminal) terminal.write(display,"tx");
         }
-
-        aciaPrimeReceiver();
-        return chunk.length;
+        return accepted;
     }
 
     async function serialPhysicalReadLoop(port)
@@ -33804,18 +34064,19 @@ function SerialProCard()
     this.serialTerminalQueueLine = function(line)
     {
         line = String(line===undefined ? "" : line);
-        // Start remote input at the current emulated-cycle boundary.
-        aciaSyncNow();
+        var bytes = new Uint8Array(line.length + 1);
 
         for(var i=0;i<line.length;i++)
-            serialTerminalState.toCard.push(line.charCodeAt(i) & 0xFF);
-        // Start only the first waiting serial frame.  Further bytes remain on
-        // the simulated line until DATA is consumed and another frame begins.
-        serialTerminalState.toCard.push(0x0D);
-        serialTerminalRemember("tx",">"+line+"\n");
+             bytes[i] = line.charCodeAt(i) & 0xFF;
 
-        aciaPrimeReceiver();
-        return line.length + 1;
+        // ENTER on the terminal is the remote endpoint sending CR.
+        bytes[line.length] = 0x0D;
+        serialTerminalRemember("tx",">"+line+"\n");
+        return serialLineInjectBytes(
+            bytes,
+            {"source":"oterm"}
+        );
+
     };
 
     this.serialTerminalPending = function()
