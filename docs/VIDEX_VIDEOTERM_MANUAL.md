@@ -1,5 +1,38 @@
 # VIDEX VIDEOTERM - Installation and Operation Manual
 
+**Authors:** Curtis White; Darrell Aldrich  
+**Edition:** Third Edition, January 1982  
+**Document number:** 001053 VT-MAN-OOO
+
+> **Transcription note.** This revised Markdown transcription is based on the supplied scan and its searchable text layer. Page-break separators have been removed; prose has been reflowed into the paragraph structure of the original manual; the contents pages are preserved in monospaced form; and clear OCR/typographic anomalies have been corrected where the intended reading is unambiguous. Figures and graphical tables are preserved as image assets. Program and firmware listings received a conservative OCR cleanup, but byte-for-byte use should still be checked against the scan.
+
+![Original cover](assets/pdf-page-001-image.jpg)
+
+First Printing: March, 1980  
+Second Printing: August, 1980  
+Third Printing: January, 1982
+
+Published by:  
+VIDEX  
+897 N.W. Grant Ave.  
+Corvallis, Oregon 97330  
+Phone: [503] 758-0521
+
+All rights reserved. No part of this publication may be reproduced without prior written permission of VIDEX. Please call for more information.
+
+Copyright © 1980 by VIDEX.
+
+Apple ][® Apple Computer, Inc.  
+Micromodem ][® D.C. Hayes Associate, Inc.  
+ROMWriter® Mountain Hardware, Inc.  
+EasyWriter® Information Unlimited Software, Inc.  
+Softcard® Microsoft
+
+Apple PIE® Programma International, Inc.  
+Video 100 is a product of Leedex Corporation
+
+Videx is a trademark of Videx, Inc.
+
 # TABLE OF CONTENTS
 
 ```text
@@ -404,6 +437,8 @@ The VIDEOTERM board starts in upper case mode.
 | Character | Displays that character |
 
 Low-resolution graphics characters each occupy one character position on the screen display.
+
+![Low-resolution graphics character table from the source manual](assets/pdf-page-040-image.jpg)
 
 ## Upper and Lower Case
 
@@ -2180,9 +2215,24 @@ PR#3 (CR)
 
 To go back to 40 columns, hit Reset or type a control Z immediately followed by a “1”. A control X should be used to prevent an error message in immediate mode. A return is not required.
 
-## Figure 9: VIDEOTERM Soldering Points
-
-![Embedded figure or graphical content from source PDF page 133](assets/pdf-page-133-image.png)
+| Decimal | Hex | 128 ($80) | 144 ($90) | 160 ($A0) | 176 ($B0) | 192 ($C0) | 208 ($D0) | 224 ($E0) | 240 ($F0) |
+|---:|:---:|:---|:---|:---:|:---:|:---:|:---:|:---:|:---:|
+| 0  | $0 | ^@ Nul | ^P Dle | space | 0 | @ | P | \` | p |
+| 1  | $1 | ^A Soh | ^Q Dc1 | ! | 1 | A | Q | a | q |
+| 2  | $2 | ^B Stx | ^R Dc2 | " | 2 | B | R | b | r |
+| 3  | $3 | ^C Etx | ^S Dc3 | # | 3 | C | S | c | s |
+| 4  | $4 | ^D Eot | ^T Dc4 | $ | 4 | D | T | d | t |
+| 5  | $5 | ^E Enq | ^U Nak | % | 5 | E | U | e | u |
+| 6  | $6 | ^F Ack | ^V Syn | & | 6 | F | V | f | v |
+| 7  | $7 | ^G Bel | ^W Etb | ' | 7 | G | W | g | w |
+| 8  | $8 | ^H Bs  | ^X Can | ( | 8 | H | X | h | x |
+| 9  | $9 | ^I Ht  | ^Y Em  | ) | 9 | I | Y | i | y |
+| 10 | $A | ^J Lf  | ^Z Sub | \* | : | J | Z | j | z |
+| 11 | $B | ^K Vt  | ^[ Esc | + | ; | K | [ | k | { |
+| 12 | $C | ^L Ff  | ^\\ Fs | , | &lt; | L | \\ | l | \| |
+| 13 | $D | ^M Cr  | ^] Gs  | - | = | M | ] | m | } |
+| 14 | $E | ^N So  | ^^ Rs  | . | &gt; | N | ^ | n | ~ |
+| 15 | $F | ^O Si  | ^\_ Us | / | ? | O | \_ | o | rub |
 
 # APPENDIX
 
