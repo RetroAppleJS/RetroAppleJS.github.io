@@ -1,4 +1,5 @@
 # VIDEX VIDEOTERM - Installation and Operation Manual
+
 # TABLE OF CONTENTS
 
 ```text
@@ -356,46 +357,24 @@ For those of you who have owned other Apple II peripherals, or Apple compatible 
 If this is your first Apple II peripheral, you will find it amazingly easy to operate. When you turn on your system, you merely type “PR#3”, assuming you have installed the board in slot 3 (PR#n for slot n), and you will see the asterisk, Applesoft or Integer Basic prompt, or the Pascal menu prompt line on the video monitor display screen. You then proceed to use your computer normally, but now you have available, at your fingertips as it were, some powerful new capabilities.
 
 It should be noted that the VIDEOTERM board only uses a few locations in the Apple II’s memory. The screen display is memory—mapped out of RAM which is located on the VIDEOTERM board itself. As the Apple II memory addresses used are set aside for that purpose by Apple itself, you are able to use the VIDEOTERM board and have no memory use conflicts with any of your programs, any software that you may have purchased, or with any other peripheral that you may have which has also followed Apple’s OEM guidelines.
-```text
-                        Table 1
-             VIDEOTERM Use of Apple II RAM
+### Table 1 — VIDEOTERM Use of Apple II RAM
 
-    Addresses used are relative to the slot used
-or the VIDEOTERM board. Slot n is the slot
-the board has been placed in. See page 134
-in the Apple II Reference Manual for the sets
-of    addresses   available as   scratchpad   Random
-Access Memory locations.
-     Description             Hex Addr   Dec Addr
+Addresses used are relative to the slot used for the VIDEOTERM board. Slot `n` is the slot the board has been placed in. See page 134 in the *Apple II Reference Manual* for the sets of addresses available as scratchpad Random Access Memory locations.
 
-Screen Base addr. (low)           $478 + n   1144 + n
-Screen Base addr. (high)          $4F8 + n   1272 + n
-Cursor horiz. position            $578 + n   1400 + n
-Cursor vert. position             $5F8 + n   1528 + n
-Pascal char. write loc.           $678 + n   1656 + n
-First line on screen              $6F8 + n   1784 + n
-Power off/leading counter         $778 + n   1912 + n
-Video set-up flags                $7F8 + n   2040 + n
+| Description | Hex Addr | Dec Addr |
+|---|---:|---:|
+| Screen Base addr. (low) | `$478 + n` | `1144 + n` |
+| Screen Base addr. (high) | `$4F8 + n` | `1272 + n` |
+| Cursor horiz. position | `$578 + n` | `1400 + n` |
+| Cursor vert. position | `$5F8 + n` | `1528 + n` |
+| Pascal char. write loc. | `$678 + n` | `1656 + n` |
+| First line on screen | `$6F8 + n` | `1784 + n` |
+| Power off/leading counter | `$778 + n` | `1912 + n` |
+| Video set-up flags | `$7F8 + n` | `2040 + n` |
 
-The first two storage locations are used to
-store an address of a location in VIDEOTERM's
-on-board   RAM.     This    address   is   where   the
-first   character  in   the   line   currently   being
-edited/listed   is  stored.      This   address   will
-be $000–$7FF, inclusive.
-The cursor horizontal position is the current
-column     location      of     the    cursor     (0-79,
-inclusive, from        left to right). The cursor
-vertical     position      is     the    current    line
-location of the cursor (0-23, inclusive, from
-top   to   bottom),    The    Pascal   write   character
-location    is   where    the    Apple   Pascal   system
-looks to find the next character to send to a
-terminal or other peripheral. The first line
-on screen pointer is used in text scrolling.
-The various video set-up flags are discussed
-in the software section, page 5-9.
-```
+The first two storage locations are used to store an address of a location in VIDEOTERM's on-board RAM. This address is where the first character in the line currently being edited/listed is stored. This address will be `$000–$7FF`, inclusive.
+
+The cursor horizontal position is the current column location of the cursor (0–79, inclusive, from left to right). The cursor vertical position is the current line location of the cursor (0–23, inclusive, from top to bottom). The Pascal write character location is where the Apple Pascal system looks to find the next character to send to a terminal or other peripheral. The first line on screen pointer is used in text scrolling. The various video set-up flags are discussed in the software section, page 5-9.
 
 ## VIDEOTERM Initialization
 
@@ -411,28 +390,18 @@ When you enter the VIDEOTERM with the "PR#3" statement, the Apple automatically 
 
 ### Table 2 — VIDEOTERM Control Parameters
 
-```text
 The VIDEOTERM board starts in upper case mode.
 
-CTRL-Z followed by:     Description
-
-0 (Default)             Clears screen and sets for 24 lines of text
-1                       Clears screen and sets for 18 lines of text
-2                       Selects the standard 7×9 character set
-                        (or selects normal video; see page 6-4)
-                        for subsequently displayed characters
-3                       Selects the alternate character set
-                        (or selects inverse video; see page 6-4)
-                        for subsequently displayed characters
-
-CTRL-@ to CTRL-G        Displays one of the set of low-resolution
-                        graphics characters
-CTRL-P to CTRL-SHIFT-O  Displays one of the set of line-drawing
-                        graphics characters
-CTRL-H to CTRL-O        Displays a small abbreviation of the ASCII
-                        function (e.g. CTRL-H shows BS for Backspace)
-Character               Displays that character
-```
+| CTRL-Z followed by | Description |
+|---|---|
+| `0` (Default) | Clears screen and sets for 24 lines of text |
+| `1` | Clears screen and sets for 18 lines of text |
+| `2` | Selects the standard 7×9 character set (or selects normal video; see page 6-4) for subsequently displayed characters |
+| `3` | Selects the alternate character set (or selects inverse video; see page 6-4) for subsequently displayed characters |
+| `CTRL-@` to `CTRL-G` | Displays one of the set of low-resolution graphics characters |
+| `CTRL-P` to `CTRL-SHIFT-O` | Displays one of the set of line-drawing graphics characters |
+| `CTRL-H` to `CTRL-O` | Displays a small abbreviation of the ASCII function (e.g. `CTRL-H` shows `BS` for Backspace) |
+| Character | Displays that character |
 
 Low-resolution graphics characters each occupy one character position on the screen display.
 
@@ -633,7 +602,26 @@ For the most part, you will want to know the memory usage of the VIDEOTERM and h
 Memory usage in the $C080+ region of the Apple II addressing space is also of interest. VIDEOTERM usage o[ this area is also detailed in Table 3. The assignment of the different 16—byte address blocks to the 8 possible expansion slots is given in Table 25, page 82, of the Apple II Reference Manual, available from your Apple dealer. For a discussion of the utilization of the 2K byte firmware memory space, $C800 to $CFFF, mentioned in the Apple II Reference Manual on pages 84—85, see the section on VIDEOTERM Memory Mapping, starting in the next chapter on page 5—11. It might be a good idea to briefly skim through that section before reading the detailed comments on each of the example programs.
 
 Remember, as noted on page 3—5, that you must execute a “IN#0” following a “PR#0” in order to reactivate the input device correctly. Otherwise, all Apple II display characters will be placed on top of each other.
-![Embedded figure or graphical content from source PDF page 54](assets/pdf-page-054-image.jpg)
+
+### Table 3 - Address Definitions by Language
+
+This table summarizes the addresses to be accessed for device select as described in Apple Language Modifications, pages 4-1 to 4-7, and How to Modify CRTC Registers, page 5-8. These are the language specific address equivalents of each hexadecimal Apple II memory address. For example, suppose the board is in slot 3. We will enter the number of the register whose value we wish to change first, followed by the value that is to be placed in that register. A total of two bytes of information must be specified. The following sets of statements are equivalent:
+
+```text
+*C0B0: 01 70 (CR)
+>POKE(-16208),01:POKE(-16207),112 (CR)
+POKE(49328),01:POKE(49329),112 (CR)
+```
+
+| Slot # | Monitor | Integer Basic | Applesoft |
+|------:|:-------:|--------------:|----------:|
+| 1 | `$C090` | `-16240` | `49296` |
+| 2 | `$C0A0` | `-16224` | `49312` |
+| 3 | `$C0B0` | `-16208` | `49328` |
+| 4 | `$C0C0` | `-16192` | `49344` |
+| 5 | `$C0D0` | `-16176` | `49360` |
+| 6 | `$C0E0` | `-16160` | `49376` |
+| 7 | `$C0F0` | `-16144` | `49392` |
 
 ## Software Examples
 
@@ -645,67 +633,82 @@ Program Listing 2 gives an example of how the VIDEOTERM can be controlled using 
 
 CALL —154 (CR)
 
-Then type the following (note that you do not have to type the “*“; the Apple II displays this symbol to let you know that it is ready for more input) \*300:48 8A 48 98 48 20 42 03 (CR) \*308:20 00 C8 A9 80 20 ED FD (CR) \*310:A5 36 8D 40 03 A5 37 8D (CR) \*318.41 03 A9 2B 85 36 A9 03 (CR) \*320:85 37 20 EA 03 68 A8 68 (CR) \*328:AA 68 60 8D 7B 06 8A 48 (CR) \*330:98 48 20 42 03 20 Cl C8 (CR) \*338:68 A8 68 AA AD 78 06 4C (CR) \*340.00 CO 8D FF CF 80 00 C3 (CR) \*348:AO 30 8C F8 06 A2 C3 8E (CR) \*350:F8 07 60 80 08 08 AO 10 (CR)
-```text
-                 PROGRAM LISTING # 2
+Then type the following (note that you do not have to type the `*`; the Apple II displays this symbol to let you know that it is ready for more input):
 
-                        2          LST ON
-0000:                   3 *
-0000:                   4 BYTE     E~U $678
-0000:                   5 NO       EQO $6F8
-0000:                   6 MSLOT    EQO $7F8
-0000:                   7 COOT     EQO $FDED
-0000:                   8 *
-0000:                   9          ORG $300
-0300:                 10           082 $300
-0300:                 11 *
-0300:48               12 START     PHA             SAVE REGISTERS
-0301:8A               13           TXA
-0302:45               14           PHA
-0303:98               15           TYA
-0304:48               16           PHA
-0 3 0 5 : 2 0 42 03   17           JSR SETREOS     SET—NP FOR ENTP.Y INTO 0800 RON
-0 3 0 8 : 2 0 00 CR   18           JSR $C$00       ENITIALIZE VIDEOTERM
-0 3 0 8 : A 9 80      19           LDA 8S80        TRANSMIT CHARACTER TO PRINTS
-0 3 0 0 : 2 0 ED PD   20           JSR COOT
-0 3 1 5 : A 5 36      21           LDA $36         STXRE OLD OUTPUT VECTOR
-  0312: 80 40 03       22          STA J7$PADR+1   INTO A JMP OPERAND
-  0315: AS 37          23          LDA S37
-  0317: 90 41 03       24          STA JSIPADR+2
-0 3 1 A : A 9 28       25          LDA ‘1<OUTI     SET UP NEW OUTPUT VECTOR
-0 3 1 C : 8 5 36      26           STA $36
-0 3 1 E : A 9 03      27           LDA #>OUTI
-0 3 2 0 : 8 5 37        28             STA $37
-0322:20IA 03          29           JSR $3EA        SWAP IN DOS OUTPUT VECTOR
-0325: 68              30 DONE      PLA             RECOVER REGISTERS
-0326: A8                  31
-0327:68               32           PLA
-032$:AA               33           TAX
-0329:68               34           PLA
-032A:60               35           RTS
-032$:                 36 *
-  0325: 80 75 06       37 OUTI     STA BYTE+3      SAVE BYTE TO OUTPUT
- 032E: 8A              38          TXA             SAVE REGISTERS
-  032F: 4$             39          PHA
-  0330: 9$             40          TYA
-  0331: 4$             41          PHA
-0 3 3 2 : 2 0 32 33   42           JSR SETREOS     SET—UP FOR ENTRY INTO 0800 ROM
-0 3 3 5 : 2 0 83 0$   43           JSR $0813       OUTPUT BYTE TO VIDEOTERM
-0338:6$               44           PLA             RECOVER REGISTERS
-0339:A8               45           TAY
-033A:68               46           PLA
-0338: AA              47           TAX
-0 3 3 0 : A D 7$ 06   48           LDA BYTE+3      OUTPUT BYTE TO PRINTER
-0 3 3 F : 4 0 00 CO   49 JNPADR    DSP $CODO       THIS ADDRESS WILL BE CHANGED
-0342:                 50 *
-0 3 4 2 : 8 0 PP CF   51 SETREGS   STA $CFFF       TURN OFF CO—RESIDENT ROMS
-0 3 4 $ : 8 0 00 03   52           STA $C300       SELECT CO—RESIDENT POll IN SLOT 3
-0 3 4 8 : A O 30      53           LDY #$30        SET UP THE NO INDEX
-0 3 4 A : B C F8 06   54           STY NO
-0 3 4 0 : A 2 03      55           LDX #$C3        SET UP THE ON INDEX
-0 3 4 F : 8 8 P8 07   56           STX MSLOT
-0352:60               57           RTS
-3353:
+```text
+*300:48 8A 48 98 48 20 42 03 (CR)
+*308:20 00 C8 A9 80 20 ED FD (CR)
+*310:A5 36 8D 40 03 A5 37 8D (CR)
+*318:41 03 A9 2B 85 36 A9 03 (CR)
+*320:85 37 20 EA 03 68 A8 68 (CR)
+*328:AA 68 60 8D 7B 06 8A 48 (CR)
+*330:98 48 20 42 03 20 C1 C8 (CR)
+*338:68 A8 68 AA AD 7B 06 4C (CR)
+*340:00 C0 8D FF CF 8D 00 C3 (CR)
+*348:A0 30 8C F8 06 A2 C3 8E (CR)
+*350:F8 07 60 80 08 08 A0 10 (CR)
+```
+
+```text
+                         PROGRAM LISTING # 2
+
+                                      2          LST ON
+0000:                                 3 *
+0000:                                 4 BYTE     EQU     $678
+0000:                                 5 NO       EQU     $6F8
+0000:                                 6 MSLOT    EQU     $7F8
+0000:                                 7 COUT     EQU     $FDED
+0000:                                 8 *
+0000:                                 9          ORG     $300
+0300:                                10          OBJ     $300
+0300:                                11 *
+0300: 48                             12 START    PHA                         SAVE REGISTERS
+0301: 8A                             13          TXA
+0302: 48                             14          PHA
+0303: 98                             15          TYA
+0304: 48                             16          PHA
+0305: 20 42 03                       17          JSR     SETREGS             SET-UP FOR ENTRY INTO C800 ROM
+0308: 20 00 C8                       18          JSR     $C800               INITIALIZE VIDEOTERM
+030B: A9 80                          19          LDA     #$80                TRANSMIT FAKE CHARACTER TO PRINTER
+030D: 20 ED FD                       20          JSR     COUT
+0310: A5 36                          21          LDA     $36                 STORE OLD OUTPUT VECTOR
+0312: 8D 40 03                       22          STA     JMPADR+1            INTO A JMP OPERAND
+0315: A5 37                          23          LDA     $37
+0317: 8D 41 03                       24          STA     JMPADR+2
+031A: A9 2B                          25          LDA     #<OUTI              SET UP NEW OUTPUT VECTOR
+031C: 85 36                          26          STA     $36
+031E: A9 03                          27          LDA     #>OUTI
+0320: 85 37                          28          STA     $37
+0322: 20 EA 03                       29          JSR     $03EA               SWAP IN DOS OUTPUT VECTOR
+0325: 68                             30 DONE     PLA                         RECOVER REGISTERS
+0326: A8                             31          TAY
+0327: 68                             32          PLA
+0328: AA                             33          TAX
+0329: 68                             34          PLA
+032A: 60                             35          RTS
+032B:                                36 *
+032B: 8D 7B 06                       37 OUTI     STA     BYTE+3              SAVE BYTE TO OUTPUT
+032E: 8A                             38          TXA                         SAVE REGISTERS
+032F: 48                             39          PHA
+0330: 98                             40          TYA
+0331: 48                             41          PHA
+0332: 20 42 03                       42          JSR     SETREGS             SET-UP FOR ENTRY INTO C800 ROM
+0335: 20 C1 C8                       43          JSR     $C8C1               OUTPUT BYTE TO VIDEOTERM
+0338: 68                             44          PLA                         RECOVER REGISTERS
+0339: A8                             45          TAY
+033A: 68                             46          PLA
+033B: AA                             47          TAX
+033C: AD 7B 06                       48          LDA     BYTE+3              OUTPUT BYTE TO PRINTER
+033F: 4C 00 C0                       49 JMPADR   JMP     $C000               THIS ADDRESS WILL BE CHANGED
+0342:                                50 *
+0342: 8D FF CF                       51 SETREGS  STA     $CFFF               TURN OFF CO-RESIDENT ROMS
+0345: 8D 00 C3                       52          STA     $C300               SELECT CO-RESIDENT ROM IN SLOT 3
+0348: A0 30                          53          LDY     #$30                SET UP THE NO INDEX
+034A: 8C F8 06                       54          STY     NO
+034D: A2 C3                          55          LDX     #$C3                SET UP THE CN INDEX
+034F: 8E F8 07                       56          STX     MSLOT
+0352: 60                             57          RTS
+0353:
 ```
 When you have finished entering these values, type \*300.357 (CR)
 
@@ -891,7 +894,8 @@ Program Listing 6 gives an example of cursor positioning in Applesoft. The progr
 
 Line 35 positions the cursor to the appropriate location and line 50 displays the Rub—out character (CHR$(127)) there. Then line 50 returns us to line 20 for input of another pair of coordinates.
 
-While very simple, note that this is generally useful. You should try translating the Integer basic examples into Applesoft, especially the low—resolution graphics example. That example and
+While very simple, note that this is generally useful. You should try translating the Integer Basic examples into Applesoft, especially the low-resolution graphics example. That example and this one can be integrated to yield a simple plotting program. The low-resolution graphics set gives 80 by 72 pixels, almost three times the density of the Apple II’s format of 40 by 48 in low-resolution graphics mode.
+
 ```text
          PROGRAM LISTING # 6
 
@@ -902,20 +906,11 @@ While very simple, note that this is generally useful. You should try translatin
 35 PRINT CHR$ (30); CHR$ (31 + X); CHR$ (31 + Y);
 50 PRINT CHR$ (127)
 70 GOTO 20
-
-this one can be integrated to yield a simple
-plotting program. The low—resolution graphics set
-gives 80 by 72 pixels, almost three times the
-density of the Apple II’s format nf 40 by 48 in
-low—resolution graphics mode.
 ```
 
-```text
-These listings are patch programs for KEYPRESS, the appropriate one should be
-run for your version of Pascal with the disk that has SYSTEM.APPLE on it in
-the drive that is volume #4. In addition to enabling the KEYPRESS function,
-the type—ahead buffer and system break have also been enabled.
+These listings are patch programs for KEYPRESS. The appropriate one should be run for your version of Pascal with the disk that has `SYSTEM.APPLE` on it in the drive that is volume #4. In addition to enabling the KEYPRESS function, the type-ahead buffer and system break have also been enabled.
 
+```text
 PROGRAM VIDPATCH;
 
 (* This program patches the SYSTEM.APPLE console check routine for version *)
@@ -1173,7 +1168,28 @@ R16 and R17: These are high and low, respectively, address components of a 14—
 
 Table 4 on the following page summarizes this information and gives the standard VIDEOTERM default values used with its various character cell matrix sizes.
 
-![Embedded figure or graphical content from source PDF page 104](assets/pdf-page-104-image.jpg)
+### Table 4 - CRTC Register Assignments
+
+| Register Number | Register file description | Read | Write | 9 x 9 | 9 x 12 |
+|:---------------:|---------------------------|:----:|:-----:|:-----:|:------:|
+| R0  | Horizontal Total            | No  | Yes | `$7B` | `$7B` |
+| R1  | Horizontal Displayed        | No  | Yes | `$50` | `$50` |
+| R2  | Horizontal Sync Position    | No  | Yes | `$62` | `$62` |
+| R3  | Horizontal Sync Width       | No  | Yes | `$29` | `$29` |
+| R4  | Vertical Total              | No  | Yes | `$1B` | `$14` |
+| R5  | Vertical Adjust             | No  | Yes | `$08` | `$08` |
+| R6  | Vertical Displayed          | No  | Yes | `$18` | `$12` |
+| R7  | Vertical Sync Position      | No  | Yes | `$19` | `$13` |
+| R8  | Interlace Mode              | No  | Yes | `$00` | `$00` |
+| R9  | Maximum Scan Line Address   | No  | Yes | `$08` | `$0B` |
+| R10 | Cursor Start                | No  | Yes | `$C0` | `$C0` |
+| R11 | Cursor End                  | No  | Yes | `$08` | `$0B` |
+| R12 | Start Address (High)        | No  | Yes | `$00` | `$00` |
+| R13 | Start Address (Lower)       | No  | Yes | `$00` | `$00` |
+| R14 | Cursor (High)               | Yes | Yes | `$00` | `$00` |
+| R15 | Cursor (Low)                | Yes | Yes | `$00` | `$00` |
+| R16 | Light Pen (High)            | Yes | No  |       |       |
+| R17 | Light Pen (Low)             | Yes | No  |       |       |
 
 ### B. How to Modify CRTC Registers
 
@@ -2172,51 +2188,63 @@ To go back to 40 columns, hit Reset or type a control Z immediately followed by 
 
 ## ASCII CHARACTER CODE CHART
 
-![Embedded figure or graphical content from source PDF page 134](assets/pdf-page-134-image.jpg)
+```text
+                        ASCII CHARACTER CODE CHART
+
+                    COLUMN (b7 b6 b5)
+ROW bits       0      1      2    3    4    5    6    7
+(b4 b3 b2 b1)
+0000     0    NUL    DLE     SP    0    @    P    `    p
+0001     1    SOH    DC1      !    1    A    Q    a    q
+0010     2    STX    DC2      "    2    B    R    b    r
+0011     3    ETX    DC3      #    3    C    S    c    s
+0100     4    EOT    DC4      $    4    D    T    d    t
+0101     5    ENQ    NAK      %    5    E    U    e    u
+0110     6    ACK    SYN      &    6    F    V    f    v
+0111     7    BEL    ETB      '    7    G    W    g    w
+1000     8     BS    CAN      (    8    H    X    h    x
+1001     9     HT     EM      )    9    I    Y    i    y
+1010    10     LF    SUB      *    :    J    Z    j    z
+1011    11     VT    ESC      +    ;    K    [    k    {
+1100    12     FF     FS      ,    <    L    \     l    |
+1101    13     CR     GS      -    =    M    ]    m    }
+1110    14     SO     RS      .    >    N    ^    n    ~
+1111    15     SI     US      /    ?    O    _    o   DEL
+```
 
 ## TECHNICAL SUMMARY
 
-```text
+### Board Description
 
-Board Description
+Consult Figure 10, page A-4, for the location of each IC on the VIDEOTERM board. Function of each chip is described in the Theory of Operation section, page 6-1.
 
-    Consult Figure 10, page A—4, for the location
-of each IC on the VIDEOTERM board. Function of each
-chip is described in the Theory of Operation
-section, page 6—1.
+| Unit No. | Description |
+|---|---|
+| U-1 | 74LS86 Exclusive OR gate, general use |
+| U-2 | 74LS02 Four NOR gates |
+| U-3 | 2708 EPROM organized as 8 bits × 1K words |
+| U-4 | 74LS04 Partly used for clock circuit |
+| U-5 | 74LS373, 74DP8304, or 74LS245 — Factory choice |
+| U-6 | 74LS00 Four NAND gates |
+| U-7 | 4013 CMOS flip-flops |
+| U-8 | 4013 CMOS flip-flops |
+| U-9 | 74LS139 2-to-4 line decoder |
+| U-10 | 2114 Static RAM organized as 4 bits × 1K words (low-power) |
+| U-11 | 2114 Static RAM |
+| U-12 | 2114 Static RAM |
+| U-13 | 2114 Static RAM |
+| U-14 | 74LS157/74LS158 Multiplexer logic use |
+| U-15 | 74LS157/74LS158 Multiplexer logic use |
+| U-16 | 74LS157/74LS158 Multiplexer logic use |
+| U-17 | 2708 or 2716 EPROM containing optional character set, organized either as 8 or 16 bits × 1K words |
+| U-18 | 74LS273 (Std.) or 74LS374 — Factory choice |
+| U-19 | Hitachi HD46505SP/Motorola MCM6845 CRT Controller |
+| U-20 | 2716 EPROM Character generator |
+| U-21 | 74LS166 Parallel-to-serial shift register |
+| U-22 | 74LS175 Delay shift register |
+| U-23 | 74LS161 System timing clock generator |
+| U-24 | 74LS368 Tri-state inverting buffer |
 
- Unit No.           Description
-
-   U—1       74LS86 Exclusive OR gate, general use
-   U—2       74LS02 Four NOR gates
-   U—3       2708 EPROM organized as 8 bits x 1K words
-   U—4       74LS04 Partly used for clock circuit
-   U—5       74LS373, 74DP8304, OR 74LS245 — Factory
-                 choice
-   U—6       75LS00 Four NAND gates
-   U—7       4013 CMOS flip—flops
-   U—S       4013 CMOS flip—flops
-   U—9       74LS139 2 TO 4 LINE DECODER
-   U—10      2114 Static RAM organized as 4 bits x 1K
-                  words (low—power)
-   U—11      2114 Static RAM
-   U—12      2114 Static RAM
-   U—13      2114 Static RAM
-   U—14      74LS157/74LS158 Multiplexer logic use
-   U—15      74LS157/74LS158 Multiplexer logic use
-   U—16      74LS157/74LS158 Multiplexer logic use
-   U—17      2708 or 2716 EPROM containing optional
-                 character set, organized either
-                 as 8 or 16 bits x 1K words
-   U—18      74LS273 (Std.) or 74L5374—Factory choice
-   U—19      Hitachi HD465O55P/Motorola MCM6845 CRT
-                  Controller
-   U—20      2716 EPROM Character generator
-   U—21      74LS166 Parallel to serial shift register
-   U—22      74LS175 Delay shift register
-   U—23      74LS161 System timing clock generator
-   U—24      74LS368 Tri—state inverting buffer
-```
 Figure 10: VIDEOTERM Board Photograph
 
 ![Embedded figure or graphical content from source PDF page 136](assets/pdf-page-136-image.jpg)
