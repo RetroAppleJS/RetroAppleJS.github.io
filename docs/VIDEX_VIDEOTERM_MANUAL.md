@@ -1,36 +1,4 @@
 # VIDEX VIDEOTERM - Installation and Operation Manual
-
-**Authors:** Curtis White; Darrell Aldrich  
-**Edition:** Third Edition, January 1982  
-**Document number:** 001053 VT-MAN-OOO
-
-> **Transcription note.** This revised Markdown transcription is based on the supplied scan and its searchable text layer. Page-break separators have been removed; prose has been reflowed into the paragraph structure of the original manual; the contents pages are preserved in monospaced form; and clear OCR/typographic anomalies have been corrected where the intended reading is unambiguous. Figures and graphical tables are preserved as image assets. Program and firmware listings received a conservative OCR cleanup, but byte-for-byte use should still be checked against the scan.
-
-First Printing: March, 1980  
-Second Printing: August, 1980  
-Third Printing: January, 1982
-
-Published by:  
-VIDEX  
-897 N.W. Grant Ave.  
-Corvallis, Oregon 97330  
-Phone: [503] 758-0521
-
-All rights reserved. No part of this publication may be reproduced without prior written permission of VIDEX. Please call for more information.
-
-Copyright © 1980 by VIDEX.
-
-Apple ][® Apple Computer, Inc.  
-Micromodem ][® D.C. Hayes Associate, Inc.  
-ROMWriter® Mountain Hardware, Inc.  
-EasyWriter® Information Unlimited Software, Inc.  
-Softcard® Microsoft
-
-Apple PIE® Programma International, Inc.  
-Video 100 is a product of Leedex Corporation
-
-Videx is a trademark of Videx, Inc.
-
 # TABLE OF CONTENTS
 
 ```text
