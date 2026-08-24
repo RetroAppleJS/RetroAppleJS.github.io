@@ -6,8 +6,6 @@
 
 > **Transcription note.** This revised Markdown transcription is based on the supplied scan and its searchable text layer. Page-break separators have been removed; prose has been reflowed into the paragraph structure of the original manual; the contents pages are preserved in monospaced form; and clear OCR/typographic anomalies have been corrected where the intended reading is unambiguous. Figures and graphical tables are preserved as image assets. Program and firmware listings received a conservative OCR cleanup, but byte-for-byte use should still be checked against the scan.
 
-![Original cover](assets/pdf-page-001-image.jpg)
-
 First Printing: March, 1980  
 Second Printing: August, 1980  
 Third Printing: January, 1982
