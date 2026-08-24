@@ -1172,6 +1172,7 @@ R14 and R15: These are high and low, respectively, address components of a 14—
 R16 and R17: These are high and low, respectively, address components of a 14—bit address which is stored when the Light Pen strobe goes high. The address which is stored is the CRTC Address Counter. R16 is a 6—bit and R17 is an 8—bit pair of read—only registers.
 
 Table 4 on the following page summarizes this information and gives the standard VIDEOTERM default values used with its various character cell matrix sizes.
+
 ![Embedded figure or graphical content from source PDF page 104](assets/pdf-page-104-image.jpg)
 
 ### B. How to Modify CRTC Registers
