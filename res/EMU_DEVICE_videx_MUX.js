@@ -573,6 +573,23 @@ function VidexVideoMUX(deviceInfo)
         ,"deviceEnable":true
     };
 
+    /*
+     * Semantic text output of the currently visible VideoTerm screen.
+     *
+     * TxtCap pulls this port and routes the resulting text/plain payload to
+     * 0:PASTEBO:text. The provider itself already reads VideoTerm VRAM using
+     * the active CRTC geometry and character-ROM Unicode metadata.
+     */
+    this.ports = {
+        "text":{
+             "direction":"out"
+            ,"mime":["text/plain"]
+            ,"provider":"captureText"
+            ,"open":"isVisible"
+            ,"description":"Visible VideoTerm screen as Unicode text"
+        }
+    };
+
     var host = null;
     var unsubscribeHost = null;
 
