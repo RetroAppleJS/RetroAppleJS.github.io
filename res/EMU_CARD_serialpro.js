@@ -1212,6 +1212,16 @@ function SerialProCard()
         return !!serialLineDevice;
     };
 
+     /*
+     * Child peer devices such as SPGPT may attach after SPSERIAL and need the
+     * live external-line device. Keep the actual 6551 state private to SPC;
+     * only expose the device boundary.
+     */
+    this.getSerialLineDevice = function()
+    {
+        return serialLineDevice;
+    };
+
     /*
      * Remote/external bytes arrive here only through SPSERIAL. Keep receive
      * framing/timing inside the card: this queue is the simulated line feeding
