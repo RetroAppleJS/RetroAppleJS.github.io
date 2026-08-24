@@ -470,8 +470,6 @@ Character               Displays that character
 
 Low-resolution graphics characters each occupy one character position on the screen display.
 
-![Low-resolution graphics character table from the source manual](assets/pdf-page-040-image.jpg)
-
 ## Upper and Lower Case
 
 You will, of course, want to use lower case right away and no wonder. Lower case is significantly easier to read and recognize than is all capital type, reducing eye strain and reading time. When you first activate the VIDEOTERM board, it will still be in all upper case. To place it in lower case, simply type “CTRL—A”. This acts just like a toggle switch or flip—flop in that you are now in lower case mode for as many characters as you wish to type. That is, the next character and all following characters will be uncapitalized.
