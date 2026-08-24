@@ -427,6 +427,22 @@
                 textarea.title = "Pasteboard pipe: 0:PASTEBO:text → " + target;
               }
 
+              var io = onBoardPasteIO();
+              var pasteboard = onBoardPasteDevice(io);
+              var captureButton = document.getElementById("TxtCapture");
+              var captureSource =
+                pasteboard &&
+                typeof(pasteboard.getCaptureSourceAddress)=="function"
+                    ? pasteboard.getCaptureSourceAddress(io)
+                    : null;
+
+              if(captureButton)
+                  captureButton.title =
+                      "Text capture: " +
+                      (captureSource
+                          ? captureSource + " → 0:PASTEBO:text"
+                          : "Apple II 40-column display");
+
               return target;
             }
 
@@ -478,6 +494,30 @@
 
             function onTxtCapture(el)
             {
+
+              var io = onBoardPasteIO();
+              var pasteboard = onBoardPasteDevice(io);
+
+              /*
+               * Prefer a semantic text-output pipe from the active display:
+               *
+               *     n:VIDEXVID:text -> 0:PASTEBO:text
+               *
+               * The existing motherboard 40-column capture remains the
+               * fallback until Apple video gets its own text-output endpoint.
+               */
+              if(pasteboard &&
+                 typeof(pasteboard.captureText)=="function")
+              {
+                var captured = pasteboard.captureText(io);
+
+                if(captured!==null)
+                {
+                  EMUboard.boardText.value = captured;
+                  return true;
+                }
+              }
+              
               var hw = apple2plus.hwObj();
               var s = "";
               const fldump = hw.safe_flashdump();
@@ -493,6 +533,7 @@
                 s+="\r"
               }
               EMUboard.boardText.value = s;
+              return true;
             }
 
             function onEMUBoardClear() { EMUboard.boardText.value = "" };  

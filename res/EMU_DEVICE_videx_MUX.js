@@ -740,6 +740,74 @@ function VidexVideoMUX(deviceInfo)
         return outputVisible;
     };
 
+    this.captureText = function()
+    {
+        if(!host ||
+           typeof(host.getVideoRAM)!="function" ||
+           typeof(host.getCRTCRegisters)!="function")
+            return false;
+
+        var vram = host.getVideoRAM();
+        var crtc = host.getCRTCRegisters();
+        var rom =
+            typeof(host.getCharacterROM)=="function"
+                ? host.getCharacterROM()
+                : null;
+
+        if(!(vram instanceof Uint8Array) ||
+           !(crtc instanceof Uint8Array))
+            return false;
+
+        var columns = crtc[1] & 0xFF;
+        var rows = crtc[6] & 0x7F;
+        var start = ((crtc[12]<<8) | crtc[13]) & 0x07FF;
+
+        if(columns<1 || columns>132) columns = 80;
+        if(rows<1 || rows>64) rows = 24;
+
+        var unicode =
+            rom && Array.isArray(rom.unicode)
+                ? rom.unicode
+                : null;
+
+        var lines = [];
+
+        for(var row=0;row<rows;row++)
+        {
+            var line = "";
+
+            for(var col=0;col<columns;col++)
+            {
+                var address =
+                    (start + row*columns + col) & 0x07FF;
+
+                // VRAM bit 7 is presentation state, not part of the glyph index.
+                var glyph = vram[address] & 0x7F;
+                var cp =
+                    unicode && Number.isInteger(unicode[glyph])
+                        ? unicode[glyph]
+                        : null;
+
+                line += cp===null
+                    ? "\uFFFD"
+                    : String.fromCodePoint(cp);
+            }
+
+            lines.push(line);
+        }
+
+        return {
+             "mime":"text/plain"
+            ,"data":lines.join("\n")
+            ,"meta":{
+                 "columns":columns
+                ,"rows":rows
+                ,"start":start
+                ,"romKey":rom && rom.key ? rom.key : null
+            }
+        };
+    };
+
     this.getDisplaySettings = function()
     {
         return {

@@ -11,18 +11,42 @@
 
 function PasteBoard()
 {
+    var receivedText = "";
+
     this.id = {
          "DCODE":"PASTEBO"
         ,"hostPCODE":"A2BO"
         ,"icon":"fa fa-clipboard"
     };
 
+    /*
+     * OUT: textarea -> emulated text input
+     * IN : active display -> textarea (TxtCap)
+     */
+
     this.ports = {
         "text":{
-             "direction":"out"
+             "direction":"duplex"
             ,"mime":["text/plain"]
+            ,"handler":"receiveText"
             ,"description":"Host pasteboard text"
         }
+    };
+
+
+    this.receiveText = function(message)
+    {
+        receivedText =
+            message && message.data!==undefined
+                ? String(message.data)
+                : "";
+
+        return true;
+    };
+
+    this.getReceivedText = function()
+    {
+        return receivedText;
     };
 
     this.getTargetAddress = function(io)
@@ -74,6 +98,53 @@ function PasteBoard()
                 ,"data":String(text==null ? "" : text)
             }
         );
+    };
+
+    this.getCaptureSourceAddress = function(io)
+    {
+        if(!io || !Array.isArray(io.slots) ||
+           typeof(io.SLOT2obj)!="function")
+            return null;
+
+        for(var slotIndex=1;slotIndex<io.slots.length;slotIndex++)
+        {
+            var owner = io.SLOT2obj(slotIndex);
+            if(!owner ||
+               String(owner.id?.PCODE || "").toUpperCase()!="VIDEX")
+                continue;
+
+            var slotID =
+                typeof(io.slot2ID)=="function"
+                    ? io.slot2ID(slotIndex)
+                    : String(slotIndex-1);
+
+            var address = slotID + ":VIDEXVID:text";
+
+            if(typeof(io.pipeIsOpen)=="function" &&
+               io.pipeIsOpen(address))
+                return address;
+        }
+
+        return null;
+    };
+
+    this.captureText = function(io)
+    {
+        if(!io || typeof(io.pipeTransfer)!="function")
+            return null;
+
+        var source = this.getCaptureSourceAddress(io);
+        if(!source) return null;
+
+        var message = io.pipeTransfer(
+            source,
+            "0:PASTEBO:text",
+            {}
+        );
+
+        return message && message.data!==undefined
+            ? String(message.data)
+            : null;
     };
 
 }

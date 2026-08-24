@@ -705,6 +705,107 @@ function mergeActionMap(dst,src)
         return result===undefined ? true : result;
     };
 
+    /*
+     * Pull one current payload from an output endpoint and route it through the
+     * normal pipeSend() validation/delivery path.
+     *
+     * Pull-capable output ports publish:
+     *
+     *     provider: "methodName"
+     *
+     * The provider may return a complete message envelope ({mime,data,...}) or
+     * raw data. Raw data is wrapped using the first MIME advertised by source.
+     */
+    this.pipeTransfer = function(sourceAddress,targetAddress,request)
+    {
+        var source = this.pipeResolve(sourceAddress);
+        var target = this.pipeResolve(targetAddress);
+
+        if(!source || !target)
+        {
+            console.error(
+                "Apple2IO.pipeTransfer: unresolved pipe endpoint",
+                sourceAddress,
+                targetAddress
+            );
+            return false;
+        }
+
+        if(!pipeEndpointOpen(source))
+        {
+            console.error("Apple2IO.pipeTransfer: source port is closed",source.address);
+            return false;
+        }
+
+        if(!pipeEndpointOpen(target))
+        {
+            console.error("Apple2IO.pipeTransfer: target port is closed",target.address);
+            return false;
+        }
+
+        if(!pipeDirectionAllows(source.port,"out"))
+        {
+            console.error("Apple2IO.pipeTransfer: source port is not an output",source.address);
+            return false;
+        }
+
+        if(!pipeDirectionAllows(target.port,"in"))
+        {
+            console.error("Apple2IO.pipeTransfer: target port is not an input",target.address);
+            return false;
+        }
+
+        var provider = source.port.provider;
+
+        if(typeof(provider)=="string")
+            provider = source.device[provider];
+
+        if(typeof(provider)!="function")
+        {
+            console.error(
+                "Apple2IO.pipeTransfer: source port has no provider",
+                source.address
+            );
+            return false;
+        }
+
+        var produced = provider.call(
+            source.device,
+            request || {},
+            {
+                 "io":this
+                ,"hw":hostHardware
+                ,"source":source
+                ,"target":target
+            }
+        );
+
+        if(produced===undefined || produced===null || produced===false)
+            return false;
+
+        var envelope;
+
+        if(produced &&
+           typeof(produced)=="object" &&
+           !Array.isArray(produced) &&
+           produced.mime!==undefined)
+        {
+            envelope = Object.assign({},produced);
+        }
+        else
+        {
+            var sourceMimes = pipeMimeList(source.port);
+            envelope = {
+                 "mime":sourceMimes.length ? sourceMimes[0] : ""
+                ,"data":produced
+            };
+        }
+
+        return this.pipeSend(sourceAddress,targetAddress,envelope)
+            ? envelope
+            : false;
+    };
+
     function emptyActionMap()
     {
         return {"WR":{},"RD":{},"RR":{},"SV":{},"VA":{},"BT":{},"RG":{}};
