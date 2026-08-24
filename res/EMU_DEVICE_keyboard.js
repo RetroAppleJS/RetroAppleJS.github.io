@@ -21,11 +21,12 @@ function A2Pkeys()
             ,"handler":"receiveText"
             ,"description":"Apple II keyboard text input"
         }
-        ,"key":{
+        ,"keyevent":{
              "direction":"in"
             ,"mime":["application/x-retroapple-keyevent"]
             ,"handler":"receiveKeyEvents"
-            ,"description":"Raw Apple II keyboard latch input with Shift-wire state"
+            ,"visibility":"internal"
+            ,"description":"Internal raw Apple II keyboard latch input with Shift-wire state"            
         }
     };
 

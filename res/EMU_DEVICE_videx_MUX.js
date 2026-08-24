@@ -65,17 +65,19 @@ function VidexVideoMUX(deviceInfo)
 
         this.ports = {
             "text":{
-                 "direction":"in"
+                 "direction":"duplex"
                 ,"mime":["text/plain"]
                 ,"handler":"receiveText"
+                ,"provider":"captureText"
                 ,"open":"isTextPortOpen"
-                ,"description":"Unicode text mapped through the active VideoTerm character ROM"
+                ,"description":"VideoTerm semantic text input/output using the active character ROM"
             }
-            ,"key":{
+            ,"keyevent":{
                  "direction":"out"
                 ,"mime":[VIDEX_KEYEVENT_MIME]
                 ,"open":"isTextPortOpen"
-                ,"description":"VideoTerm glyphs translated to Apple II keyboard events"
+                ,"visibility":"internal"
+                ,"description":"Internal VideoTerm-to-Apple-II keyboard event transport"
             }
         };
 
@@ -117,6 +119,81 @@ function VidexVideoMUX(deviceInfo)
 
             return false;
         }
+
+        /*
+         * Reverse direction of this same semantic text endpoint.
+         *
+         * Read the visible MC6845 character matrix from VideoTerm VRAM and map
+         * every 7-bit glyph through the currently active character-ROM Unicode
+         * metadata. VRAM bit 7 may be presentation/inverse state and is not part
+         * of the glyph identity.
+         */
+        this.captureText = function()
+        {
+            if(!textHost ||
+               typeof(textHost.getVideoRAM)!="function" ||
+               typeof(textHost.getCRTCRegisters)!="function")
+                return false;
+
+            var vram = textHost.getVideoRAM();
+            var crtc = textHost.getCRTCRegisters();
+            var rom =
+                typeof(textHost.getCharacterROM)=="function"
+                    ? textHost.getCharacterROM()
+                    : null;
+
+            if(!(vram instanceof Uint8Array) ||
+               !(crtc instanceof Uint8Array))
+                return false;
+
+            var columns = crtc[1] & 0xFF;
+            var rows = crtc[6] & 0x7F;
+            var start = ((crtc[12]<<8) | crtc[13]) & 0x07FF;
+
+            if(columns<1 || columns>132) columns = 80;
+            if(rows<1 || rows>64) rows = 24;
+
+            var unicode =
+                rom && Array.isArray(rom.unicode)
+                    ? rom.unicode
+                    : null;
+
+            var lines = [];
+
+            for(var row=0;row<rows;row++)
+            {
+                var line = "";
+
+                for(var col=0;col<columns;col++)
+                {
+                    var address =
+                        (start + row*columns + col) & 0x07FF;
+
+                    var glyph = vram[address] & 0x7F;
+                    var cp =
+                        unicode && Number.isInteger(unicode[glyph])
+                            ? unicode[glyph]
+                            : null;
+
+                    line += cp===null
+                        ? "\uFFFD"
+                        : String.fromCodePoint(cp);
+                }
+
+                lines.push(line);
+            }
+
+            return {
+                 "mime":"text/plain"
+                ,"data":lines.join("\n")
+                ,"meta":{
+                     "columns":columns
+                    ,"rows":rows
+                    ,"start":start
+                    ,"romKey":rom && rom.key ? rom.key : null
+                }
+            };
+        };
 
         function reverseUnicodeMap(rom)
         {
@@ -450,11 +527,11 @@ function VidexVideoMUX(deviceInfo)
                typeof(context.io.pipeSend)=="function")
             {
                 var keySource =
-                    context.target.slotN + ":VIDEXTXT:key";
+                    context.target.slotN + ":VIDEXTXT:keyevent";
 
                 sent = context.io.pipeSend(
                     keySource,
-                    "0:A2KBD:key",
+                    "0:A2KBD:keyevent",
                     {
                          "mime":VIDEX_KEYEVENT_MIME
                         ,"data":translation.events
@@ -571,23 +648,6 @@ function VidexVideoMUX(deviceInfo)
         ,"icon":"fa fa-tv"
         ,"description":"Videx VideoTerm video output"
         ,"deviceEnable":true
-    };
-
-    /*
-     * Semantic text output of the currently visible VideoTerm screen.
-     *
-     * TxtCap pulls this port and routes the resulting text/plain payload to
-     * 0:PASTEBO:text. The provider itself already reads VideoTerm VRAM using
-     * the active CRTC geometry and character-ROM Unicode metadata.
-     */
-    this.ports = {
-        "text":{
-             "direction":"out"
-            ,"mime":["text/plain"]
-            ,"provider":"captureText"
-            ,"open":"isVisible"
-            ,"description":"Visible VideoTerm screen as Unicode text"
-        }
     };
 
     var host = null;
@@ -757,73 +817,7 @@ function VidexVideoMUX(deviceInfo)
         return outputVisible;
     };
 
-    this.captureText = function()
-    {
-        if(!host ||
-           typeof(host.getVideoRAM)!="function" ||
-           typeof(host.getCRTCRegisters)!="function")
-            return false;
-
-        var vram = host.getVideoRAM();
-        var crtc = host.getCRTCRegisters();
-        var rom =
-            typeof(host.getCharacterROM)=="function"
-                ? host.getCharacterROM()
-                : null;
-
-        if(!(vram instanceof Uint8Array) ||
-           !(crtc instanceof Uint8Array))
-            return false;
-
-        var columns = crtc[1] & 0xFF;
-        var rows = crtc[6] & 0x7F;
-        var start = ((crtc[12]<<8) | crtc[13]) & 0x07FF;
-
-        if(columns<1 || columns>132) columns = 80;
-        if(rows<1 || rows>64) rows = 24;
-
-        var unicode =
-            rom && Array.isArray(rom.unicode)
-                ? rom.unicode
-                : null;
-
-        var lines = [];
-
-        for(var row=0;row<rows;row++)
-        {
-            var line = "";
-
-            for(var col=0;col<columns;col++)
-            {
-                var address =
-                    (start + row*columns + col) & 0x07FF;
-
-                // VRAM bit 7 is presentation state, not part of the glyph index.
-                var glyph = vram[address] & 0x7F;
-                var cp =
-                    unicode && Number.isInteger(unicode[glyph])
-                        ? unicode[glyph]
-                        : null;
-
-                line += cp===null
-                    ? "\uFFFD"
-                    : String.fromCodePoint(cp);
-            }
-
-            lines.push(line);
-        }
-
-        return {
-             "mime":"text/plain"
-            ,"data":lines.join("\n")
-            ,"meta":{
-                 "columns":columns
-                ,"rows":rows
-                ,"start":start
-                ,"romKey":rom && rom.key ? rom.key : null
-            }
-        };
-    };
+ 
 
     this.getDisplaySettings = function()
     {

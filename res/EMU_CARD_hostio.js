@@ -45,6 +45,13 @@ function AppleBoard()
              }
          }
         ,{
+             "DCODE":"A2VIDEOTXT"
+            ,"hostPCODE":"A2BO"
+            ,"coID":"Apple2VideoText"
+            ,"icon":"fa fa-tv"
+            ,"description":"Apple II text video output"
+        }
+        ,{
              "DCODE":"PASTEBO"
             ,"hostPCODE":"A2BO"
             ,"coID":"PasteBoard"

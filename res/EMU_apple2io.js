@@ -2754,7 +2754,11 @@ function mergeActionMap(dst,src)
         if(!ports || typeof(ports)!="object")
             return "&mdash;";
 
-        var names = Object.keys(ports);
+        var names = Object.keys(ports).filter(function(name)
+        {
+            var port = ports[name] || {};
+            return String(port.visibility || "public").toLowerCase()!="internal";
+        });
         if(!names.length)
             return "&mdash;";
 

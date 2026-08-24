@@ -102,9 +102,20 @@ function PasteBoard()
 
     this.getCaptureSourceAddress = function(io)
     {
+        const fallback = "0:A2VIDEOTXT:text";
+
         if(!io || !Array.isArray(io.slots) ||
            typeof(io.SLOT2obj)!="function")
-            return null;
+            return fallback;
+
+        /*
+         * The same VideoTerm semantic-text device is used in both directions:
+         *
+         *   Paste  : 0:PASTEBO:text -> n:VIDEXTXT:text
+         *   TxtCap : n:VIDEXTXT:text -> 0:PASTEBO:text
+         *
+         * Prefer it only while its duplex text port is open/active.
+         */
 
         for(var slotIndex=1;slotIndex<io.slots.length;slotIndex++)
         {
@@ -118,14 +129,14 @@ function PasteBoard()
                     ? io.slot2ID(slotIndex)
                     : String(slotIndex-1);
 
-            var address = slotID + ":VIDEXVID:text";
+            var address = slotID + ":VIDEXTXT:text";
 
             if(typeof(io.pipeIsOpen)=="function" &&
                io.pipeIsOpen(address))
                 return address;
         }
 
-        return null;
+        return fallback;
     };
 
     this.captureText = function(io)
