@@ -23142,6 +23142,74 @@ function VidexVideoMUX(deviceInfo)
         return outputVisible;
     };
 
+    this.captureText = function()
+    {
+        if(!host ||
+           typeof(host.getVideoRAM)!="function" ||
+           typeof(host.getCRTCRegisters)!="function")
+            return false;
+
+        var vram = host.getVideoRAM();
+        var crtc = host.getCRTCRegisters();
+        var rom =
+            typeof(host.getCharacterROM)=="function"
+                ? host.getCharacterROM()
+                : null;
+
+        if(!(vram instanceof Uint8Array) ||
+           !(crtc instanceof Uint8Array))
+            return false;
+
+        var columns = crtc[1] & 0xFF;
+        var rows = crtc[6] & 0x7F;
+        var start = ((crtc[12]<<8) | crtc[13]) & 0x07FF;
+
+        if(columns<1 || columns>132) columns = 80;
+        if(rows<1 || rows>64) rows = 24;
+
+        var unicode =
+            rom && Array.isArray(rom.unicode)
+                ? rom.unicode
+                : null;
+
+        var lines = [];
+
+        for(var row=0;row<rows;row++)
+        {
+            var line = "";
+
+            for(var col=0;col<columns;col++)
+            {
+                var address =
+                    (start + row*columns + col) & 0x07FF;
+
+                // VRAM bit 7 is presentation state, not part of the glyph index.
+                var glyph = vram[address] & 0x7F;
+                var cp =
+                    unicode && Number.isInteger(unicode[glyph])
+                        ? unicode[glyph]
+                        : null;
+
+                line += cp===null
+                    ? "\uFFFD"
+                    : String.fromCodePoint(cp);
+            }
+
+            lines.push(line);
+        }
+
+        return {
+             "mime":"text/plain"
+            ,"data":lines.join("\n")
+            ,"meta":{
+                 "columns":columns
+                ,"rows":rows
+                ,"start":start
+                ,"romKey":rom && rom.key ? rom.key : null
+            }
+        };
+    };
+
     this.getDisplaySettings = function()
     {
         return {
@@ -23348,18 +23416,42 @@ function VidexVideoMUX(deviceInfo)
 
 function PasteBoard()
 {
+    var receivedText = "";
+
     this.id = {
          "DCODE":"PASTEBO"
         ,"hostPCODE":"A2BO"
         ,"icon":"fa fa-clipboard"
     };
 
+    /*
+     * OUT: textarea -> emulated text input
+     * IN : active display -> textarea (TxtCap)
+     */
+
     this.ports = {
         "text":{
-             "direction":"out"
+             "direction":"duplex"
             ,"mime":["text/plain"]
+            ,"handler":"receiveText"
             ,"description":"Host pasteboard text"
         }
+    };
+
+
+    this.receiveText = function(message)
+    {
+        receivedText =
+            message && message.data!==undefined
+                ? String(message.data)
+                : "";
+
+        return true;
+    };
+
+    this.getReceivedText = function()
+    {
+        return receivedText;
     };
 
     this.getTargetAddress = function(io)
@@ -23411,6 +23503,53 @@ function PasteBoard()
                 ,"data":String(text==null ? "" : text)
             }
         );
+    };
+
+    this.getCaptureSourceAddress = function(io)
+    {
+        if(!io || !Array.isArray(io.slots) ||
+           typeof(io.SLOT2obj)!="function")
+            return null;
+
+        for(var slotIndex=1;slotIndex<io.slots.length;slotIndex++)
+        {
+            var owner = io.SLOT2obj(slotIndex);
+            if(!owner ||
+               String(owner.id?.PCODE || "").toUpperCase()!="VIDEX")
+                continue;
+
+            var slotID =
+                typeof(io.slot2ID)=="function"
+                    ? io.slot2ID(slotIndex)
+                    : String(slotIndex-1);
+
+            var address = slotID + ":VIDEXVID:text";
+
+            if(typeof(io.pipeIsOpen)=="function" &&
+               io.pipeIsOpen(address))
+                return address;
+        }
+
+        return null;
+    };
+
+    this.captureText = function(io)
+    {
+        if(!io || typeof(io.pipeTransfer)!="function")
+            return null;
+
+        var source = this.getCaptureSourceAddress(io);
+        if(!source) return null;
+
+        var message = io.pipeTransfer(
+            source,
+            "0:PASTEBO:text",
+            {}
+        );
+
+        return message && message.data!==undefined
+            ? String(message.data)
+            : null;
     };
 
 }
@@ -37327,6 +37466,107 @@ function mergeActionMap(dst,src)
         return result===undefined ? true : result;
     };
 
+    /*
+     * Pull one current payload from an output endpoint and route it through the
+     * normal pipeSend() validation/delivery path.
+     *
+     * Pull-capable output ports publish:
+     *
+     *     provider: "methodName"
+     *
+     * The provider may return a complete message envelope ({mime,data,...}) or
+     * raw data. Raw data is wrapped using the first MIME advertised by source.
+     */
+    this.pipeTransfer = function(sourceAddress,targetAddress,request)
+    {
+        var source = this.pipeResolve(sourceAddress);
+        var target = this.pipeResolve(targetAddress);
+
+        if(!source || !target)
+        {
+            console.error(
+                "Apple2IO.pipeTransfer: unresolved pipe endpoint",
+                sourceAddress,
+                targetAddress
+            );
+            return false;
+        }
+
+        if(!pipeEndpointOpen(source))
+        {
+            console.error("Apple2IO.pipeTransfer: source port is closed",source.address);
+            return false;
+        }
+
+        if(!pipeEndpointOpen(target))
+        {
+            console.error("Apple2IO.pipeTransfer: target port is closed",target.address);
+            return false;
+        }
+
+        if(!pipeDirectionAllows(source.port,"out"))
+        {
+            console.error("Apple2IO.pipeTransfer: source port is not an output",source.address);
+            return false;
+        }
+
+        if(!pipeDirectionAllows(target.port,"in"))
+        {
+            console.error("Apple2IO.pipeTransfer: target port is not an input",target.address);
+            return false;
+        }
+
+        var provider = source.port.provider;
+
+        if(typeof(provider)=="string")
+            provider = source.device[provider];
+
+        if(typeof(provider)!="function")
+        {
+            console.error(
+                "Apple2IO.pipeTransfer: source port has no provider",
+                source.address
+            );
+            return false;
+        }
+
+        var produced = provider.call(
+            source.device,
+            request || {},
+            {
+                 "io":this
+                ,"hw":hostHardware
+                ,"source":source
+                ,"target":target
+            }
+        );
+
+        if(produced===undefined || produced===null || produced===false)
+            return false;
+
+        var envelope;
+
+        if(produced &&
+           typeof(produced)=="object" &&
+           !Array.isArray(produced) &&
+           produced.mime!==undefined)
+        {
+            envelope = Object.assign({},produced);
+        }
+        else
+        {
+            var sourceMimes = pipeMimeList(source.port);
+            envelope = {
+                 "mime":sourceMimes.length ? sourceMimes[0] : ""
+                ,"data":produced
+            };
+        }
+
+        return this.pipeSend(sourceAddress,targetAddress,envelope)
+            ? envelope
+            : false;
+    };
+
     function emptyActionMap()
     {
         return {"WR":{},"RD":{},"RR":{},"SV":{},"VA":{},"BT":{},"RG":{}};
@@ -41624,6 +41864,22 @@ function Apple2Plus(context)
                 textarea.title = "Pasteboard pipe: 0:PASTEBO:text → " + target;
               }
 
+              var io = onBoardPasteIO();
+              var pasteboard = onBoardPasteDevice(io);
+              var captureButton = document.getElementById("TxtCapture");
+              var captureSource =
+                pasteboard &&
+                typeof(pasteboard.getCaptureSourceAddress)=="function"
+                    ? pasteboard.getCaptureSourceAddress(io)
+                    : null;
+
+              if(captureButton)
+                  captureButton.title =
+                      "Text capture: " +
+                      (captureSource
+                          ? captureSource + " → 0:PASTEBO:text"
+                          : "Apple II 40-column display");
+
               return target;
             }
 
@@ -41675,6 +41931,30 @@ function Apple2Plus(context)
 
             function onTxtCapture(el)
             {
+
+              var io = onBoardPasteIO();
+              var pasteboard = onBoardPasteDevice(io);
+
+              /*
+               * Prefer a semantic text-output pipe from the active display:
+               *
+               *     n:VIDEXVID:text -> 0:PASTEBO:text
+               *
+               * The existing motherboard 40-column capture remains the
+               * fallback until Apple video gets its own text-output endpoint.
+               */
+              if(pasteboard &&
+                 typeof(pasteboard.captureText)=="function")
+              {
+                var captured = pasteboard.captureText(io);
+
+                if(captured!==null)
+                {
+                  EMUboard.boardText.value = captured;
+                  return true;
+                }
+              }
+              
               var hw = apple2plus.hwObj();
               var s = "";
               const fldump = hw.safe_flashdump();
@@ -41690,6 +41970,7 @@ function Apple2Plus(context)
                 s+="\r"
               }
               EMUboard.boardText.value = s;
+              return true;
             }
 
             function onEMUBoardClear() { EMUboard.boardText.value = "" };  
