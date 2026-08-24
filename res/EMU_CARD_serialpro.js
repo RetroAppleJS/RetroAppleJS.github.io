@@ -1095,12 +1095,12 @@ function SerialProCard()
     this.id = {"PCODE":"SPC", "icon":"fa fa-terminal"};
 
     /*
-     * SPC remains the Apple II slot peripheral. SPCLINE is the one external
+     * SPC remains the Apple II slot peripheral. SPSERIAL is the one external
      * serial connection presented by its 6551 UART.
      */
     this.deviceConfig = [
         {
-             "DCODE":"SPCLINE"
+             "DCODE":"SPSERIAL"
             ,"hostPCODE":"SPC"
             ,"coID":"SerialProLine"
             ,"icon":"fa fa-exchange-alt"
@@ -1177,7 +1177,7 @@ function SerialProCard()
     var serialLineUnsubscribe = null;
 
     /*
-     * Apple2IO.attach() calls SPCLINE.bindHost(), which in turn binds the line
+     * Apple2IO.attach() calls SPSERIAL.bindHost(), which in turn binds the line
      * device here. Existing browser endpoints become adapters subscribed to the
      * line instead of being called directly from the 6551 timing code.
      */
@@ -1213,7 +1213,7 @@ function SerialProCard()
     };
 
     /*
-     * Remote/external bytes arrive here only through SPCLINE. Keep receive
+     * Remote/external bytes arrive here only through SPSERIAL. Keep receive
      * framing/timing inside the card: this queue is the simulated line feeding
      * the 6551 receive-shift register.
      */

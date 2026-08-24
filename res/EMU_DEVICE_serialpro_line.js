@@ -16,7 +16,7 @@ function SerialProLine()
     var listeners = [];
 
     this.id = {
-         "DCODE":"SPCLINE"
+         "DCODE":"SPSERIAL"
         ,"hostPCODE":"SPC"
         ,"icon":"fa fa-exchange-alt"
         ,"description":"Serial Pro external serial line"
@@ -147,7 +147,7 @@ function SerialProLine()
             }
             catch(error)
             {
-                console.error("SPCLINE serial subscriber failed",error);
+                console.error("SPSERIAL serial subscriber failed",error);
             }
         }
 
