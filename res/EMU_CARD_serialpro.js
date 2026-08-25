@@ -1111,6 +1111,13 @@ function SerialProCard()
             ,"description":"Serial Pro external serial line"
         }
         ,{
+             "DCODE":"SPTERM"
+            ,"hostPCODE":"SPC"
+            ,"coID":"SerialProTerminalDevice"
+            ,"icon":"fa fa-terminal"
+            ,"description":"Serial Pro browser terminal console"
+        }
+        ,{
              "DCODE":"SPGPT"
             ,"hostPCODE":"SPC"
             ,"coID":"SerialProGPTDevice"
@@ -1186,6 +1193,7 @@ function SerialProCard()
 
     var serialLineDevice = null;
     var serialLineUnsubscribe = null;
+    var serialTerminalConsoleDevice = null;
 
     /*
      * Apple2IO.attach() calls SPSERIAL.bindHost(), which in turn binds the line
@@ -1231,6 +1239,17 @@ function SerialProCard()
     this.getSerialLineDevice = function()
     {
         return serialLineDevice;
+    };
+
+    this.bindSerialTerminalConsoleDevice = function(device)
+    {
+        serialTerminalConsoleDevice = device || null;
+        return !!serialTerminalConsoleDevice;
+    };
+
+    this.getSerialTerminalConsoleDevice = function()
+    {
+        return serialTerminalConsoleDevice;
     };
 
     /*
@@ -3143,15 +3162,24 @@ function SerialProCard()
             : (error.message || String(error));
     }
 
-    function serialPhysicalMeta(text)
+    this.serialTerminalConsoleWrite = function(text,meta)
     {
         text = String(text===undefined ? "" : text);
-        if(!text.length) return;
+        if(!text.length) return 0;
         if(text.charAt(text.length-1)!="\n") text += "\n";
 
         serialTerminalRemember("meta",text);
         var terminal = serialTerminalLive();
         if(terminal) terminal.write(text,"meta");
+        return text.length;
+    };
+
+    function serialPhysicalMeta(text)
+    {
+        return serialpro.serialTerminalConsoleWrite(
+            text,
+            {"source":"webserial"}
+        );
     }
 
     function serialPhysicalConfiguration()
@@ -4214,9 +4242,9 @@ function SerialProCard()
         }
         else
         {
-            terminal.write(
+            serialpro.serialTerminalConsoleWrite(
                 "Serial terminal endpoint ready; 6551 ACIA Stage 2D + optional Web Serial Stage 3A.\n",
-                "meta"
+                {"source":"spterm"}
             );
         }
 

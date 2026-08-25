@@ -177,7 +177,9 @@
         var lowByte = null;
         var serialUnsubscribe = null;
         var peerUnsubscribe = null;
+        var consoleUnsubscribe = null;
         var listeners = [];
+        var consoleListeners = [];
 
         this.id = {
              "DCODE":"SPGPT"
@@ -196,6 +198,11 @@
                 ,"handler":"receive"
                 ,"open":"isSessionOpen"
                 ,"description":"GPT text peer: US-ASCII (GPT8) or UTF-16LE (GPT16)"
+            }
+            ,"console":{
+                 "direction":"out"
+                ,"mime":["text/plain; charset=utf-8"]
+                ,"description":"GPT request/encoding/serial diagnostics"
             }
         };
 
@@ -279,6 +286,11 @@
                 peerUnsubscribe();
                 peerUnsubscribe = null;
             }
+            if(consoleUnsubscribe)
+            {
+                consoleUnsubscribe();
+                consoleUnsubscribe = null;
+            }
 
             host = card || null;
             lowByte = null;
@@ -325,6 +337,20 @@
                 {
                     serial.receiveBytes(
                         bytes,
+                        Object.assign({"source":"spgpt"},meta || {})
+                    );
+                });
+
+            var terminal =
+                typeof(host.getSerialTerminalConsoleDevice)=="function"
+                    ? host.getSerialTerminalConsoleDevice()
+                    : null;
+
+            if(terminal && typeof(terminal.receiveText)=="function")
+                consoleUnsubscribe = device.subscribeConsole(function(text,meta)
+                {
+                    terminal.receiveText(
+                        text,
                         Object.assign({"source":"spgpt"},meta || {})
                     );
                 });
@@ -406,6 +432,42 @@
             return bytes.length;
         };
 
+        this.subscribeConsole = function(callback)
+        {
+            if(typeof(callback)!="function")
+                return function(){};
+
+            if(consoleListeners.indexOf(callback)<0)
+                consoleListeners.push(callback);
+
+            var subscribed = true;
+            return function()
+            {
+                if(!subscribed) return;
+                subscribed = false;
+
+                var index = consoleListeners.indexOf(callback);
+                if(index>=0) consoleListeners.splice(index,1);
+            };
+        };
+
+        this.transmitConsole = function(text,meta)
+        {
+            text = String(text===undefined ? "" : text);
+            var snapshot = consoleListeners.slice();
+
+            for(var i=0;i<snapshot.length;i++)
+            {
+                try { snapshot[i](text,meta || {}); }
+                catch(error)
+                {
+                    console.error("SPGPT console subscriber failed",error);
+                }
+            }
+
+            return text.length;
+        };
+
         this.transmitText = function(text)
         {
             var state = host ? serialGPTState(host) : null;
@@ -417,14 +479,97 @@
             if(state)
                 serialGPTSetEchoGuard(state,packet.wire);
 
+            var zeroBytes = 0;
+            var nulWords = 0;
+            var hex = [];
+            var bytes = packet.bytes;
+
+            for(var i=0;i<bytes.length;i++)
+            {
+                if(bytes[i]===0) zeroBytes++;
+
+                if(i<24)
+                    hex.push(
+                        (bytes[i] & 0xFF)
+                            .toString(16)
+                            .toUpperCase()
+                            .padStart(2,"0")
+                    );
+            }
+
+            if(packet.mode===SERIAL_GPT_MODE_UTF16LE)
+            {
+                for(var i=0;i+1<bytes.length;i+=2)
+                    if(bytes[i]===0 && bytes[i+1]===0)
+                        nulWords++;
+            }
+
+            var before = host &&
+                typeof(host.serialLineReceiveInfo)=="function"
+                    ? host.serialLineReceiveInfo()
+                    : null;
+
+            serialGPTStatus(
+                host,
+                (packet.mode===SERIAL_GPT_MODE_ASCII ? "GPT8" : "GPT16")
+                +" reply encode: text="+packet.text.length
+                +" wire="+packet.wire.length
+                +" bytes="+bytes.length
+                +" zeroBytes="+zeroBytes
+                +" nulWords="+nulWords
+            );
+
+            serialGPTStatus(
+                host,
+                "wire prefix: "+hex.join(" ")
+            );
+
             this.transmitBytes(
-                  packet.bytes,
+                packet.bytes,
                 {
                      "source":"gpt"
                     ,"mime":packet.mime
                     ,"mode":packet.mode
                 }
             );
+
+            var after = host &&
+                typeof(host.serialLineReceiveInfo)=="function"
+                    ? host.serialLineReceiveInfo()
+                    : null;
+
+            if(before && after)
+            {
+                serialGPTStatus(
+                    host,
+                    "SPSERIAL RX inject: before q="+before.queued
+                    +" full="+(before.rxFull?1:0)
+                    +" busy="+(before.rxBusy?1:0)
+                    +" -> after q="+after.queued
+                    +" full="+(after.rxFull?1:0)
+                    +" busy="+(after.rxBusy?1:0)
+                );
+            }
+
+            if(host && typeof(setTimeout)=="function")
+            {
+                setTimeout(function()
+                {
+                    if(typeof(host.serialLineReceiveInfo)!="function") return;
+                    var info = host.serialLineReceiveInfo();
+
+                    serialGPTStatus(
+                        host,
+                        "SPSERIAL RX +500ms: q="+info.queued
+                        +" full="+(info.rxFull?1:0)
+                        +" busy="+(info.rxBusy?1:0)
+                        +" data=$"+(info.rxData & 0xFF)
+                            .toString(16).toUpperCase().padStart(2,"0")
+                        +" shift=$"+(info.rxShift & 0xFF)
+                            .toString(16).toUpperCase().padStart(2,"0")
+                    );
+                },500);
+            }
 
             return packet.text;
         };
@@ -490,9 +635,28 @@
 
     function serialGPTStatus(card,text)
     {
+        text = "[GPT] "+String(text)+"\n";
+
+        var device = card && card._serialGPTDevice;
+        if(device && typeof(device.transmitConsole)=="function")
+        {
+            var delivered = device.transmitConsole(
+                text,
+                {
+                     "source":"spgpt"
+                    ,"mime":"text/plain; charset=utf-8"
+                }
+            );
+
+            if(delivered) return delivered;
+        }
+
+        // Bootstrap fallback before SPTERM is provisioned/opened.
         var terminal = serialGPTTerminal(card);
         if(terminal && typeof(terminal.write)==="function")
-            terminal.write("[GPT] "+String(text)+"\n","meta");
+            terminal.write(text,"meta");
+
+        return text.length;
     }
 
     function serialGPTUpdateButton(card)
@@ -706,6 +870,13 @@
         var controller = typeof(AbortController)==="function" ? new AbortController() : null;
         state.abortController = controller;
 
+        serialGPTStatus(
+            card,
+            "API request start: mode="
+            +(state.mode===SERIAL_GPT_MODE_ASCII ? "GPT8" : "GPT16")
+            +" promptChars="+String(message || "").length
+        );
+
         var payload = {
              model:SERIAL_GPT_MODEL
             ,instructions:serialGPTInstructions(state)
@@ -722,6 +893,14 @@
             ,body:JSON.stringify(payload)
             ,signal:controller ? controller.signal : undefined
         });
+
+        serialGPTStatus(
+            card,
+            "API HTTP "+response.status
+            +(serialGPTRequestId(response)
+                ? " requestId="+serialGPTRequestId(response)
+                : "")
+        );
 
         var raw = await response.text();
         var data = null;
@@ -748,7 +927,17 @@
         {
             serialGPTWarn("OpenAI response contained no text output",response,data,raw);
             throw new Error(serialGPTNoTextMessage(data));
-        }    
+        }
+
+        var answerNuls = 0;
+        for(var i=0;i<answer.length;i++)
+            if(answer.charCodeAt(i)===0) answerNuls++;
+
+        serialGPTStatus(
+            card,
+            "API text decoded: chars="+answer.length
+            +" U+0000="+answerNuls
+        );
 
         return answer;
     }
@@ -857,6 +1046,13 @@
         state.line = "";
 
         if(!message.trim().length) return;
+
+        serialGPTStatus(
+            card,
+            "prompt complete: chars="+message.length
+            +" pending="+(state.pending.length+1)
+        );
+
         state.pending.push(message);
         serialGPTProcess(card);
     }
