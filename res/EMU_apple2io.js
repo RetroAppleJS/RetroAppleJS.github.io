@@ -2801,6 +2801,14 @@ function mergeActionMap(dst,src)
             if(mime) parts.push(mime);
         }
 
+        /*
+         * A byte-stream port may carry an application encoding without changing
+         * its transport MIME. SPGPT is the first example: raw octets carrying
+         * UTF-16LE code units.
+         */
+        if(port && port.encoding)
+            parts.push(String(port.encoding));
+
        return parts.join("·");
     }
 

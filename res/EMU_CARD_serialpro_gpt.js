@@ -98,6 +98,7 @@
             "serial":{
                  "direction":"duplex"
                 ,"mime":["application/octet-stream"]
+                ,"encoding":"UTF-16LE"
                 ,"handler":"receive"
                 ,"description":"GPT peer byte stream carrying UTF-16LE text"
             }
@@ -165,12 +166,22 @@
 
             if(!host) return false;
 
+            /*
+             * Install GPT session behavior on the live mounted card. This is
+             * more reliable than depending on the discovery-constructor wrapper:
+             * bindHost() is called by Apple2IO.attach() for this exact instance.
+             */
+            install(host);
+
             Object.defineProperty(host,"_serialGPTDevice",{
                  "configurable":true
                 ,"enumerable":false
                 ,"writable":true
                 ,"value":device
             });
+
+            // No-op when the terminal popup has not been opened yet.
+            serialGPTEnsureButton(host);
 
             /*
              * Temporary streaming hookup until Apple2IO gains persistent
@@ -286,173 +297,6 @@
 
     global.SerialProGPTDevice = SerialProGPTDevice;
 
-
-    /*
-     * SPGPT is the remote serial peer, not part of the Serial Pro logic board.
-     * Its public boundary intentionally uses the same byte-stream contract as
-     * SPSERIAL. Unicode remains internal to the GPT/API side.
-     */
-    function SerialProGPTDevice()
-    {
-        var device = this;
-        var host = null;
-        var listeners = [];
-
-        this.id = {
-             "DCODE":"SPGPT"
-            ,"hostPCODE":"SPC"
-            ,"icon":"fa fa-robot"
-            ,"description":"Serial Pro GPT serial peer"
-        };
-
-        this.ports = {
-            "serial":{
-                 "direction":"duplex"
-                ,"mime":["application/octet-stream"]
-                ,"handler":"receive"
-                ,"description":"GPT peer 8-bit serial byte stream"
-            }
-        };
-
-        function normalizeBytes(data)
-        {
-            if(data instanceof Uint8Array) return data;
-            if(data instanceof ArrayBuffer) return new Uint8Array(data);
-
-            if(ArrayBuffer.isView(data))
-                return new Uint8Array(data.buffer,data.byteOffset,data.byteLength);
-
-            if(Array.isArray(data))
-            {
-                var bytes = new Uint8Array(data.length);
-                for(var i=0;i<data.length;i++)
-                    bytes[i] = Number(data[i]) & 0xFF;
-                return bytes;
-            }
-
-            if(Number.isInteger(Number(data)))
-                return new Uint8Array([Number(data) & 0xFF]);
-
-            return null;
-        }
-
-        this.bindHost = function(card)
-        {
-            host = card || null;
-
-            if(host)
-                Object.defineProperty(host,"_serialGPTDevice",{
-                     "configurable":true
-                    ,"enumerable":false
-                    ,"writable":true
-                    ,"value":device
-                });
-
-            return !!host;
-        };
-
-        /*
-         * Bytes received from SPSERIAL are Apple II -> GPT traffic.
-         */
-        this.receive = function(message,context)
-        {
-            var bytes = normalizeBytes(
-                message && message.data!==undefined
-                    ? message.data
-                    : message
-            );
-
-            if(!bytes || !host) return false;
-
-            for(var i=0;i<bytes.length;i++)
-                serialGPTCaptureByte(host,bytes[i]);
-
-            return true;
-        };
-
-        this.receiveBytes = function(data)
-        {
-            var bytes = normalizeBytes(data);
-            if(!bytes || !host) return 0;
-
-            for(var i=0;i<bytes.length;i++)
-                serialGPTCaptureByte(host,bytes[i]);
-
-            return bytes.length;
-        };
-
-        /*
-         * GPT -> serial traffic. Unicode is normalized to 7-bit ASCII before
-         * crossing the serial boundary; CR terminates each transmitted line.
-         */
-        this.transmitText = function(text)
-        {
-            var ascii = serialGPTASCII(text)
-                .replace(/\r\n/g,"\n")
-                .replace(/\r/g,"\n")
-                .replace(/\n+$/g,"");
-
-            var bytes = [];
-            var lines = ascii.split("\n");
-            if(!lines.length) lines = [""];
-
-            for(var i=0;i<lines.length;i++)
-            {
-                for(var j=0;j<lines[i].length;j++)
-                    bytes.push(lines[i].charCodeAt(j) & 0x7F);
-                bytes.push(0x0D);
-            }
-
-            this.transmitBytes(new Uint8Array(bytes),{"source":"gpt"});
-            return ascii;
-        };
-
-        this.subscribe = function(callback)
-        {
-            if(typeof(callback)!="function") return function(){};
-
-            if(listeners.indexOf(callback)<0)
-                listeners.push(callback);
-
-            var subscribed = true;
-
-            return function()
-            {
-                if(!subscribed) return;
-                subscribed = false;
-
-                var index = listeners.indexOf(callback);
-                if(index>=0) listeners.splice(index,1);
-            };
-        };
-
-        this.transmitBytes = function(data,meta)
-        {
-            var bytes = normalizeBytes(data);
-            if(!bytes) return false;
-
-            var snapshot = listeners.slice();
-
-            for(var i=0;i<snapshot.length;i++)
-            {
-                try { snapshot[i](bytes,meta || {}); }
-                catch(error)
-                {
-                    console.error("SPGPT serial subscriber failed",error);
-                }
-            }
-
-            return bytes.length;
-        };
-
-        this.reset = function()
-        {
-            return true;
-        };
-    }
-
-    global.SerialProGPTDevice = SerialProGPTDevice;
-
     function serialGPTState(card)
     {
         if(card._serialGPT) return card._serialGPT;
@@ -519,8 +363,8 @@
         if(!button || !icon) return false;
 
         button.title = state.enabled
-            ? "Disable GPT serial peer ("+SERIAL_GPT_MODEL+")"
-            : "Enable GPT serial peer";
+            ? "Disable GPT16 UTF-16LE serial peer ("+SERIAL_GPT_MODEL+")"
+            : "Start GPT16 UTF-16LE serial session";
         button.setAttribute("aria-label",button.title);
 
         icon.classList.toggle("blink",!!state.busy);
@@ -543,7 +387,7 @@
             button.className = "appbut skinny";
             button.type = "button";
             button.setAttribute("data-serial-gpt-button","");
-            button.innerHTML = '<i class="fa fa-robot" data-serial-gpt></i>';
+            button.innerHTML = '<i class="fa fa-robot" data-serial-gpt></i>&nbsp;GPT16';
             button.addEventListener("mousedown",function(event){ event.preventDefault(); });
             button.addEventListener("click",function(){ card.serialGPTToggle(); });
 
@@ -969,43 +813,9 @@
         if(!card || card._serialGPTInstalled) return card;
 
         /*
-         * The wrapped constructor runs before Apple2IO.provisionPeripheral(),
-         * therefore SPGPT is available as a normal SPC child device alongside
-         * SPSERIAL when the mounted card is provisioned.
+         * SPGPT is declared by SerialProCard.deviceConfig. install() now owns
+         * only GPT session/API/UI behavior; device topology is not mutated here.
          */
-        if(!Array.isArray(card.deviceConfig))
-            card.deviceConfig = [];
-
-        var hasSPGPT = card.deviceConfig.some(function(info)
-        {
-            return String(info && info.DCODE || "").toUpperCase()=="SPGPT";
-        });
-
-        if(!hasSPGPT)
-            card.deviceConfig.push({
-                 "DCODE":"SPGPT"
-                ,"hostPCODE":"SPC"
-                ,"coID":"SerialProGPTDevice"
-                ,"icon":"fa fa-robot"
-                ,"description":"Serial Pro GPT UTF-16LE serial peer"
-            });
-
-        if(!Array.isArray(card.deviceConfig))
-            card.deviceConfig = [];
-
-        var hasSPGPT = card.deviceConfig.some(function(info)
-        {
-            return String(info && info.DCODE || "").toUpperCase()=="SPGPT";
-        });
-
-        if(!hasSPGPT)
-            card.deviceConfig.push({
-                 "DCODE":"SPGPT"
-                ,"hostPCODE":"SPC"
-                ,"coID":"SerialProGPTDevice"
-                ,"icon":"fa fa-robot"
-                ,"description":"Serial Pro GPT serial peer"
-            });
 
         Object.defineProperty(card,"_serialGPTInstalled",{
             configurable:true,
@@ -1043,7 +853,7 @@
                 {
                     terminal.output(
                         "<br><b>GPT serial peer</b><br>"
-                        +"Use <i class=\"fa fa-robot\"></i> to enable/disable GPT replies.<br>"
+                        +"Use the <i class=\"fa fa-robot\"></i> GPT16 button to start/stop the UTF-16LE GPT serial session.<br>"
                         +"Enabling prompts for an OpenAI API key; the key stays only in page memory and is cleared when disabled/reloaded.<br>"
                         +"SPGPT and SPSERIAL carry raw 8-bit bytes; SPGPT interprets those bytes as UTF-16LE code units.<br>"
                         +"Apple II TX text is collected until U+000D/U+000A, sent to "+SERIAL_GPT_MODEL+", and the Unicode reply is encoded as UTF-16LE back through the normal 6551 RX path.<br>"

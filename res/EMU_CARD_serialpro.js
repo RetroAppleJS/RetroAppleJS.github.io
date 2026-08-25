@@ -1095,8 +1095,12 @@ function SerialProCard()
     this.id = {"PCODE":"SPC", "icon":"fa fa-terminal"};
 
     /*
-     * SPC remains the Apple II slot peripheral. SPSERIAL is the one external
-     * serial connection presented by its 6551 UART.
+     * SPC remains the Apple II slot peripheral.
+     *
+     * SPSERIAL is the external byte-oriented line presented by the 6551 UART.
+     * SPGPT is a peer device speaking UTF-16LE over an equivalent raw byte
+     * stream. Declaring both here makes device provisioning deterministic and
+     * avoids relying on constructor wrapping in an extension script.
      */
     this.deviceConfig = [
         {
@@ -1105,6 +1109,13 @@ function SerialProCard()
             ,"coID":"SerialProLine"
             ,"icon":"fa fa-exchange-alt"
             ,"description":"Serial Pro external serial line"
+        }
+        ,{
+             "DCODE":"SPGPT"
+            ,"hostPCODE":"SPC"
+            ,"coID":"SerialProGPTDevice"
+            ,"icon":"fa fa-robot"
+            ,"description":"Serial Pro GPT UTF-16LE serial peer"
         }
     ];
 
