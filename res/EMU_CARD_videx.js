@@ -1868,24 +1868,34 @@ function col80card()
             + "        </select>"
             + "      </div>"
 
+            /*
             + "      <div style=\"display:grid;grid-template-columns:78px minmax(0,1fr);gap:5px;align-items:center\">"
             + "        <label>Inverse video</label>"
             + "        <select style=\"min-width:0;width:100%\" onchange=\""+target+".setInverseVideoMode(this.value)\">"
             + "          <option value=\"off\""+(state.inverseVideoMode=="off" ? " selected" : "")+">Off</option>"
             + "          <option value=\"screen\""+(state.inverseVideoMode=="screen" ? " selected" : "")+">Whole screen</option>"
-            + "          <option value=\"char-bit7\""+(state.inverseVideoMode=="char-bit7" ? " selected" : "")+">Character bit 7 (CTRL-Z 2/3)</option>"
+            + "          <option value=\"char-bit7\""+(state.inverseVideoMode=="char-bit7" ? " selected" : "")+">Character bit 7</option>"
             + "        </select>"
             + "      </div>"
+            */
 
             // Row 2: cell width and phosphor.
             + "      <div style=\"display:grid;grid-template-columns:88px minmax(0,1fr) 34px;gap:5px;align-items:center\">"
-            + "        <label>Character cell</label>"
-            + "        <select style=\"min-width:0;width:100%\""
+            + "        <label>Inv/Char</label>"
+
+            + "        <select style=\"min-width:0;width:100px\" onchange=\""+target+".setInverseVideoMode(this.value)\">"
+            + "          <option value=\"off\""+(state.inverseVideoMode=="off" ? " selected" : "")+">Off</option>"
+            + "          <option value=\"screen\""+(state.inverseVideoMode=="screen" ? " selected" : "")+">Whole screen</option>"
+            + "          <option value=\"char-bit7\""+(state.inverseVideoMode=="char-bit7" ? " selected" : "")+">Character bit 7</option>"
+            + "        </select>"
+
+            + "        <select style=\"min-width:0;width:75px\""
             + "         onchange=\""+target+".setCharacterCellWidth(this.value);document.getElementById('"+cellWidthID+"').textContent=this.value+'-dot'\">"
-            + "          <option value=\"9\""+(state.cellWidth==9 ? " selected" : "")+">9-dot (normal)</option>"
+            + "          <option value=\"9\""+(state.cellWidth==9 ? " selected" : "")+">9-dot</option>"
             + "          <option value=\"8\""+(state.cellWidth==8 ? " selected" : "")+">8-dot</option>"
             + "        </select>"
-            + "        <span id=\""+cellWidthID+"\">"+state.cellWidth+"-dot</span>"
+
+            + "        <!--span id=\""+cellWidthID+"\">"+state.cellWidth+"-dot</span-->"
             + "      </div>"
 
             + "      <div style=\"display:grid;grid-template-columns:78px minmax(0,1fr);gap:5px;align-items:center\">"
