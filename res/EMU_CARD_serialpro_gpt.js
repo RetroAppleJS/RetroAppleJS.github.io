@@ -33,7 +33,7 @@
         "Be concise enough for a vintage text terminal.",
         "Do not prefix the answer with GPT:, ASSISTANT:, or another speaker label.",
         "When source code is requested, return plain source text suitable for a serial terminal."
-    ].join(" ");
+    ];
 
     function serialGPTInstructions(state)
     {
