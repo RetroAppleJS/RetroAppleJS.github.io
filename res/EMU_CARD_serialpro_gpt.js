@@ -967,6 +967,9 @@
                 try { state.abortController.abort(); } catch(ignore) {}
             }
 
+            if(typeof(card.serialLineResetReceiveSession)=="function")
+                card.serialLineResetReceiveSession();
+
             state.mode = mode;
             state.line = "";
             state.lastCR = false;
@@ -1004,6 +1007,9 @@
                 global.alert("API key is required to enable the GPT serial peer.");
             return false;
         }
+
+        if(typeof(card.serialLineResetReceiveSession)=="function")
+            card.serialLineResetReceiveSession();
 
         state.apiKey = key;
         state.enabled = true;
