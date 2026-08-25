@@ -404,12 +404,53 @@ function mergeActionMap(dst,src)
      * Apple2IO only resolves endpoints and validates their contracts.  Payload
      * interpretation belongs to the destination device.
      */
+
+    function pipeMimeParse(mime)
+    {
+        var fields = String(mime || "").split(";");
+        var base = String(fields.shift() || "").trim().toLowerCase();
+        var params = {};
+
+        for(var i=0;i<fields.length;i++)
+        {
+            var field = fields[i].trim();
+            if(!field) continue;
+
+            var eq = field.indexOf("=");
+            if(eq<1) continue;
+
+            var key = field.substring(0,eq).trim().toLowerCase();
+            var value = field.substring(eq+1).trim();
+
+            if(value.length>=2 &&
+               ((value[0]=='"' && value[value.length-1]=='"') ||
+                (value[0]=="'" && value[value.length-1]=="'")))
+                value = value.substring(1,value.length-1);
+
+            if(key=="charset") value = value.toLowerCase();
+            if(key) params[key] = value;
+        }
+
+        return {"base":base,"params":params};
+    }
+
     function pipeMimeBase(mime)
     {
-        return String(mime || "")
-            .split(";")[0]
-            .trim()
-            .toLowerCase();
+        return pipeMimeParse(mime).base;
+    }
+
+    function pipeMimeNormalize(mime)
+    {
+        var parsed = pipeMimeParse(mime);
+        if(!parsed.base) return "";
+
+        var keys = Object.keys(parsed.params).sort();
+        var out = parsed.base;
+
+        for(var i=0;i<keys.length;i++)
+            out += "; "+keys[i]+"="+parsed.params[keys[i]];
+
+        return out;
     }
 
     function pipeMimeList(port)
@@ -421,7 +462,7 @@ function mergeActionMap(dst,src)
 
         for(var i=0;i<list.length;i++)
         {
-            var mime = pipeMimeBase(list[i]);
+            var mime = pipeMimeNormalize(list[i]);
             if(mime) out.push(mime);
         }
 
@@ -430,20 +471,89 @@ function mergeActionMap(dst,src)
 
     function pipeMimeSupported(port,mime)
     {
-        mime = pipeMimeBase(mime);
-        if(!mime) return false;
+        var requested = pipeMimeParse(mime);
+        if(!requested.base) return false;
 
         var list = pipeMimeList(port);
-        var slash = mime.indexOf("/");
-        var major = slash>=0 ? mime.substring(0,slash) : mime;
+        var slash = requested.base.indexOf("/");
+        var major = slash>=0
+            ? requested.base.substring(0,slash)
+            : requested.base;
 
         for(var i=0;i<list.length;i++)
         {
-            if(list[i]=="*/*" || list[i]==mime) return true;
-            if(list[i]==major+"/*") return true;
+            var advertised = pipeMimeParse(list[i]);
+            var baseMatch =
+                   advertised.base=="*/*"
+                || advertised.base==requested.base
+                || advertised.base==major+"/*";
+
+            if(!baseMatch) continue;
+
+            /*
+             * Parameters advertised by a port are constraints. Thus
+             * text/plain;charset=us-ascii and text/plain;charset=utf-16le are
+             * distinct contracts, while a generic text/plain port can accept
+             * either representation.
+             */
+            var keys = Object.keys(advertised.params);
+            var paramsMatch = true;
+
+            for(var k=0;k<keys.length;k++)
+            {
+                var key = keys[k];
+                if(requested.params[key]!==advertised.params[key])
+                {
+                    paramsMatch = false;
+                    break;
+                }
+            }
+
+            if(paramsMatch) return true;
         }
 
         return false;
+    }
+
+    function pipeBytePayload(data)
+    {
+        if(data instanceof Uint8Array || data instanceof ArrayBuffer)
+            return true;
+
+        if(typeof(ArrayBuffer)!="undefined" &&
+           typeof(ArrayBuffer.isView)=="function" &&
+           ArrayBuffer.isView(data))
+            return true;
+
+        if(Array.isArray(data))
+        {
+            for(var i=0;i<data.length;i++)
+                if(!Number.isFinite(Number(data[i])))
+                    return false;
+            return true;
+        }
+
+        return false;
+    }
+
+    function pipeMimeCompatible(port,mime,data)
+    {
+        if(pipeMimeSupported(port,mime))
+            return true;
+
+        /*
+         * application/octet-stream denotes a representation-agnostic byte
+         * carrier. It may transparently carry a more specific semantic MIME
+         * when the actual payload is already bytes; no transcoding occurs.
+         *
+         * Example:
+         *   SPGPT  text/plain; charset=utf-16le
+         *      <-> SPSERIAL application/octet-stream
+         */
+        return (
+            pipeBytePayload(data) &&
+            pipeMimeSupported(port,"application/octet-stream")
+        );
     }
 
     function pipeDirectionAllows(port,flow)
@@ -652,7 +762,7 @@ function mergeActionMap(dst,src)
         }
 
         var envelope = Object.assign({},message || {});
-        var mime = pipeMimeBase(envelope.mime);
+        var mime = pipeMimeNormalize(envelope.mime);
 
         if(!mime)
         {
@@ -660,8 +770,8 @@ function mergeActionMap(dst,src)
             mime = sourceMimes.length ? sourceMimes[0] : "";
         }
 
-        if(!pipeMimeSupported(source.port,mime) ||
-           !pipeMimeSupported(target.port,mime))
+        if(!pipeMimeCompatible(source.port,mime,envelope.data) ||
+           !pipeMimeCompatible(target.port,mime,envelope.data))
         {
             console.error(
                 "Apple2IO.pipeSend: incompatible MIME type",
@@ -2801,14 +2911,6 @@ function mergeActionMap(dst,src)
             if(mime) parts.push(mime);
         }
 
-        /*
-         * A byte-stream port may carry an application encoding without changing
-         * its transport MIME. SPGPT is the first example: raw octets carrying
-         * UTF-16LE code units.
-         */
-        if(port && port.encoding)
-            parts.push(String(port.encoding));
-
        return parts.join("·");
     }
 
@@ -3508,7 +3610,5 @@ function mergeActionMap(dst,src)
     {
         return range && from >= range.from && to <= range.to;
     }
-
-
 
 }

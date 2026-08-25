@@ -1097,10 +1097,10 @@ function SerialProCard()
     /*
      * SPC remains the Apple II slot peripheral.
      *
-     * SPSERIAL is the external byte-oriented line presented by the 6551 UART.
-     * SPGPT is a peer device speaking UTF-16LE over an equivalent raw byte
-     * stream. Declaring both here makes device provisioning deterministic and
-     * avoids relying on constructor wrapping in an extension script.
+     * SPGPT is a text-aware peer device that can speak either US-ASCII (GPT8)
+     * or UTF-16LE (GPT16) over that raw serial byte stream. Declaring both here
+     * makes device provisioning deterministic and avoids relying on constructor
+     * wrapping in an extension script.
      */
     this.deviceConfig = [
         {
@@ -1115,7 +1115,7 @@ function SerialProCard()
             ,"hostPCODE":"SPC"
             ,"coID":"SerialProGPTDevice"
             ,"icon":"fa fa-robot"
-            ,"description":"Serial Pro GPT UTF-16LE serial peer"
+            ,"description":"Serial Pro GPT8/GPT16 serial peer"
         }
     ];
 

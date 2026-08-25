@@ -21,15 +21,45 @@
     const SERIAL_GPT_HISTORY_CHARS = 12000;
     const SERIAL_GPT_ECHO_GUARD_MS = 15000;
 
+    const SERIAL_GPT_MODE_ASCII = "ascii";
+    const SERIAL_GPT_MODE_UTF16LE = "utf16le";
+    const SERIAL_GPT_MIME_ASCII = "text/plain; charset=us-ascii";
+    const SERIAL_GPT_MIME_UTF16LE = "text/plain; charset=utf-16le";
+
     const SERIAL_GPT_INSTRUCTIONS = [
         "You are the remote conversational peer on an Apple II serial link.",
         "Answer the newest APPLE II message as plain text.",
-        "Unicode characters are allowed; the serial peer transports text as UTF-16LE.",
         "Do not use Markdown unless the user explicitly asks for Markdown.",
         "Be concise enough for a vintage text terminal.",
         "Do not prefix the answer with GPT:, ASSISTANT:, or another speaker label.",
         "When source code is requested, return plain source text suitable for a serial terminal."
     ].join(" ");
+
+    function serialGPTInstructions(state)
+    {
+        var instructions = SERIAL_GPT_INSTRUCTIONS.slice();
+
+        if(state && state.mode===SERIAL_GPT_MODE_ASCII)
+        {
+            instructions.push(
+                "The active GPT8 serial session uses US-ASCII: use only standard 7-bit ASCII characters."
+            );
+            instructions.push(
+                "Avoid Unicode punctuation or characters that require transliteration."
+            );
+        }
+        else
+        {
+            instructions.push(
+                "The active GPT16 serial session transports Unicode text as UTF-16LE."
+            );
+            instructions.push(
+                "Unicode characters are allowed."
+            );
+        }
+
+        return instructions.join(" ");
+    }
 
     /*
      * The physical Serial Pro link remains an 8-bit byte stream. SPGPT defines
@@ -58,6 +88,41 @@
         return bytes;
     }
 
+    function serialGPTASCII(text)
+    {
+        text = serialGPTNormalizeText(text)
+            .replace(/[\u2018\u2019\u2032]/g,"'")
+            .replace(/[\u201C\u201D\u2033]/g,'"')
+            .replace(/[\u2013\u2014]/g,"-")
+            .replace(/\u2026/g,"...")
+            .replace(/\u00A0/g," ");
+
+        if(typeof(text.normalize)==="function")
+            text = text.normalize("NFKD").replace(/[\u0300-\u036f]/g,"");
+
+        var out = "";
+        for(var i=0;i<text.length;i++)
+        {
+            var c = text.charCodeAt(i);
+            if(c===0x0A) out += "\n";
+            else if(c===0x09) out += "\t";
+            else if(c>=0x20 && c<=0x7E) out += text.charAt(i);
+            else out += "?";
+        }
+        return out;
+    }
+
+    function serialGPTEncodeASCII(text)
+    {
+        text = String(text===undefined || text===null ? "" : text);
+
+        var bytes = new Uint8Array(text.length);
+        for(var i=0;i<text.length;i++)
+            bytes[i] = text.charCodeAt(i) & 0x7F;
+
+        return bytes;
+    }
+
     function serialGPTWireText(text)
     {
         var normalized = serialGPTNormalizeText(text).replace(/\n+$/g,"");
@@ -73,8 +138,35 @@
         };
     }
 
+    function serialGPTEncodeForMode(mode,text)
+    {
+        mode = mode===SERIAL_GPT_MODE_ASCII
+            ? SERIAL_GPT_MODE_ASCII
+            : SERIAL_GPT_MODE_UTF16LE;
+
+        var sourceText = mode===SERIAL_GPT_MODE_ASCII
+            ? serialGPTASCII(text)
+            : serialGPTNormalizeText(text);
+
+        var formatted = serialGPTWireText(sourceText);
+
+        return {
+             "mode":mode
+            ,"mime":mode===SERIAL_GPT_MODE_ASCII
+                ? SERIAL_GPT_MIME_ASCII
+                : SERIAL_GPT_MIME_UTF16LE
+            ,"text":formatted.text
+            ,"wire":formatted.wire
+            ,"bytes":mode===SERIAL_GPT_MODE_ASCII
+                ? serialGPTEncodeASCII(formatted.wire)
+                : serialGPTEncodeUTF16LE(formatted.wire)
+        };
+    }
+
     /*
-     * SPGPT is a remote serial peer device. Both SPGPT and SPSERIAL expose the
+     * SPGPT is a remote serial peer device. SPSERIAL remains a representation-
+     * agnostic byte stream; SPGPT advertises the two textual representations it
+     * can serialize onto that stream.
      * same raw byte-stream MIME; UTF-16LE is an application convention owned by
      * SPGPT and by the Apple II software talking to it.
      */
@@ -91,16 +183,19 @@
              "DCODE":"SPGPT"
             ,"hostPCODE":"SPC"
             ,"icon":"fa fa-robot"
-            ,"description":"Serial Pro GPT UTF-16LE serial peer"
+            ,"description":"Serial Pro GPT8/GPT16 serial peer"
         };
 
         this.ports = {
             "serial":{
                  "direction":"duplex"
-                ,"mime":["application/octet-stream"]
-                ,"encoding":"UTF-16LE"
+                ,"mime":[
+                     SERIAL_GPT_MIME_ASCII
+                    ,SERIAL_GPT_MIME_UTF16LE
+                 ]
                 ,"handler":"receive"
-                ,"description":"GPT peer byte stream carrying UTF-16LE text"
+                ,"open":"isSessionOpen"
+                ,"description":"GPT text peer: US-ASCII (GPT8) or UTF-16LE (GPT16)"
             }
         };
 
@@ -129,6 +224,30 @@
         function consume(bytes)
         {
             if(!bytes || !host) return 0;
+
+            var state = serialGPTState(host);
+            if(!state.enabled)
+            {
+                lowByte = null;
+                return bytes.length;
+            }
+
+            if(state.mode===SERIAL_GPT_MODE_ASCII)
+            {
+                lowByte = null;
+
+                for(var i=0;i<bytes.length;i++)
+                {
+                    /*
+                     * GPT8 is standard US-ASCII transported in one 8-bit serial
+                     * frame per character. Strip bit 7 on receive so Apple-style
+                     * high-bit ASCII remains usable without changing the wire MIME.
+                     */
+                    serialGPTCaptureCodeUnit(host,bytes[i] & 0x7F);
+                }
+
+                return bytes.length;
+            }
 
             for(var i=0;i<bytes.length;i++)
             {
@@ -213,6 +332,22 @@
             return true;
         };
 
+        this.isSessionOpen = function()
+        {
+            return !!(
+                host &&
+                serialGPTState(host).enabled
+            );
+        };
+
+        this.setMode = function(mode)
+        {
+            lowByte = null;
+            return mode===SERIAL_GPT_MODE_ASCII
+                ? SERIAL_GPT_MODE_ASCII
+                : SERIAL_GPT_MODE_UTF16LE;
+        };
+
         // Raw bytes arriving from a future generic pipe.
         this.receive = function(message,context)
         {
@@ -273,18 +408,25 @@
 
         this.transmitText = function(text)
         {
-            var formatted = serialGPTWireText(text);
-            var bytes = serialGPTEncodeUTF16LE(formatted.wire);
+            var state = host ? serialGPTState(host) : null;
+            var packet = serialGPTEncodeForMode(
+                state ? state.mode : SERIAL_GPT_MODE_UTF16LE,
+                text
+            );
+
+            if(state)
+                serialGPTSetEchoGuard(state,packet.wire);
 
             this.transmitBytes(
-                bytes,
+  +                packet.bytes,
                 {
                      "source":"gpt"
-                    ,"encoding":"utf-16le"
+                    ,"mime":packet.mime
+                    ,"mode":packet.mode
                 }
             );
 
-            return formatted.text;
+            return packet.text;
         };
 
         this.reset = function()
@@ -307,6 +449,7 @@
             writable:true,
             value:{
                  enabled:false
+                ,mode:null
                 ,apiKey:""
                 ,line:""
                 ,lastCR:false
@@ -358,18 +501,47 @@
         if(!popup) return false;
 
         var state = serialGPTState(card);
-        var button = popup.querySelector("[data-serial-gpt-button]");
-        var icon = popup.querySelector("[data-serial-gpt]");
-        if(!button || !icon) return false;
+        var modes = [
+            {
+                 "mode":SERIAL_GPT_MODE_ASCII
+                ,"label":"GPT8"
+                ,"button":"[data-serial-gpt8-button]"
+                ,"icon":"[data-serial-gpt8]"
+                ,"description":"US-ASCII"
+            }
+            ,{
+                 "mode":SERIAL_GPT_MODE_UTF16LE
+                ,"label":"GPT16"
+                ,"button":"[data-serial-gpt16-button]"
+                ,"icon":"[data-serial-gpt16]"
+                ,"description":"UTF-16LE"
+            }
+        ];
+        var found = false;
 
-        button.title = state.enabled
-            ? "Disable GPT16 UTF-16LE serial peer ("+SERIAL_GPT_MODEL+")"
-            : "Start GPT16 UTF-16LE serial session";
-        button.setAttribute("aria-label",button.title);
+        for(var i=0;i<modes.length;i++)
+        {
+            var info = modes[i];
+            var button = popup.querySelector(info.button);
+            var icon = popup.querySelector(info.icon);
+            if(!button || !icon) continue;
 
-        icon.classList.toggle("blink",!!state.busy);
-        icon.style.opacity = state.enabled ? "1" : "0.55";
-        return true;
+            found = true;
+            var active = state.enabled && state.mode===info.mode;
+
+            button.title = active
+                ? "Stop "+info.label+" "+info.description+" serial session"
+                : (state.enabled
+                    ? "Switch GPT serial session to "+info.label+" "+info.description
+                    : "Start "+info.label+" "+info.description+" serial session");
+
+            button.setAttribute("aria-label",button.title);
+            button.style.fontWeight = active ? "bold" : "normal";
+            icon.classList.toggle("blink",!!state.busy && active);
+            icon.style.opacity = active ? "1" : "0.55";
+        }
+
+        return found;
     }
 
     function serialGPTEnsureButton(card)
@@ -380,22 +552,47 @@
         var title = popup.querySelector(".com_popup_title");
         if(!title) return false;
 
-        var existing = title.querySelector("[data-serial-gpt-button]");
-        if(!existing)
+        // Remove the single-mode control left by an older live DOM, if any.
+        var legacy = title.querySelector("[data-serial-gpt-button]");
+        if(legacy && legacy.parentNode)
+            legacy.parentNode.removeChild(legacy);
+
+        var plugIcon = title.querySelector("[data-serial-webserial]");
+        var plugButton = plugIcon && plugIcon.closest ? plugIcon.closest("button") : null;
+
+        function ensureModeButton(mode,label,buttonAttr,iconAttr)
         {
+            var existing = title.querySelector("["+buttonAttr+"]");
+            if(existing) return existing;
+
             var button = document.createElement("button");
             button.className = "appbut skinny";
             button.type = "button";
-            button.setAttribute("data-serial-gpt-button","");
-            button.innerHTML = '<i class="fa fa-robot" data-serial-gpt></i>&nbsp;GPT16';
-            button.addEventListener("mousedown",function(event){ event.preventDefault(); });
-            button.addEventListener("click",function(){ card.serialGPTToggle(); });
 
-            var plugIcon = title.querySelector("[data-serial-webserial]");
-            var plugButton = plugIcon && plugIcon.closest ? plugIcon.closest("button") : null;
+            button.setAttribute(buttonAttr,"");
+            button.innerHTML =
+                '<i class="fa fa-robot" '+iconAttr+'></i>&nbsp;'+label;
+            button.addEventListener("mousedown",function(event){ event.preventDefault(); });
+            button.addEventListener("click",function(){ card.serialGPTToggle(mode); });
+
             if(plugButton) title.insertBefore(button,plugButton);
             else title.appendChild(button);
+            return button;
         }
+
+        ensureModeButton(
+            SERIAL_GPT_MODE_ASCII,
+            "GPT8",
+            "data-serial-gpt8-button",
+            "data-serial-gpt8"
+        );
+
+        ensureModeButton(
+            SERIAL_GPT_MODE_UTF16LE,
+            "GPT16",
+            "data-serial-gpt16-button",
+            "data-serial-gpt16"
+        );
 
         serialGPTUpdateButton(card);
         return true;
@@ -511,7 +708,7 @@
 
         var payload = {
              model:SERIAL_GPT_MODEL
-            ,instructions:SERIAL_GPT_INSTRUCTIONS
+            ,instructions:serialGPTInstructions(state)
             ,input:serialGPTBuildInput(state,message)
             ,max_output_tokens:SERIAL_GPT_MAX_OUTPUT_TOKENS
         };
@@ -571,28 +768,29 @@
     function serialGPTInject(card,text)
     {
         var state = serialGPTState(card);
-        var formatted = serialGPTWireText(text);
-
-        serialGPTSetEchoGuard(state,formatted.wire);
-
         var device = card && card._serialGPTDevice;
+
         if(device && typeof(device.transmitText)=="function")
-            return device.transmitText(formatted.text);
+            return device.transmitText(text);
 
         /*
          * Defensive fallback for tools that construct the card without attached
-         * devices. Preserve the UTF-16LE byte protocol even in that case.
+         * devices. Preserve the selected GPT8/GPT16 representation.
          */
         if(card && typeof(card.serialLineReceiveBytes)=="function")
         {
+            var packet = serialGPTEncodeForMode(state.mode,text);
+            serialGPTSetEchoGuard(state,packet.wire);
+
             card.serialLineReceiveBytes(
-                serialGPTEncodeUTF16LE(formatted.wire),
+                packet.bytes,
                 {
                      "source":"spgpt"
-                    ,"encoding":"utf-16le"
+                    ,"mime":packet.mime
+                    ,"mode":packet.mode
                 }
             );
-            return formatted.text;
+            return packet.text;
         }
 
         return "";
@@ -747,10 +945,52 @@
             state.line += String.fromCharCode(c);
     }
 
-    function serialGPTEnable(card)
+    function serialGPTEnable(card,mode)
     {
         var state = serialGPTState(card);
-        if(state.enabled) return true;
+
+        mode = mode===SERIAL_GPT_MODE_ASCII
+            ? SERIAL_GPT_MODE_ASCII
+            : SERIAL_GPT_MODE_UTF16LE;
+
+        /*
+         * Switching GPT8 <-> GPT16 keeps the API key but resets in-flight text
+         * framing/history so no half UTF-16 code unit or ASCII line crosses the
+         * representation boundary.
+         */
+        if(state.enabled)
+        {
+            if(state.mode===mode) return true;
+
+            if(state.abortController)
+            {
+                try { state.abortController.abort(); } catch(ignore) {}
+            }
+
+            state.mode = mode;
+            state.line = "";
+            state.lastCR = false;
+            state.pending = [];
+            state.busy = false;
+            state.abortController = null;
+            state.history = [];
+            state.echoGuard = [];
+            state.echoGuardIndex = 0;
+            state.echoGuardExpires = 0;
+
+            if(card._serialGPTDevice &&
+               typeof(card._serialGPTDevice.setMode)=="function")
+                card._serialGPTDevice.setMode(mode);
+
+            serialGPTUpdateButton(card);
+            serialGPTStatus(
+                card,
+                mode===SERIAL_GPT_MODE_ASCII
+                    ? "switched to GPT8: US-ASCII, one serial byte per character; CR is 0D."
+                    : "switched to GPT16: UTF-16LE; CR is U+000D (bytes 0D 00)."
+            );
+            return true;
+        }
 
         // Same acquisition method and prompt text as tools/PromptJS.html.
         var key = typeof(global.prompt)==="function"
@@ -767,6 +1007,7 @@
 
         state.apiKey = key;
         state.enabled = true;
+        state.mode = mode;
         state.line = "";
         state.lastCR = false;
         state.pending = [];
@@ -775,11 +1016,16 @@
         state.echoGuardIndex = 0;
         state.echoGuardExpires = 0;
 
+        if(card._serialGPTDevice &&
+           typeof(card._serialGPTDevice.setMode)=="function")
+            card._serialGPTDevice.setMode(mode);
+
         serialGPTUpdateButton(card);
         serialGPTStatus(
             card,
-            "serial peer enabled ("+SERIAL_GPT_MODEL+"). "
-            +"Protocol: UTF-16LE; terminate a line with U+000D (bytes 0D 00)."
+            mode===SERIAL_GPT_MODE_ASCII
+                ? "GPT8 enabled ("+SERIAL_GPT_MODEL+"): US-ASCII; terminate with CR byte 0D."
+                : "GPT16 enabled ("+SERIAL_GPT_MODEL+"): UTF-16LE; terminate with U+000D bytes 0D 00."
         );
         return true;
     }
@@ -794,6 +1040,7 @@
         }
 
         state.enabled = false;
+        state.mode = null;
         state.apiKey = "";
         state.line = "";
         state.lastCR = false;
@@ -803,8 +1050,12 @@
         state.echoGuardIndex = 0;
         state.echoGuardExpires = 0;
 
+        if(card._serialGPTDevice &&
+           typeof(card._serialGPTDevice.setMode)=="function")
+            card._serialGPTDevice.setMode(null);
+
         serialGPTUpdateButton(card);
-        serialGPTStatus(card,"serial peer disabled; API key cleared from memory.");
+        serialGPTStatus(card,"GPT serial peer disabled; API key cleared from memory.");
         return false;
     }
 
@@ -853,21 +1104,29 @@
                 {
                     terminal.output(
                         "<br><b>GPT serial peer</b><br>"
-                        +"Use the <i class=\"fa fa-robot\"></i> GPT16 button to start/stop the UTF-16LE GPT serial session.<br>"
+                        +"Use <i class=\"fa fa-robot\"></i> GPT8 for one-byte US-ASCII or <i class=\"fa fa-robot\"></i> GPT16 for UTF-16LE. Only one mode is active at a time.<br>"
+                        +"Click the active mode again to stop GPT; click the other mode to switch without re-entering the API key.<br>"
                         +"Enabling prompts for an OpenAI API key; the key stays only in page memory and is cleared when disabled/reloaded.<br>"
-                        +"SPGPT and SPSERIAL carry raw 8-bit bytes; SPGPT interprets those bytes as UTF-16LE code units.<br>"
-                        +"Apple II TX text is collected until U+000D/U+000A, sent to "+SERIAL_GPT_MODEL+", and the Unicode reply is encoded as UTF-16LE back through the normal 6551 RX path.<br>"
-                        +"Use 8 data bits on the 6551 for unrestricted UTF-16LE byte values. An exact echo of a GPT reply is suppressed briefly to avoid a terminal echo feedback loop."
+                        +"SPSERIAL remains a raw byte transport (<code>application/octet-stream</code>). SPGPT declares the text representation in MIME: <code>text/plain; charset=us-ascii</code> or <code>text/plain; charset=utf-16le</code>.<br>"
+                        +"GPT8 collects one ASCII character per byte (bit 7 is ignored on receive); CR is $0D. GPT16 collects UTF-16LE code units; CR is bytes $0D $00.<br>"
+                        +"Use 8 data bits on the 6551 for unrestricted GPT16 byte values. An exact echo of a GPT reply is suppressed briefly to avoid a terminal echo feedback loop."
                     );
                 }
                 return result;
             };
         }
 
-        card.serialGPTToggle = function()
+        card.serialGPTToggle = function(mode)
         {
             var state = serialGPTState(card);
-            return state.enabled ? serialGPTDisable(card) : serialGPTEnable(card);
+            mode = mode===SERIAL_GPT_MODE_ASCII
+                ? SERIAL_GPT_MODE_ASCII
+                : SERIAL_GPT_MODE_UTF16LE;
+
+            if(state.enabled && state.mode===mode)
+                return serialGPTDisable(card);
+
+            return serialGPTEnable(card,mode);
         };
 
         card.serialGPTDisable = function()
@@ -880,14 +1139,22 @@
             var state = serialGPTState(card);
             return {
                  enabled:!!state.enabled
+                ,mode:state.mode
                 ,busy:!!state.busy
                 ,pending:state.pending.length
                 ,lineChars:state.line.length
                 ,historyMessages:state.history.length
                 ,model:SERIAL_GPT_MODEL
                 ,apiUrl:SERIAL_GPT_API_URL
-                ,serialEncoding:"UTF-16LE"
-                ,serialMime:"application/octet-stream"
+                ,serialMime:state.mode===SERIAL_GPT_MODE_ASCII
+                    ? SERIAL_GPT_MIME_ASCII
+                    : (state.mode===SERIAL_GPT_MODE_UTF16LE
+                        ? SERIAL_GPT_MIME_UTF16LE
+                        : null)
+                ,serialMimes:[
+                     SERIAL_GPT_MIME_ASCII
+                    ,SERIAL_GPT_MIME_UTF16LE
+                 ]
             };
         };
 
