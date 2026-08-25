@@ -418,7 +418,7 @@
                 serialGPTSetEchoGuard(state,packet.wire);
 
             this.transmitBytes(
-  +                packet.bytes,
+                  packet.bytes,
                 {
                      "source":"gpt"
                     ,"mime":packet.mime
