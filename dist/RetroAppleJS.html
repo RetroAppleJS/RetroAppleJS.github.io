@@ -31590,6 +31590,46 @@ function SerialProCard()
         return bytes.length;
     };
 
+    /*
+     * Start a new application-level serial session from a deterministic RX
+     * boundary. A normal Apple II/6551 reset intentionally preserves remote
+     * bytes already on the simulated line; changing GPT8/GPT16 encoding must
+     * not preserve those bytes because they belong to the previous protocol.
+     */
+    this.serialLineResetReceiveSession = function()
+    {
+        aciaSyncNow();
+
+        var info = {
+             queued:serialTerminalState.toCard.length
+            ,rxFull:!!acia.rxFull
+            ,rxBusy:!!acia.rxBusy
+            ,rxData:acia.rxData & 0xFF
+            ,rxShift:acia.rxShift & 0xFF
+        };
+
+        serialTerminalState.toCard.length = 0;
+        acia.rxData = 0x00;
+        acia.rxFull = false;
+        acia.rxErrors = 0x00;
+        acia.rxShift = 0x00;
+        acia.rxBusy = false;
+        acia.rxTicks = 0;
+
+        return info;
+    };
+
+    this.serialLineReceiveInfo = function()
+    {
+        return {
+             queued:serialTerminalState.toCard.length
+            ,rxFull:!!acia.rxFull
+            ,rxBusy:!!acia.rxBusy
+            ,rxData:acia.rxData & 0xFF
+            ,rxShift:acia.rxShift & 0xFF
+        };
+    };
+
     function serialLineInjectBytes(bytes,meta)
     {
         if(serialLineDevice &&
@@ -35709,6 +35749,9 @@ function SerialProCard()
                 try { state.abortController.abort(); } catch(ignore) {}
             }
 
+            if(typeof(card.serialLineResetReceiveSession)=="function")
+                card.serialLineResetReceiveSession();
+
             state.mode = mode;
             state.line = "";
             state.lastCR = false;
@@ -35746,6 +35789,9 @@ function SerialProCard()
                 global.alert("API key is required to enable the GPT serial peer.");
             return false;
         }
+
+        if(typeof(card.serialLineResetReceiveSession)=="function")
+            card.serialLineResetReceiveSession();
 
         state.apiKey = key;
         state.enabled = true;
