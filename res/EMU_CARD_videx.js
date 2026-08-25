@@ -1857,12 +1857,12 @@ function col80card()
          */
         return ""
             + "<div class=toolbox id=\""+(ctx.toolboxID || ("device_tool_"+ctx.slotID))+"\" hidden>"
-            + "  <div class=appbox style=\"text-align:left;width:580px;max-width:calc(100vw - 24px);min-height:75px;padding:4px 6px;\">"
-            + "    <div style=\"display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:5px 12px;align-items:center;font-size:11px\">"
+            + "  <div class=appbox style=\"text-align:left;width:400px;max-width:calc(100vw - 24px);min-height:75px;padding:4px 6px;\">"
+            + "  <div style=\"display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:5px 12px;align-items:center;font-size:11px\">"
 
             // Row 1: character generator and inverse-video hardware.
             + "      <div style=\"display:grid;grid-template-columns:88px minmax(0,1fr);gap:5px;align-items:center\">"
-            + "        <label>Character ROM</label>"
+            + "        <label>Char ROM</label>"
             + "        <select style=\"min-width:0;width:100%\" onchange=\""+target+".setCharacterROM(this.value)\">"
             +              options
             + "        </select>"
@@ -1880,16 +1880,16 @@ function col80card()
             */
 
             // Row 2: cell width and phosphor.
-            + "      <div style=\"display:grid;grid-template-columns:88px minmax(0,1fr) 34px;gap:5px;align-items:center\">"
+            + "      <div style=\"display:grid;grid-template-columns:88px minmax(0,1fr) 75px;gap:5px;align-items:center\">"
             + "        <label>Inv/Char</label>"
 
-            + "        <select style=\"min-width:0;width:100px\" onchange=\""+target+".setInverseVideoMode(this.value)\">"
+            + "        <select style=\"min-width:0;width:100%\" onchange=\""+target+".setInverseVideoMode(this.value)\">"
             + "          <option value=\"off\""+(state.inverseVideoMode=="off" ? " selected" : "")+">Off</option>"
             + "          <option value=\"screen\""+(state.inverseVideoMode=="screen" ? " selected" : "")+">Whole screen</option>"
             + "          <option value=\"char-bit7\""+(state.inverseVideoMode=="char-bit7" ? " selected" : "")+">Character bit 7</option>"
             + "        </select>"
 
-            + "        <select style=\"min-width:0;width:75px\""
+            + "        <select style=\"min-width:0;width:100%\""
             + "         onchange=\""+target+".setCharacterCellWidth(this.value);document.getElementById('"+cellWidthID+"').textContent=this.value+'-dot'\">"
             + "          <option value=\"9\""+(state.cellWidth==9 ? " selected" : "")+">9-dot</option>"
             + "          <option value=\"8\""+(state.cellWidth==8 ? " selected" : "")+">8-dot</option>"
