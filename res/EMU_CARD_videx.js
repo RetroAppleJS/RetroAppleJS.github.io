@@ -1922,7 +1922,7 @@ function col80card()
 
     + "      <span id=\""+contrastID+"\""
     + "       title=\"Reset contrast to 100%\""
-    + "       style=\"cursor:pointer;justify-self:end;white-space:nowrap\""
+    + "       style=\"cursor:pointer;justify-self:end;white-space:nowrap;width:100%;text-align:center\""
     + "       onclick=\""
     +          target+".setDisplayContrast(100);"
     +          "document.getElementById('"+contrastSliderID+"').value=100;"
