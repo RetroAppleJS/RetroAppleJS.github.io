@@ -30371,73 +30371,96 @@ function col80card()
          * VideoTerm title is rendered inside the panel.
          */
         return ""
-            + "<div class=toolbox id=\""+(ctx.toolboxID || ("device_tool_"+ctx.slotID))+"\" hidden>"
-            + "  <div class=appbox style=\"text-align:left;width:400px;max-width:calc(100vw - 24px);min-height:75px;padding:4px 6px;\">"
-            + "  <div style=\"display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:5px 12px;align-items:center;font-size:11px\">"
+    + "<div class=toolbox id=\""+(ctx.toolboxID || ("device_tool_"+ctx.slotID))+"\" hidden>"
+    + "  <div class=appbox style=\"text-align:left;width:460px;max-width:calc(100vw - 24px);min-height:75px;padding:4px 6px;\">"
 
-            // Row 1: character generator and inverse-video hardware.
-            + "      <div style=\"display:grid;grid-template-columns:88px minmax(0,1fr);gap:5px;align-items:center\">"
-            + "        <label>Char ROM</label>"
-            + "        <select style=\"min-width:0;width:100%\" onchange=\""+target+".setCharacterROM(this.value)\">"
-            +              options
-            + "        </select>"
-            + "      </div>"
+    + "    <div style=\""
+    + "display:grid;"
+    + "grid-template-columns:72px 105px 66px minmax(95px,1fr) 72px;"
+    + "gap:5px 8px;"
+    + "align-items:center;"
+    + "font-size:11px;"
+    + "\">"
 
-            /*
-            + "      <div style=\"display:grid;grid-template-columns:78px minmax(0,1fr);gap:5px;align-items:center\">"
-            + "        <label>Inverse video</label>"
-            + "        <select style=\"min-width:0;width:100%\" onchange=\""+target+".setInverseVideoMode(this.value)\">"
-            + "          <option value=\"off\""+(state.inverseVideoMode=="off" ? " selected" : "")+">Off</option>"
-            + "          <option value=\"screen\""+(state.inverseVideoMode=="screen" ? " selected" : "")+">Whole screen</option>"
-            + "          <option value=\"char-bit7\""+(state.inverseVideoMode=="char-bit7" ? " selected" : "")+">Character bit 7</option>"
-            + "        </select>"
-            + "      </div>"
-            */
+    // Row 1
+    + "      <label style=\"white-space:nowrap\">Char ROM</label>"
 
-            // Row 2: cell width and phosphor.
-            + "      <div style=\"display:grid;grid-template-columns:88px minmax(0,1fr) 75px;gap:5px;align-items:center\">"
-            + "        <label>Inv/Char</label>"
+    + "      <select style=\"min-width:0;width:100%\""
+    + "       onchange=\""+target+".setCharacterROM(this.value)\">"
+    +          options
+    + "      </select>"
 
-            + "        <select style=\"min-width:0;width:100%\" onchange=\""+target+".setInverseVideoMode(this.value)\">"
-            + "          <option value=\"off\""+(state.inverseVideoMode=="off" ? " selected" : "")+">Off</option>"
-            + "          <option value=\"screen\""+(state.inverseVideoMode=="screen" ? " selected" : "")+">Whole screen</option>"
-            + "          <option value=\"char-bit7\""+(state.inverseVideoMode=="char-bit7" ? " selected" : "")+">Character bit 7</option>"
-            + "        </select>"
+    + "      <label style=\"white-space:nowrap\">Inv/Char</label>"
 
-            + "        <select style=\"min-width:0;width:100%\""
-            + "         onchange=\""+target+".setCharacterCellWidth(this.value);document.getElementById('"+cellWidthID+"').textContent=this.value+'-dot'\">"
-            + "          <option value=\"9\""+(state.cellWidth==9 ? " selected" : "")+">9-dot</option>"
-            + "          <option value=\"8\""+(state.cellWidth==8 ? " selected" : "")+">8-dot</option>"
-            + "        </select>"
+    + "      <select style=\"min-width:0;width:100%\""
+    + "       onchange=\""+target+".setInverseVideoMode(this.value)\">"
+    + "        <option value=\"off\""
+    +            (state.inverseVideoMode=="off" ? " selected" : "")
+    +        ">Off</option>"
+    + "        <option value=\"screen\""
+    +            (state.inverseVideoMode=="screen" ? " selected" : "")
+    +        ">Whole screen</option>"
+    + "        <option value=\"char-bit7\""
+    +            (state.inverseVideoMode=="char-bit7" ? " selected" : "")
+    +        ">Character bit 7</option>"
+    + "      </select>"
 
-            + "        <!--span id=\""+cellWidthID+"\">"+state.cellWidth+"-dot</span-->"
-            + "      </div>"
+    + "      <select style=\"min-width:0;width:100%\""
+    + "       onchange=\""+target+".setCharacterCellWidth(this.value)\">"
+    + "        <option value=\"9\""
+    +            (state.cellWidth==9 ? " selected" : "")
+    +        ">9-dot</option>"
+    + "        <option value=\"8\""
+    +            (state.cellWidth==8 ? " selected" : "")
+    +        ">8-dot</option>"
+    + "      </select>"
 
-            + "      <div style=\"display:grid;grid-template-columns:78px minmax(0,1fr);gap:5px;align-items:center\">"
-            + "        <label>Phosphor</label>"
-            + "        <select style=\"min-width:0;width:100%\" onchange=\""+target+".setDisplayPhosphor(this.value)\">"
-            +              phosphorOptions
-            + "        </select>"
-            + "      </div>"
 
-            // Row 3: contrast and read-only display status.
-            + "      <div style=\"display:grid;grid-template-columns:88px minmax(0,1fr) 38px;gap:5px;align-items:center\">"
-            + "        <label>Contrast</label>"
-            + "        <input id=\""+contrastSliderID+"\" style=\"min-width:0;width:100%\" type=\"range\" min=\"0\" max=\"200\" step=\"1\" value=\""+Number(display.contrast)+"\""
-            + "         oninput=\""+target+".setDisplayContrast(this.value);document.getElementById('"+contrastID+"').textContent=this.value+'%'\">"
-            + "        <span id=\""+contrastID+"\" title=\"Reset contrast to 100%\" style=\"cursor:pointer\""
-            + "         onclick=\""+target+".setDisplayContrast(100);document.getElementById('"+contrastSliderID+"').value=100;this.textContent='100%'\">"
-            +           Number(display.contrast)+"%</span>"
-            + "      </div>"
+    // Row 2
+    + "      <label style=\"white-space:nowrap\">Phosphor</label>"
 
-            + "      <div style=\"display:grid;grid-template-columns:78px minmax(0,1fr);gap:5px;align-items:center\">"
-            + "        <label>Status</label>"
-            + "        <span style=\"font-size:10px;opacity:.75\">"+columns+"×"+rows+" · Normal Sync</span>"            
-            + "      </div>"
-            + "    </div>"
+    + "      <select style=\"min-width:0;width:100%\""
+    + "       onchange=\""+target+".setDisplayPhosphor(this.value)\">"
+    +          phosphorOptions
+    + "      </select>"
 
-            + "  </div>"
-            + "</div>";
+    + "      <label style=\"white-space:nowrap\">Contrast</label>"
+
+    + "      <input id=\""+contrastSliderID+"\""
+    + "       style=\"min-width:0;width:100%\""
+    + "       type=\"range\" min=\"0\" max=\"200\" step=\"1\""
+    + "       value=\""+Number(display.contrast)+"\""
+    + "       oninput=\""
+    +          target+".setDisplayContrast(this.value);"
+    +          "document.getElementById('"+contrastID+"').textContent=this.value+'%'"
+    + "       \">"
+
+    + "      <span id=\""+contrastID+"\""
+    + "       title=\"Reset contrast to 100%\""
+    + "       style=\"cursor:pointer;justify-self:end;white-space:nowrap\""
+    + "       onclick=\""
+    +          target+".setDisplayContrast(100);"
+    +          "document.getElementById('"+contrastSliderID+"').value=100;"
+    +          "this.textContent='100%'"
+    + "       \">"
+    +          Number(display.contrast)+"%"
+    + "      </span>"
+
+
+    // Row 3
+    + "      <label style=\"white-space:nowrap\">Status</label>"
+    + "      <span style=\""
+    + "grid-column:2 / 6;"
+    + "font-size:10px;"
+    + "opacity:.75;"
+    + "white-space:nowrap;"
+    + "\">"
+    +          columns+"×"+rows+" · Normal Sync"
+    + "      </span>"
+
+    + "    </div>"
+    + "  </div>"
+    + "</div>";
     };
 
 }
