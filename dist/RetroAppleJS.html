@@ -30326,7 +30326,222 @@ function col80card()
         return this.reset();
     };
        
+    /*
+     * Character-ROM / Unicode correspondence navigator.
+     *
+     * This is UI state only. It does not belong to the emulated VideoTerm
+     * hardware state and therefore deliberately remains outside `state`.
+     */
+    var characterNavigatorCode = 0x41;
 
+    function videxHex(value,digits)
+    {
+        return ("00000000" + Number(value).toString(16).toUpperCase())
+            .slice(-digits);
+    }
+
+    function characterNavigatorInfo()
+    {
+        var entry =
+            findCharacterROM(state.charRomKey) ||
+            findCharacterROM("VIDEX:NORMAL");
+
+        var code = characterNavigatorCode & 0x7F;
+        var unicode = entry && entry.unicode
+            ? entry.unicode[code]
+            : null;
+
+        return {
+             "entry":entry
+            ,"code":code
+            ,"unicode":unicode
+        };
+    }
+
+    function unicodeCodePointText(codePoint)
+    {
+        if(codePoint===null || codePoint===undefined)
+            return "U+----";
+
+        return "U+" + videxHex(
+            codePoint,
+            codePoint>0xFFFF ? 5 : 4
+        );
+    }
+
+    function unicodeUTF16LEText(codePoint)
+    {
+        if(codePoint===null || codePoint===undefined)
+            return "--";
+
+        codePoint = Number(codePoint);
+
+        if(codePoint<0 ||
+           codePoint>0x10FFFF ||
+           (codePoint>=0xD800 && codePoint<=0xDFFF))
+            return "--";
+
+        var units;
+
+        if(codePoint<=0xFFFF)
+        {
+            units = [codePoint];
+        }
+        else
+        {
+            var value = codePoint - 0x10000;
+
+            units = [
+                 0xD800 + (value >> 10)
+                ,0xDC00 + (value & 0x03FF)
+            ];
+        }
+
+        var bytes = [];
+
+        for(var i=0;i<units.length;i++)
+        {
+            bytes.push(videxHex(units[i] & 0xFF,2));
+            bytes.push(videxHex((units[i] >> 8) & 0xFF,2));
+        }
+
+        return bytes.join(" ");
+    }
+
+    function unicodeCharacterText(codePoint)
+    {
+        if(codePoint===null || codePoint===undefined)
+            return "—";
+
+        try
+        {
+            return String.fromCodePoint(codePoint);
+        }
+        catch(err)
+        {
+            return "—";
+        }
+    }
+
+    /*
+     * Render the physical character-ROM bitmap, using the same dsize/mirror
+     * semantics as the Videx normal-sync renderer.
+     */
+    function characterNavigatorGlyphHTML(entry,code)
+    {
+        if(!entry)
+            return "";
+
+        var data = characterROMData(entry);
+        if(!(data instanceof Uint8Array))
+            return "";
+
+        var dsize = Array.isArray(entry.dsize)
+            ? entry.dsize
+            : [8,16];
+
+        var width =
+            Math.max(1,Math.min(8,Number(dsize[0]) || 8));
+
+        var height =
+            Math.max(1,Number(dsize[1]) || 16);
+
+        var base = (code & 0x7F) * height;
+        var pixels = "";
+
+        for(var y=0;y<height;y++)
+        {
+            var bits = data[base+y] & 0xFF;
+
+            for(var x=0;x<width;x++)
+            {
+                var mask = entry.mirror
+                    ? (1 << x)
+                    : (0x80 >> x);
+
+                if(bits & mask)
+                {
+                    pixels +=
+                          "<rect x=\""+x+"\""
+                        + " y=\""+y+"\""
+                        + " width=\"1\" height=\"1\"/>";
+                }
+            }
+        }
+
+        return ""
+            + "<svg"
+            + " viewBox=\"0 0 "+width+" "+height+"\""
+            + " width=\"12\" height=\"18\""
+            + " preserveAspectRatio=\"none\""
+            + " style=\"background:#000;vertical-align:middle;border-radius:1px;\""
+            + " shape-rendering=\"crispEdges\""
+            + " aria-label=\"VideoTerm ROM glyph\">"
+            + "<g fill=\"#fff\">"
+            + pixels
+            + "</g>"
+            + "</svg>";
+    }
+
+    this.refreshCharacterNavigator = function(slotN)
+    {
+        slotN = Number(slotN);
+
+        var info = characterNavigatorInfo();
+
+        var asciiEl = document.getElementById("videx_nav_ascii_" + slotN);
+        var glyphEl = document.getElementById("videx_nav_glyph_" + slotN);
+        var codePointEl = document.getElementById("videx_nav_unicode_code_" + slotN);
+        var utf16El = document.getElementById("videx_nav_utf16_" + slotN);
+        var characterEl = document.getElementById("videx_nav_unicode_char_" + slotN);
+
+        if(asciiEl)
+            asciiEl.textContent = "$" + videxHex(info.code,2);
+
+        if(glyphEl)
+            glyphEl.innerHTML =
+                characterNavigatorGlyphHTML(info.entry,info.code);
+
+        if(codePointEl)
+            codePointEl.textContent =
+                unicodeCodePointText(info.unicode);
+
+        if(utf16El)
+            utf16El.textContent =
+                unicodeUTF16LEText(info.unicode);
+
+        if(characterEl)
+        {
+            characterEl.textContent =
+                unicodeCharacterText(info.unicode);
+
+            characterEl.title =
+                info.unicode===null || info.unicode===undefined
+                    ? "No Unicode mapping"
+                    : unicodeCodePointText(info.unicode);
+        }
+
+        return info;
+    };
+
+    this.stepCharacterNavigator = function(delta,slotN)
+    {
+        delta = Number(delta) || 0;
+
+        characterNavigatorCode =
+            (characterNavigatorCode + delta + 0x80) & 0x7F;
+
+        return this.refreshCharacterNavigator(slotN);
+    };
+
+    this.setCharacterNavigatorCode = function(code,slotN)
+    {
+        code = Number(code);
+        if(!isFinite(code)) return false;
+
+        characterNavigatorCode = code & 0x7F;
+        return this.refreshCharacterNavigator(slotN);
+    };
 
     this.deviceToolSlotHTML = function(ctx)
     {
@@ -30373,6 +30588,13 @@ function col80card()
         var contrastSliderID = "videx_contrast_slider_"+slotN;
         var cellWidthID = "videx_cell_width_value_"+slotN;
 
+        var navigator = characterNavigatorInfo();
+        var navigatorAsciiID = "videx_nav_ascii_"+slotN;
+        var navigatorGlyphID = "videx_nav_glyph_"+slotN;
+        var navigatorUnicodeCodeID = "videx_nav_unicode_code_"+slotN;
+        var navigatorUTF16ID = "videx_nav_utf16_"+slotN;
+        var navigatorUnicodeCharID = "videx_nav_unicode_char_"+slotN;
+
         /*
          * Compact two-column layout, sized closer to the Serial Pro toolbox.
          * The slot selector already identifies the peripheral, so no duplicate
@@ -30381,20 +30603,97 @@ function col80card()
         return ""
     + "<div class=toolbox id=\""+(ctx.toolboxID || ("device_tool_"+ctx.slotID))+"\" hidden>"
     + "  <div class=appbox style=\"text-align:left;width:440px;max-width:calc(100vw - 24px);min-height:75px;padding:4px 6px;\">"
-    + "    <div style=\"display:grid;grid-template-columns:60px 105px 50px minmax(95px,1fr) 72px;gap:5px 8px;align-items:center;font-size:11px;\">"
-
+    + "    <div style=\"display:grid;grid-template-columns:60px 105px 55px minmax(95px,1fr) 72px;gap:5px 8px;align-items:center;font-size:11px;\">"
+ 
     // Row 1
 
     + "      <label style=\"white-space:nowrap\">Char ROM</label>"
-    + "      <select style=\"min-width:0;width:100%\"" + " onchange=\""+target+".setCharacterROM(this.value)\">"
+    + "      <select style=\"min-width:0;width:100%\""
+    + "       onchange=\""
+    +          target+".setCharacterROM(this.value);"
+    +          target+".refreshCharacterNavigator("+slotN+");"
+    + "       \">"
     +          options
     + "      </select>"
 
-    + "<div style=\"width:55px;height:20px;border:1px solid;padding:0px\">&nbsp;</div>"
-    + "<div style=\"min-width:190px;height:20px;border:1px solid;padding:0px\">"
-    + "&nbsp;"
+    /*
+     * Character-ROM correspondence navigator:
+     *
+     *   $41 [ROM glyph] | ‹ U+0041 41 00 A ›
+     *
+     * Left  : 7-bit VideoTerm/ASCII character address + physical ROM bitmap.
+     * Right : Unicode scalar, UTF-16LE bytes and host Unicode rendering.
+     */
+    + "<div style=\""
+    + "grid-column:3;"
+    + "width:55px;"
+    + "height:20px;"
+    + "box-sizing:border-box;"
+    + "border:1px solid rgba(0,0,0,.28);"
+    + "border-radius:3px;"
+    + "padding:0 3px;"
+    + "display:flex;"
+    + "align-items:center;"
+    + "justify-content:space-between;"
+    + "gap:2px;"
+    + "font-family:monospace;"
+    + "font-size:10px;"
+    + "white-space:nowrap;"
+    + "\""
+    + " title=\"VideoTerm character code and physical ROM glyph\">"
+    + "  <span id=\""+navigatorAsciiID+"\">"
+    +       "$"+videxHex(navigator.code,2)
+    + "  </span>"
+    + "  <span id=\""+navigatorGlyphID+"\" style=\"line-height:0\">"
+    +       characterNavigatorGlyphHTML(navigator.entry,navigator.code)
+    + "  </span>"
     + "</div>"
-    + "<div style=\"width:0px\"></div>"
+
+    + "<div style=\""
+    + "grid-column:4 / 6;"
+    + "min-width:0;"
+    + "width:100%;"
+    + "height:20px;"
+    + "box-sizing:border-box;"
+    + "border:1px solid rgba(0,0,0,.28);"
+    + "border-radius:3px;"
+    + "padding:0 2px;"
+    + "display:grid;"
+    + "grid-template-columns:16px max-content minmax(0,1fr) 22px 16px;"
+    + "gap:3px;"
+    + "align-items:center;"
+    + "font-family:monospace;"
+    + "font-size:9px;"
+    + "white-space:nowrap;"
+    + "\""
+    + " title=\"Unicode code point / UTF-16LE bytes / Unicode character\">"
+
+    + "  <button type=\"button\" class=\"appbut skinny\""
+    + "          style=\"width:16px;min-width:16px;height:16px;min-height:16px;padding:0;line-height:14px;\""
+    + "          title=\"Previous VideoTerm glyph\""
+    + "          onclick=\""+target+".stepCharacterNavigator(-1,"+slotN+");\">‹</button>"
+
+    + "  <span id=\""+navigatorUnicodeCodeID+"\" style=\"opacity:.72\">"
+    +       unicodeCodePointText(navigator.unicode)
+    + "  </span>"
+
+    + "  <span id=\""+navigatorUTF16ID+"\""
+    + "        style=\"min-width:0;overflow:hidden;text-overflow:ellipsis;\">"
+    +       unicodeUTF16LEText(navigator.unicode)
+    + "  </span>"
+
+    + "  <span id=\""+navigatorUnicodeCharID+"\""
+    + "        style=\"text-align:center;font-family:system-ui,sans-serif;font-size:13px;\""
+    + "        title=\""+unicodeCodePointText(navigator.unicode)+"\">"
+    +       oCOM.escapeHTML(unicodeCharacterText(navigator.unicode))
+    + "  </span>"
+
+    + "  <button type=\"button\" class=\"appbut skinny\""
+    + "          style=\"width:16px;min-width:16px;height:16px;min-height:16px;padding:0;line-height:14px;\""
+    + "          title=\"Next VideoTerm glyph\""
+    + "          onclick=\""+target+".stepCharacterNavigator(1,"+slotN+");\">›</button>"
+
+    + "</div>"
 
     // Row 2
 
