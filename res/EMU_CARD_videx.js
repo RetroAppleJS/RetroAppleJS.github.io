@@ -1857,62 +1857,52 @@ function col80card()
          */
         return ""
     + "<div class=toolbox id=\""+(ctx.toolboxID || ("device_tool_"+ctx.slotID))+"\" hidden>"
-    + "  <div class=appbox style=\"text-align:left;width:460px;max-width:calc(100vw - 24px);min-height:75px;padding:4px 6px;\">"
-
-    + "    <div style=\""
-    + "display:grid;"
-    + "grid-template-columns:72px 105px 66px minmax(95px,1fr) 72px;"
-    + "gap:5px 8px;"
-    + "align-items:center;"
-    + "font-size:11px;"
-    + "\">"
+    + "  <div class=appbox style=\"text-align:left;width:440px;max-width:calc(100vw - 24px);min-height:75px;padding:4px 6px;\">"
+    + "    <div style=\"display:grid;grid-template-columns:60px 105px 50px minmax(95px,1fr) 72px;gap:5px 8px;align-items:center;font-size:11px;\">"
 
     // Row 1
-    + "      <label style=\"white-space:nowrap\">Char ROM</label>"
 
-    + "      <select style=\"min-width:0;width:100%\""
-    + "       onchange=\""+target+".setCharacterROM(this.value)\">"
+    + "      <label style=\"white-space:nowrap\">Char ROM</label>"
+    + "      <select style=\"min-width:0;width:100%\"" + " onchange=\""+target+".setCharacterROM(this.value)\">"
     +          options
     + "      </select>"
 
-    + "      <label style=\"white-space:nowrap\">Inv/Char</label>"
-
-    + "      <select style=\"min-width:0;width:100%\""
-    + "       onchange=\""+target+".setInverseVideoMode(this.value)\">"
-    + "        <option value=\"off\""
-    +            (state.inverseVideoMode=="off" ? " selected" : "")
-    +        ">Off</option>"
-    + "        <option value=\"screen\""
-    +            (state.inverseVideoMode=="screen" ? " selected" : "")
-    +        ">Whole screen</option>"
-    + "        <option value=\"char-bit7\""
-    +            (state.inverseVideoMode=="char-bit7" ? " selected" : "")
-    +        ">Character bit 7</option>"
-    + "      </select>"
-
-    + "      <select style=\"min-width:0;width:100%\""
-    + "       onchange=\""+target+".setCharacterCellWidth(this.value)\">"
-    + "        <option value=\"9\""
-    +            (state.cellWidth==9 ? " selected" : "")
-    +        ">9-dot</option>"
-    + "        <option value=\"8\""
-    +            (state.cellWidth==8 ? " selected" : "")
-    +        ">8-dot</option>"
-    + "      </select>"
-
+    + "<div style=\"width:55px;height:20px;border:1px solid;padding:0px\">&nbsp;</div>"
+    + "<div style=\"min-width:190px;height:20px;border:1px solid;padding:0px\">"
+    + "&nbsp;"
+    + "</div>"
+    + "<div style=\"width:0px\"></div>"
 
     // Row 2
-    + "      <label style=\"white-space:nowrap\">Phosphor</label>"
 
+    + "      <label style=\"white-space:nowrap\">Phosphor</label>"
     + "      <select style=\"min-width:0;width:100%\""
     + "       onchange=\""+target+".setDisplayPhosphor(this.value)\">"
     +          phosphorOptions
     + "      </select>"
 
-    + "      <label style=\"white-space:nowrap\">Contrast</label>"
+    + "      <label style=\"white-space:nowrap\">Inv/Char</label>"
+    + "      <select style=\"min-width:0;width:100%\""
+    + "       onchange=\""+target+".setInverseVideoMode(this.value)\">"
+    + "        <option value=\"off\"" + (state.inverseVideoMode=="off" ? " selected" : "") + ">Off</option>"
+    + "        <option value=\"screen\"" + (state.inverseVideoMode=="screen" ? " selected" : "") + ">Whole screen</option>"
+    + "        <option value=\"char-bit7\"" + (state.inverseVideoMode=="char-bit7" ? " selected" : "") + ">Character bit 7</option>"
+    + "      </select>"
+    + "      <select style=\"min-width:0;width:100%\" onchange=\""+target+".setCharacterCellWidth(this.value)\">"
+    + "        <option value=\"9\"" + (state.cellWidth==9 ? " selected" : "") + ">9-dot</option>"
+    + "        <option value=\"8\"" + (state.cellWidth==8 ? " selected" : "") + ">8-dot</option>"
+    + "      </select>"
 
+    // Row 3
+
+    + "      <label style=\"white-space:nowrap;grid-column:1\">Status</label>"
+    + "      <span style=\"grid-column:2;font-size:10px;opacity:.75;white-space:nowrap;\">"
+    +          columns+"×"+rows+" · Normal Sync"
+    + "      </span>"
+
+    + "      <label style=\"white-space:nowrap;grid-column:3\">Contrast</label>"
     + "      <input id=\""+contrastSliderID+"\""
-    + "       style=\"min-width:0;width:100%\""
+    + "       style=\"grid-column:4;min-width:0;width:100%\""
     + "       type=\"range\" min=\"0\" max=\"200\" step=\"1\""
     + "       value=\""+Number(display.contrast)+"\""
     + "       oninput=\""
@@ -1922,7 +1912,14 @@ function col80card()
 
     + "      <span id=\""+contrastID+"\""
     + "       title=\"Reset contrast to 100%\""
-    + "       style=\"cursor:pointer;justify-self:end;white-space:nowrap;width:100%;text-align:center\""
+    + "       style=\""
+    + "         grid-column:5;"
+    + "         cursor:pointer;"
+    + "         justify-self:end;"
+    + "         white-space:nowrap;"
+    + "         width:100%;"
+    + "         text-align:center;"
+    + "       \""
     + "       onclick=\""
     +          target+".setDisplayContrast(100);"
     +          "document.getElementById('"+contrastSliderID+"').value=100;"
@@ -1931,17 +1928,6 @@ function col80card()
     +          Number(display.contrast)+"%"
     + "      </span>"
 
-
-    // Row 3
-    + "      <label style=\"white-space:nowrap\">Status</label>"
-    + "      <span style=\""
-    + "grid-column:2 / 6;"
-    + "font-size:10px;"
-    + "opacity:.75;"
-    + "white-space:nowrap;"
-    + "\">"
-    +          columns+"×"+rows+" · Normal Sync"
-    + "      </span>"
 
     + "    </div>"
     + "  </div>"
