@@ -442,9 +442,17 @@ function EMU_init()
                 ,key_events:"onclick=keys.keystroke(event)"});
 
     // OVERRIDE SEVERAL OBJECTS TO INTERACT WITH SPECIFIC GUI OBJECTS
-    apple2plus.CPU_monitoring = function()  // override
+    apple2plus.CPU_monitoring = function()
     {
-        document.getElementById("cpu_pct").value = Math.round(oEMU.component.CPU.dutycycle_time / oEMU.stats.EMU_DashboardRefresh_cy / _o.EMU_IntervalTime_ms *100) + "%"
+        var el = document.getElementById("cpu_pct");
+        if(!el) return;
+
+        el.textContent =
+            Math.round(
+                oEMU.component.CPU.dutycycle_time /
+                oEMU.stats.EMU_DashboardRefresh_cy /
+                _o.EMU_IntervalTime_ms * 100
+            ) + "%";
     }
 
     // The common UI refresh cycle samples and displays requested-versus-real pace.

@@ -249,41 +249,114 @@
                   <div class=appbox title="SYSTEM" style="text-align:left;height:92px;padding:0px 6px 0px 6px;">
                     SYSTEM
                     <div style="font-family:arial;font-size:11px">
-                      <div style="
-                        display:grid;
-                        grid-template-columns:max-content max-content max-content minmax(0,1fr);
-                        align-items:center;
-                        column-gap:3px;
-                        width:100px;
-                        white-space:nowrap;
-                      ">
-                        <div id="cpu_component"></div>
-                        <span>load</span>
+                     <div style="
+  display:flex;
+  flex-direction:column;
+  width:110px;
+  min-width:110px;
+">
 
-                          <i class="fa fa-sync-alt" id="CPU_monitoring"  onclick="oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');oCOM.toggleRefreshEvent('CPU_monitoring');document.getElementById('cpu_pct').value='';"></i>
-                          <input id="cpu_pct" value=""
-                                  style="
-                                    width:100%;
-                                    min-width:0;
-                                    box-sizing:border-box;
-                                    background:transparent;
-                                    border:none;
-                                    font:inherit;
-                                    padding:0;
-                                  ">
-                        </div>
-                        <br>
-                        <button type="button" id="slider_1v" class="appbut skinny"
-                          style="float:left;padding:0px;width:45px;font-family:arial;font-size:11px;"
-                          onclick="oEMUI.cpuSldIndicator(event,this,'myRange','feature_box')"
-                          title="CPU speed: 100%. Click to switch to 0-100%."
-                          aria-label="CPU speed: 100%. Click to switch to 0-100%.">100%</button>
-                        <input id="myRange" type="range" min="0" max="400" value="100" step="20" class="slider"
-                          data-speed-mode="pct400"
-                          onchange="oEMUI.cpuSld(this,'slider_1v')" style="width:55px">                       
-                        <br>
-                        <div id="slider_fps_v" style="float:left;border:0px solid;padding:0px 0px 0px 0px;width:35px;">10fps</div>
-                        <input id="fpsRange" type="range" min="10" max="100" value="10" step="1" class="slider" oninput="document.getElementById('slider_fps_v').innerHTML=this.value+'fps'" onchange="oEMUI.fpsSld(this,'slider_fps_v')" title="Processing frames per second" style="width:65px">
+  <!-- CPU load -->
+  <div style="
+    display:flex;
+    flex-flow:row nowrap;
+    align-items:center;
+    width:110px;
+    white-space:nowrap;
+  ">
+    <span id="cpu_component" style="flex:0 0 auto;"></span>
+
+    <span style="flex:0 0 auto;margin-left:3px;">load</span>
+
+    <i class="fa fa-sync-alt"
+       id="CPU_monitoring"
+       style="flex:0 0 auto;margin-left:3px;"
+       onclick="
+         oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');
+         oCOM.toggleRefreshEvent('CPU_monitoring');
+         document.getElementById('cpu_pct').textContent='';
+       "></i>
+
+    <span id="cpu_pct"
+          style="
+            flex:1 1 auto;
+            min-width:24px;
+            margin-left:3px;
+            text-align:right;
+            white-space:nowrap;
+          "></span>
+  </div>
+
+  <!-- CPU speed -->
+  <div style="
+    display:flex;
+    flex-flow:row nowrap;
+    align-items:center;
+    width:110px;
+  ">
+    <button type="button"
+            id="slider_1v"
+            class="appbut skinny"
+            style="
+              flex:0 0 45px;
+              width:45px;
+              padding:0;
+              font-family:arial;
+              font-size:11px;
+            "
+            onclick="oEMUI.cpuSldIndicator(event,this,'myRange','feature_box')"
+            title="CPU speed: 100%. Click to switch to 0-100%."
+            aria-label="CPU speed: 100%. Click to switch to 0-100%.">100%</button>
+
+    <input id="myRange"
+           type="range"
+           min="0"
+           max="400"
+           value="100"
+           step="20"
+           class="slider"
+           data-speed-mode="pct400"
+           onchange="oEMUI.cpuSld(this,'slider_1v')"
+           style="
+             flex:1 1 auto;
+             min-width:0;
+             width:0;
+           ">
+  </div>
+
+  <!-- FPS -->
+  <div style="
+    display:flex;
+    flex-flow:row nowrap;
+    align-items:center;
+    width:110px;
+  ">
+    <span id="slider_fps_v"
+          style="
+            flex:0 0 35px;
+            width:35px;
+          ">10fps</span>
+
+    <input id="fpsRange"
+           type="range"
+           min="10"
+           max="100"
+           value="10"
+           step="1"
+           class="slider"
+           oninput="document.getElementById('slider_fps_v').textContent=this.value+'fps'"
+           onchange="oEMUI.fpsSld(this,'slider_fps_v')"
+           title="Processing frames per second"
+           style="
+             flex:1 1 auto;
+             min-width:0;
+             width:0;
+           ">
+  </div>
+
+</div>
+
+<div id="all_components"></div>
                         <div id="all_components"></div>
                       <script>
                         oCOM.POPUP.addRule("tab1.1", function(o) { o.toggle("tab1.1"); o.off("tab1.2") });
