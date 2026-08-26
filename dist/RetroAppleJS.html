@@ -43176,11 +43176,28 @@ function Apple2Plus(context)
                   <div class=appbox title="SYSTEM" style="text-align:left;height:92px;padding:0px 6px 0px 6px;">
                     SYSTEM
                     <div style="font-family:arial;font-size:11px">
+                      <div style="
+                        display:grid;
+                        grid-template-columns:max-content max-content max-content minmax(0,1fr);
+                        align-items:center;
+                        column-gap:3px;
+                        width:100px;
+                        white-space:nowrap;
+                      ">
+                        <div id="cpu_component"></div>
+                        <span>load</span>
 
-                        <div style="float:left;border:0px solid;padding:0px 0px 0px 0px;margin:0px;width:100px;">
-                          <div id="cpu_component" style="float:left;border:0px solid;padding-top:1px;"></div>&nbsp;load
-                          <i class="fa fa-sync-alt" id="CPU_monitoring"  onclick="oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');oCOM.toggleRefreshEvent('CPU_monitoring');document.getElementById('cpu_pct').value='';"></i>&nbsp;
-                          <input id="cpu_pct" value="" size="4" style="background:transparent;border:none;font:inherit;padding:0;">
+                          <i class="fa fa-sync-alt" id="CPU_monitoring"  onclick="oCOM.POPUP.toggle_class(this,'fa-stop-circle','fa-sync-alt');oCOM.toggleRefreshEvent('CPU_monitoring');document.getElementById('cpu_pct').value='';"></i>
+                          <input id="cpu_pct" value=""
+                                  style="
+                                    width:100%;
+                                    min-width:0;
+                                    box-sizing:border-box;
+                                    background:transparent;
+                                    border:none;
+                                    font:inherit;
+                                    padding:0;
+                                  ">
                         </div>
                         <br>
                         <button type="button" id="slider_1v" class="appbut skinny"
