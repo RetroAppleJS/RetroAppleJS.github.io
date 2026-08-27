@@ -94,11 +94,25 @@ function GamePort()
 
         var keyboard = apple2plus.keysObj();
 
+        /*
+         * While a character is pending in the Apple II keyboard latch, the
+         * Shift wire belongs to that translated Apple II key.  Do not use the
+         * raw browser modifier state here: on AZERTY/QWERTZ layouts the host
+         * may need Shift to produce an Apple II-unshifted character such as 0.
+         */
+        if(keyboard &&
+           typeof(keyboard.hasLatchedKey)=="function" &&
+           keyboard.hasLatchedKey() &&
+           typeof(keyboard.isLatchedShiftPressed)=="function")
+            return keyboard.isLatchedShiftPressed();
+
+        // Backward-compatible path for an internally queued keyevent.
         if(keyboard &&
            typeof(keyboard.isPipeShiftPressed)=="function" &&
            keyboard.isPipeShiftPressed())
             return true;
 
+        // With no character latched, expose the live physical/UI Shift state.
         var ed = keyboard && keyboard.events_data;
         if(!ed || !ed.metabitsEn || !Array.isArray(ed.metabits))
             return false;

@@ -35,6 +35,7 @@ function A2Pkeys()
     this._pipeQueue = [];
     this._pipePos = 0;
     this._pipeShift = false;
+    this._latchedShift = false;
 
     //this.hw = hw;
     this.bDebug = false;
@@ -86,6 +87,7 @@ function A2Pkeys()
         this._pipeQueue.length = 0;
         this._pipePos = 0;
         this._pipeShift = false;
+        this._latchedShift = false;
         this.events_data.metabits = [0,0];  // trigger init of keyboard modifier states (capslock, shift, control...)
 
         //window.keycap_over  = oEMU.component.Keyboard.events({"srcElement":{"id":"keycap"},"type":"over"});    // function overload
@@ -195,6 +197,16 @@ function A2Pkeys()
         return this._pipeShift===true;
     };
 
+    /*
+     * Shift-wire state that belongs to the character currently held in the
+     * Apple II keyboard latch.  This is deliberately separate from the live
+     * browser/virtual modifier UI state: on non-US host layouts the browser
+     * Shift key required to produce a character is not necessarily the Shift
+     * state of the equivalent Apple II key.
+     */
+    this.isLatchedShiftPressed = function() { return this._latchedShift===true; };
+    this.hasLatchedKey = function() { return (this.lastkey & 0x80)!==0; };
+
     this.read = function(rel_addr,ctx)
     {
         return ctx && ctx.bRO===true
@@ -217,6 +229,7 @@ function A2Pkeys()
 
             this._pipeShift =
                 !!(entry && typeof(entry)=="object" && entry.shift===true);
+            this._latchedShift = this._pipeShift;
             this.keystroke(
                 {"charCode":false,"metaKey":false,"altKey":false,"keyCode":k}
             );
@@ -781,10 +794,48 @@ padding: 0;
         return oCOM.getHexWord(crc16);
     }
 
-    this.setKey = function(code,meta,idx)
+    /*
+     * Translate the semantic host character back to the Shift state of the
+     * equivalent Apple II key.  This keeps the one-wire Shift modification
+     * independent of the physical host keyboard layout.
+     *
+     * Examples on a Belgian/AZERTY host:
+     *   host Shift+"0 key" -> event.key == "0" -> Apple II Shift RELEASED
+     *   host key producing "@" -> event.key == "@" -> Apple II Shift HELD
+     */
+    this.appleLogicalShift = function(arg)
+    {
+        var val = arg && arg.key;
+        if(typeof(val)!="string" || val.length!=1)
+            return !!(arg && arg.shiftKey===true);
+
+        var c = val.codePointAt(0);
+
+        if(c>=0x61 && c<=0x7A) return false; // a-z
+        if(c>=0x41 && c<=0x5A) return true;  // A-Z
+
+        // Unshifted keys on the Apple II keyboard.
+        if("0123456789:;,-./ ".indexOf(val)>=0)
+            return false;
+
+        // Shifted Apple II key results used by the standard keyboard map.
+        if("!\"#$%&'()*+<=>?@]^".indexOf(val)>=0)
+            return true;
+
+        return !!(arg && arg.shiftKey===true);
+    };
+
+    this.setKey = function(code,meta,idx,latchedShift)
     {
         this.events_data.metabits[idx] = (meta==null || meta===undefined)?0:meta;
-        this.lastkey = (code==null || code===undefined)?this.lastkey:code;          // expose key code to emulator
+        if(code!=null && code!==undefined)
+        {
+            this.lastkey = code;          // expose key code to emulator
+            this._latchedShift =
+                latchedShift===undefined
+                    ? !!(this.events_data.metabits[idx] & this.events_data.metabitsEn["Shift"])
+                    : !!latchedShift;
+        }
         return {"code":code,"meta":meta}
     }
 
@@ -802,7 +853,8 @@ padding: 0;
         {
             case "applescreen_keydown":
                 var d = {'key':arg.key,'meta':this.metaConvert(arg,0),'code':this.KeyCodeHandler(arg,"A2_US")}
-                this.setKey(d.code,d.meta,0);
+                var latchedShift = this.appleLogicalShift(arg);
+                this.setKey(d.code,d.meta,0,latchedShift);
                 if(this.bDebug) console.log((d.code!=null?"event":"METAevent")+"('"+id_type+"') = "+JSON.stringify({...d,'BINmeta':"0b"+oCOM.getBinMulti(d.meta,8),'HEXcode':"0x"+oCOM.getHexByte(d.code & (~0x80))}));
                 arg.preventDefault();   // prevent browser side-effects while typing in window
                 break;
@@ -823,6 +875,10 @@ padding: 0;
                     var lookup = _this.events_data.HTMLmap_A2_US[Hash16];
                     if(lookup===undefined) return console.warn("event "+id_type+" no mapping for "+_this.getKeyContent(t)+"("+Hash16+")");
                     var d = {'code':_this.KeyCodeHandler({"srcElement":{"id":"keycap"},"type":"click","key":lookup===undefined?"":lookup.val},"A2_US"),'meta':_this.metaConvert({"key":lookup.val},1),'Hash16':Hash16,'lookup':lookup}
+
+                    var latchedShift =
+                        (d.meta & _this.events_data.metabitsEn["Shift"]) ==
+                        _this.events_data.metabitsEn["Shift"];
 
                     // Shift-Control modifier
                     if((d.meta & _this.events_data.metabitsEn["Shift-Control"]) == _this.events_data.metabitsEn["Shift-Control"] && typeof(lookup["Shift-Control"])=="number" )
@@ -870,6 +926,7 @@ padding: 0;
                         _this.events_data.postEvent.push(t);        // push in postevent queue for popping the radio button at next action
                     }
                     _this.setKey(d.code,d.meta,1);
+                    _this.setKey(d.code,d.meta,1,latchedShift);
                     if(_this.bDebug) console.log("event('"+id_type+"') = "+JSON.stringify({...d,'BINmeta':"0b"+oCOM.getBinMulti(d.meta,8),'HEXcode':"0x"+oCOM.getHexByte(d.code & (~0x80))}));    
                 }
         }
