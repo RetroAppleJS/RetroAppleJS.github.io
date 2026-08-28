@@ -14,7 +14,7 @@
     "use strict";
 
     const SERIAL_GPT_API_URL = "https://api.openai.com/v1/responses";
-    const SERIAL_GPT_MODEL = "gpt-5.6";
+    const SERIAL_GPT_MODEL = "gpt-5.6-luna";
     const SERIAL_GPT_MAX_OUTPUT_TOKENS = 512;
     const SERIAL_GPT_MAX_INPUT_CHARS = 4096;
     const SERIAL_GPT_HISTORY_MESSAGES = 8;
