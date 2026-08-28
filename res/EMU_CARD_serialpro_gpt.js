@@ -15,12 +15,15 @@
 
     const SERIAL_GPT_API_URL = "https://api.openai.com/v1/responses";
     const SERIAL_GPT_MODEL = "gpt-5.6-luna";
-    const SERIAL_GPT_MAX_OUTPUT_TOKENS = 512;
     const SERIAL_GPT_MAX_INPUT_CHARS = 4096;
     const SERIAL_GPT_HISTORY_MESSAGES = 8;
     const SERIAL_GPT_HISTORY_CHARS = 12000;
+    const SERIAL_GPT_REASONING_EFFORT = "low";
+    const SERIAL_GPT_VERBOSITY = "low";
     const SERIAL_GPT_ECHO_GUARD_MS = 15000;
-
+    const SERIAL_GPT_MAX_OUTPUT_TOKENS = 2048;
+    const SERIAL_GPT_RETRY_OUTPUT_TOKENS = 4096;
+    const SERIAL_GPT_MAX_OUTPUT_RETRIES = 1;
     const SERIAL_GPT_MODE_ASCII = "ascii";
     const SERIAL_GPT_MODE_UTF16LE = "utf16le";
     const SERIAL_GPT_MIME_ASCII = "text/plain; charset=us-ascii";
@@ -764,8 +767,6 @@
 
     function serialGPTTrimHistory(state)
     {
-        while(state.history.length>SERIAL_GPT_HISTORY_MESSAGES)
-            state.history.shift();
 
         function chars()
         {
@@ -774,21 +775,53 @@
                 n += String(state.history[i].text || "").length;
             return n;
         }
+        /*
+         * History is stored as complete user/assistant turns. Never trim only
+         * one side of a turn: an orphan assistant message changes the semantic
+         * conversation presented to the model.
+         */
+        while(
+            state.history.length>SERIAL_GPT_HISTORY_MESSAGES ||
+            (state.history.length>2 && chars()>SERIAL_GPT_HISTORY_CHARS)
+        )
+        {
+            if(
+                state.history.length>=2 &&
+                state.history[0].role==="user" &&
+                state.history[1].role==="assistant"
+            )
+                state.history.splice(0,2);
+            else
+                state.history.shift();
+        }
 
-        while(state.history.length>2 && chars()>SERIAL_GPT_HISTORY_CHARS)
-            state.history.shift();
     }
 
     function serialGPTBuildInput(state,message)
     {
-        var blocks = [];
+        /*
+         * Responses API input supports explicit user/assistant messages.
+         * Preserve roles structurally instead of flattening the conversation
+         * into "APPLE II:" / "GPT:" speaker labels inside one text string.
+         */
+        var messages = [];
         for(var i=0;i<state.history.length;i++)
         {
             var h = state.history[i];
-            blocks.push((h.role==="assistant" ? "GPT" : "APPLE II")+": "+h.text);
+            if(h.role!=="user" && h.role!=="assistant")
+                continue;
+
+            messages.push({
+                 role:h.role
+                ,content:String(h.text || "")
+            });            
         }
-        blocks.push("APPLE II: "+message);
-        return blocks.join("\n\n");
+        messages.push({
+             role:"user"
+            ,content:String(message || "")
+        });
+
+        return messages;
     }
 
     function serialGPTExtractText(data)
@@ -864,82 +897,155 @@
             +".";
     }
 
+    function serialGPTOutputTokenLimitReached(data)
+    {
+        return !!(
+            data &&
+            data.status==="incomplete" &&
+            data.incomplete_details &&
+            data.incomplete_details.reason==="max_output_tokens"
+        );
+    }
+
     async function serialGPTRequest(card,message)
     {
         var state = serialGPTState(card);
         var controller = typeof(AbortController)==="function" ? new AbortController() : null;
         state.abortController = controller;
 
-        serialGPTStatus(
-            card,
-            "API request start: mode="
-            +(state.mode===SERIAL_GPT_MODE_ASCII ? "GPT8" : "GPT16")
-            +" promptChars="+String(message || "").length
-        );
+        var outputTokens = SERIAL_GPT_MAX_OUTPUT_TOKENS;
+        var retry = 0;
 
-        var payload = {
-             model:SERIAL_GPT_MODEL
-            ,instructions:serialGPTInstructions(state)
-            ,input:serialGPTBuildInput(state,message)
-            ,max_output_tokens:SERIAL_GPT_MAX_OUTPUT_TOKENS
-        };
+        while(true)
+        {
+            serialGPTStatus(
+                card,
+                "API request start: mode="
+                +(state.mode===SERIAL_GPT_MODE_ASCII ? "GPT8" : "GPT16")
+                +" promptChars="+String(message || "").length
+                +" historyMessages="+state.history.length
+                +" maxOutputTokens="+outputTokens
+                +(retry ? " retry="+retry : "")
+            );
 
-        var response = await fetch(SERIAL_GPT_API_URL,{
-             method:"POST"
-            ,headers:{
-                 "Content-Type":"application/json"
-                ,"Authorization":"Bearer "+state.apiKey
+
+
+            var payload = {
+                 model:SERIAL_GPT_MODEL
+                ,instructions:serialGPTInstructions(state)
+                ,input:serialGPTBuildInput(state,message)
+                ,max_output_tokens:outputTokens
+                ,reasoning:{effort:SERIAL_GPT_REASONING_EFFORT}
+                ,text:{verbosity:SERIAL_GPT_VERBOSITY}
+            };
+
+            var response = await fetch(SERIAL_GPT_API_URL,{
+                 method:"POST"
+                ,headers:{
+                     "Content-Type":"application/json"
+                    ,"Authorization":"Bearer "+state.apiKey
+                }
+                ,body:JSON.stringify(payload)
+                ,signal:controller ? controller.signal : undefined
+            });
+
+            serialGPTStatus(
+                card,
+                "API HTTP "+response.status
+                +(serialGPTRequestId(response)
+                    ? " requestId="+serialGPTRequestId(response)
+                    : "")
+            );
+
+            var raw = await response.text();
+            var data = null;
+            try { data = raw ? JSON.parse(raw) : {}; }
+            catch(ignore) {}
+
+            if(!response.ok)
+            {
+                serialGPTWarn("OpenAI HTTP request failed",response,data,raw);
+
+                var messageText = data && data.error && data.error.message
+                    ? data.error.message
+                    : (raw || ("HTTP "+response.status));
+                throw new Error(messageText);
             }
-            ,body:JSON.stringify(payload)
-            ,signal:controller ? controller.signal : undefined
-        });
+          
+            if(!data)
+            {
+                serialGPTWarn("OpenAI returned a non-JSON response",response,null,raw);
+                throw new Error("OpenAI returned a non-JSON response.");
+            }
 
-        serialGPTStatus(
-            card,
-            "API HTTP "+response.status
-            +(serialGPTRequestId(response)
-                ? " requestId="+serialGPTRequestId(response)
-                : "")
-        );
+            var answer = serialGPTExtractText(data);
+            var outputLimited = serialGPTOutputTokenLimitReached(data);       
 
-        var raw = await response.text();
-        var data = null;
-        try { data = raw ? JSON.parse(raw) : {}; }
-        catch(ignore) {}
+            /*
+             * A reasoning model can consume a small output allowance before
+             * producing visible text. Retry this one recoverable condition once
+             * with a larger ceiling. The retry is a fresh generation from the
+             * same structured conversation, so no failed turn enters history.
+             */
+            if(
+                outputLimited &&
+                retry<SERIAL_GPT_MAX_OUTPUT_RETRIES
+            )
+            {
+                serialGPTWarn(
+                    "OpenAI output token limit reached; retrying",
+                    response,data,raw
+                );
+       
+                retry++;
+                outputTokens = SERIAL_GPT_RETRY_OUTPUT_TOKENS;
 
-        if(!response.ok)
-        {
-            serialGPTWarn("OpenAI HTTP request failed",response,data,raw);
+                serialGPTStatus(
+                    card,
+                    "API retry: reason=max_output_tokens"
+                    +" maxOutputTokens="+outputTokens
+                );
+                continue;
+            }
 
-            var messageText = data && data.error && data.error.message
-                ? data.error.message
-                : (raw || ("HTTP "+response.status));
-            throw new Error(messageText);
+            if(!answer.length)
+            {
+                serialGPTWarn("OpenAI response contained no text output",response,data,raw);
+                throw new Error(serialGPTNoTextMessage(data));
+            }
+
+            /*
+             * If even the larger retry ceiling is exhausted but visible text
+             * exists, return that partial text instead of turning a useful
+             * response into the generic serial error string.
+             */
+            if(outputLimited)
+            {
+                serialGPTWarn(
+                    "OpenAI response remained incomplete; using partial text",
+                    response,data,raw
+                );
+                serialGPTStatus(
+                    card,
+                    "API partial response accepted: reason=max_output_tokens"
+                );
+            }
+
+            var answerNuls = 0;
+            for(var i=0;i<answer.length;i++)
+                if(answer.charCodeAt(i)===0) answerNuls++;
+
+            serialGPTStatus(
+                card,
+                "API text decoded: chars="+answer.length
+                +" U+0000="+answerNuls
+                +" status="+String(data.status || "unknown")
+            );
+
+            return answer;
         }
 
-        if(!data)
-        {
-            serialGPTWarn("OpenAI returned a non-JSON response",response,null,raw);
-            throw new Error("OpenAI returned a non-JSON response.");
-        }
-        var answer = serialGPTExtractText(data);
-        if(!answer.length)
-        {
-            serialGPTWarn("OpenAI response contained no text output",response,data,raw);
-            throw new Error(serialGPTNoTextMessage(data));
-        }
-
-        var answerNuls = 0;
-        for(var i=0;i<answer.length;i++)
-            if(answer.charCodeAt(i)===0) answerNuls++;
-
-        serialGPTStatus(
-            card,
-            "API text decoded: chars="+answer.length
-            +" U+0000="+answerNuls
-        );
-
-        return answer;
+       
     }
 
     function serialGPTSetEchoGuard(state,wireText)
