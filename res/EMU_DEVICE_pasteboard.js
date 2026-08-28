@@ -51,38 +51,9 @@ function PasteBoard()
 
     this.getTargetAddress = function(io)
     {
-        const fallback = "0:A2KBD:text";
-
-        if(!io || !Array.isArray(io.slots) ||
-           typeof(io.SLOT2obj)!="function")
-            return fallback;
-
-        for(var slotIndex=1;slotIndex<io.slots.length;slotIndex++)
-        {
-            var owner = io.SLOT2obj(slotIndex);
-            if(!owner || String(owner.id?.PCODE || "").toUpperCase()!="VIDEX")
-                continue;
-
-            if(owner.state && owner.state.active===false)
-                continue;
-
-            var slotID =
-                typeof(io.slot2ID)=="function"
-                    ? io.slot2ID(slotIndex)
-                    : String(slotIndex-1);
-
-            var address = slotID + ":VIDEXTXT:text";
-
-            if(typeof(io.pipeIsOpen)=="function")
-            {
-                if(io.pipeIsOpen(address)) return address;
-            }
-            else if(typeof(io.pipeResolve)=="function" &&
-                    io.pipeResolve(address))
-                return address;
-        }
-
-        return fallback;
+        if(io && typeof(io.getTextInputTargetAddress)=="function")
+            return io.getTextInputTargetAddress();
+        return "0:A2KBD:text";
     };
 
     this.sendText = function(io,text)

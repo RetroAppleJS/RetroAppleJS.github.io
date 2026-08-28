@@ -682,6 +682,48 @@ function mergeActionMap(dst,src)
     {
         return pipeEndpointOpen(this.pipeResolve(address));
     }
+    /*
+     * Resolve the semantic text-input endpoint that currently owns user text.
+     *
+     * Motherboard keyboard input is the permanent fallback. An active
+     * VideoTerm takes precedence only while its VIDEXTXT:text port is open,
+     * which is already tied to the VideoTerm video-selection state.
+     *
+     * Both pasteboard text and printable host-keyboard characters use this
+     * selector so they cannot drift into separate character-mapping rules.
+     */
+    this.getTextInputTargetAddress = function()
+    {
+        const fallback = "0:A2KBD:text";
+
+        if(!Array.isArray(this.slots) ||
+           typeof(this.SLOT2obj)!="function")
+            return fallback;
+
+        for(var slotIndex=1;slotIndex<this.slots.length;slotIndex++)
+        {
+            var owner = this.SLOT2obj(slotIndex);
+
+            if(!owner ||
+               String(owner.id?.PCODE || "").toUpperCase()!="VIDEX")
+                continue;
+
+            if(owner.state && owner.state.active===false)
+                continue;
+
+            var slotID =
+                typeof(this.slot2ID)=="function"
+                    ? this.slot2ID(slotIndex)
+                    : String(slotIndex-1);
+
+            var address = slotID + ":VIDEXTXT:text";
+
+            if(this.pipeIsOpen(address))
+                return address;
+        }
+
+        return fallback;
+    };
 
     /*
      * Pipe availability is runtime state, not merely topology. Consumers such
@@ -1227,6 +1269,16 @@ function mergeActionMap(dst,src)
          */
         if(typeof(device.bindHost)=="function")
             device.bindHost(owner);
+
+        /*
+         * Host-facing devices may need to originate semantic pipe traffic
+         * asynchronously (for example from a DOM keyboard event). Give such
+         * devices the live router explicitly rather than making them reach
+         * through the global oEMU.component.IO.self reference.
+         */
+        if(typeof(device.bindIO)=="function")
+            device.bindIO(io);
+
 
         var actionMap = device_info.action || {};
         for(var op in actionMap)

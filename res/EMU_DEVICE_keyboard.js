@@ -21,6 +21,12 @@ function A2Pkeys()
             ,"handler":"receiveText"
             ,"description":"Apple II keyboard text input"
         }
+        ,"hosttext":{
+             "direction":"out"
+            ,"mime":["text/plain"]
+            ,"visibility":"internal"
+            ,"description":"Host keyboard semantic Unicode text"
+        }
         ,"keyevent":{
              "direction":"in"
             ,"mime":["application/x-retroapple-keyevent"]
@@ -36,6 +42,7 @@ function A2Pkeys()
     this._pipePos = 0;
     this._pipeShift = false;
     this._latchedShift = false;
+    var pipeIO = null;
 
     //this.hw = hw;
     this.bDebug = false;
@@ -72,6 +79,76 @@ function A2Pkeys()
         if(bool!==undefined) this.active = !!bool;
         return this.active;
     }
+
+    /*
+     * Apple2IO supplies the live router after attachment. Physical keyboard
+     * events occur asynchronously, outside a normal pipe receive context, so
+     * this explicit binding lets the host adapter originate semantic text
+     * without depending on global router state.
+     */
+    this.bindIO = function(io)
+    {
+        pipeIO = io || null;
+        return !!pipeIO;
+    };
+
+    /*
+     * KeyboardEvent.key is already the semantic character produced by the
+     * user's active host layout. When VideoTerm owns text input, send that
+     * character through the same VIDEXTXT:text mapper used by pasteboard.
+     *
+     * Pure Control combinations stay on the Apple-II keyboard path. Alt and
+     * AltGr are intentionally allowed: many host layouts require them to
+     * produce ordinary printable characters.
+     */
+    this.routeHostText = function(arg)
+    {
+        if(!pipeIO ||
+           typeof(pipeIO.getTextInputTargetAddress)!="function" ||
+           typeof(pipeIO.pipeSend)!="function" ||
+           !arg ||
+           typeof(arg.key)!="string")
+            return false;
+
+        if(Array.from(arg.key).length!=1)
+            return false;
+
+        if(arg.metaKey===true)
+            return false;
+
+        var altGraph =
+            typeof(arg.getModifierState)=="function" &&
+            arg.getModifierState("AltGraph")===true;
+
+        if(arg.ctrlKey===true &&
+           arg.altKey!==true &&
+           !altGraph)
+            return false;
+
+        var target = pipeIO.getTextInputTargetAddress();
+
+        /*
+         * If motherboard A2KBD is the active destination, keep using the real
+         * Apple keyboard encoder below. The semantic detour exists only when
+         * another text device such as VIDEXTXT owns input.
+         */
+        if(!target || target=="0:A2KBD:text")
+            return false;
+
+        return pipeIO.pipeSend(
+            "0:A2KBD:hosttext",
+            target,
+            {
+                 "mime":"text/plain"
+                ,"data":arg.key
+                ,"meta":{
+                     "source":"host-keyboard"
+                    ,"code":arg.code || ""
+                    ,"altGraph":altGraph
+                }
+            }
+        )===true;
+    };
 
     // Attached-device cycle hook. Keyboard capture is refreshed once per processing cycle.
     this.cycle = function()
@@ -852,7 +929,39 @@ padding: 0;
         switch(id_type)
         {
             case "applescreen_keydown":
-                var d = {'key':arg.key,'meta':this.metaConvert(arg,0),'code':this.KeyCodeHandler(arg,"A2_US")}
+                /*
+                 * Printable text is character-oriented, not physical-key-
+                 * position-oriented. Let the active semantic text endpoint
+                 * decide whether the character exists in its current repertoire.
+                 *
+                 * For VideoTerm this means:
+                 *
+                 *   event.key Unicode
+                 *      -> VIDEXTXT active-ROM reverse map
+                 *      -> VideoTerm-reachable Apple key events
+                 *      -> A2KBD latch
+                 *
+                 * Control/navigation keys fall through to the ordinary Apple
+                 * keyboard encoder.
+                 */
+                var hostMeta = this.metaConvert(arg,0);
+
+                if(this.routeHostText(arg))
+                {
+                    this.setKey(null,hostMeta,0);
+
+                    if(this.bDebug)
+                        console.log(
+                            "event('"+id_type+"') semantic text -> active text input",
+                            arg.key
+                        );
+
+                    arg.preventDefault();
+                    break;
+                }
+
+                var d = {'key':arg.key,'meta':hostMeta,'code':this.KeyCodeHandler(arg,"A2_US")}
+
                 var latchedShift = this.appleLogicalShift(arg);
                 this.setKey(d.code,d.meta,0,latchedShift);
                 if(this.bDebug) console.log((d.code!=null?"event":"METAevent")+"('"+id_type+"') = "+JSON.stringify({...d,'BINmeta':"0b"+oCOM.getBinMulti(d.meta,8),'HEXcode':"0x"+oCOM.getHexByte(d.code & (~0x80))}));
