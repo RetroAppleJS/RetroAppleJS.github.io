@@ -2376,14 +2376,21 @@ PATCH_VIDEX_SLOT
 ; =============================================================================
 
 ENGAGE_VIDEX
-        ; Calling the slot-ROM initial entry causes firmware 2.4 to install:
-        ;       KSW -> VideoTerm input handler
-        ;       CSW -> VideoTerm output handler
-        ; and to run SETUP. A NUL is harmless as the initial output character.
+        ; VideoTerm installs its KSW/CSW.
         LDA     #$00
 
 VT_INIT_CALL
         JSR     $C300
+
+        ; If DOS 3.3 is resident, reconnect DOS around
+        ; the newly installed VideoTerm I/O handlers.
+        LDA     DOS_WARM
+        CMP     #$4C
+        BNE     ENGAGE_VIDEX_DONE
+
+        JSR     $03EA           ; DOS 3.3 re-hook I/O
+
+ENGAGE_VIDEX_DONE
         RTS
 
 ; =============================================================================
