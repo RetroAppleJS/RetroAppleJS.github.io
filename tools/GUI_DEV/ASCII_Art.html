@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Quadrant ASCII Art Converter</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #111417;
+    --panel: #1a1f24;
+    --panel2: #222930;
+    --fg: #edf2f7;
+    --muted: #aab4be;
+    --accent: #68b5ff;
+    --border: #38434d;
+    --good: #83d49a;
+    --warn: #ffcc77;
+    --bad: #ff8f8f;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f3f5f7;
+      --panel: #ffffff;
+      --panel2: #f7f9fb;
+      --fg: #17202a;
+      --muted: #5f6b76;
+      --accent: #1769aa;
+      --border: #cbd3da;
+      --good: #196f3d;
+      --warn: #8a5a00;
+      --bad: #a12626;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+  }
+  header {
+    padding: 18px 20px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  h1 { font-size: 1.25rem; margin: 0 0 6px; }
+  header p { margin: 0; color: var(--muted); max-width: 1050px; line-height: 1.4; }
+  main {
+    display: grid;
+    grid-template-columns: minmax(320px, 430px) minmax(0, 1fr);
+    gap: 14px;
+    padding: 14px;
+  }
+  @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .stack { display: grid; gap: 12px; }
+  fieldset {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    margin: 0;
+  }
+  legend { padding: 0 6px; font-weight: 650; }
+  label { display: grid; gap: 5px; font-size: .92rem; }
+  input, textarea, button, select {
+    font: inherit;
+  }
+  input[type="file"], input[type="number"], input[type="text"], textarea, select {
+    width: 100%;
+    border: 1px solid var(--border);
+    background: var(--panel2);
+    color: var(--fg);
+    border-radius: 6px;
+    padding: 7px 8px;
+  }
+  input[type="range"] { width: 100%; }
+  textarea { min-height: 84px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 9px; }
+  .checkrow { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .checkrow label { display: flex; flex-direction: row; align-items: center; gap: 6px; }
+  .small { font-size: .82rem; color: var(--muted); line-height: 1.35; }
+  .status { font-size: .85rem; padding: 8px 9px; border-radius: 6px; background: var(--panel2); color: var(--muted); }
+  .status.good { color: var(--good); }
+  .status.warn { color: var(--warn); }
+  .status.bad { color: var(--bad); }
+  .buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+  button {
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 8px 11px;
+    background: var(--panel2);
+    color: var(--fg);
+    cursor: pointer;
+  }
+  button.primary { border-color: var(--accent); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .value { font-variant-numeric: tabular-nums; color: var(--muted); }
+  #previewWrap {
+    overflow: auto;
+    min-height: 280px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  #preview { display: block; image-rendering: auto; }
+  #asciiOutput {
+    white-space: pre;
+    overflow: auto;
+    min-height: 260px;
+    max-height: 520px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    color: #000;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    line-height: 1;
+    letter-spacing: 0;
+    font-size: 11px;
+  }
+  .rightgrid { display: grid; gap: 12px; }
+  .metrics { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: .86rem; color: var(--muted); }
+  .metrics b { color: var(--fg); font-weight: 600; }
+  .hidden { display: none !important; }
+  .divider { border-top: 1px solid var(--border); margin: 3px 0; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Quadrant ASCII Art Converter</h1>
+  <p>Offline, self-contained converter. Every candidate character is represented by four independent luminance values (top-left, top-right, bottom-left, bottom-right). Floyd–Steinberg dithering propagates a four-component error vector from one character cell to the next.</p>
+</header>
+
+<main>
+  <section class="panel stack">
+    <fieldset>
+      <legend>1. Source image</legend>
+      <label>Image file
+        <input id="imageFile" type="file" accept="image/*" />
+      </label>
+      <div id="imageStatus" class="status">No image loaded.</div>
+    </fieldset>
+
+    <fieldset>
+      <legend>2. Character set</legend>
+      <label>Characters to use
+        <textarea id="charset" spellcheck="false"> !&quot;#$%&amp;'()*+,-./0123456789:;&lt;=&gt;?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~</textarea>
+      </label>
+      <div class="small">Characters are de-duplicated while preserving order. For contour-style output, try a set containing <code>/ \ | _ - ( ) &lt; &gt; ─ │ ┌ ┐ └ ┘</code>.</div>
+    </fieldset>
+
+    <fieldset>
+      <legend>3. Font / glyph source</legend>
+      <div class="row">
+        <label>Font source
+          <select id="fontMode">
+            <option value="system">System monospace</option>
+            <option value="file">Import PCF / OTF / TTF</option>
+          </select>
+        </label>
+        <label id="fontFileLabel" class="hidden">Font file
+          <input id="fontFile" type="file" accept=".pcf,.otf,.ttf,font/otf,font/ttf,application/x-font-pcf" />
+        </label>
+      </div>
+
+      <div id="otfControls" class="hidden" style="margin-top:10px">
+        <div class="small" style="margin-bottom:7px">For outline fonts, choose the raster grid before the font can be used. This grid is the exact bitmap resolution from which quadrant luminance is measured.</div>
+        <div class="row3">
+          <label>Grid width
+            <input id="gridW" type="number" min="4" max="96" value="16" />
+          </label>
+          <label>Grid height
+            <input id="gridH" type="number" min="4" max="128" value="24" />
+          </label>
+          <label>Font fill %
+            <input id="fontFill" type="number" min="40" max="120" value="88" />
+          </label>
+        </div>
+        <div class="buttons" style="margin-top:9px">
+          <button id="rasterizeFont" class="primary">Rasterize font at this grid</button>
+        </div>
+      </div>
+      <div id="fontStatus" class="status" style="margin-top:10px">Using system monospace; glyph grid 16×24.</div>
+    </fieldset>
+
+    <fieldset>
+      <legend>4. Output geometry</legend>
+      <div class="row">
+        <label>Character width <span class="value" id="colsValue">64</span>
+          <input id="cols" type="range" min="4" max="80" value="64" />
+        </label>
+        <label>Output aspect ratio W:H
+          <input id="aspect" type="number" min="0.1" max="10" step="0.01" value="1.5" />
+        </label>
+      </div>
+      <div class="small">Aspect range is 1:10 (0.1) through 10:1 (10). Rows are derived from the selected glyph-cell shape so the preview has the requested physical aspect.</div>
+    </fieldset>
+
+    <fieldset>
+      <legend>5. Tone & dithering</legend>
+      <label>Brightness <span class="value" id="brightnessValue">0</span>
+        <input id="brightness" type="range" min="-100" max="100" value="0" />
+      </label>
+      <label>Contrast <span class="value" id="contrastValue">0</span>
+        <input id="contrast" type="range" min="-95" max="95" value="0" />
+      </label>
+      <div class="checkrow" style="margin-top:7px">
+        <label><input id="invert" type="checkbox" /> Invert image luminance</label>
+        <label><input id="dither" type="checkbox" checked /> Floyd–Steinberg dithering</label>
+        <label><input id="serpentine" type="checkbox" /> Serpentine scan</label>
+      </div>
+    </fieldset>
+
+    <div class="buttons">
+      <button id="convert" class="primary" disabled>Convert now</button>
+      <button id="copy" disabled>Copy text</button>
+      <button id="download" disabled>Download .txt</button>
+    </div>
+    <div class="small" style="margin-top:7px">Auto-conversion checks for effective input changes every 200 ms; unchanged settings do not rerender the output.</div>
+  </section>
+
+  <section class="rightgrid">
+    <div class="panel">
+      <div class="metrics">
+        <span>Grid: <b id="gridInfo">—</b></span>
+        <span>Glyphs: <b id="glyphInfo">—</b></span>
+        <span>Font cell: <b id="cellInfo">16×24</b></span>
+        <span>Match model: <b>4 luminance quadrants</b></span>
+      </div>
+    </div>
+
+    <div class="panel stack">
+      <div><b>Raster preview</b> <span class="small">(uses the analyzed glyph bitmaps, including PCF fonts)</span></div>
+      <div id="previewWrap"><canvas id="preview" width="1" height="1"></canvas></div>
+    </div>
+
+    <div class="panel stack">
+      <div><b>Text output</b></div>
+      <pre id="asciiOutput" aria-label="ASCII output"></pre>
+    </div>
+  </section>
+</main>
+
+<canvas id="workCanvas" class="hidden"></canvas>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+  const imageFile = $('imageFile');
+  const imageStatus = $('imageStatus');
+  const charsetEl = $('charset');
+  const fontMode = $('fontMode');
+  const fontFileLabel = $('fontFileLabel');
+  const fontFile = $('fontFile');
+  const otfControls = $('otfControls');
+  const fontStatus = $('fontStatus');
+  const gridWEl = $('gridW');
+  const gridHEl = $('gridH');
+  const fontFillEl = $('fontFill');
+  const rasterizeBtn = $('rasterizeFont');
+  const colsEl = $('cols');
+  const aspectEl = $('aspect');
+  const brightnessEl = $('brightness');
+  const contrastEl = $('contrast');
+  const invertEl = $('invert');
+  const ditherEl = $('dither');
+  const serpentineEl = $('serpentine');
+  const convertBtn = $('convert');
+  const copyBtn = $('copy');
+  const downloadBtn = $('download');
+  const asciiOutput = $('asciiOutput');
+  const preview = $('preview');
+  const previewCtx = preview.getContext('2d');
+  const workCanvas = $('workCanvas');
+  const workCtx = workCanvas.getContext('2d', { willReadFrequently: true });
+
+  let sourceImage = null;
+  let sourceName = 'ascii-art';
+  let currentFontKind = 'system'; // system | outline | pcf
+  let outlineFontFace = null;
+  let outlineFamily = null;
+  let pendingOutlineFile = null;
+  let glyphs = [];
+  let glyphCellW = 16;
+  let glyphCellH = 24;
+  let fontReady = true;
+  let lastResult = null;
+  let currentPCFReader = null;
+  let sourceRevision = 0;
+  let glyphRevision = 0;
+  let lastConversionSignature = '';
+
+  function setStatus(el, text, kind='') {
+    el.textContent = text;
+    el.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  function uniqueChars(text) {
+    const seen = new Set();
+    const out = [];
+    for (const ch of Array.from(text)) {
+      if (!seen.has(ch)) {
+        seen.add(ch);
+        out.push(ch);
+      }
+    }
+    return out;
+  }
+
+  function updateButtons() {
+    convertBtn.disabled = !(sourceImage && fontReady && glyphs.length > 0);
+    copyBtn.disabled = !lastResult;
+    downloadBtn.disabled = !lastResult;
+  }
+
+  function updateSliders() {
+    $('colsValue').textContent = colsEl.value;
+    $('brightnessValue').textContent = brightnessEl.value;
+    $('contrastValue').textContent = contrastEl.value;
+  }
+
+  function createGlyphCanvas(w, h) {
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    return c;
+  }
+
+  function quadrantProfileFromInk(ink, w, h) {
+    // ink: 0..255 opacity/coverage of black ink. Returned profile is luminance 0..255.
+    const sums = [0, 0, 0, 0];
+    const counts = [0, 0, 0, 0];
+    const mx = w / 2;
+    const my = h / 2;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const q = (y < my ? 0 : 2) + (x < mx ? 0 : 1);
+        sums[q] += 255 - ink[y * w + x];
+        counts[q]++;
+      }
+    }
+    return sums.map((s, i) => counts[i] ? s / counts[i] : 255);
+  }
+
+  function canvasFromInk(ink, w, h) {
+    const c = createGlyphCanvas(w, h);
+    const ctx = c.getContext('2d');
+    const id = ctx.createImageData(w, h);
+    for (let i = 0; i < ink.length; i++) {
+      const lum = 255 - ink[i];
+      const p = i * 4;
+      id.data[p] = lum;
+      id.data[p+1] = lum;
+      id.data[p+2] = lum;
+      id.data[p+3] = 255;
+    }
+    ctx.putImageData(id, 0, 0);
+    return c;
+  }
+
+  function outlineGlyphForChar(ch, family, w, h, fillPct) {
+    const c = createGlyphCanvas(w, h);
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#000';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+
+    const size = Math.max(1, h * fillPct / 100);
+    ctx.font = `${size}px "${family}"`;
+    const m = ctx.measureText(ch);
+    const ascent = Number.isFinite(m.actualBoundingBoxAscent) ? m.actualBoundingBoxAscent : size * 0.8;
+    const descent = Number.isFinite(m.actualBoundingBoxDescent) ? m.actualBoundingBoxDescent : size * 0.2;
+    const inkH = ascent + descent;
+    const baseline = (h - inkH) / 2 + ascent;
+    ctx.fillText(ch, w / 2, baseline);
+
+    const data = ctx.getImageData(0, 0, w, h).data;
+    const ink = new Uint8ClampedArray(w * h);
+    for (let i = 0; i < ink.length; i++) {
+      // black text on white: coverage ~= 255 - luminance
+      const p = i * 4;
+      const lum = 0.2126 * data[p] + 0.7152 * data[p+1] + 0.0722 * data[p+2];
+      ink[i] = 255 - lum;
+    }
+    return {
+      ch,
+      profile: quadrantProfileFromInk(ink, w, h),
+      ink,
+      canvas: c
+    };
+  }
+
+  function buildOutlineGlyphSet(family, w, h, fillPct) {
+    const chars = uniqueChars(charsetEl.value);
+    glyphs = chars.map(ch => outlineGlyphForChar(ch, family, w, h, fillPct));
+    glyphCellW = w;
+    glyphCellH = h;
+    $('glyphInfo').textContent = glyphs.length;
+    $('cellInfo').textContent = `${w}×${h}`;
+    glyphRevision++;
+  }
+
+  function rebuildSystemGlyphs() {
+    currentFontKind = 'system';
+    currentPCFReader = null;
+    outlineFamily = 'monospace';
+    outlineFontFace = null;
+    pendingOutlineFile = null;
+    fontReady = true;
+    glyphCellW = 16;
+    glyphCellH = 24;
+    buildOutlineGlyphSet('monospace', 16, 24, 88);
+    setStatus(fontStatus, 'Using system monospace; glyph grid 16×24.', 'good');
+    updateButtons();
+  }
+
+  // ---- PCF parser ---------------------------------------------------------
+  const PCF_METRICS = 1 << 2;
+  const PCF_BITMAPS = 1 << 3;
+  const PCF_BDF_ENCODINGS = 1 << 5;
+  const PCF_COMPRESSED_METRICS = 0x00000100;
+  const PCF_BYTE_MASK = 1 << 2;
+  const PCF_BIT_MASK = 1 << 3;
+  const PCF_SCAN_UNIT_MASK = 3 << 4;
+  const PCF_GLYPH_PAD_MASK = 3;
+
+  class PCFReader {
+    constructor(buffer) {
+      this.buffer = buffer;
+      this.dv = new DataView(buffer);
+      this.bytes = new Uint8Array(buffer);
+      this.tables = new Map();
+      this.metrics = [];
+      this.bitmaps = null;
+      this.encoding = new Map();
+    }
+
+    u32le(o) { return this.dv.getUint32(o, true); }
+    i16(o, be) { return this.dv.getInt16(o, !be); }
+    u16(o, be) { return this.dv.getUint16(o, !be); }
+    u32(o, be) { return this.dv.getUint32(o, !be); }
+
+    parseTOC() {
+      if (this.buffer.byteLength < 8) throw new Error('PCF file is too small.');
+      const b = this.bytes;
+      const magicOK = b[0] === 1 && b[1] === 102 && b[2] === 99 && b[3] === 112; // 0x70636601 LE
+      if (!magicOK) throw new Error('Not a PCF file (invalid magic).');
+      const count = this.u32le(4);
+      if (count < 1 || count > 128) throw new Error('Invalid PCF table count.');
+      let p = 8;
+      for (let i = 0; i < count; i++, p += 16) {
+        const type = this.u32le(p);
+        const format = this.u32le(p + 4);
+        const size = this.u32le(p + 8);
+        const offset = this.u32le(p + 12);
+        if (offset + size > this.buffer.byteLength) throw new Error('PCF table outside file bounds.');
+        this.tables.set(type, { type, format, size, offset });
+      }
+    }
+
+    parseMetrics() {
+      const t = this.tables.get(PCF_METRICS);
+      if (!t) throw new Error('PCF has no metrics table.');
+      let p = t.offset;
+      const format = this.u32le(p); p += 4;
+      const be = !!(format & PCF_BYTE_MASK);
+      const compressed = (format & 0xFFFFFF00) === PCF_COMPRESSED_METRICS;
+      const metrics = [];
+      if (compressed) {
+        const n = this.u16(p, be); p += 2;
+        for (let i = 0; i < n; i++) {
+          const left = this.bytes[p++] - 0x80;
+          const right = this.bytes[p++] - 0x80;
+          const width = this.bytes[p++] - 0x80;
+          const ascent = this.bytes[p++] - 0x80;
+          const descent = this.bytes[p++] - 0x80;
+          metrics.push({ left, right, width, ascent, descent, attributes: 0 });
+        }
+      } else {
+        const n = this.u32(p, be); p += 4;
+        for (let i = 0; i < n; i++) {
+          const left = this.i16(p, be); p += 2;
+          const right = this.i16(p, be); p += 2;
+          const width = this.i16(p, be); p += 2;
+          const ascent = this.i16(p, be); p += 2;
+          const descent = this.i16(p, be); p += 2;
+          const attributes = this.u16(p, be); p += 2;
+          metrics.push({ left, right, width, ascent, descent, attributes });
+        }
+      }
+      this.metrics = metrics;
+    }
+
+    parseBitmaps() {
+      const t = this.tables.get(PCF_BITMAPS);
+      if (!t) throw new Error('PCF has no bitmap table.');
+      let p = t.offset;
+      const format = this.u32le(p); p += 4;
+      const be = !!(format & PCF_BYTE_MASK);
+      const n = this.u32(p, be); p += 4;
+      const offsets = new Uint32Array(n);
+      for (let i = 0; i < n; i++) { offsets[i] = this.u32(p, be); p += 4; }
+      const sizes = new Uint32Array(4);
+      for (let i = 0; i < 4; i++) { sizes[i] = this.u32(p, be); p += 4; }
+      const dataOffset = p;
+      const padIndex = format & PCF_GLYPH_PAD_MASK;
+      const dataSize = sizes[padIndex];
+      if (dataOffset + dataSize > t.offset + t.size) throw new Error('Invalid PCF bitmap data size.');
+      this.bitmaps = { format, n, offsets, sizes, dataOffset };
+    }
+
+    parseEncoding() {
+      const t = this.tables.get(PCF_BDF_ENCODINGS);
+      if (!t) throw new Error('PCF has no BDF encoding table.');
+      let p = t.offset;
+      const format = this.u32le(p); p += 4;
+      const be = !!(format & PCF_BYTE_MASK);
+      const min2 = this.u16(p, be); p += 2;
+      const max2 = this.u16(p, be); p += 2;
+      const min1 = this.u16(p, be); p += 2;
+      const max1 = this.u16(p, be); p += 2;
+      p += 2; // default char
+      const cols = max2 - min2 + 1;
+      const rows = max1 - min1 + 1;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const gi = this.u16(p, be); p += 2;
+          if (gi !== 0xFFFF) {
+            const code = ((min1 + r) << 8) | (min2 + c);
+            this.encoding.set(code, gi);
+          }
+        }
+      }
+    }
+
+    parse() {
+      this.parseTOC();
+      this.parseMetrics();
+      this.parseBitmaps();
+      this.parseEncoding();
+      if (this.bitmaps.n !== this.metrics.length) {
+        // Some files are legal with related but not identical counts; keep the common range.
+      }
+      return this;
+    }
+
+    getGlyphIndexForCodePoint(cp) {
+      return this.encoding.has(cp) ? this.encoding.get(cp) : -1;
+    }
+
+    getGlyphInk(index, cellBounds) {
+      if (index < 0 || index >= this.metrics.length || index >= this.bitmaps.n) return null;
+      const m = this.metrics[index];
+      const width = Math.max(0, m.right - m.left);
+      const height = Math.max(0, m.ascent + m.descent);
+      const outW = cellBounds.right - cellBounds.left;
+      const outH = cellBounds.ascent + cellBounds.descent;
+      const ink = new Uint8ClampedArray(outW * outH);
+      if (!width || !height) return ink;
+
+      const { format, offsets, dataOffset } = this.bitmaps;
+      const glyphPad = 1 << (format & PCF_GLYPH_PAD_MASK);
+      const scanUnit = 1 << ((format & PCF_SCAN_UNIT_MASK) >> 4);
+      const byteMSB = !!(format & PCF_BYTE_MASK);
+      const bitMSB = !!(format & PCF_BIT_MASK);
+      const rowBytesRaw = Math.ceil(width / 8);
+      const rowBytes = Math.ceil(rowBytesRaw / glyphPad) * glyphPad;
+      const start = dataOffset + offsets[index];
+
+      for (let y = 0; y < height; y++) {
+        const rowStart = start + y * rowBytes;
+        if (rowStart + rowBytes > this.buffer.byteLength) break;
+        const row = this.bytes.slice(rowStart, rowStart + rowBytes);
+
+        // PCF separates byte order and bit order. Normalize byte order within scan units.
+        if (scanUnit > 1 && byteMSB !== bitMSB) {
+          for (let s = 0; s + scanUnit <= row.length; s += scanUnit) {
+            for (let a = 0, b = scanUnit - 1; a < b; a++, b--) {
+              const tmp = row[s + a]; row[s + a] = row[s + b]; row[s + b] = tmp;
+            }
+          }
+        }
+
+        for (let x = 0; x < width; x++) {
+          const byteIndex = x >> 3;
+          const bit = x & 7;
+          const mask = bitMSB ? (0x80 >> bit) : (1 << bit);
+          if (row[byteIndex] & mask) {
+            const gx = (m.left - cellBounds.left) + x;
+            const gy = (cellBounds.ascent - m.ascent) + y;
+            if (gx >= 0 && gx < outW && gy >= 0 && gy < outH) {
+              ink[gy * outW + gx] = 255;
+            }
+          }
+        }
+      }
+      return ink;
+    }
+  }
+
+  function buildPCFGlyphSet(reader) {
+    const chars = uniqueChars(charsetEl.value);
+    const selected = [];
+    const metricList = [];
+    for (const ch of chars) {
+      const cp = ch.codePointAt(0);
+      const gi = reader.getGlyphIndexForCodePoint(cp);
+      if (gi >= 0 && gi < reader.metrics.length) {
+        selected.push({ ch, gi });
+        metricList.push(reader.metrics[gi]);
+      }
+    }
+    if (!selected.length) throw new Error('None of the chosen characters are encoded by this PCF font.');
+
+    let left = 0, right = 1, ascent = 1, descent = 0;
+    for (const m of metricList) {
+      left = Math.min(left, m.left);
+      right = Math.max(right, m.right);
+      ascent = Math.max(ascent, m.ascent);
+      descent = Math.max(descent, m.descent);
+    }
+    if (right <= left) right = left + 1;
+    if (ascent + descent <= 0) ascent = 1;
+    const bounds = { left, right, ascent, descent };
+    glyphCellW = right - left;
+    glyphCellH = ascent + descent;
+
+    glyphs = selected.map(({ ch, gi }) => {
+      const ink = reader.getGlyphInk(gi, bounds);
+      return {
+        ch,
+        profile: quadrantProfileFromInk(ink, glyphCellW, glyphCellH),
+        ink,
+        canvas: canvasFromInk(ink, glyphCellW, glyphCellH)
+      };
+    });
+    $('glyphInfo').textContent = glyphs.length;
+    $('cellInfo').textContent = `${glyphCellW}×${glyphCellH}`;
+    glyphRevision++;
+  }
+
+  async function loadFontFile(file) {
+    if (!file) return;
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    lastResult = null;
+    asciiOutput.textContent = '';
+    preview.width = preview.height = 1;
+
+    if (ext === 'pcf') {
+      try {
+        fontReady = false;
+        updateButtons();
+        setStatus(fontStatus, 'Parsing PCF bitmap font…', 'warn');
+        const buffer = await file.arrayBuffer();
+        const reader = new PCFReader(buffer).parse();
+        buildPCFGlyphSet(reader);
+        currentPCFReader = reader;
+        currentFontKind = 'pcf';
+        pendingOutlineFile = null;
+        outlineFontFace = null;
+        outlineFamily = null;
+        fontReady = true;
+        otfControls.classList.add('hidden');
+        setStatus(fontStatus, `PCF loaded. ${glyphs.length} selected glyphs; native normalized cell ${glyphCellW}×${glyphCellH}.`, 'good');
+      } catch (err) {
+        glyphs = [];
+        fontReady = false;
+        setStatus(fontStatus, `PCF error: ${err.message}`, 'bad');
+      }
+      updateButtons();
+      return;
+    }
+
+    if (ext === 'otf' || ext === 'ttf') {
+      pendingOutlineFile = file;
+      currentPCFReader = null;
+      currentFontKind = 'outline';
+      fontReady = false;
+      glyphs = [];
+      otfControls.classList.remove('hidden');
+      setStatus(fontStatus, 'Outline font selected. Choose the raster grid, then click “Rasterize font at this grid”.', 'warn');
+      updateButtons();
+      return;
+    }
+
+    setStatus(fontStatus, 'Unsupported font type. Choose .pcf, .otf, or .ttf.', 'bad');
+    fontReady = false;
+    glyphs = [];
+    updateButtons();
+  }
+
+  async function rasterizeOutlineFont() {
+    if (!pendingOutlineFile) return;
+    const w = clamp(parseInt(gridWEl.value, 10) || 16, 4, 96);
+    const h = clamp(parseInt(gridHEl.value, 10) || 24, 4, 128);
+    const fill = clamp(parseFloat(fontFillEl.value) || 88, 40, 120);
+    gridWEl.value = w;
+    gridHEl.value = h;
+    fontFillEl.value = fill;
+    try {
+      fontReady = false;
+      updateButtons();
+      setStatus(fontStatus, `Rasterizing outline font at ${w}×${h}…`, 'warn');
+      const buf = await pendingOutlineFile.arrayBuffer();
+      outlineFamily = `UserFont_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      outlineFontFace = new FontFace(outlineFamily, buf);
+      await outlineFontFace.load();
+      document.fonts.add(outlineFontFace);
+      await document.fonts.ready;
+      buildOutlineGlyphSet(outlineFamily, w, h, fill);
+      currentFontKind = 'outline';
+      fontReady = true;
+      asciiOutput.style.fontFamily = `"${outlineFamily}", monospace`;
+      setStatus(fontStatus, `Outline font ready. ${glyphs.length} glyphs rasterized at ${w}×${h}.`, 'good');
+    } catch (err) {
+      glyphs = [];
+      fontReady = false;
+      setStatus(fontStatus, `Font rasterization error: ${err.message}`, 'bad');
+    }
+    updateButtons();
+  }
+
+  // ---- Source image and quadrant sampling --------------------------------
+  async function loadImage(file) {
+    if (!file) return;
+    try {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        sourceImage = img;
+        sourceRevision++;
+        sourceName = file.name.replace(/\.[^.]+$/, '') || 'ascii-art';
+        setStatus(imageStatus, `${file.name}: ${img.naturalWidth}×${img.naturalHeight}px`, 'good');
+        lastResult = null;
+        updateButtons();
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        sourceImage = null;
+        sourceRevision++;
+        setStatus(imageStatus, 'Could not decode this image.', 'bad');
+        updateButtons();
+      };
+      img.src = url;
+    } catch (err) {
+      setStatus(imageStatus, `Image error: ${err.message}`, 'bad');
+    }
+  }
+
+  function outputGeometry() {
+    const cols = clamp(parseInt(colsEl.value, 10) || 64, 4, 80);
+    const aspect = clamp(parseFloat(aspectEl.value) || 1.5, 0.1, 10);
+    // physical preview ratio = (cols*cellW)/(rows*cellH)
+    const rows = clamp(Math.round((cols * glyphCellW) / (aspect * glyphCellH)), 1, 600);
+    return { cols, rows, aspect };
+  }
+
+  function sourceCropForAspect(img, aspect) {
+    const iw = img.naturalWidth;
+    const ih = img.naturalHeight;
+    const srcAspect = iw / ih;
+    let sx = 0, sy = 0, sw = iw, sh = ih;
+    if (srcAspect > aspect) {
+      sw = ih * aspect;
+      sx = (iw - sw) / 2;
+    } else {
+      sh = iw / aspect;
+      sy = (ih - sh) / 2;
+    }
+    return { sx, sy, sw, sh };
+  }
+
+  function sampleQuadrants(cols, rows, aspect) {
+    // One 2×2 sample block per character cell gives us four quadrant luminances.
+    const W = cols * 2;
+    const H = rows * 2;
+    workCanvas.width = W;
+    workCanvas.height = H;
+    workCtx.clearRect(0, 0, W, H);
+    workCtx.imageSmoothingEnabled = true;
+    workCtx.imageSmoothingQuality = 'high';
+    const c = sourceCropForAspect(sourceImage, aspect);
+    workCtx.drawImage(sourceImage, c.sx, c.sy, c.sw, c.sh, 0, 0, W, H);
+    const data = workCtx.getImageData(0, 0, W, H).data;
+
+    const brightness = parseFloat(brightnessEl.value) || 0;
+    const contrast = parseFloat(contrastEl.value) || 0;
+    const contrastFactor = (100 + contrast) / Math.max(1e-6, 100 - contrast);
+    const invert = invertEl.checked;
+
+    const lumAt = (x, y) => {
+      const p = (y * W + x) * 4;
+      let lum = 0.2126 * data[p] + 0.7152 * data[p+1] + 0.0722 * data[p+2];
+      lum = (lum - 127.5) * contrastFactor + 127.5 + brightness * 2.55;
+      lum = clamp(lum, 0, 255);
+      return invert ? 255 - lum : lum;
+    };
+
+    const cells = new Array(cols * rows);
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const px = x * 2;
+        const py = y * 2;
+        cells[y * cols + x] = [
+          lumAt(px, py),
+          lumAt(px + 1, py),
+          lumAt(px, py + 1),
+          lumAt(px + 1, py + 1)
+        ];
+      }
+    }
+    return cells;
+  }
+
+  function nearestGlyph(v) {
+    let best = glyphs[0];
+    let bestErr = Infinity;
+    for (let i = 0; i < glyphs.length; i++) {
+      const p = glyphs[i].profile;
+      const d0 = v[0] - p[0];
+      const d1 = v[1] - p[1];
+      const d2 = v[2] - p[2];
+      const d3 = v[3] - p[3];
+      const e = d0*d0 + d1*d1 + d2*d2 + d3*d3;
+      if (e < bestErr) {
+        bestErr = e;
+        best = glyphs[i];
+      }
+    }
+    return best;
+  }
+
+  function convertCells(cells, cols, rows) {
+    const errors = new Float32Array(cols * rows * 4);
+    const indices = new Uint16Array(cols * rows);
+    const useDither = ditherEl.checked;
+    const serpentine = serpentineEl.checked;
+
+    function addError(x, y, err, weight) {
+      if (x < 0 || x >= cols || y < 0 || y >= rows) return;
+      const base = (y * cols + x) * 4;
+      errors[base] += err[0] * weight;
+      errors[base+1] += err[1] * weight;
+      errors[base+2] += err[2] * weight;
+      errors[base+3] += err[3] * weight;
+    }
+
+    for (let y = 0; y < rows; y++) {
+      const reverse = serpentine && (y & 1);
+      const x0 = reverse ? cols - 1 : 0;
+      const xEnd = reverse ? -1 : cols;
+      const dx = reverse ? -1 : 1;
+      for (let x = x0; x !== xEnd; x += dx) {
+        const ci = y * cols + x;
+        const eb = ci * 4;
+        const src = cells[ci];
+        const v = [
+          clamp(src[0] + errors[eb], 0, 255),
+          clamp(src[1] + errors[eb+1], 0, 255),
+          clamp(src[2] + errors[eb+2], 0, 255),
+          clamp(src[3] + errors[eb+3], 0, 255)
+        ];
+        const g = nearestGlyph(v);
+        const gi = glyphs.indexOf(g);
+        indices[ci] = gi;
+
+        if (useDither) {
+          const err = [
+            v[0] - g.profile[0],
+            v[1] - g.profile[1],
+            v[2] - g.profile[2],
+            v[3] - g.profile[3]
+          ];
+          if (!reverse) {
+            addError(x + 1, y, err, 7/16);
+            addError(x - 1, y + 1, err, 3/16);
+            addError(x, y + 1, err, 5/16);
+            addError(x + 1, y + 1, err, 1/16);
+          } else {
+            addError(x - 1, y, err, 7/16);
+            addError(x + 1, y + 1, err, 3/16);
+            addError(x, y + 1, err, 5/16);
+            addError(x - 1, y + 1, err, 1/16);
+          }
+        }
+      }
+    }
+    return indices;
+  }
+
+  function indicesToText(indices, cols, rows) {
+    const lines = [];
+    for (let y = 0; y < rows; y++) {
+      let line = '';
+      for (let x = 0; x < cols; x++) line += glyphs[indices[y * cols + x]].ch;
+      lines.push(line);
+    }
+    return lines.join('\n');
+  }
+
+  function renderPreview(indices, cols, rows) {
+    const targetCellH = 12;
+    const targetCellW = Math.max(2, targetCellH * glyphCellW / glyphCellH);
+    const maxCanvasW = 1400;
+    let scale = Math.min(1, maxCanvasW / (cols * targetCellW));
+    if (!Number.isFinite(scale) || scale <= 0) scale = 1;
+    const cw = Math.max(1, targetCellW * scale);
+    const ch = Math.max(1, targetCellH * scale);
+    preview.width = Math.max(1, Math.round(cols * cw));
+    preview.height = Math.max(1, Math.round(rows * ch));
+    previewCtx.fillStyle = '#fff';
+    previewCtx.fillRect(0, 0, preview.width, preview.height);
+    previewCtx.imageSmoothingEnabled = currentFontKind !== 'pcf';
+
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const g = glyphs[indices[y * cols + x]];
+        const dx = Math.round(x * cw);
+        const dy = Math.round(y * ch);
+        const dw = Math.max(1, Math.round((x + 1) * cw) - dx);
+        const dh = Math.max(1, Math.round((y + 1) * ch) - dy);
+        previewCtx.drawImage(g.canvas, dx, dy, dw, dh);
+      }
+    }
+  }
+
+  function conversionInputSignature() {
+    return JSON.stringify([
+      sourceRevision,
+      glyphRevision,
+      currentFontKind,
+      fontReady,
+      colsEl.value,
+      aspectEl.value,
+      brightnessEl.value,
+      contrastEl.value,
+      invertEl.checked,
+      ditherEl.checked,
+      serpentineEl.checked
+    ]);
+  }
+
+  function doConvert(force = false) {
+    if (!sourceImage || !fontReady || !glyphs.length) return false;
+    const signature = conversionInputSignature();
+    if (!force && signature === lastConversionSignature) return false;
+    const { cols, rows, aspect } = outputGeometry();
+    const cells = sampleQuadrants(cols, rows, aspect);
+    const indices = convertCells(cells, cols, rows);
+    const text = indicesToText(indices, cols, rows);
+    asciiOutput.textContent = text;
+    if (currentFontKind === 'outline' && outlineFamily) {
+      asciiOutput.style.fontFamily = `"${outlineFamily}", monospace`;
+    } else {
+      asciiOutput.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+    }
+    renderPreview(indices, cols, rows);
+    lastResult = { text, cols, rows, indices };
+    lastConversionSignature = signature;
+    $('gridInfo').textContent = `${cols}×${rows}`;
+    $('glyphInfo').textContent = glyphs.length;
+    updateButtons();
+    return true;
+  }
+
+  async function copyOutput() {
+    if (!lastResult) return;
+    try {
+      await navigator.clipboard.writeText(lastResult.text);
+      copyBtn.textContent = 'Copied';
+      setTimeout(() => copyBtn.textContent = 'Copy text', 900);
+    } catch {
+      const range = document.createRange();
+      range.selectNodeContents(asciiOutput);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      copyBtn.textContent = 'Select text manually';
+      setTimeout(() => copyBtn.textContent = 'Copy text', 1300);
+    }
+  }
+
+  function downloadOutput() {
+    if (!lastResult) return;
+    const blob = new Blob([lastResult.text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${sourceName}_${lastResult.cols}x${lastResult.rows}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function charsetChanged() {
+    lastResult = null;
+    asciiOutput.textContent = '';
+    copyBtn.disabled = downloadBtn.disabled = true;
+    if (currentFontKind === 'system') {
+      rebuildSystemGlyphs();
+    } else if (currentFontKind === 'outline') {
+      if (fontReady && outlineFamily) {
+        buildOutlineGlyphSet(outlineFamily, glyphCellW, glyphCellH, clamp(parseFloat(fontFillEl.value) || 88, 40, 120));
+        updateButtons();
+      } else {
+        glyphs = [];
+        updateButtons();
+      }
+    } else if (currentFontKind === 'pcf') {
+      try {
+        if (!currentPCFReader) throw new Error('PCF font data is no longer available.');
+        buildPCFGlyphSet(currentPCFReader);
+        fontReady = true;
+        setStatus(fontStatus, `PCF character set remapped. ${glyphs.length} selected glyphs; cell ${glyphCellW}×${glyphCellH}.`, 'good');
+      } catch (err) {
+        glyphs = [];
+        fontReady = false;
+        setStatus(fontStatus, `PCF character-set error: ${err.message}`, 'bad');
+      }
+      updateButtons();
+    }
+  }
+
+  imageFile.addEventListener('change', () => loadImage(imageFile.files[0]));
+  fontMode.addEventListener('change', () => {
+    const fileMode = fontMode.value === 'file';
+    fontFileLabel.classList.toggle('hidden', !fileMode);
+    otfControls.classList.add('hidden');
+    fontFile.value = '';
+    if (!fileMode) rebuildSystemGlyphs();
+    else {
+      currentFontKind = 'system';
+      fontReady = false;
+      glyphs = [];
+      setStatus(fontStatus, 'Choose a PCF, OTF, or TTF font file.', 'warn');
+      updateButtons();
+    }
+  });
+  fontFile.addEventListener('change', () => loadFontFile(fontFile.files[0]));
+  rasterizeBtn.addEventListener('click', rasterizeOutlineFont);
+  charsetEl.addEventListener('change', charsetChanged);
+  colsEl.addEventListener('input', updateSliders);
+  brightnessEl.addEventListener('input', updateSliders);
+  contrastEl.addEventListener('input', updateSliders);
+  convertBtn.addEventListener('click', () => doConvert(true));
+  copyBtn.addEventListener('click', copyOutput);
+  downloadBtn.addEventListener('click', downloadOutput);
+
+  rebuildSystemGlyphs();
+  updateSliders();
+  $('gridInfo').textContent = '—';
+
+  // Poll rather than convert on every input event. This coalesces rapid slider
+  // movement and only performs the expensive conversion when effective state changed.
+  setInterval(() => {
+    doConvert(false);
+  }, 200);
+})();
+</script>
+</body>
+</html>
