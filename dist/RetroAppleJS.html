@@ -25420,10 +25420,52 @@ function AppleDisk2()
 
     this.downloadDisk = function(deviceID)
     {
-        var bytes = this.getDiskData(deviceID);
-        if(bytes==null) return;
+        if(deviceID===undefined) return;
 
-        oCOM.Download(this.getDiskName(deviceID), bytes);
+        const deviceN = diskDeviceN(deviceID);
+        if(deviceN===null) return;
+
+        var nibBytes = state.diskData[deviceN];
+        if(nibBytes==null) return;
+
+        var fileName = this.getDiskName(deviceID);
+        var match = fileName.toLowerCase().match(/\.([a-z0-9]+)$/);
+        var ext = match ? match[1] : "dsk";
+        var bytes;
+
+        switch(ext)
+        {
+            case "nib":
+                // The live emulator representation already is NIB.
+                bytes = Array.from(nibBytes);
+                break;
+
+            case "po":
+                // Restore ProDOS sector ordering.
+                bytes = this.convertNib2Po(nibBytes);
+                break;
+
+            case "dsk":
+            case "do":
+                // Restore DOS 3.3 sector ordering.
+                bytes = this.convertNib2Dsk(nibBytes);
+                break;
+
+            case "woz":
+                // Do not create a DSK image carrying a false .woz extension.
+                console.warn(
+                    "Cannot download " + fileName +
+                    " as WOZ: WOZ conversion is not implemented."
+                );
+                return;
+
+            default:
+                // Preserve the historical behaviour for unnamed/unknown images.
+                bytes = this.convertNib2Dsk(nibBytes);
+                break;
+        }
+
+        oCOM.Download(fileName, bytes);
     }
 
 
@@ -27369,7 +27411,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
             function mountDiskBytes(bytes, source)
             {
                 // Let the image detector decide dsk/po/nib instead of relying on extension.
-                var info = disk2.detectDiskImageType(bytes);
+                
                 var nibBytes;
 
                 switch(info.type)
@@ -27628,6 +27670,10 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
         try
         {
             if(typeof drv == "number") drv = "D" + drv;
+
+            // Keep the mounted-image metadata in sync with the catalog UI.
+            // downloadDisk() uses this per-drive name.
+            this.setDiskName(drv, fileName);
 
             var el = this.diskMiddleEl(drv);
             if(el == null) return;
