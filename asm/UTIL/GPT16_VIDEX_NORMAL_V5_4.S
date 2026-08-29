@@ -1,29 +1,28 @@
 ; =============================================================================
-; GPT16_VIDEX_NORMAL_V5_4.S
+; GPT16_VIDEX_NORMAL_V5_3.S
 ; =============================================================================
 ;
 ; RetroAppleJS ASM_core.js / NMOS 6502
 ; Load address : $6000
 ; Call from    : Applesoft BASIC with CALL 24576
 ;
-; V5.4 binary-history separation
-; ------------------------------
-;   * CMD and GPT-created scripts remain DOS 3.3 TEXT files: high-bit 7-bit
-;     ASCII with $8D carriage returns, suitable for EXEC.
-;   * SAVE chat history is now a DOS 3.3 BINARY file. Its payload stores the
-;     exact VIDEX:NORMAL glyph codes displayed on screen, including $00-$1F
-;     glyph positions that cannot safely pass through VideoTerm COUT/TYPE.
-;   * Binary history begins with six bytes:
-;         "GPTV", version $01, ROM id "N" (VIDEX:NORMAL)
-;   * Payload $00-$7F = literal Videx glyph; $80 = newline token.
-;   * LOAD accepts ordinary DOS TEXT files and GPTV history BINARY files.
-;   * GPTV glyphs are reverse-mapped through the same VIDEX:NORMAL metadata
-;     before transmission to GPT16 as Unicode.
-;   * SAVE is committed after every submitted prompt by CLOSE, re-OPEN and
-;     POSITION to the maintained binary byte offset while GPT works.
-;   * Prompt requests retain the V5.3 512-character input capacity.
-;   * FM_WRITE_RAW remains the sole physical disk-byte writer. Text-vs-binary
-;     behavior lives entirely in the encoding layer.
+; V5.3 history / prompt / commit correction
+; -----------------------------------------
+;   * SAVE history is DOS/TYPE-safe high-bit text. Unicode not directly printable
+;     through VideoTerm firmware is stored losslessly as ASCII UTF-16 escapes:
+;         U+2500 -> \u2500
+;         U+1F600 -> \uD83D\uDE00
+;     Literal backslash is stored as \\.
+;   * A three-byte $81,$82,$83 no-op magic identifies escaped history to LOAD.
+;     VideoTerm firmware ignores those bytes when a DOS TYPE command prints them.
+;   * CMD/GPT-created EXEC files remain DOS high-bit 7-bit ASCII + CR.
+;   * One common raw DOS byte writer remains shared by both encoding strategies.
+;   * Manual LOAD is a local SPACE-paged viewer for both escaped history and
+;     ordinary DOS text/CMD files; only history-magic files decode Unicode escapes.
+;   * Prompt requests now allow 512 ASCII characters using a 16-bit count/index.
+;   * After each submitted prompt, SAVE is closed/reopened and POSITIONed to the
+;     maintained byte offset. This commits the previous reply + current request
+;     while GPT is processing the newly submitted request.
 ;
 ; V5.1 DOS correction retained
 ; ----------------------------
@@ -37,8 +36,8 @@
 ;       [U]P [D]OWN [C]MD [S]AVE [L]OAD [Q]UIT
 ;   * UP/DOWN are reserved for later page navigation.
 ;   * CMD creates a DOS 3.3 sequential text file and accepts line-by-line text.
-;   * SAVE records requests/replies to a compact VIDEX:NORMAL binary history.
-;   * LOAD reads DOS high-bit text or GPTV Videx binary history and submits one request.
+;   * SAVE records requests/replies to a DOS-safe escaped-Unicode history file.
+;   * LOAD locally displays escaped history or ordinary DOS text with pagination.
 ;   * GPT receives a hidden startup briefing describing the terminal/file policy.
 ;   * GPT may request file create/save/load operations through U+001B controls;
 ;     the application never executes files on GPT's behalf.
@@ -177,7 +176,6 @@ FM_END_DATA     EQU     $05
 FM_FILE_NOT_FOUND EQU   $06
 
 DOS_TEXT_TYPE   EQU     $00
-DOS_BINARY_TYPE EQU     $04
 MAX_FILENAME    EQU     $1E             ; 30
 LOAD_LIMIT_HI   EQU     $0D             ; $0DAC = 3500 UTF-16 units
 LOAD_LIMIT_LO   EQU     $AC
@@ -186,12 +184,9 @@ AUTO_LOAD_MAX   EQU     $04
 FILE_TARGET_AUX EQU     $00
 FILE_TARGET_SAVE EQU    $01
 FILE_ENCODING_DOS EQU   $00             ; high-bit 7-bit DOS text
-FILE_ENCODING_HISTORY EQU $01           ; raw VIDEX:NORMAL glyph binary
+FILE_ENCODING_HISTORY EQU $01             ; DOS-safe escaped UTF-16
 LOAD_ENCODING_DOS EQU   $00
 LOAD_ENCODING_HISTORY EQU $01
-HISTORY_NEWLINE EQU     $80             ; binary-history newline token
-HISTORY_VERSION EQU     $01
-HISTORY_ROM_NORMAL EQU  $4E             ; ASCII "N"
 
 ; =============================================================================
 ; SERIAL PRO / 6551
@@ -277,10 +272,12 @@ START_CARDS_OK
         STA     ENC_LAST_CR
         STA     ENC_LAST_CR+1
         STA     LOAD_ENCODING
-        STA     LOAD_FILE_TYPE
+        STA     LOAD_PREFETCH_COUNT
+        STA     LOAD_PREFETCH_INDEX
         STA     LOAD_SURROGATE
         STA     LOAD_LAST_CR
-        STA     FILE_OPEN_TYPE
+        STA     ESC_DIGITS
+        STA     HEX_TEMP
 
         ; Send the application/file-policy briefing as a normal GPT16 request,
         ; but suppress its acknowledgement from the VideoTerm display.
@@ -565,17 +562,25 @@ MENU_LOAD_NAME_OK
         STA     INPUT_COUNT_HI
         JSR     MENU_RESTORE_ROW
         JSR     ENSURE_LINE_START
-        JSR     LOAD_AUX_AS_GPT_REQUEST
+        ; Manual LOAD distinguishes saved chat history from ordinary DOS text.
+        ; Escaped V5.3 history is rendered locally; ordinary text retains the
+        ; existing behavior of becoming the next GPT request.
+        JSR     LOAD_AUX_FROM_MENU
         BCC     MENU_LOAD_OK
         JSR     SHOW_DOS_ERROR_AND_PROMPT
         JMP     MAIN_INPUT
 
 MENU_LOAD_OK
+        LDA     LOAD_SENT_GPT
+        BEQ     MENU_LOAD_VIEW_DONE
+
         JSR     HISTORY_COMMIT_REOPEN
         LDA     #AUTO_LOAD_MAX
         STA     AUTO_ACTION_BUDGET
         JSR     RECEIVE_GPT16
         JSR     HANDLE_PENDING_LOADS
+
+MENU_LOAD_VIEW_DONE
         JSR     ENSURE_LINE_START
         JSR     PRINT_USER_PROMPT
         JMP     MAIN_INPUT
@@ -908,16 +913,11 @@ PRINT_CMD_PROMPT
 ; =============================================================================
 ; SAVE / HISTORY
 ; =============================================================================
-;
-; SAVE is a DOS BINARY file with a compact GPTV header and raw Videx glyph
-; payload. Only the encoder knows about glyph/newline semantics; all bytes pass
-; through the same FM_WRITE_RAW File Manager routine used by CMD text output.
-;
 
 SAVE_REOPEN_NEW
         LDA     SAVE_ACTIVE
         BEQ     SAVE_OPEN_NEW
-        JSR     FM_CLOSE_SAVE
+        JSR     FM_EOF_CLOSE_SAVE
         BCS     SAVE_OPEN_FAIL
         LDA     #$00
         STA     SAVE_ACTIVE
@@ -925,6 +925,9 @@ SAVE_OPEN_NEW
         JSR     FM_CREATE_SAVE
         BCS     SAVE_OPEN_FAIL
 
+        ; V5.3 history is DOS/TYPE-safe escaped UTF-16. The leading
+        ; $81,$82,$83 bytes are harmless VideoTerm no-ops and identify the
+        ; representation to LOAD without displaying a visible header.
         LDA     #FILE_TARGET_SAVE
         STA     FILE_TARGET
         LDA     #FILE_ENCODING_HISTORY
@@ -934,7 +937,6 @@ SAVE_OPEN_NEW
         STA     ENC_LAST_CR,X
         STA     SAVE_POS_LO
         STA     SAVE_POS_HI
-
         JSR     HISTORY_WRITE_MAGIC
         BCS     SAVE_MAGIC_FAIL
 
@@ -953,29 +955,19 @@ SAVE_MAGIC_FAIL
 SAVE_OPEN_FAIL
         RTS
 
-; Six-byte application header:
-;       47 50 54 56 01 4E = "GPTV", version 1, VIDEX:NORMAL.
 HISTORY_WRITE_MAGIC
-        LDA     #'G'
+        LDA     #$81                    ; ignored by VideoTerm VIDOUT
         JSR     FM_WRITE_RAW
         BCS     HISTORY_MAGIC_DONE
-        LDA     #'P'
+        LDA     #$82
         JSR     FM_WRITE_RAW
         BCS     HISTORY_MAGIC_DONE
-        LDA     #'T'
-        JSR     FM_WRITE_RAW
-        BCS     HISTORY_MAGIC_DONE
-        LDA     #'V'
-        JSR     FM_WRITE_RAW
-        BCS     HISTORY_MAGIC_DONE
-        LDA     #HISTORY_VERSION
-        JSR     FM_WRITE_RAW
-        BCS     HISTORY_MAGIC_DONE
-        LDA     #HISTORY_ROM_NORMAL
+        LDA     #$83
         JSR     FM_WRITE_RAW
 HISTORY_MAGIC_DONE
         RTS
 
+; A = one ASCII code point to append through the escaped-history encoder.
 HISTORY_WRITE_ASCII
         STA     CP_LO
         LDA     #$00
@@ -1020,8 +1012,8 @@ HISTORY_USER_CR
 HISTORY_USER_DONE
         RTS
 
-; CP_HI:CP_LO = one UTF-16 code unit. History stores the same glyph chosen for
-; the live VIDEX:NORMAL screen. Unsupported Unicode is omitted in both places.
+; CP_HI:CP_LO = one UTF-16 code unit. History chooses escaped UTF-16;
+; the File Manager byte transport itself is shared with CMD/GPT-created files.
 HISTORY_WRITE_CP
         LDA     SAVE_ACTIVE
         BEQ     HISTORY_CP_DONE
@@ -1036,6 +1028,7 @@ HISTORY_CP_DONE
         CLC
         RTS
 
+; HS_HI:HS_LO / LS_HI:LS_LO = one supplementary Unicode scalar.
 HISTORY_WRITE_SURROGATE
         LDA     SAVE_ACTIVE
         BEQ     HISTORY_SURR_DONE
@@ -1050,11 +1043,27 @@ HISTORY_SURR_DONE
         CLC
         RTS
 
-; Commit previous reply + current prompt while GPT is thinking.
-; Binary history has no DOS-text $00 sentinel: CLOSE records current EOF.
+; Commit the previous reply + current prompt while GPT is thinking.
+;
+; Write a real DOS $00 EOF before CLOSE so the on-disk file is valid at every
+; commit point.  SAVE_POS normally denotes the first free payload byte; the EOF
+; write advances it once, so move it back before reopen/POSITION.  The next
+; response byte overwrites that committed EOF.
 HISTORY_COMMIT_REOPEN
         LDA     SAVE_ACTIVE
         BEQ     HISTORY_COMMIT_DONE
+
+        LDA     #$00
+        JSR     FM_WRITE_SAVE_RAW
+        BCS     HISTORY_COMMIT_FAIL
+
+        ; Keep SAVE_POS at payload length, excluding the temporary EOF byte.
+        LDA     SAVE_POS_LO
+        BNE     HISTORY_COMMIT_DEC_LO
+        DEC     SAVE_POS_HI
+HISTORY_COMMIT_DEC_LO
+        DEC     SAVE_POS_LO
+
         JSR     FM_CLOSE_SAVE
         BCS     HISTORY_COMMIT_FAIL
         JSR     FM_OPEN_SAVE_EXIST
@@ -1079,12 +1088,205 @@ HISTORY_DISABLE
         RTS
 
 ; =============================================================================
-; LOAD DOS TEXT / GPTV BINARY HISTORY -> GPT16 REQUEST
+; LOAD TEXT FILE / CHAT HISTORY
 ; =============================================================================
 ;
-; Files beginning $81,$82,$83 are V5.3 Videx binary history. All other
-; files retain the ordinary DOS high-bit ASCII path.
+; Files beginning $81,$82,$83 are V5.3 escaped UTF-16 history. Manual menu
+; LOAD is a local paged viewer for both those history files and ordinary DOS
+; text/CMD files. Only magic-tagged history interprets \uXXXX / \\ escapes;
+; ordinary DOS text is rendered literally, so source code containing \uXXXX is
+; shown exactly as written.
 ;
+; GPT-requested ESC-L loads still use LOAD_AUX_AS_GPT_REQUEST directly, so the
+; file-control protocol retains its original semantics.
+;
+
+; Manual ESC-menu LOAD. C=0 success, C=1 DOS error.
+; This path is display-only; it never sends the selected file to GPT.
+LOAD_AUX_FROM_MENU
+        LDA     #$00
+        STA     LOAD_SENT_GPT
+
+        JSR     FM_OPEN_AUX_EXIST
+        BCC     LOAD_MENU_OPENED
+        SEC
+        RTS
+
+LOAD_MENU_OPENED
+        LDA     #$01
+        STA     AUX_OPEN
+        LDA     #$00
+        STA     LOAD_COUNT_LO
+        STA     LOAD_COUNT_HI
+        STA     LOAD_LAST_CR
+
+        JSR     LOAD_DETECT_ENCODING
+        BCC     LOAD_MENU_ENCODING_READY
+        LDA     DOS_LAST_RC
+        STA     DOS_ERROR_SAVE
+        JSR     FM_CLOSE_AUX
+        LDA     DOS_ERROR_SAVE
+        STA     DOS_LAST_RC
+        LDA     #$00
+        STA     AUX_OPEN
+        SEC
+        RTS
+
+LOAD_MENU_ENCODING_READY
+        ; LOAD_NEXT_CODEPOINT already distinguishes the representations:
+        ; history-magic files decode DOS-safe Unicode escapes, while ordinary
+        ; DOS text returns each 7-bit character literally. The same viewer can
+        ; therefore display both without ever reinterpreting CMD source text.
+        JMP     LOAD_HISTORY_TO_SCREEN
+
+; Display either decoded history or literal DOS text through the same
+; VIDEX:NORMAL Unicode mapping used for live GPT replies. LOAD_NEXT_CODEPOINT
+; performs history escape decoding only when the history magic was detected.
+;
+; The 24th physical row is reserved for the pager prompt. Content occupies
+; rows 0..22; when more displayable content follows, SPACE clears the screen
+; and continues with the next page.
+LOAD_HISTORY_TO_SCREEN
+        JSR     SCREEN_INIT
+        LDA     #$00
+        STA     LOAD_LAST_CR
+
+LOAD_HISTORY_VIEW_LOOP
+        JSR     LOAD_NEXT_CODEPOINT
+        BCS     LOAD_HISTORY_VIEW_HAVE
+        JMP     LOAD_HISTORY_VIEW_END
+
+LOAD_HISTORY_VIEW_HAVE
+        ; Saved CR/LF semantics mirror PROCESS_BMP_CODEPOINT without writing
+        ; anything back into SAVE or a GPT-created capture file.
+        LDA     CP_HI
+        BNE     LOAD_HISTORY_VIEW_UNICODE
+        LDA     CP_LO
+        CMP     #KEY_CR
+        BEQ     LOAD_HISTORY_VIEW_CR
+        CMP     #$0A
+        BEQ     LOAD_HISTORY_VIEW_LF
+
+LOAD_HISTORY_VIEW_UNICODE
+        LDA     #$00
+        STA     LOAD_LAST_CR
+
+        ; Decode a UTF-16 surrogate pair before mapping supplementary glyphs.
+        LDA     CP_HI
+        CMP     #$D8
+        BCC     LOAD_HISTORY_VIEW_BMP
+        CMP     #$DC
+        BCS     LOAD_HISTORY_VIEW_BMP
+
+        LDA     CP_LO
+        STA     HS_LO
+        LDA     CP_HI
+        STA     HS_HI
+
+        JSR     LOAD_NEXT_CODEPOINT
+        BCC     LOAD_HISTORY_VIEW_END
+
+        LDA     CP_HI
+        CMP     #$DC
+        BCC     LOAD_HISTORY_VIEW_BAD_SURR
+        CMP     #$E0
+        BCS     LOAD_HISTORY_VIEW_BAD_SURR
+
+        LDA     CP_LO
+        STA     LS_LO
+        LDA     CP_HI
+        STA     LS_HI
+        JSR     MAP_SURROGATE
+        BCC     LOAD_HISTORY_VIEW_LOOP
+        JSR     HISTORY_VIEW_WRITE_GLYPH
+        JMP     LOAD_HISTORY_VIEW_LOOP
+
+LOAD_HISTORY_VIEW_BAD_SURR
+        ; Malformed pairs are not expected from SAVE. Match the live terminal's
+        ; unsupported-character policy by omitting them rather than inventing a
+        ; replacement glyph.
+        JMP     LOAD_HISTORY_VIEW_LOOP
+
+LOAD_HISTORY_VIEW_BMP
+        JSR     MAP_BMP
+        BCC     LOAD_HISTORY_VIEW_LOOP
+        JSR     HISTORY_VIEW_WRITE_GLYPH
+        JMP     LOAD_HISTORY_VIEW_LOOP
+
+LOAD_HISTORY_VIEW_CR
+        JSR     HISTORY_VIEW_NEWLINE
+        LDA     #$01
+        STA     LOAD_LAST_CR
+        JMP     LOAD_HISTORY_VIEW_LOOP
+
+LOAD_HISTORY_VIEW_LF
+        LDA     LOAD_LAST_CR
+        BEQ     LOAD_HISTORY_VIEW_LF_ONLY
+        LDA     #$00
+        STA     LOAD_LAST_CR
+        JMP     LOAD_HISTORY_VIEW_LOOP
+
+LOAD_HISTORY_VIEW_LF_ONLY
+        JSR     HISTORY_VIEW_NEWLINE
+        LDA     #$00
+        STA     LOAD_LAST_CR
+        JMP     LOAD_HISTORY_VIEW_LOOP
+
+LOAD_HISTORY_VIEW_END
+        LDA     DOS_LAST_RC
+        CMP     #FM_END_DATA
+        BEQ     LOAD_HISTORY_VIEW_CLOSE
+
+        LDA     DOS_LAST_RC
+        STA     DOS_ERROR_SAVE
+        JSR     FM_CLOSE_AUX
+        LDA     DOS_ERROR_SAVE
+        STA     DOS_LAST_RC
+        LDA     #$00
+        STA     AUX_OPEN
+        SEC
+        RTS
+
+LOAD_HISTORY_VIEW_CLOSE
+        JSR     FM_CLOSE_AUX
+        LDA     #$00
+        STA     AUX_OPEN
+        CLC
+        RTS
+
+; A=glyph. If the next visible character would enter the pager row, stop first.
+HISTORY_VIEW_WRITE_GLYPH
+        PHA
+        JSR     HISTORY_VIEW_PAGE_CHECK
+        PLA
+        JSR     WRITE_GLYPH
+        RTS
+
+HISTORY_VIEW_NEWLINE
+        JSR     HISTORY_VIEW_PAGE_CHECK
+        JSR     NEWLINE
+        RTS
+
+; Row 23 is kept free for the pager.  We check only when another displayable
+; item is about to be emitted, so an EOF exactly at a page boundary does not
+; produce a spurious final "more" prompt.
+HISTORY_VIEW_PAGE_CHECK
+        LDA     ROW
+        CMP     #$17                    ; physical row 23 of 0..23
+        BCC     HISTORY_VIEW_PAGE_READY
+
+        LDX     #<TXT_HISTORY_MORE
+        LDY     #>TXT_HISTORY_MORE
+        JSR     PRINT_SCREEN_STRING
+
+HISTORY_VIEW_WAIT_SPACE
+        JSR     GET_KEY_WAIT
+        CMP     #' '
+        BNE     HISTORY_VIEW_WAIT_SPACE
+
+        JSR     SCREEN_INIT
+HISTORY_VIEW_PAGE_READY
+        RTS
 
 LOAD_AUX_AS_GPT_REQUEST
         JSR     FM_OPEN_AUX_EXIST
@@ -1154,8 +1356,8 @@ LOAD_LIMIT_CONTINUE
         JMP     LOAD_READ_END
 LOAD_HAVE_CODEPOINT
 
-        ; If SAVE is active, append the decoded scalar through the binary
-        ; Videx-history encoder, never the source file's physical bytes.
+        ; If SAVE is active, append the decoded scalar to the escaped history,
+        ; never the source file's physical bytes.
         LDA     LOAD_SURROGATE
         BEQ     LOAD_HISTORY_BMP
         JSR     HISTORY_WRITE_SURROGATE
@@ -1242,64 +1444,74 @@ LOAD_FINISH
         CLC
         RTS
 
-; Detect source representation from the File Manager OPEN result.
-; Parameter byte $07 contains the actual catalog type of the opened file.
+; Read the first three bytes once and recognize the invisible history magic.
+; If the prefix differs, retain every byte for ordinary DOS-text decoding.
 LOAD_DETECT_ENCODING
-        LDA     LOAD_FILE_TYPE
-        CMP     #DOS_TEXT_TYPE
-        BEQ     LOAD_DETECT_DOS
-        CMP     #DOS_BINARY_TYPE
-        BEQ     LOAD_DETECT_BINARY
-        LDA     #$07                    ; invalid parameter/type match
-        STA     DOS_LAST_RC
-        SEC
-        RTS
-
-LOAD_DETECT_DOS
         LDA     #LOAD_ENCODING_DOS
         STA     LOAD_ENCODING
-        CLC
-        RTS
+        LDA     #$00
+        STA     LOAD_PREFETCH_COUNT
+        STA     LOAD_PREFETCH_INDEX
 
-; DOS BINARY is accepted only when it is our own GPTV/Normal history format.
-LOAD_DETECT_BINARY
         JSR     FM_READ_AUX
-        BCC     LOAD_DETECT_BAD
-        CMP     #'G'
-        BNE     LOAD_DETECT_BAD
+        BCC     LOAD_DETECT_READ_END
+        STA     LOAD_PREFETCH
+        LDA     #$01
+        STA     LOAD_PREFETCH_COUNT
+        LDA     LOAD_PREFETCH
+        CMP     #$81
+        BNE     LOAD_DETECT_OK
+
         JSR     FM_READ_AUX
-        BCC     LOAD_DETECT_BAD
-        CMP     #'P'
-        BNE     LOAD_DETECT_BAD
+        BCC     LOAD_DETECT_READ_END
+        STA     LOAD_PREFETCH+1
+        LDA     #$02
+        STA     LOAD_PREFETCH_COUNT
+        LDA     LOAD_PREFETCH+1
+        CMP     #$82
+        BNE     LOAD_DETECT_OK
+
         JSR     FM_READ_AUX
-        BCC     LOAD_DETECT_BAD
-        CMP     #'T'
-        BNE     LOAD_DETECT_BAD
-        JSR     FM_READ_AUX
-        BCC     LOAD_DETECT_BAD
-        CMP     #'V'
-        BNE     LOAD_DETECT_BAD
-        JSR     FM_READ_AUX
-        BCC     LOAD_DETECT_BAD
-        CMP     #HISTORY_VERSION
-        BNE     LOAD_DETECT_BAD
-        JSR     FM_READ_AUX
-        BCC     LOAD_DETECT_BAD
-        CMP     #HISTORY_ROM_NORMAL
-        BNE     LOAD_DETECT_BAD
+        BCC     LOAD_DETECT_READ_END
+        STA     LOAD_PREFETCH+2
+        LDA     #$03
+        STA     LOAD_PREFETCH_COUNT
+        LDA     LOAD_PREFETCH+2
+        CMP     #$83
+        BNE     LOAD_DETECT_OK
 
         LDA     #LOAD_ENCODING_HISTORY
         STA     LOAD_ENCODING
+        LDA     #$00
+        STA     LOAD_PREFETCH_COUNT
+        STA     LOAD_PREFETCH_INDEX
+LOAD_DETECT_OK
         CLC
         RTS
 
-LOAD_DETECT_BAD
-        LDA     #$07
-        STA     DOS_LAST_RC
+LOAD_DETECT_READ_END
+        LDA     DOS_LAST_RC
+        CMP     #FM_END_DATA
+        BEQ     LOAD_DETECT_OK
         SEC
         RTS
 
+; C=1/A=next physical byte.  Prefetched non-magic bytes are returned before
+; resuming File Manager reads.
+LOAD_GET_BYTE
+        LDX     LOAD_PREFETCH_INDEX
+        CPX     LOAD_PREFETCH_COUNT
+        BCS     LOAD_GET_FILE
+        LDA     LOAD_PREFETCH,X
+        INC     LOAD_PREFETCH_INDEX
+        SEC
+        RTS
+LOAD_GET_FILE
+        JMP     FM_READ_AUX
+
 ; Return one Unicode scalar from either source representation.
+; C=1: CP_HI:CP_LO valid, or LOAD_SURROGATE=1 with HS/LS valid.
+; C=0: EOF / real read error, DOS_LAST_RC identifies which.
 LOAD_NEXT_CODEPOINT
         LDA     #$00
         STA     LOAD_SURROGATE
@@ -1308,7 +1520,7 @@ LOAD_NEXT_CODEPOINT
         BEQ     LOAD_NEXT_HISTORY
 
 LOAD_NEXT_DOS
-        JSR     FM_READ_AUX
+        JSR     LOAD_GET_BYTE
         BCC     LOAD_NEXT_DONE
         AND     #$7F
         BEQ     LOAD_NEXT_ZERO_EOF
@@ -1325,19 +1537,63 @@ LOAD_NEXT_ZERO_EOF
         CLC
         RTS
 
-; GPTV payload: $00-$7F literal Videx glyph, $80 newline.
 LOAD_NEXT_HISTORY
-        JSR     FM_READ_AUX
+        JSR     LOAD_GET_BYTE
         BCC     LOAD_NEXT_DONE
-        CMP     #HISTORY_NEWLINE
-        BEQ     LOAD_HISTORY_NEWLINE
-        CMP     #$80
-        BCS     LOAD_HISTORY_INVALID
-        JSR     HISTORY_GLYPH_TO_UNICODE
+        BEQ     LOAD_NEXT_ZERO_EOF
+        AND     #$7F
+        CMP     #$5C                    ; backslash
+        BEQ     LOAD_HISTORY_ESCAPE
+
+        STA     CP_LO
+        LDA     #$00
+        STA     CP_HI
+        SEC
         RTS
 
-LOAD_HISTORY_NEWLINE
-        LDA     #KEY_CR
+LOAD_HISTORY_ESCAPE
+        JSR     LOAD_GET_BYTE
+        BCC     LOAD_HISTORY_INVALID
+        AND     #$7F
+        CMP     #$5C
+        BEQ     LOAD_HISTORY_BACKSLASH
+        CMP     #'u'
+        BNE     LOAD_HISTORY_INVALID
+
+        LDA     #$00
+        STA     CP_LO
+        STA     CP_HI
+        LDA     #$04
+        STA     ESC_DIGITS
+
+LOAD_HISTORY_HEX_LOOP
+        JSR     LOAD_GET_BYTE
+        BCC     LOAD_HISTORY_INVALID
+        AND     #$7F
+        JSR     LOAD_HEX_NIBBLE
+        BCC     LOAD_HISTORY_INVALID
+        STA     HEX_TEMP
+
+        ASL     CP_LO
+        ROL     CP_HI
+        ASL     CP_LO
+        ROL     CP_HI
+        ASL     CP_LO
+        ROL     CP_HI
+        ASL     CP_LO
+        ROL     CP_HI
+
+        LDA     CP_LO
+        ORA     HEX_TEMP
+        STA     CP_LO
+
+        DEC     ESC_DIGITS
+        BNE     LOAD_HISTORY_HEX_LOOP
+        SEC
+        RTS
+
+LOAD_HISTORY_BACKSLASH
+        LDA     #$5C
         STA     CP_LO
         LDA     #$00
         STA     CP_HI
@@ -1352,81 +1608,37 @@ LOAD_HISTORY_INVALID
         SEC
         RTS
 
-; A = raw VIDEX:NORMAL glyph. Return Unicode/UTF-16 equivalent.
-HISTORY_GLYPH_TO_UNICODE
-        STA     GLYPH_TEMP
-
-        CMP     #$20
-        BCC     HISTORY_GLYPH_CONTROL
-        CMP     #$7F
-        BCS     HISTORY_GLYPH_TABLES
-        STA     CP_LO
-        LDA     #$00
-        STA     CP_HI
+; A=ASCII hex digit. C=1/A=0..15 when valid, C=0 otherwise.
+LOAD_HEX_NIBBLE
+        CMP     #'0'
+        BCC     LOAD_HEX_BAD
+        CMP     #$3A
+        BCC     LOAD_HEX_DEC
+        CMP     #'A'
+        BCC     LOAD_HEX_LOWER
+        CMP     #$47
+        BCC     LOAD_HEX_UPPER
+LOAD_HEX_LOWER
+        CMP     #'a'
+        BCC     LOAD_HEX_BAD
+        CMP     #$67
+        BCS     LOAD_HEX_BAD
+        SEC
+        SBC     #$57
         SEC
         RTS
-
-HISTORY_GLYPH_CONTROL
-        CMP     #$08
-        BCC     HISTORY_GLYPH_TABLES
-        CMP     #$10
-        BCS     HISTORY_GLYPH_TABLES
-        STA     CP_LO
-        LDA     #$24
-        STA     CP_HI
+LOAD_HEX_UPPER
+        SEC
+        SBC     #$37
         SEC
         RTS
-
-HISTORY_GLYPH_TABLES
-        LDX     #$00
-HISTORY_GLYPH_BMP_LOOP
-        CPX     #BMP_COUNT
-        BEQ     HISTORY_GLYPH_SUPP_START
-        LDA     BMP_GLYPH,X
-        CMP     GLYPH_TEMP
-        BEQ     HISTORY_GLYPH_BMP_HIT
-        INX
-        JMP     HISTORY_GLYPH_BMP_LOOP
-
-HISTORY_GLYPH_BMP_HIT
-        LDA     BMP_LOW,X
-        STA     CP_LO
-        LDA     #$25
-        STA     CP_HI
+LOAD_HEX_DEC
+        SEC
+        SBC     #'0'
         SEC
         RTS
-
-HISTORY_GLYPH_SUPP_START
-        LDX     #$00
-HISTORY_GLYPH_SUPP_LOOP
-        CPX     #SUP_COUNT
-        BEQ     HISTORY_GLYPH_UNKNOWN
-        LDA     SUP_GLYPH,X
-        CMP     GLYPH_TEMP
-        BEQ     HISTORY_GLYPH_SUPP_HIT
-        INX
-        JMP     HISTORY_GLYPH_SUPP_LOOP
-
-HISTORY_GLYPH_SUPP_HIT
-        LDA     #$01
-        STA     LOAD_SURROGATE
-        LDA     #$3E
-        STA     HS_LO
-        LDA     #$D8
-        STA     HS_HI
-        LDA     SUP_LOW,X
-        STA     LS_LO
-        LDA     #$DF
-        STA     LS_HI
-        SEC
-        RTS
-
-HISTORY_GLYPH_UNKNOWN
-        LDA     #'?'
-        STA     CP_LO
-        LDA     #$00
-        STA     CP_HI
-        SEC
+LOAD_HEX_BAD
+        CLC
         RTS
 
 LOAD_LIMIT_REACHED
@@ -2845,17 +3057,7 @@ FM_RC_OK
         CLC
         RTS
 
-FM_PREP_OPEN_TEXT
-        LDA     #DOS_TEXT_TYPE
-        JMP     FM_PREP_OPEN_TYPE
-
-FM_PREP_OPEN_BINARY
-        LDA     #DOS_BINARY_TYPE
-
-; A = type used only if OPEN creates a new file. Existing OPEN returns actual
-; catalog type in parameter byte $07.
-FM_PREP_OPEN_TYPE
-        STA     FILE_OPEN_TYPE
+FM_PREP_OPEN
         LDY     #$00
         LDA     #FM_OPEN
         STA     (FM_ZPL),Y
@@ -2867,7 +3069,7 @@ FM_PREP_OPEN_TYPE
         INY
         STA     (FM_ZPL),Y
         LDY     #$07
-        LDA     FILE_OPEN_TYPE
+        LDA     #DOS_TEXT_TYPE
         STA     (FM_ZPL),Y
         RTS
 
@@ -2936,7 +3138,7 @@ FM_CREATE_AUX
         BCS     FM_CREATE_AUX_FAIL
         JSR     FM_USE_AUX
         JSR     FM_NAME_AUX
-        JSR     FM_PREP_OPEN_TEXT
+        JSR     FM_PREP_OPEN
         JSR     FM_CALL_X0
         JSR     FM_OPEN_CREATE_RESULT
         BCS     FM_CREATE_AUX_FAIL
@@ -2949,7 +3151,7 @@ FM_CREATE_SAVE
         BCS     FM_CREATE_SAVE_FAIL
         JSR     FM_USE_SAVE
         JSR     FM_NAME_SAVE
-        JSR     FM_PREP_OPEN_BINARY
+        JSR     FM_PREP_OPEN
         JSR     FM_CALL_X0
         JSR     FM_OPEN_CREATE_RESULT
         BCS     FM_CREATE_SAVE_FAIL
@@ -2962,16 +3164,9 @@ FM_OPEN_AUX_EXIST
         BCS     FM_OPEN_AUX_DONE
         JSR     FM_USE_AUX
         JSR     FM_NAME_AUX
-        JSR     FM_PREP_OPEN_TEXT
+        JSR     FM_PREP_OPEN
         JSR     FM_CALL_XFF
         BCS     FM_OPEN_AUX_DONE
-
-        ; OPEN returns actual catalog type in byte $07.
-        LDY     #$07
-        LDA     (FM_ZPL),Y
-        AND     #$7F
-        STA     LOAD_FILE_TYPE
-
         JSR     FM_POSITION_AUX_ZERO
 FM_OPEN_AUX_DONE
         RTS
@@ -2981,7 +3176,7 @@ FM_OPEN_SAVE_EXIST
         BCS     FM_OPEN_SAVE_DONE
         JSR     FM_USE_SAVE
         JSR     FM_NAME_SAVE
-        JSR     FM_PREP_OPEN_BINARY
+        JSR     FM_PREP_OPEN
         JSR     FM_CALL_XFF
 FM_OPEN_SAVE_DONE
         RTS
@@ -3058,7 +3253,7 @@ FM_CLOSE_SAVE_DONE
         RTS
 
 ; A = exact file byte; FILE_TARGET selects AUX or SAVE.
-; This is the only File Manager WRITE implementation used by V5.4 encoders.
+; This is the only File Manager WRITE implementation used by V5.3 encoders.
 FM_WRITE_RAW
         STA     FILE_CHAR
         JSR     FM_REQUIRE_DOS
@@ -3115,15 +3310,18 @@ FM_WRITE_SAVE_RAW
 ; FILE CHARACTER ENCODING
 ; =============================================================================
 ;
-; FILE_ENCODING_DOS:
-;   printable ASCII -> high-bit DOS text, CR/LF -> $8D, other Unicode -> '?'
+; Input scalar:
+;       BMP          CP_HI:CP_LO
+;       supplementary HS_HI:HS_LO + LS_HI:LS_LO
 ;
-; FILE_ENCODING_HISTORY:
-;   Unicode -> raw VIDEX:NORMAL glyph $00-$7F, CR/LF -> $80 newline token.
+; Selection:
+;       FILE_TARGET   AUX/SAVE File Manager buffer set
+;       FILE_ENCODING DOS high-bit ASCII or DOS-safe escaped UTF-16
 ;
-; Both strategies emit physical bytes only through FM_WRITE_RAW.
+; The encoding layer emits physical bytes only through FM_WRITE_RAW.
 ;
 
+; A = one 7-bit source character. FILE_TARGET/FILE_ENCODING are already set.
 FILE_ENCODE_ASCII_A
         STA     CP_LO
         LDA     #$00
@@ -3131,6 +3329,7 @@ FILE_ENCODE_ASCII_A
         JMP     FILE_ENCODE_CP
 
 FILE_ENCODE_CP
+        ; Normalize CR/LF once per target so CRLF is stored as one DOS CR.
         LDA     CP_HI
         BNE     FILE_ENCODE_NOT_NL
         LDA     CP_LO
@@ -3165,14 +3364,8 @@ FILE_ENCODE_LF
 FILE_ENCODE_LF_ONLY
 
 FILE_ENCODE_NEWLINE
-        LDA     FILE_ENCODING
-        CMP     #FILE_ENCODING_HISTORY
-        BEQ     FILE_ENCODE_HISTORY_NL
         LDA     #KEY_CR
         ORA     #$80
-        JMP     FM_WRITE_RAW
-FILE_ENCODE_HISTORY_NL
-        LDA     #HISTORY_NEWLINE
         JMP     FM_WRITE_RAW
 
 FILE_ENCODE_DOS_CP
@@ -3192,13 +3385,74 @@ FILE_ENCODE_DOS_IGNORE
         CLC
         RTS
 
+; Escaped history:
+;   printable ASCII except backslash -> high-bit DOS text
+;   backslash                         -> \\
+;   all other UTF-16 units           -> \uXXXX
 FILE_ENCODE_HISTORY_CP
-        JSR     MAP_BMP
-        BCC     FILE_ENCODE_HISTORY_SKIP
+        LDA     CP_HI
+        BNE     FILE_HISTORY_ESCAPE
+        LDA     CP_LO
+        CMP     #$20
+        BCC     FILE_HISTORY_ESCAPE
+        CMP     #$7F
+        BCS     FILE_HISTORY_ESCAPE
+        CMP     #$5C
+        BEQ     FILE_HISTORY_BACKSLASH
+        ORA     #$80
         JMP     FM_WRITE_RAW
-FILE_ENCODE_HISTORY_SKIP
-        CLC
+
+FILE_HISTORY_BACKSLASH
+        LDA     #$DC
+        JSR     FM_WRITE_RAW
+        BCS     FILE_HISTORY_DONE
+        LDA     #$DC
+        JMP     FM_WRITE_RAW
+
+FILE_HISTORY_ESCAPE
+        LDA     #$DC                    ; '\'
+        JSR     FM_WRITE_RAW
+        BCS     FILE_HISTORY_DONE
+        LDA     #$F5                    ; 'u'
+        JSR     FM_WRITE_RAW
+        BCS     FILE_HISTORY_DONE
+        LDA     CP_HI
+        JSR     FILE_WRITE_HEX_BYTE
+        BCS     FILE_HISTORY_DONE
+        LDA     CP_LO
+        JMP     FILE_WRITE_HEX_BYTE
+FILE_HISTORY_DONE
         RTS
+
+FILE_WRITE_HEX_BYTE
+        PHA
+        LSR     A
+        LSR     A
+        LSR     A
+        LSR     A
+        JSR     FILE_WRITE_HEX_NIBBLE
+        BCS     FILE_HEX_BYTE_FAIL
+        PLA
+        AND     #$0F
+        JMP     FILE_WRITE_HEX_NIBBLE
+FILE_HEX_BYTE_FAIL
+        PLA
+        SEC
+        RTS
+
+FILE_WRITE_HEX_NIBBLE
+        AND     #$0F
+        CMP     #$0A
+        BCC     FILE_HEX_DIGIT
+        CLC
+        ADC     #$37
+        JMP     FILE_HEX_WRITE
+FILE_HEX_DIGIT
+        CLC
+        ADC     #'0'
+FILE_HEX_WRITE
+        ORA     #$80
+        JMP     FM_WRITE_RAW
 
 FILE_ENCODE_SURROGATE
         LDX     FILE_TARGET
@@ -3212,11 +3466,20 @@ FILE_ENCODE_SURROGATE
         JMP     FM_WRITE_RAW
 
 FILE_SURR_HISTORY
-        JSR     MAP_SURROGATE
-        BCC     FILE_SURR_SKIP
-        JMP     FM_WRITE_RAW
-FILE_SURR_SKIP
-        CLC
+        ; Preserve a supplementary scalar as its native UTF-16 surrogate pair.
+        LDA     HS_LO
+        STA     CP_LO
+        LDA     HS_HI
+        STA     CP_HI
+        JSR     FILE_HISTORY_ESCAPE
+        BCS     FILE_SURR_DONE
+
+        LDA     LS_LO
+        STA     CP_LO
+        LDA     LS_HI
+        STA     CP_HI
+        JMP     FILE_HISTORY_ESCAPE
+FILE_SURR_DONE
         RTS
 
 FM_READ_AUX
@@ -3257,8 +3520,18 @@ FM_EOF_CLOSE_AUX
 FM_EOF_AUX_CLOSE_OK
         JMP     FM_CLOSE_AUX
 
-; Binary GPTV history uses the File Manager's physical EOF.
 FM_EOF_CLOSE_SAVE
+        LDA     #$00
+        JSR     FM_WRITE_SAVE_RAW
+        BCC     FM_EOF_SAVE_CLOSE_OK
+        LDA     DOS_LAST_RC
+        STA     DOS_ERROR_SAVE
+        JSR     FM_CLOSE_SAVE
+        LDA     DOS_ERROR_SAVE
+        STA     DOS_LAST_RC
+        SEC
+        RTS
+FM_EOF_SAVE_CLOSE_OK
         JMP     FM_CLOSE_SAVE
 
 ; =============================================================================
@@ -3890,6 +4163,9 @@ TXT_LOAD_AUDIT
 TXT_FILE_HEADER
         ASC     "FILE "
         HEX     00
+TXT_HISTORY_MORE
+        ASC     "[SPACE] MORE"
+        HEX     00
 DEFAULT_HISTORY_NAME
         ASC     "CHAT_HISTORY"
 
@@ -3898,14 +4174,14 @@ DEFAULT_HISTORY_NAME
 GPT_BRIEFING
         ASC     "APPLE II GPT16 V5 POLICY. TERMINAL IS UTF-16LE. KEEP ANSWERS CONCISE. "
         ASC     "DISPLAY TEXT SHOULD USE ASCII OR UNICODE AVAILABLE IN VIDEX NORMAL WHEN POSSIBLE. "
-        ASC     "DOS FILES YOU CREATE ARE TEXT FILES AND MUST USE 7-BIT ASCII CONTENT WITH CR LINE ENDINGS. "
-        ASC     "CHAT HISTORY SAVE FILES ARE DOS BINARY GPTV FILES CONTAINING RAW VIDEX NORMAL GLYPHS. "
-        ASC     "LOAD REVERSE-MAPS GPTV GLYPHS TO UNICODE; IT ALSO ACCEPTS ORDINARY DOS TEXT. "
-        ASC     "OTHER BINARY FILES ARE NOT VALID CHAT INPUT. "
+        ASC     "DOS FILES YOU CREATE MUST USE 7-BIT ASCII CONTENT WITH CR LINE ENDINGS. "
+        ASC     "CHAT HISTORY SAVE FILES ARE DOS-SAFE HIGH-BIT TEXT WITH LOSSLESS UTF-16 ESCAPES. "
+        ASC     "NON-ASCII IS STORED AS BACKSLASH-u-HEX AND LOAD DECODES IT TO UNICODE. "
+        ASC     "LOAD ALSO ACCEPTS ORDINARY DOS HIGH-BIT ASCII TEXT. "
         ASC     "YOU MAY REQUEST FILE OPERATIONS WITH ACTUAL U+001B CONTROL CHARACTERS: "
         ASC     "ESC C FILENAME CR THEN FILE TEXT THEN ESC E CR CREATES A DOS TEXT FILE; "
-        ASC     "ESC S FILENAME CR STARTS BINARY CHAT HISTORY SAVE, EMPTY NAME MEANS CHAT_HISTORY; "
-        ASC     "ESC L FILENAME CR LOADS A DOS TEXT OR GPTV HISTORY FILE AS YOUR NEXT USER MESSAGE. "
+        ASC     "ESC S FILENAME CR STARTS CHAT HISTORY SAVE, EMPTY NAME MEANS CHAT_HISTORY; "
+        ASC     "ESC L FILENAME CR LOADS A DOS ASCII OR GPT16 HISTORY TEXT FILE AS YOUR NEXT USER MESSAGE. "
         ASC     "LOADED FILE LINE BREAKS ARRIVE AS U+2028. FILENAMES ARE 1-30 DOS CHARACTERS. "
         ASC     "YOU MAY WRITE APPLESOFT OR ASSEMBLY TEXT FOR THE USER TO EXECUTE LATER, "
         ASC     "BUT NEVER REQUEST OR CLAIM TO RUN EXEC BRUN RUN CALL OR OTHER EXECUTION. "
@@ -4050,16 +4326,24 @@ FILE_ENCODING
 ENC_LAST_CR
         HEX     0000
 
-; LOAD source type / GPTV binary decoder state.
+; LOAD source detection / viewer and escaped-history decoder state.
 LOAD_ENCODING
         HEX     00
-LOAD_FILE_TYPE
+LOAD_PREFETCH_COUNT
         HEX     00
+LOAD_PREFETCH_INDEX
+        HEX     00
+LOAD_PREFETCH
+        HEX     000000
 LOAD_SURROGATE
         HEX     00
 LOAD_LAST_CR
         HEX     00
-FILE_OPEN_TYPE
+LOAD_SENT_GPT
+        HEX     00
+ESC_DIGITS
+        HEX     00
+HEX_TEMP
         HEX     00
 
 AUTO_ACTION_BUDGET
