@@ -27411,7 +27411,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
             function mountDiskBytes(bytes, source)
             {
                 // Let the image detector decide dsk/po/nib instead of relying on extension.
-                
+                var info = disk2.detectDiskImageType(bytes, arg.path);
                 var nibBytes;
 
                 switch(info.type)
