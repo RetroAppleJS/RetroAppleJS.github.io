@@ -45260,7 +45260,7 @@ function ASM(options)
     var root = (typeof globalThis !== "undefined") ? globalThis : ((typeof window !== "undefined") ? window : this);
     var self = this;
 
-    this.version = "0.6.7";
+    this.version = "0.6.8";
     this.maxNumBytes = options.maxNumBytes || 2;
     // Retained for callers that still inspect it. Symbol identity is no longer truncated.
     this.label_len = options.label_len || 8;
@@ -45422,6 +45422,8 @@ function ASM(options)
         "HEX":   mkPragma("HEX",     ["raJS", "Merlin"], parsePragmaData),
         "BIN":   mkPragma("BIN",     ["raJS"], parsePragmaData),
         "ASC":   mkPragma("ASC",     ["raJS", "Merlin"], parsePragmaData),
+        "ASC6":  mkPragma("ASC6",    ["raJS"], parsePragmaData),
+        ".ASSERT": mkPragma("ASSERT", ["raJS", "ca65"], parsePragmaAssert),
 
         // S-C Macro Assembler data/include pragmas. Keep the dialect tag exclusive
         // so the listing's assembler column identifies their source syntax.
@@ -46093,13 +46095,16 @@ function ASM(options)
             if (ch === ")") { push("rparen", ch, ch); i++; continue; }
 
             var pair = text.substring(i, i + 2);
-            if (pair === "<<" || pair === ">>") {
+            if (pair === "<<" || pair === ">>"
+                || pair === "<=" || pair === ">="
+                || pair === "==" || pair === "!="
+                || pair === "<>") {
                 push("operator", pair, pair);
                 i += 2;
                 continue;
             }
 
-            if (/[+\-*\/%&|^~<>]/.test(ch)) {
+            if (/[+\-*\/%&|^~<>=]/.test(ch)) {
                 push("operator", ch, ch);
                 i++;
                 continue;
@@ -46113,6 +46118,14 @@ function ASM(options)
 
     this.expressionPrecedence = function (operator) {
         switch (operator) {
+            case "=":
+            case "==":
+            case "!=":
+            case "<>":
+            case "<":
+            case "<=":
+            case ">":
+            case ">=": return 0;
             case "|": return 1;
             case "^": return 2;
             case "&": return 3;
@@ -46129,6 +46142,14 @@ function ASM(options)
 
     this.applyExpressionBinary = function (operator, left, right) {
         switch (operator) {
+            case "=":
+            case "==": return left === right ? 1 : 0;
+            case "!=":
+            case "<>": return left !== right ? 1 : 0;
+            case "<": return left < right ? 1 : 0;
+            case "<=": return left <= right ? 1 : 0;
+            case ">": return left > right ? 1 : 0;
+            case ">=": return left >= right ? 1 : 0;
             case "+": return left + right;
             case "-": return left - right;
             case "*": return left * right;
@@ -46379,6 +46400,10 @@ function ASM(options)
             case "SC_ASC":
             case "SC_AT":
                 return { bytes: this.stringByteLength(operandText), oby: this.stringByteLength(operandText) };
+            case "ASC6":
+                n = this.stringByteLength(operandText);
+                n = Math.ceil((n * 6) / 8);
+                return { bytes: n, oby: n };
             case "SC_DA":
                 arr = this.splitCSV(operandText);
                 n = 0;
@@ -46668,6 +46693,7 @@ function ASM(options)
             case "SC_HEX": return this.compileHexData(operands);
             case "BIN": return this.compileBinData(operands);
             case "ASC": return this.compileAsciiData(operands);
+            case "ASC6": return this.compileAscii6Data(operands, row);
             case "SC_ASC": return this.compileSCAsciiData(operands, false);
             case "SC_AT": return this.compileSCAsciiData(operands, true);
             case "SC_DA": return this.compileSCAddressData(operands, symtab);
@@ -46675,6 +46701,7 @@ function ASM(options)
             case "SC_RES": return this.compileReserveData(operands, symtab);
             case "ORG":
             case "EQU":
+            case "ASSERT":
             case "END":
             case "COND":
             default:
@@ -46725,6 +46752,54 @@ function ASM(options)
         var text = quoted ? quoted[2] : (slash ? slash[1] : operandText);
         var out = [];
         for (var i = 0; i < text.length; i++) out.push(this.appleCharCode(text.charAt(i), quoted ? quoted[1] : ""));
+        return out;
+    };
+
+    /*
+     * ASC6 packs characters from the 64-character ASCII range $20..$5F.
+     * The encoded value is simply ASCII-$20, producing 0..63.
+     *
+     * Four input characters therefore occupy exactly three output bytes:
+     *
+     *   aaaaaa bbbbbb cccccc dddddd
+     *   AAAAAAAA BBBBBBBB CCCCCCCC
+     *
+     * Bits are emitted MSB first.  A final partial byte is padded with zero
+     * bits on the right.  Characters outside $20..$5F are rejected instead
+     * of being silently converted; this keeps the packed stream deterministic.
+     */
+    this.compileAscii6Data = function (operandText, row) {
+        operandText = String(operandText == null ? "" : operandText).trim();
+        var quoted = operandText.match(/^([\"'])([\s\S]*)\1$/);
+        var slash = operandText.match(/^[\\-/]([\s\S]*)[\\-/]?$/);
+        var text = quoted ? quoted[2] : (slash ? slash[1] : operandText);
+        var out = [];
+        var bitBuffer = 0;
+        var bitCount = 0;
+
+        for (var i = 0; i < text.length; i++) {
+            var code = text.charCodeAt(i);
+            if (code < 0x20 || code > 0x5f) {
+                if (row && !row.err) {
+                    row.err = "ASC6 character out of range at position "
+                        + (i + 1) + ": $" + this.getHexByte(code);
+                }
+                return [];
+            }
+
+            bitBuffer = (bitBuffer << 6) | (code - 0x20);
+            bitCount += 6;
+
+            while (bitCount >= 8) {
+                bitCount -= 8;
+                out.push((bitBuffer >> bitCount) & 0xff);
+                bitBuffer &= bitCount ? ((1 << bitCount) - 1) : 0;
+            }
+        }
+
+        if (bitCount)
+            out.push((bitBuffer << (8 - bitCount)) & 0xff);
+
         return out;
     };
 
@@ -47665,6 +47740,58 @@ function ASM(options)
         var bc = asm.byteCountForDataPragma(this.ref, operands, asm.symtab);
         if (bc.oby !== undefined) row.oby = bc.oby;
         asm.add_pc(bc.bytes || 0);
+        return row;
+    }
+
+
+
+    /*
+     * ca65-style compile-time assertion:
+     *
+     *   .ASSERT expression, error,   "message"
+     *   .ASSERT expression, warning, "message"
+     *
+     * Assertions are evaluated only on pass 2.  This is intentional: layout
+     * passes may still contain unresolved forward labels, while pass 2 sees
+     * the final converged symbol table.  ASSERT never changes the PC.
+     */
+    function parsePragmaAssert(arg) {
+        var asm = arg.asm;
+        var row = arg.row;
+        var passNo = arg.passNo;
+        var pgmIndex = asm.getTokenIndexByTag(row.tag, "PGM");
+        var operands = row.sym.slice(pgmIndex + 1).join(" ");
+        var fields = asm.splitCSV(operands);
+        row.asm = this.asm ? this.asm.slice() : ["raJS", "ca65"];
+
+        if (passNo !== 2) return row;
+
+        if (!fields.length) {
+            row.err = row.err || ".ASSERT requires an expression";
+            return row;
+        }
+
+        var expression = fields[0];
+        var severity = String(fields[1] || "error").trim().toLowerCase();
+        var message = fields.length > 2
+            ? asm.decodeSCDelimitedText(fields.slice(2).join(","))
+            : "assertion failed: " + expression;
+
+        if (severity !== "error" && severity !== "warning") {
+            row.err = row.err || ".ASSERT severity must be error or warning";
+            return row;
+        }
+
+        var result = asm.getExpression(expression, asm.symtab);
+        if (result.err || typeof result.val !== "number" || isNaN(result.val)) {
+            row.err = row.err || ".ASSERT " + (result.err || "invalid expression");
+            return row;
+        }
+
+        if (!result.val) {
+            if (severity === "warning") row.warn = row.warn || message;
+            else row.err = row.err || message;
+        }
         return row;
     }
 
