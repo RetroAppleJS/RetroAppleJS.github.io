@@ -5338,7 +5338,7 @@ TXT_START_HINT
         ASC     " [ESC] = menu"
         HEX     00
 TXT_MENU
-        ASC     "[U]P [D]OWN [C]MD [&] [S]AVE [L]OAD [Q]UIT"
+        ASC     "[U]P [D]OWN [C]MD [&]GPT [S]AVE [L]OAD [Q]UIT"
         HEX     00
 TXT_CMD_FILE
         ASC     "CMD FILE:"
