@@ -4,16 +4,18 @@
 // It wraps the Serial Pro discovery constructor, so every subsequently mounted
 // Serial Pro instance receives the GPT serial-peer feature without modifying
 // the card ROM or the 6551 implementation.
-//
-// API-key handling deliberately mirrors tools/PromptJS.html: window.prompt().
-// The key is kept only in this card instance's JavaScript memory and is erased
-// when GPT mode is disabled or the page is reloaded. It is never persisted.
+// API-key entry uses an oCOM.POPUP password field with live API validation.
+// The key is kept only in this card instance's JavaScript memory after the user
+// confirms it and is erased when GPT mode is disabled or the page is reloaded.
+// It is never persisted.
+
 
 (function(global)
 {
     "use strict";
 
     const SERIAL_GPT_API_URL = "https://api.openai.com/v1/responses";
+    const SERIAL_GPT_API_VALIDATE_URL = "https://api.openai.com/v1/models";
     const SERIAL_GPT_MODEL = "gpt-5.6-luna";
     const SERIAL_GPT_MAX_INPUT_CHARS = 4096;
     const SERIAL_GPT_HISTORY_MESSAGES = 8;
@@ -1247,7 +1249,317 @@
             state.line += String.fromCharCode(c);
     }
 
-    function serialGPTEnable(card,mode)
+    function serialGPTMaskAPIKey(key)
+    {
+        key = String(key===undefined || key===null ? "" : key);
+
+        if(!key.length) return "";
+        if(key.length<=12) return "*".repeat(key.length);
+
+        return key.slice(0,6)
+            +"*".repeat(Math.max(6,key.length-12))
+            +key.slice(-6);
+    }
+
+    async function serialGPTValidateAPIKey(key,signal)
+    {
+        /*
+         * Do not parse or surface the response body here. Authentication errors
+         * may include fragments of the submitted credential; validation status
+         * and our own fixed messages are sufficient for this UI.
+         */
+        var response = await fetch(SERIAL_GPT_API_VALIDATE_URL,{
+             method:"GET"
+            ,headers:{"Authorization":"Bearer "+key}
+            ,signal:signal
+        });
+
+        if(response.ok)
+            return {valid:true,state:"valid",message:"API key is valid."};
+
+        if(response.status===401)
+            return {valid:false,state:"invalid",message:"Invalid API key."};
+
+        if(response.status===403)
+        {
+            return {
+                 valid:false
+                ,state:"invalid"
+                ,message:"API key is not authorized for this OpenAI API request."
+            };
+        }
+
+        if(response.status===429)
+        {
+            return {
+                 valid:false
+                ,state:"error"
+                ,message:"API key could not be verified because the OpenAI API is rate limited or quota is unavailable."
+            };
+        }
+
+        return {
+             valid:false
+            ,state:"error"
+            ,message:"Unable to validate API key (HTTP "+response.status+")."
+        };
+    }
+
+    function serialGPTRequestAPIKey(card)
+    {
+        var popupAPI = global.oCOM && global.oCOM.POPUP;
+        if(
+            typeof(document)==="undefined" ||
+            !popupAPI ||
+            typeof(popupAPI.on)!=="function" ||
+            typeof(popupAPI.off)!=="function" ||
+            typeof(popupAPI.title_body_html)!=="function"
+        )
+        {
+            serialGPTStatus(card,"API key popup is unavailable.");
+            return Promise.resolve(null);
+        }
+
+        var popupId = "serialGPTKey_popup";
+        var popup = document.getElementById(popupId);
+
+        if(!popup)
+        {
+            popup = document.createElement("div");
+            popup.id = popupId;
+            popup.className = "appbox";
+            popup.hidden = true;
+            popup.setAttribute("role","dialog");
+            popup.setAttribute("aria-modal","true");
+            popup.setAttribute("aria-labelledby","serialGPTKey_title");
+            popup.style.position = "fixed";
+            popup.style.zIndex = "10000";
+            popup.style.left = "50%";
+            popup.style.top = "35%";
+            popup.style.transform = "translate(-50%,-50%)";
+            popup.style.width = "520px";
+            popup.style.maxWidth = "calc(100vw - 32px)";
+            document.body.appendChild(popup);
+        }
+
+        /*
+         * Reuse one outstanding prompt. This prevents rapid GPT8/GPT16 clicks
+         * from replacing the DOM underneath an unresolved key-entry promise.
+         */
+        if(popup._serialGPTPromptPromise)
+            return popup._serialGPTPromptPromise;
+
+        var titleHtml =
+            "<span id='serialGPTKey_title'>"
+            +"<i class='fa fa-key'></i>&nbsp;OpenAI API key"
+            +"</span>"
+            +"<button type='button' class='appbut skinny' data-gpt-key-close "
+            +"aria-label='Close API key dialog' title='Close' "
+            +"style='float:right'>x</button>";
+
+        var bodyHtml =
+            "<label for='serialGPTKey_input'>API key</label>"
+            +"<input id='serialGPTKey_input' data-gpt-key-input "
+            +"type='password' autocomplete='off' autocorrect='off' "
+            +"autocapitalize='off' spellcheck='false' "
+            +"data-1p-ignore='true' data-lpignore='true' "
+            +"style='box-sizing:border-box;width:100%;padding:6px;"
+            +"font-family:monospace'>"
+            +"<div data-gpt-key-mask "
+            +"style='min-height:1.2em;margin-top:6px;font-family:monospace;"
+            +"overflow-wrap:anywhere'></div>"
+            +"<div data-gpt-key-status role='status' aria-live='polite' "
+            +"style='min-height:1.2em;margin-top:6px'></div>"
+            +"<div style='margin-top:8px;font-size:90%;opacity:.75'>"
+            +"The key stays only in page memory and is cleared when GPT is "
+            +"disabled or the page is reloaded."
+            +"</div>"
+            +"<div style='text-align:right;margin-top:10px'>"
+            +"<button type='button' class='appbut' data-gpt-key-ok disabled>"
+            +"OK</button>"
+            +"</div>";
+
+        popup.innerHTML = popupAPI.title_body_html(
+            titleHtml,
+            bodyHtml,
+            "serialGPTKey_body",
+            "com_popup_body"
+        );
+
+        var input = popup.querySelector("[data-gpt-key-input]");
+        var masked = popup.querySelector("[data-gpt-key-mask]");
+        var status = popup.querySelector("[data-gpt-key-status]");
+        var ok = popup.querySelector("[data-gpt-key-ok]");
+        var close = popup.querySelector("[data-gpt-key-close]");
+
+        var validationTimer = null;
+        var validationController = null;
+        var validationSequence = 0;
+        var validKey = "";
+        var finished = false;
+        var resolvePrompt = null;
+
+        var promptPromise = new Promise(function(resolve)
+        {
+            resolvePrompt = resolve;
+        });
+        popup._serialGPTPromptPromise = promptPromise;
+
+        function stopValidation()
+        {
+            validationSequence++;
+
+            if(validationTimer!==null)
+            {
+                clearTimeout(validationTimer);
+                validationTimer = null;
+            }
+
+            if(validationController)
+            {
+                try { validationController.abort(); } catch(ignore) {}
+                validationController = null;
+            }
+        }
+
+        function setVisual(state,message,key)
+        {
+            var color = "";
+            if(state==="valid") color = "#188038";
+            else if(state==="invalid") color = "#b3261e";
+            else if(state==="error") color = "#946200";
+
+            masked.textContent = key ? serialGPTMaskAPIKey(key) : "";
+            status.textContent = message || "";
+            masked.style.color = color;
+            status.style.color = color;
+            input.style.borderColor = color;
+            ok.disabled = state!=="valid";
+        }
+
+        function finish(value)
+        {
+            if(finished) return;
+            finished = true;
+
+            stopValidation();
+            validKey = "";
+            input.value = "";
+            masked.textContent = "";
+            status.textContent = "";
+            popup.onkeydown = null;
+            popupAPI.off(popupId);
+            resolvePrompt(value);
+        }
+
+        input.oninput = function()
+        {
+            stopValidation();
+            validKey = "";
+
+            var key = String(input.value || "").trim();
+            if(!key.length)
+            {
+                setVisual("neutral","",key);
+                return;
+            }
+
+            setVisual("neutral","Waiting to validate...",key);
+            var sequence = validationSequence;
+
+            validationTimer = setTimeout(async function()
+            {
+                validationTimer = null;
+                if(sequence!==validationSequence || finished) return;
+
+                validationController =
+                    typeof(AbortController)==="function"
+                        ? new AbortController()
+                        : null;
+
+                setVisual("neutral","Checking API key...",key);
+
+                try
+                {
+                    var result = await serialGPTValidateAPIKey(
+                        key,
+                        validationController
+                            ? validationController.signal
+                            : undefined
+                    );
+
+                    if(sequence!==validationSequence || finished) return;
+
+                    if(result.valid)
+                    {
+                        validKey = key;
+                        setVisual("valid",result.message,key);
+                    }
+                    else
+                    {
+                        validKey = "";
+                        setVisual(result.state,result.message,key);
+                    }
+                }
+                catch(error)
+                {
+                    if(error && error.name==="AbortError") return;
+                    if(sequence!==validationSequence || finished) return;
+
+                    validKey = "";
+                    setVisual(
+                        "error",
+                        "Unable to validate API key. Check the network connection.",
+                        key
+                    );
+                }
+                finally
+                {
+                    if(sequence===validationSequence)
+                        validationController = null;
+                }
+            },400);
+        };
+
+        close.onclick = function()
+        {
+            finish(null);
+        };
+
+        ok.onclick = function()
+        {
+            if(validKey) finish(validKey);
+        };
+
+        popup.onkeydown = function(event)
+        {
+            if(event.key==="Escape")
+            {
+                event.preventDefault();
+                finish(null);
+                return;
+            }
+
+            if(event.key==="Enter" && event.target===input && validKey)
+            {
+                event.preventDefault();
+                finish(validKey);
+            }
+        };
+
+        promptPromise.then(function()
+        {
+            if(popup._serialGPTPromptPromise===promptPromise)
+                popup._serialGPTPromptPromise = null;
+        });
+
+        popupAPI.on(popupId);
+        setTimeout(function(){ input.focus(); },0);
+
+        return promptPromise;
+    }
+
+    async function serialGPTEnable(card,mode)
     {
         var state = serialGPTState(card);
 
@@ -1297,18 +1609,17 @@
             return true;
         }
 
-        // Same acquisition method and prompt text as tools/PromptJS.html.
-        var key = typeof(global.prompt)==="function"
-            ? global.prompt("Please enter your API key:")
-            : null;
 
+        var key = await serialGPTRequestAPIKey(card);
         key = key===null || key===undefined ? "" : String(key).trim();
-        if(!key.length)
-        {
-            if(typeof(global.alert)==="function")
-                global.alert("API key is required to enable the GPT serial peer.");
-            return false;
-        }
+        if(!key.length) return false;
+        /*
+         * A second GPT mode button may have been clicked while the shared key
+         * popup was open. Re-enter through the enabled path so the last mode
+         * request performs the normal GPT8/GPT16 switch/reset logic.
+         */
+        if(state.enabled)
+            return serialGPTEnable(card,mode);
 
         if(typeof(card.serialLineResetReceiveSession)=="function")
             card.serialLineResetReceiveSession();
@@ -1414,7 +1725,7 @@
                         "<br><b>GPT serial peer</b><br>"
                         +"Use <i class=\"fa fa-robot\"></i> GPT8 for one-byte US-ASCII or <i class=\"fa fa-robot\"></i> GPT16 for UTF-16LE. Only one mode is active at a time.<br>"
                         +"Click the active mode again to stop GPT; click the other mode to switch without re-entering the API key.<br>"
-                        +"Enabling prompts for an OpenAI API key; the key stays only in page memory and is cleared when disabled/reloaded.<br>"
+                        +"Enabling opens a masked OpenAI API-key popup and validates the key before OK is enabled; the key stays only in page memory and is cleared when disabled/reloaded.<br>"
                         +"SPSERIAL remains a raw byte transport (<code>application/octet-stream</code>). SPGPT declares the text representation in MIME: <code>text/plain; charset=us-ascii</code> or <code>text/plain; charset=utf-16le</code>.<br>"
                         +"GPT8 collects one ASCII character per byte (bit 7 is ignored on receive); CR is $0D. GPT16 collects UTF-16LE code units; CR is bytes $0D $00.<br>"
                         +"Use 8 data bits on the 6551 for unrestricted GPT16 byte values. An exact echo of a GPT reply is suppressed briefly to avoid a terminal echo feedback loop."
