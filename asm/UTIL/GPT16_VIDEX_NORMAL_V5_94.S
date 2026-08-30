@@ -109,7 +109,7 @@
 ; V5 additions
 ; ------------
 ;   * ESC opens a transient one-line 80-column command menu:
-;       [U]P [D]OWN [C]MD [&] [S]AVE [L]OAD [Q]UIT
+;       [U]P [D]OWN [C]MD [&]GPT [S]AVE [L]OAD [Q]UIT
 ;   * UP/DOWN are reserved for later page navigation.
 ;   * CMD creates a DOS 3.3 sequential text file and accepts line-by-line text.
 ;   * SAVE records requests/replies to a DOS-safe escaped-Unicode history file.
