@@ -25,7 +25,10 @@ Unlike other 6502 assemblers; this retrocomuting project was characterised to su
 | .BYTE,DFB       | E { __csv__:{__typ__:exp, __bpe__:8}}  | ca65,Merlin                  | [link](https://cc65.github.io/doc/ca65.html#ss11.10)  |
 | .ORG,ORG,.OR,*= | E { __exp__:{__bpe__:adrw}             | ca65,S-C                     | [link](https://cc65.github.io/doc/ca65.html#.ORG) |
 | HEX             | E { __ssv__:{__typ__:hex,__bpe__:8}    | Merlin                       |  |
- 
+| ASC6            | packed 6-bit character string           | RetroAppleJS                 | Packs ASCII `$20-$5F`, four characters per three bytes |
+| .ASSERT         | expression,severity,message              | ca65 / RetroAppleJS          | Compile-time assertion; severity is `error` or `warning` |
+
+
 #### Opcodes and Addressing
 Opcodes are always 3 letter mnemonics followed by an (optional) operand/address:
 
@@ -53,6 +56,49 @@ There must not be any white space in any part of an instruction's address.
  	<            ....	LO-byte portion
  	>            ....	HI-byte portion
  
+
+Comparison operators are also accepted in expressions and return `1` for true
+or `0` for false: `=`, `==`, `!=`, `<>`, `<`, `<=`, `>`, `>=`.
+
+#### ASC6 packed strings
+
+`ASC6` stores text as consecutive 6-bit symbols.  The supported source
+character set is exactly ASCII `$20-$5F`:
+
+      space ! " # $ % & ' ( ) * + , - . /
+      0 1 2 3 4 5 6 7 8 9 : ; < = > ?
+      @ A B C D E F G H I J K L M N O
+      P Q R S T U V W X Y Z [ \ ] ^ _
+
+The encoded symbol is `ASCII-$20`, so no lookup table is required.  Four
+characters occupy three bytes.  A trailing partial byte is zero-padded in its
+least-significant bits.
+
+Example:
+
+      TEXT    ASC6 "ABCD"
+
+Characters outside `$20-$5F` are assembly errors.  In particular, lowercase
+letters are not converted automatically.
+
+#### Compile-time assertions
+
+`.ASSERT` is evaluated after assembly layout has converged and emits no bytes.
+It follows the ca65-style form:
+
+      .ASSERT expression, error, "message"
+      .ASSERT expression, warning, "message"
+
+For example, to protect a shared arena:
+
+      ARENA_START
+      BRIEFING  ASC6 "SYSTEM BRIEFING..."
+      BRIEFING_END
+
+      .ASSERT BRIEFING_END <= ARENA_START+$0700, error, "briefing exceeds PAGE arena"
+
+An omitted severity defaults to `error`.
+
 #### Labels and Identifiers
 Identifiers must begin with a letter [A-Za-z] and contain capital or lowercase letters, digits, and the underscore [A-Za-z0-9_]. Only the first 6 characters are significant.
 
