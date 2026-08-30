@@ -1539,8 +1539,8 @@ function ASM(options)
     this.compileAsciiData = function (operandText) {
         operandText = String(operandText == null ? "" : operandText).trim();
         var quoted = operandText.match(/^(["'])([\s\S]*)\1$/);
-        var slash = operandText.match(/^[\-/]([\s\S]*)[\-/]?$/);
-        var text = quoted ? quoted[2] : (slash ? slash[1] : operandText);
+        var slash = operandText.match(/^([/-])([\s\S]*?)(?:\1)?$/);
+        var text = quoted ? quoted[2] : (slash ? slash[2] : operandText);
         var out = [];
         for (var i = 0; i < text.length; i++) out.push(this.appleCharCode(text.charAt(i), quoted ? quoted[1] : ""));
         return out;
@@ -1561,9 +1561,9 @@ function ASM(options)
      */
     this.compileAscii6Data = function (operandText, row) {
         operandText = String(operandText == null ? "" : operandText).trim();
-        var quoted = operandText.match(/^([\"'])([\s\S]*)\1$/);
-        var slash = operandText.match(/^[\\-/]([\s\S]*)[\\-/]?$/);
-        var text = quoted ? quoted[2] : (slash ? slash[1] : operandText);
+        var quoted = operandText.match(/^(["'])([\s\S]*)\1$/);
+        var slash = operandText.match(/^([/-])([\s\S]*?)(?:\1)?$/);
+        var text = quoted ? quoted[2] : (slash ? slash[2] : operandText);
         var out = [];
         var bitBuffer = 0;
         var bitCount = 0;
