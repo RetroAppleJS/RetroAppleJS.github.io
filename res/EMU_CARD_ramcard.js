@@ -20,7 +20,7 @@ function RamCard()
          "active":true          // flag to remember if peripheral is altogether operational or not 
         ,"softswitch_pos":0x1   // default soft switch state (documented by microsoft)
         ,"bMapped":false        // flag to remember if onboard ROM is mapped by the language card (true) or not (false)
-        ,"RR":0                 // flag to remember double-triggered Write-Enables (by double read)
+        ,"RR":1                 // previous qualifying access / double-trigger latch
     };
     //this.action = {"SlotIO": { "RD":{ "callback": function(addr) { return card.soft_switch(addr); } } } };  // generic callback for softswitches
 
@@ -110,15 +110,24 @@ function RamCard()
         return ok;
     };
 
-    this.reset = function() { }   // language card settings remain unchanged at warm boot
+    this.reset = function()
+    {
+        // Microsoft RAMCard RESET state is equivalent to two accesses of $C081:
+        // BANK A internally, ROM readable, LC RAM writable.
+        this.state.softswitch_pos = 0x1;
+        this.state.bMapped        = false;
+        this.state.RR             = 1;
+        if(io && this.mount) this.updateMemoryMap(false);
+    };
 
     this.restart = function()
     {
         hw = apple2plus.hwObj();
         io = apple2plus.hwObj().io;
         debug_flush();
-        this.state.bMapped = false;
-        this.state.RR      = 0;
+        this.state.softswitch_pos = 0x1;
+        this.state.bMapped        = false;
+        this.state.RR             = 1;
 
         var ruleID = this.id.PCODE+":"+this.mount.hash;
         io.MEMORY_MAP.addRule(ruleID,function(state)
@@ -180,17 +189,23 @@ function RamCard()
         if(apple2plus.hwObj().bRO == true) return status_nibble;                // skip soft switch manupulation; just return status when hardware is in Read-Only mode
 
         this.state.softswitch_pos = sw_mask(io.address_encoder(rel_io_addr,"SlotIO",slot)); // set softswitch position
-
-        const sw = softswitch[this.state.softswitch_pos] || {}; mon_soft_switch(sw);        // read soft switch
+        const sw = softswitch[this.state.softswitch_pos] || {}; mon_soft_switch(sw);        // access soft switch
         debug_flush(); if(bDebug_sw) debug_soft_switch(sw,this.state);
-        this.state.RR = sw.WE==1 ? (this.state.RR == 0 ? 1 : this.state.RR) : 0;  // only flip write-enable state after double trigger sw.WE==1
+       
+        /*
+         * RR represents whether the PREVIOUS LC control access qualified for
+         * write enable. updateMemoryMap() must therefore see RR before this
+         * access changes it:
+         *
+         *   first odd access:  WE=1, RR=0 -> writes remain protected
+         *   second odd access: WE=1, RR=1 -> writes become enabled
+         *
+         * An even/write-protect access clears RR for the following access.
+         * Read mapping (RE) is independent and takes effect immediately.
+         */
+        var ok = this.updateMemoryMap(!!sw.RE);
+        this.state.RR = sw.WE==1 ? 1 : 0;
 
-        // Refresh both the active callback table and its registered evidence.
-        var mapped = this.state.bMapped;
-        if((sw.WE==1 && this.state.RR==0) == false && sw.RE!=pre_sw.RE)
-            mapped = !!sw.RE;
-
-        var ok = this.updateMemoryMap(mapped);
         if(bDebug_sw && !ok) console.warn(this.id.PCODE+": SOFTSWITCH could not update memory map");
 
 
@@ -373,8 +388,9 @@ function RamCard()
     // Vote on ramcard status (since softswitches change more rapidly than visual updates, we want to show the most prevalent state) 
     function mon_soft_switch(sw)
     {
-        for(var k of ["RE","WE","BANK"])
-            softswitch_diff[k] += sw[k] == 1 ? 1 : -1;
+        softswitch_diff.RE   += sw.RE==1 ? 1 : -1;
+        softswitch_diff.WE   += (sw.WE==1 && card.state.RR==1) ? 1 : -1;
+        softswitch_diff.BANK += sw.BANK==1 ? 1 : -1;
     }
 
 
