@@ -1256,9 +1256,8 @@
         if(!key.length) return "";
         if(key.length<=12) return "*".repeat(key.length);
 
-        return key.slice(0,6)
-            +"*".repeat(Math.max(6,key.length-12))
-            +key.slice(-6);
+        // Keep the verification preview compact regardless of key length.
+        return key.slice(0,6)+"************"+key.slice(-6);
     }
 
     async function serialGPTValidateAPIKey(key,signal)
@@ -1285,7 +1284,7 @@
             return {
                  valid:false
                 ,state:"invalid"
-                ,message:"API key is not authorized for this OpenAI API request."
+                ,message:"API key is not authorized."
             };
         }
 
@@ -1294,14 +1293,14 @@
             return {
                  valid:false
                 ,state:"error"
-                ,message:"API key could not be verified because the OpenAI API is rate limited or quota is unavailable."
+                ,message:"OpenAI could not verify the key (rate limit/quota)."
             };
         }
 
         return {
              valid:false
             ,state:"error"
-            ,message:"Unable to validate API key (HTTP "+response.status+")."
+            ,message:"API key validation failed (HTTP "+response.status+")."
         };
     }
 
@@ -1337,8 +1336,9 @@
             popup.style.left = "50%";
             popup.style.top = "35%";
             popup.style.transform = "translate(-50%,-50%)";
-            popup.style.width = "520px";
-            popup.style.maxWidth = "calc(100vw - 32px)";
+            popup.style.width = "760px";
+            popup.style.maxWidth = "calc(100vw - 24px)";
+            popup.style.fontSize = "13px";
             document.body.appendChild(popup);
         }
 
@@ -1350,33 +1350,40 @@
             return popup._serialGPTPromptPromise;
 
         var titleHtml =
-            "<span id='serialGPTKey_title'>"
+            "<span id='serialGPTKey_title' "
+            +"style='white-space:nowrap;font-size:14px'>"
             +"<i class='fa fa-key'></i>&nbsp;OpenAI API key"
             +"</span>"
             +"<button type='button' class='appbut skinny' data-gpt-key-close "
             +"aria-label='Close API key dialog' title='Close' "
-            +"style='float:right'>x</button>";
+            +"style='float:right;font-size:12px;line-height:1'>x</button>";
+ 
+        /*
+         * Four compact visual rows: title, password field, verification/status,
+         * and the memory note with the OK action.
+         */
 
         var bodyHtml =
-            "<label for='serialGPTKey_input'>API key</label>"
-            +"<input id='serialGPTKey_input' data-gpt-key-input "
+            "<input id='serialGPTKey_input' data-gpt-key-input "
             +"type='password' autocomplete='off' autocorrect='off' "
             +"autocapitalize='off' spellcheck='false' "
+            +"aria-label='OpenAI API key' "
             +"data-1p-ignore='true' data-lpignore='true' "
-            +"style='box-sizing:border-box;width:100%;padding:6px;"
-            +"font-family:monospace'>"
-            +"<div data-gpt-key-mask "
-            +"style='min-height:1.2em;margin-top:6px;font-family:monospace;"
-            +"overflow-wrap:anywhere'></div>"
-            +"<div data-gpt-key-status role='status' aria-live='polite' "
-            +"style='min-height:1.2em;margin-top:6px'></div>"
-            +"<div style='margin-top:8px;font-size:90%;opacity:.75'>"
-            +"The key stays only in page memory and is cleared when GPT is "
-            +"disabled or the page is reloaded."
+            +"style='box-sizing:border-box;width:100%;padding:4px 6px;"
+            +"font-family:monospace;font-size:13px'>"
+            +"<div style='display:flex;align-items:center;gap:12px;"
+            +"min-height:1.4em;margin-top:6px;white-space:nowrap'>"
+            +"<span data-gpt-key-mask style='font-family:monospace'></span>"
+            +"<span data-gpt-key-status role='status' aria-live='polite'></span>"            
             +"</div>"
-            +"<div style='text-align:right;margin-top:10px'>"
-            +"<button type='button' class='appbut' data-gpt-key-ok disabled>"
-            +"OK</button>"
+            +"<div style='display:flex;align-items:center;"
+            +"justify-content:space-between;gap:12px;margin-top:6px;"
+            +"white-space:nowrap'>"
+            +"<span style='font-size:12px;opacity:.75'>"
+            +"Key stays only in page memory and is cleared when GPT is disabled "
+            +"or the page reloads.</span>"
+            +"<button type='button' class='appbut' data-gpt-key-ok disabled "
+            +"style='font-size:12px'>OK</button>"
             +"</div>";
 
         popup.innerHTML = popupAPI.title_body_html(
