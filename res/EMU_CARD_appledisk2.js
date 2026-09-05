@@ -3238,11 +3238,10 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
                     + " title=\"Target attached drive; click to select the next drive\""
                     + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.SLOT2obj("+slotN+").diskCatalogCycleDrive()\">"
                     + oCOM.escapeHTML(current.DCODE)
-                    + "</button>"
-
-                return sharedCatalog.render(arg);
++                    + "</button>";
             }
         });
+        return sharedCatalog.render(arg);
     }
 
 
