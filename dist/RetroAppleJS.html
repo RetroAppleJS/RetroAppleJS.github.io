@@ -48803,13 +48803,6 @@ function DASM()
                   <div class=appbox style="min-height:63px;height:auto;padding:0px 6px 0px 6px;">
                     <div class=appbut style="color:black">
                       load assembler code<input id="ASM_fileInput" style="display:inline-block" type="file" accept=".S,.s,.ASM,.asm,.INC,.inc,.txt,text/plain">
-                      <button id="ASM_sourceCatalogButton"
-                              class="appbut mini"
-                              type="button"
-                              title="Source Code Catalog"
-                              onclick="ASM_sourceCatalogOpen();event.stopPropagation();">
-                        <i class="fa fa-cat"></i>
-                      </button>
                     </div>
                     <div class="appbut" style="color:black"
                           title="Start address used when byte-encoding the source pane into monitor byte code">
@@ -48832,6 +48825,20 @@ function DASM()
                     <!-- Status is logged through ASM_setStatus(); find/replace lives in the Source pane header. -->
                   </div>
                 </div>
+
+                <!--  ASM SOURCE CATALOG TOOLBOX -->
+                <div class=toolbox>
+                  <div class=appbox style="text-align:left;height:63px;padding:0px 6px 0px 6px;">
+                    <button id="ASM_sourceCatalogButton"
+                            class=appbut
+                            type="button"
+                            title="Source Code Catalog"
+                            onclick="ASM_sourceCatalogOpen();event.stopPropagation();">
+                      <i class="fa fa-cat"></i>
+                    </button>
+                  </div>
+                </div>
+
               </div>
 
               <div id="ASM_paneHost" class="ASM_paneHost">
