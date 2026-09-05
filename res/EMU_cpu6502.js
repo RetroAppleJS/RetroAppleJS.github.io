@@ -27,6 +27,87 @@ function Cpu6502(hwobj)
     // It is checked only when cycle_delay is zero, before opcode fetch.
     var executionTrap = null;
 
+    // Optional terminal same-PC loop detector. Disabled unless a caller
+    // (currently STEP TRACE) explicitly enables it.
+    var selfLoopTrapEnabled = false;
+    var selfLoopTrapThreshold = 8;
+    var selfLoopTrapLastPC = -1;
+    var selfLoopTrapCount = 0;
+    var selfLoopTrapHit = null;
+
+    function resetSelfLoopTrap()
+    {
+        selfLoopTrapLastPC = -1;
+        selfLoopTrapCount = 0;
+        selfLoopTrapHit = null;
+    }
+
+    function noteSelfLoopTrap(instr_pc, opcode)
+    {
+        if(!selfLoopTrapEnabled) return;
+
+        instr_pc &= 0xffff;
+
+        if(instr_pc === selfLoopTrapLastPC)
+            selfLoopTrapCount++;
+        else
+        {
+            selfLoopTrapLastPC = instr_pc;
+            selfLoopTrapCount = 1;
+        }
+
+        if(!selfLoopTrapHit && selfLoopTrapCount >= selfLoopTrapThreshold)
+        {
+            selfLoopTrapHit = {
+                 "reason":"same-pc"
+                ,"pc":instr_pc
+                ,"repeats":selfLoopTrapCount
+                ,"threshold":selfLoopTrapThreshold
+                ,"opcode":opcode & 0xff
+                ,"a":a & 0xff
+                ,"x":x & 0xff
+                ,"y":y & 0xff
+                ,"p":p & 0xff
+                ,"sp":sp & 0xff
+            };
+        }
+    }
+
+    this.setSelfLoopTrap = function(enabled,threshold)
+    {
+        selfLoopTrapEnabled = !!enabled;
+
+        if(threshold !== undefined)
+        {
+            var n = Number(threshold) | 0;
+            selfLoopTrapThreshold = Math.max(2,n || 8);
+        }
+
+        resetSelfLoopTrap();
+        return this.getSelfLoopTrapState();
+    }
+
+    this.clearSelfLoopTrap = function()
+    {
+        resetSelfLoopTrap();
+    }
+
+    this.getSelfLoopTrap = function()
+    {
+        return selfLoopTrapHit ? Object.assign({},selfLoopTrapHit) : null;
+    }
+
+    this.getSelfLoopTrapState = function()
+    {
+        return {
+             "enabled":selfLoopTrapEnabled
+            ,"threshold":selfLoopTrapThreshold
+            ,"lastPC":selfLoopTrapLastPC < 0 ? null : selfLoopTrapLastPC
+            ,"count":selfLoopTrapCount
+            ,"hit":this.getSelfLoopTrap()
+        };
+    }
+
     //const BOOTsiz = 1024;
     const BOOTsiz = 32768;
     //const BOOTsiz = 65536;
@@ -523,6 +604,7 @@ function Cpu6502(hwobj)
         p = P_I | P_1;
         pc = readWord(RESET_VECTOR);
         cycle_delay = 0;
+        resetSelfLoopTrap();
 
         // Re-arm an address-triggered capture. With a blank start address,
         // reset begins a new immediate capture instead.
@@ -576,6 +658,7 @@ function Cpu6502(hwobj)
 
         opcode = readByte(pc);
         pc = (pc + 1) & 0xffff;
+        noteSelfLoopTrap(instr_pc,opcode);
 
         // Look up number of cycles
         var base_cycles = cycle_count[opcode];
@@ -972,6 +1055,7 @@ function Cpu6502(hwobj)
         p =  (parseInt(l[4], 16) & ~P_B) | P_1;
         pc = parseInt(l[5], 16) & 0xffff;
         cycle_delay = 0;
+        resetSelfLoopTrap();
     }
 
     // Exact architectural-state import used when the flat WASM accelerator
@@ -991,6 +1075,7 @@ function Cpu6502(hwobj)
             ? 0
             : Math.max(0,Number(state.cycle_delay)|0);
 
+        resetSelfLoopTrap();
         return this.watch();
     }
 
