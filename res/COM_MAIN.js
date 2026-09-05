@@ -2140,7 +2140,12 @@ function prettyJsonAllman(value, indent) {
         ? cfg.titleHTML(inst,arg)
         : "<span>" + _COM_this.escapeHTML(cfg.title || "CATALOG") + "</span>";
 
-      title += '<div class="appbut" data-cat-close="1" style="text-align:center;float:right;">x</div>';
+      title = '<div style="display:flex;align-items:center;gap:6px;width:100%;min-width:0;">'
+        + title
+        + '<span style="flex:1 1 auto;"></span>'
+        + '<div class="appbut" data-cat-close="1"'
+        + ' style="text-align:center;flex:0 0 auto;">x</div>'
+        + '</div>';
 
       var popup = this.ensurePopup(cfg.popupID,cfg.popupStyle);
       popup.innerHTML = oCOM.POPUP.title_body_html(

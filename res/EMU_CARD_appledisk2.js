@@ -18,6 +18,17 @@ function createDiskIIUI()
     var catalogState = {"slotN":null,"DCODE":null,"arg":null};
     var surfaceMapState = {"slotN":null};
 
+    function diskDeviceID(device)
+    {
+        if(device==null) return null;
+
+        var DCODE = typeof(device)=="string"
+            ? device
+            : (device.id && device.id.DCODE!==undefined ? device.id.DCODE : device.DCODE);
+
+        return DCODE==null ? null : String(DCODE).toUpperCase();
+    }
+
     function diskSlots(io)
     {
         var out = [];
@@ -67,14 +78,14 @@ function createDiskIIUI()
         var devices = diskDevices(io,slotN);
         if(devices.length==0) return null;
 
-        DCODE = io.obj2deviceID(DCODE);
+        DCODE = diskDeviceID(DCODE);
         var selected = devices.find(function(device)
         {
-            return String(device.id.DCODE).toUpperCase()===DCODE;
+            return diskDeviceID(device)===DCODE;
         }) || devices[0];
 
         catalogState.slotN = slotN;
-        catalogState.DCODE = io.obj2deviceID(selected);
+        catalogState.DCODE = diskDeviceID(selected);
         if(arg!==undefined) catalogState.arg = Object.assign({},arg);
 
         io.refreshDeviceToolboxes({
@@ -139,10 +150,10 @@ function createDiskIIUI()
 
         var current = -1;
         for(var i=0;i<devices.length;i++)
-            if(io.obj2deviceID(devices[i])===context.DCODE) current = i;
+            if(diskDeviceID(devices[i])===context.DCODE) current = i;
 
         var next = devices[(current+1)%devices.length];
-        setCatalogContext(io,context.slotN,io.obj2deviceID(next));
+        setCatalogContext(io,context.slotN,diskDeviceID(next));
         return catalogRender(io);
     }
 
@@ -3238,7 +3249,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
                     + " title=\"Target attached drive; click to select the next drive\""
                     + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.SLOT2obj("+slotN+").diskCatalogCycleDrive()\">"
                     + oCOM.escapeHTML(current.DCODE)
-+                    + "</button>";
+                    + "</button>";
             }
         });
         return sharedCatalog.render(arg);
