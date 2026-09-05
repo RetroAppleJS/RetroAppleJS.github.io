@@ -12244,6 +12244,87 @@ function Cpu6502(hwobj)
     // It is checked only when cycle_delay is zero, before opcode fetch.
     var executionTrap = null;
 
+    // Optional terminal same-PC loop detector. Disabled unless a caller
+    // (currently STEP TRACE) explicitly enables it.
+    var selfLoopTrapEnabled = false;
+    var selfLoopTrapThreshold = 8;
+    var selfLoopTrapLastPC = -1;
+    var selfLoopTrapCount = 0;
+    var selfLoopTrapHit = null;
+
+    function resetSelfLoopTrap()
+    {
+        selfLoopTrapLastPC = -1;
+        selfLoopTrapCount = 0;
+        selfLoopTrapHit = null;
+    }
+
+    function noteSelfLoopTrap(instr_pc, opcode)
+    {
+        if(!selfLoopTrapEnabled) return;
+
+        instr_pc &= 0xffff;
+
+        if(instr_pc === selfLoopTrapLastPC)
+            selfLoopTrapCount++;
+        else
+        {
+            selfLoopTrapLastPC = instr_pc;
+            selfLoopTrapCount = 1;
+        }
+
+        if(!selfLoopTrapHit && selfLoopTrapCount >= selfLoopTrapThreshold)
+        {
+            selfLoopTrapHit = {
+                 "reason":"same-pc"
+                ,"pc":instr_pc
+                ,"repeats":selfLoopTrapCount
+                ,"threshold":selfLoopTrapThreshold
+                ,"opcode":opcode & 0xff
+                ,"a":a & 0xff
+                ,"x":x & 0xff
+                ,"y":y & 0xff
+                ,"p":p & 0xff
+                ,"sp":sp & 0xff
+            };
+        }
+    }
+
+    this.setSelfLoopTrap = function(enabled,threshold)
+    {
+        selfLoopTrapEnabled = !!enabled;
+
+        if(threshold !== undefined)
+        {
+            var n = Number(threshold) | 0;
+            selfLoopTrapThreshold = Math.max(2,n || 8);
+        }
+
+        resetSelfLoopTrap();
+        return this.getSelfLoopTrapState();
+    }
+
+    this.clearSelfLoopTrap = function()
+    {
+        resetSelfLoopTrap();
+    }
+
+    this.getSelfLoopTrap = function()
+    {
+        return selfLoopTrapHit ? Object.assign({},selfLoopTrapHit) : null;
+    }
+
+    this.getSelfLoopTrapState = function()
+    {
+        return {
+             "enabled":selfLoopTrapEnabled
+            ,"threshold":selfLoopTrapThreshold
+            ,"lastPC":selfLoopTrapLastPC < 0 ? null : selfLoopTrapLastPC
+            ,"count":selfLoopTrapCount
+            ,"hit":this.getSelfLoopTrap()
+        };
+    }
+
     //const BOOTsiz = 1024;
     const BOOTsiz = 32768;
     //const BOOTsiz = 65536;
@@ -12740,6 +12821,7 @@ function Cpu6502(hwobj)
         p = P_I | P_1;
         pc = readWord(RESET_VECTOR);
         cycle_delay = 0;
+        resetSelfLoopTrap();
 
         // Re-arm an address-triggered capture. With a blank start address,
         // reset begins a new immediate capture instead.
@@ -12793,6 +12875,7 @@ function Cpu6502(hwobj)
 
         opcode = readByte(pc);
         pc = (pc + 1) & 0xffff;
+        noteSelfLoopTrap(instr_pc,opcode);
 
         // Look up number of cycles
         var base_cycles = cycle_count[opcode];
@@ -13189,6 +13272,7 @@ function Cpu6502(hwobj)
         p =  (parseInt(l[4], 16) & ~P_B) | P_1;
         pc = parseInt(l[5], 16) & 0xffff;
         cycle_delay = 0;
+        resetSelfLoopTrap();
     }
 
     // Exact architectural-state import used when the flat WASM accelerator
@@ -13208,6 +13292,7 @@ function Cpu6502(hwobj)
             ? 0
             : Math.max(0,Number(state.cycle_delay)|0);
 
+        resetSelfLoopTrap();
         return this.watch();
     }
 
@@ -51336,6 +51421,7 @@ Label1 TXA
     var DBG_traceHistory = null;
     var DBG_traceLines = [];
     var DBG_traceCurrentWrites = null;
+    var DBG_SELF_LOOP_THRESHOLD = 8;
     var DBG_runTimer = null;
     var DBG_runInstructionCount = 0;
     var DBG_runLastStatusStep = 0;
@@ -52587,6 +52673,38 @@ Label1 TXA
        return hw;
      }
  
+     function DBG_armSelfLoopTrap()
+     {
+       if(DBG_traceCPU && typeof DBG_traceCPU.setSelfLoopTrap === "function")
+         DBG_traceCPU.setSelfLoopTrap(true,DBG_SELF_LOOP_THRESHOLD);
+     }
+
+     function DBG_getSelfLoopTrap()
+     {
+       return DBG_traceCPU && typeof DBG_traceCPU.getSelfLoopTrap === "function"
+         ? DBG_traceCPU.getSelfLoopTrap()
+         : null;
+     }
+
+     function DBG_selfLoopTrapText(hit)
+     {
+       if(!hit) return "";
+
+       var decoded = DBG_traceInstructionTextAt(hit.pc & 0xffff);
+       var msg = "SELF-LOOP TRAP at $" + DBG_hexWord(hit.pc)
+         + " after " + hit.repeats + " consecutive instructions";
+
+       if(decoded && decoded.op) msg += " / " + decoded.op;
+
+       msg += " / A=$" + DBG_hexByte(hit.a)
+         + " X=$" + DBG_hexByte(hit.x)
+         + " Y=$" + DBG_hexByte(hit.y)
+         + " P=$" + DBG_hexByte(hit.p)
+         + " SP=$" + DBG_hexByte(hit.sp);
+
+       return msg;
+     }
+
       function DBG_settingChecked(id,defaultValue) {
         var el = DBG_el(id);
         if(!el) return !!defaultValue;
@@ -52954,6 +53072,9 @@ Label1 TXA
           rP:  DBG_hexByte(before.p || 0)
         };
 
+        if(record.selfLoopTrap)
+          parts.opc = "[LOOP] " + parts.opc;
+
         if(DBG_showCyclesEnabled()) parts.cyc = String(record.cycles || 0);
         return DBG_formatTraceParts(parts);
       }
@@ -53043,6 +53164,7 @@ Label1 TXA
        DBG_traceHW = DBG_createCpuTraceHw();
        DBG_traceCPU = new Cpu6502(DBG_traceHW);
        DBG_traceCPU.load("00,00,00,ff,24," + DBG_hexWord(startPC));
+       DBG_armSelfLoopTrap();
        DBG_traceStarted = true;
        DBG_traceStepCount = 0;
        DBG_resetTraceHistory();
@@ -53085,6 +53207,8 @@ Label1 TXA
          after = DBG_cloneTraceState(DBG_traceCPU.watch());
        } while (after && after.cycle_delay > 0 && cycles < 64);
  
+       var selfLoopTrap = DBG_getSelfLoopTrap();
+
        var writes = DBG_traceCurrentWrites || [];
        DBG_traceCurrentWrites = null;
 
@@ -53097,7 +53221,8 @@ Label1 TXA
          pc: pc,
          decoded: decoded,
          cycles: cycles,
-         writes: writes.slice()
+         writes: writes.slice(),
+         selfLoopTrap: selfLoopTrap
        };
 
        if(!DBG_traceHistory) DBG_resetTraceHistory();
@@ -53110,6 +53235,10 @@ Label1 TXA
        DBG_renderTraceView();
        DBG_updateRegisterDisplays(after,before);
        if (after) DBG_updateListingPC(after.pc & 0xffff);
+
+       if(selfLoopTrap && !DBG_running)
+         DBG_statusText(DBG_selfLoopTrapText(selfLoopTrap));
+
        return true;
      }
  
@@ -53121,6 +53250,7 @@ Label1 TXA
          DBG_traceStepCount = 0;
          DBG_resetTraceHistory();
          DBG_traceLines = [];
+         DBG_armSelfLoopTrap();
          DBG_renderTraceView();
          DBG_statusText("Trace cleared; next trace entry will be step 0001.");
          return true;
@@ -53234,6 +53364,12 @@ Label1 TXA
 
           DBG_runInstructionCount++;
 
+          var selfLoopTrap = DBG_getSelfLoopTrap();
+          if(selfLoopTrap) {
+            DBG_stopContinuousRun(DBG_selfLoopTrapText(selfLoopTrap));
+            return;
+          }
+
           if(stopAfter > 0 && DBG_runInstructionCount >= stopAfter) {
             DBG_stopContinuousRun(
               "Continuous run stopped after " + DBG_runInstructionCount + " instruction(s)."
@@ -53243,6 +53379,7 @@ Label1 TXA
         }
 
         if(DBG_traceStepCount !== DBG_runLastStatusStep) {
+          DBG_armSelfLoopTrap();
           DBG_runLastStatusStep = DBG_traceStepCount;
           DBG_statusText(
             "Continuous run: " + DBG_runInstructionCount + " instruction(s) / " + speed.label +
