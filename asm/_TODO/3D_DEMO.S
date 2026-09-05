@@ -1,63 +1,33 @@
-; =============================================================================
-; 3D-DEMO - ASM_core.js compatibility edition
-; Original: Marc Golombeck, v1.61 / 07.05.2017
-;
-; Compatibility changes:
-;   - Merlin '*' full-line comments converted to ';'
-;   - Merlin CYC directives disabled
-;   - Merlin BLT/BGE aliases replaced with BCC/BCS
-;   - Merlin DS changed to ASM_core.js .RES
-;   - Merlin CHK checksum pseudo-op omitted (unreachable in this program)
-;   - SHTABPTR and TXTPTR now receive explicit low/high address bytes
-; =============================================================================
-
-; IMPORTANT RUNTIME REQUIREMENT
-; -----------------------------
-; This source assembles only the program at $6000-$6xxx.  The original
-; demo is NOT self-contained.  Before ENTRY ($6000) is executed, the
-; original demo resources must already be present in memory:
-;   $7000  sine/cosine table
-;   $7200  point/line object data
-;   $7400  Applesoft HGR shape table
-;   $7A00  multiplication tables ($7A00-$81FF)
-;   $8200  projection + HGR lookup/mask/div7/mod7 tables ($8200-$8704)
-; Without these blocks the border can still draw, but text becomes random
-; shapes and the projected wireframe becomes apparently random line data.
-;
-; ASM_core.js note: DOS commands below are encoded explicitly with bit 7
-; set, so they work even when the assembler UI uses dQuoteLegacy=false.
-; =============================================================================
-
-;*******************************
-;           3D-DEMO            *
-;                              *
-;      BY MARC GOLOMBECK       *
-;                              *
-;   VERSION 1.61 / 07.05.2017  *
-;                              *
-; NEEDS THE FOLLOWING DATA     *
-; ALREADY LOADED INTO MEMORY:  *
-;                              *
-; $7000: SINE/COSINE-TABLE     *
-; $7200: POINT AND LINE DATA   *
-; $7400: SHAPE TABLE           *
-; $7A00: MULTIPLICATION TABLE  *
-; $8200: PROJECTION TABLE      *
-;                              *
-; CONTROLLED VIA JOYSTICK AND  *
-; KEYBOARD:                    *
-;                              *
-; PDL(0/1): ROTATION+ZOOM      *
-; PBN(0/1): RESET+STOP/EXIT    *
-; KEYS 1-5: CHOOSE 3D-OBJECT   *
-; KEYS +/-: ALTERNATE ZOOM     *
-; KEY B   : TOGGLE BENCHMARK   *
-; KEY Q   : QUIT PROGRAM       *
-;                              *
-;*******************************
-;
+********************************
+*           3D-DEMO            *
+*                              *
+*      BY MARC GOLOMBECK       *
+*                              *
+*   VERSION 1.61 / 07.05.2017  *
+*                              *
+* NEEDS THE FOLLOWING DATA     *
+* ALREADY LOADED INTO MEMORY:  *
+*                              *
+* $7000: SINE/COSINE-TABLE     *
+* $7200: POINT AND LINE DATA   *
+* $7400: SHAPE TABLE           *
+* $7A00: MULTIPLICATION TABLE  *
+* $8200: PROJECTION TABLE      *
+*                              *
+* CONTROLLED VIA JOYSTICK AND  *
+* KEYBOARD:                    *
+*                              *
+* PDL(0/1): ROTATION+ZOOM      *
+* PBN(0/1): RESET+STOP/EXIT    *
+* KEYS 1-5: CHOOSE 3D-OBJECT   *
+* KEYS +/-: ALTERNATE ZOOM     *
+* KEY B   : TOGGLE BENCHMARK   *
+* KEY Q   : QUIT PROGRAM       *
+*                              *
+********************************
+*
                ORG   $6000
-;
+*
 HGR2           EQU   $F3D8      ; SWITCH TO HIRES2
 HGR            EQU   $F3E2      ; SWITCH TO HIRES1
 HCLR           EQU   $F3F2      ; CLEAR HIRES SCREEN TO BLACK1
@@ -77,7 +47,7 @@ SHNUM          EQU   $F730      ; GET ADRESS OF SHAPE NUMBER
 SHDRAW         EQU   $F605      ; DRAW SHAPE ON SCREEN
 BELL           EQU   $FBDD      ; RING BELL
 WAIT           EQU   $FCA8      ; WAIT A BIT
-;
+*
 SINTAB         EQU   $7000      ; BASE ADRESS OF SINE TABLE
 COSTAB         EQU   $7040      ; BASE ADRESS OF COSINE TABLE
 NUMPNT         EQU   $7200      ; NUMBER OF POINTS TO DRAW
@@ -101,11 +71,11 @@ DIV7HI         EQU   $84D5      ; DIVISION BY 7 TABLE
 MOD7HI         EQU   $84ED      ; DIVISION BY 7 TABLE
 DIV7LO         EQU   $8505      ; DIVISION BY 7 TABLE
 MOD7LO         EQU   $8605      ; DIVISION BY 7 TABLE
-;
+*
 XTRANS         EQU   $8B        ; X-TRANSLATION CENTER SCREEN
 YTRANS         EQU   $5F        ; Y-TRANSLATION
 ZTRANS         EQU   $FE        ; MOVE 3D OBJECT AWAY FROM CAMERA
-;
+*
 TXTPTR         EQU   $06        ; POINTER FOR TEXT OUTPUT
 G_PAGE         EQU   $06        ; GRAPHIC PAGE TO DRAW TO
 PTR            EQU   $08        ; POINTER FOR DOS COMMAND
@@ -119,7 +89,7 @@ ROTSPDX        EQU   $FD        ; X-ROTATIONAL SPEED
 LOOPCNTZ       EQU   $F4        ; Z-ROT-COUNTER
 ROTSPDZ        EQU   $F5        ; Z-ROTATIONAL SPEED
 SCALING        EQU   $FF        ; SCALING
-;
+*
 SINX           EQU   $7B
 XREGSAVE       EQU   $7B        ; DOUBLE USE!
 COSX           EQU   $7C
@@ -147,7 +117,7 @@ TEMP1          EQU   $EB        ; TEMP STORAGE
 TEMP2          EQU   $EC        ; TENP STORAGE
 MKAND          EQU   $ED        ; MULTIPLICANT
 MATOR          EQU   $EF        ; MULTIPLICATOR
-;
+*
 XDRAW          EQU   $300       ; X-POSITION FOR DRAW
 YDRAW          EQU   $302       ; Y-POSITION FOR DRAW
 XDRAWO         EQU   $304       ; OLD POSITION X
@@ -160,18 +130,18 @@ BENCHM         EQU   $30D       ; BENCHMARK ON?
 MAXDRAW        EQU   $30E       ; MAXIMUM LINES TO DRAW
 HOLDON         EQU   $30F       ; PAUSE PLOTTING
 STEPON         EQU   $30A       ; STEP FUNCTION
-;
+*
 PSLO           EQU   $D8        ; USING FAC-ADRESS RANGE
 PSHI           EQU   $DA        ; FOR POINTER IN MULT-TAB
 PDLO           EQU   $DC        ; USING ARG-ADRESS RANGE
 PDHI           EQU   $DE        ; FOR POINTER IN MULT-TAB
-;
+*
 ENTRY          JSR   SETUP      ; SETUP GRAPHIC & VARIABLES
-;
+*
 TABLESET       JSR   WLCMTXT    ; DRAW TOP & BOTTOM TEXT
-;
-; READ PADDELS
-;
+*
+* READ PADDELS
+*
 LOOP           INC   JOYCNT     ; MAIN LOOP STARTS HERE
                LDA   HOLDON     ; IS HOLDON ACTIVATED?
                BEQ   EVJOY      ; NO
@@ -184,7 +154,7 @@ EVJOY          LDA   JOYCNT     ; EAVLUATE JOYSTICK
                BCC   READ1
                LDA   #$00       ; READ PADDLE EVERY 2 CYCLES
                STA   JOYCNT
-;
+*
 PREAD0         LDX   #$00       ; VARY Y-ROT SPEED
                JSR   PREAD ; PADDLE (0)
                CPY   #$64
@@ -192,7 +162,7 @@ PREAD0         LDX   #$00       ; VARY Y-ROT SPEED
                CPY   #$9B
                BCS   DECSPDY    ; INCREASE SPEED
                BCC   PREAD1     ; 256-STEP CIRCLE LOOP
-;
+*
 DECSPDY        LDA   ROTSPDY    ; DECREASE ANGLE
                CMP   #$02
                BCC   PREAD1     ; LOOPCNT STILL POSITIVE
@@ -204,7 +174,7 @@ INCSPDY        LDA   ROTSPDY    ; DECREASE WAIT COUNTER
                BCS   PREAD1     ; MAXIMUM 10
                INC   ROTSPDY
                INC   ROTSPDY
-;
+*
 PREAD1         LDX   #$01       ; VARY X-ROT SPEED
                JSR   PREAD      ; PADDLE (1)
                CPY   #$64
@@ -212,7 +182,7 @@ PREAD1         LDX   #$01       ; VARY X-ROT SPEED
                CPY   #$9B
                BCS   INCSPDX    ; INCREASE SPEED
                BCC   READ1      ; 256-STEP CIRCLE LOOP
-;
+*
 DECSPDX        LDA   ROTSPDX    ; DECREASE ANGLE
                CMP   #$02
                BCC   READ1      ; LOOPCNT STILL POSITIVE
@@ -224,7 +194,7 @@ INCSPDX        LDA   ROTSPDX    ; DECREASE WAIT COUNTER
                BCS   READ1      ; MAXIMUM 10
                INC   ROTSPDX
                INC   ROTSPDX
-;
+*
 READ1          CLC              ; CALC NEXT STEP
                LDX   #$00
                LDA   LOOPCNTY
@@ -242,7 +212,7 @@ READ01         CPX   #01
                LDY   BENCHM
                BEQ   READ03     ; BENCHMARK OFF
                JSR   BELL       ; REING BELL
-;
+*
 READ03         CLC              ; X-ROTATION
                LDA   LOOPCNTX
                ADC   ROTSPDX    ; ADD NEXT STEP
@@ -255,13 +225,13 @@ READ03         CLC              ; X-ROTATION
                CLC
                ADC   #$F6
                STA   LOOPCNTZ
-;
+*
                JSR   INITPNTS   ; CALC NEW POINT POSITIONS
                JSR   UDRWLNS    ; UNDRAW LINES
                JSR   DRWLNS
-;
-; READ KEYBOARD FOR LOADING NEW OBJECTS
-;
+*
+* READ KEYBOARD FOR LOADING NEW OBJECTS
+*
 READKBD        LDA   KYBD
                BPL   NOKEY1     ; NO KEY IS PRESSED
 KEYPOINT       CMP   #$AE       ; KEY '.' IS PRESSED
@@ -356,9 +326,9 @@ ENDKEY         JSR   SETUP
                JSR   WLCMTXT    ; WRITE TOP & BOTTOM TEXT
                JSR   INITPNTS   ; SET INITIAL POINT POSITION
 ENDKEY1        LDA   STROBE     ; CLEAR KEYPRESS
-;
-; CHECK PUSHBUTTONS
-;
+*
+* CHECK PUSHBUTTONS
+*
 NOKEY          LDA   PB1        ; PB 1 PRESSED?
                BMI   END        ; EXIT PROGRAM!
 PB0CHK         LDA   PB0        ; PB 0 PRESSED?
@@ -371,34 +341,32 @@ PB0CHK         LDA   PB0        ; PB 0 PRESSED?
                STA   ROTSPDY    ; STOP ROTATION
                STA   ROTSPDX
                STA   ROTSPDZ
-;
+*
 GOLOOP         JMP   LOOP       ; START AGAIN
-;
+*
 END            LDA   #$00       ; END PROGRAM
                STA   $C051      ; SWITCH TO TEXT
                STA   $C052
                STA   $C054
                JSR   HOME       ; CLEAR SCREEN
                JMP   $03D0      ; DOS WARM START NO RTS HERE!
-;
-;*******************************
-; SETUP GRAPHICS & DATA        *
-;*******************************
-;
+*
+********************************
+* SETUP GRAPHICS & DATA        *
+********************************
+*
 SETUP          LDA   #$00
                STA   $C050      ; SWITCH ON GRAPHICS
                STA   $C057      ; SWITCH TO HIRES
                STA   BENCHM     ; BENCHMARK OFF
                STA   HOLDON     ; HOLD-FUNCTION DEACTIVATED
                STA   STEPON     ; STEP-FUNCTION DEACTIVATED
-;
-               LDA   #<SHTAB     ; SHAPE TABLE POINTER LOW BYTE
-               STA   SHTABPTR
-               LDA   #>SHTAB     ; SHAPE TABLE POINTER HIGH BYTE
+*
+               LDA   #SHTAB
                STA   SHTABPTR+1
                LDA   #$01
                STA   SCALE      ; SCALE = 1
-;
+*
                LDA   #32
                STA   $E6        ; DRAW ON 1
                STA   $C055      ; SHOW 2
@@ -412,7 +380,7 @@ SETUP          LDA   #$00
                JSR   SHNUM
                LDA   #00
                JSR   SHDRAW
-;
+*
                LDA   #64
                STA   $E6        ; DRAW ON 2
                STA   $C054
@@ -434,7 +402,7 @@ SETUP          LDA   #$00
                JSR   SHNUM
                LDA   #00
                JSR   SHDRAW
-;
+*
                LDA   #$03       ; INIT HCOLOR = 3
                JSR   HCOLOR
                LDA   #$0A
@@ -442,22 +410,22 @@ SETUP          LDA   #$00
                STA   ROTSPDZ    ; INIT Z-ROT SPEED = 0
                LDA   #$0F
                STA   ROTSPDY    ; INIT Y-ROT SPEED = 1
-;
+*
                LDA   #$00       ; DEFINED POSITIONS AFTER
                STA   LOOPCNTY   ; STARTING THE ALGO OR
                STA   LOOPCNTZ   ; CHANGING 3D-OBJECTS
                LDA   #$10
                STA   LOOPCNTX   ; CURRENT X-STEP
-;
+*
                LDA   #$01
                STA   ASCR       ; DRAW ON HIRES 1
                STA   JOYCNT     ; SET JOYSTICK REQUEST COUNTER
-;
+*
                LDA   #$30       ; SCALING
                STA   SCALING
                LDA   #$50
                STA   ZTRANS     ; MOVE OBJECT AWAY FROM CAMERA
-;
+*
                LDA   #SSQLO/256 ; SETUP MULT-TAB
                STA   PSLO+1
                LDA   #SSQHI/256
@@ -466,14 +434,14 @@ SETUP          LDA   #$00
                STA   PDLO+1
                LDA   #DSQHI/256
                STA   PDHI+1
-;
-;
+*
+*
                RTS
-;
-;*******************************
-; DRAW LINES                   *
-;*******************************
-;
+*
+********************************
+* DRAW LINES                   *
+********************************
+*
 DRWLNS         LDA   #$00
                STA   PNTCNT
                LDA   ASCR       ; CHECK WHICH SCREEN IS ACTIVE
@@ -511,9 +479,9 @@ GETPNT2        LDA   PNTCNT
                LDA   #$04
                STA   MAXDRAW    ; NUMBER OF LINES TO DRAW
                STX   XREGSAVE   ; SAVE X-REG ON STACK
-;
-; EVALUATE POINTS TO DRAW TO
-;
+*
+* EVALUATE POINTS TO DRAW TO
+*
                LDX   XREGSAVE
 DRWNXT         LDA   TABLE,X
                BEQ   NXTPNT     ; NOTHING MORE TO DRAW
@@ -536,16 +504,16 @@ DRWNXT         LDA   TABLE,X
                INY
                LDA   TABLE,Y
                STA   YTO
-;
+*
                STX   XREGSAVE
                JSR   LINEDRAW   ; DO FAST LINE DRAW
                LDX   XREGSAVE
-;
+*
                DEC   MAXDRAW    ; MAXIMUM NUMBER OF LINES
                BEQ   NXTPNT     ; REACHED? IF YES NEXT POINT
                INX              ; NEXT POINT
                BNE   DRWNXT
-;
+*
 NXTPNT         INC   PNTCNT
                LDA   PNTCNT
                CMP   NUMPNT
@@ -564,17 +532,17 @@ DISP2          STA   $C055      ; SWITCH TO SCREEN2
                STA   $E6        ; DRAW ON 1
                DEC   ASCR       ; ASCR = 1
 DRWEND2        RTS
-;
-;
-;*******************************
-; INIT POINT POSITIONS         *
-;*******************************
-;
+*
+*
+********************************
+* INIT POINT POSITIONS         *
+********************************
+*
 INITPNTS       LDA   #$00
                STA   PNTCNT
-;
-; EVAL SIN/COS-TAB
-;
+*
+* EVAL SIN/COS-TAB
+*
                LDX   LOOPCNTX   ; INITIAL POS
                LDA   SINTAB,X   ; GET SINUS FOR X
                STA   SINX
@@ -590,9 +558,9 @@ INITPNTS       LDA   #$00
                STA   SINZ
                LDA   COSTAB,X
                STA   COSZ
-;
-; ROTATE POINTS AROUND X AND Y
-;
+*
+* ROTATE POINTS AROUND X AND Y
+*
 GETPNT         LDA   PNTCNT
                ASL
                ASL
@@ -607,9 +575,9 @@ GETPNT         LDA   PNTCNT
                INX
                LDA   TABLE,X    ; GET ZPOS
                STA   ZPOS
-;
-; PERFORM Y-ROTATION
-;
+*
+* PERFORM Y-ROTATION
+*
 STRTROT        LDA   XPOS       ; RX = X * COS(Y) + Z * SIN(Y)
                STA   MATOR      ; X * COS(Y)
                LDA   COSY
@@ -645,7 +613,7 @@ STRTROT        LDA   XPOS       ; RX = X * COS(Y) + Z * SIN(Y)
                LDA   PX1+1
                ADC   PX2+1
                STA   RX+1       ; SAVE HI-BYTE AS XPOS
-;
+*
                SEC              ; Z-COORD: SUB
                LDA   PX3
                SBC   PX4
@@ -653,7 +621,7 @@ STRTROT        LDA   XPOS       ; RX = X * COS(Y) + Z * SIN(Y)
                LDA   PX3+1
                SBC   PX4+1
                STA   RZ+1
-;
+*
                LDA   YPOS       ; RY = YPOS * 1 (=$7F)
                STA   MATOR
                LDA   #$7F
@@ -661,9 +629,9 @@ STRTROT        LDA   XPOS       ; RX = X * COS(Y) + Z * SIN(Y)
                JSR   MULT
                STA   RY
                STY   RY+1
-;
-; PERFORM X-ROTATION
-;
+*
+* PERFORM X-ROTATION
+*
                LDA   RX+1       ; RXNEW = RX+1 * 1 (=$7F)
                STA   MATOR
                LDA   #$7F
@@ -671,7 +639,7 @@ STRTROT        LDA   XPOS       ; RX = X * COS(Y) + Z * SIN(Y)
                JSR   MULT
                STA   RX
                STY   RX+1
-;
+*
                LDA   RY+1       ; RY = Y * COS(X) - Z * SIN(X)
                STA   MATOR      ; Y * COS(X)
                LDA   COSX
@@ -679,13 +647,13 @@ STRTROT        LDA   XPOS       ; RX = X * COS(Y) + Z * SIN(Y)
                JSR   MULT
                STA   PX1
                STY   PX1+1
-;
+*
                LDA   SINX       ; CALC Y * SIN(X) FOR Z-COORD
                STA   MKAND      ; Y * SIN(X)
                JSR   MULT
                STA   PX3
                STY   PX3+1
-;
+*
                LDA   RZ+1       ; Z * SIN(X)
                STA   MATOR
                LDA   SINX
@@ -693,13 +661,13 @@ STRTROT        LDA   XPOS       ; RX = X * COS(Y) + Z * SIN(Y)
                JSR   MULT
                STA   PX2
                STY   PX2+1
-;
+*
                LDA   COSX       ; CALC Z * COS(X) FOR Z-CCORD
                STA   MKAND      ; Z * COS(X)
                JSR   MULT
                STA   PX4
                STY   PX4+1
-;
+*
                SEC              ; Y-COORD: SUB
                LDA   PX1
                SBC   PX2
@@ -707,7 +675,7 @@ STRTROT        LDA   XPOS       ; RX = X * COS(Y) + Z * SIN(Y)
                LDA   PX1+1
                SBC   PX2+1
                STA   RY+1
-;
+*
                CLC              ; Z-COORD: ADD + TRANSLATE
                LDA   PX3
                ADC   PX4
@@ -719,11 +687,11 @@ STRTROT        LDA   XPOS       ; RX = X * COS(Y) + Z * SIN(Y)
                LSR
                LSR
                STA   RZ+1
-;
-; PERFORM Z-ROTATION
-;
-; DO NOT TOUCH RZ ANYMORE!
-;
+*
+* PERFORM Z-ROTATION
+*
+* DO NOT TOUCH RZ ANYMORE!
+*
                LDA   RX+1       ; RX = X * COSZ - Y * SINZ
                STA   MATOR      ; X * COS(Z)
                LDA   COSZ
@@ -731,13 +699,13 @@ STRTROT        LDA   XPOS       ; RX = X * COS(Y) + Z * SIN(Y)
                JSR   MULT
                STA   PX1
                STY   PX1+1
-;
+*
                LDA   SINZ       ; X * SIN(Z)
                STA   MKAND
                JSR   MULT
                STA   PX3
                STY   PX3+1
-;
+*
                LDA   RY+1       ; Y * SIN(Z)
                STA   MATOR
                LDA   SINZ
@@ -745,13 +713,13 @@ STRTROT        LDA   XPOS       ; RX = X * COS(Y) + Z * SIN(Y)
                JSR   MULT
                STA   PX2
                STY   PX2+1
-;
+*
                LDA   COSZ       ; Y * COS(Z)
                STA   MKAND
                JSR   MULT
                STA   PX4
                STY   PX4+1
-;
+*
                SEC              ; NOW CALCULATE NEW RX
                LDA   PX1        ; SINCE OLD RX IS NEEDED FOR
                SBC   PX2        ; RY-CACLULUS BEFORE!
@@ -759,7 +727,7 @@ STRTROT        LDA   XPOS       ; RX = X * COS(Y) + Z * SIN(Y)
                LDA   PX1+1
                SBC   PX2+1
                STA   RX+1
-;
+*
                CLC              ; Y-COORD: ADD
                LDA   PX3
                ADC   PX4
@@ -767,9 +735,9 @@ STRTROT        LDA   XPOS       ; RX = X * COS(Y) + Z * SIN(Y)
                LDA   PX3+1
                ADC   PX4+1
                STA   RY+1
-;
-; PERFORM SCALING AND TRANSLATION
-;
+*
+* PERFORM SCALING AND TRANSLATION
+*
                ASL   RX
                ROL   RX+1
                ASL   RX
@@ -778,7 +746,7 @@ STRTROT        LDA   XPOS       ; RX = X * COS(Y) + Z * SIN(Y)
                ROL   RY+1
                ASL   RY
                ROL   RY+1
-;
+*
                LDX   RZ+1       ; LOAD PROJECTION
                LDA   PROJTAB,X
                STA   MATOR
@@ -786,12 +754,12 @@ STRTROT        LDA   XPOS       ; RX = X * COS(Y) + Z * SIN(Y)
                STA   MKAND
                JSR   UMULT
                STY   QX
-;
+*
                LDA   RY+1       ; ONLY HI-BYTE!
                STA   MKAND
                JSR   UMULT
                STY   QY
-;
+*
                CLC              ; XD = QX + XT
                LDA   QX
                ADC   #XTRANS
@@ -807,9 +775,9 @@ CALCYD         CLC              ; YD = QY + YT
                LDA   QY
                ADC   #YTRANS
                STA   YD         ; ONLY 1 BYTE HERE, NO CARRY!
-;
-; WRITE DATA BACK TO TABLE
-;
+*
+* WRITE DATA BACK TO TABLE
+*
 WRTPNT         LDA   PNTCNT
                ASL
                ASL
@@ -827,20 +795,20 @@ WRTPNT         LDA   PNTCNT
                INX
                LDA   YD         ; SAVE YDRAW POSITION
                STA   TABLE,X
-;
+*
                INC   PNTCNT
                LDA   PNTCNT
                CMP   NUMPNT
                BCS   INITEND    ; ALL DONE
                JMP   GETPNT
 INITEND        RTS
-;
-               ; CYC   OFF    ; Merlin-only cycle-count directive
-;
-;*******************************
-; DRAW BOX AROUND HIRES SCREEN *
-;*******************************
-;
+*
+               CYC   OFF
+*
+********************************
+* DRAW BOX AROUND HIRES SCREEN *
+********************************
+*
 DRAWBOX        LDX   #$03
                JSR   HCOLOR
                LDA   #$00
@@ -850,43 +818,43 @@ DRAWBOX        LDX   #$03
                LDA   #23
                LDX   #01
                JSR   HLIN
-;
+*
                LDA   #23
                LDX   #01
                LDY   #$BF
                JSR   HLIN
-;
+*
                LDA   #$00
                LDX   #$00
                LDY   #$BF
                JSR   HLIN
-;
+*
                LDA   #$00
                TAY
                TAX
                JSR   HLIN
-;
+*
                LDY   #00
                LDX   #00
                LDA   #12
                JSR   HPOSN
-;
+*
                LDA   #23
                LDX   #01
                LDY   #12
                JSR   HLIN
                RTS
-;
-;*******************************
-;SIGNED  DIVISION 16 BIT/8 BIT *
-;*******************************
-;
-               ; CYC    ; Merlin-only cycle-count directive
-;
+*
+********************************
+*SIGNED  DIVISION 16 BIT/8 BIT *
+********************************
+*
+               CYC
+*
 DIVI           STY   DEND       ;
                STA   DEND+1
                STX   DOR
-;
+*
                LDX   #$00
 DECHK          LDA   DEND+1     ; DIVIDEND NEG?
                BPL   DORCHK
@@ -907,7 +875,7 @@ DORCHK         LDA   DOR        ; DIVISOR NEG?
                SBC   #$01
                EOR   #$FF
                STA   DOR
-;
+*
 DIVIGO         LDA   DEND+1     ; TOO LARGE OR ZERO?
                CMP   DOR        ; CMP HI-BYTE WITH DOR!
                BCC   DLOOP      ; NO -> NO ERROR!
@@ -969,9 +937,9 @@ DLOOP8         ASL   DEND
 DSUBTR8        SBC   DOR
                INC   DEND
 
-;
-; STORE RESULTS
-;
+*
+* STORE RESULTS
+*
 DCONT          STA   DOR        ; MOVE REMAINDER IN DOR
                CLC              ; NO ERROR -> CLEAR CARRY
                CPX   #$01       ; NEG SIGN FOR RESULT?
@@ -991,18 +959,18 @@ DIVEND         LDY   DEND       ; DEND = QUOTIENT
 DIVRTS         RTS
 DIVERR         LDY   #$00       ; RETURN 0 AS RESULT
                RTS
-;
-               ; CYC   OFF    ; Merlin-only cycle-count directive
-;
-DEND           .RES    2
-DOR            .RES    1
-;
-;*******************************
-; 8-BIT UNSIGNED FAST MULTIPLY *
-;*******************************
-;
-               ; CYC    ; Merlin-only cycle-count directive
-;
+*
+               CYC   OFF
+*
+DEND           DS    2
+DOR            DS    1
+*
+********************************
+* 8-BIT UNSIGNED FAST MULTIPLY *
+********************************
+*
+               CYC
+*
 UMULT          LDY   MKAND
                STY   TEMP1      ; SAVE FOR LATER USE
 UMTCHK         LDA   MATOR
@@ -1013,26 +981,26 @@ UMTCHK         LDA   MATOR
                SEC
                LDA   (PSHI),Y   ; GET (A+Y)^2/4 (HI-BYTE)
                SBC   (PDHI),Y   ; SUBTRACT (-A+Y)^2/4 (HI-BYTE)
-;
-; STORE RESULTS
-;
+*
+* STORE RESULTS
+*
                LDY   TEMP1      ; CHECK IF MKAND < 0
                BPL   UMDONE     ; NO -> ALL DONE
                SEC              ; MATOR STILL IN ACCU!
                SBC   TEMP2      ; SUBTRACT TEMP2 FROM MATOR
-;
+*
 UMDONE         TAY              ; MOVE ACCU TO Y-REG AS RESULT
                RTS
-;
-               ; CYC   OFF    ; Merlin-only cycle-count directive
-;
-;
-;*******************************
-; 8-BIT SIGNED COMPL MULTIPLY  *
-;*******************************
-;
-               ; CYC    ; Merlin-only cycle-count directive
-;
+*
+               CYC   OFF
+*
+*
+********************************
+* 8-BIT SIGNED COMPL MULTIPLY  *
+********************************
+*
+               CYC
+*
 MULT           LDY   MKAND
                STY   TEMP1      ; SAVE FOR LATER USE
 MTCHK          LDA   MATOR
@@ -1048,31 +1016,31 @@ MTCHK          LDA   MATOR
                STA   MKAND      ; SAVE IT
                LDA   (PSHI),Y   ; GET (A+Y)^2/4 (HI-BYTE)
                SBC   (PDHI),Y   ; SUBTRACT (-A+Y)^2/4 (HI-BYTE)
-;
-; STORE RESULTS
-;
+*
+* STORE RESULTS
+*
                LDY   TEMP1      ; CHECK IF MKAND < 0
                BPL   CHKT2      ; NO CHECK MATOR
                SEC              ; MATOR STILL IN ACCU!
                SBC   TEMP2      ; SUBTRACT TEMP2 FROM MATOR
-;
+*
 CHKT2          LDY   TEMP2      ; CHECK IF MATOR < 0
                BPL   MDONE      ; NO, RTS
                SEC              ; MATOR STILL IN ACCU
                SBC   TEMP1      ; SUBTRACT TEMP1 FROM MATOR
-;
+*
 MDONE          TAY              ; MOVE ACCU TO Y-REG AS RESULT
                LDA   MKAND      ; LOAD LO BYTE
                RTS
-;
-               ; CYC   OFF    ; Merlin-only cycle-count directive
-;
-;*******************************
-; 8-BIT SIGNED FAST MULTIPLY   *
-;*******************************
-;
-               ; CYC    ; Merlin-only cycle-count directive
-;
+*
+               CYC   OFF
+*
+********************************
+* 8-BIT SIGNED FAST MULTIPLY   *
+********************************
+*
+               CYC
+*
 FMULT          LDY   MKAND
                STY   TEMP1      ; SAVE FOR LATER USE
 FMTCHK         LDA   MATOR
@@ -1083,30 +1051,30 @@ FMTCHK         LDA   MATOR
                SEC
                LDA   (PSHI),Y   ; GET (A+Y)^2/4 (HI-BYTE)
                SBC   (PDHI),Y   ; SUBTRACT (-A+Y)^2/4 (HI-BYTE)
-;
-; STORE RESULTS
-;
+*
+* STORE RESULTS
+*
                LDY   TEMP1      ; CHECK IF MKAND < 0
                BPL   FCHKT2     ; NO CHECK MATOR
                SEC              ; MATOR STILL IN ACCU!
                SBC   TEMP2      ; SUBTRACT TEMP2 FROM MATOR
-;
+*
 FCHKT2         LDY   TEMP2      ; CHECK IF MATOR < 0
                BPL   FMDONE     ; NO, RTS
                SEC              ; MATOR STILL IN ACCU
                SBC   TEMP1      ; SUBTRACT TEMP1 FROM MATOR
-;
+*
 FMDONE         TAY              ; MOVE ACCU TO Y-REG AS RESULT
                RTS
-;
-               ; CYC   OFF    ; Merlin-only cycle-count directive
-;
-;*******************************
-; TOP & BOTTOM TEXT MESSAGE    *
-;*******************************
-;
-; PRINT OUT WELCOME TEXT AS SHAPES ON SCREEN
-;
+*
+               CYC   OFF
+*
+********************************
+* TOP & BOTTOM TEXT MESSAGE    *
+********************************
+*
+* PRINT OUT WELCOME TEXT AS SHAPES ON SCREEN
+*
 WLCMTXT        LDX   #$03
                JSR   HCOLOR
                STX   $F9        ; SET ROT = 0
@@ -1128,14 +1096,14 @@ TXTLOOP        LDA   TXTDAT,X
                LDY   #$00       ; HIGH-BYTE = 0
                LDA   #09        ; Y-OFFSET FOR TEXT OUTPUT
                JSR   HPOSN      ; POSITION THE CURSOR
-;
+*
                LDX   SHPDUMP    ; RETRIEVE SHAPE-NUMBER
                JSR   SHNUM      ; GET SHAPE ADRESS
                LDA   #32        ; DRAW ON SCREEN 1
                STA   $E6
                LDA   #$00       ; SET ROT = 0
                JSR   SHDRAW     ; DRAW SHAPE
-;
+*
                LDX   SHXPOS     ; GET SHAPE X-POS
                LDY   #$00       ; HIGH-BYTE = 0
                LDA   #09        ; Y-OFFSET FOR TEXT OUTPUT
@@ -1146,11 +1114,11 @@ TXTLOOP        LDA   TXTDAT,X
                STA   $E6
                LDA   #$00       ; SET ROT = 0
                JSR   SHDRAW     ; DRAW SHAPE
-;
+*
                LDX   XREGDUMP
                INX
                BNE   TXTLOOP
-;
+*
 TLP2           LDX   #$00
 TXTLOOP2       LDA   TXTDAT2,X
                BEQ   SUDONE
@@ -1167,14 +1135,14 @@ TXTLOOP2       LDA   TXTDAT2,X
                LDY   #$00
                LDA   #188
                JSR   HPOSN
-;
+*
                LDX   SHPDUMP
                JSR   SHNUM
                LDA   #32
                STA   $E6
                LDA   #$00
                JSR   SHDRAW
-;
+*
                LDX   SHXPOS
                LDY   #$00
                LDA   #188
@@ -1189,44 +1157,34 @@ TXTLOOP2       LDA   TXTDAT2,X
                INX
                BNE   TXTLOOP2
 SUDONE         RTS
-;
-; TEXT MESSAGES WHEN LOADING 3D-OBJECTS
-;
-TXTOB1          LDA   #<TXTDAT3
-               STA   TXTPTR
-               LDA   #>TXTDAT3
+*
+* TEXT MESSAGES WHEN LOADING 3D-OBJECTS
+*
+TXTOB1         LDA   #TXTDAT3
                STA   TXTPTR+1
                JSR   DLTTXT
                JMP   PRTTXT     ; PRINT MESSAGE
-;
-TXTOB2          LDA   #<TXTDAT4
-               STA   TXTPTR
-               LDA   #>TXTDAT4
+*
+TXTOB2         LDA   #TXTDAT4
                STA   TXTPTR+1
                JSR   DLTTXT
                JMP   PRTTXT
-;
-TXTOB3          LDA   #<TXTDAT5
-               STA   TXTPTR
-               LDA   #>TXTDAT5
+*
+TXTOB3         LDA   #TXTDAT5
                STA   TXTPTR+1
                JSR   DLTTXT
                JMP   PRTTXT
-;
-TXTOB4          LDA   #<TXTDAT6
-               STA   TXTPTR
-               LDA   #>TXTDAT6
+*
+TXTOB4         LDA   #TXTDAT6
                STA   TXTPTR+1
                JSR   DLTTXT
                JMP   PRTTXT
-;
-TXTOB5          LDA   #<TXTDAT7
-               STA   TXTPTR
-               LDA   #>TXTDAT7
+*
+TXTOB5         LDA   #TXTDAT7
                STA   TXTPTR+1
                JSR   DLTTXT
                JMP   PRTTXT
-;
+*
 PRTTXT         LDY   #$00
                LDX   #$03
                JSR   HCOLOR     ; SET HCOLOR = 3
@@ -1246,14 +1204,14 @@ TXTLOOP3       LDA   (TXTPTR),Y
                LDY   #$00
                LDA   #188
                JSR   HPOSN
-;
+*
                LDX   SHPDUMP
                JSR   SHNUM
                LDA   #32
                STA   $E6
                LDA   #$00
                JSR   SHDRAW
-;
+*
                LDX   SHXPOS
                LDY   #$00
                LDA   #188
@@ -1264,55 +1222,55 @@ TXTLOOP3       LDA   (TXTPTR),Y
                STA   $E6
                LDA   #$00
                JSR   SHDRAW
-;
+*
                LDY   YREGDUMP
                INY
                BNE   TXTLOOP3
 TXTDONE        RTS
-;
+*
 TXTDAT         HEX   292231313A01151135
                HEX   2901232A33352925223A
                HEX   012231312D26013E3C
                HEX   00
-;
+*
 TXTDAT2        HEX   450114250E25262E3001
                HEX   0E012E0F28302D30
                HEX   2E2326242C01131112
                HEX   18014500
-;
+*
 TXTDAT3        HEX   2D3022252A2F28013529
                HEX   2601352635332226252633
                HEX   0F0F0F010101010101
                HEX   010100
-;
+*
 TXTDAT4        HEX   2D3022252A2F28013529
                HEX   2601362E2333262D2D22
                HEX   0F0F0F010101010101
                HEX   010100
-;
+*
 TXTDAT5        HEX   2D3022252A2F28013529
                HEX   2601342A2E312D260124362326
                HEX   0F0F0F010101010101
                HEX   010100
-;
+*
 TXTDAT6        HEX   2D3022252A2F28013529
                HEX   2601352635332224362326
                HEX   0F0F0F010101010101
                HEX   010100
-;
+*
 TXTDAT7        HEX   2D3022252A2F28013529
                HEX   2601243623260135382A2F34
                HEX   0F0F0F010101010101
                HEX   010100
-;
-LCNT           .RES    1
-XREGDUMP       .RES    1
-YREGDUMP       .RES    1
-SHPDUMP        .RES    1
-SHXPOS         .RES    1
-;
-; DELETE BOTTOM TEXT
-;
+*
+LCNT           DS    1
+XREGDUMP       DS    1
+YREGDUMP       DS    1
+SHPDUMP        DS    1
+SHXPOS         DS    1
+*
+* DELETE BOTTOM TEXT
+*
 DLTTXT         LDX   #$00
                JSR   HCOLOR     ; HCOLOR = 0
                LDA   ASCR
@@ -1343,58 +1301,58 @@ DLTLOOP        LDA   #32
                CMP   #189       ; LINE 189 REACHED?
                BCC   DLTLOOP    ; NO -> DELETE NEXT LINE
 DLTEND         RTS              ; END OF LOOP
-;
-YDELROW        .RES    1
-;
-;*******************************
-; LOAD 3D-OBJECTS IN MEMORY    *
-;*******************************
-;
+*
+YDELROW        DS    1
+*
+********************************
+* LOAD 3D-OBJECTS IN MEMORY    *
+********************************
+*
 LOAD1          JSR   TXTOB1     ; PRINT LOADING MESSAGE
 LOAD01         LDA   #$8D       ; LOAD 3D-OBJECT 1 INTO MEMORY
                JSR   COUT
                JSR   PRINT
                HEX   84
-               HEX   C2CCCFC1C4A0CFC2CAC5C3D4B1AEB3C4ACC1A4B7B2B0B0   ; "BLOAD OBJECT1.3D,A$7200" with Apple-II high bit
+               ASC   "BLOAD OBJECT1.3D,A$7200"
                HEX   8D00
                RTS
-;
+*
 LOAD2          JSR   TXTOB2
 LOAD02         LDA   #$8D       ; LOAD 3D-OBJECT 1 INTO MEMORY
                JSR   COUT
                JSR   PRINT
                HEX   84
-               HEX   C2CCCFC1C4A0CFC2CAC5C3D4B2AEB3C4ACC1A4B7B2B0B0   ; "BLOAD OBJECT2.3D,A$7200" with Apple-II high bit
+               ASC   "BLOAD OBJECT2.3D,A$7200"
                HEX   8D00
                RTS
-;
+*
 LOAD3          JSR   TXTOB3
 LOAD03         LDA   #$8D       ; LOAD 3D-OBJECT 1 INTO MEMORY
                JSR   COUT
                JSR   PRINT
                HEX   84
-               HEX   C2CCCFC1C4A0CFC2CAC5C3D4B3AEB3C4ACC1A4B7B2B0B0   ; "BLOAD OBJECT3.3D,A$7200" with Apple-II high bit
+               ASC   "BLOAD OBJECT3.3D,A$7200"
                HEX   8D00
                RTS
-;
+*
 LOAD4          JSR   TXTOB4
 LOAD04         LDA   #$8D       ; LOAD 3D-OBJECT 1 INTO MEMORY
                JSR   COUT
                JSR   PRINT
                HEX   84
-               HEX   C2CCCFC1C4A0CFC2CAC5C3D4B4AEB3C4ACC1A4B7B2B0B0   ; "BLOAD OBJECT4.3D,A$7200" with Apple-II high bit
+               ASC   "BLOAD OBJECT4.3D,A$7200"
                HEX   8D00
                RTS
-;
+*
 LOAD5          JSR   TXTOB5
 LOAD05         LDA   #$8D       ; LOAD 3D-OBJECT 1 INTO MEMORY
                JSR   COUT
                JSR   PRINT
                HEX   84
-               HEX   C2CCCFC1C4A0CFC2CAC5C3D4B5AEB3C4ACC1A4B7B2B0B0   ; "BLOAD OBJECT5.3D,A$7200" with Apple-II high bit
+               ASC   "BLOAD OBJECT5.3D,A$7200"
                HEX   8D00
                RTS
-;
+*
 PRINT          PLA
                STA   PTR
                PLA
@@ -1405,8 +1363,8 @@ P0             LDA   (PTR),Y
                JSR   COUT
                INY
                BNE   P0
-               ; CHK            ; Merlin-only checksum pseudo-op; omitted for ASM_core.js
-;
+               CHK
+*
 PFIN           CLC
                TYA
                ADC   PTR
@@ -1417,13 +1375,13 @@ PFIN           CLC
                LDA   PTR
                PHA
 PEXIT          RTS
-;
-;*******************************
-; UNDRAW LINES                 *
-;*******************************
-;
+*
+********************************
+* UNDRAW LINES                 *
+********************************
+*
 UDRWLNS        LDA   #$00
-;
+*
                LDY   $E6
                CPY   #$20
                BEQ   UDRWSCR1
@@ -1536,7 +1494,7 @@ UDRWLP1        STA   $2200,X
                STA   $37A8,X
                STA   $3BA8,X
                STA   $3FA8,X
-;
+*
                STA   $2050,X
                STA   $2450,X
                STA   $2850,X
@@ -1633,7 +1591,7 @@ UDRWLP2        STA   $4200,X
                STA   $54A8,X
                STA   $58A8,X
                STA   $5CA8,X
-;
+*
                STA   $4128,X
                STA   $4528,X
                STA   $4928,X
@@ -1687,7 +1645,7 @@ UDRWLP2        STA   $4200,X
                STA   $57A8,X
                STA   $5BA8,X
                STA   $5FA8,X
-;
+*
                STA   $4050,X
                STA   $4450,X
                STA   $4850,X
@@ -1729,12 +1687,12 @@ UDRWLP2        STA   $4200,X
                BEQ   UDRW2RTS
                JMP   UDRWLP2
 UDRW2RTS       RTS
-;
-;*******************************
-; FAST LINE DRAW               *
-;*******************************
-;
-;
+*
+********************************
+* FAST LINE DRAW               *
+********************************
+*
+*
 HBASL          EQU   $07        ; DOUBLE ZPAGE ADRESS USE!!!
 XPOSL          EQU   $7C
 XPOSH          EQU   $7D
@@ -1748,7 +1706,7 @@ DIFF           EQU   $88
 DIFFH          EQU   $8D
 ANDMSK         EQU   $8E
 WIDEFLAG       EQU   $8F
-;
+*
 LINEDRAW       LDA   XTO        ; WHICH X-VALUE IS ON THE LEFT?
                SEC
                SBC   XDRAW
@@ -1757,7 +1715,7 @@ LINEDRAW       LDA   XTO        ; WHICH X-VALUE IS ON THE LEFT?
                LDA   XTO+1
                SBC   XDRAW+1
                BCS   LX0LEFT
-;
+*
 LX0RIGHT       EOR   #$FF       ; INVERT HI-BYTE
                STA   DELTAXH    ; STORE HI-BYTE
                TXA
@@ -1775,13 +1733,13 @@ NOINCHI        LDA   XTO        ; START WITH XTO
                SEC
                SBC   YDRAW      ; DELTA-Y?
                JMP   LNCOMMON
-;
+*
 CHKVERT        LDA   XTO+1      ; DIFF IN HI-BYTES?
                SBC   XDRAW+1    ; CARRY STILL SET
-               BCC   LX0RIGHT   ; WIDTH = 256, XDRAW RIGHT
+               BLT   LX0RIGHT   ; WIDTH = 256, XDRAW RIGHT
                BNE   LX0LEFT    ; WIDTH = 256, XDRAW LEFT
                JMP   VERTLINE
-;
+*
 LX0LEFT        STX   DELTAXL    ; XDRAW IS LEFT
                STA   DELTAXH
                LDA   XDRAW      ; START WITH XDRAW
@@ -1792,7 +1750,7 @@ LX0LEFT        STX   DELTAXL    ; XDRAW IS LEFT
                STA   YPOSN      ; GET DELTA-Y
                SEC
                SBC   YTO
-;
+*
 LNCOMMON       BCS   LPOSY
                EOR   #$FF       ; INVERT IF NEGATIVE
                ADC   #$01
@@ -1804,9 +1762,9 @@ LPOSY          STA   DELTAY
 GOTDY          STA   LHMODY     ; SELF-MODIFYING CODE
                STA   LVMODY
                STA   LWMODY
-;
-; CHECK DOMINANCE
-;
+*
+* CHECK DOMINANCE
+*
                LDY   #$01
                LDA   DELTAXL
                LDX   DELTAXH
@@ -1815,15 +1773,15 @@ GOTDY          STA   LHMODY     ; SELF-MODIFYING CODE
                BEQ   HORIDOM
                DEY              ; NOT WIDE
                CMP   DELTAY
-               BCS   HORIDOM    ; IF DIAGONAL
+               BGE   HORIDOM    ; IF DIAGONAL
                JMP   VERTDOM
-;
+*
 HORIDOM        STY   WIDEFLAG   ; HORIZONTAL IS DOMINANT
                STA   COUNT      ; COUNT = DELTAX + 1
                INC   COUNT
                LSR              ; DIFF = DELTAX / 2
                STA   DIFF
-;
+*
                LDX   XPOSL
                LDA   XPOSH      ; >= 256?
                BEQ   LOTABLE    ; NO -> USE LO-TABLE
@@ -1835,7 +1793,7 @@ LOTABLE        LDY   DIV7LO,X
 GOTTAB         TAX
                LDA   ANDMASK,X
                STA   ANDMSK
-;
+*
                LDX   YPOSN
                LDA   YLOOKLO,X
                STA   HBASL
@@ -1847,15 +1805,15 @@ GOTTAB         TAX
                JMP   WIDEDOM
 NOTWIDE        JMP   HORZLOOP
 HRTS           RTS
-;
+*
 HNOROLL        STA   DIFF       ; LOOP BOTTOM
 HDECC          DEC   COUNT
                BEQ   HRTS
-;
+*
 HORZLOOP       LDA   (HBASL),Y  ; PLOT PIXEL
                ORA   ANDMSK     ; SET ADDITIONAL POINTS
                STA   (HBASL),Y  ; STORE POINTS
-;
+*
                LDA   ANDMSK     ; MOVE RIGHT
                ASL              ; SHIFT & LOSE HI-BIT
                EOR   #$80       ; SET HI-BIT
@@ -1863,7 +1821,7 @@ HORZLOOP       LDA   (HBASL),Y  ; PLOT PIXEL
                INY              ; NEXT BYTE
                LDA   #$81       ; RESET
 NOH8           STA   ANDMSK
-;
+*
                LDA   DIFF       ; UPDATE ERROR DIFFERENCE
                SEC
                SBC   DELTAY
@@ -1877,7 +1835,7 @@ LHMODY         INX              ; MODIFYABLE
                ORA   G_PAGE     ; ACTIVE PAGE
                STA   HBASL+1
                BNE   HDECC
-;
+*
 VERTDOM        LDX   YDRAW
                CPX   YPOSN
                BNE   ENDY0
@@ -1886,7 +1844,7 @@ ENDY0          STX   LVCHK+1
                LDA   DELTAY
                LSR
                STA   DIFF
-;
+*
                LDX   XPOSL
                LDA   XPOSH
                BEQ   LOTABLL
@@ -1900,7 +1858,7 @@ GOTTAB2        TAX
                STA   ANDMSK
                LDX   YPOSN
                JMP   VERTLOOP
-;
+*
 VNOROLL        STA   DIFF
 VERTLOOP       LDA   YLOOKLO,X
                STA   HBASL
@@ -1925,13 +1883,13 @@ LVMODY         INX
                BEQ   IS8
                STA   ANDMSK
                BNE   VERTLOOP
-;
+*
 IS8            INY
                LDA   #$81
                STA   ANDMSK
                BNE   VERTLOOP
 VRTS           RTS
-;
+*
 WIDEDOM        LDA   DELTAXH
                STA   COUNTH
                LDX   DELTAXL
@@ -1941,7 +1899,7 @@ WIDEDOM        LDA   DELTAXH
                ROR   DIFF
                STA   DIFFH
                LDX   YPOSN
-;
+*
 WIDELOOP       LDA   (HBASL),Y  ; PLOT PIXEL
                ORA   ANDMSK     ; SET ADDITIONAL POINTS
                STA   (HBASL),Y  ; STORE POINTS
@@ -1952,7 +1910,7 @@ WIDELOOP       LDA   (HBASL),Y  ; PLOT PIXEL
                INY
                LDA   #$81
 NOT7           STA   ANDMSK
-;
+*
                LDA   DIFF
                SEC
                SBC   DELTAY
@@ -1971,7 +1929,7 @@ LWMODY         INX
                ORA   G_PAGE
                STA   HBASL+1
                BNE   WDECC
-;
+*
 WNOROLL        STA   DIFF
 WDECC          DEC   COUNT
                LDA   COUNT
@@ -1980,13 +1938,13 @@ WDECC          DEC   COUNT
                DEC   COUNTH
                BEQ   WIDELOOP
                RTS
-;
-; PURE VERTICAL LINE
-;
+*
+* PURE VERTICAL LINE
+*
 VERTLINE       LDX   YDRAW
                LDY   YTO
                CPX   YTO
-               BCC   USEY0
+               BLT   USEY0
                TXA
                TAY
                LDX   YTO
@@ -2005,7 +1963,7 @@ GOTIT          TAX
                LDA   ANDMASK,X
                STA   LPVAND+1
                LDX   YPOSN
-;
+*
 PVERLOOP       LDA   YLOOKLO,X
                STA   HBASL
                LDA   YLOOKHI,X

@@ -1,73 +1,92 @@
 ORG $6000
 
     LDA #$00
-    STA *$18
+    STA *$18          ; HGR POINTER LOW BYTE = $00
     LDA #$20
-    STA *$19
-    JMP $600B
-    LDY #$00
-L1  LDA ($18),Y
-    AND #$7F      ; REMOVE BIT 7 FROM HGR
-    STA ($18),Y
-    INC *$18
+    STA *$19          ; HGR POINTER HIGH BYTE = $20 -> $2000
+    JMP $600B         ; CONTINUE WITH MAIN LOOP
+
+    LDY #$00          ; Y REMAINS 0; POINTER ITSELF IS INCREMENTED
+
+L1  LDA ($18),Y       ; READ BYTE FROM HGR PAGE 1
+    AND #$7F          ; REMOVE HGR BIT 7 / COLOUR PHASE BIT
+    STA ($18),Y       ; WRITE NORMALISED 7-BIT PIXEL PATTERN BACK
+
+    INC *$18          ; ADVANCE POINTER LOW BYTE
     LDA *$18
-    BNE L1
-    INC *$19
+    BNE L1            ; CONTINUE UNTIL LOW BYTE WRAPS
+
+    INC *$19          ; ADVANCE TO NEXT 256-BYTE PAGE
     LDA *$19
-    CMP #$40
+    CMP #$40          ; STOP AFTER $3FFF
     BNE L1
 
+
     LDA #$00
-    STA *$18
+    STA *$18          ; RESET SOURCE POINTER LOW BYTE
     LDA #$20
-    STA *$19
-L2  LDA ($18),Y
-    TAX
-    INC $4000,X
+    STA *$19          ; RESET SOURCE POINTER TO $2000
+
+L2  LDA ($18),Y       ; READ NORMALISED HGR BYTE
+    TAX               ; USE BYTE VALUE AS HISTOGRAM INDEX
+
+    INC $4000,X       ; INCREMENT LOW BYTE OF 16-BIT COUNTER
     LDA $4000,X
-    BNE L3
-    INC $4100,X
-L3  INC *$18
+    BNE L3            ; NO OVERFLOW -> HIGH BYTE UNCHANGED
+    INC $4100,X       ; LOW BYTE WRAPPED: INCREMENT HIGH BYTE
+
+L3  INC *$18          ; ADVANCE HGR SOURCE POINTER
     LDA *$18
     BNE L2
-    INC *$19
+
+    INC *$19          ; ADVANCE TO NEXT 256-BYTE HGR BLOCK
     LDA *$19
-    CMP #$40
+    CMP #$40          ; PROCESS $2000-$3FFF
     BNE L2
 
+
     LDA #$00
-    STA *$18
+    STA *$18          ; POINTER TO HISTOGRAM LOW-BYTE TABLE
     LDA #$40
-    STA *$19
+    STA *$19          ; $18/$19 = $4000
 
     LDA #$00
-    STA *$1A
+    STA *$1A          ; POINTER TO HISTOGRAM HIGH-BYTE TABLE
     LDA #$41
-    STA *$1B
+    STA *$1B          ; $1A/$1B = $4100
 
     LDA #$00
-    STA *$06
+    STA *$06          ; CURRENT MAXIMUM COUNT LOW BYTE = 0
     LDA #$00
-    STA *$07
+    STA *$07          ; CURRENT MAXIMUM COUNT HIGH BYTE = 0
 
-    LDY #$00
-L4  LDA *$06
-    SEC
-L5  SBC ($18),Y
-    LDA *$07
-    SBC ($1A),Y
-    BCS L6
-    LDA ($18),Y
-    STA *$06
+    LDY #$00          ; Y REMAINS 0; TABLE POINTERS ARE INCREMENTED
+
+L4  LDA *$06          ; LOAD CURRENT MAXIMUM LOW BYTE
+    SEC               ; PREPARE 16-BIT SUBTRACTION
+
+L5  SBC ($18),Y       ; MAX LOW - CURRENT HISTOGRAM LOW
+    LDA *$07          ; LOAD CURRENT MAXIMUM HIGH BYTE
+    SBC ($1A),Y       ; MAX HIGH - CURRENT HISTOGRAM HIGH
+
+    BCS L6            ; NO BORROW: MAX >= CURRENT COUNT
+
+    LDA ($18),Y       ; CURRENT COUNT IS LARGER
+    STA *$06          ; STORE NEW MAXIMUM LOW BYTE
     LDA ($1A),Y
-    STA *$07
-L6  INC *$18
-    INC *$1A
+    STA *$07          ; STORE NEW MAXIMUM HIGH BYTE
+
+L6  INC *$18          ; ADVANCE LOW-BYTE HISTOGRAM POINTER
+    INC *$1A          ; ADVANCE HIGH-BYTE HISTOGRAM POINTER
+
     LDA *$18
-    BNE L4
-    INC *$19
-    INC *$1B
+    BNE L4            ; CONTINUE UNTIL LOW POINTER WRAPS
+
+    INC *$19          ; ADVANCE HISTOGRAM LOW TABLE PAGE
+    INC *$1B          ; ADVANCE HISTOGRAM HIGH TABLE PAGE
+
     LDA *$19
-    CMP #$41
+    CMP #$41          ; STOP AFTER 256 HISTOGRAM ENTRIES
     BNE L4
-    RTS
+
+    RTS               ; $07:$06 = HIGHEST HISTOGRAM COUNT
