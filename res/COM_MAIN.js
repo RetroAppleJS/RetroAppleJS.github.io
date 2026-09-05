@@ -1840,6 +1840,336 @@ function prettyJsonAllman(value, indent) {
     xhttp.send();
   }
 
+
+  /*
+   * Shared GitHub-backed catalog browser.
+   *
+   * Consumers provide only the repository/path plus adapter callbacks.  The
+   * directory request/cache, parent navigation and Name/Size rendering live
+   * here so Disk II, Assembler and future catalog users do not duplicate it.
+   */
+  this.CATALOG = {
+    cache:{},
+    instances:{},
+
+    create:function(cfg)
+    {
+      cfg = Object.assign({
+         id:"catalog"
+        ,popupID:null
+        ,title:"CATALOG"
+        ,owner:""
+        ,repo:""
+        ,ref:"main"
+        ,basepath:""
+        ,path:""
+        ,fileIcon:"fa fa-file"
+        ,popupStyle:"position:absolute;z-index:3;left:800px;top:32px;width:450px;height:450px;text-align:left;padding:0px;margin:0px"
+      },cfg || {});
+
+      cfg.popupID = cfg.popupID || (cfg.id + "_popup");
+
+      var inst = {
+         id:cfg.id
+        ,cfg:cfg
+        ,arg:{
+             id:cfg.id
+            ,owner:cfg.owner
+            ,repo:cfg.repo
+            ,ref:cfg.ref
+            ,basepath:cfg.basepath
+            ,path:cfg.path || cfg.basepath
+         }
+      };
+
+      inst.open = function(arg) { return _COM_this.CATALOG.open(inst.id,arg); };
+      inst.render = function(arg) { return _COM_this.CATALOG.render(inst.id,arg); };
+      inst.close = function() { return _COM_this.CATALOG.close(inst.id); };
+
+      this.instances[inst.id] = inst;
+      return inst;
+    },
+
+    ensurePopup:function(popupID,cssText)
+    {
+      var popup = document.getElementById(popupID);
+      if(popup) return popup;
+
+      popup = document.createElement("div");
+      popup.id = popupID;
+      popup.hidden = true;
+      popup.className = "appbox com_popup_frame";
+      popup.style.cssText = cssText ||
+        "position:absolute;z-index:3;left:800px;top:32px;width:450px;height:450px;text-align:left;padding:0px;margin:0px";
+      document.body.appendChild(popup);
+      return popup;
+    },
+
+    githubContentsURL:function(arg)
+    {
+      arg = arg || {};
+      var ref = arg.ref || "main";
+      var path = arg.path || "";
+      return "https://api.github.com/repos/"
+        + arg.owner + "/" + arg.repo + "/contents/" + path
+        + "?ref=" + encodeURIComponent(ref);
+    },
+
+    githubRawURL:function(arg)
+    {
+      arg = arg || {};
+      var ref = arg.ref || "main";
+      var rawPath = String(arg.path || "")
+        .split("/")
+        .map(function(p){ return encodeURIComponent(p); })
+        .join("/");
+
+      return "https://raw.githubusercontent.com/"
+        + arg.owner + "/" + arg.repo + "/"
+        + encodeURIComponent(ref) + "/" + rawPath;
+    },
+
+    isRateLimitResponse:function(xhr)
+    {
+      if(!xhr) return false;
+
+      var status = Number(xhr.status);
+      var remaining = "", retryAfter = "";
+      try
+      {
+        remaining = xhr.getResponseHeader("x-ratelimit-remaining") || "";
+        retryAfter = xhr.getResponseHeader("retry-after") || "";
+      }
+      catch(e) {}
+
+      if(remaining == "0") return true;
+      if(status != 403 && status != 429) return false;
+
+      var message = String(xhr.responseText || xhr.response || "");
+      try
+      {
+        var json = JSON.parse(message);
+        if(json && json.message) message = json.message;
+      }
+      catch(e) {}
+
+      return retryAfter != "" || /rate\s+limit/i.test(message);
+    },
+
+    pack:function(arg)
+    {
+      return encodeURIComponent(JSON.stringify(arg || {}));
+    },
+
+    unpack:function(txt)
+    {
+      try { return JSON.parse(decodeURIComponent(String(txt || ""))); }
+      catch(e) { return {}; }
+    },
+
+    open:function(id,arg)
+    {
+      var inst = this.instances[id];
+      if(!inst) return false;
+      this.ensurePopup(inst.cfg.popupID,inst.cfg.popupStyle);
+      oCOM.POPUP.on(inst.cfg.popupID);
+      return this.render(id,arg);
+    },
+
+    close:function(id)
+    {
+      var inst = this.instances[id];
+      if(!inst) return false;
+      oCOM.POPUP.off(inst.cfg.popupID);
+      return true;
+    },
+
+    navigate:function(id,packedArg)
+    {
+      return this.render(id,this.unpack(packedArg));
+    },
+
+    select:function(id,packedArg)
+    {
+      var inst = this.instances[id];
+      if(!inst) return false;
+      var arg = this.unpack(packedArg);
+      if(typeof inst.cfg.onFile == "function") return inst.cfg.onFile(arg,inst);
+      return false;
+    },
+
+    render:function(id,arg)
+    {
+      var inst = this.instances[id];
+      if(!inst) return false;
+
+      arg = Object.assign({},inst.arg,arg || {});
+      arg.id = inst.id;
+      arg.owner = arg.owner || inst.cfg.owner;
+      arg.repo = arg.repo || inst.cfg.repo;
+      arg.ref = arg.ref || inst.cfg.ref || "main";
+      arg.basepath = arg.basepath || inst.cfg.basepath || "";
+      arg.path = arg.path || arg.basepath;
+      inst.arg = Object.assign({},arg);
+
+      this.ensurePopup(inst.cfg.popupID,inst.cfg.popupStyle);
+      if(typeof inst.cfg.onNavigate == "function") inst.cfg.onNavigate(Object.assign({},arg),inst);
+
+      var self = this;
+      return this.list(inst,arg,function(err,list,resolvedArg)
+      {
+        if(err)
+        {
+          if(typeof inst.cfg.onError == "function") inst.cfg.onError(err,inst);
+          else console.warn("Catalog directory listing failed",err);
+          return false;
+        }
+        self.renderList(inst,list,resolvedArg);
+      });
+    },
+
+    list:function(inst,arg,callback)
+    {
+      var self = this;
+      var url = this.githubContentsURL(arg);
+
+      function useFallback(reason)
+      {
+        if(typeof inst.cfg.offlineProvider != "function") return false;
+        delete self.cache[url];
+        var offline = inst.cfg.offlineProvider(url,Object.assign({},arg),reason);
+        if(!offline) return false;
+        callback(null,offline.list || offline,offline.arg || arg);
+        return true;
+      }
+
+      if(typeof navigator != "undefined" && navigator.onLine === false)
+        if(useFallback("navigator.onLine=false")) return true;
+
+      if(this.cache[url] !== undefined)
+      {
+        var cached = this.cache[url];
+        callback(null,cached.list,Object.assign({},arg));
+        return true;
+      }
+
+      oCOM.GetHTTP(url,"text",function()
+      {
+        if(this.status != 200)
+        {
+          if(self.isRateLimitResponse(this) && useFallback("GitHub API rate limit (HTTP " + this.status + ")")) return;
+          callback({status:this.status,message:this.responseText || this.response,url:url});
+          return;
+        }
+
+        try
+        {
+          var json = JSON.parse(this.responseText || this.response);
+          if(!Array.isArray(json)) throw new Error("GitHub contents response is not a directory listing");
+
+          var list = json.map(function(e)
+          {
+            return {
+               name:e.name
+              ,path:e.path
+              ,type:e.type
+              ,size:e.size
+              ,download_url:e.download_url
+              ,html_url:e.html_url
+            };
+          });
+
+          self.cache[url] = {list:list};
+          callback(null,list,Object.assign({},arg));
+        }
+        catch(e)
+        {
+          callback({status:this.status,message:e.message,url:url});
+        }
+      });
+
+      return true;
+    },
+
+    renderList:function(inst,list,arg)
+    {
+      var cfg = inst.cfg;
+      if(typeof cfg.filter == "function") list = list.filter(cfg.filter);
+
+      var dirs = list.filter(function(e){ return e.type == "dir"; });
+      var files = list.filter(function(e){ return e.type == "file"; });
+      var rows = dirs.concat(files);
+      var html = "";
+
+      if(arg.path != arg.basepath)
+      {
+        var parentArg = Object.assign({},arg);
+        var parent = String(arg.path || "").split("/");
+        parent.pop();
+        parentArg.path = parent.join("/") || arg.basepath;
+        if(arg.basepath && parentArg.path.indexOf(arg.basepath) !== 0) parentArg.path = arg.basepath;
+
+        html += '<div class="appbut" style="width:25px;cursor:pointer" title="Parent directory"'
+          + ' data-cat-action="navigate" data-cat-arg="' + this.pack(parentArg) + '">'
+          + '<i class="fa fa-arrow-alt-circle-up"></i></div>';
+      }
+
+      html += '<div style="margin-top:6px;"><table style="width:100%;border-collapse:collapse;font-size:11px;">'
+        + '<tr><th style="text-align:left;padding:2px 4px;">Name</th>'
+        + '<th style="text-align:left;padding:2px 4px;">Size</th></tr>';
+
+      for(var i=0;i<rows.length;i++)
+      {
+        var row = rows[i];
+        var isDir = row.type == "dir";
+        var nextArg = Object.assign({},arg,row,{path:row.path});
+        var packed = this.pack(nextArg);
+        var icon = isDir ? "fa fa-folder" : cfg.fileIcon;
+        var action = isDir ? "navigate" : "select";
+
+        html += '<tr>'
+          + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'
+          + '<div style="cursor:pointer" data-cat-action="' + action + '" data-cat-arg="' + packed + '">'
+          + '<i class="' + icon + '"></i> ' + _COM_this.escapeHTML(row.name) + '</div></td>'
+          + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'
+          + _COM_this.escapeHTML(isDir ? "-" : row.size) + '</td></tr>';
+      }
+      html += '</table></div>';
+
+      var title = typeof cfg.titleHTML == "function"
+        ? cfg.titleHTML(inst,arg)
+        : "<span>" + _COM_this.escapeHTML(cfg.title || "CATALOG") + "</span>";
+
+      title += '<div class="appbut" data-cat-close="1" style="text-align:center;float:right;">x</div>';
+
+      var popup = this.ensurePopup(cfg.popupID,cfg.popupStyle);
+      popup.innerHTML = oCOM.POPUP.title_body_html(
+         title
+        ,html
+        ,inst.id + "_body"
+        ,"com_popup_body com_scroll_xy"
+      );
+
+      var body = document.getElementById(inst.id + "_body");
+      if(body)
+      {
+        body.onclick = function(ev)
+        {
+          var el = ev.target && ev.target.closest ? ev.target.closest("[data-cat-action]") : null;
+          if(!el || !body.contains(el)) return;
+          var action = el.getAttribute("data-cat-action");
+          var packedArg = el.getAttribute("data-cat-arg") || "";
+          if(action == "navigate") oCOM.CATALOG.navigate(inst.id,packedArg);
+          else if(action == "select") oCOM.CATALOG.select(inst.id,packedArg);
+        };
+      }
+
+      var close = popup.querySelector("[data-cat-close='1']");
+      if(close) close.onclick = function(ev){ ev.stopPropagation(); oCOM.CATALOG.close(inst.id); };
+      return true;
+    }
+  };
+
   this.Download = function(fileName, data)
   {
     if(data.length===undefined) return;

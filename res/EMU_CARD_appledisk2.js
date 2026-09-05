@@ -3186,202 +3186,49 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
             return false;
         }
 
+        arg = Object.assign({
+             id:"softwareCat"
+            ,owner:"RetroAppleJS"
+            ,repo:"RetroAppleJS.github.io"
+            ,basepath:"disks"
+            ,path:"disks"
+            ,ref:"main"
+        },arg || {});        
+
         this.setDiskCatalogPath(arg);
 
-        function GH_listDir(arg, callback)
-        {
-            arg.ref = arg.ref || "main";
-            arg.path = arg.path || "";
-
-            //var disk2 = apple2plus.DiskObj();
-            
-
-
-            var url = disk2.githubContentsURL(arg);
-
-            function useOfflineDir(reason)
+        var sharedCatalog = oCOM.CATALOG.create({
+             id:"softwareCat"
+            ,popupID:"softwareCat_popup"
+            ,title:"SOFTWARE CATALOG"
+            ,owner:arg.owner
+            ,repo:arg.repo
+            ,basepath:arg.basepath
+            ,path:arg.path
+            ,ref:arg.ref
+            ,fileIcon:"fa fa-cloud-upload-alt"
+            ,offlineProvider:function(url)       
             {
-                // Important: do not let offline data masquerade as GitHub cache.
-                // Keep this empty so a later online attempt really performs HTTP again.
-                disk2.GitHubDirCache = {};
-
                 var offline = disk2.getOfflineDir(url);
-
-                if(offline != null)
-                {
-                    console.warn("Using offline GitHub directory fallback: " + reason);
-                    callback(null, offline.list, offline.arg);
-                    return true;
-                }
-
-                return false;
+                if(offline) console.warn("Using offline GitHub directory fallback");
+                return offline;
             }
-
-            // If the browser already knows we are offline, do not use stale cache.
-            if(disk2.isLikelyOffline())
+            ,onNavigate:function(nextArg)
             {
-                if(useOfflineDir("navigator.onLine=false"))
-                    return;
+                disk2.setDiskCatalogPath(nextArg);
             }
-
-            if(disk2.GitHubDirCache[url] === undefined)
+            ,onFile:function(fileArg)
             {
-                oCOM.GetHTTP(url, "text", function()
-                {
-                    if(this.status != 200)
-                    {
-                        if(disk2.isGitHubRateLimitResponse(this))
-                        {
-                            if(useOfflineDir("GitHub API rate limit (HTTP " + this.status + ")"))
-                                return;
-                        }
-
-                        callback({
-                            status:this.status,
-                            message:this.responseText || this.response
-                        });
-                        return;
-                    }
-
-                    try
-                    {
-                        var json = JSON.parse(this.responseText || this.response);
-
-                        var list = json.map(function(e)
-                        {
-                            return {
-                                name:e.name,
-                                path:e.path,
-                                type:e.type,
-                                size:e.size,
-                                download_url:e.download_url,
-                                html_url:e.html_url
-                            };
-                        });
-
-                        // Only real online GitHub data goes into the cache.
-                        disk2.GitHubDirCache[url] = {
-                            list:list,
-                            arg:oCOM.cloneJSON(arg)
-                        };
-
-                        callback(null, list, arg);
-                    }
-                    catch(e)
-                    {
-                        callback({
-                            status:this.status,
-                            message:e.message
-                        });
-                    }
-                });
+                var ret = disk2.diskCatalogLoad(fileArg);
+                if(typeof EMU_audio_event_unlock == "function") EMU_audio_event_unlock();
+                return ret;
             }
-            else
+            ,titleHTML:function()
             {
-                var cache = disk2.GitHubDirCache[url];
-                callback(null, cache.list, cache.arg);
-            }
-        }
-
-        // MAIN DATA CALL
-        GH_listDir(
-            arg,
-            function(err, list, arg)             // CALLBACK FUNCTION
-            {
-                if(err) { console.warn("GitHub directory listing failed", err); return; }
-                var dirs  = list.filter(function(e) { return e.type == "dir";  });
-                var files = list.filter(function(e) { return e.type == "file"; });
-                var rows = [];
-
-                for(var i=0;i<dirs.length;i++)
-                {
-                    rows.push({
-                        name: dirs[i].name,
-                        path: dirs[i].path,
-                        size: dirs[i].size,
-                        type: dirs[i].type
-                    });
-                }
-
-                for(var i=0;i<files.length;i++)
-                {
-                    rows.push({
-                        name: files[i].name,
-                        path: files[i].path,
-                        size: files[i].size,
-                        type: files[i].type
-                    });
-                }
-
-                function clone(obj) {
-                    if (null == obj || "object" != typeof obj) return obj;
-                    var copy = obj.constructor();
-                    for (var attr in obj) {
-                        if (obj.hasOwnProperty(attr)) copy[attr] = clone(obj[attr]);
-                    }
-                    return copy;
-                }
-
-                var arg_cpy = clone(arg);
-
-                var bParentDir = arg.path != arg.basepath;
-
-                var parentpath = arg.path.split("/");
-                delete parentpath[parentpath.length-1];
-                arg_cpy.path = parentpath.join("/");
-                arg_cpy.path = arg_cpy.path.substring(0,arg_cpy.path.length-1);
-
-                var parentDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.hwObj().io.SLOT2obj("+slotN+").diskCatalogNavigate("+JSON.stringify(arg_cpy)+")'>","</div>"];
-
-                // TABLE HEAD
-                var head = "" 
-                    //+ parentDir[0]+"<i class=\"fa fa-arrow-alt-circle-up\"></i>"+parentDir[0];
-                    +(bParentDir?"<div class=appbut style=width:25px title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='apple2plus.hwObj().io.SLOT2obj("+slotN+").diskCatalogNavigate("+JSON.stringify(arg_cpy)+")'>"
-                    +"<i class=\"fa fa-arrow-alt-circle-up\"></i></div>":"")
-                    +'<div style="margin-top:6px;">'
-                    + '<table style="width:100%;border-collapse:collapse;font-size:11px;">'
-                    + '<tr>'
-                    + '<th style="text-align:left;padding:2px 4px;">Name</th>'
-                    + '<th style="text-align:left;padding:2px 4px;">Size</th>'
-                    //+ '<th style="text-align:left;padding:2px 4px;">Type</th>'
-                    //+ '<th style="text-align:left;padding:2px 4px;">Path</th>'
-                    + '</tr>';
-
-                // TABLE BODY
-                for(var i=0;i<rows.length;i++)
-                {
-                    var bDir = rows[i].type=="dir";
-                    var arg_cpy = clone(arg);
-                    arg_cpy.path = arg_cpy.path+"/"+rows[i].name;
-
-                    // LINK TO A SUBDIREcTORY
-                    var icon = bDir?"<i class=\"fa fa-folder\"></i> ":"<i class=\"fa fa-cloud-upload-alt\"></i>";
-                    var audioWakeup = "EMU_audio_event_unlock();"
-                    var cmd  = bDir
-                        ?"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskCatalogNavigate("+JSON.stringify(arg_cpy)+");"+audioWakeup
-                        :"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskCatalogLoad("+JSON.stringify(arg_cpy)+");"+audioWakeup;
-                    var subDir = ["<div title='"+JSON.stringify(arg_cpy)+"' style=cursor:pointer onclick='"+cmd+"'>"+icon,"</div>"];
-
-                    head += '<tr>'
-                    + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+subDir[0]+oCOM.escapeHTML(rows[i].name)+subDir[1]+'</td>'
-                    + '<td style="text-align:left;vertical-align:top;border-top:1px solid #888;padding:2px 4px;">'+oCOM.escapeHTML(bDir ? "-" : rows[i].size)+'</td>'                    
-                    + '</tr>';
-                }
-                head += '</table></div>';
-
-                var popup_id = arg.id + "_popup";
-                var body_id  = arg.id + "_body";
-
-                var closeBtn = "<div class=\"appbut\" "
-                        +"onclick=\"oCOM.POPUP.toggle('"+popup_id+"');event.stopPropagation();\" "
-                        +"style=\"text-align:center;float:right;\">x</div>";
-
                 var current = disk2.getDiskCatalogContext();
-                if(!current || current.slotN!==slotN) return;
-
+                if(!current || current.slotN!==slotN) return "<span>SOFTWARE CATALOG</span>";
                 var slotID = io.slot2ID(current.slotN);
-                var title =
-                      "<span>SOFTWARE CATALOG</span>"
+                return "<span>SOFTWARE CATALOG</span>"
                     + "<button class=\"appbut\" type=\"button\""
                     + " title=\"Target Disk II slot; click to select the next mounted Disk II\""
                     + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.SLOT2obj("+slotN+").diskCatalogCycleSlot()\">"
@@ -3392,12 +3239,10 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
                     + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.SLOT2obj("+slotN+").diskCatalogCycleDrive()\">"
                     + oCOM.escapeHTML(current.DCODE)
                     + "</button>"
-                    + closeBtn;
 
-                document.getElementById(popup_id).innerHTML =
-                    oCOM.POPUP.title_body_html(title, head, body_id, "com_popup_body com_scroll_xy");
+                return sharedCatalog.render(arg);
             }
-        );
+        });
     }
 
 
@@ -3553,9 +3398,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
                         );
                     }
                 }
-            );
-
-
+            )
         }
         catch({ name, message })
         {

@@ -1375,6 +1375,13 @@
                   <div class=appbox style="min-height:63px;height:auto;padding:0px 6px 0px 6px;">
                     <div class=appbut style="color:black">
                       load assembler code<input id="ASM_fileInput" style="display:inline-block" type="file" accept=".S,.s,.ASM,.asm,.INC,.inc,.txt,text/plain">
+                      <button id="ASM_sourceCatalogButton"
+                              class="appbut mini"
+                              type="button"
+                              title="Source Code Catalog"
+                              onclick="ASM_sourceCatalogOpen();event.stopPropagation();">
+                        <i class="fa fa-cat"></i>
+                      </button>
                     </div>
                     <div class="appbut" style="color:black"
                           title="Start address used when byte-encoding the source pane into monitor byte code">
@@ -2291,14 +2298,70 @@ Label1 TXA
               }
             }
 
-            async function ASM_loadFile(file)
+            function ASM_loadSourceText(name,text)
             {
-              if(!file) return;
-              ASM_setCurrentFileName(file.name || "source.S");
-              ASM_el("ASM_sourcePane").value = await file.text();
+              ASM_setCurrentFileName(name || "source.S");
+              ASM_el("ASM_sourcePane").value = String(text || "");
               ASM_clearOutputs("Loaded " + ASM_currentFileName + ". Click assemble to generate the listing, JSON and byte code.","ok");
               ASM_resizeSourceListingPanes();
               ASM_refreshFindReplaceOverlay();
+            }
+
+            async function ASM_loadFile(file)
+            {
+              if(!file) return;
+              ASM_loadSourceText(file.name || "source.S",await file.text());
+            }
+
+            function ASM_loadCatalogSource(arg)
+            {
+              var url = arg.download_url || oCOM.CATALOG.githubRawURL(arg);
+              oCOM.GetHTTP(url,"text",function()
+              {
+                if(this.status && this.status != 200)
+                {
+                  ASM_setStatus("Source catalog load failed: HTTP " + this.status,"bad");
+                  return;
+                }
+
+                ASM_loadSourceText(
+                  arg.name || String(arg.path || "source.S").split("/").pop(),
+                  this.responseText || this.response || ""
+                );
+                oCOM.CATALOG.close("sourceCat");
+              });
+            }
+
+            function ASM_sourceCatalogOpen()
+            {
+              if(typeof oCOM == "undefined" || !oCOM.CATALOG)
+              {
+                ASM_setStatus("Shared catalog browser is unavailable.","bad");
+                return false;
+              }
+
+              var catalog = oCOM.CATALOG.create({
+                 id:"sourceCat"
+                ,popupID:"sourceCat_popup"
+                ,title:"SOURCE CODE CATALOG"
+                ,owner:"RetroAppleJS"
+                ,repo:"RetroAppleJS.github.io"
+                ,ref:"main"
+                ,basepath:"asm"
+                ,path:"asm"
+                ,fileIcon:"fa fa-file-code"
+                ,filter:function(entry)
+                {
+                  return entry.type == "dir" || /\.(s|asm|inc|txt|src|a65|mac)$/i.test(entry.name || "");
+                }
+                ,onFile:ASM_loadCatalogSource
+                ,onError:function(err)
+                {
+                  ASM_setStatus("Source catalog failed: " + (err.message || ("HTTP " + err.status)),"bad");
+                }
+              });
+
+              return catalog.open();
             }
 
             function ASM_copyText(text,okMessage)
