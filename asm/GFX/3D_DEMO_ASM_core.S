@@ -11,6 +11,23 @@
 ;   - SHTABPTR and TXTPTR now receive explicit low/high address bytes
 ; =============================================================================
 
+; IMPORTANT RUNTIME REQUIREMENT
+; -----------------------------
+; This source assembles only the program at $6000-$6xxx.  The original
+; demo is NOT self-contained.  Before ENTRY ($6000) is executed, the
+; original demo resources must already be present in memory:
+;   $7000  sine/cosine table
+;   $7200  point/line object data
+;   $7400  Applesoft HGR shape table
+;   $7A00  multiplication tables ($7A00-$81FF)
+;   $8200  projection + HGR lookup/mask/div7/mod7 tables ($8200-$8704)
+; Without these blocks the border can still draw, but text becomes random
+; shapes and the projected wireframe becomes apparently random line data.
+;
+; ASM_core.js note: DOS commands below are encoded explicitly with bit 7
+; set, so they work even when the assembler UI uses dQuoteLegacy=false.
+; =============================================================================
+
 ;*******************************
 ;           3D-DEMO            *
 ;                              *
@@ -1338,7 +1355,7 @@ LOAD01         LDA   #$8D       ; LOAD 3D-OBJECT 1 INTO MEMORY
                JSR   COUT
                JSR   PRINT
                HEX   84
-               ASC   "BLOAD OBJECT1.3D,A$7200"
+               HEX   C2CCCFC1C4A0CFC2CAC5C3D4B1AEB3C4ACC1A4B7B2B0B0   ; "BLOAD OBJECT1.3D,A$7200" with Apple-II high bit
                HEX   8D00
                RTS
 ;
@@ -1347,7 +1364,7 @@ LOAD02         LDA   #$8D       ; LOAD 3D-OBJECT 1 INTO MEMORY
                JSR   COUT
                JSR   PRINT
                HEX   84
-               ASC   "BLOAD OBJECT2.3D,A$7200"
+               HEX   C2CCCFC1C4A0CFC2CAC5C3D4B2AEB3C4ACC1A4B7B2B0B0   ; "BLOAD OBJECT2.3D,A$7200" with Apple-II high bit
                HEX   8D00
                RTS
 ;
@@ -1356,7 +1373,7 @@ LOAD03         LDA   #$8D       ; LOAD 3D-OBJECT 1 INTO MEMORY
                JSR   COUT
                JSR   PRINT
                HEX   84
-               ASC   "BLOAD OBJECT3.3D,A$7200"
+               HEX   C2CCCFC1C4A0CFC2CAC5C3D4B3AEB3C4ACC1A4B7B2B0B0   ; "BLOAD OBJECT3.3D,A$7200" with Apple-II high bit
                HEX   8D00
                RTS
 ;
@@ -1365,7 +1382,7 @@ LOAD04         LDA   #$8D       ; LOAD 3D-OBJECT 1 INTO MEMORY
                JSR   COUT
                JSR   PRINT
                HEX   84
-               ASC   "BLOAD OBJECT4.3D,A$7200"
+               HEX   C2CCCFC1C4A0CFC2CAC5C3D4B4AEB3C4ACC1A4B7B2B0B0   ; "BLOAD OBJECT4.3D,A$7200" with Apple-II high bit
                HEX   8D00
                RTS
 ;
@@ -1374,7 +1391,7 @@ LOAD05         LDA   #$8D       ; LOAD 3D-OBJECT 1 INTO MEMORY
                JSR   COUT
                JSR   PRINT
                HEX   84
-               ASC   "BLOAD OBJECT5.3D,A$7200"
+               HEX   C2CCCFC1C4A0CFC2CAC5C3D4B5AEB3C4ACC1A4B7B2B0B0   ; "BLOAD OBJECT5.3D,A$7200" with Apple-II high bit
                HEX   8D00
                RTS
 ;
