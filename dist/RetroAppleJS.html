@@ -14503,32 +14503,81 @@ function EMU_WASMcpu6502()
 // notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
 //
 // apple2debug.js
+//
+// STEP TRACE is an attached debugger for the *live* Apple II runtime.
+// It never owns a shadow CPU or RAM image. Execution is performed by the real
+// Apple2Plus CPU/hardware/peripheral objects and disassembly reads the currently
+// mapped CPU bus through safe_read().
+//
 
 if(oEMU===undefined) var oEMU = {"component":{"CPU":{"Apple2Debug":new Apple2Debug()}}}
 else oEMU.component.CPU.Apple2Debug = new Apple2Debug();
 
-// TODO: move somewhere more appropriate
-
-
 function Apple2Debug()
 {
-    var prev_adr = -1000;
-    var cpu_config=null,max_instrlen,byte_scan,max_byte_lst;
+    var dbg = this;
+    var cpu_config = null;
+    var max_instrlen = 3;
+    var oDASM_debug = null;
+
+    var listingRows = 20;
+    var currentPC = null;
+    var previousObservedPC = null;
+    var previousBoundary = new Int32Array(0x10000);
+    previousBoundary.fill(-1);
+
+    // Cached decoding is always validated against the three bytes currently
+    // visible on the mapped CPU bus, so self-modifying code/remapping is local.
+    var decodeCache = new Array(0x10000);
+    var cacheHits = 0;
+    var cacheMisses = 0;
+    var domWrites = 0;
+
+    var listingColumns = "{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}";
+    var listingColumnPresets = {
+         "default":"{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}"
+        ,"wide":"{adr:0,code:6,lin:17,lbl:24,ins:34,opr:40,com:60}"
+        ,"compact":"{adr:0,code:6,lbl:15,ins:24,opr:29,com:45}"
+    };
+
+    // Run control. "system" delegates execution to the central emulator speed;
+    // fixed IPS modes own instruction scheduling while the SYSTEM timer is paused.
+    var runMode = "system";
+    var fixedRunning = false;
+    var runTimer = null;
+    var resumePct = 1;
+
+    function liveMachine()
+    {
+        return typeof(apple2plus)=="object" && apple2plus ? apple2plus : null;
+    }
+
+    function liveCPU()
+    {
+        var machine = liveMachine();
+        return machine && typeof(machine.cpuObj)=="function" ? machine.cpuObj() : null;
+    }
+
+    function liveHW()
+    {
+        var machine = liveMachine();
+        return machine && typeof(machine.hwObj)=="function" ? machine.hwObj() : null;
+    }
 
     function init(cfg)
     {
-        cpu_config = oEMU.component.CPU["6502"].getConfig();
-        max_instrlen = Math.max.apply(null, cpu_config.instrlen);
-        byte_scan = cfg.HScroll * max_instrlen    // because we can have only a max of 3 bytes per line
-        max_byte_lst = 3 * max_instrlen;          // maximum length of byte listing = (2 digits + space) * x 
-        //alert(max_instrlen);
+        var cpu = liveCPU();
+        if(!cpu) return false;
+
+        cpu_config = cpu.getConfig();
+        max_instrlen = Math.max.apply(null,cpu_config.instrlen);
+        if(cfg && cfg.scrollH) listingRows = cfg.scrollH;
 
         oDASM_debug = new DASM();
         oDASM_debug.getHexByte = oCOM.getHexByte;
         oDASM_debug.sym_search = function(op,adm)
-        {            
-            // TODO SEARCH THROUGH watchparam
-            var opd = parseInt(op.substring(1,op.length),16)
+        {
+            var opd = parseInt(op.substring(1,op.length),16);
             var symlink = null;
 
             if(typeof(oASM)!="undefined" && oASM && oASM.symlink)
@@ -14545,65 +14594,280 @@ function Apple2Debug()
                 case "inx":
                     if(symlink)
                     {
-                        var adr = symlink[opd];  // watch parameter translation
-                        if(typeof(adr)!="undefined") return adr+" <small>"+op+"h</small>"
-                        var adr = symlink[opd-1];  // watch parameter translation of address - 1
-                        if(typeof(adr)!="undefined") return adr+"+1 <small>"+op+"h</small>"
+                        var adr = symlink[opd];
+                        if(typeof(adr)!="undefined") return adr+" <small>"+op+"h</small>";
+                        adr = symlink[opd-1];
+                        if(typeof(adr)!="undefined") return adr+"+1 <small>"+op+"h</small>";
                     }
                 break;
             }
             return op;
-            
-        }
+        };
+
+        return true;
     }
 
-    this.html = function(body_id,wrapper_id)
+    function ensureInit(cfg)
     {
-        this.body_id = body_id;
-        oCOM.POPUP.set_state(wrapper_id,true); // initialise POPUP state (prevent testing for undefined)
-        return "<div class=appbox style='text-align:left;height:250px;width:300px;padding:0px 0px 0px 1px;margin:0px 0px 0px 0px'>"
-                    +"<div class=marginless style='border:0px solid #E0E0E0'>"
-                        +"STEP TRACE "
-                        +"<i id=cpuDbg_play class='fa fa-play' title='continue CPU execution' onclick=this.arr={'fa-pause':false,'fa-play':true};oCOM.POPUP.toggle_class(this,'fa-pause','fa-play');oEMU.component.CPU.Apple2Debug.play(!this.arr[oCOM.POPUP.states[this.id]])></i>&nbsp;"
-                        +"<i class='fa fa-sign-in-alt' title='step in'></i>&nbsp;"
-                        +"<i class='fa fa-paw' title='step over'></i>&nbsp;"
-                        +"<i class='fa fa-sign-out-alt' title='step out'></i>&nbsp;"
-                        +"<div class='appbut skinny' onclick=oEMU.component.CPU.Apple2Debug.downloadBootLog()><i class='fa fa-shoe-prints' title='download bootlog'></i></div>&nbsp;"
-                        +"<div class='appbut skinny'>"
-                        +"<i id='cpuDbg_bootTrigger' class='fa fa-coffee' style='opacity:.35' title='bootlog trigger disabled'"
-                        +" onclick='oEMU.component.CPU.Apple2Debug.toggleBootLogTrigger(this)'></i></div>"
-                        +"<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('"+wrapper_id+"');\" style=\"text-align:center;float:right;\">x</div>"
-                        +"<div id='"+body_id+"' class=marginless style='width:299px;height:180px;border:0px solid #FFFFFF;font-family:Arcade;font-size:7px;color:#000000;white-space:normal;word-break:break-all;overflow-wrap:anywhere;overflow-y:scroll;'></div>"
-                    +"</div>"
-                +"</div>"
-
+        return cpu_config!==null || init(cfg);
     }
 
-    this.downloadBootLog = function()
+    function stripMarkup(text)
     {
-        var cpu = apple2plus.cpuObj();
-        if(typeof(cpu.getBootLogBase64)!="function")
+        var sanitized = String(text==null ? "" : text)
+            .replace(/&nbsp;/gi," ")
+            .replace(/&lt;/gi,"<")
+            .replace(/&gt;/gi,">")
+            .replace(/&amp;/gi,"&");
+
+        var previous;
+        do {
+            previous = sanitized;
+            sanitized = sanitized.replace(/<[^>]*>/g,"");
+        } while (sanitized !== previous);
+
+        return sanitized
+            .replace(/\s+/g," ")
+            .trim();
+    }
+
+    function decodeAt(addr)
+    {
+        if(!ensureInit()) return null;
+        var hw = liveHW();
+        if(!hw || typeof(hw.safe_read)!="function") return null;
+
+        addr &= 0xffff;
+        var b0 = hw.safe_read(addr);
+        var b1 = hw.safe_read((addr+1)&0xffff);
+        var b2 = hw.safe_read((addr+2)&0xffff);
+
+        var cached = decodeCache[addr];
+        if(cached && cached.b0===b0 && cached.b1===b1 && cached.b2===b2)
         {
-            alert("Bootlog download is unavailable: getBootLogBase64() is missing.");
-            return;
+            cacheHits++;
+            return cached;
         }
 
-        var base64 = cpu.getBootLogBase64();
-        var filename = "apple2_bootlog_" + new Date().toISOString().replace(/[:.]/g,"-") + ".txt";
-        var blob = new Blob([base64], {type:"text/plain;charset=utf-8"});
+        cacheMisses++;
+        var len = cpu_config.instrlen[b0] || 1;
+        var ret = oDASM_debug.disassemble({
+             "code_arr":[b0,b1,b2]
+            ,"pc":addr
+            ,"opctab":cpu_config.opctab
+        });
 
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        a.style.display = "none";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }    
+        var mnemonic = stripMarkup(ret.mnemonic);
+        var match = /^(\S+)(?:\s+(.*))?$/.exec(mnemonic) || ["",mnemonic,""];
+        var bytes = [b0,b1,b2].slice(0,len).map(function(v){return oCOM.getHexByte(v)}).join(" ");
 
-    function DBG_parseBootAddress(value)
+        cached = {
+             "addr":addr
+            ,"b0":b0,"b1":b1,"b2":b2
+            ,"len":len
+            ,"next":(addr+len)&0xffff
+            ,"bytes":bytes
+            ,"ins":match[1] || ""
+            ,"opr":match[2] || ""
+        };
+        decodeCache[addr] = cached;
+        return cached;
+    }
+
+    function parseColumns(text)
+    {
+        var out = {};
+        String(text || "").replace(/([a-zA-Z_][\w]*)\s*:\s*(-?\d+)/g,function(_,key,val)
+        {
+            out[key] = Math.max(0,parseInt(val,10) || 0);
+            return "";
+        });
+        return out;
+    }
+
+    function crop(text,width)
+    {
+        text = String(text==null ? "" : text);
+        if(width<=0) return "";
+        if(text.length<=width) return text;
+        if(width===1) return text.slice(0,1);
+        return text.slice(0,width-1)+"…";
+    }
+
+    function formatParts(parts)
+    {
+        var columns = parseColumns(listingColumns);
+        var order = ["adr","code","lin","lbl","ins","opr","com"];
+        var active = order.filter(function(k){return Object.prototype.hasOwnProperty.call(columns,k)});
+        active.sort(function(a,b){return columns[a]-columns[b]});
+
+        var line = "";
+        for(var i=0;i<active.length;i++)
+        {
+            var key = active[i];
+            var col = columns[key];
+            while(line.length<col) line += " ";
+
+            var nextCol = i+1<active.length ? columns[active[i+1]] : null;
+            var value = String(parts[key]==null ? "" : parts[key]);
+            if(nextCol!==null) value = crop(value,Math.max(0,nextCol-col-1));
+            line += value;
+        }
+        return line.replace(/\s+$/g,"");
+    }
+
+    function formatDecoded(d)
+    {
+        return formatParts({
+             "adr":oCOM.getHexWord(d.addr)+":"
+            ,"code":d.bytes
+            ,"lin":""
+            ,"lbl":""
+            ,"ins":d.ins
+            ,"opr":d.opr
+            ,"com":""
+        });
+    }
+
+    function rememberSequential(from,to)
+    {
+        if(from==null || to==null) return false;
+        from &= 0xffff;
+        to &= 0xffff;
+        var d = decodeAt(from);
+        if(!d || d.next!==to) return false;
+        previousBoundary[to] = from;
+        return true;
+    }
+
+    function rememberEdges(edges)
+    {
+        if(!Array.isArray(edges)) return;
+        for(var i=0;i<edges.length;i++)
+            if(edges[i] && edges[i].length>=2)
+                rememberSequential(edges[i][0],edges[i][1]);
+    }
+
+    function predecessorOf(addr)
+    {
+        addr &= 0xffff;
+
+        var known = previousBoundary[addr];
+        if(known>=0)
+        {
+            var kd = decodeAt(known);
+            if(kd && kd.next===addr) return known;
+            previousBoundary[addr] = -1;
+        }
+
+        // A backward decode is accepted only when exactly one 1..3-byte
+        // candidate lands on the known instruction boundary.
+        var found = -1;
+        var count = 0;
+        for(var delta=1;delta<=max_instrlen;delta++)
+        {
+            var candidate = (addr-delta)&0xffff;
+            var d = decodeAt(candidate);
+            if(d && d.next===addr)
+            {
+                found = candidate;
+                count++;
+            }
+        }
+        return count===1 ? found : -1;
+    }
+
+    function listingWindow(pc,count)
+    {
+        pc &= 0xffff;
+        count = Math.max(1,Number(count)|0 || listingRows);
+
+        var aboveWanted = Math.min(8,Math.floor(count/2));
+        var start = pc;
+        for(var i=0;i<aboveWanted;i++)
+        {
+            var p = predecessorOf(start);
+            if(p<0) break;
+            start = p;
+        }
+
+        var rows = [];
+        var adr = start;
+        for(var row=0;row<count;row++)
+        {
+            var d = decodeAt(adr);
+            if(!d) break;
+
+            rows.push({
+                 "addr":adr
+                ,"current":adr===pc
+                ,"text":formatDecoded(d)
+            });
+
+            previousBoundary[d.next] = adr;
+            adr = d.next;
+        }
+        return rows;
+    }
+
+    function ensureRowPool()
+    {
+        var el = document.getElementById(dbg.body_id);
+        if(!el) return null;
+
+        var pool = el._cpuDbgRowPool;
+        if(pool && pool.length===listingRows && pool.length
+            && pool[0].parentNode===el)
+            return pool;
+
+        el.innerHTML = "";
+        pool = new Array(listingRows);
+        for(var i=0;i<listingRows;i++)
+        {
+            var row = document.createElement("div");
+            row.style.height = "9px";
+            row.style.lineHeight = "9px";
+            row.style.whiteSpace = "pre";
+            row.style.fontFamily = "inherit";
+            row._cpuDbgText = null;
+            row._cpuDbgCurrent = null;
+            el.appendChild(row);
+            pool[i] = row;
+        }
+        el._cpuDbgRowPool = pool;
+        return pool;
+    }
+
+    function renderListing(pc,force)
+    {
+        var pool = ensureRowPool();
+        if(!pool) return false;
+        var rows = listingWindow(pc,listingRows);
+
+        for(var i=0;i<pool.length;i++)
+        {
+            var data = rows[i] || {text:"",current:false};
+            var node = pool[i];
+            var text = data.text || "";
+
+            if(force || node._cpuDbgText!==text)
+            {
+                node.textContent = text;
+                node._cpuDbgText = text;
+                domWrites++;
+            }
+
+            if(force || node._cpuDbgCurrent!==!!data.current)
+            {
+                node.style.fontWeight = data.current ? "bold" : "normal";
+                node.style.textDecoration = data.current ? "underline" : "none";
+                node._cpuDbgCurrent = !!data.current;
+            }
+        }
+        return true;
+    }
+
+    function parseBootAddress(value)
     {
         var s = String(value==null ? "" : value).trim();
         s = s.replace(/^\$/,"").replace(/^0x/i,"");
@@ -14611,7 +14875,7 @@ function Apple2Debug()
         return parseInt(s,16) & 0xffff;
     }
 
-    function DBG_updateBootTriggerIcon(el,state)
+    function updateBootTriggerIcon(el,state)
     {
         if(!el) return;
 
@@ -14643,52 +14907,228 @@ function Apple2Debug()
         }
     }
 
+    function systemRunning()
+    {
+        return typeof(_o)!="undefined" && Number(_o.CPU_TargetTicks_s)>0;
+    }
+
+    function executionRunning()
+    {
+        return fixedRunning || (runMode==="system" && systemRunning());
+    }
+
+    function rememberSystemSpeed()
+    {
+        if(typeof(_o)==="undefined") return;
+        var base = Number(_o.CPU_ClocksTicks_s) || 1;
+        var target = Number(_o.CPU_TargetTicks_s) || 0;
+        if(target>0) resumePct = target/base;
+    }
+
+    function pauseSystem()
+    {
+        if(systemRunning())
+        {
+            rememberSystemSpeed();
+            oEMUI.cpuSpd(0);
+        }
+    }
+
+    function resumeSystem()
+    {
+        oEMUI.cpuSpd(resumePct>0 ? resumePct : 1);
+    }
+
+    function clearRunTimer()
+    {
+        if(runTimer!==null)
+        {
+            window.clearTimeout(runTimer);
+            runTimer = null;
+        }
+    }
+
+    function stopFixedRun()
+    {
+        fixedRunning = false;
+        clearRunTimer();
+    }
+
+    function runSpeedConfig(mode)
+    {
+        switch(String(mode))
+        {
+            case "1":    return {batch:1,delay:1000,label:"1 IPS"};
+            case "10":   return {batch:1,delay:100,label:"10 IPS"};
+            case "100":  return {batch:5,delay:50,label:"100 IPS"};
+            case "1000": return {batch:50,delay:50,label:"1000 IPS"};
+            default:     return {batch:0,delay:0,label:"Max (SYSTEM)"};
+        }
+    }
+
+    function syncRunIcon(el)
+    {
+        el = el || document.getElementById("cpuDbg_play");
+        if(!el || !el.classList) return;
+        var running = executionRunning();
+        el.classList.toggle("fa-pause",running);
+        el.classList.toggle("fa-play",!running);
+        el.title = running ? "pause CPU execution" : "continue CPU execution";
+    }
+
+    function scheduleFixedRun(delay)
+    {
+        clearRunTimer();
+        runTimer = window.setTimeout(fixedRunLoop,Math.max(0,delay|0));
+    }
+
+    function fixedRunLoop()
+    {
+        if(!fixedRunning || runMode==="system") return;
+        var machine = liveMachine();
+        if(!machine || typeof(machine.runLiveInstructionBatch)!="function")
+        {
+            stopFixedRun();
+            syncRunIcon();
+            return;
+        }
+
+        var cfg = runSpeedConfig(runMode);
+        var result = machine.runLiveInstructionBatch(cfg.batch);
+        rememberEdges(result && result.edges);
+
+        dbg.cycle({cpu:machine.cpuObj(),force:true});
+
+        if(!result || result.stalled)
+        {
+            stopFixedRun();
+            syncRunIcon();
+            return;
+        }
+
+        scheduleFixedRun(cfg.delay);
+    }
+
+    function startExecution()
+    {
+        if(runMode==="system")
+        {
+            stopFixedRun();
+            resumeSystem();
+        }
+        else
+        {
+            pauseSystem();
+            fixedRunning = true;
+            scheduleFixedRun(0);
+        }
+        syncRunIcon();
+    }
+
+    function pauseExecution()
+    {
+        stopFixedRun();
+        if(runMode==="system") pauseSystem();
+        syncRunIcon();
+    }
+
+    this.html = function(body_id,wrapper_id)
+    {
+        this.body_id = body_id;
+        oCOM.POPUP.set_state(wrapper_id,true);
+        return "<div class=appbox style='text-align:left;height:auto;min-height:290px;width:340px;padding:0 0 0 1px;margin:0'>"
+            +"<div class=marginless style='border:0'>"
+                +"STEP TRACE "
+                +"<i id=cpuDbg_play class='fa fa-pause' title='pause CPU execution' onclick='oEMU.component.CPU.Apple2Debug.toggleRun(this)'></i>&nbsp;"
+                +"<i class='fa fa-sign-in-alt' title='step one live instruction' onclick='oEMU.component.CPU.Apple2Debug.step()'></i>&nbsp;"
+                +"<i class='fa fa-paw' style='opacity:.35' title='step over (next pass)'></i>&nbsp;"
+                +"<i class='fa fa-sign-out-alt' style='opacity:.35' title='step out (next pass)'></i>&nbsp;"
+                +"<select id='cpuDbg_speed' title='STEP TRACE execution speed' onchange='oEMU.component.CPU.Apple2Debug.setRunSpeed(this.value)' style='font-size:10px'>"
+                    +"<option value='1'>1 IPS</option>"
+                    +"<option value='10'>10 IPS</option>"
+                    +"<option value='100'>100 IPS</option>"
+                    +"<option value='1000'>1000 IPS</option>"
+                    +"<option value='system' selected>Max (SYSTEM)</option>"
+                +"</select>&nbsp;"
+                +"<div class='appbut skinny' onclick='oEMU.component.CPU.Apple2Debug.downloadBootLog()'><i class='fa fa-shoe-prints' title='download bootlog'></i></div>&nbsp;"
+                +"<div class='appbut skinny'><i id='cpuDbg_bootTrigger' class='fa fa-coffee' style='opacity:.35' title='bootlog trigger disabled' onclick='oEMU.component.CPU.Apple2Debug.toggleBootLogTrigger(this)'></i></div>"
+                +"<div class=\"appbut\" onclick=\"oEMU.component.CPU.Apple2Debug.close();oCOM.POPUP.toggle('"+wrapper_id+"');\" style=\"text-align:center;float:right;\">x</div>"
+                +"<div style='font-family:Arial,sans-serif;font-size:10px;line-height:18px;margin-top:3px'>"
+                    +"LISTING&nbsp; Columns <input id='cpuDbg_columns' type='text' value='"+listingColumns+"' spellcheck='false' style='width:220px;font-family:monospace;font-size:10px' onchange='oEMU.component.CPU.Apple2Debug.setListingColumns(this.value)'>"
+                    +"<div style='margin-left:46px'>"
+                        +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('default')\" style='font-size:10px'>default ▦</button> "
+                        +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('wide')\" style='font-size:10px'>wide ▦</button> "
+                        +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('compact')\" style='font-size:10px'>compact ▦</button>"
+                    +"</div>"
+                +"</div>"
+                +"<div id='"+body_id+"' class=marginless style='width:338px;height:180px;border:0;font-family:Arcade;font-size:7px;color:#000;white-space:nowrap;overflow:auto;'></div>"
+            +"</div></div>";
+    };
+
+    this.downloadBootLog = function()
+    {
+        var cpu = liveCPU();
+        if(!cpu || typeof(cpu.getBootLogBase64)!="function")
+        {
+            alert("Bootlog download is unavailable: getBootLogBase64() is missing.");
+            return;
+        }
+
+        var base64 = cpu.getBootLogBase64();
+        var filename = "apple2_bootlog_" + new Date().toISOString().replace(/[:.]/g,"-") + ".txt";
+        var blob = new Blob([base64],{type:"text/plain;charset=utf-8"});
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
     this.toggleBootLogTrigger = function(el)
     {
-        var cpu = apple2plus.cpuObj();
+        var cpu = liveCPU();
         if(!cpu || typeof(cpu.BOOTparam)!="function"
-                || typeof(cpu.setBootLogTrigger)!="function")
+            || typeof(cpu.setBootLogTrigger)!="function")
         {
             alert("Bootlog trigger is unavailable in this CPU build.");
             return;
         }
 
         var state = cpu.BOOTparam();
-
-        // Enabled -> disabled. Keep the already captured log downloadable.
         if(state.bDebug_boot)
         {
             state = cpu.setBootLogTrigger(state.triggerAddress,state.stopAddress,false);
-            DBG_updateBootTriggerIcon(el,state);
+            updateBootTriggerIcon(el,state);
             return;
         }
 
-        var startDef = state.triggerAddress==null
-            ? ""
-            : "$"+oCOM.getHexWord(state.triggerAddress);
+        var startDef = state.triggerAddress==null ? "" : "$"+oCOM.getHexWord(state.triggerAddress);
         var startValue = prompt("Bootlog start address (blank = immediately):",startDef);
         if(startValue===null) return;
 
         var startAddr = null;
         if(String(startValue).trim()!=="")
         {
-            startAddr = DBG_parseBootAddress(startValue);
+            startAddr = parseBootAddress(startValue);
             if(startAddr===null)
             {
                 alert("Invalid start address. Use for example $6000, or leave blank.");
                 return;
             }
         }
-        var stopDef = state.stopAddress==null
-            ? ""
-            : "$"+oCOM.getHexWord(state.stopAddress);
+
+        var stopDef = state.stopAddress==null ? "" : "$"+oCOM.getHexWord(state.stopAddress);
         var stopValue = prompt("Bootlog stop address (blank = when buffer is full):",stopDef);
         if(stopValue===null) return;
 
         var stopAddr = null;
         if(String(stopValue).trim()!=="")
         {
-            stopAddr = DBG_parseBootAddress(stopValue);
+            stopAddr = parseBootAddress(stopValue);
             if(stopAddr===null)
             {
                 alert("Invalid stop address. Use for example $FF69, or leave blank.");
@@ -14697,104 +15137,140 @@ function Apple2Debug()
         }
 
         state = cpu.setBootLogTrigger(startAddr,stopAddr,true);
-        DBG_updateBootTriggerIcon(el,state);
-    }
+        updateBootTriggerIcon(el,state);
+    };
 
     this.isReady = function()
     {
-        return typeof(window)!="undefined"
-            && window.oTextScroll1
-            && typeof(window.oTextScroll1.move)=="function";
-    }
+        return typeof(document)!="undefined" && !!document.getElementById(this.body_id);
+    };
 
     this.cycle = function(obj)
     {
-        if(!obj || !obj.cpu || typeof(obj.cpu.watch)!="function" || !this.isReady())
-            return false;
+        var cpu = obj && obj.cpu && typeof(obj.cpu.watch)=="function"
+            ? obj.cpu
+            : liveCPU();
+        if(!cpu || !this.isReady()) return false;
+        if(!ensureInit({scrollH:listingRows})) return false;
 
-        if(typeof(obj.cpu.BOOTparam)=="function")
-            DBG_updateBootTriggerIcon(
-                document.getElementById("cpuDbg_bootTrigger"),
-                obj.cpu.BOOTparam()
-            );
+        if(typeof(cpu.BOOTparam)=="function")
+            updateBootTriggerIcon(document.getElementById("cpuDbg_bootTrigger"),cpu.BOOTparam());
 
-        //var el = document.getElementById( oEMU.component.CPU.Apple2Debug.disp_id );
-        var watch = obj.cpu.watch();
-        var jmp_adr = watch.pc - prev_adr;
+        var watch = cpu.watch();
+        var pc = watch.pc & 0xffff;
 
-        // TODO check jump adr !  DO NOT MOVE SCROLL WHEN watch.pc is not pointing to an instruction !
+        if(previousObservedPC!==null && previousObservedPC!==pc)
+            rememberSequential(previousObservedPC,pc);
 
-        if(prev_adr==-1000) jmp_adr = watch.pc; // TODO: can we do better than just -1000 to indicate start position?
-        //document.getElementById("debug").value = oCOM.getHexWord(watch.pc);
+        var changed = currentPC!==pc;
+        previousObservedPC = pc;
+        currentPC = pc;
 
-        window.oTextScroll1.move(jmp_adr);
-        prev_adr = watch.pc;
+        if(changed || (obj && obj.force)) renderListing(pc,!!(obj && obj.force));
+        syncRunIcon();
         return true;
-    }
+    };
 
+    this.setRunSpeed = function(value)
+    {
+        value = String(value || "system").toLowerCase();
+        if(["1","10","100","1000","system"].indexOf(value)<0) value = "system";
+
+        var wasRunning = executionRunning();
+        if(runMode==="system" && systemRunning()) pauseSystem();
+        stopFixedRun();
+        runMode = value;
+
+        var sel = document.getElementById("cpuDbg_speed");
+        if(sel && sel.value!==runMode) sel.value = runMode;
+
+        if(wasRunning) startExecution();
+        else syncRunIcon();
+        return runMode;
+    };
+
+    this.toggleRun = function(el)
+    {
+        if(executionRunning()) pauseExecution();
+        else startExecution();
+        syncRunIcon(el);
+        this.cycle({cpu:liveCPU(),force:true});
+    };
+
+    // Compatibility with the old toolbar API.
     this.play = function(bPlay)
     {
-        if(bPlay)
-        {
-            _o._EMU_Updates_s = _o.EMU_Updates_s;               // push previous value
-            _o._EMU_IntervalTime_ms = _o.EMU_IntervalTime_ms;   // push previous value
+        if(!!bPlay !== executionRunning()) this.toggleRun(document.getElementById("cpuDbg_play"));
+    };
 
-            _o.EMU_Updates_s = 1;
-            _o.EMU_IntervalTime_ms = 500;
-            oEMUI.cpuSpd(1 / _o.CPU_ClocksTicks_s);
-        }
-        else
-        {
-            _o.EMU_Updates_s = _o._EMU_Updates_s;               // pop previous value
-            _o.EMU_IntervalTime_ms = _o._EMU_IntervalTime_ms;   // pop previous value
-
-            delete _o._EMU_Updates_s;
-            delete _o._EMU_IntervalTime_ms;
-            oEMUI.cpuSpd(0);
-        }
-    }
-
-    /*
-    this.listing = function(watch)
+    this.step = function()
     {
-        var lines = 20;
-        var s = Array(lines);
-        
-        for(var line=0;line<lines;line++)
-        {
-            var ln = oCOM.getHexWord(watch.pc-(lines>>1)+line) + " "
-            if(line == (lines>>1)) ln = "<font color=#800000>"+ln+"</font>"
-            s[line] = ln;
-        }
-        return s.join("<br>");
-    }
-    */
-    
+        var machine = liveMachine();
+        if(!machine || typeof(machine.stepLiveInstruction)!="function") return false;
 
-    // CPU REAL-TIME DEBUGGER
-    this.scrollFeed = function(curPos,linLen,cfg)  // callback function to feed data based on cursor position and line count
+        pauseExecution();
+        var result = machine.stepLiveInstruction();
+        if(result) rememberSequential(result.startPC,result.endPC);
+
+        this.cycle({cpu:machine.cpuObj(),force:true});
+        return result;
+    };
+
+    this.setListingColumns = function(value)
     {
-        if(cpu_config==null) init(cfg);
-        var arr=new Array(linLen);
-        var hw = apple2plus.hwObj();
-        var adr = curPos;
+        if(String(value || "").trim()) listingColumns = String(value).trim();
+        var input = document.getElementById("cpuDbg_columns");
+        if(input && input.value!==listingColumns) input.value = listingColumns;
+        if(currentPC!==null) renderListing(currentPC,true);
+        return listingColumns;
+    };
 
-        const c_ram = hw.safe_flashdump();
-        for(var i=0;i<linLen;i++)           //  inverse loop for performance 
-        {
-            var b8 = c_ram[adr];
-            var ret = oDASM_debug.disassemble({"code_arr":[b8,hw.safe_read(adr+1),hw.safe_read(adr+2)],"pc":adr,"opctab":cpu_config.opctab});
-            adr += cpu_config.instrlen[b8];                  // advance to the next instruction
-            if(adr < cfg.min)  adr += cfg.max - cfg.min + 1;   // fix underflow
-            if(adr > cfg.max)  adr += cfg.min - cfg.max - 1;   // fix overflow
+    this.applyListingPreset = function(name)
+    {
+        var preset = listingColumnPresets[name];
+        if(!preset) return false;
+        this.setListingColumns(preset);
+        return true;
+    };
 
-            arr[i] = oCOM.padding([ret.adr_lst,ret.opcode_lst,ret.mnemonic],[5,max_byte_lst]);
-        }
+    this.close = function()
+    {
+        // Never leave an invisible debugger-owned IPS scheduler running.
+        stopFixedRun();
+        syncRunIcon();
+    };
 
-        return arr;
-    }
+    // ScrollerJS compatibility feed. The CPU PC remains the anchor; legacy
+    // ScrollerJS may still ask for an initial feed until EMU_apple2main.js is
+    // simplified in the next cleanup pass.
+    this.scrollFeed = function(curPos,linLen,cfg)
+    {
+        if(!ensureInit(cfg)) return [];
+        var cpu = liveCPU();
+        if(!cpu) return [];
+        if(linLen) listingRows = linLen;
+        currentPC = cpu.watch().pc & 0xffff;
+        return listingWindow(currentPC,linLen || listingRows).map(function(r){return r.text});
+    };
 
+    this.liveState = function()
+    {
+        var cpu = liveCPU();
+        return {
+             "pc":cpu ? (cpu.watch().pc & 0xffff) : null
+            ,"runMode":runMode
+            ,"running":executionRunning()
+            ,"systemRunning":systemRunning()
+            ,"resumePct":resumePct
+            ,"mappedBus":!!(liveHW() && typeof(liveHW().safe_read)=="function")
+            ,"liveStepAPI":!!(liveMachine() && typeof(liveMachine().stepLiveInstruction)=="function")
+            ,"cacheHits":cacheHits
+            ,"cacheMisses":cacheMisses
+            ,"domWrites":domWrites
+        };
+    };
 }
+
 </script>
             <script type="text/javascript">
 //
@@ -44545,7 +45021,6 @@ function Apple2Plus(context)
 
     if(typeof(COM_PopupHTML)=="undefined") var COM_PopupHTML = function() { console.log("COM_PopupHTML unavailable") }
     
-
     if(typeof(Cpu6502)=="undefined")
           { console.log("running Apple2Plus without CPU") }
     else var cpu  = new Cpu6502(this.hw);
@@ -44750,14 +45225,179 @@ function Apple2Plus(context)
         }
     }
 
+    /*
+     * Shared live CPU execution primitive.
+     *
+     * The normal SYSTEM scheduler and STEP TRACE instruction stepping both pass
+     * through this exact loop.  Every completed 6502 tick is paired with one
+     * Apple2IO tick, so mounted peripherals, timers, IRQ sources and the shared
+     * I/O clock remain live while debugging.
+     */
+    function runCpuTicks(requestedTicks,deadline)
+    {
+        requestedTicks = Math.floor(Number(requestedTicks));
+        if(!Number.isFinite(requestedTicks) || requestedTicks<0)
+            requestedTicks = 0;
+
+        var remainingTicks = requestedTicks;
+        var completedTicks = 0;
+        var trapped = false;
+        var timeCheck = 4096;
+
+        while(remainingTicks>0)
+        {
+            remainingTicks--;
+
+            // A one-shot CPU execution trap stops before the selected opcode is
+            // fetched and therefore consumes no emulated CPU tick.
+            if(cpu.cycle()===true)
+            {
+                remainingTicks++;
+                trapped = true;
+                break;
+            }
+
+            /*
+             * Use Apple2IO's monotonic clock as the tick callback phase when it
+             * is available.  This makes device timing independent of how CPU
+             * ticks are grouped into SYSTEM slices or debugger instructions.
+             * Existing devices that ignore the argument are unaffected.
+             */
+            var tickPhase = hw.io && typeof(hw.io.getClockTicks)=="function"
+                ? hw.io.getClockTicks()
+                : remainingTicks;
+            hw.io.tick(tickPhase);
+            completedTicks++;
+
+            if(deadline!==undefined && --timeCheck==0)
+            {
+                if(performance.now()>=deadline) break;
+                timeCheck = 4096;
+            }
+        }
+
+        return {
+             "requestedTicks":requestedTicks
+            ,"remainingTicks":remainingTicks
+            ,"completedTicks":completedTicks
+            ,"trapped":trapped
+        };
+    }
+
+    function advanceVideo(completedTicks,scale)
+    {
+        if(completedTicks<=0 || !video || typeof(video.cycle)!="function") return;
+        scale = Number(scale);
+        if(!Number.isFinite(scale) || scale<=0) scale = 1;
+        var videoTicks = completedTicks*scale;
+        if(Number.isFinite(videoTicks) && videoTicks>0)
+            video.cycle(videoTicks);
+    }
+
+    /*
+     * Execute one complete live instruction-boundary event without finalising
+     * video/device-cycle processing.  The caller can batch several instructions
+     * and finalise once, which is important for 100/1000 IPS STEP TRACE modes.
+     */
+    function executeLiveInstruction()
+    {
+        var ticks = 0;
+        var guard = 0;
+        var result;
+
+        // The SYSTEM timer may have been paused in the middle of an instruction
+        // after the opcode/semantic tick but before cycle_delay reached zero.
+        while(cpu.watch().cycle_delay>0 && guard++<64)
+        {
+            result = runCpuTicks(1);
+            ticks += result.completedTicks;
+            if(result.completedTicks===0) break;
+        }
+
+        var before = cpu.watch();
+        var startPC = before.pc & 0xffff;
+
+        guard = 0;
+        result = runCpuTicks(1);
+        ticks += result.completedTicks;
+
+        if(result.completedTicks>0)
+        {
+            while(cpu.watch().cycle_delay>0 && guard++<64)
+            {
+                result = runCpuTicks(1);
+                ticks += result.completedTicks;
+                if(result.completedTicks===0) break;
+            }
+        }
+
+        var after = cpu.watch();
+        return {
+             "startPC":startPC
+            ,"endPC":after.pc & 0xffff
+            ,"ticks":ticks
+            ,"state":after
+            ,"stalled":ticks===0
+        };
+    }
+
+    // Public low-level live execution helper for debugger/tools.
+    this.runLiveCpuTicks = function(n,options)
+    {
+        options = options || {};
+        var result = runCpuTicks(n,options.deadline);
+        advanceVideo(result.completedTicks,options.videoScale===undefined ? 1 : options.videoScale);
+        if(options.deviceCycle!==false && hw.io && typeof(hw.io.cycle)=="function")
+            hw.io.cycle();
+        return result;
+    }
+
+    // Execute exactly one live instruction-boundary event.
+    this.stepLiveInstruction = function()
+    {
+        var result = executeLiveInstruction();
+        advanceVideo(result.ticks,1);
+        if(hw.io && typeof(hw.io.cycle)=="function") hw.io.cycle();
+        return result;
+    }
+
+    // Batch instruction stepping while preserving every executed PC edge for
+    // the live debugger's boundary map.  Video/device-cycle work is finalised
+    // only once per batch.
+    this.runLiveInstructionBatch = function(count)
+    {
+        count = Math.max(1,Number(count)|0);
+        var edges = [];
+        var totalTicks = 0;
+        var last = null;
+
+        for(var i=0;i<count;i++)
+        {
+            var one = executeLiveInstruction();
+            last = one;
+            if(one.ticks<=0) break;
+            totalTicks += one.ticks;
+            edges.push([one.startPC,one.endPC]);
+        }
+
+        advanceVideo(totalTicks,1);
+        if(hw.io && typeof(hw.io.cycle)=="function") hw.io.cycle();
+
+        return {
+             "instructions":edges.length
+            ,"ticks":totalTicks
+            ,"edges":edges
+            ,"state":last ? last.state : cpu.watch()
+            ,"stalled":edges.length===0
+        };
+    }
+
     this.cycle = function(n)
     {
         var args = {"cpu_chrono":performance.now()};
         var requestedTicks = Math.floor(Number(n));
         if(!Number.isFinite(requestedTicks) || requestedTicks<0)
             requestedTicks = 0;
-        var remainingTicks = requestedTicks;
-        var completedTicks = 0;
 
         // Turbo targets can exceed the host's capacity by many orders of
         // magnitude. Keep each interval cooperative and discard the part of
@@ -44767,32 +45407,9 @@ function Apple2Plus(context)
             ? Math.max(1,_o.EMU_IntervalTime_ms*0.8)
             : Infinity;
         var deadline = args.cpu_chrono+maxSliceMs;
-        var timeCheck = 4096;
 
-        while (remainingTicks>0) {
-            remainingTicks--;
-            //hw.cycle();
-            //video.cycle();
-            // A one-shot CPU execution trap (used by the WASM accelerator)
-            // stops this JavaScript burst before the selected opcode is fetched.
-            if(cpu.cycle()===true)
-            {
-                remainingTicks++;       // the trap consumed no emulated CPU tick
-                break;
-            }
-
-            //snd.cycle(remainingTicks);
-            hw.io.tick(remainingTicks);
-
-            if(--timeCheck==0)
-            {
-                if(performance.now()>=deadline) break;
-                timeCheck = 4096;
-            }
-            //var completedTicks = requestedTicks-remainingTicks;
-        }
-
-        completedTicks = requestedTicks-remainingTicks;
+        var run = runCpuTicks(requestedTicks,deadline);
+        var completedTicks = run.completedTicks;
 
         /*
          * Video timing is advanced once per processing slice, not once per CPU
@@ -44800,27 +45417,17 @@ function Apple2Plus(context)
          * equivalent ticks:
          *
          *     completed CPU ticks * base clock / selected target clock
-         *
-         * Thus x16 contributes one video-timing tick for every sixteen CPU
-         * ticks, while 50% contributes two. Video timers remain tied to the
-         * emulated clock and keep approximately the same cadence at every
-         * selected speed. If the host cannot attain the requested CPU pace,
-         * video timing slows with the CPU rather than advancing artificially.
          */
-        if(completedTicks>0 && video && typeof(video.cycle)=="function")
+        if(completedTicks>0)
         {
             var baseTicks_s = Number(_o.CPU_ClocksTicks_s);
             var targetTicks_s = Number(_o.CPU_TargetTicks_s);
-            var videoTicks = baseTicks_s>0 && targetTicks_s>0
-                ? completedTicks*baseTicks_s/targetTicks_s
-                : 0;
-
-            if(Number.isFinite(videoTicks) && videoTicks>0)
-                video.cycle(videoTicks);
+            var videoScale = baseTicks_s>0 && targetTicks_s>0
+                ? baseTicks_s/targetTicks_s
+                : 1;
+            advanceVideo(completedTicks,videoScale);
         }
 
-
-        // TODO optimise speed!!!!!!!
         var debug = oEMU.component.CPU.Apple2Debug;
         var debugPopup = typeof(document)!="undefined"
             ? document.getElementById("cpuDbg_popup")
@@ -44830,9 +45437,8 @@ function Apple2Plus(context)
             && debug && typeof(debug.cycle)=="function")
             debug.cycle({"cpu":cpu});
 
-        //snd.play();
+        // Processing-cycle hooks remain once per SYSTEM slice, exactly as before.
         hw.io.cycle();
-        //keys.cycle(this);
         cpuPaceAccumulate(requestedTicks,completedTicks);
 
         // display dashboard parameters
