@@ -491,8 +491,17 @@ function EMU_init()
     {
         disk2.dN_speed_update = function(pct)  // override
         {
+            pct = Number(pct);
+
+            // STEP TRACE uses cpuSpd(0) to suspend the SYSTEM CPU owner while
+            // fixed-IPS live execution continues. Zero is therefore a scheduler
+            // state, not a meaningful Disk II audio pitch. Math.log2(0) would
+            // otherwise store -Infinity and Web Audio rejects that detune value.
+            if(!Number.isFinite(this.dNd.detune)) this.dNd.detune = 0;
+            if(!Number.isFinite(pct) || pct<=0) return;
+
             var cent = 1200 * Math.log2(pct/100);
-            this.dNd.detune = cent;
+            if(Number.isFinite(cent)) this.dNd.detune = cent;
             //console.log("pct="+pct+" cent="+cent);
         };
     });
