@@ -40,6 +40,16 @@ function Apple2Debug()
         ,"compact":"{adr:0,code:6,lbl:15,ins:24,opr:29,com:45}"
     };
 
+    // The listing has two independent modes:
+    //   followPC=true  : CPU activity owns the viewport and keeps PC visible.
+    //   followPC=false : the user owns a top-row instruction address.
+    // Manual navigation never guesses a byte offset; it walks decoded
+    // instruction boundaries only.
+    var followPC = true;
+    var manualTop = null;
+    var lastViewTop = null;
+    var rowPixelHeight = 9;
+
     // Run control. "system" delegates execution to the central emulator speed;
     // fixed IPS modes own instruction scheduling while the SYSTEM timer is paused.
     var runMode = "system";
@@ -261,7 +271,8 @@ function Apple2Debug()
         }
 
         // A backward decode is accepted only when exactly one 1..3-byte
-        // candidate lands on the known instruction boundary.
+        // candidate lands on the known instruction boundary. Ambiguity stops
+        // upward navigation rather than inventing an alignment.
         var found = -1;
         var count = 0;
         for(var delta=1;delta<=max_instrlen;delta++)
@@ -277,19 +288,11 @@ function Apple2Debug()
         return count===1 ? found : -1;
     }
 
-    function listingWindow(pc,count)
+    function forwardWindow(start,pc,count)
     {
+        start &= 0xffff;
         pc &= 0xffff;
         count = Math.max(1,Number(count)|0 || listingRows);
-
-        var aboveWanted = Math.min(8,Math.floor(count/2));
-        var start = pc;
-        for(var i=0;i<aboveWanted;i++)
-        {
-            var p = predecessorOf(start);
-            if(p<0) break;
-            start = p;
-        }
 
         var rows = [];
         var adr = start;
@@ -304,10 +307,35 @@ function Apple2Debug()
                 ,"text":formatDecoded(d)
             });
 
+            // Forward disassembly starts from a known instruction boundary, so
+            // every successor is safe to remember as a predecessor edge.
             previousBoundary[d.next] = adr;
             adr = d.next;
         }
         return rows;
+    }
+
+    function followWindow(pc,count)
+    {
+        pc &= 0xffff;
+        count = Math.max(1,Number(count)|0 || listingRows);
+
+        var aboveWanted = Math.min(8,Math.floor(count/2));
+        var start = pc;
+        for(var i=0;i<aboveWanted;i++)
+        {
+            var p = predecessorOf(start);
+            if(p<0) break;
+            start = p;
+        }
+        return forwardWindow(start,pc,count);
+    }
+
+    function listingWindow(pc,count)
+    {
+        if(followPC || manualTop===null)
+            return followWindow(pc,count);
+        return forwardWindow(manualTop,pc,count);
     }
 
     function ensureRowPool()
@@ -325,8 +353,8 @@ function Apple2Debug()
         for(var i=0;i<listingRows;i++)
         {
             var row = document.createElement("div");
-            row.style.height = "9px";
-            row.style.lineHeight = "9px";
+            row.style.height = rowPixelHeight+"px";
+            row.style.lineHeight = rowPixelHeight+"px";
             row.style.whiteSpace = "pre";
             row.style.fontFamily = "inherit";
             row._cpuDbgText = null;
@@ -338,11 +366,33 @@ function Apple2Debug()
         return pool;
     }
 
+    function syncFollowControl()
+    {
+        var input = document.getElementById("cpuDbg_followPc");
+        if(input && input.checked!==followPC) input.checked = followPC;
+    }
+
+    function updateNavigationStatus(pc)
+    {
+        var el = document.getElementById("cpuDbg_navStatus");
+        if(!el) return;
+
+        var top = lastViewTop==null ? pc : lastViewTop;
+        el.textContent = "TOP $"+oCOM.getHexWord(top)+"  PC $"+oCOM.getHexWord(pc);
+        el.title = followPC
+            ? "Listing follows the live program counter"
+            : "Manual instruction-row view; enable Follow PC to resume tracking";
+    }
+
     function renderListing(pc,force)
     {
         var pool = ensureRowPool();
         if(!pool) return false;
         var rows = listingWindow(pc,listingRows);
+
+        lastViewTop = rows.length ? rows[0].addr : null;
+        if(!followPC && manualTop===null && lastViewTop!==null)
+            manualTop = lastViewTop;
 
         for(var i=0;i<pool.length;i++)
         {
@@ -364,7 +414,105 @@ function Apple2Debug()
                 node._cpuDbgCurrent = !!data.current;
             }
         }
+
+        syncFollowControl();
+        updateNavigationStatus(pc);
         return true;
+    }
+
+    function setFollowState(enabled,renderNow)
+    {
+        enabled = !!enabled;
+
+        if(enabled)
+        {
+            followPC = true;
+            manualTop = null;
+        }
+        else
+        {
+            if(followPC)
+            {
+                var cpu = liveCPU();
+                var pc = cpu ? (cpu.watch().pc & 0xffff) : (currentPC==null ? 0 : currentPC);
+                if(lastViewTop===null)
+                {
+                    var rows = followWindow(pc,listingRows);
+                    lastViewTop = rows.length ? rows[0].addr : pc;
+                }
+                manualTop = lastViewTop;
+            }
+            followPC = false;
+        }
+
+        syncFollowControl();
+        if(renderNow && currentPC!==null) renderListing(currentPC,true);
+        return followPC;
+    }
+
+    function bindNavigation()
+    {
+        var el = document.getElementById(dbg.body_id);
+        if(!el || el._cpuDbgNavigationBound) return;
+        el._cpuDbgNavigationBound = true;
+        el.tabIndex = 0;
+        el.title = "Instruction navigation: mouse wheel, ↑/↓, Page Up/Down. Home returns to Follow PC.";
+
+        el.addEventListener("wheel",function(event)
+        {
+            event.preventDefault();
+            var page = event.shiftKey ? Math.max(1,listingRows-1) : 1;
+            dbg.navigateRows(event.deltaY<0 ? -page : page);
+        },{passive:false});
+
+        el.addEventListener("keydown",function(event)
+        {
+            var handled = true;
+            switch(event.key)
+            {
+                case "ArrowUp":   dbg.navigateRows(-1); break;
+                case "ArrowDown": dbg.navigateRows(1); break;
+                case "PageUp":    dbg.navigateRows(-Math.max(1,listingRows-1)); break;
+                case "PageDown":  dbg.navigateRows(Math.max(1,listingRows-1)); break;
+                case "Home":      dbg.setFollowPC(true); break;
+                case "f":
+                case "F":         dbg.setFollowPC(!followPC); break;
+                default: handled = false;
+            }
+
+            if(handled)
+            {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+        });
+
+        el.addEventListener("pointerdown",function(){ el.focus(); });
+
+        el.addEventListener("touchstart",function(event)
+        {
+            if(!event.changedTouches || !event.changedTouches.length) return;
+            el._cpuDbgTouchY = event.changedTouches[0].clientY;
+        },{passive:true});
+
+        el.addEventListener("touchmove",function(event)
+        {
+            if(!event.changedTouches || !event.changedTouches.length
+                || !Number.isFinite(el._cpuDbgTouchY)) return;
+
+            var y = event.changedTouches[0].clientY;
+            var delta = el._cpuDbgTouchY-y;
+            var rows = delta<0 ? Math.ceil(delta/rowPixelHeight) : Math.floor(delta/rowPixelHeight);
+            if(rows!==0)
+            {
+                event.preventDefault();
+                dbg.navigateRows(rows);
+                el._cpuDbgTouchY = y;
+            }
+        },{passive:false});
+
+        el.addEventListener("touchend",function(){ el._cpuDbgTouchY = null; },{passive:true});
+        el.addEventListener("touchcancel",function(){ el._cpuDbgTouchY = null; },{passive:true});
     }
 
     function parseBootAddress(value)
@@ -409,7 +557,13 @@ function Apple2Debug()
 
     function systemRunning()
     {
-        return typeof(_o)!="undefined" && Number(_o.CPU_TargetTicks_s)>0;
+        // CPU_TargetTicks_s is only a configured target. The main Pause button
+        // clears appleIntervalHandle without changing that target, so include
+        // the real scheduler state as well.
+        return typeof(_o)!="undefined"
+            && Number(_o.CPU_TargetTicks_s)>0
+            && typeof(appleIntervalHandle)!="undefined"
+            && appleIntervalHandle!=null;
     }
 
     function executionRunning()
@@ -497,7 +651,7 @@ function Apple2Debug()
         var result = machine.runLiveInstructionBatch(cfg.batch);
         rememberEdges(result && result.edges);
 
-        dbg.cycle({cpu:machine.cpuObj(),force:true});
+        dbg.cycle({cpu:machine.cpuObj()});
 
         if(!result || result.stalled)
         {
@@ -536,7 +690,7 @@ function Apple2Debug()
     {
         this.body_id = body_id;
         oCOM.POPUP.set_state(wrapper_id,true);
-        return "<div class=appbox style='text-align:left;height:auto;min-height:290px;width:340px;padding:0 0 0 1px;margin:0'>"
+        return "<div class=appbox style='text-align:left;height:auto;min-height:315px;width:340px;padding:0 0 0 1px;margin:0'>"
             +"<div class=marginless style='border:0'>"
                 +"STEP TRACE "
                 +"<i id=cpuDbg_play class='fa fa-pause' title='pause CPU execution' onclick='oEMU.component.CPU.Apple2Debug.toggleRun(this)'></i>&nbsp;"
@@ -554,14 +708,22 @@ function Apple2Debug()
                 +"<div class='appbut skinny'><i id='cpuDbg_bootTrigger' class='fa fa-coffee' style='opacity:.35' title='bootlog trigger disabled' onclick='oEMU.component.CPU.Apple2Debug.toggleBootLogTrigger(this)'></i></div>"
                 +"<div class=\"appbut\" onclick=\"oEMU.component.CPU.Apple2Debug.close();oCOM.POPUP.toggle('"+wrapper_id+"');\" style=\"text-align:center;float:right;\">x</div>"
                 +"<div style='font-family:Arial,sans-serif;font-size:10px;line-height:18px;margin-top:3px'>"
-                    +"LISTING&nbsp; Columns <input id='cpuDbg_columns' type='text' value='"+listingColumns+"' spellcheck='false' style='width:220px;font-family:monospace;font-size:10px' onchange='oEMU.component.CPU.Apple2Debug.setListingColumns(this.value)'>"
+                    +"<label><input id='cpuDbg_followPc' type='checkbox' checked onchange='oEMU.component.CPU.Apple2Debug.setFollowPC(this.checked)'> Follow PC</label>"
+                    +"&nbsp; NAV "
+                    +"<button type='button' title='Previous instruction' onclick='oEMU.component.CPU.Apple2Debug.navigateRows(-1)' style='font-size:10px'>▲</button>"
+                    +"<button type='button' title='Next instruction' onclick='oEMU.component.CPU.Apple2Debug.navigateRows(1)' style='font-size:10px'>▼</button>"
+                    +"<button type='button' title='Page up' onclick='oEMU.component.CPU.Apple2Debug.navigatePage(-1)' style='font-size:10px'>Pg↑</button>"
+                    +"<button type='button' title='Page down' onclick='oEMU.component.CPU.Apple2Debug.navigatePage(1)' style='font-size:10px'>Pg↓</button>"
+                    +"<button type='button' title='Return to live PC and resume following' onclick='oEMU.component.CPU.Apple2Debug.setFollowPC(true)' style='font-size:10px'>PC</button>"
+                    +"<span id='cpuDbg_navStatus' style='margin-left:5px;font-family:monospace'></span>"
+                    +"<br>LISTING&nbsp; Columns <input id='cpuDbg_columns' type='text' value='"+listingColumns+"' spellcheck='false' style='width:220px;font-family:monospace;font-size:10px' onchange='oEMU.component.CPU.Apple2Debug.setListingColumns(this.value)'>"
                     +"<div style='margin-left:46px'>"
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('default')\" style='font-size:10px'>default ▦</button> "
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('wide')\" style='font-size:10px'>wide ▦</button> "
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('compact')\" style='font-size:10px'>compact ▦</button>"
                     +"</div>"
                 +"</div>"
-                +"<div id='"+body_id+"' class=marginless style='width:338px;height:180px;border:0;font-family:Arcade;font-size:7px;color:#000;white-space:nowrap;overflow:auto;'></div>"
+                +"<div id='"+body_id+"' class=marginless style='width:338px;height:"+(listingRows*rowPixelHeight)+"px;border:0;font-family:Arcade;font-size:7px;color:#000;white-space:nowrap;overflow-x:auto;overflow-y:hidden;touch-action:none;'></div>"
             +"</div></div>";
     };
 
@@ -645,6 +807,30 @@ function Apple2Debug()
         return typeof(document)!="undefined" && !!document.getElementById(this.body_id);
     };
 
+    this.open = function()
+    {
+        var cpu = liveCPU();
+        if(!cpu || !this.isReady()) return false;
+        if(!ensureInit({scrollH:listingRows})) return false;
+
+        bindNavigation();
+
+        var sel = document.getElementById("cpuDbg_speed");
+        if(sel) sel.value = runMode;
+        var input = document.getElementById("cpuDbg_columns");
+        if(input) input.value = listingColumns;
+
+        currentPC = cpu.watch().pc & 0xffff;
+        previousObservedPC = currentPC;
+        renderListing(currentPC,true);
+        syncRunIcon();
+
+        if(typeof(cpu.BOOTparam)=="function")
+            updateBootTriggerIcon(document.getElementById("cpuDbg_bootTrigger"),cpu.BOOTparam());
+
+        return true;
+    };
+
     this.cycle = function(obj)
     {
         var cpu = obj && obj.cpu && typeof(obj.cpu.watch)=="function"
@@ -666,9 +852,71 @@ function Apple2Debug()
         previousObservedPC = pc;
         currentPC = pc;
 
-        if(changed || (obj && obj.force)) renderListing(pc,!!(obj && obj.force));
+        if(followPC)
+        {
+            if(changed || (obj && obj.force)) renderListing(pc,!!(obj && obj.force));
+        }
+        else
+        {
+            // In manual mode keep the viewport fixed while still revalidating
+            // its mapped bytes, so self-modifying code remains visible live.
+            renderListing(pc,!!(obj && obj.force));
+        }
+
         syncRunIcon();
         return true;
+    };
+
+    this.setFollowPC = function(enabled)
+    {
+        return setFollowState(enabled,true);
+    };
+
+    this.navigateRows = function(delta)
+    {
+        delta = Number(delta)|0;
+        if(delta===0) return 0;
+        var cpu = liveCPU();
+        if(!cpu || !ensureInit({scrollH:listingRows})) return 0;
+
+        var pc = cpu.watch().pc & 0xffff;
+        currentPC = pc;
+
+        if(followPC) setFollowState(false,false);
+        if(manualTop===null) manualTop = lastViewTop===null ? pc : lastViewTop;
+
+        var adr = manualTop;
+        var wanted = Math.abs(delta);
+        var dir = delta<0 ? -1 : 1;
+        var moved = 0;
+
+        for(var i=0;i<wanted;i++)
+        {
+            if(dir>0)
+            {
+                var d = decodeAt(adr);
+                if(!d) break;
+                previousBoundary[d.next] = adr;
+                adr = d.next;
+            }
+            else
+            {
+                var prev = predecessorOf(adr);
+                if(prev<0) break;
+                adr = prev;
+            }
+            moved++;
+        }
+
+        if(moved>0) manualTop = adr;
+        renderListing(pc,true);
+        return moved*dir;
+    };
+
+    this.navigatePage = function(direction)
+    {
+        direction = Number(direction)<0 ? -1 : 1;
+        return this.navigateRows(direction*Math.max(1,listingRows-1));
     };
 
     this.setRunSpeed = function(value)
@@ -740,19 +988,6 @@ function Apple2Debug()
         syncRunIcon();
     };
 
-    // ScrollerJS compatibility feed. The CPU PC remains the anchor; legacy
-    // ScrollerJS may still ask for an initial feed until EMU_apple2main.js is
-    // simplified in the next cleanup pass.
-    this.scrollFeed = function(curPos,linLen,cfg)
-    {
-        if(!ensureInit(cfg)) return [];
-        var cpu = liveCPU();
-        if(!cpu) return [];
-        if(linLen) listingRows = linLen;
-        currentPC = cpu.watch().pc & 0xffff;
-        return listingWindow(currentPC,linLen || listingRows).map(function(r){return r.text});
-    };
-
     this.liveState = function()
     {
         var cpu = liveCPU();
@@ -762,6 +997,8 @@ function Apple2Debug()
             ,"running":executionRunning()
             ,"systemRunning":systemRunning()
             ,"resumePct":resumePct
+            ,"followPC":followPC
+            ,"viewTop":lastViewTop
             ,"mappedBus":!!(liveHW() && typeof(liveHW().safe_read)=="function")
             ,"liveStepAPI":!!(liveMachine() && typeof(liveMachine().stepLiveInstruction)=="function")
             ,"cacheHits":cacheHits
