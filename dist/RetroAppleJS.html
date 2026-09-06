@@ -14460,16 +14460,25 @@ function Apple2Debug()
     // Step Over/Out are temporary debugger-owned live boundary runs.
     var boundaryAction = null;
 
-    // One-shot execution breakpoint.  It is implemented with Cpu6502's existing
-    // execution trap, which is checked only at cycle_delay==0 before interrupt
-    // dispatch/opcode fetch.  Thus the target can never stop in the middle of an
-    // instruction, even at Max (SYSTEM) speed.
+    // Temporary execution breakpoint. Cpu6502's execution trap is evaluated only
+    // when cycle_delay==0, before interrupt dispatch and opcode fetch. Conditional
+    // misses re-arm that same boundary trap and return false so the target opcode
+    // executes normally; matching conditions stop before the opcode is fetched.
     var breakTarget = null;
+    var breakConditionText = "";
+    var breakConditionError = "";
+    var breakConditionAst = null;
+    var conditionHelp = "Optional breakpoint condition. Registers: A X Y SP P PC. Flags: N V B D I Z C. Memory: M[$addr] or MEM[$addr], M16[$addr] or MEM16[$addr]. Operators: == != < <= > >= & | ^ && || ! and parentheses.";
     var tempBreakpoint = {
          address:null
         ,armed:false
         ,hit:false
         ,hits:0
+        ,checks:0
+        ,skips:0
+        ,condition:""
+        ,lastResult:null
+        ,error:null
     };
     var breakMessage = "";
 
@@ -14613,6 +14622,264 @@ function Apple2Debug()
         s = s.replace(/^\$/,"").replace(/^0x/i,"");
         if(!/^[0-9a-f]{1,4}$/i.test(s)) return null;
         return parseInt(s,16) & 0xffff;
+    }
+
+    function tokenizeCondition(text)
+    {
+        var s = String(text==null ? "" : text);
+        var out = [];
+        var i = 0;
+
+        function fail(message,pos)
+        {
+            throw new Error(message+" at column "+((pos===undefined ? i : pos)+1));
+        }
+
+        while(i<s.length)
+        {
+            var c = s.charAt(i);
+            if(/\s/.test(c)) { i++; continue; }
+
+            var two = s.substr(i,2);
+            if(["&&","||","==","!=","<=",">="].indexOf(two)>=0)
+            {
+                out.push({k:"op",v:two,p:i});
+                i += 2;
+                continue;
+            }
+
+            if("()[]&|^!<>= ".indexOf(c)>=0 && c!==" ")
+            {
+                out.push({k:"op",v:c,p:i});
+                i++;
+                continue;
+            }
+
+            if(c==="$")
+            {
+                var hp = i++;
+                var hs = "";
+                while(i<s.length && /[0-9a-f]/i.test(s.charAt(i))) hs += s.charAt(i++);
+                if(!hs) fail("Expected hexadecimal digits",hp);
+                out.push({k:"num",v:parseInt(hs,16),p:hp});
+                continue;
+            }
+
+            if(c==="0" && i+1<s.length && /[xX]/.test(s.charAt(i+1)))
+            {
+                var xp = i;
+                i += 2;
+                var xs = "";
+                while(i<s.length && /[0-9a-f]/i.test(s.charAt(i))) xs += s.charAt(i++);
+                if(!xs) fail("Expected hexadecimal digits",xp);
+                out.push({k:"num",v:parseInt(xs,16),p:xp});
+                continue;
+            }
+
+            if(/[0-9]/.test(c))
+            {
+                var np = i;
+                var ns = "";
+                while(i<s.length && /[0-9]/.test(s.charAt(i))) ns += s.charAt(i++);
+                out.push({k:"num",v:parseInt(ns,10),p:np});
+                continue;
+            }
+
+            if(/[a-z_]/i.test(c))
+            {
+                var ip = i;
+                var id = "";
+                while(i<s.length && /[a-z0-9_]/i.test(s.charAt(i))) id += s.charAt(i++);
+                out.push({k:"id",v:id.toUpperCase(),p:ip});
+                continue;
+            }
+
+            fail("Unexpected character '"+c+"'",i);
+        }
+
+        out.push({k:"eof",v:"",p:i});
+        return out;
+    }
+
+    function parseBreakpointCondition(text)
+    {
+        var tokens = tokenizeCondition(text);
+        var pos = 0;
+        var registers = {A:1,X:1,Y:1,SP:1,P:1,PC:1};
+        var flags = {N:1,V:1,B:1,D:1,I:1,Z:1,C:1};
+        var memory = {M:8,M8:8,MEM:8,MEM8:8,M16:16,MEM16:16};
+
+        function token(){ return tokens[pos]; }
+        function take(value)
+        {
+            if(token().v===value) { pos++; return true; }
+            return false;
+        }
+        function need(value)
+        {
+            if(!take(value)) throw new Error("Expected '"+value+"' at column "+(token().p+1));
+        }
+
+        function primary()
+        {
+            var t = token();
+            if(t.k==="num")
+            {
+                pos++;
+                return {t:"num",v:t.v};
+            }
+
+            if(t.k==="id")
+            {
+                pos++;
+                if(t.v==="TRUE") return {t:"num",v:1};
+                if(t.v==="FALSE") return {t:"num",v:0};
+                if(registers[t.v]) return {t:"reg",v:t.v};
+                if(flags[t.v]) return {t:"flag",v:t.v};
+                if(memory[t.v])
+                {
+                    need("[");
+                    var addr = logicalOr();
+                    need("]");
+                    return {t:"mem",w:memory[t.v],a:addr};
+                }
+                throw new Error("Unknown condition name '"+t.v+"' at column "+(t.p+1));
+            }
+
+            if(take("("))
+            {
+                var n = logicalOr();
+                need(")");
+                return n;
+            }
+
+            throw new Error("Expected value at column "+(t.p+1));
+        }
+
+        function unary()
+        {
+            if(take("!")) return {t:"un",o:"!",a:unary()};
+            return primary();
+        }
+
+        function bitAnd()
+        {
+            var n = unary();
+            while(take("&")) n = {t:"bin",o:"&",a:n,b:unary()};
+            return n;
+        }
+
+        function bitXor()
+        {
+            var n = bitAnd();
+            while(take("^")) n = {t:"bin",o:"^",a:n,b:bitAnd()};
+            return n;
+        }
+
+        function bitOr()
+        {
+            var n = bitXor();
+            while(take("|")) n = {t:"bin",o:"|",a:n,b:bitXor()};
+            return n;
+        }
+
+        function compare()
+        {
+            var n = bitOr();
+            while(["=","==","!=","<","<=",">",">="].indexOf(token().v)>=0)
+            {
+                var op = token().v;
+                pos++;
+                n = {t:"bin",o:op,a:n,b:bitOr()};
+            }
+            return n;
+        }
+
+        function logicalAnd()
+        {
+            var n = compare();
+            while(take("&&")) n = {t:"bin",o:"&&",a:n,b:compare()};
+            return n;
+        }
+
+        function logicalOr()
+        {
+            var n = logicalAnd();
+            while(take("||")) n = {t:"bin",o:"||",a:n,b:logicalAnd()};
+            return n;
+        }
+
+        var ast = logicalOr();
+        if(token().k!=="eof")
+            throw new Error("Unexpected token '"+token().v+"' at column "+(token().p+1));
+        return ast;
+    }
+
+    function conditionValue(node,state)
+    {
+        if(!node) return 1;
+
+        if(node.t==="num") return Number(node.v) || 0;
+
+        if(node.t==="reg")
+        {
+            var key = node.v.toLowerCase();
+            if(!state || state[key]===undefined) throw new Error("Register "+node.v+" is unavailable");
+            return Number(state[key]) || 0;
+        }
+
+        if(node.t==="flag")
+        {
+            if(!state || state.p===undefined) throw new Error("Processor flags are unavailable");
+            var masks = {N:0x80,V:0x40,B:0x10,D:0x08,I:0x04,Z:0x02,C:0x01};
+            return (Number(state.p) & masks[node.v]) ? 1 : 0;
+        }
+
+        if(node.t==="mem")
+        {
+            var hw = liveHW();
+            if(!hw || typeof(hw.safe_read)!="function") throw new Error("Mapped memory is unavailable");
+            var addr = conditionValue(node.a,state) & 0xffff;
+            var lo = Number(hw.safe_read(addr));
+            if(!Number.isFinite(lo)) throw new Error("Cannot read $"+oCOM.getHexWord(addr));
+            lo &= 0xff;
+            if(node.w===8) return lo;
+            var hi = Number(hw.safe_read((addr+1)&0xffff));
+            if(!Number.isFinite(hi)) throw new Error("Cannot read $"+oCOM.getHexWord((addr+1)&0xffff));
+            return lo | ((hi & 0xff)<<8);
+        }
+
+        if(node.t==="un") return conditionValue(node.a,state) ? 0 : 1;
+
+        if(node.t==="bin")
+        {
+            if(node.o==="&&") return conditionValue(node.a,state) ? (conditionValue(node.b,state) ? 1 : 0) : 0;
+            if(node.o==="||") return conditionValue(node.a,state) ? 1 : (conditionValue(node.b,state) ? 1 : 0);
+
+            var a = conditionValue(node.a,state);
+            var b = conditionValue(node.b,state);
+            switch(node.o)
+            {
+                case "&":  return ((a|0)&(b|0))>>>0;
+                case "|":  return ((a|0)|(b|0))>>>0;
+                case "^":  return ((a|0)^(b|0))>>>0;
+                case "=":
+                case "==": return a===b ? 1 : 0;
+                case "!=": return a!==b ? 1 : 0;
+                case "<":  return a<b ? 1 : 0;
+                case "<=": return a<=b ? 1 : 0;
+                case ">":  return a>b ? 1 : 0;
+                case ">=": return a>=b ? 1 : 0;
+            }
+        }
+
+        throw new Error("Invalid condition expression");
+    }
+
+    function compileBreakpointCondition(text)
+    {
+        text = String(text==null ? "" : text).trim();
+        return {text:text,ast:text ? parseBreakpointCondition(text) : null};
     }
 
     function parseColumns(text)
@@ -14843,8 +15110,21 @@ function Apple2Debug()
             if(document.activeElement!==input && input.value!==value) input.value = value;
         }
 
+        var cond = document.getElementById("cpuDbg_breakCond");
+        if(cond)
+        {
+            if(document.activeElement!==cond && cond.value!==breakConditionText) cond.value = breakConditionText;
+            cond.style.borderColor = breakConditionError ? "#c00" : "";
+            cond.setAttribute("aria-invalid",breakConditionError ? "true" : "false");
+            cond.title = breakConditionError ? "Invalid condition: "+breakConditionError : conditionHelp;
+        }
+
         var arm = document.getElementById("cpuDbg_breakArm");
-        if(arm) arm.textContent = tempBreakpoint.armed ? "Armed" : "Arm";
+        if(arm)
+        {
+            var dirty = tempBreakpoint.armed && breakConditionText!==tempBreakpoint.condition;
+            arm.textContent = dirty ? "Rearm" : (tempBreakpoint.armed ? "Armed" : "Arm");
+        }
     }
 
     function boundaryActionText()
@@ -14857,10 +15137,13 @@ function Apple2Debug()
 
     function breakpointText()
     {
+        var conditional = tempBreakpoint.condition ? " IF" : "";
         if(tempBreakpoint.armed)
-            return "  BP→$"+oCOM.getHexWord(tempBreakpoint.address);
+            return "  BP→$"+oCOM.getHexWord(tempBreakpoint.address)+conditional;
+        if(tempBreakpoint.error && tempBreakpoint.address!==null)
+            return "  BP!$"+oCOM.getHexWord(tempBreakpoint.address);
         if(tempBreakpoint.hit)
-            return "  BP@$"+oCOM.getHexWord(tempBreakpoint.address);
+            return "  BP@$"+oCOM.getHexWord(tempBreakpoint.address)+(conditional ? " IF✓" : "");
         return breakMessage ? "  "+breakMessage : "";
     }
 
@@ -14872,9 +15155,12 @@ function Apple2Debug()
         var top = lastViewTop==null ? pc : lastViewTop;
         el.textContent = "TOP $"+oCOM.getHexWord(top)+"  PC $"+oCOM.getHexWord(pc)
             +boundaryActionText()+breakpointText();
-        el.title = followPC
+        var title = followPC
             ? "Listing follows the live program counter"
             : "Manual instruction-row view; enable Follow PC to resume tracking";
+        if(tempBreakpoint.condition)
+            title += "; breakpoint condition: "+tempBreakpoint.condition;
+        el.title = title;
     }
 
     function renderListing(pc,force)
@@ -15324,10 +15610,19 @@ function Apple2Debug()
     function tempBreakpointHit(state)
     {
         tempBreakpoint.armed = false;
-        tempBreakpoint.hit = true;
-        tempBreakpoint.hits++;
+        tempBreakpoint.error = tempBreakpoint.error || null;
+        if(tempBreakpoint.error)
+        {
+            tempBreakpoint.hit = false;
+            breakMessage = "COND ERR";
+        }
+        else
+        {
+            tempBreakpoint.hit = true;
+            tempBreakpoint.hits++;
+            breakMessage = "";
+        }
         breakTarget = tempBreakpoint.address;
-        breakMessage = "";
 
         // Stop whichever live owner was executing. The CPU trap has already
         // removed itself before this callback runs, so no target opcode is lost.
@@ -15353,7 +15648,38 @@ function Apple2Debug()
         return true;
     }
 
-    function armTemporaryBreakpoint(addr,autoRun)
+    function tempBreakpointTrap(state)
+    {
+        tempBreakpoint.checks++;
+        var matched = true;
+
+        try
+        {
+            matched = breakConditionAst ? !!conditionValue(breakConditionAst,state) : true;
+            tempBreakpoint.lastResult = matched;
+            tempBreakpoint.error = null;
+        }
+        catch(err)
+        {
+            tempBreakpoint.lastResult = null;
+            tempBreakpoint.error = err && err.message ? err.message : String(err);
+            breakMessage = "COND ERR";
+            matched = true; // stop visibly rather than silently ignoring an unreadable condition
+        }
+
+        if(!matched)
+        {
+            tempBreakpoint.skips++;
+            var cpu = liveCPU();
+            if(tempBreakpoint.armed && cpu && typeof(cpu.setExecutionTrap)==="function")
+                cpu.setExecutionTrap(tempBreakpoint.address,tempBreakpointTrap);
+            return false;
+        }
+
+        return tempBreakpointHit(state);
+    }
+
+    function armTemporaryBreakpoint(addr,autoRun,conditionText)
     {
         var cpu = liveCPU();
         addr = parseAddress(addr);
@@ -15364,16 +15690,38 @@ function Apple2Debug()
             return false;
         }
 
+        var compiled;
+        try
+        {
+            compiled = compileBreakpointCondition(conditionText===undefined ? breakConditionText : conditionText);
+        }
+        catch(err)
+        {
+            breakConditionText = String(conditionText===undefined ? breakConditionText : conditionText).trim();
+            breakConditionError = err && err.message ? err.message : String(err);
+            breakMessage = "BAD COND";
+            tempBreakpoint.error = breakConditionError;
+            syncBreakpointControls();
+            if(currentPC!==null) renderListing(currentPC,true);
+            return false;
+        }
+
         if(tempBreakpoint.armed && typeof(cpu.clearExecutionTrap)==="function")
             cpu.clearExecutionTrap();
 
         breakTarget = addr;
+        breakConditionText = compiled.text;
+        breakConditionError = "";
+        breakConditionAst = compiled.ast;
         tempBreakpoint.address = addr;
         tempBreakpoint.armed = true;
         tempBreakpoint.hit = false;
+        tempBreakpoint.condition = compiled.text;
+        tempBreakpoint.lastResult = null;
+        tempBreakpoint.error = null;
         breakMessage = "";
 
-        cpu.setExecutionTrap(addr,tempBreakpointHit);
+        cpu.setExecutionTrap(addr,tempBreakpointTrap);
         syncBreakpointControls();
         if(currentPC!==null) renderListing(currentPC,true);
 
@@ -15390,6 +15738,11 @@ function Apple2Debug()
         tempBreakpoint.address = null;
         tempBreakpoint.armed = false;
         tempBreakpoint.hit = false;
+        tempBreakpoint.condition = "";
+        tempBreakpoint.lastResult = null;
+        tempBreakpoint.error = null;
+        breakConditionAst = null;
+        breakConditionError = "";
         breakMessage = "";
         if(clearTarget) breakTarget = null;
 
@@ -15402,7 +15755,7 @@ function Apple2Debug()
     {
         this.body_id = body_id;
         oCOM.POPUP.set_state(wrapper_id,true);
-        return "<div class=appbox style='text-align:left;height:auto;min-height:385px;width:350px;padding:0 0 0 1px;margin:0'>"
+        return "<div class=appbox style='text-align:left;height:auto;min-height:410px;width:350px;padding:0 0 0 1px;margin:0'>"
             +"<div class=marginless style='border:0'>"
                 +"STEP TRACE "
                 +"<i id=cpuDbg_play class='fa fa-pause' title='pause CPU execution' onclick='oEMU.component.CPU.Apple2Debug.toggleRun(this)'></i>&nbsp;"
@@ -15432,6 +15785,7 @@ function Apple2Debug()
                     +"<button id='cpuDbg_breakArm' type='button' title='Arm one-shot breakpoint (F9)' onclick='oEMU.component.CPU.Apple2Debug.setTemporaryBreakpointFromInput(false)' style='font-size:10px'>Arm</button> "
                     +"<button type='button' title='Arm breakpoint and continue execution to it' onclick='oEMU.component.CPU.Apple2Debug.setTemporaryBreakpointFromInput(true)' style='font-size:10px'>Run→</button> "
                     +"<button type='button' title='Clear temporary breakpoint (Shift+F9)' onclick='oEMU.component.CPU.Apple2Debug.clearTemporaryBreakpoint()' style='font-size:10px'>Clear</button>"
+                    +"<br>IF&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input id='cpuDbg_breakCond' type='text' value='' spellcheck='false' title='"+conditionHelp+"' placeholder='e.g. A==$10 && M[$4000]==$80' style='width:286px;font-family:"+listingFontFamily+";font-size:10px' onchange='oEMU.component.CPU.Apple2Debug.setBreakpointCondition(this.value)'>"
                     +"<br>LISTING&nbsp; Columns <input id='cpuDbg_columns' type='text' value='"+listingColumns+"' spellcheck='false' style='width:220px;font-family:"+listingFontFamily+";font-size:10px' onchange='oEMU.component.CPU.Apple2Debug.setListingColumns(this.value)'>"
                     +"<div style='margin-left:46px'>"
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('default')\" style='font-size:10px'>default ▦</button> "
@@ -15531,6 +15885,8 @@ function Apple2Debug()
         if(sel) sel.value = runMode;
         var input = document.getElementById("cpuDbg_columns");
         if(input) input.value = listingColumns;
+        var cond = document.getElementById("cpuDbg_breakCond");
+        if(cond) cond.value = breakConditionText;
 
         currentPC = cpu.watch().pc & 0xffff;
         previousObservedPC = currentPC;
@@ -15712,27 +16068,49 @@ function Apple2Debug()
         return setBreakpointTarget(addr);
     };
 
-    this.setTemporaryBreakpoint = function(address,autoRun)
+    this.setBreakpointCondition = function(value)
     {
-        return armTemporaryBreakpoint(address,!!autoRun);
+        breakConditionText = String(value==null ? "" : value).trim();
+        try
+        {
+            compileBreakpointCondition(breakConditionText);
+            breakConditionError = "";
+            breakMessage = "";
+        }
+        catch(err)
+        {
+            breakConditionError = err && err.message ? err.message : String(err);
+            breakMessage = "BAD COND";
+        }
+        syncBreakpointControls();
+        if(currentPC!==null) renderListing(currentPC,true);
+        return breakConditionError ? false : breakConditionText;
+    };
+
+    this.setTemporaryBreakpoint = function(address,autoRun,condition)
+    {
+        return armTemporaryBreakpoint(address,!!autoRun,condition);
     };
 
     this.setTemporaryBreakpointFromInput = function(autoRun)
     {
         var input = document.getElementById("cpuDbg_breakAddr");
         var addr = input ? parseAddress(input.value) : breakTarget;
+        var cond = document.getElementById("cpuDbg_breakCond");
+        var condition = cond ? cond.value : breakConditionText;
         if(addr===null)
         {
             breakMessage = "BAD BP";
             if(currentPC!==null) renderListing(currentPC,true);
             return false;
         }
-        return armTemporaryBreakpoint(addr,!!autoRun);
+        return armTemporaryBreakpoint(addr,!!autoRun,condition);
     };
 
     this.runToAddress = function(address)
     {
-        return armTemporaryBreakpoint(address,true);
+        var cond = document.getElementById("cpuDbg_breakCond");
+        return armTemporaryBreakpoint(address,true,cond ? cond.value : breakConditionText);
     };
 
     this.clearTemporaryBreakpoint = function()
@@ -15786,6 +16164,12 @@ function Apple2Debug()
                 ,"armed":tempBreakpoint.armed
                 ,"hit":tempBreakpoint.hit
                 ,"hits":tempBreakpoint.hits
+                ,"checks":tempBreakpoint.checks
+                ,"skips":tempBreakpoint.skips
+                ,"condition":tempBreakpoint.condition
+                ,"editorCondition":breakConditionText
+                ,"lastResult":tempBreakpoint.lastResult
+                ,"error":tempBreakpoint.error || breakConditionError || null
               }
             ,"cacheHits":cacheHits
             ,"cacheMisses":cacheMisses
