@@ -558,7 +558,7 @@ function EMU_init()
     oCOM.addRefreshEvent(apple2plus.hwObj().MEM_monitoring,"MEM_monitoring",false);
     oCOM.addRefreshEvent(
         function(){ apple2plus.surfaceMap_monitoring(); },
-        "SurfaceMap_refresh",
+        "surfaceMap_refresh",
         true
     );
     //oCOM.addRefreshEvent(oEMUI.MEM_monitoring,"MEM_monitoring",false);
