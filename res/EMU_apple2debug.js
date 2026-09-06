@@ -114,12 +114,19 @@ function Apple2Debug()
 
     function stripMarkup(text)
     {
-        return String(text==null ? "" : text)
+        var sanitized = String(text==null ? "" : text)
             .replace(/&nbsp;/gi," ")
-            .replace(/<[^>]*>/g,"")
             .replace(/&lt;/gi,"<")
             .replace(/&gt;/gi,">")
-            .replace(/&amp;/gi,"&")
+            .replace(/&amp;/gi,"&");
+
+        var previous;
+        do {
+            previous = sanitized;
+            sanitized = sanitized.replace(/<[^>]*>/g,"");
+        } while (sanitized !== previous);
+
+        return sanitized
             .replace(/\s+/g," ")
             .trim();
     }
