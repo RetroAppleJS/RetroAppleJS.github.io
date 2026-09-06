@@ -56,7 +56,6 @@ function Apple2Plus(context)
 
     if(typeof(COM_PopupHTML)=="undefined") var COM_PopupHTML = function() { console.log("COM_PopupHTML unavailable") }
     
-
     if(typeof(Cpu6502)=="undefined")
           { console.log("running Apple2Plus without CPU") }
     else var cpu  = new Cpu6502(this.hw);
@@ -261,14 +260,179 @@ function Apple2Plus(context)
         }
     }
 
+    /*
+     * Shared live CPU execution primitive.
+     *
+     * The normal SYSTEM scheduler and STEP TRACE instruction stepping both pass
+     * through this exact loop.  Every completed 6502 tick is paired with one
+     * Apple2IO tick, so mounted peripherals, timers, IRQ sources and the shared
+     * I/O clock remain live while debugging.
+     */
+    function runCpuTicks(requestedTicks,deadline)
+    {
+        requestedTicks = Math.floor(Number(requestedTicks));
+        if(!Number.isFinite(requestedTicks) || requestedTicks<0)
+            requestedTicks = 0;
+
+        var remainingTicks = requestedTicks;
+        var completedTicks = 0;
+        var trapped = false;
+        var timeCheck = 4096;
+
+        while(remainingTicks>0)
+        {
+            remainingTicks--;
+
+            // A one-shot CPU execution trap stops before the selected opcode is
+            // fetched and therefore consumes no emulated CPU tick.
+            if(cpu.cycle()===true)
+            {
+                remainingTicks++;
+                trapped = true;
+                break;
+            }
+
+            /*
+             * Use Apple2IO's monotonic clock as the tick callback phase when it
+             * is available.  This makes device timing independent of how CPU
+             * ticks are grouped into SYSTEM slices or debugger instructions.
+             * Existing devices that ignore the argument are unaffected.
+             */
+            var tickPhase = hw.io && typeof(hw.io.getClockTicks)=="function"
+                ? hw.io.getClockTicks()
+                : remainingTicks;
+            hw.io.tick(tickPhase);
+            completedTicks++;
+
+            if(deadline!==undefined && --timeCheck==0)
+            {
+                if(performance.now()>=deadline) break;
+                timeCheck = 4096;
+            }
+        }
+
+        return {
+             "requestedTicks":requestedTicks
+            ,"remainingTicks":remainingTicks
+            ,"completedTicks":completedTicks
+            ,"trapped":trapped
+        };
+    }
+
+    function advanceVideo(completedTicks,scale)
+    {
+        if(completedTicks<=0 || !video || typeof(video.cycle)!="function") return;
+        scale = Number(scale);
+        if(!Number.isFinite(scale) || scale<=0) scale = 1;
+        var videoTicks = completedTicks*scale;
+        if(Number.isFinite(videoTicks) && videoTicks>0)
+            video.cycle(videoTicks);
+    }
+
+    /*
+     * Execute one complete live instruction-boundary event without finalising
+     * video/device-cycle processing.  The caller can batch several instructions
+     * and finalise once, which is important for 100/1000 IPS STEP TRACE modes.
+     */
+    function executeLiveInstruction()
+    {
+        var ticks = 0;
+        var guard = 0;
+        var result;
+
+        // The SYSTEM timer may have been paused in the middle of an instruction
+        // after the opcode/semantic tick but before cycle_delay reached zero.
+        while(cpu.watch().cycle_delay>0 && guard++<64)
+        {
+            result = runCpuTicks(1);
+            ticks += result.completedTicks;
+            if(result.completedTicks===0) break;
+        }
+
+        var before = cpu.watch();
+        var startPC = before.pc & 0xffff;
+
+        guard = 0;
+        result = runCpuTicks(1);
+        ticks += result.completedTicks;
+
+        if(result.completedTicks>0)
+        {
+            while(cpu.watch().cycle_delay>0 && guard++<64)
+            {
+                result = runCpuTicks(1);
+                ticks += result.completedTicks;
+                if(result.completedTicks===0) break;
+            }
+        }
+
+        var after = cpu.watch();
+        return {
+             "startPC":startPC
+            ,"endPC":after.pc & 0xffff
+            ,"ticks":ticks
+            ,"state":after
+            ,"stalled":ticks===0
+        };
+    }
+
+    // Public low-level live execution helper for debugger/tools.
+    this.runLiveCpuTicks = function(n,options)
+    {
+        options = options || {};
+        var result = runCpuTicks(n,options.deadline);
+        advanceVideo(result.completedTicks,options.videoScale===undefined ? 1 : options.videoScale);
+        if(options.deviceCycle!==false && hw.io && typeof(hw.io.cycle)=="function")
+            hw.io.cycle();
+        return result;
+    }
+
+    // Execute exactly one live instruction-boundary event.
+    this.stepLiveInstruction = function()
+    {
+        var result = executeLiveInstruction();
+        advanceVideo(result.ticks,1);
+        if(hw.io && typeof(hw.io.cycle)=="function") hw.io.cycle();
+        return result;
+    }
+
+    // Batch instruction stepping while preserving every executed PC edge for
+    // the live debugger's boundary map.  Video/device-cycle work is finalised
+    // only once per batch.
+    this.runLiveInstructionBatch = function(count)
+    {
+        count = Math.max(1,Number(count)|0);
+        var edges = [];
+        var totalTicks = 0;
+        var last = null;
+
+        for(var i=0;i<count;i++)
+        {
+            var one = executeLiveInstruction();
+            last = one;
+            if(one.ticks<=0) break;
+            totalTicks += one.ticks;
+            edges.push([one.startPC,one.endPC]);
+        }
+
+        advanceVideo(totalTicks,1);
+        if(hw.io && typeof(hw.io.cycle)=="function") hw.io.cycle();
+
+        return {
+             "instructions":edges.length
+            ,"ticks":totalTicks
+            ,"edges":edges
+            ,"state":last ? last.state : cpu.watch()
+            ,"stalled":edges.length===0
+        };
+    }
+
     this.cycle = function(n)
     {
         var args = {"cpu_chrono":performance.now()};
         var requestedTicks = Math.floor(Number(n));
         if(!Number.isFinite(requestedTicks) || requestedTicks<0)
             requestedTicks = 0;
-        var remainingTicks = requestedTicks;
-        var completedTicks = 0;
 
         // Turbo targets can exceed the host's capacity by many orders of
         // magnitude. Keep each interval cooperative and discard the part of
@@ -278,32 +442,9 @@ function Apple2Plus(context)
             ? Math.max(1,_o.EMU_IntervalTime_ms*0.8)
             : Infinity;
         var deadline = args.cpu_chrono+maxSliceMs;
-        var timeCheck = 4096;
 
-        while (remainingTicks>0) {
-            remainingTicks--;
-            //hw.cycle();
-            //video.cycle();
-            // A one-shot CPU execution trap (used by the WASM accelerator)
-            // stops this JavaScript burst before the selected opcode is fetched.
-            if(cpu.cycle()===true)
-            {
-                remainingTicks++;       // the trap consumed no emulated CPU tick
-                break;
-            }
-
-            //snd.cycle(remainingTicks);
-            hw.io.tick(remainingTicks);
-
-            if(--timeCheck==0)
-            {
-                if(performance.now()>=deadline) break;
-                timeCheck = 4096;
-            }
-            //var completedTicks = requestedTicks-remainingTicks;
-        }
-
-        completedTicks = requestedTicks-remainingTicks;
+        var run = runCpuTicks(requestedTicks,deadline);
+        var completedTicks = run.completedTicks;
 
         /*
          * Video timing is advanced once per processing slice, not once per CPU
@@ -311,27 +452,17 @@ function Apple2Plus(context)
          * equivalent ticks:
          *
          *     completed CPU ticks * base clock / selected target clock
-         *
-         * Thus x16 contributes one video-timing tick for every sixteen CPU
-         * ticks, while 50% contributes two. Video timers remain tied to the
-         * emulated clock and keep approximately the same cadence at every
-         * selected speed. If the host cannot attain the requested CPU pace,
-         * video timing slows with the CPU rather than advancing artificially.
          */
-        if(completedTicks>0 && video && typeof(video.cycle)=="function")
+        if(completedTicks>0)
         {
             var baseTicks_s = Number(_o.CPU_ClocksTicks_s);
             var targetTicks_s = Number(_o.CPU_TargetTicks_s);
-            var videoTicks = baseTicks_s>0 && targetTicks_s>0
-                ? completedTicks*baseTicks_s/targetTicks_s
-                : 0;
-
-            if(Number.isFinite(videoTicks) && videoTicks>0)
-                video.cycle(videoTicks);
+            var videoScale = baseTicks_s>0 && targetTicks_s>0
+                ? baseTicks_s/targetTicks_s
+                : 1;
+            advanceVideo(completedTicks,videoScale);
         }
 
-
-        // TODO optimise speed!!!!!!!
         var debug = oEMU.component.CPU.Apple2Debug;
         var debugPopup = typeof(document)!="undefined"
             ? document.getElementById("cpuDbg_popup")
@@ -341,9 +472,8 @@ function Apple2Plus(context)
             && debug && typeof(debug.cycle)=="function")
             debug.cycle({"cpu":cpu});
 
-        //snd.play();
+        // Processing-cycle hooks remain once per SYSTEM slice, exactly as before.
         hw.io.cycle();
-        //keys.cycle(this);
         cpuPaceAccumulate(requestedTicks,completedTicks);
 
         // display dashboard parameters
