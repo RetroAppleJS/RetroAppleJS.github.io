@@ -269,7 +269,7 @@ function EMU_init()
                 }
                 catch({ name, message })
                 {
-                    //oCOM.POPUP.html("boot 1.0 failed: "+name+" "+message);
+                    //oCOM.POPUP.html("restart 1.0 failed: "+name+" "+message);
                 }
 
             break;
@@ -334,7 +334,7 @@ function EMU_init()
                                     if(typeof(apple2plus)!="object") apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
                                     apple2plus.restart();
                                 }
-                                //oCOM.POPUP.html("async call 1.0 succeeded, boot="+ oCOM.URL.uri["boot"]);
+                                //oCOM.POPUP.html("async call succeeded, boot="+ oCOM.URL.uri["boot"]);
                             }
                             catch({ name, message })
                             {
@@ -913,14 +913,21 @@ function EMUI()
         console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s");       
     }
 
-    // TODO: FIGURE OUT HOW TO COPE WITH CACHE (lines with different byte spacings)
+    // STEP TRACE owns its instruction-row viewport.  EMUI no longer constructs
+    // the legacy byte-coordinate TextScroll for the debugger.
     this.cpuDbg = function(id)
     {
+        var dbg = oEMU.component.CPU.Apple2Debug;
+        var popup = document.getElementById("cpuDbg_popup");
+        if(!dbg || !popup) return;
+
         oCOM.POPUP.toggle("cpuDbg_popup");
-        const dbg = oEMU.component.CPU.Apple2Debug
-             ,cfg1 = {id:dbg.body_id,scrollH:20,interval_ms:32,duration_ms:400,min:0x0000,max:0xFFFF,homePos:0x0000,cache:false,ease:1,callback:dbg.scrollFeed} // configuration data 
-        document.getElementById(cfg1.id).style.height = 15*cfg1.scrollH+"px";    // (optionally) auto-adjust text window height to number of text lines
-        window.oTextScroll1 = new oEMUI.TextScroll(cfg1);
+        if(popup.hidden===false)
+        {
+            if(typeof(dbg.open)=="function") dbg.open();
+        }
+        else if(typeof(dbg.close)=="function")
+            dbg.close();
     }
 
     this.cpuWasm = function(id)
@@ -1099,114 +1106,6 @@ function EMUI()
 
     this.resetBtn = function() { apple2plus.reset() }
     this.restartBtn = function() { apple2plus.restart() }
-
-    this.TextScroll = function(cfg)                                         // constructor
-    {
-        oEMUI.scrollFeed = cfg.callback===undefined ? function(curPos,cfg) { return [curPos] } : cfg.callback;
-        let curLinIdx = lastPos = cfg.homePos===undefined ? cfg.min : cfg.homePos, lines = new Array(cfg.scrollH), lf = "<br>";
-        const el = document.getElementById(cfg.id);
-        lines = oEMUI.scrollFeed(curLinIdx,cfg.scrollH,cfg);                // request initial data
-        el.innerHTML = lines.join(lf);                                      // initial text update
-
-        // EVENT HANDLERS
-        document.getElementById(cfg.id).addEventListener('wheel',      (event) => { event.preventDefault(); this.jump(event.deltaY) });
-        document.getElementById(cfg.id).addEventListener('touchstart', (event) => { event.preventDefault(); window[cfg.id+"_pos"] = event.changedTouches[0].clientY } );
-        document.getElementById(cfg.id).addEventListener('touchmove',  (event) => 
-        {
-            //document.getElementById("debug").innerHTML = window.touchPos1 - event.changedTouches[0].clientY
-            event.preventDefault();
-            const d = (window[cfg.id+"_pos"]  - event.changedTouches[0].clientY)/char_pixH * 4; // TODO - test multiplier using bit operations
-            oTextScroll1.glide(Math.round(d));
-            window[cfg.id+"_pos"] = event.changedTouches[0].clientY;
-        } );
-
-        this.jump = function(scrollD)
-        {
-            var ease = cfg.ease
-            cfg.ease = 0;
-            this.move(scrollD);
-            cfg.ease = ease;
-        }
-
-        this.glide = function(scrollD)
-        {
-            var ease = cfg.ease
-            cfg.ease = 2;
-            var vec = (scrollD/2)*Math.abs((scrollD/2))
-            this.move(Math.round(vec));
-            //document.getElementById("debug").innerHTML = vec;
-            cfg.ease = ease;
-        }
-
-        this.flush = function()
-        {
-            // TODO FLUSH CACHE
-        }
-
-        this.move = function(scrollD)                                       // public GUI function (scrollD = scroll distance)
-        {
-            const interval2     = Math.log2(cfg.interval_ms);               // Round to the nearest factor of 2
-            const interval_ms   = 1 << interval2;                           // Recalculated interval per step in ms
-            const totalSteps    = (cfg.duration_ms >> interval2)+1;         // Total number of steps
-            let   curStep       = 0;                                        // Reset animation step counter
-
-            function animateStep()
-            {
-                switch(cfg.ease)
-                {
-                    case 1:     // EASE (deterministic ease in/out)
-                        curPos = easeInOutSoftsign(++curStep << interval2, curLinIdx, scrollD, cfg.duration_ms); 
-                        if(curStep < totalSteps && Math.abs(scrollD)>1) setTimeout(animateStep, interval_ms);       // Animate Scroll
-                        else curPos = curLinIdx += scrollD;   // Finalise Scroll
-                        break;
-                    case 2:     // GLIDE (inertia-based, ideal for touchpads)
-                        var force = curStep==0 ? scrollD : 0; 
-                        curPos = easeNewton(++curStep << interval2, curLinIdx, force, 100, 0.005);
-                        if(lastPos != curPos) setTimeout(animateStep, interval_ms);
-                        else { cfg.velocity = 0; curLinIdx = curPos }
-                        break;
-                    default:    // JUMP (deterministic jump, ideal for scroll wheels)
-                        curPos = curLinIdx += scrollD;   // Finalise Scroll
-                }
-                                                                      
-                if(lastPos != curPos)
-                {
-                    const stepLen = curPos-lastPos, bstep = Math.abs(stepLen)<cfg.scrollH;                  // bstep is true when scroll step is smaller than view
-                    if(cfg.cache && bstep)  lines = cache(lines,curPos,stepLen);                            // only cache when step < scroll height
-                    else                    lines = oEMUI.scrollFeed(curPos,cfg.scrollH,cfg);               // request full data feed
-                    el.innerHTML = lines.join(lf);                                                          // Update DOM only at visible change
-                }
-                lastPos = curPos;
-            }
-
-            function cache(lines,curPos,stepLen)
-            {
-                if(stepLen>0) return lines.slice( stepLen, cfg.scrollH ).concat( oEMUI.scrollFeed(curPos+cfg.scrollH-stepLen,Math.abs(stepLen),cfg) );
-                else return oEMUI.scrollFeed(curPos,Math.abs(stepLen),cfg).concat( lines.slice( 0, stepLen ) ); 
-            }
-
-            function easeInOutSoftsign(elapsedT, orgPos, travelD, totalT)
-            {
-                const normT = elapsedT / (totalT>>1) - 1;                   // Normalise elapsed time to range [-1, 1]
-                const softsgn = normT / (1 + Math.abs(normT));              // Apply softsign function rangig [-0.5, 0.5]
-                return Math.floor(orgPos + travelD * (softsgn + 0.5));      // Offset & scale [orgPos, orgPos + travelD]
-            }
-            
-            function easeNewton(elapsedT, orgPos, force, mass, friction)
-            {
-                if(cfg.velocity===undefined) cfg.velocity = 0;
-                const acceleration = force / mass;                                     // Calculate the acceleration
-                cfg.velocity +=  acceleration - cfg.velocity * friction;               // Increment velocity with acceleration and decrement with friction (= fraction velocity)
-                const position = orgPos + cfg.velocity * elapsedT;                     // Calculate the position using Newton's second law
-                return Math.round(position);
-            }
-
-            animateStep();
-        }
-    }
-
-
-
 }
 
 
@@ -1397,7 +1296,6 @@ function loadDisk_fromBuffer(arr_buffer,slotN,deviceID)
     }
 }
 
-
 function ejectDisk(el,slotN,deviceID)
 {
   var io = apple2plus.hwObj().io;
@@ -1446,4 +1344,3 @@ function highlight_appbut(el,bool)
 {
     el.parentElement.style.backgroundColor = bool?"rgb(255,255,255,0.95)":""
 }
-
