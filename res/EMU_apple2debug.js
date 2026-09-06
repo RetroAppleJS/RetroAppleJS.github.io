@@ -26,8 +26,9 @@ function Apple2Debug()
     var previousBoundary = new Int32Array(0x10000);
     previousBoundary.fill(-1);
 
-    // Cached decoding is always validated against the three bytes currently
-    // visible on the mapped CPU bus, so self-modifying code/remapping is local.
+    // Cached decoding is always validated against the bytes currently visible
+    // on the mapped CPU bus.  Self-modifying code/remapping therefore invalidates
+    // only the local decode and any predecessor edge derived from the old bytes.
     var decodeCache = new Array(0x10000);
     var cacheHits = 0;
     var cacheMisses = 0;
@@ -40,21 +41,17 @@ function Apple2Debug()
         ,"compact":"{adr:0,code:6,lbl:15,ins:24,opr:29,com:45}"
     };
 
-    // Keep STEP TRACE on the same Unicode-capable mono stack as the assembler
-    // Source/Listing panes.  In particular DejaVu Sans Mono contains the box/
-    // line-drawing glyphs that the Arcade bitmap font does not provide.
+    // Same Unicode-capable mono stack as the assembler Source/Listing panes.
     var listingFontFamily = '"DejaVu Sans Mono","Menlo","Consolas","Courier New",monospace';
     var listingFontSize = 9;
+    var rowPixelHeight = 12;
 
-    // The listing has two independent modes:
-    //   followPC=true  : CPU activity owns the viewport and keeps PC visible.
-    //   followPC=false : the user owns a top-row instruction address.
-    // Manual navigation never guesses a byte offset; it walks decoded
-    // instruction boundaries only.
+    // Listing viewport state. Manual navigation walks decoded instruction rows,
+    // never address deltas.
     var followPC = true;
     var manualTop = null;
     var lastViewTop = null;
-    var rowPixelHeight = 12;
+    var lastRows = [];
 
     // Run control. "system" delegates execution to the central emulator speed;
     // fixed IPS modes own instruction scheduling while the SYSTEM timer is paused.
@@ -63,10 +60,21 @@ function Apple2Debug()
     var runTimer = null;
     var resumePct = 1;
 
-    // Step Over/Out are temporary debugger-owned runs.  They execute only live
-    // Apple2Plus instructions, stop on exact instruction boundaries, and leave
-    // the CPU paused when the requested boundary has been reached.
+    // Step Over/Out are temporary debugger-owned live boundary runs.
     var boundaryAction = null;
+
+    // One-shot execution breakpoint.  It is implemented with Cpu6502's existing
+    // execution trap, which is checked only at cycle_delay==0 before interrupt
+    // dispatch/opcode fetch.  Thus the target can never stop in the middle of an
+    // instruction, even at Max (SYSTEM) speed.
+    var breakTarget = null;
+    var tempBreakpoint = {
+         address:null
+        ,armed:false
+        ,hit:false
+        ,hits:0
+    };
+    var breakMessage = "";
 
     function liveMachine()
     {
@@ -124,7 +132,6 @@ function Apple2Debug()
             }
             return op;
         };
-
         return true;
     }
 
@@ -145,11 +152,9 @@ function Apple2Debug()
         do {
             previous = sanitized;
             sanitized = sanitized.replace(/<[^>]*>/g,"");
-        } while (sanitized !== previous);
+        } while(sanitized!==previous);
 
-        return sanitized
-            .replace(/\s+/g," ")
-            .trim();
+        return sanitized.replace(/\s+/g," ").trim();
     }
 
     function decodeAt(addr)
@@ -162,13 +167,16 @@ function Apple2Debug()
         var b0 = hw.safe_read(addr);
         var b1 = hw.safe_read((addr+1)&0xffff);
         var b2 = hw.safe_read((addr+2)&0xffff);
-
         var cached = decodeCache[addr];
+
         if(cached && cached.b0===b0 && cached.b1===b1 && cached.b2===b2)
         {
             cacheHits++;
             return cached;
         }
+
+        if(cached && previousBoundary[cached.next]===addr)
+            previousBoundary[cached.next] = -1;
 
         cacheMisses++;
         var len = cpu_config.instrlen[b0] || 1;
@@ -177,7 +185,6 @@ function Apple2Debug()
             ,"pc":addr
             ,"opctab":cpu_config.opctab
         });
-
         var mnemonic = stripMarkup(ret.mnemonic);
         var match = /^(\S+)(?:\s+(.*))?$/.exec(mnemonic) || ["",mnemonic,""];
         var bytes = [b0,b1,b2].slice(0,len).map(function(v){return oCOM.getHexByte(v)}).join(" ");
@@ -201,6 +208,14 @@ function Apple2Debug()
         if(!hw || typeof(hw.safe_read)!="function") return null;
         addr &= 0xffff;
         return (hw.safe_read(addr) | (hw.safe_read((addr+1)&0xffff)<<8)) & 0xffff;
+    }
+
+    function parseAddress(value)
+    {
+        var s = String(value==null ? "" : value).trim();
+        s = s.replace(/^\$/,"").replace(/^0x/i,"");
+        if(!/^[0-9a-f]{1,4}$/i.test(s)) return null;
+        return parseInt(s,16) & 0xffff;
     }
 
     function parseColumns(text)
@@ -280,8 +295,8 @@ function Apple2Debug()
     function predecessorOf(addr)
     {
         addr &= 0xffff;
-
         var known = previousBoundary[addr];
+
         if(known>=0)
         {
             var kd = decodeAt(known);
@@ -289,9 +304,8 @@ function Apple2Debug()
             previousBoundary[addr] = -1;
         }
 
-        // A backward decode is accepted only when exactly one 1..3-byte
-        // candidate lands on the known instruction boundary. Ambiguity stops
-        // upward navigation rather than inventing an alignment.
+        // Backward 6502 decoding is ambiguous in general. Accept an inferred
+        // predecessor only when exactly one 1..3-byte candidate lands here.
         var found = -1;
         var count = 0;
         for(var delta=1;delta<=max_instrlen;delta++)
@@ -323,11 +337,11 @@ function Apple2Debug()
             rows.push({
                  "addr":adr
                 ,"current":adr===pc
+                ,"breakpoint":tempBreakpoint.armed && tempBreakpoint.address===adr
+                ,"breakHit":tempBreakpoint.hit && tempBreakpoint.address===adr
                 ,"text":formatDecoded(d)
             });
 
-            // Forward disassembly starts from a known instruction boundary, so
-            // every successor is safe to remember as a predecessor edge.
             previousBoundary[d.next] = adr;
             adr = d.next;
         }
@@ -338,9 +352,9 @@ function Apple2Debug()
     {
         pc &= 0xffff;
         count = Math.max(1,Number(count)|0 || listingRows);
-
         var aboveWanted = Math.min(8,Math.floor(count/2));
         var start = pc;
+
         for(var i=0;i<aboveWanted;i++)
         {
             var p = predecessorOf(start);
@@ -352,9 +366,33 @@ function Apple2Debug()
 
     function listingWindow(pc,count)
     {
-        if(followPC || manualTop===null)
-            return followWindow(pc,count);
-        return forwardWindow(manualTop,pc,count);
+        return followPC || manualTop===null
+            ? followWindow(pc,count)
+            : forwardWindow(manualTop,pc,count);
+    }
+
+    function setBreakpointTarget(addr)
+    {
+        addr = parseAddress(addr);
+        if(addr===null) return false;
+        breakTarget = addr;
+        breakMessage = "";
+        syncBreakpointControls();
+        return true;
+    }
+
+    function rowClick(event)
+    {
+        var row = event.currentTarget;
+        if(row && Number.isFinite(row._cpuDbgAddr))
+            setBreakpointTarget(row._cpuDbgAddr);
+    }
+
+    function rowDoubleClick(event)
+    {
+        var row = event.currentTarget;
+        if(row && Number.isFinite(row._cpuDbgAddr))
+            dbg.runToAddress(row._cpuDbgAddr);
     }
 
     function ensureRowPool()
@@ -363,8 +401,7 @@ function Apple2Debug()
         if(!el) return null;
 
         var pool = el._cpuDbgRowPool;
-        if(pool && pool.length===listingRows && pool.length
-            && pool[0].parentNode===el)
+        if(pool && pool.length===listingRows && pool.length && pool[0].parentNode===el)
             return pool;
 
         el.innerHTML = "";
@@ -378,8 +415,13 @@ function Apple2Debug()
             row.style.fontFamily = "inherit";
             row.style.fontKerning = "none";
             row.style.fontVariantLigatures = "none";
+            row.style.cursor = "default";
             row._cpuDbgText = null;
             row._cpuDbgCurrent = null;
+            row._cpuDbgBreakpoint = null;
+            row._cpuDbgAddr = null;
+            row.addEventListener("click",rowClick);
+            row.addEventListener("dblclick",rowDoubleClick);
             el.appendChild(row);
             pool[i] = row;
         }
@@ -393,6 +435,21 @@ function Apple2Debug()
         if(input && input.checked!==followPC) input.checked = followPC;
     }
 
+    function syncBreakpointControls()
+    {
+        var input = document.getElementById("cpuDbg_breakAddr");
+        if(input)
+        {
+            var target = breakTarget;
+            if(target===null && currentPC!==null) target = currentPC;
+            var value = target===null ? "" : "$"+oCOM.getHexWord(target);
+            if(document.activeElement!==input && input.value!==value) input.value = value;
+        }
+
+        var arm = document.getElementById("cpuDbg_breakArm");
+        if(arm) arm.textContent = tempBreakpoint.armed ? "Armed" : "Arm";
+    }
+
     function boundaryActionText()
     {
         if(!boundaryAction) return "";
@@ -401,13 +458,23 @@ function Apple2Debug()
         return "  OUT J"+boundaryAction.jsrDepth+" I"+boundaryAction.irqDepth;
     }
 
+    function breakpointText()
+    {
+        if(tempBreakpoint.armed)
+            return "  BP→$"+oCOM.getHexWord(tempBreakpoint.address);
+        if(tempBreakpoint.hit)
+            return "  BP@$"+oCOM.getHexWord(tempBreakpoint.address);
+        return breakMessage ? "  "+breakMessage : "";
+    }
+
     function updateNavigationStatus(pc)
     {
         var el = document.getElementById("cpuDbg_navStatus");
         if(!el) return;
 
         var top = lastViewTop==null ? pc : lastViewTop;
-        el.textContent = "TOP $"+oCOM.getHexWord(top)+"  PC $"+oCOM.getHexWord(pc)+boundaryActionText();
+        el.textContent = "TOP $"+oCOM.getHexWord(top)+"  PC $"+oCOM.getHexWord(pc)
+            +boundaryActionText()+breakpointText();
         el.title = followPC
             ? "Listing follows the live program counter"
             : "Manual instruction-row view; enable Follow PC to resume tracking";
@@ -418,6 +485,7 @@ function Apple2Debug()
         var pool = ensureRowPool();
         if(!pool) return false;
         var rows = listingWindow(pc,listingRows);
+        lastRows = rows;
 
         lastViewTop = rows.length ? rows[0].addr : null;
         if(!followPC && manualTop===null && lastViewTop!==null)
@@ -425,9 +493,15 @@ function Apple2Debug()
 
         for(var i=0;i<pool.length;i++)
         {
-            var data = rows[i] || {text:"",current:false};
+            var data = rows[i] || {text:"",current:false,breakpoint:false,breakHit:false,addr:null};
             var node = pool[i];
             var text = data.text || "";
+            var marked = !!(data.breakpoint || data.breakHit);
+
+            node._cpuDbgAddr = data.addr;
+            node.title = data.addr==null
+                ? ""
+                : "Click: breakpoint target $"+oCOM.getHexWord(data.addr)+"; double-click: run to here";
 
             if(force || node._cpuDbgText!==text)
             {
@@ -442,9 +516,17 @@ function Apple2Debug()
                 node.style.textDecoration = data.current ? "underline" : "none";
                 node._cpuDbgCurrent = !!data.current;
             }
+
+            if(force || node._cpuDbgBreakpoint!==marked)
+            {
+                node.style.boxShadow = marked ? "inset 2px 0 0 currentColor" : "none";
+                node.style.paddingLeft = marked ? "3px" : "0";
+                node._cpuDbgBreakpoint = marked;
+            }
         }
 
         syncFollowControl();
+        syncBreakpointControls();
         updateNavigationStatus(pc);
         return true;
     }
@@ -452,7 +534,6 @@ function Apple2Debug()
     function setFollowState(enabled,renderNow)
     {
         enabled = !!enabled;
-
         if(enabled)
         {
             followPC = true;
@@ -485,7 +566,7 @@ function Apple2Debug()
         if(!el || el._cpuDbgNavigationBound) return;
         el._cpuDbgNavigationBound = true;
         el.tabIndex = 0;
-        el.title = "Instruction navigation: mouse wheel, ↑/↓, Page Up/Down. Home returns to Follow PC. F10=Over, F11=In, Shift+F11=Out.";
+        el.title = "Instruction navigation: wheel/↑/↓/PgUp/PgDn. F9 breakpoint, F10 over, F11 step, Shift+F11 out.";
 
         el.addEventListener("wheel",function(event)
         {
@@ -504,10 +585,17 @@ function Apple2Debug()
                 case "PageUp":    dbg.navigateRows(-Math.max(1,listingRows-1)); break;
                 case "PageDown":  dbg.navigateRows(Math.max(1,listingRows-1)); break;
                 case "Home":      dbg.setFollowPC(true); break;
-                case "F10":       dbg.stepOver(); break;
-                case "F11":       event.shiftKey ? dbg.stepOut() : dbg.step(); break;
                 case "f":
                 case "F":         dbg.setFollowPC(!followPC); break;
+                case "F9":
+                    if(event.shiftKey) dbg.clearTemporaryBreakpoint();
+                    else dbg.setTemporaryBreakpointFromInput(false);
+                    break;
+                case "F10":       dbg.stepOver(); break;
+                case "F11":
+                    if(event.shiftKey) dbg.stepOut();
+                    else dbg.step();
+                    break;
                 default: handled = false;
             }
 
@@ -546,35 +634,19 @@ function Apple2Debug()
         el.addEventListener("touchcancel",function(){ el._cpuDbgTouchY = null; },{passive:true});
     }
 
-    function parseBootAddress(value)
-    {
-        var s = String(value==null ? "" : value).trim();
-        s = s.replace(/^\$/,"").replace(/^0x/i,"");
-        if(!/^[0-9a-f]{1,4}$/i.test(s)) return null;
-        return parseInt(s,16) & 0xffff;
-    }
-
     function updateBootTriggerIcon(el,state)
     {
         if(!el) return;
 
         if(state && state.bDebug_boot)
         {
-            var startText = state.triggerAddress==null
-                ? "immediately"
-                : "$"+oCOM.getHexWord(state.triggerAddress);
-            var stopText = state.stopAddress==null
-                ? "when buffer is full"
-                : "before $"+oCOM.getHexWord(state.stopAddress);
-            var mode = state.triggerArmed
-                ? "armed"
-                : state.logging
-                    ? "logging"
-                    : state.full
-                        ? "buffer full"
-                        : state.complete
-                            ? "complete"
-                            : "enabled";
+            var startText = state.triggerAddress==null ? "immediately" : "$"+oCOM.getHexWord(state.triggerAddress);
+            var stopText = state.stopAddress==null ? "when buffer is full" : "before $"+oCOM.getHexWord(state.stopAddress);
+            var mode = state.triggerArmed ? "armed"
+                : state.logging ? "logging"
+                : state.full ? "buffer full"
+                : state.complete ? "complete"
+                : "enabled";
 
             el.style.opacity = "1";
             el.title = "bootlog "+mode+"; start "+startText+"; stop "+stopText;
@@ -588,9 +660,6 @@ function Apple2Debug()
 
     function systemRunning()
     {
-        // CPU_TargetTicks_s is only a configured target. The main Pause button
-        // clears appleIntervalHandle without changing that target, so include
-        // the real scheduler state as well.
         return typeof(_o)!="undefined"
             && Number(_o.CPU_TargetTicks_s)>0
             && typeof(appleIntervalHandle)!="undefined"
@@ -599,7 +668,7 @@ function Apple2Debug()
 
     function executionRunning()
     {
-        return boundaryAction!==null || fixedRunning || (runMode==="system" && systemRunning());
+        return fixedRunning || (runMode==="system" && systemRunning()) || !!boundaryAction;
     }
 
     function rememberSystemSpeed()
@@ -657,12 +726,9 @@ function Apple2Debug()
         }
     }
 
-    // Temporary Over/Out runs honour the selected fixed IPS modes. In SYSTEM
-    // mode they use cooperative live-instruction bursts so an exact boundary can
-    // still be intercepted without freezing the browser.
     function boundarySpeedConfig()
     {
-        if(runMode==="system") return {batch:250,delay:0,label:"Max boundary run"};
+        if(runMode==="system") return {batch:250,delay:0};
         return runSpeedConfig(runMode);
     }
 
@@ -684,7 +750,7 @@ function Apple2Debug()
 
     function fixedRunLoop()
     {
-        if(!fixedRunning || runMode==="system" || boundaryAction) return;
+        if(!fixedRunning || runMode==="system") return;
         var machine = liveMachine();
         if(!machine || typeof(machine.runLiveInstructionBatch)!="function")
         {
@@ -696,16 +762,16 @@ function Apple2Debug()
         var cfg = runSpeedConfig(runMode);
         var result = machine.runLiveInstructionBatch(cfg.batch);
         rememberEdges(result && result.edges);
-
         dbg.cycle({cpu:machine.cpuObj()});
 
-        if(!result || result.stalled)
+        // A temporary breakpoint callback can stop fixedRunning from inside a
+        // batch. Check ownership again before scheduling the next batch.
+        if(!fixedRunning || !result || result.stalled)
         {
             stopFixedRun();
             syncRunIcon();
             return;
         }
-
         scheduleFixedRun(cfg.delay);
     }
 
@@ -754,22 +820,16 @@ function Apple2Debug()
                 && (one.state.sp & 0xff)===action.startSP;
         }
 
-        // Step Out follows the live control-flow events from the point where the
-        // user asked to leave the current routine. JSR/RTS depth is relative to
-        // that point, so local PHA/PLA use does not confuse it. BRK/external
-        // interrupts get their own nesting depth and are passed through by RTI.
         if(opcode===0x00 || externalInterruptBoundary(before,one,opcode))
         {
             action.irqDepth++;
             return false;
         }
-
         if(opcode===0x20)
         {
             action.jsrDepth++;
             return false;
         }
-
         if(opcode===0x60)
         {
             if(action.jsrDepth>0)
@@ -779,7 +839,6 @@ function Apple2Debug()
             }
             return action.irqDepth===0;
         }
-
         if(opcode===0x40)
         {
             if(action.irqDepth>0)
@@ -787,11 +846,8 @@ function Apple2Debug()
                 action.irqDepth--;
                 return false;
             }
-            // If Step Out began inside an interrupt handler, its own RTI is the
-            // equivalent of the current routine's return boundary.
             return action.jsrDepth===0;
         }
-
         return false;
     }
 
@@ -830,8 +886,11 @@ function Apple2Debug()
             var startPC = before.pc & 0xffff;
             var decoded = decodeAt(startPC);
             var opcode = decoded ? decoded.b0 : null;
-
             var one = machine.stepLiveInstruction();
+
+            // Cpu6502's execution trap returns a stalled instruction when a
+            // temporary breakpoint is hit. The callback already cleared the
+            // boundary action, so stop without executing the target opcode.
             if(!one || one.stalled || one.ticks<=0) break;
 
             completed++;
@@ -847,12 +906,11 @@ function Apple2Debug()
 
         dbg.cycle({cpu:cpu});
 
-        if(stopped || completed===0)
+        if(boundaryAction!==action || stopped || completed===0)
         {
             finishBoundaryAction();
             return;
         }
-
         scheduleBoundaryAction(cfg.delay);
     }
 
@@ -866,11 +924,88 @@ function Apple2Debug()
         return action;
     }
 
+    function tempBreakpointHit(state)
+    {
+        tempBreakpoint.armed = false;
+        tempBreakpoint.hit = true;
+        tempBreakpoint.hits++;
+        breakTarget = tempBreakpoint.address;
+        breakMessage = "";
+
+        // Stop whichever live owner was executing. The CPU trap has already
+        // removed itself before this callback runs, so no target opcode is lost.
+        stopBoundaryAction();
+        stopFixedRun();
+        if(systemRunning()) pauseSystem();
+
+        if(state && state.pc!==undefined)
+        {
+            currentPC = state.pc & 0xffff;
+            previousObservedPC = currentPC;
+        }
+        syncRunIcon();
+        syncBreakpointControls();
+
+        // SYSTEM cycle/fixed batch will normally render immediately after the
+        // trap returns; this covers direct tool/API execution as well.
+        window.setTimeout(function()
+        {
+            var cpu = liveCPU();
+            if(cpu && dbg.isReady()) dbg.cycle({cpu:cpu,force:true});
+        },0);
+        return true;
+    }
+
+    function armTemporaryBreakpoint(addr,autoRun)
+    {
+        var cpu = liveCPU();
+        addr = parseAddress(addr);
+        if(!cpu || addr===null || typeof(cpu.setExecutionTrap)!="function")
+        {
+            breakMessage = addr===null ? "BAD BP" : "BP unavailable";
+            if(currentPC!==null) renderListing(currentPC,true);
+            return false;
+        }
+
+        if(tempBreakpoint.armed && typeof(cpu.clearExecutionTrap)==="function")
+            cpu.clearExecutionTrap();
+
+        breakTarget = addr;
+        tempBreakpoint.address = addr;
+        tempBreakpoint.armed = true;
+        tempBreakpoint.hit = false;
+        breakMessage = "";
+
+        cpu.setExecutionTrap(addr,tempBreakpointHit);
+        syncBreakpointControls();
+        if(currentPC!==null) renderListing(currentPC,true);
+
+        if(autoRun) startExecution();
+        return addr;
+    }
+
+    function clearTemporaryBreakpoint(clearTarget)
+    {
+        var cpu = liveCPU();
+        if(tempBreakpoint.armed && cpu && typeof(cpu.clearExecutionTrap)==="function")
+            cpu.clearExecutionTrap();
+
+        tempBreakpoint.address = null;
+        tempBreakpoint.armed = false;
+        tempBreakpoint.hit = false;
+        breakMessage = "";
+        if(clearTarget) breakTarget = null;
+
+        syncBreakpointControls();
+        if(currentPC!==null) renderListing(currentPC,true);
+        return true;
+    }
+
     this.html = function(body_id,wrapper_id)
     {
         this.body_id = body_id;
         oCOM.POPUP.set_state(wrapper_id,true);
-        return "<div class=appbox style='text-align:left;height:auto;min-height:355px;width:340px;padding:0 0 0 1px;margin:0'>"
+        return "<div class=appbox style='text-align:left;height:auto;min-height:385px;width:350px;padding:0 0 0 1px;margin:0'>"
             +"<div class=marginless style='border:0'>"
                 +"STEP TRACE "
                 +"<i id=cpuDbg_play class='fa fa-pause' title='pause CPU execution' onclick='oEMU.component.CPU.Apple2Debug.toggleRun(this)'></i>&nbsp;"
@@ -896,6 +1031,10 @@ function Apple2Debug()
                     +"<button type='button' title='Page down' onclick='oEMU.component.CPU.Apple2Debug.navigatePage(1)' style='font-size:10px'>Pg↓</button>"
                     +"<button type='button' title='Return to live PC and resume following' onclick='oEMU.component.CPU.Apple2Debug.setFollowPC(true)' style='font-size:10px'>PC</button>"
                     +"<span id='cpuDbg_navStatus' style='margin-left:5px;font-family:"+listingFontFamily+"'></span>"
+                    +"<br>BREAK&nbsp; <input id='cpuDbg_breakAddr' type='text' value='' maxlength='6' spellcheck='false' title='Temporary one-shot execution breakpoint address; click a listing row to fill it' style='width:58px;font-family:"+listingFontFamily+";font-size:10px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBreakpointTarget(this.value)'> "
+                    +"<button id='cpuDbg_breakArm' type='button' title='Arm one-shot breakpoint (F9)' onclick='oEMU.component.CPU.Apple2Debug.setTemporaryBreakpointFromInput(false)' style='font-size:10px'>Arm</button> "
+                    +"<button type='button' title='Arm breakpoint and continue execution to it' onclick='oEMU.component.CPU.Apple2Debug.setTemporaryBreakpointFromInput(true)' style='font-size:10px'>Run→</button> "
+                    +"<button type='button' title='Clear temporary breakpoint (Shift+F9)' onclick='oEMU.component.CPU.Apple2Debug.clearTemporaryBreakpoint()' style='font-size:10px'>Clear</button>"
                     +"<br>LISTING&nbsp; Columns <input id='cpuDbg_columns' type='text' value='"+listingColumns+"' spellcheck='false' style='width:220px;font-family:"+listingFontFamily+";font-size:10px' onchange='oEMU.component.CPU.Apple2Debug.setListingColumns(this.value)'>"
                     +"<div style='margin-left:46px'>"
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('default')\" style='font-size:10px'>default ▦</button> "
@@ -903,7 +1042,7 @@ function Apple2Debug()
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('compact')\" style='font-size:10px'>compact ▦</button>"
                     +"</div>"
                 +"</div>"
-                +"<div id='"+body_id+"' class=marginless style='width:338px;height:"+(listingRows*rowPixelHeight)+"px;border:0;font-family:"+listingFontFamily+";font-size:"+listingFontSize+"px;font-weight:500;font-kerning:none;font-variant-ligatures:none;color:#000;white-space:nowrap;overflow-x:auto;overflow-y:hidden;touch-action:none;'></div>"
+                +"<div id='"+body_id+"' class=marginless style='width:348px;height:"+(listingRows*rowPixelHeight)+"px;border:0;font-family:"+listingFontFamily+";font-size:"+listingFontSize+"px;font-weight:500;font-kerning:none;font-variant-ligatures:none;color:#000;white-space:nowrap;overflow-x:auto;overflow-y:hidden;touch-action:none;'></div>"
             +"</div></div>";
     };
 
@@ -933,8 +1072,7 @@ function Apple2Debug()
     this.toggleBootLogTrigger = function(el)
     {
         var cpu = liveCPU();
-        if(!cpu || typeof(cpu.BOOTparam)!="function"
-            || typeof(cpu.setBootLogTrigger)!="function")
+        if(!cpu || typeof(cpu.BOOTparam)!="function" || typeof(cpu.setBootLogTrigger)!="function")
         {
             alert("Bootlog trigger is unavailable in this CPU build.");
             return;
@@ -951,11 +1089,10 @@ function Apple2Debug()
         var startDef = state.triggerAddress==null ? "" : "$"+oCOM.getHexWord(state.triggerAddress);
         var startValue = prompt("Bootlog start address (blank = immediately):",startDef);
         if(startValue===null) return;
-
         var startAddr = null;
         if(String(startValue).trim()!=="")
         {
-            startAddr = parseBootAddress(startValue);
+            startAddr = parseAddress(startValue);
             if(startAddr===null)
             {
                 alert("Invalid start address. Use for example $6000, or leave blank.");
@@ -966,11 +1103,10 @@ function Apple2Debug()
         var stopDef = state.stopAddress==null ? "" : "$"+oCOM.getHexWord(state.stopAddress);
         var stopValue = prompt("Bootlog stop address (blank = when buffer is full):",stopDef);
         if(stopValue===null) return;
-
         var stopAddr = null;
         if(String(stopValue).trim()!=="")
         {
-            stopAddr = parseBootAddress(stopValue);
+            stopAddr = parseAddress(stopValue);
             if(stopAddr===null)
             {
                 alert("Invalid stop address. Use for example $FF69, or leave blank.");
@@ -994,7 +1130,6 @@ function Apple2Debug()
         if(!ensureInit({scrollH:listingRows})) return false;
 
         bindNavigation();
-
         var sel = document.getElementById("cpuDbg_speed");
         if(sel) sel.value = runMode;
         var input = document.getElementById("cpuDbg_columns");
@@ -1002,20 +1137,18 @@ function Apple2Debug()
 
         currentPC = cpu.watch().pc & 0xffff;
         previousObservedPC = currentPC;
+        if(breakTarget===null) breakTarget = currentPC;
         renderListing(currentPC,true);
         syncRunIcon();
 
         if(typeof(cpu.BOOTparam)=="function")
             updateBootTriggerIcon(document.getElementById("cpuDbg_bootTrigger"),cpu.BOOTparam());
-
         return true;
     };
 
     this.cycle = function(obj)
     {
-        var cpu = obj && obj.cpu && typeof(obj.cpu.watch)=="function"
-            ? obj.cpu
-            : liveCPU();
+        var cpu = obj && obj.cpu && typeof(obj.cpu.watch)=="function" ? obj.cpu : liveCPU();
         if(!cpu || !this.isReady()) return false;
         if(!ensureInit({scrollH:listingRows})) return false;
 
@@ -1024,7 +1157,6 @@ function Apple2Debug()
 
         var watch = cpu.watch();
         var pc = watch.pc & 0xffff;
-
         if(previousObservedPC!==null && previousObservedPC!==pc)
             rememberSequential(previousObservedPC,pc);
 
@@ -1034,15 +1166,10 @@ function Apple2Debug()
 
         if(followPC)
         {
-            if(changed || (obj && obj.force) || boundaryAction)
-                renderListing(pc,!!(obj && obj.force));
+            if(changed || (obj && obj.force)) renderListing(pc,!!(obj && obj.force));
         }
         else
-        {
-            // In manual mode keep the viewport fixed while still revalidating
-            // its mapped bytes, so self-modifying code remains visible live.
             renderListing(pc,!!(obj && obj.force));
-        }
 
         syncRunIcon();
         return true;
@@ -1062,7 +1189,6 @@ function Apple2Debug()
 
         var pc = cpu.watch().pc & 0xffff;
         currentPC = pc;
-
         if(followPC) setFollowState(false,false);
         if(manualTop===null) manualTop = lastViewTop===null ? pc : lastViewTop;
 
@@ -1105,18 +1231,9 @@ function Apple2Debug()
         value = String(value || "system").toLowerCase();
         if(["1","10","100","1000","system"].indexOf(value)<0) value = "system";
 
-        // A temporary Over/Out run can change speed in place without losing its
-        // boundary target.
-        if(boundaryAction)
-        {
-            runMode = value;
-            var actionSel = document.getElementById("cpuDbg_speed");
-            if(actionSel && actionSel.value!==runMode) actionSel.value = runMode;
-            return runMode;
-        }
-
         var wasRunning = executionRunning();
         if(runMode==="system" && systemRunning()) pauseSystem();
+        stopBoundaryAction();
         stopFixedRun();
         runMode = value;
 
@@ -1136,7 +1253,6 @@ function Apple2Debug()
         this.cycle({cpu:liveCPU(),force:true});
     };
 
-    // Compatibility with the old toolbar API.
     this.play = function(bPlay)
     {
         if(!!bPlay !== executionRunning()) this.toggleRun(document.getElementById("cpuDbg_play"));
@@ -1149,8 +1265,7 @@ function Apple2Debug()
 
         pauseExecution();
         var result = machine.stepLiveInstruction();
-        if(result) rememberSequential(result.startPC,result.endPC);
-
+        if(result && result.ticks>0) rememberSequential(result.startPC,result.endPC);
         this.cycle({cpu:machine.cpuObj(),force:true});
         return result;
     };
@@ -1158,23 +1273,19 @@ function Apple2Debug()
     this.stepOver = function()
     {
         var cpu = liveCPU();
-        var machine = liveMachine();
-        if(!cpu || !machine || typeof(machine.stepLiveInstruction)!="function") return false;
-        if(!ensureInit({scrollH:listingRows})) return false;
-
+        if(!cpu || !ensureInit({scrollH:listingRows})) return false;
         var state = cpu.watch();
         var pc = state.pc & 0xffff;
         var d = decodeAt(pc);
         if(!d) return false;
 
-        // JSR and BRK are call-like on the 6502. For every other opcode, Step
-        // Over is exactly one Step In.
-        if(d.b0!==0x20 && d.b0!==0x00)
-            return this.step();
+        // Only call-like operations need a temporary run. Everything else is
+        // exactly one live instruction.
+        if(d.b0!==0x20 && d.b0!==0x00) return this.step();
 
         return startBoundaryAction({
              "type":"over"
-            ,"returnPC":d.next & 0xffff
+            ,"returnPC":d.next
             ,"startSP":state.sp & 0xff
             ,"instructions":0
         });
@@ -1183,16 +1294,53 @@ function Apple2Debug()
     this.stepOut = function()
     {
         var cpu = liveCPU();
-        var machine = liveMachine();
-        if(!cpu || !machine || typeof(machine.stepLiveInstruction)!="function") return false;
-        if(!ensureInit({scrollH:listingRows})) return false;
-
+        if(!cpu || !ensureInit({scrollH:listingRows})) return false;
         return startBoundaryAction({
              "type":"out"
             ,"jsrDepth":0
             ,"irqDepth":0
             ,"instructions":0
         });
+    };
+
+    this.setBreakpointTarget = function(value)
+    {
+        var addr = parseAddress(value);
+        if(addr===null)
+        {
+            breakMessage = "BAD BP";
+            if(currentPC!==null) renderListing(currentPC,true);
+            return false;
+        }
+        return setBreakpointTarget(addr);
+    };
+
+    this.setTemporaryBreakpoint = function(address,autoRun)
+    {
+        return armTemporaryBreakpoint(address,!!autoRun);
+    };
+
+    this.setTemporaryBreakpointFromInput = function(autoRun)
+    {
+        var input = document.getElementById("cpuDbg_breakAddr");
+        var addr = input ? parseAddress(input.value) : breakTarget;
+        if(addr===null)
+        {
+            breakMessage = "BAD BP";
+            if(currentPC!==null) renderListing(currentPC,true);
+            return false;
+        }
+        return armTemporaryBreakpoint(addr,!!autoRun);
+    };
+
+    this.runToAddress = function(address)
+    {
+        return armTemporaryBreakpoint(address,true);
+    };
+
+    this.clearTemporaryBreakpoint = function()
+    {
+        return clearTemporaryBreakpoint(false);
     };
 
     this.setListingColumns = function(value)
@@ -1214,9 +1362,10 @@ function Apple2Debug()
 
     this.close = function()
     {
-        // Never leave an invisible debugger-owned IPS or boundary run active.
+        // Never leave an invisible debugger-owned run or execution trap active.
         stopBoundaryAction();
         stopFixedRun();
+        clearTemporaryBreakpoint(false);
         syncRunIcon();
     };
 
@@ -1231,16 +1380,16 @@ function Apple2Debug()
             ,"resumePct":resumePct
             ,"followPC":followPC
             ,"viewTop":lastViewTop
-            ,"boundaryAction":boundaryAction ? {
-                 "type":boundaryAction.type
-                ,"returnPC":boundaryAction.returnPC===undefined ? null : boundaryAction.returnPC
-                ,"jsrDepth":boundaryAction.jsrDepth===undefined ? null : boundaryAction.jsrDepth
-                ,"irqDepth":boundaryAction.irqDepth===undefined ? null : boundaryAction.irqDepth
-                ,"instructions":boundaryAction.instructions
-            } : null
-            ,"listingFont":listingFontFamily
             ,"mappedBus":!!(liveHW() && typeof(liveHW().safe_read)=="function")
             ,"liveStepAPI":!!(liveMachine() && typeof(liveMachine().stepLiveInstruction)=="function")
+            ,"boundaryAction":boundaryAction ? Object.assign({},boundaryAction) : null
+            ,"breakpoint":{
+                 "target":breakTarget
+                ,"address":tempBreakpoint.address
+                ,"armed":tempBreakpoint.armed
+                ,"hit":tempBreakpoint.hit
+                ,"hits":tempBreakpoint.hits
+              }
             ,"cacheHits":cacheHits
             ,"cacheMisses":cacheMisses
             ,"domWrites":domWrites
