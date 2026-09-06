@@ -40,6 +40,12 @@ function Apple2Debug()
         ,"compact":"{adr:0,code:6,lbl:15,ins:24,opr:29,com:45}"
     };
 
+    // Keep STEP TRACE on the same Unicode-capable mono stack as the assembler
+    // Source/Listing panes.  In particular DejaVu Sans Mono contains the box/
+    // line-drawing glyphs that the Arcade bitmap font does not provide.
+    var listingFontFamily = '"DejaVu Sans Mono","Menlo","Consolas","Courier New",monospace';
+    var listingFontSize = 9;
+
     // The listing has two independent modes:
     //   followPC=true  : CPU activity owns the viewport and keeps PC visible.
     //   followPC=false : the user owns a top-row instruction address.
@@ -48,7 +54,7 @@ function Apple2Debug()
     var followPC = true;
     var manualTop = null;
     var lastViewTop = null;
-    var rowPixelHeight = 9;
+    var rowPixelHeight = 12;
 
     // Run control. "system" delegates execution to the central emulator speed;
     // fixed IPS modes own instruction scheduling while the SYSTEM timer is paused.
@@ -56,6 +62,11 @@ function Apple2Debug()
     var fixedRunning = false;
     var runTimer = null;
     var resumePct = 1;
+
+    // Step Over/Out are temporary debugger-owned runs.  They execute only live
+    // Apple2Plus instructions, stop on exact instruction boundaries, and leave
+    // the CPU paused when the requested boundary has been reached.
+    var boundaryAction = null;
 
     function liveMachine()
     {
@@ -182,6 +193,14 @@ function Apple2Debug()
         };
         decodeCache[addr] = cached;
         return cached;
+    }
+
+    function safeWord(addr)
+    {
+        var hw = liveHW();
+        if(!hw || typeof(hw.safe_read)!="function") return null;
+        addr &= 0xffff;
+        return (hw.safe_read(addr) | (hw.safe_read((addr+1)&0xffff)<<8)) & 0xffff;
     }
 
     function parseColumns(text)
@@ -357,6 +376,8 @@ function Apple2Debug()
             row.style.lineHeight = rowPixelHeight+"px";
             row.style.whiteSpace = "pre";
             row.style.fontFamily = "inherit";
+            row.style.fontKerning = "none";
+            row.style.fontVariantLigatures = "none";
             row._cpuDbgText = null;
             row._cpuDbgCurrent = null;
             el.appendChild(row);
@@ -372,13 +393,21 @@ function Apple2Debug()
         if(input && input.checked!==followPC) input.checked = followPC;
     }
 
+    function boundaryActionText()
+    {
+        if(!boundaryAction) return "";
+        if(boundaryAction.type==="over")
+            return "  OVER→$"+oCOM.getHexWord(boundaryAction.returnPC);
+        return "  OUT J"+boundaryAction.jsrDepth+" I"+boundaryAction.irqDepth;
+    }
+
     function updateNavigationStatus(pc)
     {
         var el = document.getElementById("cpuDbg_navStatus");
         if(!el) return;
 
         var top = lastViewTop==null ? pc : lastViewTop;
-        el.textContent = "TOP $"+oCOM.getHexWord(top)+"  PC $"+oCOM.getHexWord(pc);
+        el.textContent = "TOP $"+oCOM.getHexWord(top)+"  PC $"+oCOM.getHexWord(pc)+boundaryActionText();
         el.title = followPC
             ? "Listing follows the live program counter"
             : "Manual instruction-row view; enable Follow PC to resume tracking";
@@ -409,7 +438,7 @@ function Apple2Debug()
 
             if(force || node._cpuDbgCurrent!==!!data.current)
             {
-                node.style.fontWeight = data.current ? "bold" : "normal";
+                node.style.fontWeight = data.current ? "700" : "500";
                 node.style.textDecoration = data.current ? "underline" : "none";
                 node._cpuDbgCurrent = !!data.current;
             }
@@ -456,7 +485,7 @@ function Apple2Debug()
         if(!el || el._cpuDbgNavigationBound) return;
         el._cpuDbgNavigationBound = true;
         el.tabIndex = 0;
-        el.title = "Instruction navigation: mouse wheel, ↑/↓, Page Up/Down. Home returns to Follow PC.";
+        el.title = "Instruction navigation: mouse wheel, ↑/↓, Page Up/Down. Home returns to Follow PC. F10=Over, F11=In, Shift+F11=Out.";
 
         el.addEventListener("wheel",function(event)
         {
@@ -475,6 +504,8 @@ function Apple2Debug()
                 case "PageUp":    dbg.navigateRows(-Math.max(1,listingRows-1)); break;
                 case "PageDown":  dbg.navigateRows(Math.max(1,listingRows-1)); break;
                 case "Home":      dbg.setFollowPC(true); break;
+                case "F10":       dbg.stepOver(); break;
+                case "F11":       event.shiftKey ? dbg.stepOut() : dbg.step(); break;
                 case "f":
                 case "F":         dbg.setFollowPC(!followPC); break;
                 default: handled = false;
@@ -568,7 +599,7 @@ function Apple2Debug()
 
     function executionRunning()
     {
-        return fixedRunning || (runMode==="system" && systemRunning());
+        return boundaryAction!==null || fixedRunning || (runMode==="system" && systemRunning());
     }
 
     function rememberSystemSpeed()
@@ -608,6 +639,12 @@ function Apple2Debug()
         clearRunTimer();
     }
 
+    function stopBoundaryAction()
+    {
+        boundaryAction = null;
+        clearRunTimer();
+    }
+
     function runSpeedConfig(mode)
     {
         switch(String(mode))
@@ -616,8 +653,17 @@ function Apple2Debug()
             case "10":   return {batch:1,delay:100,label:"10 IPS"};
             case "100":  return {batch:5,delay:50,label:"100 IPS"};
             case "1000": return {batch:50,delay:50,label:"1000 IPS"};
-            default:     return {batch:0,delay:0,label:"Max (SYSTEM)"};
+            default:      return {batch:0,delay:0,label:"Max (SYSTEM)"};
         }
+    }
+
+    // Temporary Over/Out runs honour the selected fixed IPS modes. In SYSTEM
+    // mode they use cooperative live-instruction bursts so an exact boundary can
+    // still be intercepted without freezing the browser.
+    function boundarySpeedConfig()
+    {
+        if(runMode==="system") return {batch:250,delay:0,label:"Max boundary run"};
+        return runSpeedConfig(runMode);
     }
 
     function syncRunIcon(el)
@@ -638,7 +684,7 @@ function Apple2Debug()
 
     function fixedRunLoop()
     {
-        if(!fixedRunning || runMode==="system") return;
+        if(!fixedRunning || runMode==="system" || boundaryAction) return;
         var machine = liveMachine();
         if(!machine || typeof(machine.runLiveInstructionBatch)!="function")
         {
@@ -665,6 +711,7 @@ function Apple2Debug()
 
     function startExecution()
     {
+        stopBoundaryAction();
         if(runMode==="system")
         {
             stopFixedRun();
@@ -681,22 +728,155 @@ function Apple2Debug()
 
     function pauseExecution()
     {
+        stopBoundaryAction();
         stopFixedRun();
         if(runMode==="system") pauseSystem();
         syncRunIcon();
+    }
+
+    function externalInterruptBoundary(before,one,opcode)
+    {
+        if(!before || !one || !one.state || opcode===0x00) return false;
+        var spDrop = ((before.sp & 0xff)-(one.state.sp & 0xff)) & 0xff;
+        if(spDrop!==3) return false;
+
+        var endPC = one.endPC & 0xffff;
+        var nmi = safeWord(0xfffa);
+        var irq = safeWord(0xfffe);
+        return (nmi!==null && endPC===nmi) || (irq!==null && endPC===irq);
+    }
+
+    function boundaryActionStopped(action,before,opcode,one)
+    {
+        if(action.type==="over")
+        {
+            return (one.endPC & 0xffff)===action.returnPC
+                && (one.state.sp & 0xff)===action.startSP;
+        }
+
+        // Step Out follows the live control-flow events from the point where the
+        // user asked to leave the current routine. JSR/RTS depth is relative to
+        // that point, so local PHA/PLA use does not confuse it. BRK/external
+        // interrupts get their own nesting depth and are passed through by RTI.
+        if(opcode===0x00 || externalInterruptBoundary(before,one,opcode))
+        {
+            action.irqDepth++;
+            return false;
+        }
+
+        if(opcode===0x20)
+        {
+            action.jsrDepth++;
+            return false;
+        }
+
+        if(opcode===0x60)
+        {
+            if(action.jsrDepth>0)
+            {
+                action.jsrDepth--;
+                return false;
+            }
+            return action.irqDepth===0;
+        }
+
+        if(opcode===0x40)
+        {
+            if(action.irqDepth>0)
+            {
+                action.irqDepth--;
+                return false;
+            }
+            // If Step Out began inside an interrupt handler, its own RTI is the
+            // equivalent of the current routine's return boundary.
+            return action.jsrDepth===0;
+        }
+
+        return false;
+    }
+
+    function finishBoundaryAction()
+    {
+        stopBoundaryAction();
+        var cpu = liveCPU();
+        if(cpu) dbg.cycle({cpu:cpu,force:true});
+        syncRunIcon();
+    }
+
+    function scheduleBoundaryAction(delay)
+    {
+        clearRunTimer();
+        runTimer = window.setTimeout(boundaryActionLoop,Math.max(0,delay|0));
+    }
+
+    function boundaryActionLoop()
+    {
+        var action = boundaryAction;
+        var machine = liveMachine();
+        var cpu = liveCPU();
+        if(!action || !machine || !cpu || typeof(machine.stepLiveInstruction)!="function")
+        {
+            finishBoundaryAction();
+            return;
+        }
+
+        var cfg = boundarySpeedConfig();
+        var completed = 0;
+        var stopped = false;
+
+        for(var i=0;i<cfg.batch && boundaryAction===action;i++)
+        {
+            var before = cpu.watch();
+            var startPC = before.pc & 0xffff;
+            var decoded = decodeAt(startPC);
+            var opcode = decoded ? decoded.b0 : null;
+
+            var one = machine.stepLiveInstruction();
+            if(!one || one.stalled || one.ticks<=0) break;
+
+            completed++;
+            action.instructions++;
+            rememberSequential(one.startPC,one.endPC);
+
+            if(boundaryActionStopped(action,before,opcode,one))
+            {
+                stopped = true;
+                break;
+            }
+        }
+
+        dbg.cycle({cpu:cpu});
+
+        if(stopped || completed===0)
+        {
+            finishBoundaryAction();
+            return;
+        }
+
+        scheduleBoundaryAction(cfg.delay);
+    }
+
+    function startBoundaryAction(action)
+    {
+        pauseExecution();
+        boundaryAction = action;
+        syncRunIcon();
+        if(currentPC!==null) renderListing(currentPC,true);
+        scheduleBoundaryAction(0);
+        return action;
     }
 
     this.html = function(body_id,wrapper_id)
     {
         this.body_id = body_id;
         oCOM.POPUP.set_state(wrapper_id,true);
-        return "<div class=appbox style='text-align:left;height:auto;min-height:315px;width:340px;padding:0 0 0 1px;margin:0'>"
+        return "<div class=appbox style='text-align:left;height:auto;min-height:355px;width:340px;padding:0 0 0 1px;margin:0'>"
             +"<div class=marginless style='border:0'>"
                 +"STEP TRACE "
                 +"<i id=cpuDbg_play class='fa fa-pause' title='pause CPU execution' onclick='oEMU.component.CPU.Apple2Debug.toggleRun(this)'></i>&nbsp;"
-                +"<i class='fa fa-sign-in-alt' title='step one live instruction' onclick='oEMU.component.CPU.Apple2Debug.step()'></i>&nbsp;"
-                +"<i class='fa fa-paw' style='opacity:.35' title='step over (next pass)'></i>&nbsp;"
-                +"<i class='fa fa-sign-out-alt' style='opacity:.35' title='step out (next pass)'></i>&nbsp;"
+                +"<i class='fa fa-sign-in-alt' title='step one live instruction (F11)' onclick='oEMU.component.CPU.Apple2Debug.step()'></i>&nbsp;"
+                +"<i class='fa fa-paw' title='step over JSR/BRK (F10)' onclick='oEMU.component.CPU.Apple2Debug.stepOver()'></i>&nbsp;"
+                +"<i class='fa fa-sign-out-alt' title='step out of current routine (Shift+F11)' onclick='oEMU.component.CPU.Apple2Debug.stepOut()'></i>&nbsp;"
                 +"<select id='cpuDbg_speed' title='STEP TRACE execution speed' onchange='oEMU.component.CPU.Apple2Debug.setRunSpeed(this.value)' style='font-size:10px'>"
                     +"<option value='1'>1 IPS</option>"
                     +"<option value='10'>10 IPS</option>"
@@ -715,15 +895,15 @@ function Apple2Debug()
                     +"<button type='button' title='Page up' onclick='oEMU.component.CPU.Apple2Debug.navigatePage(-1)' style='font-size:10px'>Pg↑</button>"
                     +"<button type='button' title='Page down' onclick='oEMU.component.CPU.Apple2Debug.navigatePage(1)' style='font-size:10px'>Pg↓</button>"
                     +"<button type='button' title='Return to live PC and resume following' onclick='oEMU.component.CPU.Apple2Debug.setFollowPC(true)' style='font-size:10px'>PC</button>"
-                    +"<span id='cpuDbg_navStatus' style='margin-left:5px;font-family:monospace'></span>"
-                    +"<br>LISTING&nbsp; Columns <input id='cpuDbg_columns' type='text' value='"+listingColumns+"' spellcheck='false' style='width:220px;font-family:monospace;font-size:10px' onchange='oEMU.component.CPU.Apple2Debug.setListingColumns(this.value)'>"
+                    +"<span id='cpuDbg_navStatus' style='margin-left:5px;font-family:"+listingFontFamily+"'></span>"
+                    +"<br>LISTING&nbsp; Columns <input id='cpuDbg_columns' type='text' value='"+listingColumns+"' spellcheck='false' style='width:220px;font-family:"+listingFontFamily+";font-size:10px' onchange='oEMU.component.CPU.Apple2Debug.setListingColumns(this.value)'>"
                     +"<div style='margin-left:46px'>"
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('default')\" style='font-size:10px'>default ▦</button> "
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('wide')\" style='font-size:10px'>wide ▦</button> "
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('compact')\" style='font-size:10px'>compact ▦</button>"
                     +"</div>"
                 +"</div>"
-                +"<div id='"+body_id+"' class=marginless style='width:338px;height:"+(listingRows*rowPixelHeight)+"px;border:0;font-family:Arcade;font-size:7px;color:#000;white-space:nowrap;overflow-x:auto;overflow-y:hidden;touch-action:none;'></div>"
+                +"<div id='"+body_id+"' class=marginless style='width:338px;height:"+(listingRows*rowPixelHeight)+"px;border:0;font-family:"+listingFontFamily+";font-size:"+listingFontSize+"px;font-weight:500;font-kerning:none;font-variant-ligatures:none;color:#000;white-space:nowrap;overflow-x:auto;overflow-y:hidden;touch-action:none;'></div>"
             +"</div></div>";
     };
 
@@ -854,7 +1034,8 @@ function Apple2Debug()
 
         if(followPC)
         {
-            if(changed || (obj && obj.force)) renderListing(pc,!!(obj && obj.force));
+            if(changed || (obj && obj.force) || boundaryAction)
+                renderListing(pc,!!(obj && obj.force));
         }
         else
         {
@@ -924,6 +1105,16 @@ function Apple2Debug()
         value = String(value || "system").toLowerCase();
         if(["1","10","100","1000","system"].indexOf(value)<0) value = "system";
 
+        // A temporary Over/Out run can change speed in place without losing its
+        // boundary target.
+        if(boundaryAction)
+        {
+            runMode = value;
+            var actionSel = document.getElementById("cpuDbg_speed");
+            if(actionSel && actionSel.value!==runMode) actionSel.value = runMode;
+            return runMode;
+        }
+
         var wasRunning = executionRunning();
         if(runMode==="system" && systemRunning()) pauseSystem();
         stopFixedRun();
@@ -964,6 +1155,46 @@ function Apple2Debug()
         return result;
     };
 
+    this.stepOver = function()
+    {
+        var cpu = liveCPU();
+        var machine = liveMachine();
+        if(!cpu || !machine || typeof(machine.stepLiveInstruction)!="function") return false;
+        if(!ensureInit({scrollH:listingRows})) return false;
+
+        var state = cpu.watch();
+        var pc = state.pc & 0xffff;
+        var d = decodeAt(pc);
+        if(!d) return false;
+
+        // JSR and BRK are call-like on the 6502. For every other opcode, Step
+        // Over is exactly one Step In.
+        if(d.b0!==0x20 && d.b0!==0x00)
+            return this.step();
+
+        return startBoundaryAction({
+             "type":"over"
+            ,"returnPC":d.next & 0xffff
+            ,"startSP":state.sp & 0xff
+            ,"instructions":0
+        });
+    };
+
+    this.stepOut = function()
+    {
+        var cpu = liveCPU();
+        var machine = liveMachine();
+        if(!cpu || !machine || typeof(machine.stepLiveInstruction)!="function") return false;
+        if(!ensureInit({scrollH:listingRows})) return false;
+
+        return startBoundaryAction({
+             "type":"out"
+            ,"jsrDepth":0
+            ,"irqDepth":0
+            ,"instructions":0
+        });
+    };
+
     this.setListingColumns = function(value)
     {
         if(String(value || "").trim()) listingColumns = String(value).trim();
@@ -983,7 +1214,8 @@ function Apple2Debug()
 
     this.close = function()
     {
-        // Never leave an invisible debugger-owned IPS scheduler running.
+        // Never leave an invisible debugger-owned IPS or boundary run active.
+        stopBoundaryAction();
         stopFixedRun();
         syncRunIcon();
     };
@@ -999,6 +1231,14 @@ function Apple2Debug()
             ,"resumePct":resumePct
             ,"followPC":followPC
             ,"viewTop":lastViewTop
+            ,"boundaryAction":boundaryAction ? {
+                 "type":boundaryAction.type
+                ,"returnPC":boundaryAction.returnPC===undefined ? null : boundaryAction.returnPC
+                ,"jsrDepth":boundaryAction.jsrDepth===undefined ? null : boundaryAction.jsrDepth
+                ,"irqDepth":boundaryAction.irqDepth===undefined ? null : boundaryAction.irqDepth
+                ,"instructions":boundaryAction.instructions
+            } : null
+            ,"listingFont":listingFontFamily
             ,"mappedBus":!!(liveHW() && typeof(liveHW().safe_read)=="function")
             ,"liveStepAPI":!!(liveMachine() && typeof(liveMachine().stepLiveInstruction)=="function")
             ,"cacheHits":cacheHits
