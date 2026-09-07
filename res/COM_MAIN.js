@@ -35,6 +35,37 @@ function COM()
       return v.toString(16).padStart(m,"0").slice(-m).toUpperCase();
   }
   this.getBinMulti   = function(v,m) { return ("0".repeat(m)+v.toString(2)).slice(-m).toUpperCase() }
+
+  // Shared 6502 register/status formatter used by debugger views.
+  // Returns HTML because the status-register flag names are rendered as subscripts.
+  this.formatCpuStatusHTML = function(p)
+  {
+      p = Number(p) & 0xFF;
+      const names = ["n","v","-","b","d","i","z","c"];
+      let out = "SR=";
+      for(let bit=7; bit>=0; bit--)
+          out += "<sub>"+names[7-bit]+"</sub>"+((p>>bit)&1);
+      return out;
+  }
+
+  this.formatCpuRegistersHTML = function(state,options)
+  {
+      state = state || {};
+      options = options || {};
+      const fields = [];
+      const hexByte = this.getHexByte.bind(this);
+      const hexWord = this.getHexWord.bind(this);
+      const dollar = options.dollarPrefix ? "$" : "";
+
+      if(options.includePC && state.pc !== undefined)
+          fields.push("PC="+dollar+hexWord(Number(state.pc)&0xFFFF));
+      if(state.a !== undefined)  fields.push("A="+dollar+hexByte(Number(state.a)&0xFF));
+      if(state.x !== undefined)  fields.push("X="+dollar+hexByte(Number(state.x)&0xFF));
+      if(state.y !== undefined)  fields.push("Y="+dollar+hexByte(Number(state.y)&0xFF));
+      if(state.sp !== undefined) fields.push("SP="+dollar+hexByte(Number(state.sp)&0xFF));
+      if(state.p !== undefined)  fields.push(this.formatCpuStatusHTML(state.p));
+      return fields.join(" ");
+  }
   //this.getNumByteArr = function(v)   { let y= Math.floor(v/2**32); return [y,(y<<8),(y<<16),(y<<24), v,(v<<8),(v<<16),(v<<24)].map(z=> z>>>24) } // convert JS number to byte array
   this.getNumByteArr = function(v)   { let y= Math.floor(v/2**32); return [(v<<24),(v<<16),(v<<8),v,(y<<24),(y<<16),(y<<8),y].map(z=> z>>>24) } // convert JS number to byte array
   this.getByteArrNum = function(arr) { return arr.reduce((a,c,i)=> a+c*2**(56-i*8),0) } // convert byte array to JS number
