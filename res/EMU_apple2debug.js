@@ -1288,8 +1288,25 @@ function Apple2Debug()
         el.addEventListener("touchcancel",function(){ el._cpuDbgTouchY = null; },{passive:true});
     }
 
+    function syncBootTriggerInputs(state)
+    {
+        var start = document.getElementById("cpuDbg_bootStart");
+        var stop = document.getElementById("cpuDbg_bootStop");
+        var startText = state && state.triggerAddress!=null
+            ? "$"+oCOM.getHexWord(state.triggerAddress)
+            : "";
+        var stopText = state && state.stopAddress!=null
+            ? "$"+oCOM.getHexWord(state.stopAddress)
+            : "";
+
+        // Do not fight the user while an address is being edited.
+        if(start && document.activeElement!==start && start.value!==startText) start.value = startText;
+        if(stop && document.activeElement!==stop && stop.value!==stopText) stop.value = stopText;
+    }
+
     function updateBootTriggerIcon(el,state)
     {
+        syncBootTriggerInputs(state);
         if(!el) return;
 
         if(state && state.bDebug_boot)
@@ -1732,39 +1749,54 @@ function Apple2Debug()
         this.body_id = body_id;
         oCOM.POPUP.set_state(wrapper_id,true);
         return "<div class=appbox style='text-align:left;height:auto;min-height:412px;width:350px;padding:0 0 0 1px;margin:0'>"
-            +"<div class=marginless style='border:0'>"
-                +"STEP TRACE "
-                +"<i id=cpuDbg_play class='fa fa-pause' title='pause CPU execution' onclick='oEMU.component.CPU.Apple2Debug.toggleRun(this)'></i>&nbsp;"
-                +"<i class='fa fa-sign-in-alt' title='step one live instruction (F11)' onclick='oEMU.component.CPU.Apple2Debug.step()'></i>&nbsp;"
-                +"<i class='fa fa-paw' title='step over JSR/BRK (F10)' onclick='oEMU.component.CPU.Apple2Debug.stepOver()'></i>&nbsp;"
-                +"<i class='fa fa-sign-out-alt' title='step out of current routine (Shift+F11)' onclick='oEMU.component.CPU.Apple2Debug.stepOut()'></i>&nbsp;"
-                +"<select id='cpuDbg_speed' title='STEP TRACE execution speed' onchange='oEMU.component.CPU.Apple2Debug.setRunSpeed(this.value)' style='font-size:10px'>"
-                    +"<option value='1'>1 IPS</option>"
-                    +"<option value='10'>10 IPS</option>"
-                    +"<option value='100'>100 IPS</option>"
-                    +"<option value='1000'>1000 IPS</option>"
-                    +"<option value='system' selected>Max (SYSTEM)</option>"
-                +"</select>&nbsp;"
-                +"<div class='appbut skinny' onclick='oEMU.component.CPU.Apple2Debug.downloadBootLog()'><i class='fa fa-shoe-prints' title='download bootlog'></i></div>&nbsp;"
-                +"<div class='appbut skinny'><i id='cpuDbg_bootTrigger' class='fa fa-coffee' style='opacity:.35' title='bootlog trigger disabled' onclick='oEMU.component.CPU.Apple2Debug.toggleBootLogTrigger(this)'></i></div>"
-                +"<div class=\"appbut\" onclick=\"oEMU.component.CPU.Apple2Debug.close();oCOM.POPUP.toggle('"+wrapper_id+"');\" style=\"text-align:center;float:right;\">x</div>"
-                +"<div style='font-family:Arial,sans-serif;font-size:10px;line-height:18px;margin-top:3px'>"
-                    +"<div style='white-space:nowrap'>"
-                        +"NAV "
-                        +"<button type='button' aria-label='Previous instruction' title='Previous instruction' onclick='oEMU.component.CPU.Apple2Debug.navigateRows(-1)' style='border:0;background:transparent;-webkit-appearance:none;appearance:none;padding:0 1px;margin:0;line-height:1;font-size:12px;cursor:pointer'>↑</button>"
-                        +"<button type='button' aria-label='Next instruction' title='Next instruction' onclick='oEMU.component.CPU.Apple2Debug.navigateRows(1)' style='border:0;background:transparent;-webkit-appearance:none;appearance:none;padding:0 1px;margin:0;line-height:1;font-size:12px;cursor:pointer'>↓</button>"
-                        +"&nbsp;Pg "
-                        +"<button type='button' aria-label='Page up' title='Page up' onclick='oEMU.component.CPU.Apple2Debug.navigatePage(-1)' style='border:0;background:transparent;-webkit-appearance:none;appearance:none;padding:0 1px;margin:0;line-height:1;font-size:13px;cursor:pointer'>⇑</button>"
-                        +"<button type='button' aria-label='Page down' title='Page down' onclick='oEMU.component.CPU.Apple2Debug.navigatePage(1)' style='border:0;background:transparent;-webkit-appearance:none;appearance:none;padding:0 1px;margin:0;line-height:1;font-size:13px;cursor:pointer'>⇓</button>"
-                        +"&nbsp;<span id='cpuDbg_navStatus' style='font-family:"+listingFontFamily+"'></span>"
-                        +"&nbsp;<label title='Track the live program counter'><input id='cpuDbg_followPc' type='checkbox' checked onchange='oEMU.component.CPU.Apple2Debug.setFollowPC(this.checked)' style='margin:0 1px 0 0;vertical-align:middle'> Track</label>"
+
+            +"<div class=marginless style='border:0;font-family:Arial,sans-serif;font-size:9px;line-height:18px'>"
+                    +"<div style='display:flex;align-items:center;gap:3px;white-space:nowrap;min-width:0'>"
+                        +"<span style='font-size:15px;font-weight:700;line-height:22px;margin-right:2px'>STEP TRACE</span>"
+                        +"<i id=cpuDbg_play class='fa fa-pause' style='font-size:11px;cursor:pointer' title='pause CPU execution' onclick='oEMU.component.CPU.Apple2Debug.toggleRun(this)'></i>"
+                        +"<i class='fa fa-sign-in-alt' style='font-size:11px;cursor:pointer' title='step one live instruction (F11)' onclick='oEMU.component.CPU.Apple2Debug.step()'></i>"
+                        +"<i class='fa fa-paw' style='font-size:11px;cursor:pointer' title='step over JSR/BRK (F10)' onclick='oEMU.component.CPU.Apple2Debug.stepOver()'></i>"
+                        +"<i class='fa fa-sign-out-alt' style='font-size:11px;cursor:pointer' title='step out of current routine (Shift+F11)' onclick='oEMU.component.CPU.Apple2Debug.stepOut()'></i>"
+                        +"<div class='appbut skinny'><i id='cpuDbg_bootTrigger' class='fa fa-coffee' style='opacity:.35;font-size:10px' title='bootlog trigger disabled' onclick='oEMU.component.CPU.Apple2Debug.toggleBootLogTrigger(this)'></i></div>"
+                        +"<input id='cpuDbg_bootStart' type='text' value='' maxlength='6' spellcheck='false' placeholder='$....' title='Bootlog start address; blank starts immediately' style='width:43px;height:18px;padding:0 2px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBootLogAddresses()'>"
+                        +"<span title='bootlog start → stop'>›</span>"
+                        +"<input id='cpuDbg_bootStop' type='text' value='' maxlength='6' spellcheck='false' placeholder='$....' title='Bootlog stop address; blank stops when the buffer is full' style='width:43px;height:18px;padding:0 2px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBootLogAddresses()'>"
+                        +"<div class='appbut skinny' onclick='oEMU.component.CPU.Apple2Debug.downloadBootLog()'><i class='fa fa-cloud-download-alt' style='font-size:10px' title='download bootlog'></i></div>"
+                        +"<span style='flex:1 1 auto'></span>"
+                        +"<div class='appbut' onclick=\"oEMU.component.CPU.Apple2Debug.close();oCOM.POPUP.toggle('"+wrapper_id+"');\" style='text-align:center;margin-left:0;padding:4px 6px;font-size:11px'>x</div>"
                     +"</div>"
-                    +"BREAK&nbsp; <input id='cpuDbg_breakAddr' type='text' value='' maxlength='6' spellcheck='false' title='Temporary one-shot execution breakpoint address; click a listing row to fill it' style='width:58px;font-family:"+listingFontFamily+";font-size:10px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBreakpointTarget(this.value)'> "
-                    +"<button id='cpuDbg_breakArm' type='button' title='Arm one-shot breakpoint (F9)' onclick='oEMU.component.CPU.Apple2Debug.setTemporaryBreakpointFromInput(false)' style='font-size:10px'>Arm</button> "
-                    +"<button type='button' title='Arm breakpoint and continue execution to it' onclick='oEMU.component.CPU.Apple2Debug.setTemporaryBreakpointFromInput(true)' style='font-size:10px'>Run→</button> "
-                    +"<button type='button' title='Clear temporary breakpoint (Shift+F9)' onclick='oEMU.component.CPU.Apple2Debug.clearTemporaryBreakpoint()' style='font-size:10px'>Clear</button>"
-                    +"<br>IF&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input id='cpuDbg_breakCond' type='text' value='' spellcheck='false' title='"+conditionHelp+"' placeholder='e.g. A==$10 && M[$4000]==$80' style='width:286px;font-family:"+listingFontFamily+";font-size:10px' onchange='oEMU.component.CPU.Apple2Debug.setBreakpointCondition(this.value)'>"
-                    +"<br>LISTING&nbsp; Columns <input id='cpuDbg_columns' type='text' value='"+listingColumns+"' spellcheck='false' style='width:220px;font-family:"+listingFontFamily+";font-size:10px' onchange='oEMU.component.CPU.Apple2Debug.setListingColumns(this.value)'>"
+                    +"<div style='display:flex;align-items:center;gap:3px;white-space:nowrap'>"
+
+                        +"NAV "
+
+                        +"<button type='button' aria-label='Previous instruction; hold for page up' title='Previous instruction; hold 1/2s for page up' "
+                            +"onmousedown='return oEMU.component.CPU.Apple2Debug.navButtonDown(this,-1)' onmouseup='return oEMU.component.CPU.Apple2Debug.navButtonUp(this)' onmouseleave='return oEMU.component.CPU.Apple2Debug.navButtonCancel(this)' "
+                            +"ontouchstart='return oEMU.component.CPU.Apple2Debug.navButtonDown(this,-1)' ontouchend='return oEMU.component.CPU.Apple2Debug.navButtonUp(this)' ontouchcancel='return oEMU.component.CPU.Apple2Debug.navButtonCancel(this)' "
+                            +"style='border:0;background:transparent;-webkit-appearance:none;appearance:none;padding:0 1px;margin:0;line-height:1;font-size:11px;cursor:pointer'>↑</button>"
+                        +"<button type='button' aria-label='Next instruction; hold for page down' title='Next instruction; hold 1/2s for page down' "
+                            +"onmousedown='return oEMU.component.CPU.Apple2Debug.navButtonDown(this,1)' onmouseup='return oEMU.component.CPU.Apple2Debug.navButtonUp(this)' onmouseleave='return oEMU.component.CPU.Apple2Debug.navButtonCancel(this)' "
+                            +"ontouchstart='return oEMU.component.CPU.Apple2Debug.navButtonDown(this,1)' ontouchend='return oEMU.component.CPU.Apple2Debug.navButtonUp(this)' ontouchcancel='return oEMU.component.CPU.Apple2Debug.navButtonCancel(this)' "
+                            +"style='border:0;background:transparent;-webkit-appearance:none;appearance:none;padding:0 1px;margin:0;line-height:1;font-size:11px;cursor:pointer'>↓</button>"
+                        +"<span id='cpuDbg_navStatus' style='font-family:"+listingFontFamily+";font-size:9px'></span>"
+                        +"<label title='Track the live program counter'><input id='cpuDbg_followPc' type='checkbox' checked onchange='oEMU.component.CPU.Apple2Debug.setFollowPC(this.checked)' style='margin:0 1px 0 0;vertical-align:middle'> Track</label>"
+                        +"<span>BREAK</span>"
+                        +"<input id='cpuDbg_breakAddr' type='text' value='' maxlength='6' spellcheck='false' title='Temporary one-shot execution breakpoint address; click a listing row to fill it' style='width:48px;height:18px;padding:0 2px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBreakpointTarget(this.value)'>"
+                        +"<select id='cpuDbg_speed' title='STEP TRACE execution speed' onchange='oEMU.component.CPU.Apple2Debug.setRunSpeed(this.value)' style='width:84px;height:18px;padding:0;font-size:9px'>"
+                            +"<option value='1'>1 IPS</option>"
+                            +"<option value='10'>10 IPS</option>"
+                            +"<option value='100'>100 IPS</option>"
+                            +"<option value='1000'>1000 IPS</option>"
+                            +"<option value='system' selected>Max (SYSTEM)</option>"
+                        +"</select>"                        
+                    +"</div>"
+                    +"<div style='display:flex;align-items:center;gap:3px;white-space:nowrap'>"
+                        +"<span>IF</span>"
+                        +"<input id='cpuDbg_breakCond' type='text' value='' spellcheck='false' title='"+conditionHelp+"' placeholder='e.g. A==$10 && M[$4000]==$80' style='flex:1 1 auto;min-width:0;height:18px;padding:0 3px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px' onchange='oEMU.component.CPU.Apple2Debug.setBreakpointCondition(this.value)'>"
+                        +"<button id='cpuDbg_breakArm' type='button' title='Arm one-shot breakpoint (F9)' onclick='oEMU.component.CPU.Apple2Debug.setTemporaryBreakpointFromInput(false)' style='font-size:9px;padding:0 4px'>Arm</button>"
+                        +"<button type='button' title='Arm breakpoint and continue execution to it' onclick='oEMU.component.CPU.Apple2Debug.setTemporaryBreakpointFromInput(true)' style='font-size:9px;padding:0 4px'>Run→</button>"
+                        +"<button type='button' title='Clear temporary breakpoint (Shift+F9)' onclick='oEMU.component.CPU.Apple2Debug.clearTemporaryBreakpoint()' style='font-size:9px;padding:0 4px'>Clear</button>"
+                    +"</div>"
+                    +"<div style='white-space:nowrap'>LISTING&nbsp; Columns <input id='cpuDbg_columns' type='text' value='"+listingColumns+"' spellcheck='false' style='width:220px;font-family:"+listingFontFamily+";font-size:9px' onchange='oEMU.component.CPU.Apple2Debug.setListingColumns(this.value)'></div>"
                     +"<div style='white-space:nowrap;font-size:9px'>"
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('default')\" style='font-size:9px;padding:0 3px'>default ▦</button> "
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('wide')\" style='font-size:9px;padding:0 3px'>wide ▦</button> "
@@ -1857,6 +1889,45 @@ function Apple2Debug()
         URL.revokeObjectURL(url);
     };
 
+    function bootAddressInput(id,label,example)
+    {
+        var input = document.getElementById(id);
+        var text = input ? String(input.value || "").trim() : "";
+        if(text==="") return {ok:true,value:null};
+
+        var addr = parseAddress(text);
+        if(addr!==null) return {ok:true,value:addr};
+
+        alert("Invalid "+label+" address. Use for example "+example+", or leave blank.");
+        if(input)
+        {
+            input.focus();
+            if(typeof(input.select)==="function") input.select();
+        }
+        return {ok:false,value:null};
+    }
+
+    function bootRangeFromInputs()
+    {
+        var start = bootAddressInput("cpuDbg_bootStart","start","$6000");
+        if(!start.ok) return null;
+        var stop = bootAddressInput("cpuDbg_bootStop","stop","$FF69");
+        if(!stop.ok) return null;
+        return {start:start.value,stop:stop.value};
+    }
+
+    this.setBootLogAddresses = function()
+    {
+        var cpu = liveCPU();
+        if(!cpu || typeof(cpu.BOOTparam)!="function" || typeof(cpu.setBootLogTrigger)!="function") return false;
+        var range = bootRangeFromInputs();
+        if(!range) return false;
+        var state = cpu.BOOTparam();
+        state = cpu.setBootLogTrigger(range.start,range.stop,!!state.bDebug_boot);
+        updateBootTriggerIcon(document.getElementById("cpuDbg_bootTrigger"),state);
+        return true;
+    };
+
     this.toggleBootLogTrigger = function(el)
     {
         var cpu = liveCPU();
@@ -1874,37 +1945,63 @@ function Apple2Debug()
             return;
         }
 
-        var startDef = state.triggerAddress==null ? "" : "$"+oCOM.getHexWord(state.triggerAddress);
-        var startValue = prompt("Bootlog start address (blank = immediately):",startDef);
-        if(startValue===null) return;
-        var startAddr = null;
-        if(String(startValue).trim()!=="")
-        {
-            startAddr = parseAddress(startValue);
-            if(startAddr===null)
-            {
-                alert("Invalid start address. Use for example $6000, or leave blank.");
-                return;
-            }
-        }
-
-        var stopDef = state.stopAddress==null ? "" : "$"+oCOM.getHexWord(state.stopAddress);
-        var stopValue = prompt("Bootlog stop address (blank = when buffer is full):",stopDef);
-        if(stopValue===null) return;
-        var stopAddr = null;
-        if(String(stopValue).trim()!=="")
-        {
-            stopAddr = parseAddress(stopValue);
-            if(stopAddr===null)
-            {
-                alert("Invalid stop address. Use for example $FF69, or leave blank.");
-                return;
-            }
-        }
-
-        state = cpu.setBootLogTrigger(startAddr,stopAddr,true);
+        var range = bootRangeFromInputs();
+        if(!range) return;
+        state = cpu.setBootLogTrigger(range.start,range.stop,true);
         updateBootTriggerIcon(el,state);
     };
+
+    /*
+     * Short press on NAV walks one instruction. Holding the same arrow for
+     * 500 ms performs one page move, matching the restart button's
+     * short-press/hold interaction model in tab 1.2.
+     */
+    this.navButtonDown = function(el,direction)
+    {
+        if(!el || el._cpuDbgNavArmed) return false;
+
+        el._cpuDbgNavArmed = true;
+        el._cpuDbgNavLong = false;
+        el._cpuDbgNavDirection = Number(direction)<0 ? -1 : 1;
+        el._cpuDbgNavTimer = window.setTimeout(function()
+        {
+            el._cpuDbgNavTimer = null;
+            if(!el._cpuDbgNavArmed) return;
+            el._cpuDbgNavLong = true;
+            dbg.navigatePage(el._cpuDbgNavDirection);
+        },500);
+        return false;
+    };
+
+    this.navButtonUp = function(el)
+    {
+        if(!el || !el._cpuDbgNavArmed) return false;
+
+        if(el._cpuDbgNavTimer!=null)
+        {
+            window.clearTimeout(el._cpuDbgNavTimer);
+            el._cpuDbgNavTimer = null;
+        }
+
+        var longPress = !!el._cpuDbgNavLong;
+        var direction = el._cpuDbgNavDirection<0 ? -1 : 1;
+        el._cpuDbgNavArmed = false;
+        el._cpuDbgNavLong = false;
+
+        if(!longPress) dbg.navigateRows(direction);
+        return false;
+    };
+
+    this.navButtonCancel = function(el)
+    {
+        if(!el) return false;
+        if(el._cpuDbgNavTimer!=null) window.clearTimeout(el._cpuDbgNavTimer);
+        el._cpuDbgNavTimer = null;
+        el._cpuDbgNavArmed = false;
+        el._cpuDbgNavLong = false;
+        return false;
+    };
+
 
     this.isReady = function()
     {
