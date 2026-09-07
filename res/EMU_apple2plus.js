@@ -397,14 +397,32 @@ function Apple2Plus(context)
     }
 
     // Batch instruction stepping while preserving every executed PC edge for
-    // the live debugger's boundary map.  Video/device-cycle work is finalised
-    // only once per batch.
-    this.runLiveInstructionBatch = function(count)
+    // the live debugger's boundary map. Video/device-cycle work is finalised
+    // only once per batch. A caller may optionally request an early return when
+    // execution crosses into or out of one address region; this lets a realtime
+    // debugger expose short ROM excursions without reducing its normal batch size.
+    this.runLiveInstructionBatch = function(count,options)
     {
+        options = options || {};
         count = Math.max(1,Number(count)|0);
         var edges = [];
         var totalTicks = 0;
         var last = null;
+        var stoppedForRegion = false;
+
+        var stopRange = Array.isArray(options.stopOnRegionChange)
+            ? options.stopOnRegionChange
+            : null;
+        var regionFrom = stopRange && stopRange.length>=2
+            ? (Number(stopRange[0]) & 0xffff)
+            : null;
+        var regionTo = stopRange && stopRange.length>=2
+            ? (Number(stopRange[1]) & 0xffff)
+            : null;
+        var regionEnabled = regionFrom!==null && regionTo!==null && regionFrom<=regionTo;
+        var startedInsideRegion = regionEnabled
+            ? ((cpu.watch().pc & 0xffff)>=regionFrom && (cpu.watch().pc & 0xffff)<=regionTo)
+            : false;
 
         for(var i=0;i<count;i++)
         {
@@ -413,6 +431,16 @@ function Apple2Plus(context)
             if(one.ticks<=0) break;
             totalTicks += one.ticks;
             edges.push([one.startPC,one.endPC]);
+
+            if(regionEnabled)
+            {
+                var endedInsideRegion = one.endPC>=regionFrom && one.endPC<=regionTo;
+                if(endedInsideRegion!==startedInsideRegion)
+                {
+                    stoppedForRegion = true;
+                    break;
+                }
+            }
         }
 
         advanceVideo(totalTicks,1);
@@ -424,6 +452,7 @@ function Apple2Plus(context)
             ,"edges":edges
             ,"state":last ? last.state : cpu.watch()
             ,"stalled":edges.length===0
+            ,"stoppedForRegion":stoppedForRegion
         };
     }
 
