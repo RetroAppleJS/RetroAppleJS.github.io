@@ -1748,7 +1748,7 @@ function Apple2Debug()
     {
         this.body_id = body_id;
         oCOM.POPUP.set_state(wrapper_id,true);
-        return "<div class=appbox style='text-align:left;height:auto;min-height:412px;width:350px;padding:0 0 0 1px;margin:0'>"
+        return "<div class=appbox style='text-align:left;height:auto;min-height:350px;width:350px;padding:0 0 0 1px;margin:0'>"
 
             +"<div class=marginless style='border:0;font-family:Arial,sans-serif;font-size:9px;line-height:18px'>"
                     +"<div style='display:flex;align-items:center;gap:3px;white-space:nowrap;min-width:0'>"
