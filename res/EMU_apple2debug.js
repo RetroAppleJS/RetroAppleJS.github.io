@@ -19,6 +19,7 @@ function Apple2Debug()
     var cpu_config = null;
     var max_instrlen = 3;
     var oDASM_debug = null;
+    var oListingASM = null;
 
     var listingRows = 20;
     var currentPC = null;
@@ -39,6 +40,23 @@ function Apple2Debug()
          "default":"{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}"
         ,"wide":"{adr:0,code:6,lin:17,lbl:24,ins:34,opr:40,com:60}"
         ,"compact":"{adr:0,code:6,lbl:15,ins:24,opr:29,com:45}"
+    };
+
+    // A symbol export from the assembler can be attached to the live trace.
+    // Labels populate lbl, label/EQU values can replace numeric operands, and
+    // instruction comments populate com.  The maps are address keyed to keep
+    // lookup cost constant while the live CPU is running.
+    var loadedLabels = new Array(0x10000);
+    var loadedSymbols = new Array(0x10000);
+    var loadedComments = new Array(0x10000);
+    var symbolState = {
+         file:""
+        ,source:""
+        ,format:""
+        ,labels:0
+        ,equs:0
+        ,comments:0
+        ,error:""
     };
 
     // Same Unicode-capable mono stack as the assembler Source/Listing panes.
@@ -102,6 +120,56 @@ function Apple2Debug()
         return machine && typeof(machine.hwObj)=="function" ? machine.hwObj() : null;
     }
 
+    function currentAsmSymlink()
+    {
+        if(typeof(oASM)!="undefined" && oASM && oASM.symlink) return oASM.symlink;
+        if(typeof(asm)!="undefined" && asm && asm.symlink) return asm.symlink;
+        return null;
+    }
+
+    function symbolAtValue(value)
+    {
+        value &= 0xffff;
+        if(loadedSymbols[value]) return loadedSymbols[value];
+        var symlink = currentAsmSymlink();
+        return symlink && typeof(symlink[value])!=="undefined" ? symlink[value] : null;
+    }
+
+    function labelAtAddress(addr)
+    {
+        return loadedLabels[addr & 0xffff] || "";
+    }
+
+    function commentAtAddress(addr,d)
+    {
+        var records = loadedComments[addr & 0xffff];
+        if(!records || !records.length) return "";
+        var bytes = [d.b0,d.b1,d.b2];
+        var out = [];
+
+        for(var i=0;i<records.length;i++)
+        {
+            var record = records[i];
+            var opcode = record.opcode || [];
+            var match = true;
+            for(var j=0;j<opcode.length;j++)
+            {
+                if((bytes[j]&0xff)!==(opcode[j]&0xff))
+                {
+                    match = false;
+                    break;
+                }
+            }
+            if(match && record.text) out.push(record.text);
+        }
+        return out.join(" ");
+    }
+
+    function invalidateDecodeCache()
+    {
+        decodeCache = new Array(0x10000);
+    }
+
     function init(cfg)
     {
         var cpu = liveCPU();
@@ -116,27 +184,23 @@ function Apple2Debug()
         oDASM_debug.sym_search = function(op,adm)
         {
             var opd = parseInt(op.substring(1,op.length),16);
-            var symlink = null;
-
-            if(typeof(oASM)!="undefined" && oASM && oASM.symlink)
-                symlink = oASM.symlink;
-            else if(typeof(asm)!="undefined" && asm && asm.symlink)
-                symlink = asm.symlink;
 
             switch(adm)
             {
                 case "zpg":
+                case "zpx":
+                case "zpy":
                 case "abs":
+                case "abx":
+                case "aby":
                 case "rel":
+                case "ind":
                 case "iny":
                 case "inx":
-                    if(symlink)
-                    {
-                        var adr = symlink[opd];
-                        if(typeof(adr)!="undefined") return adr+" <small>"+op+"h</small>";
-                        adr = symlink[opd-1];
-                        if(typeof(adr)!="undefined") return adr+"+1 <small>"+op+"h</small>";
-                    }
+                    var name = symbolAtValue(opd);
+                    if(name) return name+" <small>"+op+"h</small>";
+                    name = symbolAtValue((opd-1)&0xffff);
+                    if(name) return name+"+1 <small>"+op+"h</small>";
                 break;
             }
             return op;
@@ -189,6 +253,31 @@ function Apple2Debug()
 
         cacheMisses++;
         var len = cpu_config.instrlen[b0] || 1;
+        var entry = cpu_config.opctab[b0] || ["???","imp"];
+        var adm = entry[1] || "imp";
+        var val = null;
+
+        switch(adm)
+        {
+            case "rel":
+                var delta = (b1&0x80) ? b1-0x100 : b1;
+                val = (addr+2+delta)&0xffff;
+                break;
+            case "abs":
+            case "abx":
+            case "aby":
+            case "ind":
+                val = (b1 | (b2<<8))&0xffff;
+                break;
+            case "zpg":
+            case "zpx":
+            case "zpy":
+            case "inx":
+            case "iny":
+                val = b1&0xff;
+                break;
+        }
+
         var ret = oDASM_debug.disassemble({
              "code_arr":[b0,b1,b2]
             ,"pc":addr
@@ -206,6 +295,8 @@ function Apple2Debug()
             ,"bytes":bytes
             ,"ins":match[1] || ""
             ,"opr":match[2] || ""
+            ,"adm":adm
+            ,"val":val
         };
         decodeCache[addr] = cached;
         return cached;
@@ -225,6 +316,182 @@ function Apple2Debug()
         s = s.replace(/^\$/,"").replace(/^0x/i,"");
         if(!/^[0-9a-f]{1,4}$/i.test(s)) return null;
         return parseInt(s,16) & 0xffff;
+    }
+
+    function parseSymbolValue(value)
+    {
+        if(typeof(value)==="number" && Number.isFinite(value)) return value&0xffff;
+        var s = String(value==null ? "" : value).trim();
+        if(/^\$[0-9a-f]+$/i.test(s)) return parseInt(s.substring(1),16)&0xffff;
+        if(/^0x[0-9a-f]+$/i.test(s)) return parseInt(s.substring(2),16)&0xffff;
+        if(/^[0-9]+$/.test(s)) return parseInt(s,10)&0xffff;
+        if(/^[0-9a-f]+$/i.test(s)) return parseInt(s,16)&0xffff;
+        return null;
+    }
+
+    function parseSymbolByte(value)
+    {
+        if(typeof(value)==="number" && Number.isFinite(value)) return value&0xff;
+        var s = String(value==null ? "" : value).trim();
+        if(/^\$[0-9a-f]{1,2}$/i.test(s)) return parseInt(s.substring(1),16)&0xff;
+        if(/^0x[0-9a-f]{1,2}$/i.test(s)) return parseInt(s.substring(2),16)&0xff;
+        if(/^[0-9a-f]{1,2}$/i.test(s)) return parseInt(s,16)&0xff;
+        return null;
+    }
+
+    function commitLoadedSymbols(nextLabels,nextSymbols,nextComments,state)
+    {
+        loadedLabels = nextLabels;
+        loadedSymbols = nextSymbols;
+        loadedComments = nextComments;
+        symbolState = state;
+        invalidateDecodeCache();
+        syncSymbolControls();
+        if(currentPC!==null) renderListing(currentPC,true);
+        return Object.assign({},symbolState);
+    }
+
+    function loadSymbolObject(raw,fileName)
+    {
+        var records = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.symbols) ? raw.symbols : null);
+        if(!records) throw new Error("Symbol JSON must contain a symbols array");
+
+        var nextLabels = new Array(0x10000);
+        var nextSymbols = new Array(0x10000);
+        var nextComments = new Array(0x10000);
+        var labels = 0;
+        var equs = 0;
+        var comments = 0;
+
+        for(var i=0;i<records.length;i++)
+        {
+            var record = records[i] || {};
+            var type = String(record.type || "label").toLowerCase();
+            var value = parseSymbolValue(record.value!==undefined ? record.value : record.address);
+            if(value===null) continue;
+
+            if(type==="label")
+            {
+                var label = String(record.name || "").trim();
+                if(!label) continue;
+                if(!nextLabels[value]) nextLabels[value] = label;
+                nextSymbols[value] = label;
+                labels++;
+                continue;
+            }
+
+            if(type==="equ" || type==="symbol")
+            {
+                var name = String(record.name || "").trim();
+                if(!name) continue;
+                if(!nextSymbols[value]) nextSymbols[value] = name;
+                equs++;
+                continue;
+            }
+
+            if(type==="comment" && (!record.targetType || String(record.targetType).toLowerCase()==="instruction"))
+            {
+                var text = String(record.text || record.comment || "").trim();
+                if(!text) continue;
+                var opcode = [];
+                if(Array.isArray(record.opcode))
+                {
+                    for(var b=0;b<record.opcode.length;b++)
+                    {
+                        var parsed = parseSymbolByte(record.opcode[b]);
+                        if(parsed===null) { opcode = []; break; }
+                        opcode.push(parsed);
+                    }
+                }
+                if(!nextComments[value]) nextComments[value] = [];
+                nextComments[value].push({text:text,opcode:opcode});
+                comments++;
+            }
+        }
+
+        if(labels+equs+comments===0) throw new Error("No usable labels, EQU symbols or instruction comments found");
+
+        var fmt = raw && !Array.isArray(raw) && raw.format ? String(raw.format) : "JSON symbols";
+        if(fmt!=="RetroAppleJS-ASM-symbols" && raw && !Array.isArray(raw) && raw.format)
+            throw new Error("Unsupported symbol table format: "+fmt);
+
+        return commitLoadedSymbols(nextLabels,nextSymbols,nextComments,{
+             file:String(fileName || "symbols.json")
+            ,source:raw && !Array.isArray(raw) ? String(raw.sourceName || "") : ""
+            ,format:fmt
+            ,labels:labels
+            ,equs:equs
+            ,comments:comments
+            ,error:""
+        });
+    }
+
+    function loadSymbolTextMap(text,fileName)
+    {
+        var nextLabels = new Array(0x10000);
+        var nextSymbols = new Array(0x10000);
+        var nextComments = new Array(0x10000);
+        var labels = 0;
+        var lines = String(text || "").split(/\r?\n/);
+
+        function hexAddress(token)
+        {
+            token = String(token || "").trim();
+            if(/^\$[0-9a-f]{1,4}$/i.test(token)) return parseInt(token.substring(1),16)&0xffff;
+            if(/^0x[0-9a-f]{1,4}$/i.test(token)) return parseInt(token.substring(2),16)&0xffff;
+            if(/^[0-9a-f]{1,4}$/i.test(token)) return parseInt(token,16)&0xffff;
+            return null;
+        }
+
+        for(var i=0;i<lines.length;i++)
+        {
+            var line = lines[i].replace(/;.*/,"").trim();
+            if(!line) continue;
+            var m = /^([A-Za-z_.$@?][\w.$@?]*)\s*(?:=|EQU)\s*(\$?[0-9A-Fa-f]{1,4}|0x[0-9A-Fa-f]{1,4})$/i.exec(line);
+            var name,addr;
+            if(m)
+            {
+                name = m[1];
+                addr = hexAddress(m[2]);
+            }
+            else
+            {
+                m = /^(\$?[0-9A-Fa-f]{1,4}|0x[0-9A-Fa-f]{1,4})\s+([A-Za-z_.$@?][\w.$@?]*)$/.exec(line);
+                if(m) { addr = hexAddress(m[1]); name = m[2]; }
+                else
+                {
+                    m = /^([A-Za-z_.$@?][\w.$@?]*)\s+(\$?[0-9A-Fa-f]{1,4}|0x[0-9A-Fa-f]{1,4})$/.exec(line);
+                    if(m) { name = m[1]; addr = hexAddress(m[2]); }
+                }
+            }
+            if(addr===null || addr===undefined || !name) continue;
+            if(!nextLabels[addr]) nextLabels[addr] = name;
+            if(!nextSymbols[addr]) nextSymbols[addr] = name;
+            labels++;
+        }
+
+        if(!labels) throw new Error("No symbols found in text map");
+        return commitLoadedSymbols(nextLabels,nextSymbols,nextComments,{
+             file:String(fileName || "symbols.txt")
+            ,source:""
+            ,format:"text symbols"
+            ,labels:labels
+            ,equs:0
+            ,comments:0
+            ,error:""
+        });
+    }
+
+    function resetLoadedSymbols()
+    {
+        loadedLabels = new Array(0x10000);
+        loadedSymbols = new Array(0x10000);
+        loadedComments = new Array(0x10000);
+        symbolState = {file:"",source:"",format:"",labels:0,equs:0,comments:0,error:""};
+        invalidateDecodeCache();
+        syncSymbolControls();
+        if(currentPC!==null) renderListing(currentPC,true);
+        return true;
     }
 
     function tokenizeCondition(text)
@@ -521,22 +788,29 @@ function Apple2Debug()
 
             var nextCol = i+1<active.length ? columns[active[i+1]] : null;
             var value = String(parts[key]==null ? "" : parts[key]);
-            if(nextCol!==null) value = crop(value,Math.max(0,nextCol-col-1));
+            if(nextCol!==null)
+            {
+                // ASM_core's branch-line renderer owns the complete interval
+                // [lin,nextColumn): its rightmost character is the ▶ arrowhead.
+                // Other fields retain the traditional one-column separator.
+                var width = nextCol-col-(key==="lin" ? 0 : 1);
+                value = crop(value,Math.max(0,width));
+            }
             line += value;
         }
         return line.replace(/\s+$/g,"");
     }
 
-    function formatDecoded(d)
+    function formatDecoded(d,lin,lbl,com)
     {
         return formatParts({
              "adr":oCOM.getHexWord(d.addr)+":"
             ,"code":d.bytes
-            ,"lin":""
-            ,"lbl":""
+            ,"lin":lin || ""
+            ,"lbl":lbl || ""
             ,"ins":d.ins
             ,"opr":d.opr
-            ,"com":""
+            ,"com":com || ""
         });
     }
 
@@ -588,6 +862,48 @@ function Apple2Debug()
         return count===1 ? found : -1;
     }
 
+    function applyListingDecorations(rows)
+    {
+        rows = rows || [];
+        var temp = [];
+
+        for(var i=0;i<rows.length;i++)
+        {
+            var d = rows[i].decoded;
+            temp.push({
+                 bytes:[d.b0,d.b1,d.b2].slice(0,d.len)
+                ,pc:d.addr
+                ,mnemonic:d.ins
+                ,addrMode:d.adm
+                ,val:d.val
+                ,lin:""
+            });
+        }
+
+        // Reuse the assembler's established Unicode branch-guide algorithm.
+        // It draws relative branches and absolute JMPs only when both endpoints
+        // are present in the current visible instruction window.
+        if(typeof(ASM)==="function")
+        {
+            if(!oListingASM) oListingASM = new ASM();
+            if(oListingASM && typeof(oListingASM.applyListingLineColumn)==="function")
+            {
+                oListingASM.listingColumns = parseColumns(listingColumns);
+                oListingASM.applyListingLineColumn(temp);
+            }
+        }
+
+        for(var r=0;r<rows.length;r++)
+        {
+            var decoded = rows[r].decoded;
+            rows[r].lin = temp[r] && temp[r].lin ? temp[r].lin : "";
+            rows[r].lbl = labelAtAddress(decoded.addr);
+            rows[r].com = commentAtAddress(decoded.addr,decoded);
+            rows[r].text = formatDecoded(decoded,rows[r].lin,rows[r].lbl,rows[r].com);
+        }
+        return rows;
+    }
+
     function forwardWindow(start,pc,count)
     {
         start &= 0xffff;
@@ -606,13 +922,14 @@ function Apple2Debug()
                 ,"current":adr===pc
                 ,"breakpoint":tempBreakpoint.armed && tempBreakpoint.address===adr
                 ,"breakHit":tempBreakpoint.hit && tempBreakpoint.address===adr
-                ,"text":formatDecoded(d)
+                ,"decoded":d
+                ,"text":""
             });
 
             previousBoundary[d.next] = adr;
             adr = d.next;
         }
-        return rows;
+        return applyListingDecorations(rows);
     }
 
     function followWindow(pc,count)
@@ -700,6 +1017,28 @@ function Apple2Debug()
     {
         var input = document.getElementById("cpuDbg_followPc");
         if(input && input.checked!==followPC) input.checked = followPC;
+    }
+
+    function syncSymbolControls()
+    {
+        if(typeof(document)==="undefined") return;
+        var status = document.getElementById("cpuDbg_symbolStatus");
+        var clear = document.getElementById("cpuDbg_symbolClear");
+        var total = symbolState.labels+symbolState.equs;
+        var loaded = !!(symbolState.file || total || symbolState.comments);
+
+        if(status)
+        {
+            status.textContent = symbolState.error
+                ? "error"
+                : (loaded ? total+" sym / "+symbolState.comments+" com" : "none");
+            status.title = symbolState.error
+                ? symbolState.error
+                : (loaded
+                    ? (symbolState.file+(symbolState.source ? " · "+symbolState.source : "")+" · "+symbolState.labels+" labels, "+symbolState.equs+" EQU, "+symbolState.comments+" comments")
+                    : "No external symbol table loaded");
+        }
+        if(clear) clear.disabled = !loaded;
     }
 
     function syncBreakpointControls()
@@ -812,6 +1151,7 @@ function Apple2Debug()
         }
 
         syncFollowControl();
+        syncSymbolControls();
         syncBreakpointControls();
         updateNavigationStatus(pc);
         return true;
@@ -1358,7 +1698,7 @@ function Apple2Debug()
     {
         this.body_id = body_id;
         oCOM.POPUP.set_state(wrapper_id,true);
-        return "<div class=appbox style='text-align:left;height:auto;min-height:410px;width:350px;padding:0 0 0 1px;margin:0'>"
+        return "<div class=appbox style='text-align:left;height:auto;min-height:430px;width:350px;padding:0 0 0 1px;margin:0'>"
             +"<div class=marginless style='border:0'>"
                 +"STEP TRACE "
                 +"<i id=cpuDbg_play class='fa fa-pause' title='pause CPU execution' onclick='oEMU.component.CPU.Apple2Debug.toggleRun(this)'></i>&nbsp;"
@@ -1395,9 +1735,69 @@ function Apple2Debug()
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('wide')\" style='font-size:10px'>wide ▦</button> "
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('compact')\" style='font-size:10px'>compact ▦</button>"
                     +"</div>"
+                    +"<div style='margin-left:46px'>SYMBOLS "
+                        +"<button type='button' title='Load RetroAppleJS assembler symbol export (.symbols.json) or simple text symbol map' onclick=\"oEMU.component.CPU.Apple2Debug.chooseSymbolFile()\" style='font-size:10px'>load</button> "
+                        +"<button id='cpuDbg_symbolClear' type='button' title='Clear loaded symbol table' onclick=\"oEMU.component.CPU.Apple2Debug.clearSymbols()\" style='font-size:10px'>clear</button> "
+                        +"<span id='cpuDbg_symbolStatus' title='No external symbol table loaded'>none</span>"
+                        +"<input id='cpuDbg_symbolFile' type='file' accept='.symbols.json,.json,.sym,.txt,application/json,text/plain' style='display:none' onchange='if(this.files&&this.files[0]) oEMU.component.CPU.Apple2Debug.loadSymbolFile(this.files[0]);this.value=\"\";'>"
+                    +"</div>"
                 +"</div>"
                 +"<div id='"+body_id+"' class=marginless style='width:348px;height:"+(listingRows*rowPixelHeight)+"px;border:0;font-family:"+listingFontFamily+";font-size:"+listingFontSize+"px;font-weight:500;font-kerning:none;font-variant-ligatures:none;color:#000;white-space:nowrap;overflow-x:auto;overflow-y:hidden;touch-action:none;'></div>"
             +"</div></div>";
+    };
+
+    this.chooseSymbolFile = function()
+    {
+        var input = document.getElementById("cpuDbg_symbolFile");
+        if(input) input.click();
+    };
+
+    this.loadSymbolsText = function(text,fileName)
+    {
+        text = String(text==null ? "" : text);
+        var trimmed = text.trim();
+        try
+        {
+            if(trimmed.charAt(0)==="{" || trimmed.charAt(0)==="[")
+                return loadSymbolObject(JSON.parse(trimmed),fileName);
+            return loadSymbolTextMap(text,fileName);
+        }
+        catch(err)
+        {
+            symbolState.error = err && err.message ? err.message : String(err);
+            syncSymbolControls();
+            throw err;
+        }
+    };
+
+    this.loadSymbolFile = function(file)
+    {
+        if(!file) return false;
+        var reader = new FileReader();
+        reader.onload = function()
+        {
+            try
+            {
+                dbg.loadSymbolsText(reader.result,file.name || "symbols");
+            }
+            catch(err)
+            {
+                alert("Cannot load symbol table: "+(err && err.message ? err.message : err));
+            }
+        };
+        reader.onerror = function()
+        {
+            symbolState.error = "Cannot read symbol file";
+            syncSymbolControls();
+            alert(symbolState.error);
+        };
+        reader.readAsText(file);
+        return true;
+    };
+
+    this.clearSymbols = function()
+    {
+        return resetLoadedSymbols();
     };
 
     this.downloadBootLog = function()
@@ -1490,6 +1890,7 @@ function Apple2Debug()
         if(input) input.value = listingColumns;
         var cond = document.getElementById("cpuDbg_breakCond");
         if(cond) cond.value = breakConditionText;
+        syncSymbolControls();
 
         currentPC = cpu.watch().pc & 0xffff;
         previousObservedPC = currentPC;
@@ -1774,6 +2175,7 @@ function Apple2Debug()
                 ,"lastResult":tempBreakpoint.lastResult
                 ,"error":tempBreakpoint.error || breakConditionError || null
               }
+            ,"symbols":Object.assign({},symbolState)
             ,"cacheHits":cacheHits
             ,"cacheMisses":cacheMisses
             ,"domWrites":domWrites
