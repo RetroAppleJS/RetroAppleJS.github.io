@@ -2740,6 +2740,37 @@ function COM()
       return v.toString(16).padStart(m,"0").slice(-m).toUpperCase();
   }
   this.getBinMulti   = function(v,m) { return ("0".repeat(m)+v.toString(2)).slice(-m).toUpperCase() }
+
+  // Shared 6502 register/status formatter used by debugger views.
+  // Returns HTML because the status-register flag names are rendered as subscripts.
+  this.formatCpuStatusHTML = function(p)
+  {
+      p = Number(p) & 0xFF;
+      const names = ["n","v","-","b","d","i","z","c"];
+      let out = "SR=";
+      for(let bit=7; bit>=0; bit--)
+          out += "<sub>"+names[7-bit]+"</sub>"+((p>>bit)&1);
+      return out;
+  }
+
+  this.formatCpuRegistersHTML = function(state,options)
+  {
+      state = state || {};
+      options = options || {};
+      const fields = [];
+      const hexByte = this.getHexByte.bind(this);
+      const hexWord = this.getHexWord.bind(this);
+      const dollar = options.dollarPrefix ? "$" : "";
+
+      if(options.includePC && state.pc !== undefined)
+          fields.push("PC="+dollar+hexWord(Number(state.pc)&0xFFFF));
+      if(state.a !== undefined)  fields.push("A="+dollar+hexByte(Number(state.a)&0xFF));
+      if(state.x !== undefined)  fields.push("X="+dollar+hexByte(Number(state.x)&0xFF));
+      if(state.y !== undefined)  fields.push("Y="+dollar+hexByte(Number(state.y)&0xFF));
+      if(state.sp !== undefined) fields.push("SP="+dollar+hexByte(Number(state.sp)&0xFF));
+      if(state.p !== undefined)  fields.push(this.formatCpuStatusHTML(state.p));
+      return fields.join(" ");
+  }
   //this.getNumByteArr = function(v)   { let y= Math.floor(v/2**32); return [y,(y<<8),(y<<16),(y<<24), v,(v<<8),(v<<16),(v<<24)].map(z=> z>>>24) } // convert JS number to byte array
   this.getNumByteArr = function(v)   { let y= Math.floor(v/2**32); return [(v<<24),(v<<16),(v<<8),v,(y<<24),(y<<16),(y<<8),y].map(z=> z>>>24) } // convert JS number to byte array
   this.getByteArrNum = function(arr) { return arr.reduce((a,c,i)=> a+c*2**(56-i*8),0) } // convert byte array to JS number
@@ -14440,6 +14471,7 @@ function Apple2Debug()
     var cacheHits = 0;
     var cacheMisses = 0;
     var domWrites = 0;
+    var lastRegisterHTML = null;
 
     var listingColumns = "{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}";
     var listingColumnPresets = {
@@ -15539,6 +15571,21 @@ function Apple2Debug()
         el.title = title;
     }
 
+    function updateRegisterStatus(state,force)
+    {
+        var el = document.getElementById(dbg.body_id+"_regs");
+        if(!el || !state || !oCOM || typeof(oCOM.formatCpuRegistersHTML)!=="function") return false;
+
+        var html = oCOM.formatCpuRegistersHTML(state,{includePC:false});
+        if(force || html!==lastRegisterHTML)
+        {
+            el.innerHTML = html;
+            lastRegisterHTML = html;
+            domWrites++;
+        }
+        return true;
+    }
+
     function renderListing(pc,force)
     {
         var pool = ensureRowPool();
@@ -15588,6 +15635,8 @@ function Apple2Debug()
         syncSymbolControls();
         syncBreakpointControls();
         updateNavigationStatus(pc);
+        var cpu = liveCPU();
+        if(cpu) updateRegisterStatus(cpu.watch(),force);
         return true;
     }
 
@@ -16220,6 +16269,7 @@ function Apple2Debug()
                     +"</div>"
                 +"</div>"
                 +"<div id='"+body_id+"' class=marginless style='width:348px;height:"+(listingRows*rowPixelHeight)+"px;border:0;font-family:"+listingFontFamily+";font-size:"+listingFontSize+"px;font-weight:500;font-kerning:none;font-variant-ligatures:none;color:#000;white-space:nowrap;overflow-x:auto;overflow-y:hidden;touch-action:none;'></div>"
+                +"<div id='"+body_id+"_regs' class='DBG_traceRegisterInfo' style='width:348px;height:18px;line-height:18px;border:0;padding:1px 0 0 2px;font-family:"+listingFontFamily+";font-size:10px;font-weight:500;white-space:nowrap'>A=00 X=00 Y=00 SP=FF SR=<sub>n</sub>0<sub>v</sub>0<sub>-</sub>1<sub>b</sub>0<sub>d</sub>0<sub>i</sub>1<sub>z</sub>0<sub>c</sub>0</div>"
             +"</div></div>";
     };
 
@@ -16455,6 +16505,7 @@ function Apple2Debug()
             updateBootTriggerIcon(document.getElementById("cpuDbg_bootTrigger"),cpu.BOOTparam());
 
         var watch = cpu.watch();
+        updateRegisterStatus(watch,!!(obj && obj.force));
         var pc = watch.pc & 0xffff;
         if(previousObservedPC!==null && previousObservedPC!==pc)
             rememberSequential(previousObservedPC,pc);
@@ -55188,19 +55239,6 @@ Label1 TXA
         DBG_traceCPU.load(DBG_traceStateLoadString(record.before));
         return true;
       }
-
-
-     function DBG_formatSRHTML(p) {
-       p = Number(p) & 0xff;
-       var names = ["n","v","-","b","d","i","z","c"];
-       var bits  = [7,6,5,4,3,2,1,0];
-       var out = "SR=";
- 
-       for (var i = 0; i < bits.length; i++)
-         out += "<sub>" + names[i] + "</sub>" + ((p >> bits[i]) & 1);
- 
-       return out;
-     }
  
      function DBG_updateRegisterDisplays(state,compareState) {
        state = state || (DBG_traceCPU && DBG_traceCPU.watch ? DBG_traceCPU.watch() : {
@@ -55220,13 +55258,10 @@ Label1 TXA
  
        var info = DBG_el("DBG_traceRegisterInfo");
        if (info) {
-         info.innerHTML = 
-           //"PC=" + DBG_hexWord(pc) +
-           " A=" + DBG_hexByte(a) +
-           " X=" + DBG_hexByte(x) +
-           " Y=" + DBG_hexByte(y) +
-           " SP=" + DBG_hexByte(sp) +
-           " " + DBG_formatSRHTML(p);
+         info.innerHTML = oCOM.formatCpuRegistersHTML(
+           {pc:pc,a:a,x:x,y:y,sp:sp,p:p},
+           {includePC:false}
+         );
        }
      }
  
