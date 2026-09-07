@@ -5568,19 +5568,6 @@ Label1 TXA
         DBG_traceCPU.load(DBG_traceStateLoadString(record.before));
         return true;
       }
-
-
-     function DBG_formatSRHTML(p) {
-       p = Number(p) & 0xff;
-       var names = ["n","v","-","b","d","i","z","c"];
-       var bits  = [7,6,5,4,3,2,1,0];
-       var out = "SR=";
- 
-       for (var i = 0; i < bits.length; i++)
-         out += "<sub>" + names[i] + "</sub>" + ((p >> bits[i]) & 1);
- 
-       return out;
-     }
  
      function DBG_updateRegisterDisplays(state,compareState) {
        state = state || (DBG_traceCPU && DBG_traceCPU.watch ? DBG_traceCPU.watch() : {
@@ -5600,13 +5587,10 @@ Label1 TXA
  
        var info = DBG_el("DBG_traceRegisterInfo");
        if (info) {
-         info.innerHTML = 
-           //"PC=" + DBG_hexWord(pc) +
-           " A=" + DBG_hexByte(a) +
-           " X=" + DBG_hexByte(x) +
-           " Y=" + DBG_hexByte(y) +
-           " SP=" + DBG_hexByte(sp) +
-           " " + DBG_formatSRHTML(p);
+         info.innerHTML = oCOM.formatCpuRegistersHTML(
+           {pc:pc,a:a,x:x,y:y,sp:sp,p:p},
+           {includePC:false}
+         );
        }
      }
  

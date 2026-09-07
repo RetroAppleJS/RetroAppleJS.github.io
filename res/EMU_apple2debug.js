@@ -34,6 +34,7 @@ function Apple2Debug()
     var cacheHits = 0;
     var cacheMisses = 0;
     var domWrites = 0;
+    var lastRegisterHTML = null;
 
     var listingColumns = "{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}";
     var listingColumnPresets = {
@@ -1133,6 +1134,21 @@ function Apple2Debug()
         el.title = title;
     }
 
+    function updateRegisterStatus(state,force)
+    {
+        var el = document.getElementById(dbg.body_id+"_regs");
+        if(!el || !state || !oCOM || typeof(oCOM.formatCpuRegistersHTML)!=="function") return false;
+
+        var html = oCOM.formatCpuRegistersHTML(state,{includePC:false});
+        if(force || html!==lastRegisterHTML)
+        {
+            el.innerHTML = html;
+            lastRegisterHTML = html;
+            domWrites++;
+        }
+        return true;
+    }
+
     function renderListing(pc,force)
     {
         var pool = ensureRowPool();
@@ -1182,6 +1198,8 @@ function Apple2Debug()
         syncSymbolControls();
         syncBreakpointControls();
         updateNavigationStatus(pc);
+        var cpu = liveCPU();
+        if(cpu) updateRegisterStatus(cpu.watch(),force);
         return true;
     }
 
@@ -1814,6 +1832,7 @@ function Apple2Debug()
                     +"</div>"
                 +"</div>"
                 +"<div id='"+body_id+"' class=marginless style='width:348px;height:"+(listingRows*rowPixelHeight)+"px;border:0;font-family:"+listingFontFamily+";font-size:"+listingFontSize+"px;font-weight:500;font-kerning:none;font-variant-ligatures:none;color:#000;white-space:nowrap;overflow-x:auto;overflow-y:hidden;touch-action:none;'></div>"
+                +"<div id='"+body_id+"_regs' class='DBG_traceRegisterInfo' style='width:348px;height:18px;line-height:18px;border:0;padding:1px 0 0 2px;font-family:"+listingFontFamily+";font-size:10px;font-weight:500;white-space:nowrap'>A=00 X=00 Y=00 SP=FF SR=<sub>n</sub>0<sub>v</sub>0<sub>-</sub>1<sub>b</sub>0<sub>d</sub>0<sub>i</sub>1<sub>z</sub>0<sub>c</sub>0</div>"
             +"</div></div>";
     };
 
@@ -2049,6 +2068,7 @@ function Apple2Debug()
             updateBootTriggerIcon(document.getElementById("cpuDbg_bootTrigger"),cpu.BOOTparam());
 
         var watch = cpu.watch();
+        updateRegisterStatus(watch,!!(obj && obj.force));
         var pc = watch.pc & 0xffff;
         if(previousObservedPC!==null && previousObservedPC!==pc)
             rememberSequential(previousObservedPC,pc);
