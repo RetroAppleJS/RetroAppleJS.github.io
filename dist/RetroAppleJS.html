@@ -14526,6 +14526,33 @@ function Apple2Debug()
         return machine && typeof(machine.hwObj)=="function" ? machine.hwObj() : null;
     }
 
+    /*
+     * STEP TRACE has one deliberately masked CPU-bus interval: $C000-$C0FF.
+     * That page contains motherboard and slot soft-switch I/O rather than code.
+     * Everything else, including the complete peripheral/expansion ROM window
+     * $C100-$CFFF, is read through Apple2Hw.safe_read() exactly as the CPU maps it.
+     */
+    function traceAddressReadable(addr)
+    {
+        addr &= 0xffff;
+        return addr<0xc000 || addr>=0xc100;
+    }
+
+    function traceRead(addr)
+    {
+        addr &= 0xffff;
+        if(!traceAddressReadable(addr)) return null;
+        var hw = liveHW();
+        if(!hw || typeof(hw.safe_read)!="function") return null;
+        return hw.safe_read(addr) & 0xff;
+    }
+
+    function peripheralRomAddress(addr)
+    {
+        addr &= 0xffff;
+        return addr>=0xc100 && addr<=0xcfff;
+    }
+
     function currentAsmSymlink()
     {
         if(typeof(oASM)!="undefined" && oASM && oASM.symlink) return oASM.symlink;
@@ -14639,13 +14666,14 @@ function Apple2Debug()
     function decodeAt(addr)
     {
         if(!ensureInit()) return null;
-        var hw = liveHW();
-        if(!hw || typeof(hw.safe_read)!="function") return null;
 
         addr &= 0xffff;
-        var b0 = hw.safe_read(addr);
-        var b1 = hw.safe_read((addr+1)&0xffff);
-        var b2 = hw.safe_read((addr+2)&0xffff);
+        var b0 = traceRead(addr);
+        if(b0===null) return null;
+        var b1 = traceRead((addr+1)&0xffff);
+        var b2 = traceRead((addr+2)&0xffff);
+        if(b1===null) b1 = 0x00;
+        if(b2===null) b2 = 0x00;
         var cached = decodeCache[addr];
 
         if(cached && cached.b0===b0 && cached.b1===b1 && cached.b2===b2)
@@ -14710,10 +14738,11 @@ function Apple2Debug()
 
     function safeWord(addr)
     {
-        var hw = liveHW();
-        if(!hw || typeof(hw.safe_read)!="function") return null;
         addr &= 0xffff;
-        return (hw.safe_read(addr) | (hw.safe_read((addr+1)&0xffff)<<8)) & 0xffff;
+        var lo = traceRead(addr);
+        var hi = traceRead((addr+1)&0xffff);
+        if(lo===null || hi===null) return null;
+        return (lo | (hi<<8)) & 0xffff;
     }
 
     function parseAddress(value)
@@ -15113,15 +15142,15 @@ function Apple2Debug()
 
         if(node.t==="mem")
         {
-            var hw = liveHW();
-            if(!hw || typeof(hw.safe_read)!="function") throw new Error("Mapped memory is unavailable");
             var addr = conditionValue(node.a,state) & 0xffff;
-            var lo = Number(hw.safe_read(addr));
-            if(!Number.isFinite(lo)) throw new Error("Cannot read $"+oCOM.getHexWord(addr));
-            lo &= 0xff;
+            var lo = traceRead(addr);
+            if(lo===null)
+                throw new Error("Debugger read is masked at $"+oCOM.getHexWord(addr));
             if(node.w===8) return lo;
-            var hi = Number(hw.safe_read((addr+1)&0xffff));
-            if(!Number.isFinite(hi)) throw new Error("Cannot read $"+oCOM.getHexWord((addr+1)&0xffff));
+            var hiAddr = (addr+1)&0xffff;
+            var hi = traceRead(hiAddr);
+            if(hi===null)
+                throw new Error("Debugger read is masked at $"+oCOM.getHexWord(hiAddr));
             return lo | ((hi & 0xff)<<8);
         }
 
@@ -15500,12 +15529,11 @@ function Apple2Debug()
         var el = document.getElementById("cpuDbg_navStatus");
         if(!el) return;
 
-        var top = lastViewTop==null ? pc : lastViewTop;
-        el.textContent = "TOP $"+oCOM.getHexWord(top)+"  PC $"+oCOM.getHexWord(pc)
+        el.textContent = "PC $"+oCOM.getHexWord(pc)
             +boundaryActionText()+breakpointText();
         var title = followPC
-            ? "Listing follows the live program counter"
-            : "Manual instruction-row view; enable Follow PC to resume tracking";
+            ? "Listing tracks the live program counter"
+            : "Manual instruction-row view; enable Track PC to resume tracking";
         if(tempBreakpoint.condition)
             title += "; breakpoint condition: "+tempBreakpoint.condition;
         el.title = title;
@@ -15598,7 +15626,7 @@ function Apple2Debug()
         if(!el || el._cpuDbgNavigationBound) return;
         el._cpuDbgNavigationBound = true;
         el.tabIndex = 0;
-        el.title = "Instruction navigation: wheel/↑/↓/PgUp/PgDn. F9 breakpoint, F10 over, F11 step, Shift+F11 out.";
+        el.title = "Instruction navigation: wheel/↑/↓/PgUp/PgDn. F toggles Track PC; F9 breakpoint, F10 over, F11 step, Shift+F11 out.";
 
         el.addEventListener("wheel",function(event)
         {
@@ -15792,7 +15820,12 @@ function Apple2Debug()
         }
 
         var cfg = runSpeedConfig(runMode);
-        var result = machine.runLiveInstructionBatch(cfg.batch);
+        // Preserve large batches for 100/1000 IPS, but return at the first
+        // transition into or out of peripheral/expansion ROM. This guarantees
+        // at least one live render inside $C100-$CFFF even for short ROM calls.
+        var result = machine.runLiveInstructionBatch(cfg.batch,{
+            stopOnRegionChange:[0xc100,0xcfff]
+        });
         rememberEdges(result && result.edges);
         dbg.cycle({cpu:machine.cpuObj()});
 
@@ -16104,7 +16137,7 @@ function Apple2Debug()
     {
         this.body_id = body_id;
         oCOM.POPUP.set_state(wrapper_id,true);
-        return "<div class=appbox style='text-align:left;height:auto;min-height:430px;width:350px;padding:0 0 0 1px;margin:0'>"
+        return "<div class=appbox style='text-align:left;height:auto;min-height:412px;width:350px;padding:0 0 0 1px;margin:0'>"
             +"<div class=marginless style='border:0'>"
                 +"STEP TRACE "
                 +"<i id=cpuDbg_play class='fa fa-pause' title='pause CPU execution' onclick='oEMU.component.CPU.Apple2Debug.toggleRun(this)'></i>&nbsp;"
@@ -16122,28 +16155,29 @@ function Apple2Debug()
                 +"<div class='appbut skinny'><i id='cpuDbg_bootTrigger' class='fa fa-coffee' style='opacity:.35' title='bootlog trigger disabled' onclick='oEMU.component.CPU.Apple2Debug.toggleBootLogTrigger(this)'></i></div>"
                 +"<div class=\"appbut\" onclick=\"oEMU.component.CPU.Apple2Debug.close();oCOM.POPUP.toggle('"+wrapper_id+"');\" style=\"text-align:center;float:right;\">x</div>"
                 +"<div style='font-family:Arial,sans-serif;font-size:10px;line-height:18px;margin-top:3px'>"
-                    +"<label><input id='cpuDbg_followPc' type='checkbox' checked onchange='oEMU.component.CPU.Apple2Debug.setFollowPC(this.checked)'> Follow PC</label>"
-                    +"&nbsp; NAV "
-                    +"<button type='button' title='Previous instruction' onclick='oEMU.component.CPU.Apple2Debug.navigateRows(-1)' style='font-size:10px'>▲</button>"
-                    +"<button type='button' title='Next instruction' onclick='oEMU.component.CPU.Apple2Debug.navigateRows(1)' style='font-size:10px'>▼</button>"
-                    +"<button type='button' title='Page up' onclick='oEMU.component.CPU.Apple2Debug.navigatePage(-1)' style='font-size:10px'>Pg↑</button>"
-                    +"<button type='button' title='Page down' onclick='oEMU.component.CPU.Apple2Debug.navigatePage(1)' style='font-size:10px'>Pg↓</button>"
-                    +"<button type='button' title='Return to live PC and resume following' onclick='oEMU.component.CPU.Apple2Debug.setFollowPC(true)' style='font-size:10px'>PC</button>"
-                    +"<span id='cpuDbg_navStatus' style='margin-left:5px;font-family:"+listingFontFamily+"'></span>"
-                    +"<br>BREAK&nbsp; <input id='cpuDbg_breakAddr' type='text' value='' maxlength='6' spellcheck='false' title='Temporary one-shot execution breakpoint address; click a listing row to fill it' style='width:58px;font-family:"+listingFontFamily+";font-size:10px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBreakpointTarget(this.value)'> "
+                    +"<div style='white-space:nowrap'>"
+                        +"<label><input id='cpuDbg_followPc' type='checkbox' checked onchange='oEMU.component.CPU.Apple2Debug.setFollowPC(this.checked)'> Track PC</label>"
+                        +"&nbsp;NAV "
+                        +"<button type='button' title='Previous instruction' onclick='oEMU.component.CPU.Apple2Debug.navigateRows(-1)' style='font-size:10px'>▲</button>"
+                        +"<button type='button' title='Next instruction' onclick='oEMU.component.CPU.Apple2Debug.navigateRows(1)' style='font-size:10px'>▼</button>"
+                        +"<button type='button' title='Page up' onclick='oEMU.component.CPU.Apple2Debug.navigatePage(-1)' style='font-size:10px'>Pg↑</button>"
+                        +"<button type='button' title='Page down' onclick='oEMU.component.CPU.Apple2Debug.navigatePage(1)' style='font-size:10px'>Pg↓</button>"
+                        +"<button type='button' title='Return to live PC and resume tracking' onclick='oEMU.component.CPU.Apple2Debug.setFollowPC(true)' style='font-size:10px'>PC</button>"
+                        +"<span id='cpuDbg_navStatus' style='margin-left:4px;font-family:"+listingFontFamily+"'></span>"
+                    +"</div>"
+                    +"BREAK&nbsp; <input id='cpuDbg_breakAddr' type='text' value='' maxlength='6' spellcheck='false' title='Temporary one-shot execution breakpoint address; click a listing row to fill it' style='width:58px;font-family:"+listingFontFamily+";font-size:10px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBreakpointTarget(this.value)'> "
                     +"<button id='cpuDbg_breakArm' type='button' title='Arm one-shot breakpoint (F9)' onclick='oEMU.component.CPU.Apple2Debug.setTemporaryBreakpointFromInput(false)' style='font-size:10px'>Arm</button> "
                     +"<button type='button' title='Arm breakpoint and continue execution to it' onclick='oEMU.component.CPU.Apple2Debug.setTemporaryBreakpointFromInput(true)' style='font-size:10px'>Run→</button> "
                     +"<button type='button' title='Clear temporary breakpoint (Shift+F9)' onclick='oEMU.component.CPU.Apple2Debug.clearTemporaryBreakpoint()' style='font-size:10px'>Clear</button>"
                     +"<br>IF&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input id='cpuDbg_breakCond' type='text' value='' spellcheck='false' title='"+conditionHelp+"' placeholder='e.g. A==$10 && M[$4000]==$80' style='width:286px;font-family:"+listingFontFamily+";font-size:10px' onchange='oEMU.component.CPU.Apple2Debug.setBreakpointCondition(this.value)'>"
                     +"<br>LISTING&nbsp; Columns <input id='cpuDbg_columns' type='text' value='"+listingColumns+"' spellcheck='false' style='width:220px;font-family:"+listingFontFamily+";font-size:10px' onchange='oEMU.component.CPU.Apple2Debug.setListingColumns(this.value)'>"
-                    +"<div style='margin-left:46px'>"
-                        +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('default')\" style='font-size:10px'>default ▦</button> "
-                        +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('wide')\" style='font-size:10px'>wide ▦</button> "
-                        +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('compact')\" style='font-size:10px'>compact ▦</button>"
-                    +"</div>"
-                    +"<div style='margin-left:46px'>SYMBOLS "
-                        +"<button type='button' title='Load RetroAppleJS assembler symbol export (.symbols.json) or simple text symbol map' onclick=\"oEMU.component.CPU.Apple2Debug.chooseSymbolFile()\" style='font-size:10px'>load</button> "
-                        +"<button id='cpuDbg_symbolClear' type='button' title='Clear loaded symbol table' onclick=\"oEMU.component.CPU.Apple2Debug.clearSymbols()\" style='font-size:10px'>clear</button> "
+                    +"<div style='white-space:nowrap;font-size:9px'>"
+                        +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('default')\" style='font-size:9px;padding:0 3px'>default ▦</button> "
+                        +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('wide')\" style='font-size:9px;padding:0 3px'>wide ▦</button> "
+                        +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('compact')\" style='font-size:9px;padding:0 3px'>compact ▦</button>"
+                        +"&nbsp; SYMBOLS "
+                        +"<button type='button' title='Load RetroAppleJS assembler symbol export (.symbols.json) or simple text symbol map' onclick=\"oEMU.component.CPU.Apple2Debug.chooseSymbolFile()\" style='font-size:9px;padding:0 3px'>load</button> "
+                        +"<button id='cpuDbg_symbolClear' type='button' title='Clear loaded symbol table' onclick=\"oEMU.component.CPU.Apple2Debug.clearSymbols()\" style='font-size:9px;padding:0 3px'>clear</button> "
                         +"<span id='cpuDbg_symbolStatus' title='No external symbol table loaded'>none</span>"
                         +"<input id='cpuDbg_symbolFile' type='file' accept='.symbols.json,.json,.sym,.txt,application/json,text/plain' style='display:none' onchange='if(this.files&&this.files[0]) oEMU.component.CPU.Apple2Debug.loadSymbolFile(this.files[0]);this.value=\"\";'>"
                     +"</div>"
@@ -16566,6 +16600,9 @@ function Apple2Debug()
             ,"followPC":followPC
             ,"viewTop":lastViewTop
             ,"mappedBus":!!(liveHW() && typeof(liveHW().safe_read)=="function")
+            ,"traceMaskedRange":"$C000-$C0FF"
+            ,"tracePeripheralROM":"$C100-$CFFF"
+            ,"pcInPeripheralROM":cpu ? peripheralRomAddress(cpu.watch().pc) : false
             ,"liveStepAPI":!!(liveMachine() && typeof(liveMachine().stepLiveInstruction)=="function")
             ,"boundaryAction":boundaryAction ? Object.assign({},boundaryAction) : null
             ,"breakpoint":{
@@ -46680,14 +46717,32 @@ function Apple2Plus(context)
     }
 
     // Batch instruction stepping while preserving every executed PC edge for
-    // the live debugger's boundary map.  Video/device-cycle work is finalised
-    // only once per batch.
-    this.runLiveInstructionBatch = function(count)
+    // the live debugger's boundary map. Video/device-cycle work is finalised
+    // only once per batch. A caller may optionally request an early return when
+    // execution crosses into or out of one address region; this lets a realtime
+    // debugger expose short ROM excursions without reducing its normal batch size.
+    this.runLiveInstructionBatch = function(count,options)
     {
+        options = options || {};
         count = Math.max(1,Number(count)|0);
         var edges = [];
         var totalTicks = 0;
         var last = null;
+        var stoppedForRegion = false;
+
+        var stopRange = Array.isArray(options.stopOnRegionChange)
+            ? options.stopOnRegionChange
+            : null;
+        var regionFrom = stopRange && stopRange.length>=2
+            ? (Number(stopRange[0]) & 0xffff)
+            : null;
+        var regionTo = stopRange && stopRange.length>=2
+            ? (Number(stopRange[1]) & 0xffff)
+            : null;
+        var regionEnabled = regionFrom!==null && regionTo!==null && regionFrom<=regionTo;
+        var startedInsideRegion = regionEnabled
+            ? ((cpu.watch().pc & 0xffff)>=regionFrom && (cpu.watch().pc & 0xffff)<=regionTo)
+            : false;
 
         for(var i=0;i<count;i++)
         {
@@ -46696,6 +46751,16 @@ function Apple2Plus(context)
             if(one.ticks<=0) break;
             totalTicks += one.ticks;
             edges.push([one.startPC,one.endPC]);
+
+            if(regionEnabled)
+            {
+                var endedInsideRegion = one.endPC>=regionFrom && one.endPC<=regionTo;
+                if(endedInsideRegion!==startedInsideRegion)
+                {
+                    stoppedForRegion = true;
+                    break;
+                }
+            }
         }
 
         advanceVideo(totalTicks,1);
@@ -46707,6 +46772,7 @@ function Apple2Plus(context)
             ,"edges":edges
             ,"state":last ? last.state : cpu.watch()
             ,"stalled":edges.length===0
+            ,"stoppedForRegion":stoppedForRegion
         };
     }
 
