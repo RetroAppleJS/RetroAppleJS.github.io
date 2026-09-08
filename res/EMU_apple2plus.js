@@ -409,6 +409,10 @@ function Apple2Plus(context)
         var totalTicks = 0;
         var last = null;
         var stoppedForRegion = false;
+        var stoppedForBoundaryCallback = false;
+        var boundaryCallback = typeof(options.onInstructionBoundary)==="function"
+            ? options.onInstructionBoundary
+            : null;
 
         var stopRange = Array.isArray(options.stopOnRegionChange)
             ? options.stopOnRegionChange
@@ -432,6 +436,16 @@ function Apple2Plus(context)
             totalTicks += one.ticks;
             edges.push([one.startPC,one.endPC]);
 
+            // Optional debugger/tool observer. Returning true stops this batch
+            // *after* the current complete instruction boundary. The instruction
+            // itself is never skipped and all normal CPU/I/O/video work remains
+            // part of this live execution path.
+            if(boundaryCallback && boundaryCallback(one,edges.length)===true)
+            {
+                stoppedForBoundaryCallback = true;
+                break;
+            }
+
             if(regionEnabled)
             {
                 var endedInsideRegion = one.endPC>=regionFrom && one.endPC<=regionTo;
@@ -453,6 +467,7 @@ function Apple2Plus(context)
             ,"state":last ? last.state : cpu.watch()
             ,"stalled":edges.length===0
             ,"stoppedForRegion":stoppedForRegion
+            ,"stoppedForBoundaryCallback":stoppedForBoundaryCallback
         };
     }
 
