@@ -16017,8 +16017,8 @@ function Apple2Debug()
         el = el || document.getElementById("cpuDbg_play");
         if(!el || !el.classList) return;
         var running = executionRunning();
-        el.classList.toggle("fa-pause",running);
-        el.classList.toggle("fa-play",!running);
+        el.classList.toggle("fa-pause-circle",running);
+        el.classList.toggle("fa-play-circle",!running);
         el.title = running ? "pause CPU execution" : "continue CPU execution";
     }
 
@@ -16412,7 +16412,7 @@ function Apple2Debug()
                     +"<div style='display:flex;align-items:center;gap:3px;white-space:nowrap;min-width:0'>"
                         +"<span style='font-size:12px;'>STEP TRACE&nbsp;</span>"
                         //+"<span style='font-size:15px;font-weight:400;line-height:22px;margin-right:2px'>STEP TRACE</span>"
-                        +"<i id=cpuDbg_play class='fa fa-pause' style='font-size:11px;cursor:pointer' title='pause CPU execution' onclick='oEMU.component.CPU.Apple2Debug.toggleRun(this)'></i>"
+                        +"<i id=cpuDbg_play class='fa fa-pause-circle' style='font-size:11px;cursor:pointer' title='pause CPU execution' onclick='oEMU.component.CPU.Apple2Debug.toggleRun(this)'></i>"
                         +"<i class='fa fa-sign-in-alt' style='font-size:11px;cursor:pointer' title='step one live instruction (F11)' onclick='oEMU.component.CPU.Apple2Debug.step()'></i>"
                         +"<i class='fa fa-paw' style='font-size:11px;cursor:pointer' title='step over JSR/BRK (F10)' onclick='oEMU.component.CPU.Apple2Debug.stepOver()'></i>"
                         +"<i class='fa fa-sign-out-alt' style='font-size:11px;cursor:pointer' title='step out of current routine (Shift+F11)' onclick='oEMU.component.CPU.Apple2Debug.stepOut()'></i>"
