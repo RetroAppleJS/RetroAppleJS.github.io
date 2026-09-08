@@ -68,6 +68,13 @@ function Apple2Debug()
     // Listing viewport state. Manual navigation walks decoded instruction rows,
     // never address deltas.
     var followPC = true;
+    // Display policy only: the live CPU always executes every instruction.
+    // When showLoopSteps is false, repeated iterations of a dynamically proven
+    // backward branch/JMP loop are not rendered; the display resumes exactly at
+    // the first instruction boundary that exits that loop.
+    var showLoopSteps = true;
+    var activeClosedLoop = null;
+    var loopDisplayStats = {detected:0,hiddenInstructions:0,exits:0};
     var manualTop = null;
     var lastViewTop = null;
     var lastRows = [];
@@ -1045,8 +1052,154 @@ function Apple2Debug()
 
     function syncFollowControl()
     {
-        var input = document.getElementById("cpuDbg_followPc");
-        if(input && input.checked!==followPC) input.checked = followPC;
+        var icon = document.getElementById("cpuDbg_trackPc");
+        if(!icon) return;
+        icon.classList.toggle("fa-lock",followPC);
+        icon.classList.toggle("fa-lock-open",!followPC);
+        icon.style.opacity = "1";
+        icon.setAttribute("aria-pressed",followPC ? "true" : "false");
+        icon.title = followPC
+            ? "Track PC enabled — click to unlock the listing"
+            : "Track PC disabled — click to lock the listing to the live PC";
+    }
+
+    function syncLoopControl()
+    {
+        var icon = document.getElementById("cpuDbg_showLoopSteps");
+        if(!icon) return;
+        icon.style.opacity = showLoopSteps ? "1" : ".32";
+        icon.setAttribute("aria-pressed",showLoopSteps ? "true" : "false");
+        icon.title = showLoopSteps
+            ? "Closed-loop steps visible — click to hide repeated loop iterations"
+            : "Closed-loop steps hidden — CPU still executes every instruction; click to show them";
+    }
+
+    function resetClosedLoopDisplayState()
+    {
+        activeClosedLoop = null;
+    }
+
+    function loopContains(loop,addr)
+    {
+        addr &= 0xffff;
+        return !!loop && addr>=loop.lo && addr<=loop.hi;
+    }
+
+    function isTakenBackwardLoopEdge(d,from,to)
+    {
+        if(!d) return false;
+        from &= 0xffff;
+        to &= 0xffff;
+        // Restrict loop discovery to actual taken relative branches and JMPs.
+        // RTS/RTI/call returns may move backwards too, but are not proof of a
+        // closed loop and therefore must never trigger display suppression.
+        if(to>from) return false;
+        if(d.adm==="rel")
+            return d.val!==null && d.val!==undefined && to===(d.val&0xffff);
+        // The live endPC is authoritative for JMP, including JMP (indirect),
+        // whose decoded operand value is the pointer rather than its destination.
+        return d.ins==="JMP";
+    }
+
+    function observeClosedLoopEdge(from,to)
+    {
+        from &= 0xffff;
+        to &= 0xffff;
+        if(showLoopSteps) return {suppress:false,entered:false,exited:false};
+
+        var d = decodeAt(from);
+        if(!d)
+        {
+            if(activeClosedLoop)
+            {
+                resetClosedLoopDisplayState();
+                loopDisplayStats.exits++;
+                return {suppress:false,entered:false,exited:true};
+            }
+            return {suppress:false,entered:false,exited:false};
+        }
+
+        if(!activeClosedLoop)
+        {
+            if(!isTakenBackwardLoopEdge(d,from,to))
+                return {suppress:false,entered:false,exited:false};
+
+            activeClosedLoop = {
+                 target:to
+                ,backPC:from
+                ,lo:to
+                ,hi:from
+                ,callDepth:0
+                ,iterations:1
+                ,instructions:1
+            };
+            loopDisplayStats.detected++;
+            loopDisplayStats.hiddenInstructions++;
+            return {suppress:true,entered:true,exited:false};
+        }
+
+        var loop = activeClosedLoop;
+        loop.instructions++;
+        loopDisplayStats.hiddenInstructions++;
+
+        // A subroutine called from inside the loop remains part of the hidden
+        // iteration even when its address lies outside the loop's numeric range.
+        // Nested JSR/RTS pairs are tracked so such calls do not look like exits.
+        if(loop.callDepth>0)
+        {
+            if(d.b0===0x20) loop.callDepth++;       // JSR
+            else if(d.b0===0x60) loop.callDepth--;  // RTS
+
+            if(loop.callDepth===0 && !loopContains(loop,to))
+            {
+                resetClosedLoopDisplayState();
+                loopDisplayStats.exits++;
+                return {suppress:false,entered:false,exited:true};
+            }
+            return {suppress:true,entered:false,exited:false};
+        }
+
+        // An interrupt may temporarily take execution outside the numeric loop
+        // range. Treat that as a visible escape rather than risk hiding unrelated
+        // execution indefinitely; a later taken back-edge will prove the loop again.
+        if(!loopContains(loop,from))
+        {
+            if(loopContains(loop,to))
+                return {suppress:true,entered:false,exited:false};
+            resetClosedLoopDisplayState();
+            loopDisplayStats.exits++;
+            return {suppress:false,entered:false,exited:true};
+        }
+
+        if(d.b0===0x20)
+        {
+            loop.callDepth = 1;
+            return {suppress:true,entered:false,exited:false};
+        }
+
+        // The instruction that originally closed the loop is the definitive
+        // iteration/exit boundary. A taken edge repeats; fall-through exits.
+        if(from===loop.backPC)
+        {
+            if(to===loop.target)
+            {
+                loop.iterations++;
+                return {suppress:true,entered:false,exited:false};
+            }
+            resetClosedLoopDisplayState();
+            loopDisplayStats.exits++;
+            return {suppress:false,entered:false,exited:true};
+        }
+
+        // Early branches/jumps out of the proven loop also end suppression.
+        if(!loopContains(loop,to))
+        {
+            resetClosedLoopDisplayState();
+            loopDisplayStats.exits++;
+            return {suppress:false,entered:false,exited:true};
+        }
+
+        return {suppress:true,entered:false,exited:false};
     }
 
     function syncSymbolControls()
@@ -1195,6 +1348,7 @@ function Apple2Debug()
         }
 
         syncFollowControl();
+        syncLoopControl();
         syncSymbolControls();
         syncBreakpointControls();
         updateNavigationStatus(pc);
@@ -1449,14 +1603,43 @@ function Apple2Debug()
         }
 
         var cfg = runSpeedConfig(runMode);
+        var renderAfterBatch = true;
+        var batchOptions = {stopOnRegionChange:[0xc100,0xcfff]};
+
+        if(!showLoopSteps)
+        {
+            renderAfterBatch = activeClosedLoop===null;
+            batchOptions.onInstructionBoundary = function(one)
+            {
+                var decision = observeClosedLoopEdge(one.startPC,one.endPC);
+                if(decision.suppress)
+                {
+                    renderAfterBatch = false;
+                    return false;
+                }
+                if(decision.exited)
+                {
+                    // Stop this cooperative batch exactly at the first boundary
+                    // outside the loop so the user sees the loop exit, not some
+                    // later sample up to 50 instructions further on.
+                    renderAfterBatch = true;
+                    return true;
+                }
+                renderAfterBatch = true;
+                return false;
+            };
+        }
+
         // Preserve large batches for 100/1000 IPS, but return at the first
-        // transition into or out of peripheral/expansion ROM. This guarantees
-        // at least one live render inside $C100-$CFFF even for short ROM calls.
-        var result = machine.runLiveInstructionBatch(cfg.batch,{
-            stopOnRegionChange:[0xc100,0xcfff]
-        });
+        // transition into or out of peripheral/expansion ROM. Closed-loop hiding
+        // is an additional display policy and never bypasses CPU execution.
+        var result = machine.runLiveInstructionBatch(cfg.batch,batchOptions);
         rememberEdges(result && result.edges);
-        dbg.cycle({cpu:machine.cpuObj()});
+
+        // While a proven loop is repeating, leave listing/PC/registers frozen.
+        // Breakpoints and stalled ownership changes still force an exact render.
+        if(showLoopSteps || renderAfterBatch || !fixedRunning || !result || result.stalled)
+            dbg.cycle({cpu:machine.cpuObj()});
 
         // A temporary breakpoint callback can stop fixedRunning from inside a
         // batch. Check ownership again before scheduling the next batch.
@@ -1474,6 +1657,7 @@ function Apple2Debug()
         stopBoundaryAction();
         if(runMode==="system")
         {
+            resetClosedLoopDisplayState();
             stopFixedRun();
             resumeSystem();
         }
@@ -1548,6 +1732,7 @@ function Apple2Debug()
     function finishBoundaryAction()
     {
         stopBoundaryAction();
+        resetClosedLoopDisplayState();
         var cpu = liveCPU();
         if(cpu) dbg.cycle({cpu:cpu,force:true});
         syncRunIcon();
@@ -1573,6 +1758,7 @@ function Apple2Debug()
         var cfg = boundarySpeedConfig();
         var completed = 0;
         var stopped = false;
+        var renderBoundaryProgress = showLoopSteps || activeClosedLoop===null;
 
         for(var i=0;i<cfg.batch && boundaryAction===action;i++)
         {
@@ -1591,14 +1777,31 @@ function Apple2Debug()
             action.instructions++;
             rememberSequential(one.startPC,one.endPC);
 
+            // Completion of Step Over/Out has priority over a display-only
+            // loop yield. Otherwise an RTS/return that is also the loop exit could
+            // be followed by one unintended extra instruction on the next batch.
             if(boundaryActionStopped(action,before,opcode,one))
             {
                 stopped = true;
                 break;
             }
+
+            if(!showLoopSteps)
+            {
+                var loopDecision = observeClosedLoopEdge(one.startPC,one.endPC);
+                if(loopDecision.suppress) renderBoundaryProgress = false;
+                else if(loopDecision.exited)
+                {
+                    renderBoundaryProgress = true;
+                    // Yield at the exact loop exit before continuing Over/Out.
+                    break;
+                }
+                else renderBoundaryProgress = true;
+            }
         }
 
-        dbg.cycle({cpu:cpu});
+        if(showLoopSteps || renderBoundaryProgress || boundaryAction!==action || stopped || completed===0)
+            dbg.cycle({cpu:cpu});
 
         if(boundaryAction!==action || stopped || completed===0)
         {
@@ -1801,7 +2004,8 @@ function Apple2Debug()
                             +"ontouchstart='return oEMU.component.CPU.Apple2Debug.navButtonDown(this,1)' ontouchend='return oEMU.component.CPU.Apple2Debug.navButtonUp(this)' ontouchcancel='return oEMU.component.CPU.Apple2Debug.navButtonCancel(this)' "
                             +"style='border:0;background:transparent;-webkit-appearance:none;appearance:none;padding:0 1px;margin:0;line-height:1;font-size:11px;cursor:pointer'>↓</button>"
                         +"<span id='cpuDbg_navStatus' style='font-family:"+listingFontFamily+";font-size:9px'></span>"
-                        +"<label title='Track the live program counter'><input id='cpuDbg_followPc' type='checkbox' checked onchange='oEMU.component.CPU.Apple2Debug.setFollowPC(this.checked)' style='font-size:9px;margin:0 1px 0 0;vertical-align:middle'> track</label>"
+                        +"<i id='cpuDbg_showLoopSteps' class='fa fa-retweet' role='button' aria-pressed='true' title='Closed-loop steps visible — click to hide repeated loop iterations' onclick='oEMU.component.CPU.Apple2Debug.toggleLoopSteps()' style='font-size:10px;cursor:pointer;margin-left:3px'></i>"
+                        +"<i id='cpuDbg_trackPc' class='fa fa-lock' role='button' aria-pressed='true' title='Track PC enabled — click to unlock the listing' onclick='oEMU.component.CPU.Apple2Debug.toggleTrackPC()' style='font-size:10px;cursor:pointer;margin-left:4px'></i>"
                         +"<span>BREAK</span>"
                         +"<input id='cpuDbg_breakAddr' type='text' value='' maxlength='6' spellcheck='false' title='Temporary one-shot execution breakpoint address; click a listing row to fill it' style='width:40px;height:18px;padding:0 2px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBreakpointTarget(this.value)'>"
                         +"<select id='cpuDbg_speed' title='STEP TRACE execution speed' onchange='oEMU.component.CPU.Apple2Debug.setRunSpeed(this.value)' style='width:100px;height:18px;padding:0;font-size:9px'>"
@@ -2093,6 +2297,25 @@ function Apple2Debug()
         return setFollowState(enabled,true);
     };
 
+    this.toggleTrackPC = function()
+    {
+        return this.setFollowPC(!followPC);
+    };
+
+    this.setShowLoopSteps = function(enabled)
+    {
+        showLoopSteps = !!enabled;
+        resetClosedLoopDisplayState();
+        syncLoopControl();
+        if(currentPC!==null) renderListing(currentPC,true);
+        return showLoopSteps;
+    };
+
+    this.toggleLoopSteps = function()
+    {
+        return this.setShowLoopSteps(!showLoopSteps);
+    };
+
     this.navigateRows = function(delta)
     {
         delta = Number(delta)|0;
@@ -2149,6 +2372,7 @@ function Apple2Debug()
         stopBoundaryAction();
         stopFixedRun();
         runMode = value;
+        if(runMode==="system") resetClosedLoopDisplayState();
 
         var sel = document.getElementById("cpuDbg_speed");
         if(sel && sel.value!==runMode) sel.value = runMode;
@@ -2173,6 +2397,9 @@ function Apple2Debug()
 
     this.step = function()
     {
+        // A direct Step-In request is always displayed literally. Loop hiding is
+        // a continuous-run presentation policy, not an instruction-skipping mode.
+        resetClosedLoopDisplayState();
         var machine = liveMachine();
         if(!machine || typeof(machine.stepLiveInstruction)!="function") return false;
 
@@ -2300,6 +2527,7 @@ function Apple2Debug()
         // Never leave an invisible debugger-owned run or execution trap active.
         stopBoundaryAction();
         stopFixedRun();
+        resetClosedLoopDisplayState();
         clearTemporaryBreakpoint(false);
         syncRunIcon();
     };
@@ -2314,6 +2542,9 @@ function Apple2Debug()
             ,"systemRunning":systemRunning()
             ,"resumePct":resumePct
             ,"followPC":followPC
+            ,"showLoopSteps":showLoopSteps
+            ,"closedLoop":activeClosedLoop ? Object.assign({},activeClosedLoop) : null
+            ,"loopDisplayStats":Object.assign({},loopDisplayStats)
             ,"viewTop":lastViewTop
             ,"mappedBus":!!(liveHW() && typeof(liveHW().safe_read)=="function")
             ,"traceMaskedRange":"$C000-$C0FF"
