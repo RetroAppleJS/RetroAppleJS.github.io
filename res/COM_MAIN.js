@@ -245,6 +245,47 @@ function COM()
       return bytes;
   }
 
+  /*
+   * Shared embedded-data decoder.
+   *
+   * Offline catalogs use the same record shape for binary and text assets:
+   *   {encoding:"zlib-base64",data:"..."}
+   *   {encoding:"base64",data:"..."}
+   *
+   * A bare string remains a shorthand for zlib-base64.
+   * output is "bytes" (default) or "text".
+   */
+  this.decodeDataRecord = function(rec,output)
+  {
+      if(rec==null) return null;
+      if(typeof rec=="string")
+          rec = {encoding:"zlib-base64",data:rec};
+
+      var encoding = String(rec.encoding || "base64").toLowerCase();
+      var bytes = this.base64ToArray(String(rec.data || ""));
+
+      if(bytes==null)
+          throw new Error("Invalid base64 payload");
+
+      if(encoding=="zlib-base64")
+      {
+          if(typeof pako=="undefined" || typeof pako.inflate!="function")
+              throw new Error("zlib-base64 payload requires pako.inflate");
+          bytes = pako.inflate(bytes);
+      }
+      else if(encoding!="base64")
+          throw new Error("Unsupported data encoding: " + encoding);
+
+      if(output=="text")
+      {
+          if(typeof TextDecoder!="function")
+              throw new Error("TextDecoder is not available");
+          return new TextDecoder(rec.charset || "utf-8").decode(bytes);
+      }
+
+      return bytes;
+  }
+
   this.ArrayBufferTobase64 = function(buffer) 
   {
       //return btoa(String.fromCharCode.apply(null, new Uint8Array(bytes)));
@@ -1859,7 +1900,7 @@ function prettyJsonAllman(value, indent) {
     }
   }
  
-  this.GetHTTP = function(url,responsetype,callback_function,arg)
+  this.GetHTTP = function(url,responsetype,callback_function,arg,error_callback)
   {
     // random value (workaround to avoid caching)
     var r = ""; //"?"+btoa(Math.round(Math.random(1)*6*6*6)+"").replace(new RegExp("=","g"),"");
@@ -1867,6 +1908,11 @@ function prettyJsonAllman(value, indent) {
     xhttp.responseType = responsetype;    // check: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/responseType
     xhttp["arg"] = arg;
     xhttp.onload = callback_function;
+    if(typeof error_callback=="function")
+    {
+      xhttp.onerror = error_callback;
+      xhttp.ontimeout = error_callback;
+    }
     xhttp.open("GET", url+r);
     xhttp.send();
   }
@@ -1987,6 +2033,38 @@ function prettyJsonAllman(value, indent) {
       return retryAfter != "" || /rate\s+limit/i.test(message);
     },
 
+    isOffline:function()
+    {
+      return typeof navigator != "undefined" && navigator.onLine === false;
+    },
+
+    offlineDirectory:function(table,url)
+    {
+      if(!table) return null;
+
+      var entry = table[url];
+      if(entry === undefined) return null;
+
+      if(Array.isArray(entry))
+        return {list:_COM_this.cloneJSON(entry)};
+
+      return {
+         list:_COM_this.cloneJSON(entry.list || [])
+        ,arg:entry.arg === undefined ? undefined : _COM_this.cloneJSON(entry.arg)
+      };
+    },
+
+    offlineData:function(table,arg,fullPath,output)
+    {
+      if(!table) return null;
+
+      arg = arg || {};
+      var rec = table[arg.path] || table[arg.name] || table[fullPath];
+      if(rec === undefined) return null;
+
+      return _COM_this.decodeDataRecord(rec,output);
+    },
+
     pack:function(arg)
     {
       return encodeURIComponent(JSON.stringify(arg || {}));
@@ -2074,8 +2152,16 @@ function prettyJsonAllman(value, indent) {
         return true;
       }
 
-      if(typeof navigator != "undefined" && navigator.onLine === false)
+      if(this.isOffline())
+      {  
         if(useFallback("navigator.onLine=false")) return true;
+        callback({
+           status:0
+          ,message:"Offline: no embedded catalog data for " + String(arg.path || "")
+          ,url:url
+        });
+        return false;
+      }
 
       if(this.cache[url] !== undefined)
       {
@@ -2088,6 +2174,7 @@ function prettyJsonAllman(value, indent) {
       {
         if(this.status != 200)
         {
+          if(Number(this.status)==0 && useFallback("network error (HTTP 0)")) return;
           if(self.isRateLimitResponse(this) && useFallback("GitHub API rate limit (HTTP " + this.status + ")")) return;
           callback({status:this.status,message:this.responseText || this.response,url:url});
           return;
@@ -2117,6 +2204,16 @@ function prettyJsonAllman(value, indent) {
         {
           callback({status:this.status,message:e.message,url:url});
         }
+      },null,function()
+      {
+        if(useFallback("network error")) return;
+        callback({
+           status:this.status || 0
+          ,message:"Network error"
+          ,url:url
+        });
+
+
       });
 
       return true;
