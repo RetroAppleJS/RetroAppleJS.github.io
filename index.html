@@ -2356,14 +2356,16 @@ Label1 TXA
 
                   finish(text);
                   return true;
-                 }
-                catch(err)
-                {
-                  ASM_setStatus(
-                    "Offline source decode failed: " +
-                    (err.message || String(err)),
-                    "bad"
-                  );
+                  }
+                  catch(err)
+                  {
+                    ASM_setStatus(
+                      "Offline source decode failed: " +
+                      (err.message || String(err)),
+                      "bad"
+                    );
+                    return true;
+                  }
                 }
 
               /*
