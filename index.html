@@ -783,6 +783,7 @@
           <div id="tab2" style="width:1300px;user-select:none;-moz-user-select:none;-webkit-user-drag:none;-webkit-user-select:none;-ms-user-select:none;">
             <!--form name="tab2" class="tabdata"><input name="tabdata" value='{"SYS":"A2P"}'></form!-->
             <script type="text/javascript" src="res/ASM_core.js"></script>
+            <script type="text/javascript" src="res/ASM_OFFLINE.js"></script>
 
             <style>
               /*
@@ -2323,20 +2324,100 @@ Label1 TXA
             function ASM_loadCatalogSource(arg)
             {
               var url = arg.download_url || oCOM.CATALOG.githubRawURL(arg);
-              oCOM.GetHTTP(url,"text",function()
+              var name = arg.name || String(arg.path || "source.S").split("/").pop();
+
+              function finish(text)
               {
-                if(this.status && this.status != 200)
+                ASM_loadSourceText(name,text);
+                oCOM.CATALOG.close("sourceCat");
+              }
+
+              function loadOffline(reason)
+              {
+                if(typeof ASM_OfflineSources == "undefined")
+                  return false;
+
+                try   
                 {
-                  ASM_setStatus("Source catalog load failed: HTTP " + this.status,"bad");
-                  return;
+                  var text = oCOM.CATALOG.offlineData(
+                    ASM_OfflineSources,
+                    arg,
+                    url,
+                    "text"
+                  );
+
+                  if(text == null)
+                    return false;
+
+                  console.warn(
+                    "Using offline source fallback for " +
+                    arg.path + ": " + reason
+                  );
+
+                  finish(text);
+                  return true;
+                 }
+                catch(err)
+                {
+                  ASM_setStatus(
+                    "Offline source decode failed: " +
+                    (err.message || String(err)),
+                    "bad"
+                  );
                 }
 
-                ASM_loadSourceText(
-                  arg.name || String(arg.path || "source.S").split("/").pop(),
-                  this.responseText || this.response || ""
+              /*
+               * Do not attempt raw GitHub when the browser already knows it is
+               * offline.  This also covers the case where the directory listing
+               * came from cache before connectivity was lost.
+               */
+              if(oCOM.CATALOG.isOffline())
+              {
+                if(loadOffline("navigator.onLine=false"))
+                  return;
+
+                ASM_setStatus(
+                  "This source file is not available offline.",
+                  "warn"
                 );
-                oCOM.CATALOG.close("sourceCat");
-              });
+                return;
+              }
+
+              oCOM.GetHTTP(
+                url,
+                "text",
+                function()
+                {
+                  if(this.status != 200)
+                  {
+                    if(loadOffline("HTTP " + this.status))
+                      return;
+
+                    ASM_setStatus(
+                      "Source catalog load failed: HTTP " + this.status,
+                      "bad"
+                    );
+                    return;
+                  }
+
+                  finish(
+                    this.responseText ||
+                    this.response ||
+                    ""
+                  );
+                },
+                null,
+                function()
+                {
+                  if(loadOffline("network error"))
+                    return;
+
+                  ASM_setStatus(
+                    "Source catalog load failed: network unavailable.",
+                    "bad"
+                  );
+                }
+              );
             }
 
             function ASM_sourceCatalogOpen()
@@ -2357,6 +2438,21 @@ Label1 TXA
                 ,basepath:"asm"
                 ,path:"asm"
                 ,fileIcon:"fa fa-file-code"
+                ,offlineProvider:function(url)
+                {
+                  if(typeof ASM_GitHubDirOffline == "undefined")
+                    return null;
+
+                  var offline = oCOM.CATALOG.offlineDirectory(
+                    ASM_GitHubDirOffline,
+                    url
+                  );
+
+                  if(offline)
+                    console.warn("Using offline assembler source directory fallback");
+
+                  return offline;
+                }
                 ,filter:function(entry)
                 {
                   return entry.type == "dir" || /\.(s|asm|inc|txt|src|a65|mac)$/i.test(entry.name || "");
