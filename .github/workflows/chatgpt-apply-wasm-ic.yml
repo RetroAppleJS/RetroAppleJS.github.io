@@ -1,0 +1,448 @@
+name: Apply WASM IC breakpoint patch
+
+on:
+  push:
+    branches: [ "chatgpt/wasm-ic-breakpoint" ]
+    paths:
+      - ".github/workflows/chatgpt-apply-wasm-ic.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/wasm-ic-breakpoint
+
+      - name: Apply exact source patch
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("res/EMU_WASMcpu6502.js")
+          s = path.read_text()
+
+          def rep(old, new, label):
+              global s
+              n = s.count(old)
+              if n != 1:
+                  raise SystemExit(f"{label}: expected exactly 1 match, found {n}")
+              s = s.replace(old, new, 1)
+
+          rep(
+          '''    const ACTIVITY_RECORD_BYTES=10;
+              const ACTIVITY_GROUP_MARKER_ADR=0xFFFF;
+              const INSTRLEN=new Uint8Array([''',
+          '''    const ACTIVITY_RECORD_BYTES=10;
+              const ACTIVITY_GROUP_MARKER_ADR=0xFFFF;
+              const INSTRUCTION_COUNT_MODULO=0x1000000000000; // 2^48
+              const INSTRLEN=new Uint8Array([''',
+          "48-bit constant")
+
+          rep(
+          '''    var stopRequested=false;
+              var pauseRequested=false;
+              var sessionInstructions=0;
+              // Chunk size used by the currently executing WASM segment.''',
+          '''    var stopRequested=false;
+              var pauseRequested=false;
+              var sessionInstructions=0;
+              // Global 48-bit instruction position shared with the JavaScript CPU.
+              // The embedded WASM core already reports the exact number of opcodes
+              // completed by every cpu_run_chunk(), so keeping IC here preserves
+              // full-size chunks while still allowing an exact instruction boundary.
+              var instructionCount=0;
+              var instructionBreakpoint=null;
+              var instructionBreakpointArmed=false;
+              // Chunk size used by the currently executing WASM segment.''',
+          "counter state")
+
+          rep(
+          '''    function $(id) { return typeof(document)!="undefined" ? document.getElementById(id) : null; }
+              function hex(v,n) { return "$"+(Number(v)>>>0).toString(16).toUpperCase().padStart(n,"0"); }
+              function toHex(v,n) { return (Number(v)>>>0).toString(16).toUpperCase().padStart(n,"0"); }
+              function nextTick() { return new Promise(function(resolve){ setTimeout(resolve,0); }); }
+
+              function parseOptionalAddress(value)''',
+          '''    function $(id) { return typeof(document)!="undefined" ? document.getElementById(id) : null; }
+              function hex(v,n) { return "$"+(Number(v)>>>0).toString(16).toUpperCase().padStart(n,"0"); }
+              function toHex(v,n) { return (Number(v)>>>0).toString(16).toUpperCase().padStart(n,"0"); }
+              function nextTick() { return new Promise(function(resolve){ setTimeout(resolve,0); }); }
+
+              function normalizeInstructionCount(value)
+              {
+                  value=Math.floor(Number(value));
+                  if(!Number.isFinite(value)) return 0;
+                  value%=INSTRUCTION_COUNT_MODULO;
+                  if(value<0) value+=INSTRUCTION_COUNT_MODULO;
+                  return value;
+              }
+
+              function instructionHex(value)
+              {
+                  return "$"+normalizeInstructionCount(value).toString(16).toUpperCase().padStart(12,"0");
+              }
+
+              // Break IC expressions are hexadecimal, matching the emulator UI.
+              // Examples: $000000123456, 000000123456, $000000123456-$08.
+              function parseInstructionCountTerm(value)
+              {
+                  var s=String(value==null?"":value).trim();
+                  s=s.replace(/^\\$/,'').replace(/^0x/i,'');
+                  if(!/^[0-9a-f]{1,12}$/i.test(s))
+                      throw new Error("Invalid instruction-count term: "+value);
+                  return parseInt(s,16);
+              }
+
+              function parseOptionalInstructionCount(value)
+              {
+                  var s=String(value==null?"":value).replace(/\\s+/g,"");
+                  if(!s) return null;
+                  var parts=s.match(/[+-]?[^+-]+/g);
+                  if(!parts||parts.join("")!==s)
+                      throw new Error("Invalid instruction-count expression: "+value);
+                  var total=0;
+                  for(var i=0;i<parts.length;i++)
+                  {
+                      var part=parts[i],sign=1;
+                      if(part.charAt(0)==="+") part=part.substring(1);
+                      else if(part.charAt(0)==="-"){sign=-1;part=part.substring(1);}
+                      if(!part) throw new Error("Invalid instruction-count expression: "+value);
+                      total+=sign*parseInstructionCountTerm(part);
+                  }
+                  if(total<0||total>=INSTRUCTION_COUNT_MODULO)
+                      throw new Error("Instruction count is outside the 48-bit range: "+value);
+                  return total;
+              }
+
+              function addExecutedInstructions(executed)
+              {
+                  executed=Math.max(0,Math.floor(Number(executed)||0));
+                  sessionInstructions+=executed;
+                  instructionCount=normalizeInstructionCount(instructionCount+executed);
+              }
+
+              function syncInstructionBreakpointControls()
+              {
+                  var input=$("wasm_break_ic"),clear=$("wasm_break_ic_clear"),state=$("wasm_break_ic_state");
+                  var text=instructionBreakpoint===null?"":instructionHex(instructionBreakpoint);
+                  if(input&&document.activeElement!==input&&input.value!==text) input.value=text;
+                  if(clear) clear.disabled=phase==="running"||phase==="armed"||instructionBreakpoint===null;
+                  if(state) state.textContent=instructionBreakpointArmed?"armed":(instructionBreakpoint===null?"":"one-shot off");
+              }
+
+              function armInstructionBreakpoint(value)
+              {
+                  var target=parseOptionalInstructionCount(value);
+                  if(target!==null&&target<instructionCount)
+                      throw new Error("Break IC "+instructionHex(target)+" has already passed current IC "+instructionHex(instructionCount)+".");
+                  instructionBreakpoint=target;
+                  instructionBreakpointArmed=target!==null;
+                  syncInstructionBreakpointControls();
+                  return target;
+              }
+
+              function clearInstructionBreakpoint()
+              {
+                  instructionBreakpoint=null;
+                  instructionBreakpointArmed=false;
+                  syncInstructionBreakpointControls();
+              }
+
+              function instructionBreakpointReached()
+              {
+                  return instructionBreakpointArmed&&instructionBreakpoint!==null&&instructionCount===instructionBreakpoint;
+              }
+
+              function capForInstructionBreakpoint(count)
+              {
+                  if(!instructionBreakpointArmed||instructionBreakpoint===null) return count;
+                  var remaining=instructionBreakpoint-instructionCount;
+                  return remaining<=0?0:Math.min(count,remaining);
+              }
+
+              function validateInstructionBreakpoint()
+              {
+                  if(instructionBreakpointArmed&&instructionBreakpoint!==null&&instructionBreakpoint<instructionCount)
+                      throw new Error("Break IC "+instructionHex(instructionBreakpoint)+" was passed before WASM handoff; current IC is "+instructionHex(instructionCount)+".");
+              }
+
+              function parseOptionalAddress(value)''',
+          "IC helpers")
+
+          rep(
+          '''    function setCurrentFields(state)
+              {
+                  if(!state) return;
+                  var vals={pc:[state.pc,4],a:[state.a,2],x:[state.x,2],y:[state.y,2],sp:[state.sp,2],p:[state.p,2]};
+                  Object.keys(vals).forEach(function(k){ var el=$("wasm_cur_"+k); if(el) el.value=toHex(vals[k][0],vals[k][1]); });
+              }''',
+          '''    function setCurrentFields(state)
+              {
+                  if(!state) return;
+                  var vals={pc:[state.pc,4],a:[state.a,2],x:[state.x,2],y:[state.y,2],sp:[state.sp,2],p:[state.p,2]};
+                  Object.keys(vals).forEach(function(k){ var el=$("wasm_cur_"+k); if(el) el.value=toHex(vals[k][0],vals[k][1]); });
+                  var ic=$("wasm_cur_ic");
+                  if(ic) ic.textContent=instructionHex(state.ic===undefined?instructionCount:state.ic);
+              }''',
+          "display IC")
+
+          rep(
+          '''            p:e.cpu_get_p()&0xff,
+                      lastOpcode:e.cpu_get_last_opcode()&0xff,''',
+          '''            p:e.cpu_get_p()&0xff,
+                      ic:instructionCount,
+                      lastOpcode:e.cpu_get_last_opcode()&0xff,''',
+          "read WASM IC")
+
+          rep(
+          '''    function updateButtons()
+              {
+                  var play=$("wasm_play"),pause=$("wasm_pause"),stop=$("wasm_stop_btn"),latch=$("wasm_latch"),copy=$("wasm_copy_regs"),chunk=$("wasm_chunk");
+                  if(play){play.disabled=phase==="running"||phase==="armed";play.title=phase==="paused"?"Resume WASM":"Run / arm WASM";}
+                  if(pause) pause.disabled=phase!=="running";
+                  if(stop) stop.disabled=phase==="idle";
+                  if(latch) latch.disabled=phase==="running"||phase==="armed";
+                  if(copy) copy.disabled=phase==="running"||phase==="armed";
+                  // Chunk changes are intentionally accepted only while idle or paused.
+                  // Resume will latch the edited value into runChunkInstructions.
+                  if(chunk) chunk.disabled=phase==="running"||phase==="armed";
+              }''',
+          '''    function updateButtons()
+              {
+                  var play=$("wasm_play"),pause=$("wasm_pause"),stop=$("wasm_stop_btn"),latch=$("wasm_latch"),copy=$("wasm_copy_regs"),chunk=$("wasm_chunk"),breakIc=$("wasm_break_ic");
+                  if(play){play.disabled=phase==="running"||phase==="armed";play.title=phase==="paused"?"Resume WASM":"Run / arm WASM";}
+                  if(pause) pause.disabled=phase!=="running";
+                  if(stop) stop.disabled=phase==="idle";
+                  if(latch) latch.disabled=phase==="running"||phase==="armed";
+                  if(copy) copy.disabled=phase==="running"||phase==="armed";
+                  // Chunk and IC breakpoint changes are accepted only while idle
+                  // or paused, so a target can never be skipped inside a chunk.
+                  if(chunk) chunk.disabled=phase==="running"||phase==="armed";
+                  if(breakIc) breakIc.disabled=phase==="running"||phase==="armed";
+                  syncInstructionBreakpointControls();
+              }''',
+          "buttons")
+
+          rep(
+          '''    async function runLoop()
+              {
+                  phase="running";pauseRequested=false;stopRequested=false;updateButtons();''',
+          '''    function pauseAtInstructionBreakpoint()
+              {
+                  instructionBreakpointArmed=false; // one-shot
+                  pauseRunTimer();
+                  phase="paused";
+                  pauseRequested=false;
+                  resetChunkFps();
+                  refreshWasmUi(true);
+                  setWasmSpeedIndicator(false);
+                  updateButtons();
+                  var state=readWasmState();
+                  setStatus("WASM breakpoint at IC "+instructionHex(instructionCount)+" / PC "+hex(state.pc,4)+"; "+sessionInstructions.toLocaleString()+" WASM instruction(s) in this handoff.");
+              }
+
+              async function runLoop()
+              {
+                  phase="running";pauseRequested=false;stopRequested=false;updateButtons();''',
+          "pause breakpoint helper")
+
+          rep(
+          '''                setStatus("WASM paused after "+sessionInstructions.toLocaleString()+" instruction(s).");
+                      return;
+                  }
+                  if(maxInstructions>0&&sessionInstructions>=maxInstructions){await finishHandoff("instruction limit");return;}
+
+                  // Observe all wrapper-level addresses before opcode fetch.''',
+          '''                setStatus("WASM paused at IC "+instructionHex(instructionCount)+" after "+sessionInstructions.toLocaleString()+" WASM instruction(s).");
+                      return;
+                  }
+                  if(instructionBreakpointReached()){pauseAtInstructionBreakpoint();return;}
+                  if(maxInstructions>0&&sessionInstructions>=maxInstructions){await finishHandoff("instruction limit");return;}
+
+                  // Observe all wrapper-level addresses before opcode fetch.''',
+          "top breakpoint check")
+
+          rep(
+          '''                executed=e.cpu_get_last_executed()>>>0;
+                      sessionInstructions+=executed;
+                      loggedSinceYield+=executed;''',
+          '''                executed=e.cpu_get_last_executed()>>>0;
+                      addExecutedInstructions(executed);
+                      loggedSinceYield+=executed;''',
+          "single-step count")
+
+          rep(
+          '''                var chunk=runChunkInstructions;
+                      var thisChunk=chunk;
+                      if(maxInstructions>0) thisChunk=Math.min(thisChunk,Math.max(0,maxInstructions-sessionInstructions));
+                      if(thisChunk<=0){await finishHandoff("instruction limit");return;}
+                      reason=e.cpu_run_chunk(thisChunk>>>0)>>>0;
+                      executed=e.cpu_get_last_executed()>>>0;
+                      sessionInstructions+=executed;
+                      loggedSinceYield=chunk;''',
+          '''                var chunk=runChunkInstructions;
+                      var thisChunk=chunk;
+                      if(maxInstructions>0) thisChunk=Math.min(thisChunk,Math.max(0,maxInstructions-sessionInstructions));
+                      thisChunk=capForInstructionBreakpoint(thisChunk);
+                      if(thisChunk<=0)
+                      {
+                          if(instructionBreakpointReached()){pauseAtInstructionBreakpoint();return;}
+                          await finishHandoff("instruction limit");return;
+                      }
+                      reason=e.cpu_run_chunk(thisChunk>>>0)>>>0;
+                      executed=e.cpu_get_last_executed()>>>0;
+                      addExecutedInstructions(executed);
+                      loggedSinceYield=executed;''',
+          "fast chunk count and cap")
+
+          rep(
+          '''            if(reason===1)
+                  {
+                      if(handleEscapeControl()==="handoff"){await finishHandoff("escape "+hex(readWasmState().pc,4));return;}
+                      applyDynamicEscape(true);
+                      continue;
+                  }
+                  if(reason===2){await finishHandoff("WASM stop");return;}
+                  if(reason===3){var s=readWasmState();await finishHandoff("illegal opcode "+hex(s.lastOpcode,2)+" at "+hex(s.lastOpcodePC,4),true);return;}
+
+                  var yieldEvery=runChunkInstructions;''',
+          '''            // Core errors/stops take precedence.  Otherwise the IC test is
+                  // made at the exact post-chunk/pre-fetch boundary before any next opcode.
+                  if(reason===2){await finishHandoff("WASM stop");return;}
+                  if(reason===3){var s=readWasmState();await finishHandoff("illegal opcode "+hex(s.lastOpcode,2)+" at "+hex(s.lastOpcodePC,4),true);return;}
+                  if(instructionBreakpointReached()){pauseAtInstructionBreakpoint();return;}
+                  if(reason===1)
+                  {
+                      if(handleEscapeControl()==="handoff"){await finishHandoff("escape "+hex(readWasmState().pc,4));return;}
+                      applyDynamicEscape(true);
+                      continue;
+                  }
+
+                  var yieldEvery=runChunkInstructions;''',
+          "post chunk breakpoint")
+
+          rep(
+          '''            sourceImage=captureCpuImage();
+                  wr.set(sourceImage);
+                  sessionInstructions=0;
+                  dynamicEscape=null;''',
+          '''            sourceImage=captureCpuImage();
+                  wr.set(sourceImage);
+                  sessionInstructions=0;
+                  instructionCount=normalizeInstructionCount(jsState.ic===undefined?0:jsState.ic);
+                  validateInstructionBreakpoint();
+                  dynamicEscape=null;''',
+          "handoff IC sync")
+
+          rep(
+          '''        var msg="WASM finished: "+reason+"; "+sessionInstructions.toLocaleString()+" instruction(s).";
+                  if(copy.ioWritesIgnored) msg+=" WARNING: "+copy.ioWritesIgnored+" write(s) in $C000-$CFFF were ignored.";
+                  setStatus(msg,isError?"bad":"good");
+                  if(copy.ioWritesIgnored) console.warn(msg);''',
+          '''        var msg="WASM finished: "+reason+"; IC "+instructionHex(instructionCount)+" / PC "+hex(state.pc,4)+"; "+sessionInstructions.toLocaleString()+" instruction(s) in this handoff.";
+                  if(copy.ioWritesIgnored) msg+=" WARNING: "+copy.ioWritesIgnored+" write(s) in $C000-$CFFF were ignored.";
+                  setStatus(msg,isError?"bad":"good");
+                  if(isError||copy.ioWritesIgnored) console.warn("[IC="+instructionHex(instructionCount)+" PC="+hex(state.pc,4)+"] "+msg);''',
+          "handoff status")
+
+          rep(
+          '''              +"<label>Limit<br><input id='wasm_limit' size='6' value='0' title='0 = unlimited' style='width:52px;padding:2px'></label>"
+                +"</div>"
+                +"<div style='display:grid;grid-template-columns:62px 1fr;gap:4px;align-items:end;margin-top:4px'>"''',
+          '''              +"<label>Limit<br><input id='wasm_limit' size='6' value='0' title='0 = unlimited' style='width:52px;padding:2px'></label>"
+                +"</div>"
+                +"<div style='display:flex;align-items:center;gap:4px;margin-top:4px;white-space:nowrap'>"
+                  +"<span>IC <span id='wasm_cur_ic' style='font-family:monospace;font-size:9px'>$000000000000</span></span>"
+                  +"<label style='display:inline-flex;align-items:center;gap:2px'>BREAK IC <input id='wasm_break_ic' size='14' placeholder='$............' title='One-shot 48-bit global instruction breakpoint. Hex expressions are accepted, e.g. $000000123456-$08.' onchange='oEMU.component.CPU.WASM6502.setInstructionBreakpoint(this.value)' style='width:102px;padding:2px;font-family:monospace;font-size:9px'></label>"
+                  +"<button class='appbut skinny' id='wasm_break_ic_clear' onclick='oEMU.component.CPU.WASM6502.clearInstructionBreakpoint()' title='clear IC breakpoint'>×</button>"
+                  +"<span id='wasm_break_ic_state' style='font-size:8px'></span>"
+                +"</div>"
+                +"<div style='display:grid;grid-template-columns:62px 1fr;gap:4px;align-items:end;margin-top:4px'>"''',
+          "IC UI")
+
+          rep(
+          '''            var state=readJsState();
+                  setCurrentFields(state);
+                  updateProgressMonitor();
+                  this.copyCurrentToLatch();''',
+          '''            var state=readJsState();
+                  instructionCount=normalizeInstructionCount(state.ic===undefined?0:state.ic);
+                  instructionBreakpoint=null;
+                  instructionBreakpointArmed=false;
+                  setCurrentFields(state);
+                  syncInstructionBreakpointControls();
+                  updateProgressMonitor();
+                  this.copyCurrentToLatch();''',
+          "open IC sync")
+
+          rep(
+          '''        if(phase==="running"){stopRequested=true;setStatus("Stop requested; waiting for current WASM chunk to finish…");return;}
+                  phase="idle";updateButtons();setJsPaused(false);resetRunTimer();closePopup();return;''',
+          '''        if(phase==="running"){stopRequested=true;setStatus("Stop requested; waiting for current WASM chunk to finish…");return;}
+                  if(phase==="paused"){finishHandoff("manual stop");return;}
+                  phase="idle";updateButtons();setJsPaused(false);resetRunTimer();closePopup();return;''',
+          "paused handback")
+
+          rep(
+          '''    this.loggerChanged=function()
+              {''',
+          '''    this.setInstructionBreakpoint=function(value)
+              {
+                  try
+                  {
+                      var target=armInstructionBreakpoint(value);
+                      updateButtons();
+                      setStatus(target===null
+                          ? "WASM IC breakpoint cleared."
+                          : "WASM IC breakpoint armed for "+instructionHex(target)+" (current "+instructionHex(instructionCount)+").");
+                      return target;
+                  }
+                  catch(err)
+                  {
+                      syncInstructionBreakpointControls();
+                      setStatus(String(err),"bad");
+                      return false;
+                  }
+              };
+
+              this.clearInstructionBreakpoint=function()
+              {
+                  clearInstructionBreakpoint();
+                  updateButtons();
+                  setStatus("WASM IC breakpoint cleared.");
+                  return true;
+              };
+
+              this.loggerChanged=function()
+              {''',
+          "public breakpoint API")
+
+          rep(
+          '''    this.getState=function(){return {phase:phase,instructions:sessionInstructions,activityRecords:activityLogger?activityLogger.count:0};};''',
+          '''    this.getState=function(){return {phase:phase,instructions:sessionInstructions,ic:instructionCount,breakIC:instructionBreakpoint,breakArmed:instructionBreakpointArmed,activityRecords:activityLogger?activityLogger.count:0};};''',
+          "getState")
+
+          path.write_text(s)
+          print("Patched", path)
+          PY
+
+      - name: Syntax and feature checks
+        run: |
+          node --check res/EMU_WASMcpu6502.js
+          grep -q 'INSTRUCTION_COUNT_MODULO=0x1000000000000' res/EMU_WASMcpu6502.js
+          grep -q 'capForInstructionBreakpoint' res/EMU_WASMcpu6502.js
+          grep -q 'ic:instructionCount' res/EMU_WASMcpu6502.js
+          grep -q 'wasm_break_ic' res/EMU_WASMcpu6502.js
+
+      - name: Commit patched source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add res/EMU_WASMcpu6502.js
+          git commit -m "Add 48-bit IC breakpoint to WASM accelerator"
+          git push origin HEAD:chatgpt/wasm-ic-breakpoint
