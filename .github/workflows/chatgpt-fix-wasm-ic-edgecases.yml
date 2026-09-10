@@ -18,9 +18,40 @@ jobs:
           ref: chatgpt/wasm-ic-breakpoint
 
       - name: Apply edge-case patch
-        shell: bash
         run: |
-          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCnA9UGF0aCgncmVzL0VNVV9XQVNNY3B1NjUwMi5qcycpCnM9cC5yZWFkX3RleHQoKQoKZGVmIG9uY2Uob2xkLG5ldyxsYWJlbCk6CiAgICBnbG9iYWwgcwogICAgbj1zLmNvdW50KG9sZCkKICAgIGlmIG4hPTE6CiAgICAgICAgcmFpc2UgU3lzdGVtRXhpdChmIntsYWJlbH06IGV4cGVjdGVkIDEgbWF0Y2gsIGZvdW5kIHtufSIpCiAgICBzPXMucmVwbGFjZShvbGQsbmV3LDEpCgpvbmNlKAonJycgICAgdmFyIGluc3RydWN0aW9uQ291bnQ9MDsKICAgIHZhciBpbnN0cnVjdGlvbkJyZWFrcG9pbnQ9bnVsbDsKICAgIHZhciBpbnN0cnVjdGlvbkJyZWFrcG9pbnRBcm1lZD1mYWxzZTsKJycnLAonJycgICAgdmFyIGluc3RydWN0aW9uQ291bnQ9MDsKICAgIHZhciBpbnN0cnVjdGlvbkJyZWFrcG9pbnQ9bnVsbDsKICAgIHZhciBpbnN0cnVjdGlvbkJyZWFrcG9pbnRBcm1lZD1mYWxzZTsKICAgIC8vIElDIG9ic2VydmVkIHdoZW4gdGhlIGJyZWFrcG9pbnQgd2FzIGFybWVkLiBUaGlzIGlzIGRlbGliZXJhdGVseSBrZXB0CiAgICAvLyBzZXBhcmF0ZSBmcm9tIHRoZSB0YXJnZXQgc28gd2UgY2FuIGRldGVjdCB0aGF0IHRoZSBKYXZhU2NyaXB0IENQVSBwYXNzZWQKICAgIC8vIHRoZSB0YXJnZXQgZXZlbiBpZiBpdHMgNDgtYml0IElDIHdyYXBwZWQgYmVmb3JlIFdBU00gaGFuZG9mZi4KICAgIHZhciBpbnN0cnVjdGlvbkJyZWFrcG9pbnRBcm1JQz1udWxsOwonJycsCiJhcm0gSUMgc3RhdGUiKQoKb25jZSgKJycnICAgIGZ1bmN0aW9uIGluc3RydWN0aW9uSGV4KHZhbHVlKQogICAgewogICAgICAgIHJldHVybiAiJCIrbm9ybWFsaXplSW5zdHJ1Y3Rpb25Db3VudCh2YWx1ZSkudG9TdHJpbmcoMTYpLnRvVXBwZXJDYXNlKCkucGFkU3RhcnQoMTIsIjAiKTsKICAgIH0KCiAgICAvLyBCUkVBSyBJQyB1c2VzIGhleGFkZWNpbWFsIHZhbHVlcywgd2l0aCBvcHRpb25hbCArIC8gLSBhcml0aG1ldGljLgonJycsCi...
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('res/EMU_WASMcpu6502.js')
+          s=p.read_text()
+          def rep(old,new,label):
+              global s
+              n=s.count(old)
+              if n!=1: raise SystemExit(f'{label}: expected 1 match, found {n}')
+              s=s.replace(old,new,1)
+
+          rep('''    var instructionCount=0;\n    var instructionBreakpoint=null;\n    var instructionBreakpointArmed=false;\n''','''    var instructionCount=0;\n    var instructionBreakpoint=null;\n    var instructionBreakpointArmed=false;\n    // IC observed when the breakpoint was armed. This lets handoff detect\n    // a passed target even if the JavaScript CPU crossed the 48-bit wrap.\n    var instructionBreakpointArmIC=null;\n''','arm state')
+
+          rep('''    function instructionHex(value)\n    {\n        return "$"+normalizeInstructionCount(value).toString(16).toUpperCase().padStart(12,"0");\n    }\n\n    // BREAK IC uses hexadecimal values, with optional + / - arithmetic.\n''','''    function instructionHex(value)\n    {\n        return "$"+normalizeInstructionCount(value).toString(16).toUpperCase().padStart(12,"0");\n    }\n\n    function forwardInstructionDistance(from,to)\n    {\n        from=normalizeInstructionCount(from);\n        to=normalizeInstructionCount(to);\n        return to>=from ? to-from : INSTRUCTION_COUNT_MODULO-from+to;\n    }\n\n    // BREAK IC uses hexadecimal values, with optional + / - arithmetic.\n''','distance helper')
+
+          rep('''    async function hitInstructionBreakpoint()\n    {\n        var target=instructionBreakpoint;\n        instructionBreakpointArmed=false; // one-shot\n        syncInstructionBreakpointControls();\n        await finishHandoff("IC breakpoint "+instructionHex(target));\n    }\n''','''    async function hitInstructionBreakpoint()\n    {\n        var target=instructionBreakpoint;\n        instructionBreakpointArmed=false; // one-shot\n        instructionBreakpointArmIC=null;\n        syncInstructionBreakpointControls();\n        // Return exact RAM/register/IC state, but keep JavaScript paused so\n        // STEP TRACE starts on the instruction at the breakpoint boundary.\n        await finishHandoff("IC breakpoint "+instructionHex(target),false,true);\n    }\n''','paused hit')
+
+          rep('''            instructionCount=normalizeInstructionCount(jsState.ic===undefined?0:jsState.ic);\n            if(instructionBreakpointArmed&&instructionBreakpoint!==null&&instructionBreakpoint<instructionCount)\n                throw new Error("Break IC "+instructionHex(instructionBreakpoint)+" already passed; current IC is "+instructionHex(instructionCount)+".");\n            dynamicEscape=null;\n''','''            instructionCount=normalizeInstructionCount(jsState.ic===undefined?0:jsState.ic);\n            if(instructionBreakpointArmed&&instructionBreakpoint!==null)\n            {\n                var armIC=instructionBreakpointArmIC===null?instructionCount:instructionBreakpointArmIC;\n                var targetDistance=instructionBreakpoint-armIC;\n                var travelled=forwardInstructionDistance(armIC,instructionCount);\n                if(targetDistance<0||travelled>targetDistance)\n                    throw new Error("Break IC "+instructionHex(instructionBreakpoint)+" already passed; current IC is "+instructionHex(instructionCount)+".");\n            }\n            dynamicEscape=null;\n''','handoff rollover')
+
+          rep('''    async function finishHandoff(reason,isError)\n''','''    async function finishHandoff(reason,isError,keepJsPaused)\n''','finish signature')
+
+          rep('''        if(typeof(apple2plus.CPU_pace_reset)==="function") apple2plus.CPU_pace_reset();\n        setJsPaused(false);\n        resetRunTimer();\n        closePopup();\n''','''        if(typeof(apple2plus.CPU_pace_reset)==="function") apple2plus.CPU_pace_reset();\n        if(keepJsPaused)\n        {\n            setJsPaused(true);\n            setStatus(msg+" JavaScript CPU remains paused.",isError?"bad":"good");\n        }\n        else setJsPaused(false);\n        resetRunTimer();\n        if(!keepJsPaused) closePopup();\n''','paused handoff')
+
+          rep('''            instructionBreakpoint=null;\n            instructionBreakpointArmed=false;\n            setCurrentFields(state);\n''','''            instructionBreakpoint=null;\n            instructionBreakpointArmed=false;\n            instructionBreakpointArmIC=null;\n            setCurrentFields(state);\n''','open reset')
+
+          rep('''        try\n        {\n            var target=parseOptionalInstructionCount(value);\n            if(target!==null&&target<instructionCount)\n                throw new Error("Break IC "+instructionHex(target)+" already passed current IC "+instructionHex(instructionCount)+".");\n            instructionBreakpoint=target;\n            instructionBreakpointArmed=target!==null;\n            syncInstructionBreakpointControls();\n''','''        try\n        {\n            if(phase==="armed")\n            {\n                var liveState=readJsState();\n                instructionCount=normalizeInstructionCount(liveState.ic===undefined?0:liveState.ic);\n                setCurrentFields(liveState);\n            }\n            var target=parseOptionalInstructionCount(value);\n            // Preserve absolute semantics: numerically lower means stale,\n            // never an implicit request to wait for the next 48-bit wrap.\n            if(target!==null&&target<instructionCount)\n                throw new Error("Break IC "+instructionHex(target)+" already passed current IC "+instructionHex(instructionCount)+".");\n            instructionBreakpoint=target;\n            instructionBreakpointArmed=target!==null;\n            instructionBreakpointArmIC=target===null?null:instructionCount;\n            syncInstructionBreakpointControls();\n''','arm semantics')
+
+          rep('''        instructionBreakpoint=null;\n        instructionBreakpointArmed=false;\n        syncInstructionBreakpointControls();\n''','''        instructionBreakpoint=null;\n        instructionBreakpointArmed=false;\n        instructionBreakpointArmIC=null;\n        syncInstructionBreakpointControls();\n''','clear arm state')
+
+          rep('''    this.getState=function(){return {phase:phase,instructions:sessionInstructions,ic:instructionCount,breakIC:instructionBreakpoint,breakArmed:instructionBreakpointArmed,activityRecords:activityLogger?activityLogger.count:0};};\n''','''    this.getState=function(){return {phase:phase,instructions:sessionInstructions,ic:instructionCount,breakIC:instructionBreakpoint,breakArmIC:instructionBreakpointArmIC,breakArmed:instructionBreakpointArmed,activityRecords:activityLogger?activityLogger.count:0};};\n''','getState')
+
+          p.write_text(s)
+          print('patched',p)
+          PY
 
       - name: Validate
         run: |
