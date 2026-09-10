@@ -284,6 +284,44 @@ function Cpu6502(hwobj)
     var p = P_I | P_1;
     var pc = RESET_VECTOR;
 
+    // 48-bit debugger instruction counter. JavaScript Number represents every
+    // integer in this range exactly; do not use bitwise operators on this value.
+    //
+    // IC is the number of opcodes completed since reset. While an opcode is
+    // executing, IC therefore identifies the clean instruction boundary
+    // immediately before it. This makes a warning's IC directly reusable as
+    // a debugger breakpoint condition on a subsequent identical run.
+    const INSTRUCTION_COUNT_MODULO = 0x1000000000000; // 2^48
+    var instruction_count = 0;
+
+    function normalizeInstructionCount(value)
+    {
+        value = Math.floor(Number(value));
+        if(!Number.isFinite(value)) return 0;
+
+        value %= INSTRUCTION_COUNT_MODULO;
+        if(value < 0) value += INSTRUCTION_COUNT_MODULO;
+        return value;
+    }
+
+    function incrementInstructionCount()
+    {
+        instruction_count++;
+        if(instruction_count >= INSTRUCTION_COUNT_MODULO)
+            instruction_count = 0;
+    }
+
+    function instructionWarningPrefix(instr_pc)
+    {
+        return "[IC=$"
+            + instruction_count.toString(16).toUpperCase().padStart(12,"0")
+            + " PC=$"
+            + ((Number(instr_pc) || 0) & 0xffff)
+                .toString(16).toUpperCase().padStart(4,"0")
+            + "] ";
+    }
+
+
     // Precomputed N/Z status bits for set_nz().  This keeps the hot flag
     // update compact without adding extra helper calls inside opcode cases.
     const nz_flags = new Uint8Array(256);
@@ -604,6 +642,7 @@ function Cpu6502(hwobj)
         p = P_I | P_1;
         pc = readWord(RESET_VECTOR);
         cycle_delay = 0;
+        instruction_count = 0;
         resetSelfLoopTrap();
 
         // Re-arm an address-triggered capture. With a blank start address,
@@ -663,7 +702,13 @@ function Cpu6502(hwobj)
         // Look up number of cycles
         var base_cycles = cycle_count[opcode];
         cycle_delay = base_cycles - 1;
-        if (base_cycles == 0) console.warn("opcode %s cycle_count is zero!", opcode.toString(16));
+        if (base_cycles == 0)
+            console.warn(
+                instructionWarningPrefix(instr_pc)
+                + "opcode $"
+                + opcode.toString(16).toUpperCase().padStart(2,"0")
+                + " cycle_count is zero!"
+            );
 
         // Fetch operand
         switch (instrlen[opcode])
@@ -909,14 +954,32 @@ function Cpu6502(hwobj)
             set_nz(d8);
             cycle_delay++; // absolute,X read-modify-write is 7 cycles
             break;
-        default:  console.warn("Cpu6502:cycle: undefined opcode: 0x%s pc=$%s",opcode.toString(16), pc.toString(16).toUpperCase());
+        default:
+            console.warn(
+                instructionWarningPrefix(instr_pc)
+                + "Cpu6502:cycle: undefined opcode: $"
+                + opcode.toString(16).toUpperCase().padStart(2,"0")
+            );
         }
 
+        // Count exactly one fetched/executed opcode.
+        //
+        // cycle_delay ticks return before reaching this point, so they are not
+        // counted as instructions. Hardware IRQ/NMI entry also returns before
+        // this point because it is not itself a fetched 6502 opcode. BRK, on
+        // the other hand, is an opcode and is counted normally.
+        incrementInstructionCount();
+
         //https://www.nesdev.org/wiki/CPU_unofficial_opcodes
-        function unofficial(opcode,pc) { console.warn("Cpu6502:cycle: unofficial opcode: 0x%s pc=$%s",opcode.toString(16), pc.toString(16).toUpperCase()); }
-
+        function unofficial(opcode)
+        {
+            console.warn(
+                instructionWarningPrefix(instr_pc)
+                + "Cpu6502:cycle: unofficial opcode: $"
+                + opcode.toString(16).toUpperCase().padStart(2,"0")
+            );
+        }
     }
-
 
     //     ___                                  __        
     //   .'   `.                               |  ]       
@@ -1070,6 +1133,7 @@ function Cpu6502(hwobj)
         if(state.sp!==undefined) sp = Number(state.sp) & 0xff;
         if(state.p!==undefined)  p  = (Number(state.p) & ~P_B) | P_1;
         if(state.pc!==undefined) pc = Number(state.pc) & 0xffff;
+        if(state.ic!==undefined) instruction_count = normalizeInstructionCount(state.ic);
 
         cycle_delay = state.cycle_delay===undefined
             ? 0
@@ -1089,7 +1153,7 @@ function Cpu6502(hwobj)
                pc.toString(16);
     }
 
-    this.watch = function()     {  return {"a":a,"x":x,"y":y,"sp":sp,"p":p,"pc":pc,"cycle_delay":cycle_delay} }
+    this.watch = function()     {  return {"a":a,"x":x,"y":y,"sp":sp,"p":p,"pc":pc,"cycle_delay":cycle_delay,"ic":instruction_count} }
     this.getConfig = function() { return { "instrlen":instrlen,"cycle_count":cycle_count,"opctab":opctab } }
 
     /*
