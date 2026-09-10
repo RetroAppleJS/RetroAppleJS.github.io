@@ -73,6 +73,9 @@ function EMU_WASMcpu6502()
     var instructionCount=0;
     var instructionBreakpoint=null;
     var instructionBreakpointArmed=false;
+    // IC observed when the breakpoint was armed. This lets handoff detect
+    // a passed target even if the JavaScript CPU crossed the 48-bit wrap.
+    var instructionBreakpointArmIC=null;
     // Chunk size used by the currently executing WASM segment.
     // It is latched when Run/Resume starts, so editing the UI cannot alter
     // an in-flight run.  A new value is picked up after Pause -> Resume.
@@ -116,6 +119,13 @@ function EMU_WASMcpu6502()
     function instructionHex(value)
     {
         return "$"+normalizeInstructionCount(value).toString(16).toUpperCase().padStart(12,"0");
+    }
+
+    function forwardInstructionDistance(from,to)
+    {
+        from=normalizeInstructionCount(from);
+        to=normalizeInstructionCount(to);
+        return to>=from ? to-from : INSTRUCTION_COUNT_MODULO-from+to;
     }
 
     // BREAK IC uses hexadecimal values, with optional + / - arithmetic.
@@ -181,8 +191,11 @@ function EMU_WASMcpu6502()
     {
         var target=instructionBreakpoint;
         instructionBreakpointArmed=false; // one-shot
+        instructionBreakpointArmIC=null;
         syncInstructionBreakpointControls();
-        await finishHandoff("IC breakpoint "+instructionHex(target));
+        // Return exact RAM/register/IC state, but keep JavaScript paused so
+        // STEP TRACE starts on the instruction at the breakpoint boundary.
+        await finishHandoff("IC breakpoint "+instructionHex(target),false,true);
     }
 
     function parseOptionalAddress(value)
@@ -918,8 +931,14 @@ function EMU_WASMcpu6502()
             wr.set(sourceImage);
             sessionInstructions=0;
             instructionCount=normalizeInstructionCount(jsState.ic===undefined?0:jsState.ic);
-            if(instructionBreakpointArmed&&instructionBreakpoint!==null&&instructionBreakpoint<instructionCount)
-                throw new Error("Break IC "+instructionHex(instructionBreakpoint)+" already passed; current IC is "+instructionHex(instructionCount)+".");
+            if(instructionBreakpointArmed&&instructionBreakpoint!==null)
+            {
+                var armIC=instructionBreakpointArmIC===null?instructionCount:instructionBreakpointArmIC;
+                var targetDistance=instructionBreakpoint-armIC;
+                var travelled=forwardInstructionDistance(armIC,instructionCount);
+                if(targetDistance<0||travelled>targetDistance)
+                    throw new Error("Break IC "+instructionHex(instructionBreakpoint)+" already passed; current IC is "+instructionHex(instructionCount)+".");
+            }
             dynamicEscape=null;
             resetRunTimer();
             loggerConfigFromUI(true);
@@ -941,7 +960,7 @@ function EMU_WASMcpu6502()
         }
     }
 
-    async function finishHandoff(reason,isError)
+    async function finishHandoff(reason,isError,keepJsPaused)
     {
         if(phase==="idle") return;
         pauseRunTimer();
@@ -963,9 +982,14 @@ function EMU_WASMcpu6502()
         if(isError||copy.ioWritesIgnored) console.warn("[IC="+instructionHex(instructionCount)+" PC="+hex(state.pc,4)+"] "+reason);
 
         if(typeof(apple2plus.CPU_pace_reset)==="function") apple2plus.CPU_pace_reset();
-        setJsPaused(false);
+        if(keepJsPaused)
+        {
+            setJsPaused(true);
+            setStatus(msg+" JavaScript CPU remains paused.",isError?"bad":"good");
+        }
+        else setJsPaused(false);
         resetRunTimer();
-        closePopup();
+        if(!keepJsPaused) closePopup();
     }
 
     this.html=function(body_id,popup_id)
@@ -1031,6 +1055,7 @@ function EMU_WASMcpu6502()
             instructionCount=normalizeInstructionCount(state.ic===undefined?0:state.ic);
             instructionBreakpoint=null;
             instructionBreakpointArmed=false;
+            instructionBreakpointArmIC=null;
             setCurrentFields(state);
             syncInstructionBreakpointControls();
             updateProgressMonitor();
@@ -1136,11 +1161,20 @@ function EMU_WASMcpu6502()
     {
         try
         {
+            if(phase==="armed")
+            {
+                var liveState=readJsState();
+                instructionCount=normalizeInstructionCount(liveState.ic===undefined?0:liveState.ic);
+                setCurrentFields(liveState);
+            }
             var target=parseOptionalInstructionCount(value);
+            // Preserve absolute semantics: numerically lower means stale,
+            // never an implicit request to wait for the next 48-bit wrap.
             if(target!==null&&target<instructionCount)
                 throw new Error("Break IC "+instructionHex(target)+" already passed current IC "+instructionHex(instructionCount)+".");
             instructionBreakpoint=target;
             instructionBreakpointArmed=target!==null;
+            instructionBreakpointArmIC=target===null?null:instructionCount;
             syncInstructionBreakpointControls();
             setStatus(target===null?"WASM IC breakpoint cleared.":"WASM IC breakpoint armed for "+instructionHex(target)+"; current IC "+instructionHex(instructionCount)+".");
             return target;
@@ -1152,6 +1186,7 @@ function EMU_WASMcpu6502()
     {
         instructionBreakpoint=null;
         instructionBreakpointArmed=false;
+        instructionBreakpointArmIC=null;
         syncInstructionBreakpointControls();
         setStatus("WASM IC breakpoint cleared.");
         return true;
@@ -1186,5 +1221,5 @@ function EMU_WASMcpu6502()
         a.href=url;a.download=filename;a.style.display="none";document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
     };
 
-    this.getState=function(){return {phase:phase,instructions:sessionInstructions,ic:instructionCount,breakIC:instructionBreakpoint,breakArmed:instructionBreakpointArmed,activityRecords:activityLogger?activityLogger.count:0};};
+    this.getState=function(){return {phase:phase,instructions:sessionInstructions,ic:instructionCount,breakIC:instructionBreakpoint,breakArmIC:instructionBreakpointArmIC,breakArmed:instructionBreakpointArmed,activityRecords:activityLogger?activityLogger.count:0};};
 }
