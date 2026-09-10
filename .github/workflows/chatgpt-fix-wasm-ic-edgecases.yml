@@ -1,0 +1,39 @@
+name: Fix WASM IC breakpoint edge cases
+
+on:
+  push:
+    branches: [ "chatgpt/wasm-ic-breakpoint" ]
+    paths:
+      - ".github/workflows/chatgpt-fix-wasm-ic-edgecases.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/wasm-ic-breakpoint
+
+      - name: Apply edge-case patch
+        shell: bash
+        run: |
+          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCnA9UGF0aCgncmVzL0VNVV9XQVNNY3B1NjUwMi5qcycpCnM9cC5yZWFkX3RleHQoKQoKZGVmIG9uY2Uob2xkLG5ldyxsYWJlbCk6CiAgICBnbG9iYWwgcwogICAgbj1zLmNvdW50KG9sZCkKICAgIGlmIG4hPTE6CiAgICAgICAgcmFpc2UgU3lzdGVtRXhpdChmIntsYWJlbH06IGV4cGVjdGVkIDEgbWF0Y2gsIGZvdW5kIHtufSIpCiAgICBzPXMucmVwbGFjZShvbGQsbmV3LDEpCgpvbmNlKAonJycgICAgdmFyIGluc3RydWN0aW9uQ291bnQ9MDsKICAgIHZhciBpbnN0cnVjdGlvbkJyZWFrcG9pbnQ9bnVsbDsKICAgIHZhciBpbnN0cnVjdGlvbkJyZWFrcG9pbnRBcm1lZD1mYWxzZTsKJycnLAonJycgICAgdmFyIGluc3RydWN0aW9uQ291bnQ9MDsKICAgIHZhciBpbnN0cnVjdGlvbkJyZWFrcG9pbnQ9bnVsbDsKICAgIHZhciBpbnN0cnVjdGlvbkJyZWFrcG9pbnRBcm1lZD1mYWxzZTsKICAgIC8vIElDIG9ic2VydmVkIHdoZW4gdGhlIGJyZWFrcG9pbnQgd2FzIGFybWVkLiBUaGlzIGlzIGRlbGliZXJhdGVseSBrZXB0CiAgICAvLyBzZXBhcmF0ZSBmcm9tIHRoZSB0YXJnZXQgc28gd2UgY2FuIGRldGVjdCB0aGF0IHRoZSBKYXZhU2NyaXB0IENQVSBwYXNzZWQKICAgIC8vIHRoZSB0YXJnZXQgZXZlbiBpZiBpdHMgNDgtYml0IElDIHdyYXBwZWQgYmVmb3JlIFdBU00gaGFuZG9mZi4KICAgIHZhciBpbnN0cnVjdGlvbkJyZWFrcG9pbnRBcm1JQz1udWxsOwonJycsCiJhcm0gSUMgc3RhdGUiKQoKb25jZSgKJycnICAgIGZ1bmN0aW9uIGluc3RydWN0aW9uSGV4KHZhbHVlKQogICAgewogICAgICAgIHJldHVybiAiJCIrbm9ybWFsaXplSW5zdHJ1Y3Rpb25Db3VudCh2YWx1ZSkudG9TdHJpbmcoMTYpLnRvVXBwZXJDYXNlKCkucGFkU3RhcnQoMTIsIjAiKTsKICAgIH0KCiAgICAvLyBCUkVBSyBJQyB1c2VzIGhleGFkZWNpbWFsIHZhbHVlcywgd2l0aCBvcHRpb25hbCArIC8gLSBhcml0aG1ldGljLgonJycsCi...
+
+      - name: Validate
+        run: |
+          node --check res/EMU_WASMcpu6502.js
+          grep -q 'instructionBreakpointArmIC' res/EMU_WASMcpu6502.js
+          grep -q 'forwardInstructionDistance' res/EMU_WASMcpu6502.js
+          grep -q 'finishHandoff("IC breakpoint "+instructionHex(target),false,true)' res/EMU_WASMcpu6502.js
+          grep -q 'if(!keepJsPaused) closePopup();' res/EMU_WASMcpu6502.js
+
+      - name: Commit fixes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add res/EMU_WASMcpu6502.js
+          git commit -m "Fix WASM IC breakpoint rollover and pause semantics"
+          git push origin HEAD:chatgpt/wasm-ic-breakpoint
