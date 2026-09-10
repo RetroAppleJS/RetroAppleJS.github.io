@@ -1,0 +1,32 @@
+name: WASM IC regression tests
+
+on:
+  push:
+    paths:
+      - "res/EMU_WASMcpu6502.js"
+      - "tests/wasm_ic_breakpoint.test.js"
+      - ".github/workflows/wasm-ic-regression.yml"
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - "res/EMU_WASMcpu6502.js"
+      - "tests/wasm_ic_breakpoint.test.js"
+      - ".github/workflows/wasm-ic-regression.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run IC breakpoint regression tests
+        run: node --test tests/wasm_ic_breakpoint.test.js
