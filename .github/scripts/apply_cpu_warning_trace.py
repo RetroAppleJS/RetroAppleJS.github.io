@@ -1,0 +1,132 @@
+from pathlib import Path
+import re
+
+path = Path("res/EMU_cpu6502.js")
+s = path.read_text()
+
+
+def once(pattern, replacement, label, flags=0):
+    global s
+    s2, n = re.subn(pattern, replacement, s, count=1, flags=flags)
+    if n != 1:
+        raise SystemExit(f"{label}: expected exactly 1 match, found {n}")
+    s = s2
+
+
+marker = "\n\n    // Precomputed N/Z status bits for set_nz().  This keeps the hot flag"
+pos = s.find(marker, s.find("function instructionWarningPrefix"))
+if pos < 0:
+    raise SystemExit("warning trace insertion marker not found")
+
+helper = r'''
+
+    // Always-on lead-up trace for CPU warnings. Typed arrays avoid allocating
+    // an object for every instruction. Entries are committed after execution,
+    // so a warning shows the 32 instructions immediately preceding the offender.
+    const WARNING_TRACE_SIZE = 32;
+    const WARNING_TRACE_MASK = WARNING_TRACE_SIZE - 1;
+    var warningTraceIC = new Float64Array(WARNING_TRACE_SIZE);
+    var warningTracePC = new Uint16Array(WARNING_TRACE_SIZE);
+    var warningTraceInst = new Uint32Array(WARNING_TRACE_SIZE); // opcode + fetched operand
+    var warningTraceRegs = new Uint32Array(WARNING_TRACE_SIZE); // post-exec A/X/Y/P
+    var warningTraceSP = new Uint8Array(WARNING_TRACE_SIZE);    // post-exec SP
+    var warningTraceNext = 0;
+    var warningTraceCount = 0;
+
+    function clearWarningTrace()
+    {
+        warningTraceNext = 0;
+        warningTraceCount = 0;
+    }
+
+    function recordWarningTrace(instr_pc, opcode, fetchedOperand)
+    {
+        var i = warningTraceNext;
+        warningTraceIC[i] = instruction_count;
+        warningTracePC[i] = instr_pc & 0xffff;
+        warningTraceInst[i] = ((opcode & 0xff) | ((fetchedOperand & 0xffff) << 8)) >>> 0;
+        warningTraceRegs[i] = (
+            (a & 0xff)
+            | ((x & 0xff) << 8)
+            | ((y & 0xff) << 16)
+            | ((p & 0xff) << 24)
+        ) >>> 0;
+        warningTraceSP[i] = sp & 0xff;
+
+        warningTraceNext = (i + 1) & WARNING_TRACE_MASK;
+        if(warningTraceCount < WARNING_TRACE_SIZE)
+            warningTraceCount++;
+    }
+
+    function warningTraceHex(value, width)
+    {
+        return (Number(value) >>> 0).toString(16).toUpperCase().padStart(width,"0");
+    }
+
+    function warningTraceSuffix()
+    {
+        var lines = ["", "Previous " + warningTraceCount + " instruction(s) (oldest -> newest):"];
+
+        if(warningTraceCount === 0)
+        {
+            lines.push("  <none>");
+            return lines.join("\\n");
+        }
+
+        var start = (warningTraceNext - warningTraceCount + WARNING_TRACE_SIZE) & WARNING_TRACE_MASK;
+        for(var n = 0; n < warningTraceCount; n++)
+        {
+            var i = (start + n) & WARNING_TRACE_MASK;
+            var packed = warningTraceInst[i] >>> 0;
+            var opc = packed & 0xff;
+            var fetchedOperand = (packed >>> 8) & 0xffff;
+            var len = instrlen[opc] || 1;
+            var bytes = warningTraceHex(opc,2);
+            if(len > 1) bytes += " " + warningTraceHex(fetchedOperand & 0xff,2);
+            if(len > 2) bytes += " " + warningTraceHex((fetchedOperand >>> 8) & 0xff,2);
+            bytes = bytes.padEnd(8," ");
+
+            var meta = opctab[opc] || ["???",""];
+            var mnemonic = String(meta[0] || "???");
+            var mode = String(meta[1] || "");
+            var regs = warningTraceRegs[i] >>> 0;
+
+            lines.push(
+                "  [IC=$" + warningTraceIC[i].toString(16).toUpperCase().padStart(12,"0")
+                + " PC=$" + warningTraceHex(warningTracePC[i],4) + "] "
+                + bytes + " " + mnemonic + (mode ? "/" + mode : "")
+                + "  => A=$" + warningTraceHex(regs & 0xff,2)
+                + " X=$" + warningTraceHex((regs >>> 8) & 0xff,2)
+                + " Y=$" + warningTraceHex((regs >>> 16) & 0xff,2)
+                + " P=$" + warningTraceHex((regs >>> 24) & 0xff,2)
+                + " SP=$" + warningTraceHex(warningTraceSP[i],2)
+            );
+        }
+
+        return lines.join("\\n");
+    }
+'''
+s = s[:pos] + helper + s[pos:]
+
+once(r'(cycle_delay\s*=\s*0;\s*\n\s*instruction_count\s*=\s*0;)(\s*\n\s*resetSelfLoopTrap\(\);)', r'\1\n        clearWarningTrace();\2', "reset clears trace")
+once(r'(pc\s*=\s*parseInt\(l\[5\],\s*16\)\s*&\s*0xffff;\s*\n\s*cycle_delay\s*=\s*0;)(\s*\n\s*resetSelfLoopTrap\(\);)', r'\1\n        clearWarningTrace();\2', "load clears trace")
+once(r'(cycle_delay\s*=\s*state\.cycle_delay===undefined\s*\n\s*\?\s*0\s*\n\s*:\s*Math\.max\(0,Number\(state\.cycle_delay\)\|0\);)(\s*\n\s*resetSelfLoopTrap\(\);)', r'\1\n\n        // Imported state may have skipped arbitrary WASM instructions.\n        clearWarningTrace();\2', "setState clears trace")
+
+switch_start = s.find("        // Fetch operand")
+boot_pos = s.find("\n\n        if(bDebug_boot)", switch_start)
+if switch_start < 0 or boot_pos < 0:
+    raise SystemExit("operand switch boundary not found")
+s = s[:boot_pos] + "\n\n        // Preserve bytes fetched from the instruction stream for warning history.\n        var warningTraceOperand = operand;" + s[boot_pos:]
+
+once(r'(\+\s*" cycle_count is zero!"\s*\n)(\s*\);)', r'\1                + warningTraceSuffix()\n\2', "zero-cycle suffix")
+once(r'(\+\s*"Cpu6502:cycle: undefined opcode: \$"\s*\n\s*\+\s*opcode\.toString\(16\)\.toUpperCase\(\)\.padStart\(2,"0"\)\s*\n)(\s*\);)', r'\1                + warningTraceSuffix()\n\2', "undefined suffix")
+once(r'(\+\s*"Cpu6502:cycle: unofficial opcode: \$"\s*\n\s*\+\s*opcode\.toString\(16\)\.toUpperCase\(\)\.padStart\(2,"0"\)\s*\n)(\s*\);)', r'\1                + warningTraceSuffix()\n\2', "unofficial suffix")
+
+count_marker = "        // Count exactly one fetched/executed opcode."
+count_pos = s.find(count_marker)
+if count_pos < 0:
+    raise SystemExit("instruction-count marker not found")
+record = "        // Save the just-completed instruction for future warning context.\n        recordWarningTrace(instr_pc, opcode, warningTraceOperand);\n\n"
+s = s[:count_pos] + record + s[count_pos:]
+
+path.write_text(s)
