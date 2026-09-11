@@ -1,24 +1,28 @@
 /* First-pass Debugger tab 3.2 algorithm-test-bench UI. */
 
-/* Keep Debugger Tools close to the 350px STEP TRACE footprint. */
-#tab3.2 {
-  width: 370px;
-  max-width: calc(100vw - 24px);
-}
-
-#tab3.2 > .toolbox {
-  max-width: 100%;
-}
-
+/*
+ * Float TEST BENCH beside the normal Debugger Tools cluster.
+ *
+ * COM_MAIN's floating feature windows (Software Catalog, Disk Surface Map,
+ * etc.) use left:800px / top:32px relative to the page.  tab3.2 itself is
+ * already positioned at top:32px, so top:0 here gives the same page-level
+ * vertical alignment while keeping the bench scoped to Debugger Tools.
+ */
 .DBG_testbenchToolbox {
-  width: 360px;
+  position: absolute;
+  z-index: 3;
+  left: 780px;   /* fallback only; JS aligns it 10px after SYMBOL TABLE */
+  top: 0px;
+  float: none;
+  clear: none;
+  width: 520px;  /* fallback only; JS stretches it to the Debugger right edge */
   height: auto;
-  clear: both;
-  max-width: calc(100vw - 40px);
+  max-width: none;
+  margin: 0;
 }
 
 .DBG_testbenchBox {
-  width: 350px;
+  width: 100%;
   max-width: 100%;
   min-height: 540px;
   height: auto !important;
@@ -222,9 +226,4 @@
   width: 100%;
   min-width: 0;
   font: 11px/1.2 courier,monospace;
-}
-
-@media (max-width: 430px) {
-  .DBG_testbenchToolbox { width: calc(100vw - 24px); }
-  .DBG_testbenchBox { width: 100%; }
 }
