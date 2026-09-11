@@ -19,15 +19,137 @@
     return "$" + ("0000" + ((Number(v)||0) & mask).toString(16).toUpperCase()).slice(-width);
   }
 
+
+  function debuggerSymbols()
+  {
+    var tables = Array.isArray(global.DBG_symbolTables) ? global.DBG_symbolTables : [];
+    var out = [];
+
+    // Newest imported table first.  This mirrors the useful expectation that
+    // the most recently attached symbol set is the first one consulted.
+    for(var ti=tables.length-1;ti>=0;ti--)
+    {
+      var table = tables[ti] || {};
+      var records = Array.isArray(table.symbols)
+        ? table.symbols
+        : (table.raw && Array.isArray(table.raw.symbols) ? table.raw.symbols : []);
+
+      for(var si=0;si<records.length;si++)
+      {
+        var symbol = records[si] || {};
+        if(symbol.type === "comment") continue;
+        if(!symbol.name || typeof symbol.value !== "number" || !isFinite(symbol.value)) continue;
+
+        out.push({
+          name: String(symbol.name),
+          type: symbol.type || "symbol",
+          value: symbol.value & 0xffff,
+          bytes: symbol.bytes === 1 ? 1 : 2,
+          source: table.source || table.filename || (table.raw && table.raw.source) || "debugger"
+        });
+      }
+    }
+    return out;
+  }
+
+  function assemblerSymbols()
+  {
+    var asm = global.oASM || global.asm;
+    var tab = asm && asm.symtab ? asm.symtab : null;
+    var out = [];
+    if(!tab || typeof tab !== "object") return out;
+
+    Object.keys(tab).forEach(function(name){
+      var value = tab[name];
+      if(typeof value !== "number" || !isFinite(value)) return;
+      out.push({
+        name: String(name),
+        type: "assembler",
+        value: value & 0xffff,
+        bytes: 2,
+        source: "assembler"
+      });
+    });
+    return out;
+  }
+
+  function allSymbols()
+  {
+    var out = debuggerSymbols();
+    var seen = {};
+
+    // Keep debugger-imported records first, then expose live assembler-only names.
+    for(var i=0;i<out.length;i++)
+      seen[out[i].name.toLowerCase()] = true;
+
+    var asm = assemblerSymbols();
+    for(var j=0;j<asm.length;j++)
+      if(!seen[asm[j].name.toLowerCase()]) out.push(asm[j]);
+
+    return out;
+  }
+
+  function findSymbol(name)
+  {
+    name = String(name == null ? "" : name).trim();
+    if(!name) return null;
+
+    var dbgSymbols = debuggerSymbols();
+    var i;
+
+    // Prefer exact case, then accept the case-insensitive spelling users normally
+    // expect from an assembler/debugger console.
+    for(i=0;i<dbgSymbols.length;i++)
+      if(dbgSymbols[i].name === name) return dbgSymbols[i];
+
+    var lower = name.toLowerCase();
+    for(i=0;i<dbgSymbols.length;i++)
+      if(dbgSymbols[i].name.toLowerCase() === lower) return dbgSymbols[i];
+
+    var assembler = assemblerSymbols();
+    for(i=0;i<assembler.length;i++)
+      if(assembler[i].name === name) return assembler[i];
+    for(i=0;i<assembler.length;i++)
+      if(assembler[i].name.toLowerCase() === lower) return assembler[i];
+
+    return null;
+  }
+
+  function parseNumericAddress(text)
+  {
+    var s = String(text == null ? "" : text).trim();
+    if(/^\$[0-9a-f]+$/i.test(s)) return parseInt(s.slice(1),16);
+    if(/^0x[0-9a-f]+$/i.test(s)) return parseInt(s,16);
+    if(/^[0-9]+$/.test(s)) return parseInt(s,10);
+    return null;
+  }
   function parseAddress(value)
   {
     if(typeof value === "number") return value & 0xffff;
+
     var s = String(value == null ? "" : value).trim();
     if(!s) throw new Error("Address is required.");
-    if(/^\$[0-9a-f]+$/i.test(s)) return parseInt(s.slice(1),16) & 0xffff;
-    if(/^0x[0-9a-f]+$/i.test(s)) return parseInt(s,16) & 0xffff;
-    if(/^[0-9]+$/.test(s)) return parseInt(s,10) & 0xffff;
-    throw new Error("Invalid address '" + s + "'. Use $0000, 0x0000 or decimal.");
+
+    var numeric = parseNumericAddress(s);
+    if(numeric !== null) return numeric & 0xffff;
+
+    var symbol = findSymbol(s);
+    if(symbol) return symbol.value & 0xffff;
+
+    // Small convenience for the RAM field: label+N / label-N.  JavaScript
+    // scripts can of course use TB.sym("label") + N directly.
+    var offset = /^(.*?)\s*([+-])\s*(\$[0-9a-f]+|0x[0-9a-f]+|[0-9]+)$/i.exec(s);
+    if(offset && offset[1].trim())
+    {
+      var base = findSymbol(offset[1].trim());
+      var delta = parseNumericAddress(offset[3]);
+      if(base && delta !== null)
+        return (base.value + (offset[2] === "-" ? -delta : delta)) & 0xffff;
+    }
+
+    throw new Error(
+      "Unknown address/symbol '" + s + "'. Use $0000, 0x0000, decimal, or an imported assembler label."
+    );
   }
 
   function parseBytes(value)
@@ -90,7 +212,7 @@
   }
 
   var TB = {
-    version: "0.1-ui",
+    version: "0.2-symbols",
 
     get RAM(){
       if(!(global.DBG_RAM instanceof Uint8Array)) throw new Error("DBG_RAM is not available.");
@@ -100,6 +222,25 @@
     hex: hex,
     address: parseAddress,
     bytes: parseBytes,
+
+    sym: function(name,defaultValue)
+    {
+      var symbol = findSymbol(name);
+      if(symbol) return symbol.value & 0xffff;
+      if(arguments.length > 1) return defaultValue;
+      throw new Error("Unknown assembler symbol '" + name + "'.");
+    },
+
+    symbol: function(name)
+    {
+      var symbol = findSymbol(name);
+      return symbol ? Object.assign({},symbol) : null;
+    },
+
+    symbols: function()
+    {
+      return allSymbols().map(function(symbol){ return Object.assign({},symbol); });
+    },
 
     print: function(){
       var parts = Array.prototype.slice.call(arguments).map(formatValue);
@@ -180,6 +321,7 @@
     code = String(code == null ? "" : code);
     var RAM = TB.RAM;
     var ram = TB.ram;
+    var sym = TB.sym;
     var print = TB.print;
     var console = harnessConsole();
     // Deliberately trusted eval() test harness for this concept/debugging project.
@@ -258,12 +400,16 @@
     if(!editor) return;
     editor.value = [
       "// DBG_RAM is exposed as RAM; helpers live under TB.",
+      "// Imported assembler labels work directly as RAM addresses:",
+      "// print(TB.hex(TB.sym('inflate'),4));",
+      "// print(TB.ram.dump('inflate_data', 32));",
       "TB.ram.fill(0x3000, 16, 0xA5);",
       "TB.ram.write(0x3004, [0x44,0x45,0x46,0x4C,0x41,0x54,0x45]);",
       "print(TB.ram.dump(0x3000, 32));",
       "",
       "// Expressions also work directly in the console:",
       "// TB.ram.read(0x3004, 7)",
+      "// TB.ram.read('inputPointer')",
       "// RAM[0x3000]"
     ].join("\n");
     editor.focus();
@@ -286,7 +432,7 @@
       {
         terminal = new global.TERMINAL({
           container:"DBG_testConsole",
-          welcome:"JavaScript test harness ready.  Try <b>TB.ram.dump(0x0000,16)</b>.",
+          welcome:"JavaScript test harness ready.  Try <b>TB.sym(&quot;label&quot;)</b> or <b>TB.ram.dump(&quot;label&quot;,16)</b>.",
           prompt:"JS",
           separator:"&gt;",
           storageKey:"RetroAppleJS.Debugger.TestBench",
@@ -314,6 +460,72 @@
     termWrite("Fallback console active; COM_oTERM.js was not available.","warn");
   }
 
+  function layoutToolbox()
+  {
+    var tools = el("tab3.2");
+    var bench = tools ? tools.querySelector(".DBG_testbenchToolbox") : null;
+    var symbolBox = tools ? tools.querySelector(".DBG_symbolBox") : null;
+    var symbolToolbox = symbolBox && symbolBox.closest ? symbolBox.closest(".toolbox") : null;
+    var debuggerBox = el("tab3");
+
+    /* getBoundingClientRect() is zero while tab3.2 is hidden. */
+    if(!tools || tools.hidden || !bench || !symbolToolbox || !debuggerBox) return false;
+
+    var toolsRect = tools.getBoundingClientRect();
+    var symbolRect = symbolToolbox.getBoundingClientRect();
+    var debuggerRect = debuggerBox.getBoundingClientRect();
+
+    /*
+     * Keep a 10px gutter after SYMBOL TABLE, then consume all remaining
+     * horizontal space up to the Debugger's right edge.
+     */
+    var left = Math.round(symbolRect.right - toolsRect.left + 10);
+    var pageLeft = toolsRect.left + left;
+    var width = Math.max(350,Math.round(debuggerRect.right - pageLeft));
+
+    bench.style.left = left + "px";
+    bench.style.top = "0px";
+    bench.style.width = width + "px";
+    bench.style.maxWidth = "none";
+    return true;
+  }
+
+  function bindToolboxLayout()
+  {
+    var tools = el("tab3.2");
+    var symbolBox = tools ? tools.querySelector(".DBG_symbolBox") : null;
+    var symbolToolbox = symbolBox && symbolBox.closest ? symbolBox.closest(".toolbox") : null;
+    var debuggerBox = el("tab3");
+
+    if(!tools) return;
+
+    function scheduleLayout()
+    {
+      if(typeof global.requestAnimationFrame === "function")
+        global.requestAnimationFrame(layoutToolbox);
+      else
+        global.setTimeout(layoutToolbox,0);
+    }
+
+    /* Re-layout when Debugger Tools is opened/closed. */
+    if(typeof global.MutationObserver === "function")
+    {
+      var observer = new global.MutationObserver(scheduleLayout);
+      observer.observe(tools,{attributes:true,attributeFilter:["hidden","style","class"]});
+    }
+
+    /* Also follow later toolbox-width/theme/layout changes. */
+    if(typeof global.ResizeObserver === "function")
+    {
+      var resizeObserver = new global.ResizeObserver(scheduleLayout);
+      if(symbolToolbox) resizeObserver.observe(symbolToolbox);
+      if(debuggerBox) resizeObserver.observe(debuggerBox);
+    }
+
+    global.addEventListener("resize",scheduleLayout);
+    scheduleLayout();
+  }
+
   function init()
   {
     if(!el("DBG_testbenchBox")) return false;
@@ -321,6 +533,7 @@
     global.TB = TB;
 
     initTerminal();
+    bindToolboxLayout();
     bindButton("DBG_testRunButton",runEditor);
     bindButton("DBG_testClearConsoleButton",clearConsole);
     bindButton("DBG_testRamInjectButton",injectRam);
@@ -347,7 +560,8 @@
     clear:clearConsole,
     inject:injectRam,
     read:readRam,
-    example:loadExample
+    example:loadExample,
+    layout:layoutToolbox
   };
 
   global.DBG_TESTBENCH = TB;
