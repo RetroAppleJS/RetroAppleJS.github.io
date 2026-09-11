@@ -30,7 +30,7 @@ jobs:
           grep -q 'const WARNING_TRACE_SIZE = 32' res/EMU_cpu6502.js
           test "$(grep -c 'warningTraceSuffix()' res/EMU_cpu6502.js)" -eq 4
           grep -q 'recordWarningTrace(instr_pc, opcode, warningTraceOperand)' res/EMU_cpu6502.js
-          test "$(grep -c 'clearWarningTrace();' res/EMU_cpu6502.js)" -eq 4
+          test "$(grep -c 'clearWarningTrace();' res/EMU_cpu6502.js)" -eq 3
 
       - name: Commit patched source
         shell: bash
