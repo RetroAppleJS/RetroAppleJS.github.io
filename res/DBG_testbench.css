@@ -1,0 +1,211 @@
+/* First-pass Debugger tab 3.2 algorithm-test-bench UI. */
+
+.DBG_testbenchToolbox {
+  width: 910px;
+  max-width: calc(100vw - 60px);
+}
+
+.DBG_testbenchBox {
+  width: 900px;
+  max-width: 100%;
+  min-height: 360px;
+  height: auto !important;
+  padding: 5px 7px 7px 7px !important;
+  text-align: left !important;
+  box-sizing: border-box;
+}
+
+.DBG_testbenchHeader,
+.DBG_testbenchSectionHeader,
+.DBG_testbenchRamRow,
+.DBG_testbenchRealmBar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.DBG_testbenchHeader {
+  justify-content: space-between;
+  min-height: 24px;
+  margin-bottom: 4px;
+  font-family: arial,sans-serif;
+}
+
+.DBG_testbenchTitle {
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+
+.DBG_testbenchHeaderButtons {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.DBG_testbenchRealmBar {
+  min-height: 20px;
+  margin-bottom: 5px;
+  padding: 2px 5px;
+  border: 1px solid rgba(0,0,0,.18);
+  border-radius: 4px;
+  background: rgba(255,255,255,.45);
+  font: 11px/1.3 courier,monospace;
+  white-space: nowrap;
+}
+
+.DBG_testbenchRealmBar code {
+  font-weight: 700;
+}
+
+#DBG_testbenchStatus {
+  margin-left: auto;
+  font-family: arial,sans-serif;
+}
+
+.DBG_testbenchGrid {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  gap: 7px;
+}
+
+.DBG_testbenchSection {
+  min-width: 0;
+  border: 1px solid rgba(0,0,0,.22);
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(255,255,255,.35);
+}
+
+.DBG_testbenchSectionHeader {
+  justify-content: space-between;
+  min-height: 23px;
+  padding: 1px 4px;
+  border-bottom: 1px solid rgba(0,0,0,.18);
+  background: rgba(240,240,240,.75);
+  font: 11px/1.2 arial,sans-serif;
+  font-weight: 700;
+}
+
+#DBG_testScript {
+  display: block;
+  width: 100%;
+  height: 220px;
+  margin: 0;
+  padding: 6px 8px;
+  border: 0;
+  outline: 0;
+  resize: vertical;
+  box-sizing: border-box;
+  background: rgba(255,255,255,.78);
+  color: #111;
+  font: 12px/17px "DejaVu Sans Mono",Menlo,Consolas,"Courier New",monospace;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.DBG_testConsole {
+  height: 220px;
+  background: #101418;
+  color: #d7e0e7;
+  overflow: hidden;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Constrain the generic COM_oTERM terminal to the testbench panel. */
+#DBG_testConsole.VanillaTerm,
+#DBG_testConsole .container {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}
+
+#DBG_testConsole .container {
+  padding: 5px 7px;
+  overflow: auto;
+  background: transparent;
+  color: inherit;
+  font: 12px/17px "DejaVu Sans Mono",Menlo,Consolas,"Courier New",monospace;
+}
+
+#DBG_testConsole output {
+  display: block;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+#DBG_testConsole .command {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+}
+
+#DBG_testConsole .prompt {
+  flex: 0 0 auto;
+  margin-right: 5px;
+}
+
+#DBG_testConsole .input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: transparent;
+  color: inherit;
+  border: 0;
+  outline: 0;
+  font: inherit;
+}
+
+#DBG_testConsoleFallback {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 6px;
+  border: 0;
+  resize: none;
+  box-sizing: border-box;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.DBG_testbenchRam {
+  margin-top: 7px;
+  padding: 5px;
+  border: 1px solid rgba(0,0,0,.22);
+  border-radius: 6px;
+  background: rgba(255,255,255,.34);
+}
+
+.DBG_testbenchRamTitle {
+  margin-right: 3px;
+  font: 11px/1.2 arial,sans-serif;
+  font-weight: 700;
+}
+
+.DBG_testbenchRam label {
+  font: 11px/1.2 arial,sans-serif;
+  white-space: nowrap;
+}
+
+#DBG_testRamAddress {
+  width: 62px;
+  font-family: courier,monospace;
+}
+
+#DBG_testRamLength {
+  width: 52px;
+}
+
+#DBG_testRamData {
+  flex: 1 1 auto;
+  min-width: 170px;
+  font: 11px/1.2 courier,monospace;
+}
+
+@media (max-width: 900px) {
+  .DBG_testbenchToolbox { width: calc(100vw - 40px); }
+  .DBG_testbenchGrid { grid-template-columns: 1fr; }
+}
