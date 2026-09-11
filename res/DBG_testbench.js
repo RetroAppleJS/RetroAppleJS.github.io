@@ -1,7 +1,7 @@
 /*
  * DBG_testbench.js
  *
- * First-pass algorithm test-bench realm for Debugger tab 3.2.
+ * First-pass algorithm test harness for Debugger tab 3.2.
  * Deliberately small: UI plumbing + a trusted JavaScript REPL/editor +
  * direct debugger-RAM helpers. Test profiles/generators/assertions come later.
  */
@@ -165,7 +165,7 @@
     }
   };
 
-  function realmConsole()
+  function harnessConsole()
   {
     return {
       log: function(){ TB.print.apply(TB,arguments); },
@@ -181,8 +181,8 @@
     var RAM = TB.RAM;
     var ram = TB.ram;
     var print = TB.print;
-    var console = realmConsole();
-    // Deliberately trusted eval() realm for this concept/debugging project.
+    var console = harnessConsole();
+    // Deliberately trusted eval() test harness for this concept/debugging project.
     return eval(code);
   };
 
@@ -286,7 +286,7 @@
       {
         terminal = new global.TERMINAL({
           container:"DBG_testConsole",
-          welcome:"JavaScript test realm ready.  Try <b>TB.ram.dump(0x0000,16)</b>.",
+          welcome:"JavaScript test harness ready.  Try <b>TB.ram.dump(0x0000,16)</b>.",
           prompt:"JS",
           separator:"&gt;",
           storageKey:"RetroAppleJS.Debugger.TestBench",
