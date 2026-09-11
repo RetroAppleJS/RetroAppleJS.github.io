@@ -9,8 +9,10 @@
     <link rel="stylesheet" href="res/COM_fontawesome/all.css">
     <link rel="stylesheet" href="res/COM_MAIN.css">
     <link rel="stylesheet" href="res/COM_oTERM.css">
+    <link rel="stylesheet" href="res/DBG_testbench.css">
     <script type="text/javascript" src="res/COM_MAIN.js"></script>
     <script type="text/javascript" src="res/COM_oTERM.js"></script>
+    <script type="text/javascript" src="res/DBG_testbench.js"></script>
     <script type="text/javascript" src="res/COM_CONFIG.js"></script>  <!-- load all the help, documentation & configuration data-->
     <script type="text/javascript" src="res/pako.min.js"></script>    <!-- compression/decompression library -->
     <!--script type="text/javascript" src="res/purify.min.js"></script-->  <!-- safely filter out all HTML tags -->
@@ -6359,36 +6361,61 @@ Label1 TXA
               </div>
             </div>
 
-            <!-- RUNTIME TOOLBOX -->
-            <div class="toolbox">
-              <div class="appbox" style="text-align:left;padding:0px 6px 0px 6px;">
-                SYSTEM<br>
-                <div style="font-family:arial;font-size:11px">
-                  CPU<button class="appbut skinny" onclick="DBG_stub('Reset CPU')" title="Reset CPU"><i class="fa fa-redo"></i></button>
-                  <button class="appbut skinny" onclick="DBG_stub('Restart CPU')" title="Restart CPU"><i class="fa fa-power-off"></i></button>
-                  <br>
-                  <button class="appbut skinny" onclick="DBG_stub('Load Emulator image')" title="Load emulator image">load <i class="fa fa-microchip"></i></button>
+  
+            <!-- ALGORITHM TEST BENCH -->
+            <div class="toolbox DBG_testbenchToolbox">
+              <div id="DBG_testbenchBox" class="appbox DBG_testbenchBox" title="Algorithm test bench">
+                <div class="DBG_testbenchHeader">
+                  <span class="DBG_testbenchTitle">TEST BENCH</span>
+                  <span class="DBG_testbenchHeaderButtons">
+                    <button id="DBG_testExampleButton" class="appbut skinny" type="button" title="Load example JavaScript"><i class="fa fa-lightbulb"></i> example</button>
+                    <button id="DBG_testRunButton" class="appbut skinny" type="button" title="Run script (Ctrl/Cmd+Enter)"><i class="fa fa-play"></i> run</button>
+                    <button id="DBG_testClearConsoleButton" class="appbut skinny" type="button" title="Clear console"><i class="fa fa-trash-alt"></i> console</button>
+                  </span>
+                </div>
+
+                <div class="DBG_testbenchRealmBar">
+                  realm <code>TB</code>
+                  &nbsp;·&nbsp; RAM <code>DBG_RAM</code>
+                  &nbsp;·&nbsp; helpers <code>TB.ram.read/write/load/fill/dump()</code>
+                  <span id="DBG_testbenchStatus">initializing</span>
+                </div>
+
+                <div class="DBG_testbenchGrid">
+                  <section class="DBG_testbenchSection">
+                    <div class="DBG_testbenchSectionHeader">
+                      <span>JAVASCRIPT</span>
+                      <span>Ctrl/Cmd + Enter = run</span>
+                    </div>
+                    <textarea id="DBG_testScript" spellcheck="false" wrap="off">// Test-bench JavaScript
+print("DBG_RAM:", RAM.length, "bytes");
+print(TB.ram.dump(0x0000, 32));</textarea>
+                  </section>
+
+                  <section class="DBG_testbenchSection">
+                    <div class="DBG_testbenchSectionHeader">
+                      <span>CONSOLE / REPL</span>
+                      <span>TB · RAM · ram · print()</span>
+                    </div>
+                    <div id="DBG_testConsole" class="DBG_testConsole"></div>
+                  </section>
+                </div>
+
+                <div class="DBG_testbenchRam">
+                  <div class="DBG_testbenchRamRow">
+                    <span class="DBG_testbenchRamTitle">RAM I/O</span>
+                    <label>address <input id="DBG_testRamAddress" type="text" value="$3000" spellcheck="false"></label>
+                    <label>length <input id="DBG_testRamLength" type="number" value="16" min="1" max="65536"></label>
+                    <input id="DBG_testRamData" type="text" value="00 01 02 03" spellcheck="false" title="Hex bytes; prefix with = for a trusted JavaScript array/expression">
+                    <button id="DBG_testRamInjectButton" class="appbut skinny" type="button" title="Inject data into debugger RAM"><i class="fa fa-sign-in-alt"></i> inject</button>
+                    <button id="DBG_testRamReadButton" class="appbut skinny" type="button" title="Read debugger RAM"><i class="fa fa-search"></i> read</button>
+                  </div>
                 </div>
               </div>
-            </div>
+            </div>  
 
-            <!-- MEMORY TOOLBOX -->
-            <div class="toolbox">
-              <div class="appbox" title="Memory tools">
-                MEMORY<br>
-                <button class="appbut skinny" onclick="DBG_stub('Map zero-page')"><i class="fa fa-book"></i> zero-page</button>
-              </div>
-            </div>
 
-            <!-- EXPORT TOOLBOX -->
-            <div class="toolbox">
-              <div class="appbox" title="Export and diagnostics">
-                EXPORT / DIAGNOSTICS<br>
-                <button class="appbut skinny" onclick="DBG_stub('Export watch list')"><i class="fa fa-download"></i> export</button>
-                <br>
-                <button class="appbut skinny" onclick="DBG_stub('Clear all breakpoints/watchpoints')"><i class="fa fa-trash"></i> clear</button>
-              </div>
-            </div>
+
           </div>
 
           <div id="DBG_symbolOverlapPopup" class="DBG_symbolOverlapBack" hidden>
