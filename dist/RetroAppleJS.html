@@ -2720,7 +2720,7 @@ table { border-collapse: collapse; position: relative;}
   top: 0px;
   float: none;
   clear: none;
-  width: 520px;  /* fallback only; JS stretches it to the Debugger right edge */
+  width: 510px;  /* fallback only; JS keeps a 10px Debugger right margin */
   height: auto;
   max-width: none;
   margin: 0;
@@ -2807,6 +2807,20 @@ table { border-collapse: collapse; position: relative;}
   font-weight: 700;
 }
 
+.DBG_testbenchConsoleHeaderRight {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.DBG_testConsoleClear {
+  flex: 0 0 auto;
+  font-size: 10px !important;
+}
+
 #DBG_testScript {
   display: block;
   width: 100%;
@@ -2829,6 +2843,9 @@ table { border-collapse: collapse; position: relative;}
 
 .DBG_testConsole {
   height: 155px;
+  min-height: 155px;
+  max-height: 155px;
+  box-sizing: border-box;
   background: #101418;
   color: #d7e0e7;
   overflow: hidden;
@@ -2836,18 +2853,32 @@ table { border-collapse: collapse; position: relative;}
   -webkit-user-select: text;
 }
 
-/* Constrain the generic COM_oTERM terminal to the testbench panel. */
-#DBG_testConsole.VanillaTerm,
+/*
+ * COM_oTERM adds .VanillaTerm to DBG_testConsole.  Keep the terminal root at a
+ * real fixed height; height:100% here would resolve against the auto-height
+ * section and let the terminal grow with every command.
+ */
+#DBG_testConsole.VanillaTerm {
+  width: 100%;
+  height: 155px;
+  min-height: 155px;
+  max-height: 155px;
+  max-width: none;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Only the terminal's inner viewport scrolls. */
 #DBG_testConsole .container {
   width: 100%;
   height: 100%;
+  min-height: 0;
+  max-height: 100%;
   max-width: none;
   box-sizing: border-box;
-}
-
-#DBG_testConsole .container {
   padding: 5px 7px;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
   background: transparent;
   color: inherit;
   font: 12px/17px "DejaVu Sans Mono",Menlo,Consolas,"Courier New",monospace;
@@ -7905,11 +7936,11 @@ function TERMINAL(props)
 
     /*
      * Keep a 10px gutter after SYMBOL TABLE, then consume all remaining
-     * horizontal space up to the Debugger's right edge.
+     * horizontal space up to 10px before the Debugger's right edge.
      */
     var left = Math.round(symbolRect.right - toolsRect.left + 10);
     var pageLeft = toolsRect.left + left;
-    var width = Math.max(350,Math.round(debuggerRect.right - pageLeft));
+    var width = Math.max(350,Math.round(debuggerRect.right - pageLeft - 10));
 
     bench.style.left = left + "px";
     bench.style.top = "0px";
@@ -17683,8 +17714,8 @@ function Apple2Debug()
                             +"ontouchstart='return oEMU.component.CPU.Apple2Debug.navButtonDown(this,1)' ontouchend='return oEMU.component.CPU.Apple2Debug.navButtonUp(this)' ontouchcancel='return oEMU.component.CPU.Apple2Debug.navButtonCancel(this)' "
                             +"style='border:0;background:transparent;-webkit-appearance:none;appearance:none;padding:0 1px;margin:0;line-height:1;font-size:11px;cursor:pointer'>↓</button>"
                         +"<span id='cpuDbg_navStatus' style='font-family:"+listingFontFamily+";font-size:9px'></span>"
+                                                +"<i id='cpuDbg_trackPc' class='fa fa-lock' role='button' aria-pressed='true' title='Track PC enabled — click to unlock the listing' onclick='oEMU.component.CPU.Apple2Debug.toggleTrackPC()' style='font-size:10px;cursor:pointer;margin-left:4px'></i>"
                         +"<i id='cpuDbg_showLoopSteps' class='fa fa-retweet' role='button' aria-pressed='true' title='Closed-loop steps visible — click to hide repeated loop iterations' onclick='oEMU.component.CPU.Apple2Debug.toggleLoopSteps()' style='font-size:10px;cursor:pointer;margin-left:3px'></i>"
-                        +"<i id='cpuDbg_trackPc' class='fa fa-lock' role='button' aria-pressed='true' title='Track PC enabled — click to unlock the listing' onclick='oEMU.component.CPU.Apple2Debug.toggleTrackPC()' style='font-size:10px;cursor:pointer;margin-left:4px'></i>"
                         +"<span>BREAK</span>"
                         +"<input id='cpuDbg_breakAddr' type='text' value='' maxlength='6' spellcheck='false' title='Temporary one-shot execution breakpoint address; click a listing row to fill it' style='width:40px;height:18px;padding:0 2px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBreakpointTarget(this.value)'>"
                         +"<select id='cpuDbg_speed' title='STEP TRACE execution speed' onchange='oEMU.component.CPU.Apple2Debug.setRunSpeed(this.value)' style='width:100px;height:18px;padding:0;font-size:9px'>"
@@ -57880,7 +57911,10 @@ print(TB.ram.dump(0x0000, 32));</textarea>
                   <section class="DBG_testbenchSection">
                     <div class="DBG_testbenchSectionHeader">
                       <span>CONSOLE / REPL</span>
-                      <span>TB · RAM · ram · print()</span>
+                      <span class="DBG_testbenchConsoleHeaderRight">
+                        <span>TB · RAM · ram · print()</span>
+                        <button id="DBG_testClearConsoleButton" class="appbut skinny DBG_testConsoleClear" type="button" title="Clear console"><i class="fa fa-trash-alt"></i> clear</button>
+                      </span>                      
                     </div>
                     <div id="DBG_testConsole" class="DBG_testConsole"></div>
                   </section>
