@@ -224,6 +224,7 @@ More conditions can be combined naturally:
 
 ```text
 PC==$C600 && A==$10
+INS==$0000000D5700
 M[$4000]==$80 && Z
 X!=0 && !C
 ```
@@ -241,11 +242,19 @@ When the condition is false, the breakpoint remains armed and execution continue
 
 A blank expression cannot be armed. Invalid expressions are rejected before arming. A runtime evaluation error stops visibly instead of silently ignoring the condition.
 
-### Supported CPU registers
+### Supported CPU registers and instruction counter
 
 ```text
-A X Y SP P PC
+A X Y SP P PC INS
 ```
+
+`INS` is the same 48-bit completed-opcode counter displayed in the NAV row. It is reset with the CPU and is evaluated at the clean instruction boundary before the next opcode is fetched. For example:
+
+```text
+INS==$0000000D5700
+```
+
+The hexadecimal literal may use the full 12-digit counter width. `INS` can also be combined with other breakpoint terms, for example `PC==$C65E && INS>=$0000000D5700`.
 
 ### Supported status flags
 

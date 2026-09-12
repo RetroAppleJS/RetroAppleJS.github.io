@@ -189,3 +189,45 @@ test('STEP TRACE NAV shows the 48-bit instruction counter next to PC', () => {
     assert.match(debugSource,/INS \$\"\+instructionCounterText\(\)/);
     assert.match(debugSource,/padStart\(12,\"0\"\)\.slice\(-12\)/);
 });
+
+
+test('STEP TRACE BREAK IF accepts the 48-bit INS instruction counter', () => {
+    let installed = null;
+    const cpu = {
+        watch(){ return {pc:0xC665,a:0,x:0,y:0,sp:0xFD,p:0x24,cycle_delay:0,ic:0x0000000D56FF}; },
+        setExecutionCondition(callback,address){ installed={callback,address}; return true; },
+        clearExecutionCondition(callback){
+            if(!installed || (callback && installed.callback!==callback)) return false;
+            installed=null; return true;
+        }
+    };
+    const hw = { safe_read(){ return 0; } };
+    const elements = {
+        cpuDbg_breakCond:fakeElement({value:'INS==$0000000D5700'}),
+        cpuDbg_breakArm:fakeElement({textContent:'Arm'}),
+        cpuDbg_play:fakeElement()
+    };
+    const ctx = {
+        console,
+        oEMU:{component:{CPU:{}}},
+        apple2plus:{cpuObj(){return cpu;},hwObj(){return hw;}},
+        document:{activeElement:null,getElementById(id){return elements[id] || null;}},
+        window:{setTimeout(){},clearTimeout(){}},
+        oCOM:{getHexWord(v){return (v&0xFFFF).toString(16).toUpperCase().padStart(4,'0');}}
+    };
+    vm.createContext(ctx);
+    vm.runInContext(debugSource,ctx);
+
+    const dbg = ctx.oEMU.component.CPU.Apple2Debug;
+    assert.equal(dbg.setBreakpointCondition(elements.cpuDbg_breakCond.value),'INS==$0000000D5700');
+    assert.equal(dbg.toggleConditionalBreakpointFromInput(),'INS==$0000000D5700');
+    assert.ok(installed);
+    assert.equal(installed.address,null);
+
+    assert.equal(installed.callback({pc:0xC665,a:0,x:0,y:0,sp:0xFD,p:0x24,cycle_delay:0,ic:0x0000000D56FF}),false);
+    assert.equal(dbg.liveState().conditionalBreakpoint.armed,true);
+
+    assert.equal(installed.callback({pc:0xC665,a:0,x:0,y:0,sp:0xFD,p:0x24,cycle_delay:0,ic:0x0000000D5700}),true);
+    assert.equal(dbg.liveState().conditionalBreakpoint.hit,true);
+    assert.equal(dbg.liveState().conditionalBreakpoint.armed,false);
+});
