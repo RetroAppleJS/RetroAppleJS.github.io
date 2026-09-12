@@ -477,11 +477,11 @@
 
     /*
      * Keep a 10px gutter after SYMBOL TABLE, then consume all remaining
-     * horizontal space up to the Debugger's right edge.
+     * horizontal space up to 10px before the Debugger's right edge.
      */
     var left = Math.round(symbolRect.right - toolsRect.left + 10);
     var pageLeft = toolsRect.left + left;
-    var width = Math.max(350,Math.round(debuggerRect.right - pageLeft));
+    var width = Math.max(350,Math.round(debuggerRect.right - pageLeft - 10));
 
     bench.style.left = left + "px";
     bench.style.top = "0px";
