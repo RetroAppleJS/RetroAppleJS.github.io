@@ -89,18 +89,15 @@ function Apple2Debug()
     // Step Over/Out are temporary debugger-owned live boundary runs.
     var boundaryAction = null;
 
-    // Temporary execution breakpoint. Cpu6502's execution trap is evaluated only
-    // when cycle_delay==0, before interrupt dispatch and opcode fetch. Conditional
-    // misses re-arm that same boundary trap and return false so the target opcode
-    // executes normally; matching conditions stop before the opcode is fetched.
-    var breakTarget = null;
+    // Conditional breakpoint. While armed, its predicate is evaluated at every
+    // clean live instruction boundary before interrupt dispatch/opcode fetch. A
+    // false result keeps it armed; a true result stops before the opcode fetch.
     var breakConditionText = "";
     var breakConditionError = "";
     var breakConditionAst = null;
-    var conditionHelp = "Optional breakpoint condition. Registers: A X Y SP P PC. Flags: N V B D I Z C. Memory: M[$addr] or MEM[$addr], M16[$addr] or MEM16[$addr]. Operators: == != < <= > >= & | ^ && || ! and parentheses.";
-    var tempBreakpoint = {
-         address:null
-        ,armed:false
+    var conditionHelp = "Conditional breakpoint. Registers: A X Y SP P PC. Flags: N V B D I Z C. Memory: M[$addr] or MEM[$addr], M16[$addr] or MEM16[$addr]. Operators: == != < <= > >= & | ^ && || ! and parentheses.";
+    var conditionalBreakpoint = {
+         armed:false
         ,hit:false
         ,hits:0
         ,checks:0
@@ -957,8 +954,6 @@ function Apple2Debug()
             rows.push({
                  "addr":adr
                 ,"current":adr===pc
-                ,"breakpoint":tempBreakpoint.armed && tempBreakpoint.address===adr
-                ,"breakHit":tempBreakpoint.hit && tempBreakpoint.address===adr
                 ,"decoded":d
                 ,"text":""
             });
@@ -992,30 +987,6 @@ function Apple2Debug()
             : forwardWindow(manualTop,pc,count);
     }
 
-    function setBreakpointTarget(addr)
-    {
-        addr = parseAddress(addr);
-        if(addr===null) return false;
-        breakTarget = addr;
-        breakMessage = "";
-        syncBreakpointControls();
-        return true;
-    }
-
-    function rowClick(event)
-    {
-        var row = event.currentTarget;
-        if(row && Number.isFinite(row._cpuDbgAddr))
-            setBreakpointTarget(row._cpuDbgAddr);
-    }
-
-    function rowDoubleClick(event)
-    {
-        var row = event.currentTarget;
-        if(row && Number.isFinite(row._cpuDbgAddr))
-            dbg.runToAddress(row._cpuDbgAddr);
-    }
-
     function ensureRowPool()
     {
         var el = document.getElementById(dbg.body_id);
@@ -1039,10 +1010,7 @@ function Apple2Debug()
             row.style.cursor = "default";
             row._cpuDbgText = null;
             row._cpuDbgCurrent = null;
-            row._cpuDbgBreakpoint = null;
             row._cpuDbgAddr = null;
-            row.addEventListener("click",rowClick);
-            row.addEventListener("dblclick",rowDoubleClick);
             el.appendChild(row);
             pool[i] = row;
         }
@@ -1226,15 +1194,6 @@ function Apple2Debug()
 
     function syncBreakpointControls()
     {
-        var input = document.getElementById("cpuDbg_breakAddr");
-        if(input)
-        {
-            var target = breakTarget;
-            if(target===null && currentPC!==null) target = currentPC;
-            var value = target===null ? "" : "$"+oCOM.getHexWord(target);
-            if(document.activeElement!==input && input.value!==value) input.value = value;
-        }
-
         var cond = document.getElementById("cpuDbg_breakCond");
         if(cond)
         {
@@ -1247,9 +1206,12 @@ function Apple2Debug()
         var arm = document.getElementById("cpuDbg_breakArm");
         if(arm)
         {
-            var dirty = tempBreakpoint.armed && breakConditionText!==tempBreakpoint.condition;
-            arm.textContent = dirty ? "Rearm" : (tempBreakpoint.armed ? "Armed" : "Arm");
+            var dirty = conditionalBreakpoint.armed && breakConditionText!==conditionalBreakpoint.condition;
+            arm.textContent = dirty ? "Rearm" : (conditionalBreakpoint.armed ? "Armed" : "Arm");
         }
+
+        var clear = document.getElementById("cpuDbg_breakClear");
+        if(clear) clear.disabled = !conditionalBreakpoint.armed && !conditionalBreakpoint.hit;
     }
 
     function boundaryActionText()
@@ -1262,13 +1224,9 @@ function Apple2Debug()
 
     function breakpointText()
     {
-        var conditional = tempBreakpoint.condition ? " IF" : "";
-        if(tempBreakpoint.armed)
-            return "  BP→$"+oCOM.getHexWord(tempBreakpoint.address)+conditional;
-        if(tempBreakpoint.error && tempBreakpoint.address!==null)
-            return "  BP!$"+oCOM.getHexWord(tempBreakpoint.address);
-        if(tempBreakpoint.hit)
-            return "  BP@$"+oCOM.getHexWord(tempBreakpoint.address)+(conditional ? " IF✓" : "");
+        if(conditionalBreakpoint.armed) return "  BP IF";
+        if(conditionalBreakpoint.error) return "  BP!";
+        if(conditionalBreakpoint.hit) return "  BP IF✓";
         return breakMessage ? "  "+breakMessage : "";
     }
 
@@ -1282,8 +1240,8 @@ function Apple2Debug()
         var title = followPC
             ? "Listing tracks the live program counter"
             : "Manual instruction-row view; enable Track PC to resume tracking";
-        if(tempBreakpoint.condition)
-            title += "; breakpoint condition: "+tempBreakpoint.condition;
+        if(conditionalBreakpoint.condition)
+            title += "; breakpoint condition: "+conditionalBreakpoint.condition;
         el.title = title;
     }
 
@@ -1315,15 +1273,11 @@ function Apple2Debug()
 
         for(var i=0;i<pool.length;i++)
         {
-            var data = rows[i] || {text:"",current:false,breakpoint:false,breakHit:false,addr:null};
+            var data = rows[i] || {text:"",current:false,addr:null};
             var node = pool[i];
             var text = data.text || "";
-            var marked = !!(data.breakpoint || data.breakHit);
-
             node._cpuDbgAddr = data.addr;
-            node.title = data.addr==null
-                ? ""
-                : "Click: breakpoint target $"+oCOM.getHexWord(data.addr)+"; double-click: run to here";
+            node.title = data.addr==null ? "" : "Instruction $"+oCOM.getHexWord(data.addr);
 
             if(force || node._cpuDbgText!==text)
             {
@@ -1339,12 +1293,6 @@ function Apple2Debug()
                 node._cpuDbgCurrent = !!data.current;
             }
 
-            if(force || node._cpuDbgBreakpoint!==marked)
-            {
-                node.style.boxShadow = marked ? "inset 2px 0 0 currentColor" : "none";
-                node.style.paddingLeft = marked ? "3px" : "0";
-                node._cpuDbgBreakpoint = marked;
-            }
         }
 
         syncFollowControl();
@@ -1414,8 +1362,8 @@ function Apple2Debug()
                 case "f":
                 case "F":         dbg.setFollowPC(!followPC); break;
                 case "F9":
-                    if(event.shiftKey) dbg.clearTemporaryBreakpoint();
-                    else dbg.setTemporaryBreakpointFromInput(false);
+                    if(event.shiftKey) dbg.clearConditionalBreakpoint();
+                    else dbg.armConditionalBreakpointFromInput();
                     break;
                 case "F10":       dbg.stepOver(); break;
                 case "F11":
@@ -1641,7 +1589,7 @@ function Apple2Debug()
         if(showLoopSteps || renderAfterBatch || !fixedRunning || !result || result.stalled)
             dbg.cycle({cpu:machine.cpuObj()});
 
-        // A temporary breakpoint callback can stop fixedRunning from inside a
+        // A conditional breakpoint callback can stop fixedRunning from inside a
         // batch. Check ownership again before scheduling the next batch.
         if(!fixedRunning || !result || result.stalled)
         {
@@ -1769,7 +1717,7 @@ function Apple2Debug()
             var one = machine.stepLiveInstruction();
 
             // Cpu6502's execution trap returns a stalled instruction when a
-            // temporary breakpoint is hit. The callback already cleared the
+            // conditional breakpoint is hit. The callback already cleared the
             // boundary action, so stop without executing the target opcode.
             if(!one || one.stalled || one.ticks<=0) break;
 
@@ -1821,25 +1769,24 @@ function Apple2Debug()
         return action;
     }
 
-    function tempBreakpointHit(state)
+    function conditionalBreakpointHit(state)
     {
-        tempBreakpoint.armed = false;
-        tempBreakpoint.error = tempBreakpoint.error || null;
-        if(tempBreakpoint.error)
+        conditionalBreakpoint.armed = false;
+        conditionalBreakpoint.error = conditionalBreakpoint.error || null;
+        if(conditionalBreakpoint.error)
         {
-            tempBreakpoint.hit = false;
+            conditionalBreakpoint.hit = false;
             breakMessage = "COND ERR";
         }
         else
         {
-            tempBreakpoint.hit = true;
-            tempBreakpoint.hits++;
+            conditionalBreakpoint.hit = true;
+            conditionalBreakpoint.hits++;
             breakMessage = "";
         }
-        breakTarget = tempBreakpoint.address;
 
-        // Stop whichever live owner was executing. The CPU trap has already
-        // removed itself before this callback runs, so no target opcode is lost.
+        // Stop whichever live owner was executing. The CPU condition trap is at
+        // a clean boundary, so the matching boundary's opcode remains unexecuted.
         stopBoundaryAction();
         stopFixedRun();
         if(systemRunning()) pauseSystem();
@@ -1852,8 +1799,6 @@ function Apple2Debug()
         syncRunIcon();
         syncBreakpointControls();
 
-        // SYSTEM cycle/fixed batch will normally render immediately after the
-        // trap returns; this covers direct tool/API execution as well.
         window.setTimeout(function()
         {
             var cpu = liveCPU();
@@ -1862,44 +1807,40 @@ function Apple2Debug()
         return true;
     }
 
-    function tempBreakpointTrap(state)
+    function conditionalBreakpointTrap(state)
     {
-        tempBreakpoint.checks++;
+        conditionalBreakpoint.checks++;
         var matched = true;
 
         try
         {
-            matched = breakConditionAst ? !!conditionValue(breakConditionAst,state) : true;
-            tempBreakpoint.lastResult = matched;
-            tempBreakpoint.error = null;
+            matched = !!conditionValue(breakConditionAst,state);
+            conditionalBreakpoint.lastResult = matched;
+            conditionalBreakpoint.error = null;
         }
         catch(err)
         {
-            tempBreakpoint.lastResult = null;
-            tempBreakpoint.error = err && err.message ? err.message : String(err);
+            conditionalBreakpoint.lastResult = null;
+            conditionalBreakpoint.error = err && err.message ? err.message : String(err);
             breakMessage = "COND ERR";
             matched = true; // stop visibly rather than silently ignoring an unreadable condition
         }
 
         if(!matched)
         {
-            tempBreakpoint.skips++;
-            var cpu = liveCPU();
-            if(tempBreakpoint.armed && cpu && typeof(cpu.setExecutionTrap)==="function")
-                cpu.setExecutionTrap(tempBreakpoint.address,tempBreakpointTrap);
+            conditionalBreakpoint.skips++;
             return false;
         }
 
-        return tempBreakpointHit(state);
+        return conditionalBreakpointHit(state);
     }
 
-    function armTemporaryBreakpoint(addr,autoRun,conditionText)
+    function armConditionalBreakpoint(conditionText)
     {
         var cpu = liveCPU();
-        addr = parseAddress(addr);
-        if(!cpu || addr===null || typeof(cpu.setExecutionTrap)!="function")
+        if(!cpu || typeof(cpu.setExecutionCondition)!="function")
         {
-            breakMessage = addr===null ? "BAD BP" : "BP unavailable";
+            breakMessage = "BP unavailable";
             if(currentPC!==null) renderListing(currentPC,true);
             return false;
         }
@@ -1908,57 +1849,52 @@ function Apple2Debug()
         try
         {
             compiled = compileBreakpointCondition(conditionText===undefined ? breakConditionText : conditionText);
+            if(!compiled.text) throw new Error("Enter a breakpoint condition");
         }
         catch(err)
         {
             breakConditionText = String(conditionText===undefined ? breakConditionText : conditionText).trim();
             breakConditionError = err && err.message ? err.message : String(err);
             breakMessage = "BAD COND";
-            tempBreakpoint.error = breakConditionError;
+            conditionalBreakpoint.error = breakConditionError;
             syncBreakpointControls();
             if(currentPC!==null) renderListing(currentPC,true);
             return false;
         }
 
-        if(tempBreakpoint.armed && typeof(cpu.clearExecutionTrap)==="function")
-            cpu.clearExecutionTrap();
+        if(conditionalBreakpoint.armed && typeof(cpu.clearExecutionCondition)==="function")
+            cpu.clearExecutionCondition(conditionalBreakpointTrap);
 
-        breakTarget = addr;
         breakConditionText = compiled.text;
         breakConditionError = "";
         breakConditionAst = compiled.ast;
-        tempBreakpoint.address = addr;
-        tempBreakpoint.armed = true;
-        tempBreakpoint.hit = false;
-        tempBreakpoint.condition = compiled.text;
-        tempBreakpoint.lastResult = null;
-        tempBreakpoint.error = null;
+        conditionalBreakpoint.armed = true;
+        conditionalBreakpoint.hit = false;
+        conditionalBreakpoint.condition = compiled.text;
+        conditionalBreakpoint.lastResult = null;
+        conditionalBreakpoint.error = null;
         breakMessage = "";
 
-        cpu.setExecutionTrap(addr,tempBreakpointTrap);
+        cpu.setExecutionCondition(conditionalBreakpointTrap);
         syncBreakpointControls();
         if(currentPC!==null) renderListing(currentPC,true);
-
-        if(autoRun) startExecution();
-        return addr;
+        return compiled.text;
     }
 
-    function clearTemporaryBreakpoint(clearTarget)
+    function clearConditionalBreakpoint()
     {
         var cpu = liveCPU();
-        if(tempBreakpoint.armed && cpu && typeof(cpu.clearExecutionTrap)==="function")
-            cpu.clearExecutionTrap();
+        if(conditionalBreakpoint.armed && cpu && typeof(cpu.clearExecutionCondition)==="function")
+            cpu.clearExecutionCondition(conditionalBreakpointTrap);
 
-        tempBreakpoint.address = null;
-        tempBreakpoint.armed = false;
-        tempBreakpoint.hit = false;
-        tempBreakpoint.condition = "";
-        tempBreakpoint.lastResult = null;
-        tempBreakpoint.error = null;
+        conditionalBreakpoint.armed = false;
+        conditionalBreakpoint.hit = false;
+        conditionalBreakpoint.condition = "";
+        conditionalBreakpoint.lastResult = null;
+        conditionalBreakpoint.error = null;
         breakConditionAst = null;
         breakConditionError = "";
         breakMessage = "";
-        if(clearTarget) breakTarget = null;
 
         syncBreakpointControls();
         if(currentPC!==null) renderListing(currentPC,true);
@@ -2006,8 +1942,6 @@ function Apple2Debug()
                         +"<span id='cpuDbg_navStatus' style='font-family:"+listingFontFamily+";font-size:9px'></span>"
                                                 +"<i id='cpuDbg_trackPc' class='fa fa-lock' role='button' aria-pressed='true' title='Track PC enabled — click to unlock the listing' onclick='oEMU.component.CPU.Apple2Debug.toggleTrackPC()' style='font-size:10px;cursor:pointer;margin-left:4px'></i>"
                         +"<i id='cpuDbg_showLoopSteps' class='fa fa-retweet' role='button' aria-pressed='true' title='Closed-loop steps visible — click to hide repeated loop iterations' onclick='oEMU.component.CPU.Apple2Debug.toggleLoopSteps()' style='font-size:10px;cursor:pointer;margin-left:3px'></i>"
-                        +"<span>BREAK</span>"
-                        +"<input id='cpuDbg_breakAddr' type='text' value='' maxlength='6' spellcheck='false' title='Temporary one-shot execution breakpoint address; click a listing row to fill it' style='width:40px;height:18px;padding:0 2px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBreakpointTarget(this.value)'>"
                         +"<select id='cpuDbg_speed' title='STEP TRACE execution speed' onchange='oEMU.component.CPU.Apple2Debug.setRunSpeed(this.value)' style='width:100px;height:18px;padding:0;font-size:9px'>"
                             +"<option value='1'>1 IPS</option>"
                             +"<option value='10'>10 IPS</option>"
@@ -2017,11 +1951,10 @@ function Apple2Debug()
                         +"</select>"                        
                     +"</div>"
                     +"<div style='display:flex;align-items:center;gap:3px;white-space:nowrap'>"
-                        +"<span>IF</span>"
-                        +"<input id='cpuDbg_breakCond' type='text' value='' spellcheck='false' title='"+conditionHelp+"' placeholder='e.g. A==$10 && M[$4000]==$80' style='flex:0.7 1 auto;min-width:0;height:18px;padding:0 3px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px' onchange='oEMU.component.CPU.Apple2Debug.setBreakpointCondition(this.value)'>"
-                        +"<button id='cpuDbg_breakArm' type='button' title='Arm one-shot breakpoint (F9)' onclick='oEMU.component.CPU.Apple2Debug.setTemporaryBreakpointFromInput(false)' style='font-size:9px;padding:0 4px'>Arm</button>"
-                        +"<button type='button' title='Arm breakpoint and continue execution to it' onclick='oEMU.component.CPU.Apple2Debug.setTemporaryBreakpointFromInput(true)' style='font-size:9px;padding:0 4px'>Run→</button>"
-                        +"<button type='button' title='Clear temporary breakpoint (Shift+F9)' onclick='oEMU.component.CPU.Apple2Debug.clearTemporaryBreakpoint()' style='font-size:9px;padding:0 4px'>Clear</button>"
+                        +"<span>BREAK IF</span>"
+                        +"<input id='cpuDbg_breakCond' type='text' value='' spellcheck='false' title='"+conditionHelp+"' placeholder='e.g. PC==$C600 && A==$10' style='flex:1 1 auto;min-width:0;height:18px;padding:0 3px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px' onchange='oEMU.component.CPU.Apple2Debug.setBreakpointCondition(this.value)'>"
+                        +"<button id='cpuDbg_breakArm' type='button' title='Arm conditional breakpoint (F9)' onclick='oEMU.component.CPU.Apple2Debug.armConditionalBreakpointFromInput()' style='font-size:9px;padding:0 4px'>Arm</button>"
+                        +"<button id='cpuDbg_breakClear' type='button' title='Clear conditional breakpoint (Shift+F9)' onclick='oEMU.component.CPU.Apple2Debug.clearConditionalBreakpoint()' style='font-size:9px;padding:0 4px'>Clear</button>"
                     +"</div>"
                     +"<div style='white-space:nowrap'>LISTING&nbsp; Columns <input id='cpuDbg_columns' type='text' value='"+listingColumns+"' spellcheck='false' style='width:220px;font-family:"+listingFontFamily+";font-size:9px' onchange='oEMU.component.CPU.Apple2Debug.setListingColumns(this.value)'></div>"
                     +"<div style='white-space:nowrap;font-size:9px'>"
@@ -2253,7 +2186,6 @@ function Apple2Debug()
 
         currentPC = cpu.watch().pc & 0xffff;
         previousObservedPC = currentPC;
-        if(breakTarget===null) breakTarget = currentPC;
         renderListing(currentPC,true);
         syncRunIcon();
 
@@ -2443,25 +2375,15 @@ function Apple2Debug()
         });
     };
 
-    this.setBreakpointTarget = function(value)
-    {
-        var addr = parseAddress(value);
-        if(addr===null)
-        {
-            breakMessage = "BAD BP";
-            if(currentPC!==null) renderListing(currentPC,true);
-            return false;
-        }
-        return setBreakpointTarget(addr);
-    };
-
     this.setBreakpointCondition = function(value)
     {
         breakConditionText = String(value==null ? "" : value).trim();
         try
         {
-            compileBreakpointCondition(breakConditionText);
+            if(breakConditionText) compileBreakpointCondition(breakConditionText);
             breakConditionError = "";
+            conditionalBreakpoint.error = null;
+            if(!conditionalBreakpoint.armed) conditionalBreakpoint.hit = false;
             breakMessage = "";
         }
         catch(err)
@@ -2474,35 +2396,20 @@ function Apple2Debug()
         return breakConditionError ? false : breakConditionText;
     };
 
-    this.setTemporaryBreakpoint = function(address,autoRun,condition)
+    this.armConditionalBreakpoint = function(condition)
     {
-        return armTemporaryBreakpoint(address,!!autoRun,condition);
+        return armConditionalBreakpoint(condition);
     };
 
-    this.setTemporaryBreakpointFromInput = function(autoRun)
-    {
-        var input = document.getElementById("cpuDbg_breakAddr");
-        var addr = input ? parseAddress(input.value) : breakTarget;
-        var cond = document.getElementById("cpuDbg_breakCond");
-        var condition = cond ? cond.value : breakConditionText;
-        if(addr===null)
-        {
-            breakMessage = "BAD BP";
-            if(currentPC!==null) renderListing(currentPC,true);
-            return false;
-        }
-        return armTemporaryBreakpoint(addr,!!autoRun,condition);
-    };
-
-    this.runToAddress = function(address)
+    this.armConditionalBreakpointFromInput = function()
     {
         var cond = document.getElementById("cpuDbg_breakCond");
-        return armTemporaryBreakpoint(address,true,cond ? cond.value : breakConditionText);
+        return armConditionalBreakpoint(cond ? cond.value : breakConditionText);
     };
 
-    this.clearTemporaryBreakpoint = function()
+    this.clearConditionalBreakpoint = function()
     {
-        return clearTemporaryBreakpoint(false);
+        return clearConditionalBreakpoint();
     };
 
     this.setListingColumns = function(value)
@@ -2528,7 +2435,7 @@ function Apple2Debug()
         stopBoundaryAction();
         stopFixedRun();
         resetClosedLoopDisplayState();
-        clearTemporaryBreakpoint(false);
+        clearConditionalBreakpoint();
         syncRunIcon();
     };
 
@@ -2552,18 +2459,16 @@ function Apple2Debug()
             ,"pcInPeripheralROM":cpu ? peripheralRomAddress(cpu.watch().pc) : false
             ,"liveStepAPI":!!(liveMachine() && typeof(liveMachine().stepLiveInstruction)=="function")
             ,"boundaryAction":boundaryAction ? Object.assign({},boundaryAction) : null
-            ,"breakpoint":{
-                 "target":breakTarget
-                ,"address":tempBreakpoint.address
-                ,"armed":tempBreakpoint.armed
-                ,"hit":tempBreakpoint.hit
-                ,"hits":tempBreakpoint.hits
-                ,"checks":tempBreakpoint.checks
-                ,"skips":tempBreakpoint.skips
-                ,"condition":tempBreakpoint.condition
+            ,"conditionalBreakpoint":{
+                 "armed":conditionalBreakpoint.armed
+                ,"hit":conditionalBreakpoint.hit
+                ,"hits":conditionalBreakpoint.hits
+                ,"checks":conditionalBreakpoint.checks
+                ,"skips":conditionalBreakpoint.skips
+                ,"condition":conditionalBreakpoint.condition
                 ,"editorCondition":breakConditionText
-                ,"lastResult":tempBreakpoint.lastResult
-                ,"error":tempBreakpoint.error || breakConditionError || null
+                ,"lastResult":conditionalBreakpoint.lastResult
+                ,"error":conditionalBreakpoint.error || breakConditionError || null
               }
             ,"symbols":Object.assign({},symbolState)
             ,"cacheHits":cacheHits
