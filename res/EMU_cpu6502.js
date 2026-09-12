@@ -23,8 +23,10 @@ function Cpu6502(hwobj)
     var BOOTlogging = false;
     var BOOTcomplete = false;
 
-    // Optional one-shot instruction-boundary trap used by the WASM accelerator.
-    // It is checked only when cycle_delay is zero, before opcode fetch.
+    // Optional instruction-boundary trap. Numeric-address traps remain
+    // one-shot for accelerator callers. A null-address trap is a persistent
+    // condition observer: returning false keeps it armed for the next clean
+    // instruction boundary. All traps run before interrupt dispatch/opcode fetch.
     var executionTrap = null;
 
     // Optional terminal same-PC loop detector. Disabled unless a caller
@@ -251,6 +253,29 @@ function Cpu6502(hwobj)
             ,"callback":typeof(callback)=="function" ? callback : null
         };
         return executionTrap.address;
+    }
+
+    // Observe every clean instruction boundary until callback returns anything
+    // other than false, or clearExecutionTrap() is called. There is no per-step
+    // condition callback overhead while no condition is armed.
+    this.setExecutionCondition = function(callback)
+    {
+        executionTrap = {
+             "address":null
+            ,"callback":typeof(callback)=="function" ? callback : null
+        };
+        return true;
+    }
+
+    // Clear only the persistent condition observer owned by this callback.
+    // This avoids an inactive STEP TRACE clearing another component's numeric
+    // execution trap if ownership changed after the condition was armed.
+    this.clearExecutionCondition = function(callback)
+    {
+        if(!executionTrap || executionTrap.address!==null) return false;
+        if(callback && executionTrap.callback!==callback) return false;
+        executionTrap = null;
+        return true;
     }
 
     this.clearExecutionTrap = function()
@@ -753,14 +778,29 @@ function Cpu6502(hwobj)
 
         if (cycle_delay > 0) { cycle_delay--; return }
 
-        // The accelerator trap is deliberately before interrupt dispatch and
-        // opcode fetch: handoff therefore observes a clean instruction boundary.
-        if(executionTrap && (pc & 0xffff)==executionTrap.address)
+        // Execution traps are deliberately before interrupt dispatch and
+        // opcode fetch, so callbacks observe a clean instruction boundary.
+        if(executionTrap && (executionTrap.address===null || (pc & 0xffff)==executionTrap.address))
         {
             var trap = executionTrap;
-            executionTrap = null;
-            if(!trap.callback || trap.callback(self.watch())!==false)
-                return true;
+
+            if(trap.address===null)
+            {
+                // Persistent condition observer. A false result keeps it armed;
+                // a true result stops before this boundary's opcode is fetched.
+                if(!trap.callback || trap.callback(self.watch())!==false)
+                {
+                    if(executionTrap===trap) executionTrap = null;
+                    return true;
+                }
+            }
+            else
+            {
+                // Preserve the historical one-shot numeric address trap.
+                executionTrap = null;
+                if(!trap.callback || trap.callback(self.watch())!==false)
+                    return true;
+            }
         }
 
         // interrupt handling

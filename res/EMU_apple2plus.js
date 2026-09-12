@@ -283,8 +283,8 @@ function Apple2Plus(context)
         {
             remainingTicks--;
 
-            // A one-shot CPU execution trap stops before the selected opcode is
-            // fetched and therefore consumes no emulated CPU tick.
+            // A CPU execution trap stops at a clean instruction boundary before
+            // opcode fetch and therefore consumes no emulated CPU tick.
             if(cpu.cycle()===true)
             {
                 remainingTicks++;

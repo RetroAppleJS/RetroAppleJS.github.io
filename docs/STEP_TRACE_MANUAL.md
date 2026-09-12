@@ -1,6 +1,6 @@
 # RetroAppleJS STEP TRACE — Real-Time Debugger Manual
 
-> Applies to the current real-time STEP TRACE implementation including live CPU execution, mapped-bus disassembly, instruction-row navigation, Step Over/Out, temporary and conditional breakpoints, branch-line rendering, symbol loading, live registers, peripheral-ROM visibility, and optional closed-loop display suppression.
+> Applies to the current real-time STEP TRACE implementation including live CPU execution, mapped-bus disassembly, instruction-row navigation, Step Over/Out, conditional breakpoints, branch-line rendering, symbol loading, live registers, peripheral-ROM visibility, and optional closed-loop display suppression.
 
 ## 1. What STEP TRACE is
 
@@ -27,9 +27,9 @@ The interface is organised approximately as follows:
 ```text
 STEP TRACE  [Run/Pause] [Step] [Over] [Out]      [Boot log controls] [x]
 
-NAV  ↑  ↓   PC $xxxx   [Loop display] [Track PC]   BREAK [$....] [speed]
+NAV  ↑  ↓   PC $xxxx   [Loop display] [Track PC]   [speed]
 
-IF   [conditional expression........................] [Arm] [Run→] [Clear]
+BREAK IF   [conditional expression....................] [Arm] [Clear]
 
 LISTING Columns {adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}
 
@@ -52,7 +52,7 @@ The exact visual shape depends on browser, platform, font rendering, and the cur
 | **Step In** (`fa-sign-in-alt`) | Executes exactly one live instruction-boundary event and then refreshes the debugger. | **F11** |
 | **Step Over** (`fa-paw`) | For ordinary instructions, behaves like Step In. For `JSR` and `BRK`, runs until the matching return boundary is reached. | **F10** |
 | **Step Out** (`fa-sign-out-alt`) | Runs until the current routine returns, while tracking nested subroutine calls and interrupt nesting. | **Shift+F11** |
-| **x** | Closes STEP TRACE. Debugger-owned runs and temporary execution traps are cleared so an invisible debugger cannot later stop the emulator. | — |
+| **x** | Closes STEP TRACE. Debugger-owned runs and the conditional breakpoint trap are cleared so an invisible debugger cannot later stop the emulator. | — |
 
 ### Step In
 
@@ -202,82 +202,44 @@ In **Max (SYSTEM)** mode, STEP TRACE receives scheduler samples rather than ever
 
 ---
 
-## 8. BREAK — temporary execution breakpoint
+## 8. Conditional breakpoint — `BREAK IF`
 
-The `BREAK` field accepts a 16-bit hexadecimal address, for example:
+STEP TRACE has one breakpoint mechanism: a **conditional breakpoint** evaluated on the live CPU at every clean instruction boundary while it is armed.
+
+Enter an expression in `BREAK IF`, then press **Arm**. Arming the condition does **not** start the CPU. Use the normal **Run / Pause** control to continue execution at the selected speed.
+
+For an address breakpoint, put the program counter directly in the expression:
 
 ```text
-$C600
-$FD1D
-0800
+PC==$C600
 ```
 
-The temporary breakpoint is a **one-shot live execution breakpoint**.
+More conditions can be combined naturally:
 
-It uses the CPU's instruction-boundary execution trap, so the machine stops **before the target opcode is fetched or executed**.
+```text
+PC==$C600 && A==$10
+M[$4000]==$80 && Z
+X!=0 && !C
+```
 
-### Quick ways to select a breakpoint address
+When the condition is false, the breakpoint remains armed and execution continues. When it becomes true, STEP TRACE stops **before the next opcode at that boundary is fetched or executed**. The condition is then disarmed; press **Arm** again to reuse it.
 
-- enter the address in the `BREAK` field;
-- **single-click a visible listing row** to copy that instruction address into the breakpoint field;
-- **double-click a listing row** to arm the address and immediately run to it.
+### Buttons and keyboard
 
-### Breakpoint buttons
-
-| Button | Function |
+| Control | Function |
 |---|---|
-| **Arm** | Arms the current breakpoint without starting execution |
-| **Rearm** | Appears when an armed breakpoint's condition has been edited; explicitly installs the edited condition |
-| **Run→** | Arms the breakpoint and continues execution |
-| **Clear** | Removes the temporary execution breakpoint |
+| **Arm** | Compiles and arms the expression without starting execution |
+| **Rearm** | Appears after editing an already armed expression; installs the edited expression |
+| **Clear** | Disarms the conditional breakpoint; the editor text is retained |
+| **F9** | Arm / rearm the expression |
+| **Shift+F9** | Clear the conditional breakpoint |
 
-Keyboard:
-
-- **F9** — arm the current breakpoint;
-- **Shift+F9** — clear the breakpoint.
-
-A breakpoint can interrupt:
-
-- fixed-IPS execution;
-- Max/SYSTEM execution;
-- Step Over;
-- Step Out.
-
-Because it is evaluated on the live CPU instruction boundary, it cannot stop halfway through an instruction.
-
----
-
-## 9. Conditional breakpoint — `IF`
-
-The optional `IF` field adds a condition to the temporary execution breakpoint.
-
-A blank `IF` field means an unconditional breakpoint.
-
-Example:
-
-```text
-A==$10 && M[$4000]==$80
-```
-
-The condition is evaluated when the target breakpoint address is reached, **before that target instruction executes**.
-
-If the condition is false:
-
-- execution continues normally;
-- the same breakpoint is rearmed;
-- STEP TRACE waits for the next visit to the target address.
-
-If the condition is true, STEP TRACE stops at that instruction boundary.
+A blank expression cannot be armed. Invalid expressions are rejected before arming. A runtime evaluation error stops visibly instead of silently ignoring the condition.
 
 ### Supported CPU registers
 
 ```text
-A
-X
-Y
-SP
-P
-PC
+A X Y SP P PC
 ```
 
 ### Supported status flags
@@ -286,15 +248,7 @@ PC
 N V B D I Z C
 ```
 
-Each evaluates to `0` or `1`.
-
-Examples:
-
-```text
-Z
-!C
-X!=0 && Z
-```
+Each flag evaluates to `0` or `1`.
 
 ### Memory expressions
 
@@ -346,22 +300,11 @@ Logical:
 
 Parentheses are supported.
 
-Examples:
-
-```text
-A==$10
-X!=0 && Z
-M[$4000]==$80
-MEM16[$24]==$0400
-PC==$C600 && !C
-(M[$20]&$80) && A>=16
-```
-
-Invalid conditions are rejected before arming. A runtime evaluation error stops visibly at the breakpoint rather than silently ignoring the problem.
+The condition can interrupt fixed-IPS execution, Max/SYSTEM execution, Step Over, or Step Out because it is evaluated by the live CPU's instruction-boundary trap.
 
 ---
 
-## 10. Breakpoint and run status text
+## 9. Breakpoint and run status text
 
 The live status area can append debugger state to the `PC $xxxx` display.
 
@@ -370,24 +313,21 @@ Typical examples:
 ```text
 PC $C600  OVER→$1234
 PC $C600  OUT J1 I0
-PC $C600  BP→$FD1D
-PC $C600  BP→$FD1D IF
-PC $FD1D  BP@$FD1D
-PC $FD1D  BP@$FD1D IF✓
-PC $FD1D  BP!$FD1D
+PC $C5FE  BP IF
+PC $C600  BP IF✓
+PC $C600  BP!
 ```
 
 Common error/status messages include:
 
 ```text
-BAD BP
 BAD COND
 COND ERR
 ```
 
 ---
 
-## 11. LISTING column control
+## 10. LISTING column control
 
 The listing format is controlled by a compact column specification such as:
 
@@ -419,7 +359,7 @@ The compact preset omits some decorative/source-oriented fields so more assembly
 
 ---
 
-## 12. Unicode branch lines — `lin`
+## 11. Unicode branch lines — `lin`
 
 The realtime tracer reuses the assembler's branch-line renderer.
 
@@ -439,7 +379,7 @@ The `lin` field owns its complete configured width up to the following column, s
 
 ---
 
-## 13. SYMBOLS controls
+## 12. SYMBOLS controls
 
 The SYMBOLS area contains:
 
@@ -483,7 +423,7 @@ The tooltip gives more detail, including file name and counts.
 
 ---
 
-## 14. What loaded symbols affect
+## 13. What loaded symbols affect
 
 ### `lbl`
 
@@ -511,7 +451,7 @@ For comments exported together with opcode bytes, STEP TRACE checks those bytes 
 
 ---
 
-## 15. Simple text symbol maps
+## 14. Simple text symbol maps
 
 In addition to the canonical assembler JSON export, STEP TRACE accepts simple text maps such as:
 
@@ -526,20 +466,14 @@ These maps primarily provide symbol names and addresses. The canonical JSON expo
 
 ---
 
-## 16. Live listing interaction
+## 15. Live listing interaction
 
 ### Current instruction
 
 The row corresponding to the current PC is emphasised.
 
-### Breakpoint row
-
-An armed or hit breakpoint row receives a compact visual marker at the left edge.
-
 ### Mouse
 
-- **single click on a row** — copy that row's address to the BREAK field;
-- **double click on a row** — Run to here;
 - **mouse wheel** — move one instruction row;
 - **Shift + wheel** — move approximately one page.
 
@@ -555,7 +489,7 @@ The bytes in a manually parked view remain live: they are revalidated against cu
 
 ---
 
-## 17. Keyboard shortcuts
+## 16. Keyboard shortcuts
 
 | Key | Action |
 |---|---|
@@ -565,8 +499,8 @@ The bytes in a manually parked view remain live: they are revalidated against cu
 | **Page Down** | Next page |
 | **Home** | Re-enable Track PC and return to the live execution area |
 | **F** | Toggle Track PC |
-| **F9** | Arm temporary breakpoint |
-| **Shift+F9** | Clear temporary breakpoint |
+| **F9** | Arm / rearm conditional breakpoint |
+| **Shift+F9** | Clear conditional breakpoint |
 | **F10** | Step Over |
 | **F11** | Step In |
 | **Shift+F11** | Step Out |
@@ -575,7 +509,7 @@ The listing receives keyboard commands after it has focus. Clicking/tapping the 
 
 ---
 
-## 18. CPU register display
+## 17. CPU register display
 
 Below the listing, STEP TRACE shows the current processor registers:
 
@@ -618,7 +552,7 @@ The register row is updated from the live CPU state even when the PC itself has 
 
 ---
 
-## 19. Boot-log controls
+## 18. Boot-log controls
 
 The right side of the top row contains the boot-log controls.
 
@@ -662,7 +596,7 @@ apple2_bootlog_2026-09-11T21-45-00-000Z.txt
 
 ---
 
-## 20. Peripheral ROM tracing
+## 19. Peripheral ROM tracing
 
 STEP TRACE uses the currently mapped CPU bus for disassembly.
 
@@ -690,7 +624,7 @@ In **Max (SYSTEM)** mode, the debugger still reads this address space correctly,
 
 ---
 
-## 21. Self-modifying code and memory remapping
+## 20. Self-modifying code and memory remapping
 
 The live disassembler maintains a 64K address-indexed decode cache, but cached instructions are validated against the bytes currently visible on the mapped CPU bus.
 
@@ -711,7 +645,7 @@ The debugger does not depend on a static memory dump.
 
 ---
 
-## 22. Instruction-boundary model
+## 21. Instruction-boundary model
 
 The realtime debugger treats the live CPU's current PC as a trusted instruction boundary.
 
@@ -727,26 +661,24 @@ This is why upward manual navigation may occasionally stop even though lower add
 
 ---
 
-## 23. Temporary breakpoint semantics in detail
+## 22. Conditional breakpoint semantics in detail
 
-A temporary breakpoint is installed through the live CPU execution trap.
+An armed conditional breakpoint installs a persistent live CPU boundary observer. It is evaluated only when the previous instruction has fully completed (`cycle_delay == 0`) and before interrupt dispatch and opcode fetch for the next instruction.
 
-The trap is evaluated only at a clean instruction boundary, before opcode fetch and instruction execution.
+For each boundary:
 
-Therefore a hit leaves the target opcode unexecuted.
+1. STEP TRACE evaluates the expression against the live CPU registers and safely mapped memory;
+2. a false result leaves the observer armed and normal execution continues;
+3. a true result stops the current execution owner without consuming a CPU tick or fetching the opcode at that boundary;
+4. the matching condition becomes one-shot/disarmed after the hit.
 
-For a conditional breakpoint:
+This makes `PC==$C600` the direct replacement for the former separate address breakpoint. Combining it with other terms, such as `PC==$C600 && A==$10`, requires no second breakpoint mechanism.
 
-1. the target address is reached;
-2. the condition is evaluated against the live CPU/mapped memory;
-3. if false, the one-shot trap is immediately reinstalled and the instruction executes normally;
-4. if true, execution ownership is stopped and the debugger remains at that boundary.
-
-This is fundamentally different from periodically sampling the PC and hoping to notice a target address.
+Because the observer exists only while a condition is armed, normal execution has no per-instruction conditional-breakpoint callback overhead when the feature is unused.
 
 ---
 
-## 24. Track PC versus manual view
+## 23. Track PC versus manual view
 
 Track PC controls **where the listing viewport follows**; it does not control execution.
 
@@ -777,7 +709,7 @@ This is useful when you want to inspect nearby code without stopping the machine
 
 ---
 
-## 25. Suggested debugging workflows
+## 24. Suggested debugging workflows
 
 ### Inspect a routine instruction by instruction
 
@@ -791,32 +723,35 @@ This is useful when you want to inspect nearby code without stopping the machine
 
 1. choose a fixed IPS mode;
 2. click the **retweet** icon to disable loop-step display;
-3. continue execution;
-4. the live CPU runs every loop instruction;
+3. continue execution with the main Run control;
+4. the live CPU still runs every loop instruction;
 5. STEP TRACE resumes visual updates at the loop exit.
 
-### Run to an address
+### Break at an address
 
-1. enter the address in `BREAK`, or click its listing row;
-2. press **Run→**.
-
-Alternatively, double-click the target listing row.
-
-### Stop only when a register has a value
+Enter:
 
 ```text
-BREAK $C600
-IF    A==$10
+PC==$C600
 ```
 
-Press **Run→**.
+Press **Arm**, then use the normal **Run / Pause** control to continue.
 
-### Stop when memory changes to a particular value
+### Break at an address only when a register has a value
 
 ```text
-BREAK $1234
-IF    M[$4000]==$80
+PC==$C600 && A==$10
 ```
+
+Press **Arm**, then Run.
+
+### Break when memory reaches a value
+
+```text
+M[$4000]==$80
+```
+
+This is evaluated at every live instruction boundary until it becomes true.
 
 ### Trace Disk II ROM
 
@@ -834,7 +769,7 @@ IF    M[$4000]==$80
 
 ---
 
-## 26. Diagnostics available to developers
+## 25. Diagnostics available to developers
 
 `Apple2Debug.liveState()` exposes useful internal state, including:
 
@@ -855,18 +790,16 @@ tracePeripheralROM
 pcInPeripheralROM
 liveStepAPI
 boundaryAction
-breakpoint
+conditionalBreakpoint
 symbols
 cacheHits
 cacheMisses
 domWrites
 ```
 
-The breakpoint diagnostic object additionally exposes values such as:
+The `conditionalBreakpoint` diagnostic object additionally exposes values such as:
 
 ```text
-target
-address
 armed
 hit
 hits
@@ -890,7 +823,7 @@ These diagnostics are primarily intended for development and validation rather t
 
 ---
 
-## 27. Current behavioural limits
+## 26. Current behavioural limits
 
 A few behaviours are intentionally conservative:
 
@@ -905,7 +838,7 @@ These choices favour correctness of the live machine over making the debugger di
 
 ---
 
-## 28. Quick-reference card
+## 27. Quick-reference card
 
 | Control / gesture | Result |
 |---|---|
@@ -923,14 +856,10 @@ These choices favour correctness of the live machine over making the debugger di
 | `fa-lock-open` | Track PC disabled |
 | `fa-retweet` bright | Show closed-loop steps |
 | `fa-retweet` dim | Hide repeated closed-loop display |
-| Listing row click | Copy address to BREAK |
-| Listing row double-click | Run to here |
-| F9 | Arm temporary breakpoint |
-| Shift+F9 | Clear temporary breakpoint |
-| Arm | Install breakpoint without running |
-| Run→ | Install breakpoint and continue |
-| Clear | Remove temporary breakpoint |
-| IF | Optional breakpoint condition |
+| BREAK IF | Conditional breakpoint expression |
+| Arm / F9 | Arm or rearm the condition |
+| Clear / Shift+F9 | Disarm the condition |
+| Run/Pause | Run after arming, or pause execution |
 | 1/10/100/1000 IPS | Debugger-controlled live execution |
 | Max (SYSTEM) | Normal emulator scheduler |
 | default/wide/compact | Listing column presets |
@@ -942,7 +871,7 @@ These choices favour correctness of the live machine over making the debugger di
 
 ---
 
-## 29. Summary
+## 28. Summary
 
 STEP TRACE is designed as a **live-system debugger**, not a detached disassembler.
 
