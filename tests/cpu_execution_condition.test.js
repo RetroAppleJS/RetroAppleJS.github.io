@@ -171,6 +171,21 @@ test('STEP TRACE BREAK IF uses a one-click Arm/Disarm toggle and can re-arm afte
 
 test('STEP TRACE uses parking icon instead of BP IF text when a conditional breakpoint hits', () => {
     assert.match(debugSource,/classList\.toggle\(\"fa-parking\",breakpointStop\)/);
-    assert.match(debugSource,/conditionalBreakpoint\.hit = false;\n\s*stopBoundaryAction\(\);/);
+    assert.match(debugSource,/conditionalBreakpoint\.hit = false;\n(?:\s*manualStepPause = false;\n)?\s*stopBoundaryAction\(\);/);
     assert.doesNotMatch(debugSource,/return \"  BP IF/);
+});
+
+
+test('STEP TRACE manual stepping uses pause-circle', () => {
+    assert.match(debugSource,/var manualStepPause = false;/);
+    assert.match(debugSource,/fa-pause-circle",running \|\| stepPause/);
+    assert.match(debugSource,/this\.step = function\(\)[\s\S]*?manualStepPause = true;/);
+    assert.match(debugSource,/this\.stepOver = function\(\)[\s\S]*?manualStepPause = true;/);
+    assert.match(debugSource,/this\.stepOut = function\(\)[\s\S]*?manualStepPause = true;/);
+});
+
+
+test('STEP TRACE NAV shows the 48-bit instruction counter next to PC', () => {
+    assert.match(debugSource,/INS \$\"\+instructionCounterText\(\)/);
+    assert.match(debugSource,/padStart\(12,\"0\"\)\.slice\(-12\)/);
 });

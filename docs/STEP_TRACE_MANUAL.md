@@ -27,7 +27,7 @@ The interface is organised approximately as follows:
 ```text
 STEP TRACE  [Run/Pause] [Step] [Over] [Out]      [Boot log controls] [x]
 
-NAV  ↑  ↓   PC $xxxx   [Loop display] [Track PC]   [speed]
+NAV  ↑  ↓   PC $xxxx  INS $xxxxxxxxxxxx   [Loop display] [Track PC]   [speed]
 
 BREAK IF   [conditional expression....................] [Arm] [Clear]
 
@@ -52,6 +52,8 @@ The exact visual shape depends on browser, platform, font rendering, and the cur
 | **Step In** (`fa-sign-in-alt`) | Executes exactly one live instruction-boundary event and then refreshes the debugger. | **F11** |
 | **Step Over** (`fa-paw`) | For ordinary instructions, behaves like Step In. For `JSR` and `BRK`, runs until the matching return boundary is reached. | **F10** |
 | **Step Out** (`fa-sign-out-alt`) | Runs until the current routine returns, while tracking nested subroutine calls and interrupt nesting. | **Shift+F11** |
+
+After **Step In**, **Step Over**, or **Step Out** stops, the main execution icon remains `fa-pause-circle`. Starting continuous execution clears this manual-step indication.
 | **x** | Closes STEP TRACE. Debugger-owned runs and the conditional breakpoint trap are cleared so an invisible debugger cannot later stop the emulator. | — |
 
 ### Step In
@@ -113,7 +115,7 @@ The debugger may return from a batch early when an important live boundary needs
 The navigation row begins with:
 
 ```text
-NAV  ↑  ↓   PC $xxxx
+NAV  ↑  ↓   PC $xxxx  INS $xxxxxxxxxxxx
 ```
 
 ### `↑` and `↓`
@@ -126,11 +128,11 @@ Navigation is instruction-oriented, not byte-oriented.
 
 Forward navigation follows the decoded instruction length. Backward navigation uses a previously proven instruction predecessor where possible. If no predecessor is known, the debugger tests the possible 1-, 2-, and 3-byte 6502 predecessors and accepts the result only if exactly one candidate is valid. If backward decoding is ambiguous, navigation stops rather than inventing an alignment.
 
-### `PC $xxxx`
+### `PC $xxxx  INS $xxxxxxxxxxxx`
 
-This is the **live program counter**.
+`PC` is the **live program counter**. `INS` is the CPU's 48-bit completed-opcode count since reset, displayed as 12 hexadecimal digits; for example `PC $C665  INS $000000000001`.
 
-The PC indicator continues to represent the executing CPU even when the listing itself has been unlocked for manual browsing.
+The PC/INS indicator continues to represent the executing CPU even when the listing itself has been unlocked for manual browsing.
 
 ---
 

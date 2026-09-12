@@ -89,6 +89,9 @@ function Apple2Debug()
     // Step Over/Out are temporary debugger-owned live boundary runs.
     var boundaryAction = null;
 
+    // Manual Step In/Over/Out leaves the main execution indicator paused.
+    var manualStepPause = false;
+
     // Conditional breakpoint. While armed, its predicate is evaluated at every
     // clean live instruction boundary before interrupt dispatch/opcode fetch. A
     // false result keeps it armed; a true result stops before the opcode fetch.
@@ -1259,12 +1262,22 @@ function Apple2Debug()
         return breakMessage ? "  "+breakMessage : "";
     }
 
+    function instructionCounterText()
+    {
+        var cpu = liveCPU();
+        var state = cpu && typeof(cpu.watch)==="function" ? cpu.watch() : null;
+        var value = state && state.ic!==undefined ? Math.floor(Number(state.ic)) : 0;
+        if(!Number.isFinite(value) || value<0) value = 0;
+        return value.toString(16).toUpperCase().padStart(12,"0").slice(-12);
+    }
+
     function updateNavigationStatus(pc)
     {
         var el = document.getElementById("cpuDbg_navStatus");
         if(!el) return;
 
         el.textContent = "PC $"+oCOM.getHexWord(pc)
+            +"  INS $"+instructionCounterText()
             +boundaryActionText()+breakpointText();
         var title = followPC
             ? "Listing tracks the live program counter"
@@ -1558,9 +1571,10 @@ function Apple2Debug()
         if(!el || !el.classList) return;
         var running = executionRunning();
         var breakpointStop = !running && conditionalBreakpoint.hit && !conditionalBreakpoint.error;
-        el.classList.toggle("fa-pause-circle",running);
+        var stepPause = !running && !breakpointStop && manualStepPause;
+        el.classList.toggle("fa-pause-circle",running || stepPause);
         el.classList.toggle("fa-parking",breakpointStop);
-        el.classList.toggle("fa-play-circle",!running && !breakpointStop);
+        el.classList.toggle("fa-play-circle",!running && !breakpointStop && !stepPause);
         el.title = running
             ? "pause CPU execution"
             : (breakpointStop ? "paused at BREAK IF condition — click to continue" : "continue CPU execution");
@@ -1638,6 +1652,7 @@ function Apple2Debug()
         // Leaving a breakpoint stop returns the main control from the
         // parking pictogram to the normal running state.
         conditionalBreakpoint.hit = false;
+        manualStepPause = false;
         stopBoundaryAction();
         if(runMode==="system")
         {
@@ -1807,6 +1822,7 @@ function Apple2Debug()
 
     function conditionalBreakpointHit(state)
     {
+        manualStepPause = false;
         conditionalBreakpoint.armed = false;
         conditionalBreakpoint.error = conditionalBreakpoint.error || null;
         if(conditionalBreakpoint.error)
@@ -2397,6 +2413,7 @@ function Apple2Debug()
 
     this.step = function()
     {
+        manualStepPause = true;
         // A direct Step-In request is always displayed literally. Loop hiding is
         // a continuous-run presentation policy, not an instruction-skipping mode.
         resetClosedLoopDisplayState();
@@ -2423,6 +2440,7 @@ function Apple2Debug()
         // exactly one live instruction.
         if(d.b0!==0x20 && d.b0!==0x00) return this.step();
 
+        manualStepPause = true;
         return startBoundaryAction({
              "type":"over"
             ,"returnPC":d.next
@@ -2435,6 +2453,7 @@ function Apple2Debug()
     {
         var cpu = liveCPU();
         if(!cpu || !ensureInit({scrollH:listingRows})) return false;
+        manualStepPause = true;
         return startBoundaryAction({
              "type":"out"
             ,"jsrDepth":0
