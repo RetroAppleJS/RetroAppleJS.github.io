@@ -426,9 +426,7 @@ The **default**, **wide**, and **compact** buttons replace the current column de
 
 The compact preset removes some source/decorative fields so more assembly text fits in the small realtime window.
 
----
-
-## 10. Unicode branch lines — `lin`
+### Unicode branch lines — `lin`
 
 STEP TRACE reuses the assembler's branch-line renderer.
 
@@ -446,7 +444,7 @@ The `lin` field owns the complete interval up to the next configured column so t
 
 ---
 
-## 11. SYMBOLS controls
+## 10. SYMBOLS controls
 
 The SYMBOLS row contains:
 
@@ -492,7 +490,7 @@ The tooltip provides file name and more detailed counts.
 
 ---
 
-## 12. What loaded symbols affect
+## 11. What loaded symbols affect
 
 ### `lbl`
 
@@ -520,7 +518,7 @@ When an exported comment includes opcode bytes, STEP TRACE checks those bytes ag
 
 ---
 
-## 13. Simple text symbol maps
+## 12. Simple text symbol maps
 
 Besides the canonical assembler JSON export, STEP TRACE accepts simple text maps such as:
 
@@ -535,7 +533,7 @@ Text maps primarily provide names and addresses. Use the canonical JSON export w
 
 ---
 
-## 14. Live listing interaction
+## 13. Live listing interaction
 
 ### Current instruction
 
@@ -558,7 +556,7 @@ The bytes in a manually parked view remain live and mapped-memory aware. Self-mo
 
 ---
 
-## 15. Keyboard shortcuts
+## 14. Keyboard shortcuts
 
 | Key | Action |
 |---|---|
@@ -578,7 +576,7 @@ The listing receives these keyboard commands after it has focus. Clicking or tap
 
 ---
 
-## 16. CPU register display
+## 15. CPU register display
 
 Below the listing, STEP TRACE shows the current processor registers:
 
@@ -621,7 +619,7 @@ The register row is refreshed from the live CPU state even if the PC itself has 
 
 ---
 
-## 17. Boot-log controls
+## 16. Boot-log controls
 
 The right side of the top row contains boot-log controls.
 
@@ -663,7 +661,7 @@ apple2_bootlog_2026-09-12T18-30-00-000Z.txt
 
 ---
 
-## 18. Peripheral ROM tracing
+## 17. Peripheral ROM tracing
 
 STEP TRACE disassembles through the currently mapped CPU bus.
 
@@ -691,7 +689,7 @@ In **Max (SYSTEM)** mode, the mapped ROM is still readable, but a very short exc
 
 ---
 
-## 19. Self-modifying code and memory remapping
+## 18. Self-modifying code and memory remapping
 
 The live disassembler maintains a 64K address-indexed decode cache, but each cached instruction is validated against the bytes currently visible on the mapped CPU bus.
 
@@ -712,7 +710,7 @@ STEP TRACE therefore does not depend on a static memory dump.
 
 ---
 
-## 20. Instruction-boundary model
+## 19. Instruction-boundary model
 
 The realtime debugger treats the live CPU's current PC as a trusted instruction boundary.
 
@@ -728,7 +726,7 @@ Upward manual navigation can therefore stop even though lower addresses exist. T
 
 ---
 
-## 21. Conditional-breakpoint semantics in detail
+## 20. Conditional-breakpoint semantics in detail
 
 An armed `BREAK IF` predicate is checked only at a **clean instruction boundary**: the previous opcode has completed (`cycle_delay == 0`) and the next opcode has not yet been fetched.
 
@@ -776,7 +774,7 @@ When BREAK IF is not armed, there is no active per-boundary breakpoint predicate
 
 ---
 
-## 22. Track PC versus manual view
+## 21. Track PC versus manual view
 
 Track PC controls the **listing viewport**, not CPU execution.
 
@@ -805,7 +803,7 @@ Meanwhile:
 
 ---
 
-## 23. Suggested debugging workflows
+## 22. Suggested debugging workflows
 
 ### Inspect a routine instruction by instruction
 
@@ -887,7 +885,7 @@ This remains armed and is evaluated at every clean instruction boundary until it
 
 ---
 
-## 24. Diagnostics available to developers
+## 23. Diagnostics available to developers
 
 `Apple2Debug.liveState()` exposes debugger state including:
 
@@ -947,7 +945,7 @@ These diagnostics are intended mainly for development and validation.
 
 ---
 
-## 25. Current behavioural limits and deliberate safeguards
+## 24. Current behavioural limits and deliberate safeguards
 
 A few behaviours are intentionally conservative:
 
@@ -963,7 +961,7 @@ These choices favour correctness of the live machine over making the debugger di
 
 ---
 
-## 26. Quick-reference card
+## 25. Quick-reference card
 
 | Control / gesture | Result |
 |---|---|
@@ -1003,7 +1001,7 @@ These choices favour correctness of the live machine over making the debugger di
 
 ---
 
-## 27. Summary
+## 26. Summary
 
 STEP TRACE is a **live-system debugger**, not a detached disassembler.
 
