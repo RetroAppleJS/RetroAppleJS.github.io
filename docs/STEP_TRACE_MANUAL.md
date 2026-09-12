@@ -126,7 +126,7 @@ The NAV row begins with:
 NAV  ↑  ↓   [PC $xxxx  INS $xxxxxxxxxxxx]
 ```
 
-and is followed by the Track-PC icon, closed-loop-display icon, and speed selector. `PC` and `INS` are presented together in a **read-only input field**, so the live values can be selected and copied without making them editable.
+and is followed by the Track-PC icon, closed-loop-display icon, and speed selector. `PC` and `INS` are presented together in a **read-only input field**, so the live values can be selected and copied without making them editable. The NAV row is reserved for this copyable live CPU position; temporary run state and breakpoint diagnostics are shown beside `BREAK IF` instead.
 
 ### `↑` and `↓`
 
@@ -370,17 +370,7 @@ Parentheses are supported and recommended when an expression mixes several opera
 
 **48-bit counter note:** JavaScript bitwise operators are 32-bit. Equality and relational comparisons on `INS` use the full exact 48-bit value, but `INS & ...`, `INS | ...`, or `INS ^ ...` operate only on the low 32 bits. Use comparison operators for full-width instruction-counter conditions.
 
-The condition can stop fixed-IPS execution, Max/SYSTEM execution, Step Over, or Step Out because the observer is evaluated by the live CPU at instruction boundaries.
-
----
-
-## 9. BREAK IF run/status field
-
-The NAV row is now reserved for the copyable live CPU position:
-
-```text
-PC $C600  INS $000000001234
-```
+### Run/status and error diagnostics
 
 Transient run state and textual breakpoint diagnostics are displayed **between the BREAK IF input and the Arm/Disarm button**. The condition input is flexible, so it automatically becomes narrower while a status message is present and expands again when the status clears.
 
@@ -400,11 +390,13 @@ BP!
 BP unavailable
 ```
 
-A **successful** `BREAK IF` hit still does not add `BP IF` text. It is indicated by the main **parking** pictogram (`fa-parking`).
+A **successful** `BREAK IF` hit does not add `BP IF` text. It is indicated by the main **parking** pictogram (`fa-parking`).
+
+The condition can stop fixed-IPS execution, Max/SYSTEM execution, Step Over, or Step Out because the observer is evaluated by the live CPU at instruction boundaries.
 
 ---
 
-## 10. LISTING column control
+## 9. LISTING column control
 
 The listing format is controlled by a compact column specification such as:
 
@@ -436,7 +428,7 @@ The compact preset removes some source/decorative fields so more assembly text f
 
 ---
 
-## 11. Unicode branch lines — `lin`
+## 10. Unicode branch lines — `lin`
 
 STEP TRACE reuses the assembler's branch-line renderer.
 
@@ -454,7 +446,7 @@ The `lin` field owns the complete interval up to the next configured column so t
 
 ---
 
-## 12. SYMBOLS controls
+## 11. SYMBOLS controls
 
 The SYMBOLS row contains:
 
@@ -500,7 +492,7 @@ The tooltip provides file name and more detailed counts.
 
 ---
 
-## 13. What loaded symbols affect
+## 12. What loaded symbols affect
 
 ### `lbl`
 
@@ -528,7 +520,7 @@ When an exported comment includes opcode bytes, STEP TRACE checks those bytes ag
 
 ---
 
-## 14. Simple text symbol maps
+## 13. Simple text symbol maps
 
 Besides the canonical assembler JSON export, STEP TRACE accepts simple text maps such as:
 
@@ -543,7 +535,7 @@ Text maps primarily provide names and addresses. Use the canonical JSON export w
 
 ---
 
-## 15. Live listing interaction
+## 14. Live listing interaction
 
 ### Current instruction
 
@@ -566,7 +558,7 @@ The bytes in a manually parked view remain live and mapped-memory aware. Self-mo
 
 ---
 
-## 16. Keyboard shortcuts
+## 15. Keyboard shortcuts
 
 | Key | Action |
 |---|---|
@@ -586,7 +578,7 @@ The listing receives these keyboard commands after it has focus. Clicking or tap
 
 ---
 
-## 17. CPU register display
+## 16. CPU register display
 
 Below the listing, STEP TRACE shows the current processor registers:
 
@@ -629,7 +621,7 @@ The register row is refreshed from the live CPU state even if the PC itself has 
 
 ---
 
-## 18. Boot-log controls
+## 17. Boot-log controls
 
 The right side of the top row contains boot-log controls.
 
@@ -671,7 +663,7 @@ apple2_bootlog_2026-09-12T18-30-00-000Z.txt
 
 ---
 
-## 19. Peripheral ROM tracing
+## 18. Peripheral ROM tracing
 
 STEP TRACE disassembles through the currently mapped CPU bus.
 
@@ -699,7 +691,7 @@ In **Max (SYSTEM)** mode, the mapped ROM is still readable, but a very short exc
 
 ---
 
-## 20. Self-modifying code and memory remapping
+## 19. Self-modifying code and memory remapping
 
 The live disassembler maintains a 64K address-indexed decode cache, but each cached instruction is validated against the bytes currently visible on the mapped CPU bus.
 
@@ -720,7 +712,7 @@ STEP TRACE therefore does not depend on a static memory dump.
 
 ---
 
-## 21. Instruction-boundary model
+## 20. Instruction-boundary model
 
 The realtime debugger treats the live CPU's current PC as a trusted instruction boundary.
 
@@ -736,7 +728,7 @@ Upward manual navigation can therefore stop even though lower addresses exist. T
 
 ---
 
-## 22. Conditional-breakpoint semantics in detail
+## 21. Conditional-breakpoint semantics in detail
 
 An armed `BREAK IF` predicate is checked only at a **clean instruction boundary**: the previous opcode has completed (`cycle_delay == 0`) and the next opcode has not yet been fetched.
 
@@ -784,7 +776,7 @@ When BREAK IF is not armed, there is no active per-boundary breakpoint predicate
 
 ---
 
-## 23. Track PC versus manual view
+## 22. Track PC versus manual view
 
 Track PC controls the **listing viewport**, not CPU execution.
 
@@ -813,7 +805,7 @@ Meanwhile:
 
 ---
 
-## 24. Suggested debugging workflows
+## 23. Suggested debugging workflows
 
 ### Inspect a routine instruction by instruction
 
@@ -895,7 +887,7 @@ This remains armed and is evaluated at every clean instruction boundary until it
 
 ---
 
-## 25. Diagnostics available to developers
+## 24. Diagnostics available to developers
 
 `Apple2Debug.liveState()` exposes debugger state including:
 
@@ -955,7 +947,7 @@ These diagnostics are intended mainly for development and validation.
 
 ---
 
-## 26. Current behavioural limits and deliberate safeguards
+## 25. Current behavioural limits and deliberate safeguards
 
 A few behaviours are intentionally conservative:
 
@@ -971,7 +963,7 @@ These choices favour correctness of the live machine over making the debugger di
 
 ---
 
-## 27. Quick-reference card
+## 26. Quick-reference card
 
 | Control / gesture | Result |
 |---|---|
@@ -1011,7 +1003,7 @@ These choices favour correctness of the live machine over making the debugger di
 
 ---
 
-## 28. Summary
+## 27. Summary
 
 STEP TRACE is a **live-system debugger**, not a detached disassembler.
 
