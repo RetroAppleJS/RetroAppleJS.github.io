@@ -183,3 +183,9 @@ test('STEP TRACE manual stepping uses pause-circle', () => {
     assert.match(debugSource,/this\.stepOver = function\(\)[\s\S]*?manualStepPause = true;/);
     assert.match(debugSource,/this\.stepOut = function\(\)[\s\S]*?manualStepPause = true;/);
 });
+
+
+test('STEP TRACE NAV shows the 48-bit instruction counter next to PC', () => {
+    assert.match(debugSource,/INS \$\"\+instructionCounterText\(\)/);
+    assert.match(debugSource,/padStart\(12,\"0\"\)\.slice\(-12\)/);
+});

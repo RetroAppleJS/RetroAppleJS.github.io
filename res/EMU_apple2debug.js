@@ -1262,12 +1262,22 @@ function Apple2Debug()
         return breakMessage ? "  "+breakMessage : "";
     }
 
+    function instructionCounterText()
+    {
+        var cpu = liveCPU();
+        var state = cpu && typeof(cpu.watch)==="function" ? cpu.watch() : null;
+        var value = state && state.ic!==undefined ? Math.floor(Number(state.ic)) : 0;
+        if(!Number.isFinite(value) || value<0) value = 0;
+        return value.toString(16).toUpperCase().padStart(12,"0").slice(-12);
+    }
+
     function updateNavigationStatus(pc)
     {
         var el = document.getElementById("cpuDbg_navStatus");
         if(!el) return;
 
         el.textContent = "PC $"+oCOM.getHexWord(pc)
+            +"  INS $"+instructionCounterText()
             +boundaryActionText()+breakpointText();
         var title = followPC
             ? "Listing tracks the live program counter"
