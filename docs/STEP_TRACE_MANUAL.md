@@ -22,21 +22,7 @@ Debugger reads deliberately mask **`$C000-$C0FF`**, because that page contains A
 
 The interface is approximately:
 
-```text
-STEP TRACE  [Run/Pause/Breakpoint] [Step] [Over] [Out]   [boot log controls] [x]
-
-NAV  ↑  ↓   [PC $xxxx  INS $xxxxxxxxxxxx]   [Track PC] [Loop display] [speed]
-
-BREAK IF   [conditional expression........] <run/breakpoint status> [Arm/Disarm]
-
-LISTING Columns {adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}
-
-[default] [wide] [compact]     SYMBOLS [load] [clear]  <status>
-
-<20-row live disassembly listing>
-
-A=.. X=.. Y=.. SP=.. SR=n.v.-.b.d.i.z.c.
-```
+![Board Installed in System: Interior View](assets/STEP_TRACE_MANUAL-001.png)
 
 The exact visual appearance depends on browser and platform font rendering.
 
@@ -490,7 +476,27 @@ The tooltip provides file name and more detailed counts.
 
 ---
 
-## 11. What loaded symbols affect
+## 11. Boot-log controls
+
+The right side of the top row contains boot-log controls.
+
+### Coffee icon
+
+The coffee icon enables or disables boot logging.
+
+Its opacity and tooltip indicate states such as:
+
+```text
+disabled
+armed
+logging
+buffer full
+complete
+```
+
+---
+
+## 12. What loaded symbols affect
 
 ### `lbl`
 
@@ -518,7 +524,7 @@ When an exported comment includes opcode bytes, STEP TRACE checks those bytes ag
 
 ---
 
-## 12. Simple text symbol maps
+## 13. Simple text symbol maps
 
 Besides the canonical assembler JSON export, STEP TRACE accepts simple text maps such as:
 
@@ -533,7 +539,7 @@ Text maps primarily provide names and addresses. Use the canonical JSON export w
 
 ---
 
-## 13. Live listing interaction
+## 14. Live listing interaction
 
 ### Current instruction
 
@@ -556,7 +562,7 @@ The bytes in a manually parked view remain live and mapped-memory aware. Self-mo
 
 ---
 
-## 14. Keyboard shortcuts
+## 15. Keyboard shortcuts
 
 | Key | Action |
 |---|---|
@@ -576,7 +582,7 @@ The listing receives these keyboard commands after it has focus. Clicking or tap
 
 ---
 
-## 15. CPU register display
+## 16. CPU register display
 
 Below the listing, STEP TRACE shows the current processor registers:
 
@@ -618,24 +624,6 @@ Each flag is followed by its current bit value.
 The register row is refreshed from the live CPU state even if the PC itself has not changed.
 
 ---
-
-## 16. Boot-log controls
-
-The right side of the top row contains boot-log controls.
-
-### Coffee icon
-
-The coffee icon enables or disables boot logging.
-
-Its opacity and tooltip indicate states such as:
-
-```text
-disabled
-armed
-logging
-buffer full
-complete
-```
 
 ### Start address
 
