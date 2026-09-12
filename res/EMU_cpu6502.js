@@ -23,11 +23,14 @@ function Cpu6502(hwobj)
     var BOOTlogging = false;
     var BOOTcomplete = false;
 
-    // Optional instruction-boundary trap. Numeric-address traps remain
-    // one-shot for accelerator callers. A null-address trap is a persistent
-    // condition observer: returning false keeps it armed for the next clean
-    // instruction boundary. All traps run before interrupt dispatch/opcode fetch.
+    // Optional one-shot numeric instruction-boundary trap used by the WASM
+    // accelerator and other address-gated callers.
     var executionTrap = null;
+
+    // Independent persistent conditional observer used by STEP TRACE. Keeping
+    // it separate prevents a WASM clear/setExecutionTrap() call from silently
+    // disarming an already armed STEP TRACE condition.
+    var executionCondition = null;
 
     // Optional terminal same-PC loop detector. Disabled unless a caller
     // (currently STEP TRACE) explicitly enables it.
@@ -255,26 +258,37 @@ function Cpu6502(hwobj)
         return executionTrap.address;
     }
 
-    // Observe every clean instruction boundary until callback returns anything
-    // other than false, or clearExecutionTrap() is called. There is no per-step
-    // condition callback overhead while no condition is armed.
-    this.setExecutionCondition = function(callback)
+    // Observe clean instruction boundaries until callback returns anything other
+    // than false, or clearExecutionCondition() is called. An optional address
+    // gate avoids invoking the callback at unrelated PCs while keeping this
+    // observer independent from the numeric executionTrap used by WASM.
+    this.setExecutionCondition = function(callback,address)
     {
-        executionTrap = {
-             "address":null
-            ,"callback":typeof(callback)=="function" ? callback : null
+        if(typeof(callback)!="function")
+        {
+            executionCondition = null;
+            return false;
+        }
+
+        executionCondition = {
+             "callback":callback
+            ,"address":address==null ? null : (Number(address) & 0xffff)
         };
         return true;
     }
 
+    this.hasExecutionCondition = function(callback)
+    {
+        if(!executionCondition) return false;
+        return !callback || executionCondition.callback===callback;
+    }
+
     // Clear only the persistent condition observer owned by this callback.
-    // This avoids an inactive STEP TRACE clearing another component's numeric
-    // execution trap if ownership changed after the condition was armed.
     this.clearExecutionCondition = function(callback)
     {
-        if(!executionTrap || executionTrap.address!==null) return false;
-        if(callback && executionTrap.callback!==callback) return false;
-        executionTrap = null;
+        if(!executionCondition) return false;
+        if(callback && executionCondition.callback!==callback) return false;
+        executionCondition = null;
         return true;
     }
 
@@ -778,28 +792,27 @@ function Cpu6502(hwobj)
 
         if (cycle_delay > 0) { cycle_delay--; return }
 
-        // Execution traps are deliberately before interrupt dispatch and
-        // opcode fetch, so callbacks observe a clean instruction boundary.
-        if(executionTrap && (executionTrap.address===null || (pc & 0xffff)==executionTrap.address))
+        // Boundary hooks are deliberately before interrupt dispatch and opcode
+        // fetch, so callbacks observe a clean instruction boundary.
+        if(executionTrap && (pc & 0xffff)==executionTrap.address)
         {
+            // Numeric address traps are one-shot. Clear before the callback so a
+            // false conditional visit can explicitly re-arm the same address.
             var trap = executionTrap;
+            executionTrap = null;
+            if(!trap.callback || trap.callback(self.watch())!==false)
+                return true;
+        }
 
-            if(trap.address===null)
+        if(executionCondition
+            && (executionCondition.address===null
+                || (pc & 0xffff)===executionCondition.address))
+        {
+            var condition = executionCondition;
+            if(condition.callback(self.watch())!==false)
             {
-                // Persistent condition observer. A false result keeps it armed;
-                // a true result stops before this boundary's opcode is fetched.
-                if(!trap.callback || trap.callback(self.watch())!==false)
-                {
-                    if(executionTrap===trap) executionTrap = null;
-                    return true;
-                }
-            }
-            else
-            {
-                // Preserve the historical one-shot numeric address trap.
-                executionTrap = null;
-                if(!trap.callback || trap.callback(self.watch())!==false)
-                    return true;
+                if(executionCondition===condition) executionCondition = null;
+                return true;
             }
         }
 
