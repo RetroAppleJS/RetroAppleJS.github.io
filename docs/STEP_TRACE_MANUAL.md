@@ -206,7 +206,9 @@ In **Max (SYSTEM)** mode, STEP TRACE receives scheduler samples rather than ever
 
 STEP TRACE has one breakpoint mechanism: a **conditional breakpoint** evaluated on clean live CPU instruction boundaries while it is armed. Conditions containing a safe `PC==constant` term are internally gated to that address, so the full expression need not be evaluated at unrelated PCs.
 
-Enter an expression in `BREAK IF`, then press **Arm**. Arming the condition does **not** start the CPU. Use the normal **Run / Pause** control to continue execution at the selected speed.
+Enter an expression in `BREAK IF`, then press **Arm** once. The button immediately changes to **Disarm**. Arming the condition does **not** start the CPU. Use the normal **Run / Pause** control to continue execution at the selected speed.
+
+If you edit the expression while it is armed, the old predicate is disarmed immediately and the button returns to **Arm**. One click then arms exactly the expression visible in the editor; there is no separate “Rearm” state.
 
 For an address breakpoint, put the program counter directly in the expression:
 
@@ -231,10 +233,9 @@ When the condition is false, the breakpoint remains armed and execution continue
 | Control | Function |
 |---|---|
 | **Arm** | Compiles and arms the expression without starting execution |
-| **Rearm** | Appears after editing an already armed expression; installs the edited expression |
-| **Clear** | Disarms the conditional breakpoint; the editor text is retained |
-| **F9** | Arm / rearm the expression |
-| **Shift+F9** | Clear the conditional breakpoint |
+| **Disarm** | Disarms the active condition while retaining the editor text |
+| **F9** | Toggle Arm / Disarm |
+| **Shift+F9** | Disarm explicitly (keyboard compatibility shortcut) |
 
 A blank expression cannot be armed. Invalid expressions are rejected before arming. A runtime evaluation error stops visibly instead of silently ignoring the condition.
 

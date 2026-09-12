@@ -107,7 +107,7 @@ function fakeElement(initial)
     },initial || {});
 }
 
-test('STEP TRACE Arm installs PC equality and exposes an unmistakable armed UI state', () => {
+test('STEP TRACE BREAK IF uses a one-click Arm/Disarm toggle and can re-arm after editing', () => {
     let installed = null;
     const cpu = {
         watch(){ return {pc:0xC661,a:0,x:0,y:0,sp:0xFD,p:0x24,cycle_delay:0}; },
@@ -120,8 +120,7 @@ test('STEP TRACE Arm installs PC equality and exposes an unmistakable armed UI s
     const hw = { safe_read(){ return 0; } };
     const elements = {
         cpuDbg_breakCond:fakeElement({value:'PC==$C65E'}),
-        cpuDbg_breakArm:fakeElement({textContent:'Arm'}),
-        cpuDbg_breakClear:fakeElement({disabled:true})
+        cpuDbg_breakArm:fakeElement({textContent:'Arm'})
     };
     const ctx = {
         console,
@@ -135,14 +134,36 @@ test('STEP TRACE Arm installs PC equality and exposes an unmistakable armed UI s
     vm.runInContext(debugSource,ctx);
 
     const dbg = ctx.oEMU.component.CPU.Apple2Debug;
-    assert.equal(dbg.armConditionalBreakpointFromInput(),'PC==$C65E');
+
+    // oninput keeps the editor model current before the user clicks Arm.
+    assert.equal(dbg.setBreakpointCondition(elements.cpuDbg_breakCond.value),'PC==$C65E');
+    assert.equal(elements.cpuDbg_breakArm.textContent,'Arm');
+
+    // One click arms; there is no intermediate Rearm state.
+    assert.equal(dbg.toggleConditionalBreakpointFromInput(),'PC==$C65E');
     assert.ok(installed);
     assert.equal(installed.address,0xC65E);
-    assert.equal(elements.cpuDbg_breakArm.textContent,'Armed ✓');
-    assert.equal(elements.cpuDbg_breakClear.disabled,false);
+    assert.equal(elements.cpuDbg_breakArm.textContent,'Disarm');
+    assert.equal(dbg.liveState().conditionalBreakpoint.armed,true);
 
-    const state = dbg.liveState().conditionalBreakpoint;
-    assert.equal(state.armed,true);
-    assert.equal(state.mode,'address');
-    assert.equal(state.address,0xC65E);
+    // Editing an armed condition immediately disarms the old predicate.
+    elements.cpuDbg_breakCond.value = 'PC==$C665';
+    assert.equal(dbg.setBreakpointCondition(elements.cpuDbg_breakCond.value),'PC==$C665');
+    assert.equal(installed,null);
+    assert.equal(elements.cpuDbg_breakArm.textContent,'Arm');
+    assert.equal(dbg.liveState().conditionalBreakpoint.armed,false);
+
+    // One click arms the edited condition; another disarms it; another re-arms.
+    assert.equal(dbg.toggleConditionalBreakpointFromInput(),'PC==$C665');
+    assert.equal(installed.address,0xC665);
+    assert.equal(elements.cpuDbg_breakArm.textContent,'Disarm');
+    assert.equal(dbg.toggleConditionalBreakpointFromInput(),true);
+    assert.equal(installed,null);
+    assert.equal(elements.cpuDbg_breakArm.textContent,'Arm');
+    assert.equal(dbg.toggleConditionalBreakpointFromInput(),'PC==$C665');
+    assert.equal(installed.address,0xC665);
+    assert.equal(elements.cpuDbg_breakArm.textContent,'Disarm');
+
+    assert.match(debugSource,/oninput='oEMU\.component\.CPU\.Apple2Debug\.setBreakpointCondition\(this\.value\)'/);
+    assert.doesNotMatch(debugSource,/id='cpuDbg_breakClear'/);
 });
