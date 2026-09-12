@@ -103,6 +103,8 @@ function Apple2Debug()
         ,checks:0
         ,skips:0
         ,condition:""
+        ,mode:""
+        ,address:null
         ,lastResult:null
         ,error:null
     };
@@ -786,6 +788,31 @@ function Apple2Debug()
         return {text:text,ast:text ? parseBreakpointCondition(text) : null};
     }
 
+    // A PC equality inside an AND-only path is a safe address gate for the full
+    // expression. It keeps common address breakpoints off the every-instruction
+    // condition path without reintroducing a second user-facing breakpoint type.
+    function breakpointPcGate(node)
+    {
+        if(!node) return null;
+
+        if(node.t==="bin" && node.o==="&&")
+        {
+            var left = breakpointPcGate(node.a);
+            var right = breakpointPcGate(node.b);
+            if(left!==null && right!==null && left!==right) return null;
+            return left!==null ? left : right;
+        }
+
+        if(node.t==="bin" && (node.o==="=" || node.o==="=="))
+        {
+            if(node.a && node.a.t==="reg" && node.a.v==="PC" && node.b && node.b.t==="num")
+                return Number(node.b.v) & 0xffff;
+            if(node.b && node.b.t==="reg" && node.b.v==="PC" && node.a && node.a.t==="num")
+                return Number(node.a.v) & 0xffff;
+        }
+        return null;
+    }
+
     function parseColumns(text)
     {
         var out = {};
@@ -1207,7 +1234,9 @@ function Apple2Debug()
         if(arm)
         {
             var dirty = conditionalBreakpoint.armed && breakConditionText!==conditionalBreakpoint.condition;
-            arm.textContent = dirty ? "Rearm" : (conditionalBreakpoint.armed ? "Armed" : "Arm");
+            arm.textContent = dirty ? "Rearm" : (conditionalBreakpoint.armed ? "Armed ✓" : "Arm");
+            arm.setAttribute("aria-pressed",conditionalBreakpoint.armed ? "true" : "false");
+            arm.style.fontWeight = conditionalBreakpoint.armed ? "700" : "";
         }
 
         var clear = document.getElementById("cpuDbg_breakClear");
@@ -1807,7 +1836,7 @@ function Apple2Debug()
         return true;
     }
 
-    function conditionalBreakpointTrap(state)
+    function evaluateConditionalBreakpoint(state)
     {
         conditionalBreakpoint.checks++;
         var matched = true;
@@ -1826,19 +1855,28 @@ function Apple2Debug()
             matched = true; // stop visibly rather than silently ignoring an unreadable condition
         }
 
-        if(!matched)
-        {
-            conditionalBreakpoint.skips++;
-            return false;
-        }
+        if(!matched) conditionalBreakpoint.skips++;
+        return matched;
+    }
 
+    function conditionalBreakpointTrap(state)
+    {
+        if(!evaluateConditionalBreakpoint(state)) return false;
         return conditionalBreakpointHit(state);
+    }
+
+    function removeConditionalBreakpointObserver()
+    {
+        var cpu = liveCPU();
+        if(!cpu || !conditionalBreakpoint.armed
+            || typeof(cpu.clearExecutionCondition)!="function") return false;
+        return cpu.clearExecutionCondition(conditionalBreakpointTrap);
     }
 
     function armConditionalBreakpoint(conditionText)
     {
         var cpu = liveCPU();
-        if(!cpu || typeof(cpu.setExecutionCondition)!="function")
+        if(!cpu)
         {
             breakMessage = "BP unavailable";
             if(currentPC!==null) renderListing(currentPC,true);
@@ -1862,8 +1900,19 @@ function Apple2Debug()
             return false;
         }
 
-        if(conditionalBreakpoint.armed && typeof(cpu.clearExecutionCondition)==="function")
-            cpu.clearExecutionCondition(conditionalBreakpointTrap);
+        var pcGate = breakpointPcGate(compiled.ast);
+        var mode = pcGate!==null ? "address" : "condition";
+
+        if(typeof(cpu.setExecutionCondition)!="function")
+        {
+            breakMessage = "BP unavailable";
+            conditionalBreakpoint.error = "CPU does not provide setExecutionCondition()";
+            syncBreakpointControls();
+            if(currentPC!==null) renderListing(currentPC,true);
+            return false;
+        }
+
+        if(conditionalBreakpoint.armed) removeConditionalBreakpointObserver();
 
         breakConditionText = compiled.text;
         breakConditionError = "";
@@ -1871,11 +1920,24 @@ function Apple2Debug()
         conditionalBreakpoint.armed = true;
         conditionalBreakpoint.hit = false;
         conditionalBreakpoint.condition = compiled.text;
+        conditionalBreakpoint.mode = mode;
+        conditionalBreakpoint.address = mode==="address" ? pcGate : null;
         conditionalBreakpoint.lastResult = null;
         conditionalBreakpoint.error = null;
         breakMessage = "";
 
-        cpu.setExecutionCondition(conditionalBreakpointTrap);
+        var installed = cpu.setExecutionCondition(conditionalBreakpointTrap,pcGate)===true;
+
+        if(!installed)
+        {
+            conditionalBreakpoint.armed = false;
+            conditionalBreakpoint.error = "CPU rejected breakpoint observer";
+            breakMessage = "BP unavailable";
+            syncBreakpointControls();
+            if(currentPC!==null) renderListing(currentPC,true);
+            return false;
+        }
+
         syncBreakpointControls();
         if(currentPC!==null) renderListing(currentPC,true);
         return compiled.text;
@@ -1883,13 +1945,13 @@ function Apple2Debug()
 
     function clearConditionalBreakpoint()
     {
-        var cpu = liveCPU();
-        if(conditionalBreakpoint.armed && cpu && typeof(cpu.clearExecutionCondition)==="function")
-            cpu.clearExecutionCondition(conditionalBreakpointTrap);
+        removeConditionalBreakpointObserver();
 
         conditionalBreakpoint.armed = false;
         conditionalBreakpoint.hit = false;
         conditionalBreakpoint.condition = "";
+        conditionalBreakpoint.mode = "";
+        conditionalBreakpoint.address = null;
         conditionalBreakpoint.lastResult = null;
         conditionalBreakpoint.error = null;
         breakConditionAst = null;
@@ -2466,6 +2528,8 @@ function Apple2Debug()
                 ,"checks":conditionalBreakpoint.checks
                 ,"skips":conditionalBreakpoint.skips
                 ,"condition":conditionalBreakpoint.condition
+                ,"mode":conditionalBreakpoint.mode
+                ,"address":conditionalBreakpoint.address
                 ,"editorCondition":breakConditionText
                 ,"lastResult":conditionalBreakpoint.lastResult
                 ,"error":conditionalBreakpoint.error || breakConditionError || null

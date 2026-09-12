@@ -204,15 +204,17 @@ In **Max (SYSTEM)** mode, STEP TRACE receives scheduler samples rather than ever
 
 ## 8. Conditional breakpoint — `BREAK IF`
 
-STEP TRACE has one breakpoint mechanism: a **conditional breakpoint** evaluated on the live CPU at every clean instruction boundary while it is armed.
+STEP TRACE has one breakpoint mechanism: a **conditional breakpoint** evaluated on clean live CPU instruction boundaries while it is armed. Conditions containing a safe `PC==constant` term are internally gated to that address, so the full expression need not be evaluated at unrelated PCs.
 
 Enter an expression in `BREAK IF`, then press **Arm**. Arming the condition does **not** start the CPU. Use the normal **Run / Pause** control to continue execution at the selected speed.
 
 For an address breakpoint, put the program counter directly in the expression:
 
 ```text
-PC==$C600
+PC==$C65E
 ```
+
+Hex literals are exact 16-bit values: `$665E` and `$C65E` are different addresses. If the listing shows `C65E:`, the condition must use `PC==$C65E`.
 
 More conditions can be combined naturally:
 
@@ -663,9 +665,13 @@ This is why upward manual navigation may occasionally stop even though lower add
 
 ## 22. Conditional breakpoint semantics in detail
 
-An armed conditional breakpoint installs a persistent live CPU boundary observer. It is evaluated only when the previous instruction has fully completed (`cycle_delay == 0`) and before interrupt dispatch and opcode fetch for the next instruction.
+An armed conditional breakpoint is evaluated only when the previous instruction has fully completed (`cycle_delay == 0`) and before interrupt dispatch and opcode fetch for the next instruction.
 
-For each boundary:
+When an AND-only expression contains an exact `PC==constant` term, STEP TRACE uses that PC as an internal address gate and evaluates the complete condition only when that address is reached. For example, `PC==$C65E && A==$10` uses `$C65E` as the gate. Conditions without a safe PC equality use the persistent live CPU boundary observer and are evaluated at every clean boundary.
+
+The address gate is only an implementation optimisation; there is still one user-facing `BREAK IF` mechanism. The gated/persistent condition observer is kept independent from numeric execution traps in the CPU so another subsystem cannot silently disarm the STEP TRACE condition.
+
+For each relevant boundary:
 
 1. STEP TRACE evaluates the expression against the live CPU registers and safely mapped memory;
 2. a false result leaves the observer armed and normal execution continues;
