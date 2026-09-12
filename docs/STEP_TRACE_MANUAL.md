@@ -48,7 +48,7 @@ The exact visual shape depends on browser, platform, font rendering, and the cur
 
 | Control | Function | Keyboard |
 |---|---|---|
-| **Play / Pause** | Starts or pauses CPU execution in the currently selected STEP TRACE speed mode. The icon changes between play and pause. | — |
+| **Play / Pause / Breakpoint stop** | Starts or pauses CPU execution in the currently selected STEP TRACE speed mode. It shows `fa-play-circle` while paused, `fa-pause-circle` while running, and `fa-parking` when execution has stopped because `BREAK IF` matched. | — |
 | **Step In** (`fa-sign-in-alt`) | Executes exactly one live instruction-boundary event and then refreshes the debugger. | **F11** |
 | **Step Over** (`fa-paw`) | For ordinary instructions, behaves like Step In. For `JSR` and `BRK`, runs until the matching return boundary is reached. | **F10** |
 | **Step Out** (`fa-sign-out-alt`) | Runs until the current routine returns, while tracking nested subroutine calls and interrupt nesting. | **Shift+F11** |
@@ -226,7 +226,7 @@ M[$4000]==$80 && Z
 X!=0 && !C
 ```
 
-When the condition is false, the breakpoint remains armed and execution continues. When it becomes true, STEP TRACE stops **before the next opcode at that boundary is fetched or executed**. The condition is then disarmed; press **Arm** again to reuse it.
+When the condition is false, the breakpoint remains armed and execution continues. When it becomes true, STEP TRACE stops **before the next opcode at that boundary is fetched or executed**. The condition is then disarmed and the main Run/Pause pictogram becomes the **parking** icon (`fa-parking`) to make the reason for the stop immediately visible. The NAV row does not add a `BP IF` text marker. Press **Arm** again if you want to reuse the condition, then use the normal Run/Pause control to continue.
 
 ### Buttons and keyboard
 

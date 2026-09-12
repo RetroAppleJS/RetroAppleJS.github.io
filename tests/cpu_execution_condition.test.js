@@ -167,3 +167,10 @@ test('STEP TRACE BREAK IF uses a one-click Arm/Disarm toggle and can re-arm afte
     assert.match(debugSource,/oninput='oEMU\.component\.CPU\.Apple2Debug\.setBreakpointCondition\(this\.value\)'/);
     assert.doesNotMatch(debugSource,/id='cpuDbg_breakClear'/);
 });
+
+
+test('STEP TRACE uses parking icon instead of BP IF text when a conditional breakpoint hits', () => {
+    assert.match(debugSource,/classList\.toggle\(\"fa-parking\",breakpointStop\)/);
+    assert.match(debugSource,/conditionalBreakpoint\.hit = false;\n\s*stopBoundaryAction\(\);/);
+    assert.doesNotMatch(debugSource,/return \"  BP IF/);
+});
