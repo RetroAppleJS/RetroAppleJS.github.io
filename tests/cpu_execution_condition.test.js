@@ -185,9 +185,17 @@ test('STEP TRACE manual stepping uses pause-circle', () => {
 });
 
 
-test('STEP TRACE NAV shows the 48-bit instruction counter next to PC', () => {
+test('STEP TRACE NAV exposes copyable PC/INS and keeps run status beside BREAK IF', () => {
     assert.match(debugSource,/INS \$\"\+instructionCounterText\(\)/);
     assert.match(debugSource,/padStart\(12,\"0\"\)\.slice\(-12\)/);
+    assert.match(debugSource,/id='cpuDbg_navStatus' type='text' readonly/);
+    assert.match(debugSource,/if\(el\.value!==navText\) el\.value = navText;/);
+
+    const condPos = debugSource.indexOf("id='cpuDbg_breakCond'");
+    const statusPos = debugSource.indexOf("id='cpuDbg_breakStatus'");
+    const armPos = debugSource.indexOf("id='cpuDbg_breakArm'");
+    assert.ok(condPos >= 0 && condPos < statusPos && statusPos < armPos);
+    assert.ok(debugSource.includes('status.style.display = statusText ? "" : "none";'));
 });
 
 

@@ -25,9 +25,9 @@ The interface is approximately:
 ```text
 STEP TRACE  [Run/Pause/Breakpoint] [Step] [Over] [Out]   [boot log controls] [x]
 
-NAV  ↑  ↓   PC $xxxx  INS $xxxxxxxxxxxx   [Track PC] [Loop display] [speed]
+NAV  ↑  ↓   [PC $xxxx  INS $xxxxxxxxxxxx]   [Track PC] [Loop display] [speed]
 
-BREAK IF   [conditional expression..............................] [Arm/Disarm]
+BREAK IF   [conditional expression........] <run/breakpoint status> [Arm/Disarm]
 
 LISTING Columns {adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}
 
@@ -123,10 +123,10 @@ A batch can return early at a debugger-significant boundary, for example when:
 The NAV row begins with:
 
 ```text
-NAV  ↑  ↓   PC $xxxx  INS $xxxxxxxxxxxx
+NAV  ↑  ↓   [PC $xxxx  INS $xxxxxxxxxxxx]
 ```
 
-and is followed by the Track-PC icon, closed-loop-display icon, and speed selector.
+and is followed by the Track-PC icon, closed-loop-display icon, and speed selector. `PC` and `INS` are presented together in a **read-only input field**, so the live values can be selected and copied without making them editable.
 
 ### `↑` and `↓`
 
@@ -158,7 +158,7 @@ At a clean instruction boundary, `INS` is the number of opcodes already complete
 INS==$0000000D5700
 ```
 
-The PC/INS display remains live even when the listing viewport has been unlocked for manual browsing.
+The PC/INS read-only input remains live even when the listing viewport has been unlocked for manual browsing. Because it is a normal read-only input, either value—or the complete `PC … INS …` text—can be selected and copied.
 
 ---
 
@@ -266,7 +266,7 @@ PC==$C65E
 INS==$0000000D5700
 ```
 
-The full 12-digit hexadecimal counter can be copied directly from the NAV row.
+The full 12-digit hexadecimal counter can be selected and copied directly from the NAV read-only PC/INS input.
 
 It can be combined with other terms:
 
@@ -374,24 +374,24 @@ The condition can stop fixed-IPS execution, Max/SYSTEM execution, Step Over, or 
 
 ---
 
-## 9. NAV run/status text and breakpoint indication
+## 9. BREAK IF run/status field
 
-The NAV line always starts with the live PC and instruction counter:
+The NAV row is now reserved for the copyable live CPU position:
 
 ```text
 PC $C600  INS $000000001234
 ```
 
-Temporary Step Over/Out state can be appended, for example:
+Transient run state and textual breakpoint diagnostics are displayed **between the BREAK IF input and the Arm/Disarm button**. The condition input is flexible, so it automatically becomes narrower while a status message is present and expands again when the status clears.
+
+For example, Step Over/Out can temporarily show:
 
 ```text
-PC $C600  INS $000000001234  OVER→$1234
-PC $C600  INS $000000001234  OUT J1 I0
+BREAK IF  [condition........]  OVER→$1234  [Disarm]
+BREAK IF  [condition........]  OUT J1 I0    [Disarm]
 ```
 
-A **successful** `BREAK IF` hit does not add `BP IF` text. It is shown by the main **parking** pictogram.
-
-Only error/status diagnostics need textual breakpoint messages, for example:
+Breakpoint errors use the same status position:
 
 ```text
 BAD COND
@@ -399,6 +399,8 @@ COND ERR
 BP!
 BP unavailable
 ```
+
+A **successful** `BREAK IF` hit still does not add `BP IF` text. It is indicated by the main **parking** pictogram (`fa-parking`).
 
 ---
 
@@ -847,7 +849,7 @@ Press **Arm**, then Run.
 
 ### Break at an exact instruction count
 
-Copy the displayed NAV counter, for example:
+Select and copy the displayed NAV counter from the read-only PC/INS input, for example:
 
 ```text
 INS $0000000D5700
@@ -989,8 +991,10 @@ These choices favour correctness of the live machine over making the debugger di
 | `fa-lock-open` | Track PC disabled |
 | `fa-retweet` bright | show repeated closed-loop steps |
 | `fa-retweet` dim | hide repeated closed-loop display; CPU still executes it |
+| read-only `PC $xxxx  INS $xxxxxxxxxxxx` input | live copyable CPU position/counter text |
 | `PC $xxxx` | live 16-bit program counter |
 | `INS $xxxxxxxxxxxx` | live 48-bit completed-opcode counter |
+| BREAK IF status slot | transient Over/Out state and breakpoint diagnostics, between the expression and Arm/Disarm |
 | BREAK IF | conditional breakpoint expression |
 | Arm / F9 | arm the expression |
 | Disarm / F9 | disarm the active expression |
