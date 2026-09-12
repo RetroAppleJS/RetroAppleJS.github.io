@@ -13115,11 +13115,14 @@ function Cpu6502(hwobj)
     var BOOTlogging = false;
     var BOOTcomplete = false;
 
-    // Optional instruction-boundary trap. Numeric-address traps remain
-    // one-shot for accelerator callers. A null-address trap is a persistent
-    // condition observer: returning false keeps it armed for the next clean
-    // instruction boundary. All traps run before interrupt dispatch/opcode fetch.
+    // Optional one-shot numeric instruction-boundary trap used by the WASM
+    // accelerator and other address-gated callers.
     var executionTrap = null;
+
+    // Independent persistent conditional observer used by STEP TRACE. Keeping
+    // it separate prevents a WASM clear/setExecutionTrap() call from silently
+    // disarming an already armed STEP TRACE condition.
+    var executionCondition = null;
 
     // Optional terminal same-PC loop detector. Disabled unless a caller
     // (currently STEP TRACE) explicitly enables it.
@@ -13347,26 +13350,37 @@ function Cpu6502(hwobj)
         return executionTrap.address;
     }
 
-    // Observe every clean instruction boundary until callback returns anything
-    // other than false, or clearExecutionTrap() is called. There is no per-step
-    // condition callback overhead while no condition is armed.
-    this.setExecutionCondition = function(callback)
+    // Observe clean instruction boundaries until callback returns anything other
+    // than false, or clearExecutionCondition() is called. An optional address
+    // gate avoids invoking the callback at unrelated PCs while keeping this
+    // observer independent from the numeric executionTrap used by WASM.
+    this.setExecutionCondition = function(callback,address)
     {
-        executionTrap = {
-             "address":null
-            ,"callback":typeof(callback)=="function" ? callback : null
+        if(typeof(callback)!="function")
+        {
+            executionCondition = null;
+            return false;
+        }
+
+        executionCondition = {
+             "callback":callback
+            ,"address":address==null ? null : (Number(address) & 0xffff)
         };
         return true;
     }
 
+    this.hasExecutionCondition = function(callback)
+    {
+        if(!executionCondition) return false;
+        return !callback || executionCondition.callback===callback;
+    }
+
     // Clear only the persistent condition observer owned by this callback.
-    // This avoids an inactive STEP TRACE clearing another component's numeric
-    // execution trap if ownership changed after the condition was armed.
     this.clearExecutionCondition = function(callback)
     {
-        if(!executionTrap || executionTrap.address!==null) return false;
-        if(callback && executionTrap.callback!==callback) return false;
-        executionTrap = null;
+        if(!executionCondition) return false;
+        if(callback && executionCondition.callback!==callback) return false;
+        executionCondition = null;
         return true;
     }
 
@@ -13870,28 +13884,27 @@ function Cpu6502(hwobj)
 
         if (cycle_delay > 0) { cycle_delay--; return }
 
-        // Execution traps are deliberately before interrupt dispatch and
-        // opcode fetch, so callbacks observe a clean instruction boundary.
-        if(executionTrap && (executionTrap.address===null || (pc & 0xffff)==executionTrap.address))
+        // Boundary hooks are deliberately before interrupt dispatch and opcode
+        // fetch, so callbacks observe a clean instruction boundary.
+        if(executionTrap && (pc & 0xffff)==executionTrap.address)
         {
+            // Numeric address traps are one-shot. Clear before the callback so a
+            // false conditional visit can explicitly re-arm the same address.
             var trap = executionTrap;
+            executionTrap = null;
+            if(!trap.callback || trap.callback(self.watch())!==false)
+                return true;
+        }
 
-            if(trap.address===null)
+        if(executionCondition
+            && (executionCondition.address===null
+                || (pc & 0xffff)===executionCondition.address))
+        {
+            var condition = executionCondition;
+            if(condition.callback(self.watch())!==false)
             {
-                // Persistent condition observer. A false result keeps it armed;
-                // a true result stops before this boundary's opcode is fetched.
-                if(!trap.callback || trap.callback(self.watch())!==false)
-                {
-                    if(executionTrap===trap) executionTrap = null;
-                    return true;
-                }
-            }
-            else
-            {
-                // Preserve the historical one-shot numeric address trap.
-                executionTrap = null;
-                if(!trap.callback || trap.callback(self.watch())!==false)
-                    return true;
+                if(executionCondition===condition) executionCondition = null;
+                return true;
             }
         }
 
@@ -15853,6 +15866,8 @@ function Apple2Debug()
         ,checks:0
         ,skips:0
         ,condition:""
+        ,mode:""
+        ,address:null
         ,lastResult:null
         ,error:null
     };
@@ -16536,6 +16551,31 @@ function Apple2Debug()
         return {text:text,ast:text ? parseBreakpointCondition(text) : null};
     }
 
+    // A PC equality inside an AND-only path is a safe address gate for the full
+    // expression. It keeps common address breakpoints off the every-instruction
+    // condition path without reintroducing a second user-facing breakpoint type.
+    function breakpointPcGate(node)
+    {
+        if(!node) return null;
+
+        if(node.t==="bin" && node.o==="&&")
+        {
+            var left = breakpointPcGate(node.a);
+            var right = breakpointPcGate(node.b);
+            if(left!==null && right!==null && left!==right) return null;
+            return left!==null ? left : right;
+        }
+
+        if(node.t==="bin" && (node.o==="=" || node.o==="=="))
+        {
+            if(node.a && node.a.t==="reg" && node.a.v==="PC" && node.b && node.b.t==="num")
+                return Number(node.b.v) & 0xffff;
+            if(node.b && node.b.t==="reg" && node.b.v==="PC" && node.a && node.a.t==="num")
+                return Number(node.a.v) & 0xffff;
+        }
+        return null;
+    }
+
     function parseColumns(text)
     {
         var out = {};
@@ -16957,7 +16997,9 @@ function Apple2Debug()
         if(arm)
         {
             var dirty = conditionalBreakpoint.armed && breakConditionText!==conditionalBreakpoint.condition;
-            arm.textContent = dirty ? "Rearm" : (conditionalBreakpoint.armed ? "Armed" : "Arm");
+            arm.textContent = dirty ? "Rearm" : (conditionalBreakpoint.armed ? "Armed ✓" : "Arm");
+            arm.setAttribute("aria-pressed",conditionalBreakpoint.armed ? "true" : "false");
+            arm.style.fontWeight = conditionalBreakpoint.armed ? "700" : "";
         }
 
         var clear = document.getElementById("cpuDbg_breakClear");
@@ -17557,7 +17599,7 @@ function Apple2Debug()
         return true;
     }
 
-    function conditionalBreakpointTrap(state)
+    function evaluateConditionalBreakpoint(state)
     {
         conditionalBreakpoint.checks++;
         var matched = true;
@@ -17576,19 +17618,28 @@ function Apple2Debug()
             matched = true; // stop visibly rather than silently ignoring an unreadable condition
         }
 
-        if(!matched)
-        {
-            conditionalBreakpoint.skips++;
-            return false;
-        }
+        if(!matched) conditionalBreakpoint.skips++;
+        return matched;
+    }
 
+    function conditionalBreakpointTrap(state)
+    {
+        if(!evaluateConditionalBreakpoint(state)) return false;
         return conditionalBreakpointHit(state);
+    }
+
+    function removeConditionalBreakpointObserver()
+    {
+        var cpu = liveCPU();
+        if(!cpu || !conditionalBreakpoint.armed
+            || typeof(cpu.clearExecutionCondition)!="function") return false;
+        return cpu.clearExecutionCondition(conditionalBreakpointTrap);
     }
 
     function armConditionalBreakpoint(conditionText)
     {
         var cpu = liveCPU();
-        if(!cpu || typeof(cpu.setExecutionCondition)!="function")
+        if(!cpu)
         {
             breakMessage = "BP unavailable";
             if(currentPC!==null) renderListing(currentPC,true);
@@ -17612,8 +17663,19 @@ function Apple2Debug()
             return false;
         }
 
-        if(conditionalBreakpoint.armed && typeof(cpu.clearExecutionCondition)==="function")
-            cpu.clearExecutionCondition(conditionalBreakpointTrap);
+        var pcGate = breakpointPcGate(compiled.ast);
+        var mode = pcGate!==null ? "address" : "condition";
+
+        if(typeof(cpu.setExecutionCondition)!="function")
+        {
+            breakMessage = "BP unavailable";
+            conditionalBreakpoint.error = "CPU does not provide setExecutionCondition()";
+            syncBreakpointControls();
+            if(currentPC!==null) renderListing(currentPC,true);
+            return false;
+        }
+
+        if(conditionalBreakpoint.armed) removeConditionalBreakpointObserver();
 
         breakConditionText = compiled.text;
         breakConditionError = "";
@@ -17621,11 +17683,24 @@ function Apple2Debug()
         conditionalBreakpoint.armed = true;
         conditionalBreakpoint.hit = false;
         conditionalBreakpoint.condition = compiled.text;
+        conditionalBreakpoint.mode = mode;
+        conditionalBreakpoint.address = mode==="address" ? pcGate : null;
         conditionalBreakpoint.lastResult = null;
         conditionalBreakpoint.error = null;
         breakMessage = "";
 
-        cpu.setExecutionCondition(conditionalBreakpointTrap);
+        var installed = cpu.setExecutionCondition(conditionalBreakpointTrap,pcGate)===true;
+
+        if(!installed)
+        {
+            conditionalBreakpoint.armed = false;
+            conditionalBreakpoint.error = "CPU rejected breakpoint observer";
+            breakMessage = "BP unavailable";
+            syncBreakpointControls();
+            if(currentPC!==null) renderListing(currentPC,true);
+            return false;
+        }
+
         syncBreakpointControls();
         if(currentPC!==null) renderListing(currentPC,true);
         return compiled.text;
@@ -17633,13 +17708,13 @@ function Apple2Debug()
 
     function clearConditionalBreakpoint()
     {
-        var cpu = liveCPU();
-        if(conditionalBreakpoint.armed && cpu && typeof(cpu.clearExecutionCondition)==="function")
-            cpu.clearExecutionCondition(conditionalBreakpointTrap);
+        removeConditionalBreakpointObserver();
 
         conditionalBreakpoint.armed = false;
         conditionalBreakpoint.hit = false;
         conditionalBreakpoint.condition = "";
+        conditionalBreakpoint.mode = "";
+        conditionalBreakpoint.address = null;
         conditionalBreakpoint.lastResult = null;
         conditionalBreakpoint.error = null;
         breakConditionAst = null;
@@ -18216,6 +18291,8 @@ function Apple2Debug()
                 ,"checks":conditionalBreakpoint.checks
                 ,"skips":conditionalBreakpoint.skips
                 ,"condition":conditionalBreakpoint.condition
+                ,"mode":conditionalBreakpoint.mode
+                ,"address":conditionalBreakpoint.address
                 ,"editorCondition":breakConditionText
                 ,"lastResult":conditionalBreakpoint.lastResult
                 ,"error":conditionalBreakpoint.error || breakConditionError || null
