@@ -1252,9 +1252,10 @@ function Apple2Debug()
 
     function breakpointText()
     {
-        if(conditionalBreakpoint.armed) return "  BP IF";
+        // Armed/disarmed state is already conveyed by the Arm/Disarm
+        // button. A successful hit is shown by the parking icon in the
+        // main Run/Pause control, keeping the NAV status line uncluttered.
         if(conditionalBreakpoint.error) return "  BP!";
-        if(conditionalBreakpoint.hit) return "  BP IF✓";
         return breakMessage ? "  "+breakMessage : "";
     }
 
@@ -1556,9 +1557,13 @@ function Apple2Debug()
         el = el || document.getElementById("cpuDbg_play");
         if(!el || !el.classList) return;
         var running = executionRunning();
+        var breakpointStop = !running && conditionalBreakpoint.hit && !conditionalBreakpoint.error;
         el.classList.toggle("fa-pause-circle",running);
-        el.classList.toggle("fa-play-circle",!running);
-        el.title = running ? "pause CPU execution" : "continue CPU execution";
+        el.classList.toggle("fa-parking",breakpointStop);
+        el.classList.toggle("fa-play-circle",!running && !breakpointStop);
+        el.title = running
+            ? "pause CPU execution"
+            : (breakpointStop ? "paused at BREAK IF condition — click to continue" : "continue CPU execution");
     }
 
     function scheduleFixedRun(delay)
@@ -1630,6 +1635,9 @@ function Apple2Debug()
 
     function startExecution()
     {
+        // Leaving a breakpoint stop returns the main control from the
+        // parking pictogram to the normal running state.
+        conditionalBreakpoint.hit = false;
         stopBoundaryAction();
         if(runMode==="system")
         {
