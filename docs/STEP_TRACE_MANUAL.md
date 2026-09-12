@@ -52,6 +52,8 @@ The exact visual shape depends on browser, platform, font rendering, and the cur
 | **Step In** (`fa-sign-in-alt`) | Executes exactly one live instruction-boundary event and then refreshes the debugger. | **F11** |
 | **Step Over** (`fa-paw`) | For ordinary instructions, behaves like Step In. For `JSR` and `BRK`, runs until the matching return boundary is reached. | **F10** |
 | **Step Out** (`fa-sign-out-alt`) | Runs until the current routine returns, while tracking nested subroutine calls and interrupt nesting. | **Shift+F11** |
+
+After **Step In**, **Step Over**, or **Step Out** stops, the main execution icon remains `fa-pause-circle`. Starting continuous execution clears this manual-step indication.
 | **x** | Closes STEP TRACE. Debugger-owned runs and the conditional breakpoint trap are cleared so an invisible debugger cannot later stop the emulator. | — |
 
 ### Step In
