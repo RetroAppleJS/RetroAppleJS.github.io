@@ -24,6 +24,8 @@ The interface is approximately:
 
 ![Board Installed in System: Interior View](assets/STEP_TRACE_MANUAL-001.png)
 
+![Board Installed in System: Interior View](assets/STEP_TRACE_MANUAL-002.png)
+
 The exact visual appearance depends on browser and platform font rendering.
 
 ---
