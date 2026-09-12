@@ -1,0 +1,36 @@
+name: STEP TRACE step icon and counter temporary
+
+on:
+  push:
+    branches: [step-trace-step-icon-instruction-counter]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: step-trace-step-icon-instruction-counter
+          fetch-depth: 0
+
+      - name: Apply STEP TRACE changes
+        run: python3 .github/step_trace_step_icon_counter.py
+
+      - name: Validate
+        run: |
+          node --check res/EMU_apple2debug.js
+          node --check res/EMU_cpu6502.js
+          node --check res/EMU_apple2plus.js
+          node --test tests/cpu_execution_condition.test.js
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add res/EMU_apple2debug.js docs/STEP_TRACE_MANUAL.md tests/cpu_execution_condition.test.js
+          git commit -m "Show instruction count and preserve pause icon after steps"
+          git push origin HEAD:step-trace-step-icon-instruction-counter
