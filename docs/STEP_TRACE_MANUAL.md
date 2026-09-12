@@ -1,35 +1,33 @@
 # RetroAppleJS STEP TRACE — Real-Time Debugger Manual
 
-> Applies to the current real-time STEP TRACE implementation including live CPU execution, mapped-bus disassembly, instruction-row navigation, Step Over/Out, conditional breakpoints, branch-line rendering, symbol loading, live registers, peripheral-ROM visibility, and optional closed-loop display suppression.
+> STEP TRACE is the attached real-time debugger for the live Apple II runtime. This manual describes the current implementation: live CPU execution, mapped-bus disassembly, instruction-row navigation, PC tracking, the 48-bit instruction counter, Step In/Over/Out, conditional breakpoints, branch-line rendering, symbol loading, live CPU registers, peripheral-ROM visibility, boot logging, and optional closed-loop display suppression.
 
 ## 1. What STEP TRACE is
 
-**STEP TRACE** is an attached debugger for the *live* Apple II runtime.
+**STEP TRACE** debugs the *real* Apple II runtime CPU. It does not run a second CPU and it does not use a private copy of RAM.
 
-It does **not** run a second CPU or use a private copy of RAM. When STEP TRACE runs or steps code, it uses the real `apple2plus` CPU together with the currently mapped memory, peripherals, timers, Disk II controller, video timing, interrupts, and I/O.
-
-This has several consequences:
+When STEP TRACE runs or steps code, it uses the live `apple2plus` CPU together with the currently mapped memory, peripherals, video timing, interrupts, Disk II controller, and I/O. Consequently:
 
 - self-modifying code is visible;
 - language-card and ROM mappings are respected;
 - peripheral ROM can be traced;
-- breakpoints stop on real instruction boundaries;
-- Disk II and other devices continue receiving their normal emulated CPU/I/O timing while the debugger is running.
+- conditional breakpoints stop on real instruction boundaries;
+- Disk II and other devices continue receiving normal emulated CPU/I/O timing while debugger-controlled execution is active.
 
-The only intentionally masked debugger-read range is **`$C000-$C0FF`**, because this page contains motherboard and slot soft-switch I/O rather than ordinary instruction ROM. The peripheral and expansion ROM range **`$C100-$CFFF`** remains available to STEP TRACE.
+Debugger reads deliberately mask **`$C000-$C0FF`**, because that page contains Apple II soft switches and slot I/O rather than ordinary instruction memory. The peripheral and expansion ROM window **`$C100-$CFFF`** remains visible to STEP TRACE.
 
 ---
 
 ## 2. STEP TRACE window at a glance
 
-The interface is organised approximately as follows:
+The interface is approximately:
 
 ```text
-STEP TRACE  [Run/Pause] [Step] [Over] [Out]      [Boot log controls] [x]
+STEP TRACE  [Run/Pause/Breakpoint] [Step] [Over] [Out]   [boot log controls] [x]
 
-NAV  ↑  ↓   PC $xxxx  INS $xxxxxxxxxxxx   [Loop display] [Track PC]   [speed]
+NAV  ↑  ↓   PC $xxxx  INS $xxxxxxxxxxxx   [Track PC] [Loop display] [speed]
 
-BREAK IF   [conditional expression....................] [Arm] [Clear]
+BREAK IF   [conditional expression..............................] [Arm/Disarm]
 
 LISTING Columns {adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}
 
@@ -40,44 +38,50 @@ LISTING Columns {adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}
 A=.. X=.. Y=.. SP=.. SR=n.v.-.b.d.i.z.c.
 ```
 
-The exact visual shape depends on browser, platform, font rendering, and the currently selected listing-column preset.
+The exact visual appearance depends on browser and platform font rendering.
 
 ---
 
-## 3. Step controls
+## 3. Run and step controls
 
 | Control | Function | Keyboard |
 |---|---|---|
-| **Play / Pause / Breakpoint stop** | Starts or pauses CPU execution in the currently selected STEP TRACE speed mode. It shows `fa-play-circle` while paused, `fa-pause-circle` while running, and `fa-parking` when execution has stopped because `BREAK IF` matched. | — |
-| **Step In** (`fa-sign-in-alt`) | Executes exactly one live instruction-boundary event and then refreshes the debugger. | **F11** |
-| **Step Over** (`fa-paw`) | For ordinary instructions, behaves like Step In. For `JSR` and `BRK`, runs until the matching return boundary is reached. | **F10** |
-| **Step Out** (`fa-sign-out-alt`) | Runs until the current routine returns, while tracking nested subroutine calls and interrupt nesting. | **Shift+F11** |
+| **Run / Pause / Breakpoint stop** | Starts or pauses CPU execution in the selected STEP TRACE speed mode. The same icon also indicates a conditional-breakpoint stop. | — |
+| **Step In** (`fa-sign-in-alt`) | Executes one live instruction and refreshes the debugger. | **F11** |
+| **Step Over** (`fa-paw`) | Steps over `JSR` and `BRK`; otherwise behaves like Step In. | **F10** |
+| **Step Out** (`fa-sign-out-alt`) | Runs until the current routine returns, while tracking nested calls and interrupt nesting. | **Shift+F11** |
+| **x** | Closes STEP TRACE and clears debugger-owned execution state. | — |
 
-After **Step In**, **Step Over**, or **Step Out** stops, the main execution icon remains `fa-pause-circle`. Starting continuous execution clears this manual-step indication.
-| **x** | Closes STEP TRACE. Debugger-owned runs and the conditional breakpoint trap are cleared so an invisible debugger cannot later stop the emulator. | — |
+### Main execution pictogram
+
+The first pictogram has three meaningful visual states:
+
+| Pictogram | Meaning |
+|---|---|
+| `fa-play-circle` | ordinary idle/paused state |
+| `fa-pause-circle` | continuous execution is running, **or** a manual Step In/Over/Out has just completed and the debugger is paused at the resulting boundary |
+| `fa-parking` | execution stopped because the armed `BREAK IF` expression matched |
+
+A successful breakpoint stop is therefore shown by the **parking** icon rather than by adding `BP IF` text to the NAV line.
 
 ### Step In
 
-Step In always performs a literal single instruction step. Even when closed-loop display suppression is enabled, a manually requested Step In remains visible.
+Step In executes exactly one live instruction. It is always shown literally, even when repeated-loop display is disabled.
 
 ### Step Over
 
-Step Over treats:
+For an ordinary instruction, Step Over is equivalent to Step In.
 
-- `JSR` as a call;
-- `BRK` as a call-like boundary;
-- all other opcodes as a normal single-step operation.
-
-For a call-like instruction, STEP TRACE runs the live machine until the expected return PC is reached with the original stack pointer restored.
+For `JSR` or `BRK`, STEP TRACE temporarily runs the live CPU until the matching return boundary is reached. For a `JSR`, the expected return PC and original stack pointer are used to distinguish the intended return from unrelated control flow.
 
 ### Step Out
 
-Step Out does not simply guess a return address from the current stack. Instead it follows live control flow and keeps separate nesting counts for:
+Step Out follows live execution until the current routine returns. It separately tracks:
 
-- `JSR` / `RTS`;
-- interrupt or `BRK` entry / `RTI`.
+- nested `JSR` / `RTS` depth;
+- interrupt or `BRK` entry / `RTI` depth.
 
-This prevents an interrupt occurring during Step Out from being mistaken for the requested subroutine return.
+This prevents an interrupt occurring during Step Out from being mistaken for the requested routine return.
 
 ---
 
@@ -87,58 +91,80 @@ The speed selector offers:
 
 | Mode | Behaviour |
 |---|---|
-| **1 IPS** | Approximately 1 instruction per second |
-| **10 IPS** | Approximately 10 instructions per second |
-| **100 IPS** | Executes in small live batches |
-| **1000 IPS** | Executes in larger live batches |
-| **Max (SYSTEM)** | Returns execution ownership to the normal emulator scheduler |
+| **1 IPS** | approximately 1 instruction per second |
+| **10 IPS** | approximately 10 instructions per second |
+| **100 IPS** | debugger-controlled execution in small live batches |
+| **1000 IPS** | debugger-controlled execution in larger live batches |
+| **Max (SYSTEM)** | execution belongs to the normal emulator scheduler |
 
 `IPS` means **instructions per second**.
 
-The fixed 1/10/100/1000 IPS modes temporarily pause the normal SYSTEM CPU owner and execute the *same live CPU* through debugger-controlled instruction boundaries.
+The fixed 1/10/100/1000 IPS modes pause the normal SYSTEM CPU owner and execute the *same live CPU* through debugger-controlled instruction boundaries.
 
-Internally, the higher fixed speeds use batching for performance:
+Current batching is:
 
 - 1 IPS: 1 instruction per batch;
 - 10 IPS: 1 instruction per batch;
 - 100 IPS: 5 instructions per batch;
 - 1000 IPS: 50 instructions per batch.
 
-The debugger may return from a batch early when an important live boundary needs to be displayed, such as entering/leaving peripheral ROM, leaving a hidden loop, or hitting a breakpoint.
+A batch can return early at a debugger-significant boundary, for example when:
 
-**Max (SYSTEM)** is different: the normal emulator scheduler owns execution and STEP TRACE samples that running CPU once per scheduler slice.
+- execution enters or leaves peripheral/expansion ROM;
+- a hidden closed loop exits;
+- an armed conditional breakpoint matches.
+
+**Max (SYSTEM)** remains owned by the central emulator scheduler. STEP TRACE samples the running CPU for display, while the CPU's instruction-boundary breakpoint observer still operates at the CPU boundary itself.
 
 ---
 
-## 5. Navigation controls
+## 5. NAV row: navigation, PC and instruction counter
 
-The navigation row begins with:
+The NAV row begins with:
 
 ```text
 NAV  ↑  ↓   PC $xxxx  INS $xxxxxxxxxxxx
 ```
 
+and is followed by the Track-PC icon, closed-loop-display icon, and speed selector.
+
 ### `↑` and `↓`
 
-A **short press** moves the listing exactly one decoded instruction row backward or forward.
+A **short press** moves the listing one decoded instruction row backward or forward.
 
-A **press-and-hold for about 0.5 seconds** moves one full page.
+A **press-and-hold for about 0.5 seconds** moves approximately one page.
 
 Navigation is instruction-oriented, not byte-oriented.
 
-Forward navigation follows the decoded instruction length. Backward navigation uses a previously proven instruction predecessor where possible. If no predecessor is known, the debugger tests the possible 1-, 2-, and 3-byte 6502 predecessors and accepts the result only if exactly one candidate is valid. If backward decoding is ambiguous, navigation stops rather than inventing an alignment.
+Forward navigation follows each instruction's decoded length. Backward navigation first uses a previously proven predecessor boundary. If none is known, STEP TRACE tests possible 1-, 2-, and 3-byte 6502 predecessors and accepts the result only when exactly one candidate lands on the current address. If backward decoding is ambiguous, navigation stops instead of inventing an instruction alignment.
 
-### `PC $xxxx  INS $xxxxxxxxxxxx`
+### `PC $xxxx`
 
-`PC` is the **live program counter**. `INS` is the CPU's 48-bit completed-opcode count since reset, displayed as 12 hexadecimal digits; for example `PC $C665  INS $000000000001`.
+`PC` is the live 16-bit program counter.
 
-The PC/INS indicator continues to represent the executing CPU even when the listing itself has been unlocked for manual browsing.
+### `INS $xxxxxxxxxxxx`
+
+`INS` is the CPU's **48-bit completed-opcode counter since reset**, displayed as 12 hexadecimal digits. For example:
+
+```text
+PC $C665  INS $0000000D5700
+```
+
+The counter is the same `ic` value exposed by `Cpu6502.watch()`. JavaScript can represent the complete 48-bit integer exactly.
+
+At a clean instruction boundary, `INS` is the number of opcodes already completed. That makes the displayed value directly reusable in a breakpoint expression on a subsequent identical run:
+
+```text
+INS==$0000000D5700
+```
+
+The PC/INS display remains live even when the listing viewport has been unlocked for manual browsing.
 
 ---
 
-## 6. Track-PC control
+## 6. Track PC
 
-The Track-PC checkbox has been replaced by a compact icon.
+Track PC is controlled by a lock pictogram rather than a checkbox.
 
 | Icon | Meaning |
 |---|---|
@@ -147,20 +173,20 @@ The Track-PC checkbox has been replaced by a compact icon.
 
 When tracking is enabled, the listing follows the live PC.
 
-When tracking is disabled, the listing remains at the manually selected instruction area while execution may continue elsewhere. The live `PC $xxxx` indicator and CPU register state still update.
+When tracking is disabled, the listing remains at the manually selected code while the CPU may continue elsewhere. The live PC/INS indicator and CPU register row continue to update.
 
 Manual navigation automatically unlocks the listing.
 
-Useful keyboard controls:
+Keyboard controls:
 
 - **F** — toggle Track PC;
-- **Home** — enable Track PC and return the listing to the live execution position.
+- **Home** — enable Track PC and return the listing to the live execution area.
 
 ---
 
 ## 7. Closed-loop display control
 
-The adjacent retweet icon controls whether repeated closed loops are visually traced:
+The retweet pictogram controls whether repeated closed-loop execution is rendered:
 
 ```html
 <i class="fa fa-retweet"></i>
@@ -170,28 +196,28 @@ It is **enabled by default**.
 
 ### Enabled
 
-STEP TRACE displays its normal sequence of execution updates, including execution occurring repeatedly inside a loop.
+STEP TRACE shows normal execution updates, including instructions repeatedly executed inside a loop.
 
 ### Disabled
 
-The CPU still executes **every instruction and every cycle**. Nothing is skipped in emulation.
+The CPU still executes **every instruction and every cycle**. Only the debugger display is suppressed for dynamically proven repeated loops.
 
-The difference is purely visual:
+The current logic works as follows:
 
 1. execution proceeds normally;
-2. STEP TRACE dynamically recognises a closed loop when actual execution takes a backward relative branch or backward `JMP`;
-3. after the loop is proven, repeated loop execution is no longer rendered;
-4. the listing, displayed PC and live register row remain visually frozen during the hidden repetition;
+2. STEP TRACE recognises a closed loop when live execution takes a backward relative branch or backward `JMP`;
+3. after the loop is proven, repeated execution inside it is no longer rendered;
+4. the listing, displayed PC/INS and register row remain visually frozen while the repeated loop is hidden;
 5. when execution leaves the loop, STEP TRACE yields at the first live instruction boundary outside it and resumes normal display;
-6. the same process is repeated when another closed loop is encountered.
+6. another later loop can be detected and hidden in the same way.
 
-The loop detector intentionally does **not** classify an arbitrary backward `RTS`, `RTI`, or return address as a loop.
+An arbitrary backward `RTS`, `RTI`, or return address is **not** treated as proof of a loop.
 
-Nested `JSR` / `RTS` activity reached from inside a recognised loop is considered part of that hidden loop iteration. An unproven escape or interrupt ends suppression rather than risk hiding unrelated code indefinitely.
+Nested `JSR` / `RTS` activity entered from inside a proven loop can remain part of the hidden iteration. An uncertain escape or interrupt ends suppression rather than risk hiding unrelated code.
 
-### Important limitation
+### Limitation in Max (SYSTEM)
 
-Exact closed-loop display suppression is available in the debugger-owned execution paths:
+Exact closed-loop display suppression is implemented in debugger-owned execution paths:
 
 - 1 IPS;
 - 10 IPS;
@@ -200,61 +226,86 @@ Exact closed-loop display suppression is available in the debugger-owned executi
 - cooperative Step Over;
 - cooperative Step Out.
 
-In **Max (SYSTEM)** mode, STEP TRACE receives scheduler samples rather than every individual instruction boundary, so exact loop suppression is not applied there.
+In **Max (SYSTEM)** mode, STEP TRACE receives scheduler samples rather than a display callback for every instruction, so exact loop-display suppression is not applied there.
 
 ---
 
 ## 8. Conditional breakpoint — `BREAK IF`
 
-STEP TRACE has one breakpoint mechanism: a **conditional breakpoint** evaluated on clean live CPU instruction boundaries while it is armed. Conditions containing a safe `PC==constant` term are internally gated to that address, so the full expression need not be evaluated at unrelated PCs.
+STEP TRACE has **one user-facing breakpoint mechanism**: `BREAK IF`.
 
-Enter an expression in `BREAK IF`, then press **Arm** once. The button immediately changes to **Disarm**. Arming the condition does **not** start the CPU. Use the normal **Run / Pause** control to continue execution at the selected speed.
+There is no separate temporary address-breakpoint field and no separate `Run→` button. Address breakpoints are expressed naturally as conditions, and the normal Run/Pause control starts execution.
 
-If you edit the expression while it is armed, the old predicate is disarmed immediately and the button returns to **Arm**. One click then arms exactly the expression visible in the editor; there is no separate “Rearm” state.
+### Arm / Disarm model
 
-For an address breakpoint, put the program counter directly in the expression:
+Enter an expression and press **Arm once**. The same button changes to **Disarm**.
+
+Arming does **not** start the CPU. Use the main Run/Pause control to continue execution.
+
+If an armed expression is edited, STEP TRACE immediately disarms the old predicate. The button returns to **Arm**, and one click arms exactly the expression currently visible in the editor.
+
+There is no `Rearm` state and there is no visible breakpoint `Clear` button.
+
+After a condition matches, it is one-shot/disarmed. The expression remains in the editor and can be armed again with one click.
+
+### Address breakpoint
+
+Use `PC` directly:
 
 ```text
 PC==$C65E
 ```
 
-Hex literals are exact 16-bit values: `$665E` and `$C65E` are different addresses. If the listing shows `C65E:`, the condition must use `PC==$C65E`.
+`PC` is 16-bit. `$665E` and `$C65E` are therefore different addresses; if the listing shows `C65E:`, use `PC==$C65E`.
 
-More conditions can be combined naturally:
+### Break on the instruction counter
+
+`INS` is the same 48-bit completed-opcode count shown in NAV:
+
+```text
+INS==$0000000D5700
+```
+
+The full 12-digit hexadecimal counter can be copied directly from the NAV row.
+
+It can be combined with other terms:
+
+```text
+PC==$C65E && INS>=$0000000D5700
+```
+
+An INS-only condition is evaluated at every clean instruction boundary while armed. If the expression also contains a safe exact `PC==constant` term in an AND-only path, STEP TRACE can use the PC as an internal gate and evaluate the full expression only at that address.
+
+### More examples
 
 ```text
 PC==$C600 && A==$10
 INS==$0000000D5700
+PC==$C65E && INS>=$0000000D5700
 M[$4000]==$80 && Z
 X!=0 && !C
 ```
 
-When the condition is false, the breakpoint remains armed and execution continues. When it becomes true, STEP TRACE stops **before the next opcode at that boundary is fetched or executed**. The condition is then disarmed and the main Run/Pause pictogram becomes the **parking** icon (`fa-parking`) to make the reason for the stop immediately visible. The NAV row does not add a `BP IF` text marker. Press **Arm** again if you want to reuse the condition, then use the normal Run/Pause control to continue.
+When the condition is false, execution continues and the condition remains armed. When it becomes true, STEP TRACE stops at the clean instruction boundary **before the next opcode at that boundary is fetched or executed**. The main execution pictogram becomes `fa-parking`.
 
 ### Buttons and keyboard
 
 | Control | Function |
 |---|---|
-| **Arm** | Compiles and arms the expression without starting execution |
-| **Disarm** | Disarms the active condition while retaining the editor text |
-| **F9** | Toggle Arm / Disarm |
-| **Shift+F9** | Disarm explicitly (keyboard compatibility shortcut) |
+| **Arm** | compile and arm the expression without starting execution |
+| **Disarm** | remove the active condition while retaining editor text |
+| **F9** | toggle Arm / Disarm |
+| **Shift+F9** | explicitly disarm the condition |
 
-A blank expression cannot be armed. Invalid expressions are rejected before arming. A runtime evaluation error stops visibly instead of silently ignoring the condition.
+A blank expression cannot be armed. Invalid expressions are rejected. A runtime evaluation error stops visibly rather than silently ignoring the condition.
 
-### Supported CPU registers and instruction counter
+### Supported registers and counter
 
 ```text
 A X Y SP P PC INS
 ```
 
-`INS` is the same 48-bit completed-opcode counter displayed in the NAV row. It is reset with the CPU and is evaluated at the clean instruction boundary before the next opcode is fetched. For example:
-
-```text
-INS==$0000000D5700
-```
-
-The hexadecimal literal may use the full 12-digit counter width. `INS` can also be combined with other breakpoint terms, for example `PC==$C65E && INS>=$0000000D5700`.
+Identifiers are case-insensitive.
 
 ### Supported status flags
 
@@ -282,7 +333,7 @@ M16[$24]
 MEM16[$24]
 ```
 
-Memory expressions use the same safe mapped-bus view as the debugger. Reads into the intentionally masked `$C000-$C0FF` soft-switch page are rejected.
+Memory expressions use the debugger's mapped safe-read path. `$C000-$C0FF` is rejected because that range is deliberately masked from debugger reads.
 
 ### Number formats
 
@@ -290,7 +341,10 @@ Memory expressions use the same safe mapped-bus view as the debugger. Reads into
 $FF
 0xFF
 255
+$0000000D5700
 ```
+
+The first two are hexadecimal; an unprefixed numeric literal is decimal. The 12-digit hexadecimal form is useful for `INS`.
 
 ### Operators
 
@@ -312,31 +366,38 @@ Logical:
 &&  ||  !
 ```
 
-Parentheses are supported.
+Parentheses are supported and recommended when an expression mixes several operator classes.
 
-The condition can interrupt fixed-IPS execution, Max/SYSTEM execution, Step Over, or Step Out because it is evaluated by the live CPU's instruction-boundary trap.
+**48-bit counter note:** JavaScript bitwise operators are 32-bit. Equality and relational comparisons on `INS` use the full exact 48-bit value, but `INS & ...`, `INS | ...`, or `INS ^ ...` operate only on the low 32 bits. Use comparison operators for full-width instruction-counter conditions.
+
+The condition can stop fixed-IPS execution, Max/SYSTEM execution, Step Over, or Step Out because the observer is evaluated by the live CPU at instruction boundaries.
 
 ---
 
-## 9. Breakpoint and run status text
+## 9. NAV run/status text and breakpoint indication
 
-The live status area can append debugger state to the `PC $xxxx` display.
-
-Typical examples:
+The NAV line always starts with the live PC and instruction counter:
 
 ```text
-PC $C600  OVER→$1234
-PC $C600  OUT J1 I0
-PC $C5FE  BP IF
-PC $C600  BP IF✓
-PC $C600  BP!
+PC $C600  INS $000000001234
 ```
 
-Common error/status messages include:
+Temporary Step Over/Out state can be appended, for example:
+
+```text
+PC $C600  INS $000000001234  OVER→$1234
+PC $C600  INS $000000001234  OUT J1 I0
+```
+
+A **successful** `BREAK IF` hit does not add `BP IF` text. It is shown by the main **parking** pictogram.
+
+Only error/status diagnostics need textual breakpoint messages, for example:
 
 ```text
 BAD COND
 COND ERR
+BP!
+BP unavailable
 ```
 
 ---
@@ -349,57 +410,57 @@ The listing format is controlled by a compact column specification such as:
 {adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}
 ```
 
-Each value is the character position at which that field begins.
+Each value is the character position at which the field begins.
 
-Supported fields are:
+Supported fields:
 
 | Field | Meaning |
 |---|---|
 | `adr` | 16-bit instruction address |
 | `code` | opcode and operand bytes |
 | `lin` | Unicode branch/jump guide lines |
-| `lbl` | loaded source label at this instruction address |
+| `lbl` | source label at this instruction address |
 | `ins` | instruction mnemonic |
 | `opr` | operand |
 | `com` | loaded instruction comment |
 
-A field can effectively be omitted by leaving it out of the column specification.
+A field can be omitted by leaving it out of the column specification.
 
 ### Presets
 
-The buttons **default**, **wide**, and **compact** replace the current column definition with predefined layouts.
+The **default**, **wide**, and **compact** buttons replace the current column definition with predefined layouts.
 
-The compact preset omits some decorative/source-oriented fields so more assembly text fits into the small realtime window.
+The compact preset removes some source/decorative fields so more assembly text fits in the small realtime window.
 
 ---
 
 ## 11. Unicode branch lines — `lin`
 
-The realtime tracer reuses the assembler's branch-line renderer.
+STEP TRACE reuses the assembler's branch-line renderer.
 
-The `lin` column can therefore show Unicode control-flow guides using characters such as:
+The `lin` column can therefore contain Unicode guides such as:
 
 ```text
 │ ─ ┌ └ ▶
 ```
 
-These guides are produced for supported relative branches and `JMP` control flow.
+Guides are generated for supported relative branches and `JMP` control flow. Overlapping branches are allocated separate guide lanes.
 
-When several branches overlap, separate guide lanes are allocated.
+A complete guide is drawn only when the relevant source and destination can be represented within the current visible instruction window. If one endpoint is outside the visible window, a complete connection may not be shown.
 
-A branch line is shown only when the relevant source and destination can be represented inside the current visible instruction window. A branch whose other endpoint lies outside the visible window may therefore have no complete guide.
-
-The `lin` field owns its complete configured width up to the following column, so the rightmost `▶` arrowhead is not intentionally cropped.
+The `lin` field owns the complete interval up to the next configured column so the rightmost `▶` arrowhead is not intentionally cropped.
 
 ---
 
 ## 12. SYMBOLS controls
 
-The SYMBOLS area contains:
+The SYMBOLS row contains:
 
 ```text
 SYMBOLS  [load] [clear]  <status>
 ```
+
+The `clear` here belongs to **symbol-table management**; it is unrelated to `BREAK IF`.
 
 ### `load`
 
@@ -417,11 +478,11 @@ The loader recognises:
 - `equ` / symbol records;
 - instruction comments.
 
-The file chooser also accepts `.json`, `.symbols.json`, `.sym`, and `.txt`.
+The chooser accepts `.json`, `.symbols.json`, `.sym`, and `.txt`.
 
 ### `clear`
 
-Removes the externally loaded symbol table and refreshes the live listing.
+Removes the externally loaded symbol table and refreshes the listing.
 
 ### Status
 
@@ -433,7 +494,7 @@ none
 error
 ```
 
-The tooltip gives more detail, including file name and counts.
+The tooltip provides file name and more detailed counts.
 
 ---
 
@@ -441,7 +502,7 @@ The tooltip gives more detail, including file name and counts.
 
 ### `lbl`
 
-A label located exactly at an instruction address is displayed in the `lbl` column.
+A label whose address exactly matches an instruction appears in the `lbl` column.
 
 ### `opr`
 
@@ -453,21 +514,21 @@ For example:
 LDA $C08C,X
 ```
 
-may become symbol-aware if `$C08C` has a known symbol.
+can become symbol-aware when `$C08C` has a known symbol.
 
 Operand lookup can also use the assembler's currently available symbol mapping when present.
 
 ### `com`
 
-Instruction comments from the exported symbol file can populate the `com` field.
+Instruction comments from an exported symbol file can populate the `com` field.
 
-For comments exported together with opcode bytes, STEP TRACE checks those bytes against the currently mapped live memory before displaying the comment. This prevents a stale source comment from remaining attached after self-modifying code changes the instruction.
+When an exported comment includes opcode bytes, STEP TRACE checks those bytes against the currently mapped live memory before showing the comment. This prevents stale source comments from remaining attached after self-modifying code changes an instruction.
 
 ---
 
 ## 14. Simple text symbol maps
 
-In addition to the canonical assembler JSON export, STEP TRACE accepts simple text maps such as:
+Besides the canonical assembler JSON export, STEP TRACE accepts simple text maps such as:
 
 ```text
 START=$0800
@@ -476,7 +537,7 @@ $C600 DISK_BOOT
 RESET $FFFC
 ```
 
-These maps primarily provide symbol names and addresses. The canonical JSON export is preferred when labels, EQU symbols, and source comments should all be retained.
+Text maps primarily provide names and addresses. Use the canonical JSON export when labels, EQU symbols, and source comments all need to be retained.
 
 ---
 
@@ -493,13 +554,13 @@ The row corresponding to the current PC is emphasised.
 
 ### Touch
 
-Dragging vertically over the listing navigates by decoded instruction rows.
+Vertical dragging over the listing navigates by decoded instruction rows.
 
 ### Manual browsing
 
-As soon as you navigate manually, Track PC is disabled. The listing viewport remains at the selected code while the live CPU may continue running.
+Manual navigation disables Track PC. The viewport stays at the selected code while the live CPU may continue elsewhere.
 
-The bytes in a manually parked view remain live: they are revalidated against currently mapped memory, so self-modifying code or a mapping change can alter the displayed instruction without forcing the viewport back to the PC.
+The bytes in a manually parked view remain live and mapped-memory aware. Self-modifying code or a mapping change can therefore alter the displayed instruction without forcing the viewport back to the PC.
 
 ---
 
@@ -507,19 +568,19 @@ The bytes in a manually parked view remain live: they are revalidated against cu
 
 | Key | Action |
 |---|---|
-| **↑** | Previous instruction row |
-| **↓** | Next instruction row |
-| **Page Up** | Previous page |
-| **Page Down** | Next page |
-| **Home** | Re-enable Track PC and return to the live execution area |
-| **F** | Toggle Track PC |
-| **F9** | Arm / rearm conditional breakpoint |
-| **Shift+F9** | Clear conditional breakpoint |
+| **↑** | previous instruction row |
+| **↓** | next instruction row |
+| **Page Up** | previous page |
+| **Page Down** | next page |
+| **Home** | re-enable Track PC and return to live execution |
+| **F** | toggle Track PC |
+| **F9** | toggle BREAK IF Arm / Disarm |
+| **Shift+F9** | explicitly disarm BREAK IF |
 | **F10** | Step Over |
 | **F11** | Step In |
 | **Shift+F11** | Step Out |
 
-The listing receives keyboard commands after it has focus. Clicking/tapping the listing gives it focus.
+The listing receives these keyboard commands after it has focus. Clicking or tapping the listing gives it focus.
 
 ---
 
@@ -531,7 +592,7 @@ Below the listing, STEP TRACE shows the current processor registers:
 A=01 X=01 Y=00 SP=FF SR=ₙ0ᵥ0₋1ᵦ0_d0ᵢ1_z0_c0
 ```
 
-Displayed registers:
+Displayed values:
 
 - accumulator `A`;
 - index register `X`;
@@ -539,11 +600,11 @@ Displayed registers:
 - stack pointer `SP`;
 - status register `SR`.
 
-`PC` is deliberately not repeated because the current program counter is already displayed in the navigation/status row.
+`PC` is deliberately omitted because it is already displayed in the NAV row. `INS` is likewise displayed in NAV rather than duplicated in the register row.
 
 ### Status-register flags
 
-The status display follows the 6502 flag order:
+The status display follows 6502 flag order:
 
 ```text
 N V - B D I Z C
@@ -553,7 +614,7 @@ where:
 
 - `N` — Negative;
 - `V` — Overflow;
-- `-` — unused/reserved status bit representation;
+- `-` — reserved/unused bit representation;
 - `B` — Break;
 - `D` — Decimal;
 - `I` — Interrupt Disable;
@@ -562,19 +623,19 @@ where:
 
 Each flag is followed by its current bit value.
 
-The register row is updated from the live CPU state even when the PC itself has not changed.
+The register row is refreshed from the live CPU state even if the PC itself has not changed.
 
 ---
 
 ## 18. Boot-log controls
 
-The right side of the top row contains the boot-log controls.
+The right side of the top row contains boot-log controls.
 
 ### Coffee icon
 
 The coffee icon enables or disables boot logging.
 
-Its opacity and tooltip indicate the current state, which may include:
+Its opacity and tooltip indicate states such as:
 
 ```text
 disabled
@@ -586,35 +647,33 @@ complete
 
 ### Start address
 
-The first `$....` field sets an optional boot-log start address.
+The first `$....` field sets an optional start address.
 
-- blank: begin logging immediately;
-- address: arm logging until that execution address is reached.
+- blank: logging can begin immediately;
+- address: logging waits until execution reaches that address.
 
 ### Stop address
 
 The second `$....` field sets an optional stop address.
 
 - blank: continue until the boot-log buffer is full;
-- address: stop before that execution address.
+- address: stop before execution reaches that address.
 
 ### Download icon
 
-Downloads the boot log as a text file.
-
-A generated name is used, for example:
+Downloads the current boot log as a text file, using a generated timestamped file name such as:
 
 ```text
-apple2_bootlog_2026-09-11T21-45-00-000Z.txt
+apple2_bootlog_2026-09-12T18-30-00-000Z.txt
 ```
 
 ---
 
 ## 19. Peripheral ROM tracing
 
-STEP TRACE uses the currently mapped CPU bus for disassembly.
+STEP TRACE disassembles through the currently mapped CPU bus.
 
-Debugger-visible areas include:
+Debugger-visible address areas include:
 
 ```text
 $0000-$BFFF
@@ -622,25 +681,25 @@ $C100-$CFFF
 $D000-$FFFF
 ```
 
-The debugger intentionally masks:
+The intentionally masked range is:
 
 ```text
 $C000-$C0FF
 ```
 
-because this is the Apple II soft-switch / slot-I/O page.
+because it is the motherboard/slot soft-switch and I/O page.
 
-This means code in slot ROM and expansion ROM is traceable. For example, when a Disk II controller ROM is mapped into a slot page, execution through that ROM can be shown in the realtime listing.
+Code in slot ROM and expansion ROM is therefore traceable. For example, Disk II firmware execution can appear in the realtime listing when that ROM is mapped into the CPU's slot-ROM window.
 
-At fixed 1/10/100/1000 IPS speeds, high-speed batches yield when execution crosses into or out of the `$C100-$CFFF` peripheral/expansion-ROM region. This makes short ROM excursions visible even when 1000 IPS would otherwise execute dozens of instructions between screen updates.
+At fixed 1/10/100/1000 IPS speeds, high-speed batches yield when execution crosses into or out of `$C100-$CFFF`. This prevents a short ROM excursion from disappearing entirely inside a 5- or 50-instruction display batch.
 
-In **Max (SYSTEM)** mode, the debugger still reads this address space correctly, but an extremely brief ROM excursion can occur between two scheduler samples.
+In **Max (SYSTEM)** mode, the mapped ROM is still readable, but a very short excursion can occur between two display samples.
 
 ---
 
 ## 20. Self-modifying code and memory remapping
 
-The live disassembler maintains a 64K address-indexed decode cache, but cached instructions are validated against the bytes currently visible on the mapped CPU bus.
+The live disassembler maintains a 64K address-indexed decode cache, but each cached instruction is validated against the bytes currently visible on the mapped CPU bus.
 
 If an instruction changes:
 
@@ -648,14 +707,14 @@ If an instruction changes:
 - a predecessor relationship based on the old instruction length is invalidated;
 - the instruction is redisassembled from the new bytes.
 
-This allows STEP TRACE to cope with:
+This supports:
 
 - self-modifying RAM;
 - language-card mapping changes;
 - ROM/expansion mapping changes;
 - code copied or patched at runtime.
 
-The debugger does not depend on a static memory dump.
+STEP TRACE therefore does not depend on a static memory dump.
 
 ---
 
@@ -665,65 +724,90 @@ The realtime debugger treats the live CPU's current PC as a trusted instruction 
 
 Forward decoding is deterministic.
 
-Backward decoding is inherently ambiguous on the 6502 because instructions have variable lengths. STEP TRACE therefore avoids guessing:
+Backward decoding is inherently ambiguous on the 6502 because instructions have variable lengths. STEP TRACE therefore uses a conservative rule:
 
-1. use a predecessor boundary learned from actual sequential execution if available;
-2. otherwise inspect possible 1-, 2-, and 3-byte predecessors;
+1. use a predecessor boundary learned from actual sequential execution when available;
+2. otherwise test possible 1-, 2-, and 3-byte predecessors;
 3. accept the result only when exactly one candidate ends at the current address.
 
-This is why upward manual navigation may occasionally stop even though lower addresses exist: stopping is safer than silently switching to a false instruction alignment.
+Upward manual navigation can therefore stop even though lower addresses exist. That is intentional: stopping is safer than silently switching to a false instruction alignment.
 
 ---
 
-## 22. Conditional breakpoint semantics in detail
+## 22. Conditional-breakpoint semantics in detail
 
-An armed conditional breakpoint is evaluated only when the previous instruction has fully completed (`cycle_delay == 0`) and before interrupt dispatch and opcode fetch for the next instruction.
+An armed `BREAK IF` predicate is checked only at a **clean instruction boundary**: the previous opcode has completed (`cycle_delay == 0`) and the next opcode has not yet been fetched.
 
-When an AND-only expression contains an exact `PC==constant` term, STEP TRACE uses that PC as an internal address gate and evaluates the complete condition only when that address is reached. For example, `PC==$C65E && A==$10` uses `$C65E` as the gate. Conditions without a safe PC equality use the persistent live CPU boundary observer and are evaluated at every clean boundary.
+### PC gating
 
-The address gate is only an implementation optimisation; there is still one user-facing `BREAK IF` mechanism. The gated/persistent condition observer is kept independent from numeric execution traps in the CPU so another subsystem cannot silently disarm the STEP TRACE condition.
+When an AND-only expression contains an exact `PC==constant` term, STEP TRACE can use that address as an internal gate.
+
+For example:
+
+```text
+PC==$C65E && A==$10
+```
+
+uses `$C65E` as the gate; the complete expression is evaluated only when that PC is reached.
+
+The same applies to combinations such as:
+
+```text
+PC==$C65E && INS>=$0000000D5700
+```
+
+### Persistent conditions
+
+A condition without a safe PC equality remains a persistent CPU-boundary condition and is evaluated at every clean instruction boundary while armed. Examples include:
+
+```text
+INS==$0000000D5700
+M[$4000]==$80
+X==0 && Z
+```
+
+### Hit behaviour
 
 For each relevant boundary:
 
-1. STEP TRACE evaluates the expression against the live CPU registers and safely mapped memory;
-2. a false result leaves the observer armed and normal execution continues;
-3. a true result stops the current execution owner without consuming a CPU tick or fetching the opcode at that boundary;
-4. the matching condition becomes one-shot/disarmed after the hit.
+1. STEP TRACE evaluates the expression against live CPU state and mapped safe-read memory;
+2. a false result leaves the condition armed and execution continues;
+3. a true result stops the active execution owner without consuming the target opcode;
+4. the breakpoint becomes disarmed/one-shot after the hit;
+5. the Run/Pause control changes to the parking icon.
 
-This makes `PC==$C600` the direct replacement for the former separate address breakpoint. Combining it with other terms, such as `PC==$C600 && A==$10`, requires no second breakpoint mechanism.
+The conditional observer is separate from the CPU's numeric execution trap used by other subsystems, so setting or clearing one cannot silently remove the other.
 
-Because the observer exists only while a condition is armed, normal execution has no per-instruction conditional-breakpoint callback overhead when the feature is unused.
+When BREAK IF is not armed, there is no active per-boundary breakpoint predicate from STEP TRACE.
 
 ---
 
 ## 23. Track PC versus manual view
 
-Track PC controls **where the listing viewport follows**; it does not control execution.
+Track PC controls the **listing viewport**, not CPU execution.
 
-### Track locked
+### Locked
 
 ```html
 <i class="fa fa-lock"></i>
 ```
 
-The viewport follows the executing PC.
+The listing follows the executing PC.
 
-### Track unlocked
+### Unlocked
 
 ```html
 <i class="fa fa-lock-open"></i>
 ```
 
-The viewport stays where you browse manually.
+The listing remains where the user browses manually.
 
 Meanwhile:
 
 - the CPU can continue running;
-- the `PC $xxxx` indicator remains live;
+- `PC $xxxx  INS $xxxxxxxxxxxx` remains live;
 - the register row remains live;
-- bytes in the manual listing remain mapped-memory aware.
-
-This is useful when you want to inspect nearby code without stopping the machine.
+- manually viewed bytes remain mapped-memory aware.
 
 ---
 
@@ -731,7 +815,7 @@ This is useful when you want to inspect nearby code without stopping the machine
 
 ### Inspect a routine instruction by instruction
 
-1. select **1 IPS** or pause execution;
+1. choose **1 IPS** or pause execution;
 2. keep Track PC locked;
 3. use **F11** for Step In;
 4. use **F10** for calls you do not want to enter;
@@ -740,20 +824,18 @@ This is useful when you want to inspect nearby code without stopping the machine
 ### Let a delay loop finish without watching every iteration
 
 1. choose a fixed IPS mode;
-2. click the **retweet** icon to disable loop-step display;
-3. continue execution with the main Run control;
-4. the live CPU still runs every loop instruction;
+2. click the retweet icon to disable repeated-loop display;
+3. continue with the main Run control;
+4. the CPU still executes every loop instruction;
 5. STEP TRACE resumes visual updates at the loop exit.
 
 ### Break at an address
-
-Enter:
 
 ```text
 PC==$C600
 ```
 
-Press **Arm**, then use the normal **Run / Pause** control to continue.
+Press **Arm**, then use the main Run/Pause control.
 
 ### Break at an address only when a register has a value
 
@@ -763,33 +845,57 @@ PC==$C600 && A==$10
 
 Press **Arm**, then Run.
 
+### Break at an exact instruction count
+
+Copy the displayed NAV counter, for example:
+
+```text
+INS $0000000D5700
+```
+
+and enter:
+
+```text
+INS==$0000000D5700
+```
+
+Press **Arm**, then Run. On an identical execution path, STEP TRACE stops at the clean boundary represented by that instruction count.
+
+### Break no earlier than an instruction count, at a specific PC
+
+```text
+PC==$C65E && INS>=$0000000D5700
+```
+
+This uses the PC gate and the full 48-bit counter comparison together.
+
 ### Break when memory reaches a value
 
 ```text
 M[$4000]==$80
 ```
 
-This is evaluated at every live instruction boundary until it becomes true.
+This remains armed and is evaluated at every clean instruction boundary until it becomes true.
 
 ### Trace Disk II ROM
 
-1. select a fixed STEP TRACE speed such as 100 or 1000 IPS;
+1. choose a fixed speed such as 100 or 1000 IPS;
 2. keep Track PC enabled;
-3. execute a DOS command that enters the Disk II firmware;
-4. STEP TRACE yields on transitions into the peripheral-ROM window so the ROM execution can become visible.
+3. execute a DOS operation that enters Disk II firmware;
+4. STEP TRACE yields at peripheral-ROM transitions so the ROM excursion becomes visible.
 
 ### Use source labels in the live trace
 
 1. export symbols from the assembler;
-2. press **SYMBOLS → load**;
-3. select the `.symbols.json` file;
+2. select **SYMBOLS → load**;
+3. choose the `.symbols.json` file;
 4. use a listing layout containing `lbl`, `opr`, and optionally `com`.
 
 ---
 
 ## 25. Diagnostics available to developers
 
-`Apple2Debug.liveState()` exposes useful internal state, including:
+`Apple2Debug.liveState()` exposes debugger state including:
 
 ```text
 pc
@@ -815,7 +921,7 @@ cacheMisses
 domWrites
 ```
 
-The `conditionalBreakpoint` diagnostic object additionally exposes values such as:
+The `conditionalBreakpoint` diagnostic object contains:
 
 ```text
 armed
@@ -824,12 +930,18 @@ hits
 checks
 skips
 condition
+mode
+address
 editorCondition
 lastResult
 error
 ```
 
-The loop-display statistics include counters for:
+`mode` is `address` when a safe PC gate was extracted and `condition` for a persistent condition. `address` contains the gated PC or `null`.
+
+The CPU instruction counter itself is available as `Cpu6502.watch().ic` and is displayed to the user as `INS`.
+
+Loop-display statistics include:
 
 ```text
 detected
@@ -837,20 +949,21 @@ hiddenInstructions
 exits
 ```
 
-These diagnostics are primarily intended for development and validation rather than normal user operation.
+These diagnostics are intended mainly for development and validation.
 
 ---
 
-## 26. Current behavioural limits
+## 26. Current behavioural limits and deliberate safeguards
 
 A few behaviours are intentionally conservative:
 
-- `$C000-$C0FF` is masked from debugger reads to avoid probing soft-switch I/O while disassembling or evaluating breakpoint memory expressions.
-- Exact peripheral-ROM transition rendering is guaranteed in the debugger-owned fixed IPS modes; Max (SYSTEM) remains scheduler-sampled.
-- Exact closed-loop display suppression is also a debugger-owned fixed-IPS / cooperative Over-Out feature, not a per-instruction hook in Max (SYSTEM).
-- Branch guides are based on the currently visible listing window; a control-flow destination outside the visible window may not receive a complete Unicode guide.
+- `$C000-$C0FF` is masked from debugger reads so disassembly and breakpoint memory expressions do not probe soft-switch I/O.
+- Exact peripheral-ROM transition rendering is guaranteed in debugger-owned fixed IPS modes; Max (SYSTEM) remains display-sampled.
+- Exact closed-loop display suppression is a fixed-IPS / cooperative Over-Out feature, not a per-instruction display hook in Max (SYSTEM).
+- Branch guides depend on the current visible listing window; a destination outside it may not receive a complete Unicode guide.
 - Backward disassembly stops on unresolved ambiguity instead of inventing an instruction boundary.
-- Source comments imported with opcode signatures are deliberately hidden after those live bytes no longer match.
+- Source comments imported with opcode signatures disappear when the live bytes no longer match.
+- Full-width `INS` comparisons are exact, but JavaScript bitwise operators are 32-bit; do not use bitwise operators to test the upper 16 bits of the 48-bit instruction counter.
 
 These choices favour correctness of the live machine over making the debugger display appear artificially continuous.
 
@@ -860,38 +973,43 @@ These choices favour correctness of the live machine over making the debugger di
 
 | Control / gesture | Result |
 |---|---|
-| Play/Pause icon | Start or pause |
+| `fa-play-circle` | ordinary idle/paused state; click to run |
+| `fa-pause-circle` | running, or paused immediately after manual Step In/Over/Out |
+| `fa-parking` | stopped because BREAK IF matched |
 | Step icon / F11 | Step In |
 | Paw icon / F10 | Step Over |
 | Exit icon / Shift+F11 | Step Out |
-| `↑` / `↓` short press | Previous / next instruction |
-| `↑` / `↓` hold ~0.5 s | Previous / next page |
-| Mouse wheel | Navigate one instruction row |
-| Shift + wheel | Navigate a page |
-| Home | Return to Track PC |
-| F | Toggle Track PC |
+| `↑` / `↓` short press | previous / next instruction |
+| `↑` / `↓` hold ~0.5 s | previous / next page |
+| Mouse wheel | navigate one instruction row |
+| Shift + wheel | navigate a page |
+| Home | return to Track PC |
+| F | toggle Track PC |
 | `fa-lock` | Track PC enabled |
 | `fa-lock-open` | Track PC disabled |
-| `fa-retweet` bright | Show closed-loop steps |
-| `fa-retweet` dim | Hide repeated closed-loop display |
-| BREAK IF | Conditional breakpoint expression |
-| Arm / F9 | Arm or rearm the condition |
-| Clear / Shift+F9 | Disarm the condition |
-| Run/Pause | Run after arming, or pause execution |
-| 1/10/100/1000 IPS | Debugger-controlled live execution |
-| Max (SYSTEM) | Normal emulator scheduler |
-| default/wide/compact | Listing column presets |
-| SYMBOLS load | Load labels/EQU/comments |
-| SYMBOLS clear | Remove loaded symbol table |
-| Coffee icon | Enable/disable boot log |
-| Cloud-download icon | Download boot log |
-| x | Close STEP TRACE |
+| `fa-retweet` bright | show repeated closed-loop steps |
+| `fa-retweet` dim | hide repeated closed-loop display; CPU still executes it |
+| `PC $xxxx` | live 16-bit program counter |
+| `INS $xxxxxxxxxxxx` | live 48-bit completed-opcode counter |
+| BREAK IF | conditional breakpoint expression |
+| Arm / F9 | arm the expression |
+| Disarm / F9 | disarm the active expression |
+| Shift+F9 | explicitly disarm BREAK IF |
+| Main Run/Pause | start execution after arming, or pause execution |
+| 1/10/100/1000 IPS | debugger-controlled live execution |
+| Max (SYSTEM) | normal emulator scheduler |
+| default/wide/compact | listing-column presets |
+| SYMBOLS load | load labels/EQU/comments |
+| SYMBOLS clear | remove loaded symbol table |
+| Coffee icon | enable/disable boot log |
+| Cloud-download icon | download boot log |
+| x | close STEP TRACE |
 
 ---
 
 ## 28. Summary
 
-STEP TRACE is designed as a **live-system debugger**, not a detached disassembler.
+STEP TRACE is a **live-system debugger**, not a detached disassembler.
 
 Its central rules are:
 
@@ -899,6 +1017,8 @@ Its central rules are:
 - keep peripherals and timing alive;
 - read the currently mapped bus;
 - stop only on real instruction boundaries;
+- expose both the live PC and an exact 48-bit completed-instruction counter;
+- use one conditional breakpoint mechanism for address, register, flag, memory, and instruction-count conditions;
 - avoid guessing backward instruction alignment;
 - allow the user to follow execution or browse manually;
 - preserve source-level conveniences such as symbols, comments, and branch lines without compromising live-memory correctness;
