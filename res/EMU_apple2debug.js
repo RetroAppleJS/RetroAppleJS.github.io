@@ -1916,7 +1916,7 @@ function Apple2Debug()
                         +"<i class='fa fa-paw' style='font-size:11px;cursor:pointer' title='step over JSR/BRK (F10)' onclick='oEMU.component.CPU.Apple2Debug.stepOver()'></i>"
                         +"<i class='fa fa-sign-out-alt' style='font-size:11px;cursor:pointer' title='step out of current routine (Shift+F11)' onclick='oEMU.component.CPU.Apple2Debug.stepOut()'></i>"
                         
-                        +"<div style='width:40px'></div>"
+                        +"<div style='width:22px'></div>"
                         
                         +"<div class='appbut skinny'><i id='cpuDbg_bootTrigger' class='fa fa-coffee' style='opacity:.35;font-size:10px' title='bootlog trigger disabled' onclick='oEMU.component.CPU.Apple2Debug.toggleBootLogTrigger(this)'></i></div>"
                         +"<input id='cpuDbg_bootStart' type='text' value='' maxlength='6' spellcheck='false' placeholder='$....' title='Bootlog start address; blank starts immediately' style='width:43px;height:18px;padding:0 2px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBootLogAddresses()'>"
@@ -1942,7 +1942,7 @@ function Apple2Debug()
                         +"<span id='cpuDbg_navStatus' style='font-family:"+listingFontFamily+";font-size:9px'></span>"
                                                 +"<i id='cpuDbg_trackPc' class='fa fa-lock' role='button' aria-pressed='true' title='Track PC enabled — click to unlock the listing' onclick='oEMU.component.CPU.Apple2Debug.toggleTrackPC()' style='font-size:10px;cursor:pointer;margin-left:4px'></i>"
                         +"<i id='cpuDbg_showLoopSteps' class='fa fa-retweet' role='button' aria-pressed='true' title='Closed-loop steps visible — click to hide repeated loop iterations' onclick='oEMU.component.CPU.Apple2Debug.toggleLoopSteps()' style='font-size:10px;cursor:pointer;margin-left:3px'></i>"
-                        +"<select id='cpuDbg_speed' title='STEP TRACE execution speed' onchange='oEMU.component.CPU.Apple2Debug.setRunSpeed(this.value)' style='width:100px;height:18px;padding:0;font-size:9px'>"
+                        +"<select id='cpuDbg_speed' title='STEP TRACE execution speed' onchange='oEMU.component.CPU.Apple2Debug.setRunSpeed(this.value)' style='width:100px;height:18px;padding:0;font-size:9px;margin-left:67px'>"
                             +"<option value='1'>1 IPS</option>"
                             +"<option value='10'>10 IPS</option>"
                             +"<option value='100'>100 IPS</option>"
@@ -1954,7 +1954,7 @@ function Apple2Debug()
                         +"<span>BREAK IF</span>"
                         +"<input id='cpuDbg_breakCond' type='text' value='' spellcheck='false' title='"+conditionHelp+"' placeholder='e.g. PC==$C600 && A==$10' style='flex:1 1 auto;min-width:0;height:18px;padding:0 3px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px' onchange='oEMU.component.CPU.Apple2Debug.setBreakpointCondition(this.value)'>"
                         +"<button id='cpuDbg_breakArm' type='button' title='Arm conditional breakpoint (F9)' onclick='oEMU.component.CPU.Apple2Debug.armConditionalBreakpointFromInput()' style='font-size:9px;padding:0 4px'>Arm</button>"
-                        +"<button id='cpuDbg_breakClear' type='button' title='Clear conditional breakpoint (Shift+F9)' onclick='oEMU.component.CPU.Apple2Debug.clearConditionalBreakpoint()' style='font-size:9px;padding:0 4px'>Clear</button>"
+                        +"<button id='cpuDbg_breakClear' type='button' title='Clear conditional breakpoint (Shift+F9)' onclick='oEMU.component.CPU.Apple2Debug.clearConditionalBreakpoint()' style='font-size:9px;padding:0 4px;margin-right:50px'>Clear</button>"
                     +"</div>"
                     +"<div style='white-space:nowrap'>LISTING&nbsp; Columns <input id='cpuDbg_columns' type='text' value='"+listingColumns+"' spellcheck='false' style='width:220px;font-family:"+listingFontFamily+";font-size:9px' onchange='oEMU.component.CPU.Apple2Debug.setListingColumns(this.value)'></div>"
                     +"<div style='white-space:nowrap;font-size:9px'>"
