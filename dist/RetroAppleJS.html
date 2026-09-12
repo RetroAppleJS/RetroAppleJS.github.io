@@ -15861,7 +15861,7 @@ function Apple2Debug()
     var breakConditionText = "";
     var breakConditionError = "";
     var breakConditionAst = null;
-    var conditionHelp = "Conditional breakpoint. Registers: A X Y SP P PC. Flags: N V B D I Z C. Memory: M[$addr] or MEM[$addr], M16[$addr] or MEM16[$addr]. Operators: == != < <= > >= & | ^ && || ! and parentheses.";
+    var conditionHelp = "Conditional breakpoint. Registers/counters: A X Y SP P PC INS. INS is the 48-bit completed-instruction count shown in NAV. Flags: N V B D I Z C. Memory: M[$addr] or MEM[$addr], M16[$addr] or MEM16[$addr]. Operators: == != < <= > >= & | ^ && || ! and parentheses.";
     var conditionalBreakpoint = {
          armed:false
         ,hit:false
@@ -16377,7 +16377,7 @@ function Apple2Debug()
     {
         var tokens = tokenizeCondition(text);
         var pos = 0;
-        var registers = {A:1,X:1,Y:1,SP:1,P:1,PC:1};
+        var registers = {A:1,X:1,Y:1,SP:1,P:1,PC:1,INS:1};
         var flags = {N:1,V:1,B:1,D:1,I:1,Z:1,C:1};
         var memory = {M:8,M8:8,MEM:8,MEM8:8,M16:16,MEM16:16};
 
@@ -16495,8 +16495,8 @@ function Apple2Debug()
 
         if(node.t==="reg")
         {
-            var key = node.v.toLowerCase();
-            if(!state || state[key]===undefined) throw new Error("Register "+node.v+" is unavailable");
+            var key = node.v==="INS" ? "ic" : node.v.toLowerCase();
+            if(!state || state[key]===undefined) throw new Error("Register/counter "+node.v+" is unavailable");
             return Number(state[key]) || 0;
         }
 
