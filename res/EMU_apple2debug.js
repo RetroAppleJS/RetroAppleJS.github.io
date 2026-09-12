@@ -1233,14 +1233,13 @@ function Apple2Debug()
         var arm = document.getElementById("cpuDbg_breakArm");
         if(arm)
         {
-            var dirty = conditionalBreakpoint.armed && breakConditionText!==conditionalBreakpoint.condition;
-            arm.textContent = dirty ? "Rearm" : (conditionalBreakpoint.armed ? "Armed ✓" : "Arm");
+            arm.textContent = conditionalBreakpoint.armed ? "Disarm" : "Arm";
             arm.setAttribute("aria-pressed",conditionalBreakpoint.armed ? "true" : "false");
             arm.style.fontWeight = conditionalBreakpoint.armed ? "700" : "";
+            arm.title = conditionalBreakpoint.armed
+                ? "Disarm conditional breakpoint (F9)"
+                : "Arm conditional breakpoint (F9)";
         }
-
-        var clear = document.getElementById("cpuDbg_breakClear");
-        if(clear) clear.disabled = !conditionalBreakpoint.armed && !conditionalBreakpoint.hit;
     }
 
     function boundaryActionText()
@@ -1392,7 +1391,7 @@ function Apple2Debug()
                 case "F":         dbg.setFollowPC(!followPC); break;
                 case "F9":
                     if(event.shiftKey) dbg.clearConditionalBreakpoint();
-                    else dbg.armConditionalBreakpointFromInput();
+                    else dbg.toggleConditionalBreakpointFromInput();
                     break;
                 case "F10":       dbg.stepOver(); break;
                 case "F11":
@@ -1947,6 +1946,8 @@ function Apple2Debug()
     {
         removeConditionalBreakpointObserver();
 
+        // Disarm only. The editor text, parsed AST and validation state are kept
+        // intact so the exact same condition can be armed again with one click.
         conditionalBreakpoint.armed = false;
         conditionalBreakpoint.hit = false;
         conditionalBreakpoint.condition = "";
@@ -1954,12 +1955,10 @@ function Apple2Debug()
         conditionalBreakpoint.address = null;
         conditionalBreakpoint.lastResult = null;
         conditionalBreakpoint.error = null;
-        breakConditionAst = null;
-        breakConditionError = "";
         breakMessage = "";
 
         syncBreakpointControls();
-        if(currentPC!==null) renderListing(currentPC,true);
+        if(currentPC!==null) updateNavigationStatus(currentPC);
         return true;
     }
 
@@ -2014,9 +2013,8 @@ function Apple2Debug()
                     +"</div>"
                     +"<div style='display:flex;align-items:center;gap:3px;white-space:nowrap'>"
                         +"<span>BREAK IF</span>"
-                        +"<input id='cpuDbg_breakCond' type='text' value='' spellcheck='false' title='"+conditionHelp+"' placeholder='e.g. PC==$C600 && A==$10' style='flex:1 1 auto;min-width:0;height:18px;padding:0 3px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px' onchange='oEMU.component.CPU.Apple2Debug.setBreakpointCondition(this.value)'>"
-                        +"<button id='cpuDbg_breakArm' type='button' title='Arm conditional breakpoint (F9)' onclick='oEMU.component.CPU.Apple2Debug.armConditionalBreakpointFromInput()' style='font-size:9px;padding:0 4px'>Arm</button>"
-                        +"<button id='cpuDbg_breakClear' type='button' title='Clear conditional breakpoint (Shift+F9)' onclick='oEMU.component.CPU.Apple2Debug.clearConditionalBreakpoint()' style='font-size:9px;padding:0 4px;margin-right:50px'>Clear</button>"
+                        +"<input id='cpuDbg_breakCond' type='text' value='' spellcheck='false' title='"+conditionHelp+"' placeholder='e.g. PC==$C600 && A==$10' style='flex:1 1 auto;min-width:0;height:18px;padding:0 3px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px' oninput='oEMU.component.CPU.Apple2Debug.setBreakpointCondition(this.value)'>"
+                        +"<button id='cpuDbg_breakArm' type='button' title='Arm conditional breakpoint (F9)' onclick='oEMU.component.CPU.Apple2Debug.toggleConditionalBreakpointFromInput()' style='font-size:9px;padding:0 4px;margin-right:50px'>Arm</button>"
                     +"</div>"
                     +"<div style='white-space:nowrap'>LISTING&nbsp; Columns <input id='cpuDbg_columns' type='text' value='"+listingColumns+"' spellcheck='false' style='width:220px;font-family:"+listingFontFamily+";font-size:9px' onchange='oEMU.component.CPU.Apple2Debug.setListingColumns(this.value)'></div>"
                     +"<div style='white-space:nowrap;font-size:9px'>"
@@ -2439,10 +2437,21 @@ function Apple2Debug()
 
     this.setBreakpointCondition = function(value)
     {
-        breakConditionText = String(value==null ? "" : value).trim();
+        var nextText = String(value==null ? "" : value).trim();
+
+        // Editing an armed expression must never leave a hidden old predicate
+        // running. Disarm it immediately; the next Arm click installs exactly
+        // what is visible in the editor.
+        if(conditionalBreakpoint.armed && nextText!==conditionalBreakpoint.condition)
+            clearConditionalBreakpoint();
+
+        breakConditionText = nextText;
         try
         {
-            if(breakConditionText) compileBreakpointCondition(breakConditionText);
+            var compiled = breakConditionText
+                ? compileBreakpointCondition(breakConditionText)
+                : {text:"",ast:null};
+            breakConditionAst = compiled.ast;
             breakConditionError = "";
             conditionalBreakpoint.error = null;
             if(!conditionalBreakpoint.armed) conditionalBreakpoint.hit = false;
@@ -2450,11 +2459,12 @@ function Apple2Debug()
         }
         catch(err)
         {
+            breakConditionAst = null;
             breakConditionError = err && err.message ? err.message : String(err);
             breakMessage = "BAD COND";
         }
         syncBreakpointControls();
-        if(currentPC!==null) renderListing(currentPC,true);
+        if(currentPC!==null) updateNavigationStatus(currentPC);
         return breakConditionError ? false : breakConditionText;
     };
 
@@ -2469,6 +2479,14 @@ function Apple2Debug()
         return armConditionalBreakpoint(cond ? cond.value : breakConditionText);
     };
 
+    this.toggleConditionalBreakpointFromInput = function()
+    {
+        if(conditionalBreakpoint.armed) return clearConditionalBreakpoint();
+        return this.armConditionalBreakpointFromInput();
+    };
+
+    // Retained as a compatibility/API alias for callers that explicitly want
+    // to disarm. The visible UI intentionally has no separate Clear button.
     this.clearConditionalBreakpoint = function()
     {
         return clearConditionalBreakpoint();
