@@ -4301,7 +4301,7 @@ function prettyJsonAllman(value, indent) {
      */
     this.box = function(c0,r0,c1,r1, modifiers)
     {
-      console.log("this.box("+c0+","+r0+","+c1+","+r1+","+JSON.stringify(modifiers)+")");
+      //console.log("this.box("+c0+","+r0+","+c1+","+r1+","+JSON.stringify(modifiers)+")");
 
       if(c0===undefined || r0===undefined || c1===undefined || r1===undefined) return;  // safe escape if no arguments provided
       if(modifiers===undefined) var modifiers = {kind:{ h:'─', v:'│', tl:'┌', tr:'┐', bl:'└', br:'┘' }};
