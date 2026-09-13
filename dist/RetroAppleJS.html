@@ -15848,6 +15848,7 @@ function Apple2Debug()
     var runMode = "system";
     var fixedRunning = false;
     var runTimer = null;
+    var fixedNextDueMs = null;
     var resumePct = 1;
 
     // Step Over/Out are temporary debugger-owned live boundary runs.
@@ -17315,7 +17316,16 @@ function Apple2Debug()
     function stopFixedRun()
     {
         fixedRunning = false;
+        fixedNextDueMs = null;
         clearRunTimer();
+    }
+
+    function fixedClockMs()
+    {
+        return typeof(performance)!=="undefined" && performance
+            && typeof(performance.now)==="function"
+                ? performance.now()
+                : Date.now();
     }
 
     function stopBoundaryAction()
@@ -17360,7 +17370,43 @@ function Apple2Debug()
     function scheduleFixedRun(delay)
     {
         clearRunTimer();
-        runTimer = window.setTimeout(fixedRunLoop,Math.max(0,delay|0));
+        runTimer = window.setTimeout(
+            fixedRunLoop,
+            Math.max(0,Math.ceil(Number(delay) || 0))
+        );
+    }
+
+    /*
+     * Fixed IPS is paced against an absolute wall-clock deadline.
+     *
+     * Do not schedule "delay ms after the previous batch": doing so adds CPU,
+     * I/O and DOM-rendering time to every interval and causes cumulative drift.
+     *
+     * The first batch is due after one complete interval. Thus, measured from
+     * pressing Run:
+     *
+     *   1 IPS  -> 1 completed instruction after ~1 s
+     *  10 IPS  -> 10 completed instructions after ~1 s
+     * 100 IPS  -> 5 instructions every ~50 ms
+     * 1000 IPS -> 50 instructions every ~50 ms
+     */
+    function scheduleFirstFixedRun(cfg)
+    {
+        fixedNextDueMs = fixedClockMs()+cfg.delay;
+        scheduleFixedRun(cfg.delay);
+    }
+
+    function scheduleNextFixedRun(cfg)
+    {
+        var now = fixedClockMs();
+        fixedNextDueMs += cfg.delay;
+
+        // Browser suspension/background throttling can make a deadline very old.
+        // Do not replay an arbitrarily large backlog in a burst.
+        if(fixedNextDueMs < now-Math.max(1000,cfg.delay*4))
+            fixedNextDueMs = now+cfg.delay;
+
+        scheduleFixedRun(fixedNextDueMs-now);
     }
 
     function fixedRunLoop()
@@ -17426,7 +17472,7 @@ function Apple2Debug()
             syncRunIcon();
             return;
         }
-        scheduleFixedRun(cfg.delay);
+        scheduleNextFixedRun(cfg);
     }
 
     function startExecution()
@@ -17446,7 +17492,7 @@ function Apple2Debug()
         {
             pauseSystem();
             fixedRunning = true;
-            scheduleFixedRun(0);
+            scheduleFirstFixedRun(runSpeedConfig(runMode));
         }
         syncRunIcon();
     }
