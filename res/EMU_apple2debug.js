@@ -68,12 +68,13 @@ function Apple2Debug()
     // Listing viewport state. Manual navigation walks decoded instruction rows,
     // never address deltas.
     var followPC = true;
-    // Display policy only: the live CPU always executes every instruction.
-    // When showLoopSteps is false, repeated iterations of a dynamically proven
-    // backward branch/JMP loop are not rendered. Listing/PC/INS/registers stay
-    // visually frozen; full display resumes exactly at the first instruction
-    // boundary that exits that loop.
+    // Closed-loop step skipper. `showLoopSteps` is retained as the compatibility
+    // state bit: false means the skipper is enabled. The first taken backward
+    // branch/JMP proves a loop; subsequent instructions in that proven loop are
+    // executed in zero-delay cooperative bursts instead of waiting for the fixed
+    // IPS cadence. The complete debugger display refreshes at the exact loop exit.
     var showLoopSteps = true;
+    var closedLoopSkipBatch = 1024;
     var activeClosedLoop = null;
     var loopDisplayStats = {detected:0,hiddenInstructions:0,exits:0};
     var manualTop = null;
@@ -1067,16 +1068,22 @@ function Apple2Debug()
     {
         var icon = document.getElementById("cpuDbg_showLoopSteps");
         if(!icon) return;
-        icon.style.opacity = showLoopSteps ? "1" : ".32";
-        icon.setAttribute("aria-pressed",showLoopSteps ? "true" : "false");
-        icon.title = showLoopSteps
-            ? "Closed-loop steps visible — click to hide repeated loop iterations"
-            : "Closed-loop steps hidden — CPU still executes every instruction; click to show them";
+        var skipperEnabled = !showLoopSteps;
+        icon.style.opacity = skipperEnabled ? "1" : ".32";
+        icon.setAttribute("aria-pressed",skipperEnabled ? "true" : "false");
+        icon.title = skipperEnabled
+            ? "Closed-loop step skipper enabled — proven loops run without IPS delay; click to disable"
+            : "Closed-loop step skipper disabled — click to accelerate proven closed loops";
     }
 
     function resetClosedLoopDisplayState()
     {
         activeClosedLoop = null;
+    }
+
+    function closedLoopSkipperActive()
+    {
+        return !showLoopSteps && activeClosedLoop!==null;
     }
 
     function loopContains(loop,addr)
@@ -1677,6 +1684,8 @@ function Apple2Debug()
         }
 
         var cfg = runSpeedConfig(runMode);
+        var skippingClosedLoop = closedLoopSkipperActive();
+        var executionBatch = skippingClosedLoop ? closedLoopSkipBatch : cfg.batch;
         var renderAfterBatch = true;
         var batchOptions = {stopOnRegionChange:[0xc100,0xcfff]};
 
@@ -1704,16 +1713,16 @@ function Apple2Debug()
             };
         }
 
-        // Preserve large batches for 100/1000 IPS, but return at the first
-        // transition into or out of peripheral/expansion ROM. Closed-loop hiding
-        // is an additional display policy and never bypasses CPU execution.
-        var result = machine.runLiveInstructionBatch(cfg.batch,batchOptions);
+        // Normal execution uses the selected IPS batch. Once a taken backward
+        // edge has proven a loop, subsequent loop instructions run in bounded
+        // zero-delay bursts until the exact exit boundary. This accelerates the
+        // boring loop without bypassing any CPU, I/O, breakpoint or video work.
+        var result = machine.runLiveInstructionBatch(executionBatch,batchOptions);
         rememberEdges(result && result.edges);
 
-        // While a proven loop is repeating, freeze the complete debugger view:
-        // listing, displayed PC/INS and registers. Breakpoints, loop exits and
-        // stalled ownership changes force an exact render, at which point INS
-        // catches up to the live architectural counter in one update.
+        // Do not render intermediate instructions while a proven loop is being
+        // skipped. At the exact exit (or a breakpoint/stall) the normal debugger
+        // render resumes; INS then shows the true number of executed opcodes.
         if(showLoopSteps || renderAfterBatch || !fixedRunning || !result || result.stalled)
             dbg.cycle({cpu:machine.cpuObj()});
 
@@ -1725,6 +1734,19 @@ function Apple2Debug()
             syncRunIcon();
             return;
         }
+
+        if(closedLoopSkipperActive())
+        {
+            // No selected-IPS delay while the proven loop remains active. A
+            // bounded burst followed by setTimeout(0) keeps the browser responsive
+            // even for a genuinely endless wait loop.
+            scheduleFixedRun(0);
+            return;
+        }
+
+        // When a skip burst reaches the loop exit, restart the visible pacing
+        // interval from that boundary instead of replaying an old deadline.
+        if(skippingClosedLoop) fixedNextDueMs = fixedClockMs();
         scheduleNextFixedRun(cfg);
     }
 
@@ -1836,11 +1858,13 @@ function Apple2Debug()
         }
 
         var cfg = boundarySpeedConfig();
+        var skippingClosedLoop = closedLoopSkipperActive();
+        var executionBatch = skippingClosedLoop ? closedLoopSkipBatch : cfg.batch;
         var completed = 0;
         var stopped = false;
         var renderBoundaryProgress = showLoopSteps || activeClosedLoop===null;
 
-        for(var i=0;i<cfg.batch && boundaryAction===action;i++)
+        for(var i=0;i<executionBatch && boundaryAction===action;i++)
         {
             var before = cpu.watch();
             var startPC = before.pc & 0xffff;
@@ -1880,15 +1904,19 @@ function Apple2Debug()
             }
         }
 
-        // A hidden loop must not repaint any live execution display, including
-        // NAV/INS. On the exact loop exit the normal render resumes and INS catches
-        // up to the architectural counter in one update.
+        // Intermediate instructions in a skipped loop are deliberately not
+        // painted. The exact exit boundary (or Step Over/Out completion) is shown.
         if(showLoopSteps || renderBoundaryProgress || boundaryAction!==action || stopped || completed===0)
             dbg.cycle({cpu:cpu});
 
         if(boundaryAction!==action || stopped || completed===0)
         {
             finishBoundaryAction();
+            return;
+        }
+        if(closedLoopSkipperActive())
+        {
+            scheduleBoundaryAction(0);
             return;
         }
         scheduleBoundaryAction(cfg.delay);
@@ -2114,7 +2142,7 @@ function Apple2Debug()
                         // counter appear to advance only once per 16 opcodes.
                         +"<input id='cpuDbg_navStatus' type='text' readonly value='PC $0000  INS $000000000000' aria-label='Live PC and instruction counter' title='Live PC and instruction counter; read-only and copyable' style='width:158px;height:16px;padding:0 2px;box-sizing:border-box;border:1px solid #bbb;background:#fff;font-family:"+listingFontFamily+";font-size:9px;cursor:text'>"
                                                 +"<i id='cpuDbg_trackPc' class='fa fa-lock' role='button' aria-pressed='true' title='Track PC enabled — click to unlock the listing' onclick='oEMU.component.CPU.Apple2Debug.toggleTrackPC()' style='font-size:10px;cursor:pointer;margin-left:4px'></i>"
-                        +"<i id='cpuDbg_showLoopSteps' class='fa fa-retweet' role='button' aria-pressed='true' title='Closed-loop steps visible — click to hide repeated loop iterations' onclick='oEMU.component.CPU.Apple2Debug.toggleLoopSteps()' style='font-size:10px;cursor:pointer;margin-left:3px'></i>"
+                        +"<i id='cpuDbg_showLoopSteps' class='fa fa-retweet' role='button' aria-pressed='false' title='Closed-loop step skipper disabled — click to accelerate proven closed loops' onclick='oEMU.component.CPU.Apple2Debug.toggleClosedLoopSkip()' style='opacity:.32;font-size:10px;cursor:pointer;margin-left:3px'></i>"
                             +"<select id='cpuDbg_speed' title='STEP TRACE execution speed' onchange='oEMU.component.CPU.Apple2Debug.setRunSpeed(this.value)' style='width:90px;height:18px;padding:0;font-size:9px'>"
                             +"<option value='1'>1 IPS</option>"
                             +"<option value='10'>10 IPS</option>"
@@ -2413,18 +2441,32 @@ function Apple2Debug()
         return this.setFollowPC(!followPC);
     };
 
-    this.setShowLoopSteps = function(enabled)
+    this.setClosedLoopSkip = function(enabled)
     {
-        showLoopSteps = !!enabled;
+        showLoopSteps = !enabled;
         resetClosedLoopDisplayState();
         syncLoopControl();
         if(currentPC!==null) renderListing(currentPC,true);
+        return !showLoopSteps;
+    };
+
+    this.toggleClosedLoopSkip = function()
+    {
+        return this.setClosedLoopSkip(showLoopSteps);
+    };
+
+    // Compatibility aliases retained for callers that used the older
+    // display-oriented API names.
+    this.setShowLoopSteps = function(enabled)
+    {
+        this.setClosedLoopSkip(!enabled);
         return showLoopSteps;
     };
 
     this.toggleLoopSteps = function()
     {
-        return this.setShowLoopSteps(!showLoopSteps);
+        this.toggleClosedLoopSkip();
+        return showLoopSteps;
     };
 
     this.navigateRows = function(delta)
@@ -2509,8 +2551,8 @@ function Apple2Debug()
     this.step = function()
     {
         manualStepPause = true;
-        // A direct Step-In request is always displayed literally. Loop hiding is
-        // a continuous-run presentation policy, not an instruction-skipping mode.
+        // A direct Step-In request is always exactly one instruction. The
+        // closed-loop skipper applies only to debugger-owned continuous run paths.
         resetClosedLoopDisplayState();
         var machine = liveMachine();
         if(!machine || typeof(machine.stepLiveInstruction)!="function") return false;
@@ -2652,6 +2694,7 @@ function Apple2Debug()
             ,"resumePct":resumePct
             ,"followPC":followPC
             ,"showLoopSteps":showLoopSteps
+            ,"skipClosedLoops":!showLoopSteps
             ,"closedLoop":activeClosedLoop ? Object.assign({},activeClosedLoop) : null
             ,"loopDisplayStats":Object.assign({},loopDisplayStats)
             ,"viewTop":lastViewTop
