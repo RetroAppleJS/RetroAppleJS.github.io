@@ -17295,7 +17295,26 @@ function Apple2Debug()
         if(systemRunning())
         {
             rememberSystemSpeed();
-            oEMUI.cpuSpd(0);
+
+            /*
+             * Fixed-IPS STEP TRACE must become the sole live execution owner.
+             *
+             * Do NOT use oEMUI.cpuSpd(0) here. cpuSpd(0) clears the normal
+             * SYSTEM interval and immediately creates another interval whose
+             * CPU tick count is zero. That "paused" interval still calls
+             * apple2plus.cycle(0), which in turn runs hw.io.cycle(),
+             * dashboard work and Apple2Debug.cycle() while this fixed-IPS
+             * scheduler is also active.
+             *
+             * Stop the SYSTEM timer itself instead. Keep the selected speed in
+             * resumePct; resumeSystem() will recreate the normal SYSTEM timer.
+             */
+            if(typeof(appleIntervalHandle)!=="undefined"
+                && appleIntervalHandle!=null)
+            {
+                window.clearInterval(appleIntervalHandle);
+                appleIntervalHandle = null;
+            }
         }
     }
 
@@ -17857,10 +17876,14 @@ function Apple2Debug()
                             +"onmousedown='return oEMU.component.CPU.Apple2Debug.navButtonDown(this,1)' onmouseup='return oEMU.component.CPU.Apple2Debug.navButtonUp(this)' onmouseleave='return oEMU.component.CPU.Apple2Debug.navButtonCancel(this)' "
                             +"ontouchstart='return oEMU.component.CPU.Apple2Debug.navButtonDown(this,1)' ontouchend='return oEMU.component.CPU.Apple2Debug.navButtonUp(this)' ontouchcancel='return oEMU.component.CPU.Apple2Debug.navButtonCancel(this)' "
                             +"style='border:0;background:transparent;-webkit-appearance:none;appearance:none;padding:0 1px;margin:0;line-height:1;font-size:11px;cursor:pointer'>↓</button>"
-                        +"<input id='cpuDbg_navStatus' type='text' readonly value='PC $0000  INS $000000000000' aria-label='Live PC and instruction counter' title='Live PC and instruction counter; read-only and copyable' style='width:146px;height:16px;padding:0 2px;box-sizing:border-box;border:1px solid #bbb;background:#fff;font-family:"+listingFontFamily+";font-size:9px;cursor:text'>"
+                        // 27 fixed-width characters are required for
+                        // "PC $FFFF  INS $FFFFFFFFFFFF". 146px clipped the
+                        // least-significant INS hex digit, making the visible
+                        // counter appear to advance only once per 16 opcodes.
+                        +"<input id='cpuDbg_navStatus' type='text' readonly value='PC $0000  INS $000000000000' aria-label='Live PC and instruction counter' title='Live PC and instruction counter; read-only and copyable' style='width:158px;height:16px;padding:0 2px;box-sizing:border-box;border:1px solid #bbb;background:#fff;font-family:"+listingFontFamily+";font-size:9px;cursor:text'>"
                                                 +"<i id='cpuDbg_trackPc' class='fa fa-lock' role='button' aria-pressed='true' title='Track PC enabled — click to unlock the listing' onclick='oEMU.component.CPU.Apple2Debug.toggleTrackPC()' style='font-size:10px;cursor:pointer;margin-left:4px'></i>"
                         +"<i id='cpuDbg_showLoopSteps' class='fa fa-retweet' role='button' aria-pressed='true' title='Closed-loop steps visible — click to hide repeated loop iterations' onclick='oEMU.component.CPU.Apple2Debug.toggleLoopSteps()' style='font-size:10px;cursor:pointer;margin-left:3px'></i>"
-                        +"<select id='cpuDbg_speed' title='STEP TRACE execution speed' onchange='oEMU.component.CPU.Apple2Debug.setRunSpeed(this.value)' style='width:100px;height:18px;padding:0;font-size:9px'>"
+                            +"<select id='cpuDbg_speed' title='STEP TRACE execution speed' onchange='oEMU.component.CPU.Apple2Debug.setRunSpeed(this.value)' style='width:90px;height:18px;padding:0;font-size:9px'>"
                             +"<option value='1'>1 IPS</option>"
                             +"<option value='10'>10 IPS</option>"
                             +"<option value='100'>100 IPS</option>"
