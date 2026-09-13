@@ -1532,7 +1532,26 @@ function Apple2Debug()
         if(systemRunning())
         {
             rememberSystemSpeed();
-            oEMUI.cpuSpd(0);
+
+            /*
+             * Fixed-IPS STEP TRACE must become the sole live execution owner.
+             *
+             * Do NOT use oEMUI.cpuSpd(0) here. cpuSpd(0) clears the normal
+             * SYSTEM interval and immediately creates another interval whose
+             * CPU tick count is zero. That "paused" interval still calls
+             * apple2plus.cycle(0), which in turn runs hw.io.cycle(),
+             * dashboard work and Apple2Debug.cycle() while this fixed-IPS
+             * scheduler is also active.
+             *
+             * Stop the SYSTEM timer itself instead. Keep the selected speed in
+             * resumePct; resumeSystem() will recreate the normal SYSTEM timer.
+             */
+            if(typeof(appleIntervalHandle)!=="undefined"
+                && appleIntervalHandle!=null)
+            {
+                window.clearInterval(appleIntervalHandle);
+                appleIntervalHandle = null;
+            }
         }
     }
 
