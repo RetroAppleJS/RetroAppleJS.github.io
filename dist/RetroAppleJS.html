@@ -15833,7 +15833,8 @@ function Apple2Debug()
     var followPC = true;
     // Display policy only: the live CPU always executes every instruction.
     // When showLoopSteps is false, repeated iterations of a dynamically proven
-    // backward branch/JMP loop are not rendered; the display resumes exactly at
+    // backward branch/JMP loop are not rendered. Listing/PC/registers stay
+    // visually frozen while INS remains live; full display resumes exactly at
     // the first instruction boundary that exits that loop.
     var showLoopSteps = true;
     var activeClosedLoop = null;
@@ -17407,10 +17408,15 @@ function Apple2Debug()
         var result = machine.runLiveInstructionBatch(cfg.batch,batchOptions);
         rememberEdges(result && result.edges);
 
-        // While a proven loop is repeating, leave listing/PC/registers frozen.
-        // Breakpoints and stalled ownership changes still force an exact render.
+        // While a proven loop is repeating, leave listing/PC/registers frozen,
+        // but keep the live completed-opcode counter visible. Breakpoints and
+        // stalled ownership changes still force an exact render.
         if(showLoopSteps || renderAfterBatch || !fixedRunning || !result || result.stalled)
             dbg.cycle({cpu:machine.cpuObj()});
+        else if(currentPC!==null)
+            // updateNavigationStatus() reads the live CPU counter itself; using
+            // currentPC deliberately preserves the last rendered/frozen PC.
+            updateNavigationStatus(currentPC);
 
         // A conditional breakpoint callback can stop fixedRunning from inside a
         // batch. Check ownership again before scheduling the next batch.
@@ -17575,8 +17581,13 @@ function Apple2Debug()
             }
         }
 
+        // A hidden loop must not repaint the listing/PC/register row, but INS is
+        // a live CPU counter and should continue to advance visibly.
         if(showLoopSteps || renderBoundaryProgress || boundaryAction!==action || stopped || completed===0)
             dbg.cycle({cpu:cpu});
+        else if(currentPC!==null)
+            // Preserve the last displayed PC while refreshing only NAV/INS.
+            updateNavigationStatus(currentPC);
 
         if(boundaryAction!==action || stopped || completed===0)
         {
@@ -18076,7 +18087,13 @@ function Apple2Debug()
 
         if(followPC)
         {
-            if(changed || (obj && obj.force)) renderListing(pc,!!(obj && obj.force));
+            if(changed || (obj && obj.force))
+                renderListing(pc,!!(obj && obj.force));
+            else
+                // PC-stable code (for example JMP $xxxx to itself) still
+                // completes instructions. Keep NAV/INS live without repainting
+                // the listing or changing the displayed PC.
+                updateNavigationStatus(pc);
         }
         else
             renderListing(pc,!!(obj && obj.force));
