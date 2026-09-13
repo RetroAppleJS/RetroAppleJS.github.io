@@ -70,9 +70,9 @@ function Apple2Debug()
     var followPC = true;
     // Display policy only: the live CPU always executes every instruction.
     // When showLoopSteps is false, repeated iterations of a dynamically proven
-    // backward branch/JMP loop are not rendered. Listing/PC/registers stay
-    // visually frozen while INS remains live; full display resumes exactly at
-    // the first instruction boundary that exits that loop.
+    // backward branch/JMP loop are not rendered. Listing/PC/INS/registers stay
+    // visually frozen; full display resumes exactly at the first instruction
+    // boundary that exits that loop.
     var showLoopSteps = true;
     var activeClosedLoop = null;
     var loopDisplayStats = {detected:0,hiddenInstructions:0,exits:0};
@@ -1710,15 +1710,12 @@ function Apple2Debug()
         var result = machine.runLiveInstructionBatch(cfg.batch,batchOptions);
         rememberEdges(result && result.edges);
 
-        // While a proven loop is repeating, leave listing/PC/registers frozen,
-        // but keep the live completed-opcode counter visible. Breakpoints and
-        // stalled ownership changes still force an exact render.
+        // While a proven loop is repeating, freeze the complete debugger view:
+        // listing, displayed PC/INS and registers. Breakpoints, loop exits and
+        // stalled ownership changes force an exact render, at which point INS
+        // catches up to the live architectural counter in one update.
         if(showLoopSteps || renderAfterBatch || !fixedRunning || !result || result.stalled)
             dbg.cycle({cpu:machine.cpuObj()});
-        else if(currentPC!==null)
-            // updateNavigationStatus() reads the live CPU counter itself; using
-            // currentPC deliberately preserves the last rendered/frozen PC.
-            updateNavigationStatus(currentPC);
 
         // A conditional breakpoint callback can stop fixedRunning from inside a
         // batch. Check ownership again before scheduling the next batch.
@@ -1883,13 +1880,11 @@ function Apple2Debug()
             }
         }
 
-        // A hidden loop must not repaint the listing/PC/register row, but INS is
-        // a live CPU counter and should continue to advance visibly.
+        // A hidden loop must not repaint any live execution display, including
+        // NAV/INS. On the exact loop exit the normal render resumes and INS catches
+        // up to the architectural counter in one update.
         if(showLoopSteps || renderBoundaryProgress || boundaryAction!==action || stopped || completed===0)
             dbg.cycle({cpu:cpu});
-        else if(currentPC!==null)
-            // Preserve the last displayed PC while refreshing only NAV/INS.
-            updateNavigationStatus(currentPC);
 
         if(boundaryAction!==action || stopped || completed===0)
         {
