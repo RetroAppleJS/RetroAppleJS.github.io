@@ -200,11 +200,13 @@ test('STEP TRACE NAV exposes copyable PC/INS and keeps run status beside BREAK I
 
 
 
-test('STEP TRACE hidden-loop mode freezes PC/INS as well as the listing', () => {
-    assert.match(debugSource,/Listing\/PC\/INS\/registers stay/);
-    assert.match(debugSource,/freeze the complete debugger view:[\s\S]*?displayed PC\/INS and registers/);
-    assert.doesNotMatch(debugSource,/keep the live completed-opcode counter visible/);
-    assert.doesNotMatch(debugSource,/Preserve the last displayed PC while refreshing only NAV\/INS/);
+test('STEP TRACE closed-loop skipper bypasses fixed IPS delay after loop proof', () => {
+    assert.match(debugSource,/var closedLoopSkipBatch = 1024;/);
+    assert.match(debugSource,/executionBatch = skippingClosedLoop \? closedLoopSkipBatch : cfg\.batch/);
+    assert.match(debugSource,/if\(closedLoopSkipperActive\(\)\)[\s\S]*?scheduleFixedRun\(0\);/);
+    assert.match(debugSource,/if\(closedLoopSkipperActive\(\)\)[\s\S]*?scheduleBoundaryAction\(0\);/);
+    assert.match(debugSource,/toggleClosedLoopSkip\(\)/);
+    assert.match(debugSource,/"skipClosedLoops":!showLoopSteps/);
 });
 
 test('STEP TRACE BREAK IF accepts the 48-bit INS instruction counter', () => {

@@ -1,6 +1,6 @@
 # RetroAppleJS STEP TRACE — Real-Time Debugger Manual
 
-> STEP TRACE is the attached real-time debugger for the live Apple II runtime. This manual describes the current implementation: live CPU execution, mapped-bus disassembly, instruction-row navigation, PC tracking, the 48-bit instruction counter, Step In/Over/Out, conditional breakpoints, branch-line rendering, symbol loading, live CPU registers, peripheral-ROM visibility, boot logging, and optional closed-loop display suppression.
+> STEP TRACE is the attached real-time debugger for the live Apple II runtime. This manual describes the current implementation: live CPU execution, mapped-bus disassembly, instruction-row navigation, PC tracking, the 48-bit instruction counter, Step In/Over/Out, conditional breakpoints, branch-line rendering, symbol loading, live CPU registers, peripheral-ROM visibility, boot logging, and optional closed-loop step skipping.
 
 ## 1. What STEP TRACE is
 
@@ -54,7 +54,7 @@ A successful breakpoint stop is therefore shown by the **parking** icon rather t
 
 ### Step In
 
-Step In executes exactly one live instruction. It is always shown literally, even when repeated-loop display is disabled.
+Step In executes exactly one live instruction. It is always shown literally, even when the closed-loop step skipper is enabled.
 
 ### Step Over
 
@@ -99,7 +99,7 @@ Current batching is:
 A batch can return early at a debugger-significant boundary, for example when:
 
 - execution enters or leaves peripheral/expansion ROM;
-- a hidden closed loop exits;
+- a closed-loop skip reaches its exact exit boundary;
 - an armed conditional breakpoint matches.
 
 **Max (SYSTEM)** remains owned by the central emulator scheduler. STEP TRACE samples the running CPU for display, while the CPU's instruction-boundary breakpoint observer still operates at the CPU boundary itself.
@@ -114,7 +114,7 @@ The NAV row begins with:
 NAV  ↑  ↓   [PC $xxxx  INS $xxxxxxxxxxxx]
 ```
 
-and is followed by the Track-PC icon, closed-loop-display icon, and speed selector. `PC` and `INS` are presented together in a **read-only input field**, so the live values can be selected and copied without making them editable. The NAV row is reserved for this copyable live CPU position; temporary run state and breakpoint diagnostics are shown beside `BREAK IF` instead.
+and is followed by the Track-PC icon, closed-loop-skipper icon, and speed selector. `PC` and `INS` are presented together in a **read-only input field**, so the live values can be selected and copied without making them editable. The NAV row is reserved for this copyable live CPU position; temporary run state and breakpoint diagnostics are shown beside `BREAK IF` instead.
 
 ### `↑` and `↓`
 
@@ -172,40 +172,42 @@ Keyboard controls:
 
 ---
 
-## 7. Closed-loop display control
+## 7. Closed-loop step skipper
 
-The retweet pictogram controls whether repeated closed-loop execution is rendered:
+The retweet pictogram controls the **closed-loop step skipper**:
 
 ```html
 <i class="fa fa-retweet"></i>
 ```
 
-It is **enabled by default**.
+The skipper is **disabled by default**. When disabled, every instruction follows the selected STEP TRACE IPS cadence.
 
 ### Enabled
 
-STEP TRACE shows normal execution updates, including instructions repeatedly executed inside a loop.
+The skipper changes execution pacing, not CPU semantics. STEP TRACE first observes normal live execution until a taken backward relative branch or backward `JMP` proves a closed loop. Once that loop is proven, subsequent instructions belonging to it execute immediately in bounded zero-delay batches rather than waiting for the selected IPS delay after every instruction.
 
-### Disabled
+The CPU still executes **every instruction and every cycle**. Mapped I/O, video timing, interrupts and conditional breakpoints therefore remain part of the real live execution path; only the wall-clock debugger pacing is accelerated while the proven loop is active.
 
-The CPU still executes **every instruction and every cycle**. Only the debugger display is suppressed for dynamically proven repeated loops.
+For example, at **1 IPS**, a four-instruction loop does not consume four additional seconds after it has been proven. The loop instructions run consecutively in the background, and the next visible paced boundary is the exact instruction at which the loop exits. `INS` remains the architectural completed-opcode counter, so when the display updates it may jump by many instructions rather than by one.
 
-The current logic works as follows:
+The current logic is:
 
-1. execution proceeds normally;
-2. STEP TRACE recognises a closed loop when live execution takes a backward relative branch or backward `JMP`;
-3. after the loop is proven, repeated execution inside it is no longer rendered;
-4. the listing, displayed PC/INS and register row remain visually frozen while the repeated loop is hidden;
-5. when execution leaves the loop, STEP TRACE yields at the first live instruction boundary outside it and resumes normal display; the displayed `INS` value then catches up to the live counter in one update;
-6. another later loop can be detected and hidden in the same way.
+1. ordinary execution follows the selected IPS rate;
+2. a taken backward branch or backward `JMP` proves a closed loop;
+3. the proven loop then runs in cooperative batches with **no IPS waiting interval** between those batches;
+4. intermediate loop instructions are not rendered;
+5. at the exact first boundary outside the loop, PC, INS, listing position and registers are refreshed together;
+6. normal selected-IPS pacing resumes from that visible exit boundary.
 
-An arbitrary backward `RTS`, `RTI`, or return address is **not** treated as proof of a loop.
+The skip batches are bounded and yield back to the browser between chunks. A genuinely endless keyboard or I/O wait loop therefore does not lock the UI; browser input can still arrive and allow the loop condition to change.
 
-Nested `JSR` / `RTS` activity entered from inside a proven loop can remain part of the hidden iteration. An uncertain escape or interrupt ends suppression rather than risk hiding unrelated code.
+An arbitrary backward `RTS`, `RTI`, or return address is **not** treated as proof of a loop. Nested `JSR` / `RTS` activity entered from inside a proven loop remains eligible for skipping, while an uncertain escape or interrupt ends the proven-loop state rather than risk accelerating unrelated code.
 
-### Limitation in Max (SYSTEM)
+A manually requested **Step In** always executes exactly one instruction and is never replaced by a loop skip. The skipper also applies to debugger-owned Step Over/Out runs once they encounter a proven loop.
 
-Exact closed-loop display suppression is implemented in debugger-owned execution paths:
+### Max (SYSTEM)
+
+The skipper is intended for debugger-owned paced execution:
 
 - 1 IPS;
 - 10 IPS;
@@ -214,7 +216,7 @@ Exact closed-loop display suppression is implemented in debugger-owned execution
 - cooperative Step Over;
 - cooperative Step Out.
 
-In **Max (SYSTEM)** mode, STEP TRACE receives scheduler samples rather than a display callback for every instruction, so exact loop-display suppression is not applied there.
+**Max (SYSTEM)** already runs under the emulator's normal scheduler and does not use the fixed-IPS closed-loop skipper.
 
 ---
 
@@ -803,13 +805,14 @@ Meanwhile:
 4. use **F10** for calls you do not want to enter;
 5. use **Shift+F11** to leave the current routine.
 
-### Let a delay loop finish without watching every iteration
+### Skip through a repetitive delay or wait loop
 
 1. choose a fixed IPS mode;
-2. click the retweet icon to disable repeated-loop display;
+2. click the retweet icon to enable the closed-loop step skipper;
 3. continue with the main Run control;
-4. the CPU still executes every loop instruction;
-5. STEP TRACE resumes visual updates at the loop exit.
+4. once a backward edge proves the loop, its instructions run without the selected IPS delay;
+5. every CPU/I/O cycle still executes, and BREAK IF remains exact;
+6. STEP TRACE refreshes PC, INS, registers and the listing at the exact loop exit, then resumes normal pacing.
 
 ### Break at an address
 
@@ -887,6 +890,7 @@ systemRunning
 resumePct
 followPC
 showLoopSteps
+skipClosedLoops
 closedLoop
 loopDisplayStats
 viewTop
@@ -923,7 +927,7 @@ error
 
 The CPU instruction counter itself is available as `Cpu6502.watch().ic` and is displayed to the user as `INS`.
 
-Loop-display statistics include:
+Closed-loop skipper statistics include:
 
 ```text
 detected
