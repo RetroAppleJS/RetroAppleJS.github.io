@@ -199,6 +199,14 @@ test('STEP TRACE NAV exposes copyable PC/INS and keeps run status beside BREAK I
 });
 
 
+
+test('STEP TRACE hidden-loop mode freezes PC/INS as well as the listing', () => {
+    assert.match(debugSource,/Listing\/PC\/INS\/registers stay/);
+    assert.match(debugSource,/freeze the complete debugger view:[\s\S]*?displayed PC\/INS and registers/);
+    assert.doesNotMatch(debugSource,/keep the live completed-opcode counter visible/);
+    assert.doesNotMatch(debugSource,/Preserve the last displayed PC while refreshing only NAV\/INS/);
+});
+
 test('STEP TRACE BREAK IF accepts the 48-bit INS instruction counter', () => {
     let installed = null;
     const cpu = {

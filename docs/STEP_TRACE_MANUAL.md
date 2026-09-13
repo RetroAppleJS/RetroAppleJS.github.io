@@ -196,7 +196,7 @@ The current logic works as follows:
 2. STEP TRACE recognises a closed loop when live execution takes a backward relative branch or backward `JMP`;
 3. after the loop is proven, repeated execution inside it is no longer rendered;
 4. the listing, displayed PC/INS and register row remain visually frozen while the repeated loop is hidden;
-5. when execution leaves the loop, STEP TRACE yields at the first live instruction boundary outside it and resumes normal display;
+5. when execution leaves the loop, STEP TRACE yields at the first live instruction boundary outside it and resumes normal display; the displayed `INS` value then catches up to the live counter in one update;
 6. another later loop can be detected and hidden in the same way.
 
 An arbitrary backward `RTS`, `RTI`, or return address is **not** treated as proof of a loop.
