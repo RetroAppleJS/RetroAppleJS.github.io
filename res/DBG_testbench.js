@@ -212,7 +212,7 @@
   }
 
   var TB = {
-    version: "0.5-cpu-context",
+    version: "0.6-cpu-hexdump",
 
     get RAM(){
       if(!(global.DBG_RAM instanceof Uint8Array)) throw new Error("DBG_RAM is not available.");
@@ -467,7 +467,7 @@
     {
       var parts = [];
       if(failed.length) parts.push("checks: " + failed.join(", "));
-      if(run) parts.push(TB.cpu.describe(run));
+      if(run) parts.push(run.failureDiagnostic || TB.cpu.describe(run));
       line = "FAIL " + name + (parts.length ? " — " + parts.join("; ") : "");
     }
 
