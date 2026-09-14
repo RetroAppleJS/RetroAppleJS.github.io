@@ -7671,7 +7671,7 @@ function TERMINAL(props)
   }
 
   var TB = {
-    version: "0.4-cpu-guards",
+    version: "0.5-cpu-context",
 
     get RAM(){
       if(!(global.DBG_RAM instanceof Uint8Array)) throw new Error("DBG_RAM is not available.");
@@ -7872,7 +7872,13 @@ function TERMINAL(props)
         timeoutMs:options.timeoutMs == null ? 5000 : options.timeoutMs,
         detectPcLoops:options.detectPcLoops !== false,
         pcLoopMaxPeriod:options.pcLoopMaxPeriod == null ? 8 : options.pcLoopMaxPeriod,
-        pcLoopRepeatLimit:options.pcLoopRepeatLimit == null ? 1024 : options.pcLoopRepeatLimit
+        pcLoopRepeatLimit:options.pcLoopRepeatLimit == null ? 1024 : options.pcLoopRepeatLimit,
+        inputPointerAddress:options.inputPointerAddress == null
+          ? TB.sym("inputPointer",null)
+          : parseAddress(options.inputPointerAddress),
+        outputPointerAddress:options.outputPointerAddress == null
+          ? TB.sym("outputPointer",null)
+          : parseAddress(options.outputPointerAddress)
       }
     );
 
@@ -57668,11 +57674,58 @@ Label1 TXA
          + " P=$" + DBG_hexByte(state.p);
      }
 
++     function DBG_testCpuReadWord(address)
++     {
++       if(address == null) return null;
++       address = Number(address) & 0xffff;
++       return (DBG_RAM[address] | (DBG_RAM[(address + 1) & 0xffff] << 8)) & 0xffff;
++     }
++
++     function DBG_testCpuMemoryContext(inputPointerAddress,outputPointerAddress)
++     {
++       return {
++         inputPointerAddress:inputPointerAddress == null ? null : (Number(inputPointerAddress) & 0xffff),
++         outputPointerAddress:outputPointerAddress == null ? null : (Number(outputPointerAddress) & 0xffff),
++         inputPointer:DBG_testCpuReadWord(inputPointerAddress),
++         outputPointer:DBG_testCpuReadWord(outputPointerAddress)
++       };
++     }
++
++     function DBG_testCpuContextText(result)
++     {
++       result = result || {};
++       var parts = [];
++
++       if(result.state)
++         parts.push(DBG_testCpuStateText(result.state));
++
++       var memory = result.memory || {};
++       if(memory.inputPointer != null || memory.outputPointer != null)
++       {
++         var ptr = "PTR";
++         if(memory.inputPointer != null)
++           ptr += " in"
++             + (memory.inputPointerAddress != null ? "[$" + DBG_hexWord(memory.inputPointerAddress) + "]" : "")
++             + "=$" + DBG_hexWord(memory.inputPointer);
++         if(memory.outputPointer != null)
++           ptr += " out"
++             + (memory.outputPointerAddress != null ? "[$" + DBG_hexWord(memory.outputPointerAddress) + "]" : "")
++             + "=$" + DBG_hexWord(memory.outputPointer);
++         parts.push(ptr);
++       }
++
++       var pcs = Array.isArray(result.recentPCs) ? result.recentPCs.slice(-6) : [];
++       if(pcs.length)
++         parts.push("PCs=" + pcs.map(function(pc){ return "$" + DBG_hexWord(pc); }).join("→"));
++
++       return parts.length ? " / " + parts.join(" / ") : "";
++     }
+
      function DBG_testCpuDiagnostic(result)
      {
        result = result || {};
        var elapsed = Number(result.elapsedMs) || 0;
-       var suffix = result.state ? " / " + DBG_testCpuStateText(result.state) : "";
+       var suffix = result.reason === "stop-pc" ? "" : DBG_testCpuContextText(result);
 
        switch(result.reason)
        {
@@ -57828,6 +57881,13 @@ Label1 TXA
        var timeoutMs = options.timeoutMs == null ? 5000 : Number(options.timeoutMs);
        if(!isFinite(timeoutMs) || timeoutMs < 0) timeoutMs = 5000;
 
++       var inputPointerAddress = options.inputPointerAddress == null
++         ? null
++         : (Number(options.inputPointerAddress) & 0xffff);
++       var outputPointerAddress = options.outputPointerAddress == null
++         ? null
++         : (Number(options.outputPointerAddress) & 0xffff);
+
        var detectPcLoops = options.detectPcLoops !== false;
        var pcLoopMaxPeriod = options.pcLoopMaxPeriod == null ? 8 : options.pcLoopMaxPeriod;
        var pcLoopRepeatLimit = options.pcLoopRepeatLimit == null ? 1024 : options.pcLoopRepeatLimit;
@@ -57840,6 +57900,7 @@ Label1 TXA
        var instructions = 0;
        var cycles = 0;
        var reason = "not-started";
+       var error = null;
        var loopTrap = null;
        var pcLoop = null;
        var recentPCs = [];
@@ -57860,6 +57921,7 @@ Label1 TXA
            loopTrap:null,
            pcLoop:null,
            recentPCs:[],
+           memory:DBG_testCpuMemoryContext(inputPointerAddress,outputPointerAddress),
            writes:[]
          };
          notStarted.diagnostic = DBG_testCpuDiagnostic(notStarted);
@@ -57899,9 +57961,17 @@ Label1 TXA
 
          var step = DBG_testCpuStepInstruction({captureWrites:captureWrites});
 
++         /* Keep the actual instruction addresses, not merely the following PCs. */
++         if(step.before)
++         {
++           recentPCs.push(step.before.pc & 0xffff);
++           if(recentPCs.length > 8) recentPCs.shift();
++         }
+
          if(!step.ok)
          {
            reason = step.reason;
+           error = step.error || null;
            if(captureWrites && step.writes)
              Array.prototype.push.apply(allWrites,step.writes);
            break;
@@ -57912,12 +57982,6 @@ Label1 TXA
 
          if(captureWrites && step.writes.length)
            Array.prototype.push.apply(allWrites,step.writes);
-
-         if(step.after)
-         {
-           recentPCs.push(step.after.pc & 0xffff);
-           if(recentPCs.length > 8) recentPCs.shift();
-         }
 
          loopTrap = DBG_getSelfLoopTrap();
          if(loopTrap)
@@ -57960,9 +58024,11 @@ Label1 TXA
          cycles:cycles,
          elapsedMs:elapsedMs,
          state:finalState,
+         error:error,
          loopTrap:loopTrap,
          pcLoop:pcLoop,
          recentPCs:recentPCs.slice(),
+         memory:DBG_testCpuMemoryContext(inputPointerAddress,outputPointerAddress),
          writes:captureWrites ? allWrites : []
        };
        result.diagnostic = DBG_testCpuDiagnostic(result);
