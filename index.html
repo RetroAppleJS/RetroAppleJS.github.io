@@ -5784,13 +5784,57 @@ Label1 TXA
        return (DBG_RAM[address] | (DBG_RAM[(address + 1) & 0xffff] << 8)) & 0xffff;
      }
 
+     /*
+      * Capture a compact memory window around a pointer.  Seven bytes before
+      * the current address plus the current byte and eight following bytes
+      * gives a 16-byte diagnostic line without turning failures into a dump.
+      */
+     function DBG_testCpuHexWindow(address)
+     {
+       if(address == null) return null;
+
+       address = Number(address) & 0xffff;
+       var before = 7;
+       var length = 16;
+       var start = (address - before) & 0xffff;
+       var bytes = [];
+
+       for(var i=0;i<length;i++)
+         bytes.push(DBG_RAM[(start + i) & 0xffff] & 0xff);
+
+       return {
+         address:address,
+         start:start,
+         currentIndex:before,
+         bytes:bytes
+       };
+     }
+
+     function DBG_testCpuHexWindowText(window)
+     {
+       if(!window || !Array.isArray(window.bytes)) return "";
+
+       var bytes = window.bytes.map(function(value,index){
+         var text = DBG_hexByte(value);
+         return index === window.currentIndex ? "[" + text + "]" : text;
+       });
+
+       return "$" + DBG_hexWord(window.start) + ": " + bytes.join(" ");
+     }
+
+
      function DBG_testCpuMemoryContext(inputPointerAddress,outputPointerAddress)
      {
+       var inputPointer = DBG_testCpuReadWord(inputPointerAddress);
+       var outputPointer = DBG_testCpuReadWord(outputPointerAddress);
+
        return {
          inputPointerAddress:inputPointerAddress == null ? null : (Number(inputPointerAddress) & 0xffff),
          outputPointerAddress:outputPointerAddress == null ? null : (Number(outputPointerAddress) & 0xffff),
-         inputPointer:DBG_testCpuReadWord(inputPointerAddress),
-         outputPointer:DBG_testCpuReadWord(outputPointerAddress)
+         inputPointer:inputPointer,
+         outputPointer:outputPointer,
+         inputWindow:DBG_testCpuHexWindow(inputPointer),
+         outputWindow:DBG_testCpuHexWindow(outputPointer)
        };
      }
 
@@ -5821,7 +5865,15 @@ Label1 TXA
        if(pcs.length)
          parts.push("PCs=" + pcs.map(function(pc){ return "$" + DBG_hexWord(pc); }).join("→"));
 
-       return parts.length ? " / " + parts.join(" / ") : "";
+       var dump = [];
+       if(memory.inputWindow)
+         dump.push("IN  " + DBG_testCpuHexWindowText(memory.inputWindow));
+       if(memory.outputWindow)
+         dump.push("OUT " + DBG_testCpuHexWindowText(memory.outputWindow));
+
+       var text = parts.length ? " / " + parts.join(" / ") : "";
+       if(dump.length) text += "\n    " + dump.join("\n    ");
+       return text;
      }
 
      function DBG_testCpuDiagnostic(result)
@@ -6135,6 +6187,13 @@ Label1 TXA
          writes:captureWrites ? allWrites : []
        };
        result.diagnostic = DBG_testCpuDiagnostic(result);
+       /*
+        * If CPU execution returned normally but an algorithm assertion fails,
+        * TB.report() still needs the same register/pointer/memory context.
+        */
+       result.failureDiagnostic = result.ok
+         ? result.diagnostic + DBG_testCpuContextText(result)
+         : result.diagnostic;
        DBG_statusText("TEST BENCH: " + result.diagnostic);
        return result;
      }
