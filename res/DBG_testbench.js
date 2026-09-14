@@ -212,7 +212,7 @@
   }
 
   var TB = {
-    version: "0.3-cpu",
+    version: "0.4-cpu-guards",
 
     get RAM(){
       if(!(global.DBG_RAM instanceof Uint8Array)) throw new Error("DBG_RAM is not available.");
@@ -362,6 +362,16 @@
         maxInstructions,
         options || {}
       );
+    },
+
+    describe: function(result)
+    {
+      if(result && result.diagnostic) return result.diagnostic;
+      var bridge = debuggerCpuBridge();
+      return typeof bridge.diagnostic === "function"
+        ? bridge.diagnostic(result || {})
+        : String(result && result.reason || "unknown result");
+
     }
   };
 
@@ -398,7 +408,13 @@
     var result = TB.cpu.runUntil(
       returnPC,
       options.maxInstructions || 1000000,
-      {captureWrites:!!options.captureWrites}
+      {
+        captureWrites:!!options.captureWrites,
+        timeoutMs:options.timeoutMs == null ? 5000 : options.timeoutMs,
+        detectPcLoops:options.detectPcLoops !== false,
+        pcLoopMaxPeriod:options.pcLoopMaxPeriod == null ? 8 : options.pcLoopMaxPeriod,
+        pcLoopRepeatLimit:options.pcLoopRepeatLimit == null ? 1024 : options.pcLoopRepeatLimit
+      }
     );
 
     result.entry = entryAddress;
@@ -406,6 +422,59 @@
     result.returnPC = returnPC;
     return result;
   };
+
+  /*
+   * Concise one-line algorithm result.  `checks` is an object of named boolean
+   * assertions.  A CPU timeout/loop/limit automatically makes the test fail.
+   * Details are printed only for a failure.
+   *
+   * Example:
+   *   TB.report("stored_000", {
+   *     inputConsumed: inputPointer === INPUT + 5,
+   *     zeroOutput: outputPointer === OUTPUT,
+   *     stackRestored: run.state && run.state.sp === 0xff
+   *   }, run);
+   */
+  TB.report = function(name,checks,run)
+  {
+    name = String(name || "test");
+    checks = checks || {};
+
+    var failed = [];
+    Object.keys(checks).forEach(function(key){
+      if(!checks[key]) failed.push(key);
+    });
+
+    var cpuFailed = !!run && !run.ok;
+    var pass = !cpuFailed && failed.length === 0;
+    var line;
+
+    if(pass)
+    {
+      line = "PASS " + name;
+      if(run)
+        line += " — " + run.instructions + " ins / "
+          + run.cycles + " cyc / "
+          + (Number(run.elapsedMs) || 0).toFixed(1) + " ms";
+    }
+    else
+    {
+      var parts = [];
+      if(failed.length) parts.push("checks: " + failed.join(", "));
+      if(run) parts.push(TB.cpu.describe(run));
+      line = "FAIL " + name + (parts.length ? " — " + parts.join("; ") : "");
+    }
+
+    TB.print(line);
+
+    return {
+      pass:pass,
+      failed:failed,
+      line:line,
+      run:run || null
+    };
+  };
+
 
   function harnessConsole()
   {
