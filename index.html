@@ -6020,6 +6020,55 @@ Label1 TXA
      }
 
      /*
+      * Detect a short repeating PC cycle such as A→B→A→B. Same-PC loops are
+      * already handled by Cpu6502's self-loop trap. The deliberately high
+      * repeat limit avoids mistaking normal decode/copy loops for hangs.
+      */
+     function DBG_testPcLoopDetector(maxPeriod,repeatLimit)
+     {
+       maxPeriod = Math.max(2,Math.min(32,Number(maxPeriod) | 0 || 8));
+       repeatLimit = Math.max(2,Number(repeatLimit) | 0 || 1024);
+
+       var recent = [];
+       var streak = new Array(maxPeriod + 1).fill(0);
+
+       return function(pc)
+       {
+         recent.push(pc & 0xffff);
+         if(recent.length > maxPeriod * 2) recent.shift();
+
+         for(var period=2;period<=maxPeriod;period++)
+         {
+           if(recent.length < period * 2) continue;
+
+           var n = recent.length;
+           var same = true;
+           for(var i=0;i<period;i++)
+           {
+             if(recent[n-1-i] !== recent[n-1-period-i])
+             {
+               same = false;
+               break;
+             }
+           }
+
+           streak[period] = same ? streak[period] + 1 : 0;
+
+           if(streak[period] >= period * (repeatLimit - 1))
+           {
+             return {
+               period:period,
+               repeats:Math.floor(streak[period] / period) + 1,
+               pcs:recent.slice(n-period)
+             };
+           }
+         }
+
+         return null;
+       };
+     }
+
+     /*
       * Run until stopPC is reached at a clean instruction boundary.
       * The instruction at stopPC is NOT executed.
       */
