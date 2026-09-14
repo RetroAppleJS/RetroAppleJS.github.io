@@ -7671,7 +7671,7 @@ function TERMINAL(props)
   }
 
   var TB = {
-    version: "0.5-cpu-context",
+    version: "0.6-cpu-hexdump",
 
     get RAM(){
       if(!(global.DBG_RAM instanceof Uint8Array)) throw new Error("DBG_RAM is not available.");
@@ -7926,7 +7926,7 @@ function TERMINAL(props)
     {
       var parts = [];
       if(failed.length) parts.push("checks: " + failed.join(", "));
-      if(run) parts.push(TB.cpu.describe(run));
+      if(run) parts.push(run.failureDiagnostic || TB.cpu.describe(run));
       line = "FAIL " + name + (parts.length ? " — " + parts.join("; ") : "");
     }
 
@@ -57681,13 +57681,57 @@ Label1 TXA
        return (DBG_RAM[address] | (DBG_RAM[(address + 1) & 0xffff] << 8)) & 0xffff;
      }
 
+     /*
+      * Capture a compact memory window around a pointer.  Seven bytes before
+      * the current address plus the current byte and eight following bytes
+      * gives a 16-byte diagnostic line without turning failures into a dump.
+      */
+     function DBG_testCpuHexWindow(address)
+     {
+       if(address == null) return null;
+
+       address = Number(address) & 0xffff;
+       var before = 7;
+       var length = 16;
+       var start = (address - before) & 0xffff;
+       var bytes = [];
+
+       for(var i=0;i<length;i++)
+         bytes.push(DBG_RAM[(start + i) & 0xffff] & 0xff);
+
+       return {
+         address:address,
+         start:start,
+         currentIndex:before,
+         bytes:bytes
+       };
+     }
+
+     function DBG_testCpuHexWindowText(window)
+     {
+       if(!window || !Array.isArray(window.bytes)) return "";
+
+       var bytes = window.bytes.map(function(value,index){
+         var text = DBG_hexByte(value);
+         return index === window.currentIndex ? "[" + text + "]" : text;
+       });
+
+       return "$" + DBG_hexWord(window.start) + ": " + bytes.join(" ");
+     }
+
+
      function DBG_testCpuMemoryContext(inputPointerAddress,outputPointerAddress)
      {
+       var inputPointer = DBG_testCpuReadWord(inputPointerAddress);
+       var outputPointer = DBG_testCpuReadWord(outputPointerAddress);
+
        return {
          inputPointerAddress:inputPointerAddress == null ? null : (Number(inputPointerAddress) & 0xffff),
          outputPointerAddress:outputPointerAddress == null ? null : (Number(outputPointerAddress) & 0xffff),
-         inputPointer:DBG_testCpuReadWord(inputPointerAddress),
-         outputPointer:DBG_testCpuReadWord(outputPointerAddress)
+         inputPointer:inputPointer,
+         outputPointer:outputPointer,
+         inputWindow:DBG_testCpuHexWindow(inputPointer),
+         outputWindow:DBG_testCpuHexWindow(outputPointer)
        };
      }
 
@@ -57718,7 +57762,15 @@ Label1 TXA
        if(pcs.length)
          parts.push("PCs=" + pcs.map(function(pc){ return "$" + DBG_hexWord(pc); }).join("→"));
 
-       return parts.length ? " / " + parts.join(" / ") : "";
+       var dump = [];
+       if(memory.inputWindow)
+         dump.push("IN  " + DBG_testCpuHexWindowText(memory.inputWindow));
+       if(memory.outputWindow)
+         dump.push("OUT " + DBG_testCpuHexWindowText(memory.outputWindow));
+
+       var text = parts.length ? " / " + parts.join(" / ") : "";
+       if(dump.length) text += "\n    " + dump.join("\n    ");
+       return text;
      }
 
      function DBG_testCpuDiagnostic(result)
@@ -57861,6 +57913,55 @@ Label1 TXA
          after:after,
          cycles:cycles,
          writes:writes
+       };
+     }
+
+     /*
+      * Detect a short repeating PC cycle such as A→B→A→B. Same-PC loops are
+      * already handled by Cpu6502's self-loop trap. The deliberately high
+      * repeat limit avoids mistaking normal decode/copy loops for hangs.
+      */
+     function DBG_testPcLoopDetector(maxPeriod,repeatLimit)
+     {
+       maxPeriod = Math.max(2,Math.min(32,Number(maxPeriod) | 0 || 8));
+       repeatLimit = Math.max(2,Number(repeatLimit) | 0 || 1024);
+
+       var recent = [];
+       var streak = new Array(maxPeriod + 1).fill(0);
+
+       return function(pc)
+       {
+         recent.push(pc & 0xffff);
+         if(recent.length > maxPeriod * 2) recent.shift();
+
+         for(var period=2;period<=maxPeriod;period++)
+         {
+           if(recent.length < period * 2) continue;
+
+           var n = recent.length;
+           var same = true;
+           for(var i=0;i<period;i++)
+           {
+             if(recent[n-1-i] !== recent[n-1-period-i])
+             {
+               same = false;
+               break;
+             }
+           }
+
+           streak[period] = same ? streak[period] + 1 : 0;
+
+           if(streak[period] >= period * (repeatLimit - 1))
+           {
+             return {
+               period:period,
+               repeats:Math.floor(streak[period] / period) + 1,
+               pcs:recent.slice(n-period)
+             };
+           }
+         }
+
+         return null;
        };
      }
 
@@ -58032,6 +58133,13 @@ Label1 TXA
          writes:captureWrites ? allWrites : []
        };
        result.diagnostic = DBG_testCpuDiagnostic(result);
+       /*
+        * If CPU execution returned normally but an algorithm assertion fails,
+        * TB.report() still needs the same register/pointer/memory context.
+        */
+       result.failureDiagnostic = result.ok
+         ? result.diagnostic + DBG_testCpuContextText(result)
+         : result.diagnostic;
        DBG_statusText("TEST BENCH: " + result.diagnostic);
        return result;
      }
