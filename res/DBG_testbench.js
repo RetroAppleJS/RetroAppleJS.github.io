@@ -212,7 +212,7 @@
   }
 
   var TB = {
-    version: "0.2-symbols",
+    version: "0.3-cpu",
 
     get RAM(){
       if(!(global.DBG_RAM instanceof Uint8Array)) throw new Error("DBG_RAM is not available.");
@@ -260,6 +260,23 @@
         return out;
       },
 
+      read16: function(address)
+      {
+        var ram = TB.RAM;
+        var a = parseAddress(address);
+        return (ram[a] | (ram[(a+1)&0xffff] << 8)) & 0xffff;
+      },
+
+      write16: function(address,value)
+      {
+        var ram = TB.RAM;
+        var a = parseAddress(address);
+        var v = Number(value) & 0xffff;
+        ram[a] = v & 0xff;
+        ram[(a+1)&0xffff] = (v >>> 8) & 0xff;
+        return v;
+      },
+
       write: function(address,value)
       {
         var ram = TB.RAM;
@@ -304,6 +321,90 @@
         return lines.join("\n");
       }
     }
+  };
+
+  function debuggerCpuBridge()
+  {
+    var bridge = global.DBG_TEST_CPU;
+
+    if(!bridge ||
+       typeof bridge.start !== "function" ||
+       typeof bridge.runUntil !== "function")
+    {
+      throw new Error("Debugger CPU bridge is not available.");
+    }
+
+    return bridge;
+  }
+
+  TB.cpu = {
+    start: function(address)
+    {
+      var state = debuggerCpuBridge().start(parseAddress(address));
+      if(!state) throw new Error("Unable to start debugger CPU.");
+      return state;
+    },
+
+    state: function()
+    {
+      return debuggerCpuBridge().state();
+    },
+
+    step: function(options)
+    {
+      return debuggerCpuBridge().step(options || {});
+    },
+
+    runUntil: function(address,maxInstructions,options)
+    {
+      return debuggerCpuBridge().runUntil(
+        parseAddress(address),
+        maxInstructions,
+        options || {}
+      );
+    }
+  };
+
+  /*
+   * Call an assembler routine through a tiny JSR trampoline.
+   *
+   *   trampoline+0: JSR entry
+   *   trampoline+3: JMP trampoline+3
+   *
+   * runUntil() stops on trampoline+3 before the JMP executes, proving that
+   * the routine actually returned with RTS.
+   */
+  TB.call = function(entry,options)
+  {
+    options = options || {};
+
+    var entryAddress = parseAddress(entry);
+    var trampoline = options.trampoline == null
+      ? 0x0200
+      : parseAddress(options.trampoline);
+    var returnPC = (trampoline + 3) & 0xffff;
+
+    TB.ram.write(trampoline,[
+      0x20,
+      entryAddress & 0xff,
+      (entryAddress >>> 8) & 0xff,
+      0x4c,
+      returnPC & 0xff,
+      (returnPC >>> 8) & 0xff
+    ]);
+
+    TB.cpu.start(trampoline);
+
+    var result = TB.cpu.runUntil(
+      returnPC,
+      options.maxInstructions || 1000000,
+      {captureWrites:!!options.captureWrites}
+    );
+
+    result.entry = entryAddress;
+    result.trampoline = trampoline;
+    result.returnPC = returnPC;
+    return result;
   };
 
   function harnessConsole()
