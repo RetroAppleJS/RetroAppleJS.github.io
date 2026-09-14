@@ -5737,10 +5737,9 @@ Label1 TXA
      /*
       * TEST BENCH CPU bridge.
       *
-      * This deliberately uses the same isolated CPU and DBG_RAM as the normal
-      * debugger, but it avoids building/rendering one CPU TRACE row per
-      * instruction.  The test harness can therefore run algorithms headlessly
-      * and only refresh the debugger UI when the run has finished.
+      * Uses the same isolated CPU and DBG_RAM as the normal debugger without
+      * rendering one CPU TRACE row per instruction.  Bulk algorithm tests can
+      * therefore run headlessly and repaint the debugger only when finished.
       */
      function DBG_testCpuState()
      {
@@ -5758,6 +5757,82 @@ Label1 TXA
          cycle_delay: s.cycle_delay | 0,
          ic:          Number(s.ic) || 0
        };
+     }
+
+     function DBG_testNowMs()
+     {
+       return window.performance && typeof window.performance.now === "function"
+         ? window.performance.now()
+         : Date.now();
+     }
+
+     function DBG_testCpuStateText(state)
+     {
+       if(!state) return "PC=?";
+       return "PC=$" + DBG_hexWord(state.pc)
+         + " A=$" + DBG_hexByte(state.a)
+         + " X=$" + DBG_hexByte(state.x)
+         + " Y=$" + DBG_hexByte(state.y)
+         + " SP=$" + DBG_hexByte(state.sp)
+         + " P=$" + DBG_hexByte(state.p);
+     }
+
+     function DBG_testCpuDiagnostic(result)
+     {
+       result = result || {};
+       var elapsed = Number(result.elapsedMs) || 0;
+       var suffix = result.state ? " / " + DBG_testCpuStateText(result.state) : "";
+
+       switch(result.reason)
+       {
+         case "stop-pc":
+           return "returned to $" + DBG_hexWord(result.stopPC)
+             + " / " + result.instructions + " ins"
+             + " / " + result.cycles + " cyc"
+             + " / " + elapsed.toFixed(1) + " ms";
+
+         case "timeout":
+           return "timeout after " + elapsed.toFixed(1) + " ms"
+             + " / " + result.instructions + " ins" + suffix;
+
+         case "instruction-limit":
+           return "instruction limit " + result.maxInstructions
+             + " reached / " + result.instructions + " ins" + suffix;
+
+         case "self-loop":
+           return "self-loop at $" + DBG_hexWord(
+               result.loopTrap && result.loopTrap.pc != null
+                 ? result.loopTrap.pc
+                 : (result.state ? result.state.pc : 0)
+             )
+             + (result.loopTrap && result.loopTrap.repeats
+                 ? " x" + result.loopTrap.repeats
+                 : "")
+             + " / " + result.instructions + " ins" + suffix;
+
+         case "pc-loop":
+           var pcs = result.pcLoop && Array.isArray(result.pcLoop.pcs)
+             ? result.pcLoop.pcs.map(function(pc){ return "$" + DBG_hexWord(pc); }).join("→")
+             : "";
+           return "PC loop period " + (result.pcLoop ? result.pcLoop.period : "?")
+             + " x" + (result.pcLoop ? result.pcLoop.repeats : "?")
+             + (pcs ? " [" + pcs + "]" : "")
+             + " / " + result.instructions + " ins" + suffix;
+
+         case "cpu-error":
+           return "CPU error" + (result.error ? ": " + result.error : "") + suffix;
+
+         case "instruction-did-not-complete":
+           return "instruction did not complete" + suffix;
+
+         case "cpu-state-unavailable":
+           return "CPU state unavailable";
+
+         case "not-started":
+           return "CPU not started";
+       }
+
+       return String(result.reason || "unknown failure") + suffix;
      }
 
      function DBG_testCpuStart(startPC)
@@ -5859,24 +5934,45 @@ Label1 TXA
          maxInstructions = 1000000;
        maxInstructions = Math.floor(maxInstructions);
 
+       var timeoutMs = options.timeoutMs == null ? 5000 : Number(options.timeoutMs);
+       if(!isFinite(timeoutMs) || timeoutMs < 0) timeoutMs = 5000;
+
+       var detectPcLoops = options.detectPcLoops !== false;
+       var pcLoopMaxPeriod = options.pcLoopMaxPeriod == null ? 8 : options.pcLoopMaxPeriod;
+       var pcLoopRepeatLimit = options.pcLoopRepeatLimit == null ? 1024 : options.pcLoopRepeatLimit;
+       var detectPcLoop = detectPcLoops
+         ? DBG_testPcLoopDetector(pcLoopMaxPeriod,pcLoopRepeatLimit)
+         : null;
+
        var captureWrites = !!options.captureWrites;
        var allWrites = [];
        var instructions = 0;
        var cycles = 0;
        var reason = "not-started";
        var loopTrap = null;
+       var pcLoop = null;
+       var recentPCs = [];
+       var startedAt = DBG_testNowMs();
 
        if(!DBG_traceCPU)
        {
-         return {
+          var notStarted = {
            ok:false,
            reason:reason,
            stopPC:stopPC,
+           maxInstructions:maxInstructions,
+           timeoutMs:timeoutMs,
            instructions:0,
            cycles:0,
+           elapsedMs:0,
            state:null,
+           loopTrap:null,
+           pcLoop:null,
+           recentPCs:[],
            writes:[]
          };
+         notStarted.diagnostic = DBG_testCpuDiagnostic(notStarted);
+         return notStarted;
        }
 
        while(true)
@@ -5901,6 +5997,15 @@ Label1 TXA
            break;
          }
 
+         /* Amortize wall-clock checks so long suites do not pay for Date.now()
+          * on every single instruction.  timeoutMs=0 explicitly disables it. */
+         if(timeoutMs > 0 && (instructions & 0xff) === 0 &&
+            DBG_testNowMs() - startedAt >= timeoutMs)
+         {
+           reason = "timeout";
+           break;
+         }
+
          var step = DBG_testCpuStepInstruction({captureWrites:captureWrites});
 
          if(!step.ok)
@@ -5917,15 +6022,34 @@ Label1 TXA
          if(captureWrites && step.writes.length)
            Array.prototype.push.apply(allWrites,step.writes);
 
+         if(step.after)
+         {
+           recentPCs.push(step.after.pc & 0xffff);
+           if(recentPCs.length > 8) recentPCs.shift();
+         }
+
          loopTrap = DBG_getSelfLoopTrap();
          if(loopTrap)
          {
            reason = "self-loop";
            break;
          }
+
+
+         if(detectPcLoop && step.after && step.after.pc !== stopPC)
+         {
+           pcLoop = detectPcLoop(step.after.pc);
+           if(pcLoop)
+           {
+             reason = "pc-loop";
+             break;
+           }
+         }
+
        }
 
        var finalState = DBG_testCpuState();
+       var elapsedMs = Math.max(0,DBG_testNowMs() - startedAt);
        var ok = reason === "stop-pc";
 
        /* Headless while running; repaint once at the end. */
@@ -5935,22 +6059,24 @@ Label1 TXA
          DBG_updateListingPC(finalState.pc & 0xffff);
        }
 
-       DBG_statusText(
-         "TEST BENCH: " +
-         (ok ? "completed" : reason) +
-         " after " + instructions + " instruction(s)."
-       );
-
-       return {
+       var result = {
          ok:ok,
          reason:reason,
          stopPC:stopPC,
+         maxInstructions:maxInstructions,
+         timeoutMs:timeoutMs,
          instructions:instructions,
          cycles:cycles,
+         elapsedMs:elapsedMs,
          state:finalState,
          loopTrap:loopTrap,
+         pcLoop:pcLoop,
+         recentPCs:recentPCs.slice(),
          writes:captureWrites ? allWrites : []
        };
+       result.diagnostic = DBG_testCpuDiagnostic(result);
+       DBG_statusText("TEST BENCH: " + result.diagnostic);
+       return result;
      }
 
      /* Narrow public surface consumed by res/DBG_testbench.js. */
@@ -5958,7 +6084,8 @@ Label1 TXA
        start:DBG_testCpuStart,
        state:DBG_testCpuState,
        step:DBG_testCpuStepInstruction,
-       runUntil:DBG_testCpuRunUntil
+       runUntil:DBG_testCpuRunUntil,
+       diagnostic:DBG_testCpuDiagnostic
      };
 
      function DBG_traceInstructionTextAt(pc) {
