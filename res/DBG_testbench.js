@@ -212,7 +212,7 @@
   }
 
   var TB = {
-    version: "0.4-cpu-guards",
+    version: "0.5-cpu-context",
 
     get RAM(){
       if(!(global.DBG_RAM instanceof Uint8Array)) throw new Error("DBG_RAM is not available.");
@@ -413,7 +413,13 @@
         timeoutMs:options.timeoutMs == null ? 5000 : options.timeoutMs,
         detectPcLoops:options.detectPcLoops !== false,
         pcLoopMaxPeriod:options.pcLoopMaxPeriod == null ? 8 : options.pcLoopMaxPeriod,
-        pcLoopRepeatLimit:options.pcLoopRepeatLimit == null ? 1024 : options.pcLoopRepeatLimit
+        pcLoopRepeatLimit:options.pcLoopRepeatLimit == null ? 1024 : options.pcLoopRepeatLimit,
+        inputPointerAddress:options.inputPointerAddress == null
+          ? TB.sym("inputPointer",null)
+          : parseAddress(options.inputPointerAddress),
+        outputPointerAddress:options.outputPointerAddress == null
+          ? TB.sym("outputPointer",null)
+          : parseAddress(options.outputPointerAddress)
       }
     );
 
