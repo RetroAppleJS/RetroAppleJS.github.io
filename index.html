@@ -5733,6 +5733,234 @@ Label1 TXA
        return true;
      }
  
+
+     /*
+      * TEST BENCH CPU bridge.
+      *
+      * This deliberately uses the same isolated CPU and DBG_RAM as the normal
+      * debugger, but it avoids building/rendering one CPU TRACE row per
+      * instruction.  The test harness can therefore run algorithms headlessly
+      * and only refresh the debugger UI when the run has finished.
+      */
+     function DBG_testCpuState()
+     {
+       if(!DBG_traceCPU || typeof DBG_traceCPU.watch !== "function")
+         return null;
+
+       var s = DBG_traceCPU.watch();
+       return {
+         pc:          s.pc & 0xffff,
+         a:           s.a  & 0xff,
+         x:           s.x  & 0xff,
+         y:           s.y  & 0xff,
+         sp:          s.sp & 0xff,
+         p:           s.p  & 0xff,
+         cycle_delay: s.cycle_delay | 0,
+         ic:          Number(s.ic) || 0
+       };
+     }
+
+     function DBG_testCpuStart(startPC)
+     {
+       startPC = Number(startPC) & 0xffff;
+
+       if(DBG_running)
+         DBG_stopContinuousRun("Continuous run stopped for TEST BENCH.");
+
+       if(!DBG_startCpuTraceAtPC(startPC))
+         return null;
+
+       return DBG_testCpuState();
+     }
+
+     /* Execute one complete 6502 instruction, without rendering a trace row. */
+     function DBG_testCpuStepInstruction(options)
+     {
+       options = options || {};
+
+       if(!DBG_traceCPU)
+         return {ok:false,reason:"not-started"};
+
+       var before = DBG_testCpuState();
+       var after = before;
+       var cycles = 0;
+       var captureWrites = !!options.captureWrites;
+
+       DBG_traceCurrentWrites = captureWrites ? [] : null;
+
+       try
+       {
+         do
+         {
+           DBG_traceCPU.cycle();
+           cycles++;
+           after = DBG_testCpuState();
+         }
+         while(after && after.cycle_delay > 0 && cycles < 64);
+       }
+       catch(err)
+       {
+         var failedWrites = DBG_traceCurrentWrites
+           ? DBG_traceCurrentWrites.slice()
+           : [];
+
+         DBG_traceCurrentWrites = null;
+
+         return {
+           ok:false,
+           reason:"cpu-error",
+           error:String(err),
+           before:before,
+           after:DBG_testCpuState(),
+           cycles:cycles,
+           writes:failedWrites
+         };
+       }
+
+       var writes = DBG_traceCurrentWrites
+         ? DBG_traceCurrentWrites.slice()
+         : [];
+
+       DBG_traceCurrentWrites = null;
+
+       if(!after || after.cycle_delay > 0)
+       {
+         return {
+           ok:false,
+           reason:"instruction-did-not-complete",
+           before:before,
+           after:after,
+           cycles:cycles,
+           writes:writes
+         };
+       }
+
+       return {
+         ok:true,
+         reason:"step",
+         before:before,
+         after:after,
+         cycles:cycles,
+         writes:writes
+       };
+     }
+
+     /*
+      * Run until stopPC is reached at a clean instruction boundary.
+      * The instruction at stopPC is NOT executed.
+      */
+     function DBG_testCpuRunUntil(stopPC,maxInstructions,options)
+     {
+       options = options || {};
+       stopPC = Number(stopPC) & 0xffff;
+
+       maxInstructions = Number(maxInstructions);
+       if(!isFinite(maxInstructions) || maxInstructions < 1)
+         maxInstructions = 1000000;
+       maxInstructions = Math.floor(maxInstructions);
+
+       var captureWrites = !!options.captureWrites;
+       var allWrites = [];
+       var instructions = 0;
+       var cycles = 0;
+       var reason = "not-started";
+       var loopTrap = null;
+
+       if(!DBG_traceCPU)
+       {
+         return {
+           ok:false,
+           reason:reason,
+           stopPC:stopPC,
+           instructions:0,
+           cycles:0,
+           state:null,
+           writes:[]
+         };
+       }
+
+       while(true)
+       {
+         var state = DBG_testCpuState();
+
+         if(!state)
+         {
+           reason = "cpu-state-unavailable";
+           break;
+         }
+
+         if(state.cycle_delay === 0 && state.pc === stopPC)
+         {
+           reason = "stop-pc";
+           break;
+         }
+
+         if(instructions >= maxInstructions)
+         {
+           reason = "instruction-limit";
+           break;
+         }
+
+         var step = DBG_testCpuStepInstruction({captureWrites:captureWrites});
+
+         if(!step.ok)
+         {
+           reason = step.reason;
+           if(captureWrites && step.writes)
+             Array.prototype.push.apply(allWrites,step.writes);
+           break;
+         }
+
+         instructions++;
+         cycles += step.cycles;
+
+         if(captureWrites && step.writes.length)
+           Array.prototype.push.apply(allWrites,step.writes);
+
+         loopTrap = DBG_getSelfLoopTrap();
+         if(loopTrap)
+         {
+           reason = "self-loop";
+           break;
+         }
+       }
+
+       var finalState = DBG_testCpuState();
+       var ok = reason === "stop-pc";
+
+       /* Headless while running; repaint once at the end. */
+       if(finalState)
+       {
+         DBG_updateRegisterDisplays(finalState);
+         DBG_updateListingPC(finalState.pc & 0xffff);
+       }
+
+       DBG_statusText(
+         "TEST BENCH: " +
+         (ok ? "completed" : reason) +
+         " after " + instructions + " instruction(s)."
+       );
+
+       return {
+         ok:ok,
+         reason:reason,
+         stopPC:stopPC,
+         instructions:instructions,
+         cycles:cycles,
+         state:finalState,
+         loopTrap:loopTrap,
+         writes:captureWrites ? allWrites : []
+       };
+     }
+
+     /* Narrow public surface consumed by res/DBG_testbench.js. */
+     window.DBG_TEST_CPU = {
+       start:DBG_testCpuStart,
+       state:DBG_testCpuState,
+       step:DBG_testCpuStepInstruction,
+       runUntil:DBG_testCpuRunUntil
+     };
+
      function DBG_traceInstructionTextAt(pc) {
        var d = DBG_disassembleInstruction(pc);
        var row = d && d.row ? d.row : null;
@@ -6370,7 +6598,6 @@ Label1 TXA
                   <span class="DBG_testbenchHeaderButtons">
                     <button id="DBG_testExampleButton" class="appbut skinny" type="button" title="Load example JavaScript"><i class="fa fa-lightbulb"></i> example</button>
                     <button id="DBG_testRunButton" class="appbut skinny" type="button" title="Run script (Ctrl/Cmd+Enter)"><i class="fa fa-play"></i> run</button>
-                    <button id="DBG_testClearConsoleButton" class="appbut skinny" type="button" title="Clear console"><i class="fa fa-trash-alt"></i> console</button>
                   </span>
                 </div>
 
