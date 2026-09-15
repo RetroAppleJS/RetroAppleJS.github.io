@@ -254,7 +254,57 @@
         var device = card && card._serialGPTDevice;
         if(!device || typeof(device.transmitBytes)!=="function")
             throw new Error("Kermit serial peer is unavailable.");
-        device.transmitBytes(packet,{source:"spgpt-kermit",mime:"application/octet-stream"});
+
+        var before =
+            card && typeof(card.serialLineReceiveInfo)==="function"
+                ? card.serialLineReceiveInfo()
+                : null;
+
+        var hex = Array.from(packet || []).map(function(value)
+        {
+            return (value & 0xFF).toString(16).toUpperCase().padStart(2,"0");
+        }).join(" ");
+
+        var delivered = device.transmitBytes(
+            packet,
+            {
+                 source:"spgpt-kermit"
+                ,mime:"application/octet-stream"
+            }
+        );
+
+        var after =
+            card && typeof(card.serialLineReceiveInfo)==="function"
+                ? card.serialLineReceiveInfo()
+                : null;
+
+        var line =
+            "KERMIT WIRE bytes=["+hex+"] delivered="+String(delivered);
+
+        if(before)
+        {
+            line +=
+                " before(q="+before.queued
+                +" full="+(before.rxFull?1:0)
+                +" busy="+(before.rxBusy?1:0)
+                +" data=$"+((before.rxData||0)&0xFF).toString(16).toUpperCase().padStart(2,"0")
+                +" shift=$"+((before.rxShift||0)&0xFF).toString(16).toUpperCase().padStart(2,"0")
+                +")";
+        }
+
+        if(after)
+        {
+            line +=
+                " after(q="+after.queued
+                +" full="+(after.rxFull?1:0)
+                +" busy="+(after.rxBusy?1:0)
+                +" data=$"+((after.rxData||0)&0xFF).toString(16).toUpperCase().padStart(2,"0")
+                +" shift=$"+((after.rxShift||0)&0xFF).toString(16).toUpperCase().padStart(2,"0")
+                +")";
+        }
+
+        serialGPTStatus(card,line);
+        return delivered;
     }
 
     function serialGPTKermitTimeoutForType(type)
