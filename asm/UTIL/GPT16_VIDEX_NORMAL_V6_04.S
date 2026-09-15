@@ -428,7 +428,6 @@ DOS_TEXT_TYPE   EQU     $00
 MAX_FILENAME    EQU     $1E             ; 30
 LOAD_LIMIT_HI   EQU     $0D             ; $0DAC = 3500 UTF-16 units
 LOAD_LIMIT_LO   EQU     $AC
-AUTO_LOAD_MAX   EQU     $04
 
 FILE_TARGET_AUX EQU     $00
 FILE_TARGET_SAVE EQU    $01
@@ -728,9 +727,6 @@ SUBMIT_NONEMPTY
         STA     INPUT_COUNT_HI
 
         JSR     NEWLINE
-
-        LDA     #AUTO_LOAD_MAX
-        STA     AUTO_ACTION_BUDGET
 
         JSR     RECEIVE_GPT16
 
@@ -3143,8 +3139,6 @@ AMP_INLINE_GPT
         LDA     #$00
         STA     AMP_PENDING_CR
 
-        LDA     #AUTO_LOAD_MAX
-        STA     AUTO_ACTION_BUDGET
         JSR     RECEIVE_GPT16
 
         LDA     #$00
