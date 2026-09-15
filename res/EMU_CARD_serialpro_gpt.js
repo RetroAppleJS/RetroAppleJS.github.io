@@ -122,7 +122,7 @@
                     "Unicode characters are allowed."
                 );
             }
-        if(state && state.g16 && state.g16.ready)
+        if(state && state.g16Profile && state.g16Profile.ready)
             instructions.push("Remote file access is available through the provided file tools.");
         return instructions.join(" ");
     }
@@ -1051,16 +1051,28 @@
                 var d8 = bytes[i] & 0xFF;
 
                 /*
-                 * Raw Kermit control/data packets have priority at UTF-16LE
-                 * code-unit boundaries.  Never reinterpret a 0x01 that occurs
-                 * as the high byte of an already-started UTF-16 code unit.
+                 * G16 and Kermit both use SOH ($01), so parser ownership must
+                 * be stateful rather than "first parser wins".
+                 *
+                 * 1. An already-started G16 frame always keeps ownership.
+                 * 2. Kermit owns bytes only during an active KFS transaction
+                 *    (or while a Kermit packet is already being collected).
+                 * 3. Otherwise G16 gets first refusal. This is essential before
+                 *    READY and also permits idempotent HELLO retries after a
+                 *    lost ACK/READY.
+                 * 4. Everything else is ordinary UTF-16LE text.
                  */
-                if(lowByte===null && serialGPTKermitConsumeByte(host,d8))
-                    continue;
-                if(serialGPTKermitState(state).rx.length)
+                if(g16Frame!==null)
                 {
-                    serialGPTKermitConsumeByte(host,d8);
+                    g16ConsumeByte(state,d8);
                     continue;
+                }
+
+                var kermit = serialGPTKermitState(state);
+                if(kermit.rx.length || kermit.busy || kermit.waiter)
+                {
+                    if(serialGPTKermitConsumeByte(host,d8))
+                        continue;
                 }
 
                 if(g16ConsumeByte(state,d8))
@@ -1742,7 +1754,7 @@
                  model:SERIAL_GPT_MODEL
                 ,instructions:serialGPTInstructions(state)
                 ,input:serialGPTBuildInput(state,message)
-                ,tools:(state.g16 && state.g16.ready)
+                ,tools:(state.g16Profile && state.g16Profile.ready)
                     ? SERIAL_GPT_FILE_TOOLS
                     : undefined
                 ,max_output_tokens:outputTokens
