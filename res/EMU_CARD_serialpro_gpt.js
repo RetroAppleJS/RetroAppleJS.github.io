@@ -31,6 +31,28 @@
     const SERIAL_GPT_MIME_ASCII = "text/plain; charset=us-ascii";
     const SERIAL_GPT_MIME_UTF16LE = "text/plain; charset=utf-16le";
 
+    // G16/1 is an application control plane carried below GPT16 UTF-16LE text.
+    // Its frames are always raw 7-bit ASCII between SOH and ETX.
+    const SERIAL_G16_SOH = 0x01;
+    const SERIAL_G16_ETX = 0x03;
+    const SERIAL_G16_FRAME_MAX = 192;
+    const SERIAL_G16_DUP_MS = 60000;
+    const SERIAL_G16_DP = "G16D1";
+    const SERIAL_G16_BASE = "CP437";
+    const SERIAL_G16_FALL = "CELL1";
+    const SERIAL_G16_GRID_COLS = 80;
+    const SERIAL_G16_GRID_ROWS = 24;
+    const SERIAL_G16_ROM_CAPS = Object.freeze({
+         VN:{vg1:0x7F}
+        ,VDE:{vg1:0x7F}
+        ,VFR:{vg1:0x3F}
+        ,VES:{vg1:0x3F}
+    });
+    const SERIAL_G16_VG1_CODEPOINTS = Object.freeze([
+         0x1FB02,0x1FB0B,0x1FB0E,0x1FB2D
+        ,0x1FB30,0x1FB39,0x1FB95
+    ]);
+
     const SERIAL_GPT_INSTRUCTIONS = [
         "You are the remote conversational peer on an Apple II serial link.",
         "Answer the newest APPLE II message as plain text.",
@@ -56,13 +78,35 @@
         else
         {
             instructions.push(
-                "The active GPT16 serial session transports Unicode text as UTF-16LE."
+                "The active GPT16 serial session transports text as UTF-16LE."
             );
-            instructions.push(
-                "Unicode characters are allowed."
-            );
+
         }
 
+            var display = state && state.g16Profile;
+            if(display && display.ready)
+            {
+                instructions.push(
+                    "The negotiated terminal display profile is "
+                    +display.dp+": semantic base "+display.base
+                    +", Videx ROM "+display.rom
+                    +", VG1 capability bitmap "+serialG16Hex(display.vg1,2)
+                    +" (enabled extension code points "
+                    +serialG16VG1List(display.vg1)+")"
+                    +", grid "+display.cols+"x"+display.rows
+                    +", fallback "+display.fall
+                    +". Restrict displayed reply characters to this negotiated repertoire "
+                    +"and keep terminal layouts within the negotiated grid."
+                );
+            }
+            else
+            {
+                // Legacy GPT16 clients that do not negotiate G16D1 retain the
+                // pre-G16 behavior.
+                instructions.push(
+                    "Unicode characters are allowed."
+                );
+            }
         return instructions.join(" ");
     }
 
@@ -168,6 +212,281 @@
         };
     }
 
+
+    function serialG16Hex(value,width)
+    {
+        return (Number(value)>>>0)
+            .toString(16)
+            .toUpperCase()
+            .padStart(width,"0")
+            .slice(-width);
+    }
+
+    function serialG16Dec2(value)
+    {
+        return String(Number(value)||0).padStart(2,"0").slice(-2);
+    }
+
+    function serialG16VG1List(mask)
+    {
+        var values = [];
+        mask = Number(mask) & 0x7F;
+
+        for(var bit=0;bit<SERIAL_G16_VG1_CODEPOINTS.length;bit++)
+        {
+            if(mask & (1<<bit))
+            {
+                values.push(
+                    "U+"+SERIAL_G16_VG1_CODEPOINTS[bit]
+                        .toString(16).toUpperCase().padStart(5,"0")
+                );
+            }
+        }
+
+        return values.length ? values.join(",") : "none";
+    }
+
+    // CRC-16/CCITT-FALSE: poly 1021, init FFFF, refin/refout false, xorout 0000.
+    function serialG16CRC16ASCII(text)
+    {
+        var crc = 0xFFFF;
+        text = String(text===undefined || text===null ? "" : text);
+
+        for(var i=0;i<text.length;i++)
+        {
+            var b = text.charCodeAt(i);
+            if(b>0x7F) return null;
+
+            crc ^= (b & 0xFF) << 8;
+            for(var bit=0;bit<8;bit++)
+            {
+                crc = (crc & 0x8000)
+                    ? (((crc << 1) ^ 0x1021) & 0xFFFF)
+                    : ((crc << 1) & 0xFFFF);
+            }
+        }
+
+        return crc & 0xFFFF;
+    }
+
+    function serialG16EncodeFrame(body)
+    {
+        body = String(body===undefined || body===null ? "" : body);
+        var crc = serialG16CRC16ASCII(body);
+        if(crc===null) return null;
+
+        var text = body+"*"+serialG16Hex(crc,4);
+        var bytes = new Uint8Array(text.length+2);
+        bytes[0] = SERIAL_G16_SOH;
+
+        for(var i=0;i<text.length;i++)
+            bytes[i+1] = text.charCodeAt(i) & 0x7F;
+
+        bytes[bytes.length-1] = SERIAL_G16_ETX;
+        return bytes;
+    }
+
+    function serialG16ASCIIFromBytes(bytes)
+    {
+        var text = "";
+        for(var i=0;i<bytes.length;i++)
+        {
+            var b = Number(bytes[i]) & 0xFF;
+            if(b>0x7F) return null;
+            text += String.fromCharCode(b);
+        }
+        return text;
+    }
+
+    function serialG16DecodeFrame(bytes)
+    {
+        if(!bytes || bytes.length<6)
+            return {ok:false,code:1001,name:"BAD_FRAME",body:""};
+
+        var text = serialG16ASCIIFromBytes(bytes);
+        if(text===null)
+            return {ok:false,code:1001,name:"BAD_FRAME",body:""};
+
+        // ETX is not in bytes; the last five collected characters must be *HHHH.
+        var star = text.length-5;
+        if(star<1 || text.charAt(star)!=="*")
+            return {ok:false,code:1001,name:"BAD_FRAME",body:text};
+
+        var body = text.slice(0,star);
+        var crcText = text.slice(star+1);
+        if(!/^[0-9A-Fa-f]{4}$/.test(crcText))
+            return {ok:false,code:1001,name:"BAD_FRAME",body:body};
+
+        var expected = parseInt(crcText,16) & 0xFFFF;
+        var actual = serialG16CRC16ASCII(body);
+        if(actual===null || actual!==expected)
+        {
+            return {
+                 ok:false
+                ,code:1002
+                ,name:"BAD_CRC"
+                ,body:body
+                ,expected:expected
+                ,actual:actual
+            };
+        }
+
+        return {ok:true,body:body,crc:actual};
+    }
+
+    function serialG16SequenceFromBody(body)
+    {
+        var match = String(body || "")
+            .match(/^G16\|[^|]+\|([0-9A-Fa-f]{4})\|/);
+        return match ? match[1].toUpperCase() : "0001";
+    }
+
+    function serialG16ParseFields(payload)
+    {
+        var fields = Object.create(null);
+        var list = String(payload || "").split(";");
+
+        for(var i=0;i<list.length;i++)
+        {
+            var item = list[i];
+            var eq = item.indexOf("=");
+            if(eq<=0 || eq===item.length-1) return null;
+
+            var key = item.slice(0,eq).toUpperCase();
+            if(fields[key]!==undefined) return null;
+            fields[key] = item.slice(eq+1);
+        }
+
+        return fields;
+    }
+
+    /*
+     * Validate the transport-neutral G16D1 HELLO and calculate only downward
+     * capability negotiation. ROM/BASE/FALL remain exact; VG1 is intersected
+     * with the canonical ROM mask and GRID is reduced to gateway maxima.
+     */
+    function serialG16NegotiateHello(body,gatewayMode)
+    {
+        var parts = String(body || "").split("|");
+        if(parts.length!==5 || parts[0]!=="G16")
+        {
+            return {
+                 ok:false,kind:"NAK",code:1001,name:"BAD_FRAME"
+                ,seq:serialG16SequenceFromBody(body)
+            };
+        }
+
+        var version = parts[1];
+        var seq = parts[2].toUpperCase();
+        var type = parts[3];
+        var fields = serialG16ParseFields(parts[4]);
+
+        if(!/^[0-9A-F]{4}$/.test(seq) || !fields)
+        {
+            return {
+                 ok:false,kind:"NAK",code:1001,name:"BAD_FRAME"
+                ,seq:/^[0-9A-F]{4}$/.test(seq) ? seq : "0001"
+            };
+        }
+
+        if(version!=="1")
+            return {ok:false,kind:"FAIL",code:1101,name:"VERSION_UNSUPPORTED",seq:seq};
+        if(type!=="HELLO")
+            return {ok:false,kind:"FAIL",code:1102,name:"COMMAND_UNSUPPORTED",seq:seq};
+
+        var required = ["MODE","DP","ROM","BASE","VG1","GRID","FALL"];
+        for(var r=0;r<required.length;r++)
+        {
+            if(fields[required[r]]===undefined)
+                return {ok:false,kind:"NAK",code:1001,name:"BAD_FRAME",seq:seq};
+        }
+
+        var ackBody = "G16|1|"+seq+"|ACK|FOR=HELLO";
+
+        // From this point the HELLO is syntactically accepted. Semantic
+        // failures are ACKed first, then completed with FAIL.
+        function semanticFail(code,name)
+        {
+            return {
+                 ok:false,kind:"FAIL",code:code,name:name,seq:seq
+                ,ackFirst:true,ackBody:ackBody
+            };
+        }
+
+        if(fields.MODE!=="UTF16LE" || gatewayMode!==SERIAL_GPT_MODE_UTF16LE)
+            return semanticFail(1201,"MODE_UNSUPPORTED");
+        if(fields.DP!==SERIAL_G16_DP)
+            return semanticFail(2151,"DP_UNSUPPORTED");
+
+        var rom = fields.ROM.toUpperCase();
+        var romCaps = SERIAL_G16_ROM_CAPS[rom];
+        if(!romCaps)
+            return semanticFail(2101,"ROM_UNKNOWN");
+        if(fields.BASE!==SERIAL_G16_BASE)
+            return semanticFail(2111,"BASE_UNSUPPORTED");
+        if(!/^[0-9A-Fa-f]{2}$/.test(fields.VG1))
+            return semanticFail(2121,"VG1_INVALID");
+
+        var requestedVG1 = parseInt(fields.VG1,16) & 0xFF;
+        if(requestedVG1 & 0x80)
+            return semanticFail(2121,"VG1_INVALID");
+
+        var grid = fields.GRID.match(/^([0-9]{2})x([0-9]{2})$/);
+        if(!grid)
+            return semanticFail(2131,"GRID_INVALID");
+
+        var requestedCols = parseInt(grid[1],10);
+        var requestedRows = parseInt(grid[2],10);
+        if(!requestedCols || !requestedRows)
+            return semanticFail(2131,"GRID_INVALID");
+        if(fields.FALL!==SERIAL_G16_FALL)
+            return semanticFail(2141,"FALL_UNSUPPORTED");
+
+        var effectiveVG1 = requestedVG1 & romCaps.vg1;
+        var effectiveCols = Math.min(requestedCols,SERIAL_G16_GRID_COLS);
+        var effectiveRows = Math.min(requestedRows,SERIAL_G16_GRID_ROWS);
+        if(!effectiveCols || !effectiveRows)
+            return semanticFail(2132,"GRID_UNSUPPORTED");
+
+        var dg = 0;
+        if(effectiveVG1!==requestedVG1) dg |= 0x04;
+        if(effectiveCols!==requestedCols || effectiveRows!==requestedRows)
+            dg |= 0x08;
+
+        var profile = {
+             ready:true
+            ,version:"1"
+            ,seq:seq
+            ,mode:"UTF16LE"
+            ,dp:SERIAL_G16_DP
+            ,rom:rom
+            ,base:SERIAL_G16_BASE
+            ,vg1:effectiveVG1
+            ,cols:effectiveCols
+            ,rows:effectiveRows
+            ,fall:SERIAL_G16_FALL
+            ,dg:dg
+        };
+
+        var readyBody =
+            "G16|1|"+seq+"|READY|MODE=UTF16LE"
+            +";DP="+SERIAL_G16_DP
+            +";ROM="+rom
+            +";BASE="+SERIAL_G16_BASE
+            +";VG1="+serialG16Hex(effectiveVG1,2)
+            +";GRID="+serialG16Dec2(effectiveCols)+"x"+serialG16Dec2(effectiveRows)
+            +";FALL="+SERIAL_G16_FALL
+            +";DG="+serialG16Hex(dg,2);
+
+        return {
+             ok:true
+            ,seq:seq
+            ,profile:profile
+            ,ackBody:ackBody
+            ,readyBody:readyBody
+        };
+    }
+
     /*
      * SPGPT is a remote serial peer device. SPSERIAL remains a representation-
      * agnostic byte stream; SPGPT advertises the two textual representations it
@@ -180,6 +499,9 @@
         var device = this;
         var host = null;
         var lowByte = null;
+        var g16Frame = null;
+        var g16FrameStarted = 0;
+        var g16Discard = false;
         var serialUnsubscribe = null;
         var peerUnsubscribe = null;
         var consoleUnsubscribe = null;
@@ -233,6 +555,216 @@
             return null;
         }
 
+        function g16ResetFrame()
+        {
+            g16Frame = null;
+            g16FrameStarted = 0;
+            g16Discard = false;
+        }
+
+        function g16TransmitBody(body,kind)
+        {
+            var bytes = serialG16EncodeFrame(body);
+            if(!bytes) return false;
+
+            serialGPTStatus(
+                host,
+                "G16 TX "+String(kind || "FRAME")+": "+body
+            );
+
+            device.transmitBytes(
+                bytes,
+                {
+                     "source":"spgpt-g16"
+                    ,"mime":"application/octet-stream"
+                    ,"control":"G16/1"
+                }
+            );
+            return true;
+        }
+
+        function g16ErrorBody(kind,seq,code,retry,name)
+        {
+            seq = /^[0-9A-F]{4}$/.test(String(seq || "")) ? seq : "0001";
+            return "G16|1|"+seq+"|"+kind
+                +"|CODE="+String(code)
+                +";RETRY="+(retry ? "Y" : "N")
+                +";NAME="+String(name || "ERROR");
+        }
+
+        function g16SendError(kind,seq,code,retry,name)
+        {
+            return g16TransmitBody(
+                g16ErrorBody(kind,seq,code,retry,name),
+                kind
+            );
+        }
+
+        function g16RememberTransaction(state,seq,requestBody,ackBody,finalBody)
+        {
+            state.g16Transaction = {
+                 seq:seq
+                ,requestBody:requestBody
+                ,ackBody:ackBody
+                ,finalBody:finalBody
+                ,time:Date.now()
+            };
+        }
+
+        function g16HandleFrame(state,rawFrame)
+        {
+            var decoded = serialG16DecodeFrame(rawFrame);
+            var seq = serialG16SequenceFromBody(decoded.body);
+
+            if(!decoded.ok)
+            {
+                serialGPTStatus(
+                    host,
+                    "G16 RX rejected: "+decoded.name
+                );
+                g16SendError("NAK",seq,decoded.code,true,decoded.name);
+                return;
+            }
+
+            serialGPTStatus(host,"G16 RX: "+decoded.body);
+
+            var now = Date.now();
+            var prior = state.g16Transaction;
+            if(
+                prior &&
+                prior.seq===seq &&
+                now-prior.time<=SERIAL_G16_DUP_MS
+            )
+            {
+                if(prior.requestBody!==decoded.body)
+                {
+                    g16SendError("NAK",seq,1005,false,"SEQ_CONFLICT");
+                    return;
+                }
+
+                // Idempotent replay: a lost ACK or READY must not create a new
+                // logical negotiation transaction.
+                prior.time = now;
+                g16TransmitBody(prior.ackBody,"ACK replay");
+                g16TransmitBody(prior.finalBody,"result replay");
+                return;
+            }
+
+            var result = serialG16NegotiateHello(decoded.body,state.mode);
+
+            if(!result.ok)
+            {
+                if(result.ackFirst && result.ackBody)
+                    g16TransmitBody(result.ackBody,"ACK");
+
+                var finalBody = g16ErrorBody(
+                    result.kind,
+                    result.seq,
+                    result.code,
+                    false,
+                    result.name
+                );
+
+                if(result.ackFirst && result.ackBody)
+                {
+                    g16RememberTransaction(
+                        state,result.seq,decoded.body,result.ackBody,finalBody
+                    );
+                }
+
+                g16TransmitBody(finalBody,result.kind);
+                return;
+            }
+
+            // A valid HELLO is acknowledged before its final READY result.
+            g16TransmitBody(result.ackBody,"ACK");
+            state.g16Profile = result.profile;
+            g16RememberTransaction(
+                state,result.seq,decoded.body,result.ackBody,result.readyBody
+            );
+            g16TransmitBody(result.readyBody,"READY");
+
+            serialGPTStatus(
+                host,
+                "G16 ready: DP="+result.profile.dp
+                +" ROM="+result.profile.rom
+                +" BASE="+result.profile.base
+                +" VG1="+serialG16Hex(result.profile.vg1,2)
+                +" GRID="+result.profile.cols+"x"+result.profile.rows
+                +" FALL="+result.profile.fall
+                +" DG="+serialG16Hex(result.profile.dg,2)
+            );
+        }
+
+        /*
+         * Consume the raw G16 control plane before UTF-16LE pairing. Return true
+         * when d8 belongs to G16 and must not enter the text decoder.
+         */
+        function g16ConsumeByte(state,d8)
+        {
+            if(state.mode!==SERIAL_GPT_MODE_UTF16LE)
+                return false;
+
+            var now = Date.now();
+
+            if(g16Frame!==null && now-g16FrameStarted>1000)
+            {
+                serialGPTStatus(host,"G16 RX partial-frame timeout; resynchronizing.");
+                g16ResetFrame();
+
+                // Drop this byte as part of the damaged control transaction.
+                // A retransmitted SOH below immediately starts a fresh frame.
+                if(d8!==SERIAL_G16_SOH) return true;
+            }
+
+            if(g16Frame===null)
+            {
+                // Only claim SOH at a UTF-16LE code-unit boundary. This keeps a
+                // high byte 01 in ordinary U+01xx text from looking like G16.
+                if(lowByte!==null || d8!==SERIAL_G16_SOH)
+                    return false;
+
+                lowByte = null;
+                g16Frame = [];
+                g16FrameStarted = now;
+                g16Discard = false;
+                return true;
+            }
+
+            if(d8===SERIAL_G16_SOH)
+            {
+                // SOH inside an incomplete frame is an explicit resync point.
+                g16Frame = [];
+                g16FrameStarted = now;
+                g16Discard = false;
+                return true;
+            }
+
+            if(d8===SERIAL_G16_ETX)
+            {
+                var frame = g16Frame.slice();
+                var discard = g16Discard;
+                g16ResetFrame();
+                if(!discard) g16HandleFrame(state,frame);
+                return true;
+            }
+
+            if(g16Discard) return true;
+
+            if(g16Frame.length>=SERIAL_G16_FRAME_MAX)
+            {
+                var partial = serialG16ASCIIFromBytes(g16Frame) || "";
+                var seq = serialG16SequenceFromBody(partial);
+                serialGPTStatus(host,"G16 RX frame too long; discarding to ETX.");
+                g16SendError("NAK",seq,1003,true,"FRAME_TOO_LONG");
+                g16Discard = true;
+                return true;
+            }
+
+            g16Frame.push(d8 & 0xFF);
+            return true;
+        }
+
         function consume(bytes)
         {
             if(!bytes || !host) return 0;
@@ -264,6 +796,9 @@
             for(var i=0;i<bytes.length;i++)
             {
                 var d8 = bytes[i] & 0xFF;
+
+                if(g16ConsumeByte(state,d8))
+                    continue;
 
                 if(lowByte===null)
                 {
@@ -299,6 +834,7 @@
 
             host = card || null;
             lowByte = null;
+            g16ResetFrame();
 
             if(!host) return false;
 
@@ -374,6 +910,7 @@
         this.setMode = function(mode)
         {
             lowByte = null;
+            g16ResetFrame();
             return mode===SERIAL_GPT_MODE_ASCII
                 ? SERIAL_GPT_MODE_ASCII
                 : SERIAL_GPT_MODE_UTF16LE;
@@ -583,6 +1120,7 @@
         {
             // A reset may interrupt a code unit between its low/high byte.
             lowByte = null;
+            g16ResetFrame();
             return true;
         };
     }
@@ -610,6 +1148,8 @@
                 ,echoGuard:[]
                 ,echoGuardIndex:0
                 ,echoGuardExpires:0
+                ,g16Profile:null
+                ,g16Transaction:null
             }
         });
 
@@ -1781,6 +2321,18 @@
                      SERIAL_GPT_MIME_ASCII
                     ,SERIAL_GPT_MIME_UTF16LE
                  ]
+                ,g16Profile:state.g16Profile
+                    ? {
+                         ready:!!state.g16Profile.ready
+                        ,dp:state.g16Profile.dp
+                        ,rom:state.g16Profile.rom
+                        ,base:state.g16Profile.base
+                        ,vg1:serialG16Hex(state.g16Profile.vg1,2)
+                        ,grid:state.g16Profile.cols+"x"+state.g16Profile.rows
+                        ,fall:state.g16Profile.fall
+                        ,dg:serialG16Hex(state.g16Profile.dg,2)
+                     }
+                    : null
             };
         };
 
