@@ -179,6 +179,7 @@
             state.kermit = {
                  rx:[]
                 ,waiter:null
+                ,queue:[]
                 ,seq:0
                 ,busy:false
                 ,lastPacket:null
@@ -220,6 +221,22 @@
             k.waiter = null;
             waiter(packet);
         }
+        else
+        {
+            /*
+             * The emulator serial path can be synchronous: the Apple II may
+             * return Y immediately while serialGPTKermitTx() is still on the
+             * JavaScript stack.  Never drop such an early packet merely
+             * because the Promise waiter has not been installed yet.
+             *
+             * This queue is also required for read_file: after ACKing the G/R
+             * request the Apple II can send S immediately, before the gateway
+             * has advanced from the G ACK wait to its receive loop.
+             */
+            k.queue.push(packet);
+            if(k.queue.length>16)
+                k.queue.shift();
+        }
         return true;
     }
 
@@ -234,6 +251,12 @@
     function serialGPTKermitWait(state)
     {
         var k = serialGPTKermitState(state);
+        /*
+         * Drain packets that arrived synchronously before the waiter could be
+         * armed.  Promise.resolve keeps the caller's async behavior unchanged.
+         */
+        if(k.queue.length)
+            return Promise.resolve(k.queue.shift());
         return new Promise(function(resolve,reject)
         {
             var done = false;
