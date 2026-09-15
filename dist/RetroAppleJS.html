@@ -40014,9 +40014,18 @@ function SerialProCard()
      */
     const KRM_MARK = 0x01;
     const KRM_EOL = 0x0D;
-    const KRM_MAX_DATA = 80;
-    const KRM_TIMEOUT_MS = 2500;
+    const KRM_MAX_DATA = 80;       // inbound parser limit / KFS1 maximum
+    const KRM_TX_DATA = 32;        // conservative outbound D payload for 1 MHz + DOS 3.3
     const KRM_RETRIES = 5;
+    const KRM_TIMEOUT_DEFAULT_MS = 10000;
+    const KRM_TIMEOUT_MS_BY_TYPE = Object.freeze({
+         S:5000
+        ,F:20000
+        ,D:15000
+        ,Z:20000
+        ,B:5000
+        ,G:15000
+    });
     const SERIAL_GPT_MIME_ASCII = "text/plain; charset=us-ascii";
     const SERIAL_GPT_MIME_UTF16LE = "text/plain; charset=utf-16le";
 
@@ -40222,9 +40231,19 @@ function SerialProCard()
         device.transmitBytes(packet,{source:"spgpt-kermit",mime:"application/octet-stream"});
     }
 
-    function serialGPTKermitWait(state)
+    function serialGPTKermitTimeoutForType(type)
+    {
+        type = String(type || "");
+        return KRM_TIMEOUT_MS_BY_TYPE[type] || KRM_TIMEOUT_DEFAULT_MS;
+    }
+
+    function serialGPTKermitWait(state,timeoutMs)
     {
         var k = serialGPTKermitState(state);
+        timeoutMs = Number(timeoutMs);
+        if(!Number.isFinite(timeoutMs) || timeoutMs<=0)
+            timeoutMs = KRM_TIMEOUT_DEFAULT_MS;
+
         /*
          * Drain packets that arrived synchronously before the waiter could be
          * armed.  Promise.resolve keeps the caller's async behavior unchanged.
@@ -40239,8 +40258,8 @@ function SerialProCard()
                 if(done) return;
                 done = true;
                 if(k.waiter) k.waiter = null;
-                reject(new Error("Kermit timeout"));
-            },KRM_TIMEOUT_MS);
+                reject(new Error("Kermit timeout after "+timeoutMs+" ms"));
+            },timeoutMs);
             k.waiter = function(packet)
             {
                 if(done) return;
@@ -40254,21 +40273,59 @@ function SerialProCard()
     async function serialGPTKermitSendAndAck(card,seq,type,data)
     {
         var state = serialGPTState(card);
+        data = data || new Uint8Array(0);
         var packet = kermitPacket(seq,type,data);
+        var timeoutMs = serialGPTKermitTimeoutForType(type);
         for(var attempt=0;attempt<KRM_RETRIES;attempt++)
         {
+            serialGPTStatus(card,
+                "KERMIT TX "+type
+                +" seq="+seq
+                +" bytes="+data.length
+                +" attempt="+(attempt+1)+"/"+KRM_RETRIES
+                +" timeout="+timeoutMs+"ms");            
             serialGPTKermitTx(card,packet);
             try
             {
-                var reply = await serialGPTKermitWait(state);
-                if(reply.seq!==seq) continue;
-                if(reply.type==="Y") return true;
+                var reply = await serialGPTKermitWait(state,timeoutMs);
+
+                if(reply.seq!==seq)
+                {
+                    serialGPTStatus(card,
+                        "KERMIT RX unexpected "+reply.type
+                        +" seq="+reply.seq
+                        +" while waiting seq="+seq);
+                    continue;
+                }
+
+                if(reply.type==="Y")
+                {
+                    serialGPTStatus(card,
+                        "KERMIT ACK "+type+" seq="+seq
+                        +" attempt="+(attempt+1));
+                    return true;
+                }
                 if(reply.type==="E")
                     throw new Error("Apple II Kermit error");
-                // NAK: resend identical packet/sequence.
+                if(reply.type==="N")
+                {
+                    serialGPTStatus(card,
+                        "KERMIT NAK "+type+" seq="+seq
+                        +" attempt="+(attempt+1));
+                    continue;
+                }
+
+                serialGPTStatus(card,
+                    "KERMIT RX unexpected type="+reply.type
+                    +" seq="+reply.seq
+                    +" while waiting for ACK");
             }
             catch(error)
             {
+                serialGPTStatus(card,
+                    "KERMIT retry "+type
+                    +" seq="+seq
+                    +" after "+String(error && error.message || error));
                 if(attempt+1>=KRM_RETRIES) throw error;
             }
         }
@@ -40305,13 +40362,20 @@ function SerialProCard()
         k.busy = true;
         try
         {
+            // Discard stale packets from a previously aborted transaction.
+            // The live early-ACK queue remains active once the first TX occurs.
+            k.rx.length = 0;
+            k.queue.length = 0;
+            k.waiter = null;
+            k.lastPacket = null;
+
             var seq = 0;
             await serialGPTKermitSendAndAck(card,seq++,"S",new Uint8Array(0));
             await serialGPTKermitSendAndAck(card,seq++,"F",kermitFilename(name));
             var bytes = kermitASCIIBytes(content);
-            for(var p=0;p<bytes.length;p+=KRM_MAX_DATA)
+            for(var p=0;p<bytes.length;p+=KRM_TX_DATA)
                 await serialGPTKermitSendAndAck(card,seq++,"D",
-                    bytes.slice(p,Math.min(bytes.length,p+KRM_MAX_DATA)));
+                    bytes.slice(p,Math.min(bytes.length,p+KRM_TX_DATA)));
             await serialGPTKermitSendAndAck(card,seq++,"Z",new Uint8Array(0));
             await serialGPTKermitSendAndAck(card,seq++,"B",new Uint8Array(0));
             return "Wrote "+String(name).toUpperCase()+" via Kermit.";
