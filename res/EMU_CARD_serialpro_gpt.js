@@ -28,6 +28,21 @@
     const SERIAL_GPT_MAX_OUTPUT_RETRIES = 1;
     const SERIAL_GPT_MODE_ASCII = "ascii";
     const SERIAL_GPT_MODE_UTF16LE = "utf16le";
+    const SERIAL_GPT_FILE_SERVICE = "kermit";
+
+    /*
+     * Kermit service contract:
+     * - G16 remains the session/display negotiation.
+     * - GPT sees normal function tools, never [[A2:...]] tokens or Kermit bytes.
+     * - Gateway translates tool calls to standard short Kermit S/F/D/Z/B packets.
+     * - Apple II ACK/NAK packets are consumed before UTF-16LE decoding.
+     * - Type-1 Kermit checksum; 80 data bytes/packet; text mode only in v1.
+     */
+    const KRM_MARK = 0x01;
+    const KRM_EOL = 0x0D;
+    const KRM_MAX_DATA = 80;
+    const KRM_TIMEOUT_MS = 2500;
+    const KRM_RETRIES = 5;
     const SERIAL_GPT_MIME_ASCII = "text/plain; charset=us-ascii";
     const SERIAL_GPT_MIME_UTF16LE = "text/plain; charset=utf-16le";
 
@@ -107,8 +122,246 @@
                     "Unicode characters are allowed."
                 );
             }
+        if(state && state.g16 && state.g16.ready)
+            instructions.push("Remote file access is available through the provided file tools.");
         return instructions.join(" ");
     }
+
+
+    function kermitToChar(n) { return (Number(n) + 0x20) & 0x7F; }
+    function kermitUnChar(c) { return (Number(c) - 0x20) & 0x3F; }
+
+    function kermitCheck1(bytes)
+    {
+        var sum = 0;
+        for(var i=0;i<bytes.length;i++) sum = (sum + (bytes[i] & 0xFF)) & 0xFF;
+        sum = (sum + ((sum & 0xC0) >> 6)) & 0x3F;
+        return kermitToChar(sum);
+    }
+
+    function kermitPacket(seq,type,data)
+    {
+        data = data || new Uint8Array(0);
+        var len = data.length + 3;
+        var body = new Uint8Array(3 + data.length);
+        body[0] = kermitToChar(len);
+        body[1] = kermitToChar(seq & 0x3F);
+        body[2] = String(type).charCodeAt(0) & 0x7F;
+        body.set(data,3);
+        var out = new Uint8Array(body.length + 3);
+        out[0] = KRM_MARK;
+        out.set(body,1);
+        out[out.length-2] = kermitCheck1(body);
+        out[out.length-1] = KRM_EOL;
+        return out;
+    }
+
+    function kermitParsePacket(bytes)
+    {
+        if(!bytes || bytes.length<6 || bytes[0]!==KRM_MARK) return null;
+        var len = kermitUnChar(bytes[1]);
+        if(len<3 || len>KRM_MAX_DATA+3) return null;
+        var total = len + 3; // MARK + LEN-counted fields + EOL
+        if(bytes.length<total || bytes[total-1]!==KRM_EOL) return null;
+        var body = bytes.slice(1,total-2);
+        if(kermitCheck1(body)!==bytes[total-2]) return null;
+        return {
+             length:total
+            ,seq:kermitUnChar(bytes[2])
+            ,type:String.fromCharCode(bytes[3])
+            ,data:bytes.slice(4,total-2)
+        };
+    }
+
+    function serialGPTKermitState(state)
+    {
+        if(!state.kermit)
+            state.kermit = {
+                 rx:[]
+                ,waiter:null
+                ,seq:0
+                ,busy:false
+                ,lastPacket:null
+            };
+        return state.kermit;
+    }
+
+    function serialGPTKermitConsumeByte(card,b)
+    {
+        var state = serialGPTState(card);
+        var k = serialGPTKermitState(state);
+        b &= 0xFF;
+
+        if(!k.rx.length)
+        {
+            if(b!==KRM_MARK) return false;
+            k.rx.push(b);
+            return true;
+        }
+
+        k.rx.push(b);
+        if(k.rx.length>KRM_MAX_DATA+16)
+        {
+            k.rx = [];
+            return true;
+        }
+
+        if(b!==KRM_EOL) return true;
+        var packet = kermitParsePacket(new Uint8Array(k.rx));
+        k.rx = [];
+        if(!packet) return true;
+
+        serialGPTStatus(card,"KERMIT RX "+packet.type+" seq="+packet.seq+
+            " bytes="+packet.data.length);
+        k.lastPacket = packet;
+        if(k.waiter)
+        {
+            var waiter = k.waiter;
+            k.waiter = null;
+            waiter(packet);
+        }
+        return true;
+    }
+
+    function serialGPTKermitTx(card,packet)
+    {
+        var device = card && card._serialGPTDevice;
+        if(!device || typeof(device.transmitBytes)!=="function")
+            throw new Error("Kermit serial peer is unavailable.");
+        device.transmitBytes(packet,{source:"spgpt-kermit",mime:"application/octet-stream"});
+    }
+
+    function serialGPTKermitWait(state)
+    {
+        var k = serialGPTKermitState(state);
+        return new Promise(function(resolve,reject)
+        {
+            var done = false;
+            var timer = setTimeout(function()
+            {
+                if(done) return;
+                done = true;
+                if(k.waiter) k.waiter = null;
+                reject(new Error("Kermit timeout"));
+            },KRM_TIMEOUT_MS);
+            k.waiter = function(packet)
+            {
+                if(done) return;
+                done = true;
+                clearTimeout(timer);
+                resolve(packet);
+            };
+        });
+    }
+
+    async function serialGPTKermitSendAndAck(card,seq,type,data)
+    {
+        var state = serialGPTState(card);
+        var packet = kermitPacket(seq,type,data);
+        for(var attempt=0;attempt<KRM_RETRIES;attempt++)
+        {
+            serialGPTKermitTx(card,packet);
+            try
+            {
+                var reply = await serialGPTKermitWait(state);
+                if(reply.seq!==seq) continue;
+                if(reply.type==="Y") return true;
+                if(reply.type==="E")
+                    throw new Error("Apple II Kermit error");
+                // NAK: resend identical packet/sequence.
+            }
+            catch(error)
+            {
+                if(attempt+1>=KRM_RETRIES) throw error;
+            }
+        }
+        throw new Error("Kermit retry limit reached");
+    }
+
+    function kermitASCIIBytes(text)
+    {
+        text = serialGPTNormalizeText(text);
+        var out = [];
+        for(var i=0;i<text.length;i++)
+        {
+            var c = text.charCodeAt(i);
+            if(c===0x0A) out.push(0x0A);
+            else if(c>=0x20 && c<=0x7E) out.push(c);
+            else out.push(0x3F);
+        }
+        return new Uint8Array(out);
+    }
+
+    function kermitFilename(name)
+    {
+        name = String(name || "").trim().toUpperCase();
+        if(!/^[A-Z0-9][A-Z0-9 ._-]{0,29}$/.test(name))
+            throw new Error("Invalid DOS filename.");
+        return kermitASCIIBytes(name);
+    }
+
+    async function serialGPTKermitWriteFile(card,name,content)
+    {
+        var state = serialGPTState(card);
+        var k = serialGPTKermitState(state);
+        if(k.busy) throw new Error("Kermit file service busy.");
+        k.busy = true;
+        try
+        {
+            var seq = 0;
+            await serialGPTKermitSendAndAck(card,seq++,"S",new Uint8Array(0));
+            await serialGPTKermitSendAndAck(card,seq++,"F",kermitFilename(name));
+            var bytes = kermitASCIIBytes(content);
+            for(var p=0;p<bytes.length;p+=KRM_MAX_DATA)
+                await serialGPTKermitSendAndAck(card,seq++,"D",
+                    bytes.slice(p,Math.min(bytes.length,p+KRM_MAX_DATA)));
+            await serialGPTKermitSendAndAck(card,seq++,"Z",new Uint8Array(0));
+            await serialGPTKermitSendAndAck(card,seq++,"B",new Uint8Array(0));
+            return "Wrote "+String(name).toUpperCase()+" via Kermit.";
+        }
+        finally { k.busy = false; }
+    }
+
+    /*
+     * read_file uses the reciprocal Kermit sender in V6.04.  The gateway sends
+     * a receive request, then accepts S/F/D/Z/B from the Apple II, ACKing each.
+     * The small command packet is a Kermit generic-command G packet with data
+     * "R<filename>"; transport remains Kermit and is invisible to GPT.
+     */
+    async function serialGPTKermitReadFile(card,name)
+    {
+        throw new Error("read_file requires the V6.04 reciprocal Kermit G/R sender path.");
+    }
+
+    const SERIAL_GPT_FILE_TOOLS = [
+        {
+            type:"function",
+            name:"write_file",
+            description:"Write a DOS 3.3 text/CMD file on the connected Apple II using Kermit.",
+            strict:true,
+            parameters:{
+                type:"object",
+                properties:{
+                    name:{type:"string",description:"DOS filename, 1-30 characters."},
+                    content:{type:"string",description:"Complete text file contents."}
+                },
+                required:["name","content"],
+                additionalProperties:false
+            }
+        },
+        {
+            type:"function",
+            name:"read_file",
+            description:"Read a DOS 3.3 text file from the connected Apple II using Kermit.",
+            strict:true,
+            parameters:{
+                type:"object",
+                properties:{name:{type:"string"}},
+                required:["name"],
+                additionalProperties:false
+            }
+        }
+    ];
 
     /*
      * The physical Serial Pro link remains an 8-bit byte stream. SPGPT defines
@@ -797,6 +1050,19 @@
             {
                 var d8 = bytes[i] & 0xFF;
 
+                /*
+                 * Raw Kermit control/data packets have priority at UTF-16LE
+                 * code-unit boundaries.  Never reinterpret a 0x01 that occurs
+                 * as the high byte of an already-started UTF-16 code unit.
+                 */
+                if(lowByte===null && serialGPTKermitConsumeByte(host,d8))
+                    continue;
+                if(serialGPTKermitState(state).rx.length)
+                {
+                    serialGPTKermitConsumeByte(host,d8);
+                    continue;
+                }
+
                 if(g16ConsumeByte(state,d8))
                     continue;
 
@@ -1476,6 +1742,9 @@
                  model:SERIAL_GPT_MODEL
                 ,instructions:serialGPTInstructions(state)
                 ,input:serialGPTBuildInput(state,message)
+                ,tools:(state.g16 && state.g16.ready)
+                    ? SERIAL_GPT_FILE_TOOLS
+                    : undefined
                 ,max_output_tokens:outputTokens
                 ,reasoning:{effort:SERIAL_GPT_REASONING_EFFORT}
                 ,text:{verbosity:SERIAL_GPT_VERBOSITY}
@@ -1518,6 +1787,43 @@
             {
                 serialGPTWarn("OpenAI returned a non-JSON response",response,null,raw);
                 throw new Error("OpenAI returned a non-JSON response.");
+            }
+
+            /*
+             * Resolve model function calls locally.  File contents never have
+             * to be encoded as [[A2:...]] text.  Each tool result is returned
+             * to the Responses API as function_call_output and generation
+             * continues until the model produces ordinary terminal text.
+             */
+            var calls = (data.output || []).filter(function(item)
+            {
+                return item && item.type==="function_call";
+            });
+            if(calls.length)
+            {
+                var toolOutputs = [];
+                for(var ci=0;ci<calls.length;ci++)
+                {
+                    var call = calls[ci];
+                    var args = {};
+                    try { args = JSON.parse(call.arguments || "{}"); }
+                    catch(ignore) {}
+                    var result;
+                    if(call.name==="write_file")
+                        result = await serialGPTKermitWriteFile(card,args.name,args.content);
+                    else if(call.name==="read_file")
+                        result = await serialGPTKermitReadFile(card,args.name);
+                    else
+                        result = "Unsupported file tool.";
+                    toolOutputs.push({
+                         type:"function_call_output"
+                        ,call_id:call.call_id
+                        ,output:String(result)
+                    });
+                }
+
+                payload.input = (payload.input || []).concat(data.output || [],toolOutputs);
+                continue;
             }
 
             var answer = serialGPTExtractText(data);
