@@ -1,0 +1,1281 @@
+--- GPT16_V6_10_SPLIT_LAYOUT.S
++++ GPT16_V6_11_LC_CHAT_COMBINED.S
+@@ -1,5 +1,5 @@
+ ; =============================================================================
+-; GPT16_V6_10_SPLIT_LAYOUT.S
++; GPT16_V6_11_LC_CHAT_COMBINED.S
+ ; =============================================================================
+ ;
+ ; Phase/overlay split prototype derived mechanically from the last known-running
+@@ -164,6 +164,167 @@
+ SUP_COUNT       EQU     $07
+ 
+ ; =============================================================================
++; GPT16_RAM_API_V1_2.INC
++; Card-neutral RAM expansion API.
++;
++; Public API remains fixed at $8D00.
++;
++; Mapping postcondition:
++; Backends that temporarily replace system ROM (notably LC16K) must return
++; with system ROM visible and expansion RAM write-protected.  Classic Apple II
++; Language Card state cannot be fully queried, so V1.2 defines this canonical
++; return state instead of promising preservation of an unknown pre-call map.
++; Hardware backend ABI remains fixed at $8E00.
++;
++; V1.2 internal-state placement:
++;   $8C88-$8C9F  RAM API/backend state
++;   $8CA0-$8CFF  available to compact backend helper code
++;   $8D00-$8D7F  card-neutral API core
++;   $8D80-$8DFF  backend helper code
++;   $8E00-$8E0E  backend fixed JMP table
++;   $8E20-$8FFF  backend implementation
++;
++; GPT16 V6.10 STATE_END is $8C80.  $8C80-$8C87 is left as a guard,
++; and RAM state begins at $8C88, so validated CHAT/DOS state is untouched.
++; =============================================================================
++
++RAM_API_BASE            EQU     $8D00
++RAM_INIT                EQU     $8D00
++RAM_PRESENT             EQU     $8D03
++RAM_SELECT_BANK         EQU     $8D06
++RAM_READ_BLOCK          EQU     $8D09
++RAM_WRITE_BLOCK         EQU     $8D0C
++RAM_LOAD_OVERLAY        EQU     $8D0F
++
++RAM_BACKEND_BASE        EQU     $8E00
++RAM_BACKEND_PROBE       EQU     $8E00
++RAM_BACKEND_SELECT      EQU     $8E03
++RAM_BACKEND_READ        EQU     $8E06
++RAM_BACKEND_WRITE       EQU     $8E09
++RAM_BACKEND_LOAD        EQU     $8E0C
++
++RAM_E_OK                EQU     $00
++RAM_E_NO_DEVICE         EQU     $01
++RAM_E_NOT_INIT          EQU     $02
++RAM_E_BAD_BANK          EQU     $03
++RAM_E_RANGE             EQU     $04
++RAM_E_READ_ONLY         EQU     $05
++RAM_E_VERIFY            EQU     $06
++RAM_E_BACKEND           EQU     $07
++RAM_E_BAD_OVERLAY       EQU     $08
++RAM_E_BUSY              EQU     $09
++RAM_E_UNSUPPORTED       EQU     $0A
++
++RAM_BACKEND_NONE        EQU     $00
++RAM_BACKEND_LC16K       EQU     $01
++RAM_BACKEND_SATURN      EQU     $02
++RAM_BACKEND_RAMWORKS    EQU     $03
++RAM_BACKEND_RAMFACTOR   EQU     $04
++RAM_BACKEND_TEST        EQU     $7E
++RAM_BACKEND_GENERIC     EQU     $7F
++
++RAM_CAP_BLOCK_IO        EQU     $01
++RAM_CAP_DIRECT_MAP      EQU     $02
++RAM_CAP_DIRECT_EXEC     EQU     $04
++RAM_CAP_HIDES_ROM       EQU     $08
++RAM_CAP_AUX_MEMORY      EQU     $10
++RAM_CAP_FAST_COPY       EQU     $20
++
++; ---------------------------------------------------------------------------
++; RAM state.  These locations are not executable code.
++; ---------------------------------------------------------------------------
++RAM_INFO_BASE           EQU     $8C88
++RAM_INFO_BACKEND        EQU     $8C88
++RAM_INFO_CAPS           EQU     $8C89
++RAM_INFO_BANKS_LO       EQU     $8C8A
++RAM_INFO_BANKS_HI       EQU     $8C8B
++RAM_INFO_SEL_LO         EQU     $8C8C
++RAM_INFO_SEL_HI         EQU     $8C8D
++RAM_INFO_LAST_ERROR     EQU     $8C8E
++RAM_INFO_READY          EQU     $8C8F
++RAM_INFO_READY_VALUE    EQU     $A5
++
++RAM_INT_XFER            EQU     $8C90 ; 8 bytes: $8C98-$8C9F
++
++; LC16K private persistent state.
++RAM_LC_ROM_D0           EQU     $8C98
++RAM_LC_ROM_E0           EQU     $8C99
++RAM_LC_ROM_FD           EQU     $8C9A
++RAM_LC_SAVE_B2          EQU     $8C9B
++RAM_LC_SAVE_B1          EQU     $8C9C
++RAM_LC_SAVE_HI          EQU     $8C9D
++RAM_LC_PROBE_OK         EQU     $8C9E
++RAM_LC_RESERVED         EQU     $8C9F
++
++RAM_TEST_MARKER         EQU     $8C9F ; standalone tests only
++
++; ---------------------------------------------------------------------------
++; 8-byte block descriptor.
++; ---------------------------------------------------------------------------
++RAM_XFER_OFF_LO         EQU     $00
++RAM_XFER_OFF_HI         EQU     $01
++RAM_XFER_MAIN_LO        EQU     $02
++RAM_XFER_MAIN_HI        EQU     $03
++RAM_XFER_LEN_LO         EQU     $04
++RAM_XFER_LEN_HI         EQU     $05
++RAM_XFER_FLAGS          EQU     $06
++RAM_XFER_RESERVED       EQU     $07
++RAM_XFER_SIZE           EQU     $08
++
++; ---------------------------------------------------------------------------
++; 12-byte overlay descriptor.
++; ---------------------------------------------------------------------------
++RAM_OVL_BANK_LO         EQU     $00
++RAM_OVL_BANK_HI         EQU     $01
++RAM_OVL_OFF_LO          EQU     $02
++RAM_OVL_OFF_HI          EQU     $03
++RAM_OVL_DST_LO          EQU     $04
++RAM_OVL_DST_HI          EQU     $05
++RAM_OVL_LEN_LO          EQU     $06
++RAM_OVL_LEN_HI          EQU     $07
++RAM_OVL_CRC_LO          EQU     $08
++RAM_OVL_CRC_HI          EQU     $09
++RAM_OVL_FLAGS           EQU     $0A
++RAM_OVL_RESERVED        EQU     $0B
++RAM_OVL_SIZE            EQU     $0C
++
++RAM_OVL_F_VERIFY_CRC    EQU     $01
++
++RAM_OVERLAY_MIN         EQU     $6000
++RAM_OVERLAY_END         EQU     $8400
++RAM_LOGICAL_BANK_SIZE   EQU     $4000
++
++; Private zero-page scratch.  GPT16 currently uses $F0-$F3 for MSG/FM
++; pointers; the RAM layer stays below that area.
++RAM_ZP_DESC_LO          EQU     $E8
++RAM_ZP_DESC_HI          EQU     $E9
++RAM_ZP_EXP_LO           EQU     $EA
++RAM_ZP_EXP_HI           EQU     $EB
++RAM_ZP_MAIN_LO          EQU     $EC
++RAM_ZP_MAIN_HI          EQU     $ED
++RAM_ZP_LEN_LO           EQU     $EE
++RAM_ZP_LEN_HI           EQU     $EF
++
++
++; =============================================================================
++; V6.11 CHAT overlay backing-store integration
++; =============================================================================
++CHAT_IMAGE_START        EQU     $6000
++CHAT_IMAGE_LEN          EQU     $1D1A       ; CHAT_CODE_END=$7D1A
++CHAT_LC_BANK            EQU     $0000
++CHAT_LC_OFFSET          EQU     $2000       ; physical common LC $E000-$FFFF
++CHAT_OVL_MAGIC_ADDR     EQU     $6015
++CHAT_CACHE_FLAGS        EQU     RAM_LC_RESERVED
++CHAT_CACHE_READY        EQU     $01
++CHAT_CACHE_VERIFIED     EQU     $02
++CHAT_CACHE_FROM_DISK    EQU     $04
++DOS_BINARY_TYPE         EQU     $04
++
++; GPT16 wrapper preserves RAM API private ZP $E8-$EF here.
++; Validated LC prefix ends exactly at $8CF8.
++GPT_RAM_ZP_SAVE         EQU     $8CF8
++
++; =============================================================================
+ ; ENTRY
+ 
+ ; =============================================================================
+@@ -173,7 +334,7 @@
+         ORG     $4000
+ 
+ KAPI_BOOT
+-        JMP     $6000                   ; current overlay OVL_INIT entry
++        JMP     KERNEL_BOOT             ; validate/cache/load CHAT before OVL_INIT
+ KAPI_DETECT_CARDS
+         JMP     DETECT_CARDS
+ KAPI_PATCH_SERIAL_SLOT
+@@ -254,9 +415,15 @@
+         JMP     FILE_ENCODE_CP
+ KAPI_FILE_ENCODE_SURROGATE
+         JMP     FILE_ENCODE_SURROGATE
++KAPI_CHAT_CACHE_STORE
++        JMP     CHAT_CACHE_STORE
++KAPI_CHAT_RELOAD
++        JMP     CHAT_RELOAD
++KAPI_CHAT_DISK_BOOT
++        JMP     CHAT_DISK_BOOT
+ 
+ KERNEL_ABI_MAJOR EQU     $01
+-KERNEL_ABI_MINOR EQU     $00
++KERNEL_ABI_MINOR EQU     $01
+ 
+         .ASSERT * <= $4100, error, "Kernel ABI page exceeds $4000-$40FF"
+         .RES    $4100-*
+@@ -2577,6 +2744,416 @@
+         RTS
+ 
+ 
++
++; =============================================================================
++; CHAT OVERLAY BACKING STORE
++; =============================================================================
++;
++; Boot policy:
++;   1. If a valid CHAT image is already resident at $6000, cache it in LC.
++;   2. Reload it once from LC, validating the backing-store path.
++;   3. If no resident CHAT exists, try a previous LC copy.
++;   4. If LC is absent/stale/fails, load DOS binary file GPTCHAT.
++;
++; CHAT_RELOAD is the future XFER -> CHAT return path.  It never returns on
++; success; it transfers control to OVL_RESUME after loading CHAT.
++
++KERNEL_BOOT
++        ; Preserve the caller's $F0-$F3 before any possible DOS fallback.
++        JSR     GPT_BOOT_APP_ZP_SAVE
++
++        LDA     #$00
++        STA     CHAT_CACHE_FLAGS
++
++        JSR     CHAT_OVERLAY_VALIDATE
++        BCS     KBOOT_NO_RESIDENT
++
++        ; Combined image already contains CHAT.  Cache it in LC, then reload
++        ; it once immediately so the LC backing-store path is exercised.
++        JSR     CHAT_CACHE_STORE
++        BCS     KBOOT_LAUNCH_RESIDENT
++
++        JSR     CHAT_LOAD_FROM_LC
++        BCC     KBOOT_LAUNCH
++
++        ; RAM_LOAD_OVERLAY may partially overwrite $6000 on failure.
++        ; Recover from the disk overlay before executing uncertain bytes.
++        JSR     CHAT_DISK_LOAD
++        BCC     KBOOT_DISK_RECOVERED
++        JMP     CHAT_BOOT_FATAL
++
++KBOOT_NO_RESIDENT
++        ; Future kernel-only boot: try a valid previous LC cache first.
++        JSR     CHAT_LOAD_FROM_LC
++        BCC     KBOOT_LAUNCH
++
++        ; No usable LC copy: disk is authoritative.
++        JSR     CHAT_DISK_LOAD
++        BCC     KBOOT_DISK_RECOVERED
++        JMP     CHAT_BOOT_FATAL
++
++KBOOT_DISK_RECOVERED
++        LDA     CHAT_CACHE_FLAGS
++        ORA     #CHAT_CACHE_FROM_DISK
++        STA     CHAT_CACHE_FLAGS
++
++        ; Refresh LC if present.  Disk boot must still work without LC.
++        JSR     CHAT_CACHE_STORE
++
++KBOOT_LAUNCH
++        JSR     GPT_BOOT_APP_ZP_RESTORE
++        JMP     OVL_INIT
++
++KBOOT_LAUNCH_RESIDENT
++        JSR     GPT_BOOT_APP_ZP_RESTORE
++        JMP     OVL_INIT
++
++; ---------------------------------------------------------------------------
++; Store currently resident CHAT in LC logical bank 0, offset $2000.
++; $2000-$3D19 maps entirely into common LC RAM $E000-$FD19.
++; ---------------------------------------------------------------------------
++CHAT_CACHE_STORE
++        JSR     CHAT_OVERLAY_VALIDATE
++        BCS     CHAT_CACHE_FAIL
++
++        JSR     GPT_RAM_ZP_SAVE_NOW
++        JSR     RAM_INIT
++        BCS     CHAT_CACHE_RAM_FAIL
++
++        CMP     #RAM_BACKEND_LC16K
++        BNE     CHAT_CACHE_NOT_LC
++
++        LDA     #$00
++        LDX     #$00
++        JSR     RAM_SELECT_BANK
++        BCS     CHAT_CACHE_RAM_FAIL
++
++        LDA     #<CHAT_LC_STORE_DESC
++        LDX     #>CHAT_LC_STORE_DESC
++        JSR     RAM_WRITE_BLOCK
++        BCS     CHAT_CACHE_RAM_FAIL
++
++        PHP
++        PHA
++        JSR     GPT_RAM_ZP_RESTORE_NOW
++        PLA
++        PLP
++
++        LDA     CHAT_CACHE_FLAGS
++        ORA     #CHAT_CACHE_READY
++        STA     CHAT_CACHE_FLAGS
++        CLC
++        RTS
++
++CHAT_CACHE_NOT_LC
++        LDA     #RAM_E_NO_DEVICE
++        SEC
++CHAT_CACHE_RAM_FAIL
++        PHP
++        PHA
++        JSR     GPT_RAM_ZP_RESTORE_NOW
++        PLA
++        PLP
++CHAT_CACHE_FAIL
++        SEC
++        RTS
++
++; ---------------------------------------------------------------------------
++; Load CHAT from LC, then validate its signature.
++; On failure $6000-$7D19 must be considered potentially invalid.
++; ---------------------------------------------------------------------------
++CHAT_LOAD_FROM_LC
++        JSR     GPT_RAM_ZP_SAVE_NOW
++        JSR     RAM_INIT
++        BCS     CHAT_LC_LOAD_FAIL
++
++        CMP     #RAM_BACKEND_LC16K
++        BNE     CHAT_LC_NOT_PRESENT
++
++        LDA     #<CHAT_LC_LOAD_DESC
++        LDX     #>CHAT_LC_LOAD_DESC
++        JSR     RAM_LOAD_OVERLAY
++        BCS     CHAT_LC_LOAD_FAIL
++
++        PHP
++        PHA
++        JSR     GPT_RAM_ZP_RESTORE_NOW
++        PLA
++        PLP
++
++        JSR     CHAT_OVERLAY_VALIDATE
++        BCS     CHAT_LC_BAD_IMAGE
++
++        LDA     CHAT_CACHE_FLAGS
++        ORA     #(CHAT_CACHE_READY+CHAT_CACHE_VERIFIED)
++        STA     CHAT_CACHE_FLAGS
++        CLC
++        RTS
++
++CHAT_LC_NOT_PRESENT
++        LDA     #RAM_E_NO_DEVICE
++        SEC
++CHAT_LC_LOAD_FAIL
++        PHP
++        PHA
++        JSR     GPT_RAM_ZP_RESTORE_NOW
++        PLA
++        PLP
++CHAT_LC_BAD_IMAGE
++        SEC
++        RTS
++
++; ---------------------------------------------------------------------------
++; Future transfer-overlay return path:
++; LC first, DOS GPTCHAT fallback.
++; ---------------------------------------------------------------------------
++CHAT_RELOAD
++        JSR     CHAT_LOAD_FROM_LC
++        BCC     CHAT_RELOAD_GO
++
++        JSR     CHAT_DISK_LOAD
++        BCC     CHAT_RELOAD_DISK_OK
++        JMP     CHAT_BOOT_FATAL
++
++CHAT_RELOAD_DISK_OK
++        JSR     CHAT_CACHE_STORE         ; refresh LC if available
++CHAT_RELOAD_GO
++        JMP     OVL_RESUME
++
++; Diagnostic/fallback bootstrap.  CALLing KAPI_CHAT_DISK_BOOT forces disk.
++CHAT_DISK_BOOT
++        JSR     GPT_BOOT_APP_ZP_SAVE
++        JSR     CHAT_DISK_LOAD
++        BCC     CHAT_DISK_BOOT_OK
++        JMP     CHAT_BOOT_FATAL
++
++CHAT_DISK_BOOT_OK
++        JSR     CHAT_CACHE_STORE
++        JSR     GPT_BOOT_APP_ZP_RESTORE
++        JMP     OVL_INIT
++
++; ---------------------------------------------------------------------------
++; CHAT overlay signature in reserved ABI padding.
++; ---------------------------------------------------------------------------
++CHAT_OVERLAY_VALIDATE
++        LDA     CHAT_OVL_MAGIC_ADDR+$00
++        CMP     #$47                    ; G
++        BNE     CHAT_OVERLAY_BAD
++        LDA     CHAT_OVL_MAGIC_ADDR+$01
++        CMP     #$31                    ; 1
++        BNE     CHAT_OVERLAY_BAD
++        LDA     CHAT_OVL_MAGIC_ADDR+$02
++        CMP     #$36                    ; 6
++        BNE     CHAT_OVERLAY_BAD
++        LDA     CHAT_OVL_MAGIC_ADDR+$03
++        CMP     #$43                    ; C
++        BNE     CHAT_OVERLAY_BAD
++        LDA     CHAT_OVL_MAGIC_ADDR+$04
++        CMP     #$01
++        BNE     CHAT_OVERLAY_BAD
++        LDA     CHAT_OVL_MAGIC_ADDR+$05
++        CMP     #$01
++        BNE     CHAT_OVERLAY_BAD
++        CLC
++        RTS
++CHAT_OVERLAY_BAD
++        SEC
++        RTS
++
++; ---------------------------------------------------------------------------
++; DOS fallback loader.
++;
++; GPTCHAT is a DOS 3.3 Binary file:
++;   load address $6000
++;   image length $1D1A
++;
++; The raw file begins with four bytes:
++;   load address lo/hi, image length lo/hi
++; followed by the binary image.
++; ---------------------------------------------------------------------------
++CHAT_DISK_LOAD
++        JSR     GPT_RAM_ZP_SAVE_NOW
++        JSR     CHAT_SET_DISK_NAME
++
++        JSR     FM_OPEN_AUX_EXIST
++        BCS     CHAT_DISK_FAIL_RESTORE
++
++        ; OPEN reports actual existing file type in parameter-list byte 7.
++        LDY     #$07
++        LDA     (FM_ZPL),Y
++        CMP     #DOS_BINARY_TYPE
++        BNE     CHAT_DISK_FAIL_CLOSE
++
++        ; Binary header: load address $6000.
++        JSR     FM_READ_AUX
++        BCC     CHAT_DISK_FAIL_CLOSE
++        CMP     #<CHAT_IMAGE_START
++        BNE     CHAT_DISK_FAIL_CLOSE
++
++        JSR     FM_READ_AUX
++        BCC     CHAT_DISK_FAIL_CLOSE
++        CMP     #>CHAT_IMAGE_START
++        BNE     CHAT_DISK_FAIL_CLOSE
++
++        ; Binary header: exact image length $1D1A.
++        JSR     FM_READ_AUX
++        BCC     CHAT_DISK_FAIL_CLOSE
++        CMP     #<CHAT_IMAGE_LEN
++        BNE     CHAT_DISK_FAIL_CLOSE
++
++        JSR     FM_READ_AUX
++        BCC     CHAT_DISK_FAIL_CLOSE
++        CMP     #>CHAT_IMAGE_LEN
++        BNE     CHAT_DISK_FAIL_CLOSE
++
++        LDA     #<CHAT_IMAGE_START
++        STA     RAM_ZP_MAIN_LO
++        LDA     #>CHAT_IMAGE_START
++        STA     RAM_ZP_MAIN_HI
++        LDA     #<CHAT_IMAGE_LEN
++        STA     RAM_ZP_LEN_LO
++        LDA     #>CHAT_IMAGE_LEN
++        STA     RAM_ZP_LEN_HI
++
++CHAT_DISK_READ_LOOP
++        LDA     RAM_ZP_LEN_LO
++        ORA     RAM_ZP_LEN_HI
++        BEQ     CHAT_DISK_READ_DONE
++
++        JSR     FM_READ_AUX
++        BCC     CHAT_DISK_FAIL_CLOSE
++
++        LDY     #$00
++        STA     (RAM_ZP_MAIN_LO),Y
++
++        INC     RAM_ZP_MAIN_LO
++        BNE     CHAT_DISK_PTR_OK
++        INC     RAM_ZP_MAIN_HI
++CHAT_DISK_PTR_OK
++
++        LDA     RAM_ZP_LEN_LO
++        BNE     CHAT_DISK_DEC_LOW
++        DEC     RAM_ZP_LEN_HI
++CHAT_DISK_DEC_LOW
++        DEC     RAM_ZP_LEN_LO
++        JMP     CHAT_DISK_READ_LOOP
++
++CHAT_DISK_READ_DONE
++        JSR     FM_CLOSE_AUX
++        BCS     CHAT_DISK_FAIL_RESTORE
++
++        JSR     CHAT_OVERLAY_VALIDATE
++        BCS     CHAT_DISK_FAIL_RESTORE
++
++        JSR     GPT_RAM_ZP_RESTORE_NOW
++
++        LDA     CHAT_CACHE_FLAGS
++        ORA     #CHAT_CACHE_FROM_DISK
++        STA     CHAT_CACHE_FLAGS
++        CLC
++        RTS
++
++CHAT_DISK_FAIL_CLOSE
++        JSR     FM_CLOSE_AUX
++CHAT_DISK_FAIL_RESTORE
++        JSR     GPT_RAM_ZP_RESTORE_NOW
++        SEC
++        RTS
++
++; DOS File Manager wants a 30-byte high-bit padded filename.
++CHAT_SET_DISK_NAME
++        LDX     #$1D
++        LDA     #$A0
++CHAT_NAME_FILL
++        STA     AUX_NAME,X
++        DEX
++        BPL     CHAT_NAME_FILL
++
++        LDX     #$06
++CHAT_NAME_COPY
++        LDA     CHAT_DISK_NAME,X
++        ORA     #$80
++        STA     AUX_NAME,X
++        DEX
++        BPL     CHAT_NAME_COPY
++        RTS
++
++; Preserve caller zero page $F0-$F3 across any pre-START disk load.
++GPT_BOOT_APP_ZP_SAVE
++        LDA     MSG_ZPL
++        STA     SAVE_ZP_LO
++        LDA     MSG_ZPH
++        STA     SAVE_ZP_HI
++        LDA     FM_ZPL
++        STA     SAVE_FM_ZP_LO
++        LDA     FM_ZPH
++        STA     SAVE_FM_ZP_HI
++        RTS
++
++GPT_BOOT_APP_ZP_RESTORE
++        LDA     SAVE_ZP_LO
++        STA     MSG_ZPL
++        LDA     SAVE_ZP_HI
++        STA     MSG_ZPH
++        LDA     SAVE_FM_ZP_LO
++        STA     FM_ZPL
++        LDA     SAVE_FM_ZP_HI
++        STA     FM_ZPH
++        RTS
++
++; Preserve Applesoft's $E8-$EF while the RAM API/backend uses it.
++GPT_RAM_ZP_SAVE_NOW
++        LDX     #$07
++GPT_RAM_ZP_SAVE_LOOP
++        LDA     $E8,X
++        STA     GPT_RAM_ZP_SAVE,X
++        DEX
++        BPL     GPT_RAM_ZP_SAVE_LOOP
++        RTS
++
++GPT_RAM_ZP_RESTORE_NOW
++        LDX     #$07
++GPT_RAM_ZP_RESTORE_LOOP
++        LDA     GPT_RAM_ZP_SAVE,X
++        STA     $E8,X
++        DEX
++        BPL     GPT_RAM_ZP_RESTORE_LOOP
++        RTS
++
++CHAT_BOOT_FATAL
++        JSR     GPT_BOOT_APP_ZP_RESTORE
++
++        ; VideoTerm may not have been initialized yet; use Monitor COUT.
++        LDX     #$00
++CHAT_FATAL_LOOP
++        LDA     CHAT_FATAL_TEXT,X
++        BEQ     CHAT_FATAL_DONE
++        ORA     #$80
++        JSR     M_COUT
++        INX
++        BNE     CHAT_FATAL_LOOP
++CHAT_FATAL_DONE
++        LDA     #$8D
++        JSR     M_COUT
++        JSR     GPT_BOOT_APP_ZP_RESTORE
++        RTS
++
++CHAT_LC_STORE_DESC
++        HEX     002000601A1D0000
++CHAT_LC_LOAD_DESC
++        HEX     0000002000601A1D00000000
++
++CHAT_DISK_NAME
++        ASC     "GPTCHAT"
++        HEX     00
++CHAT_FATAL_TEXT
++        ASC     "GPTCHAT LOAD FAILED"
++        HEX     00
++
++        .ASSERT CHAT_IMAGE_START+CHAT_IMAGE_LEN = $7D1A, error, "CHAT image length changed"
++        .ASSERT GPT_RAM_ZP_SAVE >= $8CF8, error, "RAM ZP save area moved"
++        .ASSERT GPT_RAM_ZP_SAVE+$08 <= $8D00, error, "RAM ZP save collides with RAM API"
++
+ ; =============================================================================
+ ; RESIDENT KERNEL READ-ONLY DATA
+ ; =============================================================================
+@@ -2681,6 +3258,10 @@
+ 
+ CHAT_OVL_RETURN
+         RTS
++
++; Fixed signature in reserved overlay-ABI padding.
++CHAT_OVL_MAGIC
++        HEX     473136430101            ; "G16C", overlay ABI 1.1
+ 
+         .ASSERT * <= $6040, error, "Overlay ABI exceeds reserved $6000-$603F"
+         .RES    $6040-*
+@@ -6881,7 +7462,648 @@
+ 
+ 
+ STATE_END
+-        .ASSERT STATE_END <= $9000, error, "Shared state exceeds $8C00-$8FFF"
++        .ASSERT STATE_END <= $8C88, error, "Validated GPT16 state moved into RAM API area"
++
++; =============================================================================
++; CARD-NEUTRAL RAM API + VALIDATED LC16K BACKEND
++; =============================================================================
++; =============================================================================
++; GPT16_RAM_CORE_V1_2.S
++; Card-neutral resident RAM API core.
++; =============================================================================
++
++        ORG     $8D00
++
++RAM_API_ENTRY_INIT
++        JMP     RAM_INIT_IMPL
++RAM_API_ENTRY_PRESENT
++        JMP     RAM_PRESENT_IMPL
++RAM_API_ENTRY_SELECT_BANK
++        JMP     RAM_SELECT_IMPL
++RAM_API_ENTRY_READ_BLOCK
++        JMP     RAM_READ_IMPL
++RAM_API_ENTRY_WRITE_BLOCK
++        JMP     RAM_WRITE_IMPL
++RAM_API_ENTRY_LOAD_OVERLAY
++        JMP     RAM_LOAD_IMPL
++
++        ORG     $8D20
++
++RAM_INIT_IMPL
++        LDA     #$00
++        STA     RAM_INFO_READY
++        STA     RAM_INFO_LAST_ERROR
++        JSR     RAM_BACKEND_PROBE
++        BCS     RAM_CORE_ERROR
++        STA     RAM_INFO_BACKEND
++        LDA     #RAM_INFO_READY_VALUE
++        STA     RAM_INFO_READY
++        LDA     RAM_INFO_BACKEND
++        CLC
++        RTS
++
++RAM_PRESENT_IMPL
++        LDA     RAM_INFO_READY
++        CMP     #RAM_INFO_READY_VALUE
++        BNE     RAM_NOT_INIT
++        LDA     RAM_INFO_BACKEND
++        CLC
++        RTS
++
++RAM_NOT_INIT
++        LDA     #RAM_E_NOT_INIT
++        SEC
++        RTS
++
++RAM_SELECT_IMPL
++        JSR     RAM_REQUIRE_READY
++        BCS     RAM_CORE_RETURN
++        JMP     RAM_BACKEND_SELECT
++
++RAM_READ_IMPL
++        JSR     RAM_REQUIRE_READY
++        BCS     RAM_CORE_RETURN
++        JMP     RAM_BACKEND_READ
++
++RAM_WRITE_IMPL
++        JSR     RAM_REQUIRE_READY
++        BCS     RAM_CORE_RETURN
++        JMP     RAM_BACKEND_WRITE
++
++RAM_LOAD_IMPL
++        JSR     RAM_REQUIRE_READY
++        BCS     RAM_CORE_RETURN
++        JMP     RAM_BACKEND_LOAD
++
++RAM_REQUIRE_READY
++        PHA
++        LDA     RAM_INFO_READY
++        CMP     #RAM_INFO_READY_VALUE
++        BEQ     RAM_READY_OK
++        PLA
++        LDA     #RAM_E_NOT_INIT
++        SEC
++        RTS
++RAM_READY_OK
++        PLA
++        CLC
++        RTS
++
++RAM_CORE_ERROR
++        STA     RAM_INFO_LAST_ERROR
++        SEC
++RAM_CORE_RETURN
++        RTS
++
++RAM_CORE_END
++        .ASSERT RAM_CORE_END <= $8D80, error, "RAM API core exceeds $8D00-$8D7F"
++
++; =============================================================================
++; GPT16_RAM_BACKEND_LC16K.S
++;
++; Classic 16 KiB Apple II Language Card backend for GPT16 RAM API V1.2.
++;
++; Logical bank 0:
++;   $0000-$0FFF -> LC bank 2 at $D000-$DFFF
++;   $1000-$1FFF -> LC bank 1 at $D000-$DFFF
++;   $2000-$3FFF -> common LC RAM at $E000-$FFFF
++;
++; Postcondition for every public backend call:
++;   - Apple ROM visible at $D000-$FFFF
++;   - LC RAM write-protected
++;   - bank 2 selected for the next LC access
++;
++; This canonical postcondition is deliberate.  A classic Apple II/II+ LC does
++; not expose enough status to reconstruct an arbitrary pre-call mapping.
++; GPT16 therefore owns the LC mapping while this backend is installed.
++; =============================================================================
++
++LC_RD2_WP               EQU     $C080 ; RAM read, bank2, write protected
++LC_ROM2_WE              EQU     $C081 ; ROM read, bank2; two reads enable write
++LC_ROM2_WP              EQU     $C082 ; ROM read, bank2, write protected
++LC_RD1_WP               EQU     $C088 ; RAM read, bank1, write protected
++LC_ROM1_WE              EQU     $C089 ; ROM read, bank1; two reads enable write
++
++; ---------------------------------------------------------------------------
++; RAM_LOAD_OVERLAY implementation prefix.
++; It lives in otherwise-unused state-page tail so the complete LC driver
++; remains below DOS at $9000 while preserving the fixed $8E00 backend ABI.
++; ---------------------------------------------------------------------------
++
++        ORG     $8CA0
++
++RLC_LOAD
++        STA     RAM_ZP_DESC_LO
++        STX     RAM_ZP_DESC_HI
++
++        LDY     #RAM_OVL_FLAGS
++        LDA     (RAM_ZP_DESC_LO),Y
++        BNE     RLC_LOAD_UNSUP_LOCAL
++
++        ; LC16K exposes exactly one logical bank: bank 0.
++        LDY     #RAM_OVL_BANK_LO
++        LDA     (RAM_ZP_DESC_LO),Y
++        BNE     RLC_LOAD_BANK_LOCAL
++        INY
++        LDA     (RAM_ZP_DESC_LO),Y
++        BNE     RLC_LOAD_BANK_LOCAL
++
++        ; Copy OFF/DST/LEN from overlay descriptor into ordinary XFER descriptor.
++        LDY     #RAM_OVL_OFF_LO
++        LDX     #$00
++RLC_LOAD_COPY_DESC
++        LDA     (RAM_ZP_DESC_LO),Y
++        STA     RAM_INT_XFER,X
++        INY
++        INX
++        CPX     #$06
++        BNE     RLC_LOAD_COPY_DESC
++        LDA     #$00
++        STA     RAM_INT_XFER+RAM_XFER_FLAGS
++        STA     RAM_INT_XFER+RAM_XFER_RESERVED
++
++        ; Destination must start at/above $6000.
++        LDA     RAM_INT_XFER+RAM_XFER_MAIN_HI
++        CMP     #$60
++        BCC     RLC_LOAD_BAD_LOCAL
++
++        ; Destination+length must end at/below $8400.
++        LDA     RAM_INT_XFER+RAM_XFER_MAIN_LO
++        CLC
++        ADC     RAM_INT_XFER+RAM_XFER_LEN_LO
++        STA     RAM_ZP_DESC_LO
++        LDA     RAM_INT_XFER+RAM_XFER_MAIN_HI
++        ADC     RAM_INT_XFER+RAM_XFER_LEN_HI
++        CMP     #$84
++        BCC     RLC_LOAD_GO_LOCAL
++        BNE     RLC_LOAD_BAD_LOCAL
++        LDA     RAM_ZP_DESC_LO
++        BNE     RLC_LOAD_BAD_LOCAL
++
++RLC_LOAD_GO_LOCAL
++        JMP     RLC_LOAD_GO
++RLC_LOAD_UNSUP_LOCAL
++        JMP     RLC_LOAD_UNSUP
++RLC_LOAD_BANK_LOCAL
++        JMP     RLC_LOAD_BANK
++RLC_LOAD_BAD_LOCAL
++        JMP     RLC_LOAD_BAD
++
++RLC_LOAD_PREFIX_END
++        .ASSERT RLC_LOAD_PREFIX_END <= $8D00, error, "LC16K overlay-loader prefix exceeds $8CA0-$8CFF"
++
++; ---------------------------------------------------------------------------
++; Compact helpers in the free tail after the card-neutral API core.
++; ---------------------------------------------------------------------------
++
++        ORG     $8D80
++
++RLC_ROM_CHECK
++        LDA     $D000
++        CMP     RAM_LC_ROM_D0
++        BNE     RLC_ROM_BAD
++        LDA     $E000
++        CMP     RAM_LC_ROM_E0
++        BNE     RLC_ROM_BAD
++        LDA     $FDED
++        CMP     RAM_LC_ROM_FD
++        BNE     RLC_ROM_BAD
++        CLC
++        RTS
++RLC_ROM_BAD
++        SEC
++        RTS
++
++RLC_ERR_BACKEND
++        LDA     #RAM_E_BACKEND
++        BNE     RLC_SETERR
++RLC_ERR_BANK
++        LDA     #RAM_E_BAD_BANK
++        BNE     RLC_SETERR
++RLC_ERR_RANGE
++        LDA     #RAM_E_RANGE
++        BNE     RLC_SETERR
++RLC_ERR_UNSUP
++        LDA     #RAM_E_UNSUPPORTED
++RLC_SETERR
++        STA     RAM_INFO_LAST_ERROR
++        SEC
++        RTS
++
++; Build the physical LC pointer in RAM_ZP_DESC.
++; Return A=1 for Dx bank1, A=0 for Dx bank2 or common Ex/Fx RAM.
++RLC_BUILD_PHYS
++        LDA     RAM_ZP_EXP_LO
++        STA     RAM_ZP_DESC_LO
++        LDA     RAM_ZP_EXP_HI
++        CMP     #$10
++        BCC     RLC_PHYS_B2
++        CMP     #$20
++        BCC     RLC_PHYS_B1
++        CLC
++        ADC     #$C0
++        STA     RAM_ZP_DESC_HI
++        LDA     #$00
++        RTS
++RLC_PHYS_B1
++        CLC
++        ADC     #$C0
++        STA     RAM_ZP_DESC_HI
++        LDA     #$01
++        RTS
++RLC_PHYS_B2
++        CLC
++        ADC     #$D0
++        STA     RAM_ZP_DESC_HI
++        LDA     #$00
++        RTS
++
++RLC_ADVANCE
++        INC     RAM_ZP_EXP_LO
++        BNE     RLC_ADV_MAIN
++        INC     RAM_ZP_EXP_HI
++RLC_ADV_MAIN
++        INC     RAM_ZP_MAIN_LO
++        BNE     RLC_ADV_LEN
++        INC     RAM_ZP_MAIN_HI
++RLC_ADV_LEN
++        LDA     RAM_ZP_LEN_LO
++        BNE     RLC_DEC_LOW
++        DEC     RAM_ZP_LEN_HI
++RLC_DEC_LOW
++        DEC     RAM_ZP_LEN_LO
++        RTS
++
++; Overlay-loader tail.  Kept here because only 22 bytes remain before $8E00.
++RLC_LOAD_GO
++        LDA     #<RAM_INT_XFER
++        LDX     #>RAM_INT_XFER
++        JMP     RLC_READ
++RLC_LOAD_UNSUP
++        JMP     RLC_ERR_UNSUP
++RLC_LOAD_BANK
++        JMP     RLC_ERR_BANK
++RLC_LOAD_BAD
++        LDA     #RAM_E_BAD_OVERLAY
++        STA     RAM_INFO_LAST_ERROR
++        SEC
++        RTS
++
++RLC_HELPER_END
++        .ASSERT RLC_HELPER_END <= $8E00, error, "LC16K helper block overlaps backend ABI"
++
++; ---------------------------------------------------------------------------
++; Existing fixed backend ABI.
++; ---------------------------------------------------------------------------
++
++        ORG     $8E00
++
++RLC_ENTRY_PROBE
++        JMP     RLC_PROBE
++RLC_ENTRY_SELECT
++        JMP     RLC_SELECT
++RLC_ENTRY_READ
++        JMP     RLC_READ
++RLC_ENTRY_WRITE
++        JMP     RLC_WRITE
++RLC_ENTRY_LOAD
++        JMP     RLC_LOAD
++
++        ORG     $8E20
++
++; ---------------------------------------------------------------------------
++; Probe all 16 KiB without leaving modified bytes behind.
++; Distinct $55/$AA values also detect an aliased Dx bank.
++; ---------------------------------------------------------------------------
++
++RLC_PROBE
++        PHP
++        SEI
++
++        ; Establish canonical ROM-visible state and save ROM signature.
++        BIT     LC_ROM2_WP
++        LDA     $D000
++        STA     RAM_LC_ROM_D0
++        LDA     $E000
++        STA     RAM_LC_ROM_E0
++        LDA     $FDED
++        STA     RAM_LC_ROM_FD
++
++        ; Save one byte from each physical LC region.
++        BIT     LC_RD2_WP
++        LDA     $D000
++        STA     RAM_LC_SAVE_B2
++        LDA     $E000
++        STA     RAM_LC_SAVE_HI
++        BIT     LC_RD1_WP
++        LDA     $D000
++        STA     RAM_LC_SAVE_B1
++        BIT     LC_ROM2_WP
++
++        ; Write test patterns while ROM remains readable.
++        BIT     LC_ROM2_WE
++        BIT     LC_ROM2_WE
++        LDA     #$55
++        STA     $D000
++        LDA     #$A5
++        STA     $E000
++
++        BIT     LC_ROM1_WE
++        BIT     LC_ROM1_WE
++        LDA     #$AA
++        STA     $D000
++
++        LDA     #$00
++        STA     RAM_LC_PROBE_OK
++
++        ; Verify bank2 Dx + common high RAM.
++        BIT     LC_RD2_WP
++        LDA     $D000
++        CMP     #$55
++        BNE     RLC_PROBE_RESTORE
++        LDA     $E000
++        CMP     #$A5
++        BNE     RLC_PROBE_RESTORE
++
++        ; Verify bank1 Dx independently.
++        BIT     LC_RD1_WP
++        LDA     $D000
++        CMP     #$AA
++        BNE     RLC_PROBE_RESTORE
++
++        LDA     #$A5
++        STA     RAM_LC_PROBE_OK
++
++RLC_PROBE_RESTORE
++        ; Restore all probe bytes even on failed detection.
++        BIT     LC_ROM2_WE
++        BIT     LC_ROM2_WE
++        LDA     RAM_LC_SAVE_B2
++        STA     $D000
++        LDA     RAM_LC_SAVE_HI
++        STA     $E000
++
++        BIT     LC_ROM1_WE
++        BIT     LC_ROM1_WE
++        LDA     RAM_LC_SAVE_B1
++        STA     $D000
++
++        ; Verify that the original LC bytes really came back.
++        BIT     LC_RD2_WP
++        LDA     $D000
++        CMP     RAM_LC_SAVE_B2
++        BNE     RLC_PROBE_RESTORE_BAD
++        LDA     $E000
++        CMP     RAM_LC_SAVE_HI
++        BNE     RLC_PROBE_RESTORE_BAD
++
++        BIT     LC_RD1_WP
++        LDA     $D000
++        CMP     RAM_LC_SAVE_B1
++        BNE     RLC_PROBE_RESTORE_BAD
++
++        ; Canonical return mapping and explicit ROM visibility check.
++        BIT     LC_ROM2_WP
++        JSR     RLC_ROM_CHECK
++        BCS     RLC_PROBE_ROM_BAD
++        PLP
++
++        LDA     RAM_LC_PROBE_OK
++        BEQ     RLC_NO_DEVICE
++
++        LDA     #$09                    ; BLOCK_IO | HIDES_ROM
++        STA     RAM_INFO_CAPS
++        LDA     #$01
++        STA     RAM_INFO_BANKS_LO
++        LDA     #$00
++        STA     RAM_INFO_BANKS_HI
++        STA     RAM_INFO_SEL_LO
++        STA     RAM_INFO_SEL_HI
++
++        LDA     #RAM_BACKEND_LC16K
++        CLC
++        RTS
++
++RLC_PROBE_RESTORE_BAD
++        BIT     LC_ROM2_WP
++        JSR     RLC_ROM_CHECK
++RLC_PROBE_ROM_BAD
++        PLP
++        JMP     RLC_ERR_BACKEND
++
++RLC_NO_DEVICE
++        LDA     #RAM_E_NO_DEVICE
++        STA     RAM_INFO_LAST_ERROR
++        SEC
++        RTS
++
++; ---------------------------------------------------------------------------
++; One logical bank only.
++; ---------------------------------------------------------------------------
++
++RLC_SELECT
++        CPX     #$00
++        BNE     RLC_SELECT_BAD
++        CMP     #$00
++        BNE     RLC_SELECT_BAD
++
++        ; Bank 0 is already the recorded selection after RAM_INIT.
++        ; Selection itself must also leave the ROM mapping canonical.
++        BIT     LC_ROM2_WP
++        JSR     RLC_ROM_CHECK
++        BCS     RLC_SELECT_ROM_BAD
++        CLC
++        RTS
++
++RLC_SELECT_BAD
++        JMP     RLC_ERR_BANK
++RLC_SELECT_ROM_BAD
++        JMP     RLC_ERR_BACKEND
++
++; ---------------------------------------------------------------------------
++; Decode and validate an 8-byte transfer descriptor.
++; ---------------------------------------------------------------------------
++
++RLC_PREP_XFER
++        STA     RAM_ZP_DESC_LO
++        STX     RAM_ZP_DESC_HI
++
++        LDY     #RAM_XFER_FLAGS
++        LDA     (RAM_ZP_DESC_LO),Y
++        BNE     RLC_PREP_UNSUP
++
++        LDY     #RAM_XFER_OFF_LO
++        LDA     (RAM_ZP_DESC_LO),Y
++        STA     RAM_ZP_EXP_LO
++        INY
++        LDA     (RAM_ZP_DESC_LO),Y
++        CMP     #$40
++        BCS     RLC_PREP_RANGE
++        STA     RAM_ZP_EXP_HI
++
++        INY
++        LDA     (RAM_ZP_DESC_LO),Y
++        STA     RAM_ZP_MAIN_LO
++        INY
++        LDA     (RAM_ZP_DESC_LO),Y
++        STA     RAM_ZP_MAIN_HI
++        INY
++        LDA     (RAM_ZP_DESC_LO),Y
++        STA     RAM_ZP_LEN_LO
++        INY
++        LDA     (RAM_ZP_DESC_LO),Y
++        STA     RAM_ZP_LEN_HI
++
++        ; logical OFF+LEN <= $4000
++        LDA     RAM_ZP_EXP_LO
++        CLC
++        ADC     RAM_ZP_LEN_LO
++        STA     RAM_ZP_DESC_LO
++        LDA     RAM_ZP_EXP_HI
++        ADC     RAM_ZP_LEN_HI
++        CMP     #$40
++        BCC     RLC_PREP_MAIN
++        BNE     RLC_PREP_RANGE
++        LDA     RAM_ZP_DESC_LO
++        BNE     RLC_PREP_RANGE
++
++RLC_PREP_MAIN
++        ; LEN=0 is a successful no-op; no main-memory address is dereferenced.
++        LDA     RAM_ZP_LEN_LO
++        ORA     RAM_ZP_LEN_HI
++        BEQ     RLC_PREP_OK
++
++        ; Main side must end at/below $C000 because reads may hide ROM.
++        LDA     RAM_ZP_MAIN_LO
++        CLC
++        ADC     RAM_ZP_LEN_LO
++        STA     RAM_ZP_DESC_LO
++        LDA     RAM_ZP_MAIN_HI
++        ADC     RAM_ZP_LEN_HI
++        CMP     #$C0
++        BCC     RLC_PREP_OK
++        BNE     RLC_PREP_RANGE
++        LDA     RAM_ZP_DESC_LO
++        BNE     RLC_PREP_RANGE
++
++RLC_PREP_OK
++        CLC
++        RTS
++RLC_PREP_RANGE
++        JMP     RLC_ERR_RANGE
++RLC_PREP_UNSUP
++        JMP     RLC_ERR_UNSUP
++
++; ---------------------------------------------------------------------------
++; Expansion -> main RAM.
++; Interrupts are disabled only while LC RAM can hide the ROM.
++; ---------------------------------------------------------------------------
++
++RLC_READ
++        JSR     RLC_PREP_XFER
++        BCS     RLC_IO_RETURN
++
++        PHP
++        SEI
++        LDY     #$00
++
++RLC_READ_LOOP
++        LDA     RAM_ZP_LEN_LO
++        ORA     RAM_ZP_LEN_HI
++        BEQ     RLC_READ_DONE
++
++        JSR     RLC_BUILD_PHYS
++        CMP     #$01
++        BEQ     RLC_READ_B1
++        BIT     LC_RD2_WP
++        JMP     RLC_READ_BYTE
++RLC_READ_B1
++        BIT     LC_RD1_WP
++
++RLC_READ_BYTE
++        LDA     (RAM_ZP_DESC_LO),Y
++        STA     (RAM_ZP_MAIN_LO),Y
++        JSR     RLC_ADVANCE
++        JMP     RLC_READ_LOOP
++
++RLC_READ_DONE
++        JSR     RLC_IO_FINISH
++        BCS     RLC_IO_POP_FAIL
++        PLP
++        CLC
++        RTS
++
++; ---------------------------------------------------------------------------
++; Main RAM -> expansion.
++; ROM remains selected while LC write-enable is active.
++; ---------------------------------------------------------------------------
++
++RLC_WRITE
++        JSR     RLC_PREP_XFER
++        BCS     RLC_IO_RETURN
++
++        PHP
++        SEI
++        LDY     #$00
++
++RLC_WRITE_LOOP
++        LDA     RAM_ZP_LEN_LO
++        ORA     RAM_ZP_LEN_HI
++        BEQ     RLC_WRITE_DONE
++
++        JSR     RLC_BUILD_PHYS
++        CMP     #$01
++        BEQ     RLC_WRITE_B1
++
++        BIT     LC_ROM2_WE
++        BIT     LC_ROM2_WE
++        JMP     RLC_WRITE_BYTE
++
++RLC_WRITE_B1
++        BIT     LC_ROM1_WE
++        BIT     LC_ROM1_WE
++
++RLC_WRITE_BYTE
++        LDA     (RAM_ZP_MAIN_LO),Y
++        STA     (RAM_ZP_DESC_LO),Y
++        JSR     RLC_ADVANCE
++        JMP     RLC_WRITE_LOOP
++
++RLC_WRITE_DONE
++        JSR     RLC_IO_FINISH
++        BCC     RLC_IO_POP_OK
++
++RLC_IO_POP_FAIL
++        PLP
++        SEC
++        RTS
++
++RLC_IO_POP_OK
++        PLP
++        CLC
++RLC_IO_RETURN
++        RTS
++
++; Every mapped I/O call returns with ROM visible and LC write-protected.
++RLC_IO_FINISH
++        BIT     LC_ROM2_WP
++        JSR     RLC_ROM_CHECK
++        BCC     RLC_IO_OK
++
++        LDA     #RAM_E_BACKEND
++        STA     RAM_INFO_LAST_ERROR
++        SEC
++        RTS
++
++RLC_IO_OK
++        CLC
++        RTS
++
++RLC_BACKEND_END
++        .ASSERT RLC_BACKEND_END <= $9000, error, "LC16K backend exceeds $8E20-$8FFF"
++
++        .ASSERT RLC_LOAD_PREFIX_END <= GPT_RAM_ZP_SAVE, error, "LC prefix overlaps GPT RAM ZP save"
++        .ASSERT RLC_BACKEND_END <= $9000, error, "LC backend overlaps DOS workspace"
+ 
+ ; =============================================================================
+ ; DOS FILE MANAGER WORKSPACE
