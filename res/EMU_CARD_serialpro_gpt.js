@@ -66,6 +66,9 @@
     const SERIAL_G16_FALL = "CELL1";
     const SERIAL_G16_GRID_COLS = 80;
     const SERIAL_G16_GRID_ROWS = 24;
+    const SERIAL_G16_FILES_KERMIT = "KERMIT";
+    const SERIAL_G16_KFS_VERSION = "1";
+    
     const SERIAL_G16_ROM_CAPS = Object.freeze({
          VN:{vg1:0x7F}
         ,VDE:{vg1:0x7F}
@@ -131,7 +134,12 @@
                     "Unicode characters are allowed."
                 );
             }
-        if(state && state.g16Profile && state.g16Profile.ready)
+        if(
+            state &&
+            state.g16Profile &&
+            state.g16Profile.ready &&
+            state.kermitCapable
+        )
             instructions.push("Remote file access is available through the provided file tools.");
         return instructions.join(" ");
     }
@@ -803,6 +811,24 @@
             };
         }
 
+        /*
+         * Kermit file service is opt-in.  Legacy G16D1 clients such as V6.03
+         * send neither FILES nor KFS and therefore remain non-Kermit clients.
+         * A client that advertises either field must advertise the complete,
+         * supported pair.
+         */
+        var kermitCapable = false;
+        if(fields.FILES!==undefined || fields.KFS!==undefined)
+        {
+            if(
+                fields.FILES!==SERIAL_G16_FILES_KERMIT ||
+                fields.KFS!==SERIAL_G16_KFS_VERSION
+            )
+                return semanticFail(2161,"FILES_UNSUPPORTED");
+
+            kermitCapable = true;
+        }
+
         if(fields.MODE!=="UTF16LE" || gatewayMode!==SERIAL_GPT_MODE_UTF16LE)
             return semanticFail(1201,"MODE_UNSUPPORTED");
         if(fields.DP!==SERIAL_G16_DP)
@@ -856,6 +882,9 @@
             ,rows:effectiveRows
             ,fall:SERIAL_G16_FALL
             ,dg:dg
+            ,kermitCapable:kermitCapable
+            ,files:kermitCapable ? SERIAL_G16_FILES_KERMIT : null
+            ,kfs:kermitCapable ? SERIAL_G16_KFS_VERSION : null
         };
 
         var readyBody =
@@ -866,7 +895,11 @@
             +";VG1="+serialG16Hex(effectiveVG1,2)
             +";GRID="+serialG16Dec2(effectiveCols)+"x"+serialG16Dec2(effectiveRows)
             +";FALL="+SERIAL_G16_FALL
-            +";DG="+serialG16Hex(dg,2);
+            +";DG="+serialG16Hex(dg,2)
+            +(kermitCapable
+                ? ";FILES="+SERIAL_G16_FILES_KERMIT
+                  +";KFS="+SERIAL_G16_KFS_VERSION
+                : "");
 
         return {
              ok:true
@@ -1069,6 +1102,7 @@
             // A valid HELLO is acknowledged before its final READY result.
             g16TransmitBody(result.ackBody,"ACK");
             state.g16Profile = result.profile;
+            state.kermitCapable = !!result.profile.kermitCapable;
             g16RememberTransaction(
                 state,result.seq,decoded.body,result.ackBody,result.readyBody
             );
@@ -1083,6 +1117,10 @@
                 +" GRID="+result.profile.cols+"x"+result.profile.rows
                 +" FALL="+result.profile.fall
                 +" DG="+serialG16Hex(result.profile.dg,2)
+                +(state.kermitCapable
+                    ? " FILES="+SERIAL_G16_FILES_KERMIT
+                      +" KFS="+SERIAL_G16_KFS_VERSION
+                    : " FILES=NONE")
             );
         }
 
@@ -1206,7 +1244,10 @@
                 }
 
                 var kermit = serialGPTKermitState(state);
-                if(kermit.rx.length || kermit.busy || kermit.waiter)
+                if(
+                    state.kermitCapable &&
+                    (kermit.rx.length || kermit.busy || kermit.waiter)
+                )  
                 {
                     if(serialGPTKermitConsumeByte(host,d8))
                         continue;
@@ -1565,6 +1606,7 @@
                 ,echoGuardExpires:0
                 ,g16Profile:null
                 ,g16Transaction:null
+                ,kermitCapable:false
             }
         });
 
@@ -1891,7 +1933,11 @@
                  model:SERIAL_GPT_MODEL
                 ,instructions:serialGPTInstructions(state)
                 ,input:serialGPTBuildInput(state,message)
-                ,tools:(state.g16Profile && state.g16Profile.ready)
+                ,tools:(
+                    state.g16Profile &&
+                    state.g16Profile.ready &&
+                    state.kermitCapable
+                )                
                     ? SERIAL_GPT_FILE_TOOLS
                     : undefined
                 ,max_output_tokens:outputTokens
@@ -2596,6 +2642,10 @@
             state.echoGuard = [];
             state.echoGuardIndex = 0;
             state.echoGuardExpires = 0;
+            state.g16Profile = null;
+            state.g16Transaction = null;
+            state.kermitCapable = false;
+            state.kermit = null;
 
             if(card._serialGPTDevice &&
                typeof(card._serialGPTDevice.setMode)=="function")
@@ -2636,6 +2686,10 @@
         state.echoGuard = [];
         state.echoGuardIndex = 0;
         state.echoGuardExpires = 0;
+        state.g16Profile = null;
+        state.g16Transaction = null;
+        state.kermitCapable = false;
+        state.kermit = null;
 
         if(card._serialGPTDevice &&
            typeof(card._serialGPTDevice.setMode)=="function")
@@ -2670,6 +2724,10 @@
         state.echoGuard = [];
         state.echoGuardIndex = 0;
         state.echoGuardExpires = 0;
+        state.g16Profile = null;
+        state.g16Transaction = null;
+        state.kermitCapable = false;
+        state.kermit = null;
 
         if(card._serialGPTDevice &&
            typeof(card._serialGPTDevice.setMode)=="function")
