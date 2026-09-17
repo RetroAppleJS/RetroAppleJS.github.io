@@ -2521,7 +2521,24 @@ Label1 TXA
 
               function finish(text)
               {
-                ASM_loadSourceText(name,text);
+                if(/\.inc$/i.test(name))
+                {
+                  var result = ASM_addIncludeText(
+                    name,
+                    text,
+                    arg.path || name
+                  );
+
+                  ASM_clearOutputs(
+                    (result.replaced ? "Replaced include " : "Loaded include ")
+                    + name
+                    + ". Reassemble to refresh the listing and byte code.",
+                    "ok"
+                  );
+                }
+                else
+                  ASM_loadSourceText(name,text);
+
                 oCOM.CATALOG.close("sourceCat");
               }
 
