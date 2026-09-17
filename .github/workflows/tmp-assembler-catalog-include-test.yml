@@ -1,0 +1,21 @@
+name: Temporary assembler catalog include routing test
+
+on:
+  push:
+    branches:
+      - feature/assembler-include-files-ui
+    paths:
+      - index.html
+      - .github/tmp/assembler_catalog_include_test.js
+      - .github/workflows/tmp-assembler-catalog-include-test.yml
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/assembler-include-files-ui
+      - name: Run catalog include routing test
+        run: node .github/tmp/assembler_catalog_include_test.js
