@@ -1187,40 +1187,94 @@ function Cpu6502(hwobj)
     function and_instr(d8) { a &= d8; set_nz(a); }
     function eor_instr(d8) { a ^= d8; set_nz(a); }
 
-    function adc_instr(d8) {
+    function adc_instr(d8)
+    {
+        var old_a = a;
+        var carry_in = (p & P_C) ? 1 : 0;
         var result;
 
-        if ((p & P_D) != 0)           // Decimal mode
+        if ((p & P_D) != 0)
         {
-            result = (a & 0x0f) + (d8 & 0x0f) + ((p & P_C) ? 1 : 0);
-            if (result > 0x09) result += 0x06;
-            result += (a & 0xf0) + (d8 & 0xf0);
-            if ((result & 0xfff0) > 0x90) result += 0x60;
-            cycle_delay++;
+            // NMOS 6502 decimal ADC.
+            // Z comes from the unadjusted binary result.
+            // N/V are determined before the final high-nibble BCD correction.
+            // Unlike 65C02, decimal mode does NOT add a cycle.
+            var binary_result = old_a + d8 + carry_in;
+
+            var low = (old_a & 0x0f) + (d8 & 0x0f) + carry_in;
+            var carry = low > 9;
+            if (carry) low = (low - 10) & 0x0f;
+
+            var high = (old_a >> 4) + (d8 >> 4) + (carry ? 1 : 0);
+            var nv = (high & 0x08) != 0;
+
+            carry = high > 9;
+            if (carry) high = (high - 10) & 0x0f;
+
+            a = ((high << 4) | low) & 0xff;
+
+            set_flag(P_N, nv);
+            set_flag(P_V,
+                ((old_a >= 0x80) != nv) &&
+                ((d8 >= 0x80) != nv));
+            set_flag(P_Z, (binary_result & 0xff) == 0);
+            set_flag(P_C, carry);
+            return;
         }
-        else result = a + d8 + ((p & P_C) ? 1 : 0);
+
+        result = old_a + d8 + carry_in;
 
         set_flag(P_C, result & 0xff00);
-        set_flag(P_V, ((d8 ^ a) & 0x80) == 0 && ((result ^ a) & 0x80) != 0);
+        set_flag(P_V,
+            ((d8 ^ old_a) & 0x80) == 0 &&
+            ((result ^ old_a) & 0x80) != 0);
+
         a = result & 0xff;
         set_nz(a);
     }
 
-    function sbc_instr(d8) 
+    function sbc_instr(d8)
     {
+        var old_a = a;
+        var borrow = (p & P_C) ? 0 : 1;
         var result;
-        if ((p & P_D) != 0)        // Decimal mode
+
+        if ((p & P_D) != 0)
         {
-            result = (a & 0x0f) - (d8 & 0x0f) - ((p & P_C) ? 0 : 1);
-            if ((result & 0x10) != 0)  result -= 0x06;
-            result += (a & 0xf0) - (d8 & 0xf0);
-            if ((result & 0x100) != 0) result -= 0x60;
-            cycle_delay++;
+            // NMOS 6502 decimal SBC.
+            var binary_result = (old_a - d8 - borrow) & 0xff;
+            var nv = (binary_result & 0x80) != 0;
+
+            var low = (old_a & 0x0f) - (d8 & 0x0f) - borrow;
+            borrow = low < 0;
+
+            if (borrow)
+                low = (low + 10) & 0x0f;
+
+            var high = (old_a >> 4) - (d8 >> 4) - (borrow ? 1 : 0);
+            borrow = high < 0;
+
+            if (borrow)
+                high = (high + 10) & 0x0f;
+
+            a = ((high << 4) | low) & 0xff;
+
+            set_flag(P_N, nv);
+            set_flag(P_V,
+                ((old_a >= 0x80) != nv) &&
+                ((d8 < 0x80) != nv));
+            set_flag(P_Z, binary_result == 0);
+            set_flag(P_C, !borrow);
+            return;
         }
-        else result = a - d8 - ((p & P_C) ? 0 : 1);
+
+        result = old_a - d8 - borrow;
 
         set_flag(P_C, (result & 0xff00) == 0);
-        set_flag(P_V, ((d8 ^ a) & 0x80) != 0 && ((result ^ a) & 0x80) != 0);
+        set_flag(P_V,
+            ((d8 ^ old_a) & 0x80) != 0 &&
+            ((result ^ old_a) & 0x80) != 0);
+
         a = result & 0xff;
         set_nz(a);
     }
