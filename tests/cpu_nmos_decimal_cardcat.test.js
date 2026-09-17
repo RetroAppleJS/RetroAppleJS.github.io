@@ -91,3 +91,47 @@ test('Card Cat decimal probe identifies RetroAppleJS as an NMOS 6502', () => {
     executeInstruction(cpu); // LDA #$65 marker
     assert.equal(cpu.watch().a,0x65,'NMOS 6502 path marker should execute');
 });
+
+test('NMOS decimal SBC preserves binary-derived N/Z flags and 2-cycle immediate timing', () => {
+    // Matching NMOS-vs-CMOS decimal subtraction probe:
+    //   SED
+    //   LDA #$00
+    //   SEC
+    //   SBC #$50
+    //   CLD
+    //   BMI nmos6502
+    //
+    // Decimal result is $50 with a borrow (C=0), but the unadjusted binary
+    // result is $B0. NMOS 6502 therefore leaves N=1 from the binary result,
+    // while a 65C02 derives N from the corrected BCD result $50 and gets N=0.
+    const {cpu} = harness([
+        0xF8,             // $0200 SED
+        0xA9,0x00,        // $0201 LDA #$00
+        0x38,             // $0203 SEC
+        0xE9,0x50,        // $0204 SBC #$50
+        0xD8,             // $0206 CLD
+        0x30,0x02,        // $0207 BMI $020B -- NMOS path
+        0xA9,0xC0,        // $0209 65C02 path marker
+        0xA9,0x65,        // $020B NMOS 6502 path marker
+        0xEA              // $020D NOP
+    ]);
+
+    executeInstruction(cpu); // SED
+    executeInstruction(cpu); // LDA #$00
+    executeInstruction(cpu); // SEC
+    const afterSbc = executeInstruction(cpu); // SBC #$50
+
+    assert.equal(afterSbc.a,0x50,'BCD $00 - $50 must produce A=$50 with borrow');
+    assert.equal(afterSbc.p,0xAC,'NMOS status after decimal SBC should be N=1 V=0 D=1 Z=0 C=0');
+    assert.equal(afterSbc.p & (P_N|P_V|P_D|P_Z|P_C),P_N|P_D);
+    assert.equal(afterSbc.cycle_delay,1,'NMOS decimal SBC #imm remains a 2-cycle instruction');
+
+    const afterCld = executeInstruction(cpu); // CLD
+    assert.equal(afterCld.p,0xA4,'CLD clears only D; N=1 Z=0 C=0 must survive for the detector');
+
+    const afterBmi = executeInstruction(cpu); // BMI $020B
+    assert.equal(afterBmi.pc,0x020B,'BMI must take the NMOS 6502 path because N is set');
+
+    executeInstruction(cpu); // LDA #$65 marker
+    assert.equal(cpu.watch().a,0x65,'NMOS 6502 SBC path marker should execute');
+});
