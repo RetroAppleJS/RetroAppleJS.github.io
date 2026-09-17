@@ -1,0 +1,32 @@
+name: NMOS 6502 decimal regression tests
+
+on:
+  push:
+    paths:
+      - "res/EMU_cpu6502.js"
+      - "tests/cpu_nmos_decimal_cardcat.test.js"
+      - ".github/workflows/cpu-nmos-decimal-regression.yml"
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - "res/EMU_cpu6502.js"
+      - "tests/cpu_nmos_decimal_cardcat.test.js"
+      - ".github/workflows/cpu-nmos-decimal-regression.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run Card Cat NMOS decimal regression test
+        run: node --test tests/cpu_nmos_decimal_cardcat.test.js
