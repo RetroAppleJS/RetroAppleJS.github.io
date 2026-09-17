@@ -14,8 +14,10 @@ vm.runInContext(cpuSource,cpuContext);
 const P_N = 0x80;
 const P_V = 0x40;
 const P_D = 0x08;
+const P_I = 0x04;
 const P_Z = 0x02;
 const P_C = 0x01;
+const P_1 = 0x20;
 
 function harness(program)
 {
@@ -62,6 +64,76 @@ function runDecimalImmediate(opcode,a,operand,carryIn)
     executeInstruction(cpu); // LDA
     executeInstruction(cpu); // SEC/CLC
     return executeInstruction(cpu);
+}
+
+function bcdValues()
+{
+    const values = [];
+    for(let tens=0;tens<10;tens++)
+        for(let ones=0;ones<10;ones++)
+            values.push((tens << 4) | ones);
+    return values;
+}
+
+function bcdToInt(v)
+{
+    return ((v >>> 4) * 10) + (v & 0x0F);
+}
+
+function intToBcd(v)
+{
+    v = ((v % 100) + 100) % 100;
+    return ((Math.floor(v / 10) << 4) | (v % 10)) & 0xFF;
+}
+
+// Independent NMOS reference model for valid packed-BCD operands.
+// Result/C come from decimal arithmetic. Z comes from the raw binary sum.
+// N/V come from the NMOS pre-high-adjust intermediate after the low digit
+// has been decimal-corrected, which is the non-CMOS behavior we protect.
+function referenceDecimalAdc(a,b,carryIn)
+{
+    const binary = a + b + carryIn;
+
+    let low = (a & 0x0F) + (b & 0x0F) + carryIn;
+    if(low >= 0x0A)
+        low = ((low + 0x06) & 0x0F) + 0x10;
+
+    const preHighAdjust = (a & 0xF0) + (b & 0xF0) + low;
+    const decimal = bcdToInt(a) + bcdToInt(b) + carryIn;
+    const result = intToBcd(decimal);
+
+    let p = P_1 | P_I | P_D;
+    if(preHighAdjust & 0x80) p |= P_N;
+    if((~(a ^ b) & (a ^ preHighAdjust) & 0x80) !== 0) p |= P_V;
+    if((binary & 0xFF) === 0) p |= P_Z;
+    if(decimal >= 100) p |= P_C;
+
+    return {a:result,p};
+}
+
+// For NMOS SBC, N/V/Z are those of the unadjusted binary subtraction while
+// result/C follow decimal subtraction. This deliberately does not reproduce
+// the emulator's nibble-by-nibble implementation.
+function referenceDecimalSbc(a,b,carryIn)
+{
+    const borrowIn = carryIn ? 0 : 1;
+    const binaryWide = a - b - borrowIn;
+    const binary = binaryWide & 0xFF;
+    const decimal = bcdToInt(a) - bcdToInt(b) - borrowIn;
+    const result = intToBcd(decimal);
+
+    let p = P_1 | P_I | P_D;
+    if(binary & 0x80) p |= P_N;
+    if(((a ^ b) & (a ^ binary) & 0x80) !== 0) p |= P_V;
+    if(binary === 0) p |= P_Z;
+    if(decimal >= 0) p |= P_C;
+
+    return {a:result,p};
+}
+
+function hex2(v)
+{
+    return '$' + (v & 0xFF).toString(16).toUpperCase().padStart(2,'0');
 }
 
 test('Card Cat decimal probe identifies RetroAppleJS as an NMOS 6502', () => {
@@ -221,4 +293,72 @@ test('NMOS decimal SBC edge vectors preserve binary flags and inverse-borrow car
         assert.equal(state.p,v.p,`${v.name}: processor flags`);
         assert.equal(state.cycle_delay,1,`${v.name}: NMOS SBC #imm must remain 2 cycles`);
     }
+});
+
+test('exhaustive NMOS decimal ADC covers every valid BCD pair and both carry-in states', () => {
+    const values = bcdValues();
+    const {cpu,mem} = harness([0x69,0x00,0xEA]); // ADC #operand
+    let cases = 0;
+
+    for(const a of values)
+    {
+        for(const b of values)
+        {
+            for(let carryIn=0;carryIn<=1;carryIn++)
+            {
+                mem[0x0201] = b;
+                cpu.setState({
+                    a,
+                    p:P_1 | P_I | P_D | (carryIn ? P_C : 0),
+                    pc:0x0200,
+                    cycle_delay:0
+                });
+
+                const actual = executeInstruction(cpu);
+                const expected = referenceDecimalAdc(a,b,carryIn);
+                const label = `ADC A=${hex2(a)} M=${hex2(b)} C=${carryIn}`;
+
+                assert.equal(actual.a,expected.a,`${label}: accumulator`);
+                assert.equal(actual.p,expected.p,`${label}: N/V/Z/C flags`);
+                assert.equal(actual.cycle_delay,1,`${label}: immediate timing must be 2 cycles`);
+                cases++;
+            }
+        }
+    }
+
+    assert.equal(cases,20000,'100 x 100 BCD pairs x 2 carry-in states');
+});
+
+test('exhaustive NMOS decimal SBC covers every valid BCD pair and both carry-in states', () => {
+    const values = bcdValues();
+    const {cpu,mem} = harness([0xE9,0x00,0xEA]); // SBC #operand
+    let cases = 0;
+
+    for(const a of values)
+    {
+        for(const b of values)
+        {
+            for(let carryIn=0;carryIn<=1;carryIn++)
+            {
+                mem[0x0201] = b;
+                cpu.setState({
+                    a,
+                    p:P_1 | P_I | P_D | (carryIn ? P_C : 0),
+                    pc:0x0200,
+                    cycle_delay:0
+                });
+
+                const actual = executeInstruction(cpu);
+                const expected = referenceDecimalSbc(a,b,carryIn);
+                const label = `SBC A=${hex2(a)} M=${hex2(b)} C=${carryIn}`;
+
+                assert.equal(actual.a,expected.a,`${label}: accumulator`);
+                assert.equal(actual.p,expected.p,`${label}: N/V/Z/C flags`);
+                assert.equal(actual.cycle_delay,1,`${label}: immediate timing must be 2 cycles`);
+                cases++;
+            }
+        }
+    }
+
+    assert.equal(cases,20000,'100 x 100 BCD pairs x 2 carry-in states');
 });
