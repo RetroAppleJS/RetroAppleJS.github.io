@@ -1,0 +1,26 @@
+--- GPT16_V6_11_LC_CHAT_COMBINED.S
++++ GPT16_V6_11A_LC_CHAT_COMBINED.S
+@@ -1,5 +1,5 @@
+ ; =============================================================================
+-; GPT16_V6_11_LC_CHAT_COMBINED.S
++; GPT16_V6_11A_LC_CHAT_COMBINED.S
+ ; =============================================================================
+ ;
+ ; Phase/overlay split prototype derived mechanically from the last known-running
+@@ -2973,6 +2973,16 @@
+ ; ---------------------------------------------------------------------------
+ CHAT_DISK_LOAD
+         JSR     GPT_RAM_ZP_SAVE_NOW
++
++        ; CHAT_DISK_LOAD can run before CHAT START (KERNEL_BOOT or the forced
++        ; KAPI_CHAT_DISK_BOOT entry).  START normally performs DOS_INIT, but a
++        ; pre-START disk fallback cannot rely on that.  In particular, ESC-Q
++        ; restores the caller's $F2/$F3, so the DOS File Manager parameter-list
++        ; pointer must be reacquired before FM_OPEN_AUX_EXIST.
++        JSR     DOS_INIT
++        LDA     DOS_AVAILABLE
++        BEQ     CHAT_DISK_FAIL_RESTORE
++
+         JSR     CHAT_SET_DISK_NAME
+ 
+         JSR     FM_OPEN_AUX_EXIST
