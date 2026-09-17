@@ -48,6 +48,22 @@ function executeInstruction(cpu)
     return executed;
 }
 
+function runDecimalImmediate(opcode,a,operand,carryIn)
+{
+    const {cpu} = harness([
+        0xF8,                   // SED
+        0xA9,a & 0xFF,          // LDA #a
+        carryIn ? 0x38 : 0x18,  // SEC / CLC
+        opcode,operand & 0xFF,  // ADC/SBC #operand
+        0xEA                    // NOP
+    ]);
+
+    executeInstruction(cpu); // SED
+    executeInstruction(cpu); // LDA
+    executeInstruction(cpu); // SEC/CLC
+    return executeInstruction(cpu);
+}
+
 test('Card Cat decimal probe identifies RetroAppleJS as an NMOS 6502', () => {
     // Card Cat CPU probe:
     //   SED
@@ -134,4 +150,75 @@ test('NMOS decimal SBC preserves binary-derived N/Z flags and 2-cycle immediate 
 
     executeInstruction(cpu); // LDA #$65 marker
     assert.equal(cpu.watch().a,0x65,'NMOS 6502 SBC path marker should execute');
+});
+
+test('NMOS decimal ADC edge vectors preserve pre-correction flags and decimal carry', () => {
+    const vectors = [
+        {
+            name:'Z follows wrapped binary sum even when corrected BCD result is non-zero',
+            a:0x70, operand:0x90, carryIn:0,
+            result:0x60, p:0x2F
+        },
+        {
+            name:'decimal carry and signed overflow set even though binary sum has no carry out',
+            a:0x50, operand:0x50, carryIn:0,
+            result:0x00, p:0xED
+        },
+        {
+            name:'N remains set from the pre-correction high nibble when corrected result is zero',
+            a:0x99, operand:0x01, carryIn:0,
+            result:0x00, p:0xAD
+        },
+        {
+            name:'opposite binary signs keep V clear across a decimal carry',
+            a:0x90, operand:0x10, carryIn:0,
+            result:0x00, p:0xAD
+        }
+    ];
+
+    for(const v of vectors)
+    {
+        const state = runDecimalImmediate(0x69,v.a,v.operand,v.carryIn);
+        assert.equal(state.a,v.result,`${v.name}: accumulator`);
+        assert.equal(state.p,v.p,`${v.name}: processor flags`);
+        assert.equal(state.cycle_delay,1,`${v.name}: NMOS ADC #imm must remain 2 cycles`);
+    }
+});
+
+test('NMOS decimal SBC edge vectors preserve binary flags and inverse-borrow carry', () => {
+    const vectors = [
+        {
+            name:'Z remains clear when BCD correction turns a non-zero binary difference into zero',
+            a:0x10, operand:0x09, carryIn:0,
+            result:0x00, p:0x2D
+        },
+        {
+            name:'borrow clears C and wraps the decimal result',
+            a:0x00, operand:0x01, carryIn:1,
+            result:0x99, p:0xAC
+        },
+        {
+            name:'N follows binary difference even when corrected BCD result is positive',
+            a:0x00, operand:0x50, carryIn:1,
+            result:0x50, p:0xAC
+        },
+        {
+            name:'positive-direction signed overflow sets V without borrow',
+            a:0x80, operand:0x01, carryIn:1,
+            result:0x79, p:0x6D
+        },
+        {
+            name:'negative-direction signed overflow sets V while decimal borrow clears C',
+            a:0x00, operand:0x80, carryIn:1,
+            result:0x20, p:0xEC
+        }
+    ];
+
+    for(const v of vectors)
+    {
+        const state = runDecimalImmediate(0xE9,v.a,v.operand,v.carryIn);
+        assert.equal(state.a,v.result,`${v.name}: accumulator`);
+        assert.equal(state.p,v.p,`${v.name}: processor flags`);
+        assert.equal(state.cycle_delay,1,`${v.name}: NMOS SBC #imm must remain 2 cycles`);
+    }
 });
