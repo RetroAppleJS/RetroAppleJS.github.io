@@ -5,12 +5,14 @@ on:
     paths:
       - "res/EMU_cpu6502.js"
       - "tests/cpu_nmos_decimal_cardcat.test.js"
+      - "tests/cpu_nmos_decimal_invalid_bcd.test.js"
       - ".github/workflows/cpu-nmos-decimal-regression.yml"
   pull_request:
     branches: [ "main" ]
     paths:
       - "res/EMU_cpu6502.js"
       - "tests/cpu_nmos_decimal_cardcat.test.js"
+      - "tests/cpu_nmos_decimal_invalid_bcd.test.js"
       - ".github/workflows/cpu-nmos-decimal-regression.yml"
 
 permissions:
@@ -28,5 +30,5 @@ jobs:
         with:
           node-version: 20
 
-      - name: Run Card Cat NMOS decimal regression test
-        run: node --test tests/cpu_nmos_decimal_cardcat.test.js
+      - name: Run NMOS decimal regression tests
+        run: node --test tests/cpu_nmos_decimal_cardcat.test.js tests/cpu_nmos_decimal_invalid_bcd.test.js

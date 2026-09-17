@@ -12749,6 +12749,10 @@ function loadDisk_fromFile(file_obj,slotN,deviceID)
                 var disk2 = io.SLOT2obj(slotN);
                 disk2.setDiskData(bytes, deviceID, filepath);
             }
+            else if(size == 819200)
+                console.warn("disk was not loaded: likely needs Apple 3.5\" Drive Controller (\"Liron\") → UniDisk 3.5")
+            else
+                console.warn("disk was not loaded: unknown disk size ("+size+" bytes)")
         };
     }
     fread1.onload = onloadHandler(filepath, slotN, deviceID);
