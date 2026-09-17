@@ -1049,7 +1049,7 @@ function Cpu6502(hwobj)
         case 0xbe:   addr = operand + y;  if ((operand ^ addr) & 0xff00) cycle_delay++;  x = readByte(addr);  set_nz(x);  break; // LDX absolute, Y
         case 0xc0:   cmp_instr(y, operand);  break; // CPY imm
         case 0xc1:   addr = ind_x(operand);  operand = readByte(addr);  cmp_instr(a, operand);  break; // CMP (ind, X)
-        case 0xc2:   unofficial(opcode,pc); break; // NOP imm / SKB / DOP
+        case 0xc2:   break; // NOP #imm on NMOS 6502; $C2 $02 used by ProDOS 2.5 CPU detection
         case 0xc4:   operand = readByte(operand);  cmp_instr(y, operand);  break; // CPY zero
         case 0xc5:   operand = readByte(operand);  cmp_instr(a, operand);  break; // CMP zero
         case 0xc6:   d8 = (readByte(operand) - 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // DEC zero
