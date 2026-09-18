@@ -1,0 +1,200 @@
+name: Temporary Liron ROM enumeration trace
+
+on:
+  push:
+    branches: [ "feature/liron-unidisk-bus" ]
+    paths:
+      - ".github/workflows/liron-rom-trace-temp.yml"
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-bus
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Execute authentic Liron SmartPort STATUS call with trace
+        shell: bash
+        run: |
+          node <<'NODE'
+          'use strict';
+          const fs=require('node:fs');
+          const vm=require('node:vm');
+
+          function hex(v,n=2){ return '$'+(Number(v)>>>0).toString(16).toUpperCase().padStart(n,'0'); }
+
+          const cpuCtx={console};
+          vm.createContext(cpuCtx);
+          vm.runInContext(fs.readFileSync('res/EMU_cpu6502.js','utf8'),cpuCtx,{filename:'EMU_cpu6502.js'});
+
+          const actionMap={Hslot:null,RD:new Array(0x1000),WR:new Array(0x1000)};
+          const lctx={console,oEMU:{component:{IO:{ACTION_MAP:actionMap}}}};
+          vm.createContext(lctx);
+          vm.runInContext(fs.readFileSync('res/EMU_DEVICE_UNIDISK35.js','utf8'),lctx,{filename:'EMU_DEVICE_UNIDISK35.js'});
+          vm.runInContext(fs.readFileSync('res/EMU_CARD_LIRON.js','utf8'),lctx,{filename:'EMU_CARD_LIRON.js'});
+
+          const card=new lctx.AppleLiron();
+          const iwm=card.getIWM();
+          const bus=card.getBus();
+          const rom=card.getROM();
+
+          let currentPC=0;
+          let seq=0;
+          const events=[];
+
+          function busState(){
+            const s=bus.getState();
+            return {phase:s.phaseLines,req:s.req,ack:s.ack,enabled:s.enabled,state:s.protocolState,rx:s.rxLength,tx:s.txLength,txi:s.txIndex,error:s.lastError};
+          }
+          function iwmState(){
+            const s=iwm.getState();
+            return {lines:s.lines,motor:s.motor,q6:s.q6,q7:s.q7,mode:s.mode};
+          }
+          function record(kind,detail={}){
+            if(events.length>=6000) return;
+            events.push({seq:++seq,pc:currentPC&0xFFFF,kind,...detail});
+          }
+
+          const origSetLines=bus.setLines.bind(bus);
+          bus.setLines=function(lines,ctx){
+            const before=busState();
+            const r=origSetLines(lines,ctx);
+            const after=busState();
+            if(before.phase!==after.phase || before.req!==after.req || before.ack!==after.ack || before.enabled!==after.enabled || before.state!==after.state)
+              record('PH',{lines:Number(lines)&0x0F,before,after});
+            return r;
+          };
+          const origSense=bus.readSense.bind(bus);
+          bus.readSense=function(lines,ctx){
+            const before=busState();
+            const value=origSense(lines,ctx);
+            const after=busState();
+            record('SENSE',{value:value?1:0,before,after});
+            return value;
+          };
+          const origWriteData=bus.writeData.bind(bus);
+          bus.writeData=function(value,lines,ctx){
+            const before=busState();
+            const r=origWriteData(value,lines,ctx);
+            const after=busState();
+            record('DATA>',{value:Number(value)&0xFF,before,after});
+            return r;
+          };
+          const origReadData=bus.readData.bind(bus);
+          bus.readData=function(lines,ctx){
+            const before=busState();
+            const value=origReadData(lines,ctx);
+            const after=busState();
+            record('DATA<',{value:Number(value)&0xFF,before,after});
+            return value;
+          };
+
+          const mem=new Uint8Array(0x10000);
+          const entry=(0xC500 + (rom[0x5FF]&0xFF) + 3)&0xFFFF;
+          const params=0x0280;
+          const statusBuf=0x0400;
+          const returnPC=0x0206;
+
+          // JSR SmartPort entry; inline command + command-list pointer.
+          mem[0x0200]=0x20;
+          mem[0x0201]=entry&0xFF;
+          mem[0x0202]=(entry>>8)&0xFF;
+          mem[0x0203]=0x00;             // STATUS
+          mem[0x0204]=params&0xFF;
+          mem[0x0205]=(params>>8)&0xFF;
+          mem[0x0206]=0xEA;             // expected return point
+          mem[0x0207]=0x4C; mem[0x0208]=0x06; mem[0x0209]=0x02;
+
+          mem[params+0]=0x03;            // parameter count
+          mem[params+1]=0x00;            // unit 0: SmartPort controller
+          mem[params+2]=statusBuf&0xFF;
+          mem[params+3]=(statusBuf>>8)&0xFF;
+          mem[params+4]=0x00;            // status code 0
+
+          mem[0xFFFC]=0x00; mem[0xFFFD]=0x02;
+
+          const hw={irq_signal:0,nmi_signal:0};
+          hw.lineDecode=addr=>(addr>>>8)&0xFF;
+          hw.RD=new Array(256);
+          hw.WR=new Array(256);
+          for(let page=0;page<256;page++){
+            hw.RD[page]=addr=>mem[addr&0xFFFF];
+            hw.WR[page]=(addr,value)=>{mem[addr&0xFFFF]=value&0xFF;};
+          }
+
+          hw.RD[0xC0]=addr=>{
+            addr&=0xFFFF;
+            if(addr>=0xC0D0 && addr<=0xC0DF){
+              const reg=addr&0x0F;
+              const before=iwmState();
+              const value=iwm.read(reg,{pc:currentPC});
+              const after=iwmState();
+              record('IWM-R',{reg,value:Number(value)&0xFF,before,after});
+              return value&0xFF;
+            }
+            return mem[addr];
+          };
+          hw.WR[0xC0]=(addr,value)=>{
+            addr&=0xFFFF;
+            if(addr>=0xC0D0 && addr<=0xC0DF){
+              const reg=addr&0x0F;
+              const before=iwmState();
+              iwm.write(reg,value,{pc:currentPC});
+              const after=iwmState();
+              record('IWM-W',{reg,value:value&0xFF,before,after});
+              return;
+            }
+            mem[addr]=value&0xFF;
+          };
+          hw.RD[0xC5]=addr=>rom[0x500+(addr&0xFF)];
+          for(let page=0xC8;page<=0xCF;page++) hw.RD[page]=addr=>rom[0x800+((addr&0xFFFF)-0xC800)];
+          for(let page=0xC5;page<=0xCF;page++) hw.WR[page]=(addr,value)=>{};
+
+          const cpu=new cpuCtx.Cpu6502(hw);
+          cpu.reset();
+
+          function stepInstruction(){
+            if(cpu.watch().cycle_delay!==0) throw new Error('instruction boundary expected');
+            currentPC=cpu.watch().pc&0xFFFF;
+            cpu.cycle();
+            while(cpu.watch().cycle_delay>0) cpu.cycle();
+          }
+
+          let returned=false;
+          let instructions=0;
+          for(;instructions<250000;instructions++){
+            if(instructions>0 && cpu.watch().cycle_delay===0 && (cpu.watch().pc&0xFFFF)===returnPC){ returned=true; break; }
+            stepInstruction();
+          }
+
+          const finalCPU=cpu.watch();
+          console.log('=== LIRON AUTHENTIC ROM TRACE SUMMARY ===');
+          console.log('ROM C5FF offset =',hex(rom[0x5FF]),'SmartPort entry =',hex(entry,4));
+          console.log('Attached units =',JSON.stringify(Array.from(bus.getUnits())));
+          console.log('Returned =',returned,'instructions =',instructions,'PC =',hex(finalCPU.pc,4),'A =',hex(finalCPU.a),'X =',hex(finalCPU.x),'Y =',hex(finalCPU.y),'P =',hex(finalCPU.p));
+          console.log('Unit-0 status buffer =',Array.from(mem.slice(statusBuf,statusBuf+8)).map(v=>hex(v)).join(' '));
+          console.log('Final bus =',JSON.stringify(bus.getState()));
+          console.log('Trace events =',events.length);
+
+          function fmtState(s){
+            return `ph=${s.phase.toString(16).toUpperCase()} en=${+!!s.enabled} req=${+!!s.req} ack=${+!!s.ack} ${s.state}`;
+          }
+          function fmt(e){
+            const p=`#${String(e.seq).padStart(4,'0')} PC=${hex(e.pc,4)} ${e.kind}`;
+            if(e.kind==='PH') return `${p} lines=${hex(e.lines)} ${fmtState(e.before)} -> ${fmtState(e.after)}`;
+            if(e.kind==='SENSE') return `${p} value=${e.value} ${fmtState(e.before)} -> ${fmtState(e.after)}`;
+            if(e.kind==='DATA>' || e.kind==='DATA<') return `${p} ${hex(e.value)} ${fmtState(e.before)} -> ${fmtState(e.after)}`;
+            if(e.kind==='IWM-R' || e.kind==='IWM-W') return `${p} reg=${hex(e.reg)} value=${hex(e.value)} lines=${hex(e.before.lines)}->${hex(e.after.lines)} M=${+!!e.after.motor} Q6=${+!!e.after.q6} Q7=${+!!e.after.q7}`;
+            return p;
+          }
+
+          console.log('=== FIRST TRACE EVENTS ===');
+          for(const e of events.slice(0,260)) console.log(fmt(e));
+          if(events.length>260){
+            console.log('=== LAST TRACE EVENTS ===');
+            for(const e of events.slice(-60)) console.log(fmt(e));
+          }
+          NODE
