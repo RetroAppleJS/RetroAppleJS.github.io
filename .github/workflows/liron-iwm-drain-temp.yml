@@ -1,0 +1,21 @@
+name: Temporary Liron IWM drain regression
+
+on:
+  push:
+    branches: [ "feature/liron-unidisk-bus" ]
+    paths:
+      - "tests/liron_iwm.test.js"
+      - "res/EMU_CARD_LIRON.js"
+      - ".github/workflows/liron-iwm-drain-temp.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-bus
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --test tests/liron_iwm.test.js
