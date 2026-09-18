@@ -131,24 +131,81 @@ if(LIRON_ROM.length!==4096) throw new Error("Liron ROM must be exactly 4096 byte
 function SmartPortBus()
 {
     var devices = [];
+    var units = new Array(9).fill(null);
+
+    function normalizeUnit(unit)
+    {
+        unit = Number(unit);
+        if(!Number.isInteger(unit) || unit<1 || unit>8)
+            throw new RangeError("SmartPort unit must be an integer from 1 through 8");
+        return unit;
+    }
+
+    function findUnit(device)
+    {
+        for(var unit=1;unit<=8;unit++) if(units[unit]===device) return unit;
+        return 0;
+    }
+
+    function firstFreeUnit()
+    {
+        for(var unit=1;unit<=8;unit++) if(units[unit]===null) return unit;
+        throw new RangeError("SmartPort bus has no free unit numbers");
+    }
 
     this.reset = function() {};
-    this.attach = function(device)
+    this.attach = function(device,unit)
     {
-        if(device!=null && devices.indexOf(device)<0) devices.push(device);
+        if(device==null) return null;
+
+        var existingUnit = findUnit(device);
+        if(existingUnit)
+        {
+            if(unit===undefined || unit===null || Number(unit)===existingUnit) return device;
+            throw new Error("SmartPort device is already attached as unit "+existingUnit);
+        }
+
+        unit = unit===undefined || unit===null ? firstFreeUnit() : normalizeUnit(unit);
+        if(units[unit]!==null) throw new Error("SmartPort unit "+unit+" is already occupied");
+
+        if(typeof(device.setUnit)==="function") device.setUnit(unit);
+        else device.unit = unit;
+
+        devices.push(device);
+        units[unit]=device;
         return device;
     };
     this.detach = function(device)
     {
         var i = devices.indexOf(device);
-        if(i>=0) devices.splice(i,1);
+        if(i<0) return device;
+
+        var unit=findUnit(device);
+        if(unit) units[unit]=null;
+        devices.splice(i,1);
+
+        if(typeof(device.setUnit)==="function") device.setUnit(0);
+        else if(device && Object.prototype.hasOwnProperty.call(device,"unit")) device.unit=0;
+
         return device;
     };
     this.hasDevices = function() { return devices.length>0; };
+    this.getDevice = function(unit)
+    {
+        unit=Number(unit);
+        if(!Number.isInteger(unit) || unit<1 || unit>8) return null;
+        return units[unit] || null;
+    };
+    this.getUnits = function()
+    {
+        var out=[];
+        for(var unit=1;unit<=8;unit++) if(units[unit]!==null) out.push(unit);
+        return out;
+    };
     this.readSense = function(lines,ctx) { return 0; };
     this.readData = function(lines,ctx) { return 0xFF; };
     this.writeData = function(value,lines,ctx) { return value & 0xFF; };
-    this.getState = function() { return {"deviceCount":devices.length}; };
+    this.getState = function() { return {"deviceCount":devices.length,"units":this.getUnits()}; };
 }
 
 
@@ -189,7 +246,7 @@ function LironIWM(bus)
 
     function readData(ctx)
     {
-        if(bus && typeof(bus.readData)=="function")
+        if(bus && typeof(bus.readData)==="function")
         {
             var value = bus.readData(state.lines,ctx);
             if(value!==undefined && value!==null) state.readData = Number(value)&0xFF;
@@ -199,7 +256,7 @@ function LironIWM(bus)
 
     function readStatus(ctx)
     {
-        var sense = bus && typeof(bus.readSense)=="function" && bus.readSense(state.lines,ctx) ? 0x80 : 0;
+        var sense = bus && typeof(bus.readSense)==="function" && bus.readSense(state.lines,ctx) ? 0x80 : 0;
         var enabled = state.lines&MOTOR ? 0x20 : 0;
         return (sense|enabled|(state.mode&0x1F))&0xFF;
     }
@@ -212,13 +269,13 @@ function LironIWM(bus)
     function writeMode(value,ctx)
     {
         state.mode = Number(value)&0x1F;
-        if(bus && typeof(bus.writeMode)=="function") bus.writeMode(state.mode,state.lines,ctx);
+        if(bus && typeof(bus.writeMode)==="function") bus.writeMode(state.mode,state.lines,ctx);
     }
 
     function writeData(value,ctx)
     {
         state.writeData = Number(value)&0xFF;
-        if(bus && typeof(bus.writeData)=="function") bus.writeData(state.writeData,state.lines,ctx);
+        if(bus && typeof(bus.writeData)==="function") bus.writeData(state.writeData,state.lines,ctx);
     }
 
     this.read = function(reg,ctx)
@@ -251,7 +308,7 @@ function LironIWM(bus)
     {
         state.lines=0; state.mode=0; state.readData=0xFF; state.writeData=0;
         state.writeReady=true; state.underrun=false;
-        if(bus && typeof(bus.reset)=="function") bus.reset();
+        if(bus && typeof(bus.reset)==="function") bus.reset();
     };
     this.restart = function() { this.reset(); };
     this.setWriteReady = function(value) { state.writeReady=!!value; };
@@ -297,6 +354,8 @@ function AppleLiron()
     const bDebug = false;
     var liron = this;
     var smartport = new SmartPortBus();
+    var unidisk = typeof(UniDisk35Device)==="function" ? new UniDisk35Device() : null;
+    if(unidisk) smartport.attach(unidisk,1);
     var iwm = new LironIWM(smartport);
 
     this.id = {"PCODE":"LIRON","icon":"fa fa-save"};
@@ -400,5 +459,6 @@ function AppleLiron()
     this.restart = function() { iwm.restart(); };
     this.getIWM = function() { return iwm; };
     this.getBus = function() { return smartport; };
+    this.getUniDisk = function() { return unidisk; };
     this.getROM = function() { return LIRON_ROM; };
 }
