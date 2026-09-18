@@ -240,6 +240,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 | MS16K   | Microsoft 16K Language card          | $C08<sub>n</sub>0,$C08<sub>n</sub>F |                 |           | 0             | A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf) | 
 | TCLKP   | Thunderclock Plus | $C08<sub>n</sub>0,$C08<sub>n</sub>F | $C0<sub>n</sub>00,$C0<sub>n</sub>FF | | 1*,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/clocks/ThunderClock%20Plus.pdf)|
 | SSC     | Apple Super Serial Card | $C08<sub>n</sub>0,$C08<sub>n</sub>F | $C0<sub>n</sub>00,$C0<sub>n</sub>FF | | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/io/super_serial_card/Apple%20II%20Super%20Serial%20Card%20User%27s%20Manual.pdf)|
+| LIRON  | Apple 3.5 Floppy Disk Drive Interface Card | $C08<sub>n</sub>0,$C08<sub>n</sub>F | $C0<sub>n</sub>00,$C0<sub>n</sub>FF | | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/disks/Apple%20II%203.5%20Disk%20Controller%20Card%20Owner%27s%20Guide.pdf)|
 | DISKII  | Apple Disk II Floppy Disk Subsystem  | $C08<sub>n</sub>0,$C08<sub>n</sub>F | $C0<sub>n</sub>00,$C0<sub>n</sub>FF | | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)|
 | VIDEX  | Videx Videoterm 80 Column Display     | $C08<sub>n</sub>0,$C08<sub>n</sub>F | $C0<sub>n</sub>00,$C0<sub>n</sub>FF | $C800,$CFFF | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/) |
 
@@ -252,7 +253,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 |   2    | SPC        |                   |
 |   3    | VIDEX      |                   |
 |   4    |            |                   |
-|   5    |            |                   |
+|   5    | LIRON      |                   |
 |   6    | DISKII     |                   |
 |   7    |            |                   |
 
@@ -264,6 +265,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 | A2BO    | Motherboard peripheral               | X      |        |         |              | H*            | A2,A2P,A2E  |               | 
 | MS16K   | Microsoft 16K Language card          |        | X      |         |              | 0*            | A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf) | 
 | TCLKP  | Thunderclock Plus  |        | X      | X       | X             | 1,2,3,4*,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/clocks/ThunderClock%20Plus.pdf)|
+| LIRON  | Apple 3.5 Floppy Disk Drive Interface Card  | X      | X      | X       |              | 1,2,3,4,5*,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/disks/Apple%20II%203.5%20Disk%20Controller%20Card%20Owner%27s%20Guide.pdf)|
 | DISKII  | Apple Disk II Floppy Disk Subsystem  |        | X      | X       |              | 1,2,3,4,5,6*,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)|
 | VIDEX  | Videx Videoterm 80 Column Display     |        | X      | X        | X           | *3           | A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/) |
 | MOCK  | Mockingboard C                         |        | X      |          |             | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/) |
