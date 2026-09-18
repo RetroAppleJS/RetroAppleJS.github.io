@@ -1,5 +1,8 @@
 name: Temporary Liron IWM drain regression
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [ "feature/liron-unidisk-bus" ]
