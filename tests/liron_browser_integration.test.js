@@ -30,14 +30,16 @@ function loadBrowserCard()
     return context;
 }
 
-test('index.html loads UniDisk 3.5 before the Liron card', () => {
+test('index.html loads UniDisk 3.5 before exactly one Liron card script', () => {
     const deviceTag = 'src="res/EMU_DEVICE_UNIDISK35.js"';
     const lironTag = 'src="res/EMU_CARD_LIRON.js"';
     const devicePos = indexSource.indexOf(deviceTag);
     const lironPos = indexSource.indexOf(lironTag);
+    const lironCount = indexSource.split(lironTag).length - 1;
 
     assert.notEqual(devicePos,-1,'index.html must load EMU_DEVICE_UNIDISK35.js');
     assert.notEqual(lironPos,-1,'index.html must load EMU_CARD_LIRON.js');
+    assert.equal(lironCount,1,'index.html must load EMU_CARD_LIRON.js exactly once');
     assert.ok(devicePos < lironPos,'UniDisk device script must load before Liron card');
 });
 
