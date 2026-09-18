@@ -53855,16 +53855,16 @@ var ASM_OfflineSources =
                 max-width: calc(100% - 10px);
               }
 
-              .ASM_paneHost.ASM_showJson {
+              .ASM_paneHost.ASM_showInclude {
                 grid-template-columns: repeat(3, minmax(0, 1fr));
               }
 
-              .ASM_paneHost .ASM_jsonPane {
+              .ASM_paneHost .ASM_includePane {
                 display: none;
               }
 
-              .ASM_paneHost.ASM_showJson .ASM_jsonPane {
-                display: grid;
+              .ASM_paneHost.ASM_showInclude .ASM_includePane {
+                display: flex;
               }
 
               .ASM_pane {
@@ -54112,7 +54112,13 @@ var ASM_OfflineSources =
                 padding: 0px 2px;
                 box-sizing: border-box;
                 white-space: nowrap;
-                cursor: default;
+                cursor: pointer;
+              }
+
+              .ASM_includeLabelWrap .appbut.label.ASM_includeSelected {
+                outline: 2px solid #0078d4;
+                outline-offset: 1px;
+                background: rgba(0,120,212,0.10);
               }
 
               .ASM_includeLabelWrap .ASM_includeRemove {
@@ -54128,6 +54134,99 @@ var ASM_OfflineSources =
                 margin: 0px;
                 padding: 0px;
                 cursor: pointer;
+              }
+
+              #ASM_diagnosticsButton[hidden],
+              #ASM_outputPopupBack[hidden] {
+                display: none !important;
+              }
+
+              .ASM_outputPopupBack {
+                position: fixed;
+                inset: 0;
+                z-index: 2200;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 28px;
+                background: rgba(0,0,0,0.38);
+              }
+
+              .ASM_outputPopup {
+                display: flex;
+                flex-direction: column;
+                width: min(1100px,calc(100vw - 56px));
+                height: min(760px,calc(100vh - 56px));
+                min-width: 360px;
+                min-height: 260px;
+                border: 1px solid rgba(0,0,0,0.42);
+                border-radius: 10px;
+                background: #f4f4f4;
+                box-shadow: 0px 8px 30px rgba(0,0,0,0.42);
+                overflow: hidden;
+              }
+
+              .ASM_outputPopupHeader {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 10px;
+                min-height: 38px;
+                padding: 5px 8px;
+                border-bottom: 1px solid rgba(0,0,0,0.22);
+                color: #000000;
+                font: 12px/20px arial,sans-serif;
+              }
+
+              .ASM_outputPopupHeader strong { font-size: 13px; }
+
+              .ASM_outputPopupActions {
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+              }
+
+              .ASM_outputPopupText {
+                display: block;
+                flex: 1 1 auto;
+                width: 100%;
+                min-height: 0;
+                margin: 0px;
+                padding: 10px 14px;
+                border: 0px;
+                outline: 0px;
+                resize: none;
+                overflow: auto;
+                background: #ffffff;
+                color: #000000;
+                -webkit-text-fill-color: #000000;
+                font-family: var(--ASM_monoFont);
+                font-size: var(--ASM_monoSize);
+                font-weight: 500;
+                line-height: var(--ASM_monoLineHeight);
+                white-space: pre;
+                tab-size: 4;
+                user-select: text !important;
+                -moz-user-select: text !important;
+                -webkit-user-select: text !important;
+                -ms-user-select: text !important;
+              }
+
+              .ASM_root.ASM_paneDark .ASM_outputPopup {
+                background: #111820;
+                border-color: #30363d;
+                color: #e6edf3;
+              }
+
+              .ASM_root.ASM_paneDark .ASM_outputPopupHeader {
+                color: #e6edf3;
+                border-color: #30363d;
+              }
+
+              .ASM_root.ASM_paneDark .ASM_outputPopupText {
+                background: #000000;
+                color: #e6edf3;
+                -webkit-text-fill-color: #e6edf3;
               }
 
               .ASM_paneTitleButton {
@@ -54438,7 +54537,7 @@ var ASM_OfflineSources =
                 <!--  ASM ACTION BUTTONS -->
                 <div class=toolbox>
                   <!--button id="ASM_assembleButton" class=appbut type="button" title="Assemble"><i class="fa fa-cogs"></i></button-->
-                  <button id="ASM_toggleJsonButton" class=appbut type="button" title="Show JSON output"><i class="fa fa-code"></i></button>
+                  <button id="ASM_toggleIncludeButton" class="appbut greyed" type="button" title="No include file loaded" disabled><i class="fa fa-file-code"></i></button>
                   <br>
                   <button id="ASM_assembleButton" class=appbut type="button" data-pane-default-act="assemble" title="Assemble"><i class="fa fa-play"></i></button>
                 </div>
@@ -54546,7 +54645,10 @@ Label1 TXA
                     <div title="Send byte code to emulator" id="ASM_toEmulatorHeaderButton" class="ASM_toEmulatorButton appbut skinny"><i class="fa fa-apple-alt"></i>&nbsp;<i class="fa fa-caret-left"></i></div> | 
                     <div title="Send byte code to debugger" id="ASM_toDebuggerHeaderButton" class="ASM_toDebuggerButton appbut skinny"><i class="fa fa-caret-right"></i>&nbsp;<i class="fa fa-bug"></i></div>                    
 
-                    <button type="button" id="ASM_jumpErrorsButton" class="appbut skinny greyed" data-pane-default-act="jump2errors" title="No assembly errors" disabled>
+                    <button type="button" id="ASM_diagnosticsButton" class="appbut skinny" title="No assembly diagnostics" hidden disabled>
+                      <i class="fa fa-exclamation-triangle"></i>
+                    </button>
+                    <button type="button" id="ASM_jsonPopupButton" class="appbut skinny" title="Show JSON output">
                       <i class="fa fa-stethoscope"></i>
                     </button>
 
@@ -54562,26 +54664,39 @@ Label1 TXA
                   <textarea id="ASM_listingPane" class="ASM_editor dotmatrix_bck" readonly="readonly" spellcheck="false" wrap="off" placeholder="Listing"></textarea>
                 </section>
 
-                <section id="ASM_jsonPane" class="ASM_pane ASM_jsonPane">
+                <section id="ASM_includePane" class="ASM_pane ASM_includePane">
                   <div class="ASM_paneTitle">
-                    <strong>JSON output</strong>
+                    <strong>Include</strong>
                     <span class="ASM_paneTitleMain">
-                      <span id="ASM_jsonInfo" class="ASM_paneInfo"></span>
-                      <div id="ASM_copyJsonButton" class="ASM_paneTitleButton" title="Copy JSON"><i class="fa fa-copy"></i></div>
-                      <button type="button" id="ASM_closeJsonButton" class="appbut skinny" title="Hide JSON output">
+                      <span id="ASM_includeInfo" class="ASM_paneInfo"></span>
+                      <div id="ASM_copyIncludeButton" class="ASM_paneTitleButton" title="Copy include file"><i class="fa fa-copy"></i></div>
+                      <button type="button" id="ASM_closeIncludeButton" class="appbut skinny" title="Hide include file">
                         <i class="fa fa-times"></i>
                       </button>
                     </span>
                   </div>
-                   <textarea id="ASM_jsonMount"
+                   <textarea id="ASM_includeMount"
                              class="ASM_jsonMount dotmatrix_bck"
-                             aria-label="Parser output (JSON)"
+                             aria-label="Include file source"
                              readonly="readonly"
                              spellcheck="false"
                              wrap="off"
-                             placeholder="Parser output (JSON)"></textarea>
+                             placeholder="Include file source"></textarea>
                 </section>
                 
+              </div>
+
+              <div id="ASM_outputPopupBack" class="ASM_outputPopupBack" hidden aria-hidden="true">
+                <section class="ASM_outputPopup" role="dialog" aria-modal="true" aria-labelledby="ASM_outputPopupTitle">
+                  <div class="ASM_outputPopupHeader">
+                    <strong id="ASM_outputPopupTitle">JSON output</strong>
+                    <span class="ASM_outputPopupActions">
+                      <button type="button" id="ASM_outputPopupCopy" class="appbut skinny" title="Copy"><i class="fa fa-copy"></i></button>
+                      <button type="button" id="ASM_outputPopupClose" class="appbut skinny" title="Close"><i class="fa fa-times"></i></button>
+                    </span>
+                  </div>
+                  <textarea id="ASM_outputPopupText" class="ASM_outputPopupText" readonly="readonly" spellcheck="false" wrap="off"></textarea>
+                </section>
               </div>
 
               <section id="ASM_manualPane" class="CRT_TV DOUBL_TV" style="width:100%;max-width:100%;margin:10px 0px 0px 0px;padding:0px;border-radius:10px;overflow:hidden;">
@@ -54595,6 +54710,7 @@ Label1 TXA
             var ASM_currentFileName = "sample.S";
             var ASM_includeFiles = [];
             var ASM_nextIncludeFileId = 1;
+            var ASM_selectedIncludeId = null;
 
             /* ASM INCLUDE FILES BEGIN */
             function ASM_includeNameKey(name)
@@ -54608,6 +54724,20 @@ Label1 TXA
               for(var i=0;i<ASM_includeFiles.length;i++)
                 if(ASM_includeNameKey(ASM_includeFiles[i].name) === key) return i;
               return -1;
+            }
+
+            function ASM_findIncludeIndexById(id)
+            {
+              id = String(id || "");
+              for(var i=0;i<ASM_includeFiles.length;i++)
+                if(String(ASM_includeFiles[i].id) === id) return i;
+              return -1;
+            }
+
+            function ASM_currentIncludeFile()
+            {
+              var index = ASM_findIncludeIndexById(ASM_selectedIncludeId);
+              return index >= 0 ? ASM_includeFiles[index] : null;
             }
 
             function ASM_buildIncludeMap()
@@ -54624,6 +54754,55 @@ Label1 TXA
               return includes;
             }
 
+            function ASM_updateIncludePane()
+            {
+              var file = ASM_currentIncludeFile();
+              var mount = ASM_el("ASM_includeMount");
+              var info = ASM_el("ASM_includeInfo");
+
+              if(mount)
+              {
+                mount.value = file ? String(file.source == null ? "" : file.source) : "";
+                mount.scrollTop = 0;
+                mount.scrollLeft = 0;
+              }
+
+              if(info)
+              {
+                info.textContent = file ? file.name : "";
+                info.title = file ? (file.sourceName || file.name) : "";
+              }
+            }
+
+            function ASM_syncIncludeToggleButton()
+            {
+              var host = ASM_el("ASM_paneHost");
+              var btn = ASM_el("ASM_toggleIncludeButton");
+              if(!host || !btn) return;
+
+              var hasIncludes = ASM_includeFiles.length > 0;
+              if(!hasIncludes) host.classList.remove("ASM_showInclude");
+
+              btn.disabled = !hasIncludes;
+              btn.classList.toggle("greyed",!hasIncludes);
+              btn.title = !hasIncludes
+                ? "No include file loaded"
+                : (host.classList.contains("ASM_showInclude") ? "Hide include file" : "Show include file");
+            }
+
+            function ASM_selectIncludeFile(id,showPane)
+            {
+              var index = ASM_findIncludeIndexById(id);
+              if(index < 0 && ASM_includeFiles.length) index = 0;
+
+              ASM_selectedIncludeId = index >= 0 ? String(ASM_includeFiles[index].id) : null;
+              ASM_updateIncludePane();
+              ASM_renderIncludeLabels();
+
+              if(showPane !== false && index >= 0) ASM_toggleIncludePane(true);
+              return index >= 0;
+            }
+
             function ASM_renderIncludeLabels()
             {
               var wrap = ASM_el("ASM_includeLabelWrap");
@@ -54634,9 +54813,25 @@ Label1 TXA
               {
                 var file = ASM_includeFiles[i];
                 var chip = document.createElement("div");
-                chip.className = "appbut label";
-                chip.title = file.sourceName || file.name;
+                chip.className = "appbut label" + (String(file.id) === String(ASM_selectedIncludeId) ? " ASM_includeSelected" : "");
+                chip.title = "Show " + (file.sourceName || file.name);
+                chip.setAttribute("role","button");
+                chip.setAttribute("tabindex","0");
+                chip.setAttribute("data-include-id",file.id);
                 chip.appendChild(document.createTextNode(file.name + " "));
+                chip.onclick = function(ev)
+                {
+                  ev.preventDefault();
+                  ASM_selectIncludeFile(this.getAttribute("data-include-id"),true);
+                };
+                chip.onkeydown = function(ev)
+                {
+                  if(ev.key == "Enter" || ev.key == " ")
+                  {
+                    ev.preventDefault();
+                    ASM_selectIncludeFile(this.getAttribute("data-include-id"),true);
+                  }
+                };
 
                 var remove = document.createElement("div");
                 remove.className = "appbut skinny ASM_includeRemove";
@@ -54652,6 +54847,8 @@ Label1 TXA
                 chip.appendChild(remove);
                 wrap.appendChild(chip);
               }
+
+              ASM_syncIncludeToggleButton();
             }
 
             function ASM_addIncludeText(name,text,sourceName)
@@ -54676,6 +54873,10 @@ Label1 TXA
                 });
               }
 
+              if(!ASM_currentIncludeFile() && ASM_includeFiles.length)
+                ASM_selectedIncludeId = String(ASM_includeFiles[0].id);
+
+              ASM_updateIncludePane();
               ASM_renderIncludeLabels();
               return {name:name,replaced:replaced};
             }
@@ -54684,6 +54885,10 @@ Label1 TXA
             {
               id = String(id || "");
               var removed = null;
+              var host = ASM_el("ASM_paneHost");
+              var wasOpen = !!(host && host.classList.contains("ASM_showInclude"));
+              var removedSelected = String(ASM_selectedIncludeId || "") === id;
+
               ASM_includeFiles = ASM_includeFiles.filter(function(file)
               {
                 if(String(file.id) === id) { removed = file; return false; }
@@ -54692,7 +54897,15 @@ Label1 TXA
 
               if(!removed) return false;
 
+              if(removedSelected || !ASM_currentIncludeFile())
+                ASM_selectedIncludeId = ASM_includeFiles.length ? String(ASM_includeFiles[0].id) : null;
+
+              ASM_updateIncludePane();
               ASM_renderIncludeLabels();
+
+              if(!ASM_includeFiles.length) ASM_toggleIncludePane(false);
+              else if(wasOpen) ASM_toggleIncludePane(true);
+
               ASM_clearOutputs(
                 "Removed include " + removed.name + ". Reassemble to refresh the listing and byte code.",
                 "warn"
@@ -54729,8 +54942,11 @@ Label1 TXA
             /* ASM INCLUDE FILES END */
 
             var ASM_currentJsonText = "";
+            var ASM_currentDiagnosticsText = "";
             var ASM_currentByteCodeText = "";
             var ASM_currentErrorCount = 0;
+            var ASM_currentWarningCount = 0;
+            var ASM_outputPopupKind = "";
             var ASM_sourceByteCodeActive = false;
             var ASM_oPANE = null;
             var ASM_sourceFindReplace = null;
@@ -55165,21 +55381,90 @@ Label1 TXA
             }
 
 
-            function ASM_setErrorButtonState(errorCount)
+            function ASM_setErrorButtonState(errorCount,warningCount)
             {
               ASM_currentErrorCount = Number(errorCount) || 0;
+              ASM_currentWarningCount = Number(warningCount) || 0;
 
-              var btn = ASM_el("ASM_jumpErrorsButton");
+              var btn = ASM_el("ASM_diagnosticsButton");
               if(!btn) return;
 
-              var hasErrors = ASM_currentErrorCount > 0;
+              var hasDiagnostics = ASM_currentErrorCount > 0 || ASM_currentWarningCount > 0;
 
-              btn.disabled = !hasErrors;
-              btn.classList.toggle("greyed",!hasErrors);
-              btn.classList.toggle("blink",hasErrors);
-              btn.title = hasErrors
-                ? "Jump to " + ASM_currentErrorCount + " assembly error(s) in JSON output"
-                : "No assembly errors";
+              btn.hidden = !hasDiagnostics;
+              btn.disabled = !hasDiagnostics;
+              btn.classList.remove("blink");
+              var icon = btn.querySelector("i");
+              if(icon) icon.classList.toggle("blink",ASM_currentErrorCount > 0);
+
+              if(ASM_currentErrorCount && ASM_currentWarningCount)
+                btn.title = ASM_currentErrorCount + " error(s), " + ASM_currentWarningCount + " warning(s)";
+              else if(ASM_currentErrorCount)
+                btn.title = ASM_currentErrorCount + " assembly error(s)";
+              else if(ASM_currentWarningCount)
+                btn.title = ASM_currentWarningCount + " assembly warning(s)";
+              else
+                btn.title = "No assembly diagnostics";
+
+              if(!hasDiagnostics && ASM_outputPopupKind == "diagnostics") ASM_closeOutputPopup();
+            }
+
+            function ASM_setDiagnosticsText(compiled)
+            {
+              compiled = compiled || {};
+              ASM_currentDiagnosticsText = JSON.stringify({
+                errors:Array.isArray(compiled.errors) ? compiled.errors : [],
+                warnings:Array.isArray(compiled.warnings) ? compiled.warnings : []
+              },null,2);
+              ASM_refreshOutputPopup();
+            }
+
+            function ASM_refreshOutputPopup()
+            {
+              var back = ASM_el("ASM_outputPopupBack");
+              var text = ASM_el("ASM_outputPopupText");
+              if(!back || !text || back.hidden) return;
+
+              text.value = ASM_outputPopupKind == "diagnostics"
+                ? ASM_currentDiagnosticsText
+                : ASM_currentJsonText;
+            }
+
+            function ASM_openOutputPopup(kind)
+            {
+              var back = ASM_el("ASM_outputPopupBack");
+              var text = ASM_el("ASM_outputPopupText");
+              var title = ASM_el("ASM_outputPopupTitle");
+              if(!back || !text || !title) return;
+
+              ASM_outputPopupKind = kind == "diagnostics" ? "diagnostics" : "json";
+              title.textContent = ASM_outputPopupKind == "diagnostics" ? "Assembly diagnostics" : "JSON output";
+              text.value = ASM_outputPopupKind == "diagnostics" ? ASM_currentDiagnosticsText : ASM_currentJsonText;
+              text.scrollTop = 0;
+              text.scrollLeft = 0;
+              back.hidden = false;
+              back.setAttribute("aria-hidden","false");
+              text.focus();
+            }
+
+            function ASM_closeOutputPopup()
+            {
+              var back = ASM_el("ASM_outputPopupBack");
+              if(back)
+              {
+                back.hidden = true;
+                back.setAttribute("aria-hidden","true");
+              }
+              ASM_outputPopupKind = "";
+            }
+
+            function ASM_toggleOutputPopup(kind)
+            {
+              var back = ASM_el("ASM_outputPopupBack");
+              kind = kind == "diagnostics" ? "diagnostics" : "json";
+
+              if(back && !back.hidden && ASM_outputPopupKind == kind) ASM_closeOutputPopup();
+              else ASM_openOutputPopup(kind);
             }
 
             function ASM_findJsonKeyElement(key)
@@ -55294,29 +55579,14 @@ Label1 TXA
 
             function ASM_scrollJsonToErrors()
             {
-              ASM_toggleJsonPane(true);
-
-              window.setTimeout(function(){
-                var mount = ASM_el("ASM_jsonMount");
-                if(!mount) return;
-
-                if(ASM_scrollJsonTextareaToKey("errors")) return;
-
-                var target = ASM_findJsonKeyElement("errors") || ASM_findJsonTextRangeForKey("errors");
-
-                if(!ASM_scrollJsonTargetIntoView(target))
-                {
-                  mount.scrollTop = 0;
-                  mount.focus();
-                }
-              },0);
+              ASM_toggleOutputPopup("diagnostics");
             }           
 
             function ASM_jumpToErrors()
             {
-              if(ASM_currentErrorCount <= 0)
+              if(ASM_currentErrorCount <= 0 && ASM_currentWarningCount <= 0)
               {
-                ASM_setErrorButtonState(0);
+                ASM_setErrorButtonState(0,0);
                 return;
               }
 
@@ -55380,19 +55650,7 @@ Label1 TXA
              function ASM_setJsonText(text)
              {
                ASM_currentJsonText = String(text || "");
-
-               var mountEl = ASM_el("ASM_jsonMount");
-               if(!mountEl) return;
-
-               if("value" in mountEl)
-               {
-                 mountEl.value = ASM_currentJsonText;
-                 mountEl.scrollTop = 0;
-                 return;
-               }
-
-               mountEl.textContent = ASM_currentJsonText;
-               ASM_prettifyJSON();
+               ASM_refreshOutputPopup();
              }
 
             function ASM_consoleTable(rows)
@@ -55417,23 +55675,17 @@ Label1 TXA
 
             function ASM_clearOutputs(message,kind)
             {
-              ASM_currentJsonText = "";
+              ASM_setJsonText("");
+              ASM_currentDiagnosticsText = "";
               ASM_sourceByteCodeActive = false;
               ASM_setSourceByteCodeModeUI(false);
               ASM_setByteCodeOutput("",0);
               ASM_updateSourceByteCodeRangeInfo(ASM_sourceByteCodeOrigin(false),0);
               window.asmTokeniseJSON = null;
               window.asmCompileResult = null;
-              ASM_currentErrorCount = 0;
-              ASM_setErrorButtonState(0);
+              ASM_setErrorButtonState(0,0);
 
               if(ASM_el("ASM_listingPane"))  ASM_el("ASM_listingPane").value  = "";
-              var jsonMount = ASM_el("ASM_jsonMount");
-              if(jsonMount)
-              {
-                if("value" in jsonMount) jsonMount.value = "";
-                else jsonMount.replaceChildren();
-              }
               //ASM_setPaneInfos("", "not assembled");
               ASM_resizeSourceListingPanes();
               ASM_refreshFindReplaceOverlay();
@@ -55446,8 +55698,11 @@ Label1 TXA
               if(typeof window.ASM != "function")
               {
                 var msg = "ASM() was not found. Check res/ASM_core.js.";
+                var failure = {errors:[{message:msg}],warnings:[]};
                 ASM_setStatus(msg,"bad");
-                ASM_setJsonText(JSON.stringify({error:msg},null,2));
+                ASM_setJsonText(JSON.stringify(failure,null,2));
+                ASM_setDiagnosticsText(failure);
+                ASM_setErrorButtonState(1,0);
                 ASM_setPaneInfos("", "error");
                 return false;
               }
@@ -55486,8 +55741,9 @@ Label1 TXA
                 var rowCount = compiled.rows && compiled.rows.length ? compiled.rows.length : 0;
                 var byteCount = compiled.bytes && compiled.bytes.length ? compiled.bytes.length : 0;
                 var errorCount = compiled.errors && compiled.errors.length ? compiled.errors.length : 0;
-                ASM_currentErrorCount = errorCount;
-                ASM_setErrorButtonState(errorCount);
+                var warningCount = compiled.warnings && compiled.warnings.length ? compiled.warnings.length : 0;
+                ASM_setDiagnosticsText(compiled);
+                ASM_setErrorButtonState(errorCount,warningCount);
 
                 ASM_sourceByteCodeActive = false;
                 ASM_setSourceByteCodeModeUI(false);
@@ -55496,8 +55752,13 @@ Label1 TXA
                 ASM_resizeSourceListingPanes();
                 ASM_refreshFindReplaceOverlay();
 
-                if(errorCount)
-                  ASM_setStatus("ASM core v" + coreVersion + ": assembled " + rowCount + " rows / " + byteCount + " bytes with " + errorCount + " unresolved/error row(s).","warn");
+                if(errorCount || warningCount)
+                {
+                  var diagnosticSummary = [];
+                  if(errorCount) diagnosticSummary.push(errorCount + " error(s)");
+                  if(warningCount) diagnosticSummary.push(warningCount + " warning(s)");
+                  ASM_setStatus("ASM core v" + coreVersion + ": assembled " + rowCount + " rows / " + byteCount + " bytes with " + diagnosticSummary.join(" / ") + ".","warn");
+                }
                 else
                   ASM_setStatus("ASM core v" + coreVersion + ": assembled " + rowCount + " rows / " + byteCount + " bytes from " + ASM_currentFileName + ".","ok");
 
@@ -55510,11 +55771,17 @@ Label1 TXA
                 ASM_resizeSourceListingPanes();
                 ASM_refreshFindReplaceOverlay();
                 ASM_setByteCodeOutput("",0);
-                ASM_setJsonText(JSON.stringify({error:err && err.stack ? err.stack : String(err)},null,2));
-                ASM_currentErrorCount = 0;
-                ASM_setErrorButtonState(0);
+
+                var message = err && err.message ? err.message : String(err);
+                var failure = {
+                  errors:[{message:message,stack:err && err.stack ? err.stack : ""}],
+                  warnings:[]
+                };
+                ASM_setJsonText(JSON.stringify(failure,null,2));
+                ASM_setDiagnosticsText(failure);
+                ASM_setErrorButtonState(1,0);
                 ASM_setPaneInfos("", "error");
-                ASM_setStatus("Error: " + (err && err.message ? err.message : String(err)),"bad");
+                ASM_setStatus("Error: " + message,"bad");
                 return false;
               }
             }
@@ -56323,17 +56590,17 @@ Label1 TXA
             {
               var sourcePane = ASM_el("ASM_sourcePane");
               var listingPane = ASM_el("ASM_listingPane");
-              var jsonMount  = ASM_el("ASM_jsonMount");
+              var includeMount = ASM_el("ASM_includeMount");
 
               ASM_resizeTextAreaToContent(sourcePane);
               ASM_resizeTextAreaToContent(listingPane);
 
-              if(jsonMount)
+              if(includeMount)
               {
                 var sourceHeight  = sourcePane ? sourcePane.offsetHeight : 420;
                 var listingHeight = listingPane ? listingPane.offsetHeight : 420;
-                jsonMount.style.height = Math.max(420, sourceHeight, listingHeight) + "px";
-                jsonMount.style.maxHeight = jsonMount.style.height;
+                includeMount.style.height = Math.max(420, sourceHeight, listingHeight) + "px";
+                includeMount.style.maxHeight = includeMount.style.height;
               }
 
               ASM_equalizePaneHeaders();
@@ -56556,24 +56823,31 @@ Label1 TXA
                 ASM_oPANE.equalizePaneHeaderHeights("#ASM_root .ASM_paneTitle");
             }
 
-            function ASM_toggleJsonPane(forceShow)
+            function ASM_toggleIncludePane(forceShow)
             {
               var host = ASM_el("ASM_paneHost");
-              var btn  = ASM_el("ASM_toggleJsonButton");
-              if(!host) return;
+              if(!host) return false;
 
-              var show = (typeof forceShow == "boolean") ? forceShow : !host.classList.contains("ASM_showJson");
-
-              if(show) host.classList.add("ASM_showJson");
-              else     host.classList.remove("ASM_showJson");
-
-              if(btn)
+              if(!ASM_includeFiles.length)
               {
-                btn.innerHTML = '<i class="fa fa-code"></i>';
-                btn.title = show ? "Hide JSON output" : "Show JSON output";
+                host.classList.remove("ASM_showInclude");
+                ASM_syncIncludeToggleButton();
+                ASM_equalizePaneHeaders();
+                return false;
               }
 
+              if(!ASM_currentIncludeFile())
+                ASM_selectedIncludeId = String(ASM_includeFiles[0].id);
+
+              var show = (typeof forceShow == "boolean") ? forceShow : !host.classList.contains("ASM_showInclude");
+              host.classList.toggle("ASM_showInclude",show);
+
+              ASM_updateIncludePane();
+              ASM_renderIncludeLabels();
+              ASM_syncIncludeToggleButton();
+              ASM_resizeSourceListingPanes();
               ASM_equalizePaneHeaders();
+              return show;
             }
 
             function ASM_refreshFindReplaceOverlay()
@@ -56693,14 +56967,18 @@ Label1 TXA
               var fileInput = ASM_el("ASM_fileInput");
               var includeFileInput = ASM_el("ASM_includeFileInput");
               var assembleButton = ASM_el("ASM_assembleButton");
-              var toggleJsonButton = ASM_el("ASM_toggleJsonButton");
+              var toggleIncludeButton = ASM_el("ASM_toggleIncludeButton");
               var sourceFileNameInput = ASM_el("ASM_sourceFileNameInput");
               var symbolFileNameInput = ASM_el("ASM_symbolFileNameInput");
               var downloadSourceButton = ASM_el("ASM_downloadSourceButton");
               var copyByteCodeButton = ASM_el("ASM_copyByteCodeButton");
-              var copyJsonButton = ASM_el("ASM_copyJsonButton");
-              var jumpErrorsButton = ASM_el("ASM_jumpErrorsButton");
-              var closeJsonButton = ASM_el("ASM_closeJsonButton");
+              var copyIncludeButton = ASM_el("ASM_copyIncludeButton");
+              var closeIncludeButton = ASM_el("ASM_closeIncludeButton");
+              var jsonPopupButton = ASM_el("ASM_jsonPopupButton");
+              var diagnosticsButton = ASM_el("ASM_diagnosticsButton");
+              var outputPopupBack = ASM_el("ASM_outputPopupBack");
+              var outputPopupCopy = ASM_el("ASM_outputPopupCopy");
+              var outputPopupClose = ASM_el("ASM_outputPopupClose");
               var encodeSourceButton = ASM_el("ASM_encodeSourceButton");
               var sourceByteCodeStartInput = ASM_el("ASM_sourceByteCodeStartInput");
               var toEmulatorButtons = document.querySelectorAll(".ASM_toEmulatorButton");
@@ -56729,7 +57007,7 @@ Label1 TXA
                 }
               });
               if(assembleButton) assembleButton.addEventListener("click",function(ev){ ev.preventDefault(); ASM_assembleCurrentSource(); });
-              if(toggleJsonButton) toggleJsonButton.addEventListener("click",function(){ ASM_toggleJsonPane(); });
+              if(toggleIncludeButton) toggleIncludeButton.addEventListener("click",function(){ ASM_toggleIncludePane(); });
               if(sourceFileNameInput) sourceFileNameInput.addEventListener("change",function(){ ASM_setCurrentFileName(sourceFileNameInput.value); });
               if(sourceFileNameInput) sourceFileNameInput.addEventListener("keydown",function(ev){
                 if(ev.key == "Enter") { ev.preventDefault(); ASM_setCurrentFileName(sourceFileNameInput.value); sourceFileNameInput.blur(); }
@@ -56740,9 +57018,27 @@ Label1 TXA
               });
               if(downloadSourceButton) downloadSourceButton.addEventListener("click",ASM_downloadSource);
               if(copyByteCodeButton) copyByteCodeButton.addEventListener("click",function(){ ASM_syncByteCodeFromBoard(); ASM_copyText(ASM_currentByteCodeText,"Byte code copied to clipboard."); });
-              if(copyJsonButton) copyJsonButton.addEventListener("click",function(){ ASM_copyText(ASM_currentJsonText,"JSON copied to clipboard."); });
-              if(jumpErrorsButton) jumpErrorsButton.addEventListener("click",ASM_jumpToErrors);
-              if(closeJsonButton) closeJsonButton.addEventListener("click",function(){ ASM_toggleJsonPane(false); });
+              if(copyIncludeButton) copyIncludeButton.addEventListener("click",function(){
+                var includeMount = ASM_el("ASM_includeMount");
+                ASM_copyText(includeMount ? includeMount.value : "","Include file copied to clipboard.");
+              });
+              if(closeIncludeButton) closeIncludeButton.addEventListener("click",function(){ ASM_toggleIncludePane(false); });
+              if(jsonPopupButton) jsonPopupButton.addEventListener("click",function(){ ASM_toggleOutputPopup("json"); });
+              if(diagnosticsButton) diagnosticsButton.addEventListener("click",ASM_jumpToErrors);
+              if(outputPopupCopy) outputPopupCopy.addEventListener("click",function(){
+                var text = ASM_el("ASM_outputPopupText");
+                ASM_copyText(
+                  text ? text.value : "",
+                  ASM_outputPopupKind == "diagnostics" ? "Diagnostics copied to clipboard." : "JSON copied to clipboard."
+                );
+              });
+              if(outputPopupClose) outputPopupClose.addEventListener("click",ASM_closeOutputPopup);
+              if(outputPopupBack) outputPopupBack.addEventListener("click",function(ev){
+                if(ev.target === outputPopupBack) ASM_closeOutputPopup();
+              });
+              document.addEventListener("keydown",function(ev){
+                if(ev.key == "Escape" && outputPopupBack && !outputPopupBack.hidden) ASM_closeOutputPopup();
+              });
               if(boardText) boardText.addEventListener("input",function(){
                 ASM_sourceByteCodeActive = false;
                 ASM_setSourceByteCodeModeUI(false);
@@ -56846,7 +57142,7 @@ Label1 TXA
             ASM_syncListingColumns();
             ASM_bindSourceFindReplace();
             ASM_loadManualPane();
-            ASM_toggleJsonPane(false);
+            ASM_toggleIncludePane(false);
             ASM_clearOutputs("Sample source loaded. Click assemble to generate output.","");
             ASM_updateSourceByteCodeRangeInfo(ASM_sourceByteCodeOrigin(false),0);
             ASM_resizeSourceListingPanes();
