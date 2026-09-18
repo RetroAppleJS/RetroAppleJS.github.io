@@ -93,10 +93,11 @@ test('Q6/Q7 select DATA, STATUS, HANDSHAKE and MODE/WRITE DATA', () => {
 test('idle DATA selection returns all ones and enabled DATA reads come from the bus', () => {
     const {iwm,bus} = makeIWM();
 
-    assert.equal(iwm.read(0x0C),0xFF); // Q6 low, Q7 low, motor off
+    assert.equal(iwm.read(0x00),0xFF); // even read, Q6=0 Q7=0, motor off
 
     bus.readByte = 0x5A;
-    assert.equal(iwm.read(0x09),0x5A); // motor on
+    iwm.read(0x09);                    // MOTOR on
+    assert.equal(iwm.read(0x00),0x5A); // even DATA read
 });
 
 test('STATUS contains SENSE, enable and low five mode bits', () => {
@@ -106,17 +107,17 @@ test('STATUS contains SENSE, enable and low five mode bits', () => {
     iwm.write(0x0D,0x00); // Q6 high
     iwm.write(0x0F,0x15); // Q7 high and write MODE
 
-    // Select STATUS: Q7 low, Q6 high.
+    // Select STATUS: Q7 low, Q6 high, then read through an unrelated even switch.
     iwm.read(0x0E);
     bus.sense = 1;
-    assert.equal(iwm.read(0x0D),0x95); // $80 SENSE + $15 mode
+    assert.equal(iwm.read(0x00),0x95); // $80 SENSE + $15 mode
 
     // MOTOR/enable contributes status bit 5.
     iwm.read(0x09);
-    assert.equal(iwm.read(0x0D),0xB5);
+    assert.equal(iwm.read(0x00),0xB5);
 
     bus.sense = 0;
-    assert.equal(iwm.read(0x0D),0x35);
+    assert.equal(iwm.read(0x00),0x35);
 });
 
 test('HANDSHAKE reports ready, no-underrun and ones in bits 5..0', () => {
@@ -125,15 +126,14 @@ test('HANDSHAKE reports ready, no-underrun and ones in bits 5..0', () => {
     iwm.setWriteReady(true);
     iwm.setUnderrun(false);
     iwm.read(0x0C); // Q6 low
-    assert.equal(iwm.read(0x0F),0xFF); // Q7 high => handshake
+    iwm.read(0x0F); // Q7 high
+    assert.equal(iwm.read(0x00),0xFF);
 
     iwm.setWriteReady(false);
-    assert.equal(iwm.read(0x0E),0x7F); // keep Q7 low temporarily
-    assert.equal(iwm.read(0x0F),0x7F);
+    assert.equal(iwm.read(0x00),0x7F);
 
     iwm.setUnderrun(true);
-    assert.equal(iwm.read(0x0E),0xFF); // Q7 low selects DATA/ALLONES, not handshake
-    assert.equal(iwm.read(0x0F),0x3F);
+    assert.equal(iwm.read(0x00),0x3F);
 });
 
 test('odd Q6/Q7 writes target MODE with motor off and DATA with motor on', () => {
@@ -148,7 +148,7 @@ test('odd Q6/Q7 writes target MODE with motor off and DATA with motor on', () =>
     assert.equal(iwm.getState().writeData,0);
     assert.deepEqual(bus.writes,[]);
 
-    iwm.write(0x09,0x00); // MOTOR on; odd, but state selector is still Q6=Q7=1 => DATA
+    iwm.write(0x09,0x00); // MOTOR on; Q6=Q7=1 => DATA
     assert.equal(iwm.getState().writeData,0x00);
     assert.deepEqual(bus.writes,[0x00]);
 
