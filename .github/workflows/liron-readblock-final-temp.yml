@@ -1,0 +1,56 @@
+name: Temporary final Liron READBLOCK verification
+permissions:
+  contents: read
+on:
+  push:
+    branches: ["feature/liron-unidisk-bus"]
+    paths:
+      - ".github/workflows/liron-readblock-final-temp.yml"
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-bus
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Full focused regression suite
+        run: |
+          node --check res/EMU_DEVICE_UNIDISK35.js
+          node --check res/EMU_CARD_LIRON.js
+          node --test tests/unidisk35.test.js tests/liron_readblock.test.js tests/liron_iwm.test.js tests/liron_card.test.js tests/liron_smartport_bus.test.js tests/liron_smartport_transport.test.js tests/liron_browser_integration.test.js
+      - name: Verify exact CardCat Pascal directory block through production READBLOCK
+        run: |
+          node <<'NODE'
+          'use strict';
+          const fs=require('node:fs'),vm=require('node:vm');
+          const po=fs.readFileSync('disks/Utility/CardCat 1.94.po');
+          const cpuCtx={console};vm.createContext(cpuCtx);vm.runInContext(fs.readFileSync('res/EMU_cpu6502.js','utf8'),cpuCtx);
+          const actionMap={Hslot:null,RD:new Array(0x1000),WR:new Array(0x1000)};
+          const ctx={console,oEMU:{component:{IO:{ACTION_MAP:actionMap}}}};vm.createContext(ctx);
+          vm.runInContext(fs.readFileSync('res/EMU_DEVICE_UNIDISK35.js','utf8'),ctx);
+          vm.runInContext(fs.readFileSync('res/EMU_CARD_LIRON.js','utf8'),ctx);
+          const card=new ctx.AppleLiron();card.getUniDisk().loadImage(po);
+          const iwm=card.getIWM(),bus=card.getBus(),rom=card.getROM(),mem=new Uint8Array(65536);
+          const entry=(0xC500+(rom[0x5FF]&255)+3)&65535,sp=0x280,rp=0x290,sb=0x400,db=0x3000,block=2;
+          mem.set([0x20,entry&255,entry>>8,0x00,sp&255,sp>>8,0x20,entry&255,entry>>8,0x01,rp&255,rp>>8,0xEA],0x200);
+          mem.set([3,0,sb&255,sb>>8,0],sp);
+          mem.set([3,1,db&255,db>>8,block,0,0],rp);
+          mem[0xFFFC]=0;mem[0xFFFD]=2;
+          let pc=0;const hw={irq_signal:0,nmi_signal:0,lineDecode:a=>(a>>>8)&255,RD:new Array(256),WR:new Array(256)};
+          for(let p=0;p<256;p++){hw.RD[p]=a=>mem[a&65535];hw.WR[p]=(a,v)=>mem[a&65535]=v&255;}
+          hw.RD[0xC0]=a=>a>=0xC0D0&&a<=0xC0DF?iwm.read(a&15,{pc})&255:mem[a&65535];
+          hw.WR[0xC0]=(a,v)=>{if(a>=0xC0D0&&a<=0xC0DF)iwm.write(a&15,v,{pc});else mem[a&65535]=v&255;};
+          hw.RD[0xC5]=a=>rom[0x500+(a&255)];for(let p=0xC8;p<=0xCF;p++)hw.RD[p]=a=>rom[0x800+(a-0xC800)];for(let p=0xC5;p<=0xCF;p++)hw.WR[p]=()=>{};
+          const cpu=new cpuCtx.Cpu6502(hw);cpu.reset();let returned=false,n=0;
+          for(;n<2000000;n++){if(n&&cpu.watch().cycle_delay===0&&(cpu.watch().pc&65535)===0x20C){returned=true;break;}pc=cpu.watch().pc&65535;cpu.cycle();while(cpu.watch().cycle_delay>0)cpu.cycle();}
+          const actual=Buffer.from(mem.slice(db,db+512)),expected=po.subarray(1024,1536),match=actual.equals(expected);
+          const text=actual.toString('latin1').replace(/[^\x20-\x7e]+/g,' ').replace(/\s+/g,' ').trim();
+          const required=['SYSTEM.APPLE','SYSTEM.PASCAL','SYSTEM.STARTUP'];
+          const directoryEntries=required.every(x=>text.includes(x));
+          console.log('FINAL_READBLOCK',JSON.stringify({returned,instructions:n,status0:mem[sb],residentIDs:bus.getState().residentIDs,block,match,directoryEntries,text:text.slice(0,220)}));
+          if(!returned||mem[sb]!==1||!match||!directoryEntries)process.exit(1);
+          NODE
