@@ -8,6 +8,8 @@ on:
     branches: [ "feature/liron-unidisk-bus" ]
     paths:
       - ".github/workflows/cardcat-repo-acceptance-temp.yml"
+      - "index.html"
+      - "tests/liron_browser_integration.test.js"
 
 jobs:
   cardcat:
@@ -20,6 +22,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Verify Liron browser integration contract
+        run: node --test tests/liron_browser_integration.test.js
       - name: Use repository Card Cat 1.94 disk
         shell: bash
         run: |
@@ -62,22 +66,26 @@ jobs:
               if(typeof appleIntervalHandle!=='undefined'&&appleIntervalHandle){clearInterval(appleIntervalHandle);appleIntervalHandle=null;}
               const r=await fetch('/cardcat194.dsk');
               const bytes=new Uint8Array(await r.arrayBuffer());
-              const slot=EMU_defaultDiskIISlot();
+              const io=apple2plus.hwObj().io;
+              const disk=io.PCODE2obj('DISKII')[0];
+              const liron=io.PCODE2obj('LIRON')[0];
+              if(!disk||!liron) throw new Error('required cards not mounted');
               _o.D1_buffer=bytes;
               apple2plus.restart();
               if(typeof appleIntervalHandle!=='undefined'&&appleIntervalHandle){clearInterval(appleIntervalHandle);appleIntervalHandle=null;}
-              const io=apple2plus.hwObj().io;
-              const liron=io.SLOT2obj(5);
-              return {bytes:bytes.length,bootSlot:slot,disk:io.SLOT2obj(slot)?.id?.PCODE,liron:liron?.id?.PCODE,units:liron?.getBus?.().getUnits?.()||[]};
+              const io2=apple2plus.hwObj().io;
+              const disk2=io2.PCODE2obj('DISKII')[0];
+              const liron2=io2.PCODE2obj('LIRON')[0];
+              return {bytes:bytes.length,disk:disk2?.id?.PCODE,liron:liron2?.id?.PCODE,units:liron2?.getBus?.().getUnits?.()||[],diskMount:disk2?.mount?.slotN,lironMount:liron2?.mount?.slotN};
             });
             console.log('SETUP',JSON.stringify(setup));
-            if(setup.bytes!==143360||setup.bootSlot!==6||setup.disk!=='DISKII'||setup.liron!=='LIRON'||setup.units.join(',')!=='1')
+            if(setup.bytes!==143360||setup.disk!=='DISKII'||setup.liron!=='LIRON'||setup.units.join(',')!=='1')
               throw new Error('unexpected setup '+JSON.stringify(setup));
 
             async function snap(){
               return await page.evaluate(()=>{
                 function dc(raw){if(raw===0)return ' ';var c=raw&0x7f;if(c===0x7f)return '?';if(c<0x20)c+=0x40;return String.fromCharCode(c);}
-                const io=apple2plus.hwObj().io,videx=io.SLOT2obj(3),liron=io.SLOT2obj(5);
+                const io=apple2plus.hwObj().io,videx=io.PCODE2obj('VIDEX')[0],liron=io.PCODE2obj('LIRON')[0];
                 if(!videx||!videx.getVideoRAM)return {screen:'',linear:'',bus:liron?.getBus?.().getState?.()||null};
                 const v=videx.getVideoRAM(),crtc=videx.getCRTCRegisters();
                 let cols=(crtc[1]&0x7f)||80,rows=(crtc[6]&0x7f)||24,start=((crtc[12]<<8)|crtc[13])&0x7ff;
