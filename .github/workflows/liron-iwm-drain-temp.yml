@@ -11,6 +11,9 @@ on:
       - "res/EMU_CARD_LIRON.js"
       - ".github/workflows/liron-iwm-drain-temp.yml"
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
