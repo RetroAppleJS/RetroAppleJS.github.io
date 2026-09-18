@@ -1,4 +1,5 @@
 name: Temporary repository CardCat acceptance
+# rerun after duplicate Liron include fix
 
 permissions:
   contents: read
