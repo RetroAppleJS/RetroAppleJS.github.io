@@ -132,6 +132,27 @@ function SmartPortBus()
 {
     var devices = [];
     var units = new Array(9).fill(null);
+    var residentIDs = new Array(9).fill(0);
+
+    const SYNC = [0xFF,0x3F,0xCF,0xF3,0xFC,0xFF,0xC3];
+    const WAIT_SYNC="WAIT_SYNC";
+    const RECEIVE_COMMAND="RECEIVE_COMMAND";
+    const RESPONSE_PENDING="RESPONSE_PENDING";
+    const SEND_RESPONSE="SEND_RESPONSE";
+    const RESPONSE_DONE="RESPONSE_DONE";
+
+    var protocolState=WAIT_SYNC;
+    var phaseLines=0;
+    var enabled=false;
+    var req=false;
+    var ack=false; // true = active-low ACK asserted on the physical bus
+    var syncWindow=[];
+    var rx=[];
+    var header=[];
+    var expectedLength=0;
+    var tx=[];
+    var txIndex=0;
+    var lastError="";
 
     function normalizeUnit(unit)
     {
@@ -153,7 +174,338 @@ function SmartPortBus()
         throw new RangeError("SmartPort bus has no free unit numbers");
     }
 
-    this.reset = function() {};
+    function clearResidentIDs()
+    {
+        for(var unit=1;unit<=8;unit++) residentIDs[unit]=0;
+    }
+
+    function resetTransport(clearIDs)
+    {
+        protocolState=WAIT_SYNC;
+        enabled=false;
+        req=false;
+        ack=false;
+        syncWindow=[];
+        rx=[];
+        header=[];
+        expectedLength=0;
+        tx=[];
+        txIndex=0;
+        lastError="";
+        if(clearIDs) clearResidentIDs();
+    }
+
+    function findUnitByResidentID(id)
+    {
+        id=Number(id)&0x7F;
+        if(!id) return 0;
+        for(var unit=1;unit<=8;unit++) if(residentIDs[unit]===id) return unit;
+        return 0;
+    }
+
+    function firstUnassignedUnit()
+    {
+        for(var unit=1;unit<=8;unit++)
+            if(units[unit]!==null && residentIDs[unit]===0) return unit;
+        return 0;
+    }
+
+    function hasUnassignedUnit()
+    {
+        return firstUnassignedUnit()!==0;
+    }
+
+    function encodedPayloadLength(odd,groups)
+    {
+        return (odd ? odd+1 : 0) + groups*8;
+    }
+
+    function decodePayload(encoded,odd,groups)
+    {
+        var out=[];
+        var pos=0;
+        if(odd)
+        {
+            if(pos>=encoded.length) return null;
+            var prefix=encoded[pos++]&0x7F;
+            for(var i=0;i<odd;i++)
+            {
+                if(pos>=encoded.length) return null;
+                var low=encoded[pos++]&0x7F;
+                out.push(low | (((prefix>>(6-i))&1)?0x80:0));
+            }
+        }
+        for(var g=0;g<groups;g++)
+        {
+            if(pos>=encoded.length) return null;
+            var prefix7=encoded[pos++]&0x7F;
+            for(var j=0;j<7;j++)
+            {
+                if(pos>=encoded.length) return null;
+                var low7=encoded[pos++]&0x7F;
+                out.push(low7 | (((prefix7>>(6-j))&1)?0x80:0));
+            }
+        }
+        return out;
+    }
+
+    function encodePayload(payload)
+    {
+        var bytes=[];
+        var odd=payload.length%7;
+        var groups=Math.floor(payload.length/7);
+        var pos=0;
+
+        if(odd)
+        {
+            var prefix=0x80;
+            for(var i=0;i<odd;i++) if(payload[pos+i]&0x80) prefix|=0x40>>i;
+            bytes.push(prefix);
+            for(var j=0;j<odd;j++) bytes.push((payload[pos+j]&0x7F)|0x80);
+            pos+=odd;
+        }
+
+        for(var g=0;g<groups;g++)
+        {
+            var prefix7=0x80;
+            for(var k=0;k<7;k++) if(payload[pos+k]&0x80) prefix7|=0x40>>k;
+            bytes.push(prefix7);
+            for(var m=0;m<7;m++) bytes.push((payload[pos+m]&0x7F)|0x80);
+            pos+=7;
+        }
+        return {"bytes":bytes,"odd":odd,"groups":groups};
+    }
+
+    function buildResponse(source,status,payload)
+    {
+        payload=Array.from(payload||[],function(b){return Number(b)&0xFF;});
+        var enc=encodePayload(payload);
+        var rawHeader=[0x00,Number(source)&0x7F,0x01,0x00,Number(status)&0x7F,enc.odd,enc.groups];
+        var wireHeader=rawHeader.map(function(b){return b|0x80;});
+        var checksum=0;
+        for(var i=0;i<payload.length;i++) checksum^=payload[i];
+        for(var j=0;j<wireHeader.length;j++) checksum^=wireHeader[j];
+
+        tx=SYNC.slice(0,6);
+        tx.push(0xC3);
+        tx.push.apply(tx,wireHeader);
+        tx.push.apply(tx,enc.bytes);
+        tx.push(checksum|0xAA,(checksum>>1)|0xAA,0xC8);
+        txIndex=0;
+        ack=true;
+        protocolState=RESPONSE_PENDING;
+    }
+
+    function failPacket(message)
+    {
+        lastError=String(message||"SmartPort packet error");
+        protocolState=WAIT_SYNC;
+        ack=false;
+        syncWindow=[];
+        rx=[];
+        header=[];
+        expectedLength=0;
+        tx=[];
+        txIndex=0;
+    }
+
+    function statusResponseFor(device,source,code)
+    {
+        if(!device || typeof(device.status)!=="function")
+        {
+            buildResponse(source,0x28,[]);
+            return;
+        }
+        var reply=device.status(code);
+        var error=reply && reply.error!==undefined ? Number(reply.error)&0x7F : 0x01;
+        var data=reply && reply.data ? Array.from(reply.data) : [];
+        buildResponse(source,error,data);
+    }
+
+    function dispatchPacket(rawHeader,payload)
+    {
+        var dest=rawHeader[0]&0x7F;
+        var packetType=rawHeader[2]&0x7F;
+        if(packetType!==0x00)
+        {
+            failPacket("SmartPort expected command packet");
+            return;
+        }
+
+        var command=payload.length ? payload[0]&0x7F : 0;
+        if(command===0x05)
+        {
+            var unit=firstUnassignedUnit();
+            if(!unit)
+            {
+                failPacket("SmartPort INIT found no unassigned device");
+                return;
+            }
+            residentIDs[unit]=dest;
+            buildResponse(dest,hasUnassignedUnit()?0x00:0x7F,[]);
+            return;
+        }
+
+        if(command!==0x00)
+        {
+            buildResponse(dest,0x01,[]);
+            return;
+        }
+
+        // Standard SmartPort command frame:
+        // command, parameter count, device id, reserved, status/control code.
+        var frameUnit=payload.length>2 ? payload[2]&0xFF : 0;
+        var statusCode=payload.length>4 ? payload[4]&0xFF : 0;
+
+        if(dest===0 && frameUnit===0 && statusCode===0)
+        {
+            buildResponse(0,0x00,[devices.length&0xFF,0x00,0x01,0x13]);
+            return;
+        }
+
+        var unit=findUnitByResidentID(dest);
+        if(!unit && dest>=1 && dest<=8 && units[dest]!==null) unit=dest;
+        if(!unit && frameUnit>=1 && frameUnit<=8 && units[frameUnit]!==null) unit=frameUnit;
+        if(!unit)
+        {
+            buildResponse(dest,0x28,[]);
+            return;
+        }
+        statusResponseFor(units[unit],dest,statusCode);
+    }
+
+    function processPacket()
+    {
+        if(header.length!==7)
+        {
+            failPacket("SmartPort short header");
+            return;
+        }
+
+        var odd=header[5]&0x7F;
+        var groups=header[6]&0x7F;
+        var encLen=encodedPayloadLength(odd,groups);
+        if(rx.length!==7+encLen+3)
+        {
+            failPacket("SmartPort packet length mismatch");
+            return;
+        }
+        if(rx[rx.length-1]!==0xC8)
+        {
+            failPacket("SmartPort packet end marker mismatch");
+            return;
+        }
+
+        var encoded=rx.slice(7,7+encLen);
+        var payload=decodePayload(encoded,odd,groups);
+        if(payload===null)
+        {
+            failPacket("SmartPort payload decode error");
+            return;
+        }
+
+        var checksum=0;
+        for(var i=0;i<payload.length;i++) checksum^=payload[i];
+        for(var j=0;j<7;j++) checksum^=rx[j];
+        var c0=rx[7+encLen], c1=rx[8+encLen];
+        var wireChecksum=(c0&0x55)|((c1&0x55)<<1);
+        if(wireChecksum!==checksum)
+        {
+            failPacket("SmartPort checksum mismatch");
+            return;
+        }
+
+        lastError="";
+        dispatchPacket(header.slice(),payload);
+        rx=[];
+        header=[];
+        expectedLength=0;
+        syncWindow=[];
+    }
+
+    function feedSync(value)
+    {
+        syncWindow.push(value&0xFF);
+        if(syncWindow.length>SYNC.length) syncWindow.shift();
+        if(syncWindow.length!==SYNC.length) return false;
+        for(var i=0;i<SYNC.length;i++) if(syncWindow[i]!==SYNC[i]) return false;
+        protocolState=RECEIVE_COMMAND;
+        rx=[];
+        header=[];
+        expectedLength=0;
+        syncWindow=[];
+        lastError="";
+        return true;
+    }
+
+    function receiveByte(value)
+    {
+        value=Number(value)&0xFF;
+        if(protocolState!==RECEIVE_COMMAND)
+        {
+            if(protocolState===WAIT_SYNC) feedSync(value);
+            else
+            {
+                // Permit a host retry to restart framing after a timed-out response.
+                if(feedSync(value)) ack=false;
+            }
+            return;
+        }
+
+        rx.push(value);
+        if(header.length<7)
+        {
+            header.push(value&0x7F);
+            if(header.length===7)
+            {
+                expectedLength=7+encodedPayloadLength(header[5],header[6])+3;
+                if(expectedLength>1024)
+                {
+                    failPacket("SmartPort packet too large");
+                    return;
+                }
+            }
+        }
+        if(expectedLength && rx.length===expectedLength) processPacket();
+        else if(expectedLength && rx.length>expectedLength) failPacket("SmartPort packet overflow");
+    }
+
+    function onReqChange(newReq)
+    {
+        if(newReq===req) return;
+        req=newReq;
+
+        if(!req)
+        {
+            if(protocolState===RESPONSE_PENDING && ack)
+            {
+                // Host has observed active-low ACK for the command.
+                ack=false;
+            }
+            else if(protocolState===RESPONSE_DONE)
+            {
+                ack=false;
+                protocolState=WAIT_SYNC;
+                tx=[];
+                txIndex=0;
+                syncWindow=[];
+            }
+            return;
+        }
+
+        if(protocolState===RESPONSE_PENDING && !ack)
+        {
+            protocolState=SEND_RESPONSE;
+            txIndex=0;
+        }
+    }
+
+    this.reset = function()
+    {
+        phaseLines=0;
+        resetTransport(true);
+    };
+
     this.attach = function(device,unit)
     {
         if(device==null) return null;
@@ -173,15 +525,21 @@ function SmartPortBus()
 
         devices.push(device);
         units[unit]=device;
+        residentIDs[unit]=0;
         return device;
     };
+
     this.detach = function(device)
     {
         var i = devices.indexOf(device);
         if(i<0) return device;
 
         var unit=findUnit(device);
-        if(unit) units[unit]=null;
+        if(unit)
+        {
+            units[unit]=null;
+            residentIDs[unit]=0;
+        }
         devices.splice(i,1);
 
         if(typeof(device.setUnit)==="function") device.setUnit(0);
@@ -189,6 +547,7 @@ function SmartPortBus()
 
         return device;
     };
+
     this.hasDevices = function() { return devices.length>0; };
     this.getDevice = function(unit)
     {
@@ -202,12 +561,78 @@ function SmartPortBus()
         for(var unit=1;unit<=8;unit++) if(units[unit]!==null) out.push(unit);
         return out;
     };
-    this.readSense = function(lines,ctx) { return 0; };
-    this.readData = function(lines,ctx) { return 0xFF; };
-    this.writeData = function(value,lines,ctx) { return value & 0xFF; };
-    this.getState = function() { return {"deviceCount":devices.length,"units":this.getUnits()}; };
-}
 
+    this.setLines = function(lines,ctx)
+    {
+        var phase=Number(lines)&0x0F;
+        phaseLines=phase;
+
+        // SmartPort reset is exactly PH2+PH0 (0101).
+        if(phase===0x05)
+        {
+            resetTransport(true);
+            phaseLines=phase;
+            return;
+        }
+
+        var newEnabled=(phase===0x0A || phase===0x0B);
+        var newReq=newEnabled && !!(phase&0x01);
+        enabled=newEnabled;
+        onReqChange(newReq);
+    };
+
+    // IWM SENSE sees the physical ACK line. ACK is active low, so a
+    // deasserted/hi-Z line is SENSE=1 and asserted ACK is SENSE=0.
+    this.readSense = function(lines,ctx)
+    {
+        if(lines!==undefined && lines!==null) this.setLines(lines,ctx);
+        return !ack;
+    };
+
+    this.readData = function(lines,ctx)
+    {
+        if(lines!==undefined && lines!==null) this.setLines(lines,ctx);
+        if(!enabled || protocolState!==SEND_RESPONSE || txIndex>=tx.length) return 0xFF;
+
+        var value=tx[txIndex++]&0xFF;
+        if(txIndex>=tx.length)
+        {
+            protocolState=RESPONSE_DONE;
+            ack=true;
+        }
+        return value;
+    };
+
+    this.writeData = function(value,lines,ctx)
+    {
+        if(lines!==undefined && lines!==null) this.setLines(lines,ctx);
+        value=Number(value)&0xFF;
+        if(enabled && req) receiveByte(value);
+        return value;
+    };
+
+    this.getState = function()
+    {
+        var ids={};
+        for(var unit=1;unit<=8;unit++) if(residentIDs[unit]) ids[unit]=residentIDs[unit];
+        return {
+            "deviceCount":devices.length,
+            "units":this.getUnits(),
+            "residentIDs":ids,
+            "protocolState":protocolState,
+            "enabled":enabled,
+            "req":req,
+            "ack":ack,
+            "phaseLines":phaseLines,
+            "rxLength":rx.length,
+            "txLength":tx.length,
+            "txIndex":txIndex,
+            "lastError":lastError
+        };
+    };
+
+    this.reset();
+}
 
 function LironIWM(bus)
 {
@@ -225,13 +650,15 @@ function LironIWM(bus)
         ,"underrun":false
     };
 
-    function touchState(reg)
+    function touchState(reg,ctx)
     {
         reg = Number(reg)&0x0F;
-        var mask = 1<<(reg>>1);
+        var bit = reg>>1;
+        var mask = 1<<bit;
         if(reg&1) state.lines |= mask;
         else state.lines &= ~mask;
         state.lines &= 0xFF;
+        if(bit<4 && bus && typeof(bus.setLines)==="function") bus.setLines(state.lines,ctx);
         return reg;
     }
 
@@ -280,7 +707,7 @@ function LironIWM(bus)
 
     this.read = function(reg,ctx)
     {
-        reg = touchState(reg);
+        reg = touchState(reg,ctx);
         if(reg&1) return undefined;
 
         switch(selectedRegister())
@@ -295,7 +722,7 @@ function LironIWM(bus)
 
     this.write = function(reg,value,ctx)
     {
-        reg = touchState(reg);
+        reg = touchState(reg,ctx);
         value = Number(value)&0xFF;
         if(!(reg&1)) return undefined;
         if((state.lines&(Q6|Q7))!==(Q6|Q7)) return undefined;

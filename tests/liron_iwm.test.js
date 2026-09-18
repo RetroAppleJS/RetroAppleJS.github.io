@@ -18,10 +18,16 @@ function makeBus()
         sense:0,
         readByte:0xA5,
         writes:[],
+        protocolState:'WAIT_SYNC',
         reset(){ this.resets++; },
         readSense(){ return this.sense; },
         readData(){ return this.readByte; },
-        writeData(value){ this.writes.push(value & 0xFF); }
+        writeData(value){
+            value &= 0xFF;
+            this.writes.push(value);
+            if(value===0xC8) this.protocolState='RESPONSE_PENDING';
+        },
+        getState(){ return {protocolState:this.protocolState}; }
     };
 }
 
@@ -134,6 +140,38 @@ test('HANDSHAKE reports ready, no-underrun and ones in bits 5..0', () => {
 
     iwm.setUnderrun(true);
     assert.equal(iwm.read(0x00),0x3F);
+});
+
+test('final SmartPort write drains on handshake poll and clears underrun bit 6', () => {
+    const {iwm,bus} = makeIWM();
+
+    // Select WRITE DATA: motor on, Q6=1, Q7=1.
+    iwm.read(0x09);
+    iwm.read(0x0D);
+    iwm.read(0x0F);
+
+    bus.protocolState='RECEIVE_COMMAND';
+    iwm.write(0x0D,0xAA);
+    assert.equal(iwm.getState().writeReady,false,'new write must occupy the IWM write buffer');
+    assert.equal(iwm.read(0x0C),0xFF,'intermediate byte drain becomes ready without underrun');
+    assert.equal(iwm.getState().writeReady,true);
+    assert.equal(iwm.getState().underrun,false);
+
+    // Re-enter WRITE DATA and transmit the packet-end byte. The fake bus now
+    // reports RESPONSE_PENDING, matching the state reached by the real bus
+    // after accepting the complete command packet.
+    iwm.read(0x0D);
+    iwm.write(0x0D,0xC8);
+    assert.equal(bus.protocolState,'RESPONSE_PENDING');
+    assert.equal(iwm.getState().writeReady,false);
+    assert.equal(iwm.getState().underrun,false);
+
+    // This is the authentic ROM's LDA $C08C,X at $C92C: Q6 goes low with Q7
+    // high, selecting HANDSHAKE. Bit 6 must clear once the final byte drains.
+    const handshake=iwm.read(0x0C);
+    assert.equal(handshake & 0x80,0x80,'write buffer must become ready');
+    assert.equal(handshake & 0x40,0x00,'final-byte drain must signal underrun/write complete');
+    assert.equal(iwm.getState().underrun,true);
 });
 
 test('odd Q6/Q7 writes target MODE with motor off and DATA with motor on', () => {
