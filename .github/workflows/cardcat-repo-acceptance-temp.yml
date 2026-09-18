@@ -1,0 +1,123 @@
+name: Temporary repository CardCat acceptance
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [ "feature/liron-unidisk-bus" ]
+    paths:
+      - ".github/workflows/cardcat-repo-acceptance-temp.yml"
+
+jobs:
+  cardcat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-bus
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Use repository Card Cat 1.94 disk
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cp 'disks/Utility/Card Cat 1.94.dsk' cardcat194.dsk
+          test "$(stat -c%s cardcat194.dsk)" -eq 143360
+          sha256sum cardcat194.dsk
+      - name: Install browser driver
+        shell: bash
+        run: |
+          set -euxo pipefail
+          npm install --no-save puppeteer-core@24
+          CHROME="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser)"
+          test -x "$CHROME"
+          echo "CHROME_PATH=$CHROME" >> "$GITHUB_ENV"
+      - name: Boot real Card Cat and inspect Videx screen
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python3 -m http.server 8123 >/tmp/cardcat-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          sleep 1
+          node <<'NODE'
+          'use strict';
+          const puppeteer=require('puppeteer-core');
+
+          (async()=>{
+            const browser=await puppeteer.launch({
+              executablePath:process.env.CHROME_PATH,
+              headless:true,
+              args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu']
+            });
+            const page=await browser.newPage();
+            page.on('pageerror',e=>console.log('[pageerror]',String(e)));
+            await page.goto('http://127.0.0.1:8123/index.html?mute=1',{waitUntil:'load',timeout:120000});
+            await page.waitForFunction(()=>typeof apple2plus==='object'&&apple2plus&&typeof loadDisk_fromBuffer==='function',{timeout:120000});
+
+            const setup=await page.evaluate(async()=>{
+              if(typeof appleIntervalHandle!=='undefined'&&appleIntervalHandle){clearInterval(appleIntervalHandle);appleIntervalHandle=null;}
+              const r=await fetch('/cardcat194.dsk');
+              const bytes=new Uint8Array(await r.arrayBuffer());
+              const slot=EMU_defaultDiskIISlot();
+              _o.D1_buffer=bytes;
+              apple2plus.restart();
+              if(typeof appleIntervalHandle!=='undefined'&&appleIntervalHandle){clearInterval(appleIntervalHandle);appleIntervalHandle=null;}
+              const io=apple2plus.hwObj().io;
+              const liron=io.SLOT2obj(5);
+              return {bytes:bytes.length,bootSlot:slot,disk:io.SLOT2obj(slot)?.id?.PCODE,liron:liron?.id?.PCODE,units:liron?.getBus?.().getUnits?.()||[]};
+            });
+            console.log('SETUP',JSON.stringify(setup));
+            if(setup.bytes!==143360||setup.bootSlot!==6||setup.disk!=='DISKII'||setup.liron!=='LIRON'||setup.units.join(',')!=='1')
+              throw new Error('unexpected setup '+JSON.stringify(setup));
+
+            async function snap(){
+              return await page.evaluate(()=>{
+                function dc(raw){if(raw===0)return ' ';var c=raw&0x7f;if(c===0x7f)return '?';if(c<0x20)c+=0x40;return String.fromCharCode(c);}
+                const io=apple2plus.hwObj().io,videx=io.SLOT2obj(3),liron=io.SLOT2obj(5);
+                if(!videx||!videx.getVideoRAM)return {screen:'',linear:'',bus:liron?.getBus?.().getState?.()||null};
+                const v=videx.getVideoRAM(),crtc=videx.getCRTCRegisters();
+                let cols=(crtc[1]&0x7f)||80,rows=(crtc[6]&0x7f)||24,start=((crtc[12]<<8)|crtc[13])&0x7ff;
+                cols=Math.max(1,Math.min(80,cols));rows=Math.max(1,Math.min(25,rows));
+                const lines=[];
+                for(let r=0;r<rows;r++){let s='';for(let c=0;c<cols;c++)s+=dc(v[(start+r*cols+c)&0x7ff]);lines.push(s.replace(/\s+$/,''));}
+                let linear='';for(let i=0;i<v.length;i++)linear+=dc(v[i]);
+                return {screen:lines.join('\n'),linear,bus:liron?.getBus?.().getState?.()||null};
+              });
+            }
+
+            let final=null;
+            for(let i=0;i<100;i++){
+              await page.evaluate(t=>apple2plus.runLiveCpuTicks(t,{videoScale:0.02}),500000);
+              if(i%4===3){
+                final=await snap();
+                const u=(final.screen+'\n'+final.linear).toUpperCase();
+                const hasCardCat=u.includes('CARD CAT');
+                const hasLiron=u.includes('LIRON');
+                const hasSP1=/SP\s*:\s*1/.test(u);
+                const hasSP0=/SP\s*:\s*0/.test(u)||u.includes('NO UNITS');
+                console.log('PROGRESS',JSON.stringify({millionTicks:(i+1)/2,hasCardCat,hasLiron,hasSP1,hasSP0,bus:final.bus}));
+                if(hasLiron&&(hasSP1||hasSP0))break;
+              }
+            }
+            if(!final)final=await snap();
+            console.log('--- CARD CAT VIDEX SCREEN ---\n'+final.screen+'\n--- END SCREEN ---');
+            console.log('FINAL BUS',JSON.stringify(final.bus));
+            const upper=(final.screen+'\n'+final.linear).toUpperCase();
+            const result={hasCardCat:upper.includes('CARD CAT'),hasLiron:upper.includes('LIRON'),hasSP1:/SP\s*:\s*1/.test(upper),hasSP0:/SP\s*:\s*0/.test(upper)||upper.includes('NO UNITS')};
+            console.log('ACCEPTANCE',JSON.stringify(result));
+            await page.screenshot({path:'cardcat-final.png',fullPage:true});
+            await browser.close();
+            if(!result.hasCardCat||!result.hasLiron||!result.hasSP1)process.exit(3);
+          })().catch(e=>{console.error(e);process.exit(10);});
+          NODE
+      - name: Upload final screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cardcat-repo-acceptance
+          path: cardcat-final.png
+          if-no-files-found: ignore
