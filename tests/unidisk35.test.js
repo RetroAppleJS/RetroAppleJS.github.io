@@ -76,13 +76,28 @@ test('online and write-protect state is reflected in STATUS and DIB', () => {
     assert.equal(disk.status(0x03).data[0],0xFC);
 });
 
-test('unsupported status codes fail without inventing block I/O', () => {
+test('unsupported status codes fail and write path remains unimplemented', () => {
     const context = loadUniDisk();
     const disk = new context.UniDisk35Device();
 
     const reply = disk.status(0x7F);
     assert.equal(reply.error,0x01);
     assert.equal(reply.data.length,0);
-    assert.equal(typeof disk.readBlock,'undefined');
     assert.equal(typeof disk.writeBlock,'undefined');
+});
+
+test('an 800K image can be mounted and read as exact 512-byte blocks', () => {
+    const context = loadUniDisk();
+    const disk = new context.UniDisk35Device();
+    const image = new Uint8Array(1600*512);
+    const blockNo = 17;
+    for(let i=0;i<512;i++) image[blockNo*512+i]=(i*13+7)&0xFF;
+
+    assert.equal(disk.loadImage(image),819200);
+    const reply=disk.readBlock(blockNo);
+    assert.equal(reply.error,0x00);
+    assert.equal(reply.data.length,512);
+    assert.deepEqual(Array.from(reply.data),Array.from(image.slice(blockNo*512,(blockNo+1)*512)));
+    assert.equal(disk.getState().mediaLoaded,true);
+    assert.equal(disk.getState().mediaBytes,819200);
 });
