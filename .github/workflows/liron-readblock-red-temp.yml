@@ -1,0 +1,19 @@
+name: Temporary Liron READBLOCK RED
+permissions:
+  contents: read
+on:
+  push:
+    branches: ["feature/liron-unidisk-bus"]
+    paths:
+      - ".github/workflows/liron-readblock-red-temp.yml"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-bus
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --test tests/unidisk35.test.js tests/liron_readblock.test.js
