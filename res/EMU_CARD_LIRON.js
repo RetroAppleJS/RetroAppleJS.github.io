@@ -346,6 +346,39 @@ function SmartPortBus()
             return;
         }
 
+        if(command===0x01)
+        {
+            var readUnit=findUnitByResidentID(dest);
+            if(!readUnit && dest>=1 && dest<=8 && units[dest]!==null) readUnit=dest;
+            if(!readUnit)
+            {
+                buildResponse(dest,0x28,[]);
+                return;
+            }
+
+            var readDevice=units[readUnit];
+            if(!readDevice || typeof(readDevice.readBlock)!=="function")
+            {
+                buildResponse(dest,0x01,[]);
+                return;
+            }
+
+            // External SmartPort transmits the parameter list beginning after
+            // the unit byte: command, count, buffer pointer, 24-bit block.
+            // DEST already identifies the resident/device.
+            var blockNumber =
+                 (payload.length>4 ? payload[4]&0xFF : 0)
+                |((payload.length>5 ? payload[5]&0xFF : 0)<<8)
+                |((payload.length>6 ? payload[6]&0xFF : 0)<<16);
+
+            var readReply=readDevice.readBlock(blockNumber);
+            var readError=readReply && readReply.error!==undefined
+                ? Number(readReply.error)&0x7F : 0x27;
+            var readData=readReply && readReply.data ? Array.from(readReply.data) : [];
+            buildResponse(dest,readError,readData);
+            return;
+        }
+
         if(command!==0x00)
         {
             buildResponse(dest,0x01,[]);

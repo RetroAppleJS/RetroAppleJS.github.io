@@ -1,6 +1,6 @@
 // Apple UniDisk 3.5 logical SmartPort device for RetroAppleJS.
-// This layer models SmartPort-visible identity/status only. It deliberately
-// does not implement block reads/writes or the UniDisk internal 65C02 yet.
+// This layer models SmartPort-visible identity/status and read-only 512-byte block media.
+// WRITEBLOCK and the UniDisk internal 65C02 remain outside this milestone.
 
 function UniDisk35Device(options)
 {
@@ -18,6 +18,8 @@ function UniDisk35Device(options)
         ,online:options.online===undefined ? true : !!options.online
         ,writeProtected:!!options.writeProtected
     };
+
+    var media = null;
 
     this.id = {
          "DCODE":"UNIDISK35"
@@ -97,6 +99,30 @@ function UniDisk35Device(options)
         return state.writeProtected;
     };
 
+    this.loadImage = function(data)
+    {
+        // Uint8Array.from is deliberately used here because it accepts typed
+        // arrays and Buffers from another JavaScript realm as well.
+        var bytes = Uint8Array.from(data || []);
+        if(bytes.length!==BLOCK_SIZE*BLOCK_COUNT)
+            throw new RangeError("UniDisk 3.5 image must be exactly 819200 bytes");
+
+        media=bytes;
+        state.online=true;
+        return media.length;
+    };
+
+    this.readBlock = function(blockNumber)
+    {
+        blockNumber=Number(blockNumber);
+        if(!state.online || media===null || !Number.isInteger(blockNumber) ||
+           blockNumber<0 || blockNumber>=BLOCK_COUNT)
+            return {"error":0x27,"data":new Uint8Array(0)};
+
+        var offset=blockNumber*BLOCK_SIZE;
+        return {"error":0x00,"data":media.slice(offset,offset+BLOCK_SIZE)};
+    };
+
     this.status = function(statusCode)
     {
         switch(Number(statusCode)&0xFF)
@@ -120,6 +146,8 @@ function UniDisk35Device(options)
             ,"firmwareVersion":FW_VERSION
             ,"name":DEVICE_NAME
             ,"status":statusByte()
+            ,"mediaLoaded":media!==null
+            ,"mediaBytes":media===null ? 0 : media.length
         };
     };
 }
