@@ -648,6 +648,7 @@ function LironIWM(bus)
         ,"writeData":0x00
         ,"writeReady":true
         ,"underrun":false
+        ,"writeDrainPending":false
     };
 
     function touchState(reg,ctx)
@@ -690,6 +691,18 @@ function LironIWM(bus)
 
     function readHandshake()
     {
+        if(state.writeDrainPending)
+        {
+            state.writeDrainPending=false;
+            state.writeReady=true;
+
+            // Without cycle-accurate IWM timing, a handshake poll advances the
+            // pending transmit byte. Only the final packet byte may underrun:
+            // SmartPortBus reaches RESPONSE_PENDING after accepting its $C8.
+            var busState = bus && typeof(bus.getState)==="function" ? bus.getState() : null;
+            if(busState && busState.protocolState==="RESPONSE_PENDING")
+                state.underrun=true;
+        }
         return (0x3F | (state.writeReady?0x80:0) | (!state.underrun?0x40:0))&0xFF;
     }
 
@@ -702,6 +715,9 @@ function LironIWM(bus)
     function writeData(value,ctx)
     {
         state.writeData = Number(value)&0xFF;
+        state.writeReady=false;
+        state.underrun=false;
+        state.writeDrainPending=true;
         if(bus && typeof(bus.writeData)==="function") bus.writeData(state.writeData,state.lines,ctx);
     }
 
@@ -734,7 +750,7 @@ function LironIWM(bus)
     this.reset = function()
     {
         state.lines=0; state.mode=0; state.readData=0xFF; state.writeData=0;
-        state.writeReady=true; state.underrun=false;
+        state.writeReady=true; state.underrun=false; state.writeDrainPending=false;
         if(bus && typeof(bus.reset)==="function") bus.reset();
     };
     this.restart = function() { this.reset(); };
