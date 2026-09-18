@@ -1,55 +1,59 @@
-name: Temporary finalize Liron IWM drain fix
+name: Temporary verify committed Liron IWM drain fix
 
 permissions:
-  contents: write
+  contents: read
 
 on:
   push:
     branches: [ "feature/liron-unidisk-bus" ]
     paths:
-      - "res/EMU_CARD_LIRON.js"
       - ".github/workflows/liron-iwm-finalize-temp.yml"
 
 jobs:
-  finalize:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: feature/liron-unidisk-bus
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Apply verified IWM write-drain fix
-        shell: bash
-        run: |
-          python3 <<'PY'
-          from pathlib import Path
-          p=Path('res/EMU_CARD_LIRON.js')
-          s=p.read_text()
-          s=s.replace(',"writeReady":true\n        ,"underrun":false',',"writeReady":true\n        ,"underrun":false\n        ,"writeDrainPending":false')
-          s=s.replace('''    function readHandshake()\n    {\n        return (0x3F | (state.writeReady?0x80:0) | (!state.underrun?0x40:0))&0xFF;\n    }''','''    function readHandshake()\n    {\n        if(state.writeDrainPending)\n        {\n            state.writeDrainPending=false;\n            state.writeReady=true;\n\n            // Without cycle-accurate IWM timing, a handshake poll advances the\n            // pending transmit byte. Only the final packet byte may underrun:\n            // SmartPortBus reaches RESPONSE_PENDING after accepting its $C8.\n            var busState = bus && typeof(bus.getState)==="function" ? bus.getState() : null;\n            if(busState && busState.protocolState==="RESPONSE_PENDING")\n                state.underrun=true;\n        }\n        return (0x3F | (state.writeReady?0x80:0) | (!state.underrun?0x40:0))&0xFF;\n    }''')
-          s=s.replace('''    function writeData(value,ctx)\n    {\n        state.writeData = Number(value)&0xFF;\n        if(bus && typeof(bus.writeData)==="function") bus.writeData(state.writeData,state.lines,ctx);\n    }''','''    function writeData(value,ctx)\n    {\n        state.writeData = Number(value)&0xFF;\n        state.writeReady=false;\n        state.underrun=false;\n        state.writeDrainPending=true;\n        if(bus && typeof(bus.writeData)==="function") bus.writeData(state.writeData,state.lines,ctx);\n    }''')
-          s=s.replace('''        state.writeReady=true; state.underrun=false;\n        if(bus && typeof(bus.reset)==="function") bus.reset();''','''        state.writeReady=true; state.underrun=false; state.writeDrainPending=false;\n        if(bus && typeof(bus.reset)==="function") bus.reset();''')
-          p.write_text(s)
-          PY
-      - name: Verify Liron and UniDisk suites
+      - name: Verify committed Liron and UniDisk sources
         shell: bash
         run: |
           node --check res/EMU_CARD_LIRON.js
+          node --check res/EMU_DEVICE_UNIDISK35.js
           node --test tests/liron_iwm.test.js tests/liron_card.test.js tests/liron_smartport_bus.test.js tests/liron_smartport_transport.test.js tests/liron_browser_integration.test.js tests/unidisk35.test.js
-      - name: Commit and rebase production fix
+      - name: Verify authentic Liron ROM enumeration
         shell: bash
         run: |
-          if git diff --quiet -- res/EMU_CARD_LIRON.js; then
-            echo "Production source already contains the verified fix."
-            exit 0
-          fi
-          git config user.name "Zen"
-          git config user.email "freddy.vandriessche@gmail.com"
-          git add res/EMU_CARD_LIRON.js
-          git commit -m "fix: drain Liron IWM write buffer after SmartPort packet"
-          git fetch origin feature/liron-unidisk-bus
-          git rebase origin/feature/liron-unidisk-bus
-          git push origin HEAD:feature/liron-unidisk-bus
+          node <<'NODE'
+          'use strict';
+          const fs=require('node:fs');
+          const vm=require('node:vm');
+          const cpuCtx={console}; vm.createContext(cpuCtx);
+          vm.runInContext(fs.readFileSync('res/EMU_cpu6502.js','utf8'),cpuCtx);
+          const actionMap={Hslot:null,RD:new Array(0x1000),WR:new Array(0x1000)};
+          const ctx={console,oEMU:{component:{IO:{ACTION_MAP:actionMap}}}}; vm.createContext(ctx);
+          vm.runInContext(fs.readFileSync('res/EMU_DEVICE_UNIDISK35.js','utf8'),ctx);
+          vm.runInContext(fs.readFileSync('res/EMU_CARD_LIRON.js','utf8'),ctx);
+          const card=new ctx.AppleLiron(),iwm=card.getIWM(),bus=card.getBus(),rom=card.getROM(),mem=new Uint8Array(0x10000);
+          const entry=(0xC500+(rom[0x5FF]&0xFF)+3)&0xFFFF, params=0x0280, statusBuf=0x0400, returnPC=0x0206;
+          mem[0x0200]=0x20; mem[0x0201]=entry&0xFF; mem[0x0202]=entry>>8; mem[0x0203]=0; mem[0x0204]=params&0xFF; mem[0x0205]=params>>8; mem[0x0206]=0xEA;
+          mem[params]=3; mem[params+1]=0; mem[params+2]=statusBuf&0xFF; mem[params+3]=statusBuf>>8; mem[params+4]=0;
+          mem[0xFFFC]=0; mem[0xFFFD]=2;
+          let pc=0,sawDrain=false,sawResponse=false;
+          const hw={irq_signal:0,nmi_signal:0}; hw.lineDecode=a=>(a>>>8)&0xFF; hw.RD=new Array(256); hw.WR=new Array(256);
+          for(let p=0;p<256;p++){hw.RD[p]=a=>mem[a&0xFFFF];hw.WR[p]=(a,v)=>{mem[a&0xFFFF]=v&0xFF;};}
+          hw.RD[0xC0]=a=>{a&=0xFFFF;if(a>=0xC0D0&&a<=0xC0DF){const v=iwm.read(a&15,{pc});if(pc===0xC92C&&(v&0x40)===0)sawDrain=true;if(bus.getState().protocolState==='SEND_RESPONSE')sawResponse=true;return v&0xFF;}return mem[a];};
+          hw.WR[0xC0]=(a,v)=>{a&=0xFFFF;if(a>=0xC0D0&&a<=0xC0DF){iwm.write(a&15,v,{pc});return;}mem[a]=v&0xFF;};
+          hw.RD[0xC5]=a=>rom[0x500+(a&0xFF)];
+          for(let p=0xC8;p<=0xCF;p++)hw.RD[p]=a=>rom[0x800+((a&0xFFFF)-0xC800)];
+          for(let p=0xC5;p<=0xCF;p++)hw.WR[p]=()=>{};
+          const cpu=new cpuCtx.Cpu6502(hw);cpu.reset();
+          function step(){pc=cpu.watch().pc&0xFFFF;cpu.cycle();while(cpu.watch().cycle_delay>0)cpu.cycle();}
+          let returned=false,n=0;for(;n<500000;n++){if(n>0&&cpu.watch().cycle_delay===0&&(cpu.watch().pc&0xFFFF)===returnPC){returned=true;break;}step();}
+          console.log(JSON.stringify({entry:entry.toString(16),returned,instructions:n,status0:mem[statusBuf],sawDrain,sawResponse,bus:bus.getState()}));
+          if(!returned||mem[statusBuf]!==1||!sawDrain||!sawResponse)process.exit(1);
+          NODE
