@@ -29,7 +29,7 @@ jobs:
             -o /tmp/cardcat.zip
           mkdir -p /tmp/cardcat
           unzip -j /tmp/cardcat.zip -d /tmp/cardcat
-          DSK="$(find /tmp/cardcat -maxdepth 1 -type f -iname '*.dsk' | head -1)"
+          DSK="$(find /tmp/cardcat -maxdepth 1 -type f -iname '*.dsk' ! -name '._*' | head -1)"
           test -n "$DSK"
           cp "$DSK" cardcat194.dsk
           test "$(stat -c%s cardcat194.dsk)" -ge 140000
@@ -53,15 +53,6 @@ jobs:
           node <<'NODE'
           'use strict';
           const puppeteer = require('puppeteer-core');
-
-          function cleanChar(raw)
-          {
-              if(raw===0) return ' ';
-              let c=raw&0x7f;
-              if(c===0x7f) return '?';
-              if(c<0x20) c+=0x40;
-              return String.fromCharCode(c);
-          }
 
           (async()=>{
               const browser=await puppeteer.launch({
