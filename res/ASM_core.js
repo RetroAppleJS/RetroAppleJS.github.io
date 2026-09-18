@@ -1124,14 +1124,16 @@ function ASM(options)
         var upper = addr.toUpperCase();
         var mode = null;
         var forcedZeroPage = false;
+        var indexedX = upper.slice(-2) === ",X";
+        var indexedY = upper.slice(-2) === ",Y";
 
         if (upper === "A" && this.isValidMode(entry, 1)) mode = 1;
         else if (addr.charAt(0) === "#") mode = 2;
         else if (addr.charAt(0) === "/" && this.isValidMode(entry, 2)) mode = 2;
         else if (addr.charAt(0) === "*") {
             forcedZeroPage = true;
-            if (upper.indexOf(",X") > 0) mode = 7;
-            else if (upper.indexOf(",Y") > 0) mode = 8;
+            if (indexedX) mode = 7;
+            else if (indexedY) mode = 8;
             else mode = 6;
         } else if (addr.charAt(0) === "(") {
             if (upper.indexOf(",X)") > 0 && upper.indexOf(",X)") === upper.length - 3) mode = 10;
@@ -1140,7 +1142,7 @@ function ASM(options)
         } else if (this.isValidMode(entry, 12)) {
             mode = 12;
         } else {
-            var absoluteMode = upper.indexOf(",X") > 0 ? 4 : (upper.indexOf(",Y") > 0 ? 5 : 3);
+            var absoluteMode = indexedX ? 4 : (indexedY ? 5 : 3);
             var zeroPageMode = absoluteMode === 4 ? 7 : (absoluteMode === 5 ? 8 : 6);
             var exprText = this.cleanOperandValue(addr, absoluteMode);
             var expr = this.getExpression(exprText, symtab);
