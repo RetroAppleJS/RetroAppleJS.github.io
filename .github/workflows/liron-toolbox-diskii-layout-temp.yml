@@ -25,23 +25,23 @@ jobs:
           node --check res/EMU_CARD_appledisk2.js
           node --check res/EMU_CARD_LIRON.js
       - name: Focused regression
+        run: node --test tests/liron_toolbox.test.js
+      - name: Liron regressions
         shell: bash
         run: |
           set +e
-          node --test tests/liron_toolbox.test.js > /tmp/liron-layout-test-output.txt 2>&1
+          node --test tests/liron*.test.js tests/unidisk*.test.js > /tmp/liron-regression-output.txt 2>&1
           status=$?
-          cat /tmp/liron-layout-test-output.txt
+          cat /tmp/liron-regression-output.txt
           if [ "$status" -ne 0 ]; then
-            cp /tmp/liron-layout-test-output.txt .github/liron-layout-test-output.txt
+            cp /tmp/liron-regression-output.txt .github/liron-regression-output.txt
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add .github/liron-layout-test-output.txt
-            git commit -m "debug: capture Liron layout test output [skip ci]"
+            git add .github/liron-regression-output.txt
+            git commit -m "debug: capture Liron regression output [skip ci]"
             git push
             exit "$status"
           fi
-      - name: Liron regressions
-        run: node --test tests/liron*.test.js tests/unidisk*.test.js
       - name: Commit GREEN production changes
         run: |
           git config user.name "github-actions[bot]"
