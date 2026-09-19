@@ -130,6 +130,7 @@ if(LIRON_ROM.length!==4096) throw new Error("Liron ROM must be exactly 4096 byte
 
 function SmartPortBus()
 {
+    var bDebug = false;
     var devices = [];
     var units = new Array(9).fill(null);
     var residentIDs = new Array(9).fill(0);
@@ -153,6 +154,13 @@ function SmartPortBus()
     var tx=[];
     var txIndex=0;
     var lastError="";
+
+    const SMARTPORT_COMMAND_NAMES={0x00:"STATUS",0x01:"READ BLOCK",0x02:"WRITE BLOCK",0x03:"FORMAT",0x04:"CONTROL",0x05:"INIT",0x06:"OPEN",0x07:"CLOSE"};
+    function debugLog(event,fields)
+    {
+        if(!bDebug) return;
+        console.log("[LIRON SmartPort] "+event,fields || {});
+    }
 
     function normalizeUnit(unit)
     {
@@ -278,6 +286,7 @@ function SmartPortBus()
 
     function buildResponse(source,status,payload)
     {
+        debugLog("TX_RESPONSE",{"src":source&0x7F,"dest":0,"type":1,"status":status&0x7F,"statusHex":"$"+(status&0x7F).toString(16).toUpperCase().padStart(2,"0"),"payloadLength":payload ? payload.length : 0,"payloadPreview":payload ? Array.from(payload).slice(0,32) : []});
         payload=Array.from(payload||[],function(b){return Number(b)&0xFF;});
         var enc=encodePayload(payload);
         var rawHeader=[0x00,Number(source)&0x7F,0x01,0x00,Number(status)&0x7F,enc.odd,enc.groups];
@@ -298,6 +307,7 @@ function SmartPortBus()
 
     function failPacket(message)
     {
+        debugLog("PROTOCOL_ERROR",{"reason":message,"protocolState":protocolState,"header":header.slice(),"rxLength":rx.length,"expectedLength":expectedLength});
         lastError=String(message||"SmartPort packet error");
         protocolState=WAIT_SYNC;
         ack=false;
@@ -333,6 +343,7 @@ function SmartPortBus()
         }
 
         var command=payload.length ? payload[0]&0x7F : 0;
+        debugLog("RX_COMMAND",{"dest":dest,"command":command,"commandName":SMARTPORT_COMMAND_NAMES[command] || "UNKNOWN","payload":payload.slice(),"parameterCount":payload.length>1 ? payload[1]&0xFF : null,"residentUnit":findUnitByResidentID(dest) || null});
         if(command===0x05)
         {
             var unit=firstUnassignedUnit();
@@ -342,6 +353,7 @@ function SmartPortBus()
                 return;
             }
             residentIDs[unit]=dest;
+            debugLog("INIT",{"dest":dest,"assignedUnit":unit,"residentID":dest,"remainingUnassigned":hasUnassignedUnit(),"responseStatus":hasUnassignedUnit()?0x00:0x7F});
             buildResponse(dest,hasUnassignedUnit()?0x00:0x7F,[]);
             return;
         }
@@ -371,10 +383,12 @@ function SmartPortBus()
                 |((payload.length>5 ? payload[5]&0xFF : 0)<<8)
                 |((payload.length>6 ? payload[6]&0xFF : 0)<<16);
 
+            var readState=typeof(readDevice.getState)==="function" ? readDevice.getState() || {} : {};
+            debugLog("READ_BLOCK",{"dest":dest,"residentUnit":readUnit,"payload":payload.slice(),"parameterCount":payload.length>1 ? payload[1]&0xFF : null,"bufferAddress":payload.length>3 ? ((payload[2]&0xFF)|((payload[3]&0xFF)<<8)) : null,"blockBytes":[payload.length>4?payload[4]&0xFF:null,payload.length>5?payload[5]&0xFF:null,payload.length>6?payload[6]&0xFF:null],"blockNumber":blockNumber,"mediaLoaded":!!readState.mediaLoaded,"mediaFilename":readState.mediaFilename || ""});
             var readReply=readDevice.readBlock(blockNumber);
-            var readError=readReply && readReply.error!==undefined
-                ? Number(readReply.error)&0x7F : 0x27;
+            var readError=readReply && readReply.error!==undefined ? Number(readReply.error)&0x7F : 0x27;
             var readData=readReply && readReply.data ? Array.from(readReply.data) : [];
+            debugLog("DEVICE_RESULT",{"command":"READ BLOCK","unit":readUnit,"blockNumber":blockNumber,"error":readError,"errorHex":"$"+readError.toString(16).toUpperCase().padStart(2,"0"),"dataLength":readData.length,"mediaLoaded":!!readState.mediaLoaded,"mediaFilename":readState.mediaFilename || ""});
             buildResponse(dest,readError,readData);
             return;
         }
@@ -389,6 +403,7 @@ function SmartPortBus()
         // command, parameter count, device id, reserved, status/control code.
         var frameUnit=payload.length>2 ? payload[2]&0xFF : 0;
         var statusCode=payload.length>4 ? payload[4]&0xFF : 0;
+        debugLog("STATUS",{"dest":dest,"residentUnit":findUnitByResidentID(dest)||null,"frameUnit":frameUnit,"statusCode":statusCode});
 
         if(dest===0 && frameUnit===0 && statusCode===0)
         {
@@ -444,11 +459,13 @@ function SmartPortBus()
         var wireChecksum=(c0&0x55)|((c1&0x55)<<1);
         if(wireChecksum!==checksum)
         {
+            debugLog("CHECKSUM_ERROR",{"expected":checksum,"received":wireChecksum,"header":header.slice(),"payload":payload.slice(),"encodedPayload":encoded.slice()});
             failPacket("SmartPort checksum mismatch");
             return;
         }
 
         lastError="";
+        debugLog("RX_PACKET",{"dest":header[0]&0x7F,"src":header[1]&0x7F,"type":header[2]&0x7F,"aux":header[3]&0x7F,"status":header[4]&0x7F,"oddCount":header[5]&0x7F,"groupCount":header[6]&0x7F,"rawHeader":header.slice(),"encodedPayload":encoded.slice(),"payload":payload.slice(),"checksumExpected":checksum,"checksumReceived":wireChecksum});
         dispatchPacket(header.slice(),payload);
         rx=[];
         header=[];
@@ -532,6 +549,9 @@ function SmartPortBus()
             txIndex=0;
         }
     }
+
+    this.setDebug = function(value) { bDebug=!!value; return bDebug; };
+    this.getDebug = function() { return bDebug; };
 
     this.reset = function()
     {
@@ -1126,6 +1146,8 @@ function AppleLiron()
     this.restart = function() { iwm.restart(); };
     this.getIWM = function() { return iwm; };
     this.getBus = function() { return smartport; };
+    this.setDebug = function(value) { return smartport.setDebug(value); };
+    this.getDebug = function() { return smartport.getDebug(); };
     this.getUniDisk = function() { return unidisk; };
     this.getROM = function() { return LIRON_ROM; };
 }
