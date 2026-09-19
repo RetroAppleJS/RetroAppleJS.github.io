@@ -38,7 +38,8 @@
 - Modify: `res/EMU_DEVICE_UNIDISK35.js`
 - Modify: `tests/liron_smartport_bus.test.js`
 - Modify: `tests/liron_browser_integration.test.js`
-- Adjust as needed: `tests/liron_smartport_transport.test.js`, `tests/liron_readblock.test.js`
+- Modify: `tests/liron_smartport_transport.test.js`
+- Modify: `tests/liron_readblock.test.js`
 
 **Interfaces:**
 - Consumes: `Apple2IO.provisionPeripheral(owner)` / `Apple2IO.attach(owner,deviceConfig)`.
@@ -83,7 +84,7 @@ test('bindHost attaches the exact Apple2IO-created child as unit 1 idempotently'
 });
 ```
 
-Update `tests/liron_browser_integration.test.js` so the discovery instance is expected to *declare* the child; unit 1 exists only after the Apple2IO-style child is constructed and bound.
+Update `tests/liron_browser_integration.test.js` so the discovery instance is expected to declare the child; unit 1 exists only after an Apple2IO-style child is constructed and bound. Update `tests/liron_smartport_transport.test.js` and `tests/liron_readblock.test.js` helpers so direct `AppleLiron` construction is immediately followed by construction/binding of `card.deviceConfig[0]` before any device command is exercised.
 
 - [ ] **Step 2: Run RED**
 
@@ -153,12 +154,12 @@ node --test \
   tests/unidisk35.test.js
 ```
 
-Tests that instantiate `AppleLiron` outside Apple2IO must explicitly create/bind the child before exercising SmartPort device commands.
-
 - [ ] **Step 5: Commit**
 
 ```bash
-git add res/EMU_CARD_LIRON.js res/EMU_DEVICE_UNIDISK35.js tests/liron_*.test.js tests/unidisk35.test.js
+git add res/EMU_CARD_LIRON.js res/EMU_DEVICE_UNIDISK35.js \
+        tests/liron_smartport_bus.test.js tests/liron_browser_integration.test.js \
+        tests/liron_smartport_transport.test.js tests/liron_readblock.test.js
 git commit -m "refactor: provision UniDisk as Liron child device"
 ```
 
@@ -193,20 +194,13 @@ test('819200 bytes route to the mounted UniDisk child', () => {
 Also test:
 
 ```javascript
-// no mounted UniDisk
-assert.equal(EMU_mountDiskImage(new Uint8Array(819200),null,'D1','x.po'),false);
-
-// two mounted UniDisks and no explicit Liron slot
-assert.equal(EMU_mountDiskImage(new Uint8Array(819200),null,'D1','x.po'),false);
-
-// wrong size explicitly targeted to UniDisk does not fall through to Disk II
+assert.equal(EMU_mountDiskImage(new Uint8Array(819200),null,'D1','x.po'),false); // no UniDisk
+assert.equal(EMU_mountDiskImage(new Uint8Array(819200),null,'D1','x.po'),false); // two UniDisks fixture
 assert.equal(EMU_mountDiskImage(new Uint8Array(819199),null,'UNIDISK35','bad.po'),false);
-
-// existing 140K route remains Disk II
 assert.equal(EMU_mountDiskImage(new Uint8Array(143360),diskIISlot,'D1','boot.dsk'),true);
 ```
 
-For state preservation, use a real `UniDisk35Device`: load a valid image through `EMU_mountDiskImage`, reject an 819199-byte `UNIDISK35` image, and compare a known block before/after.
+For state preservation, use a real `UniDisk35Device`: load a valid image through `EMU_mountDiskImage`, record a known block, reject an 819199-byte `UNIDISK35` image, then verify the same block is unchanged.
 
 - [ ] **Step 2: Run RED**
 
@@ -217,8 +211,6 @@ node --test tests/liron_browser_mount.test.js
 Expected: `EMU_mountDiskImage` / `EMU_unidisk35Device` missing.
 
 - [ ] **Step 3: Implement mounted-child resolution**
-
-Near the existing disk helpers in `EMU_apple2main.js`:
 
 ```javascript
 function EMU_unidisk35Device(slotN)
@@ -242,7 +234,7 @@ function EMU_unidisk35Device(slotN)
 }
 ```
 
-- [ ] **Step 4: Implement one production media router**
+- [ ] **Step 4: Implement one production media router and converge both browser callers**
 
 ```javascript
 function EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath)
@@ -270,7 +262,7 @@ function EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath)
 }
 ```
 
-Refactor `loadDisk_fromBuffer()` and the local-file `FileReader.onload` path to call `EMU_mountDiskImage()`. Delete the old 819,200-byte warning branch because it is now a supported production path.
+Refactor `loadDisk_fromBuffer()` and the local-file `FileReader.onload` path to call `EMU_mountDiskImage()`. Remove the old 819,200-byte warning branch.
 
 Update `UniDisk35Device.loadImage(data,metadata)` to preserve optional filename metadata:
 
@@ -312,16 +304,16 @@ git commit -m "feat: route 800K browser media to UniDisk"
 
 **Interfaces:**
 - Consumes: Task 2 `EMU_mountDiskImage`, normal Disk II boot, Apple2IO `unmount`, `apple2plus.reset`, authentic Liron ROM/IWM/SmartPort READ BLOCK.
-- Produces: CI evidence for both Card Cat discovery and a real Card Cat/Pascal boot from the browser-mounted UniDisk volume.
+- Produces: repeatable CI evidence for both Card Cat discovery and a real Card Cat/Pascal boot from the browser-mounted UniDisk volume.
 
-The acceptance uses two phases in one browser session. Phase A boots the normal 5.25-inch Card Cat disk while the `.po` is mounted through the browser router and requires `SP:1`. Phase B passively observes block requests, removes Disk II from the live slot map, performs a machine reset (not `restart`, so default cards are not remounted), and lets the Apple II autostart through slot 5. Card Cat must boot again from the already browser-mounted `CardCat 1.94.po`. Because the UCSD Pascal loader must read its volume directory to locate system files, the test additionally requires that SmartPort block 2 was requested during this boot.
+The acceptance uses two phases in one browser session. Phase A boots the normal 5.25-inch Card Cat disk while the `.po` is mounted through the browser router and requires `SP:1`. Phase B passively observes production block requests, removes Disk II from the live slot map, performs `apple2plus.reset()` (not `restart()`, so default cards are not remounted), and lets Apple II Autostart select slot 5. Card Cat must boot again from the already mounted `CardCat 1.94.po`. The UCSD Pascal boot must request SmartPort block 2, which is the volume directory containing `SYSTEM.APPLE`, `SYSTEM.PASCAL`, and `SYSTEM.STARTUP`.
 
 - [ ] **Step 1: Write the Playwright acceptance script**
 
 The script must:
 
 1. Navigate to locally served `index.html`.
-2. Fetch both repository media files from the local server.
+2. Fetch both media files from that local server.
 3. Load `Card Cat 1.94.dsk` through the existing normal Disk II browser function.
 4. Load `CardCat 1.94.po` only through:
 
@@ -329,20 +321,9 @@ The script must:
 EMU_mountDiskImage(poBytes,null,'UNIDISK35','CardCat 1.94.po')
 ```
 
-5. Assert the normal child reports `unit===1`, `mediaLoaded===true`, `mediaBytes===819200`, `mediaFilename==='CardCat 1.94.po'`.
-6. Run live CPU ticks until Videx text contains:
-
-```text
-Apple II Liron Drive Controller (SP:1)
-```
-
-7. Install a **passive observer only** around the already-mounted child's `readBlock` method. The observer records requested block numbers and delegates using `Reflect.apply`; it never originates a block read.
-8. Resolve the live Disk II controller, save its mounted slot index, call `io.unmount(slotIndex)`, then call `apple2plus.reset()` (not `restart()`).
-9. Run live CPU ticks until Card Cat's main screen appears again, proving the machine booted from Liron/UniDisk with Disk II absent.
-10. Assert the passive request log contains block `2`, and assert Card Cat/Pascal screen text includes normal startup content after that read.
-11. Assert the acceptance source contains no direct-call pattern `\.loadImage\s*\(` and no direct-call pattern `\.readBlock\s*\(`.
-
-The observer shape is:
+5. Assert the normal child state: `unit===1`, `mediaLoaded===true`, `mediaBytes===819200`, `mediaFilename==='CardCat 1.94.po'`.
+6. Run live CPU ticks until Videx text contains `Apple II Liron Drive Controller (SP:1)`.
+7. Install a passive observer around the already-mounted child's `readBlock`. It records block numbers and delegates using `Reflect.apply`; it does not originate a read:
 
 ```javascript
 const disk=liron.getUniDisk();
@@ -355,9 +336,16 @@ disk.readBlock=function(blockNo)
 };
 ```
 
-This observes production-originated SmartPort reads without bypassing the browser mount or originating disk access from JavaScript.
+8. Resolve the live Disk II controller, call `io.unmount(disk2.mount.slotN)`, then call `apple2plus.reset()`.
+9. Run live CPU ticks until Videx text again contains both `Card Cat 1.94` and `Apple II+`, proving Card Cat/Pascal booted with Disk II absent.
+10. Require `observed.includes(2)===true`.
+11. Statistically guard the source against direct calls with regexes `\.loadImage\s*\(` and `\.readBlock\s*\(`; neither may match.
 
-- [ ] **Step 2: Add permanent GitHub Actions workflow**
+- [ ] **Step 2: Establish acceptance RED against the Task-1 revision**
+
+Before Task 2's router commit is applied, run the acceptance script once. The expected failure is specifically that the 819,200-byte browser route is unavailable/rejected. A Chromium/setup/media-file failure does not count as RED.
+
+- [ ] **Step 3: Add the permanent workflow**
 
 ```yaml
 name: Liron Card Cat browser acceptance
@@ -398,13 +386,9 @@ jobs:
       - run: node tests/cardcat_unidisk_browser_acceptance.js
 ```
 
-- [ ] **Step 3: Establish acceptance RED**
-
-Run the browser acceptance against the Task-1-only revision. Expected failure must be at the missing/rejected 819,200-byte browser route, not browser setup or missing media.
-
 - [ ] **Step 4: Run acceptance GREEN after Task 2**
 
-Required final diagnostic:
+Required diagnostic:
 
 ```text
 CARD_CAT_BROWSER_ACCEPTANCE {
@@ -417,7 +401,7 @@ CARD_CAT_BROWSER_ACCEPTANCE {
 }
 ```
 
-Every field must be true / expected or the script exits non-zero.
+All fields must pass or the process exits non-zero.
 
 - [ ] **Step 5: Commit**
 
@@ -465,7 +449,8 @@ Expected: all `CARD_CAT_BROWSER_ACCEPTANCE` fields pass.
 - [ ] **Step 3: Verify architectural constraints**
 
 ```bash
-git diff <branch-base>...HEAD -- res/EMU_apple2io.js
+BASE="$(git merge-base feature/liron-unidisk-bus HEAD)"
+git diff "$BASE"...HEAD -- res/EMU_apple2io.js
 grep -n "new UniDisk35Device" res/EMU_CARD_LIRON.js || true
 grep -nE '\.(loadImage|readBlock)[[:space:]]*\(' tests/cardcat_unidisk_browser_acceptance.js || true
 ```
