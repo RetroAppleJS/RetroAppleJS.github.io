@@ -167,10 +167,30 @@ function EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath,unit)
 
     if(bytes.length===819200 || unidiskTarget)
     {
-        if(bytes.length!==819200) return false;
+        var details={"slotN":slotN,"unit":unit,"filename":filepath || "","bytes":bytes.length};
+        if(bytes.length!==819200)
+        {
+            console.error("UniDisk 3.5 mount failed: invalid image size",{"slotN":slotN,"unit":unit,"filename":filepath || "","expected":819200,"actual":bytes.length});
+            return false;
+        }
         var unidisk=EMU_unidisk35Device(slotN,unit);
-        if(!unidisk || typeof(unidisk.loadImage)!=="function") return false;
-        unidisk.loadImage(bytes,{"filename":filepath || ""});
+        if(!unidisk)
+        {
+            console.error("UniDisk 3.5 mount failed: target device not found",details);
+            return false;
+        }
+        if(typeof(unidisk.loadImage)!=="function")
+        {
+            console.error("UniDisk 3.5 mount failed: target device cannot load images",details);
+            return false;
+        }
+        try { unidisk.loadImage(bytes,{"filename":filepath || ""}); }
+        catch(err)
+        {
+            console.error("UniDisk 3.5 mount failed: device load exception",details,err);
+            throw err;
+        }
+        console.log("UniDisk 3.5 mount succeeded",details);
         return true;
     }
 
