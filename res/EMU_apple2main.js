@@ -191,6 +191,52 @@ function EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath,unit)
             throw err;
         }
         console.log("UniDisk 3.5 mount succeeded",details);
+
+        // Diagnostic: compare the browser-router device with the exact
+        // SmartPort resident object currently attached to the owning Liron.
+        try
+        {
+            var io=typeof(apple2plus)==="object" && apple2plus
+                ? apple2plus.hwObj().io
+                : null;
+            var liron=io && Number.isInteger(Number(slotN))
+                ? io.SLOT2obj(Number(slotN))
+                : null;
+            var lironUnitDevice=null;
+            if(liron && liron.id?.PCODE==="LIRON" && typeof(liron.getBus)==="function")
+            {
+                var lironBus=liron.getBus();
+                if(lironBus && typeof(lironBus.getDevice)==="function")
+                    lironUnitDevice=lironBus.getDevice(Number(unit));
+            }
+
+            var routerState=typeof(unidisk.getState)==="function"
+                ? unidisk.getState() || {}
+                : {};
+            var lironUnitState=lironUnitDevice && typeof(lironUnitDevice.getState)==="function"
+                ? lironUnitDevice.getState() || {}
+                : {};
+
+            console.log("UniDisk 3.5 identity trace",{
+                 "slotN":slotN
+                ,"unit":unit
+                ,"sameObject":unidisk===lironUnitDevice
+                ,"routerDevice":unidisk
+                ,"lironUnitDevice":lironUnitDevice
+                ,"routerState":{
+                     "mediaLoaded":!!routerState.mediaLoaded
+                    ,"mediaFilename":routerState.mediaFilename || ""
+                }
+                ,"lironUnitState":{
+                     "mediaLoaded":!!lironUnitState.mediaLoaded
+                    ,"mediaFilename":lironUnitState.mediaFilename || ""
+                }
+            });
+        }
+        catch(traceErr)
+        {
+            console.warn("UniDisk 3.5 identity trace failed",traceErr);
+        }
         return true;
     }
 
