@@ -36,7 +36,7 @@ function mount(card,physicalSlot)
     return card;
 }
 
-test('AppleLiron exposes the RetroAppleJS card surface and an empty SmartPort chain', () => {
+test('AppleLiron exposes the RetroAppleJS card surface and declares an unprovisioned UniDisk child', () => {
     const {context} = loadLiron();
     const card = new context.AppleLiron();
 
@@ -45,7 +45,11 @@ test('AppleLiron exposes the RetroAppleJS card surface and an empty SmartPort ch
     assert.equal(typeof card.action.SlotIO.WR.callback,'function');
     assert.equal(typeof card.action.SlotROM.RD.callback,'function');
     assert.equal(typeof card.action.HostROM.RD.callback,'function');
-    assert.deepEqual(Array.from(card.deviceConfig),[]);
+    assert.equal(card.deviceConfig.length,1);
+    assert.equal(card.deviceConfig[0].DCODE,'UNIDISK35');
+    assert.equal(card.deviceConfig[0].hostPCODE,'LIRON');
+    assert.equal(card.deviceConfig[0].coID,'UniDisk35Device');
+    assert.equal(card.deviceConfig[0].deviceN,1);
     assert.equal(card.getBus().hasDevices(),false);
 });
 
