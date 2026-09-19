@@ -1,0 +1,77 @@
+name: Temporary Liron SmartPort debug
+on:
+  push:
+    branches: [feature/liron-smartport-debug]
+permissions:
+  contents: write
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-smartport-debug
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run RED debug test
+        if: github.event.head_commit.message == 'chore: add temporary SmartPort debug TDD workflow'
+        run: node --test tests/liron_smartport_debug.test.js
+      - name: Implement and verify GREEN
+        if: github.event.head_commit.message == 'chore: implement SmartPort debug logging'
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path('res/EMU_CARD_LIRON.js')
+          s=p.read_text()
+          s=s.replace('function SmartPortBus()\n{\n    var devices = [];','function SmartPortBus()\n{\n    var bDebug = false;\n    var devices = [];',1)
+          marker='''    var tx=[], txIndex=0, lastError="";\n'''
+          insert='''    var tx=[], txIndex=0, lastError="";\n\n    const SMARTPORT_COMMAND_NAMES={0x00:"STATUS",0x01:"READ BLOCK",0x02:"WRITE BLOCK",0x03:"FORMAT",0x04:"CONTROL",0x05:"INIT",0x06:"OPEN",0x07:"CLOSE"};\n    function debugLog(event,fields)\n    {\n        if(!bDebug) return;\n        console.log("[LIRON SmartPort] "+event,fields || {});\n    }\n'''
+          if marker not in s: raise SystemExit('state marker not found')
+          s=s.replace(marker,insert,1)
+
+          s=s.replace('''    function buildResponse(source,status,payload)\n    {''','''    function buildResponse(source,status,payload)\n    {\n        debugLog("TX_RESPONSE",{\n             "src":source&0x7F\n            ,"dest":0\n            ,"type":1\n            ,"status":status&0x7F\n            ,"statusHex":"$"+(status&0x7F).toString(16).toUpperCase().padStart(2,"0")\n            ,"payloadLength":payload ? payload.length : 0\n            ,"payloadPreview":payload ? Array.from(payload).slice(0,32) : []\n        });''',1)
+
+          s=s.replace('''    function failPacket(message)\n    {''','''    function failPacket(message)\n    {\n        debugLog("PROTOCOL_ERROR",{\n             "reason":message\n            ,"protocolState":protocolState\n            ,"header":header.slice()\n            ,"rxLength":rx.length\n            ,"expectedLength":expectedLength\n        });''',1)
+
+          s=s.replace('''        var command=payload.length ? payload[0]&0x7F : 0;\n''','''        var command=payload.length ? payload[0]&0x7F : 0;\n        debugLog("RX_COMMAND",{\n             "dest":dest\n            ,"command":command\n            ,"commandName":SMARTPORT_COMMAND_NAMES[command] || "UNKNOWN"\n            ,"payload":payload.slice()\n            ,"parameterCount":payload.length>1 ? payload[1]&0xFF : null\n            ,"residentUnit":findUnitByResidentID(dest) || null\n        });\n''',1)
+
+          s=s.replace('''            residentIDs[unit]=dest;\n            buildResponse(dest,hasUnassignedUnit()?0x00:0x7F,[]);''','''            residentIDs[unit]=dest;\n            debugLog("INIT",{"dest":dest,"assignedUnit":unit,"residentID":dest,"remainingUnassigned":hasUnassignedUnit(),"responseStatus":hasUnassignedUnit()?0x00:0x7F});\n            buildResponse(dest,hasUnassignedUnit()?0x00:0x7F,[]);''',1)
+
+          old='''            var readReply=readDevice.readBlock(blockNumber);\n            var readError=readReply && readReply.error!==undefined\n                ? Number(readReply.error)&0x7F : 0x27;\n            var readData=readReply && readReply.data ? Array.from(readReply.data) : [];\n            buildResponse(dest,readError,readData);'''
+          new='''            var readState=typeof(readDevice.getState)==="function" ? readDevice.getState() || {} : {};\n            debugLog("READ_BLOCK",{\n                 "dest":dest\n                ,"residentUnit":readUnit\n                ,"payload":payload.slice()\n                ,"parameterCount":payload.length>1 ? payload[1]&0xFF : null\n                ,"bufferAddress":payload.length>3 ? ((payload[2]&0xFF)|((payload[3]&0xFF)<<8)) : null\n                ,"blockBytes":[payload.length>4?payload[4]&0xFF:null,payload.length>5?payload[5]&0xFF:null,payload.length>6?payload[6]&0xFF:null]\n                ,"blockNumber":blockNumber\n                ,"mediaLoaded":!!readState.mediaLoaded\n                ,"mediaFilename":readState.mediaFilename || ""\n            });\n            var readReply=readDevice.readBlock(blockNumber);\n            var readError=readReply && readReply.error!==undefined\n                ? Number(readReply.error)&0x7F : 0x27;\n            var readData=readReply && readReply.data ? Array.from(readReply.data) : [];\n            debugLog("DEVICE_RESULT",{\n                 "command":"READ BLOCK"\n                ,"unit":readUnit\n                ,"blockNumber":blockNumber\n                ,"error":readError\n                ,"errorHex":"$"+readError.toString(16).toUpperCase().padStart(2,"0")\n                ,"dataLength":readData.length\n                ,"mediaLoaded":!!readState.mediaLoaded\n                ,"mediaFilename":readState.mediaFilename || ""\n            });\n            buildResponse(dest,readError,readData);'''
+          if old not in s: raise SystemExit('read block marker not found')
+          s=s.replace(old,new,1)
+
+          s=s.replace('''        var frameUnit=payload.length>2 ? payload[2]&0xFF : 0;\n        var statusCode=payload.length>4 ? payload[4]&0xFF : 0;''','''        var frameUnit=payload.length>2 ? payload[2]&0xFF : 0;\n        var statusCode=payload.length>4 ? payload[4]&0xFF : 0;\n        debugLog("STATUS",{"dest":dest,"residentUnit":findUnitByResidentID(dest)||null,"frameUnit":frameUnit,"statusCode":statusCode});''',1)
+
+          s=s.replace('''        var wireChecksum=(c0&0x55)|((c1&0x55)<<1);\n        if(wireChecksum!==checksum)\n        {''','''        var wireChecksum=(c0&0x55)|((c1&0x55)<<1);\n        if(wireChecksum!==checksum)\n        {\n            debugLog("CHECKSUM_ERROR",{"expected":checksum,"received":wireChecksum,"header":header.slice(),"payload":payload.slice(),"encodedPayload":encoded.slice()});''',1)
+
+          s=s.replace('''        lastError="";\n        dispatchPacket(header.slice(),payload);''','''        lastError="";\n        debugLog("RX_PACKET",{\n             "dest":header[0]&0x7F\n            ,"src":header[1]&0x7F\n            ,"type":header[2]&0x7F\n            ,"aux":header[3]&0x7F\n            ,"status":header[4]&0x7F\n            ,"oddCount":header[5]&0x7F\n            ,"groupCount":header[6]&0x7F\n            ,"rawHeader":header.slice()\n            ,"encodedPayload":encoded.slice()\n            ,"payload":payload.slice()\n            ,"checksumExpected":checksum\n            ,"checksumReceived":wireChecksum\n        });\n        dispatchPacket(header.slice(),payload);''',1)
+
+          pub='''    this.reset = function()\n    {'''
+          repl='''    this.setDebug = function(value) { bDebug=!!value; return bDebug; };\n    this.getDebug = function() { return bDebug; };\n\n    this.reset = function()\n    {'''
+          if pub not in s: raise SystemExit('public reset marker not found')
+          s=s.replace(pub,repl,1)
+
+          card='''    this.getBus = function() { return smartport; };\n'''
+          cardrepl='''    this.getBus = function() { return smartport; };\n    this.setDebug = function(value) { return smartport.setDebug(value); };\n    this.getDebug = function() { return smartport.getDebug(); };\n'''
+          if card not in s: raise SystemExit('card getBus marker not found')
+          s=s.replace(card,cardrepl,1)
+          p.write_text(s)
+          PY
+          node --check res/EMU_CARD_LIRON.js
+          node --test tests/liron_smartport_debug.test.js tests/liron_loader_diagnostics.test.js tests/liron_browser_mount.test.js tests/liron_toolbox.test.js tests/liron_browser_integration.test.js tests/liron_card.test.js tests/liron_iwm.test.js tests/liron_readblock.test.js tests/liron_smartport_bus.test.js tests/liron_smartport_transport.test.js tests/unidisk35.test.js
+      - name: Commit GREEN implementation and remove helper
+        if: github.event.head_commit.message == 'chore: implement SmartPort debug logging'
+        shell: bash
+        run: |
+          git config user.name "RetroAppleJS CI"
+          git config user.email "actions@users.noreply.github.com"
+          rm .github/workflows/liron-smartport-debug-temp.yml
+          git add res/EMU_CARD_LIRON.js tests/liron_smartport_debug.test.js .github/workflows/liron-smartport-debug-temp.yml
+          git commit -m "feat: add Liron SmartPort debug logging"
+          git pull --rebase origin feature/liron-smartport-debug
+          git push origin HEAD:feature/liron-smartport-debug
