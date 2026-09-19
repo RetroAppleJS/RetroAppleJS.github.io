@@ -420,32 +420,32 @@ function AppleDisk2()
         ctx = ctx || {};
         var slotN = Number(ctx.slotN);
         var slotID = ctx.slotID;
-        var butD1  = this.driveElementID("but","D1");
-        var formD1 = this.driveElementID("f","D1");
-        var fileD1 = this.driveElementID("file","D1");
-        var dumpD1 = this.driveElementID("dump","D1");
-        var butD2  = this.driveElementID("but","D2");
-        var formD2 = this.driveElementID("f","D2");
-        var fileD2 = this.driveElementID("file","D2");
-        var dumpD2 = this.driveElementID("dump","D2");
+        var card = this;
+
+        function mediaRow(deviceID,label)
+        {
+            return EMU_deviceMediaRowHTML({
+                 "label":label
+                ,"buttonID":card.driveElementID("but",deviceID)
+                ,"formID":card.driveElementID("f",deviceID)
+                ,"fileID":card.driveElementID("file",deviceID)
+                ,"downloadID":card.driveElementID("dump",deviceID)
+                ,"fileName":deviceID
+                ,"buttonTitle":label+": no disk"
+                ,"buttonOnClick":"ejectDisk(this,"+slotN+",'"+deviceID+"')"
+                ,"buttonOnMouseOver":"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,true)"
+                ,"buttonOnMouseOut":"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,false)"
+                ,"fileOnChange":"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'"+deviceID+"')"
+                ,"downloadOnClick":"apple2plus.hwObj().io.SLOT2obj("+slotN+").downloadDisk('"+deviceID+"')"
+                ,"downloadTitle":"Save disk"
+            });
+        }
 
         return ""
             + "<div class=toolbox id=\""+(ctx.toolboxID || ("device_tool_"+slotID))+"\" hidden>"
             + "  <div class=appbox style=\"height:63px;padding:0px 6px 0px 6px;\">"
-            + "    <div class=appbut style=\"padding:5px 0px 0px 0px;text-align:left;\">"
-            + "      <input type=button method=get class=appbut id=\""+butD1+"\" value=\"Drive1\" data-empty=\"Drive1\" data-loaded=\"\" title=\"Drive1: no disk\" onclick=\"ejectDisk(this,"+slotN+",'D1')\" onmouseover=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,true)\" onmouseout=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,false)\">"
-            + "      <form action=\"index.html\" id=\""+formD1+"\" style=\"display:inline;\">"
-            + "        <input type=\"file\" name=\"D1\" id=\""+fileD1+"\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'D1')\">"
-            + "      </form>"
-            + "      <button class=appbut value=\"Download\" onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").downloadDisk('D1')\" id=\""+dumpD1+"\" title=\"Save disk\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
-            + "    </div>"
-            + "    <div class=appbut style=\"padding:5px 0px 0px 0px;text-align:left\">"
-            + "      <input type=button method=get class=appbut id=\""+butD2+"\" value=\"Drive2\" data-empty=\"Drive2\" data-loaded=\"\" title=\"Drive2: no disk\" onclick=\"ejectDisk(this,"+slotN+",'D2')\" onmouseover=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,true)\" onmouseout=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,false)\">"
-            + "      <form action=\"index.html\" id=\""+formD2+"\" style=\"display:inline;\">"
-            + "        <input type=\"file\" name=\"D2\" id=\""+fileD2+"\" style=\"display:inline-block\" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'D2')\">"
-            + "      </form>"
-            + "      <button class=appbut value=\"Download\" onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").downloadDisk('D2')\" id=\""+dumpD2+"\" title=\"Save disk\" style=\"float:right\"><i class=\"fa fa-cloud-download-alt\"></i></button>"
-            + "    </div>"
+            + mediaRow("D1","Drive1")
+            + mediaRow("D2","Drive2")
             + "  </div>"
             + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
             + "    <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'softwareCat'})\" title=\"Software Catalog\"><i class=\"fa fa-cat\"></i></button><br>"
