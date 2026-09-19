@@ -1016,6 +1016,44 @@ function AppleLiron()
     return true;
 };
 
+    this.deviceToolEject = function(unit)
+{
+    unit=Number(unit);
+    if(!Number.isInteger(unit) || unit<1 || unit>8) return false;
+
+    var devices=Array.isArray(liron.devices) ? liron.devices : [];
+    var target=null;
+    for(var i=0;i<devices.length;i++)
+    {
+        var device=devices[i];
+        var deviceUnit=device && typeof(device.getUnit)==="function"
+            ? Number(device.getUnit())
+            : Number(device && device.id ? device.id.deviceN : NaN);
+        if(deviceUnit===unit)
+        {
+            target=device;
+            break;
+        }
+    }
+
+    if(!target || typeof(target.ejectImage)!=="function") return false;
+    if(target.ejectImage()===false) return false;
+
+    if(typeof(apple2plus)==="object" && apple2plus)
+    {
+        var io=apple2plus.hwObj().io;
+        var slotN=liron.mount ? Number(liron.mount.slotN) : NaN;
+        if(io && typeof(io.refreshDeviceToolboxes)==="function")
+            io.refreshDeviceToolboxes({
+                 "id":"devices"
+                ,"default_slot":Number.isInteger(slotN) && typeof(io.slot2ID)==="function"
+                    ? io.slot2ID(slotN)
+                    : undefined
+            });
+    }
+    return true;
+};
+
     this.deviceToolSlotHTML = function(ctx)
     {
         ctx = ctx || {};
@@ -1065,7 +1103,9 @@ function AppleLiron()
                 + " <span style=\"display:inline-block;min-width:155px;max-width:245px;overflow:hidden;text-overflow:ellipsis;\" title=\""+escapeHTML(filename || "No disk")+"\">"+escapeHTML(filename || "No disk")+"</span>"
                 + " <input type=\"file\" id=\""+controlID+"_file\" accept=\".po\" style=\"display:none\" onchange=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolLoadFile(this,"+unit+")\">"
                 + " <button type=\"button\" class=\"appbut\" onclick=\"document.getElementById('"+controlID+"_file').click()\">Load</button>"
-                + " <button type=\"button\" class=\"appbut\" disabled>Eject</button>"
+                + (state.mediaLoaded
+            ? " <button type=\"button\" class=\"appbut\" onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolEject("+unit+")\">Eject</button>"
+            : " <button type=\"button\" class=\"appbut\" disabled>Eject</button>")
                 + "</div>";
         }
 
