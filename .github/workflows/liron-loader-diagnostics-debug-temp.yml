@@ -1,4 +1,5 @@
 name: Temporary UniDisk diagnostics debug
+# trigger
 on:
   push:
     branches: [feature/liron-unidisk-loader-diagnostics]
