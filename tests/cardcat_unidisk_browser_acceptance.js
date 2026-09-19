@@ -219,17 +219,40 @@ async function runUntil(page,predicate,label)
 
         const unmounted=io.unmount(diskInfo.card.mount.slotN);
         if(!unmounted) throw new Error('Normal Apple2IO Disk II unmount failed');
+        const hw=apple2plus.hwObj();
+        const softHigh=hw.safe_read(0x03F3);
+        const validPowerup=(softHigh^0xA5)&0xFF;
+        const forcedPowerup=(validPowerup^0xFF)&0xFF;
+        hw.WR[hw.lineDecode(0x03F4)](0x03F4,forcedPowerup);
         apple2plus.reset();
         return {
             unmounted,
             diskIIAfter:!!findCard(io,'DISKII'),
             lironSlot:lironInfo.slotIndex,
+            coldReset:{softHigh,validPowerup,forcedPowerup},
             media:disk.getState()
         };
     });
     console.log('UNIDISK_BOOT_SETUP',JSON.stringify(phaseBSetup));
     if(!phaseBSetup.unmounted || phaseBSetup.diskIIAfter)
         throw new Error('Disk II remained mounted during UniDisk boot');
+
+    await runTicks(page,1);
+    const pr5Boot=await page.evaluate(()=>{
+        const io=apple2plus.hwObj().io;
+        const boards=io.DCODE2obj('PASTEBO','A2BO');
+        const pasteboard=boards.length===1 ? boards[0] : null;
+        if(!pasteboard || typeof(pasteboard.sendText)!=='function')
+            throw new Error('Normal browser pasteboard input is unavailable');
+        const pc=apple2plus.cpuObj().watch().pc&0xFFFF;
+        const target=pasteboard.getTargetAddress(io);
+        // Control-B enters BASIC from the Apple monitor; PR#5 is the historical
+        // Apple II+/unenhanced-IIe Liron boot path.
+        const sent=pasteboard.sendText(io,String.fromCharCode(0x02)+'\nPR#5\n');
+        return {pc,target,sent};
+    });
+    console.log('PR5_LIRON_BOOT',JSON.stringify(pr5Boot));
+    if(!pr5Boot.sent) throw new Error('Unable to type PR#5 Liron boot command');
 
     const phaseB=await runUntil(page,snap=>{
         const obs=snap.observed || {};
