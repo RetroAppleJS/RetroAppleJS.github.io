@@ -39,7 +39,7 @@ jobs:
           trap 'kill $server || true' EXIT
           sleep 1
           set +e
-          RETROAPPLE_URL=http://127.0.0.1:8000 node /tmp/cardcat_unidisk_browser_acceptance.js > /tmp/red.log 2>&1
+          NODE_PATH="$PWD/node_modules" RETROAPPLE_URL=http://127.0.0.1:8000 node /tmp/cardcat_unidisk_browser_acceptance.js > /tmp/red.log 2>&1
           rc=$?
           set -e
           cat /tmp/red.log
