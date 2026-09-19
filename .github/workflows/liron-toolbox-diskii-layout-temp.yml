@@ -6,38 +6,24 @@ on:
       - feature/liron-toolbox-diskii-layout
 
 jobs:
-  test-and-apply:
+  verify:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Apply approved shared-layout patch
-        run: python3 .github/scripts/liron_toolbox_diskii_layout_patch.py
       - name: Syntax checks
         run: |
           node --check res/EMU_apple2io.js
           node --check res/EMU_CARD_appledisk2.js
           node --check res/EMU_CARD_LIRON.js
-      - name: Focused regression
-        run: node --test tests/liron_toolbox.test.js
+      - name: Shared-layout tests
+        run: |
+          node --test tests/liron_toolbox.test.js tests/liron_toolbox_eject.test.js
       - name: Liron regressions except known debug-default baseline
         shell: bash
         run: |
           files=$(find tests -maxdepth 1 -name 'liron*.test.js' ! -name 'liron_smartport_debug.test.js' -print)
           node --test $files tests/unidisk*.test.js
           node --test --test-name-pattern='bDebug logs semantic SmartPort READ BLOCK lifecycle' tests/liron_smartport_debug.test.js
-      - name: Commit GREEN production changes
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add res/EMU_apple2io.js res/EMU_CARD_appledisk2.js res/EMU_CARD_LIRON.js
-          if ! git diff --cached --quiet; then
-            git commit -m "fix: reuse Disk II media rows for Liron"
-            git push
-          fi
