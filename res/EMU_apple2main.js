@@ -114,6 +114,50 @@ function EMU_diskIIObjects()
     return disks;
 }
 
+function EMU_unidisk35Device(slotN)
+{
+    if(typeof(apple2plus)!="object" || !apple2plus) return null;
+    var io=apple2plus.hwObj().io;
+    if(!io) return null;
+
+    if(slotN!==undefined && slotN!==null && Number.isInteger(Number(slotN)))
+    {
+        var owner=io.SLOT2obj(Number(slotN));
+        if(owner && owner.id?.PCODE==="LIRON" && Array.isArray(owner.devices))
+            for(var i=0;i<owner.devices.length;i++)
+                if(owner.devices[i]?.id?.DCODE==="UNIDISK35") return owner.devices[i];
+    }
+
+    var disks=typeof(io.DCODE2obj)==="function"
+        ? io.DCODE2obj("UNIDISK35","LIRON")
+        : [];
+    return disks.length===1 ? disks[0] : null;
+}
+
+function EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath)
+{
+    var bytes=arr_buffer instanceof Uint8Array
+        ? arr_buffer
+        : new Uint8Array(arr_buffer || []);
+    var unidiskTarget=String(deviceID||"").toUpperCase()==="UNIDISK35";
+
+    if(bytes.length===819200 || unidiskTarget)
+    {
+        if(bytes.length!==819200) return false;
+        var unidisk=EMU_unidisk35Device(slotN);
+        if(!unidisk || typeof(unidisk.loadImage)!=="function") return false;
+        unidisk.loadImage(bytes,{"filename":filepath || ""});
+        return true;
+    }
+
+    var disk2=EMU_slotPeripheral(slotN,"DISKII");
+    if(!disk2 || disk2.getState().active==false) return false;
+
+    var diskBytes=Array.from(bytes);
+    if(diskBytes.length===143360) diskBytes=disk2.convertDsk2Nib(diskBytes);
+    return apple2plus.loadDisk(diskBytes,deviceID,slotN)!==false;
+}
+
 /*
  * Browser-facing handler used by the RAM64K file input created by
  * EMU_CARD_ramcard.js.  Keep this function at top level because the input
@@ -1155,20 +1199,12 @@ function loadDisk_fromFile(file_obj,slotN,deviceID)
             const data = new DataView(levent.target.result);
             const size = levent.target.result.byteLength;
 
-            const bytes = Array(size);
+            const bytes = new Uint8Array(size);
             for (let i = 0; i < size; i++)
                 bytes[i] = data.getUint8(i);
 
-            if (size == 143360)
-            {
-                var io = apple2plus.hwObj().io;
-                var disk2 = io.SLOT2obj(slotN);
-                disk2.setDiskData(bytes, deviceID, filepath);
-            }
-            else if(size == 819200)
-                console.warn("disk was not loaded: likely needs Apple 3.5\" Drive Controller (\"Liron\") → UniDisk 3.5")
-            else
-                console.warn("disk was not loaded: unknown disk size ("+size+" bytes)")
+            if(!EMU_mountDiskImage(bytes,slotN,deviceID,filepath))
+                console.warn("disk was not loaded: unsupported disk size ("+size+" bytes)")
         };
     }
     fread1.onload = onloadHandler(filepath, slotN, deviceID);
@@ -1287,25 +1323,25 @@ function EMU_audio_event_unlock()
     EMU_audio_try_unlock(true);
 }
 
-function loadDisk_fromBuffer(arr_buffer,slotN,deviceID)
+function loadDisk_fromBuffer(arr_buffer,slotN,deviceID,filepath)
 {
     try
     {
-        var disk2 = EMU_slotPeripheral(slotN,"DISKII");
-        if(!disk2 || disk2.getState().active==false) return false;
+        if(!EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath)) return false;
 
-        var bytes = Array.from(arr_buffer);
-        if (bytes.length == 143360) bytes = disk2.convertDsk2Nib(bytes);
-
-        if(!apple2plus.loadDisk(bytes,deviceID,slotN)) return false;
-
-        var input = disk2.diskInputEl(deviceID);
-        if(input) highlight_appbut(input,true);
+        var size=arr_buffer && (arr_buffer.byteLength!==undefined ? arr_buffer.byteLength : arr_buffer.length);
+        if(Number(size)!==819200 && String(deviceID||"").toUpperCase()!=="UNIDISK35")
+        {
+            var disk2 = EMU_slotPeripheral(slotN,"DISKII");
+            var input = disk2 && typeof(disk2.diskInputEl)==="function" ? disk2.diskInputEl(deviceID) : null;
+            if(input) highlight_appbut(input,true);
+        }
         return true;
     }
     catch({ name, message })
     {
         //oCOM.POPUP.html("loadDisk_fromBuffer 1.0 failed: "+name+" "+message);
+        return false;
     }
 }
 

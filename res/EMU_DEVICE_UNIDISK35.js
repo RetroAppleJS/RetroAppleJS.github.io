@@ -17,6 +17,7 @@ function UniDisk35Device(options)
          unit:0
         ,online:options.online===undefined ? true : !!options.online
         ,writeProtected:!!options.writeProtected
+        ,mediaFilename:""
     };
 
     var media = null;
@@ -110,7 +111,7 @@ function UniDisk35Device(options)
         return state.writeProtected;
     };
 
-    this.loadImage = function(data)
+    this.loadImage = function(data,metadata)
     {
         // Uint8Array.from is deliberately used here because it accepts typed
         // arrays and Buffers from another JavaScript realm as well.
@@ -120,6 +121,9 @@ function UniDisk35Device(options)
 
         media=bytes;
         state.online=true;
+        state.mediaFilename = metadata && metadata.filename
+            ? String(metadata.filename).split(/[\\/]/).pop()
+            : "";
         return media.length;
     };
 
@@ -159,6 +163,7 @@ function UniDisk35Device(options)
             ,"status":statusByte()
             ,"mediaLoaded":media!==null
             ,"mediaBytes":media===null ? 0 : media.length
+            ,"mediaFilename":state.mediaFilename
         };
     };
 }
