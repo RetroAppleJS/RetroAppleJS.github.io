@@ -947,6 +947,75 @@ function AppleLiron()
         return 0;
     };
 
+    this.deviceToolLoadFile = function(input,unit)
+{
+    var file=input && input.files && input.files[0];
+    if(!file) return false;
+
+    unit=Number(unit);
+    var slotN=liron.mount ? Number(liron.mount.slotN) : NaN;
+    if(!Number.isInteger(unit) || unit<1 || unit>8 || !Number.isInteger(slotN))
+        return false;
+
+    function clearInput()
+    {
+        try { input.value=""; } catch(e) {}
+    }
+
+    if(Number(file.size)!==819200)
+    {
+        if(typeof(alert)==="function")
+            alert("UniDisk 3.5 image must contain exactly 819200 bytes.");
+        clearInput();
+        return false;
+    }
+
+    var reader=new FileReader();
+    reader.onload=function(ev)
+    {
+        try
+        {
+            var bytes=new Uint8Array(ev.target.result);
+            var mounted=typeof(EMU_mountDiskImage)==="function" &&
+                EMU_mountDiskImage(bytes,slotN,"UNIDISK35",file.name || "",unit);
+            if(!mounted) throw new Error("Unable to mount UniDisk 3.5 image.");
+
+            if(typeof(apple2plus)==="object" && apple2plus)
+            {
+                var io=apple2plus.hwObj().io;
+                if(io && typeof(io.refreshDeviceToolboxes)==="function")
+                    io.refreshDeviceToolboxes({
+                         "id":"devices"
+                        ,"default_slot":typeof(io.slot2ID)==="function"
+                            ? io.slot2ID(slotN)
+                            : undefined
+                    });
+            }
+        }
+        catch(err)
+        {
+            console.error("UniDisk 3.5 load failed",err);
+            if(typeof(alert)==="function")
+                alert("UniDisk 3.5 load failed: "+(err && err.message ? err.message : err));
+        }
+        finally
+        {
+            clearInput();
+        }
+    };
+    reader.onerror=function()
+    {
+        var msg=reader.error && reader.error.message
+            ? reader.error.message
+            : "Unable to read file.";
+        console.error("UniDisk 3.5 load failed: "+msg);
+        if(typeof(alert)==="function") alert("UniDisk 3.5 load failed: "+msg);
+        clearInput();
+    };
+    reader.readAsArrayBuffer(file);
+    return true;
+};
+
     this.deviceToolSlotHTML = function(ctx)
     {
         ctx = ctx || {};
@@ -994,7 +1063,7 @@ function AppleLiron()
                 + "<div data-smartport-unit=\""+unit+"\" style=\"display:flex;align-items:center;gap:5px;min-height:25px;white-space:nowrap;\">"
                 + " <b style=\"display:inline-block;min-width:42px;\">Unit "+unit+"</b>"
                 + " <span style=\"display:inline-block;min-width:155px;max-width:245px;overflow:hidden;text-overflow:ellipsis;\" title=\""+escapeHTML(filename || "No disk")+"\">"+escapeHTML(filename || "No disk")+"</span>"
-                + " <input type=\"file\" id=\""+controlID+"_file\" accept=\".po\" style=\"display:none\">"
+                + " <input type=\"file\" id=\""+controlID+"_file\" accept=\".po\" style=\"display:none\" onchange=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolLoadFile(this,"+unit+")\">"
                 + " <button type=\"button\" class=\"appbut\" onclick=\"document.getElementById('"+controlID+"_file').click()\">Load</button>"
                 + " <button type=\"button\" class=\"appbut\" disabled>Eject</button>"
                 + "</div>";
