@@ -1,0 +1,44 @@
+name: Temporary Liron toolbox browser RED
+on:
+  push:
+    branches: [feature/liron-unidisk-toolbox]
+permissions:
+  contents: read
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-toolbox
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Restore pre-toolbox production files
+        run: |
+          git checkout c3f834d6a0eea48d9cd7e7ceea033883bf22a914 -- res/EMU_CARD_LIRON.js res/EMU_DEVICE_UNIDISK35.js res/EMU_apple2main.js
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify real browser acceptance is RED without Liron toolbox
+        shell: bash
+        run: |
+          python3 -m http.server 8000 >/tmp/retroapple-http.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          set +e
+          RETROAPPLE_URL=http://127.0.0.1:8000 node tests/cardcat_liron_toolbox_acceptance.js > /tmp/red.log 2>&1
+          rc=$?
+          set -e
+          cat /tmp/red.log
+          if [ "$rc" -eq 0 ]; then
+            echo "Expected browser acceptance RED but it passed"
+            exit 1
+          fi
+          grep -F "Liron toolbox UniDisk file input is missing" /tmp/red.log >/dev/null || {
+            echo "Failure was not the intended missing-toolbox failure"
+            exit 1
+          }
