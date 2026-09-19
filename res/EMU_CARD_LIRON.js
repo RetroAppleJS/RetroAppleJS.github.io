@@ -130,7 +130,7 @@ if(LIRON_ROM.length!==4096) throw new Error("Liron ROM must be exactly 4096 byte
 
 function SmartPortBus()
 {
-    var bDebug = false;
+    var bDebug = true;
     var devices = [];
     var units = new Array(9).fill(null);
     var residentIDs = new Array(9).fill(0);
