@@ -1,0 +1,32 @@
+name: Temporary Liron explicit-unit RED
+on:
+  push:
+    branches: [feature/liron-unidisk-toolbox]
+permissions:
+  contents: read
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-toolbox
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify unit routing test is RED
+        shell: bash
+        run: |
+          set +e
+          node --test tests/liron_browser_mount.test.js > /tmp/red.log 2>&1
+          rc=$?
+          set -e
+          cat /tmp/red.log
+          if [ "$rc" -eq 0 ]; then
+            echo "Expected RED but test passed"
+            exit 1
+          fi
+          grep -F "unit 2 must receive the explicitly targeted image" /tmp/red.log >/dev/null || {
+            echo "Failure was not the intended explicit-unit routing failure"
+            exit 1
+          }
