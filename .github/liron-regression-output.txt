@@ -1,0 +1,335 @@
+TAP version 13
+# Subtest: index.html loads UniDisk 3.5 before exactly one Liron card script
+ok 1 - index.html loads UniDisk 3.5 before exactly one Liron card script
+  ---
+  duration_ms: 1.173471
+  ...
+# Subtest: browser discovery declares UniDisk and Apple2IO-style binding populates SmartPort unit 1
+ok 2 - browser discovery declares UniDisk and Apple2IO-style binding populates SmartPort unit 1
+  ---
+  duration_ms: 3.277256
+  ...
+# Subtest: 819200 bytes route to the mounted UniDisk child with filename metadata
+ok 3 - 819200 bytes route to the mounted UniDisk child with filename metadata
+  ---
+  duration_ms: 40.576088
+  ...
+# Subtest: 800K routing fails cleanly when no unique UniDisk child is mounted
+ok 4 - 800K routing fails cleanly when no unique UniDisk child is mounted
+  ---
+  duration_ms: 2.821979
+  ...
+# Subtest: explicit UniDisk target rejects wrong size without falling through to Disk II
+ok 5 - explicit UniDisk target rejects wrong size without falling through to Disk II
+  ---
+  duration_ms: 1.074042
+  ...
+# Subtest: 143360-byte media preserves the existing Disk II path
+ok 6 - 143360-byte media preserves the existing Disk II path
+  ---
+  duration_ms: 9.753331
+  ...
+# Subtest: rejected UniDisk-targeted media leaves previously mounted media unchanged
+ok 7 - rejected UniDisk-targeted media leaves previously mounted media unchanged
+  ---
+  duration_ms: 3.00099
+  ...
+# Subtest: normal browser loaders converge on EMU_mountDiskImage
+ok 8 - normal browser loaders converge on EMU_mountDiskImage
+  ---
+  duration_ms: 0.293603
+  ...
+# Subtest: explicit slot and SmartPort unit route 800K media to that exact UniDisk child
+ok 9 - explicit slot and SmartPort unit route 800K media to that exact UniDisk child
+  ---
+  duration_ms: 29.128505
+  ...
+# Subtest: AppleLiron exposes the RetroAppleJS card surface and declares an unprovisioned UniDisk child
+ok 10 - AppleLiron exposes the RetroAppleJS card surface and declares an unprovisioned UniDisk child
+  ---
+  duration_ms: 3.358509
+  ...
+# Subtest: slot I/O delegates all low-nibble accesses to the LironIWM
+ok 11 - slot I/O delegates all low-nibble accesses to the LironIWM
+  ---
+  duration_ms: 2.51069
+  ...
+# Subtest: the bundled Liron firmware is exactly 4 KiB and contains the SmartPort slot signature
+ok 12 - the bundled Liron firmware is exactly 4 KiB and contains the SmartPort slot signature
+  ---
+  duration_ms: 1.727787
+  ...
+# Subtest: $Cn00-$CnFF selects the firmware page matching the physical slot
+ok 13 - $Cn00-$CnFF selects the firmware page matching the physical slot
+  ---
+  duration_ms: 3.654395
+  ...
+# Subtest: normal slot-ROM access claims the shared $C800-$CFFF window
+ok 14 - normal slot-ROM access claims the shared $C800-$CFFF window
+  ---
+  duration_ms: 1.604081
+  ...
+# Subtest: read-only/debug slot-ROM inspection does not claim C8 space
+ok 15 - read-only/debug slot-ROM inspection does not claim C8 space
+  ---
+  duration_ms: 3.099288
+  ...
+# Subtest: $C800-$CFFF maps directly to ROM $0800-$0FFF only while Liron owns C8
+ok 16 - $C800-$CFFF maps directly to ROM $0800-$0FFF only while Liron owns C8
+  ---
+  duration_ms: 0.981171
+  ...
+# Subtest: reset and restart are delegated to the IWM/bus state
+ok 17 - reset and restart are delegated to the IWM/bus state
+  ---
+  duration_ms: 1.111257
+  ...
+# Subtest: each IWM soft switch clears or sets one of the eight state bits
+ok 18 - each IWM soft switch clears or sets one of the eight state bits
+  ---
+  duration_ms: 1.30491
+  ...
+# Subtest: reset clears state and mode and resets the SmartPort bus
+ok 19 - reset clears state and mode and resets the SmartPort bus
+  ---
+  duration_ms: 0.228385
+  ...
+# Subtest: Q6/Q7 select DATA, STATUS, HANDSHAKE and MODE/WRITE DATA
+ok 20 - Q6/Q7 select DATA, STATUS, HANDSHAKE and MODE/WRITE DATA
+  ---
+  duration_ms: 0.182605
+  ...
+# Subtest: idle DATA selection returns all ones and enabled DATA reads come from the bus
+ok 21 - idle DATA selection returns all ones and enabled DATA reads come from the bus
+  ---
+  duration_ms: 0.111729
+  ...
+# Subtest: STATUS contains SENSE, enable and low five mode bits
+ok 22 - STATUS contains SENSE, enable and low five mode bits
+  ---
+  duration_ms: 0.142135
+  ...
+# Subtest: HANDSHAKE reports ready, no-underrun and ones in bits 5..0
+ok 23 - HANDSHAKE reports ready, no-underrun and ones in bits 5..0
+  ---
+  duration_ms: 0.136516
+  ...
+# Subtest: final SmartPort write drains on handshake poll and clears underrun bit 6
+ok 24 - final SmartPort write drains on handshake poll and clears underrun bit 6
+  ---
+  duration_ms: 0.317099
+  ...
+# Subtest: odd Q6/Q7 writes target MODE with motor off and DATA with motor on
+ok 25 - odd Q6/Q7 writes target MODE with motor off and DATA with motor on
+  ---
+  duration_ms: 0.607547
+  ...
+# Subtest: register addresses are normalized to their low nibble
+ok 26 - register addresses are normalized to their low nibble
+  ---
+  duration_ms: 0.186682
+  ...
+# Subtest: router logs invalid 800K image size with mount details
+ok 27 - router logs invalid 800K image size with mount details
+  ---
+  duration_ms: 2.573454
+  ...
+# Subtest: router logs missing target instead of silently returning false
+ok 28 - router logs missing target instead of silently returning false
+  ---
+  duration_ms: 1.153731
+  ...
+# Subtest: router logs successful mount details
+ok 29 - router logs successful mount details
+  ---
+  duration_ms: 0.975893
+  ...
+# Subtest: file chooser logs invalid size before FileReader starts
+ok 30 - file chooser logs invalid size before FileReader starts
+  ---
+  duration_ms: 4.822719
+  ...
+# Subtest: file chooser logs FileReader errors explicitly
+ok 31 - file chooser logs FileReader errors explicitly
+  ---
+  duration_ms: 1.399322
+  ...
+# Subtest: file chooser logs mount rejection explicitly
+ok 32 - file chooser logs mount rejection explicitly
+  ---
+  duration_ms: 1.361855
+  ...
+# Subtest: SmartPort READ BLOCK returns mounted UniDisk media block
+ok 33 - SmartPort READ BLOCK returns mounted UniDisk media block
+  ---
+  duration_ms: 6.676508
+  ...
+# Subtest: SmartPortBus assigns unit 1, enumerates it, and resolves it by unit number
+ok 34 - SmartPortBus assigns unit 1, enumerates it, and resolves it by unit number
+  ---
+  duration_ms: 4.316665
+  ...
+# Subtest: SmartPortBus rejects occupied units and detach releases the unit
+ok 35 - SmartPortBus rejects occupied units and detach releases the unit
+  ---
+  duration_ms: 2.738643
+  ...
+# Subtest: SmartPortBus reset preserves attached units
+ok 36 - SmartPortBus reset preserves attached units
+  ---
+  duration_ms: 1.292441
+  ...
+# Subtest: AppleLiron declares one UniDisk child without privately constructing it
+ok 37 - AppleLiron declares one UniDisk child without privately constructing it
+  ---
+  duration_ms: 2.222405
+  ...
+# Subtest: bindHost attaches the exact Apple2IO-created child as unit 1 idempotently
+ok 38 - bindHost attaches the exact Apple2IO-created child as unit 1 idempotently
+  ---
+  duration_ms: 1.335245
+  ...
+# Subtest: bDebug logs semantic SmartPort READ BLOCK lifecycle
+ok 39 - bDebug logs semantic SmartPort READ BLOCK lifecycle
+  ---
+  duration_ms: 10.493008
+  ...
+# Subtest: bDebug false is silent
+not ok 40 - bDebug false is silent
+  ---
+  duration_ms: 2.423358
+  location: '/home/runner/work/RetroAppleJS.github.io/RetroAppleJS.github.io/tests/liron_smartport_debug.test.js:42:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    true !== false
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: false
+  actual: true
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/home/runner/work/RetroAppleJS.github.io/RetroAppleJS.github.io/tests/liron_smartport_debug.test.js:44:10)
+    Test.runInAsyncScope (node:async_hooks:206:9)
+    Test.run (node:internal/test_runner/test:796:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:526:18)
+    Test.postRun (node:internal/test_runner/test:889:19)
+    Test.run (node:internal/test_runner/test:835:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:526:7)
+  ...
+# Subtest: SmartPort STATUS $00 to resident ID 1 returns UniDisk 1600-block status packet
+ok 41 - SmartPort STATUS $00 to resident ID 1 returns UniDisk 1600-block status packet
+  ---
+  duration_ms: 5.280209
+  ...
+# Subtest: SmartPort STATUS $03 returns the UniDisk 3.5 DIB over the packet path
+ok 42 - SmartPort STATUS $03 returns the UniDisk 3.5 DIB over the packet path
+  ---
+  duration_ms: 2.039138
+  ...
+# Subtest: SmartPort INIT assigns resident ID 1 and reports end of the one-device chain
+ok 43 - SmartPort INIT assigns resident ID 1 and reports end of the one-device chain
+  ---
+  duration_ms: 1.270578
+  ...
+# Subtest: SmartPort unit-zero STATUS reports exactly one resident device
+ok 44 - SmartPort unit-zero STATUS reports exactly one resident device
+  ---
+  duration_ms: 3.983223
+  ...
+# Subtest: bad packet checksum is rejected without dispatching a response
+ok 45 - bad packet checksum is rejected without dispatching a response
+  ---
+  duration_ms: 1.51107
+  ...
+# Subtest: PH0+PH2 resets protocol state without detaching UniDisk unit 1
+ok 46 - PH0+PH2 resets protocol state without detaching UniDisk unit 1
+  ---
+  duration_ms: 3.197306
+  ...
+# Subtest: LironIWM forwards phase line transitions to SmartPortBus and exposes ACK through SENSE
+ok 47 - LironIWM forwards phase line transitions to SmartPortBus and exposes ACK through SENSE
+  ---
+  duration_ms: 2.024986
+  ...
+# Subtest: shared removable-media row preserves the Disk II native file-control layout
+ok 48 - shared removable-media row preserves the Disk II native file-control layout
+  ---
+  duration_ms: 3.423077
+  ...
+# Subtest: Disk II and Liron use the same shared removable-media row renderer
+ok 49 - Disk II and Liron use the same shared removable-media row renderer
+  ---
+  duration_ms: 0.230248
+  ...
+# Subtest: Liron toolbox renders attached SmartPort units vertically through the Disk II row layout
+ok 50 - Liron toolbox renders attached SmartPort units vertically through the Disk II row layout
+  ---
+  duration_ms: 2.678162
+  ...
+# Subtest: successful Liron file load keeps the native file selection so the browser displays the filename
+ok 51 - successful Liron file load keeps the native file selection so the browser displays the filename
+  ---
+  duration_ms: 38.22788
+  ...
+# Subtest: Liron eject targets only the selected SmartPort unit and refreshes the toolbox
+ok 52 - Liron eject targets only the selected SmartPort unit and refreshes the toolbox
+  ---
+  duration_ms: 4.606343
+  ...
+# Subtest: successful UniDisk mount logs router-vs-Liron unit identity and media state
+ok 53 - successful UniDisk mount logs router-vs-Liron unit identity and media state
+  ---
+  duration_ms: 1.125789
+  ...
+# Subtest: UniDisk35Device exposes a detached 800K SmartPort block device
+ok 54 - UniDisk35Device exposes a detached 800K SmartPort block device
+  ---
+  duration_ms: 2.310527
+  ...
+# Subtest: a SmartPort bus can assign UniDisk unit 1 explicitly
+ok 55 - a SmartPort bus can assign UniDisk unit 1 explicitly
+  ---
+  duration_ms: 1.016745
+  ...
+# Subtest: STATUS $00 reports an online 1600-block read/write format-capable device
+ok 56 - STATUS $00 reports an online 1600-block read/write format-capable device
+  ---
+  duration_ms: 1.198188
+  ...
+# Subtest: STATUS $03 returns a valid UniDisk 3.5 DIB
+ok 57 - STATUS $03 returns a valid UniDisk 3.5 DIB
+  ---
+  duration_ms: 0.827409
+  ...
+# Subtest: online and write-protect state is reflected in STATUS and DIB
+ok 58 - online and write-protect state is reflected in STATUS and DIB
+  ---
+  duration_ms: 1.435847
+  ...
+# Subtest: unsupported status codes fail and write path remains unimplemented
+ok 59 - unsupported status codes fail and write path remains unimplemented
+  ---
+  duration_ms: 0.631723
+  ...
+# Subtest: an 800K image can be mounted and read as exact 512-byte blocks
+ok 60 - an 800K image can be mounted and read as exact 512-byte blocks
+  ---
+  duration_ms: 1.619355
+  ...
+# Subtest: ejectImage clears media and filename without detaching the SmartPort unit
+ok 61 - ejectImage clears media and filename without detaching the SmartPort unit
+  ---
+  duration_ms: 1.303798
+  ...
+1..61
+# tests 61
+# suites 0
+# pass 60
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 310.42908
