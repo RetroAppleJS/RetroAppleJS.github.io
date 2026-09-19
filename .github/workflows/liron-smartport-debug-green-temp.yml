@@ -1,0 +1,31 @@
+name: Temporary Liron SmartPort debug GREEN
+on:
+  push:
+    branches:
+      - feature/liron-smartport-debug
+permissions:
+  contents: write
+jobs:
+  green:
+    if: github.event.head_commit.message == 'chore: run SmartPort debug GREEN'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-smartport-debug
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: python3 tools/temp_patch_liron_debug.py
+      - run: node --check res/EMU_CARD_LIRON.js
+      - run: node --test tests/liron_smartport_debug.test.js tests/liron_loader_diagnostics.test.js tests/liron_browser_mount.test.js tests/liron_toolbox.test.js tests/liron_browser_integration.test.js tests/liron_card.test.js tests/liron_iwm.test.js tests/liron_readblock.test.js tests/liron_smartport_bus.test.js tests/liron_smartport_transport.test.js tests/unidisk35.test.js
+      - name: Commit implementation and remove temporary helpers
+        run: |
+          git config user.name "RetroAppleJS CI"
+          git config user.email "actions@users.noreply.github.com"
+          rm -f tools/temp_patch_liron_debug.py .github/workflows/liron-smartport-debug-temp.yml .github/workflows/liron-smartport-debug-red-temp.yml .github/workflows/liron-smartport-debug-green-temp.yml
+          git add -A
+          git commit -m "feat: add Liron SmartPort debug logging"
+          git pull --rebase origin feature/liron-smartport-debug
+          git push origin HEAD:feature/liron-smartport-debug
