@@ -1,0 +1,94 @@
+name: Temporary Liron toolbox eject GREEN
+on:
+  push:
+    branches: [feature/liron-unidisk-toolbox]
+permissions:
+  contents: write
+jobs:
+  green:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-toolbox
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Implement per-unit Liron toolbox eject
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path('res/EMU_CARD_LIRON.js')
+          s=p.read_text()
+
+          marker='    this.deviceToolSlotHTML = function(ctx)\n'
+          if marker not in s:
+              raise SystemExit('Liron toolbox renderer marker not found')
+          if 'this.deviceToolEject = function(unit)' in s:
+              raise SystemExit('Liron eject handler unexpectedly already exists')
+
+          method=r'''    this.deviceToolEject = function(unit)
+          {
+              unit=Number(unit);
+              if(!Number.isInteger(unit) || unit<1 || unit>8) return false;
+
+              var devices=Array.isArray(liron.devices) ? liron.devices : [];
+              var target=null;
+              for(var i=0;i<devices.length;i++)
+              {
+                  var device=devices[i];
+                  var deviceUnit=device && typeof(device.getUnit)==="function"
+                      ? Number(device.getUnit())
+                      : Number(device && device.id ? device.id.deviceN : NaN);
+                  if(deviceUnit===unit)
+                  {
+                      target=device;
+                      break;
+                  }
+              }
+
+              if(!target || typeof(target.ejectImage)!=="function") return false;
+              if(target.ejectImage()===false) return false;
+
+              if(typeof(apple2plus)==="object" && apple2plus)
+              {
+                  var io=apple2plus.hwObj().io;
+                  var slotN=liron.mount ? Number(liron.mount.slotN) : NaN;
+                  if(io && typeof(io.refreshDeviceToolboxes)==="function")
+                      io.refreshDeviceToolboxes({
+                           "id":"devices"
+                          ,"default_slot":Number.isInteger(slotN) && typeof(io.slot2ID)==="function"
+                              ? io.slot2ID(slotN)
+                              : undefined
+                      });
+              }
+              return true;
+          };
+
+          '''
+          s=s.replace(marker,method+marker,1)
+
+          old='''                + " <button type=\\"button\\" class=\\"appbut\\" disabled>Eject</button>"'''
+          new='''                + (state.mediaLoaded
+                      ? " <button type=\\"button\\" class=\\"appbut\\" onclick=\\"apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolEject("+unit+")\\">Eject</button>"
+                      : " <button type=\\"button\\" class=\\"appbut\\" disabled>Eject</button>")'''
+          if old not in s:
+              raise SystemExit('Liron disabled Eject renderer marker not found')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+      - name: Run toolbox and Liron regressions
+        run: |
+          node --check res/EMU_CARD_LIRON.js
+          node --test tests/liron_toolbox.test.js tests/liron_toolbox_eject.test.js tests/liron_browser_mount.test.js tests/liron_browser_integration.test.js tests/liron_card.test.js tests/liron_iwm.test.js tests/liron_readblock.test.js tests/liron_smartport_bus.test.js tests/liron_smartport_transport.test.js tests/unidisk35.test.js
+      - name: Commit production eject UI
+        shell: bash
+        run: |
+          git config user.name "RetroAppleJS CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add res/EMU_CARD_LIRON.js
+          git commit -m "feat: eject UniDisk media from Liron toolbox"
+          git pull --rebase origin feature/liron-unidisk-toolbox
+          git push origin HEAD:feature/liron-unidisk-toolbox
