@@ -14,7 +14,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Verify diagnostics tests are RED
+      - name: Verify diagnostics tests are RED for missing logging
         shell: bash
         run: |
           set +e
@@ -26,5 +26,10 @@ jobs:
             echo "Expected RED but diagnostics tests passed"
             exit 1
           fi
-          grep -F "UniDisk 3.5 mount failed: invalid image size" /tmp/red.log >/dev/null || true
-          exit 0
+          grep -F "not ok" /tmp/red.log >/dev/null
+          grep -F "router logs invalid 800K image size with mount details" /tmp/red.log >/dev/null
+          grep -F "router logs missing target instead of silently returning false" /tmp/red.log >/dev/null
+          grep -F "router logs successful mount details" /tmp/red.log >/dev/null
+          grep -F "file chooser logs invalid size before FileReader starts" /tmp/red.log >/dev/null
+          grep -F "file chooser logs FileReader errors explicitly" /tmp/red.log >/dev/null
+          grep -F "file chooser logs mount rejection explicitly" /tmp/red.log >/dev/null
