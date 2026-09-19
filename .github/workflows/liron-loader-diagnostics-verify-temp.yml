@@ -1,0 +1,21 @@
+name: Temporary UniDisk loader diagnostics VERIFY
+on:
+  push:
+    branches: [feature/liron-unidisk-loader-diagnostics]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-loader-diagnostics
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify committed source
+        run: |
+          node --check res/EMU_apple2main.js
+          node --check res/EMU_CARD_LIRON.js
+          node --test tests/liron_loader_diagnostics.test.js tests/liron_browser_mount.test.js tests/liron_toolbox.test.js tests/liron_browser_integration.test.js tests/liron_card.test.js tests/liron_iwm.test.js tests/liron_readblock.test.js tests/liron_smartport_bus.test.js tests/liron_smartport_transport.test.js tests/unidisk35.test.js
