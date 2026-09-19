@@ -6,7 +6,6 @@ permissions:
   contents: write
 jobs:
   test:
-    if: github.event.head_commit.message == 'chore: implement temporary UniDisk identity trace'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,12 +32,13 @@ jobs:
         run: |
           node --check res/EMU_apple2main.js
           node --test tests/liron_unidisk_identity_trace.test.js tests/liron_loader_diagnostics.test.js tests/liron_browser_mount.test.js tests/liron_toolbox.test.js tests/liron_browser_integration.test.js tests/liron_card.test.js tests/liron_iwm.test.js tests/liron_readblock.test.js tests/liron_smartport_bus.test.js tests/liron_smartport_transport.test.js tests/unidisk35.test.js
-      - name: Commit identity trace
+      - name: Commit identity trace and remove helper
         shell: bash
         run: |
           git config user.name "RetroAppleJS CI"
           git config user.email "actions@users.noreply.github.com"
-          git add res/EMU_apple2main.js tests/liron_unidisk_identity_trace.test.js
+          rm .github/workflows/liron-unidisk-identity-trace-temp.yml
+          git add -A
           git commit -m "chore: trace UniDisk mount object identity"
           git pull --rebase origin feature/liron-unidisk-object-trace
           git push origin HEAD:feature/liron-unidisk-object-trace
