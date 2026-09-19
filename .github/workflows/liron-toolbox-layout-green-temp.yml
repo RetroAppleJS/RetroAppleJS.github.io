@@ -91,7 +91,7 @@ jobs:
                       + "</div>";
               };
 
-'''
+          '''
           s=s.replace(needle,method+needle,1)
           p.write_text(s)
           PY
