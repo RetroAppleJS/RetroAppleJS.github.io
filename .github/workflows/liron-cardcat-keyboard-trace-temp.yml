@@ -1,0 +1,58 @@
+name: Temporary Card Cat monitor-input trace
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: ["feature/liron-unidisk-browser-mount"]
+    paths:
+      - ".github/workflows/liron-cardcat-keyboard-trace-temp.yml"
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-browser-mount
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Patch acceptance with monitor-input diagnostics only
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path('tests/cardcat_unidisk_browser_acceptance.js')
+          s=p.read_text()
+          old='''        const unmounted=io.unmount(diskInfo.card.mount.slotN);\n        if(!unmounted) throw new Error('Normal Apple2IO Disk II unmount failed');\n        apple2plus.reset();\n        return {\n            unmounted,\n            diskIIAfter:!!findCard(io,'DISKII'),\n            lironSlot:lironInfo.slotIndex,\n            media:disk.getState()\n        };'''
+          new='''        const unmounted=io.unmount(diskInfo.card.mount.slotN);\n        if(!unmounted) throw new Error('Normal Apple2IO Disk II unmount failed');\n        const hw=apple2plus.hwObj();\n        const softHigh=hw.safe_read(0x03F3);\n        const validPowerup=(softHigh^0xA5)&0xFF;\n        hw.WR[hw.lineDecode(0x03F4)](0x03F4,(validPowerup^0xFF)&0xFF);\n        apple2plus.reset();\n        return {\n            unmounted,\n            diskIIAfter:!!findCard(io,'DISKII'),\n            lironSlot:lironInfo.slotIndex,\n            media:disk.getState()\n        };'''
+          if old not in s: raise SystemExit('Phase B setup pattern not found')
+          s=s.replace(old,new,1)
+
+          marker="""    console.log('UNIDISK_BOOT_SETUP',JSON.stringify(phaseBSetup));\n    if(!phaseBSetup.unmounted || phaseBSetup.diskIIAfter)\n        throw new Error('Disk II remained mounted during UniDisk boot');\n\n    const phaseB=await runUntil(page,snap=>{"""
+          repl="""    console.log('UNIDISK_BOOT_SETUP',JSON.stringify(phaseBSetup));\n    if(!phaseBSetup.unmounted || phaseBSetup.diskIIAfter)\n        throw new Error('Disk II remained mounted during UniDisk boot');\n\n    await runTicks(page,1);\n    const inputBefore=await page.evaluate(()=>{\n        const io=apple2plus.hwObj().io;\n        const keyboards=io.DCODE2obj('A2KBD','A2BO');\n        const boards=io.DCODE2obj('PASTEBO','A2BO');\n        const keyboard=keyboards.length===1?keyboards[0]:null;\n        const pasteboard=boards.length===1?boards[0]:null;\n        const liron=io.PCODE2obj('LIRON')[0];\n        globalThis.__slot5Trace={rom:0,io:0};\n        const rr=liron.readROM;\n        liron.readROM=function(addr,ctx){globalThis.__slot5Trace.rom++;return Reflect.apply(rr,liron,[addr,ctx]);};\n        const ri=liron.readSlotIO;\n        liron.readSlotIO=function(addr,ctx){globalThis.__slot5Trace.io++;return Reflect.apply(ri,liron,[addr,ctx]);};\n        const sent=pasteboard.sendText(io,'C500G\\n');\n        return {\n            pc:apple2plus.cpuObj().watch().pc&0xFFFF,\n            sent,\n            target:pasteboard.getTargetAddress(io),\n            keyboardCount:keyboards.length,\n            queue:keyboard?keyboard._pipeQueue.slice():null,\n            pipePos:keyboard?keyboard._pipePos:null,\n            lastkey:keyboard?keyboard.lastkey:null,\n            latched:keyboard&&typeof keyboard.hasLatchedKey==='function'?keyboard.hasLatchedKey():null\n        };\n    });\n    console.log('INPUT_BEFORE',JSON.stringify(inputBefore));\n    await runTicks(page,1);\n    const inputAfter=await page.evaluate(()=>{\n        const io=apple2plus.hwObj().io;\n        const keyboard=io.DCODE2obj('A2KBD','A2BO')[0];\n        return {\n            pc:apple2plus.cpuObj().watch().pc&0xFFFF,\n            queue:keyboard?keyboard._pipeQueue.slice():null,\n            pipePos:keyboard?keyboard._pipePos:null,\n            lastkey:keyboard?keyboard.lastkey:null,\n            latched:keyboard&&typeof keyboard.hasLatchedKey==='function'?keyboard.hasLatchedKey():null,\n            trace:globalThis.__slot5Trace,\n            bus:io.PCODE2obj('LIRON')[0].getBus().getState()\n        };\n    });\n    console.log('INPUT_AFTER',JSON.stringify(inputAfter));\n\n    const phaseB=await runUntil(page,snap=>{"""
+          if marker not in s: raise SystemExit('input trace insertion point not found')
+          s=s.replace(marker,repl,1)
+          p.write_text(s)
+          PY
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run input trace and preserve diagnostics
+        shell: bash
+        run: |
+          python3 -m http.server 8000 >/tmp/retroapple-http.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          set +e
+          RETROAPPLE_URL=http://127.0.0.1:8000 node tests/cardcat_unidisk_browser_acceptance.js
+          rc=$?
+          set -e
+          echo "TRACE_RUN_EXIT=$rc"
+          exit 0
