@@ -1,0 +1,37 @@
+name: Temporary UniDisk browser Task 2 RED
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: ["feature/liron-unidisk-browser-mount"]
+    paths:
+      - ".github/workflows/liron-browser-mount-task2-red-temp.yml"
+
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-browser-mount
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify browser routing tests are RED for missing router
+        shell: bash
+        run: |
+          set +e
+          node --test tests/liron_browser_mount.test.js > /tmp/red.log 2>&1
+          rc=$?
+          cat /tmp/red.log
+          if [ "$rc" -eq 0 ]; then
+            echo "Expected RED but test passed"
+            exit 1
+          fi
+          grep -E "EMU_unidisk35Device must exist|EMU_mountDiskImage must exist|EMU_mountDiskImage" /tmp/red.log >/dev/null || {
+            echo "Failure was not the expected missing browser router"
+            exit 1
+          }
+          echo "RED_CONFIRMED"
