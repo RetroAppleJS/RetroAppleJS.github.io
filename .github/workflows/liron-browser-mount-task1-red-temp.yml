@@ -1,0 +1,39 @@
+name: Temporary UniDisk browser Task 1 RED
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: ["feature/liron-unidisk-browser-mount"]
+    paths:
+      - "tests/liron_smartport_bus.test.js"
+      - "tests/liron_browser_integration.test.js"
+      - ".github/workflows/liron-browser-mount-task1-red-temp.yml"
+
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-browser-mount
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify ownership tests are RED for missing declarative child path
+        shell: bash
+        run: |
+          set +e
+          node --test tests/liron_smartport_bus.test.js tests/liron_browser_integration.test.js > /tmp/red.log 2>&1
+          rc=$?
+          cat /tmp/red.log
+          if [ "$rc" -eq 0 ]; then
+            echo "Expected RED but tests passed"
+            exit 1
+          fi
+          grep -E "deviceConfig|bindHost|Expected values to be strictly equal|Cannot read" /tmp/red.log >/dev/null || {
+            echo "Failure was not the expected missing ownership behavior"
+            exit 1
+          }
+          echo "RED_CONFIRMED"
