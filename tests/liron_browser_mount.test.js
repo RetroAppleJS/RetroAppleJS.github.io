@@ -149,3 +149,28 @@ test('normal browser loaders converge on EMU_mountDiskImage',()=>{
     assert.ok(calls>=3,'router must be used by its definition, loadDisk_fromBuffer, and local file loading');
     assert.doesNotMatch(mainSource,/disk was not loaded: likely needs Apple 3\.5/);
 });
+
+test('explicit slot and SmartPort unit route 800K media to that exact UniDisk child',()=>{
+    const unit1Loads=[];
+    const unit2Loads=[];
+    const unit1={
+        id:{DCODE:'UNIDISK35',hostPCODE:'LIRON',deviceN:1},
+        getUnit(){return 1;},
+        loadImage(bytes,metadata){unit1Loads.push({bytes:Array.from(bytes),metadata});return bytes.length;}
+    };
+    const unit2={
+        id:{DCODE:'UNIDISK35',hostPCODE:'LIRON',deviceN:2},
+        getUnit(){return 2;},
+        loadImage(bytes,metadata){unit2Loads.push({bytes:Array.from(bytes),metadata});return bytes.length;}
+    };
+    const owner={id:{PCODE:'LIRON'},devices:[unit1,unit2]};
+    const {context}=loadRouter({
+        unidisks:[unit1,unit2],
+        slotOwners:{6:owner}
+    });
+
+    assert.equal(context.EMU_mountDiskImage(new Uint8Array(819200),6,'UNIDISK35','TOOLS.po',2),true);
+    assert.equal(unit1Loads.length,0,'unit 1 must not receive a unit-2 mount');
+    assert.equal(unit2Loads.length,1,'unit 2 must receive the explicitly targeted image');
+    assert.equal(unit2Loads[0].metadata.filename,'TOOLS.po');
+});
