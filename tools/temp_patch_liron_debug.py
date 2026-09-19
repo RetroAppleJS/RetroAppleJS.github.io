@@ -2,8 +2,8 @@ from pathlib import Path
 p=Path('res/EMU_CARD_LIRON.js')
 s=p.read_text()
 s=s.replace('function SmartPortBus()\n{\n    var devices = [];','function SmartPortBus()\n{\n    var bDebug = false;\n    var devices = [];',1)
-marker='    var tx=[], txIndex=0, lastError="";\n'
-insert='''    var tx=[], txIndex=0, lastError="";\n\n    const SMARTPORT_COMMAND_NAMES={0x00:"STATUS",0x01:"READ BLOCK",0x02:"WRITE BLOCK",0x03:"FORMAT",0x04:"CONTROL",0x05:"INIT",0x06:"OPEN",0x07:"CLOSE"};\n    function debugLog(event,fields)\n    {\n        if(!bDebug) return;\n        console.log("[LIRON SmartPort] "+event,fields || {});\n    }\n'''
+marker='    var tx=[];\n    var txIndex=0;\n    var lastError="";\n'
+insert='''    var tx=[];\n    var txIndex=0;\n    var lastError="";\n\n    const SMARTPORT_COMMAND_NAMES={0x00:"STATUS",0x01:"READ BLOCK",0x02:"WRITE BLOCK",0x03:"FORMAT",0x04:"CONTROL",0x05:"INIT",0x06:"OPEN",0x07:"CLOSE"};\n    function debugLog(event,fields)\n    {\n        if(!bDebug) return;\n        console.log("[LIRON SmartPort] "+event,fields || {});\n    }\n'''
 assert marker in s
 s=s.replace(marker,insert,1)
 s=s.replace('    function buildResponse(source,status,payload)\n    {','''    function buildResponse(source,status,payload)\n    {\n        debugLog("TX_RESPONSE",{"src":source&0x7F,"dest":0,"type":1,"status":status&0x7F,"statusHex":"$"+(status&0x7F).toString(16).toUpperCase().padStart(2,"0"),"payloadLength":payload ? payload.length : 0,"payloadPreview":payload ? Array.from(payload).slice(0,32) : []});''',1)
