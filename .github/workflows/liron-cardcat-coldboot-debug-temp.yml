@@ -1,0 +1,64 @@
+name: Temporary Card Cat cold-boot acceptance correction
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: ["feature/liron-unidisk-browser-mount"]
+    paths:
+      - ".github/workflows/liron-cardcat-coldboot-debug-temp.yml"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-browser-mount
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Force a genuine Apple II cold reset in Phase B
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path('tests/cardcat_unidisk_browser_acceptance.js')
+          s=p.read_text()
+          old='''        const unmounted=io.unmount(diskInfo.card.mount.slotN);\n        if(!unmounted) throw new Error('Normal Apple2IO Disk II unmount failed');\n        apple2plus.reset();\n        return {\n            unmounted,\n            diskIIAfter:!!findCard(io,'DISKII'),\n            lironSlot:lironInfo.slotIndex,\n            media:disk.getState()\n        };'''
+          new='''        const unmounted=io.unmount(diskInfo.card.mount.slotN);\n        if(!unmounted) throw new Error('Normal Apple2IO Disk II unmount failed');\n\n        // The Apple II reset ROM distinguishes warm from cold starts with the\n        // power-up validation byte at $03F4. A plain emulator reset preserves\n        // RAM and therefore follows Card Cat's warm-start vector instead of\n        // performing a fresh slot boot scan. Invalidate the checksum exactly as\n        // a cold power-up would, then use the normal CPU reset vector.\n        const hw=apple2plus.hwObj();\n        const softHigh=hw.safe_read(0x03F3);\n        const validPowerup=(softHigh^0xA5)&0xFF;\n        const forcedPowerup=(validPowerup^0xFF)&0xFF;\n        hw.WR[hw.lineDecode(0x03F4)](0x03F4,forcedPowerup);\n        const powerupAfterWrite=hw.safe_read(0x03F4);\n        if(powerupAfterWrite===validPowerup)\n            throw new Error('Unable to invalidate Apple II warm-start checksum');\n\n        apple2plus.reset();\n        return {\n            unmounted,\n            diskIIAfter:!!findCard(io,'DISKII'),\n            lironSlot:lironInfo.slotIndex,\n            coldReset:{softHigh,validPowerup,forcedPowerup,powerupAfterWrite},\n            media:disk.getState()\n        };'''
+          if old not in s:
+              raise SystemExit('Phase B reset pattern not found')
+          p.write_text(s.replace(old,new,1))
+          PY
+          node --check tests/cardcat_unidisk_browser_acceptance.js
+          if grep -nE '\.(loadImage|readBlock)[[:space:]]*\(' tests/cardcat_unidisk_browser_acceptance.js; then
+            echo "Acceptance harness must not call UniDisk loadImage/readBlock directly"
+            exit 1
+          fi
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run corrected end-to-end acceptance
+        shell: bash
+        run: |
+          python3 -m http.server 8000 >/tmp/retroapple-http.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          RETROAPPLE_URL=http://127.0.0.1:8000 node tests/cardcat_unidisk_browser_acceptance.js
+      - name: Commit acceptance correction after GREEN
+        shell: bash
+        run: |
+          git config user.name "Zen"
+          git config user.email "freddy.vandriessche@gmail.com"
+          git add tests/cardcat_unidisk_browser_acceptance.js
+          git commit -m "test: force cold boot for UniDisk acceptance"
+          git fetch origin feature/liron-unidisk-browser-mount
+          git rebase origin/feature/liron-unidisk-browser-mount
+          git push origin HEAD:feature/liron-unidisk-browser-mount
