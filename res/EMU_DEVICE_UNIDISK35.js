@@ -127,6 +127,13 @@ function UniDisk35Device(options)
         return media.length;
     };
 
+    this.ejectImage = function()
+    {
+        media=null;
+        state.mediaFilename="";
+        return true;
+    };
+
     this.readBlock = function(blockNumber)
     {
         blockNumber=Number(blockNumber);

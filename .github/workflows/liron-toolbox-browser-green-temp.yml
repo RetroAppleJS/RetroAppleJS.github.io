@@ -1,0 +1,28 @@
+name: Temporary Liron toolbox browser GREEN
+on:
+  push:
+    branches: [feature/liron-unidisk-toolbox]
+permissions:
+  contents: read
+jobs:
+  green:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-toolbox
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run real Card Cat Liron toolbox acceptance
+        shell: bash
+        run: |
+          python3 -m http.server 8000 >/tmp/retroapple-http.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          RETROAPPLE_URL=http://127.0.0.1:8000 node tests/cardcat_liron_toolbox_acceptance.js

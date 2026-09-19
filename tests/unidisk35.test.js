@@ -101,3 +101,20 @@ test('an 800K image can be mounted and read as exact 512-byte blocks', () => {
     assert.equal(disk.getState().mediaLoaded,true);
     assert.equal(disk.getState().mediaBytes,819200);
 });
+
+test('ejectImage clears media and filename without detaching the SmartPort unit', () => {
+    const context=loadUniDisk();
+    const disk=new context.UniDisk35Device();
+    disk.setUnit(2);
+    disk.loadImage(new Uint8Array(819200),{filename:'TOOLS.po'});
+
+    assert.equal(typeof disk.ejectImage,'function','UniDisk must expose an ejectImage media operation');
+    assert.equal(disk.ejectImage(),true);
+
+    const state=disk.getState();
+    assert.equal(state.unit,2,'ejecting media must not detach the SmartPort device');
+    assert.equal(state.mediaLoaded,false);
+    assert.equal(state.mediaBytes,0);
+    assert.equal(state.mediaFilename,'');
+    assert.equal(disk.readBlock(0).error,0x27,'reads after eject must report no readable media');
+});

@@ -114,27 +114,51 @@ function EMU_diskIIObjects()
     return disks;
 }
 
-function EMU_unidisk35Device(slotN)
+function EMU_unidisk35Device(slotN,unit)
 {
     if(typeof(apple2plus)!="object" || !apple2plus) return null;
     var io=apple2plus.hwObj().io;
     if(!io) return null;
 
+    var hasUnit=unit!==undefined && unit!==null && unit!=="";
+    var requestedUnit=Number(unit);
+    if(hasUnit && (!Number.isInteger(requestedUnit) || requestedUnit<1 || requestedUnit>8))
+        return null;
+
+    function deviceUnit(device)
+    {
+        if(device && typeof(device.getUnit)==="function")
+            return Number(device.getUnit());
+        return Number(device && device.id ? device.id.deviceN : NaN);
+    }
+
+    function matchesUnit(device)
+    {
+        return !hasUnit || deviceUnit(device)===requestedUnit;
+    }
+
     if(slotN!==undefined && slotN!==null && Number.isInteger(Number(slotN)))
     {
         var owner=io.SLOT2obj(Number(slotN));
         if(owner && owner.id?.PCODE==="LIRON" && Array.isArray(owner.devices))
+        {
+            var slotMatches=[];
             for(var i=0;i<owner.devices.length;i++)
-                if(owner.devices[i]?.id?.DCODE==="UNIDISK35") return owner.devices[i];
+                if(owner.devices[i]?.id?.DCODE==="UNIDISK35" && matchesUnit(owner.devices[i]))
+                    slotMatches.push(owner.devices[i]);
+            return slotMatches.length===1 ? slotMatches[0] : null;
+        }
+        return null;
     }
 
     var disks=typeof(io.DCODE2obj)==="function"
         ? io.DCODE2obj("UNIDISK35","LIRON")
         : [];
+    if(hasUnit) disks=disks.filter(matchesUnit);
     return disks.length===1 ? disks[0] : null;
 }
 
-function EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath)
+function EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath,unit)
 {
     var bytes=arr_buffer instanceof Uint8Array
         ? arr_buffer
@@ -144,7 +168,7 @@ function EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath)
     if(bytes.length===819200 || unidiskTarget)
     {
         if(bytes.length!==819200) return false;
-        var unidisk=EMU_unidisk35Device(slotN);
+        var unidisk=EMU_unidisk35Device(slotN,unit);
         if(!unidisk || typeof(unidisk.loadImage)!=="function") return false;
         unidisk.loadImage(bytes,{"filename":filepath || ""});
         return true;
