@@ -12,6 +12,60 @@ if(oEMU===undefined) var oEMU = {"component":{"IO":{"ACTION_MAP":[]}},"system":{
 
 if(oEMUI===undefined) var oEMUI = {"slotConfig":function(){},"slotsRender":function(){},"deviceBtn":function(){}} // allow tools to include apple2io.js without apple2main.js
 
+
+
+/*
+ * Shared removable-media row used by Disk II drives and SmartPort disk units.
+ * Keep the native <input type="file"> visible: the browser then owns filename
+ * presentation instead of each peripheral inventing a parallel label/state UI.
+ */
+function EMU_deviceMediaRowHTML(spec)
+{
+    spec = spec || {};
+
+    function attr(value)
+    {
+        return String(value==null ? "" : value)
+            .replace(/&/g,"&amp;")
+            .replace(/</g,"&lt;")
+            .replace(/>/g,"&gt;")
+            .replace(/\"/g,"&quot;");
+    }
+
+    var label = String(spec.label || "Disk");
+    var buttonTitle = spec.buttonTitle || (label+": no disk");
+    var downloadTitle = spec.downloadTitle || "Save disk";
+
+    return ""
+        + "    <div class=appbut style=\"padding:5px 0px 0px 0px;text-align:left;\">"
+        + "      <input type=button method=get class=appbut"
+        + (spec.buttonID ? " id=\""+attr(spec.buttonID)+"\"" : "")
+        + " value=\""+attr(label)+"\""
+        + " data-empty=\""+attr(spec.buttonDataEmpty || label)+"\" data-loaded=\"\""
+        + " title=\""+attr(buttonTitle)+"\""
+        + (spec.buttonOnClick ? " onclick=\""+spec.buttonOnClick+"\"" : "")
+        + (spec.buttonOnMouseOver ? " onmouseover=\""+spec.buttonOnMouseOver+"\"" : "")
+        + (spec.buttonOnMouseOut ? " onmouseout=\""+spec.buttonOnMouseOut+"\"" : "")
+        + ">"
+        + "      <form action=\"index.html\""
+        + (spec.formID ? " id=\""+attr(spec.formID)+"\"" : "")
+        + " style=\"display:inline;\">"
+        + "        <input type=\"file\""
+        + (spec.fileName ? " name=\""+attr(spec.fileName)+"\"" : "")
+        + (spec.fileID ? " id=\""+attr(spec.fileID)+"\"" : "")
+        + " style=\"display:inline-block\""
+        + (spec.fileAccept ? " accept=\""+attr(spec.fileAccept)+"\"" : "")
+        + (spec.fileOnChange ? " onchange=\""+spec.fileOnChange+"\"" : "")
+        + ">"
+        + "      </form>"
+        + "      <button class=appbut value=\"Download\""
+        + (spec.downloadID ? " id=\""+attr(spec.downloadID)+"\"" : "")
+        + (spec.downloadDisabled ? " disabled" : (spec.downloadOnClick ? " onclick=\""+spec.downloadOnClick+"\"" : ""))
+        + " title=\""+attr(downloadTitle)+"\" style=\"float:right\">"
+        + "<i class=\"fa fa-cloud-download-alt\"></i></button>"
+        + "    </div>";
+}
+
 function Apple2IO(vid,hostHardware)
 {
     const bDebug = true;

@@ -8,7 +8,11 @@ const source=fs.readFileSync('res/EMU_CARD_LIRON.js','utf8');
 function loadLiron(extra={})
 {
     const context=vm.createContext(Object.assign({
-        console,Uint8Array,Array,Number,String,Object,Math,RangeError,Error,Reflect
+        console,Uint8Array,Array,Number,String,Object,Math,RangeError,Error,Reflect,
+        EMU_deviceMediaRowHTML(spec)
+        {
+            return `<div data-label="${spec.label}" onclick="${spec.buttonOnClick}"></div>`;
+        }
     },extra));
     context.oEMU={component:{IO:{}}};
     vm.runInContext(source,context,{filename:'EMU_CARD_LIRON.js'});
@@ -47,7 +51,7 @@ test('Liron eject targets only the selected SmartPort unit and refreshes the too
         slotN:6,slotID:'5',toolboxID:'device_tool_5',devices:card.devices
     });
     assert.match(html,/deviceToolEject\(2\)/,
-        'loaded Unit 2 row must wire Eject to SmartPort unit 2');
+        'Unit 2 row must wire the Disk II-style Unit2 button to SmartPort unit 2 eject');
 
     assert.equal(card.deviceToolEject(2),true);
     assert.deepEqual(ejectCalls,[2]);

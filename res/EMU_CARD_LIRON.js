@@ -968,113 +968,123 @@ function AppleLiron()
     };
 
     this.deviceToolLoadFile = function(input,unit)
-{
-    var file=input && input.files && input.files[0];
-    if(!file) return false;
-
-    unit=Number(unit);
-    var slotN=liron.mount ? Number(liron.mount.slotN) : NaN;
-    if(!Number.isInteger(unit) || unit<1 || unit>8 || !Number.isInteger(slotN))
-        return false;
-
-    function clearInput()
     {
-        try { input.value=""; } catch(e) {}
-    }
+        var file=input && input.files && input.files[0];
+        if(!file) return false;
 
-    if(Number(file.size)!==819200)
-    {
-        console.error("UniDisk 3.5 load failed: invalid image size",{"slotN":slotN,"unit":unit,"filename":file.name || "","expected":819200,"actual":Number(file.size)});
-        if(typeof(alert)==="function") alert("UniDisk 3.5 image must contain exactly 819200 bytes.");
-        clearInput();
-        return false;
-    }
+        unit=Number(unit);
+        var slotN=liron.mount ? Number(liron.mount.slotN) : NaN;
+        if(!Number.isInteger(unit) || unit<1 || unit>8 || !Number.isInteger(slotN))
+            return false;
 
-    var reader=new FileReader();
-    reader.onload=function(ev)
-    {
-        try
+        function clearInput()
         {
-            var bytes=new Uint8Array(ev.target.result);
-            var mounted=typeof(EMU_mountDiskImage)==="function" &&
-                EMU_mountDiskImage(bytes,slotN,"UNIDISK35",file.name || "",unit);
-            if(!mounted)
-            {
-                console.error("UniDisk 3.5 load failed: mount rejected",{"slotN":slotN,"unit":unit,"filename":file.name || "","bytes":bytes.length});
-                if(typeof(alert)==="function") alert("UniDisk 3.5 load failed: mount rejected.");
-                return;
-            }
-
-            if(typeof(apple2plus)==="object" && apple2plus)
-            {
-                var io=apple2plus.hwObj().io;
-                if(io && typeof(io.refreshDeviceToolboxes)==="function")
-                    io.refreshDeviceToolboxes({
-                         "id":"devices"
-                        ,"default_slot":typeof(io.slot2ID)==="function"
-                            ? io.slot2ID(slotN)
-                            : undefined
-                    });
-            }
+            try { input.value=""; } catch(e) {}
         }
-        catch(err)
+
+        if(Number(file.size)!==819200)
         {
-            console.error("UniDisk 3.5 load failed: exception",{"slotN":slotN,"unit":unit,"filename":file.name || "","error":err && err.message ? err.message : String(err)},err);
-            if(typeof(alert)==="function") alert("UniDisk 3.5 load failed: "+(err && err.message ? err.message : err));
-        }
-        finally
-        {
+            console.error("UniDisk 3.5 load failed: invalid image size",{"slotN":slotN,"unit":unit,"filename":file.name || "","expected":819200,"actual":Number(file.size)});
+            if(typeof(alert)==="function") alert("UniDisk 3.5 image must contain exactly 819200 bytes.");
             clearInput();
+            return false;
         }
+
+        var reader=new FileReader();
+        reader.onload=function(ev)
+        {
+            try
+            {
+                var bytes=new Uint8Array(ev.target.result);
+                var mounted=typeof(EMU_mountDiskImage)==="function" &&
+                    EMU_mountDiskImage(bytes,slotN,"UNIDISK35",file.name || "",unit);
+                if(!mounted)
+                {
+                    console.error("UniDisk 3.5 load failed: mount rejected",{"slotN":slotN,"unit":unit,"filename":file.name || "","bytes":bytes.length});
+                    if(typeof(alert)==="function") alert("UniDisk 3.5 load failed: mount rejected.");
+                    clearInput();
+                    return;
+                }
+
+                /*
+                 * Keep the successful native file input populated.  This is the
+                 * same filename presentation used by the Disk II toolbox.
+                 */
+                if(typeof(apple2plus)==="object" && apple2plus)
+                {
+                    var io=apple2plus.hwObj().io;
+                    if(io && typeof(io.refreshDeviceToolboxes)==="function")
+                        io.refreshDeviceToolboxes({
+                             "id":"devices"
+                            ,"default_slot":typeof(io.slot2ID)==="function"
+                                ? io.slot2ID(slotN)
+                                : undefined
+                        });
+                }
+            }
+            catch(err)
+            {
+                clearInput();
+                console.error("UniDisk 3.5 load failed: exception",{"slotN":slotN,"unit":unit,"filename":file.name || "","error":err && err.message ? err.message : String(err)},err);
+                if(typeof(alert)==="function") alert("UniDisk 3.5 load failed: "+(err && err.message ? err.message : err));
+            }
+        };
+        reader.onerror=function()
+        {
+            var msg=reader.error && reader.error.message ? reader.error.message : "Unable to read file.";
+            clearInput();
+            console.error("UniDisk 3.5 load failed: FileReader error",{"slotN":slotN,"unit":unit,"filename":file.name || "","error":msg});
+            if(typeof(alert)==="function") alert("UniDisk 3.5 load failed: "+msg);
+        };
+        reader.readAsArrayBuffer(file);
+        return true;
     };
-    reader.onerror=function()
-    {
-        var msg=reader.error && reader.error.message ? reader.error.message : "Unable to read file.";
-        console.error("UniDisk 3.5 load failed: FileReader error",{"slotN":slotN,"unit":unit,"filename":file.name || "","error":msg});
-        if(typeof(alert)==="function") alert("UniDisk 3.5 load failed: "+msg);
-        clearInput();
-    };
-    reader.readAsArrayBuffer(file);
-    return true;
-};
 
     this.deviceToolEject = function(unit)
-{
-    unit=Number(unit);
-    if(!Number.isInteger(unit) || unit<1 || unit>8) return false;
-
-    var devices=Array.isArray(liron.devices) ? liron.devices : [];
-    var target=null;
-    for(var i=0;i<devices.length;i++)
     {
-        var device=devices[i];
-        var deviceUnit=device && typeof(device.getUnit)==="function"
-            ? Number(device.getUnit())
-            : Number(device && device.id ? device.id.deviceN : NaN);
-        if(deviceUnit===unit)
+        unit=Number(unit);
+        if(!Number.isInteger(unit) || unit<1 || unit>8) return false;
+
+        var devices=Array.isArray(liron.devices) ? liron.devices : [];
+        var target=null;
+        for(var i=0;i<devices.length;i++)
         {
-            target=device;
-            break;
+            var device=devices[i];
+            var deviceUnit=device && typeof(device.getUnit)==="function"
+                ? Number(device.getUnit())
+                : Number(device && device.id ? device.id.deviceN : NaN);
+            if(deviceUnit===unit)
+            {
+                target=device;
+                break;
+            }
         }
-    }
 
-    if(!target || typeof(target.ejectImage)!=="function") return false;
-    if(target.ejectImage()===false) return false;
+        if(!target || typeof(target.ejectImage)!=="function") return false;
+        if(target.ejectImage()===false) return false;
 
-    if(typeof(apple2plus)==="object" && apple2plus)
-    {
-        var io=apple2plus.hwObj().io;
-        var slotN=liron.mount ? Number(liron.mount.slotN) : NaN;
-        if(io && typeof(io.refreshDeviceToolboxes)==="function")
-            io.refreshDeviceToolboxes({
-                 "id":"devices"
-                ,"default_slot":Number.isInteger(slotN) && typeof(io.slot2ID)==="function"
-                    ? io.slot2ID(slotN)
-                    : undefined
-            });
-    }
-    return true;
-};
+        if(typeof(apple2plus)==="object" && apple2plus)
+        {
+            var io=apple2plus.hwObj().io;
+            var slotN=liron.mount ? Number(liron.mount.slotN) : NaN;
+            var slotID=Number.isInteger(slotN) && typeof(io.slot2ID)==="function"
+                ? io.slot2ID(slotN)
+                : null;
+
+            if(slotID!==null && typeof(document)==="object" && document)
+            {
+                var fileInput=document.getElementById("liron_unit_"+slotID+"_"+unit+"_file");
+                if(fileInput) try { fileInput.value=""; } catch(e) {}
+            }
+
+            if(io && typeof(io.refreshDeviceToolboxes)==="function")
+                io.refreshDeviceToolboxes({
+                     "id":"devices"
+                    ,"default_slot":slotID
+                });
+        }
+        return true;
+    };
 
     this.deviceToolSlotHTML = function(ctx)
     {
@@ -1094,16 +1104,6 @@ function AppleLiron()
             return Number.isInteger(unit) && unit>0 ? unit : index+1;
         }
 
-        function escapeHTML(value)
-        {
-            return String(value==null ? "" : value)
-                .replace(/&/g,"&amp;")
-                .replace(/</g,"&lt;")
-                .replace(/>/g,"&gt;")
-                .replace(/\"/g,"&quot;")
-                .replace(/'/g,"&#39;");
-        }
-
         devices.sort(function(a,b)
         {
             return unitOf(a,0)-unitOf(b,0);
@@ -1115,28 +1115,30 @@ function AppleLiron()
             var device=devices[i];
             if(!device) continue;
             var unit=unitOf(device,i);
-            var state=typeof(device.getState)==="function" ? device.getState() || {} : {};
-            var filename=state.mediaFilename ? String(state.mediaFilename) : "";
             var controlID="liron_unit_"+slotID+"_"+unit;
 
-            rows += ""
-                + "<div data-smartport-unit=\""+unit+"\" style=\"display:flex;align-items:center;gap:5px;min-height:25px;white-space:nowrap;\">"
-                + " <b style=\"display:inline-block;min-width:42px;\">Unit "+unit+"</b>"
-                + " <span style=\"display:inline-block;min-width:155px;max-width:245px;overflow:hidden;text-overflow:ellipsis;\" title=\""+escapeHTML(filename || "No disk")+"\">"+escapeHTML(filename || "No disk")+"</span>"
-                + " <input type=\"file\" id=\""+controlID+"_file\" accept=\".po\" style=\"display:none\" onchange=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolLoadFile(this,"+unit+")\">"
-                + " <button type=\"button\" class=\"appbut\" onclick=\"document.getElementById('"+controlID+"_file').click()\">Load</button>"
-                + (state.mediaLoaded
-            ? " <button type=\"button\" class=\"appbut\" onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolEject("+unit+")\">Eject</button>"
-            : " <button type=\"button\" class=\"appbut\" disabled>Eject</button>")
-                + "</div>";
+            rows += EMU_deviceMediaRowHTML({
+                 "label":"Unit"+unit
+                ,"buttonID":controlID+"_but"
+                ,"formID":controlID+"_form"
+                ,"fileID":controlID+"_file"
+                ,"downloadID":controlID+"_dump"
+                ,"fileName":"UNIDISK35_"+unit
+                ,"buttonTitle":"Unit"+unit+": eject disk"
+                ,"buttonOnClick":"apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolEject("+unit+")"
+                ,"fileAccept":".po"
+                ,"fileOnChange":"javascript:EMU_audio_event_unlock();apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolLoadFile(this,"+unit+")"
+                ,"downloadDisabled":true
+                ,"downloadTitle":"Save disk (not implemented yet)"
+            });
         }
 
         if(!rows)
             rows="<div style=\"padding:5px 2px\">No SmartPort devices attached.</div>";
 
         return ""
-            + "<div class=toolbox id=\""+escapeHTML(toolboxID)+"\" hidden>"
-            + " <div class=appbox style=\"box-sizing:border-box;text-align:left;min-height:63px;padding:4px 6px;display:flex;flex-direction:column;gap:2px;\">"
+            + "<div class=toolbox id=\""+toolboxID+"\" hidden>"
+            + " <div class=appbox style=\"box-sizing:border-box;text-align:left;min-height:63px;padding:0px 6px 0px 6px;\">"
             + rows
             + " </div>"
             + "</div>";
