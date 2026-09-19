@@ -964,8 +964,8 @@ function AppleLiron()
 
     if(Number(file.size)!==819200)
     {
-        if(typeof(alert)==="function")
-            alert("UniDisk 3.5 image must contain exactly 819200 bytes.");
+        console.error("UniDisk 3.5 load failed: invalid image size",{"slotN":slotN,"unit":unit,"filename":file.name || "","expected":819200,"actual":Number(file.size)});
+        if(typeof(alert)==="function") alert("UniDisk 3.5 image must contain exactly 819200 bytes.");
         clearInput();
         return false;
     }
@@ -978,7 +978,12 @@ function AppleLiron()
             var bytes=new Uint8Array(ev.target.result);
             var mounted=typeof(EMU_mountDiskImage)==="function" &&
                 EMU_mountDiskImage(bytes,slotN,"UNIDISK35",file.name || "",unit);
-            if(!mounted) throw new Error("Unable to mount UniDisk 3.5 image.");
+            if(!mounted)
+            {
+                console.error("UniDisk 3.5 load failed: mount rejected",{"slotN":slotN,"unit":unit,"filename":file.name || "","bytes":bytes.length});
+                if(typeof(alert)==="function") alert("UniDisk 3.5 load failed: mount rejected.");
+                return;
+            }
 
             if(typeof(apple2plus)==="object" && apple2plus)
             {
@@ -994,9 +999,8 @@ function AppleLiron()
         }
         catch(err)
         {
-            console.error("UniDisk 3.5 load failed",err);
-            if(typeof(alert)==="function")
-                alert("UniDisk 3.5 load failed: "+(err && err.message ? err.message : err));
+            console.error("UniDisk 3.5 load failed: exception",{"slotN":slotN,"unit":unit,"filename":file.name || "","error":err && err.message ? err.message : String(err)},err);
+            if(typeof(alert)==="function") alert("UniDisk 3.5 load failed: "+(err && err.message ? err.message : err));
         }
         finally
         {
@@ -1005,10 +1009,8 @@ function AppleLiron()
     };
     reader.onerror=function()
     {
-        var msg=reader.error && reader.error.message
-            ? reader.error.message
-            : "Unable to read file.";
-        console.error("UniDisk 3.5 load failed: "+msg);
+        var msg=reader.error && reader.error.message ? reader.error.message : "Unable to read file.";
+        console.error("UniDisk 3.5 load failed: FileReader error",{"slotN":slotN,"unit":unit,"filename":file.name || "","error":msg});
         if(typeof(alert)==="function") alert("UniDisk 3.5 load failed: "+msg);
         clearInput();
     };
