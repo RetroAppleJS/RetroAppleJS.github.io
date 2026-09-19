@@ -1,0 +1,30 @@
+name: Temporary UniDisk loader diagnostics RED
+on:
+  push:
+    branches: [feature/liron-unidisk-loader-diagnostics]
+permissions:
+  contents: read
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-loader-diagnostics
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify diagnostics tests are RED
+        shell: bash
+        run: |
+          set +e
+          node --test tests/liron_loader_diagnostics.test.js > /tmp/red.log 2>&1
+          rc=$?
+          set -e
+          cat /tmp/red.log
+          if [ "$rc" -eq 0 ]; then
+            echo "Expected RED but diagnostics tests passed"
+            exit 1
+          fi
+          grep -F "UniDisk 3.5 mount failed: invalid image size" /tmp/red.log >/dev/null || true
+          exit 0
