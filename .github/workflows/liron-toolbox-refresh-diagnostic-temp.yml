@@ -1,0 +1,45 @@
+name: Temporary Liron toolbox refresh diagnostic
+on:
+  push:
+    branches: [feature/liron-unidisk-toolbox]
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-toolbox
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Add diagnostic logging only
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path('tests/cardcat_liron_toolbox_acceptance.js')
+          s=p.read_text()
+          old="""    const rowText=await page.locator('[data-smartport-unit=\"1\"]').innerText();\n    if(!/CardCat 1\\.94\\.po/i.test(rowText))\n        throw new Error('Mounted filename is not visible in Unit 1 row: '+rowText);\n"""
+          new="""    const refreshDiagnostic=await page.evaluate(()=>{\n        const io=apple2plus.hwObj().io;\n        const liron=io.PCODE2obj('LIRON')[0];\n        const slotN=Number(liron.mount.slotN);\n        const slotID=io.slot2ID(slotN);\n        const fresh=liron.deviceToolSlotHTML({\n            slotN,slotID,toolboxID:'device_tool_'+slotID,devices:liron.devices\n        });\n        const body=document.getElementById('device_toolbox_body');\n        return {\n            freshHasFilename:fresh.includes('CardCat 1.94.po'),\n            bodyHasFilename:!!body && body.innerHTML.includes('CardCat 1.94.po'),\n            fresh,\n            body:body ? body.innerHTML : ''\n        };\n    });\n    console.log('REFRESH_DIAGNOSTIC',JSON.stringify(refreshDiagnostic));\n    const rowText=await page.locator('[data-smartport-unit=\"1\"]').innerText();\n    if(!/CardCat 1\\.94\\.po/i.test(rowText))\n        throw new Error('Mounted filename is not visible in Unit 1 row: '+rowText);\n"""
+          if old not in s: raise SystemExit('row check marker not found')
+          p.write_text(s.replace(old,new,1))
+          PY
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run diagnostic acceptance
+        shell: bash
+        run: |
+          python3 -m http.server 8000 >/tmp/retroapple-http.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          set +e
+          RETROAPPLE_URL=http://127.0.0.1:8000 node tests/cardcat_liron_toolbox_acceptance.js
+          rc=$?
+          set -e
+          echo "DIAGNOSTIC_EXIT=$rc"
+          exit 0
