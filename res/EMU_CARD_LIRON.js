@@ -947,6 +947,70 @@ function AppleLiron()
         return 0;
     };
 
+    this.deviceToolSlotHTML = function(ctx)
+    {
+        ctx = ctx || {};
+        var slotN = Number(ctx.slotN);
+        var slotID = ctx.slotID==null ? "?" : String(ctx.slotID);
+        var toolboxID = ctx.toolboxID || ("device_tool_"+slotID);
+        var devices = Array.isArray(ctx.devices)
+            ? ctx.devices.slice()
+            : (Array.isArray(liron.devices) ? liron.devices.slice() : []);
+
+        function unitOf(device,index)
+        {
+            var unit = device && typeof(device.getUnit)==="function"
+                ? Number(device.getUnit())
+                : Number(device && device.id ? device.id.deviceN : NaN);
+            return Number.isInteger(unit) && unit>0 ? unit : index+1;
+        }
+
+        function escapeHTML(value)
+        {
+            return String(value==null ? "" : value)
+                .replace(/&/g,"&amp;")
+                .replace(/</g,"&lt;")
+                .replace(/>/g,"&gt;")
+                .replace(/\"/g,"&quot;")
+                .replace(/'/g,"&#39;");
+        }
+
+        devices.sort(function(a,b)
+        {
+            return unitOf(a,0)-unitOf(b,0);
+        });
+
+        var rows="";
+        for(var i=0;i<devices.length;i++)
+        {
+            var device=devices[i];
+            if(!device) continue;
+            var unit=unitOf(device,i);
+            var state=typeof(device.getState)==="function" ? device.getState() || {} : {};
+            var filename=state.mediaFilename ? String(state.mediaFilename) : "";
+            var controlID="liron_unit_"+slotID+"_"+unit;
+
+            rows += ""
+                + "<div data-smartport-unit=\""+unit+"\" style=\"display:flex;align-items:center;gap:5px;min-height:25px;white-space:nowrap;\">"
+                + " <b style=\"display:inline-block;min-width:42px;\">Unit "+unit+"</b>"
+                + " <span style=\"display:inline-block;min-width:155px;max-width:245px;overflow:hidden;text-overflow:ellipsis;\" title=\""+escapeHTML(filename || "No disk")+"\">"+escapeHTML(filename || "No disk")+"</span>"
+                + " <input type=\"file\" id=\""+controlID+"_file\" accept=\".po\" style=\"display:none\">"
+                + " <button type=\"button\" class=\"appbut\" onclick=\"document.getElementById('"+controlID+"_file').click()\">Load</button>"
+                + " <button type=\"button\" class=\"appbut\" disabled>Eject</button>"
+                + "</div>";
+        }
+
+        if(!rows)
+            rows="<div style=\"padding:5px 2px\">No SmartPort devices attached.</div>";
+
+        return ""
+            + "<div class=toolbox id=\""+escapeHTML(toolboxID)+"\" hidden>"
+            + " <div class=appbox style=\"box-sizing:border-box;text-align:left;min-height:63px;padding:4px 6px;display:flex;flex-direction:column;gap:2px;\">"
+            + rows
+            + " </div>"
+            + "</div>";
+    };
+
     this.reset = function() { iwm.reset(); };
     this.restart = function() { iwm.restart(); };
     this.getIWM = function() { return iwm; };
