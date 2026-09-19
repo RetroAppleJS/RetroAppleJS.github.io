@@ -1,0 +1,95 @@
+name: Temporary UniDisk browser Task 2 GREEN
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: ["feature/liron-unidisk-browser-mount"]
+    paths:
+      - ".github/workflows/liron-browser-mount-task2-green-temp.yml"
+
+jobs:
+  green:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-browser-mount
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Apply minimal browser media routing implementation
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          main=Path('res/EMU_apple2main.js')
+          s=main.read_text()
+          marker='''/*\n * Browser-facing handler used by the RAM64K file input created by\n * EMU_CARD_ramcard.js.'''
+          helpers='''function EMU_unidisk35Device(slotN)\n{\n    if(typeof(apple2plus)!="object" || !apple2plus) return null;\n    var io=apple2plus.hwObj().io;\n    if(!io) return null;\n\n    if(slotN!==undefined && slotN!==null && Number.isInteger(Number(slotN)))\n    {\n        var owner=io.SLOT2obj(Number(slotN));\n        if(owner && owner.id?.PCODE==="LIRON" && Array.isArray(owner.devices))\n            for(var i=0;i<owner.devices.length;i++)\n                if(owner.devices[i]?.id?.DCODE==="UNIDISK35") return owner.devices[i];\n    }\n\n    var disks=typeof(io.DCODE2obj)==="function"\n        ? io.DCODE2obj("UNIDISK35","LIRON")\n        : [];\n    return disks.length===1 ? disks[0] : null;\n}\n\nfunction EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath)\n{\n    var bytes=arr_buffer instanceof Uint8Array\n        ? arr_buffer\n        : new Uint8Array(arr_buffer || []);\n    var unidiskTarget=String(deviceID||"").toUpperCase()==="UNIDISK35";\n\n    if(bytes.length===819200 || unidiskTarget)\n    {\n        if(bytes.length!==819200) return false;\n        var unidisk=EMU_unidisk35Device(slotN);\n        if(!unidisk || typeof(unidisk.loadImage)!=="function") return false;\n        unidisk.loadImage(bytes,{"filename":filepath || ""});\n        return true;\n    }\n\n    var disk2=EMU_slotPeripheral(slotN,"DISKII");\n    if(!disk2 || disk2.getState().active==false) return false;\n\n    var diskBytes=Array.from(bytes);\n    if(diskBytes.length===143360) diskBytes=disk2.convertDsk2Nib(diskBytes);\n    return apple2plus.loadDisk(diskBytes,deviceID,slotN)!==false;\n}\n\n'''
+          if marker not in s:
+              raise SystemExit('browser helper insertion marker not found')
+          if 'function EMU_mountDiskImage(' in s:
+              raise SystemExit('router unexpectedly already exists')
+          s=s.replace(marker,helpers+marker,1)
+
+          old='''function loadDisk_fromBuffer(arr_buffer,slotN,deviceID)\n{\n    try\n    {\n        var disk2 = EMU_slotPeripheral(slotN,"DISKII");\n        if(!disk2 || disk2.getState().active==false) return false;\n\n        var bytes = Array.from(arr_buffer);\n        if (bytes.length == 143360) bytes = disk2.convertDsk2Nib(bytes);\n\n        if(!apple2plus.loadDisk(bytes,deviceID,slotN)) return false;\n\n        var input = disk2.diskInputEl(deviceID);\n        if(input) highlight_appbut(input,true);\n        return true;\n    }\n    catch({ name, message })\n    {\n        //oCOM.POPUP.html("loadDisk_fromBuffer 1.0 failed: "+name+" "+message);\n    }\n}'''
+          new='''function loadDisk_fromBuffer(arr_buffer,slotN,deviceID,filepath)\n{\n    try\n    {\n        if(!EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath)) return false;\n\n        var size=arr_buffer && (arr_buffer.byteLength!==undefined ? arr_buffer.byteLength : arr_buffer.length);\n        if(Number(size)!==819200 && String(deviceID||"").toUpperCase()!=="UNIDISK35")\n        {\n            var disk2 = EMU_slotPeripheral(slotN,"DISKII");\n            var input = disk2 && typeof(disk2.diskInputEl)==="function" ? disk2.diskInputEl(deviceID) : null;\n            if(input) highlight_appbut(input,true);\n        }\n        return true;\n    }\n    catch({ name, message })\n    {\n        //oCOM.POPUP.html("loadDisk_fromBuffer 1.0 failed: "+name+" "+message);\n        return false;\n    }\n}'''
+          if old not in s:
+              raise SystemExit('loadDisk_fromBuffer pattern not found')
+          s=s.replace(old,new,1)
+
+          start='            const bytes = Array(size);'
+          end='                console.warn("disk was not loaded: unknown disk size ("+size+" bytes)")'
+          a=s.find(start)
+          b=s.find(end,a)
+          if a<0 or b<0:
+              raise SystemExit('local FileReader disk routing block not found')
+          b += len(end)
+          local='''            const bytes = new Uint8Array(size);\n            for (let i = 0; i < size; i++)\n                bytes[i] = data.getUint8(i);\n\n            if(!EMU_mountDiskImage(bytes,slotN,deviceID,filepath))\n                console.warn("disk was not loaded: unsupported disk size ("+size+" bytes)")'''
+          s=s[:a]+local+s[b:]
+          main.write_text(s)
+
+          dev=Path('res/EMU_DEVICE_UNIDISK35.js')
+          d=dev.read_text()
+          old='''         unit:0\n        ,online:options.online===undefined ? true : !!options.online\n        ,writeProtected:!!options.writeProtected\n    };'''
+          new='''         unit:0\n        ,online:options.online===undefined ? true : !!options.online\n        ,writeProtected:!!options.writeProtected\n        ,mediaFilename:""\n    };'''
+          if old not in d:
+              raise SystemExit('UniDisk state pattern not found')
+          d=d.replace(old,new,1)
+          old='''    this.loadImage = function(data)\n    {\n        // Uint8Array.from is deliberately used here because it accepts typed\n        // arrays and Buffers from another JavaScript realm as well.\n        var bytes = Uint8Array.from(data || []);\n        if(bytes.length!==BLOCK_SIZE*BLOCK_COUNT)\n            throw new RangeError("UniDisk 3.5 image must be exactly 819200 bytes");\n\n        media=bytes;\n        state.online=true;\n        return media.length;\n    };'''
+          new='''    this.loadImage = function(data,metadata)\n    {\n        // Uint8Array.from is deliberately used here because it accepts typed\n        // arrays and Buffers from another JavaScript realm as well.\n        var bytes = Uint8Array.from(data || []);\n        if(bytes.length!==BLOCK_SIZE*BLOCK_COUNT)\n            throw new RangeError("UniDisk 3.5 image must be exactly 819200 bytes");\n\n        media=bytes;\n        state.online=true;\n        state.mediaFilename = metadata && metadata.filename\n            ? String(metadata.filename).split(/[\\\\/]/).pop()\n            : "";\n        return media.length;\n    };'''
+          if old not in d:
+              raise SystemExit('UniDisk loadImage pattern not found')
+          d=d.replace(old,new,1)
+          old='''            ,"mediaLoaded":media!==null\n            ,"mediaBytes":media===null ? 0 : media.length\n        };'''
+          new='''            ,"mediaLoaded":media!==null\n            ,"mediaBytes":media===null ? 0 : media.length\n            ,"mediaFilename":state.mediaFilename\n        };'''
+          if old not in d:
+              raise SystemExit('UniDisk getState media pattern not found')
+          d=d.replace(old,new,1)
+          dev.write_text(d)
+          PY
+      - name: Run Task 2 GREEN tests
+        shell: bash
+        run: |
+          node --check res/EMU_apple2main.js
+          node --check res/EMU_DEVICE_UNIDISK35.js
+          node --test \
+            tests/liron_browser_mount.test.js \
+            tests/liron_browser_integration.test.js \
+            tests/liron_smartport_bus.test.js \
+            tests/unidisk35.test.js
+      - name: Commit Task 2 production implementation
+        shell: bash
+        run: |
+          git config user.name "Zen"
+          git config user.email "freddy.vandriessche@gmail.com"
+          git add res/EMU_apple2main.js res/EMU_DEVICE_UNIDISK35.js
+          git commit -m "feat: route 800K browser media to UniDisk"
+          git fetch origin feature/liron-unidisk-browser-mount
+          git rebase origin/feature/liron-unidisk-browser-mount
+          git push origin HEAD:feature/liron-unidisk-browser-mount
