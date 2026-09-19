@@ -20,6 +20,7 @@ function UniDisk35Device(options)
     };
 
     var media = null;
+    var host = null;
 
     this.id = {
          "DCODE":"UNIDISK35"
@@ -69,6 +70,16 @@ function UniDisk35Device(options)
         out[24] = (FW_VERSION >> 8) & 0xFF;
         return out;
     }
+
+    this.bindHost = function(owner)
+    {
+        if(!owner || owner.id?.PCODE!=="LIRON" || typeof(owner.attachUniDisk)!=="function")
+            return false;
+        if(host && host!==owner) return false;
+        if(owner.attachUniDisk(this)!==this) return false;
+        host=owner;
+        return true;
+    };
 
     this.setUnit = function(unit)
     {

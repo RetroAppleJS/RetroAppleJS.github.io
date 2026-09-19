@@ -830,12 +830,18 @@ function AppleLiron()
     const bDebug = false;
     var liron = this;
     var smartport = new SmartPortBus();
-    var unidisk = typeof(UniDisk35Device)==="function" ? new UniDisk35Device() : null;
-    if(unidisk) smartport.attach(unidisk,1);
+    var unidisk = null;
     var iwm = new LironIWM(smartport);
 
     this.id = {"PCODE":"LIRON","icon":"fa fa-save"};
-    this.deviceConfig = [];
+    this.deviceConfig = [{
+         "DCODE":"UNIDISK35"
+        ,"hostPCODE":"LIRON"
+        ,"coID":"UniDisk35Device"
+        ,"deviceN":1
+        ,"icon":"fa fa-hdd"
+        ,"description":"Apple UniDisk 3.5"
+    }];
     this.state = {"active":true};
 
     this.action = {
@@ -903,6 +909,16 @@ function AppleLiron()
         if(ctx && Number.isFinite(ctx.line)) return (ctx.line+(Number(addr)&0xFF))&0x0FFF;
         return 0x800+(Number(addr)&0x07FF);
     }
+
+    this.attachUniDisk = function(device)
+    {
+        if(!device || device.id?.DCODE!=="UNIDISK35") return null;
+        if(unidisk===device) return device;
+        if(unidisk!==null) throw new Error("Liron already has a UniDisk 3.5 child");
+        smartport.attach(device,1);
+        unidisk=device;
+        return device;
+    };
 
     this.readSlotIO = function(addr,ctx) { return iwm.read(Number(addr)&0x0F,ctx); };
     this.writeSlotIO = function(addr,d8,ctx) { return iwm.write(Number(addr)&0x0F,Number(d8)&0xFF,ctx); };
