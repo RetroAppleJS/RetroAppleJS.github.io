@@ -5,6 +5,7 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync('res/EMU_CARD_LIRON.js','utf8');
 const diskIISource = fs.readFileSync('res/EMU_CARD_appledisk2.js','utf8');
+const apple2ioSource = fs.readFileSync('res/EMU_apple2io.js','utf8');
 
 function loadLiron(extra={})
 {
@@ -43,6 +44,46 @@ function fakeUniDisk(unit,filename)
         }
     };
 }
+
+test('shared removable-media row preserves the Disk II native file-control layout', () => {
+    const context=vm.createContext({
+        console,
+        oEMU:{component:{IO:{ACTION_MAP:[]}},system:{A2P:{active:true}}},
+        oEMUI:{slotConfig(){},slotsRender(){},deviceBtn(){}}
+    });
+    vm.runInContext(apple2ioSource,context,{filename:'EMU_apple2io.js'});
+
+    assert.equal(typeof context.EMU_deviceMediaRowHTML,'function');
+    const html=context.EMU_deviceMediaRowHTML({
+        label:'Unit1',
+        buttonID:'unit1_but',
+        formID:'unit1_form',
+        fileID:'unit1_file',
+        fileName:'UNIDISK35_1',
+        buttonTitle:'Unit1: eject disk',
+        buttonOnClick:'ejectUnit1()',
+        fileAccept:'.po',
+        fileOnChange:'loadUnit1(this)',
+        downloadID:'unit1_dump',
+        downloadDisabled:true,
+        downloadTitle:'Save disk (not implemented yet)'
+    });
+
+    assert.match(html,/class=appbut style="padding:5px 0px 0px 0px;text-align:left/);
+    assert.match(html,/type=button method=get class=appbut/);
+    assert.match(html,/value="Unit1"/);
+    assert.match(html,/<form action="index\.html"/);
+    assert.match(html,/type="file"/);
+    assert.match(html,/id="unit1_file"/);
+    assert.match(html,/style="display:inline-block"/,
+        'the native file input must remain visible exactly as in the Disk II row');
+    assert.match(html,/accept="\.po"/);
+    assert.match(html,/fa fa-cloud-download-alt/);
+    assert.match(html,/disabled/);
+    assert.doesNotMatch(html,/>Load</);
+    assert.doesNotMatch(html,/>Eject</);
+    assert.doesNotMatch(html,/No disk/);
+});
 
 test('Disk II and Liron use the same shared removable-media row renderer', () => {
     assert.match(diskIISource,/EMU_deviceMediaRowHTML\s*\(/,
