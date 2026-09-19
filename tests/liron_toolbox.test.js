@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 
 const source = fs.readFileSync('res/EMU_CARD_LIRON.js','utf8');
+const diskIISource = fs.readFileSync('res/EMU_CARD_appledisk2.js','utf8');
 
 function loadLiron(extra={})
 {
@@ -43,15 +44,26 @@ function fakeUniDisk(unit,filename)
     };
 }
 
-test('Liron toolbox renders attached SmartPort devices as ordered vertical unit rows', () => {
-    const context = loadLiron();
+test('Disk II and Liron use the same shared removable-media row renderer', () => {
+    assert.match(diskIISource,/EMU_deviceMediaRowHTML\s*\(/,
+        'Disk II must render its drive rows through the shared media-row helper');
+    assert.match(source,/EMU_deviceMediaRowHTML\s*\(/,
+        'Liron must render its SmartPort unit rows through the same helper');
+});
+
+test('Liron toolbox renders attached SmartPort units vertically through the Disk II row layout', () => {
+    const rowCalls=[];
+    const context = loadLiron({
+        EMU_deviceMediaRowHTML(spec)
+        {
+            rowCalls.push(spec);
+            return `<div class="shared-media-row" data-label="${spec.label}"></div>`;
+        }
+    });
     const card = new context.AppleLiron();
     const unit1 = fakeUniDisk(1,'CardCat 1.94.po');
     const unit2 = fakeUniDisk(2,'TOOLS.po');
     card.devices = [unit1,unit2];
-
-    assert.equal(typeof card.deviceToolSlotHTML,'function',
-        'Liron must provide its own slot toolbox renderer');
 
     const html = card.deviceToolSlotHTML({
         slotN:6,
@@ -60,21 +72,24 @@ test('Liron toolbox renders attached SmartPort devices as ordered vertical unit 
         devices:card.devices
     });
 
-    assert.match(html,/id="device_tool_5"/);
-    assert.match(html,/data-smartport-unit="1"/);
-    assert.match(html,/data-smartport-unit="2"/);
-    assert.ok(html.indexOf('data-smartport-unit="1"') < html.indexOf('data-smartport-unit="2"'),
-        'unit rows must be rendered vertically in SmartPort unit order');
-    assert.match(html,/Unit 1/);
-    assert.match(html,/Unit 2/);
-    assert.match(html,/CardCat 1\.94\.po/);
-    assert.match(html,/TOOLS\.po/);
-    assert.match(html,/type="file"/);
-    assert.match(html,/Load/);
-    assert.match(html,/Eject/);
+    assert.equal(rowCalls.length,2);
+    assert.deepEqual(rowCalls.map(row => row.label),['Unit1','Unit2']);
+    assert.ok(html.indexOf('data-label="Unit1"') < html.indexOf('data-label="Unit2"'),
+        'SmartPort unit rows must remain vertically ordered');
+
+    for(let i=0;i<rowCalls.length;i++)
+    {
+        const unit=i+1;
+        const row=rowCalls[i];
+        assert.equal(row.fileName,'UNIDISK35_'+unit);
+        assert.match(row.fileOnChange,new RegExp(`deviceToolLoadFile\\(this,${unit}\\)`));
+        assert.match(row.buttonOnClick,new RegExp(`deviceToolEject\\(${unit}\\)`));
+        assert.equal(row.downloadDisabled,true,
+            'UniDisk download occupies the Disk II download position but remains disabled for now');
+    }
 });
 
-test('Liron Unit 2 file chooser loads through the normal browser router with explicit unit', () => {
+test('successful Liron file load keeps the native file selection so the browser displays the filename', () => {
     const mountCalls=[];
     const refreshCalls=[];
 
@@ -108,32 +123,21 @@ test('Liron Unit 2 file chooser loads through the normal browser router with exp
     card.mount={slotN:6};
     card.devices=[fakeUniDisk(1,''),fakeUniDisk(2,'')];
 
-    assert.equal(typeof card.deviceToolLoadFile,'function',
-        'Liron must provide deviceToolLoadFile for the per-unit file chooser');
-
-    const html=card.deviceToolSlotHTML({
-        slotN:6,
-        slotID:'5',
-        toolboxID:'device_tool_5',
-        devices:card.devices
-    });
-    assert.match(html,/deviceToolLoadFile\(this,2\)/,
-        'Unit 2 file input must be wired to the Unit 2 loader');
-
     const file={
-        name:'TOOLS.po',
+        name:'ProDOS Packer 6.0.po',
         size:819200,
         bytes:new Uint8Array(819200)
     };
-    const input={files:[file],value:'chosen'};
+    const input={files:[file],value:'C:\\fakepath\\ProDOS Packer 6.0.po'};
 
-    assert.equal(card.deviceToolLoadFile(input,2),true);
+    assert.equal(card.deviceToolLoadFile(input,1),true);
     assert.equal(mountCalls.length,1);
     assert.equal(mountCalls[0].slotN,6);
     assert.equal(mountCalls[0].deviceID,'UNIDISK35');
-    assert.equal(mountCalls[0].filename,'TOOLS.po');
-    assert.equal(mountCalls[0].unit,2,'browser router must receive the selected SmartPort unit');
+    assert.equal(mountCalls[0].filename,'ProDOS Packer 6.0.po');
+    assert.equal(mountCalls[0].unit,1);
     assert.equal(mountCalls[0].bytes.length,819200);
-    assert.equal(input.value,'');
-    assert.equal(refreshCalls.length,1,'toolbox should refresh after a successful mount');
+    assert.equal(input.value,'C:\\fakepath\\ProDOS Packer 6.0.po',
+        'successful mounts must leave the native file input populated');
+    assert.equal(refreshCalls.length,1,'toolbox selection may refresh without rebuilding its media row');
 });
