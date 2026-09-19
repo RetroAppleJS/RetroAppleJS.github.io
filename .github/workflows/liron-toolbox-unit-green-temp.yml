@@ -1,0 +1,132 @@
+name: Temporary Liron explicit-unit GREEN
+on:
+  push:
+    branches: [feature/liron-unidisk-toolbox]
+permissions:
+  contents: write
+jobs:
+  green:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-toolbox
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Add explicit SmartPort unit selection to browser router
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path('res/EMU_apple2main.js')
+          s=p.read_text()
+
+          def replace_function(text,name,new_source):
+              marker='function '+name+'('
+              start=text.find(marker)
+              if start<0:
+                  raise SystemExit(name+' not found')
+              open_brace=text.find('{',start)
+              if open_brace<0:
+                  raise SystemExit(name+' opening brace not found')
+              depth=0
+              end=None
+              for i in range(open_brace,len(text)):
+                  ch=text[i]
+                  if ch=='{': depth+=1
+                  elif ch=='}':
+                      depth-=1
+                      if depth==0:
+                          end=i+1
+                          break
+              if end is None:
+                  raise SystemExit(name+' closing brace not found')
+              return text[:start]+new_source+text[end:]
+
+          resolver=r'''function EMU_unidisk35Device(slotN,unit)
+          {
+              if(typeof(apple2plus)!="object" || !apple2plus) return null;
+              var io=apple2plus.hwObj().io;
+              if(!io) return null;
+
+              var hasUnit=unit!==undefined && unit!==null && unit!=="";
+              var requestedUnit=Number(unit);
+              if(hasUnit && (!Number.isInteger(requestedUnit) || requestedUnit<1 || requestedUnit>8))
+                  return null;
+
+              function deviceUnit(device)
+              {
+                  if(device && typeof(device.getUnit)==="function")
+                      return Number(device.getUnit());
+                  return Number(device && device.id ? device.id.deviceN : NaN);
+              }
+
+              function matchesUnit(device)
+              {
+                  return !hasUnit || deviceUnit(device)===requestedUnit;
+              }
+
+              if(slotN!==undefined && slotN!==null && Number.isInteger(Number(slotN)))
+              {
+                  var owner=io.SLOT2obj(Number(slotN));
+                  if(owner && owner.id?.PCODE==="LIRON" && Array.isArray(owner.devices))
+                  {
+                      var slotMatches=[];
+                      for(var i=0;i<owner.devices.length;i++)
+                          if(owner.devices[i]?.id?.DCODE==="UNIDISK35" && matchesUnit(owner.devices[i]))
+                              slotMatches.push(owner.devices[i]);
+                      return slotMatches.length===1 ? slotMatches[0] : null;
+                  }
+                  return null;
+              }
+
+              var disks=typeof(io.DCODE2obj)==="function"
+                  ? io.DCODE2obj("UNIDISK35","LIRON")
+                  : [];
+              if(hasUnit) disks=disks.filter(matchesUnit);
+              return disks.length===1 ? disks[0] : null;
+          }'''
+
+          router=r'''function EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath,unit)
+          {
+              var bytes=arr_buffer instanceof Uint8Array
+                  ? arr_buffer
+                  : new Uint8Array(arr_buffer || []);
+              var unidiskTarget=String(deviceID||"").toUpperCase()==="UNIDISK35";
+
+              if(bytes.length===819200 || unidiskTarget)
+              {
+                  if(bytes.length!==819200) return false;
+                  var unidisk=EMU_unidisk35Device(slotN,unit);
+                  if(!unidisk || typeof(unidisk.loadImage)!=="function") return false;
+                  unidisk.loadImage(bytes,{"filename":filepath || ""});
+                  return true;
+              }
+
+              var disk2=EMU_slotPeripheral(slotN,"DISKII");
+              if(!disk2 || disk2.getState().active==false) return false;
+
+              var diskBytes=Array.from(bytes);
+              if(diskBytes.length===143360) diskBytes=disk2.convertDsk2Nib(diskBytes);
+              return apple2plus.loadDisk(diskBytes,deviceID,slotN)!==false;
+          }'''
+
+          s=replace_function(s,'EMU_unidisk35Device',resolver)
+          s=replace_function(s,'EMU_mountDiskImage',router)
+          p.write_text(s)
+          PY
+      - name: Run routing and Liron regressions
+        run: |
+          node --check res/EMU_apple2main.js
+          node --test tests/liron_browser_mount.test.js tests/liron_toolbox.test.js tests/liron_browser_integration.test.js tests/liron_card.test.js tests/liron_iwm.test.js tests/liron_readblock.test.js tests/liron_smartport_bus.test.js tests/liron_smartport_transport.test.js tests/unidisk35.test.js
+      - name: Commit production unit routing
+        shell: bash
+        run: |
+          git config user.name "RetroAppleJS CI"
+          git config user.email "actions@users.noreply.github.com"
+          git add res/EMU_apple2main.js
+          git commit -m "feat: route UniDisk browser mounts by SmartPort unit"
+          git pull --rebase origin feature/liron-unidisk-toolbox
+          git push origin HEAD:feature/liron-unidisk-toolbox
