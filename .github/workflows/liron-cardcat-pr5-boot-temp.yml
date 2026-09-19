@@ -1,0 +1,68 @@
+name: Temporary Card Cat PR#5 Liron boot acceptance
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: ["feature/liron-unidisk-browser-mount"]
+    paths:
+      - ".github/workflows/liron-cardcat-pr5-boot-temp.yml"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-browser-mount
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Patch Phase B to use Control-B then PR#5
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path('tests/cardcat_unidisk_browser_acceptance.js')
+          s=p.read_text()
+          old='''        const unmounted=io.unmount(diskInfo.card.mount.slotN);\n        if(!unmounted) throw new Error('Normal Apple2IO Disk II unmount failed');\n        apple2plus.reset();\n        return {\n            unmounted,\n            diskIIAfter:!!findCard(io,'DISKII'),\n            lironSlot:lironInfo.slotIndex,\n            media:disk.getState()\n        };'''
+          new='''        const unmounted=io.unmount(diskInfo.card.mount.slotN);\n        if(!unmounted) throw new Error('Normal Apple2IO Disk II unmount failed');\n        const hw=apple2plus.hwObj();\n        const softHigh=hw.safe_read(0x03F3);\n        const validPowerup=(softHigh^0xA5)&0xFF;\n        const forcedPowerup=(validPowerup^0xFF)&0xFF;\n        hw.WR[hw.lineDecode(0x03F4)](0x03F4,forcedPowerup);\n        apple2plus.reset();\n        return {\n            unmounted,\n            diskIIAfter:!!findCard(io,'DISKII'),\n            lironSlot:lironInfo.slotIndex,\n            coldReset:{softHigh,validPowerup,forcedPowerup},\n            media:disk.getState()\n        };'''
+          if old not in s: raise SystemExit('Phase B reset pattern not found')
+          s=s.replace(old,new,1)
+          marker="""    console.log('UNIDISK_BOOT_SETUP',JSON.stringify(phaseBSetup));\n    if(!phaseBSetup.unmounted || phaseBSetup.diskIIAfter)\n        throw new Error('Disk II remained mounted during UniDisk boot');\n\n    const phaseB=await runUntil(page,snap=>{"""
+          replacement="""    console.log('UNIDISK_BOOT_SETUP',JSON.stringify(phaseBSetup));\n    if(!phaseBSetup.unmounted || phaseBSetup.diskIIAfter)\n        throw new Error('Disk II remained mounted during UniDisk boot');\n\n    await runTicks(page,1);\n    const pr5Boot=await page.evaluate(()=>{\n        const io=apple2plus.hwObj().io;\n        const boards=io.DCODE2obj('PASTEBO','A2BO');\n        const pasteboard=boards.length===1 ? boards[0] : null;\n        if(!pasteboard || typeof(pasteboard.sendText)!=='function')\n            throw new Error('Normal browser pasteboard input is unavailable');\n        const pc=apple2plus.cpuObj().watch().pc&0xFFFF;\n        const target=pasteboard.getTargetAddress(io);\n        // Control-B enters BASIC from the Apple monitor; PR#5 is the historical\n        // Apple II+/unenhanced-IIe Liron boot path.\n        const sent=pasteboard.sendText(io,String.fromCharCode(0x02)+'\\nPR#5\\n');\n        return {pc,target,sent};\n    });\n    console.log('PR5_LIRON_BOOT',JSON.stringify(pr5Boot));\n    if(!pr5Boot.sent) throw new Error('Unable to type PR#5 Liron boot command');\n\n    const phaseB=await runUntil(page,snap=>{"""
+          if marker not in s: raise SystemExit('PR#5 insertion point not found')
+          s=s.replace(marker,replacement,1)
+          p.write_text(s)
+          PY
+          node --check tests/cardcat_unidisk_browser_acceptance.js
+          if grep -nE '\.(loadImage|readBlock)[[:space:]]*\(' tests/cardcat_unidisk_browser_acceptance.js; then
+            echo "Acceptance harness must not call UniDisk loadImage/readBlock directly"
+            exit 1
+          fi
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run end-to-end PR#5 acceptance
+        shell: bash
+        run: |
+          python3 -m http.server 8000 >/tmp/retroapple-http.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          RETROAPPLE_URL=http://127.0.0.1:8000 node tests/cardcat_unidisk_browser_acceptance.js
+      - name: Commit corrected acceptance after GREEN
+        shell: bash
+        run: |
+          git config user.name "Zen"
+          git config user.email "freddy.vandriessche@gmail.com"
+          git add tests/cardcat_unidisk_browser_acceptance.js
+          git commit -m "test: boot browser-mounted UniDisk with PR#5"
+          git fetch origin feature/liron-unidisk-browser-mount
+          git rebase origin/feature/liron-unidisk-browser-mount
+          git push origin HEAD:feature/liron-unidisk-browser-mount

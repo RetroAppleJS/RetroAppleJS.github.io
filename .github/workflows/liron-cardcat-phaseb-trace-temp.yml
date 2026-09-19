@@ -1,0 +1,61 @@
+name: Temporary Card Cat Phase B boot trace
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: ["feature/liron-unidisk-browser-mount"]
+    paths:
+      - ".github/workflows/liron-cardcat-phaseb-trace-temp.yml"
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-browser-mount
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Patch acceptance harness for Phase B trace only
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path('tests/cardcat_unidisk_browser_acceptance.js')
+          s=p.read_text()
+          old='''        const original=disk.readBlock;\n        globalThis.__cardcatUniDiskObserved={blocks:[],directoryText:'',directoryEntries:false};'''
+          new='''        const lironCard=lironInfo.card;\n        globalThis.__phaseBBootTrace={slotROM:[],hostROM:[],slotIO:[],pcBeforeReset:null,pcAfterReset:null};\n        const originalReadROM=lironCard.readROM;\n        lironCard.readROM=function(addr,ctx)\n        {\n            if(globalThis.__phaseBBootTrace.slotROM.length<128)\n                globalThis.__phaseBBootTrace.slotROM.push({addr:Number(addr)&0xFF,pc:apple2plus.cpuObj().watch().pc&0xFFFF});\n            return Reflect.apply(originalReadROM,lironCard,[addr,ctx]);\n        };\n        const originalReadHostROM=lironCard.readHostROM;\n        lironCard.readHostROM=function(addr,ctx)\n        {\n            if(globalThis.__phaseBBootTrace.hostROM.length<128)\n                globalThis.__phaseBBootTrace.hostROM.push({addr:Number(addr)&0xFF,rel:ctx&&ctx.rel_addr,pc:apple2plus.cpuObj().watch().pc&0xFFFF});\n            return Reflect.apply(originalReadHostROM,lironCard,[addr,ctx]);\n        };\n        const originalReadSlotIO=lironCard.readSlotIO;\n        lironCard.readSlotIO=function(addr,ctx)\n        {\n            if(globalThis.__phaseBBootTrace.slotIO.length<128)\n                globalThis.__phaseBBootTrace.slotIO.push({addr:Number(addr)&0x0F,pc:apple2plus.cpuObj().watch().pc&0xFFFF});\n            return Reflect.apply(originalReadSlotIO,lironCard,[addr,ctx]);\n        };\n\n        const original=disk.readBlock;\n        globalThis.__cardcatUniDiskObserved={blocks:[],directoryText:'',directoryEntries:false};'''
+          if old not in s: raise SystemExit('trace insertion point not found')
+          s=s.replace(old,new,1)
+          old='''        apple2plus.reset();\n        return {\n            unmounted,'''
+          new='''        globalThis.__phaseBBootTrace.pcBeforeReset=apple2plus.cpuObj().watch().pc&0xFFFF;\n        apple2plus.reset();\n        globalThis.__phaseBBootTrace.pcAfterReset=apple2plus.cpuObj().watch().pc&0xFFFF;\n        return {\n            unmounted,'''
+          if old not in s: raise SystemExit('reset trace point not found')
+          s=s.replace(old,new,1)
+          marker="""    console.log('UNIDISK_BOOT_SETUP',JSON.stringify(phaseBSetup));\n    if(!phaseBSetup.unmounted || phaseBSetup.diskIIAfter)"""
+          repl="""    console.log('UNIDISK_BOOT_SETUP',JSON.stringify(phaseBSetup));\n    await runTicks(page,1);\n    const phaseBDiagnostic=await page.evaluate(()=>({\n        cpu:apple2plus.cpuObj().watch(),\n        trace:globalThis.__phaseBBootTrace,\n        power:Array.from(apple2plus.hwObj().safe_dump(0x03F2,0x03F4)),\n        bus:(()=>{const io=apple2plus.hwObj().io;for(let i=0;i<io.slots.length;i++){const c=io.SLOT2obj(i);if(c&&c.id&&c.id.PCODE==='LIRON')return c.getBus().getState();}return null;})()\n    }));\n    console.log('PHASE_B_DIAGNOSTIC',JSON.stringify(phaseBDiagnostic));\n    if(!phaseBSetup.unmounted || phaseBSetup.diskIIAfter)"""
+          if marker not in s: raise SystemExit('diagnostic print insertion point not found')
+          s=s.replace(marker,repl,1)
+          p.write_text(s)
+          PY
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run trace and preserve failure evidence
+        shell: bash
+        run: |
+          python3 -m http.server 8000 >/tmp/retroapple-http.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          set +e
+          RETROAPPLE_URL=http://127.0.0.1:8000 node tests/cardcat_unidisk_browser_acceptance.js
+          rc=$?
+          set -e
+          echo "TRACE_RUN_EXIT=$rc"
+          exit 0

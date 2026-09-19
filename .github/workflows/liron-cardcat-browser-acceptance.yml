@@ -1,0 +1,58 @@
+name: Liron Card Cat browser acceptance
+
+permissions:
+  contents: read
+
+on:
+  push:
+    paths:
+      - "res/EMU_CARD_LIRON.js"
+      - "res/EMU_DEVICE_UNIDISK35.js"
+      - "res/EMU_apple2main.js"
+      - "res/EMU_apple2io.js"
+      - "tests/cardcat_unidisk_browser_acceptance.js"
+      - "disks/Utility/Card Cat 1.94.dsk"
+      - "disks/Utility/CardCat 1.94.po"
+      - ".github/workflows/liron-cardcat-browser-acceptance.yml"
+  pull_request:
+    paths:
+      - "res/EMU_CARD_LIRON.js"
+      - "res/EMU_DEVICE_UNIDISK35.js"
+      - "res/EMU_apple2main.js"
+      - "res/EMU_apple2io.js"
+      - "tests/cardcat_unidisk_browser_acceptance.js"
+      - "disks/Utility/Card Cat 1.94.dsk"
+      - "disks/Utility/CardCat 1.94.po"
+      - ".github/workflows/liron-cardcat-browser-acceptance.yml"
+  workflow_dispatch:
+
+jobs:
+  cardcat-unidisk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Guard against harness-only UniDisk injection
+        shell: bash
+        run: |
+          node --check tests/cardcat_unidisk_browser_acceptance.js
+          if grep -nE '\.(loadImage|readBlock)[[:space:]]*\(' tests/cardcat_unidisk_browser_acceptance.js; then
+            echo "Acceptance harness must not call UniDisk loadImage/readBlock directly"
+            exit 1
+          fi
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Boot Card Cat and read browser-mounted UniDisk volume
+        shell: bash
+        run: |
+          python3 -m http.server 8000 >/tmp/retroapple-http.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          RETROAPPLE_URL=http://127.0.0.1:8000 node tests/cardcat_unidisk_browser_acceptance.js

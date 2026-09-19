@@ -43,15 +43,21 @@ test('index.html loads UniDisk 3.5 before exactly one Liron card script', () => 
     assert.ok(devicePos < lironPos,'UniDisk device script must load before Liron card');
 });
 
-test('browser load order makes the discovered AppleLiron construct SmartPort unit 1', () => {
+test('browser discovery declares UniDisk and Apple2IO-style binding populates SmartPort unit 1', () => {
     const context = loadBrowserCard();
     const card = context.oEMU.component.IO.AppleLiron;
 
     assert.ok(card,'AppleLiron discovery instance must exist');
-    assert.deepEqual(Array.from(card.getBus().getUnits()),[1]);
+    assert.equal(card.deviceConfig.length,1);
+    assert.equal(card.deviceConfig[0].DCODE,'UNIDISK35');
+    assert.deepEqual(Array.from(card.getBus().getUnits()),[]);
+    assert.equal(card.getUniDisk(),null);
 
-    const device = card.getBus().getDevice(1);
-    assert.ok(device,'SmartPort unit 1 must exist');
+    const device = new context.UniDisk35Device(card.deviceConfig[0]);
+    assert.equal(device.bindHost(card),true);
+
+    assert.deepEqual(Array.from(card.getBus().getUnits()),[1]);
+    assert.equal(card.getBus().getDevice(1),device);
     assert.equal(device,card.getUniDisk());
     assert.equal(device.getUnit(),1);
     assert.equal(device.id.DCODE,'UNIDISK35');

@@ -1,0 +1,55 @@
+name: Temporary Card Cat browser acceptance RED
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: ["feature/liron-unidisk-browser-mount"]
+    paths:
+      - ".github/workflows/liron-cardcat-browser-red-temp.yml"
+
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-browser-mount
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Preserve newly written acceptance test and restore Task 1 production revision
+        shell: bash
+        run: |
+          cp tests/cardcat_unidisk_browser_acceptance.js /tmp/cardcat_unidisk_browser_acceptance.js
+          git checkout --detach 2c8949030e3afe779cf6a2bae1093b2861e9ec7d
+      - name: Install Playwright Chromium
+        shell: bash
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify acceptance is RED before browser media router exists
+        shell: bash
+        run: |
+          python3 -m http.server 8000 >/tmp/retroapple-http.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          set +e
+          NODE_PATH="$PWD/node_modules" RETROAPPLE_URL=http://127.0.0.1:8000 node /tmp/cardcat_unidisk_browser_acceptance.js > /tmp/red.log 2>&1
+          rc=$?
+          set -e
+          cat /tmp/red.log
+          if [ "$rc" -eq 0 ]; then
+            echo "Expected Card Cat browser acceptance RED but it passed"
+            exit 1
+          fi
+          grep -F "UniDisk browser media router is unavailable" /tmp/red.log >/dev/null || {
+            echo "Acceptance failed for an unexpected reason"
+            cat /tmp/retroapple-http.log
+            exit 1
+          }
+          echo "CARD_CAT_BROWSER_RED_CONFIRMED"

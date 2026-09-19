@@ -1,0 +1,78 @@
+name: Temporary UniDisk browser Task 1 GREEN
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: ["feature/liron-unidisk-browser-mount"]
+    paths:
+      - ".github/workflows/liron-browser-mount-task1-green-temp.yml"
+
+jobs:
+  green:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-browser-mount
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Apply minimal declarative ownership implementation
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          card=Path('res/EMU_CARD_LIRON.js')
+          s=card.read_text()
+          old='''    var smartport = new SmartPortBus();\n    var unidisk = typeof(UniDisk35Device)==="function" ? new UniDisk35Device() : null;\n    if(unidisk) smartport.attach(unidisk,1);\n    var iwm = new LironIWM(smartport);\n\n    this.id = {"PCODE":"LIRON","icon":"fa fa-save"};\n    this.deviceConfig = [];\n    this.state = {"active":true};'''
+          new='''    var smartport = new SmartPortBus();\n    var unidisk = null;\n    var iwm = new LironIWM(smartport);\n\n    this.id = {"PCODE":"LIRON","icon":"fa fa-save"};\n    this.deviceConfig = [{\n         "DCODE":"UNIDISK35"\n        ,"hostPCODE":"LIRON"\n        ,"coID":"UniDisk35Device"\n        ,"deviceN":1\n        ,"icon":"fa fa-hdd"\n        ,"description":"Apple UniDisk 3.5"\n    }];\n    this.state = {"active":true};'''
+          if old not in s:
+              raise SystemExit('AppleLiron constructor pattern not found')
+          s=s.replace(old,new,1)
+          marker='''    this.readSlotIO = function(addr,ctx) { return iwm.read(Number(addr)&0x0F,ctx); };'''
+          attach='''    this.attachUniDisk = function(device)\n    {\n        if(!device || device.id?.DCODE!=="UNIDISK35") return null;\n        if(unidisk===device) return device;\n        if(unidisk!==null) throw new Error("Liron already has a UniDisk 3.5 child");\n        smartport.attach(device,1);\n        unidisk=device;\n        return device;\n    };\n\n'''
+          if marker not in s:
+              raise SystemExit('AppleLiron insertion marker not found')
+          s=s.replace(marker,attach+marker,1)
+          card.write_text(s)
+
+          dev=Path('res/EMU_DEVICE_UNIDISK35.js')
+          d=dev.read_text()
+          if '    var media = null;\n' not in d:
+              raise SystemExit('UniDisk media marker not found')
+          d=d.replace('    var media = null;\n','    var media = null;\n    var host = null;\n',1)
+          marker='''    this.setUnit = function(unit)\n    {'''
+          bind='''    this.bindHost = function(owner)\n    {\n        if(!owner || owner.id?.PCODE!=="LIRON" || typeof(owner.attachUniDisk)!=="function")\n            return false;\n        if(host && host!==owner) return false;\n        if(owner.attachUniDisk(this)!==this) return false;\n        host=owner;\n        return true;\n    };\n\n'''
+          if marker not in d:
+              raise SystemExit('UniDisk bindHost insertion marker not found')
+          d=d.replace(marker,bind+marker,1)
+          dev.write_text(d)
+          PY
+      - name: Run Task 1 GREEN regression suite
+        shell: bash
+        run: |
+          node --check res/EMU_CARD_LIRON.js
+          node --check res/EMU_DEVICE_UNIDISK35.js
+          node --test \
+            tests/liron_card.test.js \
+            tests/liron_iwm.test.js \
+            tests/liron_smartport_bus.test.js \
+            tests/liron_smartport_transport.test.js \
+            tests/liron_browser_integration.test.js \
+            tests/liron_readblock.test.js \
+            tests/unidisk35.test.js
+      - name: Commit Task 1 production implementation
+        shell: bash
+        run: |
+          git config user.name "Zen"
+          git config user.email "freddy.vandriessche@gmail.com"
+          git add res/EMU_CARD_LIRON.js res/EMU_DEVICE_UNIDISK35.js
+          git commit -m "refactor: provision UniDisk as Liron child device"
+          git fetch origin feature/liron-unidisk-browser-mount
+          git rebase origin/feature/liron-unidisk-browser-mount
+          git push origin HEAD:feature/liron-unidisk-browser-mount

@@ -17,9 +17,11 @@ function UniDisk35Device(options)
          unit:0
         ,online:options.online===undefined ? true : !!options.online
         ,writeProtected:!!options.writeProtected
+        ,mediaFilename:""
     };
 
     var media = null;
+    var host = null;
 
     this.id = {
          "DCODE":"UNIDISK35"
@@ -70,6 +72,16 @@ function UniDisk35Device(options)
         return out;
     }
 
+    this.bindHost = function(owner)
+    {
+        if(!owner || owner.id?.PCODE!=="LIRON" || typeof(owner.attachUniDisk)!=="function")
+            return false;
+        if(host && host!==owner) return false;
+        if(owner.attachUniDisk(this)!==this) return false;
+        host=owner;
+        return true;
+    };
+
     this.setUnit = function(unit)
     {
         unit = Number(unit);
@@ -99,7 +111,7 @@ function UniDisk35Device(options)
         return state.writeProtected;
     };
 
-    this.loadImage = function(data)
+    this.loadImage = function(data,metadata)
     {
         // Uint8Array.from is deliberately used here because it accepts typed
         // arrays and Buffers from another JavaScript realm as well.
@@ -109,6 +121,9 @@ function UniDisk35Device(options)
 
         media=bytes;
         state.online=true;
+        state.mediaFilename = metadata && metadata.filename
+            ? String(metadata.filename).split(/[\\/]/).pop()
+            : "";
         return media.length;
     };
 
@@ -148,6 +163,7 @@ function UniDisk35Device(options)
             ,"status":statusByte()
             ,"mediaLoaded":media!==null
             ,"mediaBytes":media===null ? 0 : media.length
+            ,"mediaFilename":state.mediaFilename
         };
     };
 }
