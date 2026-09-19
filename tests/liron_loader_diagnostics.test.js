@@ -97,8 +97,8 @@ test('router logs successful mount details',()=>{
     const disk={id:{DCODE:'UNIDISK35'},getUnit(){return 1;},loadImage(bytes){return bytes.length;}};
     const {context,logs}=loadRouter({devices:[disk]});
     assert.equal(context.EMU_mountDiskImage(new Uint8Array(819200),null,'UNIDISK35','CardCat 1.94.po',1),true);
-    assert.ok(hasLog(logs.entries,'info','UniDisk 3.5 mount succeeded'));
-    const entry=findLog(logs.entries,'info','mount succeeded');
+    assert.ok(hasLog(logs.entries,'log','UniDisk 3.5 mount succeeded'));
+    const entry=findLog(logs.entries,'log','mount succeeded');
     assert.equal(entry[2].bytes,819200);
     assert.equal(entry[2].filename,'CardCat 1.94.po');
     assert.equal(entry[2].unit,1);
