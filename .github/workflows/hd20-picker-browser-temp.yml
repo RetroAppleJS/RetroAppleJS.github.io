@@ -1,0 +1,33 @@
+name: HD20 picker browser acceptance temp
+
+permissions:
+  contents: read
+
+on:
+  push:
+    paths:
+      - "tests/hd20_picker_browser_acceptance.js"
+      - ".github/workflows/hd20-picker-browser-temp.yml"
+  workflow_dispatch:
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Exercise HD20 device picker in browser
+        run: |
+          node --check tests/hd20_picker_browser_acceptance.js
+          python3 -m http.server 8000 >/tmp/retroapple-http.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          RETROAPPLE_URL=http://127.0.0.1:8000 node tests/hd20_picker_browser_acceptance.js
