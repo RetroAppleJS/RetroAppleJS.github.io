@@ -31,6 +31,28 @@ function extractFunction(source,name)
     return '';
 }
 
+function loadApple2IO(extraSource='')
+{
+    let crcSeed=0x1200;
+    const context={
+        console:{log(){},warn(){},error(){},assert(){}},
+        TextEncoder,
+        Uint8Array,
+        ArrayBuffer,
+        oEMU:{component:{IO:{ACTION_MAP:{RD:[],WR:[]}}},system:{}},
+        oEMUI:{},
+        oCOM:{
+            crc16(){ return (++crcSeed)&0xFFFF; },
+            trim(value){return String(value).trim();},
+            getHexWord(value){return Number(value).toString(16).padStart(4,'0');}
+        }
+    };
+    vm.createContext(context);
+    vm.runInContext(ioSource,context,{filename:'EMU_apple2io.js'});
+    if(extraSource) vm.runInContext(extraSource,context);
+    return context;
+}
+
 test('attached-device label emits valid HTML attributes without literal backslash escapes',()=>{
     const iconFn=extractFunction(ioSource,'slotDeviceIconClass');
     const labelFn=extractFunction(ioSource,'slotDeviceLabel_html');
@@ -58,26 +80,10 @@ test('Device table exposes a per-instance identifier column',()=>{
 });
 
 test('Apple2IO supports explicit duplicate instances while declarative provisioning stays idempotent',()=>{
-    let crcSeed=0x1200;
-    const context={
-        console:{log(){},warn(){},error(){},assert(){}},
-        TextEncoder,
-        Uint8Array,
-        ArrayBuffer,
-        oEMU:{component:{IO:{ACTION_MAP:{RD:[],WR:[]}}},system:{}},
-        oEMUI:{},
-        oCOM:{
-            crc16(){ return (++crcSeed)&0xFFFF; },
-            trim(value){return String(value).trim();},
-            getHexWord(value){return Number(value).toString(16).padStart(4,'0');}
-        }
-    };
-    vm.createContext(context);
-    vm.runInContext(ioSource,context,{filename:'EMU_apple2io.js'});
-    vm.runInContext(`
+    const context=loadApple2IO(`
         function TestDevice(){ this.id={}; }
         this.TestDevice=TestDevice;
-    `,context);
+    `);
 
     const io=new context.Apple2IO(null,null);
     const info={DCODE:'TESTDEV',hostPCODE:'HOST',coID:'TestDevice'};
@@ -98,4 +104,23 @@ test('Apple2IO supports explicit duplicate instances while declarative provision
     assert.equal(owner.devices.length,1,
         'detaching one instance must not remove another device with the same DCODE');
     assert.equal(owner.devices[0],first);
+});
+
+test('failed host binding rolls back the new instance registry and owner row',()=>{
+    const context=loadApple2IO(`
+        function FullDevice(){
+            this.id={};
+            this.bindHost=function(){ throw new Error('host full'); };
+        }
+        this.FullDevice=FullDevice;
+    `);
+    const io=new context.Apple2IO(null,null);
+    const info={DCODE:'FULLDEV',hostPCODE:'HOST',coID:'FullDevice'};
+    const owner={id:{PCODE:'HOST'},mount:{hash:0x3456},deviceConfig:[]};
+
+    assert.throws(()=>io.attach(owner,info,{newInstance:true}),/host full/);
+    assert.equal(owner.devices.length,0,
+        'failed bind must not leave a ghost row on the host peripheral');
+    assert.equal(Object.keys(io.attachments).length,0,
+        'failed bind must not leave a ghost attachment instance');
 });
