@@ -30,6 +30,17 @@ function UniDisk35Device(options)
         ,"description":"Apple UniDisk 3.5"
     };
 
+    this.ports = {
+        "smartport":{
+             "label":"SmartPort"
+            ,"kind":"bus"
+            ,"direction":"bidirectional"
+            ,"protocol":"SmartPort"
+            ,"unit":null
+            ,"visibility":"public"
+        }
+    };
+
     function statusByte()
     {
         // SmartPort general device status:
@@ -98,6 +109,7 @@ function UniDisk35Device(options)
         if(!Number.isInteger(unit) || unit<0 || unit>8)
             throw new RangeError("SmartPort unit must be an integer from 0 through 8");
         state.unit = unit;
+        this.ports.smartport.unit = unit>0 ? unit : null;
         return state.unit;
     };
 

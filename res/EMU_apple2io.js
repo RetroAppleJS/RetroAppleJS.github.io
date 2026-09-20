@@ -3470,12 +3470,32 @@ function mergeActionMap(dst,src)
 
     function slotDevicePortLabel(name,port)
     {
+        port = port || {};
+
+        /*
+         * Structured bus/device ports provide their own human-facing label and
+         * runtime instance selector.  Keep transport details such as protocol,
+         * direction and MIME metadata available in JSON without crowding the
+         * compact Device-table chip.
+         */
+        if(port.label!==undefined || port.unit!==undefined)
+        {
+            var label = port.label===undefined || port.label===null || String(port.label)===""
+                ? String(name)
+                : String(port.label);
+            var structured = [label];
+            if(port.unit!==undefined && port.unit!==null && port.unit!=="")
+                structured.push("Unit "+String(port.unit));
+            return structured.join(" · ");
+        }
+
+        /* Legacy port metadata keeps its existing direction/MIME rendering. */
         var parts = [String("<b>"+name+"</b>")];
 
-        if(port && port.direction)
+        if(port.direction)
             parts.push(String(port.direction.toUpperCase()));
 
-        if(port && port.mime)
+        if(port.mime)
         {
             var mime = Array.isArray(port.mime)
                 ? port.mime.join(", ")
