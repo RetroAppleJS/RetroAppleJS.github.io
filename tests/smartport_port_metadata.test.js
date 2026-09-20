@@ -57,6 +57,7 @@ test('UniDisk publishes structured SmartPort metadata and tracks its assigned un
     assert.equal(disk.ports.smartport.unit,null,'detached unit 0 renders as no assigned unit');
 });
 
+// The Device table consumes the same structured metadata for every mounted instance.
 test('Device-table port renderer shows SmartPort unit without inventing a MIME type',()=>{
     const labelFn=extractFunction(ioSource,'slotDevicePortLabel');
     const portsFn=extractFunction(ioSource,'slotDevicePorts_html');
