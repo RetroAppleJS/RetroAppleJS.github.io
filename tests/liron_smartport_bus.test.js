@@ -73,7 +73,7 @@ test('SmartPortBus reset preserves attached units', () => {
     assert.deepEqual(Array.from(bus.getUnits()),[1]);
 });
 
-test('AppleLiron declares one UniDisk child without privately constructing it', () => {
+test('AppleLiron declares one UniDisk device type without privately constructing it', () => {
     const context=loadLiron();
     const card=new context.AppleLiron();
 
@@ -98,10 +98,34 @@ test('bindHost attaches the exact Apple2IO-created child as unit 1 idempotently'
 
     assert.equal(disk.bindHost(card),true);
     assert.equal(card.getUniDisk(),disk);
+    assert.equal(card.getUniDisk(1),disk);
     assert.equal(card.getBus().getDevice(1),disk);
     assert.equal(disk.getUnit(),1);
 
     assert.equal(disk.bindHost(card),true);
     assert.deepEqual(Array.from(card.getBus().getUnits()),[1]);
     assert.equal(card.getBus().getState().deviceCount,1);
+});
+
+test('AppleLiron accepts multiple UniDisk instances and assigns free SmartPort units', () => {
+    const context=loadLiron();
+    const card=new context.AppleLiron();
+    const first=new context.UniDisk35Device(card.deviceConfig[0]);
+    const second=new context.UniDisk35Device(card.deviceConfig[0]);
+
+    assert.equal(first.bindHost(card),true);
+    assert.equal(second.bindHost(card),true);
+    assert.deepEqual(Array.from(card.getBus().getUnits()),[1,2]);
+    assert.equal(first.getUnit(),1);
+    assert.equal(second.getUnit(),2);
+    assert.equal(card.getUniDisk(),first,
+        'legacy no-argument accessor should still resolve the first SmartPort UniDisk');
+    assert.equal(card.getUniDisk(1),first);
+    assert.equal(card.getUniDisk(2),second);
+
+    assert.equal(first.unbindHost(card),true);
+    assert.equal(card.getBus().getDevice(1),null);
+    assert.equal(card.getBus().getDevice(2),second,
+        'detaching one instance must leave the other resident');
+    assert.equal(card.getUniDisk(2),second);
 });
