@@ -940,6 +940,14 @@ function AppleLiron()
         return device;
     };
 
+    this.detachUniDisk = function(device)
+    {
+        if(!device || unidisk!==device) return false;
+        smartport.detach(device);
+        unidisk=null;
+        return true;
+    };
+
     this.readSlotIO = function(addr,ctx) { return iwm.read(Number(addr)&0x0F,ctx); };
     this.writeSlotIO = function(addr,d8,ctx) { return iwm.write(Number(addr)&0x0F,Number(d8)&0xFF,ctx); };
 
