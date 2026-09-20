@@ -1,0 +1,38 @@
+name: Device instance RED temp
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - device-instance-identity-20260920
+    paths:
+      - "tests/device_instance_identity.test.js"
+      - "tests/liron_smartport_bus.test.js"
+      - ".github/workflows/device-instance-red-temp.yml"
+  workflow_dispatch:
+
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Expected RED tests
+        run: |
+          set +e
+          node --test tests/device_instance_identity.test.js tests/liron_smartport_bus.test.js >/tmp/red.log 2>&1
+          code=$?
+          cat /tmp/red.log
+          if [ "$code" -eq 0 ]; then
+            echo "Expected RED but tests passed"
+            exit 1
+          fi
+          grep -E "literal backslash|Instance column|second object|multiple UniDisk|already has a UniDisk" /tmp/red.log >/dev/null || {
+            echo "RED failure did not match the intended missing behavior"
+            exit 1
+          }
+          exit 0
