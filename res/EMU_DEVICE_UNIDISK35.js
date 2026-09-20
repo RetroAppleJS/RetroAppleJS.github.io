@@ -82,6 +82,16 @@ function UniDisk35Device(options)
         return true;
     };
 
+    this.unbindHost = function(owner)
+    {
+        if(!host) return true;
+        if(owner && owner!==host) return false;
+        if(typeof(host.detachUniDisk)!=="function") return false;
+        if(host.detachUniDisk(this)===false) return false;
+        host=null;
+        return true;
+    };
+
     this.setUnit = function(unit)
     {
         unit = Number(unit);

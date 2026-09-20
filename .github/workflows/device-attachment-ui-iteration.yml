@@ -1,17 +1,22 @@
-name: Device attachment UI iteration
+name: Device attachment UI acceptance
 
 permissions:
   contents: read
 
 on:
   push:
-    branches:
-      - device-attachment-ui-20260919
     paths:
-      - "tests/device_attachment_ui.test.js"
       - "res/EMU_apple2io.js"
       - "res/EMU_CARD_LIRON.js"
       - "res/EMU_DEVICE_UNIDISK35.js"
+      - "tests/device_attachment_ui.test.js"
+      - ".github/workflows/device-attachment-ui-iteration.yml"
+  pull_request:
+    paths:
+      - "res/EMU_apple2io.js"
+      - "res/EMU_CARD_LIRON.js"
+      - "res/EMU_DEVICE_UNIDISK35.js"
+      - "tests/device_attachment_ui.test.js"
       - ".github/workflows/device-attachment-ui-iteration.yml"
   workflow_dispatch:
 
