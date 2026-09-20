@@ -1,0 +1,41 @@
+name: SmartPort port metadata patch temp
+
+permissions:
+  contents: write
+
+on:
+  push:
+    paths:
+      - "tools/patch_smartport_port_metadata.py"
+      - ".github/workflows/smartport-port-metadata-temp.yml"
+  workflow_dispatch:
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: smartport-port-metadata-20260920
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Apply SmartPort metadata patch
+        run: python3 tools/patch_smartport_port_metadata.py
+      - name: Verify syntax and acceptance
+        run: |
+          node --check res/EMU_apple2io.js
+          node --check res/EMU_DEVICE_UNIDISK35.js
+          node --test \
+            tests/device_attachment_ui.test.js \
+            tests/device_instance_identity.test.js \
+            tests/liron_smartport_bus.test.js \
+            tests/smartport_port_metadata.test.js
+      - name: Commit implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add res/EMU_apple2io.js res/EMU_DEVICE_UNIDISK35.js
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: expose SmartPort device port metadata"
+          git push
