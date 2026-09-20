@@ -86,7 +86,12 @@ test('Liron toolbox routes a 20 MiB file to the HD20 resident at that unit',()=>
 test('Liron toolbox rejects media whose size does not match the selected resident device',()=>{
     let mounts=0;
     const alerts=[];
+    class NeverReadFileReader
+    {
+        readAsArrayBuffer(){throw new Error('wrong-size media must be rejected before FileReader');}
+    }
     const context=loadLiron({
+        FileReader:NeverReadFileReader,
         alert(msg){alerts.push(String(msg));},
         EMU_mountDiskImage(){mounts++;return true;}
     });
