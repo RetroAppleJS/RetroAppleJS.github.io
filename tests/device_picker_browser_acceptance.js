@@ -12,6 +12,12 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
     await page.waitForFunction(()=>typeof apple2plus==='object' && !!apple2plus,{timeout:120000});
 
     const setup=await page.evaluate(()=>{
+        if(typeof appleIntervalHandle!=='undefined' && appleIntervalHandle)
+        {
+            clearInterval(appleIntervalHandle);
+            appleIntervalHandle=null;
+        }
+
         const io=apple2plus.hwObj().io;
         let slotIndex=-1, liron=null;
         for(let i=0;i<io.slots.length;i++)
@@ -43,7 +49,7 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
     if(!setup.plusFound || setup.devices!==0 || setup.plusExpanded!=='false')
         throw new Error('Initial detached picker state is wrong: '+JSON.stringify(setup));
 
-    await page.locator('#device_add_'+setup.slotIndex).click();
+    await page.evaluate(slotIndex=>document.getElementById('device_add_'+slotIndex).click(),setup.slotIndex);
     const available=await page.evaluate(slotIndex=>{
         const popup=document.getElementById('deviceConfig_popup');
         const row=popup && popup.querySelector('.device-picker-entry');
@@ -65,7 +71,7 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
        !available.text.includes('Available'))
         throw new Error('Available-device picker state is wrong: '+JSON.stringify(available));
 
-    await page.locator('#deviceConfig_popup .device-picker-entry').click();
+    await page.evaluate(()=>document.querySelector('#deviceConfig_popup .device-picker-entry').click());
     const attached=await page.evaluate(slotIndex=>{
         const io=apple2plus.hwObj().io;
         const liron=io.SLOT2obj(slotIndex);
@@ -85,7 +91,7 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
        attached.unit!==1 || !attached.parentText.includes('UNIDISK35'))
         throw new Error('Attach flow did not return to refreshed peripheral detail: '+JSON.stringify(attached));
 
-    await page.locator('#device_add_'+setup.slotIndex).click();
+    await page.evaluate(slotIndex=>document.getElementById('device_add_'+slotIndex).click(),setup.slotIndex);
     const attachedList=await page.evaluate(()=>{
         const popup=document.getElementById('deviceConfig_popup');
         const row=popup && popup.querySelector('.device-picker-entry');
