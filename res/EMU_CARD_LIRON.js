@@ -1017,15 +1017,51 @@ function AppleLiron()
         if(!Number.isInteger(unit) || unit<1 || unit>8 || !Number.isInteger(slotN))
             return false;
 
+        function deviceUnit(device)
+        {
+            return device && typeof(device.getUnit)==="function"
+                ? Number(device.getUnit())
+                : Number(device && device.id ? device.id.deviceN : NaN);
+        }
+
+        var target=smartport.getDevice(unit);
+        if(!target)
+        {
+            var attached=Array.isArray(liron.devices) ? liron.devices : [];
+            for(var i=0;i<attached.length;i++)
+                if(deviceUnit(attached[i])===unit) { target=attached[i]; break; }
+        }
+
+        // Keep direct legacy calls compatible even when a test/tool invokes the
+        // loader before the resident list has been populated.
+        var deviceCode=String(target && target.id ? target.id.DCODE || "" : "") || "UNIDISK35";
+        var mediaLabel=deviceCode==="UNIDISK35"
+            ? "UniDisk 3.5"
+            : (deviceCode==="HD20" ? "Apple Hard Disk 20" : deviceCode);
+        var blockSize=target && typeof(target.getBlockSize)==="function"
+            ? Number(target.getBlockSize())
+            : 512;
+        var blockCount=target && typeof(target.getBlockCount)==="function"
+            ? Number(target.getBlockCount())
+            : (deviceCode==="HD20" ? 40960 : 1600);
+        var expectedBytes=blockSize*blockCount;
+
         function clearInput()
         {
             try { input.value=""; } catch(e) {}
         }
 
-        if(Number(file.size)!==819200)
+        if(!Number.isInteger(expectedBytes) || expectedBytes<=0 || Number(file.size)!==expectedBytes)
         {
-            console.error("UniDisk 3.5 load failed: invalid image size",{"slotN":slotN,"unit":unit,"filename":file.name || "","expected":819200,"actual":Number(file.size)});
-            if(typeof(alert)==="function") alert("UniDisk 3.5 image must contain exactly 819200 bytes.");
+            console.error(mediaLabel+" load failed: invalid image size",{
+                 "slotN":slotN
+                ,"unit":unit
+                ,"filename":file.name || ""
+                ,"expected":expectedBytes
+                ,"actual":Number(file.size)
+            });
+            if(typeof(alert)==="function")
+                alert(mediaLabel+" image must contain exactly "+expectedBytes+" bytes.");
             clearInput();
             return false;
         }
@@ -1037,19 +1073,15 @@ function AppleLiron()
             {
                 var bytes=new Uint8Array(ev.target.result);
                 var mounted=typeof(EMU_mountDiskImage)==="function" &&
-                    EMU_mountDiskImage(bytes,slotN,"UNIDISK35",file.name || "",unit);
+                    EMU_mountDiskImage(bytes,slotN,deviceCode,file.name || "",unit);
                 if(!mounted)
                 {
-                    console.error("UniDisk 3.5 load failed: mount rejected",{"slotN":slotN,"unit":unit,"filename":file.name || "","bytes":bytes.length});
-                    if(typeof(alert)==="function") alert("UniDisk 3.5 load failed: mount rejected.");
+                    console.error(mediaLabel+" load failed: mount rejected",{"slotN":slotN,"unit":unit,"filename":file.name || "","bytes":bytes.length});
+                    if(typeof(alert)==="function") alert(mediaLabel+" load failed: mount rejected.");
                     clearInput();
                     return;
                 }
 
-                /*
-                 * Keep the successful native file input populated.  This is the
-                 * same filename presentation used by the Disk II toolbox.
-                 */
                 if(typeof(apple2plus)==="object" && apple2plus)
                 {
                     var io=apple2plus.hwObj().io;
@@ -1065,16 +1097,16 @@ function AppleLiron()
             catch(err)
             {
                 clearInput();
-                console.error("UniDisk 3.5 load failed: exception",{"slotN":slotN,"unit":unit,"filename":file.name || "","error":err && err.message ? err.message : String(err)},err);
-                if(typeof(alert)==="function") alert("UniDisk 3.5 load failed: "+(err && err.message ? err.message : err));
+                console.error(mediaLabel+" load failed: exception",{"slotN":slotN,"unit":unit,"filename":file.name || "","error":err && err.message ? err.message : String(err)},err);
+                if(typeof(alert)==="function") alert(mediaLabel+" load failed: "+(err && err.message ? err.message : err));
             }
         };
         reader.onerror=function()
         {
             var msg=reader.error && reader.error.message ? reader.error.message : "Unable to read file.";
             clearInput();
-            console.error("UniDisk 3.5 load failed: FileReader error",{"slotN":slotN,"unit":unit,"filename":file.name || "","error":msg});
-            if(typeof(alert)==="function") alert("UniDisk 3.5 load failed: "+msg);
+            console.error(mediaLabel+" load failed: FileReader error",{"slotN":slotN,"unit":unit,"filename":file.name || "","error":msg});
+            if(typeof(alert)==="function") alert(mediaLabel+" load failed: "+msg);
         };
         reader.readAsArrayBuffer(file);
         return true;
@@ -1163,7 +1195,7 @@ function AppleLiron()
                 ,"formID":controlID+"_form"
                 ,"fileID":controlID+"_file"
                 ,"downloadID":controlID+"_dump"
-                ,"fileName":"UNIDISK35_"+unit
+                ,"fileName":String(device.id?.DCODE || "SMARTPORT")+"_"+unit
                 ,"buttonTitle":"Unit"+unit+": eject disk"
                 ,"buttonOnClick":"apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolEject("+unit+")"
                 ,"fileAccept":".po"

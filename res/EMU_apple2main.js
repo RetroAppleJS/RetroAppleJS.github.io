@@ -114,6 +114,51 @@ function EMU_diskIIObjects()
     return disks;
 }
 
+function EMU_smartportDevice(slotN,unit,deviceID)
+{
+    if(typeof(apple2plus)!="object" || !apple2plus) return null;
+    var io=apple2plus.hwObj().io;
+    if(!io) return null;
+
+    var dcode=String(deviceID || "").toUpperCase();
+    if(!dcode) return null;
+
+    var hasUnit=unit!==undefined && unit!==null && unit!=="";
+    var requestedUnit=Number(unit);
+    if(hasUnit && (!Number.isInteger(requestedUnit) || requestedUnit<1 || requestedUnit>8))
+        return null;
+
+    function deviceUnit(device)
+    {
+        if(device && typeof(device.getUnit)==="function")
+            return Number(device.getUnit());
+        return Number(device && device.id ? device.id.deviceN : NaN);
+    }
+
+    function matches(device)
+    {
+        return device && device.id?.DCODE===dcode &&
+            (!hasUnit || deviceUnit(device)===requestedUnit);
+    }
+
+    if(slotN!==undefined && slotN!==null && Number.isInteger(Number(slotN)))
+    {
+        var owner=io.SLOT2obj(Number(slotN));
+        if(owner && owner.id?.PCODE==="LIRON" && Array.isArray(owner.devices))
+        {
+            var slotMatches=owner.devices.filter(matches);
+            return slotMatches.length===1 ? slotMatches[0] : null;
+        }
+        return null;
+    }
+
+    var devices=typeof(io.DCODE2obj)==="function"
+        ? io.DCODE2obj(dcode,"LIRON")
+        : [];
+    if(hasUnit) devices=devices.filter(matches);
+    return devices.length===1 ? devices[0] : null;
+}
+
 function EMU_unidisk35Device(slotN,unit)
 {
     if(typeof(apple2plus)!="object" || !apple2plus) return null;
@@ -163,37 +208,63 @@ function EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath,unit)
     var bytes=arr_buffer instanceof Uint8Array
         ? arr_buffer
         : new Uint8Array(arr_buffer || []);
-    var unidiskTarget=String(deviceID||"").toUpperCase()==="UNIDISK35";
+    var targetCode=String(deviceID||"").toUpperCase();
+    var smartport=null;
 
-    if(bytes.length===819200 || unidiskTarget)
+    if(targetCode==="HD20")
+    {
+        smartport={
+             "code":"HD20"
+            ,"label":"Apple Hard Disk 20"
+            ,"expectedBytes":20971520
+            ,"device":EMU_smartportDevice(slotN,unit,"HD20")
+        };
+    }
+    else if(targetCode==="UNIDISK35" || bytes.length===819200)
+    {
+        smartport={
+             "code":"UNIDISK35"
+            ,"label":"UniDisk 3.5"
+            ,"expectedBytes":819200
+            ,"device":EMU_unidisk35Device(slotN,unit)
+        };
+    }
+
+    if(smartport)
     {
         var details={"slotN":slotN,"unit":unit,"filename":filepath || "","bytes":bytes.length};
-        if(bytes.length!==819200)
+        if(bytes.length!==smartport.expectedBytes)
         {
-            console.error("UniDisk 3.5 mount failed: invalid image size",{"slotN":slotN,"unit":unit,"filename":filepath || "","expected":819200,"actual":bytes.length});
+            console.error(smartport.label+" mount failed: invalid image size",{
+                 "slotN":slotN
+                ,"unit":unit
+                ,"filename":filepath || ""
+                ,"expected":smartport.expectedBytes
+                ,"actual":bytes.length
+            });
             return false;
         }
-        var unidisk=EMU_unidisk35Device(slotN,unit);
-        if(!unidisk)
+
+        var target=smartport.device;
+        if(!target)
         {
-            console.error("UniDisk 3.5 mount failed: target device not found",details);
+            console.error(smartport.label+" mount failed: target device not found",details);
             return false;
         }
-        if(typeof(unidisk.loadImage)!=="function")
+        if(typeof(target.loadImage)!=="function")
         {
-            console.error("UniDisk 3.5 mount failed: target device cannot load images",details);
+            console.error(smartport.label+" mount failed: target device cannot load images",details);
             return false;
         }
-        try { unidisk.loadImage(bytes,{"filename":filepath || ""}); }
+        try { target.loadImage(bytes,{"filename":filepath || ""}); }
         catch(err)
         {
-            console.error("UniDisk 3.5 mount failed: device load exception",details,err);
+            console.error(smartport.label+" mount failed: device load exception",details,err);
             throw err;
         }
-        console.log("UniDisk 3.5 mount succeeded",details);
+        console.log(smartport.label+" mount succeeded",details);
 
-        // Diagnostic: compare the browser-router device with the exact
-        // SmartPort resident object currently attached to the owning Liron.
+        // Compare the browser-router object with the exact SmartPort resident.
         try
         {
             var io=typeof(apple2plus)==="object" && apple2plus
@@ -210,18 +281,18 @@ function EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath,unit)
                     lironUnitDevice=lironBus.getDevice(Number(unit));
             }
 
-            var routerState=typeof(unidisk.getState)==="function"
-                ? unidisk.getState() || {}
+            var routerState=typeof(target.getState)==="function"
+                ? target.getState() || {}
                 : {};
             var lironUnitState=lironUnitDevice && typeof(lironUnitDevice.getState)==="function"
                 ? lironUnitDevice.getState() || {}
                 : {};
 
-            console.log("UniDisk 3.5 identity trace",{
+            console.log(smartport.label+" identity trace",{
                  "slotN":slotN
                 ,"unit":unit
-                ,"sameObject":unidisk===lironUnitDevice
-                ,"routerDevice":unidisk
+                ,"sameObject":target===lironUnitDevice
+                ,"routerDevice":target
                 ,"lironUnitDevice":lironUnitDevice
                 ,"routerState":{
                      "mediaLoaded":!!routerState.mediaLoaded
@@ -235,7 +306,7 @@ function EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath,unit)
         }
         catch(traceErr)
         {
-            console.warn("UniDisk 3.5 identity trace failed",traceErr);
+            console.warn(smartport.label+" identity trace failed",traceErr);
         }
         return true;
     }
