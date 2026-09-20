@@ -3,6 +3,11 @@
 const {chromium}=require('playwright');
 const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
 
+function normalizeText(value)
+{
+    return String(value || '').replace(/\u00a0/g,' ');
+}
+
 (async()=>{
     const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu']});
     const page=await browser.newPage({viewport:{width:1400,height:1000}});
@@ -74,10 +79,12 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
     console.log('HD20_PICKER_BROWSER_ACCEPTANCE',JSON.stringify(result));
     if(pageErrors.length) throw new Error('browser page errors: '+pageErrors.join(' | '));
 
+    const pickerText=normalizeText(result.pickerText);
+    const secondPickerText=normalizeText(result.secondPickerText);
     const initialHD20=result.initial.filter(d=>d.dcode==='HD20');
     if(initialHD20.length!==0) throw new Error('HD20 must not auto-attach: '+JSON.stringify(result.initial));
-    if(!/HD20/.test(result.pickerText) || !/Apple Hard Disk 20/.test(result.pickerText))
-        throw new Error('picker does not advertise HD20 correctly: '+result.pickerText);
+    if(!/HD20/.test(pickerText) || !/Apple Hard Disk 20/.test(pickerText))
+        throw new Error('picker does not advertise HD20 correctly: '+pickerText);
 
     const firstHD20=result.afterFirst.filter(d=>d.dcode==='HD20');
     if(firstHD20.length!==1 || firstHD20[0].unit!==2 || !firstHD20[0].port || firstHD20[0].port.unit!==2)
@@ -88,8 +95,8 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
        secondHD20[0].unit!==2 || secondHD20[1].unit!==3 ||
        secondHD20[0].port.unit!==2 || secondHD20[1].port.unit!==3)
         throw new Error('second HD20 instance/unit allocation failed: '+JSON.stringify(result.afterSecond));
-    if(!/Attached:\s*1/.test(result.secondPickerText))
-        throw new Error('picker did not report one attached HD20 before adding another: '+result.secondPickerText);
+    if(!/Attached:\s*1/.test(secondPickerText))
+        throw new Error('picker did not report one attached HD20 before adding another: '+secondPickerText);
 
     await browser.close();
 })().catch(err=>{
