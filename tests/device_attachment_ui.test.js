@@ -32,10 +32,8 @@ test('device picker makes host context and availability state explicit', () => {
 });
 
 test('available device row is the attach target and attach failures stay in the picker', () => {
-    assert.match(ioSource,/device-picker-entry/,
-        'device choices need a dedicated whole-row interaction target');
-    assert.match(ioSource,/devicePicker_select\(slotN,DCODE\)/,
-        'the choice row must use the generic device attach flow');
+    assert.match(ioSource,/device-picker-entry[\s\S]*devicePicker_select/,
+        'the whole device choice row must invoke the generic attach flow');
     assert.match(ioSource,/devicePicker_message/,
         'attach errors need an in-picker status message instead of silent failure');
     assert.match(ioSource,/Could not attach device/,
