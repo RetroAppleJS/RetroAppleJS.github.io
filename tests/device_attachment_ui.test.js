@@ -7,6 +7,7 @@ const ioSource = fs.readFileSync('res/EMU_apple2io.js','utf8');
 const lironSource = fs.readFileSync('res/EMU_CARD_LIRON.js','utf8');
 const unidiskSource = fs.readFileSync('res/EMU_DEVICE_UNIDISK35.js','utf8');
 
+// Keep these assertions generic so future host peripherals get the same picker interaction contract.
 test('peripheral detail UI exposes add-device picker and clickable device labels', () => {
     assert.match(ioSource,/devicePicker_popup\s*=\s*function/,
         'Apple2IO must expose a device picker for the selected peripheral');
