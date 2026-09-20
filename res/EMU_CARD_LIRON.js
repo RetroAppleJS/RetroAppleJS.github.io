@@ -860,6 +860,13 @@ function AppleLiron()
         ,"deviceN":1
         ,"icon":"fa fa-hdd"
         ,"description":"Apple UniDisk 3.5"
+    },{
+         "DCODE":"HD20"
+        ,"hostPCODE":"LIRON"
+        ,"coID":"HD20Device"
+        ,"icon":"fa fa-hdd"
+        ,"description":"Apple Hard Disk 20"
+        ,"autoAttach":false
     }];
     this.state = {"active":true};
 
@@ -928,6 +935,28 @@ function AppleLiron()
         if(ctx && Number.isFinite(ctx.line)) return (ctx.line+(Number(addr)&0xFF))&0x0FFF;
         return 0x800+(Number(addr)&0x07FF);
     }
+
+    this.attachSmartPortDevice = function(device)
+    {
+        if(!device || device.id?.hostPCODE!=="LIRON") return null;
+
+        var unit=typeof(device.getUnit)==="function" ? Number(device.getUnit()) : 0;
+        if(unit>=1 && unit<=8 && smartport.getDevice(unit)===device) return device;
+
+        smartport.attach(device);
+        unit=typeof(device.getUnit)==="function" ? Number(device.getUnit()) : 0;
+        if(device.id && unit>=1 && unit<=8) device.id.deviceN=unit;
+        return device;
+    };
+
+    this.detachSmartPortDevice = function(device)
+    {
+        if(!device) return false;
+        var unit=typeof(device.getUnit)==="function" ? Number(device.getUnit()) : 0;
+        if(unit<1 || unit>8 || smartport.getDevice(unit)!==device) return false;
+        smartport.detach(device);
+        return true;
+    };
 
     this.attachUniDisk = function(device)
     {
@@ -1176,6 +1205,25 @@ function AppleLiron()
         {
             var device=smartport.getDevice(units[i]);
             if(device && device.id?.DCODE==="UNIDISK35") return device;
+        }
+        return null;
+    };
+
+    this.getHD20 = function(unit)
+    {
+        if(unit!==undefined && unit!==null && unit!=="")
+        {
+            unit=Number(unit);
+            if(!Number.isInteger(unit) || unit<1 || unit>8) return null;
+            var device=smartport.getDevice(unit);
+            return device?.id?.DCODE==="HD20" ? device : null;
+        }
+
+        var units=smartport.getUnits();
+        for(var i=0;i<units.length;i++)
+        {
+            var device=smartport.getDevice(units[i]);
+            if(device?.id?.DCODE==="HD20") return device;
         }
         return null;
     };
