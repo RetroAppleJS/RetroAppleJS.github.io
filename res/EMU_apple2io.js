@@ -1250,49 +1250,93 @@ function mergeActionMap(dst,src)
         }
     }
 
-    this.attach = function(owner,device_info)
+    this.attach = function(owner,device_info,options)
     {
         if(!owner || !owner.id?.PCODE || !device_info || !device_info.coID) return null;
 
-        var hostPCODE = owner.id.PCODE;
-        var dcode = device_info.DCODE || device_info.coID;
+        options=options || {};
+        var newInstance=options.newInstance===true;
+        var hostPCODE=owner.id.PCODE;
+        var dcode=device_info.DCODE || device_info.coID;
         if(device_info.hostPCODE && device_info.hostPCODE != hostPCODE) return null;
 
-        var ownerHash = owner.mount && owner.mount.hash!==undefined
+        var ownerHash=owner.mount && owner.mount.hash!==undefined
             ? owner.mount.hash
             : hostPCODE;
-        var key = String(ownerHash)+":"+dcode;
-        var entry = this.attachments[key];
-        var device = entry && entry.device;
+        var entry=null;
+        var key="";
+        var device=null;
+
+        /*
+         * Normal provisioning is idempotent: it reuses the one declarative
+         * instance for this owner/device type.  An explicit UI attach requests
+         * a new mounted instance instead, even when the DCODE is identical.
+         */
+        if(!newInstance)
+        {
+            for(var existingKey in this.attachments)
+            {
+                var existing=this.attachments[existingKey];
+                if(existing && existing.owner===owner &&
+                   existing.device?.id?.DCODE===dcode &&
+                   existing.explicitInstance!==true)
+                {
+                    entry=existing;
+                    key=existingKey;
+                    device=existing.device;
+                    break;
+                }
+            }
+        }
 
         if(entry) unmapAttachedActions(entry);
 
         if(!device)
         {
-            var Device = globalThis[device_info.coID];
+            var Device=globalThis[device_info.coID];
             if(typeof(Device)!="function") return null;
 
-            /*
-             * Pass the declarative device metadata to the constructor.
-             * Existing constructors may ignore it; multi-role constructors such
-             * as VidexVideoMUX can use DCODE to instantiate the correct role.
-             */
-            device = new Device(device_info);
-            if(!device.id) device.id = {};
+            device=new Device(device_info);
+            if(!device.id) device.id={};
             if(device.id.DCODE && device.id.DCODE != dcode) return null;
             if(device.id.hostPCODE && device.id.hostPCODE != hostPCODE) return null;
 
-            entry = {"owner":owner,"device":device,"info":device_info,"bindings":[]};
-            this.attachments[key] = entry;
+            /*
+             * Device instance identity mirrors peripheral mount identity: a
+             * stable 16-bit hash belongs to this mounted object for its lifetime.
+             * The registry key includes it, so equal DCODEs do not collide.
+             */
+            var instanceHash;
+            var attempts=0;
+            do
+            {
+                instanceHash=oCOM.crc16(new TextEncoder("utf-8").encode(
+                    String(ownerHash)+":"+dcode+":"+Math.random()+":"+attempts
+                ));
+                key=String(ownerHash)+":"+dcode+":"+instanceHash;
+                attempts++;
+            }
+            while(this.attachments[key] && attempts<65536);
+
+            if(this.attachments[key]) return null;
+            entry={
+                 "owner":owner
+                ,"device":device
+                ,"info":device_info
+                ,"bindings":[]
+                ,"explicitInstance":newInstance
+                ,"hash":instanceHash
+            };
+            this.attachments[key]=entry;
         }
 
-        device.id.DCODE = dcode;
-        device.id.hostPCODE = hostPCODE;
-        device.id.coID = device_info.coID;
-        if(device_info.icon!==undefined) device.id.icon = device_info.icon;
-        if(device_info.description!==undefined) device.id.description = device_info.description;
-        if(device_info.deviceN!==undefined)
-            device.id.deviceN = Number(device_info.deviceN);
+        device.id.DCODE=dcode;
+        device.id.hostPCODE=hostPCODE;
+        device.id.coID=device_info.coID;
+        if(device_info.icon!==undefined) device.id.icon=device_info.icon;
+        if(device_info.description!==undefined) device.id.description=device_info.description;
+        if(device_info.deviceN!==undefined && device.id.deviceN===undefined)
+            device.id.deviceN=Number(device_info.deviceN);
 
         if(!Array.isArray(owner.devices))
             Object.defineProperty(owner,"devices",{
@@ -1303,12 +1347,17 @@ function mergeActionMap(dst,src)
             });
         if(owner.devices.indexOf(device)<0) owner.devices.push(device);
 
-        entry.owner = owner;
-        entry.info = device_info;
-        entry.bindings = [];
+        entry.owner=owner;
+        entry.info=device_info;
+        entry.bindings=[];
 
-        var attachHash = oCOM.crc16(new TextEncoder("utf-8").encode(key));
-        device.attach = {
+        var attachHash=entry.hash!==undefined
+            ? entry.hash
+            : device.attach && device.attach.hash!==undefined
+                ? device.attach.hash
+                : oCOM.crc16(new TextEncoder("utf-8").encode(key));
+        entry.hash=attachHash;
+        device.attach={
              "hostPCODE":hostPCODE
             ,"ownerHash":ownerHash
             ,"range":device_info.range || "HostIO"
@@ -1316,75 +1365,63 @@ function mergeActionMap(dst,src)
             ,"actions":[]
         };
 
-        /*
-         * Some attached devices consume state owned by their host peripheral
-         * without owning any CPU address range themselves (video renderers are
-         * the important case). Give them the mounted owner explicitly.
-         */
         if(typeof(device.bindHost)=="function")
-            device.bindHost(owner);
+        {
+            var hostResult=device.bindHost(owner);
+            if(hostResult===false)
+            {
+                delete this.attachments[key];
+                var failedIdx=owner.devices.indexOf(device);
+                if(failedIdx>=0) owner.devices.splice(failedIdx,1);
+                return null;
+            }
+        }
 
-        /*
-         * Host-facing devices may need to originate semantic pipe traffic
-         * asynchronously (for example from a DOM keyboard event). Give such
-         * devices the live router explicitly rather than making them reach
-         * through the global oEMU.component.IO.self reference.
-         */
         if(typeof(device.bindIO)=="function")
             device.bindIO(io);
 
-
-        var actionMap = device_info.action || {};
+        var actionMap=device_info.action || {};
         for(var op in actionMap)
         {
-            op = String(op).toUpperCase();
+            op=String(op).toUpperCase();
             if(!CIO.ACTION_MAP[op]) continue;
 
             for(var address in actionMap[op])
             {
-                var addr = Number(address);
-                var handler = actionMap[op][address];
-                var method = typeof(handler)=="string"
+                var addr=Number(address);
+                var handler=actionMap[op][address];
+                var method=typeof(handler)=="string"
                     ? device[handler]
                     : (handler && typeof(handler.handler)=="string"
                         ? device[handler.handler]
                         : (handler && handler.callback ? handler.callback : handler));
-                var allowReadOnly = !!(
+                var allowReadOnly=!!(
                     handler && typeof(handler)=="object" && handler.readOnly===true
                 );
 
                 if(!Number.isInteger(addr) || typeof(method)!="function") continue;
 
-                /*
-                 * Attached device callbacks are on the CPU I/O hot path.
-                 * Keep fixed read/write signatures so polling does not allocate
-                 * a temporary arguments array for every bus access.
-                 */
-                var callback = function(target,fn,readOnly,writeAction)
+                var callback=function(target,fn,readOnly,writeAction)
                 {
                     if(writeAction)
                     {
                         return function(rel_addr,d8,ctx)
                         {
                             if(ctx && ctx.bRO===true && !readOnly) return 0x00;
-
-                            var result = fn.call(target,rel_addr,d8,ctx);
+                            var result=fn.call(target,rel_addr,d8,ctx);
                             return result===undefined ? 0x00 : result;
                         };
                     }
 
-                    return function(rel_addr,ctx) 
+                    return function(rel_addr,ctx)
                     {
                         if(ctx && ctx.bRO===true && !readOnly) return 0x00;
-
-                        var result = fn.call(target,rel_addr,ctx);
+                        var result=fn.call(target,rel_addr,ctx);
                         return result===undefined ? 0x00 : result;
-                        var result = fn.call(target,rel_addr,ctx);
                     };
                 }(device,method,allowReadOnly,op=="WR");
 
-
-                callback._ioReport = {
+                callback._ioReport={
                      "DCODE":dcode
                     ,"hostPCODE":hostPCODE
                     ,"slotTitle":owner.mount ? slotN2name(owner.mount.slotN) : "attached"
@@ -1393,14 +1430,13 @@ function mergeActionMap(dst,src)
                     ,"hash":attachHash
                 };
 
-                var previous = CIO.ACTION_MAP[op][addr];
-                CIO.ACTION_MAP[op][addr] = callback;
+                var previous=CIO.ACTION_MAP[op][addr];
+                CIO.ACTION_MAP[op][addr]=callback;
                 entry.bindings.push({"op":op,"addr":addr,"callback":callback,"previous":previous});
                 device.attach.actions.push({"op":op,"addr":addr,"handler":typeof(handler)=="string" ? handler : (handler.handler || method.name || "callback")});
             }
         }
 
-        // Transitional reference for existing UI/debug code. It is invisible to peripheral discovery.
         if(device_info.alias && oEMU.component && oEMU.component.IO)
             Object.defineProperty(oEMU.component.IO,device_info.alias,{
                  "value":device
@@ -1409,10 +1445,6 @@ function mergeActionMap(dst,src)
                 ,"enumerable":false
             });
 
-        /*
-         * A device can request a hook-list rebuild when its runtime activity
-         * changes, for example when the speaker is muted or unmuted.
-         */
         Object.defineProperty(device,"_ioRefreshHooks",{
              "value":rebuildDeviceHooks
             ,"writable":true
@@ -1420,16 +1452,13 @@ function mergeActionMap(dst,src)
             ,"enumerable":false
         });
 
-        /*
-         * Devices must not know which UI or source is interested in a port
-         * becoming available. They only announce that routing state changed.
-         */
         Object.defineProperty(device,"_ioPipeStateChanged",{
              "value":function(change)
              {
                  io.notifyPipeStateChange(Object.assign({
                       "type":"device-state"
                      ,"DCODE":device.id?.DCODE || ""
+                     ,"instanceID":device.attach?.hash
                  },change || {}));
              }
             ,"writable":true
@@ -1443,15 +1472,16 @@ function mergeActionMap(dst,src)
              "type":"attach"
             ,"DCODE":dcode
             ,"hostPCODE":hostPCODE
+            ,"instanceID":attachHash
         });
 
         if(bDebug)
-            console.log("EMU_apple2io.js - attach(<"+dcode+" to "+hostPCODE+">)");
+            console.log("EMU_apple2io.js - attach(<"+dcode+" #"+oCOM.getHexWord(attachHash)+" to "+hostPCODE+">)");
 
         return device;
     }
 
-    this.detach = function(owner,DCODE)
+    this.detach = function(owner,DCODE,instanceHash)
     {
         if(!owner) return false;
         var removed = false;
@@ -1461,6 +1491,8 @@ function mergeActionMap(dst,src)
             var entry = this.attachments[key];
             var device = entry.device;
             if(entry.owner !== owner || (DCODE && device?.id?.DCODE != DCODE)) continue;
+            if(instanceHash!==undefined && instanceHash!==null &&
+               Number(device?.attach?.hash)!==Number(instanceHash)) continue;
 
             /*
              * Let a child release any host-owned state before the generic
@@ -1500,10 +1532,18 @@ function mergeActionMap(dst,src)
             this.notifyPipeStateChange({
                  "type":"detach"
                 ,"DCODE":DCODE || ""
+                ,"instanceID":instanceHash===undefined ? null : Number(instanceHash)
             });
         }
         return removed;
     }
+
+    this.detachInstance = function(owner,instanceHash)
+    {
+        instanceHash=Number(instanceHash);
+        if(!owner || !Number.isInteger(instanceHash)) return false;
+        return this.detach(owner,null,instanceHash);
+    };
 
     this.unmount = function(slotN)
     {
@@ -2935,23 +2975,29 @@ function mergeActionMap(dst,src)
         return undefined;
     }
 
-    this.deviceMetadata = function(owner,DCODE)
+    this.deviceMetadata = function(owner,deviceRef)
     {
         if(!owner) return null;
         var entry=null;
         var device=null;
+        var refHash=typeof(deviceRef)==="number" ? deviceRef : NaN;
+        var refCode=Number.isInteger(refHash) ? "" : String(deviceRef || "");
 
         for(var key in this.attachments)
         {
             var candidate=this.attachments[key];
             var candidateDevice=candidate && candidate.device;
-            if(candidate && candidate.owner===owner &&
-               (!DCODE || candidateDevice?.id?.DCODE===DCODE))
+            if(!candidate || candidate.owner!==owner || !candidateDevice) continue;
+
+            if(Number.isInteger(refHash))
             {
-                entry=candidate;
-                device=candidateDevice;
-                break;
+                if(Number(candidateDevice.attach?.hash)!==refHash) continue;
             }
+            else if(refCode && candidateDevice.id?.DCODE!==refCode) continue;
+
+            entry=candidate;
+            device=candidateDevice;
+            break;
         }
         if(!device) return null;
 
@@ -2966,7 +3012,8 @@ function mergeActionMap(dst,src)
         catch(e) { state=undefined; }
 
         return {
-             "DCODE":String(id.DCODE || DCODE || "")
+             "DCODE":String(id.DCODE || refCode || "")
+            ,"instanceID":Number(device.attach?.hash)
             ,"hostPCODE":String(id.hostPCODE || owner.id?.PCODE || "")
             ,"coID":String(id.coID || entry.info?.coID || "")
             ,"description":String(id.description || entry.info?.description || "")
@@ -3099,16 +3146,18 @@ function mergeActionMap(dst,src)
                 var info=entries[i];
                 var dcode=String(info.DCODE || info.coID || "device");
                 var devices=Array.isArray(owner.devices) ? owner.devices : [];
-                var attached=false;
+                var attachedCount=0;
                 for(var d=0;d<devices.length;d++)
-                    if(devices[d]?.id?.DCODE===dcode) { attached=true; break; }
+                    if(devices[d]?.id?.DCODE===dcode) attachedCount++;
 
                 var ctor=globalThis[info.coID];
-                var available=!attached && typeof(ctor)==="function";
-                var state=attached ? "Attached" : (available ? "Available" : "Unavailable");
+                var available=typeof(ctor)==="function";
+                var state=available
+                    ? (attachedCount ? "Add another · Attached: "+attachedCount : "Available")
+                    : "Unavailable";
                 var title=info.description || dcode;
-                if(attached) title += " — already attached";
-                else if(typeof(ctor)!=="function") title += " — device constructor unavailable";
+                if(attachedCount) title += " — "+attachedCount+" attached";
+                if(typeof(ctor)!=="function") title += " — device constructor unavailable";
 
                 html += "<button class='appbut label device-picker-entry"+(available ? "" : " greyed")+"' type='button'"
                     + " style='width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 8px;text-align:left;cursor:"+(available ? "pointer" : "default")+";'"
@@ -3122,7 +3171,7 @@ function mergeActionMap(dst,src)
                     + (info.description ? "<br><span style='font-size:90%;opacity:.78'>"+oCOM.escapeHTML(info.description)+"</span>" : "")
                     + "</span>"
                     + "<span style='white-space:nowrap'>"
-                    + (attached ? "<i class='fa fa-check'></i>&nbsp;" : (available ? "<i class='fa fa-plus'></i>&nbsp;" : ""))
+                    + (available ? "<i class='fa fa-plus'></i>&nbsp;" : "")
                     + oCOM.escapeHTML(state)
                     + "</span>"
                     + "</button>";
@@ -3160,18 +3209,10 @@ function mergeActionMap(dst,src)
             return false;
         }
 
-        var devices=Array.isArray(owner.devices) ? owner.devices : [];
-        for(var d=0;d<devices.length;d++)
-            if(devices[d]?.id?.DCODE===DCODE)
-            {
-                this.devicePicker_message(DCODE+" is already attached.");
-                return false;
-            }
-
         var device=null;
         try
         {
-            device=this.attach(owner,info);
+            device=this.attach(owner,info,{"newInstance":true});
         }
         catch(e)
         {
@@ -3190,22 +3231,23 @@ function mergeActionMap(dst,src)
         return true;
     };
 
-    this.deviceConfig_detail = function(slotN,DCODE)
+    this.deviceConfig_detail = function(slotN,instanceHash)
     {
         slotN=Number(slotN);
-        DCODE=String(DCODE || "");
+        instanceHash=Number(instanceHash);
         var owner=this.SLOT2obj(slotN);
-        var metadata=this.deviceMetadata(owner,DCODE);
+        var metadata=this.deviceMetadata(owner,instanceHash);
         if(!owner || !metadata) return false;
 
         var popup=devicePopupElement();
         var description=metadata.description || "";
+        var instanceLabel="#"+oCOM.getHexWord(metadata.instanceID);
         var html="<button class='appbut' type='button' style='float:right' title='Close' onclick=\"apple2plus.hwObj().io.deviceConfig_close()\">x</button>"
-            + "<div style='padding-right:28px'><b>"+oCOM.escapeHTML(metadata.DCODE)+"</b>"
+            + "<div style='padding-right:28px'><b>"+oCOM.escapeHTML(metadata.DCODE)+" "+instanceLabel+"</b>"
             + (description ? "<br>"+oCOM.escapeHTML(description) : "")
             + "</div><div style='margin-top:10px'>"
-            + "<button class='appbut' type='button' title='Download device JSON' onclick=\"event.stopPropagation();apple2plus.hwObj().io.deviceConfig_download("+slotN+",'"+metadata.DCODE+"')\"><i class='fa fa-cloud-download-alt'></i></button>&nbsp;"
-            + "<button class='appbut' type='button' title='Detach device' onclick=\"event.stopPropagation();apple2plus.hwObj().io.deviceConfig_eject("+slotN+",'"+metadata.DCODE+"')\"><i class='fa fa-eject'></i></button>"
+            + "<button class='appbut' type='button' title='Download device JSON' onclick=\"event.stopPropagation();apple2plus.hwObj().io.deviceConfig_download("+slotN+","+metadata.instanceID+")\"><i class='fa fa-cloud-download-alt'></i></button>&nbsp;"
+            + "<button class='appbut' type='button' title='Detach device' onclick=\"event.stopPropagation();apple2plus.hwObj().io.deviceConfig_eject("+slotN+","+metadata.instanceID+")\"><i class='fa fa-eject'></i></button>"
             + "</div>";
 
         popup.innerHTML=html;
@@ -3214,15 +3256,16 @@ function mergeActionMap(dst,src)
         return true;
     };
 
-    this.deviceConfig_download = function(slotN,DCODE)
+    this.deviceConfig_download = function(slotN,instanceHash)
     {
         slotN=Number(slotN);
+        instanceHash=Number(instanceHash);
         var owner=this.SLOT2obj(slotN);
-        var metadata=this.deviceMetadata(owner,String(DCODE || ""));
+        var metadata=this.deviceMetadata(owner,instanceHash);
         if(!metadata) return false;
         try
         {
-            var name=(metadata.DCODE+"_"+slotN2name(slotN).replace("#","")).replace(/[^A-Za-z0-9_.-]/g,"_")+".json";
+            var name=(metadata.DCODE+"_"+oCOM.getHexWord(metadata.instanceID)+"_"+slotN2name(slotN).replace("#","")).replace(/[^A-Za-z0-9_.-]/g,"_")+".json";
             var json=JSON.stringify(metadata,null,2);
             oCOM.Download(name,new TextEncoder("utf-8").encode(json));
             return true;
@@ -3234,13 +3277,13 @@ function mergeActionMap(dst,src)
         }
     };
 
-    this.deviceConfig_eject = function(slotN,DCODE)
+    this.deviceConfig_eject = function(slotN,instanceHash)
     {
         slotN=Number(slotN);
+        instanceHash=Number(instanceHash);
         var owner=this.SLOT2obj(slotN);
-        DCODE=String(DCODE || "");
-        if(!owner || !DCODE) return false;
-        if(!this.detach(owner,DCODE)) return false;
+        if(!owner || !Number.isInteger(instanceHash)) return false;
+        if(!this.detachInstance(owner,instanceHash)) return false;
 
         this.deviceConfig_close();
         this.slotConfig_refresh(slotN);
@@ -3272,6 +3315,9 @@ function mergeActionMap(dst,src)
                 + "<td style='padding:4px 6px;vertical-align:top'>"
                 + slotDeviceLabel_html(peripheral,device)
                 + "</td>"
+                + "<td style='padding:4px 6px;vertical-align:top;white-space:nowrap'>"
+                + deviceInstanceLabel_html(device)
+                + "</td>"
                 + "<td style='padding:4px 6px;vertical-align:top'>"
                 + slotDevicePorts_html(device)
                 + "</td>"
@@ -3279,7 +3325,7 @@ function mergeActionMap(dst,src)
         }
 
         if(!body)
-            body = "<tr><td colspan='2' style='padding:8px'>No devices attached.</td></tr>";
+            body = "<tr><td colspan='3' style='padding:8px'>No devices attached.</td></tr>";
 
         var slotN=peripheral && peripheral.mount ? Number(peripheral.mount.slotN) : -1;
         var declaredDevices=io.devicePicker_entries(peripheral);
@@ -3299,6 +3345,7 @@ function mergeActionMap(dst,src)
             + "<table style='width:100%;border-collapse:collapse;margin-top:0px;text-align:left'>"
             + "<thead><tr style='border-bottom:1px solid #888'>"
             + "<th style='padding:4px 6px'>Device</th>"
+            + "<th style='padding:4px 6px'>Instance</th>"
             + "<th style='padding:4px 6px'>Ports</th>"
             + "</tr></thead>"
             + "<tbody>"+body+"</tbody>"
@@ -3311,22 +3358,24 @@ function mergeActionMap(dst,src)
      */
     function slotDeviceLabel_html(peripheral,device)
     {
-        var id = device && device.id ? device.id : {};
-        var deviceCode = String(
+        var id=device && device.id ? device.id : {};
+        var deviceCode=String(
             id.DCODE ||
             id.coID ||
             (device && device.constructor && device.constructor.name) ||
             "device"
         );
-        var description = id.description ? String(id.description) : "";
-        var icon = slotDeviceIconClass(id.icon);
+        var description=id.description ? String(id.description) : "";
+        var icon=slotDeviceIconClass(id.icon);
+        var instanceHash=Number(device && device.attach ? device.attach.hash : NaN);
 
         return ""
-            + "<div class=\"appbut label\""
-            + " data-dcode=\\\""+oCOM.escapeHTML(deviceCode)+"\\\""
-            + " style=\\\"display:inline-block;cursor:pointer;white-space:nowrap;\\\""
-            + (peripheral && peripheral.mount
-                ? " onclick=\\\"event.stopPropagation();apple2plus.hwObj().io.deviceConfig_detail("+Number(peripheral.mount.slotN)+",'"+oCOM.escapeHTML(deviceCode)+"')\\\""
+            + "<div class='appbut label'"
+            + " data-dcode='"+oCOM.escapeHTML(deviceCode)+"'"
+            + (Number.isInteger(instanceHash) ? " data-instance='"+instanceHash+"'" : "")
+            + " style='display:inline-block;cursor:pointer;white-space:nowrap;'"
+            + (peripheral && peripheral.mount && Number.isInteger(instanceHash)
+                ? " onclick='event.stopPropagation();apple2plus.hwObj().io.deviceConfig_detail("+Number(peripheral.mount.slotN)+","+instanceHash+")'"
                 : "")
             + (description
                 ? " title=\""+oCOM.escapeHTML(description)+"\""
@@ -3335,6 +3384,12 @@ function mergeActionMap(dst,src)
             + "<i class=\""+icon+"\" aria-hidden=\"true\"></i>&nbsp;"
             + oCOM.escapeHTML(deviceCode)
             + "</div>";
+    }
+
+    function deviceInstanceLabel_html(device)
+    {
+        var hash=Number(device && device.attach ? device.attach.hash : NaN);
+        return Number.isInteger(hash) ? "#"+oCOM.getHexWord(hash) : "&mdash;";
     }
 
     /*

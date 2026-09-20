@@ -850,7 +850,6 @@ function AppleLiron()
     const bDebug = false;
     var liron = this;
     var smartport = new SmartPortBus();
-    var unidisk = null;
     var iwm = new LironIWM(smartport);
 
     this.id = {"PCODE":"LIRON","icon":"fa fa-save"};
@@ -933,18 +932,22 @@ function AppleLiron()
     this.attachUniDisk = function(device)
     {
         if(!device || device.id?.DCODE!=="UNIDISK35") return null;
-        if(unidisk===device) return device;
-        if(unidisk!==null) throw new Error("Liron already has a UniDisk 3.5 child");
-        smartport.attach(device,1);
-        unidisk=device;
+
+        var unit=typeof(device.getUnit)==="function" ? Number(device.getUnit()) : 0;
+        if(unit>=1 && unit<=8 && smartport.getDevice(unit)===device) return device;
+
+        smartport.attach(device);
+        unit=typeof(device.getUnit)==="function" ? Number(device.getUnit()) : 0;
+        if(device.id && unit>=1 && unit<=8) device.id.deviceN=unit;
         return device;
     };
 
     this.detachUniDisk = function(device)
     {
-        if(!device || unidisk!==device) return false;
+        if(!device) return false;
+        var unit=typeof(device.getUnit)==="function" ? Number(device.getUnit()) : 0;
+        if(unit<1 || unit>8 || smartport.getDevice(unit)!==device) return false;
         smartport.detach(device);
-        unidisk=null;
         return true;
     };
 
@@ -1158,6 +1161,23 @@ function AppleLiron()
     this.getBus = function() { return smartport; };
     this.setDebug = function(value) { return smartport.setDebug(value); };
     this.getDebug = function() { return smartport.getDebug(); };
-    this.getUniDisk = function() { return unidisk; };
+    this.getUniDisk = function(unit)
+    {
+        if(unit!==undefined && unit!==null && unit!=="")
+        {
+            unit=Number(unit);
+            if(!Number.isInteger(unit) || unit<1 || unit>8) return null;
+            var exact=smartport.getDevice(unit);
+            return exact && exact.id?.DCODE==="UNIDISK35" ? exact : null;
+        }
+
+        var units=smartport.getUnits();
+        for(var i=0;i<units.length;i++)
+        {
+            var device=smartport.getDevice(units[i]);
+            if(device && device.id?.DCODE==="UNIDISK35") return device;
+        }
+        return null;
+    };
     this.getROM = function() { return LIRON_ROM; };
 }
