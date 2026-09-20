@@ -12,6 +12,7 @@ on:
       - "tests/device_attachment_ui.test.js"
       - "tests/device_instance_identity.test.js"
       - "tests/liron_smartport_bus.test.js"
+      - "tests/smartport_port_metadata.test.js"
       - ".github/workflows/device-attachment-ui-iteration.yml"
   pull_request:
     paths:
@@ -21,6 +22,7 @@ on:
       - "tests/device_attachment_ui.test.js"
       - "tests/device_instance_identity.test.js"
       - "tests/liron_smartport_bus.test.js"
+      - "tests/smartport_port_metadata.test.js"
       - ".github/workflows/device-attachment-ui-iteration.yml"
   workflow_dispatch:
 
@@ -32,7 +34,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      # Cover device-type attachment, mounted-instance identity, and bind rollback.
+      # Cover device attachment, mounted-instance identity, bind rollback, and port metadata.
       - name: Syntax checks
         run: |
           node --check res/EMU_apple2io.js
@@ -41,9 +43,11 @@ jobs:
           node --check tests/device_attachment_ui.test.js
           node --check tests/device_instance_identity.test.js
           node --check tests/liron_smartport_bus.test.js
+          node --check tests/smartport_port_metadata.test.js
       - name: Device attachment acceptance
         run: |
           node --test \
             tests/device_attachment_ui.test.js \
             tests/device_instance_identity.test.js \
-            tests/liron_smartport_bus.test.js
+            tests/liron_smartport_bus.test.js \
+            tests/smartport_port_metadata.test.js
