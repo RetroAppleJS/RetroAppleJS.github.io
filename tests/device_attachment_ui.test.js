@@ -18,6 +18,32 @@ test('peripheral detail UI exposes add-device picker and clickable device labels
         'attached device labels must open the device detail popup');
 });
 
+test('device picker makes host context and availability state explicit', () => {
+    assert.match(ioSource,/devicePickerAnchorID\s*\(/,
+        'the plus button must have a stable picker anchor identity');
+    assert.match(ioSource,/aria-label=['"]Attach device['"]/,
+        'the plus pictogram needs an accessible attach-device label');
+    assert.match(ioSource,/ADD DEVICE TO/,
+        'the picker title must name the target peripheral');
+    assert.match(ioSource,/Available/,
+        'unattached compatible devices must be visibly marked Available');
+    assert.match(ioSource,/Attached/,
+        'already attached devices must have a visible Attached state');
+});
+
+test('available device row is the attach target and attach failures stay in the picker', () => {
+    assert.match(ioSource,/device-picker-entry/,
+        'device choices need a dedicated whole-row interaction target');
+    assert.match(ioSource,/devicePicker_select\(slotN,DCODE\)/,
+        'the choice row must use the generic device attach flow');
+    assert.match(ioSource,/devicePicker_message/,
+        'attach errors need an in-picker status message instead of silent failure');
+    assert.match(ioSource,/Could not attach device/,
+        'the picker must explain a failed attach attempt');
+    assert.match(ioSource,/this\.deviceConfig_close\(\);[\s\S]*this\.slotConfig_refresh\(slotN\)/,
+        'successful attach must close the picker and refresh the still-open peripheral detail');
+});
+
 test('device detail popup supports metadata download, eject and close', () => {
     assert.match(ioSource,/deviceConfig_detail\s*=\s*function/);
     assert.match(ioSource,/deviceConfig_download\s*=\s*function/);
