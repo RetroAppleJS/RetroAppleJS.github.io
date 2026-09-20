@@ -6,6 +6,7 @@ permissions:
 on:
   push:
     paths:
+      - "res/EMU_apple2main.js"
       - "res/EMU_apple2io.js"
       - "res/EMU_CARD_LIRON.js"
       - "res/EMU_DEVICE_UNIDISK35.js"
@@ -16,9 +17,12 @@ on:
       - "tests/liron_smartport_bus.test.js"
       - "tests/smartport_port_metadata.test.js"
       - "tests/hd20_smartport_device.test.js"
+      - "tests/hd20_media_routing.test.js"
+      - "tests/hd20_toolbox_media.test.js"
       - ".github/workflows/device-attachment-ui-iteration.yml"
   pull_request:
     paths:
+      - "res/EMU_apple2main.js"
       - "res/EMU_apple2io.js"
       - "res/EMU_CARD_LIRON.js"
       - "res/EMU_DEVICE_UNIDISK35.js"
@@ -29,6 +33,8 @@ on:
       - "tests/liron_smartport_bus.test.js"
       - "tests/smartport_port_metadata.test.js"
       - "tests/hd20_smartport_device.test.js"
+      - "tests/hd20_media_routing.test.js"
+      - "tests/hd20_toolbox_media.test.js"
       - ".github/workflows/device-attachment-ui-iteration.yml"
   workflow_dispatch:
 
@@ -40,18 +46,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      # Cover device attachment, mounted-instance identity, bind rollback, port metadata, and HD20.
+      # Cover attachment identity, SmartPort metadata, HD20 media routing, and toolbox integration.
       - name: Syntax checks
         run: |
+          node --check res/EMU_apple2main.js
           node --check res/EMU_apple2io.js
           node --check res/EMU_CARD_LIRON.js
           node --check res/EMU_DEVICE_UNIDISK35.js
-          if [ -f res/EMU_DEVICE_HD20.js ]; then node --check res/EMU_DEVICE_HD20.js; fi
+          node --check res/EMU_DEVICE_HD20.js
           node --check tests/device_attachment_ui.test.js
           node --check tests/device_instance_identity.test.js
           node --check tests/liron_smartport_bus.test.js
           node --check tests/smartport_port_metadata.test.js
           node --check tests/hd20_smartport_device.test.js
+          node --check tests/hd20_media_routing.test.js
+          node --check tests/hd20_toolbox_media.test.js
       - name: Device attachment acceptance
         run: |
           node --test \
@@ -59,4 +68,6 @@ jobs:
             tests/device_instance_identity.test.js \
             tests/liron_smartport_bus.test.js \
             tests/smartport_port_metadata.test.js \
-            tests/hd20_smartport_device.test.js
+            tests/hd20_smartport_device.test.js \
+            tests/hd20_media_routing.test.js \
+            tests/hd20_toolbox_media.test.js
