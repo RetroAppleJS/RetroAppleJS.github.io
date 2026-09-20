@@ -860,6 +860,7 @@ function AppleLiron()
         ,"deviceN":1
         ,"icon":"fa fa-hdd"
         ,"description":"Apple UniDisk 3.5"
+        ,"autoAttach":"if-empty"
     },{
          "DCODE":"HD20"
         ,"hostPCODE":"LIRON"
