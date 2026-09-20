@@ -10,6 +10,8 @@ on:
       - "res/EMU_CARD_LIRON.js"
       - "res/EMU_DEVICE_UNIDISK35.js"
       - "tests/device_attachment_ui.test.js"
+      - "tests/device_instance_identity.test.js"
+      - "tests/liron_smartport_bus.test.js"
       - ".github/workflows/device-attachment-ui-iteration.yml"
   pull_request:
     paths:
@@ -17,6 +19,8 @@ on:
       - "res/EMU_CARD_LIRON.js"
       - "res/EMU_DEVICE_UNIDISK35.js"
       - "tests/device_attachment_ui.test.js"
+      - "tests/device_instance_identity.test.js"
+      - "tests/liron_smartport_bus.test.js"
       - ".github/workflows/device-attachment-ui-iteration.yml"
   workflow_dispatch:
 
@@ -34,5 +38,11 @@ jobs:
           node --check res/EMU_CARD_LIRON.js
           node --check res/EMU_DEVICE_UNIDISK35.js
           node --check tests/device_attachment_ui.test.js
+          node --check tests/device_instance_identity.test.js
+          node --check tests/liron_smartport_bus.test.js
       - name: Device attachment acceptance
-        run: node --test tests/device_attachment_ui.test.js
+        run: |
+          node --test \
+            tests/device_attachment_ui.test.js \
+            tests/device_instance_identity.test.js \
+            tests/liron_smartport_bus.test.js
