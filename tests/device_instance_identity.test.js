@@ -58,9 +58,6 @@ test('Device table exposes a per-instance identifier column',()=>{
 });
 
 test('Apple2IO supports explicit duplicate instances while declarative provisioning stays idempotent',()=>{
-    const apple2ioFn=extractFunction(ioSource,'Apple2IO');
-    assert.ok(apple2ioFn,'Apple2IO constructor must be extractable');
-
     let crcSeed=0x1200;
     const context={
         console:{log(){},warn(){},error(){},assert(){}},
@@ -76,7 +73,7 @@ test('Apple2IO supports explicit duplicate instances while declarative provision
         }
     };
     vm.createContext(context);
-    vm.runInContext(apple2ioFn,context);
+    vm.runInContext(ioSource,context,{filename:'EMU_apple2io.js'});
     vm.runInContext(`
         function TestDevice(){ this.id={}; }
         this.TestDevice=TestDevice;
