@@ -41,8 +41,6 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
     if(!initial.tableText.includes('Instance') || initial.units.length!==1 || initial.units[0]!==1)
         throw new Error('Initial device table/unit state is wrong: '+JSON.stringify(initial));
 
-    // Exercise the exact generated inline handler that previously raised
-    // "Invalid escape in identifier".
     await page.evaluate(slotIndex=>{
         const slotPopup=document.getElementById('slotConfig_popup');
         slotPopup.querySelector('[data-dcode="UNIDISK35"]').click();
@@ -60,14 +58,14 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
 
     await page.evaluate(()=>apple2plus.hwObj().io.deviceConfig_close());
 
-    // Open the picker and add another instance of the same DCODE.
     await page.evaluate(slotIndex=>document.getElementById('device_add_'+slotIndex).click(),initial.slotIndex);
     const picker=await page.evaluate(()=>{
         const popup=document.getElementById('deviceConfig_popup');
         const row=popup && popup.querySelector('.device-picker-entry');
         return {hidden:popup ? popup.hidden : null,text:popup ? popup.innerText : '',disabled:row ? row.disabled : null};
     });
-    if(picker.hidden || picker.disabled || !picker.text.includes('Attached: 1'))
+    const pickerText=picker.text.replace(/\s+/g,' ');
+    if(picker.hidden || picker.disabled || !pickerText.includes('Attached: 1'))
         throw new Error('Picker does not offer another identical device: '+JSON.stringify(picker));
 
     await page.evaluate(()=>document.querySelector('#deviceConfig_popup .device-picker-entry').click());
@@ -92,7 +90,6 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
        new Set(doubled.hashes).size!==2 || !doubled.tableText.includes('Instance'))
         throw new Error('Second identical device was not mounted distinctly: '+JSON.stringify(doubled));
 
-    // Open the second row by its generated handler and eject only that instance.
     await page.evaluate(()=>{
         const labels=document.getElementById('slotConfig_popup').querySelectorAll('[data-dcode="UNIDISK35"]');
         labels[1].click();
