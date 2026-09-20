@@ -28560,6 +28560,16 @@ function UniDisk35Device(options)
         return true;
     };
 
+    this.unbindHost = function(owner)
+    {
+        if(!host) return true;
+        if(owner && owner!==host) return false;
+        if(typeof(host.detachUniDisk)!=="function") return false;
+        if(host.detachUniDisk(this)===false) return false;
+        host=null;
+        return true;
+    };
+
     this.setUnit = function(unit)
     {
         unit = Number(unit);
@@ -29596,6 +29606,14 @@ function AppleLiron()
         smartport.attach(device,1);
         unidisk=device;
         return device;
+    };
+
+    this.detachUniDisk = function(device)
+    {
+        if(!device || unidisk!==device) return false;
+        smartport.detach(device);
+        unidisk=null;
+        return true;
     };
 
     this.readSlotIO = function(addr,ctx) { return iwm.read(Number(addr)&0x0F,ctx); };
@@ -47652,6 +47670,24 @@ function mergeActionMap(dst,src)
             var device = entry.device;
             if(entry.owner !== owner || (DCODE && device?.id?.DCODE != DCODE)) continue;
 
+            /*
+             * Let a child release any host-owned state before the generic
+             * attachment record disappears.  Liron/SmartPort needs this so an
+             * ejected UniDisk does not remain resident on the SmartPort bus.
+             */
+            if(device && typeof(device.unbindHost)=="function")
+            {
+                try
+                {
+                    if(device.unbindHost(owner)===false) continue;
+                }
+                catch(e)
+                {
+                    console.error("Device host detach failed",e);
+                    continue;
+                }
+            }
+
             unmapAttachedActions(entry);
             if(entry.info.alias && oEMU.component.IO[entry.info.alias] === device)
                 delete oEMU.component.IO[entry.info.alias];
@@ -48772,24 +48808,32 @@ function mergeActionMap(dst,src)
             document.getElementById(arg.id).innerHTML = "<button class=appbut onclick=\"apple2plus.hwObj().io.slotConfig_detail('"+arg.id+"')\" style=\"margin-left:0px\"><i class=\""+arg.icon+"\"></i></button>"
     }
 
+    this.slotConfig_refresh = function(slotN)
+    {
+        slotN=Number(slotN);
+        var slot=this.slots[slotN] || {};
+        var popup=document.getElementById("slotConfig_popup");
+        if(!popup) return false;
+
+        var close="<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('slotConfig_popup');apple2plus.hwObj().io.deviceConfig_close();\" style=\"text-align:center;float:right;\">x</div>";
+        var html=close+slotConfigDetail_html(slot);
+        if(slotN==0)
+        {
+            html += "<div style='overflow-y:scroll;height:350px'>";
+            var model=typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
+            var board=this.SLOT2obj(0);
+            html += "<div class='appbox' style='float:none;'>"+(board && typeof(board.boardIO_html)=="function" ? board.boardIO_html(model) : "")+"</div>";
+            html += "</div>";
+        }
+        popup.innerHTML=html;
+        return true;
+    };
+
     this.slotConfig_detail = function(slotName)
     {
-        var n = slotName2n(slotName)
-        var close = "<div class=\"appbut\" onclick=\"oCOM.POPUP.toggle('slotConfig_popup');\" style=\"text-align:center;float:right;\">x</div>";
-        var slot = this.slots[n] || {};
-        var html = close + slotConfigDetail_html(slot);
-
-        
-        if(n==0)
-        {
-            html += "<div style='overflow-y:scroll;height:350px'>"
-            var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
-            var board = this.SLOT2obj(0);
-            html += "<div class='appbox' style='float:none;'>"+(board && typeof(board.boardIO_html)=="function" ? board.boardIO_html(model) : "") +"</div>";
-            html += "</div>"
-        }
-
-        document.getElementById("slotConfig_popup").innerHTML = html;
+        var n=slotName2n(slotName);
+        this.slotConfig_refresh(n);
+        this.deviceConfig_close();
         oCOM.POPUP.toggle("slotConfig_popup");
     }
 
@@ -49060,6 +49104,273 @@ function mergeActionMap(dst,src)
         return parts.join("; ");
     }
 
+    function deviceJSONClone(value,seen)
+    {
+        if(value===null || value===undefined) return value;
+        if(typeof(value)=="string" || typeof(value)=="number" || typeof(value)=="boolean") return value;
+        if(typeof(value)=="function" || typeof(value)=="symbol") return undefined;
+
+        if(typeof(ArrayBuffer)!="undefined" && ArrayBuffer.isView && ArrayBuffer.isView(value))
+            return Array.from(value);
+
+        seen = seen || [];
+        if(typeof(value)=="object")
+        {
+            if(seen.indexOf(value)>=0) return undefined;
+            seen.push(value);
+
+            if(Array.isArray(value))
+            {
+                var arr=[];
+                for(var i=0;i<value.length;i++)
+                {
+                    var item=deviceJSONClone(value[i],seen);
+                    if(item!==undefined) arr.push(item);
+                }
+                seen.pop();
+                return arr;
+            }
+
+            var out={};
+            for(var key in value)
+            {
+                var cloned=deviceJSONClone(value[key],seen);
+                if(cloned!==undefined) out[key]=cloned;
+            }
+            seen.pop();
+            return out;
+        }
+        return undefined;
+    }
+
+    this.deviceMetadata = function(owner,DCODE)
+    {
+        if(!owner) return null;
+        var entry=null;
+        var device=null;
+
+        for(var key in this.attachments)
+        {
+            var candidate=this.attachments[key];
+            var candidateDevice=candidate && candidate.device;
+            if(candidate && candidate.owner===owner &&
+               (!DCODE || candidateDevice?.id?.DCODE===DCODE))
+            {
+                entry=candidate;
+                device=candidateDevice;
+                break;
+            }
+        }
+        if(!device) return null;
+
+        var id=device.id || {};
+        var state;
+        try
+        {
+            state=typeof(device.getState)=="function"
+                ? device.getState()
+                : device.state;
+        }
+        catch(e) { state=undefined; }
+
+        return {
+             "DCODE":String(id.DCODE || DCODE || "")
+            ,"hostPCODE":String(id.hostPCODE || owner.id?.PCODE || "")
+            ,"coID":String(id.coID || entry.info?.coID || "")
+            ,"description":String(id.description || entry.info?.description || "")
+            ,"id":deviceJSONClone(id) || {}
+            ,"config":deviceJSONClone(entry.info || {}) || {}
+            ,"attachment":deviceJSONClone(device.attach || {}) || {}
+            ,"ports":deviceJSONClone(device.ports || {}) || {}
+            ,"state":deviceJSONClone(state)
+        };
+    };
+
+    function devicePopupElement()
+    {
+        var popup=document.getElementById("deviceConfig_popup");
+        if(popup) return popup;
+
+        popup=document.createElement("div");
+        popup.id="deviceConfig_popup";
+        popup.className="appbox";
+        popup.hidden=true;
+        popup.style.cssText="position:fixed;z-index:6;width:360px;max-width:42vw;padding:8px;text-align:left";
+        (document.getElementById("feature_box") || document.body).appendChild(popup);
+        return popup;
+    }
+
+    function positionDevicePopup(popup)
+    {
+        var host=document.getElementById("slotConfig_popup");
+        if(!popup || !host || typeof(host.getBoundingClientRect)!="function") return;
+        var rect=host.getBoundingClientRect();
+        var gap=8;
+        var width=360;
+        var left=rect.right+gap;
+        if(typeof(window)!="undefined" && left+width>window.innerWidth-gap)
+            left=Math.max(gap,rect.left-width-gap);
+        popup.style.left=Math.round(left)+"px";
+        popup.style.top=Math.max(gap,Math.round(rect.top))+"px";
+    }
+
+    this.deviceConfig_close = function()
+    {
+        var popup=document.getElementById("deviceConfig_popup");
+        if(!popup) return false;
+        popup.hidden=true;
+        popup.innerHTML="";
+        return true;
+    };
+
+    this.devicePicker_entries = function(owner)
+    {
+        var out=[];
+        var cfg=owner && Array.isArray(owner.deviceConfig) ? owner.deviceConfig : [];
+        var pcode=owner && owner.id ? owner.id.PCODE : "";
+        for(var i=0;i<cfg.length;i++)
+        {
+            var info=cfg[i];
+            if(!info || (info.hostPCODE && info.hostPCODE!==pcode)) continue;
+            out.push(info);
+        }
+        return out;
+    };
+
+    this.devicePicker_popup = function(slotN)
+    {
+        slotN=Number(slotN);
+        var owner=this.SLOT2obj(slotN);
+        if(!owner) return false;
+
+        var popup=devicePopupElement();
+        var entries=this.devicePicker_entries(owner);
+        var html="<button class='appbut' type='button' style='float:right' title='Close' onclick=\"apple2plus.hwObj().io.deviceConfig_close()\">x</button>";
+        html += "<b>ADD DEVICE</b><br><br>";
+
+        if(!entries.length)
+            html += "<div class='appbox' style='float:none;padding:8px'>No compatible devices declared.</div>";
+        else
+        {
+            html += "<div style='display:flex;flex-wrap:wrap;gap:3px'>";
+            for(var i=0;i<entries.length;i++)
+            {
+                var info=entries[i];
+                var dcode=String(info.DCODE || info.coID || "device");
+                var attached=false;
+                var devices=Array.isArray(owner.devices) ? owner.devices : [];
+                for(var d=0;d<devices.length;d++)
+                    if(devices[d]?.id?.DCODE===dcode) { attached=true; break; }
+
+                var ctor=globalThis[info.coID];
+                var addable=!attached && typeof(ctor)=="function";
+                var title=info.description || dcode;
+                if(attached) title += " — already attached";
+                else if(typeof(ctor)!="function") title += " — device constructor unavailable";
+
+                html += "<div class='appbut label"+(addable ? "" : " greyed")+"' style='cursor:default;white-space:nowrap;' title='"+oCOM.escapeHTML(title)+"'>"
+                    + "<button class='appbut skinny' type='button'"
+                    + (addable
+                        ? " title='Attach device' onclick=\"event.stopPropagation();apple2plus.hwObj().io.devicePicker_select("+slotN+",'"+dcode+"')\""
+                        : " disabled")
+                    + "><i class='fa fa-plus'></i></button>&nbsp;"
+                    + "<i class='"+slotDeviceIconClass(info.icon)+"'></i>&nbsp;"
+                    + oCOM.escapeHTML(dcode)
+                    + "</div>";
+            }
+            html += "</div>";
+        }
+
+        popup.innerHTML=html;
+        popup.hidden=false;
+        positionDevicePopup(popup);
+        return true;
+    };
+
+    this.devicePicker_select = function(slotN,DCODE)
+    {
+        slotN=Number(slotN);
+        DCODE=String(DCODE || "");
+        var owner=this.SLOT2obj(slotN);
+        if(!owner || !DCODE) return false;
+
+        var entries=this.devicePicker_entries(owner);
+        var info=null;
+        for(var i=0;i<entries.length;i++)
+            if(String(entries[i].DCODE || entries[i].coID || "")===DCODE) { info=entries[i]; break; }
+        if(!info) return false;
+
+        var devices=Array.isArray(owner.devices) ? owner.devices : [];
+        for(var d=0;d<devices.length;d++)
+            if(devices[d]?.id?.DCODE===DCODE) return false;
+
+        var device=this.attach(owner,info);
+        if(!device) return false;
+
+        this.deviceConfig_close();
+        this.slotConfig_refresh(slotN);
+        this.refreshDeviceToolboxes({"id":"devices","default_slot":this.slot2ID(slotN)});
+        return true;
+    };
+
+    this.deviceConfig_detail = function(slotN,DCODE)
+    {
+        slotN=Number(slotN);
+        DCODE=String(DCODE || "");
+        var owner=this.SLOT2obj(slotN);
+        var metadata=this.deviceMetadata(owner,DCODE);
+        if(!owner || !metadata) return false;
+
+        var popup=devicePopupElement();
+        var description=metadata.description || "";
+        var html="<button class='appbut' type='button' style='float:right' title='Close' onclick=\"apple2plus.hwObj().io.deviceConfig_close()\">x</button>"
+            + "<div style='padding-right:28px'><b>"+oCOM.escapeHTML(metadata.DCODE)+"</b>"
+            + (description ? "<br>"+oCOM.escapeHTML(description) : "")
+            + "</div><div style='margin-top:10px'>"
+            + "<button class='appbut' type='button' title='Download device JSON' onclick=\"event.stopPropagation();apple2plus.hwObj().io.deviceConfig_download("+slotN+",'"+metadata.DCODE+"')\"><i class='fa fa-cloud-download-alt'></i></button>&nbsp;"
+            + "<button class='appbut' type='button' title='Detach device' onclick=\"event.stopPropagation();apple2plus.hwObj().io.deviceConfig_eject("+slotN+",'"+metadata.DCODE+"')\"><i class='fa fa-eject'></i></button>"
+            + "</div>";
+
+        popup.innerHTML=html;
+        popup.hidden=false;
+        positionDevicePopup(popup);
+        return true;
+    };
+
+    this.deviceConfig_download = function(slotN,DCODE)
+    {
+        slotN=Number(slotN);
+        var owner=this.SLOT2obj(slotN);
+        var metadata=this.deviceMetadata(owner,String(DCODE || ""));
+        if(!metadata) return false;
+        try
+        {
+            var name=(metadata.DCODE+"_"+slotN2name(slotN).replace("#","")).replace(/[^A-Za-z0-9_.-]/g,"_")+".json";
+            var json=JSON.stringify(metadata,null,2);
+            oCOM.Download(name,new TextEncoder("utf-8").encode(json));
+            return true;
+        }
+        catch(e)
+        {
+            console.error("Device JSON download failed",e);
+            return false;
+        }
+    };
+
+    this.deviceConfig_eject = function(slotN,DCODE)
+    {
+        slotN=Number(slotN);
+        var owner=this.SLOT2obj(slotN);
+        DCODE=String(DCODE || "");
+        if(!owner || !DCODE) return false;
+        if(!this.detach(owner,DCODE)) return false;
+
+        this.deviceConfig_close();
+        this.slotConfig_refresh(slotN);
+        this.refreshDeviceToolboxes({"id":"devices","default_slot":this.slot2ID(slotN)});
+        return true;
+    };
+
     /*
      * Render the live child devices attached to one peripheral.
      *
@@ -49082,7 +49393,7 @@ function mergeActionMap(dst,src)
             body += ""
                 + "<tr>"
                 + "<td style='padding:4px 6px;vertical-align:top'>"
-                + slotDeviceLabel_html(device)
+                + slotDeviceLabel_html(peripheral,device)
                 + "</td>"
                 + "<td style='padding:4px 6px;vertical-align:top'>"
                 + slotDevicePorts_html(device)
@@ -49093,8 +49404,13 @@ function mergeActionMap(dst,src)
         if(!body)
             body = "<tr><td colspan='2' style='padding:8px'>No devices attached.</td></tr>";
 
-        return ""
-            + "<table style='width:100%;border-collapse:collapse;margin-top:10px;text-align:left'>"
+        var slotN=peripheral && peripheral.mount ? Number(peripheral.mount.slotN) : -1;
+        var addDevice = Number.isInteger(slotN) && slotN>=0
+            ? "<div style='margin-top:10px;margin-bottom:3px'><button class='slot-add' type='button' title='Attach device' onclick=\"event.stopPropagation();apple2plus.hwObj().io.devicePicker_popup("+slotN+")\"><i class='fa fa-plus dots dots1'></i></button></div>"
+            : "";
+
+        return addDevice
+            + "<table style='width:100%;border-collapse:collapse;margin-top:0px;text-align:left'>"
             + "<thead><tr style='border-bottom:1px solid #888'>"
             + "<th style='padding:4px 6px'>Device</th>"
             + "<th style='padding:4px 6px'>Ports</th>"
@@ -49107,7 +49423,7 @@ function mergeActionMap(dst,src)
      * Match the labels used by Peripheral controls: appbut + label,
      * pictogram, DCODE and description/range in the tooltip.
      */
-    function slotDeviceLabel_html(device)
+    function slotDeviceLabel_html(peripheral,device)
     {
         var id = device && device.id ? device.id : {};
         var deviceCode = String(
@@ -49121,8 +49437,11 @@ function mergeActionMap(dst,src)
 
         return ""
             + "<div class=\"appbut label\""
-            + " data-dcode=\""+oCOM.escapeHTML(deviceCode)+"\""
-            + " style=\"display:inline-block;cursor:default;white-space:nowrap;\""
+            + " data-dcode=\\\""+oCOM.escapeHTML(deviceCode)+"\\\""
+            + " style=\\\"display:inline-block;cursor:pointer;white-space:nowrap;\\\""
+            + (peripheral && peripheral.mount
+                ? " onclick=\\\"event.stopPropagation();apple2plus.hwObj().io.deviceConfig_detail("+Number(peripheral.mount.slotN)+",'"+oCOM.escapeHTML(deviceCode)+"')\\\""
+                : "")
             + (description
                 ? " title=\""+oCOM.escapeHTML(description)+"\""
                 : "")
