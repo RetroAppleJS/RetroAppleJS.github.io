@@ -1,0 +1,45 @@
+name: HD20 SmartPort implementation patch temp
+
+permissions:
+  contents: write
+
+on:
+  push:
+    paths:
+      - "tools/patch_hd20_smartport_device.py"
+      - ".github/workflows/hd20-smartport-patch-temp.yml"
+  workflow_dispatch:
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hd20-smartport-device-20260920
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Apply HD20 implementation patch
+        run: python3 tools/patch_hd20_smartport_device.py
+      - name: Verify syntax and focused acceptance
+        run: |
+          node --check res/EMU_apple2io.js
+          node --check res/EMU_CARD_LIRON.js
+          node --check res/EMU_DEVICE_UNIDISK35.js
+          node --check res/EMU_DEVICE_HD20.js
+          node --check tests/hd20_smartport_device.test.js
+          node --test \
+            tests/device_attachment_ui.test.js \
+            tests/device_instance_identity.test.js \
+            tests/liron_smartport_bus.test.js \
+            tests/smartport_port_metadata.test.js \
+            tests/hd20_smartport_device.test.js
+      - name: Commit implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add res/EMU_apple2io.js res/EMU_CARD_LIRON.js index.html
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: attach HD20 SmartPort devices to Liron"
+          git push
