@@ -59,6 +59,15 @@ function normalizeText(value)
             port:device.ports && device.ports.smartport ? {...device.ports.smartport} : null
         }));
 
+        const mediaMounted=typeof EMU_mountDiskImage==='function' &&
+            EMU_mountDiskImage(new Uint8Array(20971520),slot,'HD20','HD20.po',2);
+        const hd20=typeof owner.getHD20==='function' ? owner.getHD20(2) : null;
+        const hd20Media=hd20 && typeof hd20.getState==='function' ? hd20.getState() : null;
+        const slotID=typeof io.slot2ID==='function' ? io.slot2ID(slot) : String(slot);
+        const toolboxHTML=typeof owner.deviceToolSlotHTML==='function'
+            ? owner.deviceToolSlotHTML({slotN:slot,slotID,toolboxID:'hd20_test_toolbox',devices:owner.devices})
+            : '';
+
         io.devicePicker_popup(slot);
         const popup2=document.getElementById('deviceConfig_popup');
         const secondHD20=[...popup2.querySelectorAll('.device-picker-entry')].find(row=>/HD20/.test(row.textContent));
@@ -73,10 +82,13 @@ function normalizeText(value)
             port:device.ports && device.ports.smartport ? {...device.ports.smartport} : null
         }));
 
-        return {slot,initial,pickerText,secondPickerText,afterFirst,afterSecond};
+        return {slot,initial,pickerText,secondPickerText,afterFirst,mediaMounted,hd20Media,toolboxHTML,afterSecond};
     });
 
-    console.log('HD20_PICKER_BROWSER_ACCEPTANCE',JSON.stringify(result));
+    console.log('HD20_PICKER_BROWSER_ACCEPTANCE',JSON.stringify({
+        ...result,
+        toolboxHTML:result.toolboxHTML.includes('HD20_2') ? '[contains HD20_2]' : '[missing HD20_2]'
+    }));
     if(pageErrors.length) throw new Error('browser page errors: '+pageErrors.join(' | '));
 
     const pickerText=normalizeText(result.pickerText);
@@ -89,6 +101,11 @@ function normalizeText(value)
     const firstHD20=result.afterFirst.filter(d=>d.dcode==='HD20');
     if(firstHD20.length!==1 || firstHD20[0].unit!==2 || !firstHD20[0].port || firstHD20[0].port.unit!==2)
         throw new Error('first HD20 did not attach as SmartPort unit 2: '+JSON.stringify(result.afterFirst));
+    if(!result.mediaMounted || !result.hd20Media || !result.hd20Media.mediaLoaded ||
+       result.hd20Media.mediaBytes!==20971520 || result.hd20Media.mediaFilename!=='HD20.po')
+        throw new Error('browser HD20 media mount failed: '+JSON.stringify(result.hd20Media));
+    if(!result.toolboxHTML.includes('HD20_2'))
+        throw new Error('HD20 toolbox row did not use its device identity');
 
     const secondHD20=result.afterSecond.filter(d=>d.dcode==='HD20');
     if(secondHD20.length!==2 || secondHD20[0].instance===secondHD20[1].instance ||
