@@ -32,7 +32,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      # Cover both device-type attachment and mounted-instance identity.
+      # Cover device-type attachment, mounted-instance identity, and bind rollback.
       - name: Syntax checks
         run: |
           node --check res/EMU_apple2io.js
