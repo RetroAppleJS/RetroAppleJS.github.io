@@ -46,8 +46,8 @@ test('attached-device label emits valid HTML attributes without literal backslas
 
     assert.equal(html.includes('\\\\"'),false,
         'rendered device HTML must never contain a literal backslash before an attribute quote');
-    assert.match(html,/data-dcode="UNIDISK35"/);
-    assert.match(html,/onclick="event\.stopPropagation\(\);apple2plus\.hwObj\(\)\.io\.deviceConfig_detail\(6,/);
+    assert.match(html,/data-dcode=['"]UNIDISK35['"]/);
+    assert.match(html,/onclick=['"]event\.stopPropagation\(\);apple2plus\.hwObj\(\)\.io\.deviceConfig_detail\(6,/);
 });
 
 test('Device table exposes a per-instance identifier column',()=>{
