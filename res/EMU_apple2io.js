@@ -1266,6 +1266,7 @@ function mergeActionMap(dst,src)
         var entry=null;
         var key="";
         var device=null;
+        var createdInstance=false;
 
         /*
          * Normal provisioning is idempotent: it reuses the one declarative
@@ -1297,6 +1298,7 @@ function mergeActionMap(dst,src)
             if(typeof(Device)!="function") return null;
 
             device=new Device(device_info);
+            createdInstance=true;
             if(!device.id) device.id={};
             if(device.id.DCODE && device.id.DCODE != dcode) return null;
             if(device.id.hostPCODE && device.id.hostPCODE != hostPCODE) return null;
@@ -1367,12 +1369,26 @@ function mergeActionMap(dst,src)
 
         if(typeof(device.bindHost)=="function")
         {
-            var hostResult=device.bindHost(owner);
-            if(hostResult===false)
+            var rollbackHostBind=function()
             {
-                delete this.attachments[key];
+                if(!createdInstance) return;
+                delete io.attachments[key];
                 var failedIdx=owner.devices.indexOf(device);
                 if(failedIdx>=0) owner.devices.splice(failedIdx,1);
+            };
+            var hostResult;
+            try
+            {
+                hostResult=device.bindHost(owner);
+            }
+            catch(e)
+            {
+                rollbackHostBind();
+                throw e;
+            }
+            if(hostResult===false)
+            {
+                rollbackHostBind();
                 return null;
             }
         }
