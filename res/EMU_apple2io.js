@@ -171,7 +171,11 @@ function Apple2IO(vid,hostHardware)
 
         var deviceConfig = Array.isArray(owner.deviceConfig) ? owner.deviceConfig : [];
         for(var deviceN=0;deviceN<deviceConfig.length;deviceN++)
-            this.attach(owner,deviceConfig[deviceN]);
+        {
+            var deviceInfo=deviceConfig[deviceN];
+            if(deviceInfo && deviceInfo.autoAttach!==false)
+                this.attach(owner,deviceInfo);
+        }
 
         return true;
     }    
