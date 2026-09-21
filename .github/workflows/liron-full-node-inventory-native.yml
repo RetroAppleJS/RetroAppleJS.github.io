@@ -1,0 +1,45 @@
+name: Inventory repository-wide Node failures
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - feature/liron-unidisk-surface-map
+    paths:
+      - .github/workflows/liron-full-node-inventory-native.yml
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-surface-map
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run full Node suite as TAP inventory
+        shell: bash
+        run: |
+          set +e
+          node --test --test-reporter=tap tests/*.test.js > /tmp/full.tap 2>&1
+          rc=$?
+          set -e
+          echo "FULL_NODE_RC=$rc"
+          echo "--- NOT OK ---"
+          grep '^not ok ' /tmp/full.tap || true
+          echo "--- TOTALS ---"
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' /tmp/full.tap || true
+          exit 0
+      - name: Remove temporary inventory workflow
+        run: |
+          git config user.name "ChatGPT"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/liron-full-node-inventory-native.yml
+          git add -A
+          git commit -m "chore: remove full Node inventory workflow"
+          git push origin HEAD:feature/liron-unidisk-surface-map
