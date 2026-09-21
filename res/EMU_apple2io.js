@@ -1525,6 +1525,20 @@ function mergeActionMap(dst,src)
             ,"instanceID":attachHash
         });
 
+        if(newInstance && typeof(owner.onDeviceTopologyChanged)==="function")
+        {
+            try
+            {
+                owner.onDeviceTopologyChanged({
+                     "type":"attach"
+                    ,"DCODE":dcode
+                    ,"device":device
+                    ,"instanceID":attachHash
+                });
+            }
+            catch(e) { console.error("Device topology attach notification failed",e); }
+        }
+
         if(bDebug)
             console.log("EMU_apple2io.js - attach(<"+dcode+" #"+oCOM.getHexWord(attachHash)+" to "+hostPCODE+">)");
 
@@ -1574,6 +1588,20 @@ function mergeActionMap(dst,src)
 
             delete this.attachments[key];
             removed = true;
+
+            if(typeof(owner.onDeviceTopologyChanged)==="function")
+            {
+                try
+                {
+                    owner.onDeviceTopologyChanged({
+                         "type":"detach"
+                        ,"DCODE":device?.id?.DCODE || DCODE || ""
+                        ,"device":device
+                        ,"instanceID":Number(device?.attach?.hash)
+                    });
+                }
+                catch(e) { console.error("Device topology detach notification failed",e); }
+            }
         }
 
         if(removed)
