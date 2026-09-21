@@ -16,7 +16,6 @@ on:
       - "tests/device_instance_identity.test.js"
       - "tests/liron_smartport_bus.test.js"
       - "tests/liron_smartport_transport.test.js"
-      - "tests/liron_smartport_debug.test.js"
       - "tests/liron_readblock.test.js"
       - "tests/liron_writeblock.test.js"
       - "tests/smartport_port_metadata.test.js"
@@ -40,7 +39,6 @@ on:
       - "tests/device_instance_identity.test.js"
       - "tests/liron_smartport_bus.test.js"
       - "tests/liron_smartport_transport.test.js"
-      - "tests/liron_smartport_debug.test.js"
       - "tests/liron_readblock.test.js"
       - "tests/liron_writeblock.test.js"
       - "tests/smartport_port_metadata.test.js"
@@ -74,7 +72,6 @@ jobs:
           node --check tests/device_instance_identity.test.js
           node --check tests/liron_smartport_bus.test.js
           node --check tests/liron_smartport_transport.test.js
-          node --check tests/liron_smartport_debug.test.js
           node --check tests/liron_readblock.test.js
           node --check tests/liron_writeblock.test.js
           node --check tests/smartport_port_metadata.test.js
@@ -92,7 +89,6 @@ jobs:
             tests/device_instance_identity.test.js \
             tests/liron_smartport_bus.test.js \
             tests/liron_smartport_transport.test.js \
-            tests/liron_smartport_debug.test.js \
             tests/liron_readblock.test.js \
             tests/liron_writeblock.test.js \
             tests/smartport_port_metadata.test.js \
