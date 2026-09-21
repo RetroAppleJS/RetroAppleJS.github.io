@@ -116,6 +116,56 @@ function UniDisk35Device(options)
     this.getUnit = function() { return state.unit; };
     this.getBlockSize = function() { return BLOCK_SIZE; };
     this.getBlockCount = function() { return BLOCK_COUNT; };
+    this.getSurfaceMapGeometry = function()
+    {
+        return {
+             "sides":2
+            ,"tracksPerSide":80
+            ,"maxSectorsPerTrack":12
+            ,"bytesPerSector":BLOCK_SIZE
+            ,"zoneTracks":16
+            ,"sectorCounts":[12,11,10,9,8]
+            ,"totalSectors":BLOCK_COUNT
+            ,"totalBytes":BLOCK_COUNT*BLOCK_SIZE
+        };
+    };
+    this.getSurfaceTrackSectorCount = function(track)
+    {
+        track=Number(track);
+        if(!Number.isInteger(track) || track<0 || track>=80) return null;
+        return [12,11,10,9,8][Math.floor(track/16)];
+    };
+    this.surfaceSectorToBlock = function(side,track,sector)
+    {
+        side=Number(side); track=Number(track); sector=Number(sector);
+        if(!Number.isInteger(side) || side<0 || side>1 ||
+           !Number.isInteger(track) || track<0 || track>=80 ||
+           !Number.isInteger(sector)) return null;
+        var count=this.getSurfaceTrackSectorCount(track);
+        if(sector<0 || sector>=count) return null;
+        var block=0;
+        for(var t=0;t<track;t++) block+=2*this.getSurfaceTrackSectorCount(t);
+        return block+side*count+sector;
+    };
+    this.blockToSurfaceSector = function(block)
+    {
+        block=Number(block);
+        if(!Number.isInteger(block) || block<0 || block>=BLOCK_COUNT) return null;
+        var remaining=block;
+        for(var track=0;track<80;track++)
+        {
+            var count=this.getSurfaceTrackSectorCount(track);
+            var cylinder=2*count;
+            if(remaining<cylinder)
+            {
+                var side=remaining>=count ? 1 : 0;
+                var sector=remaining-side*count;
+                return {"side":side,"track":track,"sector":sector,"block":block,"offset":block*BLOCK_SIZE,"bytes":BLOCK_SIZE};
+            }
+            remaining-=cylinder;
+        }
+        return null;
+    };
     this.getDeviceType = function() { return DEVICE_TYPE; };
     this.getDeviceSubtype = function() { return DEVICE_SUBTYPE; };
     this.getFirmwareVersion = function() { return FW_VERSION; };
