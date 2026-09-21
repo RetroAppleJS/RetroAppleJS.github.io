@@ -1304,6 +1304,54 @@ function AppleLiron()
         return true;
     };
 
+    this.deviceToolDownload = function(unit)
+    {
+        unit=Number(unit);
+        if(!Number.isInteger(unit) || unit<1 || unit>8) return false;
+
+        var target=smartport.getDevice(unit);
+        if(!target)
+        {
+            var attached=Array.isArray(liron.devices) ? liron.devices : [];
+            for(var i=0;i<attached.length;i++)
+            {
+                var candidate=attached[i];
+                var candidateUnit=candidate && typeof(candidate.getUnit)==="function"
+                    ? Number(candidate.getUnit())
+                    : Number(candidate && candidate.id ? candidate.id.deviceN : NaN);
+                if(candidateUnit===unit) { target=candidate; break; }
+            }
+        }
+
+        if(!target || typeof(target.getImage)!=="function" || typeof(target.getSuggestedFilename)!=="function")
+            return false;
+        if(typeof(oCOM)!=="object" || !oCOM || typeof(oCOM.Download)!=="function")
+            return false;
+
+        var image=target.getImage();
+        if(!image || typeof(image.length)!=="number" || image.length<=0) return false;
+        var filename=String(target.getSuggestedFilename() || "HD20.po");
+        oCOM.Download(filename,image);
+        return true;
+    };
+
+    this.deviceMediaMetadataChanged = function(device)
+    {
+        var attached=Array.isArray(liron.devices) ? liron.devices : [];
+        if(!device || attached.indexOf(device)<0) return false;
+        if(typeof(apple2plus)!=="object" || !apple2plus) return false;
+
+        var io=apple2plus.hwObj().io;
+        var slotN=liron.mount ? Number(liron.mount.slotN) : NaN;
+        var slotID=Number.isInteger(slotN) && io && typeof(io.slot2ID)==="function"
+            ? io.slot2ID(slotN)
+            : undefined;
+        if(!io || typeof(io.refreshDeviceToolboxes)!=="function") return false;
+
+        io.refreshDeviceToolboxes({"id":"devices","default_slot":slotID});
+        return true;
+    };
+
     this.deviceToolEject = function(unit)
     {
         unit=Number(unit);
@@ -1381,19 +1429,26 @@ function AppleLiron()
             var unit=unitOf(device,i);
             var controlID="liron_unit_"+slotID+"_"+unit;
 
+            var deviceCode=String(device.id?.DCODE || "SMARTPORT");
+            var exportable=typeof(device.getImage)==="function" && typeof(device.getSuggestedFilename)==="function";
+            var logicalFilename=exportable ? String(device.getSuggestedFilename() || "HD20.po") : undefined;
+            var hardDisk=deviceCode==="HD20";
+
             rows += EMU_deviceMediaRowHTML({
                  "label":"Unit"+unit
                 ,"buttonID":controlID+"_but"
                 ,"formID":controlID+"_form"
                 ,"fileID":controlID+"_file"
                 ,"downloadID":controlID+"_dump"
-                ,"fileName":String(device.id?.DCODE || "SMARTPORT")+"_"+unit
-                ,"buttonTitle":"Unit"+unit+": eject disk"
+                ,"fileName":deviceCode+"_"+unit
+                ,"fileDisplayName":hardDisk ? logicalFilename : undefined
+                ,"buttonTitle":hardDisk ? ("Unit"+unit+": erase/reset disk") : ("Unit"+unit+": eject disk")
                 ,"buttonOnClick":"apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolEject("+unit+")"
                 ,"fileAccept":".po"
                 ,"fileOnChange":"javascript:EMU_audio_event_unlock();apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolLoadFile(this,"+unit+")"
-                ,"downloadDisabled":true
-                ,"downloadTitle":"Save disk (not implemented yet)"
+                ,"downloadDisabled":!exportable
+                ,"downloadOnClick":exportable ? ("apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolDownload("+unit+")") : undefined
+                ,"downloadTitle":exportable ? ("Save "+logicalFilename) : "Save disk (not implemented yet)"
             });
         }
 

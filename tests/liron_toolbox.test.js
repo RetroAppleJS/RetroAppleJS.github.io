@@ -85,6 +85,37 @@ test('shared removable-media row preserves the Disk II native file-control layou
     assert.doesNotMatch(html,/No disk/);
 });
 
+test('shared media row can show a managed hard-disk filename instead of browser no-file-selected text', () => {
+    const context=vm.createContext({
+        console,
+        oEMU:{component:{IO:{ACTION_MAP:[]}},system:{A2P:{active:true}}},
+        oEMUI:{slotConfig(){},slotsRender(){},deviceBtn(){}}
+    });
+    vm.runInContext(apple2ioSource,context,{filename:'EMU_apple2io.js'});
+
+    const html=context.EMU_deviceMediaRowHTML({
+        label:'Unit1',
+        fileID:'hd20_file',
+        fileName:'HD20_1',
+        fileDisplayName:'HD20.po',
+        fileAccept:'.po',
+        fileOnChange:'loadHD20(this)',
+        downloadID:'hd20_dump',
+        downloadOnClick:'downloadHD20()',
+        downloadTitle:'Save HD20.po'
+    });
+
+    assert.match(html,/type="file"[^>]*id="hd20_file"[^>]*style="display:none"/,
+        'managed filename mode keeps a real file input but hides the browser-owned filename presentation');
+    assert.match(html,/for="hd20_file"[^>]*>Choose File<\/label>/,
+        'the synthetic Choose File control must still activate the real file input');
+    assert.match(html,/id="hd20_file_name"[^>]*>HD20\.po<\/span>/,
+        'the logical hard-disk filename must be visible even before a host file was selected');
+    assert.doesNotMatch(html,/disabled/,
+        'HD20 download remains enabled when the media was created internally');
+    assert.match(html,/onclick="downloadHD20\(\)"/);
+});
+
 test('Disk II and Liron use the same shared removable-media row renderer', () => {
     assert.match(diskIISource,/EMU_deviceMediaRowHTML\s*\(/,
         'Disk II must render its drive rows through the shared media-row helper');

@@ -7,16 +7,22 @@ const vm=require('node:vm');
 
 const source=fs.readFileSync('res/EMU_CARD_LIRON.js','utf8');
 
-function fakeDevice(dcode,description,unit,blocks)
+function fakeDevice(dcode,description,unit,blocks,options={})
 {
-    return {
+    const device={
         id:{DCODE:dcode,description,hostPCODE:'LIRON',deviceN:unit},
         getUnit(){return unit;},
         getBlockSize(){return 512;},
         getBlockCount(){return blocks;},
-        getState(){return {unit,mediaLoaded:false,mediaFilename:''};},
+        getState(){return {unit,mediaLoaded:dcode==='HD20',mediaFilename:options.mediaFilename || ''};},
         ejectImage(){return true;}
     };
+    if(dcode==='HD20')
+    {
+        device.getSuggestedFilename=()=>options.logicalFilename || 'HD20.po';
+        device.getImage=()=>options.image ? Uint8Array.from(options.image) : new Uint8Array(blocks*512);
+    }
+    return device;
 }
 
 function loadLiron(extra={})
@@ -47,6 +53,73 @@ test('Liron toolbox names media controls by each SmartPort device type',()=>{
     assert.equal(rows[1].fileName,'HD20_2');
     assert.match(rows[0].fileOnChange,/deviceToolLoadFile\(this,1\)/);
     assert.match(rows[1].fileOnChange,/deviceToolLoadFile\(this,2\)/);
+});
+
+test('HD20 toolbox uses a logical filename and enables image download while UniDisk keeps native removable-media behavior',()=>{
+    const rows=[];
+    const context=loadLiron({
+        EMU_deviceMediaRowHTML(spec){rows.push(spec);return '<row>'+spec.label+'</row>';}
+    });
+    const card=new context.AppleLiron();
+    const uni=fakeDevice('UNIDISK35','Apple UniDisk 3.5',1,1600,{mediaFilename:'TOOLS.po'});
+    const hd=fakeDevice('HD20','Apple Hard Disk 20',2,40960,{logicalFilename:'BLANK92.po'});
+    card.devices=[uni,hd];
+
+    card.deviceToolSlotHTML({slotN:6,slotID:'5',toolboxID:'device_tool_5',devices:card.devices});
+
+    assert.equal(rows[0].fileDisplayName,undefined,'UniDisk must keep the browser-owned native file input');
+    assert.equal(rows[0].downloadDisabled,true);
+    assert.equal(rows[0].buttonTitle,'Unit1: eject disk');
+
+    assert.equal(rows[1].fileDisplayName,'BLANK92.po');
+    assert.equal(rows[1].downloadDisabled,false);
+    assert.match(rows[1].downloadOnClick,/deviceToolDownload\(2\)/);
+    assert.equal(rows[1].downloadTitle,'Save BLANK92.po');
+    assert.equal(rows[1].buttonTitle,'Unit2: erase/reset disk');
+});
+
+test('Liron downloads the exact HD20 backing image using its suggested .po filename',()=>{
+    const downloads=[];
+    const image=new Uint8Array(20971520);
+    image[0]=0x11;
+    image[20971519]=0xEE;
+    const context=loadLiron({
+        oCOM:{Download(filename,data){downloads.push({filename,data:Uint8Array.from(data)});}},
+        EMU_deviceMediaRowHTML(){return '<row></row>';}
+    });
+    const card=new context.AppleLiron();
+    const hd=fakeDevice('HD20','Apple Hard Disk 20',1,40960,{logicalFilename:'BLANK92.po',image});
+    card.devices=[hd];
+    card.getBus().attach(hd,1);
+
+    assert.equal(typeof card.deviceToolDownload,'function');
+    assert.equal(card.deviceToolDownload(1),true);
+    assert.equal(downloads.length,1);
+    assert.equal(downloads[0].filename,'BLANK92.po');
+    assert.equal(downloads[0].data.length,20971520);
+    assert.equal(downloads[0].data[0],0x11);
+    assert.equal(downloads[0].data[20971519],0xEE);
+});
+
+test('HD20 media metadata changes refresh the open Liron toolbox',()=>{
+    const refreshCalls=[];
+    const context=loadLiron({
+        apple2plus:{hwObj(){return {io:{
+            slot2ID(slotN){return String(slotN-1);},
+            refreshDeviceToolboxes(arg){refreshCalls.push(arg);}
+        }};}},
+        EMU_deviceMediaRowHTML(){return '<row></row>';}
+    });
+    const card=new context.AppleLiron();
+    card.mount={slotN:6};
+    const hd=fakeDevice('HD20','Apple Hard Disk 20',1,40960);
+    card.devices=[hd];
+
+    assert.equal(typeof card.deviceMediaMetadataChanged,'function');
+    assert.equal(card.deviceMediaMetadataChanged(hd),true);
+    assert.equal(refreshCalls.length,1);
+    assert.equal(refreshCalls[0].id,'devices');
+    assert.equal(refreshCalls[0].default_slot,'5');
 });
 
 test('Liron toolbox routes a 20 MiB file to the HD20 resident at that unit',()=>{

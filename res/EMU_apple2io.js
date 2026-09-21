@@ -35,6 +35,35 @@ function EMU_deviceMediaRowHTML(spec)
     var label = String(spec.label || "Disk");
     var buttonTitle = spec.buttonTitle || (label+": no disk");
     var downloadTitle = spec.downloadTitle || "Save disk";
+    var managedFilename = spec.fileDisplayName!==undefined && spec.fileDisplayName!==null;
+    var fileID = String(spec.fileID || "");
+    var fileControl = "";
+
+    if(managedFilename)
+    {
+        fileControl += "        <input type=\"file\""
+            + (spec.fileName ? " name=\""+attr(spec.fileName)+"\"" : "")
+            + (fileID ? " id=\""+attr(fileID)+"\"" : "")
+            + " style=\"display:none\""
+            + (spec.fileAccept ? " accept=\""+attr(spec.fileAccept)+"\"" : "")
+            + (spec.fileOnChange ? " onchange=\""+spec.fileOnChange+"\"" : "")
+            + ">";
+        if(fileID)
+            fileControl += "        <label class=appbut for=\""+attr(fileID)+"\" style=\"display:inline-block;cursor:pointer\">Choose File</label>";
+        fileControl += "        <span"
+            + (fileID ? " id=\""+attr(fileID+"_name")+"\"" : "")
+            + " style=\"padding-left:6px\">"+attr(spec.fileDisplayName)+"</span>";
+    }
+    else
+    {
+        fileControl += "        <input type=\"file\""
+            + (spec.fileName ? " name=\""+attr(spec.fileName)+"\"" : "")
+            + (fileID ? " id=\""+attr(fileID)+"\"" : "")
+            + " style=\"display:inline-block\""
+            + (spec.fileAccept ? " accept=\""+attr(spec.fileAccept)+"\"" : "")
+            + (spec.fileOnChange ? " onchange=\""+spec.fileOnChange+"\"" : "")
+            + ">";
+    }
 
     return ""
         + "    <div class=appbut style=\"padding:5px 0px 0px 0px;text-align:left;\">"
@@ -50,13 +79,7 @@ function EMU_deviceMediaRowHTML(spec)
         + "      <form action=\"index.html\""
         + (spec.formID ? " id=\""+attr(spec.formID)+"\"" : "")
         + " style=\"display:inline;\">"
-        + "        <input type=\"file\""
-        + (spec.fileName ? " name=\""+attr(spec.fileName)+"\"" : "")
-        + (spec.fileID ? " id=\""+attr(spec.fileID)+"\"" : "")
-        + " style=\"display:inline-block\""
-        + (spec.fileAccept ? " accept=\""+attr(spec.fileAccept)+"\"" : "")
-        + (spec.fileOnChange ? " onchange=\""+spec.fileOnChange+"\"" : "")
-        + ">"
+        + fileControl
         + "      </form>"
         + "      <button class=appbut value=\"Download\""
         + (spec.downloadID ? " id=\""+attr(spec.downloadID)+"\"" : "")
