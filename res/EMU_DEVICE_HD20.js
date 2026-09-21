@@ -111,9 +111,9 @@ function HD20Device(options)
     function poFilename(name)
     {
         name=String(name || "").split(/[\\/]/).pop();
-        if(!name) return "HD20.po";
+        if(!name) return "UNFORMATTED-HD20.po";
         name=name.replace(/\.[^.]*$/,'');
-        return (name || "HD20")+".po";
+        return (name || "UNFORMATTED-HD20")+".po";
     }
 
     function suggestedFilename()
@@ -121,7 +121,7 @@ function HD20Device(options)
         var volume=volumeName();
         if(volume) return volume+".po";
         if(state.mediaFilename) return poFilename(state.mediaFilename);
-        return "HD20.po";
+        return "UNFORMATTED-HD20.po";
     }
 
     function notifyFilenameChange(previous)

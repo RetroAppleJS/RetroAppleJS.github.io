@@ -106,6 +106,49 @@ test('Apple2IO supports explicit duplicate instances while declarative provision
     assert.equal(owner.devices[0],first);
 });
 
+test('if-empty declarative defaults stay absent when the host already has an explicit device',()=>{
+    const context=loadApple2IO(`
+        function DefaultDevice(){ this.id={}; }
+        function ExplicitDevice(){ this.id={}; }
+        this.DefaultDevice=DefaultDevice;
+        this.ExplicitDevice=ExplicitDevice;
+    `);
+
+    const io=new context.Apple2IO(null,null);
+    const defaultInfo={DCODE:'DEFAULT',hostPCODE:'HOST',coID:'DefaultDevice',autoAttach:'if-empty'};
+    const explicitInfo={DCODE:'EXPLICIT',hostPCODE:'HOST',coID:'ExplicitDevice',autoAttach:false};
+    const owner={id:{PCODE:'HOST'},mount:{hash:0x4567},deviceConfig:[defaultInfo,explicitInfo]};
+
+    const explicit=io.attach(owner,explicitInfo,{newInstance:true});
+    assert.ok(explicit);
+    assert.equal(owner.devices.length,1);
+
+    io.provisionPeripheral(owner,'A2P');
+
+    assert.equal(owner.devices.length,1,
+        'restart provisioning must not add the if-empty default beside an existing explicit device');
+    assert.equal(owner.devices[0],explicit);
+    assert.equal(owner.devices.some(device=>device.id.DCODE==='DEFAULT'),false);
+    assert.equal(Object.keys(io.attachments).length,1,
+        'restart provisioning must not create a hidden default attachment either');
+});
+
+test('if-empty declarative defaults still attach when the host really is empty',()=>{
+    const context=loadApple2IO(`
+        function DefaultDevice(){ this.id={}; }
+        this.DefaultDevice=DefaultDevice;
+    `);
+
+    const io=new context.Apple2IO(null,null);
+    const defaultInfo={DCODE:'DEFAULT',hostPCODE:'HOST',coID:'DefaultDevice',autoAttach:'if-empty'};
+    const owner={id:{PCODE:'HOST'},mount:{hash:0x5678},deviceConfig:[defaultInfo]};
+
+    io.provisionPeripheral(owner,'A2P');
+
+    assert.equal(owner.devices.length,1);
+    assert.equal(owner.devices[0].id.DCODE,'DEFAULT');
+});
+
 test('failed host binding rolls back the new instance registry and owner row',()=>{
     const context=loadApple2IO(`
         function FullDevice(){
