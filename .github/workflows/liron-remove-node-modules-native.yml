@@ -1,0 +1,43 @@
+name: Remove accidental generated dependencies
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - feature/liron-unidisk-surface-map
+    paths:
+      - .github/workflows/liron-remove-node-modules-native.yml
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-surface-map
+          fetch-depth: 0
+      - name: RED generated dependency guard
+        shell: bash
+        run: |
+          set +e
+          test -z "$(git ls-tree -r --name-only HEAD | grep '^node_modules/' || true)"
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then
+            echo "RED gate failed: node_modules was not tracked before cleanup"
+            exit 1
+          fi
+          echo "Observed expected RED: node_modules is tracked"
+      - name: GREEN remove generated dependencies
+        run: |
+          git rm -r node_modules
+          test -z "$(git ls-files 'node_modules/**')"
+      - name: Commit cleanup
+        run: |
+          git config user.name "ChatGPT"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/liron-remove-node-modules-native.yml
+          git add -A
+          test -z "$(git ls-files 'node_modules/**')"
+          git commit -m "chore: remove generated Playwright dependencies"
+          git push origin HEAD:feature/liron-unidisk-surface-map
