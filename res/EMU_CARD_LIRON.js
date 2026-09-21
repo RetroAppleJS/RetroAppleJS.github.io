@@ -1042,6 +1042,7 @@ function AppleLiron()
     var liron = this;
     var smartport = new SmartPortBus();
     var iwm = new LironIWM(smartport);
+    var deviceSurfaceMapState = {"unit":null,"hash":null};
 
     this.id = {"PCODE":"LIRON","icon":"fa fa-save"};
     this.deviceConfig = [{
@@ -1455,6 +1456,84 @@ function AppleLiron()
         var eject=document.getElementById(controlID+"_but");
         if(eject) eject.title=(instance ? ("Instance #"+instance+": ") : ("Unit"+unit+": "))+(hardDisk ? "erase/reset disk" : "eject disk");
         if(options.clearFile) { var file=document.getElementById(controlID+"_file"); if(file) try { file.value=""; } catch(e) {} }
+        if(deviceSurfaceMapState.unit===unit) liron.deviceToolSurfaceMapRefresh();
+        return true;
+    };
+
+    function deviceToolSurfaceTarget(unit,expectedHash)
+    {
+        unit=Number(unit); expectedHash=Number(expectedHash);
+        if(!Number.isInteger(unit) || unit<1 || unit>8 || !Number.isInteger(expectedHash)) return null;
+        var device=deviceToolUnitDevice(unit);
+        if(!device || device.id?.DCODE!=="UNIDISK" || typeof(device.getSurfaceMapGeometry)!=="function") return null;
+        if(Number(device.attach?.hash)!==expectedHash) return null;
+        return device;
+    }
+
+    this.deviceToolSurfaceMapHTML = function(unit,expectedHash)
+    {
+        unit=Number(unit); expectedHash=Number(expectedHash);
+        var label="UNIDISK Unit"+unit;
+        var title="<div class=\"liron-surface-title\">Disk Surface Map — "+label+"</div>";
+        var device=deviceToolSurfaceTarget(unit,expectedHash);
+        if(!device)
+            return title+"<div class=\"liron-surface-status\">Device instance is no longer attached.</div>";
+
+        var instance=deviceToolInstanceHex(device) || "????";
+        var state=typeof(device.getState)==="function" ? device.getState() || {} : {};
+        var meta="<div class=\"liron-surface-meta\">Instance #"+instance+" · 800 KB · 1600 × 512-byte sectors</div>";
+        if(!state.mediaLoaded)
+            return title+meta+"<div class=\"liron-surface-status\">No media loaded.</div>";
+
+        var out=title+meta+"<div class=\"liron-surface-panels\">";
+        for(var side=0;side<2;side++)
+        {
+            out += "<section class=\"liron-surface-side\" data-side=\""+side+"\"><div class=\"liron-surface-side-title\">Side "+side+"</div><div class=\"liron-surface-grid\">";
+            for(var sector=0;sector<12;sector++)
+            {
+                for(var track=0;track<80;track++)
+                {
+                    var count=device.getSurfaceTrackSectorCount(track);
+                    var active=sector<count;
+                    var zoneEnd=track===15 || track===31 || track===47 || track===63;
+                    if(active)
+                    {
+                        var block=device.surfaceSectorToBlock(side,track,sector);
+                        var offset=block*512;
+                        out += "<span class=\"liron-surface-cell active"+(zoneEnd?" zone-end":"")+"\" data-surface-cell=\"1\" data-active=\"1\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+"\" data-block=\""+block+"\" data-offset=\""+offset+"\""+(zoneEnd?" data-zone-end=\"1\"":"")+" title=\"Side "+side+" · Track "+track+" · Sector "+sector+" · 512 bytes\"></span>";
+                    }
+                    else
+                    {
+                        out += "<span class=\"liron-surface-cell inactive"+(zoneEnd?" zone-end":"")+"\" data-surface-cell=\"1\" data-active=\"0\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+"\""+(zoneEnd?" data-zone-end=\"1\"":"")+" title=\"Side "+side+" · Track "+track+" · Sector "+sector+" · not present\"></span>";
+                    }
+                }
+            }
+            out += "</div></section>";
+        }
+        return out+"</div>";
+    };
+
+    this.deviceToolSurfaceMapRefresh = function()
+    {
+        if(!Number.isInteger(deviceSurfaceMapState.unit) || !Number.isInteger(deviceSurfaceMapState.hash)) return false;
+        if(typeof(document)==="undefined" || !document.getElementById) return false;
+        var popup=document.getElementById("lironSurfaceMap_popup");
+        var text=document.getElementById("lironSurfaceMap_popup_text");
+        if(!popup || !text) return false;
+        text.innerHTML=liron.deviceToolSurfaceMapHTML(deviceSurfaceMapState.unit,deviceSurfaceMapState.hash);
+        return true;
+    };
+
+    this.deviceToolSurfaceMap = function(unit,expectedHash)
+    {
+        unit=Number(unit); expectedHash=Number(expectedHash);
+        if(!Number.isInteger(unit) || unit<1 || unit>8 || !Number.isInteger(expectedHash)) return false;
+        deviceSurfaceMapState.unit=unit;
+        deviceSurfaceMapState.hash=expectedHash;
+        if(!liron.deviceToolSurfaceMapRefresh()) return false;
+        var popup=document.getElementById("lironSurfaceMap_popup");
+        if(typeof(oCOM)==="object" && oCOM && oCOM.POPUP && typeof(oCOM.POPUP.on)==="function") oCOM.POPUP.on("lironSurfaceMap_popup");
+        else popup.hidden=false;
         return true;
     };
 

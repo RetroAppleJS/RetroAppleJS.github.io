@@ -91,6 +91,21 @@
         }
     }
 </script>
+
+    <style id="lironSurfaceMap_style">
+      #lironSurfaceMap_popup { box-sizing:border-box; overflow:hidden; }
+      #lironSurfaceMap_popup .liron-surface-title { font-weight:bold; padding:2px 0 4px 0; }
+      #lironSurfaceMap_popup .liron-surface-meta { padding:0 0 7px 0; }
+      #lironSurfaceMap_popup .liron-surface-status { padding:12px 4px; }
+      #lironSurfaceMap_popup .liron-surface-panels { display:flex; gap:10px; width:100%; }
+      #lironSurfaceMap_popup .liron-surface-side { flex:1 1 0; min-width:0; }
+      #lironSurfaceMap_popup .liron-surface-side-title { text-align:center; padding-bottom:3px; }
+      #lironSurfaceMap_popup .liron-surface-grid { display:grid; grid-template-columns:repeat(80,minmax(3px,1fr)); grid-template-rows:repeat(12,8px); gap:1px; width:100%; overflow:hidden; }
+      #lironSurfaceMap_popup .liron-surface-cell { min-width:0; height:8px; box-sizing:border-box; border:1px solid rgba(0,0,0,0.35); }
+      #lironSurfaceMap_popup .liron-surface-cell.active { background:rgba(0,0,0,0.38); }
+      #lironSurfaceMap_popup .liron-surface-cell.inactive { opacity:0.12; }
+      #lironSurfaceMap_popup .liron-surface-cell.zone-end { border-right-width:2px; }
+    </style>
 </head>
 
 
@@ -113,6 +128,12 @@
   <div class=appbut id=COM_popup style="position: absolute; z-index: 3; left: 0px; top: 120px; " hidden="">
   <div class="appbut" onclick="oCOM.POPUP.toggle('COM_popup');document.getElementById('COM_popup_text').innerHTML=''" style="text-align:center;float:right;">x</div>
   <div id=COM_popup_text></div>
+  </div>
+
+
+  <div class="appbox" id="lironSurfaceMap_popup" style="position:absolute;z-index:3;left:350px;top:120px;width:930px;max-width:calc(100vw - 370px);text-align:left;padding:7px;margin:0px" hidden="">
+    <div class="appbut" onclick="oCOM.POPUP.off('lironSurfaceMap_popup')" style="text-align:center;float:right;cursor:pointer">x</div>
+    <div id="lironSurfaceMap_popup_text"></div>
   </div>
 
   <table id=box style=width:450px;margin-top:0px>
@@ -375,6 +396,7 @@
                         oCOM.POPUP.addScope("slotConfig_popup","tab1.1");
                         oCOM.POPUP.addScope("softwareCat_popup","tab1.2");
                         oCOM.POPUP.addScope("surfaceMap_popup","tab1.2");
+                        oCOM.POPUP.addScope("lironSurfaceMap_popup","tab1.2");
                         oCOM.POPUP.addScope("serialProTerminal_popup","tab1.2");
 
                         function system_tab_update()
