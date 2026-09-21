@@ -24,7 +24,9 @@ async function globalPage(page)
         const s5d1=[read(0xBF1A),read(0xBF1B)];
         const s5d2=[read(0xBF2A),read(0xBF2B)];
         const mli=[read(0xBF00),read(0xBF01),read(0xBF02)];
-        return {devcnt,devlst,nodev,s5d1,s5d2,mli};
+        const c5tail=[];
+        for(let addr=0xC5F8;addr<=0xC5FF;addr++) c5tail.push(read(addr));
+        return {devcnt,devlst,nodev,s5d1,s5d2,mli,c5tail};
     });
 }
 
@@ -44,8 +46,6 @@ async function waitForProDOS(page)
         if((i%2)!==1) continue;
         state=await globalPage(page);
         const units=highNibbles(state);
-        // A real ProDOS global page has at most fourteen active devices and,
-        // in this acceptance setup, must contain the slot-6 Disk II boot drive.
         if(state.devcnt<=13 && units.includes(0x60)) return state;
     }
     throw new Error('ProDOS did not establish a valid global device table: '+JSON.stringify(state));
@@ -143,7 +143,10 @@ async function setupTwoDevicesBeforeBoot(page)
     const setup=await setupTwoDevicesBeforeBoot(page);
     console.log('TWO_DEVICE_SETUP',JSON.stringify(setup));
 
-    const prodos=await waitForProDOS(page);
+    const firstGlobals=await waitForProDOS(page);
+    console.log('PRODOS_GLOBALS_FIRST_VALID',JSON.stringify(firstGlobals));
+    await runTicks(page,10);
+    const prodos=await globalPage(page);
     const installed=highNibbles(prodos);
     const bus=await page.evaluate(()=>{
         const io=apple2plus.hwObj().io;
@@ -155,7 +158,7 @@ async function setupTwoDevicesBeforeBoot(page)
         return null;
     });
 
-    console.log('PRODOS_GLOBALS',JSON.stringify(prodos));
+    console.log('PRODOS_GLOBALS_SETTLED',JSON.stringify(prodos));
     console.log('PRODOS_INSTALLED_HIGH_NIBBLES',JSON.stringify(installed));
     console.log('SMARTPORT_BUS_AFTER_BOOT',JSON.stringify(bus));
     console.log('SMARTPORT_LOG_COUNT',smartportLogs.length);
