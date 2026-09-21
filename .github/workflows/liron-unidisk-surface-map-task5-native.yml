@@ -24,6 +24,13 @@ jobs:
         shell: bash
         run: |
           python3 .github/scripts/liron-task5.py tests
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tests/liron_surface_map.test.js')
+          s=p.read_text()
+          if s.startswith('\\\n'): s=s[2:]
+          p.write_text(s)
+          PY
           set +e
           node --test tests/liron_surface_map.test.js > /tmp/task5-red.log 2>&1
           rc=$?
