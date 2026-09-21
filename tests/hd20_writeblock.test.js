@@ -110,14 +110,14 @@ test('HD20 writes mutate the mounted copy, not the caller source image',()=>{
     assert.equal(source[4*512],0x00);
 });
 
-test('HD20 always exposes a downloadable 20 MiB image with a default logical filename',()=>{
+test('HD20 always exposes a downloadable 20 MiB image with an unformatted logical filename by default',()=>{
     const disk=loadDevice();
 
     assert.equal(typeof disk.getImage,'function');
     assert.equal(typeof disk.getVolumeName,'function');
     assert.equal(typeof disk.getSuggestedFilename,'function');
     assert.equal(disk.getVolumeName(),'');
-    assert.equal(disk.getSuggestedFilename(),'HD20.po');
+    assert.equal(disk.getSuggestedFilename(),'UNFORMATTED-HD20.po');
 
     const image=disk.getImage();
     assert.equal(image.length,20971520);
@@ -160,7 +160,7 @@ test('HD20 notifies its Liron host only when a block-2 write changes the logical
     assert.equal(changes,1,'ordinary data writes must not rebuild the toolbox');
 });
 
-test('HD20 eject resets the non-removable hard disk to blank media instead of removing it',()=>{
+test('HD20 eject resets the non-removable hard disk to blank unformatted media instead of removing it',()=>{
     const disk=loadDevice();
     disk.loadImage(prodosImage('BLANK92'),{filename:'source.po'});
     const data=new Uint8Array(512); data.fill(0xA5);
@@ -172,10 +172,10 @@ test('HD20 eject resets the non-removable hard disk to blank media instead of re
     assert.equal(state.mediaLoaded,true);
     assert.equal(state.mediaBytes,20971520);
     assert.equal(state.mediaFilename,'');
-    assert.equal(state.logicalFilename,'HD20.po');
+    assert.equal(state.logicalFilename,'UNFORMATTED-HD20.po');
     assert.equal(state.dirty,false);
     assert.equal(disk.getVolumeName(),'');
-    assert.equal(disk.getSuggestedFilename(),'HD20.po');
+    assert.equal(disk.getSuggestedFilename(),'UNFORMATTED-HD20.po');
     assert.deepEqual(Array.from(disk.readBlock(2).data),new Array(512).fill(0));
     assert.deepEqual(Array.from(disk.readBlock(20).data),new Array(512).fill(0));
 });

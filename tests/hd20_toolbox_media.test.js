@@ -6,6 +6,22 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 
 const source=fs.readFileSync('res/EMU_CARD_LIRON.js','utf8');
+const hd20Source=fs.readFileSync('res/EMU_DEVICE_HD20.js','utf8');
+
+function blankImage()
+{
+    return new Uint8Array(40960*512);
+}
+
+function prodosImage(volumeName)
+{
+    const image=blankImage();
+    const name=String(volumeName || '').slice(0,15);
+    const offset=2*512+4;
+    image[offset]=0xF0 | name.length;
+    for(let i=0;i<name.length;i++) image[offset+1+i]=name.charCodeAt(i)&0x7F;
+    return image;
+}
 
 function fakeDevice(dcode,description,unit,blocks,options={})
 {
@@ -29,9 +45,10 @@ function loadLiron(extra={})
 {
     const context=vm.createContext(Object.assign({
         console:{log(){},warn(){},error(){}},
-        Uint8Array,Array,Number,String,Object,Math,RangeError,Error,Reflect,
+        Uint8Array,ArrayBuffer,Array,Number,String,Object,Math,RangeError,Error,Reflect,
         oEMU:{component:{IO:{}}}
     },extra));
+    vm.runInContext(hd20Source,context,{filename:'EMU_DEVICE_HD20.js'});
     vm.runInContext(source,context,{filename:'EMU_CARD_LIRON.js'});
     return context;
 }
@@ -120,6 +137,37 @@ test('HD20 media metadata changes refresh the open Liron toolbox',()=>{
     assert.equal(refreshCalls.length,1);
     assert.equal(refreshCalls[0].id,'devices');
     assert.equal(refreshCalls[0].default_slot,'5');
+});
+
+test('HD20 Unit button ejects a mounted ProDOS image back to unformatted backing media',()=>{
+    const rows=[];
+    const refreshCalls=[];
+    const context=loadLiron({
+        apple2plus:{hwObj(){return {io:{
+            slot2ID(slotN){return String(slotN-1);},
+            refreshDeviceToolboxes(arg){refreshCalls.push(arg);}
+        }};}},
+        EMU_deviceMediaRowHTML(spec){rows.push(spec);return '<row>'+spec.label+'</row>';}
+    });
+    const card=new context.AppleLiron();
+    card.mount={slotN:6};
+    const hd=new context.HD20Device();
+    card.devices=[hd];
+    assert.equal(hd.bindHost(card),true);
+    hd.loadImage(prodosImage('BLANK92'),{filename:'BLANK92.po'});
+    assert.equal(hd.getSuggestedFilename(),'BLANK92.po');
+
+    assert.equal(card.deviceToolEject(1),true);
+    assert.equal(card.getBus().getDevice(1),hd,'ejecting media must keep the HD20 device attached');
+    assert.equal(hd.getVolumeName(),'');
+    assert.equal(hd.getSuggestedFilename(),'UNFORMATTED-HD20.po');
+    assert.equal(hd.getState().mediaLoaded,true);
+    assert.deepEqual(Array.from(hd.readBlock(2).data),new Array(512).fill(0));
+
+    rows.length=0;
+    card.deviceToolSlotHTML({slotN:6,slotID:'5',toolboxID:'device_tool_5',devices:card.devices});
+    assert.equal(rows[0].fileDisplayName,'UNFORMATTED-HD20.po');
+    assert.ok(refreshCalls.length>=1);
 });
 
 test('Liron toolbox routes a 20 MiB file to the HD20 resident at that unit',()=>{
