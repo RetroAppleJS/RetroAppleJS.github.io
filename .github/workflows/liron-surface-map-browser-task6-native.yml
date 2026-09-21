@@ -9,6 +9,7 @@ on:
       - feature/liron-unidisk-surface-map
     paths:
       - .github/workflows/liron-surface-map-browser-task6-native.yml
+      - tests/liron_surface_map_browser_acceptance.js
 
 jobs:
   verify-surface-map:
