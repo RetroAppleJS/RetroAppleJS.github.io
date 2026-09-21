@@ -20,7 +20,7 @@ function HD20Device(options)
         ,dirty:false
     };
 
-    var media = null;
+    var media = new Uint8Array(BLOCK_SIZE * BLOCK_COUNT);
     var host = null;
 
     this.id = {
