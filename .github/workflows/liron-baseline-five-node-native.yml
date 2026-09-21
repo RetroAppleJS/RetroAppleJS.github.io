@@ -1,0 +1,54 @@
+name: Compare five Node failures with pre-feature baseline
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - feature/liron-unidisk-surface-map
+    paths:
+      - .github/workflows/liron-baseline-five-node-native.yml
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-surface-map
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run same five test files at pre-feature base
+        shell: bash
+        run: |
+          git worktree add --detach /tmp/liron-base 9534b27856a32c55d24eb426e2760ae16ad50960
+          cd /tmp/liron-base
+          set +e
+          node --test --test-reporter=tap \
+            tests/liron_browser_integration.test.js \
+            tests/liron_browser_mount.test.js \
+            tests/liron_card.test.js \
+            tests/liron_smartport_debug.test.js \
+            tests/liron_unidisk_identity_trace.test.js > /tmp/base-five.tap 2>&1
+          rc=$?
+          set -e
+          echo "BASE_FIVE_RC=$rc"
+          echo "--- BASE NOT OK ---"
+          grep '^not ok ' /tmp/base-five.tap || true
+          echo "--- BASE TOTALS ---"
+          grep -E '^# (tests|pass|fail|cancelled|skipped|todo) ' /tmp/base-five.tap || true
+          cd -
+          git worktree remove --force /tmp/liron-base
+          exit 0
+      - name: Remove temporary baseline workflow
+        run: |
+          git config user.name "ChatGPT"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/liron-baseline-five-node-native.yml
+          git add -A
+          git commit -m "chore: remove baseline comparison workflow"
+          git push origin HEAD:feature/liron-unidisk-surface-map
