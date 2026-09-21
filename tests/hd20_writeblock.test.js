@@ -21,6 +21,16 @@ function blankImage()
     return new Uint8Array(40960*512);
 }
 
+function prodosImage(volumeName)
+{
+    const image=blankImage();
+    const name=String(volumeName || '').slice(0,15);
+    const offset=2*512+4;
+    image[offset]=0xF0 | name.length;
+    for(let i=0;i<name.length;i++) image[offset+1+i]=name.charCodeAt(i)&0x7F;
+    return image;
+}
+
 test('HD20 writeBlock writes exactly one 512-byte block and marks media dirty',()=>{
     const disk=loadDevice();
     disk.loadImage(blankImage(),{filename:'HD20.po'});
@@ -98,4 +108,74 @@ test('HD20 writes mutate the mounted copy, not the caller source image',()=>{
     assert.equal(disk.writeBlock(4,data).error,0x00);
     assert.equal(disk.readBlock(4).data[0],0x77);
     assert.equal(source[4*512],0x00);
+});
+
+test('HD20 always exposes a downloadable 20 MiB image with a default logical filename',()=>{
+    const disk=loadDevice();
+
+    assert.equal(typeof disk.getImage,'function');
+    assert.equal(typeof disk.getVolumeName,'function');
+    assert.equal(typeof disk.getSuggestedFilename,'function');
+    assert.equal(disk.getVolumeName(),'');
+    assert.equal(disk.getSuggestedFilename(),'HD20.po');
+
+    const image=disk.getImage();
+    assert.equal(image.length,20971520);
+    image[0]=0xAA;
+    assert.equal(disk.readBlock(0).data[0],0x00,'export image must be a copy, not mutable device storage');
+});
+
+test('HD20 derives its logical filename from the ProDOS volume directory header in block 2',()=>{
+    const disk=loadDevice();
+    disk.loadImage(prodosImage('BLANK92'),{filename:'uploaded.po'});
+
+    assert.equal(disk.getVolumeName(),'BLANK92');
+    assert.equal(disk.getSuggestedFilename(),'BLANK92.po');
+    assert.equal(disk.getState().logicalFilename,'BLANK92.po');
+
+    const plain=blankImage();
+    disk.loadImage(plain,{filename:'TOOLS.po'});
+    assert.equal(disk.getVolumeName(),'');
+    assert.equal(disk.getSuggestedFilename(),'TOOLS.po','uploaded filename is the fallback when no ProDOS volume name exists');
+});
+
+test('HD20 notifies its Liron host only when a block-2 write changes the logical filename',()=>{
+    const disk=loadDevice();
+    let changes=0;
+    const host={
+        id:{PCODE:'LIRON'},
+        attachSmartPortDevice(device){return device;},
+        detachSmartPortDevice(){return true;},
+        deviceMediaMetadataChanged(device){assert.equal(device,disk);changes++;}
+    };
+    assert.equal(disk.bindHost(host),true);
+
+    const block2=prodosImage('WORK').slice(2*512,3*512);
+    assert.equal(disk.writeBlock(2,block2).error,0x00);
+    assert.equal(disk.getSuggestedFilename(),'WORK.po');
+    assert.equal(changes,1);
+
+    const other=new Uint8Array(512); other.fill(0x66);
+    assert.equal(disk.writeBlock(3,other).error,0x00);
+    assert.equal(changes,1,'ordinary data writes must not rebuild the toolbox');
+});
+
+test('HD20 eject resets the non-removable hard disk to blank media instead of removing it',()=>{
+    const disk=loadDevice();
+    disk.loadImage(prodosImage('BLANK92'),{filename:'source.po'});
+    const data=new Uint8Array(512); data.fill(0xA5);
+    assert.equal(disk.writeBlock(20,data).error,0x00);
+
+    assert.equal(disk.ejectImage(),true);
+    const state=disk.getState();
+    assert.equal(state.online,true);
+    assert.equal(state.mediaLoaded,true);
+    assert.equal(state.mediaBytes,20971520);
+    assert.equal(state.mediaFilename,'');
+    assert.equal(state.logicalFilename,'HD20.po');
+    assert.equal(state.dirty,false);
+    assert.equal(disk.getVolumeName(),'');
+    assert.equal(disk.getSuggestedFilename(),'HD20.po');
+    assert.deepEqual(Array.from(disk.readBlock(2).data),new Array(512).fill(0));
+    assert.deepEqual(Array.from(disk.readBlock(20).data),new Array(512).fill(0));
 });
