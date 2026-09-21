@@ -26,7 +26,14 @@ async function globalPage(page)
         const mli=[read(0xBF00),read(0xBF01),read(0xBF02)];
         const c5tail=[];
         for(let addr=0xC5F8;addr<=0xC5FF;addr++) c5tail.push(read(addr));
-        return {devcnt,devlst,nodev,s5d1,s5d2,mli,c5tail};
+        const vectors=[];
+        for(let addr=0xBF10;addr<0xBF30;addr+=2)
+            vectors.push({addr,lo:read(addr),hi:read(addr+1)});
+        const fe70=[];
+        for(let addr=0xFE70;addr<0xFE90;addr++) fe70.push(read(addr));
+        const c500=[];
+        for(let addr=0xC500;addr<0xC520;addr++) c500.push(read(addr));
+        return {devcnt,devlst,nodev,s5d1,s5d2,mli,c5tail,vectors,fe70,c500};
     });
 }
 
@@ -159,6 +166,9 @@ async function setupTwoDevicesBeforeBoot(page)
     });
 
     console.log('PRODOS_GLOBALS_SETTLED',JSON.stringify(prodos));
+    console.log('PRODOS_DRIVER_VECTORS',JSON.stringify(prodos.vectors));
+    console.log('PRODOS_FE70',JSON.stringify(prodos.fe70));
+    console.log('LIRON_C500',JSON.stringify(prodos.c500));
     console.log('PRODOS_INSTALLED_HIGH_NIBBLES',JSON.stringify(installed));
     console.log('SMARTPORT_BUS_AFTER_BOOT',JSON.stringify(bus));
     console.log('SMARTPORT_LOG_COUNT',smartportLogs.length);
