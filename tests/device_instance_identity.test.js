@@ -129,6 +129,8 @@ test('if-empty declarative defaults stay absent when the host already has an exp
         'restart provisioning must not add the if-empty default beside an existing explicit device');
     assert.equal(owner.devices[0],explicit);
     assert.equal(owner.devices.some(device=>device.id.DCODE==='DEFAULT'),false);
+    assert.equal(Object.keys(io.attachments).length,1,
+        'restart provisioning must not create a hidden default attachment either');
 });
 
 test('if-empty declarative defaults still attach when the host really is empty',()=>{
