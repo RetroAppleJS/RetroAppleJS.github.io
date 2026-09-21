@@ -179,6 +179,9 @@ test('loaded UniDisk media enables download and exports the exact .po image', ()
     disk.loadImage(image,{filename:'ProDOS Packer 6.0.po'});
     card.devices=[disk];
 
+    assert.equal(disk.getSuggestedFilename(),'ProDOS Packer 6.0.po');
+    assert.notEqual(disk.getImage(),image,'export must return a copy of the mounted media buffer');
+
     card.deviceToolSlotHTML({slotN:6,slotID:'5',toolboxID:'device_tool_5',devices:card.devices});
     assert.equal(rows.length,1);
     assert.equal(rows[0].downloadDisabled,false,
