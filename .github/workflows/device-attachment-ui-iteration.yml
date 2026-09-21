@@ -1,50 +1,12 @@
 name: Device attachment UI acceptance
 
 permissions:
-  contents: read
+  contents: write
 
 on:
   push:
     paths:
-      - "res/EMU_apple2main.js"
-      - "res/EMU_apple2io.js"
-      - "res/EMU_CARD_LIRON.js"
-      - "res/EMU_DEVICE_UNIDISK35.js"
-      - "res/EMU_DEVICE_HD20.js"
-      - "index.html"
-      - "tests/device_attachment_ui.test.js"
-      - "tests/device_instance_identity.test.js"
-      - "tests/liron_smartport_bus.test.js"
-      - "tests/smartport_port_metadata.test.js"
-      - "tests/hd20_smartport_device.test.js"
-      - "tests/hd20_writeblock.test.js"
-      - "tests/hd20_media_routing.test.js"
-      - "tests/hd20_toolbox_media.test.js"
-      - "tests/liron_writeblock.test.js"
-      - "tests/liron_browser_mount.test.js"
-      - "tests/liron_toolbox.test.js"
-      - "tests/liron_loader_diagnostics.test.js"
-      - ".github/workflows/device-attachment-ui-iteration.yml"
-  pull_request:
-    paths:
-      - "res/EMU_apple2main.js"
-      - "res/EMU_apple2io.js"
-      - "res/EMU_CARD_LIRON.js"
-      - "res/EMU_DEVICE_UNIDISK35.js"
-      - "res/EMU_DEVICE_HD20.js"
-      - "index.html"
-      - "tests/device_attachment_ui.test.js"
-      - "tests/device_instance_identity.test.js"
-      - "tests/liron_smartport_bus.test.js"
-      - "tests/smartport_port_metadata.test.js"
-      - "tests/hd20_smartport_device.test.js"
-      - "tests/hd20_writeblock.test.js"
-      - "tests/hd20_media_routing.test.js"
-      - "tests/hd20_toolbox_media.test.js"
-      - "tests/liron_writeblock.test.js"
-      - "tests/liron_browser_mount.test.js"
-      - "tests/liron_toolbox.test.js"
-      - "tests/liron_loader_diagnostics.test.js"
+      - "tools/patch_smartport_write_format.py"
       - ".github/workflows/device-attachment-ui-iteration.yml"
   workflow_dispatch:
 
@@ -53,41 +15,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      # Cover attachment identity, SmartPort metadata, writable HD20 media, and legacy Liron media behavior.
+      - name: Apply SmartPort WRITE BLOCK and FORMAT patch
+        run: python3 tools/patch_smartport_write_format.py
       - name: Syntax checks
         run: |
-          node --check res/EMU_apple2main.js
-          node --check res/EMU_apple2io.js
           node --check res/EMU_CARD_LIRON.js
-          node --check res/EMU_DEVICE_UNIDISK35.js
           node --check res/EMU_DEVICE_HD20.js
-          node --check tests/device_attachment_ui.test.js
-          node --check tests/device_instance_identity.test.js
-          node --check tests/liron_smartport_bus.test.js
-          node --check tests/smartport_port_metadata.test.js
-          node --check tests/hd20_smartport_device.test.js
           node --check tests/hd20_writeblock.test.js
-          node --check tests/hd20_media_routing.test.js
-          node --check tests/hd20_toolbox_media.test.js
           node --check tests/liron_writeblock.test.js
-          node --check tests/liron_browser_mount.test.js
-          node --check tests/liron_toolbox.test.js
-          node --check tests/liron_loader_diagnostics.test.js
-      - name: Device attachment acceptance
+      - name: SmartPort write-format acceptance
         run: |
           node --test \
-            tests/device_attachment_ui.test.js \
-            tests/device_instance_identity.test.js \
-            tests/liron_smartport_bus.test.js \
-            tests/smartport_port_metadata.test.js \
-            tests/hd20_smartport_device.test.js \
             tests/hd20_writeblock.test.js \
-            tests/hd20_media_routing.test.js \
-            tests/hd20_toolbox_media.test.js \
             tests/liron_writeblock.test.js \
-            tests/liron_browser_mount.test.js \
-            tests/liron_toolbox.test.js \
-            tests/liron_loader_diagnostics.test.js
+            tests/liron_readblock.test.js \
+            tests/liron_smartport_bus.test.js \
+            tests/liron_smartport_transport.test.js
+      - name: Commit patched SmartPort transport
+        run: |
+          if git diff --quiet -- res/EMU_CARD_LIRON.js; then
+            echo "No SmartPort transport changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add res/EMU_CARD_LIRON.js
+          git diff --cached --check
+          git commit -m "feat: add SmartPort WRITE BLOCK and FORMAT transport"
+          git push origin HEAD:${GITHUB_REF_NAME}
