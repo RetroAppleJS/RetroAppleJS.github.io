@@ -174,6 +174,28 @@ test('final SmartPort write drains on handshake poll and clears underrun bit 6',
     assert.equal(iwm.getState().underrun,true);
 });
 
+test('WRITE BLOCK command and DATA packet ACK states also signal final-byte drain', () => {
+    for(const terminalState of ['WRITE_COMMAND_ACK','WRITE_DATA_ACK'])
+    {
+        const {iwm,bus} = makeIWM();
+
+        // Select WRITE DATA and queue the final packet byte.
+        iwm.read(0x09);
+        iwm.read(0x0D);
+        iwm.read(0x0F);
+        iwm.write(0x0D,0xC8);
+
+        // The real SmartPortBus enters these states after the WRITE command
+        // packet and its following DATA packet respectively.
+        bus.protocolState=terminalState;
+
+        const handshake=iwm.read(0x0C);
+        assert.equal(handshake & 0x80,0x80,terminalState+' must leave the transmit buffer ready');
+        assert.equal(handshake & 0x40,0x00,terminalState+' must signal final-byte drain/write complete');
+        assert.equal(iwm.getState().underrun,true,terminalState+' must latch the IWM underrun indication');
+    }
+});
+
 test('odd Q6/Q7 writes target MODE with motor off and DATA with motor on', () => {
     const {iwm,bus} = makeIWM();
 
