@@ -4,7 +4,7 @@ const {chromium}=require('playwright');
 
 const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
 const CHUNK_TICKS=500000;
-const MAX_CHUNKS=80;
+const MAX_CHUNKS=120;
 
 async function runTicks(page,count=1)
 {
@@ -23,14 +23,15 @@ async function globalPage(page)
         const nodev=[read(0xBF10),read(0xBF11)];
         const s5d1=[read(0xBF1A),read(0xBF1B)];
         const s5d2=[read(0xBF2A),read(0xBF2B)];
-        return {devcnt,devlst,nodev,s5d1,s5d2};
+        const mli=[read(0xBF00),read(0xBF01),read(0xBF02)];
+        return {devcnt,devlst,nodev,s5d1,s5d2,mli};
     });
 }
 
 function highNibbles(state)
 {
-    if(!state || state.devcnt===0xFF) return [];
-    const count=Math.min(14,(state.devcnt&0xFF)+1);
+    if(!state || state.devcnt===0xFF || state.devcnt>13) return [];
+    const count=(state.devcnt&0xFF)+1;
     return state.devlst.slice(0,count).map(value=>value&0xF0);
 }
 
@@ -43,9 +44,11 @@ async function waitForProDOS(page)
         if((i%2)!==1) continue;
         state=await globalPage(page);
         const units=highNibbles(state);
-        if(state.devcnt!==0xFF && units.includes(0x50)) return state;
+        // A real ProDOS global page has at most fourteen active devices and,
+        // in this acceptance setup, must contain the slot-6 Disk II boot drive.
+        if(state.devcnt<=13 && units.includes(0x60)) return state;
     }
-    throw new Error('ProDOS did not install slot-5 drive 1: '+JSON.stringify(state));
+    throw new Error('ProDOS did not establish a valid global device table: '+JSON.stringify(state));
 }
 
 async function stopRealtime(page)
@@ -112,6 +115,7 @@ async function setupTwoDevicesBeforeBoot(page)
         apple2plus.reset();
         return {
             lironSlot:lironInfo.slotIndex,
+            diskIISlot,
             bus:liron.getBus().getState(),
             hdUnit:hd.getUnit(),
             uniUnit:uni.getUnit(),
@@ -156,6 +160,8 @@ async function setupTwoDevicesBeforeBoot(page)
     console.log('SMARTPORT_BUS_AFTER_BOOT',JSON.stringify(bus));
     console.log('SMARTPORT_LOG_COUNT',smartportLogs.length);
 
+    if(!installed.includes(0x50))
+        throw new Error('ProDOS did not install Liron Unit 1 as S5,D1; globals='+JSON.stringify(prodos)+' bus='+JSON.stringify(bus));
     if(!installed.includes(0xD0))
         throw new Error('ProDOS did not install Liron Unit 2 as S5,D2; globals='+JSON.stringify(prodos)+' bus='+JSON.stringify(bus));
     if(prodos.s5d2[0]===prodos.nodev[0] && prodos.s5d2[1]===prodos.nodev[1])
