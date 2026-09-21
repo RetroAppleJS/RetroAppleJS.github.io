@@ -68,7 +68,7 @@ For the target unit it updates:
 - download enabled/disabled state
 - download click handler
 - download tooltip/filename
-- Surface Map enabled/disabled state if media availability affects it
+- Surface Map enabled/disabled state
 - eject tooltip if needed
 
 The native file input and its selected filename remain untouched after a successful mount.
@@ -171,13 +171,13 @@ This keeps LIRON heterogeneous-device-safe.
 
 If no UniDisk media is loaded:
 
-- Download is disabled.
-- Surface Map is disabled (or omitted if the row capability policy prefers absence for unavailable runtime state; the implementation should choose one consistent behavior and test it).
+- Download remains visible but disabled.
+- Surface Map remains visible but disabled, because it is a capability of the attached UniDisk even when no medium is inserted.
 - Clicking stale controls must not throw.
 
 After load/eject, row action states are synchronized in place.
 
-If the popup is already open when the target media is ejected, it should render an empty/no-media state rather than reading stale image data.
+If the popup is already open when the target media is ejected, it renders an explicit no-media state rather than reading stale image data.
 
 ## Testing
 
