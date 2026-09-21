@@ -106,6 +106,36 @@ test('Apple2IO supports explicit duplicate instances while declarative provision
     assert.equal(owner.devices[0],first);
 });
 
+test('explicit child attach and detach notify a host about live topology changes',()=>{
+    const context=loadApple2IO(`
+        function TestDevice(){ this.id={}; }
+        this.TestDevice=TestDevice;
+    `);
+
+    const io=new context.Apple2IO(null,null);
+    const changes=[];
+    const info={DCODE:'TESTDEV',hostPCODE:'HOST',coID:'TestDevice'};
+    const owner={
+        id:{PCODE:'HOST'},
+        mount:{hash:0x3344},
+        deviceConfig:[info],
+        onDeviceTopologyChanged(change){ changes.push(change); }
+    };
+
+    const device=io.attach(owner,info,{newInstance:true});
+    assert.ok(device);
+    assert.equal(changes.length,1,'live picker attachment must notify the host once');
+    assert.equal(changes[0].type,'attach');
+    assert.equal(changes[0].DCODE,'TESTDEV');
+    assert.equal(changes[0].device,device);
+
+    assert.equal(io.detachInstance(owner,device.attach.hash),true);
+    assert.equal(changes.length,2,'live detach must notify the host once');
+    assert.equal(changes[1].type,'detach');
+    assert.equal(changes[1].DCODE,'TESTDEV');
+    assert.equal(changes[1].device,device);
+});
+
 test('if-empty declarative defaults stay absent when the host already has an explicit device',()=>{
     const context=loadApple2IO(`
         function DefaultDevice(){ this.id={}; }
