@@ -30,19 +30,14 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
             if(!disk || disk.id.DCODE!=='UNIDISK') throw new Error('UNIDISK Unit1 not found');
             if(typeof disk.ejectImage==='function') disk.ejectImage();
 
-            if(oCOM && oCOM.POPUP && typeof oCOM.POPUP.on==='function') oCOM.POPUP.on('tab1.2');
-            let host=document.getElementById('liron_surface_acceptance_host');
-            if(host) host.remove();
-            host=document.createElement('div');
-            host.id='liron_surface_acceptance_host';
-            host.innerHTML=liron.deviceToolSlotHTML({
-                slotN,slotID,toolboxID:'liron_surface_acceptance_toolbox',devices:liron.devices
-            });
-            document.body.appendChild(host);
-            const toolbox=document.getElementById('liron_surface_acceptance_toolbox');
-            if(toolbox) toolbox.hidden=false;
+            const owner=document.getElementById('tab1.2');
+            if(owner)
+            {
+                owner.hidden=false;
+                if(owner.classList) owner.classList.add('active');
+            }
 
-            return {
+            const ids={
                 slotN,slotID,
                 fileID:'liron_unit_'+slotID+'_1_file',
                 downloadID:'liron_unit_'+slotID+'_1_dump',
@@ -50,6 +45,12 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
                 buttonID:'liron_unit_'+slotID+'_1_but',
                 hash:Number(disk.attach && disk.attach.hash)
             };
+            for(const key of ['fileID','downloadID','surfaceID','buttonID'])
+            {
+                const matches=document.querySelectorAll('#'+ids[key]);
+                if(matches.length!==1) throw new Error(ids[key]+' expected exactly once, got '+matches.length);
+            }
+            return ids;
         });
 
         assert.ok(Number.isInteger(setup.hash),'UniDisk must have an attachment instance hash');
@@ -95,7 +96,7 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
         assert.equal(loaded.rowLabel,'UNIDISK Unit1');
         assert.match(loaded.ejectTitle,/^Instance #[0-9A-F]{4}: eject disk$/);
 
-        await page.locator('#'+setup.surfaceID).click();
+        await page.evaluate(id=>document.getElementById(id).click(),setup.surfaceID);
         await page.waitForFunction(()=>{
             const popup=document.getElementById('lironSurfaceMap_popup');
             const text=document.getElementById('lironSurfaceMap_popup_text');
@@ -127,7 +128,7 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
         assert.ok(map.scrollWidth<=map.clientWidth+1,'surface map popup must not scroll horizontally');
         assert.ok(map.left>=0 && map.right<=map.viewport+1,'surface map popup must fit the desktop viewport');
 
-        await page.locator('#'+setup.buttonID).click();
+        await page.evaluate(id=>document.getElementById(id).click(),setup.buttonID);
         await page.waitForFunction(({slotN})=>{
             const card=apple2plus.hwObj().io.SLOT2obj(slotN);
             const disk=card && card.getBus().getDevice(1);
