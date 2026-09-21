@@ -17,6 +17,7 @@ function HD20Device(options)
         ,online:options.online===undefined ? true : !!options.online
         ,writeProtected:!!options.writeProtected
         ,mediaFilename:""
+        ,dirty:false
     };
 
     var media = null;
@@ -138,6 +139,7 @@ function HD20Device(options)
 
         media=bytes;
         state.online=true;
+        state.dirty=false;
         state.mediaFilename = metadata && metadata.filename
             ? String(metadata.filename).split(/[\\/]/).pop()
             : "";
@@ -148,6 +150,7 @@ function HD20Device(options)
     {
         media=null;
         state.mediaFilename="";
+        state.dirty=false;
         return true;
     };
 
@@ -160,6 +163,46 @@ function HD20Device(options)
 
         var offset=blockNumber*BLOCK_SIZE;
         return {"error":0x00,"data":media.slice(offset,offset+BLOCK_SIZE)};
+    };
+
+    this.writeBlock = function(blockNumber,data)
+    {
+        blockNumber=Number(blockNumber);
+
+        // SmartPort $2F OFFLINE: no mounted/online medium.
+        if(!state.online || media===null)
+            return {"error":0x2F};
+
+        // SmartPort $2B NOWRITE: medium/device is write protected.
+        if(state.writeProtected)
+            return {"error":0x2B};
+
+        // SmartPort $2D BADBLOCK: HD20 exposes logical blocks 0..40959.
+        if(!Number.isInteger(blockNumber) || blockNumber<0 || blockNumber>=BLOCK_COUNT)
+            return {"error":0x2D};
+
+        // SmartPort block writes are exactly one 512-byte logical block.
+        if(!data || typeof(data.length)!=="number" || data.length!==BLOCK_SIZE)
+            return {"error":0x27};
+
+        media.set(data,blockNumber*BLOCK_SIZE);
+        state.dirty=true;
+        return {"error":0x00};
+    };
+
+    this.format = function()
+    {
+        // SmartPort FORMAT prepares all blocks for read/write use.  For the
+        // memory-backed HD20 image a deterministic zero fill is sufficient;
+        // ProDOS lays down its own filesystem structures afterwards.
+        if(!state.online || media===null)
+            return {"error":0x2F};
+        if(state.writeProtected)
+            return {"error":0x2B};
+
+        media.fill(0);
+        state.dirty=true;
+        return {"error":0x00};
     };
 
     this.status = function(statusCode)
@@ -188,6 +231,7 @@ function HD20Device(options)
             ,"mediaLoaded":media!==null
             ,"mediaBytes":media===null ? 0 : media.length
             ,"mediaFilename":state.mediaFilename
+            ,"dirty":state.dirty
         };
     };
 }
