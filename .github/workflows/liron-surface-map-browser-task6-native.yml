@@ -1,0 +1,51 @@
+name: Verify UniDisk surface map browser Task 6
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - feature/liron-unidisk-surface-map
+    paths:
+      - .github/workflows/liron-surface-map-browser-task6-native.yml
+
+jobs:
+  verify-surface-map:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-surface-map
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Guard acceptance harness
+        run: |
+          node --check tests/liron_surface_map_browser_acceptance.js
+          if grep -nE '\.(loadImage|readBlock)[[:space:]]*\(' tests/liron_surface_map_browser_acceptance.js; then
+            echo "Acceptance harness must not call UniDisk loadImage/readBlock directly"
+            exit 1
+          fi
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Exercise live UniDisk file input and surface map
+        run: |
+          python3 -m http.server 8000 >/tmp/retroapple-http-surface-map.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          RETROAPPLE_URL=http://127.0.0.1:8000 node tests/liron_surface_map_browser_acceptance.js
+      - name: Remove temporary verification workflow
+        if: success()
+        run: |
+          git config user.name "ChatGPT"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/liron-surface-map-browser-task6-native.yml
+          git add -A
+          git commit -m "test: cover UniDisk surface map in browser"
+          git push origin HEAD:feature/liron-unidisk-surface-map
