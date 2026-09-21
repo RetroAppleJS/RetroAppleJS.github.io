@@ -28767,6 +28767,7 @@ function HD20Device(options)
         ,online:options.online===undefined ? true : !!options.online
         ,writeProtected:!!options.writeProtected
         ,mediaFilename:""
+        ,dirty:false
     };
 
     var media = null;
@@ -28888,6 +28889,7 @@ function HD20Device(options)
 
         media=bytes;
         state.online=true;
+        state.dirty=false;
         state.mediaFilename = metadata && metadata.filename
             ? String(metadata.filename).split(/[\\/]/).pop()
             : "";
@@ -28898,6 +28900,7 @@ function HD20Device(options)
     {
         media=null;
         state.mediaFilename="";
+        state.dirty=false;
         return true;
     };
 
@@ -28910,6 +28913,46 @@ function HD20Device(options)
 
         var offset=blockNumber*BLOCK_SIZE;
         return {"error":0x00,"data":media.slice(offset,offset+BLOCK_SIZE)};
+    };
+
+    this.writeBlock = function(blockNumber,data)
+    {
+        blockNumber=Number(blockNumber);
+
+        // SmartPort $2F OFFLINE: no mounted/online medium.
+        if(!state.online || media===null)
+            return {"error":0x2F};
+
+        // SmartPort $2B NOWRITE: medium/device is write protected.
+        if(state.writeProtected)
+            return {"error":0x2B};
+
+        // SmartPort $2D BADBLOCK: HD20 exposes logical blocks 0..40959.
+        if(!Number.isInteger(blockNumber) || blockNumber<0 || blockNumber>=BLOCK_COUNT)
+            return {"error":0x2D};
+
+        // SmartPort block writes are exactly one 512-byte logical block.
+        if(!data || typeof(data.length)!=="number" || data.length!==BLOCK_SIZE)
+            return {"error":0x27};
+
+        media.set(data,blockNumber*BLOCK_SIZE);
+        state.dirty=true;
+        return {"error":0x00};
+    };
+
+    this.format = function()
+    {
+        // SmartPort FORMAT prepares all blocks for read/write use.  For the
+        // memory-backed HD20 image a deterministic zero fill is sufficient;
+        // ProDOS lays down its own filesystem structures afterwards.
+        if(!state.online || media===null)
+            return {"error":0x2F};
+        if(state.writeProtected)
+            return {"error":0x2B};
+
+        media.fill(0);
+        state.dirty=true;
+        return {"error":0x00};
     };
 
     this.status = function(statusCode)
@@ -28938,6 +28981,7 @@ function HD20Device(options)
             ,"mediaLoaded":media!==null
             ,"mediaBytes":media===null ? 0 : media.length
             ,"mediaFilename":state.mediaFilename
+            ,"dirty":state.dirty
         };
     };
 }
@@ -29085,6 +29129,10 @@ function SmartPortBus()
     const SYNC = [0xFF,0x3F,0xCF,0xF3,0xFC,0xFF,0xC3];
     const WAIT_SYNC="WAIT_SYNC";
     const RECEIVE_COMMAND="RECEIVE_COMMAND";
+    const WRITE_COMMAND_ACK="WRITE_COMMAND_ACK";
+    const WAIT_WRITE_DATA="WAIT_WRITE_DATA";
+    const RECEIVE_WRITE_DATA="RECEIVE_WRITE_DATA";
+    const WRITE_DATA_ACK="WRITE_DATA_ACK";
     const RESPONSE_PENDING="RESPONSE_PENDING";
     const SEND_RESPONSE="SEND_RESPONSE";
     const RESPONSE_DONE="RESPONSE_DONE";
@@ -29101,6 +29149,9 @@ function SmartPortBus()
     var tx=[];
     var txIndex=0;
     var lastError="";
+    // WRITE BLOCK spans an inbound command packet and a following $82 DATA packet.
+    // The media write is committed only after the host releases DATA ACK.
+    var pendingWrite=null;
 
     const SMARTPORT_COMMAND_NAMES={0x00:"STATUS",0x01:"READ BLOCK",0x02:"WRITE BLOCK",0x03:"FORMAT",0x04:"CONTROL",0x05:"INIT",0x06:"OPEN",0x07:"CLOSE"};
     function debugLog(event,fields)
@@ -29140,6 +29191,7 @@ function SmartPortBus()
         enabled=false;
         req=false;
         ack=false;
+        pendingWrite=null;
         syncWindow=[];
         rx=[];
         header=[];
@@ -29231,7 +29283,7 @@ function SmartPortBus()
         return {"bytes":bytes,"odd":odd,"groups":groups};
     }
 
-    function buildResponse(source,status,payload)
+    function buildResponse(source,status,payload,assertAck)
     {
         debugLog("TX_RESPONSE",{"src":source&0x7F,"dest":0,"type":1,"status":status&0x7F,"statusHex":"$"+(status&0x7F).toString(16).toUpperCase().padStart(2,"0"),"payloadLength":payload ? payload.length : 0,"payloadPreview":payload ? Array.from(payload).slice(0,32) : []});
         payload=Array.from(payload||[],function(b){return Number(b)&0xFF;});
@@ -29248,7 +29300,7 @@ function SmartPortBus()
         tx.push.apply(tx,enc.bytes);
         tx.push(checksum|0xAA,(checksum>>1)|0xAA,0xC8);
         txIndex=0;
-        ack=true;
+        ack=assertAck===false ? false : true;
         protocolState=RESPONSE_PENDING;
     }
 
@@ -29256,6 +29308,7 @@ function SmartPortBus()
     {
         debugLog("PROTOCOL_ERROR",{"reason":message,"protocolState":protocolState,"header":header.slice(),"rxLength":rx.length,"expectedLength":expectedLength});
         lastError=String(message||"SmartPort packet error");
+        pendingWrite=null;
         protocolState=WAIT_SYNC;
         ack=false;
         syncWindow=[];
@@ -29279,16 +29332,93 @@ function SmartPortBus()
         buildResponse(source,error,data);
     }
 
+    function dispatchWriteData(rawHeader,payload)
+    {
+        if(!pendingWrite)
+        {
+            failPacket("SmartPort WRITE DATA without pending WRITE BLOCK");
+            return;
+        }
+
+        var dest=rawHeader[0]&0x7F;
+        var source=rawHeader[1]&0x7F;
+        if(dest!==pendingWrite.dest)
+        {
+            failPacket("SmartPort WRITE DATA destination mismatch");
+            return;
+        }
+        if(source!==0)
+        {
+            failPacket("SmartPort WRITE DATA source must be host");
+            return;
+        }
+        if(payload.length!==512)
+        {
+            failPacket("SmartPort WRITE DATA must contain exactly 512 bytes");
+            return;
+        }
+
+        pendingWrite.data=Uint8Array.from(payload);
+        debugLog("WRITE_DATA",{"dest":dest,"residentUnit":pendingWrite.unit,"blockNumber":pendingWrite.blockNumber,"dataLength":payload.length});
+        ack=true;
+        protocolState=WRITE_DATA_ACK;
+    }
+
+    function commitPendingWrite()
+    {
+        var write=pendingWrite;
+        if(!write || !write.device || !write.data || write.data.length!==512)
+        {
+            pendingWrite=null;
+            buildResponse(write ? write.dest : 0,0x27,[],false);
+            return;
+        }
+
+        var reply;
+        try
+        {
+            reply=write.device.writeBlock(write.blockNumber,write.data);
+        }
+        catch(err)
+        {
+            console.error("SmartPort WRITE BLOCK device exception",err);
+            reply={"error":0x27};
+        }
+
+        var error=reply && reply.error!==undefined ? Number(reply.error)&0x7F : 0x27;
+        debugLog("DEVICE_RESULT",{"command":"WRITE BLOCK","unit":write.unit,"blockNumber":write.blockNumber,"error":error,"errorHex":"$"+error.toString(16).toUpperCase().padStart(2,"0"),"dataLength":write.data.length});
+        pendingWrite=null;
+        // DATA ACK has already been released; prepare STATUS without reasserting ACK.
+        buildResponse(write.dest,error,[],false);
+    }
+
     function dispatchPacket(rawHeader,payload)
     {
-        var dest=rawHeader[0]&0x7F;
         var packetType=rawHeader[2]&0x7F;
+
+        if(protocolState===RECEIVE_WRITE_DATA)
+        {
+            if(packetType!==0x02)
+            {
+                failPacket("SmartPort expected WRITE DATA packet");
+                return;
+            }
+            dispatchWriteData(rawHeader,payload);
+            return;
+        }
+
+        if(protocolState!==RECEIVE_COMMAND)
+        {
+            failPacket("SmartPort packet arrived outside receive state");
+            return;
+        }
         if(packetType!==0x00)
         {
             failPacket("SmartPort expected command packet");
             return;
         }
 
+        var dest=rawHeader[0]&0x7F;
         var command=payload.length ? payload[0]&0x7F : 0;
         debugLog("RX_COMMAND",{"dest":dest,"command":command,"commandName":SMARTPORT_COMMAND_NAMES[command] || "UNKNOWN","payload":payload.slice(),"parameterCount":payload.length>1 ? payload[1]&0xFF : null,"residentUnit":findUnitByResidentID(dest) || null});
         if(command===0x05)
@@ -29302,6 +29432,75 @@ function SmartPortBus()
             residentIDs[unit]=dest;
             debugLog("INIT",{"dest":dest,"assignedUnit":unit,"residentID":dest,"remainingUnassigned":hasUnassignedUnit(),"responseStatus":hasUnassignedUnit()?0x00:0x7F});
             buildResponse(dest,hasUnassignedUnit()?0x00:0x7F,[]);
+            return;
+        }
+
+        if(command===0x02)
+        {
+            var writeUnit=findUnitByResidentID(dest);
+            if(!writeUnit && dest>=1 && dest<=8 && units[dest]!==null) writeUnit=dest;
+            if(!writeUnit)
+            {
+                buildResponse(dest,0x28,[]);
+                return;
+            }
+
+            var writeDevice=units[writeUnit];
+            if(!writeDevice || typeof(writeDevice.writeBlock)!=="function")
+            {
+                buildResponse(dest,0x01,[]);
+                return;
+            }
+
+            var writeBufferAddress=
+                 (payload.length>2 ? payload[2]&0xFF : 0)
+                |((payload.length>3 ? payload[3]&0xFF : 0)<<8);
+            var writeBlockNumber=
+                 (payload.length>4 ? payload[4]&0xFF : 0)
+                |((payload.length>5 ? payload[5]&0xFF : 0)<<8)
+                |((payload.length>6 ? payload[6]&0xFF : 0)<<16);
+
+            pendingWrite={
+                 "dest":dest
+                ,"unit":writeUnit
+                ,"device":writeDevice
+                ,"bufferAddress":writeBufferAddress
+                ,"blockNumber":writeBlockNumber
+                ,"data":null
+            };
+            debugLog("WRITE_BLOCK",{"phase":"COMMAND","dest":dest,"residentUnit":writeUnit,"parameterCount":payload.length>1 ? payload[1]&0xFF : null,"bufferAddress":writeBufferAddress,"blockNumber":writeBlockNumber});
+            ack=true;
+            protocolState=WRITE_COMMAND_ACK;
+            return;
+        }
+
+        if(command===0x03)
+        {
+            var formatUnit=findUnitByResidentID(dest);
+            if(!formatUnit && dest>=1 && dest<=8 && units[dest]!==null) formatUnit=dest;
+            if(!formatUnit)
+            {
+                buildResponse(dest,0x28,[]);
+                return;
+            }
+
+            var formatDevice=units[formatUnit];
+            if(!formatDevice || typeof(formatDevice.format)!=="function")
+            {
+                buildResponse(dest,0x01,[]);
+                return;
+            }
+
+            var formatReply;
+            try { formatReply=formatDevice.format(); }
+            catch(err)
+            {
+                console.error("SmartPort FORMAT device exception",err);
+                formatReply={"error":0x27};
+            }
+            var formatError=formatReply && formatReply.error!==undefined ? Number(formatReply.error)&0x7F : 0x27;
+            debugLog("DEVICE_RESULT",{"command":"FORMAT","unit":formatUnit,"error":formatError,"errorHex":"$"+formatError.toString(16).toUpperCase().padStart(2,"0")});
+            buildResponse(dest,formatError,[]);
             return;
         }
 
@@ -29426,7 +29625,9 @@ function SmartPortBus()
         if(syncWindow.length>SYNC.length) syncWindow.shift();
         if(syncWindow.length!==SYNC.length) return false;
         for(var i=0;i<SYNC.length;i++) if(syncWindow[i]!==SYNC[i]) return false;
-        protocolState=RECEIVE_COMMAND;
+        var receivingWriteData=protocolState===WAIT_WRITE_DATA;
+        if(!receivingWriteData) pendingWrite=null;
+        protocolState=receivingWriteData ? RECEIVE_WRITE_DATA : RECEIVE_COMMAND;
         rx=[];
         header=[];
         expectedLength=0;
@@ -29438,9 +29639,9 @@ function SmartPortBus()
     function receiveByte(value)
     {
         value=Number(value)&0xFF;
-        if(protocolState!==RECEIVE_COMMAND)
+        if(protocolState!==RECEIVE_COMMAND && protocolState!==RECEIVE_WRITE_DATA)
         {
-            if(protocolState===WAIT_SYNC) feedSync(value);
+            if(protocolState===WAIT_SYNC || protocolState===WAIT_WRITE_DATA) feedSync(value);
             else
             {
                 // Permit a host retry to restart framing after a timed-out response.
@@ -29474,22 +29675,44 @@ function SmartPortBus()
 
         if(!req)
         {
+            if(protocolState===WRITE_COMMAND_ACK)
+            {
+                // Host has observed command ACK; accept the following DATA packet.
+                ack=false;
+                protocolState=WAIT_WRITE_DATA;
+                return;
+            }
+            if(protocolState===WRITE_DATA_ACK)
+            {
+                // Complete, checksum-valid DATA is committed only when its ACK is released.
+                ack=false;
+                commitPendingWrite();
+                return;
+            }
             if(protocolState===RESPONSE_PENDING && ack)
             {
-                // Host has observed active-low ACK for the command.
+                // Host has observed active-low ACK for a one-packet command.
                 ack=false;
+                return;
             }
-            else if(protocolState===RESPONSE_DONE)
+            if(protocolState===RESPONSE_DONE)
             {
                 ack=false;
                 protocolState=WAIT_SYNC;
                 tx=[];
                 txIndex=0;
                 syncWindow=[];
+                pendingWrite=null;
+                return;
             }
             return;
         }
 
+        if(protocolState===WAIT_WRITE_DATA)
+        {
+            // Incoming bytes must first establish a complete SmartPort sync sequence.
+            return;
+        }
         if(protocolState===RESPONSE_PENDING && !ack)
         {
             protocolState=SEND_RESPONSE;
@@ -29627,6 +29850,13 @@ function SmartPortBus()
             "rxLength":rx.length,
             "txLength":tx.length,
             "txIndex":txIndex,
+            "pendingWrite":pendingWrite ? {
+                 "dest":pendingWrite.dest
+                ,"unit":pendingWrite.unit
+                ,"blockNumber":pendingWrite.blockNumber
+                ,"bufferAddress":pendingWrite.bufferAddress
+                ,"dataLength":pendingWrite.data ? pendingWrite.data.length : 0
+            } : null,
             "lastError":lastError
         };
     };
