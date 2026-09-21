@@ -1274,6 +1274,8 @@ function AppleLiron()
                     return;
                 }
 
+                liron.deviceToolSyncMediaControls(unit);
+
                 if(typeof(apple2plus)==="object" && apple2plus)
                 {
                     var io=apple2plus.hwObj().io;
@@ -1374,6 +1376,7 @@ function AppleLiron()
 
         if(!target || typeof(target.ejectImage)!=="function") return false;
         if(target.ejectImage()===false) return false;
+        liron.deviceToolSyncMediaControls(unit,{"clearFile":true});
 
         if(typeof(apple2plus)==="object" && apple2plus)
         {
@@ -1395,6 +1398,63 @@ function AppleLiron()
                     ,"default_slot":slotID
                 });
         }
+        return true;
+    };
+
+    function deviceToolUnitDevice(unit)
+    {
+        unit=Number(unit);
+        var device=smartport.getDevice(unit);
+        if(device) return device;
+        var attached=Array.isArray(liron.devices) ? liron.devices : [];
+        for(var i=0;i<attached.length;i++)
+        {
+            var n=typeof(attached[i]?.getUnit)==="function" ? Number(attached[i].getUnit()) : Number(attached[i]?.id?.deviceN);
+            if(n===unit) return attached[i];
+        }
+        return null;
+    }
+
+    function deviceToolInstanceHex(device)
+    {
+        var hash=Number(device && device.attach ? device.attach.hash : NaN);
+        if(!Number.isInteger(hash)) return null;
+        return (hash&0xFFFF).toString(16).toUpperCase().padStart(4,"0");
+    }
+
+    this.deviceToolSyncMediaControls = function(unit,options)
+    {
+        options=options || {}; unit=Number(unit);
+        var device=deviceToolUnitDevice(unit); if(!device) return false;
+        var slotN=liron.mount ? Number(liron.mount.slotN) : NaN; if(!Number.isInteger(slotN)) return false;
+        var io=typeof(apple2plus)==="object" && apple2plus ? apple2plus.hwObj().io : null;
+        var slotID=io && typeof(io.slot2ID)==="function" ? String(io.slot2ID(slotN)) : String(slotN-1);
+        var controlID="liron_unit_"+slotID+"_"+unit;
+        var deviceCode=String(device.id?.DCODE || "SMARTPORT"), hardDisk=deviceCode==="HD20";
+        var state=typeof(device.getState)==="function" ? device.getState() || {} : {};
+        var exportable=typeof(device.getImage)==="function" && typeof(device.getSuggestedFilename)==="function";
+        var downloadable=exportable && (hardDisk || !!state.mediaLoaded);
+        var filename=exportable ? String(device.getSuggestedFilename() || (hardDisk ? "HD20.po" : "UNIDISK.po")) : "";
+        var instance=deviceToolInstanceHex(device);
+        if(typeof(document)==="undefined" || !document.getElementById) return false;
+        function setClick(el,handler) { if(!el) return; if(handler) el.setAttribute("onclick",handler); else el.removeAttribute("onclick"); }
+        var download=document.getElementById(controlID+"_dump");
+        if(download)
+        {
+            download.disabled=!downloadable;
+            download.title=downloadable ? ("Save "+filename) : (exportable ? "Save disk (no media loaded)" : "Save disk (not implemented yet)");
+            setClick(download,downloadable ? ("apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolDownload("+unit+")") : null);
+        }
+        var surface=document.getElementById(controlID+"_surface");
+        if(surface)
+        {
+            var canMap=deviceCode==="UNIDISK" && typeof(device.getSurfaceMapGeometry)==="function" && !!state.mediaLoaded;
+            surface.disabled=!canMap; surface.title=canMap ? "Disk Surface Map" : "Disk Surface Map (no media loaded)";
+            setClick(surface,canMap ? ("apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolSurfaceMap("+unit+","+Number(device.attach?.hash)+")") : null);
+        }
+        var eject=document.getElementById(controlID+"_but");
+        if(eject) eject.title=(instance ? ("Instance #"+instance+": ") : ("Unit"+unit+": "))+(hardDisk ? "erase/reset disk" : "eject disk");
+        if(options.clearFile) { var file=document.getElementById(controlID+"_file"); if(file) try { file.value=""; } catch(e) {} }
         return true;
     };
 
@@ -1435,22 +1495,26 @@ function AppleLiron()
             var deviceState=typeof(device.getState)==="function" ? device.getState() || {} : {};
             var downloadable=exportable && (hardDisk || !!deviceState.mediaLoaded);
             var logicalFilename=exportable ? String(device.getSuggestedFilename() || (hardDisk ? "HD20.po" : "UNIDISK.po")) : undefined;
+            var isUniDisk=deviceCode==="UNIDISK" && typeof(device.getSurfaceMapGeometry)==="function";
+            var instanceHash=Number(device.attach?.hash);
+            var instanceHex=deviceToolInstanceHex(device);
 
             rows += EMU_deviceMediaRowHTML({
-                 "label":"Unit"+unit
+                 "label":deviceCode+" Unit"+unit
                 ,"buttonID":controlID+"_but"
                 ,"formID":controlID+"_form"
                 ,"fileID":controlID+"_file"
                 ,"downloadID":controlID+"_dump"
                 ,"fileName":deviceCode+"_"+unit
                 ,"fileDisplayName":hardDisk ? logicalFilename : undefined
-                ,"buttonTitle":hardDisk ? ("Unit"+unit+": erase/reset disk") : ("Unit"+unit+": eject disk")
+                ,"buttonTitle":(instanceHex ? ("Instance #"+instanceHex+": ") : ("Unit"+unit+": "))+(hardDisk ? "erase/reset disk" : "eject disk")
                 ,"buttonOnClick":"apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolEject("+unit+")"
                 ,"fileAccept":".po"
                 ,"fileOnChange":"javascript:EMU_audio_event_unlock();apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolLoadFile(this,"+unit+")"
                 ,"downloadDisabled":!downloadable
                 ,"downloadOnClick":downloadable ? ("apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolDownload("+unit+")") : undefined
                 ,"downloadTitle":downloadable ? ("Save "+logicalFilename) : (exportable ? "Save disk (no media loaded)" : "Save disk (not implemented yet)")
+                ,"capabilityActions":isUniDisk ? [{"id":controlID+"_surface","icon":"fa fa-th","title":deviceState.mediaLoaded ? "Disk Surface Map" : "Disk Surface Map (no media loaded)","onClick":deviceState.mediaLoaded ? ("apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolSurfaceMap("+unit+","+instanceHash+")") : undefined,"disabled":!deviceState.mediaLoaded}] : []
             });
         }
 
