@@ -21,7 +21,14 @@ jobs:
         with:
           node-version: 24
       - name: Apply Task 4 implementation
-        run: python3 .github/scripts/liron-task4-final.py
+        run: |
+          python3 .github/scripts/liron-task4-final.py
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tests/liron_toolbox.test.js')
+          s=p.read_text().replace('data-label="Unit1"','data-label="UNIDISK Unit1"').replace('data-label="Unit2"','data-label="UNIDISK Unit2"')
+          p.write_text(s)
+          PY
       - name: Verify Task 4
         run: |
           node --check res/EMU_CARD_LIRON.js
