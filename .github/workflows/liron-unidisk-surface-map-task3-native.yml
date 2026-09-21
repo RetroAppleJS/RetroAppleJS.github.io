@@ -40,7 +40,9 @@ jobs:
               });
               assert.ok(html.indexOf('fa-cloud-download-alt') < html.indexOf('id="map1"'));
               assert.ok(html.indexOf('id="map1"') < html.indexOf('id="off1"'));
-              assert.match(html,/id="map1"[^>]*title="Disk Surface Map"[^>]*onclick="map1\(\)"/);
+              const mapButton=html.match(/<button[^>]*id="map1"[^>]*>/)[0];
+              assert.match(mapButton,/title="Disk Surface Map"/);
+              assert.match(mapButton,/onclick="map1\(\)"/);
               const disabled=html.match(/<button[^>]*id="off1"[^>]*>/)[0];
               assert.match(disabled,/disabled/);
               assert.doesNotMatch(disabled,/onclick=/);
