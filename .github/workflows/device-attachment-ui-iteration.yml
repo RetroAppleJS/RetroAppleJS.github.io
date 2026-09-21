@@ -17,8 +17,10 @@ on:
       - "tests/liron_smartport_bus.test.js"
       - "tests/smartport_port_metadata.test.js"
       - "tests/hd20_smartport_device.test.js"
+      - "tests/hd20_writeblock.test.js"
       - "tests/hd20_media_routing.test.js"
       - "tests/hd20_toolbox_media.test.js"
+      - "tests/liron_writeblock.test.js"
       - "tests/liron_browser_mount.test.js"
       - "tests/liron_toolbox.test.js"
       - "tests/liron_loader_diagnostics.test.js"
@@ -36,8 +38,10 @@ on:
       - "tests/liron_smartport_bus.test.js"
       - "tests/smartport_port_metadata.test.js"
       - "tests/hd20_smartport_device.test.js"
+      - "tests/hd20_writeblock.test.js"
       - "tests/hd20_media_routing.test.js"
       - "tests/hd20_toolbox_media.test.js"
+      - "tests/liron_writeblock.test.js"
       - "tests/liron_browser_mount.test.js"
       - "tests/liron_toolbox.test.js"
       - "tests/liron_loader_diagnostics.test.js"
@@ -52,7 +56,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      # Cover attachment identity, SmartPort metadata, HD20 media routing, and legacy Liron media behavior.
+      # Cover attachment identity, SmartPort metadata, writable HD20 media, and legacy Liron media behavior.
       - name: Syntax checks
         run: |
           node --check res/EMU_apple2main.js
@@ -65,8 +69,10 @@ jobs:
           node --check tests/liron_smartport_bus.test.js
           node --check tests/smartport_port_metadata.test.js
           node --check tests/hd20_smartport_device.test.js
+          node --check tests/hd20_writeblock.test.js
           node --check tests/hd20_media_routing.test.js
           node --check tests/hd20_toolbox_media.test.js
+          node --check tests/liron_writeblock.test.js
           node --check tests/liron_browser_mount.test.js
           node --check tests/liron_toolbox.test.js
           node --check tests/liron_loader_diagnostics.test.js
@@ -78,8 +84,10 @@ jobs:
             tests/liron_smartport_bus.test.js \
             tests/smartport_port_metadata.test.js \
             tests/hd20_smartport_device.test.js \
+            tests/hd20_writeblock.test.js \
             tests/hd20_media_routing.test.js \
             tests/hd20_toolbox_media.test.js \
+            tests/liron_writeblock.test.js \
             tests/liron_browser_mount.test.js \
             tests/liron_toolbox.test.js \
             tests/liron_loader_diagnostics.test.js
