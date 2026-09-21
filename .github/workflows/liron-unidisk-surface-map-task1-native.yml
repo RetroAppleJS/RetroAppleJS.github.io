@@ -33,7 +33,7 @@ jobs:
               s=re.sub(r"(['\"])UNIDISK35\1", lambda m: m.group(1)+'UNIDISK'+m.group(1), s)
               s=s.replace('UNIDISK35_','UNIDISK_').replace('UNIDISK35.po','UNIDISK.po')
               if p.name=='device_instance_identity.test.js':
-                  s=s.replace("UNIDISK35['\\\"]","UNIDISK['\\\"]")
+                  s=s.replace('UNIDISK35','UNIDISK')
               p.write_text(s)
           PY
           set +e
