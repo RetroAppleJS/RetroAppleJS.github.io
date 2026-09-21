@@ -1,0 +1,94 @@
+name: Liron UniDisk surface map Task 2 native
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - feature/liron-unidisk-surface-map
+    paths:
+      - .github/workflows/liron-unidisk-surface-map-task2-native.yml
+jobs:
+  task2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-surface-map
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: RED geometry contract
+        shell: bash
+        run: |
+          cat >> tests/unidisk35.test.js <<'TEST'
+
+          test('UniDisk exposes the five-zone 800K surface geometry', () => {
+              const context=loadUniDisk();
+              const disk=new context.UniDisk35Device();
+              const g=disk.getSurfaceMapGeometry();
+              assert.deepEqual(JSON.parse(JSON.stringify(g)),{
+                  sides:2,tracksPerSide:80,maxSectorsPerTrack:12,bytesPerSector:512,
+                  zoneTracks:16,sectorCounts:[12,11,10,9,8],totalSectors:1600,totalBytes:819200
+              });
+              assert.deepEqual([0,15,16,31,32,47,48,63,64,79].map(t=>disk.getSurfaceTrackSectorCount(t)),[12,12,11,11,10,10,9,9,8,8]);
+              assert.equal(disk.getSurfaceTrackSectorCount(-1),null);
+              assert.equal(disk.getSurfaceTrackSectorCount(80),null);
+          });
+
+          test('UniDisk surface coordinates map every 512-byte block exactly once', () => {
+              const context=loadUniDisk();
+              const disk=new context.UniDisk35Device();
+              const seen=new Set();
+              for(let track=0;track<80;track++)
+              {
+                  const count=disk.getSurfaceTrackSectorCount(track);
+                  for(let side=0;side<2;side++)
+                      for(let sector=0;sector<count;sector++)
+                      {
+                          const block=disk.surfaceSectorToBlock(side,track,sector);
+                          assert.ok(Number.isInteger(block));
+                          assert.ok(block>=0 && block<1600);
+                          assert.equal(seen.has(block),false);
+                          seen.add(block);
+                          assert.deepEqual(JSON.parse(JSON.stringify(disk.blockToSurfaceSector(block))),{side,track,sector,block,offset:block*512,bytes:512});
+                      }
+              }
+              assert.equal(seen.size,1600);
+              assert.deepEqual([...seen].sort((a,b)=>a-b),Array.from({length:1600},(_,i)=>i));
+              assert.equal(disk.surfaceSectorToBlock(0,0,12),null);
+              assert.equal(disk.surfaceSectorToBlock(2,0,0),null);
+              assert.equal(disk.blockToSurfaceSector(-1),null);
+              assert.equal(disk.blockToSurfaceSector(1600),null);
+          });
+          TEST
+          set +e
+          node --test tests/unidisk35.test.js > /tmp/task2-red.log 2>&1
+          rc=$?
+          cat /tmp/task2-red.log
+          test "$rc" -ne 0
+      - name: GREEN geometry implementation
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path('res/EMU_DEVICE_UNIDISK35.js')
+          s=p.read_text()
+          marker='    this.getBlockCount = function() { return BLOCK_COUNT; };\n'
+          insert='''    this.getBlockCount = function() { return BLOCK_COUNT; };\n    this.getSurfaceMapGeometry = function()\n    {\n        return {\n             "sides":2\n            ,"tracksPerSide":80\n            ,"maxSectorsPerTrack":12\n            ,"bytesPerSector":BLOCK_SIZE\n            ,"zoneTracks":16\n            ,"sectorCounts":[12,11,10,9,8]\n            ,"totalSectors":BLOCK_COUNT\n            ,"totalBytes":BLOCK_COUNT*BLOCK_SIZE\n        };\n    };\n    this.getSurfaceTrackSectorCount = function(track)\n    {\n        track=Number(track);\n        if(!Number.isInteger(track) || track<0 || track>=80) return null;\n        return [12,11,10,9,8][Math.floor(track/16)];\n    };\n    this.surfaceSectorToBlock = function(side,track,sector)\n    {\n        side=Number(side); track=Number(track); sector=Number(sector);\n        if(!Number.isInteger(side) || side<0 || side>1 ||\n           !Number.isInteger(track) || track<0 || track>=80 ||\n           !Number.isInteger(sector)) return null;\n        var count=this.getSurfaceTrackSectorCount(track);\n        if(sector<0 || sector>=count) return null;\n        var block=0;\n        for(var t=0;t<track;t++) block+=2*this.getSurfaceTrackSectorCount(t);\n        return block+side*count+sector;\n    };\n    this.blockToSurfaceSector = function(block)\n    {\n        block=Number(block);\n        if(!Number.isInteger(block) || block<0 || block>=BLOCK_COUNT) return null;\n        var remaining=block;\n        for(var track=0;track<80;track++)\n        {\n            var count=this.getSurfaceTrackSectorCount(track);\n            var cylinder=2*count;\n            if(remaining<cylinder)\n            {\n                var side=remaining>=count ? 1 : 0;\n                var sector=remaining-side*count;\n                return {"side":side,"track":track,"sector":sector,"block":block,"offset":block*BLOCK_SIZE,"bytes":BLOCK_SIZE};\n            }\n            remaining-=cylinder;\n        }\n        return null;\n    };\n'''
+          if marker not in s: raise SystemExit('geometry insertion marker missing')
+          p.write_text(s.replace(marker,insert,1))
+          PY
+          node --check res/EMU_DEVICE_UNIDISK35.js
+          node --check tests/unidisk35.test.js
+          node --test tests/unidisk35.test.js
+      - name: Commit Task 2
+        shell: bash
+        run: |
+          git config user.name "ChatGPT"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm .github/workflows/liron-unidisk-surface-map-task2-native.yml
+          git add res/EMU_DEVICE_UNIDISK35.js tests/unidisk35.test.js .github/workflows/liron-unidisk-surface-map-task2-native.yml
+          git commit -m "feat: expose UniDisk surface geometry"
+          git push origin HEAD:feature/liron-unidisk-surface-map
