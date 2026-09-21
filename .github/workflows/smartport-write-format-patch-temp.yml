@@ -1,0 +1,36 @@
+name: SmartPort write-format patch temp
+
+permissions:
+  contents: write
+
+on:
+  push:
+    paths:
+      - "tools/patch_smartport_write_format.py"
+      - ".github/workflows/smartport-write-format-patch-temp.yml"
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Apply SmartPort transport patch
+        run: python3 tools/patch_smartport_write_format.py
+      - name: Verify patched transport
+        run: |
+          node --check res/EMU_CARD_LIRON.js
+          node --check res/EMU_DEVICE_HD20.js
+          node --test tests/hd20_writeblock.test.js tests/liron_writeblock.test.js tests/liron_readblock.test.js tests/liron_smartport_transport.test.js
+      - name: Commit transport patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add res/EMU_CARD_LIRON.js
+          git diff --cached --check
+          git commit -m "feat: add SmartPort WRITE BLOCK and FORMAT transport"
+          git push origin HEAD:${GITHUB_REF_NAME}
