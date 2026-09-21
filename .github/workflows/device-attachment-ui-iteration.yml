@@ -14,6 +14,7 @@ on:
       - "index.html"
       - "tests/device_attachment_ui.test.js"
       - "tests/device_instance_identity.test.js"
+      - "tests/liron_iwm.test.js"
       - "tests/liron_smartport_bus.test.js"
       - "tests/liron_smartport_transport.test.js"
       - "tests/liron_readblock.test.js"
@@ -37,6 +38,7 @@ on:
       - "index.html"
       - "tests/device_attachment_ui.test.js"
       - "tests/device_instance_identity.test.js"
+      - "tests/liron_iwm.test.js"
       - "tests/liron_smartport_bus.test.js"
       - "tests/liron_smartport_transport.test.js"
       - "tests/liron_readblock.test.js"
@@ -60,7 +62,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      # Cover attachment identity, SmartPort transport, writable HD20 media, and legacy Liron behavior.
+      # Cover attachment identity, IWM/SmartPort transport, writable HD20 media, and legacy Liron behavior.
       - name: Syntax checks
         run: |
           node --check res/EMU_apple2main.js
@@ -70,6 +72,7 @@ jobs:
           node --check res/EMU_DEVICE_HD20.js
           node --check tests/device_attachment_ui.test.js
           node --check tests/device_instance_identity.test.js
+          node --check tests/liron_iwm.test.js
           node --check tests/liron_smartport_bus.test.js
           node --check tests/liron_smartport_transport.test.js
           node --check tests/liron_readblock.test.js
@@ -87,6 +90,7 @@ jobs:
           node --test \
             tests/device_attachment_ui.test.js \
             tests/device_instance_identity.test.js \
+            tests/liron_iwm.test.js \
             tests/liron_smartport_bus.test.js \
             tests/liron_smartport_transport.test.js \
             tests/liron_readblock.test.js \

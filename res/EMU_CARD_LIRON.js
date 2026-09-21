@@ -936,11 +936,16 @@ function LironIWM(bus)
             state.writeReady=true;
 
             // Without cycle-accurate IWM timing, a handshake poll advances the
-            // pending transmit byte. Only the final packet byte may underrun:
-            // SmartPortBus reaches RESPONSE_PENDING after accepting its $C8.
+            // pending transmit byte. Only the final packet byte may underrun.
+            // One-packet commands finish in RESPONSE_PENDING; WRITE BLOCK has
+            // separate command- and DATA-packet completion states.
             var busState = bus && typeof(bus.getState)==="function" ? bus.getState() : null;
-            if(busState && busState.protocolState==="RESPONSE_PENDING")
-                state.underrun=true;
+            var packetComplete = busState && (
+                   busState.protocolState==="RESPONSE_PENDING"
+                || busState.protocolState==="WRITE_COMMAND_ACK"
+                || busState.protocolState==="WRITE_DATA_ACK"
+            );
+            if(packetComplete) state.underrun=true;
         }
         return (0x3F | (state.writeReady?0x80:0) | (!state.underrun?0x40:0))&0xFF;
     }

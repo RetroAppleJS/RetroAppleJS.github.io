@@ -65,6 +65,44 @@ function writableHD20(c)
     return disk;
 }
 
+function prepareIWMForHostWrite(iwm)
+{
+    // SmartPort PH1+PH3 enabled, REQ asserted, IWM motor on and Q7 high.
+    iwm.read(0x03);
+    iwm.read(0x07);
+    iwm.read(0x01);
+    iwm.read(0x09);
+    iwm.read(0x0F);
+}
+
+function sendPacketThroughIWM(iwm,bytes)
+{
+    let handshake=0xFF;
+    for(const b of bytes)
+    {
+        // Q6 high with Q7+motor high selects WRITE DATA; Q6 low selects HANDSHAKE.
+        iwm.write(0x0D,b);
+        handshake=iwm.read(0x0C);
+    }
+    return handshake;
+}
+
+function readResponseThroughIWM(iwm,bus)
+{
+    // Q7 low selects DATA while motor remains on. Do this before asserting REQ
+    // so the selector read cannot consume the first response byte.
+    iwm.read(0x0E);
+    iwm.read(0x01); // PH0/REQ high
+
+    const out=[];
+    for(let guard=0;guard<2048 && bus.getState().protocolState!=='RESPONSE_DONE';guard++)
+        out.push(iwm.read(0x0A)); // DRIVE-off soft switch is an even DATA read without changing SmartPort phases.
+
+    assert.equal(bus.getState().protocolState,'RESPONSE_DONE');
+    iwm.read(0x00); // PH0/REQ low; complete response handshake.
+    return decodePacket(out);
+}
+
 test('SmartPort WRITE BLOCK follows command/data/status REQ-ACK sequence and commits on DATA ACK release',()=>{
     const c=load(),bus=new c.SmartPortBus(),disk=writableHD20(c); bus.attach(disk,1);
     const block=0x1234;
@@ -101,6 +139,37 @@ test('SmartPort WRITE BLOCK follows command/data/status REQ-ACK sequence and com
     bus.setLines(0x0A);
     assert.equal(bus.getState().protocolState,'WAIT_SYNC');
     assert.equal(bus.getState().ack,false);
+});
+
+test('LironIWM completes both WRITE BLOCK packet handshakes and commits through the real bus boundary',()=>{
+    const c=load(),bus=new c.SmartPortBus(),iwm=new c.LironIWM(bus),disk=writableHD20(c); bus.attach(disk,1);
+    const block=0x0025;
+    const data=Uint8Array.from({length:512},(_,i)=>(i*3+7)&0xFF);
+    const command=[0x02,0x03,0x00,0x20,block&0xFF,(block>>8)&0xFF,(block>>16)&0xFF,0x00,0x00];
+
+    prepareIWMForHostWrite(iwm);
+    const commandHandshake=sendPacketThroughIWM(iwm,packet(1,0x00,command));
+    assert.equal(bus.getState().protocolState,'WRITE_COMMAND_ACK');
+    assert.equal(commandHandshake&0x40,0x00,'command packet drain must signal completion to the Liron ROM');
+
+    iwm.read(0x00); // PH0/REQ low
+    assert.equal(bus.getState().protocolState,'WAIT_WRITE_DATA');
+    iwm.read(0x01); // PH0/REQ high
+
+    const dataHandshake=sendPacketThroughIWM(iwm,packet(1,0x02,data));
+    assert.equal(bus.getState().protocolState,'WRITE_DATA_ACK');
+    assert.equal(dataHandshake&0x40,0x00,'DATA packet drain must signal completion to the Liron ROM');
+    assert.deepEqual(Array.from(disk.readBlock(block).data),new Array(512).fill(0),'media must remain untouched until DATA ACK is released');
+
+    iwm.read(0x00); // PH0/REQ low commits the pending write.
+    assert.equal(bus.getState().protocolState,'RESPONSE_PENDING');
+    assert.deepEqual(Array.from(disk.readBlock(block).data),Array.from(data));
+
+    const response=readResponseThroughIWM(iwm,bus);
+    assert.equal(response.type,0x01);
+    assert.equal(response.status,0x00);
+    assert.deepEqual(response.payload,[]);
+    assert.equal(bus.getState().protocolState,'WAIT_SYNC');
 });
 
 test('SmartPort WRITE BLOCK returns device errors and never crosses device boundaries',()=>{
