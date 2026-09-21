@@ -266,3 +266,27 @@ test('successful Liron file load keeps the native file selection so the browser 
         'successful mounts must leave the native file input populated');
     assert.equal(refreshCalls.length,1,'toolbox selection may refresh without rebuilding its media row');
 });
+
+test('shared media row renders ordered optional capability actions after Download', () => {
+    const context=vm.createContext({
+        console,
+        oEMU:{component:{IO:{ACTION_MAP:[]}},system:{A2P:{active:true}}},
+        oEMUI:{slotConfig(){},slotsRender(){},deviceBtn(){}}
+    });
+    vm.runInContext(apple2ioSource,context,{filename:'EMU_apple2io.js'});
+    const html=context.EMU_deviceMediaRowHTML({
+        label:'UNIDISK Unit1',downloadID:'d1',downloadOnClick:'download1()',downloadTitle:'Save disk',
+        capabilityActions:[
+            {id:'map1',icon:'fa fa-th',title:'Disk Surface Map',onClick:'map1()'},
+            {id:'off1',icon:'fa fa-ban',title:'Unavailable',onClick:'bad()',disabled:true}
+        ]
+    });
+    assert.ok(html.indexOf('fa-cloud-download-alt') < html.indexOf('id="map1"'));
+    assert.ok(html.indexOf('id="map1"') < html.indexOf('id="off1"'));
+    const mapButton=html.match(/<button[^>]*id="map1"[^>]*>/)[0];
+    assert.match(mapButton,/title="Disk Surface Map"/);
+    assert.match(mapButton,/onclick="map1\(\)"/);
+    const disabled=html.match(/<button[^>]*id="off1"[^>]*>/)[0];
+    assert.match(disabled,/disabled/);
+    assert.doesNotMatch(disabled,/onclick=/);
+});

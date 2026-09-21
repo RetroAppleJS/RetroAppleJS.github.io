@@ -81,11 +81,28 @@ function EMU_deviceMediaRowHTML(spec)
         + " style=\"display:inline;\">"
         + fileControl
         + "      </form>"
-        + "      <button class=appbut value=\"Download\""
+        + "      <span style=\"float:right;white-space:nowrap\">"
+        + "<button class=appbut value=\"Download\""
         + (spec.downloadID ? " id=\""+attr(spec.downloadID)+"\"" : "")
         + (spec.downloadDisabled ? " disabled" : (spec.downloadOnClick ? " onclick=\""+spec.downloadOnClick+"\"" : ""))
-        + " title=\""+attr(downloadTitle)+"\" style=\"float:right\">"
+        + " title=\""+attr(downloadTitle)+"\">"
         + "<i class=\"fa fa-cloud-download-alt\"></i></button>"
+        + (function()
+          {
+              var out="";
+              var actions=Array.isArray(spec.capabilityActions) ? spec.capabilityActions : [];
+              for(var i=0;i<actions.length;i++)
+              {
+                  var action=actions[i] || {};
+                  out += "<button class=\"appbut\""
+                      + (action.id ? " id=\""+attr(action.id)+"\"" : "")
+                      + (action.disabled ? " disabled" : (action.onClick ? " onclick=\""+action.onClick+"\"" : ""))
+                      + " title=\""+attr(action.title || "")+"\">"
+                      + "<i class=\""+attr(action.icon || "fa fa-circle")+"\"></i></button>";
+              }
+              return out;
+          })()
+        + "</span>"
         + "    </div>";
 }
 
