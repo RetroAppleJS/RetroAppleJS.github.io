@@ -5,13 +5,13 @@ permissions:
 
 on:
   push:
-    branches: ["feature/liron-unidisk-surface-map"]
+    branches:
+      - feature/liron-unidisk-surface-map
     paths:
-      - ".github/workflows/liron-unidisk-surface-map-task1-native.yml"
+      - .github/workflows/liron-unidisk-surface-map-task1-native.yml
 
 jobs:
   task1:
-    if: github.event.head_commit.message == 'chore: run UniDisk surface map Task 1'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: RED - change runtime expectations first
+      - name: RED runtime rename
         shell: bash
         run: |
           python3 <<'PY'
@@ -35,71 +35,39 @@ jobs:
               p.write_text(s)
           PY
           set +e
-          node --test \
-            tests/unidisk35.test.js \
-            tests/liron_card.test.js \
-            tests/liron_smartport_bus.test.js \
-            tests/liron_browser_integration.test.js \
-            tests/liron_browser_mount.test.js \
-            tests/liron_loader_diagnostics.test.js \
-            tests/liron_toolbox.test.js \
-            tests/liron_toolbox_eject.test.js \
-            tests/hd20_media_routing.test.js \
-            tests/hd20_toolbox_media.test.js \
-            tests/device_instance_identity.test.js > /tmp/task1-red.log 2>&1
+          node --test tests/unidisk35.test.js tests/liron_card.test.js tests/liron_smartport_bus.test.js tests/liron_browser_integration.test.js tests/liron_browser_mount.test.js tests/liron_loader_diagnostics.test.js tests/liron_toolbox.test.js tests/liron_toolbox_eject.test.js tests/hd20_media_routing.test.js tests/hd20_toolbox_media.test.js tests/device_instance_identity.test.js > /tmp/task1-red.log 2>&1
           rc=$?
           cat /tmp/task1-red.log
-          if [ "$rc" -eq 0 ]; then
-            echo "RED gate failed: runtime rename tests unexpectedly passed before production change"
-            exit 1
-          fi
-          echo "Observed expected RED failure (rc=$rc)"
-      - name: GREEN - rename production runtime code
+          test "$rc" -ne 0
+      - name: GREEN runtime rename
         shell: bash
         run: |
           python3 <<'PY'
           from pathlib import Path
           for name in ['res/EMU_DEVICE_UNIDISK35.js','res/EMU_CARD_LIRON.js','res/EMU_apple2main.js']:
               p=Path(name)
-              s=p.read_text().replace('UNIDISK35','UNIDISK')
-              p.write_text(s)
+              p.write_text(p.read_text().replace('UNIDISK35','UNIDISK'))
           PY
           node --check res/EMU_DEVICE_UNIDISK35.js
           node --check res/EMU_CARD_LIRON.js
           node --check res/EMU_apple2main.js
-          node --test \
-            tests/unidisk35.test.js \
-            tests/liron_card.test.js \
-            tests/liron_smartport_bus.test.js \
-            tests/liron_browser_integration.test.js \
-            tests/liron_browser_mount.test.js \
-            tests/liron_loader_diagnostics.test.js \
-            tests/liron_toolbox.test.js \
-            tests/liron_toolbox_eject.test.js \
-            tests/hd20_media_routing.test.js \
-            tests/hd20_toolbox_media.test.js \
-            tests/device_instance_identity.test.js
-      - name: Audit old runtime token
+          node --test tests/unidisk35.test.js tests/liron_card.test.js tests/liron_smartport_bus.test.js tests/liron_browser_integration.test.js tests/liron_browser_mount.test.js tests/liron_loader_diagnostics.test.js tests/liron_toolbox.test.js tests/liron_toolbox_eject.test.js tests/hd20_media_routing.test.js tests/hd20_toolbox_media.test.js tests/device_instance_identity.test.js
+      - name: Audit runtime token
         shell: bash
         run: |
-          set +e
-          git grep -n 'UNIDISK35' -- res tests index.html > /tmp/unidisk35-audit.log
-          rc=$?
-          set -e
-          cat /tmp/unidisk35-audit.log || true
+          git grep -n 'UNIDISK35' -- res tests index.html > /tmp/unidisk35-audit.log || true
+          cat /tmp/unidisk35-audit.log
           python3 <<'PY'
           from pathlib import Path
           bad=[]
-          p=Path('/tmp/unidisk35-audit.log')
-          if p.exists():
-              for line in p.read_text().splitlines():
-                  if 'EMU_DEVICE_UNIDISK35.js' in line or 'UniDisk35Device' in line:
-                      continue
-                  bad.append(line)
+          for line in Path('/tmp/unidisk35-audit.log').read_text().splitlines():
+              if 'EMU_DEVICE_UNIDISK35.js' in line or 'UniDisk35Device' in line:
+                  continue
+              bad.append(line)
           if bad:
               raise SystemExit('Unexpected runtime UNIDISK35 references remain:\n'+'\n'.join(bad))
           PY
-      - name: Commit Task 1 and remove runner workflow
+      - name: Commit Task 1
         shell: bash
         run: |
           git config user.name "ChatGPT"
