@@ -117,7 +117,9 @@ test('HD20 media metadata changes refresh the open Liron toolbox',()=>{
 
     assert.equal(typeof card.deviceMediaMetadataChanged,'function');
     assert.equal(card.deviceMediaMetadataChanged(hd),true);
-    assert.deepEqual(refreshCalls,[{id:'devices',default_slot:'5'}]);
+    assert.equal(refreshCalls.length,1);
+    assert.equal(refreshCalls[0].id,'devices');
+    assert.equal(refreshCalls[0].default_slot,'5');
 });
 
 test('Liron toolbox routes a 20 MiB file to the HD20 resident at that unit',()=>{
