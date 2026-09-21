@@ -11941,7 +11941,13 @@ function EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath,unit)
     if(!disk2 || disk2.getState().active==false) return false;
 
     var diskBytes=Array.from(bytes);
-    if(diskBytes.length===143360) diskBytes=disk2.convertDsk2Nib(diskBytes);
+    // Let Disk II determine whether a 140K sector image is DOS-order
+    // (.dsk) or ProDOS-order (.po) and perform the appropriate conversion.
+    if(diskBytes.length===143360)
+    {
+        disk2.setDiskData(diskBytes,deviceID,filepath);
+        return true;
+    }
     return apple2plus.loadDisk(diskBytes,deviceID,slotN)!==false;
 }
 
