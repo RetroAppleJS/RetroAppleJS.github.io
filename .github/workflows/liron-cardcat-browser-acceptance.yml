@@ -11,8 +11,10 @@ on:
       - "res/EMU_DEVICE_HD20.js"
       - "res/EMU_apple2main.js"
       - "res/EMU_apple2io.js"
+      - "index.html"
       - "tests/cardcat_unidisk_browser_acceptance.js"
       - "tests/liron_two_device_prodos_acceptance.js"
+      - "tests/liron_surface_map_browser_acceptance.js"
       - "tests/unidisk_media_export.test.js"
       - "disks/ProDOS 8.dsk"
       - "disks/Utility/Card Cat 1.94.dsk"
@@ -25,8 +27,10 @@ on:
       - "res/EMU_DEVICE_HD20.js"
       - "res/EMU_apple2main.js"
       - "res/EMU_apple2io.js"
+      - "index.html"
       - "tests/cardcat_unidisk_browser_acceptance.js"
       - "tests/liron_two_device_prodos_acceptance.js"
+      - "tests/liron_surface_map_browser_acceptance.js"
       - "tests/unidisk_media_export.test.js"
       - "disks/ProDOS 8.dsk"
       - "disks/Utility/Card Cat 1.94.dsk"
@@ -48,8 +52,9 @@ jobs:
         run: |
           node --check tests/cardcat_unidisk_browser_acceptance.js
           node --check tests/liron_two_device_prodos_acceptance.js
+          node --check tests/liron_surface_map_browser_acceptance.js
           node --check tests/unidisk_media_export.test.js
-          if grep -nE '\.(loadImage|readBlock)[[:space:]]*\(' tests/cardcat_unidisk_browser_acceptance.js; then
+          if grep -nE '\.(loadImage|readBlock)[[:space:]]*\(' tests/cardcat_unidisk_browser_acceptance.js tests/liron_surface_map_browser_acceptance.js; then
             echo "Acceptance harness must not call UniDisk loadImage/readBlock directly"
             exit 1
           fi
@@ -74,5 +79,13 @@ jobs:
           trap 'kill $server || true' EXIT
           sleep 1
           RETROAPPLE_URL=http://127.0.0.1:8000 node tests/liron_two_device_prodos_acceptance.js
+      - name: Exercise live UniDisk file input and surface map
+        shell: bash
+        run: |
+          python3 -m http.server 8000 >/tmp/retroapple-http-surface-map.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          RETROAPPLE_URL=http://127.0.0.1:8000 node tests/liron_surface_map_browser_acceptance.js
       - name: UniDisk media export regression
         run: node --test tests/unidisk_media_export.test.js
