@@ -1,0 +1,130 @@
+name: Final clean UniDisk surface-map verification
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - feature/liron-unidisk-surface-map
+    paths:
+      - .github/workflows/liron-final-clean-verification-native.yml
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-surface-map
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Branch hygiene and syntax
+        run: |
+          test -z "$(git ls-files 'node_modules/**')"
+          node --check res/EMU_DEVICE_UNIDISK35.js
+          node --check res/EMU_CARD_LIRON.js
+          node --check res/EMU_apple2io.js
+          node --check res/EMU_apple2main.js
+          node --check tests/liron_surface_map.test.js
+          node --check tests/liron_surface_map_browser_acceptance.js
+
+      - name: Direct feature regression suite
+        run: |
+          node --test \
+            tests/unidisk35.test.js \
+            tests/liron_surface_map.test.js \
+            tests/liron_toolbox.test.js \
+            tests/liron_toolbox_eject.test.js \
+            tests/unidisk_media_export.test.js \
+            tests/hd20_media_routing.test.js \
+            tests/hd20_toolbox_media.test.js \
+            tests/liron_loader_diagnostics.test.js \
+            tests/device_instance_identity.test.js \
+            tests/liron_smartport_bus.test.js \
+            tests/liron_smartport_transport.test.js \
+            tests/liron_readblock.test.js
+
+      - name: Full Node suite matches inherited baseline failures
+        shell: bash
+        run: |
+          set +e
+          node --test --test-reporter=tap tests/*.test.js > /tmp/full.tap 2>&1
+          rc=$?
+          set -e
+          test "$rc" -ne 0
+          grep '^not ok ' /tmp/full.tap | sed -E 's/^not ok [0-9]+ - //' > /tmp/failures.txt
+          cat > /tmp/expected.txt <<'EOF'
+          browser discovery declares UniDisk and Apple2IO-style binding populates SmartPort unit 1
+          143360-byte media preserves the existing Disk II path
+          AppleLiron exposes the RetroAppleJS card surface and declares an unprovisioned UniDisk child
+          bDebug false is silent
+          successful UniDisk mount logs router-vs-Liron unit identity and media state
+          EOF
+          sed -i 's/^          //' /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/failures.txt
+          grep -q '^# tests 142$' /tmp/full.tap
+          grep -q '^# pass 137$' /tmp/full.tap
+          grep -q '^# fail 5$' /tmp/full.tap
+
+      - name: Runtime identifier and Disk II guards
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          bad=[]
+          for root in ('res','tests'):
+              for p in Path(root).glob('*.js'):
+                  text=p.read_text()
+                  for pat in [r"(['\"])UNIDISK35\1",r'UNIDISK35_',r'UNIDISK35\.po']:
+                      if re.search(pat,text): bad.append(f'{p}: {pat}')
+          if bad: raise SystemExit('\n'.join(bad))
+          PY
+          git diff --exit-code 9534b27856a32c55d24eb426e2760ae16ad50960 -- res/EMU_CARD_appledisk2.js
+
+      - name: Standalone build
+        run: |
+          node .github/scripts/inline.cjs
+          test -s dist/RetroAppleJS.html
+          grep -q 'lironSurfaceMap_popup' dist/RetroAppleJS.html
+          grep -q 'deviceToolSurfaceMapHTML' dist/RetroAppleJS.html
+          git checkout -- dist/RetroAppleJS.html
+          git diff --exit-code -- dist/RetroAppleJS.html
+
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Card Cat and real surface-map browser acceptance
+        run: |
+          python3 -m http.server 8000 >/tmp/retroapple-http-final.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          RETROAPPLE_URL=http://127.0.0.1:8000 node tests/cardcat_unidisk_browser_acceptance.js
+          RETROAPPLE_URL=http://127.0.0.1:8000 node tests/liron_surface_map_browser_acceptance.js
+
+      - name: Known two-device acceptance remains the same baseline issue
+        shell: bash
+        run: |
+          python3 -m http.server 8001 >/tmp/retroapple-http-two-device-final.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          set +e
+          RETROAPPLE_URL=http://127.0.0.1:8001 node tests/liron_two_device_prodos_acceptance.js > /tmp/two-device.log 2>&1
+          rc=$?
+          set -e
+          cat /tmp/two-device.log
+          if [ "$rc" -eq 0 ]; then exit 0; fi
+          grep -q 'S5,D2 driver vector still points to NO DEVICE CONNECTED' /tmp/two-device.log
+
+      - name: Working-tree generated files are untracked only
+        run: |
+          test -z "$(git ls-files 'node_modules/**')"
+          git diff --exit-code -- res tests index.html .github/workflows/liron-cardcat-browser-acceptance.yml
