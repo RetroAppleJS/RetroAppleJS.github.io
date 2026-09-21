@@ -46,7 +46,7 @@ test('AppleLiron exposes the RetroAppleJS card surface and declares an unprovisi
     assert.equal(typeof card.action.SlotROM.RD.callback,'function');
     assert.equal(typeof card.action.HostROM.RD.callback,'function');
     assert.equal(card.deviceConfig.length,1);
-    assert.equal(card.deviceConfig[0].DCODE,'UNIDISK35');
+    assert.equal(card.deviceConfig[0].DCODE,'UNIDISK');
     assert.equal(card.deviceConfig[0].hostPCODE,'LIRON');
     assert.equal(card.deviceConfig[0].coID,'UniDisk35Device');
     assert.equal(card.deviceConfig[0].deviceN,1);

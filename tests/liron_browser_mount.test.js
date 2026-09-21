@@ -35,7 +35,7 @@ function loadRouter({unidisks=[],slotOwners={},disk2=null}={})
     const io={
         DCODE2obj(DCODE,hostPCODE)
         {
-            return DCODE==='UNIDISK35' && hostPCODE==='LIRON' ? unidisks : [];
+            return DCODE==='UNIDISK' && hostPCODE==='LIRON' ? unidisks : [];
         },
         SLOT2obj(slotN)
         {
@@ -73,13 +73,13 @@ function loadRouter({unidisks=[],slotOwners={},disk2=null}={})
 test('819200 bytes route to the mounted UniDisk child with filename metadata',()=>{
     const unidiskLoads=[];
     const disk={
-        id:{DCODE:'UNIDISK35',hostPCODE:'LIRON'},
+        id:{DCODE:'UNIDISK',hostPCODE:'LIRON'},
         loadImage(bytes,metadata){unidiskLoads.push({bytes:Array.from(bytes),metadata});return bytes.length;}
     };
     const {context,diskIILoads}=loadRouter({unidisks:[disk]});
     const image=new Uint8Array(819200);
 
-    assert.equal(context.EMU_mountDiskImage(image,null,'UNIDISK35','CardCat 1.94.po'),true);
+    assert.equal(context.EMU_mountDiskImage(image,null,'UNIDISK','CardCat 1.94.po'),true);
     assert.equal(unidiskLoads.length,1);
     assert.equal(unidiskLoads[0].bytes.length,819200);
     assert.equal(unidiskLoads[0].metadata.filename,'CardCat 1.94.po');
@@ -92,8 +92,8 @@ test('800K routing fails cleanly when no unique UniDisk child is mounted',()=>{
         assert.equal(context.EMU_mountDiskImage(new Uint8Array(819200),null,'D1','x.po'),false);
     }
     {
-        const a={id:{DCODE:'UNIDISK35'},loadImage(){throw new Error('must not choose first');}};
-        const b={id:{DCODE:'UNIDISK35'},loadImage(){throw new Error('must not choose second');}};
+        const a={id:{DCODE:'UNIDISK'},loadImage(){throw new Error('must not choose first');}};
+        const b={id:{DCODE:'UNIDISK'},loadImage(){throw new Error('must not choose second');}};
         const {context}=loadRouter({unidisks:[a,b]});
         assert.equal(context.EMU_mountDiskImage(new Uint8Array(819200),null,'D1','x.po'),false);
     }
@@ -101,11 +101,11 @@ test('800K routing fails cleanly when no unique UniDisk child is mounted',()=>{
 
 test('explicit UniDisk target rejects wrong size without falling through to Disk II',()=>{
     let loads=0;
-    const disk={id:{DCODE:'UNIDISK35'},loadImage(){loads++;}};
+    const disk={id:{DCODE:'UNIDISK'},loadImage(){loads++;}};
     const disk2={getState(){return {active:true};},convertDsk2Nib(bytes){return bytes;}};
     const {context,diskIILoads}=loadRouter({unidisks:[disk],disk2});
 
-    assert.equal(context.EMU_mountDiskImage(new Uint8Array(819199),null,'UNIDISK35','bad.po'),false);
+    assert.equal(context.EMU_mountDiskImage(new Uint8Array(819199),null,'UNIDISK','bad.po'),false);
     assert.equal(loads,0);
     assert.equal(diskIILoads.length,0);
 });
@@ -116,7 +116,7 @@ test('143360-byte media preserves the existing Disk II path',()=>{
         getState(){return {active:true};},
         convertDsk2Nib(bytes){converted++;return bytes.concat([0xAA]);}
     };
-    const unidisk={id:{DCODE:'UNIDISK35'},loadImage(){throw new Error('UniDisk must not receive 140K media');}};
+    const unidisk={id:{DCODE:'UNIDISK'},loadImage(){throw new Error('UniDisk must not receive 140K media');}};
     const {context,diskIILoads}=loadRouter({unidisks:[unidisk],disk2});
 
     assert.equal(context.EMU_mountDiskImage(new Uint8Array(143360),7,'D1','boot.dsk'),true);
@@ -135,9 +135,9 @@ test('rejected UniDisk-targeted media leaves previously mounted media unchanged'
     for(let i=0;i<512;i++) image[2*512+i]=(i^0x5A)&0xFF;
 
     const fixture=loadRouter({unidisks:[disk]});
-    assert.equal(fixture.context.EMU_mountDiskImage(image,null,'UNIDISK35','good.po'),true);
+    assert.equal(fixture.context.EMU_mountDiskImage(image,null,'UNIDISK','good.po'),true);
     const before=Array.from(disk.readBlock(2).data);
-    assert.equal(fixture.context.EMU_mountDiskImage(new Uint8Array(819199),null,'UNIDISK35','bad.po'),false);
+    assert.equal(fixture.context.EMU_mountDiskImage(new Uint8Array(819199),null,'UNIDISK','bad.po'),false);
     assert.deepEqual(Array.from(disk.readBlock(2).data),before);
 });
 
@@ -154,12 +154,12 @@ test('explicit slot and SmartPort unit route 800K media to that exact UniDisk ch
     const unit1Loads=[];
     const unit2Loads=[];
     const unit1={
-        id:{DCODE:'UNIDISK35',hostPCODE:'LIRON',deviceN:1},
+        id:{DCODE:'UNIDISK',hostPCODE:'LIRON',deviceN:1},
         getUnit(){return 1;},
         loadImage(bytes,metadata){unit1Loads.push({bytes:Array.from(bytes),metadata});return bytes.length;}
     };
     const unit2={
-        id:{DCODE:'UNIDISK35',hostPCODE:'LIRON',deviceN:2},
+        id:{DCODE:'UNIDISK',hostPCODE:'LIRON',deviceN:2},
         getUnit(){return 2;},
         loadImage(bytes,metadata){unit2Loads.push({bytes:Array.from(bytes),metadata});return bytes.length;}
     };
@@ -169,7 +169,7 @@ test('explicit slot and SmartPort unit route 800K media to that exact UniDisk ch
         slotOwners:{6:owner}
     });
 
-    assert.equal(context.EMU_mountDiskImage(new Uint8Array(819200),6,'UNIDISK35','TOOLS.po',2),true);
+    assert.equal(context.EMU_mountDiskImage(new Uint8Array(819200),6,'UNIDISK','TOOLS.po',2),true);
     assert.equal(unit1Loads.length,0,'unit 1 must not receive a unit-2 mount');
     assert.equal(unit2Loads.length,1,'unit 2 must receive the explicitly targeted image');
     assert.equal(unit2Loads[0].metadata.filename,'TOOLS.po');

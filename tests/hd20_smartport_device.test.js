@@ -60,7 +60,7 @@ test('Liron advertises HD20 as optional and attaches mixed SmartPort devices to 
     const context=loadContext();
     const card=new context.AppleLiron();
 
-    const uniInfo=card.deviceConfig.find(info=>info.DCODE==='UNIDISK35');
+    const uniInfo=card.deviceConfig.find(info=>info.DCODE==='UNIDISK');
     const hdInfo=card.deviceConfig.find(info=>info.DCODE==='HD20');
     assert.ok(uniInfo,'Liron must continue to advertise UNIDISK35');
     assert.ok(hdInfo,'Liron must advertise HD20 in the device picker');

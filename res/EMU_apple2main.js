@@ -189,7 +189,7 @@ function EMU_unidisk35Device(slotN,unit)
         {
             var slotMatches=[];
             for(var i=0;i<owner.devices.length;i++)
-                if(owner.devices[i]?.id?.DCODE==="UNIDISK35" && matchesUnit(owner.devices[i]))
+                if(owner.devices[i]?.id?.DCODE==="UNIDISK" && matchesUnit(owner.devices[i]))
                     slotMatches.push(owner.devices[i]);
             return slotMatches.length===1 ? slotMatches[0] : null;
         }
@@ -197,7 +197,7 @@ function EMU_unidisk35Device(slotN,unit)
     }
 
     var disks=typeof(io.DCODE2obj)==="function"
-        ? io.DCODE2obj("UNIDISK35","LIRON")
+        ? io.DCODE2obj("UNIDISK","LIRON")
         : [];
     if(hasUnit) disks=disks.filter(matchesUnit);
     return disks.length===1 ? disks[0] : null;
@@ -220,10 +220,10 @@ function EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath,unit)
             ,"device":EMU_smartportDevice(slotN,unit,"HD20")
         };
     }
-    else if(targetCode==="UNIDISK35" || bytes.length===819200)
+    else if(targetCode==="UNIDISK" || bytes.length===819200)
     {
         smartport={
-             "code":"UNIDISK35"
+             "code":"UNIDISK"
             ,"label":"UniDisk 3.5"
             ,"expectedBytes":819200
             ,"device":EMU_unidisk35Device(slotN,unit)
@@ -1497,7 +1497,7 @@ function loadDisk_fromBuffer(arr_buffer,slotN,deviceID,filepath)
         if(!EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath)) return false;
 
         var size=arr_buffer && (arr_buffer.byteLength!==undefined ? arr_buffer.byteLength : arr_buffer.length);
-        if(Number(size)!==819200 && String(deviceID||"").toUpperCase()!=="UNIDISK35")
+        if(Number(size)!==819200 && String(deviceID||"").toUpperCase()!=="UNIDISK")
         {
             var disk2 = EMU_slotPeripheral(slotN,"DISKII");
             var input = disk2 && typeof(disk2.diskInputEl)==="function" ? disk2.diskInputEl(deviceID) : null;

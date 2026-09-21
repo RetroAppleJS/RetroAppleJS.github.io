@@ -59,14 +59,14 @@ test('Liron toolbox names media controls by each SmartPort device type',()=>{
         EMU_deviceMediaRowHTML(spec){rows.push(spec);return '<row>'+spec.label+'</row>';}
     });
     const card=new context.AppleLiron();
-    const uni=fakeDevice('UNIDISK35','Apple UniDisk 3.5',1,1600);
+    const uni=fakeDevice('UNIDISK','Apple UniDisk 3.5',1,1600);
     const hd=fakeDevice('HD20','Apple Hard Disk 20',2,40960);
     card.devices=[uni,hd];
 
     card.deviceToolSlotHTML({slotN:6,slotID:'5',toolboxID:'device_tool_5',devices:card.devices});
 
     assert.equal(rows.length,2);
-    assert.equal(rows[0].fileName,'UNIDISK35_1');
+    assert.equal(rows[0].fileName,'UNIDISK_1');
     assert.equal(rows[1].fileName,'HD20_2');
     assert.match(rows[0].fileOnChange,/deviceToolLoadFile\(this,1\)/);
     assert.match(rows[1].fileOnChange,/deviceToolLoadFile\(this,2\)/);
@@ -78,7 +78,7 @@ test('HD20 toolbox uses a logical filename and enables image download while UniD
         EMU_deviceMediaRowHTML(spec){rows.push(spec);return '<row>'+spec.label+'</row>';}
     });
     const card=new context.AppleLiron();
-    const uni=fakeDevice('UNIDISK35','Apple UniDisk 3.5',1,1600,{mediaFilename:'TOOLS.po'});
+    const uni=fakeDevice('UNIDISK','Apple UniDisk 3.5',1,1600,{mediaFilename:'TOOLS.po'});
     const hd=fakeDevice('HD20','Apple Hard Disk 20',2,40960,{logicalFilename:'BLANK92.po'});
     card.devices=[uni,hd];
 
@@ -188,7 +188,7 @@ test('Liron toolbox routes a 20 MiB file to the HD20 resident at that unit',()=>
     });
     const card=new context.AppleLiron();
     card.mount={slotN:6};
-    const uni=fakeDevice('UNIDISK35','Apple UniDisk 3.5',1,1600);
+    const uni=fakeDevice('UNIDISK','Apple UniDisk 3.5',1,1600);
     const hd=fakeDevice('HD20','Apple Hard Disk 20',2,40960);
     card.devices=[uni,hd];
     card.getBus().attach(uni,1);

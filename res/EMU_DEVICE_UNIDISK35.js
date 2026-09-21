@@ -24,7 +24,7 @@ function UniDisk35Device(options)
     var host = null;
 
     this.id = {
-         "DCODE":"UNIDISK35"
+         "DCODE":"UNIDISK"
         ,"hostPCODE":"LIRON"
         ,"icon":"fa fa-hdd"
         ,"description":"Apple UniDisk 3.5"
@@ -124,7 +124,7 @@ function UniDisk35Device(options)
     this.getSuggestedFilename = function()
     {
         var name=String(state.mediaFilename || "").split(/[\\/]/).pop();
-        return name || "UNIDISK35.po";
+        return name || "UNIDISK.po";
     };
 
     this.setOnline = function(value)

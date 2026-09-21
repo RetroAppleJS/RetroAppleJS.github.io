@@ -32,7 +32,7 @@ function fakeUniDisk(unit,filename)
 {
     return {
         id:{
-            DCODE:'UNIDISK35',
+            DCODE:'UNIDISK',
             description:'Apple UniDisk 3.5',
             deviceN:unit
         },
@@ -61,7 +61,7 @@ test('shared removable-media row preserves the Disk II native file-control layou
         buttonID:'unit1_but',
         formID:'unit1_form',
         fileID:'unit1_file',
-        fileName:'UNIDISK35_1',
+        fileName:'UNIDISK_1',
         buttonTitle:'Unit1: eject disk',
         buttonOnClick:'ejectUnit1()',
         fileAccept:'.po',
@@ -155,7 +155,7 @@ test('Liron toolbox renders attached SmartPort units vertically through the Disk
     {
         const unit=i+1;
         const row=rowCalls[i];
-        assert.equal(row.fileName,'UNIDISK35_'+unit);
+        assert.equal(row.fileName,'UNIDISK_'+unit);
         assert.match(row.fileOnChange,new RegExp(`deviceToolLoadFile\\(this,${unit}\\)`));
         assert.match(row.buttonOnClick,new RegExp(`deviceToolEject\\(${unit}\\)`));
         assert.equal(row.downloadDisabled,true,
@@ -208,7 +208,7 @@ test('Liron schedules a machine restart after a live SmartPort topology change',
     const card=new context.AppleLiron();
 
     assert.equal(typeof card.onDeviceTopologyChanged,'function');
-    assert.equal(card.onDeviceTopologyChanged({type:'attach',DCODE:'UNIDISK35'}),true);
+    assert.equal(card.onDeviceTopologyChanged({type:'attach',DCODE:'UNIDISK'}),true);
     assert.equal(restarts,1,
         'live SmartPort attach must reboot so ProDOS rebuilds its boot-time device table');
     assert.ok(warnings.some(msg=>msg.includes('SmartPort topology changed')));
@@ -258,7 +258,7 @@ test('successful Liron file load keeps the native file selection so the browser 
     assert.equal(card.deviceToolLoadFile(input,1),true);
     assert.equal(mountCalls.length,1);
     assert.equal(mountCalls[0].slotN,6);
-    assert.equal(mountCalls[0].deviceID,'UNIDISK35');
+    assert.equal(mountCalls[0].deviceID,'UNIDISK');
     assert.equal(mountCalls[0].filename,'ProDOS Packer 6.0.po');
     assert.equal(mountCalls[0].unit,1);
     assert.equal(mountCalls[0].bytes.length,819200);

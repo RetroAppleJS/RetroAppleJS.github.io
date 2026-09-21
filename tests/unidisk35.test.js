@@ -19,7 +19,7 @@ test('UniDisk35Device exposes a detached 800K SmartPort block device', () => {
     const context = loadUniDisk();
     const disk = new context.UniDisk35Device();
 
-    assert.equal(disk.id.DCODE,'UNIDISK35');
+    assert.equal(disk.id.DCODE,'UNIDISK');
     assert.equal(disk.getUnit(),0);
     assert.equal(disk.getBlockSize(),512);
     assert.equal(disk.getBlockCount(),1600);

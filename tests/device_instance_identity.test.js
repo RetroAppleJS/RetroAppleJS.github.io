@@ -62,13 +62,13 @@ test('attached-device label emits valid HTML attributes without literal backslas
     vm.createContext(context);
     vm.runInContext(iconFn+'\n'+labelFn,context);
     const html=vm.runInContext(
-        `slotDeviceLabel_html({mount:{slotN:6}},{id:{DCODE:'UNIDISK35',icon:'fa fa-hdd',description:'Apple UniDisk 3.5'},attach:{hash:4660}})`,
+        `slotDeviceLabel_html({mount:{slotN:6}},{id:{DCODE:'UNIDISK',icon:'fa fa-hdd',description:'Apple UniDisk 3.5'},attach:{hash:4660}})`,
         context
     );
 
     assert.equal(html.includes('\\\\"'),false,
         'rendered device HTML must never contain a literal backslash before an attribute quote');
-    assert.match(html,/data-dcode=['"]UNIDISK35['"]/);
+    assert.match(html,/data-dcode=['"]UNIDISK['"]/);
     assert.match(html,/onclick=['"]event\.stopPropagation\(\);apple2plus\.hwObj\(\)\.io\.deviceConfig_detail\(6,/);
 });
 

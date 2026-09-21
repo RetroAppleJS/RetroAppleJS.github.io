@@ -1045,7 +1045,7 @@ function AppleLiron()
 
     this.id = {"PCODE":"LIRON","icon":"fa fa-save"};
     this.deviceConfig = [{
-         "DCODE":"UNIDISK35"
+         "DCODE":"UNIDISK"
         ,"hostPCODE":"LIRON"
         ,"coID":"UniDisk35Device"
         ,"deviceN":1
@@ -1152,7 +1152,7 @@ function AppleLiron()
 
     this.attachUniDisk = function(device)
     {
-        if(!device || device.id?.DCODE!=="UNIDISK35") return null;
+        if(!device || device.id?.DCODE!=="UNIDISK") return null;
 
         var unit=typeof(device.getUnit)==="function" ? Number(device.getUnit()) : 0;
         if(unit>=1 && unit<=8 && smartport.getDevice(unit)===device) return device;
@@ -1226,8 +1226,8 @@ function AppleLiron()
 
         // Keep direct legacy calls compatible even when a test/tool invokes the
         // loader before the resident list has been populated.
-        var deviceCode=String(target && target.id ? target.id.DCODE || "" : "") || "UNIDISK35";
-        var mediaLabel=deviceCode==="UNIDISK35"
+        var deviceCode=String(target && target.id ? target.id.DCODE || "" : "") || "UNIDISK";
+        var mediaLabel=deviceCode==="UNIDISK"
             ? "UniDisk 3.5"
             : (deviceCode==="HD20" ? "Apple Hard Disk 20" : deviceCode);
         var blockSize=target && typeof(target.getBlockSize)==="function"
@@ -1434,7 +1434,7 @@ function AppleLiron()
             var exportable=typeof(device.getImage)==="function" && typeof(device.getSuggestedFilename)==="function";
             var deviceState=typeof(device.getState)==="function" ? device.getState() || {} : {};
             var downloadable=exportable && (hardDisk || !!deviceState.mediaLoaded);
-            var logicalFilename=exportable ? String(device.getSuggestedFilename() || (hardDisk ? "HD20.po" : "UNIDISK35.po")) : undefined;
+            var logicalFilename=exportable ? String(device.getSuggestedFilename() || (hardDisk ? "HD20.po" : "UNIDISK.po")) : undefined;
 
             rows += EMU_deviceMediaRowHTML({
                  "label":"Unit"+unit
@@ -1497,14 +1497,14 @@ function AppleLiron()
             unit=Number(unit);
             if(!Number.isInteger(unit) || unit<1 || unit>8) return null;
             var exact=smartport.getDevice(unit);
-            return exact && exact.id?.DCODE==="UNIDISK35" ? exact : null;
+            return exact && exact.id?.DCODE==="UNIDISK" ? exact : null;
         }
 
         var units=smartport.getUnits();
         for(var i=0;i<units.length;i++)
         {
             var device=smartport.getDevice(units[i]);
-            if(device && device.id?.DCODE==="UNIDISK35") return device;
+            if(device && device.id?.DCODE==="UNIDISK") return device;
         }
         return null;
     };

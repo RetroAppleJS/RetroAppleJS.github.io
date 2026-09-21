@@ -49,7 +49,7 @@ test('browser discovery declares UniDisk and Apple2IO-style binding populates Sm
 
     assert.ok(card,'AppleLiron discovery instance must exist');
     assert.equal(card.deviceConfig.length,1);
-    assert.equal(card.deviceConfig[0].DCODE,'UNIDISK35');
+    assert.equal(card.deviceConfig[0].DCODE,'UNIDISK');
     assert.deepEqual(Array.from(card.getBus().getUnits()),[]);
     assert.equal(card.getUniDisk(),null);
 
@@ -60,6 +60,6 @@ test('browser discovery declares UniDisk and Apple2IO-style binding populates Sm
     assert.equal(card.getBus().getDevice(1),device);
     assert.equal(device,card.getUniDisk());
     assert.equal(device.getUnit(),1);
-    assert.equal(device.id.DCODE,'UNIDISK35');
+    assert.equal(device.id.DCODE,'UNIDISK');
     assert.equal(device.getBlockCount(),1600);
 });
