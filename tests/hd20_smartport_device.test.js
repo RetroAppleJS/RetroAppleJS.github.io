@@ -89,10 +89,12 @@ test('Liron advertises HD20 as optional and attaches mixed SmartPort devices to 
     assert.equal(card.getBus().getDevice(3),hd2);
 });
 
-test('Apple2IO declarative provisioning skips deviceConfig entries marked autoAttach false',()=>{
+test('Apple2IO provisioning recognizes optional and if-empty attachment policies',()=>{
     const ioSource=fs.readFileSync(ioPath,'utf8');
-    assert.match(ioSource,/autoAttach\s*!==\s*false/,
+    assert.match(ioSource,/autoAttach\s*===\s*false/,
         'provisionPeripheral must leave optional picker devices unattached by default');
+    assert.match(ioSource,/autoAttach\s*===\s*["']if-empty["']/,
+        'provisionPeripheral must recognize defaults that attach only to an empty host');
 });
 
 test('browser loads HD20 device module before the Liron card',()=>{
