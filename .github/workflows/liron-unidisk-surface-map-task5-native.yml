@@ -1,0 +1,50 @@
+name: Liron UniDisk surface map Task 5
+permissions:
+  contents: write
+on:
+  push:
+    branches:
+      - feature/liron-unidisk-surface-map
+    paths:
+      - .github/workflows/liron-unidisk-surface-map-task5-native.yml
+      - .github/scripts/liron-task5.py
+jobs:
+  task5:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-surface-map
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: RED exact-instance surface map
+        shell: bash
+        run: |
+          python3 .github/scripts/liron-task5.py tests
+          set +e
+          node --test tests/liron_surface_map.test.js > /tmp/task5-red.log 2>&1
+          rc=$?
+          cat /tmp/task5-red.log
+          test "$rc" -ne 0
+      - name: GREEN exact-instance surface map
+        shell: bash
+        run: |
+          python3 .github/scripts/liron-task5.py impl
+          node --check res/EMU_CARD_LIRON.js
+          node --check tests/liron_surface_map.test.js
+          node --test tests/liron_surface_map.test.js tests/liron_toolbox.test.js tests/liron_toolbox_eject.test.js tests/unidisk35.test.js
+      - name: Verify Disk II source unchanged
+        run: git diff --exit-code HEAD -- res/EMU_CARD_appledisk2.js
+      - name: Commit Task 5
+        shell: bash
+        run: |
+          git config user.name "ChatGPT"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/liron-unidisk-surface-map-task5-native.yml
+          rm -f .github/scripts/liron-task5.py
+          git add -A
+          git commit -m "feat: add UniDisk device surface map"
+          git push origin HEAD:feature/liron-unidisk-surface-map
