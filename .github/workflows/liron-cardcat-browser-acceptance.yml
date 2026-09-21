@@ -53,8 +53,6 @@ jobs:
             echo "Acceptance harness must not call UniDisk loadImage/readBlock directly"
             exit 1
           fi
-      - name: UniDisk media export regression
-        run: node --test tests/unidisk_media_export.test.js
       - name: Install Playwright Chromium
         shell: bash
         run: |
@@ -76,3 +74,5 @@ jobs:
           trap 'kill $server || true' EXIT
           sleep 1
           RETROAPPLE_URL=http://127.0.0.1:8000 node tests/liron_two_device_prodos_acceptance.js
+      - name: UniDisk media export regression
+        run: node --test tests/unidisk_media_export.test.js
