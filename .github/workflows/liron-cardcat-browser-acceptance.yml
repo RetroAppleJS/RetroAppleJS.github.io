@@ -8,9 +8,13 @@ on:
     paths:
       - "res/EMU_CARD_LIRON.js"
       - "res/EMU_DEVICE_UNIDISK35.js"
+      - "res/EMU_DEVICE_HD20.js"
       - "res/EMU_apple2main.js"
       - "res/EMU_apple2io.js"
       - "tests/cardcat_unidisk_browser_acceptance.js"
+      - "tests/liron_two_device_prodos_acceptance.js"
+      - "tests/unidisk_media_export.test.js"
+      - "disks/ProDOS 8.dsk"
       - "disks/Utility/Card Cat 1.94.dsk"
       - "disks/Utility/CardCat 1.94.po"
       - ".github/workflows/liron-cardcat-browser-acceptance.yml"
@@ -18,9 +22,13 @@ on:
     paths:
       - "res/EMU_CARD_LIRON.js"
       - "res/EMU_DEVICE_UNIDISK35.js"
+      - "res/EMU_DEVICE_HD20.js"
       - "res/EMU_apple2main.js"
       - "res/EMU_apple2io.js"
       - "tests/cardcat_unidisk_browser_acceptance.js"
+      - "tests/liron_two_device_prodos_acceptance.js"
+      - "tests/unidisk_media_export.test.js"
+      - "disks/ProDOS 8.dsk"
       - "disks/Utility/Card Cat 1.94.dsk"
       - "disks/Utility/CardCat 1.94.po"
       - ".github/workflows/liron-cardcat-browser-acceptance.yml"
@@ -39,6 +47,8 @@ jobs:
         shell: bash
         run: |
           node --check tests/cardcat_unidisk_browser_acceptance.js
+          node --check tests/liron_two_device_prodos_acceptance.js
+          node --check tests/unidisk_media_export.test.js
           if grep -nE '\.(loadImage|readBlock)[[:space:]]*\(' tests/cardcat_unidisk_browser_acceptance.js; then
             echo "Acceptance harness must not call UniDisk loadImage/readBlock directly"
             exit 1
@@ -56,3 +66,13 @@ jobs:
           trap 'kill $server || true' EXIT
           sleep 1
           RETROAPPLE_URL=http://127.0.0.1:8000 node tests/cardcat_unidisk_browser_acceptance.js
+      - name: Boot ProDOS with HD20 Unit 1 and UniDisk Unit 2
+        shell: bash
+        run: |
+          python3 -m http.server 8000 >/tmp/retroapple-http-two-device.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          RETROAPPLE_URL=http://127.0.0.1:8000 node tests/liron_two_device_prodos_acceptance.js
+      - name: UniDisk media export regression
+        run: node --test tests/unidisk_media_export.test.js

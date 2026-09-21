@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 
 const source = fs.readFileSync('res/EMU_CARD_LIRON.js','utf8');
+const uniDiskSource = fs.readFileSync('res/EMU_DEVICE_UNIDISK35.js','utf8');
 const diskIISource = fs.readFileSync('res/EMU_CARD_appledisk2.js','utf8');
 const apple2ioSource = fs.readFileSync('res/EMU_apple2io.js','utf8');
 
@@ -22,6 +23,7 @@ function loadLiron(extra={})
         Reflect
     },extra));
     context.oEMU = {component:{IO:{}}};
+    vm.runInContext(uniDiskSource,context,{filename:'EMU_DEVICE_UNIDISK35.js'});
     vm.runInContext(source,context,{filename:'EMU_CARD_LIRON.js'});
     return context;
 }
@@ -157,8 +159,59 @@ test('Liron toolbox renders attached SmartPort units vertically through the Disk
         assert.match(row.fileOnChange,new RegExp(`deviceToolLoadFile\\(this,${unit}\\)`));
         assert.match(row.buttonOnClick,new RegExp(`deviceToolEject\\(${unit}\\)`));
         assert.equal(row.downloadDisabled,true,
-            'UniDisk download occupies the Disk II download position but remains disabled for now');
+            'a non-exportable fake UniDisk remains disabled');
     }
+});
+
+test('loaded UniDisk media enables download and exports the exact .po image', () => {
+    const rows=[];
+    const downloads=[];
+    const context=loadLiron({
+        oCOM:{Download(filename,data){downloads.push({filename,data:Uint8Array.from(data)});}},
+        EMU_deviceMediaRowHTML(spec){rows.push(spec);return '<row></row>';}
+    });
+    const card=new context.AppleLiron();
+    const disk=new context.UniDisk35Device();
+    assert.equal(disk.bindHost(card),true);
+    const image=new Uint8Array(819200);
+    image[0]=0x11;
+    image[819199]=0xEE;
+    disk.loadImage(image,{filename:'ProDOS Packer 6.0.po'});
+    card.devices=[disk];
+
+    assert.equal(disk.getSuggestedFilename(),'ProDOS Packer 6.0.po');
+    assert.notEqual(disk.getImage(),image,'export must return a copy of the mounted media buffer');
+
+    card.deviceToolSlotHTML({slotN:6,slotID:'5',toolboxID:'device_tool_5',devices:card.devices});
+    assert.equal(rows.length,1);
+    assert.equal(rows[0].downloadDisabled,false,
+        'a loaded UniDisk must enable the existing download button');
+    assert.match(rows[0].downloadOnClick,/deviceToolDownload\(1\)/);
+    assert.equal(rows[0].downloadTitle,'Save ProDOS Packer 6.0.po');
+
+    assert.equal(card.deviceToolDownload(1),true);
+    assert.equal(downloads.length,1);
+    assert.equal(downloads[0].filename,'ProDOS Packer 6.0.po');
+    assert.equal(downloads[0].data.length,819200);
+    assert.equal(downloads[0].data[0],0x11);
+    assert.equal(downloads[0].data[819199],0xEE);
+});
+
+test('Liron schedules a machine restart after a live SmartPort topology change', () => {
+    let restarts=0;
+    const warnings=[];
+    const context=loadLiron({
+        console:{log(){},error(){},warn(msg){warnings.push(String(msg));}},
+        setTimeout(fn){fn();return 1;},
+        apple2plus:{restart(){restarts++;}}
+    });
+    const card=new context.AppleLiron();
+
+    assert.equal(typeof card.onDeviceTopologyChanged,'function');
+    assert.equal(card.onDeviceTopologyChanged({type:'attach',DCODE:'UNIDISK35'}),true);
+    assert.equal(restarts,1,
+        'live SmartPort attach must reboot so ProDOS rebuilds its boot-time device table');
+    assert.ok(warnings.some(msg=>msg.includes('SmartPort topology changed')));
 });
 
 test('successful Liron file load keeps the native file selection so the browser displays the filename', () => {

@@ -120,6 +120,12 @@ function UniDisk35Device(options)
     this.getDeviceSubtype = function() { return DEVICE_SUBTYPE; };
     this.getFirmwareVersion = function() { return FW_VERSION; };
     this.getName = function() { return DEVICE_NAME; };
+    this.getImage = function() { return media===null ? null : media.slice(); };
+    this.getSuggestedFilename = function()
+    {
+        var name=String(state.mediaFilename || "").split(/[\\/]/).pop();
+        return name || "UNIDISK35.po";
+    };
 
     this.setOnline = function(value)
     {
