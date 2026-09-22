@@ -177,8 +177,59 @@ async function setupTwoDevicesBeforeBoot(page)
         throw new Error('ProDOS did not install Liron Unit 1 as S5,D1; globals='+JSON.stringify(prodos)+' bus='+JSON.stringify(bus));
     if(!installed.includes(0xD0))
         throw new Error('ProDOS did not install Liron Unit 2 as S5,D2; globals='+JSON.stringify(prodos)+' bus='+JSON.stringify(bus));
-    if(prodos.s5d2[0]===prodos.nodev[0] && prodos.s5d2[1]===prodos.nodev[1])
-        throw new Error('S5,D2 driver vector still points to NO DEVICE CONNECTED');
+    const mliRead=await page.evaluate(async()=>{
+        const mediaResponse=await fetch('/disks/Utility/CardCat%201.94.po');
+        if(!mediaResponse.ok) throw new Error('UniDisk image fetch failed for MLI verification: '+mediaResponse.status);
+        const mediaBytes=new Uint8Array(await mediaResponse.arrayBuffer());
+        const expectedBytes=Array.from(mediaBytes.slice(0,512));
+
+        const hw=apple2plus.hwObj();
+        const cpu=apple2plus.cpuObj();
+        const write=(addr,value)=>{
+            addr &= 0xFFFF;
+            const fn=hw.WR[hw.lineDecode(addr)];
+            if(typeof fn!=='function') throw new Error('No CPU-bus writer for $'+addr.toString(16));
+            fn(addr,value&0xFF);
+        };
+        const writeBytes=(addr,bytes)=>bytes.forEach((value,index)=>write(addr+index,value));
+
+        const codeAddr=0x6000;
+        const parmAddr=0x6100;
+        const bufferAddr=0x7000;
+        for(let i=0;i<512;i++) write(bufferAddr+i,0);
+
+        // JSR ProDOS MLI; READ_BLOCK; parameter pointer; NOP as the return trap.
+        writeBytes(codeAddr,[0x20,0x00,0xBF,0x80,0x00,0x61,0xEA]);
+        // READ_BLOCK params: count=3, unit=$D0 (slot 5 drive 2), buffer=$7000, block 0.
+        writeBytes(parmAddr,[0x03,0xD0,0x00,0x70,0x00,0x00]);
+
+        const before=cpu.watch();
+        cpu.setExecutionTrap(codeAddr+6);
+        cpu.setState({a:before.a,x:before.x,y:before.y,sp:before.sp,p:before.p,pc:codeAddr,cycle_delay:0});
+        const run=apple2plus.runLiveCpuTicks(2000000,{videoScale:0.001});
+        const after=cpu.watch();
+        cpu.clearExecutionTrap();
+
+        const actual=Array.from(hw.safe_dump(bufferAddr,bufferAddr+511));
+        const mismatches=[];
+        for(let i=0;i<512 && mismatches.length<8;i++)
+            if(actual[i]!==expectedBytes[i]) mismatches.push({offset:i,actual:actual[i],expected:expectedBytes[i]});
+
+        return {
+            trapped:!!run.trapped,
+            completedTicks:run.completedTicks,
+            pc:after.pc&0xFFFF,
+            a:after.a&0xFF,
+            carry:after.p&1,
+            match:mismatches.length===0,
+            mismatches,
+            actualPrefix:actual.slice(0,16),
+            expectedPrefix:expectedBytes.slice(0,16)
+        };
+    });
+    console.log('PRODOS_MLI_D0_READ',JSON.stringify(mliRead));
+    if(!mliRead.trapped || mliRead.carry || !mliRead.match)
+        throw new Error('ProDOS MLI READ_BLOCK on S5,D2 ($D0) failed: '+JSON.stringify(mliRead));
     if(smartportLogs.length===0)
         throw new Error('No SmartPort traffic was observed while ProDOS enumerated the two-device Liron chain');
 
