@@ -1,0 +1,54 @@
+name: Diagnose Liron two-device ProDOS browser failure
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - feature/liron-unidisk-surface-map
+    paths:
+      - .github/workflows/liron-two-device-prodos-diagnostic.yml
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-surface-map
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Capture failing acceptance output
+        shell: bash
+        run: |
+          python3 -m http.server 8000 >/tmp/retroapple-http.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          set +e
+          RETROAPPLE_URL=http://127.0.0.1:8000 node tests/liron_two_device_prodos_acceptance.js > /tmp/prodos.out 2>&1
+          rc=$?
+          set -e
+          {
+            echo "exit_code=$rc"
+            echo "head_sha=$(git rev-parse HEAD)"
+            echo "--- browser output ---"
+            cat /tmp/prodos.out
+            echo "--- http output ---"
+            cat /tmp/retroapple-http.log
+          } > diagnostics-liron-two-device-prodos.txt
+      - name: Commit diagnostic output
+        run: |
+          git config user.name "ChatGPT"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add diagnostics-liron-two-device-prodos.txt
+          git commit -m "chore: capture two-device ProDOS browser failure"
+          git push origin HEAD:feature/liron-unidisk-surface-map
