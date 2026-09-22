@@ -1,0 +1,107 @@
+name: Repair inherited Liron baseline failures v2
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - feature/liron-unidisk-surface-map
+    paths:
+      - .github/workflows/liron-baseline-five-repair-v2.yml
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-surface-map
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Confirm inherited failures are RED
+        shell: bash
+        run: |
+          set +e
+          node --test --test-reporter=tap \
+            tests/liron_browser_integration.test.js \
+            tests/liron_browser_mount.test.js \
+            tests/liron_card.test.js \
+            tests/liron_smartport_debug.test.js \
+            tests/liron_unidisk_identity_trace.test.js >/tmp/red.log 2>&1
+          rc=$?
+          set -e
+          cat /tmp/red.log
+          test "$rc" -ne 0
+          test "$(grep -c '^not ok ' /tmp/red.log)" -eq 5
+
+      - name: Repair stale test contracts
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path('tests/liron_browser_integration.test.js')
+          s=p.read_text()
+          old="""    assert.equal(card.deviceConfig.length,1);\n    assert.equal(card.deviceConfig[0].DCODE,'UNIDISK');\n    assert.deepEqual(Array.from(card.getBus().getUnits()),[]);\n    assert.equal(card.getUniDisk(),null);\n\n    const device = new context.UniDisk35Device(card.deviceConfig[0]);\n"""
+          new="""    const uniConfig=card.deviceConfig.find(info=>info.DCODE==='UNIDISK');\n    const hd20Config=card.deviceConfig.find(info=>info.DCODE==='HD20');\n    assert.ok(uniConfig,'Liron must advertise a UniDisk SmartPort child');\n    assert.ok(hd20Config,'Liron must also advertise the optional HD20 child');\n    assert.deepEqual(Array.from(card.getBus().getUnits()),[]);\n    assert.equal(card.getUniDisk(),null);\n\n    const device = new context.UniDisk35Device(uniConfig);\n"""
+          if old not in s: raise SystemExit('browser integration marker not found')
+          p.write_text(s.replace(old,new,1))
+
+          p=Path('tests/liron_card.test.js')
+          s=p.read_text()
+          s=s.replace("test('AppleLiron exposes the RetroAppleJS card surface and declares an unprovisioned UniDisk child', () => {","test('AppleLiron exposes the RetroAppleJS card surface and SmartPort child configurations', () => {",1)
+          old="""    assert.equal(card.deviceConfig.length,1);\n    assert.equal(card.deviceConfig[0].DCODE,'UNIDISK');\n    assert.equal(card.deviceConfig[0].hostPCODE,'LIRON');\n    assert.equal(card.deviceConfig[0].coID,'UniDisk35Device');\n    assert.equal(card.deviceConfig[0].deviceN,1);\n    assert.equal(card.getBus().hasDevices(),false);\n"""
+          new="""    const uniConfig=card.deviceConfig.find(info=>info.DCODE==='UNIDISK');\n    const hd20Config=card.deviceConfig.find(info=>info.DCODE==='HD20');\n    assert.ok(uniConfig,'Liron must advertise its UniDisk child');\n    assert.ok(hd20Config,'Liron must advertise its optional HD20 child');\n    assert.equal(uniConfig.hostPCODE,'LIRON');\n    assert.equal(uniConfig.coID,'UniDisk35Device');\n    assert.equal(uniConfig.deviceN,1);\n    assert.equal(card.getBus().hasDevices(),false);\n"""
+          if old not in s: raise SystemExit('Liron card marker not found')
+          p.write_text(s.replace(old,new,1))
+
+          p=Path('tests/liron_browser_mount.test.js')
+          s=p.read_text()
+          old="""test('143360-byte media preserves the existing Disk II path',()=>{\n    let converted=0;\n    const disk2={\n        getState(){return {active:true};},\n        convertDsk2Nib(bytes){converted++;return bytes.concat([0xAA]);}\n    };\n    const unidisk={id:{DCODE:'UNIDISK'},loadImage(){throw new Error('UniDisk must not receive 140K media');}};\n    const {context,diskIILoads}=loadRouter({unidisks:[unidisk],disk2});\n\n    assert.equal(context.EMU_mountDiskImage(new Uint8Array(143360),7,'D1','boot.dsk'),true);\n    assert.equal(converted,1);\n    assert.equal(diskIILoads.length,1);\n    assert.equal(diskIILoads[0].deviceID,'D1');\n    assert.equal(diskIILoads[0].slotN,7);\n});\n"""
+          new="""test('143360-byte media preserves the existing Disk II path',()=>{\n    const controllerLoads=[];\n    const disk2={\n        getState(){return {active:true};},\n        setDiskData(bytes,deviceID,filepath){controllerLoads.push({bytes:Array.from(bytes),deviceID,filepath});}\n    };\n    const unidisk={id:{DCODE:'UNIDISK'},loadImage(){throw new Error('UniDisk must not receive 140K media');}};\n    const {context,diskIILoads}=loadRouter({unidisks:[unidisk],disk2});\n\n    assert.equal(context.EMU_mountDiskImage(new Uint8Array(143360),7,'D1','boot.dsk'),true);\n    assert.equal(controllerLoads.length,1);\n    assert.equal(controllerLoads[0].bytes.length,143360);\n    assert.equal(controllerLoads[0].deviceID,'D1');\n    assert.equal(controllerLoads[0].filepath,'boot.dsk');\n    assert.equal(diskIILoads.length,0,'140K media is handled directly by the Disk II controller');\n});\n"""
+          if old not in s: raise SystemExit('Disk II routing marker not found')
+          p.write_text(s.replace(old,new,1))
+
+          Path('tests/liron_unidisk_identity_trace.test.js').write_text("""'use strict';\n\nconst test=require('node:test');\nconst assert=require('node:assert/strict');\nconst fs=require('node:fs');\nconst vm=require('node:vm');\n\nconst mainSource=fs.readFileSync('res/EMU_apple2main.js','utf8');\n\nfunction extractFunction(source,name)\n{\n  const start=source.indexOf('function '+name+'(');\n  if(start<0) return null;\n  const open=source.indexOf('{',start);\n  let depth=0;\n  for(let i=open;i<source.length;i++)\n  {\n    if(source[i]==='{') depth++;\n    else if(source[i]==='}' && --depth===0) return source.slice(start,i+1);\n  }\n  return null;\n}\n\ntest('successful UniDisk mount logs router-vs-Liron unit identity and media state',()=>{\n  const logs=[];\n  const state={mediaLoaded:false,mediaFilename:''};\n  const target={\n    id:{DCODE:'UNIDISK'},\n    loadImage(bytes,metadata){state.mediaLoaded=true;state.mediaFilename=metadata.filename;return bytes.length;},\n    getState(){return {...state};}\n  };\n  const bus={getDevice(unit){return unit===1?target:null;}};\n  const liron={id:{PCODE:'LIRON'},devices:[target],getBus(){return bus;}};\n  const context={\n    Uint8Array,Number,String,Array,Object,\n    console:{log(...args){logs.push(args);},warn(){},error(){}},\n    apple2plus:{hwObj(){return {io:{SLOT2obj(slotN){return slotN===6?liron:null;}}};}},\n    EMU_unidisk35Device(slotN,unit){return slotN===6&&unit===1?target:null;},\n    EMU_smartportDevice(){return null;},\n    EMU_slotPeripheral(){return null;}\n  };\n  vm.createContext(context);\n  const mountSource=extractFunction(mainSource,'EMU_mountDiskImage');\n  assert.ok(mountSource,'EMU_mountDiskImage must exist');\n  vm.runInContext(mountSource,context,{filename:'EMU_mountDiskImage.js'});\n\n  assert.equal(context.EMU_mountDiskImage(new Uint8Array(819200),6,'UNIDISK','trace.po',1),true);\n  const entry=logs.find(args=>args[0]==='UniDisk 3.5 identity trace');\n  assert.ok(entry,'identity trace must be logged after a successful UniDisk mount');\n  const details=entry[1];\n  assert.equal(details.slotN,6);\n  assert.equal(details.unit,1);\n  assert.equal(details.sameObject,true);\n  assert.equal(details.routerDevice,target);\n  assert.equal(details.lironUnitDevice,target);\n  assert.deepEqual(details.routerState,{mediaLoaded:true,mediaFilename:'trace.po'});\n  assert.deepEqual(details.lironUnitState,{mediaLoaded:true,mediaFilename:'trace.po'});\n});\n""")
+          PY
+
+      - name: Verify stale-contract repairs independently
+        run: |
+          node --test \
+            tests/liron_browser_integration.test.js \
+            tests/liron_browser_mount.test.js \
+            tests/liron_card.test.js \
+            tests/liron_unidisk_identity_trace.test.js
+
+      - name: Fix SmartPort debug default
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('res/EMU_CARD_LIRON.js')
+          s=p.read_text()
+          old='function SmartPortBus()\n{\n    var bDebug = true;'
+          new='function SmartPortBus()\n{\n    var bDebug = false;'
+          if old not in s: raise SystemExit('SmartPortBus debug marker not found')
+          p.write_text(s.replace(old,new,1))
+          PY
+
+      - name: Verify SmartPort debug default independently
+        run: node --test tests/liron_smartport_debug.test.js
+
+      - name: Full Node regression suite must be green
+        run: node --test tests/*.test.js
+
+      - name: Commit repaired baseline and remove temporary workflows
+        run: |
+          git config user.name "ChatGPT"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -f .github/workflows/liron-baseline-five-diagnostics.yml
+          rm -f .github/workflows/liron-baseline-five-repair.yml
+          rm -f .github/workflows/liron-baseline-five-repair-v2.yml
+          git add res/EMU_CARD_LIRON.js tests/liron_browser_integration.test.js tests/liron_browser_mount.test.js tests/liron_card.test.js tests/liron_unidisk_identity_trace.test.js .github/workflows/liron-baseline-five-diagnostics.yml .github/workflows/liron-baseline-five-repair.yml .github/workflows/liron-baseline-five-repair-v2.yml
+          git commit -m "fix: repair inherited Liron baseline regressions"
+          git push origin HEAD:feature/liron-unidisk-surface-map
