@@ -1,0 +1,35 @@
+name: Liron baseline five diagnostics
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - feature/liron-unidisk-surface-map
+    paths:
+      - .github/workflows/liron-baseline-five-diagnostics.yml
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/liron-unidisk-surface-map
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run exact five failing test files with full TAP
+        shell: bash
+        run: |
+          set +e
+          node --test --test-reporter=tap \
+            tests/liron_browser_integration.test.js \
+            tests/liron_browser_mount.test.js \
+            tests/liron_card.test.js \
+            tests/liron_smartport_debug.test.js \
+            tests/liron_unidisk_identity_trace.test.js | tee /tmp/five.tap
+          rc=${PIPESTATUS[0]}
+          echo "RC=$rc"
+          exit 0
