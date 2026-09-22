@@ -108,10 +108,17 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
             const popup=document.getElementById('lironSurfaceMap_popup');
             const text=document.getElementById('lironSurfaceMap_popup_text');
             const rect=popup.getBoundingClientRect();
-            const anchor=document.getElementById(setup.surfaceID)?.closest('.appbox')?.getBoundingClientRect();
+            const toolboxes=[...document.querySelectorAll('.toolbox')]
+                .filter(el=>{
+                    const style=getComputedStyle(el);
+                    const r=el.getBoundingClientRect();
+                    return !el.hidden && style.display!=='none' && style.visibility!=='hidden' && r.width>0 && r.height>0;
+                })
+                .map(el=>el.getBoundingClientRect());
+            const rightmost=toolboxes.reduce((best,r)=>!best || r.right>best.right?r:best,null);
             const grid=text.querySelector('.liron-surface-grid');
             const style=grid ? getComputedStyle(grid) : null;
-            const firstCell=text.querySelector('[data-active="1"][data-content]');
+            const densityCells=[...text.querySelectorAll('[data-active="1"][data-density]')];
             return {
                 title:text.querySelector('.liron-surface-title')?.textContent || '',
                 meta:text.querySelector('.liron-surface-meta')?.textContent || '',
@@ -119,32 +126,34 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
                 cells:text.querySelectorAll('[data-surface-cell="1"]').length,
                 active:text.querySelectorAll('[data-active="1"]').length,
                 inactive:text.querySelectorAll('[data-active="0"]').length,
-                contentKinds:[...new Set([...text.querySelectorAll('[data-active="1"][data-content]')].map(el=>el.dataset.content))],
+                densities:[...new Set(densityCells.map(el=>Number(el.dataset.density)))],
+                hasLegend:!!text.querySelector('.liron-surface-legend'),
                 columns:style ? style.gridTemplateColumns.split(' ').filter(Boolean).length : 0,
                 rows:style ? style.gridTemplateRows.split(' ').filter(Boolean).length : 0,
-                firstCellBackground:firstCell ? getComputedStyle(firstCell).backgroundColor : '',
                 scrollWidth:popup.scrollWidth,
                 clientWidth:popup.clientWidth,
+                width:rect.width,
                 left:rect.left,right:rect.right,top:rect.top,viewport:window.innerWidth,
-                anchorTop:anchor ? anchor.top : null
+                toolboxRight:rightmost ? rightmost.right : null,
+                toolboxTop:rightmost ? rightmost.top : null
             };
         },setup);
         assert.equal(map.title,'Disk Surface Map — UNIDISK Unit1');
-        assert.match(map.meta,/1600 × 512-byte sectors · ProDOS/);
+        assert.match(map.meta,/1600 × 512-byte sectors/);
         assert.equal(map.sides,2);
         assert.equal(map.cells,1920);
         assert.equal(map.active,1600);
         assert.equal(map.inactive,320);
         assert.equal(map.columns,12,'rotated surface map must have 12 columns');
         assert.equal(map.rows,80,'rotated surface map must have 80 rows');
-        assert.notEqual(map.firstCellBackground,'rgba(0, 0, 0, 0)','first cell must render with a visible color');
-        for(const kind of ['boot','directory','bitmap','data','free'])
-            assert.ok(map.contentKinds.includes(kind),'missing ProDOS content class '+kind);
+        assert.equal(map.hasLegend,false,'density map does not need a semantic legend');
+        assert.ok(map.densities.length>1,'real disk image must produce more than one density value');
+        assert.ok(map.width<=242,'surface map popup must remain compact');
         assert.ok(map.scrollWidth<=map.clientWidth+1,'surface map popup must not scroll horizontally');
         assert.ok(map.left>=0 && map.right<=map.viewport+1,'surface map popup must fit the desktop viewport');
-        assert.ok(map.viewport-map.right<=10,'surface map popup must sit at the right edge');
-        if(map.anchorTop!==null)
-            assert.ok(Math.abs(map.top-map.anchorTop)<=3,'surface map popup must align vertically with the peripheral toolbox');
+        assert.ok(map.toolboxRight!==null,'a visible peripheral toolbox must anchor the popup');
+        assert.ok(Math.abs(map.left-(map.toolboxRight+5))<=2,'surface map popup must start about 5px right of the rightmost toolbox');
+        assert.ok(Math.abs(map.top-map.toolboxTop)<=2,'surface map popup must align vertically with the rightmost toolbox');
 
         await page.evaluate(id=>document.getElementById(id).click(),setup.buttonID);
         await page.waitForFunction(({slotN})=>{

@@ -1,0 +1,356 @@
+diff --git a/res/EMU_CARD_LIRON.js b/res/EMU_CARD_LIRON.js
+--- a/res/EMU_CARD_LIRON.js
++++ b/res/EMU_CARD_LIRON.js
+@@ -1680,4 +1680,80 @@
+             (zoneEnd ? "border-bottom-width:2px;" : "");
+     }
+ 
++    var deviceToolSurfaceDensityPaletteCache=null;
++
++    function deviceToolSurfaceDensityPalette()
++    {
++        if(deviceToolSurfaceDensityPaletteCache) return deviceToolSurfaceDensityPaletteCache;
++
++        // Match Disk II's density palette exactly.
++        var anchors=["#2D788E","#2CA984","#7DD552","#FDEA27"];
++        var pal=Array(101);
++
++        function rgb(hex)
++        {
++            hex=String(hex).replace("#","");
++            return [
++                 parseInt(hex.slice(0,2),16)
++                ,parseInt(hex.slice(2,4),16)
++                ,parseInt(hex.slice(4,6),16)
++            ];
++        }
++
++        function hex(v)
++        {
++            return Math.max(0,Math.min(255,Math.round(v)))
++                .toString(16).toUpperCase().padStart(2,"0");
++        }
++
++        for(var i=0;i<100;i++)
++        {
++            var range=100/(anchors.length-1);
++            var index=Math.floor(i/range);
++            if(index>=anchors.length-1) index=anchors.length-2;
++            var pct=Math.round(Math.floor(i%range)*100/range);
++            var a=rgb(anchors[index]), b=rgb(anchors[index+1]);
++            pal[i]="#"+
++                hex(a[0]+(b[0]-a[0])*pct/100)+
++                hex(a[1]+(b[1]-a[1])*pct/100)+
++                hex(a[2]+(b[2]-a[2])*pct/100);
++        }
++
++        pal[0]="#000000";
++        pal[100]=anchors[anchors.length-1];
++        deviceToolSurfaceDensityPaletteCache=pal;
++        return pal;
++    }
++
++    function deviceToolSurfaceDensity(image,block)
++    {
++        var offset=Number(block)*512;
++        if(!image || offset<0 || offset+512>image.length)
++            return {"pct":0,"nonzero":0,"avg":0};
++
++        var nonzero=0, sum=0;
++        for(var i=0;i<512;i++)
++        {
++            var value=image[offset+i]&0xFF;
++            sum+=value;
++            if(value!==0) nonzero++;
++        }
++
++        return {
++             "pct":Math.round(nonzero*100/512)
++            ,"nonzero":nonzero
++            ,"avg":Math.round(sum/512)
++        };
++    }
++
++    function deviceToolSurfaceDensityCellStyle(pct,active,zoneEnd)
++    {
++        var palette=deviceToolSurfaceDensityPalette();
++        return "display:block;width:5px;height:4px;box-sizing:border-box;"+
++            "border:1px solid #333;"+
++            "background:"+(active ? palette[pct] : "#111")+";"+
++            (active ? "" : "opacity:0.14;")+
++            (zoneEnd ? "border-bottom-width:2px;" : "");
++    }
++
+     this.deviceToolSurfaceMapHTML = function(unit,expectedHash)
+@@ -1710,29 +1786,8 @@
+-        var classification=deviceToolSurfaceMapClassification(device);
+-        if(classification && classification.filesystem)
+-            meta=meta.replace("</div>"," · "+classification.filesystem+"</div>");
+-
+-        function swatch(kind,label)
+-        {
+-            return "<span style=\"display:inline-flex;align-items:center;gap:3px;margin:0 8px 3px 0;white-space:nowrap\">"+
+-                "<i style=\"display:inline-block;width:10px;height:10px;border:1px solid rgba(0,0,0,.35);background:"+deviceToolSurfaceColor(kind)+"\"></i>"+
+-                label+
+-                "</span>";
+-        }
+-
+-        var legend="<div class=\"liron-surface-legend\" style=\"display:flex;flex-wrap:wrap;gap:3px 8px;font-size:11px;line-height:13px;padding:0 0 6px 0\">"+
+-            swatch("boot","Boot")+
+-            swatch("directory","Directory")+
+-            swatch("bitmap","Bitmap")+
+-            swatch("index","Index")+
+-            swatch("data","File data")+
+-            swatch("free","Free")+
+-            swatch("allocated","Allocated/other")+
+-            "</div>";
+-
+-        var out=title+meta+legend+"<div class=\"liron-surface-panels\" style=\"display:flex;justify-content:center;align-items:flex-start;gap:18px;width:100%\">";
++        var image=typeof(device.getImage)==="function" ? device.getImage() : null;
++        var out=title+meta+"<div class=\"liron-surface-panels\" style=\"display:inline-flex;align-items:flex-start;gap:6px;margin-top:4px;width:max-content\">";
+         for(var side=0;side<2;side++)
+         {
+-            out += "<section class=\"liron-surface-side\" data-side=\""+side+"\" style=\"flex:0 0 auto;min-width:0\"><div class=\"liron-surface-side-title\" style=\"text-align:center;padding-bottom:3px\">Side "+side+"</div><div class=\"liron-surface-grid\" style=\"display:grid;grid-template-columns:repeat(12,6px);grid-template-rows:repeat(80,6px);gap:1px;overflow:hidden\">";
++            out += "<section class=\"liron-surface-side\" data-side=\""+side+"\" style=\"flex:0 0 auto;margin:0\"><div class=\"liron-surface-side-title\" style=\"text-align:center;font-size:11px;line-height:12px;padding:0 0 2px 0\">Side "+side+"</div><div class=\"liron-surface-grid\" style=\"display:grid;grid-template-columns:repeat(12,5px);grid-template-rows:repeat(80,4px);gap:0;overflow:hidden\">";
+             // Clockwise 90° rotation of the old 80-column × 12-row map:
+             // track becomes the vertical axis and sectors run right-to-left.
+             for(var track=0;track<80;track++)
+@@ -1746,16 +1801,13 @@
+                     {
+                         var block=device.surfaceSectorToBlock(side,track,sector);
+                         var offset=block*512;
+-                        var content=classification && classification.blocks ? classification.blocks[block] : null;
+-                        var kind=content && content.kind ? content.kind : "unknown";
+-                        var detail=content && content.detail ? content.detail : "Unknown content";
+-                        var owner=content && content.owner ? content.owner : "";
+-                        var tip="Side "+side+" · Track "+track+" · Sector "+sector+" · Block "+block+" · 512 bytes · "+detail+(owner ? " · "+owner : "");
+-                        out += "<span class=\"liron-surface-cell active content-"+deviceToolSurfaceEscape(kind)+(zoneEnd?" zone-end":"")+"\" style=\""+deviceToolSurfaceCellStyle(kind,true,zoneEnd)+"\" data-surface-cell=\"1\" data-active=\"1\" data-content=\""+deviceToolSurfaceEscape(kind)+"\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+"\" data-block=\""+block+"\" data-offset=\""+offset+"\""+(zoneEnd?" data-zone-end=\"1\"":"")+" title=\""+deviceToolSurfaceEscape(tip)+"\"></span>";
++                        var density=deviceToolSurfaceDensity(image,block);
++                        var tip="Side "+side+" · Track "+track+" · Sector "+sector+" · Block "+block+" · 512 bytes · nonzero="+density.nonzero+"/512 · avg="+density.avg;
++                        out += "<span class=\"liron-surface-cell active"+(zoneEnd?" zone-end":"")+"\" style=\""+deviceToolSurfaceDensityCellStyle(density.pct,true,zoneEnd)+"\" data-surface-cell=\"1\" data-active=\"1\" data-density=\""+density.pct+"\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+"\" data-block=\""+block+"\" data-offset=\""+offset+"\""+(zoneEnd?" data-zone-end=\"1\"":"")+" title=\""+deviceToolSurfaceEscape(tip)+"\"></span>";
+                     }
+                     else
+                     {
+-                        out += "<span class=\"liron-surface-cell inactive"+(zoneEnd?" zone-end":"")+"\" style=\""+deviceToolSurfaceCellStyle("empty",false,zoneEnd)+"\" data-surface-cell=\"1\" data-active=\"0\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+"\""+(zoneEnd?" data-zone-end=\"1\"":"")+" title=\"Side "+side+" · Track "+track+" · Sector "+sector+" · not present\"></span>";
++                        out += "<span class=\"liron-surface-cell inactive"+(zoneEnd?" zone-end":"")+"\" style=\""+deviceToolSurfaceDensityCellStyle(0,false,zoneEnd)+"\" data-surface-cell=\"1\" data-active=\"0\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+"\""+(zoneEnd?" data-zone-end=\"1\"":"")+" title=\"Side "+side+" · Track "+track+" · Sector "+sector+" · not present\"></span>";
+                     }
+                 }
+             }
+@@ -1775,32 +1827,56 @@
+         var popup=document.getElementById("lironSurfaceMap_popup");
+         if(!popup) return false;
+ 
+-        var slotN=liron.mount ? Number(liron.mount.slotN) : NaN;
+-        var io=typeof(apple2plus)==="object" && apple2plus ? apple2plus.hwObj().io : null;
+-        var slotID=Number.isInteger(slotN) && io && typeof(io.slot2ID)==="function"
+-            ? String(io.slot2ID(slotN))
+-            : (Number.isInteger(slotN) ? String(slotN-1) : "?");
+-        var surface=document.getElementById("liron_unit_"+slotID+"_"+Number(unit)+"_surface");
+-        var anchor=null;
+-        if(surface)
++        var anchorRect=null;
++        var toolboxes=typeof(document.querySelectorAll)==="function"
++            ? document.querySelectorAll(".toolbox")
++            : [];
++
++        for(var i=0;i<toolboxes.length;i++)
+         {
+-            if(typeof(surface.closest)==="function")
+-                anchor=surface.closest(".appbox") || surface.closest(".toolbox");
+-            if(!anchor) anchor=surface.parentElement;
++            var toolbox=toolboxes[i];
++            if(!toolbox || toolbox.hidden || typeof(toolbox.getBoundingClientRect)!=="function") continue;
++
++            var style=typeof(window.getComputedStyle)==="function"
++                ? window.getComputedStyle(toolbox)
++                : null;
++            if(style && (style.display==="none" || style.visibility==="hidden")) continue;
++
++            var rect=toolbox.getBoundingClientRect();
++            if(!rect || rect.width<=0 || rect.height<=0) continue;
++            if(!anchorRect || rect.right>anchorRect.right) anchorRect=rect;
+         }
+ 
+-        var top=8;
+-        if(anchor && typeof(anchor.getBoundingClientRect)==="function")
+-            top=Math.max(8,Math.round(anchor.getBoundingClientRect().top));
++        // Fallback to this device's own toolbox if generic discovery is unavailable.
++        if(!anchorRect)
++        {
++            var slotN=liron.mount ? Number(liron.mount.slotN) : NaN;
++            var io=typeof(apple2plus)==="object" && apple2plus ? apple2plus.hwObj().io : null;
++            var slotID=Number.isInteger(slotN) && io && typeof(io.slot2ID)==="function"
++                ? String(io.slot2ID(slotN))
++                : (Number.isInteger(slotN) ? String(slotN-1) : "?");
++            var surface=document.getElementById("liron_unit_"+slotID+"_"+Number(unit)+"_surface");
++            var anchor=surface && typeof(surface.closest)==="function"
++                ? surface.closest(".toolbox")
++                : null;
++            if(anchor && typeof(anchor.getBoundingClientRect)==="function")
++                anchorRect=anchor.getBoundingClientRect();
++        }
++
++        var left=anchorRect ? Math.round(anchorRect.right)+5 : 8;
++        var top=anchorRect ? Math.max(8,Math.round(anchorRect.top)) : 8;
++        var available=Math.max(120,Math.floor(window.innerWidth-left-8));
+ 
+         popup.style.position="fixed";
+-        popup.style.left="auto";
+-        popup.style.right="8px";
++        popup.style.left=left+"px";
++        popup.style.right="auto";
+         popup.style.top=top+"px";
+-        popup.style.width="470px";
+-        popup.style.maxWidth="calc(100vw - 16px)";
++        popup.style.width=Math.min(240,available)+"px";
++        popup.style.maxWidth=available+"px";
+         popup.style.maxHeight="calc(100vh - "+(top+8)+"px)";
+         popup.style.overflow="auto";
++        popup.style.padding="5px";
++        popup.style.margin="0";
+         popup.style.zIndex="30";
+         return true;
+     };
+diff --git a/tests/liron_surface_map.test.js b/tests/liron_surface_map.test.js
+--- a/tests/liron_surface_map.test.js
++++ b/tests/liron_surface_map.test.js
+@@ -102,19 +102,61 @@
+-    assert.match(html,/title="Side 1 · Track 27 · Sector 8 · Block \d+ · 512 bytes · Empty block"/);
+-    assert.match(html,/style="display:grid;grid-template-columns:repeat\(12,6px\);grid-template-rows:repeat\(80,6px\);/);
++    assert.match(html,/title="Side 1 · Track 27 · Sector 8 · Block \d+ · 512 bytes · nonzero=0\/512 · avg=0"/);
++    assert.match(html,/style="display:grid;grid-template-columns:repeat\(12,5px\);grid-template-rows:repeat\(80,4px\);gap:0;/);
+ });
+ 
+-test('ProDOS surface map color-codes boot, directory, bitmap, index, file-data and free blocks',()=>{
++test('UniDisk surface map uses the Disk II data-density palette',()=>{
+     const context=loadCard();
+     const {card,disk}=mountedDisk(context);
+-    disk.loadImage(syntheticProDOSImage(),{filename:'TEST.po'});
++    const image=new Uint8Array(819200);
++    image.fill(0xFF,0,512);
++    image.fill(0x80,512,768);
++    disk.loadImage(image,{filename:'DENSITY.po'});
++
+     const html=card.deviceToolSurfaceMapHTML(1,0x9B05);
++    const cell=(block)=>{
++        const match=html.match(new RegExp('<span[^>]*data-block="'+block+'"[^>]*>'));
++        assert.ok(match,'surface cell for block '+block+' must exist');
++        return match[0];
++    };
+ 
+-    assert.match(html,/· ProDOS<\/div>/);
+-    for(const kind of ['boot','directory','bitmap','index','data','free'])
+-        assert.match(html,new RegExp('data-content="'+kind+'"'));
+-    assert.match(html,/File data · \/FILE/);
+-    assert.match(html,/class="liron-surface-legend"/);
+-    assert.match(html,/style="display:inline-flex;align-items:center/);
++    assert.match(cell(0),/data-density="100"/);
++    assert.match(cell(0),/background:#FDEA27/);
++    assert.match(cell(1),/data-density="50"/);
++    assert.match(cell(2),/data-density="0"/);
++    assert.match(cell(2),/background:#000000/);
++    assert.doesNotMatch(html,/liron-surface-legend/);
++    assert.doesNotMatch(html,/data-content=/);
++});
++
++test('UniDisk popup joins the rightmost visible toolbox with a five pixel gap',()=>{
++    const popup={style:{}};
++    const boxes=[
++        {
++            hidden:false,
++            getBoundingClientRect(){return {left:20,right:250,top:60,width:230,height:60};}
++        },
++        {
++            hidden:false,
++            getBoundingClientRect(){return {left:260,right:620,top:58,width:360,height:64};}
++        }
++    ];
++    const context=loadCard({
++        document:{
++            getElementById(id){return id==='lironSurfaceMap_popup'?popup:null;},
++            querySelectorAll(selector){return selector==='.toolbox'?boxes:[];}
++        },
++        window:{
++            innerWidth:1400,
++            innerHeight:900,
++            getComputedStyle(){return {display:'block',visibility:'visible'};}
++        }
++    });
++    const {card}=mountedDisk(context);
++
++    assert.equal(card.deviceToolSurfaceMapPosition(1),true);
++    assert.equal(popup.style.left,'625px');
++    assert.equal(popup.style.right,'auto');
++    assert.equal(popup.style.top,'58px');
++    assert.equal(popup.style.width,'240px');
+ });
+ 
+ test('UniDisk surface map keeps exact instance identity and handles stale or empty media explicitly',()=>{
+diff --git a/tests/liron_surface_map_browser_acceptance.js b/tests/liron_surface_map_browser_acceptance.js
+--- a/tests/liron_surface_map_browser_acceptance.js
++++ b/tests/liron_surface_map_browser_acceptance.js
+@@ -100,10 +100,17 @@
+             const popup=document.getElementById('lironSurfaceMap_popup');
+             const text=document.getElementById('lironSurfaceMap_popup_text');
+             const rect=popup.getBoundingClientRect();
+-            const anchor=document.getElementById(setup.surfaceID)?.closest('.appbox')?.getBoundingClientRect();
++            const toolboxes=[...document.querySelectorAll('.toolbox')]
++                .filter(el=>{
++                    const style=getComputedStyle(el);
++                    const r=el.getBoundingClientRect();
++                    return !el.hidden && style.display!=='none' && style.visibility!=='hidden' && r.width>0 && r.height>0;
++                })
++                .map(el=>el.getBoundingClientRect());
++            const rightmost=toolboxes.reduce((best,r)=>!best || r.right>best.right?r:best,null);
+             const grid=text.querySelector('.liron-surface-grid');
+             const style=grid ? getComputedStyle(grid) : null;
+-            const firstCell=text.querySelector('[data-active="1"][data-content]');
++            const densityCells=[...text.querySelectorAll('[data-active="1"][data-density]')];
+             return {
+                 title:text.querySelector('.liron-surface-title')?.textContent || '',
+                 meta:text.querySelector('.liron-surface-meta')?.textContent || '',
+@@ -111,32 +118,34 @@
+                 cells:text.querySelectorAll('[data-surface-cell="1"]').length,
+                 active:text.querySelectorAll('[data-active="1"]').length,
+                 inactive:text.querySelectorAll('[data-active="0"]').length,
+-                contentKinds:[...new Set([...text.querySelectorAll('[data-active="1"][data-content]')].map(el=>el.dataset.content))],
++                densities:[...new Set(densityCells.map(el=>Number(el.dataset.density)))],
++                hasLegend:!!text.querySelector('.liron-surface-legend'),
+                 columns:style ? style.gridTemplateColumns.split(' ').filter(Boolean).length : 0,
+                 rows:style ? style.gridTemplateRows.split(' ').filter(Boolean).length : 0,
+-                firstCellBackground:firstCell ? getComputedStyle(firstCell).backgroundColor : '',
+                 scrollWidth:popup.scrollWidth,
+                 clientWidth:popup.clientWidth,
++                width:rect.width,
+                 left:rect.left,right:rect.right,top:rect.top,viewport:window.innerWidth,
+-                anchorTop:anchor ? anchor.top : null
++                toolboxRight:rightmost ? rightmost.right : null,
++                toolboxTop:rightmost ? rightmost.top : null
+             };
+         },setup);
+         assert.equal(map.title,'Disk Surface Map — UNIDISK Unit1');
+-        assert.match(map.meta,/1600 × 512-byte sectors · ProDOS/);
++        assert.match(map.meta,/1600 × 512-byte sectors/);
+         assert.equal(map.sides,2);
+         assert.equal(map.cells,1920);
+         assert.equal(map.active,1600);
+         assert.equal(map.inactive,320);
+         assert.equal(map.columns,12,'rotated surface map must have 12 columns');
+         assert.equal(map.rows,80,'rotated surface map must have 80 rows');
+-        assert.notEqual(map.firstCellBackground,'rgba(0, 0, 0, 0)','first cell must render with a visible color');
+-        for(const kind of ['boot','directory','bitmap','data','free'])
+-            assert.ok(map.contentKinds.includes(kind),'missing ProDOS content class '+kind);
++        assert.equal(map.hasLegend,false,'density map does not need a semantic legend');
++        assert.ok(map.densities.length>1,'real disk image must produce more than one density value');
++        assert.ok(map.width<=242,'surface map popup must remain compact');
+         assert.ok(map.scrollWidth<=map.clientWidth+1,'surface map popup must not scroll horizontally');
+         assert.ok(map.left>=0 && map.right<=map.viewport+1,'surface map popup must fit the desktop viewport');
+-        assert.ok(map.viewport-map.right<=10,'surface map popup must sit at the right edge');
+-        if(map.anchorTop!==null)
+-            assert.ok(Math.abs(map.top-map.anchorTop)<=3,'surface map popup must align vertically with the peripheral toolbox');
++        assert.ok(map.toolboxRight!==null,'a visible peripheral toolbox must anchor the popup');
++        assert.ok(Math.abs(map.left-(map.toolboxRight+5))<=2,'surface map popup must start about 5px right of the rightmost toolbox');
++        assert.ok(Math.abs(map.top-map.toolboxTop)<=2,'surface map popup must align vertically with the rightmost toolbox');
+ 
+         await page.evaluate(id=>document.getElementById(id).click(),setup.buttonID);
+         await page.waitForFunction(({slotN})=>{

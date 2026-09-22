@@ -103,22 +103,64 @@ test('UniDisk surface map renders two clockwise-rotated 12 by 80 sides with exac
     assert.match(html,/data-offset="818688"/);
     assert.ok(html.indexOf('data-track="0" data-sector="11"') < html.indexOf('data-track="0" data-sector="10"'));
     assert.ok(html.indexOf('data-track="0" data-sector="10"') < html.indexOf('data-track="1" data-sector="11"'));
-    assert.match(html,/title="Side 1 · Track 27 · Sector 8 · Block \d+ · 512 bytes · Empty block"/);
-    assert.match(html,/style="display:grid;grid-template-columns:repeat\(12,6px\);grid-template-rows:repeat\(80,6px\);/);
+    assert.match(html,/title="Side 1 · Track 27 · Sector 8 · Block \d+ · 512 bytes · nonzero=0\/512 · avg=0"/);
+    assert.match(html,/style="display:grid;grid-template-columns:repeat\(12,5px\);grid-template-rows:repeat\(80,4px\);gap:0;/);
 });
 
-test('ProDOS surface map color-codes boot, directory, bitmap, index, file-data and free blocks',()=>{
+test('UniDisk surface map uses the Disk II data-density palette',()=>{
     const context=loadCard();
     const {card,disk}=mountedDisk(context);
-    disk.loadImage(syntheticProDOSImage(),{filename:'TEST.po'});
-    const html=card.deviceToolSurfaceMapHTML(1,0x9B05);
+    const image=new Uint8Array(819200);
+    image.fill(0xFF,0,512);
+    image.fill(0x80,512,768);
+    disk.loadImage(image,{filename:'DENSITY.po'});
 
-    assert.match(html,/· ProDOS<\/div>/);
-    for(const kind of ['boot','directory','bitmap','index','data','free'])
-        assert.match(html,new RegExp('data-content="'+kind+'"'));
-    assert.match(html,/File data · \/FILE/);
-    assert.match(html,/class="liron-surface-legend"/);
-    assert.match(html,/style="display:inline-flex;align-items:center/);
+    const html=card.deviceToolSurfaceMapHTML(1,0x9B05);
+    const cell=(block)=>{
+        const match=html.match(new RegExp('<span[^>]*data-block="'+block+'"[^>]*>'));
+        assert.ok(match,'surface cell for block '+block+' must exist');
+        return match[0];
+    };
+
+    assert.match(cell(0),/data-density="100"/);
+    assert.match(cell(0),/background:#FDEA27/);
+    assert.match(cell(1),/data-density="50"/);
+    assert.match(cell(2),/data-density="0"/);
+    assert.match(cell(2),/background:#000000/);
+    assert.doesNotMatch(html,/liron-surface-legend/);
+    assert.doesNotMatch(html,/data-content=/);
+});
+
+test('UniDisk popup joins the rightmost visible toolbox with a five pixel gap',()=>{
+    const popup={style:{}};
+    const boxes=[
+        {
+            hidden:false,
+            getBoundingClientRect(){return {left:20,right:250,top:60,width:230,height:60};}
+        },
+        {
+            hidden:false,
+            getBoundingClientRect(){return {left:260,right:620,top:58,width:360,height:64};}
+        }
+    ];
+    const context=loadCard({
+        document:{
+            getElementById(id){return id==='lironSurfaceMap_popup'?popup:null;},
+            querySelectorAll(selector){return selector==='.toolbox'?boxes:[];}
+        },
+        window:{
+            innerWidth:1400,
+            innerHeight:900,
+            getComputedStyle(){return {display:'block',visibility:'visible'};}
+        }
+    });
+    const {card}=mountedDisk(context);
+
+    assert.equal(card.deviceToolSurfaceMapPosition(1),true);
+    assert.equal(popup.style.left,'625px');
+    assert.equal(popup.style.right,'auto');
+    assert.equal(popup.style.top,'58px');
+    assert.equal(popup.style.width,'240px');
 });
 
 test('UniDisk surface map keeps exact instance identity and handles stale or empty media explicitly',()=>{
