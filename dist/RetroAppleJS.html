@@ -30854,6 +30854,82 @@ function AppleLiron()
             (zoneEnd ? "border-bottom-width:2px;" : "");
     }
 
+    var deviceToolSurfaceDensityPaletteCache=null;
+
+    function deviceToolSurfaceDensityPalette()
+    {
+        if(deviceToolSurfaceDensityPaletteCache) return deviceToolSurfaceDensityPaletteCache;
+
+        // Match Disk II's density palette exactly.
+        var anchors=["#2D788E","#2CA984","#7DD552","#FDEA27"];
+        var pal=Array(101);
+
+        function rgb(hex)
+        {
+            hex=String(hex).replace("#","");
+            return [
+                 parseInt(hex.slice(0,2),16)
+                ,parseInt(hex.slice(2,4),16)
+                ,parseInt(hex.slice(4,6),16)
+            ];
+        }
+
+        function hex(v)
+        {
+            return Math.max(0,Math.min(255,Math.round(v)))
+                .toString(16).toUpperCase().padStart(2,"0");
+        }
+
+        for(var i=0;i<100;i++)
+        {
+            var range=100/(anchors.length-1);
+            var index=Math.floor(i/range);
+            if(index>=anchors.length-1) index=anchors.length-2;
+            var pct=Math.round(Math.floor(i%range)*100/range);
+            var a=rgb(anchors[index]), b=rgb(anchors[index+1]);
+            pal[i]="#"+
+                hex(a[0]+(b[0]-a[0])*pct/100)+
+                hex(a[1]+(b[1]-a[1])*pct/100)+
+                hex(a[2]+(b[2]-a[2])*pct/100);
+        }
+
+        pal[0]="#000000";
+        pal[100]=anchors[anchors.length-1];
+        deviceToolSurfaceDensityPaletteCache=pal;
+        return pal;
+    }
+
+    function deviceToolSurfaceDensity(image,block)
+    {
+        var offset=Number(block)*512;
+        if(!image || offset<0 || offset+512>image.length)
+            return {"pct":0,"nonzero":0,"avg":0};
+
+        var nonzero=0, sum=0;
+        for(var i=0;i<512;i++)
+        {
+            var value=image[offset+i]&0xFF;
+            sum+=value;
+            if(value!==0) nonzero++;
+        }
+
+        return {
+             "pct":Math.round(nonzero*100/512)
+            ,"nonzero":nonzero
+            ,"avg":Math.round(sum/512)
+        };
+    }
+
+    function deviceToolSurfaceDensityCellStyle(pct,active,zoneEnd)
+    {
+        var palette=deviceToolSurfaceDensityPalette();
+        return "display:block;width:5px;height:4px;box-sizing:border-box;"+
+            "border:1px solid #333;"+
+            "background:"+(active ? palette[pct] : "#111")+";"+
+            (active ? "" : "opacity:0.14;")+
+            (zoneEnd ? "border-bottom-width:2px;" : "");
+    }
+
     this.deviceToolSurfaceMapHTML = function(unit,expectedHash)
     {
         unit=Number(unit); expectedHash=Number(expectedHash);
@@ -30869,32 +30945,11 @@ function AppleLiron()
         if(!state.mediaLoaded)
             return title+meta+"<div class=\"liron-surface-status\">No media loaded.</div>";
 
-        var classification=deviceToolSurfaceMapClassification(device);
-        if(classification && classification.filesystem)
-            meta=meta.replace("</div>"," · "+classification.filesystem+"</div>");
-
-        function swatch(kind,label)
-        {
-            return "<span style=\"display:inline-flex;align-items:center;gap:3px;margin:0 8px 3px 0;white-space:nowrap\">"+
-                "<i style=\"display:inline-block;width:10px;height:10px;border:1px solid rgba(0,0,0,.35);background:"+deviceToolSurfaceColor(kind)+"\"></i>"+
-                label+
-                "</span>";
-        }
-
-        var legend="<div class=\"liron-surface-legend\" style=\"display:flex;flex-wrap:wrap;gap:3px 8px;font-size:11px;line-height:13px;padding:0 0 6px 0\">"+
-            swatch("boot","Boot")+
-            swatch("directory","Directory")+
-            swatch("bitmap","Bitmap")+
-            swatch("index","Index")+
-            swatch("data","File data")+
-            swatch("free","Free")+
-            swatch("allocated","Allocated/other")+
-            "</div>";
-
-        var out=title+meta+legend+"<div class=\"liron-surface-panels\" style=\"display:flex;justify-content:center;align-items:flex-start;gap:18px;width:100%\">";
+        var image=typeof(device.getImage)==="function" ? device.getImage() : null;
+        var out=title+meta+"<div class=\"liron-surface-panels\" style=\"display:inline-flex;align-items:flex-start;gap:6px;margin-top:4px;width:max-content\">";
         for(var side=0;side<2;side++)
         {
-            out += "<section class=\"liron-surface-side\" data-side=\""+side+"\" style=\"flex:0 0 auto;min-width:0\"><div class=\"liron-surface-side-title\" style=\"text-align:center;padding-bottom:3px\">Side "+side+"</div><div class=\"liron-surface-grid\" style=\"display:grid;grid-template-columns:repeat(12,6px);grid-template-rows:repeat(80,6px);gap:1px;overflow:hidden\">";
+            out += "<section class=\"liron-surface-side\" data-side=\""+side+"\" style=\"flex:0 0 auto;margin:0\"><div class=\"liron-surface-side-title\" style=\"text-align:center;font-size:11px;line-height:12px;padding:0 0 2px 0\">Side "+side+"</div><div class=\"liron-surface-grid\" style=\"display:grid;grid-template-columns:repeat(12,5px);grid-template-rows:repeat(80,4px);gap:0;overflow:hidden\">";
             // Clockwise 90° rotation of the old 80-column × 12-row map:
             // track becomes the vertical axis and sectors run right-to-left.
             for(var track=0;track<80;track++)
@@ -30908,16 +30963,13 @@ function AppleLiron()
                     {
                         var block=device.surfaceSectorToBlock(side,track,sector);
                         var offset=block*512;
-                        var content=classification && classification.blocks ? classification.blocks[block] : null;
-                        var kind=content && content.kind ? content.kind : "unknown";
-                        var detail=content && content.detail ? content.detail : "Unknown content";
-                        var owner=content && content.owner ? content.owner : "";
-                        var tip="Side "+side+" · Track "+track+" · Sector "+sector+" · Block "+block+" · 512 bytes · "+detail+(owner ? " · "+owner : "");
-                        out += "<span class=\"liron-surface-cell active content-"+deviceToolSurfaceEscape(kind)+(zoneEnd?" zone-end":"")+"\" style=\""+deviceToolSurfaceCellStyle(kind,true,zoneEnd)+"\" data-surface-cell=\"1\" data-active=\"1\" data-content=\""+deviceToolSurfaceEscape(kind)+"\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+"\" data-block=\""+block+"\" data-offset=\""+offset+"\""+(zoneEnd?" data-zone-end=\"1\"":"")+" title=\""+deviceToolSurfaceEscape(tip)+"\"></span>";
+                        var density=deviceToolSurfaceDensity(image,block);
+                        var tip="Side "+side+" · Track "+track+" · Sector "+sector+" · Block "+block+" · 512 bytes · nonzero="+density.nonzero+"/512 · avg="+density.avg;
+                        out += "<span class=\"liron-surface-cell active"+(zoneEnd?" zone-end":"")+"\" style=\""+deviceToolSurfaceDensityCellStyle(density.pct,true,zoneEnd)+"\" data-surface-cell=\"1\" data-active=\"1\" data-density=\""+density.pct+"\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+"\" data-block=\""+block+"\" data-offset=\""+offset+"\""+(zoneEnd?" data-zone-end=\"1\"":"")+" title=\""+deviceToolSurfaceEscape(tip)+"\"></span>";
                     }
                     else
                     {
-                        out += "<span class=\"liron-surface-cell inactive"+(zoneEnd?" zone-end":"")+"\" style=\""+deviceToolSurfaceCellStyle("empty",false,zoneEnd)+"\" data-surface-cell=\"1\" data-active=\"0\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+"\""+(zoneEnd?" data-zone-end=\"1\"":"")+" title=\"Side "+side+" · Track "+track+" · Sector "+sector+" · not present\"></span>";
+                        out += "<span class=\"liron-surface-cell inactive"+(zoneEnd?" zone-end":"")+"\" style=\""+deviceToolSurfaceDensityCellStyle(0,false,zoneEnd)+"\" data-surface-cell=\"1\" data-active=\"0\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+"\""+(zoneEnd?" data-zone-end=\"1\"":"")+" title=\"Side "+side+" · Track "+track+" · Sector "+sector+" · not present\"></span>";
                     }
                 }
             }
@@ -30932,32 +30984,56 @@ function AppleLiron()
         var popup=document.getElementById("lironSurfaceMap_popup");
         if(!popup) return false;
 
-        var slotN=liron.mount ? Number(liron.mount.slotN) : NaN;
-        var io=typeof(apple2plus)==="object" && apple2plus ? apple2plus.hwObj().io : null;
-        var slotID=Number.isInteger(slotN) && io && typeof(io.slot2ID)==="function"
-            ? String(io.slot2ID(slotN))
-            : (Number.isInteger(slotN) ? String(slotN-1) : "?");
-        var surface=document.getElementById("liron_unit_"+slotID+"_"+Number(unit)+"_surface");
-        var anchor=null;
-        if(surface)
+        var anchorRect=null;
+        var toolboxes=typeof(document.querySelectorAll)==="function"
+            ? document.querySelectorAll(".toolbox")
+            : [];
+
+        for(var i=0;i<toolboxes.length;i++)
         {
-            if(typeof(surface.closest)==="function")
-                anchor=surface.closest(".appbox") || surface.closest(".toolbox");
-            if(!anchor) anchor=surface.parentElement;
+            var toolbox=toolboxes[i];
+            if(!toolbox || toolbox.hidden || typeof(toolbox.getBoundingClientRect)!=="function") continue;
+
+            var style=typeof(window.getComputedStyle)==="function"
+                ? window.getComputedStyle(toolbox)
+                : null;
+            if(style && (style.display==="none" || style.visibility==="hidden")) continue;
+
+            var rect=toolbox.getBoundingClientRect();
+            if(!rect || rect.width<=0 || rect.height<=0) continue;
+            if(!anchorRect || rect.right>anchorRect.right) anchorRect=rect;
         }
 
-        var top=8;
-        if(anchor && typeof(anchor.getBoundingClientRect)==="function")
-            top=Math.max(8,Math.round(anchor.getBoundingClientRect().top));
+        // Fallback to this device's own toolbox if generic discovery is unavailable.
+        if(!anchorRect)
+        {
+            var slotN=liron.mount ? Number(liron.mount.slotN) : NaN;
+            var io=typeof(apple2plus)==="object" && apple2plus ? apple2plus.hwObj().io : null;
+            var slotID=Number.isInteger(slotN) && io && typeof(io.slot2ID)==="function"
+                ? String(io.slot2ID(slotN))
+                : (Number.isInteger(slotN) ? String(slotN-1) : "?");
+            var surface=document.getElementById("liron_unit_"+slotID+"_"+Number(unit)+"_surface");
+            var anchor=surface && typeof(surface.closest)==="function"
+                ? surface.closest(".toolbox")
+                : null;
+            if(anchor && typeof(anchor.getBoundingClientRect)==="function")
+                anchorRect=anchor.getBoundingClientRect();
+        }
+
+        var left=anchorRect ? Math.round(anchorRect.right)+5 : 8;
+        var top=anchorRect ? Math.max(8,Math.round(anchorRect.top)) : 8;
+        var available=Math.max(120,Math.floor(window.innerWidth-left-8));
 
         popup.style.position="fixed";
-        popup.style.left="auto";
-        popup.style.right="8px";
+        popup.style.left=left+"px";
+        popup.style.right="auto";
         popup.style.top=top+"px";
-        popup.style.width="470px";
-        popup.style.maxWidth="calc(100vw - 16px)";
+        popup.style.width=Math.min(240,available)+"px";
+        popup.style.maxWidth=available+"px";
         popup.style.maxHeight="calc(100vh - "+(top+8)+"px)";
         popup.style.overflow="auto";
+        popup.style.padding="5px";
+        popup.style.margin="0";
         popup.style.zIndex="30";
         return true;
     };
