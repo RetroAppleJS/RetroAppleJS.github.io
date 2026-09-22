@@ -54,9 +54,10 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
         });
 
         assert.ok(Number.isInteger(setup.hash),'UniDisk must have an attachment instance hash');
-        const image=Buffer.alloc(819200);
-        image[0]=0x11;
-        image[819199]=0xEE;
+        const fixtureResponse=await fetch(baseURL+'/disks/Utility/CardCat%201.94.po');
+        assert.equal(fixtureResponse.ok,true,'ProDOS fixture must be available');
+        const image=Buffer.from(await fixtureResponse.arrayBuffer());
+        assert.equal(image.length,819200,'fixture must be an 800K ProDOS image');
         await page.locator('#'+setup.fileID).setInputFiles({
             name:'ProDOS Packer 6.0.po',
             mimeType:'application/octet-stream',
@@ -107,6 +108,10 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
             const popup=document.getElementById('lironSurfaceMap_popup');
             const text=document.getElementById('lironSurfaceMap_popup_text');
             const rect=popup.getBoundingClientRect();
+            const anchor=document.getElementById(setup.surfaceID)?.closest('.appbox')?.getBoundingClientRect();
+            const grid=text.querySelector('.liron-surface-grid');
+            const style=grid ? getComputedStyle(grid) : null;
+            const firstCell=text.querySelector('[data-active="1"][data-content]');
             return {
                 title:text.querySelector('.liron-surface-title')?.textContent || '',
                 meta:text.querySelector('.liron-surface-meta')?.textContent || '',
@@ -114,19 +119,32 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
                 cells:text.querySelectorAll('[data-surface-cell="1"]').length,
                 active:text.querySelectorAll('[data-active="1"]').length,
                 inactive:text.querySelectorAll('[data-active="0"]').length,
+                contentKinds:[...new Set([...text.querySelectorAll('[data-active="1"][data-content]')].map(el=>el.dataset.content))],
+                columns:style ? style.gridTemplateColumns.split(' ').filter(Boolean).length : 0,
+                rows:style ? style.gridTemplateRows.split(' ').filter(Boolean).length : 0,
+                firstCellBackground:firstCell ? getComputedStyle(firstCell).backgroundColor : '',
                 scrollWidth:popup.scrollWidth,
                 clientWidth:popup.clientWidth,
-                left:rect.left,right:rect.right,viewport:window.innerWidth
+                left:rect.left,right:rect.right,top:rect.top,viewport:window.innerWidth,
+                anchorTop:anchor ? anchor.top : null
             };
-        });
+        },setup);
         assert.equal(map.title,'Disk Surface Map — UNIDISK Unit1');
-        assert.match(map.meta,/1600 × 512-byte sectors/);
+        assert.match(map.meta,/1600 × 512-byte sectors · ProDOS/);
         assert.equal(map.sides,2);
         assert.equal(map.cells,1920);
         assert.equal(map.active,1600);
         assert.equal(map.inactive,320);
+        assert.equal(map.columns,12,'rotated surface map must have 12 columns');
+        assert.equal(map.rows,80,'rotated surface map must have 80 rows');
+        assert.notEqual(map.firstCellBackground,'rgba(0, 0, 0, 0)','first cell must render with a visible color');
+        for(const kind of ['boot','directory','bitmap','data','free'])
+            assert.ok(map.contentKinds.includes(kind),'missing ProDOS content class '+kind);
         assert.ok(map.scrollWidth<=map.clientWidth+1,'surface map popup must not scroll horizontally');
         assert.ok(map.left>=0 && map.right<=map.viewport+1,'surface map popup must fit the desktop viewport');
+        assert.ok(map.viewport-map.right<=10,'surface map popup must sit at the right edge');
+        if(map.anchorTop!==null)
+            assert.ok(Math.abs(map.top-map.anchorTop)<=3,'surface map popup must align vertically with the peripheral toolbox');
 
         await page.evaluate(id=>document.getElementById(id).click(),setup.buttonID);
         await page.waitForFunction(({slotN})=>{

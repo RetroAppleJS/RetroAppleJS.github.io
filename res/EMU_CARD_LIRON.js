@@ -1470,6 +1470,249 @@ function AppleLiron()
         return device;
     }
 
+    function deviceToolSurfaceMapClassification(device)
+    {
+        if(!device || typeof(device.getImage)!=="function") return null;
+        var image=device.getImage();
+        if(!image || typeof(image.length)!=="number" || image.length<512) return null;
+
+        var blockCount=Math.floor(image.length/512);
+        var blocks=new Array(blockCount);
+        var priority={
+             "empty":0
+            ,"raw":0
+            ,"free":0
+            ,"allocated":1
+            ,"data":2
+            ,"index":3
+            ,"directory":4
+            ,"bitmap":5
+            ,"boot":6
+            ,"unknown":7
+        };
+
+        function validBlock(block)
+        {
+            return Number.isInteger(block) && block>=0 && block<blockCount;
+        }
+
+        function le16(offset)
+        {
+            if(offset<0 || offset+1>=image.length) return 0;
+            return (image[offset]&0xFF) | ((image[offset+1]&0xFF)<<8);
+        }
+
+        function pointer(block,index)
+        {
+            if(!validBlock(block) || index<0 || index>255) return 0;
+            var base=block*512;
+            return (image[base+index]&0xFF) | ((image[base+256+index]&0xFF)<<8);
+        }
+
+        function mark(block,kind,detail,owner)
+        {
+            if(!validBlock(block)) return;
+            var current=blocks[block];
+            if(current && (priority[current.kind]||0)>(priority[kind]||0)) return;
+            blocks[block]={
+                 "kind":kind
+                ,"detail":detail || kind
+                ,"owner":owner || ""
+            };
+        }
+
+        for(var block=0;block<blockCount;block++)
+        {
+            var start=block*512, nonZero=false;
+            for(var b=0;b<512;b++)
+            {
+                if(image[start+b]!==0) { nonZero=true; break; }
+            }
+            blocks[block]={
+                 "kind":nonZero ? "raw" : "empty"
+                ,"detail":nonZero ? "Raw data" : "Empty block"
+                ,"owner":""
+            };
+        }
+
+        // ProDOS volume directory header is at byte $04 of block 2.
+        var volumeHeader=2*512+4;
+        if(blockCount<=2 || ((image[volumeHeader]>>4)&0x0F)!==0x0F)
+            return {"filesystem":"Raw image","blocks":blocks};
+
+        var bitmapBlock=le16(2*512+0x27);
+        var totalBlocks=le16(2*512+0x29);
+        if(totalBlocks<=0 || totalBlocks>blockCount) totalBlocks=blockCount;
+
+        // ProDOS volume bitmap: one bit per block, 1=free and 0=allocated.
+        var bitmapBlocks=Math.ceil(totalBlocks/4096);
+        if(validBlock(bitmapBlock))
+        {
+            for(block=0;block<totalBlocks;block++)
+            {
+                var bitmapOffset=bitmapBlock*512+(block>>3);
+                if(bitmapOffset>=image.length) break;
+                var free=!!(image[bitmapOffset] & (0x80>>(block&7)));
+                mark(block,free ? "free" : "allocated",free ? "Free / unallocated" : "Allocated", "");
+            }
+            for(var bm=0;bm<bitmapBlocks;bm++)
+                mark(bitmapBlock+bm,"bitmap","Volume bitmap","");
+        }
+
+        mark(0,"boot","Boot / loader block","");
+        mark(1,"boot","Boot / loader block","");
+
+        function entryName(offset)
+        {
+            var length=image[offset]&0x0F;
+            var name="";
+            for(var n=0;n<length && n<15;n++)
+            {
+                var ch=image[offset+1+n]&0x7F;
+                name += ch>=32 && ch<127 ? String.fromCharCode(ch) : "?";
+            }
+            return name || "(unnamed)";
+        }
+
+        function markStandardFile(storage,key,owner)
+        {
+            if(!validBlock(key)) return;
+
+            if(storage===1)
+            {
+                mark(key,"data","File data",owner);
+                return;
+            }
+
+            if(storage===2)
+            {
+                mark(key,"index","Sapling index",owner);
+                for(var i=0;i<256;i++)
+                {
+                    var dataBlock=pointer(key,i);
+                    if(dataBlock) mark(dataBlock,"data","File data",owner);
+                }
+                return;
+            }
+
+            if(storage===3)
+            {
+                mark(key,"index","Tree master index",owner);
+                for(var master=0;master<128;master++)
+                {
+                    var indexBlock=pointer(key,master);
+                    if(!indexBlock || !validBlock(indexBlock)) continue;
+                    mark(indexBlock,"index","Tree index",owner);
+                    for(var child=0;child<256;child++)
+                    {
+                        var treeData=pointer(indexBlock,child);
+                        if(treeData) mark(treeData,"data","File data",owner);
+                    }
+                }
+                return;
+            }
+
+            // GS/OS extended file key block: data fork at +$000,
+            // resource fork at +$100. Each mini-entry stores the standard
+            // storage type in its low nibble and a key pointer at +1.
+            if(storage===5)
+            {
+                mark(key,"index","Extended-file key block",owner);
+                var base=key*512;
+                for(var fork=0;fork<2;fork++)
+                {
+                    var forkOffset=base+(fork?0x100:0);
+                    var forkStorage=image[forkOffset]&0x0F;
+                    var forkKey=le16(forkOffset+1);
+                    if(forkStorage>=1 && forkStorage<=3 && forkKey)
+                        markStandardFile(forkStorage,forkKey,owner+(fork ? " · resource fork" : " · data fork"));
+                }
+            }
+        }
+
+        var seenDirectories={};
+        function parseDirectory(key,path)
+        {
+            if(!validBlock(key) || seenDirectories[key]) return;
+            seenDirectories[key]=true;
+
+            var keyBase=key*512;
+            var entryLength=image[keyBase+0x23] || 0x27;
+            var entriesPerBlock=image[keyBase+0x24] || 0x0D;
+            if(entryLength<0x27 || entriesPerBlock<1) { entryLength=0x27; entriesPerBlock=0x0D; }
+
+            var current=key, first=true, seenBlocks={};
+            while(validBlock(current) && !seenBlocks[current])
+            {
+                seenBlocks[current]=true;
+                mark(current,"directory","Directory",path);
+                var base=current*512;
+                var firstEntry=first ? 1 : 0; // key block entry 0 is the directory header
+                for(var entry=firstEntry;entry<entriesPerBlock;entry++)
+                {
+                    var offset=base+4+entry*entryLength;
+                    if(offset+0x26>=base+512 || offset>=image.length) break;
+                    var storage=(image[offset]>>4)&0x0F;
+                    if(storage===0 || storage===0x0E || storage===0x0F) continue;
+
+                    var name=entryName(offset);
+                    var owner=path==="/" ? "/"+name : path+"/"+name;
+                    var keyPointer=le16(offset+0x11);
+
+                    if(storage===0x0D)
+                        parseDirectory(keyPointer,owner);
+                    else if(storage===1 || storage===2 || storage===3 || storage===5)
+                        markStandardFile(storage,keyPointer,owner);
+                    else if(storage===4)
+                    {
+                        var blocksUsed=le16(offset+0x13);
+                        for(var p=0;p<blocksUsed;p++) mark(keyPointer+p,"data","Pascal area",owner);
+                    }
+                }
+                current=le16(base+2);
+                first=false;
+            }
+        }
+        parseDirectory(2,"/");
+
+        return {"filesystem":"ProDOS","blocks":blocks};
+    }
+
+    function deviceToolSurfaceEscape(value)
+    {
+        return String(value==null ? "" : value)
+            .replace(/&/g,"&amp;")
+            .replace(/"/g,"&quot;")
+            .replace(/</g,"&lt;")
+            .replace(/>/g,"&gt;");
+    }
+
+    function deviceToolSurfaceColor(kind)
+    {
+        switch(String(kind || "unknown"))
+        {
+            case "boot": return "#5856d6";
+            case "directory": return "#007aff";
+            case "bitmap": return "#ffcc00";
+            case "index": return "#ff9500";
+            case "data": return "#34c759";
+            case "free": return "#f2f2f7";
+            case "allocated": return "#af52de";
+            case "raw": return "#5ac8fa";
+            case "empty": return "#e5e5ea";
+            default: return "#ff3b30";
+        }
+    }
+
+    function deviceToolSurfaceCellStyle(kind,active,zoneEnd)
+    {
+        return "display:block;width:6px;height:6px;box-sizing:border-box;"+
+            "border:1px solid rgba(0,0,0,0.24);"+
+            "background:"+deviceToolSurfaceColor(active ? kind : "empty")+";"+
+            (active ? "" : "opacity:0.12;")+
+            (zoneEnd ? "border-bottom-width:2px;" : "");
+    }
+
     this.deviceToolSurfaceMapHTML = function(unit,expectedHash)
     {
         unit=Number(unit); expectedHash=Number(expectedHash);
@@ -1485,13 +1728,37 @@ function AppleLiron()
         if(!state.mediaLoaded)
             return title+meta+"<div class=\"liron-surface-status\">No media loaded.</div>";
 
-        var out=title+meta+"<div class=\"liron-surface-panels\">";
+        var classification=deviceToolSurfaceMapClassification(device);
+        if(classification && classification.filesystem)
+            meta=meta.replace("</div>"," · "+classification.filesystem+"</div>");
+
+        function swatch(kind,label)
+        {
+            return "<span style=\"display:inline-flex;align-items:center;gap:3px;margin:0 8px 3px 0;white-space:nowrap\">"+
+                "<i style=\"display:inline-block;width:10px;height:10px;border:1px solid rgba(0,0,0,.35);background:"+deviceToolSurfaceColor(kind)+"\"></i>"+
+                label+
+                "</span>";
+        }
+
+        var legend="<div class=\"liron-surface-legend\" style=\"display:flex;flex-wrap:wrap;gap:3px 8px;font-size:11px;line-height:13px;padding:0 0 6px 0\">"+
+            swatch("boot","Boot")+
+            swatch("directory","Directory")+
+            swatch("bitmap","Bitmap")+
+            swatch("index","Index")+
+            swatch("data","File data")+
+            swatch("free","Free")+
+            swatch("allocated","Allocated/other")+
+            "</div>";
+
+        var out=title+meta+legend+"<div class=\"liron-surface-panels\" style=\"display:flex;justify-content:center;align-items:flex-start;gap:18px;width:100%\">";
         for(var side=0;side<2;side++)
         {
-            out += "<section class=\"liron-surface-side\" data-side=\""+side+"\"><div class=\"liron-surface-side-title\">Side "+side+"</div><div class=\"liron-surface-grid\">";
-            for(var sector=0;sector<12;sector++)
+            out += "<section class=\"liron-surface-side\" data-side=\""+side+"\" style=\"flex:0 0 auto;min-width:0\"><div class=\"liron-surface-side-title\" style=\"text-align:center;padding-bottom:3px\">Side "+side+"</div><div class=\"liron-surface-grid\" style=\"display:grid;grid-template-columns:repeat(12,6px);grid-template-rows:repeat(80,6px);gap:1px;overflow:hidden\">";
+            // Clockwise 90° rotation of the old 80-column × 12-row map:
+            // track becomes the vertical axis and sectors run right-to-left.
+            for(var track=0;track<80;track++)
             {
-                for(var track=0;track<80;track++)
+                for(var sector=11;sector>=0;sector--)
                 {
                     var count=device.getSurfaceTrackSectorCount(track);
                     var active=sector<count;
@@ -1500,17 +1767,58 @@ function AppleLiron()
                     {
                         var block=device.surfaceSectorToBlock(side,track,sector);
                         var offset=block*512;
-                        out += "<span class=\"liron-surface-cell active"+(zoneEnd?" zone-end":"")+"\" data-surface-cell=\"1\" data-active=\"1\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+"\" data-block=\""+block+"\" data-offset=\""+offset+"\""+(zoneEnd?" data-zone-end=\"1\"":"")+" title=\"Side "+side+" · Track "+track+" · Sector "+sector+" · 512 bytes\"></span>";
+                        var content=classification && classification.blocks ? classification.blocks[block] : null;
+                        var kind=content && content.kind ? content.kind : "unknown";
+                        var detail=content && content.detail ? content.detail : "Unknown content";
+                        var owner=content && content.owner ? content.owner : "";
+                        var tip="Side "+side+" · Track "+track+" · Sector "+sector+" · Block "+block+" · 512 bytes · "+detail+(owner ? " · "+owner : "");
+                        out += "<span class=\"liron-surface-cell active content-"+deviceToolSurfaceEscape(kind)+(zoneEnd?" zone-end":"")+"\" style=\""+deviceToolSurfaceCellStyle(kind,true,zoneEnd)+"\" data-surface-cell=\"1\" data-active=\"1\" data-content=\""+deviceToolSurfaceEscape(kind)+"\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+"\" data-block=\""+block+"\" data-offset=\""+offset+"\""+(zoneEnd?" data-zone-end=\"1\"":"")+" title=\""+deviceToolSurfaceEscape(tip)+"\"></span>";
                     }
                     else
                     {
-                        out += "<span class=\"liron-surface-cell inactive"+(zoneEnd?" zone-end":"")+"\" data-surface-cell=\"1\" data-active=\"0\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+"\""+(zoneEnd?" data-zone-end=\"1\"":"")+" title=\"Side "+side+" · Track "+track+" · Sector "+sector+" · not present\"></span>";
+                        out += "<span class=\"liron-surface-cell inactive"+(zoneEnd?" zone-end":"")+"\" style=\""+deviceToolSurfaceCellStyle("empty",false,zoneEnd)+"\" data-surface-cell=\"1\" data-active=\"0\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+"\""+(zoneEnd?" data-zone-end=\"1\"":"")+" title=\"Side "+side+" · Track "+track+" · Sector "+sector+" · not present\"></span>";
                     }
                 }
             }
             out += "</div></section>";
         }
         return out+"</div>";
+    };
+
+    this.deviceToolSurfaceMapPosition = function(unit)
+    {
+        if(typeof(document)==="undefined" || !document.getElementById || typeof(window)==="undefined") return false;
+        var popup=document.getElementById("lironSurfaceMap_popup");
+        if(!popup) return false;
+
+        var slotN=liron.mount ? Number(liron.mount.slotN) : NaN;
+        var io=typeof(apple2plus)==="object" && apple2plus ? apple2plus.hwObj().io : null;
+        var slotID=Number.isInteger(slotN) && io && typeof(io.slot2ID)==="function"
+            ? String(io.slot2ID(slotN))
+            : (Number.isInteger(slotN) ? String(slotN-1) : "?");
+        var surface=document.getElementById("liron_unit_"+slotID+"_"+Number(unit)+"_surface");
+        var anchor=null;
+        if(surface)
+        {
+            if(typeof(surface.closest)==="function")
+                anchor=surface.closest(".appbox") || surface.closest(".toolbox");
+            if(!anchor) anchor=surface.parentElement;
+        }
+
+        var top=8;
+        if(anchor && typeof(anchor.getBoundingClientRect)==="function")
+            top=Math.max(8,Math.round(anchor.getBoundingClientRect().top));
+
+        popup.style.position="fixed";
+        popup.style.left="auto";
+        popup.style.right="8px";
+        popup.style.top=top+"px";
+        popup.style.width="470px";
+        popup.style.maxWidth="calc(100vw - 16px)";
+        popup.style.maxHeight="calc(100vh - "+(top+8)+"px)";
+        popup.style.overflow="auto";
+        popup.style.zIndex="30";
+        return true;
     };
 
     this.deviceToolSurfaceMapRefresh = function()
@@ -1534,6 +1842,7 @@ function AppleLiron()
         var popup=document.getElementById("lironSurfaceMap_popup");
         if(typeof(oCOM)==="object" && oCOM && oCOM.POPUP && typeof(oCOM.POPUP.on)==="function") oCOM.POPUP.on("lironSurfaceMap_popup");
         else popup.hidden=false;
+        liron.deviceToolSurfaceMapPosition(unit);
         return true;
     };
 
