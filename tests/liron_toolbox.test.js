@@ -32,7 +32,7 @@ function fakeUniDisk(unit,filename)
 {
     return {
         id:{
-            DCODE:'UNIDISK35',
+            DCODE:'UNIDISK',
             description:'Apple UniDisk 3.5',
             deviceN:unit
         },
@@ -61,7 +61,7 @@ test('shared removable-media row preserves the Disk II native file-control layou
         buttonID:'unit1_but',
         formID:'unit1_form',
         fileID:'unit1_file',
-        fileName:'UNIDISK35_1',
+        fileName:'UNIDISK_1',
         buttonTitle:'Unit1: eject disk',
         buttonOnClick:'ejectUnit1()',
         fileAccept:'.po',
@@ -147,15 +147,15 @@ test('Liron toolbox renders attached SmartPort units vertically through the Disk
     });
 
     assert.equal(rowCalls.length,2);
-    assert.deepEqual(rowCalls.map(row => row.label),['Unit1','Unit2']);
-    assert.ok(html.indexOf('data-label="Unit1"') < html.indexOf('data-label="Unit2"'),
+    assert.deepEqual(rowCalls.map(row => row.label),['UNIDISK Unit1','UNIDISK Unit2']);
+    assert.ok(html.indexOf('data-label="UNIDISK Unit1"') < html.indexOf('data-label="UNIDISK Unit2"'),
         'SmartPort unit rows must remain vertically ordered');
 
     for(let i=0;i<rowCalls.length;i++)
     {
         const unit=i+1;
         const row=rowCalls[i];
-        assert.equal(row.fileName,'UNIDISK35_'+unit);
+        assert.equal(row.fileName,'UNIDISK_'+unit);
         assert.match(row.fileOnChange,new RegExp(`deviceToolLoadFile\\(this,${unit}\\)`));
         assert.match(row.buttonOnClick,new RegExp(`deviceToolEject\\(${unit}\\)`));
         assert.equal(row.downloadDisabled,true,
@@ -208,7 +208,7 @@ test('Liron schedules a machine restart after a live SmartPort topology change',
     const card=new context.AppleLiron();
 
     assert.equal(typeof card.onDeviceTopologyChanged,'function');
-    assert.equal(card.onDeviceTopologyChanged({type:'attach',DCODE:'UNIDISK35'}),true);
+    assert.equal(card.onDeviceTopologyChanged({type:'attach',DCODE:'UNIDISK'}),true);
     assert.equal(restarts,1,
         'live SmartPort attach must reboot so ProDOS rebuilds its boot-time device table');
     assert.ok(warnings.some(msg=>msg.includes('SmartPort topology changed')));
@@ -258,11 +258,78 @@ test('successful Liron file load keeps the native file selection so the browser 
     assert.equal(card.deviceToolLoadFile(input,1),true);
     assert.equal(mountCalls.length,1);
     assert.equal(mountCalls[0].slotN,6);
-    assert.equal(mountCalls[0].deviceID,'UNIDISK35');
+    assert.equal(mountCalls[0].deviceID,'UNIDISK');
     assert.equal(mountCalls[0].filename,'ProDOS Packer 6.0.po');
     assert.equal(mountCalls[0].unit,1);
     assert.equal(mountCalls[0].bytes.length,819200);
     assert.equal(input.value,'C:\\fakepath\\ProDOS Packer 6.0.po',
         'successful mounts must leave the native file input populated');
     assert.equal(refreshCalls.length,1,'toolbox selection may refresh without rebuilding its media row');
+});
+
+test('shared media row renders ordered optional capability actions after Download', () => {
+    const context=vm.createContext({
+        console,
+        oEMU:{component:{IO:{ACTION_MAP:[]}},system:{A2P:{active:true}}},
+        oEMUI:{slotConfig(){},slotsRender(){},deviceBtn(){}}
+    });
+    vm.runInContext(apple2ioSource,context,{filename:'EMU_apple2io.js'});
+    const html=context.EMU_deviceMediaRowHTML({
+        label:'UNIDISK Unit1',downloadID:'d1',downloadOnClick:'download1()',downloadTitle:'Save disk',
+        capabilityActions:[
+            {id:'map1',icon:'fa fa-th',title:'Disk Surface Map',onClick:'map1()'},
+            {id:'off1',icon:'fa fa-ban',title:'Unavailable',onClick:'bad()',disabled:true}
+        ]
+    });
+    assert.ok(html.indexOf('fa-cloud-download-alt') < html.indexOf('id="map1"'));
+    assert.ok(html.indexOf('id="map1"') < html.indexOf('id="off1"'));
+    const mapButton=html.match(/<button[^>]*id="map1"[^>]*>/)[0];
+    assert.match(mapButton,/title="Disk Surface Map"/);
+    assert.match(mapButton,/onclick="map1\(\)"/);
+    const disabled=html.match(/<button[^>]*id="off1"[^>]*>/)[0];
+    assert.match(disabled,/disabled/);
+    assert.doesNotMatch(disabled,/onclick=/);
+});
+
+
+test('UniDisk row identifies device and instance and exposes its surface-map capability', () => {
+    const rows=[];
+    const context=loadLiron({EMU_deviceMediaRowHTML(spec){rows.push(spec);return '<row></row>';}});
+    const card=new context.AppleLiron(); card.mount={slotN:6};
+    const disk=new context.UniDisk35Device(); disk.setUnit(1); disk.attach={hash:0x9B05}; card.devices=[disk];
+    card.deviceToolSlotHTML({slotN:6,slotID:'5',toolboxID:'device_tool_5',devices:card.devices});
+    assert.equal(rows[0].label,'UNIDISK Unit1');
+    assert.equal(rows[0].buttonTitle,'Instance #9B05: eject disk');
+    assert.equal(rows[0].capabilityActions.length,1);
+    assert.equal(rows[0].capabilityActions[0].id,'liron_unit_5_1_surface');
+    assert.equal(rows[0].capabilityActions[0].title,'Disk Surface Map (no media loaded)');
+    assert.equal(rows[0].capabilityActions[0].disabled,true);
+    disk.loadImage(new Uint8Array(819200),{filename:'TOOLS.po'}); rows.length=0;
+    card.deviceToolSlotHTML({slotN:6,slotID:'5',toolboxID:'device_tool_5',devices:card.devices});
+    assert.equal(rows[0].capabilityActions[0].disabled,false);
+    assert.match(rows[0].capabilityActions[0].onClick,/deviceToolSurfaceMap\(1,39685\)/);
+});
+
+test('Liron synchronizes Download and Surface Map in place without clearing a successful file selection', () => {
+    function el(value='') { return {disabled:true,title:'',value,attrs:{},setAttribute(k,v){this.attrs[k]=String(v);},removeAttribute(k){delete this.attrs[k];}}; }
+    const nodes={liron_unit_5_1_dump:el(),liron_unit_5_1_surface:el(),liron_unit_5_1_but:el(),liron_unit_5_1_file:el('C:\\fakepath\\TOOLS.po')};
+    const context=loadLiron({document:{getElementById(id){return nodes[id]||null;}},apple2plus:{hwObj(){return {io:{slot2ID(){return '5';}}};}}});
+    const card=new context.AppleLiron(); card.mount={slotN:6};
+    const disk=new context.UniDisk35Device(); disk.setUnit(1); disk.attach={hash:0x9B05}; card.devices=[disk];
+    disk.loadImage(new Uint8Array(819200),{filename:'TOOLS.po'});
+    assert.equal(card.deviceToolSyncMediaControls(1),true);
+    assert.equal(nodes.liron_unit_5_1_dump.disabled,false);
+    assert.equal(nodes.liron_unit_5_1_dump.title,'Save TOOLS.po');
+    assert.match(nodes.liron_unit_5_1_dump.attrs.onclick,/deviceToolDownload\(1\)/);
+    assert.equal(nodes.liron_unit_5_1_surface.disabled,false);
+    assert.match(nodes.liron_unit_5_1_surface.attrs.onclick,/deviceToolSurfaceMap\(1,39685\)/);
+    assert.equal(nodes.liron_unit_5_1_but.title,'Instance #9B05: eject disk');
+    assert.equal(nodes.liron_unit_5_1_file.value,'C:\\fakepath\\TOOLS.po');
+    disk.ejectImage();
+    assert.equal(card.deviceToolSyncMediaControls(1,{clearFile:true}),true);
+    assert.equal(nodes.liron_unit_5_1_dump.disabled,true);
+    assert.equal(nodes.liron_unit_5_1_surface.disabled,true);
+    assert.equal(nodes.liron_unit_5_1_file.value,'');
+    assert.equal('onclick' in nodes.liron_unit_5_1_dump.attrs,false);
+    assert.equal('onclick' in nodes.liron_unit_5_1_surface.attrs,false);
 });

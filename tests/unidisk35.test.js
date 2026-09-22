@@ -19,7 +19,7 @@ test('UniDisk35Device exposes a detached 800K SmartPort block device', () => {
     const context = loadUniDisk();
     const disk = new context.UniDisk35Device();
 
-    assert.equal(disk.id.DCODE,'UNIDISK35');
+    assert.equal(disk.id.DCODE,'UNIDISK');
     assert.equal(disk.getUnit(),0);
     assert.equal(disk.getBlockSize(),512);
     assert.equal(disk.getBlockCount(),1600);
@@ -117,4 +117,43 @@ test('ejectImage clears media and filename without detaching the SmartPort unit'
     assert.equal(state.mediaBytes,0);
     assert.equal(state.mediaFilename,'');
     assert.equal(disk.readBlock(0).error,0x27,'reads after eject must report no readable media');
+});
+
+test('UniDisk exposes the five-zone 800K surface geometry', () => {
+    const context=loadUniDisk();
+    const disk=new context.UniDisk35Device();
+    const g=disk.getSurfaceMapGeometry();
+    assert.deepEqual(JSON.parse(JSON.stringify(g)),{
+        sides:2,tracksPerSide:80,maxSectorsPerTrack:12,bytesPerSector:512,
+        zoneTracks:16,sectorCounts:[12,11,10,9,8],totalSectors:1600,totalBytes:819200
+    });
+    assert.deepEqual([0,15,16,31,32,47,48,63,64,79].map(t=>disk.getSurfaceTrackSectorCount(t)),[12,12,11,11,10,10,9,9,8,8]);
+    assert.equal(disk.getSurfaceTrackSectorCount(-1),null);
+    assert.equal(disk.getSurfaceTrackSectorCount(80),null);
+});
+
+test('UniDisk surface coordinates map every 512-byte block exactly once', () => {
+    const context=loadUniDisk();
+    const disk=new context.UniDisk35Device();
+    const seen=new Set();
+    for(let track=0;track<80;track++)
+    {
+        const count=disk.getSurfaceTrackSectorCount(track);
+        for(let side=0;side<2;side++)
+            for(let sector=0;sector<count;sector++)
+            {
+                const block=disk.surfaceSectorToBlock(side,track,sector);
+                assert.ok(Number.isInteger(block));
+                assert.ok(block>=0 && block<1600);
+                assert.equal(seen.has(block),false);
+                seen.add(block);
+                assert.deepEqual(JSON.parse(JSON.stringify(disk.blockToSurfaceSector(block))),{side,track,sector,block,offset:block*512,bytes:512});
+            }
+    }
+    assert.equal(seen.size,1600);
+    assert.deepEqual([...seen].sort((a,b)=>a-b),Array.from({length:1600},(_,i)=>i));
+    assert.equal(disk.surfaceSectorToBlock(0,0,12),null);
+    assert.equal(disk.surfaceSectorToBlock(2,0,0),null);
+    assert.equal(disk.blockToSurfaceSector(-1),null);
+    assert.equal(disk.blockToSurfaceSector(1600),null);
 });

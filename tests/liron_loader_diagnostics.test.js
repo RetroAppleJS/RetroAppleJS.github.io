@@ -73,9 +73,9 @@ function findLog(entries,level,text)
 }
 
 test('router logs invalid 800K image size with mount details',()=>{
-    const disk={id:{DCODE:'UNIDISK35'},getUnit(){return 1;},loadImage(){}};
+    const disk={id:{DCODE:'UNIDISK'},getUnit(){return 1;},loadImage(){}};
     const {context,logs}=loadRouter({devices:[disk]});
-    assert.equal(context.EMU_mountDiskImage(new Uint8Array(819199),null,'UNIDISK35','bad.po',1),false);
+    assert.equal(context.EMU_mountDiskImage(new Uint8Array(819199),null,'UNIDISK','bad.po',1),false);
     assert.ok(hasLog(logs.entries,'error','UniDisk 3.5 mount failed: invalid image size'));
     const entry=findLog(logs.entries,'error','invalid image size');
     assert.equal(entry[2].expected,819200);
@@ -86,7 +86,7 @@ test('router logs invalid 800K image size with mount details',()=>{
 
 test('router logs missing target instead of silently returning false',()=>{
     const {context,logs}=loadRouter({devices:[]});
-    assert.equal(context.EMU_mountDiskImage(new Uint8Array(819200),null,'UNIDISK35','missing.po',1),false);
+    assert.equal(context.EMU_mountDiskImage(new Uint8Array(819200),null,'UNIDISK','missing.po',1),false);
     assert.ok(hasLog(logs.entries,'error','UniDisk 3.5 mount failed: target device not found'));
     const entry=findLog(logs.entries,'error','target device not found');
     assert.equal(entry[2].filename,'missing.po');
@@ -94,9 +94,9 @@ test('router logs missing target instead of silently returning false',()=>{
 });
 
 test('router logs successful mount details',()=>{
-    const disk={id:{DCODE:'UNIDISK35'},getUnit(){return 1;},loadImage(bytes){return bytes.length;}};
+    const disk={id:{DCODE:'UNIDISK'},getUnit(){return 1;},loadImage(bytes){return bytes.length;}};
     const {context,logs}=loadRouter({devices:[disk]});
-    assert.equal(context.EMU_mountDiskImage(new Uint8Array(819200),null,'UNIDISK35','CardCat 1.94.po',1),true);
+    assert.equal(context.EMU_mountDiskImage(new Uint8Array(819200),null,'UNIDISK','CardCat 1.94.po',1),true);
     assert.ok(hasLog(logs.entries,'log','UniDisk 3.5 mount succeeded'));
     const entry=findLog(logs.entries,'log','mount succeeded');
     assert.equal(entry[2].bytes,819200);

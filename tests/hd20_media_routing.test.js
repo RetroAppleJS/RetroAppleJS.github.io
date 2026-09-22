@@ -79,7 +79,7 @@ function fakeDevice(dcode,unit,expectedBytes)
 }
 
 test('20 MiB browser media routes to the exact HD20 SmartPort unit',()=>{
-    const uni=fakeDevice('UNIDISK35',1,819200);
+    const uni=fakeDevice('UNIDISK',1,819200);
     const hd20=fakeDevice('HD20',2,20971520);
     const context=loadRouter([uni,hd20]);
 
@@ -99,10 +99,10 @@ test('explicit HD20 target rejects non-20-MiB media without falling through',()=
 });
 
 test('legacy UniDisk helper and 800K route remain intact',()=>{
-    const uni=fakeDevice('UNIDISK35',1,819200);
+    const uni=fakeDevice('UNIDISK',1,819200);
     const context=loadRouter([uni]);
 
     assert.equal(context.EMU_unidisk35Device(6,1),uni);
-    assert.equal(context.EMU_mountDiskImage(new Uint8Array(819200),6,'UNIDISK35','CARD.PO',1),true);
+    assert.equal(context.EMU_mountDiskImage(new Uint8Array(819200),6,'UNIDISK','CARD.PO',1),true);
     assert.equal(uni.loads.length,1);
 });

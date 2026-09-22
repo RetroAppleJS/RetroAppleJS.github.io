@@ -104,14 +104,14 @@ async function setupTwoDevicesBeforeBoot(page)
         }
 
         const hdInfo=liron.deviceConfig.find(info=>info.DCODE==='HD20');
-        const uniInfo=liron.deviceConfig.find(info=>info.DCODE==='UNIDISK35');
+        const uniInfo=liron.deviceConfig.find(info=>info.DCODE==='UNIDISK');
         const hd=io.attach(liron,hdInfo,{newInstance:true});
         const uni=io.attach(liron,uniInfo,{newInstance:true});
         if(!hd || !uni) throw new Error('Unable to attach HD20 then UniDisk');
         if(hd.getUnit()!==1 || uni.getUnit()!==2)
             throw new Error('Unexpected SmartPort unit order: '+hd.getUnit()+','+uni.getUnit());
 
-        if(!EMU_mountDiskImage(poBytes,liron.mount.slotN,'UNIDISK35','CardCat 1.94.po',2))
+        if(!EMU_mountDiskImage(poBytes,liron.mount.slotN,'UNIDISK','CardCat 1.94.po',2))
             throw new Error('Unable to mount valid ProDOS media on UniDisk unit 2');
 
         const diskIISlot=EMU_defaultDiskIISlot();

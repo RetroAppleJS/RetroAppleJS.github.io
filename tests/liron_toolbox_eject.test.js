@@ -22,7 +22,7 @@ function loadLiron(extra={})
 function disk(unit,filename,calls)
 {
     return {
-        id:{DCODE:'UNIDISK35',deviceN:unit,description:'Apple UniDisk 3.5'},
+        id:{DCODE:'UNIDISK',deviceN:unit,description:'Apple UniDisk 3.5'},
         getUnit(){return unit;},
         getState(){return {unit,mediaLoaded:!!filename,mediaFilename:filename||''};},
         ejectImage(){calls.push(unit);filename='';return true;}

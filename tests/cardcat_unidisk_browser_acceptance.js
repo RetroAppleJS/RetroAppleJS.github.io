@@ -142,7 +142,7 @@ async function runUntil(page,predicate,label)
         const io=apple2plus.hwObj().io;
         const diskIISlot=EMU_defaultDiskIISlot();
         const dskMounted=loadDisk_fromBuffer(dskBytes,diskIISlot,'D1','Card Cat 1.94.dsk');
-        const poMounted=EMU_mountDiskImage(poBytes,null,'UNIDISK35','CardCat 1.94.po');
+        const poMounted=EMU_mountDiskImage(poBytes,null,'UNIDISK','CardCat 1.94.po');
         const lironInfo=findCard(io,'LIRON');
         const liron=lironInfo && lironInfo.card;
         const disk=liron && liron.getUniDisk ? liron.getUniDisk() : null;

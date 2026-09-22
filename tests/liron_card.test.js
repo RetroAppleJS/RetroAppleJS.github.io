@@ -36,7 +36,7 @@ function mount(card,physicalSlot)
     return card;
 }
 
-test('AppleLiron exposes the RetroAppleJS card surface and declares an unprovisioned UniDisk child', () => {
+test('AppleLiron exposes the RetroAppleJS card surface and SmartPort child configurations', () => {
     const {context} = loadLiron();
     const card = new context.AppleLiron();
 
@@ -45,11 +45,13 @@ test('AppleLiron exposes the RetroAppleJS card surface and declares an unprovisi
     assert.equal(typeof card.action.SlotIO.WR.callback,'function');
     assert.equal(typeof card.action.SlotROM.RD.callback,'function');
     assert.equal(typeof card.action.HostROM.RD.callback,'function');
-    assert.equal(card.deviceConfig.length,1);
-    assert.equal(card.deviceConfig[0].DCODE,'UNIDISK35');
-    assert.equal(card.deviceConfig[0].hostPCODE,'LIRON');
-    assert.equal(card.deviceConfig[0].coID,'UniDisk35Device');
-    assert.equal(card.deviceConfig[0].deviceN,1);
+    const uniConfig=card.deviceConfig.find(info=>info.DCODE==='UNIDISK');
+    const hd20Config=card.deviceConfig.find(info=>info.DCODE==='HD20');
+    assert.ok(uniConfig,'Liron must advertise its UniDisk child');
+    assert.ok(hd20Config,'Liron must advertise its optional HD20 child');
+    assert.equal(uniConfig.hostPCODE,'LIRON');
+    assert.equal(uniConfig.coID,'UniDisk35Device');
+    assert.equal(uniConfig.deviceN,1);
     assert.equal(card.getBus().hasDevices(),false);
 });
 
