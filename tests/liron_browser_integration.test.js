@@ -48,12 +48,14 @@ test('browser discovery declares UniDisk and Apple2IO-style binding populates Sm
     const card = context.oEMU.component.IO.AppleLiron;
 
     assert.ok(card,'AppleLiron discovery instance must exist');
-    assert.equal(card.deviceConfig.length,1);
-    assert.equal(card.deviceConfig[0].DCODE,'UNIDISK');
+    const uniConfig=card.deviceConfig.find(info=>info.DCODE==='UNIDISK');
+    const hd20Config=card.deviceConfig.find(info=>info.DCODE==='HD20');
+    assert.ok(uniConfig,'Liron must advertise a UniDisk SmartPort child');
+    assert.ok(hd20Config,'Liron must also advertise the optional HD20 child');
     assert.deepEqual(Array.from(card.getBus().getUnits()),[]);
     assert.equal(card.getUniDisk(),null);
 
-    const device = new context.UniDisk35Device(card.deviceConfig[0]);
+    const device = new context.UniDisk35Device(uniConfig);
     assert.equal(device.bindHost(card),true);
 
     assert.deepEqual(Array.from(card.getBus().getUnits()),[1]);

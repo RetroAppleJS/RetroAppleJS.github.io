@@ -111,19 +111,20 @@ test('explicit UniDisk target rejects wrong size without falling through to Disk
 });
 
 test('143360-byte media preserves the existing Disk II path',()=>{
-    let converted=0;
+    const controllerLoads=[];
     const disk2={
         getState(){return {active:true};},
-        convertDsk2Nib(bytes){converted++;return bytes.concat([0xAA]);}
+        setDiskData(bytes,deviceID,filepath){controllerLoads.push({bytes:Array.from(bytes),deviceID,filepath});}
     };
     const unidisk={id:{DCODE:'UNIDISK'},loadImage(){throw new Error('UniDisk must not receive 140K media');}};
     const {context,diskIILoads}=loadRouter({unidisks:[unidisk],disk2});
 
     assert.equal(context.EMU_mountDiskImage(new Uint8Array(143360),7,'D1','boot.dsk'),true);
-    assert.equal(converted,1);
-    assert.equal(diskIILoads.length,1);
-    assert.equal(diskIILoads[0].deviceID,'D1');
-    assert.equal(diskIILoads[0].slotN,7);
+    assert.equal(controllerLoads.length,1);
+    assert.equal(controllerLoads[0].bytes.length,143360);
+    assert.equal(controllerLoads[0].deviceID,'D1');
+    assert.equal(controllerLoads[0].filepath,'boot.dsk');
+    assert.equal(diskIILoads.length,0,'140K media is handled directly by the Disk II controller');
 });
 
 test('rejected UniDisk-targeted media leaves previously mounted media unchanged',()=>{
