@@ -32,7 +32,7 @@ function mountedHD20(context,hash=0xC07E)
     return {card,disk};
 }
 
-test('HD20 exposes the entire 20 MiB surface as two 10 MiB block grids',()=>{
+test('HD20 exposes two 40 by 64 panels with 8 contiguous blocks per surface cell',()=>{
     const context=loadContext();
     const {disk}=mountedHD20(context);
     const g=disk.getSurfaceMapGeometry();
@@ -40,8 +40,11 @@ test('HD20 exposes the entire 20 MiB surface as two 10 MiB block grids',()=>{
     assert.deepEqual(JSON.parse(JSON.stringify(g)),{
         kind:'logical-block-surface',
         panels:2,
-        columnsPerPanel:160,
-        rowsPerPanel:128,
+        columnsPerPanel:40,
+        rowsPerPanel:64,
+        cellsPerPanel:2560,
+        blocksPerCell:8,
+        bytesPerCell:4096,
         blocksPerPanel:20480,
         blocksPerPage:40960,
         pageCount:1,
@@ -50,40 +53,73 @@ test('HD20 exposes the entire 20 MiB surface as two 10 MiB block grids',()=>{
         totalBytes:20971520
     });
 
-    assert.deepEqual(JSON.parse(JSON.stringify(disk.blockToSurfaceCell(0))),
-        {page:0,panel:0,row:0,column:0,block:0,offset:0,bytes:512});
-    assert.deepEqual(JSON.parse(JSON.stringify(disk.blockToSurfaceCell(20480))),
-        {page:0,panel:1,row:0,column:0,block:20480,offset:10485760,bytes:512});
-    assert.deepEqual(JSON.parse(JSON.stringify(disk.blockToSurfaceCell(40959))),
-        {page:0,panel:1,row:127,column:159,block:40959,offset:20971008,bytes:512});
-
-    assert.equal(disk.surfaceCellToBlock(0,0,0,0),0);
-    assert.equal(disk.surfaceCellToBlock(0,1,0,0),20480);
-    assert.equal(disk.surfaceCellToBlock(0,1,127,159),40959);
+    assert.deepEqual(JSON.parse(JSON.stringify(disk.surfaceCellToBlockRange(0,0,0,0))),
+        {startBlock:0,endBlock:7,offset:0,bytes:4096});
+    assert.deepEqual(JSON.parse(JSON.stringify(disk.surfaceCellToBlockRange(0,0,63,39))),
+        {startBlock:20472,endBlock:20479,offset:10481664,bytes:4096});
+    assert.deepEqual(JSON.parse(JSON.stringify(disk.surfaceCellToBlockRange(0,1,0,0))),
+        {startBlock:20480,endBlock:20487,offset:10485760,bytes:4096});
+    assert.deepEqual(JSON.parse(JSON.stringify(disk.surfaceCellToBlockRange(0,1,63,39))),
+        {startBlock:40952,endBlock:40959,offset:20967424,bytes:4096});
 });
 
-test('HD20 surface map renders the full disk in one view as two side-by-side 10 MiB grids',()=>{
+test('HD20 surface map renders the entire disk with Disk II sized 10px cells',()=>{
     const context=loadContext();
     const {card}=mountedHD20(context);
     const html=card.deviceToolSurfaceMapHTML(1,0xC07E);
 
-    assert.match(html,/Instance #C07E · 20 MiB · 40960 × 512-byte blocks · entire disk/);
+    assert.match(html,/Instance #C07E · 20 MiB · 40960 × 512-byte blocks · 5120 × 4 KiB cells/);
     assert.match(html,/0–10 MiB/);
     assert.match(html,/10–20 MiB/);
-    assert.equal((html.match(/data-surface-cell="1"/g)||[]).length,40960);
-    assert.equal((html.match(/data-active="1"/g)||[]).length,40960);
-    assert.match(html,/grid-template-columns:36px repeat\(160,3px\)/);
-    assert.match(html,/grid-template-rows:repeat\(128,3px\)/);
-    assert.match(html,/width:3px;height:3px;box-sizing:border-box/);
-    assert.doesNotMatch(html,/Previous MiB|Next MiB|MiB 0 \/ 0/);
-    assert.match(html,/data-block="0"/);
-    assert.match(html,/data-block="20479"/);
-    assert.match(html,/data-block="20480"/);
-    assert.match(html,/data-block="40959"/);
-    assert.doesNotMatch(html,/data-block="40960"/);
+    assert.equal((html.match(/data-surface-cell="1"/g)||[]).length,5120);
+    assert.equal((html.match(/data-active="1"/g)||[]).length,5120);
+    assert.match(html,/grid-template-columns:36px repeat\(40,10px\)/);
+    assert.match(html,/grid-template-rows:repeat\(64,10px\)/);
+    assert.match(html,/width:10px;height:10px;box-sizing:border-box;border:1px solid #333/);
+    assert.doesNotMatch(html,/Previous MiB|Next MiB/);
+    assert.match(html,/data-start-block="0"[^>]*data-end-block="7"/);
+    assert.match(html,/data-start-block="20472"[^>]*data-end-block="20479"/);
+    assert.match(html,/data-start-block="20480"[^>]*data-end-block="20487"/);
+    assert.match(html,/data-start-block="40952"[^>]*data-end-block="40959"/);
 });
 
-test('HD20 surface map no longer pages and page requests clamp to the single full-disk view',()=>{
+test('HD20 surface cell density aggregates all 4096 bytes in its eight blocks',()=>{
+    const context=loadContext();
+    const {card,disk}=mountedHD20(context);
+    const image=new Uint8Array(20971520);
+    image.fill(0xFF,0,512);
+    image.fill(0x80,7*512,8*512);
+    disk.loadImage(image,{filename:'DENSITY.po'});
+
+    const html=card.deviceToolSurfaceMapHTML(1,0xC07E);
+    const first=html.match(/<span[^>]*data-start-block="0"[^>]*>/);
+    assert.ok(first,'first 4 KiB surface cell must exist');
+    assert.match(first[0],/data-density="25"/);
+    assert.match(first[0],/title="Blocks 0–7 · 4 KiB · offset 0–4095 · nonzero=1024\/4096/);
+});
+
+test('HD20 read/write activity highlights the 4 KiB cell containing the exact block',()=>{
+    const context=loadContext();
+    const {card,disk}=mountedHD20(context);
+
+    assert.equal(disk.readBlock(2500).error,0);
+    assert.deepEqual(JSON.parse(JSON.stringify(disk.getHeadSurfacePosition())),
+        {page:0,panel:0,row:7,column:32,block:2500,offset:1280000,bytes:512});
+
+    let html=card.deviceToolSurfaceMapHTML(1,0xC07E);
+    assert.match(html,/data-start-block="2496"[^>]*data-end-block="2503"[^>]*data-head="1"/);
+    assert.match(html,/Head block 2500/);
+
+    const data=new Uint8Array(512); data.fill(0xA5);
+    assert.equal(disk.writeBlock(40959,data).error,0);
+    assert.deepEqual(JSON.parse(JSON.stringify(disk.getHeadSurfacePosition())),
+        {page:0,panel:1,row:63,column:39,block:40959,offset:20971008,bytes:512});
+
+    html=card.deviceToolSurfaceMapHTML(1,0xC07E);
+    assert.match(html,/data-start-block="40952"[^>]*data-end-block="40959"[^>]*data-head="1"/);
+});
+
+test('HD20 surface map remains a single full-disk view',()=>{
     const context=loadContext();
     const {card}=mountedHD20(context);
 
@@ -92,25 +128,7 @@ test('HD20 surface map no longer pages and page requests clamp to the single ful
     const html=card.deviceToolSurfaceMapHTML(1,0xC07E);
     assert.match(html,/0–10 MiB/);
     assert.match(html,/10–20 MiB/);
-    assert.match(html,/data-block="40959"/);
-});
-
-test('HD20 read/write activity tracks the exact cell in the full-disk surface view',()=>{
-    const context=loadContext();
-    const {card,disk}=mountedHD20(context);
-
-    assert.equal(disk.readBlock(2500).error,0);
-    assert.deepEqual(JSON.parse(JSON.stringify(disk.getHeadSurfacePosition())),
-        {page:0,panel:0,row:15,column:100,block:2500,offset:1280000,bytes:512});
-
-    const data=new Uint8Array(512); data.fill(0xA5);
-    assert.equal(disk.writeBlock(40959,data).error,0);
-    assert.deepEqual(JSON.parse(JSON.stringify(disk.getHeadSurfacePosition())),
-        {page:0,panel:1,row:127,column:159,block:40959,offset:20971008,bytes:512});
-
-    card.deviceToolSurfaceMapSetPage(19,1,0xC07E);
-    card.deviceToolSurfaceMapToggleSync(true);
-    assert.equal(card.deviceToolSurfaceMapFollowHead(),0);
+    assert.match(html,/data-end-block="40959"/);
 });
 
 test('HD20 toolbox exposes the same Surface Map capability icon as UniDisk',()=>{
