@@ -6,7 +6,7 @@ permissions:
 on:
   push:
     paths:
-      - "tests/_apply_hd20_surface_map_patch.js"
+      - "tests/_apply_hd20_surface_map_patch2.js"
       - ".github/workflows/_hd20-surface-map-patch.yml"
   workflow_dispatch:
 
@@ -21,7 +21,7 @@ jobs:
         with:
           node-version: 24
       - name: Apply bounded source patch
-        run: node tests/_apply_hd20_surface_map_patch.js
+        run: node tests/_apply_hd20_surface_map_patch2.js
       - name: Commit source patch
         shell: bash
         run: |
