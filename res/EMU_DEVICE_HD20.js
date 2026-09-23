@@ -312,7 +312,7 @@ function HD20Device(options)
             {
                 var result=basePosition.call(owner,unit);
                 var target=typeof(owner.getHD20)==="function" ? owner.getHD20(unit) : null;
-                if(target && typeof(document)!=="undefined" && document.getElementById && typeof(window)!==="undefined")
+                if(target && typeof(document)!=="undefined" && document.getElementById && typeof window==="object")
                 {
                     var popup=document.getElementById("lironSurfaceMap_popup");
                     if(popup)
