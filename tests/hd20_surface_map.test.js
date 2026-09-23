@@ -85,7 +85,7 @@ test('HD20 surface map pages through all 20 MiB and page 19 ends at block 40959'
     const context=loadContext();
     const {card}=mountedHD20(context);
 
-    assert.equal(card.deviceToolSurfaceMapSetPage(19),19);
+    assert.equal(card.deviceToolSurfaceMapSetPage(19,1,0xC07E),19);
     const html=card.deviceToolSurfaceMapHTML(1,0xC07E);
     assert.match(html,/MiB 19\/19/);
     assert.match(html,/19 MiB–19\.5 MiB/);
@@ -94,8 +94,8 @@ test('HD20 surface map pages through all 20 MiB and page 19 ends at block 40959'
     assert.match(html,/data-block="40959"/);
     assert.doesNotMatch(html,/data-block="40960"/);
 
-    assert.equal(card.deviceToolSurfaceMapSetPage(20),19,'page clamps at the last MiB');
-    assert.equal(card.deviceToolSurfaceMapSetPage(-1),0,'page clamps at zero');
+    assert.equal(card.deviceToolSurfaceMapSetPage(20,1,0xC07E),19,'page clamps at the last MiB');
+    assert.equal(card.deviceToolSurfaceMapSetPage(-1,1,0xC07E),0,'page clamps at zero');
 });
 
 test('HD20 read/write activity tracks the exact logical surface cell and sync page',()=>{
@@ -111,6 +111,7 @@ test('HD20 read/write activity tracks the exact logical surface cell and sync pa
     assert.deepEqual(JSON.parse(JSON.stringify(disk.getHeadSurfacePosition())),
         {page:19,panel:1,row:63,column:15,block:40959,offset:20971008,bytes:512});
 
+    card.deviceToolSurfaceMapSetPage(0,1,0xC07E);
     card.deviceToolSurfaceMapToggleSync(true);
     assert.equal(card.deviceToolSurfaceMapFollowHead(),19);
 });
