@@ -1437,9 +1437,14 @@ function AppleLiron()
         var exportable=typeof(device.getImage)==="function" && typeof(device.getSuggestedFilename)==="function";
         var downloadable=exportable && (hardDisk || !!state.mediaLoaded);
         var filename=exportable ? String(device.getSuggestedFilename() || (hardDisk ? "HD20.po" : "UNIDISK.po")) : "";
+        var displayFilename=hardDisk
+            ? String(state.mediaFilename || filename || "UNFORMATTED-HD20.po")
+            : "";
         var instance=deviceToolInstanceHex(device);
         if(typeof(document)==="undefined" || !document.getElementById) return false;
         function setClick(el,handler) { if(!el) return; if(handler) el.setAttribute("onclick",handler); else el.removeAttribute("onclick"); }
+        var fileNameLabel=document.getElementById(controlID+"_file_name");
+        if(fileNameLabel && hardDisk) fileNameLabel.textContent=displayFilename;
         var download=document.getElementById(controlID+"_dump");
         if(download)
         {
@@ -2234,6 +2239,9 @@ function AppleLiron()
             var deviceState=typeof(device.getState)==="function" ? device.getState() || {} : {};
             var downloadable=exportable && (hardDisk || !!deviceState.mediaLoaded);
             var logicalFilename=exportable ? String(device.getSuggestedFilename() || (hardDisk ? "HD20.po" : "UNIDISK.po")) : undefined;
+            var displayFilename=hardDisk
+                ? String(deviceState.mediaFilename || logicalFilename || "UNFORMATTED-HD20.po")
+                : undefined;
             var supportsSurfaceMap=(deviceCode==="UNIDISK" || deviceCode==="HD20") && typeof(device.getSurfaceMapGeometry)==="function";
             var instanceHash=Number(device.attach?.hash);
             var instanceHex=deviceToolInstanceHex(device);
@@ -2245,7 +2253,7 @@ function AppleLiron()
                 ,"fileID":controlID+"_file"
                 ,"downloadID":controlID+"_dump"
                 ,"fileName":deviceCode+"_"+unit
-                ,"fileDisplayName":hardDisk ? logicalFilename : undefined
+                ,"fileDisplayName":displayFilename
                 ,"buttonTitle":(instanceHex ? ("Instance #"+instanceHex+": ") : ("Unit"+unit+": "))+(hardDisk ? "erase/reset disk" : "eject disk")
                 ,"buttonOnClick":"apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolEject("+unit+")"
                 ,"fileAccept":".po"

@@ -228,3 +228,63 @@ test('Liron toolbox rejects media whose size does not match the selected residen
     assert.equal(input.value,'');
     assert.ok(alerts.some(msg=>msg.includes('20971520')));
 });
+test('HD20 media row starts with the unformatted default and switches immediately to the loaded host filename',()=>{
+    const rows=[];
+    const filenameNode={textContent:'UNFORMATTED-HD20.po'};
+    let hd=null;
+
+    class FakeFileReader
+    {
+        readAsArrayBuffer(file){this.onload({target:{result:file.bytes.buffer}});}
+    }
+
+    const context=loadLiron({
+        FileReader:FakeFileReader,
+        alert(){},
+        document:{
+            getElementById(id)
+            {
+                return id==='liron_unit_5_1_file_name' ? filenameNode : null;
+            }
+        },
+        EMU_deviceMediaRowHTML(spec){rows.push(spec);return '<row>'+spec.label+'</row>';},
+        EMU_mountDiskImage(bytes,slotN,deviceID,filename,unit)
+        {
+            assert.equal(slotN,6);
+            assert.equal(deviceID,'HD20');
+            assert.equal(unit,1);
+            hd.loadImage(bytes,{filename});
+            return true;
+        },
+        apple2plus:{hwObj(){return {io:{
+            slot2ID(n){return String(n-1);},
+            refreshDeviceToolboxes(){}
+        }};}}
+    });
+
+    const card=new context.AppleLiron();
+    card.mount={slotN:6};
+    hd=new context.HD20Device();
+    card.devices=[hd];
+    assert.equal(hd.bindHost(card),true);
+
+    card.deviceToolSlotHTML({slotN:6,slotID:'5',toolboxID:'device_tool_5',devices:card.devices});
+    assert.equal(rows[0].fileDisplayName,'UNFORMATTED-HD20.po');
+
+    const file={name:'BLANK92-2.po',size:20971520,bytes:prodosImage('BLANK92')};
+    const input={files:[file],value:'C:\\fakepath\\BLANK92-2.po'};
+    assert.equal(card.deviceToolLoadFile(input,1),true);
+
+    assert.equal(hd.getState().mediaFilename,'BLANK92-2.po');
+    assert.equal(hd.getSuggestedFilename(),'BLANK92.po',
+        'logical/download naming remains volume-derived');
+    assert.equal(filenameNode.textContent,'BLANK92-2.po',
+        'the visible managed filename must update in place after load');
+
+    rows.length=0;
+    card.deviceToolSlotHTML({slotN:6,slotID:'5',toolboxID:'device_tool_5',devices:card.devices});
+    assert.equal(rows[0].fileDisplayName,'BLANK92-2.po',
+        'a rebuilt media row must still prefer the loaded host filename');
+    assert.equal(rows[0].downloadTitle,'Save BLANK92.po',
+        'download naming remains independent from the visible host filename');
+});
