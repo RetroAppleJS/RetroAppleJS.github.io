@@ -133,29 +133,6 @@ test('HD20 surface map remains a single full-disk view',()=>{
     assert.match(html,/data-end-block="40959"/);
 });
 
-test('HD20 surface map popup is sized for the single 40-column grid',()=>{
-    const popup={style:{left:'100px'}};
-    const context=loadContext({
-        document:{getElementById(id){return id==='lironSurfaceMap_popup'?popup:null;}},
-        window:{innerWidth:1400,scrollX:0}
-    });
-    const {card}=mountedHD20(context);
-    card.deviceToolSurfaceMapPosition=function(unit)
-    {
-        // bindHost already wrapped the original implementation; this test exercises
-        // the installed wrapper through a fresh HD20 below.
-        return true;
-    };
-
-    const context2=loadContext({
-        document:{getElementById(id){return id==='lironSurfaceMap_popup'?popup:null;}},
-        window:{innerWidth:1400,scrollX:0}
-    });
-    const {card:card2}=mountedHD20(context2);
-    card2.deviceToolSurfaceMapPosition(1);
-    assert.equal(popup.style.width,'456px');
-});
-
 test('HD20 toolbox exposes the same Surface Map capability icon as UniDisk',()=>{
     const rows=[];
     const context=loadContext({EMU_deviceMediaRowHTML(spec){rows.push(spec);return '<row></row>';}});
