@@ -11,11 +11,11 @@ function HD20Device(options)
     const DEVICE_SUBTYPE = 0x20; // non-removable hard disk
     const SURFACE_COLUMNS = 40;
     const SURFACE_ROWS = 64;
-    const SURFACE_PANELS = 2;
-    const SURFACE_BLOCKS_PER_CELL = 8; // 4 KiB per visible 10px cell
+    const SURFACE_PANELS = 1;
+    const SURFACE_BLOCKS_PER_CELL = 16; // 8 KiB per visible 10px cell
     const SURFACE_BYTES_PER_CELL = SURFACE_BLOCKS_PER_CELL*BLOCK_SIZE;
     const SURFACE_CELLS_PER_PANEL = SURFACE_COLUMNS*SURFACE_ROWS; // 2560 cells
-    const SURFACE_BLOCKS_PER_PANEL = SURFACE_CELLS_PER_PANEL*SURFACE_BLOCKS_PER_CELL; // 20480 = 10 MiB
+    const SURFACE_BLOCKS_PER_PANEL = SURFACE_CELLS_PER_PANEL*SURFACE_BLOCKS_PER_CELL; // 40960 = 20 MiB
     const SURFACE_BLOCKS_PER_PAGE = SURFACE_BLOCKS_PER_PANEL*SURFACE_PANELS; // 40960 = 20 MiB
     const SURFACE_PAGE_COUNT = BLOCK_COUNT/SURFACE_BLOCKS_PER_PAGE; // 1
     const FW_VERSION = options.firmwareVersion===undefined ? 0x0100 : Number(options.firmwareVersion)&0xFFFF;
@@ -192,6 +192,14 @@ function HD20Device(options)
             .replace(/>/g,"&gt;");
     }
 
+    function surfaceCellStyle(pct,isHead)
+    {
+        return "display:block;width:10px;height:10px;box-sizing:border-box;"+
+            "border:1px solid #333;"+
+            "background:"+SURFACE_DENSITY_PALETTE[pct]+";"+
+            (isHead?"outline:2px solid #FFF;outline-offset:-1px;":"");
+    }
+
     function surfaceHeader(owner,syncEnabled)
     {
         var slotN=owner && owner.mount ? Number(owner.mount.slotN) : NaN;
@@ -213,32 +221,26 @@ function HD20Device(options)
         var hash=Number(this.attach?.hash);
         var unit=Number(this.getUnit());
         var head=this.getHeadSurfacePosition();
-        var css="<style>.liron-surface-hd20 .liron-surface-cell{display:block;width:10px;height:10px;box-sizing:border-box;border:1px solid #333}.liron-surface-hd20 .liron-surface-track{box-sizing:border-box}</style>";
-        var out=header+css+"<div class=\"liron-surface-hd20-root\" data-hd20-surface-map=\"1\" data-unit=\""+unit+"\" data-hash=\""+hash+"\">"+
-            "<div class=\"liron-surface-panels liron-surface-hd20\" style=\"display:inline-flex;align-items:flex-start;gap:8px;width:max-content\">";
+        var out=header+"<div class=\"liron-surface-hd20-root\" data-hd20-surface-map=\"1\" data-unit=\""+unit+"\" data-hash=\""+hash+"\">"+
+            "<div class=\"liron-surface-panels liron-surface-hd20\" style=\"display:inline-flex;align-items:flex-start;width:max-content\">";
         for(var panel=0;panel<SURFACE_PANELS;panel++)
         {
-            var startMiB=panel*10;
             out += "<section class=\"liron-surface-side liron-surface-hd20-panel\" data-panel=\""+panel+"\" style=\"flex:0 0 auto;margin:0\">"+
-                "<div class=\"liron-surface-side-title\" style=\"text-align:center;font-size:11px;line-height:12px;padding:0 0 2px 36px\">"+startMiB+"–"+(startMiB+10)+" MiB</div>"+
+                "<div class=\"liron-surface-side-title\" style=\"text-align:center;font-size:11px;line-height:12px;padding:0 0 2px 36px\">0–20 MiB</div>"+
                 "<div class=\"liron-surface-grid\" style=\"display:grid;grid-template-columns:36px repeat(40,10px);grid-template-rows:repeat(64,10px);gap:0;overflow:hidden\">";
             for(var row=0;row<SURFACE_ROWS;row++)
             {
-                var rowMiB=startMiB+(row*10/SURFACE_ROWS);
+                var rowMiB=row*20/SURFACE_ROWS;
                 var rowLabel=row%16===0 ? ((Math.round(rowMiB*10)/10)+"M") : "";
-                out += "<span class=\"liron-surface-track\" data-row-label=\""+row+"\" style=\"display:flex;align-items:center;justify-content:flex-end;height:10px;padding-right:4px;color:#aaa;font-family:Courier;font-size:8px;line-height:10px;overflow:visible\">"+rowLabel+"</span>";
+                out += "<span class=\"liron-surface-track\" data-row-label=\""+row+"\" style=\"display:flex;align-items:center;justify-content:flex-end;height:10px;padding-right:4px;box-sizing:border-box;color:#aaa;font-family:Courier;font-size:9px\">"+rowLabel+"</span>";
                 for(var column=0;column<SURFACE_COLUMNS;column++)
                 {
                     var blockRange=this.surfaceCellToBlockRange(0,panel,row,column);
                     var density=surfaceRangeDensity(blockRange.startBlock,blockRange.endBlock);
                     var isHead=!!(head && head.block>=blockRange.startBlock && head.block<=blockRange.endBlock);
-                    var bandStart=row>0 && row%16===0;
-                    var style="background:"+SURFACE_DENSITY_PALETTE[density.pct]+";"+
-                        (bandStart?"border-top-width:2px;":"")+
-                        (isHead?"outline:2px solid #FFF;outline-offset:-1px;":"");
-                    var tip="Blocks "+blockRange.startBlock+"–"+blockRange.endBlock+" · 4 KiB · offset "+blockRange.offset+"–"+(blockRange.offset+blockRange.bytes-1)+
+                    var tip="Blocks "+blockRange.startBlock+"–"+blockRange.endBlock+" · 8 KiB · offset "+blockRange.offset+"–"+(blockRange.offset+blockRange.bytes-1)+
                         " · nonzero="+density.nonzero+"/"+blockRange.bytes+" · avg="+density.avg+(isHead?" · Head block "+head.block:"");
-                    out += "<span class=\"liron-surface-cell active"+(isHead?" liron-surface-head":"")+"\" style=\""+style+
+                    out += "<span class=\"liron-surface-cell active"+(isHead?" liron-surface-head":"")+"\" style=\""+surfaceCellStyle(density.pct,isHead)+
                         "\" data-surface-cell=\"1\" data-active=\"1\" data-density=\""+density.pct+"\" data-page=\"0\" data-panel=\""+panel+"\" data-row=\""+row+"\" data-column=\""+column+
                         "\" data-block=\""+blockRange.startBlock+"\" data-start-block=\""+blockRange.startBlock+"\" data-end-block=\""+blockRange.endBlock+"\" data-offset=\""+blockRange.offset+"\" data-head=\""+(isHead?"1":"0")+"\" title=\""+surfaceEscape(tip)+"\"></span>";
                 }
@@ -246,7 +248,7 @@ function HD20Device(options)
             out += "</div></section>";
         }
         return out+"</div><div class=\"liron-surface-meta\" style=\"font-size:10px;color:#888;margin-top:4px;line-height:12px\">"+
-            "Instance #"+instance+" · 20 MiB · 40960 × 512-byte blocks · "+(SURFACE_PANELS*SURFACE_CELLS_PER_PANEL)+" × 4 KiB cells</div></div>";
+            "Instance #"+instance+" · 20 MiB · 40960 × 512-byte blocks · "+SURFACE_CELLS_PER_PANEL+" × 8 KiB cells</div></div>";
     };
 
     function installHostSurfaceMapView(owner)
@@ -320,7 +322,7 @@ function HD20Device(options)
                         var scrollX=Number(window.scrollX)||0;
                         var viewportLeft=(parseFloat(popup.style.left)||8)-scrollX;
                         var available=Math.max(120,Math.floor(window.innerWidth-viewportLeft-8));
-                        popup.style.width=Math.min(1056,available)+"px";
+                        popup.style.width=Math.min(456,available)+"px";
                         popup.style.maxWidth=available+"px";
                     }
                 }
