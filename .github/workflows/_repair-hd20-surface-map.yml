@@ -1,0 +1,29 @@
+name: Repair HD20 surface map
+permissions:
+  contents: write
+on:
+  push:
+    paths:
+      - "tests/_repair_hd20_surface_map.js"
+      - ".github/workflows/_repair-hd20-surface-map.yml"
+  workflow_dispatch:
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node tests/_repair_hd20_surface_map.js
+      - run: node --check res/EMU_CARD_LIRON.js
+      - name: Commit repair
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add res/EMU_CARD_LIRON.js
+          git commit -m "fix: repair HD20 surface-map target check"
+          git push origin HEAD:${GITHUB_REF_NAME}
