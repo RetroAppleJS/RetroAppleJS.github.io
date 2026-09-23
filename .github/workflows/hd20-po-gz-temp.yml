@@ -39,8 +39,22 @@ jobs:
       - name: GREEN - implement HD20 gzip behavior
         shell: bash
         run: |
-          sed -i 's/typeof(pako)==="undefined"/typeof pako === "undefined"/g; s/typeof(pako.ungzip)!=="function"/typeof pako.ungzip !== "function"/g; s/typeof(pako.gzip)!=="function"/typeof pako.gzip !== "function"/g' tests/_tmp_hd20_gzip_green.py
           python3 tests/_tmp_hd20_gzip_green.py
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path('res/EMU_CARD_LIRON.js')
+          s=p.read_text()
+          lines=[]
+          for line in s.splitlines(True):
+              if 'gzip support unavailable' not in line and 'if(typeof(pako)' in line and 'pako.ungzip' in line:
+                  indent=line[:len(line)-len(line.lstrip())]
+                  line=indent+'if(typeof pako === "undefined" || !pako || !pako.ungzip)\n'
+              elif 'gzip support unavailable' not in line and 'if(typeof(pako)' in line and 'pako.gzip' in line:
+                  indent=line[:len(line)-len(line.lstrip())]
+                  line=indent+'if(typeof pako === "undefined" || !pako || !pako.gzip)\n'
+              lines.append(line)
+          p.write_text(''.join(lines))
+          PY
 
       - name: Verify HD20 gzip and SmartPort regression suite
         shell: bash
