@@ -2268,22 +2268,14 @@ function AppleLiron()
             + "</div>";
     };
 
-    var topologyRestartPending=false;
     this.onDeviceTopologyChanged = function(change)
     {
-        if(topologyRestartPending) return true;
-        topologyRestartPending=true;
-        console.warn("Liron SmartPort topology changed; restarting the Apple II so ProDOS can rebuild its device table.",change || {});
-
-        var restartHost=function()
-        {
-            topologyRestartPending=false;
-            if(typeof(apple2plus)==="object" && apple2plus && typeof(apple2plus.restart)==="function")
-                apple2plus.restart();
-        };
-
-        if(typeof(setTimeout)==="function") setTimeout(restartHost,0);
-        else restartHost();
+        // Device attachment is a live hardware reconfiguration.  Do not
+        // reboot the emulated Apple II: a user may be deliberately changing
+        // SmartPort ordering (for example replacing Unit 1 with an HD20).
+        // Software such as ProDOS can rediscover the topology on the next
+        // explicit boot/reset chosen by the user.
+        if(bDebug) console.log("Liron SmartPort topology changed",change || {});
         return true;
     };
 
