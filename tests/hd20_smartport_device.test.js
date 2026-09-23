@@ -28,6 +28,22 @@ function loadContext()
     return context;
 }
 
+// Add Device resolves coID through the browser global, so a parse-time module
+// regression must fail here instead of silently rendering HD20 as unavailable.
+test('HD20 module defines the browser-global constructor required by the device picker',()=>{
+    const context={
+        console:{log(){},warn(){},error(){}},
+        Uint8Array,ArrayBuffer,Number,String,RangeError,
+        oEMU:{component:{IO:{ACTION_MAP:{Hslot:null,RD:new Array(0x1000),WR:new Array(0x1000)}}}}
+    };
+    vm.createContext(context);
+    assert.doesNotThrow(
+        ()=>vm.runInContext(fs.readFileSync(hd20Path,'utf8'),context,{filename:'EMU_DEVICE_HD20.js'}),
+        'HD20 module must parse and execute so globalThis.HD20Device is available to Add Device'
+    );
+    assert.equal(typeof context.HD20Device,'function');
+});
+
 test('HD20 publishes Apple Hard Disk 20 identity and SmartPort hard-disk metadata',()=>{
     const context=loadContext();
     const disk=new context.HD20Device();
