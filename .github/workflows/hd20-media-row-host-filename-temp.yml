@@ -1,0 +1,172 @@
+name: Temporary HD20 media row host filename fix
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: ["fix/hd20-media-row-host-filename"]
+    paths:
+      - ".github/workflows/hd20-media-row-host-filename-temp.yml"
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/hd20-media-row-host-filename
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: RED - encode host filename media-row behavior
+        shell: bash
+        run: |
+          cat >> tests/hd20_toolbox_media.test.js <<'EOF'
+
+          test('HD20 media row starts with the unformatted default and switches immediately to the loaded host filename',()=>{
+              const rows=[];
+              const filenameNode={textContent:'UNFORMATTED-HD20.po'};
+              let hd=null;
+
+              class FakeFileReader
+              {
+                  readAsArrayBuffer(file){this.onload({target:{result:file.bytes.buffer}});}
+              }
+
+              const context=loadLiron({
+                  FileReader:FakeFileReader,
+                  alert(){},
+                  document:{
+                      getElementById(id)
+                      {
+                          return id==='liron_unit_5_1_file_name' ? filenameNode : null;
+                      }
+                  },
+                  EMU_deviceMediaRowHTML(spec){rows.push(spec);return '<row>'+spec.label+'</row>';},
+                  EMU_mountDiskImage(bytes,slotN,deviceID,filename,unit)
+                  {
+                      assert.equal(slotN,6);
+                      assert.equal(deviceID,'HD20');
+                      assert.equal(unit,1);
+                      hd.loadImage(bytes,{filename});
+                      return true;
+                  },
+                  apple2plus:{hwObj(){return {io:{
+                      slot2ID(n){return String(n-1);},
+                      refreshDeviceToolboxes(){}
+                  }};}}
+              });
+
+              const card=new context.AppleLiron();
+              card.mount={slotN:6};
+              hd=new context.HD20Device();
+              card.devices=[hd];
+              assert.equal(hd.bindHost(card),true);
+
+              card.deviceToolSlotHTML({slotN:6,slotID:'5',toolboxID:'device_tool_5',devices:card.devices});
+              assert.equal(rows[0].fileDisplayName,'UNFORMATTED-HD20.po');
+
+              const file={name:'BLANK92-2.po',size:20971520,bytes:prodosImage('BLANK92')};
+              const input={files:[file],value:'C:\\fakepath\\BLANK92-2.po'};
+              assert.equal(card.deviceToolLoadFile(input,1),true);
+
+              assert.equal(hd.getState().mediaFilename,'BLANK92-2.po');
+              assert.equal(hd.getSuggestedFilename(),'BLANK92.po',
+                  'logical/download naming remains volume-derived');
+              assert.equal(filenameNode.textContent,'BLANK92-2.po',
+                  'the visible managed filename must update in place after load');
+
+              rows.length=0;
+              card.deviceToolSlotHTML({slotN:6,slotID:'5',toolboxID:'device_tool_5',devices:card.devices});
+              assert.equal(rows[0].fileDisplayName,'BLANK92-2.po',
+                  'a rebuilt media row must still prefer the loaded host filename');
+              assert.equal(rows[0].downloadTitle,'Save BLANK92.po',
+                  'download naming remains independent from the visible host filename');
+          });
+          EOF
+
+          set +e
+          node --test tests/hd20_toolbox_media.test.js
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then
+            echo "Expected RED failure, but host filename regression test passed before implementation."
+            exit 1
+          fi
+          echo "RED confirmed: the managed HD20 filename stays stale / volume-derived."
+
+      - name: GREEN - prefer host filename for the visible media row
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          card=Path('res/EMU_CARD_LIRON.js')
+          s=card.read_text()
+
+          old='''            var downloadable=exportable && (hardDisk || !!deviceState.mediaLoaded);\n            var logicalFilename=exportable ? String(device.getSuggestedFilename() || (hardDisk ? "HD20.po" : "UNIDISK.po")) : undefined;\n            var supportsSurfaceMap=(deviceCode==="UNIDISK" || deviceCode==="HD20") && typeof(device.getSurfaceMapGeometry)==="function";'''
+          new='''            var downloadable=exportable && (hardDisk || !!deviceState.mediaLoaded);\n            var logicalFilename=exportable ? String(device.getSuggestedFilename() || (hardDisk ? "HD20.po" : "UNIDISK.po")) : undefined;\n            var displayFilename=hardDisk\n                ? String(deviceState.mediaFilename || logicalFilename || "UNFORMATTED-HD20.po")\n                : undefined;\n            var supportsSurfaceMap=(deviceCode==="UNIDISK" || deviceCode==="HD20") && typeof(device.getSurfaceMapGeometry)==="function";'''
+          if old not in s:
+              raise SystemExit('deviceToolSlotHTML filename state pattern not found')
+          s=s.replace(old,new,1)
+
+          old='''                ,"fileName":deviceCode+"_"+unit\n                ,"fileDisplayName":hardDisk ? logicalFilename : undefined\n                ,"buttonTitle":(instanceHex ? ("Instance #"+instanceHex+": ") : ("Unit"+unit+": "))+(hardDisk ? "erase/reset disk" : "eject disk")'''
+          new='''                ,"fileName":deviceCode+"_"+unit\n                ,"fileDisplayName":displayFilename\n                ,"buttonTitle":(instanceHex ? ("Instance #"+instanceHex+": ") : ("Unit"+unit+": "))+(hardDisk ? "erase/reset disk" : "eject disk")'''
+          if old not in s:
+              raise SystemExit('fileDisplayName renderer pattern not found')
+          s=s.replace(old,new,1)
+
+          old='''        var downloadable=exportable && (hardDisk || !!state.mediaLoaded);\n        var filename=exportable ? String(device.getSuggestedFilename() || (hardDisk ? "HD20.po" : "UNIDISK.po")) : "";\n        var instance=deviceToolInstanceHex(device);'''
+          new='''        var downloadable=exportable && (hardDisk || !!state.mediaLoaded);\n        var filename=exportable ? String(device.getSuggestedFilename() || (hardDisk ? "HD20.po" : "UNIDISK.po")) : "";\n        var displayFilename=hardDisk\n            ? String(state.mediaFilename || filename || "UNFORMATTED-HD20.po")\n            : "";\n        var instance=deviceToolInstanceHex(device);'''
+          if old not in s:
+              raise SystemExit('deviceToolSyncMediaControls filename state pattern not found')
+          s=s.replace(old,new,1)
+
+          old='''        var download=document.getElementById(controlID+"_dump");\n        if(download)\n        {'''
+          new='''        var fileNameLabel=document.getElementById(controlID+"_file_name");\n        if(fileNameLabel && hardDisk) fileNameLabel.textContent=displayFilename;\n        var download=document.getElementById(controlID+"_dump");\n        if(download)\n        {'''
+          if old not in s:
+              raise SystemExit('media control DOM sync insertion pattern not found')
+          s=s.replace(old,new,1)
+
+          card.write_text(s)
+          PY
+
+      - name: Verify HD20 and Liron device suite
+        shell: bash
+        run: |
+          node --check res/EMU_CARD_LIRON.js
+          node --check tests/hd20_toolbox_media.test.js
+          node --test \
+            tests/device_attachment_ui.test.js \
+            tests/device_instance_identity.test.js \
+            tests/liron_iwm.test.js \
+            tests/liron_smartport_bus.test.js \
+            tests/liron_smartport_transport.test.js \
+            tests/liron_readblock.test.js \
+            tests/liron_writeblock.test.js \
+            tests/smartport_port_metadata.test.js \
+            tests/hd20_smartport_device.test.js \
+            tests/hd20_writeblock.test.js \
+            tests/hd20_media_routing.test.js \
+            tests/hd20_toolbox_media.test.js \
+            tests/hd20_surface_map.test.js \
+            tests/liron_browser_mount.test.js \
+            tests/liron_toolbox.test.js \
+            tests/liron_toolbox_eject.test.js \
+            tests/liron_loader_diagnostics.test.js
+
+      - name: Commit verified fix and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "ChatGPT"
+          git config user.email "chatgpt@users.noreply.github.com"
+          git rm .github/workflows/hd20-media-row-host-filename-temp.yml
+          git add res/EMU_CARD_LIRON.js tests/hd20_toolbox_media.test.js
+          git commit -m "fix: show loaded HD20 filename in media row"
+          git fetch origin fix/hd20-media-row-host-filename
+          git rebase origin/fix/hd20-media-row-host-filename
+          git push origin HEAD:fix/hd20-media-row-host-filename
