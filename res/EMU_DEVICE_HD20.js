@@ -9,6 +9,12 @@ function HD20Device(options)
     const BLOCK_COUNT = 40960; // 20 MiB
     const DEVICE_TYPE = 0x02;  // SmartPort hard disk
     const DEVICE_SUBTYPE = 0x20; // non-removable hard disk
+    const SURFACE_COLUMNS = 16;
+    const SURFACE_ROWS = 64;
+    const SURFACE_PANELS = 2;
+    const SURFACE_BLOCKS_PER_PANEL = SURFACE_COLUMNS*SURFACE_ROWS; // 1024 = 512 KiB
+    const SURFACE_BLOCKS_PER_PAGE = SURFACE_BLOCKS_PER_PANEL*SURFACE_PANELS; // 2048 = 1 MiB
+    const SURFACE_PAGE_COUNT = BLOCK_COUNT/SURFACE_BLOCKS_PER_PAGE; // 20
     const FW_VERSION = options.firmwareVersion===undefined ? 0x0100 : Number(options.firmwareVersion)&0xFFFF;
     const DEVICE_NAME = String(options.name===undefined ? "HARD DISK 20" : options.name).slice(0,16);
 
@@ -19,6 +25,7 @@ function HD20Device(options)
         ,writeProtected:!!options.writeProtected
         ,mediaFilename:""
         ,dirty:false
+        ,lastBlock:null
     };
 
     var media = new Uint8Array(BLOCK_SIZE * BLOCK_COUNT);
@@ -164,6 +171,50 @@ function HD20Device(options)
     this.getUnit = function() { return state.unit; };
     this.getBlockSize = function() { return BLOCK_SIZE; };
     this.getBlockCount = function() { return BLOCK_COUNT; };
+    this.getLastBlock = function() { return state.lastBlock; };
+    this.getHeadSurfacePosition = function()
+    {
+        return Number.isInteger(state.lastBlock)
+            ? this.blockToSurfaceCell(state.lastBlock)
+            : null;
+    };
+    this.getSurfaceMapGeometry = function()
+    {
+        return {
+             "kind":"logical-block-pages"
+            ,"panels":SURFACE_PANELS
+            ,"columnsPerPanel":SURFACE_COLUMNS
+            ,"rowsPerPanel":SURFACE_ROWS
+            ,"blocksPerPanel":SURFACE_BLOCKS_PER_PANEL
+            ,"blocksPerPage":SURFACE_BLOCKS_PER_PAGE
+            ,"pageCount":SURFACE_PAGE_COUNT
+            ,"bytesPerBlock":BLOCK_SIZE
+            ,"totalBlocks":BLOCK_COUNT
+            ,"totalBytes":BLOCK_COUNT*BLOCK_SIZE
+        };
+    };
+    this.surfaceCellToBlock = function(page,panel,row,column)
+    {
+        page=Number(page); panel=Number(panel); row=Number(row); column=Number(column);
+        if(!Number.isInteger(page) || page<0 || page>=SURFACE_PAGE_COUNT ||
+           !Number.isInteger(panel) || panel<0 || panel>=SURFACE_PANELS ||
+           !Number.isInteger(row) || row<0 || row>=SURFACE_ROWS ||
+           !Number.isInteger(column) || column<0 || column>=SURFACE_COLUMNS)
+            return null;
+        return page*SURFACE_BLOCKS_PER_PAGE + panel*SURFACE_BLOCKS_PER_PANEL + row*SURFACE_COLUMNS + column;
+    };
+    this.blockToSurfaceCell = function(block)
+    {
+        block=Number(block);
+        if(!Number.isInteger(block) || block<0 || block>=BLOCK_COUNT) return null;
+        var page=Math.floor(block/SURFACE_BLOCKS_PER_PAGE);
+        var inPage=block-page*SURFACE_BLOCKS_PER_PAGE;
+        var panel=Math.floor(inPage/SURFACE_BLOCKS_PER_PANEL);
+        var inPanel=inPage-panel*SURFACE_BLOCKS_PER_PANEL;
+        var row=Math.floor(inPanel/SURFACE_COLUMNS);
+        var column=inPanel%SURFACE_COLUMNS;
+        return {"page":page,"panel":panel,"row":row,"column":column,"block":block,"offset":block*BLOCK_SIZE,"bytes":BLOCK_SIZE};
+    };
     this.getDeviceType = function() { return DEVICE_TYPE; };
     this.getDeviceSubtype = function() { return DEVICE_SUBTYPE; };
     this.getFirmwareVersion = function() { return FW_VERSION; };
@@ -194,6 +245,7 @@ function HD20Device(options)
         media=bytes;
         state.online=true;
         state.dirty=false;
+        state.lastBlock=null;
         state.mediaFilename = metadata && metadata.filename
             ? String(metadata.filename).split(/[\\/]/).pop()
             : "";
@@ -211,6 +263,7 @@ function HD20Device(options)
         state.online=true;
         state.mediaFilename="";
         state.dirty=false;
+        state.lastBlock=null;
         notifyFilenameChange(previous);
         return true;
     };
@@ -223,6 +276,7 @@ function HD20Device(options)
             return {"error":0x27,"data":new Uint8Array(0)};
 
         var offset=blockNumber*BLOCK_SIZE;
+        state.lastBlock=blockNumber;
         return {"error":0x00,"data":media.slice(offset,offset+BLOCK_SIZE)};
     };
 
@@ -249,6 +303,7 @@ function HD20Device(options)
         var previous=blockNumber===2 ? suggestedFilename() : null;
         media.set(data,blockNumber*BLOCK_SIZE);
         state.dirty=true;
+        state.lastBlock=blockNumber;
         if(previous!==null) notifyFilenameChange(previous);
         return {"error":0x00};
     };
@@ -266,6 +321,7 @@ function HD20Device(options)
         var previous=suggestedFilename();
         media.fill(0);
         state.dirty=true;
+        state.lastBlock=null;
         notifyFilenameChange(previous);
         return {"error":0x00};
     };
@@ -299,6 +355,7 @@ function HD20Device(options)
             ,"logicalFilename":suggestedFilename()
             ,"volumeName":volumeName()
             ,"dirty":state.dirty
+            ,"lastBlock":state.lastBlock
         };
     };
 }
