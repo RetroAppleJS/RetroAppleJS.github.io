@@ -232,3 +232,39 @@ test('open UniDisk popup refreshes the same instance to no-media after eject',()
     assert.equal(card.deviceToolSurfaceMapRefresh(),true);
     assert.match(text.innerHTML,/No media loaded/);
 });
+
+test('UniDisk Surface Map capability button toggles the popup open and closed',()=>{
+    const popup={hidden:true};
+    const context=loadCard({
+        document:{getElementById(id){return id==='lironSurfaceMap_popup'?popup:null;}},
+        oCOM:{POPUP:{off(id){assert.equal(id,'lironSurfaceMap_popup');popup.hidden=true;}}}
+    });
+    const {card}=mountedDisk(context);
+
+    let opens=0;
+    let syncStops=0;
+    card.deviceToolSurfaceMap=function(unit,hash)
+    {
+        assert.equal(unit,1);
+        assert.equal(hash,0x9B05);
+        opens++;
+        popup.hidden=false;
+        return true;
+    };
+    card.deviceToolSurfaceMapToggleSync=function(force)
+    {
+        if(force===false) syncStops++;
+        return false;
+    };
+
+    assert.equal(card.deviceToolSurfaceMapToggle(1,0x9B05),true);
+    assert.equal(popup.hidden,false);
+
+    assert.equal(card.deviceToolSurfaceMapToggle(1,0x9B05),false);
+    assert.equal(popup.hidden,true);
+    assert.equal(syncStops,1);
+
+    assert.equal(card.deviceToolSurfaceMapToggle(1,0x9B05),true);
+    assert.equal(popup.hidden,false);
+    assert.equal(opens,2);
+});
