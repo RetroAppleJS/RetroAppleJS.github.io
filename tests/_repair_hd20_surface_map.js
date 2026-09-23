@@ -2,9 +2,8 @@
 const fs=require('node:fs');
 const path='res/EMU_CARD_LIRON.js';
 let src=fs.readFileSync(path,'utf8');
-const bad='typeof(device.getSurfaceMapGeometry)!==="function"';
-const good='typeof(device.getSurfaceMapGeometry)!="function"';
-if(!src.includes(bad)) throw new Error('repair target not found');
-src=src.replace(bad,good);
+const matches=src.match(/!==="/g)||[];
+if(matches.length<1) throw new Error('no malformed strict-inequality tokens found');
+src=src.replace(/!==="/g,'!=="');
 fs.writeFileSync(path,src);
-console.log('repaired HD20 surface-map syntax');
+console.log('repaired',matches.length,'HD20 surface-map strict-inequality tokens');
