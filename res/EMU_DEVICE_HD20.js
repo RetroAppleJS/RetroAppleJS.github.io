@@ -9,12 +9,12 @@ function HD20Device(options)
     const BLOCK_COUNT = 40960; // 20 MiB
     const DEVICE_TYPE = 0x02;  // SmartPort hard disk
     const DEVICE_SUBTYPE = 0x20; // non-removable hard disk
-    const SURFACE_COLUMNS = 16;
-    const SURFACE_ROWS = 64;
+    const SURFACE_COLUMNS = 160;
+    const SURFACE_ROWS = 128;
     const SURFACE_PANELS = 2;
-    const SURFACE_BLOCKS_PER_PANEL = SURFACE_COLUMNS*SURFACE_ROWS; // 1024 = 512 KiB
-    const SURFACE_BLOCKS_PER_PAGE = SURFACE_BLOCKS_PER_PANEL*SURFACE_PANELS; // 2048 = 1 MiB
-    const SURFACE_PAGE_COUNT = BLOCK_COUNT/SURFACE_BLOCKS_PER_PAGE; // 20
+    const SURFACE_BLOCKS_PER_PANEL = SURFACE_COLUMNS*SURFACE_ROWS; // 20480 = 10 MiB
+    const SURFACE_BLOCKS_PER_PAGE = SURFACE_BLOCKS_PER_PANEL*SURFACE_PANELS; // 40960 = 20 MiB
+    const SURFACE_PAGE_COUNT = BLOCK_COUNT/SURFACE_BLOCKS_PER_PAGE; // 1
     const FW_VERSION = options.firmwareVersion===undefined ? 0x0100 : Number(options.firmwareVersion)&0xFFFF;
     const DEVICE_NAME = String(options.name===undefined ? "HARD DISK 20" : options.name).slice(0,16);
 
@@ -181,7 +181,7 @@ function HD20Device(options)
     this.getSurfaceMapGeometry = function()
     {
         return {
-             "kind":"logical-block-pages"
+             "kind":"logical-block-surface"
             ,"panels":SURFACE_PANELS
             ,"columnsPerPanel":SURFACE_COLUMNS
             ,"rowsPerPanel":SURFACE_ROWS
