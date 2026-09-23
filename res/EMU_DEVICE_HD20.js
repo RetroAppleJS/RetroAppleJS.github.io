@@ -54,7 +54,6 @@ function HD20Device(options)
 
     function statusByte()
     {
-        // Block device, writable/readable, format capable; online is dynamic.
         var value = 0xE8;
         if(state.online) value |= 0x10;
         if(state.writeProtected) value |= 0x04;
@@ -80,7 +79,6 @@ function HD20Device(options)
     {
         var out = new Uint8Array(25);
         out.fill(0x20,5,21);
-
         out[0] = statusByte();
         putBlockCount(out,1);
         out[4] = DEVICE_NAME.length;
@@ -94,17 +92,12 @@ function HD20Device(options)
 
     function volumeName()
     {
-        // ProDOS volume directory starts at block 2.  The first directory entry
-        // begins at byte 4; its high nibble is $F for a volume-header entry and
-        // its low nibble contains the 1..15 character volume-name length.
         if(media===null || media.length<(3*BLOCK_SIZE)) return "";
         var offset=(2*BLOCK_SIZE)+4;
         var storageAndLength=media[offset]&0xFF;
         if((storageAndLength&0xF0)!==0xF0) return "";
-
         var length=storageAndLength&0x0F;
         if(length<1 || length>15) return "";
-
         var name="";
         for(var i=0;i<length;i++)
         {
@@ -112,9 +105,6 @@ function HD20Device(options)
             if(ch<0x20 || ch>0x7E) return "";
             name+=String.fromCharCode(ch);
         }
-
-        // ProDOS volume names begin with a letter and otherwise use letters,
-        // digits and periods. Reject incidental block-2 data as a host filename.
         return /^[A-Z][A-Z0-9.]{0,14}$/.test(name) ? name : "";
     }
 
@@ -137,8 +127,7 @@ function HD20Device(options)
     function notifyFilenameChange(previous)
     {
         if(previous===suggestedFilename()) return;
-        if(host && typeof(host.deviceMediaMetadataChanged)==="function")
-            host.deviceMediaMetadataChanged(device);
+        if(host && typeof(host.deviceMediaMetadataChanged)==="function") host.deviceMediaMetadataChanged(device);
     }
 
     function surfaceDensityPalette()
@@ -180,8 +169,7 @@ function HD20Device(options)
         var end=(endBlock+1)*BLOCK_SIZE;
         var bytes=end-start;
         var nonzero=0, sum=0;
-        if(!media || start<0 || end>media.length || bytes<=0)
-            return {"pct":0,"nonzero":0,"avg":0};
+        if(!media || start<0 || end>media.length || bytes<=0) return {"pct":0,"nonzero":0,"avg":0};
         for(var i=start;i<end;i++)
         {
             var value=media[i]&0xFF;
@@ -249,8 +237,7 @@ function HD20Device(options)
                         (bandStart?"border-top-width:2px;":"")+
                         (isHead?"outline:2px solid #FFF;outline-offset:-1px;":"");
                     var tip="Blocks "+blockRange.startBlock+"–"+blockRange.endBlock+" · 4 KiB · offset "+blockRange.offset+"–"+(blockRange.offset+blockRange.bytes-1)+
-                        " · nonzero="+density.nonzero+"/"+blockRange.bytes+" · avg="+density.avg+
-                        (isHead?" · Head block "+head.block:"");
+                        " · nonzero="+density.nonzero+"/"+blockRange.bytes+" · avg="+density.avg+(isHead?" · Head block "+head.block:"");
                     out += "<span class=\"liron-surface-cell active"+(isHead?" liron-surface-head":"")+"\" style=\""+style+
                         "\" data-surface-cell=\"1\" data-active=\"1\" data-density=\""+density.pct+"\" data-page=\"0\" data-panel=\""+panel+"\" data-row=\""+row+"\" data-column=\""+column+
                         "\" data-block=\""+blockRange.startBlock+"\" data-start-block=\""+blockRange.startBlock+"\" data-end-block=\""+blockRange.endBlock+"\" data-offset=\""+blockRange.offset+"\" data-head=\""+(isHead?"1":"0")+"\" title=\""+surfaceEscape(tip)+"\"></span>";
@@ -266,7 +253,6 @@ function HD20Device(options)
     {
         if(!owner || owner.__hd20FullSurfaceViewInstalled) return;
         if(typeof(owner.deviceToolSurfaceMapHTML)!=="function") return;
-
         var baseHTML=owner.deviceToolSurfaceMapHTML;
         var baseToggleSync=typeof(owner.deviceToolSurfaceMapToggleSync)==="function" ? owner.deviceToolSurfaceMapToggleSync : null;
         var basePosition=typeof(owner.deviceToolSurfaceMapPosition)==="function" ? owner.deviceToolSurfaceMapPosition : null;
@@ -277,8 +263,7 @@ function HD20Device(options)
         owner.deviceToolSurfaceMapHTML=function(unit,expectedHash)
         {
             var target=typeof(owner.getHD20)==="function" ? owner.getHD20(unit) : null;
-            if(target && Number(target.attach?.hash)===Number(expectedHash) && typeof(target.renderSurfaceMapHTML)==="function")
-                return target.renderSurfaceMapHTML(surfaceHeader(owner,syncEnabled));
+            if(target && Number(target.attach?.hash)===Number(expectedHash) && typeof(target.renderSurfaceMapHTML)==="function") return target.renderSurfaceMapHTML(surfaceHeader(owner,syncEnabled));
             return baseHTML.call(owner,unit,expectedHash);
         };
 
@@ -286,7 +271,7 @@ function HD20Device(options)
         {
             if(typeof(document)==="undefined" || !document.getElementById) return false;
             var text=document.getElementById("lironSurfaceMap_popup_text");
-            if(!text || typeof(text.querySelector)!==="function") return false;
+            if(!text || typeof text.querySelector !== "function") return false;
             var root=text.querySelector('[data-hd20-surface-map="1"]');
             if(!root) return false;
             var unit=Number(root.dataset ? root.dataset.unit : root.getAttribute("data-unit"));
@@ -305,7 +290,6 @@ function HD20Device(options)
                 return result;
             };
         }
-
         if(baseRefresh)
         {
             owner.deviceToolSurfaceMapRefresh=function()
@@ -314,7 +298,6 @@ function HD20Device(options)
                 return baseRefresh.call(owner);
             };
         }
-
         if(baseMonitoring)
         {
             owner.deviceToolSurfaceMapMonitoring=function()
@@ -323,14 +306,13 @@ function HD20Device(options)
                 return baseMonitoring.call(owner);
             };
         }
-
         if(basePosition)
         {
             owner.deviceToolSurfaceMapPosition=function(unit)
             {
                 var result=basePosition.call(owner,unit);
                 var target=typeof(owner.getHD20)==="function" ? owner.getHD20(unit) : null;
-                if(target && typeof(document)!==="undefined" && document.getElementById && typeof(window)!==="undefined")
+                if(target && typeof(document)!=="undefined" && document.getElementById && typeof(window)!==="undefined")
                 {
                     var popup=document.getElementById("lironSurfaceMap_popup");
                     if(popup)
@@ -345,14 +327,12 @@ function HD20Device(options)
                 return result;
             };
         }
-
         owner.__hd20FullSurfaceViewInstalled=true;
     }
 
     this.bindHost = function(owner)
     {
-        if(!owner || owner.id?.PCODE!=="LIRON" || typeof(owner.attachSmartPortDevice)!=="function")
-            return false;
+        if(!owner || owner.id?.PCODE!=="LIRON" || typeof(owner.attachSmartPortDevice)!=="function") return false;
         if(host && host!==owner) return false;
         if(owner.attachSmartPortDevice(this)!==this) return false;
         host=owner;
@@ -373,8 +353,7 @@ function HD20Device(options)
     this.setUnit = function(unit)
     {
         unit = Number(unit);
-        if(!Number.isInteger(unit) || unit<0 || unit>8)
-            throw new RangeError("SmartPort unit must be an integer from 0 through 8");
+        if(!Number.isInteger(unit) || unit<0 || unit>8) throw new RangeError("SmartPort unit must be an integer from 0 through 8");
         state.unit = unit;
         this.ports.smartport.unit = unit>0 ? unit : null;
         return state.unit;
@@ -386,9 +365,7 @@ function HD20Device(options)
     this.getLastBlock = function() { return state.lastBlock; };
     this.getHeadSurfacePosition = function()
     {
-        return Number.isInteger(state.lastBlock)
-            ? this.blockToSurfaceCell(state.lastBlock)
-            : null;
+        return Number.isInteger(state.lastBlock) ? this.blockToSurfaceCell(state.lastBlock) : null;
     };
     this.getSurfaceMapGeometry = function()
     {
@@ -411,11 +388,7 @@ function HD20Device(options)
     this.surfaceCellToBlock = function(page,panel,row,column)
     {
         page=Number(page); panel=Number(panel); row=Number(row); column=Number(column);
-        if(!Number.isInteger(page) || page<0 || page>=SURFACE_PAGE_COUNT ||
-           !Number.isInteger(panel) || panel<0 || panel>=SURFACE_PANELS ||
-           !Number.isInteger(row) || row<0 || row>=SURFACE_ROWS ||
-           !Number.isInteger(column) || column<0 || column>=SURFACE_COLUMNS)
-            return null;
+        if(!Number.isInteger(page) || page<0 || page>=SURFACE_PAGE_COUNT || !Number.isInteger(panel) || panel<0 || panel>=SURFACE_PANELS || !Number.isInteger(row) || row<0 || row>=SURFACE_ROWS || !Number.isInteger(column) || column<0 || column>=SURFACE_COLUMNS) return null;
         var cell=panel*SURFACE_CELLS_PER_PANEL + row*SURFACE_COLUMNS + column;
         return page*SURFACE_BLOCKS_PER_PAGE + cell*SURFACE_BLOCKS_PER_CELL;
     };
@@ -424,12 +397,7 @@ function HD20Device(options)
         var startBlock=this.surfaceCellToBlock(page,panel,row,column);
         if(startBlock===null) return null;
         var endBlock=Math.min(BLOCK_COUNT-1,startBlock+SURFACE_BLOCKS_PER_CELL-1);
-        return {
-             "startBlock":startBlock
-            ,"endBlock":endBlock
-            ,"offset":startBlock*BLOCK_SIZE
-            ,"bytes":(endBlock-startBlock+1)*BLOCK_SIZE
-        };
+        return {"startBlock":startBlock,"endBlock":endBlock,"offset":startBlock*BLOCK_SIZE,"bytes":(endBlock-startBlock+1)*BLOCK_SIZE};
     };
     this.blockToSurfaceCell = function(block)
     {
@@ -452,32 +420,19 @@ function HD20Device(options)
     this.getVolumeName = function() { return volumeName(); };
     this.getSuggestedFilename = function() { return suggestedFilename(); };
 
-    this.setOnline = function(value)
-    {
-        state.online = !!value;
-        return state.online;
-    };
-
-    this.setWriteProtected = function(value)
-    {
-        state.writeProtected = !!value;
-        return state.writeProtected;
-    };
+    this.setOnline = function(value) { state.online = !!value; return state.online; };
+    this.setWriteProtected = function(value) { state.writeProtected = !!value; return state.writeProtected; };
 
     this.loadImage = function(data,metadata)
     {
         var previous=suggestedFilename();
         var bytes = Uint8Array.from(data || []);
-        if(bytes.length!==BLOCK_SIZE*BLOCK_COUNT)
-            throw new RangeError("Apple Hard Disk 20 image must be exactly 20971520 bytes");
-
+        if(bytes.length!==BLOCK_SIZE*BLOCK_COUNT) throw new RangeError("Apple Hard Disk 20 image must be exactly 20971520 bytes");
         media=bytes;
         state.online=true;
         state.dirty=false;
         state.lastBlock=null;
-        state.mediaFilename = metadata && metadata.filename
-            ? String(metadata.filename).split(/[\\/]/).pop()
-            : "";
+        state.mediaFilename = metadata && metadata.filename ? String(metadata.filename).split(/[\\/]/).pop() : "";
         notifyFilenameChange(previous);
         return media.length;
     };
@@ -485,10 +440,8 @@ function HD20Device(options)
     this.ejectImage = function()
     {
         var previous=suggestedFilename();
-        if(media===null || media.length!==BLOCK_SIZE*BLOCK_COUNT)
-            media=new Uint8Array(BLOCK_SIZE*BLOCK_COUNT);
-        else
-            media.fill(0);
+        if(media===null || media.length!==BLOCK_SIZE*BLOCK_COUNT) media=new Uint8Array(BLOCK_SIZE*BLOCK_COUNT);
+        else media.fill(0);
         state.online=true;
         state.mediaFilename="";
         state.dirty=false;
@@ -500,10 +453,7 @@ function HD20Device(options)
     this.readBlock = function(blockNumber)
     {
         blockNumber=Number(blockNumber);
-        if(!state.online || media===null || !Number.isInteger(blockNumber) ||
-           blockNumber<0 || blockNumber>=BLOCK_COUNT)
-            return {"error":0x27,"data":new Uint8Array(0)};
-
+        if(!state.online || media===null || !Number.isInteger(blockNumber) || blockNumber<0 || blockNumber>=BLOCK_COUNT) return {"error":0x27,"data":new Uint8Array(0)};
         var offset=blockNumber*BLOCK_SIZE;
         state.lastBlock=blockNumber;
         return {"error":0x00,"data":media.slice(offset,offset+BLOCK_SIZE)};
@@ -512,23 +462,10 @@ function HD20Device(options)
     this.writeBlock = function(blockNumber,data)
     {
         blockNumber=Number(blockNumber);
-
-        // SmartPort $2F OFFLINE: no mounted/online medium.
-        if(!state.online || media===null)
-            return {"error":0x2F};
-
-        // SmartPort $2B NOWRITE: medium/device is write protected.
-        if(state.writeProtected)
-            return {"error":0x2B};
-
-        // SmartPort $2D BADBLOCK: HD20 exposes logical blocks 0..40959.
-        if(!Number.isInteger(blockNumber) || blockNumber<0 || blockNumber>=BLOCK_COUNT)
-            return {"error":0x2D};
-
-        // SmartPort block writes are exactly one 512-byte logical block.
-        if(!data || typeof(data.length)!=="number" || data.length!==BLOCK_SIZE)
-            return {"error":0x27};
-
+        if(!state.online || media===null) return {"error":0x2F};
+        if(state.writeProtected) return {"error":0x2B};
+        if(!Number.isInteger(blockNumber) || blockNumber<0 || blockNumber>=BLOCK_COUNT) return {"error":0x2D};
+        if(!data || typeof(data.length)!=="number" || data.length!==BLOCK_SIZE) return {"error":0x27};
         var previous=blockNumber===2 ? suggestedFilename() : null;
         media.set(data,blockNumber*BLOCK_SIZE);
         state.dirty=true;
@@ -539,14 +476,8 @@ function HD20Device(options)
 
     this.format = function()
     {
-        // SmartPort FORMAT prepares all blocks for read/write use.  For the
-        // memory-backed HD20 image a deterministic zero fill is sufficient;
-        // ProDOS lays down its own filesystem structures afterwards.
-        if(!state.online || media===null)
-            return {"error":0x2F};
-        if(state.writeProtected)
-            return {"error":0x2B};
-
+        if(!state.online || media===null) return {"error":0x2F};
+        if(state.writeProtected) return {"error":0x2B};
         var previous=suggestedFilename();
         media.fill(0);
         state.dirty=true;
@@ -561,7 +492,7 @@ function HD20Device(options)
         {
             case 0x00: return {"error":0x00,"data":deviceStatus()};
             case 0x03: return {"error":0x00,"data":deviceInformationBlock()};
-            default:   return {"error":0x01,"data":new Uint8Array(0)};
+            default: return {"error":0x01,"data":new Uint8Array(0)};
         }
     };
 
