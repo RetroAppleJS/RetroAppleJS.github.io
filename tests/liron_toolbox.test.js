@@ -197,21 +197,42 @@ test('loaded UniDisk media enables download and exports the exact .po image', ()
     assert.equal(downloads[0].data[819199],0xEE);
 });
 
-test('Liron schedules a machine restart after a live SmartPort topology change', () => {
+test('Liron keeps device topology live: no restart and the next HD20 reuses unit 1', () => {
     let restarts=0;
+    let timeouts=0;
     const warnings=[];
     const context=loadLiron({
         console:{log(){},error(){},warn(msg){warnings.push(String(msg));}},
-        setTimeout(fn){fn();return 1;},
+        setTimeout(){timeouts++;return 1;},
         apple2plus:{restart(){restarts++;}}
     });
     const card=new context.AppleLiron();
+    const disk=new context.UniDisk35Device();
 
-    assert.equal(typeof card.onDeviceTopologyChanged,'function');
-    assert.equal(card.onDeviceTopologyChanged({type:'attach',DCODE:'UNIDISK'}),true);
-    assert.equal(restarts,1,
-        'live SmartPort attach must reboot so ProDOS rebuilds its boot-time device table');
-    assert.ok(warnings.some(msg=>msg.includes('SmartPort topology changed')));
+    assert.equal(disk.bindHost(card),true);
+    assert.equal(disk.getUnit(),1);
+    assert.equal(card.onDeviceTopologyChanged({type:'attach',DCODE:'UNIDISK',device:disk}),true);
+
+    assert.equal(disk.unbindHost(card),true);
+    assert.equal(card.getBus().getDevice(1),null);
+    assert.equal(card.onDeviceTopologyChanged({type:'detach',DCODE:'UNIDISK',device:disk}),true);
+
+    let hdUnit=0;
+    const hd20={
+        id:{DCODE:'HD20',hostPCODE:'LIRON'},
+        getUnit(){return hdUnit;},
+        setUnit(unit){hdUnit=Number(unit);return hdUnit;}
+    };
+    assert.equal(card.attachSmartPortDevice(hd20),hd20);
+    assert.equal(hd20.getUnit(),1,
+        'after ejecting Unit 1, HD20 must take the first free SmartPort unit');
+    assert.equal(card.onDeviceTopologyChanged({type:'attach',DCODE:'HD20',device:hd20}),true);
+
+    assert.equal(restarts,0,
+        'attaching or detaching a SmartPort device must not restart the emulator');
+    assert.equal(timeouts,0,
+        'topology changes must not even schedule a deferred machine restart');
+    assert.deepEqual(warnings,[]);
 });
 
 test('successful Liron file load keeps the native file selection so the browser displays the filename', () => {
