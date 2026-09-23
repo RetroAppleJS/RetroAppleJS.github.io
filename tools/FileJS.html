@@ -80,6 +80,48 @@
         }
     }
 
+    function crc32_bytes(bytes)
+    {
+        var table = crc32_bytes.table;
+        if(!table)
+        {
+            table = new Uint32Array(256);
+            for(var n=0;n<256;n++)
+            {
+                var c=n;
+                for(var k=0;k<8;k++) c=(c&1) ? (0xEDB88320^(c>>>1)) : (c>>>1);
+                table[n]=c>>>0;
+            }
+            crc32_bytes.table=table;
+        }
+
+        var crc=0xFFFFFFFF;
+        for(var i=0;i<bytes.length;i++)
+            crc=(crc>>>8)^table[(crc^bytes[i])&0xFF];
+        return (crc^0xFFFFFFFF)>>>0;
+    }
+
+    function gzip_from_zlib(bin, zlib_data)
+    {
+        if(!zlib_data || zlib_data.length<6) throw new Error("Invalid zlib stream");
+
+        // pako.deflate() returns: 2-byte zlib header + raw DEFLATE + 4-byte Adler-32.
+        // A gzip member uses the same raw DEFLATE payload, but a different wrapper.
+        var deflate_data=zlib_data.subarray(2,zlib_data.length-4);
+        var gz=new Uint8Array(10+deflate_data.length+8);
+
+        // RFC 1952 header: ID1 ID2 CM FLG MTIME(4) XFL OS.
+        gz.set([0x1F,0x8B,0x08,0x00,0x00,0x00,0x00,0x00,0x00,0xFF],0);
+        gz.set(deflate_data,10);
+
+        // RFC 1952 trailer: CRC32 and input size, both little-endian.
+        var trailer=10+deflate_data.length;
+        var view=new DataView(gz.buffer,gz.byteOffset,gz.byteLength);
+        view.setUint32(trailer,crc32_bytes(bin),true);
+        view.setUint32(trailer+4,bin.length>>>0,true);
+        return gz;
+    }
+
     function load_base64_file(file_obj)
     {
         if(!file_obj) return;
@@ -146,9 +188,10 @@
                 // COMPRESSION ALGORITHM
                 var l1 = arrayBuffer.byteLength 
                 var bin = new Uint8Array(arrayBuffer);
-                const deflator = new pako.Deflate( { level: 9} );
-                deflator.push(bin, true);
-                var dump = deflator.result
+                var dump = pako.deflate(bin, { level: 9 });
+                var gz_dump = gzip_from_zlib(bin, dump);
+                var gz_url = window.URL.createObjectURL(new Blob([gz_dump], { type: "application/gzip" }));
+                var gz_filename = filename + ".gz";
                 var l2 = dump.byteLength;
                 try {  var l3 = oCOM.ArrayBufferTobase64(dump).length; }
                 catch({ n, m }) { alert("ArrayBufferTobase64:"+n+" "+m) }
@@ -193,6 +236,7 @@
                 var link =  "<div style='border:1px solid rgb(0,0,0,0)'>"
                             + brows
                             +"<a target=_blank href="+url+">[ZLIB_URL]</a>"
+                            + " <a href=\""+gz_url+"\" download=\""+gz_filename.replace(/&/g,"&amp;").replace(/\"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;")+"\">[ZLIB_GZ_FILE]</a>"
                             + " <a href=javascript:oCOM.POPUP.html(oCOM.DumpBase64('"+uri+"',255,'&lt;br&gt;'))>[ZLIB_BASE64]</a>"
                             + " <a href=javascript:oCOM.POPUP.html('var&nbsp;ui8&nbsp;=&nbsp;new&nbsp;Uint8Array(['+oCOM.DumpTxt('"+[...bin].map((v)=>"0x"+oCOM.getHexByte(v)).join(",")+"])',255,'&lt;br&gt;'))>[JS_HEX_LF]</a>"
                             + " <a href=javascript:oCOM.POPUP.html('var&nbsp;ui8&nbsp;=&nbsp;new&nbsp;Uint8Array(["+[...bin].map((v)=>"0x"+oCOM.getHexByte(v)).join(",")+"])')>[JS_HEX]</a>"
