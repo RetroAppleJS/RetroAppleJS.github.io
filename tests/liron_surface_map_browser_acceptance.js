@@ -163,12 +163,34 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
         assert.equal(map.metaAfterPanels,true,'metadata must be below the grids');
         assert.equal(map.hasLegend,false,'density map does not need a semantic legend');
         assert.ok(map.densities.length>1,'real disk image must produce more than one density value');
-        assert.ok(map.width<=308,'surface map popup must remain compact');
+        assert.ok(map.width<=328,'surface map popup must remain compact');
         assert.ok(map.scrollWidth<=map.clientWidth+1,'surface map popup must not scroll horizontally');
         assert.ok(map.left>=0 && map.right<=map.viewport+1,'surface map popup must fit the desktop viewport');
         assert.ok(map.toolboxRight!==null,'a visible peripheral toolbox must anchor the popup');
         assert.ok(Math.abs(map.left-(map.toolboxRight+5))<=2,'surface map popup must start about 5px right of the rightmost toolbox');
         assert.ok(Math.abs(map.top-map.toolboxTop)<=2,'surface map popup must align vertically with the rightmost toolbox');
+
+        const scrollPinned=await page.evaluate(()=>{
+            const popup=document.getElementById('lironSurfaceMap_popup');
+            const before=popup.getBoundingClientRect();
+            window.scrollBy(0,200);
+            const after=popup.getBoundingClientRect();
+            const anchorAfter=[...document.querySelectorAll('.toolbox')]
+                .filter(el=>{
+                    const style=getComputedStyle(el);
+                    const r=el.getBoundingClientRect();
+                    return !el.hidden && style.display!=='none' && style.visibility!=='hidden' && r.width>0 && r.height>0;
+                })
+                .map(el=>el.getBoundingClientRect())
+                .reduce((best,r)=>!best || r.right>best.right?r:best,null);
+            return {
+                moved:after.top-before.top,
+                anchorDelta:anchorAfter ? after.top-anchorAfter.top : null
+            };
+        });
+        assert.ok(scrollPinned.moved<-150,'surface map must scroll with the page instead of staying fixed to the viewport');
+        if(scrollPinned.anchorDelta!==null)
+            assert.ok(Math.abs(scrollPinned.anchorDelta)<=2,'surface map must stay vertically pinned to the toolbox while scrolling');
 
         const syncResult=await page.evaluate(({slotN})=>{
             const card=apple2plus.hwObj().io.SLOT2obj(slotN);
@@ -181,15 +203,18 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
             disk.readBlock(36);
             card.deviceToolSurfaceMapUpdate();
             const after=document.querySelector('#lironSurfaceMap_popup_text [data-head="1"]');
+            const outline=after ? getComputedStyle(after).outlineColor : '';
             card.deviceToolSurfaceMapToggleSync(false);
 
             return {
                 before:before ? {side:before.dataset.side,track:before.dataset.track,sector:before.dataset.sector} : null,
-                after:after ? {side:after.dataset.side,track:after.dataset.track,sector:after.dataset.sector} : null
+                after:after ? {side:after.dataset.side,track:after.dataset.track,sector:after.dataset.sector} : null,
+                outline
             };
         },setup);
         assert.deepEqual(syncResult.before,{side:'0',track:'1',sector:'0'});
         assert.deepEqual(syncResult.after,{side:'1',track:'1',sector:'0'});
+        assert.equal(syncResult.outline,'rgb(255, 255, 255)','live head indicator must match Disk II white');
 
         await page.evaluate(id=>document.getElementById(id).click(),setup.buttonID);
         await page.waitForFunction(({slotN})=>{

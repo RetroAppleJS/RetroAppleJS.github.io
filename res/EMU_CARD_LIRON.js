@@ -1842,7 +1842,7 @@ function AppleLiron()
                         var isHead=!!(head && head.side===side && head.track===track && head.sector===sector);
                         var tip="Side "+side+" · Track "+track+" · Sector "+sector+" · Block "+block+" · 512 bytes · nonzero="+density.nonzero+"/512 · avg="+density.avg;
                         out += "<span class=\"liron-surface-cell active"+(isHead?" liron-surface-head":"")+"\" style=\""+
-                            deviceToolSurfaceDensityCellStyle(density.pct,true)+(isHead?"outline:2px solid #FF8080;outline-offset:-1px;":"")+
+                            deviceToolSurfaceDensityCellStyle(density.pct,true)+(isHead?"outline:2px solid #FFF;outline-offset:-1px;":"")+
                             "\" data-surface-cell=\"1\" data-active=\"1\" data-density=\""+density.pct+"\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+
                             "\" data-block=\""+block+"\" data-offset=\""+offset+"\" data-head=\""+(isHead?"1":"0")+"\" title=\""+deviceToolSurfaceEscape(tip)+"\"></span>";
                     }
@@ -1897,7 +1897,7 @@ function AppleLiron()
             var headCell=text.querySelector(selector);
             if(headCell)
             {
-                headCell.style.outline="2px solid #FF8080";
+                headCell.style.outline="2px solid #FFF";
                 headCell.style.outlineOffset="-1px";
                 if(headCell.classList) headCell.classList.add("liron-surface-head");
                 if(headCell.dataset) headCell.dataset.head="1";
@@ -1986,17 +1986,21 @@ function AppleLiron()
                 anchorRect=anchor.getBoundingClientRect();
         }
 
-        var left=anchorRect ? Math.round(anchorRect.right)+5 : 8;
-        var top=anchorRect ? Math.max(8,Math.round(anchorRect.top)) : 8;
-        var available=Math.max(120,Math.floor(window.innerWidth-left-8));
+        var scrollX=Number(window.scrollX)||0;
+        var scrollY=Number(window.scrollY)||0;
+        var viewportLeft=anchorRect ? Math.round(anchorRect.right)+5 : 8;
+        var viewportTop=anchorRect ? Math.max(8,Math.round(anchorRect.top)) : 8;
+        var left=viewportLeft+scrollX;
+        var top=viewportTop+scrollY;
+        var available=Math.max(120,Math.floor(window.innerWidth-viewportLeft-8));
 
-        popup.style.position="fixed";
+        popup.style.position="absolute";
         popup.style.left=left+"px";
         popup.style.right="auto";
         popup.style.top=top+"px";
-        popup.style.width=Math.min(306,available)+"px";
+        popup.style.width=Math.min(326,available)+"px";
         popup.style.maxWidth=available+"px";
-        popup.style.maxHeight="calc(100vh - "+(top+8)+"px)";
+        popup.style.maxHeight="calc(100vh - "+(viewportTop+8)+"px)";
         popup.style.overflow="auto";
         popup.style.padding="5px";
         popup.style.margin="0";

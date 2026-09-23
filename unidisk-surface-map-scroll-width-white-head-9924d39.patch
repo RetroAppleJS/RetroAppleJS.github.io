@@ -1,0 +1,146 @@
+diff --git a/res/EMU_CARD_LIRON.js b/res/EMU_CARD_LIRON.js
+--- a/res/EMU_CARD_LIRON.js
++++ b/res/EMU_CARD_LIRON.js
+@@ -1841,7 +1841,7 @@
+                         var isHead=!!(head && head.side===side && head.track===track && head.sector===sector);
+                         var tip="Side "+side+" · Track "+track+" · Sector "+sector+" · Block "+block+" · 512 bytes · nonzero="+density.nonzero+"/512 · avg="+density.avg;
+                         out += "<span class=\"liron-surface-cell active"+(isHead?" liron-surface-head":"")+"\" style=\""+
+-                            deviceToolSurfaceDensityCellStyle(density.pct,true)+(isHead?"outline:2px solid #FF8080;outline-offset:-1px;":"")+
++                            deviceToolSurfaceDensityCellStyle(density.pct,true)+(isHead?"outline:2px solid #FFF;outline-offset:-1px;":"")+
+                             "\" data-surface-cell=\"1\" data-active=\"1\" data-density=\""+density.pct+"\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+
+                             "\" data-block=\""+block+"\" data-offset=\""+offset+"\" data-head=\""+(isHead?"1":"0")+"\" title=\""+deviceToolSurfaceEscape(tip)+"\"></span>";
+                     }
+@@ -1892,7 +1892,7 @@
+             var headCell=text.querySelector(selector);
+             if(headCell)
+             {
+-                headCell.style.outline="2px solid #FF8080";
++                headCell.style.outline="2px solid #FFF";
+                 headCell.style.outlineOffset="-1px";
+                 if(headCell.classList) headCell.classList.add("liron-surface-head");
+                 if(headCell.dataset) headCell.dataset.head="1";
+@@ -1983,17 +1983,21 @@
+                 anchorRect=anchor.getBoundingClientRect();
+         }
+ 
+-        var left=anchorRect ? Math.round(anchorRect.right)+5 : 8;
+-        var top=anchorRect ? Math.max(8,Math.round(anchorRect.top)) : 8;
+-        var available=Math.max(120,Math.floor(window.innerWidth-left-8));
++        var scrollX=Number(window.scrollX)||0;
++        var scrollY=Number(window.scrollY)||0;
++        var viewportLeft=anchorRect ? Math.round(anchorRect.right)+5 : 8;
++        var viewportTop=anchorRect ? Math.max(8,Math.round(anchorRect.top)) : 8;
++        var left=viewportLeft+scrollX;
++        var top=viewportTop+scrollY;
++        var available=Math.max(120,Math.floor(window.innerWidth-viewportLeft-8));
+ 
+-        popup.style.position="fixed";
++        popup.style.position="absolute";
+         popup.style.left=left+"px";
+         popup.style.right="auto";
+         popup.style.top=top+"px";
+-        popup.style.width=Math.min(306,available)+"px";
++        popup.style.width=Math.min(326,available)+"px";
+         popup.style.maxWidth=available+"px";
+-        popup.style.maxHeight="calc(100vh - "+(top+8)+"px)";
++        popup.style.maxHeight="calc(100vh - "+(viewportTop+8)+"px)";
+         popup.style.overflow="auto";
+         popup.style.padding="5px";
+         popup.style.margin="0";
+diff --git a/tests/liron_surface_map.test.js b/tests/liron_surface_map.test.js
+--- a/tests/liron_surface_map.test.js
++++ b/tests/liron_surface_map.test.js
+@@ -142,7 +142,7 @@
+ 
+     const html=card.deviceToolSurfaceMapHTML(1,0x9B05);
+     assert.match(html,/data-side="0" data-track="1" data-sector="0"[^>]*data-head="1"/);
+-    assert.match(html,/outline:2px solid #FF8080/);
++    assert.match(html,/outline:2px solid #FFF/);
+ });
+ 
+ test('UniDisk popup joins the rightmost visible toolbox with a five pixel gap',()=>{
+@@ -166,6 +166,8 @@
+         window:{
+             innerWidth:1400,
+             innerHeight:900,
++            scrollX:40,
++            scrollY:300,
+             getComputedStyle(){return {display:'block',visibility:'visible'};}
+         }
+     });
+@@ -173,10 +175,11 @@
+     const {card}=mountedDisk(context);
+ 
+     assert.equal(card.deviceToolSurfaceMapPosition(1),true);
+-    assert.equal(popup.style.left,'625px');
++    assert.equal(popup.style.position,'absolute');
++    assert.equal(popup.style.left,'665px');
+     assert.equal(popup.style.right,'auto');
+-    assert.equal(popup.style.top,'58px');
+-    assert.equal(popup.style.width,'306px');
++    assert.equal(popup.style.top,'358px');
++    assert.equal(popup.style.width,'326px');
+ });
+ 
+ test('UniDisk surface map keeps exact instance identity and handles stale or empty media explicitly',()=>{
+diff --git a/tests/liron_surface_map_browser_acceptance.js b/tests/liron_surface_map_browser_acceptance.js
+--- a/tests/liron_surface_map_browser_acceptance.js
++++ b/tests/liron_surface_map_browser_acceptance.js
+@@ -157,7 +157,7 @@
+         assert.equal(map.metaAfterPanels,true,'metadata must be below the grids');
+         assert.equal(map.hasLegend,false,'density map does not need a semantic legend');
+         assert.ok(map.densities.length>1,'real disk image must produce more than one density value');
+-        assert.ok(map.width<=308,'surface map popup must remain compact');
++        assert.ok(map.width<=328,'surface map popup must remain compact');
+         assert.ok(map.scrollWidth<=map.clientWidth+1,'surface map popup must not scroll horizontally');
+         assert.ok(map.left>=0 && map.right<=map.viewport+1,'surface map popup must fit the desktop viewport');
+         assert.ok(map.toolboxRight!==null,'a visible peripheral toolbox must anchor the popup');
+@@ -165,6 +165,28 @@
+         assert.ok(Math.abs(map.left-(map.toolboxRight+5))<=2,'surface map popup must start about 5px right of the rightmost toolbox');
+         assert.ok(Math.abs(map.top-map.toolboxTop)<=2,'surface map popup must align vertically with the rightmost toolbox');
+ 
++        const scrollPinned=await page.evaluate(()=>{
++            const popup=document.getElementById('lironSurfaceMap_popup');
++            const before=popup.getBoundingClientRect();
++            window.scrollBy(0,200);
++            const after=popup.getBoundingClientRect();
++            const anchorAfter=[...document.querySelectorAll('.toolbox')]
++                .filter(el=>{
++                    const style=getComputedStyle(el);
++                    const r=el.getBoundingClientRect();
++                    return !el.hidden && style.display!=='none' && style.visibility!=='hidden' && r.width>0 && r.height>0;
++                })
++                .map(el=>el.getBoundingClientRect())
++                .reduce((best,r)=>!best || r.right>best.right?r:best,null);
++            return {
++                moved:after.top-before.top,
++                anchorDelta:anchorAfter ? after.top-anchorAfter.top : null
++            };
++        });
++        assert.ok(scrollPinned.moved<-150,'surface map must scroll with the page instead of staying fixed to the viewport');
++        if(scrollPinned.anchorDelta!==null)
++            assert.ok(Math.abs(scrollPinned.anchorDelta)<=2,'surface map must stay vertically pinned to the toolbox while scrolling');
++
+         const syncResult=await page.evaluate(({slotN})=>{
+             const card=apple2plus.hwObj().io.SLOT2obj(slotN);
+             const disk=card.getBus().getDevice(1);
+@@ -175,15 +200,18 @@
+             disk.readBlock(36);
+             card.deviceToolSurfaceMapUpdate();
+             const after=document.querySelector('#lironSurfaceMap_popup_text [data-head="1"]');
++            const outline=after ? getComputedStyle(after).outlineColor : '';
+             card.deviceToolSurfaceMapToggleSync(false);
+ 
+             return {
+                 before:before ? {side:before.dataset.side,track:before.dataset.track,sector:before.dataset.sector} : null,
+-                after:after ? {side:after.dataset.side,track:after.dataset.track,sector:after.dataset.sector} : null
++                after:after ? {side:after.dataset.side,track:after.dataset.track,sector:after.dataset.sector} : null,
++                outline
+             };
+         },setup);
+         assert.deepEqual(syncResult.before,{side:'0',track:'1',sector:'0'});
+         assert.deepEqual(syncResult.after,{side:'1',track:'1',sector:'0'});
++        assert.equal(syncResult.outline,'rgb(255, 255, 255)','live head indicator must match Disk II white');
+ 
+         await page.evaluate(id=>document.getElementById(id).click(),setup.buttonID);
+         await page.waitForFunction(({slotN})=>{
