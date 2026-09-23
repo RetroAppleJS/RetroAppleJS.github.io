@@ -12320,8 +12320,8 @@ function EMU_init()
     }
 
     /*
-     * The Surface Map has its own selected Disk II context. Do not refresh it
-     * through the startup/default disk2 object.
+     * Disk II and UniDisk share the same recurring surface-map dashboard event.
+     * Each controller decides whether its own popup/sync state requires an update.
      */
     apple2plus.surfaceMap_monitoring = function()
     {
@@ -12334,15 +12334,21 @@ function EMU_init()
         var popup = document.getElementById("surfaceMap_popup");
         var monitor = document.getElementById("surfaceMap_monitoring");
 
-        if(!context || !popup || popup.hidden!==false || !monitor)
-            return;
+        if(context && popup && popup.hidden===false && monitor
+            && oCOM.POPUP.get_class(monitor,1)=="fa-stop-circle")
+        {
+            var target = io.SLOT2obj(context.slotN);
+            if(target && typeof(target.surfaceMap_update)=="function")
+                target.surfaceMap_update("surfaceMap_popup");
+        }
 
-        if(oCOM.POPUP.get_class(monitor,1)!="fa-stop-circle")
-            return;
-
-        var target = io.SLOT2obj(context.slotN);
-        if(target && typeof(target.surfaceMap_update)=="function")
-            target.surfaceMap_update("surfaceMap_popup");
+        for(var slotN=1;slotN<=7;slotN++)
+        {
+            var liron = io.SLOT2obj(slotN);
+            if(liron && liron.id?.PCODE=="LIRON"
+                && typeof(liron.deviceToolSurfaceMapMonitoring)=="function")
+                liron.deviceToolSurfaceMapMonitoring();
+        }
     }
 
     EMU_diskIIObjects().forEach(function(disk2)
@@ -30197,7 +30203,6 @@ function AppleLiron()
     var iwm = new LironIWM(smartport);
     var deviceSurfaceMapState = {"unit":null,"hash":null};
     var deviceSurfaceMapSyncEnabled = false;
-    var deviceSurfaceMapSyncTimer = null;
 
     this.id = {"PCODE":"LIRON","icon":"fa fa-save"};
     this.deviceConfig = [{
@@ -31063,38 +31068,25 @@ function AppleLiron()
     {
         deviceSurfaceMapSyncEnabled = force===undefined ? !deviceSurfaceMapSyncEnabled : !!force;
 
-        if(deviceSurfaceMapSyncTimer!==null && typeof(clearInterval)==="function")
-        {
-            clearInterval(deviceSurfaceMapSyncTimer);
-            deviceSurfaceMapSyncTimer=null;
-        }
-
         if(typeof(document)!=="undefined" && document.getElementById)
         {
             var icon=document.getElementById("lironSurfaceMap_monitoring");
             if(icon) icon.className="fa "+(deviceSurfaceMapSyncEnabled ? "fa-stop-circle" : "fa-sync-alt");
         }
 
-        if(deviceSurfaceMapSyncEnabled)
-        {
-            liron.deviceToolSurfaceMapUpdate();
-            if(typeof(setInterval)==="function")
-            {
-                deviceSurfaceMapSyncTimer=setInterval(function()
-                {
-                    var popup=typeof(document)!=="undefined" && document.getElementById
-                        ? document.getElementById("lironSurfaceMap_popup")
-                        : null;
-                    if(!popup || popup.hidden)
-                    {
-                        liron.deviceToolSurfaceMapToggleSync(false);
-                        return;
-                    }
-                    liron.deviceToolSurfaceMapUpdate();
-                },250);
-            }
-        }
         return deviceSurfaceMapSyncEnabled;
+    };
+
+    // Invoked by the shared surface-map dashboard refresh event used by Disk II.
+    this.deviceToolSurfaceMapMonitoring = function()
+    {
+        if(!deviceSurfaceMapSyncEnabled || typeof(document)==="undefined" || !document.getElementById)
+            return false;
+
+        var popup=document.getElementById("lironSurfaceMap_popup");
+        if(!popup || popup.hidden!==false) return false;
+
+        return liron.deviceToolSurfaceMapUpdate();
     };
 
     this.deviceToolSurfaceMapPosition = function(unit)
@@ -31183,7 +31175,6 @@ function AppleLiron()
         if(typeof(oCOM)==="object" && oCOM && oCOM.POPUP && typeof(oCOM.POPUP.on)==="function") oCOM.POPUP.on("lironSurfaceMap_popup");
         else popup.hidden=false;
         liron.deviceToolSurfaceMapPosition(unit);
-        liron.deviceToolSurfaceMapUpdate();
         return true;
     };
 
