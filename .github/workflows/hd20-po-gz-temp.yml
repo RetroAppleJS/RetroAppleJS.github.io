@@ -38,7 +38,9 @@ jobs:
 
       - name: GREEN - implement HD20 gzip behavior
         shell: bash
-        run: python3 tests/_tmp_hd20_gzip_green.py
+        run: |
+          sed -i 's/typeof(pako)==="undefined"/typeof pako === "undefined"/g; s/typeof(pako.ungzip)!=="function"/typeof pako.ungzip !== "function"/g; s/typeof(pako.gzip)!=="function"/typeof pako.gzip !== "function"/g' tests/_tmp_hd20_gzip_green.py
+          python3 tests/_tmp_hd20_gzip_green.py
 
       - name: Verify HD20 gzip and SmartPort regression suite
         shell: bash
