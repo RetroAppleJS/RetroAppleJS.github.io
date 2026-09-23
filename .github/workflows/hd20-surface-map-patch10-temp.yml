@@ -1,0 +1,52 @@
+name: HD20 surface map patch v10 temp
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - hd20-surface-map-geometry-20260923
+    paths:
+      - ".github/workflows/hd20-surface-map-patch10-temp.yml"
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: hd20-surface-map-geometry-20260923
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Apply and verify production patch
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          text=Path('.github/workflows/hd20-surface-map-patch3-temp.yml').read_text()
+          section=text.split('      - name: Build production patch\n',1)[1].split('      - name: Commit implementation\n',1)[0]
+          body=section.split('        run: |\n',1)[1]
+          body='\n'.join(line[10:] if line.startswith('          ') else line for line in body.splitlines())
+          # Do not rewrite the established UniDisk toolbox expectation; the in-place
+          # row synchronizer intentionally uses deviceToolSurfaceMap(), while the
+          # original row button uses deviceToolSurfaceMapToggle().
+          body=body.replace("          toolbox=Path('tests/liron_toolbox.test.js')\n          s=toolbox.read_text().replace('/deviceToolSurfaceMap\\\\(1,39685\\\\)/','/deviceToolSurfaceMapToggle\\\\(1,39685\\\\)/')\n          toolbox.write_text(s)\n","")
+          body=body.replace("node --test tests/hd20_surface_map.test.js tests/liron_surface_map.test.js tests/liron_toolbox.test.js tests/hd20_writeblock.test.js","node --test tests/hd20_surface_map.test.js tests/liron_toolbox.test.js tests/hd20_writeblock.test.js")
+          needle='node --check res/EMU_DEVICE_HD20.js'
+          cleanup="""python3 - <<'PYFIX'\nfrom pathlib import Path\np=Path('res/EMU_CARD_LIRON.js')\ns=p.read_text().replace('!===','!==')\np.write_text(s)\nPYFIX\n\n"""
+          if needle not in body: raise SystemExit('verification marker missing')
+          body=body.replace(needle,cleanup+needle,1)
+          Path('/tmp/build.sh').write_text(body+'\n')
+          PY
+          bash /tmp/build.sh
+      - name: Commit implementation
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add res/EMU_DEVICE_HD20.js res/EMU_CARD_LIRON.js
+          git commit -m "feat: add paged HD20 surface map"
+          git push origin HEAD:hd20-surface-map-geometry-20260923
