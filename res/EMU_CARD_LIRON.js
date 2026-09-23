@@ -1042,7 +1042,7 @@ function AppleLiron()
     var liron = this;
     var smartport = new SmartPortBus();
     var iwm = new LironIWM(smartport);
-    var deviceSurfaceMapState = {"unit":null,"hash":null};
+    var deviceSurfaceMapState = {"unit":null,"hash":null,"page":0};
     var deviceSurfaceMapSyncEnabled = false;
 
     this.id = {"PCODE":"LIRON","icon":"fa fa-save"};
@@ -1450,7 +1450,7 @@ function AppleLiron()
         var surface=document.getElementById(controlID+"_surface");
         if(surface)
         {
-            var canMap=deviceCode==="UNIDISK" && typeof(device.getSurfaceMapGeometry)==="function" && !!state.mediaLoaded;
+            var canMap=(deviceCode==="UNIDISK" || deviceCode==="HD20") && typeof(device.getSurfaceMapGeometry)==="function" && !!state.mediaLoaded;
             surface.disabled=!canMap; surface.title=canMap ? "Disk Surface Map" : "Disk Surface Map (no media loaded)";
             setClick(surface,canMap ? ("apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolSurfaceMapToggle("+unit+","+Number(device.attach?.hash)+")") : null);
         }
@@ -1466,7 +1466,7 @@ function AppleLiron()
         unit=Number(unit); expectedHash=Number(expectedHash);
         if(!Number.isInteger(unit) || unit<1 || unit>8 || !Number.isInteger(expectedHash)) return null;
         var device=deviceToolUnitDevice(unit);
-        if(!device || device.id?.DCODE!=="UNIDISK" || typeof(device.getSurfaceMapGeometry)!=="function") return null;
+        if(!device || (device.id?.DCODE!=="UNIDISK" && device.id?.DCODE!=="HD20") || typeof(device.getSurfaceMapGeometry)!==="function") return null;
         if(Number(device.attach?.hash)!==expectedHash) return null;
         return device;
     }
@@ -1789,6 +1789,142 @@ function AppleLiron()
             (active ? "" : "opacity:0.14;");
     }
 
+
+    function deviceToolHD20SurfaceRangeLabel(page,panel)
+    {
+        var start=Number(page)+(Number(panel)*0.5), end=start+0.5;
+        function point(value)
+        {
+            if(value===0) return "0";
+            if(value<1) return Math.round(value*1024)+" KiB";
+            return String(value)+" MiB";
+        }
+        return point(start)+"–"+point(end);
+    }
+
+    function deviceToolHD20SurfaceMapHTML(device,header)
+    {
+        var instance=deviceToolInstanceHex(device) || "????";
+        var geometry=device.getSurfaceMapGeometry();
+        var page=Math.max(0,Math.min(geometry.pageCount-1,Number(deviceSurfaceMapState.page)||0));
+        deviceSurfaceMapState.page=page;
+        var image=typeof(device.getImage)==="function" ? device.getImage() : null;
+        var head=typeof(device.getHeadSurfacePosition)==="function" ? device.getHeadSurfacePosition() : null;
+        var unit=Number(device.getUnit ? device.getUnit() : device.id?.deviceN);
+        var hash=Number(device.attach?.hash);
+        var slotN=liron.mount ? Number(liron.mount.slotN) : NaN;
+        var previous=Math.max(0,page-1), next=Math.min(geometry.pageCount-1,page+1);
+        var nav="";
+        if(Number.isInteger(slotN))
+        {
+            nav="<div class=\"liron-surface-page\" style=\"display:flex;align-items:center;justify-content:center;gap:5px;margin:0 0 4px 0;font-size:10px\">"+
+                "<button class=\"appbut\" type=\"button\" title=\"Previous MiB\" "+(page<=0?"disabled ":"")+"onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolSurfaceMapSetPage("+previous+","+unit+","+hash+");event.stopPropagation();\">‹</button>"+
+                "<span>MiB "+page+" / "+(geometry.pageCount-1)+"</span>"+
+                "<button class=\"appbut\" type=\"button\" title=\"Next MiB\" "+(page>=geometry.pageCount-1?"disabled ":"")+"onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolSurfaceMapSetPage("+next+","+unit+","+hash+");event.stopPropagation();\">›</button>"+
+                "</div>";
+        }
+        var meta="<div class=\"liron-surface-meta\" style=\"font-size:10px;color:#888;margin-top:4px;line-height:12px\">"+
+            "Instance #"+instance+" · 20 MiB · 40960 × 512-byte blocks · MiB "+page+"/"+(geometry.pageCount-1)+"</div>";
+        var out=header+nav+"<div class=\"liron-surface-panels liron-surface-hd20\" style=\"display:inline-flex;align-items:flex-start;gap:8px;width:max-content\">";
+        for(var panel=0;panel<geometry.panels;panel++)
+        {
+            out += "<section class=\"liron-surface-side liron-surface-hd20-panel\" data-panel=\""+panel+"\" style=\"flex:0 0 auto;margin:0\">"+
+                "<div class=\"liron-surface-side-title\" style=\"text-align:center;font-size:11px;line-height:12px;padding:0 0 2px 30px\">"+deviceToolHD20SurfaceRangeLabel(page,panel)+"</div>"+
+                "<div class=\"liron-surface-grid\" style=\"display:grid;grid-template-columns:30px repeat(16,10px);grid-template-rows:repeat(64,10px);gap:0;overflow:hidden\">";
+            for(var row=0;row<geometry.rowsPerPanel;row++)
+            {
+                var rowLabel=(row%8===0) ? ((row*8)+"K") : "";
+                out += "<span class=\"liron-surface-track\" data-row-label=\""+row+"\" style=\"display:flex;align-items:center;justify-content:flex-end;height:10px;padding-right:4px;box-sizing:border-box;color:#aaa;font-family:Courier;font-size:9px\">"+rowLabel+"</span>";
+                for(var column=0;column<geometry.columnsPerPanel;column++)
+                {
+                    var block=device.surfaceCellToBlock(page,panel,row,column);
+                    var offset=block*geometry.bytesPerBlock;
+                    var density=deviceToolSurfaceDensity(image,block);
+                    var isHead=!!(head && head.block===block);
+                    var bandStart=row>0 && row%8===0;
+                    var tip="Block "+block+" · 512 bytes · offset "+offset+" · nonzero="+density.nonzero+"/512 · avg="+density.avg;
+                    out += "<span class=\"liron-surface-cell active"+(isHead?" liron-surface-head":"")+"\" style=\""+
+                        deviceToolSurfaceDensityCellStyle(density.pct,true)+(bandStart?"border-top-width:2px;":"")+(isHead?"outline:2px solid #FFF;outline-offset:-1px;":"")+
+                        "\" data-surface-cell=\"1\" data-active=\"1\" data-density=\""+density.pct+"\" data-page=\""+page+"\" data-panel=\""+panel+"\" data-row=\""+row+"\" data-column=\""+column+
+                        "\" data-block=\""+block+"\" data-offset=\""+offset+"\" data-head=\""+(isHead?"1":"0")+"\" title=\""+deviceToolSurfaceEscape(tip)+"\"></span>";
+                }
+            }
+            out += "</div></section>";
+        }
+        return out+"</div>"+meta;
+    }
+
+    function deviceToolHD20SurfaceMapUpdate(device,text)
+    {
+        var head=typeof(device.getHeadSurfacePosition)==="function" ? device.getHeadSurfacePosition() : null;
+        if(deviceSurfaceMapSyncEnabled && head && Number(head.page)!==Number(deviceSurfaceMapState.page))
+        {
+            deviceSurfaceMapState.page=Number(head.page);
+            text.innerHTML=liron.deviceToolSurfaceMapHTML(deviceSurfaceMapState.unit,deviceSurfaceMapState.hash);
+            return true;
+        }
+        var image=typeof(device.getImage)==="function" ? device.getImage() : null;
+        var cells=typeof(text.querySelectorAll)==="function" ? text.querySelectorAll('[data-surface-cell="1"][data-active="1"]') : [];
+        for(var i=0;i<cells.length;i++)
+        {
+            var cell=cells[i];
+            var block=Number(cell.dataset ? cell.dataset.block : cell.getAttribute("data-block"));
+            var density=deviceToolSurfaceDensity(image,block);
+            cell.style.backgroundColor=deviceToolSurfaceDensityPalette()[density.pct];
+            if(cell.dataset) cell.dataset.density=String(density.pct);
+            cell.style.outline=""; cell.style.outlineOffset="";
+            if(cell.classList) cell.classList.remove("liron-surface-head");
+            if(cell.dataset) cell.dataset.head="0";
+        }
+        if(head && Number(head.page)===Number(deviceSurfaceMapState.page) && typeof(text.querySelector)==="function")
+        {
+            var headCell=text.querySelector('[data-surface-cell="1"][data-block="'+head.block+'"]');
+            if(headCell)
+            {
+                headCell.style.outline="2px solid #FFF"; headCell.style.outlineOffset="-1px";
+                if(headCell.classList) headCell.classList.add("liron-surface-head");
+                if(headCell.dataset) headCell.dataset.head="1";
+            }
+        }
+        return true;
+    }
+
+    this.deviceToolSurfaceMapSetPage = function(page,unit,expectedHash)
+    {
+        if(unit!==undefined && expectedHash!==undefined)
+        {
+            unit=Number(unit); expectedHash=Number(expectedHash);
+            if(!deviceToolSurfaceTarget(unit,expectedHash)) return false;
+            deviceSurfaceMapState.unit=unit; deviceSurfaceMapState.hash=expectedHash;
+        }
+        var device=deviceToolSurfaceTarget(deviceSurfaceMapState.unit,deviceSurfaceMapState.hash);
+        if(!device || device.id?.DCODE!=="HD20") return false;
+        var geometry=device.getSurfaceMapGeometry();
+        page=Math.max(0,Math.min(geometry.pageCount-1,Math.floor(Number(page)||0)));
+        deviceSurfaceMapState.page=page;
+        if(typeof(document)!==="undefined" && document.getElementById)
+        {
+            var popup=document.getElementById("lironSurfaceMap_popup");
+            if(popup && popup.hidden===false) liron.deviceToolSurfaceMapRefresh();
+        }
+        return page;
+    };
+
+    this.deviceToolSurfaceMapFollowHead = function()
+    {
+        var device=deviceToolSurfaceTarget(deviceSurfaceMapState.unit,deviceSurfaceMapState.hash);
+        if(!device || device.id?.DCODE!=="HD20" || typeof(device.getHeadSurfacePosition)!==="function") return false;
+        var head=device.getHeadSurfacePosition();
+        if(!head) return deviceSurfaceMapState.page;
+        deviceSurfaceMapState.page=Number(head.page);
+        if(typeof(document)!==="undefined" && document.getElementById)
+        {
+            var popup=document.getElementById("lironSurfaceMap_popup");
+            if(popup && popup.hidden===false) liron.deviceToolSurfaceMapRefresh();
+        }
+        return deviceSurfaceMapState.page;
+    };
+
     this.deviceToolSurfaceMapHTML = function(unit,expectedHash)
     {
         unit=Number(unit); expectedHash=Number(expectedHash);
@@ -1806,6 +1942,9 @@ function AppleLiron()
 
         if(!device)
             return header+"<div class=\"liron-surface-status\">Device instance is no longer attached.</div>";
+
+        if(device.id?.DCODE==="HD20")
+            return deviceToolHD20SurfaceMapHTML(device,header);
 
         var instance=deviceToolInstanceHex(device) || "????";
         var state=typeof(device.getState)==="function" ? device.getState() || {} : {};
@@ -1870,6 +2009,9 @@ function AppleLiron()
 
         var state=typeof(device.getState)==="function" ? device.getState() || {} : {};
         if(!state.mediaLoaded) return false;
+
+        if(device.id?.DCODE==="HD20")
+            return deviceToolHD20SurfaceMapUpdate(device,text);
 
         var image=typeof(device.getImage)==="function" ? device.getImage() : null;
         var cells=typeof(text.querySelectorAll)==="function"
@@ -1984,7 +2126,9 @@ function AppleLiron()
         popup.style.left=left+"px";
         popup.style.right="auto";
         popup.style.top=top+"px";
-        popup.style.width=Math.min(326,available)+"px";
+        var surfaceDevice=deviceToolSurfaceTarget(deviceSurfaceMapState.unit,deviceSurfaceMapState.hash);
+        var desiredWidth=surfaceDevice && surfaceDevice.id?.DCODE==="HD20" ? 414 : 326;
+        popup.style.width=Math.min(desiredWidth,available)+"px";
         popup.style.maxWidth=available+"px";
         popup.style.maxHeight="calc(100vh - "+(viewportTop+8)+"px)";
         popup.style.overflow="auto";
@@ -2017,8 +2161,10 @@ function AppleLiron()
         var opening=popup.hidden!==false;
         if(opening)
         {
+            var targetChanged=deviceSurfaceMapState.unit!==unit || deviceSurfaceMapState.hash!==expectedHash;
             deviceSurfaceMapState.unit=unit;
             deviceSurfaceMapState.hash=expectedHash;
+            if(targetChanged) deviceSurfaceMapState.page=0;
             if(!liron.deviceToolSurfaceMapRefresh()) return false;
             liron.deviceToolSurfaceMapPosition(unit);
         }
@@ -2039,8 +2185,10 @@ function AppleLiron()
     {
         unit=Number(unit); expectedHash=Number(expectedHash);
         if(!Number.isInteger(unit) || unit<1 || unit>8 || !Number.isInteger(expectedHash)) return false;
+        var targetChanged=deviceSurfaceMapState.unit!==unit || deviceSurfaceMapState.hash!==expectedHash;
         deviceSurfaceMapState.unit=unit;
         deviceSurfaceMapState.hash=expectedHash;
+        if(targetChanged) deviceSurfaceMapState.page=0;
         if(!liron.deviceToolSurfaceMapRefresh()) return false;
         var popup=document.getElementById("lironSurfaceMap_popup");
         if(typeof(oCOM)==="object" && oCOM && oCOM.POPUP && typeof(oCOM.POPUP.on)==="function") oCOM.POPUP.on("lironSurfaceMap_popup");
@@ -2086,7 +2234,7 @@ function AppleLiron()
             var deviceState=typeof(device.getState)==="function" ? device.getState() || {} : {};
             var downloadable=exportable && (hardDisk || !!deviceState.mediaLoaded);
             var logicalFilename=exportable ? String(device.getSuggestedFilename() || (hardDisk ? "HD20.po" : "UNIDISK.po")) : undefined;
-            var isUniDisk=deviceCode==="UNIDISK" && typeof(device.getSurfaceMapGeometry)==="function";
+            var supportsSurfaceMap=(deviceCode==="UNIDISK" || deviceCode==="HD20") && typeof(device.getSurfaceMapGeometry)==="function";
             var instanceHash=Number(device.attach?.hash);
             var instanceHex=deviceToolInstanceHex(device);
 
@@ -2105,7 +2253,7 @@ function AppleLiron()
                 ,"downloadDisabled":!downloadable
                 ,"downloadOnClick":downloadable ? ("apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolDownload("+unit+")") : undefined
                 ,"downloadTitle":downloadable ? ("Save "+logicalFilename) : (exportable ? "Save disk (no media loaded)" : "Save disk (not implemented yet)")
-                ,"capabilityActions":isUniDisk ? [{"id":controlID+"_surface","icon":"fa fa-th","title":deviceState.mediaLoaded ? "Disk Surface Map" : "Disk Surface Map (no media loaded)","onClick":deviceState.mediaLoaded ? ("apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolSurfaceMapToggle("+unit+","+instanceHash+")") : undefined,"disabled":!deviceState.mediaLoaded}] : []
+                ,"capabilityActions":supportsSurfaceMap ? [{"id":controlID+"_surface","icon":"fa fa-th","title":deviceState.mediaLoaded ? "Disk Surface Map" : "Disk Surface Map (no media loaded)","onClick":deviceState.mediaLoaded ? ("apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolSurfaceMapToggle("+unit+","+instanceHash+")") : undefined,"disabled":!deviceState.mediaLoaded}] : []
             });
         }
 
