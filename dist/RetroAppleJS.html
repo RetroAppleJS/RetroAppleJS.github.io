@@ -31166,21 +31166,32 @@ function AppleLiron()
 
     this.deviceToolSurfaceMapToggle = function(unit,expectedHash)
     {
+        unit=Number(unit); expectedHash=Number(expectedHash);
+        if(!Number.isInteger(unit) || unit<1 || unit>8 || !Number.isInteger(expectedHash)) return false;
         if(typeof(document)==="undefined" || !document.getElementById) return false;
+
         var popup=document.getElementById("lironSurfaceMap_popup");
         if(!popup) return false;
 
-        if(popup.hidden===false)
+        var opening=popup.hidden!==false;
+        if(opening)
         {
-            liron.deviceToolSurfaceMapToggleSync(false);
-            if(typeof(oCOM)==="object" && oCOM && oCOM.POPUP && typeof(oCOM.POPUP.off)==="function")
-                oCOM.POPUP.off("lironSurfaceMap_popup");
-            else
-                popup.hidden=true;
-            return false;
+            deviceSurfaceMapState.unit=unit;
+            deviceSurfaceMapState.hash=expectedHash;
+            if(!liron.deviceToolSurfaceMapRefresh()) return false;
+            liron.deviceToolSurfaceMapPosition(unit);
         }
 
-        return liron.deviceToolSurfaceMap(unit,expectedHash);
+        if(typeof(oCOM)==="object" && oCOM && oCOM.POPUP && typeof(oCOM.POPUP.toggle)==="function")
+            oCOM.POPUP.toggle("lironSurfaceMap_popup");
+        else
+            popup.hidden=!popup.hidden;
+
+        if(popup.hidden===false)
+            return true;
+
+        liron.deviceToolSurfaceMapToggleSync(false);
+        return false;
     };
 
     this.deviceToolSurfaceMap = function(unit,expectedHash)
