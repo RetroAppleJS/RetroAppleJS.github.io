@@ -73,7 +73,7 @@ test('Liron toolbox names media controls by each SmartPort device type',()=>{
     assert.match(rows[0].fileOnChange,/deviceToolLoadFile\(this,1\)/);
     assert.match(rows[1].fileOnChange,/deviceToolLoadFile\(this,2\)/);
     assert.equal(rows[0].fileAccept,'.po');
-    assert.equal(rows[1].fileAccept,'.po,.po.gz');
+    assert.equal(rows[1].fileAccept,'.po,.gz,application/gzip,application/x-gzip');
 });
 
 test('HD20 toolbox uses a logical filename and enables image download while UniDisk keeps native removable-media behavior',()=>{

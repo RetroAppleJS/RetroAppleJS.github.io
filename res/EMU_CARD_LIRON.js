@@ -2323,7 +2323,7 @@ function AppleLiron()
                 ,"fileDisplayName":displayFilename
                 ,"buttonTitle":(instanceHex ? ("Instance #"+instanceHex+": ") : ("Unit"+unit+": "))+(hardDisk ? "erase/reset disk" : "eject disk")
                 ,"buttonOnClick":"apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolEject("+unit+")"
-                ,"fileAccept":hardDisk ? ".po,.po.gz" : ".po"
+                ,"fileAccept":hardDisk ? ".po,.gz,application/gzip,application/x-gzip" : ".po"
                 ,"fileOnChange":"javascript:EMU_audio_event_unlock();apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolLoadFile(this,"+unit+")"
                 ,"downloadDisabled":!downloadable
                 ,"downloadOnClick":downloadable ? ("apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolDownload("+unit+")") : undefined
