@@ -104,6 +104,13 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
             return !!(popup && !popup.hidden && text && text.querySelectorAll('[data-surface-cell="1"]').length===1920);
         });
 
+        // The Surface Map capability itself must be a true oCOM.POPUP toggle.
+        await page.evaluate(id=>document.getElementById(id).click(),setup.surfaceID);
+        await page.waitForFunction(()=>document.getElementById('lironSurfaceMap_popup')?.hidden===true);
+
+        await page.evaluate(id=>document.getElementById(id).click(),setup.surfaceID);
+        await page.waitForFunction(()=>document.getElementById('lironSurfaceMap_popup')?.hidden===false);
+
         const map=await page.evaluate(()=>{
             const popup=document.getElementById('lironSurfaceMap_popup');
             const text=document.getElementById('lironSurfaceMap_popup_text');

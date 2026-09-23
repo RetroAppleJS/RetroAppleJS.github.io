@@ -202,6 +202,44 @@ test('UniDisk surface-map sync uses the shared dashboard refresh and never creat
     assert.equal(icon.className,'fa fa-sync-alt');
 });
 
+test('UniDisk Surface Map capability uses oCOM.POPUP.toggle for open-close-open behavior',()=>{
+    const popup={hidden:true,style:{}};
+    const text={innerHTML:''};
+    let toggles=0;
+    const context=loadCard({
+        document:{
+            getElementById(id)
+            {
+                if(id==='lironSurfaceMap_popup') return popup;
+                if(id==='lironSurfaceMap_popup_text') return text;
+                return null;
+            },
+            querySelectorAll(){return [];}
+        },
+        window:{innerWidth:1400,scrollX:0,scrollY:0,getComputedStyle(){return {display:'block',visibility:'visible'};}},
+        oCOM:{POPUP:{
+            toggle(id)
+            {
+                assert.equal(id,'lironSurfaceMap_popup');
+                toggles++;
+                popup.hidden=!popup.hidden;
+            }
+        }}
+    });
+    const {card,disk}=mountedDisk(context);
+    disk.loadImage(new Uint8Array(819200),{filename:'TOOLS.po'});
+
+    assert.equal(card.deviceToolSurfaceMapToggle(1,0x9B05),true);
+    assert.equal(popup.hidden,false);
+
+    assert.equal(card.deviceToolSurfaceMapToggle(1,0x9B05),false);
+    assert.equal(popup.hidden,true);
+
+    assert.equal(card.deviceToolSurfaceMapToggle(1,0x9B05),true);
+    assert.equal(popup.hidden,false);
+    assert.equal(toggles,3);
+});
+
 test('UniDisk surface map keeps exact instance identity and handles stale or empty media explicitly',()=>{
     const context=loadCard();
     const {card,disk}=mountedDisk(context);
