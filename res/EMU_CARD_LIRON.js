@@ -1466,7 +1466,7 @@ function AppleLiron()
         unit=Number(unit); expectedHash=Number(expectedHash);
         if(!Number.isInteger(unit) || unit<1 || unit>8 || !Number.isInteger(expectedHash)) return null;
         var device=deviceToolUnitDevice(unit);
-        if(!device || (device.id?.DCODE!=="UNIDISK" && device.id?.DCODE!=="HD20") || typeof(device.getSurfaceMapGeometry)!==="function") return null;
+        if(!device || (device.id?.DCODE!=="UNIDISK" && device.id?.DCODE!=="HD20") || typeof(device.getSurfaceMapGeometry)!=="function") return null;
         if(Number(device.attach?.hash)!==expectedHash) return null;
         return device;
     }
@@ -1902,7 +1902,7 @@ function AppleLiron()
         var geometry=device.getSurfaceMapGeometry();
         page=Math.max(0,Math.min(geometry.pageCount-1,Math.floor(Number(page)||0)));
         deviceSurfaceMapState.page=page;
-        if(typeof(document)!==="undefined" && document.getElementById)
+        if(typeof(document)!=="undefined" && document.getElementById)
         {
             var popup=document.getElementById("lironSurfaceMap_popup");
             if(popup && popup.hidden===false) liron.deviceToolSurfaceMapRefresh();
@@ -1913,11 +1913,11 @@ function AppleLiron()
     this.deviceToolSurfaceMapFollowHead = function()
     {
         var device=deviceToolSurfaceTarget(deviceSurfaceMapState.unit,deviceSurfaceMapState.hash);
-        if(!device || device.id?.DCODE!=="HD20" || typeof(device.getHeadSurfacePosition)!==="function") return false;
+        if(!device || device.id?.DCODE!=="HD20" || typeof(device.getHeadSurfacePosition)!=="function") return false;
         var head=device.getHeadSurfacePosition();
         if(!head) return deviceSurfaceMapState.page;
         deviceSurfaceMapState.page=Number(head.page);
-        if(typeof(document)!==="undefined" && document.getElementById)
+        if(typeof(document)!=="undefined" && document.getElementById)
         {
             var popup=document.getElementById("lironSurfaceMap_popup");
             if(popup && popup.hidden===false) liron.deviceToolSurfaceMapRefresh();
