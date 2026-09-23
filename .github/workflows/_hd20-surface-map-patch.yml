@@ -1,0 +1,36 @@
+name: HD20 surface map patch helper
+
+permissions:
+  contents: write
+
+on:
+  push:
+    paths:
+      - "tests/_apply_hd20_surface_map_patch.js"
+      - ".github/workflows/_hd20-surface-map-patch.yml"
+  workflow_dispatch:
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Apply bounded source patch
+        run: node tests/_apply_hd20_surface_map_patch.js
+      - name: Commit source patch
+        shell: bash
+        run: |
+          if git diff --quiet -- res/EMU_CARD_LIRON.js; then
+            echo "No source changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add res/EMU_CARD_LIRON.js
+          git commit -m "feat: add paged HD20 surface map"
+          git push origin HEAD:${GITHUB_REF_NAME}
