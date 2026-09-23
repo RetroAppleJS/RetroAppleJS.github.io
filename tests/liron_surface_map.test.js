@@ -87,13 +87,15 @@ test('UniDisk surface map renders two clockwise-rotated 12 by 80 sides with exac
     disk.loadImage(new Uint8Array(819200),{filename:'TOOLS.po'});
     const html=card.deviceToolSurfaceMapHTML(1,0x9B05);
 
-    assert.match(html,/Disk Surface Map — UNIDISK Unit1/);
+    assert.match(html,/>Disk surface map<\/b>/);
+    assert.doesNotMatch(html,/Disk Surface Map — UNIDISK Unit1/);
     assert.match(html,/Instance #9B05 · 800 KB · 1600 × 512-byte sectors/);
+    assert.match(html,/id="lironSurfaceMap_monitoring"/);
+    assert.match(html,/title="Disk surface map sync"/);
     assert.ok(html.indexOf('data-side="0"') < html.indexOf('data-side="1"'));
     assert.equal((html.match(/data-surface-cell="1"/g)||[]).length,1920);
     assert.equal((html.match(/data-active="1"/g)||[]).length,1600);
     assert.equal((html.match(/data-active="0"/g)||[]).length,320);
-    assert.equal((html.match(/data-zone-end="1"/g)||[]).length,96);
 
     const blocks=[...html.matchAll(/data-block="(\d+)"/g)].map(m=>Number(m[1]));
     assert.equal(blocks.length,1600);
@@ -104,7 +106,11 @@ test('UniDisk surface map renders two clockwise-rotated 12 by 80 sides with exac
     assert.ok(html.indexOf('data-track="0" data-sector="11"') < html.indexOf('data-track="0" data-sector="10"'));
     assert.ok(html.indexOf('data-track="0" data-sector="10"') < html.indexOf('data-track="1" data-sector="11"'));
     assert.match(html,/title="Side 1 · Track 27 · Sector 8 · Block \d+ · 512 bytes · nonzero=0\/512 · avg=0"/);
-    assert.match(html,/style="display:grid;grid-template-columns:repeat\(12,5px\);grid-template-rows:repeat\(80,4px\);gap:0;/);
+    assert.match(html,/grid-template-columns:22px repeat\(12,10px\)/);
+    assert.match(html,/grid-template-rows:repeat\(80,10px\)/);
+    assert.match(html,/data-track-label="0"[^>]*>T0<\/span>/);
+    assert.match(html,/data-track-label="79"[^>]*>T79<\/span>/);
+    assert.match(html,/width:10px;height:10px;box-sizing:border-box;border:1px solid #333/);
 });
 
 test('UniDisk surface map uses the Disk II data-density palette',()=>{
@@ -129,6 +135,17 @@ test('UniDisk surface map uses the Disk II data-density palette',()=>{
     assert.match(cell(2),/background:#000000/);
     assert.doesNotMatch(html,/liron-surface-legend/);
     assert.doesNotMatch(html,/data-content=/);
+});
+
+test('UniDisk surface map marks the current head position',()=>{
+    const context=loadCard();
+    const {card,disk}=mountedDisk(context);
+    disk.loadImage(new Uint8Array(819200),{filename:'HEAD.po'});
+    disk.readBlock(24);
+
+    const html=card.deviceToolSurfaceMapHTML(1,0x9B05);
+    assert.match(html,/data-side="0" data-track="1" data-sector="0"[^>]*data-head="1"/);
+    assert.match(html,/outline:2px solid #FF8080/);
 });
 
 test('UniDisk popup joins the rightmost visible toolbox with a five pixel gap',()=>{
@@ -160,7 +177,7 @@ test('UniDisk popup joins the rightmost visible toolbox with a five pixel gap',(
     assert.equal(popup.style.left,'625px');
     assert.equal(popup.style.right,'auto');
     assert.equal(popup.style.top,'58px');
-    assert.equal(popup.style.width,'240px');
+    assert.equal(popup.style.width,'306px');
 });
 
 test('UniDisk surface map keeps exact instance identity and handles stale or empty media explicitly',()=>{

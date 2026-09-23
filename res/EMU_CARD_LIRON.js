@@ -1043,6 +1043,8 @@ function AppleLiron()
     var smartport = new SmartPortBus();
     var iwm = new LironIWM(smartport);
     var deviceSurfaceMapState = {"unit":null,"hash":null};
+    var deviceSurfaceMapSyncEnabled = false;
+    var deviceSurfaceMapSyncTimer = null;
 
     this.id = {"PCODE":"LIRON","icon":"fa fa-save"};
     this.deviceConfig = [{
@@ -1779,62 +1781,167 @@ function AppleLiron()
         };
     }
 
-    function deviceToolSurfaceDensityCellStyle(pct,active,zoneEnd)
+    function deviceToolSurfaceDensityCellStyle(pct,active)
     {
         var palette=deviceToolSurfaceDensityPalette();
-        return "display:block;width:5px;height:4px;box-sizing:border-box;"+
+        return "display:block;width:10px;height:10px;box-sizing:border-box;"+
             "border:1px solid #333;"+
             "background:"+(active ? palette[pct] : "#111")+";"+
-            (active ? "" : "opacity:0.14;")+
-            (zoneEnd ? "border-bottom-width:2px;" : "");
+            (active ? "" : "opacity:0.14;");
     }
 
     this.deviceToolSurfaceMapHTML = function(unit,expectedHash)
     {
         unit=Number(unit); expectedHash=Number(expectedHash);
-        var label="UNIDISK Unit"+unit;
-        var title="<div class=\"liron-surface-title\">Disk Surface Map — "+label+"</div>";
         var device=deviceToolSurfaceTarget(unit,expectedHash);
+        var slotN=liron.mount ? Number(liron.mount.slotN) : NaN;
+        var iconClass=deviceSurfaceMapSyncEnabled ? "fa-stop-circle" : "fa-sync-alt";
+        var syncOnClick=Number.isInteger(slotN)
+            ? "apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolSurfaceMapToggleSync();event.stopPropagation();"
+            : "event.stopPropagation();";
+        var header="<div class=\"liron-surface-header\" style=\"display:flex;align-items:center;gap:6px;margin:0 0 4px 0\">"+
+            "<button class=\"appbut\" type=\"button\" style=\"text-align:center\" title=\"Disk surface map sync\" onclick=\""+syncOnClick+"\">"+
+            "<i class=\"fa "+iconClass+"\" id=\"lironSurfaceMap_monitoring\"></i></button>"+
+            "<div class=\"liron-surface-title\"><b>Disk surface map</b></div>"+
+            "</div>";
+
         if(!device)
-            return title+"<div class=\"liron-surface-status\">Device instance is no longer attached.</div>";
+            return header+"<div class=\"liron-surface-status\">Device instance is no longer attached.</div>";
 
         var instance=deviceToolInstanceHex(device) || "????";
         var state=typeof(device.getState)==="function" ? device.getState() || {} : {};
-        var meta="<div class=\"liron-surface-meta\">Instance #"+instance+" · 800 KB · 1600 × 512-byte sectors</div>";
+        var meta="<div class=\"liron-surface-meta\" style=\"font-size:10px;color:#888;margin-top:4px;line-height:12px\">"+
+            "Instance #"+instance+" · 800 KB · 1600 × 512-byte sectors"+
+            "</div>";
+
         if(!state.mediaLoaded)
-            return title+meta+"<div class=\"liron-surface-status\">No media loaded.</div>";
+            return header+"<div class=\"liron-surface-status\">No media loaded.</div>"+meta;
 
         var image=typeof(device.getImage)==="function" ? device.getImage() : null;
-        var out=title+meta+"<div class=\"liron-surface-panels\" style=\"display:inline-flex;align-items:flex-start;gap:6px;margin-top:4px;width:max-content\">";
+        var head=typeof(device.getHeadSurfacePosition)==="function" ? device.getHeadSurfacePosition() : null;
+        var out=header+"<div class=\"liron-surface-panels\" style=\"display:inline-flex;align-items:flex-start;gap:8px;width:max-content\">";
+
         for(var side=0;side<2;side++)
         {
-            out += "<section class=\"liron-surface-side\" data-side=\""+side+"\" style=\"flex:0 0 auto;margin:0\"><div class=\"liron-surface-side-title\" style=\"text-align:center;font-size:11px;line-height:12px;padding:0 0 2px 0\">Side "+side+"</div><div class=\"liron-surface-grid\" style=\"display:grid;grid-template-columns:repeat(12,5px);grid-template-rows:repeat(80,4px);gap:0;overflow:hidden\">";
-            // Clockwise 90° rotation of the old 80-column × 12-row map:
-            // track becomes the vertical axis and sectors run right-to-left.
+            out += "<section class=\"liron-surface-side\" data-side=\""+side+"\" style=\"flex:0 0 auto;margin:0\">"+
+                "<div class=\"liron-surface-side-title\" style=\"text-align:center;font-size:11px;line-height:12px;padding:0 0 2px 22px\">Side "+side+"</div>"+
+                "<div class=\"liron-surface-grid\" style=\"display:grid;grid-template-columns:22px repeat(12,10px);grid-template-rows:repeat(80,10px);gap:0;overflow:hidden\">";
+
             for(var track=0;track<80;track++)
             {
+                out += "<span class=\"liron-surface-track\" data-track-label=\""+track+"\" style=\"display:flex;align-items:center;justify-content:flex-end;height:10px;padding-right:4px;box-sizing:border-box;color:#aaa;font-family:Courier;font-size:9px\">T"+track+"</span>";
                 for(var sector=11;sector>=0;sector--)
                 {
                     var count=device.getSurfaceTrackSectorCount(track);
                     var active=sector<count;
-                    var zoneEnd=track===15 || track===31 || track===47 || track===63;
                     if(active)
                     {
                         var block=device.surfaceSectorToBlock(side,track,sector);
                         var offset=block*512;
                         var density=deviceToolSurfaceDensity(image,block);
+                        var isHead=!!(head && head.side===side && head.track===track && head.sector===sector);
                         var tip="Side "+side+" · Track "+track+" · Sector "+sector+" · Block "+block+" · 512 bytes · nonzero="+density.nonzero+"/512 · avg="+density.avg;
-                        out += "<span class=\"liron-surface-cell active"+(zoneEnd?" zone-end":"")+"\" style=\""+deviceToolSurfaceDensityCellStyle(density.pct,true,zoneEnd)+"\" data-surface-cell=\"1\" data-active=\"1\" data-density=\""+density.pct+"\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+"\" data-block=\""+block+"\" data-offset=\""+offset+"\""+(zoneEnd?" data-zone-end=\"1\"":"")+" title=\""+deviceToolSurfaceEscape(tip)+"\"></span>";
+                        out += "<span class=\"liron-surface-cell active"+(isHead?" liron-surface-head":"")+"\" style=\""+
+                            deviceToolSurfaceDensityCellStyle(density.pct,true)+(isHead?"outline:2px solid #FF8080;outline-offset:-1px;":"")+
+                            "\" data-surface-cell=\"1\" data-active=\"1\" data-density=\""+density.pct+"\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+
+                            "\" data-block=\""+block+"\" data-offset=\""+offset+"\" data-head=\""+(isHead?"1":"0")+"\" title=\""+deviceToolSurfaceEscape(tip)+"\"></span>";
                     }
                     else
                     {
-                        out += "<span class=\"liron-surface-cell inactive"+(zoneEnd?" zone-end":"")+"\" style=\""+deviceToolSurfaceDensityCellStyle(0,false,zoneEnd)+"\" data-surface-cell=\"1\" data-active=\"0\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+"\""+(zoneEnd?" data-zone-end=\"1\"":"")+" title=\"Side "+side+" · Track "+track+" · Sector "+sector+" · not present\"></span>";
+                        out += "<span class=\"liron-surface-cell inactive\" style=\""+deviceToolSurfaceDensityCellStyle(0,false)+
+                            "\" data-surface-cell=\"1\" data-active=\"0\" data-side=\""+side+"\" data-track=\""+track+"\" data-sector=\""+sector+
+                            "\" title=\"Side "+side+" · Track "+track+" · Sector "+sector+" · not present\"></span>";
                     }
                 }
             }
             out += "</div></section>";
         }
-        return out+"</div>";
+        return out+"</div>"+meta;
+    };
+
+    this.deviceToolSurfaceMapUpdate = function()
+    {
+        if(typeof(document)==="undefined" || !document.getElementById) return false;
+        if(!Number.isInteger(deviceSurfaceMapState.unit) || !Number.isInteger(deviceSurfaceMapState.hash)) return false;
+
+        var device=deviceToolSurfaceTarget(deviceSurfaceMapState.unit,deviceSurfaceMapState.hash);
+        var popup=document.getElementById("lironSurfaceMap_popup");
+        var text=document.getElementById("lironSurfaceMap_popup_text");
+        if(!device || !popup || !text || popup.hidden!==false) return false;
+
+        var state=typeof(device.getState)==="function" ? device.getState() || {} : {};
+        if(!state.mediaLoaded) return false;
+
+        var image=typeof(device.getImage)==="function" ? device.getImage() : null;
+        var cells=typeof(text.querySelectorAll)==="function"
+            ? text.querySelectorAll('[data-surface-cell="1"][data-active="1"]')
+            : [];
+
+        for(var i=0;i<cells.length;i++)
+        {
+            var cell=cells[i];
+            var block=Number(cell.dataset ? cell.dataset.block : cell.getAttribute("data-block"));
+            var density=deviceToolSurfaceDensity(image,block);
+            cell.style.backgroundColor=deviceToolSurfaceDensityPalette()[density.pct];
+            if(cell.dataset) cell.dataset.density=String(density.pct);
+            cell.style.outline="";
+            cell.style.outlineOffset="";
+            if(cell.classList) cell.classList.remove("liron-surface-head");
+            if(cell.dataset) cell.dataset.head="0";
+        }
+
+        var head=typeof(device.getHeadSurfacePosition)==="function" ? device.getHeadSurfacePosition() : null;
+        if(head && typeof(text.querySelector)==="function")
+        {
+            var selector='[data-surface-cell="1"][data-side="'+head.side+'"][data-track="'+head.track+'"][data-sector="'+head.sector+'"]';
+            var headCell=text.querySelector(selector);
+            if(headCell)
+            {
+                headCell.style.outline="2px solid #FF8080";
+                headCell.style.outlineOffset="-1px";
+                if(headCell.classList) headCell.classList.add("liron-surface-head");
+                if(headCell.dataset) headCell.dataset.head="1";
+            }
+        }
+        return true;
+    };
+
+    this.deviceToolSurfaceMapToggleSync = function(force)
+    {
+        deviceSurfaceMapSyncEnabled = force===undefined ? !deviceSurfaceMapSyncEnabled : !!force;
+
+        if(deviceSurfaceMapSyncTimer!==null && typeof(clearInterval)==="function")
+        {
+            clearInterval(deviceSurfaceMapSyncTimer);
+            deviceSurfaceMapSyncTimer=null;
+        }
+
+        if(typeof(document)!=="undefined" && document.getElementById)
+        {
+            var icon=document.getElementById("lironSurfaceMap_monitoring");
+            if(icon) icon.className="fa "+(deviceSurfaceMapSyncEnabled ? "fa-stop-circle" : "fa-sync-alt");
+        }
+
+        if(deviceSurfaceMapSyncEnabled)
+        {
+            liron.deviceToolSurfaceMapUpdate();
+            if(typeof(setInterval)==="function")
+            {
+                deviceSurfaceMapSyncTimer=setInterval(function()
+                {
+                    var popup=typeof(document)!=="undefined" && document.getElementById
+                        ? document.getElementById("lironSurfaceMap_popup")
+                        : null;
+                    if(!popup || popup.hidden)
+                    {
+                        liron.deviceToolSurfaceMapToggleSync(false);
+                        return;
+                    }
+                    liron.deviceToolSurfaceMapUpdate();
+                },250);
+            }
+        }
+        return deviceSurfaceMapSyncEnabled;
     };
 
     this.deviceToolSurfaceMapPosition = function(unit)
@@ -1887,7 +1994,7 @@ function AppleLiron()
         popup.style.left=left+"px";
         popup.style.right="auto";
         popup.style.top=top+"px";
-        popup.style.width=Math.min(240,available)+"px";
+        popup.style.width=Math.min(306,available)+"px";
         popup.style.maxWidth=available+"px";
         popup.style.maxHeight="calc(100vh - "+(top+8)+"px)";
         popup.style.overflow="auto";
@@ -1919,6 +2026,7 @@ function AppleLiron()
         if(typeof(oCOM)==="object" && oCOM && oCOM.POPUP && typeof(oCOM.POPUP.on)==="function") oCOM.POPUP.on("lironSurfaceMap_popup");
         else popup.hidden=false;
         liron.deviceToolSurfaceMapPosition(unit);
+        liron.deviceToolSurfaceMapUpdate();
         return true;
     };
 
