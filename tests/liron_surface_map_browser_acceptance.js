@@ -195,25 +195,31 @@ const baseURL=process.env.RETROAPPLE_URL || 'http://127.0.0.1:8000';
         const syncResult=await page.evaluate(({slotN})=>{
             const card=apple2plus.hwObj().io.SLOT2obj(slotN);
             const disk=card.getBus().getDevice(1);
+
             disk.readBlock(24);
             card.deviceToolSurfaceMapUpdate();
-            const before=document.querySelector('#lironSurfaceMap_popup_text [data-head="1"]');
-
             card.deviceToolSurfaceMapToggleSync(true);
+
             disk.readBlock(36);
-            card.deviceToolSurfaceMapUpdate();
-            const after=document.querySelector('#lironSurfaceMap_popup_text [data-head="1"]');
-            const outline=after ? getComputedStyle(after).outlineColor : '';
+            const beforeEvent=document.querySelector('#lironSurfaceMap_popup_text [data-head="1"]');
+
+            // Same recurring surface-map event used by Disk II.
+            apple2plus.surfaceMap_monitoring();
+
+            const afterEvent=document.querySelector('#lironSurfaceMap_popup_text [data-head="1"]');
+            const outline=afterEvent ? getComputedStyle(afterEvent).outlineColor : '';
             card.deviceToolSurfaceMapToggleSync(false);
 
             return {
-                before:before ? {side:before.dataset.side,track:before.dataset.track,sector:before.dataset.sector} : null,
-                after:after ? {side:after.dataset.side,track:after.dataset.track,sector:after.dataset.sector} : null,
+                beforeEvent:beforeEvent ? {side:beforeEvent.dataset.side,track:beforeEvent.dataset.track,sector:beforeEvent.dataset.sector} : null,
+                afterEvent:afterEvent ? {side:afterEvent.dataset.side,track:afterEvent.dataset.track,sector:afterEvent.dataset.sector} : null,
                 outline
             };
         },setup);
-        assert.deepEqual(syncResult.before,{side:'0',track:'1',sector:'0'});
-        assert.deepEqual(syncResult.after,{side:'1',track:'1',sector:'0'});
+        assert.deepEqual(syncResult.beforeEvent,{side:'0',track:'1',sector:'0'},
+            'head must not update before the shared recurring refresh event');
+        assert.deepEqual(syncResult.afterEvent,{side:'1',track:'1',sector:'0'},
+            'shared surface-map refresh event must update the UniDisk head');
         assert.equal(syncResult.outline,'rgb(255, 255, 255)','live head indicator must match Disk II white');
 
         await page.evaluate(id=>document.getElementById(id).click(),setup.buttonID);

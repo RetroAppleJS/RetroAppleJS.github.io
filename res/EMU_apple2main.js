@@ -673,8 +673,8 @@ function EMU_init()
     }
 
     /*
-     * The Surface Map has its own selected Disk II context. Do not refresh it
-     * through the startup/default disk2 object.
+     * Disk II and UniDisk share the same recurring surface-map dashboard event.
+     * Each controller decides whether its own popup/sync state requires an update.
      */
     apple2plus.surfaceMap_monitoring = function()
     {
@@ -687,15 +687,21 @@ function EMU_init()
         var popup = document.getElementById("surfaceMap_popup");
         var monitor = document.getElementById("surfaceMap_monitoring");
 
-        if(!context || !popup || popup.hidden!==false || !monitor)
-            return;
+        if(context && popup && popup.hidden===false && monitor
+            && oCOM.POPUP.get_class(monitor,1)=="fa-stop-circle")
+        {
+            var target = io.SLOT2obj(context.slotN);
+            if(target && typeof(target.surfaceMap_update)=="function")
+                target.surfaceMap_update("surfaceMap_popup");
+        }
 
-        if(oCOM.POPUP.get_class(monitor,1)!="fa-stop-circle")
-            return;
-
-        var target = io.SLOT2obj(context.slotN);
-        if(target && typeof(target.surfaceMap_update)=="function")
-            target.surfaceMap_update("surfaceMap_popup");
+        for(var slotN=1;slotN<=7;slotN++)
+        {
+            var liron = io.SLOT2obj(slotN);
+            if(liron && liron.id?.PCODE=="LIRON"
+                && typeof(liron.deviceToolSurfaceMapMonitoring)=="function")
+                liron.deviceToolSurfaceMapMonitoring();
+        }
     }
 
     EMU_diskIIObjects().forEach(function(disk2)

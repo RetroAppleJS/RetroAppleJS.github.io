@@ -1044,7 +1044,6 @@ function AppleLiron()
     var iwm = new LironIWM(smartport);
     var deviceSurfaceMapState = {"unit":null,"hash":null};
     var deviceSurfaceMapSyncEnabled = false;
-    var deviceSurfaceMapSyncTimer = null;
 
     this.id = {"PCODE":"LIRON","icon":"fa fa-save"};
     this.deviceConfig = [{
@@ -1910,38 +1909,25 @@ function AppleLiron()
     {
         deviceSurfaceMapSyncEnabled = force===undefined ? !deviceSurfaceMapSyncEnabled : !!force;
 
-        if(deviceSurfaceMapSyncTimer!==null && typeof(clearInterval)==="function")
-        {
-            clearInterval(deviceSurfaceMapSyncTimer);
-            deviceSurfaceMapSyncTimer=null;
-        }
-
         if(typeof(document)!=="undefined" && document.getElementById)
         {
             var icon=document.getElementById("lironSurfaceMap_monitoring");
             if(icon) icon.className="fa "+(deviceSurfaceMapSyncEnabled ? "fa-stop-circle" : "fa-sync-alt");
         }
 
-        if(deviceSurfaceMapSyncEnabled)
-        {
-            liron.deviceToolSurfaceMapUpdate();
-            if(typeof(setInterval)==="function")
-            {
-                deviceSurfaceMapSyncTimer=setInterval(function()
-                {
-                    var popup=typeof(document)!=="undefined" && document.getElementById
-                        ? document.getElementById("lironSurfaceMap_popup")
-                        : null;
-                    if(!popup || popup.hidden)
-                    {
-                        liron.deviceToolSurfaceMapToggleSync(false);
-                        return;
-                    }
-                    liron.deviceToolSurfaceMapUpdate();
-                },250);
-            }
-        }
         return deviceSurfaceMapSyncEnabled;
+    };
+
+    // Invoked by the shared surface-map dashboard refresh event used by Disk II.
+    this.deviceToolSurfaceMapMonitoring = function()
+    {
+        if(!deviceSurfaceMapSyncEnabled || typeof(document)==="undefined" || !document.getElementById)
+            return false;
+
+        var popup=document.getElementById("lironSurfaceMap_popup");
+        if(!popup || popup.hidden!==false) return false;
+
+        return liron.deviceToolSurfaceMapUpdate();
     };
 
     this.deviceToolSurfaceMapPosition = function(unit)
@@ -2030,7 +2016,6 @@ function AppleLiron()
         if(typeof(oCOM)==="object" && oCOM && oCOM.POPUP && typeof(oCOM.POPUP.on)==="function") oCOM.POPUP.on("lironSurfaceMap_popup");
         else popup.hidden=false;
         liron.deviceToolSurfaceMapPosition(unit);
-        liron.deviceToolSurfaceMapUpdate();
         return true;
     };
 
