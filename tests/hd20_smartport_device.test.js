@@ -28,6 +28,8 @@ function loadContext()
     return context;
 }
 
+// Add Device resolves coID through the browser global, so a parse-time module
+// regression must fail here instead of silently rendering HD20 as unavailable.
 test('HD20 module defines the browser-global constructor required by the device picker',()=>{
     const context={
         console:{log(){},warn(){},error(){}},
