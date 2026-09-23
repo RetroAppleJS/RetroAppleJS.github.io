@@ -1,15 +1,57 @@
 name: Temporary HD20 Safari gzip picker
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: ["fix/hd20-safari-gzip-picker"]
 
 jobs:
-  test:
+  patch:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: fix/hd20-safari-gzip-picker
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: node --test tests/hd20_safari_gzip_picker.test.js
+
+      - name: GREEN - advertise Safari-selectable gzip HD20 media
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          p=Path('res/EMU_CARD_LIRON.js')
+          s=p.read_text()
+          old=',"fileAccept":hardDisk ? ".po,.po.gz" : ".po"'
+          new=',"fileAccept":hardDisk ? ".po,.gz,application/gzip,application/x-gzip" : ".po"'
+          if old not in s:
+              raise SystemExit('HD20 fileAccept pattern not found')
+          p.write_text(s.replace(old,new,1))
+          PY
+
+      - name: Verify targeted regression
+        run: |
+          node --check res/EMU_CARD_LIRON.js
+          node --check tests/hd20_safari_gzip_picker.test.js
+          node --test tests/hd20_safari_gzip_picker.test.js
+          node --test tests/hd20_toolbox_media.test.js tests/liron_toolbox.test.js
+
+      - name: Verify full Node test suite
+        run: node --test tests/*.test.js
+
+      - name: Commit verified patch and remove temporary workflow
+        shell: bash
+        run: |
+          git config user.name "ChatGPT"
+          git config user.email "chatgpt@users.noreply.github.com"
+          git rm .github/workflows/hd20-safari-gzip-picker-temp.yml
+          git add res/EMU_CARD_LIRON.js tests/hd20_safari_gzip_picker.test.js
+          git commit -m "fix: allow Safari to select gzip HD20 images"
+          git fetch origin fix/hd20-safari-gzip-picker
+          git rebase origin/fix/hd20-safari-gzip-picker
+          git push origin HEAD:fix/hd20-safari-gzip-picker
