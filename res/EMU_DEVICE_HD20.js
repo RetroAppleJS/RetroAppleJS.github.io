@@ -119,7 +119,7 @@ function HD20Device(options)
     {
         name=String(name || "").split(/[\\/]/).pop();
         if(!name) return "UNFORMATTED-HD20.po";
-        name=name.replace(/\.[^.]*$/,'');
+        name=name.replace(/\.po\.gz$/i,'').replace(/\.[^.]*$/,'');
         return (name || "UNFORMATTED-HD20")+".po";
     }
 
