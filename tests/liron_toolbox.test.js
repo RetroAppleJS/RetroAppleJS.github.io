@@ -307,7 +307,7 @@ test('UniDisk row identifies device and instance and exposes its surface-map cap
     disk.loadImage(new Uint8Array(819200),{filename:'TOOLS.po'}); rows.length=0;
     card.deviceToolSlotHTML({slotN:6,slotID:'5',toolboxID:'device_tool_5',devices:card.devices});
     assert.equal(rows[0].capabilityActions[0].disabled,false);
-    assert.match(rows[0].capabilityActions[0].onClick,/deviceToolSurfaceMap\(1,39685\)/);
+    assert.match(rows[0].capabilityActions[0].onClick,/deviceToolSurfaceMapToggle\(1,39685\)/);
 });
 
 test('Liron synchronizes Download and Surface Map in place without clearing a successful file selection', () => {
@@ -322,7 +322,7 @@ test('Liron synchronizes Download and Surface Map in place without clearing a su
     assert.equal(nodes.liron_unit_5_1_dump.title,'Save TOOLS.po');
     assert.match(nodes.liron_unit_5_1_dump.attrs.onclick,/deviceToolDownload\(1\)/);
     assert.equal(nodes.liron_unit_5_1_surface.disabled,false);
-    assert.match(nodes.liron_unit_5_1_surface.attrs.onclick,/deviceToolSurfaceMap\(1,39685\)/);
+    assert.match(nodes.liron_unit_5_1_surface.attrs.onclick,/deviceToolSurfaceMapToggle\(1,39685\)/);
     assert.equal(nodes.liron_unit_5_1_but.title,'Instance #9B05: eject disk');
     assert.equal(nodes.liron_unit_5_1_file.value,'C:\\fakepath\\TOOLS.po');
     disk.ejectImage();
