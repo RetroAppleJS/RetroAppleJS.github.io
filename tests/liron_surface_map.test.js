@@ -145,7 +145,7 @@ test('UniDisk surface map marks the current head position',()=>{
 
     const html=card.deviceToolSurfaceMapHTML(1,0x9B05);
     assert.match(html,/data-side="0" data-track="1" data-sector="0"[^>]*data-head="1"/);
-    assert.match(html,/outline:2px solid #FF8080/);
+    assert.match(html,/outline:2px solid #FFF/);
 });
 
 test('UniDisk popup joins the rightmost visible toolbox with a five pixel gap',()=>{
@@ -168,16 +168,19 @@ test('UniDisk popup joins the rightmost visible toolbox with a five pixel gap',(
         window:{
             innerWidth:1400,
             innerHeight:900,
+            scrollX:40,
+            scrollY:300,
             getComputedStyle(){return {display:'block',visibility:'visible'};}
         }
     });
     const {card}=mountedDisk(context);
 
     assert.equal(card.deviceToolSurfaceMapPosition(1),true);
-    assert.equal(popup.style.left,'625px');
+    assert.equal(popup.style.position,'absolute');
+    assert.equal(popup.style.left,'665px');
     assert.equal(popup.style.right,'auto');
-    assert.equal(popup.style.top,'58px');
-    assert.equal(popup.style.width,'306px');
+    assert.equal(popup.style.top,'358px');
+    assert.equal(popup.style.width,'326px');
 });
 
 test('UniDisk surface map keeps exact instance identity and handles stale or empty media explicitly',()=>{
