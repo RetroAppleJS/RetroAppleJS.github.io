@@ -30611,7 +30611,7 @@ function AppleLiron()
         {
             var canMap=deviceCode==="UNIDISK" && typeof(device.getSurfaceMapGeometry)==="function" && !!state.mediaLoaded;
             surface.disabled=!canMap; surface.title=canMap ? "Disk Surface Map" : "Disk Surface Map (no media loaded)";
-            setClick(surface,canMap ? ("apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolSurfaceMap("+unit+","+Number(device.attach?.hash)+")") : null);
+            setClick(surface,canMap ? ("apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolSurfaceMapToggle("+unit+","+Number(device.attach?.hash)+")") : null);
         }
         var eject=document.getElementById(controlID+"_but");
         if(eject) eject.title=(instance ? ("Instance #"+instance+": ") : ("Unit"+unit+": "))+(hardDisk ? "erase/reset disk" : "eject disk");
