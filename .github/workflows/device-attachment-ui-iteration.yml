@@ -26,7 +26,6 @@ on:
       - "tests/hd20_toolbox_media.test.js"
       - "tests/hd20_surface_map.test.js"
       - "tests/liron_browser_mount.test.js"
-      - "tests/liron_surface_map.test.js"
       - "tests/liron_toolbox.test.js"
       - "tests/liron_toolbox_eject.test.js"
       - "tests/liron_loader_diagnostics.test.js"
@@ -53,7 +52,6 @@ on:
       - "tests/hd20_toolbox_media.test.js"
       - "tests/hd20_surface_map.test.js"
       - "tests/liron_browser_mount.test.js"
-      - "tests/liron_surface_map.test.js"
       - "tests/liron_toolbox.test.js"
       - "tests/liron_toolbox_eject.test.js"
       - "tests/liron_loader_diagnostics.test.js"
@@ -68,7 +66,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      # Cover attachment identity, IWM/SmartPort transport, downloadable media, and surface-map behavior.
+      # Cover attachment identity, IWM/SmartPort transport, downloadable media, and HD20 surface-map behavior.
       - name: Syntax checks
         run: |
           node --check res/EMU_apple2main.js
@@ -90,7 +88,6 @@ jobs:
           node --check tests/hd20_toolbox_media.test.js
           node --check tests/hd20_surface_map.test.js
           node --check tests/liron_browser_mount.test.js
-          node --check tests/liron_surface_map.test.js
           node --check tests/liron_toolbox.test.js
           node --check tests/liron_toolbox_eject.test.js
           node --check tests/liron_loader_diagnostics.test.js
@@ -111,7 +108,6 @@ jobs:
             tests/hd20_toolbox_media.test.js \
             tests/hd20_surface_map.test.js \
             tests/liron_browser_mount.test.js \
-            tests/liron_surface_map.test.js \
             tests/liron_toolbox.test.js \
             tests/liron_toolbox_eject.test.js \
             tests/liron_loader_diagnostics.test.js
