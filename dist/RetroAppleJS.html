@@ -28970,7 +28970,7 @@ function HD20Device(options)
     {
         name=String(name || "").split(/[\\/]/).pop();
         if(!name) return "UNFORMATTED-HD20.po";
-        name=name.replace(/\.[^.]*$/,'');
+        name=name.replace(/\.po\.gz$/i,'').replace(/\.[^.]*$/,'');
         return (name || "UNFORMATTED-HD20")+".po";
     }
 
@@ -30417,6 +30417,15 @@ function AppleLiron()
         return 0;
     };
 
+    function deviceToolArchiveFilename(filename,hardDisk)
+    {
+        filename=String(filename || (hardDisk ? "HD20.po" : "UNIDISK.po"));
+        if(!hardDisk) return filename;
+        filename=filename.replace(/\.gz$/i,"");
+        if(!/\.po$/i.test(filename)) filename += ".po";
+        return filename+".gz";
+    }
+
     this.deviceToolLoadFile = function(input,unit)
     {
         var file=input && input.files && input.files[0];
@@ -30455,13 +30464,15 @@ function AppleLiron()
             ? Number(target.getBlockCount())
             : (deviceCode==="HD20" ? 40960 : 1600);
         var expectedBytes=blockSize*blockCount;
+        var mediaFilename=String(file.name || "");
+        var gzipHD20=deviceCode==="HD20" && /\.po\.gz$/i.test(mediaFilename);
 
         function clearInput()
         {
             try { input.value=""; } catch(e) {}
         }
 
-        if(!Number.isInteger(expectedBytes) || expectedBytes<=0 || Number(file.size)!==expectedBytes)
+        if(!Number.isInteger(expectedBytes) || expectedBytes<=0 || (!gzipHD20 && Number(file.size)!==expectedBytes))
         {
             console.error(mediaLabel+" load failed: invalid image size",{
                  "slotN":slotN
@@ -30482,8 +30493,44 @@ function AppleLiron()
             try
             {
                 var bytes=new Uint8Array(ev.target.result);
+                if(gzipHD20)
+                {
+                    if(bytes.length<2 || bytes[0]!==0x1F || bytes[1]!==0x8B)
+                    {
+                        console.error(mediaLabel+" load failed: invalid gzip image",{"slotN":slotN,"unit":unit,"filename":mediaFilename,"bytes":bytes.length});
+                        if(typeof(alert)==="function") alert("Unable to decompress "+mediaLabel+" image: invalid gzip data.");
+                        clearInput();
+                        return;
+                    }
+                    if(typeof pako === "undefined" || !pako || !pako.ungzip)
+                    {
+                        console.error(mediaLabel+" load failed: gzip support unavailable",{"slotN":slotN,"unit":unit,"filename":mediaFilename});
+                        if(typeof(alert)==="function") alert(mediaLabel+" gzip support is unavailable.");
+                        clearInput();
+                        return;
+                    }
+                    try
+                    {
+                        bytes=Uint8Array.from(pako.ungzip(bytes));
+                    }
+                    catch(gzipError)
+                    {
+                        console.error(mediaLabel+" load failed: gzip decompression error",{"slotN":slotN,"unit":unit,"filename":mediaFilename,"error":gzipError && gzipError.message ? gzipError.message : String(gzipError)});
+                        if(typeof(alert)==="function") alert("Unable to decompress "+mediaLabel+" image.");
+                        clearInput();
+                        return;
+                    }
+                    if(bytes.length!==expectedBytes)
+                    {
+                        console.error(mediaLabel+" load failed: invalid expanded image size",{"slotN":slotN,"unit":unit,"filename":mediaFilename,"expected":expectedBytes,"actual":bytes.length});
+                        if(typeof(alert)==="function") alert(mediaLabel+" gzip image must expand to exactly "+expectedBytes+" bytes.");
+                        clearInput();
+                        return;
+                    }
+                }
+
                 var mounted=typeof(EMU_mountDiskImage)==="function" &&
-                    EMU_mountDiskImage(bytes,slotN,deviceCode,file.name || "",unit);
+                    EMU_mountDiskImage(bytes,slotN,deviceCode,mediaFilename,unit);
                 if(!mounted)
                 {
                     console.error(mediaLabel+" load failed: mount rejected",{"slotN":slotN,"unit":unit,"filename":file.name || "","bytes":bytes.length});
@@ -30550,8 +30597,26 @@ function AppleLiron()
 
         var image=target.getImage();
         if(!image || typeof(image.length)!=="number" || image.length<=0) return false;
-        var filename=String(target.getSuggestedFilename() || "HD20.po");
-        oCOM.Download(filename,image);
+        var hardDisk=String(target.id && target.id.DCODE || "")==="HD20";
+        var filename=deviceToolArchiveFilename(target.getSuggestedFilename(),hardDisk);
+        var payload=image;
+        if(hardDisk)
+        {
+            if(typeof pako === "undefined" || !pako || !pako.gzip)
+            {
+                console.error("Apple Hard Disk 20 download failed: gzip support unavailable");
+                if(typeof(alert)==="function") alert("Apple Hard Disk 20 gzip support is unavailable.");
+                return false;
+            }
+            try { payload=pako.gzip(image); }
+            catch(gzipError)
+            {
+                console.error("Apple Hard Disk 20 download failed: gzip compression error",gzipError);
+                if(typeof(alert)==="function") alert("Unable to compress Apple Hard Disk 20 image.");
+                return false;
+            }
+        }
+        oCOM.Download(filename,payload);
         return true;
     };
 
@@ -30653,6 +30718,7 @@ function AppleLiron()
         var exportable=typeof(device.getImage)==="function" && typeof(device.getSuggestedFilename)==="function";
         var downloadable=exportable && (hardDisk || !!state.mediaLoaded);
         var filename=exportable ? String(device.getSuggestedFilename() || (hardDisk ? "HD20.po" : "UNIDISK.po")) : "";
+        var downloadFilename=deviceToolArchiveFilename(filename,hardDisk);
         var displayFilename=hardDisk
             ? String(state.mediaFilename || filename || "UNFORMATTED-HD20.po")
             : "";
@@ -30665,7 +30731,7 @@ function AppleLiron()
         if(download)
         {
             download.disabled=!downloadable;
-            download.title=downloadable ? ("Save "+filename) : (exportable ? "Save disk (no media loaded)" : "Save disk (not implemented yet)");
+            download.title=downloadable ? ("Save "+downloadFilename) : (exportable ? "Save disk (no media loaded)" : "Save disk (not implemented yet)");
             setClick(download,downloadable ? ("apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolDownload("+unit+")") : null);
         }
         var surface=document.getElementById(controlID+"_surface");
@@ -31455,6 +31521,7 @@ function AppleLiron()
             var deviceState=typeof(device.getState)==="function" ? device.getState() || {} : {};
             var downloadable=exportable && (hardDisk || !!deviceState.mediaLoaded);
             var logicalFilename=exportable ? String(device.getSuggestedFilename() || (hardDisk ? "HD20.po" : "UNIDISK.po")) : undefined;
+            var downloadFilename=deviceToolArchiveFilename(logicalFilename,hardDisk);
             var displayFilename=hardDisk
                 ? String(deviceState.mediaFilename || logicalFilename || "UNFORMATTED-HD20.po")
                 : undefined;
@@ -31472,11 +31539,11 @@ function AppleLiron()
                 ,"fileDisplayName":displayFilename
                 ,"buttonTitle":(instanceHex ? ("Instance #"+instanceHex+": ") : ("Unit"+unit+": "))+(hardDisk ? "erase/reset disk" : "eject disk")
                 ,"buttonOnClick":"apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolEject("+unit+")"
-                ,"fileAccept":".po"
+                ,"fileAccept":hardDisk ? ".po,.po.gz" : ".po"
                 ,"fileOnChange":"javascript:EMU_audio_event_unlock();apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolLoadFile(this,"+unit+")"
                 ,"downloadDisabled":!downloadable
                 ,"downloadOnClick":downloadable ? ("apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolDownload("+unit+")") : undefined
-                ,"downloadTitle":downloadable ? ("Save "+logicalFilename) : (exportable ? "Save disk (no media loaded)" : "Save disk (not implemented yet)")
+                ,"downloadTitle":downloadable ? ("Save "+downloadFilename) : (exportable ? "Save disk (no media loaded)" : "Save disk (not implemented yet)")
                 ,"capabilityActions":supportsSurfaceMap ? [{"id":controlID+"_surface","icon":"fa fa-th","title":deviceState.mediaLoaded ? "Disk Surface Map" : "Disk Surface Map (no media loaded)","onClick":deviceState.mediaLoaded ? ("apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolSurfaceMapToggle("+unit+","+instanceHash+")") : undefined,"disabled":!deviceState.mediaLoaded}] : []
             });
         }
