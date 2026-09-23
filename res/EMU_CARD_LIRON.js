@@ -2005,6 +2005,25 @@ function AppleLiron()
         return true;
     };
 
+    this.deviceToolSurfaceMapToggle = function(unit,expectedHash)
+    {
+        if(typeof(document)==="undefined" || !document.getElementById) return false;
+        var popup=document.getElementById("lironSurfaceMap_popup");
+        if(!popup) return false;
+
+        if(popup.hidden===false)
+        {
+            liron.deviceToolSurfaceMapToggleSync(false);
+            if(typeof(oCOM)==="object" && oCOM && oCOM.POPUP && typeof(oCOM.POPUP.off)==="function")
+                oCOM.POPUP.off("lironSurfaceMap_popup");
+            else
+                popup.hidden=true;
+            return false;
+        }
+
+        return liron.deviceToolSurfaceMap(unit,expectedHash);
+    };
+
     this.deviceToolSurfaceMap = function(unit,expectedHash)
     {
         unit=Number(unit); expectedHash=Number(expectedHash);
@@ -2075,7 +2094,7 @@ function AppleLiron()
                 ,"downloadDisabled":!downloadable
                 ,"downloadOnClick":downloadable ? ("apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolDownload("+unit+")") : undefined
                 ,"downloadTitle":downloadable ? ("Save "+logicalFilename) : (exportable ? "Save disk (no media loaded)" : "Save disk (not implemented yet)")
-                ,"capabilityActions":isUniDisk ? [{"id":controlID+"_surface","icon":"fa fa-th","title":deviceState.mediaLoaded ? "Disk Surface Map" : "Disk Surface Map (no media loaded)","onClick":deviceState.mediaLoaded ? ("apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolSurfaceMap("+unit+","+instanceHash+")") : undefined,"disabled":!deviceState.mediaLoaded}] : []
+                ,"capabilityActions":isUniDisk ? [{"id":controlID+"_surface","icon":"fa fa-th","title":deviceState.mediaLoaded ? "Disk Surface Map" : "Disk Surface Map (no media loaded)","onClick":deviceState.mediaLoaded ? ("apple2plus.hwObj().io.SLOT2obj("+slotN+").deviceToolSurfaceMapToggle("+unit+","+instanceHash+")") : undefined,"disabled":!deviceState.mediaLoaded}] : []
             });
         }
 
