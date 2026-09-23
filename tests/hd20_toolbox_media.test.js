@@ -7,6 +7,7 @@ const vm=require('node:vm');
 
 const source=fs.readFileSync('res/EMU_CARD_LIRON.js','utf8');
 const hd20Source=fs.readFileSync('res/EMU_DEVICE_HD20.js','utf8');
+const pakoSource=fs.readFileSync('res/pako.min.js','utf8');
 
 function blankImage()
 {
@@ -48,6 +49,7 @@ function loadLiron(extra={})
         Uint8Array,ArrayBuffer,Array,Number,String,Object,Math,RangeError,Error,Reflect,
         oEMU:{component:{IO:{}}}
     },extra));
+    vm.runInContext(pakoSource,context,{filename:'pako.min.js'});
     vm.runInContext(hd20Source,context,{filename:'EMU_DEVICE_HD20.js'});
     vm.runInContext(source,context,{filename:'EMU_CARD_LIRON.js'});
     return context;
@@ -70,6 +72,8 @@ test('Liron toolbox names media controls by each SmartPort device type',()=>{
     assert.equal(rows[1].fileName,'HD20_2');
     assert.match(rows[0].fileOnChange,/deviceToolLoadFile\(this,1\)/);
     assert.match(rows[1].fileOnChange,/deviceToolLoadFile\(this,2\)/);
+    assert.equal(rows[0].fileAccept,'.po');
+    assert.equal(rows[1].fileAccept,'.po,.po.gz');
 });
 
 test('HD20 toolbox uses a logical filename and enables image download while UniDisk keeps native removable-media behavior',()=>{
@@ -91,11 +95,11 @@ test('HD20 toolbox uses a logical filename and enables image download while UniD
     assert.equal(rows[1].fileDisplayName,'BLANK92.po');
     assert.equal(rows[1].downloadDisabled,false);
     assert.match(rows[1].downloadOnClick,/deviceToolDownload\(2\)/);
-    assert.equal(rows[1].downloadTitle,'Save BLANK92.po');
+    assert.equal(rows[1].downloadTitle,'Save BLANK92.po.gz');
     assert.equal(rows[1].buttonTitle,'Unit2: erase/reset disk');
 });
 
-test('Liron downloads the exact HD20 backing image using its suggested .po filename',()=>{
+test('Liron gzip-downloads the exact HD20 backing image using a .po.gz filename',()=>{
     const downloads=[];
     const image=new Uint8Array(20971520);
     image[0]=0x11;
@@ -112,10 +116,13 @@ test('Liron downloads the exact HD20 backing image using its suggested .po filen
     assert.equal(typeof card.deviceToolDownload,'function');
     assert.equal(card.deviceToolDownload(1),true);
     assert.equal(downloads.length,1);
-    assert.equal(downloads[0].filename,'BLANK92.po');
-    assert.equal(downloads[0].data.length,20971520);
-    assert.equal(downloads[0].data[0],0x11);
-    assert.equal(downloads[0].data[20971519],0xEE);
+    assert.equal(downloads[0].filename,'BLANK92.po.gz');
+    assert.equal(downloads[0].data[0],0x1F);
+    assert.equal(downloads[0].data[1],0x8B);
+    const inflated=Uint8Array.from(context.pako.ungzip(downloads[0].data));
+    assert.equal(inflated.length,20971520);
+    assert.equal(inflated[0],0x11);
+    assert.equal(inflated[20971519],0xEE);
 });
 
 test('HD20 media metadata changes refresh the open Liron toolbox',()=>{
@@ -285,6 +292,118 @@ test('HD20 media row starts with the unformatted default and switches immediatel
     card.deviceToolSlotHTML({slotN:6,slotID:'5',toolboxID:'device_tool_5',devices:card.devices});
     assert.equal(rows[0].fileDisplayName,'BLANK92-2.po',
         'a rebuilt media row must still prefer the loaded host filename');
-    assert.equal(rows[0].downloadTitle,'Save BLANK92.po',
-        'download naming remains independent from the visible host filename');
+    assert.equal(rows[0].downloadTitle,'Save BLANK92.po.gz',
+        'gzip download naming remains independent from the visible host filename');
+});
+
+
+test('HD20 loads .po.gz through pako while preserving the exact host filename in the media row',()=>{
+    const rows=[];
+    const filenameNode={textContent:'UNFORMATTED-HD20.po'};
+    const mountCalls=[];
+    let hd=null;
+
+    class FakeFileReader
+    {
+        readAsArrayBuffer(file){this.onload({target:{result:file.bytes.buffer}});}
+    }
+
+    const context=loadLiron({
+        FileReader:FakeFileReader,
+        alert(){},
+        document:{getElementById(id){return id==='liron_unit_5_1_file_name' ? filenameNode : null;}},
+        EMU_deviceMediaRowHTML(spec){rows.push(spec);return '<row>'+spec.label+'</row>';},
+        EMU_mountDiskImage(bytes,slotN,deviceID,filename,unit)
+        {
+            mountCalls.push({length:bytes.length,slotN,deviceID,filename,unit});
+            hd.loadImage(bytes,{filename});
+            return true;
+        },
+        apple2plus:{hwObj(){return {io:{slot2ID(n){return String(n-1);},refreshDeviceToolboxes(){}}};}}
+    });
+
+    const card=new context.AppleLiron();
+    card.mount={slotN:6};
+    hd=new context.HD20Device();
+    card.devices=[hd];
+    assert.equal(hd.bindHost(card),true);
+
+    const raw=prodosImage('BLANK92');
+    const compressed=context.pako.gzip(raw);
+    const file={name:'BLANK92-2.po.gz',size:compressed.length,bytes:compressed};
+    const input={files:[file],value:'C:\\fakepath\\BLANK92-2.po.gz'};
+
+    assert.equal(card.deviceToolLoadFile(input,1),true);
+    assert.deepEqual(mountCalls,[{
+        length:20971520,slotN:6,deviceID:'HD20',filename:'BLANK92-2.po.gz',unit:1
+    }]);
+    assert.equal(input.value,'C:\\fakepath\\BLANK92-2.po.gz');
+    assert.equal(hd.getState().mediaFilename,'BLANK92-2.po.gz');
+    assert.equal(hd.getSuggestedFilename(),'BLANK92.po');
+    assert.equal(filenameNode.textContent,'BLANK92-2.po.gz');
+
+    rows.length=0;
+    card.deviceToolSlotHTML({slotN:6,slotID:'5',toolboxID:'device_tool_5',devices:card.devices});
+    assert.equal(rows[0].fileDisplayName,'BLANK92-2.po.gz');
+    assert.equal(rows[0].downloadTitle,'Save BLANK92.po.gz');
+});
+
+test('HD20 rejects corrupt .po.gz media without mounting it',()=>{
+    let mounts=0;
+    const alerts=[];
+    class FakeFileReader
+    {
+        readAsArrayBuffer(file){this.onload({target:{result:file.bytes.buffer}});}
+    }
+    const context=loadLiron({
+        FileReader:FakeFileReader,
+        alert(msg){alerts.push(String(msg));},
+        EMU_mountDiskImage(){mounts++;return true;}
+    });
+    const card=new context.AppleLiron();
+    card.mount={slotN:6};
+    const hd=fakeDevice('HD20','Apple Hard Disk 20',1,40960);
+    card.devices=[hd];
+    card.getBus().attach(hd,1);
+
+    const bytes=new Uint8Array([0x1F,0x8B,0x00,0x00,0x00]);
+    const input={files:[{name:'BROKEN.po.gz',size:bytes.length,bytes}],value:'C:\\fakepath\\BROKEN.po.gz'};
+    assert.equal(card.deviceToolLoadFile(input,1),true);
+    assert.equal(mounts,0);
+    assert.equal(input.value,'');
+    assert.ok(alerts.some(msg=>msg.includes('Unable to decompress')));
+});
+
+test('HD20 rejects a valid gzip whose expanded image is not exactly 20 MiB',()=>{
+    let mounts=0;
+    const alerts=[];
+    class FakeFileReader
+    {
+        readAsArrayBuffer(file){this.onload({target:{result:file.bytes.buffer}});}
+    }
+    const context=loadLiron({
+        FileReader:FakeFileReader,
+        alert(msg){alerts.push(String(msg));},
+        EMU_mountDiskImage(){mounts++;return true;}
+    });
+    const card=new context.AppleLiron();
+    card.mount={slotN:6};
+    const hd=fakeDevice('HD20','Apple Hard Disk 20',1,40960);
+    card.devices=[hd];
+    card.getBus().attach(hd,1);
+
+    const compressed=context.pako.gzip(new Uint8Array(819200));
+    const input={files:[{name:'TOOSMALL.po.gz',size:compressed.length,bytes:compressed}],value:'C:\\fakepath\\TOOSMALL.po.gz'};
+    assert.equal(card.deviceToolLoadFile(input,1),true);
+    assert.equal(mounts,0);
+    assert.equal(input.value,'');
+    assert.ok(alerts.some(msg=>msg.includes('expand to exactly 20971520 bytes')));
+});
+
+test('HD20 strips the .po.gz wrapper when deriving a logical filename from unformatted host media',()=>{
+    const context=loadLiron();
+    const hd=new context.HD20Device();
+    hd.loadImage(blankImage(),{filename:'BLANK92-2.po.gz'});
+    assert.equal(hd.getState().mediaFilename,'BLANK92-2.po.gz');
+    assert.equal(hd.getSuggestedFilename(),'BLANK92-2.po');
 });
