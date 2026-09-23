@@ -1,0 +1,15 @@
+name: Temporary HD20 Safari gzip picker
+
+on:
+  push:
+    branches: ["fix/hd20-safari-gzip-picker"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node --test tests/hd20_safari_gzip_picker.test.js
