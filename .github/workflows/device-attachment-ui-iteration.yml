@@ -66,7 +66,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      # Cover attachment identity, IWM/SmartPort transport, downloadable media, and HD20 surface-map behavior.
+      # Cover attachment identity, IWM/SmartPort transport, downloadable media, and paged HD20 surface-map behavior.
       - name: Syntax checks
         run: |
           node --check res/EMU_apple2main.js
