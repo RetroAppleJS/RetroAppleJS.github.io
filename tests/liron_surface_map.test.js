@@ -183,6 +183,25 @@ test('UniDisk popup joins the rightmost visible toolbox with a five pixel gap',(
     assert.equal(popup.style.width,'326px');
 });
 
+test('UniDisk surface-map sync uses the shared dashboard refresh and never creates a private timer',()=>{
+    let scheduled=0;
+    const icon={className:'fa fa-sync-alt'};
+    const context=loadCard({
+        document:{getElementById(id){return id==='lironSurfaceMap_monitoring'?icon:null;}},
+        setInterval(){scheduled++; return 1;},
+        clearInterval(){}
+    });
+    const {card}=mountedDisk(context);
+
+    assert.equal(card.deviceToolSurfaceMapToggleSync(true),true);
+    assert.equal(icon.className,'fa fa-stop-circle');
+    assert.equal(scheduled,0,'UniDisk sync must not create a private refresh timer');
+    assert.equal(typeof card.deviceToolSurfaceMapMonitoring,'function');
+
+    assert.equal(card.deviceToolSurfaceMapToggleSync(false),false);
+    assert.equal(icon.className,'fa fa-sync-alt');
+});
+
 test('UniDisk surface map keeps exact instance identity and handles stale or empty media explicitly',()=>{
     const context=loadCard();
     const {card,disk}=mountedDisk(context);
