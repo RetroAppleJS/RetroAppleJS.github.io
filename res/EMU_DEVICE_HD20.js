@@ -255,7 +255,7 @@ function HD20Device(options)
     function installHostSurfaceMapView(owner)
     {
         if(!owner || owner.__hd20FullSurfaceViewInstalled) return;
-        if(typeof(owner.deviceToolSurfaceMapHTML)!==="function") return;
+        if(typeof(owner.deviceToolSurfaceMapHTML)!=="function") return;
 
         var baseHTML=owner.deviceToolSurfaceMapHTML;
         var baseToggleSync=typeof(owner.deviceToolSurfaceMapToggleSync)==="function" ? owner.deviceToolSurfaceMapToggleSync : null;
