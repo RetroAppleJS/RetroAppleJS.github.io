@@ -9,10 +9,13 @@ function HD20Device(options)
     const BLOCK_COUNT = 40960; // 20 MiB
     const DEVICE_TYPE = 0x02;  // SmartPort hard disk
     const DEVICE_SUBTYPE = 0x20; // non-removable hard disk
-    const SURFACE_COLUMNS = 160;
-    const SURFACE_ROWS = 128;
+    const SURFACE_COLUMNS = 40;
+    const SURFACE_ROWS = 64;
     const SURFACE_PANELS = 2;
-    const SURFACE_BLOCKS_PER_PANEL = SURFACE_COLUMNS*SURFACE_ROWS; // 20480 = 10 MiB
+    const SURFACE_BLOCKS_PER_CELL = 8; // 4 KiB per visible 10px cell
+    const SURFACE_BYTES_PER_CELL = SURFACE_BLOCKS_PER_CELL*BLOCK_SIZE;
+    const SURFACE_CELLS_PER_PANEL = SURFACE_COLUMNS*SURFACE_ROWS; // 2560 cells
+    const SURFACE_BLOCKS_PER_PANEL = SURFACE_CELLS_PER_PANEL*SURFACE_BLOCKS_PER_CELL; // 20480 = 10 MiB
     const SURFACE_BLOCKS_PER_PAGE = SURFACE_BLOCKS_PER_PANEL*SURFACE_PANELS; // 40960 = 20 MiB
     const SURFACE_PAGE_COUNT = BLOCK_COUNT/SURFACE_BLOCKS_PER_PAGE; // 1
     const FW_VERSION = options.firmwareVersion===undefined ? 0x0100 : Number(options.firmwareVersion)&0xFFFF;
@@ -170,22 +173,25 @@ function HD20Device(options)
 
     var SURFACE_DENSITY_PALETTE=surfaceDensityPalette();
 
-    function blockDensity(block)
+    function surfaceRangeDensity(startBlock,endBlock)
     {
-        var offset=Number(block)*BLOCK_SIZE;
+        startBlock=Number(startBlock); endBlock=Number(endBlock);
+        var start=startBlock*BLOCK_SIZE;
+        var end=(endBlock+1)*BLOCK_SIZE;
+        var bytes=end-start;
         var nonzero=0, sum=0;
-        if(!media || offset<0 || offset+BLOCK_SIZE>media.length)
+        if(!media || start<0 || end>media.length || bytes<=0)
             return {"pct":0,"nonzero":0,"avg":0};
-        for(var i=0;i<BLOCK_SIZE;i++)
+        for(var i=start;i<end;i++)
         {
-            var value=media[offset+i]&0xFF;
+            var value=media[i]&0xFF;
             sum+=value;
             if(value!==0) nonzero++;
         }
         return {
-             "pct":Math.round(nonzero*100/BLOCK_SIZE)
+             "pct":Math.round(nonzero*100/bytes)
             ,"nonzero":nonzero
-            ,"avg":Math.round(sum/BLOCK_SIZE)
+            ,"avg":Math.round(sum/bytes)
         };
     }
 
@@ -216,40 +222,44 @@ function HD20Device(options)
     {
         var instance=Number(this.attach?.hash);
         instance=Number.isInteger(instance) ? (instance&0xFFFF).toString(16).toUpperCase().padStart(4,"0") : "????";
+        var hash=Number(this.attach?.hash);
+        var unit=Number(this.getUnit());
         var head=this.getHeadSurfacePosition();
-        var css="<style>.liron-surface-hd20 .liron-surface-cell{display:block;width:3px;height:3px;box-sizing:border-box;border:0}.liron-surface-hd20 .liron-surface-track{box-sizing:border-box}</style>";
-        var out=header+css+"<div class=\"liron-surface-panels liron-surface-hd20\" style=\"display:inline-flex;align-items:flex-start;gap:8px;width:max-content\">";
+        var css="<style>.liron-surface-hd20 .liron-surface-cell{display:block;width:10px;height:10px;box-sizing:border-box;border:1px solid #333}.liron-surface-hd20 .liron-surface-track{box-sizing:border-box}</style>";
+        var out=header+css+"<div class=\"liron-surface-hd20-root\" data-hd20-surface-map=\"1\" data-unit=\""+unit+"\" data-hash=\""+hash+"\">"+
+            "<div class=\"liron-surface-panels liron-surface-hd20\" style=\"display:inline-flex;align-items:flex-start;gap:8px;width:max-content\">";
         for(var panel=0;panel<SURFACE_PANELS;panel++)
         {
             var startMiB=panel*10;
             out += "<section class=\"liron-surface-side liron-surface-hd20-panel\" data-panel=\""+panel+"\" style=\"flex:0 0 auto;margin:0\">"+
                 "<div class=\"liron-surface-side-title\" style=\"text-align:center;font-size:11px;line-height:12px;padding:0 0 2px 36px\">"+startMiB+"–"+(startMiB+10)+" MiB</div>"+
-                "<div class=\"liron-surface-grid\" style=\"display:grid;grid-template-columns:36px repeat(160,3px);grid-template-rows:repeat(128,3px);gap:0;overflow:hidden\">";
+                "<div class=\"liron-surface-grid\" style=\"display:grid;grid-template-columns:36px repeat(40,10px);grid-template-rows:repeat(64,10px);gap:0;overflow:hidden\">";
             for(var row=0;row<SURFACE_ROWS;row++)
             {
                 var rowMiB=startMiB+(row*10/SURFACE_ROWS);
-                var rowLabel=row%32===0 ? ((Math.round(rowMiB*10)/10)+"M") : "";
-                out += "<span class=\"liron-surface-track\" data-row-label=\""+row+"\" style=\"display:flex;align-items:center;justify-content:flex-end;height:3px;padding-right:4px;color:#aaa;font-family:Courier;font-size:8px;line-height:8px;overflow:visible\">"+rowLabel+"</span>";
+                var rowLabel=row%16===0 ? ((Math.round(rowMiB*10)/10)+"M") : "";
+                out += "<span class=\"liron-surface-track\" data-row-label=\""+row+"\" style=\"display:flex;align-items:center;justify-content:flex-end;height:10px;padding-right:4px;color:#aaa;font-family:Courier;font-size:8px;line-height:10px;overflow:visible\">"+rowLabel+"</span>";
                 for(var column=0;column<SURFACE_COLUMNS;column++)
                 {
-                    var block=this.surfaceCellToBlock(0,panel,row,column);
-                    var offset=block*BLOCK_SIZE;
-                    var density=blockDensity(block);
-                    var isHead=!!(head && head.block===block);
-                    var bandStart=row>0 && row%32===0;
+                    var blockRange=this.surfaceCellToBlockRange(0,panel,row,column);
+                    var density=surfaceRangeDensity(blockRange.startBlock,blockRange.endBlock);
+                    var isHead=!!(head && head.block>=blockRange.startBlock && head.block<=blockRange.endBlock);
+                    var bandStart=row>0 && row%16===0;
                     var style="background:"+SURFACE_DENSITY_PALETTE[density.pct]+";"+
-                        (bandStart?"border-top:1px solid #333;":"")+
+                        (bandStart?"border-top-width:2px;":"")+
                         (isHead?"outline:2px solid #FFF;outline-offset:-1px;":"");
-                    var tip="Block "+block+" · 512 bytes · offset "+offset+" · nonzero="+density.nonzero+"/512 · avg="+density.avg;
+                    var tip="Blocks "+blockRange.startBlock+"–"+blockRange.endBlock+" · 4 KiB · offset "+blockRange.offset+"–"+(blockRange.offset+blockRange.bytes-1)+
+                        " · nonzero="+density.nonzero+"/"+blockRange.bytes+" · avg="+density.avg+
+                        (isHead?" · Head block "+head.block:"");
                     out += "<span class=\"liron-surface-cell active"+(isHead?" liron-surface-head":"")+"\" style=\""+style+
-                        "\" data-surface-cell=\"1\" data-active=\"1\" data-page=\"0\" data-panel=\""+panel+"\" data-row=\""+row+"\" data-column=\""+column+
-                        "\" data-block=\""+block+"\" data-offset=\""+offset+"\" data-head=\""+(isHead?"1":"0")+"\" title=\""+surfaceEscape(tip)+"\"></span>";
+                        "\" data-surface-cell=\"1\" data-active=\"1\" data-density=\""+density.pct+"\" data-page=\"0\" data-panel=\""+panel+"\" data-row=\""+row+"\" data-column=\""+column+
+                        "\" data-block=\""+blockRange.startBlock+"\" data-start-block=\""+blockRange.startBlock+"\" data-end-block=\""+blockRange.endBlock+"\" data-offset=\""+blockRange.offset+"\" data-head=\""+(isHead?"1":"0")+"\" title=\""+surfaceEscape(tip)+"\"></span>";
                 }
             }
             out += "</div></section>";
         }
         return out+"</div><div class=\"liron-surface-meta\" style=\"font-size:10px;color:#888;margin-top:4px;line-height:12px\">"+
-            "Instance #"+instance+" · 20 MiB · 40960 × 512-byte blocks · entire disk</div>";
+            "Instance #"+instance+" · 20 MiB · 40960 × 512-byte blocks · "+(SURFACE_PANELS*SURFACE_CELLS_PER_PANEL)+" × 4 KiB cells</div></div>";
     };
 
     function installHostSurfaceMapView(owner)
@@ -260,6 +270,8 @@ function HD20Device(options)
         var baseHTML=owner.deviceToolSurfaceMapHTML;
         var baseToggleSync=typeof(owner.deviceToolSurfaceMapToggleSync)==="function" ? owner.deviceToolSurfaceMapToggleSync : null;
         var basePosition=typeof(owner.deviceToolSurfaceMapPosition)==="function" ? owner.deviceToolSurfaceMapPosition : null;
+        var baseRefresh=typeof(owner.deviceToolSurfaceMapRefresh)==="function" ? owner.deviceToolSurfaceMapRefresh : null;
+        var baseMonitoring=typeof(owner.deviceToolSurfaceMapMonitoring)==="function" ? owner.deviceToolSurfaceMapMonitoring : null;
         var syncEnabled=false;
 
         owner.deviceToolSurfaceMapHTML=function(unit,expectedHash)
@@ -269,6 +281,20 @@ function HD20Device(options)
                 return target.renderSurfaceMapHTML(surfaceHeader(owner,syncEnabled));
             return baseHTML.call(owner,unit,expectedHash);
         };
+
+        function refreshHD20Surface()
+        {
+            if(typeof(document)==="undefined" || !document.getElementById) return false;
+            var text=document.getElementById("lironSurfaceMap_popup_text");
+            if(!text || typeof(text.querySelector)!==="function") return false;
+            var root=text.querySelector('[data-hd20-surface-map="1"]');
+            if(!root) return false;
+            var unit=Number(root.dataset ? root.dataset.unit : root.getAttribute("data-unit"));
+            var hash=Number(root.dataset ? root.dataset.hash : root.getAttribute("data-hash"));
+            if(!Number.isInteger(unit) || !Number.isInteger(hash)) return false;
+            text.innerHTML=owner.deviceToolSurfaceMapHTML(unit,hash);
+            return true;
+        }
 
         if(baseToggleSync)
         {
@@ -280,13 +306,31 @@ function HD20Device(options)
             };
         }
 
+        if(baseRefresh)
+        {
+            owner.deviceToolSurfaceMapRefresh=function()
+            {
+                if(refreshHD20Surface()) return true;
+                return baseRefresh.call(owner);
+            };
+        }
+
+        if(baseMonitoring)
+        {
+            owner.deviceToolSurfaceMapMonitoring=function()
+            {
+                if(refreshHD20Surface()) return true;
+                return baseMonitoring.call(owner);
+            };
+        }
+
         if(basePosition)
         {
             owner.deviceToolSurfaceMapPosition=function(unit)
             {
                 var result=basePosition.call(owner,unit);
                 var target=typeof(owner.getHD20)==="function" ? owner.getHD20(unit) : null;
-                if(target && typeof(document)!=="undefined" && document.getElementById && typeof(window)!=="undefined")
+                if(target && typeof(document)!==="undefined" && document.getElementById && typeof(window)!==="undefined")
                 {
                     var popup=document.getElementById("lironSurfaceMap_popup");
                     if(popup)
@@ -353,6 +397,9 @@ function HD20Device(options)
             ,"panels":SURFACE_PANELS
             ,"columnsPerPanel":SURFACE_COLUMNS
             ,"rowsPerPanel":SURFACE_ROWS
+            ,"cellsPerPanel":SURFACE_CELLS_PER_PANEL
+            ,"blocksPerCell":SURFACE_BLOCKS_PER_CELL
+            ,"bytesPerCell":SURFACE_BYTES_PER_CELL
             ,"blocksPerPanel":SURFACE_BLOCKS_PER_PANEL
             ,"blocksPerPage":SURFACE_BLOCKS_PER_PAGE
             ,"pageCount":SURFACE_PAGE_COUNT
@@ -369,7 +416,20 @@ function HD20Device(options)
            !Number.isInteger(row) || row<0 || row>=SURFACE_ROWS ||
            !Number.isInteger(column) || column<0 || column>=SURFACE_COLUMNS)
             return null;
-        return page*SURFACE_BLOCKS_PER_PAGE + panel*SURFACE_BLOCKS_PER_PANEL + row*SURFACE_COLUMNS + column;
+        var cell=panel*SURFACE_CELLS_PER_PANEL + row*SURFACE_COLUMNS + column;
+        return page*SURFACE_BLOCKS_PER_PAGE + cell*SURFACE_BLOCKS_PER_CELL;
+    };
+    this.surfaceCellToBlockRange = function(page,panel,row,column)
+    {
+        var startBlock=this.surfaceCellToBlock(page,panel,row,column);
+        if(startBlock===null) return null;
+        var endBlock=Math.min(BLOCK_COUNT-1,startBlock+SURFACE_BLOCKS_PER_CELL-1);
+        return {
+             "startBlock":startBlock
+            ,"endBlock":endBlock
+            ,"offset":startBlock*BLOCK_SIZE
+            ,"bytes":(endBlock-startBlock+1)*BLOCK_SIZE
+        };
     };
     this.blockToSurfaceCell = function(block)
     {
@@ -379,8 +439,9 @@ function HD20Device(options)
         var inPage=block-page*SURFACE_BLOCKS_PER_PAGE;
         var panel=Math.floor(inPage/SURFACE_BLOCKS_PER_PANEL);
         var inPanel=inPage-panel*SURFACE_BLOCKS_PER_PANEL;
-        var row=Math.floor(inPanel/SURFACE_COLUMNS);
-        var column=inPanel%SURFACE_COLUMNS;
+        var cell=Math.floor(inPanel/SURFACE_BLOCKS_PER_CELL);
+        var row=Math.floor(cell/SURFACE_COLUMNS);
+        var column=cell%SURFACE_COLUMNS;
         return {"page":page,"panel":panel,"row":row,"column":column,"block":block,"offset":block*BLOCK_SIZE,"bytes":BLOCK_SIZE};
     };
     this.getDeviceType = function() { return DEVICE_TYPE; };
