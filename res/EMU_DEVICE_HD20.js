@@ -17,12 +17,6 @@ function HD20Device(options)
     const SURFACE_PAGE_COUNT = BLOCK_COUNT/SURFACE_BLOCKS_PER_PAGE; // 20
     const FW_VERSION = options.firmwareVersion===undefined ? 0x0100 : Number(options.firmwareVersion)&0xFFFF;
     const DEVICE_NAME = String(options.name===undefined ? "HARD DISK 20" : options.name).slice(0,16);
-    const SURFACE_COLUMNS = 16;
-    const SURFACE_ROWS = 64;
-    const SURFACE_BLOCKS_PER_PANEL = SURFACE_COLUMNS * SURFACE_ROWS;
-    const SURFACE_PANELS_PER_PAGE = 2;
-    const SURFACE_BLOCKS_PER_PAGE = SURFACE_BLOCKS_PER_PANEL * SURFACE_PANELS_PER_PAGE;
-    const SURFACE_PAGE_COUNT = BLOCK_COUNT / SURFACE_BLOCKS_PER_PAGE;
 
     var device=this;
     var state = {
@@ -144,23 +138,6 @@ function HD20Device(options)
             host.deviceMediaMetadataChanged(device);
     }
 
-    function surfacePosition(blockNumber)
-    {
-        blockNumber=Number(blockNumber);
-        if(!Number.isInteger(blockNumber) || blockNumber<0 || blockNumber>=BLOCK_COUNT) return null;
-        var page=Math.floor(blockNumber/SURFACE_BLOCKS_PER_PAGE);
-        var withinPage=blockNumber%SURFACE_BLOCKS_PER_PAGE;
-        var panel=Math.floor(withinPage/SURFACE_BLOCKS_PER_PANEL);
-        var withinPanel=withinPage%SURFACE_BLOCKS_PER_PANEL;
-        return {
-             "block":blockNumber
-            ,"page":page
-            ,"panel":panel
-            ,"row":Math.floor(withinPanel/SURFACE_COLUMNS)
-            ,"column":withinPanel%SURFACE_COLUMNS
-        };
-    }
-
     this.bindHost = function(owner)
     {
         if(!owner || owner.id?.PCODE!=="LIRON" || typeof(owner.attachSmartPortDevice)!=="function")
@@ -245,24 +222,6 @@ function HD20Device(options)
     this.getImage = function() { return media===null ? new Uint8Array(BLOCK_SIZE*BLOCK_COUNT) : media.slice(); };
     this.getVolumeName = function() { return volumeName(); };
     this.getSuggestedFilename = function() { return suggestedFilename(); };
-    this.getSurfaceMapGeometry = function()
-    {
-        return {
-             "kind":"logical-blocks"
-            ,"cellWidth":10
-            ,"cellHeight":10
-            ,"bytesPerBlock":BLOCK_SIZE
-            ,"totalBlocks":BLOCK_COUNT
-            ,"columnsPerPanel":SURFACE_COLUMNS
-            ,"rowsPerPanel":SURFACE_ROWS
-            ,"blocksPerPanel":SURFACE_BLOCKS_PER_PANEL
-            ,"panelsPerPage":SURFACE_PANELS_PER_PAGE
-            ,"blocksPerPage":SURFACE_BLOCKS_PER_PAGE
-            ,"bytesPerPage":SURFACE_BLOCKS_PER_PAGE*BLOCK_SIZE
-            ,"pageCount":SURFACE_PAGE_COUNT
-        };
-    };
-    this.getSurfaceMapPosition = function() { return surfacePosition(state.lastBlock); };
 
     this.setOnline = function(value)
     {
