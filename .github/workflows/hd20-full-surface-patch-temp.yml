@@ -1,0 +1,122 @@
+name: Temporary HD20 full-surface renderer patch
+
+on:
+  push:
+    branches:
+      - fix/hd20-full-surface-map
+    paths:
+      - .github/workflows/hd20-full-surface-patch-temp.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message == 'chore: apply HD20 surface renderer patch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/hd20-full-surface-map
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Patch HD20 renderer
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('res/EMU_CARD_LIRON.js')
+          text = path.read_text()
+
+          range_and_renderer = r'''    function deviceToolHD20SurfaceRangeLabel(page,panel)
+    {
+        var start=Number(panel)*10, end=start+10;
+        return start+"–"+end+" MiB";
+    }
+
+    function deviceToolHD20SurfaceDensityCellStyle(pct,active)
+    {
+        var palette=deviceToolSurfaceDensityPalette();
+        return "display:block;width:3px;height:3px;box-sizing:border-box;"+
+            "border:0;"+
+            "background:"+(active ? palette[pct] : "#111")+";"+
+            (active ? "" : "opacity:0.14;");
+    }
+
+    function deviceToolHD20SurfaceMapHTML(device,header)
+    {
+        var instance=deviceToolInstanceHex(device) || "????";
+        var geometry=device.getSurfaceMapGeometry();
+        var page=0;
+        deviceSurfaceMapState.page=page;
+        var image=typeof(device.getImage)==="function" ? device.getImage() : null;
+        var head=typeof(device.getHeadSurfacePosition)==="function" ? device.getHeadSurfacePosition() : null;
+        var meta="<div class=\\"liron-surface-meta\\" style=\\"font-size:10px;color:#888;margin-top:4px;line-height:12px\\">"+
+            "Instance #"+instance+" · 20 MiB · 40960 × 512-byte blocks · entire disk</div>";
+        var out=header+"<div class=\\"liron-surface-panels liron-surface-hd20\\" style=\\"display:inline-flex;align-items:flex-start;gap:8px;width:max-content\\">";
+        for(var panel=0;panel<geometry.panels;panel++)
+        {
+            out += "<section class=\\"liron-surface-side liron-surface-hd20-panel\\" data-panel=\\""+panel+"\\" style=\\"flex:0 0 auto;margin:0\\">"+
+                "<div class=\\"liron-surface-side-title\\" style=\\"text-align:center;font-size:11px;line-height:12px;padding:0 0 2px 36px\\">"+deviceToolHD20SurfaceRangeLabel(page,panel)+"</div>"+
+                "<div class=\\"liron-surface-grid\\" style=\\"display:grid;grid-template-columns:36px repeat(160,3px);grid-template-rows:repeat(128,3px);gap:0;overflow:hidden\\">";
+            for(var row=0;row<geometry.rowsPerPanel;row++)
+            {
+                var rowMiB=panel*10+(row*10/geometry.rowsPerPanel);
+                var rowLabel=row%32===0 ? ((Math.round(rowMiB*10)/10)+"M") : "";
+                out += "<span class=\\"liron-surface-track\\" data-row-label=\\""+row+"\\" style=\\"display:flex;align-items:center;justify-content:flex-end;height:3px;padding-right:4px;box-sizing:border-box;color:#aaa;font-family:Courier;font-size:8px;line-height:8px;overflow:visible\\">"+rowLabel+"</span>";
+                for(var column=0;column<geometry.columnsPerPanel;column++)
+                {
+                    var block=device.surfaceCellToBlock(page,panel,row,column);
+                    var offset=block*geometry.bytesPerBlock;
+                    var density=deviceToolSurfaceDensity(image,block);
+                    var isHead=!!(head && head.block===block);
+                    var bandStart=row>0 && row%32===0;
+                    var tip="Block "+block+" · 512 bytes · offset "+offset+" · nonzero="+density.nonzero+"/512 · avg="+density.avg;
+                    out += "<span class=\\"liron-surface-cell active"+(isHead?" liron-surface-head":"")+"\\" style=\\""+
+                        deviceToolHD20SurfaceDensityCellStyle(density.pct,true)+(bandStart?"border-top:1px solid #333;":"")+(isHead?"outline:2px solid #FFF;outline-offset:-1px;":"")+
+                        "\\" data-surface-cell=\\"1\\" data-active=\\"1\\" data-density=\\""+density.pct+"\\" data-page=\\"0\\" data-panel=\\""+panel+"\\" data-row=\\""+row+"\\" data-column=\\""+column+
+                        "\\" data-block=\\""+block+"\\" data-offset=\\""+offset+"\\" data-head=\\""+(isHead?"1":"0")+"\\" title=\\""+deviceToolSurfaceEscape(tip)+"\\"></span>";
+                }
+            }
+            out += "</div></section>";
+        }
+        return out+"</div>"+meta;
+    }
+'''
+
+          pattern = re.compile(
+              r'    function deviceToolHD20SurfaceRangeLabel\(page,panel\)\n'
+              r'    \{.*?\n'
+              r'    \}\n\n'
+              r'    function deviceToolHD20SurfaceMapHTML\(device,header\)\n'
+              r'    \{.*?\n'
+              r'    \}\n(?=\n    function deviceToolHD20SurfaceMapUpdate)',
+              re.S,
+          )
+          text, count = pattern.subn(range_and_renderer.rstrip('\n'), text, count=1)
+          if count != 1:
+              raise SystemExit(f'expected one HD20 renderer block, replaced {count}')
+
+          old_width = 'var desiredWidth=surfaceDevice && surfaceDevice.id?.DCODE==="HD20" ? 414 : 326;'
+          new_width = 'var desiredWidth=surfaceDevice && surfaceDevice.id?.DCODE==="HD20" ? 1056 : 326;'
+          if text.count(old_width) != 1:
+              raise SystemExit('HD20 popup width marker not found exactly once')
+          text = text.replace(old_width, new_width, 1)
+
+          path.write_text(text)
+          PY
+      - name: Verify focused surface-map tests
+        run: |
+          node --check res/EMU_CARD_LIRON.js
+          node --check res/EMU_DEVICE_HD20.js
+          node --test tests/hd20_surface_map.test.js
+      - name: Commit renderer patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add res/EMU_CARD_LIRON.js
+          git commit -m "feat: render HD20 full surface in one view"
+          git push origin HEAD:fix/hd20-full-surface-map
