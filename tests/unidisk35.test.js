@@ -102,6 +102,26 @@ test('an 800K image can be mounted and read as exact 512-byte blocks', () => {
     assert.equal(disk.getState().mediaBytes,819200);
 });
 
+test('UniDisk tracks the last successfully read block as the physical head position', () => {
+    const context=loadUniDisk();
+    const disk=new context.UniDisk35Device();
+    disk.loadImage(new Uint8Array(819200),{filename:'HEAD.po'});
+
+    assert.equal(disk.getLastBlock(),null);
+    assert.equal(disk.getHeadSurfacePosition(),null);
+    assert.equal(disk.readBlock(24).error,0x00);
+    assert.equal(disk.getLastBlock(),24);
+    assert.deepEqual(
+        JSON.parse(JSON.stringify(disk.getHeadSurfacePosition())),
+        {side:0,track:1,sector:0,block:24,offset:24*512,bytes:512}
+    );
+    assert.equal(disk.readBlock(1600).error,0x27);
+    assert.equal(disk.getLastBlock(),24,'failed reads must not move the head');
+    disk.ejectImage();
+    assert.equal(disk.getLastBlock(),null);
+    assert.equal(disk.getHeadSurfacePosition(),null);
+});
+
 test('ejectImage clears media and filename without detaching the SmartPort unit', () => {
     const context=loadUniDisk();
     const disk=new context.UniDisk35Device();

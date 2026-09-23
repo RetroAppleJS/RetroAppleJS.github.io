@@ -18,6 +18,7 @@ function UniDisk35Device(options)
         ,online:options.online===undefined ? true : !!options.online
         ,writeProtected:!!options.writeProtected
         ,mediaFilename:""
+        ,lastBlock:null
     };
 
     var media = null;
@@ -116,6 +117,13 @@ function UniDisk35Device(options)
     this.getUnit = function() { return state.unit; };
     this.getBlockSize = function() { return BLOCK_SIZE; };
     this.getBlockCount = function() { return BLOCK_COUNT; };
+    this.getLastBlock = function() { return state.lastBlock; };
+    this.getHeadSurfacePosition = function()
+    {
+        return Number.isInteger(state.lastBlock)
+            ? this.blockToSurfaceSector(state.lastBlock)
+            : null;
+    };
     this.getSurfaceMapGeometry = function()
     {
         return {
@@ -199,6 +207,7 @@ function UniDisk35Device(options)
 
         media=bytes;
         state.online=true;
+        state.lastBlock=null;
         state.mediaFilename = metadata && metadata.filename
             ? String(metadata.filename).split(/[\\/]/).pop()
             : "";
@@ -209,6 +218,7 @@ function UniDisk35Device(options)
     {
         media=null;
         state.mediaFilename="";
+        state.lastBlock=null;
         return true;
     };
 
@@ -220,6 +230,7 @@ function UniDisk35Device(options)
             return {"error":0x27,"data":new Uint8Array(0)};
 
         var offset=blockNumber*BLOCK_SIZE;
+        state.lastBlock=blockNumber;
         return {"error":0x00,"data":media.slice(offset,offset+BLOCK_SIZE)};
     };
 
@@ -249,6 +260,7 @@ function UniDisk35Device(options)
             ,"mediaLoaded":media!==null
             ,"mediaBytes":media===null ? 0 : media.length
             ,"mediaFilename":state.mediaFilename
+            ,"lastBlock":state.lastBlock
         };
     };
 }
