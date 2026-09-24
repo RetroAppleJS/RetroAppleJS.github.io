@@ -51,7 +51,9 @@ function companionPopup()
   p.className='appbox DBG_steptraceScenarioPopup';
   p.hidden=true;
   p.style.cssText='position:fixed;z-index:8;width:520px;max-width:calc(100vw - 8px);padding:0;text-align:left;box-sizing:border-box';
-  (E('feature_box')||D.body).appendChild(p);
+  var host=D.body||E('feature_box');
+  if(!host)return null;
+  host.appendChild(p);
   return p;
 }
 function positionPopup()
