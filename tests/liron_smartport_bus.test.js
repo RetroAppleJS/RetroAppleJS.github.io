@@ -60,6 +60,31 @@ test('SmartPortBus rejects occupied units and detach releases the unit', () => {
     assert.equal(bus.getDevice(1),null);
 });
 
+test('SmartPortBus moves one device to an adjacent unit and swaps an occupied target', () => {
+    const context=loadLiron();
+    const bus=new context.SmartPortBus();
+    const first=new context.UniDisk35Device();
+    const second=new context.UniDisk35Device();
+
+    bus.attach(first,1);
+    bus.attach(second,2);
+
+    assert.equal(bus.move(first,2),first);
+    assert.equal(bus.getDevice(2),first);
+    assert.equal(first.getUnit(),2);
+    assert.equal(first.id.deviceN,2);
+    assert.equal(bus.getDevice(1),second,
+        'an adjacent occupied unit must swap rather than lose a device');
+    assert.equal(second.getUnit(),1);
+    assert.equal(second.id.deviceN,1);
+
+    assert.equal(bus.move(first,3),first,
+        'moving into an empty adjacent unit must preserve the same device object');
+    assert.equal(bus.getDevice(3),first);
+    assert.equal(bus.getDevice(2),null);
+    assert.equal(first.getUnit(),3);
+});
+
 test('SmartPortBus reset preserves attached units', () => {
     const context = loadLiron();
     const bus = new context.SmartPortBus();
@@ -73,7 +98,7 @@ test('SmartPortBus reset preserves attached units', () => {
     assert.deepEqual(Array.from(bus.getUnits()),[1]);
 });
 
-test('AppleLiron keeps UniDisk as its if-empty default without privately constructing it', () => {
+test('AppleLiron keeps UniDisk manually attachable without privately constructing it', () => {
     const context=loadLiron();
     const card=new context.AppleLiron();
     const info=card.deviceConfig.find(entry=>entry.DCODE==='UNIDISK');
@@ -87,7 +112,7 @@ test('AppleLiron keeps UniDisk as its if-empty default without privately constru
             deviceN:info.deviceN,
             autoAttach:info.autoAttach
         },
-        {DCODE:'UNIDISK',hostPCODE:'LIRON',coID:'UniDisk35Device',deviceN:1,autoAttach:'if-empty'}
+        {DCODE:'UNIDISK',hostPCODE:'LIRON',coID:'UniDisk35Device',deviceN:1,autoAttach:false}
     );
     assert.equal(card.getUniDisk(),null);
     assert.deepEqual(Array.from(card.getBus().getUnits()),[]);
