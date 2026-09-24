@@ -28,95 +28,60 @@ jobs:
           node --check res/EMU_DEVICE_UNIDISK35.js
           node --check res/EMU_DEVICE_HD20.js
       - name: device_attachment_ui
-        id: ui
-        continue-on-error: true
         run: node --test tests/device_attachment_ui.test.js
       - name: device_instance_identity
-        id: identity
-        continue-on-error: true
         run: node --test tests/device_instance_identity.test.js
       - name: liron_iwm
-        id: iwm
-        continue-on-error: true
         run: node --test tests/liron_iwm.test.js
       - name: liron_smartport_bus
-        id: bus
-        continue-on-error: true
         run: node --test tests/liron_smartport_bus.test.js
       - name: liron_smartport_transport
-        id: transport
-        continue-on-error: true
         run: node --test tests/liron_smartport_transport.test.js
       - name: liron_readblock
-        id: readblock
-        continue-on-error: true
         run: node --test tests/liron_readblock.test.js
       - name: liron_writeblock
-        id: writeblock
-        continue-on-error: true
         run: node --test tests/liron_writeblock.test.js
       - name: smartport_port_metadata
-        id: metadata
-        continue-on-error: true
         run: node --test tests/smartport_port_metadata.test.js
       - name: hd20_smartport_device
-        id: hd20device
-        continue-on-error: true
         run: node --test tests/hd20_smartport_device.test.js
       - name: hd20_writeblock
-        id: hd20write
-        continue-on-error: true
         run: node --test tests/hd20_writeblock.test.js
       - name: hd20_media_routing
-        id: hd20routing
-        continue-on-error: true
         run: node --test tests/hd20_media_routing.test.js
       - name: hd20_toolbox_media
-        id: hd20toolbox
-        continue-on-error: true
         run: node --test tests/hd20_toolbox_media.test.js
       - name: hd20_surface_map
-        id: hd20surface
-        continue-on-error: true
         run: node --test tests/hd20_surface_map.test.js
       - name: liron_browser_mount
-        id: browser
-        continue-on-error: true
         run: node --test tests/liron_browser_mount.test.js
       - name: liron_toolbox
-        id: toolbox
-        continue-on-error: true
         run: node --test tests/liron_toolbox.test.js
       - name: liron_toolbox_eject
-        id: toolboxeject
-        continue-on-error: true
         run: node --test tests/liron_toolbox_eject.test.js
       - name: liron_loader_diagnostics
-        id: diagnostics
-        continue-on-error: true
         run: node --test tests/liron_loader_diagnostics.test.js
-      - name: Fail if any acceptance file failed
-        if: always()
+      - name: Combined acceptance command
         run: |
-          test "${{ steps.ui.outcome }}" = success
-          test "${{ steps.identity.outcome }}" = success
-          test "${{ steps.iwm.outcome }}" = success
-          test "${{ steps.bus.outcome }}" = success
-          test "${{ steps.transport.outcome }}" = success
-          test "${{ steps.readblock.outcome }}" = success
-          test "${{ steps.writeblock.outcome }}" = success
-          test "${{ steps.metadata.outcome }}" = success
-          test "${{ steps.hd20device.outcome }}" = success
-          test "${{ steps.hd20write.outcome }}" = success
-          test "${{ steps.hd20routing.outcome }}" = success
-          test "${{ steps.hd20toolbox.outcome }}" = success
-          test "${{ steps.hd20surface.outcome }}" = success
-          test "${{ steps.browser.outcome }}" = success
-          test "${{ steps.toolbox.outcome }}" = success
-          test "${{ steps.toolboxeject.outcome }}" = success
-          test "${{ steps.diagnostics.outcome }}" = success
+          node --test \
+            tests/device_attachment_ui.test.js \
+            tests/device_instance_identity.test.js \
+            tests/liron_iwm.test.js \
+            tests/liron_smartport_bus.test.js \
+            tests/liron_smartport_transport.test.js \
+            tests/liron_readblock.test.js \
+            tests/liron_writeblock.test.js \
+            tests/smartport_port_metadata.test.js \
+            tests/hd20_smartport_device.test.js \
+            tests/hd20_writeblock.test.js \
+            tests/hd20_media_routing.test.js \
+            tests/hd20_toolbox_media.test.js \
+            tests/hd20_surface_map.test.js \
+            tests/liron_browser_mount.test.js \
+            tests/liron_toolbox.test.js \
+            tests/liron_toolbox_eject.test.js \
+            tests/liron_loader_diagnostics.test.js
       - name: Remove one-shot verifier
-        if: success()
         run: |
           rm .github/workflows/zz-verify-device-unit-controls.yml
           git config user.name "RetroAppleJS automation"
