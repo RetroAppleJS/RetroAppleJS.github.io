@@ -3334,6 +3334,24 @@ function mergeActionMap(dst,src)
         var metadata=this.deviceMetadata(owner,instanceHash);
         if(!owner || !metadata) return false;
 
+        var liveDevice=null;
+        var devices=Array.isArray(owner.devices) ? owner.devices : [];
+        for(var i=0;i<devices.length;i++)
+        {
+            if(Number(devices[i]?.attach?.hash)===instanceHash)
+            {
+                liveDevice=devices[i];
+                break;
+            }
+        }
+        var unit=liveDevice && typeof(liveDevice.getUnit)==="function"
+            ? Number(liveDevice.getUnit())
+            : Number(liveDevice?.id?.deviceN);
+        var bus=typeof(owner.getBus)==="function" ? owner.getBus() : null;
+        var canMove=!!(bus && typeof(bus.move)==="function" && Number.isInteger(unit));
+        var upDisabled=!canMove || unit<=1;
+        var downDisabled=!canMove || unit>=8;
+
         var popup=devicePopupElement();
         var description=metadata.description || "";
         var instanceLabel="#"+oCOM.getHexWord(metadata.instanceID);
@@ -3341,13 +3359,77 @@ function mergeActionMap(dst,src)
             + "<div style='padding-right:28px'><b>"+oCOM.escapeHTML(metadata.DCODE)+" "+instanceLabel+"</b>"
             + (description ? "<br>"+oCOM.escapeHTML(description) : "")
             + "</div><div style='margin-top:10px'>"
-            + "<button class='appbut' type='button' title='Download device JSON' onclick=\"event.stopPropagation();apple2plus.hwObj().io.deviceConfig_download("+slotN+","+metadata.instanceID+")\"><i class='fa fa-cloud-download-alt'></i></button>&nbsp;"
+            + "<button class='appbut' type='button' title='Move device one unit up'"+(upDisabled ? " disabled" : " onclick=\"event.stopPropagation();apple2plus.hwObj().io.deviceConfig_move("+slotN+","+metadata.instanceID+",-1)\"")+"><i class='fa fa-arrow-up'></i></button>&nbsp;"
+            + "<button class='appbut' type='button' title='Move device one unit down'"+(downDisabled ? " disabled" : " onclick=\"event.stopPropagation();apple2plus.hwObj().io.deviceConfig_move("+slotN+","+metadata.instanceID+",1)\"")+"><i class='fa fa-arrow-down'></i></button>&nbsp;"
             + "<button class='appbut' type='button' title='Detach device' onclick=\"event.stopPropagation();apple2plus.hwObj().io.deviceConfig_eject("+slotN+","+metadata.instanceID+")\"><i class='fa fa-eject'></i></button>"
             + "</div>";
 
         popup.innerHTML=html;
         popup.hidden=false;
         positionDevicePopup(popup);
+        return true;
+    };
+
+    this.deviceConfig_move = function(slotN,instanceHash,delta)
+    {
+        slotN=Number(slotN);
+        instanceHash=Number(instanceHash);
+        delta=Number(delta);
+        if(delta!==-1 && delta!==1) return false;
+
+        var owner=this.SLOT2obj(slotN);
+        if(!owner || !Number.isInteger(instanceHash)) return false;
+
+        var devices=Array.isArray(owner.devices) ? owner.devices : [];
+        var device=null;
+        for(var i=0;i<devices.length;i++)
+        {
+            if(Number(devices[i]?.attach?.hash)===instanceHash)
+            {
+                device=devices[i];
+                break;
+            }
+        }
+        if(!device) return false;
+
+        var currentUnit=typeof(device.getUnit)==="function"
+            ? Number(device.getUnit())
+            : Number(device.id?.deviceN);
+        var targetUnit=currentUnit+delta;
+        if(!Number.isInteger(currentUnit) || targetUnit<1 || targetUnit>8) return false;
+
+        var bus=typeof(owner.getBus)==="function" ? owner.getBus() : null;
+        if(!bus || typeof(bus.move)!=="function") return false;
+
+        try
+        {
+            if(bus.move(device,targetUnit)!==device) return false;
+        }
+        catch(e)
+        {
+            console.error("Device unit move failed",e);
+            return false;
+        }
+
+        if(typeof(owner.onDeviceTopologyChanged)==="function")
+        {
+            try
+            {
+                owner.onDeviceTopologyChanged({
+                     "type":"move"
+                    ,"DCODE":device.id?.DCODE || ""
+                    ,"device":device
+                    ,"instanceID":instanceHash
+                    ,"fromUnit":currentUnit
+                    ,"toUnit":targetUnit
+                });
+            }
+            catch(e) { console.error("Device topology move notification failed",e); }
+        }
+
+        this.slotConfig_refresh(slotN);
+        this.refreshDeviceToolboxes({"id":"devices","default_slot":this.slot2ID(slotN)});
+        this.deviceConfig_detail(slotN,instanceHash);
         return true;
     };
 
@@ -3368,6 +3450,43 @@ function mergeActionMap(dst,src)
         catch(e)
         {
             console.error("Device JSON download failed",e);
+            return false;
+        }
+    };
+
+    this.deviceConfig_downloadDevices = function(slotN)
+    {
+        slotN=Number(slotN);
+        var owner=this.SLOT2obj(slotN);
+        if(!owner) return false;
+
+        var devices=Array.isArray(owner.devices) ? owner.devices : [];
+        var metadata=[];
+        for(var i=0;i<devices.length;i++)
+        {
+            var hash=Number(devices[i]?.attach?.hash);
+            if(!Number.isInteger(hash)) continue;
+            var item=this.deviceMetadata(owner,hash);
+            if(item) metadata.push(item);
+        }
+
+        try
+        {
+            var pcode=peripheralPCODE(owner) || "peripheral";
+            var slotName=slotN2name(slotN).replace("#","");
+            var name=(pcode+"_devices_"+slotName).replace(/[^A-Za-z0-9_.-]/g,"_")+".json";
+            var payload={
+                 "hostPCODE":pcode
+                ,"slot":slotN2name(slotN)
+                ,"devices":metadata
+            };
+            var json=JSON.stringify(payload,null,2);
+            oCOM.Download(name,new TextEncoder("utf-8").encode(json));
+            return true;
+        }
+        catch(e)
+        {
+            console.error("Device collection JSON download failed",e);
             return false;
         }
     };
@@ -3396,8 +3515,16 @@ function mergeActionMap(dst,src)
     function slotDeviceTable_html(peripheral)
     {
         var devices = peripheral && Array.isArray(peripheral.devices)
-            ? peripheral.devices
+            ? peripheral.devices.slice()
             : [];
+        devices.sort(function(a,b)
+        {
+            var au=typeof(a?.getUnit)==="function" ? Number(a.getUnit()) : Number(a?.id?.deviceN);
+            var bu=typeof(b?.getUnit)==="function" ? Number(b.getUnit()) : Number(b?.id?.deviceN);
+            if(!Number.isInteger(au)) au=99;
+            if(!Number.isInteger(bu)) bu=99;
+            return au-bu;
+        });
         var body = "";
 
         for(var i=0;i<devices.length;i++)
@@ -3425,18 +3552,25 @@ function mergeActionMap(dst,src)
         var slotN=peripheral && peripheral.mount ? Number(peripheral.mount.slotN) : -1;
         var declaredDevices=io.devicePicker_entries(peripheral);
         var canPick=declaredDevices.length>0;
-        var addDevice = Number.isInteger(slotN) && slotN>=0
-            ? "<div style='margin-top:10px;margin-bottom:3px'>"
-                + "<button class='slot-add' type='button' id='"+devicePickerAnchorID(slotN)+"'"
+        var pcode=peripheralPCODE(peripheral) || peripheral?.id?.PCODE || "PERIPHERAL";
+        var deviceHeader="<div style='margin-top:10px;margin-bottom:3px;display:flex;align-items:center;gap:4px'>"
+            + "<span style='margin-right:4px'><b>"+oCOM.escapeHTML(pcode)+"</b> &mdash; devices</span>";
+        if(Number.isInteger(slotN) && slotN>=0)
+        {
+            deviceHeader += "<button class='appbut' type='button' title='Download device JSON' aria-label='Download device JSON'"
+                + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.deviceConfig_downloadDevices("+slotN+")\">"
+                + "<i class='fa fa-cloud-download-alt'></i></button>"
+                + "<button class='appbut' type='button' id='"+devicePickerAnchorID(slotN)+"'"
                 + " aria-label='Attach device' aria-haspopup='dialog' aria-expanded='false'"
                 + " title='"+(canPick ? "Attach device" : "No compatible devices declared")+"'"
                 + (canPick
                     ? " onclick=\"event.stopPropagation();apple2plus.hwObj().io.devicePicker_popup("+slotN+")\""
                     : " disabled")
-                + "><i class='fa fa-plus dots dots1'></i></button></div>"
-            : "";
+                + "><i class='fa fa-plus'></i></button>";
+        }
+        deviceHeader += "</div>";
 
-        return addDevice
+        return deviceHeader
             + "<table style='width:100%;border-collapse:collapse;margin-top:0px;text-align:left'>"
             + "<thead><tr style='border-bottom:1px solid #888'>"
             + "<th style='padding:4px 6px'>Device</th>"
@@ -3961,8 +4095,14 @@ function mergeActionMap(dst,src)
 
             for(var d=0;d<devices.length;d++)
             {
-                var id = devices[d] && devices[d].id;
-                if(id && id.DCODE) deviceCodes.push(String(id.DCODE));
+                var device=devices[d];
+                var id=device && device.id;
+                if(id && id.DCODE)
+                {
+                    var unit=typeof(device.getUnit)==="function" ? Number(device.getUnit()) : Number(id.deviceN);
+                    var hash=Number(device.attach?.hash);
+                    deviceCodes.push(String(id.DCODE)+"#"+(Number.isInteger(hash)?hash:"")+"@"+(Number.isInteger(unit)?unit:""));
+                }
             }
 
             sig.push(String(s)+":"+pcode+":"+instance+":"+deviceCodes.join(","));

@@ -98,7 +98,7 @@ test('SmartPortBus reset preserves attached units', () => {
     assert.deepEqual(Array.from(bus.getUnits()),[1]);
 });
 
-test('AppleLiron keeps UniDisk as its if-empty default without privately constructing it', () => {
+test('AppleLiron keeps UniDisk manually attachable without privately constructing it', () => {
     const context=loadLiron();
     const card=new context.AppleLiron();
     const info=card.deviceConfig.find(entry=>entry.DCODE==='UNIDISK');
@@ -112,7 +112,7 @@ test('AppleLiron keeps UniDisk as its if-empty default without privately constru
             deviceN:info.deviceN,
             autoAttach:info.autoAttach
         },
-        {DCODE:'UNIDISK',hostPCODE:'LIRON',coID:'UniDisk35Device',deviceN:1,autoAttach:'if-empty'}
+        {DCODE:'UNIDISK',hostPCODE:'LIRON',coID:'UniDisk35Device',deviceN:1,autoAttach:false}
     );
     assert.equal(card.getUniDisk(),null);
     assert.deepEqual(Array.from(card.getBus().getUnits()),[]);

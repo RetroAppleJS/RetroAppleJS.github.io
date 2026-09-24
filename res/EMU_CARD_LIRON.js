@@ -780,6 +780,31 @@ function SmartPortBus()
         return device;
     };
 
+    this.move = function(device,unit)
+    {
+        unit=normalizeUnit(unit);
+        var from=findUnit(device);
+        if(!from) return null;
+        if(from===unit) return device;
+
+        var displaced=units[unit];
+        units[unit]=device;
+        units[from]=displaced || null;
+
+        function assignUnit(target,targetUnit)
+        {
+            if(!target) return;
+            if(typeof(target.setUnit)==="function") target.setUnit(targetUnit);
+            else target.unit=targetUnit;
+            if(target.id) target.id.deviceN=targetUnit;
+        }
+
+        assignUnit(device,unit);
+        assignUnit(displaced,from);
+        resetTransport(true);
+        return device;
+    };
+
     this.hasDevices = function() { return devices.length>0; };
     this.getDevice = function(unit)
     {
