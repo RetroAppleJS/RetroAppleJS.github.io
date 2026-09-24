@@ -19,6 +19,15 @@ test('peripheral detail UI exposes add-device picker and clickable device labels
         'attached device labels must open the device detail popup');
 });
 
+test('device table has its own peripheral-labelled header with JSON and attach actions', () => {
+    assert.match(ioSource,/slotDeviceTable_html[\s\S]*&mdash; devices/,
+        'the child-device table needs a visible <PCODE> — devices heading');
+    assert.match(ioSource,/deviceConfig_downloadDevices\s*=\s*function/,
+        'the table header needs one JSON export for the attached-device collection');
+    assert.match(ioSource,/slotDeviceTable_html[\s\S]*deviceConfig_downloadDevices[\s\S]*devicePicker_popup/,
+        'download and attach actions must live with the device-table heading');
+});
+
 test('device picker makes host context and availability state explicit', () => {
     assert.match(ioSource,/devicePickerAnchorID\s*\(/,
         'the plus button must have a stable picker anchor identity');
@@ -43,16 +52,24 @@ test('available device row is the attach target and attach failures stay in the 
         'successful attach must close the picker and refresh the still-open peripheral detail');
 });
 
-test('device detail popup supports metadata download, eject and close', () => {
+test('device detail popup has unit-order controls and detach, without a JSON-download button', () => {
     assert.match(ioSource,/deviceConfig_detail\s*=\s*function/);
-    assert.match(ioSource,/deviceConfig_download\s*=\s*function/);
+    assert.match(ioSource,/deviceConfig_move\s*=\s*function/,
+        'Apple2IO must expose the unit-step action used by the detail popup');
     assert.match(ioSource,/deviceConfig_eject\s*=\s*function/);
     assert.match(ioSource,/deviceConfig_popup/,
         'device details must use an independent popup so the peripheral popup remains visible');
-    assert.match(ioSource,/fa fa-cloud-download-alt/,
-        'device metadata download uses the established download pictogram');
-    assert.match(ioSource,/fa fa-eject/,
+
+    const detail = ioSource.match(/this\.deviceConfig_detail\s*=\s*function[\s\S]*?\n\s*this\.deviceConfig_download\s*=\s*function/);
+    assert.ok(detail,'deviceConfig_detail source block must be discoverable');
+    assert.match(detail[0],/fa fa-arrow-up/,
+        'device detail needs a move-one-unit-up pictogram');
+    assert.match(detail[0],/fa fa-arrow-down/,
+        'device detail needs a move-one-unit-down pictogram');
+    assert.match(detail[0],/fa fa-eject/,
         'device detach uses the established eject pictogram');
+    assert.doesNotMatch(detail[0],/cloud-download-alt/,
+        'device detail must no longer offer per-device JSON download');
 });
 
 test('device metadata export is structured and excludes function-valued implementation state', () => {
