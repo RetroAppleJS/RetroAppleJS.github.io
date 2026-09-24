@@ -1,4 +1,4 @@
-/* First-pass Debugger tab 3.2 algorithm-test-bench UI. */
+/* Debugger tab 3.2 TEST BENCH and STEP TRACE scenario editor UI. */
 
 /*
  * Float TEST BENCH beside the normal Debugger Tools cluster.
@@ -7,15 +7,19 @@
  * etc.) use left:800px / top:32px relative to the page.  tab3.2 itself is
  * already positioned at top:32px, so top:0 here gives the same page-level
  * vertical alignment while keeping the bench scoped to Debugger Tools.
+ *
+ * STEP TRACE SCENARIO reuses the box/section styles below but is hosted in its
+ * own companion popup by DBG_steptrace_scenario.js; it does not use this
+ * toolbox-positioning rule.
  */
 .DBG_testbenchToolbox {
   position: absolute;
   z-index: 3;
-  left: 780px;   /* fallback only; JS aligns it 10px after SYMBOL TABLE */
+  left: 780px;
   top: 0px;
   float: none;
   clear: none;
-  width: 510px;  /* fallback only; JS keeps a 10px Debugger right margin */
+  width: 510px;
   height: auto;
   max-width: none;
   margin: 0;
@@ -73,7 +77,8 @@
   font-weight: 700;
 }
 
-#DBG_testbenchStatus {
+#DBG_testbenchStatus,
+#DBG_steptracebenchStatus {
   margin-left: auto;
   font-family: arial,sans-serif;
 }
@@ -116,7 +121,8 @@
   font-size: 10px !important;
 }
 
-#DBG_testScript {
+#DBG_testScript,
+#DBG_steptraceScript {
   display: block;
   width: 100%;
   height: 155px;
@@ -148,12 +154,9 @@
   -webkit-user-select: text;
 }
 
-/*
- * COM_oTERM adds .VanillaTerm to DBG_testConsole.  Keep the terminal root at a
- * real fixed height; height:100% here would resolve against the auto-height
- * section and let the terminal grow with every command.
- */
-#DBG_testConsole.VanillaTerm {
+/* Keep both terminal roots at a real fixed height. */
+#DBG_testConsole.VanillaTerm,
+#DBG_steptraceConsole.VanillaTerm {
   width: 100%;
   height: 155px;
   min-height: 155px;
@@ -164,7 +167,8 @@
 }
 
 /* Only the terminal's inner viewport scrolls. */
-#DBG_testConsole .container {
+#DBG_testConsole .container,
+#DBG_steptraceConsole .container {
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -179,24 +183,28 @@
   font: 12px/17px "DejaVu Sans Mono",Menlo,Consolas,"Courier New",monospace;
 }
 
-#DBG_testConsole output {
+#DBG_testConsole output,
+#DBG_steptraceConsole output {
   display: block;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-#DBG_testConsole .command {
+#DBG_testConsole .command,
+#DBG_steptraceConsole .command {
   display: flex;
   align-items: baseline;
   min-width: 0;
 }
 
-#DBG_testConsole .prompt {
+#DBG_testConsole .prompt,
+#DBG_steptraceConsole .prompt {
   flex: 0 0 auto;
   margin-right: 5px;
 }
 
-#DBG_testConsole .input {
+#DBG_testConsole .input,
+#DBG_steptraceConsole .input {
   flex: 1 1 auto;
   min-width: 0;
   background: transparent;
@@ -206,7 +214,8 @@
   font: inherit;
 }
 
-#DBG_testConsoleFallback {
+#DBG_testConsoleFallback,
+#DBG_steptraceConsoleFallback {
   width: 100%;
   height: 100%;
   margin: 0;
@@ -243,16 +252,19 @@
   white-space: nowrap;
 }
 
-#DBG_testRamAddress {
+#DBG_testRamAddress,
+#DBG_steptraceRamAddress {
   width: 62px;
   font-family: courier,monospace;
 }
 
-#DBG_testRamLength {
+#DBG_testRamLength,
+#DBG_steptraceRamLength {
   width: 52px;
 }
 
-#DBG_testRamData {
+#DBG_testRamData,
+#DBG_steptraceRamData {
   flex: 1 1 100%;
   width: 100%;
   min-width: 0;

@@ -32,6 +32,146 @@ S.assert=function(ex,d){var c=req('assert'),ok=false,co,s=state();c.assertions++
 S.scenario=function(n,f){if(cur)throw Error('Nested scenarios are not supported.');var r={name:String(n||'scenario'),status:'PASS',pass:true,assertions:0,failedAssertions:0,breaks:0,instructions:0,cycles:0,elapsedMs:0,reason:null,error:null,runs:[]};try{S.reset();cur=r;if(typeof f!=='function')throw TypeError('scenario() requires a callback.');f()}catch(e){if(!(e instanceof Abort)){r.status='ERROR';r.pass=false;r.reason='javascript-error';r.error=e.message||String(e);out('ERROR '+r.name+' — '+r.error,'error')}}finally{cur=null;if(r.status==='PASS'&&r.failedAssertions){r.status='FAIL';r.pass=false;r.reason='assertion'}var z=r.status+' '+r.name;if(r.status==='PASS')z+=' — '+r.assertions+' assertions / '+r.instructions+' ins / '+r.cycles+' cyc / '+r.elapsedMs.toFixed(1)+' ms';else if(r.failedAssertions)z+=' — '+r.failedAssertions+'/'+r.assertions+' assertions failed';else if(r.reason)z+=' — '+r.reason.replace(/-/g,' ');out(z,r.status==='PASS'?'result':'error');S.results.push(r)}return r};S.condition={compile,evaluate:(c,s)=>!!val(c.ast,s||state())};
 S.eval=function(code){var scenario=S.scenario,reset=S.reset,ram=S.ram,cpu=S.cpu,breakIf=S.breakIf,assert=S.assert,sym=S.sym,print=S.print;return eval(String(code||''))};
 function rename(root){if(!root)return;var a=[root];if(root.querySelectorAll)a=a.concat([].slice.call(root.querySelectorAll('[id]')));a.forEach(n=>{if(n.id&&/^DBG_test/.test(n.id))n.id=n.id.replace(/^DBG_test/,'DBG_steptrace')})}
-function init(){if(E('DBG_steptracebenchBox'))return true;var b=E('DBG_testbenchBox');if(!b||!b.closest)return false;var t=b.closest('.toolbox');if(!t||!t.parentNode||!t.cloneNode)return false;var q=t.cloneNode(true);rename(q);if(q.classList)q.classList.add('DBG_steptraceScenarioToolbox');var title=q.querySelector&&q.querySelector('.DBG_testbenchTitle');if(title)title.textContent='STEP TRACE SCENARIO';var ed=q.querySelector&&q.querySelector('#DBG_steptraceScript');if(ed)ed.value="scenario('example',function(){ ram.write('$3000','$42'); cpu.start('$0800'); breakIf('PC==$0810'); assert('A==$42'); });";var host=q.querySelector&&q.querySelector('#DBG_steptraceConsole');if(host)host.innerHTML='';t.parentNode.appendChild(q);if(typeof g.TERMINAL==='function'&&E('DBG_steptraceConsole')){try{term=new g.TERMINAL({container:'DBG_steptraceConsole',welcome:'Live STEP TRACE scenario harness ready.',prompt:'ST',separator:'&gt;',storageKey:'RetroAppleJS.Debugger.StepTraceScenario',preserveWhitespace:true,allowEmptyInput:false});term.onInput((a,b,line)=>{try{var r=S.eval(line);if(r!==undefined)out('← '+String(r),'result')}catch(e){out('[ERROR] '+e.stack,'error')}return true})}catch(_){}}var run=E('DBG_steptraceRunButton');if(run)run.onclick=()=>{var e=E('DBG_steptraceScript');if(e)S.eval(e.value)};var inj=E('DBG_steptraceRamInjectButton');if(inj)inj.onclick=()=>S.ram.write(E('DBG_steptraceRamAddress').value,E('DBG_steptraceRamData').value);var rd=E('DBG_steptraceRamReadButton');if(rd)rd.onclick=()=>{var a=E('DBG_steptraceRamAddress').value,n=parseInt(E('DBG_steptraceRamLength').value,10)||16;out(S.ram.dump(a,n))};q.style.left=t.style.left;q.style.width=t.style.width;q.style.top=(t.offsetTop+t.offsetHeight+10)+'px';return true}
-S.ui={init};g.DBG_STEPTRACE_SCENARIO=S;g.STB=S;if(g.oCOM&&g.oCOM.addToEventStack)g.oCOM.addToEventStack('onload',init);else if(g.addEventListener)g.addEventListener('load',init);
+
+var uiObserver=null,resizeBound=false;
+function setTriggerState(open)
+{
+  var button=E('cpuDbg_scenario');
+  if(!button)return;
+  button.style.opacity=open?'1':'.45';
+  button.setAttribute('aria-pressed',open?'true':'false');
+}
+function companionPopup()
+{
+  var p=E('DBG_steptraceScenarioPopup');
+  if(p)return p;
+  if(!D||!D.createElement)return null;
+  p=D.createElement('div');
+  p.id='DBG_steptraceScenarioPopup';
+  p.className='appbox DBG_steptraceScenarioPopup';
+  p.hidden=true;
+  p.style.cssText='position:fixed;z-index:8;width:520px;max-width:calc(100vw - 8px);padding:0;text-align:left;box-sizing:border-box';
+  (E('feature_box')||D.body).appendChild(p);
+  return p;
+}
+function positionPopup()
+{
+  var p=E('DBG_steptraceScenarioPopup'),dbg=E('cpuDbg_popup');
+  if(!p||!dbg||p.hidden||!dbg.getBoundingClientRect)return false;
+  var r=dbg.getBoundingClientRect(),gap=8,vw=g.innerWidth||(D.documentElement&&D.documentElement.clientWidth)||1024,vh=g.innerHeight||(D.documentElement&&D.documentElement.clientHeight)||768;
+  var wanted=Math.min(520,Math.max(320,vw-8));
+  p.style.width=wanted+'px';
+  var pw=p.getBoundingClientRect?p.getBoundingClientRect().width:wanted;
+  if(!pw)pw=wanted;
+  var left=r.right+gap;
+  if(left+pw>vw-4)left=Math.max(4,r.left-pw-gap);
+  p.style.left=Math.round(left)+'px';
+  p.style.top=Math.round(Math.max(4,Math.min(r.top,vh-40)))+'px';
+  return true;
+}
+function initTerminal()
+{
+  if(term||typeof g.TERMINAL!=='function'||!E('DBG_steptraceConsole'))return;
+  try{
+    term=new g.TERMINAL({container:'DBG_steptraceConsole',welcome:'Live STEP TRACE scenario harness ready.',prompt:'ST',separator:'&gt;',storageKey:'RetroAppleJS.Debugger.StepTraceScenario',preserveWhitespace:true,allowEmptyInput:false});
+    term.onInput((a,b,line)=>{try{var r=S.eval(line);if(r!==undefined)out('← '+String(r),'result')}catch(e){out('[ERROR] '+e.stack,'error')}return true});
+  }catch(_){ }
+}
+function loadExample()
+{
+  var e=E('DBG_steptraceScript');
+  if(!e)return;
+  e.value="scenario('example',function(){\n  ram.write('$3000','$42');\n  cpu.start('$0800');\n  breakIf('PC==$0810');\n  assert('A==$42');\n});";
+  if(e.focus)e.focus();
+}
+function buildPopup()
+{
+  var p=companionPopup();
+  if(!p)return false;
+  if(E('DBG_steptracebenchBox'))return true;
+  var b=E('DBG_testbenchBox');
+  if(!b||!b.cloneNode)return false;
+  var q=b.cloneNode(true);
+  rename(q);
+  if(q.classList)q.classList.remove('appbox');
+  var title=q.querySelector&&q.querySelector('.DBG_testbenchTitle');
+  if(title)title.textContent='STEP TRACE SCENARIO';
+  var header=q.querySelector&&q.querySelector('.DBG_testbenchHeader');
+  var headerButtons=q.querySelector&&q.querySelector('.DBG_testbenchHeaderButtons');
+  if(header&&D.createElement){
+    var close=D.createElement('button');
+    close.type='button';
+    close.textContent='×';
+    close.title='Close STEP TRACE scenario';
+    close.style.cssText='float:right;margin-left:6px;padding:0 5px;font-size:11px';
+    close.onclick=()=>S.ui.close();
+    (headerButtons||header).appendChild(close);
+  }
+  var ed=q.querySelector&&q.querySelector('#DBG_steptraceScript');
+  if(ed){
+    ed.value="scenario('example',function(){ ram.write('$3000','$42'); cpu.start('$0800'); breakIf('PC==$0810'); assert('A==$42'); });";
+    ed.onkeydown=function(ev){if((ev.ctrlKey||ev.metaKey)&&ev.key==='Enter'){ev.preventDefault();S.eval(ed.value)}};
+  }
+  var host=q.querySelector&&q.querySelector('#DBG_steptraceConsole');
+  if(host)host.innerHTML='';
+  p.appendChild(q);
+  initTerminal();
+  var run=E('DBG_steptraceRunButton');if(run)run.onclick=()=>{var e=E('DBG_steptraceScript');if(e)S.eval(e.value)};
+  var example=E('DBG_steptraceExampleButton');if(example)example.onclick=loadExample;
+  var clear=E('DBG_steptraceClearConsoleButton');if(clear)clear.onclick=()=>{if(term&&term.clear)term.clear();var f=E('DBG_steptraceConsoleFallback');if(f)f.value=''};
+  var inj=E('DBG_steptraceRamInjectButton');if(inj)inj.onclick=()=>S.ram.write(E('DBG_steptraceRamAddress').value,E('DBG_steptraceRamData').value);
+  var rd=E('DBG_steptraceRamReadButton');if(rd)rd.onclick=()=>{var a=E('DBG_steptraceRamAddress').value,n=parseInt(E('DBG_steptraceRamLength').value,10)||16;out(S.ram.dump(a,n))};
+  return true;
+}
+function installTrigger()
+{
+  if(E('cpuDbg_scenario'))return true;
+  var play=E('cpuDbg_play');
+  if(!play||!play.parentNode||!D.createElement)return false;
+  var button=D.createElement('i');
+  button.id='cpuDbg_scenario';
+  button.className='fa fa-code';
+  button.setAttribute('role','button');
+  button.setAttribute('aria-pressed','false');
+  button.title='Open STEP TRACE scenario test script';
+  button.style.cssText='font-size:11px;cursor:pointer;opacity:.45;margin-left:2px';
+  button.onclick=()=>S.ui.toggle();
+  if(play.nextSibling)play.parentNode.insertBefore(button,play.nextSibling);else play.parentNode.appendChild(button);
+  return true;
+}
+function hideIfTraceClosed()
+{
+  var dbg=E('cpuDbg_popup'),p=E('DBG_steptraceScenarioPopup');
+  if(p&&dbg&&dbg.hidden)S.ui.close();
+}
+function observeTracePopup()
+{
+  var dbg=E('cpuDbg_popup');
+  if(!dbg||uiObserver||typeof g.MutationObserver!=='function')return;
+  uiObserver=new g.MutationObserver(()=>{hideIfTraceClosed();if(!dbg.hidden)installTrigger();if(E('DBG_steptraceScenarioPopup')&&!E('DBG_steptraceScenarioPopup').hidden)positionPopup()});
+  uiObserver.observe(dbg,{attributes:true,attributeFilter:['hidden','style','class'],childList:true,subtree:true});
+}
+function init()
+{
+  var ok=installTrigger();
+  companionPopup();
+  observeTracePopup();
+  if(!resizeBound&&g.addEventListener){g.addEventListener('resize',positionPopup);resizeBound=true}
+  if(ok)return true;
+  var host=E('feature_box')||(D&&D.body);
+  if(host&&!uiObserver&&typeof g.MutationObserver==='function'){
+    uiObserver=new g.MutationObserver(()=>{if(installTrigger()){uiObserver.disconnect();uiObserver=null;observeTracePopup()}});
+    uiObserver.observe(host,{childList:true,subtree:true});
+  }
+  return false;
+}
+S.ui={
+  init:init,
+  open:function(){init();if(!buildPopup())return false;var p=E('DBG_steptraceScenarioPopup');if(!p)return false;p.hidden=false;setTriggerState(true);positionPopup();return true},
+  close:function(){var p=E('DBG_steptraceScenarioPopup');if(p)p.hidden=true;setTriggerState(false);return true},
+  toggle:function(){var p=E('DBG_steptraceScenarioPopup');if(!p||p.hidden)return S.ui.open();return S.ui.close()},
+  position:positionPopup,
+  example:loadExample
+};
+g.DBG_STEPTRACE_SCENARIO=S;g.STB=S;if(g.oCOM&&g.oCOM.addToEventStack)g.oCOM.addToEventStack('onload',init);else if(g.addEventListener)g.addEventListener('load',init);
 })(window);
