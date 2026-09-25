@@ -10,7 +10,7 @@ on:
       - ".github/workflows/steptrace-complete-trigger-temp.yml"
 
 jobs:
-  inspect:
+  apply-and-verify:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -18,7 +18,10 @@ jobs:
         with:
           ref: feat/steptrace-breakpoint-scenario-complete
           fetch-depth: 0
-      - name: Decode staged completion payload
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Decode and apply staged completion payload
         shell: bash
         run: |
           python3 <<'PY'
@@ -32,8 +35,29 @@ jobs:
               if line.startswith('            '): parts.append(line.strip())
               else: break
           raw=gzip.decompress(base64.b64decode(''.join(parts)))
-          Path('/tmp/steptrace-complete.payload').write_bytes(raw)
-          print('decoded bytes',len(raw))
-          print(raw[:3000].decode('utf-8','replace'))
+          Path('/tmp/steptrace-complete.patch').write_bytes(raw)
           PY
-          file /tmp/steptrace-complete.payload
+          grep '^diff --git ' /tmp/steptrace-complete.patch
+          git apply --check /tmp/steptrace-complete.patch
+          git apply /tmp/steptrace-complete.patch
+      - name: Run focused STEP TRACE and INFLATE regressions
+        shell: bash
+        run: |
+          node --check res/EMU_apple2debug.js
+          node --check res/DBG_steptrace_scenario.js
+          node --check asm/_TODO/INFLATE_ASM_CORE_testbench.js
+          node --test \
+            tests/cpu_execution_condition.test.js \
+            tests/debugger_steptrace_scenario.test.js \
+            tests/debugger_testbench_loader.test.js \
+            tests/inflate_steptrace_harness.test.js
+      - name: Commit real implementation and remove temporary workflows
+        shell: bash
+        run: |
+          rm -f .github/workflows/steptrace-breakpoint-scenario-complete-temp.yml
+          rm -f .github/workflows/steptrace-complete-trigger-temp.yml
+          git config user.name "Zen"
+          git config user.email "freddy.vandriessche@gmail.com"
+          git add -A
+          git commit -m "feat: complete STEP TRACE breakpoint scenarios"
+          git push origin HEAD:feat/steptrace-breakpoint-scenario-complete
