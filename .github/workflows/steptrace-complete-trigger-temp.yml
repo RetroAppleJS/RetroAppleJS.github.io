@@ -21,7 +21,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Decode and apply staged completion payload
+      - name: Decode and apply staged debugger-core payload
         shell: bash
         run: |
           python3 <<'PY'
@@ -34,24 +34,21 @@ jobs:
           for line in lines[i:]:
               if line.startswith('            '): parts.append(line.strip())
               else: break
-          raw=gzip.decompress(base64.b64decode(''.join(parts)))
-          Path('/tmp/steptrace-complete.patch').write_bytes(raw)
+          Path('/tmp/steptrace-core.patch').write_bytes(gzip.decompress(base64.b64decode(''.join(parts))))
           PY
-          grep '^diff --git ' /tmp/steptrace-complete.patch
-          git apply --check /tmp/steptrace-complete.patch
-          git apply /tmp/steptrace-complete.patch
-      - name: Run focused STEP TRACE and INFLATE regressions
+          grep '^diff --git ' /tmp/steptrace-core.patch
+          git apply --check /tmp/steptrace-core.patch
+          git apply /tmp/steptrace-core.patch
+      - name: Run focused debugger-core regressions
         shell: bash
         run: |
           node --check res/EMU_apple2debug.js
           node --check res/DBG_steptrace_scenario.js
-          node --check asm/_TODO/INFLATE_ASM_CORE_testbench.js
           node --test \
             tests/cpu_execution_condition.test.js \
             tests/debugger_steptrace_scenario.test.js \
-            tests/debugger_testbench_loader.test.js \
-            tests/inflate_steptrace_harness.test.js
-      - name: Commit real implementation and remove temporary workflows
+            tests/debugger_testbench_loader.test.js
+      - name: Commit debugger core and remove temporary workflows
         shell: bash
         run: |
           rm -f .github/workflows/steptrace-breakpoint-scenario-complete-temp.yml
@@ -59,5 +56,5 @@ jobs:
           git config user.name "Zen"
           git config user.email "freddy.vandriessche@gmail.com"
           git add -A
-          git commit -m "feat: complete STEP TRACE breakpoint scenarios"
+          git commit -m "refactor: dispatch STEP TRACE scenarios at breakpoints"
           git push origin HEAD:feat/steptrace-breakpoint-scenario-complete
