@@ -10,7 +10,8 @@
 
   var scripts = [
     "res/DBG_testbench_legacy.js",
-    "res/DBG_steptrace_scenario.js"
+    "res/DBG_steptrace_scenario.js",
+    "res/DBG_steptrace_scenario_layout.js"
   ];
 
   if(global.document && global.document.readyState === "loading" &&
