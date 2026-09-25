@@ -1,0 +1,37 @@
+/* STEP TRACE + live scenario companion layout polish. */
+
+/* cpuDbg_popup wraps an inner appbox; remove the outer appbox padding so its
+ * title baseline matches SYSTEM/SLOTS instead of being pushed down twice. */
+#cpuDbg_popup {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.DBG_steptraceScenarioPopup {
+  margin: 0 !important;
+}
+
+.DBG_steptraceScenarioPopup .DBG_testbenchBox {
+  min-height: 0;
+  padding-top: 1px !important;
+}
+
+.DBG_steptraceScenarioPopup .DBG_testbenchHeader {
+  min-height: 18px;
+  margin-bottom: 3px;
+}
+
+.DBG_steptraceScenarioPopup .DBG_testbenchTitle {
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 18px;
+}
+
+/* Match the compact STEP TRACE listing density in the scenario body only. */
+#DBG_steptraceScript {
+  font: 9px/12px "DejaVu Sans Mono",Menlo,Consolas,"Courier New",monospace;
+}
+
+#DBG_steptraceConsole .container {
+  font: 9px/12px "DejaVu Sans Mono",Menlo,Consolas,"Courier New",monospace;
+}
