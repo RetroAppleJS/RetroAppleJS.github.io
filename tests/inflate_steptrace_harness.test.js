@@ -3,30 +3,63 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
-const source=fs.readFileSync(path.join(__dirname,'..','asm','_TODO','INFLATE_ASM_CORE_testbench.js'),'utf8');
+const zlib=require('node:zlib');
 
-test('INFLATE harness executes vectors through live STEP TRACE scenarios',()=>{
-  assert.match(source,/STB\.scenario\(v\.name/);
-  assert.match(source,/STB\.cpu\.start\(call\.trampoline/);
-  assert.match(source,/STB\.breakIf\("PC==" \+ STB\.hex\(call\.returnPC,4\)/);
-  assert.match(source,/STB\.assert\(diff === -1, "exact output"\)/);
-  assert.doesNotMatch(source,/TB\.call\(/);
+const harness=fs.readFileSync(path.join(__dirname,'..','asm','_TODO','INFLATE_ASM_CORE_testbench.js'),'utf8');
+const assembly=fs.readFileSync(path.join(__dirname,'..','asm','_TODO','INFLATE_ASM_CORE.S'),'utf8');
+
+function vectorsFromSource(){
+  const out=[];
+  const re=/\{\s*name:\s*"([^"]+)",\s*group:\s*"([^"]+)",\s*hex:\s*"([0-9A-Fa-f]+)",\s*expectedBytes:\s*(\d+)/g;
+  let m;
+  while((m=re.exec(harness)))out.push({name:m[1],group:m[2],hex:m[3],expectedBytes:Number(m[4])});
+  return out;
+}
+
+test('INFLATE assembly owns the repeated test-call loop',()=>{
+  assert.match(assembly,/ORG\s+\$0D10[\s\S]*?inflate_test_loop[\s\S]*?JSR\s+inflate[\s\S]*?inflate_test_done[\s\S]*?JMP\s+inflate_test_loop/i);
 });
 
-test('INFLATE harness requires an already loaded live assembler build instead of copying debugger RAM',()=>{
-  assert.match(source,/STB\.buildInfo\(\)/);
-  assert.match(source,/No assembler build is loaded in live RAM/);
-  assert.doesNotMatch(source,/TB\.ram/);
-  assert.doesNotMatch(source,/DBG_RAM/);
-  assert.doesNotMatch(source,/DBG_TESTBENCH/);
-  assert.doesNotMatch(source,/installLiveProgram/);
+test('INFLATE harness prepares and verifies through one persistent STEP TRACE breakpoint callback',()=>{
+  assert.match(harness,/onBreakpoint\s*\(\s*function\s*\(bp\)/);
+  assert.match(harness,/sym\(["']inflate_test_loop["']\)/);
+  assert.match(harness,/sym\(["']inflate_test_done["']\)/);
+  assert.match(harness,/bp\.PC\s*===\s*LOOP/);
+  assert.match(harness,/bp\.PC\s*===\s*DONE/);
+  assert.match(harness,/haltAtBreakpoint\s*\(\s*\)/);
+  assert.match(harness,/check\(diff\s*===\s*-1,\s*["']exact output["']\)/);
 });
 
-test('stored_255 validation fixture remains byte-for-byte rooted in the original compressed stream',()=>{
-  assert.match(source,/stored_255[\s\S]*?hex: "010000FFFF135CA5EE3780C9125BA4ED367FC8115AA3EC357EC71059/);
+test('INFLATE harness no longer owns CPU execution or assembler live loading',()=>{
+  for(const forbidden of [
+    /STB\.scenario/,
+    /STB\.cpu\.start/,
+    /STB\.breakIf/,
+    /installTrampoline/,
+    /trampoline\s*:/,
+    /STB\.buildInfo/,
+    /LOAD LIVE/,
+    /EMU_ASM_BUILD/,
+    /\bTB\.ram/,
+    /DBG_RAM/,
+    /DBG_TESTBENCH/
+  ]) assert.doesNotMatch(harness,forbidden);
 });
 
-test('large distance-range vector keeps compressed input in writable main RAM',()=>{
-  assert.match(source,/fixed_all_distance_ranges[\s\S]*?input: 0xB000, output: 0x1000/);
-  assert.doesNotMatch(source,/fixed_all_distance_ranges[\s\S]*?input: 0xD000, output: 0x1000/);
+test('all 15 DEFLATE vector manifests independently decode to their declared size',()=>{
+  const vectors=vectorsFromSource();
+  assert.equal(vectors.length,15);
+  for(const v of vectors){
+    const actual=zlib.inflateRawSync(Buffer.from(v.hex,'hex'));
+    assert.equal(actual.length,v.expectedBytes,v.name);
+  }
+});
+
+test('corrected distance-range vector remains 33426 bytes in writable main RAM',()=>{
+  assert.match(harness,/fixed_all_distance_ranges[\s\S]*?expectedBytes:\s*33426,\s*input:\s*0xB000,\s*output:\s*0x1000/);
+  assert.doesNotMatch(harness,/fixed_all_distance_ranges[\s\S]*?input:\s*0xD000/);
+});
+
+test('stored_255 fixture retains the validated compressed-stream prefix',()=>{
+  assert.match(harness,/stored_255[\s\S]*?hex:\s*"01FF0000FF135CA5EE3780C9125BA4ED367FC8115AA3EC357EC71059/);
 });

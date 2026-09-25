@@ -489,4 +489,13 @@ codeToLiteralSymbol
 codeToControlSymbol
         ORG     *+CONTROL_SYMBOLS
 
+; STEP TRACE validation driver. BREAK IF is armed on the two labels below.
+; JavaScript prepares a vector at inflate_test_loop, the live 6502 calls the
+; decompressor normally, and JavaScript verifies the result at inflate_test_done.
+        ORG     $0D10
+inflate_test_loop
+        JSR     inflate
+inflate_test_done
+        JMP     inflate_test_loop
+
         .END

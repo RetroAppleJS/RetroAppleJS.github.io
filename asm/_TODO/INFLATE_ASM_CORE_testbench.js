@@ -1,21 +1,21 @@
 /*
- * INFLATE_ASM_CORE.S validation harness for the live RetroAppleJS STEP TRACE
- * scenario bench.
+ * INFLATE_ASM_CORE.S validation harness for STEP TRACE breakpoint scenarios.
  *
- * Assemble INFLATE_ASM_CORE.S and use the Assembler's LOAD LIVE action first.
- * This script expects the program bytes and symbols to already belong to the
- * live Apple II build, then executes 15 host-validated RFC1951 vectors through
- * the real apple2plus CPU/hardware used by STEP TRACE.
+ * Load the assembled program into the Apple II using the normal emulator
+ * workflow, load its symbols into STEP TRACE, and arm BREAK IF as:
  *
- * pako is used only as an independent reference decoder.
+ *   PC==inflate_test_loop || PC==inflate_test_done
+ *
+ * Select RUN script at breakpoint. The live Apple II remains the sole CPU
+ * execution owner; this script only prepares inputs and verifies results at
+ * those two existing instruction boundaries.
  */
 (function() {
   "use strict";
 
   const CFG = {
-    only: null,                 // null = all; or e.g. ["stored_000"]
+    only: null,
     stopOnFailure: true,
-    trampoline: 0x0200,
     defaultInput: 0x3000,
     defaultOutput: 0x4000,
     scratchBytes: 765,
@@ -26,12 +26,7 @@
     scratchFill: 0xA5,
     outputFill: 0xD3,
     inputGuardFill: 0xC7,
-    scratchGuardFill: 0x5A,
-    maxInstructions: 5000000,
-    timeoutMs: 15000,
-    detectPcLoops: false,
-    pcLoopMaxPeriod: 8,
-    pcLoopRepeatLimit: 1024
+    scratchGuardFill: 0x5A
   };
 
   const VECTORS = [
@@ -67,8 +62,8 @@
     return actual.length === expected.length ? -1 : n;
   }
   function filled(address, length, value) {
-    const bytes = STB.ram.read(address, length);
-    for(let i=0; i<bytes.length; i++) if(bytes[i] !== (value & 0xFF)) return false;
+    const data = STB.ram.read(address, length);
+    for(let i=0; i<data.length; i++) if(data[i] !== (value & 0xFF)) return false;
     return true;
   }
   function selectVector(v) {
@@ -76,11 +71,32 @@
     const selected = Array.isArray(CFG.only) ? CFG.only : [CFG.only];
     return selected.indexOf(v.name) >= 0 || selected.indexOf(v.group) >= 0;
   }
-  function prepareCase(v, compressed, expected) {
+
+  need(window.STB && typeof STB.ram === "object", "STEP TRACE scenario helpers are unavailable.");
+  need(window.pako && typeof window.pako.inflateRaw === "function", "pako.inflateRaw() is not available.");
+  ["inflate", "inflate_data", "inputPointer", "outputPointer", "inflate_test_loop", "inflate_test_done"]
+    .forEach(name => need(STB.symbol(name), "Missing STEP TRACE symbol: " + name));
+
+  const LOOP = sym("inflate_test_loop");
+  const DONE = sym("inflate_test_done");
+  const selected = VECTORS.filter(selectVector);
+  need(selected.length > 0, "No vectors selected.");
+
+  let index = 0;
+  let active = null;
+  let currentGroup = "";
+  const results = [];
+
+  function prepareCase(v, bp) {
+    const compressed = hexBytes(v.hex);
+    const expected = window.pako.inflateRaw(compressed);
+    need(expected instanceof Uint8Array, v.name + ": pako.inflateRaw() did not return Uint8Array.");
+    need(expected.length === v.expectedBytes,
+      v.name + ": reference length " + expected.length + " != manifest length " + v.expectedBytes + ".");
     const input = v.input == null ? CFG.defaultInput : v.input;
     const output = v.output == null ? CFG.defaultOutput : v.output;
-    const scratch = STB.sym("inflate_data");
-    const zp = STB.sym("inflate_zp", STB.sym("inputPointer"));
+    const scratch = sym("inflate_data");
+    const zp = sym("inflate_zp", sym("inputPointer"));
     STB.ram.fill(zp, CFG.zpBytes, CFG.scratchFill);
     STB.ram.fill(scratch, CFG.scratchBytes, CFG.scratchFill);
     STB.ram.fill(scratch + CFG.scratchBytes, CFG.scratchGuardBytes, CFG.scratchGuardFill);
@@ -90,65 +106,74 @@
     STB.ram.fill(output - CFG.outputGuardBytes, CFG.outputGuardBytes + expected.length + CFG.outputGuardBytes, CFG.outputFill);
     STB.ram.write16("inputPointer", input);
     STB.ram.write16("outputPointer", output);
-    return {input, output, scratch};
-  }
-  function installTrampoline() {
-    const entry = STB.sym("inflate"), trampoline = CFG.trampoline & 0xFFFF, returnPC = (trampoline + 3) & 0xFFFF;
-    STB.ram.write(trampoline, [0x20, entry & 0xFF, (entry >>> 8) & 0xFF, 0x4C, returnPC & 0xFF, (returnPC >>> 8) & 0xFF]);
-    return {entry, trampoline, returnPC};
-  }
-  function runCase(v) {
-    const compressed = hexBytes(v.hex), expected = window.pako.inflateRaw(compressed);
-    need(expected instanceof Uint8Array, v.name + ": pako.inflateRaw() did not return Uint8Array.");
-    need(expected.length === v.expectedBytes, v.name + ": reference length " + expected.length + " != manifest length " + v.expectedBytes + ".");
-    let details = null;
-    const scenarioResult = STB.scenario(v.name, function() {
-      const m = prepareCase(v, compressed, expected), call = installTrampoline();
-      STB.cpu.start(call.trampoline, {A:0, X:0, Y:0, SP:0xFF, P:0x20});
-      const run = STB.breakIf("PC==" + STB.hex(call.returnPC,4), {maxInstructions:CFG.maxInstructions, timeoutMs:CFG.timeoutMs});
-      const inputPointer = STB.ram.read16("inputPointer"), outputPointer = STB.ram.read16("outputPointer");
-      const actual = STB.ram.read(m.output, expected.length), diff = firstDifference(actual, expected);
-      STB.assert(inputPointer === ((m.input + compressed.length) & 0xFFFF), "input consumed");
-      STB.assert(outputPointer === ((m.output + expected.length) & 0xFFFF), "output pointer");
-      STB.assert(diff === -1, "exact output");
-      STB.assert(filled(m.output - CFG.outputGuardBytes, CFG.outputGuardBytes, CFG.outputFill), "output guard before");
-      STB.assert(filled(m.output + expected.length, CFG.outputGuardBytes, CFG.outputFill), "output guard after");
-      STB.assert(filled(m.input - CFG.inputGuardBytes, CFG.inputGuardBytes, CFG.inputGuardFill), "input guard before");
-      STB.assert(filled(m.input + compressed.length, CFG.inputGuardBytes, CFG.inputGuardFill), "input guard after");
-      STB.assert(filled(m.scratch + CFG.scratchBytes, CFG.scratchGuardBytes, CFG.scratchGuardFill), "scratch guard after");
-      STB.assert(!!run.state && run.state.sp === 0xFF, "stack restored");
-      if(diff >= 0) print("    output diff +" + diff + " @ " + STB.hex((m.output + diff) & 0xFFFF,4));
-      details = {input:m.input, output:m.output, compressedBytes:compressed.length, expectedBytes:expected.length, firstDifference:diff, run};
-    });
-    return Object.assign({name:v.name, group:v.group}, scenarioResult, details || {});
+    return {vector:v,compressed,expected,input,output,scratch,startSP:bp.SP,startINS:bp.INS,assertions:0,failedAssertions:0};
   }
 
-  need(window.STB && typeof STB.scenario === "function", "STEP TRACE scenario bench is unavailable.");
-  const liveBuild = typeof STB.buildInfo === "function" ? STB.buildInfo() : null;
-  need(liveBuild, "No assembler build is loaded in live RAM. Assemble INFLATE_ASM_CORE.S and use LOAD LIVE first.");
-  need(window.pako && typeof window.pako.inflateRaw === "function", "pako.inflateRaw() is not available.");
-  ["inflate", "inflate_data", "inputPointer", "outputPointer"].forEach(name => need(STB.symbol(name), "Missing live-build assembler symbol: " + name));
+  function check(condition, description) {
+    active.assertions++;
+    if(!STB.assert(!!condition, description)) active.failedAssertions++;
+    return !!condition;
+  }
 
-  const selected = VECTORS.filter(selectVector);
-  need(selected.length > 0, "No vectors selected.");
-  print("INFLATE_ASM_CORE.S — live STEP TRACE raw DEFLATE validation");
-  print("STB " + STB.version + " / build=" + liveBuild.buildId + " / source=" + liveBuild.sourceName + " / inflate=" + STB.hex(STB.sym("inflate"),4) + " / vectors=" + selected.length);
-  const results = [];
-  let currentGroup = "";
-  for(const v of selected) {
-    if(v.group !== currentGroup) { currentGroup = v.group; print("-- " + currentGroup + " --"); }
-    let result;
-    try { result = runCase(v); }
-    catch(err) { print("ERROR " + v.name + " — harness error: " + (err && err.stack ? err.stack : String(err))); result = {name:v.name, group:v.group, status:"ERROR", pass:false, harnessError:String(err)}; }
+  function verifyCase(bp) {
+    const v = active.vector;
+    const inputPointer = STB.ram.read16("inputPointer");
+    const outputPointer = STB.ram.read16("outputPointer");
+    const actual = STB.ram.read(active.output, active.expected.length);
+    const diff = firstDifference(actual, active.expected);
+    check(inputPointer === ((active.input + active.compressed.length) & 0xFFFF), "input consumed");
+    check(outputPointer === ((active.output + active.expected.length) & 0xFFFF), "output pointer");
+    check(diff === -1, "exact output");
+    check(filled(active.output - CFG.outputGuardBytes, CFG.outputGuardBytes, CFG.outputFill), "output guard before");
+    check(filled(active.output + active.expected.length, CFG.outputGuardBytes, CFG.outputFill), "output guard after");
+    check(filled(active.input - CFG.inputGuardBytes, CFG.inputGuardBytes, CFG.inputGuardFill), "input guard before");
+    check(filled(active.input + active.compressed.length, CFG.inputGuardBytes, CFG.inputGuardFill), "input guard after");
+    check(filled(active.scratch + CFG.scratchBytes, CFG.scratchGuardBytes, CFG.scratchGuardFill), "scratch guard after");
+    check(bp.SP === active.startSP, "stack restored");
+    if(diff >= 0) print("    output diff +" + diff + " @ " + STB.hex((active.output + diff) & 0xFFFF,4));
+    const pass = active.failedAssertions === 0;
+    const instructions = Math.max(0, Number(bp.INS || 0) - Number(active.startINS || 0));
+    const result = {name:v.name,group:v.group,status:pass?"PASS":"FAIL",pass,assertions:active.assertions,failedAssertions:active.failedAssertions,input:active.input,output:active.output,compressedBytes:active.compressed.length,expectedBytes:active.expected.length,firstDifference:diff,instructions};
     results.push(result);
-    if(!result.pass && CFG.stopOnFailure) break;
+    print((pass ? "PASS " : "FAIL ") + v.name + " — " + result.assertions + " assertions / " + instructions + " ins");
+    return result;
   }
-  const passed = results.filter(r => r.pass).length, failed = results.length - passed, notRun = selected.length - results.length;
-  print("-- SUMMARY --");
-  print("PASS " + passed + "/" + results.length + (failed ? " / FAIL " + failed : "") + (notRun ? " / NOT RUN " + notRun : ""));
-  if(failed) print("failed: " + results.filter(r => !r.pass).map(r => r.name).join(", "));
+
+  function summary() {
+    const passed = results.filter(r => r.pass).length;
+    const failed = results.length - passed;
+    const notRun = selected.length - results.length;
+    print("-- SUMMARY --");
+    print("PASS " + passed + "/" + results.length + (failed ? " / FAIL " + failed : "") + (notRun ? " / NOT RUN " + notRun : ""));
+    if(failed) print("failed: " + results.filter(r => !r.pass).map(r => r.name).join(", "));
+  }
+
+  print("INFLATE_ASM_CORE.S — STEP TRACE breakpoint-driven raw DEFLATE validation");
+  print("BREAK IF: PC==inflate_test_loop || PC==inflate_test_done / vectors=" + selected.length);
   window.INFLATE_STEPTRACE_RESULTS = results;
   window.INFLATE_STEPTRACE_CONFIG = CFG;
   window.INFLATE_STEPTRACE_VECTORS = VECTORS;
-  return results;
+
+  onBreakpoint(function(bp) {
+    if(bp.PC === LOOP) {
+      need(active === null, "Reached inflate_test_loop while a vector is still active.");
+      need(index < selected.length, "Reached inflate_test_loop after all selected vectors completed.");
+      const v = selected[index];
+      if(v.group !== currentGroup) { currentGroup = v.group; print("-- " + currentGroup + " --"); }
+      active = prepareCase(v, bp);
+      return;
+    }
+    if(bp.PC === DONE) {
+      need(active !== null, "Reached inflate_test_done without an active vector.");
+      const result = verifyCase(bp);
+      active = null;
+      index++;
+      if((!result.pass && CFG.stopOnFailure) || index >= selected.length) {
+        summary();
+        haltAtBreakpoint();
+      }
+      return;
+    }
+    throw new Error("Unexpected BREAK IF callback at " + STB.hex(bp.PC,4) + ".");
+  });
 })();

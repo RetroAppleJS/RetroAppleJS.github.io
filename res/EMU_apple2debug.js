@@ -50,6 +50,7 @@ function Apple2Debug()
     var loadedLabels = new Array(0x10000);
     var loadedSymbols = new Array(0x10000);
     var loadedComments = new Array(0x10000);
+    var loadedSymbolNames = Object.create(null);
     var symbolState = {
          file:""
         ,source:""
@@ -115,6 +116,13 @@ function Apple2Debug()
         ,error:null
     };
     var breakMessage = "";
+
+    // Optional synchronous action dispatched when BREAK IF matches. The live
+    // emulator remains the execution owner; a normal callback return means the
+    // matching opcode may execute immediately.
+    var breakpointActionHandler = null;
+    var breakpointActionDispatching = false;
+    var breakpointActionLastError = null;
 
     function liveMachine()
     {
@@ -381,11 +389,12 @@ function Apple2Debug()
         return null;
     }
 
-    function commitLoadedSymbols(nextLabels,nextSymbols,nextComments,state)
+    function commitLoadedSymbols(nextLabels,nextSymbols,nextComments,nextNames,state)
     {
         loadedLabels = nextLabels;
         loadedSymbols = nextSymbols;
         loadedComments = nextComments;
+        loadedSymbolNames = nextNames || Object.create(null);
         symbolState = state;
         invalidateDecodeCache();
         syncSymbolControls();
@@ -401,6 +410,7 @@ function Apple2Debug()
         var nextLabels = new Array(0x10000);
         var nextSymbols = new Array(0x10000);
         var nextComments = new Array(0x10000);
+        var nextNames = Object.create(null);
         var labels = 0;
         var equs = 0;
         var comments = 0;
@@ -418,6 +428,7 @@ function Apple2Debug()
                 if(!label) continue;
                 if(!nextLabels[value]) nextLabels[value] = label;
                 nextSymbols[value] = label;
+                nextNames[label.toUpperCase()] = {name:label,value:value,type:"label"};
                 labels++;
                 continue;
             }
@@ -427,6 +438,7 @@ function Apple2Debug()
                 var name = String(record.name || "").trim();
                 if(!name) continue;
                 if(!nextSymbols[value]) nextSymbols[value] = name;
+                nextNames[name.toUpperCase()] = {name:name,value:value,type:type==="symbol" ? "equ" : type};
                 equs++;
                 continue;
             }
@@ -457,7 +469,7 @@ function Apple2Debug()
         if(fmt!=="RetroAppleJS-ASM-symbols" && raw && !Array.isArray(raw) && raw.format)
             throw new Error("Unsupported symbol table format: "+fmt);
 
-        return commitLoadedSymbols(nextLabels,nextSymbols,nextComments,{
+        return commitLoadedSymbols(nextLabels,nextSymbols,nextComments,nextNames,{
              file:String(fileName || "symbols.json")
             ,source:raw && !Array.isArray(raw) ? String(raw.sourceName || "") : ""
             ,format:fmt
@@ -473,6 +485,7 @@ function Apple2Debug()
         var nextLabels = new Array(0x10000);
         var nextSymbols = new Array(0x10000);
         var nextComments = new Array(0x10000);
+        var nextNames = Object.create(null);
         var labels = 0;
         var lines = String(text || "").split(/\r?\n/);
 
@@ -509,11 +522,12 @@ function Apple2Debug()
             if(addr===null || addr===undefined || !name) continue;
             if(!nextLabels[addr]) nextLabels[addr] = name;
             if(!nextSymbols[addr]) nextSymbols[addr] = name;
+            nextNames[String(name).toUpperCase()] = {name:String(name),value:addr,type:"label"};
             labels++;
         }
 
         if(!labels) throw new Error("No symbols found in text map");
-        return commitLoadedSymbols(nextLabels,nextSymbols,nextComments,{
+        return commitLoadedSymbols(nextLabels,nextSymbols,nextComments,nextNames,{
              file:String(fileName || "symbols.txt")
             ,source:""
             ,format:"text symbols"
@@ -529,6 +543,7 @@ function Apple2Debug()
         loadedLabels = new Array(0x10000);
         loadedSymbols = new Array(0x10000);
         loadedComments = new Array(0x10000);
+        loadedSymbolNames = Object.create(null);
         symbolState = {file:"",source:"",format:"",labels:0,equs:0,comments:0,error:""};
         invalidateDecodeCache();
         syncSymbolControls();
@@ -597,11 +612,11 @@ function Apple2Debug()
                 continue;
             }
 
-            if(/[a-z_]/i.test(c))
+            if(/[a-z_.@?]/i.test(c))
             {
                 var ip = i;
                 var id = "";
-                while(i<s.length && /[a-z0-9_]/i.test(s.charAt(i))) id += s.charAt(i++);
+                while(i<s.length && /[a-z0-9_.@$?]/i.test(s.charAt(i))) id += s.charAt(i++);
                 out.push({k:"id",v:id.toUpperCase(),p:ip});
                 continue;
             }
@@ -655,6 +670,8 @@ function Apple2Debug()
                     need("]");
                     return {t:"mem",w:memory[t.v],a:addr};
                 }
+                var symbol = loadedSymbolNames[t.v];
+                if(symbol) return {t:"num",v:symbol.value};
                 throw new Error("Unknown condition name '"+t.v+"' at column "+(t.p+1));
             }
 
@@ -1932,7 +1949,7 @@ function Apple2Debug()
         return action;
     }
 
-    function conditionalBreakpointHit(state)
+    function conditionalBreakpointHit(state,countHit)
     {
         manualStepPause = false;
         conditionalBreakpoint.armed = false;
@@ -1945,7 +1962,7 @@ function Apple2Debug()
         else
         {
             conditionalBreakpoint.hit = true;
-            conditionalBreakpoint.hits++;
+            if(countHit!==false) conditionalBreakpoint.hits++;
             breakMessage = "";
         }
 
@@ -1969,6 +1986,72 @@ function Apple2Debug()
             if(cpu && dbg.isReady()) dbg.cycle({cpu:cpu,force:true});
         },0);
         return true;
+    }
+
+    function breakpointActionContext(state,hit)
+    {
+        state = state || {};
+        return {
+             A:Number(state.a || 0) & 0xff
+            ,X:Number(state.x || 0) & 0xff
+            ,Y:Number(state.y || 0) & 0xff
+            ,SP:Number(state.sp || 0) & 0xff
+            ,P:Number(state.p || 0) & 0xff
+            ,PC:Number(state.pc || 0) & 0xffff
+            ,INS:Number(state.ic) || 0
+            ,condition:conditionalBreakpoint.condition
+            ,hit:hit
+        };
+    }
+
+    function conditionalBreakpointMatched(state)
+    {
+        if(conditionalBreakpoint.error || typeof(breakpointActionHandler)!=="function")
+            return conditionalBreakpointHit(state,true);
+
+        // A callback must never recursively enter itself through another CPU
+        // boundary. Fail safe to the ordinary breakpoint stop at the current PC.
+        if(breakpointActionDispatching)
+        {
+            breakpointActionLastError = "Re-entrant breakpoint action dispatch";
+            breakpointActionHandler = null;
+            return conditionalBreakpointHit(state,false);
+        }
+
+        var hit = conditionalBreakpoint.hits + 1;
+        conditionalBreakpoint.hits = hit;
+        breakpointActionDispatching = true;
+        var result = null;
+        var failed = false;
+        try
+        {
+            result = breakpointActionHandler(breakpointActionContext(state,hit));
+            if(result && typeof(result.then)==="function")
+                throw new Error("Async breakpoint actions are not supported.");
+        }
+        catch(err)
+        {
+            failed = true;
+            breakpointActionLastError = err && err.message ? err.message : String(err);
+        }
+        finally
+        {
+            breakpointActionDispatching = false;
+        }
+
+        if(failed || !breakpointActionHandler || (result && result.halt===true))
+        {
+            breakpointActionHandler = null;
+            return conditionalBreakpointHit(state,false);
+        }
+
+        // Successful RUN-mode dispatch: keep the observer armed and do not stop
+        // any execution owner. Returning false lets the matching opcode execute.
+        conditionalBreakpoint.hit = false;
+        conditionalBreakpoint.armed = true;
+        breakMessage = "";
+        syncBreakpointControls();
+        return false;
     }
 
     function evaluateConditionalBreakpoint(state)
@@ -1997,7 +2080,7 @@ function Apple2Debug()
     function conditionalBreakpointTrap(state)
     {
         if(!evaluateConditionalBreakpoint(state)) return false;
-        return conditionalBreakpointHit(state);
+        return conditionalBreakpointMatched(state);
     }
 
     function removeConditionalBreakpointObserver()
@@ -2221,6 +2304,29 @@ function Apple2Debug()
         };
         reader.readAsText(file);
         return true;
+    };
+
+    this.resolveSymbol = function(name)
+    {
+        var key = String(name==null ? "" : name).trim().toUpperCase();
+        var record = key ? loadedSymbolNames[key] : null;
+        return record ? (record.value & 0xffff) : null;
+    };
+
+    this.symbol = function(name)
+    {
+        var key = String(name==null ? "" : name).trim().toUpperCase();
+        var record = key ? loadedSymbolNames[key] : null;
+        return record ? {name:record.name,value:record.value,type:record.type} : null;
+    };
+
+    this.symbols = function()
+    {
+        return Object.keys(loadedSymbolNames).sort().map(function(key)
+        {
+            var record = loadedSymbolNames[key];
+            return {name:record.name,value:record.value,type:record.type};
+        });
     };
 
     this.clearSymbols = function()
@@ -2599,6 +2705,24 @@ function Apple2Debug()
         });
     };
 
+    this.setBreakpointActionHandler = function(fn)
+    {
+        if(fn!==null && typeof(fn)!=="function")
+            throw new TypeError("Breakpoint action handler must be a function or null.");
+        breakpointActionHandler = fn;
+        breakpointActionLastError = null;
+        return !!breakpointActionHandler;
+    };
+
+    this.breakpointActionState = function()
+    {
+        return {
+             active:typeof(breakpointActionHandler)==="function"
+            ,dispatching:breakpointActionDispatching
+            ,lastError:breakpointActionLastError
+        };
+    };
+
     this.setBreakpointCondition = function(value)
     {
         var nextText = String(value==null ? "" : value).trim();
@@ -2679,6 +2803,9 @@ function Apple2Debug()
         stopBoundaryAction();
         stopFixedRun();
         resetClosedLoopDisplayState();
+        breakpointActionHandler = null;
+        breakpointActionDispatching = false;
+        breakpointActionLastError = null;
         clearConditionalBreakpoint();
         syncRunIcon();
     };
