@@ -1,0 +1,32 @@
+name: Temporary STEP TRACE INFLATE RED
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/steptrace-inflate-red-temp.yml"
+
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/steptrace-breakpoint-scenario-complete
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Prove breakpoint-driven INFLATE contract is RED
+        shell: bash
+        run: |
+          set +e
+          node --test tests/inflate_steptrace_harness.test.js > /tmp/red.log 2>&1
+          status=$?
+          cat /tmp/red.log
+          if [ "$status" -eq 0 ]; then
+            echo 'Expected RED but test suite passed.' >&2
+            exit 1
+          fi
+          grep -q 'INFLATE assembly owns the repeated test-call loop' /tmp/red.log
+          grep -q 'INFLATE harness prepares and verifies through one persistent STEP TRACE breakpoint callback' /tmp/red.log
+          echo 'RED confirmed: old trampoline/live-load harness violates the new contract.'
