@@ -23,6 +23,12 @@ test('scenario companion starts hidden and exposes open close toggle controls', 
   assert.match(scenarioSource,/toggle:function\(\)/);
 });
 
+test('fixed scenario companion is mounted in viewport coordinate space', () => {
+  assert.match(scenarioSource,/var host=D\.body\|\|E\('feature_box'\)/);
+  assert.match(scenarioSource,/host\.appendChild\(p\)/);
+  assert.doesNotMatch(scenarioSource,/\(E\('feature_box'\)\|\|D\.body\)\.appendChild\(p\)/);
+});
+
 test('scenario companion prefers the right side and falls back to the left', () => {
   assert.match(scenarioSource,/left=r\.right\+gap/);
   assert.match(scenarioSource,/left=Math\.max\(4,r\.left-pw-gap\)/);
