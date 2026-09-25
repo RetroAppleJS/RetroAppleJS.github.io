@@ -1,0 +1,1001 @@
+{
+  "format": "RetroAppleJS-ASM-symbols",
+  "version": 2,
+  "source": "INFLATE_ASM_CORE.S",
+  "scopeMode": "instruction-pc",
+  "scope": [
+    [
+      2048,
+      2555
+    ],
+    [
+      3344,
+      3349
+    ]
+  ],
+  "scopeHex": [
+    [
+      "$0800",
+      "$09FB"
+    ],
+    [
+      "$0D10",
+      "$0D15"
+    ]
+  ],
+  "count": 128,
+  "symbols": [
+    {
+      "name": "inflate",
+      "type": "equ",
+      "bytes": 2,
+      "value": 2048,
+      "hex": "$0800"
+    },
+    {
+      "name": "inflate_data",
+      "type": "equ",
+      "bytes": 2,
+      "value": 2560,
+      "hex": "$0A00"
+    },
+    {
+      "name": "inflate_zp",
+      "type": "equ",
+      "bytes": 1,
+      "value": 240,
+      "hex": "$F0"
+    },
+    {
+      "name": "inputPointer",
+      "type": "equ",
+      "bytes": 1,
+      "value": 240,
+      "hex": "$F0"
+    },
+    {
+      "name": "outputPointer",
+      "type": "equ",
+      "bytes": 1,
+      "value": 242,
+      "hex": "$F2"
+    },
+    {
+      "name": "getBit_buffer",
+      "type": "equ",
+      "bytes": 1,
+      "value": 244,
+      "hex": "$F4"
+    },
+    {
+      "name": "getBits_base",
+      "type": "equ",
+      "bytes": 1,
+      "value": 245,
+      "hex": "$F5"
+    },
+    {
+      "name": "inflateStored_pageCounter",
+      "type": "equ",
+      "bytes": 1,
+      "value": 245,
+      "hex": "$F5"
+    },
+    {
+      "name": "inflateCodes_sourcePointer",
+      "type": "equ",
+      "bytes": 1,
+      "value": 246,
+      "hex": "$F6"
+    },
+    {
+      "name": "inflateDynamic_symbol",
+      "type": "equ",
+      "bytes": 1,
+      "value": 246,
+      "hex": "$F6"
+    },
+    {
+      "name": "inflateDynamic_lastLength",
+      "type": "equ",
+      "bytes": 1,
+      "value": 247,
+      "hex": "$F7"
+    },
+    {
+      "name": "inflateDynamic_tempCodes",
+      "type": "equ",
+      "bytes": 1,
+      "value": 247,
+      "hex": "$F7"
+    },
+    {
+      "name": "inflateCodes_lengthMinus2",
+      "type": "equ",
+      "bytes": 1,
+      "value": 248,
+      "hex": "$F8"
+    },
+    {
+      "name": "inflateDynamic_allCodes",
+      "type": "equ",
+      "bytes": 1,
+      "value": 248,
+      "hex": "$F8"
+    },
+    {
+      "name": "inflateDynamic_primaryCodes",
+      "type": "equ",
+      "bytes": 1,
+      "value": 249,
+      "hex": "$F9"
+    },
+    {
+      "name": "GET_1_BIT",
+      "type": "equ",
+      "bytes": 1,
+      "value": 129,
+      "hex": "$81"
+    },
+    {
+      "name": "GET_2_BITS",
+      "type": "equ",
+      "bytes": 1,
+      "value": 130,
+      "hex": "$82"
+    },
+    {
+      "name": "GET_3_BITS",
+      "type": "equ",
+      "bytes": 1,
+      "value": 132,
+      "hex": "$84"
+    },
+    {
+      "name": "GET_4_BITS",
+      "type": "equ",
+      "bytes": 1,
+      "value": 136,
+      "hex": "$88"
+    },
+    {
+      "name": "GET_5_BITS",
+      "type": "equ",
+      "bytes": 1,
+      "value": 144,
+      "hex": "$90"
+    },
+    {
+      "name": "GET_6_BITS",
+      "type": "equ",
+      "bytes": 1,
+      "value": 160,
+      "hex": "$A0"
+    },
+    {
+      "name": "GET_7_BITS",
+      "type": "equ",
+      "bytes": 1,
+      "value": 192,
+      "hex": "$C0"
+    },
+    {
+      "name": "TREE_SIZE",
+      "type": "equ",
+      "bytes": 1,
+      "value": 16,
+      "hex": "$10"
+    },
+    {
+      "name": "PRIMARY_TREE",
+      "type": "equ",
+      "bytes": 1,
+      "value": 0,
+      "hex": "$00"
+    },
+    {
+      "name": "DISTANCE_TREE",
+      "type": "equ",
+      "bytes": 1,
+      "value": 16,
+      "hex": "$10"
+    },
+    {
+      "name": "LENGTH_SYMBOLS",
+      "type": "equ",
+      "bytes": 1,
+      "value": 32,
+      "hex": "$20"
+    },
+    {
+      "name": "DISTANCE_SYMBOLS",
+      "type": "equ",
+      "bytes": 1,
+      "value": 30,
+      "hex": "$1E"
+    },
+    {
+      "name": "CONTROL_SYMBOLS",
+      "type": "equ",
+      "bytes": 1,
+      "value": 62,
+      "hex": "$3E"
+    },
+    {
+      "name": "inflate_blockLoop",
+      "type": "label",
+      "bytes": 2,
+      "value": 2052,
+      "hex": "$0804"
+    },
+    {
+      "name": "inflateStored_copyByte",
+      "type": "label",
+      "bytes": 2,
+      "value": 2075,
+      "hex": "$081B"
+    },
+    {
+      "name": "inflateStored_firstByte",
+      "type": "label",
+      "bytes": 2,
+      "value": 2081,
+      "hex": "$0821"
+    },
+    {
+      "name": "inflate_nextBlock",
+      "type": "label",
+      "bytes": 2,
+      "value": 2088,
+      "hex": "$0828"
+    },
+    {
+      "name": "inflateCompressed",
+      "type": "label",
+      "bytes": 2,
+      "value": 2092,
+      "hex": "$082C"
+    },
+    {
+      "name": "inflateCompressed_setCodeLengths",
+      "type": "label",
+      "bytes": 2,
+      "value": 2094,
+      "hex": "$082E"
+    },
+    {
+      "name": "inflateCompressed_setLiteralCodeLength",
+      "type": "label",
+      "bytes": 2,
+      "value": 2102,
+      "hex": "$0836"
+    },
+    {
+      "name": "inflateCompressed_setControlCodeLength",
+      "type": "label",
+      "bytes": 2,
+      "value": 2117,
+      "hex": "$0845"
+    },
+    {
+      "name": "inflateCompressed_skipControlStore",
+      "type": "label",
+      "bytes": 2,
+      "value": 2124,
+      "hex": "$084C"
+    },
+    {
+      "name": "inflateDynamic_decodeLength",
+      "type": "label",
+      "bytes": 2,
+      "value": 2133,
+      "hex": "$0855"
+    },
+    {
+      "name": "inflateDynamic_skipAdd7",
+      "type": "label",
+      "bytes": 2,
+      "value": 2153,
+      "hex": "$0869"
+    },
+    {
+      "name": "inflateDynamic_repeatLast",
+      "type": "label",
+      "bytes": 2,
+      "value": 2155,
+      "hex": "$086B"
+    },
+    {
+      "name": "inflateDynamic_verbatimLength",
+      "type": "label",
+      "bytes": 2,
+      "value": 2160,
+      "hex": "$0870"
+    },
+    {
+      "name": "inflateDynamic_storeLength",
+      "type": "label",
+      "bytes": 2,
+      "value": 2164,
+      "hex": "$0874"
+    },
+    {
+      "name": "inflateDynamic_storeNext",
+      "type": "label",
+      "bytes": 2,
+      "value": 2172,
+      "hex": "$087C"
+    },
+    {
+      "name": "inflateDynamic_controlSymbolCodeLength",
+      "type": "label",
+      "bytes": 2,
+      "value": 2179,
+      "hex": "$0883"
+    },
+    {
+      "name": "inflateDynamic_skipResetControlIndex",
+      "type": "label",
+      "bytes": 2,
+      "value": 2187,
+      "hex": "$088B"
+    },
+    {
+      "name": "inflateDynamic_storeControl",
+      "type": "label",
+      "bytes": 2,
+      "value": 2189,
+      "hex": "$088D"
+    },
+    {
+      "name": "inflateCodes",
+      "type": "label",
+      "bytes": 2,
+      "value": 2198,
+      "hex": "$0896"
+    },
+    {
+      "name": "inflateCodes_literal",
+      "type": "label",
+      "bytes": 2,
+      "value": 2203,
+      "hex": "$089B"
+    },
+    {
+      "name": "inflateCodes_loop",
+      "type": "label",
+      "bytes": 2,
+      "value": 2206,
+      "hex": "$089E"
+    },
+    {
+      "name": "inflateCodes_setSequenceLength",
+      "type": "label",
+      "bytes": 2,
+      "value": 2239,
+      "hex": "$08BF"
+    },
+    {
+      "name": "inflateCodes_setOffsetLowByte",
+      "type": "label",
+      "bytes": 2,
+      "value": 2256,
+      "hex": "$08D0"
+    },
+    {
+      "name": "inflateCodes_setOffsetHighByte",
+      "type": "label",
+      "bytes": 2,
+      "value": 2273,
+      "hex": "$08E1"
+    },
+    {
+      "name": "inflateCodes_copyByte",
+      "type": "label",
+      "bytes": 2,
+      "value": 2285,
+      "hex": "$08ED"
+    },
+    {
+      "name": "buildTempHuffmanTree",
+      "type": "label",
+      "bytes": 2,
+      "value": 2294,
+      "hex": "$08F6"
+    },
+    {
+      "name": "inflateDynamic_getHeader",
+      "type": "label",
+      "bytes": 2,
+      "value": 2296,
+      "hex": "$08F8"
+    },
+    {
+      "name": "inflateDynamic_getTempCodeLengths",
+      "type": "label",
+      "bytes": 2,
+      "value": 2310,
+      "hex": "$0906"
+    },
+    {
+      "name": "buildHuffmanTree",
+      "type": "label",
+      "bytes": 2,
+      "value": 2328,
+      "hex": "$0918"
+    },
+    {
+      "name": "buildHuffmanTree_clearCounts",
+      "type": "label",
+      "bytes": 2,
+      "value": 2329,
+      "hex": "$0919"
+    },
+    {
+      "name": "buildHuffmanTree_countCodeLengths",
+      "type": "label",
+      "bytes": 2,
+      "value": 2335,
+      "hex": "$091F"
+    },
+    {
+      "name": "buildHuffmanTree_notAllLiterals",
+      "type": "label",
+      "bytes": 2,
+      "value": 2346,
+      "hex": "$092A"
+    },
+    {
+      "name": "buildHuffmanTree_noControlSymbol",
+      "type": "label",
+      "bytes": 2,
+      "value": 2356,
+      "hex": "$0934"
+    },
+    {
+      "name": "buildHuffmanTree_calculateOffsets",
+      "type": "label",
+      "bytes": 2,
+      "value": 2361,
+      "hex": "$0939"
+    },
+    {
+      "name": "buildHuffmanTree_assignCode",
+      "type": "label",
+      "bytes": 2,
+      "value": 2371,
+      "hex": "$0943"
+    },
+    {
+      "name": "buildHuffmanTree_noControlSymbol2",
+      "type": "label",
+      "bytes": 2,
+      "value": 2402,
+      "hex": "$0962"
+    },
+    {
+      "name": "fetchPrimaryCode",
+      "type": "label",
+      "bytes": 2,
+      "value": 2406,
+      "hex": "$0966"
+    },
+    {
+      "name": "fetchCode",
+      "type": "label",
+      "bytes": 2,
+      "value": 2408,
+      "hex": "$0968"
+    },
+    {
+      "name": "fetchCode_nextBit",
+      "type": "label",
+      "bytes": 2,
+      "value": 2409,
+      "hex": "$0969"
+    },
+    {
+      "name": "fetchCode_allLiterals",
+      "type": "label",
+      "bytes": 2,
+      "value": 2434,
+      "hex": "$0982"
+    },
+    {
+      "name": "fetchCode_ge256",
+      "type": "label",
+      "bytes": 2,
+      "value": 2436,
+      "hex": "$0984"
+    },
+    {
+      "name": "fetchCode_notLiteral",
+      "type": "label",
+      "bytes": 2,
+      "value": 2440,
+      "hex": "$0988"
+    },
+    {
+      "name": "getAMinus1BitsMax8",
+      "type": "label",
+      "bytes": 2,
+      "value": 2456,
+      "hex": "$0998"
+    },
+    {
+      "name": "getBits",
+      "type": "label",
+      "bytes": 2,
+      "value": 2466,
+      "hex": "$09A2"
+    },
+    {
+      "name": "getBits_normalizeLoop",
+      "type": "label",
+      "bytes": 2,
+      "value": 2469,
+      "hex": "$09A5"
+    },
+    {
+      "name": "getWord",
+      "type": "label",
+      "bytes": 2,
+      "value": 2475,
+      "hex": "$09AB"
+    },
+    {
+      "name": "getByte",
+      "type": "label",
+      "bytes": 2,
+      "value": 2479,
+      "hex": "$09AF"
+    },
+    {
+      "name": "getBits_loop",
+      "type": "label",
+      "bytes": 2,
+      "value": 2481,
+      "hex": "$09B1"
+    },
+    {
+      "name": "getBit",
+      "type": "label",
+      "bytes": 2,
+      "value": 2488,
+      "hex": "$09B8"
+    },
+    {
+      "name": "getBit_inputPointerIncremented",
+      "type": "label",
+      "bytes": 2,
+      "value": 2501,
+      "hex": "$09C5"
+    },
+    {
+      "name": "getBit_return",
+      "type": "label",
+      "bytes": 2,
+      "value": 2506,
+      "hex": "$09CA"
+    },
+    {
+      "name": "copyByte",
+      "type": "label",
+      "bytes": 2,
+      "value": 2507,
+      "hex": "$09CB"
+    },
+    {
+      "name": "storeByte",
+      "type": "label",
+      "bytes": 2,
+      "value": 2513,
+      "hex": "$09D1"
+    },
+    {
+      "name": "storeByte_return",
+      "type": "label",
+      "bytes": 2,
+      "value": 2523,
+      "hex": "$09DB"
+    },
+    {
+      "name": "getNPlus1Bits_mask",
+      "type": "label",
+      "bytes": 2,
+      "value": 2524,
+      "hex": "$09DC"
+    },
+    {
+      "name": "inflateDynamic_tempSymbols",
+      "type": "label",
+      "bytes": 2,
+      "value": 2531,
+      "hex": "$09E3"
+    },
+    {
+      "name": "inflateDynamic_headerBits",
+      "type": "label",
+      "bytes": 2,
+      "value": 2550,
+      "hex": "$09F6"
+    },
+    {
+      "name": "inflateDynamic_headerBase",
+      "type": "label",
+      "bytes": 2,
+      "value": 2553,
+      "hex": "$09F9"
+    },
+    {
+      "name": "literalSymbolCodeLength",
+      "type": "label",
+      "bytes": 2,
+      "value": 2560,
+      "hex": "$0A00"
+    },
+    {
+      "name": "controlSymbolCodeLength",
+      "type": "label",
+      "bytes": 2,
+      "value": 2816,
+      "hex": "$0B00"
+    },
+    {
+      "name": "nBitCode_clearFrom",
+      "type": "label",
+      "bytes": 2,
+      "value": 2878,
+      "hex": "$0B3E"
+    },
+    {
+      "name": "nBitCode_literalCount",
+      "type": "label",
+      "bytes": 2,
+      "value": 2878,
+      "hex": "$0B3E"
+    },
+    {
+      "name": "nBitCode_controlCount",
+      "type": "label",
+      "bytes": 2,
+      "value": 2910,
+      "hex": "$0B5E"
+    },
+    {
+      "name": "nBitCode_literalOffset",
+      "type": "label",
+      "bytes": 2,
+      "value": 2942,
+      "hex": "$0B7E"
+    },
+    {
+      "name": "nBitCode_controlOffset",
+      "type": "label",
+      "bytes": 2,
+      "value": 2974,
+      "hex": "$0B9E"
+    },
+    {
+      "name": "allLiteralsCodeLength",
+      "type": "label",
+      "bytes": 2,
+      "value": 3006,
+      "hex": "$0BBE"
+    },
+    {
+      "name": "codeToLiteralSymbol",
+      "type": "label",
+      "bytes": 2,
+      "value": 3007,
+      "hex": "$0BBF"
+    },
+    {
+      "name": "codeToControlSymbol",
+      "type": "label",
+      "bytes": 2,
+      "value": 3263,
+      "hex": "$0CBF"
+    },
+    {
+      "name": "inflate_test_loop",
+      "type": "label",
+      "bytes": 2,
+      "value": 3344,
+      "hex": "$0D10"
+    },
+    {
+      "name": "inflate_test_done",
+      "type": "label",
+      "bytes": 2,
+      "value": 3347,
+      "hex": "$0D13"
+    },
+    {
+      "name": "COMMENT_inputPointer",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 240,
+      "comment": "2 bytes"
+    },
+    {
+      "name": "COMMENT_outputPointer",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 242,
+      "comment": "2 bytes"
+    },
+    {
+      "name": "COMMENT_getBit_buffer",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 244,
+      "comment": "1 byte"
+    },
+    {
+      "name": "COMMENT_getBits_base",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 245,
+      "comment": "1 byte"
+    },
+    {
+      "name": "COMMENT_inflateStored_pageCounter",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 245,
+      "comment": "1 byte"
+    },
+    {
+      "name": "COMMENT_inflateCodes_sourcePointer",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 246,
+      "comment": "2 bytes"
+    },
+    {
+      "name": "COMMENT_inflateDynamic_symbol",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 246,
+      "comment": "1 byte"
+    },
+    {
+      "name": "COMMENT_inflateDynamic_lastLength",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 247,
+      "comment": "1 byte"
+    },
+    {
+      "name": "COMMENT_inflateDynamic_tempCodes",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 247,
+      "comment": "1 byte"
+    },
+    {
+      "name": "COMMENT_inflateCodes_lengthMinus2",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 248,
+      "comment": "1 byte"
+    },
+    {
+      "name": "COMMENT_inflateDynamic_allCodes",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 248,
+      "comment": "1 byte"
+    },
+    {
+      "name": "COMMENT_inflateDynamic_primaryCodes",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 249,
+      "comment": "1 byte"
+    },
+    {
+      "name": "COMMENT_0800_12",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 2048,
+      "comment": "XASM: mvy #0,getBit_buffer",
+      "opcode": [
+        160,
+        0
+      ]
+    },
+    {
+      "name": "COMMENT_080F_13",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 2063,
+      "comment": "ignore bits until byte boundary",
+      "opcode": [
+        132,
+        244
+      ]
+    },
+    {
+      "name": "COMMENT_0811_14",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 2065,
+      "comment": "skip the length we don't need",
+      "opcode": [
+        32,
+        171,
+        9
+      ]
+    },
+    {
+      "name": "COMMENT_0814_15",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 2068,
+      "comment": "get the one's complement length",
+      "opcode": [
+        32,
+        171,
+        9
+      ]
+    },
+    {
+      "name": "COMMENT_0847_16",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 2119,
+      "comment": "XASM: scs:sta",
+      "opcode": [
+        176,
+        3
+      ]
+    },
+    {
+      "name": "COMMENT_0865_17",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 2149,
+      "comment": "XASM: seq:adc #7",
+      "opcode": [
+        240,
+        2
+      ]
+    },
+    {
+      "name": "COMMENT_086E_18",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 2158,
+      "comment": "XASM: iny:iny",
+      "opcode": [
+        200
+      ]
+    },
+    {
+      "name": "COMMENT_0876_19",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 2166,
+      "comment": "XASM: ...,x+",
+      "opcode": [
+        157,
+        0,
+        10
+      ]
+    },
+    {
+      "name": "COMMENT_0887_20",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 2183,
+      "comment": "XASM: sne:ldx",
+      "opcode": [
+        208,
+        2
+      ]
+    },
+    {
+      "name": "COMMENT_088D_21",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 2189,
+      "comment": "XASM: ...,x+",
+      "opcode": [
+        157,
+        0,
+        11
+      ]
+    },
+    {
+      "name": "COMMENT_0919_22",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 2329,
+      "comment": "XASM: sta:rne ...,y+",
+      "opcode": [
+        153,
+        62,
+        11
+      ]
+    },
+    {
+      "name": "COMMENT_0925_23",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 2341,
+      "comment": "XASM: sne:stx",
+      "opcode": [
+        208,
+        3
+      ]
+    },
+    {
+      "name": "COMMENT_093C_24",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 2364,
+      "comment": "XASM: add",
+      "opcode": [
+        24
+      ]
+    },
+    {
+      "name": "COMMENT_0947_25",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 2375,
+      "comment": "XASM: ldy:inc",
+      "opcode": [
+        188,
+        126,
+        11
+      ]
+    },
+    {
+      "name": "COMMENT_0958_26",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 2392,
+      "comment": "XASM: ldy:inc",
+      "opcode": [
+        188,
+        158,
+        11
+      ]
+    },
+    {
+      "name": "COMMENT_0975_27",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 2421,
+      "comment": "XASM: sub",
+      "opcode": [
+        56
+      ]
+    },
+    {
+      "name": "COMMENT_0994_28",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 2452,
+      "comment": "make distance symbols zero-based",
+      "opcode": [
+        41,
+        31
+      ]
+    },
+    {
+      "name": "COMMENT_09BF_29",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 2495,
+      "comment": "XASM: inw inputPointer",
+      "opcode": [
+        230,
+        240
+      ]
+    }
+  ]
+}
