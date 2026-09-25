@@ -55,7 +55,7 @@ test('extract groups explicit PCs into emission-order ORG segments and exports p
   assert.equal(spec.segments[1].address,0x2000);
   assert.deepEqual(Array.from(spec.segments[2].bytes),[0xEA]);
   assert.equal(spec.segments[2].address,0x0801);
-  assert.deepEqual(spec.symbols.map(s=>[s.key,s.name,s.value]),[
+  assert.deepEqual(Array.from(spec.symbols,s=>[s.key,s.name,s.value]),[
     ['INFLATE','inflate',0x0800],
     ['INPUTPOINTER','inputPointer',0x00F0]
   ]);
@@ -72,7 +72,7 @@ test('extract falls back to oASM code_pc/read_code and preserves explicit ORG bo
   };
   const spec = w.ASM_BUILD.extract({asm,inputRevision:3});
   assert.equal(spec.entry,0x1000);
-  assert.deepEqual(spec.segments.map(s=>[s.address,Array.from(s.bytes)]),[
+  assert.deepEqual(Array.from(spec.segments,s=>[s.address,Array.from(s.bytes)]),[
     [0x1000,[0xEA,0x60]],
     [0x2000,[0x00]]
   ]);
