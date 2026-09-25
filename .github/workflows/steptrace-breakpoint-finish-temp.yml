@@ -4,8 +4,8 @@ permissions:
   contents: write
 
 on:
-  push:
-    branches: ["feat/steptrace-breakpoint-scenario-finish"]
+  pull_request:
+    branches: ["main"]
     paths:
       - ".github/workflows/steptrace-breakpoint-finish-temp.yml"
 
