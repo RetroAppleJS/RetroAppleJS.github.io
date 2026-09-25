@@ -1,0 +1,48 @@
+name: Temporary STEP TRACE breakpoint scenario finish
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: ["feat/steptrace-breakpoint-scenario-finish"]
+    paths:
+      - ".github/workflows/steptrace-breakpoint-finish-temp.yml"
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/steptrace-breakpoint-scenario-finish
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Decode and apply tested core patch
+        shell: bash
+        run: |
+          cat .superpowers-tmp/steptrace-finish/core.* | base64 -d > /tmp/steptrace-finish.patch
+          git apply --check /tmp/steptrace-finish.patch
+          git apply /tmp/steptrace-finish.patch
+      - name: Run focused STEP TRACE regressions
+        shell: bash
+        run: |
+          node --check res/EMU_apple2debug.js
+          node --check res/DBG_steptrace_scenario.js
+          node --test \
+            tests/cpu_execution_condition.test.js \
+            tests/debugger_steptrace_scenario.test.js \
+            tests/debugger_testbench_loader.test.js
+      - name: Commit implementation and remove temporary payload
+        shell: bash
+        run: |
+          rm -rf .superpowers-tmp/steptrace-finish
+          rm -f .github/workflows/steptrace-breakpoint-finish-temp.yml
+          git config user.name "Zen"
+          git config user.email "freddy.vandriessche@gmail.com"
+          git add -A
+          git commit -m "refactor: dispatch STEP TRACE scenarios at breakpoints"
+          git push origin HEAD:feat/steptrace-breakpoint-scenario-finish
