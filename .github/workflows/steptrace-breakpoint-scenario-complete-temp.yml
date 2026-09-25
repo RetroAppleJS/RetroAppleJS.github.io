@@ -1,0 +1,134 @@
+name: Temporary STEP TRACE breakpoint scenario completion
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: ["feat/steptrace-breakpoint-scenario-complete"]
+    paths:
+      - ".github/workflows/steptrace-breakpoint-scenario-complete-temp.yml"
+
+jobs:
+  complete:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/steptrace-breakpoint-scenario-complete
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Apply remaining breakpoint-scenario implementation
+        env:
+          CORE_B64: >-
+            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
+          HARNESS_B64: >-
+            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
+          INFLATE_TEST_B64: >-
+            H4sIAOC4tmoC/51V23LbNhB991fgoTOkUpqim7aTcYbp6JZUGcvySHJeTA8HIpcWGhJgAFCXVvn3LngxbdrqZPogkcCePbvYs1hahQKitGSRtt6fRYIrTTQo7Uv4VjAJtsVFDJdmy+o1AKoUyC6k2uzXXI/YRHVwiWqNOdWbjtlstYBt1jFvs9b4d8rWHbPZagFSCO0bQvcvwbgdhjGTnGbgWK7bojZUclDqxuTSgo2vY1GVWY4VrubjOT6n1x+vBqtJOFjOwtF8MQlNWdbAI/RRT8uT/Q8yd9kyKFHICPxEuRJo/JGlsDzwyH6SqWMVOnn3LOYLeJ1HCz0z+dpN5FLGbJ0eiNhxRfQGCGjAAqVlB5BUiJyIQisWY4tEkupoQxaDmeXYPf/DP2ek7gM3MxYTzekznqRUQ6De+PgLfvLeeV4fI/8HNoyppq3D4LTDfPEpUD8jZnzh3QUqWN6/+aMhMRmHJuPG8Hm5QHBtfhUdC/5o+Dy7adEtWZ9hKt9fVq4WgjBF1ljyrzmKrM9jybbACeUxQVE0ZVhVLshGYDFHN7dEFpyDJEKSFIHnqaAxiSEHHmMLHU6UtWoFpy/48DFSYCcFjzQTPLDXedB7pWCN28sj/SDWVOcZNhagroWedVyUpmm6kjTLRco4HPXjK+p5eVyuhoEb5UXgIlDqal3WbJpUCxUBp5KJ47pgaTzliQjs49V8MCZX0y+T42R2W16R4e30anwcDz+F2ILlczVB/8n16M/+c5EwH9IIlbC9LiSQjHKWlE0N/EFvFClPjlIRxhsJcF7QHRlPKs8YIhwoslWlumeZ369evkxGq/liSXxiB3dNGwWckOC+777vwh6iukpPiyi+2pljNb5USnqwSns97iDSQip/m7nYLFN+DbsRdhLstZ3dXdw/ZcKxR1O7dnCrYzkXv5WQREi7JiQiaVh75hRNpOp4sW8GplsLv6C7cm4MiyQB6SZSZPbW3cDesfDP6pXcnQRqniaBLR48x3AQDw+oBq7NvC0dv5/KPUEJ7K3/ocL6vm+hahCHqCMObGwbHkEoKX8AnLEd/rdvf/3l9+fyp1Q+AGkcz0vHugT4oaMHvLWc7CTTdJ2axsDV6aHW9PnJjNrJkhf6knj7oed5jhmb9frC6wy0V+/Rj/OPaz5z4n8BUceHIL0HAAA==
+        shell: bash
+        run: |
+          python3 <<'PY'
+          import base64,gzip,os
+          from pathlib import Path
+          def unpack(env,path):
+              data=gzip.decompress(base64.b64decode(os.environ[env]))
+              Path(path).write_bytes(data)
+          unpack('CORE_B64','/tmp/steptrace-core.patch')
+          unpack('HARNESS_B64','asm/_TODO/INFLATE_ASM_CORE_testbench.js')
+          unpack('INFLATE_TEST_B64','tests/inflate_steptrace_harness.test.js')
+          PY
+          git apply /tmp/steptrace-core.patch
+          python3 <<'PY'
+          from pathlib import Path
+
+          # Add the visible, assembly-owned eternal test loop.
+          asm=Path('asm/_TODO/INFLATE_ASM_CORE.S')
+          s=asm.read_text()
+          if 'inflate_test_loop' not in s:
+              marker='\n        .END'
+              if marker not in s:
+                  raise SystemExit('INFLATE .END marker not found')
+              driver='''\n\n; STEP TRACE breakpoint-driven validation driver.\n; $0D10 is deliberately outside inflate scratch/data ($0A00-$0CFC)\n; and its guard area. The live 6502 owns the loop; scenario JavaScript only\n; prepares a vector at inflate_test_loop and verifies it at inflate_test_done.\n        ORG     $0D10\ninflate_test_loop\n        JSR     inflate\ninflate_test_done\n        JMP     inflate_test_loop\n'''
+              s=s.replace(marker,driver+marker,1)
+              asm.write_text(s)
+
+          # Bring the user manual in line with breakpoint-action semantics.
+          manual=Path('docs/STEP_TRACE_MANUAL.md')
+          m=manual.read_text()
+          m=m.replace(
+              'After a condition matches, it is one-shot/disarmed. The expression remains in the editor and can be armed again with one click.',
+              'In the default **HALT at breakpoint** mode, a match is one-shot/disarmed and the expression remains in the editor for re-arming. In **RUN script at breakpoint** mode, a successful scenario callback leaves the same BREAK IF armed so an assembly-owned loop can trigger it repeatedly.'
+          )
+          m=m.replace(
+              'When the condition is false, execution continues and the condition remains armed. When it becomes true, STEP TRACE stops at the clean instruction boundary **before the next opcode at that boundary is fetched or executed**. The main execution pictogram becomes `fa-parking`.',
+              'When the condition is false, execution continues and the condition remains armed. When it becomes true, STEP TRACE reaches the clean instruction boundary **before the next opcode at that boundary is fetched or executed**. In HALT mode it stops there and shows `fa-parking`; in RUN-script mode it executes the registered scenario callback synchronously and then continues through that opcode unless the callback requests a halt or fails.'
+          )
+          anchor='The condition can stop fixed-IPS execution, Max/SYSTEM execution, Step Over, or Step Out because the observer is evaluated by the live CPU at instruction boundaries.\n\n---\n\n## 9. LISTING column control'
+          section='''The condition can stop fixed-IPS execution, Max/SYSTEM execution, Step Over, or Step Out because the observer is evaluated by the live CPU at instruction boundaries.\n\n### STEP TRACE SCENARIO — breakpoint actions\n\nThe code pictogram opens the **STEP TRACE SCENARIO** companion. Its action control has two states and does not start, pause, step, or otherwise own the emulator:\n\n- `<i class="fa fa-pause"></i>` **HALT at breakpoint** — default. A true BREAK IF behaves as an ordinary STEP TRACE stop.\n- `<i class="fa fa-sign-in-alt"></i>` **RUN script at breakpoint** — the editor is evaluated once, must register exactly one `onBreakpoint(fn)` callback, and that persistent callback runs on every true BREAK IF match.\n\nThe callback runs synchronously at the clean boundary before the matching opcode. It receives `A`, `X`, `Y`, `SP`, `P`, `PC`, `INS`, the armed condition text, and the 1-based hit count. A normal return leaves BREAK IF armed and execution continues. Calling `haltAtBreakpoint()` converts the current match into the normal STEP TRACE halt and returns the scenario control to HALT mode. Callback exceptions, async returns, or re-entry also fail safe to the same halt.\n\nClosing the scenario popup does not disarm an active callback; reopening derives the control state from the debugger runtime. **Ctrl/Cmd+Enter** while editing performs the same HALT-to-RUN arm operation and never starts the CPU.\n\nScenario symbols come only from the symbol table loaded into STEP TRACE. The same case-insensitive labels/EQU values are usable in BREAK IF and through `sym()`, `symbol()`, and `symbols()`. For example:\n\n```text\nPC==inflate_test_loop || PC==inflate_test_done\n```\n\nA repeated test therefore belongs in the 6502 control flow itself, for example an assembly loop that calls the routine and jumps back. JavaScript prepares input at the loop breakpoint, validates output at the done breakpoint, advances its own vector index, and finally calls `haltAtBreakpoint()`.\n\nMigration from the former scenario runner is deliberately explicit: `scenario()`, `cpu.start()`, scenario-owned `breakIf()`, `reset()`, `buildInfo()`, and `syncBuild()` are removed. `STB.assert()` accepts a JavaScript boolean rather than a STEP TRACE expression string. The special **LOAD LIVE** workflow is gone; use the normal assembler/emulator workflow and load the desired symbols into STEP TRACE.\n\n---\n\n## 9. LISTING column control'''
+          if '### STEP TRACE SCENARIO — breakpoint actions' not in m:
+              if anchor not in m:
+                  raise SystemExit('STEP TRACE manual insertion anchor not found')
+              m=m.replace(anchor,section,1)
+          symbol_anchor='The tooltip provides file name and more detailed counts.\n\n---'
+          symbol_text='''The tooltip provides file name and more detailed counts.\n\nLoaded labels and EQU symbols also form the symbolic constant table used by `BREAK IF` and STEP TRACE SCENARIO. Name lookup is case-insensitive, and replacing or clearing the loaded symbol file replaces or clears that table atomically; there is no assembler-symbol fallback.\n\n---'''
+          if 'symbolic constant table used by `BREAK IF`' not in m:
+              if symbol_anchor not in m:
+                  raise SystemExit('STEP TRACE symbol documentation anchor not found')
+              m=m.replace(symbol_anchor,symbol_text,1)
+          quick='| Main Run/Pause | start execution after arming, or pause execution |'
+          quick_new='''| Scenario `fa-pause` | HALT at breakpoint; BREAK IF pauses normally |\n| Scenario `fa-sign-in-alt` | RUN script at breakpoint and continue after a successful callback |\n| Main Run/Pause | start execution after arming, or pause execution |'''
+          if 'Scenario `fa-sign-in-alt`' not in m and quick in m:
+              m=m.replace(quick,quick_new,1)
+          hit_old='''3. a true result stops the active execution owner without consuming the target opcode;\n4. the breakpoint becomes disarmed/one-shot after the hit;\n5. the Run/Pause control changes to the parking icon.'''
+          hit_new='''3. a true result reaches the breakpoint-action router without consuming the target opcode;\n4. with no RUN scenario action, the breakpoint disarms and stops exactly as before;\n5. a successful RUN callback leaves the condition armed and returns control to the emulator so the target opcode executes next;\n6. `haltAtBreakpoint()`, callback failure, async return, or re-entry clears the action and stops at that same boundary.'''
+          if hit_old in m:
+              m=m.replace(hit_old,hit_new,1)
+          manual.write_text(m)
+
+          # Pin the manual contract in the scenario regression file.
+          t=Path('tests/debugger_steptrace_scenario.test.js')
+          text=t.read_text()
+          if "manual documents breakpoint-driven scenario workflow" not in text:
+              text += '''\n\ntest('manual documents breakpoint-driven scenario workflow',()=>{\n  const manual=fs.readFileSync(path.join(__dirname,'..','docs','STEP_TRACE_MANUAL.md'),'utf8');\n  for(const phrase of ['HALT at breakpoint','RUN script at breakpoint','onBreakpoint','haltAtBreakpoint','PC==inflate_test_loop || PC==inflate_test_done']) assert.match(manual,new RegExp(phrase.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\$&')));\n  assert.match(manual,/normal assembler\/emulator workflow/);\n});\n'''
+              t.write_text(text)
+
+          # PR #93 accidentally merged only staging payload chunks; remove them now.
+          tmp=Path('.superpowers-tmp/steptrace-finish')
+          if tmp.exists():
+              for p in tmp.glob('core.*'):
+                  p.unlink()
+          PY
+      - name: Verify focused STEP TRACE regressions
+        shell: bash
+        run: |
+          node --check res/EMU_apple2debug.js
+          node --check res/DBG_steptrace_scenario.js
+          node --check asm/_TODO/INFLATE_ASM_CORE_testbench.js
+          node --test \
+            tests/cpu_execution_condition.test.js \
+            tests/debugger_steptrace_scenario.test.js \
+            tests/debugger_testbench_loader.test.js \
+            tests/inflate_steptrace_harness.test.js
+      - name: Commit verified implementation and remove temporary workflow
+        shell: bash
+        run: |
+          rm -f .github/workflows/steptrace-breakpoint-scenario-complete-temp.yml
+          git config user.name "Zen"
+          git config user.email "freddy.vandriessche@gmail.com"
+          git add \
+            res/EMU_apple2debug.js \
+            tests/cpu_execution_condition.test.js \
+            tests/debugger_steptrace_scenario.test.js \
+            asm/_TODO/INFLATE_ASM_CORE.S \
+            asm/_TODO/INFLATE_ASM_CORE_testbench.js \
+            tests/inflate_steptrace_harness.test.js \
+            docs/STEP_TRACE_MANUAL.md
+          git add -u .superpowers-tmp .github/workflows
+          git commit -m "feat: complete STEP TRACE breakpoint scenarios"
+          git fetch origin feat/steptrace-breakpoint-scenario-complete
+          git rebase origin/feat/steptrace-breakpoint-scenario-complete
+          git push origin HEAD:feat/steptrace-breakpoint-scenario-complete
