@@ -22,6 +22,10 @@ test('INFLATE harness requires an already loaded live assembler build instead of
   assert.doesNotMatch(source,/installLiveProgram/);
 });
 
+test('stored_255 validation fixture remains byte-for-byte rooted in the original compressed stream',()=>{
+  assert.match(source,/stored_255[\s\S]*?hex: "010000FFFF135CA5EE3780C9125BA4ED367FC8115AA3EC357EC71059/);
+});
+
 test('large distance-range vector keeps compressed input in writable main RAM',()=>{
   assert.match(source,/fixed_all_distance_ranges[\s\S]*?input: 0xB000, output: 0x1000/);
   assert.doesNotMatch(source,/fixed_all_distance_ranges[\s\S]*?input: 0xD000, output: 0x1000/);
