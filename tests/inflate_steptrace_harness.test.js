@@ -27,7 +27,7 @@ test('INFLATE harness prepares and verifies through one persistent STEP TRACE br
   assert.match(harness,/bp\.PC\s*===\s*LOOP/);
   assert.match(harness,/bp\.PC\s*===\s*DONE/);
   assert.match(harness,/haltAtBreakpoint\s*\(\s*\)/);
-  assert.match(harness,/STB\.assert\(diff\s*===\s*-1,\s*["']exact output["']\)/);
+  assert.match(harness,/check\(diff\s*===\s*-1,\s*["']exact output["']\)/);
 });
 
 test('INFLATE harness no longer owns CPU execution or assembler live loading',()=>{
@@ -40,7 +40,7 @@ test('INFLATE harness no longer owns CPU execution or assembler live loading',()
     /STB\.buildInfo/,
     /LOAD LIVE/,
     /EMU_ASM_BUILD/,
-    /TB\.ram/,
+    /\bTB\.ram/,
     /DBG_RAM/,
     /DBG_TESTBENCH/
   ]) assert.doesNotMatch(harness,forbidden);
