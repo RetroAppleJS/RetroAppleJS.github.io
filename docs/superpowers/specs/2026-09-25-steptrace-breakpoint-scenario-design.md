@@ -158,7 +158,7 @@ reset()
 scenario()
 ```
 
-and the implementation should remove the private scenario condition parser/CPU stepping loop rather than retain a second BREAK IF engine.
+and the implementation removes the private scenario condition parser/CPU stepping loop rather than retaining a second BREAK IF engine.
 
 `haltAtBreakpoint()` is meaningful only while a callback is running. It requests that the current matching boundary become a normal STEP TRACE halt and switches the scenario UI back to HALT mode.
 
@@ -166,9 +166,9 @@ A JavaScript exception is fail-safe: print the exception, switch to HALT mode, a
 
 ## Symbol ownership
 
-STEP TRACE SCENARIO must use the same symbols already loaded into STEP TRACE. It must not import symbols from `EMU_ASM_BUILD`, `DBG_RAM`, TEST BENCH, or the current assembler as a separate symbol universe.
+STEP TRACE SCENARIO uses the same symbols already loaded into STEP TRACE. It does not import symbols from `EMU_ASM_BUILD`, `DBG_RAM`, TEST BENCH, or the current assembler as a separate symbol universe.
 
-`Apple2Debug` therefore exposes read-only symbol lookup over its loaded symbol set, conceptually:
+`Apple2Debug` exposes read-only symbol lookup over its loaded symbol set:
 
 ```js
 Apple2Debug.resolveSymbol(name)   // number|null
@@ -212,15 +212,27 @@ The scenario popup may be closed while RUN mode is active; callback state is run
 
 STEP TRACE SCENARIO no longer requires an authoritative assembler build in live RAM. The user may have loaded code via monitor paste, disk software, ProDOS, another program, or any other normal emulator path.
 
-The Assembler's special **LOAD LIVE** button is removed from the normal UI and STEP TRACE SCENARIO has no `EMU_ASM_BUILD` dependency.
+The special Assembler **LOAD LIVE** workflow introduced solely for STEP TRACE scenario provenance is removed rather than hidden. Current repository usage shows the neutral build handoff and live-build service have no remaining runtime consumer once STEP TRACE SCENARIO stops depending on them.
 
-`DBG_testbench.js` must no longer initialize the live-load service merely to support STEP TRACE SCENARIO. The neutral/live-build files introduced for that path may be removed if they have no remaining runtime consumer; at minimum they must not be loaded by the standard page and no user documentation may claim they are required for STEP TRACE.
+Implementation therefore removes:
+
+```text
+res/ASM_build_handoff.js
+res/EMU_asm_build.js
+tests/asm_build_handoff.test.js
+tests/emu_asm_build.test.js
+docs/ASM_BUILD_LIVE_HANDOFF.md
+```
+
+`DBG_testbench.js` returns to loading only the isolated TEST BENCH implementation plus STEP TRACE SCENARIO/layout; it no longer initializes either build-handoff service. Loader regression tests are updated accordingly.
+
+Historical files under `docs/superpowers/plans/` remain historical records; this design supersedes the live-build architecture for STEP TRACE SCENARIO.
 
 TEST BENCH remains an isolated debugger facility and remains unrelated to STEP TRACE SCENARIO.
 
 ## INFLATE validation flow
 
-`INFLATE_ASM_CORE.S` receives a small explicit 6502 test driver outside its decompressor/scratch range. The current scratch block begins at `$0A00`; the test driver must be placed beyond the scratch and guard region. A suitable location is `$0D10`:
+`INFLATE_ASM_CORE.S` receives a small explicit 6502 test driver outside its decompressor/scratch range. The current scratch block begins at `$0A00`; the test driver is placed beyond the scratch and existing guard region at `$0D10`:
 
 ```asm
         ORG     $0D10
@@ -251,7 +263,7 @@ The corrected `fixed_all_distance_ranges` manifest remains `expectedBytes: 33426
 - BREAK IF script evaluation error while arming: remain HALT, do not alter emulator execution.
 - Callback exception: log error, switch to HALT, stop at current matching boundary.
 - `haltAtBreakpoint()`: switch to HALT and stop at current matching boundary.
-- Assertion failure: assertion helper records/prints failure; the harness decides whether to request halt. The INFLATE harness should halt on a failed vector rather than continue with potentially corrupted state.
+- Assertion failure: assertion helper records/prints failure; the harness decides whether to request halt. The INFLATE harness halts on a failed vector rather than continuing with potentially corrupted state.
 - Missing symbol: explicit script error; callback exception behavior then halts safely.
 
 ## Tests
@@ -266,7 +278,7 @@ Regression coverage must prove:
 6. Scenario mode does not change STEP TRACE execution speed or start/stop execution itself.
 7. Scenario symbols come exclusively from STEP TRACE's loaded symbol table.
 8. Scenario works with no `EMU_ASM_BUILD`, TEST BENCH, or `DBG_RAM` object.
-9. The special LOAD LIVE control is absent from the standard UI path.
+9. The special LOAD LIVE control and its runtime services are absent from the standard page path.
 10. INFLATE harness contains no trampoline, `cpu.start()`, or scenario-owned `breakIf()`.
 11. INFLATE's loop driver and BREAK IF locations permit all 15 vectors to be driven by repeated live breakpoint callbacks.
 12. All compressed-vector manifest lengths are independently checked with Node's raw DEFLATE decoder so fixture metadata cannot silently drift again.
