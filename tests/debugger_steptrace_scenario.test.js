@@ -1,202 +1,84 @@
 'use strict';
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const vm=require('node:vm');
+const source=fs.readFileSync(path.join(__dirname,'..','res','DBG_steptrace_scenario.js'),'utf8');
 
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const path = require('node:path');
-const vm = require('node:vm');
-
-const scenarioSource = fs.readFileSync(path.join(__dirname,'..','res','DBG_steptrace_scenario.js'),'utf8');
-
-function makeHarness(options={})
-{
-  const mem = new Uint8Array(0x10000);
-  const state = {pc:0x2222,a:9,x:8,y:7,sp:0x80,p:0xff,cycle_delay:0,ic:99};
-  const writes = [];
-  let now = 0;
-  let steps = 0;
-  const listeners = Object.create(null);
-
-  const hw = {
-    lineDecode(addr){ return (addr >>> 12) & 0x0f; },
-    safe_read(addr){ return mem[addr & 0xffff]; },
-    WR:new Array(16)
+function makeHarness(){
+  const mem=new Uint8Array(0x10000),state={pc:0x0d10,a:1,x:2,y:3,sp:0xff,p:0x20,cycle_delay:0,ic:0};
+  let handler=null,lastError=null;
+  const symbolRecords=[{name:'inflate_test_loop',value:0x0d10,type:'label'},{name:'inputPointer',value:0x00f0,type:'equ'}];
+  const dbg={
+    setBreakpointActionHandler(fn){handler=fn;lastError=null;return !!handler;},
+    breakpointActionState(){return{active:!!handler,dispatching:false,lastError};},
+    resolveSymbol(name){const k=String(name).toUpperCase();const r=symbolRecords.find(x=>x.name.toUpperCase()===k);return r?r.value:null;},
+    symbol(name){const k=String(name).toUpperCase();const r=symbolRecords.find(x=>x.name.toUpperCase()===k);return r?{...r}:null;},
+    symbols(){return symbolRecords.map(x=>({...x}));}
   };
-  for(let page=0;page<16;page++)
-    hw.WR[page] = (addr,value) => { mem[addr & 0xffff] = value & 0xff; writes.push([addr & 0xffff,value & 0xff]); };
-
-  const cpu = {
-    watch(){ return Object.assign({},state); },
-    setState(next){ Object.assign(state,next || {}); return this.watch(); }
-  };
-
-  const machine = {
-    cpuObj(){ return cpu; },
-    hwObj(){ return hw; },
-    stepLiveInstruction(){
-      const startPC = state.pc & 0xffff;
-      steps++;
-      if(startPC === 0x1000)
-      {
-        state.a = mem[0x3000];
-        mem[0x4000] = state.a;
-        state.pc = 0x1001;
-      }
-      else if(startPC === 0x1001)
-        state.pc = 0x1002;
-      else
-        state.pc = (startPC + 1) & 0xffff;
-      state.ic++;
-      now += 0.25;
-      return {ticks:2,startPC,endPC:state.pc,state:cpu.watch()};
-    }
-  };
-
-  const symbols = {entry:0x1000,done:0x1002,source:0x3000,target:0x4000,word:0x4010};
-  let liveBuild = options.noBuild ? null : {
-    schema:'RetroAppleJS.LiveAssemblerBuild',version:1,buildId:'asm-build-test',generation:1,inputRevision:1,
-    sourceName:'scenario-test.S',entry:0x1000,loadedAt:1,byteCount:3,ranges:[{start:0x1000,end:0x1002,length:3}],
-    symbols:Object.keys(symbols).map(name=>({key:name.toUpperCase(),name,value:symbols[name],kind:'unknown'}))
-  };
-  const EMU_ASM_BUILD = {current(){ return liveBuild; }};
-
-  const dbg = {
-    play(){},
-    clearConditionalBreakpoint(){ return true; },
-    cycle(){ return true; }
-  };
-
-  const window = {
-    EMU_ASM_BUILD,
-    apple2plus:machine,
-    oEMU:{component:{CPU:{Apple2Debug:dbg}}},
-    performance:{now(){ return now; }},
-    addEventListener(type,fn){ (listeners[type]||(listeners[type]=[])).push(fn); },
-    dispatchEvent(ev){ (listeners[ev.type]||[]).slice().forEach(fn=>fn(ev)); return true; },
-    setTimeout(fn){ fn(); return 1; }, clearTimeout(){},
-    requestAnimationFrame(fn){ fn(); }, console
-  };
-  window.window = window;
-  const document = {
-    getElementById(){ return null; },
-    createElement(){ return {style:{},appendChild(){},addEventListener(){},classList:{add(){}}}; },
-    body:{appendChild(){}}
-  };
-  window.document = document;
-
-  const ctx = {window,document,console,Uint8Array,Array,Object,Number,String,Boolean,Math,Date,Error,TypeError,RangeError,JSON,isFinite,parseInt,performance:window.performance};
-  vm.createContext(ctx);
-  vm.runInContext(scenarioSource,ctx,{filename:'DBG_steptrace_scenario.js'});
-  return {STB:window.STB,window,mem,state,writes,get steps(){return steps;},setLiveBuild(v){liveBuild=v;}};
+  const hw={lineDecode(a){return(a>>>12)&15},safe_read(a){return mem[a&0xffff]},WR:new Array(16)};
+  for(let i=0;i<16;i++)hw.WR[i]=(a,v)=>{mem[a&0xffff]=v&255};
+  const cpu={watch(){return{...state}}};
+  const window={apple2plus:{cpuObj(){return cpu},hwObj(){return hw}},oEMU:{component:{CPU:{Apple2Debug:dbg}}},console,addEventListener(){},setTimeout(fn){fn();return 1},clearTimeout(){}};
+  window.window=window;window.document={getElementById(){return null},createElement(){return{style:{},setAttribute(){},appendChild(){}}},body:{appendChild(){}}};
+  const ctx={window,document:window.document,console,Uint8Array,Array,Object,Number,String,Boolean,Math,Date,Error,TypeError,JSON,isFinite,parseInt};
+  vm.createContext(ctx);vm.runInContext(source,ctx);
+  return{STB:window.STB,window,mem,state,dbg,get handler(){return handler}};
 }
 
-test('scenario resolves live-build symbols without TEST BENCH and executes live CPU', () => {
-  const h = makeHarness();
-  assert.equal(h.window.TB,undefined);
-  assert.equal(h.STB.syncBuild().buildId,'asm-build-test');
-  assert.equal(h.STB.buildInfo().buildId,'asm-build-test');
-  const result = h.STB.scenario('copy byte', function(){
-    h.STB.ram.write('source',0x42);
-    h.STB.cpu.start('entry',{A:0x11,X:0x22,Y:0x33});
-    const run = h.STB.breakIf('PC==done',{maxInstructions:10,timeoutMs:1000});
-    assert.equal(run.ok,true);
-    assert.equal(run.instructions,2);
-    h.STB.assert('A==$42','A loaded');
-    h.STB.assert('M[target]==$42','destination written');
-  });
-
-  assert.equal(result.status,'PASS');
-  assert.equal(result.assertions,2);
-  assert.equal(h.state.pc,0x1002);
-  assert.equal(h.mem[0x4000],0x42);
-  assert.equal(h.state.x,0x22);
-  assert.equal(h.state.y,0x33);
+test('scenario script registers one persistent breakpoint callback without controlling CPU execution',()=>{
+  const h=makeHarness();
+  assert.equal(h.window.TB,undefined);assert.equal(h.window.EMU_ASM_BUILD,undefined);
+  assert.equal(h.STB.arm("let n=0; onBreakpoint(function(bp){ n++; ram.write('$3000',n); });"),true);
+  assert.equal(h.STB.mode(),'run');
+  assert.equal(h.handler({PC:0x0d10,A:0,X:0,Y:0,SP:0xff,P:0x20,INS:1,condition:'PC==$0D10',hit:1}),undefined);
+  assert.equal(h.handler({PC:0x0d10,A:0,X:0,Y:0,SP:0xff,P:0x20,INS:2,condition:'PC==$0D10',hit:2}),undefined);
+  assert.equal(h.mem[0x3000],2);
 });
 
-test('scenario reset is deterministic for CPU state but does not clear RAM', () => {
-  const h = makeHarness();
-  h.mem[0x1234] = 0x5a;
-  h.STB.reset();
-  assert.deepEqual(
-    {pc:h.state.pc,a:h.state.a,x:h.state.x,y:h.state.y,sp:h.state.sp,p:h.state.p,cycle_delay:h.state.cycle_delay,ic:h.state.ic},
-    {pc:0,a:0,x:0,y:0,sp:0xff,p:0x20,cycle_delay:0,ic:0}
-  );
-  assert.equal(h.mem[0x1234],0x5a);
+test('haltAtBreakpoint switches scenario back to HALT at the current match',()=>{
+  const h=makeHarness();
+  h.STB.arm("onBreakpoint(function(bp){ haltAtBreakpoint(); });");
+  const fn=h.handler;assert.deepEqual(JSON.parse(JSON.stringify(fn({PC:0x0d10,hit:1}))),{halt:true});
+  assert.equal(h.STB.mode(),'halt');assert.equal(h.handler,null);
 });
 
-test('assertion failures accumulate without aborting later assertions', () => {
-  const h = makeHarness();
-  const result = h.STB.scenario('assertions', function(){
-    h.STB.cpu.start('entry');
-    h.STB.assert('A==$01','first');
-    h.STB.assert('X==$00','second');
-  });
-  assert.equal(result.status,'FAIL');
-  assert.equal(result.assertions,2);
-  assert.equal(result.failedAssertions,1);
+test('callback exceptions disarm RUN mode and are rethrown for debugger fail-safe handling',()=>{
+  const h=makeHarness();
+  h.STB.arm("onBreakpoint(function(){ throw new Error('boom'); });");
+  const fn=h.handler;assert.throws(()=>fn({PC:0x0d10,hit:1}),/boom/);assert.equal(h.STB.mode(),'halt');assert.equal(h.handler,null);
 });
 
-test('failed break aborts the remaining scenario body', () => {
-  const h = makeHarness();
-  let reached = false;
-  const result = h.STB.scenario('limit', function(){
-    h.STB.cpu.start('entry');
-    h.STB.breakIf('PC==$9999',{maxInstructions:2,timeoutMs:1000});
-    reached = true;
-  });
-  assert.equal(reached,false);
-  assert.equal(result.status,'FAIL');
-  assert.equal(result.reason,'instruction-limit');
+test('scenario symbol helpers proxy only STEP TRACE loaded symbols',()=>{
+  const h=makeHarness();
+  assert.equal(h.STB.sym('INFLATE_TEST_LOOP'),0x0d10);assert.equal(h.STB.sym('missing',0x1234),0x1234);
+  assert.throws(()=>h.STB.sym('missing'),e=>e&&e.code==='STB_UNKNOWN_SYMBOL');
+  assert.deepEqual(JSON.parse(JSON.stringify(h.STB.symbol('inputPointer'))),{name:'inputPointer',value:0xf0,type:'equ'});
 });
 
-test('malformed conditions are scenario errors and abort the body', () => {
-  const h = makeHarness();
-  let reached = false;
-  const result = h.STB.scenario('bad expression', function(){
-    h.STB.cpu.start('entry');
-    h.STB.breakIf('PC==');
-    reached = true;
-  });
-  assert.equal(reached,false);
-  assert.equal(result.status,'ERROR');
-  assert.equal(result.reason,'expression-error');
+test('assert requires JavaScript booleans and never drives execution',()=>{
+  const h=makeHarness();assert.equal(h.STB.assert(true,'ok'),true);assert.equal(h.STB.assert(false,'bad'),false);assert.throws(()=>h.STB.assert('A==$01'),/boolean/);
 });
 
-test('condition language resolves live symbols, offsets, M16 and flags', () => {
-  const h = makeHarness();
-  h.mem[0x4010] = 0x34;
-  h.mem[0x4011] = 0x12;
-  const result = h.STB.scenario('expressions', function(){
-    h.STB.cpu.start('entry',{P:0x21});
-    h.STB.assert('PC==entry && M16[word]==$1234 && M[target+1]==0 && C==1');
-  });
-  assert.equal(result.status,'PASS');
+test('old CPU-driving scenario APIs and live-build dependencies are removed',()=>{
+  const h=makeHarness();
+  for(const name of ['scenario','reset','breakIf','syncBuild','buildInfo'])assert.equal(h.STB[name],undefined,name);
+  assert.equal(h.STB.cpu.start,undefined);
+  assert.doesNotMatch(source,/EMU_ASM_BUILD|DBG_RAM|DBG_TESTBENCH|function\s+compile\s*\(|stepLiveInstruction/);
 });
 
-test('live RAM writes refuse the Apple II I/O page', () => {
-  const h = makeHarness();
-  assert.throws(() => h.STB.ram.write(0xc000,0x01),/I\/O/);
+test('arming requires exactly one onBreakpoint registration',()=>{
+  const h=makeHarness();assert.throws(()=>h.STB.arm("print('none')"),/exactly one/);assert.equal(h.STB.mode(),'halt');
+  assert.throws(()=>h.STB.arm("onBreakpoint(function(){}); onBreakpoint(function(){});"),/exactly one/);assert.equal(h.STB.mode(),'halt');
 });
 
-test('assert accepts a boolean for host-side byte-array/guard checks', () => {
-  const h = makeHarness();
-  const result = h.STB.scenario('boolean assertion', function(){
-    h.STB.assert(true,'host comparison');
-    h.STB.assert(false,'host mismatch');
-    h.STB.assert(true,'still runs');
-  });
-  assert.equal(result.status,'FAIL');
-  assert.equal(result.assertions,3);
-  assert.equal(result.failedAssertions,1);
+test('scenario mode UI uses HALT pause and RUN sign-in pictograms',()=>{
+  assert.match(source,/fa fa-pause/);assert.match(source,/HALT at breakpoint/);assert.match(source,/fa fa-sign-in-alt/);assert.match(source,/RUN script at breakpoint/);
 });
 
-test('numeric scenarios work with no live assembler build while symbolic lookup reports the missing build', () => {
-  const h=makeHarness({noBuild:true});
-  const result=h.STB.scenario('numeric only',function(){
-    h.STB.cpu.start(0x1000);
-    h.STB.breakIf('PC==$1001',{maxInstructions:2,timeoutMs:1000});
-  });
-  assert.equal(result.status,'PASS');
-  assert.equal(h.STB.buildInfo(),null);
-  assert.throws(()=>h.STB.sym('entry'),e=>e&&e.code==='STB_NO_LIVE_BUILD');
+test('scenario popup initializes its terminal output surface after cloning the TEST BENCH UI',()=>{
+  assert.match(source,/function initTerminal\(\)/);
+  assert.match(source,/p\.appendChild\(q\);\s*initTerminal\(\);/);
+  assert.match(source,/if\(term&&term\.clear\)term\.clear\(\)/);
 });
