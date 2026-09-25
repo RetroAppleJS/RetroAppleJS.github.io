@@ -1,0 +1,39 @@
+name: Temporary STEP TRACE completion trigger
+
+permissions:
+  contents: write
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/steptrace-complete-trigger-temp.yml"
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/steptrace-breakpoint-scenario-complete
+          fetch-depth: 0
+      - name: Decode staged completion payload
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import base64,gzip
+          p=Path('.github/workflows/steptrace-breakpoint-scenario-complete-temp.yml')
+          lines=p.read_text().splitlines()
+          i=next(i for i,x in enumerate(lines) if 'CORE_B64: >-' in x)+1
+          parts=[]
+          for line in lines[i:]:
+              if line.startswith('            '): parts.append(line.strip())
+              else: break
+          raw=gzip.decompress(base64.b64decode(''.join(parts)))
+          Path('/tmp/steptrace-complete.payload').write_bytes(raw)
+          print('decoded bytes',len(raw))
+          print(raw[:3000].decode('utf-8','replace'))
+          PY
+          file /tmp/steptrace-complete.payload
