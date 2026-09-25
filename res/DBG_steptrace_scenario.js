@@ -1,50 +1,16 @@
 (function(g){
 'use strict';
 
-var D=g.document,term=null,cur=null,liveBuild=null,liveSymbols=Object.create(null);
+var D=g.document||null,term=null,armed=false,arming=false,callback=null,inCallback=false,haltRequested=false;
 
 function E(id){return D&&D.getElementById?D.getElementById(id):null}
-function H(v,w){w=w||2;return '$'+('000000000000'+((Number(v)||0)&(w<=2?255:65535)).toString(16).toUpperCase()).slice(-w)}
-function IH(v){return '$'+Math.max(0,Math.floor(Number(v)||0)).toString(16).toUpperCase().padStart(12,'0').slice(-12)}
-function now(){return g.performance&&g.performance.now?g.performance.now():Date.now()}
-function M(){var m=g.apple2plus;if(!m||!m.cpuObj||!m.hwObj)throw Error('Live Apple II runtime is not available.');return m}
-function C(){var c=M().cpuObj();if(!c||!c.watch||!c.setState)throw Error('Live 6502 state API is not available.');return c}
-function W(){var h=M().hwObj();if(!h||!h.safe_read||!Array.isArray(h.WR)||!h.lineDecode)throw Error('Live mapped-memory API is not available.');return h}
 function DBG(){return g.oEMU&&g.oEMU.component&&g.oEMU.component.CPU?g.oEMU.component.CPU.Apple2Debug:null}
-function stop(){var d=DBG();if(d){if(d.play)d.play(false);if(d.clearConditionalBreakpoint)d.clearConditionalBreakpoint()}}
-function refresh(){var d=DBG();try{if(d&&d.cycle)d.cycle({cpu:C(),force:true})}catch(_){}}
+function M(){var m=g.apple2plus;if(!m||!m.cpuObj||!m.hwObj)throw Error('Live Apple II runtime is not available.');return m}
+function C(){var c=M().cpuObj();if(!c||!c.watch)throw Error('Live 6502 state API is not available.');return c}
+function W(){var h=M().hwObj();if(!h||!h.safe_read||!Array.isArray(h.WR)||!h.lineDecode)throw Error('Live mapped-memory API is not available.');return h}
+function H(v,w){w=w||2;var mask=w<=2?255:65535;return '$'+('000000000000'+((Number(v)||0)&mask).toString(16).toUpperCase()).slice(-w)}
 function num(s){s=String(s==null?'':s).trim();if(/^\$[\da-f]+$/i.test(s))return parseInt(s.slice(1),16);if(/^0x[\da-f]+$/i.test(s))return parseInt(s,16);if(/^\d+$/.test(s))return parseInt(s,10);return null}
-function cloneSymbol(s){return s?{key:String(s.key||s.name||'').toUpperCase(),name:String(s.name||s.key||''),value:Number(s.value)&65535,kind:String(s.kind||'unknown')}:null}
-function syncBuild(){
-  var svc=g.EMU_ASM_BUILD,b=svc&&typeof svc.current==='function'?svc.current():null;
-  liveBuild=b||null;liveSymbols=Object.create(null);
-  if(liveBuild&&Array.isArray(liveBuild.symbols)){
-    for(var i=0;i<liveBuild.symbols.length;i++){
-      var s=cloneSymbol(liveBuild.symbols[i]);if(!s)continue;
-      var key=String(s.key||s.name||'').trim().toUpperCase();if(key)liveSymbols[key]=s;
-    }
-  }
-  return buildInfo();
-}
-function buildInfo(){
-  if(!liveBuild)return null;
-  return{
-    buildId:liveBuild.buildId,generation:liveBuild.generation,inputRevision:liveBuild.inputRevision,
-    sourceName:liveBuild.sourceName,entry:liveBuild.entry,loadedAt:liveBuild.loadedAt,byteCount:liveBuild.byteCount,
-    symbolCount:Object.keys(liveSymbols).length,
-    ranges:Array.isArray(liveBuild.ranges)?liveBuild.ranges.map(function(r){return{start:r.start,end:r.end,length:r.length}}):[]
-  };
-}
-function symValue(name){var s=liveSymbols[String(name==null?'':name).trim().toUpperCase()];return s&&typeof s.value==='number'&&isFinite(s.value)?s.value&65535:null}
-function symError(name){var e;if(!liveBuild){e=Error('No assembler build is loaded in the live emulator.');e.code='STB_NO_LIVE_BUILD'}else{e=Error("Unknown live-build symbol '"+name+"'.");e.code='STB_UNKNOWN_SYMBOL'}return e}
-function adr(v){
-  if(typeof v==='number')return v&65535;
-  var s=String(v==null?'':v).trim(),n=num(s);if(n!==null)return n&65535;
-  var m=/^(.*?)\s*([+-])\s*(\$[\da-f]+|0x[\da-f]+|\d+)$/i.exec(s);
-  if(m){var b=symValue(m[1].trim()),d=num(m[3]);if(b!==null&&d!==null)return(b+(m[2]==='-'?-d:d))&65535}
-  n=symValue(s);if(n!==null)return n;
-  throw Error("Unknown address/symbol '"+s+"'.");
-}
+function out(t,ch){t=String(t==null?'':t);if(term&&term.write)term.write(t+(t.endsWith('\n')?'':'\n'),ch||'host');else{var f=E('DBG_steptraceConsoleFallback');if(f){f.value+=t+(t.endsWith('\n')?'':'\n');f.scrollTop=f.scrollHeight}else if(g.console&&g.console.log)g.console.log(t)}}
 function bytes(v){
   if(v instanceof Uint8Array)return new Uint8Array(v);
   if(Array.isArray(v))return Uint8Array.from(v.map(function(x){return Number(x)&255}));
@@ -58,88 +24,54 @@ function bytes(v){
     throw Error("Invalid byte '"+t+"'.");
   }));
 }
+function symValue(name){var d=DBG();return d&&typeof d.resolveSymbol==='function'?d.resolveSymbol(name):null}
+function adr(v){
+  if(typeof v==='number')return v&65535;
+  var s=String(v==null?'':v).trim(),n=num(s);if(n!==null)return n&65535;
+  var m=/^(.*?)\s*([+-])\s*(\$[\da-f]+|0x[\da-f]+|\d+)$/i.exec(s);
+  if(m){var base=symValue(m[1].trim()),delta=num(m[3]);if(base!==null&&delta!==null)return(base+(m[2]==='-'?-delta:delta))&65535}
+  n=symValue(s);if(n!==null)return n&65535;
+  throw Error("Unknown STEP TRACE symbol/address '"+s+"'.");
+}
 function rb(a){a&=65535;if(a>=0xc000&&a<0xc100)throw Error('STEP TRACE safe read masks Apple II I/O at '+H(a,4)+'.');var v=W().safe_read(a);if(v==null)throw Error('Mapped memory unreadable at '+H(a,4)+'.');return Number(v)&255}
 function wb(a,v){a&=65535;v=Number(v)&255;if(a>=0xc000&&a<=0xcfff)throw Error('Scenario RAM injection refuses Apple II I/O/slot space '+H(a,4)+'.');var h=W(),f=h.WR[h.lineDecode(a)];if(typeof f!=='function')throw Error('Mapped memory not writable at '+H(a,4)+'.');f(a,v);if((a<0xc000||a>=0xc100)&&rb(a)!==v)throw Error('Write did not stick at '+H(a,4)+'.');return v}
 function state(){var s=C().watch();return{pc:+s.pc&65535,a:+s.a&255,x:+s.x&255,y:+s.y&255,sp:+s.sp&255,p:+s.p&255,cycle_delay:+s.cycle_delay|0,ic:Math.max(0,Math.floor(+s.ic||0))}}
-function out(t,ch){t=String(t==null?'':t);if(term&&term.write)term.write(t+(t.endsWith('\n')?'':'\n'),ch||'host');else{var f=E('DBG_steptraceConsoleFallback');if(f){f.value+=t+(t.endsWith('\n')?'':'\n');f.scrollTop=f.scrollHeight}else if(g.console&&g.console.log)g.console.log(t)}}
-
-function toks(s){
-  s=String(s||'');var o=[],i=0;
-  function fail(m,p){throw Error(m+' at column '+((p==null?i:p)+1))}
-  while(i<s.length){
-    var c=s[i],z=s.substr(i,2);
-    if(/\s/.test(c)){i++;continue}
-    if(['&&','||','==','!=','<=','>='].includes(z)){o.push({k:'o',v:z,p:i});i+=2;continue}
-    if('()[]&|^!<>=+-'.includes(c)){o.push({k:'o',v:c,p:i++});continue}
-    if(c==='$'){var hp=i++,h='';while(/[\da-f]/i.test(s[i]||''))h+=s[i++];if(!h)fail('Expected hexadecimal digits',hp);o.push({k:'n',v:parseInt(h,16),p:hp});continue}
-    if(c==='0'&&/[xX]/.test(s[i+1]||'')){var xp=i;i+=2;var xh='';while(/[\da-f]/i.test(s[i]||''))xh+=s[i++];if(!xh)fail('Expected hexadecimal digits',xp);o.push({k:'n',v:parseInt(xh,16),p:xp});continue}
-    if(/\d/.test(c)){var dp=i,dh='';while(/\d/.test(s[i]||''))dh+=s[i++];o.push({k:'n',v:parseInt(dh,10),p:dp});continue}
-    if(/[a-z_.$@?]/i.test(c)){var ip=i,ih='';while(/[a-z0-9_.$@?]/i.test(s[i]||''))ih+=s[i++];o.push({k:'i',v:ih.toUpperCase(),r:ih,p:ip});continue}
-    fail("Unexpected character '"+c+"'",i);
-  }
-  o.push({k:'e',v:'',p:i});return o;
+function syncButton(){
+  var b=E('DBG_steptraceRunButton');if(!b)return;
+  b.setAttribute('aria-pressed',armed?'true':'false');
+  b.title=armed?'RUN script at breakpoint — execute scenario callback and continue':'HALT at breakpoint — BREAK IF pauses execution';
+  b.innerHTML=armed?'<i class="fa fa-sign-in-alt"></i> RUN script at breakpoint':'<i class="fa fa-pause"></i> HALT at breakpoint';
 }
-function compile(text){
-  text=String(text||'').trim();if(!text)throw Error('Condition is required.');
-  var t=toks(text),p=0,R={A:1,X:1,Y:1,SP:1,P:1,PC:1,INS:1},F={N:1,V:1,B:1,D:1,I:1,Z:1,C:1},MM={M:8,M8:8,MEM:8,MEM8:8,M16:16,MEM16:16};
-  function q(){return t[p]}
-  function take(v){if(q().v===v){p++;return true}return false}
-  function need(v){if(!take(v))throw Error("Expected '"+v+"' at column "+(q().p+1))}
-  function pri(){
-    var x=q();
-    if(x.k==='n'){p++;return{t:'n',v:x.v}}
-    if(x.k==='i'){
-      p++;
-      if(x.v==='TRUE'||x.v==='FALSE')return{t:'n',v:x.v==='TRUE'?1:0};
-      if(R[x.v])return{t:'r',v:x.v};
-      if(F[x.v])return{t:'f',v:x.v};
-      if(MM[x.v]){need('[');var a=lor();need(']');return{t:'m',w:MM[x.v],a:a}}
-      var sv=symValue(x.r);if(sv!==null)return{t:'n',v:sv};
-      throw Error("Unknown condition name '"+x.r+"' at column "+(x.p+1));
-    }
-    if(take('(')){var n=lor();need(')');return n}
-    throw Error('Expected value at column '+(x.p+1));
-  }
-  function un(){if(take('!'))return{t:'u',o:'!',a:un()};if(take('+'))return{t:'u',o:'+',a:un()};if(take('-'))return{t:'u',o:'-',a:un()};return pri()}
-  function bin(next,ops){var n=next();while(ops.includes(q().v)){var o=q().v;p++;n={t:'b',o:o,a:n,b:next()}}return n}
-  function add(){return bin(un,['+','-'])}
-  function ba(){return bin(add,['&'])}
-  function bx(){return bin(ba,['^'])}
-  function bo(){return bin(bx,['|'])}
-  function cmp(){return bin(bo,['=','==','!=','<','<=','>','>='])}
-  function land(){return bin(cmp,['&&'])}
-  function lor(){return bin(land,['||'])}
-  var a=lor();if(q().k!=='e')throw Error("Unexpected token '"+q().v+"' at column "+(q().p+1));return{text:text,ast:a};
+function clearAction(){var d=DBG();if(d&&typeof d.setBreakpointActionHandler==='function')d.setBreakpointActionHandler(null);armed=false;callback=null;syncButton();return true}
+function onBreakpoint(fn){
+  if(!arming)throw Error('onBreakpoint() is only valid while arming the scenario script.');
+  if(typeof fn!=='function')throw TypeError('onBreakpoint() requires a function.');
+  if(callback)throw Error('Scenario script may register exactly one onBreakpoint() callback.');
+  callback=fn;return fn;
 }
-function val(n,s){
-  if(n.t==='n')return+n.v||0;
-  if(n.t==='r'){var k=n.v==='INS'?'ic':n.v.toLowerCase();return+s[k]||0}
-  if(n.t==='f'){var fm={N:128,V:64,B:16,D:8,I:4,Z:2,C:1};return(+s.p&fm[n.v])?1:0}
-  if(n.t==='m'){var ma=val(n.a,s)&65535,l=rb(ma);return n.w===8?l:l|(rb(ma+1)<<8)}
-  if(n.t==='u'){var ua=val(n.a,s);return n.o==='!'?!ua:n.o==='-'?-ua:+ua}
-  if(n.t==='b'){
-    if(n.o==='&&')return val(n.a,s)?!!val(n.b,s):0;
-    if(n.o==='||')return val(n.a,s)?1:!!val(n.b,s);
-    var a=val(n.a,s),b=val(n.b,s);
-    switch(n.o){case'+':return a+b;case'-':return a-b;case'&':return((a|0)&(b|0))>>>0;case'|':return((a|0)|(b|0))>>>0;case'^':return((a|0)^(b|0))>>>0;case'=':case'==':return a===b;case'!=':return a!==b;case'<':return a<b;case'<=':return a<=b;case'>':return a>b;case'>=':return a>=b}
-  }
-  throw Error('Invalid condition expression');
+function haltAtBreakpoint(){if(!inCallback)throw Error('haltAtBreakpoint() is only valid inside onBreakpoint().');haltRequested=true;return true}
+function dispatch(bp){
+  if(!armed||typeof callback!=='function')return;
+  haltRequested=false;inCallback=true;
+  try{callback(bp)}catch(err){armed=false;var d=DBG();if(d&&d.setBreakpointActionHandler)d.setBreakpointActionHandler(null);out('ERROR breakpoint scenario — '+(err&&err.message?err.message:String(err))+(err&&err.stack?'\n'+err.stack:''),'error');syncButton();throw err}
+  finally{inCallback=false}
+  if(haltRequested){var dbg=DBG();armed=false;if(dbg&&dbg.setBreakpointActionHandler)dbg.setBreakpointActionHandler(null);syncButton();return{halt:true}}
 }
+function armScript(code){
+  if(armed)return true;
+  var d=DBG();if(!d||typeof d.setBreakpointActionHandler!=='function')throw Error('STEP TRACE breakpoint-action API is unavailable.');
+  callback=null;arming=true;
+  try{
+    var ram=S.ram,cpu=S.cpu,assert=S.assert,sym=S.sym,symbol=S.symbol,symbols=S.symbols,print=S.print;
+    eval(String(code||''));
+  }catch(err){callback=null;out('ERROR arming breakpoint scenario — '+(err&&err.message?err.message:String(err))+(err&&err.stack?'\n'+err.stack:''),'error');throw err}
+  finally{arming=false}
+  if(typeof callback!=='function'){callback=null;throw Error('Scenario script must register exactly one onBreakpoint() callback.');}
+  d.setBreakpointActionHandler(dispatch);armed=true;syncButton();return true;
+}
+function mode(){var d=DBG(),st=d&&typeof d.breakpointActionState==='function'?d.breakpointActionState():null;if(st&&!st.active&&armed){armed=false;callback=null}return armed?'run':'halt'}
 
-function Abort(){}
-Abort.prototype=Object.create(Error.prototype);
-function req(n){if(!cur)throw Error(n+'(): no active scenario');return cur}
-function fatal(st,r,e){var c=req('scenario');c.status=st;c.pass=false;c.reason=r;c.error=e||null;throw new Abort()}
-
-var S={
-  version:'0.2-live-build-scenario',results:[],hex:H,address:adr,bytes:bytes,
-  buildInfo:buildInfo,syncBuild:syncBuild,
-  sym:function(n,d){var v=symValue(n);if(v!==null)return v;if(arguments.length>1)return d;throw symError(n)},
-  symbol:function(n){return cloneSymbol(liveSymbols[String(n==null?'':n).trim().toUpperCase()]||null)},
-  symbols:function(){return Object.keys(liveSymbols).sort().map(function(k){return cloneSymbol(liveSymbols[k])})},
-  print:function(){out([].slice.call(arguments).map(String).join(' '));return arguments[arguments.length-1]}
-};
-
+var S={version:'0.3-breakpoint-scenario',hex:H,address:adr,bytes:bytes,print:function(){out([].slice.call(arguments).map(String).join(' '));return arguments[arguments.length-1]}};
 S.ram={
   read:function(a,n){a=adr(a);n=n==null?1:Math.max(0,+n|0);if(n===1)return rb(a);var x=new Uint8Array(n);for(var i=0;i<n;i++)x[i]=rb(a+i);return x},
   read16:function(a){a=adr(a);return rb(a)|(rb(a+1)<<8)},
@@ -149,107 +81,46 @@ S.ram={
   fill:function(a,n,v){a=adr(a);for(var i=0;i<(+n|0);i++)wb(a+i,v);return+n|0},
   dump:function(a,n,c){a=adr(a);n=Math.max(0,n==null?16:+n|0);c=Math.max(1,c==null?16:+c|0);var z=[];for(var o=0;o<n;o+=c){var r=[],q='';for(var i=0;i<Math.min(c,n-o);i++){var b=rb(a+o+i);r.push(('0'+b.toString(16).toUpperCase()).slice(-2));q+=b>=32&&b<127?String.fromCharCode(b):'.'}z.push(H(a+o,4)+'  '+r.join(' ')+'  '+q)}return z.join('\n')}
 };
-S.reset=function(){stop();var c=C(),n=Object.assign({},c.watch(),{pc:0,a:0,x:0,y:0,sp:255,p:32,cycle_delay:0,ic:0});c.setState(n);refresh();return state()};
-S.cpu={state:state,start:function(a,r){stop();r=r||{};var c=C(),n=Object.assign({},c.watch(),{pc:adr(a),a:r.A==null?0:+r.A&255,x:r.X==null?0:+r.X&255,y:r.Y==null?0:+r.Y&255,sp:r.SP==null?255:+r.SP&255,p:r.P==null?32:+r.P&255,cycle_delay:0,ic:0});c.setState(n);refresh();return state()}};
-S.breakIf=function(ex,opt){
-  var c=req('breakIf'),co;try{co=compile(ex)}catch(e){out('ERROR BREAK\n  expression: '+ex+'\n  '+e.message,'error');fatal('ERROR','expression-error',e.message)}
-  opt=opt||{};var lim=+opt.maxInstructions;if(!isFinite(lim)||lim<1)lim=1e6;lim=Math.floor(lim);var tm=opt.timeoutMs==null?5000:+opt.timeoutMs;if(!isFinite(tm)||tm<0)tm=5000;
-  var st=now(),ins=0,cy=0,reason='condition',err=null,m=M();stop();
-  while(1){
-    var s=state();try{if(val(co.ast,s)){reason='condition';break}}catch(e){fatal('ERROR','expression-error',e.message)}
-    if(ins>=lim){reason='instruction-limit';break}
-    if(tm>0&&(ins&255)===0&&now()-st>=tm){reason='timeout';break}
-    var one;try{one=m.stepLiveInstruction()}catch(e){reason='cpu-fault';err=e.message;break}
-    if(!one||one.stalled||+one.ticks<=0){reason='cpu-fault';err='live instruction did not complete';break}
-    ins++;cy+=+one.ticks||0;
-  }
-  var r={ok:reason==='condition',reason:reason,expression:co.text,maxInstructions:lim,timeoutMs:tm,instructions:ins,cycles:cy,elapsedMs:Math.max(0,now()-st),state:state(),error:err};
-  c.breaks++;c.instructions+=ins;c.cycles+=cy;c.elapsedMs+=r.elapsedMs;c.runs.push(r);refresh();
-  if(r.ok){out('BREAK '+co.text+' — PC='+H(r.state.pc,4)+' INS='+IH(r.state.ic)+' — '+ins+' ins / '+cy+' cyc','command');return r}
-  out('FAIL BREAK '+co.text+'\n  reason: '+reason+'\n  last: PC='+H(r.state.pc,4)+' INS='+IH(r.state.ic),'error');fatal('FAIL',reason,err);
-};
-S.assert=function(ex,d){
-  var c=req('assert'),ok=false,co,s=state();c.assertions++;
-  try{if(typeof ex==='boolean')ok=ex;else{co=compile(ex);ok=!!val(co.ast,s)}}catch(e){out('ERROR assertion\n  expression: '+ex+'\n  '+e.message,'error');fatal('ERROR','expression-error',e.message)}
-  var n=String(d||(co?co.text:'assertion'));if(ok){out('PASS '+n,'result');return true}
-  c.failedAssertions++;c.status='FAIL';c.pass=false;c.reason=c.reason||'assertion';out('FAIL '+n+(co?' — '+co.text:'')+'\n  at: PC='+H(s.pc,4)+' INS='+IH(s.ic),'error');return false;
-};
-S.scenario=function(n,f){
-  if(cur)throw Error('Nested scenarios are not supported.');syncBuild();
-  var r={name:String(n||'scenario'),status:'PASS',pass:true,assertions:0,failedAssertions:0,breaks:0,instructions:0,cycles:0,elapsedMs:0,reason:null,error:null,runs:[]};
-  try{S.reset();cur=r;if(typeof f!=='function')throw TypeError('scenario() requires a callback.');f()}
-  catch(e){if(!(e instanceof Abort)){r.status='ERROR';r.pass=false;r.reason='javascript-error';r.error=e.message||String(e);out('ERROR '+r.name+' — '+r.error,'error')}}
-  finally{
-    cur=null;if(r.status==='PASS'&&r.failedAssertions){r.status='FAIL';r.pass=false;r.reason='assertion'}
-    var z=r.status+' '+r.name;if(r.status==='PASS')z+=' — '+r.assertions+' assertions / '+r.instructions+' ins / '+r.cycles+' cyc / '+r.elapsedMs.toFixed(1)+' ms';else if(r.failedAssertions)z+=' — '+r.failedAssertions+'/'+r.assertions+' assertions failed';else if(r.reason)z+=' — '+r.reason.replace(/-/g,' ');
-    out(z,r.status==='PASS'?'result':'error');S.results.push(r);
-  }
-  return r;
-};
-S.condition={compile:compile,evaluate:function(c,s){return!!val(c.ast,s||state())}};
-S.eval=function(code){var scenario=S.scenario,reset=S.reset,ram=S.ram,cpu=S.cpu,breakIf=S.breakIf,assert=S.assert,sym=S.sym,print=S.print;return eval(String(code||''))};
+S.cpu={state:state};
+S.assert=function(value,description){if(typeof value!=='boolean')throw TypeError('assert() requires a JavaScript boolean.');var text=String(description||'assertion');out((value?'PASS ':'FAIL ')+text,value?'result':'error');return value};
+S.sym=function(name,fallback){var v=symValue(name);if(v!==null)return v;if(arguments.length>1)return fallback;var e=Error("Unknown STEP TRACE symbol '"+name+"'.");e.code='STB_UNKNOWN_SYMBOL';throw e};
+S.symbol=function(name){var d=DBG();return d&&typeof d.symbol==='function'?d.symbol(name):null};
+S.symbols=function(){var d=DBG();return d&&typeof d.symbols==='function'?d.symbols():[]};
+S.onBreakpoint=onBreakpoint;S.haltAtBreakpoint=haltAtBreakpoint;S.arm=armScript;S.disarm=clearAction;S.mode=mode;
 
+function evaluateEditor(code){try{return armScript(code)}catch(_){clearAction();return false}}
 function rename(root){if(!root)return;var a=[root];if(root.querySelectorAll)a=a.concat([].slice.call(root.querySelectorAll('[id]')));a.forEach(function(n){if(n.id&&/^DBG_test/.test(n.id))n.id=n.id.replace(/^DBG_test/,'DBG_steptrace')})}
-
-var uiObserver=null,resizeBound=false;
-function setTriggerState(open){var button=E('cpuDbg_scenario');if(!button)return;button.style.opacity=open?'1':'.45';button.setAttribute('aria-pressed',open?'true':'false')}
-function companionPopup(){
-  var p=E('DBG_steptraceScenarioPopup');if(p)return p;if(!D||!D.createElement)return null;
-  p=D.createElement('div');p.id='DBG_steptraceScenarioPopup';p.className='appbox DBG_steptraceScenarioPopup';p.hidden=true;
-  p.style.cssText='position:fixed;z-index:8;width:520px;max-width:calc(100vw - 8px);padding:0;text-align:left;box-sizing:border-box';
-  var host=D.body||E('feature_box');if(!host)return null;host.appendChild(p);return p;
-}
-function positionPopup(){
-  var p=E('DBG_steptraceScenarioPopup'),dbg=E('cpuDbg_popup');if(!p||!dbg||p.hidden||!dbg.getBoundingClientRect)return false;
-  var r=dbg.getBoundingClientRect(),gap=8,vw=g.innerWidth||(D.documentElement&&D.documentElement.clientWidth)||1024,vh=g.innerHeight||(D.documentElement&&D.documentElement.clientHeight)||768;
-  var wanted=Math.min(520,Math.max(320,vw-8));p.style.width=wanted+'px';var pw=p.getBoundingClientRect?p.getBoundingClientRect().width:wanted;if(!pw)pw=wanted;
-  var left=r.right+gap;if(left+pw>vw-4)left=Math.max(4,r.left-pw-gap);p.style.left=Math.round(left)+'px';p.style.top=Math.round(Math.max(4,Math.min(r.top,vh-40)))+'px';return true;
-}
+function loadExample(){var e=E('DBG_steptraceScript');if(!e)return;e.value="let vector = 0;\nonBreakpoint(function(bp) {\n  print('break', hex(bp.PC,4), 'hit', bp.hit);\n  if (++vector >= 3) haltAtBreakpoint();\n});";if(e.focus)e.focus()}
 function initTerminal(){
   if(term||typeof g.TERMINAL!=='function'||!E('DBG_steptraceConsole'))return;
-  try{term=new g.TERMINAL({container:'DBG_steptraceConsole',welcome:'Live STEP TRACE scenario harness ready.',prompt:'ST',separator:'&gt;',storageKey:'RetroAppleJS.Debugger.StepTraceScenario',preserveWhitespace:true,allowEmptyInput:false});term.onInput(function(a,b,line){try{var r=S.eval(line);if(r!==undefined)out('← '+String(r),'result')}catch(e){out('[ERROR] '+e.stack,'error')}return true})}catch(_){ }
+  try{
+    term=new g.TERMINAL({container:'DBG_steptraceConsole',welcome:'STEP TRACE breakpoint scenario ready.',prompt:'ST',separator:'&gt;',storageKey:'RetroAppleJS.Debugger.StepTraceScenario',preserveWhitespace:true,allowEmptyInput:false});
+    if(term&&typeof term.onInput==='function')term.onInput(function(){out('Use the scenario editor and HALT/RUN control.','host');return true});
+  }catch(_){term=null}
 }
-function loadExample(){var e=E('DBG_steptraceScript');if(!e)return;e.value="scenario('example',function(){\n  ram.write('$3000','$42');\n  cpu.start('$0800');\n  breakIf('PC==$0810');\n  assert('A==$42');\n});";if(e.focus)e.focus()}
+var uiObserver=null,resizeBound=false;
+function setTriggerState(open){var button=E('cpuDbg_scenario');if(!button)return;button.style.opacity=open?'1':'.45';button.setAttribute('aria-pressed',open?'true':'false')}
+function companionPopup(){var p=E('DBG_steptraceScenarioPopup');if(p)return p;if(!D||!D.createElement)return null;p=D.createElement('div');p.id='DBG_steptraceScenarioPopup';p.className='toolbox';p.hidden=true;p.style.cssText='position:fixed;z-index:2000;';(D.body||D.documentElement).appendChild(p);return p}
+function positionPopup(){var p=E('DBG_steptraceScenarioPopup'),d=E('cpuDbg_popup');if(!p||!d||p.hidden||!d.getBoundingClientRect)return false;var r=d.getBoundingClientRect();p.style.left=Math.round(r.right+4)+'px';p.style.top=Math.round(r.top)+'px';return true}
 function buildPopup(){
-  var p=companionPopup();if(!p)return false;if(E('DBG_steptracebenchBox'))return true;var b=E('DBG_testbenchBox');if(!b||!b.cloneNode)return false;
+  var p=companionPopup();if(!p)return false;if(E('DBG_steptracebenchBox')){syncButton();return true}var b=E('DBG_testbenchBox');if(!b||!b.cloneNode)return false;
   var q=b.cloneNode(true);rename(q);if(q.classList)q.classList.remove('appbox');var title=q.querySelector&&q.querySelector('.DBG_testbenchTitle');if(title)title.textContent='STEP TRACE SCENARIO';
   var header=q.querySelector&&q.querySelector('.DBG_testbenchHeader'),headerButtons=q.querySelector&&q.querySelector('.DBG_testbenchHeaderButtons');
   if(header&&D.createElement){var close=D.createElement('button');close.type='button';close.textContent='×';close.title='Close STEP TRACE scenario';close.style.cssText='float:right;margin-left:6px;padding:0 5px;font-size:11px';close.onclick=function(){S.ui.close()};(headerButtons||header).appendChild(close)}
-  var ed=q.querySelector&&q.querySelector('#DBG_steptraceScript');if(ed){ed.value="scenario('example',function(){ ram.write('$3000','$42'); cpu.start('$0800'); breakIf('PC==$0810'); assert('A==$42'); });";ed.onkeydown=function(ev){if((ev.ctrlKey||ev.metaKey)&&ev.key==='Enter'){ev.preventDefault();S.eval(ed.value)}}}
-  var host=q.querySelector&&q.querySelector('#DBG_steptraceConsole');if(host)host.innerHTML='';p.appendChild(q);initTerminal();
-  var run=E('DBG_steptraceRunButton');if(run)run.onclick=function(){var x=E('DBG_steptraceScript');if(x)S.eval(x.value)};
+  var ed=q.querySelector&&q.querySelector('#DBG_steptraceScript');if(ed){ed.value="let vector = 0;\nonBreakpoint(function(bp) {\n  print('break', hex(bp.PC,4), 'hit', bp.hit);\n  if (++vector >= 3) haltAtBreakpoint();\n});";ed.onkeydown=function(ev){if((ev.ctrlKey||ev.metaKey)&&ev.key==='Enter'&&!armed){ev.preventDefault();evaluateEditor(ed.value)}}}
+  p.appendChild(q);initTerminal();
+  var run=E('DBG_steptraceRunButton');if(run)run.onclick=function(){if(armed)clearAction();else{var x=E('DBG_steptraceScript');if(x)evaluateEditor(x.value)};syncButton()};
   var example=E('DBG_steptraceExampleButton');if(example)example.onclick=loadExample;
   var clear=E('DBG_steptraceClearConsoleButton');if(clear)clear.onclick=function(){if(term&&term.clear)term.clear();var f=E('DBG_steptraceConsoleFallback');if(f)f.value=''};
   var inj=E('DBG_steptraceRamInjectButton');if(inj)inj.onclick=function(){S.ram.write(E('DBG_steptraceRamAddress').value,E('DBG_steptraceRamData').value)};
   var rd=E('DBG_steptraceRamReadButton');if(rd)rd.onclick=function(){var a=E('DBG_steptraceRamAddress').value,n=parseInt(E('DBG_steptraceRamLength').value,10)||16;out(S.ram.dump(a,n))};
-  return true;
+  syncButton();return true;
 }
-function installTrigger(){
-  if(E('cpuDbg_scenario'))return true;var play=E('cpuDbg_play');if(!play||!play.parentNode||!D.createElement)return false;
-  var button=D.createElement('i');button.id='cpuDbg_scenario';button.className='fa fa-code';button.setAttribute('role','button');button.setAttribute('aria-pressed','false');button.title='Open STEP TRACE scenario test script';button.style.cssText='font-size:11px;cursor:pointer;opacity:.45;margin-left:2px';button.onclick=function(){S.ui.toggle()};
-  if(play.nextSibling)play.parentNode.insertBefore(button,play.nextSibling);else play.parentNode.appendChild(button);return true;
-}
-function hideIfTraceClosed(){var dbg=E('cpuDbg_popup'),p=E('DBG_steptraceScenarioPopup');if(p&&dbg&&dbg.hidden)S.ui.close()}
-function observeTracePopup(){
-  var dbg=E('cpuDbg_popup');if(!dbg||uiObserver||typeof g.MutationObserver!=='function')return;
-  uiObserver=new g.MutationObserver(function(){hideIfTraceClosed();if(!dbg.hidden)installTrigger();if(E('DBG_steptraceScenarioPopup')&&!E('DBG_steptraceScenarioPopup').hidden)positionPopup()});
-  uiObserver.observe(dbg,{attributes:true,attributeFilter:['hidden','style','class'],childList:true,subtree:true});
-}
-function init(){
-  syncBuild();var ok=installTrigger();companionPopup();observeTracePopup();if(!resizeBound&&g.addEventListener){g.addEventListener('resize',positionPopup);resizeBound=true}if(ok)return true;
-  var host=E('feature_box')||(D&&D.body);if(host&&!uiObserver&&typeof g.MutationObserver==='function'){uiObserver=new g.MutationObserver(function(){if(installTrigger()){uiObserver.disconnect();uiObserver=null;observeTracePopup()}});uiObserver.observe(host,{childList:true,subtree:true})}
-  return false;
-}
-S.ui={
-  init:init,
-  open:function(){init();if(!buildPopup())return false;var p=E('DBG_steptraceScenarioPopup');if(!p)return false;p.hidden=false;setTriggerState(true);positionPopup();return true},
-  close:function(){var p=E('DBG_steptraceScenarioPopup');if(p)p.hidden=true;setTriggerState(false);return true},
-  toggle:function(){var p=E('DBG_steptraceScenarioPopup');if(!p||p.hidden)return S.ui.open();return S.ui.close()},
-  position:positionPopup,
-  example:loadExample
-};
+function installTrigger(){if(E('cpuDbg_scenario'))return true;var play=E('cpuDbg_play');if(!play||!play.parentNode||!D.createElement)return false;var button=D.createElement('i');button.id='cpuDbg_scenario';button.className='fa fa-code';button.setAttribute('role','button');button.setAttribute('aria-pressed','false');button.title='Open STEP TRACE scenario test script';button.style.cssText='font-size:11px;cursor:pointer;opacity:.45;margin-left:2px';button.onclick=function(){S.ui.toggle()};if(play.nextSibling)play.parentNode.insertBefore(button,play.nextSibling);else play.parentNode.appendChild(button);return true}
+function init(){var ok=installTrigger();companionPopup();if(!resizeBound&&g.addEventListener){g.addEventListener('resize',positionPopup);resizeBound=true}return ok}
+S.ui={init:init,open:function(){init();if(!buildPopup())return false;var p=E('DBG_steptraceScenarioPopup');if(!p)return false;p.hidden=false;setTriggerState(true);syncButton();positionPopup();return true},close:function(){var p=E('DBG_steptraceScenarioPopup');if(p)p.hidden=true;setTriggerState(false);return true},toggle:function(){var p=E('DBG_steptraceScenarioPopup');if(!p||p.hidden)return S.ui.open();return S.ui.close()},position:positionPopup,example:loadExample};
 
 g.DBG_STEPTRACE_SCENARIO=S;g.STB=S;
-if(g.addEventListener){g.addEventListener('retroapple:emu-build-loaded',syncBuild);g.addEventListener('retroapple:emu-build-cleared',syncBuild)}
+g.onBreakpoint=onBreakpoint;g.haltAtBreakpoint=haltAtBreakpoint;g.ram=S.ram;g.cpu=S.cpu;g.assert=S.assert;g.sym=S.sym;g.symbol=S.symbol;g.symbols=S.symbols;g.print=S.print;
 if(g.oCOM&&g.oCOM.addToEventStack)g.oCOM.addToEventStack('onload',init);else if(g.addEventListener)g.addEventListener('load',init);
 })(window);
