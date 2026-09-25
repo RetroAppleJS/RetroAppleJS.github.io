@@ -29,8 +29,8 @@ jobs:
             base64 -d "$f" >> /tmp/steptrace-finish.patch
           done
           if ! git apply --check /tmp/steptrace-finish.patch; then
-            echo '--- patch lines 275-315 ---'
-            nl -ba /tmp/steptrace-finish.patch | sed -n '275,315p'
+            echo '--- patch lines 235-300 ---'
+            nl -ba /tmp/steptrace-finish.patch | sed -n '235,300p'
             exit 1
           fi
           git apply /tmp/steptrace-finish.patch
