@@ -6,8 +6,6 @@ permissions:
 on:
   pull_request:
     branches: ["main"]
-    paths:
-      - ".github/workflows/steptrace-inflate-red-temp.yml"
 
 jobs:
   green:
@@ -21,167 +19,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Convert INFLATE to assembly-owned breakpoint loop
+      - name: Apply breakpoint-driven INFLATE conversion
         shell: bash
         run: |
-          python3 <<'PY'
-          from pathlib import Path
-          asm=Path('asm/_TODO/INFLATE_ASM_CORE.S')
-          s=asm.read_text()
-          old='''codeToControlSymbol\n        ORG     *+CONTROL_SYMBOLS\n\n        .END\n'''
-          new='''codeToControlSymbol\n        ORG     *+CONTROL_SYMBOLS\n\n; STEP TRACE validation driver. BREAK IF is armed on the two labels below.\n; JavaScript prepares a vector at inflate_test_loop, the live 6502 calls the\n; decompressor normally, and JavaScript verifies the result at inflate_test_done.\n        ORG     $0D10\ninflate_test_loop\n        JSR     inflate\ninflate_test_done\n        JMP     inflate_test_loop\n\n        .END\n'''
-          if old not in s: raise SystemExit('INFLATE assembly tail marker not found')
-          asm.write_text(s.replace(old,new,1))
-
-          harness=Path('asm/_TODO/INFLATE_ASM_CORE_testbench.js')
-          old=harness.read_text()
-          v0=old.index('  const VECTORS = [')
-          v1=old.index('  function need',v0)
-          vectors=old[v0:v1]
-          prefix='''/*\n * INFLATE_ASM_CORE.S validation harness for STEP TRACE breakpoint scenarios.\n *\n * Load the assembled program into the Apple II using the normal emulator\n * workflow, load its symbols into STEP TRACE, and arm BREAK IF as:\n *\n *   PC==inflate_test_loop || PC==inflate_test_done\n *\n * Select RUN script at breakpoint. The live Apple II remains the sole CPU\n * execution owner; this script only prepares inputs and verifies results at\n * those two existing instruction boundaries.\n */\n(function() {\n  "use strict";\n\n  const CFG = {\n    only: null,\n    stopOnFailure: true,\n    defaultInput: 0x3000,\n    defaultOutput: 0x4000,\n    scratchBytes: 765,\n    zpBytes: 10,\n    outputGuardBytes: 16,\n    inputGuardBytes: 8,\n    scratchGuardBytes: 8,\n    scratchFill: 0xA5,\n    outputFill: 0xD3,\n    inputGuardFill: 0xC7,\n    scratchGuardFill: 0x5A\n  };\n\n'''
-          body=r'''  function need(condition, message) { if(!condition) throw new Error(message); }
-  function hexBytes(text) {
-    text = String(text || "").replace(/[^0-9A-Fa-f]/g, "");
-    need((text.length & 1) === 0, "Odd-length hex vector.");
-    const out = new Uint8Array(text.length >> 1);
-    for(let i=0; i<out.length; i++) out[i] = parseInt(text.substr(i*2, 2), 16);
-    return out;
-  }
-  function firstDifference(actual, expected) {
-    const n = Math.min(actual.length, expected.length);
-    for(let i=0; i<n; i++) if(actual[i] !== expected[i]) return i;
-    return actual.length === expected.length ? -1 : n;
-  }
-  function filled(address, length, value) {
-    const data = STB.ram.read(address, length);
-    for(let i=0; i<data.length; i++) if(data[i] !== (value & 0xFF)) return false;
-    return true;
-  }
-  function selectVector(v) {
-    if(CFG.only == null) return true;
-    const selected = Array.isArray(CFG.only) ? CFG.only : [CFG.only];
-    return selected.indexOf(v.name) >= 0 || selected.indexOf(v.group) >= 0;
-  }
-
-  need(window.STB && typeof STB.ram === "object", "STEP TRACE scenario helpers are unavailable.");
-  need(window.pako && typeof window.pako.inflateRaw === "function", "pako.inflateRaw() is not available.");
-  ["inflate", "inflate_data", "inputPointer", "outputPointer", "inflate_test_loop", "inflate_test_done"]
-    .forEach(name => need(STB.symbol(name), "Missing STEP TRACE symbol: " + name));
-
-  const LOOP = sym("inflate_test_loop");
-  const DONE = sym("inflate_test_done");
-  const selected = VECTORS.filter(selectVector);
-  need(selected.length > 0, "No vectors selected.");
-
-  let index = 0;
-  let active = null;
-  let currentGroup = "";
-  const results = [];
-
-  function prepareCase(v, bp) {
-    const compressed = hexBytes(v.hex);
-    const expected = window.pako.inflateRaw(compressed);
-    need(expected instanceof Uint8Array, v.name + ": pako.inflateRaw() did not return Uint8Array.");
-    need(expected.length === v.expectedBytes,
-      v.name + ": reference length " + expected.length + " != manifest length " + v.expectedBytes + ".");
-    const input = v.input == null ? CFG.defaultInput : v.input;
-    const output = v.output == null ? CFG.defaultOutput : v.output;
-    const scratch = sym("inflate_data");
-    const zp = sym("inflate_zp", sym("inputPointer"));
-    STB.ram.fill(zp, CFG.zpBytes, CFG.scratchFill);
-    STB.ram.fill(scratch, CFG.scratchBytes, CFG.scratchFill);
-    STB.ram.fill(scratch + CFG.scratchBytes, CFG.scratchGuardBytes, CFG.scratchGuardFill);
-    STB.ram.fill(input - CFG.inputGuardBytes, CFG.inputGuardBytes, CFG.inputGuardFill);
-    STB.ram.fill(input + compressed.length, CFG.inputGuardBytes, CFG.inputGuardFill);
-    STB.ram.load(input, compressed);
-    STB.ram.fill(output - CFG.outputGuardBytes, CFG.outputGuardBytes + expected.length + CFG.outputGuardBytes, CFG.outputFill);
-    STB.ram.write16("inputPointer", input);
-    STB.ram.write16("outputPointer", output);
-    return {vector:v,compressed,expected,input,output,scratch,startSP:bp.SP,startINS:bp.INS,assertions:0,failedAssertions:0};
-  }
-
-  function check(condition, description) {
-    active.assertions++;
-    if(!STB.assert(!!condition, description)) active.failedAssertions++;
-    return !!condition;
-  }
-
-  function verifyCase(bp) {
-    const v = active.vector;
-    const inputPointer = STB.ram.read16("inputPointer");
-    const outputPointer = STB.ram.read16("outputPointer");
-    const actual = STB.ram.read(active.output, active.expected.length);
-    const diff = firstDifference(actual, active.expected);
-    check(inputPointer === ((active.input + active.compressed.length) & 0xFFFF), "input consumed");
-    check(outputPointer === ((active.output + active.expected.length) & 0xFFFF), "output pointer");
-    check(diff === -1, "exact output");
-    check(filled(active.output - CFG.outputGuardBytes, CFG.outputGuardBytes, CFG.outputFill), "output guard before");
-    check(filled(active.output + active.expected.length, CFG.outputGuardBytes, CFG.outputFill), "output guard after");
-    check(filled(active.input - CFG.inputGuardBytes, CFG.inputGuardBytes, CFG.inputGuardFill), "input guard before");
-    check(filled(active.input + active.compressed.length, CFG.inputGuardBytes, CFG.inputGuardFill), "input guard after");
-    check(filled(active.scratch + CFG.scratchBytes, CFG.scratchGuardBytes, CFG.scratchGuardFill), "scratch guard after");
-    check(bp.SP === active.startSP, "stack restored");
-    if(diff >= 0) print("    output diff +" + diff + " @ " + STB.hex((active.output + diff) & 0xFFFF,4));
-    const pass = active.failedAssertions === 0;
-    const instructions = Math.max(0, Number(bp.INS || 0) - Number(active.startINS || 0));
-    const result = {name:v.name,group:v.group,status:pass?"PASS":"FAIL",pass,assertions:active.assertions,failedAssertions:active.failedAssertions,input:active.input,output:active.output,compressedBytes:active.compressed.length,expectedBytes:active.expected.length,firstDifference:diff,instructions};
-    results.push(result);
-    print((pass ? "PASS " : "FAIL ") + v.name + " — " + result.assertions + " assertions / " + instructions + " ins");
-    return result;
-  }
-
-  function summary() {
-    const passed = results.filter(r => r.pass).length;
-    const failed = results.length - passed;
-    const notRun = selected.length - results.length;
-    print("-- SUMMARY --");
-    print("PASS " + passed + "/" + results.length + (failed ? " / FAIL " + failed : "") + (notRun ? " / NOT RUN " + notRun : ""));
-    if(failed) print("failed: " + results.filter(r => !r.pass).map(r => r.name).join(", "));
-  }
-
-  print("INFLATE_ASM_CORE.S — STEP TRACE breakpoint-driven raw DEFLATE validation");
-  print("BREAK IF: PC==inflate_test_loop || PC==inflate_test_done / vectors=" + selected.length);
-  window.INFLATE_STEPTRACE_RESULTS = results;
-  window.INFLATE_STEPTRACE_CONFIG = CFG;
-  window.INFLATE_STEPTRACE_VECTORS = VECTORS;
-
-  onBreakpoint(function(bp) {
-    if(bp.PC === LOOP) {
-      need(active === null, "Reached inflate_test_loop while a vector is still active.");
-      need(index < selected.length, "Reached inflate_test_loop after all selected vectors completed.");
-      const v = selected[index];
-      if(v.group !== currentGroup) { currentGroup = v.group; print("-- " + currentGroup + " --"); }
-      active = prepareCase(v, bp);
-      return;
-    }
-    if(bp.PC === DONE) {
-      need(active !== null, "Reached inflate_test_done without an active vector.");
-      const result = verifyCase(bp);
-      active = null;
-      index++;
-      if((!result.pass && CFG.stopOnFailure) || index >= selected.length) {
-        summary();
-        haltAtBreakpoint();
-      }
-      return;
-    }
-    throw new Error("Unexpected BREAK IF callback at " + STB.hex(bp.PC,4) + ".");
-  });
-})();
-'''
-          harness.write_text(prefix+vectors+body)
-          PY
+          echo 'ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgphc209UGF0aCgnYXNtL19UT0RPL0lORkxBVEVfQVNNX0NPUkUuUycpCnM9YXNtLnJlYWRfdGV4dCgpCm9sZD0nJydjb2RlVG9Db250cm9sU3ltYm9sCiAgICAgICAgT1JHICAgICAqK0NPTlRST0xfU1lNQk9MUwoKICAgICAgICAuRU5ECicnJwpuZXc9JycnY29kZVRvQ29udHJvbFN5bWJvbAogICAgICAgIE9SRyAgICAgKitDT05UUk9MX1NZTUJPTFMKCjsgU1RFUCBUUkFDRSB2YWxpZGF0aW9uIGRyaXZlci4gQlJFQUsgSUYgaXMgYXJtZWQgb24gdGhlIHR3byBsYWJlbHMgYmVsb3cuCjsgSmF2YVNjcmlwdCBwcmVwYXJlcyBhIHZlY3RvciBhdCBpbmZsYXRlX3Rlc3RfbG9vcCwgdGhlIGxpdmUgNjUwMiBjYWxscyB0aGUKOyBkZWNvbXByZXNzb3Igbm9ybWFsbHksIGFuZCBKYXZhU2NyaXB0IHZlcmlmaWVzIHRoZSByZXN1bHQgYXQgaW5mbGF0ZV90ZXN0X2RvbmUuCiAgICAgICAgT1JHICAgICAkMEQxMAppbmZsYXRlX3Rlc3RfbG9vcAogICAgICAgIEpTUiAgICAgaW5mbGF0ZQppbmZsYXRlX3Rlc3RfZG9uZQogICAgICAgIEpNUCAgICAgaW5mbGF0ZV90ZXN0X2xvb3AKCiAgICAgICAgLkVORAonJycKaWYgb2xkIG5vdCBpbiBzOgogICAgcmFpc2UgU3lzdGVtRXhpdCgnSU5GTEFURSBhc3NlbWJseSB0YWlsIG1hcmtlciBub3QgZm91bmQnKQphc20ud3JpdGVfdGV4dChzLnJlcGxhY2Uob2xkLG5ldywxKSkKCmhhcm5lc3M9UGF0aCgnYXNtL19UT0RPL0lORkxBVEVfQVNNX0NPUkVfdGVzdGJlbmNoLmpzJykKb2xkPWhhcm5lc3MucmVhZF90ZXh0KCkKdjA9b2xkLmluZGV4KCcgIGNvbnN0IFZFQ1RPUlMgPSBbJykKdjE9b2xkLmluZGV4KCcgIGZ1bmN0aW9uIG5lZWQnLHYwKQp2ZWN0b3JzPW9sZFt2MDp2MV0KcHJlZml4PScnJy8qCiAqIElORkxBVEVfQVNNX0NPUkUuUyB2YWxpZGF0aW9uIGhhcm5lc3MgZm9yIFNURVAgVFJBQ0UgYnJlYWtwb2ludCBzY2VuYXJpb3MuCiAqCiAqIExvYWQgdGhlIGFzc2VtYmxlZCBwcm9ncmFtIGludG8gdGhlIEFwcGxlIElJIHVzaW5nIHRoZSBub3JtYWwgZW11bGF0b3IKICogd29ya2Zsb3csIGxvYWQgaXRzIHN5bWJvbHMgaW50byBTVEVQIFRSQUNFLCBhbmQgYXJtIEJSRUFLIElGIGFzOgogKgogKiAgIFBDPT1pbmZsYXRlX3Rlc3RfbG9vcCB8fCBQQz09aW5mbGF0ZV90ZXN0X2RvbmUKICoKICogU2VsZWN0IFJVTiBzY3JpcHQgYXQgYnJlYWtwb2ludC4gVGhlIGxpdmUgQXBwbGUgSUkgcmVtYWlucyB0aGUgc29sZSBDUFUKICogZXhlY3V0aW9uIG93bmVyOyB0aGlzIHNjcmlwdCBvbmx5IHByZXBhcmVzIGlucHV0cyBhbmQgdmVyaWZpZXMgcmVzdWx0cyBhdAogKiB0aG9zZSB0d28gZXhpc3RpbmcgaW5zdHJ1Y3Rpb24gYm91bmRhcmllcy4KICovCihmdW5jdGlvbigpIHsKICAidXNlIHN0cmljdCI7CgogIGNvbnN0IENGRyA9IHsKICAgIG9ubHk6IG51bGwsCiAgICBzdG9wT25GYWlsdXJlOiB0cnVlLAogICAgZGVmYXVsdElucHV0OiAweDMwMDAsCiAgICBkZWZhdWx0T3V0cHV0OiAweDQwMDAsCiAgICBzY3JhdGNoQnl0ZXM6IDc2NSwKICAgIHpwQnl0ZXM6IDEwLAogICAgb3V0cHV0R3VhcmRCeXRlczogMTYsCiAgICBpbnB1dEd1YXJkQnl0ZXM6IDgsCiAgICBzY3JhdGNoR3VhcmRCeXRlczogOCwKICAgIHNjcmF0Y2hGaWxsOiAweEE1LAogICAgb3V0cHV0RmlsbDogMHhEMywKICAgIGlucHV0R3VhcmRGaWxsOiAweEM3LAogICAgc2NyYXRjaEd1YXJkRmlsbDogMHg1QQogIH07CgonJycKYm9keT1yJycnICBmdW5jdGlvbiBuZWVkKGNvbmRpdGlvbiwgbWVzc2FnZSkgeyBpZighY29uZGl0aW9uKSB0aHJvdyBuZXcgRXJyb3IobWVzc2FnZSk7IH0KICBmdW5jdGlvbiBoZXhCeXRlcyh0ZXh0KSB7CiAgICB0ZXh0ID0gU3RyaW5nKHRleHQgfHwgIiIpLnJlcGxhY2UoL1teMC05QS1GYS1mXS9nLCAiIik7CiAgICBuZWVkKCh0ZXh0Lmxlbmd0aCAmIDEpID09PSAwLCAiT2RkLWxlbmd0aCBoZXggdmVjdG9yLiIpOwogICAgY29uc3Qgb3V0ID0gbmV3IFVpbnQ4QXJyYXkodGV4dC5sZW5ndGggPj4gMSk7CiAgICBmb3IobGV0IGk9MDsgaTxvdXQubGVuZ3RoOyBpKyspIG91dFtpXSA9IHBhcnNlSW50KHRleHQuc3Vic3RyKGkqMiwgMiksIDE2KTsKICAgIHJldHVybiBvdXQ7CiAgfQogIGZ1bmN0aW9uIGZpcnN0RGlmZmVyZW5jZShhY3R1YWwsIGV4cGVjdGVkKSB7CiAgICBjb25zdCBuID0gTWF0aC5taW4oYWN0dWFsLmxlbmd0aCwgZXhwZWN0ZWQubGVuZ3RoKTsKICAgIGZvcihsZXQgaT0wOyBpPG47IGkrKykgaWYoYWN0dWFsW2ldICE9PSBleHBlY3RlZFtpXSkgcmV0dXJuIGk7CiAgICByZXR1cm4gYWN0dWFsLmxlbmd0aCA9PT0gZXhwZWN0ZWQubGVuZ3RoID8gLTEgOiBuOwogIH0KICBmdW5jdGlvbiBmaWxsZWQoYWRkcmVzcywgbGVuZ3RoLCB2YWx1ZSkgewogICAgY29uc3QgZGF0YSA9IFNUQi5yYW0ucmVhZChhZGRyZXNzLCBsZW5ndGgpOwogICAgZm9yKGxldCBpPTA7IGk8ZGF0YS5sZW5ndGg7IGkrKykgaWYoZGF0YVtpXSAhPT0gKHZhbHVlICYgMHhGRikpIHJldHVybiBmYWxzZTsKICAgIHJldHVybiB0cnVlOwogIH0KICBmdW5jdGlvbiBzZWxlY3RWZWN0b3IodikgewogICAgaWYoQ0ZHLm9ubHkgPT0gbnVsbCkgcmV0dXJuIHRydWU7CiAgICBjb25zdCBzZWxlY3RlZCA9IEFycmF5LmlzQXJyYXkoQ0ZHLm9ubHkpID8gQ0ZHLm9ubHkgOiBbQ0ZHLm9ubHldOwogICAgcmV0dXJuIHNlbGVjdGVkLmluZGV4T2Yodi5uYW1lKSA+PSAwIHx8IHNlbGVjdGVkLmluZGV4T2Yodi5ncm91cCkgPj0gMDsKICB9CgogIG5lZWQod2luZG93LlNUQiAmJiB0eXBlb2YgU1RCLnJhbSA9PT0gIm9iamVjdCIsICJTVEVQIFRSQUNFIHNjZW5hcmlvIGhlbHBlcnMgYXJlIHVuYXZhaWxhYmxlLiIpOwogIG5lZWQod2luZG93LnBha28gJiYgdHlwZW9mIHdpbmRvdy5wYWtvLmluZmxhdGVSYXcgPT09ICJmdW5jdGlvbiIsICJwYWtvLmluZmxhdGVSYXcoKSBpcyBub3QgYXZhaWxhYmxlLiIpOwogIFsiaW5mbGF0ZSIsICJpbmZsYXRlX2RhdGEiLCAiaW5wdXRQb2ludGVyIiwgIm91dHB1dFBvaW50ZXIiLCAiaW5mbGF0ZV90ZXN0X2xvb3AiLCAiaW5mbGF0ZV90ZXN0X2RvbmUiXQogICAgLmZvckVhY2gobmFtZSA9PiBuZWVkKFNUQi5zeW1ib2wobmFtZSksICJNaXNzaW5nIFNURVAgVFJBQ0Ugc3ltYm9sOiAiICsgbmFtZSkpOwoKICBjb25zdCBMT09QID0gc3ltKCJpbmZsYXRlX3Rlc3RfbG9vcCIpOwogIGNvbnN0IERPTkUgPSBzeW0oImluZmxhdGVfdGVzdF9kb25lIik7CiAgY29uc3Qgc2VsZWN0ZWQgPSBWRUNUT1JTLmZpbHRlcihzZWxlY3RWZWN0b3IpOwogIG5lZWQoc2VsZWN0ZWQubGVuZ3RoID4gMCwgIk5vIHZlY3RvcnMgc2VsZWN0ZWQuIik7CgogIGxldCBpbmRleCA9IDA7CiAgbGV0IGFjdGl2ZSA9IG51bGw7CiAgbGV0IGN1cnJlbnRHcm91cCA9ICIiOwogIGNvbnN0IHJlc3VsdHMgPSBbXTsKCiAgZnVuY3Rpb24gcHJlcGFyZUNhc2UodiwgYnApIHsKICAgIGNvbnN0IGNvbXByZXNzZWQgPSBoZXhCeXRlcyh2LmhleCk7CiAgICBjb25zdCBleHBlY3RlZCA9IHdpbmRvdy5wYWtvLmluZmxhdGVSYXcoY29tcHJlc3NlZCk7CiAgICBuZWVkKGV4cGVjdGVkIGluc3RhbmNlb2YgVWludDhBcnJheSwgdi5uYW1lICsgIjogcGFrby5pbmZsYXRlUmF3KCkgZGlkIG5vdCByZXR1cm4gVWludDhBcnJheS4iKTsKICAgIG5lZWQoZXhwZWN0ZWQubGVuZ3RoID09PSB2LmV4cGVjdGVkQnl0ZXMsCiAgICAgIHYubmFtZSArICI6IHJlZmVyZW5jZSBsZW5ndGggIiArIGV4cGVjdGVkLmxlbmd0aCArICIgIT0gbWFuaWZlc3QgbGVuZ3RoICIgKyB2LmV4cGVjdGVkQnl0ZXMgKyAiLiIpOwogICAgY29uc3QgaW5wdXQgPSB2LmlucHV0ID09IG51bGwgPyBDRkcuZGVmYXVsdElucHV0IDogdi5pbnB1dDsKICAgIGNvbnN0IG91dHB1dCA9IHYub3V0cHV0ID09IG51bGwgPyBDRkcuZGVmYXVsdE91dHB1dCA6IHYub3V0cHV0OwogICAgY29uc3Qgc2NyYXRjaCA9IHN5bSgiaW5mbGF0ZV9kYXRhIik7CiAgICBjb25zdCB6cCA9IHN5bSgiaW5mbGF0ZV96cCIsIHN5bSgiaW5wdXRQb2ludGVyIikpOwogICAgU1RCLnJhbS5maWxsKHpwLCBDRkcuenBCeXRlcywgQ0ZHLnNjcmF0Y2hGaWxsKTsKICAgIFNUQi5yYW0uZmlsbChzY3JhdGNoLCBDRkcuc2NyYXRjaEJ5dGVzLCBDRkcuc2NyYXRjaEZpbGwpOwogICAgU1RCLnJhbS5maWxsKHNjcmF0Y2ggKyBDRkcuc2NyYXRjaEJ5dGVzLCBDRkcuc2NyYXRjaEd1YXJkQnl0ZXMsIENGRy5zY3JhdGNoR3VhcmRGaWxsKTsKICAgIFNUQi5yYW0uZmlsbChpbnB1dCAtIENGRy5pbnB1dEd1YXJkQnl0ZXMsIENGRy5pbnB1dEd1YXJkQnl0ZXMsIENGRy5pbnB1dEd1YXJkRmlsbCk7CiAgICBTVEIucmFtLmZpbGwoaW5wdXQgKyBjb21wcmVzc2VkLmxlbmd0aCwgQ0ZHLmlucHV0R3VhcmRCeXRlcywgQ0ZHLmlucHV0R3VhcmRGaWxsKTsKICAgIFNUQi5yYW0ubG9hZChpbnB1dCwgY29tcHJlc3NlZCk7CiAgICBTVEIucmFtLmZpbGwob3V0cHV0IC0gQ0ZHLm91dHB1dEd1YXJkQnl0ZXMsIENGRy5vdXRwdXRHdWFyZEJ5dGVzICsgZXhwZWN0ZWQubGVuZ3RoICsgQ0ZHLm91dHB1dEd1YXJkQnl0ZXMsIENGRy5vdXRwdXRGaWxsKTsKICAgIFNUQi5yYW0ud3JpdGUxNigiaW5wdXRQb2ludGVyIiwgaW5wdXQpOwogICAgU1RCLnJhbS53cml0ZTE2KCJvdXRwdXRQb2ludGVyIiwgb3V0cHV0KTsKICAgIHJldHVybiB7dmVjdG9yOnYsY29tcHJlc3NlZCxleHBlY3RlZCxpbnB1dCxvdXRwdXQsc2NyYXRjaCxzdGFydFNQOmJwLlNQLHN0YXJ0SU5TOmJwLklOUyxhc3NlcnRpb25zOjAsZmFpbGVkQXNzZXJ0aW9uczowfTsKICB9CgogIGZ1bmN0aW9uIGNoZWNrKGNvbmRpdGlvbiwgZGVzY3JpcHRpb24pIHsKICAgIGFjdGl2ZS5hc3NlcnRpb25zKys7CiAgICBpZighU1RCLmFzc2VydCghIWNvbmRpdGlvbiwgZGVzY3JpcHRpb24pKSBhY3RpdmUuZmFpbGVkQXNzZXJ0aW9ucysrOwogICAgcmV0dXJuICEhY29uZGl0aW9uOwogIH0KCiAgZnVuY3Rpb24gdmVyaWZ5Q2FzZShicCkgewogICAgY29uc3QgdiA9IGFjdGl2ZS52ZWN0b3I7CiAgICBjb25zdCBpbnB1dFBvaW50ZXIgPSBTVEIucmFtLnJlYWQxNigiaW5wdXRQb2ludGVyIik7CiAgICBjb25zdCBvdXRwdXRQb2ludGVyID0gU1RCLnJhbS5yZWFkMTYoIm91dHB1dFBvaW50ZXIiKTsKICAgIGNvbnN0IGFjdHVhbCA9IFNUQi5yYW0ucmVhZChhY3RpdmUub3V0cHV0LCBhY3RpdmUuZXhwZWN0ZWQubGVuZ3RoKTsKICAgIGNvbnN0IGRpZmYgPSBmaXJzdERpZmZlcmVuY2UoYWN0dWFsLCBhY3RpdmUuZXhwZWN0ZWQpOwogICAgY2hlY2soaW5wdXRQb2ludGVyID09PSAoKGFjdGl2ZS5pbnB1dCArIGFjdGl2ZS5jb21wcmVzc2VkLmxlbmd0aCkgJiAweEZGRkYpLCAiaW5wdXQgY29uc3VtZWQiKTsKICAgIGNoZWNrKG91dHB1dFBvaW50ZXIgPT09ICgoYWN0aXZlLm91dHB1dCArIGFjdGl2ZS5leHBlY3RlZC5sZW5ndGgpICYgMHhGRkZGKSwgIm91dHB1dCBwb2ludGVyIik7CiAgICBjaGVjayhkaWZmID09PSAtMSwgImV4YWN0IG91dHB1dCIpOwogICAgY2hlY2soZmlsbGVkKGFjdGl2ZS5vdXRwdXQgLSBDRkcub3V0cHV0R3VhcmRCeXRlcywgQ0ZHLm91dHB1dEd1YXJkQnl0ZXMsIENGRy5vdXRwdXRGaWxsKSwgIm91dHB1dCBndWFyZCBiZWZvcmUiKTsKICAgIGNoZWNrKGZpbGxlZChhY3RpdmUub3V0cHV0ICsgYWN0aXZlLmV4cGVjdGVkLmxlbmd0aCwgQ0ZHLm91dHB1dEd1YXJkQnl0ZXMsIENGRy5vdXRwdXRGaWxsKSwgIm91dHB1dCBndWFyZCBhZnRlciIpOwogICAgY2hlY2soZmlsbGVkKGFjdGl2ZS5pbnB1dCAtIENGRy5pbnB1dEd1YXJkQnl0ZXMsIENGRy5pbnB1dEd1YXJkQnl0ZXMsIENGRy5pbnB1dEd1YXJkRmlsbCksICJpbnB1dCBndWFyZCBiZWZvcmUiKTsKICAgIGNoZWNrKGZpbGxlZChhY3RpdmUuaW5wdXQgKyBhY3RpdmUuY29tcHJlc3NlZC5sZW5ndGgsIENGRy5pbnB1dEd1YXJkQnl0ZXMsIENGRy5pbnB1dEd1YXJkRmlsbCksICJpbnB1dCBndWFyZCBhZnRlciIpOwogICAgY2hlY2soZmlsbGVkKGFjdGl2ZS5zY3JhdGNoICsgQ0ZHLnNjcmF0Y2hCeXRlcywgQ0ZHLnNjcmF0Y2hHdWFyZEJ5dGVzLCBDRkcuc2NyYXRjaEd1YXJkRmlsbCksICJzY3JhdGNoIGd1YXJkIGFmdGVyIik7CiAgICBjaGVjayhicC5TUCA9PT0gYWN0aXZlLnN0YXJ0U1AsICJzdGFjayByZXN0b3JlZCIpOwogICAgaWYoZGlmZiA+PSAwKSBwcmludCgiICAgIG91dHB1dCBkaWZmICsiICsgZGlmZiArICIgQCAiICsgU1RCLmhleCgoYWN0aXZlLm91dHB1dCArIGRpZmYpICYgMHhGRkZGLDQpKTsKICAgIGNvbnN0IHBhc3MgPSBhY3RpdmUuZmFpbGVkQXNzZXJ0aW9ucyA9PT0gMDsKICAgIGNvbnN0IGluc3RydWN0aW9ucyA9IE1hdGgubWF4KDAsIE51bWJlcihicC5JTlMgfHwgMCkgLSBOdW1iZXIoYWN0aXZlLnN0YXJ0SU5TIHx8IDApKTsKICAgIGNvbnN0IHJlc3VsdCA9IHtuYW1lOnYubmFtZSxncm91cDp2Lmdyb3VwLHN0YXR1czpwYXNzPyJQQVNTIjoiRkFJTCIscGFzcyxhc3NlcnRpb25zOmFjdGl2ZS5hc3NlcnRpb25zLGZhaWxlZEFzc2VydGlvbnM6YWN0aXZlLmZhaWxlZEFzc2VydGlvbnMsaW5wdXQ6YWN0aXZlLmlucHV0LG91dHB1dDphY3RpdmUub3V0cHV0LGNvbXByZXNzZWRCeXRlczphY3RpdmUuY29tcHJlc3NlZC5sZW5ndGgsZXhwZWN0ZWRCeXRlczphY3RpdmUuZXhwZWN0ZWQubGVuZ3RoLGZpcnN0RGlmZmVyZW5jZTpkaWZmLGluc3RydWN0aW9uc307CiAgICByZXN1bHRzLnB1c2gocmVzdWx0KTsKICAgIHByaW50KChwYXNzID8gIlBBU1MgIiA6ICJGQUlMICIpICsgdi5uYW1lICsgIiDigJQgIiArIHJlc3VsdC5hc3NlcnRpb25zICsgIiBhc3NlcnRpb25zIC8gIiArIGluc3RydWN0aW9ucyArICIgaW5zIik7CiAgICByZXR1cm4gcmVzdWx0OwogIH0KCiAgZnVuY3Rpb24gc3VtbWFyeSgpIHsKICAgIGNvbnN0IHBhc3NlZCA9IHJlc3VsdHMuZmlsdGVyKHIgPT4gci5wYXNzKS5sZW5ndGg7CiAgICBjb25zdCBmYWlsZWQgPSByZXN1bHRzLmxlbmd0aCAtIHBhc3NlZDsKICAgIGNvbnN0IG5vdFJ1biA9IHNlbGVjdGVkLmxlbmd0aCAtIHJlc3VsdHMubGVuZ3RoOwogICAgcHJpbnQoIi0tIFNVTU1BUlkgLS0iKTsKICAgIHByaW50KCJQQVNTICIgKyBwYXNzZWQgKyAiLyIgKyByZXN1bHRzLmxlbmd0aCArIChmYWlsZWQgPyAiIC8gRkFJTCAiICsgZmFpbGVkIDogIiIpICsgKG5vdFJ1biA/ICIgLyBOT1QgUlVOICIgKyBub3RSdW4gOiAiIikpOwogICAgaWYoZmFpbGVkKSBwcmludCgiZmFpbGVkOiAiICsgcmVzdWx0cy5maWx0ZXIociA9PiAhci5wYXNzKS5tYXAociA9PiByLm5hbWUpLmpvaW4oIiwgIikpOwogIH0KCiAgcHJpbnQoIklORkxBVEVfQVNNX0NPUkUuUyDigJQgU1RFUCBUUkFDRSBicmVha3BvaW50LWRyaXZlbiByYXcgREVGTEFURSB2YWxpZGF0aW9uIik7CiAgcHJpbnQoIkJSRUFLIElGOiBQQz09aW5mbGF0ZV90ZXN0X2xvb3AgfHwgUEM9PWluZmxhdGVfdGVzdF9kb25lIC8gdmVjdG9ycz0iICsgc2VsZWN0ZWQubGVuZ3RoKTsKICB3aW5kb3cuSU5GTEFURV9TVEVQVFJBQ0VfUkVTVUxUUyA9IHJlc3VsdHM7CiAgd2luZG93LklORkxBVEVfU1RFUFRSQUNFX0NPTkZJRyA9IENGRzsKICB3aW5kb3cuSU5GTEFURV9TVEVQVFJBQ0VfVkVDVE9SUyA9IFZFQ1RPUlM7CgogIG9uQnJlYWtwb2ludChmdW5jdGlvbihicCkgewogICAgaWYoYnAuUEMgPT09IExPT1ApIHsKICAgICAgbmVlZChhY3RpdmUgPT09IG51bGwsICJSZWFjaGVkIGluZmxhdGVfdGVzdF9sb29wIHdoaWxlIGEgdmVjdG9yIGlzIHN0aWxsIGFjdGl2ZS4iKTsKICAgICAgbmVlZChpbmRleCA8IHNlbGVjdGVkLmxlbmd0aCwgIlJlYWNoZWQgaW5mbGF0ZV90ZXN0X2xvb3AgYWZ0ZXIgYWxsIHNlbGVjdGVkIHZlY3RvcnMgY29tcGxldGVkLiIpOwogICAgICBjb25zdCB2ID0gc2VsZWN0ZWRbaW5kZXhdOwogICAgICBpZih2Lmdyb3VwICE9PSBjdXJyZW50R3JvdXApIHsgY3VycmVudEdyb3VwID0gdi5ncm91cDsgcHJpbnQoIi0tICIgKyBjdXJyZW50R3JvdXAgKyAiIC0tIik7IH0KICAgICAgYWN0aXZlID0gcHJlcGFyZUNhc2UodiwgYnApOwogICAgICByZXR1cm47CiAgICB9CiAgICBpZihicC5QQyA9PT0gRE9ORSkgewogICAgICBuZWVkKGFjdGl2ZSAhPT0gbnVsbCwgIlJlYWNoZWQgaW5mbGF0ZV90ZXN0X2RvbmUgd2l0aG91dCBhbiBhY3RpdmUgdmVjdG9yLiIpOwogICAgICBjb25zdCByZXN1bHQgPSB2ZXJpZnlDYXNlKGJwKTsKICAgICAgYWN0aXZlID0gbnVsbDsKICAgICAgaW5kZXgrKzsKICAgICAgaWYoKCFyZXN1bHQucGFzcyAmJiBDRkcuc3RvcE9uRmFpbHVyZSkgfHwgaW5kZXggPj0gc2VsZWN0ZWQubGVuZ3RoKSB7CiAgICAgICAgc3VtbWFyeSgpOwogICAgICAgIGhhbHRBdEJyZWFrcG9pbnQoKTsKICAgICAgfQogICAgICByZXR1cm47CiAgICB9CiAgICB0aHJvdyBuZXcgRXJyb3IoIlVuZXhwZWN0ZWQgQlJFQUsgSUYgY2FsbGJhY2sgYXQgIiArIFNUQi5oZXgoYnAuUEMsNCkgKyAiLiIpOwogIH0pOwp9KSgpOwonJycKaGFybmVzcy53cml0ZV90ZXh0KHByZWZpeCt2ZWN0b3JzK2JvZHkpCg==' | base64 -d > /tmp/apply_inflate.py
+          python3 /tmp/apply_inflate.py
       - name: Run INFLATE GREEN regression suite
         shell: bash
         run: |
           node --check asm/_TODO/INFLATE_ASM_CORE_testbench.js
           node --test tests/inflate_steptrace_harness.test.js
           node --test tests/cpu_execution_condition.test.js tests/debugger_steptrace_scenario.test.js tests/debugger_testbench_loader.test.js tests/inflate_steptrace_harness.test.js
-      - name: Commit Task 5 and remove temporary workflows
+      - name: Commit Task 5 and remove temporary scaffolding
         shell: bash
         run: |
           rm -f .github/workflows/steptrace-inflate-red-temp.yml
-          rm -f .github/workflows/steptrace-inflate-green-temp.yml
+          rm -rf .superpowers-tmp
           git config user.name "Zen"
           git config user.email "freddy.vandriessche@gmail.com"
           git add -A
