@@ -24,7 +24,10 @@ jobs:
       - name: Decode and apply tested core patch
         shell: bash
         run: |
-          cat .superpowers-tmp/steptrace-finish/core.* | base64 -d > /tmp/steptrace-finish.patch
+          : > /tmp/steptrace-finish.patch
+          for f in .superpowers-tmp/steptrace-finish/core.*; do
+            base64 -d "$f" >> /tmp/steptrace-finish.patch
+          done
           git apply --check /tmp/steptrace-finish.patch
           git apply /tmp/steptrace-finish.patch
       - name: Run focused STEP TRACE regressions
