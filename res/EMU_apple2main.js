@@ -830,6 +830,11 @@ function EMU_init()
         +"<div class=appbox id=\"slotConfig_popup\" hidden=\"\"></div>\n"
     // all other slots are configured in EMU_apple2io.js --> this.mount()
     
+    if(window.DBG_STEPTRACE_SCENARIO &&
+    window.DBG_STEPTRACE_SCENARIO.ui &&
+    typeof window.DBG_STEPTRACE_SCENARIO.ui.init === "function")
+        window.DBG_STEPTRACE_SCENARIO.ui.init();
+
 }
 
 function EMU_system_get()
