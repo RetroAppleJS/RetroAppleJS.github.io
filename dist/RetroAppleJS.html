@@ -7473,13 +7473,15 @@ function TERMINAL(props)
  * DBG_testbench.js
  *
  * Compatibility loader.  The original isolated TEST BENCH implementation is
- * preserved byte-for-byte as DBG_testbench_legacy.js.  The live STEP TRACE
- * scenario bench is layered beside it without changing index.html.
+ * preserved byte-for-byte as DBG_testbench_legacy.js.  Neutral assembler-build
+ * services are initialized independently before the live STEP TRACE scenario.
  */
 (function(global){
   "use strict";
 
   var scripts = [
+    "res/ASM_build_handoff.js",
+    "res/EMU_asm_build.js",
     "res/DBG_testbench_legacy.js",
     "res/DBG_steptrace_scenario.js",
     "res/DBG_steptrace_scenario_layout.js"
