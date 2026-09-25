@@ -1,6 +1,6 @@
 (function(g){
 'use strict';
-var D=g.document,observer=null,resizeBound=false,wrapped=false,tracePositioned=false;
+var D=g.document,resizeBound=false,wrapped=false,tracePositioned=false;
 function E(id){return D&&D.getElementById?D.getElementById(id):null}
 function referenceToolboxes()
 {
@@ -137,11 +137,6 @@ function init()
 {
   apply();
   if(!resizeBound&&g.addEventListener){g.addEventListener('resize',apply);resizeBound=true}
-  if(!observer&&typeof g.MutationObserver==='function'&&D&&D.body)
-  {
-    observer=new g.MutationObserver(apply);
-    observer.observe(D.body,{attributes:true,attributeFilter:['hidden','style','class'],childList:true,subtree:true});
-  }
 }
 if(g.oCOM&&g.oCOM.addToEventStack)g.oCOM.addToEventStack('onload',init);
 else if(g.addEventListener)g.addEventListener('load',init);
