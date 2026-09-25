@@ -10,10 +10,11 @@ permissions:
 jobs:
   red:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: feat/steptrace-breakpoint-scenario-complete
+          ref: docs/steptrace-breakpoint-scenario-manual
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -25,8 +26,9 @@ jobs:
           status=$?
           cat /tmp/red.log
           if [ "$status" -eq 0 ]; then
-            echo 'Expected RED but manual test passed.' >&2
+            echo 'Expected RED but test suite passed.' >&2
             exit 1
           fi
           grep -q 'manual documents breakpoint-driven scenarios' /tmp/red.log
-          echo 'RED confirmed: active manual does not yet describe the breakpoint-scenario workflow.'
+          grep -Eq 'HALT at breakpoint|RUN script at breakpoint|onBreakpoint|haltAtBreakpoint|inflate_test_loop' /tmp/red.log
+          echo 'RED confirmed: manual lacks breakpoint-scenario guidance.'
