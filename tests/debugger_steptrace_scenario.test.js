@@ -8,13 +8,14 @@ const vm = require('node:vm');
 
 const scenarioSource = fs.readFileSync(path.join(__dirname,'..','res','DBG_steptrace_scenario.js'),'utf8');
 
-function makeHarness()
+function makeHarness(options={})
 {
   const mem = new Uint8Array(0x10000);
   const state = {pc:0x2222,a:9,x:8,y:7,sp:0x80,p:0xff,cycle_delay:0,ic:99};
   const writes = [];
   let now = 0;
   let steps = 0;
+  const listeners = Object.create(null);
 
   const hw = {
     lineDecode(addr){ return (addr >>> 12) & 0x0f; },
@@ -52,12 +53,12 @@ function makeHarness()
   };
 
   const symbols = {entry:0x1000,done:0x1002,source:0x3000,target:0x4000,word:0x4010};
-  const TB = {
-    sym(name,def){ return Object.prototype.hasOwnProperty.call(symbols,name) ? symbols[name] : (arguments.length>1 ? def : (()=>{throw new Error('Unknown assembler symbol '+name);})()); },
-    symbol(name){ return Object.prototype.hasOwnProperty.call(symbols,name) ? {name,value:symbols[name]} : null; },
-    symbols(){ return Object.keys(symbols).map(name=>({name,value:symbols[name]})); },
-    hex(v,w){ return '$'+(Number(v)&(w<=2?0xff:0xffff)).toString(16).toUpperCase().padStart(w||2,'0'); }
+  let liveBuild = options.noBuild ? null : {
+    schema:'RetroAppleJS.LiveAssemblerBuild',version:1,buildId:'asm-build-test',generation:1,inputRevision:1,
+    sourceName:'scenario-test.S',entry:0x1000,loadedAt:1,byteCount:3,ranges:[{start:0x1000,end:0x1002,length:3}],
+    symbols:Object.keys(symbols).map(name=>({key:name.toUpperCase(),name,value:symbols[name],kind:'unknown'}))
   };
+  const EMU_ASM_BUILD = {current(){ return liveBuild; }};
 
   const dbg = {
     play(){},
@@ -66,12 +67,13 @@ function makeHarness()
   };
 
   const window = {
-    TB,
-    DBG_TESTBENCH:TB,
+    EMU_ASM_BUILD,
     apple2plus:machine,
     oEMU:{component:{CPU:{Apple2Debug:dbg}}},
     performance:{now(){ return now; }},
-    addEventListener(){}, setTimeout(fn){ fn(); return 1; }, clearTimeout(){},
+    addEventListener(type,fn){ (listeners[type]||(listeners[type]=[])).push(fn); },
+    dispatchEvent(ev){ (listeners[ev.type]||[]).slice().forEach(fn=>fn(ev)); return true; },
+    setTimeout(fn){ fn(); return 1; }, clearTimeout(){},
     requestAnimationFrame(fn){ fn(); }, console
   };
   window.window = window;
@@ -85,11 +87,13 @@ function makeHarness()
   const ctx = {window,document,console,Uint8Array,Array,Object,Number,String,Boolean,Math,Date,Error,TypeError,RangeError,JSON,isFinite,parseInt,performance:window.performance};
   vm.createContext(ctx);
   vm.runInContext(scenarioSource,ctx,{filename:'DBG_steptrace_scenario.js'});
-  return {STB:window.STB,mem,state,writes,get steps(){return steps;}};
+  return {STB:window.STB,window,mem,state,writes,get steps(){return steps;},setLiveBuild(v){liveBuild=v;}};
 }
 
-test('scenario resets CPU, injects live RAM, breaks before target opcode and asserts state', () => {
+test('scenario resolves live-build symbols without TEST BENCH and executes live CPU', () => {
   const h = makeHarness();
+  assert.equal(h.window.TB,undefined);
+  assert.equal(h.STB.buildInfo().buildId,'asm-build-test');
   const result = h.STB.scenario('copy byte', function(){
     h.STB.ram.write('source',0x42);
     h.STB.cpu.start('entry',{A:0x11,X:0x22,Y:0x33});
@@ -157,7 +161,7 @@ test('malformed conditions are scenario errors and abort the body', () => {
   assert.equal(result.reason,'expression-error');
 });
 
-test('condition language resolves symbols, offsets, M16 and flags', () => {
+test('condition language resolves live symbols, offsets, M16 and flags', () => {
   const h = makeHarness();
   h.mem[0x4010] = 0x34;
   h.mem[0x4011] = 0x12;
@@ -183,4 +187,15 @@ test('assert accepts a boolean for host-side byte-array/guard checks', () => {
   assert.equal(result.status,'FAIL');
   assert.equal(result.assertions,3);
   assert.equal(result.failedAssertions,1);
+});
+
+test('numeric scenarios work with no live assembler build while symbolic lookup reports the missing build', () => {
+  const h=makeHarness({noBuild:true});
+  const result=h.STB.scenario('numeric only',function(){
+    h.STB.cpu.start(0x1000);
+    h.STB.breakIf('PC==$1001',{maxInstructions:2,timeoutMs:1000});
+  });
+  assert.equal(result.status,'PASS');
+  assert.equal(h.STB.buildInfo(),null);
+  assert.throws(()=>h.STB.sym('entry'),e=>e&&e.code==='STB_NO_LIVE_BUILD');
 });
