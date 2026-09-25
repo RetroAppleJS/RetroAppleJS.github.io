@@ -93,6 +93,7 @@ function makeHarness(options={})
 test('scenario resolves live-build symbols without TEST BENCH and executes live CPU', () => {
   const h = makeHarness();
   assert.equal(h.window.TB,undefined);
+  assert.equal(h.STB.syncBuild().buildId,'asm-build-test');
   assert.equal(h.STB.buildInfo().buildId,'asm-build-test');
   const result = h.STB.scenario('copy byte', function(){
     h.STB.ram.write('source',0x42);
