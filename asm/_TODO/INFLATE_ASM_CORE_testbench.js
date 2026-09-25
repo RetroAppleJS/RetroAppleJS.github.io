@@ -2,10 +2,10 @@
  * INFLATE_ASM_CORE.S validation harness for the live RetroAppleJS STEP TRACE
  * scenario bench.
  *
- * Assemble/load INFLATE_ASM_CORE.S into the normal Debugger first.  This script
- * copies the assembled $0800-$09FF code image from DBG_RAM into live Apple II
- * RAM, then executes the same 15 host-validated RFC1951 vectors through the
- * real apple2plus CPU/hardware used by STEP TRACE.
+ * Assemble INFLATE_ASM_CORE.S and use the Assembler's LOAD LIVE action first.
+ * This script expects the program bytes and symbols to already belong to the
+ * live Apple II build, then executes 15 host-validated RFC1951 vectors through
+ * the real apple2plus CPU/hardware used by STEP TRACE.
  *
  * pako is used only as an independent reference decoder.
  */
@@ -37,7 +37,7 @@
   const VECTORS = [
     { name: "stored_000", group: "STORED", hex: "010000FFFF", expectedBytes: 0 },
     { name: "stored_005", group: "STORED", hex: "010500FAFF48454C4C4F", expectedBytes: 5 },
-    { name: "stored_255", group: "STORED", hex: "01FF0000FF135CA5EE3780C9125BA4ED367FC8115AA3EC357EC71059A2EB347DC60F58A1EA337CC50E57A0E9327BC40D569FE8317AC30C559EE73079C20B549DE62F78C10A539CE52E77C009529BE42D76BF08519AE32C75BE075099E22B74BD064F98E12A73BC054E97E02972BB044D96DF2871BA034C95DE2770B9024B94DD266FB8014A93DC256EB7004992DB246DB6FF4891DA236CB5FE4790D9226BB4FD468FD8216AB3FC458ED72069B2FB448DD61F68B1FA438CD51E67B0F9428BD41D66AFF8418AD31C65AEF74089D21B64ADF63F88D11A63ACF53E87D01962ABF43D86CF1861AAF33C85CE1760A9F23B84CD165FA8F13A83CC155EA7F03982CB145DA6EF3881", expectedBytes: 255 },
+    { name: "stored_255", group: "STORED", hex: "01FF0000FF135CA5EE3780C9125BA4ED367FC8115AA3EC357FC8115AA3EC357EC71059A2EB347DC60F58A1EA337CC50E57A0E9327BC40D569FE8317AC30C559EE73079C20B549DE62F78C10A539CE52E77C009529BE42D76BF08519AE32C75BE075099E22B74BD064F98E12A73BC054E97E02972BB044D96DF2871BA034C95DE2770B9024B94DD266FB8014A93DC256EB7004992DB246DB6FF4891DA236CB5FE4790D9226BB4FD468FD8216AB3FC458ED72069B2FB448DD61F68B1FA438CD51E67B0F9428BD41D66AFF8418AD31C65AEF74089D21B64ADF63F88D11A63ACF53E87D01962ABF43D86CF1861AAF33C85CE1760A9F23B84CD165FA8F13A83CC155EA7F03982CB145DA6EF3881", expectedBytes: 255 },
     { name: "stored_256", group: "STORED", hex: "010001FFFE135CA5EE3780C9125BA4ED367FC8115AA3EC357EC71059A2EB347DC60F58A1EA337CC50E57A0E9327BC40D569FE8317AC30C559EE73079C20B549DE62F78C10A539CE52E77C009529BE42D76BF08519AE32C75BE075099E22B74BD064F98E12A73BC054E97E02972BB044D96DF2871BA034C95DE2770B9024B94DD266FB8014A93DC256EB7004992DB246DB6FF4891DA236CB5FE4790D9226BB4FD468FD8216AB3FC458ED72069B2FB448DD61F68B1FA438CD51E67B0F9428BD41D66AFF8418AD31C65AEF74089D21B64ADF63F88D11A63ACF53E87D01962ABF43D86CF1861AAF33C85CE1760A9F23B84CD165FA8F13A83CC155EA7F03982CB145DA6EF3881CA", expectedBytes: 256 },
     { name: "stored_257", group: "STORED", hex: "010101FEFE135CA5EE3780C9125BA4ED367FC8115AA3EC357EC71059A2EB347DC60F58A1EA337CC50E57A0E9327BC40D569FE8317AC30C559EE73079C20B549DE62F78C10A539CE52E77C009529BE42D76BF08519AE32C75BE075099E22B74BD064F98E12A73BC054E97E02972BB044D96DF2871BA034C95DE2770B9024B94DD266FB8014A93DC256EB7004992DB246DB6FF4891DA236CB5FE4790D9226BB4FD468FD8216AB3FC458ED72069B2FB448DD61F68B1FA438CD51E67B0F9428BD41D66AFF8418AD31C65AEF74089D21B64ADF63F88D11A63ACF53E87D01962ABF43D86CF1861AAF33C85CE1760A9F23B84CD165FA8F13A83CC155EA7F03982CB145DA6EF3881CA13", expectedBytes: 257 },
     { name: "fixed_literal_ranges", group: "FIXED", hex: "636064AAEF9F30F1DF7FC72800", expectedBytes: 11 },
@@ -74,13 +74,6 @@
     if(CFG.only == null) return true;
     const selected = Array.isArray(CFG.only) ? CFG.only : [CFG.only];
     return selected.indexOf(v.name) >= 0 || selected.indexOf(v.group) >= 0;
-  }
-  function installLiveProgram() {
-    const start = STB.sym("inflate"), end = STB.sym("inflate_data"), length = (end - start) & 0xFFFF;
-    need(length > 0, "Invalid inflate/inflate_data symbol range.");
-    need(TB && TB.ram && typeof TB.ram.read === "function", "Original TEST BENCH RAM is required as the assembled-code source.");
-    STB.ram.write(start, TB.ram.read(start, length));
-    return {start, end, length};
   }
   function prepareCase(v, compressed, expected) {
     const input = v.input == null ? CFG.defaultInput : v.input;
@@ -130,14 +123,15 @@
   }
 
   need(window.STB && typeof STB.scenario === "function", "STEP TRACE scenario bench is unavailable.");
-  need(window.TB && TB.ram && typeof TB.ram.read === "function", "Original TEST BENCH is required to copy assembled code into live RAM.");
+  const liveBuild = typeof STB.buildInfo === "function" ? STB.buildInfo() : null;
+  need(liveBuild, "No assembler build is loaded in live RAM. Assemble INFLATE_ASM_CORE.S and use LOAD LIVE first.");
   need(window.pako && typeof window.pako.inflateRaw === "function", "pako.inflateRaw() is not available.");
-  ["inflate", "inflate_data", "inputPointer", "outputPointer"].forEach(name => need(STB.symbol(name), "Missing assembler symbol: " + name));
+  ["inflate", "inflate_data", "inputPointer", "outputPointer"].forEach(name => need(STB.symbol(name), "Missing live-build assembler symbol: " + name));
 
-  const installed = installLiveProgram(), selected = VECTORS.filter(selectVector);
+  const selected = VECTORS.filter(selectVector);
   need(selected.length > 0, "No vectors selected.");
   print("INFLATE_ASM_CORE.S — live STEP TRACE raw DEFLATE validation");
-  print("STB " + STB.version + " / inflate=" + STB.hex(STB.sym("inflate"),4) + " / copied=" + installed.length + " bytes / vectors=" + selected.length);
+  print("STB " + STB.version + " / build=" + liveBuild.buildId + " / source=" + liveBuild.sourceName + " / inflate=" + STB.hex(STB.sym("inflate"),4) + " / vectors=" + selected.length);
   const results = [];
   let currentGroup = "";
   for(const v of selected) {
