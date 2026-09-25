@@ -5,6 +5,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 const source=fs.readFileSync(path.join(__dirname,'..','res','DBG_steptrace_scenario.js'),'utf8');
+const manual=fs.readFileSync(path.join(__dirname,'..','docs','STEP_TRACE_MANUAL.md'),'utf8');
 
 function makeHarness(){
   const mem=new Uint8Array(0x10000),state={pc:0x0d10,a:1,x:2,y:3,sp:0xff,p:0x20,cycle_delay:0,ic:0};
@@ -81,4 +82,10 @@ test('scenario popup initializes its terminal output surface after cloning the T
   assert.match(source,/function initTerminal\(\)/);
   assert.match(source,/p\.appendChild\(q\);\s*initTerminal\(\);/);
   assert.match(source,/if\(term&&term\.clear\)term\.clear\(\)/);
+});
+
+test('manual documents breakpoint-driven scenarios and removes the LOAD LIVE workflow',()=>{
+  for(const text of ['HALT at breakpoint','RUN script at breakpoint','onBreakpoint','haltAtBreakpoint','PC==inflate_test_loop || PC==inflate_test_done'])
+    assert.ok(manual.includes(text),text);
+  assert.doesNotMatch(manual,/LOAD LIVE/);
 });
