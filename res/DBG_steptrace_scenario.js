@@ -100,8 +100,35 @@ function initTerminal(){
 }
 var uiObserver=null,resizeBound=false;
 function setTriggerState(open){var button=E('cpuDbg_scenario');if(!button)return;button.style.opacity=open?'1':'.45';button.setAttribute('aria-pressed',open?'true':'false')}
-function companionPopup(){var p=E('DBG_steptraceScenarioPopup');if(p)return p;if(!D||!D.createElement)return null;p=D.createElement('div');p.id='DBG_steptraceScenarioPopup';p.className='toolbox';p.hidden=true;p.style.cssText='position:fixed;z-index:2000;';(D.body||D.documentElement).appendChild(p);return p}
-function positionPopup(){var p=E('DBG_steptraceScenarioPopup'),d=E('cpuDbg_popup');if(!p||!d||p.hidden||!d.getBoundingClientRect)return false;var r=d.getBoundingClientRect();p.style.left=Math.round(r.right+4)+'px';p.style.top=Math.round(r.top)+'px';return true}
+function companionPopup(){
+  var p=E('DBG_steptraceScenarioPopup');
+  if(p)return p;
+  if(!D||!D.createElement)return null;
+
+  p=D.createElement('div');
+  p.id='DBG_steptraceScenarioPopup';
+
+  // Match the visual shell of SYSTEM/SLOTS/STEP TRACE,
+  // while enabling scenario-specific CSS overrides.
+  p.className='appbox DBG_steptraceScenarioPopup';
+
+  p.hidden=true;
+  p.style.cssText='position:absolute;z-index:2000;';
+  (D.body||D.documentElement).appendChild(p);
+  return p;
+}
+function positionPopup(){
+  var p=E('DBG_steptraceScenarioPopup'),d=E('cpuDbg_popup');
+  if(!p||!d||p.hidden||!d.getBoundingClientRect)return false;
+
+  var r=d.getBoundingClientRect();
+  var sx=g.pageXOffset || D.documentElement.scrollLeft || D.body.scrollLeft || 0;
+  var sy=g.pageYOffset || D.documentElement.scrollTop  || D.body.scrollTop  || 0;
+
+  p.style.left=Math.round(r.right+sx+4)+'px';
+  p.style.top=Math.round(r.top+sy)+'px';
+  return true;
+}
 function buildPopup(){
   var p=companionPopup();if(!p)return false;if(E('DBG_steptracebenchBox')){syncButton();return true}var b=E('DBG_testbenchBox');if(!b||!b.cloneNode)return false;
   var q=b.cloneNode(true);rename(q);if(q.classList)q.classList.remove('appbox');var title=q.querySelector&&q.querySelector('.DBG_testbenchTitle');if(title)title.textContent='STEP TRACE SCENARIO';
@@ -117,7 +144,11 @@ function buildPopup(){
   syncButton();return true;
 }
 function installTrigger(){if(E('cpuDbg_scenario'))return true;var play=E('cpuDbg_play');if(!play||!play.parentNode||!D.createElement)return false;var button=D.createElement('i');button.id='cpuDbg_scenario';button.className='fa fa-code';button.setAttribute('role','button');button.setAttribute('aria-pressed','false');button.title='Open STEP TRACE scenario test script';button.style.cssText='font-size:11px;cursor:pointer;opacity:.45;margin-left:2px';button.onclick=function(){S.ui.toggle()};if(play.nextSibling)play.parentNode.insertBefore(button,play.nextSibling);else play.parentNode.appendChild(button);return true}
-function init(){var ok=installTrigger();companionPopup();if(!resizeBound&&g.addEventListener){g.addEventListener('resize',positionPopup);resizeBound=true}return ok}
+function init(){
+  var ok=installTrigger();
+  companionPopup();
+  return ok;
+}
 S.ui={init:init,open:function(){init();if(!buildPopup())return false;var p=E('DBG_steptraceScenarioPopup');if(!p)return false;p.hidden=false;setTriggerState(true);syncButton();positionPopup();return true},close:function(){var p=E('DBG_steptraceScenarioPopup');if(p)p.hidden=true;setTriggerState(false);return true},toggle:function(){var p=E('DBG_steptraceScenarioPopup');if(!p||p.hidden)return S.ui.open();return S.ui.close()},position:positionPopup,example:loadExample};
 
 g.DBG_STEPTRACE_SCENARIO=S;g.STB=S;
