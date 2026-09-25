@@ -53,8 +53,10 @@ test('layout companion prefers the right side, falls back left, and uses a narro
   assert.match(layoutSource,/p\.style\.top=Math\.round/);
 });
 
-test('STEP TRACE scenario is scoped to emulator tab 1.1', () => {
+test('STEP TRACE scenario is scoped to emulator tab 1.1 and preserves logical open state', () => {
   assert.match(layoutSource,/oCOM\.POPUP\.addScope\(['"]DBG_steptraceScenarioPopup['"],['"]tab1\.1['"]\)/);
+  assert.match(layoutSource,/oCOM\.POPUP\.set_state\(['"]DBG_steptraceScenarioPopup['"],false\)/);
+  assert.match(layoutSource,/oCOM\.POPUP\.set_state\(['"]DBG_steptraceScenarioPopup['"],true\)/);
 });
 
 test('shared TEST BENCH CSS also styles renamed STEP TRACE editor controls', () => {
