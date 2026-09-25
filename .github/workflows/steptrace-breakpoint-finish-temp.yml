@@ -21,14 +21,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Decode and apply tested core patch
+      - name: Decode and inspect core patch
         shell: bash
         run: |
           : > /tmp/steptrace-finish.patch
           for f in .superpowers-tmp/steptrace-finish/core.*; do
             base64 -d "$f" >> /tmp/steptrace-finish.patch
           done
-          git apply --check /tmp/steptrace-finish.patch
+          if ! git apply --check /tmp/steptrace-finish.patch; then
+            echo '--- patch lines 275-315 ---'
+            nl -ba /tmp/steptrace-finish.patch | sed -n '275,315p'
+            exit 1
+          fi
           git apply /tmp/steptrace-finish.patch
       - name: Run focused STEP TRACE regressions
         shell: bash
