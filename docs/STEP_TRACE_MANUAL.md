@@ -236,7 +236,7 @@ If an armed expression is edited, STEP TRACE immediately disarms the old predica
 
 There is no `Rearm` state and there is no visible breakpoint `Clear` button.
 
-After a condition matches, it is one-shot/disarmed. The expression remains in the editor and can be armed again with one click.
+In the normal **HALT at breakpoint** mode, a matching condition is one-shot/disarmed. The expression remains in the editor and can be armed again with one click. When STEP TRACE SCENARIO is armed in **RUN script at breakpoint** mode, the same `BREAK IF` condition remains active across successful callback returns so one persistent script can handle repeated matches.
 
 ### Address breakpoint
 
@@ -756,9 +756,11 @@ For each relevant boundary:
 
 1. STEP TRACE evaluates the expression against live CPU state and mapped safe-read memory;
 2. a false result leaves the condition armed and execution continues;
-3. a true result stops the active execution owner without consuming the target opcode;
-4. the breakpoint becomes disarmed/one-shot after the hit;
-5. the Run/Pause control changes to the parking icon.
+3. a true result is observed at the clean boundary **before the matching opcode executes**;
+4. in ordinary **HALT at breakpoint** mode, the breakpoint becomes one-shot/disarmed and STEP TRACE stops at that boundary;
+5. in **RUN script at breakpoint** mode, the registered scenario callback runs synchronously at that boundary; a successful return keeps the condition armed and lets the matching opcode execute next;
+6. `haltAtBreakpoint()`, a callback exception, or callback re-entry converts that same match into the ordinary fail-safe halt;
+7. an ordinary halt is shown by the parking icon.
 
 The conditional observer is separate from the CPU's numeric execution trap used by other subsystems, so setting or clearing one cannot silently remove the other.
 
@@ -875,6 +877,72 @@ This remains armed and is evaluated at every clean instruction boundary until it
 2. select **SYMBOLS → load**;
 3. choose the `.symbols.json` file;
 4. use a listing layout containing `lbl`, `opr`, and optionally `com`.
+
+### Run JavaScript at `BREAK IF` with STEP TRACE SCENARIO
+
+STEP TRACE SCENARIO is a **breakpoint callback**, not a second CPU runner. The emulator remains the sole execution owner at the speed already selected in STEP TRACE. The existing `BREAK IF` expression remains the sole breakpoint engine.
+
+The scenario window has two action modes:
+
+| Control | Meaning |
+|---|---|
+| `<i class="fa fa-pause"></i>` **HALT at breakpoint** | Normal STEP TRACE behaviour: a matching `BREAK IF` stops before the matching opcode. This is the default. |
+| `<i class="fa fa-sign-in-alt"></i>` **RUN script at breakpoint** | Evaluate the editor once, register its callback, run that callback synchronously at each matching boundary, then continue with the matching opcode unless the script requests a halt. |
+
+Switching from HALT to RUN evaluates the editor **once**. The script must register exactly one persistent callback:
+
+```js
+onBreakpoint(function(bp) {
+    // bp.A, bp.X, bp.Y, bp.SP, bp.P, bp.PC and bp.INS
+    // describe the live clean instruction boundary.
+});
+```
+
+Local variables captured by that callback persist across later breakpoint hits, so the script can keep its own test index or phase. Closing and reopening the scenario popup does not itself stop the registered callback; the mode is owned by the debugger rather than by popup visibility. Ctrl/Cmd+Enter while editing performs the same arm operation as selecting RUN; it does not start the emulator.
+
+A successful callback return leaves the BREAK IF predicate active and execution continues through the matching opcode. To finish a scenario and remain stopped at the current match, call:
+
+```js
+haltAtBreakpoint();
+```
+
+A callback exception or re-entrant callback dispatch also fails safe to HALT at that same instruction boundary. Scenario callbacks are synchronous in this version; promises or asynchronous callbacks are not supported.
+
+Scenario helpers read the **same symbol table loaded into STEP TRACE**. `sym(name)`, `symbol(name)`, `symbols()`, and symbolic identifiers used by `BREAK IF` therefore refer to one symbol universe. Use **SYMBOLS → load** before running a symbol-based scenario.
+
+The scenario API is intentionally observational/manipulative rather than an execution scheduler. Useful helpers include `ram.read()`, `ram.write()`, `ram.read16()`, `ram.write16()`, `ram.fill()`, `cpu.state()`, `sym()`, `print()`, and `assert(boolean, description)`. The older scenario-owned `scenario()`, `cpu.start()`, `breakIf()`, `reset()`, and string-expression assertions are no longer part of this interface. Existing assembler **to emulator** and **to debugger** workflows remain separate and unchanged.
+
+### INFLATE repeated-validation example
+
+`INFLATE_ASM_CORE.S` contains an explicit 6502 test loop:
+
+```asm
+inflate_test_loop
+        JSR     inflate
+inflate_test_done
+        JMP     inflate_test_loop
+```
+
+A complete repeated test therefore uses the normal live machine rather than a JavaScript trampoline:
+
+1. assemble `INFLATE_ASM_CORE.S` and put the assembled program into the Apple II with the normal emulator workflow;
+2. load the assembler symbol export with **SYMBOLS → load**;
+3. enter and arm:
+
+   ```text
+   PC==inflate_test_loop || PC==inflate_test_done
+   ```
+
+4. open STEP TRACE SCENARIO and place `INFLATE_ASM_CORE_testbench.js` in the editor;
+5. select **RUN script at breakpoint**;
+6. run the emulator normally at the desired STEP TRACE speed;
+7. at `inflate_test_loop`, the callback injects the next compressed vector and pointer values;
+8. the live 6502 executes `JSR inflate`;
+9. at `inflate_test_done`, the callback checks output, pointers, guards and stack state;
+10. the assembly `JMP` returns to `inflate_test_loop`, so the next vector is prepared;
+11. after the final vector, the script calls `haltAtBreakpoint()` and STEP TRACE remains stopped.
+
+The JavaScript script tracks progress and evidence; the 6502 program owns control flow and the emulator owns execution. No host-injected trampoline or separate CPU-driving loop is involved.
 
 ---
 
