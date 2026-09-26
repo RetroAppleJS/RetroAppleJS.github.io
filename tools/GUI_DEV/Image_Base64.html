@@ -1,0 +1,190 @@
+<!--
+//     _____                       _____   ______                         ______   _    _    
+//    |_   _|                     / ___ `.|_   _ \                      .' ____ \ | |  | |   
+//      | |   _ .--..--.   .--./)|_/___) |  | |_) |  ,--.   .--.  .---. | |____\_|| |__| |_  
+//      | |  [ `.-. .-. | / /'`\; .'____.'  |  __'. `'_\ : ( (`\]/ /__\\| '____`'.|____   _| 
+//     _| |_  | | | | | | \ \._/// /_____  _| |__) |// | |, `'.'.| \__.,| (____) |    _| |_  
+//    |_____|[___||__||__].',__` |_______||_______/ \'-;__/[\__) )'.__.''.______.'   |_____| 
+//                       ( ( __))                                                            
+// Copyright (c) 2025 Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+// Image_Base64.html
+-->
+
+<!DOCTYPE html>
+<html>
+  <head>
+      <title>Image / Base64 Converter</title>
+      <script type="text/javascript" src="../TOOLS_Header.js"></script>
+        <meta name="description" content="Image to Base64 and Base64 to image converter">
+        <meta name="author" content="Freddy Vandriessche">
+        <meta charset="utf-8"> 
+  </head>
+  <body onload="document.getElementById('slider_title').outerHTML=_TITLE();update()">
+
+    <div id="slider_title">
+    </div>
+    <div class="slider_overlay">
+      <div id="topmenu">
+      </div>
+      <div id="main" style="height:100%;overflow-x:hidden;overflow-y:auto;background: linear-gradient(180deg, rgba(220,220,220,1) 0%, rgba(251,251,251,1) 50%);">
+
+        <div style="padding: 5px 10px;">
+          <b>IMAGE → BASE64</b>
+        </div>
+        <input id="myinput" type="file" accept="image/*" onchange="encode();" style="padding: 5px 10px; margin: 10px;" />
+        <button style="padding: 5px 10px; margin: 10px;" onclick="copy(document.getElementById('txt').value)">COPY BASE64</button>
+
+        <div style="padding: 5px 10px; margin-top: 5px;">
+          <b>BASE64 → IMAGE</b>
+        </div>
+        <button style="padding: 5px 10px; margin: 10px;" onclick="decode();">SHOW IMAGE</button>
+        <button id="downloadButton" style="padding: 5px 10px; margin: 10px;" onclick="downloadDecodedImage();" disabled>DOWNLOAD IMAGE</button>
+        <span id="status" style="margin: 10px;"></span>
+
+        <div id="dummy" style="padding: 10px;">
+        </div>
+        <div>
+          <textarea style="width:98%;height:500px;" id="txt" placeholder="Image Base64 data URL, or raw Base64 image data"></textarea>
+        </div>
+
+        <script>
+        var CONF_version="0.0.3"
+        var CONF_builddate="20260926-153400"
+        var decodedDataURL=""
+        var decodedMime=""
+
+          function encode() {
+            var selectedfile = document.getElementById("myinput").files;
+            if (selectedfile.length > 0) {
+              var imageFile = selectedfile[0];
+              var fileReader = new FileReader();
+              fileReader.onload = function(fileLoadedEvent) {
+                var srcData = fileLoadedEvent.target.result;
+                showImage(srcData);
+                document.getElementById("txt").value = srcData;
+                setStatus("");
+              }
+              fileReader.readAsDataURL(imageFile);
+            }
+          }
+
+          function toImageDataURL(input) {
+            var value = String(input || "").trim();
+            if (!value) {
+              throw new Error("No Base64 image data supplied.");
+            }
+
+            var dataUrlMatch = value.match(/^data:(image\/[a-z0-9.+-]+);base64,([\s\S]*)$/i);
+            if (dataUrlMatch) {
+              var dataUrlPayload = cleanBase64(dataUrlMatch[2]);
+              validateBase64(dataUrlPayload);
+              return "data:" + dataUrlMatch[1].toLowerCase() + ";base64," + dataUrlPayload;
+            }
+
+            if (/^data:/i.test(value)) {
+              throw new Error("The data URL must contain an image MIME type and Base64 data.");
+            }
+
+            var payload = cleanBase64(value);
+            validateBase64(payload);
+            var mime = detectImageMime(payload);
+            if (!mime) {
+              throw new Error("Base64 is valid, but the image type could not be detected. Paste a complete data:image/...;base64,... URL instead.");
+            }
+            return "data:" + mime + ";base64," + payload;
+          }
+
+          function cleanBase64(value) {
+            return String(value || "").replace(/\s+/g, "");
+          }
+
+          function validateBase64(payload) {
+            if (!payload || !/^[A-Za-z0-9+/]*={0,2}$/.test(payload) || payload.length % 4 === 1) {
+              throw new Error("Invalid Base64 image data.");
+            }
+            try {
+              atob(payload);
+            } catch (err) {
+              throw new Error("Invalid Base64 image data.");
+            }
+          }
+
+          function detectImageMime(payload) {
+            if (payload.indexOf("iVBORw0KGgo") === 0) return "image/png";
+            if (payload.indexOf("/9j/") === 0) return "image/jpeg";
+            if (payload.indexOf("R0lGOD") === 0) return "image/gif";
+            if (payload.indexOf("UklGR") === 0) return "image/webp";
+            if (payload.indexOf("Qk") === 0) return "image/bmp";
+            if (payload.indexOf("PHN2Zy") === 0 || payload.indexOf("PD94bWwg") === 0) return "image/svg+xml";
+            return "";
+          }
+
+          function decode() {
+            try {
+              decodedDataURL = toImageDataURL(document.getElementById("txt").value);
+              decodedMime = decodedDataURL.match(/^data:([^;]+);base64,/i)[1];
+              showImage(decodedDataURL);
+              document.getElementById("downloadButton").disabled = false;
+              setStatus("Image decoded.");
+            } catch (err) {
+              decodedDataURL = "";
+              decodedMime = "";
+              document.getElementById("dummy").innerHTML = "";
+              document.getElementById("downloadButton").disabled = true;
+              setStatus(err.message, true);
+            }
+          }
+
+          function showImage(srcData) {
+            var newImage = document.createElement("img");
+            newImage.src = srcData;
+            newImage.alt = "Decoded image";
+            newImage.style.maxWidth = "98%";
+            newImage.style.height = "auto";
+            document.getElementById("dummy").innerHTML = "";
+            document.getElementById("dummy").appendChild(newImage);
+          }
+
+          function downloadDecodedImage() {
+            if (!decodedDataURL) return;
+            var link = document.createElement("a");
+            link.href = decodedDataURL;
+            link.download = "decoded-image." + extensionForMime(decodedMime);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
+
+          function extensionForMime(mime) {
+            var extensions = {
+              "image/png": "png",
+              "image/jpeg": "jpg",
+              "image/gif": "gif",
+              "image/webp": "webp",
+              "image/bmp": "bmp",
+              "image/svg+xml": "svg"
+            };
+            return extensions[mime] || "img";
+          }
+
+          function setStatus(message, isError) {
+            var status = document.getElementById("status");
+            status.textContent = message;
+            status.style.color = isError ? "#a00000" : "";
+          }
+
+          function copy(text) {
+            navigator.clipboard.writeText(text).then(function() {
+              //alert('Copied to clipboard');
+            }, function(err) {
+              alert('Could not copy text: ' + err);
+            });
+          }
+        </script>
+
+      </div>
+    </div>
+  </body>
+
+</html>
