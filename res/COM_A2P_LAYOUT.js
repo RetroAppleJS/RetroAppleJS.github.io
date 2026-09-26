@@ -1,10 +1,11 @@
 /*
  * COM_A2P_LAYOUT.js
  *
- * Experimental runtime compositor for the emulator tab background.
- * It consumes the same version-1 layout JSON written by
- * tools/GUI_DEV/apple2-system-composer.html and replaces the legacy static
- * #tab1 background only after the complete composition has rendered.
+ * Runtime HTML compositor for the emulator tab background.
+ * It consumes the version-1 embedded layout JSON written by
+ * tools/GUI_DEV/apple2-system-composer.html. Embedded PNG data URLs are used
+ * directly when present, with the legacy asset directory retained as a
+ * compatibility fallback for non-embedded layouts.
  */
 (function(root,factory)
 {
@@ -26,7 +27,7 @@
     var CANVAS_W = 1144;
     var CANVAS_H = 1144;
     var DISPLAY_SIZE = 1300;
-    var LAYOUT_URL = "tools/GUI_DEV/assets/apple2-layout-6.json";
+    var LAYOUT_URL = "tools/GUI_DEV/assets/apple2-layout-embedded.json";
     var ASSET_BASE = "tools/GUI_DEV/assets/";
     var LEGACY_DRIVE_VISUAL_IDS = ["dskLED_D1","dskLED_D2","dskLID_D1","dskLID_D2"];
 
@@ -56,6 +57,22 @@
             throw new Error("Layer " + (index+1) + " shadow opacity must be between 0 and 1.");
 
         return out;
+    }
+
+    function validateAssets(raw)
+    {
+        if(raw === undefined) return {};
+        if(!raw || typeof raw != "object" || Array.isArray(raw))
+            throw new Error("Apple II layout assets must be an object.");
+
+        var assets = {};
+        Object.keys(raw).forEach(function(filename)
+        {
+            if(typeof raw[filename] != "string" || !raw[filename].trim())
+                throw new Error("Embedded Apple II layout asset " + filename + " must be a non-empty data URL string.");
+            assets[filename] = raw[filename];
+        });
+        return assets;
     }
 
     function validateLayout(raw)
@@ -92,26 +109,30 @@
         return {
             version: LAYOUT_VERSION,
             canvas: {width:CANVAS_W,height:CANVAS_H},
-            layers: layers
+            layers: layers,
+            assets: validateAssets(raw.assets)
         };
     }
 
-    function assetURL(filename)
+    function assetURL(filename,layout)
     {
+        if(layout && layout.assets && typeof layout.assets[filename] == "string" && layout.assets[filename])
+            return layout.assets[filename];
+
         return ASSET_BASE + String(filename)
             .split("/")
             .map(function(part){ return encodeURIComponent(part); })
             .join("/");
     }
 
-    function loadImage(rootWindow,filename)
+    function loadImage(rootWindow,filename,layout)
     {
         return new Promise(function(resolve,reject)
         {
             var img = new rootWindow.Image();
             img.onload = function(){ resolve(img); };
             img.onerror = function(){ reject(new Error("Could not load Apple II layout asset: " + filename)); };
-            img.src = assetURL(filename);
+            img.src = assetURL(filename,layout);
         });
     }
 
@@ -129,7 +150,7 @@
 
         return Promise.all(files.map(function(file)
         {
-            return loadImage(rootWindow,file).then(function(image){ return [file,image]; });
+            return loadImage(rootWindow,file,layout).then(function(image){ return [file,image]; });
         })).then(function(entries){ return new Map(entries); });
     }
 
@@ -185,6 +206,53 @@
         });
     }
 
+    function buildDOMComposition(doc,layout)
+    {
+        var host = doc.createElement("div");
+        host.id = "a2p-system-layout";
+        host.style.position = "absolute";
+        host.style.left = "0px";
+        host.style.top = "0px";
+        host.style.width = layout.canvas.width + "px";
+        host.style.height = layout.canvas.height + "px";
+        host.style.transformOrigin = "0 0";
+        host.style.transform = "scale(" + (DISPLAY_SIZE / layout.canvas.width) + ")";
+        host.style.pointerEvents = "none";
+        host.style.overflow = "visible";
+        host.style.zIndex = "0";
+
+        for(var i=layout.layers.length-1;i>=0;i--)
+        {
+            var layer = layout.layers[i];
+            if(!layer.visible) continue;
+
+            var img = doc.createElement("img");
+            img.src = assetURL(layer.file,layout);
+            img.alt = "";
+            img.draggable = false;
+            img.dataset.layerIndex = String(i);
+            img.dataset.file = layer.file;
+            img.style.position = "absolute";
+            img.style.left = layer.x + "px";
+            img.style.top = layer.y + "px";
+            img.style.maxWidth = "none";
+            img.style.userSelect = "none";
+            img.style.pointerEvents = "none";
+            img.style.filter = "none";
+
+            if(layer.shadow && layer.shadow.enabled)
+                img.style.filter = "drop-shadow("
+                    + layer.shadow.offsetX + "px "
+                    + layer.shadow.offsetY + "px "
+                    + layer.shadow.blur + "px rgba(0,0,0,"
+                    + layer.shadow.opacity + "))";
+
+            host.appendChild(img);
+        }
+
+        return host;
+    }
+
     function disableLegacyDriveVisuals(doc)
     {
         LEGACY_DRIVE_VISUAL_IDS.forEach(function(id)
@@ -203,37 +271,34 @@
         return loadLayout(rootWindow)
             .then(function(layout)
             {
-                return renderLayout(rootWindow,layout).then(function(canvas)
-                {
-                    var dataURL = canvas.toDataURL("image/png");
+                var oldHost = doc.getElementById("a2p-system-layout");
+                if(oldHost && oldHost.parentNode) oldHost.parentNode.removeChild(oldHost);
 
-                    /*
-                     * Keep #tab1 itself as the coordinate system used by the
-                     * existing emulator.  Only replace its background bitmap.
-                     */
-                    tab.style.backgroundImage = 'url("' + dataURL + '")';
-                    tab.style.backgroundSize = DISPLAY_SIZE + "px " + DISPLAY_SIZE + "px";
-                    tab.style.backgroundRepeat = "no-repeat";
-                    tab.style.backgroundPosition = "0 0";
-                    tab.style.imageRendering = "pixelated";
+                var host = buildDOMComposition(doc,layout);
 
-                    /*
-                     * The JSON already contains the two static LED and lid
-                     * layers.  Hide the legacy state-driven DOM overlays for
-                     * this visual-only experiment; no drive integration yet.
-                     */
-                    disableLegacyDriveVisuals(doc);
+                /* Keep the existing 1300 x 1300 emulator coordinate system. */
+                tab.style.position = "relative";
+                tab.style.backgroundImage = "none";
+                tab.style.backgroundSize = "none";
+                tab.style.backgroundRepeat = "no-repeat";
 
-                    api.lastLayout = layout;
-                    api.lastCanvas = canvas;
-                    return true;
-                });
+                if(typeof tab.insertBefore == "function")
+                    tab.insertBefore(host,tab.firstChild || null);
+                else
+                    tab.appendChild(host);
+
+                /* JSON owns the static drive visuals in this iteration. */
+                disableLegacyDriveVisuals(doc);
+
+                api.lastLayout = layout;
+                api.lastComposition = host;
+                api.lastCanvas = null;
+                return true;
             })
             .catch(function(err)
             {
-                /* Keep the base64 CSS background as a safe fallback. */
                 if(rootWindow.console && typeof rootWindow.console.error == "function")
-                    rootWindow.console.error("Apple II system composition failed; using legacy background.",err);
+                    rootWindow.console.error("Apple II HTML system composition failed.",err);
                 return false;
             });
     }
@@ -259,8 +324,10 @@
         install: install,
         autoInstall: autoInstall,
         disableLegacyDriveVisuals: disableLegacyDriveVisuals,
+        buildDOMComposition: buildDOMComposition,
         lastLayout: null,
-        lastCanvas: null
+        lastCanvas: null,
+        lastComposition: null
     };
 
     return api;
