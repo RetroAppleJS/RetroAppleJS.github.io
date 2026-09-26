@@ -1,0 +1,23 @@
+name: Build branch preview distro
+
+on:
+  push:
+    branches: [ "apple2-tab1-html-layout" ]
+
+permissions:
+  contents: read
+
+jobs:
+  test-preview-builder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run preview distribution contract
+        run: node --test tests/preview_distribution.test.js
