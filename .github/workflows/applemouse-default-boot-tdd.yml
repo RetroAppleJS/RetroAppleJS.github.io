@@ -10,5 +10,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch, test, and commit AppleMouse default boot integration
-        run: bash tools/applemouse_default_boot_tdd.sh
+      - name: Run focused AppleMouse boot suite
+        run: node --test tests/applemouse_default_boot.test.js tests/applemouse_68705.test.js tests/applemouse_rom.test.js
