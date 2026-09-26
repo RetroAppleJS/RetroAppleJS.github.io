@@ -96,7 +96,7 @@ function inlineBuild(html, repoRoot) {
 }
 
 function buildPreviewAssets(repoRoot) {
-  const layoutRel = 'tools/GUI_DEV/assets/apple2-layout-embedded.json';
+  const layoutRel = 'tools/GUI_DEV/assets/apple2-layout-embedded_v2.json';
   const layoutPath = path.join(repoRoot, layoutRel);
   if (!fs.existsSync(layoutPath)) return null;
 
