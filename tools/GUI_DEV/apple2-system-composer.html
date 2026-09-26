@@ -8,7 +8,7 @@
 :root{--bg:#e9e4d9;--panel:#f7f4ec;--line:#b7b0a4;--ink:#292722;--muted:#746f66;--accent:#8c3c2d;--sel:#1e6ba8;--danger:#a5382a}
 *{box-sizing:border-box}html,body{height:100%}body{margin:0;font:14px/1.35 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink);background:var(--bg)}
 button,input{font:inherit}button{border:1px solid var(--line);background:#fffdf8;color:var(--ink);border-radius:5px;padding:7px 11px;cursor:pointer}button:hover:not(:disabled){background:#fff}button:focus-visible,input:focus-visible{outline:2px solid var(--sel);outline-offset:2px}button:disabled{opacity:.45;cursor:default}.danger{color:var(--danger)}
-.app{min-height:100%;display:grid;grid-template-rows:auto 1fr auto}.toolbar{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:4}.title{font-weight:700;margin-right:auto;letter-spacing:.02em}.workspace{min-height:0;display:grid;grid-template-columns:285px 1fr;gap:0}.sidebar{border-right:1px solid var(--line);background:var(--panel);padding:12px;overflow:auto}.sidebar h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px}.layer-list{display:flex;flex-direction:column;gap:5px;margin-bottom:18px}.layer-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:7px;padding:7px;border:1px solid var(--line);border-radius:5px;background:#fffdf8;cursor:pointer}.layer-row.selected{outline:2px solid var(--sel);outline-offset:-1px}.layer-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.missing{font-size:10px;font-weight:700;color:var(--danger);letter-spacing:.06em}.props{border-top:1px solid var(--line);padding-top:12px}.filename{font-weight:600;overflow-wrap:anywhere;margin:0 0 10px}.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}.field input[type=number]{width:100%;padding:6px;border:1px solid var(--line);border-radius:4px;background:#fff}.check{display:flex;gap:7px;align-items:center;margin:10px 0}.zbuttons{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}.remove{margin-top:7px;width:100%}.empty{color:var(--muted);font-style:italic;padding:8px 2px}
+.app{min-height:100%;display:grid;grid-template-rows:auto 1fr auto}.toolbar{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:4}.title{font-weight:700;margin-right:auto;letter-spacing:.02em}.workspace{min-height:0;display:grid;grid-template-columns:285px 1fr;gap:0}.sidebar{border-right:1px solid var(--line);background:var(--panel);padding:12px;overflow:auto}.sidebar h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px}.layer-list{display:flex;flex-direction:column;gap:5px;margin-bottom:18px}.layer-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:7px;padding:7px;border:1px solid var(--line);border-radius:5px;background:#fffdf8;cursor:pointer}.layer-row.selected{outline:2px solid var(--sel);outline-offset:-1px}.layer-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.missing{font-size:10px;font-weight:700;color:var(--danger);letter-spacing:.06em}.props{border-top:1px solid var(--line);padding-top:12px}.filename{font-weight:600;overflow-wrap:anywhere;margin:0 0 10px}.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}.field input[type=number]{width:100%;padding:6px;border:1px solid var(--line);border-radius:4px;background:#fff}.check{display:flex;gap:7px;align-items:center;margin:10px 0}.zbuttons{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}.remove{margin-top:7px;width:100%}.shadow-section{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}.shadow-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 8px}.shadow-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}.shadow-section.disabled .shadow-fields{opacity:.45}.empty{color:var(--muted);font-style:italic;padding:8px 2px}
 .stage{min-width:0;min-height:0;overflow:auto;padding:18px;display:flex;justify-content:center;align-items:flex-start;background:linear-gradient(45deg,#ded9ce 25%,transparent 25%) 0 0/20px 20px,linear-gradient(45deg,transparent 75%,#ded9ce 75%) 0 0/20px 20px,linear-gradient(45deg,transparent 75%,#ded9ce 75%) 10px -10px/20px 20px,linear-gradient(45deg,#ded9ce 25%,#eee9df 25%) 10px -10px/20px 20px}.canvas-shell{box-shadow:0 2px 18px #0002;border:1px solid #b9b4aa;background:transparent;line-height:0;max-width:100%}canvas{display:block;width:min(1144px,calc(100vw - 340px));height:auto;max-width:100%;touch-action:none;background:transparent}.status{padding:7px 12px;border-top:1px solid var(--line);background:var(--panel);color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hint{font-size:11px;color:var(--muted);margin-top:8px}
 @media(max-width:850px){.workspace{grid-template-columns:220px 1fr}.title{display:none}canvas{width:min(1144px,calc(100vw - 270px))}}
 </style>
@@ -38,6 +38,16 @@ button,input{font:inherit}button{border:1px solid var(--line);background:#fffdf8
             <div class="field"><label for="yInput">Y</label><input id="yInput" type="number" step="1"></div>
           </div>
           <label class="check"><input id="visibleInput" type="checkbox"> Visible</label>
+          <section id="shadowSection" class="shadow-section">
+            <div class="shadow-title">Shadow</div>
+            <label class="check"><input id="shadowEnabledInput" type="checkbox"> Cast shadow</label>
+            <div class="shadow-fields">
+              <div class="field"><label for="shadowOffsetXInput">Offset X</label><input id="shadowOffsetXInput" type="number" step="1"></div>
+              <div class="field"><label for="shadowOffsetYInput">Offset Y</label><input id="shadowOffsetYInput" type="number" step="1"></div>
+              <div class="field"><label for="shadowBlurInput">Blur</label><input id="shadowBlurInput" type="number" min="0" step="1"></div>
+              <div class="field"><label for="shadowOpacityInput">Opacity</label><input id="shadowOpacityInput" type="number" min="0" max="1" step="0.05"></div>
+            </div>
+          </section>
           <div class="zbuttons">
             <button id="forwardBtn">Bring Forward</button>
             <button id="backwardBtn">Send Backward</button>
@@ -56,6 +66,7 @@ button,input{font:inherit}button{border:1px solid var(--line);background:#fffdf8
 <script>
 'use strict';
 const CANVAS_W=1144, CANVAS_H=1144, LAYOUT_VERSION=1;
+const DEFAULT_SHADOW=Object.freeze({enabled:false,offsetX:0,offsetY:15,blur:12,opacity:0.75});
 const state={layers:[],selectedLayerId:null,assets:new Map(),dragging:null};
 let runtimeCounter=1;
 const $=id=>document.getElementById(id);
@@ -65,6 +76,21 @@ const imageInput=$('imageInput'), layoutInput=$('layoutInput');
 function makeRuntimeId(){ return `layer-${Date.now().toString(36)}-${runtimeCounter++}`; }
 function getSelectedLayer(){ return state.layers.find(l=>l.id===state.selectedLayerId)||null; }
 function setLayers(layers){ state.layers=layers; state.selectedLayerId=layers[0]?.id||null; refreshUI(); renderPreview(); }
+
+function validateShadow(raw,index){
+  if(raw==null) return {...DEFAULT_SHADOW};
+  if(typeof raw!=='object' || Array.isArray(raw)) throw new Error(`Layer ${index+1} shadow must be an object.`);
+  const enabled=raw.enabled ?? false;
+  const offsetX=raw.offsetX ?? DEFAULT_SHADOW.offsetX;
+  const offsetY=raw.offsetY ?? DEFAULT_SHADOW.offsetY;
+  const blur=raw.blur ?? DEFAULT_SHADOW.blur;
+  const opacity=raw.opacity ?? DEFAULT_SHADOW.opacity;
+  if(typeof enabled!=='boolean') throw new Error(`Layer ${index+1} shadow enabled must be boolean.`);
+  if(!Number.isInteger(offsetX) || !Number.isInteger(offsetY)) throw new Error(`Layer ${index+1} shadow offsets must be integer pixels.`);
+  if(typeof blur!=='number' || !Number.isFinite(blur) || blur<0) throw new Error(`Layer ${index+1} shadow blur must be a non-negative number.`);
+  if(typeof opacity!=='number' || !Number.isFinite(opacity) || opacity<0 || opacity>1) throw new Error(`Layer ${index+1} shadow opacity must be between 0 and 1.`);
+  return {enabled,offsetX,offsetY,blur,opacity};
+}
 
 function validateLayout(raw){
   if(!raw || typeof raw!=='object' || Array.isArray(raw)) throw new Error('Layout must be a JSON object.');
@@ -76,7 +102,7 @@ function validateLayout(raw){
     if(typeof l.file!=='string' || !l.file.trim()) throw new Error(`Layer ${i+1} filename must be non-empty.`);
     if(!Number.isInteger(l.x) || !Number.isInteger(l.y)) throw new Error(`Layer ${i+1} X/Y coordinates must be integer pixels.`);
     if(typeof l.visible!=='boolean') throw new Error(`Layer ${i+1} visibility must be boolean.`);
-    return {file:l.file,x:l.x,y:l.y,visible:l.visible};
+    return {file:l.file,x:l.x,y:l.y,visible:l.visible,shadow:validateShadow(l.shadow,i)};
   });
   return {version:LAYOUT_VERSION,canvas:{width:CANVAS_W,height:CANVAS_H},layers};
 }
@@ -89,14 +115,14 @@ function findCachedAsset(filename){
 }
 function attachAsset(layer,asset){ layer.image=asset.image;layer.width=asset.width;layer.height=asset.height;layer.resolved=true; }
 function layerFromLayout(entry){
-  const l={id:makeRuntimeId(),file:entry.file,x:entry.x,y:entry.y,visible:entry.visible,image:null,width:0,height:0,resolved:false};
+  const l={id:makeRuntimeId(),file:entry.file,x:entry.x,y:entry.y,visible:entry.visible,shadow:{...(entry.shadow||DEFAULT_SHADOW)},image:null,width:0,height:0,resolved:false};
   const a=findCachedAsset(entry.file); if(a) attachAsset(l,a); return l;
 }
 function applyLayout(layout){
   const next=layout.layers.map(layerFromLayout);
   state.layers=next; state.selectedLayerId=next[0]?.id||null; state.dragging=null; refreshUI();renderPreview();
 }
-function serializeLayout(){return {version:LAYOUT_VERSION,canvas:{width:CANVAS_W,height:CANVAS_H},layers:state.layers.map(({file,x,y,visible})=>({file,x,y,visible}))};}
+function serializeLayout(){return {version:LAYOUT_VERSION,canvas:{width:CANVAS_W,height:CANVAS_H},layers:state.layers.map(({file,x,y,visible,shadow})=>({file,x,y,visible,shadow:{...shadow}}))};}
 
 function resolveLayersForAsset(asset){
   const exact=state.layers.filter(l=>!l.resolved && l.file===asset.file);
@@ -106,7 +132,7 @@ function resolveLayersForAsset(asset){
   ci.forEach(l=>attachAsset(l,asset));return ci.length;
 }
 function addLayerFromAsset(asset){
-  const l={id:makeRuntimeId(),file:asset.file,x:Math.round((CANVAS_W-asset.width)/2),y:Math.round((CANVAS_H-asset.height)/2),visible:true,image:asset.image,width:asset.width,height:asset.height,resolved:true};
+  const l={id:makeRuntimeId(),file:asset.file,x:Math.round((CANVAS_W-asset.width)/2),y:Math.round((CANVAS_H-asset.height)/2),visible:true,shadow:{...DEFAULT_SHADOW},image:asset.image,width:asset.width,height:asset.height,resolved:true};
   state.layers.unshift(l); state.selectedLayerId=l.id; return l;
 }
 function loadImageFile(file){
@@ -141,9 +167,21 @@ function sendBackward(){const i=state.layers.findIndex(l=>l.id===state.selectedL
 
 function hitTest(x,y){for(const l of state.layers){if(l.visible&&l.resolved&&x>=l.x&&x<l.x+l.width&&y>=l.y&&y<l.y+l.height)return l;}return null;}
 function canvasPoint(e){const r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};}
+function drawLayer(targetCtx,l){
+  if(!l.visible||!l.resolved)return;
+  targetCtx.save();
+  if(l.shadow?.enabled){
+    targetCtx.shadowOffsetX=l.shadow.offsetX;
+    targetCtx.shadowOffsetY=l.shadow.offsetY;
+    targetCtx.shadowBlur=l.shadow.blur;
+    targetCtx.shadowColor=`rgba(0,0,0,${l.shadow.opacity})`;
+  }
+  targetCtx.drawImage(l.image,l.x,l.y);
+  targetCtx.restore();
+}
 function renderPreview(){
   ctx.clearRect(0,0,CANVAS_W,CANVAS_H);
-  for(let i=state.layers.length-1;i>=0;i--){const l=state.layers[i];if(l.visible&&l.resolved)ctx.drawImage(l.image,l.x,l.y);}
+  for(let i=state.layers.length-1;i>=0;i--)drawLayer(ctx,state.layers[i]);
   const s=getSelectedLayer(); if(s&&s.visible&&s.resolved){ctx.save();ctx.strokeStyle='#1e6ba8';ctx.lineWidth=2;ctx.setLineDash([8,5]);ctx.strokeRect(s.x+.5,s.y+.5,s.width-1,s.height-1);ctx.restore();}
 }
 
@@ -158,7 +196,13 @@ function refreshUI(){
     row.append(cb,name,tag);row.addEventListener('click',()=>selectLayer(l.id));list.appendChild(row);
   });
   const s=getSelectedLayer(), controls=$('selectionControls'); $('noSelection').hidden=!!s;controls.hidden=!s;
-  if(s){$('selectedFilename').textContent=s.file;$('xInput').value=s.x;$('yInput').value=s.y;$('visibleInput').checked=s.visible;const i=state.layers.indexOf(s);$('forwardBtn').disabled=i<=0;$('backwardBtn').disabled=i<0||i>=state.layers.length-1;}
+  if(s){
+    $('selectedFilename').textContent=s.file;$('xInput').value=s.x;$('yInput').value=s.y;$('visibleInput').checked=s.visible;
+    $('shadowEnabledInput').checked=!!s.shadow.enabled;$('shadowOffsetXInput').value=s.shadow.offsetX;$('shadowOffsetYInput').value=s.shadow.offsetY;$('shadowBlurInput').value=s.shadow.blur;$('shadowOpacityInput').value=s.shadow.opacity;
+    $('shadowSection').classList.toggle('disabled',!s.shadow.enabled);
+    for(const id of ['shadowOffsetXInput','shadowOffsetYInput','shadowBlurInput','shadowOpacityInput'])$(id).disabled=!s.shadow.enabled;
+    const i=state.layers.indexOf(s);$('forwardBtn').disabled=i<=0;$('backwardBtn').disabled=i<0||i>=state.layers.length-1;
+  }
   const missing=state.layers.filter(l=>!l.resolved).length; $('statusBar').textContent=`${state.layers.length} layer${state.layers.length===1?'':'s'} | ${s?`Selected: ${s.file} | x=${s.x} y=${s.y}`:'No layer selected'}${missing?` | ${missing} missing asset${missing===1?'':'s'}`:''}`;
 }
 
@@ -171,6 +215,12 @@ function commitNumber(input,key){const l=getSelectedLayer();if(!l)return;const n
 $('xInput').addEventListener('change',()=>commitNumber($('xInput'),'x'));$('yInput').addEventListener('change',()=>commitNumber($('yInput'),'y'));
 $('xInput').addEventListener('keydown',e=>{if(e.key==='Enter'){commitNumber($('xInput'),'x');e.target.blur();}});$('yInput').addEventListener('keydown',e=>{if(e.key==='Enter'){commitNumber($('yInput'),'y');e.target.blur();}});
 $('visibleInput').addEventListener('change',()=>{const l=getSelectedLayer();if(l){l.visible=$('visibleInput').checked;refreshUI();renderPreview();}});
+$('shadowEnabledInput').addEventListener('change',()=>{const l=getSelectedLayer();if(l){l.shadow.enabled=$('shadowEnabledInput').checked;refreshUI();renderPreview();}});
+function commitShadowNumber(id,key,{integer=false,min=-Infinity,max=Infinity}={}){const l=getSelectedLayer();if(!l)return;const n=Number($(id).value);if(Number.isFinite(n)&&(!integer||Number.isInteger(n))&&n>=min&&n<=max){l.shadow[key]=n;refreshUI();renderPreview();}else refreshUI();}
+$('shadowOffsetXInput').addEventListener('change',()=>commitShadowNumber('shadowOffsetXInput','offsetX',{integer:true}));
+$('shadowOffsetYInput').addEventListener('change',()=>commitShadowNumber('shadowOffsetYInput','offsetY',{integer:true}));
+$('shadowBlurInput').addEventListener('change',()=>commitShadowNumber('shadowBlurInput','blur',{min:0}));
+$('shadowOpacityInput').addEventListener('change',()=>commitShadowNumber('shadowOpacityInput','opacity',{min:0,max:1}));
 $('forwardBtn').addEventListener('click',bringForward);$('backwardBtn').addEventListener('click',sendBackward);$('removeBtn').addEventListener('click',removeSelectedLayer);
 
 document.addEventListener('keydown',e=>{const tag=e.target?.tagName?.toLowerCase();if(tag==='input'||tag==='textarea'||tag==='select'||e.target?.isContentEditable)return;if(!getSelectedLayer())return;const step=e.shiftKey?10:1;const delta={ArrowLeft:[-step,0],ArrowRight:[step,0],ArrowUp:[0,-step],ArrowDown:[0,step]}[e.key];if(delta){e.preventDefault();moveSelected(...delta);}});
@@ -181,7 +231,7 @@ $('loadBtn').addEventListener('click',()=>layoutInput.click());
 layoutInput.addEventListener('change',async()=>{const f=layoutInput.files?.[0];layoutInput.value='';if(!f)return;try{const raw=JSON.parse(await f.text());const valid=validateLayout(raw);applyLayout(valid);}catch(e){alert(`Could not load layout: ${e.message}`);}});
 $('saveBtn').addEventListener('click',()=>downloadBlob(new Blob([JSON.stringify(serializeLayout(),null,2)],{type:'application/json'}),'apple2-layout.json'));
 function getExportBlockers(){return [...new Set(state.layers.filter(l=>l.visible&&!l.resolved).map(l=>l.file))];}
-function buildExportCanvas(){const c=document.createElement('canvas');c.width=CANVAS_W;c.height=CANVAS_H;const cctx=c.getContext('2d');cctx.clearRect(0,0,CANVAS_W,CANVAS_H);for(let i=state.layers.length-1;i>=0;i--){const l=state.layers[i];if(l.visible&&l.resolved)cctx.drawImage(l.image,l.x,l.y);}return c;}
+function buildExportCanvas(){const c=document.createElement('canvas');c.width=CANVAS_W;c.height=CANVAS_H;const cctx=c.getContext('2d');cctx.clearRect(0,0,CANVAS_W,CANVAS_H);for(let i=state.layers.length-1;i>=0;i--)drawLayer(cctx,state.layers[i]);return c;}
 function exportPNG(){const blockers=getExportBlockers();if(blockers.length){alert(`Cannot export PNG. Missing visible assets:\n${blockers.join('\n')}`);return;}const c=buildExportCanvas();c.toBlob(blob=>{if(blob)downloadBlob(blob,'apple2-composition.png');else alert('PNG export failed.');},'image/png');}
 $('exportBtn').addEventListener('click',exportPNG);
 
