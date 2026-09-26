@@ -10,117 +10,63 @@
       "x": 535,
       "y": 684,
       "visible": true,
-      "shadow": {
-        "enabled": false,
-        "offsetX": 8,
-        "offsetY": 10,
-        "blur": 12,
-        "opacity": 0.3
-      }
+      "shadow": {"enabled": false, "offsetX": 8, "offsetY": 10, "blur": 12, "opacity": 0.3}
     },
     {
       "file": "A2P_FULL_DISKII_LED.png",
       "x": 154,
       "y": 684,
       "visible": true,
-      "shadow": {
-        "enabled": false,
-        "offsetX": 8,
-        "offsetY": 10,
-        "blur": 12,
-        "opacity": 0.3
-      }
+      "shadow": {"enabled": false, "offsetX": 8, "offsetY": 10, "blur": 12, "opacity": 0.3}
     },
     {
       "file": "A2P_FULL_DISKII_LID.png",
       "x": 580,
       "y": 576,
       "visible": true,
-      "shadow": {
-        "enabled": false,
-        "offsetX": 8,
-        "offsetY": 10,
-        "blur": 12,
-        "opacity": 0.3
-      }
+      "shadow": {"enabled": false, "offsetX": 8, "offsetY": 10, "blur": 12, "opacity": 0.3}
     },
     {
       "file": "A2P_FULL_DISKII_LID.png",
       "x": 206,
       "y": 577,
       "visible": true,
-      "shadow": {
-        "enabled": false,
-        "offsetX": 8,
-        "offsetY": 10,
-        "blur": 12,
-        "opacity": 0.3
-      }
+      "shadow": {"enabled": false, "offsetX": 8, "offsetY": 10, "blur": 12, "opacity": 0.3}
     },
     {
-      "file": "A2P_FULL_monitor.png",
+      "file": "A2P_FULL_Monitor.png",
       "x": 0,
       "y": 0,
       "visible": true,
-      "shadow": {
-        "enabled": true,
-        "offsetX": 0,
-        "offsetY": 15,
-        "blur": 12,
-        "opacity": 0.75
-      }
+      "shadow": {"enabled": true, "offsetX": 0, "offsetY": 15, "blur": 12, "opacity": 0.75}
     },
     {
       "file": "A2P_FULL_DISKII_right.png",
       "x": 461,
       "y": 463,
       "visible": true,
-      "shadow": {
-        "enabled": true,
-        "offsetX": 0,
-        "offsetY": 15,
-        "blur": 12,
-        "opacity": 0.75
-      }
+      "shadow": {"enabled": true, "offsetX": 0, "offsetY": 15, "blur": 12, "opacity": 0.75}
     },
     {
       "file": "A2P_FULL_DISKII_left.png",
       "x": 80,
       "y": 464,
       "visible": true,
-      "shadow": {
-        "enabled": true,
-        "offsetX": 0,
-        "offsetY": 15,
-        "blur": 12,
-        "opacity": 0.75
-      }
+      "shadow": {"enabled": true, "offsetX": 0, "offsetY": 15, "blur": 12, "opacity": 0.75}
     },
     {
       "file": "A2P_FULL_Body.png",
       "x": 0,
       "y": 485,
       "visible": true,
-      "shadow": {
-        "enabled": true,
-        "offsetX": 0,
-        "offsetY": 15,
-        "blur": 12,
-        "opacity": 0.75
-      }
+      "shadow": {"enabled": true, "offsetX": 0, "offsetY": 15, "blur": 12, "opacity": 0.75}
     },
     {
       "file": "A2P_FULL_v3.png",
       "x": 0,
       "y": 0,
       "visible": true,
-      "shadow": {
-        "enabled": false,
-        "offsetX": 8,
-        "offsetY": 10,
-        "blur": 12,
-        "opacity": 0.3
-      }
+      "shadow": {"enabled": false, "offsetX": 8, "offsetY": 10, "blur": 12, "opacity": 0.3}
     }
   ]
 }
