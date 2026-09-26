@@ -1,0 +1,35 @@
+name: AppleMouse ROM TDD
+
+on:
+  push:
+    branches:
+      - feature/applemouse-authentic-rom
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch and verify published AppleMouse ROM
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L --fail --silent --show-error \
+            'https://raw.githubusercontent.com/freitz85/AppleIIMouse/master/Apple%20Mouse%20Interface%20Card%20ROM%20-%20342-0270-C.bin' \
+            -o /tmp/applemouse.bin
+          python - <<'PY'
+          from pathlib import Path
+          import base64,hashlib,zlib
+          data=Path('/tmp/applemouse.bin').read_bytes()
+          assert len(data)==2048, len(data)
+          assert hashlib.sha1(data).hexdigest()=='3a9d881a8a8d30f55b9719aceebbcf717f829d6f'
+          assert zlib.crc32(data)&0xffffffff==0x0bcd1e8e
+          print('APPLE_MOUSE_ROM_SIZE=',len(data),sep='')
+          print('APPLE_MOUSE_ROM_SHA1=',hashlib.sha1(data).hexdigest(),sep='')
+          print('APPLE_MOUSE_ROM_CRC32=',format(zlib.crc32(data)&0xffffffff,'08x'),sep='')
+          print('APPLE_MOUSE_ROM_B64_BEGIN')
+          print(base64.b64encode(data).decode('ascii'))
+          print('APPLE_MOUSE_ROM_B64_END')
+          PY
+      - name: Run AppleMouse ROM tests
+        run: node --test tests/applemouse_rom.test.js
