@@ -1,0 +1,14 @@
+name: AppleMouse default boot TDD
+
+on:
+  push:
+    branches:
+      - feature/applemouse-authentic-rom
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run AppleMouse default boot test
+        run: node --test tests/applemouse_default_boot.test.js
