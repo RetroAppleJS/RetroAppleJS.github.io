@@ -22,7 +22,7 @@ function parseRngExpr(expr,opts)
 function loadDefaultBoot()
 {
     const sandbox={
-        console:{log(){},warn(){},error(){},assert(){}},
+        console:{log(){},warn(){},error(){},assert(){},group(){},groupEnd(){}},
         TextEncoder,
         _DOCS:{},
         oEMUI:{slotConfig(){},slotsRender(){},deviceBtn(){}},
