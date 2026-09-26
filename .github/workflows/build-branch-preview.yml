@@ -2,22 +2,94 @@ name: Build branch preview distro
 
 on:
   push:
-    branches: [ "apple2-tab1-html-layout" ]
+    branches-ignore:
+      - "main"
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to build"
+        required: true
+        type: string
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: branch-preview-publish
+  cancel-in-progress: false
 
 jobs:
-  test-preview-builder:
+  build-preview:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Select branch
+        id: branch
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            BRANCH="${{ inputs.branch }}"
+          else
+            BRANCH="${GITHUB_REF_NAME}"
+          fi
+          SAFE="$(printf '%s' "$BRANCH" | sed -E 's/[^A-Za-z0-9._-]+/-/g; s/^-+//; s/-+$//')"
+          if [ -z "$SAFE" ]; then
+            echo "Could not derive a safe preview filename from branch: $BRANCH"
+            exit 1
+          fi
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "safe=$SAFE" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout preview source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.branch.outputs.branch }}
+          path: source
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Run preview distribution contract
+      - name: Test preview distribution builder
+        working-directory: source
         run: node --test tests/preview_distribution.test.js
+
+      - name: Build branch preview distro
+        working-directory: source
+        run: node .github/scripts/inline-preview.cjs --branch "${{ steps.branch.outputs.branch }}"
+
+      - name: Verify preview output
+        run: |
+          test -f "source/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
+          ls -lh "source/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
+
+      - name: Checkout main for publishing
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: publish
+
+      - name: Publish preview into main dist
+        shell: bash
+        run: |
+          mkdir -p publish/dist
+          cp "source/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html" \
+             "publish/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
+
+          cd publish
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add "dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
+
+          if git diff --cached --quiet; then
+            echo "Preview is already up to date."
+          else
+            git commit -m "Update preview distro for ${{ steps.branch.outputs.branch }} [skip ci]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Preview URL
+        run: |
+          echo "https://retroapplejs.github.io/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
