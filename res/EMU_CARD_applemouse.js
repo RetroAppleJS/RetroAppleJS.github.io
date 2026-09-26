@@ -11,6 +11,74 @@
 // style PIA and therefore sees the original four-phase PB4-PB7 protocol.
 //
 
+const APPLE_MOUSE_ROM_B64 = `
+LFj/cBs4kBi4UBUBIPT09PQAs8SbpMCK3bxI8FPh5uwIeI34B0iYSIpIIFj/ur0AAaoICgoKCiio
+rfgHjvgHSKkIcGeQTbBVKQEJ8J04BqkC0EApDwmQ0DX//7mDwCn7mYPAqT6ZgsC5g8AJBJmDwLmC
+wCnBHbgFmYLAaPAKapB1aKpoqGgoYBhgKQEJYJ04BqkOnbgFqQFI0MCpDJ24BakC0PSpMJ04BqkG
+nbgFqQBI8KjJELDSnTgHkOqpBNDrqUDQyqQGqWCFBiAGAIQGur0AAaoKCgoKqKkg0MmpcNDFSKmg
+0KgpDwmw0LqpwNC2qQLQt6IDOGD////W////AZhIpQZIpQdIhgepJ4UGIFj8oACxBvAGIO39yND2
+aIUHaIUGaKjQW8Hw8Ozlze/18+WNw+/w+fLp5+j0oLG5uLOg4vmgwfDw7OWgw+/t8PX05fKsoMnu
+466NjcLh4+jt4e6vzeHy6/OvzeHjy+H5jQC5gsAp8R24BZmCwGgwDPCA0AmpAJ24BUjw5mC9OAcp
+DwkgnTgHikhISEipqki9OAZIqQyduAWpAEjwxamzSK14BBiQ7Km8SK34BBiQ46mBSH44BpAFrXgF
+sNaKSKnYSKkMnbgFqQFI0Je9OAaNeAVg/////////////////////////////////////////8K9
+OAcpDwlAnTgHikhISKkR0CepHkipDJ24BakBSNBRrbP7yQbQIa0ZwDD7rRnAEPutGcAw+6l/0ABI
+qVBIqQyduAWpAEjwKaUGSKUHSJhIqSCFB6AAhAapAJEGyND75gelB8lA0PFoqKUISKkA8Bz/uYLA
+KfEduAWZgsBoMArwgKkAnbgFSPDoYNCuqQGN0D+N4D+tV8CtVMCtUsCtUMDqhQaFB4UI5gbQDuYH
+0AzmCKUIyQGQCrAfCCgIKKkApQCt/8+5gsBK6uqw263/z7mCwEqlAOqwz2iFCGiFB2iFBqnj0KWt
+UcCtVsAYkJP////////////////////////BvTgGySDQBql/aQFwAbi5gsAw+7mBwCn7mYHAqf+Z
+gMC5gcAJBJmBwL04BpmAwLmCwAkgmYLAuYLAEPsp35mCwHBEvTgGyTDQNakAnbgEnbgDnTgFnTgE
+8CX//////////////////////////////7mCwCnxHbgFmYLAaPCCqQCduAVI8Oq5gcAp+5mBwKkA
+mYDAuYHACQSZgcC5gsAKEPq5gMCdOAa5gsAJEJmCwLmCwAow+rmCwCnvmYLAvbgGKfEdOAaduAYp
+DtCyqQCduAWpAkjQmv//////////////////////////////////////////////////////w+Q3
+0C2pB8U28CeFNmjJjfB0KQEJgJ04B4pIqYRIvTgHSqmAsAEKSKkMnbgFqQBI8D/kOdDXqQWFOL04
+BykB0BRoaGhoqQCduAOduASdOASdOAXwPL04BykBCYCdOAeKSKmhSKkQSKkM0DD///////+5gsAp
+8R24BZmCwGgwEfCAarCJkLSpAJ24BakBSNDhYKnAnbgGjCICqQqduAWpAEjwzmhoaGipBZ04BrmB
+wCn7mYHAqQCZgMC5gcAJBJmBwLmCwAoQ+rmAwEi5gsAJEJmCwLmCwAow+rmCwCnvmYLA3jgG0Nto
+nbgGaJ04BWidOARonbgEaJ24AxiQmf///8iKSEhIqRJIvLgDvbgEqpigBdBtrvgHqSRIvDgEvTgF
+qpigDNBbrvgHqUNIrQDACgi9uAYqKiopA0kDOGkAKKIAoBDQTamNjRECSKkRSEipAPAS////////
+////////////////rvgHrCICnbgFqQFIuYLAKfEduAWZgsBoME7wgOCAkA1J/2kASIpJ/2kAqmg4
+jSECjiACqauQAqmtSKmsmQECohGpABgqyQqQAukKLiECLiACytDwCbCZAAKI8AjAB/AEwA7Q22iZ
+AAJg///////////////////////////////////////////////////////////////////NuFAT
+vTgHKQHwR6kQSKkFnTgGqX9pAbmCwDD7uYHAKfuZgcCp/5mAwLmBwAkEmYHAaJmAwLmCwAkgmYLA
+uYLAEPsp35mCwHA/cAe9OAdKSkpKuJ24BfACqYBIUBT//////////////////////////7mCwCnx
+HbgFmYLAaPCCyQLwgdAC8MK4uYHAKfuZgcCpAJmAwLmBwAkEmYHAuYLAChD6uYDAcAWdOAZQAUi5
+gsAJEJmCwLmCwAow+rmCwCnvmYLAUBneOAbQ0miduAZonTgFaJ04BGiduARonbgDqQDwov//////
+////////////////////////////////wb04BslA8CLJYPANyWHwCcmg0C5IqQLQRa34BUiteAVI
+rfgESK14BLAPvTgFSL04BEi9uARIvbgDSL04BkipBdAcKQxKSkqwPkqQDK14BUi9OAZIqQLQBr04
+BkipAZ04BtBP//////////////////+5gsAp8R24BZmCwGjQgqkAnbgFSPDqSrATrfgESK14BEi9
+OAZIqQOdOAbQFa14BUit+ARIrXgESL04BkipBJ04BrmCwDD7uYHAKfuZgcCp/5mAwLmBwAkEmYHA
+aJmAwLmCwAkgmYLAuYLAEPsp35mCwN44BvCYuYLAMPsQ1v///////////////////////84=
+`;
+
+function decodeAppleMouseBase64(text)
+{
+    const alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    text=String(text).replace(/[^A-Za-z0-9+/=]/g,"");
+    var padding=text.slice(-2)=="==" ? 2 : (text.slice(-1)=="=" ? 1 : 0);
+    if((text.length&3)!==0) throw new Error("Invalid AppleMouse ROM base64 length");
+
+    var out=new Uint8Array((text.length/4)*3-padding);
+    var p=0;
+    for(var i=0;i<text.length;i+=4)
+    {
+        var c0=alphabet.indexOf(text[i]);
+        var c1=alphabet.indexOf(text[i+1]);
+        var c2=text[i+2]=="=" ? 0 : alphabet.indexOf(text[i+2]);
+        var c3=text[i+3]=="=" ? 0 : alphabet.indexOf(text[i+3]);
+        if(c0<0 || c1<0 || c2<0 || c3<0) throw new Error("Invalid AppleMouse ROM base64");
+
+        var n=(c0<<18)|(c1<<12)|(c2<<6)|c3;
+        if(p<out.length) out[p++]=(n>>16)&0xFF;
+        if(p<out.length) out[p++]=(n>>8)&0xFF;
+        if(p<out.length) out[p++]=n&0xFF;
+    }
+    return out;
+}
+
+const APPLE_MOUSE_ROM=decodeAppleMouseBase64(APPLE_MOUSE_ROM_B64);
+if(APPLE_MOUSE_ROM.length!==0x800) throw new Error("AppleMouse ROM must be exactly 2048 bytes");
+
+
 function MousePIA6821()
 {
     var ora=0, orb=0, ddra=0, ddrb=0, cra=0, crb=0;
@@ -491,7 +559,7 @@ function AppleMouse68705(pia,options)
 function AppleMouse()
 {
     var card=this;
-    var rom=new Uint8Array(0x800);
+    var rom=new Uint8Array(APPLE_MOUSE_ROM);
     var pia=new MousePIA6821();
 
     this.id={"PCODE":"AMOUSE","icon":"fa fa-mouse-pointer"};
