@@ -91,46 +91,16 @@ function inlineBuild(html, repoRoot) {
   return html;
 }
 
-function mimeForFile(file) {
-  const ext = path.extname(file).toLowerCase();
-  if (ext === '.png') return 'image/png';
-  if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg';
-  if (ext === '.gif') return 'image/gif';
-  if (ext === '.webp') return 'image/webp';
-  if (ext === '.svg') return 'image/svg+xml';
-  return 'application/octet-stream';
-}
-
 function buildPreviewAssets(repoRoot) {
-  const layoutRel = 'tools/GUI_DEV/assets/apple2-layout-6.json';
+  const layoutRel = 'tools/GUI_DEV/assets/apple2-layout-embedded.json';
   const layoutPath = path.join(repoRoot, layoutRel);
   if (!fs.existsSync(layoutPath)) return null;
 
   const rawLayout = readUtf8(layoutPath);
-  const layout = JSON.parse(rawLayout);
-  const assets = {};
-  assets[layoutRel] = { mime: 'application/json', text: rawLayout };
-
-  const baseRel = 'tools/GUI_DEV/assets/';
-  const baseDir = path.resolve(repoRoot, baseRel);
-  const seen = new Set();
-  for (const layer of Array.isArray(layout.layers) ? layout.layers : []) {
-    if (!layer || typeof layer.file !== 'string' || seen.has(layer.file)) continue;
-    seen.add(layer.file);
-
-    const filePath = path.resolve(baseDir, layer.file);
-    const relative = path.relative(baseDir, filePath);
-    if (relative.startsWith('..') || path.isAbsolute(relative)) {
-      throw new Error(`Layout asset escapes asset directory: ${layer.file}`);
-    }
-    if (!fs.existsSync(filePath)) throw new Error(`Missing layout asset: ${filePath}`);
-
-    const key = baseRel + layer.file.replace(/\\/g, '/');
-    const mime = mimeForFile(layer.file);
-    const base64 = fs.readFileSync(filePath).toString('base64');
-    assets[key] = { mime, data: `data:${mime};base64,${base64}` };
-  }
-  return assets;
+  JSON.parse(rawLayout);
+  return {
+    [layoutRel]: { mime: 'application/json', text: rawLayout }
+  };
 }
 
 function previewAssetShim(assets) {
@@ -140,8 +110,7 @@ function previewAssetShim(assets) {
     `var assets=window.__RETROAPPLEJS_PREVIEW_ASSETS__=${payload};\n` +
     `function findAsset(value){var raw=String(value||'');if(assets[raw])return assets[raw];if(raw.indexOf('./')===0&&assets[raw.slice(2)])return assets[raw.slice(2)];if(raw.charAt(0)==='/'&&assets[raw.slice(1)])return assets[raw.slice(1)];return null;}\n` +
     `var nativeFetch=typeof window.fetch==='function'?window.fetch.bind(window):null;\n` +
-    `if(nativeFetch){window.fetch=function(input,init){var raw=typeof input==='string'?input:(input&&input.url);var asset=findAsset(raw);if(!asset)return nativeFetch(input,init);if(Object.prototype.hasOwnProperty.call(asset,'text'))return Promise.resolve(new Response(asset.text,{status:200,headers:{'Content-Type':asset.mime}}));return nativeFetch(asset.data,init);};}\n` +
-    `if(window.HTMLImageElement){var d=Object.getOwnPropertyDescriptor(HTMLImageElement.prototype,'src');if(d&&d.get&&d.set){Object.defineProperty(HTMLImageElement.prototype,'src',{configurable:d.configurable,enumerable:d.enumerable,get:d.get,set:function(value){var asset=findAsset(value);return d.set.call(this,asset&&asset.data?asset.data:value);}});}}\n` +
+    `if(nativeFetch){window.fetch=function(input,init){var raw=typeof input==='string'?input:(input&&input.url);var asset=findAsset(raw);if(!asset)return nativeFetch(input,init);return Promise.resolve(new Response(asset.text,{status:200,headers:{'Content-Type':asset.mime}}));};}\n` +
     `})();\n</script>`;
 }
 

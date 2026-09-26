@@ -1,10 +1,11 @@
 /*
  * COM_A2P_LAYOUT.js
  *
- * Experimental runtime compositor for the emulator tab background.
- * It consumes the same version-1 layout JSON written by
- * tools/GUI_DEV/apple2-system-composer.html and replaces the legacy static
- * #tab1 background only after the complete composition has rendered.
+ * Runtime HTML compositor for the emulator tab background.
+ * It consumes the version-1 embedded layout JSON written by
+ * tools/GUI_DEV/apple2-system-composer.html. Embedded PNG data URLs are used
+ * directly when present, with the legacy asset directory retained as a
+ * compatibility fallback for non-embedded layouts.
  */
 (function(root,factory)
 {
@@ -26,7 +27,7 @@
     var CANVAS_W = 1144;
     var CANVAS_H = 1144;
     var DISPLAY_SIZE = 1300;
-    var LAYOUT_URL = "tools/GUI_DEV/assets/apple2-layout-6.json";
+    var LAYOUT_URL = "tools/GUI_DEV/assets/apple2-layout-embedded.json";
     var ASSET_BASE = "tools/GUI_DEV/assets/";
     var LEGACY_DRIVE_VISUAL_IDS = ["dskLED_D1","dskLED_D2","dskLID_D1","dskLID_D2"];
 
@@ -56,6 +57,22 @@
             throw new Error("Layer " + (index+1) + " shadow opacity must be between 0 and 1.");
 
         return out;
+    }
+
+    function validateAssets(raw)
+    {
+        if(raw === undefined) return {};
+        if(!raw || typeof raw != "object" || Array.isArray(raw))
+            throw new Error("Apple II layout assets must be an object.");
+
+        var assets = {};
+        Object.keys(raw).forEach(function(filename)
+        {
+            if(typeof raw[filename] != "string" || !raw[filename].trim())
+                throw new Error("Embedded Apple II layout asset " + filename + " must be a non-empty data URL string.");
+            assets[filename] = raw[filename];
+        });
+        return assets;
     }
 
     function validateLayout(raw)
@@ -92,26 +109,30 @@
         return {
             version: LAYOUT_VERSION,
             canvas: {width:CANVAS_W,height:CANVAS_H},
-            layers: layers
+            layers: layers,
+            assets: validateAssets(raw.assets)
         };
     }
 
-    function assetURL(filename)
+    function assetURL(filename,layout)
     {
+        if(layout && layout.assets && typeof layout.assets[filename] == "string" && layout.assets[filename])
+            return layout.assets[filename];
+
         return ASSET_BASE + String(filename)
             .split("/")
             .map(function(part){ return encodeURIComponent(part); })
             .join("/");
     }
 
-    function loadImage(rootWindow,filename)
+    function loadImage(rootWindow,filename,layout)
     {
         return new Promise(function(resolve,reject)
         {
             var img = new rootWindow.Image();
             img.onload = function(){ resolve(img); };
             img.onerror = function(){ reject(new Error("Could not load Apple II layout asset: " + filename)); };
-            img.src = assetURL(filename);
+            img.src = assetURL(filename,layout);
         });
     }
 
@@ -129,7 +150,7 @@
 
         return Promise.all(files.map(function(file)
         {
-            return loadImage(rootWindow,file).then(function(image){ return [file,image]; });
+            return loadImage(rootWindow,file,layout).then(function(image){ return [file,image]; });
         })).then(function(entries){ return new Map(entries); });
     }
 
@@ -185,7 +206,6 @@
         });
     }
 
-
     function buildDOMComposition(doc,layout)
     {
         var host = doc.createElement("div");
@@ -207,7 +227,7 @@
             if(!layer.visible) continue;
 
             var img = doc.createElement("img");
-            img.src = assetURL(layer.file);
+            img.src = assetURL(layer.file,layout);
             img.alt = "";
             img.draggable = false;
             img.dataset.layerIndex = String(i);
