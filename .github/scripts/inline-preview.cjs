@@ -76,17 +76,21 @@ function inlineBuild(html, repoRoot) {
   });
 
   const scriptRe = /<script\b([^>]*)\bsrc\s*=\s*["']([^"']+)["']([^>]*)>\s*<\/script>/gi;
-  html = html.replace(scriptRe, (full, preAttrs, src, postAttrs) => {
-    const s = src.trim();
-    if (shouldExclude(s, full)) return '';
-    if (isRemote(s)) return full;
+  let prevHtml;
+  do {
+    prevHtml = html;
+    html = html.replace(scriptRe, (full, preAttrs, src, postAttrs) => {
+      const s = src.trim();
+      if (shouldExclude(s, full)) return '';
+      if (isRemote(s)) return full;
 
-    const raw = readUtf8(path.join(repoRoot, s));
-    const js = expandDocumentWriteScripts(raw, repoRoot, [s]);
-    const attrs = (preAttrs + ' ' + postAttrs).replace(/\s+/g, ' ').trim();
-    const cleanedAttrs = attrs.replace(/\bsrc\s*=\s*["'][^"']+["']/i, '').trim();
-    return `<script${cleanedAttrs ? ' ' + cleanedAttrs : ''}>\n${escapeInlineScript(js)}\n</script>`;
-  });
+      const raw = readUtf8(path.join(repoRoot, s));
+      const js = expandDocumentWriteScripts(raw, repoRoot, [s]);
+      const attrs = (preAttrs + ' ' + postAttrs).replace(/\s+/g, ' ').trim();
+      const cleanedAttrs = attrs.replace(/\bsrc\s*=\s*["'][^"']+["']/i, '').trim();
+      return `<script${cleanedAttrs ? ' ' + cleanedAttrs : ''}>\n${escapeInlineScript(js)}\n</script>`;
+    });
+  } while (html !== prevHtml);
 
   return html;
 }
