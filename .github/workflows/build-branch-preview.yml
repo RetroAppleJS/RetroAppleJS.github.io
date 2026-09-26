@@ -50,9 +50,9 @@ jobs:
         with:
           node-version: 20
 
-      - name: Test preview distribution builder
+      - name: Test preview distribution builder and HTML compositor
         working-directory: source
-        run: node --test tests/preview_distribution.test.js
+        run: node --test tests/apple2_html_layout.test.js tests/preview_distribution.test.js
 
       - name: Build branch preview distro
         working-directory: source
