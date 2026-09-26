@@ -53,3 +53,5 @@ if ! git diff --quiet -- res/COM_CONFIG.js index.html; then
   git commit -m 'feat: mount AppleMouse in default slot 4'
   git push origin HEAD:feature/applemouse-authentic-rom
 fi
+
+node --test tests/*.test.js
