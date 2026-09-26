@@ -20,6 +20,7 @@ button,input{font:inherit}button{border:1px solid var(--line);background:#fffdf8
     <button id="importBtn">Import Images</button>
     <button id="loadBtn">Load Layout</button>
     <button id="saveBtn">Save Layout</button>
+    <button id="saveEmbeddedBtn">Save Embedded JSON</button>
     <button id="exportBtn">Export PNG</button>
     <input id="imageInput" type="file" accept="image/png,.png" multiple hidden>
     <input id="layoutInput" type="file" accept="application/json,.json" hidden>
@@ -92,11 +93,24 @@ function validateShadow(raw,index){
   return {enabled,offsetX,offsetY,blur,opacity};
 }
 
+function validateAssets(raw){
+  if(raw==null) return null;
+  if(typeof raw!=='object' || Array.isArray(raw)) throw new Error('Layout assets must be an object keyed by filename.');
+  const assets={};
+  for(const [filename,dataUrl] of Object.entries(raw)){
+    if(typeof filename!=='string' || !filename.trim()) throw new Error('Asset filenames must be non-empty.');
+    if(typeof dataUrl!=='string' || !dataUrl.startsWith('data:image/png;base64,')) throw new Error(`Asset ${filename} must be an inline PNG data URL.`);
+    assets[filename]=dataUrl;
+  }
+  return assets;
+}
+
 function validateLayout(raw){
   if(!raw || typeof raw!=='object' || Array.isArray(raw)) throw new Error('Layout must be a JSON object.');
   if(raw.version!==LAYOUT_VERSION) throw new Error(`Unsupported layout version; expected version ${LAYOUT_VERSION}.`);
   if(!raw.canvas || raw.canvas.width!==CANVAS_W || raw.canvas.height!==CANVAS_H) throw new Error('Canvas must be exactly 1144 × 1144.');
   if(!Array.isArray(raw.layers)) throw new Error('Layout layers must be an array.');
+  const assets=validateAssets(raw.assets);
   const layers=raw.layers.map((l,i)=>{
     if(!l || typeof l!=='object') throw new Error(`Layer ${i+1} is malformed.`);
     if(typeof l.file!=='string' || !l.file.trim()) throw new Error(`Layer ${i+1} filename must be non-empty.`);
@@ -104,7 +118,7 @@ function validateLayout(raw){
     if(typeof l.visible!=='boolean') throw new Error(`Layer ${i+1} visibility must be boolean.`);
     return {file:l.file,x:l.x,y:l.y,visible:l.visible,shadow:validateShadow(l.shadow,i)};
   });
-  return {version:LAYOUT_VERSION,canvas:{width:CANVAS_W,height:CANVAS_H},layers};
+  return {version:LAYOUT_VERSION,canvas:{width:CANVAS_W,height:CANVAS_H},assets,layers};
 }
 
 function findCachedAsset(filename){
@@ -123,6 +137,7 @@ function applyLayout(layout){
   state.layers=next; state.selectedLayerId=next[0]?.id||null; state.dragging=null; refreshUI();renderPreview();
 }
 function serializeLayout(){return {version:LAYOUT_VERSION,canvas:{width:CANVAS_W,height:CANVAS_H},layers:state.layers.map(({file,x,y,visible,shadow})=>({file,x,y,visible,shadow:{...shadow}}))};}
+function serializeEmbeddedLayout(){const usedFiles=[...new Set(state.layers.map(l=>l.file))];const assets={};for(const file of usedFiles){const asset=findCachedAsset(file);if(asset?.dataUrl)assets[file]=asset.dataUrl;}return {...serializeLayout(),assets};}
 
 function resolveLayersForAsset(asset){
   const exact=state.layers.filter(l=>!l.resolved && l.file===asset.file);
@@ -135,13 +150,40 @@ function addLayerFromAsset(asset){
   const l={id:makeRuntimeId(),file:asset.file,x:Math.round((CANVAS_W-asset.width)/2),y:Math.round((CANVAS_H-asset.height)/2),visible:true,shadow:{...DEFAULT_SHADOW},image:asset.image,width:asset.width,height:asset.height,resolved:true};
   state.layers.unshift(l); state.selectedLayerId=l.id; return l;
 }
-function loadImageFile(file){
+async function dataUrlToAsset(file,dataUrl){
   return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>resolve({file,image:img,width:img.naturalWidth,height:img.naturalHeight,dataUrl});
+    img.onerror=()=>reject(new Error(`${file}: embedded image decode failed.`));
+    img.src=dataUrl;
+  });
+}
+async function cacheEmbeddedAssets(assets){
+  if(!assets) return;
+  for(const [file,dataUrl] of Object.entries(assets)){
+    const asset=await dataUrlToAsset(file,dataUrl);
+    const old=state.assets.get(asset.file); if(old?.objectUrl) URL.revokeObjectURL(old.objectUrl);
+    state.assets.set(asset.file,asset);
+  }
+}
+function readFileAsDataURL(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(reader.result);
+    reader.onerror=()=>reject(new Error(`${file.name}: could not read file data.`));
+    reader.readAsDataURL(file);
+  });
+}
+function loadImageFile(file){
+  return new Promise(async (resolve,reject)=>{
     if(file.type && file.type!=='image/png' && !file.name.toLowerCase().endsWith('.png')) return reject(new Error(`${file.name}: only PNG images are supported.`));
-    const url=URL.createObjectURL(file), img=new Image();
-    img.onload=()=>resolve({file:file.name,image:img,width:img.naturalWidth,height:img.naturalHeight,objectUrl:url});
-    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error(`${file.name}: image decode failed.`));};
-    img.src=url;
+    try{
+      const dataUrl=await readFileAsDataURL(file);
+      const url=URL.createObjectURL(file), img=new Image();
+      img.onload=()=>resolve({file:file.name,image:img,width:img.naturalWidth,height:img.naturalHeight,objectUrl:url,dataUrl});
+      img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error(`${file.name}: image decode failed.`));};
+      img.src=url;
+    }catch(error){reject(error);}
   });
 }
 async function importImageFiles(files){
@@ -228,8 +270,12 @@ document.addEventListener('keydown',e=>{const tag=e.target?.tagName?.toLowerCase
 function downloadBlob(blob,name){const a=document.createElement('a');const url=URL.createObjectURL(blob);a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 $('importBtn').addEventListener('click',()=>imageInput.click());imageInput.addEventListener('change',()=>importImageFiles(imageInput.files));
 $('loadBtn').addEventListener('click',()=>layoutInput.click());
-layoutInput.addEventListener('change',async()=>{const f=layoutInput.files?.[0];layoutInput.value='';if(!f)return;try{const raw=JSON.parse(await f.text());const valid=validateLayout(raw);applyLayout(valid);}catch(e){alert(`Could not load layout: ${e.message}`);}});
+layoutInput.addEventListener('change',async()=>{const f=layoutInput.files?.[0];layoutInput.value='';if(!f)return;try{const raw=JSON.parse(await f.text());const valid=validateLayout(raw);await cacheEmbeddedAssets(valid.assets);applyLayout(valid);}catch(e){alert(`Could not load layout: ${e.message}`);}});
 $('saveBtn').addEventListener('click',()=>downloadBlob(new Blob([JSON.stringify(serializeLayout(),null,2)],{type:'application/json'}),'apple2-layout.json'));
+function getEmbeddedExportBlockers(){return [...new Set(state.layers.filter(l=>!findCachedAsset(l.file)?.dataUrl).map(l=>l.file))];}
+function saveEmbeddedJSON(){const blockers=getEmbeddedExportBlockers();if(blockers.length){alert(`Cannot save embedded JSON. Missing inline image data for:
+${blockers.join('\n')}`);return;}downloadBlob(new Blob([JSON.stringify(serializeEmbeddedLayout(),null,2)],{type:'application/json'}),'apple2-layout-embedded.json');}
+$('saveEmbeddedBtn').addEventListener('click',saveEmbeddedJSON);
 function getExportBlockers(){return [...new Set(state.layers.filter(l=>l.visible&&!l.resolved).map(l=>l.file))];}
 function buildExportCanvas(){const c=document.createElement('canvas');c.width=CANVAS_W;c.height=CANVAS_H;const cctx=c.getContext('2d');cctx.clearRect(0,0,CANVAS_W,CANVAS_H);for(let i=state.layers.length-1;i>=0;i--)drawLayer(cctx,state.layers[i]);return c;}
 function exportPNG(){const blockers=getExportBlockers();if(blockers.length){alert(`Cannot export PNG. Missing visible assets:\n${blockers.join('\n')}`);return;}const c=buildExportCanvas();c.toBlob(blob=>{if(blob)downloadBlob(blob,'apple2-composition.png');else alert('PNG export failed.');},'image/png');}
