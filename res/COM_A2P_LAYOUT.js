@@ -185,6 +185,54 @@
         });
     }
 
+
+    function buildDOMComposition(doc,layout)
+    {
+        var host = doc.createElement("div");
+        host.id = "a2p-system-layout";
+        host.style.position = "absolute";
+        host.style.left = "0px";
+        host.style.top = "0px";
+        host.style.width = layout.canvas.width + "px";
+        host.style.height = layout.canvas.height + "px";
+        host.style.transformOrigin = "0 0";
+        host.style.transform = "scale(" + (DISPLAY_SIZE / layout.canvas.width) + ")";
+        host.style.pointerEvents = "none";
+        host.style.overflow = "visible";
+        host.style.zIndex = "0";
+
+        for(var i=layout.layers.length-1;i>=0;i--)
+        {
+            var layer = layout.layers[i];
+            if(!layer.visible) continue;
+
+            var img = doc.createElement("img");
+            img.src = assetURL(layer.file);
+            img.alt = "";
+            img.draggable = false;
+            img.dataset.layerIndex = String(i);
+            img.dataset.file = layer.file;
+            img.style.position = "absolute";
+            img.style.left = layer.x + "px";
+            img.style.top = layer.y + "px";
+            img.style.maxWidth = "none";
+            img.style.userSelect = "none";
+            img.style.pointerEvents = "none";
+            img.style.filter = "none";
+
+            if(layer.shadow && layer.shadow.enabled)
+                img.style.filter = "drop-shadow("
+                    + layer.shadow.offsetX + "px "
+                    + layer.shadow.offsetY + "px "
+                    + layer.shadow.blur + "px rgba(0,0,0,"
+                    + layer.shadow.opacity + "))";
+
+            host.appendChild(img);
+        }
+
+        return host;
+    }
+
     function disableLegacyDriveVisuals(doc)
     {
         LEGACY_DRIVE_VISUAL_IDS.forEach(function(id)
@@ -203,37 +251,34 @@
         return loadLayout(rootWindow)
             .then(function(layout)
             {
-                return renderLayout(rootWindow,layout).then(function(canvas)
-                {
-                    var dataURL = canvas.toDataURL("image/png");
+                var oldHost = doc.getElementById("a2p-system-layout");
+                if(oldHost && oldHost.parentNode) oldHost.parentNode.removeChild(oldHost);
 
-                    /*
-                     * Keep #tab1 itself as the coordinate system used by the
-                     * existing emulator.  Only replace its background bitmap.
-                     */
-                    tab.style.backgroundImage = 'url("' + dataURL + '")';
-                    tab.style.backgroundSize = DISPLAY_SIZE + "px " + DISPLAY_SIZE + "px";
-                    tab.style.backgroundRepeat = "no-repeat";
-                    tab.style.backgroundPosition = "0 0";
-                    tab.style.imageRendering = "pixelated";
+                var host = buildDOMComposition(doc,layout);
 
-                    /*
-                     * The JSON already contains the two static LED and lid
-                     * layers.  Hide the legacy state-driven DOM overlays for
-                     * this visual-only experiment; no drive integration yet.
-                     */
-                    disableLegacyDriveVisuals(doc);
+                /* Keep the existing 1300 x 1300 emulator coordinate system. */
+                tab.style.position = "relative";
+                tab.style.backgroundImage = "none";
+                tab.style.backgroundSize = "none";
+                tab.style.backgroundRepeat = "no-repeat";
 
-                    api.lastLayout = layout;
-                    api.lastCanvas = canvas;
-                    return true;
-                });
+                if(typeof tab.insertBefore == "function")
+                    tab.insertBefore(host,tab.firstChild || null);
+                else
+                    tab.appendChild(host);
+
+                /* JSON owns the static drive visuals in this iteration. */
+                disableLegacyDriveVisuals(doc);
+
+                api.lastLayout = layout;
+                api.lastComposition = host;
+                api.lastCanvas = null;
+                return true;
             })
             .catch(function(err)
             {
-                /* Keep the base64 CSS background as a safe fallback. */
                 if(rootWindow.console && typeof rootWindow.console.error == "function")
-                    rootWindow.console.error("Apple II system composition failed; using legacy background.",err);
+                    rootWindow.console.error("Apple II HTML system composition failed.",err);
                 return false;
             });
     }
@@ -259,8 +304,10 @@
         install: install,
         autoInstall: autoInstall,
         disableLegacyDriveVisuals: disableLegacyDriveVisuals,
+        buildDOMComposition: buildDOMComposition,
         lastLayout: null,
-        lastCanvas: null
+        lastCanvas: null,
+        lastComposition: null
     };
 
     return api;
