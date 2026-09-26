@@ -27,7 +27,7 @@
     var CANVAS_W = 1144;
     var CANVAS_H = 1144;
     var DISPLAY_SIZE = 1300;
-    var LAYOUT_URL = "tools/GUI_DEV/assets/apple2-layout-embedded.json";
+    var LAYOUT_URL = "tools/GUI_DEV/assets/apple2-layout-embedded_v2.json";
     var ASSET_BASE = "tools/GUI_DEV/assets/";
     var LEGACY_DRIVE_VISUAL_IDS = ["dskLED_D1","dskLED_D2","dskLID_D1","dskLID_D2"];
 
