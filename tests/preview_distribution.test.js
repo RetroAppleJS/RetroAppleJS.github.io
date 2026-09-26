@@ -13,7 +13,7 @@ function write(root, rel, content, encoding) {
   fs.writeFileSync(full, content, encoding);
 }
 
-test('branch preview builder emits one self-contained branch-named HTML file from embedded layout JSON', () => {
+test('branch preview builder emits one self-contained branch-named HTML file from embedded v2 layout JSON', () => {
   const repoRoot = path.join(__dirname, '..');
   const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'retroapple-preview-'));
 
@@ -31,7 +31,7 @@ test('branch preview builder emits one self-contained branch-named HTML file fro
     ],
     assets: { 'tiny.png': embeddedData }
   };
-  write(fixture, 'tools/GUI_DEV/assets/apple2-layout-embedded.json', JSON.stringify(layout), 'utf8');
+  write(fixture, 'tools/GUI_DEV/assets/apple2-layout-embedded_v2.json', JSON.stringify(layout), 'utf8');
   // Deliberately do not create tiny.png. The preview must depend only on the embedded JSON.
 
   const builder = path.join(repoRoot, '.github', 'scripts', 'inline-preview.cjs');
@@ -48,7 +48,7 @@ test('branch preview builder emits one self-contained branch-named HTML file fro
   assert.doesNotMatch(html, /src=["']res\/(bootstrap|inner)\.js["']/);
   assert.doesNotMatch(html, /document\.write\(/);
   assert.match(html, /__RETROAPPLEJS_PREVIEW_ASSETS__/);
-  assert.match(html, /tools\/GUI_DEV\/assets\/apple2-layout-embedded\.json/);
+  assert.match(html, /tools\/GUI_DEV\/assets\/apple2-layout-embedded_v2\.json/);
   assert.match(html, /data:image\/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB/);
-  assert.doesNotMatch(html, /tools\/GUI_DEV\/assets\/apple2-layout-6\.json/);
+  assert.doesNotMatch(html, /tools\/GUI_DEV\/assets\/apple2-layout-embedded\.json/);
 });

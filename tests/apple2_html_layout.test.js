@@ -54,7 +54,7 @@ test('HTML composition falls back to the legacy asset URL when an embedded asset
   assert.equal(host.children[0].src,'tools/GUI_DEV/assets/legacy%20image.png');
 });
 
-test('install loads embedded layout JSON and replaces the tab background with embedded images', async () => {
+test('install loads embedded v2 layout JSON and replaces the tab background with embedded images', async () => {
   const tab=fakeElement('div');
   tab.id='tab1';
   tab.firstChild={name:'existing-ui'};
@@ -77,7 +77,7 @@ test('install loads embedded layout JSON and replaces the tab background with em
   };
   const ok=await layout.install(win);
   assert.equal(ok,true);
-  assert.equal(requestedURL,'tools/GUI_DEV/assets/apple2-layout-embedded.json');
+  assert.equal(requestedURL,'tools/GUI_DEV/assets/apple2-layout-embedded_v2.json');
   assert.equal(tab.style.backgroundImage,'none');
   assert.equal(tab.style.position,'relative');
   assert.equal(tab.inserted.id,'a2p-system-layout');
