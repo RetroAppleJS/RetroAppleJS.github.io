@@ -19,11 +19,12 @@ jobs:
         with:
           ref: apple2-inline-layout-data
 
-      - name: Generate res/COM_A2P_LAYOUT_DATA.js
+      - name: Generate layout data and wire file-safe loader
         shell: bash
         run: |
           node <<'NODE'
           const fs = require('fs');
+
           const source = 'tools/GUI_DEV/assets/apple2-layout-embedded_v2.json';
           const target = 'res/COM_A2P_LAYOUT_DATA.js';
           const raw = fs.readFileSync(source, 'utf8').trim();
@@ -31,17 +32,48 @@ jobs:
           const header = '/* Generated from tools/GUI_DEV/assets/apple2-layout-embedded_v2.json. */\n';
           fs.writeFileSync(target, header + 'window.A2P_EMBEDDED_LAYOUT = ' + raw + ';\n', 'utf8');
           console.log(`Wrote ${target} (${fs.statSync(target).size} bytes)`);
+
+          const layoutPath = 'res/COM_A2P_LAYOUT.js';
+          let layout = fs.readFileSync(layoutPath, 'utf8');
+          const oldConstant = '    var LAYOUT_URL = "tools/GUI_DEV/assets/apple2-layout-embedded_v2.json";';
+          const newConstant = '    var LAYOUT_DATA_GLOBAL = "A2P_EMBEDDED_LAYOUT";';
+          if (!layout.includes(oldConstant) && !layout.includes(newConstant)) {
+            throw new Error('Could not find Apple II layout source constant.');
+          }
+          layout = layout.replace(oldConstant, newConstant);
+
+          const oldLoader = `    function loadLayout(rootWindow)\n    {\n        return rootWindow.fetch(LAYOUT_URL,{cache:"no-store"}).then(function(response)\n        {\n            if(!response.ok)\n                throw new Error("Could not load " + LAYOUT_URL + " (HTTP " + response.status + ").");\n            return response.json();\n        }).then(validateLayout);\n    }`;
+          const newLoader = `    function loadLayout(rootWindow)\n    {\n        return Promise.resolve().then(function()\n        {\n            if(!rootWindow || !rootWindow[LAYOUT_DATA_GLOBAL])\n                throw new Error("Apple II embedded layout data is not loaded.");\n            return validateLayout(rootWindow[LAYOUT_DATA_GLOBAL]);\n        });\n    }`;
+          if (!layout.includes(oldLoader) && !layout.includes(newLoader)) {
+            throw new Error('Could not find Apple II layout loader.');
+          }
+          layout = layout.replace(oldLoader, newLoader);
+          layout = layout.replace('        LAYOUT_URL: LAYOUT_URL,', '        LAYOUT_DATA_GLOBAL: LAYOUT_DATA_GLOBAL,');
+          fs.writeFileSync(layoutPath, layout, 'utf8');
+
+          const indexPath = 'index.html';
+          let index = fs.readFileSync(indexPath, 'utf8');
+          const dataScript = '    <script type="text/javascript" src="res/COM_A2P_LAYOUT_DATA.js"></script>\n';
+          const mainScript = '    <script type="text/javascript" src="res/COM_MAIN.js"></script>';
+          if (!index.includes(dataScript.trim())) {
+            if (!index.includes(mainScript)) throw new Error('Could not find COM_MAIN.js include in index.html.');
+            index = index.replace(mainScript, dataScript + mainScript);
+          }
+          fs.writeFileSync(indexPath, index, 'utf8');
           NODE
 
-      - name: Commit generated data file
+      - name: Verify regression tests
+        run: node --test tests/apple2_html_layout.test.js
+
+      - name: Commit implementation
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add res/COM_A2P_LAYOUT_DATA.js
+          git add res/COM_A2P_LAYOUT_DATA.js res/COM_A2P_LAYOUT.js index.html
           if git diff --cached --quiet; then
-            echo "Generated layout data is already up to date."
+            echo "Inline layout implementation is already up to date."
           else
-            git commit -m "Add embedded Apple II layout data script [skip ci]"
+            git commit -m "Load Apple II layout data without Fetch API [skip ci]"
             git push origin HEAD:apple2-inline-layout-data
           fi
