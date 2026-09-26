@@ -1,6 +1,8 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const layout = require('../res/COM_A2P_LAYOUT.js');
 
 test('Apple II layout exposes an HTML composition builder', () => {
@@ -54,7 +56,7 @@ test('HTML composition falls back to the legacy asset URL when an embedded asset
   assert.equal(host.children[0].src,'tools/GUI_DEV/assets/legacy%20image.png');
 });
 
-test('install loads embedded v2 layout JSON and replaces the tab background with embedded images', async () => {
+test('install uses inline layout data without requiring Fetch API', async () => {
   const tab=fakeElement('div');
   tab.id='tab1';
   tab.firstChild={name:'existing-ui'};
@@ -69,18 +71,28 @@ test('install loads embedded v2 layout JSON and replaces the tab background with
   },layers:[
     {file:'case.png',x:0,y:485,visible:true,shadow:{enabled:false,offsetX:0,offsetY:15,blur:12,opacity:.75}}
   ]};
-  let requestedURL='';
   const win={
     document:doc,
-    fetch:async(url)=>{ requestedURL=url; return {ok:true,json:async()=>cfg}; },
+    A2P_EMBEDDED_LAYOUT:cfg,
     console:{error(){}}
   };
+  assert.equal(typeof win.fetch,'undefined');
   const ok=await layout.install(win);
   assert.equal(ok,true);
-  assert.equal(requestedURL,'tools/GUI_DEV/assets/apple2-layout-embedded_v2.json');
   assert.equal(tab.style.backgroundImage,'none');
   assert.equal(tab.style.position,'relative');
   assert.equal(tab.inserted.id,'a2p-system-layout');
   assert.equal(tab.inserted.children[0].dataset.file,'case.png');
   assert.equal(tab.inserted.children[0].src,'data:image/png;base64,CASE');
+});
+
+test('index loads layout data script before COM_MAIN.js', () => {
+  const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
+  const dataScript='res/COM_A2P_LAYOUT_DATA.js';
+  const mainScript='res/COM_MAIN.js';
+  const dataPos=html.indexOf(dataScript);
+  const mainPos=html.indexOf(mainScript);
+  assert.notEqual(dataPos,-1,`${dataScript} must be loaded by index.html`);
+  assert.notEqual(mainPos,-1,`${mainScript} must be loaded by index.html`);
+  assert.ok(dataPos < mainPos,`${dataScript} must load before ${mainScript}`);
 });
