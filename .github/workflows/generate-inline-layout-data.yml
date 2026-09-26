@@ -1,0 +1,47 @@
+name: Generate inline Apple II layout data
+
+on:
+  push:
+    branches:
+      - "apple2-inline-layout-data"
+    paths:
+      - ".github/workflows/generate-inline-layout-data.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: apple2-inline-layout-data
+
+      - name: Generate res/COM_A2P_LAYOUT_DATA.js
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const source = 'tools/GUI_DEV/assets/apple2-layout-embedded_v2.json';
+          const target = 'res/COM_A2P_LAYOUT_DATA.js';
+          const raw = fs.readFileSync(source, 'utf8').trim();
+          JSON.parse(raw);
+          const header = '/* Generated from tools/GUI_DEV/assets/apple2-layout-embedded_v2.json. */\n';
+          fs.writeFileSync(target, header + 'window.A2P_EMBEDDED_LAYOUT = ' + raw + ';\n', 'utf8');
+          console.log(`Wrote ${target} (${fs.statSync(target).size} bytes)`);
+          NODE
+
+      - name: Commit generated data file
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add res/COM_A2P_LAYOUT_DATA.js
+          if git diff --cached --quiet; then
+            echo "Generated layout data is already up to date."
+          else
+            git commit -m "Add embedded Apple II layout data script [skip ci]"
+            git push origin HEAD:apple2-inline-layout-data
+          fi
