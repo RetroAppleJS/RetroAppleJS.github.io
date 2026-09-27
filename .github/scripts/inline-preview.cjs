@@ -95,36 +95,6 @@ function inlineBuild(html, repoRoot) {
   return html;
 }
 
-function buildPreviewAssets(repoRoot) {
-  const layoutRel = 'tools/GUI_DEV/assets/apple2-layout-embedded_v2.json';
-  const layoutPath = path.join(repoRoot, layoutRel);
-  if (!fs.existsSync(layoutPath)) return null;
-
-  const rawLayout = readUtf8(layoutPath);
-  JSON.parse(rawLayout);
-  return {
-    [layoutRel]: { mime: 'application/json', text: rawLayout }
-  };
-}
-
-function previewAssetShim(assets) {
-  if (!assets) return '';
-  const payload = JSON.stringify(assets).replace(/<\//g, '<\\/');
-  return `<script>\n(function(){\n` +
-    `var assets=window.__RETROAPPLEJS_PREVIEW_ASSETS__=${payload};\n` +
-    `function findAsset(value){var raw=String(value||'');if(assets[raw])return assets[raw];if(raw.indexOf('./')===0&&assets[raw.slice(2)])return assets[raw.slice(2)];if(raw.charAt(0)==='/'&&assets[raw.slice(1)])return assets[raw.slice(1)];return null;}\n` +
-    `var nativeFetch=typeof window.fetch==='function'?window.fetch.bind(window):null;\n` +
-    `if(nativeFetch){window.fetch=function(input,init){var raw=typeof input==='string'?input:(input&&input.url);var asset=findAsset(raw);if(!asset)return nativeFetch(input,init);return Promise.resolve(new Response(asset.text,{status:200,headers:{'Content-Type':asset.mime}}));};}\n` +
-    `})();\n</script>`;
-}
-
-function injectPreviewAssets(html, repoRoot) {
-  const shim = previewAssetShim(buildPreviewAssets(repoRoot));
-  if (!shim) return html;
-  if (/<head\b[^>]*>/i.test(html)) return html.replace(/<head\b[^>]*>/i, (tag) => `${tag}\n${shim}`);
-  return `${shim}\n${html}`;
-}
-
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const scriptRepoRoot = path.resolve(__dirname, '..', '..');
@@ -136,8 +106,7 @@ function main() {
   const outHtmlPath = path.join(outDir, `RetroAppleJS-${safeBranch}.html`);
 
   const srcHtml = readUtf8(srcHtmlPath);
-  const withAssets = injectPreviewAssets(srcHtml, repoRoot);
-  const built = inlineBuild(withAssets, repoRoot);
+  const built = inlineBuild(srcHtml, repoRoot);
 
   if (fs.existsSync(outDir) && !fs.lstatSync(outDir).isDirectory()) {
     throw new Error(`'${outDir}' exists but is not a directory.`);
@@ -152,4 +121,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { sanitizeBranchName, inlineBuild, expandDocumentWriteScripts, buildPreviewAssets, injectPreviewAssets };
+module.exports = { sanitizeBranchName, inlineBuild, expandDocumentWriteScripts };
