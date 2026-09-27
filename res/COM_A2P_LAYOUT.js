@@ -183,13 +183,60 @@ function drawComposition(ctx,layout,images)
     return ctx;
 }
 
+function forceWebKitRepaint(element)
+{
+    if(!element || !element.style) return;
+
+    var doc = element.ownerDocument || null;
+    var win = doc && doc.defaultView ? doc.defaultView : root;
+    var host = doc && doc.getElementById ? doc.getElementById("a2p-system-layout") : null;
+    var oldTransform = element.style.transform || "";
+    var oldBackface = element.style.webkitBackfaceVisibility || "";
+    var oldHostWillChange = host && host.style ? (host.style.willChange || "") : "";
+
+    element.style.webkitBackfaceVisibility = "hidden";
+    element.style.transform = oldTransform
+        ? oldTransform + " translateZ(0)"
+        : "translateZ(0)";
+
+    if(host && host.style)
+    {
+        host.style.willChange = "transform";
+        void host.offsetHeight;
+    }
+
+    void element.offsetHeight;
+
+    var repaintBack = function()
+    {
+        element.style.transform = oldTransform;
+        element.style.webkitBackfaceVisibility = oldBackface;
+
+        if(host && host.style)
+        {
+            host.style.willChange = oldHostWillChange;
+            void host.offsetHeight;
+        }
+    };
+
+    if(win && typeof win.requestAnimationFrame == "function")
+        win.requestAnimationFrame(function(){ win.requestAnimationFrame(repaintBack); });
+    else
+        setTimeout(repaintBack,0);
+}
+
 function applyLayerVisibility(entry,state)
 {
     if(!entry) return false;
     state = !!state;
     entry.model.visible = state;
     if(entry.element && entry.element.style)
-        entry.element.style.display = state ? "" : "none";
+    {
+        entry.element.style.display = "";
+        entry.element.style.visibility = state ? "visible" : "hidden";
+        entry.element.style.opacity = state ? "1" : "0";
+        forceWebKitRepaint(entry.element);
+    }
     return state;
 }
 
@@ -260,7 +307,9 @@ function buildDOMComposition(doc,layout,registry)
         img.style.userSelect = "none";
         img.style.pointerEvents = "none";
         img.style.filter = "none";
-        img.style.display = layer.visible ? "" : "none";
+        img.style.display = "";
+        img.style.visibility = layer.visible ? "visible" : "hidden";
+        img.style.opacity = layer.visible ? "1" : "0";
 
         if(layer.shadow && layer.shadow.enabled)
             img.style.filter = "drop-shadow("
@@ -394,7 +443,10 @@ function LAYOUT(rootWindow)
             {
                 if(nodes[i].dataset && nodes[i].dataset.file == filename)
                 {
-                    nodes[i].style.display = state ? "" : "none";
+                    nodes[i].style.display = "";
+                    nodes[i].style.visibility = state ? "visible" : "hidden";
+                    nodes[i].style.opacity = state ? "1" : "0";
+                    forceWebKitRepaint(nodes[i]);
                     changed = true;
                 }
             }
