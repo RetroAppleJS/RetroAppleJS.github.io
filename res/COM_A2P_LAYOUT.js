@@ -2,10 +2,9 @@
  * COM_A2P_LAYOUT.js
  *
  * Runtime HTML compositor for the emulator tab background.
- * It consumes the version-1 embedded layout JSON written by
- * tools/GUI_DEV/apple2-system-composer.html. Embedded PNG data URLs are used
- * directly when present, with the legacy asset directory retained as a
- * compatibility fallback for non-embedded layouts.
+ * It consumes the version-1 layout object embedded in EMU_apple2main.js.
+ * Embedded PNG data URLs are used directly when present, with the legacy
+ * asset directory retained as a compatibility fallback for non-embedded layouts.
  */
 (function(root,factory)
 {
@@ -27,7 +26,6 @@
     var CANVAS_W = 1144;
     var CANVAS_H = 1144;
     var DISPLAY_SIZE = 1300;
-    var LAYOUT_URL = "tools/GUI_DEV/assets/apple2-layout-embedded_v2.json";
     var ASSET_BASE = "tools/GUI_DEV/assets/";
     var LEGACY_DRIVE_VISUAL_IDS = ["dskLED_D1","dskLED_D2","dskLID_D1","dskLID_D2"];
 
@@ -183,12 +181,12 @@
 
     function loadLayout(rootWindow)
     {
-        return rootWindow.fetch(LAYOUT_URL,{cache:"no-store"}).then(function(response)
+        return Promise.resolve().then(function()
         {
-            if(!response.ok)
-                throw new Error("Could not load " + LAYOUT_URL + " (HTTP " + response.status + ").");
-            return response.json();
-        }).then(validateLayout);
+            if(!rootWindow || !rootWindow.composer)
+                throw new Error("Apple II layout data is not available on window.composer.");
+            return validateLayout(rootWindow.composer);
+        });
     }
 
     function renderLayout(rootWindow,layout)
@@ -287,7 +285,7 @@
                 else
                     tab.appendChild(host);
 
-                /* JSON owns the static drive visuals in this iteration. */
+                /* Embedded layout data owns the static drive visuals. */
                 disableLegacyDriveVisuals(doc);
 
                 api.lastLayout = layout;
@@ -314,7 +312,6 @@
     }
 
     var api = {
-        LAYOUT_URL: LAYOUT_URL,
         ASSET_BASE: ASSET_BASE,
         validateLayout: validateLayout,
         assetURL: assetURL,

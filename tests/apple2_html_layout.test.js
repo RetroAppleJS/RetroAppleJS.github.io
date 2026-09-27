@@ -60,7 +60,7 @@ test('HTML composition falls back to the legacy asset URL when an embedded asset
   assert.equal(host.children[0].src,'tools/GUI_DEV/assets/legacy%20image.png');
 });
 
-test('install uses EMU-owned layout data without requiring Fetch API', async () => {
+test('install uses EMU-owned composer data without requiring Fetch API', async () => {
   const tab=fakeElement('div');
   tab.id='tab1';
   tab.firstChild={name:'existing-ui'};
@@ -77,7 +77,7 @@ test('install uses EMU-owned layout data without requiring Fetch API', async () 
   ]};
   const win={
     document:doc,
-    A2P_LAYOUT_DATA:cfg,
+    composer:cfg,
     console:{error(){}}
   };
   assert.equal(typeof win.fetch,'undefined');
@@ -90,10 +90,9 @@ test('install uses EMU-owned layout data without requiring Fetch API', async () 
   assert.equal(tab.inserted.children[0].src,'data:image/png;base64,CASE');
 });
 
-test('EMU_apple2main owns layout data and compositor has no JSON HTTP loader', () => {
-  assert.match(emuMainSource,/\bvar\s+A2P_LAYOUT_DATA\s*=/);
-  assert.doesNotMatch(emuMainSource,/\bvar\s+composer\s*=/);
-  assert.match(compositorSource,/A2P_LAYOUT_DATA/);
+test('EMU_apple2main owns composer layout data and compositor has no JSON HTTP loader', () => {
+  assert.match(emuMainSource,/\bvar\s+composer\s*=/);
+  assert.match(compositorSource,/rootWindow\.composer/);
   assert.doesNotMatch(compositorSource,/apple2-layout-embedded_v2\.json/);
   assert.doesNotMatch(compositorSource,/\.fetch\s*\(/);
 });
