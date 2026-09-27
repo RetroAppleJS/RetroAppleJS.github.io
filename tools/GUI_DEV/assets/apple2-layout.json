@@ -9,7 +9,7 @@
       "file": "A2P_FULL_Monitor.png",
       "x": 80,
       "y": 0,
-      "visible": true,
+      "visible": false,
       "shadow": {
         "enabled": true,
         "offsetX": 0,
@@ -94,6 +94,19 @@
         "offsetY": 15,
         "blur": 12,
         "opacity": 0.75
+      }
+    },
+    {
+      "file": "DISKII_gap.png",
+      "x": 446,
+      "y": 486,
+      "visible": true,
+      "shadow": {
+        "enabled": true,
+        "offsetX": 0,
+        "offsetY": 9,
+        "blur": 30,
+        "opacity": 1
       }
     },
     {
