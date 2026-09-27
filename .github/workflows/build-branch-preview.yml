@@ -3,7 +3,7 @@ name: Build branch preview distro
 on:
   push:
     branches:
-      - green-diskii-layout-visuals-v2
+      - fix-diskii-led-lid-runtime
 
 permissions:
   contents: write
@@ -15,27 +15,24 @@ jobs:
       - name: Checkout branch
         uses: actions/checkout@v4
         with:
-          ref: green-diskii-layout-visuals-v2
+          ref: fix-diskii-led-lid-runtime
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Apply and verify Disk II layout visual patch
+      - name: Apply and verify Disk II runtime visual patch
         shell: bash
         run: |
           python3 .github/scripts/patch_diskii_green.py
           node --test tests/apple2_html_layout.test.js tests/appledisk2_layout_visuals.test.js tests/preview_distribution.test.js
 
-      - name: Commit production patch and restore normal workflow
+      - name: Commit production runtime patch only
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
-          git checkout origin/main -- .github/workflows/build-branch-preview.yml
-          git rm .github/scripts/patch_diskii_green.py
-          git add res/EMU_CARD_appledisk2.js res/EMU_apple2plus.js tests/appledisk2_layout_visuals.test.js .github/workflows/build-branch-preview.yml .github/scripts/patch_diskii_green.py
-          git commit -m "fix: wire Disk II visuals to layout API"
-          git push origin HEAD:green-diskii-layout-visuals-v2
+          git add res/EMU_CARD_appledisk2.js res/EMU_apple2plus.js tests/appledisk2_layout_visuals.test.js
+          git commit -m "fix: wire Disk II LEDs and lids to layout API"
+          git push origin HEAD:fix-diskii-led-lid-runtime
