@@ -60,6 +60,33 @@ test('HTML composition falls back to the legacy asset URL when an embedded asset
   assert.equal(host.children[0].src,'tools/GUI_DEV/assets/legacy%20image.png');
 });
 
+test('layout artwork stays behind emulator canvas and top tab chrome', async () => {
+  const tab=fakeElement('div');
+  tab.id='tab1';
+  tab.firstChild={name:'existing-ui'};
+  tab.insertBefore=function(child,before){ this.inserted=child; child.parentNode=this; return child; };
+  const app=fakeElement('div');
+  app.id='app';
+  const ids={tab1:tab,app};
+  const doc={
+    createElement:fakeElement,
+    getElementById(id){ return ids[id] || null; }
+  };
+  const cfg={version:1,canvas:{width:1144,height:1144},assets:{
+    'monitor.png':'data:image/png;base64,MONITOR'
+  },layers:[
+    {file:'monitor.png',x:0,y:0,visible:true,shadow:{enabled:false,offsetX:0,offsetY:15,blur:12,opacity:.75}}
+  ]};
+  const win={document:doc,composer:cfg,console:{error(){}}};
+  const ok=await layout.install(win);
+  assert.equal(ok,true);
+  assert.equal(tab.style.position,'relative');
+  assert.equal(tab.style.zIndex,'0');
+  assert.equal(tab.inserted.style.zIndex,'-1');
+  assert.equal(app.style.position,'relative');
+  assert.equal(app.style.zIndex,'1');
+});
+
 test('install uses EMU-owned composer data without requiring Fetch API', async () => {
   const tab=fakeElement('div');
   tab.id='tab1';
