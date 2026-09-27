@@ -2144,28 +2144,6 @@ table { border-collapse: collapse; position: relative;}
     background-attachment:local;
     background-repeat:repeat;
   }
-
-  .appdskLED 
-  {
-    /*background-image:url('../res/LED_ON.png');*/
-    background-image:url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABkAAAAYCAMAAAA4a6b0AAAAAXNSR0IB2cksfwAAAAlwSFlzAAALEwAACxMBAJqcGAAAAJZQTFRFPSgrNScpIiIhUwoLRiUpQyotSyktZgsNUysv9EdARAsM+GFUTRoc7zw4UyElhA0RtxkdJCMidQwP+XJiXBQVJCMiRxQV91RMphMXWy4yjw8T5zIw4CspmBEV+/n2IiIh+5R7AAAA+ohx+qyIKCQkxB8hMSgo0SYn+82kMycpJyQkYyUnKyUl/N3A+ejZ2lZULCYn+bebv+L2LQAAADJ0Uk5T//8D//////////////////8u////Dv///////////x3/AP//UP/v///Yb/+f////xv9LZh/7AAABjklEQVR4nD2S2ZqkIAyFA6iIiAsUartUuZa1z/T7v9wk9sycS/6Pk+QkwCfu/YMxCEkQAvwu+TRNHDi/lAeISHGE6MFJgODOIAiCKkmqKs3iOIR76fkEZXlFkCaJEFKehKjirwiuF89hJVAlQtq8zXMrpcjiiGoBAwgR2LYp9v3X3uQ/aCWCVsI2W993Ro+qQPQVh9cLAHoJOexGoWplui2XpzhiJYIgkflm3Oic03Vdd41Fv/ABEKXo1dffn+V7Gd2s1dZKrEQTpiIvOr28P+fPbRyd6ht5ws6PMmS2vM/n82102vwn9GdTbjzI7GrTD//+YB10c8vtTV+U2Vv5JMJwHGxa6XkeZ10b0+FEzzgIyS45Wqg19kygJbMAKINMyHY7JjWm3wYrnhgPA8aCqBJ2KIxWXbcXrRVHfQbrHT9h1PnQoAZMDQGtD/hKfilux6KkECkVYS8P3B8rJUZKaQWMvXA/eCB3ijXLnlmGzxH2y14XugPO/QvjC35ETmwt6UI8Er/i8fwVYwzvA/UHMcEh/vhlIW8AAAAASUVORK5CYII=');
-    z-index:0;
-    opacity:0.8;
-    visibility:hidden;
-    position:absolute;
-    padding:25px 24px 0px 0px;
-  }
-
-  .appdskLID
-  {
-    background-image:url('data:image/png;base64,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');
-    z-index:0;
-    opacity:1;
-    visibility:hidden;
-    position:absolute;
-    padding:150px 110px 0px 0px;
-  }
-
 .diskLoaded {
     font-weight:bold;
     outline:1px solid #8ee68e;
@@ -6542,7 +6520,6 @@ var CANVAS_W = 1144;
 var CANVAS_H = 1144;
 var DISPLAY_SIZE = 1300;
 var ASSET_BASE = "tools/GUI_DEV/assets/";
-var LEGACY_DRIVE_VISUAL_IDS = ["dskLED_D1","dskLED_D2","dskLID_D1","dskLID_D2"];
 
 function isFiniteNumber(v)
 {
@@ -6799,15 +6776,6 @@ function buildDOMComposition(doc,layout,registry)
     return host;
 }
 
-function disableLegacyDriveVisuals(doc)
-{
-    LEGACY_DRIVE_VISUAL_IDS.forEach(function(id)
-    {
-        var el = doc.getElementById(id);
-        if(el) el.style.display = "none";
-    });
-}
-
 function LAYOUT(rootWindow)
 {
     var self = this;
@@ -6856,7 +6824,6 @@ function LAYOUT(rootWindow)
     this.drawComposition = drawComposition;
     this.renderLayout = renderLayout;
     this.buildDOMComposition = buildDOMComposition;
-    this.disableLegacyDriveVisuals = disableLegacyDriveVisuals;
 
     this.loadLayout = function(rootWindow)
     {
@@ -6943,9 +6910,6 @@ function LAYOUT(rootWindow)
                     tab.insertBefore(host,tab.firstChild || null);
                 else
                     tab.appendChild(host);
-
-                /* Embedded layout data owns the static drive visuals. */
-                disableLegacyDriveVisuals(doc);
 
                 layersById = registry;
                 Object.keys(pending).forEach(function(id)
@@ -55577,12 +55541,6 @@ function Apple2Plus(context)
             <!--/input-->
 
 <!--button onclick="onSnapshot()">SNAP</button-->
-
-            <div class="appdskLED" id="dskLED_D1" style="left:178px;top:778px;z-index:0"></div>
-            <div class="appdskLED" id="dskLED_D2" style="left:612px;top:778px;z-index:0"></div>
-
-            <div class="appdskLID" id="dskLID_D1" style="left:250px;top:652px;z-index:0"></div>
-            <div class="appdskLID" id="dskLID_D2" style="left:685px;top:652px;z-index:0"></div>
 
             <div id="kbd" style="position:relative; z-index:1;"></div>
 
