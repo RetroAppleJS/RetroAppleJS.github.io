@@ -858,18 +858,9 @@ function EMU_init()
             && this.Pstate[1].b_diskData == (state.diskData[1]!=null
             //|| cmd == "kbd"
             )) return;
-            
-        if(state.DSK_led.length) state.DSK_led = [document.getElementById("dskLED_D1"),document.getElementById("dskLED_D2")]
-        if(state.hw[state.drv].motor==1) { state.DSK_led[state.drv].style.visibility = "visible"; }
-        else state.DSK_led[state.drv].style.visibility = "hidden";
-        //if(_o.EMU_keyb_active) { state.DSK_led[0].style.visibility="hidden"; state.DSK_led[1].style.visibility="hidden"; return }  // hide drive LED when shadowed by pop-up keyboard (fixed by z-index)
 
-        // LID
-        if(state.diskData[0]==null) state.DSK_lid[0].style.visibility="hidden";
-        else state.DSK_lid[0].style.visibility="visible";
-
-        if(state.diskData[1]==null) state.DSK_lid[1].style.visibility="hidden";
-        else state.DSK_lid[1].style.visibility="visible";
+        if(typeof this.syncDriveVisuals == "function")
+            this.syncDriveVisuals();
 
         this.Pstate = [{"motor":state.hw[0].motor,"b_diskData":state.diskData[0]!=null}
                     ,{"motor":state.hw[1].motor,"b_diskData":state.diskData[1]!=null}
@@ -887,12 +878,6 @@ function EMU_init()
         if(bool!==undefined) this.active = !!bool;
         return this.active && document.getElementById("tab1").checked;
     }
-
-    disk2.getState().DSK_led[0] = document.getElementById("dskLED_D1");        // required for GUI_update
-    disk2.getState().DSK_led[1] = document.getElementById("dskLED_D2");
-
-    disk2.getState().DSK_lid[0] = document.getElementById("dskLID_D1");        // required for GUI_update
-    disk2.getState().DSK_lid[1] = document.getElementById("dskLID_D2");
 
     oCOM.addRefreshEvent(apple2plus.CPU_monitoring,"CPU_monitoring",false);
     oCOM.addRefreshEvent(apple2plus.CPU_pace_monitoring,"CPU_pace_monitoring",true);
