@@ -520,9 +520,6 @@ function installDeviceAttachmentPolicies(rootWindow)
             }
         });
 
-        return changed;
-    }
-
         if(!Array.isArray(owner.layoutRules))
         {
             owner.layoutRules = [
@@ -538,6 +535,9 @@ function installDeviceAttachmentPolicies(rootWindow)
             ];
             changed = true;
         }
+
+        return changed;
+    }
 
     function patchKnownDeviceConfigs(io)
     {
