@@ -2,40 +2,94 @@ name: Build branch preview distro
 
 on:
   push:
-    branches:
-      - green-diskii-layout-visuals-v2
+    branches-ignore:
+      - "main"
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to build"
+        required: true
+        type: string
 
 permissions:
   contents: write
 
+concurrency:
+  group: branch-preview-publish
+  cancel-in-progress: false
+
 jobs:
-  patch:
+  build-preview:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout branch
+      - name: Select branch
+        id: branch
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            BRANCH="${{ inputs.branch }}"
+          else
+            BRANCH="${GITHUB_REF_NAME}"
+          fi
+          SAFE="$(printf '%s' "$BRANCH" | sed -E 's/[^A-Za-z0-9._-]+/-/g; s/^-+//; s/-+$//')"
+          if [ -z "$SAFE" ]; then
+            echo "Could not derive a safe preview filename from branch: $BRANCH"
+            exit 1
+          fi
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "safe=$SAFE" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout preview source
         uses: actions/checkout@v4
         with:
-          ref: green-diskii-layout-visuals-v2
+          ref: ${{ steps.branch.outputs.branch }}
+          path: source
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Apply and verify Disk II layout visual patch
-        shell: bash
-        run: |
-          python3 .github/scripts/patch_diskii_green.py
-          node --test tests/apple2_html_layout.test.js tests/appledisk2_layout_visuals.test.js tests/preview_distribution.test.js
+      - name: Test preview distribution builder and HTML compositor
+        working-directory: source
+        run: node --test tests/apple2_html_layout.test.js tests/appledisk2_layout_visuals.test.js tests/preview_distribution.test.js
 
-      - name: Commit production patch and restore normal workflow
+      - name: Build branch preview distro
+        working-directory: source
+        run: node .github/scripts/inline-preview.cjs --branch "${{ steps.branch.outputs.branch }}"
+
+      - name: Verify preview output
+        run: |
+          test -f "source/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
+          ls -lh "source/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
+
+      - name: Checkout main for publishing
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: publish
+
+      - name: Publish preview into main dist
         shell: bash
         run: |
+          mkdir -p publish/dist
+          cp "source/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html" \
+             "publish/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
+
+          cd publish
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin main
-          git checkout origin/main -- .github/workflows/build-branch-preview.yml
-          git rm .github/scripts/patch_diskii_green.py
-          git add res/EMU_CARD_appledisk2.js res/EMU_apple2plus.js tests/appledisk2_layout_visuals.test.js .github/workflows/build-branch-preview.yml .github/scripts/patch_diskii_green.py
-          git commit -m "fix: wire Disk II visuals to layout API"
-          git push origin HEAD:green-diskii-layout-visuals-v2
+
+          git add "dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
+
+          if git diff --cached --quiet; then
+            echo "Preview is already up to date."
+          else
+            git commit -m "Update preview distro for ${{ steps.branch.outputs.branch }} [skip ci]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Preview URL
+        run: |
+          echo "https://retroapplejs.github.io/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
