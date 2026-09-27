@@ -1329,7 +1329,6 @@ function EMUI()
 
 function loadDisk_fromFile(file_obj,slotN,deviceID)
 {
-    //var disk2 = oCOM.default(oEMU.component.IO.AppleDisk,{state:{active:false}},"AppleDisk");
     var io = apple2plus.hwObj().io;
     var disk2 = io.SLOT2obj(slotN);
 
