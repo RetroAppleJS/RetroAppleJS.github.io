@@ -60,19 +60,6 @@ function validateAssets(raw)
     return assets;
 }
 
-function legacyDiskIILayerId(layer)
-{
-    if(!layer || typeof layer.file != "string") return null;
-
-    if(layer.file == "A2P_FULL_DISKII_LED.png")
-        return layer.x < 300 ? "A2P.DISKII.D1.LED" : "A2P.DISKII.D2.LED";
-
-    if(layer.file == "A2P_FULL_DISKII_LID.png")
-        return layer.x < 400 ? "A2P.DISKII.D1.LID" : "A2P.DISKII.D2.LID";
-
-    return null;
-}
-
 function validateLayerId(rawId,index)
 {
     if(rawId === undefined || rawId === null || rawId === "") return null;
@@ -104,7 +91,7 @@ function validateLayout(raw)
         if(typeof layer.visible != "boolean")
             throw new Error("Layer " + (index+1) + " visibility must be boolean.");
 
-        var id = validateLayerId(layer.id,index) || legacyDiskIILayerId(layer);
+        var id = validateLayerId(layer.id,index);
         if(id)
         {
             if(seenIds[id]) throw new Error("Duplicate Apple II layout layer id: " + id);
