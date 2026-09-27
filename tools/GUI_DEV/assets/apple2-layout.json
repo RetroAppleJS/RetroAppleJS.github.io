@@ -22,7 +22,7 @@
       "file": "A2P_FULL_DISKII_LED.png",
       "x": 545,
       "y": 684,
-      "visible": true,
+      "visible": false,
       "shadow": {
         "enabled": false,
         "offsetX": 8,
@@ -35,7 +35,7 @@
       "file": "A2P_FULL_DISKII_LED.png",
       "x": 154,
       "y": 684,
-      "visible": true,
+      "visible": false,
       "shadow": {
         "enabled": false,
         "offsetX": 8,
@@ -48,7 +48,7 @@
       "file": "A2P_FULL_DISKII_LID.png",
       "x": 591,
       "y": 576,
-      "visible": true,
+      "visible": false,
       "shadow": {
         "enabled": false,
         "offsetX": 8,
@@ -61,7 +61,7 @@
       "file": "A2P_FULL_DISKII_LID.png",
       "x": 207,
       "y": 577,
-      "visible": true,
+      "visible": false,
       "shadow": {
         "enabled": false,
         "offsetX": 8,
@@ -74,7 +74,7 @@
       "file": "A2P_FULL_DISKII_right.png",
       "x": 472,
       "y": 463,
-      "visible": true,
+      "visible": false,
       "shadow": {
         "enabled": true,
         "offsetX": 0,
@@ -87,7 +87,7 @@
       "file": "A2P_FULL_DISKII_left.png",
       "x": 81,
       "y": 463,
-      "visible": true,
+      "visible": false,
       "shadow": {
         "enabled": true,
         "offsetX": 0,
@@ -100,13 +100,39 @@
       "file": "A2P_FULL_DISKII_gap.png",
       "x": 446,
       "y": 486,
-      "visible": true,
+      "visible": false,
       "shadow": {
         "enabled": true,
         "offsetX": 0,
         "offsetY": 15,
         "blur": 15,
         "opacity": 0.85
+      }
+    },
+    {
+      "file": "A2P_UNIDISK_left.png",
+      "x": 80,
+      "y": 438,
+      "visible": true,
+      "shadow": {
+        "enabled": true,
+        "offsetX": 0,
+        "offsetY": 15,
+        "blur": 12,
+        "opacity": 0.75
+      }
+    },
+    {
+      "file": "A2P_UNIDISK_right.png",
+      "x": 464,
+      "y": 437,
+      "visible": true,
+      "shadow": {
+        "enabled": true,
+        "offsetX": 0,
+        "offsetY": 15,
+        "blur": 12,
+        "opacity": 0.75
       }
     },
     {
