@@ -267,8 +267,6 @@ function AppleDisk2()
         "active":true
         ,"drive_enable":0
         ,"drv":0
-        ,"DSK_led" :[]
-        ,"DSK_lid":[]
         ,"diskData":[null,null]
         ,"diskName":[null,null]
         ,"hw":[{
@@ -286,7 +284,6 @@ function AppleDisk2()
                 ,"write":0
                 ,"motorOffTimer":null
             }
-            ,"LED":false
         },{
              "track":0
             ,"phase":0
@@ -302,7 +299,6 @@ function AppleDisk2()
                 ,"write":0
                 ,"motorOffTimer":null
             }
-            ,"LED":false
         }]
     };
 
@@ -343,6 +339,49 @@ function AppleDisk2()
         if(typeof(apple2plus)!="object" || !apple2plus) return null;
         return apple2plus.hwObj().io;
     }
+
+    function diskLayout()
+    {
+        if(typeof(oCOM)!="object" || !oCOM || !oCOM.LAYOUT) return null;
+        if(!oCOM.LAYOUT.A2P || !oCOM.LAYOUT.A2P.DISKII) return null;
+        return oCOM.LAYOUT.A2P.DISKII;
+    }
+
+    function driveLayout(deviceN)
+    {
+        if(typeof deviceN == "string")
+        {
+            var m = deviceN.toUpperCase().match(/^D([12])$/);
+            deviceN = m ? Number(m[1])-1 : NaN;
+        }
+
+        deviceN = Number(deviceN);
+        if(!Number.isInteger(deviceN) || deviceN<0 || deviceN>1) return null;
+
+        var layout = diskLayout();
+        return layout ? layout["D"+(deviceN+1)] || null : null;
+    }
+
+    this.setDriveLED = function(deviceN,on)
+    {
+        var drive = driveLayout(deviceN);
+        if(drive && typeof drive.LED == "function") drive.LED(!!on);
+    }
+
+    this.setDriveLidClosed = function(deviceN,closed)
+    {
+        var drive = driveLayout(deviceN);
+        if(drive && typeof drive.LID == "function") drive.LID(!!closed);
+    }
+
+    this.syncDriveVisuals = function()
+    {
+        for(var i=0;i<state.hw.length;i++)
+        {
+            this.setDriveLED(i,state.hw[i] && state.hw[i].motor);
+            this.setDriveLidClosed(i,state.diskData[i]!=null);
+        }
+    };
 
     this.getDiskCatalogContext = function()
     {
@@ -916,6 +955,7 @@ function AppleDisk2()
             var oldMotor = state.hw[i].motor;
             var newMotor = (enabled && i == deviceN) ? 1 : 0;
             state.hw[i].motor = newMotor;
+            this.setDriveLED(i,newMotor);
             if (oldMotor != newMotor)
             {
                 this.traceChange(
@@ -1011,11 +1051,12 @@ function AppleDisk2()
         this.cancelTrackStatsFlush(0);
         this.cancelTrackStatsFlush(1);
         this.traceSoftSwitchMarker("RESET");
+        this.syncDriveVisuals();
     }
 
     this.getState = function() { return state }
 
-    this.GUI_update = function() {}   // overridable function to update drive status (LED)
+    this.GUI_update = function() { this.syncDriveVisuals(); }   // update drive status (LED/lid)
     
     this.update_logs = function(name) {}   // overridable function
     
@@ -3322,6 +3363,9 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
                         + slotN
                     );
 
+                var deviceN = deviceRef.deviceN;
+                disk2.setDriveLidClosed(deviceN,true);
+
                 var fileName = arg.name || (arg.path || "").split("/").pop() || "disk image";
                 disk2.setDriveCatalogFile(deviceID, fileName);
 
@@ -3473,12 +3517,6 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
     {
         if(typeof drv == "number") drv = "D" + drv;
         var slotN = ssSlotNumber();
-    }
-
-    this.driveElementID = function(prefix,drv)
-    {
-        if(typeof drv == "number") drv = "D" + drv;
-        var slotN = ssSlotNumber();
         return String(prefix)+"_"+(slotN===null ? "X" : slotN)+"_"+String(drv).toUpperCase();
     }
 
@@ -3571,6 +3609,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
         try
         {
             if(typeof drv == "number") drv = "D" + drv;
+            this.setDriveLidClosed(drv,false);
 
             var el = this.diskMiddleEl(drv);
             if(el == null) return;

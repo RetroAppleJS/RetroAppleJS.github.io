@@ -552,6 +552,8 @@ function Apple2Plus(context)
         if(!device || device.periID!="DISKII") return false;
 
         disk2.getState().diskData[device.deviceN] = bytes;
+        if(typeof disk2.setDriveLidClosed == "function")
+            disk2.setDriveLidClosed(device.deviceN,true);
         return true;
     }  
 

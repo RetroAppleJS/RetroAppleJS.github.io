@@ -19,7 +19,7 @@ test('Disk II drive visuals delegate to the Apple II layout API', () => {
 });
 
 test('Disk II media and motor paths update layout lids and LEDs', () => {
-  assert.match(diskIISource,/this\.setDriveLidClosed\(deviceN,true\)/);
+  assert.match(diskIISource,/setDriveLidClosed\(deviceN,true\)/);
   assert.match(diskIISource,/this\.setDriveLidClosed\(drv,false\)/);
   assert.match(diskIISource,/this\.setDriveLED\(i,newMotor\)/);
   assert.match(diskIISource,/this\.syncDriveVisuals\(\)/);
