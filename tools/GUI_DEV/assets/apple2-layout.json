@@ -6,6 +6,19 @@
   },
   "layers": [
     {
+      "file": "A2P_FULL_Monitor.png",
+      "x": 75,
+      "y": 0,
+      "visible": true,
+      "shadow": {
+        "enabled": true,
+        "offsetX": 0,
+        "offsetY": 15,
+        "blur": 12,
+        "opacity": 0.75
+      }
+    },
+    {
       "file": "A2P_FULL_DISKII_LED.png",
       "x": 535,
       "y": 684,
@@ -55,19 +68,6 @@
         "offsetY": 10,
         "blur": 12,
         "opacity": 0.3
-      }
-    },
-    {
-      "file": "A2P_FULL_Monitor.png",
-      "x": 0,
-      "y": 0,
-      "visible": true,
-      "shadow": {
-        "enabled": true,
-        "offsetX": 0,
-        "offsetY": 15,
-        "blur": 12,
-        "opacity": 0.75
       }
     },
     {
