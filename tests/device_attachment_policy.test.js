@@ -76,3 +76,29 @@ test('owner-level layout rules are evaluated during sync without external helper
   assert.match(layoutSource,/var\s+ruleTargets\s*=\s*layoutTargets\(rule,active\s*\?\s*"attached"\s*:\s*"detached"\)/,
     'owner rules should choose attached or detached layout targets');
 });
+
+test('Safari repaint pulse keeps filtered layout layers in the compositor', () => {
+  assert.match(layoutSource,/function\s+forceWebKitRepaint\s*\(/,
+    'visibility changes should have a targeted Safari/WebKit repaint helper');
+  assert.match(layoutSource,/webkitBackfaceVisibility\s*=\s*"hidden"/,
+    'the repaint helper should touch a WebKit compositing property');
+  assert.match(layoutSource,/translateZ\(0\)/,
+    'the repaint helper should temporarily promote the image layer');
+  assert.match(layoutSource,/requestAnimationFrame[\s\S]*requestAnimationFrame[\s\S]*repaintBack/,
+    'the repaint helper should restore the layer after a frame boundary');
+});
+
+test('layout visibility uses opacity and visibility instead of display toggling', () => {
+  assert.match(layoutSource,/entry\.element\.style\.display\s*=\s*""/,
+    'visible(id,state) should keep DOM layers mounted');
+  assert.match(layoutSource,/entry\.element\.style\.visibility\s*=\s*state\s*\?\s*"visible"\s*:\s*"hidden"/,
+    'visible(id,state) should hide layers without removing them from the compositor');
+  assert.match(layoutSource,/entry\.element\.style\.opacity\s*=\s*state\s*\?\s*"1"\s*:\s*"0"/,
+    'visible(id,state) should hide layers through opacity as well');
+  assert.match(layoutSource,/forceWebKitRepaint\(entry\.element\)/,
+    'visible(id,state) should force a repaint after toggling state');
+  assert.match(layoutSource,/nodes\[i\]\.style\.visibility\s*=\s*state\s*\?\s*"visible"\s*:\s*"hidden"/,
+    'visibleByFile should use the same mounted-layer visibility path');
+  assert.match(layoutSource,/forceWebKitRepaint\(nodes\[i\]\)/,
+    'visibleByFile should also force a Safari repaint');
+});
