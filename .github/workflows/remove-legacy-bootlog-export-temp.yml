@@ -1,0 +1,112 @@
+name: Temporary legacy bootlog exporter cleanup
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: ["cleanup/remove-legacy-drive-visuals"]
+    paths:
+      - ".github/workflows/remove-legacy-bootlog-export-temp.yml"
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanup/remove-legacy-drive-visuals
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Add regression test before production cleanup
+        shell: bash
+        run: |
+          cat > tests/cpu_bootlog_api.test.js <<'EOF'
+          const test = require('node:test');
+          const assert = require('node:assert/strict');
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const repoRoot = path.resolve(__dirname,'..');
+          const cpuSource = fs.readFileSync(path.join(repoRoot,'res','EMU_cpu6502.js'),'utf8');
+          const debuggerSource = fs.readFileSync(path.join(repoRoot,'res','EMU_apple2debug.js'),'utf8');
+
+          test('bootlog exposes only the current 10-byte Base64 export API', () => {
+            assert.match(cpuSource,/this\.getBootLogBase64\s*=\s*function\s*\(\)/);
+            assert.doesNotMatch(cpuSource,/getBootLogBase64_legacy|Backward-compatible export for the old 5-byte disassembler input/);
+            assert.match(debuggerSource,/cpu\.getBootLogBase64\(\)/);
+            assert.doesNotMatch(debuggerSource,/getBootLogBase64_legacy/);
+          });
+          EOF
+
+      - name: Verify RED regression state
+        shell: bash
+        run: |
+          set +e
+          node --test tests/cpu_bootlog_api.test.js > /tmp/bootlog-red.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/bootlog-red.log
+          if [ "$status" -eq 0 ]; then
+            echo "Expected legacy bootlog API regression test to fail before cleanup."
+            exit 1
+          fi
+          grep -q "bootlog exposes only the current 10-byte Base64 export API" /tmp/bootlog-red.log
+
+      - name: Remove obsolete legacy exporter
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          p=Path('res/EMU_cpu6502.js')
+          s=p.read_text()
+          old='''    // Backward-compatible export for the old 5-byte disassembler input:\n    //   PClo PChi OPC OP1 OP2\n    this.getBootLogBase64_legacy = function()\n    {\n        flushBootGroupPending();\n\n        var bytes = new Uint8Array(BOOTcnt * 5);\n\n        for (var i = 0, o = 0; i < BOOTcnt; i++, o += 5)\n        {\n            var adr = BOOTlog_adr[i] & 0xffff;\n            var packed = BOOTlog_cpu[i];\n\n            bytes[o    ] = adr & 0xff;\n            bytes[o + 1] = adr >> 8;\n            bytes[o + 2] = Number( packed        & 0xffn);\n            bytes[o + 3] = Number((packed >> 8n)  & 0xffn);\n            bytes[o + 4] = Number((packed >> 16n) & 0xffn);\n        }\n\n        return u8ToBase64(bytes);\n    };\n\n'''
+          if s.count(old) != 1:
+              raise SystemExit(f'legacy exporter block: expected exactly one match, found {s.count(old)}')
+          p.write_text(s.replace(old,'',1))
+          PY
+
+      - name: Verify GREEN CPU regression suite
+        shell: bash
+        run: |
+          node --check res/EMU_cpu6502.js
+          node --test tests/cpu_bootlog_api.test.js tests/cpu_execution_condition.test.js tests/cpu_nmos_decimal_cardcat.test.js tests/cpu_nmos_decimal_invalid_bcd.test.js tests/wasm_ic_breakpoint.test.js
+          if grep -En 'getBootLogBase64_legacy|Backward-compatible export for the old 5-byte disassembler input' res/EMU_cpu6502.js res/EMU_apple2debug.js; then
+            echo "Legacy bootlog compatibility API remains."
+            exit 1
+          fi
+
+      - name: Run complete Node suite and confirm baseline only
+        shell: bash
+        run: |
+          set +e
+          node --test tests/*.test.js > /tmp/all-tests.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/all-tests.log
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
+          grep -q 'ℹ fail 5' /tmp/all-tests.log
+          grep -q 'default Apple II Plus boot mounts AppleMouse in physical slot 4' /tmp/all-tests.log
+          grep -q 'fixed scenario companion is mounted in viewport coordinate space' /tmp/all-tests.log
+          grep -q 'layout companion prefers the right side, falls back left, and uses a narrower preferred width' /tmp/all-tests.log
+          grep -q 'Liron advertises HD20 as optional and attaches mixed SmartPort devices to distinct units' /tmp/all-tests.log
+          grep -q 'UniDisk Surface Map capability button toggles the popup open and closed' /tmp/all-tests.log
+
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add res/EMU_cpu6502.js tests/cpu_bootlog_api.test.js
+          git commit -m "refactor: remove legacy bootlog exporter"
+          git fetch origin cleanup/remove-legacy-drive-visuals
+          git rebase origin/cleanup/remove-legacy-drive-visuals
+          git push origin HEAD:cleanup/remove-legacy-drive-visuals
