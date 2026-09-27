@@ -63,7 +63,9 @@ test('HTML composition preserves JSON top-to-bottom stacking, geometry, shadows 
   assert.equal(host.children[0].style.left,'30px');
   assert.equal(host.children[0].style.top,'40px');
   assert.match(host.children[0].style.filter,/drop-shadow\(0px 15px 12px rgba\(0,0,0,0\.75\)\)/);
-  assert.equal(host.children[1].style.display,'none');
+  assert.equal(host.children[1].style.display,'');
+  assert.equal(host.children[1].style.visibility,'hidden');
+  assert.equal(host.children[1].style.opacity,'0');
   assert.equal(host.children[2].style.filter,'none');
 });
 
@@ -174,7 +176,9 @@ test('LAYOUT constructor installs as oCOM.LAYOUT and applies pending Disk II fac
   assert.equal(service.A2P.DISKII.D1.LED(),true);
   assert.equal(service.A2P.DISKII.D2.LID(),false);
   assert.equal(service.getLayer('A2P.DISKII.D1.LED').element.style.display,'');
-  assert.equal(service.getLayer('A2P.DISKII.D2.LID').element.style.display,'none');
+  assert.equal(service.getLayer('A2P.DISKII.D2.LID').element.style.display,'');
+  assert.equal(service.getLayer('A2P.DISKII.D2.LID').element.style.visibility,'hidden');
+  assert.equal(service.getLayer('A2P.DISKII.D2.LID').element.style.opacity,'0');
 });
 
 test('generic visibility API updates runtime layer model and DOM element atomically', async () => {
@@ -195,9 +199,13 @@ test('generic visibility API updates runtime layer model and DOM element atomica
   const entry=service.getLayer('A2P.TEST.PART');
   assert.equal(entry.model.visible,true);
   assert.equal(entry.element.style.display,'');
+  assert.equal(entry.element.style.visibility,'visible');
+  assert.equal(entry.element.style.opacity,'1');
   assert.equal(service.visible('A2P.TEST.PART',false),false);
   assert.equal(entry.model.visible,false);
-  assert.equal(entry.element.style.display,'none');
+  assert.equal(entry.element.style.display,'');
+  assert.equal(entry.element.style.visibility,'hidden');
+  assert.equal(entry.element.style.opacity,'0');
 });
 
 test('COM_LAYOUT_CONFIG owns composer layout data and compositor has no JSON HTTP loader', () => {
