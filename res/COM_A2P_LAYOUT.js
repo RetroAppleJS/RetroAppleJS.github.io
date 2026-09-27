@@ -15,7 +15,6 @@ var CANVAS_W = 1144;
 var CANVAS_H = 1144;
 var DISPLAY_SIZE = 1300;
 var ASSET_BASE = "tools/GUI_DEV/assets/";
-var LEGACY_DRIVE_VISUAL_IDS = ["dskLED_D1","dskLED_D2","dskLID_D1","dskLID_D2"];
 
 function isFiniteNumber(v)
 {
@@ -272,15 +271,6 @@ function buildDOMComposition(doc,layout,registry)
     return host;
 }
 
-function disableLegacyDriveVisuals(doc)
-{
-    LEGACY_DRIVE_VISUAL_IDS.forEach(function(id)
-    {
-        var el = doc.getElementById(id);
-        if(el) el.style.display = "none";
-    });
-}
-
 function LAYOUT(rootWindow)
 {
     var self = this;
@@ -329,7 +319,6 @@ function LAYOUT(rootWindow)
     this.drawComposition = drawComposition;
     this.renderLayout = renderLayout;
     this.buildDOMComposition = buildDOMComposition;
-    this.disableLegacyDriveVisuals = disableLegacyDriveVisuals;
 
     this.loadLayout = function(rootWindow)
     {
@@ -416,9 +405,6 @@ function LAYOUT(rootWindow)
                     tab.insertBefore(host,tab.firstChild || null);
                 else
                     tab.appendChild(host);
-
-                /* Embedded layout data owns the static drive visuals. */
-                disableLegacyDriveVisuals(doc);
 
                 layersById = registry;
                 Object.keys(pending).forEach(function(id)
