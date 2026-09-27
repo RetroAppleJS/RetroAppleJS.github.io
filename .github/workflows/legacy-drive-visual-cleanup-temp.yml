@@ -1,0 +1,137 @@
+name: Temporary legacy Disk II visual cleanup
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: ["cleanup/remove-legacy-drive-visuals"]
+    paths:
+      - ".github/workflows/legacy-drive-visual-cleanup-temp.yml"
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanup/remove-legacy-drive-visuals
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Add regression test before production cleanup
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          p=Path('tests/appledisk2_layout_visuals.test.js')
+          s=p.read_text()
+
+          marker="const apple2MainSource = fs.readFileSync(path.join(repoRoot,'res','EMU_apple2main.js'),'utf8');"
+          if marker not in s:
+              raise SystemExit('apple2 main source marker not found')
+
+          extra="""const indexSource = fs.readFileSync(path.join(repoRoot,'index.html'),'utf8');
+          const layoutSource = fs.readFileSync(path.join(repoRoot,'res','COM_A2P_LAYOUT.js'),'utf8');
+          const mainCssSource = fs.readFileSync(path.join(repoRoot,'res','COM_MAIN.css'),'utf8');"""
+          extra=extra.replace('\n          ','\n')
+          if "const layoutSource =" not in s:
+              s=s.replace(marker,marker+'\n'+extra,1)
+
+          test="""
+
+          test('legacy Disk II DOM visuals are fully removed', () => {
+            assert.doesNotMatch(indexSource,/dskLED_D[12]|dskLID_D[12]|appdskLED|appdskLID/);
+            assert.doesNotMatch(layoutSource,/LEGACY_DRIVE_VISUAL_IDS|disableLegacyDriveVisuals|dskLED_D[12]|dskLID_D[12]/);
+            assert.doesNotMatch(mainCssSource,/\\.appdsk(?:LED|LID)\\b/);
+          });
+          """.replace('\n          ','\n')
+
+          if "legacy Disk II DOM visuals are fully removed" not in s:
+              s=s.rstrip()+test+'\n'
+
+          p.write_text(s)
+          PY
+
+      - name: Verify RED regression state
+        shell: bash
+        run: |
+          set +e
+          node --test tests/appledisk2_layout_visuals.test.js > /tmp/legacy-drive-red.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/legacy-drive-red.log
+          if [ "$status" -eq 0 ]; then
+            echo "Expected the new legacy-visual regression test to fail before cleanup."
+            exit 1
+          fi
+          grep -q "legacy Disk II DOM visuals are fully removed" /tmp/legacy-drive-red.log
+
+      - name: Remove obsolete legacy Disk II visual plumbing
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          def replace_once(text, old, new, label):
+              if text.count(old) != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, found {text.count(old)}')
+              return text.replace(old,new,1)
+
+          index=Path('index.html')
+          s=index.read_text()
+          legacy_html='''            <div class="appdskLED" id="dskLED_D1" style="left:178px;top:778px;z-index:0"></div>\n            <div class="appdskLED" id="dskLED_D2" style="left:612px;top:778px;z-index:0"></div>\n\n            <div class="appdskLID" id="dskLID_D1" style="left:250px;top:652px;z-index:0"></div>\n            <div class="appdskLID" id="dskLID_D2" style="left:685px;top:652px;z-index:0"></div>\n\n'''
+          s=replace_once(s,legacy_html,'','index legacy Disk II elements')
+          index.write_text(s)
+
+          layout=Path('res/COM_A2P_LAYOUT.js')
+          s=layout.read_text()
+          s=replace_once(s,'var LEGACY_DRIVE_VISUAL_IDS = ["dskLED_D1","dskLED_D2","dskLID_D1","dskLID_D2"];\n','','legacy visual ID array')
+          legacy_fn='''function disableLegacyDriveVisuals(doc)\n{\n    LEGACY_DRIVE_VISUAL_IDS.forEach(function(id)\n    {\n        var el = doc.getElementById(id);\n        if(el) el.style.display = "none";\n    });\n}\n\n'''
+          s=replace_once(s,legacy_fn,'','legacy visual disable function')
+          s=replace_once(s,'    this.disableLegacyDriveVisuals = disableLegacyDriveVisuals;\n','','legacy visual public alias')
+          legacy_call='''                /* Embedded layout data owns the static drive visuals. */\n                disableLegacyDriveVisuals(doc);\n\n'''
+          s=replace_once(s,legacy_call,'','legacy visual install call')
+          layout.write_text(s)
+
+          css=Path('res/COM_MAIN.css')
+          s=css.read_text()
+          for cls in ('appdskLED','appdskLID'):
+              pattern=re.compile(r'\n\s*\.'+re.escape(cls)+r'\s*\n\s*\{.*?\n\s*\}\s*\n',re.S)
+              s,n=pattern.subn('\n',s,count=1)
+              if n != 1:
+                  raise SystemExit(f'{cls} CSS block: expected exactly one match, found {n}')
+          css.write_text(s)
+          PY
+
+      - name: Verify GREEN targeted regression suite
+        shell: bash
+        run: |
+          node --check res/COM_A2P_LAYOUT.js
+          node --test tests/apple2_html_layout.test.js tests/appledisk2_layout_visuals.test.js
+          if grep -En 'LEGACY_DRIVE_VISUAL_IDS|disableLegacyDriveVisuals|dskLED_D1|dskLED_D2|dskLID_D1|dskLID_D2|appdskLED|appdskLID' index.html res/COM_A2P_LAYOUT.js res/COM_MAIN.css; then
+            echo "Legacy Disk II visual plumbing remains in runtime files."
+            exit 1
+          fi
+
+      - name: Run complete Node test suite
+        shell: bash
+        run: |
+          node --test tests/*.test.js
+
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html res/COM_A2P_LAYOUT.js res/COM_MAIN.css tests/appledisk2_layout_visuals.test.js
+          git commit -m "refactor: remove legacy Disk II visual DOM"
+          git fetch origin cleanup/remove-legacy-drive-visuals
+          git rebase origin/cleanup/remove-legacy-drive-visuals
+          git push origin HEAD:cleanup/remove-legacy-drive-visuals
