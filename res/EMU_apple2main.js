@@ -77,7 +77,7 @@ var composer =
   "layers": [
     {
       "file": "A2P_FULL_Monitor.png",
-      "x": 70,
+      "x": 80,
       "y": 0,
       "visible": true,
       "shadow": {
@@ -90,7 +90,7 @@ var composer =
     },
     {
       "file": "A2P_FULL_DISKII_LED.png",
-      "x": 535,
+      "x": 545,
       "y": 684,
       "visible": true,
       "shadow": {
@@ -103,7 +103,7 @@ var composer =
     },
     {
       "file": "A2P_FULL_DISKII_LED.png",
-      "x": 144,
+      "x": 154,
       "y": 684,
       "visible": true,
       "shadow": {
@@ -116,7 +116,7 @@ var composer =
     },
     {
       "file": "A2P_FULL_DISKII_LID.png",
-      "x": 580,
+      "x": 591,
       "y": 576,
       "visible": true,
       "shadow": {
@@ -129,7 +129,7 @@ var composer =
     },
     {
       "file": "A2P_FULL_DISKII_LID.png",
-      "x": 196,
+      "x": 207,
       "y": 577,
       "visible": true,
       "shadow": {
@@ -142,7 +142,7 @@ var composer =
     },
     {
       "file": "A2P_FULL_DISKII_right.png",
-      "x": 461,
+      "x": 472,
       "y": 463,
       "visible": true,
       "shadow": {
@@ -155,7 +155,7 @@ var composer =
     },
     {
       "file": "A2P_FULL_DISKII_left.png",
-      "x": 70,
+      "x": 81,
       "y": 463,
       "visible": true,
       "shadow": {
@@ -168,7 +168,7 @@ var composer =
     },
     {
       "file": "A2P_FULL_Body.png",
-      "x": 0,
+      "x": 5,
       "y": 489,
       "visible": true,
       "shadow": {
