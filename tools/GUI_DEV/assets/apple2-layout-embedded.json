@@ -9,7 +9,7 @@
       "file": "A2P_FULL_Monitor.png",
       "x": 80,
       "y": 0,
-      "visible": false,
+      "visible": true,
       "shadow": {
         "enabled": true,
         "offsetX": 0,
@@ -104,9 +104,9 @@
       "shadow": {
         "enabled": true,
         "offsetX": 0,
-        "offsetY": 9,
-        "blur": 30,
-        "opacity": 1
+        "offsetY": 15,
+        "blur": 15,
+        "opacity": 0.85
       }
     },
     {
