@@ -523,6 +523,22 @@ function installDeviceAttachmentPolicies(rootWindow)
         return changed;
     }
 
+        if(!Array.isArray(owner.layoutRules))
+        {
+            owner.layoutRules = [
+                {
+                    when: { allAttached: ["D1","D2"] },
+                    attached: [
+                        { file: "A2P_FULL_DISKII_gap.png", visible: true }
+                    ],
+                    detached: [
+                        { file: "A2P_FULL_DISKII_gap.png", visible: false }
+                    ]
+                }
+            ];
+            changed = true;
+        }
+
     function patchKnownDeviceConfigs(io)
     {
         if(rootWindow.oEMU && rootWindow.oEMU.component && rootWindow.oEMU.component.IO)
@@ -596,6 +612,45 @@ function installDeviceAttachmentPolicies(rootWindow)
         return Array.isArray(raw) ? raw : [raw];
     }
 
+    function hasAttached(owner,code)
+    {
+        return attachedCount(owner,code) > 0;
+    }
+
+    function ruleMatches(owner,rule)
+    {
+        var when = rule && rule.when ? rule.when : {};
+
+        if(Array.isArray(when.allAttached))
+        {
+            for(var i=0;i<when.allAttached.length;i++)
+                if(!hasAttached(owner,when.allAttached[i])) return false;
+        }
+
+        if(Array.isArray(when.anyAttached))
+        {
+            var any = false;
+            for(var j=0;j<when.anyAttached.length;j++)
+            {
+                if(hasAttached(owner,when.anyAttached[j]))
+                {
+                    any = true;
+                    break;
+                }
+            }
+            if(!any) return false;
+        }
+
+        if(Array.isArray(when.noneAttached))
+        {
+            for(var k=0;k<when.noneAttached.length;k++)
+                if(hasAttached(owner,when.noneAttached[k])) return false;
+        }
+
+        return true;
+    }
+
+
     function setLayoutTarget(target,defaultState)
     {
         if(target === undefined || target === null) return false;
@@ -643,6 +698,7 @@ function installDeviceAttachmentPolicies(rootWindow)
             var count = attachedCount(owner,deviceCode(info));
             changed = applyDeviceLayout(owner,info,count>0) || changed;
         }
+        changed = applyOwnerLayoutRules(owner) || changed;
         return changed;
     }
 
