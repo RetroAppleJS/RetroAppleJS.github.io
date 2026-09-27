@@ -6698,6 +6698,20 @@ function applyLayerVisibility(entry,state)
     return state;
 }
 
+function runtimeLayerIdForFile(filename)
+{
+    switch(String(filename || ""))
+    {
+        case "A2P_FULL_DISKII_left.png":
+            return "A2P.DISKII.D1.BODY";
+        case "A2P_FULL_DISKII_right.png":
+            return "A2P.DISKII.D2.BODY";
+        case "A2P_FULL_DISKII_gap.png":
+            return "A2P.DISKII.GAP";
+    }
+    return null;
+}
+
 function renderLayout(rootWindow,layout)
 {
     var canvas = rootWindow.document.createElement("canvas");
@@ -6732,12 +6746,18 @@ function buildDOMComposition(doc,layout,registry)
     {
         var layer = layout.layers[i];
         var img = doc.createElement("img");
+        var runtimeId = layer.id || runtimeLayerIdForFile(layer.file);
+
         img.src = assetURL(layer.file,layout);
         img.alt = "";
         img.draggable = false;
         img.dataset.layerIndex = String(i);
         img.dataset.file = layer.file;
-        if(layer.id) img.dataset.layerId = layer.id;
+        if(runtimeId)
+        {
+            layer.id = runtimeId;
+            img.dataset.layerId = runtimeId;
+        }
         img.style.position = "absolute";
         img.style.left = layer.x + "px";
         img.style.top = layer.y + "px";
@@ -6756,8 +6776,8 @@ function buildDOMComposition(doc,layout,registry)
 
         host.appendChild(img);
 
-        if(layer.id && registry)
-            registry[layer.id] = {id:layer.id,model:layer,element:img};
+        if(runtimeId && registry)
+            registry[runtimeId] = {id:runtimeId,model:layer,element:img};
     }
 
     return host;
@@ -6795,11 +6815,14 @@ function LAYOUT(rootWindow)
 
     this.A2P = {
         DISKII: {
+            GAP: function(on){ return setDiskLayer("A2P.DISKII.GAP",on); },
             D1: {
+                BODY: function(on){ return setDiskLayer("A2P.DISKII.D1.BODY",on); },
                 LED: function(on){ return setDiskLayer("A2P.DISKII.D1.LED",on); },
                 LID: function(open){ return setDiskLayer("A2P.DISKII.D1.LID",open); }
             },
             D2: {
+                BODY: function(on){ return setDiskLayer("A2P.DISKII.D2.BODY",on); },
                 LED: function(on){ return setDiskLayer("A2P.DISKII.D2.LED",on); },
                 LID: function(open){ return setDiskLayer("A2P.DISKII.D2.LID",open); }
             }
@@ -7003,20 +7026,17 @@ function installDeviceAttachmentPolicies(rootWindow)
 
             if(!info.layout)
             {
-                var isD1 = code == "D1";
-                var bodyFile = isD1
-                    ? "A2P_FULL_DISKII_left.png"
-                    : "A2P_FULL_DISKII_right.png";
+                var bodyId = "A2P.DISKII." + code + ".BODY";
                 var prefix = "A2P.DISKII." + code + ".";
 
                 info.layout = {
                     attached: [
-                        {file: bodyFile, visible: true},
+                        {id: bodyId, visible: true},
                         {id: prefix + "LED", visible: false},
                         {id: prefix + "LID", visible: false}
                     ],
                     detached: [
-                        {file: bodyFile, visible: false},
+                        {id: bodyId, visible: false},
                         {id: prefix + "LED", visible: false},
                         {id: prefix + "LID", visible: false}
                     ]
@@ -7025,20 +7045,40 @@ function installDeviceAttachmentPolicies(rootWindow)
             }
         });
 
+        var gapRule = {
+            id: "DISKII.GAP.BOTH_DRIVES",
+            when: {allAttached: ["D1","D2"]},
+            attached: [
+                {id: "A2P.DISKII.GAP", visible: true}
+            ],
+            detached: [
+                {id: "A2P.DISKII.GAP", visible: false}
+            ]
+        };
+
         if(!Array.isArray(owner.layoutRules))
         {
-            owner.layoutRules = [
-                {
-                    when: { allAttached: ["D1","D2"] },
-                    attached: [
-                        { file: "A2P_FULL_DISKII_gap.png", visible: true }
-                    ],
-                    detached: [
-                        { file: "A2P_FULL_DISKII_gap.png", visible: false }
-                    ]
-                }
-            ];
+            owner.layoutRules = [gapRule];
             changed = true;
+        }
+        else
+        {
+            var replacedGapRule = false;
+            for(var r=0;r<owner.layoutRules.length;r++)
+            {
+                if(owner.layoutRules[r] && owner.layoutRules[r].id == gapRule.id)
+                {
+                    owner.layoutRules[r] = gapRule;
+                    replacedGapRule = true;
+                    changed = true;
+                    break;
+                }
+            }
+            if(!replacedGapRule)
+            {
+                owner.layoutRules.push(gapRule);
+                changed = true;
+            }
         }
 
         return changed;
@@ -7167,7 +7207,6 @@ function installDeviceAttachmentPolicies(rootWindow)
         }
 
         var rules = Array.isArray(owner.layoutRules) ? owner.layoutRules : [];
-
         for(var r=0;r<rules.length;r++)
         {
             var rule = rules[r];
@@ -7216,6 +7255,7 @@ function installDeviceAttachmentPolicies(rootWindow)
             for(var t=0;t<ruleTargets.length;t++)
                 changed = setLayoutTarget(ruleTargets[t],active) || changed;
         }
+
         return changed;
     }
 
