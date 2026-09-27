@@ -33,7 +33,7 @@ function loadJsConfig(source) {
 }
 
 function loadComposerModel() {
-  const match = composerSource.match(/<script>\s*([\s\S]*?)<\/script>/);
+  const match = composerSource.match(/<script\b[^>]*>\s*([\s\S]*?)<\/script\b[^>]*>/i);
   assert.ok(match,'Composer inline script must exist');
   const script = match[1];
   const start = script.indexOf("'use strict';");
