@@ -148,7 +148,7 @@ function disk_appledisk()
   if(oEMU.component === undefined) oEMU.component = {};
   if(oEMU.component.IO === undefined) oEMU.component.IO = {};
 
-  var disk2 = oEMU.component.IO["AppleDisk2"] || oEMU.component.IO["AppleDisk"];
+  var disk2 = oEMU.component.IO["AppleDisk2"];
 
   if(!disk2)
   {
@@ -164,8 +164,6 @@ function disk_appledisk()
 
     oEMU.component.IO["AppleDisk2"] = disk2;
 
-    // Legacy alias for older DiskJS/helper code.
-    oEMU.component.IO["AppleDisk"] = disk2;
   }
 
   if(typeof disk2.detectDiskImageType != "function")
