@@ -205,4 +205,6 @@ test('EMU_apple2main owns composer layout data and compositor has no JSON HTTP l
   assert.match(compositorSource,/oCOM\.LAYOUT/);
   assert.doesNotMatch(compositorSource,/apple2-layout-embedded_v2\.json/);
   assert.doesNotMatch(compositorSource,/\.fetch\s*\(/);
+  assert.doesNotMatch(compositorSource,/\(function\s*\(\s*root\s*,\s*factory\s*\)/);
+  assert.doesNotMatch(compositorSource,/factory\s*\(\s*root\s*\)/);
 });
