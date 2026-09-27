@@ -141,6 +141,6 @@ test('Composer validation rejects duplicate semantic IDs and exposes an optional
   }),/Duplicate .*layer id/i);
 
   assert.match(composerSource,/id="runtimeIdInput"/);
-  assert.doesNotMatch(composerSource,/id:makeRuntimeId\(\)/);
+  assert.doesNotMatch(composerSource,/const\s+l=\{id:makeRuntimeId\(\)/);
   assert.match(composerSource,/uid:makeRuntimeId\(\)/);
 });
