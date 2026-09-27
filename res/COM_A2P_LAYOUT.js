@@ -612,6 +612,40 @@ function installDeviceAttachmentPolicies(rootWindow)
         return Array.isArray(raw) ? raw : [raw];
     }
 
+    function setLayoutTarget(target,defaultState)
+    {
+        if(target === undefined || target === null) return false;
+        if(typeof target == "string") target = {id:target};
+        if(typeof target != "object") return false;
+
+        var state = target.visible === undefined ? !!defaultState : !!target.visible;
+        var layout = rootWindow.oLAYOUT || (rootWindow.oCOM && rootWindow.oCOM.LAYOUT);
+        var changed = false;
+
+        if(target.id && layout && typeof layout.visible == "function")
+            changed = layout.visible(target.id,state) || changed;
+
+        if(target.file && layout && typeof layout.visibleByFile == "function")
+            changed = layout.visibleByFile(target.file,state) || changed;
+
+        return changed;
+    }
+
+    function applyDeviceLayout(owner,info,attached)
+    {
+        info = info || null;
+        if(!info || !info.layout) return false;
+
+        var mode = attached ? "attached" : "detached";
+        var targets = layoutTargets(info.layout,mode);
+        var changed = false;
+
+        for(var i=0;i<targets.length;i++)
+            changed = setLayoutTarget(targets[i],attached) || changed;
+
+        return changed;
+    }
+
     function hasAttached(owner,code)
     {
         return attachedCount(owner,code) > 0;
@@ -650,41 +684,6 @@ function installDeviceAttachmentPolicies(rootWindow)
         return true;
     }
 
-
-    function setLayoutTarget(target,defaultState)
-    {
-        if(target === undefined || target === null) return false;
-        if(typeof target == "string") target = {id:target};
-        if(typeof target != "object") return false;
-
-        var state = target.visible === undefined ? !!defaultState : !!target.visible;
-        var layout = rootWindow.oLAYOUT || (rootWindow.oCOM && rootWindow.oCOM.LAYOUT);
-        var changed = false;
-
-        if(target.id && layout && typeof layout.visible == "function")
-            changed = layout.visible(target.id,state) || changed;
-
-        if(target.file && layout && typeof layout.visibleByFile == "function")
-            changed = layout.visibleByFile(target.file,state) || changed;
-
-        return changed;
-    }
-
-    function applyDeviceLayout(owner,info,attached)
-    {
-        info = info || null;
-        if(!info || !info.layout) return false;
-
-        var mode = attached ? "attached" : "detached";
-        var targets = layoutTargets(info.layout,mode);
-        var changed = false;
-
-        for(var i=0;i<targets.length;i++)
-            changed = setLayoutTarget(targets[i],attached) || changed;
-
-        return changed;
-    }
-
     function syncDeviceLayout(io,owner)
     {
         if(!owner) return false;
@@ -692,12 +691,14 @@ function installDeviceAttachmentPolicies(rootWindow)
 
         var changed = false;
         var cfg = Array.isArray(owner.deviceConfig) ? owner.deviceConfig : [];
+
         for(var i=0;i<cfg.length;i++)
         {
             var info = cfg[i];
             var count = attachedCount(owner,deviceCode(info));
             changed = applyDeviceLayout(owner,info,count>0) || changed;
         }
+
         changed = applyOwnerLayoutRules(owner) || changed;
         return changed;
     }
