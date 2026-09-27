@@ -1,0 +1,15 @@
+name: Temporary persistent Disk II layer ID migration
+
+on:
+  push:
+    branches: ["refactor/persistent-diskii-layer-ids"]
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node --test tests/apple2_composer_layer_ids.test.js tests/apple2_html_layout.test.js
