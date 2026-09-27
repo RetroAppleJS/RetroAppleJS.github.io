@@ -50,23 +50,6 @@ jobs:
         with:
           node-version: 20
 
-      - name: Apply centralize script/include cleanup
-        working-directory: source
-        shell: bash
-        run: |
-          node .github/scripts/apply-centralize-script-includes.cjs
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A index.html res/COM_MAIN.js res/COM_MAIN_core.js tests/apple2_html_layout.test.js tests/script_include_ownership.test.js
-          if git diff --cached --quiet; then
-            echo "Centralization patch already applied."
-          else
-            git commit -m "refactor: centralize script includes and layout config"
-            git push origin HEAD:${{ steps.branch.outputs.branch }}
-            echo "Centralization patch committed; stop this run and let the pushed commit verify cleanly."
-            exit 1
-          fi
-
       - name: Test preview distribution builder and HTML compositor
         working-directory: source
         run: node --test tests/apple2_html_layout.test.js tests/appledisk2_layout_visuals.test.js tests/script_include_ownership.test.js tests/preview_distribution.test.js
