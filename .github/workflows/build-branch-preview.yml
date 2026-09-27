@@ -2,94 +2,123 @@ name: Build branch preview distro
 
 on:
   push:
-    branches-ignore:
-      - "main"
-  workflow_dispatch:
-    inputs:
-      branch:
-        description: "Branch to build"
-        required: true
-        type: string
+    branches:
+      - fix-diskii-main-gui-update
 
 permissions:
   contents: write
 
-concurrency:
-  group: branch-preview-publish
-  cancel-in-progress: false
-
 jobs:
-  build-preview:
+  patch:
     runs-on: ubuntu-latest
     steps:
-      - name: Select branch
-        id: branch
-        shell: bash
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            BRANCH="${{ inputs.branch }}"
-          else
-            BRANCH="${GITHUB_REF_NAME}"
-          fi
-          SAFE="$(printf '%s' "$BRANCH" | sed -E 's/[^A-Za-z0-9._-]+/-/g; s/^-+//; s/-+$//')"
-          if [ -z "$SAFE" ]; then
-            echo "Could not derive a safe preview filename from branch: $BRANCH"
-            exit 1
-          fi
-          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
-          echo "safe=$SAFE" >> "$GITHUB_OUTPUT"
-
-      - name: Checkout preview source
+      - name: Checkout branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ steps.branch.outputs.branch }}
-          path: source
+          ref: fix-diskii-main-gui-update
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Test preview distribution builder and HTML compositor
-        working-directory: source
-        run: node --test tests/apple2_html_layout.test.js tests/appledisk2_layout_visuals.test.js tests/preview_distribution.test.js
-
-      - name: Build branch preview distro
-        working-directory: source
-        run: node .github/scripts/inline-preview.cjs --branch "${{ steps.branch.outputs.branch }}"
-
-      - name: Verify preview output
-        run: |
-          test -f "source/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
-          ls -lh "source/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
-
-      - name: Checkout main for publishing
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          path: publish
-
-      - name: Publish preview into main dist
+      - name: Apply Disk II main GUI hotfix and verify
         shell: bash
         run: |
-          mkdir -p publish/dist
-          cp "source/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html" \
-             "publish/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
+          python3 - <<'PY'
+          from pathlib import Path
 
-          cd publish
+          path = Path('res/EMU_apple2main.js')
+          text = path.read_text()
+
+          def must_replace(src, old, new):
+              if old not in src:
+                  raise SystemExit('Missing expected block:\n' + old[:600])
+              return src.replace(old, new, 1)
+
+          old_gui = '''    disk2.GUI_update = function(cmd)  // override (called continuously from oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);)
+    {
+        // CATCH CHANGES ONLY
+        var state = this.getState();
+        if(this.Pstate 
+            && this.Pstate[0].motor == state.hw[0].motor
+            && this.Pstate[1].motor == state.hw[1].motor
+            && this.Pstate[0].b_diskData == (state.diskData[0]!=null)
+            && this.Pstate[1].b_diskData == (state.diskData[1]!=null
+            //|| cmd == "kbd"
+            )) return;
+            
+        if(state.DSK_led.length) state.DSK_led = [document.getElementById("dskLED_D1"),document.getElementById("dskLED_D2")]
+        if(state.hw[state.drv].motor==1) { state.DSK_led[state.drv].style.visibility = "visible"; }
+        else state.DSK_led[state.drv].style.visibility = "hidden";
+        //if(_o.EMU_keyb_active) { state.DSK_led[0].style.visibility="hidden"; state.DSK_led[1].style.visibility="hidden"; return }  // hide drive LED when shadowed by pop-up keyboard (fixed by z-index)
+
+        // LID
+        if(state.diskData[0]==null) state.DSK_lid[0].style.visibility="hidden";
+        else state.DSK_lid[0].style.visibility="visible";
+
+        if(state.diskData[1]==null) state.DSK_lid[1].style.visibility="hidden";
+        else state.DSK_lid[1].style.visibility="visible";
+
+        this.Pstate = [{"motor":state.hw[0].motor,"b_diskData":state.diskData[0]!=null}
+                    ,{"motor":state.hw[1].motor,"b_diskData":state.diskData[1]!=null}
+                    ,{"keyb_active":_o.EMU_keyb_active}
+                    ];
+    }
+'''
+          new_gui = '''    disk2.GUI_update = function(cmd)  // override (called continuously from oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);)
+    {
+        // CATCH CHANGES ONLY
+        var state = this.getState();
+        if(this.Pstate 
+            && this.Pstate[0].motor == state.hw[0].motor
+            && this.Pstate[1].motor == state.hw[1].motor
+            && this.Pstate[0].b_diskData == (state.diskData[0]!=null)
+            && this.Pstate[1].b_diskData == (state.diskData[1]!=null
+            //|| cmd == "kbd"
+            )) return;
+
+        if(typeof this.syncDriveVisuals == "function")
+            this.syncDriveVisuals();
+
+        this.Pstate = [{"motor":state.hw[0].motor,"b_diskData":state.diskData[0]!=null}
+                    ,{"motor":state.hw[1].motor,"b_diskData":state.diskData[1]!=null}
+                    ,{"keyb_active":_o.EMU_keyb_active}
+                    ];
+    }
+'''
+
+          if old_gui in text:
+              text = must_replace(text, old_gui, new_gui)
+          elif 'DSK_led' in text or 'DSK_lid' in text:
+              raise SystemExit('Legacy Disk II GUI references remain but expected GUI block was not found')
+
+          old_init = '''    disk2.getState().DSK_led[0] = document.getElementById("dskLED_D1");        // required for GUI_update
+    disk2.getState().DSK_led[1] = document.getElementById("dskLED_D2");
+
+    disk2.getState().DSK_lid[0] = document.getElementById("dskLID_D1");        // required for GUI_update
+    disk2.getState().DSK_lid[1] = document.getElementById("dskLID_D2");
+
+'''
+          if old_init in text:
+              text = must_replace(text, old_init, '')
+          elif 'dskLED_D' in text or 'dskLID_D' in text:
+              raise SystemExit('Legacy Disk II DOM handle initializers remain but expected init block was not found')
+
+          path.write_text(text)
+          PY
+
+          node --test tests/apple2_html_layout.test.js tests/appledisk2_layout_visuals.test.js tests/preview_distribution.test.js
+
+      - name: Commit production hotfix only
+        shell: bash
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          git add "dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
-
+          git add res/EMU_apple2main.js
           if git diff --cached --quiet; then
-            echo "Preview is already up to date."
+            echo "Production hotfix already applied."
           else
-            git commit -m "Update preview distro for ${{ steps.branch.outputs.branch }} [skip ci]"
-            git pull --rebase origin main
-            git push origin HEAD:main
+            git commit -m "fix: remove legacy Disk II GUI DOM wiring"
+            git push origin HEAD:fix-diskii-main-gui-update
           fi
-
-      - name: Preview URL
-        run: |
-          echo "https://retroapplejs.github.io/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
