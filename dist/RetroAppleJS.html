@@ -7151,44 +7151,6 @@ function installDeviceAttachmentPolicies(rootWindow)
         return changed;
     }
 
-    function hasAttached(owner,code)
-    {
-        return attachedCount(owner,code) > 0;
-    }
-
-    function ruleMatches(owner,rule)
-    {
-        var when = rule && rule.when ? rule.when : {};
-
-        if(Array.isArray(when.allAttached))
-        {
-            for(var i=0;i<when.allAttached.length;i++)
-                if(!hasAttached(owner,when.allAttached[i])) return false;
-        }
-
-        if(Array.isArray(when.anyAttached))
-        {
-            var any = false;
-            for(var j=0;j<when.anyAttached.length;j++)
-            {
-                if(hasAttached(owner,when.anyAttached[j]))
-                {
-                    any = true;
-                    break;
-                }
-            }
-            if(!any) return false;
-        }
-
-        if(Array.isArray(when.noneAttached))
-        {
-            for(var k=0;k<when.noneAttached.length;k++)
-                if(hasAttached(owner,when.noneAttached[k])) return false;
-        }
-
-        return true;
-    }
-
     function syncDeviceLayout(io,owner)
     {
         if(!owner) return false;
@@ -7204,7 +7166,56 @@ function installDeviceAttachmentPolicies(rootWindow)
             changed = applyDeviceLayout(owner,info,count>0) || changed;
         }
 
-        changed = applyOwnerLayoutRules(owner) || changed;
+        var rules = Array.isArray(owner.layoutRules) ? owner.layoutRules : [];
+
+        for(var r=0;r<rules.length;r++)
+        {
+            var rule = rules[r];
+            var when = rule && rule.when ? rule.when : {};
+            var active = true;
+
+            if(Array.isArray(when.allAttached))
+            {
+                for(var a=0;a<when.allAttached.length;a++)
+                {
+                    if(attachedCount(owner,when.allAttached[a]) <= 0)
+                    {
+                        active = false;
+                        break;
+                    }
+                }
+            }
+
+            if(active && Array.isArray(when.anyAttached))
+            {
+                var any = false;
+                for(var b=0;b<when.anyAttached.length;b++)
+                {
+                    if(attachedCount(owner,when.anyAttached[b]) > 0)
+                    {
+                        any = true;
+                        break;
+                    }
+                }
+                active = any;
+            }
+
+            if(active && Array.isArray(when.noneAttached))
+            {
+                for(var n=0;n<when.noneAttached.length;n++)
+                {
+                    if(attachedCount(owner,when.noneAttached[n]) > 0)
+                    {
+                        active = false;
+                        break;
+                    }
+                }
+            }
+
+            var ruleTargets = layoutTargets(rule,active ? "attached" : "detached");
+            for(var t=0;t<ruleTargets.length;t++)
+                changed = setLayoutTarget(ruleTargets[t],active) || changed;
+        }
         return changed;
     }
 
