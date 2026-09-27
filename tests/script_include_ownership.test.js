@@ -35,6 +35,7 @@ test('index.html owns core script include order without COM_MAIN bootstrap indir
 });
 
 test('COM_MAIN.js is the core implementation, not a script bootstrapper', () => {
+  assert.equal(fs.existsSync(path.join(repoRoot, 'res', 'COM_MAIN_core.js')), false, 'COM_MAIN_core.js should be removed');
   assert.match(comMainSource, /function\s+COM\s*\(/);
   assert.doesNotMatch(comMainSource, /document\.write\s*\(/);
   assert.doesNotMatch(comMainSource, /COM_MAIN_core\.js/);

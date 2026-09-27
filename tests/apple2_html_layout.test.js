@@ -7,6 +7,7 @@ const layout = require('../res/COM_A2P_LAYOUT.js');
 
 const repoRoot=path.join(__dirname,'..');
 const emuMainSource=fs.readFileSync(path.join(repoRoot,'res','EMU_apple2main.js'),'utf8');
+const layoutConfigSource=fs.readFileSync(path.join(repoRoot,'res','COM_LAYOUT_CONFIG.js'),'utf8');
 const compositorSource=fs.readFileSync(path.join(repoRoot,'res','COM_A2P_LAYOUT.js'),'utf8');
 
 test('Apple II layout exposes an HTML composition builder', () => {
@@ -199,8 +200,11 @@ test('generic visibility API updates runtime layer model and DOM element atomica
   assert.equal(entry.element.style.display,'none');
 });
 
-test('EMU_apple2main owns composer layout data and compositor has no JSON HTTP loader', () => {
-  assert.match(emuMainSource,/\bvar\s+composer\s*=/);
+test('COM_LAYOUT_CONFIG owns composer layout data and compositor has no JSON HTTP loader', () => {
+  assert.match(layoutConfigSource,/\bvar\s+composer\s*=/);
+  assert.match(layoutConfigSource,/A2P_FULL_DISKII_LED\.png/);
+  assert.doesNotMatch(emuMainSource,/\bvar\s+composer\s*=/);
+  assert.doesNotMatch(emuMainSource,/A2P_FULL_DISKII_LED\.png/);
   assert.match(compositorSource,/function\s+LAYOUT\s*\(/);
   assert.match(compositorSource,/oCOM\.LAYOUT/);
   assert.doesNotMatch(compositorSource,/apple2-layout-embedded_v2\.json/);
