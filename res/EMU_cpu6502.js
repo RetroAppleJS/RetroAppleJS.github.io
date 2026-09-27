@@ -1456,29 +1456,6 @@ function Cpu6502(hwobj)
         return u8ToBase64(bytes);
     };
 
-    // Backward-compatible export for the old 5-byte disassembler input:
-    //   PClo PChi OPC OP1 OP2
-    this.getBootLogBase64_legacy = function()
-    {
-        flushBootGroupPending();
-
-        var bytes = new Uint8Array(BOOTcnt * 5);
-
-        for (var i = 0, o = 0; i < BOOTcnt; i++, o += 5)
-        {
-            var adr = BOOTlog_adr[i] & 0xffff;
-            var packed = BOOTlog_cpu[i];
-
-            bytes[o    ] = adr & 0xff;
-            bytes[o + 1] = adr >> 8;
-            bytes[o + 2] = Number( packed        & 0xffn);
-            bytes[o + 3] = Number((packed >> 8n)  & 0xffn);
-            bytes[o + 4] = Number((packed >> 16n) & 0xffn);
-        }
-
-        return u8ToBase64(bytes);
-    };
-
     function u8ToBase64(bytes)
     {
         var s = "";
