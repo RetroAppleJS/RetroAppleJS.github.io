@@ -21,6 +21,7 @@ button,input{font:inherit}button{border:1px solid var(--line);background:#fffdf8
     <button id="loadBtn">Load Layout</button>
     <button id="saveBtn">Save Layout</button>
     <button id="saveEmbeddedBtn">Save Embedded JSON</button>
+    <button id="exportJsBtn">Export JS</button>
     <button id="exportBtn">Export PNG</button>
     <input id="imageInput" type="file" accept="image/png,.png" multiple hidden>
     <input id="layoutInput" type="file" accept="application/json,.json" hidden>
@@ -276,6 +277,11 @@ function getEmbeddedExportBlockers(){return [...new Set(state.layers.filter(l=>!
 function saveEmbeddedJSON(){const blockers=getEmbeddedExportBlockers();if(blockers.length){alert(`Cannot save embedded JSON. Missing inline image data for:
 ${blockers.join('\n')}`);return;}downloadBlob(new Blob([JSON.stringify(serializeEmbeddedLayout(),null,2)],{type:'application/json'}),'apple2-layout-embedded.json');}
 $('saveEmbeddedBtn').addEventListener('click',saveEmbeddedJSON);
+function exportJS(){const blockers=getEmbeddedExportBlockers();if(blockers.length){alert(`Cannot export JS. Missing inline image data for:
+${blockers.join('\n')}`);return;}const source=`var composer =
+${JSON.stringify(serializeEmbeddedLayout(),null,2)};
+`;downloadBlob(new Blob([source],{type:'text/javascript'}),'COM_LAYOUT_CONFIG.js');}
+$('exportJsBtn').addEventListener('click',exportJS);
 function getExportBlockers(){return [...new Set(state.layers.filter(l=>l.visible&&!l.resolved).map(l=>l.file))];}
 function buildExportCanvas(){const c=document.createElement('canvas');c.width=CANVAS_W;c.height=CANVAS_H;const cctx=c.getContext('2d');cctx.clearRect(0,0,CANVAS_W,CANVAS_H);for(let i=state.layers.length-1;i>=0;i--)drawLayer(cctx,state.layers[i]);return c;}
 function exportPNG(){const blockers=getExportBlockers();if(blockers.length){alert(`Cannot export PNG. Missing visible assets:\n${blockers.join('\n')}`);return;}const c=buildExportCanvas();c.toBlob(blob=>{if(blob)downloadBlob(blob,'apple2-composition.png');else alert('PNG export failed.');},'image/png');}
