@@ -29,10 +29,10 @@ test('device picker disables over-limit entries in the UI', () => {
 test('Disk II declares D1 and D2 as singleton layout-controlled devices', () => {
   assert.match(layoutSource,/info\.maxInstances\s*=\s*1/,
     'Disk II drive declarations should be patched as singleton device slots');
-  assert.match(layoutSource,/A2P_FULL_DISKII_left\.png/,
-    'D1 should control the left Disk II body image');
-  assert.match(layoutSource,/A2P_FULL_DISKII_right\.png/,
-    'D2 should control the right Disk II body image');
+  assert.match(layoutSource,/A2P\.DISKII\.D1\.BODY/,
+    'D1 should control the left Disk II body layer by stable layer id');
+  assert.match(layoutSource,/A2P\.DISKII\.D2\.BODY/,
+    'D2 should control the right Disk II body layer by stable layer id');
 });
 
 test('device attach and detach resynchronise generic layout visibility', () => {
@@ -42,4 +42,37 @@ test('device attach and detach resynchronise generic layout visibility', () => {
     'successful attach should sync layout visibility');
   assert.match(layoutSource,/var\s+nativeDetach\s*=\s*io\.detach[\s\S]*syncDeviceLayout\(this,owner\)/,
     'successful detach should sync layout visibility');
+});
+
+test('Disk II body and gap images receive stable runtime layer ids', () => {
+  assert.match(layoutSource,/function\s+runtimeLayerIdForFile\s*\(/,
+    'runtime fallback ids should exist for legacy composer layers without explicit ids');
+  assert.match(layoutSource,/case\s+"A2P_FULL_DISKII_left\.png"\s*:[\s\S]*return\s+"A2P\.DISKII\.D1\.BODY"/,
+    'left Disk II body should map to a stable body id');
+  assert.match(layoutSource,/case\s+"A2P_FULL_DISKII_right\.png"\s*:[\s\S]*return\s+"A2P\.DISKII\.D2\.BODY"/,
+    'right Disk II body should map to a stable body id');
+  assert.match(layoutSource,/case\s+"A2P_FULL_DISKII_gap\.png"\s*:[\s\S]*return\s+"A2P\.DISKII\.GAP"/,
+    'gap shadow should map to a stable gap id');
+  assert.match(layoutSource,/var\s+runtimeId\s*=\s*layer\.id\s*\|\|\s*runtimeLayerIdForFile\(layer\.file\)/,
+    'DOM layer registration should use explicit ids or runtime fallback ids');
+});
+
+test('Disk II gap shadow uses an owner-level allAttached layout rule', () => {
+  assert.match(layoutSource,/id:\s*"DISKII\.GAP\.BOTH_DRIVES"/,
+    'the Disk II gap rule should be a named owner-level rule');
+  assert.match(layoutSource,/when:\s*\{allAttached:\s*\["D1","D2"\]\}/,
+    'the gap shadow should require both Disk II drives to be attached');
+  assert.match(layoutSource,/\{id:\s*"A2P\.DISKII\.GAP",\s*visible:\s*true\}/,
+    'the gap layer should be visible when the rule is active');
+  assert.match(layoutSource,/\{id:\s*"A2P\.DISKII\.GAP",\s*visible:\s*false\}/,
+    'the gap layer should be hidden when the rule is inactive');
+});
+
+test('owner-level layout rules are evaluated during sync without external helper scope', () => {
+  assert.match(layoutSource,/var\s+rules\s*=\s*Array\.isArray\(owner\.layoutRules\)\s*\?\s*owner\.layoutRules\s*:\s*\[\]/,
+    'syncDeviceLayout should evaluate owner-level layoutRules inline');
+  assert.match(layoutSource,/when\.allAttached[\s\S]*attachedCount\(owner,when\.allAttached\[a\]\)\s*<=\s*0/,
+    'allAttached should be evaluated from current owner device state');
+  assert.match(layoutSource,/var\s+ruleTargets\s*=\s*layoutTargets\(rule,active\s*\?\s*"attached"\s*:\s*"detached"\)/,
+    'owner rules should choose attached or detached layout targets');
 });
