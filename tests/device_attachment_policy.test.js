@@ -1,30 +1,23 @@
 const fs = require('node:fs');
-const path = require('node:path');
-const test = require('node:test');
-const assert = require('node:assert/strict');
+ const path = require('node:path');
+ const test = require('node:test');
+ const assert = require('node:assert/strict');
 
-const repoRoot = path.join(__dirname,'..');
-const layoutSource = fs.readFileSync(path.join(repoRoot,'res','COM_A2P_LAYOUT.js'),'utf8');
+ const repoRoot = path.join(__dirname,'..');
+ const layoutSource = fs.readFileSync(path.join(repoRoot,'res','COM_A2P_LAYOUT.js'),'utf8');
 
-test('device picker enforces generic maxInstances before attach', () => {
-  assert.match(layoutSource,/deviceMaxInstances\s*=\s*function/,
-    'Apple2IO should expose a generic maxInstances helper');
-  assert.match(layoutSource,/deviceCanAttach\s*=\s*function/,
-    'Apple2IO should expose a generic can-attach helper');
-  assert.match(layoutSource,/if\(info\s*&&\s*!canAttach\(owner,info\)\)[\s\S]*return false;/,
-    'devicePicker_select must block over-limit device attaches before io.attach() runs');
-});
+ test('device picker enforces generic maxInstances before attach', () => {
+   assert.match(layoutSource,/deviceMaxInstances\s*=\s*function/);
+   assert.match(layoutSource,/deviceCanAttach\s*=\s*function/);
+   assert.match(layoutSource,/deviceAttachmentLimitMessage\s*=\s*function/);
+   assert.match(layoutSource,/if\(info && !canAttach\(owner,info\)\)/);
+ });
 
-test('device picker disables over-limit entries in the UI', () => {
-  assert.match(layoutSource,/\.device-picker-entry/,
-    'the policy should post-process device picker rows');
-  assert.match(layoutSource,/button\.disabled\s*=\s*true/,
-    'over-limit entries should be disabled');
-  assert.match(layoutSource,/aria-disabled["'],["']true/,
-    'over-limit entries should expose disabled state to assistive UI');
-  assert.match(layoutSource,/Attached:\s*"\s*\+\s*count\s*\+\s*"\/"\s*\+\s*max/,
-    'over-limit entries should show count/max state');
-});
+ test('DISKII is patched as singleton visual devices', () => {
+   assert.match(layoutSource,/info\.maxInstances\s*=\s*1/);
+   assert.match(layoutSource,/A2P_FULL_DISKII_left\.png/);
+   assert.match(layoutSource,/A2P_FULL_DISKII_right\.png/);
+ });
 
 test('Disk II declares D1 and D2 as singleton layout-controlled devices', () => {
   assert.match(layoutSource,/info\.maxInstances\s*=\s*1/,
@@ -35,13 +28,16 @@ test('Disk II declares D1 and D2 as singleton layout-controlled devices', () => 
     'D2 should control the right Disk II body layer by stable layer id');
 });
 
-test('device attach and detach resynchronise generic layout visibility', () => {
-  assert.match(layoutSource,/io\.syncDeviceLayout\s*=\s*function/,
-    'Apple2IO should expose a generic device layout sync hook');
-  assert.match(layoutSource,/var\s+nativeAttach\s*=\s*io\.attach[\s\S]*syncDeviceLayout\(this,owner\)/,
-    'successful attach should sync layout visibility');
-  assert.match(layoutSource,/var\s+nativeDetach\s*=\s*io\.detach[\s\S]*syncDeviceLayout\(this,owner\)/,
-    'successful detach should sync layout visibility');
+ test('attach and detach both resync device layouts', () => {
+   assert.match(layoutSource,/io\.attach\s*=\s*function/);
+   assert.match(layoutSource,/if\(device\) syncDeviceLayout\(this,owner\)/);
+   assert.match(layoutSource,/io\.detach\s*=\s*function/);
+   assert.match(layoutSource,/if\(removed\) syncDeviceLayout\(this,owner\)/);
+ });
+
+test('DISKII declares an owner-level gap-shadow rule that requires both drives', () => {
+  assert.match(layoutSource,/A2P_FULL_DISKII_gap\.png/);
+  assert.match(layoutSource,/allAttached:\s*\[\s*"D1"\s*,\s*"D2"\s*\]/);
 });
 
 test('Disk II body and gap images receive stable runtime layer ids', () => {

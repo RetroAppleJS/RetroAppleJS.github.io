@@ -693,6 +693,7 @@ function installDeviceAttachmentPolicies(rootWindow)
 
         var changed = false;
         var cfg = Array.isArray(owner.deviceConfig) ? owner.deviceConfig : [];
+
         for(var i=0;i<cfg.length;i++)
         {
             var info = cfg[i];
