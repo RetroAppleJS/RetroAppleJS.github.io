@@ -7,6 +7,7 @@ const path = require('node:path');
 
 const repoRoot = path.join(__dirname,'..');
 const diskIISource = fs.readFileSync(path.join(repoRoot,'res','EMU_CARD_appledisk2.js'),'utf8');
+const apple2MainSource = fs.readFileSync(path.join(repoRoot,'res','EMU_apple2main.js'),'utf8');
 
 test('Disk II drive visuals delegate to the Apple II layout API', () => {
   assert.doesNotMatch(diskIISource,/DSK_led|DSK_lid/);
@@ -23,4 +24,9 @@ test('Disk II media and motor paths update layout lids and LEDs', () => {
   assert.match(diskIISource,/this\.setDriveLidClosed\(drv,false\)/);
   assert.match(diskIISource,/this\.setDriveLED\(i,newMotor\)/);
   assert.match(diskIISource,/this\.syncDriveVisuals\(\)/);
+});
+
+test('Apple II main UI does not initialize legacy Disk II DOM image handles', () => {
+  assert.doesNotMatch(apple2MainSource,/DSK_led|DSK_lid|dskLED_D[12]|dskLID_D[12]/);
+  assert.match(apple2MainSource,/syncDriveVisuals/);
 });
