@@ -52,10 +52,11 @@ jobs:
           set -e
           cat /tmp/all-tests.log
           if [ "$status" -eq 0 ]; then exit 0; fi
-          grep -q 'ℹ fail 5' /tmp/all-tests.log
+          grep -q 'ℹ fail 6' /tmp/all-tests.log
           grep -q 'default Apple II Plus boot mounts AppleMouse in physical slot 4' /tmp/all-tests.log
           grep -q 'fixed scenario companion is mounted in viewport coordinate space' /tmp/all-tests.log
           grep -q 'layout companion prefers the right side, falls back left, and uses a narrower preferred width' /tmp/all-tests.log
+          grep -q 'DiskJS uses only the canonical AppleDisk2 component ID' /tmp/all-tests.log
           grep -q 'Liron advertises HD20 as optional and attaches mixed SmartPort devices to distinct units' /tmp/all-tests.log
           grep -q 'UniDisk Surface Map capability button toggles the popup open and closed' /tmp/all-tests.log
       - name: Commit migration
