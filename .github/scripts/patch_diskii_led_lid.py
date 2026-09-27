@@ -1,0 +1,273 @@
+from pathlib import Path
+
+
+def must_replace(src, old, new):
+    if old not in src:
+        raise SystemExit('Missing expected block:\n' + old[:600])
+    return src.replace(old, new, 1)
+
+
+path = Path('res/EMU_CARD_appledisk2.js')
+text = path.read_text()
+
+text = must_replace(text,
+'''        ,"drv":0
+        ,"DSK_led" :[]
+        ,"DSK_lid":[]
+        ,"diskData":[null,null]
+''',
+'''        ,"drv":0
+        ,"diskData":[null,null]
+''')
+
+text = text.replace('            ,"LED":false\n', '')
+
+text = must_replace(text,
+'''    function mountedIO()
+    {
+        if(typeof(apple2plus)!="object" || !apple2plus) return null;
+        return apple2plus.hwObj().io;
+    }
+
+    this.getDiskCatalogContext = function()
+''',
+'''    function mountedIO()
+    {
+        if(typeof(apple2plus)!="object" || !apple2plus) return null;
+        return apple2plus.hwObj().io;
+    }
+
+    function diskLayout()
+    {
+        if(typeof(oCOM)!="object" || !oCOM || !oCOM.LAYOUT) return null;
+        if(!oCOM.LAYOUT.A2P || !oCOM.LAYOUT.A2P.DISKII) return null;
+        return oCOM.LAYOUT.A2P.DISKII;
+    }
+
+    function driveLayout(deviceN)
+    {
+        if(typeof deviceN == "string")
+        {
+            var m = deviceN.toUpperCase().match(/^D([12])$/);
+            deviceN = m ? Number(m[1])-1 : NaN;
+        }
+
+        deviceN = Number(deviceN);
+        if(!Number.isInteger(deviceN) || deviceN<0 || deviceN>1) return null;
+
+        var layout = diskLayout();
+        return layout ? layout["D"+(deviceN+1)] || null : null;
+    }
+
+    this.setDriveLED = function(deviceN,on)
+    {
+        var drive = driveLayout(deviceN);
+        if(drive && typeof drive.LED == "function") drive.LED(!!on);
+    }
+
+    this.setDriveLidClosed = function(deviceN,closed)
+    {
+        var drive = driveLayout(deviceN);
+        if(drive && typeof drive.LID == "function") drive.LID(!!closed);
+    }
+
+    this.syncDriveVisuals = function()
+    {
+        for(var i=0;i<state.hw.length;i++)
+        {
+            this.setDriveLED(i,state.hw[i] && state.hw[i].motor);
+            this.setDriveLidClosed(i,state.diskData[i]!=null);
+        }
+    };
+
+    this.getDiskCatalogContext = function()
+''')
+
+text = must_replace(text,
+'''            state.hw[i].motor = newMotor;
+            if (oldMotor != newMotor)
+''',
+'''            state.hw[i].motor = newMotor;
+            this.setDriveLED(i,newMotor);
+            if (oldMotor != newMotor)
+''')
+
+text = must_replace(text,
+'''        this.traceSoftSwitchMarker("RESET");
+    }
+
+    this.getState = function() { return state }
+
+    this.GUI_update = function() {}   // overridable function to update drive status (LED)
+''',
+'''        this.traceSoftSwitchMarker("RESET");
+        this.syncDriveVisuals();
+    }
+
+    this.getState = function() { return state }
+
+    this.GUI_update = function() { this.syncDriveVisuals(); }   // update drive status (LED/lid)
+''')
+
+text = must_replace(text,
+'''                if(!apple2plus.loadDisk(nibBytes,deviceID,slotN))
+                    throw new Error(
+                        "DISKII is not mounted in slotN="
+                        + slotN
+                    );
+
+                var fileName = arg.name || (arg.path || "").split("/").pop() || "disk image";
+''',
+'''                if(!apple2plus.loadDisk(nibBytes,deviceID,slotN))
+                    throw new Error(
+                        "DISKII is not mounted in slotN="
+                        + slotN
+                    );
+
+                var deviceN = deviceRef.deviceN;
+                disk2.setDriveLidClosed(deviceN,true);
+
+                var fileName = arg.name || (arg.path || "").split("/").pop() || "disk image";
+''')
+
+text = must_replace(text,
+'''            if(typeof drv == "number") drv = "D" + drv;
+
+            var el = this.diskMiddleEl(drv);
+''',
+'''            if(typeof drv == "number") drv = "D" + drv;
+            this.setDriveLidClosed(drv,false);
+
+            var el = this.diskMiddleEl(drv);
+''')
+
+text = must_replace(text,
+'''    this.driveElementID = function(prefix,drv)
+    {
+        if(typeof drv == "number") drv = "D" + drv;
+        var slotN = ssSlotNumber();
+    }
+
+''','')
+
+path.write_text(text)
+
+plus = Path('res/EMU_apple2plus.js')
+ptext = plus.read_text()
+ptext = must_replace(ptext,
+'''        disk2.getState().diskData[device.deviceN] = bytes;
+        return true;
+''',
+'''        disk2.getState().diskData[device.deviceN] = bytes;
+        if(typeof disk2.setDriveLidClosed == "function")
+            disk2.setDriveLidClosed(device.deviceN,true);
+        return true;
+''')
+plus.write_text(ptext)
+
+test_path = Path('tests/appledisk2_layout_visuals.test.js')
+ttext = test_path.read_text()
+ttext = must_replace(ttext,
+'''  assert.match(diskIISource,/this\\.setDriveLidClosed\\(deviceN,true\\)/);
+''',
+'''  assert.match(diskIISource,/setDriveLidClosed\\(deviceN,true\\)/);
+''')
+test_path.write_text(ttext)
+
+normal_preview = '''name: Build branch preview distro
+
+on:
+  push:
+    branches-ignore:
+      - "main"
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to build"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: branch-preview-publish
+  cancel-in-progress: false
+
+jobs:
+  build-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Select branch
+        id: branch
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            BRANCH="${{ inputs.branch }}"
+          else
+            BRANCH="${GITHUB_REF_NAME}"
+          fi
+          SAFE="$(printf '%s' "$BRANCH" | sed -E 's/[^A-Za-z0-9._-]+/-/g; s/^-+//; s/-+$//')"
+          if [ -z "$SAFE" ]; then
+            echo "Could not derive a safe preview filename from branch: $BRANCH"
+            exit 1
+          fi
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "safe=$SAFE" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout preview source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.branch.outputs.branch }}
+          path: source
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Test preview distribution builder and HTML compositor
+        working-directory: source
+        run: node --test tests/apple2_html_layout.test.js tests/appledisk2_layout_visuals.test.js tests/preview_distribution.test.js
+
+      - name: Build branch preview distro
+        working-directory: source
+        run: node .github/scripts/inline-preview.cjs --branch "${{ steps.branch.outputs.branch }}"
+
+      - name: Verify preview output
+        run: |
+          test -f "source/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
+          ls -lh "source/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
+
+      - name: Checkout main for publishing
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: publish
+
+      - name: Publish preview into main dist
+        shell: bash
+        run: |
+          mkdir -p publish/dist
+          cp "source/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html" \
+             "publish/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
+
+          cd publish
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add "dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
+
+          if git diff --cached --quiet; then
+            echo "Preview is already up to date."
+          else
+            git commit -m "Update preview distro for ${{ steps.branch.outputs.branch }} [skip ci]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Preview URL
+        run: |
+          echo "https://retroapplejs.github.io/dist/RetroAppleJS-${{ steps.branch.outputs.safe }}.html"
+'''
+Path('.github/workflows/build-branch-preview.yml').write_text(normal_preview)
