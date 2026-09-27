@@ -5,6 +5,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 const layout = require('../res/COM_A2P_LAYOUT.js');
 
+const repoRoot=path.join(__dirname,'..');
+const emuMainSource=fs.readFileSync(path.join(repoRoot,'res','EMU_apple2main.js'),'utf8');
+const compositorSource=fs.readFileSync(path.join(repoRoot,'res','COM_A2P_LAYOUT.js'),'utf8');
+
 test('Apple II layout exposes an HTML composition builder', () => {
   assert.equal(typeof layout.buildDOMComposition, 'function');
 });
@@ -56,7 +60,7 @@ test('HTML composition falls back to the legacy asset URL when an embedded asset
   assert.equal(host.children[0].src,'tools/GUI_DEV/assets/legacy%20image.png');
 });
 
-test('install uses inline layout data without requiring Fetch API', async () => {
+test('install uses EMU-owned layout data without requiring Fetch API', async () => {
   const tab=fakeElement('div');
   tab.id='tab1';
   tab.firstChild={name:'existing-ui'};
@@ -73,7 +77,7 @@ test('install uses inline layout data without requiring Fetch API', async () => 
   ]};
   const win={
     document:doc,
-    A2P_EMBEDDED_LAYOUT:cfg,
+    A2P_LAYOUT_DATA:cfg,
     console:{error(){}}
   };
   assert.equal(typeof win.fetch,'undefined');
@@ -86,13 +90,10 @@ test('install uses inline layout data without requiring Fetch API', async () => 
   assert.equal(tab.inserted.children[0].src,'data:image/png;base64,CASE');
 });
 
-test('index loads layout data script before COM_MAIN.js', () => {
-  const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');
-  const dataScript='res/COM_A2P_LAYOUT_DATA.js';
-  const mainScript='res/COM_MAIN.js';
-  const dataPos=html.indexOf(dataScript);
-  const mainPos=html.indexOf(mainScript);
-  assert.notEqual(dataPos,-1,`${dataScript} must be loaded by index.html`);
-  assert.notEqual(mainPos,-1,`${mainScript} must be loaded by index.html`);
-  assert.ok(dataPos < mainPos,`${dataScript} must load before ${mainScript}`);
+test('EMU_apple2main owns layout data and compositor has no JSON HTTP loader', () => {
+  assert.match(emuMainSource,/\bvar\s+A2P_LAYOUT_DATA\s*=/);
+  assert.doesNotMatch(emuMainSource,/\bvar\s+composer\s*=/);
+  assert.match(compositorSource,/A2P_LAYOUT_DATA/);
+  assert.doesNotMatch(compositorSource,/apple2-layout-embedded_v2\.json/);
+  assert.doesNotMatch(compositorSource,/\.fetch\s*\(/);
 });
