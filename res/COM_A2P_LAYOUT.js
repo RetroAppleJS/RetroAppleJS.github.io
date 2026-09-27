@@ -217,7 +217,7 @@
         host.style.transform = "scale(" + (DISPLAY_SIZE / layout.canvas.width) + ")";
         host.style.pointerEvents = "none";
         host.style.overflow = "visible";
-        host.style.zIndex = "0";
+        host.style.zIndex = "-1";
 
         for(var i=layout.layers.length-1;i>=0;i--)
         {
@@ -264,6 +264,7 @@
     {
         var doc = rootWindow.document;
         var tab = doc.getElementById("tab1");
+        var app = doc.getElementById("app");
         if(!tab) return Promise.resolve(false);
 
         return loadLayout(rootWindow)
@@ -274,11 +275,28 @@
 
                 var host = buildDOMComposition(doc,layout);
 
-                /* Keep the existing 1300 x 1300 emulator coordinate system. */
+                /*
+                 * Keep the composed hardware as a true background layer.  The
+                 * tab itself forms a stacking context so the negative layout
+                 * z-index remains visible behind the emulator canvas and UI.
+                 */
                 tab.style.position = "relative";
+                tab.style.zIndex = "0";
                 tab.style.backgroundImage = "none";
                 tab.style.backgroundSize = "none";
                 tab.style.backgroundRepeat = "no-repeat";
+
+                /*
+                 * #app contains the floated top tab selector.  Its parent has
+                 * no normal-flow height, so #tab1 begins underneath it.  Lift
+                 * that tab chrome above the emulator stacking context without
+                 * changing the established layout coordinates.
+                 */
+                if(app)
+                {
+                    app.style.position = "relative";
+                    app.style.zIndex = "1";
+                }
 
                 if(typeof tab.insertBefore == "function")
                     tab.insertBefore(host,tab.firstChild || null);
