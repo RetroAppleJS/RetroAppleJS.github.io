@@ -8,7 +8,6 @@ const layout = require('../res/COM_A2P_LAYOUT.js');
 const repoRoot=path.join(__dirname,'..');
 const emuMainSource=fs.readFileSync(path.join(repoRoot,'res','EMU_apple2main.js'),'utf8');
 const compositorSource=fs.readFileSync(path.join(repoRoot,'res','COM_A2P_LAYOUT.js'),'utf8');
-const mainCssSource=fs.readFileSync(path.join(repoRoot,'res','COM_MAIN.css'),'utf8');
 
 test('Apple II layout exposes an HTML composition builder', () => {
   assert.equal(typeof layout.buildDOMComposition, 'function');
@@ -66,7 +65,9 @@ test('layout artwork stays behind emulator canvas and top tab chrome', async () 
   tab.id='tab1';
   tab.firstChild={name:'existing-ui'};
   tab.insertBefore=function(child,before){ this.inserted=child; child.parentNode=this; return child; };
-  const ids={tab1:tab};
+  const app=fakeElement('div');
+  app.id='app';
+  const ids={tab1:tab,app};
   const doc={
     createElement:fakeElement,
     getElementById(id){ return ids[id] || null; }
@@ -82,7 +83,8 @@ test('layout artwork stays behind emulator canvas and top tab chrome', async () 
   assert.equal(tab.style.position,'relative');
   assert.equal(tab.style.zIndex,'0');
   assert.equal(tab.inserted.style.zIndex,'-1');
-  assert.match(mainCssSource,/#app\s+ul\s*\{[^}]*z-index\s*:\s*1\s*;/s);
+  assert.equal(app.style.position,'relative');
+  assert.equal(app.style.zIndex,'1');
 });
 
 test('install uses EMU-owned composer data without requiring Fetch API', async () => {
