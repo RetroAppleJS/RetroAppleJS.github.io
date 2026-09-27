@@ -79,7 +79,7 @@ var composer =
       "file": "A2P_FULL_Monitor.png",
       "x": 80,
       "y": 0,
-      "visible": false,
+      "visible": true,
       "shadow": {
         "enabled": true,
         "offsetX": 0,
