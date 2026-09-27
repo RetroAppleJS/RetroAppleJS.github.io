@@ -8,6 +8,7 @@
 (function(global){
   "use strict";
   var scripts = [
+    "res/EMU_CARD_appledisk2_topology.js",
     "res/DBG_testbench_legacy.js",
     "res/DBG_steptrace_scenario.js",
     "res/DBG_steptrace_scenario_layout.js"
