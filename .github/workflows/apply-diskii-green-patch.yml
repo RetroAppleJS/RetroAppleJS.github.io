@@ -1,11 +1,12 @@
-name: Apply Disk II layout visual patch
+name: Apply Disk II LED/lid runtime patch
 
 on:
   push:
     branches:
-      - green-diskii-layout-visuals
+      - fix-diskii-led-lid-wiring
     paths:
       - .github/workflows/apply-diskii-green-patch.yml
+      - .github/scripts/patch_diskii_led_lid.py
   workflow_dispatch:
 
 permissions:
@@ -15,178 +16,28 @@ jobs:
   patch:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout branch
+        uses: actions/checkout@v4
         with:
-          ref: green-diskii-layout-visuals
-      - name: Patch Disk II visuals
+          ref: fix-diskii-led-lid-wiring
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Apply and verify runtime wiring
         shell: bash
         run: |
-          python - <<'PY'
-          from pathlib import Path
+          python3 .github/scripts/patch_diskii_led_lid.py
+          node --test tests/apple2_html_layout.test.js tests/appledisk2_layout_visuals.test.js tests/preview_distribution.test.js
 
-          path = Path('res/EMU_CARD_appledisk2.js')
-          text = path.read_text()
-
-          def must_replace(src, old, new):
-              if old not in src:
-                  raise SystemExit('Missing expected block:\n' + old[:400])
-              return src.replace(old, new, 1)
-
-          text = must_replace(text,
-'''        ,"drv":0
-        ,"DSK_led" :[]
-        ,"DSK_lid":[]
-        ,"diskData":[null,null]
-''',
-'''        ,"drv":0
-        ,"diskData":[null,null]
-''')
-
-          text = text.replace('            ,"LED":false\n', '')
-
-          text = must_replace(text,
-'''    function mountedIO()
-    {
-        if(typeof(apple2plus)!="object" || !apple2plus) return null;
-        return apple2plus.hwObj().io;
-    }
-
-    this.getDiskCatalogContext = function()
-''',
-'''    function mountedIO()
-    {
-        if(typeof(apple2plus)!="object" || !apple2plus) return null;
-        return apple2plus.hwObj().io;
-    }
-
-    function diskLayout()
-    {
-        if(typeof(oCOM)!="object" || !oCOM || !oCOM.LAYOUT) return null;
-        if(!oCOM.LAYOUT.A2P || !oCOM.LAYOUT.A2P.DISKII) return null;
-        return oCOM.LAYOUT.A2P.DISKII;
-    }
-
-    function driveLayout(deviceN)
-    {
-        if(typeof deviceN == "string")
-        {
-            var m = deviceN.toUpperCase().match(/^D([12])$/);
-            deviceN = m ? Number(m[1])-1 : NaN;
-        }
-
-        deviceN = Number(deviceN);
-        if(!Number.isInteger(deviceN) || deviceN<0 || deviceN>1) return null;
-
-        var layout = diskLayout();
-        return layout ? layout["D"+(deviceN+1)] || null : null;
-    }
-
-    this.setDriveLED = function(deviceN,on)
-    {
-        var drive = driveLayout(deviceN);
-        if(drive && typeof drive.LED == "function") drive.LED(!!on);
-    }
-
-    this.setDriveLidClosed = function(deviceN,closed)
-    {
-        var drive = driveLayout(deviceN);
-        if(drive && typeof drive.LID == "function") drive.LID(!!closed);
-    }
-
-    this.syncDriveVisuals = function()
-    {
-        for(var i=0;i<state.hw.length;i++)
-        {
-            this.setDriveLED(i,state.hw[i] && state.hw[i].motor);
-            this.setDriveLidClosed(i,state.diskData[i]!=null);
-        }
-    };
-
-    this.getDiskCatalogContext = function()
-''')
-
-          text = must_replace(text,
-'''            state.hw[i].motor = newMotor;
-            if (oldMotor != newMotor)
-''',
-'''            state.hw[i].motor = newMotor;
-            this.setDriveLED(i,newMotor);
-            if (oldMotor != newMotor)
-''')
-
-          text = must_replace(text,
-'''        this.traceSoftSwitchMarker("RESET");
-    }
-
-    this.getState = function() { return state }
-
-    this.GUI_update = function() {}   // overridable function to update drive status (LED)
-''',
-'''        this.traceSoftSwitchMarker("RESET");
-        this.syncDriveVisuals();
-    }
-
-    this.getState = function() { return state }
-
-    this.GUI_update = function() { this.syncDriveVisuals(); }   // update drive status (LED/lid)
-''')
-
-          text = must_replace(text,
-'''        state.diskData[deviceN] = nibBytes;
-        this.setDiskName(deviceID, filepath);
-''',
-'''        state.diskData[deviceN] = nibBytes;
-        this.setDriveLidClosed(deviceN,true);
-        this.setDiskName(deviceID, filepath);
-''')
-
-          text = must_replace(text,
-'''            if(typeof drv == "number") drv = "D" + drv;
-
-            var el = this.diskMiddleEl(drv);
-''',
-'''            if(typeof drv == "number") drv = "D" + drv;
-            this.setDriveLidClosed(drv,false);
-
-            var el = this.diskMiddleEl(drv);
-''')
-
-          # Remove an obsolete duplicate stub left before the real driveElementID implementation.
-          text = must_replace(text,
-'''    this.driveElementID = function(prefix,drv)
-    {
-        if(typeof drv == "number") drv = "D" + drv;
-        var slotN = ssSlotNumber();
-    }
-
-''',
-'')
-
-          path.write_text(text)
-
-          plus = Path('res/EMU_apple2plus.js')
-          ptext = plus.read_text()
-          ptext = must_replace(ptext,
-'''        disk2.getState().diskData[device.deviceN] = bytes;
-        return true;
-''',
-'''        disk2.getState().diskData[device.deviceN] = bytes;
-        if(typeof disk2.setDriveLidClosed == "function")
-            disk2.setDriveLidClosed(device.deviceN,true);
-        return true;
-''')
-          plus.write_text(ptext)
-          PY
-
-      - name: Run focused tests
-        run: node --test tests/apple2_html_layout.test.js tests/appledisk2_layout_visuals.test.js tests/preview_distribution.test.js
-
-      - name: Commit patched source
+      - name: Commit production patch and remove temporary runner
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git rm .github/workflows/apply-diskii-green-patch.yml
-          git add res/EMU_CARD_appledisk2.js res/EMU_apple2plus.js tests/appledisk2_layout_visuals.test.js
-          git commit -m "fix: wire Disk II visuals to layout API"
-          git push origin HEAD:green-diskii-layout-visuals
+          rm -f .github/workflows/apply-diskii-green-patch.yml .github/scripts/patch_diskii_led_lid.py
+          git add -A
+          git commit -m "fix: wire Disk II LEDs and lids to layout API"
+          git push origin HEAD:fix-diskii-led-lid-wiring
