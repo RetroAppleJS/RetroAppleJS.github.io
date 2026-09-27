@@ -1,24 +1,27 @@
 /*
  * COM_A2P_LAYOUT.js
  *
- * Runtime HTML compositor for the emulator tab background.
+ * Runtime HTML compositor and control API for the emulator tab background.
  * It consumes the version-1 layout object embedded in EMU_apple2main.js.
  * Embedded PNG data URLs are used directly when present, with the legacy
  * asset directory retained as a compatibility fallback for non-embedded layouts.
  */
 (function(root,factory)
 {
-    var api = factory();
+    var api = factory(root);
 
     if(typeof module == "object" && module.exports)
         module.exports = api;
 
     if(root)
     {
-        root.A2PSystemLayout = api;
+        root.LAYOUT = api.LAYOUT;
+        root.oLAYOUT = api;
+        root.A2PSystemLayout = api; /* compatibility alias */
+        if(root.oCOM) root.oCOM.LAYOUT = api;
         api.autoInstall(root);
     }
-})(typeof window != "undefined" ? window : null,function()
+})(typeof window != "undefined" ? window : null,function(root)
 {
     "use strict";
 
@@ -73,6 +76,27 @@
         return assets;
     }
 
+    function legacyDiskIILayerId(layer)
+    {
+        if(!layer || typeof layer.file != "string") return null;
+
+        if(layer.file == "A2P_FULL_DISKII_LED.png")
+            return layer.x < 300 ? "A2P.DISKII.D1.LED" : "A2P.DISKII.D2.LED";
+
+        if(layer.file == "A2P_FULL_DISKII_LID.png")
+            return layer.x < 400 ? "A2P.DISKII.D1.LID" : "A2P.DISKII.D2.LID";
+
+        return null;
+    }
+
+    function validateLayerId(rawId,index)
+    {
+        if(rawId === undefined || rawId === null || rawId === "") return null;
+        if(typeof rawId != "string" || !rawId.trim())
+            throw new Error("Layer " + (index+1) + " id must be a non-empty string when supplied.");
+        return rawId.trim();
+    }
+
     function validateLayout(raw)
     {
         if(!raw || typeof raw != "object" || Array.isArray(raw))
@@ -84,6 +108,7 @@
         if(!Array.isArray(raw.layers))
             throw new Error("Apple II layout layers must be an array.");
 
+        var seenIds = Object.create(null);
         var layers = raw.layers.map(function(layer,index)
         {
             if(!layer || typeof layer != "object" || Array.isArray(layer))
@@ -95,7 +120,15 @@
             if(typeof layer.visible != "boolean")
                 throw new Error("Layer " + (index+1) + " visibility must be boolean.");
 
+            var id = validateLayerId(layer.id,index) || legacyDiskIILayerId(layer);
+            if(id)
+            {
+                if(seenIds[id]) throw new Error("Duplicate Apple II layout layer id: " + id);
+                seenIds[id] = true;
+            }
+
             return {
+                id: id,
                 file: layer.file,
                 x: layer.x,
                 y: layer.y,
@@ -179,14 +212,14 @@
         return ctx;
     }
 
-    function loadLayout(rootWindow)
+    function applyLayerVisibility(entry,state)
     {
-        return Promise.resolve().then(function()
-        {
-            if(!rootWindow || !rootWindow.composer)
-                throw new Error("Apple II layout data is not available on window.composer.");
-            return validateLayout(rootWindow.composer);
-        });
+        if(!entry) return false;
+        state = !!state;
+        entry.model.visible = state;
+        if(entry.element && entry.element.style)
+            entry.element.style.display = state ? "" : "none";
+        return state;
     }
 
     function renderLayout(rootWindow,layout)
@@ -204,7 +237,7 @@
         });
     }
 
-    function buildDOMComposition(doc,layout)
+    function buildDOMComposition(doc,layout,registry)
     {
         var host = doc.createElement("div");
         host.id = "a2p-system-layout";
@@ -222,14 +255,13 @@
         for(var i=layout.layers.length-1;i>=0;i--)
         {
             var layer = layout.layers[i];
-            if(!layer.visible) continue;
-
             var img = doc.createElement("img");
             img.src = assetURL(layer.file,layout);
             img.alt = "";
             img.draggable = false;
             img.dataset.layerIndex = String(i);
             img.dataset.file = layer.file;
+            if(layer.id) img.dataset.layerId = layer.id;
             img.style.position = "absolute";
             img.style.left = layer.x + "px";
             img.style.top = layer.y + "px";
@@ -237,6 +269,7 @@
             img.style.userSelect = "none";
             img.style.pointerEvents = "none";
             img.style.filter = "none";
+            img.style.display = layer.visible ? "" : "none";
 
             if(layer.shadow && layer.shadow.enabled)
                 img.style.filter = "drop-shadow("
@@ -246,6 +279,9 @@
                     + layer.shadow.opacity + "))";
 
             host.appendChild(img);
+
+            if(layer.id && registry)
+                registry[layer.id] = {id:layer.id,model:layer,element:img};
         }
 
         return host;
@@ -260,90 +296,187 @@
         });
     }
 
-    function install(rootWindow)
+    function LAYOUT(rootWindow)
     {
-        var doc = rootWindow.document;
-        var tab = doc.getElementById("tab1");
-        var app = doc.getElementById("app");
-        if(!tab) return Promise.resolve(false);
+        var self = this;
+        var layersById = Object.create(null);
+        var pending = Object.create(null);
 
-        return loadLayout(rootWindow)
-            .then(function(layout)
-            {
-                var oldHost = doc.getElementById("a2p-system-layout");
-                if(oldHost && oldHost.parentNode) oldHost.parentNode.removeChild(oldHost);
+        this.root = rootWindow || root || null;
+        this.lastLayout = null;
+        this.lastCanvas = null;
+        this.lastComposition = null;
 
-                var host = buildDOMComposition(doc,layout);
+        function attachToRoot(target)
+        {
+            if(!target) return;
+            target.LAYOUT = LAYOUT;
+            target.oLAYOUT = self;
+            target.A2PSystemLayout = self;
+            if(target.oCOM) target.oCOM.LAYOUT = self;
+        }
 
-                /*
-                 * Keep the composed hardware as a true background layer.  The
-                 * tab itself forms a stacking context so the negative layout
-                 * z-index remains visible behind the emulator canvas and UI.
-                 */
-                tab.style.position = "relative";
-                tab.style.zIndex = "0";
-                tab.style.backgroundImage = "none";
-                tab.style.backgroundSize = "none";
-                tab.style.backgroundRepeat = "no-repeat";
+        function resolveRoot(candidate)
+        {
+            return candidate || self.root || root || null;
+        }
 
-                /*
-                 * #app contains the floated top tab selector.  Its parent has
-                 * no normal-flow height, so #tab1 begins underneath it.  Lift
-                 * that tab chrome above the emulator stacking context without
-                 * changing the established layout coordinates.
-                 */
-                if(app)
-                {
-                    app.style.position = "relative";
-                    app.style.zIndex = "1";
+        function setDiskLayer(id,state)
+        {
+            return self.visible(id,state);
+        }
+
+        this.A2P = {
+            DISKII: {
+                D1: {
+                    LED: function(on){ return setDiskLayer("A2P.DISKII.D1.LED",on); },
+                    LID: function(open){ return setDiskLayer("A2P.DISKII.D1.LID",open); }
+                },
+                D2: {
+                    LED: function(on){ return setDiskLayer("A2P.DISKII.D2.LED",on); },
+                    LID: function(open){ return setDiskLayer("A2P.DISKII.D2.LID",open); }
                 }
+            }
+        };
 
-                if(typeof tab.insertBefore == "function")
-                    tab.insertBefore(host,tab.firstChild || null);
-                else
-                    tab.appendChild(host);
+        this.validateLayout = validateLayout;
+        this.assetURL = assetURL;
+        this.drawComposition = drawComposition;
+        this.renderLayout = renderLayout;
+        this.buildDOMComposition = buildDOMComposition;
+        this.disableLegacyDriveVisuals = disableLegacyDriveVisuals;
 
-                /* Embedded layout data owns the static drive visuals. */
-                disableLegacyDriveVisuals(doc);
-
-                api.lastLayout = layout;
-                api.lastComposition = host;
-                api.lastCanvas = null;
-                return true;
-            })
-            .catch(function(err)
+        this.loadLayout = function(rootWindow)
+        {
+            rootWindow = resolveRoot(rootWindow);
+            return Promise.resolve().then(function()
             {
-                if(rootWindow.console && typeof rootWindow.console.error == "function")
-                    rootWindow.console.error("Apple II HTML system composition failed.",err);
-                return false;
+                if(!rootWindow || !rootWindow.composer)
+                    throw new Error("Apple II layout data is not available on window.composer.");
+                return validateLayout(rootWindow.composer);
             });
+        };
+
+        this.getLayer = function(id)
+        {
+            return layersById[id] || null;
+        };
+
+        this.visible = function(id,state)
+        {
+            if(state === undefined)
+            {
+                if(layersById[id]) return layersById[id].model.visible;
+                if(Object.prototype.hasOwnProperty.call(pending,id)) return pending[id];
+                return undefined;
+            }
+
+            state = !!state;
+            if(!layersById[id])
+            {
+                pending[id] = state;
+                return state;
+            }
+
+            return applyLayerVisibility(layersById[id],state);
+        };
+
+        this.setVisible = this.visible;
+
+        this.install = function(rootWindow)
+        {
+            rootWindow = resolveRoot(rootWindow);
+            if(!rootWindow || !rootWindow.document) return Promise.resolve(false);
+            self.root = rootWindow;
+            attachToRoot(rootWindow);
+
+            var doc = rootWindow.document;
+            var tab = doc.getElementById("tab1");
+            var app = doc.getElementById("app");
+            if(!tab) return Promise.resolve(false);
+
+            return self.loadLayout(rootWindow)
+                .then(function(layout)
+                {
+                    var oldHost = doc.getElementById("a2p-system-layout");
+                    if(oldHost && oldHost.parentNode) oldHost.parentNode.removeChild(oldHost);
+
+                    var registry = Object.create(null);
+                    var host = buildDOMComposition(doc,layout,registry);
+
+                    /*
+                     * Keep the composed hardware as a true background layer.  The
+                     * tab itself forms a stacking context so the negative layout
+                     * z-index remains visible behind the emulator canvas and UI.
+                     */
+                    tab.style.position = "relative";
+                    tab.style.zIndex = "0";
+                    tab.style.backgroundImage = "none";
+                    tab.style.backgroundSize = "none";
+                    tab.style.backgroundRepeat = "no-repeat";
+
+                    /*
+                     * #app contains the floated top tab selector.  Its parent has
+                     * no normal-flow height, so #tab1 begins underneath it.  Lift
+                     * that tab chrome above the emulator stacking context without
+                     * changing the established layout coordinates.
+                     */
+                    if(app)
+                    {
+                        app.style.position = "relative";
+                        app.style.zIndex = "1";
+                    }
+
+                    if(typeof tab.insertBefore == "function")
+                        tab.insertBefore(host,tab.firstChild || null);
+                    else
+                        tab.appendChild(host);
+
+                    /* Embedded layout data owns the static drive visuals. */
+                    disableLegacyDriveVisuals(doc);
+
+                    layersById = registry;
+                    Object.keys(pending).forEach(function(id)
+                    {
+                        if(layersById[id])
+                        {
+                            applyLayerVisibility(layersById[id],pending[id]);
+                            delete pending[id];
+                        }
+                    });
+
+                    self.lastLayout = layout;
+                    self.lastComposition = host;
+                    self.lastCanvas = null;
+                    return true;
+                })
+                .catch(function(err)
+                {
+                    if(rootWindow.console && typeof rootWindow.console.error == "function")
+                        rootWindow.console.error("Apple II HTML system composition failed.",err);
+                    return false;
+                });
+        };
+
+        this.autoInstall = function(rootWindow)
+        {
+            rootWindow = resolveRoot(rootWindow);
+            if(!rootWindow || !rootWindow.document) return;
+            self.root = rootWindow;
+            attachToRoot(rootWindow);
+
+            if(rootWindow.document.readyState == "complete")
+                self.install(rootWindow);
+            else
+                rootWindow.addEventListener("load",function(){ self.install(rootWindow); },{once:true});
+        };
+
+        attachToRoot(this.root);
     }
 
-    function autoInstall(rootWindow)
-    {
-        if(!rootWindow || !rootWindow.document) return;
-
-        if(rootWindow.document.readyState == "complete")
-            install(rootWindow);
-        else
-            rootWindow.addEventListener("load",function(){ install(rootWindow); },{once:true});
-    }
-
-    var api = {
-        ASSET_BASE: ASSET_BASE,
-        validateLayout: validateLayout,
-        assetURL: assetURL,
-        drawComposition: drawComposition,
-        loadLayout: loadLayout,
-        renderLayout: renderLayout,
-        install: install,
-        autoInstall: autoInstall,
-        disableLegacyDriveVisuals: disableLegacyDriveVisuals,
-        buildDOMComposition: buildDOMComposition,
-        lastLayout: null,
-        lastCanvas: null,
-        lastComposition: null
-    };
+    var api = new LAYOUT(root);
+    api.LAYOUT = LAYOUT;
+    api.ASSET_BASE = ASSET_BASE;
 
     return api;
 });
