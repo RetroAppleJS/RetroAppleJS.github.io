@@ -20,7 +20,7 @@ test('branch preview inlines EMU-owned layout data and ignores legacy JSON trans
   write(fixture, 'index.html', '<!doctype html><html><head><link rel="stylesheet" href="res/test.css"></head><body><script src="res/EMU_apple2main.js"></script><script src="res/bootstrap.js"></script></body></html>', 'utf8');
   write(fixture, 'res/test.css', 'body{background:#123}', 'utf8');
   const embeddedData = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB' + 'A'.repeat(1200);
-  write(fixture, 'res/EMU_apple2main.js', `var A2P_LAYOUT_DATA={version:1,canvas:{width:1144,height:1144},layers:[{file:'tiny.png',x:0,y:0,visible:true,shadow:{enabled:false,offsetX:0,offsetY:15,blur:12,opacity:.75}}],assets:{'tiny.png':'${embeddedData}'}};`, 'utf8');
+  write(fixture, 'res/EMU_apple2main.js', `var composer={version:1,canvas:{width:1144,height:1144},layers:[{file:'tiny.png',x:0,y:0,visible:true,shadow:{enabled:false,offsetX:0,offsetY:15,blur:12,opacity:.75}}],assets:{'tiny.png':'${embeddedData}'}};`, 'utf8');
   write(fixture, 'res/bootstrap.js', "document.write('<script src=\"res/inner.js\"><\\/script>');", 'utf8');
   write(fixture, 'res/inner.js', 'window.INNER_PREVIEW_TEST=true;', 'utf8');
 
@@ -38,7 +38,7 @@ test('branch preview inlines EMU-owned layout data and ignores legacy JSON trans
   const html = fs.readFileSync(previewPath, 'utf8');
   assert.match(html, /body\{background:#123\}/);
   assert.match(html, /window\.INNER_PREVIEW_TEST=true/);
-  assert.match(html, /var A2P_LAYOUT_DATA=/);
+  assert.match(html, /var composer=/);
   assert.match(html, /data:image\/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB/);
   assert.doesNotMatch(html, /src=["']res\/(EMU_apple2main|bootstrap|inner)\.js["']/);
   assert.doesNotMatch(html, /document\.write\(/);
