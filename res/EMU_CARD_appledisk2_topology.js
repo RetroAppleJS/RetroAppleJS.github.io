@@ -34,6 +34,14 @@
         return null;
     }
 
+    function diskDriveID(deviceN)
+    {
+        deviceN = Number(deviceN);
+        return Number.isInteger(deviceN) && deviceN>=0 && deviceN<=1
+            ? "D" + (deviceN + 1)
+            : null;
+    }
+
     function isDriveAttached(card,deviceN)
     {
         deviceN = Number(deviceN);
@@ -47,13 +55,60 @@
         return false;
     }
 
+    function diskState(card)
+    {
+        return card && typeof card.getState == "function" ? card.getState() : null;
+    }
+
+    function attachedDiskDevices(card)
+    {
+        var devices = Array.isArray(card && card.devices) ? card.devices.slice() : [];
+        devices = devices.filter(function(device)
+        {
+            return diskDeviceN(device)!==null;
+        });
+        devices.sort(function(a,b)
+        {
+            var A = diskDeviceID(a) || "";
+            var B = diskDeviceID(b) || "";
+            return A < B ? -1 : (A > B ? 1 : 0);
+        });
+        return devices;
+    }
+
+    function driveFileDisplayName(card,deviceN)
+    {
+        var state = diskState(card);
+        deviceN = Number(deviceN);
+        if(!state || !Number.isInteger(deviceN) || deviceN<0 || deviceN>1) return null;
+        if(!Array.isArray(state.diskData) || state.diskData[deviceN]==null) return null;
+
+        var name = Array.isArray(state.diskName) ? state.diskName[deviceN] : null;
+        name = name==null ? "" : String(name);
+        return name || "disk image";
+    }
+
+    function shouldSuppressDiskNoise(card,status)
+    {
+        status = String(status || "");
+        if(status!="MOTOR_ON" && status!="ARM_IN" && status!="ARM_OUT" && status!="CLICK_IN" && status!="CLICK_OUT")
+            return false;
+
+        var state = diskState(card);
+        var deviceN = state ? Number(state.drv) : NaN;
+        return !isDriveAttached(card,deviceN);
+    }
+
     function clearDetachedDriveState(card,deviceN)
     {
         deviceN = Number(deviceN);
         if(!card || !Number.isInteger(deviceN) || deviceN<0 || deviceN>1) return false;
 
-        var state = typeof card.getState == "function" ? card.getState() : null;
+        var state = diskState(card);
         if(!state) return false;
+
+        var selected = Number(state.drv) == deviceN;
+        var wasMotorOn = !!(Array.isArray(state.hw) && state.hw[deviceN] && state.hw[deviceN].motor);
 
         if(typeof card.cancelTrackStatsFlush == "function")
             card.cancelTrackStatsFlush(deviceN);
@@ -77,8 +132,11 @@
             }
         }
 
-        if(Number(state.drv) == deviceN)
+        if(selected)
             state.drive_enable = 0;
+
+        if((wasMotorOn || selected) && typeof card.dN_update == "function")
+            card.dN_update("MOTOR_OFF");
 
         if(typeof card.setDriveLED == "function") card.setDriveLED(deviceN,false);
         if(typeof card.setDriveLidClosed == "function") card.setDriveLidClosed(deviceN,false);
@@ -100,32 +158,32 @@
 
         function mediaRow(deviceID,label)
         {
-            return rowFactory({
+            var deviceN = diskDeviceN(deviceID);
+            var displayName = driveFileDisplayName(card,deviceN);
+            var spec = {
                  "label":label
                 ,"buttonID":card.driveElementID("but",deviceID)
                 ,"formID":card.driveElementID("f",deviceID)
                 ,"fileID":card.driveElementID("file",deviceID)
                 ,"downloadID":card.driveElementID("dump",deviceID)
                 ,"fileName":deviceID
-                ,"buttonTitle":label+": no disk"
+                ,"buttonTitle":displayName ? (label+" loaded: "+displayName) : (label+": no disk")
                 ,"buttonOnClick":"ejectDisk(this,"+slotN+",'"+deviceID+"')"
                 ,"buttonOnMouseOver":"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,true)"
                 ,"buttonOnMouseOut":"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,false)"
                 ,"fileOnChange":"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'"+deviceID+"')"
                 ,"downloadOnClick":"apple2plus.hwObj().io.SLOT2obj("+slotN+").downloadDisk('"+deviceID+"')"
                 ,"downloadTitle":"Save disk"
-            });
+            };
+
+            if(displayName)
+                spec.fileDisplayName = displayName;
+
+            return rowFactory(spec);
         }
 
         var rows = "";
-        var devices = Array.isArray(card.devices) ? card.devices.slice() : [];
-        devices.sort(function(a,b)
-        {
-            var A = diskDeviceID(a) || "";
-            var B = diskDeviceID(b) || "";
-            return A < B ? -1 : (A > B ? 1 : 0);
-        });
-
+        var devices = attachedDiskDevices(card);
         for(var i=0;i<devices.length;i++)
         {
             var id = diskDeviceID(devices[i]);
@@ -145,6 +203,26 @@
             + "</div>";
     }
 
+    function renderAttachedDiskIISurfaceMap(card,popupID,nativeSurfaceMapHTML)
+    {
+        if(typeof nativeSurfaceMapHTML != "function") return "";
+        var html = String(nativeSurfaceMapHTML.call(card,popupID));
+        if(typeof card.surfaceMap_grid_html != "function") return html;
+
+        var nativeGrids = card.surfaceMap_grid_html(0) + card.surfaceMap_grid_html(1);
+        var attachedGrids = "";
+        var devices = attachedDiskDevices(card);
+
+        for(var i=0;i<devices.length;i++)
+        {
+            var deviceN = diskDeviceN(devices[i]);
+            if(deviceN!==null)
+                attachedGrids += card.surfaceMap_grid_html(deviceN);
+        }
+
+        return html.replace(nativeGrids,attachedGrids);
+    }
+
     function decorateDiskIITopology(card)
     {
         if(!card || !card.id || card.id.PCODE!="DISKII") return card;
@@ -155,7 +233,9 @@
         var nativeSetDriveLidClosed = card.setDriveLidClosed;
         var nativeSyncDriveVisuals = card.syncDriveVisuals;
         var nativeDeviceToolSlotHTML = card.deviceToolSlotHTML;
+        var nativeSurfaceMapHTML = card.surfaceMap_html;
         var nativeTopologyChanged = card.onDeviceTopologyChanged;
+        var nativeDNUpdate = card.dN_update;
 
         card.isDriveAttached = function(deviceN)
         {
@@ -178,9 +258,17 @@
                 : false;
         };
 
+        card.dN_update = function(status)
+        {
+            if(shouldSuppressDiskNoise(this,status)) return false;
+            return typeof nativeDNUpdate == "function"
+                ? nativeDNUpdate.apply(this,arguments)
+                : false;
+        };
+
         card.applyDriveEnable = function(reason)
         {
-            var state = typeof this.getState == "function" ? this.getState() : null;
+            var state = diskState(this);
             if(!state || !Array.isArray(state.hw)) return false;
 
             var deviceN = Number(state.drv);
@@ -223,7 +311,7 @@
 
         card.syncDriveVisuals = function()
         {
-            var state = typeof this.getState == "function" ? this.getState() : null;
+            var state = diskState(this);
             if(state && Array.isArray(state.hw))
             {
                 for(var i=0;i<state.hw.length;i++)
@@ -262,6 +350,11 @@
         card.deviceToolSlotHTML = function(ctx)
         {
             return renderAttachedDiskIIRows(this,ctx,nativeDeviceToolSlotHTML);
+        };
+
+        card.surfaceMap_html = function(popupID)
+        {
+            return renderAttachedDiskIISurfaceMap(this,popupID,nativeSurfaceMapHTML);
         };
 
         if(typeof card.syncDriveVisuals == "function") card.syncDriveVisuals();
@@ -369,6 +462,7 @@
     return {
          "diskDeviceID":diskDeviceID
         ,"diskDeviceN":diskDeviceN
+        ,"diskDriveID":diskDriveID
         ,"isDriveAttached":isDriveAttached
         ,"clearDetachedDriveState":clearDetachedDriveState
         ,"decorateDiskIITopology":decorateDiskIITopology
