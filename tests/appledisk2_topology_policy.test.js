@@ -26,7 +26,7 @@ function fakeCard(devices) {
     ]
   };
 
-  const calls = {led: [], lid: [], cancel: [], schedule: [], trace: [], audio: [], spin: []};
+  const calls = {led: [], lid: [], cancel: [], schedule: [], trace: [], audio: [], spin: [], spinActive: false};
   const card = {
     id: {PCODE: 'DISKII'},
     devices: devices.map((DCODE) => ({id: {DCODE}})),
@@ -41,7 +41,14 @@ function fakeCard(devices) {
     },
     dN_update(eventName) {
       calls.audio.push(eventName);
-      if(eventName === 'MOTOR_ON') calls.spin.push('DiskII_spin');
+      if(eventName === 'MOTOR_ON') {
+        calls.spinActive = true;
+        calls.spin.push('DiskII_spin');
+      }
+      if(eventName === 'MOTOR_OFF') {
+        calls.spinActive = false;
+        calls.spin.length = 0;
+      }
     },
     cancelTrackStatsFlush(deviceN) { calls.cancel.push(deviceN); },
     scheduleTrackStatsFlush(deviceN,reason,delay) { calls.schedule.push([deviceN,reason,delay]); },
@@ -129,6 +136,45 @@ test('detached D1 and D2 do not trigger MOTOR_ON disk audio during catalog acces
       `${scenario.label} must not call dN_update("MOTOR_ON") for a detached drive`);
     assert.deepEqual(calls.spin, [],
       `${scenario.label} must not start DiskII_spin audio for a detached drive`);
+  }
+});
+
+test('detaching a currently spinning D1 or D2 clears motor, LED, pending motor-off state, and spin audio', () => {
+  for (const scenario of [
+    {label:'D1', detachedDrive:0, attachedDevices:['D2']},
+    {label:'D2', detachedDrive:1, attachedDevices:['D1']}
+  ]) {
+    const {card,state,calls} = fakeCard(scenario.attachedDevices);
+    topology.decorateDiskIITopology(card);
+
+    const deviceN = scenario.detachedDrive;
+    const staleTimer = {drive: scenario.label, pending: true};
+
+    state.drv = deviceN;
+    state.drive_enable = 1;
+    state.hw[deviceN].motor = 1;
+    state.hw[deviceN].stats.motorOffTimer = staleTimer;
+    calls.spinActive = true;
+    calls.spin.push('DiskII_spin');
+    calls.led.length = 0;
+    calls.audio.length = 0;
+
+    card.onDeviceTopologyChanged({type:'detach', DCODE:scenario.label});
+
+    assert.equal(state.hw[deviceN].motor, 0,
+      `${scenario.label} detach must clear the spinning motor state`);
+    assert.equal(state.hw[deviceN].stats.motorOffTimer, null,
+      `${scenario.label} detach must clear pending motor-off state`);
+    assert.deepEqual(calls.cancel.includes(deviceN), true,
+      `${scenario.label} detach must cancel any pending track-stat/motor-off flush`);
+    assert.deepEqual(calls.led.some(([ledDeviceN,on]) => ledDeviceN === deviceN && on === false), true,
+      `${scenario.label} detach must switch the LED off`);
+    assert.equal(calls.spinActive, false,
+      `${scenario.label} detach must stop the active DiskII_spin loop`);
+    assert.deepEqual(calls.spin, [],
+      `${scenario.label} detach must clear tracked DiskII_spin audio`);
+    assert.deepEqual(calls.audio.includes('MOTOR_OFF'), true,
+      `${scenario.label} detach must issue a MOTOR_OFF audio update`);
   }
 });
 
