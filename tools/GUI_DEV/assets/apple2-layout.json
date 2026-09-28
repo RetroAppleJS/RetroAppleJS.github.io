@@ -19,32 +19,43 @@
       }
     },
     {
+      "file": "A2P_TAPE.png",
+      "x": 80,
+      "y": 520,
+      "visible": false,
+      "shadow": {
+        "enabled": true,
+        "offsetX": 0,
+        "offsetY": 15,
+        "blur": 12,
+        "opacity": 0.75
+      }
+    },
+    {
       "file": "A2P_DISKII_LED.png",
       "x": 545,
       "y": 684,
-      "visible": false,
+      "visible": true,
       "shadow": {
         "enabled": false,
         "offsetX": 8,
         "offsetY": 10,
         "blur": 12,
         "opacity": 0.3
-      },
-      "id": "A2P.DISKII.D2.LED"
+      }
     },
     {
       "file": "A2P_DISKII_LED.png",
       "x": 154,
       "y": 684,
-      "visible": false,
+      "visible": true,
       "shadow": {
         "enabled": false,
         "offsetX": 8,
         "offsetY": 10,
         "blur": 12,
         "opacity": 0.3
-      },
-      "id": "A2P.DISKII.D1.LED"
+      }
     },
     {
       "file": "A2P_DISKII_LID.png",
@@ -57,8 +68,7 @@
         "offsetY": 10,
         "blur": 12,
         "opacity": 0.3
-      },
-      "id": "A2P.DISKII.D2.LID"
+      }
     },
     {
       "file": "A2P_DISKII_LID.png",
@@ -71,14 +81,13 @@
         "offsetY": 10,
         "blur": 12,
         "opacity": 0.3
-      },
-      "id": "A2P.DISKII.D1.LID"
+      }
     },
     {
       "file": "A2P_DISKII_right.png",
       "x": 472,
       "y": 463,
-      "visible": false,
+      "visible": true,
       "shadow": {
         "enabled": true,
         "offsetX": 0,
@@ -91,7 +100,7 @@
       "file": "A2P_DISKII_left.png",
       "x": 81,
       "y": 463,
-      "visible": false,
+      "visible": true,
       "shadow": {
         "enabled": true,
         "offsetX": 0,
@@ -104,7 +113,7 @@
       "file": "A2P_DISKII_gap.png",
       "x": 446,
       "y": 486,
-      "visible": false,
+      "visible": true,
       "shadow": {
         "enabled": true,
         "offsetX": 0,
@@ -114,9 +123,22 @@
       }
     },
     {
+      "file": "A2P_HD20.png",
+      "x": 164,
+      "y": 394,
+      "visible": false,
+      "shadow": {
+        "enabled": true,
+        "offsetX": 0,
+        "offsetY": 15,
+        "blur": 12,
+        "opacity": 0.75
+      }
+    },
+    {
       "file": "A2P_UNIDISK_left.png",
-      "x": 80,
-      "y": 438,
+      "x": 170,
+      "y": 460,
       "visible": true,
       "shadow": {
         "enabled": true,
@@ -128,9 +150,22 @@
     },
     {
       "file": "A2P_UNIDISK_right.png",
-      "x": 464,
-      "y": 437,
+      "x": 463,
+      "y": 460,
       "visible": true,
+      "shadow": {
+        "enabled": true,
+        "offsetX": 0,
+        "offsetY": 15,
+        "blur": 12,
+        "opacity": 0.75
+      }
+    },
+    {
+      "file": "A2P_HD20.png",
+      "x": 164,
+      "y": 501,
+      "visible": false,
       "shadow": {
         "enabled": true,
         "offsetX": 0,
