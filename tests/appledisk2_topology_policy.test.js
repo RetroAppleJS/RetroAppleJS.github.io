@@ -26,7 +26,7 @@ function fakeCard(devices) {
     ]
   };
 
-  const calls = {led: [], lid: [], cancel: [], schedule: [], trace: []};
+  const calls = {led: [], lid: [], cancel: [], schedule: [], trace: [], audio: [], spin: []};
   const card = {
     id: {PCODE: 'DISKII'},
     devices: devices.map((DCODE) => ({id: {DCODE}})),
@@ -39,6 +39,10 @@ function fakeCard(devices) {
       this.setDriveLidClosed(0,state.diskData[0] != null);
       this.setDriveLidClosed(1,state.diskData[1] != null);
     },
+    dN_update(eventName) {
+      calls.audio.push(eventName);
+      if(eventName === 'MOTOR_ON') calls.spin.push('DiskII_spin');
+    },
     cancelTrackStatsFlush(deviceN) { calls.cancel.push(deviceN); },
     scheduleTrackStatsFlush(deviceN,reason,delay) { calls.schedule.push([deviceN,reason,delay]); },
     traceChange(type,deviceN,field,oldValue,newValue,meta) { calls.trace.push({type,deviceN,field,oldValue,newValue,meta}); },
@@ -46,6 +50,13 @@ function fakeCard(devices) {
   };
 
   return {card,state,calls};
+}
+
+function simulateCatalogMotorOn(card,state,deviceN,label) {
+  state.drv = deviceN;
+  state.drive_enable = 1;
+  card.applyDriveEnable(label);
+  card.dN_update('MOTOR_ON');
 }
 
 test('Disk II topology patch is loaded by the browser bootstrap', () => {
@@ -97,6 +108,28 @@ test('CATALOG,D2 soft-switch activity does not spin or light a detached D2', () 
   assert.equal(state.hw[1].motor, 0);
   assert.equal(state.hw[0].motor, 0);
   assert.deepEqual(calls.led, [[0,false],[1,false]]);
+});
+
+test('detached D1 and D2 do not trigger MOTOR_ON disk audio during catalog access', () => {
+  for (const scenario of [
+    {label:'CATALOG,D1', detachedDrive:0, attachedDevices:['D2']},
+    {label:'CATALOG,D2', detachedDrive:1, attachedDevices:['D1']}
+  ]) {
+    const {card,state,calls} = fakeCard(scenario.attachedDevices);
+    topology.decorateDiskIITopology(card);
+
+    calls.audio.length = 0;
+    calls.spin.length = 0;
+
+    simulateCatalogMotorOn(card,state,scenario.detachedDrive,scenario.label);
+
+    assert.equal(state.hw[scenario.detachedDrive].motor, 0,
+      `${scenario.label} must not set the detached drive motor`);
+    assert.deepEqual(calls.audio, [],
+      `${scenario.label} must not call dN_update("MOTOR_ON") for a detached drive`);
+    assert.deepEqual(calls.spin, [],
+      `${scenario.label} must not start DiskII_spin audio for a detached drive`);
+  }
 });
 
 test('attached D1 can still spin while detached D2 remains suppressed', () => {
