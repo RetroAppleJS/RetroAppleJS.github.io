@@ -99,6 +99,31 @@
         return !isDriveAttached(card,deviceN);
     }
 
+    function documentRef()
+    {
+        if(root && root.document) return root.document;
+        if(typeof document == "object") return document;
+        return null;
+    }
+
+    function refreshVisibleSurfaceMap(card)
+    {
+        var doc = documentRef();
+        var popup = doc && typeof doc.getElementById == "function"
+            ? doc.getElementById("surfaceMap_popup")
+            : null;
+
+        if(!popup || popup.hidden===true) return false;
+
+        if(typeof card.surfaceMap_render == "function")
+            return card.surfaceMap_render("surfaceMap_popup");
+
+        if(typeof card.surfaceMap_update == "function")
+            return card.surfaceMap_update("surfaceMap_popup");
+
+        return false;
+    }
+
     function clearDetachedDriveState(card,deviceN)
     {
         deviceN = Number(deviceN);
@@ -137,6 +162,9 @@
 
         if((wasMotorOn || selected) && typeof card.dN_update == "function")
             card.dN_update("MOTOR_OFF");
+
+        if(typeof card.surfaceMap_clear_drive == "function")
+            card.surfaceMap_clear_drive(deviceN);
 
         if(typeof card.setDriveLED == "function") card.setDriveLED(deviceN,false);
         if(typeof card.setDriveLidClosed == "function") card.setDriveLidClosed(deviceN,false);
@@ -305,7 +333,11 @@
         card.detachDriveDevice = function(deviceN)
         {
             var cleared = clearDetachedDriveState(this,deviceN);
-            if(cleared && typeof this.syncDriveVisuals == "function") this.syncDriveVisuals();
+            if(cleared)
+            {
+                if(typeof this.syncDriveVisuals == "function") this.syncDriveVisuals();
+                refreshVisibleSurfaceMap(this);
+            }
             return cleared;
         };
 
@@ -341,8 +373,11 @@
             var deviceN = diskDeviceN(change && change.DCODE);
             if(change && change.type == "detach" && deviceN!==null)
                 this.detachDriveDevice(deviceN);
-            else if(typeof this.syncDriveVisuals == "function")
-                this.syncDriveVisuals();
+            else
+            {
+                if(typeof this.syncDriveVisuals == "function") this.syncDriveVisuals();
+                refreshVisibleSurfaceMap(this);
+            }
 
             return true;
         };
