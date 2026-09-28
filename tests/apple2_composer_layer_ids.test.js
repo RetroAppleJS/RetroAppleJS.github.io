@@ -21,7 +21,7 @@ const DISK_IDS = [
 
 function diskIds(config) {
   return config.layers
-    .filter(layer => layer.file === 'A2P_FULL_DISKII_LED.png' || layer.file === 'A2P_FULL_DISKII_LID.png')
+    .filter(layer => layer.file === 'A2P_DISKII_LED.png' || layer.file === 'A2P_DISKII_LID.png')
     .map(layer => layer.id)
     .sort();
 }
@@ -65,14 +65,14 @@ test('active emulator and Composer layouts carry all four persistent Disk II sem
 
 test('runtime compositor never infers Disk II semantic identity from artwork or geometry', () => {
   assert.doesNotMatch(compositorSource,/legacyDiskIILayerId/);
-  assert.doesNotMatch(compositorSource,/A2P_FULL_DISKII_(?:LED|LID)\.png/);
+  assert.doesNotMatch(compositorSource,/A2P_DISKII_(?:LED|LID)\.png/);
 
   const unlabeled = layout.validateLayout({
     version:1,
     canvas:{width:1144,height:1144},
     assets:{},
     layers:[{
-      file:'A2P_FULL_DISKII_LED.png',
+      file:'A2P_DISKII_LED.png',
       x:154,
       y:684,
       visible:true,
@@ -87,7 +87,7 @@ test('runtime compositor never infers Disk II semantic identity from artwork or 
     assets:{},
     layers:[{
       id:'A2P.DISKII.D1.LED',
-      file:'A2P_FULL_DISKII_LED.png',
+      file:'A2P_DISKII_LED.png',
       x:700,
       y:684,
       visible:true,

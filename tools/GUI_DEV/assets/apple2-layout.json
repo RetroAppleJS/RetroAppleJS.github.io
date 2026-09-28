@@ -19,7 +19,7 @@
       }
     },
     {
-      "file": "A2P_FULL_DISKII_LED.png",
+      "file": "A2P_DISKII_LED.png",
       "x": 545,
       "y": 684,
       "visible": false,
@@ -33,7 +33,7 @@
       "id": "A2P.DISKII.D2.LED"
     },
     {
-      "file": "A2P_FULL_DISKII_LED.png",
+      "file": "A2P_DISKII_LED.png",
       "x": 154,
       "y": 684,
       "visible": false,
@@ -47,7 +47,7 @@
       "id": "A2P.DISKII.D1.LED"
     },
     {
-      "file": "A2P_FULL_DISKII_LID.png",
+      "file": "A2P_DISKII_LID.png",
       "x": 591,
       "y": 576,
       "visible": false,
@@ -61,7 +61,7 @@
       "id": "A2P.DISKII.D2.LID"
     },
     {
-      "file": "A2P_FULL_DISKII_LID.png",
+      "file": "A2P_DISKII_LID.png",
       "x": 207,
       "y": 577,
       "visible": false,
@@ -75,7 +75,7 @@
       "id": "A2P.DISKII.D1.LID"
     },
     {
-      "file": "A2P_FULL_DISKII_right.png",
+      "file": "A2P_DISKII_right.png",
       "x": 472,
       "y": 463,
       "visible": false,
@@ -88,7 +88,7 @@
       }
     },
     {
-      "file": "A2P_FULL_DISKII_left.png",
+      "file": "A2P_DISKII_left.png",
       "x": 81,
       "y": 463,
       "visible": false,
@@ -101,7 +101,7 @@
       }
     },
     {
-      "file": "A2P_FULL_DISKII_gap.png",
+      "file": "A2P_DISKII_gap.png",
       "x": 446,
       "y": 486,
       "visible": false,

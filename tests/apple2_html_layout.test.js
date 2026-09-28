@@ -210,9 +210,9 @@ test('generic visibility API updates runtime layer model and DOM element atomica
 
 test('COM_LAYOUT_CONFIG owns composer layout data and compositor has no JSON HTTP loader', () => {
   assert.match(layoutConfigSource,/\bvar\s+composer\s*=/);
-  assert.match(layoutConfigSource,/A2P_FULL_DISKII_LED\.png/);
+  assert.match(layoutConfigSource,/A2P_DISKII_LED\.png/);
   assert.doesNotMatch(emuMainSource,/\bvar\s+composer\s*=/);
-  assert.doesNotMatch(emuMainSource,/A2P_FULL_DISKII_LED\.png/);
+  assert.doesNotMatch(emuMainSource,/A2P_DISKII_LED\.png/);
   assert.match(compositorSource,/function\s+LAYOUT\s*\(/);
   assert.match(compositorSource,/oCOM\.LAYOUT/);
   assert.doesNotMatch(compositorSource,/apple2-layout-embedded_v2\.json/);

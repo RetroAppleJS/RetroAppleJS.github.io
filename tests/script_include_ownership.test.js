@@ -44,7 +44,7 @@ test('COM_MAIN.js is the core implementation, not a script bootstrapper', () => 
 
 test('layout data lives in COM_LAYOUT_CONFIG.js instead of EMU_apple2main.js', () => {
   assert.match(layoutConfigSource, /\bvar\s+composer\s*=/);
-  assert.match(layoutConfigSource, /A2P_FULL_DISKII_LED\.png/);
+  assert.match(layoutConfigSource, /A2P_DISKII_LED\.png/);
   assert.doesNotMatch(emuMainSource, /\bvar\s+composer\s*=/);
-  assert.doesNotMatch(emuMainSource, /A2P_FULL_DISKII_LED\.png/);
+  assert.doesNotMatch(emuMainSource, /A2P_DISKII_LED\.png/);
 });

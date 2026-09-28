@@ -15,8 +15,8 @@ const fs = require('node:fs');
 
  test('DISKII is patched as singleton visual devices', () => {
    assert.match(layoutSource,/info\.maxInstances\s*=\s*1/);
-   assert.match(layoutSource,/A2P_FULL_DISKII_left\.png/);
-   assert.match(layoutSource,/A2P_FULL_DISKII_right\.png/);
+   assert.match(layoutSource,/A2P_DISKII_left\.png/);
+   assert.match(layoutSource,/A2P_DISKII_right\.png/);
  });
 
 test('Disk II declares D1 and D2 as singleton layout-controlled devices', () => {
@@ -36,18 +36,18 @@ test('Disk II declares D1 and D2 as singleton layout-controlled devices', () => 
  });
 
 test('DISKII declares an owner-level gap-shadow rule that requires both drives', () => {
-  assert.match(layoutSource,/A2P_FULL_DISKII_gap\.png/);
+  assert.match(layoutSource,/A2P_DISKII_gap\.png/);
   assert.match(layoutSource,/allAttached:\s*\[\s*"D1"\s*,\s*"D2"\s*\]/);
 });
 
 test('Disk II body and gap images receive stable runtime layer ids', () => {
   assert.match(layoutSource,/function\s+runtimeLayerIdForFile\s*\(/,
     'runtime fallback ids should exist for legacy composer layers without explicit ids');
-  assert.match(layoutSource,/case\s+"A2P_FULL_DISKII_left\.png"\s*:[\s\S]*return\s+"A2P\.DISKII\.D1\.BODY"/,
+  assert.match(layoutSource,/case\s+"A2P_DISKII_left\.png"\s*:[\s\S]*return\s+"A2P\.DISKII\.D1\.BODY"/,
     'left Disk II body should map to a stable body id');
-  assert.match(layoutSource,/case\s+"A2P_FULL_DISKII_right\.png"\s*:[\s\S]*return\s+"A2P\.DISKII\.D2\.BODY"/,
+  assert.match(layoutSource,/case\s+"A2P_DISKII_right\.png"\s*:[\s\S]*return\s+"A2P\.DISKII\.D2\.BODY"/,
     'right Disk II body should map to a stable body id');
-  assert.match(layoutSource,/case\s+"A2P_FULL_DISKII_gap\.png"\s*:[\s\S]*return\s+"A2P\.DISKII\.GAP"/,
+  assert.match(layoutSource,/case\s+"A2P_DISKII_gap\.png"\s*:[\s\S]*return\s+"A2P\.DISKII\.GAP"/,
     'gap shadow should map to a stable gap id');
   assert.match(layoutSource,/var\s+runtimeId\s*=\s*layer\.id\s*\|\|\s*runtimeLayerIdForFile\(layer\.file\)/,
     'DOM layer registration should use explicit ids or runtime fallback ids');

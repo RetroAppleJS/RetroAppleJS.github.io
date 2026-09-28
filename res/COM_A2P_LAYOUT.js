@@ -244,11 +244,11 @@ function runtimeLayerIdForFile(filename)
 {
     switch(String(filename || ""))
     {
-        case "A2P_FULL_DISKII_left.png":
+        case "A2P_DISKII_left.png":
             return "A2P.DISKII.D1.BODY";
-        case "A2P_FULL_DISKII_right.png":
+        case "A2P_DISKII_right.png":
             return "A2P.DISKII.D2.BODY";
-        case "A2P_FULL_DISKII_gap.png":
+        case "A2P_DISKII_gap.png":
             return "A2P.DISKII.GAP";
     }
     return null;

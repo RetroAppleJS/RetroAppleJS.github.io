@@ -6,7 +6,7 @@
   },
   "layers": [
     {
-      "file": "A2P_FULL_DISKII_LED.png",
+      "file": "A2P_DISKII_LED.png",
       "x": 535,
       "y": 684,
       "visible": true,
@@ -19,7 +19,7 @@
       }
     },
     {
-      "file": "A2P_FULL_DISKII_LED.png",
+      "file": "A2P_DISKII_LED.png",
       "x": 154,
       "y": 684,
       "visible": true,
@@ -32,7 +32,7 @@
       }
     },
     {
-      "file": "A2P_FULL_DISKII_LID.png",
+      "file": "A2P_DISKII_LID.png",
       "x": 580,
       "y": 576,
       "visible": true,
@@ -45,7 +45,7 @@
       }
     },
     {
-      "file": "A2P_FULL_DISKII_LID.png",
+      "file": "A2P_DISKII_LID.png",
       "x": 206,
       "y": 577,
       "visible": true,
@@ -71,7 +71,7 @@
       }
     },
     {
-      "file": "A2P_FULL_DISKII_right.png",
+      "file": "A2P_DISKII_right.png",
       "x": 461,
       "y": 463,
       "visible": true,
@@ -84,7 +84,7 @@
       }
     },
     {
-      "file": "A2P_FULL_DISKII_left.png",
+      "file": "A2P_DISKII_left.png",
       "x": 80,
       "y": 464,
       "visible": true,
