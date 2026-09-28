@@ -16,6 +16,25 @@ function resetMediaRows() {
   mediaRows = [];
 }
 
+function withVisibleSurfaceMap(fn) {
+  const oldDocument = globalThis.document;
+  const popup = {hidden:false, innerHTML:''};
+
+  globalThis.document = {
+    getElementById(id) {
+      return id === 'surfaceMap_popup' ? popup : null;
+    }
+  };
+
+  try {
+    return fn(popup);
+  }
+  finally {
+    if(oldDocument === undefined) delete globalThis.document;
+    else globalThis.document = oldDocument;
+  }
+}
+
 function fakeCard(devices) {
   const state = {
     drive_enable: 0,
@@ -28,7 +47,7 @@ function fakeCard(devices) {
     ]
   };
 
-  const calls = {led: [], lid: [], audio: []};
+  const calls = {led: [], lid: [], audio: [], surfaceMapClear: [], surfaceMapRender: []};
   const card = {
     id: {PCODE: 'DISKII'},
     devices: devices.map((DCODE) => ({id: {DCODE}})),
@@ -49,8 +68,20 @@ function fakeCard(devices) {
     scheduleTrackStatsFlush() {},
     traceChange() {},
     driveElementID(prefix,deviceID) { return `${prefix}_${deviceID}`; },
-    surfaceMap_grid_html(deviceN) { return `<grid data-drive="D${deviceN+1}">D${deviceN+1}</grid>`; },
-    surfaceMap_html() { return `<surface>${this.surfaceMap_grid_html(0)}${this.surfaceMap_grid_html(1)}</surface>`; }
+    surfaceMap_grid_html(deviceN) {
+      const diskName = state.diskName[deviceN] || '';
+      return `<grid data-drive="D${deviceN+1}" data-disk="${diskName}">D${deviceN+1}:${diskName}</grid>`;
+    },
+    surfaceMap_html() { return `<surface>${this.surfaceMap_grid_html(0)}${this.surfaceMap_grid_html(1)}</surface>`; },
+    surfaceMap_clear_drive(deviceN) { calls.surfaceMapClear.push(deviceN); },
+    surfaceMap_render(popupID) {
+      calls.surfaceMapRender.push(popupID);
+      const popup = globalThis.document && typeof globalThis.document.getElementById === 'function'
+        ? globalThis.document.getElementById(popupID)
+        : null;
+      if(popup) popup.innerHTML = this.surfaceMap_html(popupID);
+      return true;
+    }
   };
 
   return {card,state,calls};
@@ -119,4 +150,40 @@ test('detaching one Disk II drive does not blank the remaining attached drive fi
   assert.equal(mediaRows.length, 1);
   assert.equal(mediaRows[0].fileName, 'D1');
   assert.equal(mediaRows[0].fileDisplayName, 'LEFT_STILL_MOUNTED.dsk');
+});
+
+test('detaching a Disk II drive ejects its media and refreshes the visible surface map', () => {
+  withVisibleSurfaceMap((popup) => {
+    const {card,state,calls} = fakeCard(['D1','D2']);
+    topology.decorateDiskIITopology(card);
+
+    state.diskData[0] = [1,2,3];
+    state.diskName[0] = 'LEFT_STILL_MOUNTED.dsk';
+    state.diskData[1] = [4,5,6];
+    state.diskName[1] = 'RIGHT_REMOVED.dsk';
+
+    popup.innerHTML = card.surfaceMap_html('surfaceMap_popup');
+    assert.match(popup.innerHTML,/RIGHT_REMOVED\.dsk/);
+
+    card.devices = [{id:{DCODE:'D1'}}];
+    card.onDeviceTopologyChanged({type:'detach', DCODE:'D2'});
+
+    assert.equal(state.diskData[1], null);
+    assert.equal(state.diskName[1], null);
+    assert.deepEqual(calls.surfaceMapClear.includes(1), true);
+    assert.deepEqual(calls.surfaceMapRender.includes('surfaceMap_popup'), true);
+    assert.match(popup.innerHTML,/data-drive="D1"/);
+    assert.doesNotMatch(popup.innerHTML,/data-drive="D2"/);
+    assert.doesNotMatch(popup.innerHTML,/RIGHT_REMOVED\.dsk/);
+
+    card.devices = [{id:{DCODE:'D1'}},{id:{DCODE:'D2'}}];
+    card.onDeviceTopologyChanged({type:'attach', DCODE:'D2'});
+
+    assert.equal(state.diskData[1], null,
+      'reattaching D2 must not restore stale media bytes');
+    assert.equal(state.diskName[1], null,
+      'reattaching D2 must not restore the stale media filename');
+    assert.match(popup.innerHTML,/data-drive="D2"/);
+    assert.doesNotMatch(popup.innerHTML,/RIGHT_REMOVED\.dsk/);
+  });
 });
