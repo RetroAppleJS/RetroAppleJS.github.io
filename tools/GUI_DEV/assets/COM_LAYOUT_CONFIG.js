@@ -43,7 +43,8 @@ var composer =
         "offsetY": 10,
         "blur": 12,
         "opacity": 0.3
-      }
+      },
+      "id": "A2P.DISKII.D2.LED"
     },
     {
       "file": "A2P_DISKII_LED.png",
@@ -56,7 +57,8 @@ var composer =
         "offsetY": 10,
         "blur": 12,
         "opacity": 0.3
-      }
+      },
+      "id": "A2P.DISKII.D1.LED"
     },
     {
       "file": "A2P_DISKII_LID.png",
@@ -69,7 +71,8 @@ var composer =
         "offsetY": 10,
         "blur": 12,
         "opacity": 0.3
-      }
+      },
+      "id": "A2P.DISKII.D2.LID"
     },
     {
       "file": "A2P_DISKII_LID.png",
@@ -82,7 +85,8 @@ var composer =
         "offsetY": 10,
         "blur": 12,
         "opacity": 0.3
-      }
+      },
+      "id": "A2P.DISKII.D1.LID"
     },
     {
       "file": "A2P_DISKII_right.png",
@@ -122,7 +126,7 @@ var composer =
         "blur": 15,
         "opacity": 0.85
       }
-    },
+    }, 
     {
       "file": "A2P_HD20.png",
       "x": 164,
