@@ -58,7 +58,7 @@
       }
     },
     {
-      "file": "A2P_FULL_Monitor.png",
+      "file": "A2P_Monitor.png",
       "x": 0,
       "y": 0,
       "visible": true,
@@ -97,7 +97,7 @@
       }
     },
     {
-      "file": "A2P_FULL_Body.png",
+      "file": "A2P_Body.png",
       "x": 0,
       "y": 485,
       "visible": true,
@@ -110,7 +110,7 @@
       }
     },
     {
-      "file": "A2P_FULL_v3.png",
+      "file": "A2P_v3.png",
       "x": 0,
       "y": 0,
       "visible": true,

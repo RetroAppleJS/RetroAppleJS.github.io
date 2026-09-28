@@ -6,7 +6,7 @@
   },
   "layers": [
     {
-      "file": "A2P_FULL_Monitor.png",
+      "file": "A2P_Monitor.png",
       "x": 80,
       "y": 0,
       "visible": true,
@@ -162,7 +162,7 @@
       }
     },
     {
-      "file": "A2P_FULL_Body.png",
+      "file": "A2P_Body.png",
       "x": 5,
       "y": 489,
       "visible": true,
