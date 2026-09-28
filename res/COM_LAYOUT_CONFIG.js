@@ -20,6 +20,19 @@ var composer =
       }
     },
     {
+      "file": "A2P_TAPE.png",
+      "x": 80,
+      "y": 520,
+      "visible": false,
+      "shadow": {
+        "enabled": true,
+        "offsetX": 0,
+        "offsetY": 15,
+        "blur": 12,
+        "opacity": 0.75
+      }
+    },
+    {
       "file": "A2P_DISKII_LED.png",
       "x": 545,
       "y": 684,
