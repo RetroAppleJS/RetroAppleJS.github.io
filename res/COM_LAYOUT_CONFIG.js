@@ -64,7 +64,7 @@ var composer =
       "file": "A2P_DISKII_LID.png",
       "x": 591,
       "y": 576,
-      "visible": true,
+      "visible": false,
       "shadow": {
         "enabled": false,
         "offsetX": 8,
@@ -78,7 +78,7 @@ var composer =
       "file": "A2P_DISKII_LID.png",
       "x": 207,
       "y": 577,
-      "visible": true,
+      "visible": false,
       "shadow": {
         "enabled": false,
         "offsetX": 8,
@@ -125,6 +125,58 @@ var composer =
         "offsetY": 15,
         "blur": 15,
         "opacity": 0.85
+      }
+    }, 
+    {
+      "file": "A2P_HD20.png",
+      "x": 164,
+      "y": 394,
+      "visible": false,
+      "shadow": {
+        "enabled": true,
+        "offsetX": 0,
+        "offsetY": 15,
+        "blur": 12,
+        "opacity": 0.75
+      }
+    },
+    {
+      "file": "A2P_UNIDISK_left.png",
+      "x": 170,
+      "y": 460,
+      "visible": true,
+      "shadow": {
+        "enabled": true,
+        "offsetX": 0,
+        "offsetY": 15,
+        "blur": 12,
+        "opacity": 0.75
+      }
+    },
+    {
+      "file": "A2P_UNIDISK_right.png",
+      "x": 463,
+      "y": 460,
+      "visible": true,
+      "shadow": {
+        "enabled": true,
+        "offsetX": 0,
+        "offsetY": 15,
+        "blur": 12,
+        "opacity": 0.75
+      }
+    },
+    {
+      "file": "A2P_HD20.png",
+      "x": 164,
+      "y": 501,
+      "visible": false,
+      "shadow": {
+        "enabled": true,
+        "offsetX": 0,
+        "offsetY": 15,
+        "blur": 12,
+        "opacity": 0.75
       }
     },
     {
