@@ -9,6 +9,7 @@
   "use strict";
   var scripts = [
     "res/EMU_CARD_appledisk2_topology.js",
+    "res/EMU_CARD_appledisk2_ui_state.js",
     "res/EMU_CARD_smartport_topology.js",
     "res/DBG_testbench_legacy.js",
     "res/DBG_steptrace_scenario.js",
