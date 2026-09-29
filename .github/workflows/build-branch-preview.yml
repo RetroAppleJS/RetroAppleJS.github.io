@@ -50,6 +50,10 @@ jobs:
         with:
           node-version: 20
 
+      - name: Test Composer v3 unload-images behavior
+        working-directory: source
+        run: node --test tests/apple2_system_composer_v3_unload_images.test.js
+
       - name: Test focused Composer v3 schema
         working-directory: source
         run: node --test tests/apple2_system_composer_v3.test.js
