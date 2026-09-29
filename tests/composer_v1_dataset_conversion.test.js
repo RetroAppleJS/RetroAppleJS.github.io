@@ -15,7 +15,7 @@ function loadComposer(file)
     const source=fs.readFileSync(file,'utf8');
     const context={};
     vm.runInNewContext(source+'\n;this.__composer=composer;',context,{filename:file});
-    return context.__composer;
+    return JSON.parse(JSON.stringify(context.__composer));
 }
 
 function byFileAndPosition(layout,file,x,y)
