@@ -50,27 +50,9 @@ jobs:
         with:
           node-version: 20
 
-      - name: Generate Composer v2 layout dataset
-        working-directory: source
-        run: node .github/scripts/generate-com-layout-config-v2.cjs
-
       - name: Test Composer v2 and dataset conversion
         working-directory: source
         run: node --test tests/apple2_system_composer_v2.test.js tests/composer_v1_dataset_conversion.test.js
-
-      - name: Commit converted v2 dataset
-        working-directory: source
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add tools/GUI_DEV/COM_LAYOUT_CONFIG.v2.js
-          if git diff --cached --quiet; then
-            echo "Converted Composer v2 dataset already committed."
-          else
-            git commit -m "data: convert Apple II layout dataset to composer v2"
-            git push origin HEAD:"${{ steps.branch.outputs.branch }}"
-          fi
 
       - name: Build branch preview distro
         working-directory: source
