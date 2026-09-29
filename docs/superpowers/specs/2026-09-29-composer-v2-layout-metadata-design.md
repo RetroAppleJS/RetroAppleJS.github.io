@@ -17,7 +17,7 @@ The v2 contract is shared by:
 2. Every layer has a `slotN` namespace.
 3. Runtime addresses are generated uniformly as `A2P.<slotN>.<id>`.
 4. `slotN: 0` is reserved for non-slot system elements such as the monitor and Apple II enclosure.
-5. Slot-bound elements use the same `slotN` numbering already used by the emulator. For example, a peripheral mounted at `slotN: 7` is represented under the runtime namespace `A2P.7.*`.
+5. Slot-bound elements use the same internal `slotN` numbering already used by the emulator. Because `slotID2n()` applies an internal +1 offset, the valid namespace range is `0..8`; for example, `PR#6` maps to `slotN: 7`, while Apple slot 7 maps to `slotN: 8`.
 6. Image filenames are assets only; runtime control must not depend on filenames.
 7. Layers can carry typed key/value metadata such as `PCODE`, `DCODE`, and `ROLE` so related visual elements can be queried as a semantic group.
 8. Composer v2 auto-suggests a semantic id from metadata, but the developer may override it manually.
@@ -111,7 +111,7 @@ Top-level structure:
 Required in v2:
 
 - `id`: semantic element identifier
-- `slotN`: integer namespace, with `0` reserved for non-slot system visuals
+- `slotN`: integer namespace in the range `0..8`, with `0` reserved for non-slot system visuals
 - `labels`: object containing zero or more metadata key/value pairs
 - `file`: asset filename
 - `x`: integer pixel coordinate
@@ -211,7 +211,7 @@ The auto/custom authoring flag is Composer-local state and is not serialized int
 The Composer prevents export when:
 
 - a layer has no semantic id
-- a layer has an invalid `slotN`
+- a layer has an invalid `slotN` outside `0..8`
 - two layers generate the same runtime address
 - an id contains whitespace or unsupported characters
 - a metadata key is empty or duplicated within one layer
@@ -388,7 +388,7 @@ Composer import should reject malformed v2 metadata with an actionable message i
 - unsupported document versions
 - duplicate generated runtime addresses
 - invalid ids
-- invalid slot numbers
+- invalid slot numbers outside `0..8`
 - malformed labels
 
 Runtime lookup for a missing address retains the current pending-visibility behavior where appropriate, allowing device state to be expressed before the DOM composition has completed installation.
@@ -403,7 +403,7 @@ Cover:
 
 - v2 serialization and reload round-trip
 - semantic id validation
-- slotN validation including reserved slot 0
+- slotN validation including reserved slot 0 and upper bound 8
 - duplicate runtime-address rejection
 - PCODE/DCODE/ROLE id suggestion
 - system id suggestion for slot 0
