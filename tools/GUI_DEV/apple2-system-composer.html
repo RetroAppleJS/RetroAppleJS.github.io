@@ -78,8 +78,12 @@ button,input{font:inherit}button{border:1px solid var(--line);background:#fffdf8
           <button id="baseConfigurationBtn" class="configuration-tab active" type="button">Base</button>
           <div id="configurationTabs" class="configuration-tabs"></div>
           <button id="addConfigurationBtn" type="button" title="Add visual configuration">+</button>
+          <button id="duplicateConfigurationBtn" type="button" disabled>Duplicate</button>
           <button id="renameConfigurationBtn" type="button" disabled>Rename</button>
           <button id="deleteConfigurationBtn" type="button" class="danger" disabled>Delete</button>
+          <button id="importConfigurationBtn" type="button">Import Configuration</button>
+          <button id="exportConfigurationBtn" type="button" disabled>Export Configuration</button>
+          <input id="configurationInput" type="file" accept="application/json,.json" hidden>
         </div>
         <div class="canvas-shell"><canvas id="previewCanvas" width="1144" height="1144" aria-label="Apple II composition canvas" tabindex="0"></canvas></div>
       </div>
@@ -90,13 +94,14 @@ button,input{font:inherit}button{border:1px solid var(--line);background:#fffdf8
 <script>
 'use strict';
 const CANVAS_W=1144, CANVAS_H=1144, LAYOUT_VERSION=3;
+const CONFIGURATION_FILE_TYPE='apple2-system-composer-configuration', CONFIGURATION_FILE_VERSION=1;
 const DEFAULT_SHADOW=Object.freeze({enabled:false,offsetX:0,offsetY:15,blur:12,opacity:0.75});
 const HISTORY_LIMIT=100;
 const state={layers:[],configurations:[],activeConfigurationId:null,selectedLayerUid:null,assets:new Map(),dragging:null,history:{undo:[],redo:[]}};
 let runtimeCounter=1, semanticCounter=1;
 const $=id=>document.getElementById(id);
 const canvas=$('previewCanvas'), ctx=canvas.getContext('2d');
-const imageInput=$('imageInput'), layoutInput=$('layoutInput');
+const imageInput=$('imageInput'), layoutInput=$('layoutInput'), configurationInput=$('configurationInput');
 
 function makeRuntimeId(){ return `layer-${Date.now().toString(36)}-${runtimeCounter++}`; }
 function makeDefaultSemanticId(){ return `SYSTEM.LAYER${semanticCounter++}`; }
@@ -489,6 +494,31 @@ function selectConfiguration(id){
   if(!config) throw new Error('Unknown configuration: '+id);
   state.activeConfigurationId=id; return config;
 }
+function serializeStandaloneConfiguration(config=getActiveConfiguration()){
+  if(!config) throw new Error('A named configuration must be selected for export.');
+  return {type:CONFIGURATION_FILE_TYPE,version:CONFIGURATION_FILE_VERSION,id:config.id,title:config.title,visible:[...config.visible]};
+}
+function validateStandaloneConfiguration(raw){
+  if(!raw||typeof raw!=='object'||Array.isArray(raw)) throw new Error('Configuration file must contain an object.');
+  if(raw.type!==CONFIGURATION_FILE_TYPE) throw new Error('Configuration file type must be '+CONFIGURATION_FILE_TYPE+'.');
+  if(raw.version!==CONFIGURATION_FILE_VERSION) throw new Error('Unsupported configuration file version: '+raw.version+'.');
+  const validated=validateConfigurations([{id:raw.id,title:raw.title,visible:raw.visible}],new Set(state.layers.map(layer=>layer.id)))[0];
+  return {type:CONFIGURATION_FILE_TYPE,version:CONFIGURATION_FILE_VERSION,id:validated.id,title:validated.title,visible:[...validated.visible]};
+}
+function importStandaloneConfiguration(raw){
+  const validated=validateStandaloneConfiguration(raw);
+  let id=validated.id,suffix=2;
+  while(state.configurations.some(config=>config.id===id)) id=validated.id+'-'+suffix++;
+  const config={id,title:validated.title,visible:[...validated.visible]};
+  state.configurations.push(config);state.activeConfigurationId=config.id;return config;
+}
+function duplicateConfiguration(id=state.activeConfigurationId){
+  const source=id==null?getActiveConfiguration():state.configurations.find(config=>config.id===id);
+  if(!source) throw new Error('A named configuration must be selected to duplicate.');
+  const title=source.title+' copy';
+  const config={id:makeConfigurationId(title),title,visible:[...source.visible]};
+  state.configurations.push(config);state.activeConfigurationId=config.id;return config;
+}
 function replaceSemanticIdInConfigurations(oldId,newId){
   if(oldId===newId) return;
   for(const config of state.configurations) config.visible=config.visible.map(id=>id===oldId?newId:id);
@@ -506,7 +536,7 @@ function renderConfigurationBar(){
     const button=document.createElement('button'); button.type='button'; button.className='configuration-tab'+(config.id===state.activeConfigurationId?' active':''); button.textContent=config.title; button.dataset.configurationId=config.id;
     button.addEventListener('click',()=>{selectConfiguration(config.id);refreshUI();renderPreview();}); host.appendChild(button);
   }
-  const active=getActiveConfiguration(); $('renameConfigurationBtn').disabled=!active; $('deleteConfigurationBtn').disabled=!active;
+  const active=getActiveConfiguration(); $('duplicateConfigurationBtn').disabled=!active; $('renameConfigurationBtn').disabled=!active; $('deleteConfigurationBtn').disabled=!active; $('exportConfigurationBtn').disabled=!active;
 }
 function renderLabelsEditor(layer){
   const host=$('labelsEditor');host.textContent='';
@@ -616,8 +646,12 @@ $('semanticIdInput').addEventListener('change',commitSemanticId);$('semanticIdIn
 $('addLabelBtn').addEventListener('click',addCustomLabel);$('resetSuggestedIdBtn').addEventListener('click',resetSelectedSemanticId);
 $('baseConfigurationBtn').addEventListener('click',()=>{selectConfiguration(null);refreshUI();renderPreview();});
 $('addConfigurationBtn').addEventListener('click',()=>{const title=prompt('Configuration title:');if(title==null)return;try{commitAuthoringMutation(()=>createConfiguration(title));refreshUI();renderPreview();}catch(error){alert(error.message);}});
+$('duplicateConfigurationBtn').addEventListener('click',()=>{try{commitAuthoringMutation(()=>duplicateConfiguration());refreshUI();renderPreview();}catch(error){alert(error.message);}});
 $('renameConfigurationBtn').addEventListener('click',()=>{const active=getActiveConfiguration();if(!active)return;const title=prompt('Configuration title:',active.title);if(title==null)return;try{commitAuthoringMutation(()=>renameConfiguration(active.id,title));refreshUI();}catch(error){alert(error.message);}});
 $('deleteConfigurationBtn').addEventListener('click',()=>{const active=getActiveConfiguration();if(!active)return;if(!confirm('Delete visual configuration “'+active.title+'”?'))return;commitAuthoringMutation(()=>deleteConfiguration(active.id));refreshUI();renderPreview();});
+$('importConfigurationBtn').addEventListener('click',()=>configurationInput.click());
+configurationInput.addEventListener('change',async()=>{const file=configurationInput.files?.[0];configurationInput.value='';if(!file)return;try{const raw=JSON.parse(await file.text());commitAuthoringMutation(()=>importStandaloneConfiguration(raw));refreshUI();renderPreview();}catch(error){alert('Could not import configuration: '+error.message);}});
+$('exportConfigurationBtn').addEventListener('click',()=>{const active=getActiveConfiguration();if(!active)return;const standalone=serializeStandaloneConfiguration(active);downloadBlob(new Blob([JSON.stringify(standalone,null,2)],{type:'application/json'}),active.id+'.config.json');});
 $('visibleInput').addEventListener('change',()=>{const l=getSelectedLayer();if(l){commitAuthoringMutation(()=>setLayerVisibleInActiveView(l,$('visibleInput').checked));refreshUI();renderPreview();}});
 $('shadowEnabledInput').addEventListener('change',()=>{const l=getSelectedLayer();if(l&&l.shadow.enabled!==$('shadowEnabledInput').checked){commitAuthoringMutation(()=>{l.shadow.enabled=$('shadowEnabledInput').checked;});refreshUI();renderPreview();}});
 function commitShadowNumber(id,key,{integer=false,min=-Infinity,max=Infinity}={}){const layer=getSelectedLayer();if(!layer)return;const n=Number($(id).value);if(Number.isFinite(n)&&(!integer||Number.isInteger(n))&&n>=min&&n<=max&&layer.shadow[key]!==n){commitAuthoringMutation(()=>{layer.shadow[key]=n;});refreshUI();renderPreview();}else refreshUI();}
