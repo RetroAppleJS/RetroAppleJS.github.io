@@ -6,6 +6,12 @@
  * A physical device detach must also release/eject any mounted media owned by
  * that child device. This is particularly important for HD20-sized images:
  * removing the device must not keep a stale 20 MiB backing store alive.
+ *
+ * LIRON device visuals use Composer v2 semantic BODY ids through visibleAt().
+ * UniDisk visuals follow SmartPort units 1/2. The two HD20 images are layout
+ * positions: visual 1 is the upper position used by a standalone HD20, while
+ * visual 2 is the lower position used when one or more UniDisks are present.
+ * UniDisk/HD20 LED visuals are intentionally outside this design milestone.
  */
 (function(root,factory){
     "use strict";
@@ -39,6 +45,54 @@
         for(var key in from)
             if(Object.prototype.hasOwnProperty.call(from,key))
                 to[key] = from[key];
+    }
+
+    function lironLayout(owner)
+    {
+        if(root && root.oLAYOUT) return root.oLAYOUT;
+        if(root && root.oCOM && root.oCOM.LAYOUT) return root.oCOM.LAYOUT;
+        return null;
+    }
+
+    function lironLayoutSlotN(owner)
+    {
+        var slotN = owner && owner.mount ? Number(owner.mount.slotN) : NaN;
+        return Number.isInteger(slotN) && slotN>=0 && slotN<=8 ? slotN : null;
+    }
+
+    function syncLironLayout(owner)
+    {
+        if(!owner || !owner.id || owner.id.PCODE!="LIRON") return false;
+
+        var layout = lironLayout(owner);
+        var slotN = lironLayoutSlotN(owner);
+        if(slotN===null || !layout || typeof layout.visibleAt != "function") return false;
+
+        var unidisk1 = false;
+        var unidisk2 = false;
+        var hd20 = false;
+        var devices = Array.isArray(owner.devices) ? owner.devices : [];
+
+        for(var i=0;i<devices.length;i++)
+        {
+            var code = deviceCode(devices[i]);
+            if(code=="UNIDISK")
+            {
+                var unit = deviceUnit(devices[i]);
+                if(unit===1) unidisk1 = true;
+                else if(unit===2) unidisk2 = true;
+            }
+            else if(code=="HD20")
+                hd20 = true;
+        }
+
+        var hasUniDisk = unidisk1 || unidisk2;
+
+        layout.visibleAt(slotN,"LIRON.UNIDISK.1.BODY",unidisk1);
+        layout.visibleAt(slotN,"LIRON.UNIDISK.2.BODY",unidisk2);
+        layout.visibleAt(slotN,"LIRON.HD20.1.BODY",hd20 && !hasUniDisk);
+        layout.visibleAt(slotN,"LIRON.HD20.2.BODY",hd20 && hasUniDisk);
+        return true;
     }
 
     function patchHD20Constructor(rootWindow)
@@ -156,6 +210,7 @@
                 ? nativeDetachSmartPortDevice.apply(this,arguments)
                 : false;
             refreshLironMediaUI(this,device,true);
+            syncLironLayout(this);
             return result;
         };
 
@@ -166,6 +221,7 @@
                 ? nativeDetachUniDisk.apply(this,arguments)
                 : false;
             refreshLironMediaUI(this,device,true);
+            syncLironLayout(this);
             return result;
         };
 
@@ -185,9 +241,11 @@
                 refreshLironMediaUI(this,change.device,false);
             }
 
+            syncLironLayout(this);
             return result;
         };
 
+        syncLironLayout(owner);
         return owner;
     }
 
@@ -291,6 +349,7 @@
          "deviceCode":deviceCode
         ,"deviceUnit":deviceUnit
         ,"deviceHash":deviceHash
+        ,"syncLironLayout":syncLironLayout
         ,"releaseDeviceMedia":releaseDeviceMedia
         ,"decorateLironTopology":decorateLironTopology
         ,"installSmartPortTopologyPatch":installSmartPortTopologyPatch
