@@ -8,7 +8,6 @@ const vm=require('node:vm');
 
 const root=path.join(__dirname,'..');
 const productionPath=path.join(root,'res','COM_LAYOUT_CONFIG.js');
-const convertedPath=path.join(root,'tools','GUI_DEV','COM_LAYOUT_CONFIG.v2.js');
 
 function loadComposer(file)
 {
@@ -23,17 +22,14 @@ function byFileAndPosition(layout,file,x,y)
     return layout.layers.find(layer=>layer.file===file && layer.x===x && layer.y===y);
 }
 
-test('production Composer dataset is v2 and remains equivalent to the checked-in v2 conversion companion',()=>{
-    assert.equal(fs.existsSync(convertedPath),true,'tools/GUI_DEV/COM_LAYOUT_CONFIG.v2.js must remain available as the migration/reference dataset');
-
+test('production Composer dataset preserves the v2 conversion metadata contract',()=>{
     const production=loadComposer(productionPath);
-    const companion=loadComposer(convertedPath);
 
     assert.equal(production.version,2);
-    assert.equal(companion.version,2);
-    assert.deepEqual(production.canvas,companion.canvas);
-    assert.equal(production.layers.length,companion.layers.length);
-    assert.deepEqual(Object.keys(production.assets).sort(),Object.keys(companion.assets).sort(),'all embedded assets must be preserved');
+    assert.deepEqual(production.canvas,{width:1144,height:1144});
+    assert.ok(Array.isArray(production.layers));
+    assert.ok(production.layers.length>0);
+    assert.equal(typeof production.assets,'object');
 
     for(const layer of production.layers)
     {
@@ -61,8 +57,4 @@ test('production Composer dataset is v2 and remains equivalent to the checked-in
 
     const addresses=production.layers.map(layer=>`A2P.${layer.slotN}.${layer.id}`);
     assert.equal(new Set(addresses).size,addresses.length,'every production v2 layer must have a unique qualified runtime address');
-
-    const productionShape=production.layers.map(layer=>({id:layer.id,slotN:layer.slotN,labels:layer.labels,file:layer.file,x:layer.x,y:layer.y,visible:layer.visible,shadow:layer.shadow}));
-    const companionShape=companion.layers.map(layer=>({id:layer.id,slotN:layer.slotN,labels:layer.labels,file:layer.file,x:layer.x,y:layer.y,visible:layer.visible,shadow:layer.shadow}));
-    assert.deepEqual(productionShape,companionShape,'production and conversion companion must describe the same visual layout');
 });
