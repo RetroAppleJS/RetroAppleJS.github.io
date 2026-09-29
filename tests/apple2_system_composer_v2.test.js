@@ -26,12 +26,38 @@ function extractFunction(name)
     const marker = `function ${name}(`;
     const start = source.indexOf(marker);
     assert.notEqual(start,-1,`Composer must define ${name}()`);
-    const bodyStart = source.indexOf('{',start);
+
+    const paramsStart = source.indexOf('(',start);
+    let paramsEnd = -1;
+    let parenDepth = 0;
+    let quote = null;
+    let escaped = false;
+    for(let i=paramsStart;i<source.length;i++)
+    {
+        const ch = source[i];
+        if(quote)
+        {
+            if(escaped) escaped = false;
+            else if(ch==='\\') escaped = true;
+            else if(ch===quote) quote = null;
+            continue;
+        }
+        if(ch==='"' || ch==="'" || ch==='`') { quote=ch; continue; }
+        if(ch==='(') parenDepth++;
+        else if(ch===')')
+        {
+            parenDepth--;
+            if(parenDepth===0) { paramsEnd=i; break; }
+        }
+    }
+    assert.notEqual(paramsEnd,-1,`${name}() must have a complete parameter list`);
+
+    const bodyStart = source.indexOf('{',paramsEnd+1);
     assert.notEqual(bodyStart,-1,`${name}() must have a function body`);
 
     let depth = 0;
-    let quote = null;
-    let escaped = false;
+    quote = null;
+    escaped = false;
     for(let i=bodyStart;i<source.length;i++)
     {
         const ch = source[i];
