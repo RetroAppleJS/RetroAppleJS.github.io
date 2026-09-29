@@ -109,6 +109,10 @@ function keyEvent(key,overrides={}){
   return Object.assign({key,ctrlKey:false,metaKey:false,shiftKey:false,target:{tagName:'DIV',isContentEditable:false},preventDefault(){prevented=true;},get prevented(){return prevented;}},overrides);
 }
 
+test('Composer inline script remains syntactically valid as a whole',()=>{
+  assert.doesNotThrow(()=>new vm.Script(source,{filename:'apple2-system-composer-inline.js'}));
+});
+
 test('history API exists with a 100-action bound and toolbar buttons mirror stack availability',()=>{
   assert.match(html,/id="undoBtn"[^>]*disabled/);
   assert.match(html,/id="redoBtn"[^>]*disabled/);
