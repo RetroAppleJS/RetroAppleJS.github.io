@@ -404,20 +404,6 @@ function applyLayerVisibility(entry,state)
     return state;
 }
 
-function runtimeLayerIdForFile(filename)
-{
-    switch(String(filename || ""))
-    {
-        case "A2P_DISKII_left.png":
-            return "A2P.DISKII.D1.BODY";
-        case "A2P_DISKII_right.png":
-            return "A2P.DISKII.D2.BODY";
-        case "A2P_DISKII_gap.png":
-            return "A2P.DISKII.GAP";
-    }
-    return null;
-}
-
 function renderLayout(rootWindow,layout)
 {
     var canvas = rootWindow.document.createElement("canvas");
@@ -433,7 +419,7 @@ function renderLayout(rootWindow,layout)
     });
 }
 
-function buildDOMComposition(doc,layout,registry)
+function buildDOMComposition(doc,layout,registry,aliasRegistry)
 {
     var host = doc.createElement("div");
     host.id = "a2p-system-layout";
@@ -452,18 +438,16 @@ function buildDOMComposition(doc,layout,registry)
     {
         var layer = layout.layers[i];
         var img = doc.createElement("img");
-        var runtimeId = layer.id || runtimeLayerIdForFile(layer.file);
+        var address = layer.address || layoutAddress(layer.slotN,layer.id);
 
         img.src = assetURL(layer.file,layout);
         img.alt = "";
         img.draggable = false;
         img.dataset.layerIndex = String(i);
         img.dataset.file = layer.file;
-        if(runtimeId)
-        {
-            layer.id = runtimeId;
-            img.dataset.layerId = runtimeId;
-        }
+        img.dataset.layerId = layer.id;
+        img.dataset.layoutAddress = address;
+        img.dataset.slotN = String(layer.slotN);
         img.style.position = "absolute";
         img.style.left = layer.x + "px";
         img.style.top = layer.y + "px";
@@ -484,17 +468,36 @@ function buildDOMComposition(doc,layout,registry)
 
         host.appendChild(img);
 
-        if(runtimeId && registry)
-            registry[runtimeId] = {id:runtimeId,model:layer,element:img};
+        if(registry)
+        {
+            var entry = {
+                id: layer.id,
+                address: address,
+                slotN: layer.slotN,
+                labels: layer.labels || {},
+                model: layer,
+                element: img
+            };
+            registry[address] = entry;
+
+            if(aliasRegistry && Array.isArray(layer.aliases))
+            {
+                for(var a=0;a<layer.aliases.length;a++)
+                {
+                    var alias = layer.aliases[a];
+                    if(alias && !aliasRegistry[alias]) aliasRegistry[alias] = entry;
+                }
+            }
+        }
     }
 
     return host;
 }
-
 function LAYOUT(rootWindow)
 {
     var self = this;
     var layersById = Object.create(null);
+    var layersByAlias = Object.create(null);
     var pending = Object.create(null);
 
     this.root = rootWindow || root || null;
@@ -540,6 +543,10 @@ function LAYOUT(rootWindow)
     this.validateLayout = validateLayout;
     this.normalizeLayout = normalizeLayout;
     this.layoutAddress = layoutAddress;
+    this.address = function(slotN,id)
+    {
+        return layoutAddress(validateSlotN(slotN,0),validateSemanticId(id,0));
+    };
     this.assetURL = assetURL;
     this.drawComposition = drawComposition;
     this.renderLayout = renderLayout;
@@ -556,32 +563,78 @@ function LAYOUT(rootWindow)
         });
     };
 
+    function resolveLayerEntry(id)
+    {
+        return layersById[id] || layersByAlias[id] || null;
+    }
+
     this.getLayer = function(id)
     {
-        return layersById[id] || null;
+        return resolveLayerEntry(id);
     };
 
     this.visible = function(id,state)
     {
+        var entry = resolveLayerEntry(id);
         if(state === undefined)
         {
-            if(layersById[id]) return layersById[id].model.visible;
+            if(entry) return entry.model.visible;
             if(Object.prototype.hasOwnProperty.call(pending,id)) return pending[id];
             return undefined;
         }
 
         state = !!state;
-        if(!layersById[id])
+        if(!entry)
         {
             pending[id] = state;
             return state;
         }
 
-        return applyLayerVisibility(layersById[id],state);
+        return applyLayerVisibility(entry,state);
+    };
+
+    this.visibleAt = function(slotN,id,state)
+    {
+        return self.visible(self.address(slotN,id),state);
+    };
+
+    this.find = function(query)
+    {
+        if(!query || typeof query != "object" || Array.isArray(query)) return [];
+        if(!self.lastLayout || !Array.isArray(self.lastLayout.layers)) return [];
+
+        var queryKeys = Object.keys(query);
+        var matches = [];
+        for(var i=0;i<self.lastLayout.layers.length;i++)
+        {
+            var layer = self.lastLayout.layers[i];
+            var entry = layersById[layer.address];
+            if(!entry) continue;
+            var matched = true;
+
+            for(var q=0;q<queryKeys.length;q++)
+            {
+                var rawKey = queryKeys[q];
+                if(rawKey == "slotN")
+                {
+                    if(layer.slotN !== query[rawKey]) { matched = false; break; }
+                    continue;
+                }
+
+                var key = String(rawKey).toUpperCase();
+                if(!layer.labels || layer.labels[key] !== query[rawKey])
+                {
+                    matched = false;
+                    break;
+                }
+            }
+
+            if(matched) matches.push(entry);
+        }
+        return matches;
     };
 
     this.setVisible = this.visible;
-
     this.visibleByFile = function(filename,state)
     {
         filename = String(filename || "");
@@ -640,7 +693,8 @@ function LAYOUT(rootWindow)
                 if(oldHost && oldHost.parentNode) oldHost.parentNode.removeChild(oldHost);
 
                 var registry = Object.create(null);
-                var host = buildDOMComposition(doc,layout,registry);
+                var aliasRegistry = Object.create(null);
+                var host = buildDOMComposition(doc,layout,registry,aliasRegistry);
 
                 /*
                  * Keep the composed hardware as a true background layer.  The
@@ -671,11 +725,13 @@ function LAYOUT(rootWindow)
                     tab.appendChild(host);
 
                 layersById = registry;
+                layersByAlias = aliasRegistry;
                 Object.keys(pending).forEach(function(id)
                 {
-                    if(layersById[id])
+                    var entry = resolveLayerEntry(id);
+                    if(entry)
                     {
-                        applyLayerVisibility(layersById[id],pending[id]);
+                        applyLayerVisibility(entry,pending[id]);
                         delete pending[id];
                     }
                 });
