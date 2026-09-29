@@ -68,15 +68,16 @@ button,input{font:inherit}button{border:1px solid var(--line);background:#fffdf8
 </div>
 <script>
 'use strict';
-const CANVAS_W=1144, CANVAS_H=1144, LAYOUT_VERSION=1;
+const CANVAS_W=1144, CANVAS_H=1144, LAYOUT_VERSION=2;
 const DEFAULT_SHADOW=Object.freeze({enabled:false,offsetX:0,offsetY:15,blur:12,opacity:0.75});
 const state={layers:[],selectedLayerUid:null,assets:new Map(),dragging:null};
-let runtimeCounter=1;
+let runtimeCounter=1, semanticCounter=1;
 const $=id=>document.getElementById(id);
 const canvas=$('previewCanvas'), ctx=canvas.getContext('2d');
 const imageInput=$('imageInput'), layoutInput=$('layoutInput');
 
 function makeRuntimeId(){ return `layer-${Date.now().toString(36)}-${runtimeCounter++}`; }
+function makeDefaultSemanticId(){ return `SYSTEM.LAYER${semanticCounter++}`; }
 function getSelectedLayer(){ return state.layers.find(l=>l.uid===state.selectedLayerUid)||null; }
 function setLayers(layers){ state.layers=layers; state.selectedLayerUid=layers[0]?.uid||null; refreshUI(); renderPreview(); }
 
@@ -107,11 +108,36 @@ function validateAssets(raw){
   return assets;
 }
 
-function validateLayerId(raw,index){
-  if(raw==null || raw==='') return null;
-  if(typeof raw!=='string' || !raw.trim()) throw new Error(`Layer ${index+1} id must be a non-empty string when supplied.`);
-  return raw.trim();
+function validateSemanticId(raw,index){
+  if(typeof raw!=='string' || !raw.trim()) throw new Error(`Layer ${index+1} id must be a non-empty semantic identifier.`);
+  const id=raw.trim();
+  if(!/^[A-Za-z0-9._-]+$/.test(id)) throw new Error(`Layer ${index+1} id may contain only letters, digits, '.', '_' and '-'.`);
+  return id;
 }
+
+function validateSlotN(raw,index){
+  if(!Number.isInteger(raw) || raw<0 || raw>8) throw new Error(`Layer ${index+1} slotN must be an integer from 0 through 8.`);
+  return raw;
+}
+
+function validateLabels(raw,index){
+  if(raw==null) return {};
+  if(typeof raw!=='object' || Array.isArray(raw)) throw new Error(`Layer ${index+1} labels must be an object.`);
+  const labels={};
+  const seen=new Set();
+  for(const [rawKey,value] of Object.entries(raw)){
+    const key=String(rawKey).trim().toUpperCase();
+    if(!key) throw new Error(`Layer ${index+1} label keys must be non-empty.`);
+    if(!/^[A-Z][A-Z0-9_-]*$/.test(key)) throw new Error(`Layer ${index+1} label key ${rawKey} is invalid.`);
+    if(seen.has(key)) throw new Error(`Layer ${index+1} has duplicate label key ${key}.`);
+    if(typeof value!=='string') throw new Error(`Layer ${index+1} label ${key} must have a string value.`);
+    seen.add(key);
+    labels[key]=value;
+  }
+  return labels;
+}
+
+function layoutAddress(slotN,id){ return `A2P.${slotN}.${id}`; }
 
 function validateLayout(raw){
   if(!raw || typeof raw!=='object' || Array.isArray(raw)) throw new Error('Layout must be a JSON object.');
@@ -119,16 +145,19 @@ function validateLayout(raw){
   if(!raw.canvas || raw.canvas.width!==CANVAS_W || raw.canvas.height!==CANVAS_H) throw new Error('Canvas must be exactly 1144 × 1144.');
   if(!Array.isArray(raw.layers)) throw new Error('Layout layers must be an array.');
   const assets=validateAssets(raw.assets);
-  const seenIds=new Set();
+  const seenAddresses=new Set();
   const layers=raw.layers.map((l,i)=>{
     if(!l || typeof l!=='object') throw new Error(`Layer ${i+1} is malformed.`);
     if(typeof l.file!=='string' || !l.file.trim()) throw new Error(`Layer ${i+1} filename must be non-empty.`);
     if(!Number.isInteger(l.x) || !Number.isInteger(l.y)) throw new Error(`Layer ${i+1} X/Y coordinates must be integer pixels.`);
     if(typeof l.visible!=='boolean') throw new Error(`Layer ${i+1} visibility must be boolean.`);
-    const id=validateLayerId(l.id,i);
-    if(id&&seenIds.has(id)) throw new Error(`Duplicate layout layer id: ${id}`);
-    if(id) seenIds.add(id);
-    return {id,file:l.file,x:l.x,y:l.y,visible:l.visible,shadow:validateShadow(l.shadow,i)};
+    const id=validateSemanticId(l.id,i);
+    const slotN=validateSlotN(l.slotN,i);
+    const labels=validateLabels(l.labels,i);
+    const address=layoutAddress(slotN,id);
+    if(seenAddresses.has(address)) throw new Error(`Duplicate layout runtime address: ${address}`);
+    seenAddresses.add(address);
+    return {id,slotN,labels,file:l.file,x:l.x,y:l.y,visible:l.visible,shadow:validateShadow(l.shadow,i)};
   });
   return {version:LAYOUT_VERSION,canvas:{width:CANVAS_W,height:CANVAS_H},assets,layers};
 }
@@ -141,14 +170,14 @@ function findCachedAsset(filename){
 }
 function attachAsset(layer,asset){ layer.image=asset.image;layer.width=asset.width;layer.height=asset.height;layer.resolved=true; }
 function layerFromLayout(entry){
-  const l={uid:makeRuntimeId(),id:entry.id??null,file:entry.file,x:entry.x,y:entry.y,visible:entry.visible,shadow:{...(entry.shadow||DEFAULT_SHADOW)},image:null,width:0,height:0,resolved:false};
+  const l={uid:makeRuntimeId(),id:entry.id,slotN:entry.slotN,labels:{...(entry.labels||{})},file:entry.file,x:entry.x,y:entry.y,visible:entry.visible,shadow:{...(entry.shadow||DEFAULT_SHADOW)},image:null,width:0,height:0,resolved:false};
   const a=findCachedAsset(entry.file); if(a) attachAsset(l,a); return l;
 }
 function applyLayout(layout){
   const next=layout.layers.map(layerFromLayout);
   state.layers=next; state.selectedLayerUid=next[0]?.uid||null; state.dragging=null; refreshUI();renderPreview();
 }
-function serializeLayer({id,file,x,y,visible,shadow}){const out={file,x,y,visible,shadow:{...shadow}};if(id)out.id=id;return out;}
+function serializeLayer({id,slotN,labels,file,x,y,visible,shadow}){return {id,slotN,labels:{...(labels||{})},file,x,y,visible,shadow:{...shadow}};}
 function serializeLayout(){return {version:LAYOUT_VERSION,canvas:{width:CANVAS_W,height:CANVAS_H},layers:state.layers.map(serializeLayer)};}
 function serializeEmbeddedLayout(){const usedFiles=[...new Set(state.layers.map(l=>l.file))];const assets={};for(const file of usedFiles){const asset=findCachedAsset(file);if(asset?.dataUrl)assets[file]=asset.dataUrl;}return {...serializeLayout(),assets};}
 
@@ -160,7 +189,7 @@ function resolveLayersForAsset(asset){
   ci.forEach(l=>attachAsset(l,asset));return ci.length;
 }
 function addLayerFromAsset(asset){
-  const l={uid:makeRuntimeId(),id:null,file:asset.file,x:Math.round((CANVAS_W-asset.width)/2),y:Math.round((CANVAS_H-asset.height)/2),visible:true,shadow:{...DEFAULT_SHADOW},image:asset.image,width:asset.width,height:asset.height,resolved:true};
+  const l={uid:makeRuntimeId(),id:makeDefaultSemanticId(),slotN:0,labels:{},file:asset.file,x:Math.round((CANVAS_W-asset.width)/2),y:Math.round((CANVAS_H-asset.height)/2),visible:true,shadow:{...DEFAULT_SHADOW},image:asset.image,width:asset.width,height:asset.height,resolved:true};
   state.layers.unshift(l); state.selectedLayerUid=l.uid; return l;
 }
 async function dataUrlToAsset(file,dataUrl){
