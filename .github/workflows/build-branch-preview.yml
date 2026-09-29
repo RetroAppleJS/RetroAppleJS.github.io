@@ -52,7 +52,7 @@ jobs:
 
       - name: Test preview distribution builder and HTML compositor
         working-directory: source
-        run: node --test tests/apple2_html_layout.test.js tests/appledisk2_layout_visuals.test.js tests/script_include_ownership.test.js tests/preview_distribution.test.js
+        run: node --test tests/apple2_system_composer_v2.test.js tests/apple2_html_layout.test.js tests/appledisk2_layout_visuals.test.js tests/script_include_ownership.test.js tests/preview_distribution.test.js
 
       - name: Build branch preview distro
         working-directory: source
