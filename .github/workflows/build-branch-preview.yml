@@ -58,7 +58,7 @@ jobs:
       # cover both the legacy slot-qualified v2 contract and the live v3 scene.
       - name: Test Composer v3 and runtime layout
         working-directory: source
-        run: node --test tests/apple2_system_composer_v3.test.js tests/apple2_system_composer_v3_unload_images.test.js tests/apple2_system_composer_v3_history.test.js tests/apple2_system_composer_v3_exports.test.js tests/apple2_system_composer_v3_configuration_files.test.js tests/composer_v1_dataset_conversion.test.js tests/apple2_layout_v2.test.js tests/appledisk2_layout_v2.test.js tests/smartport_layout_v2.test.js tests/peripheral_layout_context.test.js tests/peripheral_scene_v3.test.js
+        run: node --test tests/apple2_system_composer_v3.test.js tests/apple2_system_composer_v3_unload_images.test.js tests/apple2_system_composer_v3_history.test.js tests/apple2_system_composer_v3_exports.test.js tests/apple2_system_composer_v3_configuration_files.test.js tests/composer_v1_dataset_conversion.test.js tests/apple2_layout_v2.test.js tests/appledisk2_layout_v2.test.js tests/smartport_layout_v2.test.js tests/peripheral_layout_context.test.js tests/peripheral_scene_v3.test.js tests/liron_led_activity_v3.test.js
 
       - name: Build branch preview distro
         working-directory: source
