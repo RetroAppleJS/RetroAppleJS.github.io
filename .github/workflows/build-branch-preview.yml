@@ -50,21 +50,6 @@ jobs:
         with:
           node-version: 20
 
-      - name: Apply standalone configuration implementation
-        working-directory: source
-        shell: bash
-        run: |
-          node .github/scripts/apply-composer-standalone-config-files.cjs
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add tools/GUI_DEV/apple2-system-composer.html
-          if git diff --cached --quiet; then
-            echo "Standalone configuration implementation already applied."
-          else
-            git commit -m "feat: add standalone visual configuration files [skip ci]"
-            git push origin "HEAD:${{ steps.branch.outputs.branch }}"
-          fi
-
       - name: Test focused Composer v3 authoring
         working-directory: source
         run: node --test tests/apple2_system_composer_v3.test.js tests/apple2_system_composer_v3_unload_images.test.js tests/apple2_system_composer_v3_history.test.js tests/apple2_system_composer_v3_exports.test.js tests/apple2_system_composer_v3_configuration_files.test.js
