@@ -54,11 +54,15 @@ jobs:
         working-directory: source
         run: node .github/scripts/apply-composer-v2-runtime-task4.cjs
 
+      - name: Apply Composer v2 slot-qualified runtime API
+        working-directory: source
+        run: node .github/scripts/apply-composer-v2-runtime-task5.cjs
+
       - name: Test Composer v2, dataset conversion, and runtime layout
         working-directory: source
         run: node --test tests/apple2_system_composer_v2.test.js tests/composer_v1_dataset_conversion.test.js tests/apple2_layout_v2.test.js
 
-      - name: Commit Composer v2 runtime normalization
+      - name: Commit Composer v2 slot-qualified runtime API
         working-directory: source
         shell: bash
         run: |
@@ -66,9 +70,9 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add res/COM_A2P_LAYOUT.js
           if git diff --cached --quiet; then
-            echo "Composer v2 runtime normalization already committed."
+            echo "Composer v2 runtime API already committed."
           else
-            git commit -m "feat: normalize composer v1 and v2 layouts"
+            git commit -m "feat: add slot-qualified layout runtime API"
             git push origin HEAD:"${{ steps.branch.outputs.branch }}"
           fi
 
