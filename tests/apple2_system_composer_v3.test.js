@@ -96,6 +96,7 @@ function loadCore()
         extractFunction('validateAssets'),
         extractFunction('validateSemanticId'),
         extractFunction('validateLabels'),
+        extractFunction('validateConfigurations'),
         extractFunction('normalizeComposerDocument'),
         extractFunction('validateLayout'),
         'const state=globalThis.__state;',
