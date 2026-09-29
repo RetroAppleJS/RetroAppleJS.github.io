@@ -108,6 +108,29 @@ function loadCore()
     return context.__api;
 }
 
+function loadAuthoringCore()
+{
+    const context = vm.createContext({console,Object,Array,Number,String,Boolean,Math,JSON,Error});
+    const core = [
+        "'use strict';",
+        extractFunction('validateSemanticId'),
+        extractFunction('validateSlotN'),
+        extractFunction('layoutAddress'),
+        extractFunction('canonicalSuggestionSegment'),
+        extractFunction('suggestSemanticId'),
+        extractFunction('syncSuggestedSemanticId'),
+        extractFunction('setLayerSemanticId'),
+        extractFunction('setLayerLabel'),
+        extractFunction('setLayerSlotN'),
+        extractFunction('resetSemanticIdToSuggested'),
+        extractFunction('runtimeAddressForLayer'),
+        extractFunction('serializeLayer'),
+        'globalThis.__api={suggestSemanticId,syncSuggestedSemanticId,setLayerSemanticId,setLayerLabel,setLayerSlotN,resetSemanticIdToSuggested,runtimeAddressForLayer,serializeLayer};'
+    ].join('\n');
+    vm.runInContext(core,context,{filename:'apple2-system-composer-authoring-core.js'});
+    return context.__api;
+}
+
 function shadow()
 {
     return {enabled:false,offsetX:0,offsetY:15,blur:12,opacity:0.75};
@@ -197,4 +220,64 @@ test('newly imported images start in the system namespace with explicit v2 metad
 
     const defaultId = extractFunction('makeDefaultSemanticId');
     assert.match(defaultId,/SYSTEM\./,'default semantic ids must live under the SYSTEM semantic namespace');
+});
+
+test('semantic ID suggestions follow PCODE, DCODE, ROLE and system namespace rules',()=>{
+    const api = loadAuthoringCore();
+
+    assert.equal(api.suggestSemanticId({slotN:7,labels:{PCODE:'DISKII',DCODE:'D2',ROLE:'LED'}}),'DISKII.D2.LED');
+    assert.equal(api.suggestSemanticId({slotN:7,labels:{PCODE:'DISKII',ROLE:'GAP'}}),'DISKII.GAP');
+    assert.equal(api.suggestSemanticId({slotN:0,labels:{ROLE:'MONITOR'}}),'SYSTEM.MONITOR');
+});
+
+test('manual semantic ID override survives label edits until reset to suggestion',()=>{
+    const api = loadAuthoringCore();
+    const l = layer({idMode:'auto'});
+
+    api.setLayerSemanticId(l,'DISKII.DRIVE2.ACTIVITY');
+    assert.equal(l.idMode,'custom');
+    assert.equal(l.id,'DISKII.DRIVE2.ACTIVITY');
+
+    api.setLayerLabel(l,'ROLE','status_led');
+    assert.equal(l.labels.ROLE,'status_led');
+    assert.equal(l.id,'DISKII.DRIVE2.ACTIVITY','custom id must not be overwritten by metadata edits');
+
+    api.resetSemanticIdToSuggested(l);
+    assert.equal(l.idMode,'auto');
+    assert.equal(l.id,'DISKII.D2.STATUS_LED');
+
+    api.setLayerLabel(l,'DCODE','d1');
+    assert.equal(l.id,'DISKII.D1.STATUS_LED','automatic mode must continue following metadata edits');
+});
+
+test('authoring idMode is not serialized into Composer v2 output',()=>{
+    const api = loadAuthoringCore();
+    const out = plain(api.serializeLayer(layer({idMode:'custom'})));
+    assert.equal(Object.hasOwn(out,'idMode'),false);
+});
+
+test('qualified runtime address follows slotN and semantic ID edits',()=>{
+    const api = loadAuthoringCore();
+    const l = layer({idMode:'auto'});
+
+    assert.equal(api.runtimeAddressForLayer(l),'A2P.7.DISKII.D2.LED');
+    api.setLayerSlotN(l,8);
+    assert.equal(api.runtimeAddressForLayer(l),'A2P.8.DISKII.D2.LED');
+    api.setLayerSemanticId(l,'DISKII.DRIVE2.ACTIVITY');
+    assert.equal(api.runtimeAddressForLayer(l),'A2P.8.DISKII.DRIVE2.ACTIVITY');
+});
+
+test('Composer selected-layer UI exposes semantic metadata authoring controls',()=>{
+    assert.match(html,/id="semanticIdInput"/,'Semantic ID input must exist');
+    assert.match(html,/id="slotNInput"/,'SlotN input must exist');
+    assert.match(html,/id="runtimeAddressInput"[^>]*readonly/,'Runtime address must be read-only');
+    assert.match(html,/id="labelsEditor"/,'Metadata label editor must exist');
+    assert.match(html,/id="addLabelBtn"/,'Add label control must exist');
+    assert.match(html,/id="resetSuggestedIdBtn"/,'Reset-to-suggested control must exist');
+});
+
+test('Composer layer list and status use qualified runtime identity',()=>{
+    const refresh = extractFunction('refreshUI');
+    assert.match(refresh,/runtimeAddressForLayer\(l\)/,'layer list must use qualified runtime address');
+    assert.match(refresh,/runtimeAddressForLayer\(s\)/,'status text must use selected qualified runtime address');
 });
