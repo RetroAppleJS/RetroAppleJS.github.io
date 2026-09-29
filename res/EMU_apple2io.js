@@ -4106,6 +4106,23 @@ function mergeActionMap(dst,src)
     this.refreshDeviceToolboxes = function(arg)
     {
         arg = arg || {};
+        var io = this;
+
+        function syncPeripheralLayoutContext(selectedSlot)
+        {
+            var layout = typeof(oLAYOUT) != "undefined" && oLAYOUT
+                ? oLAYOUT
+                : (typeof(window) != "undefined" ? window.oLAYOUT : null);
+            if(!layout || typeof(layout.setPeripheralContext) != "function") return false;
+
+            if(selectedSlot === "H" || selectedSlot === null || selectedSlot === undefined)
+                return layout.setPeripheralContext(null,"");
+
+            var slotN = Number(slotID2n(selectedSlot));
+            var peripheral = Number.isInteger(slotN) ? io.SLOT2obj(slotN) : null;
+            var pcode = peripheralPCODE(peripheral);
+            return layout.setPeripheralContext(slotN,pcode);
+        }
 
         var box = document.getElementById("device_toolbox_body");
         var btn = document.getElementById(arg.id || "devices");
@@ -4135,6 +4152,7 @@ function mergeActionMap(dst,src)
             btn.innerHTML = "∅";
             btn.setAttribute("data-slot","");
             this.showDeviceTool(null);
+            syncPeripheralLayoutContext(null);
             return null;
         }
 
@@ -4150,6 +4168,7 @@ function mergeActionMap(dst,src)
         btn.setAttribute("data-slot", slot==="H" ? "H" : String(slot));
         btn.innerHTML = this.deviceLabel(slot);
         this.showDeviceTool(slot);
+        syncPeripheralLayoutContext(slot);
         return slot;
     }
 
