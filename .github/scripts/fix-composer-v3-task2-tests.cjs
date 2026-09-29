@@ -1,0 +1,11 @@
+'use strict';
+const fs=require('node:fs');
+const path=require('node:path');
+const file=path.resolve(__dirname,'../../tests/apple2_system_composer_v3.test.js');
+let source=fs.readFileSync(file,'utf8');
+const old="        extractFunction('validateLabels'),\n        extractFunction('normalizeComposerDocument'),\n        extractFunction('validateLayout'),";
+const next="        extractFunction('validateLabels'),\n        extractFunction('validateConfigurations'),\n        extractFunction('normalizeComposerDocument'),\n        extractFunction('validateLayout'),";
+if(source.includes(old)) source=source.replace(old,next);
+else if(!source.includes(next)) throw new Error('Could not find loadCore validation dependency sequence');
+fs.writeFileSync(file,source);
+console.log('Updated Composer v3 Task 2 test harness.');
