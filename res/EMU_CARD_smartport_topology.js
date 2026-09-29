@@ -8,9 +8,10 @@
  * removing the device must not keep a stale 20 MiB backing store alive.
  *
  * LIRON device visuals use Composer v2 semantic BODY ids through visibleAt().
- * UniDisk visuals follow SmartPort units 1/2. The two HD20 images are layout
- * positions: visual 1 is the upper position used by a standalone HD20, while
- * visual 2 is the lower position used when one or more UniDisks are present.
+ * UniDisk visuals are layout positions filled by the first/second attached
+ * UniDisk, independently of their SmartPort unit numbers. The two HD20 images
+ * are layout positions: visual 1 is the upper position used by a standalone
+ * HD20, while visual 2 is the lower position used when UniDisks are present.
  * UniDisk/HD20 LED visuals are intentionally outside this design milestone.
  */
 (function(root,factory){
@@ -60,6 +61,34 @@
         return Number.isInteger(slotN) && slotN>=0 && slotN<=8 ? slotN : null;
     }
 
+    function lironVisualState(owner)
+    {
+        var unidiskCount = 0;
+        var hd20 = false;
+        var devices = Array.isArray(owner && owner.devices) ? owner.devices : [];
+
+        for(var i=0;i<devices.length;i++)
+        {
+            var code = deviceCode(devices[i]);
+            if(code=="UNIDISK") unidiskCount++;
+            else if(code=="HD20") hd20 = true;
+        }
+
+        return {
+            unidiskCount: unidiskCount,
+            hd20: hd20
+        };
+    }
+
+    function lironTopologySignature(owner)
+    {
+        var slotN = lironLayoutSlotN(owner);
+        if(slotN===null) return null;
+
+        var state = lironVisualState(owner);
+        return slotN + "|U" + Math.min(state.unidiskCount,2) + "|H" + (state.hd20 ? 1 : 0);
+    }
+
     function syncLironLayout(owner)
     {
         if(!owner || !owner.id || owner.id.PCODE!="LIRON") return false;
@@ -68,31 +97,28 @@
         var slotN = lironLayoutSlotN(owner);
         if(slotN===null || !layout || typeof layout.visibleAt != "function") return false;
 
-        var unidisk1 = false;
-        var unidisk2 = false;
-        var hd20 = false;
-        var devices = Array.isArray(owner.devices) ? owner.devices : [];
-
-        for(var i=0;i<devices.length;i++)
-        {
-            var code = deviceCode(devices[i]);
-            if(code=="UNIDISK")
-            {
-                var unit = deviceUnit(devices[i]);
-                if(unit===1) unidisk1 = true;
-                else if(unit===2) unidisk2 = true;
-            }
-            else if(code=="HD20")
-                hd20 = true;
-        }
-
-        var hasUniDisk = unidisk1 || unidisk2;
+        var state = lironVisualState(owner);
+        var unidisk1 = state.unidiskCount >= 1;
+        var unidisk2 = state.unidiskCount >= 2;
+        var hasUniDisk = state.unidiskCount > 0;
 
         layout.visibleAt(slotN,"LIRON.UNIDISK.1.BODY",unidisk1);
         layout.visibleAt(slotN,"LIRON.UNIDISK.2.BODY",unidisk2);
-        layout.visibleAt(slotN,"LIRON.HD20.1.BODY",hd20 && !hasUniDisk);
-        layout.visibleAt(slotN,"LIRON.HD20.2.BODY",hd20 && hasUniDisk);
+        layout.visibleAt(slotN,"LIRON.HD20.1.BODY",state.hd20 && !hasUniDisk);
+        layout.visibleAt(slotN,"LIRON.HD20.2.BODY",state.hd20 && hasUniDisk);
         return true;
+    }
+
+    function syncLironLayoutTracked(owner,force)
+    {
+        var signature = lironTopologySignature(owner);
+        if(!force && signature!==null && owner && owner.__A2PSmartPortLayoutSignature===signature)
+            return true;
+
+        var synced = syncLironLayout(owner);
+        if(synced && owner)
+            owner.__A2PSmartPortLayoutSignature = signature;
+        return synced;
     }
 
     function patchHD20Constructor(rootWindow)
@@ -196,7 +222,13 @@
     function decorateLironTopology(owner)
     {
         if(!owner || !owner.id || owner.id.PCODE!="LIRON") return owner;
-        if(owner.__A2PSmartPortTopologyDecorated) return owner;
+        if(owner.__A2PSmartPortTopologyDecorated)
+        {
+            // Discovery may encounter the card before its slot/device topology is
+            // initialized. Retry only until a new visual topology is synchronized.
+            syncLironLayoutTracked(owner,false);
+            return owner;
+        }
         owner.__A2PSmartPortTopologyDecorated = true;
 
         var nativeDetachSmartPortDevice = owner.detachSmartPortDevice;
@@ -210,7 +242,7 @@
                 ? nativeDetachSmartPortDevice.apply(this,arguments)
                 : false;
             refreshLironMediaUI(this,device,true);
-            syncLironLayout(this);
+            syncLironLayoutTracked(this,true);
             return result;
         };
 
@@ -221,7 +253,7 @@
                 ? nativeDetachUniDisk.apply(this,arguments)
                 : false;
             refreshLironMediaUI(this,device,true);
-            syncLironLayout(this);
+            syncLironLayoutTracked(this,true);
             return result;
         };
 
@@ -241,11 +273,11 @@
                 refreshLironMediaUI(this,change.device,false);
             }
 
-            syncLironLayout(this);
+            syncLironLayoutTracked(this,true);
             return result;
         };
 
-        syncLironLayout(owner);
+        syncLironLayoutTracked(owner,true);
         return owner;
     }
 

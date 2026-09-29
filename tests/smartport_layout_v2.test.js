@@ -85,47 +85,39 @@ test('production v2 layout retains two distinct HD20 visual positions',()=>{
     assert.ok(hd20[0].y < hd20[1].y,'HD20 visual #1 is the upper position and visual #2 is the lower position');
 });
 
-test('UniDisk unit 1 controls only the unit-1 BODY through visibleAt()',()=>{
-    const calls=[];
-    const api=loadTopology(calls);
-    const d1=device('UNIDISK',1);
-    const owner=api.decorateLironTopology(makeOwner(5,[d1]));
-    calls.length=0;
+test('a single UniDisk occupies the first visual position regardless of SmartPort unit',()=>{
+    for(const unit of [1,2,3])
+    {
+        const calls=[];
+        const api=loadTopology(calls);
+        const disk=device('UNIDISK',unit);
+        const owner=api.decorateLironTopology(makeOwner(5,[disk]));
+        calls.length=0;
 
-    owner.onDeviceTopologyChanged({type:'attach',device:d1});
+        owner.onDeviceTopologyChanged({type:'attach',device:disk});
 
-    assertBodyState(calls,5,'LIRON.UNIDISK.1.BODY',true);
-    assertBodyState(calls,5,'LIRON.UNIDISK.2.BODY',false);
-    assertBodyState(calls,5,HD20_TOP,false);
-    assertBodyState(calls,5,HD20_BOTTOM,false);
-    assert.equal(calls.some(call=>/\.LED$/.test(call.id)),false,'UniDisk/HD20 LEDs are not part of this design yet');
+        assertBodyState(calls,5,'LIRON.UNIDISK.1.BODY',true);
+        assertBodyState(calls,5,'LIRON.UNIDISK.2.BODY',false);
+        assertBodyState(calls,5,HD20_TOP,false);
+        assertBodyState(calls,5,HD20_BOTTOM,false);
+        assert.equal(calls.some(call=>/\.LED$/.test(call.id)),false,'UniDisk/HD20 LEDs are not part of this design yet');
+    }
 });
 
-test('UniDisk unit 2 controls only the unit-2 BODY through visibleAt()',()=>{
+test('two attached UniDisks occupy both side-by-side BODY layers regardless of SmartPort units',()=>{
     const calls=[];
     const api=loadTopology(calls);
     const d2=device('UNIDISK',2);
-    const owner=api.decorateLironTopology(makeOwner(4,[d2]));
+    const d3=device('UNIDISK',3);
+    const owner=api.decorateLironTopology(makeOwner(6,[d2,d3]));
     calls.length=0;
 
-    owner.onDeviceTopologyChanged({type:'attach',device:d2});
-
-    assertBodyState(calls,4,'LIRON.UNIDISK.1.BODY',false);
-    assertBodyState(calls,4,'LIRON.UNIDISK.2.BODY',true);
-});
-
-test('two attached UniDisks make both side-by-side BODY layers visible',()=>{
-    const calls=[];
-    const api=loadTopology(calls);
-    const d1=device('UNIDISK',1);
-    const d2=device('UNIDISK',2);
-    const owner=api.decorateLironTopology(makeOwner(6,[d1,d2]));
-    calls.length=0;
-
-    owner.onDeviceTopologyChanged({type:'attach',device:d2});
+    owner.onDeviceTopologyChanged({type:'attach',device:d3});
 
     assertBodyState(calls,6,'LIRON.UNIDISK.1.BODY',true);
     assertBodyState(calls,6,'LIRON.UNIDISK.2.BODY',true);
+    assertBodyState(calls,6,HD20_TOP,false);
+    assertBodyState(calls,6,HD20_BOTTOM,false);
 });
 
 test('a sole HD20 uses the upper HD20 position regardless of SmartPort unit',()=>{
@@ -143,37 +135,49 @@ test('a sole HD20 uses the upper HD20 position regardless of SmartPort unit',()=
     assertBodyState(calls,3,'LIRON.UNIDISK.2.BODY',false);
 });
 
-test('HD20 uses the lower position when at least one UniDisk is attached',()=>{
-    for(const unidiskCount of [1,2])
-    {
-        const calls=[];
-        const api=loadTopology(calls);
-        const disks=[device('UNIDISK',1)];
-        if(unidiskCount===2) disks.push(device('UNIDISK',2));
-        const hd=device('HD20',unidiskCount+1);
-        disks.push(hd);
-        const owner=api.decorateLironTopology(makeOwner(6,disks));
-        calls.length=0;
+test('HD20 Unit 1 plus UniDisk Unit 2 uses first UniDisk visual and lower HD20 position',()=>{
+    const calls=[];
+    const api=loadTopology(calls);
+    const hd=device('HD20',1);
+    const d2=device('UNIDISK',2);
+    const owner=api.decorateLironTopology(makeOwner(6,[hd,d2]));
+    calls.length=0;
 
-        owner.onDeviceTopologyChanged({type:'attach',device:hd});
+    owner.onDeviceTopologyChanged({type:'attach',device:d2});
 
-        assertBodyState(calls,6,HD20_TOP,false);
-        assertBodyState(calls,6,HD20_BOTTOM,true);
-        assertBodyState(calls,6,'LIRON.UNIDISK.1.BODY',true);
-        assertBodyState(calls,6,'LIRON.UNIDISK.2.BODY',unidiskCount===2);
-    }
+    assertBodyState(calls,6,'LIRON.UNIDISK.1.BODY',true);
+    assertBodyState(calls,6,'LIRON.UNIDISK.2.BODY',false);
+    assertBodyState(calls,6,HD20_TOP,false);
+    assertBodyState(calls,6,HD20_BOTTOM,true);
+});
+
+test('HD20 Unit 1 plus UniDisk Units 2 and 3 shows both UniDisks and lower HD20',()=>{
+    const calls=[];
+    const api=loadTopology(calls);
+    const hd=device('HD20',1);
+    const d2=device('UNIDISK',2);
+    const d3=device('UNIDISK',3);
+    const owner=api.decorateLironTopology(makeOwner(6,[hd,d2,d3]));
+    calls.length=0;
+
+    owner.onDeviceTopologyChanged({type:'attach',device:d3});
+
+    assertBodyState(calls,6,'LIRON.UNIDISK.1.BODY',true);
+    assertBodyState(calls,6,'LIRON.UNIDISK.2.BODY',true);
+    assertBodyState(calls,6,HD20_TOP,false);
+    assertBodyState(calls,6,HD20_BOTTOM,true);
 });
 
 test('detach recomputes all LIRON BODY visibility from the remaining topology',()=>{
     const calls=[];
     const api=loadTopology(calls);
-    const d1=device('UNIDISK',1);
-    const hd=device('HD20',2);
-    const owner=api.decorateLironTopology(makeOwner(6,[d1,hd]));
+    const d2=device('UNIDISK',2);
+    const hd=device('HD20',1);
+    const owner=api.decorateLironTopology(makeOwner(6,[hd,d2]));
 
     owner.devices=[hd];
     calls.length=0;
-    owner.onDeviceTopologyChanged({type:'detach',device:d1});
+    owner.onDeviceTopologyChanged({type:'detach',device:d2});
 
     assertBodyState(calls,6,'LIRON.UNIDISK.1.BODY',false);
     assertBodyState(calls,6,'LIRON.UNIDISK.2.BODY',false);
@@ -181,10 +185,32 @@ test('detach recomputes all LIRON BODY visibility from the remaining topology',(
     assertBodyState(calls,6,HD20_BOTTOM,false);
 });
 
-test('redecorating an already decorated LIRON card does not repeat layout repaint calls',()=>{
+test('delayed LIRON initialization synchronizes once mount and default topology become available',()=>{
     const calls=[];
     const api=loadTopology(calls);
-    const owner=api.decorateLironTopology(makeOwner(6,[device('UNIDISK',1)]));
+    const owner={id:{PCODE:'LIRON'},devices:[]};
+
+    api.decorateLironTopology(owner);
+    assert.equal(calls.length,0,'no slot-qualified repaint is possible before mount initialization');
+
+    owner.mount={slotN:6};
+    owner.devices=[device('HD20',1)];
+    api.decorateLironTopology(owner);
+
+    assertBodyState(calls,6,'LIRON.UNIDISK.1.BODY',false);
+    assertBodyState(calls,6,'LIRON.UNIDISK.2.BODY',false);
+    assertBodyState(calls,6,HD20_TOP,true);
+    assertBodyState(calls,6,HD20_BOTTOM,false);
+
+    calls.length=0;
+    api.decorateLironTopology(owner);
+    assert.equal(calls.length,0,'after deferred synchronization succeeds, discovery polling must not repaint unchanged topology');
+});
+
+test('redecorating an already synchronized LIRON card does not repeat layout repaint calls',()=>{
+    const calls=[];
+    const api=loadTopology(calls);
+    const owner=api.decorateLironTopology(makeOwner(6,[device('UNIDISK',2)]));
     assert.ok(calls.length>0,'first decoration synchronizes the current topology');
     calls.length=0;
 
