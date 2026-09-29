@@ -377,7 +377,7 @@ function loadImageFile(file){
     }catch(error){reject(error);}
   });
 }
-async async function importImageFiles(files){
+async function importImageFiles(files){
   const before=captureHistorySnapshot();
   const errors=[];
   for(const file of Array.from(files)){
