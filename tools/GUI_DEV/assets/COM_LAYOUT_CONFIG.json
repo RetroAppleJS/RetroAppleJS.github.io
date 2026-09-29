@@ -87,7 +87,7 @@
       "file": "A2P_DISKII_LID.png",
       "x": 591,
       "y": 576,
-      "visible": false,
+      "visible": true,
       "shadow": {
         "enabled": false,
         "offsetX": 8,
@@ -106,7 +106,7 @@
       "file": "A2P_DISKII_LID.png",
       "x": 207,
       "y": 577,
-      "visible": false,
+      "visible": true,
       "shadow": {
         "enabled": false,
         "offsetX": 8,
@@ -172,6 +172,26 @@
       }
     },
     {
+      "id": "LIRON.HD20.1.LED",
+      "labels": {
+        "PCODE": "LIRON",
+        "DCODE": "HD20",
+        "ROLE": "LED",
+        "LAYOUT": "STANDALONE"
+      },
+      "file": "A2P_HD20_LED.png",
+      "x": 217,
+      "y": 607,
+      "visible": true,
+      "shadow": {
+        "enabled": false,
+        "offsetX": 0,
+        "offsetY": 15,
+        "blur": 12,
+        "opacity": 0.75
+      }
+    },
+    {
       "id": "LIRON.HD20.1.BODY",
       "labels": {
         "PCODE": "LIRON",
@@ -182,9 +202,28 @@
       "file": "A2P_HD20.png",
       "x": 164,
       "y": 394,
-      "visible": false,
+      "visible": true,
       "shadow": {
         "enabled": true,
+        "offsetX": 0,
+        "offsetY": 15,
+        "blur": 12,
+        "opacity": 0.75
+      }
+    },
+    {
+      "id": "LIRON.UNIDISK.1.LED",
+      "labels": {
+        "PCODE": "LIRON",
+        "DCODE": "UNIDISK",
+        "ROLE": "LED"
+      },
+      "file": "A2P_UNIDISK_LED_left.png",
+      "x": 171,
+      "y": 572,
+      "visible": true,
+      "shadow": {
+        "enabled": false,
         "offsetX": 0,
         "offsetY": 15,
         "blur": 12,
@@ -211,7 +250,26 @@
       }
     },
     {
-      "id": "LIRON.UNIDISK.2.BODY",
+      "id": "LIRON.UNIDISK.2.LED",
+      "labels": {
+        "PCODE": "LIRON",
+        "DCODE": "UNIDISK",
+        "ROLE": "LED"
+      },
+      "file": "A2P_UNIDISK_LED_right.png",
+      "x": 465,
+      "y": 571,
+      "visible": true,
+      "shadow": {
+        "enabled": false,
+        "offsetX": 0,
+        "offsetY": 15,
+        "blur": 12,
+        "opacity": 0.75
+      }
+    },
+    {
+      "id": "LIRON.UNIDISK.2",
       "labels": {
         "PCODE": "LIRON",
         "DCODE": "UNIDISK",
@@ -230,6 +288,26 @@
       }
     },
     {
+      "id": "LIRON.HD20.2.LED",
+      "labels": {
+        "PCODE": "LIRON",
+        "DCODE": "HD20",
+        "ROLE": "LED",
+        "LAYOUT": "STACKED"
+      },
+      "file": "A2P_HD20_LED.png",
+      "x": 217,
+      "y": 715,
+      "visible": true,
+      "shadow": {
+        "enabled": false,
+        "offsetX": 0,
+        "offsetY": 15,
+        "blur": 12,
+        "opacity": 0.75
+      }
+    },
+    {
       "id": "LIRON.HD20.2.BODY",
       "labels": {
         "PCODE": "LIRON",
@@ -240,7 +318,7 @@
       "file": "A2P_HD20.png",
       "x": 164,
       "y": 501,
-      "visible": false,
+      "visible": true,
       "shadow": {
         "enabled": true,
         "offsetX": 0,
@@ -289,7 +367,7 @@
         "SYSTEM.MONITOR",
         "SYSTEM.CHASSIS",
         "LIRON.UNIDISK.1.BODY",
-        "LIRON.UNIDISK.2.BODY",
+        "LIRON.UNIDISK.2",
         "LIRON.HD20.2.BODY"
       ]
     },
