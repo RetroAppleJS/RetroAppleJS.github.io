@@ -228,7 +228,7 @@ test('arrow-key movement remains available and becomes an undoable committed act
   const api=loadShortcutCore();
   const right=keyEvent('ArrowRight');api.handleGlobalKeydown(right);
   const up10=keyEvent('ArrowUp',{shiftKey:true});api.handleGlobalKeydown(up10);
-  assert.deepEqual(api.calls,[['move',1,0],['move',0,-10]]);
+  assert.deepEqual(plain(api.calls),[['move',1,0],['move',0,-10]]);
   assert.equal(right.prevented,true);
   assert.equal(up10.prevented,true);
 });
