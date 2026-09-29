@@ -54,9 +54,9 @@ jobs:
         working-directory: source
         run: node .github/scripts/apply-composer-v2-task2.cjs
 
-      - name: Test Composer v2
+      - name: Test Composer v2 and dataset conversion
         working-directory: source
-        run: node --test tests/apple2_system_composer_v2.test.js
+        run: node --test tests/apple2_system_composer_v2.test.js tests/composer_v1_dataset_conversion.test.js
 
       - name: Commit Composer v2 Task 2 implementation
         working-directory: source
