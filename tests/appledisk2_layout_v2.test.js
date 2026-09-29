@@ -140,14 +140,10 @@ test('Disk II attachment policy stores slot-aware semantic targets and syncs the
 
     const gapRule=owner.layoutRules.find(rule=>rule.id==='DISKII.GAP.BOTH_DRIVES');
     assert.ok(gapRule);
-    assert.deepEqual(
-        gapRule.attached.map(target=>({slotN:target.slotN,id:target.id,visible:target.visible})),
-        [{slotN:7,id:'DISKII.GAP',visible:true}]
-    );
-    assert.deepEqual(
-        gapRule.detached.map(target=>({slotN:target.slotN,id:target.id,visible:target.visible})),
-        [{slotN:7,id:'DISKII.GAP',visible:false}]
-    );
+    const attachedGap=JSON.parse(JSON.stringify(gapRule.attached.map(target=>({slotN:target.slotN,id:target.id,visible:target.visible}))));
+    const detachedGap=JSON.parse(JSON.stringify(gapRule.detached.map(target=>({slotN:target.slotN,id:target.id,visible:target.visible}))));
+    assert.deepEqual(attachedGap,[{slotN:7,id:'DISKII.GAP',visible:true}]);
+    assert.deepEqual(detachedGap,[{slotN:7,id:'DISKII.GAP',visible:false}]);
 
     const calls=[];
     rootWindow.oLAYOUT={
