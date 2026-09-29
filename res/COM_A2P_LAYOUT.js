@@ -2,7 +2,8 @@
  * COM_A2P_LAYOUT.js
  *
  * Runtime HTML compositor and control API for the emulator tab background.
- * It consumes Composer v2 layouts and normalizes legacy v1 layouts for compatibility.
+ * It consumes Composer v3 authoring scenes, Composer v2 runtime layouts, and
+ * normalizes legacy v1 layouts for compatibility.
  * Embedded PNG data URLs are used directly when present, with the legacy
  * asset directory retained as a compatibility fallback for non-embedded layouts.
  */
@@ -11,6 +12,7 @@
 var root = typeof window != "undefined" ? window : null;
 
 var LAYOUT_VERSION = 2;
+var AUTHORING_LAYOUT_VERSION = 3;
 var LEGACY_LAYOUT_VERSION = 1;
 var CANVAS_W = 1144;
 var CANVAS_H = 1144;
@@ -109,6 +111,11 @@ function validateLabels(raw,index)
 function layoutAddress(slotN,id)
 {
     return "A2P." + slotN + "." + id;
+}
+
+function sceneLayoutAddress(id)
+{
+    return "A2P.SCENE." + id;
 }
 
 function validateLayerGeometry(layer,index)
@@ -227,6 +234,41 @@ function normalizeV2Layout(raw)
     };
 }
 
+function normalizeV3Layout(raw)
+{
+    var seenIds = Object.create(null);
+    var layers = raw.layers.map(function(layer,index)
+    {
+        validateLayerGeometry(layer,index);
+        var id = validateSemanticId(layer.id,index);
+        var labels = validateLabels(layer.labels,index);
+        if(seenIds[id])
+            throw new Error("Duplicate Apple II Composer v3 semantic id: " + id);
+        seenIds[id] = true;
+
+        var scene = !!String(labels.PCODE || "");
+        return {
+            id: id,
+            slotN: scene ? null : 0,
+            labels: labels,
+            address: scene ? sceneLayoutAddress(id) : layoutAddress(0,id),
+            aliases: [],
+            file: layer.file,
+            x: layer.x,
+            y: layer.y,
+            visible: layer.visible,
+            shadow: validateShadow(layer.shadow,index)
+        };
+    });
+
+    return {
+        version: AUTHORING_LAYOUT_VERSION,
+        canvas: {width:CANVAS_W,height:CANVAS_H},
+        layers: layers,
+        assets: validateAssets(raw.assets)
+    };
+}
+
 function normalizeV1Layout(raw)
 {
     var seenAddresses = Object.create(null);
@@ -265,13 +307,14 @@ function normalizeLayout(raw)
 {
     if(!raw || typeof raw != "object" || Array.isArray(raw))
         throw new Error("Apple II layout must be a JSON object.");
-    if(raw.version !== LAYOUT_VERSION && raw.version !== LEGACY_LAYOUT_VERSION)
+    if(raw.version !== AUTHORING_LAYOUT_VERSION && raw.version !== LAYOUT_VERSION && raw.version !== LEGACY_LAYOUT_VERSION)
         throw new Error("Unsupported Apple II layout version: " + raw.version + ".");
     if(!raw.canvas || raw.canvas.width !== CANVAS_W || raw.canvas.height !== CANVAS_H)
         throw new Error("Apple II layout canvas must be exactly 1144 x 1144.");
     if(!Array.isArray(raw.layers))
         throw new Error("Apple II layout layers must be an array.");
 
+    if(raw.version === AUTHORING_LAYOUT_VERSION) return normalizeV3Layout(raw);
     return raw.version === LAYOUT_VERSION ? normalizeV2Layout(raw) : normalizeV1Layout(raw);
 }
 
@@ -455,7 +498,7 @@ function buildDOMComposition(doc,layout,registry,aliasRegistry)
         img.dataset.file = layer.file;
         img.dataset.layerId = layer.id;
         img.dataset.layoutAddress = address;
-        img.dataset.slotN = String(layer.slotN);
+        img.dataset.slotN = layer.slotN === null ? "" : String(layer.slotN);
         img.style.position = "absolute";
         img.style.left = layer.x + "px";
         img.style.top = layer.y + "px";
@@ -541,6 +584,11 @@ function LAYOUT(rootWindow)
         // monitor, and other slot-0 system imagery) and remain visible according
         // to their intrinsic topology state in every Peripheral-controls context.
         if(!pcode) return true;
+
+        // Composer v3 PCODE layers are a reusable slot-agnostic scene.  The
+        // selected slot determines which live peripheral supplies the state;
+        // presentation then filters that scene by the selected PCODE.
+        if(entry.slotN === null) return pcode === peripheralContext.pcode;
 
         return peripheralContext.slotN !== null &&
             entry.slotN === peripheralContext.slotN &&
@@ -653,6 +701,12 @@ function LAYOUT(rootWindow)
 
     this.visibleAt = function(slotN,id,state)
     {
+        id = validateSemanticId(id,0);
+        var rootWindow = resolveRoot();
+        var isScene = (self.lastLayout && self.lastLayout.version === AUTHORING_LAYOUT_VERSION) ||
+            (!self.lastLayout && rootWindow && rootWindow.composer && rootWindow.composer.version === AUTHORING_LAYOUT_VERSION);
+
+        if(isScene) return self.visible(sceneLayoutAddress(id),state);
         return self.visible(self.address(slotN,id),state);
     };
 

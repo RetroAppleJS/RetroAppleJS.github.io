@@ -89,6 +89,23 @@
         return slotN + "|U" + Math.min(state.unidiskCount,2) + "|H" + (state.hd20 ? 1 : 0);
     }
 
+    function lironVisualEntries(layout,slotN,query)
+    {
+        if(!layout || typeof layout.find != "function") return [];
+        var found = layout.find(query);
+        if(!Array.isArray(found)) return [];
+        return found.filter(function(entry)
+        {
+            return !!entry && (entry.slotN === null || entry.slotN === undefined || entry.slotN === slotN);
+        });
+    }
+
+    function lironVisualId(entries,index,fallback)
+    {
+        var entry = entries[index];
+        return entry && entry.id ? entry.id : fallback;
+    }
+
     function syncLironLayout(owner)
     {
         if(!owner || !owner.id || owner.id.PCODE!="LIRON") return false;
@@ -98,14 +115,15 @@
         if(slotN===null || !layout || typeof layout.visibleAt != "function") return false;
 
         var state = lironVisualState(owner);
-        var unidisk1 = state.unidiskCount >= 1;
-        var unidisk2 = state.unidiskCount >= 2;
         var hasUniDisk = state.unidiskCount > 0;
+        var unidisks = lironVisualEntries(layout,slotN,{PCODE:"LIRON",DCODE:"UNIDISK",ROLE:"BODY"});
+        var standalone = lironVisualEntries(layout,slotN,{PCODE:"LIRON",DCODE:"HD20",ROLE:"BODY",LAYOUT:"STANDALONE"});
+        var stacked = lironVisualEntries(layout,slotN,{PCODE:"LIRON",DCODE:"HD20",ROLE:"BODY",LAYOUT:"STACKED"});
 
-        layout.visibleAt(slotN,"LIRON.UNIDISK.1.BODY",unidisk1);
-        layout.visibleAt(slotN,"LIRON.UNIDISK.2.BODY",unidisk2);
-        layout.visibleAt(slotN,"LIRON.HD20.1.BODY",state.hd20 && !hasUniDisk);
-        layout.visibleAt(slotN,"LIRON.HD20.2.BODY",state.hd20 && hasUniDisk);
+        layout.visibleAt(slotN,lironVisualId(unidisks,0,"LIRON.UNIDISK.1.BODY"),state.unidiskCount >= 1);
+        layout.visibleAt(slotN,lironVisualId(unidisks,1,"LIRON.UNIDISK.2.BODY"),state.unidiskCount >= 2);
+        layout.visibleAt(slotN,lironVisualId(standalone,0,"LIRON.HD20.1.BODY"),state.hd20 && !hasUniDisk);
+        layout.visibleAt(slotN,lironVisualId(stacked,0,"LIRON.HD20.2.BODY"),state.hd20 && hasUniDisk);
         return true;
     }
 
@@ -230,6 +248,13 @@
             return owner;
         }
         owner.__A2PSmartPortTopologyDecorated = true;
+
+        // Standard hook used by Peripheral-controls navigation to reconstruct
+        // the selected scene from the card's current child-device topology.
+        owner.syncLayoutVisuals = function()
+        {
+            return syncLironLayoutTracked(this,true);
+        };
 
         var nativeDetachSmartPortDevice = owner.detachSmartPortDevice;
         var nativeDetachUniDisk = owner.detachUniDisk;
