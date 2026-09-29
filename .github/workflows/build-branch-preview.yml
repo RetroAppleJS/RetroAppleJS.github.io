@@ -50,9 +50,27 @@ jobs:
         with:
           node-version: 20
 
+      - name: Apply Composer v2 Task 1 patch
+        working-directory: source
+        run: node .github/scripts/apply-composer-v2-task1.cjs
+
       - name: Test Composer v2 schema
         working-directory: source
         run: node --test tests/apple2_system_composer_v2.test.js
+
+      - name: Commit Composer v2 Task 1 implementation
+        working-directory: source
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tools/GUI_DEV/apple2-system-composer.html
+          if git diff --cached --quiet; then
+            echo "Composer v2 Task 1 implementation already committed."
+          else
+            git commit -m "feat: add composer v2 layout metadata model"
+            git push origin HEAD:"${{ steps.branch.outputs.branch }}"
+          fi
 
       - name: Build branch preview distro
         working-directory: source
