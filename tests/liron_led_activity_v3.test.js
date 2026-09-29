@@ -57,6 +57,11 @@ function loadTopology(fakeWindow)
     return sandbox.module.exports;
 }
 
+function noLayoutWindow()
+{
+    return {setInterval(){return null;},clearInterval(){},addEventListener(){}};
+}
+
 test('production Composer v3 contains the four LIRON LED overlays with HD20 layout metadata',()=>{
     const composer=loadComposer();
     const byId=new Map(composer.layers.map(layer=>[layer.id,layer]));
@@ -71,33 +76,37 @@ test('production Composer v3 contains the four LIRON LED overlays with HD20 layo
     assert.equal(byId.get('LIRON.HD20.2.LED').labels.LAYOUT,'STACKED');
 });
 
-test('UniDisk records successful block activity as a monotonically increasing device generation',()=>{
+test('decorated UniDisk records successful block activity per device and ignores failed I/O',()=>{
     const UniDisk35Device=loadConstructor('EMU_DEVICE_UNIDISK35.js','UniDisk35Device');
     const disk=new UniDisk35Device();
     disk.loadImage(new Uint8Array(819200),{filename:'disk.po'});
+    const api=loadTopology(noLayoutWindow());
+    api.decorateLironTopology({id:{PCODE:'LIRON'},mount:{slotN:6},devices:[disk]});
 
-    assert.equal(disk.getState().activityGeneration,0);
+    assert.equal(api.deviceActivityGeneration(disk),0);
     assert.equal(disk.readBlock(0).error,0);
-    assert.equal(disk.getState().activityGeneration,1);
+    assert.equal(api.deviceActivityGeneration(disk),1);
     assert.equal(disk.readBlock(1).error,0);
-    assert.equal(disk.getState().activityGeneration,2);
+    assert.equal(api.deviceActivityGeneration(disk),2);
 
     disk.setOnline(false);
     assert.notEqual(disk.readBlock(2).error,0);
-    assert.equal(disk.getState().activityGeneration,2,'failed I/O must not create LED activity');
+    assert.equal(api.deviceActivityGeneration(disk),2,'failed I/O must not create LED activity');
 });
 
-test('HD20 records successful read, write and format activity',()=>{
+test('decorated HD20 records successful read, write and format activity',()=>{
     const HD20Device=loadConstructor('EMU_DEVICE_HD20.js','HD20Device');
     const disk=new HD20Device();
+    const api=loadTopology(noLayoutWindow());
+    api.decorateLironTopology({id:{PCODE:'LIRON'},mount:{slotN:6},devices:[disk]});
 
-    assert.equal(disk.getState().activityGeneration,0);
+    assert.equal(api.deviceActivityGeneration(disk),0);
     assert.equal(disk.readBlock(0).error,0);
-    assert.equal(disk.getState().activityGeneration,1);
+    assert.equal(api.deviceActivityGeneration(disk),1);
     assert.equal(disk.writeBlock(1,new Uint8Array(512)).error,0);
-    assert.equal(disk.getState().activityGeneration,2);
+    assert.equal(api.deviceActivityGeneration(disk),2);
     assert.equal(disk.format().error,0);
-    assert.equal(disk.getState().activityGeneration,3);
+    assert.equal(api.deviceActivityGeneration(disk),3);
 });
 
 test('500 ms LIRON activity sync isolates UniDisk LEDs by visual position and follows HD20 stacked/standalone layout',()=>{
@@ -121,17 +130,23 @@ test('500 ms LIRON activity sync isolates UniDisk LEDs by visual position and fo
     };
     const api=loadTopology(fakeWindow);
 
-    let u1Generation=0,u2Generation=0,hdGeneration=0;
-    const u1={id:{DCODE:'UNIDISK',deviceN:7},attach:{hash:101},getUnit(){return 7;},getState(){return {activityGeneration:u1Generation};}};
-    const u2={id:{DCODE:'UNIDISK',deviceN:2},attach:{hash:102},getUnit(){return 2;},getState(){return {activityGeneration:u2Generation};}};
-    const hd={id:{DCODE:'HD20',deviceN:5},attach:{hash:103},getUnit(){return 5;},getState(){return {activityGeneration:hdGeneration};}};
+    function makeDevice(code,unit,hash)
+    {
+        return {
+            id:{DCODE:code,deviceN:unit},attach:{hash},getUnit(){return unit;},
+            readBlock(){return {error:0,data:new Uint8Array(512)};}
+        };
+    }
+    const u1=makeDevice('UNIDISK',7,101);
+    const u2=makeDevice('UNIDISK',2,102);
+    const hd=makeDevice('HD20',5,103);
     const owner=api.decorateLironTopology({id:{PCODE:'LIRON'},mount:{slotN:6},devices:[u1,u2,hd]});
 
     assert.equal(typeof owner.syncLayoutActivity,'function','LIRON exposes a refresh-tick activity hook');
     calls.length=0;
 
-    u1Generation++;
-    hdGeneration++;
+    u1.readBlock(0);
+    hd.readBlock(0);
     owner.syncLayoutActivity();
     const first=new Map(calls);
     assert.equal(first.get('U1.LED'),true,'first visual UniDisk lights from its own activity even when its SmartPort unit is 7');
@@ -146,7 +161,7 @@ test('500 ms LIRON activity sync isolates UniDisk LEDs by visual position and fo
     assert.equal(quiet.get('HD.STACKED.LED'),false,'one quiet 500 ms interval turns the HD20 LED off');
 
     owner.devices=[hd];
-    hdGeneration++;
+    hd.readBlock(1);
     calls.length=0;
     owner.syncLayoutVisuals();
     owner.syncLayoutActivity();
