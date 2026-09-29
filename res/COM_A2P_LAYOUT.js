@@ -389,11 +389,10 @@ function forceWebKitRepaint(element)
         setTimeout(repaintBack,0);
 }
 
-function applyLayerVisibility(entry,state)
+function applyLayerPresentation(entry,state)
 {
     if(!entry) return false;
     state = !!state;
-    entry.model.visible = state;
     if(entry.element && entry.element.style)
     {
         entry.element.style.display = "";
@@ -401,6 +400,15 @@ function applyLayerVisibility(entry,state)
         entry.element.style.opacity = state ? "1" : "0";
         forceWebKitRepaint(entry.element);
     }
+    return state;
+}
+
+function applyLayerVisibility(entry,state,presentedState)
+{
+    if(!entry) return false;
+    state = !!state;
+    entry.model.visible = state;
+    applyLayerPresentation(entry,presentedState === undefined ? state : presentedState);
     return state;
 }
 
@@ -499,6 +507,7 @@ function LAYOUT(rootWindow)
     var layersById = Object.create(null);
     var layersByAlias = Object.create(null);
     var pending = Object.create(null);
+    var peripheralContext = null;
 
     this.root = rootWindow || root || null;
     this.lastLayout = null;
@@ -517,6 +526,38 @@ function LAYOUT(rootWindow)
     function resolveRoot(candidate)
     {
         return candidate || self.root || root || null;
+    }
+
+    function entryPresentationState(entry)
+    {
+        if(!entry || !entry.model) return false;
+        if(!entry.model.visible) return false;
+        if(!peripheralContext) return true;
+
+        var labels = entry.labels || entry.model.labels || {};
+        var pcode = String(labels.PCODE || "");
+
+        // Layers without PCODE belong to the system composition (Apple II body,
+        // monitor, and other slot-0 system imagery) and remain visible according
+        // to their intrinsic topology state in every Peripheral-controls context.
+        if(!pcode) return true;
+
+        return peripheralContext.slotN !== null &&
+            entry.slotN === peripheralContext.slotN &&
+            pcode === peripheralContext.pcode;
+    }
+
+    function refreshEntryPresentation(entry)
+    {
+        return applyLayerPresentation(entry,entryPresentationState(entry));
+    }
+
+    function refreshPeripheralPresentation()
+    {
+        Object.keys(layersById).forEach(function(address)
+        {
+            refreshEntryPresentation(layersById[address]);
+        });
     }
 
     function mountedDiskIISlotN(explicitSlotN)
@@ -607,12 +648,33 @@ function LAYOUT(rootWindow)
             return state;
         }
 
-        return applyLayerVisibility(entry,state);
+        return applyLayerVisibility(entry,state,entryPresentationState(entry));
     };
 
     this.visibleAt = function(slotN,id,state)
     {
         return self.visible(self.address(slotN,id),state);
+    };
+
+    this.setPeripheralContext = function(slotN,pcode)
+    {
+        slotN = Number(slotN);
+        pcode = String(pcode || "").trim().toUpperCase();
+
+        // Missing/host/unsupported context intentionally means system-only.
+        // A valid context with no matching PCODE layers naturally has the same
+        // presentation while remaining ready for future Composer artwork.
+        peripheralContext = {
+            slotN: Number.isInteger(slotN) && slotN >= 0 && slotN <= 8 ? slotN : null,
+            pcode: pcode
+        };
+        refreshPeripheralPresentation();
+        return true;
+    };
+
+    this.getPeripheralContext = function()
+    {
+        return peripheralContext ? {slotN:peripheralContext.slotN,pcode:peripheralContext.pcode} : null;
     };
 
     this.find = function(query)
@@ -666,26 +728,10 @@ function LAYOUT(rootWindow)
             {
                 if(layer && layer.file == filename)
                 {
-                    layer.visible = state;
+                    self.visible(layer.address || layoutAddress(layer.slotN,layer.id),state);
                     changed = true;
                 }
             });
-        }
-
-        if(self.lastComposition && typeof self.lastComposition.querySelectorAll == "function")
-        {
-            var nodes = self.lastComposition.querySelectorAll("img[data-file]");
-            for(var i=0;i<nodes.length;i++)
-            {
-                if(nodes[i].dataset && nodes[i].dataset.file == filename)
-                {
-                    nodes[i].style.display = "";
-                    nodes[i].style.visibility = state ? "visible" : "hidden";
-                    nodes[i].style.opacity = state ? "1" : "0";
-                    forceWebKitRepaint(nodes[i]);
-                    changed = true;
-                }
-            }
         }
 
         return changed;
@@ -748,10 +794,15 @@ function LAYOUT(rootWindow)
                     var entry = resolveLayerEntry(id);
                     if(entry)
                     {
-                        applyLayerVisibility(entry,pending[id]);
+                        applyLayerVisibility(entry,pending[id],entryPresentationState(entry));
                         delete pending[id];
                     }
                 });
+
+                // setPeripheralContext() may have been called before installation.
+                // Reapply presentation after the registry exists without changing
+                // any intrinsic attachment/topology visibility state.
+                if(peripheralContext) refreshPeripheralPresentation();
 
                 self.lastLayout = layout;
                 self.lastComposition = host;
