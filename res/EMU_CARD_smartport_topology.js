@@ -196,11 +196,7 @@
     function decorateLironTopology(owner)
     {
         if(!owner || !owner.id || owner.id.PCODE!="LIRON") return owner;
-        if(owner.__A2PSmartPortTopologyDecorated)
-        {
-            syncLironLayout(owner);
-            return owner;
-        }
+        if(owner.__A2PSmartPortTopologyDecorated) return owner;
         owner.__A2PSmartPortTopologyDecorated = true;
 
         var nativeDetachSmartPortDevice = owner.detachSmartPortDevice;
