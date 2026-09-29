@@ -7,12 +7,13 @@
  * that child device. This is particularly important for HD20-sized images:
  * removing the device must not keep a stale 20 MiB backing store alive.
  *
- * LIRON device visuals use Composer v2 semantic BODY ids through visibleAt().
+ * LIRON device visuals use Composer semantic BODY/LED ids through visibleAt().
  * UniDisk visuals are layout positions filled by the first/second attached
- * UniDisk, independently of their SmartPort unit numbers. The two HD20 images
- * are layout positions: visual 1 is the upper position used by a standalone
- * HD20, while visual 2 is the lower position used when UniDisks are present.
- * UniDisk/HD20 LED visuals are intentionally outside this design milestone.
+ * UniDisk, independently of their SmartPort unit numbers. The two HD20 BODY
+ * and LED pairs are layout positions: visual 1 is the standalone position,
+ * while visual 2 is the stacked position used when UniDisks are present.
+ * Device activity is sampled by the existing 500 ms surface-map dashboard
+ * refresh hook; no additional timer is introduced here.
  */
 (function(root,factory){
     "use strict";
@@ -41,6 +42,39 @@
         return Number.isInteger(hash) ? hash : null;
     }
 
+    function trackDeviceActivity(device)
+    {
+        if(!device || (typeof device!="object" && typeof device!="function")) return device;
+        if(device.__A2PSmartPortActivityTracked) return device;
+
+        device.__A2PSmartPortActivityTracked = true;
+        device.__A2PSmartPortActivityGeneration = 0;
+
+        ["readBlock","writeBlock","format"].forEach(function(name)
+        {
+            var nativeMethod = device[name];
+            if(typeof nativeMethod != "function") return;
+
+            device[name] = function()
+            {
+                var result = nativeMethod.apply(this,arguments);
+                if(result && result.error!==undefined && (Number(result.error)&0xFF)===0)
+                    this.__A2PSmartPortActivityGeneration =
+                        (Number(this.__A2PSmartPortActivityGeneration)||0)+1;
+                return result;
+            };
+        });
+
+        return device;
+    }
+
+    function deviceActivityGeneration(device)
+    {
+        trackDeviceActivity(device);
+        var generation = Number(device && device.__A2PSmartPortActivityGeneration);
+        return Number.isFinite(generation) && generation>=0 ? generation : 0;
+    }
+
     function copyStatics(from,to)
     {
         for(var key in from)
@@ -61,6 +95,13 @@
         return Number.isInteger(slotN) && slotN>=0 && slotN<=8 ? slotN : null;
     }
 
+    function lironDevices(owner,code)
+    {
+        code = String(code || "").toUpperCase();
+        var devices = Array.isArray(owner && owner.devices) ? owner.devices : [];
+        return devices.filter(function(device){ return deviceCode(device)===code; });
+    }
+
     function lironVisualState(owner)
     {
         var unidiskCount = 0;
@@ -78,6 +119,68 @@
             unidiskCount: unidiskCount,
             hd20: hd20
         };
+    }
+
+    function ensureLironLedState(owner)
+    {
+        if(!owner.__A2PSmartPortLedState)
+            owner.__A2PSmartPortLedState = {"unidisk":[false,false],"hd20":false};
+        if(!Array.isArray(owner.__A2PSmartPortLedState.unidisk))
+            owner.__A2PSmartPortLedState.unidisk = [false,false];
+        return owner.__A2PSmartPortLedState;
+    }
+
+    function lironActivityRecords(owner)
+    {
+        if(!Array.isArray(owner.__A2PSmartPortActivityRecords))
+            owner.__A2PSmartPortActivityRecords = [];
+        return owner.__A2PSmartPortActivityRecords;
+    }
+
+    function lironActivityRecord(owner,device)
+    {
+        var records = lironActivityRecords(owner);
+        for(var i=0;i<records.length;i++)
+            if(records[i].device===device) return records[i];
+        return null;
+    }
+
+    function primeLironDeviceActivity(owner,device)
+    {
+        if(!device) return null;
+        trackDeviceActivity(device);
+        var record = lironActivityRecord(owner,device);
+        if(record) return record;
+
+        record = {"device":device,"generation":deviceActivityGeneration(device)};
+        lironActivityRecords(owner).push(record);
+        return record;
+    }
+
+    function prepareLironActivity(owner)
+    {
+        if(!owner) return false;
+        ensureLironLedState(owner);
+
+        var devices = Array.isArray(owner.devices) ? owner.devices : [];
+        for(var i=0;i<devices.length;i++) primeLironDeviceActivity(owner,devices[i]);
+
+        var records = lironActivityRecords(owner);
+        owner.__A2PSmartPortActivityRecords = records.filter(function(record)
+        {
+            return devices.indexOf(record.device)>=0;
+        });
+        return true;
+    }
+
+    function sampleLironDeviceActivity(owner,device)
+    {
+        if(!device) return false;
+        var record = primeLironDeviceActivity(owner,device);
+        var current = deviceActivityGeneration(device);
+        var active = current!==record.generation;
+        record.generation = current;
+        return active;
     }
 
     function lironTopologySignature(owner)
@@ -115,15 +218,35 @@
         if(slotN===null || !layout || typeof layout.visibleAt != "function") return false;
 
         var state = lironVisualState(owner);
+        var ledState = ensureLironLedState(owner);
         var hasUniDisk = state.unidiskCount > 0;
         var unidisks = lironVisualEntries(layout,slotN,{PCODE:"LIRON",DCODE:"UNIDISK",ROLE:"BODY"});
         var standalone = lironVisualEntries(layout,slotN,{PCODE:"LIRON",DCODE:"HD20",ROLE:"BODY",LAYOUT:"STANDALONE"});
         var stacked = lironVisualEntries(layout,slotN,{PCODE:"LIRON",DCODE:"HD20",ROLE:"BODY",LAYOUT:"STACKED"});
+        var unidiskLEDs = lironVisualEntries(layout,slotN,{PCODE:"LIRON",DCODE:"UNIDISK",ROLE:"LED"});
+        var standaloneLEDs = lironVisualEntries(layout,slotN,{PCODE:"LIRON",DCODE:"HD20",ROLE:"LED",LAYOUT:"STANDALONE"});
+        var stackedLEDs = lironVisualEntries(layout,slotN,{PCODE:"LIRON",DCODE:"HD20",ROLE:"LED",LAYOUT:"STACKED"});
 
         layout.visibleAt(slotN,lironVisualId(unidisks,0,"LIRON.UNIDISK.1.BODY"),state.unidiskCount >= 1);
         layout.visibleAt(slotN,lironVisualId(unidisks,1,"LIRON.UNIDISK.2.BODY"),state.unidiskCount >= 2);
         layout.visibleAt(slotN,lironVisualId(standalone,0,"LIRON.HD20.1.BODY"),state.hd20 && !hasUniDisk);
         layout.visibleAt(slotN,lironVisualId(stacked,0,"LIRON.HD20.2.BODY"),state.hd20 && hasUniDisk);
+
+        // LED layers were added with Composer v3. Keep older/runtime fixtures that
+        // do not contain them compatible by touching LED visibility only when the
+        // corresponding semantic layer actually exists.
+        if(unidiskLEDs.length>0)
+            layout.visibleAt(slotN,lironVisualId(unidiskLEDs,0,"LIRON.UNIDISK.1.LED"),
+                state.unidiskCount>=1 && !!ledState.unidisk[0]);
+        if(unidiskLEDs.length>1)
+            layout.visibleAt(slotN,lironVisualId(unidiskLEDs,1,"LIRON.UNIDISK.2.LED"),
+                state.unidiskCount>=2 && !!ledState.unidisk[1]);
+        if(standaloneLEDs.length>0)
+            layout.visibleAt(slotN,lironVisualId(standaloneLEDs,0,"LIRON.HD20.1.LED"),
+                state.hd20 && !hasUniDisk && !!ledState.hd20);
+        if(stackedLEDs.length>0)
+            layout.visibleAt(slotN,lironVisualId(stackedLEDs,0,"LIRON.HD20.2.LED"),
+                state.hd20 && hasUniDisk && !!ledState.hd20);
         return true;
     }
 
@@ -137,6 +260,51 @@
         if(synced && owner)
             owner.__A2PSmartPortLayoutSignature = signature;
         return synced;
+    }
+
+    function syncLironActivity(owner)
+    {
+        if(!owner || !owner.id || owner.id.PCODE!="LIRON") return false;
+        prepareLironActivity(owner);
+
+        var unidisks = lironDevices(owner,"UNIDISK");
+        var hd20s = lironDevices(owner,"HD20");
+        var ledState = ensureLironLedState(owner);
+
+        ledState.unidisk[0] = unidisks[0] ? sampleLironDeviceActivity(owner,unidisks[0]) : false;
+        ledState.unidisk[1] = unidisks[1] ? sampleLironDeviceActivity(owner,unidisks[1]) : false;
+        ledState.hd20 = hd20s[0] ? sampleLironDeviceActivity(owner,hd20s[0]) : false;
+
+        return syncLironLayout(owner);
+    }
+
+    function wrapLironRefreshMonitor(owner)
+    {
+        if(!owner || typeof owner.deviceToolSurfaceMapMonitoring != "function") return false;
+        var nativeMonitoring = owner.deviceToolSurfaceMapMonitoring;
+        if(nativeMonitoring.__A2PSmartPortActivityMonitorOwner===owner) return true;
+
+        var wrapped = function()
+        {
+            var outermost = !this.__A2PSmartPortActivityMonitorBusy;
+            if(outermost)
+            {
+                this.__A2PSmartPortActivityMonitorBusy = true;
+                syncLironActivity(this);
+            }
+            try
+            {
+                return nativeMonitoring.apply(this,arguments);
+            }
+            finally
+            {
+                if(outermost) this.__A2PSmartPortActivityMonitorBusy = false;
+            }
+        };
+        wrapped.__A2PSmartPortActivityMonitorOwner = owner;
+        wrapped.__A2PSmartPortActivityMonitorBase = nativeMonitoring;
+        owner.deviceToolSurfaceMapMonitoring = wrapped;
+        return true;
     }
 
     function patchHD20Constructor(rootWindow)
@@ -240,6 +408,9 @@
     function decorateLironTopology(owner)
     {
         if(!owner || !owner.id || owner.id.PCODE!="LIRON") return owner;
+        prepareLironActivity(owner);
+        wrapLironRefreshMonitor(owner);
+
         if(owner.__A2PSmartPortTopologyDecorated)
         {
             // Discovery may encounter the card before its slot/device topology is
@@ -249,11 +420,17 @@
         }
         owner.__A2PSmartPortTopologyDecorated = true;
 
-        // Standard hook used by Peripheral-controls navigation to reconstruct
-        // the selected scene from the card's current child-device topology.
+        // Standard hooks used by Peripheral-controls navigation and the shared
+        // 500 ms surface-map refresh cycle.
         owner.syncLayoutVisuals = function()
         {
+            prepareLironActivity(this);
+            wrapLironRefreshMonitor(this);
             return syncLironLayoutTracked(this,true);
+        };
+        owner.syncLayoutActivity = function()
+        {
+            return syncLironActivity(this);
         };
 
         var nativeDetachSmartPortDevice = owner.detachSmartPortDevice;
@@ -267,6 +444,7 @@
                 ? nativeDetachSmartPortDevice.apply(this,arguments)
                 : false;
             refreshLironMediaUI(this,device,true);
+            prepareLironActivity(this);
             syncLironLayoutTracked(this,true);
             return result;
         };
@@ -278,6 +456,7 @@
                 ? nativeDetachUniDisk.apply(this,arguments)
                 : false;
             refreshLironMediaUI(this,device,true);
+            prepareLironActivity(this);
             syncLironLayoutTracked(this,true);
             return result;
         };
@@ -295,9 +474,12 @@
             }
             else if(change && change.type=="attach" && change.device)
             {
+                primeLironDeviceActivity(this,change.device);
                 refreshLironMediaUI(this,change.device,false);
             }
 
+            prepareLironActivity(this);
+            wrapLironRefreshMonitor(this);
             syncLironLayoutTracked(this,true);
             return result;
         };
@@ -406,7 +588,9 @@
          "deviceCode":deviceCode
         ,"deviceUnit":deviceUnit
         ,"deviceHash":deviceHash
+        ,"deviceActivityGeneration":deviceActivityGeneration
         ,"syncLironLayout":syncLironLayout
+        ,"syncLironActivity":syncLironActivity
         ,"releaseDeviceMedia":releaseDeviceMedia
         ,"decorateLironTopology":decorateLironTopology
         ,"installSmartPortTopologyPatch":installSmartPortTopologyPatch
