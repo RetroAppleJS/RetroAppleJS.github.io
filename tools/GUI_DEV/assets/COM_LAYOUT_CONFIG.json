@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "canvas": {
     "width": 1144,
     "height": 1144
@@ -7,7 +7,6 @@
   "layers": [
     {
       "id": "SYSTEM.MONITOR",
-      "slotN": 0,
       "labels": {
         "ROLE": "MONITOR"
       },
@@ -25,7 +24,6 @@
     },
     {
       "id": "SYSTEM.TAPE",
-      "slotN": 0,
       "labels": {
         "ROLE": "TAPE"
       },
@@ -43,7 +41,6 @@
     },
     {
       "id": "DISKII.D2.LED",
-      "slotN": 7,
       "labels": {
         "PCODE": "DISKII",
         "DCODE": "D2",
@@ -63,7 +60,6 @@
     },
     {
       "id": "DISKII.D1.LED",
-      "slotN": 7,
       "labels": {
         "PCODE": "DISKII",
         "DCODE": "D1",
@@ -83,7 +79,6 @@
     },
     {
       "id": "DISKII.D2.LID",
-      "slotN": 7,
       "labels": {
         "PCODE": "DISKII",
         "DCODE": "D2",
@@ -103,7 +98,6 @@
     },
     {
       "id": "DISKII.D1.LID",
-      "slotN": 7,
       "labels": {
         "PCODE": "DISKII",
         "DCODE": "D1",
@@ -123,7 +117,6 @@
     },
     {
       "id": "DISKII.D2.BODY",
-      "slotN": 7,
       "labels": {
         "PCODE": "DISKII",
         "DCODE": "D2",
@@ -143,7 +136,6 @@
     },
     {
       "id": "DISKII.D1.BODY",
-      "slotN": 7,
       "labels": {
         "PCODE": "DISKII",
         "DCODE": "D1",
@@ -163,7 +155,6 @@
     },
     {
       "id": "DISKII.GAP",
-      "slotN": 7,
       "labels": {
         "PCODE": "DISKII",
         "ROLE": "GAP"
@@ -182,11 +173,9 @@
     },
     {
       "id": "LIRON.HD20.1.BODY",
-      "slotN": 6,
       "labels": {
         "PCODE": "LIRON",
         "DCODE": "HD20",
-        "UNIT": "1",
         "ROLE": "BODY"
       },
       "file": "A2P_HD20.png",
@@ -203,11 +192,9 @@
     },
     {
       "id": "LIRON.UNIDISK.1.BODY",
-      "slotN": 6,
       "labels": {
         "PCODE": "LIRON",
         "DCODE": "UNIDISK",
-        "UNIT": "1",
         "ROLE": "BODY"
       },
       "file": "A2P_UNIDISK_left.png",
@@ -224,11 +211,9 @@
     },
     {
       "id": "LIRON.UNIDISK.2.BODY",
-      "slotN": 6,
       "labels": {
         "PCODE": "LIRON",
         "DCODE": "UNIDISK",
-        "UNIT": "2",
         "ROLE": "BODY"
       },
       "file": "A2P_UNIDISK_right.png",
@@ -245,11 +230,9 @@
     },
     {
       "id": "LIRON.HD20.2.BODY",
-      "slotN": 6,
       "labels": {
         "PCODE": "LIRON",
         "DCODE": "HD20",
-        "UNIT": "2",
         "ROLE": "BODY"
       },
       "file": "A2P_HD20.png",
@@ -266,7 +249,6 @@
     },
     {
       "id": "SYSTEM.CHASSIS",
-      "slotN": 0,
       "labels": {
         "ROLE": "CHASSIS"
       },
