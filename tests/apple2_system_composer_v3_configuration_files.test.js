@@ -146,8 +146,8 @@ test('duplicate clones active visibility into an independently editable selected
 });
 
 test('UI wiring records import and duplicate through the normal authoring history path and exports config.json',()=>{
-    assert.match(source,/duplicateConfigurationBtn[\s\S]*commitAuthoringMutation\([^)]*duplicateConfiguration/s);
-    assert.match(source,/configurationInput[\s\S]*commitAuthoringMutation\([^)]*importStandaloneConfiguration/s);
-    assert.match(source,/exportConfigurationBtn[\s\S]*serializeStandaloneConfiguration/s);
+    assert.match(source,/\$\('duplicateConfigurationBtn'\)\.addEventListener\('click',[\s\S]*?commitAuthoringMutation\(\(\)=>duplicateConfiguration\(\)\)/);
+    assert.match(source,/configurationInput\.addEventListener\('change',[\s\S]*?commitAuthoringMutation\(\(\)=>importStandaloneConfiguration\(raw\)\)/);
+    assert.match(source,/\$\('exportConfigurationBtn'\)\.addEventListener\('click',[\s\S]*?serializeStandaloneConfiguration\(active\)/);
     assert.match(source,/\.config\.json/);
 });
