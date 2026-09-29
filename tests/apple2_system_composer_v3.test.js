@@ -437,3 +437,11 @@ test('active configuration visibility drives hit testing, rendering, layer check
     assert.match(extractFunction('refreshUI'),/isLayerVisibleInActiveView/);
     assert.match(extractFunction('getExportBlockers'),/isLayerVisibleInActiveView/);
 });
+
+
+test('Composer toolbar exposes Undo and Redo controls for the history task',()=>{
+    assert.match(html,/id=\"undoBtn\"/,'Undo button must exist');
+    assert.match(html,/id=\"redoBtn\"/,'Redo button must exist');
+    assert.match(html,/id=\"undoBtn\"[^>]*disabled/,'Undo stays disabled until history is available');
+    assert.match(html,/id=\"redoBtn\"[^>]*disabled/,'Redo stays disabled until history is available');
+});

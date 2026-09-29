@@ -8,7 +8,7 @@
 :root{--bg:#e9e4d9;--panel:#f7f4ec;--line:#b7b0a4;--ink:#292722;--muted:#746f66;--accent:#8c3c2d;--sel:#1e6ba8;--danger:#a5382a}
 *{box-sizing:border-box}html,body{height:100%}body{margin:0;font:14px/1.35 system-ui,-apple-system,Segoe UI,sans-serif;color:var(--ink);background:var(--bg)}
 button,input{font:inherit}button{border:1px solid var(--line);background:#fffdf8;color:var(--ink);border-radius:5px;padding:7px 11px;cursor:pointer}button:hover:not(:disabled){background:#fff}button:focus-visible,input:focus-visible{outline:2px solid var(--sel);outline-offset:2px}button:disabled{opacity:.45;cursor:default}.danger{color:var(--danger)}
-.app{min-height:100%;display:grid;grid-template-rows:auto 1fr auto}.toolbar{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:4}.title{font-weight:700;margin-right:auto;letter-spacing:.02em}.workspace{min-height:0;display:grid;grid-template-columns:285px 1fr;gap:0}.sidebar{border-right:1px solid var(--line);background:var(--panel);padding:12px;overflow:auto}.sidebar h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px}.layer-list{display:flex;flex-direction:column;gap:5px;margin-bottom:18px}.layer-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:7px;padding:7px;border:1px solid var(--line);border-radius:5px;background:#fffdf8;cursor:pointer}.layer-row.selected{outline:2px solid var(--sel);outline-offset:-1px}.layer-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.missing{font-size:10px;font-weight:700;color:var(--danger);letter-spacing:.06em}.props{border-top:1px solid var(--line);padding-top:12px}.filename{font-weight:600;overflow-wrap:anywhere;margin:0 0 10px}.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}.field input[type=number],.field input[type=text]{width:100%;padding:6px;border:1px solid var(--line);border-radius:4px;background:#fff}.check{display:flex;gap:7px;align-items:center;margin:10px 0}.zbuttons{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}.remove{margin-top:7px;width:100%}.shadow-section{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}.shadow-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 8px}.shadow-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}.shadow-section.disabled .shadow-fields{opacity:.45}.empty{color:var(--muted);font-style:italic;padding:8px 2px}.metadata-section{margin:10px 0 14px;padding:10px;border:1px solid var(--line);border-radius:5px;background:#fffaf2}.metadata-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.metadata-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}.id-mode{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}.metadata-labels{display:flex;flex-direction:column;gap:5px;margin:7px 0}.metadata-row{display:grid;grid-template-columns:minmax(72px,.8fr) minmax(90px,1.2fr) auto;gap:5px;align-items:center}.metadata-row input{min-width:0;width:100%;padding:5px;border:1px solid var(--line);border-radius:4px;background:#fff}.metadata-row input[readonly]{background:#eeeae1;color:var(--muted)}.metadata-row .remove-label{padding:4px 7px}.metadata-actions{display:flex;gap:6px;margin-top:7px}.metadata-actions button{padding:5px 8px;font-size:12px}
+.app{min-height:100%;display:grid;grid-template-rows:auto 1fr auto}.toolbar{display:flex;gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--panel);position:sticky;top:0;z-index:4}.title{font-weight:700;margin-right:auto;letter-spacing:.02em}.workspace{min-height:0;display:grid;grid-template-columns:285px 1fr;gap:0}.sidebar{border-right:1px solid var(--line);background:var(--panel);padding:12px;overflow:auto}.sidebar h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px}.layer-list{display:flex;flex-direction:column;gap:5px;margin-bottom:18px}.layer-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:7px;padding:7px;border:1px solid var(--line);border-radius:5px;background:#fffdf8;cursor:pointer}.layer-row.selected{outline:2px solid var(--sel);outline-offset:-1px}.layer-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.missing{font-size:10px;font-weight:700;color:var(--danger);letter-spacing:.06em}.props{border-top:1px solid var(--line);padding-top:12px}.filename{font-weight:600;overflow-wrap:anywhere;margin:0 0 10px}.field-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}.field input[type=number],.field input[type=text]{width:100%;padding:6px;border:1px solid var(--line);border-radius:4px;background:#fff}.check{display:flex;gap:7px;align-items:center;margin:10px 0}.zbuttons{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}.remove{margin-top:7px;width:100%}.shadow-section{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}.shadow-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 8px}.shadow-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}.shadow-section.disabled .shadow-fields{opacity:.45}.empty{color:var(--muted);font-style:italic;padding:8px 2px}.metadata-section{margin:10px 0 14px;padding:10px;border:1px solid var(--line);border-radius:5px;background:#fffaf2}.metadata-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}.metadata-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}.id-mode{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}.metadata-labels{display:flex;flex-direction:column;gap:5px;margin:7px 0}.metadata-row{display:grid;grid-template-columns:minmax(72px,.8fr) minmax(90px,1.2fr) auto;gap:5px;align-items:center}.metadata-row input{min-width:0;width:100%;padding:5px;border:1px solid var(--line);border-radius:4px;background:#fff}.metadata-row input[readonly]{background:#eeeae1;color:var(--muted)}.metadata-row .remove-label{padding:4px 7px}.metadata-actions{display:flex;gap:6px;margin-top:7px}.metadata-actions button{padding:5px 8px;font-size:12px}.configuration-bar{width:min(1144px,calc(100vw - 340px));max-width:100%;display:flex;align-items:center;gap:6px;flex-wrap:wrap;line-height:1.35}.configuration-tabs{display:flex;gap:6px;flex-wrap:wrap}.configuration-tab.active{outline:2px solid var(--sel);outline-offset:-1px;background:#eef6fc}.stage-content{min-width:0;display:flex;flex-direction:column;align-items:center;gap:10px}
 .stage{min-width:0;min-height:0;overflow:auto;padding:18px;display:flex;justify-content:center;align-items:flex-start;background:linear-gradient(45deg,#ded9ce 25%,transparent 25%) 0 0/20px 20px,linear-gradient(45deg,transparent 75%,#ded9ce 75%) 0 0/20px 20px,linear-gradient(45deg,transparent 75%,#ded9ce 75%) 10px -10px/20px 20px,linear-gradient(45deg,#ded9ce 25%,#eee9df 25%) 10px -10px/20px 20px}.canvas-shell{box-shadow:0 2px 18px #0002;border:1px solid #b9b4aa;background:transparent;line-height:0;max-width:100%}canvas{display:block;width:min(1144px,calc(100vw - 340px));height:auto;max-width:100%;touch-action:none;background:transparent}.status{padding:7px 12px;border-top:1px solid var(--line);background:var(--panel);color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hint{font-size:11px;color:var(--muted);margin-top:8px}
 @media(max-width:850px){.workspace{grid-template-columns:220px 1fr}.title{display:none}canvas{width:min(1144px,calc(100vw - 270px))}}
 </style>
@@ -17,6 +17,8 @@ button,input{font:inherit}button{border:1px solid var(--line);background:#fffdf8
 <div class="app">
   <header class="toolbar">
     <div class="title">Apple II System Composer</div>
+    <button id="undoBtn" type="button" disabled>Undo</button>
+    <button id="redoBtn" type="button" disabled>Redo</button>
     <button id="importBtn">Import Images</button>
     <button id="loadBtn">Load Layout</button>
     <button id="saveBtn">Save Layout</button>
@@ -70,7 +72,16 @@ button,input{font:inherit}button{border:1px solid var(--line);background:#fffdf8
       </section>
     </aside>
     <section class="stage">
-      <div class="canvas-shell"><canvas id="previewCanvas" width="1144" height="1144" aria-label="Apple II composition canvas" tabindex="0"></canvas></div>
+      <div class="stage-content">
+        <div id="configurationBar" class="configuration-bar" aria-label="Visual configurations">
+          <button id="baseConfigurationBtn" class="configuration-tab active" type="button">Base</button>
+          <div id="configurationTabs" class="configuration-tabs"></div>
+          <button id="addConfigurationBtn" type="button" title="Add visual configuration">+</button>
+          <button id="renameConfigurationBtn" type="button" disabled>Rename</button>
+          <button id="deleteConfigurationBtn" type="button" class="danger" disabled>Delete</button>
+        </div>
+        <div class="canvas-shell"><canvas id="previewCanvas" width="1144" height="1144" aria-label="Apple II composition canvas" tabindex="0"></canvas></div>
+      </div>
     </section>
   </main>
   <footer id="statusBar" class="status">0 layers | No layer selected</footer>
@@ -79,7 +90,7 @@ button,input{font:inherit}button{border:1px solid var(--line);background:#fffdf8
 'use strict';
 const CANVAS_W=1144, CANVAS_H=1144, LAYOUT_VERSION=3;
 const DEFAULT_SHADOW=Object.freeze({enabled:false,offsetX:0,offsetY:15,blur:12,opacity:0.75});
-const state={layers:[],configurations:[],selectedLayerUid:null,assets:new Map(),dragging:null};
+const state={layers:[],configurations:[],activeConfigurationId:null,selectedLayerUid:null,assets:new Map(),dragging:null};
 let runtimeCounter=1, semanticCounter=1;
 const $=id=>document.getElementById(id);
 const canvas=$('previewCanvas'), ctx=canvas.getContext('2d');
@@ -140,6 +151,32 @@ function validateLabels(raw,index){
     labels[key]=value;
   }
   return labels;
+}
+
+function validateConfigurations(raw,layerIds){
+  if(!Array.isArray(raw)) throw new Error('Layout configurations must be an array.');
+  const seenIds=new Set();
+  return raw.map((config,index)=>{
+    if(!config || typeof config!=='object' || Array.isArray(config)) throw new Error('Configuration '+(index+1)+' is malformed.');
+    if(typeof config.id!=='string' || !config.id.trim()) throw new Error('Configuration '+(index+1)+' id must be non-empty.');
+    const id=config.id.trim();
+    if(!/^[A-Za-z0-9._-]+$/.test(id)) throw new Error('Configuration '+(index+1)+' id is invalid.');
+    if(seenIds.has(id)) throw new Error('Duplicate configuration id: '+id);
+    seenIds.add(id);
+    if(typeof config.title!=='string' || !config.title.trim()) throw new Error('Configuration '+id+' title must be non-empty.');
+    const title=config.title.trim();
+    if(!Array.isArray(config.visible)) throw new Error('Configuration '+id+' visible must be an array.');
+    const seenVisible=new Set();
+    const visible=config.visible.map((rawId,itemIndex)=>{
+      if(typeof rawId!=='string' || !rawId.trim()) throw new Error('Configuration '+id+' visible entry '+(itemIndex+1)+' must be a semantic ID.');
+      const semanticId=rawId.trim();
+      if(!layerIds.has(semanticId)) throw new Error('Configuration '+id+' references unknown semantic ID '+semanticId+'.');
+      if(seenVisible.has(semanticId)) throw new Error('Configuration '+id+' contains duplicate visible semantic ID '+semanticId+'.');
+      seenVisible.add(semanticId);
+      return semanticId;
+    });
+    return {id,title,visible};
+  });
 }
 
 function canonicalSuggestionSegment(value){
@@ -216,10 +253,7 @@ function validateLayout(raw){
     const labels=validateLabels(l.labels,i);
     return {id,labels,file:l.file,x:l.x,y:l.y,visible:l.visible,shadow:validateShadow(l.shadow,i)};
   });
-  const configurations=doc.configurations.map(c=>{
-    if(!c || typeof c!=='object' || Array.isArray(c)) return c;
-    return {...c,visible:Array.isArray(c.visible)?[...c.visible]:c.visible};
-  });
+  const configurations=validateConfigurations(doc.configurations,seenIds);
   return {version:LAYOUT_VERSION,canvas:{width:CANVAS_W,height:CANVAS_H},assets,layers,configurations};
 }
 
@@ -236,7 +270,7 @@ function layerFromLayout(entry){
 }
 function applyLayout(layout){
   const next=layout.layers.map(layerFromLayout);
-  state.layers=next; state.configurations=(layout.configurations||[]).map(c=>({...c,visible:Array.isArray(c.visible)?[...c.visible]:c.visible})); state.selectedLayerUid=next[0]?.uid||null; state.dragging=null; refreshUI();renderPreview();
+  state.layers=next; state.configurations=(layout.configurations||[]).map(c=>({...c,visible:[...c.visible]})); state.activeConfigurationId=null; state.selectedLayerUid=next[0]?.uid||null; state.dragging=null; refreshUI();renderPreview();
 }
 function serializeLayer({id,labels,file,x,y,visible,shadow}){
   const cleanLabels={};
@@ -307,17 +341,20 @@ async function importImageFiles(files){
 }
 function removeSelectedLayer(){
   const idx=state.layers.findIndex(l=>l.uid===state.selectedLayerUid); if(idx<0)return;
-  state.layers.splice(idx,1); const next=state.layers[Math.min(idx,state.layers.length-1)]||null; state.selectedLayerUid=next?.uid||null; refreshUI();renderPreview();
+  const removed=state.layers[idx];
+  state.layers.splice(idx,1);
+  for(const config of state.configurations) config.visible=config.visible.filter(id=>id!==removed.id);
+  const next=state.layers[Math.min(idx,state.layers.length-1)]||null; state.selectedLayerUid=next?.uid||null; refreshUI();renderPreview();
 }
 function selectLayer(uid){state.selectedLayerUid=uid;refreshUI();renderPreview();}
 function moveSelected(dx,dy){const l=getSelectedLayer();if(!l)return;l.x+=dx;l.y+=dy;refreshUI();renderPreview();}
 function bringForward(){const i=state.layers.findIndex(l=>l.uid===state.selectedLayerUid);if(i>0){[state.layers[i-1],state.layers[i]]=[state.layers[i],state.layers[i-1]];refreshUI();renderPreview();}}
 function sendBackward(){const i=state.layers.findIndex(l=>l.uid===state.selectedLayerUid);if(i>=0&&i<state.layers.length-1){[state.layers[i],state.layers[i+1]]=[state.layers[i+1],state.layers[i]];refreshUI();renderPreview();}}
 
-function hitTest(x,y){for(const l of state.layers){if(l.visible&&l.resolved&&x>=l.x&&x<l.x+l.width&&y>=l.y&&y<l.y+l.height)return l;}return null;}
+function hitTest(x,y){for(const l of state.layers){if(isLayerVisibleInActiveView(l)&&l.resolved&&x>=l.x&&x<l.x+l.width&&y>=l.y&&y<l.y+l.height)return l;}return null;}
 function canvasPoint(e){const r=canvas.getBoundingClientRect();return {x:(e.clientX-r.left)*canvas.width/r.width,y:(e.clientY-r.top)*canvas.height/r.height};}
 function drawLayer(targetCtx,l){
-  if(!l.visible||!l.resolved)return;
+  if(!isLayerVisibleInActiveView(l)||!l.resolved)return;
   targetCtx.save();
   if(l.shadow?.enabled){
     targetCtx.shadowOffsetX=l.shadow.offsetX;
@@ -331,12 +368,80 @@ function drawLayer(targetCtx,l){
 function renderPreview(){
   ctx.clearRect(0,0,CANVAS_W,CANVAS_H);
   for(let i=state.layers.length-1;i>=0;i--)drawLayer(ctx,state.layers[i]);
-  const s=getSelectedLayer(); if(s&&s.visible&&s.resolved){ctx.save();ctx.strokeStyle='#1e6ba8';ctx.lineWidth=2;ctx.setLineDash([8,5]);ctx.strokeRect(s.x+.5,s.y+.5,s.width-1,s.height-1);ctx.restore();}
+  const s=getSelectedLayer(); if(s&&isLayerVisibleInActiveView(s)&&s.resolved){ctx.save();ctx.strokeStyle='#1e6ba8';ctx.lineWidth=2;ctx.setLineDash([8,5]);ctx.strokeRect(s.x+.5,s.y+.5,s.width-1,s.height-1);ctx.restore();}
 }
 
 function semanticIdInUse(layer,id){
   if(!id) return false;
   return state.layers.some(other=>other!==layer && other.id===id);
+}
+function getActiveConfiguration(){
+  if(state.activeConfigurationId==null) return null;
+  return state.configurations.find(config=>config.id===state.activeConfigurationId)||null;
+}
+function isLayerVisibleInActiveView(layer){
+  const config=getActiveConfiguration();
+  return config ? config.visible.includes(layer.id) : !!layer.visible;
+}
+function setLayerVisibleInActiveView(layer,visible){
+  const config=getActiveConfiguration();
+  if(!config){ layer.visible=!!visible; return layer.visible; }
+  const has=config.visible.includes(layer.id);
+  if(visible&&!has) config.visible.push(layer.id);
+  else if(!visible&&has) config.visible=config.visible.filter(id=>id!==layer.id);
+  return !!visible;
+}
+function makeConfigurationId(title){
+  const raw=String(title??'').trim().toLowerCase();
+  const base=raw.replace(/[^a-z0-9._-]+/g,'-').replace(/^-+|-+$/g,'')||'configuration';
+  let id=base,suffix=2;
+  while(state.configurations.some(config=>config.id===id)) id=base+'-'+suffix++;
+  return id;
+}
+function visibleIdsForActiveView(){ return state.layers.filter(isLayerVisibleInActiveView).map(layer=>layer.id); }
+function createConfiguration(title){
+  const clean=String(title??'').trim();
+  if(!clean) throw new Error('Configuration title must be non-empty.');
+  const config={id:makeConfigurationId(clean),title:clean,visible:visibleIdsForActiveView()};
+  state.configurations.push(config); state.activeConfigurationId=config.id; return config;
+}
+function renameConfiguration(id,title){
+  const config=state.configurations.find(item=>item.id===id);
+  if(!config) throw new Error('Unknown configuration: '+id);
+  const clean=String(title??'').trim();
+  if(!clean) throw new Error('Configuration title must be non-empty.');
+  config.title=clean; return config;
+}
+function deleteConfiguration(id){
+  const index=state.configurations.findIndex(item=>item.id===id);
+  if(index<0) throw new Error('Unknown configuration: '+id);
+  state.configurations.splice(index,1);
+  if(state.activeConfigurationId===id) state.activeConfigurationId=null;
+}
+function selectConfiguration(id){
+  if(id==null){ state.activeConfigurationId=null; return null; }
+  const config=state.configurations.find(item=>item.id===id);
+  if(!config) throw new Error('Unknown configuration: '+id);
+  state.activeConfigurationId=id; return config;
+}
+function replaceSemanticIdInConfigurations(oldId,newId){
+  if(oldId===newId) return;
+  for(const config of state.configurations) config.visible=config.visible.map(id=>id===oldId?newId:id);
+}
+function renameLayerSemanticId(layer,value){
+  const id=validateSemanticId(value,0);
+  if(semanticIdInUse(layer,id)) throw new Error('Semantic ID already used: '+id);
+  const oldId=layer.id;
+  layer.id=id; layer.idMode='custom'; replaceSemanticIdInConfigurations(oldId,id); return id;
+}
+function renderConfigurationBar(){
+  const host=$('configurationTabs'); host.textContent='';
+  $('baseConfigurationBtn').classList.toggle('active',state.activeConfigurationId==null);
+  for(const config of state.configurations){
+    const button=document.createElement('button'); button.type='button'; button.className='configuration-tab'+(config.id===state.activeConfigurationId?' active':''); button.textContent=config.title; button.dataset.configurationId=config.id;
+    button.addEventListener('click',()=>{selectConfiguration(config.id);refreshUI();renderPreview();}); host.appendChild(button);
+  }
+  const active=getActiveConfiguration(); $('renameConfigurationBtn').disabled=!active; $('deleteConfigurationBtn').disabled=!active;
 }
 function renderLabelsEditor(layer){
   const host=$('labelsEditor');host.textContent='';
@@ -361,18 +466,19 @@ function renderLabelsEditor(layer){
   }
 }
 function refreshUI(){
+  renderConfigurationBar();
   const list=$('layerList');list.textContent='';
   if(!state.layers.length){const d=document.createElement('div');d.className='empty';d.textContent='No layers';list.appendChild(d);}
   state.layers.forEach(l=>{
     const row=document.createElement('div');row.className='layer-row'+(l.uid===state.selectedLayerUid?' selected':'');row.dataset.uid=l.uid;row.title=l.id?`${l.id}\n${l.file}`:l.file;
-    const cb=document.createElement('input');cb.type='checkbox';cb.checked=l.visible;cb.setAttribute('aria-label',`Show ${l.file}`);cb.addEventListener('click',e=>e.stopPropagation());cb.addEventListener('change',()=>{l.visible=cb.checked;refreshUI();renderPreview();});
+    const cb=document.createElement('input');cb.type='checkbox';cb.checked=isLayerVisibleInActiveView(l);cb.setAttribute('aria-label',`Show ${l.file}`);cb.addEventListener('click',e=>e.stopPropagation());cb.addEventListener('change',()=>{setLayerVisibleInActiveView(l,cb.checked);refreshUI();renderPreview();});
     const name=document.createElement('span');name.className='layer-name';name.textContent=l.id||l.file;
     const tag=document.createElement('span');tag.className='missing';tag.textContent=l.resolved?'':'MISSING';
     row.append(cb,name,tag);row.addEventListener('click',()=>selectLayer(l.uid));list.appendChild(row);
   });
   const s=getSelectedLayer(), controls=$('selectionControls'); $('noSelection').hidden=!!s;controls.hidden=!s;
   if(s){
-    $('selectedFilename').textContent=s.file;$('semanticIdInput').value=s.id||'';$('idModeBadge').textContent=s.idMode==='custom'?'custom':'auto';$('xInput').value=s.x;$('yInput').value=s.y;$('visibleInput').checked=s.visible;
+    $('selectedFilename').textContent=s.file;$('semanticIdInput').value=s.id||'';$('idModeBadge').textContent=s.idMode==='custom'?'custom':'auto';$('xInput').value=s.x;$('yInput').value=s.y;$('visibleInput').checked=isLayerVisibleInActiveView(s);
     renderLabelsEditor(s);
     $('shadowEnabledInput').checked=!!s.shadow.enabled;$('shadowOffsetXInput').value=s.shadow.offsetX;$('shadowOffsetYInput').value=s.shadow.offsetY;$('shadowBlurInput').value=s.shadow.blur;$('shadowOpacityInput').value=s.shadow.opacity;
     $('shadowSection').classList.toggle('disabled',!s.shadow.enabled);
@@ -394,10 +500,9 @@ function commitSemanticId(){
   const l=getSelectedLayer();if(!l)return;
   try{
     const id=validateSemanticId($('semanticIdInput').value,0);
-    if(semanticIdInUse(l,id)) throw new Error(`Semantic ID already used: ${id}`);
-    setLayerSemanticId(l,id);
+    renameLayerSemanticId(l,id);
   }catch(error){alert(error.message);}
-  refreshUI();
+  refreshUI();renderPreview();
 }
 function commitLabelValue(key,value){
   const l=getSelectedLayer();if(!l)return;
@@ -406,21 +511,27 @@ function commitLabelValue(key,value){
   if(value==='') delete labels[key]; else labels[key]=value;
   const candidate={...l,labels};
   const candidateId=l.idMode==='custom'?l.id:(suggestSemanticId(candidate)||l.id);
-  if(semanticIdInUse(l,candidateId)){alert(`Semantic ID already used: ${candidateId}`);refreshUI();return;}
-  l.labels=labels;syncSuggestedSemanticId(l);refreshUI();
+  if(semanticIdInUse(l,candidateId)){alert('Semantic ID already used: '+candidateId);refreshUI();return;}
+  const oldId=l.id;l.labels=labels;syncSuggestedSemanticId(l);replaceSemanticIdInConfigurations(oldId,l.id);refreshUI();renderPreview();
 }
 function commitCustomLabelType(oldKey,rawKey){
   const l=getSelectedLayer();if(!l)return;
   const key=String(rawKey||'').trim().toUpperCase();
   if(!/^[A-Z][A-Z0-9_-]*$/.test(key)){alert('Label key is invalid.');refreshUI();return;}
   if(key==='UNIT'){alert('UNIT is runtime topology metadata and is not part of Composer v3.');refreshUI();return;}
-  if(key!==oldKey && Object.hasOwn(l.labels||{},key)){alert(`Label key already used: ${key}`);refreshUI();return;}
+  if(key!==oldKey && Object.hasOwn(l.labels||{},key)){alert('Label key already used: '+key);refreshUI();return;}
   const labels={...(l.labels||{})};const value=labels[oldKey]??'';delete labels[oldKey];labels[key]=value;
   const candidate={...l,labels};const candidateId=l.idMode==='custom'?l.id:(suggestSemanticId(candidate)||l.id);
-  if(semanticIdInUse(l,candidateId)){alert(`Semantic ID already used: ${candidateId}`);refreshUI();return;}
-  l.labels=labels;syncSuggestedSemanticId(l);refreshUI();
+  if(semanticIdInUse(l,candidateId)){alert('Semantic ID already used: '+candidateId);refreshUI();return;}
+  const oldId=l.id;l.labels=labels;syncSuggestedSemanticId(l);replaceSemanticIdInConfigurations(oldId,l.id);refreshUI();renderPreview();
 }
-function removeCustomLabel(key){const l=getSelectedLayer();if(!l)return;delete l.labels[key];syncSuggestedSemanticId(l);refreshUI();}
+function removeCustomLabel(key){
+  const l=getSelectedLayer();if(!l)return;
+  const labels={...(l.labels||{})};delete labels[key];
+  const candidate={...l,labels};const candidateId=l.idMode==='custom'?l.id:(suggestSemanticId(candidate)||l.id);
+  if(semanticIdInUse(l,candidateId)){alert('Semantic ID already used: '+candidateId);refreshUI();return;}
+  const oldId=l.id;l.labels=labels;syncSuggestedSemanticId(l);replaceSemanticIdInConfigurations(oldId,l.id);refreshUI();renderPreview();
+}
 function addCustomLabel(){
   const l=getSelectedLayer();if(!l)return;l.labels=l.labels||{};
   let i=1,key='LABEL';while(Object.hasOwn(l.labels,key))key=`LABEL${++i}`;l.labels[key]='';refreshUI();
@@ -428,12 +539,16 @@ function addCustomLabel(){
 function resetSelectedSemanticId(){
   const l=getSelectedLayer();if(!l)return;const suggested=suggestSemanticId(l);
   if(!suggested){alert('No semantic ID can be suggested from the current metadata.');return;}
-  if(semanticIdInUse(l,suggested)){alert(`Semantic ID already used: ${suggested}`);return;}
-  resetSemanticIdToSuggested(l);refreshUI();
+  if(semanticIdInUse(l,suggested)){alert('Semantic ID already used: '+suggested);return;}
+  const oldId=l.id;resetSemanticIdToSuggested(l);replaceSemanticIdInConfigurations(oldId,l.id);refreshUI();renderPreview();
 }
 $('semanticIdInput').addEventListener('change',commitSemanticId);$('semanticIdInput').addEventListener('keydown',e=>{if(e.key==='Enter'){commitSemanticId();e.target.blur();}});
 $('addLabelBtn').addEventListener('click',addCustomLabel);$('resetSuggestedIdBtn').addEventListener('click',resetSelectedSemanticId);
-$('visibleInput').addEventListener('change',()=>{const l=getSelectedLayer();if(l){l.visible=$('visibleInput').checked;refreshUI();renderPreview();}});
+$('baseConfigurationBtn').addEventListener('click',()=>{selectConfiguration(null);refreshUI();renderPreview();});
+$('addConfigurationBtn').addEventListener('click',()=>{const title=prompt('Configuration title:');if(title==null)return;try{createConfiguration(title);refreshUI();renderPreview();}catch(error){alert(error.message);}});
+$('renameConfigurationBtn').addEventListener('click',()=>{const active=getActiveConfiguration();if(!active)return;const title=prompt('Configuration title:',active.title);if(title==null)return;try{renameConfiguration(active.id,title);refreshUI();}catch(error){alert(error.message);}});
+$('deleteConfigurationBtn').addEventListener('click',()=>{const active=getActiveConfiguration();if(!active)return;if(!confirm('Delete visual configuration “'+active.title+'”?'))return;deleteConfiguration(active.id);refreshUI();renderPreview();});
+$('visibleInput').addEventListener('change',()=>{const l=getSelectedLayer();if(l){setLayerVisibleInActiveView(l,$('visibleInput').checked);refreshUI();renderPreview();}});
 $('shadowEnabledInput').addEventListener('change',()=>{const l=getSelectedLayer();if(l){l.shadow.enabled=$('shadowEnabledInput').checked;refreshUI();renderPreview();}});
 function commitShadowNumber(id,key,{integer=false,min=-Infinity,max=Infinity}={}){const l=getSelectedLayer();if(!l)return;const n=Number($(id).value);if(Number.isFinite(n)&&(!integer||Number.isInteger(n))&&n>=min&&n<=max){l.shadow[key]=n;refreshUI();renderPreview();}else refreshUI();}
 $('shadowOffsetXInput').addEventListener('change',()=>commitShadowNumber('shadowOffsetXInput','offsetX',{integer:true}));
@@ -458,7 +573,7 @@ ${blockers.join('\n')}`);return;}const source=`var composer =
 ${JSON.stringify(serializeEmbeddedLayout(),null,2)};
 `;downloadBlob(new Blob([source],{type:'text/javascript'}),'COM_LAYOUT_CONFIG.js');}
 $('exportJsBtn').addEventListener('click',exportJS);
-function getExportBlockers(){return [...new Set(state.layers.filter(l=>l.visible&&!l.resolved).map(l=>l.file))];}
+function getExportBlockers(){return [...new Set(state.layers.filter(l=>isLayerVisibleInActiveView(l)&&!l.resolved).map(l=>l.file))];}
 function buildExportCanvas(){const c=document.createElement('canvas');c.width=CANVAS_W;c.height=CANVAS_H;const cctx=c.getContext('2d');cctx.clearRect(0,0,CANVAS_W,CANVAS_H);for(let i=state.layers.length-1;i>=0;i--)drawLayer(cctx,state.layers[i]);return c;}
 function exportPNG(){const blockers=getExportBlockers();if(blockers.length){alert(`Cannot export PNG. Missing visible assets:\n${blockers.join('\n')}`);return;}const c=buildExportCanvas();c.toBlob(blob=>{if(blob)downloadBlob(blob,'apple2-composition.png');else alert('PNG export failed.');},'image/png');}
 $('exportBtn').addEventListener('click',exportPNG);
