@@ -1,6 +1,6 @@
 var composer =
 {
-  "version": 2,
+  "version": 3,
   "canvas": {
     "width": 1144,
     "height": 1144
@@ -177,8 +177,8 @@ var composer =
       "labels": {
         "PCODE": "LIRON",
         "DCODE": "HD20",
-        "UNIT": "1",
-        "ROLE": "BODY"
+        "ROLE": "BODY",
+        "LAYOUT": "STANDALONE"
       },
       "file": "A2P_HD20.png",
       "x": 164,
@@ -197,7 +197,6 @@ var composer =
       "labels": {
         "PCODE": "LIRON",
         "DCODE": "UNIDISK",
-        "UNIT": "1",
         "ROLE": "BODY"
       },
       "file": "A2P_UNIDISK_left.png",
@@ -217,7 +216,6 @@ var composer =
       "labels": {
         "PCODE": "LIRON",
         "DCODE": "UNIDISK",
-        "UNIT": "2",
         "ROLE": "BODY"
       },
       "file": "A2P_UNIDISK_right.png",
@@ -237,8 +235,8 @@ var composer =
       "labels": {
         "PCODE": "LIRON",
         "DCODE": "HD20",
-        "UNIT": "2",
-        "ROLE": "BODY"
+        "ROLE": "BODY",
+        "LAYOUT": "STACKED"
       },
       "file": "A2P_HD20.png",
       "x": 164,
@@ -268,6 +266,42 @@ var composer =
         "blur": 12,
         "opacity": 0.75
       }
+    }
+  ],
+  "configurations": [
+    {
+      "id": "diskii-peripheral",
+      "title": "DISKII peripheral",
+      "visible": [
+        "SYSTEM.MONITOR",
+        "DISKII.D2.LED",
+        "DISKII.D2.BODY",
+        "DISKII.D1.BODY",
+        "DISKII.GAP",
+        "SYSTEM.CHASSIS",
+        "DISKII.D1.LED",
+        "LIRON.HD20.1.BODY"
+      ]
+    },
+    {
+      "id": "liron",
+      "title": "LIRON",
+      "visible": [
+        "SYSTEM.MONITOR",
+        "SYSTEM.CHASSIS",
+        "LIRON.UNIDISK.1.BODY",
+        "LIRON.UNIDISK.2.BODY",
+        "LIRON.HD20.2.BODY"
+      ]
+    },
+    {
+      "id": "tape",
+      "title": "TAPE",
+      "visible": [
+        "SYSTEM.MONITOR",
+        "SYSTEM.CHASSIS",
+        "SYSTEM.TAPE"
+      ]
     }
   ],
   "assets": {
