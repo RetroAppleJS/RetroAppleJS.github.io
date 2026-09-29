@@ -52,25 +52,8 @@ jobs:
 
       - name: Apply Composer v3 Task 1 implementation
         working-directory: source
-        shell: bash
         run: |
-          node <<'NODE'
-          const fs=require('node:fs');
-          const file='tools/GUI_DEV/apple2-system-composer.html';
-          let s=fs.readFileSync(file,'utf8');
-          const from=`            <div class="field-grid">
-              <div class="field"><label for="slotNInput">SlotN</label><input id="slotNInput" type="number" min="0" max="8" step="1"></div>
-              <div class="field"><label for="runtimeAddressInput">Runtime address</label><input id="runtimeAddressInput" class="runtime-address" type="text" readonly></div>
-            </div>
-`;
-          const to=`                <div class="field-grid">
-                  <div class="field"><label for="slotNInput">SlotN</label><input id="slotNInput" type="number" min="0" max="8" step="1"></div>
-                  <div class="field"><label for="runtimeAddressInput">Runtime address</label><input id="runtimeAddressInput" class="runtime-address" type="text" readonly></div>
-                </div>
-`;
-          if(!s.includes(from)) throw new Error('Could not normalize metadata field-grid indentation');
-          fs.writeFileSync(file,s.replace(from,to));
-          NODE
+          node .github/scripts/normalize-composer-v3-task1.cjs
           node .github/scripts/apply-composer-v3-task1.cjs
 
       - name: Commit Composer v3 Task 1 implementation
