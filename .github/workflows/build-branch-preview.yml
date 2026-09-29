@@ -50,9 +50,9 @@ jobs:
         with:
           node-version: 20
 
-      - name: Test Composer v2 and dataset conversion
+      - name: Test Composer v2, dataset conversion, and runtime layout
         working-directory: source
-        run: node --test tests/apple2_system_composer_v2.test.js tests/composer_v1_dataset_conversion.test.js
+        run: node --test tests/apple2_system_composer_v2.test.js tests/composer_v1_dataset_conversion.test.js tests/apple2_layout_v2.test.js
 
       - name: Build branch preview distro
         working-directory: source
