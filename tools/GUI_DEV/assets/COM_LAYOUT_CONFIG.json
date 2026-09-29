@@ -176,7 +176,8 @@
       "labels": {
         "PCODE": "LIRON",
         "DCODE": "HD20",
-        "ROLE": "BODY"
+        "ROLE": "BODY",
+        "LAYOUT": "STANDALONE"
       },
       "file": "A2P_HD20.png",
       "x": 164,
@@ -233,7 +234,8 @@
       "labels": {
         "PCODE": "LIRON",
         "DCODE": "HD20",
-        "ROLE": "BODY"
+        "ROLE": "BODY",
+        "LAYOUT": "STACKED"
       },
       "file": "A2P_HD20.png",
       "x": 164,
@@ -263,6 +265,42 @@
         "blur": 12,
         "opacity": 0.75
       }
+    }
+  ],
+  "configurations": [
+    {
+      "id": "diskii-peripheral",
+      "title": "DISKII peripheral",
+      "visible": [
+        "SYSTEM.MONITOR",
+        "DISKII.D2.LED",
+        "DISKII.D2.BODY",
+        "DISKII.D1.BODY",
+        "DISKII.GAP",
+        "SYSTEM.CHASSIS",
+        "DISKII.D1.LED",
+        "LIRON.HD20.1.BODY"
+      ]
+    },
+    {
+      "id": "liron",
+      "title": "LIRON",
+      "visible": [
+        "SYSTEM.MONITOR",
+        "SYSTEM.CHASSIS",
+        "LIRON.UNIDISK.1.BODY",
+        "LIRON.UNIDISK.2.BODY",
+        "LIRON.HD20.2.BODY"
+      ]
+    },
+    {
+      "id": "tape",
+      "title": "TAPE",
+      "visible": [
+        "SYSTEM.MONITOR",
+        "SYSTEM.CHASSIS",
+        "SYSTEM.TAPE"
+      ]
     }
   ]
 }
