@@ -50,6 +50,21 @@ jobs:
         with:
           node-version: 20
 
+      - name: Apply Composer v3 Task 3 implementation
+        working-directory: source
+        shell: bash
+        run: |
+          node .github/scripts/apply-composer-v3-task3.cjs
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tools/GUI_DEV/apple2-system-composer.html
+          if git diff --cached --quiet; then
+            echo "Composer Task 3 implementation already applied."
+          else
+            git commit -m "feat: add Composer unload images command [skip ci]"
+            git push origin "HEAD:${{ steps.branch.outputs.branch }}"
+          fi
+
       - name: Test Composer v3 unload-images behavior
         working-directory: source
         run: node --test tests/apple2_system_composer_v3_unload_images.test.js
