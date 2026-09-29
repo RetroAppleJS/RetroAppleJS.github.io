@@ -14,7 +14,7 @@
 
 - Composer structured exports write `version: 2` only.
 - Runtime addresses are always `A2P.<slotN>.<semantic-id>`.
-- `slotN: 0` is reserved for non-slot system visuals.
+- Valid `slotN` values are integers `0..8`; `slotN: 0` is reserved for non-slot system visuals.
 - `id` is mandatory in v2, may contain only letters, digits, `.`, `_`, and `-`, and may not contain whitespace.
 - `(slotN,id)` must be unique within one layout.
 - `labels` is an open key/value object; primary keys are `PCODE`, `DCODE`, and `ROLE`.
@@ -49,7 +49,9 @@ Create `tests/apple2_system_composer_v2.test.js` that loads/extracts the Compose
 
 - serialized top-level `version === 2`
 - every serialized layer contains `id`, `slotN`, and `labels`
-- `slotN: 0` validates
+- `slotN: 0` validates as the reserved system namespace
+- `slotN: 8` validates as the highest emulator slot namespace
+- `slotN: 9` is rejected
 - duplicate `A2P.<slotN>.<id>` addresses are rejected
 - identical `id` values in different slots are accepted
 - ids containing whitespace or unsupported characters are rejected
@@ -71,7 +73,7 @@ In `tools/GUI_DEV/apple2-system-composer.html`:
 
 - set `LAYOUT_VERSION=2`
 - add `validateSemanticId(raw,index)`
-- add `validateSlotN(raw,index)` accepting integer `0..7`
+- add `validateSlotN(raw,index)` accepting integer `0..8`
 - add `validateLabels(raw,index)` returning a plain object with canonical uppercase keys
 - add `layoutAddress(slotN,id)` returning `A2P.${slotN}.${id}`
 - make v2 duplicate detection operate on generated runtime addresses
@@ -237,6 +239,7 @@ Create `tests/apple2_layout_v2.test.js` covering:
 
 - valid v2 layer normalizes with `address: "A2P.7.DISKII.D2.LED"`
 - `slotN:0` system layer normalizes correctly
+- `slotN:8` normalizes correctly and `slotN:9` rejects
 - duplicate qualified addresses reject
 - same semantic id in slots 6 and 7 is valid
 - labels survive normalization
@@ -257,7 +260,7 @@ Expected: FAIL because `COM_A2P_LAYOUT.js` accepts only version 1 and has no slo
 
 - [ ] **Step 3: Implement `layoutAddress(slotN,id)` and v2 validators**
 
-In `res/COM_A2P_LAYOUT.js`, add focused helpers for semantic id, slotN, labels, and qualified-address generation.
+In `res/COM_A2P_LAYOUT.js`, add focused helpers for semantic id, slotN `0..8`, labels, and qualified-address generation.
 
 - [ ] **Step 4: Implement `normalizeLayout(raw)`**
 
