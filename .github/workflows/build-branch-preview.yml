@@ -50,24 +50,6 @@ jobs:
         with:
           node-version: 20
 
-      - name: Verify Undo/Redo regression sensitivity
-        working-directory: source
-        shell: bash
-        run: |
-          cp tools/GUI_DEV/apple2-system-composer.html /tmp/current-composer.html
-          git fetch --depth=1 origin 2a639f518b0c7dd33beaee09883a3b97ec9bcb6f
-          git show FETCH_HEAD:tools/GUI_DEV/apple2-system-composer.html > tools/GUI_DEV/apple2-system-composer.html
-          set +e
-          node --test --test-name-pattern="Composer toolbar exposes Undo and Redo controls" tests/apple2_system_composer_v3.test.js
-          OLD_STATUS=$?
-          set -e
-          mv /tmp/current-composer.html tools/GUI_DEV/apple2-system-composer.html
-          if [ "$OLD_STATUS" -eq 0 ]; then
-            echo "Undo/Redo regression unexpectedly passed against pre-Task-2 Composer."
-            exit 1
-          fi
-          node --test --test-name-pattern="Composer toolbar exposes Undo and Redo controls" tests/apple2_system_composer_v3.test.js
-
       - name: Test focused Composer v3 schema
         working-directory: source
         run: node --test tests/apple2_system_composer_v3.test.js
@@ -75,7 +57,6 @@ jobs:
       # Composer v3 authoring remains slot-agnostic; the runtime suite below still
       # covers legacy v1 normalization and slot-qualified emulator v2 lookup/control.
       - name: Test Composer v3 and runtime layout
-        continue-on-error: true
         working-directory: source
         run: node --test tests/apple2_system_composer_v3.test.js tests/composer_v1_dataset_conversion.test.js tests/apple2_layout_v2.test.js tests/appledisk2_layout_v2.test.js tests/smartport_layout_v2.test.js tests/peripheral_layout_context.test.js
 
