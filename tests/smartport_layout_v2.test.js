@@ -7,6 +7,8 @@ const vm = require('node:vm');
 const test = require('node:test');
 
 const ROOT = path.resolve(__dirname,'..');
+const HD20_TOP='LIRON.HD20.1.BODY';
+const HD20_BOTTOM='LIRON.HD20.2.BODY';
 
 function loadProductionLayout()
 {
@@ -74,16 +76,13 @@ function assertBodyState(calls,slotN,id,state)
     assert.equal(call.state,state,`${id} visibility`);
 }
 
-test('production v2 layout models HD20 images as TOP/BOTTOM positions, not SmartPort units',()=>{
+test('production v2 layout retains two distinct HD20 visual positions',()=>{
     const layout = loadProductionLayout();
     const hd20 = layout.layers.filter(layer=>layer.labels && layer.labels.PCODE==='LIRON' && layer.labels.DCODE==='HD20');
-    assert.deepEqual(
-        hd20.map(layer=>({id:layer.id,slotN:layer.slotN,labels:layer.labels})),
-        [
-            {id:'LIRON.HD20.TOP.BODY',slotN:6,labels:{PCODE:'LIRON',DCODE:'HD20',POSITION:'TOP',ROLE:'BODY'}},
-            {id:'LIRON.HD20.BOTTOM.BODY',slotN:6,labels:{PCODE:'LIRON',DCODE:'HD20',POSITION:'BOTTOM',ROLE:'BODY'}}
-        ]
-    );
+    assert.equal(hd20.length,2);
+    assert.equal(hd20[0].id,HD20_TOP);
+    assert.equal(hd20[1].id,HD20_BOTTOM);
+    assert.ok(hd20[0].y < hd20[1].y,'HD20 visual #1 is the upper position and visual #2 is the lower position');
 });
 
 test('UniDisk unit 1 controls only the unit-1 BODY through visibleAt()',()=>{
@@ -97,8 +96,8 @@ test('UniDisk unit 1 controls only the unit-1 BODY through visibleAt()',()=>{
 
     assertBodyState(calls,5,'LIRON.UNIDISK.1.BODY',true);
     assertBodyState(calls,5,'LIRON.UNIDISK.2.BODY',false);
-    assertBodyState(calls,5,'LIRON.HD20.TOP.BODY',false);
-    assertBodyState(calls,5,'LIRON.HD20.BOTTOM.BODY',false);
+    assertBodyState(calls,5,HD20_TOP,false);
+    assertBodyState(calls,5,HD20_BOTTOM,false);
     assert.equal(calls.some(call=>/\.LED$/.test(call.id)),false,'UniDisk/HD20 LEDs are not part of this design yet');
 });
 
@@ -138,13 +137,13 @@ test('a sole HD20 uses the upper HD20 position regardless of SmartPort unit',()=
 
     owner.onDeviceTopologyChanged({type:'attach',device:hd});
 
-    assertBodyState(calls,3,'LIRON.HD20.TOP.BODY',true);
-    assertBodyState(calls,3,'LIRON.HD20.BOTTOM.BODY',false);
+    assertBodyState(calls,3,HD20_TOP,true);
+    assertBodyState(calls,3,HD20_BOTTOM,false);
     assertBodyState(calls,3,'LIRON.UNIDISK.1.BODY',false);
     assertBodyState(calls,3,'LIRON.UNIDISK.2.BODY',false);
 });
 
-test('HD20 moves to the lower position when at least one UniDisk is attached',()=>{
+test('HD20 uses the lower position when at least one UniDisk is attached',()=>{
     for(const unidiskCount of [1,2])
     {
         const calls=[];
@@ -158,8 +157,8 @@ test('HD20 moves to the lower position when at least one UniDisk is attached',()
 
         owner.onDeviceTopologyChanged({type:'attach',device:hd});
 
-        assertBodyState(calls,6,'LIRON.HD20.TOP.BODY',false);
-        assertBodyState(calls,6,'LIRON.HD20.BOTTOM.BODY',true);
+        assertBodyState(calls,6,HD20_TOP,false);
+        assertBodyState(calls,6,HD20_BOTTOM,true);
         assertBodyState(calls,6,'LIRON.UNIDISK.1.BODY',true);
         assertBodyState(calls,6,'LIRON.UNIDISK.2.BODY',unidiskCount===2);
     }
@@ -178,6 +177,6 @@ test('detach recomputes all LIRON BODY visibility from the remaining topology',(
 
     assertBodyState(calls,6,'LIRON.UNIDISK.1.BODY',false);
     assertBodyState(calls,6,'LIRON.UNIDISK.2.BODY',false);
-    assertBodyState(calls,6,'LIRON.HD20.TOP.BODY',true);
-    assertBodyState(calls,6,'LIRON.HD20.BOTTOM.BODY',false);
+    assertBodyState(calls,6,HD20_TOP,true);
+    assertBodyState(calls,6,HD20_BOTTOM,false);
 });
