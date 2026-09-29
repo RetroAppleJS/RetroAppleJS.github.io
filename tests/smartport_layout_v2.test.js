@@ -76,9 +76,9 @@ function assertBodyState(calls,slotN,id,state)
     assert.equal(call.state,state,`${id} visibility`);
 }
 
-test('production v2 layout retains two distinct HD20 visual positions',()=>{
+test('production v3 layout retains two distinct HD20 BODY visual positions',()=>{
     const layout = loadProductionLayout();
-    const hd20 = layout.layers.filter(layer=>layer.labels && layer.labels.PCODE==='LIRON' && layer.labels.DCODE==='HD20');
+    const hd20 = layout.layers.filter(layer=>layer.labels && layer.labels.PCODE==='LIRON' && layer.labels.DCODE==='HD20' && layer.labels.ROLE==='BODY');
     assert.equal(hd20.length,2);
     assert.equal(hd20[0].id,HD20_TOP);
     assert.equal(hd20[1].id,HD20_BOTTOM);
@@ -100,7 +100,7 @@ test('a single UniDisk occupies the first visual position regardless of SmartPor
         assertBodyState(calls,5,'LIRON.UNIDISK.2.BODY',false);
         assertBodyState(calls,5,HD20_TOP,false);
         assertBodyState(calls,5,HD20_BOTTOM,false);
-        assert.equal(calls.some(call=>/\.LED$/.test(call.id)),false,'UniDisk/HD20 LEDs are not part of this design yet');
+        assert.equal(calls.some(call=>/\.LED$/.test(call.id)),false,'legacy layout fixture without LED metadata must not receive LED writes');
     }
 });
 
