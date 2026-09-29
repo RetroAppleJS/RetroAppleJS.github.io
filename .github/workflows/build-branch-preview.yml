@@ -50,6 +50,7 @@ jobs:
         with:
           node-version: 20
 
+      # The runtime suite covers legacy v1 normalization and v2 slot-qualified lookup/control APIs.
       - name: Test Composer v2, dataset conversion, and runtime layout
         working-directory: source
         run: node --test tests/apple2_system_composer_v2.test.js tests/composer_v1_dataset_conversion.test.js tests/apple2_layout_v2.test.js
