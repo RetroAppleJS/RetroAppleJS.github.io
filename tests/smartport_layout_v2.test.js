@@ -180,3 +180,15 @@ test('detach recomputes all LIRON BODY visibility from the remaining topology',(
     assertBodyState(calls,6,HD20_TOP,true);
     assertBodyState(calls,6,HD20_BOTTOM,false);
 });
+
+test('redecorating an already decorated LIRON card does not repeat layout repaint calls',()=>{
+    const calls=[];
+    const api=loadTopology(calls);
+    const owner=api.decorateLironTopology(makeOwner(6,[device('UNIDISK',1)]));
+    assert.ok(calls.length>0,'first decoration synchronizes the current topology');
+    calls.length=0;
+
+    api.decorateLironTopology(owner);
+
+    assert.equal(calls.length,0,'discovery polling must not repeatedly reapply the same visual state');
+});
