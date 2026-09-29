@@ -119,7 +119,7 @@ test('slot-agnostic 14-layer migration fixture normalizes to stable Composer v3 
 
     assert.equal(output.version,3);
     assert.deepEqual(output.layers.map(layer=>layer.id),expectedIds);
-    assert.deepEqual(output.configurations,[]);
+    assert.deepEqual(output.configurations,input.configurations,'v3 normalization must preserve authored visibility configurations');
 
     assert.equal(output.layers.length,input.layers.length);
     for(let i=0;i<input.layers.length;i++)

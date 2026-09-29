@@ -4121,6 +4121,14 @@ function mergeActionMap(dst,src)
             var slotN = Number(slotID2n(selectedSlot));
             var peripheral = Number.isInteger(slotN) ? io.SLOT2obj(slotN) : null;
             var pcode = peripheralPCODE(peripheral);
+
+            // Navigation is authoritative: rebuild the selected scene from the
+            // live peripheral and its attached devices before presenting it.
+            if(peripheral && typeof(io.syncDeviceLayout) == "function")
+                io.syncDeviceLayout(peripheral);
+            if(peripheral && typeof(peripheral.syncLayoutVisuals) == "function")
+                peripheral.syncLayoutVisuals();
+
             return layout.setPeripheralContext(slotN,pcode);
         }
 

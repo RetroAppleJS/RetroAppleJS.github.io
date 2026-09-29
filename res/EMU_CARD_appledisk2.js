@@ -365,13 +365,17 @@ function AppleDisk2()
     this.setDriveLED = function(deviceN,on)
     {
         var drive = driveLayout(deviceN);
-        if(drive && typeof drive.LED == "function") drive.LED(!!on);
+        var slotN = this.mount ? Number(this.mount.slotN) : NaN;
+        if(drive && typeof drive.LED == "function")
+            drive.LED(!!on,Number.isInteger(slotN) ? slotN : undefined);
     }
 
     this.setDriveLidClosed = function(deviceN,closed)
     {
         var drive = driveLayout(deviceN);
-        if(drive && typeof drive.LID == "function") drive.LID(!!closed);
+        var slotN = this.mount ? Number(this.mount.slotN) : NaN;
+        if(drive && typeof drive.LID == "function")
+            drive.LID(!!closed,Number.isInteger(slotN) ? slotN : undefined);
     }
 
     this.syncDriveVisuals = function()
@@ -382,6 +386,9 @@ function AppleDisk2()
             this.setDriveLidClosed(i,state.diskData[i]!=null);
         }
     };
+
+    // Standard navigation-time visual synchronization hook.
+    this.syncLayoutVisuals = this.syncDriveVisuals;
 
     this.getDiskCatalogContext = function()
     {
