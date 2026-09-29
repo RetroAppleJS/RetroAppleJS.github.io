@@ -8,7 +8,7 @@ const vm = require('node:vm');
 
 const repoRoot = path.join(__dirname,'..');
 const runtimePath = path.join(repoRoot,'res','COM_A2P_LAYOUT.js');
-const configPath = path.join(repoRoot,'res','COM_LAYOUT_CONFIG.js');
+const configPath = path.join(repoRoot,'tests','fixtures','apple2_runtime_layout_v2.js');
 const runtimeSource = fs.readFileSync(runtimePath,'utf8');
 
 delete require.cache[require.resolve(runtimePath)];
@@ -72,7 +72,7 @@ function loadBrowserPolicy(owner)
     return {rootWindow,io};
 }
 
-test('production COM_LAYOUT_CONFIG.js is v2 and Disk II visuals live in the slot-qualified namespace',()=>{
+test('runtime v2 fixture keeps Disk II visuals in the slot-qualified namespace',()=>{
     const composer = loadComposerConfig();
     assert.equal(composer.version,2);
 

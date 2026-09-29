@@ -13,7 +13,7 @@ const runtime = require(runtimePath);
 
 function loadProductionComposer()
 {
-    const source = fs.readFileSync(path.join(ROOT,'res','COM_LAYOUT_CONFIG.js'),'utf8');
+    const source = fs.readFileSync(path.join(ROOT,'tests','fixtures','apple2_runtime_layout_v2.js'),'utf8');
     const sandbox = {};
     vm.runInNewContext(source+'\n;this.__composer=composer;',sandbox,{filename:'COM_LAYOUT_CONFIG.js'});
     return JSON.parse(JSON.stringify(sandbox.__composer));

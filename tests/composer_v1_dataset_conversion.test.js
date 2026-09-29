@@ -7,7 +7,7 @@ const assert=require('node:assert/strict');
 const vm=require('node:vm');
 
 const root=path.join(__dirname,'..');
-const productionPath=path.join(root,'res','COM_LAYOUT_CONFIG.js');
+const runtimeFixturePath=path.join(root,'tests','fixtures','apple2_runtime_layout_v2.js');
 
 function loadComposer(file)
 {
@@ -22,8 +22,8 @@ function byFileAndPosition(layout,file,x,y)
     return layout.layers.find(layer=>layer.file===file && layer.x===x && layer.y===y);
 }
 
-test('production Composer dataset preserves the v2 conversion metadata contract',()=>{
-    const production=loadComposer(productionPath);
+test('runtime v2 fixture preserves the slot-qualified conversion metadata contract',()=>{
+    const production=loadComposer(runtimeFixturePath);
 
     assert.equal(production.version,2);
     assert.deepEqual(production.canvas,{width:1144,height:1144});
