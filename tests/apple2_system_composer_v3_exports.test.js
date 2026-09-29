@@ -179,7 +179,7 @@ test('Composer v3 authoring has no runtime-address controls/helpers while runtim
     assert.doesNotMatch(html,/id="slotNInput"/);
     assert.doesNotMatch(html,/id="runtimeAddressInput"/);
 
-    assert.match(runtimeSource,/visibleAt\s*\(slotN\s*,\s*id\s*,\s*state\s*\)/,'runtime must retain mounted-slot visibility API');
-    assert.match(runtimeSource,/address\s*\(slotN\s*,\s*id\s*\)/,'runtime must retain slot-qualified address API');
-    assert.match(runtimeSource,/A2P\.\$\{slotN\}\.\$\{id\}/,'runtime address format must stay slot-qualified');
+    assert.match(runtimeSource,/visibleAt\s*=\s*function\s*\(slotN\s*,\s*id\s*,\s*state\s*\)/,'runtime must retain mounted-slot visibility API');
+    assert.match(runtimeSource,/address\s*=\s*function\s*\(slotN\s*,\s*id\s*\)/,'runtime must retain slot-qualified address API');
+    assert.match(runtimeSource,/return\s+"A2P\."\s*\+\s*slotN\s*\+\s*"\."\s*\+\s*id\s*;/,'runtime address format must stay slot-qualified');
 });
