@@ -150,7 +150,7 @@ test('500 ms LIRON activity sync isolates UniDisk LEDs by visual position and fo
 test('the existing surfaceMap_refresh monitor hook samples LIRON LEDs on the same 500 ms dashboard tick',()=>{
     const mainSource=fs.readFileSync(path.join(ROOT,'res','EMU_apple2main.js'),'utf8');
     assert.match(mainSource,/surfaceMap_refresh/,'surface-map refresh event remains registered');
-    assert.match(mainSource,/EMU_DashboardRefresh_s\s*=\s*2/,'dashboard event remains paced at 2 Hz / 500 ms');
+    assert.match(mainSource,/["']EMU_DashboardRefresh_s["']\s*:\s*2/,'dashboard event remains paced at 2 Hz / 500 ms');
     assert.match(mainSource,/deviceToolSurfaceMapMonitoring\(\)/,'the recurring surface-map event invokes the LIRON monitor hook');
 
     const calls=[];
