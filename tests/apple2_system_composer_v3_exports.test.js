@@ -108,11 +108,12 @@ function loadExportCore()
 const expectedIds=[
     'SYSTEM.MONITOR','SYSTEM.TAPE','DISKII.D2.LED','DISKII.D1.LED',
     'DISKII.D2.LID','DISKII.D1.LID','DISKII.D2.BODY','DISKII.D1.BODY',
-    'DISKII.GAP','LIRON.HD20.1.BODY','LIRON.UNIDISK.1.BODY',
-    'LIRON.UNIDISK.2.BODY','LIRON.HD20.2.BODY','SYSTEM.CHASSIS'
+    'DISKII.GAP','LIRON.HD20.1.LED','LIRON.HD20.1.BODY',
+    'LIRON.UNIDISK.1.LED','LIRON.UNIDISK.1.BODY','LIRON.UNIDISK.2.LED',
+    'LIRON.UNIDISK.2','LIRON.HD20.2.LED','LIRON.HD20.2.BODY','SYSTEM.CHASSIS'
 ];
 
-test('slot-agnostic 14-layer migration fixture normalizes to stable Composer v3 authoring data',()=>{
+test('slot-agnostic 18-layer migration fixture normalizes to stable Composer v3 authoring data',()=>{
     const api=loadExportCore();
     const input=loadMigrationFixture();
     const output=plain(api.validateLayout(input));
