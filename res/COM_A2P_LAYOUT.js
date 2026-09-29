@@ -10,7 +10,8 @@
 
 var root = typeof window != "undefined" ? window : null;
 
-var LAYOUT_VERSION = 1;
+var LAYOUT_VERSION = 2;
+var LEGACY_LAYOUT_VERSION = 1;
 var CANVAS_W = 1144;
 var CANVAS_H = 1144;
 var DISPLAY_SIZE = 1300;
@@ -60,7 +61,7 @@ function validateAssets(raw)
     return assets;
 }
 
-function validateLayerId(rawId,index)
+function validateLegacyLayerId(rawId,index)
 {
     if(rawId === undefined || rawId === null || rawId === "") return null;
     if(typeof rawId != "string" || !rawId.trim())
@@ -68,38 +69,148 @@ function validateLayerId(rawId,index)
     return rawId.trim();
 }
 
-function validateLayout(raw)
+function validateSemanticId(rawId,index)
+{
+    if(typeof rawId != "string" || !rawId.trim())
+        throw new Error("Layer " + (index+1) + " semantic id must be a non-empty string.");
+    var id = rawId.trim();
+    if(!/^[A-Za-z0-9._-]+$/.test(id))
+        throw new Error("Layer " + (index+1) + " semantic id contains unsupported characters: " + id);
+    return id;
+}
+
+function validateSlotN(rawSlotN,index)
+{
+    if(!Number.isInteger(rawSlotN) || rawSlotN < 0 || rawSlotN > 8)
+        throw new Error("Layer " + (index+1) + " slotN must be an integer from 0 through 8.");
+    return rawSlotN;
+}
+
+function validateLabels(raw,index)
 {
     if(!raw || typeof raw != "object" || Array.isArray(raw))
-        throw new Error("Apple II layout must be a JSON object.");
-    if(raw.version !== LAYOUT_VERSION)
-        throw new Error("Unsupported Apple II layout version; expected version " + LAYOUT_VERSION + ".");
-    if(!raw.canvas || raw.canvas.width !== CANVAS_W || raw.canvas.height !== CANVAS_H)
-        throw new Error("Apple II layout canvas must be exactly 1144 x 1144.");
-    if(!Array.isArray(raw.layers))
-        throw new Error("Apple II layout layers must be an array.");
+        throw new Error("Layer " + (index+1) + " labels must be an object.");
 
-    var seenIds = Object.create(null);
+    var labels = {};
+    Object.keys(raw).forEach(function(rawKey)
+    {
+        var key = String(rawKey || "").trim().toUpperCase();
+        if(!key || !/^[A-Z0-9_-]+$/.test(key))
+            throw new Error("Layer " + (index+1) + " has an invalid metadata label key: " + rawKey);
+        if(Object.prototype.hasOwnProperty.call(labels,key))
+            throw new Error("Layer " + (index+1) + " has duplicate metadata label " + key + ".");
+        if(typeof raw[rawKey] != "string")
+            throw new Error("Layer " + (index+1) + " metadata label " + key + " must have a string value.");
+        labels[key] = raw[rawKey];
+    });
+    return labels;
+}
+
+function layoutAddress(slotN,id)
+{
+    return "A2P." + slotN + "." + id;
+}
+
+function validateLayerGeometry(layer,index)
+{
+    if(!layer || typeof layer != "object" || Array.isArray(layer))
+        throw new Error("Layer " + (index+1) + " is malformed.");
+    if(typeof layer.file != "string" || !layer.file.trim())
+        throw new Error("Layer " + (index+1) + " filename must be non-empty.");
+    if(!Number.isInteger(layer.x) || !Number.isInteger(layer.y))
+        throw new Error("Layer " + (index+1) + " X/Y coordinates must be integer pixels.");
+    if(typeof layer.visible != "boolean")
+        throw new Error("Layer " + (index+1) + " visibility must be boolean.");
+}
+
+function labelsForLegacySemanticId(id)
+{
+    var parts = String(id || "").split(".");
+    if(parts[0] != "DISKII") return {};
+    if(parts.length == 2)
+        return {PCODE:"DISKII",ROLE:parts[1]};
+    if(parts.length >= 3)
+        return {PCODE:"DISKII",DCODE:parts[1],ROLE:parts.slice(2).join(".")};
+    return {PCODE:"DISKII"};
+}
+
+function legacyDiskIISemanticForFile(filename)
+{
+    switch(String(filename || ""))
+    {
+        case "A2P_DISKII_left.png": return "DISKII.D1.BODY";
+        case "A2P_DISKII_right.png": return "DISKII.D2.BODY";
+        case "A2P_DISKII_gap.png": return "DISKII.GAP";
+    }
+    return null;
+}
+
+function normalizeLegacyIdentity(layer,index)
+{
+    var rawId = validateLegacyLayerId(layer.id,index);
+    var semanticId = null;
+    var slotN = 0;
+    var aliases = [];
+
+    if(rawId)
+    {
+        aliases.push(rawId);
+        if(rawId.indexOf("A2P.DISKII.") === 0)
+        {
+            semanticId = rawId.slice(4);
+            slotN = 7;
+        }
+        else if(rawId.indexOf("A2P.") === 0 && /^[A-Za-z0-9._-]+$/.test(rawId.slice(4)))
+        {
+            semanticId = rawId.slice(4);
+        }
+        else if(/^[A-Za-z0-9._-]+$/.test(rawId))
+        {
+            semanticId = rawId;
+        }
+    }
+
+    if(!semanticId)
+    {
+        semanticId = legacyDiskIISemanticForFile(layer.file);
+        if(semanticId)
+        {
+            slotN = 7;
+            aliases.push("A2P." + semanticId);
+        }
+    }
+
+    if(!semanticId)
+        semanticId = "COMPAT.LAYER" + (index+1);
+
+    return {
+        id: validateSemanticId(semanticId,index),
+        slotN: slotN,
+        labels: labelsForLegacySemanticId(semanticId),
+        aliases: aliases
+    };
+}
+
+function normalizeV2Layout(raw)
+{
+    var seenAddresses = Object.create(null);
     var layers = raw.layers.map(function(layer,index)
     {
-        if(!layer || typeof layer != "object" || Array.isArray(layer))
-            throw new Error("Layer " + (index+1) + " is malformed.");
-        if(typeof layer.file != "string" || !layer.file.trim())
-            throw new Error("Layer " + (index+1) + " filename must be non-empty.");
-        if(!Number.isInteger(layer.x) || !Number.isInteger(layer.y))
-            throw new Error("Layer " + (index+1) + " X/Y coordinates must be integer pixels.");
-        if(typeof layer.visible != "boolean")
-            throw new Error("Layer " + (index+1) + " visibility must be boolean.");
-
-        var id = validateLayerId(layer.id,index);
-        if(id)
-        {
-            if(seenIds[id]) throw new Error("Duplicate Apple II layout layer id: " + id);
-            seenIds[id] = true;
-        }
+        validateLayerGeometry(layer,index);
+        var id = validateSemanticId(layer.id,index);
+        var slotN = validateSlotN(layer.slotN,index);
+        var labels = validateLabels(layer.labels,index);
+        var address = layoutAddress(slotN,id);
+        if(seenAddresses[address])
+            throw new Error("Duplicate Apple II layout address: " + address);
+        seenAddresses[address] = true;
 
         return {
             id: id,
+            slotN: slotN,
+            labels: labels,
+            address: address,
+            aliases: [],
             file: layer.file,
             x: layer.x,
             y: layer.y,
@@ -114,6 +225,59 @@ function validateLayout(raw)
         layers: layers,
         assets: validateAssets(raw.assets)
     };
+}
+
+function normalizeV1Layout(raw)
+{
+    var seenAddresses = Object.create(null);
+    var layers = raw.layers.map(function(layer,index)
+    {
+        validateLayerGeometry(layer,index);
+        var identity = normalizeLegacyIdentity(layer,index);
+        var address = layoutAddress(identity.slotN,identity.id);
+        if(seenAddresses[address])
+            throw new Error("Duplicate Apple II layout address after v1 normalization: " + address);
+        seenAddresses[address] = true;
+
+        return {
+            id: identity.id,
+            slotN: identity.slotN,
+            labels: identity.labels,
+            address: address,
+            aliases: identity.aliases,
+            file: layer.file,
+            x: layer.x,
+            y: layer.y,
+            visible: layer.visible,
+            shadow: validateShadow(layer.shadow,index)
+        };
+    });
+
+    return {
+        version: LAYOUT_VERSION,
+        canvas: {width:CANVAS_W,height:CANVAS_H},
+        layers: layers,
+        assets: validateAssets(raw.assets)
+    };
+}
+
+function normalizeLayout(raw)
+{
+    if(!raw || typeof raw != "object" || Array.isArray(raw))
+        throw new Error("Apple II layout must be a JSON object.");
+    if(raw.version !== LAYOUT_VERSION && raw.version !== LEGACY_LAYOUT_VERSION)
+        throw new Error("Unsupported Apple II layout version: " + raw.version + ".");
+    if(!raw.canvas || raw.canvas.width !== CANVAS_W || raw.canvas.height !== CANVAS_H)
+        throw new Error("Apple II layout canvas must be exactly 1144 x 1144.");
+    if(!Array.isArray(raw.layers))
+        throw new Error("Apple II layout layers must be an array.");
+
+    return raw.version === LAYOUT_VERSION ? normalizeV2Layout(raw) : normalizeV1Layout(raw);
+}
+
+function validateLayout(raw)
+{
+    return normalizeLayout(raw);
 }
 
 function assetURL(filename,layout)
@@ -240,20 +404,6 @@ function applyLayerVisibility(entry,state)
     return state;
 }
 
-function runtimeLayerIdForFile(filename)
-{
-    switch(String(filename || ""))
-    {
-        case "A2P_DISKII_left.png":
-            return "A2P.DISKII.D1.BODY";
-        case "A2P_DISKII_right.png":
-            return "A2P.DISKII.D2.BODY";
-        case "A2P_DISKII_gap.png":
-            return "A2P.DISKII.GAP";
-    }
-    return null;
-}
-
 function renderLayout(rootWindow,layout)
 {
     var canvas = rootWindow.document.createElement("canvas");
@@ -269,7 +419,7 @@ function renderLayout(rootWindow,layout)
     });
 }
 
-function buildDOMComposition(doc,layout,registry)
+function buildDOMComposition(doc,layout,registry,aliasRegistry)
 {
     var host = doc.createElement("div");
     host.id = "a2p-system-layout";
@@ -288,18 +438,16 @@ function buildDOMComposition(doc,layout,registry)
     {
         var layer = layout.layers[i];
         var img = doc.createElement("img");
-        var runtimeId = layer.id || runtimeLayerIdForFile(layer.file);
+        var address = layer.address || layoutAddress(layer.slotN,layer.id);
 
         img.src = assetURL(layer.file,layout);
         img.alt = "";
         img.draggable = false;
         img.dataset.layerIndex = String(i);
         img.dataset.file = layer.file;
-        if(runtimeId)
-        {
-            layer.id = runtimeId;
-            img.dataset.layerId = runtimeId;
-        }
+        img.dataset.layerId = layer.id;
+        img.dataset.layoutAddress = address;
+        img.dataset.slotN = String(layer.slotN);
         img.style.position = "absolute";
         img.style.left = layer.x + "px";
         img.style.top = layer.y + "px";
@@ -320,17 +468,36 @@ function buildDOMComposition(doc,layout,registry)
 
         host.appendChild(img);
 
-        if(runtimeId && registry)
-            registry[runtimeId] = {id:runtimeId,model:layer,element:img};
+        if(registry)
+        {
+            var entry = {
+                id: layer.id,
+                address: address,
+                slotN: layer.slotN,
+                labels: layer.labels || {},
+                model: layer,
+                element: img
+            };
+            registry[address] = entry;
+
+            if(aliasRegistry && Array.isArray(layer.aliases))
+            {
+                for(var a=0;a<layer.aliases.length;a++)
+                {
+                    var alias = layer.aliases[a];
+                    if(alias && !aliasRegistry[alias]) aliasRegistry[alias] = entry;
+                }
+            }
+        }
     }
 
     return host;
 }
-
 function LAYOUT(rootWindow)
 {
     var self = this;
     var layersById = Object.create(null);
+    var layersByAlias = Object.create(null);
     var pending = Object.create(null);
 
     this.root = rootWindow || root || null;
@@ -374,6 +541,12 @@ function LAYOUT(rootWindow)
     };
 
     this.validateLayout = validateLayout;
+    this.normalizeLayout = normalizeLayout;
+    this.layoutAddress = layoutAddress;
+    this.address = function(slotN,id)
+    {
+        return layoutAddress(validateSlotN(slotN,0),validateSemanticId(id,0));
+    };
     this.assetURL = assetURL;
     this.drawComposition = drawComposition;
     this.renderLayout = renderLayout;
@@ -390,32 +563,78 @@ function LAYOUT(rootWindow)
         });
     };
 
+    function resolveLayerEntry(id)
+    {
+        return layersById[id] || layersByAlias[id] || null;
+    }
+
     this.getLayer = function(id)
     {
-        return layersById[id] || null;
+        return resolveLayerEntry(id);
     };
 
     this.visible = function(id,state)
     {
+        var entry = resolveLayerEntry(id);
         if(state === undefined)
         {
-            if(layersById[id]) return layersById[id].model.visible;
+            if(entry) return entry.model.visible;
             if(Object.prototype.hasOwnProperty.call(pending,id)) return pending[id];
             return undefined;
         }
 
         state = !!state;
-        if(!layersById[id])
+        if(!entry)
         {
             pending[id] = state;
             return state;
         }
 
-        return applyLayerVisibility(layersById[id],state);
+        return applyLayerVisibility(entry,state);
+    };
+
+    this.visibleAt = function(slotN,id,state)
+    {
+        return self.visible(self.address(slotN,id),state);
+    };
+
+    this.find = function(query)
+    {
+        if(!query || typeof query != "object" || Array.isArray(query)) return [];
+        if(!self.lastLayout || !Array.isArray(self.lastLayout.layers)) return [];
+
+        var queryKeys = Object.keys(query);
+        var matches = [];
+        for(var i=0;i<self.lastLayout.layers.length;i++)
+        {
+            var layer = self.lastLayout.layers[i];
+            var entry = layersById[layer.address];
+            if(!entry) continue;
+            var matched = true;
+
+            for(var q=0;q<queryKeys.length;q++)
+            {
+                var rawKey = queryKeys[q];
+                if(rawKey == "slotN")
+                {
+                    if(layer.slotN !== query[rawKey]) { matched = false; break; }
+                    continue;
+                }
+
+                var key = String(rawKey).toUpperCase();
+                if(!layer.labels || layer.labels[key] !== query[rawKey])
+                {
+                    matched = false;
+                    break;
+                }
+            }
+
+            if(matched) matches.push(entry);
+        }
+        return matches;
     };
 
     this.setVisible = this.visible;
-
     this.visibleByFile = function(filename,state)
     {
         filename = String(filename || "");
@@ -474,7 +693,8 @@ function LAYOUT(rootWindow)
                 if(oldHost && oldHost.parentNode) oldHost.parentNode.removeChild(oldHost);
 
                 var registry = Object.create(null);
-                var host = buildDOMComposition(doc,layout,registry);
+                var aliasRegistry = Object.create(null);
+                var host = buildDOMComposition(doc,layout,registry,aliasRegistry);
 
                 /*
                  * Keep the composed hardware as a true background layer.  The
@@ -505,11 +725,13 @@ function LAYOUT(rootWindow)
                     tab.appendChild(host);
 
                 layersById = registry;
+                layersByAlias = aliasRegistry;
                 Object.keys(pending).forEach(function(id)
                 {
-                    if(layersById[id])
+                    var entry = resolveLayerEntry(id);
+                    if(entry)
                     {
-                        applyLayerVisibility(layersById[id],pending[id]);
+                        applyLayerVisibility(entry,pending[id]);
                         delete pending[id];
                     }
                 });
