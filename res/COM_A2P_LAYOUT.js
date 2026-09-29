@@ -2,7 +2,7 @@
  * COM_A2P_LAYOUT.js
  *
  * Runtime HTML compositor and control API for the emulator tab background.
- * It consumes the version-1 layout object embedded in EMU_apple2main.js.
+ * It consumes Composer v2 layouts and normalizes legacy v1 layouts for compatibility.
  * Embedded PNG data URLs are used directly when present, with the legacy
  * asset directory retained as a compatibility fallback for non-embedded layouts.
  */
@@ -519,23 +519,40 @@ function LAYOUT(rootWindow)
         return candidate || self.root || root || null;
     }
 
-    function setDiskLayer(id,state)
+    function mountedDiskIISlotN(explicitSlotN)
     {
-        return self.visible(id,state);
+        var slotN = explicitSlotN;
+        if(slotN === undefined || slotN === null)
+        {
+            var rootWindow = resolveRoot();
+            var owner = rootWindow && rootWindow.oEMU && rootWindow.oEMU.component && rootWindow.oEMU.component.IO
+                ? rootWindow.oEMU.component.IO.AppleDisk2
+                : null;
+            slotN = owner && owner.mount ? Number(owner.mount.slotN) : NaN;
+        }
+        slotN = Number(slotN);
+        return Number.isInteger(slotN) && slotN >= 0 && slotN <= 8 ? slotN : null;
+    }
+
+    function setDiskLayer(id,state,slotN)
+    {
+        slotN = mountedDiskIISlotN(slotN);
+        if(slotN === null) return false;
+        return self.visibleAt(slotN,id,state);
     }
 
     this.A2P = {
         DISKII: {
-            GAP: function(on){ return setDiskLayer("A2P.DISKII.GAP",on); },
+            GAP: function(on,slotN){ return setDiskLayer("DISKII.GAP",on,slotN); },
             D1: {
-                BODY: function(on){ return setDiskLayer("A2P.DISKII.D1.BODY",on); },
-                LED: function(on){ return setDiskLayer("A2P.DISKII.D1.LED",on); },
-                LID: function(open){ return setDiskLayer("A2P.DISKII.D1.LID",open); }
+                BODY: function(on,slotN){ return setDiskLayer("DISKII.D1.BODY",on,slotN); },
+                LED: function(on,slotN){ return setDiskLayer("DISKII.D1.LED",on,slotN); },
+                LID: function(open,slotN){ return setDiskLayer("DISKII.D1.LID",open,slotN); }
             },
             D2: {
-                BODY: function(on){ return setDiskLayer("A2P.DISKII.D2.BODY",on); },
-                LED: function(on){ return setDiskLayer("A2P.DISKII.D2.LED",on); },
-                LID: function(open){ return setDiskLayer("A2P.DISKII.D2.LID",open); }
+                BODY: function(on,slotN){ return setDiskLayer("DISKII.D2.BODY",on,slotN); },
+                LED: function(on,slotN){ return setDiskLayer("DISKII.D2.LED",on,slotN); },
+                LID: function(open,slotN){ return setDiskLayer("DISKII.D2.LID",open,slotN); }
             }
         }
     };
@@ -795,34 +812,38 @@ function installDeviceAttachmentPolicies(rootWindow)
 
             if(!info.layout)
             {
-                var bodyId = "A2P.DISKII." + code + ".BODY";
-                var prefix = "A2P.DISKII." + code + ".";
+                var slotN = owner.mount ? Number(owner.mount.slotN) : NaN;
+                if(!Number.isInteger(slotN) || slotN < 0 || slotN > 8) return;
+
+                var bodyId = "DISKII." + code + ".BODY";
+                var prefix = "DISKII." + code + ".";
 
                 info.layout = {
                     attached: [
-                        {id: bodyId, visible: true},
-                        {id: prefix + "LED", visible: false},
-                        {id: prefix + "LID", visible: false}
+                        {slotN: slotN, id: bodyId, visible: true},
+                        {slotN: slotN, id: prefix + "LED", visible: false},
+                        {slotN: slotN, id: prefix + "LID", visible: false}
                     ],
                     detached: [
-                        {id: bodyId, visible: false},
-                        {id: prefix + "LED", visible: false},
-                        {id: prefix + "LID", visible: false}
+                        {slotN: slotN, id: bodyId, visible: false},
+                        {slotN: slotN, id: prefix + "LED", visible: false},
+                        {slotN: slotN, id: prefix + "LID", visible: false}
                     ]
                 };
                 changed = true;
             }
         });
 
+        var gapSlotN = owner.mount ? Number(owner.mount.slotN) : NaN;
         var gapRule = {
             id: "DISKII.GAP.BOTH_DRIVES",
             when: {allAttached: ["D1","D2"]},
-            attached: [
-                {id: "A2P.DISKII.GAP", visible: true}
-            ],
-            detached: [
-                {id: "A2P.DISKII.GAP", visible: false}
-            ]
+            attached: Number.isInteger(gapSlotN) && gapSlotN >= 0 && gapSlotN <= 8 ? [
+                {slotN: gapSlotN, id: "DISKII.GAP", visible: true}
+            ] : [],
+            detached: Number.isInteger(gapSlotN) && gapSlotN >= 0 && gapSlotN <= 8 ? [
+                {slotN: gapSlotN, id: "DISKII.GAP", visible: false}
+            ] : []
         };
 
         if(!Array.isArray(owner.layoutRules))
@@ -936,8 +957,13 @@ function installDeviceAttachmentPolicies(rootWindow)
         var layout = rootWindow.oLAYOUT || (rootWindow.oCOM && rootWindow.oCOM.LAYOUT);
         var changed = false;
 
-        if(target.id && layout && typeof layout.visible == "function")
-            changed = layout.visible(target.id,state) || changed;
+        if(target.id && layout)
+        {
+            if(target.slotN !== undefined && target.slotN !== null && typeof layout.visibleAt == "function")
+                changed = layout.visibleAt(Number(target.slotN),target.id,state) || changed;
+            else if(typeof layout.visible == "function")
+                changed = layout.visible(target.id,state) || changed;
+        }
 
         if(target.file && layout && typeof layout.visibleByFile == "function")
             changed = layout.visibleByFile(target.file,state) || changed;
