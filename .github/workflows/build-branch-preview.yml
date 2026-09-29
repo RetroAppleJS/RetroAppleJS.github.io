@@ -50,36 +50,12 @@ jobs:
         with:
           node-version: 20
 
-      - name: Apply Peripheral-controls layout context implementation
-        working-directory: source
-        shell: bash
-        run: |
-          if grep -q "this.setPeripheralContext = function" res/COM_A2P_LAYOUT.js; then
-            echo "Context implementation already committed."
-          else
-            node .github/scripts/apply-peripheral-layout-context.cjs
-          fi
-
       # The runtime suite covers legacy v1 normalization, v2 lookup/control APIs,
       # emulator call sites that must remain slot-qualified, and Peripheral-controls
       # context switching between mounted peripheral/device compositions.
       - name: Test Composer v2, dataset conversion, and runtime layout
         working-directory: source
         run: node --test tests/apple2_system_composer_v2.test.js tests/composer_v1_dataset_conversion.test.js tests/apple2_layout_v2.test.js tests/appledisk2_layout_v2.test.js tests/smartport_layout_v2.test.js tests/peripheral_layout_context.test.js
-
-      - name: Commit green context implementation
-        working-directory: source
-        shell: bash
-        run: |
-          git add res/COM_A2P_LAYOUT.js res/EMU_apple2io.js
-          if git diff --cached --quiet; then
-            echo "No implementation changes to commit."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "Implement Peripheral controls layout context switching"
-            git push origin HEAD:${{ steps.branch.outputs.branch }}
-          fi
 
       - name: Build branch preview distro
         working-directory: source
