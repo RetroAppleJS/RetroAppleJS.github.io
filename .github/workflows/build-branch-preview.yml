@@ -50,6 +50,28 @@ jobs:
         with:
           node-version: 20
 
+      - name: Apply Composer v3 Task 1 implementation
+        working-directory: source
+        run: node .github/scripts/apply-composer-v3-task1.cjs
+
+      - name: Commit Composer v3 Task 1 implementation
+        working-directory: source
+        shell: bash
+        run: |
+          if git diff --quiet -- tools/GUI_DEV/apple2-system-composer.html; then
+            echo "Composer Task 1 source already committed."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add tools/GUI_DEV/apple2-system-composer.html
+            git commit -m "feat: add slot-agnostic Composer v3 schema"
+            git push origin HEAD:"${{ steps.branch.outputs.branch }}"
+          fi
+
+      - name: Test focused Composer v3 schema
+        working-directory: source
+        run: node --test tests/apple2_system_composer_v3.test.js
+
       # Composer v3 authoring remains slot-agnostic; the runtime suite below still
       # covers legacy v1 normalization and slot-qualified emulator v2 lookup/control.
       - name: Test Composer v3 and runtime layout
