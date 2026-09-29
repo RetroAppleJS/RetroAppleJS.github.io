@@ -96,6 +96,7 @@ function loadCore()
         extractFunction('validateAssets'),
         extractFunction('validateSemanticId'),
         extractFunction('validateLabels'),
+        extractFunction('validateConfigurations'),
         extractFunction('normalizeComposerDocument'),
         extractFunction('validateLayout'),
         'const state=globalThis.__state;',
@@ -123,6 +124,53 @@ function loadAuthoringCore()
         'globalThis.__api={suggestSemanticId,syncSuggestedSemanticId,setLayerSemanticId,setLayerLabel,resetSemanticIdToSuggested,serializeLayer};'
     ].join('\n');
     vm.runInContext(core,context,{filename:'apple2-system-composer-v3-authoring-core.js'});
+    return context.__api;
+}
+
+function loadConfigurationCore()
+{
+    const context = vm.createContext({console,Map,Set,Object,Array,Number,String,Boolean,Math,JSON,Error});
+    context.__state = {layers:[],configurations:[],activeConfigurationId:null};
+    const core = [
+        "'use strict';",
+        extractFunction('validateSemanticId'),
+        'const state=globalThis.__state;',
+        extractFunction('semanticIdInUse'),
+        extractFunction('validateConfigurations'),
+        extractFunction('getActiveConfiguration'),
+        extractFunction('isLayerVisibleInActiveView'),
+        extractFunction('setLayerVisibleInActiveView'),
+        extractFunction('makeConfigurationId'),
+        extractFunction('visibleIdsForActiveView'),
+        extractFunction('createConfiguration'),
+        extractFunction('renameConfiguration'),
+        extractFunction('deleteConfiguration'),
+        extractFunction('selectConfiguration'),
+        extractFunction('replaceSemanticIdInConfigurations'),
+        extractFunction('renameLayerSemanticId'),
+        'globalThis.__api={state,validateConfigurations,getActiveConfiguration,isLayerVisibleInActiveView,setLayerVisibleInActiveView,createConfiguration,renameConfiguration,deleteConfiguration,selectConfiguration,replaceSemanticIdInConfigurations,renameLayerSemanticId};'
+    ].join('\n');
+    vm.runInContext(core,context,{filename:'apple2-system-composer-v3-config-core.js'});
+    return context.__api;
+}
+
+function loadConfigurationValidationCore()
+{
+    const context = vm.createContext({console,Map,Set,Object,Array,Number,String,Boolean,Math,JSON,Error});
+    const core = [
+        "'use strict';",
+        extractStatement(/const\s+CANVAS_W\s*=\s*1144\s*,\s*CANVAS_H\s*=\s*1144\s*,\s*LAYOUT_VERSION\s*=\s*\d+\s*;/,'Composer canvas/version constants'),
+        extractStatement(/const\s+DEFAULT_SHADOW\s*=\s*Object\.freeze\([^;]+\);/,'DEFAULT_SHADOW'),
+        extractFunction('validateShadow'),
+        extractFunction('validateAssets'),
+        extractFunction('validateSemanticId'),
+        extractFunction('validateLabels'),
+        extractFunction('validateConfigurations'),
+        extractFunction('normalizeComposerDocument'),
+        extractFunction('validateLayout'),
+        'globalThis.__api={validateConfigurations,validateLayout};'
+    ].join('\n');
+    vm.runInContext(core,context,{filename:'apple2-system-composer-v3-config-validation.js'});
     return context.__api;
 }
 
@@ -280,4 +328,121 @@ test('Composer layer list and status display semantic IDs instead of runtime add
     assert.doesNotMatch(refresh,/runtimeAddressForLayer/,'runtime address helper must not drive Composer UI');
     assert.match(refresh,/l\.id/,'layer rows must display the semantic id');
     assert.match(refresh,/s\.id/,'selected-layer status must display the semantic id');
+});
+
+test('Base view uses layer.visible while named configurations use their explicit visible semantic IDs',()=>{
+    const api = loadConfigurationCore();
+    const a = v3Layer({id:'A',visible:true});
+    const b = v3Layer({id:'B',visible:false});
+    api.state.layers = [a,b];
+    api.state.configurations = [{id:'only-b',title:'Only B',visible:['B']}];
+
+    api.selectConfiguration(null);
+    assert.equal(api.isLayerVisibleInActiveView(a),true);
+    assert.equal(api.isLayerVisibleInActiveView(b),false);
+
+    api.selectConfiguration('only-b');
+    assert.equal(api.isLayerVisibleInActiveView(a),false);
+    assert.equal(api.isLayerVisibleInActiveView(b),true);
+    api.setLayerVisibleInActiveView(a,true);
+    api.setLayerVisibleInActiveView(b,false);
+    assert.deepEqual(plain(api.state.configurations[0].visible),['A']);
+    assert.equal(a.visible,true,'named-view edits must not mutate base visibility');
+    assert.equal(b.visible,false,'named-view edits must not mutate base visibility');
+});
+
+test('configuration CRUD validates titles, keeps IDs unique, and selection returns to Base after deleting the active configuration',()=>{
+    const api = loadConfigurationCore();
+    api.state.layers = [v3Layer({id:'A',visible:true}),v3Layer({id:'B',visible:false})];
+
+    assert.throws(()=>api.createConfiguration('   '),/title/i);
+    const first = api.createConfiguration('My View');
+    const second = api.createConfiguration('My View');
+    assert.notEqual(first.id,second.id,'configuration IDs must remain unique');
+    assert.deepEqual(plain(first.visible),['A'],'a new configuration starts from the currently displayed Base visibility');
+
+    api.selectConfiguration(first.id);
+    api.renameConfiguration(first.id,'Renamed View');
+    assert.equal(first.title,'Renamed View');
+    assert.throws(()=>api.renameConfiguration(first.id,''),/title/i);
+    assert.equal(first.title,'Renamed View','failed rename must leave the title unchanged');
+    assert.throws(()=>api.selectConfiguration('missing'),/configuration/i);
+
+    api.deleteConfiguration(first.id);
+    assert.equal(api.state.activeConfigurationId,null);
+    assert.equal(api.state.configurations.some(c=>c.id===first.id),false);
+});
+
+test('configuration validation rejects duplicate IDs, blank titles, and unknown layer references',()=>{
+    const api = loadConfigurationValidationCore();
+    const ids = new Set(['A','B']);
+
+    assert.throws(()=>api.validateConfigurations([
+        {id:'same',title:'One',visible:['A']},
+        {id:'same',title:'Two',visible:['B']}
+    ],ids),/duplicate.*configuration/i);
+    assert.throws(()=>api.validateConfigurations([{id:'blank',title:'   ',visible:['A']}],ids),/title/i);
+    assert.throws(()=>api.validateConfigurations([{id:'bad-ref',title:'Bad ref',visible:['MISSING']}],ids),/unknown.*MISSING/i);
+});
+
+test('semantic-ID rename updates every configuration reference atomically',()=>{
+    const api = loadConfigurationCore();
+    const a = v3Layer({id:'A',idMode:'custom'});
+    const b = v3Layer({id:'B',idMode:'custom'});
+    api.state.layers = [a,b];
+    api.state.configurations = [
+        {id:'one',title:'One',visible:['A']},
+        {id:'two',title:'Two',visible:['B','A']}
+    ];
+
+    api.renameLayerSemanticId(a,'A.NEW');
+    assert.equal(a.id,'A.NEW');
+    assert.deepEqual(plain(api.state.configurations[0].visible),['A.NEW']);
+    assert.deepEqual(plain(api.state.configurations[1].visible),['B','A.NEW']);
+
+    const before = plain({layers:api.state.layers.map(l=>l.id),configurations:api.state.configurations});
+    assert.throws(()=>api.renameLayerSemanticId(a,'B'),/already used/i);
+    assert.deepEqual(plain({layers:api.state.layers.map(l=>l.id),configurations:api.state.configurations}),before,'duplicate rename must leave the document unchanged');
+});
+
+test('v3 validation and serialization preserve named configurations across reload',()=>{
+    const validation = loadConfigurationValidationCore();
+    const doc = v3Document([
+        v3Layer({id:'A',file:'a.png'}),
+        v3Layer({id:'B',file:'b.png',visible:false})
+    ]);
+    doc.configurations = [{id:'only-b',title:'Only B',visible:['B']}];
+    const validated = plain(validation.validateLayout(doc));
+    assert.deepEqual(validated.configurations,[{id:'only-b',title:'Only B',visible:['B']}]);
+
+    const serialization = loadCore();
+    serialization.state.layers = validated.layers;
+    serialization.state.configurations = validated.configurations;
+    const serialized = plain(serialization.serializeLayout());
+    const reloaded = plain(validation.validateLayout(serialized));
+    assert.deepEqual(reloaded.configurations,validated.configurations);
+});
+
+test('configuration selector UI exposes Base, add, rename and delete controls',()=>{
+    assert.match(html,/id="configurationBar"/,'configuration strip must exist above the canvas');
+    assert.match(html,/id="baseConfigurationBtn"/,'Base control must exist');
+    assert.match(html,/id="addConfigurationBtn"/,'configuration add control must exist');
+    assert.match(html,/id="renameConfigurationBtn"/,'configuration rename control must exist');
+    assert.match(html,/id="deleteConfigurationBtn"/,'configuration delete control must exist');
+});
+
+test('active configuration visibility drives hit testing, rendering, layer checkboxes and PNG blocker detection',()=>{
+    assert.match(extractFunction('hitTest'),/isLayerVisibleInActiveView/);
+    assert.match(extractFunction('drawLayer'),/isLayerVisibleInActiveView/);
+    assert.match(extractFunction('renderPreview'),/isLayerVisibleInActiveView/);
+    assert.match(extractFunction('refreshUI'),/isLayerVisibleInActiveView/);
+    assert.match(extractFunction('getExportBlockers'),/isLayerVisibleInActiveView/);
+});
+
+
+test('Composer toolbar exposes Undo and Redo controls for the history task',()=>{
+    assert.match(html,/id=\"undoBtn\"/,'Undo button must exist');
+    assert.match(html,/id=\"redoBtn\"/,'Redo button must exist');
+    assert.match(html,/id=\"undoBtn\"[^>]*disabled/,'Undo stays disabled until history is available');
+    assert.match(html,/id=\"redoBtn\"[^>]*disabled/,'Redo stays disabled until history is available');
 });
