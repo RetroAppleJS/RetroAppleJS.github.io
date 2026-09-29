@@ -50,21 +50,6 @@ jobs:
         with:
           node-version: 20
 
-      - name: Apply Composer v3 Task 5 runtime test isolation
-        working-directory: source
-        shell: bash
-        run: |
-          node .github/scripts/apply-composer-v3-task5-runtime-isolation.cjs
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add tests/appledisk2_layout_v2.test.js tests/composer_v1_dataset_conversion.test.js tests/peripheral_layout_context.test.js
-          if git diff --cached --quiet; then
-            echo "Task 5 runtime test isolation already applied."
-          else
-            git commit -m "test: isolate runtime v2 layout fixture [skip ci]"
-            git push origin "HEAD:${{ steps.branch.outputs.branch }}"
-          fi
-
       - name: Test focused Composer v3 authoring
         working-directory: source
         run: node --test tests/apple2_system_composer_v3.test.js tests/apple2_system_composer_v3_unload_images.test.js tests/apple2_system_composer_v3_history.test.js tests/apple2_system_composer_v3_exports.test.js
