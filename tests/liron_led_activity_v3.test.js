@@ -26,29 +26,6 @@ function loadConstructor(file,name)
     return sandbox.__ctor;
 }
 
-function extractAssignedFunction(source,marker)
-{
-    const markerIndex=source.indexOf(marker);
-    assert.ok(markerIndex>=0,'missing function marker: '+marker);
-    const functionIndex=source.indexOf('function',markerIndex);
-    const open=source.indexOf('{',functionIndex);
-    assert.ok(functionIndex>=0 && open>=0,'could not locate assigned function body for '+marker);
-    let depth=0,quote=null,escaped=false,lineComment=false,blockComment=false;
-    for(let i=open;i<source.length;i++)
-    {
-        const c=source[i],next=source[i+1];
-        if(lineComment){if(c==='\n')lineComment=false;continue;}
-        if(blockComment){if(c==='*'&&next==='/'){blockComment=false;i++;}continue;}
-        if(quote){if(escaped){escaped=false;continue;}if(c==='\\'){escaped=true;continue;}if(c===quote)quote=null;continue;}
-        if(c==='/'&&next==='/'){lineComment=true;i++;continue;}
-        if(c==='/'&&next==='*'){blockComment=true;i++;continue;}
-        if(c==='\''||c==='"'||c==='`'){quote=c;continue;}
-        if(c==='{')depth++;
-        else if(c==='}'&&--depth===0)return source.slice(functionIndex,i+1);
-    }
-    throw new Error('unterminated function body for '+marker);
-}
-
 function loadTopology(fakeWindow)
 {
     const source=fs.readFileSync(path.join(ROOT,'res','EMU_CARD_smartport_topology.js'),'utf8');
@@ -170,27 +147,37 @@ test('500 ms LIRON activity sync isolates UniDisk LEDs by visual position and fo
     assert.equal(standalone.get('HD.STACKED.LED'),false);
 });
 
-test('the existing surfaceMap_refresh path invokes LIRON LED synchronization on the same dashboard tick',()=>{
-    const source=fs.readFileSync(path.join(ROOT,'res','EMU_apple2main.js'),'utf8');
-    const fnSource=extractAssignedFunction(source,'apple2plus.surfaceMap_monitoring = function');
+test('the existing surfaceMap_refresh monitor hook samples LIRON LEDs on the same 500 ms dashboard tick',()=>{
+    const mainSource=fs.readFileSync(path.join(ROOT,'res','EMU_apple2main.js'),'utf8');
+    assert.match(mainSource,/surfaceMap_refresh/,'surface-map refresh event remains registered');
+    assert.match(mainSource,/EMU_DashboardRefresh_s\s*=\s*2/,'dashboard event remains paced at 2 Hz / 500 ms');
+    assert.match(mainSource,/deviceToolSurfaceMapMonitoring\(\)/,'the recurring surface-map event invokes the LIRON monitor hook');
+
     const calls=[];
-    const liron={
-        id:{PCODE:'LIRON'},
-        syncLayoutActivity(){calls.push('LED');return true;},
+    const entries=[
+        {id:'U1.BODY',slotN:null,labels:{PCODE:'LIRON',DCODE:'UNIDISK',ROLE:'BODY'}},
+        {id:'U1.LED',slotN:null,labels:{PCODE:'LIRON',DCODE:'UNIDISK',ROLE:'LED'}}
+    ];
+    const fakeWindow={
+        oLAYOUT:{
+            find(query){return entries.filter(entry=>Object.keys(query).every(key=>entry.labels[key]===query[key]));},
+            visibleAt(slotN,id,state){if(id==='U1.LED' && state) calls.push('LED');return true;}
+        },
+        setInterval(){return null;},clearInterval(){},addEventListener(){}
+    };
+    const api=loadTopology(fakeWindow);
+    const disk={
+        id:{DCODE:'UNIDISK'},getUnit(){return 1;},
+        readBlock(){return {error:0,data:new Uint8Array(512)};}
+    };
+    const owner={
+        id:{PCODE:'LIRON'},mount:{slotN:6},devices:[disk],
         deviceToolSurfaceMapMonitoring(){calls.push('SURFACE');return true;}
     };
-    const io={SLOT2obj(slotN){return Number(slotN)===6?liron:null;}};
-    const document={getElementById(){return null;}};
-    const sandbox={
-        document,
-        EMU_diskIIObjects(){return [];},
-        oCOM:{POPUP:{get_class(){return '';}}}
-    };
-    const monitoring=vm.runInNewContext('('+fnSource+')',sandbox,{filename:'surfaceMap_monitoring.js'});
-    monitoring.call({hwObj(){return {io};}});
+    api.decorateLironTopology(owner);
+    disk.readBlock(0);
+    calls.length=0;
+    owner.deviceToolSurfaceMapMonitoring();
 
-    assert.deepEqual(calls,['LED','SURFACE'],'LED and surface-map refresh must share the same recurring event');
-
-    assert.match(source,/surfaceMap_refresh/,'surface-map refresh event remains registered');
-    assert.match(source,/EMU_DashboardRefresh_s\s*=\s*2/,'dashboard event remains paced at 2 Hz / 500 ms');
+    assert.deepEqual(calls,['LED','SURFACE'],'LED sampling and surface-map refresh share the same recurring monitor call');
 });
