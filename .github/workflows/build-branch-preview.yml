@@ -50,6 +50,10 @@ jobs:
         with:
           node-version: 20
 
+      - name: Test LIRON device LED activity
+        working-directory: source
+        run: node --test tests/liron_led_activity_v3.test.js
+
       - name: Test focused Composer v3 authoring
         working-directory: source
         run: node --test tests/apple2_system_composer_v3.test.js tests/apple2_system_composer_v3_unload_images.test.js tests/apple2_system_composer_v3_history.test.js tests/apple2_system_composer_v3_exports.test.js tests/apple2_system_composer_v3_configuration_files.test.js
