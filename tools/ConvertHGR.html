@@ -236,7 +236,6 @@ function quantize280(rgb,settings=defaultSettings(),seed=0x12345678,progressCall
     if(progressCallback && (row&7)===0) progressCallback(row,HEIGHT);
     const errDiv=(row===0 || settings.dither.accumulateErrors)?1:3;
     for(let col=0;col<WIDTH;col+=7){
-      // desired pixels and incoming error
       for(let c=0;c<7;c++){
         const si=(row*WIDTH+col+c)*3;
         let r=rgb[si],g=rgb[si+1],b=rgb[si+2];
@@ -281,12 +280,10 @@ function quantize280(rgb,settings=defaultSettings(),seed=0x12345678,progressCall
         }
       }
 
-      // after input-prep loop, C++ pointer is at logical x=col+7; add D/E there
       let right=(row*282 + (col+7+1))*3;
       errBuf[right]+=bestCarry[0];errBuf[right+1]+=bestCarry[1];errBuf[right+2]+=bestCarry[2];
       errBuf[right+3]+=bestCarry[3];errBuf[right+4]+=bestCarry[4];errBuf[right+5]+=bestCarry[5];
 
-      // rebase pointer to next row at logical x=col
       const nextBase=((row+1)*282 + (col+1))*3;
       for(let bit=0;bit<7;bit++){
         let ci=patternColor(bestPattern,bit,col/7,previousOn);
@@ -309,7 +306,6 @@ function quantize280(rgb,settings=defaultSettings(),seed=0x12345678,progressCall
   return {paletteImage,linearHgr,hgrPage};
 }
 
-
 function filterInfo(name){
   switch(name){
     case 'box': return {width:0.5, fn:x=>Math.abs(x)<=0.5?1:0};
@@ -331,7 +327,6 @@ function contributions(dstSize,srcSize,filterName){
     let left=Math.max(0,Math.floor(center-width));
     let right=Math.min(Math.ceil(center+width),srcSize-1);
     if(right-left+1>windowSize){
-      // Preserve original expression semantics: int(uSrcSize) - 1/2 means srcSize - 0.5.
       if(left < srcSize - 0.5) left++; else right--;
     }
     const weights=[];
@@ -430,8 +425,6 @@ function applyMaxColorShift(src,settings){
 }
 
 function applyHistogramApprox(src){
-  // Compatibility gap: ImgSource's exact histogram equalizer is external to ConvertHGR.
-  // This approximation stretches luminance percentiles 32..224 while retaining chroma ratios.
   const out=new Uint8Array(src), hist=new Uint32Array(256);
   for(let i=0;i<src.length;i+=3){const y=Math.max(0,Math.min(255,Math.round(0.299*src[i]+0.587*src[i+1]+0.114*src[i+2])));hist[y]++;}
   const total=src.length/3, loTarget=total*(32/256), hiTarget=total*(224/256);
@@ -496,9 +489,6 @@ function convertHgrCore({sourceRGB,sourceWidth,sourceHeight,settings=defaultSett
   return {processedRGB,...q};
 }
 
-
-function cloneSettings(v){ return JSON.parse(JSON.stringify(v)); }
-
 function nowMs(){ return (typeof performance!=="undefined"&&performance.now)?performance.now():Date.now(); }
 
 function makeFixtureRGB(name,args={}){
@@ -534,15 +524,7 @@ function makeFixtureRGB(name,args={}){
 
 function sha256Bytes(bytes){
   function rr(v,n){return (v>>>n)|(v<<(32-n));}
-  const K=[
-    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
-    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
-    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
-    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
-    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
-    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
-    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
-    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
   const H=new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);
   const len=bytes.length, bitLen=len*8;
   const padLen=((len+9+63)>>6)<<6, data=new Uint8Array(padLen);data.set(bytes);data[len]=0x80;
@@ -556,12 +538,6 @@ function sha256Bytes(bytes){
     H[0]=(H[0]+a)>>>0;H[1]=(H[1]+b)>>>0;H[2]=(H[2]+c)>>>0;H[3]=(H[3]+d)>>>0;H[4]=(H[4]+e)>>>0;H[5]=(H[5]+f)>>>0;H[6]=(H[6]+g)>>>0;H[7]=(H[7]+h)>>>0;
   }
   return Array.from(H,x=>x.toString(16).padStart(8,'0')).join('');
-}
-
-function firstMismatch(actual,expected){
-  if(!expected)return null; const n=Math.min(actual.length,expected.length);let count=0,first=-1;
-  for(let i=0;i<n;i++)if(actual[i]!==expected[i]){count++;if(first<0)first=i;}
-  count+=Math.abs(actual.length-expected.length);return {first,count};
 }
 
 const FIXTURES=[
@@ -594,14 +570,6 @@ function runFixture(f){
   return {fixtureId:f.id,status:legal?'reference-pending':'fail',durationMs:nowMs()-t0,stages:{paletteImage:legal?'structural-pass':'fail',linearHgr:legal?'structural-pass':'fail',hgrPage:legal?'structural-pass':'fail'},hashes:{paletteImage:sha256Bytes(one.paletteImage),linearHgr:sha256Bytes(one.linearHgr),hgrPage:sha256Bytes(one.hgrPage)},note:'Desktop ConvertHGR golden hash not embedded yet.'};
 }
 
-function traceByte(rgb,settings,seed,row,byteColumn){
-  // Lightweight diagnostics: return the actual winning byte and source/processed pixel values.
-  const q=quantize280(rgb,settings,seed),x=byteColumn*7,values=[];
-  for(let i=0;i<7;i++){const o=(row*WIDTH+x+i)*3;values.push([rgb[o],rgb[o+1],rgb[o+2]]);}
-  const v=q.linearHgr[row*40+byteColumn];
-  return {row,byteColumn,x0:x,sourcePixels:values,winner:{pattern:v,phase:(v>>7)&1,dataBits:Array.from({length:7},(_,i)=>(v>>i)&1)},pageOffset:hgrOffset(row,byteColumn)};
-}
-
 self.onmessage=function(event){
   const msg=event.data||{};
   try{
@@ -616,9 +584,6 @@ self.onmessage=function(event){
       const wanted=new Set(msg.groups||['core','quantizer']);let pass=0,fail=0,pending=0;
       for(const f of FIXTURES){if(!wanted.has(f.group))continue;const r=runFixture(f);if(r.status==='pass')pass++;else if(r.status==='reference-pending')pending++;else fail++;self.postMessage({type:'testResult',requestId:msg.requestId,...r});}
       self.postMessage({type:'testSuiteComplete',requestId:msg.requestId,passed:pass,failed:fail,referencePending:pending});
-    } else if(msg.type==='traceByte'){
-      const rgb=new Uint8Array(msg.rgbBuffer);const result=traceByte(rgb,msg.settings,msg.randomSeed>>>0,msg.row|0,msg.byteColumn|0);
-      self.postMessage({type:'traceByteResult',requestId:msg.requestId,...result});
     }
   }catch(error){self.postMessage({type:'error',requestId:msg.requestId||0,stage:msg.type||'worker',code:error.name||'Error',message:String(error.message||error),stack:String(error.stack||'')});}
 };
