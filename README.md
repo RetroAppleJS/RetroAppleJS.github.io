@@ -68,13 +68,13 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 
 ## Feature wish-list
 
-- [ ] EMULATOR: Step debugger (decommission or extend the current debugger ?)
+- [x] EMULATOR: Real-time system step debugger
 - [ ] EMULATOR: pasteboard macro scripting supporting keyboard/paddle/mouse recording, playback events and conditional stops
 - [x] EMULATOR: paddle/mouse capture
 - [ ] EMULATOR: vapor lock compliance (requires elaborate real-time debugger)
 - [ ] EMULATOR: swap between multiple virtual keyboards (start with A2_US vs A2_JP)
 - [ ] EMULATOR: more peripherals: Mockingboard card, Videx card, saturnRAM card, and what not...
-- [ ] ASSEMBLER: Step Assembler completion (currently in alpha release)
+- [x] ASSEMBLER: Step Assembler
 - [x] ASSEMBLER: Extend pragma's (pick a few more useful ideas from Merlin assembler)
 - [x] RETRO LAB: realtime dithering in CameraJS (QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17)
 - [ ] RETRO LAB: lo-res and hi-res graphics conversion tool (including dithering and color optimization algorithms)
