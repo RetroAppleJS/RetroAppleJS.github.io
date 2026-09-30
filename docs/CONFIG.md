@@ -272,6 +272,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 | MOCK  | Mockingboard C                         |        | X      |          |             | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/) |
 | SSC  | Apple Super Serial Card                 |        | X      | X        |             | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/io/super_serial_card/Apple%20II%20Super%20Serial%20Card%20User%27s%20Manual.pdf) |
 | SPC  | Apple Serial Pro Card                 |        | X      | X        | X            | 1,2*,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf) |
+| DITHER   | Dithertizer II Card               |        | X      | X        |              | 1,2,3,4,5,6,*7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf) |
 
 \* = pre-assigned slot
 
