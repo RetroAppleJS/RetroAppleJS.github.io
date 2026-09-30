@@ -709,7 +709,23 @@ async function loadFile(file){
  }
  catch(e){errStatus(`Unable to open image: ${e.message}`);}
 }
-function drawSource(){const c=$('sourceCanvas'),v=$('cameraVideo'),showVideo=camera.active&&sourceView==='original';v.hidden=!showVideo;c.hidden=showVideo;if(showVideo)return;const x=c.getContext('2d');x.imageSmoothingEnabled=true;x.fillStyle='#000';x.fillRect(0,0,280,192);if(sourceView==='original'&&source.bitmap){const s=Math.min(280/source.width,192/source.height),w=source.width*s,h=source.height*s;x.drawImage(source.bitmap,(280-w)/2,(192-h)/2,w,h);}else if(result){drawRGB(result.processedRGB,c);}}
+function drawSource(){
+ const c=$('sourceCanvas'),v=$('cameraVideo'),showVideo=camera.active&&sourceView==='original';
+ v.hidden=!showVideo;c.hidden=showVideo;
+ if(showVideo)return;
+ const x=c.getContext('2d');x.imageSmoothingEnabled=true;x.fillStyle='#000';x.fillRect(0,0,280,192);
+ if(sourceView==='original'&&source.rgb&&source.width&&source.height){drawSourceRgbPreview(c,source.rgb,source.width,source.height);}
+ else if(result){drawRGB(result.processedRGB,c);}
+}
+function drawSourceRgbPreview(canvas,rgb,w,h){
+ const tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;
+ const t=tmp.getContext('2d'),im=t.createImageData(w,h);
+ for(let i=0,p=0;i<rgb.length;i+=3,p+=4){im.data[p]=rgb[i];im.data[p+1]=rgb[i+1];im.data[p+2]=rgb[i+2];im.data[p+3]=255;}
+ t.putImageData(im,0,0);
+ const x=canvas.getContext('2d');x.imageSmoothingEnabled=true;
+ const scale=Math.min(canvas.width/w,canvas.height/h),dw=w*scale,dh=h*scale;
+ x.drawImage(tmp,(canvas.width-dw)/2,(canvas.height-dh)/2,dw,dh);
+}
 function drawRGB(rgb,canvas){const ctx=canvas.getContext('2d'),im=ctx.createImageData(280,192);for(let i=0,p=0;i<rgb.length;i+=3,p+=4){im.data[p]=rgb[i];im.data[p+1]=rgb[i+1];im.data[p+2]=rgb[i+2];im.data[p+3]=255;}ctx.putImageData(im,0,0);}
 function drawOutput(){const c=$('outputCanvas'),ctx=c.getContext('2d');ctx.fillStyle='#000';ctx.fillRect(0,0,280,192);if(!result)return;const im=ctx.createImageData(280,192);for(let y=0;y<192;y++)for(let x=0;x<280;x++){const p=y*280+x,o=p*4;let r=0,g=0,b=0;if(outputView==='color'){[r,g,b]=PALETTE[result.paletteImage[p]];}else{const byte=result.linearHgr[y*40+Math.floor(x/7)],on=(byte>>(x%7))&1;if(outputView==='green'){g=on?255:0;}else{r=g=b=on?255:0;}}im.data[o]=r;im.data[o+1]=g;im.data[o+2]=b;im.data[o+3]=255;}ctx.putImageData(im,0,0);}
 async function startCamera(){
