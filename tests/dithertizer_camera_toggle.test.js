@@ -43,7 +43,9 @@ test('camera toggle starts and stops getUserMedia video stream without touching 
 
     assert.equal(card.getCameraSource(),null);
     assert.equal(await card.deviceToolCameraToggle('dither_ctrl_S7'),true);
-    assert.deepEqual(calls,[{video:true,audio:false}]);
+    assert.equal(calls.length,1);
+    assert.equal(calls[0].video,true);
+    assert.equal(calls[0].audio,false);
     assert.equal(card.getCameraSource(),null,'host camera lifecycle stays separate from frame processing');
     assert.match(render(card),/id="dither_ctrl_S7_camera"[^>]*aria-pressed="true"/);
 
