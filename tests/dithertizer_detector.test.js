@@ -169,6 +169,23 @@ function oneShotSignatureDevice()
     });
 }
 
+function slotVisitOrder(readLog)
+{
+    const order=[];
+    let previous=null;
+
+    for(const entry of readLog)
+    {
+        if(entry.slot!==previous)
+        {
+            order.push(entry.slot);
+            previous=entry.slot;
+        }
+    }
+
+    return order;
+}
+
 test('real DithertizerII is detected in each Apple II slot 1 through 7',()=>{
     const DithertizerII=loadDithertizer();
 
@@ -186,6 +203,25 @@ test('real DithertizerII is detected in each Apple II slot 1 through 7',()=>{
 test('seven empty slots do not identify as a Dithertizer II',()=>{
     const bus=new SevenSlotBus();
     assert.equal(detectDithertizer(bus),0);
+});
+
+test('slot scan order is ascending and stops at the first detected Dithertizer',()=>{
+    const DithertizerII=loadDithertizer();
+
+    const emptyBus=new SevenSlotBus();
+    assert.equal(detectDithertizer(emptyBus),0);
+    assert.deepEqual(slotVisitOrder(emptyBus.readLog),[1,2,3,4,5,6,7],
+        'a complete passive scan must visit slots strictly from 1 through 7');
+
+    const earlyHitBus=new SevenSlotBus();
+    earlyHitBus.mount(3,new DithertizerII());
+    earlyHitBus.mount(6,new DithertizerII());
+
+    assert.equal(detectDithertizer(earlyHitBus),3,'the lowest-numbered matching slot must win');
+    assert.deepEqual(slotVisitOrder(earlyHitBus.readLog),[1,2,3],
+        'scan must stop immediately after the first matching slot');
+    assert.equal(earlyHitBus.readLog.some(entry=>entry.slot>3),false,
+        'slots above the first detected Dithertizer must never be probed');
 });
 
 test('static and lookalike D7 waveforms are rejected',()=>{
