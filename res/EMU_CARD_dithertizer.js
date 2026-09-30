@@ -239,7 +239,7 @@ function DithertizerII()
 
     function uiReadout(controlID,setting,value)
     {
-        if(typeof(document)==="undefined" || !document || typeof(document.getElementById)!==="function")
+        if(typeof(document)==="undefined" || !document || typeof(document.getElementById)!=="function")
             return;
 
         var el=document.getElementById(controlID+"_"+setting+"_value");
