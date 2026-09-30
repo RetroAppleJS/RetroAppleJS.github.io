@@ -6,7 +6,7 @@
 <title>ConvertHGR Core — Browser Parity Port</title>
 <style>
 :root{color-scheme:dark;--bg:#111418;--panel:#1a1f25;--panel2:#202731;--border:#39424e;--text:#e7edf4;--muted:#aeb8c5;--accent:#79d2ff;--warn:#f0c36a;--bad:#ff8080;--good:#86e49d}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select{font:inherit;color:inherit;background:#171c22;border:1px solid var(--border);border-radius:6px;padding:6px 8px}button{cursor:pointer}button:hover:not(:disabled){border-color:var(--accent)}button:disabled{opacity:.45;cursor:not-allowed}input[type=number]{width:76px}input[type=range]{padding:0}.app{max-width:1680px;margin:auto;padding:14px}.topbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.topbar h1{font-size:20px;margin:0 auto 0 0}.badge{border:1px solid var(--border);border-radius:999px;padding:4px 9px;color:var(--muted)}.grid{display:grid;grid-template-columns:340px minmax(340px,1fr) minmax(340px,1fr);gap:12px;align-items:start}.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px}.panel h2,.panel h3{margin:0 0 10px}.controls{max-height:calc(100vh - 100px);overflow:auto}.group{border-top:1px solid var(--border);padding-top:10px;margin-top:10px}.group:first-child{border-top:0;padding-top:0;margin-top:0}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}.row label{min-width:122px;color:var(--muted)}.small{font-size:12px;color:var(--muted)}.canvasWrap{background:#050607;border:1px solid var(--border);border-radius:8px;overflow:hidden;aspect-ratio:280/192}.canvasWrap canvas,.canvasWrap video{display:block;width:100%;height:100%}.canvasWrap canvas{image-rendering:pixelated}.canvasWrap video{object-fit:contain;background:#000}.tabs{display:flex;gap:5px;margin-bottom:8px}.tabs button.active{border-color:var(--accent);background:#263443}.ditherGrid{display:grid;grid-template-columns:repeat(5,44px);grid-template-rows:repeat(3,40px);align-items:center;justify-content:start;gap:4px}.ditherGrid .pix{grid-column:2;grid-row:1;text-align:center;color:var(--muted)}.ditherGrid .D{grid-column:3;grid-row:1}.ditherGrid .E{grid-column:4;grid-row:1}.ditherGrid .A{grid-column:1;grid-row:2}.ditherGrid .B{grid-column:2;grid-row:2}.ditherGrid .C{grid-column:3;grid-row:2}.ditherGrid .F{grid-column:2;grid-row:3}.ditherGrid input{width:44px;padding:5px}.status{margin-top:10px;padding:8px;border-radius:6px;background:#151a20;color:var(--muted)}.status.dirty{color:var(--warn)}.status.error{color:var(--bad)}.status.good{color:var(--good)}.inspector{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;margin-top:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}.inspector dt{color:var(--muted)}.inspector dd{margin:0}.footer{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.tests table{width:100%;border-collapse:collapse;font-size:12px}.tests th,.tests td{padding:5px;border-bottom:1px solid var(--border);text-align:left}.pass{color:var(--good)}.fail{color:var(--bad)}.pending{color:var(--warn)}.credit{font-size:12px;color:var(--muted);margin-top:10px}progress{width:180px}@media(max-width:1100px){.grid{grid-template-columns:1fr 1fr}.controls{grid-column:1/-1;max-height:none}.footer{grid-template-columns:1fr}}@media(max-width:720px){.grid{grid-template-columns:1fr}.footer{grid-template-columns:1fr}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select{font:inherit;color:inherit;background:#171c22;border:1px solid var(--border);border-radius:6px;padding:6px 8px}button{cursor:pointer}button:hover:not(:disabled){border-color:var(--accent)}button:disabled{opacity:.45;cursor:not-allowed}input[type=number]{width:76px}input[type=range]{padding:0}.app{max-width:1680px;margin:auto;padding:14px}.topbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.topbar h1{font-size:20px;margin:0 auto 0 0}.badge{border:1px solid var(--border);border-radius:999px;padding:4px 9px;color:var(--muted)}.grid{display:grid;grid-template-columns:340px minmax(340px,1fr) minmax(340px,1fr);gap:12px;align-items:start}.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px}.panel h2,.panel h3{margin:0 0 10px}.controls{max-height:calc(100vh - 100px);overflow:auto}.group{border-top:1px solid var(--border);padding-top:10px;margin-top:10px}.group:first-child{border-top:0;padding-top:0;margin-top:0}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}.row label{min-width:122px;color:var(--muted)}.sliderRow input[type=range]{flex:1;min-width:130px}.valueReadout{min-width:48px;text-align:right;font-variant-numeric:tabular-nums;color:var(--text)}.small{font-size:12px;color:var(--muted)}.canvasWrap{background:#050607;border:1px solid var(--border);border-radius:8px;overflow:hidden;aspect-ratio:280/192}.canvasWrap canvas,.canvasWrap video{display:block;width:100%;height:100%}.canvasWrap canvas{image-rendering:pixelated}.canvasWrap video{object-fit:contain;background:#000}.canvasWrap [hidden]{display:none!important}.tabs{display:flex;gap:5px;margin-bottom:8px}.tabs button.active{border-color:var(--accent);background:#263443}.ditherGrid{display:grid;grid-template-columns:repeat(5,44px);grid-template-rows:repeat(3,40px);align-items:center;justify-content:start;gap:4px}.ditherGrid .pix{grid-column:2;grid-row:1;text-align:center;color:var(--muted)}.ditherGrid .D{grid-column:3;grid-row:1}.ditherGrid .E{grid-column:4;grid-row:1}.ditherGrid .A{grid-column:1;grid-row:2}.ditherGrid .B{grid-column:2;grid-row:2}.ditherGrid .C{grid-column:3;grid-row:2}.ditherGrid .F{grid-column:2;grid-row:3}.ditherGrid input{width:44px;padding:5px}.status{margin-top:10px;padding:8px;border-radius:6px;background:#151a20;color:var(--muted)}.status.dirty{color:var(--warn)}.status.error{color:var(--bad)}.status.good{color:var(--good)}.inspector{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;margin-top:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}.inspector dt{color:var(--muted)}.inspector dd{margin:0}.footer{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.tests table{width:100%;border-collapse:collapse;font-size:12px}.tests th,.tests td{padding:5px;border-bottom:1px solid var(--border);text-align:left}.pass{color:var(--good)}.fail{color:var(--bad)}.pending{color:var(--warn)}.credit{font-size:12px;color:var(--muted);margin-top:10px}progress{width:180px}@media(max-width:1100px){.grid{grid-template-columns:1fr 1fr}.controls{grid-column:1/-1;max-height:none}.footer{grid-template-columns:1fr}}@media(max-width:720px){.grid{grid-template-columns:1fr}.footer{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -39,20 +39,26 @@
       <div class="group">
         <h3>Colour matching</h3>
         <div class="row"><label><input id="perceptual" type="checkbox"> Perceptual RGB</label></div>
-        <div class="row"><label for="luma">Luma emphasis</label><input id="luma" type="number" min="0" max="500" value="80">%</div>
+        <div class="row sliderRow"><label for="luma">Luma emphasis</label><input id="luma" type="range" min="0" max="500" step="1" value="80"><span id="lumaValue" class="valueReadout">80%</span></div>
         <div class="row"><label>RGB weights</label><input id="weightR" type="number" min="0" max="100" value="30"><input id="weightG" type="number" min="0" max="100" value="52"><input id="weightB" type="number" min="0" max="100" value="18"><button id="weightDefault">Default</button></div>
-        <div class="row"><label for="colorShift">Max Color Shift</label><input id="colorShift" type="number" min="0" max="100" value="1">%</div>
+        <div class="row sliderRow"><label for="colorShift">Max Color Shift</label><input id="colorShift" type="range" min="0" max="100" step="1" value="1"><span id="colorShiftValue" class="valueReadout">1%</span></div>
       </div>
 
       <div class="group">
         <h3>Image preparation</h3>
         <div class="row"><label><input id="greyscale" type="checkbox"> Greyscale</label><label><input id="histogram" type="checkbox"> Stretch Histogram</label></div>
         <div class="small">Histogram uses a browser approximation until the external ImgSource equalizer is reference-calibrated.</div>
-        <div class="row"><label for="gamma">Gamma</label><input id="gamma" type="number" min="0" max="500" value="130">%</div>
+        <div class="row sliderRow"><label for="gamma">Gamma</label><input id="gamma" type="range" min="0" max="500" step="1" value="130"><span id="gammaValue" class="valueReadout">130%</span></div>
         <div class="row"><label for="fillMode">Fill mode</label><select id="fillMode"><option value="default">Default</option><option value="top-left">Top / Left</option><option value="middle">Middle</option><option value="bottom-right">Bottom / Right</option></select></div>
         <div class="row"><label for="filter">Scaling filter</label><select id="filter"><option value="box">Box</option><option value="gaussian">Gaussian</option><option value="hamming">Hamming</option><option value="blackman">Blackman</option><option value="bilinear" selected>Bilinear</option></select></div>
         <div class="row"><label>Horizontal nudge</label><button id="xMinus">←</button><span id="xNudge">0</span><button id="xPlus">→</button></div>
         <div class="row"><label>Vertical nudge</label><button id="yMinus">↑</button><span id="yNudge">0</span><button id="yPlus">↓</button></div>
+      </div>
+
+      <div class="group">
+        <h3>Conversion engine</h3>
+        <div class="row"><label for="conversionBackend">Backend</label><select id="conversionBackend"><option value="auto" selected>Auto — WASM preferred</option><option value="javascript">JavaScript</option><option value="wasm">WASM</option></select></div>
+        <div class="small" id="backendStatus">WASM initializes on first conversion.</div>
       </div>
 
       <div class="group"><label><input id="autoConvert" type="checkbox" checked> Auto-convert after changes</label></div>
@@ -99,6 +105,53 @@ const WIDTH = 280;
 const HEIGHT = 192;
 const BYTES_PER_ROW = 40;
 const PAGE_BYTES = 8192;
+
+// Embedded optional WASM quantizer/packer backend. Preprocessing remains in JavaScript.
+const WASM_HGR_BASE64 = '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';
+let wasmBackend = null;
+let wasmBackendPromise = null;
+
+function base64Bytes(text){
+  const raw=atob(text),out=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++)out[i]=raw.charCodeAt(i);
+  return out;
+}
+async function ensureWasmBackend(){
+  if(wasmBackend)return wasmBackend;
+  if(!wasmBackendPromise)wasmBackendPromise=(async()=>{
+    const bytes=base64Bytes(WASM_HGR_BASE64);
+    const instantiated=await WebAssembly.instantiate(bytes,{});
+    const e=instantiated.instance.exports;
+    const required=['memory','hgr_get_source_ptr','hgr_get_settings_ptr','hgr_get_palette_ptr','hgr_get_linear_ptr','hgr_get_page_ptr','hgr_convert'];
+    for(const name of required)if(!e[name])throw new Error(`WASM backend missing export ${name}`);
+    wasmBackend={exports:e,memory:e.memory,sourcePtr:e.hgr_get_source_ptr()>>>0,settingsPtr:e.hgr_get_settings_ptr()>>>0,palettePtr:e.hgr_get_palette_ptr()>>>0,linearPtr:e.hgr_get_linear_ptr()>>>0,pagePtr:e.hgr_get_page_ptr()>>>0};
+    return wasmBackend;
+  })().catch(error=>{wasmBackendPromise=null;throw error;});
+  return wasmBackendPromise;
+}
+function writeWasmSettings(memory,ptr,settings){
+  const v=new Float64Array(memory.buffer,ptr,15),e=settings.dither.error;
+  v[0]=settings.matching.perceptual?1:0;v[1]=settings.matching.lumaEmphasis;v[2]=settings.matching.perceptualR;v[3]=settings.matching.perceptualG;v[4]=settings.matching.perceptualB;
+  v[5]=settings.dither.orderedMode;v[6]=settings.dither.mapSize;v[7]=settings.dither.orderedOffset;v[8]=settings.dither.accumulateErrors?1:0;
+  v[9]=e.A;v[10]=e.B;v[11]=e.C;v[12]=e.D;v[13]=e.E;v[14]=e.F;
+}
+function quantize280Wasm(rgb,settings,seed){
+  if(!wasmBackend)throw new Error('WASM backend has not been initialized');
+  const w=wasmBackend,m=w.memory;
+  new Uint8Array(m.buffer,w.sourcePtr,WIDTH*HEIGHT*3).set(rgb);
+  writeWasmSettings(m,w.settingsPtr,settings);
+  const rc=w.exports.hgr_convert(seed>>>0);
+  if(rc!==0)throw new Error(`WASM conversion returned status ${rc}`);
+  return {paletteImage:new Uint8Array(new Uint8Array(m.buffer,w.palettePtr,WIDTH*HEIGHT)),linearHgr:new Uint8Array(new Uint8Array(m.buffer,w.linearPtr,BYTES_PER_ROW*HEIGHT)),hgrPage:new Uint8Array(new Uint8Array(m.buffer,w.pagePtr,PAGE_BYTES))};
+}
+async function quantizeWithBackend(rgb,settings,seed,backendRequested='auto'){
+  const requested=(backendRequested==='javascript'||backendRequested==='wasm')?backendRequested:'auto';
+  if(requested!=='javascript'){
+    try{await ensureWasmBackend();return {output:quantize280Wasm(rgb,settings,seed),backendRequested:requested,backendUsed:'wasm',fallbackReason:''};}
+    catch(error){const fallbackReason=String(error&&error.message||error);return {output:quantize280(rgb,settings,seed),backendRequested:requested,backendUsed:'javascript',fallbackReason};}
+  }
+  return {output:quantize280(rgb,settings,seed),backendRequested:requested,backendUsed:'javascript',fallbackReason:''};
+}
 
 const PALETTE = [
   [0,0,0], [20,245,60], [255,68,253], [255,255,255],
@@ -597,6 +650,22 @@ function runFixture(f){
   return {fixtureId:f.id,status:legal?'reference-pending':'fail',durationMs:nowMs()-t0,stages:{paletteImage:legal?'structural-pass':'fail',linearHgr:legal?'structural-pass':'fail',hgrPage:legal?'structural-pass':'fail'},hashes:{paletteImage:sha256Bytes(one.paletteImage),linearHgr:sha256Bytes(one.linearHgr),hgrPage:sha256Bytes(one.hgrPage)},note:'Desktop ConvertHGR golden hash not embedded yet.'};
 }
 
+async function runWasmParityFixture(){
+  const t0=nowMs(),settings=defaultSettings(),rgb=makeFixtureRGB('randomRGB',{seed:0x91e10da5}),seed=0x2468ace0;
+  try{
+    const js=quantize280(rgb,settings,seed);
+    await ensureWasmBackend();
+    const wa=quantize280Wasm(rgb,settings,seed);
+    let first=-1,count=0;
+    const pairs=[[js.paletteImage,wa.paletteImage],[js.linearHgr,wa.linearHgr],[js.hgrPage,wa.hgrPage]];
+    for(const [a,b] of pairs)for(let i=0;i<a.length;i++)if(a[i]!==b[i]){count++;if(first<0)first=i;}
+    const ok=count===0;
+    return {fixtureId:'WASM_JS_PARITY',status:ok?'pass':'fail',durationMs:nowMs()-t0,stages:{wasm:ok?'pass':'fail'},hashes:{hgrPage:sha256Bytes(wa.hgrPage)},note:ok?'WASM quantizer matches JavaScript byte-for-byte.':`WASM differs from JavaScript (${count} byte mismatches; first index ${first}).`};
+  }catch(error){
+    return {fixtureId:'WASM_JS_PARITY',status:'reference-pending',durationMs:nowMs()-t0,stages:{wasm:'unavailable'},hashes:{},note:`WASM unavailable; JavaScript fallback remains active: ${String(error&&error.message||error)}`};
+  }
+}
+
 function traceByte(rgb,settings,seed,row,byteColumn){
   // Lightweight diagnostics: return the actual winning byte and source/processed pixel values.
   const q=quantize280(rgb,settings,seed),x=byteColumn*7,values=[];
@@ -605,7 +674,7 @@ function traceByte(rgb,settings,seed,row,byteColumn){
   return {row,byteColumn,x0:x,sourcePixels:values,winner:{pattern:v,phase:(v>>7)&1,dataBits:Array.from({length:7},(_,i)=>(v>>i)&1)},pageOffset:hgrOffset(row,byteColumn)};
 }
 
-self.onmessage=function(event){
+self.onmessage=async function(event){
   const msg=event.data||{};
   try{
     if(msg.type==='convert'){
@@ -613,11 +682,13 @@ self.onmessage=function(event){
       self.postMessage({type:'progress',requestId:msg.requestId,stage:'preprocessing',current:0,total:1});
       const p0=nowMs(),processedRGB=prepareSourceRGB(sourceRGB,msg.source.width,msg.source.height,settings),p1=nowMs();
       self.postMessage({type:'progress',requestId:msg.requestId,stage:'quantize',current:0,total:192});
-      const q0=nowMs(),q=quantize280(processedRGB,settings,msg.randomSeed>>>0,(row,total)=>self.postMessage({type:'progress',requestId:msg.requestId,stage:'quantize',current:row,total})),q1=nowMs();
-      self.postMessage({type:'conversionResult',requestId:msg.requestId,metadata:{randomSeed:msg.randomSeed>>>0,outputWidth:280,outputHeight:192,histogramParity:settings.image.stretchHistogram?'approximation':'not-used'},timing:{preprocessingMs:p1-p0,quantizationMs:q1-q0,totalMs:nowMs()-t0},buffers:{processedRGB:processedRGB.buffer,paletteImage:q.paletteImage.buffer,linearHgr:q.linearHgr.buffer,hgrPage:q.hgrPage.buffer}},[processedRGB.buffer,q.paletteImage.buffer,q.linearHgr.buffer,q.hgrPage.buffer]);
+      const q0=nowMs(),backend=await quantizeWithBackend(processedRGB,settings,msg.randomSeed>>>0,msg.backend||'auto'),q=backend.output,q1=nowMs();
+      self.postMessage({type:'progress',requestId:msg.requestId,stage:'quantize',current:192,total:192});
+      self.postMessage({type:'conversionResult',requestId:msg.requestId,metadata:{randomSeed:msg.randomSeed>>>0,outputWidth:280,outputHeight:192,histogramParity:settings.image.stretchHistogram?'approximation':'not-used',backendRequested:backend.backendRequested,backendUsed:backend.backendUsed,backendFallbackReason:backend.fallbackReason},timing:{preprocessingMs:p1-p0,quantizationMs:q1-q0,totalMs:nowMs()-t0},buffers:{processedRGB:processedRGB.buffer,paletteImage:q.paletteImage.buffer,linearHgr:q.linearHgr.buffer,hgrPage:q.hgrPage.buffer}},[processedRGB.buffer,q.paletteImage.buffer,q.linearHgr.buffer,q.hgrPage.buffer]);
     } else if(msg.type==='runTests'){
       const wanted=new Set(msg.groups||['core','quantizer']);let pass=0,fail=0,pending=0;
       for(const f of FIXTURES){if(!wanted.has(f.group))continue;const r=runFixture(f);if(r.status==='pass')pass++;else if(r.status==='reference-pending')pending++;else fail++;self.postMessage({type:'testResult',requestId:msg.requestId,...r});}
+      if(wanted.has('core')){const r=await runWasmParityFixture();if(r.status==='pass')pass++;else if(r.status==='reference-pending')pending++;else fail++;self.postMessage({type:'testResult',requestId:msg.requestId,...r});}
       self.postMessage({type:'testSuiteComplete',requestId:msg.requestId,passed:pass,failed:fail,referencePending:pending});
     } else if(msg.type==='traceByte'){
       const rgb=new Uint8Array(msg.rgbBuffer);const result=traceByte(rgb,msg.settings,msg.randomSeed>>>0,msg.row|0,msg.byteColumn|0);
@@ -659,7 +730,7 @@ const cameraPump=createOneInFlightPump(captureCameraFrameAndConvert,cb=>requestA
 
 function markDirty(reason='Settings changed — output is not current.'){
  dirty=true;$('status').className='status dirty';$('status').textContent=camera.active?'Settings changed — next camera frame will use them.':reason;$('savePng').disabled=true;$('saveHgr').disabled=true;$('convertBtn').disabled=camera.active||!source.rgb;
- if(camera.active){camera.settingsRevision++;return;}
+ if(camera.active){camera.settingsRevision++;$('status').textContent=$('autoConvert').checked?'Settings changed — next camera frame will use them.':'Settings changed — Auto-convert is off.';return;}
  if($('autoConvert').checked&&source.rgb){clearTimeout(autoTimer);autoTimer=setTimeout(convertNow,180);}
 }
 function cleanStatus(text){dirty=false;$('status').className='status good';$('status').textContent=text;$('savePng').disabled=false;$('saveHgr').disabled=false;}
@@ -668,6 +739,9 @@ function updateControlState(){
  const p=$('perceptual').checked;$('luma').disabled=p;$('weightR').disabled=!p;$('weightG').disabled=!p;$('weightB').disabled=!p;$('weightDefault').disabled=!p;
  const m=$('ditherMode').value,ordered=m!=='diffusion',thresholdOnly=m==='order1'||m==='order3';$('orderedOffset').disabled=!ordered;document.querySelectorAll('.errcoef').forEach(e=>e.disabled=thresholdOnly);
  $('orderedOffsetValue').textContent=$('orderedOffset').value;
+ $('lumaValue').textContent=`${$('luma').value}%`;
+ $('colorShiftValue').textContent=`${$('colorShift').value}%`;
+ $('gammaValue').textContent=`${$('gamma').value}%`;
  let total=0;document.querySelectorAll('.errcoef').forEach(e=>total+=Number(e.value)||0);$('errorTotal').textContent=`Total distributed error: ${total} / 16 = ${Math.round(total/16*100)}%`;
 }
 function syncSettings(){
@@ -712,6 +786,7 @@ async function loadFile(file){
 function drawSource(){
  const c=$('sourceCanvas'),v=$('cameraVideo'),showVideo=camera.active&&sourceView==='original';
  v.hidden=!showVideo;c.hidden=showVideo;
+ v.style.display=showVideo?'block':'none';c.style.display=showVideo?'none':'block';
  if(showVideo)return;
  const x=c.getContext('2d');x.imageSmoothingEnabled=true;x.fillStyle='#000';x.fillRect(0,0,280,192);
  if(sourceView==='original'&&source.rgb&&source.width&&source.height){drawSourceRgbPreview(c,source.rgb,source.width,source.height);}
@@ -740,7 +815,7 @@ async function startCamera(){
   $('cameraStartBtn').disabled=true;$('cameraStopBtn').disabled=false;$('convertBtn').disabled=true;
   setSourceTab('original');
   $('sourceInfo').textContent=`Camera — ${v.videoWidth||'?'} × ${v.videoHeight||'?'} — live HGR`;
-  drawSource();cameraPump.start();
+  drawSource();if($('autoConvert').checked)cameraPump.start();else{$('status').className='status';$('status').textContent='Camera active — Auto-convert is off.';}
  }catch(e){camera.stream?.getTracks().forEach(t=>t.stop());camera.stream=null;$('cameraStartBtn').disabled=false;$('cameraStopBtn').disabled=true;errStatus(`Unable to start camera: ${e.message}. Camera access generally requires HTTPS or localhost.`);}
 }
 function stopCamera(){
@@ -759,7 +834,7 @@ function captureCameraFrameAndConvert(){
  const c=camera.canvas;c.width=w;c.height=h;const ctx=c.getContext('2d',{willReadFrequently:true});ctx.drawImage(v,0,0,w,h);const rgba=ctx.getImageData(0,0,w,h).data,rgb=new Uint8Array(w*h*3);
  for(let s=0,t=0;s<rgba.length;s+=4){rgb[t++]=rgba[s];rgb[t++]=rgba[s+1];rgb[t++]=rgba[s+2];}
  syncSettings();const id=++requestId;currentRequest=id;camera.requestId=id;camera.requestRevision=camera.settingsRevision;
- worker.postMessage({type:'convert',requestId:id,source:{width:w,height:h,rgbBuffer:rgb.buffer},settings:JSON.parse(JSON.stringify(settings)),randomSeed:(Date.now()/1000)>>>0},[rgb.buffer]);
+ worker.postMessage({type:'convert',requestId:id,source:{width:w,height:h,rgbBuffer:rgb.buffer},settings:JSON.parse(JSON.stringify(settings)),backend:$('conversionBackend').value,randomSeed:(Date.now()/1000)>>>0},[rgb.buffer]);
  return true;
 }
 function recordCameraCompletion(){
@@ -767,8 +842,15 @@ function recordCameraCompletion(){
 }
 function exportBaseName(){return camera.active?'camera':(source.fileName.replace(/\.[^.]+$/,'')||'image');}
 
-function convertNow(){if(!source.rgb)return;syncSettings();const id=++requestId;currentRequest=id;$('progress').hidden=false;$('progress').value=0;$('convertBtn').disabled=true;$('status').className='status';$('status').textContent='Converting…';const copy=source.rgb.slice();worker.postMessage({type:'convert',requestId:id,source:{width:source.width,height:source.height,rgbBuffer:copy.buffer},settings:JSON.parse(JSON.stringify(settings)),randomSeed:(Date.now()/1000)>>>0},[copy.buffer]);}
-worker.onmessage=e=>{const m=e.data;if(m.requestId&&m.requestId!==currentRequest&&m.type!=='testResult'&&m.type!=='testSuiteComplete')return;if(m.type==='progress'){if(!camera.active){$('progress').hidden=false;$('progress').value=m.stage==='quantize'?m.current:0;}}else if(m.type==='conversionResult'){const live=camera.active&&m.requestId===camera.requestId,settingsCurrent=!live||camera.requestRevision===camera.settingsRevision;result={processedRGB:new Uint8Array(m.buffers.processedRGB),paletteImage:new Uint8Array(m.buffers.paletteImage),linearHgr:new Uint8Array(m.buffers.linearHgr),hgrPage:new Uint8Array(m.buffers.hgrPage),metadata:m.metadata,timing:m.timing};$('progress').hidden=true;$('convertBtn').disabled=camera.active||!source.rgb;if(live){recordCameraCompletion();if(settingsCurrent)cleanStatus(`Live HGR — ${m.timing.totalMs.toFixed(1)} ms per conversion${m.metadata.histogramParity==='approximation'?' — histogram compatibility approximation active':''}.`);else{$('status').className='status dirty';$('status').textContent='Live HGR updating with changed settings…';}drawSource();drawOutput();cameraPump.complete();}else{cleanStatus(`Converted in ${m.timing.totalMs.toFixed(1)} ms${m.metadata.histogramParity==='approximation'?' — histogram compatibility approximation active':''}.`);drawSource();drawOutput();}}else if(m.type==='error'){const live=camera.active&&m.requestId===camera.requestId;errStatus(`${m.stage}: ${m.message}`);$('progress').hidden=true;$('convertBtn').disabled=camera.active||!source.rgb;if(live){cameraPump.stop();}}else if(m.type==='testResult'){addTestRow(m);}else if(m.type==='testSuiteComplete'){const s=$('testSummary');s.className='status '+(m.failed?'error':m.referencePending?'dirty':'good');s.textContent=`${m.passed} passed, ${m.failed} failed, ${m.referencePending||0} reference pending.`;} };
+function convertNow(){if(!source.rgb)return;syncSettings();const id=++requestId;currentRequest=id;$('progress').hidden=false;$('progress').value=0;$('convertBtn').disabled=true;$('status').className='status';$('status').textContent='Converting…';const copy=source.rgb.slice();worker.postMessage({type:'convert',requestId:id,source:{width:source.width,height:source.height,rgbBuffer:copy.buffer},settings:JSON.parse(JSON.stringify(settings)),backend:$('conversionBackend').value,randomSeed:(Date.now()/1000)>>>0},[copy.buffer]);}
+function backendDescription(metadata){
+ const requested=metadata.backendRequested||'auto',used=metadata.backendUsed||'javascript',fallback=metadata.backendFallbackReason||'';
+ let text=`Backend: ${used==='wasm'?'WASM':'JavaScript'}`;
+ if(fallback)text+=` (fallback from ${requested}: ${fallback})`;
+ $('backendStatus').textContent=text;
+ return ` — ${used==='wasm'?'WASM':'JavaScript'}${fallback?' fallback':''}`;
+}
+worker.onmessage=e=>{const m=e.data;if(m.requestId&&m.requestId!==currentRequest&&m.type!=='testResult'&&m.type!=='testSuiteComplete')return;if(m.type==='progress'){if(!camera.active){$('progress').hidden=false;$('progress').value=m.stage==='quantize'?m.current:0;}}else if(m.type==='conversionResult'){const live=camera.active&&m.requestId===camera.requestId,settingsCurrent=!live||camera.requestRevision===camera.settingsRevision;result={processedRGB:new Uint8Array(m.buffers.processedRGB),paletteImage:new Uint8Array(m.buffers.paletteImage),linearHgr:new Uint8Array(m.buffers.linearHgr),hgrPage:new Uint8Array(m.buffers.hgrPage),metadata:m.metadata,timing:m.timing};$('progress').hidden=true;$('convertBtn').disabled=camera.active||!source.rgb;const backendText=backendDescription(m.metadata);if(live){recordCameraCompletion();if(settingsCurrent)cleanStatus(`Live HGR — ${m.timing.totalMs.toFixed(1)} ms per conversion${backendText}${m.metadata.histogramParity==='approximation'?' — histogram compatibility approximation active':''}.`);else{$('status').className='status dirty';$('status').textContent='Live HGR updating with changed settings…';}drawSource();drawOutput();cameraPump.complete();}else{cleanStatus(`Converted in ${m.timing.totalMs.toFixed(1)} ms${backendText}${m.metadata.histogramParity==='approximation'?' — histogram compatibility approximation active':''}.`);drawSource();drawOutput();}}else if(m.type==='error'){const live=camera.active&&m.requestId===camera.requestId;errStatus(`${m.stage}: ${m.message}`);$('progress').hidden=true;$('convertBtn').disabled=camera.active||!source.rgb;if(live){cameraPump.stop();}}else if(m.type==='testResult'){addTestRow(m);}else if(m.type==='testSuiteComplete'){const s=$('testSummary');s.className='status '+(m.failed?'error':m.referencePending?'dirty':'good');s.textContent=`${m.passed} passed, ${m.failed} failed, ${m.referencePending||0} reference pending.`;} };
 
 function downloadBlob(bytes,name,type='application/octet-stream'){const u=URL.createObjectURL(new Blob([bytes],{type})),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
 function saveHgr(){if(result&&!dirty)downloadBlob(result.hgrPage,exportBaseName()+'.HGR');}
@@ -786,7 +868,8 @@ document.querySelectorAll('.outputTab').forEach(b=>b.onclick=()=>{document.query
 document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>setErrorCoeffs(presets[b.dataset.preset]));$('ditherMode').onchange=applyModePreset;$('weightDefault').onclick=()=>{$('weightR').value=30;$('weightG').value=52;$('weightB').value=18;syncSettings();markDirty();};
 function nudge(axis,delta,e){let step=1;if(e.shiftKey)step=2;if(e.ctrlKey||e.metaKey)step=e.shiftKey?8:4;const key=axis==='x'?'horizontalNudge':'verticalNudge';if(axis==='x')settings.scaling[key]=Math.max(-7,Math.min(7,settings.scaling[key]+delta*step));else settings.scaling[key]+=delta*step;$('xNudge').textContent=settings.scaling.horizontalNudge;$('yNudge').textContent=settings.scaling.verticalNudge;markDirty();}
 $('xMinus').onclick=e=>nudge('x',-1,e);$('xPlus').onclick=e=>nudge('x',1,e);$('yMinus').onclick=e=>nudge('y',-1,e);$('yPlus').onclick=e=>nudge('y',1,e);
-['perceptual','luma','weightR','weightG','weightB','colorShift','greyscale','histogram','gamma','fillMode','filter','errorMode','orderedOffset'].forEach(id=>$(id).addEventListener('input',()=>{syncSettings();markDirty();}));document.querySelectorAll('.errcoef').forEach(e=>e.addEventListener('input',()=>{syncSettings();markDirty();}));$('autoConvert').onchange=()=>{if($('autoConvert').checked&&dirty&&source.rgb&&!camera.active)convertNow();};
+['perceptual','luma','weightR','weightG','weightB','colorShift','greyscale','histogram','gamma','fillMode','filter','errorMode','orderedOffset'].forEach(id=>$(id).addEventListener('input',()=>{syncSettings();markDirty();}));document.querySelectorAll('.errcoef').forEach(e=>e.addEventListener('input',()=>{syncSettings();markDirty();}));$('autoConvert').onchange=()=>{const enabled=$('autoConvert').checked;if(camera.active){if(enabled){cameraPump.start();$('status').className='status';$('status').textContent='Live HGR auto-convert resumed.';}else{cameraPump.stop();camera.requestId=0;currentRequest=++requestId;$('status').className='status';$('status').textContent='Camera active — Auto-convert is off.';}return;}if(enabled&&dirty&&source.rgb)convertNow();};
+$('conversionBackend').onchange=()=>{markDirty('Conversion backend changed — output is not current.');};
 $('runCoreTests').onclick=()=>runTests(['core']);$('runQuantTests').onclick=()=>runTests(['quantizer']);$('runAllTests').onclick=()=>runTests(['core','quantizer']);$('clearTests').onclick=()=>{$('testBody').innerHTML='';$('testSummary').textContent='No tests run.';};
 for(const [k,v] of Object.entries(settings.dither.error))document.querySelector(`.errcoef[data-k="${k}"]`).value=v;updateControlState();$('cameraStartBtn').disabled=!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);window.addEventListener('beforeunload',()=>{cameraPump.stop();camera.stream?.getTracks().forEach(t=>t.stop());if(source.objectUrl)URL.revokeObjectURL(source.objectUrl);worker.terminate();URL.revokeObjectURL(workerUrl);});
 })();
