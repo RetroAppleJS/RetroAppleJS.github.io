@@ -22,7 +22,12 @@ function render(card)
     return card.deviceToolSlotHTML({toolboxID:'device_tool_S7',slotID:'S7',slotN:8});
 }
 
-test('IMG row contains one compact camera pictogram toggle',()=>{
+function assertCameraStatus(html,state)
+{
+    assert.match(html,new RegExp('id="dither_ctrl_S7_camera_status"[^>]*>'+state+'<'));
+}
+
+test('IMG row contains one compact camera pictogram toggle with OFF status beside it',()=>{
     const DithertizerII=loadCard();
     const html=render(new DithertizerII());
 
@@ -31,6 +36,8 @@ test('IMG row contains one compact camera pictogram toggle',()=>{
     assert.match(html,/id="dither_ctrl_S7_camera"[^>]*aria-pressed="false"/);
     assert.match(html,/id="dither_ctrl_S7_camera"[\s\S]*fa-camera/);
     assert.match(html,/deviceToolCameraToggle\('dither_ctrl_S7'\)/);
+    assert.match(html,/id="dither_ctrl_S7_camera"[\s\S]*id="dither_ctrl_S7_camera_status"/);
+    assertCameraStatus(html,'OFF');
 });
 
 test('camera toggle starts and stops getUserMedia video stream without touching cameraSource',async()=>{
@@ -48,11 +55,13 @@ test('camera toggle starts and stops getUserMedia video stream without touching 
     assert.equal(calls[0].audio,false);
     assert.equal(card.getCameraSource(),null,'host camera lifecycle stays separate from frame processing');
     assert.match(render(card),/id="dither_ctrl_S7_camera"[^>]*aria-pressed="true"/);
+    assertCameraStatus(render(card),'ON');
 
     assert.equal(await card.deviceToolCameraToggle('dither_ctrl_S7'),false);
     assert.equal(stopped,2);
     assert.equal(card.getCameraSource(),null);
     assert.match(render(card),/id="dither_ctrl_S7_camera"[^>]*aria-pressed="false"/);
+    assertCameraStatus(render(card),'OFF');
 });
 
 test('camera toggle fails closed when getUserMedia is unavailable or rejected',async()=>{
@@ -61,6 +70,7 @@ test('camera toggle fails closed when getUserMedia is unavailable or rejected',a
         const card=new DithertizerII();
         assert.equal(await card.deviceToolCameraToggle('dither_ctrl_S7'),false);
         assert.match(render(card),/id="dither_ctrl_S7_camera"[^>]*aria-pressed="false"/);
+        assertCameraStatus(render(card),'OFF');
     }
 
     {
@@ -69,10 +79,11 @@ test('camera toggle fails closed when getUserMedia is unavailable or rejected',a
         const card=new DithertizerII();
         assert.equal(await card.deviceToolCameraToggle('dither_ctrl_S7'),false);
         assert.match(render(card),/id="dither_ctrl_S7_camera"[^>]*aria-pressed="false"/);
+        assertCameraStatus(render(card),'OFF');
     }
 });
 
-test('reset and restart stop all host-camera tracks',async()=>{
+test('reset and restart stop all host-camera tracks and restore OFF status',async()=>{
     let stopped=0;
     const makeStream=()=>({getTracks(){return [{stop(){stopped++;}},{stop(){stopped++;}}];}});
     let current=makeStream();
@@ -84,10 +95,12 @@ test('reset and restart stop all host-camera tracks',async()=>{
     card.reset();
     assert.equal(stopped,2);
     assert.match(render(card),/id="dither_ctrl_S7_camera"[^>]*aria-pressed="false"/);
+    assertCameraStatus(render(card),'OFF');
 
     current=makeStream();
     await card.deviceToolCameraToggle('dither_ctrl_S7');
     card.restart();
     assert.equal(stopped,4);
     assert.match(render(card),/id="dither_ctrl_S7_camera"[^>]*aria-pressed="false"/);
+    assertCameraStatus(render(card),'OFF');
 });

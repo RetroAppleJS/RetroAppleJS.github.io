@@ -278,6 +278,10 @@ function DithertizerII()
         var icon=button.querySelector ? button.querySelector("i") : null;
         if(icon && icon.style)
             icon.style.color=active ? "#0a0" : "";
+
+        var status=document.getElementById(controlID+"_camera_status");
+        if(status)
+            status.textContent=active ? "ON" : "OFF";
     }
 
     this.deviceToolCameraToggle=async function(controlID)
@@ -476,6 +480,7 @@ function DithertizerII()
             +"           style=\"margin-left:auto;height:19px;padding:1px 5px;\">"
             +"    <i class=\"fa fa-camera\" style=\""+(cameraActive ? "color:#0a0;" : "")+"\"></i>"
             +"   </button>"
+            +"   <span id=\""+controlID+"_camera_status\" style=\"display:inline-block;width:20px;font-size:10px;text-align:center;color:#777;\">"+(cameraActive ? "ON" : "OFF")+"</span>"
             +"  </div>"
 
             +" </div>"
