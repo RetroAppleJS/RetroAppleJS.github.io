@@ -55,7 +55,7 @@
         <div class="row"><label>Vertical nudge</label><button id="yMinus">↑</button><span id="yNudge">0</span><button id="yPlus">↓</button></div>
       </div>
 
-      <div class="group"><label><input id="autoConvert" type="checkbox"> Auto-convert after changes</label></div>
+      <div class="group"><label><input id="autoConvert" type="checkbox" checked> Auto-convert after changes</label></div>
       <div id="status" class="status">Open an image to begin.</div>
     </section>
 
@@ -635,7 +635,7 @@ const $=id=>document.getElementById(id);
 const PALETTE=[[0,0,0],[20,245,60],[255,68,253],[255,255,255],[0,0,0],[255,106,60],[20,207,253],[255,255,255]];
 const PALNAME=['black','green','purple','white','black2','orange','blue','white2'];
 let settings={image:{greyscale:false,stretchHistogram:false,gamma:1.30,maxColorShift:1},scaling:{filter:'bilinear',fillMode:'default',horizontalNudge:0,verticalNudge:0,applePixelAspect:256/280},matching:{perceptual:false,lumaEmphasis:.80,perceptualR:.30,perceptualG:.52,perceptualB:.18},dither:{orderedMode:0,mapSize:2,orderedOffset:0,accumulateErrors:true,error:{A:1,B:2,C:2,D:2,E:1,F:1}}};
-let source={fileName:'',width:0,height:0,rgb:null,bitmap:null};
+let source={fileName:'',width:0,height:0,rgb:null,bitmap:null,objectUrl:null};
 let result=null,requestId=0,currentRequest=0,dirty=true,sourceView='original',outputView='color',autoTimer=0;
 const camera={active:false,stream:null,requestId:0,settingsRevision:0,requestRevision:0,lastCompletedAt:0,fpsSamples:[],canvas:document.createElement('canvas')};
 const workerSource=$('worker-source').textContent,workerUrl=URL.createObjectURL(new Blob([workerSource],{type:'text/javascript'})),worker=new Worker(workerUrl);
@@ -647,7 +647,7 @@ function createOneInFlightPump(submitFrame,scheduleNext){
  function kick(){scheduled=false;if(!active||inFlight)return false;inFlight=true;const submitted=submitFrame();if(submitted===false){inFlight=false;schedule();return false;}return true;}
  return {
   start(){if(active)return;active=true;schedule();},
-  stop(){active=false;scheduled=false;},
+  stop(){active=false;scheduled=false;inFlight=false;},
   complete(){if(!inFlight)return;inFlight=false;schedule();},
   fail(){if(!inFlight)return;inFlight=false;schedule();},
   isActive(){return active;},
@@ -682,9 +682,31 @@ function setErrorCoeffs(v){for(const k of 'ABCDEF'){const e=document.querySelect
 const presets={atkinson:{A:1,B:2,C:2,D:2,E:1,F:1},floyd:{A:3,B:5,C:1,D:7,E:0,F:0},pattern:{A:0,B:8,C:0,D:8,E:0,F:0},diag:{A:1,B:3,C:2,D:3,E:1,F:1},none:{A:0,B:0,C:0,D:0,E:0,F:0}};
 function applyModePreset(){const m=$('ditherMode').value;if(m==='order2'||m==='order4'){for(const [k,v] of Object.entries({A:1,B:2,C:2,D:2,E:0,F:0}))document.querySelector(`.errcoef[data-k="${k}"]`).value=v;}syncSettings();markDirty();}
 
+function setSourceTab(view){
+ sourceView=view;
+ $('sourceOriginalTab').classList.toggle('active',view==='original');
+ $('sourceProcessedTab').classList.toggle('active',view==='processed');
+}
+function decodeImageFile(file){
+ return new Promise((resolve,reject)=>{
+  const url=URL.createObjectURL(file),img=new Image();
+  img.onload=()=>resolve({img,url});
+  img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Browser could not decode this image.'));};
+  img.src=url;
+ });
+}
 async function loadFile(file){
- stopCamera();
- try{const bm=await createImageBitmap(file);const c=document.createElement('canvas');c.width=bm.width;c.height=bm.height;const x=c.getContext('2d',{willReadFrequently:true});x.fillStyle='#000';x.fillRect(0,0,c.width,c.height);x.drawImage(bm,0,0);const d=x.getImageData(0,0,c.width,c.height).data,rgb=new Uint8Array(bm.width*bm.height*3);for(let s=0,t=0;s<d.length;s+=4){rgb[t++]=d[s];rgb[t++]=d[s+1];rgb[t++]=d[s+2];}source={fileName:file.name,width:bm.width,height:bm.height,rgb,bitmap:bm};$('sourceInfo').textContent=`${file.name} — ${bm.width} × ${bm.height}`;drawSource();markDirty('Image loaded — press Convert / Reload.');$('convertBtn').disabled=false;}
+ if(camera.active)stopCamera();
+ try{
+  const decoded=await decodeImageFile(file),img=decoded.img,w=img.naturalWidth||img.width,h=img.naturalHeight||img.height;
+  if(!w||!h)throw new Error('Image has no readable dimensions.');
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.fillStyle='#000';x.fillRect(0,0,w,h);x.drawImage(img,0,0,w,h);
+  const d=x.getImageData(0,0,w,h).data,rgb=new Uint8Array(w*h*3);for(let s=0,t=0;s<d.length;s+=4){rgb[t++]=d[s];rgb[t++]=d[s+1];rgb[t++]=d[s+2];}
+  if(source.objectUrl)URL.revokeObjectURL(source.objectUrl);
+  source={fileName:file.name,width:w,height:h,rgb,bitmap:img,objectUrl:decoded.url};
+  result=null;setSourceTab('original');drawOutput();
+  $('sourceInfo').textContent=`${file.name} — ${w} × ${h}`;drawSource();markDirty('Image loaded — press Convert / Reload.');$('convertBtn').disabled=false;
+ }
  catch(e){errStatus(`Unable to open image: ${e.message}`);}
 }
 function drawSource(){const c=$('sourceCanvas'),v=$('cameraVideo'),showVideo=camera.active&&sourceView==='original';v.hidden=!showVideo;c.hidden=showVideo;if(showVideo)return;const x=c.getContext('2d');x.imageSmoothingEnabled=true;x.fillStyle='#000';x.fillRect(0,0,280,192);if(sourceView==='original'&&source.bitmap){const s=Math.min(280/source.width,192/source.height),w=source.width*s,h=source.height*s;x.drawImage(source.bitmap,(280-w)/2,(192-h)/2,w,h);}else if(result){drawRGB(result.processedRGB,c);}}
@@ -700,7 +722,7 @@ async function startCamera(){
   camera.active=true;camera.settingsRevision++;camera.lastCompletedAt=0;camera.fpsSamples.length=0;$('cameraFps').textContent='HGR FPS: —';
   currentRequest=++requestId;
   $('cameraStartBtn').disabled=true;$('cameraStopBtn').disabled=false;$('convertBtn').disabled=true;
-  sourceView='original';$('sourceOriginalTab').classList.add('active');$('sourceProcessedTab').classList.remove('active');
+  setSourceTab('original');
   $('sourceInfo').textContent=`Camera — ${v.videoWidth||'?'} × ${v.videoHeight||'?'} — live HGR`;
   drawSource();cameraPump.start();
  }catch(e){camera.stream?.getTracks().forEach(t=>t.stop());camera.stream=null;$('cameraStartBtn').disabled=false;$('cameraStopBtn').disabled=true;errStatus(`Unable to start camera: ${e.message}. Camera access generally requires HTTPS or localhost.`);}
@@ -741,16 +763,16 @@ function inspect(ev){if(!result)return;const r=$('outputCanvas').getBoundingClie
 function addTestRow(m){const tr=document.createElement('tr'),status=m.status==='pass'?'pass':m.status==='fail'?'fail':'pending',hash=m.hashes?.hgrPage||'';tr.innerHTML=`<td>${m.fixtureId}</td><td class="${status}">${m.status}</td><td>${m.durationMs.toFixed(1)} ms</td><td title="${hash}">${hash.slice(0,16)}${hash?'…':''}</td>`;$('testBody').appendChild(tr);}
 function runTests(groups){$('testBody').innerHTML='';$('testSummary').className='status';$('testSummary').textContent='Running…';const id=++requestId;worker.postMessage({type:'runTests',requestId:id,groups});}
 
-$('openBtn').onclick=()=>{if(camera.active)stopCamera();$('fileInput').click();};$('cameraStartBtn').onclick=startCamera;$('cameraStopBtn').onclick=stopCamera;$('fileInput').onchange=e=>e.target.files[0]&&loadFile(e.target.files[0]);$('convertBtn').onclick=convertNow;$('saveHgr').onclick=saveHgr;$('savePng').onclick=savePng;$('saveSettings').onclick=saveSettings;
+$('openBtn').onclick=()=>{if(camera.active)stopCamera();$('fileInput').value='';$('fileInput').click();};$('cameraStartBtn').onclick=startCamera;$('cameraStopBtn').onclick=stopCamera;$('fileInput').onchange=e=>e.target.files[0]&&loadFile(e.target.files[0]);$('convertBtn').onclick=convertNow;$('saveHgr').onclick=saveHgr;$('savePng').onclick=savePng;$('saveSettings').onclick=saveSettings;
 $('dropZone').ondragover=e=>{e.preventDefault();};$('dropZone').ondrop=e=>{e.preventDefault();if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0]);};
-$('sourceOriginalTab').onclick=()=>{sourceView='original';$('sourceOriginalTab').classList.add('active');$('sourceProcessedTab').classList.remove('active');drawSource();};$('sourceProcessedTab').onclick=()=>{sourceView='processed';$('sourceProcessedTab').classList.add('active');$('sourceOriginalTab').classList.remove('active');drawSource();};
+$('sourceOriginalTab').onclick=()=>{setSourceTab('original');drawSource();};$('sourceProcessedTab').onclick=()=>{setSourceTab('processed');drawSource();};
 document.querySelectorAll('.outputTab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.outputTab').forEach(x=>x.classList.remove('active'));b.classList.add('active');outputView=b.dataset.view;drawOutput();});$('outputCanvas').onpointermove=inspect;
 document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>setErrorCoeffs(presets[b.dataset.preset]));$('ditherMode').onchange=applyModePreset;$('weightDefault').onclick=()=>{$('weightR').value=30;$('weightG').value=52;$('weightB').value=18;syncSettings();markDirty();};
 function nudge(axis,delta,e){let step=1;if(e.shiftKey)step=2;if(e.ctrlKey||e.metaKey)step=e.shiftKey?8:4;const key=axis==='x'?'horizontalNudge':'verticalNudge';if(axis==='x')settings.scaling[key]=Math.max(-7,Math.min(7,settings.scaling[key]+delta*step));else settings.scaling[key]+=delta*step;$('xNudge').textContent=settings.scaling.horizontalNudge;$('yNudge').textContent=settings.scaling.verticalNudge;markDirty();}
 $('xMinus').onclick=e=>nudge('x',-1,e);$('xPlus').onclick=e=>nudge('x',1,e);$('yMinus').onclick=e=>nudge('y',-1,e);$('yPlus').onclick=e=>nudge('y',1,e);
 ['perceptual','luma','weightR','weightG','weightB','colorShift','greyscale','histogram','gamma','fillMode','filter','errorMode','orderedOffset'].forEach(id=>$(id).addEventListener('input',()=>{syncSettings();markDirty();}));document.querySelectorAll('.errcoef').forEach(e=>e.addEventListener('input',()=>{syncSettings();markDirty();}));$('autoConvert').onchange=()=>{if($('autoConvert').checked&&dirty&&source.rgb&&!camera.active)convertNow();};
 $('runCoreTests').onclick=()=>runTests(['core']);$('runQuantTests').onclick=()=>runTests(['quantizer']);$('runAllTests').onclick=()=>runTests(['core','quantizer']);$('clearTests').onclick=()=>{$('testBody').innerHTML='';$('testSummary').textContent='No tests run.';};
-for(const [k,v] of Object.entries(settings.dither.error))document.querySelector(`.errcoef[data-k="${k}"]`).value=v;updateControlState();$('cameraStartBtn').disabled=!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);window.addEventListener('beforeunload',()=>{cameraPump.stop();camera.stream?.getTracks().forEach(t=>t.stop());worker.terminate();URL.revokeObjectURL(workerUrl);});
+for(const [k,v] of Object.entries(settings.dither.error))document.querySelector(`.errcoef[data-k="${k}"]`).value=v;updateControlState();$('cameraStartBtn').disabled=!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);window.addEventListener('beforeunload',()=>{cameraPump.stop();camera.stream?.getTracks().forEach(t=>t.stop());if(source.objectUrl)URL.revokeObjectURL(source.objectUrl);worker.terminate();URL.revokeObjectURL(workerUrl);});
 })();
 </script>
 
