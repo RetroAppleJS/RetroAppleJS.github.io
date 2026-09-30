@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ConvertHGR Core — Browser Parity Port</title>
+<style>
+:root{color-scheme:dark;--bg:#111418;--panel:#1a1f25;--panel2:#202731;--border:#39424e;--text:#e7edf4;--muted:#aeb8c5;--accent:#79d2ff;--warn:#f0c36a;--bad:#ff8080;--good:#86e49d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,select{font:inherit;color:inherit;background:#171c22;border:1px solid var(--border);border-radius:6px;padding:6px 8px}button{cursor:pointer}button:hover:not(:disabled){border-color:var(--accent)}button:disabled{opacity:.45;cursor:not-allowed}input[type=number]{width:76px}input[type=range]{padding:0}.app{max-width:1680px;margin:auto;padding:14px}.topbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.topbar h1{font-size:20px;margin:0 auto 0 0}.badge{border:1px solid var(--border);border-radius:999px;padding:4px 9px;color:var(--muted)}.grid{display:grid;grid-template-columns:340px minmax(340px,1fr) minmax(340px,1fr);gap:12px;align-items:start}.panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px}.panel h2,.panel h3{margin:0 0 10px}.controls{max-height:calc(100vh - 100px);overflow:auto}.group{border-top:1px solid var(--border);padding-top:10px;margin-top:10px}.group:first-child{border-top:0;padding-top:0;margin-top:0}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0}.row label{min-width:122px;color:var(--muted)}.small{font-size:12px;color:var(--muted)}.canvasWrap{background:#050607;border:1px solid var(--border);border-radius:8px;overflow:hidden;aspect-ratio:280/192}.canvasWrap canvas{display:block;width:100%;height:100%;image-rendering:pixelated}.tabs{display:flex;gap:5px;margin-bottom:8px}.tabs button.active{border-color:var(--accent);background:#263443}.ditherGrid{display:grid;grid-template-columns:repeat(5,44px);grid-template-rows:repeat(3,40px);align-items:center;justify-content:start;gap:4px}.ditherGrid .pix{grid-column:2;grid-row:1;text-align:center;color:var(--muted)}.ditherGrid .D{grid-column:3;grid-row:1}.ditherGrid .E{grid-column:4;grid-row:1}.ditherGrid .A{grid-column:1;grid-row:2}.ditherGrid .B{grid-column:2;grid-row:2}.ditherGrid .C{grid-column:3;grid-row:2}.ditherGrid .F{grid-column:2;grid-row:3}.ditherGrid input{width:44px;padding:5px}.status{margin-top:10px;padding:8px;border-radius:6px;background:#151a20;color:var(--muted)}.status.dirty{color:var(--warn)}.status.error{color:var(--bad)}.status.good{color:var(--good)}.inspector{display:grid;grid-template-columns:auto 1fr;gap:5px 10px;margin-top:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}.inspector dt{color:var(--muted)}.inspector dd{margin:0}.footer{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.tests table{width:100%;border-collapse:collapse;font-size:12px}.tests th,.tests td{padding:5px;border-bottom:1px solid var(--border);text-align:left}.pass{color:var(--good)}.fail{color:var(--bad)}.pending{color:var(--warn)}.credit{font-size:12px;color:var(--muted);margin-top:10px}progress{width:180px}@media(max-width:1100px){.grid{grid-template-columns:1fr 1fr}.controls{grid-column:1/-1;max-height:none}.footer{grid-template-columns:1fr}}@media(max-width:720px){.grid{grid-template-columns:1fr}.footer{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <h1>ConvertHGR Core — Browser Parity Port</h1>
+    <span class="badge" id="parityBadge">Parity reference fixtures pending</span>
+    <input id="fileInput" type="file" accept="image/*" hidden>
+    <button id="openBtn">Open Image…</button>
+    <button id="convertBtn" disabled>Convert / Reload</button>
+    <progress id="progress" max="192" value="0" hidden></progress>
+  </div>
+
+  <div class="grid">
+    <section class="panel controls">
+      <h2>Conversion controls</h2>
+      <div class="group">
+        <h3>Dithering</h3>
+        <div class="row"><label for="ditherMode">Mode</label><select id="ditherMode"><option value="diffusion">Error diffusion</option><option value="order1">Order1 — 2×2 threshold</option><option value="order2">Order2 — 2×2 + diffusion</option><option value="order3">Order3 — 4×4 threshold</option><option value="order4">Order4 — 4×4 + diffusion</option></select></div>
+        <div class="row"><button data-preset="atkinson">Atkinson</button><button data-preset="floyd">Floyd-Stein</button><button data-preset="pattern">Pattern</button><button data-preset="diag">Diag</button><button data-preset="none">None</button></div>
+        <div class="ditherGrid"><div class="pix">PIX</div><input class="D errcoef" data-k="D" type="number" min="0" max="16"><input class="E errcoef" data-k="E" type="number" min="0" max="16"><input class="A errcoef" data-k="A" type="number" min="0" max="16"><input class="B errcoef" data-k="B" type="number" min="0" max="16"><input class="C errcoef" data-k="C" type="number" min="0" max="16"><input class="F errcoef" data-k="F" type="number" min="0" max="16"></div>
+        <div class="small" id="errorTotal">Total distributed error: 8 / 16</div>
+        <div class="row"><label for="errorMode">Incoming error</label><select id="errorMode"><option value="accumulate">Accumulate</option><option value="average">Average</option></select></div>
+        <div class="row"><label for="orderedOffset">Ordered offset</label><input id="orderedOffset" type="range" min="0" max="16" value="0"><span id="orderedOffsetValue">0</span></div>
+      </div>
+
+      <div class="group">
+        <h3>Colour matching</h3>
+        <div class="row"><label><input id="perceptual" type="checkbox"> Perceptual RGB</label></div>
+        <div class="row"><label for="luma">Luma emphasis</label><input id="luma" type="number" min="0" max="500" value="80">%</div>
+        <div class="row"><label>RGB weights</label><input id="weightR" type="number" min="0" max="100" value="30"><input id="weightG" type="number" min="0" max="100" value="52"><input id="weightB" type="number" min="0" max="100" value="18"><button id="weightDefault">Default</button></div>
+        <div class="row"><label for="colorShift">Max Color Shift</label><input id="colorShift" type="number" min="0" max="100" value="1">%</div>
+      </div>
+
+      <div class="group">
+        <h3>Image preparation</h3>
+        <div class="row"><label><input id="greyscale" type="checkbox"> Greyscale</label><label><input id="histogram" type="checkbox"> Stretch Histogram</label></div>
+        <div class="small">Histogram uses a browser approximation until the external ImgSource equalizer is reference-calibrated.</div>
+        <div class="row"><label for="gamma">Gamma</label><input id="gamma" type="number" min="0" max="500" value="130">%</div>
+        <div class="row"><label for="fillMode">Fill mode</label><select id="fillMode"><option value="default">Default</option><option value="top-left">Top / Left</option><option value="middle">Middle</option><option value="bottom-right">Bottom / Right</option></select></div>
+        <div class="row"><label for="filter">Scaling filter</label><select id="filter"><option value="box">Box</option><option value="gaussian">Gaussian</option><option value="hamming">Hamming</option><option value="blackman">Blackman</option><option value="bilinear" selected>Bilinear</option></select></div>
+        <div class="row"><label>Horizontal nudge</label><button id="xMinus">←</button><span id="xNudge">0</span><button id="xPlus">→</button></div>
+        <div class="row"><label>Vertical nudge</label><button id="yMinus">↑</button><span id="yNudge">0</span><button id="yPlus">↓</button></div>
+      </div>
+
+      <div class="group"><label><input id="autoConvert" type="checkbox"> Auto-convert after changes</label></div>
+      <div id="status" class="status">Open an image to begin.</div>
+    </section>
+
+    <section class="panel">
+      <h2>Source / processed RGB</h2>
+      <div class="tabs"><button id="sourceOriginalTab" class="active">Original</button><button id="sourceProcessedTab">Processed 280×192</button></div>
+      <div class="canvasWrap" id="dropZone"><canvas id="sourceCanvas" width="280" height="192"></canvas></div>
+      <div class="small" id="sourceInfo">Drop an image here or use Open Image…</div>
+    </section>
+
+    <section class="panel">
+      <h2>Apple II HGR output</h2>
+      <div class="tabs"><button data-view="color" class="outputTab active">Colour</button><button data-view="green" class="outputTab">Green</button><button data-view="raw" class="outputTab">Raw Bits</button></div>
+      <div class="canvasWrap"><canvas id="outputCanvas" width="280" height="192"></canvas></div>
+      <dl class="inspector"><dt>X/Y</dt><dd id="ixy">—</dd><dt>Processed RGB</dt><dd id="irgb">—</dd><dt>Palette</dt><dd id="ipal">—</dd><dt>Byte</dt><dd id="ibyte">—</dd><dt>Phase</dt><dd id="iphase">—</dd><dt>HGR offset</dt><dd id="ioffset">—</dd></dl>
+      <div class="row"><button id="savePng" disabled>Save PNG…</button><button id="saveHgr" disabled>Save HGR…</button><span class="small">8,192-byte HGR page</span></div>
+    </section>
+  </div>
+
+  <div class="footer">
+    <section class="panel tests">
+      <h2>Parity diagnostics</h2>
+      <div class="row"><button id="runCoreTests">Run Core</button><button id="runQuantTests">Run Quantizer</button><button id="runAllTests">Run All</button><button id="clearTests">Clear</button></div>
+      <div class="small">Structural tests run locally. Quantizer hashes are reported but remain “reference pending” until desktop ConvertHGR golden fixtures are embedded.</div>
+      <table><thead><tr><th>Fixture</th><th>Status</th><th>Time</th><th>HGR SHA-256</th></tr></thead><tbody id="testBody"></tbody></table>
+      <div id="testSummary" class="status">No tests run.</div>
+    </section>
+
+    <section class="panel">
+      <h2>Implementation status</h2>
+      <p>This file implements the ConvertHGR-compatible seven-pixel / 256-pattern quantizer, palette phases, candidate-horizontal D/E diffusion, A/B/C/F error propagation, ordered modes, colour metrics, five resize filters, HGR packing, and Apple II 8 KB memory interleave.</p>
+      <p class="small">Parity is deliberately not claimed until reference fixtures generated by a fixed-seed desktop ConvertHGR build match byte-for-byte. Histogram Stretch is explicitly a compatibility approximation because the original delegates that operation to the external ImgSource library.</p>
+      <div class="credit">Behavioral reimplementation based on ConvertHGR by Mike Brent (Tursi / HarmlessLion). The original project should be credited and its redistribution terms reviewed before distributing a derived port.</div>
+    </section>
+  </div>
+</div>
+
+<script id="worker-source" type="text/plain">
+
+const WIDTH = 280;
+const HEIGHT = 192;
+const BYTES_PER_ROW = 40;
+const PAGE_BYTES = 8192;
+
+const PALETTE = [
+  [0,0,0], [20,245,60], [255,68,253], [255,255,255],
+  [0,0,0], [255,106,60], [20,207,253], [255,255,255]
+];
+
+const ORDER2 = [[0/4,2/4],[3/4,1/4]];
+const ORDER4 = [
+  [0/16,8/16,2/16,10/16],
+  [12/16,4/16,14/16,6/16],
+  [3/16,11/16,1/16,9/16],
+  [15/16,7/16,13/16,5/16]
+];
+
+function defaultSettings(){
+  return {
+    image:{greyscale:false,stretchHistogram:false,gamma:1.30,maxColorShift:1},
+    scaling:{filter:'bilinear',fillMode:'default',horizontalNudge:0,verticalNudge:0,applePixelAspect:256/280},
+    matching:{perceptual:false,lumaEmphasis:0.80,perceptualR:0.30,perceptualG:0.52,perceptualB:0.18},
+    dither:{orderedMode:0,mapSize:2,orderedOffset:0,accumulateErrors:true,error:{A:1,B:2,C:2,D:2,E:1,F:1}}
+  };
+}
+
+class MsvcRand {
+  constructor(seed){ this.state = seed >>> 0; }
+  next(){
+    this.state = (Math.imul(this.state,214013)+2531011)>>>0;
+    return (this.state>>>16)&0x7fff;
+  }
+}
+
+function makeYuv(r,g,b){
+  return [
+    0.299*r + 0.587*g + 0.114*b,
+    0.500*r - 0.419*g - 0.081*b,
+   -0.169*r - 0.331*g + 0.500*b
+  ];
+}
+
+const PALETTE_YUV = PALETTE.map(c => makeYuv(c[0],c[1],c[2]));
+
+function colorDistance(r,g,b,index,settings){
+  const p = PALETTE[index];
+  const m = settings.matching;
+  const dr=r-p[0], dg=g-p[1], db=b-p[2];
+  if(m.perceptual){
+    return dr*dr*m.perceptualR + dg*dg*m.perceptualG + db*db*m.perceptualB;
+  }
+  const q = makeYuv(r,g,b), py = PALETTE_YUV[index];
+  const dy=(q[0]-py[0])*m.lumaEmphasis, dcr=q[1]-py[1], dcb=q[2]-py[2];
+  return dy*dy+dcr*dcr+dcb*dcb;
+}
+
+function hgrOffset(y,byteColumn){
+  return ((y&7)<<10) + (((y>>3)&7)<<7) + (Math.floor(y/64)*40) + byteColumn;
+}
+
+function packPaletteToHgr(paletteImage){
+  if(paletteImage.length !== WIDTH*HEIGHT) throw new Error('paletteImage must be 280x192');
+  const out = new Uint8Array(BYTES_PER_ROW*HEIGHT);
+  let op=0;
+  for(let row=0;row<HEIGHT;row++){
+    const rowBase=row*WIDTH;
+    for(let col=0;col<WIDTH;col+=7){
+      const first=paletteImage[rowBase+col];
+      const setBit=first&0x04;
+      for(let i=1;i<7;i++) if((paletteImage[rowBase+col+i]&0x04)!==setBit) throw new Error(`palette group mismatch at ${col},${row}`);
+      let byte=(setBit<<5)&0x80;
+      let col1, col2;
+      if(((col/7)&1)!==0){ col1=0x55; col2=0xaa; }
+      else { col1=0xaa; col2=0x55; }
+      let mask=0x40, maskOut=0x01;
+      for(let i=0;i<7;i++,mask>>=1,maskOut<<=1){
+        let w=paletteImage[rowBase+col+i]&0x03;
+        let on;
+        if(w===3) on=1;
+        else if(w===1) on=(col1&mask)?1:0;
+        else if(w===2) on=(col2&mask)?1:0;
+        else on=0;
+        if(on) byte|=maskOut;
+      }
+      out[op++]=byte;
+    }
+  }
+  return out;
+}
+
+function interleaveHgrPage(linear){
+  if(linear.length !== BYTES_PER_ROW*HEIGHT) throw new Error('linear HGR must be 7680 bytes');
+  const page=new Uint8Array(PAGE_BYTES);
+  for(let y=0;y<HEIGHT;y++) for(let xb=0;xb<BYTES_PER_ROW;xb++) page[hgrOffset(y,xb)] = linear[y*BYTES_PER_ROW+xb];
+  return page;
+}
+
+function patternColor(pattern, bit, byteColumn, previousOn){
+  let base, odd, even;
+  if(byteColumn&1){
+    base=(pattern&0x80)?0:4; odd=2; even=1;
+  } else {
+    base=(pattern&0x80)?4:0; odd=1; even=2;
+  }
+  const mask=0x40>>bit;
+  let c=base;
+  if(pattern&mask){
+    c |= (bit&1)?odd:even;
+    if(bit===0 && previousOn) c|=3;
+    if(bit>0 && (pattern&(mask<<1))) c|=3;
+    if(pattern&(mask>>1)) c|=3;
+  } else {
+    if(bit>0 && (pattern&(mask<<1))) c |= (bit&1)?even:odd;
+    if(bit===0 && previousOn) c |= (bit&1)?even:odd;
+  }
+  return c;
+}
+
+function previousOnFromPalette(paletteImage,row,col){
+  if(col<=0) return 0;
+  let last=paletteImage[row*WIDTH+col-1];
+  if(((col/7)&1)!==0) return (last&2)?1:0;
+  return (last&1)?1:0;
+}
+
+function quantize280(rgb,settings=defaultSettings(),seed=0x12345678,progressCallback=null){
+  if(rgb.length!==WIDTH*HEIGHT*3) throw new Error('quantize280 expects 280x192 RGB');
+  const paletteImage=new Uint8Array(WIDTH*HEIGHT);
+  const errBuf=new Float64Array(283*194*3);
+  const desired=new Float64Array(7*3);
+  const e=settings.dither.error;
+  const fA=e.A/16, fB=e.B/16, fC=e.C/16, fD=e.D/16, fE=e.E/16, fF=e.F/16;
+  const rng=new MsvcRand(seed);
+  const orderedMode=settings.dither.orderedMode|0;
+  const mapSize=settings.dither.mapSize===4?4:2;
+  const thresholdBase=mapSize===4?ORDER4:ORDER2;
+  const threshold=thresholdBase.map(row => row.map(v => v - settings.dither.orderedOffset/16));
+  const mapMask=mapSize-1;
+
+  for(let row=0;row<HEIGHT;row++){
+    if(progressCallback && (row&7)===0) progressCallback(row,HEIGHT);
+    const errDiv=(row===0 || settings.dither.accumulateErrors)?1:3;
+    for(let col=0;col<WIDTH;col+=7){
+      // desired pixels and incoming error
+      for(let c=0;c<7;c++){
+        const si=(row*WIDTH+col+c)*3;
+        let r=rgb[si],g=rgb[si+1],b=rgb[si+2];
+        const pureBlack=r===0&&g===0&&b===0;
+        const pureWhite=r===255&&g===255&&b===255;
+        if(!pureBlack && !pureWhite){
+          if(orderedMode){
+            const t=threshold[c&mapMask][row&mapMask];
+            r+=r*t; g+=g*t; b+=b*t;
+          }
+          const ei=(row*282 + (col+c+1))*3;
+          r+=errBuf[ei]/errDiv; g+=errBuf[ei+1]/errDiv; b+=errBuf[ei+2]/errDiv;
+        }
+        const di=c*3; desired[di]=r;desired[di+1]=g;desired[di+2]=b;
+      }
+
+      const previousOn=previousOnFromPalette(paletteImage,row,col);
+      let bestDistance=256**6;
+      let bestPattern=0;
+      let bestCarry=[0,0,0,0,0,0];
+      let pattern=rng.next()%256;
+
+      for(let count=0;count<256;count++,pattern=(pattern+1)&0xff){
+        let dist=0;
+        let tmpR=0,tmpG=0,tmpB=0,farR=0,farG=0,farB=0;
+        for(let bit=0;bit<7;bit++){
+          const di=bit*3;
+          let r=desired[di]+tmpR/errDiv;
+          let g=desired[di+1]+tmpG/errDiv;
+          let b=desired[di+2]+tmpB/errDiv;
+          const ci=patternColor(pattern,bit,col/7,previousOn);
+          const p=PALETTE[ci];
+          const dr=r-p[0],dg=g-p[1],db=b-p[2];
+          dist+=colorDistance(r,g,b,ci,settings);
+          if(dist>=bestDistance) break;
+          tmpR=dr*fD+farR; tmpG=dg*fD+farG; tmpB=db*fD+farB;
+          farR=dr*fE; farG=dg*fE; farB=db*fE;
+        }
+        if(dist<bestDistance){
+          bestDistance=dist; bestPattern=pattern;
+          bestCarry=[tmpR,tmpG,tmpB,farR,farG,farB];
+        }
+      }
+
+      // after input-prep loop, C++ pointer is at logical x=col+7; add D/E there
+      let right=(row*282 + (col+7+1))*3;
+      errBuf[right]+=bestCarry[0];errBuf[right+1]+=bestCarry[1];errBuf[right+2]+=bestCarry[2];
+      errBuf[right+3]+=bestCarry[3];errBuf[right+4]+=bestCarry[4];errBuf[right+5]+=bestCarry[5];
+
+      // rebase pointer to next row at logical x=col
+      const nextBase=((row+1)*282 + (col+1))*3;
+      for(let bit=0;bit<7;bit++){
+        let ci=patternColor(bestPattern,bit,col/7,previousOn);
+        if(bit===0 && previousOn && (bestPattern&0x40)) paletteImage[row*WIDTH+col-1] |= 0x03;
+        paletteImage[row*WIDTH+col+bit]=ci;
+        const di=bit*3;
+        const p=PALETTE[ci];
+        const dr=desired[di]-p[0], dg=desired[di+1]-p[1], db=desired[di+2]-p[2];
+        const base=nextBase+bit*3;
+        errBuf[base-3]+=dr*fA; errBuf[base-2]+=dg*fA; errBuf[base-1]+=db*fA;
+        errBuf[base]+=dr*fB; errBuf[base+1]+=dg*fB; errBuf[base+2]+=db*fB;
+        errBuf[base+3]+=dr*fC; errBuf[base+4]+=dg*fC; errBuf[base+5]+=db*fC;
+        const foff=base+258*3;
+        errBuf[foff]+=dr*fF; errBuf[foff+1]+=dg*fF; errBuf[foff+2]+=db*fF;
+      }
+    }
+  }
+  const linearHgr=packPaletteToHgr(paletteImage);
+  const hgrPage=interleaveHgrPage(linearHgr);
+  return {paletteImage,linearHgr,hgrPage};
+}
+
+
+function filterInfo(name){
+  switch(name){
+    case 'box': return {width:0.5, fn:x=>Math.abs(x)<=0.5?1:0};
+    case 'gaussian': return {width:3, fn:x=>Math.abs(x)>3?0:Math.exp(-(x*x)/2)/Math.sqrt(2*Math.PI)};
+    case 'hamming': return {width:0.5, fn:x=>{ if(Math.abs(x)>0.5)return 0; const win=0.54+0.46*Math.cos(2*Math.PI*x); const sinc=x===0?1:Math.sin(Math.PI*x)/(Math.PI*x); return win*sinc; }};
+    case 'blackman': return {width:0.5, fn:x=>{ if(Math.abs(x)>0.5)return 0; const n=2*0.5+1; return 0.42+0.5*Math.cos(2*Math.PI*x/(n-1))+0.08*Math.cos(4*Math.PI*x/(n-1)); }};
+    default: return {width:1, fn:x=>{ x=Math.abs(x); return x<1?1-x:0; }};
+  }
+}
+
+function contributions(dstSize,srcSize,filterName){
+  const f=filterInfo(filterName), scale=dstSize/srcSize;
+  let width=f.width, fscale=1;
+  if(scale<1){ width=f.width/(scale===0?1:scale); fscale=scale===0?1:scale; }
+  const windowSize=2*Math.ceil(width)+1;
+  const out=new Array(dstSize);
+  for(let u=0;u<dstSize;u++){
+    const center=u/scale;
+    let left=Math.max(0,Math.floor(center-width));
+    let right=Math.min(Math.ceil(center+width),srcSize-1);
+    if(right-left+1>windowSize){
+      // Preserve original expression semantics: int(uSrcSize) - 1/2 means srcSize - 0.5.
+      if(left < srcSize - 0.5) left++; else right--;
+    }
+    const weights=[];
+    let total=0;
+    for(let i=left;i<=right;i++){
+      const w=fscale*f.fn(fscale*(center-i));
+      weights.push(w); total+=w;
+    }
+    if(total>0) for(let i=0;i<weights.length;i++) weights[i]/=total;
+    out[u]={left,right,weights};
+  }
+  return out;
+}
+
+function byteFromFloat(v){ return (Math.trunc(Math.fround(v)+0.5)&0xff); }
+
+function resampleRGB(src,srcW,srcH,dstW,dstH,filterName='bilinear'){
+  if(srcW===dstW && srcH===dstH) return new Uint8Array(src);
+  let horiz;
+  if(srcW===dstW){ horiz=new Uint8Array(src); }
+  else {
+    const contrib=contributions(dstW,srcW,filterName);
+    horiz=new Uint8Array(dstW*srcH*3);
+    for(let y=0;y<srcH;y++){
+      for(let x=0;x<dstW;x++){
+        const c=contrib[x]; let r=0,g=0,b=0;
+        for(let i=c.left;i<=c.right;i++){
+          const w=c.weights[i-c.left], si=(y*srcW+i)*3;
+          r=Math.fround(r+Math.fround(w*src[si]));
+          g=Math.fround(g+Math.fround(w*src[si+1]));
+          b=Math.fround(b+Math.fround(w*src[si+2]));
+        }
+        const di=(y*dstW+x)*3; horiz[di]=byteFromFloat(r);horiz[di+1]=byteFromFloat(g);horiz[di+2]=byteFromFloat(b);
+      }
+    }
+  }
+  if(srcH===dstH) return horiz;
+  const contrib=contributions(dstH,srcH,filterName), out=new Uint8Array(dstW*dstH*3);
+  for(let x=0;x<dstW;x++){
+    for(let y=0;y<dstH;y++){
+      const c=contrib[y]; let r=0,g=0,b=0;
+      for(let i=c.left;i<=c.right;i++){
+        const w=c.weights[i-c.left], si=(i*dstW+x)*3;
+        r=Math.fround(r+Math.fround(w*horiz[si]));
+        g=Math.fround(g+Math.fround(w*horiz[si+1]));
+        b=Math.fround(b+Math.fround(w*horiz[si+2]));
+      }
+      const di=(y*dstW+x)*3; out[di]=byteFromFloat(r);out[di+1]=byteFromFloat(g);out[di+2]=byteFromFloat(b);
+    }
+  }
+  return out;
+}
+
+function applyGreyscale(src,settings){
+  const out=new Uint8Array(src), m=settings.matching;
+  for(let i=0;i<out.length;i+=3){
+    const r=out[i],g=out[i+1],b=out[i+2];
+    let y;
+    if(m.perceptual) y=Math.trunc(r*m.perceptualR+g*m.perceptualG+b*m.perceptualB+0.5);
+    else y=Math.trunc(0.299*r+0.587*g+0.114*b);
+    if(y<0)y=0;if(y>255)y=255;
+    out[i]=out[i+1]=out[i+2]=y;
+  }
+  return out;
+}
+
+function applyGamma(src,settings){
+  const gamma=settings.image.gamma;
+  if(gamma===0 || gamma===1) return new Uint8Array(src);
+  const out=new Uint8Array(src), correct=1/gamma;
+  for(let i=0;i<out.length;i++) out[i]=Math.trunc(Math.pow(out[i]/255,correct)*255)&0xff;
+  return out;
+}
+
+function applyMaxColorShift(src,settings){
+  const pct=settings.image.maxColorShift;
+  if(!(pct>0)) return new Uint8Array(src);
+  const out=new Uint8Array(src);
+  const maxBase=3*255*255, maxRange=maxBase*Math.pow(pct/100,2);
+  for(let i=0;i<out.length;i+=3){
+    let r=out[i],g=out[i+1],b=out[i+2],mind=maxBase,best=0;
+    for(let c=0;c<8;c++){
+      const p=PALETTE[c],dr=r-p[0],dg=g-p[1],db=b-p[2],d=dr*dr+dg*dg+db*db;
+      if(d<mind){mind=d;best=c;}
+    }
+    const p=PALETTE[best];
+    if(mind<=maxRange){r=p[0];g=p[1];b=p[2];}
+    else if(mind>0){
+      const scale=Math.sqrt(maxRange/mind);
+      const move=(v,t)=>{const d=(t-v)*scale; return v+Math.trunc(d<0?d-0.5:d+0.5);};
+      r=move(r,p[0]);g=move(g,p[1]);b=move(b,p[2]);
+    }
+    out[i]=r&255;out[i+1]=g&255;out[i+2]=b&255;
+  }
+  return out;
+}
+
+function applyHistogramApprox(src){
+  // Compatibility gap: ImgSource's exact histogram equalizer is external to ConvertHGR.
+  // This approximation stretches luminance percentiles 32..224 while retaining chroma ratios.
+  const out=new Uint8Array(src), hist=new Uint32Array(256);
+  for(let i=0;i<src.length;i+=3){const y=Math.max(0,Math.min(255,Math.round(0.299*src[i]+0.587*src[i+1]+0.114*src[i+2])));hist[y]++;}
+  const total=src.length/3, loTarget=total*(32/256), hiTarget=total*(224/256);
+  let cum=0,lo=0,hi=255;
+  for(let v=0;v<256;v++){cum+=hist[v];if(cum>=loTarget){lo=v;break;}}
+  cum=0;for(let v=0;v<256;v++){cum+=hist[v];if(cum>=hiTarget){hi=v;break;}}
+  if(hi<=lo) return out;
+  const scale=255/(hi-lo);
+  for(let i=0;i<out.length;i++) out[i]=Math.max(0,Math.min(255,Math.round((out[i]-lo)*scale)));
+  return out;
+}
+
+function scaleAndFrame(src,srcW,srcH,settings){
+  const mode=settings.scaling.fillMode, aspect=256/280;
+  const xScale=WIDTH/srcW, yScale=HEIGHT/srcH;
+  let axis='y';
+  if(srcH*(xScale*aspect)>HEIGHT) axis='y';
+  if(srcW*(yScale/aspect)>WIDTH) axis='x';
+  if(mode!=='default') axis=axis==='y'?'x':'y';
+  let finalW,finalH;
+  if(axis==='y') {finalW=Math.trunc(srcW*(yScale/aspect)+0.5);finalH=Math.trunc(srcH*yScale+0.5);}
+  else {finalW=Math.trunc(srcW*xScale+0.5);finalH=Math.trunc(srcH*(xScale*aspect)+0.5);}
+  finalW=Math.max(1,finalW);finalH=Math.max(1,finalH);
+  let scaled=resampleRGB(src,srcW,srcH,finalW,finalH,settings.scaling.filter);
+  let cropX=0,cropY=0,cropW=Math.min(finalW,WIDTH),cropH=Math.min(finalH,HEIGHT);
+  if(finalH>HEIGHT){
+    if(mode==='middle') cropY=Math.trunc((finalH-HEIGHT)/2);
+    else if(mode==='bottom-right') cropY=finalH-HEIGHT;
+    cropY+=settings.scaling.verticalNudge|0;
+    cropY=Math.max(0,Math.min(finalH-HEIGHT,cropY));cropH=HEIGHT;
+  }
+  if(finalW>WIDTH){
+    if(mode==='middle') cropX=Math.trunc((finalW-WIDTH)/2);
+    else if(mode==='bottom-right') cropX=finalW-WIDTH;
+    cropX=Math.max(0,Math.min(finalW-WIDTH,cropX));cropW=WIDTH;
+  }
+  const out=new Uint8Array(WIDTH*HEIGHT*3);
+  const copyW=Math.min(cropW,WIDTH),copyH=Math.min(cropH,HEIGHT);
+  const dstX=Math.trunc((WIDTH-copyW)/2), dstY=Math.trunc((HEIGHT-copyH)/2);
+  for(let y=0;y<copyH;y++){
+    const s=((cropY+y)*finalW+cropX)*3,d=((dstY+y)*WIDTH+dstX)*3;
+    out.set(scaled.subarray(s,s+copyW*3),d);
+  }
+  const off=settings.scaling.horizontalNudge|0;
+  if(off>0){out.copyWithin(0,off*3,out.length);}
+  else if(off<0){const b=(-off)*3;out.copyWithin(b,0,out.length-b);}
+  return out;
+}
+
+function prepareSourceRGB(src,srcW,srcH,settings){
+  let work=settings.image.greyscale?applyGreyscale(src,settings):new Uint8Array(src);
+  work=scaleAndFrame(work,srcW,srcH,settings);
+  if(settings.image.stretchHistogram) work=applyHistogramApprox(work);
+  work=applyGamma(work,settings);
+  work=applyMaxColorShift(work,settings);
+  return work;
+}
+
+function convertHgrCore({sourceRGB,sourceWidth,sourceHeight,settings=defaultSettings(),randomSeed=0x12345678}){
+  const processedRGB=prepareSourceRGB(sourceRGB,sourceWidth,sourceHeight,settings);
+  const q=quantize280(processedRGB,settings,randomSeed);
+  return {processedRGB,...q};
+}
+
+
+function cloneSettings(v){ return JSON.parse(JSON.stringify(v)); }
+
+function nowMs(){ return (typeof performance!=="undefined"&&performance.now)?performance.now():Date.now(); }
+
+function makeFixtureRGB(name,args={}){
+  const out=new Uint8Array(WIDTH*HEIGHT*3);
+  if(name==='solidRGB'){
+    for(let i=0;i<out.length;i+=3){out[i]=args.r||0;out[i+1]=args.g||0;out[i+2]=args.b||0;}
+    return out;
+  }
+  if(name==='horizontalGradient'){
+    for(let y=0;y<HEIGHT;y++) for(let x=0;x<WIDTH;x++){
+      const v=Math.round(x*255/(WIDTH-1)),i=(y*WIDTH+x)*3;out[i]=out[i+1]=out[i+2]=v;
+    }
+    return out;
+  }
+  if(name==='byteBoundaryPattern'){
+    const marks=new Set([5,6,7,8,12,13,14,15,20,21,22]);
+    for(let y=0;y<HEIGHT;y++) for(let x=0;x<WIDTH;x++){
+      const i=(y*WIDTH+x)*3,v=marks.has(x)?255:0;out[i]=v;out[i+1]=(y&1)?v:0;out[i+2]=(y&1)?0:v;
+    }
+    return out;
+  }
+  if(name==='phasePattern'){
+    const cols=[[255,68,253],[20,245,60],[20,207,253],[255,106,60],[255,255,255],[0,0,0]];
+    for(let y=0;y<HEIGHT;y++) for(let x=0;x<WIDTH;x++){
+      const c=cols[Math.floor(x/14)%cols.length],i=(y*WIDTH+x)*3;out[i]=c[0];out[i+1]=c[1];out[i+2]=c[2];
+    }
+    return out;
+  }
+  let s=(args.seed||0x31415926)>>>0;
+  for(let i=0;i<out.length;i++){s=(Math.imul(s,1664525)+1013904223)>>>0;out[i]=s>>>24;}
+  return out;
+}
+
+function sha256Bytes(bytes){
+  function rr(v,n){return (v>>>n)|(v<<(32-n));}
+  const K=[
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  const H=new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);
+  const len=bytes.length, bitLen=len*8;
+  const padLen=((len+9+63)>>6)<<6, data=new Uint8Array(padLen);data.set(bytes);data[len]=0x80;
+  const dv=new DataView(data.buffer);dv.setUint32(padLen-4,bitLen>>>0,false);dv.setUint32(padLen-8,Math.floor(bitLen/0x100000000),false);
+  const w=new Uint32Array(64);
+  for(let o=0;o<padLen;o+=64){
+    for(let i=0;i<16;i++)w[i]=dv.getUint32(o+i*4,false);
+    for(let i=16;i<64;i++){const a=w[i-15],b=w[i-2],s0=rr(a,7)^rr(a,18)^(a>>>3),s1=rr(b,17)^rr(b,19)^(b>>>10);w[i]=(w[i-16]+s0+w[i-7]+s1)>>>0;}
+    let a=H[0],b=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+    for(let i=0;i<64;i++){const S1=rr(e,6)^rr(e,11)^rr(e,25),ch=(e&f)^((~e)&g),t1=(h+S1+ch+K[i]+w[i])>>>0,S0=rr(a,2)^rr(a,13)^rr(a,22),maj=(a&b)^(a&c)^(b&c),t2=(S0+maj)>>>0;h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;}
+    H[0]=(H[0]+a)>>>0;H[1]=(H[1]+b)>>>0;H[2]=(H[2]+c)>>>0;H[3]=(H[3]+d)>>>0;H[4]=(H[4]+e)>>>0;H[5]=(H[5]+f)>>>0;H[6]=(H[6]+g)>>>0;H[7]=(H[7]+h)>>>0;
+  }
+  return Array.from(H,x=>x.toString(16).padStart(8,'0')).join('');
+}
+
+function firstMismatch(actual,expected){
+  if(!expected)return null; const n=Math.min(actual.length,expected.length);let count=0,first=-1;
+  for(let i=0;i<n;i++)if(actual[i]!==expected[i]){count++;if(first<0)first=i;}
+  count+=Math.abs(actual.length-expected.length);return {first,count};
+}
+
+const FIXTURES=[
+  {id:'Q00_BLACK',group:'quantizer',kind:'procedural',generator:'solidRGB',args:{r:0,g:0,b:0},seed:0x12345678},
+  {id:'Q01_WHITE',group:'quantizer',kind:'procedural',generator:'solidRGB',args:{r:255,g:255,b:255},seed:0x12345678},
+  {id:'Q03_7PX_BOUNDARIES',group:'quantizer',kind:'procedural',generator:'byteBoundaryPattern',args:{},seed:0x12345678},
+  {id:'Q05_PHASE',group:'quantizer',kind:'procedural',generator:'phasePattern',args:{},seed:0x12345678},
+  {id:'Q06_LUMA_GRADIENT',group:'quantizer',kind:'procedural',generator:'horizontalGradient',args:{},seed:0x12345678},
+  {id:'Q08_RANDOM_RGB',group:'quantizer',kind:'procedural',generator:'randomRGB',args:{seed:0x31415926},seed:0x12345678},
+  {id:'H01_INTERLEAVE',group:'core',kind:'structural'},
+  {id:'DET_REPEAT',group:'core',kind:'determinism'}
+];
+
+function runFixture(f){
+  const t0=nowMs();
+  if(f.kind==='structural'){
+    const linear=new Uint8Array(7680);for(let y=0;y<192;y++)for(let b=0;b<40;b++)linear[y*40+b]=(y+b)&255;
+    const page=interleaveHgrPage(linear);let ok=true;
+    for(let y=0;y<192;y++)for(let b=0;b<40;b++)if(page[hgrOffset(y,b)]!==linear[y*40+b])ok=false;
+    return {fixtureId:f.id,status:ok?'pass':'fail',durationMs:nowMs()-t0,stages:{hgrPage:ok?'pass':'fail'},hashes:{hgrPage:sha256Bytes(page)}};
+  }
+  const rgb=makeFixtureRGB(f.generator,f.args),settings=defaultSettings();settings.image.gamma=1;settings.image.maxColorShift=0;
+  if(f.id==='Q00_BLACK'||f.id==='Q01_WHITE')settings.dither.error={A:0,B:0,C:0,D:0,E:0,F:0};
+  const one=quantize280(rgb,settings,f.seed);
+  if(f.kind==='determinism'){
+    const two=quantize280(rgb,settings,f.seed);const ok=sha256Bytes(one.hgrPage)===sha256Bytes(two.hgrPage);
+    return {fixtureId:f.id,status:ok?'pass':'fail',durationMs:nowMs()-t0,stages:{determinism:ok?'pass':'fail'},hashes:{hgrPage:sha256Bytes(one.hgrPage)}};
+  }
+  const legal=one.paletteImage.every(v=>v<=7)&&one.linearHgr.length===7680&&one.hgrPage.length===8192;
+  return {fixtureId:f.id,status:legal?'reference-pending':'fail',durationMs:nowMs()-t0,stages:{paletteImage:legal?'structural-pass':'fail',linearHgr:legal?'structural-pass':'fail',hgrPage:legal?'structural-pass':'fail'},hashes:{paletteImage:sha256Bytes(one.paletteImage),linearHgr:sha256Bytes(one.linearHgr),hgrPage:sha256Bytes(one.hgrPage)},note:'Desktop ConvertHGR golden hash not embedded yet.'};
+}
+
+function traceByte(rgb,settings,seed,row,byteColumn){
+  // Lightweight diagnostics: return the actual winning byte and source/processed pixel values.
+  const q=quantize280(rgb,settings,seed),x=byteColumn*7,values=[];
+  for(let i=0;i<7;i++){const o=(row*WIDTH+x+i)*3;values.push([rgb[o],rgb[o+1],rgb[o+2]]);}
+  const v=q.linearHgr[row*40+byteColumn];
+  return {row,byteColumn,x0:x,sourcePixels:values,winner:{pattern:v,phase:(v>>7)&1,dataBits:Array.from({length:7},(_,i)=>(v>>i)&1)},pageOffset:hgrOffset(row,byteColumn)};
+}
+
+self.onmessage=function(event){
+  const msg=event.data||{};
+  try{
+    if(msg.type==='convert'){
+      const t0=nowMs(),settings=msg.settings||defaultSettings(),sourceRGB=new Uint8Array(msg.source.rgbBuffer);
+      self.postMessage({type:'progress',requestId:msg.requestId,stage:'preprocessing',current:0,total:1});
+      const p0=nowMs(),processedRGB=prepareSourceRGB(sourceRGB,msg.source.width,msg.source.height,settings),p1=nowMs();
+      self.postMessage({type:'progress',requestId:msg.requestId,stage:'quantize',current:0,total:192});
+      const q0=nowMs(),q=quantize280(processedRGB,settings,msg.randomSeed>>>0,(row,total)=>self.postMessage({type:'progress',requestId:msg.requestId,stage:'quantize',current:row,total})),q1=nowMs();
+      self.postMessage({type:'conversionResult',requestId:msg.requestId,metadata:{randomSeed:msg.randomSeed>>>0,outputWidth:280,outputHeight:192,histogramParity:settings.image.stretchHistogram?'approximation':'not-used'},timing:{preprocessingMs:p1-p0,quantizationMs:q1-q0,totalMs:nowMs()-t0},buffers:{processedRGB:processedRGB.buffer,paletteImage:q.paletteImage.buffer,linearHgr:q.linearHgr.buffer,hgrPage:q.hgrPage.buffer}},[processedRGB.buffer,q.paletteImage.buffer,q.linearHgr.buffer,q.hgrPage.buffer]);
+    } else if(msg.type==='runTests'){
+      const wanted=new Set(msg.groups||['core','quantizer']);let pass=0,fail=0,pending=0;
+      for(const f of FIXTURES){if(!wanted.has(f.group))continue;const r=runFixture(f);if(r.status==='pass')pass++;else if(r.status==='reference-pending')pending++;else fail++;self.postMessage({type:'testResult',requestId:msg.requestId,...r});}
+      self.postMessage({type:'testSuiteComplete',requestId:msg.requestId,passed:pass,failed:fail,referencePending:pending});
+    } else if(msg.type==='traceByte'){
+      const rgb=new Uint8Array(msg.rgbBuffer);const result=traceByte(rgb,msg.settings,msg.randomSeed>>>0,msg.row|0,msg.byteColumn|0);
+      self.postMessage({type:'traceByteResult',requestId:msg.requestId,...result});
+    }
+  }catch(error){self.postMessage({type:'error',requestId:msg.requestId||0,stage:msg.type||'worker',code:error.name||'Error',message:String(error.message||error),stack:String(error.stack||'')});}
+};
+
+</script>
+
+<script>
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);
+const PALETTE=[[0,0,0],[20,245,60],[255,68,253],[255,255,255],[0,0,0],[255,106,60],[20,207,253],[255,255,255]];
+const PALNAME=['black','green','purple','white','black2','orange','blue','white2'];
+let settings={image:{greyscale:false,stretchHistogram:false,gamma:1.30,maxColorShift:1},scaling:{filter:'bilinear',fillMode:'default',horizontalNudge:0,verticalNudge:0,applePixelAspect:256/280},matching:{perceptual:false,lumaEmphasis:.80,perceptualR:.30,perceptualG:.52,perceptualB:.18},dither:{orderedMode:0,mapSize:2,orderedOffset:0,accumulateErrors:true,error:{A:1,B:2,C:2,D:2,E:1,F:1}}};
+let source={fileName:'',width:0,height:0,rgb:null,bitmap:null};
+let result=null,requestId=0,currentRequest=0,dirty=true,sourceView='original',outputView='color',autoTimer=0;
+const workerSource=$('worker-source').textContent,workerUrl=URL.createObjectURL(new Blob([workerSource],{type:'text/javascript'})),worker=new Worker(workerUrl);
+
+function markDirty(reason='Settings changed — output is not current.'){
+ dirty=true;$('status').className='status dirty';$('status').textContent=reason;$('savePng').disabled=true;$('saveHgr').disabled=true;$('convertBtn').disabled=!source.rgb;
+ if($('autoConvert').checked&&source.rgb){clearTimeout(autoTimer);autoTimer=setTimeout(convertNow,180);}
+}
+function cleanStatus(text){dirty=false;$('status').className='status good';$('status').textContent=text;$('savePng').disabled=false;$('saveHgr').disabled=false;}
+function errStatus(text){$('status').className='status error';$('status').textContent=text;}
+function updateControlState(){
+ const p=$('perceptual').checked;$('luma').disabled=p;$('weightR').disabled=!p;$('weightG').disabled=!p;$('weightB').disabled=!p;$('weightDefault').disabled=!p;
+ const m=$('ditherMode').value,ordered=m!=='diffusion',thresholdOnly=m==='order1'||m==='order3';$('orderedOffset').disabled=!ordered;document.querySelectorAll('.errcoef').forEach(e=>e.disabled=thresholdOnly);
+ $('orderedOffsetValue').textContent=$('orderedOffset').value;
+ let total=0;document.querySelectorAll('.errcoef').forEach(e=>total+=Number(e.value)||0);$('errorTotal').textContent=`Total distributed error: ${total} / 16 = ${Math.round(total/16*100)}%`;
+}
+function syncSettings(){
+ settings.image.greyscale=$('greyscale').checked;settings.image.stretchHistogram=$('histogram').checked;settings.image.gamma=(Number($('gamma').value)||0)/100;settings.image.maxColorShift=Number($('colorShift').value)||0;
+ settings.scaling.filter=$('filter').value;settings.scaling.fillMode=$('fillMode').value;
+ settings.matching.perceptual=$('perceptual').checked;settings.matching.lumaEmphasis=(Number($('luma').value)||0)/100;settings.matching.perceptualR=(Number($('weightR').value)||0)/100;settings.matching.perceptualG=(Number($('weightG').value)||0)/100;settings.matching.perceptualB=(Number($('weightB').value)||0)/100;
+ settings.dither.accumulateErrors=$('errorMode').value==='accumulate';settings.dither.orderedOffset=Number($('orderedOffset').value)||0;document.querySelectorAll('.errcoef').forEach(e=>settings.dither.error[e.dataset.k]=Number(e.value)||0);
+ const m=$('ditherMode').value;if(m==='diffusion'){settings.dither.orderedMode=0;}else if(m==='order1'){settings.dither.orderedMode=1;settings.dither.mapSize=2;}else if(m==='order2'){settings.dither.orderedMode=2;settings.dither.mapSize=2;}else if(m==='order3'){settings.dither.orderedMode=1;settings.dither.mapSize=4;}else{settings.dither.orderedMode=2;settings.dither.mapSize=4;}
+ updateControlState();
+}
+function setErrorCoeffs(v){for(const k of 'ABCDEF'){const e=document.querySelector(`.errcoef[data-k="${k}"]`);e.value=v[k];}syncSettings();markDirty();}
+const presets={atkinson:{A:1,B:2,C:2,D:2,E:1,F:1},floyd:{A:3,B:5,C:1,D:7,E:0,F:0},pattern:{A:0,B:8,C:0,D:8,E:0,F:0},diag:{A:1,B:3,C:2,D:3,E:1,F:1},none:{A:0,B:0,C:0,D:0,E:0,F:0}};
+function applyModePreset(){const m=$('ditherMode').value;if(m==='order2'||m==='order4'){for(const [k,v] of Object.entries({A:1,B:2,C:2,D:2,E:0,F:0}))document.querySelector(`.errcoef[data-k="${k}"]`).value=v;}syncSettings();markDirty();}
+
+async function loadFile(file){
+ try{const bm=await createImageBitmap(file);const c=document.createElement('canvas');c.width=bm.width;c.height=bm.height;const x=c.getContext('2d',{willReadFrequently:true});x.fillStyle='#000';x.fillRect(0,0,c.width,c.height);x.drawImage(bm,0,0);const d=x.getImageData(0,0,c.width,c.height).data,rgb=new Uint8Array(bm.width*bm.height*3);for(let s=0,t=0;s<d.length;s+=4){rgb[t++]=d[s];rgb[t++]=d[s+1];rgb[t++]=d[s+2];}source={fileName:file.name,width:bm.width,height:bm.height,rgb,bitmap:bm};$('sourceInfo').textContent=`${file.name} — ${bm.width} × ${bm.height}`;drawSource();markDirty('Image loaded — press Convert / Reload.');$('convertBtn').disabled=false;}
+ catch(e){errStatus(`Unable to open image: ${e.message}`);}
+}
+function drawSource(){const c=$('sourceCanvas'),x=c.getContext('2d');x.imageSmoothingEnabled=true;x.fillStyle='#000';x.fillRect(0,0,280,192);if(sourceView==='original'&&source.bitmap){const s=Math.min(280/source.width,192/source.height),w=source.width*s,h=source.height*s;x.drawImage(source.bitmap,(280-w)/2,(192-h)/2,w,h);}else if(result){drawRGB(result.processedRGB,c);}}
+function drawRGB(rgb,canvas){const ctx=canvas.getContext('2d'),im=ctx.createImageData(280,192);for(let i=0,p=0;i<rgb.length;i+=3,p+=4){im.data[p]=rgb[i];im.data[p+1]=rgb[i+1];im.data[p+2]=rgb[i+2];im.data[p+3]=255;}ctx.putImageData(im,0,0);}
+function drawOutput(){const c=$('outputCanvas'),ctx=c.getContext('2d');ctx.fillStyle='#000';ctx.fillRect(0,0,280,192);if(!result)return;const im=ctx.createImageData(280,192);for(let y=0;y<192;y++)for(let x=0;x<280;x++){const p=y*280+x,o=p*4;let r=0,g=0,b=0;if(outputView==='color'){[r,g,b]=PALETTE[result.paletteImage[p]];}else{const byte=result.linearHgr[y*40+Math.floor(x/7)],on=(byte>>(x%7))&1;if(outputView==='green'){g=on?255:0;}else{r=g=b=on?255:0;}}im.data[o]=r;im.data[o+1]=g;im.data[o+2]=b;im.data[o+3]=255;}ctx.putImageData(im,0,0);}
+function convertNow(){if(!source.rgb)return;syncSettings();const id=++requestId;currentRequest=id;$('progress').hidden=false;$('progress').value=0;$('convertBtn').disabled=true;$('status').className='status';$('status').textContent='Converting…';const copy=source.rgb.slice();worker.postMessage({type:'convert',requestId:id,source:{width:source.width,height:source.height,rgbBuffer:copy.buffer},settings:JSON.parse(JSON.stringify(settings)),randomSeed:(Date.now()/1000)>>>0},[copy.buffer]);}
+worker.onmessage=e=>{const m=e.data;if(m.requestId&&m.requestId!==currentRequest&&m.type!=='testResult'&&m.type!=='testSuiteComplete')return;if(m.type==='progress'){$('progress').hidden=false;$('progress').value=m.stage==='quantize'?m.current:0;}else if(m.type==='conversionResult'){result={processedRGB:new Uint8Array(m.buffers.processedRGB),paletteImage:new Uint8Array(m.buffers.paletteImage),linearHgr:new Uint8Array(m.buffers.linearHgr),hgrPage:new Uint8Array(m.buffers.hgrPage),metadata:m.metadata,timing:m.timing};$('progress').hidden=true;$('convertBtn').disabled=false;cleanStatus(`Converted in ${m.timing.totalMs.toFixed(1)} ms${m.metadata.histogramParity==='approximation'?' — histogram compatibility approximation active':''}.`);drawSource();drawOutput();}else if(m.type==='error'){errStatus(`${m.stage}: ${m.message}`);$('progress').hidden=true;$('convertBtn').disabled=false;}else if(m.type==='testResult'){addTestRow(m);}else if(m.type==='testSuiteComplete'){const s=$('testSummary');s.className='status '+(m.failed?'error':m.referencePending?'dirty':'good');s.textContent=`${m.passed} passed, ${m.failed} failed, ${m.referencePending||0} reference pending.`;} };
+
+function downloadBlob(bytes,name,type='application/octet-stream'){const u=URL.createObjectURL(new Blob([bytes],{type})),a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
+function saveHgr(){if(result&&!dirty)downloadBlob(result.hgrPage,(source.fileName.replace(/\.[^.]+$/,'')||'image')+'.HGR');}
+function savePng(){if(!result||dirty)return;const c=document.createElement('canvas');c.width=280;c.height=192;const old=outputView;outputView='color';const ctx=c.getContext('2d'),im=ctx.createImageData(280,192);for(let p=0,o=0;p<result.paletteImage.length;p++,o+=4){const q=PALETTE[result.paletteImage[p]];im.data[o]=q[0];im.data[o+1]=q[1];im.data[o+2]=q[2];im.data[o+3]=255;}ctx.putImageData(im,0,0);outputView=old;c.toBlob(b=>downloadBlob(b,(source.fileName.replace(/\.[^.]+$/,'')||'image')+'-HGR.png','image/png'),'image/png');}
+function hgrOffset(y,b){return ((y&7)<<10)+(((y>>3)&7)<<7)+Math.floor(y/64)*40+b;}
+function inspect(ev){if(!result)return;const r=$('outputCanvas').getBoundingClientRect(),x=Math.max(0,Math.min(279,Math.floor((ev.clientX-r.left)*280/r.width))),y=Math.max(0,Math.min(191,Math.floor((ev.clientY-r.top)*192/r.height))),p=y*280+x,o=p*3,bc=Math.floor(x/7),bv=result.linearHgr[y*40+bc],pi=result.paletteImage[p];$('ixy').textContent=`${x}, ${y}`;$('irgb').textContent=`${result.processedRGB[o]}, ${result.processedRGB[o+1]}, ${result.processedRGB[o+2]}`;$('ipal').textContent=`${pi} ${PALNAME[pi]}`;$('ibyte').textContent=`$${bv.toString(16).padStart(2,'0').toUpperCase()}  bits=${Array.from({length:7},(_,i)=>(bv>>i)&1).join('')}`;$('iphase').textContent=String((bv>>7)&1);$('ioffset').textContent=`$${hgrOffset(y,bc).toString(16).padStart(4,'0').toUpperCase()}`;}
+function addTestRow(m){const tr=document.createElement('tr'),status=m.status==='pass'?'pass':m.status==='fail'?'fail':'pending',hash=m.hashes?.hgrPage||'';tr.innerHTML=`<td>${m.fixtureId}</td><td class="${status}">${m.status}</td><td>${m.durationMs.toFixed(1)} ms</td><td title="${hash}">${hash.slice(0,16)}${hash?'…':''}</td>`;$('testBody').appendChild(tr);}
+function runTests(groups){$('testBody').innerHTML='';$('testSummary').className='status';$('testSummary').textContent='Running…';const id=++requestId;currentRequest=id;worker.postMessage({type:'runTests',requestId:id,groups});}
+
+$('openBtn').onclick=()=>$('fileInput').click();$('fileInput').onchange=e=>e.target.files[0]&&loadFile(e.target.files[0]);$('convertBtn').onclick=convertNow;$('saveHgr').onclick=saveHgr;$('savePng').onclick=savePng;
+$('dropZone').ondragover=e=>{e.preventDefault();};$('dropZone').ondrop=e=>{e.preventDefault();if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0]);};
+$('sourceOriginalTab').onclick=()=>{sourceView='original';$('sourceOriginalTab').classList.add('active');$('sourceProcessedTab').classList.remove('active');drawSource();};$('sourceProcessedTab').onclick=()=>{sourceView='processed';$('sourceProcessedTab').classList.add('active');$('sourceOriginalTab').classList.remove('active');drawSource();};
+document.querySelectorAll('.outputTab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.outputTab').forEach(x=>x.classList.remove('active'));b.classList.add('active');outputView=b.dataset.view;drawOutput();});$('outputCanvas').onpointermove=inspect;
+document.querySelectorAll('[data-preset]').forEach(b=>b.onclick=()=>setErrorCoeffs(presets[b.dataset.preset]));$('ditherMode').onchange=applyModePreset;$('weightDefault').onclick=()=>{$('weightR').value=30;$('weightG').value=52;$('weightB').value=18;syncSettings();markDirty();};
+function nudge(axis,delta,e){let step=1;if(e.shiftKey)step=2;if(e.ctrlKey||e.metaKey)step=e.shiftKey?8:4;const key=axis==='x'?'horizontalNudge':'verticalNudge';if(axis==='x')settings.scaling[key]=Math.max(-7,Math.min(7,settings.scaling[key]+delta*step));else settings.scaling[key]+=delta*step;$('xNudge').textContent=settings.scaling.horizontalNudge;$('yNudge').textContent=settings.scaling.verticalNudge;markDirty();}
+$('xMinus').onclick=e=>nudge('x',-1,e);$('xPlus').onclick=e=>nudge('x',1,e);$('yMinus').onclick=e=>nudge('y',-1,e);$('yPlus').onclick=e=>nudge('y',1,e);
+['perceptual','luma','weightR','weightG','weightB','colorShift','greyscale','histogram','gamma','fillMode','filter','errorMode','orderedOffset'].forEach(id=>$(id).addEventListener('input',()=>{syncSettings();markDirty();}));document.querySelectorAll('.errcoef').forEach(e=>e.addEventListener('input',()=>{syncSettings();markDirty();}));$('autoConvert').onchange=()=>{if($('autoConvert').checked&&dirty&&source.rgb)convertNow();};
+$('runCoreTests').onclick=()=>runTests(['core']);$('runQuantTests').onclick=()=>runTests(['quantizer']);$('runAllTests').onclick=()=>runTests(['core','quantizer']);$('clearTests').onclick=()=>{$('testBody').innerHTML='';$('testSummary').textContent='No tests run.';};
+for(const [k,v] of Object.entries(settings.dither.error))document.querySelector(`.errcoef[data-k="${k}"]`).value=v;updateControlState();window.addEventListener('beforeunload',()=>{worker.terminate();URL.revokeObjectURL(workerUrl);});
+})();
+</script>
+
+</body>
+</html>
