@@ -17,6 +17,7 @@ function DithertizerII()
 {
     var card=this;
     var cameraSource=null;
+    var hostCameraStream=null;
 
     const HGR_WIDTH=280;
     const HGR_HEIGHT=192;
@@ -249,6 +250,68 @@ function DithertizerII()
         el.textContent=String(value)+suffix;
     }
 
+    function stopHostCamera()
+    {
+        if(hostCameraStream && typeof(hostCameraStream.getTracks)==="function")
+        {
+            var tracks=hostCameraStream.getTracks();
+            for(var i=0;i<tracks.length;i++)
+                if(tracks[i] && typeof(tracks[i].stop)==="function")
+                    tracks[i].stop();
+        }
+
+        hostCameraStream=null;
+    }
+
+    function updateCameraButton(controlID)
+    {
+        if(typeof(document)==="undefined" || !document || typeof(document.getElementById)!=="function")
+            return;
+
+        var button=document.getElementById(controlID+"_camera");
+        if(!button) return;
+
+        var active=!!hostCameraStream;
+        button.setAttribute("aria-pressed",active ? "true" : "false");
+        button.title=active ? "Stop host camera" : "Start host camera";
+
+        var icon=button.querySelector ? button.querySelector("i") : null;
+        if(icon && icon.style)
+            icon.style.color=active ? "#0a0" : "";
+    }
+
+    this.deviceToolCameraToggle=async function(controlID)
+    {
+        controlID=String(controlID || "");
+
+        if(hostCameraStream)
+        {
+            stopHostCamera();
+            updateCameraButton(controlID);
+            return false;
+        }
+
+        if(typeof(navigator)==="undefined" || !navigator ||
+           !navigator.mediaDevices || typeof(navigator.mediaDevices.getUserMedia)!=="function")
+        {
+            updateCameraButton(controlID);
+            return false;
+        }
+
+        try
+        {
+            hostCameraStream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+            updateCameraButton(controlID);
+            return true;
+        }
+        catch(e)
+        {
+            stopHostCamera();
+            updateCameraButton(controlID);
+            return false;
+        }
+    };
+
     this.deviceToolSetting=function(controlID,setting,value)
     {
         controlID=String(controlID || "");
@@ -361,6 +424,7 @@ function DithertizerII()
         var perceptualChecked=uiState.perceptual ? " checked" : "";
         var greyscaleChecked=uiState.greyscale ? " checked" : "";
         var histogramChecked=uiState.histogram ? " checked" : "";
+        var cameraActive=!!hostCameraStream;
 
         var rowStyle="height:21px;display:flex;align-items:center;gap:4px;";
         var headStyle="display:inline-block;width:28px;";
@@ -406,6 +470,12 @@ function DithertizerII()
             +"   <span id=\""+controlID+"_gamma_value\" style=\""+valueStyle+"\">"+uiState.gamma+"%</span>"
             +"   <span>FILTER</span>"
             +"   <select id=\""+controlID+"_filter\" title=\"Scaling filter\" onchange=\""+call+".deviceToolSetting('"+controlID+"','filter',this.value)\" style=\""+selectStyle+"\">"+filterOptions+"</select>"
+            +"   <button id=\""+controlID+"_camera\" class=\"appbut skinny\" type=\"button\" aria-pressed=\""+(cameraActive ? "true" : "false")+"\""
+            +"           title=\""+(cameraActive ? "Stop host camera" : "Start host camera")+"\""
+            +"           onclick=\""+call+".deviceToolCameraToggle('"+controlID+"')\""
+            +"           style=\"margin-left:auto;height:19px;padding:1px 5px;\">"
+            +"    <i class=\"fa fa-camera\" style=\""+(cameraActive ? "color:#0a0;" : "")+"\"></i>"
+            +"   </button>"
             +"  </div>"
 
             +" </div>"
@@ -421,6 +491,7 @@ function DithertizerII()
 
     this.reset=function()
     {
+        stopHostCamera();
         card.state.threshold=0;
         card.state.captureEnabled=false;
         card.state.page2=false;
