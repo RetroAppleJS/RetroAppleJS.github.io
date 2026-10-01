@@ -79,3 +79,26 @@ test('RATE control drives the next one-in-flight conversion interval',async()=>{
  assert.equal(h.timers.size,1);
  assert.equal([...h.timers.values()][0].ms,500);
 });
+
+test('Order2/Order4 install ConvertHGR diffusion coefficients while threshold modes preserve the effective set',async()=>{
+ const h=makeHarness(),log={init:0,convert:0,close:0};
+ const Ctor=loadCard(h,makeFakeAdapter(log));
+ const card=new Ctor();
+
+ card.deviceToolSetting('dither_ctrl_S7','preset','floyd');
+ card.deviceToolSetting('dither_ctrl_S7','mode','order4');
+ await card.deviceToolCameraToggle('dither_ctrl_S7');
+ assert.deepEqual(
+   [log.settings.dither.error.A,log.settings.dither.error.B,log.settings.dither.error.C,log.settings.dither.error.D,log.settings.dither.error.E,log.settings.dither.error.F],
+   [1,2,2,2,0,0]
+ );
+ await card.deviceToolCameraToggle('dither_ctrl_S7');
+
+ card.deviceToolSetting('dither_ctrl_S7','mode','order1');
+ await card.deviceToolCameraToggle('dither_ctrl_S7');
+ assert.deepEqual(
+   [log.settings.dither.error.A,log.settings.dither.error.B,log.settings.dither.error.C,log.settings.dither.error.D,log.settings.dither.error.E,log.settings.dither.error.F],
+   [1,2,2,2,0,0],
+   'Order1 preserves the effective coefficients left by Order4'
+ );
+});
