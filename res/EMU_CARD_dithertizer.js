@@ -55,6 +55,7 @@ function DithertizerII()
         ,"gamma":130
         ,"filter":"bilinear"
         ,"rate":250
+        ,"errorCoeffs":{"A":1,"B":2,"C":2,"D":2,"E":1,"F":1}
     };
 
     function hgrLineAddress(pageBase,y)
@@ -133,7 +134,7 @@ function DithertizerII()
 
     this.setCameraSource=function(source)
     {
-        if(source!==null && source!==undefined && typeof(source.getLumaFrame)!=="function")
+        if(source!==null && source!==undefined && typeof(source.getLumaFrame)!==="function")
             throw new TypeError("Dithertizer camera source must expose getLumaFrame(width,height)");
 
         cameraSource=source || null;
@@ -220,7 +221,7 @@ function DithertizerII()
 
     function uiReadout(controlID,setting,value)
     {
-        if(typeof(document)==="undefined" || !document || typeof(document.getElementById)!=="function") return;
+        if(typeof(document)==="undefined" || !document || typeof(document.getElementById)!==="function") return;
         var el=document.getElementById(controlID+"_"+setting+"_value");
         if(!el) return;
         if(setting==="rate") el.textContent=(Number(value)/1000).toFixed(2)+"s";
@@ -251,12 +252,35 @@ function DithertizerII()
         else if(uiState.mode==="order3"){orderedMode=1;mapSize=4;}
         else if(uiState.mode==="order4"){orderedMode=2;mapSize=4;}
 
-        var e=presetError(uiState.preset);
+        var e=uiState.errorCoeffs;
         return {
-            image:{greyscale:!!uiState.greyscale,stretchHistogram:!!uiState.histogram,gamma:Number(uiState.gamma)/100,maxColorShift:Number(uiState.shift)},
-            scaling:{filter:uiState.filter,fillMode:"default",horizontalNudge:0,verticalNudge:0,applePixelAspect:256/280},
-            matching:{perceptual:!!uiState.perceptual,lumaEmphasis:Number(uiState.luma)/100,perceptualR:0.30,perceptualG:0.52,perceptualB:0.18},
-            dither:{orderedMode:orderedMode,mapSize:mapSize,orderedOffset:Number(uiState.offset),accumulateErrors:uiState.error==="accumulate",error:{A:e.A,B:e.B,C:e.C,D:e.D,E:e.E,F:e.F}}
+            image:{
+                 greyscale:!!uiState.greyscale
+                ,stretchHistogram:!!uiState.histogram
+                ,gamma:Number(uiState.gamma)/100
+                ,maxColorShift:Number(uiState.shift)
+            },
+            scaling:{
+                 filter:uiState.filter
+                ,fillMode:"default"
+                ,horizontalNudge:0
+                ,verticalNudge:0
+                ,applePixelAspect:256/280
+            },
+            matching:{
+                 perceptual:!!uiState.perceptual
+                ,lumaEmphasis:Number(uiState.luma)/100
+                ,perceptualR:0.30
+                ,perceptualG:0.52
+                ,perceptualB:0.18
+            },
+            dither:{
+                 orderedMode:orderedMode
+                ,mapSize:mapSize
+                ,orderedOffset:Number(uiState.offset)
+                ,accumulateErrors:uiState.error==="accumulate"
+                ,error:{A:e.A,B:e.B,C:e.C,D:e.D,E:e.E,F:e.F}
+            }
         };
     }
 
@@ -344,14 +368,14 @@ function DithertizerII()
     function scheduleHostCameraFrame(epoch)
     {
         clearHostCameraTimer();
-        if(!hostCameraStream || epoch!==hostCameraEpoch || typeof(setTimeout)!=="function") return;
+        if(!hostCameraStream || epoch!==hostCameraEpoch || typeof(setTimeout)!==="function") return;
         hostCameraTimer=setTimeout(function()
         {
             hostCameraTimer=null;
             if(!hostCameraStream || epoch!==hostCameraEpoch) return;
             Promise.resolve(captureHostCameraFrame(epoch)).catch(function(error)
             {
-                if(typeof(console)!=="undefined" && console && typeof(console.warn)==="function")
+                if(typeof(console)!==="undefined" && console && typeof(console.warn)==="function")
                     console.warn("Dithertizer ConvertHGR camera frame failed",error);
             }).then(function()
             {
@@ -362,7 +386,7 @@ function DithertizerII()
 
     async function startHostCameraBridge(stream,epoch)
     {
-        if(typeof(document)==="undefined" || !document || typeof(document.createElement)!=="function") return false;
+        if(typeof(document)==="undefined" || !document || typeof(document.createElement)!==="function") return false;
 
         var AdapterCtor=await ensureConvertHGRAdapterCtor();
         if(!AdapterCtor) return false;
@@ -371,11 +395,11 @@ function DithertizerII()
 
         hostCameraVideo=document.createElement("video");
         hostCameraCanvas=document.createElement("canvas");
-        if(!hostCameraVideo || !hostCameraCanvas || typeof(hostCameraCanvas.getContext)!=="function")
+        if(!hostCameraVideo || !hostCameraCanvas || typeof(hostCameraCanvas.getContext)!==="function")
             throw new Error("Dithertizer host camera requires video/canvas support");
 
         hostCameraContext=hostCameraCanvas.getContext("2d");
-        if(!hostCameraContext || typeof(hostCameraContext.drawImage)!=="function" || typeof(hostCameraContext.getImageData)!=="function")
+        if(!hostCameraContext || typeof(hostCameraContext.drawImage)!==="function" || typeof(hostCameraContext.getImageData)!==="function")
             throw new Error("Dithertizer host camera requires a 2D canvas context");
 
         hostCameraVideo.autoplay=true;
@@ -418,7 +442,7 @@ function DithertizerII()
 
     function updateCameraButton(controlID)
     {
-        if(typeof(document)==="undefined" || !document || typeof(document.getElementById)!=="function") return;
+        if(typeof(document)==="undefined" || !document || typeof(document.getElementById)!==="function") return;
         var button=document.getElementById(controlID+"_camera");
         if(!button) return;
         var active=!!hostCameraStream;
@@ -439,7 +463,7 @@ function DithertizerII()
             updateCameraButton(controlID);
             return false;
         }
-        if(typeof(navigator)==="undefined" || !navigator || !navigator.mediaDevices || typeof(navigator.mediaDevices.getUserMedia)!=="function")
+        if(typeof(navigator)==="undefined" || !navigator || !navigator.mediaDevices || typeof(navigator.mediaDevices.getUserMedia)!==="function")
         {
             updateCameraButton(controlID);
             return false;
@@ -472,11 +496,14 @@ function DithertizerII()
             case "mode":
                 allowed=["diffusion","order1","order2","order3","order4"];
                 if(allowed.indexOf(String(value))<0) return false;
-                uiState.mode=String(value);return true;
+                uiState.mode=String(value);
+                if(uiState.mode==="order2" || uiState.mode==="order4")
+                    uiState.errorCoeffs={"A":1,"B":2,"C":2,"D":2,"E":0,"F":0};
+                return true;
             case "preset":
                 allowed=["atkinson","floyd","pattern","diag","none"];
                 if(allowed.indexOf(String(value))<0) return false;
-                uiState.preset=String(value);return true;
+                uiState.preset=String(value);uiState.errorCoeffs=presetError(uiState.preset);return true;
             case "error":
                 allowed=["accumulate","average"];
                 if(allowed.indexOf(String(value))<0) return false;
