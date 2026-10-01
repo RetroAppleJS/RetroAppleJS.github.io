@@ -18,11 +18,18 @@ function DithertizerII()
     var card=this;
     var cameraSource=null;
     var hostCameraStream=null;
+    var hostCameraVideo=null;
+    var hostCameraCanvas=null;
+    var hostCameraContext=null;
+    var hostCameraTimer=null;
+    var hostCameraEpoch=0;
+    var hostCameraFrame=new Uint8Array(280*192);
 
     const HGR_WIDTH=280;
     const HGR_HEIGHT=192;
     const HGR_BYTES_PER_LINE=40;
     const APPLE_FRAME_CYCLES=17030;
+    const HOST_CAMERA_SAMPLE_MS=250;
 
     this.id={"PCODE":"DITHER","icon":"fa fa-camera"};
     this.state={
@@ -113,12 +120,8 @@ function DithertizerII()
         return 0x80;
     }
 
-    function sourceFrame()
+    function normalizeSourceFrame(frame)
     {
-        if(!cameraSource || typeof(cameraSource.getLumaFrame)!=="function")
-            return new Uint8Array(HGR_WIDTH*HGR_HEIGHT);
-
-        var frame=cameraSource.getLumaFrame(HGR_WIDTH,HGR_HEIGHT);
         if(frame instanceof ArrayBuffer) frame=new Uint8Array(frame);
         else if(typeof(ArrayBuffer)!=="undefined" && typeof(ArrayBuffer.isView)==="function" && ArrayBuffer.isView(frame))
             frame=new Uint8Array(frame.buffer,frame.byteOffset,frame.byteLength);
@@ -127,6 +130,17 @@ function DithertizerII()
             throw new Error("Dithertizer camera source must provide at least 280x192 luminance bytes");
 
         return frame;
+    }
+
+    function sourceFrame()
+    {
+        if(cameraSource && typeof(cameraSource.getLumaFrame)==="function")
+            return normalizeSourceFrame(cameraSource.getLumaFrame(HGR_WIDTH,HGR_HEIGHT));
+
+        if(hostCameraStream)
+            return hostCameraFrame;
+
+        return hostCameraFrame;
     }
 
     this.setCameraSource=function(source)
@@ -178,8 +192,7 @@ function DithertizerII()
                 for(var bit=0;bit<7;bit++)
                     if((frame[row+x0+bit]&0xFF) >= threshold)
                         d8 |= (1 << bit);
-
-                hw.write(line+xb,d8&0x7F);
+                hwrite(line+xb,d8&0x7F);
             }
         }
 
@@ -250,8 +263,98 @@ function DithertizerII()
         el.textContent=String(value)+suffix;
     }
 
+    function clearHostCameraTimer()
+    {
+        if(hostCameraTimer!==null && typeof(clearTimeout)==="function")
+            clearTimeout(hostCameraTimer);
+        hostCameraTimer=null;
+    }
+
+    function captureHostCameraFrame()
+    {
+        if(!hostCameraStream || !hostCameraVideo || !hostCameraContext || !hostCameraCanvas)
+            return false;
+
+        if(!(Number(hostCameraVideo.videoWidth)>0) || !(Number(hostCameraVideo.videoHeight)>0))
+            return false;
+
+        hostCameraContext.drawImage(hostCameraVideo,0,0,HGR_WIDTH,HGR_HEIGHT);
+        var image=hostCameraContext.getImageData(0,0,HGR_WIDTH,HGR_HEIGHT);
+        var rgba=image && image.data;
+        if(!rgba || rgba.length < HGR_WIDTH*HGR_HEIGHT*4)
+            return false;
+
+        var next=new Uint8Array(HGR_WIDTH*HGR_HEIGHT);
+        for(var p=0,s=0;p<next.length;p++,s+=4)
+            next[p]=Math.trunc(0.299*rgba[s] + 0.587*rgba[s+1] + 0.114*rgba[s+2]);
+
+        hostCameraFrame=next;
+        return true;
+    }
+
+    function scheduleHostCameraFrame(epoch)
+    {
+        clearHostCameraTimer();
+        if(!hostCameraStream || epoch!==hostCameraEpoch || typeof(setTimeout)!=="function")
+            return;
+
+        hostCameraTimer=setTimeout(function()
+        {
+            hostCameraTimer=null;
+            if(!hostCameraStream || epoch!==hostCameraEpoch) return;
+            captureHostCameraFrame();
+            scheduleHostCameraFrame(epoch);
+        },HOST_CAMERA_SAMPLE_MS);
+    }
+
+    async function startHostCameraBridge(stream,epoch)
+    {
+        if(typeof(document)==="undefined" || !document || typeof(document.createElement)!=="function")
+            return false;
+
+        hostCameraVideo=document.createElement("video");
+        hostCameraCanvas=document.createElement("canvas");
+        if(!hostCameraVideo || !hostCameraCanvas || typeof(hostCameraCanvas.getContext)!=="function")
+            throw new Error("Dithertizer host camera requires video/canvas support");
+
+        hostCameraCanvas.width=HGR_WIDTH;
+        hostCameraCanvas.height=HGR_HEIGHT;
+        hostCameraContext=hostCameraCanvas.getContext("2d");
+        if(!hostCameraContext || typeof(hostCameraContext.drawImage)!=="function" ||
+           typeof(hostCameraContext.getImageData)!=="function")
+            throw new Error("Dithertizer host camera requires a 2D canvas context");
+
+        hostCameraVideo.autoplay=true;
+        hostCameraVideo.muted=true;
+        hostCameraVideo.playsInline=true;
+        hostCameraVideo.srcObject=stream;
+
+        if(typeof(hostCameraVideo.play)==="function")
+            await hostCameraVideo.play();
+
+        if(!hostCameraStream || hostCameraStream!==stream || epoch!==hostCameraEpoch)
+            return false;
+
+        captureHostCameraFrame();
+        scheduleHostCameraFrame(epoch);
+        return true;
+    }
+
     function stopHostCamera()
     {
+        hostCameraEpoch++;
+        clearHostCameraTimer();
+
+        if(hostCameraVideo)
+        {
+            if(typeof(hostCameraVideo.pause)==="function") hostCameraVideo.pause();
+            try { hostCameraVideo.srcObject=null; } catch(e) {}
+        }
+        hostCameraVideo=null;
+        hostCameraCanvas=null;
+        hostCameraContext=null;
+        hostCameraFrame=new Uint8Array(HGR_WIDTH*HGR_HEIGHT);
+
         if(hostCameraStream && typeof(hostCameraStream.getTracks)==="function")
         {
             var tracks=hostCameraStream.getTracks();
@@ -304,7 +407,12 @@ function DithertizerII()
 
         try
         {
-            hostCameraStream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+            var stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+            hostCameraStream=stream;
+            var epoch=++hostCameraEpoch;
+            await startHostCameraBridge(stream,epoch);
+            if(!hostCameraStream || hostCameraStream!==stream || epoch!==hostCameraEpoch)
+                return false;
             updateCameraButton(controlID);
             return true;
         }
