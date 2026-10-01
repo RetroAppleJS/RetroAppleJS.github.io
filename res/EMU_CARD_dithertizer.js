@@ -134,7 +134,7 @@ function DithertizerII()
 
     this.setCameraSource=function(source)
     {
-        if(source!==null && source!==undefined && typeof(source.getLumaFrame)!==="function")
+        if(source!==null && source!==undefined && typeof(source.getLumaFrame)!=="function")
             throw new TypeError("Dithertizer camera source must expose getLumaFrame(width,height)");
 
         cameraSource=source || null;
@@ -221,7 +221,7 @@ function DithertizerII()
 
     function uiReadout(controlID,setting,value)
     {
-        if(typeof(document)==="undefined" || !document || typeof(document.getElementById)!==="function") return;
+        if(typeof(document)==="undefined" || !document || typeof(document.getElementById)!=="function") return;
         var el=document.getElementById(controlID+"_"+setting+"_value");
         if(!el) return;
         if(setting==="rate") el.textContent=(Number(value)/1000).toFixed(2)+"s";
@@ -289,8 +289,8 @@ function DithertizerII()
         if(typeof(DithertizerConvertHGRAdapter)==="function")
             return Promise.resolve(DithertizerConvertHGRAdapter);
         if(convertHGRAdapterLoadPromise) return convertHGRAdapterLoadPromise;
-        if(typeof(document)==="undefined" || !document || typeof(document.createElement)!==="function" ||
-           !document.head || typeof(document.head.appendChild)!==="function")
+        if(typeof(document)==="undefined" || !document || typeof(document.createElement)!=="function" ||
+           !document.head || typeof(document.head.appendChild)!=="function")
             return Promise.resolve(null);
 
         convertHGRAdapterLoadPromise=new Promise(function(resolve,reject)
@@ -368,14 +368,14 @@ function DithertizerII()
     function scheduleHostCameraFrame(epoch)
     {
         clearHostCameraTimer();
-        if(!hostCameraStream || epoch!==hostCameraEpoch || typeof(setTimeout)!==="function") return;
+        if(!hostCameraStream || epoch!==hostCameraEpoch || typeof(setTimeout)!=="function") return;
         hostCameraTimer=setTimeout(function()
         {
             hostCameraTimer=null;
             if(!hostCameraStream || epoch!==hostCameraEpoch) return;
             Promise.resolve(captureHostCameraFrame(epoch)).catch(function(error)
             {
-                if(typeof(console)!==="undefined" && console && typeof(console.warn)==="function")
+                if(typeof(console)!=="undefined" && console && typeof(console.warn)==="function")
                     console.warn("Dithertizer ConvertHGR camera frame failed",error);
             }).then(function()
             {
@@ -386,7 +386,7 @@ function DithertizerII()
 
     async function startHostCameraBridge(stream,epoch)
     {
-        if(typeof(document)==="undefined" || !document || typeof(document.createElement)!==="function") return false;
+        if(typeof(document)==="undefined" || !document || typeof(document.createElement)!=="function") return false;
 
         var AdapterCtor=await ensureConvertHGRAdapterCtor();
         if(!AdapterCtor) return false;
@@ -395,11 +395,11 @@ function DithertizerII()
 
         hostCameraVideo=document.createElement("video");
         hostCameraCanvas=document.createElement("canvas");
-        if(!hostCameraVideo || !hostCameraCanvas || typeof(hostCameraCanvas.getContext)!==="function")
+        if(!hostCameraVideo || !hostCameraCanvas || typeof(hostCameraCanvas.getContext)!=="function")
             throw new Error("Dithertizer host camera requires video/canvas support");
 
         hostCameraContext=hostCameraCanvas.getContext("2d");
-        if(!hostCameraContext || typeof(hostCameraContext.drawImage)!==="function" || typeof(hostCameraContext.getImageData)!==="function")
+        if(!hostCameraContext || typeof(hostCameraContext.drawImage)!=="function" || typeof(hostCameraContext.getImageData)!=="function")
             throw new Error("Dithertizer host camera requires a 2D canvas context");
 
         hostCameraVideo.autoplay=true;
@@ -442,7 +442,7 @@ function DithertizerII()
 
     function updateCameraButton(controlID)
     {
-        if(typeof(document)==="undefined" || !document || typeof(document.getElementById)!==="function") return;
+        if(typeof(document)==="undefined" || !document || typeof(document.getElementById)!=="function") return;
         var button=document.getElementById(controlID+"_camera");
         if(!button) return;
         var active=!!hostCameraStream;
@@ -463,7 +463,7 @@ function DithertizerII()
             updateCameraButton(controlID);
             return false;
         }
-        if(typeof(navigator)==="undefined" || !navigator || !navigator.mediaDevices || typeof(navigator.mediaDevices.getUserMedia)!==="function")
+        if(typeof(navigator)==="undefined" || !navigator || !navigator.mediaDevices || typeof(navigator.mediaDevices.getUserMedia)!=="function")
         {
             updateCameraButton(controlID);
             return false;
