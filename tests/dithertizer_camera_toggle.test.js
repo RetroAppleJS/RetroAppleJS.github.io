@@ -83,6 +83,28 @@ test('camera toggle fails closed when getUserMedia is unavailable or rejected',a
     }
 });
 
+test('camera startup exception is logged before the existing fail-closed cleanup',async()=>{
+    const errors=[];
+    let stopped=0;
+    const stream={getTracks(){return [{stop(){stopped++;}}];}};
+    const navigator={mediaDevices:{async getUserMedia(){return stream;}}};
+    const fakeConsole={...console,error(...args){errors.push(args);}};
+    class FailingAdapter
+    {
+        async init(){throw new Error('bridge boom');}
+        close(){}
+    }
+    const document={getElementById(){return null;},createElement(){throw new Error('should not create elements');}};
+    const DithertizerII=loadCard({navigator,console:fakeConsole,document,DithertizerConvertHGRAdapter:FailingAdapter});
+    const card=new DithertizerII();
+
+    assert.equal(await card.deviceToolCameraToggle('dither_ctrl_S7'),false);
+    assert.equal(stopped,1,'existing fail-closed cleanup still stops the acquired stream');
+    assert.equal(errors.length,1);
+    assert.equal(errors[0][0],'Dithertizer camera startup failed');
+    assert.match(String(errors[0][1]),/bridge boom/);
+});
+
 test('reset and restart stop all host-camera tracks and restore OFF status',async()=>{
     let stopped=0;
     const makeStream=()=>({getTracks(){return [{stop(){stopped++;}},{stop(){stopped++;}}];}});
