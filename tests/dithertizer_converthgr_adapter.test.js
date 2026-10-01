@@ -8,14 +8,17 @@ const vm=require('node:vm');
 
 const ROOT=path.resolve(__dirname,'..');
 
-function loadAdapter(workerMode='wasm')
+function loadAdapter(workerMode='wasm',options={})
 {
     const source=fs.readFileSync(path.join(ROOT,'res','EMU_DITHERTIZER_converthgr.js'),'utf8');
     const posted=[];
+    const blobs=[];
+    const workerSource=Object.prototype.hasOwnProperty.call(options,'workerSource') ? options.workerSource : 'self.onmessage=function(){};';
+    let fetchCalls=0;
 
     class FakeBlob
     {
-        constructor(parts,options){this.parts=parts;this.type=options&&options.type;}
+        constructor(parts,options){this.parts=parts;this.type=options&&options.type;blobs.push(this);}
     }
 
     class FakeWorker
@@ -48,20 +51,43 @@ function loadAdapter(workerMode='wasm')
         terminate(){}
     }
 
-    const fakeHTML='before<script id="worker-source" type="text/plain">self.onmessage=function(){};<\/script>after';
     const sandbox={
         console,Uint8Array,ArrayBuffer,Promise,Error,TypeError,JSON,Math,Number,String,Object,queueMicrotask,
         Blob:FakeBlob,
         Worker:FakeWorker,
-        fetch:async()=>({ok:true,text:async()=>fakeHTML}),
+        fetch:async()=>{fetchCalls++;throw new Error('fetch must not be used');},
         URL:{createObjectURL(){return 'blob:worker';},revokeObjectURL(){}},
-        document:{baseURI:'https://example.test/index.html'}
+        document:{baseURI:'file:///RetroAppleJS/index.html'}
     };
+    if(workerSource!==undefined) sandbox.CONVERTHGR_WORKER_SOURCE=workerSource;
 
     vm.createContext(sandbox);
     vm.runInContext(source+'\nthis.Adapter=DithertizerConvertHGRAdapter;',sandbox,{filename:'EMU_DITHERTIZER_converthgr.js'});
-    return {Adapter:sandbox.Adapter,posted};
+    return {Adapter:sandbox.Adapter,posted,blobs,getFetchCalls:()=>fetchCalls,workerSource};
 }
+
+test('adapter initializes from bundled worker source without fetch',async()=>{
+    const {Adapter,blobs,getFetchCalls,workerSource}=loadAdapter('wasm');
+    const adapter=new Adapter();
+
+    await adapter.init();
+
+    assert.equal(getFetchCalls(),0);
+    assert.equal(blobs.length,1);
+    assert.equal(blobs[0].parts.length,1);
+    assert.equal(blobs[0].parts[0],workerSource);
+    assert.equal(blobs[0].type,'text/javascript');
+});
+
+test('adapter rejects missing bundled worker source with a clear error',async()=>{
+    const {Adapter}=loadAdapter('wasm',{workerSource:undefined});
+    const adapter=new Adapter();
+
+    await assert.rejects(
+        adapter.init(),
+        /bundled worker source is unavailable/
+    );
+});
 
 test('adapter forces ConvertHGR worker to WASM and returns the processed 280x192 palette index',async()=>{
     const {Adapter,posted}=loadAdapter('wasm');
