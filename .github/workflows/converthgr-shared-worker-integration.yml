@@ -1,0 +1,105 @@
+name: Generate shared ConvertHGR worker integration
+
+on:
+  push:
+    branches:
+      - fix/converthgr-shared-worker-end-to-end
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract worker source and wire emulator
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          tool_path = Path('tools/ConvertHGR.html')
+          worker_path = Path('res/EMU_DITHERTIZER_converthgr_worker.js')
+          index_path = Path('index.html')
+
+          html = tool_path.read_text(encoding='utf-8')
+          open_tag = '<script id="worker-source" type="text/plain">'
+          start = html.index(open_tag) + len(open_tag)
+          end = html.index('</script>', start)
+          worker_source = html[start:end]
+
+          if '*/' in worker_source:
+              raise SystemExit('worker-source contains */ and cannot be stored in the source-carrier comment')
+
+          worker_file = (
+              '//\n'
+              '// EMU_DITHERTIZER_converthgr_worker.js\n'
+              '//\n'
+              '// Shared bundled ConvertHGR worker source. The body between the markers\n'
+              '// is extracted byte-for-byte from tools/ConvertHGR.html. It is kept in\n'
+              '// a function-source carrier so loading this file on the main thread does\n'
+              '// not execute worker code.\n'
+              '//\n\n'
+              'function ConvertHGRWorkerSourceCarrier()\n'
+              '{\n'
+              '/* CONVERTHGR_WORKER_SOURCE_BEGIN\n'
+              + worker_source +
+              '\nCONVERTHGR_WORKER_SOURCE_END */\n'
+              '}\n\n'
+              'var CONVERTHGR_WORKER_SOURCE=(function()\n'
+              '{\n'
+              '    var source=ConvertHGRWorkerSourceCarrier.toString();\n'
+              '    var begin="/* CONVERTHGR_WORKER_SOURCE_BEGIN\\n";\n'
+              '    var end="\\nCONVERTHGR_WORKER_SOURCE_END */";\n'
+              '    var i=source.indexOf(begin);\n'
+              '    var j=source.lastIndexOf(end);\n'
+              '    if(i<0 || j<0 || j<=i)\n'
+              '        throw new Error("ConvertHGR bundled worker source markers not found");\n'
+              '    return source.slice(i+begin.length,j);\n'
+              '})();\n'
+          )
+          worker_path.write_text(worker_file, encoding='utf-8')
+
+          index = index_path.read_text(encoding='utf-8')
+          worker_line = '            <script type="text/javascript" src="res/EMU_DITHERTIZER_converthgr_worker.js"></script>\n'
+          adapter_line = '            <script type="text/javascript" src="res/EMU_DITHERTIZER_converthgr.js"></script>\n'
+          card_line = '            <script type="text/javascript" src="res/EMU_CARD_dithertizer.js"></script>\n'
+
+          if worker_line not in index:
+              if card_line not in index:
+                  raise SystemExit('Dithertizer card script include not found in index.html')
+              index = index.replace(card_line, worker_line + adapter_line + card_line, 1)
+          index_path.write_text(index, encoding='utf-8')
+
+          print('worker-source bytes:', len(worker_source.encode('utf-8')))
+          print('worker-source chars:', len(worker_source))
+          PY
+
+      - name: Syntax checks
+        run: |
+          node --check res/EMU_DITHERTIZER_converthgr_worker.js
+          node --check res/EMU_DITHERTIZER_converthgr.js
+          node --check res/EMU_CARD_dithertizer.js
+
+      - name: Focused regression tests
+        run: |
+          node --test \
+            tests/converthgr_worker_source_regression.test.js \
+            tests/dithertizer_converthgr_load_order.test.js \
+            tests/dithertizer_converthgr_adapter.test.js \
+            tests/dithertizer_converthgr_camera.test.js
+
+      - name: Diff check
+        run: git diff --check
+
+      - name: Commit generated integration
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add res/EMU_DITHERTIZER_converthgr_worker.js index.html
+          git rm .github/workflows/converthgr-shared-worker-integration.yml
+          git commit -m "fix: bundle shared ConvertHGR worker"
+          git push
