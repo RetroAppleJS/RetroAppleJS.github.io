@@ -1,10 +1,11 @@
 //
 // EMU_DITHERTIZER_converthgr.js
 //
-// Thin adapter around the existing ConvertHGR browser worker. The worker is
-// sourced from tools/ConvertHGR.html so the Dithertizer and the standalone tool
-// execute the same conversion code. Live Dithertizer conversion requires the
-// worker's WASM backend; JavaScript quantizer fallback is rejected.
+// Thin adapter around the bundled ConvertHGR browser worker source. The worker
+// source is loaded by the emulator as normal script data and then instantiated
+// as a Blob Worker so local file:// execution does not need runtime fetch().
+// Live Dithertizer conversion requires the worker's WASM backend; JavaScript
+// quantizer fallback is rejected.
 //
 
 function DithertizerConvertHGRAdapter(options)
@@ -81,28 +82,22 @@ function DithertizerConvertHGRAdapter(options)
         if(worker) return Promise.resolve(this);
         if(initPromise) return initPromise;
 
-        var sourceURL=String(options.workerSourceUrl || "tools/ConvertHGR.html");
-        var fetchFn=options.fetch || (typeof(fetch)==="function" ? fetch : null);
+        var workerSource=options.workerSource ||
+            (typeof(CONVERTHGR_WORKER_SOURCE)!=="undefined" ? CONVERTHGR_WORKER_SOURCE : null);
         var WorkerCtor=options.Worker || (typeof(Worker)!=="undefined" ? Worker : null);
         var BlobCtor=options.Blob || (typeof(Blob)!=="undefined" ? Blob : null);
         var URLApi=options.URL || (typeof(URL)!=="undefined" ? URL : null);
 
-        if(!fetchFn || !WorkerCtor || !BlobCtor || !URLApi || typeof(URLApi.createObjectURL)!=="function")
+        if(typeof(workerSource)!=="string" || workerSource.length===0)
+            return Promise.reject(new Error("ConvertHGR bundled worker source is unavailable"));
+
+        if(!WorkerCtor || !BlobCtor || !URLApi || typeof(URLApi.createObjectURL)!=="function")
             return Promise.reject(new Error("ConvertHGR worker APIs are unavailable"));
 
         var self=this;
-        initPromise=Promise.resolve(fetchFn(sourceURL)).then(function(response)
+        initPromise=Promise.resolve().then(function()
         {
-            if(!response || response.ok===false || typeof(response.text)!=="function")
-                throw new Error("Unable to load "+sourceURL);
-            return response.text();
-        }).then(function(html)
-        {
-            var match=String(html).match(/<script\s+id=["']worker-source["'][^>]*>([\s\S]*?)<\/script>/i);
-            if(!match || !match[1])
-                throw new Error("ConvertHGR worker-source script was not found");
-
-            var blob=new BlobCtor([match[1]],{type:"text/javascript"});
+            var blob=new BlobCtor([workerSource],{type:"text/javascript"});
             workerBlobURL=URLApi.createObjectURL(blob);
             worker=new WorkerCtor(workerBlobURL);
             worker.onmessage=workerMessage;
