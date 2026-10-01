@@ -10,10 +10,12 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-01-dithertizer-converthgr-wasm-design.md`
 
+**Normative ABI:** `docs/superpowers/specs/2026-10-01-converthgr-wasm-abi-v1.md`
+
 ## Global Constraints
 
 - No JavaScript ConvertHGR implementation or fallback in the production Dithertizer path.
-- JavaScript may only perform browser integration, pixel-format transport, settings serialization, scheduling, worker messaging, luma adaptation, and Dithertizer integration.
+- JavaScript may only perform browser integration, pixel-format transport, settings serialization, scheduling, worker messaging, the specified palette-RGB-to-luma adaptation, and Dithertizer integration.
 - WASM must not import, receive, or write Apple II RAM.
 - DSCAN keeps `$C0n0`, `$C0n8`, HGR page selection, threshold semantics, and final HGR writes.
 - Camera conversion cadence is 100..1000 ms inclusive, 50 ms steps, default 250 ms.
@@ -21,7 +23,12 @@
 - Camera OFF/reset/restart clears the virtual camera frame to black.
 - Only a fully completed conversion may replace the currently exposed 280x192 luma frame.
 - If WASM load/conversion fails, fail closed: no JS conversion fallback and no partial-frame publication.
-- Preserve current ConvertHGR browser-port behavior, including its histogram-stretch approximation; do not claim stronger desktop ConvertHGR parity.
+- Preserve current ConvertHGR browser-port behavior, including its histogram-stretch approximation and its current ordered-mode/A-F interaction; do not claim stronger desktop ConvertHGR parity.
+- ABI v1 fixes Apple pixel aspect to `256/280`; offset `0x68` is reserved and must be positive zero.
+- The 48-MiB module may consume/reuse the source buffer as workspace after `hgr_convert()` begins; the caller rewrites source bytes before every call.
+- Validation precedence is fixed: zero dimensions, then source limits/capacity, then settings validation, then internal conversion failure.
+- RNG behavior is the exact browser-reference Microsoft-style recurrence and candidate ordering defined by ABI v1.
+- Dithertizer luma publication uses exactly `trunc(0.299*R + 0.587*G + 0.114*B)` from `paletteRGB`.
 - `tools/ConvertHGR.html` remains the frozen reference source during this implementation; migrating that tool to the shared WASM module is a later follow-up, not part of this plan.
 
 ## Review Focus
@@ -30,7 +37,7 @@
 2. **Camera OFF/reset while a conversion is in flight:** an old worker result must never republish after shutdown. Covered in Task 6 with a camera-generation/epoch regression.
 3. **RATE changes while idle or in flight:** reschedule exactly once, do not duplicate capture, cancel conversion, or queue frames. Covered in Task 6 scheduler tests.
 4. **DSCAN capture concurrent with frame publication:** `sourceFrame()` must see either the old complete luma frame or the new complete luma frame, never a partially rewritten buffer. Covered in Task 7 integration tests.
-5. **WASM ABI drift or memory growth/pointer corruption:** reject ABI mismatches and refresh typed-array views from the current `memory.buffer` before every copy. Covered in Tasks 2 and 5.
+5. **WASM ABI drift/workspace/pointer corruption:** reject ABI mismatches, validate the reserved `0x68` field, verify non-overlapping public ranges, and recreate typed-array views from the current `memory.buffer` before every copy. Covered in Tasks 2 and 5.
 
 ---
 
@@ -88,7 +95,7 @@
 
 **Interfaces:**
 - Consumes: current `tools/ConvertHGR.html` worker code and its `convertHgrCore(...)` JavaScript reference path.
-- Produces: deterministic fixture descriptors plus SHA-256 hashes for `processedRGB`, `paletteRGB`, `paletteIndex`, `linearHGR`, and `hgrPage`.
+- Produces: deterministic fixture descriptors plus SHA-256 hashes for `processedRGB`, ABI-v1-derived `paletteRGB`, `paletteIndex`, `linearHGR`, and `hgrPage`.
 
 - [ ] **Step 1: Write the failing reference-fixture test**
 
@@ -140,8 +147,10 @@ Use `0x12345678` as the default random seed and at least one case with `0xC0FFEE
 2. extract the `worker-source` script text;
 3. evaluate it in a Node `vm` sandbox with test-only worker stubs;
 4. call the existing JavaScript `convertHgrCore({sourceRGB,sourceWidth,sourceHeight,settings,randomSeed})` directly;
-5. SHA-256 each of the five outputs;
-6. support `--write` and `--check` modes.
+5. treat the reference `paletteImage` byte array as ABI-v1 `paletteIndex`;
+6. derive `paletteRGB` from that final index array through the frozen ABI-v1 eight-entry palette, rather than expecting the current reference to return `paletteRGB` directly;
+7. ensure HGR-page holes are zero and SHA-256 the five ABI outputs;
+8. support `--write` and `--check` modes.
 
 The generator is test/reference tooling only. It must never be loaded by `index.html` or any production Dithertizer script.
 
@@ -181,6 +190,8 @@ git commit -m "test: freeze ConvertHGR golden fixtures"
 
 #### ABI v1
 
+The normative source is `docs/superpowers/specs/2026-10-01-converthgr-wasm-abi-v1.md`. This copied excerpt must remain synchronized with that document.
+
 Input format is packed RGB24.
 
 ```text
@@ -194,10 +205,12 @@ HGR_PAGE_BYTES           = 8192
 HGR_MAX_SOURCE_WIDTH     = 3840
 HGR_MAX_SOURCE_HEIGHT    = 2160
 HGR_SOURCE_CAPACITY      = 24883200 bytes
+HGR_SETTINGS_V1_BYTES    = 120
 HGR_WASM_MEMORY_BYTES    = 50331648 bytes (48 MiB)
+HGR_APPLE_PIXEL_ASPECT   = 256.0 / 280.0 (fixed algorithm constant; not a settings field)
 ```
 
-Export exactly:
+Required exports:
 
 ```c
 uint32_t hgr_get_abi_version(void);          // 1
@@ -246,10 +259,20 @@ The 120-byte settings block is fixed little-endian ABI v1:
 0x50 f64 perceptual_R
 0x58 f64 perceptual_G
 0x60 f64 perceptual_B
-0x68 f64 apple_pixel_aspect
+0x68 f64 reserved_f64_0 (= positive-zero IEEE-754 bit pattern; never read as pixel aspect)
 0x70 u32 reserved0 (=0)
 0x74 u32 reserved1 (=0)
 ```
+
+The seven resolved ABI-v1 rules are normative:
+
+1. **Fixed Apple pixel aspect.** Scaling/framing always uses `256.0/280.0`. The `0x68` field is reserved positive zero; a nonzero bit pattern is `HGR_ERR_SETTINGS`.
+2. **Dither-mode parity.** `DIFFUSION` disables the ordered threshold. `ORDER1/ORDER2` use the 2x2 ordered matrix; `ORDER3/ORDER4` use the 4x4 matrix. WASM never alters serialized A-F based on mode. UI/card state applies the current reference rule: selecting ORDER2/ORDER4 sets `A=1 B=2 C=2 D=2 E=0 F=0`; ORDER1/ORDER3/DIFFUSION retain the currently effective A-F values.
+3. **Palette output.** `paletteIndex` is the final byte-per-pixel reference `paletteImage` with values `0..7`. `paletteRGB` is derived exactly from that final array through the ABI-v1 palette `[black, green, magenta, white, black, orange, blue, white]` using the exact RGB values in the normative spec.
+4. **48-MiB workspace/source ownership.** After `hgr_convert()` begins, the source-capacity region is consumable scratch and may be overwritten. The caller rewrites source RGB before every call. Private workspace may overlap source but not settings or output regions. Scaling must be bounded/crop-aware and may not require allocating a potentially huge conceptual `finalW*finalH*3` intermediate.
+5. **Validation precedence.** Return the first applicable error in this order: zero dimension -> `HGR_ERR_DIMENSIONS`; source dimensions/capacity -> `HGR_ERR_SOURCE_TOO_LARGE`; settings -> `HGR_ERR_SETTINGS`; otherwise unclassified runtime failure -> `HGR_ERR_INTERNAL`.
+6. **Deterministic RNG.** `state = seed`; each group advances once with `state = state*214013u + 2531011u` modulo `2^32`, returns `(state >> 16) & 0x7fff`, chooses `first_pattern = next() % 256`, then evaluates all 256 candidates sequentially modulo 256.
+7. **Dithertizer luma.** After successful conversion, JavaScript derives luma from `paletteRGB` using exactly `trunc(0.299*R + 0.587*G + 0.114*B)`, yielding palette LUT `[0,156,145,255,0,145,156,255]`; this luma rule is integration state, not a WASM settings field.
 
 - [ ] **Step 1: Write failing ABI tests**
 
@@ -259,22 +282,27 @@ The 120-byte settings block is fixed little-endian ABI v1:
 - `WebAssembly.Module.imports(module)` is empty;
 - required exports exist;
 - ABI version is 1 and settings size is 120;
-- memory is exactly 48 MiB and does not need growth for the declared buffers;
-- pointers/ranges fit memory and output regions do not overlap;
+- memory is exactly 48 MiB and does not need growth for declared public buffers/workspace strategy;
+- public pointer ranges fit memory and do not overlap;
 - source capacity is exactly 24,883,200 bytes;
-- `hgr_convert(0,192,seed)` and `hgr_convert(280,0,seed)` return 1;
-- dimensions/capacity above the 3840x2160 contract return 2;
-- wrong settings ABI version returns 3.
+- source bytes may be overwritten by a successful or failed call and are never relied upon after `hgr_convert()` starts;
+- `reserved_f64_0` accepts only the positive-zero bit pattern;
+- `hgr_convert(0,192,seed)` and `hgr_convert(280,0,seed)` return `HGR_ERR_DIMENSIONS` even when settings are also invalid;
+- oversized dimensions/capacity return `HGR_ERR_SOURCE_TOO_LARGE` before settings validation;
+- wrong settings ABI version and all other settings validation failures return `HGR_ERR_SETTINGS` only after dimension/capacity checks;
+- dither modes use the normative ordered-matrix semantics without mutating A-F;
+- the exact RNG sequence/candidate starting order matches the browser reference;
+- `paletteIndex` is `0..7`, `paletteRGB` expands it exactly, and HGR-page holes are zero.
 
 - [ ] **Step 2: Implement the ABI skeleton and static buffers**
 
 `convert_hgr.c` may initially fill all fixed outputs with black/zero for a valid call. Do not port image algorithms yet.
 
-Use static/BSS buffers so the 24.9 MB source area does not inflate the `.wasm` file.
+Use static/BSS public buffers so the 24.9 MB source region does not inflate the `.wasm` file. Layout the fixed public regions inside 48 MiB with source available as consumable scratch after call entry. Do not allocate a second maximum-size source image.
 
 - [ ] **Step 3: Add the WASI SDK 34 build script**
 
-`tools/build_convert_hgr_wasm.sh [output]` must require `WASI_SDK_PATH` and compile C11 using the pinned SDK toolchain, `-O3`, `-lm`, no entry point, exported memory, the explicit ABI exports above, and fixed 48 MiB initial/max memory.
+`tools/build_convert_hgr_wasm.sh [output]` must require `WASI_SDK_PATH` and compile C11 using the pinned SDK toolchain, `-O3`, `-lm`, no entry point, exported memory, the explicit ABI exports above, and fixed 48 MiB initial/max memory. Do not enable unsafe floating-point reassociation/`-ffast-math` because golden parity depends on browser-reference rounding points.
 
 Default output: `res/wasm/convert_hgr.wasm`.
 
@@ -318,7 +346,8 @@ Compare `processedRGB` SHA-256 against Task 1 goldens for all fixture cases that
 - default/middle fill and nudges;
 - histogram stretch on/off;
 - gamma 0.75, 1.00, 1.30 and at least one >1.30 value;
-- non-280x192 dimensions.
+- non-280x192 dimensions;
+- at least one extreme-aspect valid source proving bounded/crop-aware scaling fits the fixed 48-MiB workspace.
 
 - [ ] **Step 2: Port preprocessing in the same operation order as `prepareSourceRGB()`**
 
@@ -326,16 +355,17 @@ Port behavior from `tools/ConvertHGR.html` in this order:
 
 ```text
 1. greyscale source in-place when enabled
-2. scaleAndFrame to 280x192 using applePixelAspect 256/280
+2. scaleAndFrame to 280x192 using the fixed 256/280 pixel-aspect constant
 3. applyHistogramApprox when enabled
 4. applyGamma
+5. applyMaxColorShift
 ```
 
-Keep calculations in `double` where the JavaScript reference uses Number semantics; clamp/round at the same pixel-write boundaries.
+The ABI settings field at `0x68` is reserved positive zero and must never control scaling. Implement scaling/framing in a bounded/crop-aware way that is behaviorally equivalent to the conceptual reference intermediate but does not allocate the entire conceptual `finalW*finalH` RGB image.
 
-Implement all five filters: box, gaussian, hamming, blackman, bilinear.
+Preserve reference numeric behavior: JavaScript `Number`/double where used, the reference `Math.fround()` points in resampling, and the same clamp/round/truncation boundaries. Implement all five filters: box, gaussian, hamming, blackman, bilinear.
 
-Do not move histogram/gamma before scaling merely for convenience; fixture parity owns the order.
+Do not move histogram/gamma/max-color-shift before scaling merely for convenience; fixture parity owns the order.
 
 - [ ] **Step 3: Rebuild and run preprocessing parity**
 
@@ -366,11 +396,11 @@ git commit -m "feat: port ConvertHGR preprocessing to WASM"
 
 **Interfaces:**
 - Consumes: Task 3 `processedRGB`, ABI settings, full Task 1 golden hashes.
-- Produces: `paletteRGB`, `paletteIndex`, `linearHGR`, and `hgrPage` parity outputs.
+- Produces: final `paletteIndex`, its exact `paletteRGB` expansion, `linearHGR`, and zero-filled/interleaved `hgrPage` parity outputs.
 
 - [ ] **Step 1: Write the failing full-output parity test**
 
-For every Task 1 case, hash and compare all five outputs. Also assert same input/settings/seed twice yields byte-identical output.
+For every Task 1 case, hash and compare all five outputs. Also assert same input/settings/seed twice yields byte-identical output, `paletteIndex` contains only `0..7`, `paletteRGB` is an exact expansion of final `paletteIndex`, and unused HGR page bytes are zero.
 
 - [ ] **Step 2: Port the colour metric and palette-phase logic**
 
@@ -380,7 +410,7 @@ Preserve current browser-port semantics for:
 - luma emphasis;
 - max colour shift;
 - default perceptual weights `0.30 / 0.52 / 0.18`;
-- Apple II palette phases and candidate evaluation.
+- exact ABI-v1 palette values and Apple II phase/candidate behavior.
 
 - [ ] **Step 3: Port dithering and seven-pixel quantization**
 
@@ -394,23 +424,37 @@ Diag        A1 B3 C2 D3 E1 F1
 None        A0 B0 C0 D0 E0 F0
 ```
 
-The UI preset remains independent of mode; changing mode must not silently replace the selected preset.
+Preserve ABI-v1 mode semantics exactly:
 
-Port:
+```text
+DIFFUSION  ordered threshold disabled
+ORDER1     ordered enabled, 2x2 matrix
+ORDER2     ordered enabled, 2x2 matrix
+ORDER3     ordered enabled, 4x4 matrix
+ORDER4     ordered enabled, 4x4 matrix
+```
 
-- diffusion;
-- order1/order2/order3/order4;
-- map-size/order-matrix semantics;
-- ordered offset 0..16;
-- accumulate vs average incoming error;
-- fixed-seed/tie-breaking behavior using 32-bit unsigned arithmetic equivalent to the current JS reference.
+WASM must never zero or replace `error_A..error_F` based on mode. The Dithertizer UI/card layer owns the browser-reference mode-driven coefficient state change: selecting ORDER2/ORDER4 sets `{1,2,2,2,0,0}`; ORDER1/ORDER3/DIFFUSION retain the currently effective coefficients.
 
-- [ ] **Step 4: Port linear and Apple II page packing**
+Port ordered offset `0..16`, accumulate vs average incoming error, and the exact ABI-v1 RNG/tie-breaking behavior:
+
+```text
+state = seed
+state = state*214013 + 2531011 (uint32 wrap)
+next = (state >> 16) & 0x7fff
+first_pattern = next % 256
+then evaluate first_pattern..first_pattern+255 modulo 256
+one RNG advance per 7-pixel group
+```
+
+- [ ] **Step 4: Produce palette and HGR outputs exactly**
+
+Treat the final reference `paletteImage` result as ABI-v1 `paletteIndex`. Expand every final index through the frozen ABI-v1 palette into `paletteRGB`; do not render from a pre-adjustment/transient palette state.
 
 Produce exactly:
 
 - 7680-byte linear HGR stream;
-- 8192-byte Apple II HGR page with the existing interleave mapping.
+- 8192-byte Apple II HGR page with the existing interleave mapping and every unused/interleave-hole byte zero.
 
 - [ ] **Step 5: Rebuild and run full parity**
 
@@ -443,10 +487,11 @@ git commit -m "feat: port ConvertHGR quantizer to WASM"
 - Produces:
 
 ```js
-const adapter = new DithertizerConvertHGR(options);
+const adapter = new DithertizerConvertHGRAdapter(options);
 await adapter.init();
-const result = await adapter.convert({rgb,width,height,settings,seed});
-adapter.dispose();
+adapter.configure(settings);
+const result = await adapter.convert(rgb,width,height,seed);
+adapter.close();
 ```
 
 `result` contains copied `Uint8Array` values:
@@ -463,42 +508,44 @@ hgrPage         8192
 
 Cover:
 
-- one `init` handshake;
-- settings serialization uses ABI v1 offsets/types exactly;
-- RGB source bytes are transported unchanged;
+- concurrent/repeated `init()` uses one worker/one initialization promise;
+- settings serialization uses ABI v1 offsets/types exactly, including `reserved_f64_0 = +0.0` at `0x68`;
+- RGB source bytes are transported unchanged before conversion and the caller never expects WASM source memory to survive a call;
 - result lengths are exact;
-- conversion status != 0 rejects with a diagnostic error;
+- conversion status != 0 rejects with a diagnostic error and no output is published;
 - worker/WASM init failure rejects and never calls a JS converter;
-- adapter refreshes memory views after a replaced/grown `memory.buffer` in the worker-side test harness;
-- `dispose()` rejects pending conversions and terminates the worker.
+- adapter recreates memory views from the current `memory.buffer` before copies;
+- `close()` rejects pending conversions and terminates the worker;
+- exactly one conversion may be in flight and there is no queue.
 
-- [ ] **Step 2: Implement `DithertizerConvertHGR` main-thread adapter**
+- [ ] **Step 2: Implement `DithertizerConvertHGRAdapter` main-thread adapter**
 
-Use an injectable `workerFactory` for tests and the real `Worker` by default.
+Use an injectable Worker constructor/factory for tests and the real `Worker` by default. Resolve worker/WASM URLs from the page/base URL before sending them to the worker.
 
-Do not embed any ConvertHGR preprocessing/quantization functions in this file.
+Do not embed any ConvertHGR preprocessing/quantization functions in this file. The adapter accepts normalized effective A-F values; preset-name and mode-driven A-F resolution belong to the Dithertizer UI/card layer.
 
 - [ ] **Step 3: Implement the Worker-side WASM loader**
 
-Message protocol:
+Message protocol follows the normative ABI spec:
 
 ```text
-{type:'init', wasmURL}
-{type:'convert', id, width, height, seed, settings, rgbBuffer}
+{type:'init', wasmURL, abiVersion:1}
+{type:'convert', requestId, width, height, seed, settings, rgbBuffer}
 
--> {type:'ready', abiVersion:1}
--> {type:'result', id, processedRGB, paletteRGB, paletteIndex, linearHGR, hgrPage}
--> {type:'error', id?, code, message}
+-> {type:'ready', abiVersion:1, settingsSize:120, sourceCapacity:24883200}
+-> {type:'result', requestId, width:280, height:192,
+    processedRGBBuffer, paletteRGBBuffer, paletteIndexBuffer, linearHGRBuffer, hgrPageBuffer}
+-> {type:'error', phase, requestId?, status?, code?, message}
 ```
 
 Worker rules:
 
 - instantiate with an empty import object;
-- validate ABI version/settings size before accepting conversions;
-- write settings with `DataView` little-endian;
-- copy RGB24 directly into `hgr_get_source_ptr()`;
-- call `hgr_convert()`;
-- copy completed outputs into transferable ArrayBuffers before posting;
+- validate ABI version/settings size/memory size/public pointer ranges before accepting conversions;
+- write settings with `DataView` little-endian and write positive-zero at reserved offset `0x68`;
+- copy RGB24 directly into `hgr_get_source_ptr()` for every conversion;
+- call `hgr_convert()` and never depend on source contents afterwards;
+- copy completed outputs into fresh transferable ArrayBuffers only after `HGR_OK`;
 - never receive any Apple II RAM object/buffer/pointer.
 
 - [ ] **Step 4: Load scripts in dependency order**
@@ -540,7 +587,7 @@ git commit -m "feat: add Dithertizer ConvertHGR WASM adapter"
 - Modify: `index.html`
 
 **Interfaces:**
-- Consumes: `DithertizerConvertHGR` from Task 5.
+- Consumes: `DithertizerConvertHGRAdapter` from Task 5.
 - Produces:
 
 ```js
@@ -572,7 +619,8 @@ Cover:
 - oversized source failure preserves the previous completed frame;
 - before first success, `getLumaFrame()` returns black;
 - camera OFF clears frame to black and cancels future timers;
-- camera OFF/reset epoch prevents an already in-flight worker result from republishing afterward.
+- camera OFF/reset epoch prevents an already in-flight worker result from republishing afterward;
+- palette-index/RGB luma fixtures produce the ABI-v1 luma LUT `[0,156,145,255,0,145,156,255]`.
 
 - [ ] **Step 2: Implement browser camera transport**
 
@@ -592,17 +640,24 @@ video -> canvas.drawImage -> ImageData RGBA -> packed RGB24
 
 No resizing, gamma, histogram, greyscale, colour matching, dithering, or quantization in JavaScript.
 
-- [ ] **Step 3: Implement atomic luma publication**
+- [ ] **Step 3: Implement atomic ABI-v1 luma publication**
 
-After a successful worker result, convert `paletteRGB` to a newly allocated 280x192 luma buffer using fixed BT.601 integer luma:
+After a successful worker result, convert `paletteRGB` to a newly allocated 280x192 luma buffer using exactly:
 
 ```text
-Y = (77*R + 150*G + 29*B + 128) >> 8
+Y = trunc(0.299 * R + 0.587 * G + 0.114 * B)
 ```
 
-Replace the public luma-buffer reference only after the whole new buffer is complete and only if the camera epoch still matches.
+Use JavaScript/IEEE-754 double arithmetic with truncation toward zero. For the frozen ABI-v1 palette this must produce exactly:
 
-This luma adapter is Dithertizer transport, not part of ConvertHGR.
+```text
+index: 0   1   2   3   4   5   6   7
+luma:  0 156 145 255   0 145 156 255
+```
+
+A lookup table is permitted only if it produces those exact bytes. Do not use the previous integer approximation `(77R+150G+29B+128)>>8`.
+
+Replace the public luma-buffer reference only after the whole new buffer is complete and only if the camera epoch still matches. This luma adapter is Dithertizer integration code, not a ConvertHGR fallback.
 
 - [ ] **Step 4: Add the camera pipeline page script**
 
@@ -658,22 +713,26 @@ Add a single internal `buildConvertHGRSettings()` used for every scheduled frame
 Map:
 
 ```text
-mode: diffusion/order1/order2/order3/order4 -> 0..4
-preset -> A/B/C/D/E/F table from Task 4
-error: accumulate/average -> flags bit3
+mode -> diffusion/order1/order2/order3/order4
+preset -> effective A/B/C/D/E/F table
+mode transition ORDER2/ORDER4 -> force effective A/B/C/D/E/F to 1/2/2/2/0/0
+mode transition ORDER1/ORDER3/DIFFUSION -> retain current effective A/B/C/D/E/F
+error accumulate/average -> accumulateErrors boolean / ABI flag bit3
 ordered offset -> 0..16
-perceptual -> flags bit0
+perceptual -> ABI flag bit0
 luma % -> value/100
 max colour shift % -> same percent semantics as frozen ConvertHGR settings
-greyscale -> flags bit1
-histogram -> flags bit2
+greyscale -> ABI flag bit1
+histogram -> ABI flag bit2
 gamma % -> value/100
-filter -> 0..4
-fill mode -> default
-nudges -> 0,0
-weights -> 0.30,0.52,0.18
-apple pixel aspect -> 256/280
+filter -> box/gaussian/hamming/blackman/bilinear
+fillMode -> default
+horizontalNudge -> 0
+verticalNudge -> 0
+perceptual weights -> 0.30,0.52,0.18
 ```
+
+Do **not** serialize Apple pixel aspect. ABI v1 fixes it internally to `256/280`; the worker serializer writes `reserved_f64_0 = +0.0` at offset `0x68` plus zero `reserved0/reserved1`.
 
 Changing controls while live updates the camera pipeline settings for the next conversion only.
 
@@ -708,8 +767,9 @@ Assert the path:
 ```text
 source RGB
 -> worker/WASM conversion
--> paletteRGB
--> completed luma
+-> final paletteIndex
+-> exact ABI-v1 paletteRGB expansion
+-> exact ABI-v1 completed luma
 -> Dithertizer threshold
 -> $C0n8 startCapture()
 -> selected PAGE1/PAGE2 HGR writes
@@ -722,7 +782,8 @@ Also assert:
 - PAGE2 still selects `$4000` base through current video state;
 - `$C0n0` write/read still disables capture as before;
 - D7 sync/detector behavior is unchanged;
-- a frame publication between two DSCAN captures changes only the next capture, never the capture already in progress.
+- a frame publication between two DSCAN captures changes only the next capture, never the capture already in progress;
+- the luma bytes for palette indices `0..7` equal `[0,156,145,255,0,145,156,255]`.
 
 - [ ] **Step 6: Run all Dithertizer regressions**
 
@@ -835,9 +896,10 @@ Implement strictly in this order:
 
 Recommended review gates:
 
-- **After Task 1:** verify goldens really come from the current JavaScript reference and are deterministic.
-- **After Task 4:** require 100% frozen fixture parity before any browser/Dithertizer wiring begins.
-- **After Task 6:** review one-in-flight/no-queue semantics and OFF/in-flight epoch handling independently from DSCAN.
+- **After Task 1:** verify goldens really come from the current JavaScript reference, with `paletteRGB` derived from final `paletteIndex`, and are deterministic.
+- **After Task 2:** verify ABI conformance includes the fixed aspect/reserved field, source-workspace rule, validation precedence, and no public-region overlap.
+- **After Task 4:** require 100% frozen fixture parity, exact dither/RNG semantics, palette expansion, and HGR zero-hole behavior before any browser/Dithertizer wiring begins.
+- **After Task 6:** review one-in-flight/no-queue semantics, exact ABI-v1 luma conversion, and OFF/in-flight epoch handling independently from DSCAN.
 - **After Task 7:** review the Dithertizer hardware contract separately from image-quality concerns.
 - **After Task 8:** whole-branch review and browser smoke test before merge.
 
@@ -848,4 +910,5 @@ Recommended review gates:
 - Do not change DSCAN 4.2 software, `$C0n0/$C0n8` meanings, D7 sync, HGR address mapping, or page selection.
 - Do not add a JavaScript image-processing fallback.
 - Do not queue camera frames or keep a pending/latest raw camera frame while WASM is busy.
+- Do not reintroduce configurable Apple pixel aspect into ABI v1.
 - Do not add controls beyond the approved DTH/COL/IMG controls plus RATE.
