@@ -8,37 +8,31 @@ It defines:
 
 - the exported WebAssembly functions;
 - linear-memory ownership and lifetime;
-- the fixed input/output buffer sizes;
+- fixed input/output buffer sizes;
 - the 120-byte settings structure;
 - enum and flag values;
-- validation and error codes;
+- normative dither-mode semantics;
+- validation order and error codes;
+- deterministic RNG behavior;
 - success/failure output semantics;
-- the Worker protocol; and
-- the public JavaScript adapter contract.
+- Worker protocol and JavaScript adapter contract; and
+- the exact palette-RGB-to-Dithertizer-luma conversion.
 
 It does **not** define Apple II peripheral I/O or HGR RAM writes. The WASM module must never receive an Apple II RAM pointer or hardware object. Dithertizer/DSCAN remains the only path that writes Apple II HGR memory.
 
-This ABI is consumed first by the Dithertizer integration. `tools/ConvertHGR.html` remains the frozen behavioral reference during this implementation milestone and may migrate to the same ABI later.
+`tools/ConvertHGR.html` remains the frozen behavioral reference during this implementation milestone. ABI v1 deliberately preserves the current browser-port behavior, including behavior that may differ from what the UI labels suggest.
 
 ## Compatibility rules
-
-ABI v1 is identified by:
 
 ```text
 HGR_ABI_VERSION = 1
 ```
 
-A consumer must call `hgr_get_abi_version()` before using any other pointer or conversion API. A consumer that does not receive `1` must reject the module.
+A consumer must call `hgr_get_abi_version()` before using any pointer or conversion API and reject any module that does not return `1`.
 
-The ABI is little-endian. This matches WebAssembly linear-memory scalar representation.
-
-ABI v1 uses WebAssembly 32-bit linear-memory offsets. All exported pointers are `uint32_t` byte offsets into the module's exported `memory`.
-
-The ABI is intentionally allocation-free from the consumer's perspective. No exported `malloc`, `free`, or caller-owned WASM allocation is part of ABI v1.
+ABI v1 is little-endian and uses WebAssembly 32-bit linear-memory byte offsets. No exported allocator is part of the ABI.
 
 ## Required WebAssembly module properties
-
-The checked-in ABI v1 module must satisfy all of the following:
 
 ```text
 memory export name:       memory
@@ -53,9 +47,9 @@ entry point:              none
 
 The exported `memory.buffer.byteLength` must be exactly `50,331,648` bytes after instantiation.
 
-The module owns this memory for the lifetime of the WebAssembly instance.
+The module owns this memory for the lifetime of the instance.
 
-## Image constants and buffer sizes
+## Image constants and fixed buffer sizes
 
 ```c
 #define HGR_ABI_VERSION             1u
@@ -63,60 +57,87 @@ The module owns this memory for the lifetime of the WebAssembly instance.
 #define HGR_WIDTH                   280u
 #define HGR_HEIGHT                  192u
 #define HGR_PIXELS                  53760u
-#define HGR_RGB_BYTES               161280u   /* 280 * 192 * 3 */
-#define HGR_PALETTE_INDEX_BYTES     53760u    /* one palette index per pixel */
-#define HGR_LINEAR_BYTES            7680u     /* 40 bytes * 192 rows */
+#define HGR_RGB_BYTES               161280u
+#define HGR_PALETTE_INDEX_BYTES     53760u
+#define HGR_LINEAR_BYTES            7680u
 #define HGR_PAGE_BYTES              8192u
 
 #define HGR_MAX_SOURCE_WIDTH        3840u
 #define HGR_MAX_SOURCE_HEIGHT       2160u
 #define HGR_SOURCE_CHANNELS         3u
-#define HGR_SOURCE_CAPACITY         24883200u /* 3840 * 2160 * 3 */
+#define HGR_SOURCE_CAPACITY         24883200u
 
 #define HGR_SETTINGS_V1_BYTES       120u
-#define HGR_WASM_MEMORY_BYTES       50331648u /* 48 MiB */
+#define HGR_WASM_MEMORY_BYTES       50331648u
 ```
 
 ### Source format
 
-The input image is tightly packed RGB24 in row-major order:
+Input is tightly packed RGB24, row-major, with no padding and no alpha:
 
 ```text
 R0 G0 B0 R1 G1 B1 ...
 ```
 
-There is no row padding and no alpha channel.
-
-For a conversion of `width x height`, the consumer must write exactly:
+For `width x height`, the caller writes exactly:
 
 ```text
 width * height * 3
 ```
 
-bytes starting at `hgr_get_source_ptr()`.
+bytes beginning at `hgr_get_source_ptr()`.
 
-The unused remainder of the source-capacity region does not need to be zeroed.
+The unused remainder of the source region need not be initialized.
 
 ### Fixed output formats
 
 `processedRGB`
-: `HGR_RGB_BYTES` bytes, tightly packed 280x192 RGB24 after image-preparation operations and before HGR palette quantization.
-
-`paletteRGB`
-: `HGR_RGB_BYTES` bytes, tightly packed 280x192 RGB24 representing the palette-rendered HGR result. This is the Dithertizer integration's source for luma adaptation.
+: 161,280 bytes, tightly packed 280x192 RGB24 after image preparation and before HGR palette quantization.
 
 `paletteIndex`
-: `HGR_PALETTE_INDEX_BYTES` bytes, one ConvertHGR palette index per 280x192 output pixel.
+: 53,760 bytes, one palette index for every 280x192 output pixel. Every successful conversion must produce only values `0..7`.
+
+`paletteRGB`
+: 161,280 bytes, derived **exactly** from the final `paletteIndex` array using the fixed ABI-v1 palette below.
 
 `linearHGR`
-: `HGR_LINEAR_BYTES` bytes, 40 bytes per raster row for 192 rows before Apple II 8-KB page interleave.
+: 7,680 bytes, 40 bytes per row for 192 rows before Apple II page interleave.
 
 `hgrPage`
-: `HGR_PAGE_BYTES` bytes, complete Apple II HGR page image using Apple II row interleave. This is diagnostic/shared-converter output only in the Dithertizer path and must not be copied directly to Apple II RAM by the WASM adapter.
+: 8,192 bytes, Apple II HGR page layout using the standard row interleave. Bytes in the 8-KB page that are not addressed by the 192x40 raster are zero.
+
+## ABI-v1 palette and `paletteRGB` derivation
+
+The palette is frozen as:
+
+```text
+index  RGB
+0      0,   0,   0
+1      20,  245, 60
+2      255, 68,  253
+3      255, 255, 255
+4      0,   0,   0
+5      255, 106, 60
+6      20,  207, 253
+7      255, 255, 255
+```
+
+For every output pixel `p`:
+
+```text
+idx = paletteIndex[p]
+paletteRGB[p*3+0] = palette[idx].R
+paletteRGB[p*3+1] = palette[idx].G
+paletteRGB[p*3+2] = palette[idx].B
+```
+
+`paletteRGB` is therefore a deterministic expansion of the **final** palette-index image, including any previous-pixel adjustments performed by the HGR artifact quantizer.
+
+The current browser reference exposes `paletteImage`; ABI v1 names that same byte-per-pixel result `paletteIndex` and adds the deterministic RGB expansion above.
 
 ## Required exports
 
-ABI v1 exports exactly the following public conversion interface in addition to the WebAssembly `memory` export:
+In addition to exported `memory`, ABI v1 requires:
 
 ```c
 uint32_t hgr_get_abi_version(void);
@@ -137,108 +158,84 @@ int32_t hgr_convert(uint32_t src_width,
                     uint32_t random_seed);
 ```
 
-Return values for the getters are byte offsets into exported linear memory.
-
-The getter contract is:
+Getter constants:
 
 ```text
-hgr_get_abi_version()          == 1
-hgr_get_settings_size()        == 120
-hgr_get_source_capacity()      == 24,883,200
+hgr_get_abi_version()     == 1
+hgr_get_settings_size()   == 120
+hgr_get_source_capacity() == 24,883,200
 ```
 
-All pointer getters must return nonzero offsets whose declared ranges fit completely inside `memory`.
+Pointer values are byte offsets into exported memory and are stable for the lifetime of one instance. All declared public regions must fit inside memory and must not overlap one another.
 
-Pointer values are stable for the lifetime of one module instance. ABI v1 consumers may cache numeric offsets, but JavaScript typed-array views must still be recreated from the current `memory.buffer` before each copy/read operation.
+JavaScript must recreate typed-array/DataView views from the current `memory.buffer` before each write/read operation even though ABI v1 does not rely on memory growth.
 
-## Pointer ownership and access rules
+## Pointer ownership and workspace rules
 
-All ABI pointers refer to **module-owned** memory.
-
-The caller never owns, allocates, frees, resizes, or transfers WebAssembly linear-memory regions.
+All public buffers are module-owned. The caller never allocates or frees WASM memory.
 
 ### Source region
 
-Owner: WASM module.
-
-Caller permissions before `hgr_convert()`:
+Before `hgr_convert()` begins, the caller owns the contents of the active source range and may write:
 
 ```text
-WRITE: [source_ptr, source_ptr + src_width * src_height * 3)
-READ:  allowed but unnecessary
+[source_ptr, source_ptr + width*height*3)
 ```
 
-Module behavior during `hgr_convert()`:
+Once `hgr_convert()` begins, the active source bytes become **consumable scratch**. The module may overwrite any or all of the source-capacity region while converting.
 
-- treats the active source bytes as input;
-- does not require bytes beyond the active source length to have any value;
-- may use internal work buffers, but must not require the caller to provide them.
+Consequences:
 
-The caller must not modify source memory while `hgr_convert()` is executing.
+- the caller must rewrite source RGB for every conversion;
+- source bytes are unspecified after `hgr_convert()` returns, regardless of success or failure;
+- the module may reuse the source region for internal preprocessing/resampling workspace;
+- the caller must not read or modify source memory while conversion is running.
+
+This source-reuse rule is normative and exists so the complete maximum accepted input can be processed inside fixed 48-MiB memory without a second full-size source copy.
 
 ### Settings region
 
-Owner: WASM module.
+The caller writes all 120 bytes before conversion. The module treats settings as read-only during the call.
 
-Caller permissions before `hgr_convert()`:
-
-```text
-WRITE exactly HGR_SETTINGS_V1_BYTES bytes at hgr_get_settings_ptr()
-```
-
-The caller must populate every field, including reserved fields. Reserved fields must be zero.
-
-The module treats settings as read-only for one conversion.
-
-The caller must not modify settings memory while `hgr_convert()` is executing.
+The settings region may not be used as workspace.
 
 ### Output regions
 
-Owner: WASM module.
+The caller never writes output buffers.
 
-Caller permissions:
+After `HGR_OK`, all five output regions are simultaneously valid and remain stable until the next `hgr_convert()` call.
 
-```text
-WRITE: never
-READ:  only after hgr_convert() returned HGR_OK
-```
+After any nonzero status, every output region is unspecified and must be ignored.
 
-On success, all five output regions are valid simultaneously and remain valid until the next call to `hgr_convert()` or destruction of the module instance.
+### Private workspace
 
-On any nonzero return status, **all output regions are unspecified** and may contain old, partial, or intermediate data. A consumer must not publish, hash, display, or otherwise use them after a failed conversion.
+Private conversion workspace may overlap the module-owned source region after conversion begins.
 
-This rule is deliberate: preserving the previous completed Dithertizer frame is the responsibility of the JavaScript camera pipeline, not of WASM output-buffer transactional semantics.
+Private workspace must **not** overlap:
 
-### Pointer overlap rules
+- settings;
+- processed RGB;
+- palette RGB;
+- palette index;
+- linear HGR; or
+- HGR page.
 
-The following externally visible regions must not overlap:
+The implementation must fit every valid ABI-v1 conversion inside fixed 48-MiB memory. It must not reject an otherwise valid input merely because a naive implementation would require a huge temporary image.
 
-- source
-- settings
-- processed RGB
-- palette RGB
-- palette index
-- linear HGR
-- HGR page
-
-Internal/private work areas may not overlap any externally visible region while conversion is running.
+In particular, scaling/framing must be implemented in a bounded/crop-aware manner. The conceptual intermediate dimensions produced by reference `scaleAndFrame()` must not require allocating a full `finalW * finalH * 3` image when only the 280x192 crop/output is needed.
 
 ### Alignment guarantees
 
-ABI v1 guarantees:
-
 ```text
 settings pointer:       at least 8-byte aligned
-all other ABI buffers:  at least 16-byte aligned
+all byte buffers:       at least 16-byte aligned
 ```
 
-Consumers must not assume stronger alignment.
+No stronger alignment is guaranteed.
 
 ## Settings ABI v1
 
-The settings block is exactly 120 bytes.
-
-The normative C representation is:
+The settings block is exactly 120 bytes:
 
 ```c
 #include <stdint.h>
@@ -262,22 +259,38 @@ typedef struct hgr_settings_v1
     double   gamma;                    /* 0x38 */
     double   luma_emphasis;            /* 0x40 */
     double   max_color_shift_percent;  /* 0x48 */
-    double   perceptual_R;              /* 0x50 */
-    double   perceptual_G;              /* 0x58 */
-    double   perceptual_B;              /* 0x60 */
-    double   apple_pixel_aspect;        /* 0x68 */
-    uint32_t reserved0;                /* 0x70 */
-    uint32_t reserved1;                /* 0x74 */
+    double   perceptual_R;             /* 0x50 */
+    double   perceptual_G;             /* 0x58 */
+    double   perceptual_B;             /* 0x60 */
+    double   reserved_f64_0;           /* 0x68, must be +0.0 */
+    uint32_t reserved0;                /* 0x70, must be 0 */
+    uint32_t reserved1;                /* 0x74, must be 0 */
 } hgr_settings_v1;
 ```
 
-The implementation must enforce at compile time:
+The C implementation must enforce:
 
 ```c
 _Static_assert(sizeof(hgr_settings_v1) == 120, "ABI v1 settings size");
 ```
 
-and should assert the critical field offsets with `offsetof()`.
+and must assert every published field offset with `offsetof()`.
+
+### Fixed Apple pixel aspect
+
+ABI v1 does **not** expose a configurable Apple pixel aspect.
+
+The image-framing algorithm always uses the browser-reference constant:
+
+```text
+HGR_APPLE_PIXEL_ASPECT = 256.0 / 280.0
+```
+
+The previous candidate field at offset `0x68` is therefore reserved as `reserved_f64_0` and must contain the positive-zero IEEE-754 bit pattern (`0x0000000000000000`).
+
+WASM must not read it as an aspect setting. A nonzero bit pattern returns `HGR_ERR_SETTINGS`.
+
+Changing the pixel-aspect behavior requires a future ABI version or an explicitly assigned reserved field.
 
 ### Flags
 
@@ -289,11 +302,7 @@ and should assert the critical field offsets with `offsetof()`.
 #define HGR_FLAGS_V1_MASK             0x0000000Fu
 ```
 
-All other flag bits must be zero in ABI v1.
-
-`HGR_FLAG_ACCUMULATE_ERRORS` set means `Incoming error = Accumulate`.
-
-`HGR_FLAG_ACCUMULATE_ERRORS` clear means `Incoming error = Average`.
+Unknown bits are invalid.
 
 ### Dither mode enum
 
@@ -308,25 +317,75 @@ typedef enum hgr_dither_mode_v1
 } hgr_dither_mode_v1;
 ```
 
-The UI preset name is not part of the ABI. Presets are resolved by JavaScript to the six coefficient fields before the settings block is written.
+### Normative dither-mode behavior
 
-Preset coefficient mappings are:
+ABI v1 preserves the current browser-reference behavior exactly, including the fact that the `Order1`/`Order3` UI labels say “threshold” but the quantizer still applies whatever A-F coefficients are serialized.
 
-```text
-Atkinson:   A=1 B=2 C=2 D=2 E=1 F=1
-Floyd-Stein:A=3 B=5 C=1 D=7 E=0 F=0
-Pattern:    A=0 B=8 C=0 D=8 E=0 F=0
-Diag:       A=1 B=3 C=2 D=3 E=1 F=1
-None:       A=0 B=0 C=0 D=0 E=0 F=0
-```
-
-For `order2` and `order4`, the current browser reference's mode behavior may override the coefficient set to:
+WASM derives ordered-threshold behavior from `dither_mode` as follows:
 
 ```text
-A=1 B=2 C=2 D=2 E=0 F=0
+mode       ordered threshold enabled   matrix size
+DIFFUSION  no                          2 (unused)
+ORDER1     yes                         2
+ORDER2     yes                         2
+ORDER3     yes                         4
+ORDER4     yes                         4
 ```
 
-The adapter must apply the same UI/reference rule before serialization so WASM receives the effective coefficients, not a preset label.
+The ordered matrices are:
+
+```text
+ORDER2 =
+  0/4  2/4
+  3/4  1/4
+
+ORDER4 =
+   0/16   8/16   2/16  10/16
+  12/16   4/16  14/16   6/16
+   3/16  11/16   1/16   9/16
+  15/16   7/16  13/16   5/16
+```
+
+For ordered modes, each matrix entry is adjusted as:
+
+```text
+threshold = matrix_value - ordered_offset / 16.0
+```
+
+and is applied with the same reference arithmetic before incoming error is added.
+
+`dither_mode` does **not** itself zero or replace `error_A..error_F`.
+
+Therefore:
+
+- ORDER1 and ORDER2 have identical ordered-matrix mechanics when given identical effective coefficients;
+- ORDER3 and ORDER4 have identical ordered-matrix mechanics when given identical effective coefficients;
+- their practical distinction in the current UI comes from UI state changes to A-F, not from hidden WASM behavior.
+
+Current UI behavior to preserve before serialization:
+
+```text
+select ORDER2 or ORDER4:
+  A=1 B=2 C=2 D=2 E=0 F=0
+
+select ORDER1 or ORDER3:
+  retain the currently effective A-F values
+
+select DIFFUSION:
+  retain the currently effective A-F values
+```
+
+Preset labels are not part of the ABI. The UI/card layer resolves presets into effective A-F fields before calling the adapter.
+
+Preset values are:
+
+```text
+Atkinson:    A=1 B=2 C=2 D=2 E=1 F=1
+Floyd-Stein: A=3 B=5 C=1 D=7 E=0 F=0
+Pattern:     A=0 B=8 C=0 D=8 E=0 F=0
+Diag:        A=1 B=3 C=2 D=3 E=1 F=1
+None:        A=0 B=0 C=0 D=0 E=0 F=0
+```
 
 ### Scaling filter enum
 
@@ -353,65 +412,77 @@ typedef enum hgr_fill_mode_v1
 } hgr_fill_mode_v1;
 ```
 
-The Dithertizer UI does not currently expose fill mode or nudges. The adapter therefore serializes:
-
-```text
-fill_mode         = HGR_FILL_DEFAULT
-horizontal_nudge  = 0
-vertical_nudge    = 0
-```
-
-until such controls are explicitly introduced.
-
 ### Scalar domains
 
 `abi_version`
-: must equal `1`.
+: exactly `1`.
 
 `flags`
-: may contain only `HGR_FLAGS_V1_MASK` bits.
+: only `HGR_FLAGS_V1_MASK` bits.
 
 `ordered_offset`
-: integer `0..16` inclusive.
+: `0..16` inclusive.
 
-`error_A` through `error_F`
-: integer `0..16` inclusive.
+`error_A..error_F`
+: each `0..16` inclusive.
 
 `gamma`
-: finite `double`, `0.0..5.0` inclusive. Dithertizer UI `0..500` percent serializes as `value / 100.0`.
+: finite `0.0..5.0`. Reference semantics define `gamma == 0.0` and `gamma == 1.0` as identity/no gamma correction.
 
 `luma_emphasis`
-: finite `double`, `0.0..5.0` inclusive. Dithertizer UI `0..500` percent serializes as `value / 100.0`.
+: finite `0.0..5.0`.
 
 `max_color_shift_percent`
-: finite `double`, `0.0..100.0` inclusive. Dithertizer UI percentage is written directly as a percent value; `1` means `1%`.
+: finite `0.0..100.0`; `1.0` means one percent.
 
-`perceptual_R`, `perceptual_G`, `perceptual_B`
-: finite nonnegative doubles. For the current Dithertizer UI they are always the ConvertHGR defaults:
+`perceptual_R/G/B`
+: finite nonnegative doubles with positive sum. Current Dithertizer defaults are `0.30/0.52/0.18`.
 
-```text
-R = 0.30
-G = 0.52
-B = 0.18
-```
+`reserved_f64_0`
+: must be positive zero by bit pattern.
 
-Their sum must be greater than zero. ABI v1 does not require the sum to equal exactly 1.0.
-
-`apple_pixel_aspect`
-: finite positive double. Current default:
-
-```text
-256 / 280 = 0.9142857142857143...
-```
-
-`reserved0`, `reserved1`
+`reserved0/reserved1`
 : must be zero.
 
-Any invalid settings value returns `HGR_ERR_SETTINGS`.
+Any invalid settings value returns `HGR_ERR_SETTINGS` after dimension/capacity validation described below.
+
+## Deterministic RNG contract
+
+ABI v1 uses the exact Microsoft-style `rand()` sequence implemented by the browser reference.
+
+State is unsigned 32-bit and initialized to `random_seed`:
+
+```c
+state = random_seed;
+```
+
+Each `next()` operation is:
+
+```c
+state = state * 214013u + 2531011u; /* modulo 2^32 */
+value = (state >> 16) & 0x7fffu;
+```
+
+At the start of each 7-pixel quantizer group:
+
+```text
+first_pattern = next() % 256
+```
+
+The converter then evaluates exactly 256 pattern candidates in this order:
+
+```text
+first_pattern,
+(first_pattern + 1) & 0xFF,
+...
+(first_pattern + 255) & 0xFF
+```
+
+The RNG advances exactly once per 7-pixel group and not once per candidate.
+
+Given identical source bytes, settings, ABI-v1 implementation, and seed, all outputs must be byte-identical.
 
 ## Status and error codes
-
-The `hgr_convert()` return value is an `int32_t` status code.
 
 ```c
 typedef enum hgr_status_v1
@@ -424,106 +495,70 @@ typedef enum hgr_status_v1
 } hgr_status_v1;
 ```
 
-### HGR_OK = 0
+Codes `0..4` are frozen for ABI v1.
 
-The conversion completed successfully and every ABI output buffer is valid.
+### Validation precedence
 
-### HGR_ERR_DIMENSIONS = 1
-
-Returned when either dimension is zero:
+`hgr_convert()` must validate in this exact order and return the first applicable error:
 
 ```text
-src_width == 0
-or
-src_height == 0
+1. zero dimensions
+2. source limits/capacity
+3. settings block
+4. conversion/internal failure
 ```
 
-No output may be consumed.
-
-### HGR_ERR_SOURCE_TOO_LARGE = 2
-
-Returned when any of the following is true:
+Normative cases:
 
 ```text
-src_width  > HGR_MAX_SOURCE_WIDTH
-src_height > HGR_MAX_SOURCE_HEIGHT
-src_width * src_height * 3 > HGR_SOURCE_CAPACITY
+if src_width == 0 || src_height == 0
+    return HGR_ERR_DIMENSIONS
+
+else if src_width > 3840 || src_height > 2160 ||
+        uint64(src_width) * uint64(src_height) * 3 > 24883200
+    return HGR_ERR_SOURCE_TOO_LARGE
+
+else if any settings validation fails
+    return HGR_ERR_SETTINGS
+
+else perform conversion; an otherwise unclassified runtime failure
+    return HGR_ERR_INTERNAL
 ```
 
-The implementation must perform the byte-count calculation without integer overflow, e.g. using a wider intermediate type.
+An input with both zero dimensions and invalid settings therefore returns `HGR_ERR_DIMENSIONS`. An oversized input with invalid settings returns `HGR_ERR_SOURCE_TOO_LARGE`.
 
-No output may be consumed.
+The byte-count expression must use a wide enough intermediate to avoid integer overflow.
 
-### HGR_ERR_SETTINGS = 3
-
-Returned for any ABI-v1 settings validation failure, including:
-
-- settings `abi_version != 1`;
-- unknown flag bits;
-- unknown enum value;
-- ordered offset outside `0..16`;
-- any diffusion coefficient outside `0..16`;
-- non-finite or out-of-range scalar;
-- non-positive perceptual-weight sum;
-- non-positive Apple pixel aspect;
-- nonzero reserved field.
-
-No output may be consumed.
-
-### HGR_ERR_INTERNAL = 4
-
-Reserved for a conversion failure not attributable to caller input and not representable by the other ABI-v1 statuses.
-
-This is not a JavaScript exception channel. The worker converts this status to a structured JavaScript error.
-
-No output may be consumed.
-
-### Error-code stability
-
-Codes `0..4` are frozen for ABI v1 and must not be renumbered.
-
-Future ABI versions may add new positive codes. ABI-v1 JavaScript must preserve unknown nonzero codes in diagnostics and treat them as conversion failure.
+After any nonzero status, no output may be consumed.
 
 ## `hgr_convert()` call contract
 
-Before calling:
+Before calling, the worker/consumer must:
 
-1. validate `hgr_get_abi_version() == 1`;
-2. validate `hgr_get_settings_size() == 120`;
-3. validate memory size and all buffer ranges;
-4. write exactly `width * height * 3` RGB24 source bytes;
-5. serialize all 120 settings bytes;
-6. ensure no other conversion is running against the same module instance.
+1. verify ABI version and settings size;
+2. verify fixed memory size and public pointer ranges;
+3. write exactly `width*height*3` RGB24 source bytes;
+4. write all 120 settings bytes;
+5. ensure no conversion is already running on that instance.
 
-Call:
+The WASM call is synchronous:
 
 ```c
 status = hgr_convert(width, height, seed);
 ```
 
-`random_seed` is an unsigned 32-bit value. The same source, settings, ABI-compatible module, and seed must produce byte-identical outputs.
+After the call, source memory is unspecified because it may have been reused as workspace.
 
-The call is synchronous at the WASM level. It runs inside a dedicated Web Worker in browser production use.
+After `HGR_OK`, output buffers are valid until the next call. After any error, all output buffers are unspecified.
 
-After `HGR_OK`:
+## JavaScript normalized settings contract
 
-- copy/read all required outputs before starting the next conversion;
-- outputs remain stable until the next `hgr_convert()` call.
-
-After any nonzero status:
-
-- ignore all output memory;
-- surface the status through the adapter;
-- do not publish a new Dithertizer frame.
-
-## JavaScript settings contract
-
-The main-thread adapter accepts a normalized object with this v1 shape:
+The adapter accepts normalized algorithm settings:
 
 ```js
 {
   dither: {
-    mode: "diffusion",          // diffusion|order1|order2|order3|order4
+    mode: "diffusion",
     accumulateErrors: true,
     orderedOffset: 0,
     error: {A:1,B:2,C:2,D:2,E:1,F:1}
@@ -542,37 +577,38 @@ The main-thread adapter accepts a normalized object with this v1 shape:
     gamma: 1.30
   },
   scaling: {
-    filter: "bilinear",        // box|gaussian|hamming|blackman|bilinear
-    fillMode: "default",       // default|top-left|middle|bottom-right
+    filter: "bilinear",
+    fillMode: "default",
     horizontalNudge: 0,
-    verticalNudge: 0,
-    applePixelAspect: 256/280
+    verticalNudge: 0
   }
 }
 ```
 
-UI-level percentage controls are normalized before this object reaches the worker:
+Apple pixel aspect is intentionally absent: ABI v1 fixes it to `256/280`.
+
+UI percentages normalize as:
 
 ```text
-Gamma UI 130          -> image.gamma = 1.30
-Luma UI 80            -> matching.lumaEmphasis = 0.80
-Max shift UI 1        -> matching.maxColorShiftPercent = 1.0
+Gamma 130%       -> gamma = 1.30
+Luma 80%         -> lumaEmphasis = 0.80
+Max shift 1%     -> maxColorShiftPercent = 1.0
 ```
 
-The camera RATE value is not part of the WASM settings ABI. RATE controls JavaScript scheduling only.
+RATE and camera ON/OFF are JavaScript scheduling/lifecycle state and never enter WASM settings.
 
-The host-camera ON/OFF state is not part of the WASM settings ABI.
+The adapter receives effective A-F values. It does not serialize preset names.
 
 ## Worker protocol
 
-The dedicated worker owns exactly one WebAssembly instance and serializes access to it.
+The dedicated worker owns one WASM instance.
 
-### Main -> worker: initialization
+### Main -> worker: init
 
 ```js
 {
   type: "init",
-  wasmURL: "res/wasm/convert_hgr.wasm",
+  wasmURL,
   abiVersion: 1
 }
 ```
@@ -588,40 +624,27 @@ The dedicated worker owns exactly one WebAssembly instance and serializes access
 }
 ```
 
-The worker must reject initialization if:
+Initialization fails if ABI version/settings size/memory size are wrong, required exports are missing, the module imports anything, or any public pointer range is invalid/overlapping.
 
-- module ABI version is not 1;
-- settings size is not 120;
-- memory size is not exactly 48 MiB;
-- required exports are missing;
-- the module imports anything;
-- any ABI pointer range is invalid or overlaps another public region.
-
-### Main -> worker: conversion
+### Main -> worker: convert
 
 ```js
 {
   type: "convert",
-  requestId,          // monotonically increasing integer owned by adapter
+  requestId,
   width,
   height,
-  seed,               // uint32
-  settings,           // normalized JS settings object
-  rgbBuffer           // ArrayBuffer containing exact RGB24 payload
+  seed,
+  settings,
+  rgbBuffer
 }
 ```
 
-`rgbBuffer.byteLength` must equal:
+`rgbBuffer.byteLength` must equal `width*height*3` exactly. It is transferred to the worker and treated as consumed by the caller once accepted.
 
-```text
-width * height * 3
-```
+Only one conversion may be in flight.
 
-The main thread transfers `rgbBuffer` to the worker. Once `convert()` accepts the request, the caller must treat that input buffer as consumed/detached.
-
-Only one conversion request may be in flight per adapter instance.
-
-### Worker -> main: conversion success
+### Worker -> main: success
 
 ```js
 {
@@ -637,9 +660,7 @@ Only one conversion request may be in flight per adapter instance.
 }
 ```
 
-The worker copies each successful WASM output into a fresh JavaScript-owned `ArrayBuffer` and transfers those buffers to the main thread.
-
-Expected byte lengths:
+Lengths:
 
 ```text
 processedRGBBuffer   161280
@@ -649,11 +670,11 @@ linearHGRBuffer        7680
 hgrPageBuffer           8192
 ```
 
-No view into `WebAssembly.Memory` crosses the worker boundary.
+Each is copied to a fresh JavaScript-owned `ArrayBuffer`; no view into `WebAssembly.Memory` crosses the worker boundary.
 
 ### Worker -> main: failure
 
-Initialization failure:
+Initialization:
 
 ```js
 {
@@ -664,19 +685,19 @@ Initialization failure:
 }
 ```
 
-Conversion failure:
+Conversion:
 
 ```js
 {
   type: "error",
   phase: "convert",
   requestId,
-  status,             // numeric WASM status where available
+  status,
   message
 }
 ```
 
-A worker-side error must never be converted into a JavaScript ConvertHGR fallback.
+No worker failure may trigger a JavaScript ConvertHGR fallback.
 
 ## Public JavaScript adapter contract
 
@@ -686,36 +707,29 @@ File:
 res/EMU_DITHERTIZER_converthgr.js
 ```
 
-Public constructor:
+Constructor:
 
 ```js
 new DithertizerConvertHGRAdapter(options?)
 ```
 
-Supported options:
+Options:
 
 ```js
 {
   workerURL: "res/EMU_DITHERTIZER_converthgr_worker.js",
   wasmURL: "res/wasm/convert_hgr.wasm",
-  WorkerCtor: Worker       // injectable for tests
+  WorkerCtor: Worker
 }
 ```
 
-### Adapter states
-
-The adapter has these logical states:
+States:
 
 ```text
-new
-initializing
-ready
-busy
-failed
-closed
+new -> initializing -> ready <-> busy
+                     \-> failed
+any non-closed state -> closed
 ```
-
-A conversion is accepted only in `ready`.
 
 ### `init()`
 
@@ -723,17 +737,7 @@ A conversion is accepted only in `ready`.
 await adapter.init();
 ```
 
-Returns `Promise<void>`.
-
-Behavior:
-
-- creates the worker;
-- sends `init`;
-- validates the worker's ready response;
-- resolves only when ABI v1 is ready;
-- rejects on load/ABI/worker failure;
-- repeated calls after successful initialization resolve without creating a second worker;
-- calls after `close()` reject.
+Creates the worker, sends `init`, validates ABI v1, and resolves only when ready. Repeated calls after readiness do not create a second worker. Calls after `close()` reject.
 
 ### `configure(settings)`
 
@@ -741,17 +745,9 @@ Behavior:
 adapter.configure(settings);
 ```
 
-Returns `void`.
+Validates/normalizes the public settings object and stores an immutable snapshot for the next conversion. It may be called while busy and affects only the next accepted conversion.
 
-Behavior:
-
-- validates and normalizes the public settings object;
-- stores an immutable snapshot for the next conversion;
-- does not send work to WASM by itself;
-- may be called while a conversion is busy; it affects only the next accepted conversion;
-- does not cancel or mutate the settings of the in-flight request.
-
-The adapter must resolve UI preset names to effective A/B/C/D/E/F coefficients before the settings snapshot reaches the worker. Preset labels are never serialized into WASM memory.
+The UI/card layer, not the adapter, resolves preset labels and mode-driven coefficient changes. The adapter receives effective A-F values.
 
 ### `convert(rgb, width, height, seed)`
 
@@ -762,68 +758,37 @@ const result = await adapter.convert(rgb, width, height, seed);
 Arguments:
 
 ```text
-rgb     Uint8Array containing exactly width * height * 3 RGB24 bytes
+rgb     Uint8Array containing exactly width*height*3 bytes
 width   positive integer <= 3840
 height  positive integer <= 2160
 seed    uint32
 ```
 
-Returns `Promise<DithertizerConvertHGRResult>`.
+Only one conversion may be in flight. A busy call rejects with `ConvertHGRBusyError`; there is no queue or implicit replacement.
 
-Input ownership:
+The adapter may transfer/detach `rgb.buffer`. If `rgb` is only a view into a larger buffer, it first creates an exact owned copy so unrelated caller bytes are not detached.
 
-- the adapter is allowed to transfer/detach `rgb.buffer`;
-- the caller must not use `rgb` after the request has been accepted;
-- if the supplied `Uint8Array` is not a full-buffer view (`byteOffset != 0` or `byteLength != buffer.byteLength`), the adapter first creates an exact owned copy and transfers that copy rather than detaching unrelated caller data.
-
-Concurrency:
-
-- exactly one request may be in flight;
-- calling `convert()` while state is `busy` rejects with a JavaScript `ConvertHGRBusyError`;
-- there is no queue and no implicit replacement of the busy request.
-
-Settings:
-
-- `convert()` snapshots the adapter's most recently configured settings at request acceptance time;
-- later calls to `configure()` do not change the in-flight request.
-
-Result shape:
+Result:
 
 ```js
 {
   width: 280,
   height: 192,
-  processedRGB: Uint8Array,   // 161280
-  paletteRGB: Uint8Array,     // 161280
-  paletteIndex: Uint8Array,   // 53760
-  linearHGR: Uint8Array,      // 7680
-  hgrPage: Uint8Array         // 8192
+  processedRGB: Uint8Array,
+  paletteRGB: Uint8Array,
+  paletteIndex: Uint8Array,
+  linearHGR: Uint8Array,
+  hgrPage: Uint8Array
 }
 ```
 
-All result arrays are JavaScript-owned and independent of WebAssembly memory.
+All result arrays are JavaScript-owned copies.
 
 ### `close()`
 
-```js
-adapter.close();
-```
+Terminates the worker, rejects unresolved adapter promises, transitions to `closed`, and releases adapter references. It does not stop the browser camera stream.
 
-Returns `void`.
-
-Behavior:
-
-- terminates the worker;
-- rejects any unresolved adapter promise;
-- transitions to `closed`;
-- releases all adapter references to transferred outputs/settings;
-- subsequent `init()` or `convert()` calls reject.
-
-`close()` does not own or stop the browser camera stream; camera ownership belongs to the Dithertizer camera pipeline.
-
-## JavaScript adapter errors
-
-The public adapter exposes errors by class/name rather than by inventing additional WASM numeric statuses.
+### Adapter errors
 
 ```text
 ConvertHGRAbiError
@@ -834,63 +799,54 @@ ConvertHGRClosedError
 ConvertHGRStatusError
 ```
 
-`ConvertHGRStatusError` must expose:
-
-```js
-error.status   // original nonzero hgr_status_v1 value
-error.phase    // "convert"
-```
-
-Unknown future nonzero WASM statuses are preserved in `error.status`.
+`ConvertHGRStatusError.status` preserves the numeric nonzero WASM status.
 
 ## Serialization from current Dithertizer UI
 
-Current Dithertizer controls map to ABI v1 as follows:
-
 ```text
-UI: DTH Mode
-  Error diffusion -> HGR_DITHER_DIFFUSION
-  Order1          -> HGR_DITHER_ORDER1
-  Order2          -> HGR_DITHER_ORDER2
-  Order3          -> HGR_DITHER_ORDER3
-  Order4          -> HGR_DITHER_ORDER4
+DTH Mode
+  Error diffusion -> DIFFUSION
+  Order1          -> ORDER1
+  Order2          -> ORDER2
+  Order3          -> ORDER3
+  Order4          -> ORDER4
 
-UI: DTH preset
-  -> resolved to error_A..error_F; preset string not serialized
+DTH preset
+  -> UI/card resolves to effective A-F
 
-UI: Incoming error
-  Accumulate -> HGR_FLAG_ACCUMULATE_ERRORS set
-  Average    -> HGR_FLAG_ACCUMULATE_ERRORS clear
+Incoming error
+  Accumulate -> ACCUMULATE_ERRORS flag set
+  Average    -> flag clear
 
-UI: Ordered offset
-  -> ordered_offset 0..16
+Ordered offset
+  -> 0..16
 
-UI: Perceptual RGB
-  -> HGR_FLAG_PERCEPTUAL_RGB
+Perceptual RGB
+  -> PERCEPTUAL_RGB flag
 
-UI: Luma emphasis N%
-  -> luma_emphasis = N / 100
+Luma N%
+  -> luma_emphasis = N/100
 
-UI: Max color shift N%
+Max color shift N%
   -> max_color_shift_percent = N
 
-UI: Greyscale
-  -> HGR_FLAG_GREYSCALE
+Greyscale
+  -> GREYSCALE flag
 
-UI: Stretch histo
-  -> HGR_FLAG_STRETCH_HISTOGRAM
+Stretch histo
+  -> STRETCH_HISTOGRAM flag
 
-UI: Gamma N%
-  -> gamma = N / 100
+Gamma N%
+  -> gamma = N/100
 
-UI: Scaling filter
-  -> hgr_scaling_filter_v1
+Scaling filter
+  -> filter enum
 
-UI: RATE
-  -> JavaScript scheduler only; never enters hgr_settings_v1
+RATE
+  -> JavaScript scheduler only
 
-UI: Camera ON/OFF
-  -> JavaScript camera lifecycle only; never enters hgr_settings_v1
+Camera ON/OFF
+  -> JavaScript camera lifecycle only
 ```
 
 Defaults not exposed by the Dithertizer UI:
@@ -902,52 +858,65 @@ vertical_nudge      = 0
 perceptual_R        = 0.30
 perceptual_G        = 0.52
 perceptual_B        = 0.18
-apple_pixel_aspect  = 256.0 / 280.0
+reserved_f64_0      = +0.0
 reserved0           = 0
 reserved1           = 0
 ```
 
-## Dithertizer integration boundary
+## Dithertizer RGB-to-luma integration contract
 
 The adapter result is not itself an Apple II capture.
 
-The Dithertizer camera pipeline uses only `result.paletteRGB` to construct the next completed 280x192 luma frame.
+After a successful conversion and camera-session epoch check, the Dithertizer camera pipeline converts each `paletteRGB` pixel to one unsigned luma byte using exactly:
 
-The luma adaptation is JavaScript integration code and must operate on the completed palette-rendered output only. It is not a ConvertHGR fallback and it must not modify the WASM result.
+```text
+Y = trunc(0.299 * R + 0.587 * G + 0.114 * B)
+```
 
-The camera pipeline atomically swaps the completed luma buffer only after `adapter.convert()` resolves successfully and after its camera-generation/epoch check confirms that the camera session is still current.
+where arithmetic is JavaScript/IEEE-754 double precision and `trunc` discards the fractional part toward zero. Since RGB values are nonnegative, this is equivalent to floor. The result is in `0..255` and requires no further scaling.
 
-DSCAN then sees that completed luma frame through the existing synchronous Dithertizer `getLumaFrame(280,192)` source contract.
+For the frozen ABI-v1 palette, the resulting luma values are:
 
-Neither `hgrPage` nor `linearHGR` is copied to Apple II memory by the adapter or camera pipeline.
+```text
+palette index:  0    1    2    3    4    5    6    7
+luma:           0  156  145  255    0  145  156  255
+```
+
+An implementation may use this exact lookup table as an optimization, provided it produces the same luma bytes.
+
+The completed 53,760-byte luma frame is atomically published only after conversion succeeds and the camera epoch is still current. DSCAN then consumes that stable frame through the existing synchronous `getLumaFrame(280,192)` source contract.
+
+Neither `hgrPage` nor `linearHGR` is copied to Apple II RAM by the adapter or camera pipeline.
 
 ## Required ABI conformance tests
 
-ABI v1 is not considered implemented until automated tests prove all of the following:
+ABI v1 is not implemented until tests prove at least:
 
 1. module has no imports;
 2. exported memory is exactly 48 MiB;
-3. ABI version is 1;
-4. settings size is 120;
-5. every required export exists;
-6. source capacity is exactly 24,883,200 bytes;
-7. every public pointer range is inside memory;
-8. public regions do not overlap;
-9. settings pointer is 8-byte aligned and byte-buffer pointers are 16-byte aligned;
-10. zero width/height returns `HGR_ERR_DIMENSIONS`;
-11. oversized dimensions return `HGR_ERR_SOURCE_TOO_LARGE` without overflow;
-12. every invalid enum/range/reserved/NaN/Infinity case returns `HGR_ERR_SETTINGS`;
-13. same source/settings/seed is byte-identical across repeated successful conversions;
-14. failed conversion output is never published by the JavaScript adapter;
-15. adapter rejects ABI mismatch before first conversion;
-16. adapter permits only one in-flight conversion and maintains no queue;
-17. result buffer byte lengths exactly match this document;
-18. no production JavaScript fallback conversion path exists.
+3. ABI version is 1 and settings size is 120;
+4. required exports exist;
+5. source capacity is exactly 24,883,200 bytes;
+6. public ranges fit memory and do not overlap;
+7. source may be overwritten by conversion and must be rewritten per call;
+8. fixed 0x68 reserved field rejects nonzero bit patterns;
+9. zero width/height wins validation precedence with `HGR_ERR_DIMENSIONS`;
+10. oversized source wins over invalid settings with `HGR_ERR_SOURCE_TOO_LARGE`;
+11. invalid settings return `HGR_ERR_SETTINGS` after dimension/capacity checks;
+12. DIFFUSION/ORDER1..ORDER4 use the normative ordered matrix/map semantics above;
+13. WASM never silently changes serialized A-F coefficients based on mode;
+14. `paletteIndex` contains only 0..7 and `paletteRGB` exactly expands it through the frozen palette;
+15. HGR page unused/interleave holes are zero;
+16. exact RNG sequence and candidate starting order match the browser reference;
+17. same source/settings/seed yields byte-identical outputs;
+18. failed conversion output is never published by the adapter;
+19. adapter permits one in-flight conversion and no queue;
+20. result byte lengths match this document;
+21. Dithertizer RGB-to-luma conversion matches `[0,156,145,255,0,145,156,255]` for palette indices 0..7;
+22. no production JavaScript ConvertHGR fallback exists.
 
 ## Versioning rules
 
-ABI v1's exported function names, numeric enum values, flag bits, status codes, settings offsets, settings size, and fixed output sizes are frozen once implementation lands.
+ABI v1's exported function names, enum values, flag bits, status codes, settings offsets, settings size, fixed output sizes, palette table, dither-mode semantics, RNG sequence, validation precedence, and luma-conversion contract are frozen once implementation lands.
 
-A future incompatible settings layout or function signature requires `HGR_ABI_VERSION = 2` and new consumer support. Do not reinterpret an ABI-v1 field in place.
-
-Reserved fields/bits exist for backward-compatible extension. ABI v1 requires them to be zero so future use can be detected unambiguously.
+An incompatible settings layout or semantic change requires ABI v2. Reserved fields/bits must remain zero in ABI v1 and must not be reinterpreted by an ABI-v1 consumer.
