@@ -480,6 +480,8 @@ function DithertizerII()
         }
         catch(e)
         {
+            if(typeof(console)!=="undefined" && console && typeof(console.error)==="function")
+                console.error("Dithertizer camera startup failed",e);
             stopHostCamera();
             updateCameraButton(controlID);
             return false;
