@@ -16,9 +16,11 @@ function scriptPosition(html,src)
     return pos;
 }
 
-test('index.html loads only the historical Dithertizer card without ConvertHGR',()=>{
+test('index.html loads ConvertHGR source and adapter before the DITHER2 color card',()=>{
     const html=fs.readFileSync(INDEX_HTML,'utf8');
-    scriptPosition(html,'res/EMU_CARD_dithertizer.js');
-    for(const src of ['res/EMU_DITHERTIZER_converthgr_worker.js','res/EMU_DITHERTIZER_converthgr.js'])
-        assert.equal(html.includes('src="'+src+'"'),false,src+' must not load in the historical card path');
+    const worker=scriptPosition(html,'res/EMU_DITHERTIZER_converthgr_worker.js');
+    const adapter=scriptPosition(html,'res/EMU_DITHERTIZER_converthgr.js');
+    const color=scriptPosition(html,'res/EMU_CARD_dithertizer2.js');
+    assert.ok(worker<adapter && adapter<color,'DITHER2 must find both scripts at camera startup');
+    assert.notEqual(scriptPosition(html,'res/EMU_CARD_dithertizer.js'),color);
 });
