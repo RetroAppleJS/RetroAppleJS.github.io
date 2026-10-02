@@ -1,0 +1,329 @@
+--- a/res/EMU_CARD_dithertizer2.js
++++ b/res/EMU_CARD_dithertizer2.js
+@@ -1,16 +1,16 @@
+ //
+ // EMU_CARD_dithertizer2.js
+ //
+-// Computer Stations Dithertizer II video digitizer.
++// Color HGR camera card. ConvertHGR supplies complete Apple II HGR bytes;
++// the capture copies them to the selected page, including color phase bit 7.
+ //
+ // The original DSCAN 4.2 driver uses only two slot-I/O addresses:
+-//   $C0n0 write : latch 8-bit threshold and disable capture
++//   $C0n0 write : retain the threshold latch and disable capture
+ //   $C0n0 read  : read sync in D7 and disable capture
+ //   $C0n8 read  : enable capture
+ //
+-// DSCAN selects HGR page 1/2 through the normal Apple II $C054/$C055
+-// soft switches, so the card follows the current video page rather than
+-// maintaining a private page-select register.
++// DSCAN's $1D03 entry selects PAGE2 and performs the video-sync capture.
++// Its $1C00 four-pass merge clears bit 7 and cannot preserve color HGR.
+ //
+ 
+ function DithertizerII_2()
+@@ -23,7 +23,7 @@
+     var hostCameraContext=null;
+     var hostCameraTimer=null;
+     var hostCameraEpoch=0;
+-    var hostCameraFrame=new Uint8Array(280*192);
++    var hostCameraPage=null;
+     var hostCameraAdapter=null;
+     var hostCameraControlID=null;
+     var convertHGRAdapterLoadPromise=null;
+@@ -35,12 +35,12 @@
+     const HGR_WIDTH=280;
+     const HGR_HEIGHT=192;
+     const HGR_BYTES_PER_LINE=40;
++    const HGR_PAGE_BYTES=8192;
+     const APPLE_FRAME_CYCLES=17030;
+     const DSCAN_TRACE_PC_MIN=0x1D23;
+     const DSCAN_TRACE_PC_MAX=0x1D35;
+     const SYNC_TRACE_LIMIT=512;
+     const HOST_CAMERA_SEED=0x12345678;
+-    const PALETTE_LUMA=new Uint8Array([0,156,145,255,0,145,156,255]);
+ 
+     this.id={"PCODE":"DITHER2","icon":"fa fa-camera"};
+     this.state={
+@@ -208,17 +208,22 @@
+         return frame;
+     }
+ 
+-    function sourceFrame()
++    function normalizeHGRPage(page)
+     {
+-        if(cameraSource && typeof(cameraSource.getLumaFrame)==="function")
+-            return normalizeSourceFrame(cameraSource.getLumaFrame(HGR_WIDTH,HGR_HEIGHT));
+-        return hostCameraFrame;
++        if(page instanceof ArrayBuffer) page=new Uint8Array(page);
++        else if(typeof(ArrayBuffer)!=="undefined" && typeof(ArrayBuffer.isView)==="function" && ArrayBuffer.isView(page))
++            page=new Uint8Array(page.buffer,page.byteOffset,page.byteLength);
++
++        if(!page || typeof(page.length)!=="number" || page.length!==HGR_PAGE_BYTES)
++            throw new Error("Dithertizer color source must provide an 8192-byte HGR page");
++        return page;
+     }
+ 
+     this.setCameraSource=function(source)
+     {
+-        if(source!==null && source!==undefined && typeof(source.getLumaFrame)!=="function")
+-            throw new TypeError("Dithertizer camera source must expose getLumaFrame(width,height)");
++        if(source!==null && source!==undefined && typeof(source.getHGRPage)!=="function" &&
++           typeof(source.getLumaFrame)!=="function")
++            throw new TypeError("Dithertizer color source must expose getHGRPage() or getLumaFrame(width,height)");
+ 
+         cameraSource=source || null;
+         return cameraSource;
+@@ -275,7 +280,25 @@
+ 
+         var pageBase=card.state.page2 ? 0x4000 : 0x2000;
+ 
+-        if(!cameraSource && !hostCameraStream)
++        var page=null;
++        if(cameraSource && typeof(cameraSource.getHGRPage)==="function")
++            page=normalizeHGRPage(cameraSource.getHGRPage());
++        else if(!cameraSource)
++            page=hostCameraPage;
++
++        if(page)
++        {
++            for(var py=0;py<HGR_HEIGHT;py++)
++            {
++                var offset=hgrLineAddress(0,py);
++                var destination=pageBase+offset;
++                for(var px=0;px<HGR_BYTES_PER_LINE;px++)
++                    hw.write(destination+px,page[offset+px]&0xFF);
++            }
++            return true;
++        }
++
++        if(!cameraSource)
+         {
+             for(var fy=0;fy<HGR_HEIGHT;fy++)
+             {
+@@ -286,7 +309,8 @@
+             return true;
+         }
+ 
+-        var frame=sourceFrame();
++        // Keep luminance-only injected sources usable for diagnostics.
++        var frame=normalizeSourceFrame(cameraSource.getLumaFrame(HGR_WIDTH,HGR_HEIGHT));
+         var threshold=card.state.threshold & 0xFF;
+ 
+         for(var y=0;y<HGR_HEIGHT;y++)
+@@ -482,18 +506,7 @@
+         var result=await hostCameraAdapter.convert(rgb,sourceW,sourceH,HOST_CAMERA_SEED);
+         if(!hostCameraStream || epoch!==hostCameraEpoch) return false;
+ 
+-        var palette=result && result.paletteIndex;
+-        if(!palette || palette.length!==HGR_WIDTH*HGR_HEIGHT)
+-            throw new Error("ConvertHGR did not return a 280x192 palette image");
+-
+-        var next=new Uint8Array(HGR_WIDTH*HGR_HEIGHT);
+-        for(var p=0;p<next.length;p++)
+-        {
+-            var index=palette[p]&0xFF;
+-            if(index>7) throw new Error("ConvertHGR palette index outside 0..7");
+-            next[p]=PALETTE_LUMA[index];
+-        }
+-        hostCameraFrame=next;
++        hostCameraPage=new Uint8Array(normalizeHGRPage(result && result.hgrPage));
+         return true;
+     }
+ 
+@@ -561,7 +574,7 @@
+         hostCameraVideo=null;
+         hostCameraCanvas=null;
+         hostCameraContext=null;
+-        hostCameraFrame=new Uint8Array(HGR_WIDTH*HGR_HEIGHT);
++        hostCameraPage=null;
+ 
+         if(hostCameraStream && typeof(hostCameraStream.getTracks)==="function")
+         {
+@@ -738,4 +751,4 @@
+     if(!oEMU.component) oEMU.component={};
+     if(!oEMU.component.IO) oEMU.component.IO={};
+ }
+-oEMU.component.IO.DithertizerII_2=new DithertizerII_2();
+\ No newline at end of file
++oEMU.component.IO.DithertizerII_2=new DithertizerII_2();
+--- /dev/null
++++ b/docs/DITHER2_COLOR_CAPTURE.md
+@@ -0,0 +1,20 @@
++# DITHER2 color capture
++
++`res/EMU_CARD_dithertizer2.js` is the separate color card. Its existing camera
++and ConvertHGR controls are unchanged. The WASM converter supplies an 8192-byte
++Apple II HGR page. On `$C0n8`, DITHER2 copies its 7680 visible bytes through the
++hardware write mapping into the page selected by `$C054` or `$C055`, preserving
++every byte's color phase bit 7. HGR memory holes remain untouched. The latest
++complete converted page is published atomically; a converter failure retains
++the previous page. An injected `getHGRPage()` source can supply a full page,
++while the older `getLumaFrame()` test source remains supported as monochrome.
++
++The original disk's `DSCAN 4.2.OBJ` already contains a synchronized PAGE2
++capture entry at `$1D03` (decimal `7427`). Calling that entry selects PAGE2,
++waits for video sync, reads `$C0n8` once, and returns. This entry needs no
++assembly changes. The disk's usual `CALL 7168` enters `$1C00`, which instead
++takes four PAGE1 captures and merges a Bayer dither into PAGE2. Its merge uses
++`AND #$7F`, so the usual DITHER command on the disk cannot retain color. A
++color capture must call `7427` after loading `DSCAN 4.2.OBJ` (or change the
++disk application's call site from `7168` to `7427`). The original driver disk
++is left intact for the historical DITHER card.
+--- /dev/null
++++ b/tests/dithertizer2_color_hgr.test.js
+@@ -0,0 +1,154 @@
++'use strict';
++const test=require('node:test');
++const assert=require('node:assert/strict');
++const fs=require('node:fs');
++const path=require('node:path');
++const vm=require('node:vm');
++
++const ROOT=path.resolve(__dirname,'..');
++const source=fs.readFileSync(path.join(ROOT,'res/EMU_CARD_dithertizer2.js'),'utf8');
++function offset(y,x){return ((y&7)<<10)+((y&0x38)<<4)+((y&0xC0)>>1)+((y&0xC0)>>3)+x;}
++function load(extra={})
++{
++    const sandbox={console,Uint8Array,Uint8ClampedArray,ArrayBuffer,Promise,setTimeout,clearTimeout,...extra};
++    vm.createContext(sandbox);
++    vm.runInContext(source+'\nthis.ColorCard=typeof DithertizerII_2==="function" ? DithertizerII_2 : DithertizerII;',sandbox);
++    return new sandbox.ColorCard();
++}
++function capture(card,page2)
++{
++    const writes=new Map();
++    const ctx={vid:{state:{page2}},hw:{write(addr,value){writes.set(addr,value);}}};
++    card.readSlotIO(0x08,ctx);
++    return writes;
++}
++function dscanPayload()
++{
++    const disk=fs.readFileSync(path.join(ROOT,'disks/GFX/Computer Stations Dithertizer II Driver Software for II II+.dsk'));
++    const sector=(track,number)=>disk.subarray((track*16+number)*256,(track*16+number+1)*256);
++    let track=sector(17,0)[1],number=sector(17,0)[2],entry=null;
++    while(track)
++    {
++        const catalog=sector(track,number);
++        for(let i=11;i+35<=256;i+=35)
++        {
++            const item=catalog.subarray(i,i+35);
++            const name=Array.from(item.subarray(3,33),c=>String.fromCharCode(c&127)).join('').trimEnd();
++            if(item[0]!==0 && item[0]!==255 && name==='DSCAN 4.2.OBJ') entry=item;
++        }
++        track=catalog[1];number=catalog[2];
++    }
++    assert.ok(entry);
++    track=entry[0];number=entry[1];
++    const bytes=[];
++    while(track)
++    {
++        const list=sector(track,number);
++        for(let i=12;i+1<256;i+=2)
++            if(list[i]||list[i+1]) bytes.push(...sector(list[i],list[i+1]));
++        track=list[1];number=list[2];
++    }
++    const data=Buffer.from(bytes);
++    assert.equal(data.readUInt16LE(0),0x1C00);
++    return data.subarray(4,4+1024);
++}
++
++test('color source writes complete HGR bytes and preserves bit 7 in either selected page',()=>{
++    const card=load();
++    const page=new Uint8Array(8192);
++    page[offset(0,0)]=0xD5;
++    page[offset(1,0)]=0x8A;
++    page[offset(191,39)]=0xFF;
++    page[0x78]=0xEE; // The HGR memory hole is not a pixel.
++    card.setCameraSource({getHGRPage(){return page;}});
++    card.writeSlotIO(0,255,{}); // Color data must not be thresholded.
++    const first=capture(card,false);
++    assert.equal(first.size,7680);
++    assert.equal(first.get(0x2000),0xD5);
++    assert.equal(first.get(0x2400),0x8A);
++    assert.equal(first.get(0x2000+offset(191,39)),0xFF);
++    assert.equal(first.has(0x2078),false);
++    const second=capture(card,true);
++    assert.equal(second.get(0x4000),0xD5);
++    assert.equal(second.get(0x4400),0x8A);
++    assert.equal(second.has(0x4078),false);
++});
++
++test('live camera publishes the complete WASM HGR page at a capture boundary',async()=>{
++    const page=new Uint8Array(8192);
++    page[0]=0xD5;
++    page[offset(64,39)]=0xA6;
++    const stream={getTracks(){return [{stop(){}}];}};
++    const video={videoWidth:280,videoHeight:192,async play(){},pause(){}};
++    const canvas={getContext(){return {drawImage(){},getImageData(){return {data:new Uint8ClampedArray(280*192*4)};}};}};
++    class Adapter
++    {
++        async init(){}
++        configure(){}
++        async convert(){return {paletteIndex:new Uint8Array(280*192),hgrPage:page};}
++        close(){}
++    }
++    const card=load({DithertizerConvertHGRAdapter:Adapter,
++        document:{createElement(type){return type==='video'?video:canvas;},getElementById(){return null;}},
++        navigator:{mediaDevices:{async getUserMedia(){return stream;}}}});
++    assert.equal(await card.deviceToolCameraToggle('camera'),true);
++    try
++    {
++        card.writeSlotIO(0,255,{});
++        const writes=capture(card,true);
++        assert.equal(writes.get(0x4000),0xD5);
++        assert.equal(writes.get(0x4000+offset(64,39)),0xA6);
++    }
++    finally {card.reset();}
++});
++
++test('the original DSCAN $1D03 sync entry captures color PAGE2 without its bit-7-clearing merge',()=>{
++    const sandbox={console,oEMU:{component:{CPU:{},IO:{},ROM:{}}}};
++    vm.createContext(sandbox);
++    for(const filename of ['EMU_cpu6502.js','EMU_apple2roms.js','EMU_CARD_dithertizer2.js'])
++        vm.runInContext(fs.readFileSync(path.join(ROOT,'res',filename),'utf8'),sandbox,{filename});
++    const ram=new Uint8Array(65536);
++    ram.fill(0xA5,0x2000,0x6000);
++    ram.set(vm.runInContext('apple2Rom',sandbox),0xD000);
++    ram.set(dscanPayload(),0x1C00);
++    ram[0]=2;
++    ram[0x1FE]=0xFF;ram[0x1FF]=7;
++    const page=new Uint8Array(8192);
++    page[0]=0xD5;page[offset(191,39)]=0xE9;
++    const card=new (sandbox.DithertizerII_2 || sandbox.DithertizerII)();
++    card.setCameraSource({getHGRPage(){return page;}});
++    const vid={state:{page2:false}};
++    const hw={RD:[],WR:[],lineDecode:a=>a>>12};
++    let ticks=0,captures=0;
++    function read(addr)
++    {
++        if(addr===0xC054) vid.state.page2=false;
++        if(addr===0xC055) vid.state.page2=true;
++        if(addr===0xC0F0 || addr===0xC0F8)
++        {
++            if(addr===0xC0F8) captures++;
++            return card.readSlotIO(addr,{hw,vid,io:{getClockTicks:()=>ticks}});
++        }
++        return ram[addr];
++    }
++    function write(addr,value)
++    {
++        if(addr===0xC0F0) card.writeSlotIO(addr,value,{});
++        else ram[addr]=value;
++    }
++    for(let i=0;i<16;i++){hw.RD[i]=read;hw.WR[i]=write;}
++    const cpu=new sandbox.Cpu6502(hw);
++    cpu.setState({pc:0x1D03,sp:0xFD});
++    for(;ticks<1000000;ticks++)
++    {
++        cpu.cycle();
++        if(cpu.watch().pc===0x0800) break;
++    }
++    assert.equal(cpu.watch().pc,0x0800);
++    assert.equal(captures,1);
++    assert.equal(card.state.page2,true);
++    assert.equal(ram[0x4000],0xD5);
++    assert.equal(ram[0x4000+offset(191,39)],0xE9);
++    assert.equal(ram[0x2000],0xA5);
++    assert.equal(ram[0x4078],0xA5);
++});
