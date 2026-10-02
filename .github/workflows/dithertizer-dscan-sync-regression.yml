@@ -51,4 +51,13 @@ jobs:
           trap 'kill $server || true' EXIT
           sleep 1
           NODE_PATH="$PWD/node_modules" node tests/dithertizer_dscan_sync_browser.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tests/dithertizer_fallback_steptrace_browser.js')
+          s=p.read_text()
+          old="assert.ok(trace && trace.done,'four-capture fallback trace did not finish');"
+          new="console.log('FALLBACK_TRACE_TIMEOUT_STATE',JSON.stringify(trace)); console.log('FALLBACK_TRACE_TIMEOUT_PC',await page.evaluate(()=>apple2plus.cpuObj().watch().pc&0xFFFF)); "+old
+          if old not in s: raise SystemExit('trace assertion marker missing')
+          p.write_text(s.replace(old,new))
+          PY
           NODE_PATH="$PWD/node_modules" node tests/dithertizer_fallback_steptrace_browser.js
