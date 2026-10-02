@@ -74,8 +74,6 @@ jobs:
               if(typeof dither.readVideoSync!=='function')
                 throw new Error('Production readVideoSync unavailable');
 
-              // Preserve the exact production function reference so the result can prove
-              // that the passive observer never replaced it.
               globalThis.__dscanProductionReadVideoSync=dither.readVideoSync;
               globalThis.__dscanPassive={
                 reached1D37:false,
@@ -89,7 +87,6 @@ jobs:
               const dbg=oEMU.component.CPU.Apple2Debug;
               const cond=document.getElementById('cpuDbg_breakCond');
               cond.value='PC==$1D23 || PC==$1D2D || PC==$1D35 || PC==$1D37';
-              // Ensure a clean disarmed state, then arm the production BREAK IF engine.
               const live=dbg.liveState && dbg.liveState();
               if(live && live.conditionalBreakpoint && live.conditionalBreakpoint.armed)
                 dbg.toggleConditionalBreakpointFromInput();
@@ -145,8 +142,6 @@ jobs:
                 };
               });
               if(state.reached1D37) break;
-              // Once the routine has been entered, do not run forever if production
-              // timing keeps it in the detector loop.
               if(state.rows.length>=2000 || (state.first1D23!==null && i>=40))
               {
                 state.failed=true;
@@ -180,4 +175,4 @@ jobs:
           server=$!
           trap 'kill $server || true' EXIT
           sleep 1
-          node /tmp/dscan-stock-observer.js
+          NODE_PATH="$PWD/node_modules" node /tmp/dscan-stock-observer.js
