@@ -61,6 +61,7 @@ test('raw host camera frame is exposed synchronously to DSCAN and captured into 
     const h=makeBrowserHarness();
     const DithertizerII=loadCard(h);
     const card=new DithertizerII();
+    card.deviceToolWasmToggle('dither_ctrl_S7');
 
     assert.equal(card.getCameraSource(),null,'explicit synthetic source starts unset');
     assert.equal(await card.deviceToolCameraToggle('dither_ctrl_S7'),true);
@@ -77,13 +78,14 @@ test('raw host camera frame is exposed synchronously to DSCAN and captured into 
 
     assert.equal(await card.deviceToolCameraToggle('dither_ctrl_S7'),false);
     assert.equal(h.stopped,1);
-    assert.equal(captureFirstByte(card).first,0x00,'camera OFF clears the host signal to black');
+    assert.equal(captureFirstByte(card).first,0x00,'sample image begins with black pixels');
 });
 
 test('a transient canvas failure keeps the last complete frame until the next processing frame',async()=>{
     const h=makeBrowserHarness();
     h.console={warn(){}};
     const card=new (loadCard(h))();
+    card.deviceToolWasmToggle('dither_ctrl_S7');
     await card.deviceToolCameraToggle('dither_ctrl_S7');
     h.context.getImageData=()=>{throw new Error('temporary video failure');};
     assert.doesNotThrow(()=>card.cycle());
@@ -99,6 +101,7 @@ test('camera RGB samples retain continuous luminance and adjustments affect the 
     for(const [x,rgb] of [[0,[255,0,0]],[1,[0,255,0]],[2,[0,0,255]],[3,[100,100,100]],[4,[120,120,120]],[5,[140,140,140]],[6,[0,0,0]]])
         h.rgba.set([...rgb,255],x*4);
     const card=new (loadCard(h))();
+    card.deviceToolWasmToggle('dither_ctrl_S7');
     await card.deviceToolCameraToggle('dither_ctrl_S7');
     assert.equal(captureFirstByte(card,128).first,0b00100010);
     assert.equal(captureFirstByte(card,115).first,0b00110010,'100 and 120 must remain distinct before DSCAN');
@@ -112,6 +115,7 @@ test('camera RGB samples retain continuous luminance and adjustments affect the 
 test('each processing frame replaces the camera frame and reset prevents further sampling',async()=>{
     const h=makeBrowserHarness();
     const card=new (loadCard(h))();
+    card.deviceToolWasmToggle('dither_ctrl_S7');
     await card.deviceToolCameraToggle('dither_ctrl_S7');
     h.rgba.fill(255);
     card.cycle();
@@ -131,6 +135,7 @@ test('explicit setCameraSource still takes priority over a live raw host camera 
     const h=makeBrowserHarness();
     const DithertizerII=loadCard(h);
     const card=new DithertizerII();
+    card.deviceToolWasmToggle('dither_ctrl_S7');
 
     await card.deviceToolCameraToggle('dither_ctrl_S7');
     card.setCameraSource({getLumaFrame(){
@@ -146,6 +151,7 @@ test('reset stops processing-frame camera sampling and clears the host frame',as
     const h=makeBrowserHarness();
     const DithertizerII=loadCard(h);
     const card=new DithertizerII();
+    card.deviceToolWasmToggle('dither_ctrl_S7');
 
     await card.deviceToolCameraToggle('dither_ctrl_S7');
     assert.equal(h.timers.size,0,'live bridge relies only on processing frames');

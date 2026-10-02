@@ -59,6 +59,7 @@ function harness()
 
 test('SYSTEM FPS slider drives exactly one camera sample per processing frame at 10 then 50 fps',async()=>{
     const h=harness();
+    h.card.deviceToolWasmToggle('dither_ctrl_S7');
     assert.equal(await h.card.deviceToolCameraToggle('dither_ctrl_S7'),true);
     assert.equal(h.draws,1,'camera start seeds its initial frame');
     h.sandbox.oEMUI.fpsSld({value:10},'slider_fps_v');
@@ -78,6 +79,7 @@ test('SYSTEM FPS slider drives exactly one camera sample per processing frame at
 
 test('no camera work occurs on CPU ticks or when the card is no longer mounted',async()=>{
     const h=harness();
+    h.card.deviceToolWasmToggle('dither_ctrl_S7');
     await h.card.deviceToolCameraToggle('dither_ctrl_S7');
     for(let i=0;i<1000;i++) h.io.tick(i);
     assert.equal(h.draws,1,'per-CPU-tick path must not sample the camera');

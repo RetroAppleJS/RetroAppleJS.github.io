@@ -39,11 +39,12 @@ test('brightness, contrast and gamma adjust luminance before the programmable co
     assert.equal(capture(card,2)[0x2000],0,'double contrast moves 64 to rounded luminance 1');
 });
 
-test('no camera supplies black luminance rather than a synthetic HGR checker',()=>{
+test('no camera supplies the original disk picture rather than a diagnostic checker',()=>{
     const card=makeCard();
     const ram=capture(card,128);
     assert.equal(ram[0x2001],0);
     assert.equal(ram[0x2400],0);
+    assert.equal(ram[0x2003],0x2A,'first row contains captured picture pixels');
     assert.equal(capture(card,0)[0x2000],0x7F,'zero luminance passes a zero threshold');
 });
 

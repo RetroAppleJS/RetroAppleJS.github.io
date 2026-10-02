@@ -1,0 +1,630 @@
+diff --git a/docs/DITHERTIZER.md b/docs/DITHERTIZER.md
+index e9fe284..72af17c 100644
+--- a/docs/DITHERTIZER.md
++++ b/docs/DITHERTIZER.md
+@@ -1,9 +1,20 @@
+ # Dithertizer II camera capture
+ 
+ `res/EMU_CARD_dithertizer.js` emulates a one-bit luminance comparator. The host
+-camera is cropped to a 4:3 view, resampled to 280x192, and converted to continuous
+-8-bit luminance. It does not run ConvertHGR, palette matching, error diffusion,
+-or a Bayer filter before capture.
++camera is cropped to a 4:3 view and resampled to 280x192. The WASM pictogram
++below the camera button selects the camera conversion path and starts ON:
++
++| WASM | Camera signal supplied to the comparator |
++| --- | --- |
++| ON (default) | An embedded ConvertHGR WASM quantizer produces palette pixels, then the card converts those pixels to luminance. |
++| OFF | The camera RGB pixels become continuous 8-bit BT.601 luminance directly. |
++
++The WASM code and its Worker source are both contained in the card file. A
++Worker performs the conversion so the emulator can continue processing while
++WASM works. Only one conversion can be in flight; if it takes longer than a
++SYSTEM processing frame, the card skips that camera sample and retains the last
++complete image. The WASM-produced HGR bytes are not injected into Apple II RAM.
++DSCAN still controls all four threshold captures and performs the Bayer merge.
+ 
+ The three image controls adjust luminance before the card compares it with the
+ threshold programmed by Apple II software:
+@@ -17,13 +28,19 @@ threshold programmed by Apple II software:
+ Contrast operates around 127.5; brightness adds a fraction of the full 255-level
+ range. The result is clamped to 0..255, then gamma applies an exponent of
+ `1/gamma`. Increasing gamma brightens midtones. A 256-entry lookup table makes
+-adjustments immediate for both the host camera and injected `getLumaFrame()`
+-sources. The first camera frame is sampled at startup; subsequent frames are sampled once
+-per emulator processing frame. The SYSTEM FPS slider controls this cadence
+-through the existing scheduler, with no separate camera timer. CPU tick rate and
+-DSCAN sync timing are unaffected. The camera button starts/stops the stream;
+-reset/restart releases tracks and stops sampling.
+-With no source, the input is black, replacing the former diagnostic checker.
++adjustments immediate for both camera modes and injected `getLumaFrame()`
++sources. The first camera frame is sampled at startup; subsequent frames are
++eligible once per emulator processing frame. The SYSTEM FPS slider controls this
++cadence through the existing scheduler, with no separate camera timer. CPU tick
++rate and DSCAN sync timing are unaffected. The camera button starts/stops the
++stream; reset/restart releases tracks and stops sampling. If WASM conversion
++fails, the last complete camera frame is retained and the toggle shows `ERR`.
++
++When the camera is OFF, the card decodes the original disk's complete $4000–$5FFF
++HGR capture of the “Computer Station” sign into monochrome camera luminance.
++DSCAN can reconstruct that picture with its ordinary capture passes. An explicit
++`setCameraSource()` remains higher priority than both camera modes and the disk
++sample.
+ 
+ ## DSCAN performs the dithering
+ 
+@@ -52,8 +69,8 @@ thresholds, all five Bayer states across the image, bit 7, and HGR holes.
+ 
+ ## Scope
+ 
+-The shared ConvertHGR adapter and worker remain available to the standalone
+-ConvertHGR tool. Earlier ConvertHGR/WASM camera-integration plans no longer
+-apply to the historical card implemented here.
++The separate ConvertHGR adapter and worker remain available to the standalone
++tool. Earlier full-pipeline ConvertHGR/WASM plans do not describe this compact
++camera option: only the existing quantizer module is embedded in the card.
+ 
+ Verification: `node --test tests/*.test.js`.
+diff --git a/res/EMU_CARD_dithertizer.js b/res/EMU_CARD_dithertizer.js
+index f18ae30..939688a 100644
+--- a/res/EMU_CARD_dithertizer.js
++++ b/res/EMU_CARD_dithertizer.js
+@@ -25,6 +25,12 @@ function DithertizerII()
+     var hostCameraPending=false;
+     var hostCameraFrame=new Uint8Array(280*192);
+     var hostCameraControlID=null;
++    var wasmEnabled=true;
++    var wasmWorker=null;
++    var wasmWorkerURL=null;
++    var wasmPending=null;
++    var wasmRequestId=0;
++    var wasmError=null;
+     var syncTraceEnabled=false;
+     var syncTraceEntries=[];
+     var syncTraceLastD7=null;
+@@ -37,6 +43,11 @@ function DithertizerII()
+     const DSCAN_TRACE_PC_MIN=0x1D23;
+     const DSCAN_TRACE_PC_MAX=0x1D35;
+     const SYNC_TRACE_LIMIT=512;
++    // The bundled HGR quantizer is the same WASM module used by ConvertHGR.
++    // DSCAN still owns the displayed HGR page through the comparator.
++    const WASM_HGR_BASE64="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";
++    // Original disk picture: the complete monochrome HGR $4000-$5FFF page.
++    const SAMPLE_HGR_BASE64="AAAAKlUqVSpVKlUqVWpdK3duXSpXKlUqVSpVKlUqVSpVKlUqVSpVKn9/Xyp/f38PfD99f39/HwgBIH9/f39/f39/f39/f39/f39/f39/f38AAAAAAAAAAEB+f39/f38vfWN/en9/X35/f30/dSpValUiQCt/f18qfHwCAnx8AgIAAAAAUH9/f39/f39/f39/f39/f39/f39/f39/f29ff3duXTt3bl07f39/fxcqVT9xP3AvFXp/f18gBCh/f39/f39/f39/f39/f39/f39/fwAAAAAAAAAAAAAAAFB/f39/f396X351P19qf39Xbn8/FSJEKlUqVQp8fAICfHwCAnAvAAAAAHR/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f38jfx98Y19/f39/ABEgfX9/f39/f39/f39/f39/f39/AAAAAAAAAAAAAAAAAAAAAHR/f39/f18qfz5/f1EqVSoVKkUAAAAAKHx8AgJ8fAICdH9/PwEAAAB9f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f38LESB0f3UrH35XKn9/fwNEAH1/f39/f39/f39/f39/f38AAAAAFAAAAAAAAAAAAAAAAAAAAH1+f39/f39/dSpVahUiRD4BAAAAfHwCAnx8AgJ8LwAAcD8BAAAAfX9/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/fw9Vfn8of39/fld/fHt/f30PEQJ9f39/f39/f39/f39/fwAAAAAAAAAAQAoAAAAAAAAAAAAAAAAAAH9+f393b187FSJEeH9vXWJ8fQICfHwCAn8DQH5/AHx/AQAAAH9/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/A3wARD9/Kn1/dy99a1d/VX9/P0UKdX9/f39/f39/f39/AAAAAAAAAAAAAAAAACAFAAAAAAAQAAAAAAAAAHd+VypXIkR4f29dK3x8AgJ8fAICfwNAf39/QX9/fwUAACB/f39/f39/f39/f39/f39/f39/f39/f39/fwAgf39/f38rdX8PAH8vfz9Vf39/d391L39/f38BInR/f39/f39/f38AAAAAAAAAAAAAAAAAAAAAAABAAgAAVCoRKl0qAQAAIFcCBCB/f1UKfHwCAnx8AgJ/P1V+f39/PxF+f38HAAAof39/f39/f39/f39/f39/f39/f39/f39/AAAAAAB6f38fKlUqfy9/D3VrX3pXf38/fX9dP1FqBwhQf39/f2pVKgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIH9/f39/f39/dypVCAAgfyt8fAICfHwCAgAAAFAqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlV/fw8Afn9/B3hfeH9/fy8AAAB6f39/f39/f39/f39/f39/f39/f29fAAAAAAAAAAAAUGp9f39/XypBP3Avfw99f39qXypVCFEAAABQen8qEXx8AgJ8fAICAAAAAABVKlUqVypVO1UqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVX9/f38/AHh/YD9gHzpwf38/AQAAen9/f39/f39/f39/f39/f39/f18AAAAAAAAAAAAAAAAAVGp/f39/VQ98Y18+VX5/AkAuVQIAAAAAQAAAfHwCAnx8AgIoVQAAAAAgXTt3bl07d25dO3duXTt3KlUqVSpVKlUqVSpVKlUqVSpVf39/f39/f39/f38feEEvfX9/fwUAAGh/f39/f39/f39/f39/f39/fwAAAAAAAAAAAAAAAAAAAAAAV35/f38vUT9cfn8CUCgRAgAAAAAAAAB8fAICfHwCAihValUCAAAAKH9/f39/f39/f29dO3duXTt3bl07d2pVO1duVSpVKlV/f39/f39/AQAAYH97RQ98I0d+f38XAABof39/f39/f39/f39/f39/AAAAAAAAAAAAAAAAAAAAAAAAAAAgVX5/f39+fysFAFUCAABcAwAAAHx8AgJ8fAICOgUAACB3AgAAAGh/f39/f39/f39/f39fe39uXTt3bl07d25dO3cuXX9/f39/f38fAHR/AX9/fn0Df2h1a396HwAAaH9/f39/f39/f39/f38AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgVX5/K1UqVQoAAFArVypRfHwCAnx8AgI6AQB9PwFgfwMAAAB6f39/f39/f39/f39/f39/P3duXTt3bl07d25dKn9/f39/fwF4AQB8fwF4fytfflEjfyp/f38CACB/f39/f39/f39/fwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAodS4RKgAAUCpXCkV8fAICfHwCAn4FAH9/f0B/f38LAAAAen9/f39/f39/f39/f39/f39/e3duXTt3bl0AAChVf39/V2p/DwB+B34fIn1/fS9/aB8+f35/AwAAfX9/f39/f39/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVAEQqFQAAAAAKAABAKn8KBHx8AgJ8fAICfx8AfX9/fx8AdH9/DwAAAHp/f39/f39/f39/f39/f39/f39/O3dvXQAAAAAAQCp9P1AqVX4HfgcAQD9RL39/f3p/KB8gQA4AAH1/fytVKhEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABof39/P3d+fytVAgAAAGgRfHwCAnx8AgIAAAAoVSpVblU7d25dO3duXTt3bl07VSpVK1UqVSpVKlUqVSpVKlUqf39/Kn1/fw98P31/f39/AgAAdX9/f39/f39/f39/f39/f39/f39/fwAAAAAAAAAAAAB/f39/fz9dKH96X39Xen9/f39VeldqRQgAKn1/Vyp8fQICfHwCAgAAAAAAen9/f39/f39/f39/f39/f39/bl0/d25dO3duXTt3bl07d25/f39/f39/f1U/cA98Kn1/fwsAAHR/f39/f39/f39/f39/f39/f39/AAAAAAAAAAAAAAAAAGh/f39/f2tffncvXyt/f1UKdS5VCAECQAgVInx8AgJ8fAICVDsFAAAAQH5/f39/f39/f39/f39/f39/f39/f39/f39/f39/XTt3bn9/f39/f39/VX9/D3wDX35/f38PQABwf39/f39/f39/f39/f39/f38AAAAAAAAAAAAAAAAAAAAAAHh/f39/f25/Pn9/RShVKgUIAQIAAAAAfHwCAnx8AgJ8f39/BQAAAEB/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/fytwP0B+fysffkc/f39/PwAiVH9/f39/f39/f39/f39/fwAAAAAAKAAAAAAAAAAAAAAAAAAAADp3f39/f39dPlUuBQAAfh8AAAB8fAICfHwCAnwLAABAfwcAAABwf39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/P0BqfyN/P39/Vz9wa1V/fX8FAFB+f39/f39/f39/f39/AAAAAAAAAAAAABUAAAAAAAAAAAAAAAAAQD5/f186dy4VAAFofy9XYnx8AgJ8fAICfwNAfn8DcH8fAAAAdH9/f39/f39/f39/f39/f39/f39/f39/f39/f1V/f39/f38DcAMAfn8vdX9Xf39rR391f39/ByJAfn9/f39/f39/f38AAAAAAAAAAAAAAAAAAAACAAAAAEAIAAAAAAAAQDt/K1UAAGBfL1UqfHwCAnx8AgJ/A0B/f39Bf39/HwAAAHR/f39/f39/f39/f39/f39/f39/f39/f39/AABQbn9/fy9Vfx8Afg9/f1V6f39ff3UvfT5/fx8AAH5/f39/f39/fwAAAAAAAAAAAAAAAAAAAAAAAAAABABAKlUqfy5VCgAAAAABIFV/fwp8fAICfHwCAn8/UX5/f38vFXh/f38AAAB0f39/f39/f39/f39/f39/f39/f39/f38AAAAAAAB0f38jVSp/L30PQCh/al9/f39dfn0/fAt9AAB6f39VO1UqAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVH9/f39/f39/fwUAAABQKnx8AgJ8fAICAAAAQCpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVX9/PwBof2IHeB94B35/fwcAACB/f39/f39/f39/f393b107d25dO3cAAAAAAAAAAAAAKFV+f39/KEU/cA99K3F/f39/ClUqRQAAAERqXSoAfH0CAnx8AgIAAAAAAFAqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVf39/f39/f38LFWAXeBFgf38XAAAgfX9/f39/f39/f39/f3t3bl07dwAAAAAAAAAAAAAAAAAAKnV/f39HDn0jVy5Vfn8KAQJUAAAAAAAAAAB8fAICfHwCAihVCgAAAAB0bl07d25dO3duXTtVKlUqVSpVKlUqVSpVKlUqVSpVKlV/f39/f39/HwB9fx94QQ98Yn9/VwAAAH9/f39/f39/f39/P3d+XTt3AAAAAAAAAAAAAAAAAAAAAABAKnV/fz9VLx16fwBAKhQAAAAEAAAAAHx8AgJ8fAICKFUqVQoAAAAAXT93bl07d25dO3duXTt3bl0rVSpVKlUqVSpVKlUqVX9/f39/f38DYH8AQH9RD3wDX3p/f18CAAB9f39/f39/f39/d29dO3cAAAAAAAAAAAAAAAAAAAAAAAAAAABQKnV/f39/KlQCVAoAAFQqAAAAfHwCAnx8AgIqBQAAAFwrAAAAIH9/f39/f39/f39dO3duXTt3bl07dy5VKlUqVSpVf39/f39/f38AUH8Bfh9+fysdIFFqXXh3CgAAdH9/f39/f39/b387dwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQKncOUCJVCAAAUGpVAkB8fAICfHwCAmoBAHduBSB/LwAAACB/f39/f39/f39/f39dO3duXTt3bl07d25VK1UqVX9/f39/AWAHAHB/F2B/K39/RwJ9aFdofysAAFR/f39/f39/Xzt3AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQKlUoAABAKl0qRHx8AgJ8fAICbgUAf39/A39/fz8AAAAgf39/f39/f39/f39/d25dO3duXTt3bl07VwAAAFRqfX8XCH8/AH4Hfn8vdH91b30jFwhdIncoAABwf39/f39fKlUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFQKVSpVCgEAAAAAAEAKVTsFfHwCAnx8AgJ+XwB0f39/BwBAf39/AQAAIH9/f39/f39/f39/fl87d25dO3duXTt3AAAAAAAAIFVqFyBVfxd6BwJAP0VufX9/Kl16FygBKAEAUH9/KlUqBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB9f39/XXt/f10CAAAAAAB8fAICfHwCAgAAAAB3bl9/f39/f39/f39/f39/f25dO3d+XTt3bl07d25dO3duXSt/f38rVS50D3w/dC99f38/AAJQf39/f39/f39/f39/f39/f39/f39/AAAAAAAAAAAAAEB/f39/f1dqf3pffn9rf39/f1duXy8VKkQqdX9VKnx8AgJ8fAICUAAAAABof39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f25dO39/f39/f39/VwpwH3wrVX9/P0EIUH5/f39/f39/f39/f39/f39/f38AAAAAAAAAAAAAAAAAAHB/f39/P19+Vz9ffn9/VSpVKhUqRQAAAEQqfHwCAnx8AgJ0f18AAAAAeH9/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/fw8Qen8/fUNffld/f38BIkB+f39/f39/f39/f39/f39/fwAABQAAAAAAAAAAAAAAAAAAAHx/f39/f38+fX8VKlUuBSJFDgAAAAB8fAICfHwCAnx/f39/AAAAAH5/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/K3V/R2h/b19+Rz99e39/BwgBen9/f39/f39/f39/f39/AAAAAAAAUAAAAAAAAAAAAAAAAAAAAF1/f39/f3dqVyoXIkR6fwIAAHx8AgJ8fAICfQMAAAB+fwAAAEB+f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/ASB/K38/fX93PnRrdy99fx8gBHp/f39/f39/f39/f38AAAAAAAAAAAAAACgBAAAAAAAAAAAAAAAAAH1/Xyp1OhciRXh/L1UifHwCAnx8AgJ/A0B/fw9wf38CAABQfn9/f39/f39/f39/f39/f39/f39/f39/f39/V3p/f39/fytxPwB4fy91f3d/fztXf3U/dX9/ABVqf39/f39/f39/fwAAAAAAAAAAAAAAAAAAAAAUAgAAACoFAAAAAAAAIF9/fSJEKH8/VQp8fAICfHwCAn8PQH9/f0d/f39/AwAARH9/f39/f39/f39/f39/f39/f39/f39/f38AAABof39/P1V+fwp9D35/f3p/e3d/dz9RflU/dQMEaH9/f39/f1U6AAAAAAAAAAAAAAAAAAAAAAAAAAAAKgBqV25/f3cqBQAAKgUgVX9/C3x8AgJ8fAICf39Ven9/fw91Y39/fw8AAFB/f39/f39/f39/f39/f39/f39/f39/fwAAAAAAAAB+f39Ban8vdQ9/Yn96X39/f1d+fT9dIlQPVSJ/P3d/XSoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABVfn9/f39/f39/RwAAAAAofHwCAnx8AgIAAAAAKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVf39/ByIAaB94f2AfKH9/XwAAAHx/f39/f39/f39/f39/f39/f39vXQAAAAAAAAAAAAAAVCp/f38vVT9wD31rV39/f38iVSpVAgAAESpVCgF8fAICfHwCAiAAAAAAQG5dO3duXTt3bl07dy5VKlUqVSpVKlUqVSpVKlUqVSpVKlV/f39/f39/fy8FaB94VQB/f38CAAB0f39/f39/f39/f39/f39/f39/AAAAAAAAAAAAAAAAAAAAXXp/f38vfWMfPl1+fyoBABECAAAAAAAAUHx8AgJ8fAICKFUqAQAAAFA7d39/f39uXTt3bl07d25dO3duXStVKlUqVSpVKlUqVX9/f39/f38HAEB/X3pBD3wrdH9/AwAAUH9/f39/f39/f39/f39/f38AAAAAAAAAAAAAAAAAAAAAAAAAVX9/f38/XX5/A1AqVQIAABQAAAAAfHwCAnx8AgIoVQpRKwEAAAB0f39/f39/f39/f39/bl07d25dO3duXTt3bl0qVypVf39/f39/fxdifwdAf18OfQN/enV/fw8AAFB/f39/f39/f39/f39/fwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgVXp/f38jVSoRCgAAVDsHAAB8fAICfHwCAjoFAAAAcH8BAAAAfH9/f39/f39/f39/f39/f387d25dO3duXTt3bl1/f39/f39/fwMAeAd+F35/KwVoUStXaH8/AABQf39/f39/f39/f39/AAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAoVTtFKFUKAABQKkcIQXx8AgJ8fAICOgEAfX8XYH9/BwAAAHR/f39/f39/f39/f39/f39/f187d25dO3duXSBVfn9/f38VYn8AQH9Xan8vf39XIn9oXyJ/fwEAQH5/f39/f39/f38AAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAoVTsAAFAqXygFfHwCAnx8AgJ/BwB/f38Df39/fwcAAAB8f39/f39/f39/f39/f39/f39/b107d25dAAAAACp1f38gdD8Bfgd+f391L30jfysfAnwqHSAHAAB+f39/f1UqVQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUCpVbl8rVQoAAAAAQCJXbhV8fAICfHwCAn9/A3F/f38HeEd+f38fAAAAfH9/f39/f39/f39/f39/f39/fz93b10AAAAAAAAAUCp/D3R/X2oHfkM+dS9/f38/f3gfCgEAHQAAel8qVyoRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIH1/f39/f39/fw8AAAAAEHx8AgJ8fAICAAAAAFQ7d29ff3d/f39/f19/f25dO3duXTt3bl07d25dO3duXStXKn9/fy9UKlU/eD9wL0V+f38FAABqf39/f39/f39/f39/f39/f39/f38AAAAAAAAAAAAAACB/f39/fy9/el9+dW9ff39/VSt1bkUKUSpVO1UifHwCAnx8AgJQCgAAAAB/f39/f39/f39/f39/f39/f39/f39/Xzt3bl07d25dO3duf39/f39/f39fKn0PfCtXf39/FwAAeH9/f39/f39/f39/f39/f39/fwAAAAAAAAAAAAAAAAAAAGh/f39/X35XL18+f399O1UqRQgRAgAAAGp8fAICfHwCAlR7fwIAAABgf39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f25/f39/f39/AwAAfy99Ax9+V2p/fx8AAWh/f39/f39/f39/f39/f39/AAAAAAAAAAAAAAAAAAAAAAAAAHp/f39/fz99f0Vof24FABA+AAAAAHx8AgJ8fAICfD8BIH8LAAAAaH9/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f38nVX8fYn9/X35HP3V6f39/IgAof39/f39/f39/f39/f38AAAAAAAAAIAUAAAAAAAAAAAAAAAAAAG59f39/VT5VKlUAEXh/KxFgfHwCAnx8AgJ8AwBoBWB/DwAAAGh/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f38HAHAvfwp/f1cqdWNXP3V/fwsRIH9/f39/f39/f39/fwAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAQG59K1UqFQAQaH8vVQJ8fAICfHwCAn8DQH9/P0B/fw8AAAB4f39/f39/f39/f39/f39/f39/f39/f39/f39AKnd/f39/K3V/A2B/L39/fX9/L1V/cW9Xf38PRAB9f39/f39/f39/AAAAAAAAAAAAAAAAAAAAAAAoAQAAABUAAAgRAAAAQG5/AAFiXT9VCnx8AgJ8fAICfw8Bf39/X39/f38/AAAAen9/f39/f39/f39/f39/f39/f39/f39/fwAAAABUe39/UWpfKn0Pfz9/e1d6V39XPlV/VS5APgAAfX9/f38rVSoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAECJ9f39/X3tXKlUKFQBVfncrfHwCAnx8AgJ/f1dqf39/D3wvf39/PwEAAHp/f39/f39/f39/f39/f39/f39/f39/AAAAAAAAAAB9f39/fz91L38Df3pff39/f391P1wKETpFCHQvfX9XKgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFR+f39/f39/f38fAAAAACB8fAICfHwCAgAAAAAgVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlV/f39/ABAiH2gfYEcAdH9/DwAAQH5/f39/f39/f39/f29fO3duXTt3AAAAAAAAAAAAAAAAKFV/f39fPnQPfWNXDlF/fypVKlUAAAAAABUCAHx8AgJ8fAICKAUAAAAAKFUqXSpVblUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVX9/f39/f39/PxB6H3hBI39/fy8AAEB+f39/f39/f39/f39/d29dO3cAAAAAAAAAAAAAAAAAAABAKn1/fz99KwcuHXp/aFEAQAAAAAAAAABAfHwCAnx8AgIoVSoFAAAAAG5dO3duXTt3bl07d25dKlUqVSpVKlUqVSpVKlUqVSpVf39/f39/fwEAAHgfaEEPfCtRf38vAABAfn9/f39/f39/f39/b107dwAAAAAAAAAAAAAAAAAAAAAAAABAKl1/fz8den8CACpVAgAAVAAAAAB8fAICfHwCAigVAAAoFQAAAEB6f39/f39/Xzt3bl07d25dO1cuVStVKlUqVSpVKlV/f39/f39/Bwh9P0B/fy99A184dX9/OwUAAHp/f39/f39/f39/XTt3AAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQKn1/fwpVKlUIAABUalUqQHx8AgJ8fAICKgEAdAoAOhcAAABAfn9/f39/f39/fz93bl07d25dO3cuVSpVKlUqVW5/f39/f38HDgAgRz4Aen8rUXpBIl0if38VAABof39/f39/f39fO3cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQKl0CVAoAAFAqVSpAfHwCAnx8AgJuAQB/fx8gf39fAAAAQH9/f39/f39/f39/fz93bl07d25dO3duXTtVAFAqdX9/f0FofwNAfgd+HyB/f18qfWBHDn1/VwAAeH9/f39/f387dwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAABUKgAAQCodAAR8fAICfHwCAn4dAH9/f39/AH9/fwAAAEB/f39/f39/f39/f39vXTt3bl07d25dO3cAAAAAAFU6fwMRAFV+B34HaFELdAt9L1VqXyoXAFQAAGh/f38vVSpEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAal07dypVKlUKAQAAAFArFXx8AgJ8fAICfn8DQH9/fwd4H3p/f38DAABAf39/f39/f39/f39/P3duXTt3bl07dwAAAAAAAAAAKFV6f39/Ywd+QT90L30/f39/en8IAQBQAAAgVypdKgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAodX9/f39/f39/DwAAAAAAfHwCAnx8AgI=";
+ 
+     this.id={"PCODE":"DITHER","icon":"fa fa-camera"};
+     this.state={
+@@ -74,6 +85,44 @@ function DithertizerII()
+             + ((y & 0xC0) >> 3);
+     }
+ 
++    function decodeBase64(value)
++    {
++        var alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
++        var bytes=[],word=0,bits=0;
++        for(var i=0;i<value.length;i++)
++        {
++            var digit=alphabet.indexOf(value.charAt(i));
++            if(digit<0) continue;
++            word=(word<<6)|digit;
++            bits+=6;
++            if(bits>=8)
++            {
++                bits-=8;
++                bytes.push((word>>bits)&0xFF);
++            }
++        }
++        return new Uint8Array(bytes);
++    }
++
++    function sampleLumaFrame()
++    {
++        var page=decodeBase64(SAMPLE_HGR_BASE64);
++        if(page.length!==8192) throw new Error("Invalid Dithertizer sample HGR page");
++        var frame=new Uint8Array(HGR_WIDTH*HGR_HEIGHT);
++        for(var y=0;y<HGR_HEIGHT;y++)
++        {
++            var source=hgrLineAddress(0,y);
++            for(var xb=0;xb<HGR_BYTES_PER_LINE;xb++)
++            {
++                var value=page[source+xb];
++                for(var bit=0;bit<7;bit++)
++                    frame[y*HGR_WIDTH+xb*7+bit]=(value & (1<<bit)) ? 255 : 0;
++            }
++        }
++        return frame;
++    }
++    var sampleFrame=sampleLumaFrame();
++
+     function writableHardware(hw)
+     {
+         if(!hw) return null;
+@@ -211,7 +260,7 @@ function DithertizerII()
+     {
+         if(cameraSource && typeof(cameraSource.getLumaFrame)==="function")
+             return normalizeSourceFrame(cameraSource.getLumaFrame(HGR_WIDTH,HGR_HEIGHT));
+-        return hostCameraFrame;
++        return hostCameraStream ? hostCameraFrame : sampleFrame;
+     }
+ 
+     this.setCameraSource=function(source)
+@@ -343,10 +392,121 @@ function DithertizerII()
+         if(el) el.textContent=uiValue(setting,value);
+     }
+ 
++    // This function is serialized into a Blob Worker along with the WASM bytes.
++    // The worker returns palette luminance, never writes to Apple II memory.
++    function wasmWorkerMain(base64)
++    {
++        var backend=null;
++        var loading=null;
++        var paletteLuma=[0,156,145,255,0,145,156,255];
++
++        async function load()
++        {
++            if(backend) return backend;
++            if(!loading) loading=(async function()
++            {
++                var binary=atob(base64);
++                var bytes=new Uint8Array(binary.length);
++                for(var i=0;i<bytes.length;i++) bytes[i]=binary.charCodeAt(i);
++                var result=await WebAssembly.instantiate(bytes,{});
++                backend=result.instance.exports;
++                return backend;
++            })();
++            return loading;
++        }
++
++        self.onmessage=async function(event)
++        {
++            var msg=event.data || {};
++            try
++            {
++                var wasm=await load();
++                var source=new Uint8Array(msg.rgb);
++                if(source.length!==280*192*3) throw new Error("Invalid HGR source frame");
++                var memory=wasm.memory.buffer;
++                new Uint8Array(memory,wasm.hgr_get_source_ptr(),source.length).set(source);
++                // Neutral ConvertHGR settings: diffusion with the original
++                // browser port's colour metric and Atkinson coefficients.
++                new Float64Array(memory,wasm.hgr_get_settings_ptr(),15).set([
++                    0,0.8,0.30,0.52,0.18, 0,2,0,1, 1,2,2,2,1,1
++                ]);
++                var status=wasm.hgr_convert(0x1234);
++                if(status!==0) throw new Error("HGR WASM status "+status);
++                var indices=new Uint8Array(memory,wasm.hgr_get_palette_ptr(),280*192);
++                var luma=new Uint8Array(indices.length);
++                for(var p=0;p<indices.length;p++)
++                {
++                    if(indices[p]>7) throw new Error("Invalid HGR palette index");
++                    luma[p]=paletteLuma[indices[p]];
++                }
++                self.postMessage({requestId:msg.requestId,epoch:msg.epoch,luma:luma.buffer},[luma.buffer]);
++            }
++            catch(error)
++            {
++                self.postMessage({requestId:msg.requestId,epoch:msg.epoch,error:String(error && error.message || error)});
++            }
++        };
++    }
++
++    function stopWasmWorker()
++    {
++        wasmPending=null;
++        if(wasmWorker && typeof(wasmWorker.terminate)==="function") wasmWorker.terminate();
++        wasmWorker=null;
++        if(wasmWorkerURL && typeof(URL)!=="undefined" && URL && typeof(URL.revokeObjectURL)==="function")
++            URL.revokeObjectURL(wasmWorkerURL);
++        wasmWorkerURL=null;
++        wasmError=null;
++    }
++
++    function startWasmWorker()
++    {
++        if(wasmWorker) return wasmWorker;
++        if(typeof(Worker)!=="function" || typeof(Blob)!=="function" ||
++           typeof(URL)==="undefined" || !URL || typeof(URL.createObjectURL)!=="function")
++            throw new Error("WASM HGR conversion requires Blob Worker support");
++
++        var script="("+wasmWorkerMain.toString()+")("+JSON.stringify(WASM_HGR_BASE64)+");";
++        wasmWorkerURL=URL.createObjectURL(new Blob([script],{type:"text/javascript"}));
++        try { wasmWorker=new Worker(wasmWorkerURL); }
++        catch(error)
++        {
++            URL.revokeObjectURL(wasmWorkerURL);
++            wasmWorkerURL=null;
++            throw error;
++        }
++        var worker=wasmWorker;
++        worker.onmessage=function(event)
++        {
++            var msg=event && event.data || {};
++            if(worker!==wasmWorker || !wasmPending || wasmPending.id!==msg.requestId) return;
++            var pending=wasmPending;
++            wasmPending=null;
++            if(!hostCameraStream || !wasmEnabled || pending.epoch!==hostCameraEpoch) return;
++            if(msg.error || !(msg.luma instanceof ArrayBuffer) || msg.luma.byteLength!==HGR_WIDTH*HGR_HEIGHT)
++            {
++                wasmError=String(msg.error || "Invalid WASM HGR output");
++                if(typeof(console)!=="undefined" && console && typeof(console.warn)==="function")
++                    console.warn("Dithertizer WASM conversion failed",wasmError);
++            }
++            else hostCameraFrame=new Uint8Array(msg.luma);
++            updateWasmButton(hostCameraControlID);
++        };
++        worker.onerror=function(event)
++        {
++            if(worker!==wasmWorker) return;
++            wasmPending=null;
++            wasmError=String(event && event.message || "WASM worker failed");
++            updateWasmButton(hostCameraControlID);
++        };
++        return worker;
++    }
++
+     function captureHostCameraFrame(epoch)
+     {
+         if(!hostCameraStream || epoch!==hostCameraEpoch || !hostCameraVideo || !hostCameraContext)
+             return false;
++        if(wasmEnabled && (wasmPending || wasmError)) return false;
+ 
+         var sourceW=Number(hostCameraVideo.videoWidth)|0;
+         var sourceH=Number(hostCameraVideo.videoHeight)|0;
+@@ -362,6 +522,34 @@ function DithertizerII()
+         var rgba=image && image.data;
+         if(!rgba || rgba.length < HGR_WIDTH*HGR_HEIGHT*4) return false;
+ 
++        if(wasmEnabled)
++        {
++            try
++            {
++                var worker=startWasmWorker();
++                var rgb=new Uint8Array(HGR_WIDTH*HGR_HEIGHT*3);
++                for(var p=0,s=0,d=0;p<HGR_WIDTH*HGR_HEIGHT;p++,s+=4)
++                {
++                    rgb[d++]=rgba[s];
++                    rgb[d++]=rgba[s+1];
++                    rgb[d++]=rgba[s+2];
++                }
++                var requestId=++wasmRequestId;
++                wasmPending={id:requestId,epoch:epoch};
++                worker.postMessage({requestId:requestId,epoch:epoch,rgb:rgb.buffer},[rgb.buffer]);
++                return true;
++            }
++            catch(error)
++            {
++                wasmPending=null;
++                wasmError=String(error && error.message || error);
++                updateWasmButton(hostCameraControlID);
++                if(typeof(console)!=="undefined" && console && typeof(console.warn)==="function")
++                    console.warn("Dithertizer WASM conversion unavailable",error);
++                return false;
++            }
++        }
++
+         // Keep the full luminance range: no palette matching or host dithering.
+         // Publish a complete raw frame; adjustments are applied at capture time.
+         var next=new Uint8Array(HGR_WIDTH*HGR_HEIGHT);
+@@ -414,6 +602,7 @@ function DithertizerII()
+     {
+         hostCameraEpoch++;
+         hostCameraPending=false;
++        stopWasmWorker();
+ 
+         if(hostCameraVideo)
+         {
+@@ -448,6 +637,38 @@ function DithertizerII()
+         if(status) status.textContent=active ? "ON" : "OFF";
+     }
+ 
++    function updateWasmButton(controlID)
++    {
++        if(typeof(document)==="undefined" || !document || typeof(document.getElementById)!=="function") return;
++        var button=document.getElementById(controlID+"_wasm");
++        if(!button) return;
++        button.setAttribute("aria-pressed",wasmEnabled ? "true" : "false");
++        button.title=wasmError ? "WASM HGR error: "+wasmError :
++            (wasmEnabled ? "Disable WASM HGR conversion" : "Enable WASM HGR conversion");
++        var icon=button.querySelector ? button.querySelector("i") : null;
++        if(icon && icon.style) icon.style.color=wasmError ? "#a00" : (wasmEnabled ? "#0a0" : "");
++        var status=document.getElementById(controlID+"_wasm_status");
++        if(status) status.textContent=wasmError ? "ERR" : (wasmEnabled ? "ON" : "OFF");
++    }
++
++    this.deviceToolWasmToggle=function(controlID)
++    {
++        hostCameraControlID=String(controlID || "");
++        wasmEnabled=!wasmEnabled;
++        stopWasmWorker();
++        if(hostCameraStream)
++        {
++            try { captureHostCameraFrame(hostCameraEpoch); }
++            catch(error)
++            {
++                if(typeof(console)!=="undefined" && console && typeof(console.warn)==="function")
++                    console.warn("Dithertizer camera frame failed",error);
++            }
++        }
++        updateWasmButton(hostCameraControlID);
++        return wasmEnabled;
++    };
++
+     this.deviceToolCameraToggle=async function(controlID)
+     {
+         controlID=String(controlID || "");
+@@ -525,7 +746,9 @@ function DithertizerII()
+             +"<div data-dither-row=\"IMG\" style=\""+rowStyle+"\">"+slider("brightness","Brightness",-100,100)
+             +"<button id=\""+controlID+"_camera\" class=\"appbut skinny\" type=\"button\" aria-pressed=\""+(cameraActive ? "true" : "false")+"\" title=\""+(cameraActive ? "Stop host camera" : "Start host camera")+"\" onclick=\""+call+".deviceToolCameraToggle('"+controlID+"')\" style=\"margin-left:auto;height:19px;padding:1px 5px;\"><i class=\"fa fa-camera\" style=\""+(cameraActive ? "color:#0a0;" : "")+"\"></i></button>"
+             +"<span id=\""+controlID+"_camera_status\" style=\"width:20px;font-size:10px;text-align:center;color:#777;\">"+(cameraActive ? "ON" : "OFF")+"</span></div>"
+-            +"<div data-dither-row=\"CONTRAST\" style=\""+rowStyle+"\">"+slider("contrast","Contrast",0,200)+"</div>"
++            +"<div data-dither-row=\"CONTRAST\" style=\""+rowStyle+"\">"+slider("contrast","Contrast",0,200)
++            +"<button id=\""+controlID+"_wasm\" class=\"appbut skinny\" type=\"button\" aria-pressed=\""+(wasmEnabled ? "true" : "false")+"\" title=\""+(wasmError ? "WASM HGR conversion unavailable" : (wasmEnabled ? "Disable WASM HGR conversion" : "Enable WASM HGR conversion"))+"\" onclick=\""+call+".deviceToolWasmToggle('"+controlID+"')\" style=\"margin-left:auto;height:19px;padding:1px 5px;\"><i class=\"fa fa-microchip\" style=\""+(wasmError ? "color:#a00;" : (wasmEnabled ? "color:#0a0;" : ""))+"\"></i></button>"
++            +"<span id=\""+controlID+"_wasm_status\" style=\"width:20px;font-size:10px;text-align:center;color:#777;\">"+(wasmError ? "ERR" : (wasmEnabled ? "ON" : "OFF"))+"</span></div>"
+             +"<div data-dither-row=\"GAMMA\" style=\""+rowStyle+"\">"+slider("gamma","Gamma",10,500)+"</div>"
+             +"</div></div>";
+     };
+@@ -536,6 +759,7 @@ function DithertizerII()
+     {
+         stopHostCamera();
+         if(hostCameraControlID) updateCameraButton(hostCameraControlID);
++        if(hostCameraControlID) updateWasmButton(hostCameraControlID);
+         card.state.threshold=0;
+         card.state.captureEnabled=false;
+         card.state.page2=false;
+diff --git a/tests/dithertizer_foundation.test.js b/tests/dithertizer_foundation.test.js
+index fedc6fc..2d5be99 100644
+--- a/tests/dithertizer_foundation.test.js
++++ b/tests/dithertizer_foundation.test.js
+@@ -78,7 +78,7 @@ test('$C0F8 read captures a thresholded frame into currently selected HGR page t
+     assert.equal(writes.get(0x4028),0b01010101);
+ });
+ 
+-test('$C0F8 read without camera source captures black luminance',()=>{
++test('$C0F8 read without camera source captures the disk sample on either HGR page',()=>{
+     const {DithertizerII}=loadCard();
+     const card=new DithertizerII();
+     card.writeSlotIO(0x00,0x80,{});
+@@ -94,9 +94,9 @@ test('$C0F8 read without camera source captures black luminance',()=>{
+     assert.equal(writes.size,192*40);
+     assert.equal(writes.get(0x2000),0x00);
+     assert.equal(writes.get(0x2001),0x00);
+-    assert.equal(writes.get(0x2400),0x00,'every row captures the same black source');
++    assert.equal(writes.get(0x2400),0x00);
+     assert.equal(writes.get(0x2401),0x00);
+-    assert.equal(writes.get(0x2028),0x00,'scanline 64 captures black');
++    assert.equal(writes.get(0x2028),0x7F,'scanline 64 carries the sample image');
+     assert.equal(writes.has(0x4000),false);
+ 
+     writes.clear();
+diff --git a/tests/dithertizer_host_camera_hgr_bridge.test.js b/tests/dithertizer_host_camera_hgr_bridge.test.js
+index 0ecdccb..0deb6d1 100644
+--- a/tests/dithertizer_host_camera_hgr_bridge.test.js
++++ b/tests/dithertizer_host_camera_hgr_bridge.test.js
+@@ -61,6 +61,7 @@ test('raw host camera frame is exposed synchronously to DSCAN and captured into
+     const h=makeBrowserHarness();
+     const DithertizerII=loadCard(h);
+     const card=new DithertizerII();
++    card.deviceToolWasmToggle('dither_ctrl_S7');
+ 
+     assert.equal(card.getCameraSource(),null,'explicit synthetic source starts unset');
+     assert.equal(await card.deviceToolCameraToggle('dither_ctrl_S7'),true);
+@@ -77,13 +78,14 @@ test('raw host camera frame is exposed synchronously to DSCAN and captured into
+ 
+     assert.equal(await card.deviceToolCameraToggle('dither_ctrl_S7'),false);
+     assert.equal(h.stopped,1);
+-    assert.equal(captureFirstByte(card).first,0x00,'camera OFF clears the host signal to black');
++    assert.equal(captureFirstByte(card).first,0x00,'sample image begins with black pixels');
+ });
+ 
+ test('a transient canvas failure keeps the last complete frame until the next processing frame',async()=>{
+     const h=makeBrowserHarness();
+     h.console={warn(){}};
+     const card=new (loadCard(h))();
++    card.deviceToolWasmToggle('dither_ctrl_S7');
+     await card.deviceToolCameraToggle('dither_ctrl_S7');
+     h.context.getImageData=()=>{throw new Error('temporary video failure');};
+     assert.doesNotThrow(()=>card.cycle());
+@@ -99,6 +101,7 @@ test('camera RGB samples retain continuous luminance and adjustments affect the
+     for(const [x,rgb] of [[0,[255,0,0]],[1,[0,255,0]],[2,[0,0,255]],[3,[100,100,100]],[4,[120,120,120]],[5,[140,140,140]],[6,[0,0,0]]])
+         h.rgba.set([...rgb,255],x*4);
+     const card=new (loadCard(h))();
++    card.deviceToolWasmToggle('dither_ctrl_S7');
+     await card.deviceToolCameraToggle('dither_ctrl_S7');
+     assert.equal(captureFirstByte(card,128).first,0b00100010);
+     assert.equal(captureFirstByte(card,115).first,0b00110010,'100 and 120 must remain distinct before DSCAN');
+@@ -112,6 +115,7 @@ test('camera RGB samples retain continuous luminance and adjustments affect the
+ test('each processing frame replaces the camera frame and reset prevents further sampling',async()=>{
+     const h=makeBrowserHarness();
+     const card=new (loadCard(h))();
++    card.deviceToolWasmToggle('dither_ctrl_S7');
+     await card.deviceToolCameraToggle('dither_ctrl_S7');
+     h.rgba.fill(255);
+     card.cycle();
+@@ -131,6 +135,7 @@ test('explicit setCameraSource still takes priority over a live raw host camera
+     const h=makeBrowserHarness();
+     const DithertizerII=loadCard(h);
+     const card=new DithertizerII();
++    card.deviceToolWasmToggle('dither_ctrl_S7');
+ 
+     await card.deviceToolCameraToggle('dither_ctrl_S7');
+     card.setCameraSource({getLumaFrame(){
+@@ -146,6 +151,7 @@ test('reset stops processing-frame camera sampling and clears the host frame',as
+     const h=makeBrowserHarness();
+     const DithertizerII=loadCard(h);
+     const card=new DithertizerII();
++    card.deviceToolWasmToggle('dither_ctrl_S7');
+ 
+     await card.deviceToolCameraToggle('dither_ctrl_S7');
+     assert.equal(h.timers.size,0,'live bridge relies only on processing frames');
+diff --git a/tests/dithertizer_luminance.test.js b/tests/dithertizer_luminance.test.js
+index 1083b5b..befba0e 100644
+--- a/tests/dithertizer_luminance.test.js
++++ b/tests/dithertizer_luminance.test.js
+@@ -39,11 +39,12 @@ test('brightness, contrast and gamma adjust luminance before the programmable co
+     assert.equal(capture(card,2)[0x2000],0,'double contrast moves 64 to rounded luminance 1');
+ });
+ 
+-test('no camera supplies black luminance rather than a synthetic HGR checker',()=>{
++test('no camera supplies the original disk picture rather than a diagnostic checker',()=>{
+     const card=makeCard();
+     const ram=capture(card,128);
+     assert.equal(ram[0x2001],0);
+     assert.equal(ram[0x2400],0);
++    assert.equal(ram[0x2003],0x2A,'first row contains captured picture pixels');
+     assert.equal(capture(card,0)[0x2000],0x7F,'zero luminance passes a zero threshold');
+ });
+ 
+diff --git a/tests/dithertizer_system_frame_sync.test.js b/tests/dithertizer_system_frame_sync.test.js
+index c7d3182..985a8be 100644
+--- a/tests/dithertizer_system_frame_sync.test.js
++++ b/tests/dithertizer_system_frame_sync.test.js
+@@ -59,6 +59,7 @@ function harness()
+ 
+ test('SYSTEM FPS slider drives exactly one camera sample per processing frame at 10 then 50 fps',async()=>{
+     const h=harness();
++    h.card.deviceToolWasmToggle('dither_ctrl_S7');
+     assert.equal(await h.card.deviceToolCameraToggle('dither_ctrl_S7'),true);
+     assert.equal(h.draws,1,'camera start seeds its initial frame');
+     h.sandbox.oEMUI.fpsSld({value:10},'slider_fps_v');
+@@ -78,6 +79,7 @@ test('SYSTEM FPS slider drives exactly one camera sample per processing frame at
+ 
+ test('no camera work occurs on CPU ticks or when the card is no longer mounted',async()=>{
+     const h=harness();
++    h.card.deviceToolWasmToggle('dither_ctrl_S7');
+     await h.card.deviceToolCameraToggle('dither_ctrl_S7');
+     for(let i=0;i<1000;i++) h.io.tick(i);
+     assert.equal(h.draws,1,'per-CPU-tick path must not sample the camera');
+diff --git a/tests/dithertizer_wasm_sample.test.js b/tests/dithertizer_wasm_sample.test.js
+new file mode 100644
+index 0000000..8b415b2
+--- /dev/null
++++ b/tests/dithertizer_wasm_sample.test.js
+@@ -0,0 +1,128 @@
++'use strict';
++
++const test=require('node:test');
++const assert=require('node:assert/strict');
++const crypto=require('node:crypto');
++const fs=require('node:fs');
++const path=require('node:path');
++const vm=require('node:vm');
++
++const cardSource=fs.readFileSync(path.join(__dirname,'../res/EMU_CARD_dithertizer.js'),'utf8');
++
++function makeCard(browser={})
++{
++    const sandbox={console:browser.console||console,Uint8Array,ArrayBuffer,WebAssembly,atob,Blob:browser.Blob,URL:browser.URL,
++        Worker:browser.Worker,document:browser.document,navigator:browser.navigator};
++    vm.createContext(sandbox);
++    vm.runInContext(cardSource,sandbox,{filename:'EMU_CARD_dithertizer.js'});
++    return new sandbox.DithertizerII();
++}
++
++function capture(card,threshold=128)
++{
++    const page=new Uint8Array(8192).fill(0xA5);
++    card.writeSlotIO(0,threshold,{});
++    card.readSlotIO(8,{vid:{state:{page2:false}},hw:{write(addr,value){page[addr-0x2000]=value;}}});
++    return page;
++}
++
++function raster(page)
++{
++    const bytes=new Uint8Array(7680);
++    for(let y=0;y<192;y++)
++    {
++        const offset=((y&7)<<10)+((y&0x38)<<4)+((y&0xC0)>>1)+((y&0xC0)>>3);
++        bytes.set(page.subarray(offset,offset+40),y*40);
++    }
++    return bytes;
++}
++
++test('camera-off comparator reconstructs the captured Computer Station HGR raster',()=>{
++    const card=makeCard();
++    const image=capture(card);
++    assert.equal(crypto.createHash('sha256').update(raster(image)).digest('hex'),
++        '0da9501930e2d38484a4d4a20359246bada8dd879d1d076c155452aeb55833f2');
++    assert.equal(image[0x78],0xA5,'HGR screen holes must remain untouched');
++    card.reset();
++    assert.equal(crypto.createHash('sha256').update(raster(capture(card))).digest('hex'),
++        '0da9501930e2d38484a4d4a20359246bada8dd879d1d076c155452aeb55833f2');
++});
++
++test('WASM pictogram starts ON below the camera and changes state without adding a fourth slider',()=>{
++    const card=makeCard();
++    let html=card.deviceToolSlotHTML({slotID:'S7',slotN:8});
++    assert.equal((html.match(/type="range"/g)||[]).length,3);
++    assert.match(html,/id="dither_ctrl_S7_wasm"[^>]*aria-pressed="true"/);
++    assert.ok(html.indexOf('id="dither_ctrl_S7_wasm"')>html.indexOf('id="dither_ctrl_S7_camera"'));
++    assert.equal(card.deviceToolWasmToggle('dither_ctrl_S7'),false);
++    html=card.deviceToolSlotHTML({slotID:'S7',slotN:8});
++    assert.match(html,/id="dither_ctrl_S7_wasm"[^>]*aria-pressed="false"/);
++});
++
++test('unavailable WASM displays an error and the camera can switch to raw luminance',async()=>{
++    const video={videoWidth:280,videoHeight:192,async play(){},pause(){}};
++    const rgba=new Uint8ClampedArray(280*192*4).fill(255);
++    const card=makeCard({console:{warn(){}},
++        document:{getElementById(){return null;},createElement(kind){
++            return kind==='video' ? video : {getContext(){return {drawImage(){},getImageData(){return {data:rgba};}};}};
++        }},
++        navigator:{mediaDevices:{async getUserMedia(){return {getTracks(){return [{stop(){}}];}};}}}
++    });
++    assert.equal(await card.deviceToolCameraToggle('dither_ctrl_S7'),true);
++    assert.match(card.deviceToolSlotHTML({slotID:'S7',slotN:8}),/id="dither_ctrl_S7_wasm_status"[^>]*>ERR</);
++    assert.equal(card.deviceToolWasmToggle('dither_ctrl_S7'),false);
++    assert.equal(capture(card,128)[0],0x7F);
++});
++
++test('embedded WASM quantizes a live red frame before the DSCAN comparator, and OFF restores raw luminance',async()=>{
++    const rgba=new Uint8ClampedArray(280*192*4);
++    for(let i=0;i<rgba.length;i+=4){rgba[i]=255;rgba[i+3]=255;}
++    const video={videoWidth:280,videoHeight:192,async play(){},pause(){}};
++    const context={drawImage(){},getImageData(){return {data:rgba};}};
++    const stream={getTracks(){return [{stop(){}}];}};
++    const document={getElementById(){return null;},createElement(kind){
++        if(kind==='video') return video;
++        if(kind==='canvas') return {getContext(){return context;}};
++        throw new Error(kind);
++    }};
++    let workerSource='';
++    let firstResultResolve;
++    const firstResult=new Promise(resolve=>{firstResultResolve=resolve;});
++    let nextResultResolve=null;
++    let wasmResult;
++    class TestBlob {constructor(parts){workerSource=parts.join('');}}
++    const URL={createObjectURL(){return 'blob:test-worker';},revokeObjectURL(){}};
++    class TestWorker
++    {
++        constructor(url)
++        {
++            assert.equal(url,'blob:test-worker');
++            const self={postMessage:data=>{
++                wasmResult=data;
++                this.onmessage({data});
++                firstResultResolve();
++                if(nextResultResolve) {const resolve=nextResultResolve;nextResultResolve=null;resolve();}
++            }};
++            const sandbox={self,Uint8Array,ArrayBuffer,Float64Array,WebAssembly,atob,console};
++            vm.createContext(sandbox);
++            vm.runInContext(workerSource,sandbox);
++            this.worker=self;
++        }
++        postMessage(data){this.worker.onmessage({data});}
++        terminate(){}
++    }
++    const card=makeCard({document,navigator:{mediaDevices:{async getUserMedia(){return stream;}}},
++        Blob:TestBlob,URL,Worker:TestWorker});
++    assert.equal(await card.deviceToolCameraToggle('dither_ctrl_S7'),true);
++    await firstResult;
++    assert.equal(wasmResult.error,undefined);
++    assert.equal(capture(card,100)[0],0x7E,'WASM palette makes six of the first seven red pixels bright');
++    const staleResult=new Promise(resolve=>{nextResultResolve=resolve;});
++    card.cycle();
++    assert.equal(card.deviceToolWasmToggle('dither_ctrl_S7'),false);
++    await staleResult;
++    assert.equal(capture(card,100)[0],0,'raw red luminance is 76, below the threshold');
++    assert.equal(await card.deviceToolCameraToggle('dither_ctrl_S7'),false);
++    assert.equal(crypto.createHash('sha256').update(raster(capture(card))).digest('hex'),
++        '0da9501930e2d38484a4d4a20359246bada8dd879d1d076c155452aeb55833f2');
++});
