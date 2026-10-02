@@ -183,6 +183,26 @@ function extractDSCAN42()
             if(trace && trace.done) break;
         }
 
+        const diagnostic=await page.evaluate(()=>{
+            const hw=apple2plus.hwObj();
+            const cpu=apple2plus.cpuObj();
+            const D=hw.io.SLOT2obj(8);
+            return {
+                pc:cpu.watch().pc&0xFFFF,
+                zeroPage00:hw.safe_read(0x0000)&0xFF,
+                phaseX:hw.safe_read(0x047F)&0xFF,
+                phaseY:hw.safe_read(0x04FF)&0xFF,
+                threshold:D.state.threshold&0xFF,
+                captureEnabled:!!D.state.captureEnabled,
+                page2Selected:!!D.state.page2
+            };
+        });
+
+        fs.mkdirSync('test-results',{recursive:true});
+        fs.writeFileSync('test-results/dithertizer-fallback-steptrace.json',JSON.stringify({setup,trace,diagnostic,pageErrors},null,2));
+        console.log('FALLBACK_STEPTRACE_DIAGNOSTIC',JSON.stringify(diagnostic));
+        console.log('FALLBACK_STEPTRACE_PARTIAL',JSON.stringify(trace));
+
         assert.equal(setup.pc,0x1C00);
         assert.equal(setup.breakArmed,true);
         assert.equal(setup.scenarioMode,'run');
