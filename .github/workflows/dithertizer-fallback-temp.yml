@@ -9,6 +9,7 @@ on:
       - 'res/EMU_CARD_dithertizer.js'
       - 'tests/dithertizer_foundation.test.js'
       - 'tests/dithertizer_camera_toggle.test.js'
+      - '.github/workflows/dithertizer-fallback-temp.yml'
 
 jobs:
   test:
@@ -18,4 +19,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - run: node --check res/EMU_CARD_dithertizer.js
       - run: node --test tests/dithertizer_foundation.test.js tests/dithertizer_camera_toggle.test.js
