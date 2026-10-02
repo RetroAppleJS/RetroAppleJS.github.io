@@ -71,10 +71,12 @@ jobs:
           trap 'kill $server || true' EXIT
           sleep 1
           NODE_PATH="$PWD/node_modules" node tests/dithertizer_fallback_steptrace_browser.js
-      - name: Upload C0F8 write trace
+      - name: Upload Dithertizer traces
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dithertizer-c0f8-write-trace
-          path: test-results/dithertizer-c0f8-write-trace.json
+          name: dithertizer-traces
+          path: |
+            test-results/dithertizer-c0f8-write-trace.json
+            test-results/dithertizer-fallback-steptrace.json
           if-no-files-found: warn
