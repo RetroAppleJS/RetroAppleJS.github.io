@@ -1,0 +1,75 @@
+name: Temporary Dithertizer disk catalog
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: ["debug/dithertizer-stock-steptrace-observer"]
+    paths:
+      - ".github/workflows/dithertizer-disk-catalog-temp.yml"
+  workflow_dispatch:
+
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse DOS 3.3 catalog and startup files
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('disks/GFX/Computer Stations Dithertizer II Driver Software for II II+.dsk')
+          d=p.read_bytes()
+          assert len(d)==35*16*256, len(d)
+          def sec(t,s):
+              o=(t*16+s)*256
+              return d[o:o+256]
+          def file_bytes(ts_t,ts_s):
+              out=bytearray(); seen=set(); t,s=ts_t,ts_s
+              while t and (t,s) not in seen:
+                  seen.add((t,s)); b=sec(t,s)
+                  nt,ns=b[1],b[2]
+                  for off in range(0x0C,0x100,2):
+                      if off+1>=256: break
+                      dt,ds=b[off],b[off+1]
+                      if dt==0 and ds==0: continue
+                      if dt>=35 or ds>=16: continue
+                      out.extend(sec(dt,ds))
+                  t,s=nt,ns
+              return bytes(out)
+          vt=sec(17,0)
+          t,s=vt[1],vt[2]
+          print('catalog start',t,s)
+          seen=set(); entries=[]
+          while t and (t,s) not in seen:
+              seen.add((t,s)); b=sec(t,s)
+              nt,ns=b[1],b[2]
+              for off in range(0x0B,0x100,35):
+                  e=b[off:off+35]
+                  if len(e)<35: break
+                  if e[0] in (0,0xFF): continue
+                  name=''.join(chr(x&0x7F) for x in e[3:33]).rstrip()
+                  ftype=e[2]&0x7F
+                  locked=bool(e[2]&0x80)
+                  nsec=e[33]|(e[34]<<8)
+                  entries.append((name,ftype,e[0],e[1]))
+                  print(f'{name!r} type=${ftype:02X} locked={locked} sectors={nsec} ts={e[0]},{e[1]}')
+              t,s=nt,ns
+          for name,ftype,tt,ss in entries:
+              if name not in {'HELLO','AMENU','IMENU','DSCAN 4.2.OBJ'}: continue
+              raw=file_bytes(tt,ss)
+              print('\n===',name,'raw',len(raw),'bytes ===')
+              if ftype==0x04 and len(raw)>=4:
+                  addr=raw[0]|(raw[1]<<8); n=raw[2]|(raw[3]<<8)
+                  print(f'BINARY header load=${addr:04X} len={n}')
+                  raw=raw[4:4+n]
+              elif ftype in (0x01,0x02) and len(raw)>=2:
+                  n=raw[0]|(raw[1]<<8)
+                  print('program header len=',n)
+                  raw=raw[2:2+n]
+              for m in re.finditer(rb'[ -~]{4,}',raw):
+                  print(f'ASCII @{m.start():04X}:',m.group().decode('ascii','replace'))
+          PY
