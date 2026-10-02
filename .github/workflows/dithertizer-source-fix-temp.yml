@@ -1,0 +1,38 @@
+name: Dithertizer source fix temp
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - fix/dithertizer-no-camera-hgr-fallback
+    paths:
+      - '.github/workflows/dithertizer-source-fix-temp.yml'
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/dithertizer-no-camera-hgr-fallback
+      - name: Repair accidental typeof syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('res/EMU_CARD_dithertizer.js')
+          s=p.read_text()
+          bad='!===\"undefined\"'
+          count=s.count(bad)
+          if count != 2:
+              raise SystemExit(f'expected 2 accidental typeof operators, found {count}')
+          p.write_text(s.replace(bad,'!==\"undefined\"'))
+          PY
+      - name: Commit repair
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add res/EMU_CARD_dithertizer.js
+          git commit -m 'fix: repair Dithertizer typeof guards'
+          git push origin HEAD:fix/dithertizer-no-camera-hgr-fallback
