@@ -66,6 +66,20 @@ jobs:
       - name: Run four-capture fallback STEP TRACE
         shell: bash
         run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tests/dithertizer_fallback_steptrace_browser.js')
+          s=p.read_text()
+          old='            globalThis.__fallbackTrace={captures:[],merges:[],done:false};'
+          new='''            const zeroWrite=hw.WR[hw.lineDecode(0x0000)];
+            if(typeof zeroWrite!==\'function\') throw new Error(\'zero page not writable\');
+            zeroWrite(0x0000,0x02);
+
+            globalThis.__fallbackTrace={captures:[],merges:[],done:false};'''
+          if old not in s:
+              raise SystemExit('fallback setup marker missing')
+          p.write_text(s.replace(old,new,1))
+          PY
           python3 -m http.server 8000 >/tmp/retroapple-http-fallback.log 2>&1 &
           server=$!
           trap 'kill $server || true' EXIT
