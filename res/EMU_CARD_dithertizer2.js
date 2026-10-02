@@ -1,5 +1,5 @@
 //
-// EMU_CARD_dithertizer.js
+// EMU_CARD_dithertizer2.js
 //
 // Computer Stations Dithertizer II video digitizer.
 //
@@ -13,7 +13,7 @@
 // maintaining a private page-select register.
 //
 
-function DithertizerII()
+function DithertizerII_2()
 {
     var card=this;
     var cameraSource=null;
@@ -738,4 +738,4 @@ else
     if(!oEMU.component) oEMU.component={};
     if(!oEMU.component.IO) oEMU.component.IO={};
 }
-oEMU.component.IO.DithertizerII=new DithertizerII();
+oEMU.component.IO.DithertizerII_2=new DithertizerII_2();
