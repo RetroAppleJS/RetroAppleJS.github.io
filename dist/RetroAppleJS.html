@@ -31312,16 +31312,16 @@ oEMU.component.IO.DithertizerII=new DithertizerII();
 //
 // EMU_CARD_dithertizer2.js
 //
-// Computer Stations Dithertizer II video digitizer.
+// Color HGR camera card. ConvertHGR supplies complete Apple II HGR bytes;
+// the capture copies them to the selected page, including color phase bit 7.
 //
 // The original DSCAN 4.2 driver uses only two slot-I/O addresses:
-//   $C0n0 write : latch 8-bit threshold and disable capture
+//   $C0n0 write : retain the threshold latch and disable capture
 //   $C0n0 read  : read sync in D7 and disable capture
 //   $C0n8 read  : enable capture
 //
-// DSCAN selects HGR page 1/2 through the normal Apple II $C054/$C055
-// soft switches, so the card follows the current video page rather than
-// maintaining a private page-select register.
+// DSCAN's $1D03 entry selects PAGE2 and performs the video-sync capture.
+// Its $1C00 four-pass merge clears bit 7 and cannot preserve color HGR.
 //
 
 function DithertizerII_2()
@@ -31334,7 +31334,7 @@ function DithertizerII_2()
     var hostCameraContext=null;
     var hostCameraTimer=null;
     var hostCameraEpoch=0;
-    var hostCameraFrame=new Uint8Array(280*192);
+    var hostCameraPage=null;
     var hostCameraAdapter=null;
     var hostCameraControlID=null;
     var convertHGRAdapterLoadPromise=null;
@@ -31346,12 +31346,12 @@ function DithertizerII_2()
     const HGR_WIDTH=280;
     const HGR_HEIGHT=192;
     const HGR_BYTES_PER_LINE=40;
+    const HGR_PAGE_BYTES=8192;
     const APPLE_FRAME_CYCLES=17030;
     const DSCAN_TRACE_PC_MIN=0x1D23;
     const DSCAN_TRACE_PC_MAX=0x1D35;
     const SYNC_TRACE_LIMIT=512;
     const HOST_CAMERA_SEED=0x12345678;
-    const PALETTE_LUMA=new Uint8Array([0,156,145,255,0,145,156,255]);
 
     this.id={"PCODE":"DITHER2","icon":"fa fa-camera"};
     this.state={
@@ -31519,17 +31519,22 @@ function DithertizerII_2()
         return frame;
     }
 
-    function sourceFrame()
+    function normalizeHGRPage(page)
     {
-        if(cameraSource && typeof(cameraSource.getLumaFrame)==="function")
-            return normalizeSourceFrame(cameraSource.getLumaFrame(HGR_WIDTH,HGR_HEIGHT));
-        return hostCameraFrame;
+        if(page instanceof ArrayBuffer) page=new Uint8Array(page);
+        else if(typeof(ArrayBuffer)!=="undefined" && typeof(ArrayBuffer.isView)==="function" && ArrayBuffer.isView(page))
+            page=new Uint8Array(page.buffer,page.byteOffset,page.byteLength);
+
+        if(!page || typeof(page.length)!=="number" || page.length!==HGR_PAGE_BYTES)
+            throw new Error("Dithertizer color source must provide an 8192-byte HGR page");
+        return page;
     }
 
     this.setCameraSource=function(source)
     {
-        if(source!==null && source!==undefined && typeof(source.getLumaFrame)!=="function")
-            throw new TypeError("Dithertizer camera source must expose getLumaFrame(width,height)");
+        if(source!==null && source!==undefined && typeof(source.getHGRPage)!=="function" &&
+           typeof(source.getLumaFrame)!=="function")
+            throw new TypeError("Dithertizer color source must expose getHGRPage() or getLumaFrame(width,height)");
 
         cameraSource=source || null;
         return cameraSource;
@@ -31586,7 +31591,25 @@ function DithertizerII_2()
 
         var pageBase=card.state.page2 ? 0x4000 : 0x2000;
 
-        if(!cameraSource && !hostCameraStream)
+        var page=null;
+        if(cameraSource && typeof(cameraSource.getHGRPage)==="function")
+            page=normalizeHGRPage(cameraSource.getHGRPage());
+        else if(!cameraSource)
+            page=hostCameraPage;
+
+        if(page)
+        {
+            for(var py=0;py<HGR_HEIGHT;py++)
+            {
+                var offset=hgrLineAddress(0,py);
+                var destination=pageBase+offset;
+                for(var px=0;px<HGR_BYTES_PER_LINE;px++)
+                    hw.write(destination+px,page[offset+px]&0xFF);
+            }
+            return true;
+        }
+
+        if(!cameraSource)
         {
             for(var fy=0;fy<HGR_HEIGHT;fy++)
             {
@@ -31597,7 +31620,8 @@ function DithertizerII_2()
             return true;
         }
 
-        var frame=sourceFrame();
+        // Keep luminance-only injected sources usable for diagnostics.
+        var frame=normalizeSourceFrame(cameraSource.getLumaFrame(HGR_WIDTH,HGR_HEIGHT));
         var threshold=card.state.threshold & 0xFF;
 
         for(var y=0;y<HGR_HEIGHT;y++)
@@ -31793,18 +31817,7 @@ function DithertizerII_2()
         var result=await hostCameraAdapter.convert(rgb,sourceW,sourceH,HOST_CAMERA_SEED);
         if(!hostCameraStream || epoch!==hostCameraEpoch) return false;
 
-        var palette=result && result.paletteIndex;
-        if(!palette || palette.length!==HGR_WIDTH*HGR_HEIGHT)
-            throw new Error("ConvertHGR did not return a 280x192 palette image");
-
-        var next=new Uint8Array(HGR_WIDTH*HGR_HEIGHT);
-        for(var p=0;p<next.length;p++)
-        {
-            var index=palette[p]&0xFF;
-            if(index>7) throw new Error("ConvertHGR palette index outside 0..7");
-            next[p]=PALETTE_LUMA[index];
-        }
-        hostCameraFrame=next;
+        hostCameraPage=new Uint8Array(normalizeHGRPage(result && result.hgrPage));
         return true;
     }
 
@@ -31872,7 +31885,7 @@ function DithertizerII_2()
         hostCameraVideo=null;
         hostCameraCanvas=null;
         hostCameraContext=null;
-        hostCameraFrame=new Uint8Array(HGR_WIDTH*HGR_HEIGHT);
+        hostCameraPage=null;
 
         if(hostCameraStream && typeof(hostCameraStream.getTracks)==="function")
         {
@@ -32050,6 +32063,7 @@ else
     if(!oEMU.component.IO) oEMU.component.IO={};
 }
 oEMU.component.IO.DithertizerII_2=new DithertizerII_2();
+
 </script>
             <script type="text/javascript">
 // 2026 Apple UniDisk 3.5 Interface Controller (Liron) for RetroAppleJS.
