@@ -1,0 +1,21 @@
+name: Dithertizer fallback temp
+
+on:
+  push:
+    branches:
+      - fix/dithertizer-no-camera-hgr-fallback
+  pull_request:
+    paths:
+      - 'res/EMU_CARD_dithertizer.js'
+      - 'tests/dithertizer_foundation.test.js'
+      - 'tests/dithertizer_camera_toggle.test.js'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: node --test tests/dithertizer_foundation.test.js tests/dithertizer_camera_toggle.test.js
