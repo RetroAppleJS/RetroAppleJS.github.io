@@ -12,6 +12,7 @@ on:
       - "tests/dithertizer_foundation.test.js"
       - "tests/dithertizer_camera_toggle.test.js"
       - "tests/dithertizer_dscan_sync_browser.js"
+      - "tests/dithertizer_fallback_steptrace_browser.js"
       - "disks/GFX/Computer Stations Dithertizer II Driver Software for II II+.dsk"
       - ".github/workflows/dithertizer-dscan-sync-regression.yml"
   pull_request:
@@ -22,6 +23,7 @@ on:
       - "tests/dithertizer_foundation.test.js"
       - "tests/dithertizer_camera_toggle.test.js"
       - "tests/dithertizer_dscan_sync_browser.js"
+      - "tests/dithertizer_fallback_steptrace_browser.js"
       - "disks/GFX/Computer Stations Dithertizer II Driver Software for II II+.dsk"
       - ".github/workflows/dithertizer-dscan-sync-regression.yml"
   workflow_dispatch:
@@ -41,7 +43,7 @@ jobs:
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Run real DSCAN sync regression
+      - name: Run real DSCAN regressions
         shell: bash
         run: |
           python3 -m http.server 8000 >/tmp/retroapple-http.log 2>&1 &
@@ -49,3 +51,4 @@ jobs:
           trap 'kill $server || true' EXIT
           sleep 1
           NODE_PATH="$PWD/node_modules" node tests/dithertizer_dscan_sync_browser.js
+          NODE_PATH="$PWD/node_modules" node tests/dithertizer_fallback_steptrace_browser.js
