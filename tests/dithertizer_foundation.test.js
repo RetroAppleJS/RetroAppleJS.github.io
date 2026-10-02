@@ -78,7 +78,7 @@ test('$C0F8 read captures a thresholded frame into currently selected HGR page t
     assert.equal(writes.get(0x4028),0b01010101);
 });
 
-test('$C0F8 read without camera source writes deterministic $00/$7F HGR checker fallback',()=>{
+test('$C0F8 read without camera source captures black luminance',()=>{
     const {DithertizerII}=loadCard();
     const card=new DithertizerII();
     card.writeSlotIO(0x00,0x80,{});
@@ -93,18 +93,18 @@ test('$C0F8 read without camera source writes deterministic $00/$7F HGR checker 
     card.readSlotIO(0x08,ctx);
     assert.equal(writes.size,192*40);
     assert.equal(writes.get(0x2000),0x00);
-    assert.equal(writes.get(0x2001),0x7F);
-    assert.equal(writes.get(0x2400),0x7F,'odd scanline reverses checker phase');
+    assert.equal(writes.get(0x2001),0x00);
+    assert.equal(writes.get(0x2400),0x00,'every row captures the same black source');
     assert.equal(writes.get(0x2401),0x00);
-    assert.equal(writes.get(0x2028),0x00,'scanline 64 preserves even-row phase');
+    assert.equal(writes.get(0x2028),0x00,'scanline 64 captures black');
     assert.equal(writes.has(0x4000),false);
 
     writes.clear();
     ctx.vid.state.page2=true;
     card.readSlotIO(0x08,ctx);
     assert.equal(writes.get(0x4000),0x00);
-    assert.equal(writes.get(0x4001),0x7F);
-    assert.equal(writes.get(0x4400),0x7F);
+    assert.equal(writes.get(0x4001),0x00);
+    assert.equal(writes.get(0x4400),0x00);
     assert.equal(writes.get(0x4401),0x00);
 });
 

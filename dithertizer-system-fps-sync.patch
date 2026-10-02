@@ -1,0 +1,289 @@
+diff --git a/docs/DITHERTIZER.md b/docs/DITHERTIZER.md
+index 6789cd7..e9fe284 100644
+--- a/docs/DITHERTIZER.md
++++ b/docs/DITHERTIZER.md
+@@ -18,8 +18,11 @@ Contrast operates around 127.5; brightness adds a fraction of the full 255-level
+ range. The result is clamped to 0..255, then gamma applies an exponent of
+ `1/gamma`. Increasing gamma brightens midtones. A 256-entry lookup table makes
+ adjustments immediate for both the host camera and injected `getLumaFrame()`
+-sources. Host frames are sampled at a fixed nominal 33 ms interval. The camera
+-button starts/stops the stream; reset/restart releases tracks and cancels sampling.
++sources. The first camera frame is sampled at startup; subsequent frames are sampled once
++per emulator processing frame. The SYSTEM FPS slider controls this cadence
++through the existing scheduler, with no separate camera timer. CPU tick rate and
++DSCAN sync timing are unaffected. The camera button starts/stops the stream;
++reset/restart releases tracks and stops sampling.
+ With no source, the input is black, replacing the former diagnostic checker.
+ 
+ ## DSCAN performs the dithering
+diff --git a/res/EMU_CARD_dithertizer.js b/res/EMU_CARD_dithertizer.js
+index a01fca6..f18ae30 100644
+--- a/res/EMU_CARD_dithertizer.js
++++ b/res/EMU_CARD_dithertizer.js
+@@ -21,7 +21,6 @@ function DithertizerII()
+     var hostCameraVideo=null;
+     var hostCameraCanvas=null;
+     var hostCameraContext=null;
+-    var hostCameraTimer=null;
+     var hostCameraEpoch=0;
+     var hostCameraPending=false;
+     var hostCameraFrame=new Uint8Array(280*192);
+@@ -38,7 +37,6 @@ function DithertizerII()
+     const DSCAN_TRACE_PC_MIN=0x1D23;
+     const DSCAN_TRACE_PC_MAX=0x1D35;
+     const SYNC_TRACE_LIMIT=512;
+-    const HOST_CAMERA_INTERVAL=33;
+ 
+     this.id={"PCODE":"DITHER","icon":"fa fa-camera"};
+     this.state={
+@@ -345,12 +343,6 @@ function DithertizerII()
+         if(el) el.textContent=uiValue(setting,value);
+     }
+ 
+-    function clearHostCameraTimer()
+-    {
+-        if(hostCameraTimer!==null && typeof(clearTimeout)==="function") clearTimeout(hostCameraTimer);
+-        hostCameraTimer=null;
+-    }
+-
+     function captureHostCameraFrame(epoch)
+     {
+         if(!hostCameraStream || epoch!==hostCameraEpoch || !hostCameraVideo || !hostCameraContext)
+@@ -379,23 +371,18 @@ function DithertizerII()
+         return true;
+     }
+ 
+-    function scheduleHostCameraFrame(epoch)
++    // Apple2IO calls mounted-peripheral cycle hooks once per processing frame.
++    // The SYSTEM FPS slider owns that cadence; the camera has no private timer.
++    this.cycle=function()
+     {
+-        if(!hostCameraStream || epoch!==hostCameraEpoch || typeof(setTimeout)!=="function") return;
+-        clearHostCameraTimer();
+-        hostCameraTimer=setTimeout(function()
++        if(!hostCameraStream) return;
++        try { captureHostCameraFrame(hostCameraEpoch); }
++        catch(error)
+         {
+-            hostCameraTimer=null;
+-            if(!hostCameraStream || epoch!==hostCameraEpoch) return;
+-            try { captureHostCameraFrame(epoch); }
+-            catch(error)
+-            {
+-                if(typeof(console)!=="undefined" && console && typeof(console.warn)==="function")
+-                    console.warn("Dithertizer camera frame failed",error);
+-            }
+-            scheduleHostCameraFrame(epoch);
+-        },HOST_CAMERA_INTERVAL);
+-    }
++            if(typeof(console)!=="undefined" && console && typeof(console.warn)==="function")
++                console.warn("Dithertizer camera frame failed",error);
++        }
++    };
+ 
+     async function startHostCameraBridge(stream,epoch)
+     {
+@@ -420,7 +407,6 @@ function DithertizerII()
+         if(!hostCameraStream || hostCameraStream!==stream || epoch!==hostCameraEpoch) return false;
+ 
+         await captureHostCameraFrame(epoch);
+-        scheduleHostCameraFrame(epoch);
+         return true;
+     }
+ 
+@@ -428,7 +414,6 @@ function DithertizerII()
+     {
+         hostCameraEpoch++;
+         hostCameraPending=false;
+-        clearHostCameraTimer();
+ 
+         if(hostCameraVideo)
+         {
+diff --git a/res/EMU_apple2io.js b/res/EMU_apple2io.js
+index 1d2b78f..ca94282 100644
+--- a/res/EMU_apple2io.js
++++ b/res/EMU_apple2io.js
+@@ -1288,6 +1288,10 @@ function mergeActionMap(dst,src)
+         for(var slotN in this.slots)
+         {
+             var peripheral = this.slots[slotN] && this.slots[slotN].peripheral;
++            // Mounted cards share the same processing-frame cadence as devices.
++            // In particular, camera sampling follows the SYSTEM FPS scheduler.
++            if(peripheral && typeof(peripheral.cycle)=="function" && hookActive(peripheral,"cycle"))
++                peripheral.cycle();
+             if(peripheral && typeof(peripheral.syncClock)=="function")
+                 peripheral.syncClock(clockTicks);
+         }
+diff --git a/tests/dithertizer_host_camera_hgr_bridge.test.js b/tests/dithertizer_host_camera_hgr_bridge.test.js
+index 3f4d13f..0ecdccb 100644
+--- a/tests/dithertizer_host_camera_hgr_bridge.test.js
++++ b/tests/dithertizer_host_camera_hgr_bridge.test.js
+@@ -68,6 +68,7 @@ test('raw host camera frame is exposed synchronously to DSCAN and captured into
+     assert.equal(h.canvas.width,280);
+     assert.equal(h.canvas.height,192);
+     assert.equal(h.drawCount,1,'first host frame is sampled immediately after video starts');
++    assert.equal(h.timers.size,0,'camera has no independent sampling timer');
+     assert.equal(card.getCameraSource(),null,'host bridge must not overwrite explicit setCameraSource() state');
+ 
+     const live=captureFirstByte(card);
+@@ -79,19 +80,17 @@ test('raw host camera frame is exposed synchronously to DSCAN and captured into
+     assert.equal(captureFirstByte(card).first,0x00,'camera OFF clears the host signal to black');
+ });
+ 
+-test('a transient canvas failure keeps the last complete frame and schedules another sample',async()=>{
++test('a transient canvas failure keeps the last complete frame until the next processing frame',async()=>{
+     const h=makeBrowserHarness();
+     h.console={warn(){}};
+     const card=new (loadCard(h))();
+     await card.deviceToolCameraToggle('dither_ctrl_S7');
+-    const [id,timer]=[...h.timers.entries()][0];
+-    h.timers.delete(id);
+     h.context.getImageData=()=>{throw new Error('temporary video failure');};
+-    assert.doesNotThrow(()=>timer.fn());
++    assert.doesNotThrow(()=>card.cycle());
+     await Promise.resolve();
+     await Promise.resolve();
+     assert.equal(captureFirstByte(card).first,0b01010101);
+-    assert.equal(h.timers.size,1);
++    assert.equal(h.timers.size,0);
+     card.reset();
+ });
+ 
+@@ -110,20 +109,19 @@ test('camera RGB samples retain continuous luminance and adjustments affect the
+     await card.deviceToolCameraToggle('dither_ctrl_S7');
+ });
+ 
+-test('next camera sample replaces the entire frame and a cancelled sampling callback cannot restart it',async()=>{
++test('each processing frame replaces the camera frame and reset prevents further sampling',async()=>{
+     const h=makeBrowserHarness();
+     const card=new (loadCard(h))();
+     await card.deviceToolCameraToggle('dither_ctrl_S7');
+-    const [id,timer]=[...h.timers.entries()][0];
+-    h.timers.delete(id);
+     h.rgba.fill(255);
+-    timer.fn();
++    card.cycle();
+     await Promise.resolve();
+     await Promise.resolve();
+     assert.equal(captureFirstByte(card).first,0x7F);
+-    const cancelled=[...h.timers.values()][0];
+     card.reset();
+-    cancelled.fn();
++    const draws=h.drawCount;
++    card.cycle();
++    assert.equal(h.drawCount,draws,'stopped camera must not be sampled');
+     await Promise.resolve();
+     assert.equal(h.timers.size,0);
+     assert.equal(captureFirstByte(card).first,0);
+@@ -144,13 +142,13 @@ test('explicit setCameraSource still takes priority over a live raw host camera
+     assert.equal(captureFirstByte(card).first,0b00101010,'explicit source remains the highest-priority source');
+ });
+ 
+-test('reset cancels raw host-camera sampling and clears the host frame',async()=>{
++test('reset stops processing-frame camera sampling and clears the host frame',async()=>{
+     const h=makeBrowserHarness();
+     const DithertizerII=loadCard(h);
+     const card=new DithertizerII();
+ 
+     await card.deviceToolCameraToggle('dither_ctrl_S7');
+-    assert.ok(h.timers.size>0,'live bridge schedules another sample');
++    assert.equal(h.timers.size,0,'live bridge relies only on processing frames');
+     card.reset();
+ 
+     assert.equal(h.timers.size,0,'reset cancels pending camera sampling');
+diff --git a/tests/dithertizer_system_frame_sync.test.js b/tests/dithertizer_system_frame_sync.test.js
+new file mode 100644
+index 0000000..c7d3182
+--- /dev/null
++++ b/tests/dithertizer_system_frame_sync.test.js
+@@ -0,0 +1,90 @@
++'use strict';
++const test=require('node:test');
++const assert=require('node:assert/strict');
++const fs=require('node:fs');
++const path=require('node:path');
++const vm=require('node:vm');
++const ROOT=path.resolve(__dirname,'..');
++
++function harness()
++{
++    let draws=0,stopped=0,nextTimer=1,now=0;
++    const intervals=new Map();
++    const rgba=new Uint8ClampedArray(280*192*4).fill(255);
++    const context={drawImage(){draws++;},getImageData(){return {data:rgba};}};
++    const stream={getTracks(){return [{stop(){stopped++;}}];}};
++    const video={videoWidth:280,videoHeight:192,async play(){},pause(){}};
++    const document={getElementById(id){return id==='slider_fps_v' ? {} : null;},createElement(kind){
++        if(kind==='video') return video;
++        if(kind==='canvas') return {getContext(){return context;}};
++        throw new Error(kind);
++    }};
++    const window={
++        setInterval(fn,ms,...args){const id=nextTimer++;intervals.set(id,{fn,ms,args});return id;},
++        clearInterval(id){intervals.delete(id);}
++    };
++    const sandbox={console:{log(){},warn(){},assert(){}},document,window,
++        navigator:{mediaDevices:{async getUserMedia(){return stream;}}},
++        performance:{now:()=>now},
++        oCOM:{addToEventStack(){},default:obj=>obj,bRefreshEvent:false},
++        setTimeout(){throw new Error('Camera must not create a separate timer');}
++    };
++    vm.createContext(sandbox);
++    for(const name of ['EMU_apple2main.js','EMU_cpu6502.js','EMU_apple2io.js','EMU_CARD_dithertizer.js'])
++        vm.runInContext(fs.readFileSync(path.join(ROOT,'res',name),'utf8'),sandbox,{filename:name});
++    // Replace graphical/hardware construction only; keep production SYSTEM,
++    // CPU, I/O processing loops and the Dithertizer camera implementation.
++    sandbox.Apple2VideoMUX=function(){this.cycle=()=>{};};
++    sandbox.Apple2Hw=function(vid){
++        this.io=new sandbox.Apple2IO(vid,this);
++        this.lineDecode=a=>a>>12;
++        this.RD=Array(16).fill(()=>0xEA);
++        this.WR=Array(16).fill(()=>{});
++    };
++    vm.runInContext(fs.readFileSync(path.join(ROOT,'res/EMU_apple2plus.js'),'utf8'),sandbox);
++    vm.runInContext('apple2plus=new Apple2Plus({}); apple2plus.cpuObj().setState({pc:0x0800,sp:0xFF});',sandbox);
++    const card=new sandbox.DithertizerII();
++    const io=sandbox.apple2plus.hwObj().io;
++    io.slots[8]={peripheral:card};
++    sandbox.appleIntervalHandle=window.setInterval(sandbox.apple2plus.cycle,100,102180);
++    function frames(count){
++        for(let i=0;i<count;i++){
++            const timer=[...intervals.values()][0];
++            now+=timer.ms;
++            timer.fn(...timer.args);
++        }
++    }
++    return {sandbox,card,io,frames,intervals,get draws(){return draws;},get stopped(){return stopped;}};
++}
++
++test('SYSTEM FPS slider drives exactly one camera sample per processing frame at 10 then 50 fps',async()=>{
++    const h=harness();
++    assert.equal(await h.card.deviceToolCameraToggle('dither_ctrl_S7'),true);
++    assert.equal(h.draws,1,'camera start seeds its initial frame');
++    h.sandbox.oEMUI.fpsSld({value:10},'slider_fps_v');
++    h.frames(10);
++    assert.equal(h.draws,11,'ten processing frames collect ten camera frames');
++    const firstSecondTicks=h.io.getClockTicks();
++    h.sandbox.oEMUI.fpsSld({value:50},'slider_fps_v');
++    assert.equal([...h.intervals.values()][0].ms,20);
++    h.frames(50);
++    assert.equal(h.draws,61,'FPS change applies through the existing SYSTEM scheduler');
++    assert.equal(h.io.getClockTicks()-firstSecondTicks,firstSecondTicks,'FPS changes do not change CPU ticks per second');
++    h.card.reset();
++    h.frames(2);
++    assert.equal(h.draws,61,'camera OFF prevents samples on subsequent SYSTEM frames');
++    assert.equal(h.stopped,1);
++});
++
++test('no camera work occurs on CPU ticks or when the card is no longer mounted',async()=>{
++    const h=harness();
++    await h.card.deviceToolCameraToggle('dither_ctrl_S7');
++    for(let i=0;i<1000;i++) h.io.tick(i);
++    assert.equal(h.draws,1,'per-CPU-tick path must not sample the camera');
++    h.io.cycle();
++    assert.equal(h.draws,2,'I/O processing frame invokes the mounted card');
++    h.io.slots[8]={};
++    h.frames(3);
++    assert.equal(h.draws,2,'unmounted cards receive no frame callbacks');
++    h.card.reset();
++});

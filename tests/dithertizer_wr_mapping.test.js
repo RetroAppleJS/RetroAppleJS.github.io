@@ -20,6 +20,14 @@ function loadCard()
 test('$C0F8 capture writes through production Apple2Hw WR[] mapping when hw.write is absent',()=>{
     const DithertizerII=loadCard();
     const card=new DithertizerII();
+    card.setCameraSource({getLumaFrame(){
+        const frame=new Uint8Array(280*192);
+        for(let y=0;y<192;y++)
+            for(let x=0;x<280;x++)
+                frame[y*280+x]=((Math.floor(x/7)+y)&1) ? 255 : 0;
+        return frame;
+    }});
+    card.writeSlotIO(0,128,{});
     const writes=new Map();
     const hw={
         WR:new Array(16),

@@ -1288,6 +1288,10 @@ function mergeActionMap(dst,src)
         for(var slotN in this.slots)
         {
             var peripheral = this.slots[slotN] && this.slots[slotN].peripheral;
+            // Mounted cards share the same processing-frame cadence as devices.
+            // In particular, camera sampling follows the SYSTEM FPS scheduler.
+            if(peripheral && typeof(peripheral.cycle)=="function" && hookActive(peripheral,"cycle"))
+                peripheral.cycle();
             if(peripheral && typeof(peripheral.syncClock)=="function")
                 peripheral.syncClock(clockTicks);
         }

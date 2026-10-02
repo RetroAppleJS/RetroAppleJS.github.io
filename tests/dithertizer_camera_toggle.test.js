@@ -133,3 +133,30 @@ test('reset and restart stop all host-camera tracks and update the rendered came
     assert.equal(dom.status.textContent,'OFF');
     assert.equal(dom.icon.style.color,'');
 });
+
+test('reset during pending camera permission discards and releases the late stream',async()=>{
+    let grant,stopped=0;
+    const stream={getTracks(){return [{stop(){stopped++;}}];}};
+    const navigator={mediaDevices:{getUserMedia(){return new Promise(resolve=>{grant=resolve;});}}};
+    const card=new (loadCard({navigator}))();
+    const pending=card.deviceToolCameraToggle('dither_ctrl_S7');
+    card.reset();
+    grant(stream);
+    assert.equal(await pending,false);
+    assert.equal(stopped,1);
+    assertCameraStatus(render(card),'OFF');
+});
+
+test('a second toggle cancels a pending start instead of requesting a second camera',async()=>{
+    let grant,requests=0,stopped=0;
+    const navigator={mediaDevices:{getUserMedia(){requests++;return new Promise(resolve=>{grant=resolve;});}}};
+    const card=new (loadCard({navigator}))();
+    const pending=card.deviceToolCameraToggle('dither_ctrl_S7');
+    const cancelled=card.deviceToolCameraToggle('dither_ctrl_S7');
+    assert.equal(requests,1);
+    assert.equal(await cancelled,false);
+    grant({getTracks(){return [{stop(){stopped++;}}];}});
+    assert.equal(await pending,false);
+    assert.equal(stopped,1);
+    assertCameraStatus(render(card),'OFF');
+});

@@ -16,19 +16,9 @@ function scriptPosition(html,src)
     return pos;
 }
 
-test('index.html loads ConvertHGR worker source before adapter and Dithertizer card',()=>{
+test('index.html loads only the historical Dithertizer card without ConvertHGR',()=>{
     const html=fs.readFileSync(INDEX_HTML,'utf8');
-
-    const worker=scriptPosition(html,'res/EMU_DITHERTIZER_converthgr_worker.js');
-    const adapter=scriptPosition(html,'res/EMU_DITHERTIZER_converthgr.js');
-    const card=scriptPosition(html,'res/EMU_CARD_dithertizer.js');
-
-    assert.ok(
-        worker<adapter,
-        'EMU_DITHERTIZER_converthgr_worker.js must load before EMU_DITHERTIZER_converthgr.js'
-    );
-    assert.ok(
-        adapter<card,
-        'EMU_DITHERTIZER_converthgr.js must load before EMU_CARD_dithertizer.js'
-    );
+    scriptPosition(html,'res/EMU_CARD_dithertizer.js');
+    for(const src of ['res/EMU_DITHERTIZER_converthgr_worker.js','res/EMU_DITHERTIZER_converthgr.js'])
+        assert.equal(html.includes('src="'+src+'"'),false,src+' must not load in the historical card path');
 });
