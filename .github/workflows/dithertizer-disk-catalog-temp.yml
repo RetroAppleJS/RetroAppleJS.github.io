@@ -1,0 +1,46 @@
+name: Temporary Dithertizer disk catalog
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: ["debug/dithertizer-stock-steptrace-observer"]
+    paths:
+      - ".github/workflows/dithertizer-disk-catalog-temp.yml"
+  workflow_dispatch:
+
+jobs:
+  catalog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse DOS 3.3 catalog
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('disks/GFX/Computer Stations Dithertizer II Driver Software for II II+.dsk')
+          d=p.read_bytes()
+          assert len(d)==35*16*256, len(d)
+          def sec(t,s):
+              o=(t*16+s)*256
+              return d[o:o+256]
+          vt=sec(17,0)
+          t,s=vt[1],vt[2]
+          print('catalog start',t,s)
+          seen=set()
+          while t and (t,s) not in seen:
+              seen.add((t,s)); b=sec(t,s)
+              nt,ns=b[1],b[2]
+              for off in range(0x0B,0x100,35):
+                  e=b[off:off+35]
+                  if len(e)<35: break
+                  if e[0] in (0,0xFF): continue
+                  name=''.join(chr(x&0x7F) for x in e[3:33]).rstrip()
+                  ftype=e[2]&0x7F
+                  locked=bool(e[2]&0x80)
+                  nsec=e[33]|(e[34]<<8)
+                  print(f'{name!r} type=${ftype:02X} locked={locked} sectors={nsec} ts={e[0]},{e[1]}')
+              t,s=nt,ns
+          PY
