@@ -172,7 +172,7 @@ function DithertizerII()
         var phase=syncPhase(ticks);
         if(phase < 64) return 0x00;
         if(phase < 96) return 0x80;
-        if(phase < 102) return 0x00;
+        if(phase < 103) return 0x00;
         return 0x80;
     }
 
