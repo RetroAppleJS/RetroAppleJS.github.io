@@ -31424,19 +31424,38 @@ function DithertizerII()
             + ((y & 0xC0) >> 3);
     }
 
+    function writableHardware(hw)
+    {
+        if(!hw) return null;
+
+        if(Array.isArray(hw.WR) && typeof(hw.lineDecode)==="function")
+        {
+            return {
+                write:function(addr,d8)
+                {
+                    var line=hw.lineDecode(addr);
+                    var fn=hw.WR[line];
+                    if(typeof(fn)!=="function") return false;
+                    fn(addr,d8);
+                    return true;
+                }
+            };
+        }
+
+        if(typeof(hw.write)==="function") return hw;
+        return null;
+    }
+
     function resolveHardware(ctx)
     {
-        if(ctx && ctx.hw && typeof(ctx.hw.write)==="function")
-            return ctx.hw;
+        var hw=writableHardware(ctx && ctx.hw);
+        if(hw) return hw;
 
-        if(ctx && ctx.vid && ctx.vid.hw && typeof(ctx.vid.hw.write)==="function")
-            return ctx.vid.hw;
+        hw=writableHardware(ctx && ctx.vid && ctx.vid.hw);
+        if(hw) return hw;
 
         if(typeof(apple2plus)!=="undefined" && apple2plus && typeof(apple2plus.hwObj)==="function")
-        {
-            var hw=apple2plus.hwObj();
-            if(hw && typeof(hw.write)==="function") return hw;
-        }
+            return writableHardware(apple2plus.hwObj());
 
         return null;
     }
