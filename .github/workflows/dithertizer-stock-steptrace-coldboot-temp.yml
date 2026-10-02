@@ -66,7 +66,6 @@ jobs:
           const baseURL='http://127.0.0.1:8000';
           const CHUNK_TICKS=250000;
           const MAX_CHUNKS=80;
-          const FRAME=17030;
 
           (async()=>{
             const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu']});
@@ -81,7 +80,6 @@ jobs:
               document.getElementById('cpuDbg_breakCond'),
               {timeout:120000});
 
-            // Detach the wall-clock owner and bring ROM/Applesoft to an input prompt.
             await page.evaluate(()=>{
               if(typeof appleIntervalHandle!=='undefined' && appleIntervalHandle){clearInterval(appleIntervalHandle);appleIntervalHandle=null;}
               apple2plus.reset();
@@ -115,10 +113,11 @@ jobs:
               if(!dbg.liveState().conditionalBreakpoint.armed) dbg.toggleConditionalBreakpointFromInput();
 
               DBG_STEPTRACE_SCENARIO.arm(`
+                const FRAME=17030;
                 onBreakpoint(function(bp) {
                   const s=globalThis.__dscanPassive;
                   const ticks=Number(oEMU.component.IO.self.getClockTicks())||0;
-                  const phase=((ticks%${FRAME})+${FRAME})%${FRAME};
+                  const phase=((ticks%FRAME)+FRAME)%FRAME;
                   const row={PC:bp.PC&0xFFFF,INS:Number(bp.INS)||0,A:bp.A&0xFF,D7:(bp.A&0x80)?1:0,clockTicks:Math.trunc(ticks),phase:Math.trunc(phase)};
                   s.rows.push(row);
                   if(row.PC===0x1D23)s.hits1D23++;
