@@ -1,0 +1,183 @@
+name: Temporary Dithertizer stock STEP TRACE observer
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: ["debug/dithertizer-stock-steptrace-observer"]
+    paths:
+      - ".github/workflows/dithertizer-stock-steptrace-observer-temp.yml"
+  workflow_dispatch:
+
+jobs:
+  observe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run production readVideoSync through STEP TRACE breakpoint scenario
+        shell: bash
+        run: |
+          cat > /tmp/dscan-stock-observer.js <<'NODE'
+          'use strict';
+          const {chromium}=require('playwright');
+          const baseURL='http://127.0.0.1:8000';
+          const CHUNK_TICKS=250000;
+          const MAX_CHUNKS=160;
+
+          (async()=>{
+            const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu']});
+            const page=await browser.newPage({viewport:{width:1400,height:1000}});
+            page.on('pageerror',err=>console.log('[pageerror]',String(err)));
+            page.on('console',msg=>{
+              const text=msg.text();
+              if(/DSCAN_PASSIVE|Dithertizer|Loaded disk|error/i.test(text)) console.log('[browser]',text);
+            });
+
+            await page.goto(baseURL+'/index.html?mute=1',{waitUntil:'load',timeout:120000});
+            await page.waitForFunction(()=>
+              typeof apple2plus==='object' && apple2plus &&
+              typeof loadDisk_fromBuffer==='function' &&
+              typeof DBG_STEPTRACE_SCENARIO==='object' && DBG_STEPTRACE_SCENARIO &&
+              oEMU && oEMU.component && oEMU.component.CPU && oEMU.component.CPU.Apple2Debug &&
+              document.getElementById('cpuDbg_breakCond'),
+              {timeout:120000});
+
+            const setup=await page.evaluate(async()=>{
+              if(typeof appleIntervalHandle!=='undefined' && appleIntervalHandle)
+              {
+                clearInterval(appleIntervalHandle);
+                appleIntervalHandle=null;
+              }
+
+              const response=await fetch('/disks/GFX/Computer%20Stations%20Dithertizer%20II%20Driver%20Software%20for%20II%20II%2B.dsk');
+              if(!response.ok) throw new Error('Dithertizer disk fetch failed: '+response.status);
+              const bytes=new Uint8Array(await response.arrayBuffer());
+              const diskSlot=EMU_defaultDiskIISlot();
+              const mounted=loadDisk_fromBuffer(bytes,diskSlot,'D1','Computer Stations Dithertizer II Driver Software for II II+.dsk');
+              if(!mounted) throw new Error('Dithertizer disk mount failed');
+
+              apple2plus.reset();
+
+              const io=apple2plus.hwObj().io;
+              const dither=io.SLOT2obj(8);
+              if(!dither || !dither.id || dither.id.PCODE!=='DITHER')
+                throw new Error('DITHER not present at SLOT2obj(8)');
+              if(typeof dither.readVideoSync!=='function')
+                throw new Error('Production readVideoSync unavailable');
+
+              // Preserve the exact production function reference so the result can prove
+              // that the passive observer never replaced it.
+              globalThis.__dscanProductionReadVideoSync=dither.readVideoSync;
+              globalThis.__dscanPassive={
+                reached1D37:false,
+                failed:false,
+                first1D23:null,
+                hits1D23:0,
+                rows:[],
+                reason:'running'
+              };
+
+              const dbg=oEMU.component.CPU.Apple2Debug;
+              const cond=document.getElementById('cpuDbg_breakCond');
+              cond.value='PC==$1D23 || PC==$1D2D || PC==$1D35 || PC==$1D37';
+              // Ensure a clean disarmed state, then arm the production BREAK IF engine.
+              const live=dbg.liveState && dbg.liveState();
+              if(live && live.conditionalBreakpoint && live.conditionalBreakpoint.armed)
+                dbg.toggleConditionalBreakpointFromInput();
+              if(!(dbg.liveState && dbg.liveState().conditionalBreakpoint.armed))
+                dbg.toggleConditionalBreakpointFromInput();
+
+              DBG_STEPTRACE_SCENARIO.arm(`
+                const FRAME=17030;
+                onBreakpoint(function(bp) {
+                  const s=globalThis.__dscanPassive;
+                  const ticks=(oEMU.component.IO.self && typeof oEMU.component.IO.self.getClockTicks==='function')
+                    ? Number(oEMU.component.IO.self.getClockTicks())||0 : 0;
+                  const phase=((ticks%FRAME)+FRAME)%FRAME;
+                  const row={PC:bp.PC&0xFFFF,INS:Number(bp.INS)||0,A:bp.A&0xFF,D7:(bp.A&0x80)?1:0,clockTicks:Math.trunc(ticks),phase:Math.trunc(phase)};
+                  s.rows.push(row);
+                  if(row.PC===0x1D23) {
+                    s.hits1D23++;
+                    if(s.first1D23===null) s.first1D23=row.INS;
+                  }
+                  if(row.PC===0x1D37) {
+                    s.reached1D37=true;
+                    s.reason='reached_$1D37';
+                    print('DSCAN_PASSIVE PASS PC=$1D37 A=$'+row.A.toString(16).toUpperCase().padStart(2,'0')+' phase='+row.phase+' hits1D23='+s.hits1D23);
+                    haltAtBreakpoint();
+                  }
+                });
+              `);
+
+              return {
+                diskBytes:bytes.length,
+                diskSlot,
+                mounted,
+                ditherPCODE:dither.id.PCODE,
+                breakArmed:!!(dbg.liveState && dbg.liveState().conditionalBreakpoint.armed),
+                scenarioMode:DBG_STEPTRACE_SCENARIO.mode(),
+                readVideoSyncUntouched:dither.readVideoSync===globalThis.__dscanProductionReadVideoSync
+              };
+            });
+
+            console.log('DSCAN_PASSIVE_SETUP',JSON.stringify(setup));
+
+            let state=null;
+            for(let i=0;i<MAX_CHUNKS;i++)
+            {
+              await page.evaluate(t=>apple2plus.runLiveCpuTicks(t,{videoScale:0.02}),CHUNK_TICKS);
+              state=await page.evaluate(()=>{
+                const s=globalThis.__dscanPassive;
+                const dither=apple2plus.hwObj().io.SLOT2obj(8);
+                return {
+                  ...s,
+                  pc:apple2plus.cpuObj().watch().pc&0xFFFF,
+                  readVideoSyncUntouched:dither.readVideoSync===globalThis.__dscanProductionReadVideoSync
+                };
+              });
+              if(state.reached1D37) break;
+              // Once the routine has been entered, do not run forever if production
+              // timing keeps it in the detector loop.
+              if(state.rows.length>=2000 || (state.first1D23!==null && i>=40))
+              {
+                state.failed=true;
+                state.reason='no_$1D37_within_observation_window';
+                break;
+              }
+            }
+
+            state=state || await page.evaluate(()=>globalThis.__dscanPassive);
+            const compactRows=state.rows.slice(0,80);
+            console.log('DSCAN_PASSIVE_ROWS',JSON.stringify(compactRows));
+            console.log('DSCAN_PASSIVE_RESULT',JSON.stringify({
+              reached1D37:state.reached1D37,
+              reason:state.reason,
+              hits1D23:state.hits1D23,
+              rows:state.rows.length,
+              pc:state.pc,
+              readVideoSyncUntouched:state.readVideoSyncUntouched
+            }));
+
+            await browser.close();
+            if(!setup.breakArmed || setup.scenarioMode!=='run' || !setup.readVideoSyncUntouched) process.exit(3);
+            process.exit(state.reached1D37 ? 0 : 2);
+          })().catch(err=>{
+            console.error('DSCAN_PASSIVE_ERROR',err && err.stack ? err.stack : String(err));
+            process.exit(10);
+          });
+          NODE
+
+          python3 -m http.server 8000 >/tmp/retroapple-http.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          node /tmp/dscan-stock-observer.js
