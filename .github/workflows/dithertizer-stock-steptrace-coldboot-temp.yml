@@ -1,4 +1,4 @@
-name: Temporary Dithertizer stock STEP TRACE cold-boot observer
+name: Temporary Dithertizer stock STEP TRACE observer
 
 permissions:
   contents: read
@@ -19,21 +19,54 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Extract original DSCAN 4.2 object from DOS disk
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          disk=Path('disks/GFX/Computer Stations Dithertizer II Driver Software for II II+.dsk').read_bytes()
+          def sec(t,s): return disk[(t*16+s)*256:(t*16+s+1)*256]
+          def file_bytes(tt,ss):
+              out=bytearray(); seen=set(); t,s=tt,ss
+              while t and (t,s) not in seen:
+                  seen.add((t,s)); b=sec(t,s); nt,ns=b[1],b[2]
+                  for off in range(0x0C,0x100,2):
+                      if off+1>=256: break
+                      dt,ds=b[off],b[off+1]
+                      if dt==0 and ds==0: continue
+                      if dt<35 and ds<16: out.extend(sec(dt,ds))
+                  t,s=nt,ns
+              return bytes(out)
+          vt=sec(17,0); t,s=vt[1],vt[2]; target=None; seen=set()
+          while t and (t,s) not in seen:
+              seen.add((t,s)); b=sec(t,s); nt,ns=b[1],b[2]
+              for off in range(0x0B,0x100,35):
+                  e=b[off:off+35]
+                  if len(e)<35 or e[0] in (0,0xFF): continue
+                  name=''.join(chr(x&0x7F) for x in e[3:33]).rstrip()
+                  if name=='DSCAN 4.2.OBJ': target=(e[0],e[1])
+              t,s=nt,ns
+          assert target, 'DSCAN 4.2.OBJ not found'
+          raw=file_bytes(*target)
+          addr=raw[0]|raw[1]<<8; n=raw[2]|raw[3]<<8; payload=raw[4:4+n]
+          assert addr==0x1C00 and n==1024 and len(payload)==1024,(addr,n,len(payload))
+          Path('tests/_dscan42_payload.bin').write_bytes(payload)
+          print(f'extracted DSCAN load=${addr:04X} len={len(payload)}')
+          PY
       - name: Install Playwright Chromium
         run: |
           npm install --no-save playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Cold boot Dithertizer disk and run passive STEP TRACE observer
+      - name: Run production readVideoSync through real DSCAN machine code
         shell: bash
         run: |
-          cat > /tmp/dscan-stock-coldboot.js <<'NODE'
+          cat > /tmp/dscan-stock-observer.js <<'NODE'
           'use strict';
           const {chromium}=require('playwright');
           const baseURL='http://127.0.0.1:8000';
           const CHUNK_TICKS=250000;
-          const MAX_CHUNKS=160;
-
-          function fmtHex(v,n=4){return '$'+(Number(v)||0).toString(16).toUpperCase().padStart(n,'0');}
+          const MAX_CHUNKS=80;
+          const FRAME=17030;
 
           (async()=>{
             const browser=await chromium.launch({headless:true,args:['--no-sandbox','--disable-dev-shm-usage','--disable-gpu']});
@@ -43,63 +76,65 @@ jobs:
             await page.goto(baseURL+'/index.html?mute=1',{waitUntil:'load',timeout:120000});
             await page.waitForFunction(()=>
               typeof apple2plus==='object' && apple2plus &&
-              typeof loadDisk_fromBuffer==='function' &&
               typeof DBG_STEPTRACE_SCENARIO==='object' && DBG_STEPTRACE_SCENARIO &&
               oEMU && oEMU.component && oEMU.component.CPU && oEMU.component.CPU.Apple2Debug &&
               document.getElementById('cpuDbg_breakCond'),
               {timeout:120000});
 
+            // Detach the wall-clock owner and bring ROM/Applesoft to an input prompt.
+            await page.evaluate(()=>{
+              if(typeof appleIntervalHandle!=='undefined' && appleIntervalHandle){clearInterval(appleIntervalHandle);appleIntervalHandle=null;}
+              apple2plus.reset();
+              apple2plus.runLiveCpuTicks(500000,{videoScale:0.02});
+            });
+
             const setup=await page.evaluate(async()=>{
-              if(typeof appleIntervalHandle!=='undefined' && appleIntervalHandle)
-              {
-                clearInterval(appleIntervalHandle);
-                appleIntervalHandle=null;
+              const hw=apple2plus.hwObj();
+              const dither=hw.io.SLOT2obj(8);
+              if(!dither || !dither.id || dither.id.PCODE!=='DITHER') throw new Error('DITHER not present at SLOT2obj(8)');
+              if(typeof dither.readVideoSync!=='function') throw new Error('production readVideoSync unavailable');
+
+              const response=await fetch('/tests/_dscan42_payload.bin');
+              if(!response.ok) throw new Error('DSCAN payload fetch failed '+response.status);
+              const payload=new Uint8Array(await response.arrayBuffer());
+              if(payload.length!==1024) throw new Error('DSCAN payload length '+payload.length);
+              for(let i=0;i<payload.length;i++){
+                const a=0x1C00+i, wr=hw.WR[hw.lineDecode(a)];
+                if(typeof wr!=='function') throw new Error('RAM not writable at '+a.toString(16));
+                wr(a,payload[i]);
               }
 
-              const response=await fetch('/disks/GFX/Computer%20Stations%20Dithertizer%20II%20Driver%20Software%20for%20II%20II%2B.dsk');
-              if(!response.ok) throw new Error('Dithertizer disk fetch failed: '+response.status);
-              const bytes=new Uint8Array(await response.arrayBuffer());
-              const diskSlot=EMU_defaultDiskIISlot();
-              if(!loadDisk_fromBuffer(bytes,diskSlot,'D1','Computer Stations Dithertizer II Driver Software for II II+.dsk'))
-                throw new Error('Dithertizer disk mount failed');
-
-              const hw=apple2plus.hwObj();
-              const softHigh=hw.safe_read(0x03F3);
-              const validPowerup=(softHigh^0xA5)&0xFF;
-              const forcedPowerup=(validPowerup^0xFF)&0xFF;
-              hw.WR[hw.lineDecode(0x03F4)](0x03F4,forcedPowerup);
-              apple2plus.reset();
-
-              const dither=hw.io.SLOT2obj(8);
-              if(!dither || !dither.id || dither.id.PCODE!=='DITHER')
-                throw new Error('DITHER not present at SLOT2obj(8)');
               globalThis.__dscanProductionReadVideoSync=dither.readVideoSync;
-              globalThis.__dscanPassive={reached1D37:false,first1D23:null,hits1D23:0,rows:[],reason:'running'};
+              globalThis.__dscanPassive={reached1D37:false,hits1D23:0,rows:[],reason:'running'};
 
               const dbg=oEMU.component.CPU.Apple2Debug;
               const cond=document.getElementById('cpuDbg_breakCond');
               cond.value='PC==$1D23 || PC==$1D2D || PC==$1D35 || PC==$1D37';
-              const st=dbg.liveState();
+              let st=dbg.liveState();
               if(st.conditionalBreakpoint.armed) dbg.toggleConditionalBreakpointFromInput();
               if(!dbg.liveState().conditionalBreakpoint.armed) dbg.toggleConditionalBreakpointFromInput();
 
               DBG_STEPTRACE_SCENARIO.arm(`
-                const FRAME=17030;
                 onBreakpoint(function(bp) {
                   const s=globalThis.__dscanPassive;
                   const ticks=Number(oEMU.component.IO.self.getClockTicks())||0;
-                  const phase=((ticks%FRAME)+FRAME)%FRAME;
+                  const phase=((ticks%${FRAME})+${FRAME})%${FRAME};
                   const row={PC:bp.PC&0xFFFF,INS:Number(bp.INS)||0,A:bp.A&0xFF,D7:(bp.A&0x80)?1:0,clockTicks:Math.trunc(ticks),phase:Math.trunc(phase)};
                   s.rows.push(row);
-                  if(row.PC===0x1D23){s.hits1D23++;if(s.first1D23===null)s.first1D23=row.INS;}
+                  if(row.PC===0x1D23)s.hits1D23++;
                   if(row.PC===0x1D37){s.reached1D37=true;s.reason='reached_$1D37';haltAtBreakpoint();}
                 });
               `);
 
+              const pcBefore=apple2plus.cpuObj().watch().pc&0xFFFF;
+              const keys=apple2plus.keysObj();
+              if(!keys || typeof keys.receiveText!=='function') throw new Error('A2KBD receiveText unavailable');
+              keys.receiveText({data:'CALL 7168\n'});
+
               return {
-                diskBytes:bytes.length,
-                diskSlot,
-                coldReset:{softHigh,validPowerup,forcedPowerup},
+                pcBefore,
+                payloadBytes:payload.length,
+                pcode:dither.id.PCODE,
                 breakArmed:dbg.liveState().conditionalBreakpoint.armed,
                 scenarioMode:DBG_STEPTRACE_SCENARIO.mode(),
                 readVideoSyncUntouched:dither.readVideoSync===globalThis.__dscanProductionReadVideoSync
@@ -108,8 +143,7 @@ jobs:
             console.log('DSCAN_PASSIVE_SETUP',JSON.stringify(setup));
 
             let state=null;
-            for(let i=0;i<MAX_CHUNKS;i++)
-            {
+            for(let i=0;i<MAX_CHUNKS;i++){
               await page.evaluate(t=>apple2plus.runLiveCpuTicks(t,{videoScale:0.02}),CHUNK_TICKS);
               state=await page.evaluate(()=>{
                 const s=globalThis.__dscanPassive;
@@ -117,49 +151,27 @@ jobs:
                 return {...s,pc:apple2plus.cpuObj().watch().pc&0xFFFF,readVideoSyncUntouched:d.readVideoSync===globalThis.__dscanProductionReadVideoSync};
               });
               if(state.reached1D37) break;
-              if(state.rows.length>=2000 || (state.first1D23!==null && i>=40))
-              {
-                state.reason='no_$1D37_within_observation_window';
-                break;
-              }
+              if(state.rows.length>=2000) {state.reason='no_$1D37_after_2000_break_hits';break;}
             }
 
-            const screen=await page.evaluate(()=>{
-              const hw=apple2plus.hwObj();
-              const lines=[];
-              for(let r=0;r<24;r++){
-                const base=0x400+((r&7)<<7)+((r>>3)*40);
-                let line='';
-                for(let c=0;c<40;c++){
-                  let b=hw.safe_read(base+c)&0x7F;
-                  line+=b>=0x20&&b<0x7F?String.fromCharCode(b):' ';
-                }
-                lines.push(line.replace(/\s+$/,''));
-              }
-              return lines.join('\n');
-            });
-            console.log('--- APPLE II SCREEN ---\n'+screen+'\n--- END SCREEN ---');
-            console.log('DSCAN_PASSIVE_ROWS',JSON.stringify((state.rows||[]).slice(0,120)));
+            console.log('DSCAN_PASSIVE_ROWS',JSON.stringify((state.rows||[]).slice(0,100)));
             console.log('DSCAN_PASSIVE_RESULT',JSON.stringify({
               reached1D37:state.reached1D37,
               reason:state.reason,
               hits1D23:state.hits1D23,
               rows:state.rows.length,
-              pc:fmtHex(state.pc),
+              pc:'$'+state.pc.toString(16).toUpperCase().padStart(4,'0'),
               readVideoSyncUntouched:state.readVideoSyncUntouched
             }));
 
             await browser.close();
             if(!setup.breakArmed || setup.scenarioMode!=='run' || !setup.readVideoSyncUntouched) process.exit(3);
             process.exit(state.reached1D37 ? 0 : 2);
-          })().catch(err=>{
-            console.error('DSCAN_PASSIVE_ERROR',err && err.stack ? err.stack : String(err));
-            process.exit(10);
-          });
+          })().catch(err=>{console.error('DSCAN_PASSIVE_ERROR',err&&err.stack?err.stack:String(err));process.exit(10);});
           NODE
 
           python3 -m http.server 8000 >/tmp/retroapple-http.log 2>&1 &
           server=$!
           trap 'kill $server || true' EXIT
           sleep 1
-          NODE_PATH="$PWD/node_modules" node /tmp/dscan-stock-coldboot.js
+          NODE_PATH="$PWD/node_modules" node /tmp/dscan-stock-observer.js
