@@ -63,6 +63,14 @@ jobs:
           trap 'kill $server || true' EXIT
           sleep 1
           NODE_PATH="$PWD/node_modules" node tests/dithertizer_c0f8_write_trace_browser.js
+      - name: Run four-capture fallback STEP TRACE
+        shell: bash
+        run: |
+          python3 -m http.server 8000 >/tmp/retroapple-http-fallback.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          NODE_PATH="$PWD/node_modules" node tests/dithertizer_fallback_steptrace_browser.js
       - name: Upload C0F8 write trace
         if: always()
         uses: actions/upload-artifact@v4
