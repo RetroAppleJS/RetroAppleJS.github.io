@@ -36,3 +36,4 @@ jobs:
           git add res/EMU_CARD_dithertizer.js
           git commit -m 'fix: repair Dithertizer typeof guards'
           git push origin HEAD:fix/dithertizer-no-camera-hgr-fallback
+      # one-shot workflow; remove after repair
