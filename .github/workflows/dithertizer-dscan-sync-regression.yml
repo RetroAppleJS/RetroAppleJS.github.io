@@ -1,0 +1,45 @@
+name: Dithertizer DSCAN sync regression
+
+permissions:
+  contents: read
+
+on:
+  push:
+    paths:
+      - "res/EMU_CARD_dithertizer.js"
+      - "res/DBG_steptrace_scenario.js"
+      - "res/EMU_cpu6502.js"
+      - "tests/dithertizer_dscan_sync_browser.js"
+      - "disks/GFX/Computer Stations Dithertizer II Driver Software for II II+.dsk"
+      - ".github/workflows/dithertizer-dscan-sync-regression.yml"
+  pull_request:
+    paths:
+      - "res/EMU_CARD_dithertizer.js"
+      - "res/DBG_steptrace_scenario.js"
+      - "res/EMU_cpu6502.js"
+      - "tests/dithertizer_dscan_sync_browser.js"
+      - "disks/GFX/Computer Stations Dithertizer II Driver Software for II II+.dsk"
+      - ".github/workflows/dithertizer-dscan-sync-regression.yml"
+  workflow_dispatch:
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Run real DSCAN sync regression
+        shell: bash
+        run: |
+          python3 -m http.server 8000 >/tmp/retroapple-http.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 1
+          NODE_PATH="$PWD/node_modules" node tests/dithertizer_dscan_sync_browser.js

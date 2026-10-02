@@ -50,7 +50,8 @@ test('DSCAN sync trace records only D7 transitions in $1D23-$1D35 with ticks, ph
 
     setPC(0x1D35);
     card.readSlotIO(0x00,ctxAt(96));      // LOW: transition, 32 cycles
-    card.readSlotIO(0x00,ctxAt(102));     // HIGH: transition, 6 cycles
+    card.readSlotIO(0x00,ctxAt(102));     // LOW: remains visible to 7-cycle DSCAN polling
+    card.readSlotIO(0x00,ctxAt(103));     // HIGH: transition, 7 cycles
 
     setPC(0x2000);
     card.readSlotIO(0x00,ctxAt(17030));   // outside DSCAN range: ignored
@@ -58,8 +59,8 @@ test('DSCAN sync trace records only D7 transitions in $1D23-$1D35 with ticks, ph
     const trace=card.getSyncTrace();
     assert.equal(trace.length,4);
     assert.deepEqual(Array.from(trace,e=>e.d7),[0,1,0,1]);
-    assert.deepEqual(Array.from(trace,e=>e.phase),[0,64,96,102]);
-    assert.deepEqual(Array.from(trace,e=>e.deltaTicks),[null,64,32,6]);
+    assert.deepEqual(Array.from(trace,e=>e.phase),[0,64,96,103]);
+    assert.deepEqual(Array.from(trace,e=>e.deltaTicks),[null,64,32,7]);
     assert.deepEqual(Array.from(trace,e=>e.pc),[0x1D2D,0x1D2D,0x1D35,0x1D35]);
     assert.ok(Array.from(trace).every(e=>Number.isInteger(e.clockTicks)));
 
