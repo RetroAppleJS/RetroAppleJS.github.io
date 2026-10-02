@@ -108,6 +108,11 @@ function extractDSCAN42()
                 write(address,payload[i]);
             }
 
+            // DSCAN expects its caller to supply the two-pixel phase step in $00.
+            const zeroWrite=hw.WR[hw.lineDecode(0x0000)];
+            if(typeof zeroWrite!=='function') throw new Error('zero page not writable');
+            zeroWrite(0x0000,0x02);
+
             globalThis.__fallbackTrace={captures:[],merges:[],done:false};
 
             const dbg=oEMU.component.CPU.Apple2Debug;
