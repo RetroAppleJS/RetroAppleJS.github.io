@@ -31375,11 +31375,18 @@ function DithertizerII()
     var hostCameraFrame=new Uint8Array(280*192);
     var hostCameraAdapter=null;
     var convertHGRAdapterLoadPromise=null;
+    var syncTraceEnabled=false;
+    var syncTraceEntries=[];
+    var syncTraceLastD7=null;
+    var syncTraceLastTick=null;
 
     const HGR_WIDTH=280;
     const HGR_HEIGHT=192;
     const HGR_BYTES_PER_LINE=40;
     const APPLE_FRAME_CYCLES=17030;
+    const DSCAN_TRACE_PC_MIN=0x1D23;
+    const DSCAN_TRACE_PC_MAX=0x1D35;
+    const SYNC_TRACE_LIMIT=512;
     const HOST_CAMERA_SEED=0x12345678;
     const PALETTE_LUMA=new Uint8Array([0,156,145,255,0,145,156,255]);
 
@@ -31453,9 +31460,65 @@ function DithertizerII()
         return 0;
     }
 
+    function syncPhase(ticks)
+    {
+        return ((Number(ticks)||0)%APPLE_FRAME_CYCLES+APPLE_FRAME_CYCLES)%APPLE_FRAME_CYCLES;
+    }
+
+    function currentPC()
+    {
+        try
+        {
+            if(typeof(apple2plus)!=="undefined" && apple2plus && typeof(apple2plus.cpuObj)==="function")
+            {
+                var cpu=apple2plus.cpuObj();
+                if(cpu && typeof(cpu.watch)==="function")
+                {
+                    var state=cpu.watch();
+                    if(state && Number.isFinite(Number(state.pc))) return Number(state.pc)&0xFFFF;
+                }
+            }
+        }
+        catch(e){}
+        return null;
+    }
+
+    function traceSyncD7(ticks,d8)
+    {
+        if(!syncTraceEnabled || syncTraceEntries.length>=SYNC_TRACE_LIMIT) return;
+
+        var pc=currentPC();
+        if(pc===null || pc<DSCAN_TRACE_PC_MIN || pc>DSCAN_TRACE_PC_MAX) return;
+
+        var d7=(Number(d8)&0x80) ? 1 : 0;
+        if(syncTraceLastD7!==null && d7===syncTraceLastD7) return;
+
+        var now=Math.trunc(Number(ticks)||0);
+        var entry={
+             "index":syncTraceEntries.length
+            ,"pc":pc
+            ,"clockTicks":now
+            ,"phase":syncPhase(now)
+            ,"d7":d7
+            ,"deltaTicks":syncTraceLastTick===null ? null : now-syncTraceLastTick
+        };
+        syncTraceEntries.push(entry);
+        syncTraceLastD7=d7;
+        syncTraceLastTick=now;
+
+        if(typeof(console)!=="undefined" && console && typeof(console.log)==="function")
+        {
+            var pcHex=pc.toString(16).toUpperCase().padStart(4,"0");
+            var width=entry.deltaTicks===null ? "start" : String(entry.deltaTicks)+" cycles";
+            console.log("Dithertizer DSCAN sync transition #"+entry.index+
+                " PC=$"+pcHex+" ticks="+entry.clockTicks+" phase="+entry.phase+
+                " D7="+entry.d7+" width="+width);
+        }
+    }
+
     function syncD7(ticks)
     {
-        var phase=((Number(ticks)||0)%APPLE_FRAME_CYCLES+APPLE_FRAME_CYCLES)%APPLE_FRAME_CYCLES;
+        var phase=syncPhase(ticks);
         if(phase < 64) return 0x00;
         if(phase < 96) return 0x80;
         if(phase < 102) return 0x00;
@@ -31491,7 +31554,44 @@ function DithertizerII()
     };
 
     this.getCameraSource=function(){return cameraSource;};
-    this.readVideoSync=function(ctx){return syncD7(clockTicks(ctx));};
+
+    this.setSyncTrace=function(enabled)
+    {
+        syncTraceEnabled=!!enabled;
+        syncTraceEntries=[];
+        syncTraceLastD7=null;
+        syncTraceLastTick=null;
+        if(syncTraceEnabled && typeof(console)!=="undefined" && console && typeof(console.info)==="function")
+            console.info("Dithertizer DSCAN sync trace enabled for PC $1D23-$1D35");
+        return syncTraceEnabled;
+    };
+
+    this.clearSyncTrace=function()
+    {
+        syncTraceEntries=[];
+        syncTraceLastD7=null;
+        syncTraceLastTick=null;
+    };
+
+    this.getSyncTrace=function(){return syncTraceEntries.slice();};
+    this.dumpSyncTrace=function()
+    {
+        var out=card.getSyncTrace();
+        if(typeof(console)!=="undefined" && console)
+        {
+            if(typeof(console.table)==="function") console.table(out);
+            else if(typeof(console.log)==="function") console.log(out);
+        }
+        return out;
+    };
+
+    this.readVideoSync=function(ctx)
+    {
+        var ticks=clockTicks(ctx);
+        var d8=syncD7(ticks);
+        traceSyncD7(ticks,d8);
+        return d8;
+    };
     this.stopCapture=function(){card.state.captureEnabled=false;};
 
     this.startCapture=function(ctx)
