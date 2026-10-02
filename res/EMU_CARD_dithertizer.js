@@ -105,7 +105,7 @@ function DithertizerII()
         if(ctx && ctx.io && typeof(ctx.io.getClockTicks)==="function")
             return Number(ctx.io.getClockTicks()) || 0;
 
-        if(typeof(oEMU)!==="undefined" && oEMU && oEMU.component && oEMU.component.IO &&
+        if(typeof(oEMU)!=="undefined" && oEMU && oEMU.component && oEMU.component.IO &&
            oEMU.component.IO.self && typeof(oEMU.component.IO.self.getClockTicks)==="function")
             return Number(oEMU.component.IO.self.getClockTicks()) || 0;
 
@@ -121,7 +121,7 @@ function DithertizerII()
     {
         try
         {
-            if(typeof(apple2plus)!==="undefined" && apple2plus && typeof(apple2plus.cpuObj)==="function")
+            if(typeof(apple2plus)!=="undefined" && apple2plus && typeof(apple2plus.cpuObj)==="function")
             {
                 var cpu=apple2plus.cpuObj();
                 if(cpu && typeof(cpu.watch)==="function")
@@ -158,7 +158,7 @@ function DithertizerII()
         syncTraceLastD7=d7;
         syncTraceLastTick=now;
 
-        if(typeof(console)!==="undefined" && console && typeof(console.log)==="function")
+        if(typeof(console)!=="undefined" && console && typeof(console.log)==="function")
         {
             var pcHex=pc.toString(16).toUpperCase().padStart(4,"0");
             var width=entry.deltaTicks===null ? "start" : String(entry.deltaTicks)+" cycles";
@@ -180,7 +180,7 @@ function DithertizerII()
     function normalizeSourceFrame(frame)
     {
         if(frame instanceof ArrayBuffer) frame=new Uint8Array(frame);
-        else if(typeof(ArrayBuffer)!==="undefined" && typeof(ArrayBuffer.isView)==="function" && ArrayBuffer.isView(frame))
+        else if(typeof(ArrayBuffer)!=="undefined" && typeof(ArrayBuffer.isView)==="function" && ArrayBuffer.isView(frame))
             frame=new Uint8Array(frame.buffer,frame.byteOffset,frame.byteLength);
 
         if(!frame || typeof(frame.length)!==="number" || frame.length < HGR_WIDTH*HGR_HEIGHT)
@@ -213,7 +213,7 @@ function DithertizerII()
         syncTraceEntries=[];
         syncTraceLastD7=null;
         syncTraceLastTick=null;
-        if(syncTraceEnabled && typeof(console)!==="undefined" && console && typeof(console.info)==="function")
+        if(syncTraceEnabled && typeof(console)!=="undefined" && console && typeof(console.info)==="function")
             console.info("Dithertizer DSCAN sync trace enabled for PC $1D23-$1D35");
         return syncTraceEnabled;
     };
@@ -229,7 +229,7 @@ function DithertizerII()
     this.dumpSyncTrace=function()
     {
         var out=card.getSyncTrace();
-        if(typeof(console)!==="undefined" && console)
+        if(typeof(console)!=="undefined" && console)
         {
             if(typeof(console.table)==="function") console.table(out);
             else if(typeof(console.log)==="function") console.log(out);
@@ -488,7 +488,7 @@ function DithertizerII()
             if(!hostCameraStream || epoch!==hostCameraEpoch) return;
             Promise.resolve(captureHostCameraFrame(epoch)).catch(function(error)
             {
-                if(typeof(console)!==="undefined" && console && typeof(console.warn)==="function")
+                if(typeof(console)!=="undefined" && console && typeof(console.warn)==="function")
                     console.warn("Dithertizer ConvertHGR camera frame failed",error);
             }).then(function()
             {
