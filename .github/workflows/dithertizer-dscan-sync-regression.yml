@@ -9,6 +9,8 @@ on:
       - "res/EMU_CARD_dithertizer.js"
       - "res/DBG_steptrace_scenario.js"
       - "res/EMU_cpu6502.js"
+      - "tests/dithertizer_foundation.test.js"
+      - "tests/dithertizer_camera_toggle.test.js"
       - "tests/dithertizer_dscan_sync_browser.js"
       - "disks/GFX/Computer Stations Dithertizer II Driver Software for II II+.dsk"
       - ".github/workflows/dithertizer-dscan-sync-regression.yml"
@@ -17,6 +19,8 @@ on:
       - "res/EMU_CARD_dithertizer.js"
       - "res/DBG_steptrace_scenario.js"
       - "res/EMU_cpu6502.js"
+      - "tests/dithertizer_foundation.test.js"
+      - "tests/dithertizer_camera_toggle.test.js"
       - "tests/dithertizer_dscan_sync_browser.js"
       - "disks/GFX/Computer Stations Dithertizer II Driver Software for II II+.dsk"
       - ".github/workflows/dithertizer-dscan-sync-regression.yml"
@@ -31,6 +35,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - name: Run Dithertizer unit regressions
+        run: node --test tests/dithertizer_foundation.test.js tests/dithertizer_camera_toggle.test.js
       - name: Install Playwright Chromium
         run: |
           npm install --no-save playwright@1.55.0
