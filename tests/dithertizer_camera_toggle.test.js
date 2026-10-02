@@ -27,6 +27,28 @@ function assertCameraStatus(html,state)
     assert.match(html,new RegExp('id="dither_ctrl_S7_camera_status"[^>]*>'+state+'<'));
 }
 
+function makeCameraDOM()
+{
+    const icon={style:{color:''}};
+    const button={
+        attrs:{},
+        title:'',
+        setAttribute(name,value){this.attrs[name]=String(value);},
+        querySelector(selector){return selector==='i' ? icon : null;}
+    };
+    const status={textContent:'OFF'};
+    const nodes={
+        'dither_ctrl_S7_camera':button,
+        'dither_ctrl_S7_camera_status':status
+    };
+    return {
+        document:{getElementById(id){return nodes[id] || null;}},
+        button,
+        icon,
+        status
+    };
+}
+
 test('IMG row contains one compact camera pictogram toggle with OFF status beside it',()=>{
     const DithertizerII=loadCard();
     const html=render(new DithertizerII());
@@ -83,24 +105,31 @@ test('camera toggle fails closed when getUserMedia is unavailable or rejected',a
     }
 });
 
-test('reset and restart stop all host-camera tracks and restore OFF status',async()=>{
+test('reset and restart stop all host-camera tracks and update the rendered camera status to OFF',async()=>{
     let stopped=0;
     const makeStream=()=>({getTracks(){return [{stop(){stopped++;}},{stop(){stopped++;}}];}});
     let current=makeStream();
     const navigator={mediaDevices:{async getUserMedia(){return current;}}};
-    const DithertizerII=loadCard({navigator});
+    const dom=makeCameraDOM();
+    const DithertizerII=loadCard({navigator,document:dom.document});
     const card=new DithertizerII();
 
     await card.deviceToolCameraToggle('dither_ctrl_S7');
+    assert.equal(dom.button.attrs['aria-pressed'],'true');
+    assert.equal(dom.status.textContent,'ON');
     card.reset();
     assert.equal(stopped,2);
-    assert.match(render(card),/id="dither_ctrl_S7_camera"[^>]*aria-pressed="false"/);
-    assertCameraStatus(render(card),'OFF');
+    assert.equal(dom.button.attrs['aria-pressed'],'false');
+    assert.equal(dom.status.textContent,'OFF');
+    assert.equal(dom.icon.style.color,'');
 
     current=makeStream();
     await card.deviceToolCameraToggle('dither_ctrl_S7');
+    assert.equal(dom.button.attrs['aria-pressed'],'true');
+    assert.equal(dom.status.textContent,'ON');
     card.restart();
     assert.equal(stopped,4);
-    assert.match(render(card),/id="dither_ctrl_S7_camera"[^>]*aria-pressed="false"/);
-    assertCameraStatus(render(card),'OFF');
+    assert.equal(dom.button.attrs['aria-pressed'],'false');
+    assert.equal(dom.status.textContent,'OFF');
+    assert.equal(dom.icon.style.color,'');
 });

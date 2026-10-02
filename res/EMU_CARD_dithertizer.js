@@ -25,6 +25,7 @@ function DithertizerII()
     var hostCameraEpoch=0;
     var hostCameraFrame=new Uint8Array(280*192);
     var hostCameraAdapter=null;
+    var hostCameraControlID=null;
     var convertHGRAdapterLoadPromise=null;
     var syncTraceEnabled=false;
     var syncTraceEntries=[];
@@ -253,9 +254,21 @@ function DithertizerII()
         var hw=resolveHardware(ctx);
         if(!hw) return false;
 
+        var pageBase=card.state.page2 ? 0x4000 : 0x2000;
+
+        if(!cameraSource && !hostCameraStream)
+        {
+            for(var fy=0;fy<HGR_HEIGHT;fy++)
+            {
+                var fline=hgrLineAddress(pageBase,fy);
+                for(var fxb=0;fxb<HGR_BYTES_PER_LINE;fxb++)
+                    hw.write(fline+fxb,((fxb+fy)&1) ? 0x7F : 0x00);
+            }
+            return true;
+        }
+
         var frame=sourceFrame();
         var threshold=card.state.threshold & 0xFF;
-        var pageBase=card.state.page2 ? 0x4000 : 0x2000;
 
         for(var y=0;y<HGR_HEIGHT;y++)
         {
@@ -557,6 +570,7 @@ function DithertizerII()
     this.deviceToolCameraToggle=async function(controlID)
     {
         controlID=String(controlID || "");
+        hostCameraControlID=controlID;
         if(hostCameraStream)
         {
             stopHostCamera();
@@ -690,6 +704,7 @@ function DithertizerII()
     this.reset=function()
     {
         stopHostCamera();
+        if(hostCameraControlID) updateCameraButton(hostCameraControlID);
         card.state.threshold=0;
         card.state.captureEnabled=false;
         card.state.page2=false;
