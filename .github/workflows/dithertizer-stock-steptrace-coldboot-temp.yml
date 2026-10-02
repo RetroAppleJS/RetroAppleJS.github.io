@@ -88,9 +88,11 @@ jobs:
 
             const setup=await page.evaluate(async()=>{
               const hw=apple2plus.hwObj();
+              const cpu=apple2plus.cpuObj();
               const dither=hw.io.SLOT2obj(8);
               if(!dither || !dither.id || dither.id.PCODE!=='DITHER') throw new Error('DITHER not present at SLOT2obj(8)');
               if(typeof dither.readVideoSync!=='function') throw new Error('production readVideoSync unavailable');
+              if(!cpu || typeof cpu.setState!=='function') throw new Error('Cpu6502.setState unavailable');
 
               const response=await fetch('/tests/_dscan42_payload.bin');
               if(!response.ok) throw new Error('DSCAN payload fetch failed '+response.status);
@@ -125,13 +127,13 @@ jobs:
                 });
               `);
 
-              const pcBefore=apple2plus.cpuObj().watch().pc&0xFFFF;
-              const keys=apple2plus.keysObj();
-              if(!keys || typeof keys.receiveText!=='function') throw new Error('A2KBD receiveText unavailable');
-              keys.receiveText({data:'CALL 7168\n'});
+              const before=cpu.watch();
+              cpu.setState({pc:0x1C00});
+              const after=cpu.watch();
 
               return {
-                pcBefore,
+                pcBefore:before.pc&0xFFFF,
+                pcAfter:after.pc&0xFFFF,
                 payloadBytes:payload.length,
                 pcode:dither.id.PCODE,
                 breakArmed:dbg.liveState().conditionalBreakpoint.armed,
@@ -164,7 +166,7 @@ jobs:
             }));
 
             await browser.close();
-            if(!setup.breakArmed || setup.scenarioMode!=='run' || !setup.readVideoSyncUntouched) process.exit(3);
+            if(setup.pcAfter!==0x1C00 || !setup.breakArmed || setup.scenarioMode!=='run' || !setup.readVideoSyncUntouched) process.exit(3);
             process.exit(state.reached1D37 ? 0 : 2);
           })().catch(err=>{console.error('DSCAN_PASSIVE_ERROR',err&&err.stack?err.stack:String(err));process.exit(10);});
           NODE
