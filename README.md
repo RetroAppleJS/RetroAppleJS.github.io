@@ -60,22 +60,16 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 
 Completed items remain checked; unchecked items are planned or still need further development.
 
-- [x] EMULATOR: Live system step debugger and memory capture
-- [x] EMULATOR: Paddle/mouse input capture and AppleMouse II interface emulation
-- [x] EMULATOR: Dynamic slot configuration with attached devices and ports
-- [x] EMULATOR: Disk II, 16K Language Card, Videx VideoTerm, Serial Pro, and ThunderClock Plus implementations
-- [x] EMULATOR: LIRON/SmartPort storage with UniDisk 3.5 and an emulated HD20 block device
-- [x] EMULATOR: Dithertizer II camera capture using the original DSCAN driver
 - [x] EMULATOR: Experimental DITHER2 color HGR capture
+- [ ] EMULATOR: KATAKANA apple][ J-plus keyboard & font logic
 - [ ] EMULATOR: Pasteboard macro scripting with keyboard/paddle/mouse recording, playback, and conditional stops
 - [ ] EMULATOR: Vapor-lock timing compatibility
 - [ ] EMULATOR: Switch between US and Japanese Apple II keyboard layouts
 - [ ] EMULATOR: Complete Mockingboard sound emulation and integrate Saturn RAM expansion
 - [ ] EMULATOR: Add further peripherals, including UltraTerm, No-Slot Clock, AE RamFactor, Super Serial Card, and VersaCard
-- [x] ASSEMBLER: Step Assembler and additional assembler directives
-- [x] ASSEMBLER / DEBUGGER: Symbol transfer and debugger session import/export
+- [ ] ASSEMBLER - disassembler tool
 - [x] RETRO LAB: Real-time camera processing and a configurable [ConvertHGR tool](tools/ConvertHGR.html)
-- [ ] RETRO LAB: Further improve lo-res/hi-res conversion, dithering, and color optimization
+- [ ] RETRO LAB: HGR paint tool (https://hgrtool.art/imgedit.html)
 - [ ] DOCUMENTATION: Expand the documentation and examples in [asm](asm/)
 - [ ] TOOLS: Integrate number-base conversion, binary-file conversion, and pasteboard byte-stream generation into a common popup tool
 
