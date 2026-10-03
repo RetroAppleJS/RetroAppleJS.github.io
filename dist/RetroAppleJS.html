@@ -59409,6 +59409,38 @@ function Apple2Plus(context)
 
             }
 
+            function EMU_toggleMEMMonitoring()
+            {
+                if(typeof(apple2plus)!="object" || !apple2plus) return false;
+
+                var hw = apple2plus.hwObj();
+                var enabled = oCOM.toggleRefreshEvent("MEM_monitoring");
+                hw.enable_MEM_monitoring(enabled);
+
+                for(var slotN in hw.io.slots)
+                {
+                    var peripheral = hw.io.SLOT2obj(slotN);
+                    if(!peripheral
+                        || typeof(peripheral.enable_MEM_monitoring)!="function")
+                        continue;
+
+                    peripheral.enable_MEM_monitoring(enabled);
+
+                    var eventID = peripheral.MEM_refresh_id
+                        || (peripheral.id.PCODE==="MS16K"
+                            ? "MEM_monitoring_MS16K" : null);
+
+                    if(eventID) oCOM.enableRefreshEvent(eventID,enabled);
+                }
+
+                var icon = document.getElementById("MEM_monitoring");
+                if(icon)
+                    icon.className = "fa "
+                        +(enabled ? "fa-stop-circle" : "fa-sync-alt");
+
+                return enabled;
+            }
+
             function isHidden(el)
             {
               var style = window.getComputedStyle(el);
