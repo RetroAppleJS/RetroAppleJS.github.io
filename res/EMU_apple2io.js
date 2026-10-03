@@ -3880,7 +3880,7 @@ function mergeActionMap(dst,src)
         document.getElementById(anchorId).style = "background:rgba(255, 255, 0, 0.5); border-radius:10px"
         
         var close   = "<button class='appbut' style='float:right' onclick=\"oCOM.POPUP.toggle('" + popupId + "');document.getElementById('"+anchorId+"').style=''\">x</button>";
-        var html = "";
+        var html = "<div class='peripheral-add-toolbox'>";
         
         html += "<div style=\"float:left\">ADD PERIPHERAL</div>";
         html += close;
@@ -3911,7 +3911,7 @@ function mergeActionMap(dst,src)
         var names = io.scanPeripheralContainers();
         var pcodes = Object.keys(names).sort();
         
-        html += "<div style='display:flex;flex-wrap:wrap;gap:2px'>";
+        html += "<div class='peripheral-add-list'>";
 
         for(var i=0;i<pcodes.length;i++)        
         {
@@ -3945,6 +3945,7 @@ function mergeActionMap(dst,src)
                 +oCOM.escapeHTML(id.PCODE)
                 +"</div>";
         }
+        html += "</div>";
         html += "</div>";
 
         
