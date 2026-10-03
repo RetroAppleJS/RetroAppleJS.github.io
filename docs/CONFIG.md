@@ -237,7 +237,8 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 |[PCODE]| NAME                                   | IOrange\*                           | ROMrange\*      | LROMrange | SLOTrange    | SYScode      | Manuals       |
 | :-----: | :----------------------------------- | :---------------------------------- | :-------------- | :-------- | :------------ |:----------- |:------------- |
-| MS16K   | Microsoft 16K Language card          | $C08<sub>n</sub>0,$C08<sub>n</sub>F |                 |           | 0             | A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf) | 
+| MS16K   | Microsoft 16K Language card          | $C08<sub>n</sub>0,$C08<sub>n</sub>F |                 |           | 0             | A2,A2P,A2E  
+| [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf) | 
 | TCLKP   | Thunderclock Plus | $C08<sub>n</sub>0,$C08<sub>n</sub>F | $C0<sub>n</sub>00,$C0<sub>n</sub>FF | | 1*,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/clocks/ThunderClock%20Plus.pdf)|
 | SSC     | Apple Super Serial Card | $C08<sub>n</sub>0,$C08<sub>n</sub>F | $C0<sub>n</sub>00,$C0<sub>n</sub>FF | | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/io/super_serial_card/Apple%20II%20Super%20Serial%20Card%20User%27s%20Manual.pdf)|
 | LIRON  | Apple 3.5 Floppy Disk Drive Interface Card | $C08<sub>n</sub>0,$C08<sub>n</sub>F | $C0<sub>n</sub>00,$C0<sub>n</sub>FF | | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/disks/Apple%20II%203.5%20Disk%20Controller%20Card%20Owner%27s%20Guide.pdf)|
@@ -264,6 +265,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 | :-----: | :----------------------------------- | :----- | :----- | :------ | :----------- |:------------- |:----------- | :------------ |
 | A2BO    | Motherboard peripheral               | X      |        |         |              | H*            | A2,A2P,A2E  |               | 
 | MS16K   | Microsoft 16K Language card          |        | X      |         |              | 0*            | A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf) | 
+| SATURN   | Saturn RAM card                     |        | X      | X       | X            | 0,1,2,3,4,5,6,7 | A2,A2P,A2E  | [user_manual](http://www.applelogic.org/files/SATURN128MAN.pdf) | 
 | TCLKP  | Thunderclock Plus  |        | X      | X       | X             | 1,2,3,4*,5,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/clocks/ThunderClock%20Plus.pdf)|
 | AMOUSE  | AppleMouse II Interface              |        | X      | X       |              | 1,2,3,4,5,6,7| A2,A2P,A2E  | [user_manual](https://github.com/freitz85/AppleIIMouse/blob/master/AppleMouse%20II%20User's%20Manual.pdf)|
 | LIRON  | Apple 3.5 Floppy Disk Drive Interface Card  |        | X      | X       | X             | 1,2,3,4,5*,6,7| A2,A2P,A2E  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/disks/Apple%20II%203.5%20Disk%20Controller%20Card%20Owner%27s%20Guide.pdf)|
