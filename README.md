@@ -71,9 +71,12 @@ Completed items remain checked; unchecked items are planned or still need furthe
 - [ ] EMULATOR: LIRON HD20 & UNIDISK - track-by-track compression/decompression (saving browser RAM)
 - [ ] EMULATOR: HGR/HGR2/GR screen capture (.bin / .png / .animgif with timer or variable interval stopframe)
 - [ ] EMULATOR: VIDEO vaporlock compatibility (detecting vertical blank)
+- [ ] EMULATOR: SerialPro terminal emulator - generic script runner (replacing GPT8 and GPT16 buttons)
 - [ ] ASSEMBLER - disassembler tool
 - [x] RETRO LAB: Real-time camera processing and a configurable [ConvertHGR tool](tools/ConvertHGR.html)
 - [ ] RETRO LAB: HGR paint tool (https://hgrtool.art/imgedit.html)
+- [ ] RETRO LAB: Mockinboard PoC & C64 SID song to mockingboard exporter
+- [ ] ASSEMBLER: Bomberman game (using the Mockingboard card)
 - [ ] DOCUMENTATION: Expand the documentation and examples in [asm](asm/)
 - [ ] TOOLS: Integrate number-base conversion, binary-file conversion, and pasteboard byte-stream generation into a common popup tool
 
