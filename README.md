@@ -69,6 +69,7 @@ Completed items remain checked; unchecked items are planned or still need furthe
 - [ ] EMULATOR: Add further peripherals, including UltraTerm, No-Slot Clock, AE RamFactor, Super Serial Card, and VersaCard
 - [ ] EMULATOR: Extended URL instant configuration options
 - [ ] EMULATOR: LIRON HD20 & UNIDISK - track-by-track compression/decompression (saving browser RAM)
+- [ ] EMULATOR: HGR/HGR2/GR screen capture (.bin / .png / .animgif with timer or variable interval stopframe)
 - [ ] ASSEMBLER - disassembler tool
 - [x] RETRO LAB: Real-time camera processing and a configurable [ConvertHGR tool](tools/ConvertHGR.html)
 - [ ] RETRO LAB: HGR paint tool (https://hgrtool.art/imgedit.html)
