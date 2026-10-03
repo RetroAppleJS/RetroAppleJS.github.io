@@ -253,7 +253,7 @@ function SaturnRAM()
             grid += "</tr>";
         }
         grid += "</tbody></table>";
-        return "<div style='display:flex;flex-direction:column;gap:6px;align-items:flex-start'>"
+        return "<div style='display:flex;gap:6px;align-items:flex-end'>"
             +grid
             +"<div id='"+this.MEM_status_id+"' style='padding:2px;background:white;border-radius:5px'>"
             +this.MEM_status_text()+"</div></div>";
