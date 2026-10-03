@@ -636,31 +636,12 @@ function DithertizerII_2()
 
     function ensureConvertHGRAdapterCtor()
     {
-        if(typeof(DithertizerConvertHGRAdapter)==="function")
-            return Promise.resolve(DithertizerConvertHGRAdapter);
-        if(convertHGRAdapterLoadPromise) return convertHGRAdapterLoadPromise;
-        if(typeof(document)==="undefined" || !document || typeof(document.createElement)!=="function" ||
-           !document.head || typeof(document.head.appendChild)!=="function")
-            return Promise.resolve(null);
+        if(typeof(DithertizerConvertHGRAdapter)!=="function")
+            return Promise.reject(
+                new Error("DithertizerConvertHGRAdapter is not loaded")
+            );
 
-        convertHGRAdapterLoadPromise=new Promise(function(resolve,reject)
-        {
-            var script=document.createElement("script");
-            script.type="text/javascript";
-            script.src="res/EMU_DITHERTIZER_converthgr.js";
-            script.onload=function()
-            {
-                if(typeof(DithertizerConvertHGRAdapter)==="function") resolve(DithertizerConvertHGRAdapter);
-                else reject(new Error("ConvertHGR adapter did not register"));
-            };
-            script.onerror=function(){reject(new Error("Unable to load ConvertHGR adapter"));};
-            document.head.appendChild(script);
-        }).catch(function(error)
-        {
-            convertHGRAdapterLoadPromise=null;
-            throw error;
-        });
-        return convertHGRAdapterLoadPromise;
+        return Promise.resolve(DithertizerConvertHGRAdapter);
     }
 
     function stabilizeCameraPhase(page,processedRGB)
