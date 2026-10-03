@@ -867,8 +867,8 @@ table { border-collapse: collapse; position: relative;}
 
 /* ADD PERIPHERAL toolbox */
 .peripheral-add-toolbox {
-    width: 550px;           /* match SLOTS toolbox */
-    max-width: 550px;
+    width: 400px;           /* match SLOTS toolbox */
+    max-width: 400px;
 }
 
 /* row containing the peripheral choices */
