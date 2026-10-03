@@ -1,6 +1,8 @@
 # RetroAppleJS STEP TRACE — Real-Time Debugger Manual
 
-> STEP TRACE is the attached real-time debugger for the live Apple II runtime. This manual describes the current implementation: live CPU execution, mapped-bus disassembly, instruction-row navigation, PC tracking, the 48-bit instruction counter, Step In/Over/Out, conditional breakpoints, branch-line rendering, symbol loading, live CPU registers, peripheral-ROM visibility, boot logging, and optional closed-loop step skipping.
+> STEP TRACE is the attached real-time debugger for the live Apple II runtime. This manual describes live CPU execution, mapped-bus disassembly, instruction-row navigation, PC tracking, the 48-bit instruction counter, Step In/Over/Out, conditional breakpoints, branch-line rendering, symbol loading, live CPU registers, peripheral-ROM visibility, boot logging, optional closed-loop step skipping, and STEP TRACE SCENARIO for JavaScript actions at breakpoint boundaries.
+
+For a first session, start with [opening the windows](#opening-step-trace-and-step-trace-scenario), then [Run and step controls](#3-run-and-step-controls) and [BREAK IF](#8-conditional-breakpoint--break-if). For automated checks and RAM injection, see [STEP TRACE SCENARIO](#23-step-trace-scenario).
 
 ## 1. What STEP TRACE is
 
@@ -16,15 +18,50 @@ When STEP TRACE runs or steps code, it uses the live `apple2plus` CPU together w
 
 Debugger reads deliberately mask **`$C000-$C0FF`**, because that page contains Apple II soft switches and slot I/O rather than ordinary instruction memory. The peripheral and expansion ROM window **`$C100-$CFFF`** remains visible to STEP TRACE.
 
+### Opening STEP TRACE and STEP TRACE SCENARIO
+
+The **CPU speed slidebar is tricky**: the same SYSTEM slider has three modes, and the debugger entry appears only at the zero endpoint. Click the **numeric speed label** beside the slider to cycle through these scales:
+
+| SYSTEM CPU slider mode | Range | Purpose |
+| --- | --- | --- |
+| Default | **0 → 400%** | Normal speed control, in 20% steps. |
+| Fine percentage scale | **0 → 100%** | Slower execution with 5% steps. |
+| Factor scale | **x1 → x72** | Faster JavaScript execution; x72 exposes the [WASM accelerator](WASM_ACCELERATOR.md). This scale also has a leftmost zero position. |
+
+To open STEP TRACE:
+
+1. Select the **Emulator** tab and locate **SYSTEM**.
+2. Slide the **CPU speed to 0%**, all the way left, until the **bug icon** appears. In factor mode, the same zero endpoint may read `x0`.
+3. Click the **bug icon itself** to open **STEP TRACE**. Clicking the number instead changes the slider's scale.
+4. In the STEP TRACE top row, click the **`</>` code icon**, beside the main Run/Pause icon, to open the companion **STEP TRACE SCENARIO** window.
+
+![SYSTEM CPU speed at 0%, exposing the bug icon used to open STEP TRACE](assets/STEP_TRACE_MANUAL-003.png)
+
+*The bug icon is the debugger entrance. Moving the CPU slider to zero exposes it; clicking it opens the window.*
+
+Setting the SYSTEM slider to zero stops normal SYSTEM execution. Once STEP TRACE is open, choose its own **1/10/100/1000 IPS** or **Max (SYSTEM)** mode and use its Run or step controls. The lower SYSTEM **fps** slider controls emulator processing frames, not the STEP TRACE instruction rate. Selecting zero does not reset the machine or change its RAM.
+
+STEP TRACE belongs to the live **Emulator**. The separate **Debugger** tab offers a different debugging workspace; opening that tab is not how you open these live STEP TRACE windows.
+
 ---
 
 ## 2. STEP TRACE window at a glance
 
-The interface is approximately:
+The following screenshot shows STEP TRACE on the left and STEP TRACE SCENARIO on the right:
 
-![Board Installed in System: Interior View](assets/STEP_TRACE_MANUAL-001.png)
+![Live STEP TRACE listing and registers beside the STEP TRACE SCENARIO JavaScript editor, console, and RAM I/O controls](assets/STEP_TRACE_MANUAL-004.png)
 
-![Board Installed in System: Interior View](assets/STEP_TRACE_MANUAL-002.png)
+| Area | What to use it for |
+| --- | --- |
+| STEP TRACE top row | Run/Pause, `</>` scenario access, Step In/Over/Out, boot-log capture and download, and close. |
+| NAV | Browse instructions, copy the live PC/INS, toggle Track PC and the loop skipper, and select execution speed. |
+| BREAK IF | Enter and arm the condition that stops execution or invokes a scenario callback. |
+| LISTING / SYMBOLS | Configure listing columns and load source labels, EQU values, and comments. |
+| Assembly listing and bottom register row | Read live instructions, branch guides, registers, and status flags. |
+| SCENARIO header and JAVASCRIPT editor | Choose HALT/RUN action mode and define a persistent breakpoint callback. |
+| SCENARIO console and RAM I/O | Read script output, inject bytes into live RAM, and inspect memory. |
+
+In this screenshot, **SYMBOLS** reads `none`, **BREAK IF** is blank, and SCENARIO is in **HALT at breakpoint** mode. The visible script is therefore not yet registered as a RUN callback, and there is no armed condition to trigger it. The NAV PC/INS and bottom registers describe the live machine; they are not values controlled by the editor.
 
 The exact visual appearance depends on browser and platform font rendering.
 
@@ -35,6 +72,7 @@ The exact visual appearance depends on browser and platform font rendering.
 | Control | Function | Keyboard |
 |---|---|---|
 | **Run / Pause / Breakpoint stop** | Starts or pauses CPU execution in the selected STEP TRACE speed mode. The same icon also indicates a conditional-breakpoint stop. | — |
+| **`</>`** (`fa-code`) | Opens or hides STEP TRACE SCENARIO, beside the live trace window. Opening it does not arm a callback or start the CPU. | — |
 | **Step In** (`fa-sign-in-alt`) | Executes one live instruction and refreshes the debugger. | **F11** |
 | **Step Over** (`fa-paw`) | Steps over `JSR` and `BRK`; otherwise behaves like Step In. | **F10** |
 | **Step Out** (`fa-sign-out-alt`) | Runs until the current routine returns, while tracking nested calls and interrupt nesting. | **Shift+F11** |
@@ -500,6 +538,34 @@ complete
 
 ---
 
+### Start address
+
+These two address fields belong to **boot logging**, not BREAK IF. Capturing a log does not arm a breakpoint or start the CPU. Enter explicit hexadecimal addresses such as `$6000` to avoid number-format ambiguity.
+
+The first `$....` field sets an optional start address.
+
+- blank: logging can begin immediately;
+- address: logging waits until execution reaches that address.
+
+### Stop address
+
+The second `$....` field sets an optional stop address.
+
+- blank: continue until the boot-log buffer is full;
+- address: stop before execution reaches that address.
+
+Stopping logging or filling its buffer does not stop CPU execution. Capture and download are separate from the JavaScript scenario console.
+
+### Download icon
+
+Downloads the current boot log as a `.txt` file containing **Base64-encoded activity records**, not a plain-text assembly listing. The generated timestamped file name looks like:
+
+```text
+apple2_bootlog_2026-09-12T18-30-00-000Z.txt
+```
+
+---
+
 ## 12. What loaded symbols affect
 
 ### `lbl`
@@ -626,30 +692,6 @@ where:
 Each flag is followed by its current bit value.
 
 The register row is refreshed from the live CPU state even if the PC itself has not changed.
-
----
-
-### Start address
-
-The first `$....` field sets an optional start address.
-
-- blank: logging can begin immediately;
-- address: logging waits until execution reaches that address.
-
-### Stop address
-
-The second `$....` field sets an optional stop address.
-
-- blank: continue until the boot-log buffer is full;
-- address: stop before execution reaches that address.
-
-### Download icon
-
-Downloads the current boot log as a text file, using a generated timestamped file name such as:
-
-```text
-apple2_bootlog_2026-09-12T18-30-00-000Z.txt
-```
 
 ---
 
@@ -878,7 +920,13 @@ This remains armed and is evaluated at every clean instruction boundary until it
 3. choose the `.symbols.json` file;
 4. use a listing layout containing `lbl`, `opr`, and optionally `com`.
 
-### Run JavaScript at `BREAK IF` with STEP TRACE SCENARIO
+### Run JavaScript at a breakpoint
+
+Use the **`</>`** icon to open STEP TRACE SCENARIO, register a callback in **RUN script at breakpoint** mode, arm the desired **BREAK IF** condition, and start execution in STEP TRACE. The complete setup, helper API, and examples are described below.
+
+---
+
+## 23. STEP TRACE SCENARIO
 
 STEP TRACE SCENARIO is a **breakpoint callback**, not a second CPU runner. The emulator remains the sole execution owner at the speed already selected in STEP TRACE. The existing `BREAK IF` expression remains the sole breakpoint engine.
 
@@ -912,6 +960,130 @@ Scenario helpers read the **same symbol table loaded into STEP TRACE**. `sym(nam
 
 The scenario API is intentionally observational/manipulative rather than an execution scheduler. Useful helpers include `ram.read()`, `ram.write()`, `ram.read16()`, `ram.write16()`, `ram.fill()`, `cpu.state()`, `sym()`, `print()`, and `assert(boolean, description)`. The older scenario-owned `scenario()`, `cpu.start()`, `breakIf()`, `reset()`, and string-expression assertions are no longer part of this interface. Existing assembler **to emulator** and **to debugger** workflows remain separate and unchanged.
 
+### Three controls cooperate
+
+The word **RUN** in the scenario header means “run the callback when the breakpoint matches.” It does not start CPU execution. A working scenario needs all three of these controls:
+
+| Control | Responsibility |
+| --- | --- |
+| **BREAK IF → Arm** in STEP TRACE | Choose and activate the matching instruction-boundary condition. |
+| **SCENARIO → RUN script at breakpoint** | Evaluate the editor once and register its callback. |
+| **STEP TRACE → Run** | Start the live CPU at the selected speed. |
+
+If BREAK IF is not armed, the registered script receives no hits. If the CPU is paused, no new instructions advance. If the scenario remains in HALT mode, a match stops execution without calling the script.
+
+The editor's top-level code runs once when arming. Only the function passed to `onBreakpoint()` runs on later matches. Put per-hit work inside that function and persistent counters outside it. Editing the text while RUN is active does **not** replace the registered callback: switch back to HALT, edit, then select RUN again. Ctrl/Cmd+Enter arms only while the scenario is not already in RUN mode.
+
+### Window controls
+
+| Control | What it does |
+| --- | --- |
+| **example** / lightbulb | Replace the editor text with the built-in three-hit example. It does not register the new text or start the CPU. |
+| **HALT at breakpoint / RUN script at breakpoint** | Toggle between ordinary breakpoint halting and the registered JavaScript action. Switching back to HALT removes the callback but does not itself pause CPU execution or disarm BREAK IF. |
+| **JAVASCRIPT** editor | Define the callback and persistent variables; Ctrl/Cmd+Enter performs the arm action when in HALT mode. |
+| **CONSOLE / REPL** | Show `print()` output, PASS/FAIL messages, RAM dumps, and script errors. In the live scenario interface, console input directs you to the editor and HALT/RUN control; it is not a general JavaScript evaluator. |
+| **clear** / trash icon | Clear console output. This does not clear RAM, BREAK IF, or the registered callback. |
+| **RAM I/O** | Read or inject live mapped RAM using the fields and buttons described below. |
+| **x** | Hide the scenario window. The registered callback remains active. Close STEP TRACE itself to clear its breakpoint action and condition. |
+
+The screenshot retains labels such as **TB**, **RAM DBG_RAM**, **helpers TB.ram.***, and the old test-harness welcome text because the scenario window reuses that interface shell. For live scenarios, use **`ram`**, **`cpu`**, and **`STB`** as documented here. The legacy `TB` helpers belong to the separate test-bench workspace; its `DBG_RAM` is not the live Apple II RAM. A `ready` label or welcome message does not prove the callback and condition are armed.
+
+### First working example: stop on the third hit
+
+Choose an instruction address your program executes repeatedly. For example, if its loop reaches `$6000`, enter this condition in BREAK IF:
+
+```text
+PC==$6000
+```
+
+Paste this script into STEP TRACE SCENARIO:
+
+```js
+let matches = 0;
+
+onBreakpoint(function(bp) {
+    matches++;
+    print('match', matches, 'PC', STB.hex(bp.PC, 4), 'INS', bp.INS);
+    if (matches >= 3) haltAtBreakpoint();
+});
+```
+
+1. Keep the CPU paused while setting up.
+2. Select **RUN script at breakpoint** to register the script.
+3. Click **Arm** beside BREAK IF.
+4. Select a STEP TRACE speed and click its main **Run** control.
+5. Read the console: the first two matches print a line and continue; the third prints a line and halts before the instruction at `$6000` executes.
+
+Choose a PC your program actually reaches; opening SCENARIO does not load or jump to `$6000`. After the final halt, the callback is removed, the condition is disarmed, and STEP TRACE shows the parking icon. To repeat the example, register the editor again, arm BREAK IF again, and resume. Registering again recreates the `matches` variable.
+
+The built-in example and screenshot use `hex(bp.PC,4)`. Use **`STB.hex(bp.PC,4)`** explicitly, as above: this revision does not expose a standalone scenario `hex` helper. Avoid using `STB.hex()` for the full 48-bit INS value, because it formats byte/word values; print `bp.INS` directly or use JavaScript `bp.INS.toString(16).toUpperCase().padStart(12, '0')`.
+
+### Breakpoint context and CPU state
+
+| Callback field | Meaning |
+| --- | --- |
+| `bp.A`, `bp.X`, `bp.Y`, `bp.SP`, `bp.P` | 8-bit registers at the matching boundary. |
+| `bp.PC` | 16-bit address of the instruction about to execute. |
+| `bp.INS` | Exact 48-bit count of completed instructions. |
+| `bp.condition` | Text of the active BREAK IF condition. |
+| `bp.hit` | Debugger hit count for the armed condition. Use your own closure counter if a scenario needs an independent test index. |
+
+`cpu.state()` returns a fresh snapshot with lowercase fields: `pc`, `a`, `x`, `y`, `sp`, `p`, `cycle_delay`, and `ic`. The helper provides observation; it does not expose a CPU runner or register setter.
+
+### Live RAM and symbol helpers
+
+Helpers are available directly inside the editor and as properties of `STB` (also named `DBG_STEPTRACE_SCENARIO`). They read the live machine's current memory mapping.
+
+| Helper | Result / use |
+| --- | --- |
+| `ram.read(address)` | Read one byte as a number. |
+| `ram.read(address, length)` | Read a byte range as a `Uint8Array`; length `1` returns a number. |
+| `ram.read16(address)` | Read a 16-bit little-endian value. |
+| `ram.write(address, bytes)` / `ram.load(address, bytes)` | Write one byte or a sequence; return the number written. |
+| `ram.write16(address, value)` | Write a 16-bit value, low byte first. |
+| `ram.fill(address, length, value)` | Fill the specified range with a byte value. |
+| `ram.dump(address, length, columns)` | Return a hexadecimal/ASCII dump; defaults to 16 bytes and 16 columns. Use `print()` to show it. |
+| `sym(name[, fallback])` | Resolve a name from STEP TRACE's loaded symbols; throw for an unknown name unless a fallback was supplied. |
+| `symbol(name)` | Return one symbol record, or `null`. |
+| `symbols()` | Return the loaded symbol records. |
+| `print(...)` | Append a line to the scenario console. |
+| `assert(boolean, description)` | Print PASS or FAIL and return the boolean. A false result does **not** automatically halt execution. |
+| `haltAtBreakpoint()` | Request a halt at the current matching boundary; valid only inside the registered callback. |
+
+JavaScript uses normal number syntax: write `0x3000`, not `$3000`, as a numeric expression. RAM helpers also accept address strings such as `'$3000'`, `'0x3000'`, `'12288'`, `'inputPointer'`, or `'inputPointer+$02'`. Digits-only address strings are decimal. For symbolic strings, load the symbol export using STEP TRACE's **SYMBOLS → load** first.
+
+Byte data can be a number, an array, a `Uint8Array`, or a text list such as `'00 01 A5 FF'`. Short unprefixed text tokens are interpreted as hexadecimal bytes: `'10'` is `$10`. Use numeric arrays when you want ordinary JavaScript decimal values, for example `[10, 20]`.
+
+RAM helper reads reject `$C000–$C0FF` to avoid soft-switch side effects. Writes reject the broader **`$C000–$CFFF`** I/O/slot window. Writes elsewhere use the live write map and verify the value afterward; a write to protected ROM normally fails with **Write did not stick**. These helpers therefore work with an already writable mapped language-card bank, but they do not switch banks for you. A multi-byte operation can write earlier bytes before a later byte fails; it is not an atomic transaction.
+
+### RAM I/O panel
+
+The lower part of the scenario window offers a small manual memory tool:
+
+1. Enter **address**, preferably with an explicit hex prefix such as `$3000` (or a loaded symbol).
+2. To inspect memory, enter a decimal **length**, then click **read**. A hex/ASCII dump appears in the console.
+3. To inject data, enter a byte list such as `00 01 02 03`, then click **inject**. The bytes are written sequentially from the address.
+
+**Length applies to read. Inject writes the number of bytes in the data field**, irrespective of that length. Read prints the dump; it does not replace the injection text. These controls operate immediately, even when no callback is armed. Pause the live CPU before making manual memory changes when you need a reproducible state.
+
+### Validate a result and stop on failure
+
+For a program that publishes its result at `$3000`, choose a breakpoint at the instruction boundary after the result is ready, then register:
+
+```js
+onBreakpoint(function(bp) {
+    const actual = ram.read(0x3000);
+    print('result', actual, 'at', STB.hex(bp.PC, 4));
+    if (!assert(actual === 0x42, 'result byte is $42')) {
+        haltAtBreakpoint();
+    }
+});
+```
+
+This explicitly halts on a failed check. Passing checks continue and keep BREAK IF armed. To stop after every check, call `haltAtBreakpoint()` unconditionally at the end instead.
+
+Use `assert()` with a JavaScript boolean, such as `actual === 0x42`; passing a BREAK IF expression string is an error. Callback exceptions halt at the matching boundary and report the error. Keep callbacks synchronous and short: do not use `async`, promises, timers, or CPU-driving loops to control subsequent execution. The ordinary emulator and STEP TRACE remain responsible for advancing the CPU.
+
 ### INFLATE repeated-validation example
 
 `INFLATE_ASM_CORE.S` contains an explicit 6502 test loop:
@@ -944,9 +1116,23 @@ A complete repeated test therefore uses the normal live machine rather than a Ja
 
 The JavaScript script tracks progress and evidence; the 6502 program owns control flow and the emulator owns execution. No host-injected trampoline or separate CPU-driving loop is involved.
 
+### Scenario troubleshooting
+
+| Symptom | Check / action |
+| --- | --- |
+| Editor is visible but no output appears | Select RUN to register it, arm a nonblank BREAK IF condition, and start STEP TRACE execution. All three are required. |
+| CPU stops on the first hit without running the script | SCENARIO is in HALT mode, or registration failed. Read the console and register a valid callback. |
+| Edits have no effect | Return to HALT and register the revised editor text again. An already registered callback retains its original closure. |
+| **exactly one onBreakpoint** | Register one function at editor top level; zero or multiple registrations are rejected. |
+| **hex is not defined** | Use `STB.hex(value, 4)` in place of the unqualified `hex()` used by the built-in example. |
+| **Unknown STEP TRACE symbol** | Load the matching assembler symbol export in STEP TRACE; the legacy test-bench symbol table is separate. |
+| FAIL is printed but execution continues | `assert(false, ...)` reports failure. Call `haltAtBreakpoint()` explicitly if it should stop the CPU. |
+| RAM write fails | Check the active map and permissions: I/O/slot writes are refused, and protected ROM is not writable. |
+| Closing SCENARIO does not stop the script | Its x button hides the panel. Switch to HALT to remove the callback, or close STEP TRACE to clear the action and condition. |
+
 ---
 
-## 23. Diagnostics available to developers
+## 24. Diagnostics available to developers
 
 `Apple2Debug.liveState()` exposes debugger state including:
 
@@ -1007,7 +1193,7 @@ These diagnostics are intended mainly for development and validation.
 
 ---
 
-## 24. Current behavioural limits and deliberate safeguards
+## 25. Current behavioural limits and deliberate safeguards
 
 A few behaviours are intentionally conservative:
 
@@ -1023,10 +1209,13 @@ These choices favour correctness of the live machine over making the debugger di
 
 ---
 
-## 25. Quick-reference card
+## 26. Quick-reference card
 
 | Control / gesture | Result |
 |---|---|
+| SYSTEM CPU slider → 0%, then bug icon | open live STEP TRACE; factor mode may display `x0` |
+| Numeric SYSTEM speed label | cycle 0–400%, 0–100%, and x1–x72 slider modes |
+| `</>` code icon | open/hide STEP TRACE SCENARIO |
 | `fa-play-circle` | ordinary idle/paused state; click to run |
 | `fa-pause-circle` | running, or paused immediately after manual Step In/Over/Out |
 | `fa-parking` | stopped because BREAK IF matched |
@@ -1041,8 +1230,8 @@ These choices favour correctness of the live machine over making the debugger di
 | F | toggle Track PC |
 | `fa-lock` | Track PC enabled |
 | `fa-lock-open` | Track PC disabled |
-| `fa-retweet` bright | show repeated closed-loop steps |
-| `fa-retweet` dim | hide repeated closed-loop display; CPU still executes it |
+| `fa-retweet` bright | skipper enabled: accelerate proven loops without IPS delay and hide intermediate display |
+| `fa-retweet` dim | skipper disabled: show and pace repeated loop instructions |
 | read-only `PC $xxxx  INS $xxxxxxxxxxxx` input | live copyable CPU position/counter text |
 | `PC $xxxx` | live 16-bit program counter |
 | `INS $xxxxxxxxxxxx` | live 48-bit completed-opcode counter |
@@ -1059,11 +1248,16 @@ These choices favour correctness of the live machine over making the debugger di
 | SYMBOLS clear | remove loaded symbol table |
 | Coffee icon | enable/disable boot log |
 | Cloud-download icon | download boot log |
+| SCENARIO HALT/RUN | remove/register the JavaScript breakpoint callback; does not start the CPU |
+| Ctrl/Cmd+Enter in scenario editor | register editor text while in HALT mode |
+| SCENARIO clear | clear console output only |
+| SCENARIO RAM read / inject | inspect/inject live mapped RAM |
+| SCENARIO x | hide the companion; registered callback stays active |
 | x | close STEP TRACE |
 
 ---
 
-## 26. Summary
+## 27. Summary
 
 STEP TRACE is a **live-system debugger**, not a detached disassembler.
 
