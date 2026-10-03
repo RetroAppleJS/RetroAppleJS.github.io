@@ -1,6 +1,6 @@
 // Copyright (c) 2026 Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
-// EMU_CARD_saturnRAM.js â€” Saturn 128K RAM board. Included by index.html.
+// EMU_CARD_saturnRAM.js — Saturn 128K RAM board. Included by index.html.
 
 // Discovery container; Apple2IO constructs independent live instances.
 if(oEMU===undefined) var oEMU = {"component":{"IO":{}}};
@@ -278,6 +278,24 @@ function SaturnRAM()
         if(this.MEM_refresh_id) oCOM.enableRefreshEvent(this.MEM_refresh_id,!!enabled);
         this.update_MEM_status();
     };
+    this.toggle_MEM_monitoring = function()
+    {
+        if(!mounted()) return false;
+        var enabled = oCOM.toggleRefreshEvent("MEM_monitoring");
+        hw.enable_MEM_monitoring(enabled);
+        for(var slotN in io.slots)
+        {
+            var peripheral = io.SLOT2obj(slotN);
+            if(!peripheral || typeof(peripheral.enable_MEM_monitoring)!="function") continue;
+            peripheral.enable_MEM_monitoring(enabled);
+            var eventID = peripheral.MEM_refresh_id
+                || (peripheral.id.PCODE==="MS16K" ? "MEM_monitoring_MS16K" : null);
+            if(eventID) oCOM.enableRefreshEvent(eventID,enabled);
+        }
+        var icon = document.getElementById("MEM_monitoring");
+        if(icon) icon.className = "fa "+(enabled ? "fa-stop-circle" : "fa-sync-alt");
+        return enabled;
+    };
     this.MEM_monitoring = function()
     {
         if(!this.state.active || !this.MEM_grid || !this.bMEM_monitoring) return;
@@ -298,11 +316,12 @@ function SaturnRAM()
     {
         ctx = ctx || {};
         var access = "apple2plus.hwObj().io.HASH2obj("+Number(this.mount.hash)+")";
-        var title = "Load 1â€“131072 bytes into Saturn RAM; bank order A, B, common 8K";
+        var title = "Load 1–131072 bytes into Saturn RAM; bank order A, B, common 8K";
         return "<div class=toolbox id='"+(ctx.toolboxID || "device_tool_"+ctx.slotID)+"' hidden>"
             +"<div class=appbox style='padding:0px 6px;min-height:76px' title='Saturn 128K memory map'>"
             +"<div style='float:left;width:28px;text-align:center'>MEM<br>"
-            +"<button class=appbut title='Start/stop synchronised memory monitoring' onclick='EMU_toggleMEMMonitoring()'>"
+            +"<button class=appbut title='Start/stop synchronised memory monitoring' onclick='"
+            +access+"?.toggle_MEM_monitoring()'>"
             +"<i id='"+this.MEM_sync_id+"' class='fa "+(hw && hw.bMEM_monitoring ? "fa-stop-circle" : "fa-sync-alt")+"'></i></button><br>"
             +"<button class=appbut id='"+this.MEM_upload_id+"' title='"+title+"' onclick='document.getElementById(\""
             +this.MEM_file_id+"\").click()'><i class='fa fa-cloud-upload-alt'></i></button>"
