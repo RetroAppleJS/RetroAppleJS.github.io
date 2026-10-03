@@ -35,32 +35,22 @@ Explore our [vintage computing laboratory](https://retroapplejs.github.io/tools/
 
 ### Emulator
 
-The Apple II+ emulator is probably the most intuitive module, at least for those who were familiar using an Apple II.
-One can:
-1) use the pasteboard to paste any text through the text prompt (APPLESOFT BASIC LISTINGS, DOS COMMANDS, ASSEMBLY... anything)
-2) insert any disk found on the internet (.do, .dsk)
+Run Apple II+ software, boot disk images, paste BASIC or assembly listings, and configure expansion cards and attached devices. The emulator includes JavaScript and WebAssembly CPU options, several video renderers, and a live system step debugger.
 
 ### Assembler
 
-The assembler contains handy tools to edit source-code originating from all over the internet, but purposefully avoids the implementation of any exotic macro language as this would perpetuate numerous assembler code compatibility problems.  Once the code is generated, one can send the object code with one click to the debugger or the pasteboard of the emulator.
+Edit and assemble 6502 source code, inspect the listing and symbols, and send the result directly to the emulator or debugger. Source conversion tools and supported directives help reuse vintage listings.
 
 ### Debugger
 
-The debugger is composed of 5 sections
-1) Disassembler
-2) Memory tracer
-3) CPU operations monitor
-4) CPU register
-5) Memory map
-6) Help screen
+Step through 6502 code and inspect the disassembly, CPU trace, registers, flags, and memory. Import assembler symbols or emulator memory captures, and save or reload a debugging session as a `.DEB` file.
 
 ## User manuals
 
 [EMULATOR.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/EMULATOR.md)  
 [ASSEMBLER.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/ASSEMBLER.md)
 [DEBUGGER.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/DEBUGGER.md)     
-[6502.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/6502.md)  
-[ZEROPAGE_APPLE2PLUS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/ZEROPAGE_APPLE2PLUS.md)  
+[6502.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/6502.md)
 [PERIPHERALS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md)  
 [TOOLS.md](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/TOOLS.md)  
 
@@ -68,60 +58,61 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 
 ## Feature wish-list
 
-- [x] EMULATOR: Real-time system step debugger
-- [ ] EMULATOR: pasteboard macro scripting supporting keyboard/paddle/mouse recording, playback events and conditional stops
-- [x] EMULATOR: paddle/mouse capture
-- [ ] EMULATOR: vapor lock compliance (requires elaborate real-time debugger)
-- [ ] EMULATOR: swap between multiple virtual keyboards (start with A2_US vs A2_JP)
-- [ ] EMULATOR: more peripherals: Mockingboard card, Videx card, saturnRAM card, and what not...
-- [x] ASSEMBLER: Step Assembler
-- [x] ASSEMBLER: Extend pragma's (pick a few more useful ideas from Merlin assembler)
-- [x] RETRO LAB: realtime dithering in CameraJS (QuickCam emulation ? http://schmenk.is-a-geek.com/wordpress/?p=17)
-- [ ] RETRO LAB: lo-res and hi-res graphics conversion tool (including dithering and color optimization algorithms)
-- [ ] OTHER: better document assembler code located in asm_code_examples
-- [ ] OTHER: popup tool with overlay tools like DEC-HEX-BIN-BASE64 converter, binary file converter and byte stream generator for Apple II pasteboard
-      
+Completed items remain checked; unchecked items are planned or still need further development.
+
+- [x] EMULATOR: Live system step debugger and memory capture
+- [x] EMULATOR: Paddle/mouse input capture and AppleMouse II interface emulation
+- [x] EMULATOR: Dynamic slot configuration with attached devices and ports
+- [x] EMULATOR: Disk II, 16K Language Card, Videx VideoTerm, Serial Pro, and ThunderClock Plus implementations
+- [x] EMULATOR: LIRON/SmartPort storage with UniDisk 3.5 and an emulated HD20 block device
+- [x] EMULATOR: Dithertizer II camera capture using the original DSCAN driver
+- [x] EMULATOR: Experimental DITHER2 color HGR capture
+- [ ] EMULATOR: Pasteboard macro scripting with keyboard/paddle/mouse recording, playback, and conditional stops
+- [ ] EMULATOR: Vapor-lock timing compatibility
+- [ ] EMULATOR: Switch between US and Japanese Apple II keyboard layouts
+- [ ] EMULATOR: Complete Mockingboard sound emulation and integrate Saturn RAM expansion
+- [ ] EMULATOR: Add further peripherals, including UltraTerm, No-Slot Clock, AE RamFactor, Super Serial Card, and VersaCard
+- [x] ASSEMBLER: Step Assembler and additional assembler directives
+- [x] ASSEMBLER / DEBUGGER: Symbol transfer and debugger session import/export
+- [x] RETRO LAB: Real-time camera processing and a configurable [ConvertHGR tool](tools/ConvertHGR.html)
+- [ ] RETRO LAB: Further improve lo-res/hi-res conversion, dithering, and color optimization
+- [ ] DOCUMENTATION: Expand the documentation and examples in [asm](asm/)
+- [ ] TOOLS: Integrate number-base conversion, binary-file conversion, and pasteboard byte-stream generation into a common popup tool
+
 ## Contribute
 
-This project is build with HTML/JavaScript, CSS, Markdown documentation and 6502 assembler source code.  Contributions in any of these fields are welcome, but the latest feature developments (here below) are currently the most valuable on my priority list.
+This project is built with HTML/JavaScript, CSS, Markdown documentation, and 6502 assembly source code. Contributions in any of these fields are welcome. Read the [contribution guide](CONTRIBUTING.md) and [coding style guide](docs/CODING_STYLE.md), and use the wish-list and latest developments to find areas where you can help.
 
 ### Latest developments
 
-#### interactive Apple II+ virtual keyboard
+#### Apple II peripherals emulation
 
-<img src="/res/appleIIplus_vir.png?raw=true" width=40% align="right" />
-It took a while to find a good generic framework to support keyboard emulation. But one popular online tool was hiding in plain sight: www.keyboard-layout-editor.com. This framework can be used to generate virtually any virtual keyboard in HTML format.
-
-So, here's the new Apple II+ keyboard HTML basis:
-https://www.keyboard-layout-editor.com/#/gists/ba23f9cdc666b5d2a61cf5408f062a96
-
-The new version of EMU_DEVICE_keyboard.js, besides HTML, covers the action logic and mapping logic for 3 use-cases:
-
-- virtual keyboard: for mouse/trackpad/screen tapping
-- real keyboard: type as you go (after click/tapping the screen canvas)
-- pasteboard: click the tool icon in the main menu -> copy-paste your text/source code right into the Apple II+ prompt
-
-Before calling it a version, this needs to be tested on a few laptop keyboards, and touch devices.
-If everything goes well, documentation will follow soon!
-
-*Note: Only two files are impacted:*
-- *index.html*
-- *res/EMU_AP2keys.js*
-
-#### apple II peripherals emulation
 <img src="/res/appleIIplus_motherboard_p1_650.png?raw=true" width=40% align="right" />
-Apple II wizards out there, anyone familiar with emulating any of these popular cards ? 
-Recollecting ROM images from Apple II peripherals looks like a major challenge. Can anyone help ?
 
-- [x] Dynamic slot/peripheral configuration
-- [x] [Videx VideoTerm or UltraTerm](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/) 80-Column card
-- [x] [Thunderware Thunderclock Plus](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Clock/Thunderware%20Thunderclock/) Clock with [BSR X-10 AC Remote Control System](https://www.atarimagazines.com/compute/issue17/209_1_INTERFACING_A_BSR_X-10_AC_REMOTE_CONTROL_SYSTEM_TO_YOUR_PET.php), for Home automation !
-- [ ] [No-Slot Clock](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Chips/SMT%20No-Slot%20Clock/Manuals/No-Slot%20Clock%20-%20User%27s%20Manual.pdf) Simple Real-Time Clock
-- [x] [Serial Pro](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf) = Serial card + real time clock (Applied Engineering) 
-- [ ] [6820 Peripheral Interface Adapter](https://en.wikipedia.org/wiki/Peripheral_Interface_Adapter), often abreviated as PIA
-- [ ] [AE RamFactor](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Memory/AE%20RamFactor/) more serious RAM expansion (256K - 1Mb)
-- [x] [Apple Mouse Card 670-0030-C](http://www.applelogic.org/PeripheralCards.html)
-- [ ] [The Mocking Board](https://en.wikipedia.org/wiki/Mockingboard) sound card supported by different games and the 'Music Construction Set'
-- [ ] [VersaCard](https://forum.vcfed.org/index.php?threads/do-you-own-a-prometheus-versacard-for-the-apple-ii-i-need-a-copy-of-the-rom.70770/) - [Brochure](https://cvxmelody.net/VERSAcard%20original%20brochure%20&%20manual%20cover.pdf) 4 on 1 card: serial, parallel,real-time clock, BSR Home automation
-- [ ] [Mouse card](https://www.applefritter.com/content/a2usb-apple-ii-usb-mouse-interface-card-emulation)
+Expansion cards can be mounted or ejected through the slot configuration interface. Cards own their memory-mapped I/O and ROM behaviour; attached devices provide functions such as video output, serial terminals, disk storage, and camera input through named ports.
 
+The current implementations include:
+
+| Peripheral | Current scope |
+| --- | --- |
+| Disk II | Floppy controller emulation, disk image loading/saving, and configurable drive arrangements, including DuoDisk |
+| 16K Language Card | Microsoft-compatible bank-switched RAM expansion in slot 0 |
+| Videx VideoTerm | 80-column display, resident firmware, character ROMs, and a separate video output device |
+| ThunderClock Plus | Real-time clock, interrupt generation, and emulated BSR/X-10 output |
+| Applied Engineering Serial Pro | Serial interface and real-time clock, with an attached browser terminal and an optional GPT serial peer |
+| AppleMouse II Interface | Original slot ROM with PIA command/handshake emulation and host mouse input |
+| LIRON / Apple 3.5 Disk Interface | SmartPort transport with attached UniDisk 3.5 and HD20 block-storage devices |
+| Dithertizer II (`DITHER`) | Monochrome camera capture compatible with the original DSCAN 4.2 driver |
+| Color capture extension (`DITHER2`) | Experimental ConvertHGR-based capture that preserves HGR color-phase bits |
+
+The Videx implementation targets **VideoTerm**; UltraTerm is not currently implemented. The HD20 device is presented through the emulated SmartPort bus. Mockingboard currently has a placeholder implementation, while Saturn RAM and Super Serial Card are not enabled in the main application.
+
+Recent work has expanded the distinction between cards, attached devices, and their ports. Disk II and SmartPort devices now have topology-aware controls and media displays. Videx video output and Serial Pro terminal connections use the same device framework.
+
+Camera capture also follows this model: ejecting either Dithertizer card detaches its camera device and releases the host camera stream. For the historical `DITHER` card, JavaScript and WASM supply the same luminance signal; **DSCAN performs the four threshold captures and Bayer dithering**. The separate `DITHER2` extension converts camera frames to color HGR through selectable JavaScript/WASM backends and captures an embedded HGR sample when the camera is off.
+
+Contributions remain welcome for missing peripherals, ROM references, hardware behaviour, and compatibility testing with original Apple II software. See the [peripheral architecture](docs/PERIPHERALS_DEV.md), [Dithertizer guide](docs/DITHERTIZER.md), and [color capture notes](docs/DITHER2_COLOR_CAPTURE.md).
+
+#### Assembler and debugger integration
+
+Assembler output now carries symbols into the debugger, making listings and traces easier to follow. Debugger sessions can be saved and reloaded, and emulator memory captures can be inspected with matching symbol tables. See the [debugger manual](docs/DEBUGGER.md) and [system step-trace manual](docs/STEP_TRACE_MANUAL.md).
