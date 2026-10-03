@@ -13,8 +13,9 @@ function loadCard(extras={})
     const source=fs.readFileSync(path.join(ROOT,'res','EMU_CARD_dithertizer.js'),'utf8');
     const sandbox={console,Uint8Array,ArrayBuffer,Array,Number,String,Object,Math,RegExp,Promise,...extras};
     vm.createContext(sandbox);
+    vm.runInContext(fs.readFileSync(path.join(ROOT,'res','EMU_DEVICE_camera.js'),'utf8'),sandbox);
     vm.runInContext(source+'\n;this.__ctor=DithertizerII;',sandbox,{filename:'EMU_CARD_dithertizer.js'});
-    return sandbox.__ctor;
+    return function(){const card=new sandbox.__ctor();new sandbox.DithertizerCameraDevice().bindHost(card);return card;};
 }
 
 function render(card)

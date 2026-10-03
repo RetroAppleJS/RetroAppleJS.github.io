@@ -4,8 +4,7 @@
 // Thin adapter around the bundled ConvertHGR browser worker source. The worker
 // source is loaded by the emulator as normal script data and then instantiated
 // as a Blob Worker so local file:// execution does not need runtime fetch().
-// Live Dithertizer conversion requires the worker's WASM backend; JavaScript
-// quantizer fallback is rejected.
+// Backend is selected per conversion; unexpected fallback is reported.
 //
 
 function DithertizerConvertHGRAdapter(options)
@@ -19,6 +18,7 @@ function DithertizerConvertHGRAdapter(options)
     var pending=null;
     var settings=null;
     var closed=false;
+    var backend=options.backend==="javascript" ? "javascript" : "wasm";
 
     function failPending(error)
     {
@@ -48,9 +48,9 @@ function DithertizerConvertHGRAdapter(options)
         pending=null;
 
         var metadata=msg.metadata || {};
-        if(metadata.backendUsed!=="wasm")
+        if(metadata.backendUsed!==p.backend)
         {
-            p.reject(new Error("ConvertHGR WASM backend required; worker used "+String(metadata.backendUsed || "unknown")+
+            p.reject(new Error("ConvertHGR "+(p.backend==="wasm" ? "WASM" : "JavaScript")+" backend required; worker used "+String(metadata.backendUsed || "unknown")+
                 (metadata.fallbackReason ? " ("+metadata.fallbackReason+")" : "")));
             return;
         }
@@ -66,7 +66,7 @@ function DithertizerConvertHGRAdapter(options)
         p.resolve({
              width:280
             ,height:192
-            ,backendUsed:"wasm"
+            ,backendUsed:p.backend
             ,metadata:metadata
             ,timing:msg.timing || {}
             ,processedRGB:buffers.processedRGB instanceof ArrayBuffer ? new Uint8Array(buffers.processedRGB) : null
@@ -123,6 +123,13 @@ function DithertizerConvertHGRAdapter(options)
         return this;
     };
 
+    this.setBackend=function(value)
+    {
+        if(value!=="wasm" && value!=="javascript") throw new TypeError("Invalid ConvertHGR backend");
+        backend=value;
+        return this;
+    };
+
     this.convert=function(rgb,width,height,seed)
     {
         if(closed) return Promise.reject(new Error("ConvertHGR adapter is closed"));
@@ -150,7 +157,7 @@ function DithertizerConvertHGRAdapter(options)
         var requestId=++requestSeq;
         return new Promise(function(resolve,reject)
         {
-            pending={requestId:requestId,resolve:resolve,reject:reject};
+            pending={requestId:requestId,resolve:resolve,reject:reject,backend:backend};
             try
             {
                 worker.postMessage({
@@ -159,7 +166,7 @@ function DithertizerConvertHGRAdapter(options)
                     ,settings:settings
                     ,source:{rgbBuffer:transferBuffer,width:width,height:height}
                     ,randomSeed:Number(seed)>>>0
-                    ,backend:"wasm"
+                    ,backend:backend
                 },[transferBuffer]);
             }
             catch(error)

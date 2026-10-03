@@ -6,15 +6,15 @@ below the camera button selects the camera conversion path and starts ON:
 
 | WASM | Camera signal supplied to the comparator |
 | --- | --- |
-| ON (default) | An embedded ConvertHGR WASM quantizer produces palette pixels, then the card converts those pixels to luminance. |
-| OFF | The camera RGB pixels become continuous 8-bit BT.601 luminance directly. |
+| ON (default) | An embedded WASM routine converts RGB24 to continuous 8-bit BT.601 luminance. |
+| OFF | JavaScript performs the same RGB24-to-luminance conversion, with byte-identical results. |
 
 The WASM code and its Worker source are both contained in the card file. A
 Worker performs the conversion so the emulator can continue processing while
 WASM works. Only one conversion can be in flight; if it takes longer than a
 SYSTEM processing frame, the card skips that camera sample and retains the last
-complete image. The WASM-produced HGR bytes are not injected into Apple II RAM.
-DSCAN still controls all four threshold captures and performs the Bayer merge.
+complete image. Neither backend dithers the source: DSCAN controls all four
+threshold captures and performs the Bayer merge.
 
 The three image controls adjust luminance before the card compares it with the
 threshold programmed by Apple II software:
@@ -33,7 +33,10 @@ sources. The first camera frame is sampled at startup; subsequent frames are
 eligible once per emulator processing frame. The SYSTEM FPS slider controls this
 cadence through the existing scheduler, with no separate camera timer. CPU tick
 rate and DSCAN sync timing are unaffected. The camera button starts/stops the
-stream; reset/restart releases tracks and stops sampling. If WASM conversion
+stream; reset/restart and peripheral ejection release tracks and stop sampling.
+Both cards attach the same `DithertizerCameraDevice` type through Apple2IO.
+Its `video/x-raw;format=RGB24` port publishes complete frames to the mounted
+card; detaching the device stops the host stream. If WASM conversion
 fails, the last complete camera frame is retained and the toggle shows `ERR`.
 
 When the camera is OFF, the card decodes the original disk's complete $4000–$5FFF
@@ -72,6 +75,13 @@ thresholds, all five Bayer states across the image, bit 7, and HGR holes.
 The separate `res/EMU_CARD_dithertizer2.js` copies complete ConvertHGR bytes to
 the selected HGR page, including each byte's color-phase bit 7. With the camera
 off, it captures the embedded Apple II logo HGR page from the original disk.
+It uses the same attached RGB24 camera device as DITHER. Its WASM pictogram
+starts ON and selects between the ConvertHGR worker's WASM and JavaScript
+backends. One new frame is eligible per SYSTEM processing frame; a conversion
+still in progress prevents a second from starting. The MODE menu offers
+`None`, `Error diffusion`, and ordered choices. `ERR` is disabled in `None`;
+`OFFSET` sits beside MODE and is enabled only for ordered choices. There is no
+separate RATE timer.
 
 The stock disk calls DSCAN at `$1C00` (`CALL 7168`). That entry captures four
 PAGE1 frames and merges them into PAGE2 with `AND #$7F`, so its displayed color
@@ -86,7 +96,7 @@ that driver is still present. Other programs are not patched; they can call
 ## Scope
 
 The separate ConvertHGR adapter and worker remain available to the standalone
-tool. Earlier full-pipeline ConvertHGR/WASM plans do not describe this compact
-camera option: only the existing quantizer module is embedded in the card.
+tool and to DITHER2 color capture. DITHER embeds only its small luminance WASM
+module and Worker source, keeping the original comparator and DSCAN dither.
 
 Verification: `node --test tests/*.test.js`.

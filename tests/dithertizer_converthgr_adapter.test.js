@@ -36,7 +36,7 @@ function loadAdapter(workerMode='wasm',options={})
                 type:'conversionResult',
                 requestId:msg.requestId,
                 metadata:{
-                    backendRequested:'wasm',
+                    backendRequested:msg.backend,
                     backendUsed:workerMode,
                     fallbackReason:workerMode==='wasm'?'':'simulated fallback'
                 },
@@ -115,4 +115,17 @@ test('adapter rejects the ConvertHGR JavaScript fallback instead of publishing i
         adapter.convert(new Uint8Array(12),2,2,1),
         /WASM backend required/
     );
+});
+
+test('adapter explicitly selects JavaScript and can switch back to WASM',async()=>{
+    const {Adapter:JavaScriptAdapter,posted}=loadAdapter('javascript');
+    const adapter=new JavaScriptAdapter({backend:'javascript'});
+    await adapter.init();
+    adapter.configure({image:{gamma:1.3}});
+    const result=await adapter.convert(new Uint8Array(12),2,2,1);
+    assert.equal(posted[0].backend,'javascript');
+    assert.equal(result.backendUsed,'javascript');
+    adapter.setBackend('wasm');
+    await assert.rejects(adapter.convert(new Uint8Array(12),2,2,1),/WASM backend required/);
+    assert.equal(posted[1].backend,'wasm');
 });

@@ -1,0 +1,1447 @@
+diff --git a/index.html b/index.html
+--- a/index.html
++++ b/index.html
+@@ -191,6 +191,7 @@
+             <script type="text/javascript" src="res/EMU_DEVICE_UNIDISK35.js"></script>
+             <script type="text/javascript" src="res/EMU_DEVICE_HD20.js"></script>
+             
++            <script type="text/javascript" src="res/EMU_DEVICE_camera.js"></script>
+             <script type="text/javascript" src="res/EMU_CARD_dithertizer.js"></script>
+             <script type="text/javascript" src="res/EMU_DITHERTIZER_converthgr_worker.js"></script>
+             <script type="text/javascript" src="res/EMU_DITHERTIZER_converthgr.js"></script>
+diff --git a/res/EMU_DEVICE_camera.js b/res/EMU_DEVICE_camera.js
+new file mode 100644
+--- /dev/null
++++ b/res/EMU_DEVICE_camera.js
+@@ -0,0 +1,163 @@
++// Host camera device shared by DITHER and DITHER2. Its video port publishes
++// complete RGB24 frames; an owning card chooses the conversion and HGR format.
++function DithertizerCameraDevice()
++{
++    var device=this;
++    var owner=null;
++    var stream=null;
++    var video=null;
++    var canvas=null;
++    var context=null;
++    var pending=null;
++    var epoch=0;
++
++    this.id={DCODE:"A2CAMERA",coID:"DithertizerCameraDevice",icon:"fa fa-camera"};
++    this.ports={video:{
++        mimeType:"video/x-raw;format=RGB24",
++        read:function(options){return device.readFrame(options);}
++    }};
++
++    function releaseTracks(source)
++    {
++        if(!source || typeof(source.getTracks)!=="function") return;
++        var tracks=source.getTracks();
++        for(var i=0;i<tracks.length;i++)
++            if(tracks[i] && typeof(tracks[i].stop)==="function") tracks[i].stop();
++    }
++
++    function releaseVideo(element)
++    {
++        if(!element) return;
++        if(typeof(element.pause)==="function") element.pause();
++        try { element.srcObject=null; } catch(e) {}
++    }
++
++    this.bindHost=function(host)
++    {
++        if(!host || !host.id || (host.id.PCODE!=="DITHER" && host.id.PCODE!=="DITHER2")) return false;
++        if(owner && owner!==host) return false;
++        owner=host;
++        host.cameraDevice=device;
++        return true;
++    };
++
++    this.unbindHost=function(host)
++    {
++        if(host && owner && owner!==host) return false;
++        device.stop();
++        if(owner && owner.cameraDevice===device) owner.cameraDevice=null;
++        owner=null;
++        return true;
++    };
++
++    this.isActive=function(){return !!stream;};
++    this.isPending=function(){return !!pending;};
++
++    this.start=function()
++    {
++        if(!owner) return Promise.resolve(false);
++        if(stream) return Promise.resolve(true);
++        if(pending) return pending;
++        if(typeof(navigator)==="undefined" || !navigator || !navigator.mediaDevices ||
++           typeof(navigator.mediaDevices.getUserMedia)!=="function") return Promise.resolve(false);
++
++        var startEpoch=++epoch;
++        pending=(async function()
++        {
++            var source=null,element=null;
++            try
++            {
++                source=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
++                if(startEpoch!==epoch || !owner)
++                {
++                    releaseTracks(source);
++                    return false;
++                }
++                if(typeof(document)!=="undefined" && document && typeof(document.createElement)==="function")
++                {
++                    element=document.createElement("video");
++                    canvas=document.createElement("canvas");
++                    context=canvas && typeof(canvas.getContext)==="function" ? canvas.getContext("2d") : null;
++                    if(element)
++                    {
++                        element.autoplay=true;
++                        element.muted=true;
++                        element.playsInline=true;
++                        element.srcObject=source;
++                        if(typeof(element.play)==="function") await element.play();
++                    }
++                }
++                if(startEpoch!==epoch || !owner)
++                {
++                    releaseVideo(element);
++                    releaseTracks(source);
++                    return false;
++                }
++                video=element;
++                stream=source;
++                return true;
++            }
++            catch(error)
++            {
++                releaseVideo(element);
++                releaseTracks(source);
++                return false;
++            }
++            finally
++            {
++                if(startEpoch===epoch) pending=null;
++            }
++        })();
++        return pending;
++    };
++
++    this.stop=function()
++    {
++        epoch++;
++        pending=null;
++        releaseVideo(video);
++        video=null;
++        canvas=null;
++        context=null;
++        releaseTracks(stream);
++        stream=null;
++    };
++    this.reset=this.stop;
++
++    this.readFrame=function(options)
++    {
++        if(!stream || !video || !canvas || !context) return null;
++        var sourceW=Number(video.videoWidth)|0;
++        var sourceH=Number(video.videoHeight)|0;
++        if(sourceW<=0 || sourceH<=0) return null;
++        options=options || {};
++        var width=Number(options.width)|0 || sourceW;
++        var height=Number(options.height)|0 || sourceH;
++        if(width<=0 || height<=0) return null;
++        if(canvas.width!==width) canvas.width=width;
++        if(canvas.height!==height) canvas.height=height;
++        context=canvas.getContext("2d");
++        if(!context) return null;
++
++        if(options.crop==="4:3")
++        {
++            var cropW=Math.min(sourceW,sourceH*4/3);
++            var cropH=Math.min(sourceH,sourceW*3/4);
++            context.drawImage(video,(sourceW-cropW)/2,(sourceH-cropH)/2,
++                cropW,cropH,0,0,width,height);
++        }
++        else context.drawImage(video,0,0,sourceW,sourceH,0,0,width,height);
++
++        var image=context.getImageData(0,0,width,height);
++        var rgba=image && image.data;
++        if(!rgba || rgba.length<width*height*4) return null;
++        var rgb=new Uint8Array(width*height*3);
++        for(var s=0,d=0;d<rgb.length;s+=4)
++        {
++            rgb[d++]=rgba[s];
++            rgb[d++]=rgba[s+1];
++            rgb[d++]=rgba[s+2];
++        }
++        return {mimeType:device.ports.video.mimeType,width:width,height:height,rgb:rgb};
++    };
++}
+diff --git a/res/EMU_CARD_dithertizer.js b/res/EMU_CARD_dithertizer.js
+--- a/res/EMU_CARD_dithertizer.js
++++ b/res/EMU_CARD_dithertizer.js
+@@ -17,12 +17,7 @@
+ {
+     var card=this;
+     var cameraSource=null;
+-    var hostCameraStream=null;
+-    var hostCameraVideo=null;
+-    var hostCameraCanvas=null;
+-    var hostCameraContext=null;
+     var hostCameraEpoch=0;
+-    var hostCameraPending=false;
+     var hostCameraFrame=new Uint8Array(280*192);
+     var hostCameraControlID=null;
+     var wasmEnabled=true;
+@@ -43,13 +38,15 @@
+     const DSCAN_TRACE_PC_MIN=0x1D23;
+     const DSCAN_TRACE_PC_MAX=0x1D35;
+     const SYNC_TRACE_LIMIT=512;
+-    // The bundled HGR quantizer is the same WASM module used by ConvertHGR.
+-    // DSCAN still owns the displayed HGR page through the comparator.
+-    const WASM_HGR_BASE64="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";
++    // RGB24 -> BT.601 luminance only; DSCAN owns the 2x2 Bayer dithering.
++    // The 134-byte module is embedded so local file:// needs no fetch().
++    const WASM_LUMA_BASE64="AGFzbQEAAAABBQFgAX8AAwIBAAUDAQAEBxQCBm1lbW9yeQIAB2NvbnZlcnQAAApWAVQBAX8DQCABQYDsCWogAUEDbEEAai0AAEGrAmwgAUEDbEEBai0AAEHLBGxqIAFBA2xBAmotAABB8gBsakH0A2pB6AduOgAAIAFBAWoiASAASQ0ACws=";
+     // Original disk picture: the complete monochrome HGR $4000-$5FFF page.
+     const SAMPLE_HGR_BASE64="AAAAKlUqVSpVKlUqVWpdK3duXSpXKlUqVSpVKlUqVSpVKlUqVSpVKn9/Xyp/f38PfD99f39/HwgBIH9/f39/f39/f39/f39/f39/f39/f38AAAAAAAAAAEB+f39/f38vfWN/en9/X35/f30/dSpValUiQCt/f18qfHwCAnx8AgIAAAAAUH9/f39/f39/f39/f39/f39/f39/f39/f29ff3duXTt3bl07f39/fxcqVT9xP3AvFXp/f18gBCh/f39/f39/f39/f39/f39/f39/fwAAAAAAAAAAAAAAAFB/f39/f396X351P19qf39Xbn8/FSJEKlUqVQp8fAICfHwCAnAvAAAAAHR/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f38jfx98Y19/f39/ABEgfX9/f39/f39/f39/f39/f39/AAAAAAAAAAAAAAAAAAAAAHR/f39/f18qfz5/f1EqVSoVKkUAAAAAKHx8AgJ8fAICdH9/PwEAAAB9f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f38LESB0f3UrH35XKn9/fwNEAH1/f39/f39/f39/f39/f38AAAAAFAAAAAAAAAAAAAAAAAAAAH1+f39/f39/dSpVahUiRD4BAAAAfHwCAnx8AgJ8LwAAcD8BAAAAfX9/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/fw9Vfn8of39/fld/fHt/f30PEQJ9f39/f39/f39/f39/fwAAAAAAAAAAQAoAAAAAAAAAAAAAAAAAAH9+f393b187FSJEeH9vXWJ8fQICfHwCAn8DQH5/AHx/AQAAAH9/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/A3wARD9/Kn1/dy99a1d/VX9/P0UKdX9/f39/f39/f39/AAAAAAAAAAAAAAAAACAFAAAAAAAQAAAAAAAAAHd+VypXIkR4f29dK3x8AgJ8fAICfwNAf39/QX9/fwUAACB/f39/f39/f39/f39/f39/f39/f39/f39/fwAgf39/f38rdX8PAH8vfz9Vf39/d391L39/f38BInR/f39/f39/f38AAAAAAAAAAAAAAAAAAAAAAABAAgAAVCoRKl0qAQAAIFcCBCB/f1UKfHwCAnx8AgJ/P1V+f39/PxF+f38HAAAof39/f39/f39/f39/f39/f39/f39/f39/AAAAAAB6f38fKlUqfy9/D3VrX3pXf38/fX9dP1FqBwhQf39/f2pVKgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIH9/f39/f39/dypVCAAgfyt8fAICfHwCAgAAAFAqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlV/fw8Afn9/B3hfeH9/fy8AAAB6f39/f39/f39/f39/f39/f39/f29fAAAAAAAAAAAAUGp9f39/XypBP3Avfw99f39qXypVCFEAAABQen8qEXx8AgJ8fAICAAAAAABVKlUqVypVO1UqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVX9/f38/AHh/YD9gHzpwf38/AQAAen9/f39/f39/f39/f39/f39/f18AAAAAAAAAAAAAAAAAVGp/f39/VQ98Y18+VX5/AkAuVQIAAAAAQAAAfHwCAnx8AgIoVQAAAAAgXTt3bl07d25dO3duXTt3KlUqVSpVKlUqVSpVKlUqVSpVf39/f39/f39/f38feEEvfX9/fwUAAGh/f39/f39/f39/f39/f39/fwAAAAAAAAAAAAAAAAAAAAAAV35/f38vUT9cfn8CUCgRAgAAAAAAAAB8fAICfHwCAihValUCAAAAKH9/f39/f39/f29dO3duXTt3bl07d2pVO1duVSpVKlV/f39/f39/AQAAYH97RQ98I0d+f38XAABof39/f39/f39/f39/f39/AAAAAAAAAAAAAAAAAAAAAAAAAAAgVX5/f39+fysFAFUCAABcAwAAAHx8AgJ8fAICOgUAACB3AgAAAGh/f39/f39/f39/f39fe39uXTt3bl07d25dO3cuXX9/f39/f38fAHR/AX9/fn0Df2h1a396HwAAaH9/f39/f39/f39/f38AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgVX5/K1UqVQoAAFArVypRfHwCAnx8AgI6AQB9PwFgfwMAAAB6f39/f39/f39/f39/f39/P3duXTt3bl07d25dKn9/f39/fwF4AQB8fwF4fytfflEjfyp/f38CACB/f39/f39/f39/fwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAodS4RKgAAUCpXCkV8fAICfHwCAn4FAH9/f0B/f38LAAAAen9/f39/f39/f39/f39/f39/e3duXTt3bl0AAChVf39/V2p/DwB+B34fIn1/fS9/aB8+f35/AwAAfX9/f39/f39/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVAEQqFQAAAAAKAABAKn8KBHx8AgJ8fAICfx8AfX9/fx8AdH9/DwAAAHp/f39/f39/f39/f39/f39/f39/O3dvXQAAAAAAQCp9P1AqVX4HfgcAQD9RL39/f3p/KB8gQA4AAH1/fytVKhEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABof39/P3d+fytVAgAAAGgRfHwCAnx8AgIAAAAoVSpVblU7d25dO3duXTt3bl07VSpVK1UqVSpVKlUqVSpVKlUqf39/Kn1/fw98P31/f39/AgAAdX9/f39/f39/f39/f39/f39/f39/fwAAAAAAAAAAAAB/f39/fz9dKH96X39Xen9/f39VeldqRQgAKn1/Vyp8fQICfHwCAgAAAAAAen9/f39/f39/f39/f39/f39/bl0/d25dO3duXTt3bl07d25/f39/f39/f1U/cA98Kn1/fwsAAHR/f39/f39/f39/f39/f39/f39/AAAAAAAAAAAAAAAAAGh/f39/f2tffncvXyt/f1UKdS5VCAECQAgVInx8AgJ8fAICVDsFAAAAQH5/f39/f39/f39/f39/f39/f39/f39/f39/f39/XTt3bn9/f39/f39/VX9/D3wDX35/f38PQABwf39/f39/f39/f39/f39/f38AAAAAAAAAAAAAAAAAAAAAAHh/f39/f25/Pn9/RShVKgUIAQIAAAAAfHwCAnx8AgJ8f39/BQAAAEB/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/fytwP0B+fysffkc/f39/PwAiVH9/f39/f39/f39/f39/fwAAAAAAKAAAAAAAAAAAAAAAAAAAADp3f39/f39dPlUuBQAAfh8AAAB8fAICfHwCAnwLAABAfwcAAABwf39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/P0BqfyN/P39/Vz9wa1V/fX8FAFB+f39/f39/f39/f39/AAAAAAAAAAAAABUAAAAAAAAAAAAAAAAAQD5/f186dy4VAAFofy9XYnx8AgJ8fAICfwNAfn8DcH8fAAAAdH9/f39/f39/f39/f39/f39/f39/f39/f39/f1V/f39/f38DcAMAfn8vdX9Xf39rR391f39/ByJAfn9/f39/f39/f38AAAAAAAAAAAAAAAAAAAACAAAAAEAIAAAAAAAAQDt/K1UAAGBfL1UqfHwCAnx8AgJ/A0B/f39Bf39/HwAAAHR/f39/f39/f39/f39/f39/f39/f39/f39/AABQbn9/fy9Vfx8Afg9/f1V6f39ff3UvfT5/fx8AAH5/f39/f39/fwAAAAAAAAAAAAAAAAAAAAAAAAAABABAKlUqfy5VCgAAAAABIFV/fwp8fAICfHwCAn8/UX5/f38vFXh/f38AAAB0f39/f39/f39/f39/f39/f39/f39/f38AAAAAAAB0f38jVSp/L30PQCh/al9/f39dfn0/fAt9AAB6f39VO1UqAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAVH9/f39/f39/fwUAAABQKnx8AgJ8fAICAAAAQCpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVX9/PwBof2IHeB94B35/fwcAACB/f39/f39/f39/f393b107d25dO3cAAAAAAAAAAAAAKFV+f39/KEU/cA99K3F/f39/ClUqRQAAAERqXSoAfH0CAnx8AgIAAAAAAFAqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVf39/f39/f38LFWAXeBFgf38XAAAgfX9/f39/f39/f39/f3t3bl07dwAAAAAAAAAAAAAAAAAAKnV/f39HDn0jVy5Vfn8KAQJUAAAAAAAAAAB8fAICfHwCAihVCgAAAAB0bl07d25dO3duXTtVKlUqVSpVKlUqVSpVKlUqVSpVKlV/f39/f39/HwB9fx94QQ98Yn9/VwAAAH9/f39/f39/f39/P3d+XTt3AAAAAAAAAAAAAAAAAAAAAABAKnV/fz9VLx16fwBAKhQAAAAEAAAAAHx8AgJ8fAICKFUqVQoAAAAAXT93bl07d25dO3duXTt3bl0rVSpVKlUqVSpVKlUqVX9/f39/f38DYH8AQH9RD3wDX3p/f18CAAB9f39/f39/f39/d29dO3cAAAAAAAAAAAAAAAAAAAAAAAAAAABQKnV/f39/KlQCVAoAAFQqAAAAfHwCAnx8AgIqBQAAAFwrAAAAIH9/f39/f39/f39dO3duXTt3bl07dy5VKlUqVSpVf39/f39/f38AUH8Bfh9+fysdIFFqXXh3CgAAdH9/f39/f39/b387dwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQKncOUCJVCAAAUGpVAkB8fAICfHwCAmoBAHduBSB/LwAAACB/f39/f39/f39/f39dO3duXTt3bl07d25VK1UqVX9/f39/AWAHAHB/F2B/K39/RwJ9aFdofysAAFR/f39/f39/Xzt3AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQKlUoAABAKl0qRHx8AgJ8fAICbgUAf39/A39/fz8AAAAgf39/f39/f39/f39/d25dO3duXTt3bl07VwAAAFRqfX8XCH8/AH4Hfn8vdH91b30jFwhdIncoAABwf39/f39fKlUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFQKVSpVCgEAAAAAAEAKVTsFfHwCAnx8AgJ+XwB0f39/BwBAf39/AQAAIH9/f39/f39/f39/fl87d25dO3duXTt3AAAAAAAAIFVqFyBVfxd6BwJAP0VufX9/Kl16FygBKAEAUH9/KlUqBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB9f39/XXt/f10CAAAAAAB8fAICfHwCAgAAAAB3bl9/f39/f39/f39/f39/f25dO3d+XTt3bl07d25dO3duXSt/f38rVS50D3w/dC99f38/AAJQf39/f39/f39/f39/f39/f39/f39/AAAAAAAAAAAAAEB/f39/f1dqf3pffn9rf39/f1duXy8VKkQqdX9VKnx8AgJ8fAICUAAAAABof39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f25dO39/f39/f39/VwpwH3wrVX9/P0EIUH5/f39/f39/f39/f39/f39/f38AAAAAAAAAAAAAAAAAAHB/f39/P19+Vz9ffn9/VSpVKhUqRQAAAEQqfHwCAnx8AgJ0f18AAAAAeH9/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/fw8Qen8/fUNffld/f38BIkB+f39/f39/f39/f39/f39/fwAABQAAAAAAAAAAAAAAAAAAAHx/f39/f38+fX8VKlUuBSJFDgAAAAB8fAICfHwCAnx/f39/AAAAAH5/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/K3V/R2h/b19+Rz99e39/BwgBen9/f39/f39/f39/f39/AAAAAAAAUAAAAAAAAAAAAAAAAAAAAF1/f39/f3dqVyoXIkR6fwIAAHx8AgJ8fAICfQMAAAB+fwAAAEB+f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/ASB/K38/fX93PnRrdy99fx8gBHp/f39/f39/f39/f38AAAAAAAAAAAAAACgBAAAAAAAAAAAAAAAAAH1/Xyp1OhciRXh/L1UifHwCAnx8AgJ/A0B/fw9wf38CAABQfn9/f39/f39/f39/f39/f39/f39/f39/f39/V3p/f39/fytxPwB4fy91f3d/fztXf3U/dX9/ABVqf39/f39/f39/fwAAAAAAAAAAAAAAAAAAAAAUAgAAACoFAAAAAAAAIF9/fSJEKH8/VQp8fAICfHwCAn8PQH9/f0d/f39/AwAARH9/f39/f39/f39/f39/f39/f39/f39/f38AAABof39/P1V+fwp9D35/f3p/e3d/dz9RflU/dQMEaH9/f39/f1U6AAAAAAAAAAAAAAAAAAAAAAAAAAAAKgBqV25/f3cqBQAAKgUgVX9/C3x8AgJ8fAICf39Ven9/fw91Y39/fw8AAFB/f39/f39/f39/f39/f39/f39/f39/fwAAAAAAAAB+f39Ban8vdQ9/Yn96X39/f1d+fT9dIlQPVSJ/P3d/XSoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABVfn9/f39/f39/RwAAAAAofHwCAnx8AgIAAAAAKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVf39/ByIAaB94f2AfKH9/XwAAAHx/f39/f39/f39/f39/f39/f39vXQAAAAAAAAAAAAAAVCp/f38vVT9wD31rV39/f38iVSpVAgAAESpVCgF8fAICfHwCAiAAAAAAQG5dO3duXTt3bl07dy5VKlUqVSpVKlUqVSpVKlUqVSpVKlV/f39/f39/fy8FaB94VQB/f38CAAB0f39/f39/f39/f39/f39/f39/AAAAAAAAAAAAAAAAAAAAXXp/f38vfWMfPl1+fyoBABECAAAAAAAAUHx8AgJ8fAICKFUqAQAAAFA7d39/f39uXTt3bl07d25dO3duXStVKlUqVSpVKlUqVX9/f39/f38HAEB/X3pBD3wrdH9/AwAAUH9/f39/f39/f39/f39/f38AAAAAAAAAAAAAAAAAAAAAAAAAVX9/f38/XX5/A1AqVQIAABQAAAAAfHwCAnx8AgIoVQpRKwEAAAB0f39/f39/f39/f39/bl07d25dO3duXTt3bl0qVypVf39/f39/fxdifwdAf18OfQN/enV/fw8AAFB/f39/f39/f39/f39/fwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgVXp/f38jVSoRCgAAVDsHAAB8fAICfHwCAjoFAAAAcH8BAAAAfH9/f39/f39/f39/f39/f387d25dO3duXTt3bl1/f39/f39/fwMAeAd+F35/KwVoUStXaH8/AABQf39/f39/f39/f39/AAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAoVTtFKFUKAABQKkcIQXx8AgJ8fAICOgEAfX8XYH9/BwAAAHR/f39/f39/f39/f39/f39/f187d25dO3duXSBVfn9/f38VYn8AQH9Xan8vf39XIn9oXyJ/fwEAQH5/f39/f39/f38AAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAoVTsAAFAqXygFfHwCAnx8AgJ/BwB/f38Df39/fwcAAAB8f39/f39/f39/f39/f39/f39/b107d25dAAAAACp1f38gdD8Bfgd+f391L30jfysfAnwqHSAHAAB+f39/f1UqVQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUCpVbl8rVQoAAAAAQCJXbhV8fAICfHwCAn9/A3F/f38HeEd+f38fAAAAfH9/f39/f39/f39/f39/f39/fz93b10AAAAAAAAAUCp/D3R/X2oHfkM+dS9/f38/f3gfCgEAHQAAel8qVyoRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIH1/f39/f39/fw8AAAAAEHx8AgJ8fAICAAAAAFQ7d29ff3d/f39/f19/f25dO3duXTt3bl07d25dO3duXStXKn9/fy9UKlU/eD9wL0V+f38FAABqf39/f39/f39/f39/f39/f39/f38AAAAAAAAAAAAAACB/f39/fy9/el9+dW9ff39/VSt1bkUKUSpVO1UifHwCAnx8AgJQCgAAAAB/f39/f39/f39/f39/f39/f39/f39/Xzt3bl07d25dO3duf39/f39/f39fKn0PfCtXf39/FwAAeH9/f39/f39/f39/f39/f39/fwAAAAAAAAAAAAAAAAAAAGh/f39/X35XL18+f399O1UqRQgRAgAAAGp8fAICfHwCAlR7fwIAAABgf39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f25/f39/f39/AwAAfy99Ax9+V2p/fx8AAWh/f39/f39/f39/f39/f39/AAAAAAAAAAAAAAAAAAAAAAAAAHp/f39/fz99f0Vof24FABA+AAAAAHx8AgJ8fAICfD8BIH8LAAAAaH9/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f38nVX8fYn9/X35HP3V6f39/IgAof39/f39/f39/f39/f38AAAAAAAAAIAUAAAAAAAAAAAAAAAAAAG59f39/VT5VKlUAEXh/KxFgfHwCAnx8AgJ8AwBoBWB/DwAAAGh/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f38HAHAvfwp/f1cqdWNXP3V/fwsRIH9/f39/f39/f39/fwAAAAAAAAAAAAAAAFAAAAAAAAAAAAAAAAAAQG59K1UqFQAQaH8vVQJ8fAICfHwCAn8DQH9/P0B/fw8AAAB4f39/f39/f39/f39/f39/f39/f39/f39/f39AKnd/f39/K3V/A2B/L39/fX9/L1V/cW9Xf38PRAB9f39/f39/f39/AAAAAAAAAAAAAAAAAAAAAAAoAQAAABUAAAgRAAAAQG5/AAFiXT9VCnx8AgJ8fAICfw8Bf39/X39/f38/AAAAen9/f39/f39/f39/f39/f39/f39/f39/fwAAAABUe39/UWpfKn0Pfz9/e1d6V39XPlV/VS5APgAAfX9/f38rVSoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAECJ9f39/X3tXKlUKFQBVfncrfHwCAnx8AgJ/f1dqf39/D3wvf39/PwEAAHp/f39/f39/f39/f39/f39/f39/f39/AAAAAAAAAAB9f39/fz91L38Df3pff39/f391P1wKETpFCHQvfX9XKgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFR+f39/f39/f38fAAAAACB8fAICfHwCAgAAAAAgVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlV/f39/ABAiH2gfYEcAdH9/DwAAQH5/f39/f39/f39/f29fO3duXTt3AAAAAAAAAAAAAAAAKFV/f39fPnQPfWNXDlF/fypVKlUAAAAAABUCAHx8AgJ8fAICKAUAAAAAKFUqXSpVblUqVSpVKlUqVSpVKlUqVSpVKlUqVSpVKlUqVX9/f39/f39/PxB6H3hBI39/fy8AAEB+f39/f39/f39/f39/d29dO3cAAAAAAAAAAAAAAAAAAABAKn1/fz99KwcuHXp/aFEAQAAAAAAAAABAfHwCAnx8AgIoVSoFAAAAAG5dO3duXTt3bl07d25dKlUqVSpVKlUqVSpVKlUqVSpVf39/f39/fwEAAHgfaEEPfCtRf38vAABAfn9/f39/f39/f39/b107dwAAAAAAAAAAAAAAAAAAAAAAAABAKl1/fz8den8CACpVAgAAVAAAAAB8fAICfHwCAigVAAAoFQAAAEB6f39/f39/Xzt3bl07d25dO1cuVStVKlUqVSpVKlV/f39/f39/Bwh9P0B/fy99A184dX9/OwUAAHp/f39/f39/f39/XTt3AAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQKn1/fwpVKlUIAABUalUqQHx8AgJ8fAICKgEAdAoAOhcAAABAfn9/f39/f39/fz93bl07d25dO3cuVSpVKlUqVW5/f39/f38HDgAgRz4Aen8rUXpBIl0if38VAABof39/f39/f39fO3cAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQKl0CVAoAAFAqVSpAfHwCAnx8AgJuAQB/fx8gf39fAAAAQH9/f39/f39/f39/fz93bl07d25dO3duXTtVAFAqdX9/f0FofwNAfgd+HyB/f18qfWBHDn1/VwAAeH9/f39/f387dwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAABUKgAAQCodAAR8fAICfHwCAn4dAH9/f39/AH9/fwAAAEB/f39/f39/f39/f39vXTt3bl07d25dO3cAAAAAAFU6fwMRAFV+B34HaFELdAt9L1VqXyoXAFQAAGh/f38vVSpEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAal07dypVKlUKAQAAAFArFXx8AgJ8fAICfn8DQH9/fwd4H3p/f38DAABAf39/f39/f39/f39/P3duXTt3bl07dwAAAAAAAAAAKFV6f39/Ywd+QT90L30/f39/en8IAQBQAAAgVypdKgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAodX9/f39/f39/DwAAAAAAfHwCAnx8AgI=";
+ 
+     this.id={"PCODE":"DITHER","icon":"fa fa-camera"};
++    this.deviceConfig=[{DCODE:"A2CAMERA",coID:"DithertizerCameraDevice",icon:"fa fa-camera",description:"Host camera",autoAttach:true}];
++    this.cameraDevice=null;
+     this.state={
+          "active":true
+         ,"threshold":0
+@@ -260,7 +257,7 @@
+     {
+         if(cameraSource && typeof(cameraSource.getLumaFrame)==="function")
+             return normalizeSourceFrame(cameraSource.getLumaFrame(HGR_WIDTH,HGR_HEIGHT));
+-        return hostCameraStream ? hostCameraFrame : sampleFrame;
++        return card.cameraDevice && card.cameraDevice.isActive() ? hostCameraFrame : sampleFrame;
+     }
+ 
+     this.setCameraSource=function(source)
+@@ -393,13 +390,10 @@
+     }
+ 
+     // This function is serialized into a Blob Worker along with the WASM bytes.
+-    // The worker returns palette luminance, never writes to Apple II memory.
+     function wasmWorkerMain(base64)
+     {
+         var backend=null;
+         var loading=null;
+-        var paletteLuma=[0,156,145,255,0,145,156,255];
+-
+         async function load()
+         {
+             if(backend) return backend;
+@@ -414,7 +408,6 @@
+             })();
+             return loading;
+         }
+-
+         self.onmessage=async function(event)
+         {
+             var msg=event.data || {};
+@@ -422,23 +415,11 @@
+             {
+                 var wasm=await load();
+                 var source=new Uint8Array(msg.rgb);
+-                if(source.length!==280*192*3) throw new Error("Invalid HGR source frame");
++                if(source.length!==280*192*3) throw new Error("Invalid RGB24 source frame");
+                 var memory=wasm.memory.buffer;
+-                new Uint8Array(memory,wasm.hgr_get_source_ptr(),source.length).set(source);
+-                // Neutral ConvertHGR settings: diffusion with the original
+-                // browser port's colour metric and Atkinson coefficients.
+-                new Float64Array(memory,wasm.hgr_get_settings_ptr(),15).set([
+-                    0,0.8,0.30,0.52,0.18, 0,2,0,1, 1,2,2,2,1,1
+-                ]);
+-                var status=wasm.hgr_convert(0x1234);
+-                if(status!==0) throw new Error("HGR WASM status "+status);
+-                var indices=new Uint8Array(memory,wasm.hgr_get_palette_ptr(),280*192);
+-                var luma=new Uint8Array(indices.length);
+-                for(var p=0;p<indices.length;p++)
+-                {
+-                    if(indices[p]>7) throw new Error("Invalid HGR palette index");
+-                    luma[p]=paletteLuma[indices[p]];
+-                }
++                new Uint8Array(memory,0,source.length).set(source);
++                wasm.convert(280*192);
++                var luma=new Uint8Array(new Uint8Array(memory,source.length,280*192));
+                 self.postMessage({requestId:msg.requestId,epoch:msg.epoch,luma:luma.buffer},[luma.buffer]);
+             }
+             catch(error)
+@@ -464,9 +445,9 @@
+         if(wasmWorker) return wasmWorker;
+         if(typeof(Worker)!=="function" || typeof(Blob)!=="function" ||
+            typeof(URL)==="undefined" || !URL || typeof(URL.createObjectURL)!=="function")
+-            throw new Error("WASM HGR conversion requires Blob Worker support");
+-
+-        var script="("+wasmWorkerMain.toString()+")("+JSON.stringify(WASM_HGR_BASE64)+");";
++            throw new Error("WASM luminance conversion requires Blob Worker support");
++
++        var script="("+wasmWorkerMain.toString()+")("+JSON.stringify(WASM_LUMA_BASE64)+");";
+         wasmWorkerURL=URL.createObjectURL(new Blob([script],{type:"text/javascript"}));
+         try { wasmWorker=new Worker(wasmWorkerURL); }
+         catch(error)
+@@ -482,10 +463,10 @@
+             if(worker!==wasmWorker || !wasmPending || wasmPending.id!==msg.requestId) return;
+             var pending=wasmPending;
+             wasmPending=null;
+-            if(!hostCameraStream || !wasmEnabled || pending.epoch!==hostCameraEpoch) return;
++            if(!card.cameraDevice || !card.cameraDevice.isActive() || !wasmEnabled || pending.epoch!==hostCameraEpoch) return;
+             if(msg.error || !(msg.luma instanceof ArrayBuffer) || msg.luma.byteLength!==HGR_WIDTH*HGR_HEIGHT)
+             {
+-                wasmError=String(msg.error || "Invalid WASM HGR output");
++                wasmError=String(msg.error || "Invalid WASM luminance output");
+                 if(typeof(console)!=="undefined" && console && typeof(console.warn)==="function")
+                     console.warn("Dithertizer WASM conversion failed",wasmError);
+             }
+@@ -504,36 +485,16 @@
+ 
+     function captureHostCameraFrame(epoch)
+     {
+-        if(!hostCameraStream || epoch!==hostCameraEpoch || !hostCameraVideo || !hostCameraContext)
+-            return false;
++        if(!card.cameraDevice || !card.cameraDevice.isActive() || epoch!==hostCameraEpoch) return false;
+         if(wasmEnabled && (wasmPending || wasmError)) return false;
+-
+-        var sourceW=Number(hostCameraVideo.videoWidth)|0;
+-        var sourceH=Number(hostCameraVideo.videoHeight)|0;
+-        if(sourceW<=0 || sourceH<=0) return false;
+-
+-        // A 4:3 camera view fills the Apple display. HGR's 280 samples are
+-        // slightly narrower than square pixels, so crop before resampling.
+-        var cropW=Math.min(sourceW,sourceH*4/3);
+-        var cropH=Math.min(sourceH,sourceW*3/4);
+-        hostCameraContext.drawImage(hostCameraVideo,(sourceW-cropW)/2,(sourceH-cropH)/2,
+-            cropW,cropH,0,0,HGR_WIDTH,HGR_HEIGHT);
+-        var image=hostCameraContext.getImageData(0,0,HGR_WIDTH,HGR_HEIGHT);
+-        var rgba=image && image.data;
+-        if(!rgba || rgba.length < HGR_WIDTH*HGR_HEIGHT*4) return false;
+-
++        var frame=card.cameraDevice.ports.video.read({width:HGR_WIDTH,height:HGR_HEIGHT,crop:"4:3"});
++        if(!frame || !frame.rgb || frame.rgb.length!==HGR_WIDTH*HGR_HEIGHT*3) return false;
++        var rgb=frame.rgb;
+         if(wasmEnabled)
+         {
+             try
+             {
+                 var worker=startWasmWorker();
+-                var rgb=new Uint8Array(HGR_WIDTH*HGR_HEIGHT*3);
+-                for(var p=0,s=0,d=0;p<HGR_WIDTH*HGR_HEIGHT;p++,s+=4)
+-                {
+-                    rgb[d++]=rgba[s];
+-                    rgb[d++]=rgba[s+1];
+-                    rgb[d++]=rgba[s+2];
+-                }
+                 var requestId=++wasmRequestId;
+                 wasmPending={id:requestId,epoch:epoch};
+                 worker.postMessage({requestId:requestId,epoch:epoch,rgb:rgb.buffer},[rgb.buffer]);
+@@ -550,20 +511,17 @@
+             }
+         }
+ 
+-        // Keep the full luminance range: no palette matching or host dithering.
+-        // Publish a complete raw frame; adjustments are applied at capture time.
+         var next=new Uint8Array(HGR_WIDTH*HGR_HEIGHT);
+-        for(var p=0,s=0;p<next.length;p++,s+=4)
+-            next[p]=Math.round((299*rgba[s]+587*rgba[s+1]+114*rgba[s+2])/1000);
++        for(var p=0,s=0;p<next.length;p++,s+=3)
++            next[p]=Math.floor((299*rgb[s]+587*rgb[s+1]+114*rgb[s+2]+500)/1000);
+         hostCameraFrame=next;
+         return true;
+     }
+ 
+-    // Apple2IO calls mounted-peripheral cycle hooks once per processing frame.
+-    // The SYSTEM FPS slider owns that cadence; the camera has no private timer.
++    // Apple2IO invokes this hook once per SYSTEM processing frame.
+     this.cycle=function()
+     {
+-        if(!hostCameraStream) return;
++        if(!card.cameraDevice || !card.cameraDevice.isActive()) return;
+         try { captureHostCameraFrame(hostCameraEpoch); }
+         catch(error)
+         {
+@@ -572,55 +530,12 @@
+         }
+     };
+ 
+-    async function startHostCameraBridge(stream,epoch)
+-    {
+-        if(typeof(document)==="undefined" || !document || typeof(document.createElement)!=="function") return false;
+-
+-        hostCameraVideo=document.createElement("video");
+-        hostCameraCanvas=document.createElement("canvas");
+-        if(!hostCameraVideo || !hostCameraCanvas || typeof(hostCameraCanvas.getContext)!=="function")
+-            throw new Error("Dithertizer host camera requires video/canvas support");
+-
+-        hostCameraCanvas.width=HGR_WIDTH;
+-        hostCameraCanvas.height=HGR_HEIGHT;
+-        hostCameraContext=hostCameraCanvas.getContext("2d");
+-        if(!hostCameraContext || typeof(hostCameraContext.drawImage)!=="function" || typeof(hostCameraContext.getImageData)!=="function")
+-            throw new Error("Dithertizer host camera requires a 2D canvas context");
+-
+-        hostCameraVideo.autoplay=true;
+-        hostCameraVideo.muted=true;
+-        hostCameraVideo.playsInline=true;
+-        hostCameraVideo.srcObject=stream;
+-        if(typeof(hostCameraVideo.play)==="function") await hostCameraVideo.play();
+-        if(!hostCameraStream || hostCameraStream!==stream || epoch!==hostCameraEpoch) return false;
+-
+-        await captureHostCameraFrame(epoch);
+-        return true;
+-    }
+-
+     function stopHostCamera()
+     {
+         hostCameraEpoch++;
+-        hostCameraPending=false;
+         stopWasmWorker();
+-
+-        if(hostCameraVideo)
+-        {
+-            if(typeof(hostCameraVideo.pause)==="function") hostCameraVideo.pause();
+-            try { hostCameraVideo.srcObject=null; } catch(e) {}
+-        }
+-        hostCameraVideo=null;
+-        hostCameraCanvas=null;
+-        hostCameraContext=null;
++        if(card.cameraDevice) card.cameraDevice.stop();
+         hostCameraFrame=new Uint8Array(HGR_WIDTH*HGR_HEIGHT);
+-
+-        if(hostCameraStream && typeof(hostCameraStream.getTracks)==="function")
+-        {
+-            var tracks=hostCameraStream.getTracks();
+-            for(var i=0;i<tracks.length;i++)
+-                if(tracks[i] && typeof(tracks[i].stop)==="function") tracks[i].stop();
+-        }
+-        hostCameraStream=null;
+     }
+ 
+     function updateCameraButton(controlID)
+@@ -628,7 +543,7 @@
+         if(typeof(document)==="undefined" || !document || typeof(document.getElementById)!=="function") return;
+         var button=document.getElementById(controlID+"_camera");
+         if(!button) return;
+-        var active=!!hostCameraStream;
++        var active=!!(card.cameraDevice && card.cameraDevice.isActive());
+         button.setAttribute("aria-pressed",active ? "true" : "false");
+         button.title=active ? "Stop host camera" : "Start host camera";
+         var icon=button.querySelector ? button.querySelector("i") : null;
+@@ -643,8 +558,8 @@
+         var button=document.getElementById(controlID+"_wasm");
+         if(!button) return;
+         button.setAttribute("aria-pressed",wasmEnabled ? "true" : "false");
+-        button.title=wasmError ? "WASM HGR error: "+wasmError :
+-            (wasmEnabled ? "Disable WASM HGR conversion" : "Enable WASM HGR conversion");
++        button.title=wasmError ? "WASM luminance error: "+wasmError :
++            (wasmEnabled ? "Disable WASM luminance conversion" : "Enable WASM luminance conversion");
+         var icon=button.querySelector ? button.querySelector("i") : null;
+         if(icon && icon.style) icon.style.color=wasmError ? "#a00" : (wasmEnabled ? "#0a0" : "");
+         var status=document.getElementById(controlID+"_wasm_status");
+@@ -656,7 +571,7 @@
+         hostCameraControlID=String(controlID || "");
+         wasmEnabled=!wasmEnabled;
+         stopWasmWorker();
+-        if(hostCameraStream)
++        if(card.cameraDevice && card.cameraDevice.isActive())
+         {
+             try { captureHostCameraFrame(hostCameraEpoch); }
+             catch(error)
+@@ -671,44 +586,22 @@
+ 
+     this.deviceToolCameraToggle=async function(controlID)
+     {
+-        controlID=String(controlID || "");
+-        hostCameraControlID=controlID;
+-        if(hostCameraStream || hostCameraPending)
++        hostCameraControlID=String(controlID || "");
++        var device=card.cameraDevice;
++        if(!device) return false;
++        if(device.isActive() || device.isPending())
+         {
+             stopHostCamera();
+-            updateCameraButton(controlID);
++            updateCameraButton(hostCameraControlID);
+             return false;
+         }
+-        if(typeof(navigator)==="undefined" || !navigator || !navigator.mediaDevices || typeof(navigator.mediaDevices.getUserMedia)!=="function")
+-        {
+-            updateCameraButton(controlID);
+-            return false;
+-        }
+         var epoch=++hostCameraEpoch;
+-        hostCameraPending=true;
+-        try
+-        {
+-            var stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+-            if(epoch!==hostCameraEpoch)
+-            {
+-                if(stream && typeof(stream.getTracks)==="function")
+-                    stream.getTracks().forEach(function(track){if(track && typeof(track.stop)==="function") track.stop();});
+-                return false;
+-            }
+-            hostCameraPending=false;
+-            hostCameraStream=stream;
+-            await startHostCameraBridge(stream,epoch);
+-            if(!hostCameraStream || hostCameraStream!==stream || epoch!==hostCameraEpoch) return false;
+-            updateCameraButton(controlID);
+-            return true;
+-        }
+-        catch(e)
+-        {
+-            if(epoch!==hostCameraEpoch) return false;
+-            stopHostCamera();
+-            updateCameraButton(controlID);
+-            return false;
+-        }
++        var started=await device.start();
++        if(epoch!==hostCameraEpoch || device!==card.cameraDevice || !started) return false;
++        try { captureHostCameraFrame(epoch); }
++        catch(error) { stopHostCamera(); return false; }
++        updateCameraButton(hostCameraControlID);
++        return true;
+     };
+ 
+     this.deviceToolSetting=function(controlID,setting,value)
+@@ -731,7 +624,7 @@
+         var slotN=Number(ctx.slotN);
+         var controlID="dither_ctrl_"+slotID;
+         var call="apple2plus.hwObj().io.SLOT2obj("+slotN+")";
+-        var cameraActive=!!hostCameraStream;
++        var cameraActive=!!(card.cameraDevice && card.cameraDevice.isActive());
+         var rowStyle="height:21px;display:flex;align-items:center;gap:4px;";
+ 
+         function slider(setting,label,min,max)
+@@ -747,7 +640,7 @@
+             +"<button id=\""+controlID+"_camera\" class=\"appbut skinny\" type=\"button\" aria-pressed=\""+(cameraActive ? "true" : "false")+"\" title=\""+(cameraActive ? "Stop host camera" : "Start host camera")+"\" onclick=\""+call+".deviceToolCameraToggle('"+controlID+"')\" style=\"margin-left:auto;height:19px;padding:1px 5px;\"><i class=\"fa fa-camera\" style=\""+(cameraActive ? "color:#0a0;" : "")+"\"></i></button>"
+             +"<span id=\""+controlID+"_camera_status\" style=\"width:20px;font-size:10px;text-align:center;color:#777;\">"+(cameraActive ? "ON" : "OFF")+"</span></div>"
+             +"<div data-dither-row=\"CONTRAST\" style=\""+rowStyle+"\">"+slider("contrast","Contrast",0,200)
+-            +"<button id=\""+controlID+"_wasm\" class=\"appbut skinny\" type=\"button\" aria-pressed=\""+(wasmEnabled ? "true" : "false")+"\" title=\""+(wasmError ? "WASM HGR conversion unavailable" : (wasmEnabled ? "Disable WASM HGR conversion" : "Enable WASM HGR conversion"))+"\" onclick=\""+call+".deviceToolWasmToggle('"+controlID+"')\" style=\"margin-left:auto;height:19px;padding:1px 5px;\"><i class=\"fa fa-microchip\" style=\""+(wasmError ? "color:#a00;" : (wasmEnabled ? "color:#0a0;" : ""))+"\"></i></button>"
++            +"<button id=\""+controlID+"_wasm\" class=\"appbut skinny\" type=\"button\" aria-pressed=\""+(wasmEnabled ? "true" : "false")+"\" title=\""+(wasmError ? "WASM luminance conversion unavailable" : (wasmEnabled ? "Disable WASM luminance conversion" : "Enable WASM luminance conversion"))+"\" onclick=\""+call+".deviceToolWasmToggle('"+controlID+"')\" style=\"margin-left:auto;height:19px;padding:1px 5px;\"><i class=\"fa fa-microchip\" style=\""+(wasmError ? "color:#a00;" : (wasmEnabled ? "color:#0a0;" : ""))+"\"></i></button>"
+             +"<span id=\""+controlID+"_wasm_status\" style=\"width:20px;font-size:10px;text-align:center;color:#777;\">"+(wasmError ? "ERR" : (wasmEnabled ? "ON" : "OFF"))+"</span></div>"
+             +"<div data-dither-row=\"GAMMA\" style=\""+rowStyle+"\">"+slider("gamma","Gamma",10,500)+"</div>"
+             +"</div></div>";
+@@ -765,6 +658,7 @@
+         card.state.page2=false;
+     };
+     this.restart=this.reset;
++    this.onUnmount=this.reset;
+ }
+ 
+ if(typeof(oEMU)==="undefined")
+diff --git a/res/EMU_CARD_dithertizer2.js b/res/EMU_CARD_dithertizer2.js
+--- a/res/EMU_CARD_dithertizer2.js
++++ b/res/EMU_CARD_dithertizer2.js
+@@ -17,12 +17,10 @@
+ {
+     var card=this;
+     var cameraSource=null;
+-    var hostCameraStream=null;
+-    var hostCameraVideo=null;
+-    var hostCameraCanvas=null;
+-    var hostCameraContext=null;
+-    var hostCameraTimer=null;
+     var hostCameraEpoch=0;
++    var cameraFrameBusy=false;
++    var cameraFrameToken=0;
++    var wasmEnabled=true;
+     var hostCameraPage=null;
+     var hostCameraPhaseReference=null;
+     var defaultHGRPage=null;
+@@ -169,6 +167,8 @@
+     const HOST_CAMERA_SEED=0x12345678;
+ 
+     this.id={"PCODE":"DITHER2","icon":"fa fa-camera"};
++    this.deviceConfig=[{DCODE:"A2CAMERA",coID:"DithertizerCameraDevice",icon:"fa fa-camera",description:"Host camera",autoAttach:true}];
++    this.cameraDevice=null;
+     this.state={
+          "active":true
+         ,"threshold":0
+@@ -188,7 +188,6 @@
+         ,"histogram":false
+         ,"gamma":130
+         ,"filter":"bilinear"
+-        ,"rate":250
+         ,"errorCoeffs":{"A":1,"B":2,"C":2,"D":2,"E":1,"F":1}
+     };
+ 
+@@ -259,6 +258,20 @@
+     // synchronized, one-pass PAGE2 entry. The historical DITHER card is intact.
+     this.cycle=function()
+     {
++        if(card.cameraDevice && card.cameraDevice.isActive() && hostCameraAdapter && !cameraFrameBusy)
++        {
++            cameraFrameBusy=true;
++            var frameEpoch=hostCameraEpoch;
++            var frameToken=++cameraFrameToken;
++            Promise.resolve(captureHostCameraFrame(frameEpoch)).catch(function(error)
++            {
++                if(typeof(console)!=="undefined" && console && typeof(console.warn)==="function")
++                    console.warn("Dithertizer ConvertHGR camera frame failed",error);
++            }).then(function()
++            {
++                if(frameToken===cameraFrameToken) cameraFrameBusy=false;
++            });
++        }
+         if(typeof(apple2plus)==="undefined" || !apple2plus || typeof(apple2plus.hwObj)!=="function") return;
+         var hw=apple2plus.hwObj();
+         if(!hw || !hw.RD || !hw.WR || typeof(hw.RD[1])!=="function" || typeof(hw.WR[1])!=="function") return;
+@@ -593,7 +606,7 @@
+         else if(uiState.mode==="order3"){orderedMode=1;mapSize=4;}
+         else if(uiState.mode==="order4"){orderedMode=2;mapSize=4;}
+ 
+-        var e=uiState.errorCoeffs;
++        var e=uiState.mode==="none" ? {A:0,B:0,C:0,D:0,E:0,F:0} : uiState.errorCoeffs;
+         return {
+             image:{
+                  greyscale:!!uiState.greyscale
+@@ -619,7 +632,7 @@
+                  orderedMode:orderedMode
+                 ,mapSize:mapSize
+                 ,orderedOffset:Number(uiState.offset)
+-                ,accumulateErrors:uiState.error==="accumulate"
++                ,accumulateErrors:uiState.mode!=="none" && uiState.error==="accumulate"
+                 ,error:{A:e.A,B:e.B,C:e.C,D:e.D,E:e.E,F:e.F}
+             }
+         };
+@@ -652,12 +665,6 @@
+             throw error;
+         });
+         return convertHGRAdapterLoadPromise;
+-    }
+-
+-    function clearHostCameraTimer()
+-    {
+-        if(hostCameraTimer!==null && typeof(clearTimeout)==="function") clearTimeout(hostCameraTimer);
+-        hostCameraTimer=null;
+     }
+ 
+     function stabilizeCameraPhase(page,processedRGB)
+@@ -706,34 +713,14 @@
+ 
+     async function captureHostCameraFrame(epoch)
+     {
+-        if(!hostCameraStream || !hostCameraVideo || !hostCameraContext || !hostCameraCanvas || !hostCameraAdapter)
+-            return false;
+-
+-        var sourceW=Number(hostCameraVideo.videoWidth)|0;
+-        var sourceH=Number(hostCameraVideo.videoHeight)|0;
+-        if(sourceW<=0 || sourceH<=0) return false;
+-
+-        if(hostCameraCanvas.width!==sourceW) hostCameraCanvas.width=sourceW;
+-        if(hostCameraCanvas.height!==sourceH) hostCameraCanvas.height=sourceH;
+-        hostCameraContext=hostCameraCanvas.getContext("2d");
+-        if(!hostCameraContext) return false;
+-
+-        hostCameraContext.drawImage(hostCameraVideo,0,0,sourceW,sourceH);
+-        var image=hostCameraContext.getImageData(0,0,sourceW,sourceH);
+-        var rgba=image && image.data;
+-        if(!rgba || rgba.length < sourceW*sourceH*4) return false;
+-
+-        var rgb=new Uint8Array(sourceW*sourceH*3);
+-        for(var s=0,d=0;s<rgba.length;s+=4)
+-        {
+-            rgb[d++]=rgba[s];
+-            rgb[d++]=rgba[s+1];
+-            rgb[d++]=rgba[s+2];
+-        }
++        var device=card.cameraDevice;
++        if(!device || !device.isActive() || !hostCameraAdapter || epoch!==hostCameraEpoch) return false;
++        var frame=device.ports.video.read();
++        if(!frame || !frame.rgb || frame.rgb.length!==frame.width*frame.height*3) return false;
+ 
+         hostCameraAdapter.configure(buildConvertHGRSettings());
+-        var result=await hostCameraAdapter.convert(rgb,sourceW,sourceH,HOST_CAMERA_SEED);
+-        if(!hostCameraStream || epoch!==hostCameraEpoch) return false;
++        var result=await hostCameraAdapter.convert(frame.rgb,frame.width,frame.height,HOST_CAMERA_SEED);
++        if(device!==card.cameraDevice || !device.isActive() || epoch!==hostCameraEpoch) return false;
+ 
+         var nextPage=new Uint8Array(normalizeHGRPage(result && result.hgrPage));
+         stabilizeCameraPhase(nextPage,result && result.processedRGB);
+@@ -741,80 +728,36 @@
+         return true;
+     }
+ 
+-    function scheduleHostCameraFrame(epoch)
+-    {
+-        clearHostCameraTimer();
+-        if(!hostCameraStream || epoch!==hostCameraEpoch || typeof(setTimeout)!=="function") return;
+-        hostCameraTimer=setTimeout(function()
+-        {
+-            hostCameraTimer=null;
+-            if(!hostCameraStream || epoch!==hostCameraEpoch) return;
+-            Promise.resolve(captureHostCameraFrame(epoch)).catch(function(error)
+-            {
+-                if(typeof(console)!=="undefined" && console && typeof(console.warn)==="function")
+-                    console.warn("Dithertizer ConvertHGR camera frame failed",error);
+-            }).then(function()
+-            {
+-                if(hostCameraStream && epoch===hostCameraEpoch) scheduleHostCameraFrame(epoch);
+-            });
+-        },uiState.rate);
+-    }
+-
+-    async function startHostCameraBridge(stream,epoch)
+-    {
+-        if(typeof(document)==="undefined" || !document || typeof(document.createElement)!=="function") return false;
+-
++    async function startHostCameraBridge(epoch)
++    {
+         var AdapterCtor=await ensureConvertHGRAdapterCtor();
+-        if(!AdapterCtor) return false;
+-        hostCameraAdapter=new AdapterCtor();
+-        await hostCameraAdapter.init();
+-
+-        hostCameraVideo=document.createElement("video");
+-        hostCameraCanvas=document.createElement("canvas");
+-        if(!hostCameraVideo || !hostCameraCanvas || typeof(hostCameraCanvas.getContext)!=="function")
+-            throw new Error("Dithertizer host camera requires video/canvas support");
+-
+-        hostCameraContext=hostCameraCanvas.getContext("2d");
+-        if(!hostCameraContext || typeof(hostCameraContext.drawImage)!=="function" || typeof(hostCameraContext.getImageData)!=="function")
+-            throw new Error("Dithertizer host camera requires a 2D canvas context");
+-
+-        hostCameraVideo.autoplay=true;
+-        hostCameraVideo.muted=true;
+-        hostCameraVideo.playsInline=true;
+-        hostCameraVideo.srcObject=stream;
+-        if(typeof(hostCameraVideo.play)==="function") await hostCameraVideo.play();
+-        if(!hostCameraStream || hostCameraStream!==stream || epoch!==hostCameraEpoch) return false;
+-
++        if(!AdapterCtor || !card.cameraDevice || !card.cameraDevice.isActive() || epoch!==hostCameraEpoch)
++            return false;
++        var adapter=new AdapterCtor({backend:wasmEnabled ? "wasm" : "javascript"});
++        try { await adapter.init(); }
++        catch(error) { if(typeof(adapter.close)==="function") adapter.close(); throw error; }
++        if(typeof(adapter.setBackend)==="function")
++            adapter.setBackend(wasmEnabled ? "wasm" : "javascript");
++        if(!card.cameraDevice || !card.cameraDevice.isActive() || epoch!==hostCameraEpoch)
++        {
++            if(typeof(adapter.close)==="function") adapter.close();
++            return false;
++        }
++        hostCameraAdapter=adapter;
+         await captureHostCameraFrame(epoch);
+-        scheduleHostCameraFrame(epoch);
+         return true;
+     }
+ 
+     function stopHostCamera()
+     {
+         hostCameraEpoch++;
+-        clearHostCameraTimer();
++        cameraFrameToken++;
++        cameraFrameBusy=false;
+         if(hostCameraAdapter && typeof(hostCameraAdapter.close)==="function") hostCameraAdapter.close();
+         hostCameraAdapter=null;
+-
+-        if(hostCameraVideo)
+-        {
+-            if(typeof(hostCameraVideo.pause)==="function") hostCameraVideo.pause();
+-            try { hostCameraVideo.srcObject=null; } catch(e) {}
+-        }
+-        hostCameraVideo=null;
+-        hostCameraCanvas=null;
+-        hostCameraContext=null;
+         hostCameraPage=null;
+         hostCameraPhaseReference=null;
+-
+-        if(hostCameraStream && typeof(hostCameraStream.getTracks)==="function")
+-        {
+-            var tracks=hostCameraStream.getTracks();
+-            for(var i=0;i<tracks.length;i++)
+-                if(tracks[i] && typeof(tracks[i].stop)==="function") tracks[i].stop();
+-        }
+-        hostCameraStream=null;
++        if(card.cameraDevice) card.cameraDevice.stop();
+     }
+ 
+     function updateCameraButton(controlID)
+@@ -822,7 +765,7 @@
+         if(typeof(document)==="undefined" || !document || typeof(document.getElementById)!=="function") return;
+         var button=document.getElementById(controlID+"_camera");
+         if(!button) return;
+-        var active=!!hostCameraStream;
++        var active=!!(card.cameraDevice && card.cameraDevice.isActive());
+         button.setAttribute("aria-pressed",active ? "true" : "false");
+         button.title=active ? "Stop host camera" : "Start host camera";
+         var icon=button.querySelector ? button.querySelector("i") : null;
+@@ -831,38 +774,71 @@
+         if(status) status.textContent=active ? "ON" : "OFF";
+     }
+ 
++    function updateWasmButton(controlID)
++    {
++        if(typeof(document)==="undefined" || !document || typeof(document.getElementById)!=="function") return;
++        var button=document.getElementById(controlID+"_wasm");
++        if(!button) return;
++        button.setAttribute("aria-pressed",wasmEnabled ? "true" : "false");
++        button.title=wasmEnabled ? "Use JavaScript ConvertHGR" : "Use WASM ConvertHGR";
++        var icon=button.querySelector ? button.querySelector("i") : null;
++        if(icon && icon.style) icon.style.color=wasmEnabled ? "#0a0" : "";
++        var status=document.getElementById(controlID+"_wasm_status");
++        if(status) status.textContent=wasmEnabled ? "ON" : "OFF";
++    }
++
++    this.deviceToolWasmToggle=function(controlID)
++    {
++        hostCameraControlID=String(controlID || "");
++        wasmEnabled=!wasmEnabled;
++        // Discard the result of a conversion started with the previous backend.
++        if(hostCameraAdapter)
++        {
++            hostCameraEpoch++;
++            if(typeof(hostCameraAdapter.setBackend)==="function")
++                hostCameraAdapter.setBackend(wasmEnabled ? "wasm" : "javascript");
++        }
++        updateWasmButton(hostCameraControlID);
++        return wasmEnabled;
++    };
++
+     this.deviceToolCameraToggle=async function(controlID)
+     {
+-        controlID=String(controlID || "");
+-        hostCameraControlID=controlID;
+-        if(hostCameraStream)
++        hostCameraControlID=String(controlID || "");
++        var device=card.cameraDevice;
++        if(!device) return false;
++        if(device.isActive() || device.isPending())
+         {
+             stopHostCamera();
+-            updateCameraButton(controlID);
++            updateCameraButton(hostCameraControlID);
+             return false;
+         }
+-        if(typeof(navigator)==="undefined" || !navigator || !navigator.mediaDevices || typeof(navigator.mediaDevices.getUserMedia)!=="function")
+-        {
+-            updateCameraButton(controlID);
++        var epoch=++hostCameraEpoch;
++        var started=await device.start();
++        if(epoch!==hostCameraEpoch || device!==card.cameraDevice || !started) return false;
++        try
++        {
++            started=await startHostCameraBridge(epoch);
++            if(!started || epoch!==hostCameraEpoch) return false;
++            updateCameraButton(hostCameraControlID);
++            return true;
++        }
++        catch(error)
++        {
++            if(epoch===hostCameraEpoch) stopHostCamera();
++            updateCameraButton(hostCameraControlID);
+             return false;
+         }
+-        try
+-        {
+-            var stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+-            hostCameraStream=stream;
+-            var epoch=++hostCameraEpoch;
+-            await startHostCameraBridge(stream,epoch);
+-            if(!hostCameraStream || hostCameraStream!==stream || epoch!==hostCameraEpoch) return false;
+-            updateCameraButton(controlID);
+-            return true;
+-        }
+-        catch(e)
+-        {
+-            stopHostCamera();
+-            updateCameraButton(controlID);
+-            return false;
+-        }
+-    };
++    };
++
++    function updateModeControls(controlID)
++    {
++        if(typeof(document)==="undefined" || !document || typeof(document.getElementById)!=="function") return;
++        var error=document.getElementById(controlID+"_error");
++        var offset=document.getElementById(controlID+"_offset");
++        if(error) error.disabled=uiState.mode==="none";
++        if(offset) offset.disabled=uiState.mode==="none" || uiState.mode==="diffusion";
++    }
+ 
+     this.deviceToolSetting=function(controlID,setting,value)
+     {
+@@ -872,9 +848,10 @@
+         switch(setting)
+         {
+             case "mode":
+-                allowed=["diffusion","order1","order2","order3","order4"];
++                allowed=["none","diffusion","order1","order2","order3","order4"];
+                 if(allowed.indexOf(String(value))<0) return false;
+                 uiState.mode=String(value);
++                updateModeControls(controlID);
+                 if(uiState.mode==="order2" || uiState.mode==="order4")
+                     uiState.errorCoeffs={"A":1,"B":2,"C":2,"D":2,"E":0,"F":0};
+                 return true;
+@@ -885,12 +862,14 @@
+             case "error":
+                 allowed=["accumulate","average"];
+                 if(allowed.indexOf(String(value))<0) return false;
++                if(uiState.mode==="none") return false;
+                 uiState.error=String(value);return true;
+             case "filter":
+                 allowed=["box","gaussian","hamming","blackman","bilinear"];
+                 if(allowed.indexOf(String(value))<0) return false;
+                 uiState.filter=String(value);return true;
+             case "offset":
++                if(uiState.mode==="none" || uiState.mode==="diffusion") return false;
+                 value=uiNumber(value,0,16);if(value===null)return false;uiState.offset=value;uiReadout(controlID,"offset",value);return true;
+             case "luma":
+                 value=uiNumber(value,0,500);if(value===null)return false;uiState.luma=value;uiReadout(controlID,"luma",value);return true;
+@@ -898,8 +877,6 @@
+                 value=uiNumber(value,0,100);if(value===null)return false;uiState.shift=value;uiReadout(controlID,"shift",value);return true;
+             case "gamma":
+                 value=uiNumber(value,0,500);if(value===null)return false;uiState.gamma=value;uiReadout(controlID,"gamma",value);return true;
+-            case "rate":
+-                value=uiNumber(value,100,1000);if(value===null)return false;uiState.rate=value;uiReadout(controlID,"rate",value);return true;
+         }
+         return false;
+     };
+@@ -921,7 +898,7 @@
+         var controlID="dither_ctrl_"+slotID;
+         var call="apple2plus.hwObj().io.SLOT2obj("+slotN+")";
+ 
+-        var modeOptions=""+uiOption("diffusion","Error diffusion",uiState.mode)+uiOption("order1","Order1",uiState.mode)+uiOption("order2","Order2",uiState.mode)+uiOption("order3","Order3",uiState.mode)+uiOption("order4","Order4",uiState.mode);
++        var modeOptions=""+uiOption("none","None",uiState.mode)+uiOption("diffusion","Error diffusion",uiState.mode)+uiOption("order1","Order1",uiState.mode)+uiOption("order2","Order2",uiState.mode)+uiOption("order3","Order3",uiState.mode)+uiOption("order4","Order4",uiState.mode);
+         var presetOptions=""+uiOption("atkinson","Atkinson",uiState.preset)+uiOption("floyd","Floyd-Stein",uiState.preset)+uiOption("pattern","Pattern",uiState.preset)+uiOption("diag","Diag",uiState.preset)+uiOption("none","None",uiState.preset);
+         var errorOptions=""+uiOption("accumulate","Accumulate",uiState.error)+uiOption("average","Average",uiState.error);
+         var filterOptions=""+uiOption("box","Box",uiState.filter)+uiOption("gaussian","Gaussian",uiState.filter)+uiOption("hamming","Hamming",uiState.filter)+uiOption("blackman","Blackman",uiState.filter)+uiOption("bilinear","Bilinear",uiState.filter);
+@@ -929,14 +906,13 @@
+         var perceptualChecked=uiState.perceptual ? " checked" : "";
+         var greyscaleChecked=uiState.greyscale ? " checked" : "";
+         var histogramChecked=uiState.histogram ? " checked" : "";
+-        var cameraActive=!!hostCameraStream;
++        var cameraActive=!!(card.cameraDevice && card.cameraDevice.isActive());
+         var rowStyle="height:21px;display:flex;align-items:center;gap:4px;";
+         var headStyle="display:inline-block;width:28px;";
+         var selectStyle="height:19px;font:11px monospace;padding:0px 1px;";
+         var sliderStyle="width:68px;height:15px;padding:0;margin:0;";
+-        var rateSliderStyle="width:50px;height:15px;padding:0;margin:0;";
++        var compactOffsetStyle="width:54px;height:15px;padding:0;margin:0;";
+         var valueStyle="display:inline-block;width:30px;font:10px monospace;text-align:right;";
+-        var rateValueStyle="display:inline-block;width:34px;font:10px monospace;text-align:right;";
+ 
+         return ""
+             +"<div class=toolbox id=\""+toolboxID+"\" hidden>"
+@@ -944,10 +920,11 @@
+             +"  <div data-dither-row=\"DTH\" style=\""+rowStyle+"\">"
+             +"   <b style=\""+headStyle+"\">DTH</b><span>MODE</span>"
+             +"   <select id=\""+controlID+"_mode\" title=\"Dithering mode\" onchange=\""+call+".deviceToolSetting('"+controlID+"','mode',this.value)\" style=\""+selectStyle+"\">"+modeOptions+"</select>"
++            +"   <span>OFFSET</span><input id=\""+controlID+"_offset\" type=\"range\" min=\"0\" max=\"16\" step=\"1\" value=\""+uiState.offset+"\" title=\"Ordered offset\""+(uiState.mode==="diffusion" || uiState.mode==="none" ? " disabled" : "")+" oninput=\""+call+".deviceToolSetting('"+controlID+"','offset',this.value)\" style=\""+compactOffsetStyle+"\">"
++            +"   <span id=\""+controlID+"_offset_value\" style=\"width:17px;font:10px monospace;text-align:right;\">"+uiState.offset+"</span>"
+             +"   <select id=\""+controlID+"_preset\" title=\"Error-diffusion preset\" onchange=\""+call+".deviceToolSetting('"+controlID+"','preset',this.value)\" style=\""+selectStyle+"\">"+presetOptions+"</select>"
+-            +"   <span>ERR</span><select id=\""+controlID+"_error\" title=\"Incoming error handling\" onchange=\""+call+".deviceToolSetting('"+controlID+"','error',this.value)\" style=\""+selectStyle+"\">"+errorOptions+"</select>"
+-            +"   <span>OFFSET</span><input id=\""+controlID+"_offset\" type=\"range\" min=\"0\" max=\"16\" step=\"1\" value=\""+uiState.offset+"\" title=\"Ordered offset\" oninput=\""+call+".deviceToolSetting('"+controlID+"','offset',this.value)\" style=\""+sliderStyle+"\">"
+-            +"   <span id=\""+controlID+"_offset_value\" style=\""+valueStyle+"\">"+uiState.offset+"</span></div>"
++            +"   <span>ERR</span><select id=\""+controlID+"_error\" title=\"Incoming error handling\""+(uiState.mode==="none" ? " disabled" : "")+" onchange=\""+call+".deviceToolSetting('"+controlID+"','error',this.value)\" style=\""+selectStyle+"\">"+errorOptions+"</select>"
++            +"  </div>"
+             +"  <div data-dither-row=\"COL\" style=\""+rowStyle+"\">"
+             +"   <b style=\""+headStyle+"\">COL</b><label title=\"Use perceptual RGB colour matching\" style=\"display:flex;align-items:center;gap:2px;\"><input id=\""+controlID+"_perceptual\" type=\"checkbox\""+perceptualChecked+" onchange=\""+call+".deviceToolFlag('"+controlID+"','perceptual',this.checked)\">Perceptual RGB</label>"
+             +"   <span>LUMA</span><input id=\""+controlID+"_luma\" type=\"range\" min=\"0\" max=\"500\" step=\"1\" value=\""+uiState.luma+"\" title=\"Luma emphasis\" oninput=\""+call+".deviceToolSetting('"+controlID+"','luma',this.value)\" style=\""+sliderStyle+"\"><span id=\""+controlID+"_luma_value\" style=\""+valueStyle+"\">"+uiState.luma+"%</span>"
+@@ -957,9 +934,10 @@
+             +"   <label style=\"display:flex;align-items:center;gap:2px;\"><input id=\""+controlID+"_histogram\" type=\"checkbox\""+histogramChecked+" onchange=\""+call+".deviceToolFlag('"+controlID+"','histogram',this.checked)\">Stretch histo</label>"
+             +"   <span>GAMMA</span><input id=\""+controlID+"_gamma\" type=\"range\" min=\"0\" max=\"500\" step=\"1\" value=\""+uiState.gamma+"\" title=\"Gamma\" oninput=\""+call+".deviceToolSetting('"+controlID+"','gamma',this.value)\" style=\""+sliderStyle+"\"><span id=\""+controlID+"_gamma_value\" style=\""+valueStyle+"\">"+uiState.gamma+"%</span>"
+             +"   <span>FILTER</span><select id=\""+controlID+"_filter\" title=\"Scaling filter\" onchange=\""+call+".deviceToolSetting('"+controlID+"','filter',this.value)\" style=\""+selectStyle+"\">"+filterOptions+"</select>"
+-            +"   <span>RATE</span><input id=\""+controlID+"_rate\" type=\"range\" min=\"100\" max=\"1000\" step=\"50\" value=\""+uiState.rate+"\" title=\"Camera conversion interval\" oninput=\""+call+".deviceToolSetting('"+controlID+"','rate',this.value)\" style=\""+rateSliderStyle+"\"><span id=\""+controlID+"_rate_value\" style=\""+rateValueStyle+"\">"+(uiState.rate/1000).toFixed(2)+"s</span>"
+             +"   <button id=\""+controlID+"_camera\" class=\"appbut skinny\" type=\"button\" aria-pressed=\""+(cameraActive ? "true" : "false")+"\" title=\""+(cameraActive ? "Stop host camera" : "Start host camera")+"\" onclick=\""+call+".deviceToolCameraToggle('"+controlID+"')\" style=\"margin-left:auto;height:19px;padding:1px 5px;\"><i class=\"fa fa-camera\" style=\""+(cameraActive ? "color:#0a0;" : "")+"\"></i></button>"
+-            +"   <span id=\""+controlID+"_camera_status\" style=\"display:inline-block;width:20px;font-size:10px;text-align:center;color:#777;\">"+(cameraActive ? "ON" : "OFF")+"</span></div>"
++            +"   <span id=\""+controlID+"_camera_status\" style=\"display:inline-block;width:20px;font-size:10px;text-align:center;color:#777;\">"+(cameraActive ? "ON" : "OFF")+"</span>"
++            +"   <button id=\""+controlID+"_wasm\" class=\"appbut skinny\" type=\"button\" aria-pressed=\""+(wasmEnabled ? "true" : "false")+"\" title=\""+(wasmEnabled ? "Use JavaScript ConvertHGR" : "Use WASM ConvertHGR")+"\" onclick=\""+call+".deviceToolWasmToggle('"+controlID+"')\" style=\"height:19px;padding:1px 5px;\"><i class=\"fa fa-microchip\" style=\""+(wasmEnabled ? "color:#0a0;" : "")+"\"></i></button>"
++            +"   <span id=\""+controlID+"_wasm_status\" style=\"display:inline-block;width:20px;font-size:10px;text-align:center;color:#777;\">"+(wasmEnabled ? "ON" : "OFF")+"</span></div>"
+             +" </div></div>";
+     };
+ 
+@@ -970,6 +948,7 @@
+         restoreDSCANEntry();
+         stopHostCamera();
+         if(hostCameraControlID) updateCameraButton(hostCameraControlID);
++        if(hostCameraControlID) updateWasmButton(hostCameraControlID);
+         card.state.threshold=0;
+         card.state.captureEnabled=false;
+         card.state.page2=false;
+diff --git a/res/EMU_DITHERTIZER_converthgr.js b/res/EMU_DITHERTIZER_converthgr.js
+--- a/res/EMU_DITHERTIZER_converthgr.js
++++ b/res/EMU_DITHERTIZER_converthgr.js
+@@ -4,8 +4,7 @@
+ // Thin adapter around the bundled ConvertHGR browser worker source. The worker
+ // source is loaded by the emulator as normal script data and then instantiated
+ // as a Blob Worker so local file:// execution does not need runtime fetch().
+-// Live Dithertizer conversion requires the worker's WASM backend; JavaScript
+-// quantizer fallback is rejected.
++// Backend is selected per conversion; unexpected fallback is reported.
+ //
+ 
+ function DithertizerConvertHGRAdapter(options)
+@@ -19,6 +18,7 @@
+     var pending=null;
+     var settings=null;
+     var closed=false;
++    var backend=options.backend==="javascript" ? "javascript" : "wasm";
+ 
+     function failPending(error)
+     {
+@@ -48,9 +48,9 @@
+         pending=null;
+ 
+         var metadata=msg.metadata || {};
+-        if(metadata.backendUsed!=="wasm")
++        if(metadata.backendUsed!==p.backend)
+         {
+-            p.reject(new Error("ConvertHGR WASM backend required; worker used "+String(metadata.backendUsed || "unknown")+
++            p.reject(new Error("ConvertHGR "+(p.backend==="wasm" ? "WASM" : "JavaScript")+" backend required; worker used "+String(metadata.backendUsed || "unknown")+
+                 (metadata.fallbackReason ? " ("+metadata.fallbackReason+")" : "")));
+             return;
+         }
+@@ -66,7 +66,7 @@
+         p.resolve({
+              width:280
+             ,height:192
+-            ,backendUsed:"wasm"
++            ,backendUsed:p.backend
+             ,metadata:metadata
+             ,timing:msg.timing || {}
+             ,processedRGB:buffers.processedRGB instanceof ArrayBuffer ? new Uint8Array(buffers.processedRGB) : null
+@@ -123,6 +123,13 @@
+         return this;
+     };
+ 
++    this.setBackend=function(value)
++    {
++        if(value!=="wasm" && value!=="javascript") throw new TypeError("Invalid ConvertHGR backend");
++        backend=value;
++        return this;
++    };
++
+     this.convert=function(rgb,width,height,seed)
+     {
+         if(closed) return Promise.reject(new Error("ConvertHGR adapter is closed"));
+@@ -150,7 +157,7 @@
+         var requestId=++requestSeq;
+         return new Promise(function(resolve,reject)
+         {
+-            pending={requestId:requestId,resolve:resolve,reject:reject};
++            pending={requestId:requestId,resolve:resolve,reject:reject,backend:backend};
+             try
+             {
+                 worker.postMessage({
+@@ -159,7 +166,7 @@
+                     ,settings:settings
+                     ,source:{rgbBuffer:transferBuffer,width:width,height:height}
+                     ,randomSeed:Number(seed)>>>0
+-                    ,backend:"wasm"
++                    ,backend:backend
+                 },[transferBuffer]);
+             }
+             catch(error)
+diff --git a/docs/DITHERTIZER.md b/docs/DITHERTIZER.md
+--- a/docs/DITHERTIZER.md
++++ b/docs/DITHERTIZER.md
+@@ -6,15 +6,15 @@
+ 
+ | WASM | Camera signal supplied to the comparator |
+ | --- | --- |
+-| ON (default) | An embedded ConvertHGR WASM quantizer produces palette pixels, then the card converts those pixels to luminance. |
+-| OFF | The camera RGB pixels become continuous 8-bit BT.601 luminance directly. |
++| ON (default) | An embedded WASM routine converts RGB24 to continuous 8-bit BT.601 luminance. |
++| OFF | JavaScript performs the same RGB24-to-luminance conversion, with byte-identical results. |
+ 
+ The WASM code and its Worker source are both contained in the card file. A
+ Worker performs the conversion so the emulator can continue processing while
+ WASM works. Only one conversion can be in flight; if it takes longer than a
+ SYSTEM processing frame, the card skips that camera sample and retains the last
+-complete image. The WASM-produced HGR bytes are not injected into Apple II RAM.
+-DSCAN still controls all four threshold captures and performs the Bayer merge.
++complete image. Neither backend dithers the source: DSCAN controls all four
++threshold captures and performs the Bayer merge.
+ 
+ The three image controls adjust luminance before the card compares it with the
+ threshold programmed by Apple II software:
+@@ -33,7 +33,10 @@
+ eligible once per emulator processing frame. The SYSTEM FPS slider controls this
+ cadence through the existing scheduler, with no separate camera timer. CPU tick
+ rate and DSCAN sync timing are unaffected. The camera button starts/stops the
+-stream; reset/restart releases tracks and stops sampling. If WASM conversion
++stream; reset/restart and peripheral ejection release tracks and stop sampling.
++Both cards attach the same `DithertizerCameraDevice` type through Apple2IO.
++Its `video/x-raw;format=RGB24` port publishes complete frames to the mounted
++card; detaching the device stops the host stream. If WASM conversion
+ fails, the last complete camera frame is retained and the toggle shows `ERR`.
+ 
+ When the camera is OFF, the card decodes the original disk's complete $4000–$5FFF
+@@ -72,6 +75,13 @@
+ The separate `res/EMU_CARD_dithertizer2.js` copies complete ConvertHGR bytes to
+ the selected HGR page, including each byte's color-phase bit 7. With the camera
+ off, it captures the embedded Apple II logo HGR page from the original disk.
++It uses the same attached RGB24 camera device as DITHER. Its WASM pictogram
++starts ON and selects between the ConvertHGR worker's WASM and JavaScript
++backends. One new frame is eligible per SYSTEM processing frame; a conversion
++still in progress prevents a second from starting. The MODE menu offers
++`None`, `Error diffusion`, and ordered choices. `ERR` is disabled in `None`;
++`OFFSET` sits beside MODE and is enabled only for ordered choices. There is no
++separate RATE timer.
+ 
+ The stock disk calls DSCAN at `$1C00` (`CALL 7168`). That entry captures four
+ PAGE1 frames and merges them into PAGE2 with `AND #$7F`, so its displayed color
+@@ -86,7 +96,7 @@
+ ## Scope
+ 
+ The separate ConvertHGR adapter and worker remain available to the standalone
+-tool. Earlier full-pipeline ConvertHGR/WASM plans do not describe this compact
+-camera option: only the existing quantizer module is embedded in the card.
++tool and to DITHER2 color capture. DITHER embeds only its small luminance WASM
++module and Worker source, keeping the original comparator and DSCAN dither.
+ 
+ Verification: `node --test tests/*.test.js`.
+diff --git a/tests/dithertizer_camera_device.test.js b/tests/dithertizer_camera_device.test.js
+new file mode 100644
+--- /dev/null
++++ b/tests/dithertizer_camera_device.test.js
+@@ -0,0 +1,59 @@
++'use strict';
++const test=require('node:test');
++const assert=require('node:assert/strict');
++const fs=require('node:fs');
++const path=require('node:path');
++const vm=require('node:vm');
++
++const source=fs.readFileSync(path.join(__dirname,'../res/EMU_DEVICE_camera.js'),'utf8');
++
++function setup(permission)
++{
++    const stops=[];
++    const rgba=new Uint8ClampedArray(280*192*4);
++    rgba.set([20,100,180,255]);
++    const context={drawImage(){},getImageData(){return {data:rgba};}};
++    const video={videoWidth:280,videoHeight:192,async play(){},pause(){}};
++    const sandbox={console,Uint8Array,ArrayBuffer,Promise,
++        document:{createElement(kind){return kind==='video'?video:{width:0,height:0,getContext(){return context;}};}},
++        navigator:{mediaDevices:{getUserMedia:permission||(()=>Promise.resolve({getTracks(){return [{stop(){stops.push(1);}}];}}))}}
++    };
++    vm.createContext(sandbox);
++    vm.runInContext(source,sandbox);
++    return {Device:sandbox.DithertizerCameraDevice,stops};
++}
++
++test('the same RGB24 camera port attaches to either DITHER card and releases on detach',async()=>{
++    const {Device,stops}=setup();
++    for(const code of ['DITHER','DITHER2'])
++    {
++        const owner={id:{PCODE:code}};
++        const device=new Device();
++        assert.equal(device.bindHost(owner),true);
++        assert.equal(owner.cameraDevice,device);
++        assert.equal(device.ports.video.mimeType,'video/x-raw;format=RGB24');
++        assert.equal(await device.start(),true);
++        const frame=device.ports.video.read({width:280,height:192,crop:'4:3'});
++        assert.equal(frame.width,280);
++        assert.equal(frame.height,192);
++        assert.equal(frame.rgb.length,280*192*3);
++        assert.deepEqual(Array.from(frame.rgb.subarray(0,3)),[20,100,180]);
++        assert.equal(device.unbindHost(owner),true);
++        assert.equal(owner.cameraDevice,null);
++        assert.equal(device.isActive(),false);
++    }
++    assert.equal(stops.length,2);
++});
++
++test('detach while camera permission is pending stops the late stream',async()=>{
++    let grant,stopped=0;
++    const {Device}=setup(()=>new Promise(resolve=>{grant=resolve;}));
++    const device=new Device(),owner={id:{PCODE:'DITHER'}};
++    device.bindHost(owner);
++    const pending=device.start();
++    device.unbindHost(owner);
++    grant({getTracks(){return [{stop(){stopped++;}}];}});
++    assert.equal(await pending,false);
++    assert.equal(stopped,1);
++    assert.equal(device.isActive(),false);
++});
+diff --git a/tests/dithertizer2_camera_controls.test.js b/tests/dithertizer2_camera_controls.test.js
+new file mode 100644
+--- /dev/null
++++ b/tests/dithertizer2_camera_controls.test.js
+@@ -0,0 +1,92 @@
++'use strict';
++const test=require('node:test');
++const assert=require('node:assert/strict');
++const fs=require('node:fs');
++const path=require('node:path');
++const vm=require('node:vm');
++
++const ROOT=path.resolve(__dirname,'..');
++function harness()
++{
++    const calls=[];
++    let drawings=0,stopped=0;
++    const page=new Uint8Array(8192);page[0]=0xD5;
++    const elements={
++        ctrl_error:{disabled:false},ctrl_offset:{disabled:false}
++    };
++    const video={videoWidth:280,videoHeight:192,async play(){},pause(){}};
++    const context={drawImage(){drawings++;},getImageData(){return {data:new Uint8ClampedArray(280*192*4)};}};
++    const document={getElementById(id){return elements[id]||null;},createElement(kind){
++        return kind==='video' ? video : {getContext(){return context;}};
++    }};
++    class Adapter
++    {
++        constructor(options){this.backend=options.backend;}
++        async init(){}
++        setBackend(value){this.backend=value;}
++        configure(settings){this.settings=settings;}
++        async convert(rgb,width,height)
++        {
++            calls.push({backend:this.backend,settings:this.settings,width,height});
++            return {hgrPage:page};
++        }
++        close(){}
++    }
++    const sandbox={console,Uint8Array,Uint8ClampedArray,ArrayBuffer,Promise,
++        DithertizerConvertHGRAdapter:Adapter,document,
++        navigator:{mediaDevices:{async getUserMedia(){return {getTracks(){return [{stop(){stopped++;}}];}};}}},
++        setTimeout(){throw new Error('RATE timer must not exist');}
++    };
++    vm.createContext(sandbox);
++    for(const filename of ['EMU_DEVICE_camera.js','EMU_CARD_dithertizer2.js'])
++        vm.runInContext(fs.readFileSync(path.join(ROOT,'res',filename),'utf8'),sandbox,{filename});
++    const card=new sandbox.DithertizerII_2();
++    new sandbox.DithertizerCameraDevice().bindHost(card);
++    return {card,calls,elements,get drawings(){return drawings;},get stopped(){return stopped;}};
++}
++
++test('DITHER2 exposes compact OFFSET next to MODE and enforces mode-dependent controls',()=>{
++    const {card,elements}=harness();
++    let html=card.deviceToolSlotHTML({slotID:'S7',slotN:8});
++    assert.ok(html.indexOf('_mode"')<html.indexOf('_offset"'));
++    assert.ok(html.indexOf('_offset"')<html.indexOf('_preset"'));
++    assert.doesNotMatch(html,/id="dither_ctrl_S7_rate"/);
++    assert.match(html,/id="dither_ctrl_S7_wasm"[^>]*aria-pressed="true"/);
++    assert.match(html,/id="dither_ctrl_S7_offset"[^>]*disabled/);
++    assert.equal(card.deviceToolSetting('ctrl','mode','none'),true);
++    assert.equal(elements.ctrl_error.disabled,true);
++    assert.equal(elements.ctrl_offset.disabled,true);
++    assert.equal(card.deviceToolSetting('ctrl','error','average'),false);
++    assert.equal(card.deviceToolSetting('ctrl','offset',8),false);
++    html=card.deviceToolSlotHTML({slotID:'S7',slotN:8});
++    assert.match(html,/id="dither_ctrl_S7_error"[^>]*disabled/);
++    assert.equal(card.deviceToolSetting('ctrl','mode','order1'),true);
++    assert.equal(elements.ctrl_error.disabled,false);
++    assert.equal(elements.ctrl_offset.disabled,false);
++    assert.equal(card.deviceToolSetting('ctrl','offset',8),true);
++    assert.equal(card.deviceToolSetting('ctrl','mode','diffusion'),true);
++    assert.equal(elements.ctrl_error.disabled,false);
++    assert.equal(elements.ctrl_offset.disabled,true);
++});
++
++test('DITHER2 samples once per display frame and passes chosen WASM or JS backend',async()=>{
++    const h=harness();
++    assert.equal(await h.card.deviceToolCameraToggle('ctrl'),true);
++    assert.equal(h.drawings,1);
++    assert.deepEqual(h.calls.map(c=>c.backend),['wasm']);
++    h.card.cycle();
++    await new Promise(setImmediate);
++    assert.equal(h.drawings,2);
++    assert.equal(h.card.deviceToolWasmToggle('ctrl'),false);
++    h.card.deviceToolSetting('ctrl','mode','none');
++    h.card.cycle();
++    await new Promise(setImmediate);
++    assert.deepEqual(h.calls.map(c=>c.backend),['wasm','wasm','javascript']);
++    assert.deepEqual(Object.values(h.calls[2].settings.dither.error),[0,0,0,0,0,0]);
++    assert.equal(h.calls[2].settings.dither.accumulateErrors,false);
++    const writes=new Map();
++    h.card.readSlotIO(0x08,{vid:{state:{page2:true}},hw:{write(a,v){writes.set(a,v);}}});
++    assert.equal(writes.get(0x4000),0xD5);
++    assert.equal(await h.card.deviceToolCameraToggle('ctrl'),false);
++    assert.equal(h.stopped,1);
++});
+diff --git a/tests/dithertizer_camera_toggle.test.js b/tests/dithertizer_camera_toggle.test.js
+--- a/tests/dithertizer_camera_toggle.test.js
++++ b/tests/dithertizer_camera_toggle.test.js
+@@ -13,8 +13,9 @@
+     const source=fs.readFileSync(path.join(ROOT,'res','EMU_CARD_dithertizer.js'),'utf8');
+     const sandbox={console,Uint8Array,ArrayBuffer,Array,Number,String,Object,Math,RegExp,Promise,...extras};
+     vm.createContext(sandbox);
++    vm.runInContext(fs.readFileSync(path.join(ROOT,'res','EMU_DEVICE_camera.js'),'utf8'),sandbox);
+     vm.runInContext(source+'\n;this.__ctor=DithertizerII;',sandbox,{filename:'EMU_CARD_dithertizer.js'});
+-    return sandbox.__ctor;
++    return function(){const card=new sandbox.__ctor();new sandbox.DithertizerCameraDevice().bindHost(card);return card;};
+ }
+ 
+ function render(card)
+diff --git a/tests/dithertizer_system_frame_sync.test.js b/tests/dithertizer_system_frame_sync.test.js
+--- a/tests/dithertizer_system_frame_sync.test.js
++++ b/tests/dithertizer_system_frame_sync.test.js
+@@ -23,14 +23,14 @@
+         setInterval(fn,ms,...args){const id=nextTimer++;intervals.set(id,{fn,ms,args});return id;},
+         clearInterval(id){intervals.delete(id);}
+     };
+-    const sandbox={console:{log(){},warn(){},assert(){}},document,window,
++    const sandbox={console:{log(){},warn(){},assert(){}},document,window,TextEncoder,
+         navigator:{mediaDevices:{async getUserMedia(){return stream;}}},
+         performance:{now:()=>now},
+-        oCOM:{addToEventStack(){},default:obj=>obj,bRefreshEvent:false},
++        oCOM:{addToEventStack(){},default:obj=>obj,bRefreshEvent:false,crc16(){return 187;},getHexWord(n){return n.toString(16);}},
+         setTimeout(){throw new Error('Camera must not create a separate timer');}
+     };
+     vm.createContext(sandbox);
+-    for(const name of ['EMU_apple2main.js','EMU_cpu6502.js','EMU_apple2io.js','EMU_CARD_dithertizer.js'])
++    for(const name of ['EMU_apple2main.js','EMU_cpu6502.js','EMU_apple2io.js','EMU_DEVICE_camera.js','EMU_CARD_dithertizer.js'])
+         vm.runInContext(fs.readFileSync(path.join(ROOT,'res',name),'utf8'),sandbox,{filename:name});
+     // Replace graphical/hardware construction only; keep production SYSTEM,
+     // CPU, I/O processing loops and the Dithertizer camera implementation.
+@@ -45,7 +45,8 @@
+     vm.runInContext('apple2plus=new Apple2Plus({}); apple2plus.cpuObj().setState({pc:0x0800,sp:0xFF});',sandbox);
+     const card=new sandbox.DithertizerII();
+     const io=sandbox.apple2plus.hwObj().io;
+-    io.slots[8]={peripheral:card};
++    io.slots[8]={peripheral:card,lock:false};
++    io.provisionPeripheral(card);
+     sandbox.appleIntervalHandle=window.setInterval(sandbox.apple2plus.cycle,100,102180);
+     function frames(count){
+         for(let i=0;i<count;i++){
+@@ -90,3 +91,21 @@
+     assert.equal(h.draws,2,'unmounted cards receive no frame callbacks');
+     h.card.reset();
+ });
++
++test('I/O ejection detaches the camera, stops its tracks, and remount gets a new working camera port',async()=>{
++    const h=harness();
++    h.card.deviceToolWasmToggle('dither_ctrl_S7');
++    const first=h.card.cameraDevice;
++    assert.ok(first);
++    assert.equal(await h.card.deviceToolCameraToggle('dither_ctrl_S7'),true);
++    assert.equal(h.io.unmount(8),true);
++    assert.equal(h.stopped,1);
++    assert.equal(h.card.cameraDevice,null);
++    assert.equal(first.isActive(),false);
++    h.io.slots[8]={peripheral:h.card,lock:false};
++    h.io.provisionPeripheral(h.card);
++    assert.notEqual(h.card.cameraDevice,first);
++    assert.equal(await h.card.deviceToolCameraToggle('dither_ctrl_S7'),true);
++    assert.equal(await h.card.deviceToolCameraToggle('dither_ctrl_S7'),false);
++    assert.equal(h.stopped,2);
++});
+diff --git a/tests/dithertizer2_camera_boot.test.js b/tests/dithertizer2_camera_boot.test.js
+--- a/tests/dithertizer2_camera_boot.test.js
++++ b/tests/dithertizer2_camera_boot.test.js
+@@ -7,6 +7,7 @@
+ 
+ const ROOT=path.resolve(__dirname,'..');
+ const scriptNames=[
++    'res/EMU_DEVICE_camera.js',
+     'res/EMU_DITHERTIZER_converthgr_worker.js',
+     'res/EMU_DITHERTIZER_converthgr.js',
+     'res/EMU_CARD_dithertizer2.js'
+@@ -48,6 +49,7 @@
+     for(const name of scriptNames)
+         vm.runInContext(fs.readFileSync(path.join(ROOT,name),'utf8'),sandbox,{filename:name});
+     const card=new (sandbox.DithertizerII_2 || sandbox.DithertizerII)();
++    new sandbox.DithertizerCameraDevice().bindHost(card);
+     assert.equal(await card.deviceToolCameraToggle('camera'),true);
+     try
+     {
+diff --git a/tests/dithertizer2_color_hgr.test.js b/tests/dithertizer2_color_hgr.test.js
+--- a/tests/dithertizer2_color_hgr.test.js
++++ b/tests/dithertizer2_color_hgr.test.js
+@@ -12,8 +12,11 @@
+ {
+     const sandbox={console,Uint8Array,Uint8ClampedArray,ArrayBuffer,Promise,setTimeout,clearTimeout,...extra};
+     vm.createContext(sandbox);
++    vm.runInContext(fs.readFileSync(path.join(ROOT,'res/EMU_DEVICE_camera.js'),'utf8'),sandbox);
+     vm.runInContext(source+'\nthis.ColorCard=typeof DithertizerII_2==="function" ? DithertizerII_2 : DithertizerII;',sandbox);
+-    return new sandbox.ColorCard();
++    const card=new sandbox.ColorCard();
++    new sandbox.DithertizerCameraDevice().bindHost(card);
++    return card;
+ }
+ function capture(card,page2)
+ {
+diff --git a/tests/dithertizer_converthgr_adapter.test.js b/tests/dithertizer_converthgr_adapter.test.js
+--- a/tests/dithertizer_converthgr_adapter.test.js
++++ b/tests/dithertizer_converthgr_adapter.test.js
+@@ -36,7 +36,7 @@
+                 type:'conversionResult',
+                 requestId:msg.requestId,
+                 metadata:{
+-                    backendRequested:'wasm',
++                    backendRequested:msg.backend,
+                     backendUsed:workerMode,
+                     fallbackReason:workerMode==='wasm'?'':'simulated fallback'
+                 },
+@@ -116,3 +116,16 @@
+         /WASM backend required/
+     );
+ });
++
++test('adapter explicitly selects JavaScript and can switch back to WASM',async()=>{
++    const {Adapter:JavaScriptAdapter,posted}=loadAdapter('javascript');
++    const adapter=new JavaScriptAdapter({backend:'javascript'});
++    await adapter.init();
++    adapter.configure({image:{gamma:1.3}});
++    const result=await adapter.convert(new Uint8Array(12),2,2,1);
++    assert.equal(posted[0].backend,'javascript');
++    assert.equal(result.backendUsed,'javascript');
++    adapter.setBackend('wasm');
++    await assert.rejects(adapter.convert(new Uint8Array(12),2,2,1),/WASM backend required/);
++    assert.equal(posted[1].backend,'wasm');
++});
+diff --git a/tests/dithertizer_wasm_sample.test.js b/tests/dithertizer_wasm_sample.test.js
+--- a/tests/dithertizer_wasm_sample.test.js
++++ b/tests/dithertizer_wasm_sample.test.js
+@@ -8,14 +8,18 @@
+ const vm=require('node:vm');
+ 
+ const cardSource=fs.readFileSync(path.join(__dirname,'../res/EMU_CARD_dithertizer.js'),'utf8');
++const cameraSource=fs.readFileSync(path.join(__dirname,'../res/EMU_DEVICE_camera.js'),'utf8');
+ 
+ function makeCard(browser={})
+ {
+     const sandbox={console:browser.console||console,Uint8Array,ArrayBuffer,WebAssembly,atob,Blob:browser.Blob,URL:browser.URL,
+         Worker:browser.Worker,document:browser.document,navigator:browser.navigator};
+     vm.createContext(sandbox);
++    vm.runInContext(cameraSource,sandbox,{filename:'EMU_DEVICE_camera.js'});
+     vm.runInContext(cardSource,sandbox,{filename:'EMU_CARD_dithertizer.js'});
+-    return new sandbox.DithertizerII();
++    const card=new sandbox.DithertizerII();
++    new sandbox.DithertizerCameraDevice().bindHost(card);
++    return card;
+ }
+ 
+ function capture(card,threshold=128)
+@@ -74,7 +78,7 @@
+     assert.equal(capture(card,128)[0],0x7F);
+ });
+ 
+-test('embedded WASM quantizes a live red frame before the DSCAN comparator, and OFF restores raw luminance',async()=>{
++test('embedded WASM and JavaScript supply identical luminance to the DSCAN Bayer comparator',async()=>{
+     const rgba=new Uint8ClampedArray(280*192*4);
+     for(let i=0;i<rgba.length;i+=4){rgba[i]=255;rgba[i+3]=255;}
+     const video={videoWidth:280,videoHeight:192,async play(){},pause(){}};
+@@ -116,12 +120,23 @@
+     assert.equal(await card.deviceToolCameraToggle('dither_ctrl_S7'),true);
+     await firstResult;
+     assert.equal(wasmResult.error,undefined);
+-    assert.equal(capture(card,100)[0],0x7E,'WASM palette makes six of the first seven red pixels bright');
++    assert.equal(capture(card,100)[0],0,'red luminance is 76, below the threshold in WASM');
++    assert.equal(capture(card,70)[0],0x7F,'all seven red pixels pass the lower threshold in WASM');
++    for(let p=0,s=0;p<280*192;p++,s+=4)
++    {
++        rgba[s]=(p*37)&255;
++        rgba[s+1]=(p*17+73)&255;
++        rgba[s+2]=(p*101+11)&255;
++    }
++    const gradientResult=new Promise(resolve=>{nextResultResolve=resolve;});
++    card.cycle();
++    await gradientResult;
++    const wasmRaster=raster(capture(card,128));
+     const staleResult=new Promise(resolve=>{nextResultResolve=resolve;});
+     card.cycle();
+     assert.equal(card.deviceToolWasmToggle('dither_ctrl_S7'),false);
+     await staleResult;
+-    assert.equal(capture(card,100)[0],0,'raw red luminance is 76, below the threshold');
++    assert.deepEqual(raster(capture(card,128)),wasmRaster,'all 7680 HGR pixel bytes match after switching backends');
+     assert.equal(await card.deviceToolCameraToggle('dither_ctrl_S7'),false);
+     assert.equal(crypto.createHash('sha256').update(raster(capture(card))).digest('hex'),
+         '0da9501930e2d38484a4d4a20359246bada8dd879d1d076c155452aeb55833f2');

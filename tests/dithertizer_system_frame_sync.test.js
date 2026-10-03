@@ -23,14 +23,14 @@ function harness()
         setInterval(fn,ms,...args){const id=nextTimer++;intervals.set(id,{fn,ms,args});return id;},
         clearInterval(id){intervals.delete(id);}
     };
-    const sandbox={console:{log(){},warn(){},assert(){}},document,window,
+    const sandbox={console:{log(){},warn(){},assert(){}},document,window,TextEncoder,
         navigator:{mediaDevices:{async getUserMedia(){return stream;}}},
         performance:{now:()=>now},
-        oCOM:{addToEventStack(){},default:obj=>obj,bRefreshEvent:false},
+        oCOM:{addToEventStack(){},default:obj=>obj,bRefreshEvent:false,crc16(){return 187;},getHexWord(n){return n.toString(16);}},
         setTimeout(){throw new Error('Camera must not create a separate timer');}
     };
     vm.createContext(sandbox);
-    for(const name of ['EMU_apple2main.js','EMU_cpu6502.js','EMU_apple2io.js','EMU_CARD_dithertizer.js'])
+    for(const name of ['EMU_apple2main.js','EMU_cpu6502.js','EMU_apple2io.js','EMU_DEVICE_camera.js','EMU_CARD_dithertizer.js'])
         vm.runInContext(fs.readFileSync(path.join(ROOT,'res',name),'utf8'),sandbox,{filename:name});
     // Replace graphical/hardware construction only; keep production SYSTEM,
     // CPU, I/O processing loops and the Dithertizer camera implementation.
@@ -45,7 +45,8 @@ function harness()
     vm.runInContext('apple2plus=new Apple2Plus({}); apple2plus.cpuObj().setState({pc:0x0800,sp:0xFF});',sandbox);
     const card=new sandbox.DithertizerII();
     const io=sandbox.apple2plus.hwObj().io;
-    io.slots[8]={peripheral:card};
+    io.slots[8]={peripheral:card,lock:false};
+    io.provisionPeripheral(card);
     sandbox.appleIntervalHandle=window.setInterval(sandbox.apple2plus.cycle,100,102180);
     function frames(count){
         for(let i=0;i<count;i++){
@@ -89,4 +90,22 @@ test('no camera work occurs on CPU ticks or when the card is no longer mounted',
     h.frames(3);
     assert.equal(h.draws,2,'unmounted cards receive no frame callbacks');
     h.card.reset();
+});
+
+test('I/O ejection detaches the camera, stops its tracks, and remount gets a new working camera port',async()=>{
+    const h=harness();
+    h.card.deviceToolWasmToggle('dither_ctrl_S7');
+    const first=h.card.cameraDevice;
+    assert.ok(first);
+    assert.equal(await h.card.deviceToolCameraToggle('dither_ctrl_S7'),true);
+    assert.equal(h.io.unmount(8),true);
+    assert.equal(h.stopped,1);
+    assert.equal(h.card.cameraDevice,null);
+    assert.equal(first.isActive(),false);
+    h.io.slots[8]={peripheral:h.card,lock:false};
+    h.io.provisionPeripheral(h.card);
+    assert.notEqual(h.card.cameraDevice,first);
+    assert.equal(await h.card.deviceToolCameraToggle('dither_ctrl_S7'),true);
+    assert.equal(await h.card.deviceToolCameraToggle('dither_ctrl_S7'),false);
+    assert.equal(h.stopped,2);
 });

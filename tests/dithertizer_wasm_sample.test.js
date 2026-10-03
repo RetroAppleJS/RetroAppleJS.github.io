@@ -8,14 +8,18 @@ const path=require('node:path');
 const vm=require('node:vm');
 
 const cardSource=fs.readFileSync(path.join(__dirname,'../res/EMU_CARD_dithertizer.js'),'utf8');
+const cameraSource=fs.readFileSync(path.join(__dirname,'../res/EMU_DEVICE_camera.js'),'utf8');
 
 function makeCard(browser={})
 {
     const sandbox={console:browser.console||console,Uint8Array,ArrayBuffer,WebAssembly,atob,Blob:browser.Blob,URL:browser.URL,
         Worker:browser.Worker,document:browser.document,navigator:browser.navigator};
     vm.createContext(sandbox);
+    vm.runInContext(cameraSource,sandbox,{filename:'EMU_DEVICE_camera.js'});
     vm.runInContext(cardSource,sandbox,{filename:'EMU_CARD_dithertizer.js'});
-    return new sandbox.DithertizerII();
+    const card=new sandbox.DithertizerII();
+    new sandbox.DithertizerCameraDevice().bindHost(card);
+    return card;
 }
 
 function capture(card,threshold=128)
@@ -74,7 +78,7 @@ test('unavailable WASM displays an error and the camera can switch to raw lumina
     assert.equal(capture(card,128)[0],0x7F);
 });
 
-test('embedded WASM quantizes a live red frame before the DSCAN comparator, and OFF restores raw luminance',async()=>{
+test('embedded WASM and JavaScript supply identical luminance to the DSCAN Bayer comparator',async()=>{
     const rgba=new Uint8ClampedArray(280*192*4);
     for(let i=0;i<rgba.length;i+=4){rgba[i]=255;rgba[i+3]=255;}
     const video={videoWidth:280,videoHeight:192,async play(){},pause(){}};
@@ -116,12 +120,23 @@ test('embedded WASM quantizes a live red frame before the DSCAN comparator, and 
     assert.equal(await card.deviceToolCameraToggle('dither_ctrl_S7'),true);
     await firstResult;
     assert.equal(wasmResult.error,undefined);
-    assert.equal(capture(card,100)[0],0x7E,'WASM palette makes six of the first seven red pixels bright');
+    assert.equal(capture(card,100)[0],0,'red luminance is 76, below the threshold in WASM');
+    assert.equal(capture(card,70)[0],0x7F,'all seven red pixels pass the lower threshold in WASM');
+    for(let p=0,s=0;p<280*192;p++,s+=4)
+    {
+        rgba[s]=(p*37)&255;
+        rgba[s+1]=(p*17+73)&255;
+        rgba[s+2]=(p*101+11)&255;
+    }
+    const gradientResult=new Promise(resolve=>{nextResultResolve=resolve;});
+    card.cycle();
+    await gradientResult;
+    const wasmRaster=raster(capture(card,128));
     const staleResult=new Promise(resolve=>{nextResultResolve=resolve;});
     card.cycle();
     assert.equal(card.deviceToolWasmToggle('dither_ctrl_S7'),false);
     await staleResult;
-    assert.equal(capture(card,100)[0],0,'raw red luminance is 76, below the threshold');
+    assert.deepEqual(raster(capture(card,128)),wasmRaster,'all 7680 HGR pixel bytes match after switching backends');
     assert.equal(await card.deviceToolCameraToggle('dither_ctrl_S7'),false);
     assert.equal(crypto.createHash('sha256').update(raster(capture(card))).digest('hex'),
         '0da9501930e2d38484a4d4a20359246bada8dd879d1d076c155452aeb55833f2');

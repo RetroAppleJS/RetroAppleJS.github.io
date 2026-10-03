@@ -12,8 +12,11 @@ function load(extra={})
 {
     const sandbox={console,Uint8Array,Uint8ClampedArray,ArrayBuffer,Promise,setTimeout,clearTimeout,...extra};
     vm.createContext(sandbox);
+    vm.runInContext(fs.readFileSync(path.join(ROOT,'res/EMU_DEVICE_camera.js'),'utf8'),sandbox);
     vm.runInContext(source+'\nthis.ColorCard=typeof DithertizerII_2==="function" ? DithertizerII_2 : DithertizerII;',sandbox);
-    return new sandbox.ColorCard();
+    const card=new sandbox.ColorCard();
+    new sandbox.DithertizerCameraDevice().bindHost(card);
+    return card;
 }
 function capture(card,page2)
 {

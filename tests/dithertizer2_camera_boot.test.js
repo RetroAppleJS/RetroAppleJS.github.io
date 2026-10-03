@@ -7,6 +7,7 @@ const vm=require('node:vm');
 
 const ROOT=path.resolve(__dirname,'..');
 const scriptNames=[
+    'res/EMU_DEVICE_camera.js',
     'res/EMU_DITHERTIZER_converthgr_worker.js',
     'res/EMU_DITHERTIZER_converthgr.js',
     'res/EMU_CARD_dithertizer2.js'
@@ -48,6 +49,7 @@ test('DITHER2 starts a camera and captures the worker HGR page from the scripts 
     for(const name of scriptNames)
         vm.runInContext(fs.readFileSync(path.join(ROOT,name),'utf8'),sandbox,{filename:name});
     const card=new (sandbox.DithertizerII_2 || sandbox.DithertizerII)();
+    new sandbox.DithertizerCameraDevice().bindHost(card);
     assert.equal(await card.deviceToolCameraToggle('camera'),true);
     try
     {
