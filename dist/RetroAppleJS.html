@@ -32159,6 +32159,7 @@ function DithertizerII_2()
     var hostCameraAdapter=null;
     var hostCameraControlID=null;
     var convertHGRAdapterLoadPromise=null;
+    var dscanPatchedHardware=null;
     var syncTraceEnabled=false;
     var syncTraceEntries=[];
     var syncTraceLastD7=null;
@@ -32169,6 +32170,11 @@ function DithertizerII_2()
     const HGR_BYTES_PER_LINE=40;
     const HGR_PAGE_BYTES=8192;
     const PHASE_CHROMA_TOLERANCE=12;
+    const DSCAN_COLOR_ENTRY=0x1C00;
+    const DSCAN_COLOR_JUMP=[0x4C,0x03,0x1D]; // JMP $1D03
+    const DSCAN_ORIGINAL_ENTRY=[0x48,0x8A,0x48,0x98,0x48,0x20,0x3A,0x1C];
+    const DSCAN_MERGE_SIGNATURE=[0x29,0x7F,0x91,0x26]; // AND #$7F; STA ($26),Y
+    const DSCAN_SYNC_SIGNATURE=[0x38,0x08,0x48,0x8A,0x48,0x98,0x48,0x78];
     // Apple II logo captured from the original disk, including HGR page holes.
     const DEFAULT_HGR_BASE64=[
         "gICAgACAgACAgICAAACAgICAgAAAgAAAAIAAAIAAgIAAgACAAACAgAAAgACAUOqBgAAAAAAAgACAAICAgICAAIAAAICAAICA",
@@ -32346,6 +32352,53 @@ function DithertizerII_2()
         if(typeof(hw.write)==="function") return hw;
         return null;
     }
+
+    function driverByte(hw,address)
+    {
+        return hw.RD[1](address)&0xFF;
+    }
+
+    function driverMatches(hw,address,bytes)
+    {
+        for(var i=0;i<bytes.length;i++)
+            if(driverByte(hw,address+i)!==bytes[i]) return false;
+        return true;
+    }
+
+    function driverWrite(hw,address,bytes)
+    {
+        for(var i=0;i<bytes.length;i++) hw.WR[1](address+i,bytes[i]);
+    }
+
+    function dscanDriverMatches(hw)
+    {
+        return driverMatches(hw,0x1CCC,DSCAN_MERGE_SIGNATURE) &&
+               driverMatches(hw,0x1D03,DSCAN_SYNC_SIGNATURE);
+    }
+
+    function restoreDSCANEntry()
+    {
+        var hw=dscanPatchedHardware;
+        if(hw && driverMatches(hw,DSCAN_COLOR_ENTRY,DSCAN_COLOR_JUMP) && dscanDriverMatches(hw))
+            driverWrite(hw,DSCAN_COLOR_ENTRY,DSCAN_ORIGINAL_ENTRY.slice(0,3));
+        dscanPatchedHardware=null;
+    }
+
+    // The original disk's CALL 7168 uses four monochrome passes and clears D7
+    // in its PAGE2 merge. DITHER2 reroutes only that exact driver to its own
+    // synchronized, one-pass PAGE2 entry. The historical DITHER card is intact.
+    this.cycle=function()
+    {
+        if(typeof(apple2plus)==="undefined" || !apple2plus || typeof(apple2plus.hwObj)!=="function") return;
+        var hw=apple2plus.hwObj();
+        if(!hw || !hw.RD || !hw.WR || typeof(hw.RD[1])!=="function" || typeof(hw.WR[1])!=="function") return;
+        if(dscanPatchedHardware && dscanPatchedHardware!==hw) restoreDSCANEntry();
+        if(dscanPatchedHardware===hw && driverMatches(hw,DSCAN_COLOR_ENTRY,DSCAN_COLOR_JUMP)) return;
+        dscanPatchedHardware=null;
+        if(!driverMatches(hw,DSCAN_COLOR_ENTRY,DSCAN_ORIGINAL_ENTRY) || !dscanDriverMatches(hw)) return;
+        driverWrite(hw,DSCAN_COLOR_ENTRY,DSCAN_COLOR_JUMP);
+        dscanPatchedHardware=hw;
+    };
 
     function resolveHardware(ctx)
     {
@@ -33044,6 +33097,7 @@ function DithertizerII_2()
 
     this.reset=function()
     {
+        restoreDSCANEntry();
         stopHostCamera();
         if(hostCameraControlID) updateCameraButton(hostCameraControlID);
         card.state.threshold=0;
@@ -33051,6 +33105,7 @@ function DithertizerII_2()
         card.state.page2=false;
     };
     this.restart=this.reset;
+    this.onUnmount=this.reset;
 }
 
 if(typeof(oEMU)==="undefined")
@@ -54210,6 +54265,9 @@ function mergeActionMap(dst,src)
 
         if(this.MEMORY_MAP && typeof(this.MEMORY_MAP.unmount)=="function")
             this.MEMORY_MAP.unmount(peripheral_obj);
+
+        if(typeof(peripheral_obj.onUnmount)=="function")
+            peripheral_obj.onUnmount();
 
         delete slot.peripheral;
         refillEmptyIOActions();
