@@ -17,6 +17,7 @@ Do not dynamically inject `<script>` or `<link>` elements unless there is a spec
 The loading order in `index.html` must reflect dependencies between modules.
 
 Avoid hidden dependencies on files being loaded indirectly by another module.
+JSON files should not be loaded or included, better declare a JSON in a separate .js file. 
 
 ---
 
