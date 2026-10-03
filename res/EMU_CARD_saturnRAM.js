@@ -349,7 +349,7 @@ function SaturnRAM()
             +this.MEM_file_id+"\").click()'><i class='fa fa-cloud-upload-alt'></i></button>"
             +"<input id='"+this.MEM_file_id+"' type=file accept='.bin,application/octet-stream' hidden onchange='"
             +access+"?.deviceToolLoadFile(this)'></div>"
-            +"<div id='"+this.MEM_root_id+"' style='margin-left:30px;white-space:nowrap'>"+this.build_MEM_map()+"</div>"
+            +"<div id='"+this.MEM_root_id+"' style='margin-left:35px;white-space:nowrap'>"+this.build_MEM_map()+"</div>"
             +"</div></div>";
     };
 }
