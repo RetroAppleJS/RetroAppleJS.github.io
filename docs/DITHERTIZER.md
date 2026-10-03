@@ -74,7 +74,8 @@ thresholds, all five Bayer states across the image, bit 7, and HGR holes.
 
 The separate `res/EMU_CARD_dithertizer2.js` copies complete ConvertHGR bytes to
 the selected HGR page, including each byte's color-phase bit 7. With the camera
-off, it captures the embedded Apple II logo HGR page from the original disk.
+off, it captures the supplied `appleiilogo-2-3.HGR` image embedded as a full
+8,192-byte HGR page, preserving bit 7 and the original page holes.
 It uses the same attached RGB24 camera device as DITHER. Its WASM pictogram
 starts ON and selects between the ConvertHGR worker's WASM and JavaScript
 backends. One new frame is eligible per SYSTEM processing frame; a conversion
