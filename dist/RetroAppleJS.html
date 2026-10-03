@@ -40940,7 +40940,7 @@ function SaturnRAM()
     this.MEM_status_text = function()
     {
         var state = this.state;
-        return "SATURN &nbsp; "+(state.RE ? '<i class="fa fa-microchip" title="RAM read"></i>'
+        return "SATURN<br>"+(state.RE ? '<i class="fa fa-microchip" title="RAM read"></i>'
             : '<i class="fa fa-apple-alt" title="ROM read"></i>')
             + ' &nbsp; <i class="fa '+(state.WE ? 'fa-lock-open' : 'fa-lock')+'" title="'
             +(state.WE ? 'Write enabled' : 'Write protected')+'"></i> &nbsp; Bank '
