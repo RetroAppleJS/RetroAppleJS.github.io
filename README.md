@@ -67,6 +67,8 @@ Completed items remain checked; unchecked items are planned or still need furthe
 - [ ] EMULATOR: Switch between US and Japanese Apple II keyboard layouts
 - [ ] EMULATOR: Complete Mockingboard sound emulation and integrate Saturn RAM expansion
 - [ ] EMULATOR: Add further peripherals, including UltraTerm, No-Slot Clock, AE RamFactor, Super Serial Card, and VersaCard
+- [ ] EMULATOR: Extended URL instant configuration options
+- [ ] EMULATOR: LIRON HD20 & UNIDISK - track-by-track compression/decompression (saving browser RAM)
 - [ ] ASSEMBLER - disassembler tool
 - [x] RETRO LAB: Real-time camera processing and a configurable [ConvertHGR tool](tools/ConvertHGR.html)
 - [ ] RETRO LAB: HGR paint tool (https://hgrtool.art/imgedit.html)
