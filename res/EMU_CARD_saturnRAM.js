@@ -1,240 +1,314 @@
-//
-// Copyright (c) 2022 Freddy Vandriessche.
+// Copyright (c) 2026 Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
-//
-// EMU_saturnRAM.js
+// EMU_CARD_saturnRAM.js â€” Saturn 128K RAM board. Included by index.html.
 
-if(oEMU===undefined) var oEMU = {"component":{"IO":{"RamCard":new RamCard()}}}
-else oEMU.component.IO.RamCard = new RamCard();
+// Discovery container; Apple2IO constructs independent live instances.
+if(oEMU===undefined) var oEMU = {"component":{"IO":{}}};
+oEMU.component.IO.SaturnRAM = new SaturnRAM();
 
-function RamCard()
+function SaturnRAM()
 {
-    var   BANK = 0;
-    const BANK_SIZE     =  4096
-         ,RAMCARD       =  4096
-         ,RAMCARD_SIZE  =  8192
+    this.id = {"PCODE":"SATURN", "icon":"fa fa-microchip"};
+    this.state = {"active":true, "softswitch_pos":2, "bank":0, "BANK":0,
+                  "RE":false, "RR":false, "WE":false, "bMapped":false};
+    this.action = {"SlotIO":{
+         "RD":{"callback":function(addr,ctx) { return card.soft_switch(addr,ctx); }}
+        ,"WR":{"callback":function(addr,d8,ctx) { return card.soft_switch(addr,ctx); }}
+    }};
 
-    this.active = true; 
-    var bDebug = false;   // debug all RAM R/W operations
-    var bDebug_S = true;  // debug soft switch updates
+    const BANK_SIZE = 0x1000;
+    const BANK_TOTAL = 0x4000;
+    const TOTAL_SIZE = 0x20000;
+    const CELL_BITS = 11; // 2048 physical bytes/cell
+    var RAMCARD_MEM = new Uint8Array(TOTAL_SIZE);
+    var card = this;
+    var hw, io, ROM_ID, ROM_CFG, ROM_RANGE;
+    var loadGeneration = 0;
+    var fileReader = null;
+    this.mem_mon = {};
+    this.bMEM_monitoring = false;
+    this.MEM_grid = null;
+    this.MEM_refresh_id = null;
 
-    var stats = new Uint32Array(4);   // 
- 
-    var softswitch = {
-        0x0: {"RAMCARD":true             ,"BANKA":true}
-       ,0x1: {               "WE":true   ,"BANKA":true}
-       ,0x2: {                            "BANKA":true}
-       ,0x3: {"RAMCARD":true,"WE":true   ,"BANKA":true}
-
-       ,0x4: {                            "BANK":0}
-       ,0x5: {                            "BANK":1}
-       ,0x6: {                            "BANK":2}
-       ,0x7: {                            "BANK":3}
-
-       ,0x8: {"RAMCARD":true             ,"BANKB":true}
-       ,0x9: {               "WE":true   ,"BANKB":true}
-       ,0xA:{                             "BANKB":true}
-       ,0xB:{"RAMCARD":true, "WE":true   ,"BANKB":true}
-
-       ,0xC: {                            "BANK":4}
-       ,0xD: {                            "BANK":5}
-       ,0xE: {                            "BANK":6}
-       ,0xF: {                            "BANK":7}       
-    } 
-
-
-    // TODO FVD - emulate status leds !
-
-    var softswitch_pos = 0x1;    // default softswitch
-    var NEXT  = false;         // flag to remember double-triggered Write-Enables
-
-    this.soft_switch = function(addr)
+    function physical_address(rel_addr)
     {
-        const bBANKSW = typeof(softswitch[addr].BANK)!="undefined"
-
-        if(bDebug_S)
-        {
-            if(softswitch[addr].WE)
-            {
-                if(NEXT) console.log("SOFTSWITCH $"+oCOM.getHexByte(addr)+" -> "+JSON.stringify(softswitch[addr]));
-                else     console.log("waiting for NEXT to write-enable ($"+oCOM.getHexByte(addr)+")");
-            }
-            else  if(bBANKSW) console.log("SOFTSWITCH $"+oCOM.getHexByte(addr)+" -> BANK"+(softswitch[addr].BANK+1));
-            else console.log("SOFTSWITCH $"+oCOM.getHexByte(addr)+" -> "+JSON.stringify(softswitch[addr]));
-        }
-
-        if(bBANKSW) {BANK = softswitch[addr].BANK; return 0}
-
-        // only flip switch write-enable after double trigger
-        if(softswitch[addr].WE) NEXT = NEXT==false?true:NEXT;
-        else                    NEXT= false;
-
-        softswitch_pos = addr;
-
-        return 0;
+        // Each 16K bank is stored as 4K A, 4K B, common 8K.
+        return card.state.bank*BANK_TOTAL
+            + (rel_addr<BANK_SIZE ? card.state.BANK*BANK_SIZE+rel_addr : rel_addr+BANK_SIZE);
     }
-
-    this.read = function(addr)
+    function valid_address(addr) { return Number.isInteger(addr) && addr>=0 && addr<0x3000; }
+    function mounted()
     {
-        if(addr < BANK_SIZE)
-        {
-            var sw = softswitch[softswitch_pos];
-            if(sw.RAMCARD)
-            {
-                d8 = BANK_MEM[BANK][sw.BANKB?0:1][addr];
-                if(bDebug) console.log("BANK"+(BANK+1)+(sw.BANKB?"A":"B")+" read $#"+oCOM.getHexByte(d8)+" at addr $"+oCOM.oCOM.getHexWord(addr));
-            }
-            else d8 = apple2Rom[addr];  
-        }
-        else if(addr < RAMCARD+RAMCARD_SIZE)
-        {
-            var sw = softswitch[softswitch_pos];
-            if(sw.RAMCARD)
-            {
-                d8 = RAMCARD_MEM[BANK][addr-RAMCARD];
-                if(bDebug) console.log("RAMCARD read #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.oCOM.getHexWord(addr-RAMCARD));
-            }
-            else d8 = apple2Rom[addr];
-        }
-
-        return d8;
+        return io && card.mount && card.state.active && io.HASH2obj(card.mount.hash)===card;
     }
-
-    this.write = function(addr,d8)
+    this.mapRead = function(addr) { return card.read((addr & 0xFFFF)-ROM_RANGE.from); };
+    this.mapWrite = function(addr,d8) { return card.write((addr & 0xFFFF)-ROM_RANGE.from,d8); };
+    this.read = function(rel_addr)
     {
-        if(addr < BANK_SIZE)
+        return valid_address(rel_addr) ? RAMCARD_MEM[physical_address(rel_addr)] : 0;
+    };
+    this.write = function(rel_addr,d8)
+    {
+        if(!this.state.active || !this.state.WE || !valid_address(rel_addr)) return false;
+        var physical = physical_address(rel_addr);
+        RAMCARD_MEM[physical] = d8 & 0xFF;
+        this.mark_MEM_monitoring(physical);
+        return true;
+    };
+    this.updateMemoryMap = function()
+    {
+        if(!io || !this.mount || !ROM_CFG) return false;
+        var state = this.state;
+        var result = io.MEMORY_MAP.runRule(this.id.PCODE+":"+this.mount.hash,{
+             "position":"$"+oCOM.getHexByte(state.softswitch_pos), "bank":state.bank+1
+            ,"BANK":state.BANK===0 ? "A" : "B", "RE":state.RE, "WE":state.WE, "RR":state.RR
+        });
+        if(result) state.bMapped = state.RE;
+        return result;
+    };
+    this.soft_switch = function(rel_io_addr)
+    {
+        var state = this.state;
+        var status = state.BANK | (state.RE ? 2 : 0) | (state.WE ? 4 : 0) | (state.RR ? 8 : 0);
+        if(!state.active || (hw && hw.bRO)) return status;
+        var nibble = rel_io_addr & 15;
+        if(nibble & 4)
+            // Select 16K bank without changing mode, A/B or the write latch.
+            state.bank = (nibble & 3) | ((nibble & 8) >> 1);
+        else
         {
-            var sw = softswitch[softswitch_pos];
-            if(sw.WE && NEXT)
-            {
-                BANK_MEM[BANK][sw.BANKB?0:1][addr] = d8;
-                //if(bDebug) console.log("BANK="+(sw.BANKB?1:2)+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.oCOM.getHexWord(addr));
-            } 
-            else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") BANK"+(BANK+1)+(sw.BANKB?"A":"B")+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.oCOM.getHexWord(addr));       
+            var mode = nibble & 3;
+            var wantsWrite = !!(mode & 1);
+            state.softswitch_pos = nibble;
+            state.BANK = (nibble & 8) ? 1 : 0;
+            state.RE = mode===0 || mode===3;
+            state.WE = wantsWrite && state.RR;
+            state.RR = wantsWrite;
         }
-        else if(addr < RAMCARD+RAMCARD_SIZE)
+        this.updateMemoryMap();
+        return status;
+    };
+    this.reset = function()
+    {
+        // Saturn power-up: bank 1, A, ROM readable, RAM write-protected.
+        this.state.softswitch_pos = 2;
+        this.state.bank = this.state.BANK = 0;
+        this.state.RE = this.state.WE = this.state.RR = this.state.bMapped = false;
+        this.updateMemoryMap();
+        this.update_MEM_status();
+    };
+    this.restart = function()
+    {
+        hw = apple2plus.hwObj();
+        io = hw.io;
+        var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
+        ROM_ID = (_CFG_SYSCODE[model] || _CFG_SYSCODE.A2P).ROM || _CFG_SYSCODE.A2P.ROM;
+        ROM_CFG = _CFG_ROMRANGES[ROM_ID];
+        ROM_RANGE = oCOM.parseRngExpr(ROM_CFG.ROM);
+        this.state.active = true;
+        io.MEMORY_MAP.addRule(this.id.PCODE+":"+this.mount.hash,function(state)
         {
-            var sw = softswitch[softswitch_pos];
-            if(sw.WE && NEXT)
+            var target = "SATURN bank "+state.bank+" / "+state.BANK+" + common 8K";
+            return {"owner":card, "source":"Saturn 128K RAM board soft switches", "state":state,
+                "mappings":[
+                    {"id":"upper-memory-read", "space":ROM_ID, "op":"RD", "range":ROM_CFG.ROM,
+                     "handler":state.RE ? "mapRead" : "@default", "target":state.RE ? target : "Apple II ROM",
+                     "enabled":true, "condition":"RE="+Number(state.RE)+"; bank="+state.bank+"; 4K="+state.BANK},
+                    {"id":"upper-memory-write", "space":ROM_ID, "op":"WR", "range":ROM_CFG.ROM,
+                     "handler":state.WE ? "mapWrite" : "@default", "target":target,
+                     "enabled":state.WE, "condition":"WE="+Number(state.WE)+"; bank="+state.bank+"; 4K="+state.BANK}
+                ]};
+        });
+        var prefix = this.id.PCODE+"_"+this.mount.hash+"_";
+        this.MEM_grid = {"cnf":{"id_prefix":prefix,"table_id":prefix+"grid","digits":5,"mem_gran":CELL_BITS},"layout":{}};
+        this.MEM_status_id = prefix+"status";
+        this.MEM_root_id = prefix+"map";
+        this.MEM_sync_id = prefix+"sync";
+        this.MEM_file_id = prefix+"file";
+        this.MEM_upload_id = prefix+"upload";
+        this.MEM_refresh_id = "MEM_monitoring_"+prefix;
+        for(var bank=0;bank<8;bank++)
+        {
+            var base = bank*BANK_TOTAL;
+            var label = "SATURN bank "+(bank+1);
+            var segments = [[0,0x1000,"#A04040","A","DA"],[0x1000,0x2000,"#B05050","B","DB"],
+                            [0x2000,0x4000,"#D06060","common","RAM"]];
+            for(var i=0;i<segments.length;i++)
             {
-                RAMCARD_MEM[BANK][BANK][addr-RAMCARD] = d8;
-                //if(bDebug) console.log("RAMCARD write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.oCOM.getHexWord(addr-RAMCARD));
+                var segment = segments[i];
+                var from = oCOM.getHexMulti(base+segment[0],5);
+                var to = oCOM.getHexMulti(base+segment[1],5);
+                this.MEM_grid.layout[from+"-"+to] = [segment[2],label+" "+segment[3],segment[4]];
             }
-            else if(bDebug) console.log("FAILED ATTEMPT: (WE="+(sw.WE?true:false)+") RAMCARD write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.oCOM.getHexWord(addr-RAMCARD));
         }
-
-        return 0;
-    }
-
-
-//  ██████   █████  ███    ██ ██   ██   
-//  ██   ██ ██   ██ ████   ██ ██  ██    
-//  ██████  ███████ ██ ██  ██ █████  
-//  ██   ██ ██   ██ ██  ██ ██ ██  ██    
-//  ██████  ██   ██ ██   ████ ██   ██ 
- 
-    // 8 * 2*4K
-    var BANK_MEM = [
-                         [ new Uint8Array(4096), new Uint8Array(4096) ]
-                        ,[ new Uint8Array(4096), new Uint8Array(4096) ]
-                        ,[ new Uint8Array(4096), new Uint8Array(4096) ]
-                        ,[ new Uint8Array(4096), new Uint8Array(4096) ]
-                        ,[ new Uint8Array(4096), new Uint8Array(4096) ]
-                        ,[ new Uint8Array(4096), new Uint8Array(4096) ]
-                        ,[ new Uint8Array(4096), new Uint8Array(4096) ]
-                        ,[ new Uint8Array(4096), new Uint8Array(4096) ]
-                    ];
-    // 8 * 8K
-    var RAMCARD_MEM = [
-                         [ new Uint8Array(8192) ]
-                        ,[ new Uint8Array(8192) ]
-                        ,[ new Uint8Array(8192) ]
-                        ,[ new Uint8Array(8192) ]
-                        ,[ new Uint8Array(8192) ]
-                        ,[ new Uint8Array(8192) ]
-                        ,[ new Uint8Array(8192) ]
-                        ,[ new Uint8Array(8192) ]
-                      ];
+        this.reset();
+        this.enable_MEM_monitoring(!!hw.bMEM_monitoring);
+        oCOM.addRefreshEvent(function() { card.MEM_monitoring(); },this.MEM_refresh_id,this.bMEM_monitoring);
+    };
+    this.onUnmount = function()
+    {
+        this.state.active = false;
+        loadGeneration++;
+        if(fileReader && fileReader.readyState===1) fileReader.abort();
+        fileReader = null;
+        this.bMEM_monitoring = false;
+        this.mem_mon = {};
+        if(this.MEM_refresh_id && oCOM.RefreshEvent_arr)
+        {
+            delete oCOM.RefreshEvent_arr[this.MEM_refresh_id];
+            oCOM.checkActiveRefreshEvents();
+        }
+    };
+    this.load_ram = function(bytes)
+    {
+        if(!(bytes instanceof Uint8Array)) throw new TypeError("Saturn RAM image must be a Uint8Array");
+        if(bytes.length<1 || bytes.length>TOTAL_SIZE)
+            throw new RangeError("Saturn RAM image must contain 1 to 131072 bytes");
+        RAMCARD_MEM.set(bytes,0);
+        this.reset_MEM_monitoring();
+        return {"loadedBytes":bytes.length,"from":0,"to":bytes.length-1};
+    };
+    this.deviceToolLoadFile = async function(input)
+    {
+        var file = input && input.files && input.files[0];
+        if(!file) return false;
+        var generation = ++loadGeneration;
+        try
+        {
+            if(!mounted()) return false;
+            if(file.size<1 || file.size>TOTAL_SIZE)
+                throw new RangeError("Saturn RAM image must contain 1 to 131072 bytes");
+            var buffer;
+            if(typeof(file.arrayBuffer)=="function") buffer = await file.arrayBuffer();
+            else buffer = await new Promise(function(resolve,reject)
+            {
+                var reader = new FileReader();
+                fileReader = reader;
+                reader.onload = function() { resolve(reader.result); };
+                reader.onerror = function() { reject(reader.error || new Error("Unable to read RAM image")); };
+                reader.onabort = function() { reject(new Error("RAM image loading cancelled")); };
+                reader.readAsArrayBuffer(file);
+            });
+            if(generation!==loadGeneration || !mounted()) return false;
+            var result = this.load_ram(new Uint8Array(buffer));
+            var upload = document.getElementById(this.MEM_upload_id);
+            if(upload) upload.title = "Loaded "+result.loadedBytes+" bytes into Saturn RAM";
+            return true;
+        }
+        catch(error)
+        {
+            if(generation===loadGeneration && mounted())
+            {
+                var upload = document.getElementById(this.MEM_upload_id);
+                if(upload) upload.title = error.message;
+                if(typeof(alert)=="function") alert(error.message);
+            }
+            return false;
+        }
+        finally
+        {
+            if(generation===loadGeneration) { input.value = ""; fileReader = null; }
+        }
+    };
+    this.MEM_status_text = function()
+    {
+        var state = this.state;
+        return "SATURN &nbsp; "+(state.RE ? '<i class="fa fa-microchip" title="RAM read"></i>'
+            : '<i class="fa fa-apple-alt" title="ROM read"></i>')
+            + ' &nbsp; <i class="fa '+(state.WE ? 'fa-lock-open' : 'fa-lock')+'" title="'
+            +(state.WE ? 'Write enabled' : 'Write protected')+'"></i> &nbsp; Bank '
+            +(state.bank+1)+" / "+(state.BANK===0 ? "A" : "B")+" &nbsp; 2 KiB/cell";
+    };
+    this.update_MEM_status = function()
+    {
+        if(typeof(document)!="object") return;
+        var status = document.getElementById(this.MEM_status_id);
+        if(status) status.innerHTML = this.MEM_status_text();
+        var sync = document.getElementById(this.MEM_sync_id);
+        if(sync) sync.className = "fa "+(hw && hw.bMEM_monitoring ? "fa-stop-circle" : "fa-sync-alt");
+    };
+    this.build_MEM_map = function()
+    {
+        if(!this.MEM_grid) return "";
+        return "<div style='display:flex;flex-direction:column;gap:6px;align-items:flex-start'>"
+            +oMEMGRID.build_grid(0,4,0x8000,this.MEM_grid.cnf)
+            +"<div id='"+this.MEM_status_id+"' style='padding:2px;background:white;border-radius:5px'>"
+            +this.MEM_status_text()+"</div></div>";
+    };
+    this.paint_MEM_map = function()
+    {
+        if(!this.MEM_grid || typeof(document)!="object") return false;
+        var cfg = this.MEM_grid.cnf;
+        oMEMGRID.paint_grid(this.MEM_grid.layout,cfg);
+        oMEMGRID.relabel_grid_rows(cfg.table_id,["1 / 2","3 / 4","5 / 6","7 / 8"]);
+        for(var cell=0;cell<64;cell++)
+        {
+            var physical = cell<<CELL_BITS;
+            var el = document.getElementById(cfg.id_prefix+oCOM.getHexMulti(physical,5));
+            if(!el) continue;
+            var local = physical & (BANK_TOTAL-1);
+            var bank = physical>>14;
+            var part = local<0x1000 ? "A" : local<0x2000 ? "B" : "common";
+            var cpu = local<0x2000 ? 0xD000+(local & 0x0FFF) : 0xE000+local-0x2000;
+            var title = "Bank "+(bank+1)+" "+part+" | physical $"+oCOM.getHexMulti(physical,5)
+                +"-$"+oCOM.getHexMulti(physical+0x7FF,5)+" | CPU $"+oCOM.getHexWord(cpu)
+                +"-$"+oCOM.getHexWord(cpu+0x7FF)+" | 2048 bytes";
+            el.title = title;
+            el.innerHTML = "<span class=gt>"+title+"</span>";
+            var selected = bank===this.state.bank && (part==="common" || (part==="A" ? 0 : 1)===this.state.BANK);
+            el.style.boxShadow = selected ? "inset 0 0 0 1px #202020" : "none";
+        }
+        this.update_MEM_status();
+        return true;
+    };
+    this.mark_MEM_monitoring = function(physical)
+    {
+        if(this.bMEM_monitoring) this.mem_mon[physical>>CELL_BITS] = true;
+    };
+    this.reset_MEM_monitoring = function()
+    {
+        this.mem_mon = {};
+        this.paint_MEM_map();
+    };
+    this.enable_MEM_monitoring = function(enabled)
+    {
+        var wasEnabled = this.bMEM_monitoring;
+        this.bMEM_monitoring = !!enabled;
+        if(enabled && !wasEnabled) this.reset_MEM_monitoring();
+        if(this.MEM_refresh_id) oCOM.enableRefreshEvent(this.MEM_refresh_id,!!enabled);
+        this.update_MEM_status();
+    };
+    this.MEM_monitoring = function()
+    {
+        if(!this.state.active || !this.MEM_grid || !this.bMEM_monitoring) return;
+        this.paint_MEM_map();
+        oMEMGRID.update_grid(this.mem_mon,this.MEM_grid.cnf);
+        if(hw && hw.bClear_mon) this.mem_mon = {};
+    };
+    this.render_MEM_map = function()
+    {
+        var root = document.getElementById(this.MEM_root_id);
+        if(!root) return false;
+        if(!document.getElementById("gtable_"+this.MEM_grid.cnf.table_id)) root.innerHTML = this.build_MEM_map();
+        this.paint_MEM_map();
+        oMEMGRID.update_grid(this.mem_mon,this.MEM_grid.cnf);
+        return true;
+    };
+    this.deviceToolSlotHTML = function(ctx)
+    {
+        ctx = ctx || {};
+        var access = "apple2plus.hwObj().io.HASH2obj("+Number(this.mount.hash)+")";
+        var title = "Load 1â€“131072 bytes into Saturn RAM; bank order A, B, common 8K";
+        return "<div class=toolbox id='"+(ctx.toolboxID || "device_tool_"+ctx.slotID)+"' hidden>"
+            +"<div class=appbox style='padding:0px 6px;min-height:76px' title='Saturn 128K memory map'>"
+            +"<div style='float:left;width:28px;text-align:center'>MEM<br>"
+            +"<button class=appbut title='Start/stop synchronised memory monitoring' onclick='EMU_toggleMEMMonitoring()'>"
+            +"<i id='"+this.MEM_sync_id+"' class='fa "+(hw && hw.bMEM_monitoring ? "fa-stop-circle" : "fa-sync-alt")+"'></i></button><br>"
+            +"<button class=appbut id='"+this.MEM_upload_id+"' title='"+title+"' onclick='document.getElementById(\""
+            +this.MEM_file_id+"\").click()'><i class='fa fa-cloud-upload-alt'></i></button>"
+            +"<input id='"+this.MEM_file_id+"' type=file accept='.bin,application/octet-stream' hidden onchange='"
+            +access+"?.deviceToolLoadFile(this)'></div>"
+            +"<div id='"+this.MEM_root_id+"' style='margin-left:30px;white-space:nowrap'>"+this.build_MEM_map()+"</div>"
+            +"</div></div>";
+    };
 }
-
-/*  EXAMPLE CODE
-
-M.PRNTYX  = $F940   ; print hex word (Y=hi X=lo)
-M.OUTSP   = $DB57   ; space
-
-*=$6000
-
-; WRITE BANK2 and RAMCARD in mode 3 :o)
-LDA $C083   ; 3: {"RAMCARD":true,"WE":true,"BANK":2}
-LDA $C083   ; 3: {"RAMCARD":true,"WE":true,"BANK":2}
-LDA #$12
-STA $E000   ; WRITE IN RAMCARD
-LDA #$34
-STA $D000   ; WRITE IN BANK 2
-LDX $D000
-LDY $E000
-LDA $C081   ; 1: {"WE":true,"BANK":2}
-LDA $C081   ; 1: {"WE":true,"BANK":2}
-JSR M.PRNTYX
-JSR M.OUTSP
-
-; WRITE BANK2 and RAMCARD in mode 2 :o(
-LDA $C082   ; 2: {"BANK":2}
-LDA #$23
-STA $E000   ; WRITE IN RAMCARD
-LDA #$45
-STA $D000   ; WRITE IN BANK 2
-LDX $D000
-LDY $E000
-LDA $C081   ; 1: {"WE":true,"BANK":2}
-LDA $C081   ; 1: {"WE":true,"BANK":2}
-JSR M.PRNTYX
-JSR M.OUTSP
-
-; WRITE BANK2 and RAMCARD in mode 1 :o)
-LDA $C081   ; 1: {"WE":true,"BANK":2}
-LDA $C081   ; 1: {"WE":true,"BANK":2}
-LDA #$34
-STA $E000   ; WRITE IN RAMCARD
-LDA #$56
-STA $D000   ; WRITE IN BANK 2
-LDX $D000
-LDY $E000
-JSR M.PRNTYX
-JSR M.OUTSP
-
-; WRITE BANK2 and RAMCARD in mode 0 :o(
-LDA $C080   ; 0: {"RAMCARD":true,"BANK":2}
-LDA #$45
-STA $D000   ; WRITE IN BANK 2
-LDA #$67
-STA $E000   ; WRITE IN RAMCARD
-LDX $D000
-LDY $E000
-LDA $C081   ; 1: {"WE":true,"BANK":2}
-LDA $C081   ; 1: {"WE":true,"BANK":2}
-JSR M.PRNTYX
-JSR M.OUTSP
-
-RTS
-
-
-CALL-151
-6000: AD 83 C0 AD 83 C0 A9 12 
-6008: 8D 00 E0 A9 34 8D 00 D0 
-6010: AE 00 D0 AC 00 E0 AD 81 
-6018: C0 AD 81 C0 20 40 F9 20 
-6020: 57 DB AD 82 C0 A9 23 8D 
-6028: 00 E0 A9 45 8D 00 D0 AE 
-6030: 00 D0 AC 00 E0 AD 81 C0 
-6038: AD 81 C0 20 40 F9 20 57 
-6040: DB AD 81 C0 AD 81 C0 A9 
-6048: 34 8D 00 E0 A9 56 8D 00 
-6050: D0 AE 00 D0 AC 00 E0 20 
-6058: 40 F9 20 57 DB AD 80 C0 
-6060: A9 45 8D 00 D0 A9 67 8D 
-6068: 00 E0 AE 00 D0 AC 00 E0 
-6070: AD 81 C0 AD 81 C0 20 40 
-6078: F9 20 57 DB 60 
-*/
-
