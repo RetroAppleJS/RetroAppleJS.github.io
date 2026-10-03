@@ -24,9 +24,9 @@ The **CPU speed slidebar is tricky**: the same SYSTEM slider has three modes, an
 
 | SYSTEM CPU slider mode | Range | Purpose |
 | --- | --- | --- |
-| Default | **0 → 400%** | Normal speed control, in 20% steps. |
-| Fine percentage scale | **0 → 100%** | Slower execution with 5% steps. |
-| Factor scale | **x1 → x72** | Faster JavaScript execution; x72 exposes the [WASM accelerator](WASM_ACCELERATOR.md). This scale also has a leftmost zero position. |
+| Default | **0→400%** | Normal speed control, in 20% steps. |
+| Fine percentage scale | **0→100%** | Slower execution with 5% steps. |
+| Factor scale | **x1→x72** | Faster JavaScript execution; x72 exposes the [WASM accelerator](WASM_ACCELERATOR.md). This scale also has a leftmost zero position. |
 
 To open STEP TRACE:
 
