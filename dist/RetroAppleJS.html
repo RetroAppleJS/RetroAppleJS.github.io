@@ -40746,7 +40746,7 @@ function SaturnRAM()
     const BANK_SIZE = 0x1000;
     const BANK_TOTAL = 0x4000;
     const TOTAL_SIZE = 0x20000;
-    const CELL_BITS = 11; // 2048 physical bytes/cell
+    const CELL_BITS = 10; // 1024 physical bytes/cell
     var RAMCARD_MEM = new Uint8Array(TOTAL_SIZE);
     var card = this;
     var hw, io, ROM_ID, ROM_CFG, ROM_RANGE;
@@ -40944,7 +40944,7 @@ function SaturnRAM()
             : '<i class="fa fa-apple-alt" title="ROM read"></i>')
             + ' &nbsp; <i class="fa '+(state.WE ? 'fa-lock-open' : 'fa-lock')+'" title="'
             +(state.WE ? 'Write enabled' : 'Write protected')+'"></i> &nbsp; Bank '
-            +(state.bank+1)+" / "+(state.BANK===0 ? "A" : "B")+" &nbsp; 2 KiB/cell";
+            +(state.bank+1)+" / "+(state.BANK===0 ? "A" : "B");
     };
     this.update_MEM_status = function()
     {
@@ -40957,8 +40957,31 @@ function SaturnRAM()
     this.build_MEM_map = function()
     {
         if(!this.MEM_grid) return "";
+        var cfg = this.MEM_grid.cnf;
+        var grid = "<table class=gtable style='display:inline-block' id='gtable_"+cfg.table_id+"'>"
+            +"<thead><tr style='font-weight:normal'>"
+            //+"<th style='font-weight:normal'></th>"
+            //+"<th colspan='4' style='font-weight:normal' title='4K A: CPU $D000-$DFFF'>D000-A</th>"
+            //+"<th aria-hidden='true' style='width:6px'></th>"
+            //+"<th colspan='4' style='font-weight:normal' title='4K B: CPU $D000-$DFFF'>D000-B</th>"
+            //+"<th aria-hidden='true' style='width:6px'></th>"
+            //+"<th colspan='8' style='font-weight:normal' title='Common 8K: CPU $E000-$FFFF, shared by A and B'>E000-FFFF</th>"
+            +"</tr></thead><tbody>";
+        for(var bank=0;bank<8;bank++)
+        {
+            grid += "<tr data-bank='"+(bank+1)+"'><td title='16K bank "+(bank+1)+"'>"+(bank+1)+"</td>";
+            for(var cell=0;cell<16;cell++)
+            {
+                if(cell===4 || cell===8)
+                    grid += "<td aria-hidden='true' style='width:6px;min-width:6px'></td>";
+                var physical = bank*BANK_TOTAL+(cell<<CELL_BITS);
+                grid += "<td id='"+cfg.id_prefix+oCOM.getHexMulti(physical,5)+"'></td>";
+            }
+            grid += "</tr>";
+        }
+        grid += "</tbody></table>";
         return "<div style='display:flex;flex-direction:column;gap:6px;align-items:flex-start'>"
-            +oMEMGRID.build_grid(0,4,0x8000,this.MEM_grid.cnf)
+            +grid
             +"<div id='"+this.MEM_status_id+"' style='padding:2px;background:white;border-radius:5px'>"
             +this.MEM_status_text()+"</div></div>";
     };
@@ -40967,22 +40990,21 @@ function SaturnRAM()
         if(!this.MEM_grid || typeof(document)!="object") return false;
         var cfg = this.MEM_grid.cnf;
         oMEMGRID.paint_grid(this.MEM_grid.layout,cfg);
-        oMEMGRID.relabel_grid_rows(cfg.table_id,["1 / 2","3 / 4","5 / 6","7 / 8"]);
-        for(var cell=0;cell<64;cell++)
+        for(var cell=0;cell<(TOTAL_SIZE>>CELL_BITS);cell++)
         {
             var physical = cell<<CELL_BITS;
             var el = document.getElementById(cfg.id_prefix+oCOM.getHexMulti(physical,5));
             if(!el) continue;
             var local = physical & (BANK_TOTAL-1);
             var bank = physical>>14;
-            var part = local<0x1000 ? "A" : local<0x2000 ? "B" : "common";
+            var part = local<0x1000 ? "A" : local<0x2000 ? "B" : "com";
             var cpu = local<0x2000 ? 0xD000+(local & 0x0FFF) : 0xE000+local-0x2000;
-            var title = "Bank "+(bank+1)+" "+part+" | physical $"+oCOM.getHexMulti(physical,5)
-                +"-$"+oCOM.getHexMulti(physical+0x7FF,5)+" | CPU $"+oCOM.getHexWord(cpu)
-                +"-$"+oCOM.getHexWord(cpu+0x7FF)+" | 2048 bytes";
+            var title = "Bank "+(bank+1)+" "+part+" | phys $"+oCOM.getHexMulti(physical,5)
+                +"-$"+oCOM.getHexMulti(physical+0x3FF,5)+"<br>CPU $"+oCOM.getHexWord(cpu)
+                +"-$"+oCOM.getHexWord(cpu+0x3FF)+" | 1KB";
             el.title = title;
             el.innerHTML = "<span class=gt>"+title+"</span>";
-            var selected = bank===this.state.bank && (part==="common" || (part==="A" ? 0 : 1)===this.state.BANK);
+            var selected = bank===this.state.bank && (part==="com" || (part==="A" ? 0 : 1)===this.state.BANK);
             el.style.boxShadow = selected ? "inset 0 0 0 1px #202020" : "none";
         }
         this.update_MEM_status();
