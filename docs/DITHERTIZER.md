@@ -67,6 +67,22 @@ from the repository's driver disk and runs it on the production 6502 CPU with
 the card's production I/O and sync timing. It checks completion, all four
 thresholds, all five Bayer states across the image, bit 7, and HGR holes.
 
+## DITHER2 color capture
+
+The separate `res/EMU_CARD_dithertizer2.js` copies complete ConvertHGR bytes to
+the selected HGR page, including each byte's color-phase bit 7. With the camera
+off, it captures the embedded Apple II logo HGR page from the original disk.
+
+The stock disk calls DSCAN at `$1C00` (`CALL 7168`). That entry captures four
+PAGE1 frames and merges them into PAGE2 with `AND #$7F`, so its displayed color
+alternates between a fresh color capture and a bit-7-cleared result. DSCAN also
+contains a synchronized one-pass PAGE2 capture at `$1D03` (`CALL 7427`). When
+DITHER2 is mounted and the exact original driver is loaded, it changes the
+in-memory `$1C00` entry to `JMP $1D03`. The disk image and the DITHER card are
+unchanged. Removing or resetting DITHER2 restores the original RAM entry when
+that driver is still present. Other programs are not patched; they can call
+`7427` explicitly after loading DSCAN.
+
 ## Scope
 
 The separate ConvertHGR adapter and worker remain available to the standalone

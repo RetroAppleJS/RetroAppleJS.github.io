@@ -1652,6 +1652,9 @@ function mergeActionMap(dst,src)
         if(this.MEMORY_MAP && typeof(this.MEMORY_MAP.unmount)=="function")
             this.MEMORY_MAP.unmount(peripheral_obj);
 
+        if(typeof(peripheral_obj.onUnmount)=="function")
+            peripheral_obj.onUnmount();
+
         delete slot.peripheral;
         refillEmptyIOActions();
 

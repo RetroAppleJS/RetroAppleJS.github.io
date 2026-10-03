@@ -152,3 +152,90 @@ test('the original DSCAN $1D03 sync entry captures color PAGE2 without its bit-7
     assert.equal(ram[0x2000],0xA5);
     assert.equal(ram[0x4078],0xA5);
 });
+
+test('DITHER2 redirects the stock DSCAN $1C00 entry to one PAGE2 color capture',()=>{
+    const sandbox={console,oEMU:{component:{CPU:{},IO:{},ROM:{}}}};
+    vm.createContext(sandbox);
+    for(const filename of ['EMU_cpu6502.js','EMU_apple2roms.js','EMU_CARD_dithertizer2.js'])
+        vm.runInContext(fs.readFileSync(path.join(ROOT,'res',filename),'utf8'),sandbox,{filename});
+
+    const driver=dscanPayload();
+    const ram=new Uint8Array(65536);
+    ram.fill(0xA5,0x2000,0x6000);
+    ram.set(vm.runInContext('apple2Rom',sandbox),0xD000);
+    ram.set(driver,0x1C00);
+    ram[0]=2;ram[1]=25;ram[2]=115;
+    ram[0x1FE]=0xFF;ram[0x1FF]=7;
+    const page=new Uint8Array(8192);
+    page[0]=0x80;
+    page[offset(64,13)]=0xA5;
+    page[offset(191,39)]=0xE9;
+    const card=new sandbox.DithertizerII_2();
+    card.setCameraSource({getHGRPage(){return page;}});
+    const vid={state:{page2:false}},hw={RD:[],WR:[],lineDecode:a=>a>>12};
+    let ticks=0,captures=0;
+    function read(addr)
+    {
+        if(addr===0xC054) vid.state.page2=false;
+        if(addr===0xC055) vid.state.page2=true;
+        if(addr===0xC0F0 || addr===0xC0F8)
+        {
+            if(addr===0xC0F8) captures++;
+            return card.readSlotIO(addr,{hw,vid,io:{getClockTicks:()=>ticks}});
+        }
+        return ram[addr];
+    }
+    function write(addr,value)
+    {
+        if(addr===0xC0F0) card.writeSlotIO(addr,value,{});
+        else ram[addr]=value;
+    }
+    for(let i=0;i<16;i++){hw.RD[i]=read;hw.WR[i]=write;}
+    sandbox.apple2plus={hwObj(){return hw;}};
+
+    card.cycle();
+    assert.deepEqual(Array.from(ram.subarray(0x1C00,0x1C03)),[0x4C,0x03,0x1D]);
+    const cpu=new sandbox.Cpu6502(hw);
+    cpu.setState({pc:0x1C00,sp:0xFD});
+    for(;ticks<1000000;ticks++)
+    {
+        cpu.cycle();
+        if(cpu.watch().pc===0x0800) break;
+    }
+    assert.equal(cpu.watch().pc,0x0800);
+    assert.equal(captures,1);
+    assert.equal(vid.state.page2,true);
+    for(let y=0;y<192;y++)
+        for(let x=0;x<40;x++)
+            assert.equal(ram[0x4000+offset(y,x)],page[offset(y,x)]);
+    assert.equal(ram[0x4078],0xA5,'HGR holes remain untouched');
+
+    const firstCapture=ram.slice(0x4000,0x6000);
+    ram[0x1FE]=0xFF;ram[0x1FF]=7;
+    cpu.setState({pc:0x1C00,sp:0xFD});
+    for(;ticks<1000000;ticks++)
+    {
+        cpu.cycle();
+        if(cpu.watch().pc===0x0800) break;
+    }
+    assert.equal(cpu.watch().pc,0x0800);
+    assert.equal(captures,2);
+    assert.deepEqual(ram.slice(0x4000,0x6000),firstCapture,'repeated stock calls show the same color page');
+
+    card.reset();
+    assert.deepEqual(Array.from(ram.subarray(0x1C00,0x1C03)),Array.from(driver.subarray(0,3)));
+    card.cycle();
+    assert.deepEqual(Array.from(ram.subarray(0x1C00,0x1C03)),[0x4C,0x03,0x1D]);
+    ram.set(driver,0x1C00); // A subsequent BLOAD is redirected too.
+    card.cycle();
+    assert.deepEqual(Array.from(ram.subarray(0x1C00,0x1C03)),[0x4C,0x03,0x1D]);
+
+    vm.runInContext(fs.readFileSync(path.join(ROOT,'res/EMU_apple2io.js'),'utf8'),sandbox);
+    const io=new sandbox.Apple2IO();
+    io.slots[7]={peripheral:card,lock:false};
+    assert.equal(io.unmount(7),true);
+    assert.deepEqual(Array.from(ram.subarray(0x1C00,0x1C03)),Array.from(driver.subarray(0,3)));
+    ram[0x1CCC]=0xEA; // A different program must not be redirected.
+    card.cycle();
+    assert.deepEqual(Array.from(ram.subarray(0x1C00,0x1C03)),Array.from(driver.subarray(0,3)));
+});
