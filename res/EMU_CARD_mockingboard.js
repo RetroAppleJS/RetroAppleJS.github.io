@@ -632,6 +632,13 @@ function MockingboardAYBus(renderer,options)
         index&=0x0F; value&=MockingboardAYBus.REG_MASK[index];
         this.regs[index]=value;
         applyRegister(index);
+        if(index<=13 && typeof(bDebug)!=="undefined" && bDebug===true)
+        {
+            var hex=("0"+value.toString(16).toUpperCase()).slice(-2);
+            var tick=Number(cycle);
+            console.log("MOCK "+this.name+" R"+index+" "+MockingboardAYBus.REG_NAMES[index]+
+                " <= $"+hex+" @"+(Number.isFinite(tick)?Math.floor(tick):"?"));
+        }
         if(this.onRegisterWrite) this.onRegisterWrite(index,value,cycle,this);
         if(this.controlState===READ && this.addressValid && this.selectedRegister===index) this.busDrive=value;
         return value;
@@ -641,3 +648,8 @@ function MockingboardAYBus(renderer,options)
     this.reset(0);
 }
 MockingboardAYBus.REG_MASK=[0xFF,0x0F,0xFF,0x0F,0xFF,0x0F,0x1F,0xFF,0x1F,0x1F,0x1F,0xFF,0xFF,0x0F,0xFF,0xFF];
+MockingboardAYBus.REG_NAMES=[
+    "TONE_A_FINE","TONE_A_COARSE","TONE_B_FINE","TONE_B_COARSE",
+    "TONE_C_FINE","TONE_C_COARSE","NOISE_PERIOD","MIXER",
+    "AMP_A","AMP_B","AMP_C","ENV_FINE","ENV_COARSE","ENV_SHAPE"
+];
