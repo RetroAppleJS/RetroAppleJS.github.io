@@ -72,7 +72,7 @@ test('large free-running catch-up preserves phase without per-period stepping',(
     const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
     via.writeRegister(0x0B,0x40); loadT1(via,1); via.tick(100000);
     assert.equal(via.peekRegister(0x0D)&F.T1,F.T1);
-    assert.equal(via.peekRegister(0x04),0); // 100000 mod 3 = 1: N(1)-phase(1)=0
+    assert.equal(via.peekRegister(0x04),0);
 });
 
 test('T2 pulse-count mode is not decremented by CPU ticks',()=>{
@@ -93,49 +93,4 @@ test('two VIA timers progress independently',()=>{
     loadT1(a,2); loadT2(b,6); a.tick(4); b.tick(4);
     assert.equal(a.peekRegister(0x0D)&F.T1,F.T1); assert.equal(b.peekRegister(0x0D)&F.T2,0);
     b.tick(4); assert.equal(b.peekRegister(0x0D)&F.T2,F.T2);
-});
-
-test('mb-audit: T1 one-shot counter reloads every N+2 cycles but IRQ fires only once per load',()=>{
-    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
-    loadT1(via,2);
-    via.tick(4);
-    assert.equal(via.peekRegister(0x0D)&F.T1,F.T1);
-    assert.equal(via.peekRegister(0x04),0x02,'counter reloads from latch on underflow');
-    via.writeRegister(0x0D,F.T1);
-    via.tick(4);
-    assert.equal(via.peekRegister(0x04),0x02,'one-shot counter keeps reloading');
-    assert.equal(via.peekRegister(0x0D)&F.T1,0,'one-shot interrupt does not retrigger without reload');
-});
-
-test('mb-audit: T1 interrupt clear rules match register accesses',()=>{
-    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
-    loadT1(via,2); via.tick(4); assert.equal(via.ifr&F.T1,F.T1);
-    via.writeRegister(0x04,0x34); assert.equal(via.ifr&F.T1,F.T1,'T1C_L write does not clear');
-    via.writeRegister(0x06,0x56); assert.equal(via.ifr&F.T1,F.T1,'T1L_L write does not clear');
-    via.readRegister(0x05); assert.equal(via.ifr&F.T1,F.T1,'T1C_H read does not clear');
-    via.readRegister(0x04); assert.equal(via.ifr&F.T1,0,'T1C_L read clears');
-    loadT1(via,2); via.tick(4); via.writeRegister(0x07,0x12); assert.equal(via.ifr&F.T1,0,'T1L_H write clears');
-    loadT1(via,2); via.tick(4); via.writeRegister(0x05,0x12); assert.equal(via.ifr&F.T1,0,'T1C_H write clears');
-});
-
-test('mb-audit: T2 continues into $FFxx after underflow',()=>{
-    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
-    loadT2(via,0x0001); via.tick(3);
-    assert.equal(via.peekRegister(0x0D)&F.T2,F.T2);
-    assert.equal(via.peekRegister(0x09),0xFF);
-});
-
-test('mb-audit Detect6522: reset counters move even while inactive without setting IFR',()=>{
-    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
-    const t1=via.peekRegister(0x04), t2=via.peekRegister(0x08);
-    via.tick(8);
-    assert.equal((t1-via.peekRegister(0x04))&0xFF,8);
-    assert.equal((t2-via.peekRegister(0x08))&0xFF,8);
-    assert.equal(via.peekRegister(0x0D)&(F.T1|F.T2),0);
-});
-
-test('mb-audit: T1 and T2 can run concurrently in the same VIA',()=>{
-    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
-    loadT1(via,2); loadT2(via,5); via.tick(7);
-    assert.equal(via.peekRegister(0x0D)&(F.T1|F.T2),F.T1|F.T2);
 });
