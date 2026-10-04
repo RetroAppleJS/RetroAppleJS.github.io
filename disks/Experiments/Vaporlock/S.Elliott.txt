@@ -7,7 +7,6 @@ Either assemble the program and start it with BRUN WINDOWTOGGLE.OBJ0, or enter t
 Press the keys 0-9 to switch each region between text or graphics.
 
 
-
 Here's a machine-code listing:
 0300:20 69 03 AD 57 C0 AD 54
 0308:C0 AD 52 C0 AD 50 C0 AD
