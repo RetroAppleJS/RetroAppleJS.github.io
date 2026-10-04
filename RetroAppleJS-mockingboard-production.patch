@@ -1,0 +1,1376 @@
+--- a/res/EMU_CARD_mockingboard.js
++++ b/res/EMU_CARD_mockingboard.js
+@@ -3,29 +3,641 @@
+ // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
+ //
+ // EMU_CARD_mockingboard.js
+-
+-
+-if(oEMU===undefined) var oEMU = {"component":{"IO":{"mockingboard":new mockingboard()}}}
+-else oEMU.component.IO.mockingboard= new mockingboard();
++//
++
++if(oEMU===undefined) var oEMU = {"component":{"IO":{}}};
++oEMU.component.IO.mockingboard = new mockingboard();
+ 
+ function mockingboard()
+ {
+-    //console.log("oEMU="+typeof(oEMU))
+-    this.id     = {"PCODE":"MOCK", "icon":"fa fa-assistive-listening-systems"}
+-    this.state = {"active":true};
+-        
+-    this.init = function()
+-    {
+-        //oEMU.component.IO.DRIVER.mount("MOCK",3,this.mockingboard,false);
+-    }
+-
+-    this.read = function(addr)
+-    {
+-
+-    }
+-
+-    this.write = function(addr)
+-    {
+-
+-    }
++    var card=this;
++    const SAMPLE_RATE=44100;
++    const AUDIO_CAPACITY=Math.ceil(SAMPLE_RATE*0.25);
++
++    this.id={"PCODE":"MOCK","icon":"fa fa-assistive-listening-systems"};
++    this.state={"active":true,"irq":false,"audio":true};
++    this.deviceConfig=[{
++         "DCODE":"MOCKAUDIO"
++        ,"hostPCODE":"MOCK"
++        ,"coID":"MockingboardAudio"
++        ,"deviceN":1
++        ,"icon":"fa fa-volume-up"
++        ,"description":"Mockingboard stereo audio output"
++        ,"autoAttach":true
++    }];
++    this.action={"SlotROM":{
++         "RD":{"callback":function(addr,ctx){ return card.readSlotROM(addr,ctx); }}
++        ,"WR":{"callback":function(addr,d8,ctx){ return card.writeSlotROM(addr,d8,ctx); }}
++    }};
++
++    var hw=null, io=null;
++    var irqSource="MOCK:0";
++    var lastCpuTick=0;
++    var clockRate=(typeof(_o)!="undefined" && Number(_o.CPU_ClocksTicks_s)>0) ? Number(_o.CPU_ClocksTicks_s) : 1021800;
++    var chips=[];
++    var psgBuses=[];
++    var vias=[];
++    var syncingBus=[false,false];
++    var timingRefresh=null;
++
++    var audioPhase=0;
++    var audioConsumerActive=false;
++    var audioLeft=new Float32Array(AUDIO_CAPACITY);
++    var audioRight=new Float32Array(AUDIO_CAPACITY);
++    var audioRead=0, audioWrite=0, audioCount=0;
++    var audioStats={producedFrames:0,drainedFrames:0,droppedFrames:0,overruns:0,highWaterFrames:0};
++
++    function configureChip(chip,index)
++    {
++        if(chip && typeof(chip.configure)==="function") chip.configure(false,clockRate,SAMPLE_RATE);
++        if(chip && typeof(chip.setPan)==="function")
++            for(var channel=0;channel<3;channel++) chip.setPan(channel,index===0?0.0:1.0,false);
++    }
++    function buildSoundChips()
++    {
++        chips=[new Ayumi(),new Ayumi()];
++        configureChip(chips[0],0); configureChip(chips[1],1);
++        psgBuses=[
++            new MockingboardAYBus(chips[0],{"name":"AY0"}),
++            new MockingboardAYBus(chips[1],{"name":"AY1"})
++        ];
++    }
++    function syncBus(index)
++    {
++        if(syncingBus[index] || !vias[index] || !psgBuses[index]) return;
++        syncingBus[index]=true;
++        var via=vias[index], bus=psgBuses[index];
++        var driven=bus.observeViaPins(via.paPins,via.pbPins,lastCpuTick);
++        via.setPortAInput(driven===null?0xFF:driven,0xFF);
++        syncingBus[index]=false;
++    }
++    function setCardIRQ(level,force)
++    {
++        level=!!level;
++        if(!force && level===card.state.irq) return;
++        card.state.irq=level;
++        if(hw && typeof(hw.setIRQSource)==="function") hw.setIRQSource(irqSource,level);
++    }
++    function updateIRQ()
++    {
++        setCardIRQ(!!((vias[0]&&vias[0].irqLevel)||(vias[1]&&vias[1].irqLevel)),false);
++    }
++    function buildVias()
++    {
++        function makeVia(index)
++        {
++            return new MockingboardR6522({
++                 "name":"VIA"+index
++                ,"onPortAChange":function(){ syncBus(index); }
++                ,"onPortBChange":function(){ syncBus(index); }
++                ,"onIrqChange":function(){ updateIRQ(); }
++            });
++        }
++        vias=[makeVia(0),makeVia(1)];
++    }
++    function decodeAddress(addr)
++    {
++        var offset=Number(addr)&0xFF;
++        if(offset>=0x00 && offset<=0x0F) return {via:0,reg:offset};
++        if(offset>=0x80 && offset<=0x8F) return {via:1,reg:offset&0x0F};
++        return null;
++    }
++    function floatingBus(ctx)
++    {
++        if(ctx && ctx.io && ctx.io.FLOATING_BUS!==undefined) return ctx.io.FLOATING_BUS;
++        if(io && io.FLOATING_BUS!==undefined) return io.FLOATING_BUS;
++        return -1;
++    }
++    function resolveTick(ctx)
++    {
++        var t=ctx && Number(ctx.cpuTick);
++        if(Number.isFinite(t)) return t;
++        if(io && typeof(io.getClockTicks)==="function")
++        {
++            t=Number(io.getClockTicks());
++            if(Number.isFinite(t)) return t;
++        }
++        return lastCpuTick;
++    }
++    function enqueueFrame(left,right)
++    {
++        if(audioCount===AUDIO_CAPACITY)
++        {
++            audioRead=(audioRead+1)%AUDIO_CAPACITY;
++            audioCount--;
++            audioStats.overruns++;
++            audioStats.droppedFrames++;
++        }
++        audioLeft[audioWrite]=left;
++        audioRight[audioWrite]=right;
++        audioWrite=(audioWrite+1)%AUDIO_CAPACITY;
++        audioCount++;
++        if(audioCount>audioStats.highWaterFrames) audioStats.highWaterFrames=audioCount;
++    }
++    function renderAudioFrame()
++    {
++        for(var i=0;i<2;i++)
++        {
++            if(chips[i] && typeof(chips[i].process)==="function") chips[i].process();
++            if(chips[i] && typeof(chips[i].removeDC)==="function") chips[i].removeDC();
++        }
++        audioStats.producedFrames++;
++        if(!audioConsumerActive) return;
++        var left=chips[0] && Number.isFinite(Number(chips[0].left)) ? Number(chips[0].left) : 0;
++        var right=chips[1] && Number.isFinite(Number(chips[1].right)) ? Number(chips[1].right) : 0;
++        enqueueFrame(left*0.5,right*0.5);
++    }
++    function advanceAudio(cycles)
++    {
++        audioPhase += cycles*SAMPLE_RATE;
++        while(audioPhase>=clockRate)
++        {
++            audioPhase-=clockRate;
++            renderAudioFrame();
++        }
++    }
++
++    buildSoundChips();
++    buildVias();
++
++    this.setTimingRefreshCallback=function(callback)
++    {
++        timingRefresh=typeof(callback)==="function"?callback:null;
++    };
++    this.readSlotROM=function(addr,ctx)
++    {
++        var d=decodeAddress(addr);
++        if(!d) return floatingBus(ctx);
++        if(ctx && ctx.bRO===true) return vias[d.via].peekRegister(d.reg);
++        this.advanceTo(resolveTick(ctx));
++        syncBus(d.via);
++        return vias[d.via].readRegister(d.reg);
++    };
++    this.writeSlotROM=function(addr,d8,ctx)
++    {
++        var d=decodeAddress(addr);
++        if(!d || (ctx && ctx.bRO===true)) return false;
++        this.advanceTo(resolveTick(ctx));
++        vias[d.via].writeRegister(d.reg,Number(d8)&0xFF);
++        if(timingRefresh) timingRefresh();
++        return true;
++    };
++    this.advanceTo=function(cpuTick)
++    {
++        cpuTick=Math.floor(Number(cpuTick));
++        if(!Number.isFinite(cpuTick)) return;
++        if(cpuTick<lastCpuTick)
++        {
++            lastCpuTick=cpuTick;
++            return;
++        }
++        var elapsed=cpuTick-lastCpuTick;
++        if(elapsed<=0) return;
++        vias[0].tick(elapsed); vias[1].tick(elapsed);
++        advanceAudio(elapsed);
++        lastCpuTick=cpuTick;
++    };
++    this.syncClock=function(cpuTick){ this.advanceTo(cpuTick); };
++    this.needsRealtimeTick=function(){ return vias[0].needsRealtimeTick()||vias[1].needsRealtimeTick(); };
++    this.getAudioFormat=function(){ return {sampleRate:SAMPLE_RATE,channels:2,format:"float32"}; };
++    this.setAudioConsumerActive=function(active){ audioConsumerActive=!!active; };
++    this.getAudioFramesAvailable=function(){ return audioCount; };
++    this.drainAudioFrames=function(maxFrames)
++    {
++        var count=Math.min(audioCount,Math.max(0,Math.floor(Number(maxFrames)||0)));
++        var left=new Float32Array(count), right=new Float32Array(count);
++        for(var i=0;i<count;i++)
++        {
++            left[i]=audioLeft[audioRead]; right[i]=audioRight[audioRead];
++            audioRead=(audioRead+1)%AUDIO_CAPACITY;
++        }
++        audioCount-=count;
++        audioStats.drainedFrames+=count;
++        return {frames:count,left:left,right:right};
++    };
++    this.clearAudioQueue=function(){ audioRead=audioWrite=audioCount=0; };
++    this.getAudioStats=function()
++    {
++        return {
++             producedFrames:audioStats.producedFrames
++            ,queuedFrames:audioCount
++            ,drainedFrames:audioStats.drainedFrames
++            ,droppedFrames:audioStats.droppedFrames
++            ,overruns:audioStats.overruns
++            ,highWaterFrames:audioStats.highWaterFrames
++            ,capacityFrames:AUDIO_CAPACITY
++        };
++    };
++    this.getRegisters=function(index)
++    {
++        index=Number(index)|0;
++        return psgBuses[index] ? psgBuses[index].getRegisters() : new Uint8Array(0);
++    };
++    this.getViaState=function(index)
++    {
++        index=Number(index)|0;
++        return vias[index] ? vias[index].getState() : null;
++    };
++    this.reset=function()
++    {
++        setCardIRQ(false,true);
++        vias[0].reset(); vias[1].reset();
++        buildSoundChips();
++        audioPhase=0;
++        this.clearAudioQueue();
++        audioStats={producedFrames:0,drainedFrames:0,droppedFrames:0,overruns:0,highWaterFrames:0};
++        lastCpuTick=(io && typeof(io.getClockTicks)==="function") ? Number(io.getClockTicks())||0 : 0;
++        syncBus(0); syncBus(1);
++    };
++    this.restart=function()
++    {
++        if(typeof(apple2plus)!="undefined" && apple2plus && typeof(apple2plus.hwObj)==="function")
++        {
++            hw=apple2plus.hwObj();
++            io=hw && hw.io ? hw.io : null;
++        }
++        clockRate=(typeof(_o)!="undefined" && Number(_o.CPU_ClocksTicks_s)>0) ? Number(_o.CPU_ClocksTicks_s) : clockRate;
++        irqSource="MOCK:"+(this.mount && this.mount.hash!==undefined ? this.mount.hash : 0);
++        this.state.active=true;
++        this.reset();
++    };
++    this.onUnmount=function()
++    {
++        setCardIRQ(false,true);
++        this.state.active=false;
++        audioConsumerActive=false;
++        this.clearAudioQueue();
++    };
+ }
++
++function MockingboardR6522(options)
++{
++    options=options||{};
++    var via=this;
++    this.name=options.name||"6522";
++    this.onPortAChange=typeof(options.onPortAChange)==="function"?options.onPortAChange:null;
++    this.onPortBChange=typeof(options.onPortBChange)==="function"?options.onPortBChange:null;
++    this.onIrqChange=typeof(options.onIrqChange)==="function"?options.onIrqChange:null;
++
++    function updateIRQ()
++    {
++        var next=!!(via.ifr & via.ier & 0x7F);
++        if(next===via.irqLevel) return;
++        via.irqLevel=next;
++        if(via.onIrqChange) via.onIrqChange(next,via);
++    }
++    function updatePins()
++    {
++        var oldA=via.paPins, oldB=via.pbPins;
++        via.paPins=((via.ora & via.ddra) | (via.iraExternal & (~via.ddra & 0xFF))) & 0xFF;
++        via.pbPins=((via.orb & via.ddrb) | (via.irbExternal & (~via.ddrb & 0xFF))) & 0xFF;
++        if(oldA!==via.paPins && via.onPortAChange) via.onPortAChange(via.paPins,via);
++        if(oldB!==via.pbPins && via.onPortBChange) via.onPortBChange(via.pbPins,via);
++    }
++    function visibleIFR(){ return (via.ifr & 0x7F) | ((via.ifr & via.ier & 0x7F)?0x80:0); }
++    function clearIFR(mask){ via.ifr &= ~(mask & 0x7F); updateIRQ(); }
++    function setIFR(mask){ via.ifr |= mask & 0x7F; updateIRQ(); }
++
++    this.reset=function()
++    {
++        this.ora=this.orb=0;
++        this.ddra=this.ddrb=0;
++        this.iraExternal=this.irbExternal=0xFF;
++        this.paPins=this.pbPins=0xFF;
++        this.t1Counter=this.t1Latch=0xFFFF; this.t1Gap=false;
++        this.t2Counter=0xFFFF; this.t2LatchLow=0xFF; this.t2StartValue=0xFFFF; this.t2Phase=0;
++        this.t1Running=this.t2Running=false;
++        this.t1HasInterrupted=this.t2HasInterrupted=false;
++        this.sr=this.acr=this.pcr=this.ifr=this.ier=0;
++        this.irqLevel=false;
++        this.ca1=this.ca2=this.cb1=this.cb2=1;
++    };
++    this.peekRegister=function(reg)
++    {
++        switch(reg & 0x0F)
++        {
++            case 0x00:return this.pbPins;
++            case 0x01:return this.paPins;
++            case 0x02:return this.ddrb;
++            case 0x03:return this.ddra;
++            case 0x04:return this.t1Counter & 0xFF;
++            case 0x05:return (this.t1Counter>>8)&0xFF;
++            case 0x06:return this.t1Latch & 0xFF;
++            case 0x07:return (this.t1Latch>>8)&0xFF;
++            case 0x08:return this.t2Counter & 0xFF;
++            case 0x09:return (this.t2Counter>>8)&0xFF;
++            case 0x0A:return this.sr;
++            case 0x0B:return this.acr;
++            case 0x0C:return this.pcr;
++            case 0x0D:return visibleIFR();
++            case 0x0E:return (this.ier & 0x7F)|0x80;
++            case 0x0F:return this.paPins;
++        }
++        return 0xFF;
++    };
++    this.readRegister=function(reg)
++    {
++        reg &= 0x0F;
++        var value=this.peekRegister(reg);
++        switch(reg)
++        {
++            case 0x00: clearIFR(0x18); break;
++            case 0x01: clearIFR(0x03); break;
++            case 0x04: clearIFR(0x40); break;
++            case 0x08: clearIFR(0x20); break;
++        }
++        return value;
++    };
++    this.writeRegister=function(reg,value)
++    {
++        reg&=0x0F; value&=0xFF;
++        switch(reg)
++        {
++            case 0x00:this.orb=value; clearIFR(0x18); updatePins(); break;
++            case 0x01:this.ora=value; clearIFR(0x03); updatePins(); break;
++            case 0x0F:this.ora=value; updatePins(); break;
++            case 0x02:this.ddrb=value; updatePins(); break;
++            case 0x03:this.ddra=value; updatePins(); break;
++            case 0x04:this.t1Latch=(this.t1Latch & 0xFF00)|value; break;
++            case 0x05:
++                this.t1Latch=(value<<8)|(this.t1Latch & 0xFF);
++                this.t1Counter=this.t1Latch; this.t1Gap=false; this.t1Running=true; this.t1HasInterrupted=false;
++                clearIFR(0x40);
++                break;
++            case 0x06:this.t1Latch=(this.t1Latch & 0xFF00)|value; break;
++            case 0x07:this.t1Latch=(value<<8)|(this.t1Latch & 0xFF); clearIFR(0x40); break;
++            case 0x08:this.t2LatchLow=value; break;
++            case 0x09:
++                this.t2StartValue=(value<<8)|this.t2LatchLow;
++                this.t2Counter=this.t2StartValue; this.t2Phase=0; this.t2Running=true; this.t2HasInterrupted=false;
++                clearIFR(0x20);
++                break;
++            case 0x0A:this.sr=value; clearIFR(0x04); break;
++            case 0x0B:this.acr=value; break;
++            case 0x0C:this.pcr=value; break;
++            case 0x0D:this.ifr &= ~(value & 0x7F); updateIRQ(); break;
++            case 0x0E:
++                if(value & 0x80) this.ier |= value & 0x7F;
++                else this.ier &= ~(value & 0x7F);
++                updateIRQ();
++                break;
++        }
++    };
++    this.setPortAInput=function(value,mask)
++    {
++        mask=mask===undefined?0xFF:(mask&0xFF); value&=0xFF;
++        this.iraExternal=(this.iraExternal & (~mask & 0xFF)) | (value & mask);
++        updatePins();
++    };
++    this.setPortBInput=function(value,mask)
++    {
++        mask=mask===undefined?0xFF:(mask&0xFF); value&=0xFF;
++        this.irbExternal=(this.irbExternal & (~mask & 0xFF)) | (value & mask);
++        updatePins();
++    };
++    this.setCA1=function(level){ level=level?1:0; var old=this.ca1; this.ca1=level; if(old!==level){ var rising=!!(this.pcr&0x01); if((rising&&level)||(!rising&&!level)) setIFR(0x02); } };
++    this.setCA2=function(level){ level=level?1:0; var old=this.ca2; this.ca2=level; if(old!==level){ var rising=!!(this.pcr&0x04); if((rising&&level)||(!rising&&!level)) setIFR(0x01); } };
++    this.setCB1=function(level){ level=level?1:0; var old=this.cb1; this.cb1=level; if(old!==level){ var rising=!!(this.pcr&0x10); if((rising&&level)||(!rising&&!level)) setIFR(0x10); } };
++    this.setCB2=function(level){ level=level?1:0; var old=this.cb2; this.cb2=level; if(old!==level){ var rising=!!(this.pcr&0x40); if((rising&&level)||(!rising&&!level)) setIFR(0x08); } };
++    this.needsRealtimeTick=function()
++    {
++        var t1=this.t1Running && !!(this.ier & 0x40) && ((this.acr & 0x40) || !this.t1HasInterrupted);
++        var t2=this.t2Running && !(this.acr & 0x20) && !!(this.ier & 0x20) && !this.t2HasInterrupted;
++        return !!(t1||t2);
++    };
++    this.tick=function(cycles)
++    {
++        cycles=Math.floor(Number(cycles));
++        if(!Number.isFinite(cycles) || cycles<=0) return;
++        var cyclesOriginal=cycles;
++
++        /*
++         * T1 counter motion never stops.  "Running" means a T1CH load has
++         * armed interrupt generation; mb-audit also relies on an otherwise
++         * inactive/reset counter continuing to decrement for card detection.
++         * A real 6522 has one $FFFF gap cycle after zero, hence N+2 between
++         * reload events.
++         */
++        var toReload=this.t1Gap ? 1 : (this.t1Counter+2);
++        if(cycles<toReload)
++        {
++            if(this.t1Gap)
++            {
++                /* integer cycles<1 cannot occur */
++            }
++            else if(cycles<=this.t1Counter)
++                this.t1Counter=(this.t1Counter-cycles)&0xFFFF;
++            else
++            {
++                this.t1Counter=0xFFFF;
++                this.t1Gap=true;
++            }
++        }
++        else
++        {
++            cycles-=toReload;
++            this.t1Counter=this.t1Latch&0xFFFF;
++            this.t1Gap=false;
++
++            if(this.t1Running)
++            {
++                if(this.acr&0x40) setIFR(0x40);
++                else if(!this.t1HasInterrupted)
++                {
++                    this.t1HasInterrupted=true;
++                    setIFR(0x40);
++                }
++            }
++
++            var period=(this.t1Latch&0xFFFF)+2;
++            if(cycles>=period)
++            {
++                var reloads=Math.floor(cycles/period);
++                if(reloads>0 && this.t1Running && (this.acr&0x40)) setIFR(0x40);
++                cycles%=period;
++            }
++
++            if(cycles<=this.t1Latch)
++                this.t1Counter=(this.t1Latch-cycles)&0xFFFF;
++            else
++            {
++                this.t1Counter=0xFFFF;
++                this.t1Gap=true;
++            }
++        }
++
++        /*
++         * T2's counter also moves while not interrupt-armed.  In PHI2 mode it
++         * simply wraps through $FFFF after underflow; its interrupt is a
++         * one-shot generated N+2 cycles after a T2CH load.
++         */
++        if(!(this.acr&0x20))
++        {
++            this.t2Counter=(this.t2Counter-cyclesOriginal)&0xFFFF;
++            if(this.t2Running && !this.t2HasInterrupted)
++            {
++                var before2=this.t2Phase;
++                this.t2Phase+=cyclesOriginal;
++                if(before2<this.t2StartValue+2 && this.t2Phase>=this.t2StartValue+2)
++                {
++                    this.t2HasInterrupted=true;
++                    setIFR(0x20);
++                }
++            }
++        }
++    };
++    this.getState=function(){ return {ora:this.ora,orb:this.orb,ddra:this.ddra,ddrb:this.ddrb,paPins:this.paPins,pbPins:this.pbPins,t1Counter:this.t1Counter,t1Latch:this.t1Latch,t1Running:this.t1Running,t2Counter:this.t2Counter,t2Running:this.t2Running,sr:this.sr,acr:this.acr,pcr:this.pcr,ifr:this.peekRegister(0x0D),ier:this.peekRegister(0x0E),irq:this.irqLevel}; };
++    this.reset();
++}
++MockingboardR6522.REG={ORB:0,ORA:1,DDRB:2,DDRA:3,T1CL:4,T1CH:5,T1LL:6,T1LH:7,T2CL:8,T2CH:9,SR:10,ACR:11,PCR:12,IFR:13,IER:14,ORA_NH:15};
++MockingboardR6522.IFR={CA2:0x01,CA1:0x02,SR:0x04,CB2:0x08,CB1:0x10,T2:0x20,T1:0x40,IRQ:0x80};
++MockingboardR6522.REG_NAMES=["ORB","ORA","DDRB","DDRA","T1CL","T1CH","T1LL","T1LH","T2CL","T2CH","SR","ACR","PCR","IFR","IER","ORA_NH"];
++
++function MockingboardAYBus(renderer,options)
++{
++    options=options||{};
++    var bus=this;
++    var INACTIVE=0, READ=1, WRITE=2, LATCH=3, RESET=-1;
++    this.name=options.name||"AY";
++    this.renderer=renderer||null;
++    this.onRegisterWrite=typeof(options.onRegisterWrite)==="function"?options.onRegisterWrite:null;
++    this.onControlChange=typeof(options.onControlChange)==="function"?options.onControlChange:null;
++    this.regs=new Uint8Array(16);
++    this.selectedRegister=0;
++    this.addressValid=false;
++    this.controlState=INACTIVE;
++    this.resetAsserted=false;
++    this.lastPortA=0xFF;
++    this.lastPortB=0xFF;
++    this.busDrive=null;
++
++    function applyChannel(index)
++    {
++        if(!bus.renderer) return;
++        var r7=bus.regs[7];
++        var amp=bus.regs[8+index];
++        if(typeof(bus.renderer.setMixer)==="function")
++            bus.renderer.setMixer(index,(r7>>index)&1,(r7>>(index+3))&1,(amp>>4)&1);
++        if(typeof(bus.renderer.setVolume)==="function")
++            bus.renderer.setVolume(index,amp&0x0F);
++    }
++    function applyRegister(reg)
++    {
++        if(!bus.renderer) return;
++        switch(reg)
++        {
++            case 0: case 1:
++                if(typeof(bus.renderer.setTone)==="function") bus.renderer.setTone(0,((bus.regs[1]&0x0F)<<8)|bus.regs[0]);
++                break;
++            case 2: case 3:
++                if(typeof(bus.renderer.setTone)==="function") bus.renderer.setTone(1,((bus.regs[3]&0x0F)<<8)|bus.regs[2]);
++                break;
++            case 4: case 5:
++                if(typeof(bus.renderer.setTone)==="function") bus.renderer.setTone(2,((bus.regs[5]&0x0F)<<8)|bus.regs[4]);
++                break;
++            case 6:
++                if(typeof(bus.renderer.setNoise)==="function") bus.renderer.setNoise(bus.regs[6]&0x1F);
++                break;
++            case 7:
++                applyChannel(0); applyChannel(1); applyChannel(2);
++                break;
++            case 8: case 9: case 10:
++                applyChannel(reg-8);
++                break;
++            case 11: case 12:
++                if(typeof(bus.renderer.setEnvelope)==="function") bus.renderer.setEnvelope((bus.regs[12]<<8)|bus.regs[11]);
++                break;
++            case 13:
++                if(typeof(bus.renderer.setEnvelopeShape)==="function") bus.renderer.setEnvelopeShape(bus.regs[13]&0x0F);
++                break;
++        }
++    }
++    function decodeControl(portB)
++    {
++        if((portB & 0x04)===0) return RESET;
++        switch(portB & 0x03)
++        {
++            case 0:return INACTIVE;
++            case 1:return READ;
++            case 2:return WRITE;
++            case 3:return LATCH;
++        }
++        return INACTIVE;
++    }
++    function latchAddress(value)
++    {
++        if(value & 0xF0)
++        {
++            bus.addressValid=false;
++            return;
++        }
++        bus.selectedRegister=value & 0x0F;
++        bus.addressValid=true;
++    }
++
++    this.reset=function(cycle)
++    {
++        this.regs.fill(0);
++        this.selectedRegister=0;
++        this.addressValid=false;
++        this.controlState=INACTIVE;
++        this.busDrive=null;
++        for(var i=0;i<3;i++)
++        {
++            if(this.renderer && typeof(this.renderer.setTone)==="function") this.renderer.setTone(i,0);
++            applyChannel(i);
++        }
++        if(this.renderer && typeof(this.renderer.setNoise)==="function") this.renderer.setNoise(0);
++        if(this.renderer && typeof(this.renderer.setEnvelope)==="function") this.renderer.setEnvelope(0);
++        if(this.renderer && typeof(this.renderer.setEnvelopeShape)==="function") this.renderer.setEnvelopeShape(0);
++    };
++    this.observeViaPins=function(portA,portB,cycle)
++    {
++        portA&=0xFF; portB&=0xFF;
++        this.lastPortA=portA; this.lastPortB=portB;
++        var next=decodeControl(portB);
++        if(next===RESET)
++        {
++            if(!this.resetAsserted) this.reset(cycle);
++            this.resetAsserted=true;
++            this.controlState=RESET;
++            this.busDrive=null;
++            return null;
++        }
++        if(this.resetAsserted)
++        {
++            this.resetAsserted=false;
++            this.controlState=INACTIVE;
++        }
++        var previous=this.controlState;
++        if(previous===INACTIVE)
++        {
++            if(next===LATCH) latchAddress(portA);
++            else if(next===WRITE && this.addressValid) this.writeRegister(this.selectedRegister,portA,cycle);
++        }
++        if(previous!==next && this.onControlChange) this.onControlChange(previous,next,cycle,this);
++        this.controlState=next;
++        this.busDrive=(next===READ && this.addressValid)?this.readRegister(this.selectedRegister):null;
++        return this.busDrive;
++    };
++    this.getBusDrive=function()
++    {
++        if(this.controlState!==READ || !this.addressValid) return null;
++        return this.readRegister(this.selectedRegister);
++    };
++    this.isDrivingBus=function(){ return this.getBusDrive()!==null; };
++    this.readRegister=function(index){ index&=0x0F; return this.regs[index] & MockingboardAYBus.REG_MASK[index]; };
++    this.writeRegister=function(index,value,cycle)
++    {
++        index&=0x0F; value&=MockingboardAYBus.REG_MASK[index];
++        this.regs[index]=value;
++        applyRegister(index);
++        if(this.onRegisterWrite) this.onRegisterWrite(index,value,cycle,this);
++        if(this.controlState===READ && this.addressValid && this.selectedRegister===index) this.busDrive=value;
++        return value;
++    };
++    this.getRegisters=function(){ return new Uint8Array(this.regs); };
++    this.getState=function(){ return {selectedRegister:this.selectedRegister,addressValid:this.addressValid,controlState:this.controlState,resetAsserted:this.resetAsserted,busDrive:this.getBusDrive(),lastPortA:this.lastPortA,lastPortB:this.lastPortB}; };
++    this.reset(0);
++}
++MockingboardAYBus.REG_MASK=[0xFF,0x0F,0xFF,0x0F,0xFF,0x0F,0x1F,0xFF,0x1F,0x1F,0x1F,0xFF,0xFF,0x0F,0xFF,0xFF];
+--- /dev/null
++++ b/res/EMU_DEVICE_mockingboard_audio.js
+@@ -0,0 +1,206 @@
++//
++// Copyright (c) 2026 Freddy Vandriessche.
++// notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
++//
++// EMU_DEVICE_mockingboard_audio.js
++// Browser playback sink for the Mockingboard. Emulated audio time belongs to
++// EMU_CARD_mockingboard.js; this device only drains rendered stereo frames.
++
++function MockingboardAudio()
++{
++    var device=this;
++    const QUEUE_LEAD_MS=30;
++    const MAX_DRAIN_FRAMES=4096;
++
++    this.audioDevice=true;
++
++    this.id={
++         "DCODE":"MOCKAUDIO"
++        ,"coID":"MockingboardAudio"
++        ,"hostPCODE":"MOCK"
++        ,"icon":"fa fa-volume-up"
++    };
++
++    var owner=null;
++    var io=null;
++    var playbackEnabled=false;
++    var gain=null;
++    var activeSources=[];
++    var nextStartTime=0;
++    var stats={buffersScheduled:0,framesScheduled:0,underruns:0,minLead_ms:Infinity};
++
++    this.audio=undefined;
++
++    function refreshHooks()
++    {
++        if(typeof(device._ioRefreshHooks)==="function") device._ioRefreshHooks();
++    }
++    function clearStats()
++    {
++        stats={buffersScheduled:0,framesScheduled:0,underruns:0,minLead_ms:Infinity};
++    }
++    function stopSources()
++    {
++        for(var i=0;i<activeSources.length;i++)
++        {
++            try { activeSources[i].stop(); } catch(e) {}
++            try { activeSources[i].disconnect(); } catch(e) {}
++        }
++        activeSources=[];
++    }
++    function ensureAudio()
++    {
++        if(device.audio!==undefined) return device.audio;
++        if(typeof(AudioContext)!="function") return null;
++        var format=owner && typeof(owner.getAudioFormat)==="function"
++            ? owner.getAudioFormat()
++            : {sampleRate:44100};
++        device.audio=new AudioContext({latencyHint:"interactive",sampleRate:format.sampleRate||44100});
++        gain=device.audio.createGain();
++        gain.gain.value=0.25;
++        gain.connect(device.audio.destination);
++        return device.audio;
++    }
++
++    this.bindHost=function(host)
++    {
++        if(!host || !host.id || host.id.PCODE!=="MOCK") return false;
++        owner=host;
++        if(typeof(owner.setTimingRefreshCallback)==="function")
++            owner.setTimingRefreshCallback(function(){ refreshHooks(); });
++        return true;
++    };
++    this.bindIO=function(hostIO)
++    {
++        io=hostIO||null;
++        return !!io;
++    };
++    this.isTickActive=function()
++    {
++        return !!(owner && typeof(owner.needsRealtimeTick)==="function" && owner.needsRealtimeTick());
++    };
++    this.isCycleActive=function(){ return playbackEnabled===true; };
++    this.tick=function()
++    {
++        if(!owner || !io || typeof(io.getClockTicks)!=="function") return;
++        var wasActive=this.isTickActive();
++        owner.advanceTo(io.getClockTicks());
++        if(wasActive && !this.isTickActive()) refreshHooks();
++    };
++    this.init=async function(action)
++    {
++        switch(action)
++        {
++            case "audio_ctx":
++            {
++                var ctx=ensureAudio();
++                if(ctx && ctx.state==="suspended" && typeof(ctx.resume)==="function") await ctx.resume();
++                break;
++            }
++            case "audio_on":
++            {
++                var ac=ensureAudio();
++                playbackEnabled=true;
++                clearStats();
++                if(owner)
++                {
++                    if(typeof(owner.clearAudioQueue)==="function") owner.clearAudioQueue();
++                    if(typeof(owner.setAudioConsumerActive)==="function") owner.setAudioConsumerActive(true);
++                }
++                if(ac)
++                {
++                    if(ac.state==="suspended" && typeof(ac.resume)==="function") await ac.resume();
++                    nextStartTime=ac.currentTime+QUEUE_LEAD_MS/1000;
++                }
++                refreshHooks();
++                break;
++            }
++            case "audio_off":
++                playbackEnabled=false;
++                if(owner)
++                {
++                    if(typeof(owner.setAudioConsumerActive)==="function") owner.setAudioConsumerActive(false);
++                    if(typeof(owner.clearAudioQueue)==="function") owner.clearAudioQueue();
++                }
++                stopSources();
++                nextStartTime=0;
++                refreshHooks();
++                if(device.audio && typeof(device.audio.suspend)==="function") await device.audio.suspend();
++                break;
++        }
++    };
++    this.cycle=function()
++    {
++        if(!playbackEnabled || !owner || !io) return;
++        if(typeof(io.getClockTicks)==="function") owner.advanceTo(io.getClockTicks());
++        var ac=ensureAudio();
++        if(!ac || !gain) return;
++        var available=typeof(owner.getAudioFramesAvailable)==="function" ? owner.getAudioFramesAvailable() : 0;
++        if(available<=0) return;
++        var data=owner.drainAudioFrames(Math.min(available,MAX_DRAIN_FRAMES));
++        if(!data || !data.frames) return;
++        var format=owner.getAudioFormat();
++        var buffer=ac.createBuffer(2,data.frames,format.sampleRate);
++        buffer.getChannelData(0).set(data.left);
++        buffer.getChannelData(1).set(data.right);
++        var src=ac.createBufferSource();
++        src.buffer=buffer;
++        src.connect(gain);
++        var now=ac.currentTime;
++        if(!nextStartTime) nextStartTime=now+QUEUE_LEAD_MS/1000;
++        if(nextStartTime<now)
++        {
++            stats.underruns++;
++            nextStartTime=now+QUEUE_LEAD_MS/1000;
++        }
++        var start=nextStartTime;
++        src.start(start);
++        nextStartTime=start+buffer.duration;
++        var lead=(nextStartTime-now)*1000;
++        if(lead<stats.minLead_ms) stats.minLead_ms=lead;
++        stats.buffersScheduled++;
++        stats.framesScheduled+=data.frames;
++        activeSources.push(src);
++        src.onended=function()
++        {
++            try { src.disconnect(); } catch(e) {}
++            activeSources=activeSources.filter(function(x){ return x!==src; });
++        };
++    };
++    this.reset=function()
++    {
++        stopSources();
++        nextStartTime=0;
++        clearStats();
++        if(owner && typeof(owner.clearAudioQueue)==="function") owner.clearAudioQueue();
++        if(owner && typeof(owner.setAudioConsumerActive)==="function") owner.setAudioConsumerActive(playbackEnabled);
++    };
++    this.restart=function()
++    {
++        this.reset();
++        refreshHooks();
++    };
++    this.onUnmount=function()
++    {
++        playbackEnabled=false;
++        if(owner)
++        {
++            if(typeof(owner.setAudioConsumerActive)==="function") owner.setAudioConsumerActive(false);
++            if(typeof(owner.clearAudioQueue)==="function") owner.clearAudioQueue();
++            if(typeof(owner.setTimingRefreshCallback)==="function") owner.setTimingRefreshCallback(null);
++        }
++        stopSources();
++        nextStartTime=0;
++        refreshHooks();
++    };
++    this.getStats=function()
++    {
++        return {
++             buffersScheduled:stats.buffersScheduled
++            ,framesScheduled:stats.framesScheduled
++            ,underruns:stats.underruns
++            ,queuedLead_ms:this.audio ? Math.max(0,(nextStartTime-this.audio.currentTime)*1000) : 0
++            ,minLead_ms:Number.isFinite(stats.minLead_ms)?stats.minLead_ms:0
++        };
++    };
++}
+--- /dev/null
++++ b/tests/mockingboard_r6522.test.js
+@@ -0,0 +1,141 @@
++'use strict';
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const path = require('node:path');
++const vm = require('node:vm');
++function load(){ const ctx={console,Ayumi:function(){},oEMU:{component:{IO:{}}}}; vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res','EMU_CARD_mockingboard.js'),'utf8'),ctx); return ctx; }
++test('reset ports and IER semantics match regular 6522',()=>{ const ctx=load(); const via=new ctx.MockingboardR6522({}); assert.equal(via.peekRegister(0x02),0x00); assert.equal(via.peekRegister(0x03),0x00); assert.equal(via.paPins,0xFF); assert.equal(via.pbPins,0xFF); via.writeRegister(0x0E,0xC0); assert.equal(via.peekRegister(0x0E),0xC0); via.writeRegister(0x0E,0x40); assert.equal(via.peekRegister(0x0E),0x80); });
++test('DDRs preserve all data-line patterns and VIAs are independent',()=>{ const ctx=load(); const a=new ctx.MockingboardR6522({}); const b=new ctx.MockingboardR6522({}); for(const [x,y] of [[0x55,0xAA],[0x69,0x96],[0xAA,0x55],[0x96,0x69]]){ a.writeRegister(0x02,x); a.writeRegister(0x03,y); assert.equal(a.peekRegister(0x02),x); assert.equal(a.peekRegister(0x03),y);} a.writeRegister(0x02,0x55); b.writeRegister(0x02,0x69); assert.equal(a.peekRegister(0x02),0x55); assert.equal(b.peekRegister(0x02),0x69); });
++
++test('peek is observational while destructive reads clear the documented flags',()=>{
++    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
++    via.ifr=F.T1|F.T2; via.writeRegister(0x0E,0xE0);
++    assert.equal(via.irqLevel,true);
++    via.peekRegister(0x04); assert.equal(via.ifr & F.T1,F.T1); assert.equal(via.irqLevel,true);
++    via.readRegister(0x04); assert.equal(via.ifr & F.T1,0); assert.equal(via.irqLevel,true);
++    via.peekRegister(0x08); assert.equal(via.ifr & F.T2,F.T2);
++    via.readRegister(0x08); assert.equal(via.ifr & F.T2,0); assert.equal(via.irqLevel,false);
++});
++
++test('ORA no-handshake read preserves CA flags while normal ORA read clears them',()=>{
++    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
++    via.ifr=F.CA1|F.CA2; via.writeRegister(0x0E,0x83);
++    via.readRegister(0x0F); assert.equal(via.ifr & (F.CA1|F.CA2),F.CA1|F.CA2);
++    via.readRegister(0x01); assert.equal(via.ifr & (F.CA1|F.CA2),0);
++});
++
++test('shift-register write stores byte and clears SR interrupt',()=>{
++    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
++    via.ifr=F.SR; via.writeRegister(0x0E,0x84); via.writeRegister(0x0A,0x5A);
++    assert.equal(via.peekRegister(0x0A),0x5A); assert.equal(via.ifr & F.SR,0); assert.equal(via.irqLevel,false);
++});
++
++function loadT1(via,n){ via.writeRegister(0x04,n&0xFF); via.writeRegister(0x05,(n>>8)&0xFF); }
++function loadT2(via,n){ via.writeRegister(0x08,n&0xFF); via.writeRegister(0x09,(n>>8)&0xFF); }
++
++test('T1 one-shot asserts after latch N plus 2 cycles',()=>{
++    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
++    loadT1(via,0x0004); via.tick(5); assert.equal(via.peekRegister(0x0D)&F.T1,0); assert.equal(via.peekRegister(0x04),0xFF);
++    via.tick(1); assert.equal(via.peekRegister(0x0D)&F.T1,F.T1);
++});
++
++test('T1 free-running period is N plus 2 including N zero',()=>{
++    const ctx=load(); const F=ctx.MockingboardR6522.IFR;
++    const via=new ctx.MockingboardR6522({}); via.writeRegister(0x0B,0x40); loadT1(via,2);
++    via.tick(3); assert.equal(via.peekRegister(0x0D)&F.T1,0);
++    via.tick(1); assert.equal(via.peekRegister(0x0D)&F.T1,F.T1);
++    via.writeRegister(0x0D,F.T1); via.tick(4); assert.equal(via.peekRegister(0x0D)&F.T1,F.T1);
++    const zero=new ctx.MockingboardR6522({}); zero.writeRegister(0x0B,0x40); loadT1(zero,0);
++    zero.tick(1); assert.equal(zero.peekRegister(0x0D)&F.T1,0);
++    zero.tick(1); assert.equal(zero.peekRegister(0x0D)&F.T1,F.T1);
++});
++
++test('T2 PHI2 interval underflows after N plus 2 cycles',()=>{
++    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
++    loadT2(via,3); via.tick(4); assert.equal(via.peekRegister(0x0D)&F.T2,0);
++    via.tick(1); assert.equal(via.peekRegister(0x0D)&F.T2,F.T2);
++});
++
++test('inactive timers never create IFR flags',()=>{
++    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
++    via.tick(500000); assert.equal(via.peekRegister(0x0D)&(F.T1|F.T2),0);
++});
++
++test('pending timer IFR asserts IRQ immediately when matching IER is later enabled',()=>{
++    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
++    loadT1(via,2); via.tick(4); assert.equal(via.peekRegister(0x0D)&F.T1,F.T1); assert.equal(via.irqLevel,false);
++    via.writeRegister(0x0E,0xC0); assert.equal(via.irqLevel,true); assert.equal(via.peekRegister(0x0D)&0x80,0x80);
++});
++
++test('large free-running catch-up preserves phase without per-period stepping',()=>{
++    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
++    via.writeRegister(0x0B,0x40); loadT1(via,1); via.tick(100000);
++    assert.equal(via.peekRegister(0x0D)&F.T1,F.T1);
++    assert.equal(via.peekRegister(0x04),0); // 100000 mod 3 = 1: N(1)-phase(1)=0
++});
++
++test('T2 pulse-count mode is not decremented by CPU ticks',()=>{
++    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
++    via.writeRegister(0x0B,0x20); loadT2(via,0x1234); via.tick(10000);
++    assert.equal(via.peekRegister(0x08),0x34); assert.equal(via.peekRegister(0x09),0x12); assert.equal(via.peekRegister(0x0D)&F.T2,0);
++});
++
++test('realtime predicate tracks only IRQ-enabled timers that can still assert',()=>{
++    const ctx=load(); const via=new ctx.MockingboardR6522({});
++    loadT1(via,2); assert.equal(via.needsRealtimeTick(),false);
++    via.writeRegister(0x0E,0xC0); assert.equal(via.needsRealtimeTick(),true);
++    via.tick(4); assert.equal(via.needsRealtimeTick(),false);
++});
++
++test('two VIA timers progress independently',()=>{
++    const ctx=load(); const F=ctx.MockingboardR6522.IFR; const a=new ctx.MockingboardR6522({}); const b=new ctx.MockingboardR6522({});
++    loadT1(a,2); loadT2(b,6); a.tick(4); b.tick(4);
++    assert.equal(a.peekRegister(0x0D)&F.T1,F.T1); assert.equal(b.peekRegister(0x0D)&F.T2,0);
++    b.tick(4); assert.equal(b.peekRegister(0x0D)&F.T2,F.T2);
++});
++
++test('mb-audit: T1 one-shot counter reloads every N+2 cycles but IRQ fires only once per load',()=>{
++    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
++    loadT1(via,2);
++    via.tick(4);
++    assert.equal(via.peekRegister(0x0D)&F.T1,F.T1);
++    assert.equal(via.peekRegister(0x04),0x02,'counter reloads from latch on underflow');
++    via.writeRegister(0x0D,F.T1);
++    via.tick(4);
++    assert.equal(via.peekRegister(0x04),0x02,'one-shot counter keeps reloading');
++    assert.equal(via.peekRegister(0x0D)&F.T1,0,'one-shot interrupt does not retrigger without reload');
++});
++
++test('mb-audit: T1 interrupt clear rules match register accesses',()=>{
++    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
++    loadT1(via,2); via.tick(4); assert.equal(via.ifr&F.T1,F.T1);
++    via.writeRegister(0x04,0x34); assert.equal(via.ifr&F.T1,F.T1,'T1C_L write does not clear');
++    via.writeRegister(0x06,0x56); assert.equal(via.ifr&F.T1,F.T1,'T1L_L write does not clear');
++    via.readRegister(0x05); assert.equal(via.ifr&F.T1,F.T1,'T1C_H read does not clear');
++    via.readRegister(0x04); assert.equal(via.ifr&F.T1,0,'T1C_L read clears');
++    loadT1(via,2); via.tick(4); via.writeRegister(0x07,0x12); assert.equal(via.ifr&F.T1,0,'T1L_H write clears');
++    loadT1(via,2); via.tick(4); via.writeRegister(0x05,0x12); assert.equal(via.ifr&F.T1,0,'T1C_H write clears');
++});
++
++test('mb-audit: T2 continues into $FFxx after underflow',()=>{
++    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
++    loadT2(via,0x0001); via.tick(3);
++    assert.equal(via.peekRegister(0x0D)&F.T2,F.T2);
++    assert.equal(via.peekRegister(0x09),0xFF);
++});
++
++test('mb-audit Detect6522: reset counters move even while inactive without setting IFR',()=>{
++    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
++    const t1=via.peekRegister(0x04), t2=via.peekRegister(0x08);
++    via.tick(8);
++    assert.equal((t1-via.peekRegister(0x04))&0xFF,8);
++    assert.equal((t2-via.peekRegister(0x08))&0xFF,8);
++    assert.equal(via.peekRegister(0x0D)&(F.T1|F.T2),0);
++});
++
++test('mb-audit: T1 and T2 can run concurrently in the same VIA',()=>{
++    const ctx=load(); const via=new ctx.MockingboardR6522({}); const F=ctx.MockingboardR6522.IFR;
++    loadT1(via,2); loadT2(via,5); via.tick(7);
++    assert.equal(via.peekRegister(0x0D)&(F.T1|F.T2),F.T1|F.T2);
++});
+--- /dev/null
++++ b/tests/mockingboard_aybus.test.js
+@@ -0,0 +1,57 @@
++'use strict';
++const test=require('node:test');
++const assert=require('node:assert/strict');
++const fs=require('node:fs');
++const path=require('node:path');
++const vm=require('node:vm');
++function load(){ const ctx={console,Ayumi:function(){},oEMU:{component:{IO:{}}}}; vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res','EMU_CARD_mockingboard.js'),'utf8'),ctx); return ctx; }
++function renderer(){ const calls=[]; return {calls,setTone(...a){calls.push(['tone',...a]);},setNoise(...a){calls.push(['noise',...a]);},setMixer(...a){calls.push(['mixer',...a]);},setVolume(...a){calls.push(['volume',...a]);},setEnvelope(...a){calls.push(['envelope',...a]);},setEnvelopeShape(...a){calls.push(['shape',...a]);}}; }
++
++test('AY bus decodes $4/$5/$6/$7 and accepts commands only from inactive',()=>{
++  const ctx=load(), r=renderer(), bus=new ctx.MockingboardAYBus(r,{});
++  bus.observeViaPins(8,0x04,1); bus.observeViaPins(8,0x07,2); assert.equal(bus.getState().selectedRegister,8); assert.equal(bus.getState().addressValid,true);
++  bus.observeViaPins(0x0F,0x06,3); // LATCH -> WRITE is invalid active-to-active transition
++  assert.equal(bus.readRegister(8),0);
++  bus.observeViaPins(0,0x04,4); bus.observeViaPins(0x0F,0x06,5); assert.equal(bus.readRegister(8),0x0F);
++  bus.observeViaPins(0,0x04,6); bus.observeViaPins(0,0x05,7); assert.equal(bus.isDrivingBus(),true); assert.equal(bus.getBusDrive(),0x0F);
++});
++
++test('PB2 low reset dominates control and invalidates address',()=>{
++  const ctx=load(), bus=new ctx.MockingboardAYBus(renderer(),{});
++  bus.observeViaPins(2,0x04,1); bus.observeViaPins(2,0x07,2); assert.equal(bus.getState().addressValid,true);
++  bus.observeViaPins(0xAA,0x03,3); assert.equal(bus.getState().resetAsserted,true); assert.equal(bus.getState().addressValid,false); assert.equal(bus.getBusDrive(),null);
++  assert.ok(Array.from(bus.getRegisters()).every(v=>v===0));
++});
++
++test('address latch rejects values above $0F instead of aliasing',()=>{
++  const ctx=load(), bus=new ctx.MockingboardAYBus(renderer(),{});
++  bus.observeViaPins(0xF8,0x04,1); bus.observeViaPins(0xF8,0x07,2);
++  assert.equal(bus.getState().addressValid,false);
++  bus.observeViaPins(0,0x04,3); bus.observeViaPins(0x1F,0x06,4); assert.equal(bus.readRegister(8),0);
++});
++
++test('register masks and READ drive persist until inactive',()=>{
++  const ctx=load(), bus=new ctx.MockingboardAYBus(renderer(),{});
++  bus.observeViaPins(1,0x04,1); bus.observeViaPins(1,0x07,2); bus.observeViaPins(0,0x04,3); bus.observeViaPins(0xFF,0x06,4);
++  assert.equal(bus.readRegister(1),0x0F);
++  bus.observeViaPins(0,0x04,5); bus.observeViaPins(0,0x05,6); assert.equal(bus.getBusDrive(),0x0F);
++  bus.observeViaPins(0,0x05,7); assert.equal(bus.getBusDrive(),0x0F);
++  bus.observeViaPins(0,0x04,8); assert.equal(bus.getBusDrive(),null); assert.equal(bus.isDrivingBus(),false);
++});
++
++test('READ without a valid latched address leaves bus high impedance',()=>{
++  const ctx=load(), bus=new ctx.MockingboardAYBus(renderer(),{});
++  bus.observeViaPins(0,0x04,1); bus.observeViaPins(0,0x05,2); assert.equal(bus.getBusDrive(),null); assert.equal(bus.isDrivingBus(),false);
++});
++
++test('renderer mapping follows AY registers and repeated R13 retriggers',()=>{
++  const ctx=load(), r=renderer(), bus=new ctx.MockingboardAYBus(r,{}); r.calls.length=0;
++  bus.writeRegister(0,0x34,1); bus.writeRegister(1,0x02,2); assert.deepEqual(r.calls.slice(-1)[0],['tone',0,0x234]);
++  bus.writeRegister(6,0x1A,3); assert.deepEqual(r.calls.slice(-1)[0],['noise',0x1A]);
++  bus.writeRegister(7,0b00101001,4); bus.writeRegister(8,0x1C,5);
++  assert.ok(r.calls.some(c=>c[0]==='mixer'&&c[1]===0&&c[2]===1&&c[3]===1&&c[4]===1));
++  assert.ok(r.calls.some(c=>c[0]==='volume'&&c[1]===0&&c[2]===0x0C));
++  bus.writeRegister(11,0x78,6); bus.writeRegister(12,0x56,7); assert.deepEqual(r.calls.slice(-1)[0],['envelope',0x5678]);
++  const before=r.calls.filter(c=>c[0]==='shape').length; bus.writeRegister(13,0x0A,8); bus.writeRegister(13,0x0A,9);
++  assert.equal(r.calls.filter(c=>c[0]==='shape').length,before+2);
++});
+--- /dev/null
++++ b/tests/mockingboard_card.test.js
+@@ -0,0 +1,108 @@
++'use strict';
++const test=require('node:test');
++const assert=require('node:assert/strict');
++const fs=require('node:fs');
++const path=require('node:path');
++const vm=require('node:vm');
++
++function harness(clockRate=44100)
++{
++  const chips=[];
++  function Ayumi(){ this.left=0; this.right=0; this.processCount=0; this.pans=[]; chips.push(this); }
++  Ayumi.prototype.configure=function(isYM,clock,sr){ this.configureArgs=[isYM,clock,sr]; };
++  Ayumi.prototype.setPan=function(i,p,e){ this.pans[i]=[p,e]; };
++  Ayumi.prototype.setTone=function(){}; Ayumi.prototype.setNoise=function(){}; Ayumi.prototype.setMixer=function(){}; Ayumi.prototype.setVolume=function(){}; Ayumi.prototype.setEnvelope=function(){}; Ayumi.prototype.setEnvelopeShape=function(){};
++  Ayumi.prototype.process=function(){ this.processCount++; this.left=this.processCount/1000; this.right=this.processCount/500; };
++  Ayumi.prototype.removeDC=function(){};
++  let ticks=0; const irq={};
++  const io={FLOATING_BUS:-1,getClockTicks(){return ticks;}};
++  const hw={io,setIRQSource(source,active){ irq[source]=!!active; }};
++  const ctx={console,Ayumi,_o:{CPU_ClocksTicks_s:clockRate},oEMU:{component:{IO:{}}},apple2plus:{hwObj(){return hw;}}};
++  vm.createContext(ctx);
++  vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res','EMU_CARD_mockingboard.js'),'utf8'),ctx);
++  const card=new ctx.mockingboard(); card.mount={hash:1234,slotN:4}; card.restart();
++  return {ctx,card,chips,irq,io,hw,setTicks(v){ticks=v;}};
++}
++
++function cctx(t,bRO=false,io=null){ return {cpuTick:t,bRO,io:io||{FLOATING_BUS:-1}}; }
++
++test('strict slot-page decode maps only $00-$0F and $80-$8F',()=>{
++  const h=harness(), card=h.card;
++  card.writeSlotROM(0x03,0xAA,cctx(1,false,h.io));
++  card.writeSlotROM(0x83,0x55,cctx(2,false,h.io));
++  assert.equal(card.readSlotROM(0x03,cctx(2,true,h.io)),0xAA);
++  assert.equal(card.readSlotROM(0x83,cctx(2,true,h.io)),0x55);
++  card.writeSlotROM(0x13,0x11,cctx(3,false,h.io)); card.writeSlotROM(0x93,0x22,cctx(4,false,h.io));
++  assert.equal(card.readSlotROM(0x03,cctx(4,true,h.io)),0xAA);
++  assert.equal(card.readSlotROM(0x83,cctx(4,true,h.io)),0x55);
++  assert.equal(card.readSlotROM(0x10,cctx(4,false,h.io)),-1);
++  assert.equal(card.readSlotROM(0x90,cctx(4,false,h.io)),-1);
++});
++
++test('read-only slot reads use peek semantics and do not clear timer IFR',()=>{
++  const h=harness(), card=h.card, F=h.ctx.MockingboardR6522.IFR;
++  card.writeSlotROM(0x04,0x02,cctx(0,false,h.io)); card.writeSlotROM(0x05,0x00,cctx(0,false,h.io));
++  card.advanceTo(4); assert.equal(card.getViaState(0).ifr & F.T1,F.T1);
++  card.readSlotROM(0x04,cctx(4,true,h.io)); assert.equal(card.getViaState(0).ifr & F.T1,F.T1);
++  card.readSlotROM(0x04,cctx(4,false,h.io)); assert.equal(card.getViaState(0).ifr & F.T1,0);
++});
++
++test('AY register write and readback travel through VIA pins and DDRA direction',()=>{
++  const h=harness(), card=h.card;
++  card.writeSlotROM(0x02,0x07,cctx(1,false,h.io));
++  card.writeSlotROM(0x03,0xFF,cctx(2,false,h.io));
++  card.writeSlotROM(0x00,0x04,cctx(3,false,h.io));
++  card.writeSlotROM(0x01,0x08,cctx(4,false,h.io));
++  card.writeSlotROM(0x00,0x07,cctx(5,false,h.io));
++  card.writeSlotROM(0x00,0x04,cctx(6,false,h.io));
++  card.writeSlotROM(0x01,0x0F,cctx(7,false,h.io));
++  card.writeSlotROM(0x00,0x06,cctx(8,false,h.io));
++  card.writeSlotROM(0x00,0x04,cctx(9,false,h.io));
++  assert.equal(Array.from(card.getRegisters(0))[8],0x0F);
++  card.writeSlotROM(0x03,0x00,cctx(10,false,h.io));
++  card.writeSlotROM(0x00,0x05,cctx(11,false,h.io));
++  assert.equal(card.readSlotROM(0x01,cctx(11,false,h.io)),0x0F);
++  card.writeSlotROM(0x00,0x04,cctx(12,false,h.io));
++});
++
++test('absolute timing is idempotent and card ORs both VIA IRQs',()=>{
++  const h=harness(), card=h.card, F=h.ctx.MockingboardR6522.IFR;
++  // VIA0 T1=2, IRQ enabled
++  card.writeSlotROM(0x04,2,cctx(0,false,h.io)); card.writeSlotROM(0x05,0,cctx(0,false,h.io)); card.writeSlotROM(0x0E,0xC0,cctx(0,false,h.io));
++  card.advanceTo(4); const a=card.getViaState(0); assert.equal(a.ifr&F.T1,F.T1); assert.equal(h.irq['MOCK:1234'],true);
++  const counter=a.t1Counter; card.advanceTo(4); assert.equal(card.getViaState(0).t1Counter,counter);
++  // VIA1 T1=2 too
++  card.writeSlotROM(0x84,2,cctx(4,false,h.io)); card.writeSlotROM(0x85,0,cctx(4,false,h.io)); card.writeSlotROM(0x8E,0xC0,cctx(4,false,h.io));
++  card.advanceTo(8); assert.equal(card.getViaState(1).ifr&F.T1,F.T1);
++  card.writeSlotROM(0x0D,F.T1,cctx(8,false,h.io)); assert.equal(h.irq['MOCK:1234'],true);
++  card.writeSlotROM(0x8D,F.T1,cctx(8,false,h.io)); assert.equal(h.irq['MOCK:1234'],false);
++  card.reset(); assert.equal(h.irq['MOCK:1234'],false);
++});
++
++test('deterministic audio ring is CPU-time driven, bounded, and mute only stops capture',()=>{
++  const h=harness(44100), card=h.card;
++  card.setAudioConsumerActive(true); card.advanceTo(10);
++  assert.equal(card.getAudioFramesAvailable(),10); assert.equal(card.getAudioStats().producedFrames,10);
++  const d=card.drainAudioFrames(4); assert.equal(d.frames,4); assert.ok(ArrayBuffer.isView(d.left)); assert.ok(ArrayBuffer.isView(d.right)); assert.equal(card.getAudioFramesAvailable(),6);
++  const before=h.chips.reduce((n,c)=>n+c.processCount,0); card.setAudioConsumerActive(false); card.advanceTo(20); const after=h.chips.reduce((n,c)=>n+c.processCount,0);
++  assert.ok(after>before); assert.equal(card.getAudioFramesAvailable(),6);
++  card.clearAudioQueue(); card.setAudioConsumerActive(true); card.advanceTo(11050);
++  assert.equal(card.getAudioFramesAvailable(),11025); assert.ok(card.getAudioStats().droppedFrames>0); assert.ok(card.getAudioStats().overruns>0);
++});
++
++test('mb-audit timing: slot accesses observe counters at ctx.cpuTick timestamps',()=>{
++  const {card}=harness(); const base=0xC400;
++  card.writeSlotROM(base+4,0x02,{cpuTick:100});
++  card.writeSlotROM(base+5,0x00,{cpuTick:100});
++  assert.equal(card.readSlotROM(base+4,{cpuTick:103}),0xFF,'N+1 reaches $FFFF gap');
++  const ifr=card.readSlotROM(base+13,{cpuTick:104});
++  assert.equal(ifr & 0x40,0x40,'N+2 timestamp observes T1 underflow');
++});
++
++test('mb-audit Detect6522 sees timer motion through slot reads before timer is armed',()=>{
++  const {card}=harness(); const base=0xC400;
++  const first=card.readSlotROM(base+8,{cpuTick:10});
++  const second=card.readSlotROM(base+8,{cpuTick:18});
++  assert.equal((first-second)&0xFF,8);
++  assert.equal(card.readSlotROM(base+13,{cpuTick:18})&0x60,0);
++});
+--- /dev/null
++++ b/tests/mockingboard_audio_device.test.js
+@@ -0,0 +1,68 @@
++'use strict';
++const test=require('node:test');
++const assert=require('node:assert/strict');
++const fs=require('node:fs');
++const path=require('node:path');
++const vm=require('node:vm');
++
++class FakeAudioContext {
++  constructor(opts){ this.opts=opts; this.currentTime=1; this.state='running'; this.destination={}; this.sources=[]; }
++  createGain(){ return {gain:{value:1},connect(){},disconnect(){}}; }
++  createBuffer(channels,length,sampleRate){ const data=Array.from({length:channels},()=>new Float32Array(length)); return {numberOfChannels:channels,length,sampleRate,duration:length/sampleRate,getChannelData(i){return data[i];},_data:data}; }
++  createBufferSource(){ const ctx=this; const src={buffer:null,started:null,stopped:false,disconnected:false,connect(){},disconnect(){this.disconnected=true;},start(t){this.started=t;},stop(){this.stopped=true;},onended:null}; ctx.sources.push(src); return src; }
++  async resume(){ this.state='running'; }
++  async suspend(){ this.state='suspended'; }
++}
++
++function load(){ const ctx={console,AudioContext:FakeAudioContext}; vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res','EMU_DEVICE_mockingboard_audio.js'),'utf8'),ctx); return ctx; }
++function owner(){ let consumer=false, refreshCb=null; const qL=[.1,.2,.3], qR=[.4,.5,.6]; return {id:{PCODE:'MOCK'},advanced:[],clears:0,realtime:false,setTimingRefreshCallback(fn){refreshCb=fn;},fireTiming(){if(refreshCb)refreshCb();},needsRealtimeTick(){return this.realtime;},advanceTo(t){this.advanced.push(t);},getAudioFormat(){return {sampleRate:44100,channels:2,format:'float32'};},setAudioConsumerActive(v){consumer=!!v;},consumer(){return consumer;},getAudioFramesAvailable(){return qL.length;},drainAudioFrames(n){const c=Math.min(n,qL.length); return {frames:c,left:Float32Array.from(qL.splice(0,c)),right:Float32Array.from(qR.splice(0,c))};},clearAudioQueue(){this.clears++; qL.length=qR.length=0;}}; }
++
++test('bind/lifecycle hooks keep exact-timer sync separate from host audio',async()=>{
++  const ctx=load(), dev=new ctx.MockingboardAudio(), good=owner(); let ticks=12, refresh=0; const io={getClockTicks(){return ticks;}}; dev._ioRefreshHooks=()=>refresh++;
++  assert.equal(dev.bindHost({id:{PCODE:'OTHER'}}),false); assert.equal(dev.bindHost(good),true); dev.bindIO(io);
++  assert.equal(dev.isTickActive(),false); good.realtime=true; assert.equal(dev.isTickActive(),true); dev.tick(); assert.deepEqual(good.advanced,[12]);
++  good.fireTiming(); assert.equal(refresh,1);
++  await dev.init('audio_on'); assert.equal(good.consumer(),true); assert.equal(dev.isCycleActive(),true); assert.ok(refresh>=2);
++  await dev.init('audio_off'); assert.equal(good.consumer(),false); assert.equal(dev.isCycleActive(),false);
++});
++
++test('cycle synchronizes to emulated tick then drains already-produced stereo frames',async()=>{
++  const ctx=load(), dev=new ctx.MockingboardAudio(), good=owner(); let ticks=25; const io={getClockTicks(){return ticks;}}; dev.bindHost(good); dev.bindIO(io); await dev.init('audio_on');
++  const ac=dev.audio; ac.currentTime=2; // host time must only schedule playback
++  // Refill after audio_on intentionally clears stale queue.
++  good.getAudioFramesAvailable=()=>3;
++  good.drainAudioFrames=(n)=>({frames:3,left:Float32Array.from([.1,.2,.3]),right:Float32Array.from([.4,.5,.6])});
++  dev.cycle();
++  assert.equal(good.advanced.at(-1),25); assert.equal(ac.sources.length,1); assert.equal(ac.sources[0].buffer.numberOfChannels,2); assert.equal(ac.sources[0].started,2.03);
++  assert.deepEqual(Array.from(ac.sources[0].buffer.getChannelData(0)),Array.from(Float32Array.from([.1,.2,.3])));
++  assert.deepEqual(Array.from(ac.sources[0].buffer.getChannelData(1)),Array.from(Float32Array.from([.4,.5,.6])));
++  assert.equal(dev.getStats().framesScheduled,3);
++});
++
++test('host underrun reschedules queue lead without inventing emulated samples',async()=>{
++  const ctx=load(), dev=new ctx.MockingboardAudio(), good=owner(); const io={getClockTicks(){return 7;}}; dev.bindHost(good); dev.bindIO(io); await dev.init('audio_on'); const ac=dev.audio;
++  good.getAudioFramesAvailable=()=>1; good.drainAudioFrames=()=>({frames:1,left:Float32Array.of(.1),right:Float32Array.of(.2)});
++  ac.currentTime=5; dev.cycle();
++  assert.equal(dev.getStats().underruns,1); assert.equal(ac.sources[0].started,5.03); assert.deepEqual(good.advanced,[7]);
++});
++
++test('reset and unmount stop sources, clear transport queue, and retain AudioContext',async()=>{
++  const ctx=load(), dev=new ctx.MockingboardAudio(), good=owner(); const io={getClockTicks(){return 1;}}; dev.bindHost(good); dev.bindIO(io); await dev.init('audio_on'); const ac=dev.audio;
++  good.getAudioFramesAvailable=()=>1; good.drainAudioFrames=()=>({frames:1,left:Float32Array.of(.1),right:Float32Array.of(.2)}); dev.cycle(); const src=ac.sources[0];
++  dev.reset(); assert.equal(dev.audio,ac); assert.equal(src.stopped,true); assert.equal(src.disconnected,true); assert.ok(good.clears>=2);
++  await dev.init('audio_on'); dev.onUnmount(); assert.equal(good.consumer(),false); assert.equal(dev.isCycleActive(),false); assert.equal(dev.audio,ac);
++});
++
++test('tick refreshes Apple2IO hooks when one-shot timer no longer needs exact ticking',()=>{
++    const ctx=load();
++    let realtime=true, refreshes=0, advances=0;
++    const owner={id:{PCODE:'MOCK'},needsRealtimeTick(){return realtime;},advanceTo(){advances++; realtime=false;},setTimingRefreshCallback(){},getAudioFormat(){return {sampleRate:44100};}};
++    const io={getClockTicks(){return 77;}};
++    const dev=new ctx.MockingboardAudio(); dev._ioRefreshHooks=()=>{refreshes++;};
++    dev.bindHost(owner); dev.bindIO(io);
++    assert.equal(dev.isTickActive(),true);
++    dev.tick();
++    assert.equal(advances,1);
++    assert.equal(dev.isTickActive(),false);
++    assert.equal(refreshes,1);
++});
+--- /dev/null
++++ b/tests/mockingboard_integration_config.test.js
+@@ -0,0 +1,36 @@
++'use strict';
++const test=require('node:test');
++const assert=require('node:assert/strict');
++const fs=require('node:fs');
++const path=require('node:path');
++const root=path.join(__dirname,'..');
++
++test('Mockingboard dependencies are statically loaded in safe order',()=>{
++  const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
++  const ay='<script type="text/javascript" src="res/ayumi.js"></script>';
++  const audio='<script type="text/javascript" src="res/EMU_DEVICE_mockingboard_audio.js"></script>';
++  const card='<script type="text/javascript" src="res/EMU_CARD_mockingboard.js"></script>';
++  assert.ok(html.includes(ay),'ayumi.js must be enabled');
++  assert.ok(html.includes(audio),'MockingboardAudio device must be statically included');
++  assert.ok(html.indexOf(ay)<html.indexOf(card),'ayumi must load before card');
++  assert.ok(html.indexOf(audio)<html.indexOf(card),'audio device must load before card');
++});
++
++test('Mockingboard config uses SlotROM and keeps physical slots 1-7',()=>{
++  const text=fs.readFileSync(path.join(root,'res','COM_CONFIG.js'),'utf8');
++  const m=text.match(/"MOCK"\s*:\s*\{[^}]+\}/); assert.ok(m,'MOCK config entry'); const s=m[0];
++  assert.match(s,/"HostIO"\s*:\s*""/); assert.match(s,/"SlotIO"\s*:\s*""/); assert.match(s,/"SlotROM"\s*:\s*"X"/); assert.match(s,/"HostROM"\s*:\s*""/); assert.match(s,/"SLOTrange"\s*:\s*"1,2,3,4,5,6,7"/);
++});
++
++test('global sound toggle discovers attached audio-capable devices generically',()=>{
++  const main=fs.readFileSync(path.join(root,'res','EMU_apple2main.js'),'utf8');
++  const device=fs.readFileSync(path.join(root,'res','EMU_DEVICE_mockingboard_audio.js'),'utf8');
++  assert.match(device,/this\.audioDevice\s*=\s*true/);
++  assert.match(main,/function\s+EMU_attachedAudioDevices\s*\(/);
++  assert.match(main,/io\.attachments/);
++  assert.match(main,/device\.audioDevice\s*===\s*true/);
++  assert.match(main,/EMU_attachedAudioDevices\(\)/);
++  assert.match(main,/audioDevice\.init\("audio_ctx"\)/);
++  assert.match(main,/audioDevice\.init\("audio_on"\)/);
++  assert.match(main,/audioDevice\.init\("audio_off"\)/);
++});
+--- a/index.html
++++ b/index.html
+@@ -18,7 +18,7 @@
+     <script type="text/javascript" src="res/COM_CONFIG.js"></script>  <!-- load all the help, documentation & configuration data-->
+     <script type="text/javascript" src="res/pako.min.js"></script>    <!-- compression/decompression library -->
+     <!--script type="text/javascript" src="res/purify.min.js"></script-->  <!-- safely filter out all HTML tags -->
+-    <!--script type="text/javascript" src="res/ayumi.js"></script-->    <!--  AY-3-8910 chip emulator -->
++    <script type="text/javascript" src="res/ayumi.js"></script>    <!-- AY-3-8910 chip emulator -->
+     <script type="text/javascript" src="https://unpkg.com/three@0.147.0/build/three.min.js"></script>
+     <script type="text/javascript" src="https://unpkg.com/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
+     <script type="text/javascript" src="https://unpkg.com/three@0.147.0/examples/js/controls/TransformControls.js"></script>
+@@ -184,6 +184,7 @@
+             <script type="text/javascript" src="res/EMU_WASMcpu6502.js"></script>
+             <script type="text/javascript" src="res/EMU_apple2debug.js"></script>
+             <script type="text/javascript" src="res/EMU_DEVICE_speaker.js"></script>
++            <script type="text/javascript" src="res/EMU_DEVICE_mockingboard_audio.js"></script>
+             <script type="text/javascript" src="res/EMU_DEVICE_gameport.js"></script>
+             <script type="text/javascript" src="res/EMU_apple2roms.js"></script>
+             <script type="text/javascript" src="res/gpu-browser.min.js"></script>
+--- a/res/EMU_apple2main.js
++++ b/res/EMU_apple2main.js
+@@ -108,6 +108,23 @@
+     return disks;
+ }
+ 
++function EMU_attachedAudioDevices()
++{
++    if(typeof(apple2plus)!="object" || !apple2plus) return [];
++
++    var io=apple2plus.hwObj().io;
++    var attachments=io && io.attachments ? io.attachments : {};
++    var devices=[];
++
++    for(var key in attachments)
++    {
++        var device=attachments[key] && attachments[key].device;
++        if(device && device.audioDevice===true && typeof(device.init)==="function")
++            devices.push(device);
++    }
++    return devices;
++}
++
+ function EMU_smartportDevice(slotN,unit,deviceID)
+ {
+     if(typeof(apple2plus)!="object" || !apple2plus) return null;
+@@ -1207,12 +1224,19 @@
+         if(arg===undefined) arg = this.muteArg;
+ 
+         var disks = EMU_diskIIObjects();
++        var audioDevices = EMU_attachedAudioDevices();
+         var b = arg.override===undefined?(oCOM.POPUP.states[arg.id]==arg.class1):arg.override
+ 
+         if(b)
+         {
+             oEMU.component.IO.AppleSpeaker.init("audio_ctx")
+                 .then(()=>{  oEMU.component.IO.AppleSpeaker.init("audio_on")  });
++
++            audioDevices.forEach(function(audioDevice)
++            {
++                audioDevice.init("audio_ctx")
++                    .then(function(){ return audioDevice.init("audio_on"); });
++            });
+ 
+             disks.forEach(function(disk2)
+             {
+@@ -1223,6 +1247,10 @@
+         else
+         {
+             oEMU.component.IO.AppleSpeaker.init("audio_off").then(()=>{});
++            audioDevices.forEach(function(audioDevice)
++            {
++                audioDevice.init("audio_off").then(()=>{});
++            });
+             disks.forEach(function(disk2)
+             {
+                 disk2.init("audio_off").then(()=>{});
