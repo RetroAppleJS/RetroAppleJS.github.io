@@ -14863,6 +14863,13 @@ async function EMU_audio_prepare()
             })
         );
 
+        await Promise.all(
+            EMU_attachedAudioDevices().map(function(audioDevice)
+            {
+                return audioDevice.init("audio_ctx");
+            })
+        );
+
         _o.EMU_audio.prepared = true;
         return true;
     }
@@ -14884,6 +14891,7 @@ async function EMU_audio_try_unlock(forceButtonState)
 
         const spk = oEMU.component.IO.AppleSpeaker;
         var disks = EMU_diskIIObjects();
+        var audioDevices = EMU_attachedAudioDevices();
 
         const spkRunning = spk.audio && spk.audio.state === "running";
         const dskRunning = disks.every(function(disk2)
@@ -14937,6 +14945,10 @@ async function EMU_audio_try_unlock(forceButtonState)
             await Promise.all(disks.map(function(disk2)
             {
                 return disk2.init("audio_buffer");
+            }));
+            await Promise.all(audioDevices.map(function(audioDevice)
+            {
+                return audioDevice.init("audio_on");
             }));
         }
 
