@@ -2921,20 +2921,10 @@ function SerialProCard()
                 : "#777777";
             physicalLabel.title = serialUIPhysicalTitle();
         }
-
         var baudSelect = serialUIElement(controlID,"serial_baud");
         if(baudSelect)
         {
-            var programmed = aciaBaudRate();
             var effective = aciaEffectiveBaudRate();
-
-        }
-
-        var cpuSync = serialUIElement(controlID,"serial_cpu_sync");
-        if(cpuSync)
-            cpuSync.title = state.cpuSync
-                ? "CPU sync ON: serial timing follows the CPU speed multiplier"
-                : "CPU sync OFF: serial timing is normalized to approximately x1 regardless of CPU acceleration";
             var configuredLabel = serialFormatLabel(configured.control,configured.command);
             var activeLabel = serialFormatLabel(acia.control,acia.command);
             var pending = serialFormatSignature(configured.control,configured.command)
@@ -2947,6 +2937,16 @@ function SerialProCard()
                 +(state.cpuSync
                     ? "; effective live baud "+effective
                     : "; CPU sync is off so live serial timing remains approximately x1");
+        }
+
+        var cpuSync = serialUIElement(controlID,"serial_cpu_sync");
+        if(cpuSync)
+        {
+            cpuSync.title = state.cpuSync
+                ? "CPU sync ON: serial timing follows the CPU speed multiplier"
+                : "CPU sync OFF: serial timing is normalized to approximately x1 regardless of CPU acceleration";
+        }
+
         return true;
     }
 
@@ -4465,5 +4465,31 @@ function SerialProCard()
         aciaHardwareReset();
         // Bytes already typed at the remote end remain on the simulated line.
         aciaPrimeReceiver();
+    };
+
+    this.onUnmount = function()
+    {
+        /*
+         * deviceToolSlotHTML() registers dashboard refresh callbacks whose
+         * control IDs refer to DOM elements owned by this peripheral toolbox.
+         * Once the card is ejected those elements no longer exist, so remove
+         * the callbacks rather than leaving stale monitoring functions behind.
+         */
+        if(oCOM.RefreshEvent_arr)
+        {
+            if(rtcUI.refreshEvent)
+                delete oCOM.RefreshEvent_arr[rtcUI.refreshEvent];
+
+            if(serialUI.refreshEvent)
+                delete oCOM.RefreshEvent_arr[serialUI.refreshEvent];
+
+            oCOM.checkActiveRefreshEvents();
+        }
+
+        rtcUI.controlID = null;
+        rtcUI.refreshEvent = null;
+
+        serialUI.controlID = null;
+        serialUI.refreshEvent = null;
     };
 }
