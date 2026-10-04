@@ -63,14 +63,13 @@ Completed items remain checked; unchecked items are planned or still need furthe
 - [x] EMULATOR: Experimental DITHER2 color HGR capture
 - [ ] EMULATOR: KATAKANA apple][ J-plus keyboard & font logic
 - [ ] EMULATOR: Pasteboard macro scripting with keyboard/paddle/mouse recording, playback, and conditional stops
-- [ ] EMULATOR: Vapor-lock timing compatibility
 - [ ] EMULATOR: Switch between US and Japanese Apple II keyboard layouts
 - [ ] EMULATOR: Complete Mockingboard sound emulation and integrate Saturn RAM expansion
-- [ ] EMULATOR: Add further peripherals, including UltraTerm, No-Slot Clock, AE RamFactor, Super Serial Card, and VersaCard
+- [x] EMULATOR: Add memory expansion peripherals to complete compatibility (MS16K, SATURN, LEGEND, RAMFAC)
 - [ ] EMULATOR: Extended URL instant configuration options
 - [ ] EMULATOR: LIRON HD20 & UNIDISK - track-by-track compression/decompression (saving browser RAM)
 - [ ] EMULATOR: HGR/HGR2/GR screen capture (.bin / .png / .animgif with timer or variable interval stopframe)
-- [ ] EMULATOR: VIDEO vaporlock compatibility (detecting vertical blank)
+- [x] EMULATOR: VIDEO vaporlock compatibility (detect and display vertical blank)
 - [ ] EMULATOR: SerialPro terminal emulator - generic script runner (replacing GPT8 and GPT16 buttons)
 - [ ] ASSEMBLER - disassembler tool
 - [x] RETRO LAB: Real-time camera processing and a configurable [ConvertHGR tool](tools/ConvertHGR.html)
