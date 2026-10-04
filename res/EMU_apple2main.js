@@ -1076,10 +1076,36 @@ function EMUI()
     // PROCESSING FRAME RATE SLIDER
     this.fpsSld = function(el,id)
     {
+        if(typeof(oApple2Video)!="undefined" && oApple2Video && oApple2Video.frameTiming==="vblank") return;
         var fps = Math.round(Number(el.value));
         document.getElementById(id).innerHTML = fps+"fps";
         this.fpsSpd(fps);
     }
+
+    // The SYSTEM indicator switches presentation modes, retaining the user's
+    // timer cadence. CPU clocks/second remain owned by the CPU speed control.
+    var timerFrameRate = null;
+    this.toggleFrameTiming = function()
+    {
+        var video=typeof(oApple2Video)!="undefined" ? oApple2Video : null;
+        if(!video || typeof(video.setFrameTiming)!=="function") return false;
+        var lock=video.frameTiming!=="vblank";
+        if(lock) timerFrameRate=_o.EMU_Updates_s;
+        video.setFrameTiming(lock ? "vblank" : "timer");
+        // Small SYSTEM slices let the browser present VBL frames promptly;
+        // this is processing cadence, not a wall-time video frame trigger.
+        this.fpsSpd(lock ? _o.CPU_ClocksTicks_s/17030 : (timerFrameRate || 10));
+        var slider=document.getElementById("fpsRange"), label=document.getElementById("slider_fps_v");
+        if(slider) { slider.disabled=lock; if(!lock) slider.value=_o.EMU_Updates_s; }
+        if(label)
+        {
+            label.innerHTML=lock ? '<i class="fa fa-lock" aria-hidden="true"></i>' : _o.EMU_Updates_s+"fps";
+            label.setAttribute("aria-pressed",lock ? "true" : "false");
+            label.setAttribute("aria-label",lock ? "Vertical blank locked; click to unlock" : "Video frame rate; click to lock to vertical blank");
+            label.title=lock ? "Vertical blank locked — click to restore timer FPS" : "Click to lock video frames to vertical blank";
+        }
+        return lock;
+    };
 
     // MODIFY PROCESSING FRAME RATE WITHOUT CHANGING CPU CLOCKS PER SECOND
     this.fpsSpd = function(fps)

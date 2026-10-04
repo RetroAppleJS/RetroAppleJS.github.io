@@ -322,6 +322,7 @@ function Apple2Video(ctx)
 
     this.cycle = function(ticks)
     {
+      if(this.frameTiming==="vblank") return;
       ticks = Number(ticks);
       if(!Number.isFinite(ticks) || ticks<=0) return;   
       frame_count += ticks;
@@ -352,6 +353,7 @@ function Apple2Video(ctx)
 
   this.redraw = function()
   {
+      if(this.frameTiming==="vblank") return;
       this.serial8[ this.idx8("CHROME_MODE") ] = chrome_mode;
       this.serial8[ this.idx8("GFX_FLG") ]     = this.register_mode();
       this.serial8[ this.idx8("FLASH") ]       = flash_on ? 1 : 0;
@@ -360,6 +362,7 @@ function Apple2Video(ctx)
 
 window.requestAnimationFrame(function(rafNow)
 {
+    if(video.frameTiming==="vblank") return;
     if (!video.hw || typeof(video.hw.safe_videodump) !== "function") return;
     if (typeof(video.kernel) !== "function") return;
 
@@ -377,6 +380,14 @@ window.requestAnimationFrame(function(rafNow)
 
       frame_redraw = false;
   }
+
+    this.presentRasterFrame = function(frame,state)
+    {
+        if(!this.gpu) return;
+        if(!this.rasterKernel) this.rasterKernel=Apple2RasterCreateKernel(this.gpu,2);
+        this.rasterKernel(frame.bytes,frame.modes,this.charRom,this.INTCols,state.chrome,frame.flash?1:0);
+        this.recordFrameSubmit(this.nowMs());
+    };
 
     this.write = function(addr, d8) // FLOATING BUS behavior ?
     {

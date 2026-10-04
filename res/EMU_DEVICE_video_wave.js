@@ -298,6 +298,7 @@ function Apple2Video(ctx)
 
     this.cycle = function(ticks)
     {
+        if(this.frameTiming==="vblank") return;
         ticks = Number(ticks);
         if(!Number.isFinite(ticks) || ticks<=0) return;
 
@@ -663,7 +664,7 @@ function Apple2Video(ctx)
             graphical:true
         });
 
-        this.mixedWaveKernel = this.gpu.createKernel(function(wave, mem, rom, pal, cfg, GFX_FLG, CHROME_MODE, FLASH)
+        this.mixedWaveKernel = this.gpu.createKernel(function(wave, mem, rom, pal, cfg, GFX_FLG, CHROME_MODE, FLASH, rasterBytes, rasterModes, RASTER)
         {
             // Composite renderer used only for HIRES mixed mode:
             // - top 160 native scanlines are HGR wave/YIQ
@@ -683,7 +684,8 @@ function Apple2Video(ctx)
             const HIRES = (GFX_FLG & GFX_FLG>>7 & MIX) & 1;
             const LORES = (GFX_FLG & GFX_FLG>>6 & MIX) & 1;
 
-            if (HIRES == 1)
+            const rasterIndex=yp*40+x7;
+            if ((RASTER==1 && rasterModes[rasterIndex]==2) || (RASTER==0 && HIRES==1))
             {
                 const sx = xp << 2;
 
@@ -715,10 +717,10 @@ function Apple2Video(ctx)
 
                 this.color(r, g, b, 1.0);
             }
-            else if (LORES == 1)
+            else if ((RASTER==1 && rasterModes[rasterIndex]==1) || (RASTER==0 && LORES==1))
             {
                 const adr = (PAGE>>3) + adr_ofs + x7;
-                const d8 = mem[adr];
+                const d8 = RASTER==1 ? rasterBytes[rasterIndex] : mem[adr];
                 const y4 = (yp>>2&1)<<2;
                 let cp = (CHROME_MODE << 2);
                 cp += ((d8>>y4&15)<<4);
@@ -727,7 +729,7 @@ function Apple2Video(ctx)
             else
             {
                 const adr   = (PAGE>>3) + adr_ofs + x7;
-                const d8    = mem[adr];
+                const d8    = RASTER==1 ? rasterBytes[rasterIndex] : mem[adr];
                 const offs  = ((d8 & 0x3F) ^ 0x20) << 3;
                 const cbyte = rom[offs + (yp&7)];
                 const infl  = d8>>6 & 3;
@@ -807,6 +809,7 @@ function Apple2Video(ctx)
 
     this.redraw = function()
     {
+        if(this.frameTiming==="vblank") return;
         if (!this.gpu || !this.waveKernel || !this.renderKernel || !this.deterministicKernel || !this.mixedWaveKernel) return;
 
         const mode = this.register_mode();
@@ -822,7 +825,8 @@ function Apple2Video(ctx)
             const wave = this.waveKernel(this.hgrLinear, this.cfg);
 
             if (mix_mode)
-                this.mixedWaveKernel(wave, mem, chr, this.INTCols, this.cfg, mode, chrome_mode, flash);
+                this.mixedWaveKernel(wave, mem, chr, this.INTCols, this.cfg, mode, chrome_mode, flash,
+                    new Uint8Array(7680),new Uint8Array(7680),0);
             else
                 this.renderKernel(wave, this.cfg);
         }
@@ -834,6 +838,17 @@ function Apple2Video(ctx)
         }
 
         frame_redraw = false;
+    };
+
+    this.presentRasterFrame = function(frame,state)
+    {
+        if(!this.gpu || !this.waveKernel || !this.mixedWaveKernel) return;
+        var hires=new Uint8Array(7680);
+        for(var i=0;i<hires.length;i++) if(frame.modes[i]===2) hires[i]=frame.bytes[i];
+        var wave=this.waveKernel(hires,this.cfg);
+        var rom=this.charRom instanceof Uint8Array ? this.charRom : Apple2CharROM_get("A2_US");
+        this.mixedWaveKernel(wave,new Uint8Array(0x6000),rom,this.INTCols,this.cfg,0,state.chrome,
+            frame.flash?1:0,frame.bytes,frame.modes,1);
     };
 
     this.ensureLinearHgr = function()

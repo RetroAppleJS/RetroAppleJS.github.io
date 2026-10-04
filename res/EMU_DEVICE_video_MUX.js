@@ -20,6 +20,44 @@ function Apple2VideoMUX(canvas)
 
     this.vidram = null;
     this.hw = null;
+    this.frameTiming = "timer";
+    this.rasterFrame = null;
+    var rasterPresentationPending = false;
+
+    this.setFrameTiming = function(mode)
+    {
+        mode=mode==="vblank" ? "vblank" : "timer";
+        if(mode===this.frameTiming) return mode;
+        this.frameTiming=mode;
+        this.rasterFrame=null;
+        if(this.hw) this.hw.setVideoRasterCapture(mode==="vblank");
+        if(this.active) this.active.frameTiming=mode;
+        if(mode==="timer" && this.active) { this.applyState(this.active); this.redraw(); }
+        return mode;
+    };
+
+    this.presentRasterFrame = function()
+    {
+        if(this.frameTiming!=="vblank" || !this.rasterFrame || !this.ensureActive()) return;
+        this.active.frameTiming="vblank";
+        this.active.presentRasterFrame(this.rasterFrame,this.state);
+    };
+
+    this.completeRasterFrame = function(frame)
+    {
+        if(this.frameTiming!=="vblank") return;
+        frame.flash=(Math.floor(frame.endTick/(_o.CPU_ClocksTicks_s/4))&1)===0;
+        this.rasterFrame=frame;
+        // A SYSTEM slice may complete several frames. Only complete frames are
+        // eligible for presentation; browser refresh displays the latest one.
+        if(rasterPresentationPending) return;
+        rasterPresentationPending=true;
+        window.requestAnimationFrame(function()
+        {
+            rasterPresentationPending=false;
+            mux.presentRasterFrame();
+        });
+    };
 
     this.state = {
         gfx: false,
@@ -389,6 +427,7 @@ function Apple2VideoMUX(canvas)
 
         r.vidram = this.vidram;
         r.hw = this.hw;
+        r.frameTiming = this.frameTiming;
 
         if(typeof(r.setGfx) == "function")   r.setGfx(this.state.gfx);
         if(typeof(r.setMix) == "function")   r.setMix(this.state.mix);
@@ -594,7 +633,8 @@ function Apple2VideoMUX(canvas)
         this.active = this.getRenderer(spec, !!forceReset);
         this.activeName = spec.name;
 
-        if(typeof(this.active.redraw) == "function")
+        if(this.frameTiming==="vblank") this.presentRasterFrame();
+        else if(typeof(this.active.redraw) == "function")
             this.active.redraw();
 
         this.updateRenderModeUI(uiEl);
@@ -657,6 +697,8 @@ function Apple2VideoMUX(canvas)
 
     this.reset = function()
     {
+        // A queued presentation must never reuse a pre-reset beam frame.
+        this.rasterFrame = null;
         // Register every video device once; activation remains a separate state.
         this.registerDevices();
 
@@ -679,12 +721,14 @@ function Apple2VideoMUX(canvas)
     // TODO: refactoring suggestion: do we need typeof(...) == "function" when it's clear it will be always a function ?  If not, identify the edge cases!
     this.cycle = function(ticks)
     {
+        if(this.frameTiming==="vblank") return;
         if(this.ensureActive() && typeof(this.active.cycle) == "function")
             return this.active.cycle(ticks);
     };
 
     this.redraw = function()
     {
+        if(this.frameTiming==="vblank") return this.presentRasterFrame();
         if(this.ensureActive() && typeof(this.active.redraw) == "function")
             return this.active.redraw();
     };
@@ -699,6 +743,7 @@ function Apple2VideoMUX(canvas)
 
     this.write = function(addr,d8)
     {
+        if(this.frameTiming==="vblank") return;
         if(!this.ensureActive()) return;
 
         this.active.vidram = this.vidram;
@@ -715,7 +760,7 @@ function Apple2VideoMUX(canvas)
         this.state.gfx = next;
 
         var result;
-        if(this.ensureActive() && typeof(this.active.setGfx) == "function")
+        if(this.frameTiming!=="vblank" && this.ensureActive() && typeof(this.active.setGfx) == "function")
             result = this.active.setGfx(this.state.gfx);
 
         /*
@@ -732,21 +777,21 @@ function Apple2VideoMUX(canvas)
     this.setMix = function(flag)
     {
         this.state.mix = !!flag;
-        if(this.ensureActive() && typeof(this.active.setMix) == "function")
+        if(this.frameTiming!=="vblank" && this.ensureActive() && typeof(this.active.setMix) == "function")
             return this.active.setMix(this.state.mix);
     };
 
     this.setPage2 = function(flag)
     {
         this.state.page2 = !!flag;
-        if(this.ensureActive() && typeof(this.active.setPage2) == "function")
+        if(this.frameTiming!=="vblank" && this.ensureActive() && typeof(this.active.setPage2) == "function")
             return this.active.setPage2(this.state.page2);
     };
 
     this.setHires = function(flag)
     {
         this.state.hires = !!flag;
-        if(this.ensureActive() && typeof(this.active.setHires) == "function")
+        if(this.frameTiming!=="vblank" && this.ensureActive() && typeof(this.active.setHires) == "function")
             return this.active.setHires(this.state.hires);
     };
 
@@ -876,6 +921,7 @@ function Apple2VideoMUX(canvas)
 
         r.vidram = this.vidram;
         r.hw = this.hw;
+        r.frameTiming = this.frameTiming;
 
         if (typeof(r.setCharRom) == "function")
             r.setCharRom(this.state.charRom, this.state.charRomKey);

@@ -61,6 +61,7 @@ function Apple2Hw(vid,keys)
     var scaleVideoEpoch = 0;
     var busMonitoring = false;
     var lastBusAccess = null;
+    var rasterCapture = null;
     var videoMode = {
          "gfx":!!(video.state && video.state.gfx)
         ,"mix":!!(video.state && video.state.mix)
@@ -102,6 +103,7 @@ function Apple2Hw(vid,keys)
         // Multiplication from an epoch avoids accumulating fractional rounding
         // errors across ticks/batches (six ticks at 1/3 must be exactly two).
         videoTicks = scaleVideoEpoch+(cpuTicks-scaleCpuEpoch)*videoClockScale;
+        if(rasterCapture) rasterCapture.advanceTo(videoTicks,false);
     };
 
     function effectiveVideoTick(cycleOffset)
@@ -112,6 +114,11 @@ function Apple2Hw(vid,keys)
     this.getVideoPosition = function(cycleOffset)
     {
         var tick = effectiveVideoTick(cycleOffset);
+        return videoPositionAt(tick);
+    };
+
+    function videoPositionAt(tick)
+    {
         var phase = ((Math.floor(tick)%VIDEO_FRAME_CYCLES)+VIDEO_FRAME_CYCLES)%VIDEO_FRAME_CYCLES;
         var line = Math.floor(phase/VIDEO_LINE_CYCLES);
         var hcycle = phase%VIDEO_LINE_CYCLES;
@@ -124,17 +131,22 @@ function Apple2Hw(vid,keys)
             ,"x":hblank || vblank ? -1 : (hcycle-25)*7
             ,"y":vblank ? -1 : line
         };
-    };
+    }
 
     this.getScannerState = function(cycleOffset)
     {
         var state = this.getVideoPosition(cycleOffset);
+        return scannerStateAt(state);
+    };
+
+    function scannerStateAt(state)
+    {
         var hClock = (state.hcycle+40)%65;
         state.hState = (0x18+hClock-(hClock>=41 ? 1 : 0)) & 0x3F;
         // The NTSC V counter presets after line 255, giving $FA..$FF.
         state.vState = (0x100+state.line-(state.line>=256 ? 262 : 0)) & 0x1FF;
         return state;
-    };
+    }
 
     function scannerAddress(state)
     {
@@ -168,6 +180,29 @@ function Apple2Hw(vid,keys)
         return ram[this.getScannerAddress(cycleOffset)];
     };
     this.getFloatingBus = this.peekFloatingBus;
+
+    this.setVideoRasterCapture = function(enabled)
+    {
+        rasterCapture=null;
+        if(enabled)
+            rasterCapture=new Apple2RasterCapture(function(tick,line,col)
+            {
+                // Visible-row permutation only: the capture excludes blanking.
+                // Avoid allocating scanner/state objects in the per-fetch path.
+                var graphics=videoMode.gfx && !(videoMode.mix && line>=160);
+                var hires=graphics && videoMode.hires;
+                var row=((line&0x38)<<4)+Math.floor(line/64)*40+col;
+                var address=hires ? (videoMode.page2?0x4000:0x2000)+(line&7)*1024+row
+                    : (videoMode.page2?0x800:0x400)+row;
+                return ram[address] | ((graphics ? (hires?2:1) : 0)<<8);
+            },function(frame){video.completeRasterFrame(frame);},videoTicks);
+        return !!rasterCapture;
+    };
+    this.getVideoRasterStats=function(){return rasterCapture ? rasterCapture.stats() : null;};
+    function captureBeforeAccess(offset)
+    {
+        if(rasterCapture && !hw.bRO) rasterCapture.advanceTo(effectiveVideoTick(offset));
+    }
 
     this.setBusMonitoring = function(enabled)
     {
@@ -216,6 +251,7 @@ function Apple2Hw(vid,keys)
 
     this.readIO = function(addr,cycleOffset)
     {
+        captureBeforeAccess(cycleOffset);
         // Capture BEFORE dispatch: this cycle's video fetch precedes any
         // mode-changing CPU soft switch accessed during the CPU phase.
         var state = this.getScannerState(cycleOffset);
@@ -227,6 +263,7 @@ function Apple2Hw(vid,keys)
 
     this.read = function(addr,cycleOffset)
     {
+        captureBeforeAccess(cycleOffset);
         addr &= 0xFFFF;
         var line = this.lineDecode(addr);
         var fn = this.RD[line];
@@ -239,6 +276,7 @@ function Apple2Hw(vid,keys)
 
     this.write = function(addr,d8,cycleOffset)
     {
+        captureBeforeAccess(cycleOffset);
         addr &= 0xFFFF;
         d8 &= 0xFF;
         var offset = Number(cycleOffset) || 0;
@@ -289,6 +327,7 @@ function Apple2Hw(vid,keys)
         this.clearIRQSources();
         videoMode.gfx = videoMode.mix = videoMode.page2 = videoMode.hires = false;
         lastBusAccess = null;
+        if(rasterCapture) this.setVideoRasterCapture(true);
         hw.io.reset();
     }
 
@@ -298,6 +337,7 @@ function Apple2Hw(vid,keys)
         cpuTicks = videoTicks = 0;
         videoClockScale = 1;
         scaleCpuEpoch = scaleVideoEpoch = 0;
+        if(rasterCapture) this.setVideoRasterCapture(true);
         lastBusAccess = null;
         for (var i = 0; i < RAM_SIZE; i++)
             ram[i] = Math.floor(Math.random() * 256.0);

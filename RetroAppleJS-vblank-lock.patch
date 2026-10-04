@@ -1,0 +1,972 @@
+diff --git a/docs/VAPORLOCK_BUS.md b/docs/VAPORLOCK_BUS.md
+index 81eb456..e1a8362 100644
+--- a/docs/VAPORLOCK_BUS.md
++++ b/docs/VAPORLOCK_BUS.md
+@@ -5,6 +5,9 @@ owns bus timing and the motherboard video-mode latches. Video renderers
+ continue to display memory asynchronously. No renderer or include changes
+ are required, and the WASM accelerator is outside this patch's scope.
+ 
++The subsequent [vertical blank render lock](VBL_RENDER_LOCK.md) patch adds
++optional beam capture and MUX presentation for transient display effects.
++
+ ## Clock and raster convention
+ 
+ An NTSC field contains 262 lines of 65 machine cycles: 17,030 cycles.
+diff --git a/docs/VBL_RENDER_LOCK.md b/docs/VBL_RENDER_LOCK.md
+new file mode 100644
+index 0000000..bb95157
+--- /dev/null
++++ b/docs/VBL_RENDER_LOCK.md
+@@ -0,0 +1,90 @@
++# Vertical blank render lock
++
++Apply this follow-up after the Vaporlock scanner/floating-bus patch. It uses
++the live JavaScript CPU and shared beam clock; the WASM accelerator remains
++outside scope.
++
++## SYSTEM control
++
++In SYSTEM tab 1.1, click the displayed FPS value to enable vertical blank
++lock. A lock pictogram replaces the value and the FPS slider is disabled.
++Click the lock to restore the previous timer FPS and enable the slider.
++Keyboard focus plus Enter or Space performs the same toggle. The CPU speed
++setting is preserved. Timer mode remains the default.
++
++Locking sets the SYSTEM processing cadence to 60 slices per second at the
++nominal 1,021,800 Hz clock. These slices run the emulator; they do not decide
++which screen image to display. A frame becomes eligible for display when
++the emulated beam enters vertical blank at field cycle 12,480. Fields repeat
++every 17,030 cycles (262 lines of 65 cycles).
++
++## Capture and presentation
++
++A redraw of current RAM and the final graphics switch at vertical blank
++would lose mode changes within the field. The capture therefore records
++the physical RAM byte and effective text/lores/hires mode for each of the
++40 visible fetches on each of 192 scanlines. A CPU access first captures the
++beam fetch at its effective bus cycle, then applies its memory or switch
++side effect. The following fetch sees the new value or mode.
++
++Each completed frame contains immutable byte and mode planes. Partial
++fields after enabling capture or resetting are discarded. Safe debugger
++reads do not advance capture. Machine reset also discards any retained
++frame awaiting browser presentation.
++
++| MUX device | Locked presentation |
++| --- | --- |
++| Canvas | Shared raster pixel calculation into one ImageData submission |
++| GPU | Dedicated GPU.js graphical kernel using captured planes |
++| Wave | Captured text/lores and the existing waveform/YIQ path for hires |
++| Three.js | Captured GPU output uploaded to its screen texture, bypassing timer texture throttling |
++
++The browser presents the latest completed field on its next animation
++frame. If emulation completes multiple fields before browser refresh,
++earlier completed fields are coalesced. Lock follows emulated VBL; it cannot
++force the physical display refresh rate. A paused CPU retains the last
++completed image. Renderer selection can present that same captured frame.
++Unlock restores the current motherboard modes and resumes normal redraws.
++
++Capture resolves mode changes at a seven-pixel byte fetch, rather than at
++every composite-video subcycle. It preserves the horizontal text/hires
++windows produced by Elliott's 65-cycle loop within that timing model.
++
++## STEP TRACE display scenario
++
++Keep the existing instruction-level Vaporlock scenario for scanner and
++bus assertions. Add this presentation check after those assertions:
++
++1. Select a MUX device and set timer FPS to a recognizable value, such as 37.
++2. Click the FPS value. Verify the lock pictogram and disabled slider.
++3. Load the WINDOWTOGGLE program and run its setup, then its repeating
++   65-cycle text/hires loop. Resume execution long enough to complete a
++   whole field. Verify horizontal text/hires windows rather than a screen
++   rendered entirely in the loop's last mode.
++4. Pause execution. Safe memory inspection must preserve the displayed
++   completed frame. Single instruction steps update capture, with screen
++   presentation occurring only after a whole visible field reaches VBL.
++5. Repeat the display check with Canvas, GPU, Wave and Three.js. The Wave
++   hires region retains its waveform filtering; Three.js retains its scene.
++6. Reset while a frame is awaiting presentation. No pre-reset frame may be
++   submitted after reset. Resume to obtain a newly completed field.
++7. Click the lock. Verify that the slider is enabled, 37 FPS returns, and
++   normal timer redraws resume without changing the CPU speed setting.
++
++Automated regression coverage:
++
++```sh
++node --test tests/apple2_vaporlock_bus.test.js tests/video_vblank_lock.test.js
++```
++
++The display tests execute the actual Canvas, GPU, Wave and Three.js producer
++paths with the bundled GPU.js CPU backend, plus its real static WebGL array
++upload class for timer/lock transitions. They run an Elliott-style 65-cycle
++CPU loop and check its mode strips on all 192 visible lines. They do not
++boot the complete attached WINDOWTOGGLE binary or exercise a native WebGL
++context/Three.js scene; the browser scenario above covers that final check.
++
++Patch verification: all 28 focused bus/display tests passed. The full
++JavaScript suite ran 440 tests: 412 passed and 28 failed, with exactly the
++same failing test names as the pre-patch baseline. All changed JavaScript
++files passed syntax checks.
+diff --git a/index.html b/index.html
+index d293b0c..c68fb5f 100644
+--- a/index.html
++++ b/index.html
+@@ -177,6 +177,7 @@
+             <script type="text/javascript" src="res/EMU_apple2roms.js"></script>
+             <script type="text/javascript" src="res/gpu-browser.min.js"></script>
+ 
++            <script type="text/javascript" src="res/EMU_VIDEO_raster.js"></script>
+             <script type="text/javascript" src="res/EMU_DEVICE_video_GPU.js"></script><script>var Apple2VideoGPU = Apple2Video;</script>
+             <script type="text/javascript" src="res/EMU_DEVICE_video_wave.js"></script><script>var Apple2VideoWave = Apple2Video; Apple2Video = Apple2VideoGPU;</script>
+             <script type="text/javascript" src="res/EMU_DEVICE_video_THREE.js"></script>
+@@ -370,9 +371,14 @@
+     width:110px;
+   ">
+     <span id="slider_fps_v"
++          role="button" tabindex="0" aria-pressed="false"
++          onclick="oEMUI.toggleFrameTiming()"
++          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();oEMUI.toggleFrameTiming()}"
++          title="Click to lock video frames to vertical blank"
+           style="
+             flex:0 0 35px;
+             width:35px;
++            cursor:pointer;
+           ">10fps</span>
+ 
+     <input id="fpsRange"
+diff --git a/res/EMU_DEVICE_video_GPU.js b/res/EMU_DEVICE_video_GPU.js
+index 96690ab..857657d 100644
+--- a/res/EMU_DEVICE_video_GPU.js
++++ b/res/EMU_DEVICE_video_GPU.js
+@@ -322,6 +322,7 @@ function Apple2Video(ctx)
+ 
+     this.cycle = function(ticks)
+     {
++      if(this.frameTiming==="vblank") return;
+       ticks = Number(ticks);
+       if(!Number.isFinite(ticks) || ticks<=0) return;   
+       frame_count += ticks;
+@@ -352,6 +353,7 @@ function Apple2Video(ctx)
+ 
+   this.redraw = function()
+   {
++      if(this.frameTiming==="vblank") return;
+       this.serial8[ this.idx8("CHROME_MODE") ] = chrome_mode;
+       this.serial8[ this.idx8("GFX_FLG") ]     = this.register_mode();
+       this.serial8[ this.idx8("FLASH") ]       = flash_on ? 1 : 0;
+@@ -360,6 +362,7 @@ function Apple2Video(ctx)
+ 
+ window.requestAnimationFrame(function(rafNow)
+ {
++    if(video.frameTiming==="vblank") return;
+     if (!video.hw || typeof(video.hw.safe_videodump) !== "function") return;
+     if (typeof(video.kernel) !== "function") return;
+ 
+@@ -378,6 +381,14 @@ window.requestAnimationFrame(function(rafNow)
+       frame_redraw = false;
+   }
+ 
++    this.presentRasterFrame = function(frame,state)
++    {
++        if(!this.gpu) return;
++        if(!this.rasterKernel) this.rasterKernel=Apple2RasterCreateKernel(this.gpu,2);
++        this.rasterKernel(frame.bytes,frame.modes,this.charRom,this.INTCols,state.chrome,frame.flash?1:0);
++        this.recordFrameSubmit(this.nowMs());
++    };
++
+     this.write = function(addr, d8) // FLOATING BUS behavior ?
+     {
+         if (this.vidram[addr] == d8) return;   // biggest cheap win
+diff --git a/res/EMU_DEVICE_video_MUX.js b/res/EMU_DEVICE_video_MUX.js
+index bc9ffc1..d644b34 100644
+--- a/res/EMU_DEVICE_video_MUX.js
++++ b/res/EMU_DEVICE_video_MUX.js
+@@ -20,6 +20,44 @@ function Apple2VideoMUX(canvas)
+ 
+     this.vidram = null;
+     this.hw = null;
++    this.frameTiming = "timer";
++    this.rasterFrame = null;
++    var rasterPresentationPending = false;
++
++    this.setFrameTiming = function(mode)
++    {
++        mode=mode==="vblank" ? "vblank" : "timer";
++        if(mode===this.frameTiming) return mode;
++        this.frameTiming=mode;
++        this.rasterFrame=null;
++        if(this.hw) this.hw.setVideoRasterCapture(mode==="vblank");
++        if(this.active) this.active.frameTiming=mode;
++        if(mode==="timer" && this.active) { this.applyState(this.active); this.redraw(); }
++        return mode;
++    };
++
++    this.presentRasterFrame = function()
++    {
++        if(this.frameTiming!=="vblank" || !this.rasterFrame || !this.ensureActive()) return;
++        this.active.frameTiming="vblank";
++        this.active.presentRasterFrame(this.rasterFrame,this.state);
++    };
++
++    this.completeRasterFrame = function(frame)
++    {
++        if(this.frameTiming!=="vblank") return;
++        frame.flash=(Math.floor(frame.endTick/(_o.CPU_ClocksTicks_s/4))&1)===0;
++        this.rasterFrame=frame;
++        // A SYSTEM slice may complete several frames. Only complete frames are
++        // eligible for presentation; browser refresh displays the latest one.
++        if(rasterPresentationPending) return;
++        rasterPresentationPending=true;
++        window.requestAnimationFrame(function()
++        {
++            rasterPresentationPending=false;
++            mux.presentRasterFrame();
++        });
++    };
+ 
+     this.state = {
+         gfx: false,
+@@ -389,6 +427,7 @@ function Apple2VideoMUX(canvas)
+ 
+         r.vidram = this.vidram;
+         r.hw = this.hw;
++        r.frameTiming = this.frameTiming;
+ 
+         if(typeof(r.setGfx) == "function")   r.setGfx(this.state.gfx);
+         if(typeof(r.setMix) == "function")   r.setMix(this.state.mix);
+@@ -594,7 +633,8 @@ function Apple2VideoMUX(canvas)
+         this.active = this.getRenderer(spec, !!forceReset);
+         this.activeName = spec.name;
+ 
+-        if(typeof(this.active.redraw) == "function")
++        if(this.frameTiming==="vblank") this.presentRasterFrame();
++        else if(typeof(this.active.redraw) == "function")
+             this.active.redraw();
+ 
+         this.updateRenderModeUI(uiEl);
+@@ -657,6 +697,8 @@ function Apple2VideoMUX(canvas)
+ 
+     this.reset = function()
+     {
++        // A queued presentation must never reuse a pre-reset beam frame.
++        this.rasterFrame = null;
+         // Register every video device once; activation remains a separate state.
+         this.registerDevices();
+ 
+@@ -679,12 +721,14 @@ function Apple2VideoMUX(canvas)
+     // TODO: refactoring suggestion: do we need typeof(...) == "function" when it's clear it will be always a function ?  If not, identify the edge cases!
+     this.cycle = function(ticks)
+     {
++        if(this.frameTiming==="vblank") return;
+         if(this.ensureActive() && typeof(this.active.cycle) == "function")
+             return this.active.cycle(ticks);
+     };
+ 
+     this.redraw = function()
+     {
++        if(this.frameTiming==="vblank") return this.presentRasterFrame();
+         if(this.ensureActive() && typeof(this.active.redraw) == "function")
+             return this.active.redraw();
+     };
+@@ -699,6 +743,7 @@ function Apple2VideoMUX(canvas)
+ 
+     this.write = function(addr,d8)
+     {
++        if(this.frameTiming==="vblank") return;
+         if(!this.ensureActive()) return;
+ 
+         this.active.vidram = this.vidram;
+@@ -715,7 +760,7 @@ function Apple2VideoMUX(canvas)
+         this.state.gfx = next;
+ 
+         var result;
+-        if(this.ensureActive() && typeof(this.active.setGfx) == "function")
++        if(this.frameTiming!=="vblank" && this.ensureActive() && typeof(this.active.setGfx) == "function")
+             result = this.active.setGfx(this.state.gfx);
+ 
+         /*
+@@ -732,21 +777,21 @@ function Apple2VideoMUX(canvas)
+     this.setMix = function(flag)
+     {
+         this.state.mix = !!flag;
+-        if(this.ensureActive() && typeof(this.active.setMix) == "function")
++        if(this.frameTiming!=="vblank" && this.ensureActive() && typeof(this.active.setMix) == "function")
+             return this.active.setMix(this.state.mix);
+     };
+ 
+     this.setPage2 = function(flag)
+     {
+         this.state.page2 = !!flag;
+-        if(this.ensureActive() && typeof(this.active.setPage2) == "function")
++        if(this.frameTiming!=="vblank" && this.ensureActive() && typeof(this.active.setPage2) == "function")
+             return this.active.setPage2(this.state.page2);
+     };
+ 
+     this.setHires = function(flag)
+     {
+         this.state.hires = !!flag;
+-        if(this.ensureActive() && typeof(this.active.setHires) == "function")
++        if(this.frameTiming!=="vblank" && this.ensureActive() && typeof(this.active.setHires) == "function")
+             return this.active.setHires(this.state.hires);
+     };
+ 
+@@ -876,6 +921,7 @@ function Apple2VideoMUX(canvas)
+ 
+         r.vidram = this.vidram;
+         r.hw = this.hw;
++        r.frameTiming = this.frameTiming;
+ 
+         if (typeof(r.setCharRom) == "function")
+             r.setCharRom(this.state.charRom, this.state.charRomKey);
+@@ -890,4 +936,4 @@ function Apple2VideoMUX(canvas)
+             r.sync2DLinks();
+     };
+ 
+-}
+\ No newline at end of file
++}
+diff --git a/res/EMU_DEVICE_video_THREE.js b/res/EMU_DEVICE_video_THREE.js
+index 9cc37a4..27e8b8b 100644
+--- a/res/EMU_DEVICE_video_THREE.js
++++ b/res/EMU_DEVICE_video_THREE.js
+@@ -488,6 +488,7 @@ var APPLE2_THREE_CFG_DEFAULT =
+             this.video2D.hw = this.hw;
+ 
+             // Expose the 2D renderer's
++            this.video2D.frameTiming = this.frameTiming;
+             // serial buffer and delegate kernel calls back to it.
+             if (this.video2D.serial8)
+                 this.serial8 = this.video2D.serial8;
+@@ -520,6 +521,7 @@ var APPLE2_THREE_CFG_DEFAULT =
+ 
+         this.cycle = function(ticks)
+         {
++            if(this.frameTiming==="vblank") return;
+             if (this.video2D && typeof(this.video2D.cycle) === "function")
+             {
+                 this.video2D.cycle(ticks);
+@@ -533,11 +535,23 @@ var APPLE2_THREE_CFG_DEFAULT =
+ 
+         this.redraw = function()
+         {
++            if(this.frameTiming==="vblank") return;
+             if (this.video2D && typeof(this.video2D.redraw) === "function")
+                 this.video2D.redraw();
+             this.textureDirty = true;
+         };
+ 
++        this.presentRasterFrame = function(frame,state)
++        {
++            if(!this.video2D) return;
++            this.video2D.frameTiming="vblank";
++            this.video2D.presentRasterFrame(frame,state);
++            this.textureDirty=true;
++            // Upload this completed frame through the existing screen texture.
++            // No wall-time texture throttle is applied while VBL is locked.
++            this.pumpTexture(performance.now());
++        };
++
+         this.write = function(addr, d8)
+         {
+             if (this.video2D && typeof(this.video2D.write) === "function")
+@@ -1922,7 +1936,7 @@ var APPLE2_THREE_CFG_DEFAULT =
+                 window.requestAnimationFrame(animate);
+ 
+                 var renderInterval = 1000 / Math.max(1, cfg.renderFPS | 0);
+-                if (now - lastRenderUpdate < renderInterval)
++                if (video3D.frameTiming!=="vblank" && now - lastRenderUpdate < renderInterval)
+                     return;
+                 lastRenderUpdate = now;
+ 
+@@ -1943,7 +1957,7 @@ var APPLE2_THREE_CFG_DEFAULT =
+                 return;
+ 
+             var textureInterval = 1000 / Math.max(1, cfg.textureFPS | 0);
+-            if (now - lastTextureUpdate < textureInterval)
++            if (this.frameTiming!=="vblank" && now - lastTextureUpdate < textureInterval)
+                 return;
+ 
+             this.updateTextureCanvas();
+diff --git a/res/EMU_DEVICE_video_canvas.js b/res/EMU_DEVICE_video_canvas.js
+index c86251a..52cabe2 100644
+--- a/res/EMU_DEVICE_video_canvas.js
++++ b/res/EMU_DEVICE_video_canvas.js
+@@ -200,6 +200,7 @@ function Apple2Video(ctx)
+      */
+     this.cycle = function(ticks)
+     {
++        if(this.frameTiming==="vblank") return;
+         ticks = Number(ticks);
+         if(!Number.isFinite(ticks) || ticks<=0) return;
+ 
+@@ -450,6 +451,7 @@ function Apple2Video(ctx)
+     // Redraw everything.  Called whenever the graphics modes change.
+     this.redraw = function()
+     {
++        if(this.frameTiming==="vblank") return;
+         if(this.ctx === undefined)
+         {
+             clearDirty();
+@@ -526,4 +528,31 @@ function Apple2Video(ctx)
+         }
+     };
+ 
++    this.presentRasterFrame = function(frame,state)
++    {
++        if(!ctx) return;
++        if(!this.rasterImage) this.rasterImage=ctx.createImageData(560,384);
++        var image=this.rasterImage, data=image.data;
++        // Reuse the GPU raster pixel calculation as an ordinary JS function;
++        // drawing covers only the captured pixel, so neighboring text strips
++        // cannot be overwritten by a whole-row or neighboring-byte redraw.
++        var pixel={thread:{x:0,y:0},constants:{scale:1},color:function(r,g,b)
++        {
++            var base=((191-pixel.thread.y)*1120+pixel.thread.x*2)*4;
++            for(var row=0;row<2;row++)
++                for(var col=0;col<2;col++)
++                {
++                    var i=base+row*2240+col*4;
++                    data[i]=Math.round(r*256); data[i+1]=Math.round(g*256); data[i+2]=Math.round(b*256); data[i+3]=255;
++                }
++        }};
++        for(var y=0;y<192;y++)
++            for(var x=0;x<280;x++)
++            {
++                pixel.thread.x=x; pixel.thread.y=191-y;
++                Apple2RasterKernel.call(pixel,frame.bytes,frame.modes,charRom,INTCols,state.chrome,frame.flash?1:0);
++            }
++        ctx.putImageData(image,0,0);
++    };
++
+ }
+diff --git a/res/EMU_DEVICE_video_wave.js b/res/EMU_DEVICE_video_wave.js
+index e9999af..17902eb 100644
+--- a/res/EMU_DEVICE_video_wave.js
++++ b/res/EMU_DEVICE_video_wave.js
+@@ -298,6 +298,7 @@ function Apple2Video(ctx)
+ 
+     this.cycle = function(ticks)
+     {
++        if(this.frameTiming==="vblank") return;
+         ticks = Number(ticks);
+         if(!Number.isFinite(ticks) || ticks<=0) return;
+ 
+@@ -663,7 +664,7 @@ function Apple2Video(ctx)
+             graphical:true
+         });
+ 
+-        this.mixedWaveKernel = this.gpu.createKernel(function(wave, mem, rom, pal, cfg, GFX_FLG, CHROME_MODE, FLASH)
++        this.mixedWaveKernel = this.gpu.createKernel(function(wave, mem, rom, pal, cfg, GFX_FLG, CHROME_MODE, FLASH, rasterBytes, rasterModes, RASTER)
+         {
+             // Composite renderer used only for HIRES mixed mode:
+             // - top 160 native scanlines are HGR wave/YIQ
+@@ -683,7 +684,8 @@ function Apple2Video(ctx)
+             const HIRES = (GFX_FLG & GFX_FLG>>7 & MIX) & 1;
+             const LORES = (GFX_FLG & GFX_FLG>>6 & MIX) & 1;
+ 
+-            if (HIRES == 1)
++            const rasterIndex=yp*40+x7;
++            if ((RASTER==1 && rasterModes[rasterIndex]==2) || (RASTER==0 && HIRES==1))
+             {
+                 const sx = xp << 2;
+ 
+@@ -715,10 +717,10 @@ function Apple2Video(ctx)
+ 
+                 this.color(r, g, b, 1.0);
+             }
+-            else if (LORES == 1)
++            else if ((RASTER==1 && rasterModes[rasterIndex]==1) || (RASTER==0 && LORES==1))
+             {
+                 const adr = (PAGE>>3) + adr_ofs + x7;
+-                const d8 = mem[adr];
++                const d8 = RASTER==1 ? rasterBytes[rasterIndex] : mem[adr];
+                 const y4 = (yp>>2&1)<<2;
+                 let cp = (CHROME_MODE << 2);
+                 cp += ((d8>>y4&15)<<4);
+@@ -727,7 +729,7 @@ function Apple2Video(ctx)
+             else
+             {
+                 const adr   = (PAGE>>3) + adr_ofs + x7;
+-                const d8    = mem[adr];
++                const d8    = RASTER==1 ? rasterBytes[rasterIndex] : mem[adr];
+                 const offs  = ((d8 & 0x3F) ^ 0x20) << 3;
+                 const cbyte = rom[offs + (yp&7)];
+                 const infl  = d8>>6 & 3;
+@@ -807,6 +809,7 @@ function Apple2Video(ctx)
+ 
+     this.redraw = function()
+     {
++        if(this.frameTiming==="vblank") return;
+         if (!this.gpu || !this.waveKernel || !this.renderKernel || !this.deterministicKernel || !this.mixedWaveKernel) return;
+ 
+         const mode = this.register_mode();
+@@ -822,7 +825,8 @@ function Apple2Video(ctx)
+             const wave = this.waveKernel(this.hgrLinear, this.cfg);
+ 
+             if (mix_mode)
+-                this.mixedWaveKernel(wave, mem, chr, this.INTCols, this.cfg, mode, chrome_mode, flash);
++                this.mixedWaveKernel(wave, mem, chr, this.INTCols, this.cfg, mode, chrome_mode, flash,
++                    new Uint8Array(7680),new Uint8Array(7680),0);
+             else
+                 this.renderKernel(wave, this.cfg);
+         }
+@@ -836,6 +840,17 @@ function Apple2Video(ctx)
+         frame_redraw = false;
+     };
+ 
++    this.presentRasterFrame = function(frame,state)
++    {
++        if(!this.gpu || !this.waveKernel || !this.mixedWaveKernel) return;
++        var hires=new Uint8Array(7680);
++        for(var i=0;i<hires.length;i++) if(frame.modes[i]===2) hires[i]=frame.bytes[i];
++        var wave=this.waveKernel(hires,this.cfg);
++        var rom=this.charRom instanceof Uint8Array ? this.charRom : Apple2CharROM_get("A2_US");
++        this.mixedWaveKernel(wave,new Uint8Array(0x6000),rom,this.INTCols,this.cfg,0,state.chrome,
++            frame.flash?1:0,frame.bytes,frame.modes,1);
++    };
++
+     this.ensureLinearHgr = function()
+     {
+         if (!hgr_linear_dirty) return;
+@@ -891,4 +906,4 @@ function Apple2Video(ctx)
+ Apple2Video.ctrl_dlg = function()
+ {
+     return Apple2VideoWave_controls(null);
+-};
+\ No newline at end of file
++};
+diff --git a/res/EMU_VIDEO_raster.js b/res/EMU_VIDEO_raster.js
+new file mode 100644
+index 0000000..50a7070
+--- /dev/null
++++ b/res/EMU_VIDEO_raster.js
+@@ -0,0 +1,64 @@
++// Completed NTSC beam frames. No browser timer or CPU runner is owned here.
++function Apple2RasterCapture(fetch,present,startTick)
++{
++    var cursor=Math.ceil(startTick)-1, bytes=new Uint8Array(7680), modes=new Uint8Array(7680);
++    var count=0, startFrame=Math.floor(startTick/17030), completed=0;
++    this.advanceTo=function(tick,inclusive)
++    {
++        var end=inclusive===false ? Math.ceil(tick)-1 : Math.floor(tick);
++        while(cursor<end)
++        {
++            var t=++cursor, phase=((t%17030)+17030)%17030;
++            if(phase===0) { count=0; startFrame=Math.floor(t/17030); }
++            if(phase===12480)
++            {
++                if(count===7680)
++                {
++                    present({bytes:bytes,modes:modes,endTick:t,frame:startFrame,sequence:++completed});
++                    bytes=new Uint8Array(7680); modes=new Uint8Array(7680);
++                }
++                count=0;
++            }
++            var h=phase%65, y=Math.floor(phase/65);
++            if(y<192 && h>=25)
++            {
++                var sample=fetch(t,y,h-25), i=y*40+h-25;
++                bytes[i]=sample&255; modes[i]=sample>>8; count++;
++            }
++        }
++    };
++    this.stats=function(){return {capturedThrough:cursor,visibleSamples:count,completed:completed};};
++}
++
++// GPU.js graphical kernel: immutable per-beam byte/mode planes, never live RAM.
++function Apple2RasterKernel(bytes,modes,rom,pal,chrome,flash)
++{
++    var xp=Math.floor(this.thread.x/this.constants.scale);
++    var y=191-Math.floor(this.thread.y/this.constants.scale);
++    var col=Math.floor(xp/7), bit=xp-col*7, i=y*40+col;
++    var d=bytes[i], mode=modes[i], cp=chrome*4;
++    if(mode===2)
++    {
++        var left=0, right=0;
++        if(col>0 && modes[i-1]===2) left=bytes[i-1];
++        if(col<39 && modes[i+1]===2) right=bytes[i+1];
++        var bits=((right&127)<<8)|((d&127)<<1)|((left>>6)&1);
++        var b3=(bits>>bit)&7, d1=(0b100100>>b3)&1, d2=(0b11001000>>b3)&1;
++        var dl=(1+((((xp^b3)<<1)&2)|(((xp^b3)&1)^(d>>7))))&((d1<<4)-d1);
++        cp+=((dl+(dl<<1))|((d2<<4)-d2))<<4;
++    }
++    else if(mode===1) cp+=((d>>((y>>2&1)*4))&15)<<4;
++    else
++    {
++        var glyph=rom[(((d&63)^32)*8)+(y&7)], attr=d>>6;
++        var on=((glyph>>bit)&1)^((1>>attr)&1)^((2>>attr)&flash);
++        cp+=on*240;
++    }
++    this.color(pal[cp]/256,pal[cp+1]/256,pal[cp+2]/256,1);
++}
++
++function Apple2RasterCreateKernel(gpu,scale)
++{
++    return gpu.createKernel(Apple2RasterKernel,{output:[280*scale,192*scale],
++        constants:{scale:scale},graphical:true});
++}
+diff --git a/res/EMU_apple2hw.js b/res/EMU_apple2hw.js
+index fafc9bd..61c8235 100644
+--- a/res/EMU_apple2hw.js
++++ b/res/EMU_apple2hw.js
+@@ -61,6 +61,7 @@ function Apple2Hw(vid,keys)
+     var scaleVideoEpoch = 0;
+     var busMonitoring = false;
+     var lastBusAccess = null;
++    var rasterCapture = null;
+     var videoMode = {
+          "gfx":!!(video.state && video.state.gfx)
+         ,"mix":!!(video.state && video.state.mix)
+@@ -102,6 +103,7 @@ function Apple2Hw(vid,keys)
+         // Multiplication from an epoch avoids accumulating fractional rounding
+         // errors across ticks/batches (six ticks at 1/3 must be exactly two).
+         videoTicks = scaleVideoEpoch+(cpuTicks-scaleCpuEpoch)*videoClockScale;
++        if(rasterCapture) rasterCapture.advanceTo(videoTicks,false);
+     };
+ 
+     function effectiveVideoTick(cycleOffset)
+@@ -112,6 +114,11 @@ function Apple2Hw(vid,keys)
+     this.getVideoPosition = function(cycleOffset)
+     {
+         var tick = effectiveVideoTick(cycleOffset);
++        return videoPositionAt(tick);
++    };
++
++    function videoPositionAt(tick)
++    {
+         var phase = ((Math.floor(tick)%VIDEO_FRAME_CYCLES)+VIDEO_FRAME_CYCLES)%VIDEO_FRAME_CYCLES;
+         var line = Math.floor(phase/VIDEO_LINE_CYCLES);
+         var hcycle = phase%VIDEO_LINE_CYCLES;
+@@ -124,17 +131,22 @@ function Apple2Hw(vid,keys)
+             ,"x":hblank || vblank ? -1 : (hcycle-25)*7
+             ,"y":vblank ? -1 : line
+         };
+-    };
++    }
+ 
+     this.getScannerState = function(cycleOffset)
+     {
+         var state = this.getVideoPosition(cycleOffset);
++        return scannerStateAt(state);
++    };
++
++    function scannerStateAt(state)
++    {
+         var hClock = (state.hcycle+40)%65;
+         state.hState = (0x18+hClock-(hClock>=41 ? 1 : 0)) & 0x3F;
+         // The NTSC V counter presets after line 255, giving $FA..$FF.
+         state.vState = (0x100+state.line-(state.line>=256 ? 262 : 0)) & 0x1FF;
+         return state;
+-    };
++    }
+ 
+     function scannerAddress(state)
+     {
+@@ -169,6 +181,29 @@ function Apple2Hw(vid,keys)
+     };
+     this.getFloatingBus = this.peekFloatingBus;
+ 
++    this.setVideoRasterCapture = function(enabled)
++    {
++        rasterCapture=null;
++        if(enabled)
++            rasterCapture=new Apple2RasterCapture(function(tick,line,col)
++            {
++                // Visible-row permutation only: the capture excludes blanking.
++                // Avoid allocating scanner/state objects in the per-fetch path.
++                var graphics=videoMode.gfx && !(videoMode.mix && line>=160);
++                var hires=graphics && videoMode.hires;
++                var row=((line&0x38)<<4)+Math.floor(line/64)*40+col;
++                var address=hires ? (videoMode.page2?0x4000:0x2000)+(line&7)*1024+row
++                    : (videoMode.page2?0x800:0x400)+row;
++                return ram[address] | ((graphics ? (hires?2:1) : 0)<<8);
++            },function(frame){video.completeRasterFrame(frame);},videoTicks);
++        return !!rasterCapture;
++    };
++    this.getVideoRasterStats=function(){return rasterCapture ? rasterCapture.stats() : null;};
++    function captureBeforeAccess(offset)
++    {
++        if(rasterCapture && !hw.bRO) rasterCapture.advanceTo(effectiveVideoTick(offset));
++    }
++
+     this.setBusMonitoring = function(enabled)
+     {
+         busMonitoring = !!enabled;
+@@ -216,6 +251,7 @@ function Apple2Hw(vid,keys)
+ 
+     this.readIO = function(addr,cycleOffset)
+     {
++        captureBeforeAccess(cycleOffset);
+         // Capture BEFORE dispatch: this cycle's video fetch precedes any
+         // mode-changing CPU soft switch accessed during the CPU phase.
+         var state = this.getScannerState(cycleOffset);
+@@ -227,6 +263,7 @@ function Apple2Hw(vid,keys)
+ 
+     this.read = function(addr,cycleOffset)
+     {
++        captureBeforeAccess(cycleOffset);
+         addr &= 0xFFFF;
+         var line = this.lineDecode(addr);
+         var fn = this.RD[line];
+@@ -239,6 +276,7 @@ function Apple2Hw(vid,keys)
+ 
+     this.write = function(addr,d8,cycleOffset)
+     {
++        captureBeforeAccess(cycleOffset);
+         addr &= 0xFFFF;
+         d8 &= 0xFF;
+         var offset = Number(cycleOffset) || 0;
+@@ -289,6 +327,7 @@ function Apple2Hw(vid,keys)
+         this.clearIRQSources();
+         videoMode.gfx = videoMode.mix = videoMode.page2 = videoMode.hires = false;
+         lastBusAccess = null;
++        if(rasterCapture) this.setVideoRasterCapture(true);
+         hw.io.reset();
+     }
+ 
+@@ -298,6 +337,7 @@ function Apple2Hw(vid,keys)
+         cpuTicks = videoTicks = 0;
+         videoClockScale = 1;
+         scaleCpuEpoch = scaleVideoEpoch = 0;
++        if(rasterCapture) this.setVideoRasterCapture(true);
+         lastBusAccess = null;
+         for (var i = 0; i < RAM_SIZE; i++)
+             ram[i] = Math.floor(Math.random() * 256.0);
+diff --git a/res/EMU_apple2main.js b/res/EMU_apple2main.js
+index 5474f96..bb3101f 100644
+--- a/res/EMU_apple2main.js
++++ b/res/EMU_apple2main.js
+@@ -1076,11 +1076,37 @@ function EMUI()
+     // PROCESSING FRAME RATE SLIDER
+     this.fpsSld = function(el,id)
+     {
++        if(typeof(oApple2Video)!="undefined" && oApple2Video && oApple2Video.frameTiming==="vblank") return;
+         var fps = Math.round(Number(el.value));
+         document.getElementById(id).innerHTML = fps+"fps";
+         this.fpsSpd(fps);
+     }
+ 
++    // The SYSTEM indicator switches presentation modes, retaining the user's
++    // timer cadence. CPU clocks/second remain owned by the CPU speed control.
++    var timerFrameRate = null;
++    this.toggleFrameTiming = function()
++    {
++        var video=typeof(oApple2Video)!="undefined" ? oApple2Video : null;
++        if(!video || typeof(video.setFrameTiming)!=="function") return false;
++        var lock=video.frameTiming!=="vblank";
++        if(lock) timerFrameRate=_o.EMU_Updates_s;
++        video.setFrameTiming(lock ? "vblank" : "timer");
++        // Small SYSTEM slices let the browser present VBL frames promptly;
++        // this is processing cadence, not a wall-time video frame trigger.
++        this.fpsSpd(lock ? _o.CPU_ClocksTicks_s/17030 : (timerFrameRate || 10));
++        var slider=document.getElementById("fpsRange"), label=document.getElementById("slider_fps_v");
++        if(slider) { slider.disabled=lock; if(!lock) slider.value=_o.EMU_Updates_s; }
++        if(label)
++        {
++            label.innerHTML=lock ? '<i class="fa fa-lock" aria-hidden="true"></i>' : _o.EMU_Updates_s+"fps";
++            label.setAttribute("aria-pressed",lock ? "true" : "false");
++            label.setAttribute("aria-label",lock ? "Vertical blank locked; click to unlock" : "Video frame rate; click to lock to vertical blank");
++            label.title=lock ? "Vertical blank locked — click to restore timer FPS" : "Click to lock video frames to vertical blank";
++        }
++        return lock;
++    };
++
+     // MODIFY PROCESSING FRAME RATE WITHOUT CHANGING CPU CLOCKS PER SECOND
+     this.fpsSpd = function(fps)
+     {
+diff --git a/tests/video_vblank_lock.test.js b/tests/video_vblank_lock.test.js
+new file mode 100644
+index 0000000..bdd641a
+--- /dev/null
++++ b/tests/video_vblank_lock.test.js
+@@ -0,0 +1,189 @@
++'use strict';
++const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
++const ROOT=path.resolve(__dirname,'..');
++function run(ctx,file){vm.runInContext(fs.readFileSync(path.join(ROOT,'res',file),'utf8'),ctx,{filename:file});}
++function machine()
++{
++    const frames=[],video={state:{gfx:false,mix:false,page2:false,hires:false},write(){},reset(){},cycle(){},
++        setGfx(v){this.state.gfx=v;},setMix(v){this.state.mix=v;},setPage2(v){this.state.page2=v;},setHires(v){this.state.hires=v;},
++        completeRasterFrame(f){frames.push(f);}};
++    const ctx={console:{log(){},warn(){},error(){}},performance,TextEncoder,
++        oEMU:{system:{},component:{IO:{ACTION_MAP:{RD:[],WR:[]}},CPU:{}}},oEMUI:{},_CFG_IOADDR:{},_CFG_IORANGES:{},
++        _o:{CPU_ClocksTicks_s:1021800,CPU_TargetTicks_s:1021800,EMU_Updates_s:10},
++        oCOM:{crc16(){return 1;},trim(s){return s.trim();},getHexWord(v){return v.toString(16);},default(o){return o;},bRefreshEvent:false},
++        apple2Rom:new Uint8Array(0x3000),Apple2VideoMUX:function(){return video;}};
++    vm.createContext(ctx);
++    for(const f of ['EMU_VIDEO_raster.js','EMU_apple2io.js','EMU_apple2hw.js','EMU_cpu6502.js','EMU_CARD_hostio.js',
++        'EMU_DEVICE_gameport.js','EMU_DEVICE_keyboard.js','EMU_DEVICE_speaker.js','EMU_apple2plus.js'])run(ctx,f);
++    const system=new ctx.Apple2Plus({});ctx.apple2plus=system;
++    const hw=system.hwObj();hw.mount();hw.io.provisionPeripheral(new ctx.AppleBoard(),'A2P');
++    for(let a=0x400;a<0xC00;a++)hw.WR[0](a,0xC1);
++    for(let a=0x2000;a<0x6000;a++)hw.WR[a>>12](a,0x55);
++    return {ctx,system,hw,frames};
++}
++test('beam mode changes preserve the old fetch then select the next byte; frames seal on VBL only',()=>{
++    const h=machine();h.hw.setVideoRasterCapture(true);
++    h.hw.read(0xC050,30);h.hw.read(0xC057,31);
++    h.hw.read(0xC020,12479);assert.equal(h.frames.length,0);
++    h.hw.read(0xC020,12480);assert.equal(h.frames.length,1);
++    const f=h.frames[0];assert.equal(f.endTick,12480);
++    assert.deepEqual(Array.from(f.modes.slice(0,8)),[0,0,0,0,0,0,1,2]);
++    assert.equal(f.bytes[5],0xC1);assert.equal(f.bytes[7],0x55);
++    const old=Array.from(f.bytes);h.hw.write(0x2000,0xFF,17030);
++    assert.deepEqual(Array.from(f.bytes),old,'completed planes stay immutable');
++});
++test('a RAM write after the beam fetch changes the following scanline, not the captured byte',()=>{
++    const h=machine();h.hw.setVideoRasterCapture(true);
++    h.hw.write(0x400,0xC2,25);h.hw.read(0xC020,12480);
++    assert.equal(h.frames[0].bytes[0],0xC1);assert.equal(h.frames[0].bytes[40],0xC2);
++});
++test('capture handles several fields per slice and discards an incomplete first field',()=>{
++    const h=machine();for(let i=0;i<100;i++)h.hw.io.tick();
++    h.hw.setVideoRasterCapture(true);h.hw.read(0xC020,12480-100);
++    assert.equal(h.frames.length,0);
++    h.hw.read(0xC020,3*17030-100);assert.equal(h.frames.length,2);
++    assert.equal(h.frames[0].endTick,29510);assert.equal(h.frames[1].endTick,46540);
++    assert.notEqual(h.frames[0].bytes,h.frames[1].bytes);
++});
++test('safe observation and an execution trap do not advance the raster cursor',()=>{
++    const h=machine();h.hw.setVideoRasterCapture(true);h.hw.read(0xC020,3);
++    const before=h.hw.getVideoRasterStats();h.hw.safe_read(0xC055);h.hw.peekFloatingBus();
++    assert.deepEqual(h.hw.getVideoRasterStats(),before);
++    h.system.cpuObj().setState({pc:0x6000});h.system.cpuObj().setExecutionTrap(0x6000);
++    assert.equal(h.system.stepLiveInstruction().ticks,0);assert.deepEqual(h.hw.getVideoRasterStats(),before);
++});
++test('Elliott-style 65-cycle loop retains horizontal text/hires windows on every scanline',()=>{
++    const h=machine(), bytes=[];
++    for(let col=0;col<14;col++)bytes.push(0xCD,col%2===0?0x50:0x51,0xC0);
++    bytes.push(0xEA,0xAD,0,0xC0,0x10,0xD0);
++    bytes.forEach((v,i)=>h.hw.WR[0](0x31A+i,v));
++    h.hw.setVideoMode('gfx',true);h.hw.setVideoMode('hires',true);
++    for(let i=0;i<23;i++)h.hw.io.tick();
++    h.hw.setVideoRasterCapture(true);h.system.cpuObj().setState({pc:0x31A,p:0x24});
++    h.system.runLiveCpuTicks(17030);
++    assert.equal(h.frames.length,1);
++    for(let y=0;y<192;y++)
++    {
++        assert.equal(h.frames[0].modes[y*40+6],0,'text strip line '+y);
++        assert.equal(h.frames[0].modes[y*40+10],2,'hires strip line '+y);
++    }
++});
++test('GPU raster kernel uses captured text/lores/hires samples independently of final mode',()=>{
++    const h=machine(), bytes=new Uint8Array(7680),modes=new Uint8Array(7680),rom=new Uint8Array(512).fill(127),pal=new Uint8Array(256);
++    pal.fill(255,240,243);bytes[0]=0xC1;bytes[1]=15;modes[1]=1;modes[2]=2;
++    function pixel(x){let color;h.ctx.Apple2RasterKernel.call({thread:{x,y:191},constants:{scale:1},color(...c){color=c;}},bytes,modes,rom,pal,0,0);return color;}
++    assert.deepEqual(pixel(0),[255/256,255/256,255/256,1]);assert.deepEqual(pixel(7),pixel(0));
++    assert.deepEqual(pixel(14),[0,0,0,1]);
++});
++
++test('SYSTEM FPS label locks/unlocks, preserves timer FPS and CPU target, and disables the slider',()=>{
++    const label={setAttribute(k,v){this[k]=v;}},slider={value:37,disabled:false};let timer=1,stops=0;
++    const ctx={console,TextEncoder,document:{getElementById(id){return id==='fpsRange'?slider:id==='slider_fps_v'?label:null;}},
++        window:{setInterval(){return ++timer;},clearInterval(){stops++;}},
++        oCOM:{addToEventStack(){},default(o){return o;}},
++        oApple2Video:{frameTiming:'timer',setFrameTiming(m){this.frameTiming=m;}}};
++    vm.createContext(ctx);run(ctx,'EMU_apple2main.js');
++    vm.runInContext('apple2plus={cycle(){},CPU_pace_reset(){}}; appleIntervalHandle=1; oEMUI.fpsSpd(37);',ctx);
++    const target=vm.runInContext('_o.CPU_TargetTicks_s',ctx);
++    assert.equal(ctx.oEMUI.toggleFrameTiming(),true);assert.equal(slider.disabled,true);assert.match(label.innerHTML,/fa-lock/);
++    assert.equal(vm.runInContext('_o.EMU_Updates_s',ctx),60);assert.equal(vm.runInContext('_o.CPU_TargetTicks_s',ctx),target);
++    ctx.oEMUI.fpsSld({value:99},'slider_fps_v');assert.match(label.innerHTML,/fa-lock/);
++    assert.equal(ctx.oEMUI.toggleFrameTiming(),false);assert.equal(slider.disabled,false);assert.equal(slider.value,37);assert.equal(label.innerHTML,'37fps');
++    assert.equal(vm.runInContext('_o.CPU_TargetTicks_s',ctx),target);assert.ok(stops>=3);
++});
++
++function rendererHarness()
++{
++    const images=[], callbacks=[];
++    function canvas(){const c={style:{},width:560,height:384};c.getContext=function(type){if(type!=='2d')return null;return {
++        canvas:c,createImageData(w,h){return {data:new Uint8ClampedArray(w*h*4)};},
++        getImageData(w,h){return {data:new Uint8ClampedArray(w*h*4)};},
++        putImageData(image){images.push(image);},fillRect(){},clearRect(){}};};return c;}
++    const ctx={console,performance,setTimeout,clearTimeout,
++        oEMU:{component:{Video:{}}},_o:{CPU_ClocksTicks_s:1021800,EMU_vid_mode:'canvas'},
++        _CFG_CHROMA:[{COL_num:null,COL_name:'Color'}],
++        Apple2CharROM_get(){return new Uint8Array(512).fill(127);},
++        document:{createElement(){return canvas();},getElementById(){return null;}},
++        requestAnimationFrame(fn){callbacks.push(fn);}};
++    ctx.window=ctx;ctx.self=ctx;vm.createContext(ctx);run(ctx,'gpu-browser.min.js');
++    const RealGPU=ctx.GPU;
++    const GPU=function(options){return new RealGPU(Object.assign({},options,{mode:'cpu'}));};
++    ctx.window=Object.assign({},ctx,{GPU:{GPU:GPU}});
++    run(ctx,'EMU_VIDEO_raster.js');run(ctx,'EMU_DEVICE_video_GPU.js');ctx.Apple2VideoGPU=ctx.Apple2Video;
++    run(ctx,'EMU_DEVICE_video_wave.js');ctx.Apple2VideoWave=ctx.Apple2Video;
++    run(ctx,'EMU_DEVICE_video_THREE.js');run(ctx,'EMU_DEVICE_video_canvas.js');ctx.Apple2VideoCanvas=ctx.Apple2Video;
++    run(ctx,'EMU_DEVICE_video_MUX.js');
++    return {ctx,images,callbacks,canvas};
++}
++function sampleFrame()
++{
++    const bytes=new Uint8Array(7680).fill(0xC1),modes=new Uint8Array(7680);
++    for(let y=0;y<192;y++) for(let c=0;c<40;c++) if(c>=4 && c<8){modes[y*40+c]=2;bytes[y*40+c]=0;}
++    return {bytes,modes,endTick:12480,flash:false};
++}
++test('actual Canvas and GPU drivers present captured strips; bundled GPU.js compiles the raster kernel',()=>{
++    const h=rendererHarness(),frame=sampleFrame();
++    const c=new h.ctx.Apple2VideoCanvas(h.canvas().getContext('2d'));c.frameTiming='vblank';
++    c.presentRasterFrame(frame,{chrome:0});
++    const data=h.images.at(-1).data;assert.equal(data[0],255);assert.equal(data[4*56],0);
++    const gpu=new h.ctx.Apple2VideoGPU(h.canvas());gpu.reset();gpu.frameTiming='vblank';
++    gpu.hw={safe_videodump(){throw Error('locked GPU must not sample live RAM');}};
++    gpu.presentRasterFrame(frame,{chrome:0});
++    const pixels=gpu.rasterKernel.getPixels(true);assert.equal(pixels[0],254);assert.equal(pixels[4*56],0);
++    h.callbacks.splice(0).forEach(fn=>fn(100)); // old timer RAF must not overwrite raster output
++});
++test('actual Wave driver compiles and presents captured text and wave/YIQ hires without live RAM',()=>{
++    const h=rendererHarness(),wave=new h.ctx.Apple2VideoWave(h.canvas());wave.reset();wave.frameTiming='vblank';
++    wave.hw={safe_videodump(){throw Error('locked wave must not sample live RAM');}};
++    wave.presentRasterFrame(sampleFrame(),{chrome:0});
++    const pixels=wave.mixedWaveKernel.getPixels(true);assert.equal(pixels[0],254);assert.equal(pixels[4*112],0);
++});
++test('Three.js producer receives raster planes and uploads texture without the timer throttle',()=>{
++    const h=rendererHarness(),three=new h.ctx.Apple2VideoTHREE(h.canvas());
++    assert.equal(three.ensure2DRenderer(),true);three.video2D.reset();three.frameTiming='vblank';three.sync2DLinks();
++    three.screenTexture={needsUpdate:false};let copies=0;three.updateTextureCanvas=function(){copies++;};
++    three.presentRasterFrame(sampleFrame(),{chrome:0});
++    assert.equal(three.video2D.frameTiming,'vblank');assert.equal(three.screenTexture.needsUpdate,true);assert.equal(copies,1);
++    three.frameTiming='timer';three.sync2DLinks();assert.equal(three.video2D.frameTiming,'timer');
++});
++test('MUX coalesces complete frames and suppresses timer/mode redraws until unlock',()=>{
++    const h=rendererHarness(),mux=new h.ctx.Apple2VideoMUX(h.canvas());let renders=0,cycles=0,redraws=0,enabled=null;
++    mux.active={presentRasterFrame(frame){renders++;this.frame=frame;},cycle(){cycles++;},redraw(){redraws++;},setGfx(){}};
++    mux.ensureActive=function(){return true;};mux.hw={setVideoRasterCapture(e){enabled=e;}};
++    mux.setFrameTiming('vblank');assert.equal(enabled,true);
++    mux.setGfx(true);mux.cycle(17030);mux.redraw();assert.equal(cycles,0);assert.equal(redraws,0);
++    const first=sampleFrame(),last=sampleFrame();mux.completeRasterFrame(first);mux.completeRasterFrame(last);
++    assert.equal(h.callbacks.length,1);h.callbacks.shift()(100);assert.equal(renders,1);assert.equal(mux.active.frame,last);
++    mux.setFrameTiming('timer');assert.equal(enabled,false);mux.cycle(1);assert.equal(cycles,1);assert.ok(redraws>0);
++});
++
++test('MUX reset discards a retained frame even when its presentation is already queued',()=>{
++    const h=rendererHarness(),mux=new h.ctx.Apple2VideoMUX(h.canvas());let renders=0;
++    mux.active={presentRasterFrame(){renders++;}};mux.ensureActive=function(){return true;};
++    mux.registerDevices=function(){};mux.setMode=function(){};mux.frameTiming='vblank';
++    mux.completeRasterFrame(sampleFrame());mux.reset();h.callbacks.shift()(100);
++    assert.equal(renders,0);assert.equal(mux.rasterFrame,null);
++    mux.completeRasterFrame(sampleFrame());h.callbacks.shift()(101);assert.equal(renders,1);
++});
++
++test('Wave timer/lock/timer transitions retain GPU.js static array upload dimensions',()=>{
++    const h=rendererHarness(),wave=new h.ctx.Apple2VideoWave(h.canvas());wave.reset();
++    wave.hw={safe_videodump(){return new Uint8Array(0x6000);}};
++    wave.setGfx(true);wave.setHires(true);wave.setMix(true);
++    const calls=[],kernel=wave.mixedWaveKernel;
++    wave.mixedWaveKernel=function(...args){calls.push(args);return kernel(...args);};
++    wave.redraw();wave.frameTiming='vblank';wave.presentRasterFrame(sampleFrame(),{chrome:0});
++    wave.frameTiming='timer';wave.redraw();assert.equal(calls.length,3);
++    const GPU=require(path.join(ROOT,'res/gpu-browser.min.js'));
++    const StaticArray=GPU.webGLKernelValueMaps.unsigned.static.Array;
++    for(const index of [1,2,3,4,8,9])
++    {
++        // Normalize VM/Node realms while retaining the actual driver argument sizes.
++        const values=calls.map(args=>Array.from(args[index]));
++        const upload=new StaticArray(values[0],{name:'arg'+index,type:'Array',origin:'user',
++            kernel:{validate:false,setUniform1i(){}},
++            context:{activeTexture(){},bindTexture(){},pixelStorei(){},texImage2D(){}},
++            onRequestContextHandle(){return 0;},onRequestTexture(){return {};},onRequestIndex(){return 0;}});
++        for(const value of values.slice(1))assert.doesNotThrow(()=>upload.updateValue(value));
++    }
++});

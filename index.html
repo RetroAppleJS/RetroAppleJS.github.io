@@ -177,6 +177,7 @@
             <script type="text/javascript" src="res/EMU_apple2roms.js"></script>
             <script type="text/javascript" src="res/gpu-browser.min.js"></script>
 
+            <script type="text/javascript" src="res/EMU_VIDEO_raster.js"></script>
             <script type="text/javascript" src="res/EMU_DEVICE_video_GPU.js"></script><script>var Apple2VideoGPU = Apple2Video;</script>
             <script type="text/javascript" src="res/EMU_DEVICE_video_wave.js"></script><script>var Apple2VideoWave = Apple2Video; Apple2Video = Apple2VideoGPU;</script>
             <script type="text/javascript" src="res/EMU_DEVICE_video_THREE.js"></script>
@@ -370,9 +371,14 @@
     width:110px;
   ">
     <span id="slider_fps_v"
+          role="button" tabindex="0" aria-pressed="false"
+          onclick="oEMUI.toggleFrameTiming()"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();oEMUI.toggleFrameTiming()}"
+          title="Click to lock video frames to vertical blank"
           style="
             flex:0 0 35px;
             width:35px;
+            cursor:pointer;
           ">10fps</span>
 
     <input id="fpsRange"

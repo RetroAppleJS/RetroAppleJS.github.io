@@ -5,6 +5,9 @@ owns bus timing and the motherboard video-mode latches. Video renderers
 continue to display memory asynchronously. No renderer or include changes
 are required, and the WASM accelerator is outside this patch's scope.
 
+The subsequent [vertical blank render lock](VBL_RENDER_LOCK.md) patch adds
+optional beam capture and MUX presentation for transient display effects.
+
 ## Clock and raster convention
 
 An NTSC field contains 262 lines of 65 machine cycles: 17,030 cycles.

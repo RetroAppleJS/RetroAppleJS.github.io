@@ -488,6 +488,7 @@ var APPLE2_THREE_CFG_DEFAULT =
             this.video2D.hw = this.hw;
 
             // Expose the 2D renderer's
+            this.video2D.frameTiming = this.frameTiming;
             // serial buffer and delegate kernel calls back to it.
             if (this.video2D.serial8)
                 this.serial8 = this.video2D.serial8;
@@ -520,6 +521,7 @@ var APPLE2_THREE_CFG_DEFAULT =
 
         this.cycle = function(ticks)
         {
+            if(this.frameTiming==="vblank") return;
             if (this.video2D && typeof(this.video2D.cycle) === "function")
             {
                 this.video2D.cycle(ticks);
@@ -533,9 +535,21 @@ var APPLE2_THREE_CFG_DEFAULT =
 
         this.redraw = function()
         {
+            if(this.frameTiming==="vblank") return;
             if (this.video2D && typeof(this.video2D.redraw) === "function")
                 this.video2D.redraw();
             this.textureDirty = true;
+        };
+
+        this.presentRasterFrame = function(frame,state)
+        {
+            if(!this.video2D) return;
+            this.video2D.frameTiming="vblank";
+            this.video2D.presentRasterFrame(frame,state);
+            this.textureDirty=true;
+            // Upload this completed frame through the existing screen texture.
+            // No wall-time texture throttle is applied while VBL is locked.
+            this.pumpTexture(performance.now());
         };
 
         this.write = function(addr, d8)
@@ -1922,7 +1936,7 @@ var APPLE2_THREE_CFG_DEFAULT =
                 window.requestAnimationFrame(animate);
 
                 var renderInterval = 1000 / Math.max(1, cfg.renderFPS | 0);
-                if (now - lastRenderUpdate < renderInterval)
+                if (video3D.frameTiming!=="vblank" && now - lastRenderUpdate < renderInterval)
                     return;
                 lastRenderUpdate = now;
 
@@ -1943,7 +1957,7 @@ var APPLE2_THREE_CFG_DEFAULT =
                 return;
 
             var textureInterval = 1000 / Math.max(1, cfg.textureFPS | 0);
-            if (now - lastTextureUpdate < textureInterval)
+            if (this.frameTiming!=="vblank" && now - lastTextureUpdate < textureInterval)
                 return;
 
             this.updateTextureCanvas();

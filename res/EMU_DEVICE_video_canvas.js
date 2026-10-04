@@ -200,6 +200,7 @@ function Apple2Video(ctx)
      */
     this.cycle = function(ticks)
     {
+        if(this.frameTiming==="vblank") return;
         ticks = Number(ticks);
         if(!Number.isFinite(ticks) || ticks<=0) return;
 
@@ -450,6 +451,7 @@ function Apple2Video(ctx)
     // Redraw everything.  Called whenever the graphics modes change.
     this.redraw = function()
     {
+        if(this.frameTiming==="vblank") return;
         if(this.ctx === undefined)
         {
             clearDirty();
@@ -524,6 +526,33 @@ function Apple2Video(ctx)
                 ctx.fillRect(x * 2, yy, 2, 2); b >>= 1;
             }
         }
+    };
+
+    this.presentRasterFrame = function(frame,state)
+    {
+        if(!ctx) return;
+        if(!this.rasterImage) this.rasterImage=ctx.createImageData(560,384);
+        var image=this.rasterImage, data=image.data;
+        // Reuse the GPU raster pixel calculation as an ordinary JS function;
+        // drawing covers only the captured pixel, so neighboring text strips
+        // cannot be overwritten by a whole-row or neighboring-byte redraw.
+        var pixel={thread:{x:0,y:0},constants:{scale:1},color:function(r,g,b)
+        {
+            var base=((191-pixel.thread.y)*1120+pixel.thread.x*2)*4;
+            for(var row=0;row<2;row++)
+                for(var col=0;col<2;col++)
+                {
+                    var i=base+row*2240+col*4;
+                    data[i]=Math.round(r*256); data[i+1]=Math.round(g*256); data[i+2]=Math.round(b*256); data[i+3]=255;
+                }
+        }};
+        for(var y=0;y<192;y++)
+            for(var x=0;x<280;x++)
+            {
+                pixel.thread.x=x; pixel.thread.y=191-y;
+                Apple2RasterKernel.call(pixel,frame.bytes,frame.modes,charRom,INTCols,state.chrome,frame.flash?1:0);
+            }
+        ctx.putImageData(image,0,0);
     };
 
 }
