@@ -2219,7 +2219,7 @@ function mergeActionMap(dst,src)
         return null;
     }
 
-    // caution:  slotN = slot number + 1 !!! 
+    // caution:  slotN = physical slot number + 1
     this.SLOT2obj = function(slotN)
     {
         slotN = Number(slotN);
