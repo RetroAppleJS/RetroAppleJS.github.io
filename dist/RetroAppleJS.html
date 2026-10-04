@@ -41591,7 +41591,8 @@ function RamCard()
             RAMCARD_MEM[ ramcard_address_encoder(rel_addr,sw.BANK) ] = d8;
             if(bDebug) debug_record( rel_addr < BANK_SIZE ? DBG_WRITE_BANK : DBG_WRITE_RAMCARD, rel_addr, d8, rel_addr < BANK_SIZE ? (sw.BANK==0 ? "A" : "B") : null );
         }
-        else
+        // Writes while protected are normal Language Card bus activity.
+        else if(bDebug)
         {
             debug_flush();
             console.warn(this.id.PCODE+": FAILED ATTEMPT: (WE="+(sw.WE==1?true:false)+") BANK"+(sw.BANK==0?"A":"B")+" write #$"+oCOM.getHexByte(d8)+" at addr $"+oCOM.getHexWord(rel2abs(rel_addr)));
