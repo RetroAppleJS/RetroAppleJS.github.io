@@ -55,3 +55,25 @@ test('renderer mapping follows AY registers and repeated R13 retriggers',()=>{
   const before=r.calls.filter(c=>c[0]==='shape').length; bus.writeRegister(13,0x0A,8); bus.writeRegister(13,0x0A,9);
   assert.equal(r.calls.filter(c=>c[0]==='shape').length,before+2);
 });
+
+test('bDebug logs every AY sound-register update with masked value and cycle',()=>{
+  const ctx=load(), messages=[];
+  ctx.bDebug=true;
+  ctx.console={log:function(){ messages.push(Array.from(arguments).join(' ')); }};
+  const bus=new ctx.MockingboardAYBus(renderer(),{name:'AY0'});
+
+  bus.writeRegister(1,0xFF,123);
+  bus.writeRegister(13,0x1A,456);
+  bus.writeRegister(13,0x1A,457);
+  bus.writeRegister(14,0xAA,458); // I/O port is not a sound-register update
+
+  assert.deepEqual(messages,[
+    'MOCK AY0 R1 TONE_A_COARSE <= $0F @123',
+    'MOCK AY0 R13 ENV_SHAPE <= $0A @456',
+    'MOCK AY0 R13 ENV_SHAPE <= $0A @457'
+  ]);
+
+  ctx.bDebug=false;
+  bus.writeRegister(8,0x1F,500);
+  assert.equal(messages.length,3);
+});
