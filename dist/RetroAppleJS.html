@@ -13778,10 +13778,36 @@ function EMUI()
     // PROCESSING FRAME RATE SLIDER
     this.fpsSld = function(el,id)
     {
+        if(typeof(oApple2Video)!="undefined" && oApple2Video && oApple2Video.frameTiming==="vblank") return;
         var fps = Math.round(Number(el.value));
         document.getElementById(id).innerHTML = fps+"fps";
         this.fpsSpd(fps);
     }
+
+    // The SYSTEM indicator switches presentation modes, retaining the user's
+    // timer cadence. CPU clocks/second remain owned by the CPU speed control.
+    var timerFrameRate = null;
+    this.toggleFrameTiming = function()
+    {
+        var video=typeof(oApple2Video)!="undefined" ? oApple2Video : null;
+        if(!video || typeof(video.setFrameTiming)!=="function") return false;
+        var lock=video.frameTiming!=="vblank";
+        if(lock) timerFrameRate=_o.EMU_Updates_s;
+        video.setFrameTiming(lock ? "vblank" : "timer");
+        // Small SYSTEM slices let the browser present VBL frames promptly;
+        // this is processing cadence, not a wall-time video frame trigger.
+        this.fpsSpd(lock ? _o.CPU_ClocksTicks_s/17030 : (timerFrameRate || 10));
+        var slider=document.getElementById("fpsRange"), label=document.getElementById("slider_fps_v");
+        if(slider) { slider.disabled=lock; if(!lock) slider.value=_o.EMU_Updates_s; }
+        if(label)
+        {
+            label.innerHTML=lock ? '<i class="fa fa-lock" aria-hidden="true"></i>' : _o.EMU_Updates_s+"fps";
+            label.setAttribute("aria-pressed",lock ? "true" : "false");
+            label.setAttribute("aria-label",lock ? "Vertical blank locked; click to unlock" : "Video frame rate; click to lock to vertical blank");
+            label.title=lock ? "Vertical blank locked — click to restore timer FPS" : "Click to lock video frames to vertical blank";
+        }
+        return lock;
+    };
 
     // MODIFY PROCESSING FRAME RATE WITHOUT CHANGING CPU CLOCKS PER SECOND
     this.fpsSpd = function(fps)
@@ -14324,6 +14350,7 @@ function Apple2Hw(vid,keys)
     var scaleVideoEpoch = 0;
     var busMonitoring = false;
     var lastBusAccess = null;
+    var rasterCapture = null;
     var videoMode = {
          "gfx":!!(video.state && video.state.gfx)
         ,"mix":!!(video.state && video.state.mix)
@@ -14365,6 +14392,7 @@ function Apple2Hw(vid,keys)
         // Multiplication from an epoch avoids accumulating fractional rounding
         // errors across ticks/batches (six ticks at 1/3 must be exactly two).
         videoTicks = scaleVideoEpoch+(cpuTicks-scaleCpuEpoch)*videoClockScale;
+        if(rasterCapture) rasterCapture.advanceTo(videoTicks,false);
     };
 
     function effectiveVideoTick(cycleOffset)
@@ -14375,6 +14403,11 @@ function Apple2Hw(vid,keys)
     this.getVideoPosition = function(cycleOffset)
     {
         var tick = effectiveVideoTick(cycleOffset);
+        return videoPositionAt(tick);
+    };
+
+    function videoPositionAt(tick)
+    {
         var phase = ((Math.floor(tick)%VIDEO_FRAME_CYCLES)+VIDEO_FRAME_CYCLES)%VIDEO_FRAME_CYCLES;
         var line = Math.floor(phase/VIDEO_LINE_CYCLES);
         var hcycle = phase%VIDEO_LINE_CYCLES;
@@ -14387,17 +14420,22 @@ function Apple2Hw(vid,keys)
             ,"x":hblank || vblank ? -1 : (hcycle-25)*7
             ,"y":vblank ? -1 : line
         };
-    };
+    }
 
     this.getScannerState = function(cycleOffset)
     {
         var state = this.getVideoPosition(cycleOffset);
+        return scannerStateAt(state);
+    };
+
+    function scannerStateAt(state)
+    {
         var hClock = (state.hcycle+40)%65;
         state.hState = (0x18+hClock-(hClock>=41 ? 1 : 0)) & 0x3F;
         // The NTSC V counter presets after line 255, giving $FA..$FF.
         state.vState = (0x100+state.line-(state.line>=256 ? 262 : 0)) & 0x1FF;
         return state;
-    };
+    }
 
     function scannerAddress(state)
     {
@@ -14431,6 +14469,29 @@ function Apple2Hw(vid,keys)
         return ram[this.getScannerAddress(cycleOffset)];
     };
     this.getFloatingBus = this.peekFloatingBus;
+
+    this.setVideoRasterCapture = function(enabled)
+    {
+        rasterCapture=null;
+        if(enabled)
+            rasterCapture=new Apple2RasterCapture(function(tick,line,col)
+            {
+                // Visible-row permutation only: the capture excludes blanking.
+                // Avoid allocating scanner/state objects in the per-fetch path.
+                var graphics=videoMode.gfx && !(videoMode.mix && line>=160);
+                var hires=graphics && videoMode.hires;
+                var row=((line&0x38)<<4)+Math.floor(line/64)*40+col;
+                var address=hires ? (videoMode.page2?0x4000:0x2000)+(line&7)*1024+row
+                    : (videoMode.page2?0x800:0x400)+row;
+                return ram[address] | ((graphics ? (hires?2:1) : 0)<<8);
+            },function(frame){video.completeRasterFrame(frame);},videoTicks);
+        return !!rasterCapture;
+    };
+    this.getVideoRasterStats=function(){return rasterCapture ? rasterCapture.stats() : null;};
+    function captureBeforeAccess(offset)
+    {
+        if(rasterCapture && !hw.bRO) rasterCapture.advanceTo(effectiveVideoTick(offset));
+    }
 
     this.setBusMonitoring = function(enabled)
     {
@@ -14479,6 +14540,7 @@ function Apple2Hw(vid,keys)
 
     this.readIO = function(addr,cycleOffset)
     {
+        captureBeforeAccess(cycleOffset);
         // Capture BEFORE dispatch: this cycle's video fetch precedes any
         // mode-changing CPU soft switch accessed during the CPU phase.
         var state = this.getScannerState(cycleOffset);
@@ -14490,6 +14552,7 @@ function Apple2Hw(vid,keys)
 
     this.read = function(addr,cycleOffset)
     {
+        captureBeforeAccess(cycleOffset);
         addr &= 0xFFFF;
         var line = this.lineDecode(addr);
         var fn = this.RD[line];
@@ -14502,6 +14565,7 @@ function Apple2Hw(vid,keys)
 
     this.write = function(addr,d8,cycleOffset)
     {
+        captureBeforeAccess(cycleOffset);
         addr &= 0xFFFF;
         d8 &= 0xFF;
         var offset = Number(cycleOffset) || 0;
@@ -14552,6 +14616,7 @@ function Apple2Hw(vid,keys)
         this.clearIRQSources();
         videoMode.gfx = videoMode.mix = videoMode.page2 = videoMode.hires = false;
         lastBusAccess = null;
+        if(rasterCapture) this.setVideoRasterCapture(true);
         hw.io.reset();
     }
 
@@ -14561,6 +14626,7 @@ function Apple2Hw(vid,keys)
         cpuTicks = videoTicks = 0;
         videoClockScale = 1;
         scaleCpuEpoch = scaleVideoEpoch = 0;
+        if(rasterCapture) this.setVideoRasterCapture(true);
         lastBusAccess = null;
         for (var i = 0; i < RAM_SIZE; i++)
             ram[i] = Math.floor(Math.random() * 256.0);
@@ -23022,6 +23088,73 @@ const eightycolumnRom  = new Uint8Array([ // P5A
 </script>
 
             <script type="text/javascript">
+// Completed NTSC beam frames. No browser timer or CPU runner is owned here.
+function Apple2RasterCapture(fetch,present,startTick)
+{
+    var cursor=Math.ceil(startTick)-1, bytes=new Uint8Array(7680), modes=new Uint8Array(7680);
+    var count=0, startFrame=Math.floor(startTick/17030), completed=0;
+    this.advanceTo=function(tick,inclusive)
+    {
+        var end=inclusive===false ? Math.ceil(tick)-1 : Math.floor(tick);
+        while(cursor<end)
+        {
+            var t=++cursor, phase=((t%17030)+17030)%17030;
+            if(phase===0) { count=0; startFrame=Math.floor(t/17030); }
+            if(phase===12480)
+            {
+                if(count===7680)
+                {
+                    present({bytes:bytes,modes:modes,endTick:t,frame:startFrame,sequence:++completed});
+                    bytes=new Uint8Array(7680); modes=new Uint8Array(7680);
+                }
+                count=0;
+            }
+            var h=phase%65, y=Math.floor(phase/65);
+            if(y<192 && h>=25)
+            {
+                var sample=fetch(t,y,h-25), i=y*40+h-25;
+                bytes[i]=sample&255; modes[i]=sample>>8; count++;
+            }
+        }
+    };
+    this.stats=function(){return {capturedThrough:cursor,visibleSamples:count,completed:completed};};
+}
+
+// GPU.js graphical kernel: immutable per-beam byte/mode planes, never live RAM.
+function Apple2RasterKernel(bytes,modes,rom,pal,chrome,flash)
+{
+    var xp=Math.floor(this.thread.x/this.constants.scale);
+    var y=191-Math.floor(this.thread.y/this.constants.scale);
+    var col=Math.floor(xp/7), bit=xp-col*7, i=y*40+col;
+    var d=bytes[i], mode=modes[i], cp=chrome*4;
+    if(mode===2)
+    {
+        var left=0, right=0;
+        if(col>0 && modes[i-1]===2) left=bytes[i-1];
+        if(col<39 && modes[i+1]===2) right=bytes[i+1];
+        var bits=((right&127)<<8)|((d&127)<<1)|((left>>6)&1);
+        var b3=(bits>>bit)&7, d1=(0b100100>>b3)&1, d2=(0b11001000>>b3)&1;
+        var dl=(1+((((xp^b3)<<1)&2)|(((xp^b3)&1)^(d>>7))))&((d1<<4)-d1);
+        cp+=((dl+(dl<<1))|((d2<<4)-d2))<<4;
+    }
+    else if(mode===1) cp+=((d>>((y>>2&1)*4))&15)<<4;
+    else
+    {
+        var glyph=rom[(((d&63)^32)*8)+(y&7)], attr=d>>6;
+        var on=((glyph>>bit)&1)^((1>>attr)&1)^((2>>attr)&flash);
+        cp+=on*240;
+    }
+    this.color(pal[cp]/256,pal[cp+1]/256,pal[cp+2]/256,1);
+}
+
+function Apple2RasterCreateKernel(gpu,scale)
+{
+    return gpu.createKernel(Apple2RasterKernel,{output:[280*scale,192*scale],
+        constants:{scale:scale},graphical:true});
+}
+
+</script>
+            <script type="text/javascript">
 //
 // Copyright (c) 2024 Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
@@ -23346,6 +23479,7 @@ function Apple2Video(ctx)
 
     this.cycle = function(ticks)
     {
+      if(this.frameTiming==="vblank") return;
       ticks = Number(ticks);
       if(!Number.isFinite(ticks) || ticks<=0) return;   
       frame_count += ticks;
@@ -23376,6 +23510,7 @@ function Apple2Video(ctx)
 
   this.redraw = function()
   {
+      if(this.frameTiming==="vblank") return;
       this.serial8[ this.idx8("CHROME_MODE") ] = chrome_mode;
       this.serial8[ this.idx8("GFX_FLG") ]     = this.register_mode();
       this.serial8[ this.idx8("FLASH") ]       = flash_on ? 1 : 0;
@@ -23384,6 +23519,7 @@ function Apple2Video(ctx)
 
 window.requestAnimationFrame(function(rafNow)
 {
+    if(video.frameTiming==="vblank") return;
     if (!video.hw || typeof(video.hw.safe_videodump) !== "function") return;
     if (typeof(video.kernel) !== "function") return;
 
@@ -23401,6 +23537,14 @@ window.requestAnimationFrame(function(rafNow)
 
       frame_redraw = false;
   }
+
+    this.presentRasterFrame = function(frame,state)
+    {
+        if(!this.gpu) return;
+        if(!this.rasterKernel) this.rasterKernel=Apple2RasterCreateKernel(this.gpu,2);
+        this.rasterKernel(frame.bytes,frame.modes,this.charRom,this.INTCols,state.chrome,frame.flash?1:0);
+        this.recordFrameSubmit(this.nowMs());
+    };
 
     this.write = function(addr, d8) // FLOATING BUS behavior ?
     {
@@ -23933,6 +24077,7 @@ function Apple2Video(ctx)
 
     this.cycle = function(ticks)
     {
+        if(this.frameTiming==="vblank") return;
         ticks = Number(ticks);
         if(!Number.isFinite(ticks) || ticks<=0) return;
 
@@ -24298,7 +24443,7 @@ function Apple2Video(ctx)
             graphical:true
         });
 
-        this.mixedWaveKernel = this.gpu.createKernel(function(wave, mem, rom, pal, cfg, GFX_FLG, CHROME_MODE, FLASH)
+        this.mixedWaveKernel = this.gpu.createKernel(function(wave, mem, rom, pal, cfg, GFX_FLG, CHROME_MODE, FLASH, rasterBytes, rasterModes, RASTER)
         {
             // Composite renderer used only for HIRES mixed mode:
             // - top 160 native scanlines are HGR wave/YIQ
@@ -24318,7 +24463,8 @@ function Apple2Video(ctx)
             const HIRES = (GFX_FLG & GFX_FLG>>7 & MIX) & 1;
             const LORES = (GFX_FLG & GFX_FLG>>6 & MIX) & 1;
 
-            if (HIRES == 1)
+            const rasterIndex=yp*40+x7;
+            if ((RASTER==1 && rasterModes[rasterIndex]==2) || (RASTER==0 && HIRES==1))
             {
                 const sx = xp << 2;
 
@@ -24350,10 +24496,10 @@ function Apple2Video(ctx)
 
                 this.color(r, g, b, 1.0);
             }
-            else if (LORES == 1)
+            else if ((RASTER==1 && rasterModes[rasterIndex]==1) || (RASTER==0 && LORES==1))
             {
                 const adr = (PAGE>>3) + adr_ofs + x7;
-                const d8 = mem[adr];
+                const d8 = RASTER==1 ? rasterBytes[rasterIndex] : mem[adr];
                 const y4 = (yp>>2&1)<<2;
                 let cp = (CHROME_MODE << 2);
                 cp += ((d8>>y4&15)<<4);
@@ -24362,7 +24508,7 @@ function Apple2Video(ctx)
             else
             {
                 const adr   = (PAGE>>3) + adr_ofs + x7;
-                const d8    = mem[adr];
+                const d8    = RASTER==1 ? rasterBytes[rasterIndex] : mem[adr];
                 const offs  = ((d8 & 0x3F) ^ 0x20) << 3;
                 const cbyte = rom[offs + (yp&7)];
                 const infl  = d8>>6 & 3;
@@ -24442,6 +24588,7 @@ function Apple2Video(ctx)
 
     this.redraw = function()
     {
+        if(this.frameTiming==="vblank") return;
         if (!this.gpu || !this.waveKernel || !this.renderKernel || !this.deterministicKernel || !this.mixedWaveKernel) return;
 
         const mode = this.register_mode();
@@ -24457,7 +24604,8 @@ function Apple2Video(ctx)
             const wave = this.waveKernel(this.hgrLinear, this.cfg);
 
             if (mix_mode)
-                this.mixedWaveKernel(wave, mem, chr, this.INTCols, this.cfg, mode, chrome_mode, flash);
+                this.mixedWaveKernel(wave, mem, chr, this.INTCols, this.cfg, mode, chrome_mode, flash,
+                    new Uint8Array(7680),new Uint8Array(7680),0);
             else
                 this.renderKernel(wave, this.cfg);
         }
@@ -24469,6 +24617,17 @@ function Apple2Video(ctx)
         }
 
         frame_redraw = false;
+    };
+
+    this.presentRasterFrame = function(frame,state)
+    {
+        if(!this.gpu || !this.waveKernel || !this.mixedWaveKernel) return;
+        var hires=new Uint8Array(7680);
+        for(var i=0;i<hires.length;i++) if(frame.modes[i]===2) hires[i]=frame.bytes[i];
+        var wave=this.waveKernel(hires,this.cfg);
+        var rom=this.charRom instanceof Uint8Array ? this.charRom : Apple2CharROM_get("A2_US");
+        this.mixedWaveKernel(wave,new Uint8Array(0x6000),rom,this.INTCols,this.cfg,0,state.chrome,
+            frame.flash?1:0,frame.bytes,frame.modes,1);
     };
 
     this.ensureLinearHgr = function()
@@ -24527,6 +24686,7 @@ Apple2Video.ctrl_dlg = function()
 {
     return Apple2VideoWave_controls(null);
 };
+
 </script><script>var Apple2VideoWave = Apple2Video; Apple2Video = Apple2VideoGPU;</script>
             <script type="text/javascript">
 //
@@ -25019,6 +25179,7 @@ var APPLE2_THREE_CFG_DEFAULT =
             this.video2D.hw = this.hw;
 
             // Expose the 2D renderer's
+            this.video2D.frameTiming = this.frameTiming;
             // serial buffer and delegate kernel calls back to it.
             if (this.video2D.serial8)
                 this.serial8 = this.video2D.serial8;
@@ -25051,6 +25212,7 @@ var APPLE2_THREE_CFG_DEFAULT =
 
         this.cycle = function(ticks)
         {
+            if(this.frameTiming==="vblank") return;
             if (this.video2D && typeof(this.video2D.cycle) === "function")
             {
                 this.video2D.cycle(ticks);
@@ -25064,9 +25226,21 @@ var APPLE2_THREE_CFG_DEFAULT =
 
         this.redraw = function()
         {
+            if(this.frameTiming==="vblank") return;
             if (this.video2D && typeof(this.video2D.redraw) === "function")
                 this.video2D.redraw();
             this.textureDirty = true;
+        };
+
+        this.presentRasterFrame = function(frame,state)
+        {
+            if(!this.video2D) return;
+            this.video2D.frameTiming="vblank";
+            this.video2D.presentRasterFrame(frame,state);
+            this.textureDirty=true;
+            // Upload this completed frame through the existing screen texture.
+            // No wall-time texture throttle is applied while VBL is locked.
+            this.pumpTexture(performance.now());
         };
 
         this.write = function(addr, d8)
@@ -26453,7 +26627,7 @@ var APPLE2_THREE_CFG_DEFAULT =
                 window.requestAnimationFrame(animate);
 
                 var renderInterval = 1000 / Math.max(1, cfg.renderFPS | 0);
-                if (now - lastRenderUpdate < renderInterval)
+                if (video3D.frameTiming!=="vblank" && now - lastRenderUpdate < renderInterval)
                     return;
                 lastRenderUpdate = now;
 
@@ -26474,7 +26648,7 @@ var APPLE2_THREE_CFG_DEFAULT =
                 return;
 
             var textureInterval = 1000 / Math.max(1, cfg.textureFPS | 0);
-            if (now - lastTextureUpdate < textureInterval)
+            if (this.frameTiming!=="vblank" && now - lastTextureUpdate < textureInterval)
                 return;
 
             this.updateTextureCanvas();
@@ -26727,6 +26901,7 @@ function Apple2Video(ctx)
      */
     this.cycle = function(ticks)
     {
+        if(this.frameTiming==="vblank") return;
         ticks = Number(ticks);
         if(!Number.isFinite(ticks) || ticks<=0) return;
 
@@ -26977,6 +27152,7 @@ function Apple2Video(ctx)
     // Redraw everything.  Called whenever the graphics modes change.
     this.redraw = function()
     {
+        if(this.frameTiming==="vblank") return;
         if(this.ctx === undefined)
         {
             clearDirty();
@@ -27053,6 +27229,33 @@ function Apple2Video(ctx)
         }
     };
 
+    this.presentRasterFrame = function(frame,state)
+    {
+        if(!ctx) return;
+        if(!this.rasterImage) this.rasterImage=ctx.createImageData(560,384);
+        var image=this.rasterImage, data=image.data;
+        // Reuse the GPU raster pixel calculation as an ordinary JS function;
+        // drawing covers only the captured pixel, so neighboring text strips
+        // cannot be overwritten by a whole-row or neighboring-byte redraw.
+        var pixel={thread:{x:0,y:0},constants:{scale:1},color:function(r,g,b)
+        {
+            var base=((191-pixel.thread.y)*1120+pixel.thread.x*2)*4;
+            for(var row=0;row<2;row++)
+                for(var col=0;col<2;col++)
+                {
+                    var i=base+row*2240+col*4;
+                    data[i]=Math.round(r*256); data[i+1]=Math.round(g*256); data[i+2]=Math.round(b*256); data[i+3]=255;
+                }
+        }};
+        for(var y=0;y<192;y++)
+            for(var x=0;x<280;x++)
+            {
+                pixel.thread.x=x; pixel.thread.y=191-y;
+                Apple2RasterKernel.call(pixel,frame.bytes,frame.modes,charRom,INTCols,state.chrome,frame.flash?1:0);
+            }
+        ctx.putImageData(image,0,0);
+    };
+
 }
 
 </script><script>var Apple2VideoCanvas = Apple2Video;</script>
@@ -27079,6 +27282,44 @@ function Apple2VideoMUX(canvas)
 
     this.vidram = null;
     this.hw = null;
+    this.frameTiming = "timer";
+    this.rasterFrame = null;
+    var rasterPresentationPending = false;
+
+    this.setFrameTiming = function(mode)
+    {
+        mode=mode==="vblank" ? "vblank" : "timer";
+        if(mode===this.frameTiming) return mode;
+        this.frameTiming=mode;
+        this.rasterFrame=null;
+        if(this.hw) this.hw.setVideoRasterCapture(mode==="vblank");
+        if(this.active) this.active.frameTiming=mode;
+        if(mode==="timer" && this.active) { this.applyState(this.active); this.redraw(); }
+        return mode;
+    };
+
+    this.presentRasterFrame = function()
+    {
+        if(this.frameTiming!=="vblank" || !this.rasterFrame || !this.ensureActive()) return;
+        this.active.frameTiming="vblank";
+        this.active.presentRasterFrame(this.rasterFrame,this.state);
+    };
+
+    this.completeRasterFrame = function(frame)
+    {
+        if(this.frameTiming!=="vblank") return;
+        frame.flash=(Math.floor(frame.endTick/(_o.CPU_ClocksTicks_s/4))&1)===0;
+        this.rasterFrame=frame;
+        // A SYSTEM slice may complete several frames. Only complete frames are
+        // eligible for presentation; browser refresh displays the latest one.
+        if(rasterPresentationPending) return;
+        rasterPresentationPending=true;
+        window.requestAnimationFrame(function()
+        {
+            rasterPresentationPending=false;
+            mux.presentRasterFrame();
+        });
+    };
 
     this.state = {
         gfx: false,
@@ -27448,6 +27689,7 @@ function Apple2VideoMUX(canvas)
 
         r.vidram = this.vidram;
         r.hw = this.hw;
+        r.frameTiming = this.frameTiming;
 
         if(typeof(r.setGfx) == "function")   r.setGfx(this.state.gfx);
         if(typeof(r.setMix) == "function")   r.setMix(this.state.mix);
@@ -27653,7 +27895,8 @@ function Apple2VideoMUX(canvas)
         this.active = this.getRenderer(spec, !!forceReset);
         this.activeName = spec.name;
 
-        if(typeof(this.active.redraw) == "function")
+        if(this.frameTiming==="vblank") this.presentRasterFrame();
+        else if(typeof(this.active.redraw) == "function")
             this.active.redraw();
 
         this.updateRenderModeUI(uiEl);
@@ -27716,6 +27959,8 @@ function Apple2VideoMUX(canvas)
 
     this.reset = function()
     {
+        // A queued presentation must never reuse a pre-reset beam frame.
+        this.rasterFrame = null;
         // Register every video device once; activation remains a separate state.
         this.registerDevices();
 
@@ -27738,12 +27983,14 @@ function Apple2VideoMUX(canvas)
     // TODO: refactoring suggestion: do we need typeof(...) == "function" when it's clear it will be always a function ?  If not, identify the edge cases!
     this.cycle = function(ticks)
     {
+        if(this.frameTiming==="vblank") return;
         if(this.ensureActive() && typeof(this.active.cycle) == "function")
             return this.active.cycle(ticks);
     };
 
     this.redraw = function()
     {
+        if(this.frameTiming==="vblank") return this.presentRasterFrame();
         if(this.ensureActive() && typeof(this.active.redraw) == "function")
             return this.active.redraw();
     };
@@ -27758,6 +28005,7 @@ function Apple2VideoMUX(canvas)
 
     this.write = function(addr,d8)
     {
+        if(this.frameTiming==="vblank") return;
         if(!this.ensureActive()) return;
 
         this.active.vidram = this.vidram;
@@ -27774,7 +28022,7 @@ function Apple2VideoMUX(canvas)
         this.state.gfx = next;
 
         var result;
-        if(this.ensureActive() && typeof(this.active.setGfx) == "function")
+        if(this.frameTiming!=="vblank" && this.ensureActive() && typeof(this.active.setGfx) == "function")
             result = this.active.setGfx(this.state.gfx);
 
         /*
@@ -27791,21 +28039,21 @@ function Apple2VideoMUX(canvas)
     this.setMix = function(flag)
     {
         this.state.mix = !!flag;
-        if(this.ensureActive() && typeof(this.active.setMix) == "function")
+        if(this.frameTiming!=="vblank" && this.ensureActive() && typeof(this.active.setMix) == "function")
             return this.active.setMix(this.state.mix);
     };
 
     this.setPage2 = function(flag)
     {
         this.state.page2 = !!flag;
-        if(this.ensureActive() && typeof(this.active.setPage2) == "function")
+        if(this.frameTiming!=="vblank" && this.ensureActive() && typeof(this.active.setPage2) == "function")
             return this.active.setPage2(this.state.page2);
     };
 
     this.setHires = function(flag)
     {
         this.state.hires = !!flag;
-        if(this.ensureActive() && typeof(this.active.setHires) == "function")
+        if(this.frameTiming!=="vblank" && this.ensureActive() && typeof(this.active.setHires) == "function")
             return this.active.setHires(this.state.hires);
     };
 
@@ -27935,6 +28183,7 @@ function Apple2VideoMUX(canvas)
 
         r.vidram = this.vidram;
         r.hw = this.hw;
+        r.frameTiming = this.frameTiming;
 
         if (typeof(r.setCharRom) == "function")
             r.setCharRom(this.state.charRom, this.state.charRomKey);
@@ -27950,6 +28199,7 @@ function Apple2VideoMUX(canvas)
     };
 
 }
+
 </script>
             <script type="text/javascript">
 //
@@ -60507,9 +60757,14 @@ function Apple2Plus(context)
     width:110px;
   ">
     <span id="slider_fps_v"
+          role="button" tabindex="0" aria-pressed="false"
+          onclick="oEMUI.toggleFrameTiming()"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();oEMUI.toggleFrameTiming()}"
+          title="Click to lock video frames to vertical blank"
           style="
             flex:0 0 35px;
             width:35px;
+            cursor:pointer;
           ">10fps</span>
 
     <input id="fpsRange"
