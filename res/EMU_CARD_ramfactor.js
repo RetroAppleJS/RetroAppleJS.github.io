@@ -2,7 +2,7 @@
 // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 // EMU_CARD_ramfactor.js — Applied Engineering RAMFactor, default 8 MB.
 // Include from index.html: <script src="res/EMU_CARD_ramfactor.js"></script>
-// Replace the RAMFACTOR entry in _CFG_PSLOT (res/COM_CONFIG.js) with:
+// Replace the RAMFAC entry in _CFG_PSLOT (res/COM_CONFIG.js) with:
 // ,"RAMFAC":{"NAME":"AE RAMFactor 8 MB", "HostIO":"", "SlotIO":"X",
 // "SlotROM":"X", "HostROM":"X", "SLOTrange":"1,2,3,4,5,6,7",
 // "SYScode":"A2,A2P,A2e", "Manuals":"[user_manual](https://garrettsworkshop.com/files/GR8RAM/ae_ramfactor_manual.pdf)"}
@@ -334,7 +334,7 @@ function RAMFactor(installedBytes)
     };
     this.MEM_status_text = function()
     {
-        return "RAMFACTOR &nbsp; "+(TOTAL_SIZE/0x100000)+" MB<br>"
+        return "RAMFAC &nbsp; "+(TOTAL_SIZE/0x100000)+" MB<br>"
             + (this.state.registersEnabled ? "Enabled" : "Disabled")
             + " &nbsp; ROM "+this.state.firmwareBank
             + "<br>Address $"+oCOM.getHexMulti(this.state.address,6)
