@@ -111,6 +111,8 @@ function Apple2IO(vid,hostHardware)
     const bDebug = true;
     var io = this;
     hostHardware = hostHardware || null;
+    this.FLOATING_BUS = hostHardware && hostHardware.FLOATING_BUS!==undefined
+        ? hostHardware.FLOATING_BUS : -1;
 
     this.slot_ctx = {};
     this.slots = [];
@@ -287,7 +289,7 @@ function Apple2IO(vid,hostHardware)
                             oCOM.getHexWord(0xC000 + base + rel_addr)
                         );
 
-                    return 0x00;
+                    return io.FLOATING_BUS;
                 };
 
                 fn._ioEmpty = true;
@@ -1152,7 +1154,7 @@ function mergeActionMap(dst,src)
 
     function line_decode(adr)  { return adr<256 ? adr & 0xF0 : (adr & 0xFF00); } // line decoder on IO & PROM addressing
 
-    this.read = function(rel_addr)
+    this.read = function(rel_addr,cycleOffset)
     {
         var line = line_decode(rel_addr);
 
@@ -1162,14 +1164,18 @@ function mergeActionMap(dst,src)
             //"snd": snd,
             "vid": vid,
             "io": this,
-            "bRO": (typeof(apple2plus) == "object" && apple2plus && apple2plus.hwObj().bRO === true),
+            "bRO": hostHardware ? hostHardware.bRO===true : false,
+            "hw": hostHardware,
+            "cycleOffset": Number(cycleOffset) || 0,
+            "cpuTick": hostHardware && typeof(hostHardware.getCpuTicks)==="function"
+                ? hostHardware.getCpuTicks()+(Number(cycleOffset) || 0) : clockTicks+(Number(cycleOffset) || 0),
             "rel_addr": rel_addr,
             "line": line,
             "abs_addr": 0xC000 + rel_addr
         };
 
         var fn = CIO.ACTION_MAP.RD[line];
-        if(!fn) { if(!ctx2.bRO) console.warn("CIO.ACTION_MAP.RD["+oCOM.getHexWord(line)+"] I/O call out of bounds (0x"+oCOM.getHexWord(line+0xC000)+")"); return 0x00; }
+        if(!fn || fn._ioEmpty===true) return this.FLOATING_BUS;
 
         /*
         * Read-only bus scan policy:
@@ -1181,12 +1187,12 @@ function mergeActionMap(dst,src)
         * triggers. During bRO scans, do not call those callbacks.
         */
         if(ctx2.bRO && fn._ioReport && fn._ioReport.range == "SlotIO")
-            return 0x00;
+            return this.FLOATING_BUS;
 
         return fn(rel_addr-line,ctx2);
     }
 
-    this.write = function(rel_addr,d8)
+    this.write = function(rel_addr,d8,cycleOffset)
     {
         var line = line_decode(rel_addr);
 
@@ -1196,7 +1202,11 @@ function mergeActionMap(dst,src)
             //"snd": snd,
             "vid": vid,
             "io": this,
-            "bRO": (typeof(apple2plus) == "object" && apple2plus && apple2plus.hwObj().bRO === true),
+            "bRO": hostHardware ? hostHardware.bRO===true : false,
+            "hw": hostHardware,
+            "cycleOffset": Number(cycleOffset) || 0,
+            "cpuTick": hostHardware && typeof(hostHardware.getCpuTicks)==="function"
+                ? hostHardware.getCpuTicks()+(Number(cycleOffset) || 0) : clockTicks+(Number(cycleOffset) || 0),
             "rel_addr": rel_addr,
             "line": line,
             "abs_addr": 0xC000 + rel_addr
@@ -1261,6 +1271,7 @@ function mergeActionMap(dst,src)
     this.tick = function(n)
     {
         clockTicks++;
+        if(hostHardware && typeof(hostHardware.tick)==="function") hostHardware.tick();
         for(var i=0;i<tickCallbacks.length;i++)
             tickCallbacks[i](n);
     }
@@ -1461,10 +1472,12 @@ function mergeActionMap(dst,src)
                 var allowReadOnly=!!(
                     handler && typeof(handler)=="object" && handler.readOnly===true
                 );
+                var driveMask = handler && typeof(handler)==="object" && handler.driveMask!==undefined
+                    ? handler.driveMask & 0xFF : 0xFF;
 
                 if(!Number.isInteger(addr) || typeof(method)!="function") continue;
 
-                var callback=function(target,fn,readOnly,writeAction)
+                var callback=function(target,fn,readOnly,writeAction,mask)
                 {
                     if(writeAction)
                     {
@@ -1478,11 +1491,13 @@ function mergeActionMap(dst,src)
 
                     return function(rel_addr,ctx)
                     {
-                        if(ctx && ctx.bRO===true && !readOnly) return 0x00;
+                        if(ctx && ctx.bRO===true && !readOnly) return io.FLOATING_BUS;
                         var result=fn.call(target,rel_addr,ctx);
+                        if(mask===0) return io.FLOATING_BUS;
+                        if(mask!==0xFF) return {"value":result & 0xFF,"mask":mask};
                         return result===undefined ? 0x00 : result;
                     };
-                }(device,method,allowReadOnly,op=="WR");
+                }(device,method,allowReadOnly,op=="WR",driveMask);
 
                 callback._ioReport={
                      "DCODE":dcode

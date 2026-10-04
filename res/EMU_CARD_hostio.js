@@ -39,7 +39,7 @@ function AppleBoard()
             ,"action":{
                  "RD":{
                      "0x00":{"handler":"read","readOnly":true}
-                    ,"0x10":"strobe"
+                    ,"0x10":{"handler":"strobe","driveMask":0}
                  }
                 ,"WR":{"0x10":"strobe"}
              }
@@ -66,7 +66,7 @@ function AppleBoard()
             ,"icon":"fa fa-volume-up"
             ,"description":"Apple II speaker"
             ,"range":"HostIO"
-            ,"action":{"RD":{"0x30":"toggle"}}
+            ,"action":{"RD":{"0x30":{"handler":"toggle","driveMask":0}}}
         }
         ,{
              "DCODE":"A2GAM"
@@ -77,8 +77,8 @@ function AppleBoard()
             ,"range":"HostIO"
             ,"action":{
                  "RD":{
-                     "0x60":{"handler":"read","readOnly":true}
-                    ,"0x70":"trigger"
+                     "0x60":{"handler":"read","readOnly":true,"driveMask":0x80}
+                    ,"0x70":{"handler":"trigger","driveMask":0}
                  }
                 ,"WR":{"0x70":"trigger"}
              }
@@ -92,28 +92,37 @@ function AppleBoard()
                     ,"WR":{"callback":write.bind(this)}}                                      // by default always 16 bytes
     }
 
-    function read()  {}
+    function read(rel_addr,ctx) { return ctx.io.FLOATING_BUS; }
     function write() {}
 
 
     this.IO_map = function(model)
     {
         function isRO(ctx) { return ctx && ctx.bRO === true; }
+        function setVideoSwitch(ctx,name,flag,legacySetter)
+        {
+            if(!isRO(ctx))
+            {
+                if(ctx.hw && typeof(ctx.hw.setVideoMode)==="function") ctx.hw.setVideoMode(name,flag);
+                else ctx.vid[legacySetter](flag);
+            }
+            return ctx.io.FLOATING_BUS;
+        }
 
         // hack - TODO: find a permanent fix
         const IOMAP_CALLS = {
             //"KBD":      function(ctx2){ return isRO(ctx2) ? ctx2.keys.lastkey : ctx2.keys.polling(ctx2.keys.lastkey); },
-            //"KBDSTRB":  function(ctx2){ if(!isRO(ctx2)) ctx2.keys.strobe();       return 0x00; },
-            //"SPKR":     function(ctx2){ if(!isRO(ctx2)) ctx2.snd.toggle();        return 0x00; },
+            //"KBDSTRB":  function(ctx2){ if(!isRO(ctx2)) ctx2.keys.strobe();       return ctx.io.FLOATING_BUS; },
+            //"SPKR":     function(ctx2){ if(!isRO(ctx2)) ctx2.snd.toggle();        return ctx.io.FLOATING_BUS; },
 
-            "TXTCLR":   function(ctx){ if(!isRO(ctx)) ctx.vid.setGfx(true);       return 0x00; },
-            "TXTSET":   function(ctx){ if(!isRO(ctx)) ctx.vid.setGfx(false);      return 0x00; },
-            "MIXCLR":   function(ctx){ if(!isRO(ctx)) ctx.vid.setMix(false);      return 0x00; },
-            "MIXSET":   function(ctx){ if(!isRO(ctx)) ctx.vid.setMix(true);       return 0x00; },
-            "TXTPAGE1": function(ctx){ if(!isRO(ctx)) ctx.vid.setPage2(false);    return 0x00; },
-            "TXTPAGE2": function(ctx){ if(!isRO(ctx)) ctx.vid.setPage2(true);     return 0x00; },
-            "LORES":    function(ctx){ if(!isRO(ctx)) ctx.vid.setHires(false);    return 0x00; },
-            "HIRES":    function(ctx){ if(!isRO(ctx)) ctx.vid.setHires(true);     return 0x00; },
+            "TXTCLR":   function(ctx){ return setVideoSwitch(ctx,"gfx",true,"setGfx"); },
+            "TXTSET":   function(ctx){ return setVideoSwitch(ctx,"gfx",false,"setGfx"); },
+            "MIXCLR":   function(ctx){ return setVideoSwitch(ctx,"mix",false,"setMix"); },
+            "MIXSET":   function(ctx){ return setVideoSwitch(ctx,"mix",true,"setMix"); },
+            "TXTPAGE1": function(ctx){ return setVideoSwitch(ctx,"page2",false,"setPage2"); },
+            "TXTPAGE2": function(ctx){ return setVideoSwitch(ctx,"page2",true,"setPage2"); },
+            "LORES":    function(ctx){ return setVideoSwitch(ctx,"hires",false,"setHires"); },
+            "HIRES":    function(ctx){ return setVideoSwitch(ctx,"hires",true,"setHires"); },
 
             /*
              * $C058 clears annunciator zero and selects motherboard video.
@@ -124,8 +133,8 @@ function AppleBoard()
              * selector subscribes to the video MUX signal instead of decoding
              * PR#3/PR#0 commands.
              */
-            "AN0OFF":   function(ctx){ if(!isRO(ctx) && ctx.vid && typeof(ctx.vid.setAnnunciator0)=="function") ctx.vid.setAnnunciator0(false); return 0x00; },
-            "AN0ON":    function(ctx){ if(!isRO(ctx) && ctx.vid && typeof(ctx.vid.setAnnunciator0)=="function") ctx.vid.setAnnunciator0(true);  return 0x00; }
+            "AN0OFF":   function(ctx){ if(!isRO(ctx) && ctx.vid && typeof(ctx.vid.setAnnunciator0)=="function") ctx.vid.setAnnunciator0(false); return ctx.io.FLOATING_BUS; },
+            "AN0ON":    function(ctx){ if(!isRO(ctx) && ctx.vid && typeof(ctx.vid.setAnnunciator0)=="function") ctx.vid.setAnnunciator0(true);  return ctx.io.FLOATING_BUS; }
         };
   
         var IOMAP_ID = null;
@@ -256,7 +265,7 @@ function AppleBoard()
                 0x50: function(rel_addr,ctx)
                 {
                     const fn = SOFTSWITCH_50[rel_addr];
-                    return fn ? fn(ctx) : 0x00;
+                    return fn ? fn(ctx) : ctx.io.FLOATING_BUS;
                 }
             },
             "RG":{},
@@ -268,7 +277,7 @@ function AppleBoard()
                 0x50: function(rel_addr,d8,ctx)
                 {
                     const fn = SOFTSWITCH_50[rel_addr];
-                    return fn ? fn(ctx) : 0x00;
+                    return fn ? fn(ctx) : ctx.io.FLOATING_BUS;
                 }
             }
         }

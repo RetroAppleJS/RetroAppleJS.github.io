@@ -578,23 +578,51 @@ function Cpu6502(hwobj)
 //   ██████ ██       ██████       ██████  ██████  ██   ██ ███████ 
 
 
-    function readByte(addr)         
+    // Semantics still execute together. Offsets timestamp real bus accesses
+    // relative to the opcode tick; the scheduler drains cycle_delay as before.
+    function readByte(addr,cycleOffset)
     { 
         const adr = addr & 0xffff;
+        const offset = cycleOffset===undefined ? cycle_delay : cycleOffset;
+        if(typeof(hw.read)==="function") return hw.read(adr,offset) & 0xff;
         const line = hw.lineDecode(adr);
-        return hw.RD[line](adr) & 0xff;
+        return hw.RD[line](adr,offset) & 0xff;
     }
 
-    function writeByte(addr, d8)
+    function writeByte(addr,d8,cycleOffset)
     {
         const adr = addr & 0xffff;
-        const line = hw.lineDecode(adr);
         const d = d8 & 0xff;
-        hw.WR[line](adr,d);
+        const offset = cycleOffset===undefined ? cycle_delay : cycleOffset;
+        if(typeof(hw.write)==="function") { hw.write(adr,d,offset); return; }
+        hw.WR[hw.lineDecode(adr)](adr,d,offset);
     }
 
-    function readWord(addr)         { return readByte(addr) | (readByte(addr + 1) << 8) }
-    function readWordZp(addr)       { addr &= 0xff; return readByte(addr) | (readByte((addr + 1) & 0xff) << 8) }
+    function readWord(addr,offset)  { return readByte(addr,offset) | (readByte(addr + 1,offset+1) << 8); }
+    function readWordZp(addr,offset) { addr &= 0xff; return readByte(addr,offset) | (readByte((addr + 1) & 0xff,offset+1) << 8); }
+
+    function indexedAddress(base,index,writeAccess,rmw)
+    {
+        var addr = (base+index) & 0xffff;
+        var crossed = ((base ^ addr) & 0xff00)!==0;
+        if(writeAccess || crossed)
+        {
+            // NMOS 6502 first accesses the old page with the indexed low byte.
+            // This is a real read: it can trigger an I/O soft switch.
+            readByte((base & 0xff00) | (addr & 0xff),
+                rmw ? cycle_delay-3 : writeAccess ? cycle_delay-1 : cycle_delay);
+            if(!writeAccess) cycle_delay++;
+        }
+        return addr;
+    }
+
+    function readModifyByte(addr)
+    {
+        var original = readByte(addr,cycle_delay-2);
+        // NMOS RMW writes the unmodified byte before the final modified byte.
+        writeByte(addr,original,cycle_delay-1);
+        return original;
+    }
 
     // Boot log record payload, stored little-endian when exported:
     //   PClo PChi OPC OP1 OP2 A X Y P SP
@@ -691,11 +719,11 @@ function Cpu6502(hwobj)
         return true;
     }
 
-    function logBootInstruction(boot_pc, opcode, operand)
+    function logBootInstruction(boot_pc,opcode,operand,stackPointer)
     {
         if (!bDebug_boot || BOOTcnt >= BOOTsiz) return;
 
-        var packed = packBootState(opcode, operand);
+        var packed = packBootState(opcode,operand,stackPointer);
         var member = BOOTgroup_lookup[boot_pc & 0xffff];
 
         if (!member)
@@ -735,7 +763,7 @@ function Cpu6502(hwobj)
         if (!startBootGroup(member, boot_pc, packed)) emitBootPacked(boot_pc, packed);
     }
 
-    function packBootState(opcode, operand)
+    function packBootState(opcode,operand,stackPointer)
     {
         return  BigInt(opcode & 0xff) |
                (BigInt(operand & 0xffff) << 8n) |
@@ -743,7 +771,7 @@ function Cpu6502(hwobj)
                (BigInt(x & 0xff)       << 32n) |
                (BigInt(y & 0xff)       << 40n) |
                (BigInt(p & 0xff)       << 48n) |
-               (BigInt(sp & 0xff)      << 56n);
+               (BigInt((stackPointer===undefined ? sp : stackPointer) & 0xff) << 56n);
     }
 
     function packGroupState(group, repeatCount)
@@ -754,7 +782,7 @@ function Cpu6502(hwobj)
 
 
     // NMOS 6502 JMP ($xxFF) wraps the high-byte read inside the same page.
-    function readWordBug(addr)      { return readByte(addr) | (readByte((addr & 0xff00) | ((addr + 1) & 0xff)) << 8) }
+    function readWordBug(addr)      { return readByte(addr,3) | (readByte((addr & 0xff00) | ((addr + 1) & 0xff),4) << 8); }
 
     // Note that ROM must be set up before calling this because
     // RESET vector must be in place.
@@ -766,7 +794,7 @@ function Cpu6502(hwobj)
         y = 0x00;
         sp = 0xFF;
         p = P_I | P_1;
-        pc = readWord(RESET_VECTOR);
+        pc = readWord(RESET_VECTOR,0);
         cycle_delay = 0;
         instruction_count = 0;
         clearWarningTrace();
@@ -789,6 +817,7 @@ function Cpu6502(hwobj)
         var     operand;
         var     addr;
         var     d8;
+        var     jsrStackPointer;
 
         if (cycle_delay > 0) { cycle_delay--; return }
 
@@ -825,10 +854,10 @@ function Cpu6502(hwobj)
         {
             if(takingNMI)
                 hw.nmi_signal = 0;
-            push(pc >> 8); push(pc & 0xff); push(p);
-            p |= P_I;
-            pc = readWord(takingNMI ? NMI_VECTOR : IRQ_VECTOR);
             cycle_delay = 6;
+            push(pc >> 8,2); push(pc & 0xff,3); push(p,4);
+            p |= P_I;
+            pc = readWord(takingNMI ? NMI_VECTOR : IRQ_VECTOR,5);
             return;
         }
 
@@ -836,7 +865,7 @@ function Cpu6502(hwobj)
         var instr_pc = pc;          // PC of the opcode byte
         operand = 0;                // important for 1-byte opcodes
 
-        opcode = readByte(pc);
+        opcode = readByte(pc,0);
         pc = (pc + 1) & 0xffff;
         noteSelfLoopTrap(instr_pc,opcode);
 
@@ -856,12 +885,25 @@ function Cpu6502(hwobj)
         switch (instrlen[opcode])
         {
             case 2:
-                operand = readByte(pc);
+                operand = readByte(pc,1);
                 pc = (pc + 1) & 0xffff;
                 break;
 
             case 3:
-                operand = readWord(pc);
+                if(opcode===0x20)
+                {
+                    // JSR is unusual: the high operand is fetched LAST.
+                    // This ordering also handles a JSR whose high operand lies
+                    // in stack RAM overwritten by one of these pushes.
+                    operand = readByte(pc,1);
+                    jsrStackPointer = sp;
+                    var returnPC = (pc+1) & 0xffff;
+                    readByte(STACK_ADDR+sp,2);
+                    push(returnPC>>8,3);
+                    push(returnPC & 0xff,4);
+                    operand |= readByte(returnPC,5)<<8;
+                }
+                else operand = readWord(pc,1);
                 pc = (pc + 2) & 0xffff;
                 break;
         }
@@ -893,7 +935,7 @@ function Cpu6502(hwobj)
                 }
                 else
                 {
-                    logBootInstruction(boot_pc, opcode, operand);
+                    logBootInstruction(boot_pc,opcode,operand,jsrStackPointer);
                     if(BOOTcnt>=BOOTsiz)
                     {
                         BOOTlogging = false;
@@ -905,103 +947,103 @@ function Cpu6502(hwobj)
  
         // Execute!
         switch (opcode) {
-        case 0x00:   push(pc >> 8);  push(pc & 0xff);  push(p | P_B);  p |= P_I;  pc = readWord(IRQ_VECTOR);  break; // BRK
+        case 0x00:   push(pc >> 8,2);  push(pc & 0xff,3);  push(p | P_B,4);  p |= P_I;  pc = readWord(IRQ_VECTOR,5);  break; // BRK
         case 0x01:   addr = ind_x(operand);  operand = readByte(addr);  or_instr(operand);  break; // ORA (ind,X)
         case 0x04:   unofficial(opcode,pc); break; // NOP zeropage / DOP / SKB (unofficial opcode, but 100% harmless)
         case 0x05:   operand = readByte(operand);  or_instr(operand);  break; // ORA zero page
-        case 0x06:   d8 = readByte(operand);  d8 = asl_instr(d8);  writeByte(operand, d8);  break; // ASL zero page
-        case 0x07:   d8 = readByte(operand);  d8 = asl_instr(d8);  writeByte(operand, d8);  or_instr(d8);  unofficial(opcode,pc); break; // SLO zero page (unofficial opcode)
-        case 0x08:   push(p | P_B);  break; // PHP
+        case 0x06:   d8 = readModifyByte(operand);  d8 = asl_instr(d8);  writeByte(operand, d8);  break; // ASL zero page
+        case 0x07:   d8 = readModifyByte(operand);  d8 = asl_instr(d8);  writeByte(operand, d8);  or_instr(d8);  unofficial(opcode,pc); break; // SLO zero page (unofficial opcode)
+        case 0x08:   push(p | P_B,2);  break; // PHP
         case 0x09:   or_instr(operand);  break; // ORA imm
         case 0x0a:   a = asl_instr(a);  break; // ASL A
         case 0x0d:   operand = readByte(operand);  or_instr(operand);  break; // ORA absolute
-        case 0x0e:   d8 = readByte(operand);  d8 = asl_instr(d8);  writeByte(operand, d8);  break; // ASL absolute
+        case 0x0e:   d8 = readModifyByte(operand);  d8 = asl_instr(d8);  writeByte(operand, d8);  break; // ASL absolute
         case 0x10:   if ((p & P_N) == 0) branch_instr(operand);  break; // BPL
-        case 0x11:   addr = ind_y(operand);  operand = readByte(addr);  or_instr(operand);  if (((addr - y) ^ addr) & 0xff00) cycle_delay++;  break; // ORA (ind),Y
+        case 0x11:   addr = ind_y(operand);  operand = readByte(addr);  or_instr(operand);  break; // ORA (ind),Y
         case 0x15:   operand = readByte((operand + x) & 0xff);  or_instr(operand);  break; // ORA zero,X
-        case 0x16:   addr = (operand + x) & 0xff;  d8 = readByte(addr);  d8 = asl_instr(d8);  writeByte(addr, d8);  break; // ASL zero,X
+        case 0x16:   addr = (operand + x) & 0xff;  d8 = readModifyByte(addr);  d8 = asl_instr(d8);  writeByte(addr, d8);  break; // ASL zero,X
         case 0x18:   p &= ~P_C;  break; // CLC
-        case 0x19:   addr = operand + y;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  or_instr(operand);  break; // ORA absolute,Y
-        case 0x1d:   addr = operand + x;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  or_instr(operand);  break; // ORA absolute,X
+        case 0x19:   addr = indexedAddress(operand,y);  operand = readByte(addr);  or_instr(operand);  break; // ORA absolute,Y
+        case 0x1d:   addr = indexedAddress(operand,x);  operand = readByte(addr);  or_instr(operand);  break; // ORA absolute,X
         case 0x1e:       // ASL absolute,X
-            addr = (operand + x) & 0xffff;
-            d8 = readByte(addr);
+            cycle_delay++; // absolute,X RMW is seven cycles
+            addr = indexedAddress(operand,x,true,true);
+            d8 = readModifyByte(addr);
             d8 = asl_instr(d8);
             writeByte(addr, d8);
-            cycle_delay++; // absolute,X read-modify-write is 7 cycles
             break;
-        case 0x20:   pc--;  push(pc >> 8);  push(pc & 0xff);  pc = operand;  break; // JSR absolute
+        case 0x20:   pc = operand;  break; // JSR absolute (pushes accompany operand fetch above)
         case 0x21:   addr = ind_x(operand);  operand = readByte(addr);  and_instr(operand);  break; // AND (ind,X)
         case 0x24:   operand = readByte(operand);  bit_instr(operand);  break; // BIT zero page
         case 0x25:   operand = readByte(operand);  and_instr(operand);  break; // AND zero page
-        case 0x26:   d8 = readByte(operand);  d8 = rol_instr(d8);  writeByte(operand, d8);  break; // ROL zero page
-        case 0x28:   p = (pull() & ~P_B) | P_1;  break; // PLP
+        case 0x26:   d8 = readModifyByte(operand);  d8 = rol_instr(d8);  writeByte(operand, d8);  break; // ROL zero page
+        case 0x28:   p = (pull(3) & ~P_B) | P_1;  break; // PLP
         case 0x29:   and_instr(operand);  break; // AND imm
         case 0x2a:   a = rol_instr(a);  break; // ROL A
         case 0x2c:   operand = readByte(operand);  bit_instr(operand);  break; // BIT absolute
         case 0x2d:   operand = readByte(operand);  and_instr(operand);  break; // AND absolute
-        case 0x2e:   d8 = readByte(operand);  d8 = rol_instr(d8);  writeByte(operand, d8);  break; // ROL absolute
+        case 0x2e:   d8 = readModifyByte(operand);  d8 = rol_instr(d8);  writeByte(operand, d8);  break; // ROL absolute
         case 0x30:   if ((p & P_N) != 0) branch_instr(operand);  break; // BMI
-        case 0x31:   addr = ind_y(operand);  operand = readByte(addr);  and_instr(operand);  if (((addr - y) ^ addr) & 0xff00) cycle_delay++;  break; // AND (ind),Y
+        case 0x31:   addr = ind_y(operand);  operand = readByte(addr);  and_instr(operand);  break; // AND (ind),Y
         case 0x35:   operand = readByte((operand + x) & 0xff);  and_instr(operand);  break; // AND zero, X
-        case 0x36:   addr = (operand + x) & 0xff;  d8 = readByte(addr);  d8 = rol_instr(d8);  writeByte(addr, d8);  break; // ROL zero, X
+        case 0x36:   addr = (operand + x) & 0xff;  d8 = readModifyByte(addr);  d8 = rol_instr(d8);  writeByte(addr, d8);  break; // ROL zero, X
         case 0x38:   p |= P_C;  break; // SEC
-        case 0x39:   addr = operand + y;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  and_instr(operand);  break; // AND absolute, Y
-        case 0x3d:   addr = operand + x;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  and_instr(operand);  break; // AND absolute, X
+        case 0x39:   addr = indexedAddress(operand,y);  operand = readByte(addr);  and_instr(operand);  break; // AND absolute, Y
+        case 0x3d:   addr = indexedAddress(operand,x);  operand = readByte(addr);  and_instr(operand);  break; // AND absolute, X
         case 0x3e:       // ROL absolute, X
-            addr = (operand + x) & 0xffff;
-            d8 = readByte(addr);
+            cycle_delay++; // absolute,X RMW is seven cycles
+            addr = indexedAddress(operand,x,true,true);
+            d8 = readModifyByte(addr);
             d8 = rol_instr(d8);
             writeByte(addr, d8);
-            cycle_delay++; // absolute,X read-modify-write is 7 cycles
             break;
-        case 0x40:   p = (pull() & ~P_B) | P_1;  pc = pull();  pc |= pull() << 8;  break; // RTI
+        case 0x40:   p = (pull(3) & ~P_B) | P_1;  pc = pull(4);  pc |= pull(5) << 8;  break; // RTI
         case 0x41:   addr = ind_x(operand);  operand = readByte(addr);  eor_instr(operand);  break; // EOR (ind, X)
         case 0x45:   operand = readByte(operand);  eor_instr(operand);  break; // EOR zero page
-        case 0x46:   d8 = readByte(operand);  d8 = lsr_instr(d8);  writeByte(operand, d8);  break; // LSR zero page
-        case 0x48:   push(a);  break; // PHA
+        case 0x46:   d8 = readModifyByte(operand);  d8 = lsr_instr(d8);  writeByte(operand, d8);  break; // LSR zero page
+        case 0x48:   push(a,2);  break; // PHA
         case 0x49:   eor_instr(operand);  break; // EOR imm
         case 0x4a:   a = lsr_instr(a);  break; // LSR A
         case 0x4c:   pc = operand;  break; // JMP absolute
         case 0x4d:   operand = readByte(operand);  eor_instr(operand);  break; // EOR absolute
-        case 0x4e:   d8 = readByte(operand);  d8 = lsr_instr(d8);  writeByte(operand, d8);  break; // LSR absolute
+        case 0x4e:   d8 = readModifyByte(operand);  d8 = lsr_instr(d8);  writeByte(operand, d8);  break; // LSR absolute
         case 0x50:   if ((p & P_V) == 0) branch_instr(operand);  break; // BVC
-        case 0x51:   addr = ind_y(operand);  operand = readByte(addr);  eor_instr(operand);  if (((addr - y) ^ addr) & 0xff00) cycle_delay++;  break; // EOR (indirect), Y
+        case 0x51:   addr = ind_y(operand);  operand = readByte(addr);  eor_instr(operand);  break; // EOR (indirect), Y
         case 0x55:   operand = readByte((operand + x) & 0xff);  eor_instr(operand);  break; // EOR zero, X
-        case 0x56:   addr = (operand + x) & 0xff;  d8 = readByte(addr);  d8 = lsr_instr(d8);  writeByte(addr, d8);  break; // LSR zero, X
+        case 0x56:   addr = (operand + x) & 0xff;  d8 = readModifyByte(addr);  d8 = lsr_instr(d8);  writeByte(addr, d8);  break; // LSR zero, X
         case 0x58:   p &= ~P_I;  break; // CLI
-        case 0x59:   addr = operand + y;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  eor_instr(operand);  break; // EOR absolute,Y
-        case 0x5d:   addr = operand + x;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  eor_instr(operand);  break; // EOR absolute,X
+        case 0x59:   addr = indexedAddress(operand,y);  operand = readByte(addr);  eor_instr(operand);  break; // EOR absolute,Y
+        case 0x5d:   addr = indexedAddress(operand,x);  operand = readByte(addr);  eor_instr(operand);  break; // EOR absolute,X
         case 0x5e:       // LSR absolute,X
-            addr = (operand + x) & 0xffff;
-            d8 = readByte(addr);
+            cycle_delay++; // absolute,X RMW is seven cycles
+            addr = indexedAddress(operand,x,true,true);
+            d8 = readModifyByte(addr);
             d8 = lsr_instr(d8);
             writeByte(addr, d8);
-            cycle_delay++; // absolute,X read-modify-write is 7 cycles
             break;
-        case 0x60:   pc = pull();  pc |= pull() << 8;  pc++;  break; // RTS
+        case 0x60:   pc = pull(3);  pc |= pull(4) << 8;  pc++;  break; // RTS
         case 0x61:   addr = ind_x(operand);  operand = readByte(addr);  adc_instr(operand);  break; // ADC (ind,X)
         case 0x65:   operand = readByte(operand);  adc_instr(operand);  break; // ADC zero page
-        case 0x66:   d8 = readByte(operand);  d8 = ror_instr(d8);  writeByte(operand, d8);  break; // ROR zero page
-        case 0x68:   a = pull();  set_nz(a);  break; // PLA
+        case 0x66:   d8 = readModifyByte(operand);  d8 = ror_instr(d8);  writeByte(operand, d8);  break; // ROR zero page
+        case 0x68:   a = pull(3);  set_nz(a);  break; // PLA
         case 0x69:   adc_instr(operand);  break; // ADC imm
         case 0x6a:   a = ror_instr(a);  break; // ROR A
         case 0x6c:   pc = readWordBug(operand);  break; // JMP (ind)
         case 0x6d:   operand = readByte(operand);  adc_instr(operand);  break; // ADC absolute
-        case 0x6e:   d8 = readByte(operand);  d8 = ror_instr(d8);  writeByte(operand, d8);  break; // ROR absolute
+        case 0x6e:   d8 = readModifyByte(operand);  d8 = ror_instr(d8);  writeByte(operand, d8);  break; // ROR absolute
         case 0x70:   if ((p & P_V) != 0) branch_instr(operand);  break; // BVS
-        case 0x71:   addr = ind_y(operand);  operand = readByte(addr);  adc_instr(operand);  if (((addr - y) ^ addr) & 0xff00) cycle_delay++;  break; // ADC (indirect),Y
+        case 0x71:   addr = ind_y(operand);  operand = readByte(addr);  adc_instr(operand);  break; // ADC (indirect),Y
         case 0x75:   operand = readByte((operand + x) & 0xff);  adc_instr(operand);  break; // ADC zero, X
-        case 0x76:   addr = (operand + x) & 0xff;  d8 = readByte(addr);  d8 = ror_instr(d8);  writeByte(addr, d8);  break; // ROR zero, X
+        case 0x76:   addr = (operand + x) & 0xff;  d8 = readModifyByte(addr);  d8 = ror_instr(d8);  writeByte(addr, d8);  break; // ROR zero, X
         case 0x78:   p |= P_I;  break; // SEI
-        case 0x79:   addr = operand + y;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  adc_instr(operand);  break; // ADC absolute,Y
-        case 0x7d:   addr = operand + x;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  adc_instr(operand);  break; // ADC absolute,X
+        case 0x79:   addr = indexedAddress(operand,y);  operand = readByte(addr);  adc_instr(operand);  break; // ADC absolute,Y
+        case 0x7d:   addr = indexedAddress(operand,x);  operand = readByte(addr);  adc_instr(operand);  break; // ADC absolute,X
         case 0x7e:       // ROR absolute,X
-            addr = (operand + x) & 0xffff;
-            d8 = readByte(addr);
+            cycle_delay++; // absolute,X RMW is seven cycles
+            addr = indexedAddress(operand,x,true,true);
+            d8 = readModifyByte(addr);
             d8 = ror_instr(d8);
             writeByte(addr, d8);
-            cycle_delay++; // absolute,X read-modify-write is 7 cycles
             break;
         case 0x80:   unofficial(opcode,pc); break; // NOP imm / SKB / DOP
         case 0x81:   addr = ind_x(operand);  writeByte(addr, a);  break; // STA (ind, X)
@@ -1016,14 +1058,14 @@ function Cpu6502(hwobj)
         case 0x8d:   writeByte(operand, a);  break; // STA absolute
         case 0x8e:   writeByte(operand, x);  break; // STX absolute
         case 0x90:   if ((p & P_C) == 0) branch_instr(operand);  break; // BCC
-        case 0x91:   addr = ind_y(operand);  writeByte(addr, a);  break; // STA (ind),Y
+        case 0x91:   addr = ind_y(operand,true);  writeByte(addr, a);  break; // STA (ind),Y
         case 0x94:   writeByte((operand + x) & 0xff, y);  break; // STY zero, X
         case 0x95:   writeByte((operand + x) & 0xff, a);  break; // STA zero, X
         case 0x96:   writeByte((operand + y) & 0xff, x);  break; // STX zero, Y
         case 0x98:   a = y;  set_nz(a);  break; // TYA
-        case 0x99:   writeByte(operand + y, a);  break; // STA absolute, Y
+        case 0x99:   writeByte(indexedAddress(operand,y,true),a);  break; // STA absolute, Y
         case 0x9a:   sp = x;  break; // TXS
-        case 0x9d:   writeByte(operand + x, a);  break; // STA absolute, X
+        case 0x9d:   writeByte(indexedAddress(operand,x,true),a);  break; // STA absolute, X
         case 0xa0:   y = operand;  set_nz(y);  break; // LDY imm
         case 0xa1:   addr = ind_x(operand);  operand = readByte(addr);  a = operand;  set_nz(a);  break; // LDA (ind, X)
         case 0xa2:   x = operand;  set_nz(x);  break; // LDX imm
@@ -1037,67 +1079,67 @@ function Cpu6502(hwobj)
         case 0xad:   a = readByte(operand);  set_nz(a);  break; // LDA absolute
         case 0xae:   x = readByte(operand);  set_nz(x);  break; // LDX absolute
         case 0xb0:   if ((p & P_C) != 0) branch_instr(operand);  break; // BCS
-        case 0xb1:   addr = ind_y(operand);  a = readByte(addr);  set_nz(a);  if (((addr - y) ^ addr) & 0xff00) cycle_delay++;  break; // LDA (ind),Y
+        case 0xb1:   addr = ind_y(operand);  a = readByte(addr);  set_nz(a);  break; // LDA (ind),Y
         case 0xb4:   y = readByte((operand + x) & 0xff);  set_nz(y);  break; // LDY zero,X
         case 0xb5:   a = readByte((operand + x) & 0xff);  set_nz(a);  break; // LDA zero,X
         case 0xb6:   x = readByte((operand + y) & 0xff);  set_nz(x);  break; // LDX zero,Y
         case 0xb8:   p &= ~P_V;  break; // CLV
-        case 0xb9:   addr = operand + y;  if ((operand ^ addr) & 0xff00) cycle_delay++;  a = readByte(addr);  set_nz(a);  break; // LDA absolute, Y
+        case 0xb9:   addr = indexedAddress(operand,y);  a = readByte(addr);  set_nz(a);  break; // LDA absolute, Y
         case 0xba:   x = sp;  set_nz(x);  break; // TSX
-        case 0xbc:   addr = operand + x;  if ((operand ^ addr) & 0xff00) cycle_delay++;  y = readByte(addr);  set_nz(y);  break; // LDY absolute, X
-        case 0xbd:   addr = operand + x;  if ((operand ^ addr) & 0xff00) cycle_delay++;  a = readByte(addr);  set_nz(a);  break; // LDA absolute, X
-        case 0xbe:   addr = operand + y;  if ((operand ^ addr) & 0xff00) cycle_delay++;  x = readByte(addr);  set_nz(x);  break; // LDX absolute, Y
+        case 0xbc:   addr = indexedAddress(operand,x);  y = readByte(addr);  set_nz(y);  break; // LDY absolute, X
+        case 0xbd:   addr = indexedAddress(operand,x);  a = readByte(addr);  set_nz(a);  break; // LDA absolute, X
+        case 0xbe:   addr = indexedAddress(operand,y);  x = readByte(addr);  set_nz(x);  break; // LDX absolute, Y
         case 0xc0:   cmp_instr(y, operand);  break; // CPY imm
         case 0xc1:   addr = ind_x(operand);  operand = readByte(addr);  cmp_instr(a, operand);  break; // CMP (ind, X)
         case 0xc2:   break; // NOP #imm on NMOS 6502; $C2 $02 used by ProDOS 2.5 CPU detection
         case 0xc4:   operand = readByte(operand);  cmp_instr(y, operand);  break; // CPY zero
         case 0xc5:   operand = readByte(operand);  cmp_instr(a, operand);  break; // CMP zero
-        case 0xc6:   d8 = (readByte(operand) - 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // DEC zero
+        case 0xc6:   d8 = (readModifyByte(operand) - 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // DEC zero
         case 0xc8:   y = ++y & 0xff;  set_nz(y);  break; // INY
         case 0xc9:   cmp_instr(a, operand);  break; // CMP imm
         case 0xca:   x = --x & 0xff;  set_nz(x);  break; // DEX
         case 0xcc:   operand = readByte(operand);  cmp_instr(y, operand);  break; // CPY absolute
         case 0xcd:   operand = readByte(operand);  cmp_instr(a, operand);  break; // CMP absolute
-        case 0xce:   d8 = (readByte(operand) - 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // DEC absolute
+        case 0xce:   d8 = (readModifyByte(operand) - 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // DEC absolute
         case 0xd0:   if ((p & P_Z) == 0) branch_instr(operand);  break; // BNE
-        case 0xd1:   addr = ind_y(operand);  operand = readByte(addr);  cmp_instr(a, operand);  if (((addr - y) ^ addr) & 0xff00) cycle_delay++;  break; // CMP (ind),Y
+        case 0xd1:   addr = ind_y(operand);  operand = readByte(addr);  cmp_instr(a, operand);  break; // CMP (ind),Y
         case 0xd5:   operand = readByte((operand + x) & 0xff);  cmp_instr(a, operand);  break; // CMP zero,X
-        case 0xd6:   addr = (operand + x) & 0xff;  d8 = (readByte(addr) - 1) & 0xff;  writeByte(addr, d8);  set_nz(d8);  break; // DEC zero,X
+        case 0xd6:   addr = (operand + x) & 0xff;  d8 = (readModifyByte(addr) - 1) & 0xff;  writeByte(addr, d8);  set_nz(d8);  break; // DEC zero,X
         case 0xd8:   p &= ~P_D;  break; // CLD
-        case 0xd9:   addr = operand + y;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  cmp_instr(a, operand);  break; // CMP absolute,Y
-        case 0xdd:   addr = operand + x;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  cmp_instr(a, operand);  break; // CMP absolute,X
+        case 0xd9:   addr = indexedAddress(operand,y);  operand = readByte(addr);  cmp_instr(a, operand);  break; // CMP absolute,Y
+        case 0xdd:   addr = indexedAddress(operand,x);  operand = readByte(addr);  cmp_instr(a, operand);  break; // CMP absolute,X
         case 0xde:       // DEC absolute,X
-            addr = (operand + x) & 0xffff;
-            d8 = (readByte(addr) - 1) & 0xff;
+            cycle_delay++; // absolute,X RMW is seven cycles
+            addr = indexedAddress(operand,x,true,true);
+            d8 = (readModifyByte(addr) - 1) & 0xff;
             writeByte(addr, d8);
             set_nz(d8);
-            cycle_delay++; // absolute,X read-modify-write is 7 cycles
             break;
         case 0xe0:   cmp_instr(x, operand);  break; // CPX imm
         case 0xe1:   addr = ind_x(operand);  operand = readByte(addr);  sbc_instr(operand);  break; // SBC (ind,X)
         case 0xe2:   unofficial(opcode,pc); break; // NOP imm / SKB / DOP
         case 0xe4:   operand = readByte(operand);  cmp_instr(x, operand);  break; // CPX zero
         case 0xe5:   operand = readByte(operand);  sbc_instr(operand);  break; // SBC zero
-        case 0xe6:   d8 = (readByte(operand) + 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // INC zero
+        case 0xe6:   d8 = (readModifyByte(operand) + 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // INC zero
         case 0xe8:   x = ++x & 0xff;  set_nz(x);  break; // INX
         case 0xe9:   sbc_instr(operand);  break; // SBC imm
         case 0xea:   break; // NOP
         case 0xec:   operand = readByte(operand);  cmp_instr(x, operand);  break; // CPX absolute
         case 0xed:   operand = readByte(operand);  sbc_instr(operand);  break; // SBC absolute
-        case 0xee:   d8 = (readByte(operand) + 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // INC absolute
+        case 0xee:   d8 = (readModifyByte(operand) + 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // INC absolute
         case 0xf0:   if ((p & P_Z) != 0) branch_instr(operand);  break; // BEQ
-        case 0xf1:   addr = ind_y(operand);  operand = readByte(addr);  sbc_instr(operand);  if (((addr - y) ^ addr) & 0xff00) cycle_delay++;  break; // SBC (ind),Y
+        case 0xf1:   addr = ind_y(operand);  operand = readByte(addr);  sbc_instr(operand);  break; // SBC (ind),Y
         case 0xf5:   operand = readByte((operand + x) & 0xff);  sbc_instr(operand);  break; // SBC zero,X
-        case 0xf6:   addr = (operand + x) & 0xff;  d8 = (readByte(addr) + 1) & 0xff;  writeByte(addr, d8);  set_nz(d8);  break; // INC zero,X
+        case 0xf6:   addr = (operand + x) & 0xff;  d8 = (readModifyByte(addr) + 1) & 0xff;  writeByte(addr, d8);  set_nz(d8);  break; // INC zero,X
         case 0xf8:   p |= P_D;  break; // SED
-        case 0xf9:   addr = operand + y;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  sbc_instr(operand);  break; // SBC absolute,Y
-        case 0xfd:   addr = operand + x;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  sbc_instr(operand);  break; // SBC absolute,X
+        case 0xf9:   addr = indexedAddress(operand,y);  operand = readByte(addr);  sbc_instr(operand);  break; // SBC absolute,Y
+        case 0xfd:   addr = indexedAddress(operand,x);  operand = readByte(addr);  sbc_instr(operand);  break; // SBC absolute,X
         case 0xfe:       // INC absolute,X
-            addr = (operand + x) & 0xffff;
-            d8 = (readByte(addr) + 1) & 0xff;
+            cycle_delay++; // absolute,X RMW is seven cycles
+            addr = indexedAddress(operand,x,true,true);
+            d8 = (readModifyByte(addr) + 1) & 0xff;
             writeByte(addr, d8);
             set_nz(d8);
-            cycle_delay++; // absolute,X read-modify-write is 7 cycles
             break;
         default:
             console.warn(
@@ -1145,8 +1187,15 @@ function Cpu6502(hwobj)
     //  ██   ██ ███████ ███████ ██      ███████ ██   ██ ███████ 
 
 
-    function ind_x(operand) { return readWordZp(operand + x); }
-    function ind_y(operand) { return (readWordZp(operand) + y) & 0xffff; }
+    function ind_x(operand)
+    {
+        readByte(operand & 0xff,2);
+        return readWordZp(operand+x,3);
+    }
+    function ind_y(operand,writeAccess)
+    {
+        return indexedAddress(readWordZp(operand,2),y,writeAccess);
+    }
     function set_flag(flag, cond) { p = (cond != 0) ? p | flag : p & ~flag; }
     function set_nz(d8) { p = (p & ~(P_N | P_Z)) | nz_flags[d8 & 0xff]; }
     function asl_instr(d8) 
@@ -1296,8 +1345,8 @@ function Cpu6502(hwobj)
         if ((old_pc ^ pc) & 0xff00) cycle_delay++; // branch crossed a page
     }
 
-    function push(d8) { writeByte(STACK_ADDR + sp, d8); sp = (sp - 1) & 0xff; }
-    function pull() { sp = (sp + 1) & 0xff; return readByte(STACK_ADDR + sp); }
+    function push(d8,offset) { writeByte(STACK_ADDR + sp,d8,offset); sp = (sp - 1) & 0xff; }
+    function pull(offset) { sp = (sp + 1) & 0xff; return readByte(STACK_ADDR + sp,offset); }
 
 //    ______                                            _    _                   
 //  .' ____ \                                          / |_ (_)                  

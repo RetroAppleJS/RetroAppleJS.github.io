@@ -1,0 +1,1650 @@
+diff --git a/docs/VAPORLOCK_BUS.md b/docs/VAPORLOCK_BUS.md
+new file mode 100644
+index 0000000..81eb456
+--- /dev/null
++++ b/docs/VAPORLOCK_BUS.md
+@@ -0,0 +1,159 @@
++# Apple II/II+ scanner and floating bus
++
++This patch prepares the live JavaScript emulator for Vaporlock. `Apple2Hw`
++owns bus timing and the motherboard video-mode latches. Video renderers
++continue to display memory asynchronously. No renderer or include changes
++are required, and the WASM accelerator is outside this patch's scope.
++
++## Clock and raster convention
++
++An NTSC field contains 262 lines of 65 machine cycles: 17,030 cycles.
++The scanner epoch starts at horizontal blanking on line zero. For video
++clock `V`, the field phase is `floor(V) mod 17030`, the line is
++`floor(phase / 65)`, and the horizontal cycle is `phase mod 65`.
++
++| Horizontal cycle | Meaning |
++| --- | --- |
++| 0–24 | Horizontal blanking; scanner still fetches RAM |
++| 25–64 | Visible byte columns 0–39 |
++
++Lines 0–191 are visible; 192–261 are vertical blanking. The H counter
++starts in state `$18`, with the blanking origin offset by 40 clocks and
++one repeated counter state at its preset. The V counter starts at `$100`
++and presets to `$FA` on line 256. The address adder and counter wiring
++select memory throughout blanking; addresses are never clamped to the
++visible screen. In text/lores mode, II/II+ additionally selects A12 during
++horizontal blanking. Mixed hires switches to text using the V4/V2 gate,
++including its behavior outside the displayed lines.
++
++At the field origin, text page 1 fetches `$1468` for two adjacent cycles;
++visible column zero on line zero is `$0400` at cycle 25. These are different
++from a convention that places the first visible column at horizontal
++cycle zero. Diagnostic code must use the convention above.
++
++`getCpuTicks()` counts completed live CPU ticks. `getVideoTicks()` is a
++separate counter. At normal speed their increments are 1:1. The existing
++JavaScript SYSTEM speed selection determines the video/CPU ratio;
++fractions are retained between ticks, using a fixed-scale epoch to avoid
++repeated-addition rounding drift. Debugger instruction stepping uses
++1:1 advancement. Pausing or a pre-fetch CPU trap advances neither clock.
++Warm reset preserves scanner phase and CPU elapsed time; power restart
++starts a new scanner epoch and clears both hardware counters. The existing
++I/O peripheral clock retains its independent lifecycle.
++
++## Bus interface
++
++```js
++hw.read(cpuAddress, cycleOffset);          // byte, using current RD mapping
++hw.write(cpuAddress, byte, cycleOffset);   // using current WR mapping
++```
++
++Offsets are zero-based CPU cycles measured from the opcode tick. The
++floating-bus fetch uses `videoTicks + cycleOffset * videoClockScale`.
++An absolute `LDA`, `CMP`, `BIT` or `EOR` data read uses offset 3. A normal
++`(zp),Y` data read uses offset 4, or 5 when it crosses a page. Indexed dummy
++reads are performed through the active map, and NMOS read-modify-write
++instructions perform the original-byte write before the modified write.
++JSR fetches its high operand on offset 5, after its stack writes.
++This is a hybrid timestamped CPU: semantic operations still occur together,
++then the scheduler drains the remaining ticks. It does not implement every
++6502 pin transition or every internal/dummy cycle.
++
++The existing `RD[]` and `WR[]` callback arrays remain available. Standard
++callbacks retain their byte interface, and accept optional extra offsets
++without needing to use them. The default `$C000–$CFFF` RD mapping resolves
++floating results even when called directly. `safe_read()` and `safe_dump()`
++resolve the same current mappings with read-only mode raised.
++
++I/O callbacks can return:
++
++| Read result | Driven bits |
++| --- | --- |
++| A number from 0 to 255 | All eight bits; `$00` remains a real driven byte |
++| `ctx.io.FLOATING_BUS` / `Apple2Hw.FLOATING_BUS` | None; the reserved sentinel is `-1` |
++| `{value: byte, mask: byte}` | Only the bits set in `mask` |
++
++The result is `(value & mask) | (videoByte & ~mask)`. The video byte is
++read directly from physical motherboard RAM, never through CPU mappings.
++The video fetch is sampled before dispatching the CPU I/O access, so a
++mode-changing read returns the preceding fetch and affects subsequent
++fetches. Empty I/O and absent slot ROMs float. Ordinary existing card
++callbacks continue to drive the byte they return; they are not silently
++reclassified on the basis of returning zero or `undefined`.
++
++Attached-device read descriptors can declare `driveMask`, for example:
++
++```js
++"0x60": {"handler":"read", "readOnly":true, "driveMask":0x80}
++```
++
++The game port drives D7 and leaves D0–D6 floating. A3 is ignored, so
++`$C068–$C06F` mirrors `$C060–$C067`. Paddle deadlines are sampled at the
++CPU access timestamp. The unconnected cassette input currently drives a
++low D7; this patch does not implement a cassette device. Keyboard data
++remains a full byte; keyboard strobe, speaker, paddle-trigger, display,
++and annunciator strobes float while retaining their normal side effects.
++`$C019` is not an Apple II/II+ VBL status register and remains floating.
++
++Peripherals receive `ctx.hw`, `ctx.cycleOffset`, and `ctx.cpuTick` (the
++effective CPU timestamp). A time-sensitive peripheral may adopt those
++fields without changing the dispatcher. Existing peripheral timers are
++not rewritten in this patch.
++
++## Observation for the later STEP TRACE SCENARIO
++
++```js
++var hw = apple2plus.hwObj();
++hw.getVideoPosition();     // phase, line, hcycle, blanking flags, column/x/y
++hw.getScannerState();      // position plus six-bit H and nine-bit V state
++hw.getScannerAddress();    // physical video RAM address
++hw.peekFloatingBus();      // current video RAM byte, no I/O access
++hw.getVideoMode();         // copy of hardware video-mode latches
++
++hw.setBusMonitoring(true); // off by default; starts a new capture
++hw.getLastBusAccess();     // copy of the last timestamped access, or null
++hw.setBusMonitoring(false);
++```
++
++The position/scanner/floating-bus methods accept an optional CPU-cycle
++offset. They do not move the clocks or trigger I/O. `getLastBusAccess()`
++reports CPU start/effective ticks, effective video tick, offset, CPU address,
++R/W, line, horizontal cycle, field phase, H/V states, scanner address,
++video byte, driven mask, whether any bits are driven, and the resolved
++result. Read-only peeks/dumps do not change this record. Records are
++allocated only while monitoring is enabled. At an instruction's semantic
++tick, an access record can have an effective timestamp ahead of the
++completed-tick counter; the following delay ticks catch up normally.
++
++This patch supplies the observation API and Node regression checks only.
++The STEP TRACE SCENARIO and an end-to-end Vaporshow pass/fail run belong to
++the next step. Do not infer complete Vaporlock compatibility from these
++foundation checks alone. PAL timing, //e auxiliary-memory behavior, and
++cycle-specific DMA/IRQ scheduling are not implemented here.
++
++## Verification
++
++Run the focused checks with:
++
++```sh
++node --test tests/apple2_vaporlock_bus.test.js
++```
++
++They use the real CPU, hardware bus, I/O dispatcher, motherboard, keyboard,
++speaker, and game-port code with the host drawing boundary omitted. Fixtures
++cover horizontal/vertical presets, blanking, pages, hires/mixed, physical
++RAM, driven and masked reads, observation, effective absolute/indirect/
++indexed/RMW accesses, and shared live/SYSTEM clock behavior.
++
++The existing repository test suite is supplied in `tests.zip`. It was
++extracted for verification and compared against an unmodified checkout;
++pre-existing failures are recorded in `VAPORLOCK_PATCH_VERIFICATION.md`.
++The archive itself is not changed.
++
++Hardware-reference cross-checks:
++[AppleWin scanner implementation](https://github.com/AppleWin/AppleWin/blob/master/source/Video.cpp),
++which identifies the counter and address-adder equations in *Understanding
++the Apple IIe*, and the test author's
++[Vaporshow explanation](https://www.applefritter.com/content/one-liner-vaporshow).
++The scanner code here expresses those hardware equations independently;
++no AppleWin code is incorporated.
+diff --git a/docs/VAPORLOCK_PATCH_VERIFICATION.md b/docs/VAPORLOCK_PATCH_VERIFICATION.md
+new file mode 100644
+index 0000000..9233ac0
+--- /dev/null
++++ b/docs/VAPORLOCK_PATCH_VERIFICATION.md
+@@ -0,0 +1,64 @@
++# Vaporlock patch verification
++
++Base: `d9d3d68d8adebd5cbe29dbafe7b65842b31b82ad` (main, 4 October 2026).
++
++The patch covers six existing JavaScript files, this verification note,
++`VAPORLOCK_BUS.md`, and `tests/apple2_vaporlock_bus.test.js`.
++WASM, renderer files, index.html and STEP TRACE SCENARIO files are unchanged.
++
++- Focused bus/CPU regressions: 15 passed, zero failed.
++- Existing tests.zip suite before changes: 412 tests, 384 passed, 28 failed.
++- Suite with this patch: 427 tests, 399 passed, the same 28 failures.
++- No additional failure names; none of the baseline failures were hidden or changed.
++- All six modified JavaScript files pass `node --check`.
++- `git diff --check` passes.
++- The delivered patch passes `git apply --check` and applies to a pristine copy
++  of its base files. The focused suite also runs against that applied copy.
++
++Commands:
++
++```sh
++node --test tests/apple2_vaporlock_bus.test.js
++node --test --test-concurrency=1 tests/*.test.js
++```
++
++The full-suite command exits nonzero because of the pre-existing failures
++listed below. No browser/Vaporshow compatibility claim is made; the
++STEP TRACE SCENARIO and end-to-end test are the next step.
++
++A fresh review identified fractional video-clock accumulation and JSR high
++operand ordering. Both received failing regressions, then fixes verified
++by the focused and full-suite runs. A further indexed/zero-page wrap check
++covers the review's remaining test gap. JSR's activity log still records
++its pre-instruction stack pointer and full instruction bytes.
++
++## Pre-existing failing tests
++
++- Composer import and export round-trip emulator semantic IDs independently of editor identity
++- Composer validation rejects duplicate semantic IDs and exposes an optional Runtime ID editor
++- DITHER2 redirects the stock DSCAN $1C00 entry to one PAGE2 color capture
++- Disk II body and gap images receive stable runtime layer ids
++- Disk II declares D1 and D2 as singleton layout-controlled devices
++- Disk II drive visuals delegate to the Apple II layout API
++- Disk II gap shadow uses an owner-level allAttached layout rule
++- DiskJS uses only the canonical AppleDisk2 component ID
++- LAYOUT constructor installs as oCOM.LAYOUT and applies pending Disk II facade state
++- Liron advertises HD20 as optional and attaches mixed SmartPort devices to distinct units
++- UniDisk Surface Map capability button toggles the popup open and closed
++- a transient canvas failure keeps the last complete frame until the next processing frame
++- active emulator and Composer layouts carry all four persistent Disk II semantic IDs
++- camera OFF captures the exact Apple II logo HGR page, including phase bit 7
++- camera RGB samples retain continuous luminance and adjustments affect the next capture immediately
++- default Apple II Plus boot mounts AppleMouse in physical slot 4
++- duplicate semantic layer ids are rejected
++- each processing frame replaces the camera frame and reset prevents further sampling
++- fixed scenario companion is mounted in viewport coordinate space
++- generic visibility API updates runtime layer model and DOM element atomically
++- layout companion prefers the right side, falls back left, and uses a narrower preferred width
++- layout visibility uses opacity and visibility instead of display toggling
++- near-neutral camera changes retain phase, while a real hue change can update bit 7
++- raw host camera frame is exposed synchronously to DSCAN and captured into HGR
++- reset stops processing-frame camera sampling and clears the host frame
++- runtime compositor never infers Disk II semantic identity from artwork or geometry
++- stock DSCAN 4.2 runs four comparator captures and builds all five Bayer densities in PAGE2
++- the original DSCAN $1D03 sync entry captures color PAGE2 without its bit-7-clearing merge
+diff --git a/res/EMU_CARD_hostio.js b/res/EMU_CARD_hostio.js
+index 252ae53..1e66686 100644
+--- a/res/EMU_CARD_hostio.js
++++ b/res/EMU_CARD_hostio.js
+@@ -39,7 +39,7 @@ function AppleBoard()
+             ,"action":{
+                  "RD":{
+                      "0x00":{"handler":"read","readOnly":true}
+-                    ,"0x10":"strobe"
++                    ,"0x10":{"handler":"strobe","driveMask":0}
+                  }
+                 ,"WR":{"0x10":"strobe"}
+              }
+@@ -66,7 +66,7 @@ function AppleBoard()
+             ,"icon":"fa fa-volume-up"
+             ,"description":"Apple II speaker"
+             ,"range":"HostIO"
+-            ,"action":{"RD":{"0x30":"toggle"}}
++            ,"action":{"RD":{"0x30":{"handler":"toggle","driveMask":0}}}
+         }
+         ,{
+              "DCODE":"A2GAM"
+@@ -77,8 +77,8 @@ function AppleBoard()
+             ,"range":"HostIO"
+             ,"action":{
+                  "RD":{
+-                     "0x60":{"handler":"read","readOnly":true}
+-                    ,"0x70":"trigger"
++                     "0x60":{"handler":"read","readOnly":true,"driveMask":0x80}
++                    ,"0x70":{"handler":"trigger","driveMask":0}
+                  }
+                 ,"WR":{"0x70":"trigger"}
+              }
+@@ -92,28 +92,37 @@ function AppleBoard()
+                     ,"WR":{"callback":write.bind(this)}}                                      // by default always 16 bytes
+     }
+ 
+-    function read()  {}
++    function read(rel_addr,ctx) { return ctx.io.FLOATING_BUS; }
+     function write() {}
+ 
+ 
+     this.IO_map = function(model)
+     {
+         function isRO(ctx) { return ctx && ctx.bRO === true; }
++        function setVideoSwitch(ctx,name,flag,legacySetter)
++        {
++            if(!isRO(ctx))
++            {
++                if(ctx.hw && typeof(ctx.hw.setVideoMode)==="function") ctx.hw.setVideoMode(name,flag);
++                else ctx.vid[legacySetter](flag);
++            }
++            return ctx.io.FLOATING_BUS;
++        }
+ 
+         // hack - TODO: find a permanent fix
+         const IOMAP_CALLS = {
+             //"KBD":      function(ctx2){ return isRO(ctx2) ? ctx2.keys.lastkey : ctx2.keys.polling(ctx2.keys.lastkey); },
+-            //"KBDSTRB":  function(ctx2){ if(!isRO(ctx2)) ctx2.keys.strobe();       return 0x00; },
+-            //"SPKR":     function(ctx2){ if(!isRO(ctx2)) ctx2.snd.toggle();        return 0x00; },
+-
+-            "TXTCLR":   function(ctx){ if(!isRO(ctx)) ctx.vid.setGfx(true);       return 0x00; },
+-            "TXTSET":   function(ctx){ if(!isRO(ctx)) ctx.vid.setGfx(false);      return 0x00; },
+-            "MIXCLR":   function(ctx){ if(!isRO(ctx)) ctx.vid.setMix(false);      return 0x00; },
+-            "MIXSET":   function(ctx){ if(!isRO(ctx)) ctx.vid.setMix(true);       return 0x00; },
+-            "TXTPAGE1": function(ctx){ if(!isRO(ctx)) ctx.vid.setPage2(false);    return 0x00; },
+-            "TXTPAGE2": function(ctx){ if(!isRO(ctx)) ctx.vid.setPage2(true);     return 0x00; },
+-            "LORES":    function(ctx){ if(!isRO(ctx)) ctx.vid.setHires(false);    return 0x00; },
+-            "HIRES":    function(ctx){ if(!isRO(ctx)) ctx.vid.setHires(true);     return 0x00; },
++            //"KBDSTRB":  function(ctx2){ if(!isRO(ctx2)) ctx2.keys.strobe();       return ctx.io.FLOATING_BUS; },
++            //"SPKR":     function(ctx2){ if(!isRO(ctx2)) ctx2.snd.toggle();        return ctx.io.FLOATING_BUS; },
++
++            "TXTCLR":   function(ctx){ return setVideoSwitch(ctx,"gfx",true,"setGfx"); },
++            "TXTSET":   function(ctx){ return setVideoSwitch(ctx,"gfx",false,"setGfx"); },
++            "MIXCLR":   function(ctx){ return setVideoSwitch(ctx,"mix",false,"setMix"); },
++            "MIXSET":   function(ctx){ return setVideoSwitch(ctx,"mix",true,"setMix"); },
++            "TXTPAGE1": function(ctx){ return setVideoSwitch(ctx,"page2",false,"setPage2"); },
++            "TXTPAGE2": function(ctx){ return setVideoSwitch(ctx,"page2",true,"setPage2"); },
++            "LORES":    function(ctx){ return setVideoSwitch(ctx,"hires",false,"setHires"); },
++            "HIRES":    function(ctx){ return setVideoSwitch(ctx,"hires",true,"setHires"); },
+ 
+             /*
+              * $C058 clears annunciator zero and selects motherboard video.
+@@ -124,8 +133,8 @@ function AppleBoard()
+              * selector subscribes to the video MUX signal instead of decoding
+              * PR#3/PR#0 commands.
+              */
+-            "AN0OFF":   function(ctx){ if(!isRO(ctx) && ctx.vid && typeof(ctx.vid.setAnnunciator0)=="function") ctx.vid.setAnnunciator0(false); return 0x00; },
+-            "AN0ON":    function(ctx){ if(!isRO(ctx) && ctx.vid && typeof(ctx.vid.setAnnunciator0)=="function") ctx.vid.setAnnunciator0(true);  return 0x00; }
++            "AN0OFF":   function(ctx){ if(!isRO(ctx) && ctx.vid && typeof(ctx.vid.setAnnunciator0)=="function") ctx.vid.setAnnunciator0(false); return ctx.io.FLOATING_BUS; },
++            "AN0ON":    function(ctx){ if(!isRO(ctx) && ctx.vid && typeof(ctx.vid.setAnnunciator0)=="function") ctx.vid.setAnnunciator0(true);  return ctx.io.FLOATING_BUS; }
+         };
+   
+         var IOMAP_ID = null;
+@@ -256,7 +265,7 @@ function AppleBoard()
+                 0x50: function(rel_addr,ctx)
+                 {
+                     const fn = SOFTSWITCH_50[rel_addr];
+-                    return fn ? fn(ctx) : 0x00;
++                    return fn ? fn(ctx) : ctx.io.FLOATING_BUS;
+                 }
+             },
+             "RG":{},
+@@ -268,7 +277,7 @@ function AppleBoard()
+                 0x50: function(rel_addr,d8,ctx)
+                 {
+                     const fn = SOFTSWITCH_50[rel_addr];
+-                    return fn ? fn(ctx) : 0x00;
++                    return fn ? fn(ctx) : ctx.io.FLOATING_BUS;
+                 }
+             }
+         }
+diff --git a/res/EMU_DEVICE_gameport.js b/res/EMU_DEVICE_gameport.js
+index 0d123f1..52387e2 100644
+--- a/res/EMU_DEVICE_gameport.js
++++ b/res/EMU_DEVICE_gameport.js
+@@ -185,12 +185,15 @@ function GamePort()
+         ticks++;
+     };
+ 
+-    this.trigger = function()
++    this.trigger = function(rel_addr,d8,ctx)
+     {
++        // RD callbacks pass ctx as argument two; WR callbacks use argument three.
++        ctx = ctx || (d8 && typeof(d8)==="object" ? d8 : null);
++        var now = ctx && ctx.cpuTick!==undefined ? ctx.cpuTick : ticks;
+         for(var i=0;i<paddleDeadline.length;i++)
+         {
+             paddleDeadline[i] =
+-                ticks +
++                now +
+                 clampByte(gameport.state.paddles[i]) *
+                 PADDLE_CYCLES_PER_STEP;
+         }
+@@ -198,9 +201,11 @@ function GamePort()
+         return 0x00;
+     };
+ 
+-    this.read = function(rel_addr)
++    this.read = function(rel_addr,ctx)
+     {
+-        var input = Number(rel_addr) & 0x0F;
++        // A3 is not decoded: $C068-$C06F mirror $C060-$C067.
++        var input = Number(rel_addr) & 0x07;
++        var now = ctx && ctx.cpuTick!==undefined ? ctx.cpuTick : ticks;
+ 
+         /*
+          * $C063 / SW2 is occupied by the traditional one-wire Shift-key
+@@ -220,7 +225,7 @@ function GamePort()
+ 
+         // $C064-$C067: PDL0-PDL3. Bit 7 stays high until its timer expires.
+         if(input>=0x04 && input<=0x07)
+-            return ticks < paddleDeadline[input-4] ? 0x80 : 0x00;
++            return now < paddleDeadline[input-4] ? 0x80 : 0x00;
+ 
+         return 0x00;
+     };
+diff --git a/res/EMU_apple2hw.js b/res/EMU_apple2hw.js
+index ac18b5c..fafc9bd 100644
+--- a/res/EMU_apple2hw.js
++++ b/res/EMU_apple2hw.js
+@@ -9,6 +9,10 @@
+ // 2) I/O (--> relative address starting from $C000)
+ // 3) ROM (--> relative address starting from $D000)
+ 
++// Reserved read result: the addressed device does not drive any data bits.
++// Ordinary callbacks still return bytes; partial drivers return {value,mask}.
++Apple2Hw.FLOATING_BUS = -1;
++
+ function Apple2Hw(vid,keys)
+ {
+     var hw = this;
+@@ -22,6 +26,7 @@ function Apple2Hw(vid,keys)
+     this.WR = [];
+     this.bRO = false;                   // Read-Only flag across the entire hardware (allowing safe read operations)
+     this.default_map = null;
++    this.FLOATING_BUS = Apple2Hw.FLOATING_BUS;
+ 
+     var video = vid;                        
+     this.io = new Apple2IO(video,hw);   // HARDWARE OBJECT OWNS IO (always call 'io' methods via hardware)
+@@ -41,6 +46,207 @@ function Apple2Hw(vid,keys)
+     var ram = new Uint8Array(RAM_SIZE);      // HARDWARE RAM SPACE //
+     /////////////////////////////////////////////////////////////////
+ 
++    /*
++     * NTSC Apple II/II+ video scanner, independent of canvas redraws.
++     * The field origin is the start of horizontal blanking on line zero.
++     * hcycle 0..24 is HBL; 25..64 fetches columns 0..39. Video RAM is
++     * fetched in the phase preceding the CPU access, including during blanking.
++     */
++    const VIDEO_LINE_CYCLES = 65;
++    const VIDEO_FRAME_CYCLES = 65*262;
++    var cpuTicks = 0;
++    var videoTicks = 0;
++    var videoClockScale = 1;
++    var scaleCpuEpoch = 0;
++    var scaleVideoEpoch = 0;
++    var busMonitoring = false;
++    var lastBusAccess = null;
++    var videoMode = {
++         "gfx":!!(video.state && video.state.gfx)
++        ,"mix":!!(video.state && video.state.mix)
++        ,"page2":!!(video.state && video.state.page2)
++        ,"hires":!!(video.state && video.state.hires)
++    };
++
++    this.setVideoMode = function(name,flag)
++    {
++        var setters = {"gfx":"setGfx","mix":"setMix","page2":"setPage2","hires":"setHires"};
++        var setter = setters[name];
++        if(!setter) return;
++        videoMode[name] = !!flag;
++        if(typeof(video[setter])==="function") video[setter](!!flag);
++    };
++
++    this.getVideoMode = function() { return Object.assign({},videoMode); };
++
++    this.getCpuTicks = function() { return cpuTicks; };
++    this.getVideoTicks = function() { return videoTicks; };
++
++    this.setVideoClockScale = function(scale)
++    {
++        scale = Number(scale);
++        scale = Number.isFinite(scale) && scale>0 ? scale : 1;
++        if(scale!==videoClockScale)
++        {
++            scaleCpuEpoch = cpuTicks;
++            scaleVideoEpoch = videoTicks;
++            videoClockScale = scale;
++        }
++        return videoClockScale;
++    };
++
++    // Called once per completed CPU tick by Apple2IO, never by the renderer.
++    this.tick = function()
++    {
++        cpuTicks++;
++        // Multiplication from an epoch avoids accumulating fractional rounding
++        // errors across ticks/batches (six ticks at 1/3 must be exactly two).
++        videoTicks = scaleVideoEpoch+(cpuTicks-scaleCpuEpoch)*videoClockScale;
++    };
++
++    function effectiveVideoTick(cycleOffset)
++    {
++        return scaleVideoEpoch+(cpuTicks-scaleCpuEpoch+(Number(cycleOffset) || 0))*videoClockScale;
++    }
++
++    this.getVideoPosition = function(cycleOffset)
++    {
++        var tick = effectiveVideoTick(cycleOffset);
++        var phase = ((Math.floor(tick)%VIDEO_FRAME_CYCLES)+VIDEO_FRAME_CYCLES)%VIDEO_FRAME_CYCLES;
++        var line = Math.floor(phase/VIDEO_LINE_CYCLES);
++        var hcycle = phase%VIDEO_LINE_CYCLES;
++        var hblank = hcycle<25;
++        var vblank = line>=192;
++        return {
++             "videoTick":tick,"frameCycle":phase,"line":line,"hcycle":hcycle
++            ,"hblank":hblank,"vblank":vblank
++            ,"byteColumn":hblank ? -1 : hcycle-25
++            ,"x":hblank || vblank ? -1 : (hcycle-25)*7
++            ,"y":vblank ? -1 : line
++        };
++    };
++
++    this.getScannerState = function(cycleOffset)
++    {
++        var state = this.getVideoPosition(cycleOffset);
++        var hClock = (state.hcycle+40)%65;
++        state.hState = (0x18+hClock-(hClock>=41 ? 1 : 0)) & 0x3F;
++        // The NTSC V counter presets after line 255, giving $FA..$FF.
++        state.vState = (0x100+state.line-(state.line>=256 ? 262 : 0)) & 0x1FF;
++        return state;
++    };
++
++    function scannerAddress(state)
++    {
++        var h = state.hState;
++        var v = state.vState;
++        // Motherboard latches belong to the bus; the renderer mirrors them.
++        var mode = videoMode;
++        var hires = !!mode.gfx && !!mode.hires;
++        if(mode.mix && (v & 0xA0)===0xA0) hires = false;
++
++        // The address adder wires V3/V4 to weights 5/10; carry is discarded.
++        // A0..A2 = H0..H2; A3..A6 = the four-bit sum; A7..A9 = V0..V2.
++        var rowGroup = (v>>6)&3;
++        var low = (h&7) | (((13+(h>>3)+rowGroup*5)&15)<<3);
++        var row = (v&0x38)<<4;
++        if(hires)
++            return (mode.page2 ? 0x4000 : 0x2000) | ((v&7)<<10) | row | low;
++
++        // On II/II+ the text scanner also selects A12 during HBL (not //e).
++        return (mode.page2 ? 0x0800 : 0x0400) | row | low | (state.hblank ? 0x1000 : 0);
++    }
++
++    this.getScannerAddress = function(cycleOffset)
++    {
++        return scannerAddress(this.getScannerState(cycleOffset));
++    };
++
++    this.peekFloatingBus = function(cycleOffset)
++    {
++        // Physical motherboard RAM, not the CPU RD map or a slot-card overlay.
++        return ram[this.getScannerAddress(cycleOffset)];
++    };
++    this.getFloatingBus = this.peekFloatingBus;
++
++    this.setBusMonitoring = function(enabled)
++    {
++        busMonitoring = !!enabled;
++        lastBusAccess = null;
++        return busMonitoring;
++    };
++
++    this.getLastBusAccess = function()
++    {
++        return lastBusAccess ? Object.assign({},lastBusAccess) : null;
++    };
++
++    function noteBusAccess(addr,rw,offset,result,mask,state,scanAddr,floating)
++    {
++        if(!busMonitoring || hw.bRO) return;
++        state = state || hw.getScannerState(offset);
++        scanAddr = scanAddr===undefined ? scannerAddress(state) : scanAddr;
++        lastBusAccess = {
++             "cpuTick":cpuTicks,"effectiveCpuTick":cpuTicks+offset
++            ,"effectiveTick":state.videoTick,"cycleOffset":offset
++            ,"address":addr,"rw":rw,"line":state.line,"hcycle":state.hcycle
++            ,"frameCycle":state.frameCycle,"hState":state.hState,"vState":state.vState
++            ,"scannerAddress":scanAddr
++            ,"floatingValue":floating===undefined ? ram[scanAddr] : floating
++            ,"mask":mask,"driven":mask!==0,"result":result
++        };
++    }
++
++    function resolveBusRead(addr,data,offset,state,scanAddr,floating)
++    {
++        offset = Number(offset) || 0;
++        var mask = data===hw.FLOATING_BUS ? 0
++            : data && typeof(data)==="object" ? data.mask & 0xFF : 0xFF;
++        var value = data && typeof(data)==="object" ? data.value : data;
++        if(mask!==0xFF && floating===undefined)
++        {
++            state = hw.getScannerState(offset);
++            scanAddr = scannerAddress(state);
++            floating = ram[scanAddr];
++        }
++        var result = ((value & mask) | ((floating || 0) & (mask^0xFF))) & 0xFF;
++        noteBusAccess(addr,"R",offset,result,mask,state,scanAddr,floating);
++        return result;
++    }
++
++    this.readIO = function(addr,cycleOffset)
++    {
++        // Capture BEFORE dispatch: this cycle's video fetch precedes any
++        // mode-changing CPU soft switch accessed during the CPU phase.
++        var state = this.getScannerState(cycleOffset);
++        var scanAddr = scannerAddress(state);
++        var floating = ram[scanAddr];
++        var data = this.io.read(addr-IO_ADDR,cycleOffset);
++        return resolveBusRead(addr,data,cycleOffset,state,scanAddr,floating);
++    };
++
++    this.read = function(addr,cycleOffset)
++    {
++        addr &= 0xFFFF;
++        var line = this.lineDecode(addr);
++        var fn = this.RD[line];
++        var data = fn(addr,cycleOffset);
++        // The default I/O callback already resolves and records the bus read;
++        // mapped RAM/ROM/card callbacks retain their existing byte interface.
++        if(line===0xC && this.default_map && fn===this.default_map.RD[line]) return data;
++        return resolveBusRead(addr,data,cycleOffset);
++    };
++
++    this.write = function(addr,d8,cycleOffset)
++    {
++        addr &= 0xFFFF;
++        d8 &= 0xFF;
++        var offset = Number(cycleOffset) || 0;
++        // Snapshot preceding the write, for the same phase reason as readIO.
++        noteBusAccess(addr,"W",offset,d8,0xFF);
++        return this.WR[this.lineDecode(addr)](addr,d8,offset);
++    };
++
+     /*
+      * Shared Apple II IRQ line.
+      *
+@@ -81,12 +287,18 @@ function Apple2Hw(vid,keys)
+     this.reset = function()
+     {
+         this.clearIRQSources();
++        videoMode.gfx = videoMode.mix = videoMode.page2 = videoMode.hires = false;
++        lastBusAccess = null;
+         hw.io.reset();
+     }
+ 
+     this.restart = function()
+     {
+         this.clearIRQSources();
++        cpuTicks = videoTicks = 0;
++        videoClockScale = 1;
++        scaleCpuEpoch = scaleVideoEpoch = 0;
++        lastBusAccess = null;
+         for (var i = 0; i < RAM_SIZE; i++)
+             ram[i] = Math.floor(Math.random() * 256.0);
+         this.mount();       // mount hardware callbacks
+@@ -113,7 +325,7 @@ function Apple2Hw(vid,keys)
+                 function(addr) { return ram[addr]; },                   // $9000 - $9FFF
+                 function(addr) { return ram[addr]; },                   // $A000 - $AFFF
+                 function(addr) { return ram[addr]; },                   // $B000 - $BFFF
+-                function(addr) { return hw.io.read(abs2IO(addr)); },    // $C000 - $CFFF
++                function(addr,offset) { return hw.readIO(addr,offset); }, // $C000 - $CFFF
+ 
+                 // Default ROM, not RAMCARD.
+                 function(addr) { return apple2Rom[addr - ROM_ADDR]; },  // $D000 - $DFFF
+@@ -135,7 +347,7 @@ function Apple2Hw(vid,keys)
+                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $9000 - $9FFF
+                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $A000 - $AFFF
+                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $B000 - $BFFF
+-                function(addr,d8) { hw.io.write(abs2IO(addr),d8); },                // $C000 - $CFFF
++                function(addr,d8,offset) { hw.io.write(abs2IO(addr),d8,offset); },   // $C000 - $CFFF
+ 
+                 // Default ROM write: no-op.
+                 function(addr,d8) {},                                               // $D000 - $DFFF
+@@ -196,9 +408,7 @@ function Apple2Hw(vid,keys)
+ 
+         try
+         {
+-            var line = this.lineDecode(addr);
+-            var fn = this.RD[line];
+-            var d8 = typeof(fn) == "function" ? fn(addr) : 0x00;
++            var d8 = typeof(this.RD[this.lineDecode(addr)])==="function" ? this.read(addr) : 0x00;
+ 
+             return (d8 == null ? 0x00 : d8) & 0xFF;
+         }
+@@ -227,9 +437,7 @@ function Apple2Hw(vid,keys)
+             for(var i=0;i<len;i++)
+             {
+                 var addr = (from + i) & 0xFFFF;
+-                var line = this.lineDecode(addr);
+-                var fn = this.RD[line];
+-                var d8 = typeof(fn) == "function" ? fn(addr) : 0x00;
++                var d8 = typeof(this.RD[this.lineDecode(addr)])==="function" ? this.read(addr) : 0x00;
+                 out[i] = (d8 == null ? 0x00 : d8) & 0xFF;
+             }
+         }
+@@ -321,4 +529,4 @@ function Apple2Hw(vid,keys)
+     // Link memory to Video
+     //video.vidram = ram.slice(0,0x6000);
+     video.vidram = ram.subarray(0, 0x6000);
+-}
+\ No newline at end of file
++}
+diff --git a/res/EMU_apple2io.js b/res/EMU_apple2io.js
+index 479af1e..6036157 100644
+--- a/res/EMU_apple2io.js
++++ b/res/EMU_apple2io.js
+@@ -111,6 +111,8 @@ function Apple2IO(vid,hostHardware)
+     const bDebug = true;
+     var io = this;
+     hostHardware = hostHardware || null;
++    this.FLOATING_BUS = hostHardware && hostHardware.FLOATING_BUS!==undefined
++        ? hostHardware.FLOATING_BUS : -1;
+ 
+     this.slot_ctx = {};
+     this.slots = [];
+@@ -287,7 +289,7 @@ function Apple2IO(vid,hostHardware)
+                             oCOM.getHexWord(0xC000 + base + rel_addr)
+                         );
+ 
+-                    return 0x00;
++                    return io.FLOATING_BUS;
+                 };
+ 
+                 fn._ioEmpty = true;
+@@ -1152,7 +1154,7 @@ function mergeActionMap(dst,src)
+ 
+     function line_decode(adr)  { return adr<256 ? adr & 0xF0 : (adr & 0xFF00); } // line decoder on IO & PROM addressing
+ 
+-    this.read = function(rel_addr)
++    this.read = function(rel_addr,cycleOffset)
+     {
+         var line = line_decode(rel_addr);
+ 
+@@ -1162,14 +1164,18 @@ function mergeActionMap(dst,src)
+             //"snd": snd,
+             "vid": vid,
+             "io": this,
+-            "bRO": (typeof(apple2plus) == "object" && apple2plus && apple2plus.hwObj().bRO === true),
++            "bRO": hostHardware ? hostHardware.bRO===true : false,
++            "hw": hostHardware,
++            "cycleOffset": Number(cycleOffset) || 0,
++            "cpuTick": hostHardware && typeof(hostHardware.getCpuTicks)==="function"
++                ? hostHardware.getCpuTicks()+(Number(cycleOffset) || 0) : clockTicks+(Number(cycleOffset) || 0),
+             "rel_addr": rel_addr,
+             "line": line,
+             "abs_addr": 0xC000 + rel_addr
+         };
+ 
+         var fn = CIO.ACTION_MAP.RD[line];
+-        if(!fn) { if(!ctx2.bRO) console.warn("CIO.ACTION_MAP.RD["+oCOM.getHexWord(line)+"] I/O call out of bounds (0x"+oCOM.getHexWord(line+0xC000)+")"); return 0x00; }
++        if(!fn || fn._ioEmpty===true) return this.FLOATING_BUS;
+ 
+         /*
+         * Read-only bus scan policy:
+@@ -1181,12 +1187,12 @@ function mergeActionMap(dst,src)
+         * triggers. During bRO scans, do not call those callbacks.
+         */
+         if(ctx2.bRO && fn._ioReport && fn._ioReport.range == "SlotIO")
+-            return 0x00;
++            return this.FLOATING_BUS;
+ 
+         return fn(rel_addr-line,ctx2);
+     }
+ 
+-    this.write = function(rel_addr,d8)
++    this.write = function(rel_addr,d8,cycleOffset)
+     {
+         var line = line_decode(rel_addr);
+ 
+@@ -1196,7 +1202,11 @@ function mergeActionMap(dst,src)
+             //"snd": snd,
+             "vid": vid,
+             "io": this,
+-            "bRO": (typeof(apple2plus) == "object" && apple2plus && apple2plus.hwObj().bRO === true),
++            "bRO": hostHardware ? hostHardware.bRO===true : false,
++            "hw": hostHardware,
++            "cycleOffset": Number(cycleOffset) || 0,
++            "cpuTick": hostHardware && typeof(hostHardware.getCpuTicks)==="function"
++                ? hostHardware.getCpuTicks()+(Number(cycleOffset) || 0) : clockTicks+(Number(cycleOffset) || 0),
+             "rel_addr": rel_addr,
+             "line": line,
+             "abs_addr": 0xC000 + rel_addr
+@@ -1261,6 +1271,7 @@ function mergeActionMap(dst,src)
+     this.tick = function(n)
+     {
+         clockTicks++;
++        if(hostHardware && typeof(hostHardware.tick)==="function") hostHardware.tick();
+         for(var i=0;i<tickCallbacks.length;i++)
+             tickCallbacks[i](n);
+     }
+@@ -1461,10 +1472,12 @@ function mergeActionMap(dst,src)
+                 var allowReadOnly=!!(
+                     handler && typeof(handler)=="object" && handler.readOnly===true
+                 );
++                var driveMask = handler && typeof(handler)==="object" && handler.driveMask!==undefined
++                    ? handler.driveMask & 0xFF : 0xFF;
+ 
+                 if(!Number.isInteger(addr) || typeof(method)!="function") continue;
+ 
+-                var callback=function(target,fn,readOnly,writeAction)
++                var callback=function(target,fn,readOnly,writeAction,mask)
+                 {
+                     if(writeAction)
+                     {
+@@ -1478,11 +1491,13 @@ function mergeActionMap(dst,src)
+ 
+                     return function(rel_addr,ctx)
+                     {
+-                        if(ctx && ctx.bRO===true && !readOnly) return 0x00;
++                        if(ctx && ctx.bRO===true && !readOnly) return io.FLOATING_BUS;
+                         var result=fn.call(target,rel_addr,ctx);
++                        if(mask===0) return io.FLOATING_BUS;
++                        if(mask!==0xFF) return {"value":result & 0xFF,"mask":mask};
+                         return result===undefined ? 0x00 : result;
+                     };
+-                }(device,method,allowReadOnly,op=="WR");
++                }(device,method,allowReadOnly,op=="WR",driveMask);
+ 
+                 callback._ioReport={
+                      "DCODE":dcode
+diff --git a/res/EMU_apple2plus.js b/res/EMU_apple2plus.js
+index c6f7cb3..bac707d 100644
+--- a/res/EMU_apple2plus.js
++++ b/res/EMU_apple2plus.js
+@@ -268,8 +268,12 @@ function Apple2Plus(context)
+      * Apple2IO tick, so mounted peripherals, timers, IRQ sources and the shared
+      * I/O clock remain live while debugging.
+      */
+-    function runCpuTicks(requestedTicks,deadline)
++    function runCpuTicks(requestedTicks,deadline,videoScale)
+     {
++        // Latch once per execution batch. Both scanner queries (including
++        // intra-instruction offsets) and completed ticks use the same ratio.
++        if(typeof(hw.setVideoClockScale)==="function")
++            hw.setVideoClockScale(videoScale===undefined ? 1 : videoScale);
+         requestedTicks = Math.floor(Number(requestedTicks));
+         if(!Number.isFinite(requestedTicks) || requestedTicks<0)
+             requestedTicks = 0;
+@@ -380,7 +384,7 @@ function Apple2Plus(context)
+     this.runLiveCpuTicks = function(n,options)
+     {
+         options = options || {};
+-        var result = runCpuTicks(n,options.deadline);
++        var result = runCpuTicks(n,options.deadline,options.videoScale);
+         advanceVideo(result.completedTicks,options.videoScale===undefined ? 1 : options.videoScale);
+         if(options.deviceCycle!==false && hw.io && typeof(hw.io.cycle)=="function")
+             hw.io.cycle();
+@@ -487,7 +491,11 @@ function Apple2Plus(context)
+             : Infinity;
+         var deadline = args.cpu_chrono+maxSliceMs;
+ 
+-        var run = runCpuTicks(requestedTicks,deadline);
++        var baseTicks_s = Number(_o.CPU_ClocksTicks_s);
++        var targetTicks_s = Number(_o.CPU_TargetTicks_s);
++        var videoScale = baseTicks_s>0 && targetTicks_s>0
++            ? baseTicks_s/targetTicks_s : 1;
++        var run = runCpuTicks(requestedTicks,deadline,videoScale);
+         var completedTicks = run.completedTicks;
+ 
+         /*
+@@ -499,11 +507,6 @@ function Apple2Plus(context)
+          */
+         if(completedTicks>0)
+         {
+-            var baseTicks_s = Number(_o.CPU_ClocksTicks_s);
+-            var targetTicks_s = Number(_o.CPU_TargetTicks_s);
+-            var videoScale = baseTicks_s>0 && targetTicks_s>0
+-                ? baseTicks_s/targetTicks_s
+-                : 1;
+             advanceVideo(completedTicks,videoScale);
+         }
+ 
+@@ -575,4 +578,4 @@ function Apple2Plus(context)
+         return video.setMonitor(type);
+     }
+ 
+-}
+\ No newline at end of file
++}
+diff --git a/res/EMU_cpu6502.js b/res/EMU_cpu6502.js
+index 8a785a6..dce8b90 100644
+--- a/res/EMU_cpu6502.js
++++ b/res/EMU_cpu6502.js
+@@ -578,23 +578,51 @@ function Cpu6502(hwobj)
+ //   ██████ ██       ██████       ██████  ██████  ██   ██ ███████ 
+ 
+ 
+-    function readByte(addr)         
++    // Semantics still execute together. Offsets timestamp real bus accesses
++    // relative to the opcode tick; the scheduler drains cycle_delay as before.
++    function readByte(addr,cycleOffset)
+     { 
+         const adr = addr & 0xffff;
++        const offset = cycleOffset===undefined ? cycle_delay : cycleOffset;
++        if(typeof(hw.read)==="function") return hw.read(adr,offset) & 0xff;
+         const line = hw.lineDecode(adr);
+-        return hw.RD[line](adr) & 0xff;
++        return hw.RD[line](adr,offset) & 0xff;
+     }
+ 
+-    function writeByte(addr, d8)
++    function writeByte(addr,d8,cycleOffset)
+     {
+         const adr = addr & 0xffff;
+-        const line = hw.lineDecode(adr);
+         const d = d8 & 0xff;
+-        hw.WR[line](adr,d);
++        const offset = cycleOffset===undefined ? cycle_delay : cycleOffset;
++        if(typeof(hw.write)==="function") { hw.write(adr,d,offset); return; }
++        hw.WR[hw.lineDecode(adr)](adr,d,offset);
+     }
+ 
+-    function readWord(addr)         { return readByte(addr) | (readByte(addr + 1) << 8) }
+-    function readWordZp(addr)       { addr &= 0xff; return readByte(addr) | (readByte((addr + 1) & 0xff) << 8) }
++    function readWord(addr,offset)  { return readByte(addr,offset) | (readByte(addr + 1,offset+1) << 8); }
++    function readWordZp(addr,offset) { addr &= 0xff; return readByte(addr,offset) | (readByte((addr + 1) & 0xff,offset+1) << 8); }
++
++    function indexedAddress(base,index,writeAccess,rmw)
++    {
++        var addr = (base+index) & 0xffff;
++        var crossed = ((base ^ addr) & 0xff00)!==0;
++        if(writeAccess || crossed)
++        {
++            // NMOS 6502 first accesses the old page with the indexed low byte.
++            // This is a real read: it can trigger an I/O soft switch.
++            readByte((base & 0xff00) | (addr & 0xff),
++                rmw ? cycle_delay-3 : writeAccess ? cycle_delay-1 : cycle_delay);
++            if(!writeAccess) cycle_delay++;
++        }
++        return addr;
++    }
++
++    function readModifyByte(addr)
++    {
++        var original = readByte(addr,cycle_delay-2);
++        // NMOS RMW writes the unmodified byte before the final modified byte.
++        writeByte(addr,original,cycle_delay-1);
++        return original;
++    }
+ 
+     // Boot log record payload, stored little-endian when exported:
+     //   PClo PChi OPC OP1 OP2 A X Y P SP
+@@ -691,11 +719,11 @@ function Cpu6502(hwobj)
+         return true;
+     }
+ 
+-    function logBootInstruction(boot_pc, opcode, operand)
++    function logBootInstruction(boot_pc,opcode,operand,stackPointer)
+     {
+         if (!bDebug_boot || BOOTcnt >= BOOTsiz) return;
+ 
+-        var packed = packBootState(opcode, operand);
++        var packed = packBootState(opcode,operand,stackPointer);
+         var member = BOOTgroup_lookup[boot_pc & 0xffff];
+ 
+         if (!member)
+@@ -735,7 +763,7 @@ function Cpu6502(hwobj)
+         if (!startBootGroup(member, boot_pc, packed)) emitBootPacked(boot_pc, packed);
+     }
+ 
+-    function packBootState(opcode, operand)
++    function packBootState(opcode,operand,stackPointer)
+     {
+         return  BigInt(opcode & 0xff) |
+                (BigInt(operand & 0xffff) << 8n) |
+@@ -743,7 +771,7 @@ function Cpu6502(hwobj)
+                (BigInt(x & 0xff)       << 32n) |
+                (BigInt(y & 0xff)       << 40n) |
+                (BigInt(p & 0xff)       << 48n) |
+-               (BigInt(sp & 0xff)      << 56n);
++               (BigInt((stackPointer===undefined ? sp : stackPointer) & 0xff) << 56n);
+     }
+ 
+     function packGroupState(group, repeatCount)
+@@ -754,7 +782,7 @@ function Cpu6502(hwobj)
+ 
+ 
+     // NMOS 6502 JMP ($xxFF) wraps the high-byte read inside the same page.
+-    function readWordBug(addr)      { return readByte(addr) | (readByte((addr & 0xff00) | ((addr + 1) & 0xff)) << 8) }
++    function readWordBug(addr)      { return readByte(addr,3) | (readByte((addr & 0xff00) | ((addr + 1) & 0xff),4) << 8); }
+ 
+     // Note that ROM must be set up before calling this because
+     // RESET vector must be in place.
+@@ -766,7 +794,7 @@ function Cpu6502(hwobj)
+         y = 0x00;
+         sp = 0xFF;
+         p = P_I | P_1;
+-        pc = readWord(RESET_VECTOR);
++        pc = readWord(RESET_VECTOR,0);
+         cycle_delay = 0;
+         instruction_count = 0;
+         clearWarningTrace();
+@@ -789,6 +817,7 @@ function Cpu6502(hwobj)
+         var     operand;
+         var     addr;
+         var     d8;
++        var     jsrStackPointer;
+ 
+         if (cycle_delay > 0) { cycle_delay--; return }
+ 
+@@ -825,10 +854,10 @@ function Cpu6502(hwobj)
+         {
+             if(takingNMI)
+                 hw.nmi_signal = 0;
+-            push(pc >> 8); push(pc & 0xff); push(p);
+-            p |= P_I;
+-            pc = readWord(takingNMI ? NMI_VECTOR : IRQ_VECTOR);
+             cycle_delay = 6;
++            push(pc >> 8,2); push(pc & 0xff,3); push(p,4);
++            p |= P_I;
++            pc = readWord(takingNMI ? NMI_VECTOR : IRQ_VECTOR,5);
+             return;
+         }
+ 
+@@ -836,7 +865,7 @@ function Cpu6502(hwobj)
+         var instr_pc = pc;          // PC of the opcode byte
+         operand = 0;                // important for 1-byte opcodes
+ 
+-        opcode = readByte(pc);
++        opcode = readByte(pc,0);
+         pc = (pc + 1) & 0xffff;
+         noteSelfLoopTrap(instr_pc,opcode);
+ 
+@@ -856,12 +885,25 @@ function Cpu6502(hwobj)
+         switch (instrlen[opcode])
+         {
+             case 2:
+-                operand = readByte(pc);
++                operand = readByte(pc,1);
+                 pc = (pc + 1) & 0xffff;
+                 break;
+ 
+             case 3:
+-                operand = readWord(pc);
++                if(opcode===0x20)
++                {
++                    // JSR is unusual: the high operand is fetched LAST.
++                    // This ordering also handles a JSR whose high operand lies
++                    // in stack RAM overwritten by one of these pushes.
++                    operand = readByte(pc,1);
++                    jsrStackPointer = sp;
++                    var returnPC = (pc+1) & 0xffff;
++                    readByte(STACK_ADDR+sp,2);
++                    push(returnPC>>8,3);
++                    push(returnPC & 0xff,4);
++                    operand |= readByte(returnPC,5)<<8;
++                }
++                else operand = readWord(pc,1);
+                 pc = (pc + 2) & 0xffff;
+                 break;
+         }
+@@ -893,7 +935,7 @@ function Cpu6502(hwobj)
+                 }
+                 else
+                 {
+-                    logBootInstruction(boot_pc, opcode, operand);
++                    logBootInstruction(boot_pc,opcode,operand,jsrStackPointer);
+                     if(BOOTcnt>=BOOTsiz)
+                     {
+                         BOOTlogging = false;
+@@ -905,103 +947,103 @@ function Cpu6502(hwobj)
+  
+         // Execute!
+         switch (opcode) {
+-        case 0x00:   push(pc >> 8);  push(pc & 0xff);  push(p | P_B);  p |= P_I;  pc = readWord(IRQ_VECTOR);  break; // BRK
++        case 0x00:   push(pc >> 8,2);  push(pc & 0xff,3);  push(p | P_B,4);  p |= P_I;  pc = readWord(IRQ_VECTOR,5);  break; // BRK
+         case 0x01:   addr = ind_x(operand);  operand = readByte(addr);  or_instr(operand);  break; // ORA (ind,X)
+         case 0x04:   unofficial(opcode,pc); break; // NOP zeropage / DOP / SKB (unofficial opcode, but 100% harmless)
+         case 0x05:   operand = readByte(operand);  or_instr(operand);  break; // ORA zero page
+-        case 0x06:   d8 = readByte(operand);  d8 = asl_instr(d8);  writeByte(operand, d8);  break; // ASL zero page
+-        case 0x07:   d8 = readByte(operand);  d8 = asl_instr(d8);  writeByte(operand, d8);  or_instr(d8);  unofficial(opcode,pc); break; // SLO zero page (unofficial opcode)
+-        case 0x08:   push(p | P_B);  break; // PHP
++        case 0x06:   d8 = readModifyByte(operand);  d8 = asl_instr(d8);  writeByte(operand, d8);  break; // ASL zero page
++        case 0x07:   d8 = readModifyByte(operand);  d8 = asl_instr(d8);  writeByte(operand, d8);  or_instr(d8);  unofficial(opcode,pc); break; // SLO zero page (unofficial opcode)
++        case 0x08:   push(p | P_B,2);  break; // PHP
+         case 0x09:   or_instr(operand);  break; // ORA imm
+         case 0x0a:   a = asl_instr(a);  break; // ASL A
+         case 0x0d:   operand = readByte(operand);  or_instr(operand);  break; // ORA absolute
+-        case 0x0e:   d8 = readByte(operand);  d8 = asl_instr(d8);  writeByte(operand, d8);  break; // ASL absolute
++        case 0x0e:   d8 = readModifyByte(operand);  d8 = asl_instr(d8);  writeByte(operand, d8);  break; // ASL absolute
+         case 0x10:   if ((p & P_N) == 0) branch_instr(operand);  break; // BPL
+-        case 0x11:   addr = ind_y(operand);  operand = readByte(addr);  or_instr(operand);  if (((addr - y) ^ addr) & 0xff00) cycle_delay++;  break; // ORA (ind),Y
++        case 0x11:   addr = ind_y(operand);  operand = readByte(addr);  or_instr(operand);  break; // ORA (ind),Y
+         case 0x15:   operand = readByte((operand + x) & 0xff);  or_instr(operand);  break; // ORA zero,X
+-        case 0x16:   addr = (operand + x) & 0xff;  d8 = readByte(addr);  d8 = asl_instr(d8);  writeByte(addr, d8);  break; // ASL zero,X
++        case 0x16:   addr = (operand + x) & 0xff;  d8 = readModifyByte(addr);  d8 = asl_instr(d8);  writeByte(addr, d8);  break; // ASL zero,X
+         case 0x18:   p &= ~P_C;  break; // CLC
+-        case 0x19:   addr = operand + y;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  or_instr(operand);  break; // ORA absolute,Y
+-        case 0x1d:   addr = operand + x;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  or_instr(operand);  break; // ORA absolute,X
++        case 0x19:   addr = indexedAddress(operand,y);  operand = readByte(addr);  or_instr(operand);  break; // ORA absolute,Y
++        case 0x1d:   addr = indexedAddress(operand,x);  operand = readByte(addr);  or_instr(operand);  break; // ORA absolute,X
+         case 0x1e:       // ASL absolute,X
+-            addr = (operand + x) & 0xffff;
+-            d8 = readByte(addr);
++            cycle_delay++; // absolute,X RMW is seven cycles
++            addr = indexedAddress(operand,x,true,true);
++            d8 = readModifyByte(addr);
+             d8 = asl_instr(d8);
+             writeByte(addr, d8);
+-            cycle_delay++; // absolute,X read-modify-write is 7 cycles
+             break;
+-        case 0x20:   pc--;  push(pc >> 8);  push(pc & 0xff);  pc = operand;  break; // JSR absolute
++        case 0x20:   pc = operand;  break; // JSR absolute (pushes accompany operand fetch above)
+         case 0x21:   addr = ind_x(operand);  operand = readByte(addr);  and_instr(operand);  break; // AND (ind,X)
+         case 0x24:   operand = readByte(operand);  bit_instr(operand);  break; // BIT zero page
+         case 0x25:   operand = readByte(operand);  and_instr(operand);  break; // AND zero page
+-        case 0x26:   d8 = readByte(operand);  d8 = rol_instr(d8);  writeByte(operand, d8);  break; // ROL zero page
+-        case 0x28:   p = (pull() & ~P_B) | P_1;  break; // PLP
++        case 0x26:   d8 = readModifyByte(operand);  d8 = rol_instr(d8);  writeByte(operand, d8);  break; // ROL zero page
++        case 0x28:   p = (pull(3) & ~P_B) | P_1;  break; // PLP
+         case 0x29:   and_instr(operand);  break; // AND imm
+         case 0x2a:   a = rol_instr(a);  break; // ROL A
+         case 0x2c:   operand = readByte(operand);  bit_instr(operand);  break; // BIT absolute
+         case 0x2d:   operand = readByte(operand);  and_instr(operand);  break; // AND absolute
+-        case 0x2e:   d8 = readByte(operand);  d8 = rol_instr(d8);  writeByte(operand, d8);  break; // ROL absolute
++        case 0x2e:   d8 = readModifyByte(operand);  d8 = rol_instr(d8);  writeByte(operand, d8);  break; // ROL absolute
+         case 0x30:   if ((p & P_N) != 0) branch_instr(operand);  break; // BMI
+-        case 0x31:   addr = ind_y(operand);  operand = readByte(addr);  and_instr(operand);  if (((addr - y) ^ addr) & 0xff00) cycle_delay++;  break; // AND (ind),Y
++        case 0x31:   addr = ind_y(operand);  operand = readByte(addr);  and_instr(operand);  break; // AND (ind),Y
+         case 0x35:   operand = readByte((operand + x) & 0xff);  and_instr(operand);  break; // AND zero, X
+-        case 0x36:   addr = (operand + x) & 0xff;  d8 = readByte(addr);  d8 = rol_instr(d8);  writeByte(addr, d8);  break; // ROL zero, X
++        case 0x36:   addr = (operand + x) & 0xff;  d8 = readModifyByte(addr);  d8 = rol_instr(d8);  writeByte(addr, d8);  break; // ROL zero, X
+         case 0x38:   p |= P_C;  break; // SEC
+-        case 0x39:   addr = operand + y;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  and_instr(operand);  break; // AND absolute, Y
+-        case 0x3d:   addr = operand + x;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  and_instr(operand);  break; // AND absolute, X
++        case 0x39:   addr = indexedAddress(operand,y);  operand = readByte(addr);  and_instr(operand);  break; // AND absolute, Y
++        case 0x3d:   addr = indexedAddress(operand,x);  operand = readByte(addr);  and_instr(operand);  break; // AND absolute, X
+         case 0x3e:       // ROL absolute, X
+-            addr = (operand + x) & 0xffff;
+-            d8 = readByte(addr);
++            cycle_delay++; // absolute,X RMW is seven cycles
++            addr = indexedAddress(operand,x,true,true);
++            d8 = readModifyByte(addr);
+             d8 = rol_instr(d8);
+             writeByte(addr, d8);
+-            cycle_delay++; // absolute,X read-modify-write is 7 cycles
+             break;
+-        case 0x40:   p = (pull() & ~P_B) | P_1;  pc = pull();  pc |= pull() << 8;  break; // RTI
++        case 0x40:   p = (pull(3) & ~P_B) | P_1;  pc = pull(4);  pc |= pull(5) << 8;  break; // RTI
+         case 0x41:   addr = ind_x(operand);  operand = readByte(addr);  eor_instr(operand);  break; // EOR (ind, X)
+         case 0x45:   operand = readByte(operand);  eor_instr(operand);  break; // EOR zero page
+-        case 0x46:   d8 = readByte(operand);  d8 = lsr_instr(d8);  writeByte(operand, d8);  break; // LSR zero page
+-        case 0x48:   push(a);  break; // PHA
++        case 0x46:   d8 = readModifyByte(operand);  d8 = lsr_instr(d8);  writeByte(operand, d8);  break; // LSR zero page
++        case 0x48:   push(a,2);  break; // PHA
+         case 0x49:   eor_instr(operand);  break; // EOR imm
+         case 0x4a:   a = lsr_instr(a);  break; // LSR A
+         case 0x4c:   pc = operand;  break; // JMP absolute
+         case 0x4d:   operand = readByte(operand);  eor_instr(operand);  break; // EOR absolute
+-        case 0x4e:   d8 = readByte(operand);  d8 = lsr_instr(d8);  writeByte(operand, d8);  break; // LSR absolute
++        case 0x4e:   d8 = readModifyByte(operand);  d8 = lsr_instr(d8);  writeByte(operand, d8);  break; // LSR absolute
+         case 0x50:   if ((p & P_V) == 0) branch_instr(operand);  break; // BVC
+-        case 0x51:   addr = ind_y(operand);  operand = readByte(addr);  eor_instr(operand);  if (((addr - y) ^ addr) & 0xff00) cycle_delay++;  break; // EOR (indirect), Y
++        case 0x51:   addr = ind_y(operand);  operand = readByte(addr);  eor_instr(operand);  break; // EOR (indirect), Y
+         case 0x55:   operand = readByte((operand + x) & 0xff);  eor_instr(operand);  break; // EOR zero, X
+-        case 0x56:   addr = (operand + x) & 0xff;  d8 = readByte(addr);  d8 = lsr_instr(d8);  writeByte(addr, d8);  break; // LSR zero, X
++        case 0x56:   addr = (operand + x) & 0xff;  d8 = readModifyByte(addr);  d8 = lsr_instr(d8);  writeByte(addr, d8);  break; // LSR zero, X
+         case 0x58:   p &= ~P_I;  break; // CLI
+-        case 0x59:   addr = operand + y;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  eor_instr(operand);  break; // EOR absolute,Y
+-        case 0x5d:   addr = operand + x;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  eor_instr(operand);  break; // EOR absolute,X
++        case 0x59:   addr = indexedAddress(operand,y);  operand = readByte(addr);  eor_instr(operand);  break; // EOR absolute,Y
++        case 0x5d:   addr = indexedAddress(operand,x);  operand = readByte(addr);  eor_instr(operand);  break; // EOR absolute,X
+         case 0x5e:       // LSR absolute,X
+-            addr = (operand + x) & 0xffff;
+-            d8 = readByte(addr);
++            cycle_delay++; // absolute,X RMW is seven cycles
++            addr = indexedAddress(operand,x,true,true);
++            d8 = readModifyByte(addr);
+             d8 = lsr_instr(d8);
+             writeByte(addr, d8);
+-            cycle_delay++; // absolute,X read-modify-write is 7 cycles
+             break;
+-        case 0x60:   pc = pull();  pc |= pull() << 8;  pc++;  break; // RTS
++        case 0x60:   pc = pull(3);  pc |= pull(4) << 8;  pc++;  break; // RTS
+         case 0x61:   addr = ind_x(operand);  operand = readByte(addr);  adc_instr(operand);  break; // ADC (ind,X)
+         case 0x65:   operand = readByte(operand);  adc_instr(operand);  break; // ADC zero page
+-        case 0x66:   d8 = readByte(operand);  d8 = ror_instr(d8);  writeByte(operand, d8);  break; // ROR zero page
+-        case 0x68:   a = pull();  set_nz(a);  break; // PLA
++        case 0x66:   d8 = readModifyByte(operand);  d8 = ror_instr(d8);  writeByte(operand, d8);  break; // ROR zero page
++        case 0x68:   a = pull(3);  set_nz(a);  break; // PLA
+         case 0x69:   adc_instr(operand);  break; // ADC imm
+         case 0x6a:   a = ror_instr(a);  break; // ROR A
+         case 0x6c:   pc = readWordBug(operand);  break; // JMP (ind)
+         case 0x6d:   operand = readByte(operand);  adc_instr(operand);  break; // ADC absolute
+-        case 0x6e:   d8 = readByte(operand);  d8 = ror_instr(d8);  writeByte(operand, d8);  break; // ROR absolute
++        case 0x6e:   d8 = readModifyByte(operand);  d8 = ror_instr(d8);  writeByte(operand, d8);  break; // ROR absolute
+         case 0x70:   if ((p & P_V) != 0) branch_instr(operand);  break; // BVS
+-        case 0x71:   addr = ind_y(operand);  operand = readByte(addr);  adc_instr(operand);  if (((addr - y) ^ addr) & 0xff00) cycle_delay++;  break; // ADC (indirect),Y
++        case 0x71:   addr = ind_y(operand);  operand = readByte(addr);  adc_instr(operand);  break; // ADC (indirect),Y
+         case 0x75:   operand = readByte((operand + x) & 0xff);  adc_instr(operand);  break; // ADC zero, X
+-        case 0x76:   addr = (operand + x) & 0xff;  d8 = readByte(addr);  d8 = ror_instr(d8);  writeByte(addr, d8);  break; // ROR zero, X
++        case 0x76:   addr = (operand + x) & 0xff;  d8 = readModifyByte(addr);  d8 = ror_instr(d8);  writeByte(addr, d8);  break; // ROR zero, X
+         case 0x78:   p |= P_I;  break; // SEI
+-        case 0x79:   addr = operand + y;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  adc_instr(operand);  break; // ADC absolute,Y
+-        case 0x7d:   addr = operand + x;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  adc_instr(operand);  break; // ADC absolute,X
++        case 0x79:   addr = indexedAddress(operand,y);  operand = readByte(addr);  adc_instr(operand);  break; // ADC absolute,Y
++        case 0x7d:   addr = indexedAddress(operand,x);  operand = readByte(addr);  adc_instr(operand);  break; // ADC absolute,X
+         case 0x7e:       // ROR absolute,X
+-            addr = (operand + x) & 0xffff;
+-            d8 = readByte(addr);
++            cycle_delay++; // absolute,X RMW is seven cycles
++            addr = indexedAddress(operand,x,true,true);
++            d8 = readModifyByte(addr);
+             d8 = ror_instr(d8);
+             writeByte(addr, d8);
+-            cycle_delay++; // absolute,X read-modify-write is 7 cycles
+             break;
+         case 0x80:   unofficial(opcode,pc); break; // NOP imm / SKB / DOP
+         case 0x81:   addr = ind_x(operand);  writeByte(addr, a);  break; // STA (ind, X)
+@@ -1016,14 +1058,14 @@ function Cpu6502(hwobj)
+         case 0x8d:   writeByte(operand, a);  break; // STA absolute
+         case 0x8e:   writeByte(operand, x);  break; // STX absolute
+         case 0x90:   if ((p & P_C) == 0) branch_instr(operand);  break; // BCC
+-        case 0x91:   addr = ind_y(operand);  writeByte(addr, a);  break; // STA (ind),Y
++        case 0x91:   addr = ind_y(operand,true);  writeByte(addr, a);  break; // STA (ind),Y
+         case 0x94:   writeByte((operand + x) & 0xff, y);  break; // STY zero, X
+         case 0x95:   writeByte((operand + x) & 0xff, a);  break; // STA zero, X
+         case 0x96:   writeByte((operand + y) & 0xff, x);  break; // STX zero, Y
+         case 0x98:   a = y;  set_nz(a);  break; // TYA
+-        case 0x99:   writeByte(operand + y, a);  break; // STA absolute, Y
++        case 0x99:   writeByte(indexedAddress(operand,y,true),a);  break; // STA absolute, Y
+         case 0x9a:   sp = x;  break; // TXS
+-        case 0x9d:   writeByte(operand + x, a);  break; // STA absolute, X
++        case 0x9d:   writeByte(indexedAddress(operand,x,true),a);  break; // STA absolute, X
+         case 0xa0:   y = operand;  set_nz(y);  break; // LDY imm
+         case 0xa1:   addr = ind_x(operand);  operand = readByte(addr);  a = operand;  set_nz(a);  break; // LDA (ind, X)
+         case 0xa2:   x = operand;  set_nz(x);  break; // LDX imm
+@@ -1037,67 +1079,67 @@ function Cpu6502(hwobj)
+         case 0xad:   a = readByte(operand);  set_nz(a);  break; // LDA absolute
+         case 0xae:   x = readByte(operand);  set_nz(x);  break; // LDX absolute
+         case 0xb0:   if ((p & P_C) != 0) branch_instr(operand);  break; // BCS
+-        case 0xb1:   addr = ind_y(operand);  a = readByte(addr);  set_nz(a);  if (((addr - y) ^ addr) & 0xff00) cycle_delay++;  break; // LDA (ind),Y
++        case 0xb1:   addr = ind_y(operand);  a = readByte(addr);  set_nz(a);  break; // LDA (ind),Y
+         case 0xb4:   y = readByte((operand + x) & 0xff);  set_nz(y);  break; // LDY zero,X
+         case 0xb5:   a = readByte((operand + x) & 0xff);  set_nz(a);  break; // LDA zero,X
+         case 0xb6:   x = readByte((operand + y) & 0xff);  set_nz(x);  break; // LDX zero,Y
+         case 0xb8:   p &= ~P_V;  break; // CLV
+-        case 0xb9:   addr = operand + y;  if ((operand ^ addr) & 0xff00) cycle_delay++;  a = readByte(addr);  set_nz(a);  break; // LDA absolute, Y
++        case 0xb9:   addr = indexedAddress(operand,y);  a = readByte(addr);  set_nz(a);  break; // LDA absolute, Y
+         case 0xba:   x = sp;  set_nz(x);  break; // TSX
+-        case 0xbc:   addr = operand + x;  if ((operand ^ addr) & 0xff00) cycle_delay++;  y = readByte(addr);  set_nz(y);  break; // LDY absolute, X
+-        case 0xbd:   addr = operand + x;  if ((operand ^ addr) & 0xff00) cycle_delay++;  a = readByte(addr);  set_nz(a);  break; // LDA absolute, X
+-        case 0xbe:   addr = operand + y;  if ((operand ^ addr) & 0xff00) cycle_delay++;  x = readByte(addr);  set_nz(x);  break; // LDX absolute, Y
++        case 0xbc:   addr = indexedAddress(operand,x);  y = readByte(addr);  set_nz(y);  break; // LDY absolute, X
++        case 0xbd:   addr = indexedAddress(operand,x);  a = readByte(addr);  set_nz(a);  break; // LDA absolute, X
++        case 0xbe:   addr = indexedAddress(operand,y);  x = readByte(addr);  set_nz(x);  break; // LDX absolute, Y
+         case 0xc0:   cmp_instr(y, operand);  break; // CPY imm
+         case 0xc1:   addr = ind_x(operand);  operand = readByte(addr);  cmp_instr(a, operand);  break; // CMP (ind, X)
+         case 0xc2:   break; // NOP #imm on NMOS 6502; $C2 $02 used by ProDOS 2.5 CPU detection
+         case 0xc4:   operand = readByte(operand);  cmp_instr(y, operand);  break; // CPY zero
+         case 0xc5:   operand = readByte(operand);  cmp_instr(a, operand);  break; // CMP zero
+-        case 0xc6:   d8 = (readByte(operand) - 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // DEC zero
++        case 0xc6:   d8 = (readModifyByte(operand) - 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // DEC zero
+         case 0xc8:   y = ++y & 0xff;  set_nz(y);  break; // INY
+         case 0xc9:   cmp_instr(a, operand);  break; // CMP imm
+         case 0xca:   x = --x & 0xff;  set_nz(x);  break; // DEX
+         case 0xcc:   operand = readByte(operand);  cmp_instr(y, operand);  break; // CPY absolute
+         case 0xcd:   operand = readByte(operand);  cmp_instr(a, operand);  break; // CMP absolute
+-        case 0xce:   d8 = (readByte(operand) - 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // DEC absolute
++        case 0xce:   d8 = (readModifyByte(operand) - 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // DEC absolute
+         case 0xd0:   if ((p & P_Z) == 0) branch_instr(operand);  break; // BNE
+-        case 0xd1:   addr = ind_y(operand);  operand = readByte(addr);  cmp_instr(a, operand);  if (((addr - y) ^ addr) & 0xff00) cycle_delay++;  break; // CMP (ind),Y
++        case 0xd1:   addr = ind_y(operand);  operand = readByte(addr);  cmp_instr(a, operand);  break; // CMP (ind),Y
+         case 0xd5:   operand = readByte((operand + x) & 0xff);  cmp_instr(a, operand);  break; // CMP zero,X
+-        case 0xd6:   addr = (operand + x) & 0xff;  d8 = (readByte(addr) - 1) & 0xff;  writeByte(addr, d8);  set_nz(d8);  break; // DEC zero,X
++        case 0xd6:   addr = (operand + x) & 0xff;  d8 = (readModifyByte(addr) - 1) & 0xff;  writeByte(addr, d8);  set_nz(d8);  break; // DEC zero,X
+         case 0xd8:   p &= ~P_D;  break; // CLD
+-        case 0xd9:   addr = operand + y;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  cmp_instr(a, operand);  break; // CMP absolute,Y
+-        case 0xdd:   addr = operand + x;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  cmp_instr(a, operand);  break; // CMP absolute,X
++        case 0xd9:   addr = indexedAddress(operand,y);  operand = readByte(addr);  cmp_instr(a, operand);  break; // CMP absolute,Y
++        case 0xdd:   addr = indexedAddress(operand,x);  operand = readByte(addr);  cmp_instr(a, operand);  break; // CMP absolute,X
+         case 0xde:       // DEC absolute,X
+-            addr = (operand + x) & 0xffff;
+-            d8 = (readByte(addr) - 1) & 0xff;
++            cycle_delay++; // absolute,X RMW is seven cycles
++            addr = indexedAddress(operand,x,true,true);
++            d8 = (readModifyByte(addr) - 1) & 0xff;
+             writeByte(addr, d8);
+             set_nz(d8);
+-            cycle_delay++; // absolute,X read-modify-write is 7 cycles
+             break;
+         case 0xe0:   cmp_instr(x, operand);  break; // CPX imm
+         case 0xe1:   addr = ind_x(operand);  operand = readByte(addr);  sbc_instr(operand);  break; // SBC (ind,X)
+         case 0xe2:   unofficial(opcode,pc); break; // NOP imm / SKB / DOP
+         case 0xe4:   operand = readByte(operand);  cmp_instr(x, operand);  break; // CPX zero
+         case 0xe5:   operand = readByte(operand);  sbc_instr(operand);  break; // SBC zero
+-        case 0xe6:   d8 = (readByte(operand) + 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // INC zero
++        case 0xe6:   d8 = (readModifyByte(operand) + 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // INC zero
+         case 0xe8:   x = ++x & 0xff;  set_nz(x);  break; // INX
+         case 0xe9:   sbc_instr(operand);  break; // SBC imm
+         case 0xea:   break; // NOP
+         case 0xec:   operand = readByte(operand);  cmp_instr(x, operand);  break; // CPX absolute
+         case 0xed:   operand = readByte(operand);  sbc_instr(operand);  break; // SBC absolute
+-        case 0xee:   d8 = (readByte(operand) + 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // INC absolute
++        case 0xee:   d8 = (readModifyByte(operand) + 1) & 0xff;  writeByte(operand, d8);  set_nz(d8);  break; // INC absolute
+         case 0xf0:   if ((p & P_Z) != 0) branch_instr(operand);  break; // BEQ
+-        case 0xf1:   addr = ind_y(operand);  operand = readByte(addr);  sbc_instr(operand);  if (((addr - y) ^ addr) & 0xff00) cycle_delay++;  break; // SBC (ind),Y
++        case 0xf1:   addr = ind_y(operand);  operand = readByte(addr);  sbc_instr(operand);  break; // SBC (ind),Y
+         case 0xf5:   operand = readByte((operand + x) & 0xff);  sbc_instr(operand);  break; // SBC zero,X
+-        case 0xf6:   addr = (operand + x) & 0xff;  d8 = (readByte(addr) + 1) & 0xff;  writeByte(addr, d8);  set_nz(d8);  break; // INC zero,X
++        case 0xf6:   addr = (operand + x) & 0xff;  d8 = (readModifyByte(addr) + 1) & 0xff;  writeByte(addr, d8);  set_nz(d8);  break; // INC zero,X
+         case 0xf8:   p |= P_D;  break; // SED
+-        case 0xf9:   addr = operand + y;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  sbc_instr(operand);  break; // SBC absolute,Y
+-        case 0xfd:   addr = operand + x;  if ((operand ^ addr) & 0xff00) cycle_delay++;  operand = readByte(addr);  sbc_instr(operand);  break; // SBC absolute,X
++        case 0xf9:   addr = indexedAddress(operand,y);  operand = readByte(addr);  sbc_instr(operand);  break; // SBC absolute,Y
++        case 0xfd:   addr = indexedAddress(operand,x);  operand = readByte(addr);  sbc_instr(operand);  break; // SBC absolute,X
+         case 0xfe:       // INC absolute,X
+-            addr = (operand + x) & 0xffff;
+-            d8 = (readByte(addr) + 1) & 0xff;
++            cycle_delay++; // absolute,X RMW is seven cycles
++            addr = indexedAddress(operand,x,true,true);
++            d8 = (readModifyByte(addr) + 1) & 0xff;
+             writeByte(addr, d8);
+             set_nz(d8);
+-            cycle_delay++; // absolute,X read-modify-write is 7 cycles
+             break;
+         default:
+             console.warn(
+@@ -1145,8 +1187,15 @@ function Cpu6502(hwobj)
+     //  ██   ██ ███████ ███████ ██      ███████ ██   ██ ███████ 
+ 
+ 
+-    function ind_x(operand) { return readWordZp(operand + x); }
+-    function ind_y(operand) { return (readWordZp(operand) + y) & 0xffff; }
++    function ind_x(operand)
++    {
++        readByte(operand & 0xff,2);
++        return readWordZp(operand+x,3);
++    }
++    function ind_y(operand,writeAccess)
++    {
++        return indexedAddress(readWordZp(operand,2),y,writeAccess);
++    }
+     function set_flag(flag, cond) { p = (cond != 0) ? p | flag : p & ~flag; }
+     function set_nz(d8) { p = (p & ~(P_N | P_Z)) | nz_flags[d8 & 0xff]; }
+     function asl_instr(d8) 
+@@ -1296,8 +1345,8 @@ function Cpu6502(hwobj)
+         if ((old_pc ^ pc) & 0xff00) cycle_delay++; // branch crossed a page
+     }
+ 
+-    function push(d8) { writeByte(STACK_ADDR + sp, d8); sp = (sp - 1) & 0xff; }
+-    function pull() { sp = (sp + 1) & 0xff; return readByte(STACK_ADDR + sp); }
++    function push(d8,offset) { writeByte(STACK_ADDR + sp,d8,offset); sp = (sp - 1) & 0xff; }
++    function pull(offset) { sp = (sp + 1) & 0xff; return readByte(STACK_ADDR + sp,offset); }
+ 
+ //    ______                                            _    _                   
+ //  .' ____ \                                          / |_ (_)                  
+@@ -1493,4 +1542,4 @@ function Cpu6502(hwobj)
+         resetBootGroupState();
+     }
+ 
+-}
+\ No newline at end of file
++}
+diff --git a/tests/apple2_vaporlock_bus.test.js b/tests/apple2_vaporlock_bus.test.js
+new file mode 100644
+index 0000000..802c3df
+--- /dev/null
++++ b/tests/apple2_vaporlock_bus.test.js
+@@ -0,0 +1,303 @@
++'use strict';
++
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const fs = require('node:fs');
++const path = require('node:path');
++const vm = require('node:vm');
++
++// Real CPU, bus, I/O dispatcher, motherboard and game device. Only the host
++// drawing/audio/DOM boundary is absent. This is not a STEP TRACE scenario.
++function machine()
++{
++    const video = {
++        state:{gfx:false,mix:false,page2:false,hires:false},
++        write(){}, reset(){}, cycle(){},
++        setGfx(v){this.state.gfx=v;}, setMix(v){this.state.mix=v;},
++        setPage2(v){this.state.page2=v;}, setHires(v){this.state.hires=v;}
++    };
++    const ctx = {
++        console:{log(){},warn(){},error(){}}, performance, TextEncoder,
++        oEMU:{system:{},component:{IO:{ACTION_MAP:{RD:[],WR:[]}},CPU:{}}},
++        oEMUI:{}, _CFG_IOADDR:{}, _CFG_IORANGES:{},
++        _o:{CPU_ClocksTicks_s:1021800,CPU_TargetTicks_s:1021800,EMU_Updates_s:10},
++        oCOM:{crc16(){return 1;},trim(s){return s.trim();},getHexWord(v){return v.toString(16);},
++            default(o){return o;},bRefreshEvent:false},
++        apple2Rom:new Uint8Array(0x3000),
++        Apple2VideoMUX:function(){return video;}
++    };
++    vm.createContext(ctx);
++    for(const file of ['EMU_apple2io.js','EMU_apple2hw.js','EMU_cpu6502.js',
++                      'EMU_CARD_hostio.js','EMU_DEVICE_gameport.js','EMU_DEVICE_keyboard.js',
++                      'EMU_DEVICE_speaker.js','EMU_apple2plus.js'])
++        vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res',file),'utf8'),ctx,{filename:file});
++    const system = new ctx.Apple2Plus({});
++    ctx.apple2plus = system;
++    const hw = system.hwObj();
++    hw.mount();
++    const board = new ctx.AppleBoard();
++    hw.io.provisionPeripheral(board,'A2P');
++    const game = board.devices.find(d=>d.id.DCODE==='A2GAM');
++    return {ctx,system,hw,video,game,board,cpu:system.cpuObj(),map:ctx.oEMU.component.IO.ACTION_MAP};
++}
++
++function put(hw,addr,bytes)
++{
++    bytes.forEach((value,i)=>hw.WR[hw.lineDecode(addr+i)](addr+i,value));
++}
++
++test('NTSC scanner repeats the H-preset address and covers both blanking intervals', () => {
++    const {hw} = machine();
++    assert.equal(typeof hw.getScannerAddress,'function');
++    // Literal fixtures: row 0, column 0 is $0400; blanking fetches have A12
++    // set on II/II+, with $1468 repeated at the horizontal preset.
++    for(const [tick,line,h,address] of [
++        [0,0,0,0x1468],[1,0,1,0x1468],[24,0,24,0x147F],
++        [25,0,25,0x0400],[64,0,64,0x0427],[65,1,0,0x1468],
++        [191*65+64,191,64,0x07F7],[192*65+25,192,25,0x0478],
++        [256*65+25,256,25,0x07F8],[261*65+64,261,64,0x079F],
++        [17030,0,0,0x1468]
++    ])
++    {
++        const p=hw.getVideoPosition(tick);
++        assert.equal(p.line,line); assert.equal(p.hcycle,h);
++        assert.equal(hw.getScannerAddress(tick),address,`tick ${tick}`);
++        assert.equal(p.hblank,h<25); assert.equal(p.vblank,line>=192);
++    }
++    assert.equal(hw.getVideoPosition(25).x,0);
++    assert.equal(hw.getVideoPosition(64).x,273);
++    assert.equal(hw.getVideoPosition(-1).frameCycle,17029);
++    assert.equal(hw.getScannerState(256*65).vState,0xFA);
++    assert.equal(hw.getScannerState(0).hState,hw.getScannerState(1).hState);
++});
++
++test('scanner chooses physical RAM by video mode, page, mixed gate and vertical preset', () => {
++    const {hw} = machine();
++    hw.RD[0xC](0xC055);
++    assert.equal(typeof hw.getScannerAddress,'function');
++    assert.equal(hw.getScannerAddress(25),0x0800);
++    assert.equal(hw.getScannerAddress(0),0x1868);
++    hw.RD[0xC](0xC054); hw.RD[0xC](0xC050); hw.RD[0xC](0xC057);
++    assert.equal(hw.getScannerAddress(25),0x2000);
++    assert.equal(hw.getScannerAddress(65+25),0x2400);
++    assert.equal(hw.getScannerAddress(191*65+64),0x3FF7);
++    assert.equal(hw.getScannerAddress(256*65+25),0x2BF8);
++    assert.equal(hw.getScannerAddress(0),0x2068);
++    hw.RD[0xC](0xC055);
++    assert.equal(hw.getScannerAddress(25),0x4000);
++    hw.RD[0xC](0xC053);
++    assert.equal(hw.getScannerAddress(160*65+25),0x0A50);
++    // MIXED is a counter-bit gate, not a clamp to the displayed 160..191 rows.
++    assert.equal(hw.getScannerAddress(256*65+25),0x0BF8);
++});
++
++test('unmapped reads float, explicit zero and slot ROM remain driven', () => {
++    const {hw,map} = machine();
++    put(hw,0x1468,[0xA5]);
++    assert.equal(hw.RD[0xC](0xC020),0xA5);
++    assert.equal(hw.RD[0xC](0xC090),0xA5);
++    assert.equal(hw.RD[0xC](0xC800),0xA5);
++    map.RD[0x200]=()=>0;
++    map.RD[0x300]=()=>0x42;
++    assert.equal(hw.RD[0xC](0xC200),0);
++    assert.equal(hw.RD[0xC](0xC300),0x42);
++    map.RD[0x400]=()=>hw.FLOATING_BUS;
++    assert.equal(hw.RD[0xC](0xC400),0xA5);
++    map.RD[0x500]=()=>({value:0x80,mask:0x80});
++    assert.equal(hw.RD[0xC](0xC500),0xA5);
++    // CPU mapping overrides must also be resolved without bypassing the map.
++    hw.RD[0xD]=()=>hw.FLOATING_BUS;
++    assert.equal(hw.read(0xD000),0xA5);
++});
++
++test('game inputs drive only D7, mirror at $C068 and sample timers at the effective read cycle', () => {
++    const {hw,game} = machine();
++    put(hw,0x1468,[0x35]);
++    game.state.switches[0]=true;
++    assert.equal(hw.RD[0xC](0xC061),0xB5);
++    assert.equal(hw.RD[0xC](0xC069),0xB5);
++    game.state.switches[0]=false;
++    assert.equal(hw.RD[0xC](0xC061),0x35);
++    game.state.paddles[0]=1;
++    hw.write(0xC070,0,3);
++    // Trigger at CPU clock 3, expires at clock 14 (one 11-cycle paddle step).
++    assert.equal(hw.read(0xC064,13),0x80 | hw.peekFloatingBus(13));
++    assert.equal(hw.read(0xC06C,14),hw.peekFloatingBus(14)&0x7F);
++});
++
++test('soft-switch reads float from the preceding video fetch and safe observation has no side effects', () => {
++    const {hw,video} = machine();
++    put(hw,0x1468,[0x25]); put(hw,0x1868,[0x72]);
++    assert.equal(hw.RD[0xC](0xC055),0x25);
++    assert.equal(video.state.page2,true);
++    assert.equal(hw.RD[0xC](0xC020),0x72);
++    hw.setBusMonitoring(true);
++    hw.read(0xC020,3);
++    const last=hw.getLastBusAccess();
++    assert.equal(last.address,0xC020); assert.equal(last.cycleOffset,3);
++    assert.equal(last.cpuTick,0); assert.equal(last.effectiveCpuTick,3);
++    assert.equal(last.driven,false); assert.equal(last.mask,0);
++    assert.equal(hw.safe_read(0xC054),0x72);
++    hw.safe_dump(0xC050,0xC05F);
++    hw.getVideoPosition(); hw.getScannerState(); hw.peekFloatingBus();
++    assert.equal(video.state.page2,true);
++    assert.deepEqual(hw.getLastBusAccess(),last);
++    last.address=0;
++    assert.equal(hw.getLastBusAccess().address,0xC020);
++    assert.equal(hw.getCpuTicks(),0); assert.equal(hw.getVideoTicks(),0);
++});
++
++test('CPU absolute reads sample their final cycle, not the opcode fetch cycle', () => {
++    for(const op of [0xAD,0xCD,0x2C,0x4D])
++    {
++        const {hw,cpu,system} = machine();
++        put(hw,0x1468,[0x11,0x22,0x33]);
++        put(hw,0x0200,[op,0x20,0xC0]);
++        cpu.setState({pc:0x0200,a:0x33,p:0x20}); hw.setBusMonitoring(true);
++        const result=system.runLiveCpuTicks(4);
++        assert.equal(result.completedTicks,4);
++        const last=hw.getLastBusAccess();
++        assert.equal(last.cycleOffset,3); assert.equal(last.scannerAddress,0x146A);
++        assert.equal(last.result,0x33); assert.equal(hw.getVideoTicks(),4);
++        if(op===0xAD) assert.equal(cpu.watch().a,0x33);
++        if(op===0xCD) assert.equal(cpu.watch().p&2,2);
++    }
++});
++
++test('indirect,Y reads and page-cross dummy reads receive their actual offsets', () => {
++    for(const opcode of [0xB1,0xD1,0x51,0xF1])
++    for(const [ptr,y,ticks,offset] of [[0xC020,0,5,4],[0xBFFF,0x21,6,5]])
++    {
++        const {hw,cpu,system,map}=machine();
++        put(hw,0x0200,[opcode,0x42]); put(hw,0x42,[ptr&255,ptr>>8]);
++        const reads=[];
++        map.RD[0x20]=(_r,ctx)=>{reads.push([ctx.abs_addr,ctx.cycleOffset]);return hw.FLOATING_BUS;};
++        cpu.setState({pc:0x0200,y}); hw.setBusMonitoring(true);
++        system.runLiveCpuTicks(ticks);
++        assert.deepEqual(reads,[[0xC020,offset]]);
++        assert.equal(hw.getLastBusAccess().effectiveCpuTick,offset);
++        assert.equal(cpu.watch().cycle_delay,0);
++    }
++    // A crossed read from C0FF,X first reads C000 (keyboard), then C100.
++    const {hw,cpu,system,map}=machine();
++    put(hw,0x0200,[0xBD,0xFF,0xC0]); const reads=[];
++    map.RD[0]=(_r,ctx)=>{reads.push([ctx.abs_addr,ctx.cycleOffset]);return 0;};
++    map.RD[0x100]=(_r,ctx)=>{reads.push([ctx.abs_addr,ctx.cycleOffset]);return 0x42;};
++    cpu.setState({pc:0x0200,x:1}); system.runLiveCpuTicks(5);
++    assert.deepEqual(reads,[[0xC000,3],[0xC100,4]]);
++    assert.equal(cpu.watch().a,0x42);
++});
++
++test('stores and read-modify-write perform indexed dummy accesses at their bus cycles', () => {
++    const {hw,cpu,system,map}=machine(); const accesses=[];
++    map.RD[0x20]=(_r,ctx)=>{accesses.push(['R',ctx.cycleOffset]);return 0x12;};
++    map.WR[0x20]=(_r,d,ctx)=>accesses.push(['W',ctx.cycleOffset,d]);
++    put(hw,0x0200,[0x8D,0x20,0xC0]); cpu.setState({pc:0x0200,a:0x34});
++    system.runLiveCpuTicks(4);
++    assert.deepEqual(accesses,[['W',3,0x34]]);
++    accesses.length=0;
++    put(hw,0x0200,[0xEE,0x20,0xC0]); cpu.setState({pc:0x0200});
++    system.runLiveCpuTicks(6);
++    assert.deepEqual(accesses,[['R',3],['W',4,0x12],['W',5,0x13]]);
++    accesses.length=0;
++    put(hw,0x0200,[0x9D,0x1F,0xC0]); cpu.setState({pc:0x0200,x:1,a:0x34});
++    system.runLiveCpuTicks(5);
++    assert.deepEqual(accesses,[['R',3],['W',4,0x34]]);
++    for(const [opcode,value] of [[0x1E,0x24],[0x3E,0x24],[0x5E,0x09],
++                                [0x7E,0x09],[0xDE,0x11],[0xFE,0x13]])
++    {
++        accesses.length=0;
++        put(hw,0x0200,[opcode,0x1F,0xC0]); cpu.setState({pc:0x0200,x:1,p:0x20});
++        system.runLiveCpuTicks(7);
++        assert.deepEqual(accesses,[['R',3],['R',4],['W',5,0x12],['W',6,value]]);
++        assert.equal(cpu.watch().cycle_delay,0);
++    }
++});
++
++test('live and SYSTEM timing share one clock, scaled JS ticks retain fraction and traps consume none', () => {
++    const {hw,cpu,system,ctx}=machine();
++    assert.equal(typeof hw.getVideoTicks,'function');
++    put(hw,0x0200,[0xEA,0xEA,0xEA]); cpu.setState({pc:0x0200});
++    system.runLiveCpuTicks(3,{videoScale:0.5});
++    assert.equal(hw.getVideoTicks(),1.5); assert.equal(hw.getCpuTicks(),3);
++    system.runLiveCpuTicks(1,{videoScale:0.5});
++    assert.equal(hw.getVideoTicks(),2);
++    cpu.setExecutionTrap(0x0202,()=>true);
++    assert.equal(system.runLiveCpuTicks(1).completedTicks,0);
++    assert.equal(hw.getVideoTicks(),2); assert.equal(hw.getCpuTicks(),4);
++    ctx._o.CPU_TargetTicks_s=ctx._o.CPU_ClocksTicks_s*2;
++    system.cycle(2);
++    assert.equal(hw.getVideoTicks(),3); assert.equal(hw.getCpuTicks(),6);
++    assert.equal(hw.io.getClockTicks(),6);
++});
++
++test('hardware mode latches work with a renderer that exposes no state object', () => {
++    const {hw,video}=machine();
++    delete video.state;
++    video.setGfx=video.setHires=video.setMix=video.setPage2=()=>{};
++    hw.RD[0xC](0xC050); hw.RD[0xC](0xC057); hw.RD[0xC](0xC055);
++    assert.equal(hw.getScannerAddress(25),0x4000);
++});
++
++test('safe CPU map reads resolve a floating result while suppressing diagnostics', () => {
++    const {hw}=machine();
++    put(hw,0x1468,[0x2A]); hw.RD[0xD]=()=>hw.FLOATING_BUS;
++    hw.setBusMonitoring(true);
++    assert.equal(hw.safe_read(0xD000),0x2A);
++    assert.equal(hw.safe_dump(0xD000,0xD000)[0],0x2A);
++    assert.equal(hw.getLastBusAccess(),null);
++});
++
++test('keyboard remains driven while strobe, speaker and paddle-trigger reads float', () => {
++    const {hw,board}=machine();
++    const keyboard=board.devices.find(d=>d.id.DCODE==='A2KBD');
++    put(hw,0x1468,[0x25]);
++    keyboard.lastkey=0xC1;
++    assert.equal(hw.RD[0xC](0xC000),0xC1);
++    assert.equal(hw.safe_read(0xC010),0x25);
++    assert.equal(keyboard.lastkey,0xC1);
++    assert.equal(hw.RD[0xC](0xC010),0x25);
++    assert.equal(keyboard.lastkey,0x41);
++    assert.equal(hw.RD[0xC](0xC030),0x25);
++    assert.equal(hw.RD[0xC](0xC070),0x25);
++});
++
++test('fractional JS video clocks do not lose a whole cycle at batch boundaries', () => {
++    const {hw,cpu,system}=machine();
++    put(hw,0x0200,[0x4C,0x00,0x02]); cpu.setState({pc:0x0200});
++    for(let i=0;i<5;i++) system.runLiveCpuTicks(1,{videoScale:1/3});
++    assert.equal(hw.getVideoPosition(1).frameCycle,2);
++    system.runLiveCpuTicks(1,{videoScale:1/3});
++    assert.equal(hw.getVideoTicks(),2);
++    assert.equal(hw.getVideoPosition().frameCycle,2);
++    system.runLiveCpuTicks(1,{videoScale:0.5});
++    assert.equal(hw.getVideoTicks(),2.5);
++});
++
++test('JSR fetches its high operand after stack writes, at offset five', () => {
++    const {hw,cpu,system}=machine(); const accesses=[];
++    const rd=hw.read.bind(hw), wr=hw.write.bind(hw);
++    hw.read=(addr,offset)=>{accesses.push(['R',addr,offset]);return rd(addr,offset);};
++    hw.write=(addr,value,offset)=>{accesses.push(['W',addr,offset]);return wr(addr,value,offset);};
++    put(hw,0x0200,[0x20,0x00,0x03]); cpu.setState({pc:0x0200,sp:0xFF});
++    cpu.setBootLogTrigger(0x0200,null,true);
++    system.runLiveCpuTicks(6);
++    const significant=accesses.filter(a=>a[0]==='W' || a[1]===0x0202);
++    assert.deepEqual(significant,[['W',0x01FF,3],['W',0x01FE,4],['R',0x0202,5]]);
++    assert.equal(cpu.watch().pc,0x0300);
++    assert.equal(hw.safe_read(0x01FF),0x02); assert.equal(hw.safe_read(0x01FE),0x02);
++    assert.equal(cpu.getBootLog()[0].sp,0xFF);
++    assert.deepEqual(Array.from(cpu.getBootLog()[0].bytes),[0x20,0x00,0x03]);
++});
++
++test('indexed addresses and zero-page pointers wrap through the real CPU bus', () => {
++    const {hw,cpu,system}=machine();
++    put(hw,0,[0x73]); put(hw,0x0200,[0xBD,0xFF,0xFF]);
++    cpu.setState({pc:0x0200,x:1}); system.runLiveCpuTicks(5);
++    assert.equal(cpu.watch().a,0x73); assert.equal(cpu.watch().cycle_delay,0);
++    put(hw,0,[0xC0]); put(hw,0xFF,[0x20]); put(hw,0x0200,[0xB1,0xFF]);
++    cpu.setState({pc:0x0200,y:0}); hw.setBusMonitoring(true);
++    system.runLiveCpuTicks(5);
++    assert.equal(hw.getLastBusAccess().address,0xC020);
++    assert.equal(hw.getLastBusAccess().cycleOffset,4);
++});

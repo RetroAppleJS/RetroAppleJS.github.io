@@ -185,12 +185,15 @@ function GamePort()
         ticks++;
     };
 
-    this.trigger = function()
+    this.trigger = function(rel_addr,d8,ctx)
     {
+        // RD callbacks pass ctx as argument two; WR callbacks use argument three.
+        ctx = ctx || (d8 && typeof(d8)==="object" ? d8 : null);
+        var now = ctx && ctx.cpuTick!==undefined ? ctx.cpuTick : ticks;
         for(var i=0;i<paddleDeadline.length;i++)
         {
             paddleDeadline[i] =
-                ticks +
+                now +
                 clampByte(gameport.state.paddles[i]) *
                 PADDLE_CYCLES_PER_STEP;
         }
@@ -198,9 +201,11 @@ function GamePort()
         return 0x00;
     };
 
-    this.read = function(rel_addr)
+    this.read = function(rel_addr,ctx)
     {
-        var input = Number(rel_addr) & 0x0F;
+        // A3 is not decoded: $C068-$C06F mirror $C060-$C067.
+        var input = Number(rel_addr) & 0x07;
+        var now = ctx && ctx.cpuTick!==undefined ? ctx.cpuTick : ticks;
 
         /*
          * $C063 / SW2 is occupied by the traditional one-wire Shift-key
@@ -220,7 +225,7 @@ function GamePort()
 
         // $C064-$C067: PDL0-PDL3. Bit 7 stays high until its timer expires.
         if(input>=0x04 && input<=0x07)
-            return ticks < paddleDeadline[input-4] ? 0x80 : 0x00;
+            return now < paddleDeadline[input-4] ? 0x80 : 0x00;
 
         return 0x00;
     };

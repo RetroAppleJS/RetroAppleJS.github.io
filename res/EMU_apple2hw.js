@@ -9,6 +9,10 @@
 // 2) I/O (--> relative address starting from $C000)
 // 3) ROM (--> relative address starting from $D000)
 
+// Reserved read result: the addressed device does not drive any data bits.
+// Ordinary callbacks still return bytes; partial drivers return {value,mask}.
+Apple2Hw.FLOATING_BUS = -1;
+
 function Apple2Hw(vid,keys)
 {
     var hw = this;
@@ -22,6 +26,7 @@ function Apple2Hw(vid,keys)
     this.WR = [];
     this.bRO = false;                   // Read-Only flag across the entire hardware (allowing safe read operations)
     this.default_map = null;
+    this.FLOATING_BUS = Apple2Hw.FLOATING_BUS;
 
     var video = vid;                        
     this.io = new Apple2IO(video,hw);   // HARDWARE OBJECT OWNS IO (always call 'io' methods via hardware)
@@ -40,6 +45,207 @@ function Apple2Hw(vid,keys)
     /////////////////////////////////////////////////////////////////
     var ram = new Uint8Array(RAM_SIZE);      // HARDWARE RAM SPACE //
     /////////////////////////////////////////////////////////////////
+
+    /*
+     * NTSC Apple II/II+ video scanner, independent of canvas redraws.
+     * The field origin is the start of horizontal blanking on line zero.
+     * hcycle 0..24 is HBL; 25..64 fetches columns 0..39. Video RAM is
+     * fetched in the phase preceding the CPU access, including during blanking.
+     */
+    const VIDEO_LINE_CYCLES = 65;
+    const VIDEO_FRAME_CYCLES = 65*262;
+    var cpuTicks = 0;
+    var videoTicks = 0;
+    var videoClockScale = 1;
+    var scaleCpuEpoch = 0;
+    var scaleVideoEpoch = 0;
+    var busMonitoring = false;
+    var lastBusAccess = null;
+    var videoMode = {
+         "gfx":!!(video.state && video.state.gfx)
+        ,"mix":!!(video.state && video.state.mix)
+        ,"page2":!!(video.state && video.state.page2)
+        ,"hires":!!(video.state && video.state.hires)
+    };
+
+    this.setVideoMode = function(name,flag)
+    {
+        var setters = {"gfx":"setGfx","mix":"setMix","page2":"setPage2","hires":"setHires"};
+        var setter = setters[name];
+        if(!setter) return;
+        videoMode[name] = !!flag;
+        if(typeof(video[setter])==="function") video[setter](!!flag);
+    };
+
+    this.getVideoMode = function() { return Object.assign({},videoMode); };
+
+    this.getCpuTicks = function() { return cpuTicks; };
+    this.getVideoTicks = function() { return videoTicks; };
+
+    this.setVideoClockScale = function(scale)
+    {
+        scale = Number(scale);
+        scale = Number.isFinite(scale) && scale>0 ? scale : 1;
+        if(scale!==videoClockScale)
+        {
+            scaleCpuEpoch = cpuTicks;
+            scaleVideoEpoch = videoTicks;
+            videoClockScale = scale;
+        }
+        return videoClockScale;
+    };
+
+    // Called once per completed CPU tick by Apple2IO, never by the renderer.
+    this.tick = function()
+    {
+        cpuTicks++;
+        // Multiplication from an epoch avoids accumulating fractional rounding
+        // errors across ticks/batches (six ticks at 1/3 must be exactly two).
+        videoTicks = scaleVideoEpoch+(cpuTicks-scaleCpuEpoch)*videoClockScale;
+    };
+
+    function effectiveVideoTick(cycleOffset)
+    {
+        return scaleVideoEpoch+(cpuTicks-scaleCpuEpoch+(Number(cycleOffset) || 0))*videoClockScale;
+    }
+
+    this.getVideoPosition = function(cycleOffset)
+    {
+        var tick = effectiveVideoTick(cycleOffset);
+        var phase = ((Math.floor(tick)%VIDEO_FRAME_CYCLES)+VIDEO_FRAME_CYCLES)%VIDEO_FRAME_CYCLES;
+        var line = Math.floor(phase/VIDEO_LINE_CYCLES);
+        var hcycle = phase%VIDEO_LINE_CYCLES;
+        var hblank = hcycle<25;
+        var vblank = line>=192;
+        return {
+             "videoTick":tick,"frameCycle":phase,"line":line,"hcycle":hcycle
+            ,"hblank":hblank,"vblank":vblank
+            ,"byteColumn":hblank ? -1 : hcycle-25
+            ,"x":hblank || vblank ? -1 : (hcycle-25)*7
+            ,"y":vblank ? -1 : line
+        };
+    };
+
+    this.getScannerState = function(cycleOffset)
+    {
+        var state = this.getVideoPosition(cycleOffset);
+        var hClock = (state.hcycle+40)%65;
+        state.hState = (0x18+hClock-(hClock>=41 ? 1 : 0)) & 0x3F;
+        // The NTSC V counter presets after line 255, giving $FA..$FF.
+        state.vState = (0x100+state.line-(state.line>=256 ? 262 : 0)) & 0x1FF;
+        return state;
+    };
+
+    function scannerAddress(state)
+    {
+        var h = state.hState;
+        var v = state.vState;
+        // Motherboard latches belong to the bus; the renderer mirrors them.
+        var mode = videoMode;
+        var hires = !!mode.gfx && !!mode.hires;
+        if(mode.mix && (v & 0xA0)===0xA0) hires = false;
+
+        // The address adder wires V3/V4 to weights 5/10; carry is discarded.
+        // A0..A2 = H0..H2; A3..A6 = the four-bit sum; A7..A9 = V0..V2.
+        var rowGroup = (v>>6)&3;
+        var low = (h&7) | (((13+(h>>3)+rowGroup*5)&15)<<3);
+        var row = (v&0x38)<<4;
+        if(hires)
+            return (mode.page2 ? 0x4000 : 0x2000) | ((v&7)<<10) | row | low;
+
+        // On II/II+ the text scanner also selects A12 during HBL (not //e).
+        return (mode.page2 ? 0x0800 : 0x0400) | row | low | (state.hblank ? 0x1000 : 0);
+    }
+
+    this.getScannerAddress = function(cycleOffset)
+    {
+        return scannerAddress(this.getScannerState(cycleOffset));
+    };
+
+    this.peekFloatingBus = function(cycleOffset)
+    {
+        // Physical motherboard RAM, not the CPU RD map or a slot-card overlay.
+        return ram[this.getScannerAddress(cycleOffset)];
+    };
+    this.getFloatingBus = this.peekFloatingBus;
+
+    this.setBusMonitoring = function(enabled)
+    {
+        busMonitoring = !!enabled;
+        lastBusAccess = null;
+        return busMonitoring;
+    };
+
+    this.getLastBusAccess = function()
+    {
+        return lastBusAccess ? Object.assign({},lastBusAccess) : null;
+    };
+
+    function noteBusAccess(addr,rw,offset,result,mask,state,scanAddr,floating)
+    {
+        if(!busMonitoring || hw.bRO) return;
+        state = state || hw.getScannerState(offset);
+        scanAddr = scanAddr===undefined ? scannerAddress(state) : scanAddr;
+        lastBusAccess = {
+             "cpuTick":cpuTicks,"effectiveCpuTick":cpuTicks+offset
+            ,"effectiveTick":state.videoTick,"cycleOffset":offset
+            ,"address":addr,"rw":rw,"line":state.line,"hcycle":state.hcycle
+            ,"frameCycle":state.frameCycle,"hState":state.hState,"vState":state.vState
+            ,"scannerAddress":scanAddr
+            ,"floatingValue":floating===undefined ? ram[scanAddr] : floating
+            ,"mask":mask,"driven":mask!==0,"result":result
+        };
+    }
+
+    function resolveBusRead(addr,data,offset,state,scanAddr,floating)
+    {
+        offset = Number(offset) || 0;
+        var mask = data===hw.FLOATING_BUS ? 0
+            : data && typeof(data)==="object" ? data.mask & 0xFF : 0xFF;
+        var value = data && typeof(data)==="object" ? data.value : data;
+        if(mask!==0xFF && floating===undefined)
+        {
+            state = hw.getScannerState(offset);
+            scanAddr = scannerAddress(state);
+            floating = ram[scanAddr];
+        }
+        var result = ((value & mask) | ((floating || 0) & (mask^0xFF))) & 0xFF;
+        noteBusAccess(addr,"R",offset,result,mask,state,scanAddr,floating);
+        return result;
+    }
+
+    this.readIO = function(addr,cycleOffset)
+    {
+        // Capture BEFORE dispatch: this cycle's video fetch precedes any
+        // mode-changing CPU soft switch accessed during the CPU phase.
+        var state = this.getScannerState(cycleOffset);
+        var scanAddr = scannerAddress(state);
+        var floating = ram[scanAddr];
+        var data = this.io.read(addr-IO_ADDR,cycleOffset);
+        return resolveBusRead(addr,data,cycleOffset,state,scanAddr,floating);
+    };
+
+    this.read = function(addr,cycleOffset)
+    {
+        addr &= 0xFFFF;
+        var line = this.lineDecode(addr);
+        var fn = this.RD[line];
+        var data = fn(addr,cycleOffset);
+        // The default I/O callback already resolves and records the bus read;
+        // mapped RAM/ROM/card callbacks retain their existing byte interface.
+        if(line===0xC && this.default_map && fn===this.default_map.RD[line]) return data;
+        return resolveBusRead(addr,data,cycleOffset);
+    };
+
+    this.write = function(addr,d8,cycleOffset)
+    {
+        addr &= 0xFFFF;
+        d8 &= 0xFF;
+        var offset = Number(cycleOffset) || 0;
+        // Snapshot preceding the write, for the same phase reason as readIO.
+        noteBusAccess(addr,"W",offset,d8,0xFF);
+        return this.WR[this.lineDecode(addr)](addr,d8,offset);
+    };
 
     /*
      * Shared Apple II IRQ line.
@@ -81,12 +287,18 @@ function Apple2Hw(vid,keys)
     this.reset = function()
     {
         this.clearIRQSources();
+        videoMode.gfx = videoMode.mix = videoMode.page2 = videoMode.hires = false;
+        lastBusAccess = null;
         hw.io.reset();
     }
 
     this.restart = function()
     {
         this.clearIRQSources();
+        cpuTicks = videoTicks = 0;
+        videoClockScale = 1;
+        scaleCpuEpoch = scaleVideoEpoch = 0;
+        lastBusAccess = null;
         for (var i = 0; i < RAM_SIZE; i++)
             ram[i] = Math.floor(Math.random() * 256.0);
         this.mount();       // mount hardware callbacks
@@ -113,7 +325,7 @@ function Apple2Hw(vid,keys)
                 function(addr) { return ram[addr]; },                   // $9000 - $9FFF
                 function(addr) { return ram[addr]; },                   // $A000 - $AFFF
                 function(addr) { return ram[addr]; },                   // $B000 - $BFFF
-                function(addr) { return hw.io.read(abs2IO(addr)); },    // $C000 - $CFFF
+                function(addr,offset) { return hw.readIO(addr,offset); }, // $C000 - $CFFF
 
                 // Default ROM, not RAMCARD.
                 function(addr) { return apple2Rom[addr - ROM_ADDR]; },  // $D000 - $DFFF
@@ -135,7 +347,7 @@ function Apple2Hw(vid,keys)
                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $9000 - $9FFF
                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $A000 - $AFFF
                 function(addr,d8) { ram[addr] = d8; hw.mark_MEM_monitoring(addr);}, // $B000 - $BFFF
-                function(addr,d8) { hw.io.write(abs2IO(addr),d8); },                // $C000 - $CFFF
+                function(addr,d8,offset) { hw.io.write(abs2IO(addr),d8,offset); },   // $C000 - $CFFF
 
                 // Default ROM write: no-op.
                 function(addr,d8) {},                                               // $D000 - $DFFF
@@ -196,9 +408,7 @@ function Apple2Hw(vid,keys)
 
         try
         {
-            var line = this.lineDecode(addr);
-            var fn = this.RD[line];
-            var d8 = typeof(fn) == "function" ? fn(addr) : 0x00;
+            var d8 = typeof(this.RD[this.lineDecode(addr)])==="function" ? this.read(addr) : 0x00;
 
             return (d8 == null ? 0x00 : d8) & 0xFF;
         }
@@ -227,9 +437,7 @@ function Apple2Hw(vid,keys)
             for(var i=0;i<len;i++)
             {
                 var addr = (from + i) & 0xFFFF;
-                var line = this.lineDecode(addr);
-                var fn = this.RD[line];
-                var d8 = typeof(fn) == "function" ? fn(addr) : 0x00;
+                var d8 = typeof(this.RD[this.lineDecode(addr)])==="function" ? this.read(addr) : 0x00;
                 out[i] = (d8 == null ? 0x00 : d8) & 0xFF;
             }
         }

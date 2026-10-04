@@ -268,8 +268,12 @@ function Apple2Plus(context)
      * Apple2IO tick, so mounted peripherals, timers, IRQ sources and the shared
      * I/O clock remain live while debugging.
      */
-    function runCpuTicks(requestedTicks,deadline)
+    function runCpuTicks(requestedTicks,deadline,videoScale)
     {
+        // Latch once per execution batch. Both scanner queries (including
+        // intra-instruction offsets) and completed ticks use the same ratio.
+        if(typeof(hw.setVideoClockScale)==="function")
+            hw.setVideoClockScale(videoScale===undefined ? 1 : videoScale);
         requestedTicks = Math.floor(Number(requestedTicks));
         if(!Number.isFinite(requestedTicks) || requestedTicks<0)
             requestedTicks = 0;
@@ -380,7 +384,7 @@ function Apple2Plus(context)
     this.runLiveCpuTicks = function(n,options)
     {
         options = options || {};
-        var result = runCpuTicks(n,options.deadline);
+        var result = runCpuTicks(n,options.deadline,options.videoScale);
         advanceVideo(result.completedTicks,options.videoScale===undefined ? 1 : options.videoScale);
         if(options.deviceCycle!==false && hw.io && typeof(hw.io.cycle)=="function")
             hw.io.cycle();
@@ -487,7 +491,11 @@ function Apple2Plus(context)
             : Infinity;
         var deadline = args.cpu_chrono+maxSliceMs;
 
-        var run = runCpuTicks(requestedTicks,deadline);
+        var baseTicks_s = Number(_o.CPU_ClocksTicks_s);
+        var targetTicks_s = Number(_o.CPU_TargetTicks_s);
+        var videoScale = baseTicks_s>0 && targetTicks_s>0
+            ? baseTicks_s/targetTicks_s : 1;
+        var run = runCpuTicks(requestedTicks,deadline,videoScale);
         var completedTicks = run.completedTicks;
 
         /*
@@ -499,11 +507,6 @@ function Apple2Plus(context)
          */
         if(completedTicks>0)
         {
-            var baseTicks_s = Number(_o.CPU_ClocksTicks_s);
-            var targetTicks_s = Number(_o.CPU_TargetTicks_s);
-            var videoScale = baseTicks_s>0 && targetTicks_s>0
-                ? baseTicks_s/targetTicks_s
-                : 1;
             advanceVideo(completedTicks,videoScale);
         }
 
