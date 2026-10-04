@@ -115,6 +115,23 @@ function EMU_diskIIObjects()
     return disks;
 }
 
+function EMU_attachedAudioDevices()
+{
+    if(typeof(apple2plus)!="object" || !apple2plus) return [];
+
+    var io=apple2plus.hwObj().io;
+    var attachments=io && io.attachments ? io.attachments : {};
+    var devices=[];
+
+    for(var key in attachments)
+    {
+        var device=attachments[key] && attachments[key].device;
+        if(device && device.audioDevice===true && typeof(device.init)==="function")
+            devices.push(device);
+    }
+    return devices;
+}
+
 function EMU_smartportDevice(slotN,unit,deviceID)
 {
     if(typeof(apple2plus)!="object" || !apple2plus) return null;
@@ -1207,12 +1224,19 @@ function EMUI()
         if(arg===undefined) arg = this.muteArg;
 
         var disks = EMU_diskIIObjects();
+        var audioDevices = EMU_attachedAudioDevices();
         var b = arg.override===undefined?(oCOM.POPUP.states[arg.id]==arg.class1):arg.override
 
         if(b)
         {
             oEMU.component.IO.AppleSpeaker.init("audio_ctx")
                 .then(()=>{  oEMU.component.IO.AppleSpeaker.init("audio_on")  });
+
+            audioDevices.forEach(function(audioDevice)
+            {
+                audioDevice.init("audio_ctx")
+                    .then(function(){ return audioDevice.init("audio_on"); });
+            });
 
             disks.forEach(function(disk2)
             {
@@ -1223,6 +1247,10 @@ function EMUI()
         else
         {
             oEMU.component.IO.AppleSpeaker.init("audio_off").then(()=>{});
+            audioDevices.forEach(function(audioDevice)
+            {
+                audioDevice.init("audio_off").then(()=>{});
+            });
             disks.forEach(function(disk2)
             {
                 disk2.init("audio_off").then(()=>{});

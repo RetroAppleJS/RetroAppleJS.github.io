@@ -1,3 +1,10 @@
+//
+// Copyright (c) 2026 Freddy Vandriessche.
+// notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
+//
+// EMU_CARD_mockingboard.js
+//
+
 if(oEMU===undefined) var oEMU = {"component":{"IO":{}}};
 oEMU.component.IO.mockingboard = new mockingboard();
 
