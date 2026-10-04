@@ -149,14 +149,16 @@ function RamCard()
                         ,"condition":"RE="+Number(state.RE)+"; mapped="+Number(state.mapped)+"; bank="+state.BANK
                     },
                     {
-                         "id":"upper-memory-write"
-                        ,"space":ROM_ID
-                        ,"op":"WR"
-                        ,"range":ROM_CFG.ROM
-                        ,"handler":"mapWrite"
-                        ,"target":"MS16K RAM - bank "+state.BANK+" and contiguous 8K"
-                        ,"enabled":writeEnabled
-                        ,"condition":"WE="+Number(state.WE)+"; RR="+Number(state.RR)+"; bank="+state.BANK
+                        "id":"upper-memory-write",
+                        "space":ROM_ID,
+                        "op":"WR",
+                        "range":ROM_CFG.ROM,
+                        "handler":writeEnabled ? "mapWrite" : "@default",
+                        "target":writeEnabled
+                            ? "MS16K RAM - bank "+state.BANK+" and contiguous 8K"
+                            : "write protected",
+                        "enabled":writeEnabled,
+                        "condition":"WE="+Number(state.WE)+"; RR="+Number(state.RR)+"; bank="+state.BANK
                     }
                 ]
             };
