@@ -3,9 +3,9 @@
 // EMU_CARD_ramfactor.js — Applied Engineering RAMFactor, default 8 MB.
 // Include from index.html: <script src="res/EMU_CARD_ramfactor.js"></script>
 // Replace the RAMFACTOR entry in _CFG_PSLOT (res/COM_CONFIG.js) with:
-// ,"RAMFACTOR":{"NAME":"AE RAMFactor 8 MB", "HostIO":"", "SlotIO":"X",
+// ,"RAMFAC":{"NAME":"AE RAMFactor 8 MB", "HostIO":"", "SlotIO":"X",
 // "SlotROM":"X", "HostROM":"X", "SLOTrange":"1,2,3,4,5,6,7",
-// "SYScode":"A2,A2P,A2E", "Manuals":"[user_manual](https://garrettsworkshop.com/files/GR8RAM/ae_ramfactor_manual.pdf)"}
+// "SYScode":"A2,A2P,A2e", "Manuals":"[user_manual](https://garrettsworkshop.com/files/GR8RAM/ae_ramfactor_manual.pdf)"}
 // Registers, not language-card banking; no interception of $D000-$FFFF.
 // Raw uploads start at physical $000000, preserve the remaining RAM, and are
 // not DOS .dsk/.do images. Cold power cycling/ejection creates a fresh card;
@@ -43,7 +43,7 @@ oEMU.component.IO.RAMFactor = new RAMFactor();
 
 function RAMFactor(installedBytes)
 {
-    this.id = {"PCODE":"RAMFACTOR", "icon":"fa fa-microchip"};
+    this.id = {"PCODE":"RAMFAC", "icon":"fa fa-microchip"};
     this.state = {"active":true, "registersEnabled":false, "address":0, "firmwareBank":0};
     this.action = {
         "SlotIO":{
