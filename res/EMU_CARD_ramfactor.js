@@ -352,19 +352,25 @@ function RAMFactor(installedBytes)
     {
         if(!this.MEM_grid) return "";
         var cfg = this.MEM_grid.cnf;
-        var grid = "<table class=gtable style='display:inline-block' id='gtable_"+cfg.table_id+"'><tbody>";
-        for(var row=0;row<16;row++)
+        var grid = "<div style='display:flex;gap:12px;align-items:flex-end'>";
+        for(var part=0;part<2;part++)
         {
-            var base = row*0x80000;
-            grid += "<tr><td title='Physical row start'>"+oCOM.getHexMulti(base,6)+"</td>";
-            for(var col=0;col<16;col++)
+            var tableID = cfg.table_id+(part===0 ? "" : "_part2");
+            grid += "<table class=gtable style='display:inline-block' id='gtable_"+tableID+"'><tbody>";
+            for(var row=0;row<8;row++)
             {
-                var physical = base+col*CELL_SIZE;
-                grid += "<td id='"+cfg.id_prefix+oCOM.getHexMulti(physical,6)+"'></td>";
+                var base = (part*8+row)*0x80000;
+                grid += "<tr><td title='Physical row start'>"+oCOM.getHexMulti(base,6)+"</td>";
+                for(var col=0;col<16;col++)
+                {
+                    var physical = base+col*CELL_SIZE;
+                    grid += "<td id='"+cfg.id_prefix+oCOM.getHexMulti(physical,6)+"'></td>";
+                }
+                grid += "</tr>";
             }
-            grid += "</tr>";
+            grid += "</tbody></table>";
         }
-        grid += "</tbody></table>";
+        grid += "</div>";
         return "<div style='display:flex;gap:6px;align-items:flex-end'>"+grid
             +"<div id='"+this.MEM_status_id+"' style='padding:2px;background:white;border-radius:5px'>"
             +this.MEM_status_text()+"</div></div>";
