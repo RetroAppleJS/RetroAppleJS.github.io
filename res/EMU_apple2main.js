@@ -1430,20 +1430,23 @@ function loadDisk_fromFile(file_obj,slotN,deviceID)
 
 async function EMU_audio_prepare()
 {
-    if (_o.EMU_audio.prepared) return true;
-
     try
     {
-        // Create contexts early. This may still leave them suspended.
-        await oEMU.component.IO.AppleSpeaker.init("audio_ctx");
+        if (!_o.EMU_audio.prepared)
+        {
+            // Create base contexts early. This may still leave them suspended.
+            await oEMU.component.IO.AppleSpeaker.init("audio_ctx");
 
-        await Promise.all(
-            EMU_diskIIObjects().map(function(disk2)
-            {
-                return disk2.init("audio_ctx");
-            })
-        );
+            await Promise.all(
+                EMU_diskIIObjects().map(function(disk2)
+                {
+                    return disk2.init("audio_ctx");
+                })
+            );
+        }
 
+        // Attached audio devices may be provisioned after global preparation.
+        // audio_ctx is idempotent, so synchronize the currently attached set.
         await Promise.all(
             EMU_attachedAudioDevices().map(function(audioDevice)
             {
@@ -1463,7 +1466,19 @@ async function EMU_audio_prepare()
 
 async function EMU_audio_try_unlock(forceButtonState)
 {
-    if (_o.EMU_audio.unlocked || _o.EMU_audio.trying) return _o.EMU_audio.unlocked;
+    if (_o.EMU_audio.trying) return _o.EMU_audio.unlocked;
+
+    var pendingAudioDevice = EMU_attachedAudioDevices().some(function(audioDevice)
+    {
+        return !audioDevice.audio;
+    });
+
+    // Preserve the normal fast path once all currently attached audio devices
+    // have inherited the browser-audio lifecycle. A newly attached device has
+    // no AudioContext yet and must be allowed through even when the global
+    // speaker/Disk II state was unlocked earlier.
+    if (_o.EMU_audio.unlocked && !pendingAudioDevice) return true;
+
     _o.EMU_audio.trying = true;
 
     try

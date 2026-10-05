@@ -10,6 +10,7 @@ oEMU.component.IO.mockingboard = new mockingboard();
 
 function mockingboard()
 {
+    var bDebug = true;
     var card=this;
     const SAMPLE_RATE=44100;
     const AUDIO_CAPACITY=Math.ceil(SAMPLE_RATE*0.25);
