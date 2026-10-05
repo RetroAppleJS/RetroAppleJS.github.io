@@ -85,8 +85,10 @@ test('peripheral UI uses the dashboard refresh event for live fill display',()=>
   assert.equal(ctx.__refresh[0].active,true);
   assert.match(html,/MOCK_history_27_kbwrap/);
   assert.match(html,/MOCK_history_27_fill/);
-  assert.match(html,/downloadHistoryFYM/);
-  assert.match(html,/>FYM</);
+  assert.match(html,/downloadHistoryFYM\(0\)/);
+  assert.match(html,/downloadHistoryFYM\(1\)/);
+  assert.match(html,/>FYM0</);
+  assert.match(html,/>FYM1</);
 
   const elements={
     MOCK_history_27_toggle:{style:{}},
@@ -94,7 +96,8 @@ test('peripheral UI uses the dashboard refresh event for live fill display',()=>
     MOCK_history_27_kbwrap:{style:{}},
     MOCK_history_27_fill:{style:{},textContent:''},
     MOCK_history_27_download:{style:{}},
-    MOCK_history_27_fym:{style:{}}
+    MOCK_history_27_fym0:{style:{}},
+    MOCK_history_27_fym1:{style:{}}
   };
   ctx.document={getElementById:id=>elements[id]||null};
   card.history.setCapacityKB(1);
@@ -111,7 +114,7 @@ test('peripheral UI uses the dashboard refresh event for live fill display',()=>
   assert.equal(elements.MOCK_history_27_kbwrap.style.display,'inline-flex');
 });
 
-test('FYM download emits one file for each AY chip',()=>{
+test('each FYM button emits exactly one AY file',()=>{
   const clicks=[], blobs=[];
   const ctx=load({
     pako:{deflate:bytes=>bytes},
@@ -129,10 +132,14 @@ test('FYM download emits one file for each AY chip',()=>{
   card.history.recordWrite(0,8,15,10);
   card.history.recordWrite(1,8,12,10);
   card.history.stop(20);
-  assert.equal(card.downloadHistoryFYM(),true);
+  assert.equal(card.downloadHistoryFYM(0),true);
+  assert.deepEqual(clicks,['mockingboard-slotx-AY0.fym']);
+  assert.equal(blobs.length,1);
+  assert.equal(card.downloadHistoryFYM(1),true);
   assert.deepEqual(clicks,['mockingboard-slotx-AY0.fym','mockingboard-slotx-AY1.fym']);
   assert.equal(blobs.length,2);
   assert.equal(blobs[0].options.type,'application/octet-stream');
   assert.ok(blobs[0].parts[0] instanceof Uint8Array);
   assert.ok(blobs[1].parts[0] instanceof Uint8Array);
+  assert.equal(card.downloadHistoryFYM(),false);
 });

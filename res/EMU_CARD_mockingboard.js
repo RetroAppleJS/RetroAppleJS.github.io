@@ -159,7 +159,8 @@ function mockingboard()
         var kbWrap=document.getElementById(historyID("kbwrap"));
         var fill=document.getElementById(historyID("fill"));
         var download=document.getElementById(historyID("download"));
-        var fym=document.getElementById(historyID("fym"));
+        var fym0=document.getElementById(historyID("fym0"));
+        var fym1=document.getElementById(historyID("fym1"));
         if(mug)
         {
             mug.style.opacity=state.capturing ? "1" : ".35";
@@ -177,7 +178,8 @@ function mockingboard()
             fill.textContent=state.fillPercent+"%";
         }
         if(download) download.title="Download latest Mockingboard history ("+state.bytesUsed+" / "+state.capacityBytes+" bytes)";
-        if(fym) fym.title="Download AY0 and AY1 as 60 Hz FYM playback files";
+        if(fym0) fym0.title="Download AY0 as a 60 Hz FYM playback file";
+        if(fym1) fym1.title="Download AY1 as a 60 Hz FYM playback file";
     }
     function enqueueFrame(left,right)
     {
@@ -348,10 +350,14 @@ function mockingboard()
         setTimeout(function(){ window.URL.revokeObjectURL(url); },1000);
         return true;
     };
-    this.downloadHistoryFYM=function()
+    this.downloadHistoryFYM=function(ay)
     {
         if(typeof(document)!=="object" || typeof(Blob)!=="function" || typeof(window)!=="object" || !window.URL) return false;
         if(typeof(pako)==="undefined" || !pako || typeof(pako.deflate)!=="function") return false;
+
+        ay=Number(ay);
+        if(ay!==0 && ay!==1) return false;
+        ay|=0;
 
         function toFYM(historyData,ay,frameRate)
         {
@@ -444,20 +450,17 @@ function mockingboard()
 
         var json=this.getHistoryJSON();
         var stem="mockingboard-slot"+(json.slot==null?"x":json.slot);
-        for(var ay=0;ay<2;ay++)
-        {
-            var raw=toFYM(json,ay,60);
-            var packed=pako.deflate(raw);
-            var blob=new Blob([packed],{type:"application/octet-stream"});
-            var url=window.URL.createObjectURL(blob);
-            var a=document.createElement("a");
-            a.href=url;
-            a.download=stem+"-AY"+ay+".fym";
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            (function(revokeURL){ setTimeout(function(){ window.URL.revokeObjectURL(revokeURL); },1000); })(url);
-        }
+        var raw=toFYM(json,ay,60);
+        var packed=pako.deflate(raw);
+        var blob=new Blob([packed],{type:"application/octet-stream"});
+        var url=window.URL.createObjectURL(blob);
+        var a=document.createElement("a");
+        a.href=url;
+        a.download=stem+"-AY"+ay+".fym";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function(){ window.URL.revokeObjectURL(url); },1000);
         return true;
     };
     this.reset=function()
@@ -520,8 +523,10 @@ function mockingboard()
             +"<span id='"+historyID("fill")+"' title='History ring-buffer fill' style='display:"+(state.capturing?"inline-block":"none")+";min-width:48px;text-align:center;font-size:11px'>"+state.fillPercent+"%</span>"
             +"<button class=appbut id='"+historyID("download")+"' title='Download latest Mockingboard history' onclick='"+access+"?.downloadHistory()'>"
             +"<span style='font-size:9px'>JSON</span>&nbsp;<i class='fa fa-cloud-download-alt'></i></button>"
-            +"<button class=appbut id='"+historyID("fym")+"' title='Download AY0 and AY1 as 60 Hz FYM playback files' onclick='"+access+"?.downloadHistoryFYM()'>"
-            +"<span style='font-size:9px'>FYM</span>&nbsp;<i class='fa fa-cloud-download-alt'></i></button>"
+            +"<button class=appbut id='"+historyID("fym0")+"' title='Download AY0 as a 60 Hz FYM playback file' onclick='"+access+"?.downloadHistoryFYM(0)'>"
+            +"<span style='font-size:9px'>FYM0</span>&nbsp;<i class='fa fa-cloud-download-alt'></i></button>"
+            +"<button class=appbut id='"+historyID("fym1")+"' title='Download AY1 as a 60 Hz FYM playback file' onclick='"+access+"?.downloadHistoryFYM(1)'>"
+            +"<span style='font-size:9px'>FYM1</span>&nbsp;<i class='fa fa-cloud-download-alt'></i></button>"
             +"</div></div></div>";
     };
 }
