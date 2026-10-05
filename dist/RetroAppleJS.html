@@ -13045,7 +13045,918 @@ Ayumi.prototype.removeDC = function() {
   this.dcIndex = (this.dcIndex + 1) & (DC_FILTER_SIZE - 1);
 }
 
-</script>    <!-- AY-3-8910 chip emulator -->
+</script>    <!-- AY numerical reference -->
+    <script>
+// Shared AY JavaScript numerical backend. Original Ayumi authors:
+// Peter Sovietov & Alexander Kovalenko. See tools/ay_core/NOTICE.md.
+var AYCoreJS = {
+    create: function(config) {
+        var state = {
+            config: config,
+            tick: config.originTick,
+            origin: config.originTick,
+            phase: 0,
+            frames: 0,
+            advanced: false,
+            chips: [],
+            models: [],
+            clocks: [],
+            registers: []
+        };
+        for (var i = 0; i < config.chipCount; i++)
+        {
+            var chip = new Ayumi();
+            chip.process = AYCoreJS.process;
+            chip.firViewsLeft = [];
+            chip.firViewsRight = [];
+            for (var j = 0; j < 23; j++)
+            {
+                chip.firViewsLeft.push(chip.firLeft.subarray(192 - j * 8));
+                chip.firViewsRight.push(chip.firRight.subarray(192 - j * 8));
+            }
+            state.chips.push(chip);
+            state.models.push('AY');
+            state.clocks.push(config.sampleRate * 8);
+            state.registers.push(new Uint8Array(14));
+            chip.configure(false, state.clocks[i], config.sampleRate);
+            AYCoreJS.resetDigital(chip, state.registers[i]);
+        }
+        state.configure = function(index, model, clock) {
+            this.models[index] = model;
+            this.clocks[index] = clock;
+            this.chips[index].step = clock / (config.sampleRate * 64);
+            this.chips[index].dacTable = model === 'YM' ? YM_DAC_TABLE : AY_DAC_TABLE;
+        };
+        state.mix = function(index, weights) {
+            for (var j = 0; j < 3; j++)
+            {
+                this.chips[index].channels[j].panLeft = weights[j * 2];
+                this.chips[index].channels[j].panRight = weights[j * 2 + 1];
+            }
+        };
+        state.write = function(index, reg, value) {
+            AYCoreJS.write(this.chips[index], this.registers[index], reg, value);
+        };
+        state.resetChip = function(index) {
+            AYCoreJS.resetDigital(this.chips[index], this.registers[index]);
+        };
+        state.reset = function(origin) {
+            this.tick = this.origin = origin;
+            this.phase = this.frames = 0;
+            this.advanced = false;
+            for (var i = 0; i < this.chips.length; i++)
+            {
+                var p = this.chips[i];
+                AYCoreJS.resetDigital(p, this.registers[i]);
+                p.x = p.left = p.right = 0;
+                p.firIndex = p.dcIndex = 0;
+                p.firLeft.fill(0);
+                p.firRight.fill(0);
+                p.interpolatorLeft.c.fill(0);
+                p.interpolatorLeft.y.fill(0);
+                p.interpolatorRight.c.fill(0);
+                p.interpolatorRight.y.fill(0);
+                p.dcFilterLeft.sum = p.dcFilterRight.sum = 0;
+                p.dcFilterLeft.delay.fill(0);
+                p.dcFilterRight.delay.fill(0);
+            }
+        };
+        state.render = function(end, data, count, left, right) {
+            var written = 0;
+            for (var event = 0; event <= count; event++)
+            {
+                var offset = event * 16;
+                var target = event < count ? AYCore.eventTick(data, offset) : end;
+                var q = this.phase + (target - this.tick) * config.sampleRate;
+                var frames = Math.floor(q / config.timebaseHz);
+                this.phase = q % config.timebaseHz;
+                if (target > this.tick) this.advanced = true;
+                this.tick = target;
+                for (var frame = 0; frame < frames; frame++)
+                {
+                    var l = 0, r = 0;
+                    for (var chip = 0; chip < this.chips.length; chip++)
+                    {
+                        var p = this.chips[chip];
+                        p.process();
+                        p.removeDC();
+                        l += p.left;
+                        r += p.right;
+                    }
+                    left[written] = l;
+                    right[written++] = r;
+                }
+                this.frames += frames;
+                if (event < count)
+                {
+                    var i = data[offset + 8];
+                    if (data[offset + 9] === 1)
+                        this.resetChip(i);
+                    else
+                        this.write(i, data[offset + 10], data[offset + 11]);
+                }
+            }
+            return written;
+        };
+        state.position = function(dest) {
+            dest.tick = this.tick;
+            dest.samplePhase = this.phase;
+            dest.renderedFrames = this.frames;
+        };
+        state.regs = function(index, dest) {
+            dest.set(this.registers[index]);
+        };
+        state.save = function() {
+            return AYCoreJS.save(this);
+        };
+        state.load = function(blob) {
+            AYCoreJS.load(this, blob);
+        };
+        state.dispose = function() {};
+        return state;
+    },
+    resetDigital: function(chip, regs) {
+        regs.fill(0);
+        for (var i = 0; i < 3; i++)
+        {
+            var c = chip.channels[i];
+            c.toneCounter = c.tone = c.tOff = c.nOff = c.eOn = c.volume = 0;
+            c.tonePeriod = 1;
+        }
+        chip.noisePeriod = chip.noiseCounter = 0;
+        chip.noise = 1;
+        chip.envelopePeriod = 1;
+        chip.setEnvelopeShape(0);
+    },
+    write: function(chip, regs, reg, value) {
+        regs[reg] = value & AYCore.MASKS[reg];
+        if (reg < 6)
+        {
+            var i = reg >> 1;
+            chip.setTone(i, (regs[i * 2 + 1] << 8) | regs[i * 2]);
+        }
+        else if (reg === 6)
+            chip.setNoise(regs[6]);
+        else if (reg >= 7 && reg <= 10)
+        {
+            for (var i = 0; i < 3; i++)
+            {
+                chip.setMixer(i, (regs[7] >> i) & 1, (regs[7] >> (i + 3)) & 1, regs[8 + i] >> 4);
+                chip.setVolume(i, regs[8 + i] & 15);
+            }
+        }
+        else if (reg === 11 || reg === 12)
+            chip.setEnvelope((regs[12] << 8) | regs[11]);
+        else if (reg === 13)
+            chip.setEnvelopeShape(regs[13]);
+    },
+    process: function() {
+        var y1;
+
+        var cLeft = this.interpolatorLeft.c;
+        var yLeft = this.interpolatorLeft.y;
+
+        var cRight = this.interpolatorRight.c;
+        var yRight = this.interpolatorRight.y;
+
+        var firOffset = FIR_SIZE - this.firIndex * DECIMATE_FACTOR;
+        var firLeft = this.firViewsLeft[this.firIndex];
+        var firRight = this.firViewsRight[this.firIndex];
+
+        this.firIndex = (this.firIndex + 1) % (FIR_SIZE / DECIMATE_FACTOR - 1);
+
+        for (var i = DECIMATE_FACTOR - 1; i >= 0; i--)
+        {
+            this.x += this.step;
+            if (this.x >= 1)
+            {
+                this.x--;
+                yLeft[0] = yLeft[1];
+                yLeft[1] = yLeft[2];
+                yLeft[2] = yLeft[3];
+
+                yRight[0] = yRight[1];
+                yRight[1] = yRight[2];
+                yRight[2] = yRight[3];
+
+                this.updateMixer();
+
+                yLeft[3] = this.left;
+                yRight[3] = this.right;
+
+                y1 = yLeft[2] - yLeft[0];
+                cLeft[0] = 0.5 * yLeft[1] + 0.25 * (yLeft[0] + yLeft[2]);
+                cLeft[1] = 0.5 * y1;
+                cLeft[2] = 0.25 * (yLeft[3] - yLeft[1] - y1);
+
+                y1 = yRight[2] - yRight[0];
+                cRight[0] = 0.5 * yRight[1] + 0.25 * (yRight[0] + yRight[2]);
+                cRight[1] = 0.5 * y1;
+                cRight[2] = 0.25 * (yRight[3] - yRight[1] - y1);
+            }
+            firLeft[i] = (cLeft[2] * this.x + cLeft[1]) * this.x + cLeft[0];
+            firRight[i] = (cRight[2] * this.x + cRight[1]) * this.x + cRight[0];
+        }
+
+        this.left = this.decimate(firLeft);
+        this.right = this.decimate(firRight);
+    }
+
+    ,
+    // Backend snapshots are deliberately outside rendering. Shape validation and
+    // checksum precede restoration; object/function identities stay untouched.
+    numeric: function(value) {
+        if (typeof (value) === 'number' || typeof (value) === 'boolean') return value;
+        if (ArrayBuffer.isView(value)) return Array.from(value);
+        if (Array.isArray(value)) return value.map(AYCoreJS.numeric);
+        var result = {};
+        for (var key of Object.keys(value))
+            if (key !== 'envelopes' && key !== 'dacTable' && key !== 'firViewsLeft' &&
+                key !== 'firViewsRight' && typeof (value[key]) !== 'function')
+                result[key] = AYCoreJS.numeric(value[key]);
+        return result;
+    },
+    save: function(state) {
+        var payload = JSON.stringify({
+            config: state.config,
+            tick: state.tick,
+            origin: state.origin,
+            phase: state.phase,
+            frames: state.frames,
+            advanced: state.advanced,
+            models: state.models,
+            clocks: state.clocks,
+            registers: state.registers.map(function(r) {
+                return Array.from(r);
+            }),
+            chips: state.chips.map(AYCoreJS.numeric)
+        });
+        var bytes = new Uint8Array(28 + payload.length), v = new DataView(bytes.buffer);
+        bytes.set([65, 89, 83, 84]);
+        [1, 1, 1, 1, bytes.length].forEach(function(n, i) {
+            v.setUint32(4 + i * 4, n, true);
+        });
+        for (var i = 0; i < payload.length; i++) bytes[28 + i] = payload.charCodeAt(i);
+        v.setUint32(24, AYCore.checksum(bytes, 28), true);
+        return bytes;
+    },
+    load: function(state, bytes) {
+        try
+        {
+            AYCore.checkSnapshot(bytes, 1);
+            var text = '';
+            for (var i = 28; i < bytes.length; i++) text += String.fromCharCode(bytes[i]);
+            var saved = JSON.parse(text);
+            var current = AYCoreJS.save(state), templateText = '';
+            for (var i = 28; i < current.length; i++)
+                templateText += String.fromCharCode(current[i]);
+            var template = JSON.parse(templateText);
+            function verify(a, b)
+            {
+                if (typeof a !== typeof b) throw 0;
+                if (typeof a === 'number')
+                {
+                    if (!Number.isFinite(a)) throw 0;
+                    return;
+                }
+                if (typeof a === 'boolean' || typeof a === 'string') return;
+                if (!a || !b || Array.isArray(a) !== Array.isArray(b)) throw 0;
+                var keys = Object.keys(b);
+                if (Object.keys(a).length !== keys.length) throw 0;
+                for (var key of keys)
+                {
+                    if (!Object.prototype.hasOwnProperty.call(a, key)) throw 0;
+                    verify(a[key], b[key]);
+                }
+            }
+            verify(saved, template);
+            if (JSON.stringify(saved.config) !== JSON.stringify(state.config)) throw 0;
+            if (!AYCore.validTick(saved.tick) || !AYCore.validTick(saved.origin) ||
+                saved.origin > saved.tick || !Number.isSafeInteger(saved.frames) ||
+                saved.frames < 0 || !Number.isInteger(saved.phase) || saved.phase < 0 ||
+                saved.phase >= state.config.timebaseHz)
+                throw 0;
+            var elapsed = BigInt(saved.tick - saved.origin) * BigInt(state.config.sampleRate),
+                timebase = BigInt(state.config.timebaseHz);
+            if (elapsed / timebase !== BigInt(saved.frames) ||
+                elapsed % timebase !== BigInt(saved.phase) ||
+                saved.advanced !== (saved.tick > saved.origin))
+                throw 0;
+            for (var i = 0; i < saved.chips.length; i++)
+            {
+                var p = saved.chips[i];
+                if (!['AY', 'YM'].includes(saved.models[i]) || !Number.isInteger(saved.clocks[i]) ||
+                    saved.clocks[i] <= 0 || saved.clocks[i] > 64 * state.config.sampleRate)
+                    throw 0;
+                if (!Number.isInteger(p.firIndex) || p.firIndex < 0 || p.firIndex >= 23 ||
+                    !Number.isInteger(p.dcIndex) || p.dcIndex < 0 || p.dcIndex >= 1024 || p.x < 0 ||
+                    p.x >= 1 || !Number.isInteger(p.noise) || p.noise < 0 || p.noise > 131071 ||
+                    !Number.isInteger(p.envelopeShape) || p.envelopeShape < 0 ||
+                    p.envelopeShape > 15 || !Number.isInteger(p.envelopeSegment) ||
+                    p.envelopeSegment < 0 || p.envelopeSegment > 1 || p.envelope < 0 ||
+                    p.envelope > 31)
+                    throw 0;
+                if (p.step !== saved.clocks[i] / (state.config.sampleRate * 64) ||
+                    p.mastervolume !== 1 || !AYCore.integer(p.noisePeriod, 0, 31) ||
+                    !AYCore.integer(p.noiseCounter, 0, 62) ||
+                    !AYCore.integer(p.envelopePeriod, 1, 65535) ||
+                    !AYCore.integer(p.envelopeCounter, 0, 65535) ||
+                    !AYCore.integer(p.envelope, 0, 31))
+                    throw 0;
+                for (var j = 0; j < 3; j++)
+                {
+                    var ch = p.channels[j];
+                    if (!AYCore.integer(ch.tonePeriod, 1, 4095) ||
+                        !AYCore.integer(ch.toneCounter, 0, 4095) ||
+                        !AYCore.integer(ch.tone, 0, 1) || !AYCore.integer(ch.tOff, 0, 1) ||
+                        !AYCore.integer(ch.nOff, 0, 1) || !AYCore.integer(ch.eOn, 0, 1) ||
+                        !AYCore.integer(ch.volume, 0, 15) || ch.panLeft < 0 || ch.panLeft > 1 ||
+                        ch.panRight < 0 || ch.panRight > 1)
+                        throw 0;
+                }
+                for (var j = 0; j < 14; j++)
+                    if (!Number.isInteger(saved.registers[i][j]) ||
+                        (saved.registers[i][j] & AYCore.MASKS[j]) !== saved.registers[i][j])
+                        throw 0;
+            }
+            function restore(dest, src)
+            {
+                for (var key of Object.keys(src))
+                {
+                    if (ArrayBuffer.isView(dest[key]))
+                        dest[key].set(src[key]);
+                    else if (typeof (src[key]) === 'object')
+                        restore(dest[key], src[key]);
+                    else
+                        dest[key] = src[key];
+                }
+            }
+            state.tick = saved.tick;
+            state.origin = saved.origin;
+            state.phase = saved.phase;
+            state.frames = saved.frames;
+            state.advanced = saved.advanced;
+            for (var i = 0; i < state.chips.length; i++)
+            {
+                state.models[i] = saved.models[i];
+                state.clocks[i] = saved.clocks[i];
+                state.chips[i].dacTable = saved.models[i] === 'YM' ? YM_DAC_TABLE : AY_DAC_TABLE;
+                state.registers[i].set(saved.registers[i]);
+                restore(state.chips[i], saved.chips[i]);
+            }
+        }
+        catch (error)
+        {
+            throw AYCore.error('E_STATE');
+        }
+    }
+};
+
+</script>
+    <script>
+// Generated by tools/ay_core/build.sh. Do not edit.
+var AYCoreWASMAsset = {abiVersion:1,sourceSHA256:"ea697b779a94ddc6a2504b0b2b862c324568c64fe863a747b1d3c13a3f97a585",base64:"AGFzbQEAAAABRAtgAAF/YAF/AX9gAX8AYAR/f39/AX9gA39/fwF/YAN/f38AYAJ/fwF/YAJ/fAF/YAd/fH9/f39/AX9gAX8BfmABfwF8AxoZAAABAgMEAwUGBwgJCgQGAQQEBgEBAQEBAQUEAQEgIAYIAX8BQaCRCAsH4gIVBm1lbW9yeQIADmF5X2FiaV92ZXJzaW9uAAAQYXlfY29uZmlnX2J1ZmZlcgABCWF5X2NyZWF0ZQACEWF5X2NvbmZpZ3VyZV9jaGlwAAQKYXlfc2V0X21peAAFDGF5X3dyaXRlX25vdwAGEWF5X3Jlc2V0X2NoaXBfbm93AAgSYXlfcmVzZXRfdHJhbnNwb3J0AAkPYXlfcmVuZGVyX3VudGlsAAoQYXlfZ2V0X3JlZ2lzdGVycwAND2F5X2dldF9wb3NpdGlvbgAODWF5X3N0YXRlX3NpemUADw1heV9zYXZlX3N0YXRlABANYXlfbG9hZF9zdGF0ZQARCmF5X2Rlc3Ryb3kAEw9heV9ldmVudF9idWZmZXIAFA5heV9sZWZ0X2J1ZmZlcgAVD2F5X3JpZ2h0X2J1ZmZlcgAWEWF5X2NvbnRyb2xfYnVmZmVyABcPYXlfc3RhdGVfYnVmZmVyABgK0H4ZBABBAQsIAEGwjICAAAu5EwQGfwF8AX4mf0F/IQECQCAAQbCMgIAARw0AQQAoArCMgIAAQShHDQBBACgCtIyAgABBAUcNAEEAKAK4jICAACICRQ0AIAJBAksNAEEAKAK8jICAACIDRQ0AQQAoAsCMgIAAIgRBwD5JDQAgBEGA3AtLDQBBACgCxIyAgAAiBUUNACAFQYCAAUsNAEEAKALIjICAACIGRQ0AIAZBgIABSw0AQQAoAsyMgIAADQBBACsD0IyAgAAiB0T///////8/Q2UhAAJAAkAgB0QAAAAAAADwQ2MgB0QAAAAAAAAAAGZxRQ0AIAexIQgMAQtCACEICyAARQ0AIAdEAAAAAAAAAABmRQ0AIAdE////////7/9mRQ0AIAcgB2INACAHRP///////+9/ZUUNACAHIAi6Yg0AQQAhCQJAAkBBACgC5IyAgAAiCg0AQQAoAuCMgIAAQf///x9JDQELAkBBACgCiI2AgAANAEEBIQlBACgChI2AgABB////H0kNAQsCQEEAKAKsjYCAAA0AQQIhCUEAKAKojYCAAEH///8fSQ0BCwJAQQAoAtCNgIAADQBBAyEJQQAoAsyNgIAAQf///x9JDQELAkBBACgC9I2AgAANAEEEIQlBACgC8I2AgABB////H0kNAQsCQEEAKAKYjoCAAA0AQQUhCUEAKAKUjoCAAEH///8fSQ0BCwJAQQAoAryOgIAADQBBBiEJQQAoAriOgIAAQf///x9JDQELAkBBACgC4I6AgAANAEEHIQlBACgC3I6AgABB////H0kNAQsCQEEAKAKEj4CAAA0AQQghCUEAKAKAj4CAAEH///8fSQ0BCwJAQQAoAqiPgIAADQBBCSEJQQAoAqSPgIAAQf///x9JDQELAkBBACgCzI+AgAANAEEKIQlBACgCyI+AgABB////H0kNAQsCQEEAKALwj4CAAA0AQQshCUEAKALsj4CAAEH///8fSQ0BCwJAQQAoApSQgIAADQBBDCEJQQAoApCQgIAAQf///x9JDQELAkBBACgCuJCAgAANAEENIQlBACgCtJCAgABB////H0kNAQsCQEEAKALckICAAA0AQQ4hCUEAKALYkICAAEH///8fSQ0BC0F6IQFBACgCgJGAgAANAUEPIQlBACgC/JCAgABB/v//H0sNAQtBeiEBQaCRiIAAQQdqQXhxIgBBgICAAUsNAEGAgIABIABrIAVBA3QgBkEEdCILaiIMQfDNBWoiDUkNAEEAKAKEkYCAAEEAKAKAkYCAACIOaiEPQQAoAuCQgIAAQQAoAtyQgIAAIhBqIRFBACgCvJCAgABBACgCuJCAgAAiEmohE0EAKAKYkICAAEEAKAKUkICAACIUaiEVQQAoAvSPgIAAQQAoAvCPgIAAIhZqIRdBACgC0I+AgABBACgCzI+AgAAiGGohGUEAKAKsj4CAAEEAKAKoj4CAACIaaiEbQQAoAoiPgIAAQQAoAoSPgIAAIhxqIR1BACgC5I6AgABBACgC4I6AgAAiHmohH0EAKALAjoCAAEEAKAK8joCAACIgaiEhQQAoApyOgIAAQQAoApiOgIAAIiJqISNBACgC+I2AgABBACgC9I2AgAAiJGohJUEAKALUjYCAAEEAKALQjYCAACImaiEnQQAoArCNgIAAQQAoAqyNgIAAIihqISlBACgCjI2AgABBACgCiI2AgAAiKmohK0EAKALojICAACAKaiEsAkADQCAAIA1qIS0CQAJAIApFDQAgACAsTw0AICwhLiAKIC1JDQELAkAgKkUNACAAICtPDQAgKyEuICogLUkNAQsCQCAoRQ0AIAAgKU8NACApIS4gKCAtSQ0BCwJAICZFDQAgACAnTw0AICchLiAmIC1JDQELAkAgJEUNACAAICVPDQAgJSEuICQgLUkNAQsCQCAiRQ0AIAAgI08NACAjIS4gIiAtSQ0BCwJAICBFDQAgACAhTw0AICEhLiAgIC1JDQELAkAgHkUNACAAIB9PDQAgHyEuIB4gLUkNAQsCQCAcRQ0AIAAgHU8NACAdIS4gHCAtSQ0BCwJAIBpFDQAgACAbTw0AIBshLiAaIC1JDQELAkAgGEUNACAAIBlPDQAgGSEuIBggLUkNAQsCQCAWRQ0AIAAgF08NACAXIS4gFiAtSQ0BCwJAIBRFDQAgACAVTw0AIBUhLiAUIC1JDQELAkAgEkUNACAAIBNPDQAgEyEuIBIgLUkNAQsCQCAQRQ0AIAAgEU8NACARIS4gECAtSQ0BCyAORQ0CIAAgD08NAiAPIS4gDiAtTw0CCyAuQQdqQXhxIgBBgICAAUsNAkGAgIABIABrIA1PDQAMAgsLIABFDQAgCUEkbCItQYCNgIAAaiIKIAA2AgAgLUHojICAAGogDTYCACAtQeSMgIAAaiAANgIAIC1B4IyAgABqIg0gDSgCAEEBajYCAEGQsnogDGshLiAAIS0DQCAtQgA3AAAgLUEIaiEtIC5BCGoiLg0ACyAKKAIAIi0gBzkDICAtQQA2AhwgLSAGNgIYIC0gBTYCFCAtIAQ2AhAgLSADNgIMIC0gAjYCCCAtQqiAgIAQNwMAIAlBJGwiLUHwjICAAGogAEHI5gJqIgAgC2oiLjYCACAtQeyMgIAAaiAANgIAIAooAgAiACAINwMwIAAgCDcDKCAtQfSMgIAAaiAuIAVBAnQiCmoiLjYCACAtQfiMgIAAaiAKIC5qQQdqQXhxIi42AgAgLUH8jICAAGogLkHAAGo2AgAgBEEDdCItuCAEuEQAAAAAAABQQKKjIQcDQCAAQZACaiAHOQMAIABB3AFqIC02AgAgAEHwAGpCgICAgICAgPg/NwMAIABBoAFqQoCAgICAgID4PzcDACAAQegAakKAgICAgICA+D83AwAgAEHQAWpCgICAgICAgPg/NwMAIABBmAFqQoCAgICAgID4PzcDACAAQewBakEAOwAAIABB6AFqQQA2AAAgAEHgAWpCADcAACAAQcgBakKAgICAgICA+D83AwAgAEHcAGpCADcCACAAQdQAakIANwIAIABB0ABqQQA2AgAgAEHIAGpCgICAgBA3AwAgAEGMAWpCADcCACAAQYQBakIANwIAIABBgAFqQQA2AgAgAEHAAWpBADYCACAAQfgAakKAgICAEDcDACAAQbgBakIANwMAIABBiAJqQoCAgIDwAzcDACAAQbABakIANwMAIABBqAFqQoCAgIAQNwMAIABB8AFqQgA3AwAgAEH4AWpCATcDACAAQYACakIBNwMAIABBgLMBaiEAIAJBf2oiAg0ACyAJIA0oAgBBBXRyQQFqIQELIAELxgEAIABCADcAmAEgAEEANgIYIABCADcDECAAQgA3AwggAEKAgICAEDcDACAAQoCAgIAQNwMwIABCgICAgBA3A2AgAEIANwK8ASAAQQA2ArQBIABBpAFqQQA7AAAgAEGgAWpBADYAACAAQcQAakIANwIAIABBPGpCADcCACAAQThqQQA2AgAgAEH4AGpBADYCACAAQfAAakIANwMAIABB6ABqQgA3AwAgAEEfNgLEASAAQgA3A6gBIABBATYCuAEgAEEBNgKwAQvMAQEDf0F+IQQCQCAAQQFIDQAgAEEfcUF/aiIFQQ9LDQAgBUEkbCIGQeSMgIAAaigCAEUNACAGQeCMgIAAaigCACAAQQV2Rw0AQX8hBCADRQ0AIAJBAUsNACAFQSRsQYCNgIAAaigCACIAKAIIIAFNDQAgACgCECIFQQZ0IANJDQBBeCEEIAAoAkQNACAAIAFBgLMBbGoiAEGQAmogA7ggBbhEAAAAAAAAUECiozkDACAAQdwBaiADNgIAIABB2AFqIAI2AgBBACEECyAEC4AFAgN/AnxBfiEDAkAgAEEBSA0AIABBH3FBf2oiBEEPSw0AIARBJGwiBUHkjICAAGooAgBFDQAgBUHgjICAAGooAgAgAEEFdkcNAEF/IQMgBEEkbCIAQYCNgIAAaigCACIEKAIIIAFNDQAgAEH4jICAAGooAgAgAkcNACACKwMAIgZE////////7/9mRQ0AIAYgBmINACAGRP///////+9/ZUUNACAGRAAAAAAAAAAAYw0AIAZEAAAAAAAA8D9kDQAgAisDCCIHRP///////+//ZkUNACAHIAdiDQAgB0T////////vf2VFDQAgB0QAAAAAAAAAAGMNACAHRAAAAAAAAPA/ZA0AIAIrAxAiB0T////////v/2ZFDQAgByAHYg0AIAdE////////739lRQ0AIAdEAAAAAAAAAABjDQAgB0QAAAAAAADwP2QNACACKwMYIgdE////////7/9mRQ0AIAcgB2INACAHRP///////+9/ZUUNACAHRAAAAAAAAAAAYw0AIAdEAAAAAAAA8D9kDQAgAisDICIHRP///////+//ZkUNACAHIAdiDQAgB0T////////vf2VFDQAgB0QAAAAAAAAAAGMNACAHRAAAAAAAAPA/ZA0AIAIrAygiB0T////////v/2ZFDQAgByAHYg0AIAdE////////739lRQ0AIAdEAAAAAAAAAABjDQAgB0QAAAAAAADwP2QNACAEIAFBgLMBbGoiAEHoAGogBjkDACAAQfAAaiACKwMIOQMAIABBmAFqIAIrAxA5AwAgAEGgAWogAisDGDkDACAAQcgBaiACKwMgOQMAIABB0AFqIAIrAyg5AwBBACEDCyADC5MBAQN/QX4hBAJAIABBAUgNACAAQR9xQX9qIgVBD0sNACAFQSRsIgZB5IyAgABqKAIARQ0AIAZB4IyAgABqKAIAIABBBXZHDQBBfyEEIANB/wFLDQAgAkENSw0AIAVBJGxBgI2AgABqKAIAIgAoAgggAU0NACAAIAFBgLMBbGpByABqIAIgAxCHgICAAEEAIQQLIAQLtAMBAX8gAEGYAWoiAyABaiABQYCIgIAAai0AACACcToAAAJAIAFBBUsNACAAIAFBAXZBMGxqIAMgAUEBcmotAABBCHQgAyABQQZxai0AAHIiAUEBIAFBAUsbNgIEDwsCQCABQQZHDQAgACAAQZ4Bai0AADYCqAEPCwJAIAFBCksNACAAIABBnwFqLQAAIgFBAXE2AgwgACAAQaABai0AACICQQ9xNgIYIAAgAkEEdjYCFCAAQcgAaiAAQaEBai0AACICQQ9xNgIAIABBxABqIAJBBHY2AgAgAEH4AGogAEGiAWotAAAiAkEPcTYCACAAQfQAaiACQQR2NgIAIAAgAUEDdkEBcTYCECAAQcAAaiABQQR2QQFxNgIAIABBPGogAUEBdkEBcTYCACAAQfAAaiABQQV2QQFxNgIAIABB7ABqIAFBAnZBAXE2AgAPCwJAIAFBdWpBAUsNACAAIABBowFqLwAAIgFBASABQQFLGzYCuAEPCwJAIAFBDUcNACAAQQA2AsABIABBADYCtAEgACAAQaUBai0AACIBNgK8ASAAQQBBjx4gAXZBAXFrQR9xNgLEAQsL6QIBA39BfiECAkAgAEEBSA0AIABBH3FBf2oiA0EPSw0AIANBJGwiBEHkjICAAGooAgBFDQAgBEHgjICAAGooAgAgAEEFdkcNAEF/IQIgA0EkbEGAjYCAAGooAgAiACgCCCABTQ0AQQAhAiAAIAFBgLMBbGoiAEHsAWpBADsAACAAQegBakEANgAAIABB4AFqQgA3AAAgAEHgAGpBADYCACAAQdgAakIANwMAIABB0ABqQgA3AwAgAEHIAGpCgICAgBA3AwAgAEGMAWpCADcCACAAQYQBakIANwIAIABBgAFqQQA2AgAgAEH4AGpCgICAgBA3AwAgAEHAAWpBADYCACAAQbgBakIANwMAIABBsAFqQgA3AwAgAEGoAWpCgICAgBA3AwAgAEGEAmpCADcCACAAQfwBakEANgIAIABBgAJqQQE2AgAgAEH4AWpBATYCACAAQYwCakEfNgIAIABB8AFqQgA3AwALIAIL4AUFA38BfgJ/BXwEf0F+IQICQCAAQQFIDQAgAEEfcUF/aiIDQQ9LDQAgA0EkbCIEQeSMgIAAaigCAEUNACAEQeCMgIAAaigCACAAQQV2Rw0AIAFE////////P0NlIQACQAJAIAFEAAAAAAAA8ENjIAFEAAAAAAAAAABmcUUNACABsSEFDAELQgAhBQtBfSECIABFDQAgAUQAAAAAAAAAAGZFDQAgAUT////////v/2ZFDQAgASABYg0AIAFE////////739lRQ0AIAW6IAFiDQAgA0EkbEGAjYCAAGooAgAiBiAFNwMwIAYgBTcDKCAGQgA3A0AgBkIANwM4AkAgBigCCA0AQQAPC0EAIQcgBiEAA0AgBiAHQYCzAWxqIgRByABqIQMgBEHQAWorAwAhASAEQcgBaisDACEIIARBoAFqKwMAIQkgBEGYAWorAwAhCiAEQfAAaisDACELIARB6ABqKwMAIQwgBEHcAWoiDSgCACEOIARB2AFqIg8oAgAhEEHIACECA0AgACACakIANwAAIAJBCGoiAkHIswFHDQALIA0gDjYCACAPIBA2AgAgAyABOQOIASADIAg5A4ABIAMgCTkDWCADIAo5A1AgAyALOQMoIAMgDDkDIEEAIQIgA0EANgIYIANCADcDECADQgA3AwggA0KAgICAEDcDACADQcgAakEANgIAIARB7AFqQQA7AAAgBEHoAWpBADYAACAEQeABakIANwAAIARBkAJqIA64IAYoAhC4RAAAAAAAAFBAoqM5AwAgA0HAAGpCADcDACADQfgAakEANgIAIANBOGpCADcDACADQoCAgIAQNwMwIANB8ABqQgA3AwAgA0HoAGpCADcDACADQoCAgIAQNwNgIARB8AFqQgA3AwAgBEH4AWpCATcDACAEQYACakIBNwMAIARBiAJqQoCAgIDwAzcDACAAQYCzAWohACAHQQFqIgcgBigCCEkNAAsLIAILtRcMBH8EfgJ/AX4CfwJ8IH8HfAN/BnwBfwJ8QX4hBwJAIABBAUgNACAAQR9xQX9qIghBD0sNACAIQSRsIglB5IyAgABqKAIARQ0AIAlB4IyAgABqKAIAIABBBXZHDQBBfyEHIAhBJGwiAEHsjICAAGooAgAgAkcNACAAQfCMgIAAaigCACAERw0AIAhBJGxB9IyAgABqKAIAIAVHDQAgAEGAjYCAAGooAgAhCiABRP///////z9DZSEAAkACQCABRAAAAAAAAPBDYyABRAAAAAAAAAAAZnFFDQAgAbEhCwwBC0IAIQsLQX0hByAARQ0AIAFEAAAAAAAAAABmRQ0AIAFE////////7/9mRQ0AIAEgAWINACABRP///////+9/ZUUNACALuiABYg0AIAsgCikDKCIMVA0AIAsgDH0iDUL/////D1YNAEF7IQcgCigCGCADSQ0AIAooAhQgBkkNAAJAIANFDQAgAiEAIAMhCANAQXwhByAAKQAAIg4gC1YNAiAOQv////////8PVg0CIA4gDFQNAkF/IQcgCigCCCAAQQhqLQAATQ0CIABBCWotAAAiCUEBSw0CIABBDGotAAANAiAAQQ1qLQAADQIgAEEOai0AAA0CIABBD2otAAANAiAAQQpqLQAAIQ8CQAJAIAkNACAPQf8BcUENTQ0BDAQLIA9B/wFxDQMgAEELai0AAA0DCyAAQRBqIQAgDiEMIAhBf2oiCA0ACwtBfSEHIA0gCjUCEH4gCjUCQHwgCjUC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ISAAKwOYByEiIAArA+gEISMgACsDoAchJCAAKwPgBCElIAArA6gHISYgACsD2AQhJyAAKwOwByEoIAArA9AEISkgACsDuAchKiAAKwPIBCErIAArA8gHISwgACsDuAQhLSAAKwPQByEuIAArA7AEIS8gACsD2AchMCAAKwOoBCExIAArA+AHITIgACsDoAQhMyAAKwPoByE0IAArA5gEITUgACsD8AchNiAAKwOQBCE3IAArA/gHITggACsDiAQhOSAAKwOICCE6IAArA/gDITsgACsDkAghPCAAKwPwAyE9IAArA5gIIT4gACsD6AMhPyAAKwOgCCFAIAArA+ADIUEgACsDqAghQiAAKwPYAyFDIAArA7AIIUQgACsD0AMhRSAAKwO4CCFGIAArA8gDIUcgACsDyAghSCAAKwO4AyFJIAArA9AIIUogACsDsAMhSyAAKwPYCCFMIAArA6gDIU0gACsD4AghTiAAKwOgAyFPIAArA+gIIVAgACsDmAMhUSAAKwPwCCFSIAArA5ADIVMgACsD+AghVCAAKwOIAyFVIAArA4gJIVYgACsD+AIhVyAAKwOQCSFYIAArA/ACIVkgACsDmAkhWiAAKwPoAiFbIAArA6AJIVwgACsD4AIhXSAAKwOoCSFeIAArA9gCIV8gACsDsAkhYCAAKwPQAiFhIAArA7gJIWIgACsDyAIhYyAAKwPICSFkIAArA7gCIWUgACsD0AkhZiAAKwOwAiFnIAArA9gJIWggACsDqAIhaSAAKwPgCSFqIAArA6ACIWsgACsD6AkhbCAAKwOYAiFtIAArA/AJIW4gACsDkAIhbyAAKwP4CSFwIAArA4gCIXEgACsDiAohciAAKwP4ASFzIAArA5AKIXQgACsD8AEhdSAAKwOYCiF2IAArA+gBIXcgACsDoAoheCAAKwPgASF5IAArA6gKIXogACsD2AEheyAAKwOwCiF8IAArA9ABIX0gACsDuAohfiAAKwPIASF/IAArA8gKIYABIAArA7gBIYEBIAArA9AKIYIBIAArA7ABIYMBIAArA9gKIYQBIAArA6gBIYUBIAArA+AKIYYBIAArA6ABIYcBIAArA+gKIYgBIAArA5gBIYkBIAArA/AKIYoBIAArA5ABIYsBIAArA/gKIYwBIAArA4gBIY0BIAArA4gLIY4BIAArA3ghjwEgACsD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IABBBWogA0EFai0AADoAACAAQQZqIANBBmotAAA6AAAgAEEHaiADQQdqLQAAOgAAIARBCGoiBEHI5gJHDQALQcW78oh4IQRBACEDA0AgBCACIANqIgAtAABzQZODgAhsIABBAWotAABzQZODgAhsIABBAmotAABzQZODgAhsIABBA2otAABzQZODgAhsIQQgA0EEaiIDQcjmAkcNAAsgASAENgIYQeTmAiEDCyADC/oYBAV/CH4BfwN8I4CAgIAAQdDmAmsiAySAgICAAEF+IQQCQCAAQQFIDQAgAEEfcUF/aiIFQQ9LDQAgBUEkbCIGQeSMgIAAaigCAEUNACAGQeCMgIAAaigCACAAQQV2Rw0AQX8hBCAFQSRsQfyMgIAAaigCACABRw0AQXkhBCACQeTmAkcNACABKAIAQcGyzaIFRw0AIAEoAgRBAUcNACABKAIIQQFHDQAgASgCDEECRw0AIAEoAhBBAUcNACABKAIUQeTmAkcNACABQRxqIQYgASgCGCEHQcW78oh4IQJBACEBA0AgAiAGIAFqIgAtAABzQZODgAhsIABBAWotAABzQZODgAhsIABBAmotAABzQZODgAhsIABBA2otAABzQZODgAhsIQIgAUEEaiIBQcjmAkcNAAsgByACRw0AQQAhAQNAIANBCGogAWoiACAGIAFqIgQtAAA6AAAgAEEBaiAEQQFqLQAAOgAAIABBAmogBEECai0AADoAACAAQQNqIARBA2otAAA6AAAgAEEEaiAEQQRqLQAAOgAAIABBBWogBEEFai0AADoAACAAQQZqIARBBmotAAA6AAAgAEEHaiAEQQdqLQAAOgAAIAFBCGoiAUHI5gJHDQALQXkhBCADQQhqIAVBJGxBgI2AgABqKAIAIgAQkoCAgABFDQAgAykDMCIIQv////////8PVg0AIAggAykDOCIJVA0AIAMpA0AiCkL/////////D1YNACADKAJIIgIgAygCFCIBTw0AIAMoAkwiBUEBSw0AIAggCX0iCyABrSIMgCINQv////////8PIAMoAhgiAa0iDoBWDQAgCyANIAx+fSAOfiILIAyAIg8gDSAOfnwgClINACALIA8gDH59IAKtUg0AIAUgCCAJVkcNAAJAIAMoAhAiEEUNACABQQZ0IQcgAbhEAAAAAAAAUECiIRFBACEGIANBCGohBQNAIANBCGogBkGAswFsaiIBQdgBaigCAEEBSw0CIAFB3AFqKAIAIgJBf2ogB08NAiABQZACaisDACACuCARo2INAiABQZgCaisDACISRP///////+//ZkUNAiASIBJiDQIgEkT////////vf2VFDQIgEkQAAAAAAAAAAGMNAiASRAAAAAAAAPA/Zg0CIAFB+AFqKAIAQf//B0sNAiABQfABaigCAEEfSw0CIAFB9AFqKAIAQT5LDQIgAUGEAmooAgBBD0sNAiABQYgCaigCAEEBSw0CIAFBjAJqKAIAQR9LDQIgAUGAAmooAgBBgIB8akGBgHxJDQIgAUH8AWooAgBB//8DSw0CIAFBwLMBaigCAEEWSw0CIAFBxLMBaigCAEH/B0sNAiABQeEBai0AAEEPSw0CIAFB4wFqLQAAQQ9LDQIgAUHlAWotAABBD0sNAiABQeYBai0AAEEfSw0CIAFB6AFqLQAAQR9LDQIgAUHpAWotAABBH0sNAiABQeoBai0AAEEfSw0CIAFB7QFqLQAAQQ9LDQIgAUHIAGoiAigCBEGAYGpBgWBJDQIgAigCAEH/H0sNAiACKAIIQQFLDQIgAigCDEEBSw0CIAIoAhBBAUsNAiACKAIUQQFLDQIgAigCGEEPSw0CIAIrAyAiEkT////////v/2ZFDQIgEiASYg0CIBJE////////739lRQ0CIAIrAygiE0T////////v/2ZFDQIgEyATYg0CIBNE////////739lRQ0CIBJEAAAAAAAAAABjDQIgEkQAAAAAAADwP2QNAiATRAAAAAAAAAAAYw0CIBNEAAAAAAAA8D9kDQIgAkE0aigCAEGAYGpBgWBJDQIgAigCMEH/H0sNAiACQThqKAIAQQFLDQIgAkE8aigCAEEBSw0CIAJBwABqKAIAQQFLDQIgAkHEAGooAgBBAUsNAiACQcgAaigCAEEPSw0CIAJB0ABqKwMAIhJE////////7/9mRQ0CIBIgEmINAiASRP///////+9/ZUUNAiACQdgAaisDACITRP///////+//ZkUNAiATIBNiDQIgE0T////////vf2VFDQIgEkQAAAAAAAAAAGMNAiASRAAAAAAAAPA/ZA0CIBNEAAAAAAAAAABjDQIgE0QAAAAAAADwP2QNAiACQeQAaigCAEGAYGpBgWBJDQIgAigCYEH/H0sNAiACQegAaigCAEEBSw0CIAJB7ABqKAIAQQFLDQIgAkHwAGooAgBBAUsNAiACQfQAaigCAEEBSw0CIAJB+ABqKAIAQQ9LDQIgAkGAAWorAwAiEkT////////v/2ZFDQIgEiASYg0CIBJE////////739lRQ0CIAJBiAFqKwMAIhNE////////7/9mRQ0CIBMgE2INAiATRP///////+9/ZUUNAiASRAAAAAAAAAAAYw0CIBJEAAAAAAAA8D9kDQIgE0QAAAAAAAAAAGMNAiATRAAAAAAAAPA/ZA0CIAFBoAJqKwMAIhJE////////7/9mRQ0CIBIgEmINAiASRP///////+9/ZUUNAiABQagCaisDACISRP///////+//ZkUNAiASIBJiDQIgEkT////////vf2VFDQIgAUGwswFqKwMAIhJE////////7/9mRQ0CIBIgEmINAiASRP///////+9/ZUUNAiABQbizAWorAwAiEkT////////v/2ZFDQIgEiASYg0CIBJE////////739lRQ0CIAFBsAJqKwMAIhJE////////7/9mRQ0CIBIgEmINAiASRP///////+9/ZUUNAiABQfACaisDACISRP///////+//ZkUNAiASIBJiDQIgEkT////////vf2VFDQIgAUHQAmorAwAiEkT////////v/2ZFDQIgEiASYg0CIBJE////////739lRQ0CIAFBkANqKwMAIhJE////////7/9mRQ0CIBIgEmINAiASRP///////+9/ZUUNAiABQbgCaisDACISRP///////+//ZkUNAiASIBJiDQIgEkT////////vf2VFDQIgAUH4AmorAwAiEkT////////v/2ZFDQIgEiASYg0CIBJE////////739lRQ0CIAFB2AJqKwMAIhJE////////7/9mRQ0CIBIgEmINAiASRP///////+9/ZUUNAiABQZgDaisDACISRP///////+//ZkUNAiASIBJiDQIgEkT////////vf2VFDQIgAUHAAmorAwAiEkT////////v/2ZFDQIgEiASYg0CIBJE////////739lRQ0CIAFBgANqKwMAIhJE////////7/9mRQ0CIBIgEmINAiASRP///////+9/ZUUNAiABQeACaisDACISRP///////+//ZkUNAiASIBJiDQIgEkT////////vf2VFDQIgAUGgA2orAwAiEkT////////v/2ZFDQIgEiASYg0CIBJE////////739lRQ0CIAFByAJqKwMAIhJE////////7/9mRQ0CIBIgEmINAiASRP///////+9/ZUUNAiABQYgDaisDACISRP///////+//ZkUNAiASIBJiDQIgEkT////////vf2VFDQIgAUHoAmorAwAiEkT////////v/2ZFDQIgEiASYg0CIBJE////////739lRQ0CIAFBqANqKwMAIhJE////////7/9mRQ0CIBIgEmINAiASRP///////+9/ZUUNAkGwAyEBA0AgBSABaiICKwMAIhJE////////7/9mRQ0DIBIgEmINAyASRP///////+9/ZUUNAyACQYAYaisDACISRP///////+//ZkUNAyASIBJiDQMgEkT////////vf2VFDQMgAUEIaiIBQbAbRw0AC0GwMyEBA0AgBSABaiICKwMAIhJE////////7/9mRQ0DIBIgEmINAyASRP///////+9/ZUUNAyACQYDAAGorAwAiEkT////////v/2ZFDQMgEiASYg0DIBJE////////739lRQ0DIAFBCGoiAUGw8wBHDQALIAVBgLMBaiEFIAZBAWoiBiAQRw0ACwtBACEEQQAhBQNAIAAgBWoiASADQQhqIAVqIgItAAA6AAAgAUEBaiACQQFqLQAAOgAAIAFBAmogAkECai0AADoAACABQQNqIAJBA2otAAA6AAAgAUEEaiACQQRqLQAAOgAAIAFBBWogAkEFai0AADoAACABQQZqIAJBBmotAAA6AAAgAUEHaiACQQdqLQAAOgAAIAVBCGoiBUHI5gJHDQALCyADQdDmAmokgICAgAAgBAuCAQEBf0EAIQICQCAAKAIAIAEoAgBHDQAgACgCBCABKAIERw0AIAAoAgggASgCCEcNACAAKAIMIAEoAgxHDQAgACgCECABKAIQRw0AIAAoAhQgASgCFEcNACAAKAIYIAEoAhhHDQAgACgCHCABKAIcRw0AIAArAyAgASsDIGEhAgsgAgt5AQR/QX4hAQJAIABBAUgNACAAQR9xQX9qIgJBD0sNACACQSRsIgNB5IyAgABqIgQoAgBFDQAgA0HgjICAAGooAgAgAEEFdkcNAEEAIQEgBEEANgIAIAJBJGwiAEHojICAAGpBADYCACAAQYCNgIAAakEANgIACyABC1wBA39BACEBAkAgAEEBSA0AIABBH3FBf2oiAkEPSw0AIAJBJGwiA0HkjICAAGooAgBFDQAgA0HgjICAAGooAgAgAEEFdkcNACACQSRsQeyMgIAAaigCACEBCyABC1wBA39BACEBAkAgAEEBSA0AIABBH3FBf2oiAkEPSw0AIAJBJGwiA0HkjICAAGooAgBFDQAgA0HgjICAAGooAgAgAEEFdkcNACACQSRsQfCMgIAAaigCACEBCyABC1wBA39BACEBAkAgAEEBSA0AIABBH3FBf2oiAkEPSw0AIAJBJGwiA0HkjICAAGooAgBFDQAgA0HgjICAAGooAgAgAEEFdkcNACACQSRsQfSMgIAAaigCACEBCyABC1wBA39BACEBAkAgAEEBSA0AIABBH3FBf2oiAkEPSw0AIAJBJGwiA0HkjICAAGooAgBFDQAgA0HgjICAAGooAgAgAEEFdkcNACACQSRsQfiMgIAAaigCACEBCyABC1wBA39BACEBAkAgAEEBSA0AIABBH3FBf2oiAkEPSw0AIAJBJGwiA0HkjICAAGooAgBFDQAgA0HgjICAAGooAgAgAEEFdkcNACACQSRsQfyMgIAAaigCACEBCyABCwu4BAEAQYAIC7AE/w//D/8PH/8fHx///w8AAAACAAIAAgACAQIBAgECAQIAAAACAAEAAwEBAQMBAAECAAAAAAAAAAAAAAAAAAAAADoFExATEHM/YacfoB+gfz/4MBZwFnCGP2XLHJgcmIw/wlERaBFokT+xphSAFICUP97YGPQY9Jg/gYgeaB5onj9b7xH0EfShPyzHFK4UrqQ//N4Y2hjaqD/F7h3eHd6tP6B1EWwRbLE/3vMT6RPpsz9stxevF6+3PzN+HHAccLw/gNKQm5CbwD9aJJMBkwHDP/ajFp0WncY/XjAbFBsUyz+oj5+Jn4nPP7ABkv2R/dE/pXTVW9Vb1T8JmZmgmaDZP+P2nemd6d0/vx0RGhEa4T9eV1RTVFPkP1c3mEGYQeg/BixcKFwo7D8AAAAAAADwPwAAAAAAAAAAAAAAAAAAAAC8gBR4FHiEP7yAFHgUeIQ/RNgdmB2YjT9E2B2YHZiNP9phFZAVkJU/2mEVkBWQlT/QpB9wH3CfP9CkH3AfcJ8/PTwXUhdSpz89PBdSF1KnP/94EIMQg7A//3gQgxCDsD8xUBt8G3y7PzFQG3wbfLs/+jQQNBA0wD/6NBA0EDTAPy4eGj0aPco/Lh4aPRo9yj8expKzkrPSPx7GkrOSs9I/A+WX3Jfc1z8D5Zfcl9zXPxakn4Wfhd8/FqSfhZ+F3z/HWZRUlFTkP8dZlFSUVOQ/osBZx1nH6T+iwFnHWcfpPwAAAAAAAPA/AAAAAAAA8D8AugMEbmFtZQANDGF5X2NvcmUud2FzbQGDAxkADmF5X2FiaV92ZXJzaW9uARBheV9jb25maWdfYnVmZmVyAglheV9jcmVhdGUDDXJlc2V0X2RpZ2l0YWwEEWF5X2NvbmZpZ3VyZV9jaGlwBQpheV9zZXRfbWl4BgxheV93cml0ZV9ub3cHCXdyaXRlX3JlZwgRYXlfcmVzZXRfY2hpcF9ub3cJEmF5X3Jlc2V0X3RyYW5zcG9ydAoPYXlfcmVuZGVyX3VudGlsCwpldmVudF90aWNrDAhkZWNpbWF0ZQ0QYXlfZ2V0X3JlZ2lzdGVycw4PYXlfZ2V0X3Bvc2l0aW9uDw1heV9zdGF0ZV9zaXplEA1heV9zYXZlX3N0YXRlEQ1heV9sb2FkX3N0YXRlEgxjb25maWdfZXF1YWwTCmF5X2Rlc3Ryb3kUD2F5X2V2ZW50X2J1ZmZlchUOYXlfbGVmdF9idWZmZXIWD2F5X3JpZ2h0X2J1ZmZlchcRYXlfY29udHJvbF9idWZmZXIYD2F5X3N0YXRlX2J1ZmZlcgcSAQAPX19zdGFja19wb2ludGVyCQoBAAcucm9kYXRhADgJcHJvZHVjZXJzAQxwcm9jZXNzZWQtYnkBDFVidW50dSBjbGFuZxExOC4xLjMgKDF1YnVudHUxKQAsD3RhcmdldF9mZWF0dXJlcwIrD211dGFibGUtZ2xvYmFscysIc2lnbi1leHQ="};
+// Source template appended to the generated embedded module asset.
+var AYCoreWASM = {
+    modulePromise: null,
+    exports: null,
+    initialize: function() {
+        if (!this.modulePromise)
+            this.modulePromise = (async function() {
+                if (typeof WebAssembly !== 'object')
+                    throw AYCore.error('E_MEMORY', 'WebAssembly unavailable');
+                var binary = atob(AYCoreWASMAsset.base64), bytes = new Uint8Array(binary.length);
+                for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                var result = await WebAssembly.instantiate(bytes, {}),
+                    exports = result.instance.exports;
+                if (exports.ay_abi_version() !== 1 || exports.memory.buffer.byteLength !== 2097152)
+                    throw AYCore.error('E_STATE', 'Unsupported AY WASM ABI/memory');
+                AYCoreWASM.exports = exports;
+                return exports;
+            })();
+        return this.modulePromise;
+    },
+    create: async function(config) {
+        await this.initialize();
+        return this.createReady(config);
+    },
+    createReady: function(config) {
+        var e = this.exports;
+        if (!e) throw AYCore.error('E_MEMORY', 'WASM not initialized');
+        var memory = e.memory.buffer, v = new DataView(memory), ptr = e.ay_config_buffer();
+        function check(code)
+        {
+            if (code < 0) throw AYCore.error(AYCore.ERROR_NAMES[-code] || 'E_STATE');
+            return code;
+        }
+        var fields = [
+            40, 1, config.chipCount, config.timebaseHz, config.sampleRate, config.maxFrames,
+            config.maxEvents, 0
+        ];
+        for (var i = 0; i < 8; i++) v.setUint32(ptr + i * 4, fields[i], true);
+        v.setFloat64(ptr + 32, config.originTick, true);
+        var h = check(e.ay_create(ptr)), eventPtr = e.ay_event_buffer(h),
+            leftPtr = e.ay_left_buffer(h), rightPtr = e.ay_right_buffer(h),
+            controlPtr = e.ay_control_buffer(h), statePtr = e.ay_state_buffer(h);
+        var eventBytes = new Uint8Array(memory, eventPtr, config.maxEvents * 16),
+            left = new Float32Array(memory, leftPtr, config.maxFrames),
+            right = new Float32Array(memory, rightPtr, config.maxFrames),
+            controlBytes = new Uint8Array(memory, controlPtr, 64),
+            snapshotBytes = new Uint8Array(memory, statePtr, check(e.ay_state_size(h)));
+        return {
+            config: config,
+            advanced: false,
+            configure: function(i, model, clock) {
+                check(e.ay_configure_chip(h, i, model === 'YM' ? 1 : 0, clock));
+            },
+            mix: function(i, w) {
+                for (var j = 0; j < 6; j++) v.setFloat64(controlPtr + j * 8, w[j], true);
+                check(e.ay_set_mix(h, i, controlPtr));
+            },
+            write: function(i, r, value) {
+                check(e.ay_write_now(h, i, r, value));
+            },
+            resetChip: function(i) {
+                check(e.ay_reset_chip_now(h, i));
+            },
+            reset: function(origin) {
+                check(e.ay_reset_transport(h, origin));
+                this.advanced = false;
+            },
+            render: function(end, data, count, destLeft, destRight) {
+                for (var i = 0; i < count * 16; i++) eventBytes[i] = data[i];
+                var oldTick = v.getFloat64(controlPtr, true);
+                var n = check(e.ay_render_until(
+                    h, end, eventPtr, count, leftPtr, rightPtr, config.maxFrames));
+                if (end > oldTick) this.advanced = true;
+                for (var i = 0; i < n; i++)
+                {
+                    destLeft[i] = left[i];
+                    destRight[i] = right[i];
+                }
+                return n;
+            },
+            position: function(dest) {
+                check(e.ay_get_position(h, controlPtr));
+                dest.tick = v.getFloat64(controlPtr, true);
+                dest.samplePhase = v.getUint32(controlPtr + 8, true);
+                dest.renderedFrames = v.getFloat64(controlPtr + 16, true);
+            },
+            regs: function(i, dest) {
+                check(e.ay_get_registers(h, i, controlPtr));
+                for (var j = 0; j < 14; j++) dest[j] = controlBytes[j];
+            },
+            save: function() {
+                check(e.ay_save_state(h, statePtr, snapshotBytes.length));
+                return snapshotBytes.slice();
+            },
+            load: function(bytes) {
+                if (bytes.length !== snapshotBytes.length) throw AYCore.error('E_STATE');
+                AYCore.checkSnapshot(bytes, 2);
+                snapshotBytes.set(bytes);
+                check(e.ay_load_state(h, statePtr, bytes.length));
+                this.advanced = false;
+            },
+            dispose: function() {
+                check(e.ay_destroy(h));
+            }
+        };
+    }
+};
+
+</script>
+    <script>
+// Shared synchronous AY sound API. Browser transport and VIA pins stay outside.
+function AYCoreError(code, message)
+{
+    this.name = 'AYCoreError';
+    this.code = code;
+    this.message = message || code;
+    if (Error.captureStackTrace) Error.captureStackTrace(this, AYCoreError);
+}
+AYCoreError.prototype = Object.create(Error.prototype);
+var AYCore = {
+    ABI_VERSION: 1,
+    EVENT_STRIDE: 16,
+    MASKS: new Uint8Array([255, 15, 255, 15, 255, 15, 31, 255, 31, 31, 31, 255, 255, 15]),
+    ERROR_NAMES: [
+        null, 'E_ARGUMENT', 'E_HANDLE', 'E_TIME', 'E_ORDER', 'E_CAPACITY', 'E_MEMORY', 'E_STATE',
+        'E_PHASE'
+    ],
+    error: function(code, message) {
+        return new AYCoreError(code, message);
+    },
+    validTick: function(n) {
+        return Number.isSafeInteger(n) && n >= 0;
+    },
+    integer: function(n, min, max) {
+        return Number.isInteger(n) && n >= min && n <= max;
+    },
+    eventTick: function(data, p) {
+        return (data[p] + data[p + 1] * 256 + data[p + 2] * 65536 + data[p + 3] * 16777216) +
+            (data[p + 4] + data[p + 5] * 256 + data[p + 6] * 65536 + data[p + 7] * 16777216) *
+            4294967296;
+    },
+    packEvent: function(view, index, tick, chip, op, reg, value) {
+        if (!(view instanceof DataView) || !this.validTick(tick) ||
+            !this.integer(index, 0, Math.floor(view.byteLength / 16) - 1) ||
+            !this.integer(chip, 0, 1) || !this.integer(op, 0, 1) || !this.integer(reg, 0, 13) ||
+            !this.integer(value, 0, 255) || op === 1 && (reg !== 0 || value !== 0))
+            throw this.error('E_ARGUMENT');
+        var p = index * 16;
+        view.setUint32(p, tick % 4294967296, true);
+        view.setUint32(p + 4, Math.floor(tick / 4294967296), true);
+        view.setUint8(p + 8, chip);
+        view.setUint8(p + 9, op);
+        view.setUint8(p + 10, reg);
+        view.setUint8(p + 11, value);
+        view.setUint32(p + 12, 0, true);
+    },
+    configuration: function(options) {
+        options = options || {};
+        var c = {
+            chipCount: options.chipCount === undefined ? 2 : options.chipCount,
+            sampleRate: options.sampleRate === undefined ? 44100 : options.sampleRate,
+            timebaseHz: options.timebaseHz === undefined ? 1000000000 : options.timebaseHz,
+            originTick: options.originTick === undefined ? 0 : options.originTick,
+            maxFrames: options.maxFrames === undefined ? 4096 : options.maxFrames,
+            maxEvents: options.maxEvents === undefined ? 4096 : options.maxEvents
+        };
+        if (!this.integer(c.chipCount, 1, 2) || !this.integer(c.sampleRate, 8000, 192000) ||
+            !this.integer(c.timebaseHz, 1, 4294967295) || !this.integer(c.maxFrames, 1, 16384) ||
+            !this.integer(c.maxEvents, 1, 16384) || !this.validTick(c.originTick))
+            throw this.error('E_ARGUMENT');
+        return c;
+    },
+    createJS: function(options) {
+        return this.facade(AYCoreJS.create(this.configuration(options)), 'js', '');
+    },
+    create: async function(options) {
+        options = options || {};
+        var requested = options.backend || 'auto', c = this.configuration(options);
+        if (!['auto', 'js', 'wasm'].includes(requested)) throw this.error('E_ARGUMENT');
+        if (requested === 'wasm')
+        {
+            if (typeof AYCoreWASM === 'undefined')
+                throw this.error('E_MEMORY', 'WASM asset unavailable');
+            return this.facade(await AYCoreWASM.create(c), 'wasm', '');
+        }
+        return this.facade(
+            AYCoreJS.create(c), 'js',
+            requested === 'auto' ? 'Browser performance acceptance pending' : '');
+    },
+    overlaps: function(a, b) {
+        return a.buffer === b.buffer && a.byteOffset < b.byteOffset + b.byteLength &&
+            b.byteOffset < a.byteOffset + a.byteLength;
+    },
+    facade: function(state, backend, reason) {
+        var c = state.config, dead = false, position = {tick: 0, samplePhase: 0, renderedFrames: 0};
+        function alive()
+        {
+            if (dead) throw AYCore.error('E_HANDLE');
+        }
+        function chip(i)
+        {
+            alive();
+            if (!AYCore.integer(i, 0, c.chipCount - 1)) throw AYCore.error('E_ARGUMENT');
+        }
+        return {
+            backend: backend,
+            status: {backend: backend, fallbackReason: reason},
+            config: Object.freeze({...c}),
+            configureChip: function(i, options) {
+                chip(i);
+                if (!options || !['AY', 'YM'].includes(options.model) ||
+                    !AYCore.integer(options.clockHz, 1, 64 * c.sampleRate))
+                    throw AYCore.error('E_ARGUMENT');
+                if (state.advanced) throw AYCore.error('E_PHASE');
+                state.configure(i, options.model, options.clockHz);
+            },
+            setMix: function(i, w) {
+                chip(i);
+                if (!w || w.length !== 6) throw AYCore.error('E_ARGUMENT');
+                for (var j = 0; j < 6; j++)
+                    if (!Number.isFinite(w[j]) || w[j] < 0 || w[j] > 1)
+                        throw AYCore.error('E_ARGUMENT');
+                state.mix(i, w);
+            },
+            writeNow: function(i, r, v) {
+                chip(i);
+                if (!AYCore.integer(r, 0, 13) || !AYCore.integer(v, 0, 255))
+                    throw AYCore.error('E_ARGUMENT');
+                state.write(i, r, v);
+            },
+            resetChipNow: function(i) {
+                chip(i);
+                state.resetChip(i);
+            },
+            resetTransport: function(t) {
+                alive();
+                if (!AYCore.validTick(t)) throw AYCore.error('E_TIME');
+                state.reset(t);
+            },
+            getRegisters: function(i, d) {
+                chip(i);
+                if (!(d instanceof Uint8Array) || d.length < 14) throw AYCore.error('E_ARGUMENT');
+                state.regs(i, d);
+            },
+            getPosition: function(d) {
+                alive();
+                if (!d || typeof d !== 'object') throw AYCore.error('E_ARGUMENT');
+                state.position(d);
+            },
+            renderUntil: function(end, batch, output) {
+                alive();
+                state.position(position);
+                if (!AYCore.validTick(end) || end < position.tick ||
+                    end - position.tick > 4294967295)
+                    throw AYCore.error('E_TIME');
+                var count = 0, data = null;
+                if (batch !== null && batch !== undefined)
+                {
+                    data = batch.data;
+                    count = batch.count;
+                    if (!(data instanceof Uint8Array) || !Number.isInteger(count) || count < 0)
+                        throw AYCore.error('E_ARGUMENT');
+                    if (count > c.maxEvents || count * 16 > data.length)
+                        throw AYCore.error('E_CAPACITY');
+                }
+                var prior = position.tick;
+                for (var i = 0; i < count; i++)
+                {
+                    var p = i * 16, t = AYCore.eventTick(data, p);
+                    if (!AYCore.validTick(t) || t < prior || t > end) throw AYCore.error('E_ORDER');
+                    prior = t;
+                    if (data[p + 8] >= c.chipCount || data[p + 9] > 1 || data[p + 12] ||
+                        data[p + 13] || data[p + 14] || data[p + 15] ||
+                        (data[p + 9] === 0 ? data[p + 10] > 13 :
+                                             data[p + 10] !== 0 || data[p + 11] !== 0))
+                        throw AYCore.error('E_ARGUMENT');
+                }
+                var frames = Math.floor(
+                    (position.samplePhase + (end - position.tick) * c.sampleRate) / c.timebaseHz);
+                if (!Number.isSafeInteger(position.renderedFrames + frames))
+                    throw AYCore.error('E_TIME');
+                if (!output || !(output.left instanceof Float32Array) ||
+                    !(output.right instanceof Float32Array) ||
+                    AYCore.overlaps(output.left, output.right) ||
+                    (data &&
+                     (AYCore.overlaps(data, output.left) || AYCore.overlaps(data, output.right))))
+                    throw AYCore.error('E_ARGUMENT');
+                if (frames > c.maxFrames || output.left.length < frames ||
+                    output.right.length < frames)
+                    throw AYCore.error('E_CAPACITY');
+                try
+                {
+                    return state.render(end, data, count, output.left, output.right);
+                }
+                catch (error)
+                {
+                    if (error instanceof WebAssembly.RuntimeError)
+                    {
+                        dead = true;
+                        state.dispose();
+                    }
+                    throw error;
+                }
+            },
+            saveState: function() {
+                alive();
+                return state.save();
+            },
+            loadState: function(bytes) {
+                alive();
+                if (!(bytes instanceof Uint8Array)) throw AYCore.error('E_STATE');
+                state.load(bytes);
+            },
+            destroy: function() {
+                alive();
+                state.dispose();
+                dead = true;
+            }
+        };
+    },
+    checksum: function(bytes, start) {
+        var hash = 2166136261;
+        for (var i = start; i < bytes.length; i++) hash = Math.imul(hash ^ bytes[i], 16777619);
+        return hash >>> 0;
+    },
+    checkSnapshot: function(bytes, backend) {
+        if (bytes.length < 28 || bytes[0] !== 65 || bytes[1] !== 89 || bytes[2] !== 83 ||
+            bytes[3] !== 84)
+            throw this.error('E_STATE');
+        var v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+        if (v.getUint32(4, true) !== 1 || v.getUint32(8, true) !== 1 ||
+            v.getUint32(12, true) !== backend || v.getUint32(16, true) !== 1 ||
+            v.getUint32(20, true) !== bytes.length ||
+            v.getUint32(24, true) !== this.checksum(bytes, 28))
+            throw this.error('E_STATE');
+    }
+};
+
+</script>
+    <script>
+// Source/transport policy for real-time AY music. No wall clock enters synthesis.
+function AYSourceClock(nominalHz, cpuOrigin, audioOrigin)
+{
+    var source = this;
+    this.nominalHz = nominalHz;
+    this.cpuOrigin = cpuOrigin || 0;
+    this.anchorQ32 = BigInt(audioOrigin || 0) << 32n;
+    this.rateNumerator = 0;
+    this.rateDenominator = 1;
+    this.segmentChanges = 0;
+    this.paused = false;
+    function canonical(hz)
+    {
+        if (!Number.isFinite(hz) || hz < 0.001 || hz > 4294967295)
+            throw AYCore.error('E_ARGUMENT', 'Invalid CPU target frequency');
+        var numerator = Math.round(hz * 1000), denominator = 1000, a = numerator, b = denominator;
+        while (b)
+        {
+            var remainder = a % b;
+            a = b;
+            b = remainder;
+        }
+        return {numerator: numerator / a, denominator: denominator / a};
+    }
+    function project(cpuTick)
+    {
+        if (!AYCore.validTick(cpuTick) || cpuTick < source.cpuOrigin) throw AYCore.error('E_TIME');
+        var q = source.anchorQ32 +
+            (BigInt(cpuTick - source.cpuOrigin) * 1000000000n * BigInt(source.rateDenominator) *
+             4294967296n) /
+                BigInt(source.rateNumerator);
+        if (q >> 32n > 9007199254740991n) throw AYCore.error('E_TIME', 'Audio timeline exhausted');
+        return q;
+    }
+    var initial = canonical(nominalHz);
+    this.rateNumerator = initial.numerator;
+    this.rateDenominator = initial.denominator;
+    if (!AYCore.validTick(this.cpuOrigin) || !AYCore.validTick(audioOrigin || 0))
+        throw AYCore.error('E_TIME');
+    this.map = function(cpuTick) {
+        return Number(project(cpuTick) >> 32n);
+    };
+    this.setRate = function(cpuTick, targetHz) {
+        if (targetHz === 0)
+        {
+            project(cpuTick);
+            this.paused = true;
+            return;
+        }
+        var next = canonical(targetHz), anchor = project(cpuTick);
+        if (this.segmentChanges >= 4294967294)
+            throw AYCore.error('E_TIME', 'Speed segment limit reached');
+        this.cpuOrigin = cpuTick;
+        this.anchorQ32 = anchor;
+        this.rateNumerator = next.numerator;
+        this.rateDenominator = next.denominator;
+        this.segmentChanges++;
+        this.paused = false;
+    };
+    this.saveState = function(cpuTick) {
+        return {
+            version: 1,
+            nominalHz: this.nominalHz,
+            cpuOrigin: cpuTick === undefined ? this.cpuOrigin : cpuTick,
+            anchorQ32: (cpuTick === undefined ? this.anchorQ32 : project(cpuTick)).toString(),
+            rateNumerator: this.rateNumerator,
+            rateDenominator: this.rateDenominator,
+            segmentChanges: this.segmentChanges,
+            paused: this.paused
+        };
+    };
+    this.loadState = function(s) {
+        try
+        {
+            if (!s || s.version !== 1 || s.nominalHz !== this.nominalHz ||
+                !AYCore.validTick(s.cpuOrigin) || !Number.isSafeInteger(s.rateNumerator) ||
+                s.rateNumerator <= 0 || !AYCore.integer(s.rateDenominator, 1, 1000) ||
+                !AYCore.integer(s.segmentChanges, 0, 4294967294) || typeof s.paused !== 'boolean' ||
+                !/^\d+$/.test(s.anchorQ32))
+                throw 0;
+            var anchor = BigInt(s.anchorQ32), hz = s.rateNumerator / s.rateDenominator,
+                pair = canonical(hz);
+            if (anchor < 0n || anchor >> 32n > 9007199254740991n ||
+                pair.numerator !== s.rateNumerator || pair.denominator !== s.rateDenominator)
+                throw 0;
+            this.cpuOrigin = s.cpuOrigin;
+            this.anchorQ32 = anchor;
+            this.rateNumerator = s.rateNumerator;
+            this.rateDenominator = s.rateDenominator;
+            this.segmentChanges = s.segmentChanges;
+            this.paused = s.paused;
+        }
+        catch (error)
+        {
+            throw AYCore.error('E_STATE');
+        }
+    };
+}
+
+function AYStream(core, options)
+{
+    options = options || {};
+    var capacity = options.maxEvents || core.config.maxEvents;
+    if (!AYCore.integer(capacity, 1, core.config.maxEvents)) throw AYCore.error('E_ARGUMENT');
+    var data = new Uint8Array(capacity * 16), renderData = new Uint8Array(capacity * 16),
+        renderBatch = {data: renderData, count: 0};
+    var position = {};
+    core.getPosition(position);
+    var count = 0, lastTick = position.tick, sealed = position.tick, epoch = options.epoch || 0,
+        sequence = 0, firstFrame = position.renderedFrames;
+    var stats = {
+        pendingEvents: 0,
+        eventHighWater: 0,
+        stalePackets: 0,
+        lateEvents: 0,
+        epoch: epoch,
+        sequence: 0,
+        sealedBeforeTick: sealed,
+        firstFrame: firstFrame
+    };
+    if (!AYCore.validTick(epoch)) throw AYCore.error('E_ARGUMENT');
+    this.accept = function(packet) {
+        if (!packet || !AYCore.validTick(packet.epoch) || !AYCore.validTick(packet.sequence))
+            throw AYCore.error('E_ARGUMENT');
+        if (packet.epoch < epoch)
+        {
+            stats.stalePackets++;
+            return false;
+        }
+        if (packet.epoch !== epoch || packet.sequence !== sequence)
+            throw AYCore.error('E_ORDER', 'Stream epoch/sequence mismatch');
+        if (!AYCore.validTick(packet.sealedBeforeTick) || packet.sealedBeforeTick < sealed)
+            throw AYCore.error('E_TIME');
+        var batch = packet.events ||
+            (packet.data ? {data: packet.data, count: packet.eventCount} : null),
+            n = batch ? batch.count : 0;
+        if (!AYCore.integer(n, 0, capacity) || count + n > capacity)
+            throw AYCore.error('E_CAPACITY');
+        if (n && (!(batch.data instanceof Uint8Array) || batch.data.length < n * 16))
+            throw AYCore.error('E_ARGUMENT');
+        var prior = lastTick;
+        for (var i = 0; i < n; i++)
+        {
+            var p = i * 16, t = AYCore.eventTick(batch.data, p);
+            if (!AYCore.validTick(t) || t < sealed || t < prior || t > packet.sealedBeforeTick)
+            {
+                stats.lateEvents++;
+                throw AYCore.error('E_ORDER');
+            }
+            if (batch.data[p + 8] >= core.config.chipCount || batch.data[p + 9] > 1 ||
+                batch.data[p + 12] || batch.data[p + 13] || batch.data[p + 14] ||
+                batch.data[p + 15] ||
+                (batch.data[p + 9] === 0 ? batch.data[p + 10] > 13 :
+                                           batch.data[p + 10] || batch.data[p + 11]))
+                throw AYCore.error('E_ARGUMENT');
+            prior = t;
+        }
+        if (n)
+            for (var i = 0; i < n * 16; i++) data[count * 16 + i] = batch.data[i];
+        count += n;
+        lastTick = prior;
+        sealed = packet.sealedBeforeTick;
+        sequence++;
+        stats.pendingEvents = count;
+        stats.eventHighWater = Math.max(stats.eventHighWater, count);
+        stats.sequence = sequence;
+        stats.sealedBeforeTick = sealed;
+        return true;
+    };
+    this.renderUntil = function(end, output) {
+        if (end > sealed) throw AYCore.error('E_TIME', 'CPU interval has not been sealed');
+        var consumed = 0;
+        while (consumed < count && AYCore.eventTick(data, consumed * 16) <= end) consumed++;
+        for (var i = 0; i < consumed * 16; i++) renderData[i] = data[i];
+        renderBatch.count = consumed;
+        var frames = core.renderUntil(end, renderBatch, output);
+        data.copyWithin(0, consumed * 16, count * 16);
+        count -= consumed;
+        firstFrame += frames;
+        stats.pendingEvents = count;
+        stats.firstFrame = firstFrame;
+        return frames;
+    };
+    this.beginEpoch = function(next) {
+        if (!AYCore.validTick(next) || next <= epoch || count) throw AYCore.error('E_ORDER');
+        core.getPosition(position);
+        epoch = next;
+        sequence = 0;
+        sealed = lastTick = position.tick;
+        firstFrame = position.renderedFrames;
+        stats.epoch = epoch;
+        stats.sequence = 0;
+        stats.sealedBeforeTick = sealed;
+        stats.firstFrame = firstFrame;
+    };
+    this.getStats = function() {
+        return {...stats};
+    };
+}
+
+</script>
     <script type="text/javascript" src="https://unpkg.com/three@0.147.0/build/three.min.js"></script>
     <script type="text/javascript" src="https://unpkg.com/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
     <script type="text/javascript" src="https://unpkg.com/three@0.147.0/examples/js/controls/TransformControls.js"></script>
@@ -19964,6 +20875,8 @@ function Apple2Debug()
 
     function pauseSystem()
     {
+        var machine=liveMachine(),hardware=machine&&typeof(machine.hwObj)==="function"?machine.hwObj():null;
+        if(hardware&&hardware.io&&typeof(hardware.io.setAudioPresentationPaused)==="function")hardware.io.setAudioPresentationPaused(true);
         if(systemRunning())
         {
             rememberSystemSpeed();
@@ -19993,6 +20906,8 @@ function Apple2Debug()
     function resumeSystem()
     {
         oEMUI.cpuSpd(resumePct>0 ? resumePct : 1);
+        var machine=liveMachine(),hardware=machine&&typeof(machine.hwObj)==="function"?machine.hwObj():null;
+        if(hardware&&hardware.io&&typeof(hardware.io.setAudioPresentationPaused)==="function")hardware.io.setAudioPresentationPaused(false);
     }
 
     function clearRunTimer()
@@ -21594,6 +22509,8 @@ function MockingboardAudio()
 {
     var device=this;
     const QUEUE_LEAD_MS=30;
+    const QUEUE_LOW_MS=15, QUEUE_HIGH_MS=60;
+    var ownerEpoch=null;
 
     this.audioDevice=true;
 
@@ -21607,6 +22524,8 @@ function MockingboardAudio()
     var owner=null;
     var io=null;
     var playbackEnabled=false;
+    var presentationPaused=false;
+    var lifecycleRequest=0;
     var gain=null;
     var activeSources=[];
     var nextStartTime=0;
@@ -21639,19 +22558,37 @@ function MockingboardAudio()
             ? owner.getAudioFormat()
             : {sampleRate:44100};
         device.audio=new AudioContext({latencyHint:"interactive",sampleRate:format.sampleRate||44100});
+        if(owner && typeof(owner.setAudioSampleRate)==="function")owner.setAudioSampleRate(device.audio.sampleRate);
         gain=device.audio.createGain();
         gain.gain.value=0.25;
         gain.connect(device.audio.destination);
         return device.audio;
     }
-    function emulationPlaybackRate()
+    function targetHz()
     {
-        if(typeof(_o)==="undefined") return 1;
-        var base=Number(_o.CPU_ClocksTicks_s);
-        var target=Number(_o.CPU_TargetTicks_s);
-        if(!Number.isFinite(base) || base<=0 || !Number.isFinite(target) || target<=0) return 1;
-        return target/base;
+        return typeof(_o)!=="undefined" && Number.isFinite(_o.CPU_TargetTicks_s)?_o.CPU_TargetTicks_s:1021800;
     }
+    this.setPresentationPaused=function(paused)
+    {
+        paused=!!paused;if(paused===presentationPaused)return;
+        presentationPaused=paused;stopSources();nextStartTime=0;
+        if(owner)
+        {
+            if(typeof(owner.setAudioConsumerActive)==="function")owner.setAudioConsumerActive(playbackEnabled&&!paused);
+            if(typeof(owner.clearAudioQueue)==="function")owner.clearAudioQueue();
+        }
+        if(!paused&&this.audio)nextStartTime=this.audio.currentTime+QUEUE_LEAD_MS/1000;
+    };
+    this.getCpuSliceBudget=function(requested)
+    {
+        if(!playbackEnabled||presentationPaused||!owner||!device.audio)return requested;
+        if(targetHz()===0)return requested; // debugger stepping is numerically live, presentation silent
+        if(io && typeof(io.getClockTicks)==="function")owner.advanceTo(io.getClockTicks());
+        var scheduled=Math.max(0,nextStartTime-device.audio.currentTime);
+        var pending=typeof(owner.getAudioBufferedSeconds)==="function"?owner.getAudioBufferedSeconds():0;
+        var room=Math.max(0,QUEUE_HIGH_MS/1000-scheduled-pending);
+        return Math.min(requested,4096,Math.floor(room*targetHz()));
+    };
 
     this.bindHost=function(host)
     {
@@ -21691,22 +22628,23 @@ function MockingboardAudio()
             case "audio_on":
             {
                 var ac=ensureAudio();
-                playbackEnabled=true;
-                clearStats();
+                var request=++lifecycleRequest;
+                playbackEnabled=false;stopSources();clearStats();
                 if(owner)
                 {
-                    if(typeof(owner.clearAudioQueue)==="function") owner.clearAudioQueue();
-                    if(typeof(owner.setAudioConsumerActive)==="function") owner.setAudioConsumerActive(true);
+                    if(typeof(owner.setAudioConsumerActive)==="function")owner.setAudioConsumerActive(false);
+                    if(typeof(owner.clearAudioQueue)==="function")owner.clearAudioQueue();
                 }
-                if(ac)
-                {
-                    if(ac.state==="suspended" && typeof(ac.resume)==="function") await ac.resume();
-                    nextStartTime=ac.currentTime+QUEUE_LEAD_MS/1000;
-                }
+                if(ac && ac.state==="suspended" && typeof(ac.resume)==="function")await ac.resume();
+                if(request!==lifecycleRequest)return;
+                playbackEnabled=!!ac;
+                if(owner && typeof(owner.setAudioConsumerActive)==="function")owner.setAudioConsumerActive(playbackEnabled&&!presentationPaused);
+                if(ac)nextStartTime=ac.currentTime+QUEUE_LEAD_MS/1000;
                 refreshHooks();
                 break;
             }
             case "audio_off":
+                lifecycleRequest++;
                 playbackEnabled=false;
                 if(owner)
                 {
@@ -21727,8 +22665,16 @@ function MockingboardAudio()
         var ac=ensureAudio();
         if(!ac || !gain) return;
         var available=typeof(owner.getAudioFramesAvailable)==="function" ? owner.getAudioFramesAvailable() : 0;
-        if(available<=0) return;
-        var data=owner.drainAudioFrames(available);
+        var epoch=typeof(owner.getAudioEpoch)==="function"?owner.getAudioEpoch():null;
+        if(epoch!==ownerEpoch){stopSources();nextStartTime=ac.currentTime+QUEUE_LEAD_MS/1000;ownerEpoch=epoch;}
+        if(presentationPaused||targetHz()===0){stopSources();nextStartTime=0;if(typeof(owner.clearAudioQueue)==="function")owner.clearAudioQueue();return;}
+        if(available<=0)return;
+        if(!nextStartTime)nextStartTime=ac.currentTime+QUEUE_LEAD_MS/1000;
+        if(nextStartTime<ac.currentTime){stats.underruns++;nextStartTime=ac.currentTime+QUEUE_LEAD_MS/1000;}
+        var scheduledLead=Math.max(0,nextStartTime-ac.currentTime);
+        var frameBudget=Math.max(0,Math.floor((QUEUE_HIGH_MS/1000-scheduledLead)*owner.getAudioFormat().sampleRate));
+        if(frameBudget===0)return;
+        var data=owner.drainAudioFrames(Math.min(available,frameBudget));
         if(!data || !data.frames) return;
         var format=owner.getAudioFormat();
         var buffer=ac.createBuffer(2,data.frames,format.sampleRate);
@@ -21736,7 +22682,7 @@ function MockingboardAudio()
         buffer.getChannelData(1).set(data.right);
         var src=ac.createBufferSource();
         src.buffer=buffer;
-        var playbackRate=emulationPlaybackRate();
+        var playbackRate=1; // CPU orchestration was mapped before AY synthesis.
         if(src.playbackRate) src.playbackRate.value=playbackRate;
         src.connect(gain);
         var now=ac.currentTime;
@@ -21766,7 +22712,7 @@ function MockingboardAudio()
         nextStartTime=0;
         clearStats();
         if(owner && typeof(owner.clearAudioQueue)==="function") owner.clearAudioQueue();
-        if(owner && typeof(owner.setAudioConsumerActive)==="function") owner.setAudioConsumerActive(playbackEnabled);
+        if(owner && typeof(owner.setAudioConsumerActive)==="function") owner.setAudioConsumerActive(playbackEnabled&&!presentationPaused);
     };
     this.restart=function()
     {
@@ -21775,6 +22721,7 @@ function MockingboardAudio()
     };
     this.onUnmount=function()
     {
+        lifecycleRequest++;
         playbackEnabled=false;
         if(owner)
         {
@@ -21794,6 +22741,7 @@ function MockingboardAudio()
             ,underruns:stats.underruns
             ,queuedLead_ms:this.audio ? Math.max(0,(nextStartTime-this.audio.currentTime)*1000) : 0
             ,minLead_ms:Number.isFinite(stats.minLead_ms)?stats.minLead_ms:0
+            ,lowWater_ms:QUEUE_LOW_MS,highWater_ms:QUEUE_HIGH_MS,playbackRate:1
         };
     };
 }
@@ -46245,8 +47193,8 @@ function mockingboard()
 {
     var bDebug = false;
     var card=this;
-    const SAMPLE_RATE=44100;
-    const AUDIO_CAPACITY=Math.ceil(SAMPLE_RATE*0.25);
+    var SAMPLE_RATE=44100;
+    var AUDIO_CAPACITY=Math.ceil(SAMPLE_RATE*0.25);
 
     this.id={"PCODE":"MOCK","icon":"fa fa-assistive-listening-systems"};
     this.state={"active":true,"irq":false,"audio":true};
@@ -46268,7 +47216,14 @@ function mockingboard()
     var irqSource="MOCK:0";
     var lastCpuTick=0;
     var clockRate=(typeof(_o)!="undefined" && Number(_o.CPU_ClocksTicks_s)>0) ? Number(_o.CPU_ClocksTicks_s) : 1021800;
-    var chips=[];
+    var core=null, coreRequest=0, backend="js";
+    var sourceClock=null, sourceTarget=clockRate;
+    const CORE_FRAMES=4096, CORE_EVENTS=4096, AUDIO_TIMEBASE=1000000000;
+    var pendingEvents=new Uint8Array(CORE_EVENTS*16),pendingView=new DataView(pendingEvents.buffer),pendingCount=0;
+    var renderEvents=new Uint8Array(CORE_EVENTS*16),renderBatch={data:renderEvents,count:0};
+    var pcm={left:new Float32Array(CORE_FRAMES),right:new Float32Array(CORE_FRAMES)},corePosition={};
+    var mappedHorizon=0, transportEpoch=0;
+    var pendingHighWater=0;
     var psgBuses=[];
     var vias=[];
     var syncingBus=[false,false];
@@ -46277,35 +47232,58 @@ function mockingboard()
     this.history=history;
     var historyRefreshRegistered=false;
 
-    var audioPhase=0;
+
     var audioConsumerActive=false;
     var audioLeft=new Float32Array(AUDIO_CAPACITY);
     var audioRight=new Float32Array(AUDIO_CAPACITY);
     var audioRead=0, audioWrite=0, audioCount=0;
     var audioStats={producedFrames:0,drainedFrames:0,droppedFrames:0,overruns:0,highWaterFrames:0};
 
-    function configureChip(chip,index)
+    function cpuTarget()
     {
-        if(chip && typeof(chip.configure)==="function") chip.configure(false,clockRate,SAMPLE_RATE);
-        if(chip && typeof(chip.setPan)==="function")
-            for(var channel=0;channel<3;channel++) chip.setPan(channel,index===0?0.0:1.0,false);
+        return typeof(_o)!=="undefined" && Number.isFinite(_o.CPU_TargetTicks_s)
+            ? _o.CPU_TargetTicks_s : clockRate;
     }
-    function buildSoundChips()
+    function establishSource(cpuOrigin)
     {
-        chips=[new Ayumi(),new Ayumi()];
-        configureChip(chips[0],0); configureChip(chips[1],1);
+        sourceClock=new AYSourceClock(clockRate,cpuOrigin,0);
+        sourceTarget=cpuTarget();sourceClock.setRate(cpuOrigin,sourceTarget);
+        mappedHorizon=0;pendingCount=0;pendingHighWater=0;transportEpoch++;
+    }
+    function prepareEvent()
+    {
+        if(pendingCount===CORE_EVENTS)flushAudio();
+        if(pendingCount===CORE_EVENTS)throw AYCore.error("E_CAPACITY","Mockingboard event queue full; audio backpressure required");
+    }
+    function appendEvent(index,op,reg,value,cycle)
+    {
+        prepareEvent();
+        var tick=sourceClock.map(cycle);
+        AYCore.packEvent(pendingView,pendingCount++,tick,index,op,reg,value);
+        pendingHighWater=Math.max(pendingHighWater,pendingCount);
+    }
+    function buildSoundChips(candidate)
+    {
+        if(core)core.destroy();
+        var config=AYCore.configuration({chipCount:2,sampleRate:SAMPLE_RATE,timebaseHz:AUDIO_TIMEBASE,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
+        core=candidate||(backend==="wasm"?AYCore.facade(AYCoreWASM.createReady(config),"wasm",""):AYCore.createJS(config));
+        backend=core.backend;
+        for(var i=0;i<2;i++)
+        {
+            core.configureChip(i,{model:"AY",clockHz:clockRate});
+            core.setMix(i,i===0?[.5,0,.5,0,.5,0]:[0,.5,0,.5,0,.5]);
+        }
+        establishSource(lastCpuTick);
         function busOptions(index)
         {
             return {
                  "name":"AY"+index
-                ,"onRegisterWrite":function(reg,value,cycle){ history.recordWrite(index,reg,value,cycle); }
-                ,"onReset":function(cycle){ history.recordReset(index,cycle); }
+                ,"beforeSoundEvent":prepareEvent
+                ,"onRegisterWrite":function(reg,value,cycle){if(reg<14)appendEvent(index,0,reg,value,cycle);history.recordWrite(index,reg,value,cycle);}
+                ,"onReset":function(cycle){appendEvent(index,1,0,0,cycle);history.recordReset(index,cycle);}
             };
         }
-        psgBuses=[
-            new MockingboardAYBus(chips[0],busOptions(0)),
-            new MockingboardAYBus(chips[1],busOptions(1))
-        ];
+        psgBuses=[new MockingboardAYBus(null,busOptions(0)),new MockingboardAYBus(null,busOptions(1))];
     }
     function syncBus(index)
     {
@@ -46418,10 +47396,8 @@ function mockingboard()
     {
         if(audioCount===AUDIO_CAPACITY)
         {
-            audioRead=(audioRead+1)%AUDIO_CAPACITY;
-            audioCount--;
             audioStats.overruns++;
-            audioStats.droppedFrames++;
+            throw AYCore.error("E_CAPACITY","Mockingboard PCM queue full");
         }
         audioLeft[audioWrite]=left;
         audioRight[audioWrite]=right;
@@ -46429,32 +47405,76 @@ function mockingboard()
         audioCount++;
         if(audioCount>audioStats.highWaterFrames) audioStats.highWaterFrames=audioCount;
     }
-    function renderAudioFrame()
+    function flushAudio()
     {
-        for(var i=0;i<2;i++)
+        core.getPosition(corePosition);
+        while(corePosition.tick<mappedHorizon || pendingCount && AYCore.eventTick(pendingEvents,0)<=corePosition.tick)
         {
-            if(chips[i] && typeof(chips[i].process)==="function") chips[i].process();
-            if(chips[i] && typeof(chips[i].removeDC)==="function") chips[i].removeDC();
-        }
-        audioStats.producedFrames++;
-        if(!audioConsumerActive) return;
-        var left=chips[0] && Number.isFinite(Number(chips[0].left)) ? Number(chips[0].left) : 0;
-        var right=chips[1] && Number.isFinite(Number(chips[1].right)) ? Number(chips[1].right) : 0;
-        enqueueFrame(left*0.5,right*0.5);
-    }
-    function advanceAudio(cycles)
-    {
-        audioPhase += cycles*SAMPLE_RATE;
-        while(audioPhase>=clockRate)
-        {
-            audioPhase-=clockRate;
-            renderAudioFrame();
+            var capacity=audioConsumerActive?Math.min(CORE_FRAMES,AUDIO_CAPACITY-audioCount):CORE_FRAMES;
+            var maxDelta=Math.max(0,Math.floor(((capacity+1)*AUDIO_TIMEBASE-1-corePosition.samplePhase)/SAMPLE_RATE));
+            var end=Math.min(mappedHorizon,corePosition.tick+Math.min(4294967295,maxDelta));
+            if(end===corePosition.tick && (!pendingCount||AYCore.eventTick(pendingEvents,0)>end))break;
+            var consumed=0;
+            while(consumed<pendingCount && AYCore.eventTick(pendingEvents,consumed*16)<=end)consumed++;
+            for(var i=0;i<consumed*16;i++)renderEvents[i]=pendingEvents[i];renderBatch.count=consumed;
+            var frames=core.renderUntil(end,renderBatch,pcm);
+            pendingEvents.copyWithin(0,consumed*16,pendingCount*16);pendingCount-=consumed;
+            audioStats.producedFrames+=frames;
+            if(audioConsumerActive && sourceTarget!==0)for(var i=0;i<frames;i++)enqueueFrame(pcm.left[i],pcm.right[i]);
+            core.getPosition(corePosition);
+            if(capacity===0)break;
         }
     }
 
     buildSoundChips();
     buildVias();
 
+    this.getAYDiagnostics=function()
+    {
+        core.getPosition(corePosition);
+        return {backend:backend,targetHz:sourceTarget,playbackRate:1,cpuTick:lastCpuTick,
+            mappedHorizon:mappedHorizon,coreTick:corePosition.tick,samplePhase:corePosition.samplePhase,
+            renderedFrames:corePosition.renderedFrames,pendingEvents:pendingCount,eventHighWater:pendingHighWater,
+            queuedFrames:audioCount,epoch:transportEpoch,mapping:sourceClock.saveState()};
+    };
+    this.getAudioBufferedSeconds=function()
+    {
+        core.getPosition(corePosition);
+        return audioCount/SAMPLE_RATE+(mappedHorizon-corePosition.tick)/AUDIO_TIMEBASE;
+    };
+    this.setAYBackend=async function(requested)
+    {
+        var request=++coreRequest;
+        var candidate=await AYCore.create({backend:requested,chipCount:2,sampleRate:SAMPLE_RATE,timebaseHz:AUDIO_TIMEBASE,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
+        if(request!==coreRequest){candidate.destroy();return false;}
+        if(history.isCapturing())history.stop(lastCpuTick);
+        this.clearAudioQueue();buildSoundChips(candidate);syncBus(0);syncBus(1);
+        if(timingRefresh)timingRefresh();return true;
+    };
+    this.getAudioEpoch=function(){return transportEpoch;};
+    this.flushAudio=flushAudio;
+
+    this.setAudioSampleRate=function(rate)
+    {
+        if(!AYCore.integer(rate,8000,192000))throw AYCore.error("E_ARGUMENT");
+        if(rate===SAMPLE_RATE)return;
+        coreRequest++; // Invalidate candidates created for the previous output configuration.
+        var consumer=audioConsumerActive;audioConsumerActive=false;flushAudio();audioConsumerActive=consumer;
+        var config=AYCore.configuration({chipCount:2,sampleRate:rate,timebaseHz:AUDIO_TIMEBASE,originTick:mappedHorizon,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
+        var candidate=backend==="wasm"?AYCore.facade(AYCoreWASM.createReady(config),"wasm",""):AYCore.createJS(config);
+        try
+        {
+            for(var i=0;i<2;i++)
+            {
+                candidate.configureChip(i,{model:"AY",clockHz:clockRate});
+                candidate.setMix(i,i===0?[.5,0,.5,0,.5,0]:[0,.5,0,.5,0,.5]);
+                for(var reg=0;reg<14;reg++)candidate.writeNow(i,reg,psgBuses[i].regs[reg]);
+            }
+        }
+        catch(error){candidate.destroy();throw error;}
+        core.destroy();core=candidate;SAMPLE_RATE=rate;AUDIO_CAPACITY=Math.ceil(rate*.25);
+        this.clearAudioQueue();audioLeft=new Float32Array(AUDIO_CAPACITY);audioRight=new Float32Array(AUDIO_CAPACITY);transportEpoch++;
+    };
     this.setTimingRefreshCallback=function(callback)
     {
         timingRefresh=typeof(callback)==="function"?callback:null;
@@ -46483,22 +47503,38 @@ function mockingboard()
         if(!Number.isFinite(cpuTick)) return;
         if(cpuTick<lastCpuTick)
         {
-            lastCpuTick=cpuTick;
-            return;
+            return; // A slot bus cycle can be ahead of the per-tick IO clock.
+        }
+        var target=cpuTarget();
+        if(target!==sourceTarget)
+        {
+            sourceClock.setRate(lastCpuTick,target);sourceTarget=target;
+            history.recordTiming(sourceClock.saveState(lastCpuTick));
+            if(target===0){this.clearAudioQueue();transportEpoch++;}
         }
         var elapsed=cpuTick-lastCpuTick;
         if(elapsed<=0) return;
         vias[0].tick(elapsed); vias[1].tick(elapsed);
-        advanceAudio(elapsed);
         lastCpuTick=cpuTick;
+        mappedHorizon=sourceClock.map(cpuTick);
+        core.getPosition(corePosition);
+        if(mappedHorizon-corePosition.tick>=Math.floor(512*AUDIO_TIMEBASE/SAMPLE_RATE))flushAudio();
     };
     this.syncClock=function(cpuTick){ this.advanceTo(cpuTick); };
     this.needsRealtimeTick=function(){ return vias[0].needsRealtimeTick()||vias[1].needsRealtimeTick(); };
     this.getAudioFormat=function(){ return {sampleRate:SAMPLE_RATE,channels:2,format:"float32"}; };
-    this.setAudioConsumerActive=function(active){ audioConsumerActive=!!active; };
-    this.getAudioFramesAvailable=function(){ return audioCount; };
+    this.setAudioConsumerActive=function(active)
+    {
+        active=!!active;if(active===audioConsumerActive)return;
+        if(!active)audioConsumerActive=false;
+        // Consume the committed source horizon while presentation is disabled.
+        // Reattachment starts with new PCM, retaining every numerical phase.
+        flushAudio();audioConsumerActive=active;transportEpoch++;
+    };
+    this.getAudioFramesAvailable=function(){ flushAudio();return audioCount; };
     this.drainAudioFrames=function(maxFrames)
     {
+        flushAudio();
         var count=Math.min(audioCount,Math.max(0,Math.floor(Number(maxFrames)||0)));
         var left=new Float32Array(count), right=new Float32Array(count);
         for(var i=0;i<count;i++)
@@ -46510,9 +47546,10 @@ function mockingboard()
         audioStats.drainedFrames+=count;
         return {frames:count,left:left,right:right};
     };
-    this.clearAudioQueue=function(){ audioRead=audioWrite=audioCount=0; };
+    this.clearAudioQueue=function(){ audioStats.droppedFrames+=audioCount;audioRead=audioWrite=audioCount=0; };
     this.getAudioStats=function()
     {
+        flushAudio();
         return {
              producedFrames:audioStats.producedFrames
             ,queuedFrames:audioCount
@@ -46557,7 +47594,7 @@ function mockingboard()
                 var kb=document.getElementById(historyID("kb"));
                 if(kb) history.setCapacityKB(kb.value);
             }
-            history.start(resolveTick(null),historyRegisters());
+            history.start(Math.max(lastCpuTick,resolveTick(null)),historyRegisters(),sourceClock.saveState(Math.max(lastCpuTick,resolveTick(null))));
         }
         syncHistoryControls();
         return history.getState();
@@ -46698,16 +47735,19 @@ function mockingboard()
     };
     this.reset=function()
     {
+        coreRequest++;
         var resetTick=resolveTick(null);
         if(history.isCapturing())
         {
+            resetTick=Math.max(resetTick,lastCpuTick);
             history.recordReset(0,resetTick);
             history.recordReset(1,resetTick);
+            history.stop(resetTick);
         }
         setCardIRQ(false,true);
         vias[0].reset(); vias[1].reset();
+        lastCpuTick=(io && typeof(io.getClockTicks)==="function") ? Number(io.getClockTicks())||0 : 0;
         buildSoundChips();
-        audioPhase=0;
         this.clearAudioQueue();
         audioStats={producedFrames:0,drainedFrames:0,droppedFrames:0,overruns:0,highWaterFrames:0};
         lastCpuTick=(io && typeof(io.getClockTicks)==="function") ? Number(io.getClockTicks())||0 : 0;
@@ -46727,6 +47767,7 @@ function mockingboard()
     };
     this.onUnmount=function()
     {
+        coreRequest++;
         if(history.isCapturing()) history.stop(resolveTick(null));
         setCardIRQ(false,true);
         this.state.active=false;
@@ -46994,6 +48035,7 @@ function MockingboardAYBus(renderer,options)
     var INACTIVE=0, READ=1, WRITE=2, LATCH=3, RESET=-1;
     this.name=options.name||"AY";
     this.renderer=renderer||null;
+    this.beforeSoundEvent=typeof(options.beforeSoundEvent)==="function"?options.beforeSoundEvent:null;
     this.onRegisterWrite=typeof(options.onRegisterWrite)==="function"?options.onRegisterWrite:null;
     this.onControlChange=typeof(options.onControlChange)==="function"?options.onControlChange:null;
     this.onReset=typeof(options.onReset)==="function"?options.onReset:null;
@@ -47095,6 +48137,7 @@ function MockingboardAYBus(renderer,options)
         {
             if(!this.resetAsserted)
             {
+                if(this.beforeSoundEvent)this.beforeSoundEvent();
                 this.reset(cycle);
                 if(this.onReset) this.onReset(cycle,this);
             }
@@ -47129,6 +48172,7 @@ function MockingboardAYBus(renderer,options)
     this.writeRegister=function(index,value,cycle)
     {
         index&=0x0F; value&=MockingboardAYBus.REG_MASK[index];
+        if(index<14 && this.beforeSoundEvent)this.beforeSoundEvent();
         this.regs[index]=value;
         applyRegister(index);
         if(this.onRegisterWrite) this.onRegisterWrite(index,value,cycle,this);
@@ -47161,6 +48205,8 @@ function MockingboardHistory(bufferKB)
     var lastTick=0;
     var stopTick=0;
     var baseRegisters=[new Uint8Array(14),new Uint8Array(14)];
+    var timing=[];
+    const TIMING_RECORD_BYTES=128;
 
     function normaliseKB(value)
     {
@@ -47204,6 +48250,18 @@ function MockingboardHistory(bufferKB)
         head=(head+RECORD_BYTES)%buffer.length;
         records--;
         wrapped=true;
+        while(timing.length>1 && timing[1].cpuOrigin<=baseTick)timing.shift();
+    }
+    function trimBefore(cutoff)
+    {
+        while(records && baseTick+readRecord(0)[0]<cutoff)dropOldest();
+        if(records)
+        {
+            var first=readRecord(0),delta=baseTick+first[0]-cutoff;
+            var p=offsetFor(0);buffer[p]=delta&255;buffer[p+1]=(delta>>8)&255;
+        }
+        baseTick=cutoff;lastTick=Math.max(lastTick,cutoff);wrapped=true;
+        while(timing.length>1 && timing[1].cpuOrigin<=baseTick)timing.shift();
     }
     function push(delta,command,value)
     {
@@ -47241,7 +48299,7 @@ function MockingboardHistory(bufferKB)
         wrapped=false;
         return capacityKB;
     };
-    this.start=function(tick,registers)
+    this.start=function(tick,registers,sourceTiming)
     {
         tick=Math.floor(Number(tick));
         if(!Number.isFinite(tick)) tick=0;
@@ -47249,7 +48307,9 @@ function MockingboardHistory(bufferKB)
         wrapped=false;
         baseTick=lastTick=stopTick=tick;
         baseRegisters=copyRegisters(registers);
+        timing=[];
         capturing=true;
+        if(sourceTiming)this.recordTiming(sourceTiming);
         return this.getState();
     };
     this.stop=function(tick)
@@ -47274,6 +48334,16 @@ function MockingboardHistory(bufferKB)
         if(ay!==0 && ay!==1) return false;
         return pushTimed(CMD_RESET|ay,0,tick);
     };
+    this.recordTiming=function(snapshot)
+    {
+        if(!capturing)return false;
+        var clock=new AYSourceClock(snapshot.nominalHz,0,0);clock.loadState(snapshot);
+        if(snapshot.cpuOrigin<baseTick || timing.length && snapshot.cpuOrigin<timing[timing.length-1].cpuOrigin)throw AYCore.error("E_ORDER");
+        timing.push(clock.saveState());
+        var capacity=Math.max(2,Math.floor(buffer.length/TIMING_RECORD_BYTES));
+        while(timing.length>capacity)trimBefore(timing[1].cpuOrigin);
+        return true;
+    };
     this.isCapturing=function(){ return capturing; };
     this.getState=function()
     {
@@ -47288,6 +48358,8 @@ function MockingboardHistory(bufferKB)
             ,baseTick:baseTick
             ,lastTick:lastTick
             ,stopTick:stopTick
+            ,timingSegments:timing.length
+            ,timingCapacity:Math.max(2,Math.floor(buffer.length/TIMING_RECORD_BYTES))
         };
     };
     this.toJSON=function(meta)
@@ -47306,7 +48378,7 @@ function MockingboardHistory(bufferKB)
                 events.push([pending,(r[1]>>4)&1,r[1]&0x0F,r[2]]);
             pending=0;
         }
-        return {
+        var result={
              format:"RetroAppleJS.MockingboardHistory"
             ,version:1
             ,encoding:"deltaCycles,ay,register,value; register -1 means AY reset"
@@ -47319,6 +48391,13 @@ function MockingboardHistory(bufferKB)
             ,initialRegisters:{AY0:Array.from(baseRegisters[0]),AY1:Array.from(baseRegisters[1])}
             ,events:events
         };
+        if(timing.length)
+        {
+            var first=new AYSourceClock(timing[0].nominalHz,0,0);first.loadState(timing[0]);
+            result.sourceTiming={policy:"fixed-pitch-v1",timebaseHz:1000000000,
+                segments:[first.saveState(baseTick)].concat(timing.slice(1).map(function(s){return {...s};}))};
+        }
+        return result;
     };
     this.downloadHistoryFYM=function()
     {
@@ -56749,6 +57828,9 @@ function Apple2IO(vid,hostHardware)
      */
     var tickCallbacks = [];
     var cycleCallbacks = [];
+    var cpuBudgetCallbacks = [];
+    var presentationCallbacks = [];
+    var presentationPaused = false;
 
     /*
      * Emulated CPU-cycle timebase. This advances only when a 6502 tick actually
@@ -56770,6 +57852,8 @@ function Apple2IO(vid,hostHardware)
     {
         tickCallbacks.length = 0;
         cycleCallbacks.length = 0;
+        cpuBudgetCallbacks.length = 0;
+        presentationCallbacks.length = 0;
 
         for(var key in io.attachments)
         {
@@ -56779,11 +57863,31 @@ function Apple2IO(vid,hostHardware)
             if(typeof(device.tick)=="function" && hookActive(device,"tick"))
                 tickCallbacks.push(device.tick.bind(device));
 
+            if(typeof(device.setPresentationPaused)==="function")
+            {
+                presentationCallbacks.push(device.setPresentationPaused.bind(device));
+                device.setPresentationPaused(presentationPaused);
+            }
+            if(typeof(device.getCpuSliceBudget)==="function" && hookActive(device,"cycle"))
+                cpuBudgetCallbacks.push(device.getCpuSliceBudget.bind(device));
+
             if(typeof(device.cycle)=="function" && hookActive(device,"cycle"))
                 cycleCallbacks.push(device.cycle.bind(device));
         }
     }
 
+    this.setAudioPresentationPaused=function(paused)
+    {
+        paused=!!paused;if(paused===presentationPaused)return;
+        presentationPaused=paused;
+        for(var i=0;i<presentationCallbacks.length;i++)presentationCallbacks[i](paused);
+    };
+    this.limitCpuSliceTicks=function(requested)
+    {
+        var budget=requested;
+        for(var i=0;i<cpuBudgetCallbacks.length;i++)budget=Math.min(budget,cpuBudgetCallbacks[i](budget));
+        return Math.max(0,Math.floor(budget));
+    };
     this.refreshDeviceHooks = rebuildDeviceHooks;    
 
     // restart() installs the real empty-bus filler; live remounts reuse it.
@@ -62507,8 +63611,18 @@ function Apple2Plus(context)
         var trapped = false;
         var timeCheck = 4096;
 
+        var audioBudget=0;
         while(remainingTicks>0)
         {
+            // Normal host execution yields to bounded audio queues. Debugger
+            // instruction stepping (no deadline) retains its existing behavior.
+            if(deadline!==undefined && audioBudget===0)
+            {
+                audioBudget=hw.io && typeof(hw.io.limitCpuSliceTicks)==="function"
+                    ? hw.io.limitCpuSliceTicks(remainingTicks) : remainingTicks;
+                if(audioBudget===0)break;
+            }
+            if(deadline!==undefined)audioBudget--;
             remainingTicks--;
 
             // A CPU execution trap stops at a clean instruction boundary before
@@ -62564,6 +63678,7 @@ function Apple2Plus(context)
      */
     function executeLiveInstruction()
     {
+        if(hw.io && typeof(hw.io.setAudioPresentationPaused)==="function")hw.io.setAudioPresentationPaused(true);
         var ticks = 0;
         var guard = 0;
         var result;
@@ -62608,6 +63723,7 @@ function Apple2Plus(context)
     this.runLiveCpuTicks = function(n,options)
     {
         options = options || {};
+        if(hw.io && typeof(hw.io.setAudioPresentationPaused)==="function")hw.io.setAudioPresentationPaused(options.presentAudio!==true);
         var result = runCpuTicks(n,options.deadline,options.videoScale);
         advanceVideo(result.completedTicks,options.videoScale===undefined ? 1 : options.videoScale);
         if(options.deviceCycle!==false && hw.io && typeof(hw.io.cycle)=="function")
@@ -62701,6 +63817,7 @@ function Apple2Plus(context)
 
     this.cycle = function(n)
     {
+        if(hw.io && typeof(hw.io.setAudioPresentationPaused)==="function")hw.io.setAudioPresentationPaused(cpuPaceTarget()===0);
         var args = {"cpu_chrono":performance.now()};
         var requestedTicks = Math.floor(Number(n));
         if(!Number.isFinite(requestedTicks) || requestedTicks<0)
