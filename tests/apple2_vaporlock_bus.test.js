@@ -231,6 +231,29 @@ test('live and SYSTEM timing share one clock, scaled JS ticks retain fraction an
     assert.equal(hw.io.getClockTicks(),6);
 });
 
+test('hardware restart realigns Apple2IO and CPU absolute clocks', () => {
+    const {hw,system,ctx}=machine();
+
+    system.runLiveCpuTicks(12345);
+    assert.equal(hw.getCpuTicks(),12345);
+    assert.equal(hw.io.getClockTicks(),12345);
+
+    // Apple2Hw.restart() resets the hardware CPU epoch before io.restart().
+    // Minimal restart configuration is sufficient for this timing invariant.
+    ctx.slot_count=7;
+    ctx.slotR={slotMap:{},slotFit:{}};
+    ctx._CFG_PSLOT={};
+    ctx.EMU_system_get=()=> 'A2P';
+
+    hw.restart();
+    assert.equal(hw.getCpuTicks(),0);
+    assert.equal(hw.io.getClockTicks(),0);
+
+    system.runLiveCpuTicks(7);
+    assert.equal(hw.getCpuTicks(),7);
+    assert.equal(hw.io.getClockTicks(),7);
+});
+
 test('hardware mode latches work with a renderer that exposes no state object', () => {
     const {hw,video}=machine();
     delete video.state;
