@@ -316,7 +316,7 @@ function mockingboard()
     {
         if(typeof(document)!=="object" || typeof(Blob)!=="function" || typeof(window)!=="object" || !window.URL) return false;
         var json=this.getHistoryJSON();
-        var blob=new Blob([JSON.stringify(json,null,2)+"\n"],{type:"application/json"});
+        var blob=new Blob([MockingboardHistory.stringifyJSON(json)+"\n"],{type:"application/json"});
         var url=window.URL.createObjectURL(blob);
         var a=document.createElement("a");
         a.href=url;
@@ -942,3 +942,33 @@ function MockingboardHistory(bufferKB)
 
     this.setCapacityKB(bufferKB);
 }
+
+MockingboardHistory.stringifyJSON=function(value)
+{
+    function pad(depth){ return "  ".repeat(depth); }
+    function isScalar(item){ return item===null || typeof(item)!=="object"; }
+    function render(item,depth)
+    {
+        if(Array.isArray(item))
+        {
+            if(item.length===0) return "[]";
+            if(item.every(isScalar))
+                return "["+item.map(function(value){ return JSON.stringify(value); }).join(", ")+"]";
+            return "[\n"+item.map(function(value)
+            {
+                return pad(depth+1)+render(value,depth+1);
+            }).join(",\n")+"\n"+pad(depth)+"]";
+        }
+        if(item!==null && typeof(item)==="object")
+        {
+            var keys=Object.keys(item);
+            if(keys.length===0) return "{}";
+            return "{\n"+keys.map(function(key)
+            {
+                return pad(depth+1)+JSON.stringify(key)+": "+render(item[key],depth+1);
+            }).join(",\n")+"\n"+pad(depth)+"}";
+        }
+        return JSON.stringify(item);
+    }
+    return render(value,0);
+};
