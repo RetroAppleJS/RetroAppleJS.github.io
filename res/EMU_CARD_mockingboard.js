@@ -348,6 +348,118 @@ function mockingboard()
         setTimeout(function(){ window.URL.revokeObjectURL(url); },1000);
         return true;
     };
+    this.downloadHistoryFYM=function()
+    {
+        if(typeof(document)!=="object" || typeof(Blob)!=="function" || typeof(window)!=="object" || !window.URL) return false;
+        if(typeof(pako)==="undefined" || !pako || typeof(pako.deflate)!=="function") return false;
+
+        function toFYM(historyData,ay,frameRate)
+        {
+            if(typeof(MockingboardHistory.toFYM)==="function")
+                return MockingboardHistory.toFYM(historyData,ay,frameRate);
+
+            historyData=historyData||{};
+            ay=Number(ay)|0;
+            if(ay!==0 && ay!==1) throw new Error("Mockingboard FYM export requires AY index 0 or 1");
+            frameRate=Math.floor(Number(frameRate)||60);
+            if(frameRate<1) frameRate=60;
+            var clockHz=Math.floor(Number(historyData.clockHz)||1021800);
+            if(clockHz<1) clockHz=1021800;
+            var baseTick=Math.floor(Number(historyData.baseTick)||0);
+            var stopTick=Math.floor(Number(historyData.stopTick));
+            if(!Number.isFinite(stopTick) || stopTick<baseTick) stopTick=baseTick;
+            var duration=stopTick-baseTick;
+            var frameCount=Math.max(1,Math.ceil(duration*frameRate/clockHz));
+            var key="AY"+ay;
+            var initial=historyData.initialRegisters && historyData.initialRegisters[key]
+                ? historyData.initialRegisters[key] : [];
+            var current=new Uint8Array(14);
+            for(var r=0;r<14;r++) current[r]=initial[r]===undefined?0:Number(initial[r])&0xFF;
+
+            var timeline=[];
+            var cycle=0;
+            var events=Array.isArray(historyData.events)?historyData.events:[];
+            for(var i=0;i<events.length;i++)
+            {
+                var e=events[i]||[];
+                cycle+=Math.max(0,Math.floor(Number(e[0])||0));
+                if((Number(e[1])|0)===ay)
+                    timeline.push([cycle,Number(e[2])|0,Number(e[3])&0xFF]);
+            }
+
+            var slot=historyData.slot==null?"x":String(historyData.slot);
+            var trackName="Mockingboard slot "+slot+" AY"+ay;
+            var authorName="RetroAppleJS";
+            var offset=20+trackName.length+1+authorName.length+1;
+            var out=new Uint8Array(offset+14*frameCount);
+
+            function put32(pos,value)
+            {
+                value=Math.floor(Number(value))>>>0;
+                out[pos]=value&0xFF;
+                out[pos+1]=(value>>>8)&0xFF;
+                out[pos+2]=(value>>>16)&0xFF;
+                out[pos+3]=(value>>>24)&0xFF;
+            }
+            function putString(pos,value)
+            {
+                for(var n=0;n<value.length;n++) out[pos++]=value.charCodeAt(n)&0x7F;
+                out[pos++]=0;
+                return pos;
+            }
+
+            put32(0,offset);
+            put32(4,frameCount);
+            put32(8,0);
+            put32(12,clockHz);
+            put32(16,frameRate);
+            var p=20;
+            p=putString(p,trackName);
+            putString(p,authorName);
+
+            var eventIndex=0;
+            for(var frame=0;frame<frameCount;frame++)
+            {
+                var target=Math.floor(frame*clockHz/frameRate);
+                var shape=frame===0 ? current[13] : 0xFF;
+                while(eventIndex<timeline.length && timeline[eventIndex][0]<=target)
+                {
+                    var ev=timeline[eventIndex++];
+                    if(ev[1]<0)
+                    {
+                        current.fill(0);
+                        shape=0;
+                    }
+                    else if(ev[1]<14)
+                    {
+                        current[ev[1]]=ev[2];
+                        if(ev[1]===13) shape=ev[2];
+                    }
+                }
+                for(r=0;r<13;r++) out[offset+r*frameCount+frame]=current[r];
+                out[offset+13*frameCount+frame]=shape;
+            }
+            return out;
+        }
+
+        var json=this.getHistoryJSON();
+        var stem="mockingboard-slot"+(json.slot==null?"x":json.slot);
+        for(var ay=0;ay<2;ay++)
+        {
+            var raw=toFYM(json,ay,60);
+            var packed=pako.deflate(raw);
+            var blob=new Blob([packed],{type:"application/octet-stream"});
+            var url=window.URL.createObjectURL(blob);
+            var a=document.createElement("a");
+            a.href=url;
+            a.download=stem+"-AY"+ay+".fym";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            (function(revokeURL){ setTimeout(function(){ window.URL.revokeObjectURL(revokeURL); },1000); })(url);
+        }
+        return true;
+    };
     this.reset=function()
     {
         var resetTick=resolveTick(null);
