@@ -43,6 +43,7 @@
         volume: 1,
         isPlaying: false,
         playbackId: 0,
+        positionSeconds: 0,
 
         loadFile: async function(file, chipIndex)
         {
@@ -78,6 +79,8 @@
             this.stop();
             ++this.loadRequests[chipIndex];
             this.chips[chipIndex] = null;
+            this.positionSeconds=Math.min(this.positionSeconds,this.getDurationSeconds());
+            this.updateTransportUI();
             document.getElementById("getFile" + chipIndex).value = "";
             this.showText("chip" + chipIndex + "Status", "No FYM loaded.");
         },
@@ -96,15 +99,7 @@
                 {
                     var chip = this.chips[i];
                     if(!chip) continue;
-                    // A fresh renderer also resets envelope, noise, FIR and DC history.
-                    chip.renderer = new Ayumi();
-                    chip.renderer.configure(false, chip.clockRate, this.sampleRate);
-                    chip.renderer.setPan(0, 0.1, 0);
-                    chip.renderer.setPan(1, 0.5, 0);
-                    chip.renderer.setPan(2, 0.9, 0);
-                    chip.frame = 0;
-                    chip.frameCounter = 0;
-                    this.applyFrame(chip);
+                    this.seekChip(chip,this.positionSeconds);
                 }
                 await this.audioContext.resume();
                 if(playbackId != this.playbackId) return false;
@@ -135,13 +130,108 @@
                 this.audioNode.disconnect();
                 this.audioNode = null;
             }
-            this.showText("output", "Stopped. Start plays all loaded chips from the beginning.");
+            this.updateTransportUI();
+            this.showText("output", "Stopped at "+this.formatTime(this.positionSeconds)+". Start resumes from the selected position.");
         },
 
         setVolume: function(value)
         {
             this.volume = Math.max(0, Math.min(100, Number(value) || 0)) / 100;
             this.showText("voldisp", Math.round(this.volume * 100));
+        },
+
+
+        getDurationSeconds: function()
+        {
+            var duration=null;
+            for(var i=0;i<this.chips.length;i++)
+            {
+                var chip=this.chips[i];
+                if(!chip || !chip.frameRate) continue;
+                var seconds=chip.frameCount/chip.frameRate;
+                if(duration===null || seconds<duration) duration=seconds;
+            }
+            return duration===null?0:duration;
+        },
+
+        getLoopSeconds: function()
+        {
+            var loop=0;
+            for(var i=0;i<this.chips.length;i++)
+            {
+                var chip=this.chips[i];
+                if(!chip || !chip.frameRate) continue;
+                loop=Math.max(loop,chip.loopFrame/chip.frameRate);
+            }
+            return Math.min(loop,this.getDurationSeconds());
+        },
+
+        formatTime: function(seconds)
+        {
+            seconds=Math.max(0,Math.floor(Number(seconds)||0));
+            var minutes=Math.floor(seconds/60);
+            var remainder=seconds%60;
+            return minutes+":"+(remainder<10?"0":"")+remainder;
+        },
+
+        updateTransportUI: function()
+        {
+            if(typeof(document)!="object") return;
+            var duration=this.getDurationSeconds();
+            var position=Math.max(0,Math.min(duration,this.positionSeconds));
+            var slider=document.getElementById("seekbar");
+            if(slider)
+            {
+                slider.disabled=duration<=0;
+                slider.max=String(duration);
+                slider.value=String(position);
+            }
+            this.showText("seektime",this.formatTime(position)+" / "+this.formatTime(duration));
+        },
+
+        createRenderer: function(chip)
+        {
+            chip.renderer=new Ayumi();
+            chip.renderer.configure(false,chip.clockRate,this.sampleRate);
+            chip.renderer.setPan(0,0.1,0);
+            chip.renderer.setPan(1,0.5,0);
+            chip.renderer.setPan(2,0.9,0);
+        },
+
+        seekChip: function(chip,seconds)
+        {
+            if(!chip) return;
+            this.createRenderer(chip);
+            var frame=Math.floor(Math.max(0,Number(seconds)||0)*chip.frameRate);
+            frame=Math.max(0,Math.min(chip.frameCount-1,frame));
+            for(var r=0;r<13;r++)
+                chip.regs[r]=chip.dump[chip.offset+r*chip.frameCount+frame];
+            var shape=chip.dump[chip.offset+13*chip.frameCount+frame];
+            if(shape===255)
+            {
+                for(var f=frame-1;f>=0;f--)
+                {
+                    shape=chip.dump[chip.offset+13*chip.frameCount+f];
+                    if(shape!==255) break;
+                }
+            }
+            if(shape===255) shape=0;
+            chip.regs[13]=shape;
+            updateState(chip.renderer,chip.regs);
+            chip.frame=frame+1;
+            if(chip.frame>=chip.frameCount) chip.frame=chip.loopFrame;
+            chip.frameCounter=0;
+        },
+
+        seekToSeconds: function(value)
+        {
+            var duration=this.getDurationSeconds();
+            var seconds=Math.max(0,Math.min(duration,Number(value)||0));
+            this.positionSeconds=seconds;
+            if(this.isPlaying)
+                for(var i=0;i<this.chips.length;i++) if(this.chips[i]) this.seekChip(this.chips[i],seconds);
+            this.updateTransportUI();
+            return seconds;
         },
 
         fillBuffer: function(event)
@@ -155,12 +245,13 @@
             for(var c = 0; c < this.chips.length; c++) if(this.chips[c]) count++;
             // Linear A/B/C pans sum to 1.5 per output. Keep headroom for both chips.
             var gain = count ? this.volume / (1.5 * count) : 0;
-            for(var c = 0; c < this.chips.length; c++)
+            var duration=this.getDurationSeconds();
+            for(var i = 0; i < left.length; i++)
             {
-                var chip = this.chips[c];
-                if(!chip) continue;
-                for(var i = 0; i < left.length; i++)
+                for(var c = 0; c < this.chips.length; c++)
                 {
+                    var chip = this.chips[c];
+                    if(!chip) continue;
                     // Accumulate integer FYM ticks to avoid fractional boundary drift.
                     chip.frameCounter += chip.frameRate;
                     while(chip.frameCounter >= this.sampleRate)
@@ -173,13 +264,22 @@
                     left[i] += chip.renderer.left * gain;
                     right[i] += chip.renderer.right * gain;
                 }
+                this.positionSeconds += 1/this.sampleRate;
+                if(duration>0 && this.positionSeconds>=duration)
+                {
+                    this.positionSeconds=this.getLoopSeconds();
+                    for(var n=0;n<this.chips.length;n++) if(this.chips[n]) this.seekChip(this.chips[n],this.positionSeconds);
+                }
             }
+            this.updateTransportUI();
         },
 
         installTrack: function(track, chipIndex)
         {
             this.stop();
             this.chips[chipIndex] = track;
+            this.positionSeconds=Math.min(this.positionSeconds,this.getDurationSeconds());
+            this.updateTransportUI();
             this.showText("chip" + chipIndex + "Status", track.filename + " — " +
                 (track.trackName || "Untitled") + (track.authorName ? " / " + track.authorName : "") +
                 " — " + track.frameCount + " frames, " + track.frameRate + " Hz, clock " + track.clockRate + " Hz");
@@ -388,6 +488,10 @@
                     </td>
                 </tr>
             </table>
+        </li>
+        <li>position:
+            <input id="seekbar" type="range" min="0" max="0" value="0" step="0.01" disabled oninput="MockingboardPlayer.seekToSeconds(this.value);"></input>
+            <span id="seektime">0:00 / 0:00</span><br/>
         </li>
         <li>volume:
             <input id="setvol" type="range" min="0" max="100" value="100" step="10" oninput="MockingboardPlayer.setVolume(this.value);" onchange="MockingboardPlayer.setVolume(this.value);"></input>
