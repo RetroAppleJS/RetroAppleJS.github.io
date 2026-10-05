@@ -614,12 +614,33 @@ function mockingboard()
             +"onchange='"+access+"?.setHistoryBufferKB(this.value)'>"
             +"<span style='font-size:10px'>KB</span></span>"
             +"<span id='"+historyID("fill")+"' title='History ring-buffer fill' style='display:"+(state.capturing?"inline-block":"none")+";min-width:48px;text-align:center;font-size:11px'>"+state.fillPercent+"%</span>"
-            +"<button class=appbut id='"+historyID("download")+"' title='Download latest Mockingboard history' onclick='"+access+"?.downloadHistory()'>"
-            +"<span style='font-size:9px'>JSON</span>&nbsp;<i class='fa fa-cloud-download-alt'></i></button>"
-            +"<button class=appbut id='"+historyID("fym0")+"' title='Download AY0 as a 60 Hz FYM playback file' onclick='"+access+"?.downloadHistoryFYM(0)'>"
-            +"<span style='font-size:9px'>FYM0</span>&nbsp;<i class='fa fa-cloud-download-alt'></i></button>"
-            +"<button class=appbut id='"+historyID("fym1")+"' title='Download AY1 as a 60 Hz FYM playback file' onclick='"+access+"?.downloadHistoryFYM(1)'>"
-            +"<span style='font-size:9px'>FYM1</span>&nbsp;<i class='fa fa-cloud-download-alt'></i></button>"
+            
+            //+"<button class=appbut id='"+historyID("download")+"' title='Download latest Mockingboard history' onclick='"+access+"?.downloadHistory()'>"
+            //+"<span style='font-size:9px'>JSON</span>&nbsp;<i class='fa fa-cloud-download-alt'></i></button>"
+
+            //+"<button class=appbut id='"+historyID("fym0")+"' title='Download AY0 as a 60 Hz FYM playback file' onclick='"+access+"?.downloadHistoryFYM(0)'>"
+            //+"<span style='font-size:9px'>FYM0</span>&nbsp;<i class='fa fa-cloud-download-alt'></i></button>"
+            //+"<button class=appbut id='"+historyID("fym1")+"' title='Download AY1 as a 60 Hz FYM playback file' onclick='"+access+"?.downloadHistoryFYM(1)'>"
+            //+"<span style='font-size:9px'>FYM1</span>&nbsp;<i class='fa fa-cloud-download-alt'></i></button>"
+
+            +"<style>"
+            +".splitFYM .left { clip-path: inset(0 53% 0 0); margin-right:-7px }"
+            +".splitFYM .right { clip-path: inset(0 0 0 41%); margin-left:-7px;}"
+            +".splitFYM .hit { position: absolute; top: 0; width: 50%; height: 100%; cursor: pointer; }"
+            +".splitFYM .hit0 { left: 0; }"
+            +".splitFYM .hit1 { right: 0; }"
+            +"</style>"
+            +"<button class=appbut>"
+                +"<span class=splitFYM>"
+                +"<span style='font-size:9px'>FYM 0&nbsp;</span>"
+                +"<i class='fa fa-cloud-download-alt left'></i>"
+                +"<i class='fa fa-cloud-download-alt right'></i>"
+                +"<span class='hit hit0' onclick='"+access+"?.downloadHistoryFYM(0)' title='Download FYM0'></span>"
+                +"<span class='hit hit1' onclick='"+access+"?.downloadHistoryFYM(1)' title='Download FYM1'></span>"
+                +"<span style='font-size:9px'>&nbsp;FYM 1</span>"
+                +"</span>"
+            +"</button>"
+
             +"</div></div></div>";
     };
 }
