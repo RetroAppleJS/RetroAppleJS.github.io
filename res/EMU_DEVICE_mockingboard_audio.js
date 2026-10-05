@@ -10,6 +10,8 @@ function MockingboardAudio()
 {
     var device=this;
     const QUEUE_LEAD_MS=30;
+    const QUEUE_LOW_MS=15, QUEUE_HIGH_MS=60;
+    var ownerEpoch=null;
 
     this.audioDevice=true;
 
@@ -23,6 +25,8 @@ function MockingboardAudio()
     var owner=null;
     var io=null;
     var playbackEnabled=false;
+    var presentationPaused=false;
+    var lifecycleRequest=0;
     var gain=null;
     var activeSources=[];
     var nextStartTime=0;
@@ -55,19 +59,37 @@ function MockingboardAudio()
             ? owner.getAudioFormat()
             : {sampleRate:44100};
         device.audio=new AudioContext({latencyHint:"interactive",sampleRate:format.sampleRate||44100});
+        if(owner && typeof(owner.setAudioSampleRate)==="function")owner.setAudioSampleRate(device.audio.sampleRate);
         gain=device.audio.createGain();
         gain.gain.value=0.25;
         gain.connect(device.audio.destination);
         return device.audio;
     }
-    function emulationPlaybackRate()
+    function targetHz()
     {
-        if(typeof(_o)==="undefined") return 1;
-        var base=Number(_o.CPU_ClocksTicks_s);
-        var target=Number(_o.CPU_TargetTicks_s);
-        if(!Number.isFinite(base) || base<=0 || !Number.isFinite(target) || target<=0) return 1;
-        return target/base;
+        return typeof(_o)!=="undefined" && Number.isFinite(_o.CPU_TargetTicks_s)?_o.CPU_TargetTicks_s:1021800;
     }
+    this.setPresentationPaused=function(paused)
+    {
+        paused=!!paused;if(paused===presentationPaused)return;
+        presentationPaused=paused;stopSources();nextStartTime=0;
+        if(owner)
+        {
+            if(typeof(owner.setAudioConsumerActive)==="function")owner.setAudioConsumerActive(playbackEnabled&&!paused);
+            if(typeof(owner.clearAudioQueue)==="function")owner.clearAudioQueue();
+        }
+        if(!paused&&this.audio)nextStartTime=this.audio.currentTime+QUEUE_LEAD_MS/1000;
+    };
+    this.getCpuSliceBudget=function(requested)
+    {
+        if(!playbackEnabled||presentationPaused||!owner||!device.audio)return requested;
+        if(targetHz()===0)return requested; // debugger stepping is numerically live, presentation silent
+        if(io && typeof(io.getClockTicks)==="function")owner.advanceTo(io.getClockTicks());
+        var scheduled=Math.max(0,nextStartTime-device.audio.currentTime);
+        var pending=typeof(owner.getAudioBufferedSeconds)==="function"?owner.getAudioBufferedSeconds():0;
+        var room=Math.max(0,QUEUE_HIGH_MS/1000-scheduled-pending);
+        return Math.min(requested,4096,Math.floor(room*targetHz()));
+    };
 
     this.bindHost=function(host)
     {
@@ -107,22 +129,23 @@ function MockingboardAudio()
             case "audio_on":
             {
                 var ac=ensureAudio();
-                playbackEnabled=true;
-                clearStats();
+                var request=++lifecycleRequest;
+                playbackEnabled=false;stopSources();clearStats();
                 if(owner)
                 {
-                    if(typeof(owner.clearAudioQueue)==="function") owner.clearAudioQueue();
-                    if(typeof(owner.setAudioConsumerActive)==="function") owner.setAudioConsumerActive(true);
+                    if(typeof(owner.setAudioConsumerActive)==="function")owner.setAudioConsumerActive(false);
+                    if(typeof(owner.clearAudioQueue)==="function")owner.clearAudioQueue();
                 }
-                if(ac)
-                {
-                    if(ac.state==="suspended" && typeof(ac.resume)==="function") await ac.resume();
-                    nextStartTime=ac.currentTime+QUEUE_LEAD_MS/1000;
-                }
+                if(ac && ac.state==="suspended" && typeof(ac.resume)==="function")await ac.resume();
+                if(request!==lifecycleRequest)return;
+                playbackEnabled=!!ac;
+                if(owner && typeof(owner.setAudioConsumerActive)==="function")owner.setAudioConsumerActive(playbackEnabled&&!presentationPaused);
+                if(ac)nextStartTime=ac.currentTime+QUEUE_LEAD_MS/1000;
                 refreshHooks();
                 break;
             }
             case "audio_off":
+                lifecycleRequest++;
                 playbackEnabled=false;
                 if(owner)
                 {
@@ -143,8 +166,16 @@ function MockingboardAudio()
         var ac=ensureAudio();
         if(!ac || !gain) return;
         var available=typeof(owner.getAudioFramesAvailable)==="function" ? owner.getAudioFramesAvailable() : 0;
-        if(available<=0) return;
-        var data=owner.drainAudioFrames(available);
+        var epoch=typeof(owner.getAudioEpoch)==="function"?owner.getAudioEpoch():null;
+        if(epoch!==ownerEpoch){stopSources();nextStartTime=ac.currentTime+QUEUE_LEAD_MS/1000;ownerEpoch=epoch;}
+        if(presentationPaused||targetHz()===0){stopSources();nextStartTime=0;if(typeof(owner.clearAudioQueue)==="function")owner.clearAudioQueue();return;}
+        if(available<=0)return;
+        if(!nextStartTime)nextStartTime=ac.currentTime+QUEUE_LEAD_MS/1000;
+        if(nextStartTime<ac.currentTime){stats.underruns++;nextStartTime=ac.currentTime+QUEUE_LEAD_MS/1000;}
+        var scheduledLead=Math.max(0,nextStartTime-ac.currentTime);
+        var frameBudget=Math.max(0,Math.floor((QUEUE_HIGH_MS/1000-scheduledLead)*owner.getAudioFormat().sampleRate));
+        if(frameBudget===0)return;
+        var data=owner.drainAudioFrames(Math.min(available,frameBudget));
         if(!data || !data.frames) return;
         var format=owner.getAudioFormat();
         var buffer=ac.createBuffer(2,data.frames,format.sampleRate);
@@ -152,7 +183,7 @@ function MockingboardAudio()
         buffer.getChannelData(1).set(data.right);
         var src=ac.createBufferSource();
         src.buffer=buffer;
-        var playbackRate=emulationPlaybackRate();
+        var playbackRate=1; // CPU orchestration was mapped before AY synthesis.
         if(src.playbackRate) src.playbackRate.value=playbackRate;
         src.connect(gain);
         var now=ac.currentTime;
@@ -182,7 +213,7 @@ function MockingboardAudio()
         nextStartTime=0;
         clearStats();
         if(owner && typeof(owner.clearAudioQueue)==="function") owner.clearAudioQueue();
-        if(owner && typeof(owner.setAudioConsumerActive)==="function") owner.setAudioConsumerActive(playbackEnabled);
+        if(owner && typeof(owner.setAudioConsumerActive)==="function") owner.setAudioConsumerActive(playbackEnabled&&!presentationPaused);
     };
     this.restart=function()
     {
@@ -191,6 +222,7 @@ function MockingboardAudio()
     };
     this.onUnmount=function()
     {
+        lifecycleRequest++;
         playbackEnabled=false;
         if(owner)
         {
@@ -210,6 +242,7 @@ function MockingboardAudio()
             ,underruns:stats.underruns
             ,queuedLead_ms:this.audio ? Math.max(0,(nextStartTime-this.audio.currentTime)*1000) : 0
             ,minLead_ms:Number.isFinite(stats.minLead_ms)?stats.minLead_ms:0
+            ,lowWater_ms:QUEUE_LOW_MS,highWater_ms:QUEUE_HIGH_MS,playbackRate:1
         };
     };
 }

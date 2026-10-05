@@ -6,7 +6,7 @@ const path=require('node:path');
 const vm=require('node:vm');
 function load(){
   const ctx={console,Uint8Array,Array,Number,Math,Object,Ayumi:function(){},oEMU:{component:{IO:{}}}};
-  vm.createContext(ctx);
+  vm.createContext(ctx);require('./helpers/ay_core').loadInto(ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res','EMU_CARD_mockingboard.js'),'utf8'),ctx);
   return ctx;
 }
@@ -111,3 +111,5 @@ test('history download keeps scalar arrays on one line and one event tuple per l
   assert.doesNotMatch(text,/"AY0": \[\n/);
   assert.deepEqual(JSON.parse(text).events,[[10,0,8,15],[10,1,7,56]]);
 });
+
+test('rate segments share the bounded history window and retain its exact mapping anchor',()=>{const ctx=load(),h=new ctx.MockingboardHistory(1),clock=new ctx.AYSourceClock(1000000,0,0);assert.ok(h.recordTiming,'History must capture source tempo metadata');h.start(0,regs(0),clock.saveState(0));for(let i=1;i<=25;i++){h.recordWrite(0,8,i&15,i*100);clock.setRate(i*100,i%2?2000000:1000000);h.recordTiming(clock.saveState(i*100));}const json=h.toJSON({clockHz:1000000});assert.equal(json.sourceTiming.policy,'fixed-pitch-v1');assert.ok(json.sourceTiming.segments.length<=8);assert.equal(json.sourceTiming.segments[0].cpuOrigin,json.baseTick);const first=json.sourceTiming.segments[0],reference=new ctx.AYSourceClock(1000000,0,0);reference.loadState(first);assert.ok(reference.map(json.baseTick)>=0);assert.equal(h.getState().wrapped,true);});

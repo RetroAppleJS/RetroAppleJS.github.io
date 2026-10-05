@@ -1553,6 +1553,8 @@ function Apple2Debug()
 
     function pauseSystem()
     {
+        var machine=liveMachine(),hardware=machine&&typeof(machine.hwObj)==="function"?machine.hwObj():null;
+        if(hardware&&hardware.io&&typeof(hardware.io.setAudioPresentationPaused)==="function")hardware.io.setAudioPresentationPaused(true);
         if(systemRunning())
         {
             rememberSystemSpeed();
@@ -1582,6 +1584,8 @@ function Apple2Debug()
     function resumeSystem()
     {
         oEMUI.cpuSpd(resumePct>0 ? resumePct : 1);
+        var machine=liveMachine(),hardware=machine&&typeof(machine.hwObj)==="function"?machine.hwObj():null;
+        if(hardware&&hardware.io&&typeof(hardware.io.setAudioPresentationPaused)==="function")hardware.io.setAudioPresentationPaused(false);
     }
 
     function clearRunTimer()

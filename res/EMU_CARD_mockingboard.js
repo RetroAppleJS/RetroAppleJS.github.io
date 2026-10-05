@@ -12,8 +12,8 @@ function mockingboard()
 {
     var bDebug = false;
     var card=this;
-    const SAMPLE_RATE=44100;
-    const AUDIO_CAPACITY=Math.ceil(SAMPLE_RATE*0.25);
+    var SAMPLE_RATE=44100;
+    var AUDIO_CAPACITY=Math.ceil(SAMPLE_RATE*0.25);
 
     this.id={"PCODE":"MOCK","icon":"fa fa-assistive-listening-systems"};
     this.state={"active":true,"irq":false,"audio":true};
@@ -35,7 +35,14 @@ function mockingboard()
     var irqSource="MOCK:0";
     var lastCpuTick=0;
     var clockRate=(typeof(_o)!="undefined" && Number(_o.CPU_ClocksTicks_s)>0) ? Number(_o.CPU_ClocksTicks_s) : 1021800;
-    var chips=[];
+    var core=null, coreRequest=0, backend="js";
+    var sourceClock=null, sourceTarget=clockRate;
+    const CORE_FRAMES=4096, CORE_EVENTS=4096, AUDIO_TIMEBASE=1000000000;
+    var pendingEvents=new Uint8Array(CORE_EVENTS*16),pendingView=new DataView(pendingEvents.buffer),pendingCount=0;
+    var renderEvents=new Uint8Array(CORE_EVENTS*16),renderBatch={data:renderEvents,count:0};
+    var pcm={left:new Float32Array(CORE_FRAMES),right:new Float32Array(CORE_FRAMES)},corePosition={};
+    var mappedHorizon=0, transportEpoch=0;
+    var pendingHighWater=0;
     var psgBuses=[];
     var vias=[];
     var syncingBus=[false,false];
@@ -44,35 +51,58 @@ function mockingboard()
     this.history=history;
     var historyRefreshRegistered=false;
 
-    var audioPhase=0;
+
     var audioConsumerActive=false;
     var audioLeft=new Float32Array(AUDIO_CAPACITY);
     var audioRight=new Float32Array(AUDIO_CAPACITY);
     var audioRead=0, audioWrite=0, audioCount=0;
     var audioStats={producedFrames:0,drainedFrames:0,droppedFrames:0,overruns:0,highWaterFrames:0};
 
-    function configureChip(chip,index)
+    function cpuTarget()
     {
-        if(chip && typeof(chip.configure)==="function") chip.configure(false,clockRate,SAMPLE_RATE);
-        if(chip && typeof(chip.setPan)==="function")
-            for(var channel=0;channel<3;channel++) chip.setPan(channel,index===0?0.0:1.0,false);
+        return typeof(_o)!=="undefined" && Number.isFinite(_o.CPU_TargetTicks_s)
+            ? _o.CPU_TargetTicks_s : clockRate;
     }
-    function buildSoundChips()
+    function establishSource(cpuOrigin)
     {
-        chips=[new Ayumi(),new Ayumi()];
-        configureChip(chips[0],0); configureChip(chips[1],1);
+        sourceClock=new AYSourceClock(clockRate,cpuOrigin,0);
+        sourceTarget=cpuTarget();sourceClock.setRate(cpuOrigin,sourceTarget);
+        mappedHorizon=0;pendingCount=0;pendingHighWater=0;transportEpoch++;
+    }
+    function prepareEvent()
+    {
+        if(pendingCount===CORE_EVENTS)flushAudio();
+        if(pendingCount===CORE_EVENTS)throw AYCore.error("E_CAPACITY","Mockingboard event queue full; audio backpressure required");
+    }
+    function appendEvent(index,op,reg,value,cycle)
+    {
+        prepareEvent();
+        var tick=sourceClock.map(cycle);
+        AYCore.packEvent(pendingView,pendingCount++,tick,index,op,reg,value);
+        pendingHighWater=Math.max(pendingHighWater,pendingCount);
+    }
+    function buildSoundChips(candidate)
+    {
+        if(core)core.destroy();
+        var config=AYCore.configuration({chipCount:2,sampleRate:SAMPLE_RATE,timebaseHz:AUDIO_TIMEBASE,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
+        core=candidate||(backend==="wasm"?AYCore.facade(AYCoreWASM.createReady(config),"wasm",""):AYCore.createJS(config));
+        backend=core.backend;
+        for(var i=0;i<2;i++)
+        {
+            core.configureChip(i,{model:"AY",clockHz:clockRate});
+            core.setMix(i,i===0?[.5,0,.5,0,.5,0]:[0,.5,0,.5,0,.5]);
+        }
+        establishSource(lastCpuTick);
         function busOptions(index)
         {
             return {
                  "name":"AY"+index
-                ,"onRegisterWrite":function(reg,value,cycle){ history.recordWrite(index,reg,value,cycle); }
-                ,"onReset":function(cycle){ history.recordReset(index,cycle); }
+                ,"beforeSoundEvent":prepareEvent
+                ,"onRegisterWrite":function(reg,value,cycle){if(reg<14)appendEvent(index,0,reg,value,cycle);history.recordWrite(index,reg,value,cycle);}
+                ,"onReset":function(cycle){appendEvent(index,1,0,0,cycle);history.recordReset(index,cycle);}
             };
         }
-        psgBuses=[
-            new MockingboardAYBus(chips[0],busOptions(0)),
-            new MockingboardAYBus(chips[1],busOptions(1))
-        ];
+        psgBuses=[new MockingboardAYBus(null,busOptions(0)),new MockingboardAYBus(null,busOptions(1))];
     }
     function syncBus(index)
     {
@@ -185,10 +215,8 @@ function mockingboard()
     {
         if(audioCount===AUDIO_CAPACITY)
         {
-            audioRead=(audioRead+1)%AUDIO_CAPACITY;
-            audioCount--;
             audioStats.overruns++;
-            audioStats.droppedFrames++;
+            throw AYCore.error("E_CAPACITY","Mockingboard PCM queue full");
         }
         audioLeft[audioWrite]=left;
         audioRight[audioWrite]=right;
@@ -196,32 +224,76 @@ function mockingboard()
         audioCount++;
         if(audioCount>audioStats.highWaterFrames) audioStats.highWaterFrames=audioCount;
     }
-    function renderAudioFrame()
+    function flushAudio()
     {
-        for(var i=0;i<2;i++)
+        core.getPosition(corePosition);
+        while(corePosition.tick<mappedHorizon || pendingCount && AYCore.eventTick(pendingEvents,0)<=corePosition.tick)
         {
-            if(chips[i] && typeof(chips[i].process)==="function") chips[i].process();
-            if(chips[i] && typeof(chips[i].removeDC)==="function") chips[i].removeDC();
-        }
-        audioStats.producedFrames++;
-        if(!audioConsumerActive) return;
-        var left=chips[0] && Number.isFinite(Number(chips[0].left)) ? Number(chips[0].left) : 0;
-        var right=chips[1] && Number.isFinite(Number(chips[1].right)) ? Number(chips[1].right) : 0;
-        enqueueFrame(left*0.5,right*0.5);
-    }
-    function advanceAudio(cycles)
-    {
-        audioPhase += cycles*SAMPLE_RATE;
-        while(audioPhase>=clockRate)
-        {
-            audioPhase-=clockRate;
-            renderAudioFrame();
+            var capacity=audioConsumerActive?Math.min(CORE_FRAMES,AUDIO_CAPACITY-audioCount):CORE_FRAMES;
+            var maxDelta=Math.max(0,Math.floor(((capacity+1)*AUDIO_TIMEBASE-1-corePosition.samplePhase)/SAMPLE_RATE));
+            var end=Math.min(mappedHorizon,corePosition.tick+Math.min(4294967295,maxDelta));
+            if(end===corePosition.tick && (!pendingCount||AYCore.eventTick(pendingEvents,0)>end))break;
+            var consumed=0;
+            while(consumed<pendingCount && AYCore.eventTick(pendingEvents,consumed*16)<=end)consumed++;
+            for(var i=0;i<consumed*16;i++)renderEvents[i]=pendingEvents[i];renderBatch.count=consumed;
+            var frames=core.renderUntil(end,renderBatch,pcm);
+            pendingEvents.copyWithin(0,consumed*16,pendingCount*16);pendingCount-=consumed;
+            audioStats.producedFrames+=frames;
+            if(audioConsumerActive && sourceTarget!==0)for(var i=0;i<frames;i++)enqueueFrame(pcm.left[i],pcm.right[i]);
+            core.getPosition(corePosition);
+            if(capacity===0)break;
         }
     }
 
     buildSoundChips();
     buildVias();
 
+    this.getAYDiagnostics=function()
+    {
+        core.getPosition(corePosition);
+        return {backend:backend,targetHz:sourceTarget,playbackRate:1,cpuTick:lastCpuTick,
+            mappedHorizon:mappedHorizon,coreTick:corePosition.tick,samplePhase:corePosition.samplePhase,
+            renderedFrames:corePosition.renderedFrames,pendingEvents:pendingCount,eventHighWater:pendingHighWater,
+            queuedFrames:audioCount,epoch:transportEpoch,mapping:sourceClock.saveState()};
+    };
+    this.getAudioBufferedSeconds=function()
+    {
+        core.getPosition(corePosition);
+        return audioCount/SAMPLE_RATE+(mappedHorizon-corePosition.tick)/AUDIO_TIMEBASE;
+    };
+    this.setAYBackend=async function(requested)
+    {
+        var request=++coreRequest;
+        var candidate=await AYCore.create({backend:requested,chipCount:2,sampleRate:SAMPLE_RATE,timebaseHz:AUDIO_TIMEBASE,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
+        if(request!==coreRequest){candidate.destroy();return false;}
+        if(history.isCapturing())history.stop(lastCpuTick);
+        this.clearAudioQueue();buildSoundChips(candidate);syncBus(0);syncBus(1);
+        if(timingRefresh)timingRefresh();return true;
+    };
+    this.getAudioEpoch=function(){return transportEpoch;};
+    this.flushAudio=flushAudio;
+
+    this.setAudioSampleRate=function(rate)
+    {
+        if(!AYCore.integer(rate,8000,192000))throw AYCore.error("E_ARGUMENT");
+        if(rate===SAMPLE_RATE)return;
+        coreRequest++; // Invalidate candidates created for the previous output configuration.
+        var consumer=audioConsumerActive;audioConsumerActive=false;flushAudio();audioConsumerActive=consumer;
+        var config=AYCore.configuration({chipCount:2,sampleRate:rate,timebaseHz:AUDIO_TIMEBASE,originTick:mappedHorizon,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
+        var candidate=backend==="wasm"?AYCore.facade(AYCoreWASM.createReady(config),"wasm",""):AYCore.createJS(config);
+        try
+        {
+            for(var i=0;i<2;i++)
+            {
+                candidate.configureChip(i,{model:"AY",clockHz:clockRate});
+                candidate.setMix(i,i===0?[.5,0,.5,0,.5,0]:[0,.5,0,.5,0,.5]);
+                for(var reg=0;reg<14;reg++)candidate.writeNow(i,reg,psgBuses[i].regs[reg]);
+            }
+        }
+        catch(error){candidate.destroy();throw error;}
+        core.destroy();core=candidate;SAMPLE_RATE=rate;AUDIO_CAPACITY=Math.ceil(rate*.25);
+        this.clearAudioQueue();audioLeft=new Float32Array(AUDIO_CAPACITY);audioRight=new Float32Array(AUDIO_CAPACITY);transportEpoch++;
+    };
     this.setTimingRefreshCallback=function(callback)
     {
         timingRefresh=typeof(callback)==="function"?callback:null;
@@ -250,22 +322,38 @@ function mockingboard()
         if(!Number.isFinite(cpuTick)) return;
         if(cpuTick<lastCpuTick)
         {
-            lastCpuTick=cpuTick;
-            return;
+            return; // A slot bus cycle can be ahead of the per-tick IO clock.
+        }
+        var target=cpuTarget();
+        if(target!==sourceTarget)
+        {
+            sourceClock.setRate(lastCpuTick,target);sourceTarget=target;
+            history.recordTiming(sourceClock.saveState(lastCpuTick));
+            if(target===0){this.clearAudioQueue();transportEpoch++;}
         }
         var elapsed=cpuTick-lastCpuTick;
         if(elapsed<=0) return;
         vias[0].tick(elapsed); vias[1].tick(elapsed);
-        advanceAudio(elapsed);
         lastCpuTick=cpuTick;
+        mappedHorizon=sourceClock.map(cpuTick);
+        core.getPosition(corePosition);
+        if(mappedHorizon-corePosition.tick>=Math.floor(512*AUDIO_TIMEBASE/SAMPLE_RATE))flushAudio();
     };
     this.syncClock=function(cpuTick){ this.advanceTo(cpuTick); };
     this.needsRealtimeTick=function(){ return vias[0].needsRealtimeTick()||vias[1].needsRealtimeTick(); };
     this.getAudioFormat=function(){ return {sampleRate:SAMPLE_RATE,channels:2,format:"float32"}; };
-    this.setAudioConsumerActive=function(active){ audioConsumerActive=!!active; };
-    this.getAudioFramesAvailable=function(){ return audioCount; };
+    this.setAudioConsumerActive=function(active)
+    {
+        active=!!active;if(active===audioConsumerActive)return;
+        if(!active)audioConsumerActive=false;
+        // Consume the committed source horizon while presentation is disabled.
+        // Reattachment starts with new PCM, retaining every numerical phase.
+        flushAudio();audioConsumerActive=active;transportEpoch++;
+    };
+    this.getAudioFramesAvailable=function(){ flushAudio();return audioCount; };
     this.drainAudioFrames=function(maxFrames)
     {
+        flushAudio();
         var count=Math.min(audioCount,Math.max(0,Math.floor(Number(maxFrames)||0)));
         var left=new Float32Array(count), right=new Float32Array(count);
         for(var i=0;i<count;i++)
@@ -277,9 +365,10 @@ function mockingboard()
         audioStats.drainedFrames+=count;
         return {frames:count,left:left,right:right};
     };
-    this.clearAudioQueue=function(){ audioRead=audioWrite=audioCount=0; };
+    this.clearAudioQueue=function(){ audioStats.droppedFrames+=audioCount;audioRead=audioWrite=audioCount=0; };
     this.getAudioStats=function()
     {
+        flushAudio();
         return {
              producedFrames:audioStats.producedFrames
             ,queuedFrames:audioCount
@@ -324,7 +413,7 @@ function mockingboard()
                 var kb=document.getElementById(historyID("kb"));
                 if(kb) history.setCapacityKB(kb.value);
             }
-            history.start(resolveTick(null),historyRegisters());
+            history.start(Math.max(lastCpuTick,resolveTick(null)),historyRegisters(),sourceClock.saveState(Math.max(lastCpuTick,resolveTick(null))));
         }
         syncHistoryControls();
         return history.getState();
@@ -465,16 +554,19 @@ function mockingboard()
     };
     this.reset=function()
     {
+        coreRequest++;
         var resetTick=resolveTick(null);
         if(history.isCapturing())
         {
+            resetTick=Math.max(resetTick,lastCpuTick);
             history.recordReset(0,resetTick);
             history.recordReset(1,resetTick);
+            history.stop(resetTick);
         }
         setCardIRQ(false,true);
         vias[0].reset(); vias[1].reset();
+        lastCpuTick=(io && typeof(io.getClockTicks)==="function") ? Number(io.getClockTicks())||0 : 0;
         buildSoundChips();
-        audioPhase=0;
         this.clearAudioQueue();
         audioStats={producedFrames:0,drainedFrames:0,droppedFrames:0,overruns:0,highWaterFrames:0};
         lastCpuTick=(io && typeof(io.getClockTicks)==="function") ? Number(io.getClockTicks())||0 : 0;
@@ -494,6 +586,7 @@ function mockingboard()
     };
     this.onUnmount=function()
     {
+        coreRequest++;
         if(history.isCapturing()) history.stop(resolveTick(null));
         setCardIRQ(false,true);
         this.state.active=false;
@@ -761,6 +854,7 @@ function MockingboardAYBus(renderer,options)
     var INACTIVE=0, READ=1, WRITE=2, LATCH=3, RESET=-1;
     this.name=options.name||"AY";
     this.renderer=renderer||null;
+    this.beforeSoundEvent=typeof(options.beforeSoundEvent)==="function"?options.beforeSoundEvent:null;
     this.onRegisterWrite=typeof(options.onRegisterWrite)==="function"?options.onRegisterWrite:null;
     this.onControlChange=typeof(options.onControlChange)==="function"?options.onControlChange:null;
     this.onReset=typeof(options.onReset)==="function"?options.onReset:null;
@@ -862,6 +956,7 @@ function MockingboardAYBus(renderer,options)
         {
             if(!this.resetAsserted)
             {
+                if(this.beforeSoundEvent)this.beforeSoundEvent();
                 this.reset(cycle);
                 if(this.onReset) this.onReset(cycle,this);
             }
@@ -896,6 +991,7 @@ function MockingboardAYBus(renderer,options)
     this.writeRegister=function(index,value,cycle)
     {
         index&=0x0F; value&=MockingboardAYBus.REG_MASK[index];
+        if(index<14 && this.beforeSoundEvent)this.beforeSoundEvent();
         this.regs[index]=value;
         applyRegister(index);
         if(this.onRegisterWrite) this.onRegisterWrite(index,value,cycle,this);
@@ -928,6 +1024,8 @@ function MockingboardHistory(bufferKB)
     var lastTick=0;
     var stopTick=0;
     var baseRegisters=[new Uint8Array(14),new Uint8Array(14)];
+    var timing=[];
+    const TIMING_RECORD_BYTES=128;
 
     function normaliseKB(value)
     {
@@ -971,6 +1069,18 @@ function MockingboardHistory(bufferKB)
         head=(head+RECORD_BYTES)%buffer.length;
         records--;
         wrapped=true;
+        while(timing.length>1 && timing[1].cpuOrigin<=baseTick)timing.shift();
+    }
+    function trimBefore(cutoff)
+    {
+        while(records && baseTick+readRecord(0)[0]<cutoff)dropOldest();
+        if(records)
+        {
+            var first=readRecord(0),delta=baseTick+first[0]-cutoff;
+            var p=offsetFor(0);buffer[p]=delta&255;buffer[p+1]=(delta>>8)&255;
+        }
+        baseTick=cutoff;lastTick=Math.max(lastTick,cutoff);wrapped=true;
+        while(timing.length>1 && timing[1].cpuOrigin<=baseTick)timing.shift();
     }
     function push(delta,command,value)
     {
@@ -1008,7 +1118,7 @@ function MockingboardHistory(bufferKB)
         wrapped=false;
         return capacityKB;
     };
-    this.start=function(tick,registers)
+    this.start=function(tick,registers,sourceTiming)
     {
         tick=Math.floor(Number(tick));
         if(!Number.isFinite(tick)) tick=0;
@@ -1016,7 +1126,9 @@ function MockingboardHistory(bufferKB)
         wrapped=false;
         baseTick=lastTick=stopTick=tick;
         baseRegisters=copyRegisters(registers);
+        timing=[];
         capturing=true;
+        if(sourceTiming)this.recordTiming(sourceTiming);
         return this.getState();
     };
     this.stop=function(tick)
@@ -1041,6 +1153,16 @@ function MockingboardHistory(bufferKB)
         if(ay!==0 && ay!==1) return false;
         return pushTimed(CMD_RESET|ay,0,tick);
     };
+    this.recordTiming=function(snapshot)
+    {
+        if(!capturing)return false;
+        var clock=new AYSourceClock(snapshot.nominalHz,0,0);clock.loadState(snapshot);
+        if(snapshot.cpuOrigin<baseTick || timing.length && snapshot.cpuOrigin<timing[timing.length-1].cpuOrigin)throw AYCore.error("E_ORDER");
+        timing.push(clock.saveState());
+        var capacity=Math.max(2,Math.floor(buffer.length/TIMING_RECORD_BYTES));
+        while(timing.length>capacity)trimBefore(timing[1].cpuOrigin);
+        return true;
+    };
     this.isCapturing=function(){ return capturing; };
     this.getState=function()
     {
@@ -1055,6 +1177,8 @@ function MockingboardHistory(bufferKB)
             ,baseTick:baseTick
             ,lastTick:lastTick
             ,stopTick:stopTick
+            ,timingSegments:timing.length
+            ,timingCapacity:Math.max(2,Math.floor(buffer.length/TIMING_RECORD_BYTES))
         };
     };
     this.toJSON=function(meta)
@@ -1073,7 +1197,7 @@ function MockingboardHistory(bufferKB)
                 events.push([pending,(r[1]>>4)&1,r[1]&0x0F,r[2]]);
             pending=0;
         }
-        return {
+        var result={
              format:"RetroAppleJS.MockingboardHistory"
             ,version:1
             ,encoding:"deltaCycles,ay,register,value; register -1 means AY reset"
@@ -1086,6 +1210,13 @@ function MockingboardHistory(bufferKB)
             ,initialRegisters:{AY0:Array.from(baseRegisters[0]),AY1:Array.from(baseRegisters[1])}
             ,events:events
         };
+        if(timing.length)
+        {
+            var first=new AYSourceClock(timing[0].nominalHz,0,0);first.loadState(timing[0]);
+            result.sourceTiming={policy:"fixed-pitch-v1",timebaseHz:1000000000,
+                segments:[first.saveState(baseTick)].concat(timing.slice(1).map(function(s){return {...s};}))};
+        }
+        return result;
     };
     this.downloadHistoryFYM=function()
     {

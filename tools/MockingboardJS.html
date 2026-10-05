@@ -22,6 +22,9 @@
         <script type="text/javascript" src="../res/COM_MAIN.js"></script>
         <script type="text/javascript" src="TOOLS_Header.js"></script>
         <script type="text/javascript" src="../res/ayumi.js"></script>
+        <script src="../res/EMU_CHIP_AY_JS.js"></script>
+        <script src="../res/EMU_CHIP_AY_WASM.js"></script>
+        <script src="../res/EMU_CHIP_AY.js"></script>
         <script type="text/javascript" src="../res/pako.min.js"></script> 
       </head>
       
@@ -44,6 +47,15 @@
         isPlaying: false,
         playbackId: 0,
         positionSeconds: 0,
+        songBaseTick: 0,
+        loopTick: 0,
+        backend: "auto",
+        core: null,
+        cursor: 0,
+        eventData: new Uint8Array(4096 * 16),
+        pcm: {left:new Float32Array(4096),right:new Float32Array(4096)},
+        batch: null,
+        eventView: null,
 
         loadFile: async function(file, chipIndex)
         {
@@ -88,32 +100,42 @@
         start: async function()
         {
             this.stop();
+            var playbackId=this.playbackId;
             try
             {
-                if(!this.chips[0] && !this.chips[1]) this.loadBase64(d_fym, 0);
+                if(!this.chips[0] && !this.chips[1]){this.loadBase64(d_fym,0);playbackId=this.playbackId;}
                 var AudioContext = window.AudioContext || window.webkitAudioContext;
                 if(!this.audioContext) this.audioContext = new AudioContext();
                 this.sampleRate = this.audioContext.sampleRate;
-                var playbackId = this.playbackId;
+                var core = await AYCore.create({backend:this.backend,chipCount:2,
+                    sampleRate:this.sampleRate,timebaseHz:this.sampleRate,maxFrames:4096,maxEvents:4096});
+                if(playbackId != this.playbackId){core.destroy();return false;}
+                this.core=core;this.cursor=0;
+                this.batch={data:this.eventData,count:0};this.eventView=new DataView(this.eventData.buffer);
+                var count = this.chips.filter(function(chip) { return chip != null; }).length;
                 for(var i = 0; i < this.chips.length; i++)
                 {
                     var chip = this.chips[i];
-                    if(!chip) continue;
-                    this.seekChip(chip,this.positionSeconds);
+                    if(!chip) {core.setMix(i,[0,0,0,0,0,0]);continue;}
+                    core.configureChip(i,{model:"AY",clockHz:chip.clockRate});
+                    var gain=1/(1.5*count);
+                    core.setMix(i,[.9*gain,.1*gain,.5*gain,.5*gain,.1*gain,.9*gain]);
                 }
                 await this.audioContext.resume();
                 if(playbackId != this.playbackId) return false;
+                this.seekCore(this.positionSeconds);
                 var player = this;
                 this.audioNode = this.audioContext.createScriptProcessor(4096, 0, 2);
                 this.audioNode.onaudioprocess = function(event) { player.fillBuffer(event); };
                 this.isPlaying = true;
                 this.audioNode.connect(this.audioContext.destination);
                 var count = this.chips.filter(function(chip) { return chip != null; }).length;
-                this.showText("output", "Playing " + count + " AY chip(s): " + count * 3 + " channels.");
+                this.showText("output", "Playing " + count + " AY chip(s): " + count * 3 + " channels (" + this.core.backend.toUpperCase() + ").");
                 return true;
             }
             catch(error)
             {
+                if(playbackId!==this.playbackId)return false;
                 this.stop();
                 this.showText("output", "Unable to start: " + (error.message || String(error)));
                 return false;
@@ -130,6 +152,7 @@
                 this.audioNode.disconnect();
                 this.audioNode = null;
             }
+            if(this.core){this.core.destroy();this.core=null;}
             this.updateTransportUI();
             this.showText("output", "Stopped at "+this.formatTime(this.positionSeconds)+". Start resumes from the selected position.");
         },
@@ -140,6 +163,55 @@
             this.showText("voldisp", Math.round(this.volume * 100));
         },
 
+        fillBuffer: function(event)
+        {
+            var left = event.outputBuffer.getChannelData(0);
+            var right = event.outputBuffer.getChannelData(1);
+            left.fill(0);
+            right.fill(0);
+            if(!this.isPlaying) return;
+            try
+            {
+                var copied=0;
+                while(copied<left.length)
+                {
+                    var end=Math.min(this.loopTick,this.cursor+Math.min(4096,left.length-copied));
+                    this.batch.count=0;
+                    while(true)
+                    {
+                        var selected=-1;
+                        for(var c=0;c<2;c++)
+                            if(this.chips[c] && (selected<0 || this.chips[c].nextTick<this.chips[selected].nextTick))selected=c;
+                        if(selected<0 || this.chips[selected].nextTick>end || this.chips[selected].nextTick>=this.loopTick)break;
+                        var chip=this.chips[selected];
+                        // A frame contributes at most fourteen ordered records. If
+                        // full, render through this boundary and retain its events
+                        // for the following batch; same-tick writes remain legal.
+                        if(this.batch.count+14>4096){end=chip.nextTick;break;}
+                        this.applyFrame(chip,selected,this.batch,chip.nextTick);
+                        this.advanceDeadline(chip);
+                    }
+                    var frames=this.core.renderUntil(end,this.batch,this.pcm);
+                    for(var i=0;i<frames;i++){left[copied+i]=this.pcm.left[i]*this.volume;right[copied+i]=this.pcm.right[i]*this.volume;}
+                    copied+=frames;this.cursor=end;
+                    this.positionSeconds=(this.cursor-this.songBaseTick)/this.sampleRate;
+                    if(this.cursor===this.loopTick)
+                    {
+                        var loop=this.getLoopSeconds();
+                        if(loop>=this.getDurationSeconds())throw new Error("The FYM files have no shared loop interval.");
+                        if(Math.round(loop*this.sampleRate)>=this.loopTick-this.songBaseTick)
+                            throw new Error("The shared FYM loop interval is shorter than one output sample.");
+                        this.seekCore(loop);
+                    }
+                }
+                this.updateTransportUI();
+            }
+            catch(error)
+            {
+                this.stop();left.fill(0);right.fill(0);
+                this.showText("output","Playback stopped: "+(error.message||String(error)));
+            }
+        },
 
         getDurationSeconds: function()
         {
@@ -189,38 +261,41 @@
             this.showText("seektime",this.formatTime(position)+" / "+this.formatTime(duration));
         },
 
-        createRenderer: function(chip)
+        setBackend: function(backend)
         {
-            chip.renderer=new Ayumi();
-            chip.renderer.configure(false,chip.clockRate,this.sampleRate);
-            chip.renderer.setPan(0,0.1,0);
-            chip.renderer.setPan(1,0.5,0);
-            chip.renderer.setPan(2,0.9,0);
+            this.stop();this.backend=backend;
         },
 
-        seekChip: function(chip,seconds)
+        // A seek is a cold synthesis transition, matching the existing player's
+        // envelope restoration; only the numerical backend changes.
+        seekCore: function(seconds)
         {
-            if(!chip) return;
-            this.createRenderer(chip);
-            var frame=Math.floor(Math.max(0,Number(seconds)||0)*chip.frameRate);
-            frame=Math.max(0,Math.min(chip.frameCount-1,frame));
-            for(var r=0;r<13;r++)
-                chip.regs[r]=chip.dump[chip.offset+r*chip.frameCount+frame];
-            var shape=chip.dump[chip.offset+13*chip.frameCount+frame];
-            if(shape===255)
-            {
-                for(var f=frame-1;f>=0;f--)
-                {
-                    shape=chip.dump[chip.offset+13*chip.frameCount+f];
-                    if(shape!==255) break;
-                }
-            }
-            if(shape===255) shape=0;
-            chip.regs[13]=shape;
-            updateState(chip.renderer,chip.regs);
+            var sample=Math.round(seconds*this.sampleRate);
+            this.positionSeconds=sample/this.sampleRate;
+            this.songBaseTick=this.cursor-sample;
+            var durationSamples=Infinity;
+            for(var i=0;i<this.chips.length;i++)if(this.chips[i])
+                durationSamples=Math.min(durationSamples,Math.ceil(this.chips[i].frameCount*this.sampleRate/this.chips[i].frameRate));
+            this.loopTick=this.songBaseTick+durationSamples;
+            this.core.resetTransport(this.cursor);
+            for(var i=0;i<this.chips.length;i++)if(this.chips[i])this.seekChip(this.chips[i],this.positionSeconds,i);
+            this.updateTransportUI();
+        },
+
+        seekChip: function(chip,seconds,index)
+        {
+            var frame=Math.max(0,Math.min(chip.frameCount-1,Math.floor(Math.round(seconds*this.sampleRate)*chip.frameRate/this.sampleRate)));
+            for(var r=0;r<13;r++)chip.regs[r]=chip.dump[chip.offset+r*chip.frameCount+frame];
+            var shape=255;
+            for(var f=frame;f>=0 && shape===255;f--)shape=chip.dump[chip.offset+13*chip.frameCount+f];
+            chip.regs[13]=shape===255?0:shape;
+            for(r=0;r<14;r++)this.core.writeNow(index,r,chip.regs[r]);
             chip.frame=frame+1;
-            if(chip.frame>=chip.frameCount) chip.frame=chip.loopFrame;
-            chip.frameCounter=0;
+            // Integer deadlines retain each FYM's frame rate and fractional phase.
+            var next=(frame+1)*this.sampleRate;
+            chip.deadlineWhole=this.songBaseTick+Math.floor(next/chip.frameRate);
+            chip.deadlineRemainder=next%chip.frameRate;
+            chip.nextTick=chip.deadlineWhole+(chip.deadlineRemainder?1:0);
         },
 
         seekToSeconds: function(value)
@@ -228,50 +303,18 @@
             var duration=this.getDurationSeconds();
             var seconds=Math.max(0,Math.min(duration,Number(value)||0));
             this.positionSeconds=seconds;
-            if(this.isPlaying)
-                for(var i=0;i<this.chips.length;i++) if(this.chips[i]) this.seekChip(this.chips[i],seconds);
+            if(this.isPlaying)this.seekCore(seconds);
             this.updateTransportUI();
             return seconds;
         },
 
-        fillBuffer: function(event)
+        advanceDeadline: function(chip)
         {
-            var left = event.outputBuffer.getChannelData(0);
-            var right = event.outputBuffer.getChannelData(1);
-            left.fill(0);
-            right.fill(0);
-            if(!this.isPlaying) return;
-            var count = 0;
-            for(var c = 0; c < this.chips.length; c++) if(this.chips[c]) count++;
-            // Linear A/B/C pans sum to 1.5 per output. Keep headroom for both chips.
-            var gain = count ? this.volume / (1.5 * count) : 0;
-            var duration=this.getDurationSeconds();
-            for(var i = 0; i < left.length; i++)
-            {
-                for(var c = 0; c < this.chips.length; c++)
-                {
-                    var chip = this.chips[c];
-                    if(!chip) continue;
-                    // Accumulate integer FYM ticks to avoid fractional boundary drift.
-                    chip.frameCounter += chip.frameRate;
-                    while(chip.frameCounter >= this.sampleRate)
-                    {
-                        chip.frameCounter -= this.sampleRate;
-                        this.applyFrame(chip);
-                    }
-                    chip.renderer.process();
-                    chip.renderer.removeDC();
-                    left[i] += chip.renderer.left * gain;
-                    right[i] += chip.renderer.right * gain;
-                }
-                this.positionSeconds += 1/this.sampleRate;
-                if(duration>0 && this.positionSeconds>=duration)
-                {
-                    this.positionSeconds=this.getLoopSeconds();
-                    for(var n=0;n<this.chips.length;n++) if(this.chips[n]) this.seekChip(this.chips[n],this.positionSeconds);
-                }
-            }
-            this.updateTransportUI();
+            var q=chip.deadlineRemainder+this.sampleRate;
+            chip.deadlineWhole+=Math.floor(q/chip.frameRate);
+            chip.deadlineRemainder=q%chip.frameRate;
+            chip.nextTick=chip.deadlineWhole+(chip.deadlineRemainder?1:0);
+            if(!Number.isSafeInteger(chip.nextTick))throw new Error("FYM timeline exhausted.");
         },
 
         installTrack: function(track, chipIndex)
@@ -315,12 +358,17 @@
                 frame: 0, frameCounter: 0, renderer: null };
         },
 
-        applyFrame: function(chip)
+        applyFrame: function(chip,index,batch,tick)
         {
-            for(var r = 0; r < 14; r++)
-                chip.regs[r] = chip.dump[chip.offset + r * chip.frameCount + chip.frame];
-            updateState(chip.renderer, chip.regs);
-            if(++chip.frame >= chip.frameCount) chip.frame = chip.loopFrame;
+            for(var r=0;r<14;r++)
+            {
+                var value=chip.dump[chip.offset+r*chip.frameCount+chip.frame];
+                chip.regs[r]=value;
+                if(r===13 && value===255)continue;
+                if(batch)AYCore.packEvent(this.eventView,batch.count++,tick,index,0,r,value);
+                else this.core.writeNow(index,r,value);
+            }
+            if(++chip.frame>=chip.frameCount)chip.frame=chip.loopFrame;
         },
 
         showText: function(id, value)
@@ -358,21 +406,7 @@
         }
     }
 
-    function updateState(renderer, r)
-    {
-        renderer.setTone(0,  (r[1] << 8) | r[0]);
-        renderer.setTone(1,  (r[3] << 8) | r[2]);
-        renderer.setTone(2,  (r[5] << 8) | r[4]);
-        renderer.setNoise(    r[6]);
-        renderer.setMixer(0,  r[7] & 1      , (r[7] >> 3) & 1, r[8] >> 4);
-        renderer.setMixer(1, (r[7] >> 1) & 1, (r[7] >> 4) & 1, r[9] >> 4);
-        renderer.setMixer(2, (r[7] >> 2) & 1, (r[7] >> 5) & 1, r[10] >> 4);
-        renderer.setVolume(0, r[8] & 0xf);
-        renderer.setVolume(1, r[9] & 0xf);
-        renderer.setVolume(2, r[10] & 0xf);
-        renderer.setEnvelope((r[12] << 8) | r[11]);
-        if(r[13] != 255) renderer.setEnvelopeShape(r[13]);
-    }
+
 
 //  ██████  ███████ ███    ███  ██████      ███████  ██████  ███    ██  ██████  
 //  ██   ██ ██      ████  ████ ██    ██     ██      ██    ██ ████   ██ ██       
@@ -485,6 +519,9 @@
                     <td style="vertical-align:top;border:1px solid;width:200px">
                         <button onclick="MockingboardPlayer.start()">Start</button>
                         <button onclick="MockingboardPlayer.stop()">Stop</button>
+                        <label>AY core <select onchange="MockingboardPlayer.setBackend(this.value)">
+                            <option value="auto">Auto</option><option value="js">JS</option><option value="wasm">WASM</option>
+                        </select></label>
                     </td>
                 </tr>
             </table>
@@ -519,9 +556,9 @@
                     onchange="MockingboardPlayer.loadFile(this.files[0], 1); this.value='';">
                 <p id="chip1Status" aria-live="polite" style="overflow-wrap:anywhere;">No FYM loaded.</p>
                 <p>Load the two FYM parts of a six-channel song, then press Start to play both together.
-                    Each chip uses its file's clock, frame rate and loop point.</p>
+                    Each chip uses its file's clock and frame rate; both share the position slider and song loop.</p>
                 <p>A single loaded file plays three channels. With no files loaded, Start plays the demo.</p>
-                <div id="output" role="status">Ready. Start plays all loaded chips from the beginning.</div>
+                <div id="output" role="status">Ready. Start resumes all loaded chips from the selected position.</div>
             </div>
         </td>
     </tr>

@@ -7,21 +7,14 @@ const vm=require('node:vm');
 
 function harness(clockRate=44100)
 {
-  const chips=[];
-  function Ayumi(){ this.left=0; this.right=0; this.processCount=0; this.pans=[]; chips.push(this); }
-  Ayumi.prototype.configure=function(isYM,clock,sr){ this.configureArgs=[isYM,clock,sr]; };
-  Ayumi.prototype.setPan=function(i,p,e){ this.pans[i]=[p,e]; };
-  Ayumi.prototype.setTone=function(){}; Ayumi.prototype.setNoise=function(){}; Ayumi.prototype.setMixer=function(){}; Ayumi.prototype.setVolume=function(){}; Ayumi.prototype.setEnvelope=function(){}; Ayumi.prototype.setEnvelopeShape=function(){};
-  Ayumi.prototype.process=function(){ this.processCount++; this.left=this.processCount/1000; this.right=this.processCount/500; };
-  Ayumi.prototype.removeDC=function(){};
   let ticks=0; const irq={};
   const io={FLOATING_BUS:-1,getClockTicks(){return ticks;}};
   const hw={io,setIRQSource(source,active){ irq[source]=!!active; }};
-  const ctx={console,Ayumi,_o:{CPU_ClocksTicks_s:clockRate},oEMU:{component:{IO:{}}},apple2plus:{hwObj(){return hw;}}};
-  vm.createContext(ctx);
+  const ctx={console,_o:{CPU_ClocksTicks_s:clockRate},oEMU:{component:{IO:{}}},apple2plus:{hwObj(){return hw;}}};
+  vm.createContext(ctx);require('./helpers/ay_core').loadInto(ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res','EMU_CARD_mockingboard.js'),'utf8'),ctx);
   const card=new ctx.mockingboard(); card.mount={hash:1234,slotN:4}; card.restart();
-  return {ctx,card,chips,irq,io,hw,setTicks(v){ticks=v;}};
+  return {ctx,card,irq,io,hw,setTicks(v){ticks=v;}};
 }
 
 function cctx(t,bRO=false,io=null){ return {cpuTick:t,bRO,io:io||{FLOATING_BUS:-1}}; }
@@ -81,13 +74,13 @@ test('absolute timing is idempotent and card ORs both VIA IRQs',()=>{
 
 test('deterministic audio ring is CPU-time driven, bounded, and mute only stops capture',()=>{
   const h=harness(44100), card=h.card;
-  card.setAudioConsumerActive(true); card.advanceTo(10);
+  card.setAudioConsumerActive(true); card.advanceTo(11);
   assert.equal(card.getAudioFramesAvailable(),10); assert.equal(card.getAudioStats().producedFrames,10);
   const d=card.drainAudioFrames(4); assert.equal(d.frames,4); assert.ok(ArrayBuffer.isView(d.left)); assert.ok(ArrayBuffer.isView(d.right)); assert.equal(card.getAudioFramesAvailable(),6);
-  const before=h.chips.reduce((n,c)=>n+c.processCount,0); card.setAudioConsumerActive(false); card.advanceTo(20); const after=h.chips.reduce((n,c)=>n+c.processCount,0);
+  const before=card.getAudioStats().producedFrames; card.setAudioConsumerActive(false); card.advanceTo(20); const after=card.getAudioStats().producedFrames;
   assert.ok(after>before); assert.equal(card.getAudioFramesAvailable(),6);
-  card.clearAudioQueue(); card.setAudioConsumerActive(true); card.advanceTo(11050);
-  assert.equal(card.getAudioFramesAvailable(),11025); assert.ok(card.getAudioStats().droppedFrames>0); assert.ok(card.getAudioStats().overruns>0);
+  card.clearAudioQueue(); card.setAudioConsumerActive(true); card.advanceTo(11060);
+  assert.equal(card.getAudioFramesAvailable(),11025); assert.equal(card.getAudioStats().droppedFrames,6); assert.equal(card.getAudioStats().overruns,0);
 });
 
 test('mb-audit timing: slot accesses observe counters at ctx.cpuTick timestamps',()=>{

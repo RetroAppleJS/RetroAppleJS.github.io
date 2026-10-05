@@ -283,8 +283,18 @@ function Apple2Plus(context)
         var trapped = false;
         var timeCheck = 4096;
 
+        var audioBudget=0;
         while(remainingTicks>0)
         {
+            // Normal host execution yields to bounded audio queues. Debugger
+            // instruction stepping (no deadline) retains its existing behavior.
+            if(deadline!==undefined && audioBudget===0)
+            {
+                audioBudget=hw.io && typeof(hw.io.limitCpuSliceTicks)==="function"
+                    ? hw.io.limitCpuSliceTicks(remainingTicks) : remainingTicks;
+                if(audioBudget===0)break;
+            }
+            if(deadline!==undefined)audioBudget--;
             remainingTicks--;
 
             // A CPU execution trap stops at a clean instruction boundary before
@@ -340,6 +350,7 @@ function Apple2Plus(context)
      */
     function executeLiveInstruction()
     {
+        if(hw.io && typeof(hw.io.setAudioPresentationPaused)==="function")hw.io.setAudioPresentationPaused(true);
         var ticks = 0;
         var guard = 0;
         var result;
@@ -384,6 +395,7 @@ function Apple2Plus(context)
     this.runLiveCpuTicks = function(n,options)
     {
         options = options || {};
+        if(hw.io && typeof(hw.io.setAudioPresentationPaused)==="function")hw.io.setAudioPresentationPaused(options.presentAudio!==true);
         var result = runCpuTicks(n,options.deadline,options.videoScale);
         advanceVideo(result.completedTicks,options.videoScale===undefined ? 1 : options.videoScale);
         if(options.deviceCycle!==false && hw.io && typeof(hw.io.cycle)=="function")
@@ -477,6 +489,7 @@ function Apple2Plus(context)
 
     this.cycle = function(n)
     {
+        if(hw.io && typeof(hw.io.setAudioPresentationPaused)==="function")hw.io.setAudioPresentationPaused(cpuPaceTarget()===0);
         var args = {"cpu_chrono":performance.now()};
         var requestedTicks = Math.floor(Number(n));
         if(!Number.isFinite(requestedTicks) || requestedTicks<0)

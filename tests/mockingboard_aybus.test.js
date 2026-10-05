@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
-function load(){ const ctx={console,Ayumi:function(){},oEMU:{component:{IO:{}}}}; vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res','EMU_CARD_mockingboard.js'),'utf8'),ctx); return ctx; }
+function load(){ const ctx={console,Ayumi:function(){},oEMU:{component:{IO:{}}}}; vm.createContext(ctx);require('./helpers/ay_core').loadInto(ctx); vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res','EMU_CARD_mockingboard.js'),'utf8'),ctx); return ctx; }
 function renderer(){ const calls=[]; return {calls,setTone(...a){calls.push(['tone',...a]);},setNoise(...a){calls.push(['noise',...a]);},setMixer(...a){calls.push(['mixer',...a]);},setVolume(...a){calls.push(['volume',...a]);},setEnvelope(...a){calls.push(['envelope',...a]);},setEnvelopeShape(...a){calls.push(['shape',...a]);}}; }
 
 test('AY bus decodes $4/$5/$6/$7 and accepts commands only from inactive',()=>{

@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-function load(){ const ctx={console,Ayumi:function(){},oEMU:{component:{IO:{}}}}; vm.createContext(ctx); vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res','EMU_CARD_mockingboard.js'),'utf8'),ctx); return ctx; }
+function load(){ const ctx={console,Ayumi:function(){},oEMU:{component:{IO:{}}}}; vm.createContext(ctx);require('./helpers/ay_core').loadInto(ctx); vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res','EMU_CARD_mockingboard.js'),'utf8'),ctx); return ctx; }
 test('reset ports and IER semantics match regular 6522',()=>{ const ctx=load(); const via=new ctx.MockingboardR6522({}); assert.equal(via.peekRegister(0x02),0x00); assert.equal(via.peekRegister(0x03),0x00); assert.equal(via.paPins,0xFF); assert.equal(via.pbPins,0xFF); via.writeRegister(0x0E,0xC0); assert.equal(via.peekRegister(0x0E),0xC0); via.writeRegister(0x0E,0x40); assert.equal(via.peekRegister(0x0E),0x80); });
 test('DDRs preserve all data-line patterns and VIAs are independent',()=>{ const ctx=load(); const a=new ctx.MockingboardR6522({}); const b=new ctx.MockingboardR6522({}); for(const [x,y] of [[0x55,0xAA],[0x69,0x96],[0xAA,0x55],[0x96,0x69]]){ a.writeRegister(0x02,x); a.writeRegister(0x03,y); assert.equal(a.peekRegister(0x02),x); assert.equal(a.peekRegister(0x03),y);} a.writeRegister(0x02,0x55); b.writeRegister(0x02,0x69); assert.equal(a.peekRegister(0x02),0x55); assert.equal(b.peekRegister(0x02),0x69); });
 

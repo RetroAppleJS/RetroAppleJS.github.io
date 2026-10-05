@@ -67,7 +67,7 @@ test('tick refreshes Apple2IO hooks when one-shot timer no longer needs exact ti
     assert.equal(refreshes,1);
 });
 
-test('cycle drains the complete produced FIFO batch instead of imposing a 4096-frame backlog',async()=>{
+test('cycle bounds scheduled lead and leaves excess PCM in the peripheral FIFO',async()=>{
   const ctx=load(), dev=new ctx.MockingboardAudio();
   const available=5000;
   let requested=0;
@@ -88,11 +88,11 @@ test('cycle drains the complete produced FIFO batch instead of imposing a 4096-f
   const io={getClockTicks(){return 100;}};
   dev.bindHost(good); dev.bindIO(io); await dev.init('audio_on');
   dev.cycle();
-  assert.equal(requested,available);
-  assert.equal(dev.getStats().framesScheduled,available);
+  assert.ok(requested>1320 && requested<=1323);
+  assert.equal(dev.getStats().framesScheduled,requested);
 });
 
-test('CPU speed scales Web Audio playback duration without building future backlog',async()=>{
+test('CPU speed leaves browser playback rate and PCM duration fixed',async()=>{
   const ctx=load(), dev=new ctx.MockingboardAudio();
   const good={
     id:{PCODE:'MOCK'},
@@ -121,22 +121,38 @@ test('CPU speed scales Web Audio playback duration without building future backl
 
   ac.currentTime=2;
   ctx._o.CPU_TargetTicks_s=ctx._o.CPU_ClocksTicks_s;
-  block(4410);
+  block(441);
   dev.cycle();
   assert.equal(ac.sources[0].playbackRate.value,1);
-  assert.ok(Math.abs(dev.getStats().queuedLead_ms-130)<0.001);
+  assert.ok(Math.abs(dev.getStats().queuedLead_ms-40)<0.001);
 
-  ac.currentTime=2.1;
+  ac.currentTime=2.01;
   ctx._o.CPU_TargetTicks_s=ctx._o.CPU_ClocksTicks_s*4;
-  block(17640);
+  block(441);
   dev.cycle();
-  assert.equal(ac.sources[1].playbackRate.value,4);
-  assert.ok(Math.abs(dev.getStats().queuedLead_ms-130)<0.001);
+  assert.equal(ac.sources[1].playbackRate.value,1);
+  assert.ok(Math.abs(dev.getStats().queuedLead_ms-40)<0.001);
 
-  ac.currentTime=2.2;
+  ac.currentTime=2.02;
   ctx._o.CPU_TargetTicks_s=ctx._o.CPU_ClocksTicks_s;
-  block(4410);
+  block(441);
   dev.cycle();
   assert.equal(ac.sources[2].playbackRate.value,1);
-  assert.ok(Math.abs(dev.getStats().queuedLead_ms-130)<0.001);
+  assert.ok(Math.abs(dev.getStats().queuedLead_ms-40)<0.001);
 });
+
+test('scheduled host audio is bounded by the high watermark and reduces CPU slice budget',async()=>{
+  const ctx=load(),dev=new ctx.MockingboardAudio(),good=owner();
+  dev.bindHost(good);dev.bindIO({getClockTicks(){return 0;}});await dev.init('audio_on');
+  let remaining=20000,requested=0;
+  good.getAudioFramesAvailable=()=>remaining;
+  good.drainAudioFrames=n=>{requested=n;remaining-=n;return {frames:n,left:new Float32Array(n),right:new Float32Array(n)};};
+  dev.cycle();
+  assert.ok(requested<=1323,'30ms initial lead plus at most 30ms PCM');
+  assert.ok(dev.getStats().queuedLead_ms<=60.001);
+  assert.ok(dev.getCpuSliceBudget(1000)<24,'Only the sub-frame remainder remains');
+});
+
+test('explicit presentation pause stops nodes at positive CPU speed and suppresses step audio',async()=>{const ctx=load(),dev=new ctx.MockingboardAudio(),good=owner();dev.bindHost(good);dev.bindIO({getClockTicks(){return 77;}});await dev.init('audio_on');good.getAudioFramesAvailable=()=>100;good.drainAudioFrames=n=>({frames:n,left:new Float32Array(n),right:new Float32Array(n)});dev.cycle();const source=dev.audio.sources[0];assert.ok(dev.setPresentationPaused);dev.setPresentationPaused(true);assert.equal(source.stopped,true);assert.equal(good.consumer(),false);dev.cycle();assert.equal(dev.audio.sources.length,1);dev.setPresentationPaused(false);assert.equal(good.consumer(),true);});
+
+test('pending browser permission keeps CPU unpaced and unmount cancels activation',async()=>{const ctx=load(),dev=new ctx.MockingboardAudio(),good=owner();dev.bindHost(good);dev.bindIO({getClockTicks(){return 0;}});await dev.init('audio_ctx');let resume;dev.audio.state='suspended';dev.audio.resume=()=>new Promise(resolve=>{resume=resolve;});const pending=dev.init('audio_on');assert.equal(dev.isCycleActive(),false);assert.equal(good.consumer(),false);assert.equal(dev.getCpuSliceBudget(100000),100000);dev.onUnmount();resume();await pending;assert.equal(dev.isCycleActive(),false);assert.equal(good.consumer(),false);});

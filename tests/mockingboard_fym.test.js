@@ -16,6 +16,7 @@ function load(extra){
   };
   ctx.__refresh=refresh;
   vm.createContext(ctx);
+  require('./helpers/ay_core').loadInto(ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res','EMU_CARD_mockingboard.js'),'utf8'),ctx);
   return ctx;
 }

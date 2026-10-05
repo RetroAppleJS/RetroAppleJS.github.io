@@ -125,6 +125,9 @@ function Apple2IO(vid,hostHardware)
      */
     var tickCallbacks = [];
     var cycleCallbacks = [];
+    var cpuBudgetCallbacks = [];
+    var presentationCallbacks = [];
+    var presentationPaused = false;
 
     /*
      * Emulated CPU-cycle timebase. This advances only when a 6502 tick actually
@@ -146,6 +149,8 @@ function Apple2IO(vid,hostHardware)
     {
         tickCallbacks.length = 0;
         cycleCallbacks.length = 0;
+        cpuBudgetCallbacks.length = 0;
+        presentationCallbacks.length = 0;
 
         for(var key in io.attachments)
         {
@@ -155,11 +160,31 @@ function Apple2IO(vid,hostHardware)
             if(typeof(device.tick)=="function" && hookActive(device,"tick"))
                 tickCallbacks.push(device.tick.bind(device));
 
+            if(typeof(device.setPresentationPaused)==="function")
+            {
+                presentationCallbacks.push(device.setPresentationPaused.bind(device));
+                device.setPresentationPaused(presentationPaused);
+            }
+            if(typeof(device.getCpuSliceBudget)==="function" && hookActive(device,"cycle"))
+                cpuBudgetCallbacks.push(device.getCpuSliceBudget.bind(device));
+
             if(typeof(device.cycle)=="function" && hookActive(device,"cycle"))
                 cycleCallbacks.push(device.cycle.bind(device));
         }
     }
 
+    this.setAudioPresentationPaused=function(paused)
+    {
+        paused=!!paused;if(paused===presentationPaused)return;
+        presentationPaused=paused;
+        for(var i=0;i<presentationCallbacks.length;i++)presentationCallbacks[i](paused);
+    };
+    this.limitCpuSliceTicks=function(requested)
+    {
+        var budget=requested;
+        for(var i=0;i<cpuBudgetCallbacks.length;i++)budget=Math.min(budget,cpuBudgetCallbacks[i](budget));
+        return Math.max(0,Math.floor(budget));
+    };
     this.refreshDeviceHooks = rebuildDeviceHooks;    
 
     // restart() installs the real empty-bus filler; live remounts reuse it.

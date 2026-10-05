@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AY core benchmark</title>
+<script src="../res/ayumi.js"></script>
+<script src="../res/EMU_CHIP_AY_JS.js"></script>
+<script src="../res/EMU_CHIP_AY_WASM.js"></script>
+<script src="../res/EMU_CHIP_AY.js"></script>
+<script src="../res/EMU_AUDIO_AY_STREAM.js"></script>
+<style>body{font:16px system-ui;max-width:860px;margin:40px auto;padding:0 20px}button,select{font:inherit}pre{white-space:pre-wrap}table{border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #ccc;text-align:right}th:first-child,td:first-child{text-align:left}</style>
+</head>
+<body>
+<h1>AY core benchmark</h1>
+<p>Compare the complete source mapping, packed-event staging, two-chip synthesis and PCM copy path. Warm-up runs are excluded. Run in a foreground tab without a debugger, and repeat in each target browser.</p>
+<label>Chips <select id="chips"><option>2</option><option>1</option></select></label>
+<label>Sample rate <select id="rate"><option>44100</option><option>48000</option><option>96000</option></select></label>
+<button id="run" onclick="runBenchmark()">Compare JS / WASM</button>
+<p id="status" role="status">Ready.</p>
+<table><thead><tr><th>Backend</th><th>Median ms/block</th><th>p95 ms/block</th><th>Frames</th></tr></thead><tbody id="results"></tbody></table>
+<pre id="details"></pre>
+<script>
+async function measure(backend,chipCount,sampleRate)
+{
+    var core=await AYCore.create({backend:backend,chipCount:chipCount,sampleRate:sampleRate,timebaseHz:1000000000,maxFrames:4096,maxEvents:512});
+    var clock=new AYSourceClock(1021800,0,0),data=new Uint8Array(512*16),view=new DataView(data.buffer),batch={data:data,count:0};
+    var pcm={left:new Float32Array(4096),right:new Float32Array(4096)},times=[],samples=[],cpu=0,totalFrames=0;
+    for(var chip=0;chip<chipCount;chip++)
+    {
+        core.configureChip(chip,{model:chip?"YM":"AY",clockHz:1021800});
+        core.setMix(chip,[.3,.1,.2,.2,.1,.3]);core.writeNow(chip,0,100+chip*73);core.writeNow(chip,7,56);core.writeNow(chip,8,15);
+    }
+    try
+    {
+        for(var block=0;block<110;block++)
+        {
+            var start=performance.now(),next=cpu+Math.floor(4096*1021800/sampleRate);batch.count=0;
+            for(var i=0;i<128;i++)
+            {
+                var raw=cpu+Math.floor((next-cpu)*i/128),tick=clock.map(raw);
+                for(var chip=0;chip<chipCount;chip++)AYCore.packEvent(view,batch.count++,tick,chip,0,i%16===0?13:8,i%16===0?10:(i%32));
+            }
+            var frames=core.renderUntil(clock.map(next),batch,pcm);
+            var elapsed=performance.now()-start;
+            cpu=next;
+            if(block>=10){times.push(elapsed);totalFrames+=frames;}
+            if(block>=108)for(var i=0;i<frames;i++)samples.push(pcm.left[i],pcm.right[i]);
+            if(block%20===19)await new Promise(requestAnimationFrame);
+        }
+    }
+    finally{core.destroy();}
+    times.sort(function(a,b){return a-b;});
+    return {median:times[50],p95:times[94],frames:totalFrames,samples:samples};
+}
+async function runBenchmark()
+{
+    var button=document.getElementById("run"),status=document.getElementById("status");button.disabled=true;
+    try
+    {
+        status.textContent="Running warm-up and measurements…";
+        var chips=Number(document.getElementById("chips").value),rate=Number(document.getElementById("rate").value);
+        var js=await measure("js",chips,rate),wasm=await measure("wasm",chips,rate),diff=0;
+        for(var i=0;i<js.samples.length;i++)diff=Math.max(diff,Math.abs(js.samples[i]-wasm.samples[i]));
+        document.getElementById("results").innerHTML=[['JS',js],['WASM',wasm]].map(function(row){return '<tr><td>'+row[0]+'</td><td>'+row[1].median.toFixed(3)+'</td><td>'+row[1].p95.toFixed(3)+'</td><td>'+row[1].frames+'</td></tr>';}).join('');
+        var improvement=100*(1-wasm.median/js.median);
+        status.textContent="WASM median improvement: "+improvement.toFixed(1)+"%. Maximum checked PCM difference: "+diff.toExponential(3)+".";
+        document.getElementById("details").textContent=navigator.userAgent+'\nFixed WASM memory: 2 MiB\nSource SHA256: '+AYCoreWASMAsset.sourceSHA256+'\nAuto remains JS until the browser acceptance matrix passes. This page does not measure host audio latency or CPU emulator throughput.';
+    }
+    catch(error){status.textContent="Benchmark failed: "+(error.message||String(error));}
+    finally{button.disabled=false;}
+}
+</script>
+</body>
+</html>

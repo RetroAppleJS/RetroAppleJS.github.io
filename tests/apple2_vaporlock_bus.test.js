@@ -17,7 +17,7 @@ function machine()
         setPage2(v){this.state.page2=v;}, setHires(v){this.state.hires=v;}
     };
     const ctx = {
-        console:{log(){},warn(){},error(){}}, performance, TextEncoder,
+        console:{log(){},warn(){},error(){},assert:assert.ok,group(){},groupEnd(){},table(){}}, performance, TextEncoder,
         oEMU:{system:{},component:{IO:{ACTION_MAP:{RD:[],WR:[]}},CPU:{}}},
         oEMUI:{}, _CFG_IOADDR:{}, _CFG_IORANGES:{},
         _o:{CPU_ClocksTicks_s:1021800,CPU_TargetTicks_s:1021800,EMU_Updates_s:10},
@@ -324,3 +324,19 @@ test('indexed addresses and zero-page pointers wrap through the real CPU bus', (
     assert.equal(hw.getLastBusAccess().address,0xC020);
     assert.equal(hw.getLastBusAccess().cycleOffset,4);
 });
+
+test('audio backpressure yields normal execution and leaves debugger stepping available',()=>{
+    const {system,hw}=machine();
+    assert.equal(typeof hw.io.limitCpuSliceTicks,'function','IO must combine device audio budgets');
+    let budget=0;
+    hw.io.attachments.audioBudget={device:{getCpuSliceBudget(n){return Math.max(0,Math.min(n,budget-(hw.io.getClockTicks()-before)));},isCycleActive(){return true;}}};
+    hw.io.refreshDeviceHooks();
+    const before=hw.io.getClockTicks();
+    system.cycle(1000);
+    assert.equal(hw.io.getClockTicks(),before);
+    budget=10;
+    system.cycle(1000);
+    assert.equal(hw.io.getClockTicks(),before+10);
+});
+
+test('live instruction stepping explicitly pauses presentation while SYSTEM execution resumes it',()=>{const {hw,system}=machine();const changes=[];hw.io.attachments.presentationProbe={device:{setPresentationPaused(v){changes.push(v);}}};hw.io.refreshDeviceHooks();assert.ok(hw.io.setAudioPresentationPaused);system.stepLiveInstruction();assert.equal(changes.at(-1),true);system.cycle(10);assert.equal(changes.at(-1),false);});
