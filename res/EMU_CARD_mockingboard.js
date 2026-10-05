@@ -42,6 +42,7 @@ function mockingboard()
     var timingRefresh=null;
     var history=new MockingboardHistory(64);
     this.history=history;
+    var historyRefreshRegistered=false;
 
     var audioPhase=0;
     var audioConsumerActive=false;
@@ -155,14 +156,28 @@ function mockingboard()
         var state=history.getState();
         var mug=document.getElementById(historyID("toggle"));
         var kb=document.getElementById(historyID("kb"));
+        var kbWrap=document.getElementById(historyID("kbwrap"));
+        var fill=document.getElementById(historyID("fill"));
         var download=document.getElementById(historyID("download"));
+        var fym=document.getElementById(historyID("fym"));
         if(mug)
         {
             mug.style.opacity=state.capturing ? "1" : ".35";
             mug.title=state.capturing ? "Stop Mockingboard history capture" : "Start a fresh Mockingboard history capture";
         }
-        if(kb) { kb.disabled=state.capturing; kb.value=state.capacityKB; }
+        if(kb)
+        {
+            kb.disabled=state.capturing;
+            if(!state.capturing) kb.value=state.capacityKB;
+        }
+        if(kbWrap) kbWrap.style.display=state.capturing ? "none" : "inline-flex";
+        if(fill)
+        {
+            fill.style.display=state.capturing ? "inline-block" : "none";
+            fill.textContent=state.fillPercent+"%";
+        }
         if(download) download.title="Download latest Mockingboard history ("+state.bytesUsed+" / "+state.capacityBytes+" bytes)";
+        if(fym) fym.title="Download AY0 and AY1 as 60 Hz FYM playback files";
     }
     function enqueueFrame(left,right)
     {
@@ -290,6 +305,12 @@ function mockingboard()
         syncHistoryControls();
         return result;
     };
+    this.historyRefreshMonitoring=function()
+    {
+        if(!history.isCapturing()) return false;
+        syncHistoryControls();
+        return true;
+    };
     this.toggleHistoryCapture=function()
     {
         if(history.isCapturing())
@@ -369,17 +390,26 @@ function mockingboard()
         ctx=ctx||{};
         var access="apple2plus.hwObj().io.HASH2obj("+Number(this.mount.hash)+")";
         var state=history.getState();
+        if(!historyRefreshRegistered && typeof(oCOM)!=="undefined" && oCOM && typeof(oCOM.addRefreshEvent)==="function")
+        {
+            oCOM.addRefreshEvent(function(){ card.historyRefreshMonitoring(); },historyID("refresh"),true);
+            historyRefreshRegistered=true;
+        }
         return "<div class=toolbox id='"+(ctx.toolboxID || "device_tool_"+ctx.slotID)+"' hidden>"
             +"<div class=appbox style='padding:4px 6px;min-height:32px' title='Mockingboard music/command history'>"
             +"<div style='display:flex;align-items:center;gap:6px;white-space:nowrap'>"
             +"<button class=appbut title='Start/stop Mockingboard history capture' onclick='"+access+"?.toggleHistoryCapture()'>"
             +"<i id='"+historyID("toggle")+"' class='fa fa-coffee' style='opacity:"+(state.capturing?"1":".35")+"'></i></button>"
+            +"<span id='"+historyID("kbwrap")+"' style='display:"+(state.capturing?"none":"inline-flex")+";align-items:center;gap:3px'>"
             +"<input id='"+historyID("kb")+"' type=number min=1 max=1024 step=1 value='"+state.capacityKB+"' "
             +(state.capturing?"disabled ":"")+"title='History ring-buffer length in Kbytes' style='width:58px;height:24px;padding:0 4px;box-sizing:border-box;border-radius:7px' "
             +"onchange='"+access+"?.setHistoryBufferKB(this.value)'>"
-            +"<span style='font-size:10px'>KB</span>"
+            +"<span style='font-size:10px'>KB</span></span>"
+            +"<span id='"+historyID("fill")+"' title='History ring-buffer fill' style='display:"+(state.capturing?"inline-block":"none")+";min-width:48px;text-align:center;font-size:11px'>"+state.fillPercent+"%</span>"
             +"<button class=appbut id='"+historyID("download")+"' title='Download latest Mockingboard history' onclick='"+access+"?.downloadHistory()'>"
-            +"<i class='fa fa-cloud-download-alt'></i></button>"
+            +"<span style='font-size:9px'>JSON</span>&nbsp;<i class='fa fa-cloud-download-alt'></i></button>"
+            +"<button class=appbut id='"+historyID("fym")+"' title='Download AY0 and AY1 as 60 Hz FYM playback files' onclick='"+access+"?.downloadHistoryFYM()'>"
+            +"<span style='font-size:9px'>FYM</span>&nbsp;<i class='fa fa-cloud-download-alt'></i></button>"
             +"</div></div></div>";
     };
 }
@@ -903,6 +933,7 @@ function MockingboardHistory(bufferKB)
             ,capacityBytes:buffer.length
             ,records:records
             ,bytesUsed:records*RECORD_BYTES
+            ,fillPercent:buffer.length ? Math.min(100,Math.floor(records*RECORD_BYTES*100/buffer.length)) : 0
             ,wrapped:wrapped
             ,baseTick:baseTick
             ,lastTick:lastTick
@@ -939,6 +970,28 @@ function MockingboardHistory(bufferKB)
             ,events:events
         };
     };
+    this.downloadHistoryFYM=function()
+    {
+        if(typeof(document)!=="object" || typeof(Blob)!=="function" || typeof(window)!=="object" || !window.URL) return false;
+        if(typeof(pako)==="undefined" || !pako || typeof(pako.deflate)!=="function") return false;
+        var json=this.getHistoryJSON();
+        var stem="mockingboard-slot"+(json.slot==null?"x":json.slot);
+        for(var ay=0;ay<2;ay++)
+        {
+            var raw=MockingboardHistory.toFYM(json,ay,60);
+            var packed=pako.deflate(raw);
+            var blob=new Blob([packed],{type:"application/octet-stream"});
+            var url=window.URL.createObjectURL(blob);
+            var a=document.createElement("a");
+            a.href=url;
+            a.download=stem+"-AY"+ay+".fym";
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            (function(revokeURL){ setTimeout(function(){ window.URL.revokeObjectURL(revokeURL); },1000); })(url);
+        }
+        return true;
+    };
 
     this.setCapacityKB(bufferKB);
 }
@@ -971,4 +1024,86 @@ MockingboardHistory.stringifyJSON=function(value)
         return JSON.stringify(item);
     }
     return render(value,0);
+};
+
+MockingboardHistory.toFYM=function(history,ay,frameRate)
+{
+    history=history||{};
+    ay=Number(ay)|0;
+    if(ay!==0 && ay!==1) throw new Error("Mockingboard FYM export requires AY index 0 or 1");
+    frameRate=Math.floor(Number(frameRate)||60);
+    if(frameRate<1) frameRate=60;
+    var clockHz=Math.floor(Number(history.clockHz)||1021800);
+    if(clockHz<1) clockHz=1021800;
+    var baseTick=Math.floor(Number(history.baseTick)||0);
+    var stopTick=Math.floor(Number(history.stopTick));
+    if(!Number.isFinite(stopTick) || stopTick<baseTick) stopTick=baseTick;
+    var duration=stopTick-baseTick;
+    var frameCount=Math.max(1,Math.ceil(duration*frameRate/clockHz));
+    var key="AY"+ay;
+    var initial=history.initialRegisters && history.initialRegisters[key] ? history.initialRegisters[key] : [];
+    var current=new Uint8Array(14);
+    for(var r=0;r<14;r++) current[r]=initial[r]===undefined?0:Number(initial[r])&0xFF;
+
+    var timeline=[];
+    var cycle=0;
+    var events=Array.isArray(history.events)?history.events:[];
+    for(var i=0;i<events.length;i++)
+    {
+        var e=events[i]||[];
+        cycle+=Math.max(0,Math.floor(Number(e[0])||0));
+        if((Number(e[1])|0)===ay) timeline.push([cycle,Number(e[2])|0,Number(e[3])&0xFF]);
+    }
+
+    var slot=history.slot==null?"x":String(history.slot);
+    var trackName="Mockingboard slot "+slot+" AY"+ay;
+    var authorName="RetroAppleJS";
+    var offset=20+trackName.length+1+authorName.length+1;
+    var out=new Uint8Array(offset+14*frameCount);
+    function put32(pos,value)
+    {
+        value=Math.floor(Number(value))>>>0;
+        out[pos]=value&0xFF;
+        out[pos+1]=(value>>>8)&0xFF;
+        out[pos+2]=(value>>>16)&0xFF;
+        out[pos+3]=(value>>>24)&0xFF;
+    }
+    function putString(pos,value)
+    {
+        for(var n=0;n<value.length;n++) out[pos++]=value.charCodeAt(n)&0x7F;
+        out[pos++]=0;
+        return pos;
+    }
+    put32(0,offset);
+    put32(4,frameCount);
+    put32(8,0);
+    put32(12,clockHz);
+    put32(16,frameRate);
+    var p=20;
+    p=putString(p,trackName);
+    putString(p,authorName);
+
+    var eventIndex=0;
+    for(var frame=0;frame<frameCount;frame++)
+    {
+        var target=Math.floor(frame*clockHz/frameRate);
+        var shape=frame===0 ? current[13] : 0xFF;
+        while(eventIndex<timeline.length && timeline[eventIndex][0]<=target)
+        {
+            var ev=timeline[eventIndex++];
+            if(ev[1]<0)
+            {
+                current.fill(0);
+                shape=0;
+            }
+            else if(ev[1]<14)
+            {
+                current[ev[1]]=ev[2];
+                if(ev[1]===13) shape=ev[2];
+            }
+        }
+        for(r=0;r<13;r++) out[offset+r*frameCount+frame]=current[r];
+        out[offset+13*frameCount+frame]=shape;
+    }
+    return out;
 };
