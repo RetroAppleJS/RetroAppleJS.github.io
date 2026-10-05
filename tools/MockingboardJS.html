@@ -13,10 +13,9 @@
 //  |_______/  '.__.' \'-;__/[___]    '.__.;__]`.____.'   \______.'                                                          
 -->
 
-<html>
-    <html style="background-color:#B0B0B0"><head>
+<html style="background-color:#B0B0B0"><head>
         <title>Mockingboard Emulator</title>
-        <meta name="description" content="Highly precise emulation of AY-3-8910 and YM2149 sound chips.">
+        <meta name="description" content="Two parallel AY-3-8910 chips with six-channel FYM playback.">
         <meta name="author" content="Freddy Vandriessche">
         <meta charset="utf-8"> 
         <link rel="stylesheet"        href="../res/COM_MAIN.css">
@@ -30,96 +29,237 @@
   <script defer type="text/javascript">
 
 
-    var CONF_version="0.0.2";
-    var CONF_builddate="20240114-190000";
+    var CONF_version="0.0.3";
+    var CONF_builddate="20261005-120000";
 
-    var psgdump;
-    var frameCount;
-    var frameRate;
-    var ptr = 0;
-    var offset;
-    var frame = 0;
-    var loopFrame = 0;
-    var sampleRate = 44100;
-    var clockRate = 0;
-    var regs = [];
-    var ayumi = new Ayumi;
-    var audioContext;
-
-//   ██████  ██    ██ ██      ██████  ██████  ███    ██ ████████ ██████   ██████  ██      ███████ 
-//  ██       ██    ██ ██     ██      ██    ██ ████   ██    ██    ██   ██ ██    ██ ██      ██      
-//  ██   ███ ██    ██ ██     ██      ██    ██ ██ ██  ██    ██    ██████  ██    ██ ██      ███████ 
-//  ██    ██ ██    ██ ██     ██      ██    ██ ██  ██ ██    ██    ██   ██ ██    ██ ██           ██ 
-//   ██████   ██████  ██      ██████  ██████  ██   ████    ██    ██   ██  ██████  ███████ ███████ 
-
-    function init_gui(_o)
-    { 
-        document.getElementById('slider_title').outerHTML = _TITLE();
-
-        // LOAD DISK IMAGE VIA URI PARAMETER (if any)
-        oCOM.URL.parse(document.location.toString());
-        var fym = oCOM.URL.uri["fym"];
-        if(fym===undefined || fym.length==0) return null;
-        var db = oCOM.base64ToArrayBuffer(fym);
-        if(db==null) return null;
-        var dd = pako.inflate(db);
-        if(dd===undefined) return null;
-        psgdump = pako.inflate(dd);
-    }
-
-    function load_file(file_obj)
+    // Each FYM owns one complete AY chip; only the audio transport is shared.
+    var MockingboardPlayer =
     {
-        var blob = window.URL.createObjectURL(file_obj)
-        var oReq = new XMLHttpRequest();
-        var e = file_obj.name.split(".");
-        ext = "."+e[e.length-1];
-        ext = ext.toLowerCase(ext);
+        chips: [null, null],
+        loadRequests: [0, 0],
+        audioContext: null,
+        audioNode: null,
+        sampleRate: 44100,
+        volume: 1,
+        isPlaying: false,
+        playbackId: 0,
 
-        oReq.open('GET', blob, true);
-        oReq.responseType = 'arraybuffer';
-        oReq.onload = function(e) {
-            var arrayBuffer = oReq.response;
-            if(arrayBuffer)
+        loadFile: async function(file, chipIndex)
+        {
+            if(!file) return false;
+            var request = ++this.loadRequests[chipIndex];
+            this.showText("chip" + chipIndex + "Status", "Loading " + file.name + "...");
+            try
             {
-                switch(ext)
+                if(!/\.fym$/i.test(file.name)) throw new Error("Please select a .fym file.");
+                var bytes = new Uint8Array(await file.arrayBuffer());
+                var track = this.parseFYM(pako.inflate(bytes), file.name);
+                if(request != this.loadRequests[chipIndex]) return false;
+                this.installTrack(track, chipIndex);
+                return true;
+            }
+            catch(error)
+            {
+                if(request == this.loadRequests[chipIndex])
+                    this.showText("chip" + chipIndex + "Status", "Unable to load: " + (error.message || String(error)));
+                return false;
+            }
+        },
+
+        loadBase64: function(base64, chipIndex)
+        {
+            var track = this.parseFYM(pako.inflate(_base64ToArray(base64)), "Base64 FYM");
+            ++this.loadRequests[chipIndex];
+            this.installTrack(track, chipIndex);
+        },
+
+        clearChip: function(chipIndex)
+        {
+            this.stop();
+            ++this.loadRequests[chipIndex];
+            this.chips[chipIndex] = null;
+            document.getElementById("getFile" + chipIndex).value = "";
+            this.showText("chip" + chipIndex + "Status", "No FYM loaded.");
+        },
+
+        start: async function()
+        {
+            this.stop();
+            try
+            {
+                if(!this.chips[0] && !this.chips[1]) this.loadBase64(d_fym, 0);
+                var AudioContext = window.AudioContext || window.webkitAudioContext;
+                if(!this.audioContext) this.audioContext = new AudioContext();
+                this.sampleRate = this.audioContext.sampleRate;
+                var playbackId = this.playbackId;
+                for(var i = 0; i < this.chips.length; i++)
                 {
-                    case ".fym":
-                        var fym = new Uint8Array(arrayBuffer);
-                        psgdump = pako.inflate(fym);
-                    break;
-                    case ".psg":
-                        psgdump = new Uint8Array(arrayBuffer);
-                    break;
-                    case ".ym":
-                        psgdump = new Uint8Array(arrayBuffer);
-                    break;
+                    var chip = this.chips[i];
+                    if(!chip) continue;
+                    // A fresh renderer also resets envelope, noise, FIR and DC history.
+                    chip.renderer = new Ayumi();
+                    chip.renderer.configure(false, chip.clockRate, this.sampleRate);
+                    chip.renderer.setPan(0, 0.1, 0);
+                    chip.renderer.setPan(1, 0.5, 0);
+                    chip.renderer.setPan(2, 0.9, 0);
+                    chip.frame = 0;
+                    chip.frameCounter = 0;
+                    this.applyFrame(chip);
+                }
+                await this.audioContext.resume();
+                if(playbackId != this.playbackId) return false;
+                var player = this;
+                this.audioNode = this.audioContext.createScriptProcessor(4096, 0, 2);
+                this.audioNode.onaudioprocess = function(event) { player.fillBuffer(event); };
+                this.isPlaying = true;
+                this.audioNode.connect(this.audioContext.destination);
+                var count = this.chips.filter(function(chip) { return chip != null; }).length;
+                this.showText("output", "Playing " + count + " AY chip(s): " + count * 3 + " channels.");
+                return true;
+            }
+            catch(error)
+            {
+                this.stop();
+                this.showText("output", "Unable to start: " + (error.message || String(error)));
+                return false;
+            }
+        },
+
+        stop: function()
+        {
+            ++this.playbackId;
+            this.isPlaying = false;
+            if(this.audioNode)
+            {
+                this.audioNode.onaudioprocess = null;
+                this.audioNode.disconnect();
+                this.audioNode = null;
+            }
+            this.showText("output", "Stopped. Start plays all loaded chips from the beginning.");
+        },
+
+        setVolume: function(value)
+        {
+            this.volume = Math.max(0, Math.min(100, Number(value) || 0)) / 100;
+            this.showText("voldisp", Math.round(this.volume * 100));
+        },
+
+        fillBuffer: function(event)
+        {
+            var left = event.outputBuffer.getChannelData(0);
+            var right = event.outputBuffer.getChannelData(1);
+            left.fill(0);
+            right.fill(0);
+            if(!this.isPlaying) return;
+            var count = 0;
+            for(var c = 0; c < this.chips.length; c++) if(this.chips[c]) count++;
+            // Linear A/B/C pans sum to 1.5 per output. Keep headroom for both chips.
+            var gain = count ? this.volume / (1.5 * count) : 0;
+            for(var c = 0; c < this.chips.length; c++)
+            {
+                var chip = this.chips[c];
+                if(!chip) continue;
+                for(var i = 0; i < left.length; i++)
+                {
+                    // Accumulate integer FYM ticks to avoid fractional boundary drift.
+                    chip.frameCounter += chip.frameRate;
+                    while(chip.frameCounter >= this.sampleRate)
+                    {
+                        chip.frameCounter -= this.sampleRate;
+                        this.applyFrame(chip);
+                    }
+                    chip.renderer.process();
+                    chip.renderer.removeDC();
+                    left[i] += chip.renderer.left * gain;
+                    right[i] += chip.renderer.right * gain;
                 }
             }
+        },
+
+        installTrack: function(track, chipIndex)
+        {
+            this.stop();
+            this.chips[chipIndex] = track;
+            this.showText("chip" + chipIndex + "Status", track.filename + " — " +
+                (track.trackName || "Untitled") + (track.authorName ? " / " + track.authorName : "") +
+                " — " + track.frameCount + " frames, " + track.frameRate + " Hz, clock " + track.clockRate + " Hz");
+        },
+
+        parseFYM: function(bytes, filename)
+        {
+            if(!bytes || bytes.length < 20) throw new Error("Invalid FYM header.");
+            var header = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+            var offset = header.getUint32(0, true);
+            var frameCount = header.getUint32(4, true);
+            var loopFrame = header.getUint32(8, true);
+            var clockRate = header.getUint32(12, true);
+            var frameRate = header.getUint32(16, true);
+            if(offset < 22 || offset > bytes.length || frameCount == 0 ||
+                loopFrame >= frameCount || clockRate == 0 || frameRate == 0 ||
+                frameRate > 1000 || offset + 14 * frameCount > bytes.length)
+                throw new Error("Invalid or truncated FYM data.");
+            var ptr = 20;
+            function getString()
+            {
+                var result = "";
+                while(ptr < offset && bytes[ptr] != 0) result += String.fromCharCode(bytes[ptr++]);
+                if(ptr >= offset) throw new Error("Invalid FYM metadata.");
+                ptr++;
+                return result;
+            }
+            var trackName = getString();
+            var authorName = getString();
+            return { dump: bytes, filename: filename, offset: offset, frameCount: frameCount,
+                loopFrame: loopFrame, clockRate: clockRate, frameRate: frameRate,
+                trackName: trackName, authorName: authorName, regs: new Uint8Array(14),
+                frame: 0, frameCounter: 0, renderer: null };
+        },
+
+        applyFrame: function(chip)
+        {
+            for(var r = 0; r < 14; r++)
+                chip.regs[r] = chip.dump[chip.offset + r * chip.frameCount + chip.frame];
+            updateState(chip.renderer, chip.regs);
+            if(++chip.frame >= chip.frameCount) chip.frame = chip.loopFrame;
+        },
+
+        showText: function(id, value)
+        {
+            var element = document.getElementById(id);
+            if(element) element.textContent = value;
         }
-        oReq.send();
+    };
+
+    function init_gui()
+    {
+        document.getElementById('slider_title').outerHTML = _TITLE();
+        oCOM.URL.parse(document.location.toString());
+        // Retain the original fym URL parameter and allow a second stream via fym2.
+        for(var i = 0; i < 2; i++)
+        {
+            var base64 = oCOM.URL.uri[i == 0 ? "fym" : "fym2"];
+            if(!base64) continue;
+            try
+            {
+                var bytes = pako.inflate(_base64ToArray(base64));
+                var track;
+                try { track = MockingboardPlayer.parseFYM(bytes, "URL FYM"); }
+                catch(error)
+                {
+                    // Older links wrapped the compressed FYM in another zlib stream.
+                    track = MockingboardPlayer.parseFYM(pako.inflate(bytes), "URL FYM");
+                }
+                MockingboardPlayer.installTrack(track, i);
+            }
+            catch(error)
+            {
+                MockingboardPlayer.showText("chip" + i + "Status", "Unable to load URL FYM: " + (error.message || String(error)));
+            }
+        }
     }
 
-    function showvol(pos)
+    function updateState(renderer, r)
     {
-        document.getElementById('voldisp').innerHTML = pos;
-    }
-
-    function change_volume(pos)
-    {
-        document.getElementById('voldisp').innerHTML = pos;
-        var scale = Math.round(pos/100*255);
-        ayumi.setMasterVolume(scale);
-    }
-
-//  ██████  ██       █████  ██    ██ ███████ ██████  
-//  ██   ██ ██      ██   ██  ██  ██  ██      ██   ██ 
-//  ██████  ██      ███████   ████   █████   ██████  
-//  ██      ██      ██   ██    ██    ██      ██   ██ 
-//  ██      ███████ ██   ██    ██    ███████ ██   ██ 
-
-    updateState = function(renderer, r)
-    {
-        var n = renderer.channels.length;
         renderer.setTone(0,  (r[1] << 8) | r[0]);
         renderer.setTone(1,  (r[3] << 8) | r[2]);
         renderer.setTone(2,  (r[5] << 8) | r[4]);
@@ -131,67 +271,7 @@
         renderer.setVolume(1, r[9] & 0xf);
         renderer.setVolume(2, r[10] & 0xf);
         renderer.setEnvelope((r[12] << 8) | r[11]);
-        if (r[13] != 255) renderer.setEnvelopeShape(r[13]);
-    }
-
-    getint = function() {
-        var r = 0;
-        for(var i=0; i<4; i++) r += psgdump[ptr++] << (8*i);
-        return r;
-    }
-
-    getstr = function() {
-        var r = '';
-        while(c = psgdump[ptr++]) r+=String.fromCharCode(c);
-        return r;
-    }
-
-    var isrCounter = 0;
-    fillBuffer = function(e) {
-        var isrStep = frameRate / sampleRate;
-        var left = e.outputBuffer.getChannelData(0);
-        var right = e.outputBuffer.getChannelData(1);
-        for(var i = 0; i < left.length; i++) {
-            isrCounter += isrStep;
-            if(isrCounter >= 1) {
-                isrCounter--;
-                for(var r = 0; r < 14; r++) {
-                    regs[r] = psgdump[r*frameCount + frame + offset] || 0;
-                }
-                updateState(ayumi, regs);
-                if(++frame >= frameCount) frame = loopFrame;
-            }
-            ayumi.process();
-            ayumi.removeDC();
-            left[i] = ayumi.left;
-            right[i] = ayumi.right;
-        }
-        return true;
-    }
-
-    start = function()
-    {
-        offset = getint();
-        frameCount = getint();
-        loopFrame = getint();
-        clockRate = getint();
-        frameRate = getint();
-        var trackName = getstr();
-        var authorName = getstr();
-
-        ayumi.configure(true, clockRate, sampleRate);
-        ayumi.setPan(0, 0.1, 0);
-        ayumi.setPan(1, 0.5, 0);
-        ayumi.setPan(2, 0.9, 0);
-
-        var AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioContext = new AudioContext();
-
-        var audioNode = audioContext.createScriptProcessor(4096, 0, 2);
-        audioNode.onaudioprocess = fillBuffer;
-        audioNode.connect(audioContext.destination);
-
-        console.log(offset, frameCount, loopFrame, clockRate, frameRate, trackName, authorName);
+        if(r[13] != 255) renderer.setEnvelopeShape(r[13]);
     }
 
 //  ██████  ███████ ███    ███  ██████      ███████  ██████  ███    ██  ██████  
@@ -274,16 +354,6 @@
 //    ██    ██   ██ ██ ██          ██      ██    ██ ██  ██ ██ ██         ██    ██ ██    ██ ██  ██ ██      ██ 
 //    ██    ██   ██ ██ ███████     ██       ██████  ██   ████  ██████    ██    ██  ██████  ██   ████ ███████
 
-    function load_b64(b64)
-    {
-        var arrayBuffer = _base64ToArray(b64);
-        if(arrayBuffer)
-        {
-            var fym = new Uint8Array(arrayBuffer);
-            psgdump = pako.inflate(fym);
-        }
-    }
-
     function _base64ToArray(base64)
     {
         var binary_string = window.atob(base64);
@@ -313,14 +383,14 @@
             <table class=no_margins style='display:inline-block;border:0px solid;vertical-align:top;'>
                 <tr>
                     <td style="vertical-align:top;border:1px solid;width:200px">
-                        <button onclick="if(!psgdump) load_b64(d_fym); start()">Start</button>
-                        <button onclick="ayumi.stop()">Stop</button>
+                        <button onclick="MockingboardPlayer.start()">Start</button>
+                        <button onclick="MockingboardPlayer.stop()">Stop</button>
                     </td>
                 </tr>
             </table>
         </li>
         <li>volume:
-            <input id="setvol" type="range" min="0" max="100" value="100" step="10" oninput="change_volume(this.value);" onchange="change_volume(this.value);"></input>
+            <input id="setvol" type="range" min="0" max="100" value="100" step="10" oninput="MockingboardPlayer.setVolume(this.value);" onchange="MockingboardPlayer.setVolume(this.value);"></input>
             <span id="voldisp">100</span>%<br/>
         </li>
     </ul>
@@ -331,9 +401,24 @@
         <td><img style="margin:20px;width:256px;float:left;image-rendering:pixelated;" src="../res/mockingboard.png"></td>
         <td rowspan="2" valign="top">
             <br>
-            <button onclick="document.getElementById('getFile').click()">Load .fym file</button>
-            <input type='file' id="getFile" style="display:none" onchange="load_file(this.files[0]);">
-            <div id="output"></div>
+            <div style="max-width:560px;padding-right:20px;">
+                <strong>AY chip 1 — channels A, B, C</strong><br>
+                <button onclick="document.getElementById('getFile0').click()">Load FYM — chip 1</button>
+                <button onclick="MockingboardPlayer.clearChip(0)">Clear</button>
+                <input type="file" id="getFile0" accept=".fym" style="display:none"
+                    onchange="MockingboardPlayer.loadFile(this.files[0], 0); this.value='';">
+                <p id="chip0Status" aria-live="polite" style="overflow-wrap:anywhere;">No FYM loaded.</p>
+                <strong>AY chip 2 — channels D, E, F</strong><br>
+                <button onclick="document.getElementById('getFile1').click()">Load FYM — chip 2</button>
+                <button onclick="MockingboardPlayer.clearChip(1)">Clear</button>
+                <input type="file" id="getFile1" accept=".fym" style="display:none"
+                    onchange="MockingboardPlayer.loadFile(this.files[0], 1); this.value='';">
+                <p id="chip1Status" aria-live="polite" style="overflow-wrap:anywhere;">No FYM loaded.</p>
+                <p>Load the two FYM parts of a six-channel song, then press Start to play both together.
+                    Each chip uses its file's clock, frame rate and loop point.</p>
+                <p>A single loaded file plays three channels. With no files loaded, Start plays the demo.</p>
+                <div id="output" role="status">Ready. Start plays all loaded chips from the beginning.</div>
+            </div>
         </td>
     </tr>
     <tr>
