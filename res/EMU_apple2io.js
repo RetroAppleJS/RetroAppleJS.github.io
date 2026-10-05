@@ -127,8 +127,10 @@ function Apple2IO(vid,hostHardware)
     var cycleCallbacks = [];
 
     /*
-     * Monotonic emulated CPU-cycle timebase.  This advances only when a 6502
-     * tick actually completes; it is deliberately independent of host RTC.
+     * Emulated CPU-cycle timebase. This advances only when a 6502 tick actually
+     * completes; it is deliberately independent of host RTC. It is monotonic
+     * within one hardware run. A hardware restart starts a new CPU-time epoch,
+     * so restart() realigns this counter with hostHardware.getCpuTicks().
      * Slow peripherals can sample it lazily instead of adding another callback
      * to the one-call-per-CPU-tick hot path.
      */
@@ -224,6 +226,21 @@ function Apple2IO(vid,hostHardware)
     this.restart = function()
     {
         console.assert(Array.isArray(this.slots), "Apple2IO.slots must be initialized");
+
+        /*
+         * Apple2Hw.restart() resets its CPU counter before calling io.restart().
+         * Bus-access contexts use hostHardware.getCpuTicks(), while slow-device
+         * syncClock() calls use this Apple2IO counter. Both therefore must share
+         * the same absolute epoch after a restart; otherwise a peripheral can
+         * alternate between two timestamps separated by the whole previous run.
+         */
+        if(hostHardware && typeof(hostHardware.getCpuTicks)==="function")
+        {
+            var hostTicks=Number(hostHardware.getCpuTicks());
+            clockTicks=Number.isFinite(hostTicks) ? Math.floor(hostTicks) : 0;
+        }
+        else
+            clockTicks=0;
 
         // create empty slot info directly in the Apple2IO-owned configuration
         if (this.slots.length == 0)
