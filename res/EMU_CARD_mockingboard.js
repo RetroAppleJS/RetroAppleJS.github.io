@@ -10,7 +10,6 @@ oEMU.component.IO.mockingboard = new mockingboard();
 
 function mockingboard()
 {
-    var bDebug = true;
     var card=this;
     const SAMPLE_RATE=44100;
     const AUDIO_CAPACITY=Math.ceil(SAMPLE_RATE*0.25);
@@ -46,7 +45,18 @@ function mockingboard()
     var audioLeft=new Float32Array(AUDIO_CAPACITY);
     var audioRight=new Float32Array(AUDIO_CAPACITY);
     var audioRead=0, audioWrite=0, audioCount=0;
-    var audioStats={producedFrames:0,drainedFrames:0,droppedFrames:0,overruns:0,highWaterFrames:0};
+    var audioStats={
+         producedFrames:0
+        ,drainedFrames:0
+        ,droppedFrames:0
+        ,overruns:0
+        ,highWaterFrames:0
+        ,advanceCalls:0
+        ,maxAdvanceCycles:0
+        ,maxAdvanceFrames:0
+        ,largeAdvances:0
+        ,lastLargeAdvance:null
+    };
 
     function configureChip(chip,index)
     {
@@ -194,6 +204,22 @@ function mockingboard()
         }
         var elapsed=cpuTick-lastCpuTick;
         if(elapsed<=0) return;
+        var projectedFrames=Math.floor((audioPhase + elapsed*SAMPLE_RATE)/clockRate);
+        audioStats.advanceCalls++;
+        if(elapsed>audioStats.maxAdvanceCycles) audioStats.maxAdvanceCycles=elapsed;
+        if(projectedFrames>audioStats.maxAdvanceFrames) audioStats.maxAdvanceFrames=projectedFrames;
+        if(elapsed>clockRate)
+        {
+            audioStats.largeAdvances++;
+            audioStats.lastLargeAdvance={
+                 fromCpuTick:lastCpuTick
+                ,toCpuTick:cpuTick
+                ,cycles:elapsed
+                ,projectedFrames:projectedFrames
+            };
+            if(bDebug)
+                console.warn("Mockingboard: large synchronous audio catch-up",audioStats.lastLargeAdvance);
+        }
         vias[0].tick(elapsed); vias[1].tick(elapsed);
         advanceAudio(elapsed);
         lastCpuTick=cpuTick;
@@ -227,6 +253,13 @@ function mockingboard()
             ,overruns:audioStats.overruns
             ,highWaterFrames:audioStats.highWaterFrames
             ,capacityFrames:AUDIO_CAPACITY
+            ,advanceCalls:audioStats.advanceCalls
+            ,maxAdvanceCycles:audioStats.maxAdvanceCycles
+            ,maxAdvanceFrames:audioStats.maxAdvanceFrames
+            ,largeAdvances:audioStats.largeAdvances
+            ,lastLargeAdvance:audioStats.lastLargeAdvance
+                ? Object.assign({},audioStats.lastLargeAdvance)
+                : null
         };
     };
     this.getRegisters=function(index)
@@ -246,7 +279,18 @@ function mockingboard()
         buildSoundChips();
         audioPhase=0;
         this.clearAudioQueue();
-        audioStats={producedFrames:0,drainedFrames:0,droppedFrames:0,overruns:0,highWaterFrames:0};
+        audioStats={
+             producedFrames:0
+            ,drainedFrames:0
+            ,droppedFrames:0
+            ,overruns:0
+            ,highWaterFrames:0
+            ,advanceCalls:0
+            ,maxAdvanceCycles:0
+            ,maxAdvanceFrames:0
+            ,largeAdvances:0
+            ,lastLargeAdvance:null
+        };
         lastCpuTick=(io && typeof(io.getClockTicks)==="function") ? Number(io.getClockTicks())||0 : 0;
         syncBus(0); syncBus(1);
     };
@@ -496,6 +540,7 @@ MockingboardR6522.REG_NAMES=["ORB","ORA","DDRB","DDRA","T1CL","T1CH","T1LL","T1L
 
 function MockingboardAYBus(renderer,options)
 {
+    var bDebug = true
     options=options||{};
     var bus=this;
     var INACTIVE=0, READ=1, WRITE=2, LATCH=3, RESET=-1;
