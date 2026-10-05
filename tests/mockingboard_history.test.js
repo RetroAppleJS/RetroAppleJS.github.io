@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
 function load(){
-  const ctx={console,Uint8Array,Array,Number,Math,Object};
+  const ctx={console,Uint8Array,Array,Number,Math,Object,Ayumi:function(){},oEMU:{component:{IO:{}}}};
   vm.createContext(ctx);
   vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res','EMU_CARD_mockingboard.js'),'utf8'),ctx);
   return ctx;
@@ -83,4 +83,31 @@ test('capacity is configurable in whole Kbytes while stopped and fixed while rec
   h.stop(1);
   assert.equal(h.setCapacityKB(8),8);
   assert.equal(h.getState().capacityBytes,8192);
+});
+
+test('history download keeps scalar arrays on one line and one event tuple per line',()=>{
+  const ctx=load(), blobs=[];
+  ctx.Blob=function(parts,options){ blobs.push({parts,options}); };
+  ctx.window={URL:{createObjectURL:()=>"blob:test",revokeObjectURL:()=>{}}};
+  ctx.setTimeout=(fn)=>fn();
+  ctx.document={
+    createElement:()=>({click(){},remove(){}}),
+    body:{appendChild(){}},
+    getElementById:()=>null
+  };
+
+  const card=ctx.oEMU.component.IO.mockingboard;
+  const zero=Array(14).fill(0);
+  card.history.start(100,[zero,zero]);
+  card.history.recordWrite(0,8,15,110);
+  card.history.recordWrite(1,7,56,120);
+  card.history.stop(120);
+
+  assert.equal(card.downloadHistory(),true);
+  const text=String(blobs[0].parts[0]);
+  assert.match(text,/"AY0": \[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0\]/);
+  assert.match(text,/"AY1": \[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0\]/);
+  assert.match(text,/"events": \[\n    \[10, 0, 8, 15\],\n    \[10, 1, 7, 56\]\n  \]/);
+  assert.doesNotMatch(text,/"AY0": \[\n/);
+  assert.deepEqual(JSON.parse(text).events,[[10,0,8,15],[10,1,7,56]]);
 });
