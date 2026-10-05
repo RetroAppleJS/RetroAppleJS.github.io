@@ -17,10 +17,12 @@ test('AY bus decodes $4/$5/$6/$7 and accepts commands only from inactive',()=>{
 });
 
 test('PB2 low reset dominates control and invalidates address',()=>{
-  const ctx=load(), bus=new ctx.MockingboardAYBus(renderer(),{});
+  const ctx=load(), resets=[], bus=new ctx.MockingboardAYBus(renderer(),{onReset:(cycle)=>resets.push(cycle)});
   bus.observeViaPins(2,0x04,1); bus.observeViaPins(2,0x07,2); assert.equal(bus.getState().addressValid,true);
   bus.observeViaPins(0xAA,0x03,3); assert.equal(bus.getState().resetAsserted,true); assert.equal(bus.getState().addressValid,false); assert.equal(bus.getBusDrive(),null);
   assert.ok(Array.from(bus.getRegisters()).every(v=>v===0));
+  bus.observeViaPins(0xAA,0x03,4); // held reset must not emit a second event
+  assert.deepEqual(resets,[3]);
 });
 
 test('address latch rejects values above $0F instead of aliasing',()=>{
@@ -56,24 +58,18 @@ test('renderer mapping follows AY registers and repeated R13 retriggers',()=>{
   assert.equal(r.calls.filter(c=>c[0]==='shape').length,before+2);
 });
 
-test('bDebug logs every AY sound-register update with masked value and cycle',()=>{
-  const ctx=load(), messages=[];
-  ctx.bDebug=true;
+test('AY sound-register updates use the semantic callback without console spam',()=>{
+  const ctx=load(), messages=[], writes=[];
   ctx.console={log:function(){ messages.push(Array.from(arguments).join(' ')); }};
-  const bus=new ctx.MockingboardAYBus(renderer(),{name:'AY0'});
+  const bus=new ctx.MockingboardAYBus(renderer(),{name:'AY0',onRegisterWrite:(reg,value,cycle)=>writes.push([reg,value,cycle])});
 
   bus.writeRegister(1,0xFF,123);
   bus.writeRegister(13,0x1A,456);
   bus.writeRegister(13,0x1A,457);
-  bus.writeRegister(14,0xAA,458); // I/O port is not a sound-register update
-
-  assert.deepEqual(messages,[
-    'MOCK AY0 R1 TONE_A_COARSE <= $0F @123',
-    'MOCK AY0 R13 ENV_SHAPE <= $0A @456',
-    'MOCK AY0 R13 ENV_SHAPE <= $0A @457'
+  assert.deepEqual(writes,[
+    [1,0x0F,123],
+    [13,0x0A,456],
+    [13,0x0A,457]
   ]);
-
-  ctx.bDebug=false;
-  bus.writeRegister(8,0x1F,500);
-  assert.equal(messages.length,3);
+  assert.deepEqual(messages,[]);
 });

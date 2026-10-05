@@ -40,6 +40,8 @@ function mockingboard()
     var vias=[];
     var syncingBus=[false,false];
     var timingRefresh=null;
+    var history=new MockingboardHistory(64);
+    this.history=history;
 
     var audioPhase=0;
     var audioConsumerActive=false;
@@ -58,9 +60,17 @@ function mockingboard()
     {
         chips=[new Ayumi(),new Ayumi()];
         configureChip(chips[0],0); configureChip(chips[1],1);
+        function busOptions(index)
+        {
+            return {
+                 "name":"AY"+index
+                ,"onRegisterWrite":function(reg,value,cycle){ history.recordWrite(index,reg,value,cycle); }
+                ,"onReset":function(cycle){ history.recordReset(index,cycle); }
+            };
+        }
         psgBuses=[
-            new MockingboardAYBus(chips[0],{"name":"AY0"}),
-            new MockingboardAYBus(chips[1],{"name":"AY1"})
+            new MockingboardAYBus(chips[0],busOptions(0)),
+            new MockingboardAYBus(chips[1],busOptions(1))
         ];
     }
     function syncBus(index)
@@ -119,6 +129,40 @@ function mockingboard()
             if(Number.isFinite(t)) return t;
         }
         return lastCpuTick;
+    }
+    function historyID(suffix)
+    {
+        var hash=card.mount && card.mount.hash!==undefined ? Number(card.mount.hash) : 0;
+        return "MOCK_history_"+hash+"_"+suffix;
+    }
+    function historySlotNumber()
+    {
+        if(!io || !io.slots || typeof(io.SLOT2obj)!=="function") return null;
+        for(var slotN in io.slots)
+            if(io.SLOT2obj(slotN)===card) return Number(slotN);
+        return null;
+    }
+    function historyRegisters()
+    {
+        return [
+            psgBuses[0] ? psgBuses[0].getRegisters() : [],
+            psgBuses[1] ? psgBuses[1].getRegisters() : []
+        ];
+    }
+    function syncHistoryControls()
+    {
+        if(typeof(document)!=="object") return;
+        var state=history.getState();
+        var mug=document.getElementById(historyID("toggle"));
+        var kb=document.getElementById(historyID("kb"));
+        var download=document.getElementById(historyID("download"));
+        if(mug)
+        {
+            mug.style.opacity=state.capturing ? "1" : ".35";
+            mug.title=state.capturing ? "Stop Mockingboard history capture" : "Start a fresh Mockingboard history capture";
+        }
+        if(kb) { kb.disabled=state.capturing; kb.value=state.capacityKB; }
+        if(download) download.title="Download latest Mockingboard history ("+state.bytesUsed+" / "+state.capacityBytes+" bytes)";
     }
     function enqueueFrame(left,right)
     {
@@ -239,8 +283,58 @@ function mockingboard()
         index=Number(index)|0;
         return vias[index] ? vias[index].getState() : null;
     };
+    this.getHistoryState=function(){ return history.getState(); };
+    this.setHistoryBufferKB=function(value)
+    {
+        var result=history.setCapacityKB(value);
+        syncHistoryControls();
+        return result;
+    };
+    this.toggleHistoryCapture=function()
+    {
+        if(history.isCapturing())
+            history.stop(resolveTick(null));
+        else
+        {
+            if(typeof(document)==="object")
+            {
+                var kb=document.getElementById(historyID("kb"));
+                if(kb) history.setCapacityKB(kb.value);
+            }
+            history.start(resolveTick(null),historyRegisters());
+        }
+        syncHistoryControls();
+        return history.getState();
+    };
+    this.getHistoryJSON=function()
+    {
+        var meta={"slot":historySlotNumber(),"clockHz":clockRate};
+        if(history.isCapturing()) meta.stopTick=resolveTick(null);
+        return history.toJSON(meta);
+    };
+    this.downloadHistory=function()
+    {
+        if(typeof(document)!=="object" || typeof(Blob)!=="function" || typeof(window)!=="object" || !window.URL) return false;
+        var json=this.getHistoryJSON();
+        var blob=new Blob([JSON.stringify(json,null,2)+"\n"],{type:"application/json"});
+        var url=window.URL.createObjectURL(blob);
+        var a=document.createElement("a");
+        a.href=url;
+        a.download="mockingboard-slot"+(json.slot==null?"x":json.slot)+"-history.json";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function(){ window.URL.revokeObjectURL(url); },1000);
+        return true;
+    };
     this.reset=function()
     {
+        var resetTick=resolveTick(null);
+        if(history.isCapturing())
+        {
+            history.recordReset(0,resetTick);
+            history.recordReset(1,resetTick);
+        }
         setCardIRQ(false,true);
         vias[0].reset(); vias[1].reset();
         buildSoundChips();
@@ -264,10 +358,29 @@ function mockingboard()
     };
     this.onUnmount=function()
     {
+        if(history.isCapturing()) history.stop(resolveTick(null));
         setCardIRQ(false,true);
         this.state.active=false;
         audioConsumerActive=false;
         this.clearAudioQueue();
+    };
+    this.deviceToolSlotHTML=function(ctx)
+    {
+        ctx=ctx||{};
+        var access="apple2plus.hwObj().io.HASH2obj("+Number(this.mount.hash)+")";
+        var state=history.getState();
+        return "<div class=toolbox id='"+(ctx.toolboxID || "device_tool_"+ctx.slotID)+"' hidden>"
+            +"<div class=appbox style='padding:4px 6px;min-height:32px' title='Mockingboard music/command history'>"
+            +"<div style='display:flex;align-items:center;gap:6px;white-space:nowrap'>"
+            +"<button class=appbut title='Start/stop Mockingboard history capture' onclick='"+access+"?.toggleHistoryCapture()'>"
+            +"<i id='"+historyID("toggle")+"' class='fa fa-coffee' style='opacity:"+(state.capturing?"1":".35")+"'></i></button>"
+            +"<input id='"+historyID("kb")+"' type=number min=1 max=1024 step=1 value='"+state.capacityKB+"' "
+            +(state.capturing?"disabled ":"")+"title='History ring-buffer length in Kbytes' style='width:58px;height:24px;padding:0 4px;box-sizing:border-box;border-radius:7px' "
+            +"onchange='"+access+"?.setHistoryBufferKB(this.value)'>"
+            +"<span style='font-size:10px'>KB</span>"
+            +"<button class=appbut id='"+historyID("download")+"' title='Download latest Mockingboard history' onclick='"+access+"?.downloadHistory()'>"
+            +"<i class='fa fa-cloud-download-alt'></i></button>"
+            +"</div></div></div>";
     };
 }
 
@@ -496,7 +609,6 @@ MockingboardR6522.REG_NAMES=["ORB","ORA","DDRB","DDRA","T1CL","T1CH","T1LL","T1L
 
 function MockingboardAYBus(renderer,options)
 {
-    var bDebug = true;
     options=options||{};
     var bus=this;
     var INACTIVE=0, READ=1, WRITE=2, LATCH=3, RESET=-1;
@@ -504,6 +616,7 @@ function MockingboardAYBus(renderer,options)
     this.renderer=renderer||null;
     this.onRegisterWrite=typeof(options.onRegisterWrite)==="function"?options.onRegisterWrite:null;
     this.onControlChange=typeof(options.onControlChange)==="function"?options.onControlChange:null;
+    this.onReset=typeof(options.onReset)==="function"?options.onReset:null;
     this.regs=new Uint8Array(16);
     this.selectedRegister=0;
     this.addressValid=false;
@@ -600,7 +713,11 @@ function MockingboardAYBus(renderer,options)
         var next=decodeControl(portB);
         if(next===RESET)
         {
-            if(!this.resetAsserted) this.reset(cycle);
+            if(!this.resetAsserted)
+            {
+                this.reset(cycle);
+                if(this.onReset) this.onReset(cycle,this);
+            }
             this.resetAsserted=true;
             this.controlState=RESET;
             this.busDrive=null;
@@ -634,13 +751,6 @@ function MockingboardAYBus(renderer,options)
         index&=0x0F; value&=MockingboardAYBus.REG_MASK[index];
         this.regs[index]=value;
         applyRegister(index);
-        if(index<=13 && typeof(bDebug)!=="undefined" && bDebug===true)
-        {
-            var hex=("0"+value.toString(16).toUpperCase()).slice(-2);
-            var tick=Number(cycle);
-            console.log("MOCK "+this.name+" R"+index+" "+MockingboardAYBus.REG_NAMES[index]+
-                " <= $"+hex+" @"+(Number.isFinite(tick)?Math.floor(tick):"?"));
-        }
         if(this.onRegisterWrite) this.onRegisterWrite(index,value,cycle,this);
         if(this.controlState===READ && this.addressValid && this.selectedRegister===index) this.busDrive=value;
         return value;
@@ -655,3 +765,180 @@ MockingboardAYBus.REG_NAMES=[
     "TONE_C_FINE","TONE_C_COARSE","NOISE_PERIOD","MIXER",
     "AMP_A","AMP_B","AMP_C","ENV_FINE","ENV_COARSE","ENV_SHAPE"
 ];
+
+function MockingboardHistory(bufferKB)
+{
+    const RECORD_BYTES=4;
+    const CMD_RESET=0x80;
+    const CMD_DELAY=0xFF;
+    var capturing=false;
+    var capacityKB=64;
+    var buffer=new Uint8Array(64*1024);
+    var head=0;
+    var records=0;
+    var wrapped=false;
+    var baseTick=0;
+    var lastTick=0;
+    var stopTick=0;
+    var baseRegisters=[new Uint8Array(14),new Uint8Array(14)];
+
+    function normaliseKB(value)
+    {
+        value=Math.floor(Number(value));
+        if(!Number.isFinite(value) || value<1) value=64;
+        return Math.max(1,Math.min(1024,value));
+    }
+    function copyRegisters(source)
+    {
+        var out=[new Uint8Array(14),new Uint8Array(14)];
+        for(var ay=0;ay<2;ay++)
+        {
+            var src=source && source[ay];
+            for(var reg=0;reg<14;reg++) out[ay][reg]=src && src[reg]!==undefined ? Number(src[reg])&0xFF : 0;
+        }
+        return out;
+    }
+    function offsetFor(index){ return (head+index*RECORD_BYTES)%buffer.length; }
+    function readRecord(index)
+    {
+        var p=offsetFor(index);
+        return [buffer[p]|(buffer[p+1]<<8),buffer[p+2],buffer[p+3]];
+    }
+    function applyToBase(command,value)
+    {
+        if(command===CMD_DELAY) return;
+        if((command&0xFE)===CMD_RESET)
+        {
+            baseRegisters[command&1].fill(0);
+            return;
+        }
+        var ay=(command>>4)&1, reg=command&0x0F;
+        if(reg<14) baseRegisters[ay][reg]=value&0xFF;
+    }
+    function dropOldest()
+    {
+        if(records<1) return;
+        var r=readRecord(0);
+        baseTick+=r[0];
+        applyToBase(r[1],r[2]);
+        head=(head+RECORD_BYTES)%buffer.length;
+        records--;
+        wrapped=true;
+    }
+    function push(delta,command,value)
+    {
+        if(records>=buffer.length/RECORD_BYTES) dropOldest();
+        var p=offsetFor(records);
+        buffer[p]=delta&0xFF;
+        buffer[p+1]=(delta>>8)&0xFF;
+        buffer[p+2]=command&0xFF;
+        buffer[p+3]=value&0xFF;
+        records++;
+    }
+    function pushTimed(command,value,tick)
+    {
+        if(!capturing) return false;
+        tick=Math.floor(Number(tick));
+        if(!Number.isFinite(tick)) tick=lastTick;
+        var delta=tick>=lastTick ? tick-lastTick : 0;
+        while(delta>0xFFFF)
+        {
+            push(0xFFFF,CMD_DELAY,0);
+            delta-=0xFFFF;
+        }
+        push(delta,command,value);
+        lastTick=tick;
+        stopTick=tick;
+        return true;
+    }
+
+    this.setCapacityKB=function(value)
+    {
+        if(capturing) return capacityKB;
+        capacityKB=normaliseKB(value);
+        buffer=new Uint8Array(capacityKB*1024);
+        head=records=0;
+        wrapped=false;
+        return capacityKB;
+    };
+    this.start=function(tick,registers)
+    {
+        tick=Math.floor(Number(tick));
+        if(!Number.isFinite(tick)) tick=0;
+        head=records=0;
+        wrapped=false;
+        baseTick=lastTick=stopTick=tick;
+        baseRegisters=copyRegisters(registers);
+        capturing=true;
+        return this.getState();
+    };
+    this.stop=function(tick)
+    {
+        if(tick!==undefined)
+        {
+            tick=Math.floor(Number(tick));
+            if(Number.isFinite(tick)) stopTick=tick;
+        }
+        capturing=false;
+        return this.getState();
+    };
+    this.recordWrite=function(ay,reg,value,tick)
+    {
+        ay=Number(ay)|0; reg=Number(reg)|0;
+        if((ay!==0 && ay!==1) || reg<0 || reg>13) return false;
+        return pushTimed((ay<<4)|reg,Number(value)&0xFF,tick);
+    };
+    this.recordReset=function(ay,tick)
+    {
+        ay=Number(ay)|0;
+        if(ay!==0 && ay!==1) return false;
+        return pushTimed(CMD_RESET|ay,0,tick);
+    };
+    this.isCapturing=function(){ return capturing; };
+    this.getState=function()
+    {
+        return {
+             capturing:capturing
+            ,capacityKB:capacityKB
+            ,capacityBytes:buffer.length
+            ,records:records
+            ,bytesUsed:records*RECORD_BYTES
+            ,wrapped:wrapped
+            ,baseTick:baseTick
+            ,lastTick:lastTick
+            ,stopTick:stopTick
+        };
+    };
+    this.toJSON=function(meta)
+    {
+        meta=meta||{};
+        var events=[];
+        var pending=0;
+        for(var i=0;i<records;i++)
+        {
+            var r=readRecord(i);
+            pending+=r[0];
+            if(r[1]===CMD_DELAY) continue;
+            if((r[1]&0xFE)===CMD_RESET)
+                events.push([pending,r[1]&1,-1,0]);
+            else
+                events.push([pending,(r[1]>>4)&1,r[1]&0x0F,r[2]]);
+            pending=0;
+        }
+        return {
+             format:"RetroAppleJS.MockingboardHistory"
+            ,version:1
+            ,encoding:"deltaCycles,ay,register,value; register -1 means AY reset"
+            ,slot:meta.slot==null?null:Number(meta.slot)
+            ,clockHz:Number(meta.clockHz)||0
+            ,bufferKB:capacityKB
+            ,baseTick:baseTick
+            ,stopTick:meta.stopTick==null?stopTick:Number(meta.stopTick)
+            ,wrapped:wrapped
+            ,initialRegisters:{AY0:Array.from(baseRegisters[0]),AY1:Array.from(baseRegisters[1])}
+            ,events:events
+        };
+    };
+
+    this.setCapacityKB(bufferKB);
+}
