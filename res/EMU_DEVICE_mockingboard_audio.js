@@ -10,7 +10,6 @@ function MockingboardAudio()
 {
     var device=this;
     const QUEUE_LEAD_MS=30;
-    const MAX_DRAIN_FRAMES=4096;
 
     this.audioDevice=true;
 
@@ -60,6 +59,14 @@ function MockingboardAudio()
         gain.gain.value=0.25;
         gain.connect(device.audio.destination);
         return device.audio;
+    }
+    function emulationPlaybackRate()
+    {
+        if(typeof(_o)==="undefined") return 1;
+        var base=Number(_o.CPU_ClocksTicks_s);
+        var target=Number(_o.CPU_TargetTicks_s);
+        if(!Number.isFinite(base) || base<=0 || !Number.isFinite(target) || target<=0) return 1;
+        return target/base;
     }
 
     this.bindHost=function(host)
@@ -137,7 +144,7 @@ function MockingboardAudio()
         if(!ac || !gain) return;
         var available=typeof(owner.getAudioFramesAvailable)==="function" ? owner.getAudioFramesAvailable() : 0;
         if(available<=0) return;
-        var data=owner.drainAudioFrames(Math.min(available,MAX_DRAIN_FRAMES));
+        var data=owner.drainAudioFrames(available);
         if(!data || !data.frames) return;
         var format=owner.getAudioFormat();
         var buffer=ac.createBuffer(2,data.frames,format.sampleRate);
@@ -145,6 +152,8 @@ function MockingboardAudio()
         buffer.getChannelData(1).set(data.right);
         var src=ac.createBufferSource();
         src.buffer=buffer;
+        var playbackRate=emulationPlaybackRate();
+        if(src.playbackRate) src.playbackRate.value=playbackRate;
         src.connect(gain);
         var now=ac.currentTime;
         if(!nextStartTime) nextStartTime=now+QUEUE_LEAD_MS/1000;
@@ -155,7 +164,7 @@ function MockingboardAudio()
         }
         var start=nextStartTime;
         src.start(start);
-        nextStartTime=start+buffer.duration;
+        nextStartTime=start+(buffer.duration/playbackRate);
         var lead=(nextStartTime-now)*1000;
         if(lead<stats.minLead_ms) stats.minLead_ms=lead;
         stats.buffersScheduled++;
