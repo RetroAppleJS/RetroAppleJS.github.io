@@ -2,6 +2,8 @@
 #ifndef AY_CORE_H
 #define AY_CORE_H
 #include <stdint.h>
+/* Config.flags: zero retains the reference renderer; bit 0 selects 2x economy. */
+#define AY_RENDER_ECONOMY 1u
 uint32_t ay_abi_version(void);
 uint32_t ay_config_buffer(void);
 int32_t ay_create(uint32_t config_ptr);

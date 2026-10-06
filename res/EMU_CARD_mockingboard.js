@@ -12,8 +12,9 @@ function mockingboard()
 {
     var bDebug = false;
     var card=this;
-    var SAMPLE_RATE=44100;
-    var AUDIO_CAPACITY=Math.ceil(SAMPLE_RATE*0.25);
+    const SAMPLE_RATE=22050;
+    const RENDER_PROFILE="economy";
+    const AUDIO_CAPACITY=Math.ceil(SAMPLE_RATE*0.25);
 
     this.id={"PCODE":"MOCK","icon":"fa fa-assistive-listening-systems"};
     this.state={"active":true,"irq":false,"audio":true};
@@ -94,7 +95,7 @@ function mockingboard()
     {
         // Only the cheap CPU deadline is checked on IRQ-driven per-cycle ticks.
         // Exact Q64.32 projection stays at event and audio block boundaries.
-        nextAudioTick=lastCpuTick+Math.max(1,Math.floor(512*sourceClock.rateNumerator/
+        nextAudioTick=lastCpuTick+Math.max(1,Math.floor(256*sourceClock.rateNumerator/
             (sourceClock.rateDenominator*SAMPLE_RATE)));
     }
     function prepareEvent()
@@ -112,7 +113,7 @@ function mockingboard()
     function buildSoundChips(candidate,preserveBus)
     {
         if(core)core.destroy();
-        var config=AYCore.configuration({chipCount:2,sampleRate:SAMPLE_RATE,timebaseHz:AUDIO_TIMEBASE,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
+        var config=AYCore.configuration({chipCount:2,sampleRate:SAMPLE_RATE,renderProfile:RENDER_PROFILE,timebaseHz:AUDIO_TIMEBASE,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
         if(candidate)core=candidate;
         else
         {
@@ -289,7 +290,7 @@ function mockingboard()
     this.getAYDiagnostics=function()
     {
         if(core)core.getPosition(corePosition);
-        return {backend:backend,targetHz:sourceTarget,playbackRate:1,cpuTick:lastCpuTick,
+        return {backend:backend,sampleRate:SAMPLE_RATE,renderProfile:RENDER_PROFILE,targetHz:sourceTarget,playbackRate:1,cpuTick:lastCpuTick,
             mappedHorizon:sourceClock.map(lastCpuTick),coreTick:corePosition.tick,samplePhase:corePosition.samplePhase,
             renderedFrames:corePosition.renderedFrames,pendingEvents:pendingCount,eventHighWater:pendingHighWater,
             queuedFrames:audioCount,epoch:transportEpoch,mapping:sourceClock.saveState()};
@@ -308,7 +309,7 @@ function mockingboard()
         backendUIRequest=request;backendLoading=true;backendError="";syncAYControls(requested);
         try
         {
-            var candidate=await AYCore.create({backend:requested,chipCount:2,sampleRate:SAMPLE_RATE,timebaseHz:AUDIO_TIMEBASE,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
+            var candidate=await AYCore.create({backend:requested,chipCount:2,sampleRate:SAMPLE_RATE,renderProfile:RENDER_PROFILE,timebaseHz:AUDIO_TIMEBASE,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
             if(request!==coreRequest){candidate.destroy();return false;}
             if(history.isCapturing())history.stop(lastCpuTick);
             this.clearAudioQueue();buildSoundChips(candidate,true);syncBus(0);syncBus(1);
@@ -352,26 +353,10 @@ function mockingboard()
 
     this.setAudioSampleRate=function(rate)
     {
-        if(!AYCore.integer(rate,8000,192000))throw AYCore.error("E_ARGUMENT");
-        if(rate===SAMPLE_RATE)return;
-        coreRequest++; // Invalidate candidates created for the previous output configuration.
-        var consumer=audioConsumerActive;audioConsumerActive=false;flushAudio();audioConsumerActive=consumer;
-        var config=AYCore.configuration({chipCount:2,sampleRate:rate,timebaseHz:AUDIO_TIMEBASE,originTick:mappedHorizon,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
-        var candidate=backend==="wasm"?AYCore.facade(AYCoreWASM.createReady(config),"wasm",""):AYCore.createJS(config);
-        try
-        {
-            for(var i=0;i<2;i++)
-            {
-                candidate.configureChip(i,{model:"AY",clockHz:clockRate});
-                candidate.setMix(i,i===0?[.5,0,.5,0,.5,0]:[0,.5,0,.5,0,.5]);
-                for(var reg=0;reg<14;reg++)candidate.writeNow(i,reg,psgBuses[i].regs[reg]);
-            }
-        }
-        catch(error){candidate.destroy();throw error;}
-        core.destroy();core=candidate;SAMPLE_RATE=rate;AUDIO_CAPACITY=Math.ceil(rate*.25);
-        for(var i=0;i<2;i++)ayDevices[i].bindCore(core);
-        this.clearAudioQueue();audioLeft=new Float32Array(AUDIO_CAPACITY);audioRight=new Float32Array(AUDIO_CAPACITY);transportEpoch++;
-        scheduleAudioFlush();
+        // Retain the old entry point for callers checking the supported rate.
+        // A browser output-rate change must never restart the AY generators.
+        if(rate!==SAMPLE_RATE)
+            throw AYCore.error("E_ARGUMENT","Mockingboard synthesis is fixed at 22050 Hz");
     };
     this.setTimingRefreshCallback=function(callback)
     {

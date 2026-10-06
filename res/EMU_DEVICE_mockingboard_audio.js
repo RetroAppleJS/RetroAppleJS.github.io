@@ -56,13 +56,11 @@ function MockingboardAudio()
     {
         if(device.audio!==undefined) return device.audio;
         if(typeof(AudioContext)!="function") return null;
-        var format=owner && typeof(owner.getAudioFormat)==="function"
-            ? owner.getAudioFormat()
-            : {sampleRate:44100};
-        device.audio=new AudioContext({latencyHint:"interactive",sampleRate:format.sampleRate||44100});
+        // PCM rate belongs to the card. Web Audio resamples its buffers to
+        // the browser's output rate without rebuilding either AY instance.
+        device.audio=new AudioContext({latencyHint:"interactive"});
         if(typeof(device.audio.addEventListener)==="function")
             device.audio.addEventListener("statechange",syncAudioContext);
-        if(owner && typeof(owner.setAudioSampleRate)==="function")owner.setAudioSampleRate(device.audio.sampleRate);
         gain=device.audio.createGain();
         gain.gain.value=0.25;
         gain.connect(device.audio.destination);

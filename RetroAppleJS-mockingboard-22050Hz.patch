@@ -1,0 +1,1268 @@
+diff --git a/docs/AY_CORE_WASM.md b/docs/AY_CORE_WASM.md
+index eb618cdd..9edad23d 100644
+--- a/docs/AY_CORE_WASM.md
++++ b/docs/AY_CORE_WASM.md
+@@ -49,6 +49,23 @@ shared stereo browser sink. Detaching an AY source mutes its output; reattaching
+ restores the same device and register state. Detaching the sink cancels pending
+ activation and stops scheduled audio. Ejecting the card releases its core.
+ 
++The emulator's Mockingboard synthesizes at a fixed **22,050 Hz**, using the
++`economy` renderer in both JS and WASM. It generates two integrated intermediate
++points per PCM frame (44,100 Hz), then applies a seven-tap half-band filter and
++downsamples. AY generator clocks remain independent of this rate; every required
++clock/8 update runs, including multiple updates inside one intermediate point.
++The browser resamples 22,050 Hz AudioBuffers to its own output rate. Opening an
++AudioContext, changing SYSTEM fps or changing CPU speed does not reconfigure the
++PCM rate. The card's retained `setAudioSampleRate()` guard accepts only 22050;
++other values raise `E_ARGUMENT` without changing state.
++
++The shared API's `renderProfile` creation option accepts `reference` (default,
++original Ayumi 8x renderer) or `economy` (2x integrated renderer). The standalone
++FYM player retains its existing reference profile and rate selection. The two
++profiles deliberately differ in filtering/PCM; backend parity compares JS and
++WASM within the same profile. Profile selection is fixed for an instance and
++snapshots must match it. Existing reference snapshots remain compatible.
++
+ The core owns generators, AY/YM DAC behavior, FIR/DC filter state, register
+ masks, mixing and PCM. The emulator retains VIA timers, bus pins, synchronous
+ register readback, R14/R15 I/O and CPU scheduling. Browser playback owns only
+@@ -56,7 +73,7 @@ presentation queues and device lifecycle.
+ 
+ ```js
+ const core = await AYCore.create({
+-    backend: "wasm", chipCount: 2, sampleRate: 48000,
++    backend: "wasm", chipCount: 2, sampleRate: 22050, renderProfile: "economy",
+     timebaseHz: 1000000000, maxFrames: 4096, maxEvents: 4096
+ });
+ core.configureChip(0, {model: "AY", clockHz: 1020484});
+@@ -100,22 +117,22 @@ anchor survives rate changes; target frequencies are canonicalized to millihertz
+ VIA interrupt timers still advance on every required CPU cycle. Audio time
+ projection and core-position queries run at register events and audio block
+ boundaries instead of every CPU cycle. A cheap CPU deadline triggers synthesis
+-about every 512 output frames; reads of the audio queue or diagnostics project
+-the latest committed CPU horizon. CPU speed and output sample-rate changes
++about every 256 output frames (11.6 ms at 22,050 Hz); reads of the audio queue or
++diagnostics project the latest committed CPU horizon. CPU speed changes
+ reschedule that deadline without changing the exact source mapping.
+ 
+ Pause and debugger single-step continue updating logical chip state silently.
+ Resuming playback discards obsolete presentation PCM and starts a new bounded
+ lead. CPU execution yields under audio backpressure; a full FIFO retains pending
+-PCM/events instead of overwriting old samples. The browser uses its actual
+-AudioContext sample rate. Its queue ceiling is the larger of 60 ms or one SYSTEM
++PCM/events instead of overwriting old samples. The browser uses the card's fixed
++PCM rate for AudioBuffers and its own output rate for presentation. Its queue
++ceiling is the larger of 60 ms or one SYSTEM
+ processing interval plus 30 ms startup lead and 15 ms margin. This admits a
+ complete CPU slice at the supported 10–100 fps processing cadences; at 10 fps,
+ normal scheduled lead is about 130 ms. The numerical FIFO remains bounded to
+ 250 ms. A stopped AudioContext disables PCM presentation and releases CPU
+ backpressure while logical AY phase continues silently. Resuming the context
+-discards obsolete PCM and schedules fresh output. A device sample-rate change
+-starts a cold synthesis transition while preserving bus readback.
++discards obsolete PCM and schedules fresh output.
+ 
+ See [Mockingboard audio debugging](MOCKINGBOARD_AUDIO_DEBUGGING.md) for CPU
+ pacing diagnostics and the distinction between CPU pace and host utilization.
+diff --git a/docs/AY_CORE_WASM_DESIGN.md b/docs/AY_CORE_WASM_DESIGN.md
+index 7351d37d..63b28f89 100644
+--- a/docs/AY_CORE_WASM_DESIGN.md
++++ b/docs/AY_CORE_WASM_DESIGN.md
+@@ -205,7 +205,7 @@ Create configuration, 40 bytes:
+ | 16 | u32 | Sample rate, 8,000–192,000 |
+ | 20 | u32 | Maximum frames per call, 1–16,384 |
+ | 24 | u32 | Maximum events per call, 1–16,384 |
+-| 28 | u32 | Flags, zero |
++| 28 | u32 | Flags: bit 0 selects economy rendering; zero selects reference; other bits must be zero |
+ | 32 | f64 | Origin tick, nonnegative safe integer |
+ 
+ Creation uses the module-owned setup staging returned by `ay_config_buffer()`, initialized before any instance exists. Create calls are serialized; the core copies the configuration before returning and retains no pointer to that shared staging. Instances own event, output, 64-byte control, and snapshot scratch buffers. All control/configuration buffers are eight-byte aligned. Getter pointers remain valid until destruction; pointer getters return zero for an invalid handle. The control buffer holds six f64 routing coefficients at offsets 0–47, or a position record: f64 tick at 0, u32 phase at 8, u32 reserved zero at 12, f64 rendered-frame count at 16. These uses are sequential, not concurrent.
+@@ -239,7 +239,30 @@ Every R13 write invokes envelope retriggering, including consecutive writes of t
+ 
+ `resetTransport()` performs a cold restart: digital state and all interpolation/filter histories are cleared. Sample phase and rendered-frame count return to zero at the supplied origin.
+ 
+-Keep Float64 numerical state and the current FIR coefficients in the first WASM implementation. Write Float32 only at the PCM boundary. Compile without fast-math/reassociation or floating-point contraction. SIMD and reduced precision require separate benchmark and equivalence decisions.
++Keep Float64 numerical state and the current FIR coefficients in the reference WASM renderer. Write Float32 only at the PCM boundary. Compile without fast-math/reassociation or floating-point contraction. SIMD and reduced precision require separate benchmark and equivalence decisions.
++
++The live Mockingboard uses a fixed 22,050 Hz PCM rate and the `economy` profile.
++Both JS and WASM use two integrated intermediate points per output frame,
++followed by the seven-tap half-band coefficients
++`[-1/32, 0, 9/32, 1/2, 9/32, 0, -1/32]`. Integration averages raw mixer levels
++across every clock/8 generator boundary inside each point; it does not skip
++tone, noise or envelope updates. The raw held levels use the first interpolation
++history entries, and the seven-point FIR ring uses the existing filter storage.
++The reference renderer remains the public API default and retains its exact
++8x numerical path; economical PCM is intentionally different. The creation-only
++`renderProfile` option accepts `reference` or `economy`. ABI v1's existing flags
++word encodes economy as bit 0, preserving the 40-byte config, existing zero-flags
++calls and snapshot layouts. Snapshot configuration includes the profile/flags
++and rejects cross-profile restoration. Old reference JS snapshots lacking the
++option are normalized to `reference`; old WASM snapshots retain flags zero.
++
++The card's PCM rate is independent of AudioContext output rate, SYSTEM fps and
++CPU target speed. Web Audio resamples the fixed-rate buffers. Opening host audio
++does not reconstruct the core. CPU acceleration continues to shorten register
++write intervals without changing AY pitch. The 250 ms stereo FIFO holds 5,513
++frames, and a 256-frame synthesis deadline preserves the previous approximately
++11.6 ms update interval. The standalone FYM player retains reference rendering
++and its own rate configuration.
+ 
+ Mixing is an explicit linear matrix. There is no implicit normalization based on chip count, no limiter, and no silent clipping in the core. Existing adapters choose their gains:
+ 
+diff --git a/docs/MOCKINGBOARD_22K_VALIDATION.md b/docs/MOCKINGBOARD_22K_VALIDATION.md
+new file mode 100644
+index 00000000..015e8ee7
+--- /dev/null
++++ b/docs/MOCKINGBOARD_22K_VALIDATION.md
+@@ -0,0 +1,116 @@
++# Fixed-rate Mockingboard validation
++
++Patch base: `7c88dc2e384e77540a4c3c76108119a0fb273c67`.
++
++## Delivered behavior
++
++The peripheral uses fixed 22,050 Hz stereo PCM and the 2x economy profile in
++both numerical backends. Web Audio resamples these buffers to the host output
++rate. The native AY clock stays fixed; CPU speed changes note duration.
++The existing browser pacing/interruption fix is preserved. The reference 8x
++renderer remains the shared API default for the standalone FYM player.
++PCM filtering intentionally differs between the two profiles.
++
++The 250 ms stereo PCM ring drops from 11,025 to 5,513 frames (88,200 to 44,104
++bytes). Per-chip state and the WASM module's fixed 2 MiB memory budget remain.
++The retained sample-rate setter accepts only 22050; incompatible requests fail
++before changing core phase, queued output or backend activation.
++
++## Verification
++
++New tests failed against the original implementation for missing profiles and
++fixed-rate PCM behavior. A further red/green check verified the constant-rate
++setter guard. Final validation included:
++
++- 90 focused tests passed: core/ABI, all envelope shapes, tone/noise/envelope
++  clocks, snapshots, block splits, reset, FIFO pressure, VIA IRQ timing,
++  backend selection, audio lifecycle and cadence.
++- A clean archive of the base accepted the patch with `git apply --check`,
++  applied it, and passed all 77 tests shipped with the patch/base.
++- Two seconds of controlled SYSTEM execution at 10/60/100 fps generated 44,100
++  PCM frames and executed every requested nominal CPU tick, for JS and WASM.
++- Mock AudioContexts at 44,100 and 48,000 Hz both received 22,050 Hz buffers.
++- Real card/sink orchestration at 2x/1x/0.5x CPU produced 0.1/0.2/0.4-second notes,
++  identical initial PCM and unchanged 638.625 Hz tone pitch.
++- JS/WASM economy PCM agreed within 1e-7 across all 16 envelope shapes,
++  mixed AY/YM chips, noise, repeated R13 writes, register events and chip reset.
++- Independent review compared nonzero reference PCM and old snapshot
++  continuation against the actual base implementation: bit-identical for
++  both JS and WASM.
++- The embedded WASM was rebuilt using Zig 0.14.1's Clang driver targeting
++  freestanding wasm32 with strict floating-point flags. Its source fingerprint
++  matches the checked-in C/header/adapter/build inputs.
++
++The browser presentation boundary is represented by an AudioContext test double.
++These checks do not establish subjective audio quality or whole-emulator browser
++performance. The tests exercise the real SYSTEM loop, IO, card, cores and sink,
++with CPU instructions/video replaced only to isolate admission behavior.
++
++## Numerical rendering benchmark
++
++Run `node tools/ay_core/benchmark_render.cjs`. This benchmark renders two active
++AY chips with tone, noise and envelope output, in reusable 512-frame blocks.
++It warms up 500 blocks and takes the median of five 1,000-block runs, including
++PCM copying through the shared API. Values below are milliseconds of wall time
++per synthesized audio second, measured separately from test execution under
++Node v24.19.0. They are local numerical-render timings, not browser
++CPU percentages or expected whole-emulator speedups.
++
++| Backend | Previous 44.1 kHz / 8x | 22.05 kHz / 8x | New 22.05 kHz / 2x | Render speedup vs previous |
++| --- | ---: | ---: | ---: | ---: |
++| JS | 29.637 | 18.267 | 6.143 | 4.82x |
++| WASM | 27.066 | 15.725 | 3.762 | 7.19x |
++
++## Broader archived suite
++
++Restoring `tests.zip` without overwriting tracked tests yielded 586 tests,
++558 passes and 28 failures before changes. After adding 30 new regressions and
++updating rate-dependent expectations, the same command
++`node --test tests/*.test.js` yielded 616 tests, 588 passes and the identical
++28 failing test names. The full archived suite is not green. The three updated
++Mockingboard source/hot-path/card test files are included in the patch; unrelated
++archived tests are not.
++
++Existing failures:
++
++- active emulator and Composer layouts carry all four persistent Disk II semantic IDs
++- runtime compositor never infers Disk II semantic identity from artwork or geometry
++- Composer import and export round-trip emulator semantic IDs independently of editor identity
++- Composer validation rejects duplicate semantic IDs and exposes an optional Runtime ID editor
++- duplicate semantic layer ids are rejected
++- LAYOUT constructor installs as oCOM.LAYOUT and applies pending Disk II facade state
++- generic visibility API updates runtime layer model and DOM element atomically
++- Disk II drive visuals delegate to the Apple II layout API
++- default Apple II Plus boot mounts AppleMouse in physical slot 4
++- fixed scenario companion is mounted in viewport coordinate space
++- layout companion prefers the right side, falls back left, and uses a narrower preferred width
++- Disk II declares D1 and D2 as singleton layout-controlled devices
++- Disk II body and gap images receive stable runtime layer ids
++- Disk II gap shadow uses an owner-level allAttached layout rule
++- layout visibility uses opacity and visibility instead of display toggling
++- DiskJS uses only the canonical AppleDisk2 component ID
++- the original DSCAN $1D03 sync entry captures color PAGE2 without its bit-7-clearing merge
++- DITHER2 redirects the stock DSCAN $1C00 entry to one PAGE2 color capture
++- camera OFF captures the exact Apple II logo HGR page, including phase bit 7
++- near-neutral camera changes retain phase, while a real hue change can update bit 7
++- stock DSCAN 4.2 runs four comparator captures and builds all five Bayer densities in PAGE2
++- raw host camera frame is exposed synchronously to DSCAN and captured into HGR
++- a transient canvas failure keeps the last complete frame until the next processing frame
++- camera RGB samples retain continuous luminance and adjustments affect the next capture immediately
++- each processing frame replaces the camera frame and reset prevents further sampling
++- reset stops processing-frame camera sampling and clears the host frame
++- Liron advertises HD20 as optional and attaches mixed SmartPort devices to distinct units
++- UniDisk Surface Map capability button toggles the popup open and closed
++
++## Applying and rebuilding
++
++```sh
++git apply --check RetroAppleJS-mockingboard-22050Hz.patch
++git apply RetroAppleJS-mockingboard-22050Hz.patch
++node --test tests/*.test.js
++```
++
++The rebuilt embedded WASM is included; ordinary playback needs no compiler.
++The patch updates source files. `dist/RetroAppleJS.html` is regenerated by the
++repository's existing standalone build workflow when source changes are pushed.
++Reload updated scripts when testing the source `index.html` locally.
+diff --git a/res/EMU_CARD_mockingboard.js b/res/EMU_CARD_mockingboard.js
+index 291bc261..4115a73a 100644
+--- a/res/EMU_CARD_mockingboard.js
++++ b/res/EMU_CARD_mockingboard.js
+@@ -12,8 +12,9 @@ function mockingboard()
+ {
+     var bDebug = false;
+     var card=this;
+-    var SAMPLE_RATE=44100;
+-    var AUDIO_CAPACITY=Math.ceil(SAMPLE_RATE*0.25);
++    const SAMPLE_RATE=22050;
++    const RENDER_PROFILE="economy";
++    const AUDIO_CAPACITY=Math.ceil(SAMPLE_RATE*0.25);
+ 
+     this.id={"PCODE":"MOCK","icon":"fa fa-assistive-listening-systems"};
+     this.state={"active":true,"irq":false,"audio":true};
+@@ -94,7 +95,7 @@ function mockingboard()
+     {
+         // Only the cheap CPU deadline is checked on IRQ-driven per-cycle ticks.
+         // Exact Q64.32 projection stays at event and audio block boundaries.
+-        nextAudioTick=lastCpuTick+Math.max(1,Math.floor(512*sourceClock.rateNumerator/
++        nextAudioTick=lastCpuTick+Math.max(1,Math.floor(256*sourceClock.rateNumerator/
+             (sourceClock.rateDenominator*SAMPLE_RATE)));
+     }
+     function prepareEvent()
+@@ -112,7 +113,7 @@ function mockingboard()
+     function buildSoundChips(candidate,preserveBus)
+     {
+         if(core)core.destroy();
+-        var config=AYCore.configuration({chipCount:2,sampleRate:SAMPLE_RATE,timebaseHz:AUDIO_TIMEBASE,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
++        var config=AYCore.configuration({chipCount:2,sampleRate:SAMPLE_RATE,renderProfile:RENDER_PROFILE,timebaseHz:AUDIO_TIMEBASE,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
+         if(candidate)core=candidate;
+         else
+         {
+@@ -289,7 +290,7 @@ function mockingboard()
+     this.getAYDiagnostics=function()
+     {
+         if(core)core.getPosition(corePosition);
+-        return {backend:backend,targetHz:sourceTarget,playbackRate:1,cpuTick:lastCpuTick,
++        return {backend:backend,sampleRate:SAMPLE_RATE,renderProfile:RENDER_PROFILE,targetHz:sourceTarget,playbackRate:1,cpuTick:lastCpuTick,
+             mappedHorizon:sourceClock.map(lastCpuTick),coreTick:corePosition.tick,samplePhase:corePosition.samplePhase,
+             renderedFrames:corePosition.renderedFrames,pendingEvents:pendingCount,eventHighWater:pendingHighWater,
+             queuedFrames:audioCount,epoch:transportEpoch,mapping:sourceClock.saveState()};
+@@ -308,7 +309,7 @@ function mockingboard()
+         backendUIRequest=request;backendLoading=true;backendError="";syncAYControls(requested);
+         try
+         {
+-            var candidate=await AYCore.create({backend:requested,chipCount:2,sampleRate:SAMPLE_RATE,timebaseHz:AUDIO_TIMEBASE,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
++            var candidate=await AYCore.create({backend:requested,chipCount:2,sampleRate:SAMPLE_RATE,renderProfile:RENDER_PROFILE,timebaseHz:AUDIO_TIMEBASE,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
+             if(request!==coreRequest){candidate.destroy();return false;}
+             if(history.isCapturing())history.stop(lastCpuTick);
+             this.clearAudioQueue();buildSoundChips(candidate,true);syncBus(0);syncBus(1);
+@@ -352,26 +353,10 @@ function mockingboard()
+ 
+     this.setAudioSampleRate=function(rate)
+     {
+-        if(!AYCore.integer(rate,8000,192000))throw AYCore.error("E_ARGUMENT");
+-        if(rate===SAMPLE_RATE)return;
+-        coreRequest++; // Invalidate candidates created for the previous output configuration.
+-        var consumer=audioConsumerActive;audioConsumerActive=false;flushAudio();audioConsumerActive=consumer;
+-        var config=AYCore.configuration({chipCount:2,sampleRate:rate,timebaseHz:AUDIO_TIMEBASE,originTick:mappedHorizon,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
+-        var candidate=backend==="wasm"?AYCore.facade(AYCoreWASM.createReady(config),"wasm",""):AYCore.createJS(config);
+-        try
+-        {
+-            for(var i=0;i<2;i++)
+-            {
+-                candidate.configureChip(i,{model:"AY",clockHz:clockRate});
+-                candidate.setMix(i,i===0?[.5,0,.5,0,.5,0]:[0,.5,0,.5,0,.5]);
+-                for(var reg=0;reg<14;reg++)candidate.writeNow(i,reg,psgBuses[i].regs[reg]);
+-            }
+-        }
+-        catch(error){candidate.destroy();throw error;}
+-        core.destroy();core=candidate;SAMPLE_RATE=rate;AUDIO_CAPACITY=Math.ceil(rate*.25);
+-        for(var i=0;i<2;i++)ayDevices[i].bindCore(core);
+-        this.clearAudioQueue();audioLeft=new Float32Array(AUDIO_CAPACITY);audioRight=new Float32Array(AUDIO_CAPACITY);transportEpoch++;
+-        scheduleAudioFlush();
++        // Retain the old entry point for callers checking the supported rate.
++        // A browser output-rate change must never restart the AY generators.
++        if(rate!==SAMPLE_RATE)
++            throw AYCore.error("E_ARGUMENT","Mockingboard synthesis is fixed at 22050 Hz");
+     };
+     this.setTimingRefreshCallback=function(callback)
+     {
+diff --git a/res/EMU_CHIP_AY.js b/res/EMU_CHIP_AY.js
+index c56e4475..33e59b53 100644
+--- a/res/EMU_CHIP_AY.js
++++ b/res/EMU_CHIP_AY.js
+@@ -52,11 +52,13 @@ var AYCore = {
+             timebaseHz: options.timebaseHz === undefined ? 1000000000 : options.timebaseHz,
+             originTick: options.originTick === undefined ? 0 : options.originTick,
+             maxFrames: options.maxFrames === undefined ? 4096 : options.maxFrames,
+-            maxEvents: options.maxEvents === undefined ? 4096 : options.maxEvents
++            maxEvents: options.maxEvents === undefined ? 4096 : options.maxEvents,
++            renderProfile: options.renderProfile === undefined ? 'reference' : options.renderProfile
+         };
+         if (!this.integer(c.chipCount, 1, 2) || !this.integer(c.sampleRate, 8000, 192000) ||
+             !this.integer(c.timebaseHz, 1, 4294967295) || !this.integer(c.maxFrames, 1, 16384) ||
+-            !this.integer(c.maxEvents, 1, 16384) || !this.validTick(c.originTick))
++            !this.integer(c.maxEvents, 1, 16384) || !this.validTick(c.originTick) ||
++            !['reference', 'economy'].includes(c.renderProfile))
+             throw this.error('E_ARGUMENT');
+         return c;
+     },
+diff --git a/res/EMU_CHIP_AY_JS.js b/res/EMU_CHIP_AY_JS.js
+index 5a96468d..60dc55d5 100644
+--- a/res/EMU_CHIP_AY_JS.js
++++ b/res/EMU_CHIP_AY_JS.js
+@@ -17,7 +17,7 @@ var AYCoreJS = {
+         for (var i = 0; i < config.chipCount; i++)
+         {
+             var chip = new Ayumi();
+-            chip.process = AYCoreJS.process;
++            chip.process = config.renderProfile === 'economy' ? AYCoreJS.processEconomy : AYCoreJS.process;
+             chip.firViewsLeft = [];
+             chip.firViewsRight = [];
+             for (var j = 0; j < 23; j++)
+@@ -30,12 +30,13 @@ var AYCoreJS = {
+             state.clocks.push(config.sampleRate * 8);
+             state.registers.push(new Uint8Array(14));
+             chip.configure(false, state.clocks[i], config.sampleRate);
++            chip.step = state.clocks[i] / (config.sampleRate * (config.renderProfile === 'economy' ? 16 : 64));
+             AYCoreJS.resetDigital(chip, state.registers[i]);
+         }
+         state.configure = function(index, model, clock) {
+             this.models[index] = model;
+             this.clocks[index] = clock;
+-            this.chips[index].step = clock / (config.sampleRate * 64);
++            this.chips[index].step = clock / (config.sampleRate * (config.renderProfile === 'economy' ? 16 : 64));
+             this.chips[index].dacTable = model === 'YM' ? YM_DAC_TABLE : AY_DAC_TABLE;
+         };
+         state.mix = function(index, weights) {
+@@ -214,6 +215,42 @@ var AYCoreJS = {
+     }
+ 
+     ,
++    // Two box-integrated points per PCM frame, followed by a seven-tap
++    // half-band decimator. AY generator ticks remain clock/8, even when
++    // several of them occur inside one substep. No per-sample allocations.
++    processEconomy: function() {
++        var heldLeft = this.interpolatorLeft.y[0], heldRight = this.interpolatorRight.y[0];
++        for (var point = 0; point < 2; point++)
++        {
++            var remaining = this.step, left = 0, right = 0;
++            while (remaining > 0)
++            {
++                var until = 1 - this.x;
++                var width = remaining < until ? remaining : until;
++                left += heldLeft * width;
++                right += heldRight * width;
++                remaining -= width;
++                this.x += width;
++                if (this.x >= 1)
++                {
++                    this.x = 0;
++                    this.updateMixer();
++                    heldLeft = this.left;
++                    heldRight = this.right;
++                }
++            }
++            this.firLeft[this.firIndex] = left / this.step;
++            this.firRight[this.firIndex] = right / this.step;
++            this.firIndex = (this.firIndex + 1) % 7;
++        }
++        this.interpolatorLeft.y[0] = heldLeft;
++        this.interpolatorRight.y[0] = heldRight;
++        var i = this.firIndex, l = this.firLeft, r = this.firRight;
++        this.left = -(l[i] + l[(i + 6) % 7]) / 32 +
++            (l[(i + 2) % 7] + l[(i + 4) % 7]) * (9 / 32) + l[(i + 3) % 7] / 2;
++        this.right = -(r[i] + r[(i + 6) % 7]) / 32 +
++            (r[(i + 2) % 7] + r[(i + 4) % 7]) * (9 / 32) + r[(i + 3) % 7] / 2;
++    },
+     // Backend snapshots are deliberately outside rendering. Shape validation and
+     // checksum precede restoration; object/function identities stay untouched.
+     numeric: function(value) {
+@@ -258,6 +295,9 @@ var AYCoreJS = {
+             var text = '';
+             for (var i = 28; i < bytes.length; i++) text += String.fromCharCode(bytes[i]);
+             var saved = JSON.parse(text);
++            // Reference snapshots from before profiles were introduced keep
++            // their existing generator/filter layout and remain compatible.
++            if (saved.config.renderProfile === undefined) saved.config.renderProfile = 'reference';
+             var current = AYCoreJS.save(state), templateText = '';
+             for (var i = 28; i < current.length; i++)
+                 templateText += String.fromCharCode(current[i]);
+@@ -299,7 +339,8 @@ var AYCoreJS = {
+                 if (!['AY', 'YM'].includes(saved.models[i]) || !Number.isInteger(saved.clocks[i]) ||
+                     saved.clocks[i] <= 0 || saved.clocks[i] > 64 * state.config.sampleRate)
+                     throw 0;
+-                if (!Number.isInteger(p.firIndex) || p.firIndex < 0 || p.firIndex >= 23 ||
++                if (!Number.isInteger(p.firIndex) || p.firIndex < 0 ||
++                    p.firIndex >= (state.config.renderProfile === 'economy' ? 7 : 23) ||
+                     !Number.isInteger(p.dcIndex) || p.dcIndex < 0 || p.dcIndex >= 1024 || p.x < 0 ||
+                     p.x >= 1 || !Number.isInteger(p.noise) || p.noise < 0 || p.noise > 131071 ||
+                     !Number.isInteger(p.envelopeShape) || p.envelopeShape < 0 ||
+@@ -307,7 +348,8 @@ var AYCoreJS = {
+                     p.envelopeSegment < 0 || p.envelopeSegment > 1 || p.envelope < 0 ||
+                     p.envelope > 31)
+                     throw 0;
+-                if (p.step !== saved.clocks[i] / (state.config.sampleRate * 64) ||
++                if (p.step !== saved.clocks[i] / (state.config.sampleRate *
++                        (state.config.renderProfile === 'economy' ? 16 : 64)) ||
+                     p.mastervolume !== 1 || !AYCore.integer(p.noisePeriod, 0, 31) ||
+                     !AYCore.integer(p.noiseCounter, 0, 62) ||
+                     !AYCore.integer(p.envelopePeriod, 1, 65535) ||
+diff --git a/res/EMU_CHIP_AY_WASM.js b/res/EMU_CHIP_AY_WASM.js
+index 6339b101..d251a9fc 100644
+--- a/res/EMU_CHIP_AY_WASM.js
++++ b/res/EMU_CHIP_AY_WASM.js
+@@ -1,5 +1,5 @@
+ // Generated by tools/ay_core/build.sh. Do not edit.
+-var AYCoreWASMAsset = {abiVersion:1,sourceSHA256:"cf3a39d43da0321d20147ee230d44efc809253ebf2838f262f45d78a3a618b0e",base64:"AGFzbQEAAAABRAtgAAF/YAF/AX9gAX8AYAR/f39/AX9gA39/fwF/YAN/f38AYAJ/fwF/YAJ/fAF/YAd/fH9/f39/AX9gAX8BfmABfwF8AxoZAAABAgMEAwUGBwgJCgQGAQQEBgEBAQEBAQUEAQEgIAYIAX8BQaCRCAsH4gIVBm1lbW9yeQIADmF5X2FiaV92ZXJzaW9uAAAQYXlfY29uZmlnX2J1ZmZlcgABCWF5X2NyZWF0ZQACEWF5X2NvbmZpZ3VyZV9jaGlwAAQKYXlfc2V0X21peAAFDGF5X3dyaXRlX25vdwAGEWF5X3Jlc2V0X2NoaXBfbm93AAgSYXlfcmVzZXRfdHJhbnNwb3J0AAkPYXlfcmVuZGVyX3VudGlsAAoQYXlfZ2V0X3JlZ2lzdGVycwAND2F5X2dldF9wb3NpdGlvbgAODWF5X3N0YXRlX3NpemUADw1heV9zYXZlX3N0YXRlABANYXlfbG9hZF9zdGF0ZQARCmF5X2Rlc3Ryb3kAEw9heV9ldmVudF9idWZmZXIAFA5heV9sZWZ0X2J1ZmZlcgAVD2F5X3JpZ2h0X2J1ZmZlcgAWEWF5X2NvbnRyb2xfYnVmZmVyABcPYXlfc3RhdGVfYnVmZmVyABgK0H4ZBABBAQsIAEGwjICAAAu5EwQGfwF8AX4mf0F/IQECQCAAQbCMgIAARw0AQQAoArCMgIAAQShHDQBBACgCtIyAgABBAUcNAEEAKAK4jICAACICRQ0AIAJBAksNAEEAKAK8jICAACIDRQ0AQQAoAsCMgIAAIgRBwD5JDQAgBEGA3AtLDQBBACgCxIyAgAAiBUUNACAFQYCAAUsNAEEAKALIjICAACIGRQ0AIAZBgIABSw0AQQAoAsyMgIAADQBBACsD0IyAgAAiB0T///////8/Q2UhAAJAAkAgB0QAAAAAAADwQ2MgB0QAAAAAAAAAAGZxRQ0AIAexIQgMAQtCACEICyAARQ0AIAdEAAAAAAAAAABmRQ0AIAdE////////7/9mRQ0AIAcgB2INACAHRP///////+9/ZUUNACAHIAi6Yg0AQQAhCQJAAkBBACgC5IyAgAAiCg0AQQAoAuCMgIAAQf///x9JDQELAkBBACgCiI2AgAANAEEBIQlBACgChI2AgABB////H0kNAQsCQEEAKAKsjYCAAA0AQQIhCUEAKAKojYCAAEH///8fSQ0BCwJAQQAoAtCNgIAADQBBAyEJQQAoAsyNgIAAQf///x9JDQELAkBBACgC9I2AgAANAEEEIQlBACgC8I2AgABB////H0kNAQsCQEEAKAKYjoCAAA0AQQUhCUEAKAKUjoCAAEH///8fSQ0BCwJAQQAoAryOgIAADQBBBiEJQQAoAriOgIAAQf///x9JDQELAkBBACgC4I6AgAANAEEHIQlBACgC3I6AgABB////H0kNAQsCQEEAKAKEj4CAAA0AQQghCUEAKAKAj4CAAEH///8fSQ0BCwJAQQAoAqiPgIAADQBBCSEJQQAoAqSPgIAAQf///x9JDQELAkBBACgCzI+AgAANAEEKIQlBACgCyI+AgABB////H0kNAQsCQEEAKALwj4CAAA0AQQshCUEAKALsj4CAAEH///8fSQ0BCwJAQQAoApSQgIAADQBBDCEJQQAoApCQgIAAQf///x9JDQELAkBBACgCuJCAgAANAEENIQlBACgCtJCAgABB////H0kNAQsCQEEAKALckICAAA0AQQ4hCUEAKALYkICAAEH///8fSQ0BC0F6IQFBACgCgJGAgAANAUEPIQlBACgC/JCAgABB/v//H0sNAQtBeiEBQaCRiIAAQQdqQXhxIgBBgICAAUsNAEGAgIABIABrIAVBA3QgBkEEdCILaiIMQfDNBWoiDUkNAEEAKAKEkYCAAEEAKAKAkYCAACIOaiEPQQAoAuCQgIAAQQAoAtyQgIAAIhBqIRFBACgCvJCAgABBACgCuJCAgAAiEmohE0EAKAKYkICAAEEAKAKUkICAACIUaiEVQQAoAvSPgIAAQQAoAvCPgIAAIhZqIRdBACgC0I+AgABBACgCzI+AgAAiGGohGUEAKAKsj4CAAEEAKAKoj4CAACIaaiEbQQAoAoiPgIAAQQAoAoSPgIAAIhxqIR1BACgC5I6AgABBACgC4I6AgAAiHmohH0EAKALAjoCAAEEAKAK8joCAACIgaiEhQQAoApyOgIAAQQAoApiOgIAAIiJqISNBACgC+I2AgABBACgC9I2AgAAiJGohJUEAKALUjYCAAEEAKALQjYCAACImaiEnQQAoArCNgIAAQQAoAqyNgIAAIihqISlBACgCjI2AgABBACgCiI2AgAAiKmohK0EAKALojICAACAKaiEsAkADQCAAIA1qIS0CQAJAIApFDQAgACAsTw0AICwhLiAKIC1JDQELAkAgKkUNACAAICtPDQAgKyEuICogLUkNAQsCQCAoRQ0AIAAgKU8NACApIS4gKCAtSQ0BCwJAICZFDQAgACAnTw0AICchLiAmIC1JDQELAkAgJEUNACAAICVPDQAgJSEuICQgLUkNAQsCQCAiRQ0AIAAgI08NACAjIS4gIiAtSQ0BCwJAICBFDQAgACAhTw0AICEhLiAgIC1JDQELAkAgHkUNACAAIB9PDQAgHyEuIB4gLUkNAQsCQCAcRQ0AIAAgHU8NACAdIS4gHCAtSQ0BCwJAIBpFDQAgACAbTw0AIBshLiAaIC1JDQELAkAgGEUNACAAIBlPDQAgGSEuIBggLUkNAQsCQCAWRQ0AIAAgF08NACAXIS4gFiAtSQ0BCwJAIBRFDQAgACAVTw0AIBUhLiAUIC1JDQELAkAgEkUNACAAIBNPDQAgEyEuIBIgLUkNAQsCQCAQRQ0AIAAgEU8NACARIS4gECAtSQ0BCyAORQ0CIAAgD08NAiAPIS4gDiAtTw0CCyAuQQdqQXhxIgBBgICAAUsNAkGAgIABIABrIA1PDQAMAgsLIABFDQAgCUEkbCItQYCNgIAAaiIKIAA2AgAgLUHojICAAGogDTYCACAtQeSMgIAAaiAANgIAIC1B4IyAgABqIg0gDSgCAEEBajYCAEGQsnogDGshLiAAIS0DQCAtQgA3AAAgLUEIaiEtIC5BCGoiLg0ACyAKKAIAIi0gBzkDICAtQQA2AhwgLSAGNgIYIC0gBTYCFCAtIAQ2AhAgLSADNgIMIC0gAjYCCCAtQqiAgIAQNwMAIAlBJGwiLUHwjICAAGogAEHI5gJqIgAgC2oiLjYCACAtQeyMgIAAaiAANgIAIAooAgAiACAINwMwIAAgCDcDKCAtQfSMgIAAaiAuIAVBAnQiCmoiLjYCACAtQfiMgIAAaiAKIC5qQQdqQXhxIi42AgAgLUH8jICAAGogLkHAAGo2AgAgBEEDdCItuCAEuEQAAAAAAABQQKKjIQcDQCAAQZACaiAHOQMAIABB3AFqIC02AgAgAEHwAGpCgICAgICAgPg/NwMAIABBoAFqQoCAgICAgID4PzcDACAAQegAakKAgICAgICA+D83AwAgAEHQAWpCgICAgICAgPg/NwMAIABBmAFqQoCAgICAgID4PzcDACAAQewBakEAOwAAIABB6AFqQQA2AAAgAEHgAWpCADcAACAAQcgBakKAgICAgICA+D83AwAgAEHcAGpCADcCACAAQdQAakIANwIAIABB0ABqQQA2AgAgAEHIAGpCgICAgBA3AwAgAEGMAWpCADcCACAAQYQBakIANwIAIABBgAFqQQA2AgAgAEHAAWpBADYCACAAQfgAakKAgICAEDcDACAAQbgBakIANwMAIABBiAJqQoCAgIDwAzcDACAAQbABakIANwMAIABBqAFqQoCAgIAQNwMAIABB8AFqQgA3AwAgAEH4AWpCATcDACAAQYACakIBNwMAIABBgLMBaiEAIAJBf2oiAg0ACyAJIA0oAgBBBXRyQQFqIQELIAELxgEAIABCADcAmAEgAEEANgIYIABCADcDECAAQgA3AwggAEKAgICAEDcDACAAQoCAgIAQNwMwIABCgICAgBA3A2AgAEIANwK8ASAAQQA2ArQBIABBpAFqQQA7AAAgAEGgAWpBADYAACAAQcQAakIANwIAIABBPGpCADcCACAAQThqQQA2AgAgAEH4AGpBADYCACAAQfAAakIANwMAIABB6ABqQgA3AwAgAEEfNgLEASAAQgA3A6gBIABBATYCuAEgAEEBNgKwAQvMAQEDf0F+IQQCQCAAQQFIDQAgAEEfcUF/aiIFQQ9LDQAgBUEkbCIGQeSMgIAAaigCAEUNACAGQeCMgIAAaigCACAAQQV2Rw0AQX8hBCADRQ0AIAJBAUsNACAFQSRsQYCNgIAAaigCACIAKAIIIAFNDQAgACgCECIFQQZ0IANJDQBBeCEEIAAoAkQNACAAIAFBgLMBbGoiAEGQAmogA7ggBbhEAAAAAAAAUECiozkDACAAQdwBaiADNgIAIABB2AFqIAI2AgBBACEECyAEC4AFAgN/AnxBfiEDAkAgAEEBSA0AIABBH3FBf2oiBEEPSw0AIARBJGwiBUHkjICAAGooAgBFDQAgBUHgjICAAGooAgAgAEEFdkcNAEF/IQMgBEEkbCIAQYCNgIAAaigCACIEKAIIIAFNDQAgAEH4jICAAGooAgAgAkcNACACKwMAIgZE////////7/9mRQ0AIAYgBmINACAGRP///////+9/ZUUNACAGRAAAAAAAAAAAYw0AIAZEAAAAAAAA8D9kDQAgAisDCCIHRP///////+//ZkUNACAHIAdiDQAgB0T////////vf2VFDQAgB0QAAAAAAAAAAGMNACAHRAAAAAAAAPA/ZA0AIAIrAxAiB0T////////v/2ZFDQAgByAHYg0AIAdE////////739lRQ0AIAdEAAAAAAAAAABjDQAgB0QAAAAAAADwP2QNACACKwMYIgdE////////7/9mRQ0AIAcgB2INACAHRP///////+9/ZUUNACAHRAAAAAAAAAAAYw0AIAdEAAAAAAAA8D9kDQAgAisDICIHRP///////+//ZkUNACAHIAdiDQAgB0T////////vf2VFDQAgB0QAAAAAAAAAAGMNACAHRAAAAAAAAPA/ZA0AIAIrAygiB0T////////v/2ZFDQAgByAHYg0AIAdE////////739lRQ0AIAdEAAAAAAAAAABjDQAgB0QAAAAAAADwP2QNACAEIAFBgLMBbGoiAEHoAGogBjkDACAAQfAAaiACKwMIOQMAIABBmAFqIAIrAxA5AwAgAEGgAWogAisDGDkDACAAQcgBaiACKwMgOQMAIABB0AFqIAIrAyg5AwBBACEDCyADC5MBAQN/QX4hBAJAIABBAUgNACAAQR9xQX9qIgVBD0sNACAFQSRsIgZB5IyAgABqKAIARQ0AIAZB4IyAgABqKAIAIABBBXZHDQBBfyEEIANB/wFLDQAgAkENSw0AIAVBJGxBgI2AgABqKAIAIgAoAgggAU0NACAAIAFBgLMBbGpByABqIAIgAxCHgICAAEEAIQQLIAQLtAMBAX8gAEGYAWoiAyABaiABQYCIgIAAai0AACACcToAAAJAIAFBBUsNACAAIAFBAXZBMGxqIAMgAUEBcmotAABBCHQgAyABQQZxai0AAHIiAUEBIAFBAUsbNgIEDwsCQCABQQZHDQAgACAAQZ4Bai0AADYCqAEPCwJAIAFBCksNACAAIABBnwFqLQAAIgFBAXE2AgwgACAAQaABai0AACICQQ9xNgIYIAAgAkEEdjYCFCAAQcgAaiAAQaEBai0AACICQQ9xNgIAIABBxABqIAJBBHY2AgAgAEH4AGogAEGiAWotAAAiAkEPcTYCACAAQfQAaiACQQR2NgIAIAAgAUEDdkEBcTYCECAAQcAAaiABQQR2QQFxNgIAIABBPGogAUEBdkEBcTYCACAAQfAAaiABQQV2QQFxNgIAIABB7ABqIAFBAnZBAXE2AgAPCwJAIAFBdWpBAUsNACAAIABBowFqLwAAIgFBASABQQFLGzYCuAEPCwJAIAFBDUcNACAAQQA2AsABIABBADYCtAEgACAAQaUBai0AACIBNgK8ASAAQQBBjx4gAXZBAXFrQR9xNgLEAQsL6QIBA39BfiECAkAgAEEBSA0AIABBH3FBf2oiA0EPSw0AIANBJGwiBEHkjICAAGooAgBFDQAgBEHgjICAAGooAgAgAEEFdkcNAEF/IQIgA0EkbEGAjYCAAGooAgAiACgCCCABTQ0AQQAhAiAAIAFBgLMBbGoiAEHsAWpBADsAACAAQegBakEANgAAIABB4AFqQgA3AAAgAEHgAGpBADYCACAAQdgAakIANwMAIABB0ABqQgA3AwAgAEHIAGpCgICAgBA3AwAgAEGMAWpCADcCACAAQYQBakIANwIAIABBgAFqQQA2AgAgAEH4AGpCgICAgBA3AwAgAEHAAWpBADYCACAAQbgBakIANwMAIABBsAFqQgA3AwAgAEGoAWpCgICAgBA3AwAgAEGEAmpCADcCACAAQfwBakEANgIAIABBgAJqQQE2AgAgAEH4AWpBATYCACAAQYwCakEfNgIAIABB8AFqQgA3AwALIAIL4AUFA38BfgJ/BXwEf0F+IQICQCAAQQFIDQAgAEEfcUF/aiIDQQ9LDQAgA0EkbCIEQeSMgIAAaigCAEUNACAEQeCMgIAAaigCACAAQQV2Rw0AIAFE////////P0NlIQACQAJAIAFEAAAAAAAA8ENjIAFEAAAAAAAAAABmcUUNACABsSEFDAELQgAhBQtBfSECIABFDQAgAUQAAAAAAAAAAGZFDQAgAUT////////v/2ZFDQAgASABYg0AIAFE////////739lRQ0AIAW6IAFiDQAgA0EkbEGAjYCAAGooAgAiBiAFNwMwIAYgBTcDKCAGQgA3A0AgBkIANwM4AkAgBigCCA0AQQAPC0EAIQcgBiEAA0AgBiAHQYCzAWxqIgRByABqIQMgBEHQAWorAwAhASAEQcgBaisDACEIIARBoAFqKwMAIQkgBEGYAWorAwAhCiAEQfAAaisDACELIARB6ABqKwMAIQwgBEHcAWoiDSgCACEOIARB2AFqIg8oAgAhEEHIACECA0AgACACakIANwAAIAJBCGoiAkHIswFHDQALIA0gDjYCACAPIBA2AgAgAyABOQOIASADIAg5A4ABIAMgCTkDWCADIAo5A1AgAyALOQMoIAMgDDkDIEEAIQIgA0EANgIYIANCADcDECADQgA3AwggA0KAgICAEDcDACADQcgAakEANgIAIARB7AFqQQA7AAAgBEHoAWpBADYAACAEQeABakIANwAAIARBkAJqIA64IAYoAhC4RAAAAAAAAFBAoqM5AwAgA0HAAGpCADcDACADQfgAakEANgIAIANBOGpCADcDACADQoCAgIAQNwMwIANB8ABqQgA3AwAgA0HoAGpCADcDACADQoCAgIAQNwNgIARB8AFqQgA3AwAgBEH4AWpCATcDACAEQYACakIBNwMAIARBiAJqQoCAgIDwAzcDACAAQYCzAWohACAHQQFqIgcgBigCCEkNAAsLIAILtRcMBH8EfgJ/AX4CfwJ8IH8HfAN/BnwBfwJ8QX4hBwJAIABBAUgNACAAQR9xQX9qIghBD0sNACAIQSRsIglB5IyAgABqKAIARQ0AIAlB4IyAgABqKAIAIABBBXZHDQBBfyEHIAhBJGwiAEHsjICAAGooAgAgAkcNACAAQfCMgIAAaigCACAERw0AIAhBJGxB9IyAgABqKAIAIAVHDQAgAEGAjYCAAGooAgAhCiABRP///////z9DZSEAAkACQCABRAAAAAAAAPBDYyABRAAAAAAAAAAAZnFFDQAgAbEhCwwBC0IAIQsLQX0hByAARQ0AIAFEAAAAAAAAAABmRQ0AIAFE////////7/9mRQ0AIAEgAWINACABRP///////+9/ZUUNACALuiABYg0AIAsgCikDKCIMVA0AIAsgDH0iDUL/////D1YNAEF7IQcgCigCGCADSQ0AIAooAhQgBkkNAAJAIANFDQAgAiEAIAMhCANAQXwhByAAKQAAIg4gC1YNAiAOQv////////8PVg0CIA4gDFQNAkF/IQcgCigCCCAAQQhqLQAATQ0CIABBCWotAAAiCUEBSw0CIABBDGotAAANAiAAQQ1qLQAADQIgAEEOai0AAA0CIABBD2otAAANAiAAQQpqLQAAIQ8CQAJAIAkNACAPQf8BcUENTQ0BDAQLIA9B/wFxDQMgAEELai0AAA0DCyAAQRBqIQAgDiEMIAhBf2oiCA0ACwtBfSEHIA0gCjUCEH4gCjUCQHwgCjUC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ISAAKwOYByEiIAArA+gEISMgACsDoAchJCAAKwPgBCElIAArA6gHISYgACsD2AQhJyAAKwOwByEoIAArA9AEISkgACsDuAchKiAAKwPIBCErIAArA8gHISwgACsDuAQhLSAAKwPQByEuIAArA7AEIS8gACsD2AchMCAAKwOoBCExIAArA+AHITIgACsDoAQhMyAAKwPoByE0IAArA5gEITUgACsD8AchNiAAKwOQBCE3IAArA/gHITggACsDiAQhOSAAKwOICCE6IAArA/gDITsgACsDkAghPCAAKwPwAyE9IAArA5gIIT4gACsD6AMhPyAAKwOgCCFAIAArA+ADIUEgACsDqAghQiAAKwPYAyFDIAArA7AIIUQgACsD0AMhRSAAKwO4CCFGIAArA8gDIUcgACsDyAghSCAAKwO4AyFJIAArA9AIIUogACsDsAMhSyAAKwPYCCFMIAArA6gDIU0gACsD4AghTiAAKwOgAyFPIAArA+gIIVAgACsDmAMhUSAAKwPwCCFSIAArA5ADIVMgACsD+AghVCAAKwOIAyFVIAArA4gJIVYgACsD+AIhVyAAKwOQCSFYIAArA/ACIVkgACsDmAkhWiAAKwPoAiFbIAArA6AJIVwgACsD4AIhXSAAKwOoCSFeIAArA9gCIV8gACsDsAkhYCAAKwPQAiFhIAArA7gJIWIgACsDyAIhYyAAKwPICSFkIAArA7gCIWUgACsD0AkhZiAAKwOwAiFnIAArA9gJIWggACsDqAIhaSAAKwPgCSFqIAArA6ACIWsgACsD6AkhbCAAKwOYAiFtIAArA/AJIW4gACsDkAIhbyAAKwP4CSFwIAArA4gCIXEgACsDiAohciAAKwP4ASFzIAArA5AKIXQgACsD8AEhdSAAKwOYCiF2IAArA+gBIXcgACsDoAoheCAAKwPgASF5IAArA6gKIXogACsD2AEheyAAKwOwCiF8IAArA9ABIX0gACsDuAohfiAAKwPIASF/IAArA8gKIYABIAArA7gBIYEBIAArA9AKIYIBIAArA7ABIYMBIAArA9gKIYQBIAArA6gBIYUBIAArA+AKIYYBIAArA6ABIYcBIAArA+gKIYgBIAArA5gBIYkBIAArA/AKIYoBIAArA5ABIYsBIAArA/gKIYwBIAArA4gBIY0BIAArA4gLIY4BIAArA3ghjwEgACsD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IABBBWogA0EFai0AADoAACAAQQZqIANBBmotAAA6AAAgAEEHaiADQQdqLQAAOgAAIARBCGoiBEHI5gJHDQALQcW78oh4IQRBACEDA0AgBCACIANqIgAtAABzQZODgAhsIABBAWotAABzQZODgAhsIABBAmotAABzQZODgAhsIABBA2otAABzQZODgAhsIQQgA0EEaiIDQcjmAkcNAAsgASAENgIYQeTmAiEDCyADC/oYBAV/CH4BfwN8I4CAgIAAQdDmAmsiAySAgICAAEF+IQQCQCAAQQFIDQAgAEEfcUF/aiIFQQ9LDQAgBUEkbCIGQeSMgIAAaigCAEUNACAGQeCMgIAAaigCACAAQQV2Rw0AQX8hBCAFQSRsQfyMgIAAaigCACABRw0AQXkhBCACQeTmAkcNACABKAIAQcGyzaIFRw0AIAEoAgRBAUcNACABKAIIQQFHDQAgASgCDEECRw0AIAEoAhBBAUcNACABKAIUQeTmAkcNACABQRxqIQYgASgCGCEHQcW78oh4IQJBACEBA0AgAiAGIAFqIgAtAABzQZODgAhsIABBAWotAABzQZODgAhsIABBAmotAABzQZODgAhsIABBA2otAABzQZODgAhsIQIgAUEEaiIBQcjmAkcNAAsgByACRw0AQQAhAQNAIANBCGogAWoiACAGIAFqIgQtAAA6AAAgAEEBaiAEQQFqLQAAOgAAIABBAmogBEECai0AADoAACAAQQNqIARBA2otAAA6AAAgAEEEaiAEQQRqLQAAOgAAIABBBWogBEEFai0AADoAACAAQQZqIARBBmotAAA6AAAgAEEHaiAEQQdqLQAAOgAAIAFBCGoiAUHI5gJHDQALQXkhBCADQQhqIAVBJGxBgI2AgABqKAIAIgAQkoCAgABFDQAgAykDMCIIQv////////8PVg0AIAggAykDOCIJVA0AIAMpA0AiCkL/////////D1YNACADKAJIIgIgAygCFCIBTw0AIAMoAkwiBUEBSw0AIAggCX0iCyABrSIMgCINQv////////8PIAMoAhgiAa0iDoBWDQAgCyANIAx+fSAOfiILIAyAIg8gDSAOfnwgClINACALIA8gDH59IAKtUg0AIAUgCCAJVkcNAAJAIAMoAhAiEEUNACABQQZ0IQcgAbhEAAAAAAAAUECiIRFBACEGIANBCGohBQNAIANBCGogBkGAswFsaiIBQdgBaigCAEEBSw0CIAFB3AFqKAIAIgJBf2ogB08NAiABQZACaisDACACuCARo2INAiABQZgCaisDACISRP///////+//ZkUNAiASIBJiDQIgEkT////////vf2VFDQIgEkQAAAAAAAAAAGMNAiASRAAAAAAAAPA/Zg0CIAFB+AFqKAIAQf//B0sNAiABQfABaigCAEEfSw0CIAFB9AFqKAIAQT5LDQIgAUGEAmooAgBBD0sNAiABQYgCaigCAEEBSw0CIAFBjAJqKAIAQR9LDQIgAUGAAmooAgBBgIB8akGBgHxJDQIgAUH8AWooAgBB//8DSw0CIAFBwLMBaigCAEEWSw0CIAFBxLMBaigCAEH/B0sNAiABQeEBai0AAEEPSw0CIAFB4wFqLQAAQQ9LDQIgAUHlAWotAABBD0sNAiABQeYBai0AAEEfSw0CIAFB6AFqLQAAQR9LDQIgAUHpAWotAABBH0sNAiABQeoBai0AAEEfSw0CIAFB7QFqLQAAQQ9LDQIgAUHIAGoiAigCBEGAYGpBgWBJDQIgAigCAEH/H0sNAiACKAIIQQFLDQIgAigCDEEBSw0CIAIoAhBBAUsNAiACKAIUQQFLDQIgAigCGEEPSw0CIAIrAyAiEkT////////v/2ZFDQIgEiASYg0CIBJE////////739lRQ0CIAIrAygiE0T////////v/2ZFDQIgEyATYg0CIBNE////////739lRQ0CIBJEAAAAAAAAAABjDQIgEkQAAAAAAADwP2QNAiATRAAAAAAAAAAAYw0CIBNEAAAAAAAA8D9kDQIgAkE0aigCAEGAYGpBgWBJDQIgAigCMEH/H0sNAiACQThqKAIAQQFLDQIgAkE8aigCAEEBSw0CIAJBwABqKAIAQQFLDQIgAkHEAGooAgBBAUsNAiACQcgAaigCAEEPSw0CIAJB0ABqKwMAIhJE////////7/9mRQ0CIBIgEmINAiASRP///////+9/ZUUNAiACQdgAaisDACITRP///////+//ZkUNAiATIBNiDQIgE0T////////vf2VFDQIgEkQAAAAAAAAAAGMNAiASRAAAAAAAAPA/ZA0CIBNEAAAAAAAAAABjDQIgE0QAAAAAAADwP2QNAiACQeQAaigCAEGAYGpBgWBJDQIgAigCYEH/H0sNAiACQegAaigCAEEBSw0CIAJB7ABqKAIAQQFLDQIgAkHwAGooAgBBAUsNAiACQfQAaigCAEEBSw0CIAJB+ABqKAIAQQ9LDQIgAkGAAWorAwAiEkT////////v/2ZFDQIgEiASYg0CIBJE////////739lRQ0CIAJBiAFqKwMAIhNE////////7/9mRQ0CIBMgE2INAiATRP///////+9/ZUUNAiASRAAAAAAAAAAAYw0CIBJEAAAAAAAA8D9kDQIgE0QAAAAAAAAAAGMNAiATRAAAAAAAAPA/ZA0CIAFBoAJqKwMAIhJE////////7/9mRQ0CIBIgEmINAiASRP///////+9/ZUUNAiABQagCaisDACISRP///////+//ZkUNAiASIBJiDQIgEkT////////vf2VFDQIgAUGwswFqKwMAIhJE////////7/9mRQ0CIBIgEmINAiASRP///////+9/ZUUNAiABQbizAWorAwAiEkT////////v/2ZFDQIgEiASYg0CIBJE////////739lRQ0CIAFBsAJqKwMAIhJE////////7/9mRQ0CIBIgEmINAiASRP///////+9/ZUUNAiABQfACaisDACISRP///////+//ZkUNAiASIBJiDQIgEkT////////vf2VFDQIgAUHQAmorAwAiEkT////////v/2ZFDQIgEiASYg0CIBJE////////739lRQ0CIAFBkANqKwMAIhJE////////7/9mRQ0CIBIgEmINAiASRP///////+9/ZUUNAiABQbgCaisDACISRP///////+//ZkUNAiASIBJiDQIgEkT////////vf2VFDQIgAUH4AmorAwAiEkT////////v/2ZFDQIgEiASYg0CIBJE////////739lRQ0CIAFB2AJqKwMAIhJE////////7/9mRQ0CIBIgEmINAiASRP///////+9/ZUUNAiABQZgDaisDACISRP///////+//ZkUNAiASIBJiDQIgEkT////////vf2VFDQIgAUHAAmorAwAiEkT////////v/2ZFDQIgEiASYg0CIBJE////////739lRQ0CIAFBgANqKwMAIhJE////////7/9mRQ0CIBIgEmINAiASRP///////+9/ZUUNAiABQeACaisDACISRP///////+//ZkUNAiASIBJiDQIgEkT////////vf2VFDQIgAUGgA2orAwAiEkT////////v/2ZFDQIgEiASYg0CIBJE////////739lRQ0CIAFByAJqKwMAIhJE////////7/9mRQ0CIBIgEmINAiASRP///////+9/ZUUNAiABQYgDaisDACISRP///////+//ZkUNAiASIBJiDQIgEkT////////vf2VFDQIgAUHoAmorAwAiEkT////////v/2ZFDQIgEiASYg0CIBJE////////739lRQ0CIAFBqANqKwMAIhJE////////7/9mRQ0CIBIgEmINAiASRP///////+9/ZUUNAkGwAyEBA0AgBSABaiICKwMAIhJE////////7/9mRQ0DIBIgEmINAyASRP///////+9/ZUUNAyACQYAYaisDACISRP///////+//ZkUNAyASIBJiDQMgEkT////////vf2VFDQMgAUEIaiIBQbAbRw0AC0GwMyEBA0AgBSABaiICKwMAIhJE////////7/9mRQ0DIBIgEmINAyASRP///////+9/ZUUNAyACQYDAAGorAwAiEkT////////v/2ZFDQMgEiASYg0DIBJE////////739lRQ0DIAFBCGoiAUGw8wBHDQALIAVBgLMBaiEFIAZBAWoiBiAQRw0ACwtBACEEQQAhBQNAIAAgBWoiASADQQhqIAVqIgItAAA6AAAgAUEBaiACQQFqLQAAOgAAIAFBAmogAkECai0AADoAACABQQNqIAJBA2otAAA6AAAgAUEEaiACQQRqLQAAOgAAIAFBBWogAkEFai0AADoAACABQQZqIAJBBmotAAA6AAAgAUEHaiACQQdqLQAAOgAAIAVBCGoiBUHI5gJHDQALCyADQdDmAmokgICAgAAgBAuCAQEBf0EAIQICQCAAKAIAIAEoAgBHDQAgACgCBCABKAIERw0AIAAoAgggASgCCEcNACAAKAIMIAEoAgxHDQAgACgCECABKAIQRw0AIAAoAhQgASgCFEcNACAAKAIYIAEoAhhHDQAgACgCHCABKAIcRw0AIAArAyAgASsDIGEhAgsgAgt5AQR/QX4hAQJAIABBAUgNACAAQR9xQX9qIgJBD0sNACACQSRsIgNB5IyAgABqIgQoAgBFDQAgA0HgjICAAGooAgAgAEEFdkcNAEEAIQEgBEEANgIAIAJBJGwiAEHojICAAGpBADYCACAAQYCNgIAAakEANgIACyABC1wBA39BACEBAkAgAEEBSA0AIABBH3FBf2oiAkEPSw0AIAJBJGwiA0HkjICAAGooAgBFDQAgA0HgjICAAGooAgAgAEEFdkcNACACQSRsQeyMgIAAaigCACEBCyABC1wBA39BACEBAkAgAEEBSA0AIABBH3FBf2oiAkEPSw0AIAJBJGwiA0HkjICAAGooAgBFDQAgA0HgjICAAGooAgAgAEEFdkcNACACQSRsQfCMgIAAaigCACEBCyABC1wBA39BACEBAkAgAEEBSA0AIABBH3FBf2oiAkEPSw0AIAJBJGwiA0HkjICAAGooAgBFDQAgA0HgjICAAGooAgAgAEEFdkcNACACQSRsQfSMgIAAaigCACEBCyABC1wBA39BACEBAkAgAEEBSA0AIABBH3FBf2oiAkEPSw0AIAJBJGwiA0HkjICAAGooAgBFDQAgA0HgjICAAGooAgAgAEEFdkcNACACQSRsQfiMgIAAaigCACEBCyABC1wBA39BACEBAkAgAEEBSA0AIABBH3FBf2oiAkEPSw0AIAJBJGwiA0HkjICAAGooAgBFDQAgA0HgjICAAGooAgAgAEEFdkcNACACQSRsQfyMgIAAaigCACEBCyABCwu4BAEAQYAIC7AE/w//D/8PH/8fHx///w8AAAACAAIAAgACAQIBAgECAQIAAAACAAEAAwEBAQMBAAECAAAAAAAAAAAAAAAAAAAAADoFExATEHM/YacfoB+gfz/4MBZwFnCGP2XLHJgcmIw/wlERaBFokT+xphSAFICUP97YGPQY9Jg/gYgeaB5onj9b7xH0EfShPyzHFK4UrqQ//N4Y2hjaqD/F7h3eHd6tP6B1EWwRbLE/3vMT6RPpsz9stxevF6+3PzN+HHAccLw/gNKQm5CbwD9aJJMBkwHDP/ajFp0WncY/XjAbFBsUyz+oj5+Jn4nPP7ABkv2R/dE/pXTVW9Vb1T8JmZmgmaDZP+P2nemd6d0/vx0RGhEa4T9eV1RTVFPkP1c3mEGYQeg/BixcKFwo7D8AAAAAAADwPwAAAAAAAAAAAAAAAAAAAAC8gBR4FHiEP7yAFHgUeIQ/RNgdmB2YjT9E2B2YHZiNP9phFZAVkJU/2mEVkBWQlT/QpB9wH3CfP9CkH3AfcJ8/PTwXUhdSpz89PBdSF1KnP/94EIMQg7A//3gQgxCDsD8xUBt8G3y7PzFQG3wbfLs/+jQQNBA0wD/6NBA0EDTAPy4eGj0aPco/Lh4aPRo9yj8expKzkrPSPx7GkrOSs9I/A+WX3Jfc1z8D5Zfcl9zXPxakn4Wfhd8/FqSfhZ+F3z/HWZRUlFTkP8dZlFSUVOQ/osBZx1nH6T+iwFnHWcfpPwAAAAAAAPA/AAAAAAAA8D8AugMEbmFtZQANDGF5X2NvcmUud2FzbQGDAxkADmF5X2FiaV92ZXJzaW9uARBheV9jb25maWdfYnVmZmVyAglheV9jcmVhdGUDDXJlc2V0X2RpZ2l0YWwEEWF5X2NvbmZpZ3VyZV9jaGlwBQpheV9zZXRfbWl4BgxheV93cml0ZV9ub3cHCXdyaXRlX3JlZwgRYXlfcmVzZXRfY2hpcF9ub3cJEmF5X3Jlc2V0X3RyYW5zcG9ydAoPYXlfcmVuZGVyX3VudGlsCwpldmVudF90aWNrDAhkZWNpbWF0ZQ0QYXlfZ2V0X3JlZ2lzdGVycw4PYXlfZ2V0X3Bvc2l0aW9uDw1heV9zdGF0ZV9zaXplEA1heV9zYXZlX3N0YXRlEQ1heV9sb2FkX3N0YXRlEgxjb25maWdfZXF1YWwTCmF5X2Rlc3Ryb3kUD2F5X2V2ZW50X2J1ZmZlchUOYXlfbGVmdF9idWZmZXIWD2F5X3JpZ2h0X2J1ZmZlchcRYXlfY29udHJvbF9idWZmZXIYD2F5X3N0YXRlX2J1ZmZlcgcSAQAPX19zdGFja19wb2ludGVyCQoBAAcucm9kYXRhADgJcHJvZHVjZXJzAQxwcm9jZXNzZWQtYnkBDFVidW50dSBjbGFuZxExOC4xLjMgKDF1YnVudHUxKQAsD3RhcmdldF9mZWF0dXJlcwIrD211dGFibGUtZ2xvYmFscysIc2lnbi1leHQ="};
++var AYCoreWASMAsset = {abiVersion:1,sourceSHA256:"cb0200389751aa0415967578a9122fbfcc0a493338d803854316bcea54e7356f",base64:"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AAAwQEQAAAAAAABQQCAHGyAEuKKjIQggDygCICEAA0AgAEGQAmogCDkDACAAQdwBaiAQNgIAIABB8ABqQoCAgICAgID4PzcDACAAQaABakKAgICAgICA+D83AwAgAEHoAGpCgICAgICAgPg/NwMAIABB0AFqQoCAgICAgID4PzcDACAAQZgBakKAgICAgICA+D83AwAgAEHsAWpBADsAACAAQegBakEANgAAIABB4AFqQgA3AAAgAEHIAWpCgICAgICAgPg/NwMAIABB3ABqQgA3AgAgAEHUAGpCADcCACAAQdAAakEANgIAIABByABqQoCAgIAQNwMAIABBjAFqQgA3AgAgAEGEAWpCADcCACAAQYABakEANgIAIABBwAFqQQA2AgAgAEH4AGpCgICAgBA3AwAgAEG4AWpCADcDACAAQYgCakKAgICA8AM3AwAgAEGwAWpCADcDACAAQagBakKAgICAEDcDACAAQfABakIANwMAIABB+AFqQgE3AwAgAEGAAmpCATcDACAAQYCzAWohACACQX9qIgINAAsLIAogDygCAEEFdHJBAWoPCyAQQQdqQXhxIgtBgICAAUsNAUGAgIABIAtrIA5PDQALCyABC6oBACAAQQA7AKQBIABBADYAoAEgAEIANwCYASAAQQA2AhggAEIANwMQIABCADcDCCAAQoCAgIAQNwMAIABCADcCRCAAQgA3AjwgAEEANgI4IABCgICAgBA3AzAgAEEANgJ4IABCADcDcCAAQgA3A2ggAEKAgICAEDcDYCAAQgA3ArwBIABBADYCtAEgAEEfNgLEASAAQgA3A6gBIABBATYCuAEgAEEBNgKwAQvWAQECf0F+IQQCQCAAQQFIDQAgAEEfcUF/aiIFQQ9LDQAgBUEkbCIFQeSEiIAAaigCAEUNACAFQeCEiIAAaiIFKAIAIABBBXZHDQBBfyEEIANFDQAgAkEBSw0AIAUoAiAiACgCCCABTQ0AIAAoAhAiBUEGdCADSQ0AQXghBCAAKAJEDQAgACABQYCzAWxqIgRB3AFqIAM2AgAgBEHYAWogAjYCACAEQZACaiADuEQAAAAAAAAwQEQAAAAAAABQQCAAKAIcQQFxGyAFuKKjOQMAQQAhBAsgBAvxAwICfwJ8QX4hAwJAIABBAUgNACAAQR9xQX9qIgRBD0sNACAEQSRsIgRB5ISIgABqKAIARQ0AIARB4ISIgABqIgQoAgAgAEEFdkcNAEF/IQMgBCgCICIAKAIIIAFNDQAgBCgCGCACRw0AIAIrAwAiBZlE////////739lRQ0AIAVEAAAAAAAAAABjDQAgBUQAAAAAAADwP2QNACACKwMIIgaZRP///////+9/ZUUNACAGRAAAAAAAAAAAYw0AIAZEAAAAAAAA8D9kDQAgAisDECIGmUT////////vf2VFDQAgBkQAAAAAAAAAAGMNACAGRAAAAAAAAPA/ZA0AIAIrAxgiBplE////////739lRQ0AIAZEAAAAAAAAAABjDQAgBkQAAAAAAADwP2QNACACKwMgIgaZRP///////+9/ZUUNACAGRAAAAAAAAAAAYw0AIAZEAAAAAAAA8D9kDQAgAisDKCIGmUT////////vf2VFDQAgBkQAAAAAAAAAAGMNACAGRAAAAAAAAPA/ZA0AIAAgAUGAswFsaiIAQegAaiAFOQMAIABB8ABqIAIrAwg5AwAgAEGYAWogAisDEDkDACAAQaABaiACKwMYOQMAIABByAFqIAIrAyA5AwAgAEHQAWogAisDKDkDAEEAIQMLIAMLiwEBAn9BfiEEAkAgAEEBSA0AIABBH3FBf2oiBUEPSw0AIAVBJGwiBUHkhIiAAGooAgBFDQAgBUHghIiAAGoiBSgCACAAQQV2Rw0AQX8hBCADQf8BSw0AIAJBDUsNACAFKAIgIgAoAgggAU0NACAAIAFBgLMBbGpByABqIAIgAxCHgICAAEEAIQQLIAQLgAMBAX8gAEGYAWoiAyABaiABQYCAiIAAai0AACACcToAAAJAIAFBBUsNACAAIAFBAXZBMGxqIAMgAUEBcmotAABBCHQgAyABQQZxai0AAHIiAUEBIAFBAUsbNgIEDwsCQCABQQZHDQAgACAALQCeATYCqAEPCwJAIAFBCksNACAAIAAtAJ8BIgFBAXE2AgwgACAALQCgASICQQ9xNgIYIAAgAkEEdjYCFCAAIAAtAKEBIgJBD3E2AkggACACQQR2NgJEIAAgAC0AogEiAkEPcTYCeCAAIAJBBHY2AnQgACABQQN2QQFxNgIQIAAgAUEEdkEBcTYCQCAAIAFBAXZBAXE2AjwgACABQQV2QQFxNgJwIAAgAUECdkEBcTYCbA8LAkAgAUF1akEBSw0AIAAgAC8AowEiAUEBIAFBAUsbNgK4AQ8LAkAgAUENRw0AIABBADYCwAEgAEEANgK0ASAAIAAtAKUBIgE2ArwBIABBAEGPHiABdkEBcWtBH3E2AsQBCwvhAgECf0F+IQICQCAAQQFIDQAgAEEfcUF/aiIDQQ9LDQAgA0EkbCIDQeSEiIAAaigCAEUNACADQeCEiIAAaiIDKAIAIABBBXZHDQBBfyECIAMoAiAiACgCCCABTQ0AQQAhAiAAIAFBgLMBbGoiAEHsAWpBADsAACAAQegBakEANgAAIABB4AFqQgA3AAAgAEHgAGpBADYCACAAQdgAakIANwMAIABB0ABqQgA3AwAgAEHIAGpCgICAgBA3AwAgAEGMAWpCADcCACAAQYQBakIANwIAIABBgAFqQQA2AgAgAEH4AGpCgICAgBA3AwAgAEHAAWpBADYCACAAQbgBakIANwMAIABBsAFqQgA3AwAgAEGoAWpCgICAgBA3AwAgAEGEAmpCADcCACAAQfwBakEANgIAIABBgAJqQQE2AgAgAEH4AWpBATYCACAAQYwCakEfNgIAIABB8AFqQgA3AwALIAIL2wQFAn8BfgN/BXwCf0F+IQICQCAAQQFIDQAgAEEfcUF/aiIDQQ9LDQAgA0EkbCIDQeSEiIAAaigCAEUNACADQeCEiIAAaiIDKAIAIABBBXZHDQBBfSECIAFE////////P0NlRQ0AIAFEAAAAAAAAAABmRQ0AIAGZRP///////+9/ZUUNACAB/AciBLogAWINACADKAIgIgUgBDcDMCAFIAQ3AyggBUIANwNAIAVCADcDOAJAIAUoAggNAEEADwsgBUHIAGohBkEAIQcgBSEDA0AgBiAHQYCzAWxqIgArA4gBIQEgACsDgAEhCCAAKwNYIQkgACsDUCEKIAArAyghCyAAKwMgIQwgACgClAEhDSAAKAKQASEOQcgAIQIDQCADIAJqQgA3AAAgAkEIaiICQcizAUcNAAsgACANNgKUASAAIA42ApABQQAhAiAAQQA7AKQBIABBADYAoAEgAEIANwCYASAAIAE5A4gBIAAgCDkDgAEgACAJOQNYIAAgCjkDUCAAIAs5AyggACAMOQMgIABCADcCFCAAQgA3AgwgAEEANgIIIABBADYCSCAAQoCAgIAQNwMAIAAgDbhEAAAAAAAAMEBEAAAAAAAAUEAgBSgCHEEBcRsgBSgCELiiozkDyAEgAEIANwNAIABBADYCeCAAQgA3AzggAEKAgICAEDcDMCAAQgA3A3AgAEKAgICA8AM3A8ABIABCADcDaCAAQoCAgIAQNwNgIABCADcDqAEgAEIBNwOwASAAQgE3A7gBIANBgLMBaiEDIAdBAWoiByAFKAIISQ0ACwsgAgvNFAoCfwF+AX8EfgZ/AnwBfwh8BX8BfEF+IQcCQCAAQQFIDQAgAEEfcUF/aiIIQQ9LDQAgCEEkbCIIQeSEiIAAaigCAEUNACAIQeCEiIAAaiIIKAIAIABBBXZHDQBBfyEHIAgoAgwgAkcNACAIKAIQIARHDQAgCCgCFCAFRw0AQX0hByABRP///////z9DZUUNACABRAAAAAAAAAAAZkUNACABmUT////////vf2VFDQAgAfwHIgm6IAFiDQAgCSAIKAIgIgopAygiC1QNACAJIAt9IgxC/////w9WDQBBeyEHIAooAhggA0kNACAKKAIUIAZJDQACQCADRQ0AIAIhACADIQgDQEF8IQcgAEEEajMAACAAQQdqMQAAQhiGIABBBmoxAABCEIaEIg2EQiCGIAA1AACEIg4gCVYNAiANQv///wBWDQIgDiALVA0CQX8hByAKKAIIIABBCGotAABNDQIgAEEJai0AACIPQQFLDQIgAEEMai0AAA0CIABBDWotAAANAiAAQQ5qLQAADQIgAEEPai0AAA0CIABBCmotAAAhEAJAAkAgDw0AIBBB/wFxQQ1NDQEMBAsgEEH/AXENAyAAQQtqLQAADQMLIABBEGohACAOIQsgCEF/aiIIDQALC0F9IQcgDCAKNQIQfiAKNQJAfCAKNQIMgCILQv////////8PIAopAzh9Vg0AQXshByALIAatVg0AIApByABqIRFBACESQQAhBwNAIAkhCwJAIBIgA08NACACIBJBBHRqEIuAgIAAIQsLIAogCyAKKQMoIgx9IAo1AhB+IAo1AkB8Ig4gDiAKKAIMrSINgCIOIA1+fT4CQAJAIAsgDFgNACAKQQE2AkQLIAogCzcDKAJAIA6nIhNFDQAgCigCCCEAQQAhFANAAkACQCAADQBEAAAAAAAAAAAhFUEAIQBEAAAAAAAAAAAhFgwBC0QAAAAAAAAAACEWQQAhECAKIRdEAAAAAAAAAAAhFQNAIBEgEEGAswFsaiEAAkACQCAKLQAcQQFxRQ0AIABB6BpqIQggAEHoAmohD0QAAAAAAAAAACEYIAArA8gCIRkgACsDiAIhGgJAAkAgACsDyAEiAUQAAAAAAAAAAGQNAEQAAAAAAAAAACEbRAAAAAAAAAAAIRwMAQtEAAAAAAAAAAAhHEQAAAAAAAAAACEbA0AgACAAKwPQASIdIAFEAAAAAAAA8D8gHaEiHSABIB1jGyIdoCIeOQPQASABIB2hIQEgGSAdoiEfIBogHaIhHQJAIB5EAAAAAAAA8D9mRQ0AIABCADcD0AEgABCMgICAACAAKwPgASEZIAArA9gBIRoLIBsgH6AhGyAcIB2gIRwgAUQAAAAAAAAAAGQNAAsgACsDyAEhAQsgDyAAKAL4sgEiBkEDdCIgaiAcIAGjOQMAIAggIGogGyAAKwPIAaM5AwAgACAGQQFqQQdwIgY2AviyAQJAAkAgACsDyAEiAUQAAAAAAAAAAGQNAEQAAAAAAAAAACEbDAELRAAAAAAAAAAAIRtEAAAAAAAAAAAhGANAIAAgACsD0AEiHSABRAAAAAAAAPA/IB2hIh0gASAdYxsiHaAiHDkD0AEgASAdoSEBIBkgHaIhHiAaIB2iIR0CQCAcRAAAAAAAAPA/ZkUNACAAQgA3A9ABIAAQjICAgAAgACsD4AEhGSAAKwPYASEaCyAYIB6gIRggGyAdoCEbIAFEAAAAAAAAAABkDQALIAAoAviyASEGIAArA8gBIQELIA8gBkEDdCIgaiAbIAGjOQMAIAggIGogGCAAKwPIAaM5AwAgACAZOQPIAiAAIBo5A4gCIAAgD0F8QQMgBkEBakEHcCIGQQNLGyAGakEDdCIgaisDAEQAAAAAAADgP6IgD0ECQXsgBkEFSRsgBmpBA3QiIWorAwAgD0EEQX0gBkEDSRsgBmpBA3QiImorAwCgRAAAAAAAANI/oiAPIAZBA3QiI2orAwAgDyAGQX9qQQYgBhtBA3QiJGorAwCgRAAAAAAAAKA/oqGgIgE5A9gBIAAgBjYC+LIBIAAgCCAgaisDAEQAAAAAAADgP6IgCCAhaisDACAIICJqKwMAoEQAAAAAAADSP6IgCCAjaisDACAIICRqKwMAoEQAAAAAAACgP6KhoDkD4AEgACAAKwPosgEgASAAIAAoAvyyASIGQQN0akHoMmoiCCsDAKGgOQPosgEgCCABOQMADAELIAAgACgC+LIBIgZBAWpBF3A2AviyASAXIAZBBnRrIQ8gAEHAASAGQQN0a0EDdGoiBkHoGmohICAGQegCaiEhQQAhBgNAIAAgACsDyAEgACsD0AGgIgE5A9ABAkACQCABRAAAAAAAAPA/Zg0AIAArA+gBIR0gACsD8AEhGSAAKwP4ASEaDAELIAAgAUQAAAAAAADwv6A5A9ABIAArA5ACIQEgACAAKwOYAjkDkAIgACABOQOIAiAAIAArA6ACOQOYAiAAKwPQAiEBIAAgACsD2AI5A9ACIAAgATkDyAIgACAAKwPgAjkD2AIgABCMgICAACAAIAArA9gBIgE5A6ACIAAgACsD4AEiGDkD4AIgACAAKwOYAiIdIAArA4gCIhuhIhpEAAAAAAAA4D+iIhk5A/ABIAAgACsD2AIiHCAAKwPIAiIeoSIfRAAAAAAAAOA/ojkDsAIgACABIAArA5ACIiWhIBqhRAAAAAAAANA/oiIaOQP4ASAAICVEAAAAAAAA4D+iIB0gG6BEAAAAAAAA0D+ioCIdOQPoASAAIBggACsD0AIiAaEgH6FEAAAAAAAA0D+iOQO4AiAAIAFEAAAAAAAA4D+iIBwgHqBEAAAAAAAA0D+ioDkDqAIgACsD0AEhAQsgDyAGaiIIQegPaiAdIAEgGSABIBqioKKgOQMAIAhB6CdqIAArA6gCIAArA9ABIgEgASAAKwO4AqIgACsDsAKgoqA5AwAgBkF4aiIGQUBHDQALIAAgIRCNgICAADkD2AEgACAgEI2AgIAAOQPgASAAIAArA+iyASAAKwPYASIBIAAgACgC/LIBIgZBA3RqQegyaiIIKwMAoaA5A+iyASAIIAE5AwALIAAgASAAKwPosgFEAAAAAAAAUD+ioTkD2AEgACAAKwPwsgEgACsD4AEiASAAIAZBA3RqQejyAGoiCCsDAKGgOQPwsgEgCCABOQMAIAAgBkEBakH/B3E2AvyyASAAIAEgACsD8LIBRAAAAAAAAFA/oqEiATkD4AEgF0GAswFqIRcgFSAAKwPYAaAhFSAWIAGgIRYgEEEBaiIQIAooAggiAEkNAAsLIAQgB0ECdCIGaiAVtjgCACAFIAZqIBa2OAIAIAdBAWohByAUQQFqIhQgE0kNAAsLIAogCikDOCAOQv////8Pg3w3AzgCQCASIANPDQAgESACIBJBBHRqIgAtAAhBgLMBbGohBgJAIAAtAAlFDQAgBhCDgICAAAwBCyAGIAAtAAogAC0ACxCHgICAAAsgEkEBaiISIANNDQALCyAHCwcAIAApAAAL+QYDBX8GfAF/IAAgACgCrAFBAWoiATYCrAECQAJAIAEgACgCqAFBAXRPDQAgACgCsAEhAQwBCyAAQQA2AqwBIAAgACgCsAEiAUEDdiABc0EQdEGAgARxIAFBAXZyIgE2ArABCyAAIAAoArQBQQFqIgI2ArQBAkAgAiAAKAK4AUkNACAAQQA2ArQBAkACQCAAKAK8ASICQQF0IAAoAsABIgNqQZCAiIAAai0AAA4CAAECCwJAIAAoAsQBIgQNACAAIANBAXMiAzYCwAEgAEEfQQAgAkEBdCADakGQgIiAAGotAAAiAkEDRhtBHyACGzYCxAEMAgsgACAEQX9qNgLEAQwBCyAAIAAoAsQBQQFqIgQ2AsQBIARBIEkNACAAIANBAXMiAzYCwAEgAEEfQQAgAkEBdCADakGQgIiAAGotAAAiAkEDRhtBHyACGzYCxAELIAFBAXEhASAAQgA3A9gBIABCADcD4AEgACAAKAIAQQFqIgI2AgAgACgCkAEhAwJAAkAgAiAAKAIETw0AIAAoAgghBAwBCyAAQQA2AgAgACAAKAIIQQFzIgQ2AggLQbCAiIAAQbCCiIAAIAMbIQIgACgCECABciAAKAIMIARycSEDAkACQCAAKAIURQ0AIAAoAsQBIQQMAQsgACgCGEEBdEEBciEECyAAIAAoAjBBAWoiBTYCMCACIAQgA2xBA3RqKwMAIQYCQAJAIAUgACgCNE8NACAAKAI4IQMMAQsgAEEANgIwIAAgACgCOEEBcyIDNgI4CyAAKAJAIAFyIAAoAjwgA3JxIQMCQAJAIAAoAkRFDQAgACgCxAEhBAwBCyAAKAJIQQF0QQFyIQQLIAArAyghByAAKwMgIQggACAAKAJgQQFqIgU2AmAgAiAEIANsQQN0aisDACEJAkACQCAFIAAoAmRPDQAgACgCaCEDDAELIABBADYCYCAAIAAoAmhBAXMiAzYCaAsgACsDWCEKIAArA1AhCyAAKAJwIQQgACgCbCEFAkACQCAAKAJ0RQ0AIAAoAsQBIQwMAQsgACgCeEEBdEEBciEMCyAAIAYgCKJEAAAAAAAAAACgIAkgC6KgIAIgDCAEIAFyIAUgA3JxbEEDdGorAwAiCCAAKwOAAaKgOQPYASAAIAYgB6JEAAAAAAAAAACgIAkgCqKgIAggACsDiAGioDkD4AELtxYBqQF8IAArA4AGIQEgACsDiAYhAiAAKwP4BSEDIAArA5AGIQQgACsD8AUhBSAAKwOYBiEGIAArA+gFIQcgACsDoAYhCCAAKwPgBSEJIAArA6gGIQogACsD2AUhCyAAKwOwBiEMIAArA9AFIQ0gACsDuAYhDiAAKwPIBSEPIAArA8gGIRAgACsDuAUhESAAKwPQBiESIAArA7AFIRMgACsD2AYhFCAAKwOoBSEVIAArA+AGIRYgACsDoAUhFyAAKwPoBiEYIAArA5gFIRkgACsD8AYhGiAAKwOQBSEbIAArA/gGIRwgACsDiAUhHSAAKwOIByEeIAArA/gEIR8gACsDkAchICAAKwPwBCEhIAArA5gHISIgACsD6AQhIyAAKwOgByEkIAArA+AEISUgACsDqAchJiAAKwPYBCEnIAArA7AHISggACsD0AQhKSAAKwO4ByEqIAArA8gEISsgACsDyAchLCAAKwO4BCEtIAArA9AHIS4gACsDsAQhLyAAKwPYByEwIAArA6gEITEgACsD4AchMiAAKwOgBCEzIAArA+gHITQgACsDmAQhNSAAKwPwByE2IAArA5AEITcgACsD+AchOCAAKwOIBCE5IAArA4gIITogACsD+AMhOyAAKwOQCCE8IAArA/ADIT0gACsDmAghPiAAKwPoAyE/IAArA6AIIUAgACsD4AMhQSAAKwOoCCFCIAArA9gDIUMgACsDsAghRCAAKwPQAyFFIAArA7gIIUYgACsDyAMhRyAAKwPICCFIIAArA7gDIUkgACsD0AghSiAAKwOwAyFLIAArA9gIIUwgACsDqAMhTSAAKwPgCCFOIAArA6ADIU8gACsD6AghUCAAKwOYAyFRIAArA/AIIVIgACsDkAMhUyAAKwP4CCFUIAArA4gDIVUgACsDiAkhViAAKwP4AiFXIAArA5AJIVggACsD8AIhWSAAKwOYCSFaIAArA+gCIVsgACsDoAkhXCAAKwPgAiFdIAArA6gJIV4gACsD2AIhXyAAKwOwCSFgIAArA9ACIWEgACsDuAkhYiAAKwPIAiFjIAArA8gJIWQgACsDuAIhZSAAKwPQCSFmIAArA7ACIWcgACsD2AkhaCAAKwOoAiFpIAArA+AJIWogACsDoAIhayAAKwPoCSFsIAArA5gCIW0gACsD8AkhbiAAKwOQAiFvIAArA/gJIXAgACsDiAIhcSAAKwOICiFyIAArA/gBIXMgACsDkAohdCAAKwPwASF1IAArA5gKIXYgACsD6AEhdyAAKwOgCiF4IAArA+ABIXkgACsDqAoheiAAKwPYASF7IAArA7AKIXwgACsD0AEhfSAAKwO4CiF+IAArA8gBIX8gACsDyAohgAEgACsDuAEhgQEgACsD0AohggEgACsDsAEhgwEgACsD2AohhAEgACsDqAEhhQEgACsD4AohhgEgACsDoAEhhwEgACsD6AohiAEgACsDmAEhiQEgACsD8AohigEgACsDkAEhiwEgACsD+AohjAEgACsDiAEhjQEgACsDiAshjgEgACsDeCGPASAAKwOQCyGQASAAKwNwIZEBIAArA5gLIZIBIAArA2ghkwEgACsDoAshlAEgACsDYCGVASAAKwOoCyGWASAAKwNYIZcBIAArA7ALIZgBIAArA1AhmQEgACsDuAshmgEgACsDSCGbASAAKwPICyGcASAAKwM4IZ0BIAArA9ALIZ4BIAArAzAhnwEgACsD2AshoAEgACsDKCGhASAAKwPgCyGiASAAKwMgIaMBIAArA+gLIaQBIAArAxghpQEgACsD+AshpgEgACsDCCGnASAAKwPwCyGoASAAKwMQIakBIAAgACsDADkDwAsgACAAKwMIOQPICyAAIAArAxA5A9ALIAAgACsDGDkD2AsgACAAKwMgOQPgCyAAIAArAyg5A+gLIAAgACsDMDkD8AsgACAAKwM4OQP4CyABRAAAAAAAAMA/oiCnASCmAaBEaypixd9e076iIKkBIKgBoERaxsvm73DnvqKgIKUBIKQBoER/f3Sjp4PzvqKgIKMBIKIBoEQainKbA1v6vqKgIKEBIKABoEQ0RrQg4OD9vqKgIJ8BIJ4BoEQjKB1D2K37vqKgIJ0BIJwBoERxA55XsezxvqKgIJsBIJoBoESkUe1oR/T4PqKgIJkBIJgBoERI9MY/1+IKP6KgIJcBIJYBoERsna5uH1kUP6KgIJUBIJQBoERlR9tKal0ZP6KgIJMBIJIBoES0mXn/GdgaP6KgIJEBIJABoETwBdnI0GsXP6KgII8B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f2VFDQIgASsDWCIVmUT////////vf2VFDQIgFEQAAAAAAAAAAGMNAiAURAAAAAAAAPA/ZA0CIBVEAAAAAAAAAABjDQIgFUQAAAAAAADwP2QNAiABKAJkQYBgakGBYEkNAiABKAJgQf8fSw0CIAEoAmhBAUsNAiABKAJsQQFLDQIgASgCcEEBSw0CIAEoAnRBAUsNAiABKAJ4QQ9LDQIgASsDgAEiFJlE////////739lRQ0CIAErA4gBIhWZRP///////+9/ZUUNAiAURAAAAAAAAAAAYw0CIBREAAAAAAAA8D9kDQIgFUQAAAAAAAAAAGMNAiAVRAAAAAAAAPA/ZA0CIAErA9gBmUT////////vf2VFDQIgASsD4AGZRP///////+9/ZUUNAiABKwPosgGZRP///////+9/ZUUNAiABKwPwsgGZRP///////+9/ZUUNAiABKwPoAZlE////////739lRQ0CIAErA6gCmUT////////vf2VFDQIgASsDiAKZRP///////+9/ZUUNAiABKwPIAplE////////739lRQ0CIAErA/ABmUT////////vf2VFDQIgASsDsAKZRP///////+9/ZUUNAiABKwOQAplE////////739lRQ0CIAErA9ACmUT////////vf2VFDQIgASsD+AGZRP///////+9/ZUUNAiABKwO4AplE////////739lRQ0CIAErA5gCmUT////////vf2VFDQIgASsD2AKZRP///////+9/ZUUNAiABKwOAAplE////////739lRQ0CIAErA8ACmUT////////vf2VFDQIgASsDoAKZRP///////+9/ZUUNAiABKwPgAplE////////739lRQ0CQYBoIQcDQCATIAdqIgFBsBtqKwMAmUT////////vf2VFDQMgAUGwM2orAwCZRP///////+9/ZUUNAyABQbgbaisDAJlE////////739lRQ0DIAFBuDNqKwMAmUT////////vf2VFDQMgB0EQaiIHDQALQYBAIQcDQCATIAdqIgFBsPMAaisDAJlE////////739lRQ0DIAFBsLMBaisDAJlE////////739lRQ0DIAFBuPMAaisDAJlE////////739lRQ0DIAFBuLMBaisDAJlE////////739lRQ0DIAdBEGoiBw0ACyATQYCzAWoh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AAAAAAAAAP////8RAAAAXwQAAGgEAAAEAO0AAJ8AAAAAAAAAAP////8RAAAASgUAAL8FAAADABEAn78FAAA5BgAAAwARA585BgAAbgYAAAMAEQGfbgYAALAGAAADABECnwAAAAAAAAAA/////xEAAACpBQAAtAUAAAIAMZ+0BQAAvwUAAAIANZ+/BQAA3QUAAAIAPZ/dBQAAsAYAAAQAMDEcnwAAAAAAAAAA/////xEAAADdBQAADQYAAAMAEQCfDQYAAC4GAAADABEBny4GAABTBgAAAwARAp9TBgAAsAYAAAMAEQOfAAAAAAAAAAD/////+QYAAAAAAAAJAAAAAgAxnwkAAAARAAAAAgA1nxEAAAAZAAAAAgA9nxkAAACqAAAABAAwMRyfAAAAAAAAAAD/////+QYAABEAAACqAAAABwDtAAAjmAGfAAAAAAAAAAD/////+QYAABkAAAA5AAAAAwARAJ85AAAAWQAAAAMAEQGfWQAAAHkAAAADABECn3kAAACqAAAAAwARA58AAAAAAAAAAP/////5BgAAGQAAADkAAAAEAO0AAJ85AAAAWQAAAAYA7QAAIzCfWQAAAKoAAAAGAO0AACNgnwAAAAAAAAAA/////6UHAAAAAAAAaAAAAAQA7QAAnwAAAAAAAAAA/////6UHAABGAAAARwAAAAQA7QIBnwAAAAAAAAAA/////6UHAAAYAAAAGgAAAAQA7QIAnxoAAAAzAAAABADtAAWfAAAAAAAAAAD/////fQgAAAAAAABeAAAABADtAACfAAAAAAAAAAD/////fQgAAEgAAABJAAAABADtAgGfAAAAAAAAAAD/////fQgAABoAAAAcAAAABADtAgCfHAAAADUAAAAEAO0ABJ8AAAAAAAAAAP////99CAAAaAAAAH0AAAADABEAn30AAACZAAAABQARACMBn5kAAACuAAAAAwARAZ+uAAAAygAAAAUAEQEjAZ/KAAAA3wAAAAMAEQKf3wAAAPsAAAAFABECIwGf+wAAABABAAADABEDnxABAAAsAQAABQARAyMBnywBAABBAQAAAwARBJ9BAQAAXQEAAAUAEQQjAZ9dAQAAcgEAAAMAEQWfcgEAAI4BAAAFABEFIwGfAAAAAAAAAAD/////fQgAAG0AAABvAAAABADtAgCfbwAAAH0AAAAEAO0ABZ+eAAAAoAAAAAQA7QIAn6AAAACuAAAABADtAAafzwAAANEAAAAEAO0CAJ/RAAAA3wAAAAQA7QAGnwABAAACAQAABADtAgCfAgEAABABAAAEAO0ABp8xAQAAMwEAAAQA7QIAnzMBAABBAQAABADtAAafYgEAAGQBAAAEAO0CAJ9kAQAAcgEAAAQA7QAGnwAAAAAAAAAA/////30IAACOAQAAsQEAAAMAEQCfsQEAAM0BAAADABEBn80BAADtAQAAAwARAp8AAAAAAAAAAP////9wCgAAAAAAAGsAAAAEAO0AAJ8AAAAAAAAAAP////9wCgAARgAAAEcAAAAEAO0CAZ8AAAAAAAAAAP////9wCgAAGAAAABoAAAAEAO0CAJ8aAAAAMwAAAAQA7QAFnwAAAAAAAAAA//////0KAAAJAAAACwAAAAQA7QIAnwsAAACAAQAABADtAAOfAAAAAAAAAAD//////QoAAAAAAAB+AQAABADtAAGfAAAAAAAAAAD//////QoAAE4AAABQAAAABADtAgGfUAAAAFwAAAAEAO0AAZ8AAAAAAAAAAP/////9CgAAMAAAADMAAAAEAO0CAZ8AAAAAAAAAAP/////9CgAAfQAAAPUAAAADABEAn/UAAAAPAQAAAwARAZ8PAQAAHAEAAAMAEQKfHAEAAB0BAAADABEDnwAAAAAAAAAA//////0KAAAyAQAANAEAAAQA7QIBnzQBAABBAQAABADtAAGfAAAAAAAAAAD/////fwwAAAAAAABcAAAABADtAACfAAAAAAAAAAD/////fwwAAEYAAABHAAAABADtAgGfAAAAAAAAAAD/////fwwAABgAAAAaAAAABADtAgCfGgAAADMAAAAEAO0AA58AAAAAAAAAAP////9/DAAAYAAAAHUAAAACADGfdQAAAIAAAAACADWfgAAAAIsAAAACAD2fiwAAAKwAAAAEADAxHJ+sAAAAXQEAAAIAMJ8AAAAAAAAAAP////9/DAAAhgAAAIsAAAAEAO0CAJ8AAAAAAAAAAP////9/DAAAiwAAANwAAAADABEAn9wAAAAMAQAAAwARAZ8MAQAAGwEAAAMAEQKfGwEAAF0BAAADABEDnwAAAAAAAAAA/////38MAACyAAAAXQEAAAQA7QIAnwAAAAAAAAAA/////38MAACyAAAA6wAAAAQA7QIAnxIBAAAb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AAAA/////7ErAABIAAAASQAAAAQA7QIBnwAAAAAAAAAA/////7ErAAAWAAAAGAAAAAQA7QIAnxgAAABLAAAABADtAAGfAAAAAAAAAAD/////BywAAAAAAACdAAAABADtAACfAAAAAAAAAAD/////BywAAAAAAACdAAAABADtAAKfAAAAAAAAAAD/////BywAAEYAAABHAAAABADtAgGfAAAAAAAAAAD/////BywAABgAAAAaAAAABADtAgCfGgAAADMAAAAEAO0ABJ8AAAAAAAAAAP////8HLAAAcQEAAHoBAAAEAO0CAJ+CAQAAngEAAAQA7QACnwAAAAAAAAAA/////6stAAAAAAAA3QAAAAQA7QAAnwAAAAAAAAAA/////6stAAAAAAAA3QAAAAQA7QACnwAAAAAAAAAA/////6stAAAAAAAA3QAAAAQA7QABnwAAAAAAAAAA/////6stAABjAAAAZAAAAAQA7QIBnwAAAAAAAAAA/////6stAAA1AAAANwAAAAQA7QIAnzcAAABQAAAABADtAAWfAAAAAAAAAAD/////qy0AABABAAAZAQAABADtAgCfIQEAADcBAAAEAO0AAp8AAAAAAAAAAP////+rLQAAaQIAAGwCAAAEAO0CAJ8AAAAAAAAAAP////+rLQAAQAIAAEICAAAEAO0CAJ9CAgAAfgIAAAQA7QALnwAAAAAAAAAA/////6stAABIAgAASgIAAAQA7QIAn0oCAABgCQAABADtAA2fAAAAAAAAAAD/////qy0AAHkCAAB8AgAABADtAgCfAAAAAAAAAAD/////qy0AAJYCAADoAgAAAgAwn7gIAAC6CAAABADtAgCfuggAAL8IAAAEAO0AAp8AAAAAAAAAAP////+rLQAA9AIAAPYCAAAEAO0CAJ/2AgAAxwcAAAQA7QABnwAAAAAAAAAA/////6stAAAkAwAAJgMAAAQA7QIAnyYDAAA0AwAABADtABSfAAAAAAAAAAD/////qy0AAMwDAADXAwAABQARASMBn9cDAADiAwAABQARAyMBn+IDAADtAwAABQARBSMBn+0DAAD4AwAABQARBiMBn/gDAAADBAAABQARCCMBnwMEAAAOBAAABQARCSMBnw4EAAAZBAAABQARCiMBnxkEAAAkBAAABQARDSMBnwAAAAAAAAAA/////6stAAAkBAAAtgQAAAMAEQCftgQAANIEAAAFABEAIwGf0gQAAGQFAAADABEBn2QFAACABQAABQARASMBn4AFAAAUBgAAAwARAp8UBgAAMAYAAAUAEQIjAZ8AAAAAAAAAAP////+rLQAAdQQAAHcEAAAEAO0CAJ93BAAAhQQAAAQA7QAUnyMFAAAlBQAABADtAgCfJQUAADMFAAAEAO0AFJ/SBQAA1AUAAAQA7QIAn9QFAADiBQAABADtABSfAAAAAAAAAAD/////qy0AAIoEAACMBAAABADtAgCfjAQAAJoEAAAEAO0AFZ84BQAAOgUAAAQA7QIAnzoFAABIBQAABADtABWf6AUAAOoFAAAEAO0CAJ/qBQAA+AUAAAQA7QAVnwAAAAAAAAAA/////6stAAA2BgAANwYAAAQA7QIAnwAAAAAAAAAA/////6stAABKBgAASwYAAAQA7QIAnwAAAAAAAAAA/////6stAABfBgAAYAYAAAQA7QIAnwAAAAAAAAAA/////6stAAB0BgAAdQYAAAQA7QIAnwAAAAAAAAAA/////6stAACCBgAAvgYAAAMAEQCfvgYAANIGAAAFABEAIwGf0gYAAA4HAAADABEBnw4HAAAiBwAABQARASMBnyIHAABeBwAAAwARAp9eBwAAcgcAAAUAEQIjAZ9yBwAArgcAAAMAEQOfrgcAAMIHAAAFABEDIwGfAAAAAAAAAAD/////qy0AAIgGAACJBgAABADtAgCf2AYAANkGAAAEAO0CAJ8oBwAAKQcAAAQA7QIAn3gHAAB5BwAABADtAgCfAAAAAAAAAAD/////qy0AAJwGAACdBgAABADtAgCf7AYAAO0GAAAEAO0CAJ88BwAAPQcAAAQA7QIAn4wHAACNBwAABADtAgCfAAAAAAAAAAD/////qy0AALAGAACxBgAABADtAgCfAAcAAAEHAAAEAO0CAJ9QBwAAUQcAAAQA7QIAn6AHAAChBwAABADtAgCfAAAAAAAAAAD/////qy0AAMQGAADFBgAABADtAgCfFAcAABUHAAAEAO0CAJ9kBwAAZQcAAAQA7QIAn7QHAAC1BwAABADtAgCfAAAAAAAAAAD/////qy0AANcHAADYBwAABADtAgCfBQgAAAYIAAAEAO0CAJ8AAAAAAAAAAP////+rLQAA7gcAAO8HAAAEAO0CAJ8cCAAAHQgAAAQA7QIAnwAAAAAAAAAA/////6stAABKCAAASwgAAAQA7QIAn3oIAAB7CAAABADtAgCfAAAAAAAAAAD/////qy0AAGIIAABjCAAABADtAgCfkggAAJMIAAAEAO0CAJ8AAAAAAAAAAP////+iNwAARgAAAEcAAAAEAO0CAZ8AAAAAAAAAAP////+iNwAAGAAAABoAAAAEAO0CAJ8aAAAAMwAAAAQA7QACnwAAAAAAAAAA/////wI4AABGAAAARwAAAAQA7QIBnwAAAAAAAAAA/////wI4AAAYAAAAGgAAAAQA7QIAnxoAAAAzAAAABADtAAKfAAAAAAAAAAD/////VzgAAEYAAABHAAAABADtAgGfAAAAAAAAAAD/////VzgAABgAAAAaAAAABADtAgCfGgAAADMAAAAEAO0AAp8AAAAAAAAAAP////+sOAAARgAAAEcAAAAEAO0CAZ8AAAAAAAAAAP////+sOAAAGAAAABoAAAAEAO0CAJ8aAAAAMwAAAAQA7QACnwAAAAAAAAAA/////wE5AABGAAAARwAAAAQA7QIBnwAAAAAAAAAA/////wE5AAAYAAAAGgAAAAQA7QIAnxoAAAAzAAAABADtAAKfAAAAAAAAAAD/////VjkAAEYAAABHAAAABADtAgGfAAAAAAAAAAD/////VjkAABgAAAAaAAAABADtAgCfGgAAADMAAAAEAO0AAp8AAAAAAAAAAP////+WGgAATQAAAFAAAAAGAO0CATEanwAAAAAAAAAA/////5YaAABVAQAAeQMAAAQA7QABnwAAAAAAAAAA/////5YaAADhAAAA4wAAAAgA7QIDEP8BGp/jAAAA8gAAAAgA7QACEP8BGp8AAAAAAAAAAP////+WGgAAPgEAAEABAAAIAO0CAxD/ARqfQAEAAE0BAAAIAO0AAhD/ARqfAAAAAAAAAAD/////lhoAAGUBAAD0AQAAAwARAJ/0AQAAiAIAAAMAEQGfiAIAAHgDAAADABECn3gDAAB5AwAAAwARA58AAAAAAAAAAP////+WGgAAvAEAAHkDAAAEAO0AAp8AAAAAAAAAAP////+WGgAAzwEAAAoCAAAEAO0AA58KAgAADQIAAAQA7QIBn1UCAACeAgAABADtAAOfngIAAKECAAAEAO0CAZ89AwAAPgMAAAQA7QIEnz4DAABBAwAABADt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ZWdzAGZsYWdzAHNoYXBlcwBmcmFtZXMAbWF4RnJhbWVzAHlyAHB0cgBldmVudFB0cgByaWdodFB0cgBsZWZ0UHRyAGNvbnRyb2xQdHIAc3RhdGVQdHIAcHJpb3IAZnIAdXBkYXRlX21peGVyAG5vaXNlQ291bnRlcgBlbnZlbG9wZUNvdW50ZXIAdG9uZUNvdW50ZXIAYXlfZXZlbnRfYnVmZmVyAGF5X3JpZ2h0X2J1ZmZlcgBheV9sZWZ0X2J1ZmZlcgBheV9jb250cm9sX2J1ZmZlcgBheV9jb25maWdfYnVmZmVyAGF5X3N0YXRlX2J1ZmZlcgByZW1haW5kZXIAaGVhZGVyAGNyAHVuc2lnbmVkIGNoYXIAcQBzZXR1cABycABscABheV9jb25maWd1cmVfY2hpcABDaGlwAHN0ZXAAb3ZlcmxhcAB6ZXJvAGF5X2dldF9wb3NpdGlvbgBnZW5lcmF0aW9uAGF5X2FiaV92ZXJzaW9uAG9yaWdpbgB3cml0dGVuAGVPbgBjaGVja3N1bQB5bABheV9yZW5kZXJfdW50aWwAZmwAQ2hhbm5lbABtb2RlbABjbABjb25maWdfZXF1YWwAdG90YWwAcmVzZXRfZGlnaXRhbABjbG9jawBldmVudF90aWNrAGoAYWJpAGxlbmd0aAB3aWR0aABoYXNoAGhpZ2gAdW5zaWduZWQgbG9uZyBsb25nAHVuc2lnbmVkIGxvbmcAcmVtYWluaW5nAGNvbmZpZwBDb25maWcAd3JpdGVfcmVnAHRPZmYAbk9mZgBheV9zdGF0ZV9zaXplAHZhbHVlAGZpbml0ZQBheV9zYXZlX3N0YXRlAGF5X2xvYWRfc3RhdGUAU3RhdGUAZGVjaW1hdGUAYXlfY3JlYXRlAGNhbmRpZGF0ZQBhbGxvY2F0ZQBzYW1wbGVSYXRlAG5vaXNlAHBoYXNlAGJhc2UAL3dvcmtzcGFjZS9zY3JhdGNoL2ZiZjA3MzA3MTJmZC9SZXRyb0FwcGxlSlMtMjJrL3Rvb2xzL2F5X2NvcmUAZW52ZWxvcGUAZW52ZWxvcGVTaGFwZQB0b25lAHZvbHVtZQB3aG9sZQBkb3VibGUAcGVyaW9kAG5vaXNlUGVyaW9kAGVudmVsb3BlUGVyaW9kAHRvbmVQZXJpb2QAZW5kAGV4cGVjdGVkAGVs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HwVTIQVKBtYFMiAFKAYhBR8G1gVdBh8FUyEFSgbWBTIgBSgGIQUfBtYFXQYfBVMhBUoG1gUyIAUpBiEFIAbWBV0GHwVVIQVMBtYFMyAFKQYhBSAG1gVfBh8FVSEFTAbWBTMgBSkGIQUgBtYFXwYfBVQhBUsG1gUzIAUpBiEFIAbWBV4GHwVUIQVLBtYFMyAFKAYhBR8G1gVeBh8FUSEFSAbWBTIgBScGIQUeBtYFWwYfBVEhBUgG1gUxIAUnBiEFHgbWBVsGHwVRIQVIBtYFMSAFKAYhBR8G1gVbBh8FUiEFSQbWBTIgBSgGIQUfBtYFXAYfBVIhBUkG1gUyIAUoBiEFHwbWBVwGHwVTIQVKBtYFMiAFKAYhBR8G1gVdBh8FUiEFSQbWBTIgBScGIQUeBtYFXAYfBVAhBUcG1gUxIAUnBiEFHgbWBVoGHwVRIQVIBtYFMSAFJgYhBR0G1gVaBh8FTiEFRQbWBS8gBVcgBQUGJgIBAAEBAMgDBG5hbWUADQxheV9jb3JlLndhc20BkQMaAA5heV9hYmlfdmVyc2lvbgEQYXlfY29uZmlnX2J1ZmZlcgIJYXlfY3JlYXRlAw1yZXNldF9kaWdpdGFsBBFheV9jb25maWd1cmVfY2hpcAUKYXlfc2V0X21peAYMYXlfd3JpdGVfbm93Bwl3cml0ZV9yZWcIEWF5X3Jlc2V0X2NoaXBfbm93CRJheV9yZXNldF90cmFuc3BvcnQKD2F5X3JlbmRlcl91bnRpbAsKZXZlbnRfdGljawwMdXBkYXRlX21peGVyDQhkZWNpbWF0ZQ4QYXlfZ2V0X3JlZ2lzdGVycw8PYXlfZ2V0X3Bvc2l0aW9uEA1heV9zdGF0ZV9zaXplEQ1heV9zYXZlX3N0YXRlEg1heV9sb2FkX3N0YXRlEwxjb25maWdfZXF1YWwUCmF5X2Rlc3Ryb3kVD2F5X2V2ZW50X2J1ZmZlchYOYXlfbGVmdF9idWZmZXIXD2F5X3JpZ2h0X2J1ZmZlchgRYXlfY29udHJvbF9idWZmZXIZD2F5X3N0YXRlX2J1ZmZlcgcSAQAPX19zdGFja19wb2ludGVyCQoBAAcucm9kYXRhAIkBCXByb2R1Y2VycwIIbGFuZ3VhZ2UBA0MxMQAMcHJvY2Vzc2VkLWJ5AQVjbGFuZ1oxOS4xLjcgKGh0dHBzOi8vZ2l0aHViLmNvbS96aWdsYW5nL3ppZy1ib290c3RyYXAgZGUxYjAxYThjMWRkZGY3NWE1NjAxMjNhYzFjMmFiMTgyYjQ4MzBkYSkAag90YXJnZXRfZmVhdHVyZXMGKwtidWxrLW1lbW9yeSsOZXh0ZW5kZWQtY29uc3QrCm11bHRpdmFsdWUrD211dGFibGUtZ2xvYmFscysTbm9udHJhcHBpbmctZnB0b2ludCsIc2lnbi1leHQ="};
+ // Source template appended to the generated embedded module asset.
+ var AYCoreWASM = {
+     modulePromise: null,
+@@ -48,7 +48,7 @@ var AYCoreWASM = {
+         }
+         var fields = [
+             40, 1, config.chipCount, config.timebaseHz, config.sampleRate, config.maxFrames,
+-            config.maxEvents, 0
++            config.maxEvents, config.renderProfile === 'economy' ? 1 : 0
+         ];
+         for (var i = 0; i < 8; i++) v.setUint32(ptr + i * 4, fields[i], true);
+         v.setFloat64(ptr + 32, config.originTick, true);
+diff --git a/res/EMU_DEVICE_mockingboard_audio.js b/res/EMU_DEVICE_mockingboard_audio.js
+index b172d0f1..02d3c3de 100644
+--- a/res/EMU_DEVICE_mockingboard_audio.js
++++ b/res/EMU_DEVICE_mockingboard_audio.js
+@@ -56,13 +56,11 @@ function MockingboardAudio()
+     {
+         if(device.audio!==undefined) return device.audio;
+         if(typeof(AudioContext)!="function") return null;
+-        var format=owner && typeof(owner.getAudioFormat)==="function"
+-            ? owner.getAudioFormat()
+-            : {sampleRate:44100};
+-        device.audio=new AudioContext({latencyHint:"interactive",sampleRate:format.sampleRate||44100});
++        // PCM rate belongs to the card. Web Audio resamples its buffers to
++        // the browser's output rate without rebuilding either AY instance.
++        device.audio=new AudioContext({latencyHint:"interactive"});
+         if(typeof(device.audio.addEventListener)==="function")
+             device.audio.addEventListener("statechange",syncAudioContext);
+-        if(owner && typeof(owner.setAudioSampleRate)==="function")owner.setAudioSampleRate(device.audio.sampleRate);
+         gain=device.audio.createGain();
+         gain.gain.value=0.25;
+         gain.connect(device.audio.destination);
+diff --git a/tests/ay_economy.test.js b/tests/ay_economy.test.js
+new file mode 100644
+index 00000000..7a5b79d6
+--- /dev/null
++++ b/tests/ay_economy.test.js
+@@ -0,0 +1,96 @@
++'use strict';
++const test=require('node:test'),assert=require('node:assert/strict');
++const {load}=require('./helpers/mockingboard_scheduler');
++const options={chipCount:2,sampleRate:22050,timebaseHz:1000000000,maxFrames:8192,maxEvents:64};
++async function core(ctx,backend,renderProfile='economy',extra={}) {
++    const config={...options,...extra,backend};
++    if(renderProfile!==null)config.renderProfile=renderProfile;
++    const c=await ctx.AYCore.create(config);
++    for(let i=0;i<2;i++) {
++        c.configureChip(i,{model:i?'YM':'AY',clockHz:1021800});
++        c.setMix(i,i?[0,.5,0,.5,0,.5]:[.5,0,.5,0,.5,0]);
++        c.writeNow(i,0,100);c.writeNow(i,6,3);c.writeNow(i,7,0x30);
++        c.writeNow(i,8,16);c.writeNow(i,9,8);c.writeNow(i,10,12);
++        c.writeNow(i,11,11);c.writeNow(i,13,10);
++    }
++    return c;
++}
++function output(){return {left:new Float32Array(8192),right:new Float32Array(8192)};}
++function render(c,t,batch=null){const o=output();const n=c.renderUntil(t,batch,o);return {left:o.left.slice(0,n),right:o.right.slice(0,n)};}
++function same(a,b,tolerance=0){
++    for(const channel of ['left','right']) {
++        assert.equal(a[channel].length,b[channel].length);
++        for(let i=0;i<a[channel].length;i++)assert.ok(Math.abs(a[channel][i]-b[channel][i])<=tolerance,channel+' sample '+i);
++    }
++}
++function jsState(c){return JSON.parse(Buffer.from(c.saveState().slice(28)).toString());}
++
++test('economy profile uses a distinct renderer while omitted profile retains reference PCM',async()=>{
++    const ctx=load(),a=await core(ctx,'js','reference'),b=await core(ctx,'js');
++    const defaultCore=await core(ctx,'js',null);
++    const explicitCore=await core(ctx,'js','reference');
++    try {
++        assert.notDeepEqual(render(a,10000000).left,render(b,10000000).left);
++        const defaultPCM=render(defaultCore,10000000);
++        assert.ok(defaultPCM.left.some(x=>Math.abs(x)>.001));
++        same(defaultPCM,render(explicitCore,10000000));
++        assert.throws(()=>ctx.AYCore.configuration({renderProfile:'unknown'}),e=>e.code==='E_ARGUMENT');
++    } finally {for(const c of [a,b,defaultCore,explicitCore])c.destroy();}
++});
++
++test('economy advances every tone, noise and envelope tick when four clocks fit each substep',async()=>{
++    const ctx=load(),c=await ctx.AYCore.create({...options,chipCount:1,sampleRate:20000,backend:'js',renderProfile:'economy'});
++    try {
++        c.configureChip(0,{model:'AY',clockHz:1280000});
++        c.writeNow(0,0,7);c.writeNow(0,6,3);c.writeNow(0,11,11);c.writeNow(0,13,10);
++        render(c,10000000); // 10 ms = 1600 AY generator ticks.
++        const p=jsState(c).chips[0];
++        assert.equal(p.channels[0].toneCounter,4);
++        assert.equal(p.channels[0].tone,0);
++        assert.equal(p.noiseCounter,4);
++        assert.equal(p.noise,577,'266 shifts of the seeded AY LFSR');
++        assert.equal(p.envelopeCounter,5);
++        assert.ok(p.x>=0&&p.x<1);
++        assert.equal(c.config.renderProfile,'economy');
++    } finally {c.destroy();}
++});
++
++for(const shape of Array.from({length:16},(_,i)=>i))test('economy JS/WASM parity: envelope '+shape,async()=>{
++    const ctx=load(),js=await core(ctx,'js'),wasm=await core(ctx,'wasm');
++    try {
++        for(const c of [js,wasm]){c.writeNow(0,13,shape);c.writeNow(1,13,shape);}
++        const data=new Uint8Array(5*16),view=new DataView(data.buffer);
++        ctx.AYCore.packEvent(view,0,1234567,0,0,13,shape);
++        ctx.AYCore.packEvent(view,1,1234567,1,0,13,shape);
++        ctx.AYCore.packEvent(view,2,22222222,0,0,0,37);
++        ctx.AYCore.packEvent(view,3,30000000,1,1,0,0);
++        ctx.AYCore.packEvent(view,4,50000000,1,0,8,15);
++        same(render(js,100000000,{data,count:5}),render(wasm,100000000,{data,count:5}),1e-7);
++    } finally {js.destroy();wasm.destroy();}
++});
++
++for(const backend of ['js','wasm'])test(backend+': economy snapshots, splits and reset preserve phase',async()=>{
++    const ctx=load(),whole=await core(ctx,backend),split=await core(ctx,backend),reference=await core(ctx,backend,'reference');
++    try {
++        const expected=render(whole,20000000),first=render(split,7777777),saved=split.saveState();
++        const second=render(split,20000000);split.loadState(saved);
++        same(second,render(split,20000000));
++        for(const channel of ['left','right'])assert.deepEqual(Float32Array.from([...first[channel],...second[channel]]),expected[channel]);
++        assert.throws(()=>reference.loadState(saved),e=>e.code==='E_STATE');
++        whole.resetTransport(0);split.resetTransport(0);
++        for(const c of [whole,split]){c.writeNow(0,8,15);c.writeNow(0,0,1);c.writeNow(0,7,0x3e);}
++        same(render(whole,20000000),render(split,20000000));
++    } finally {whole.destroy();split.destroy();reference.destroy();}
++});
++
++for(const backend of ['js','wasm'])test(backend+': economy preserves an 800 Hz tone',async()=>{
++    const ctx=load(),c=await ctx.AYCore.create({...options,chipCount:1,sampleRate:20000,backend,renderProfile:'economy'});
++    try {
++        c.configureChip(0,{model:'AY',clockHz:1280000});
++        c.writeNow(0,0,100);c.writeNow(0,7,0x3e);c.writeNow(0,8,15);
++        const samples=render(c,250000000).left;
++        let crossings=0;
++        for(let i=1001;i<5000;i++)if(samples[i-1]<=0&&samples[i]>0)crossings++;
++        assert.ok(crossings>=158&&crossings<=162,'0.2 s must contain about 160 periods, got '+crossings);
++    } finally {c.destroy();}
++});
+diff --git a/tests/ay_mockingboard.test.js b/tests/ay_mockingboard.test.js
+new file mode 100644
+index 00000000..dbcef9ff
+--- /dev/null
++++ b/tests/ay_mockingboard.test.js
+@@ -0,0 +1,154 @@
++'use strict';
++const test = require('node:test'), assert = require('node:assert/strict'), fs = require('node:fs'),
++      vm = require('node:vm');
++const {load, root} = require('./helpers/mockingboard_scheduler');
++function card(speed = 1)
++{
++    const ctx = load();
++    ctx._o = {CPU_ClocksTicks_s: 1000000, CPU_TargetTicks_s: 1000000 * speed};
++    ctx.oEMU = {component: {IO: {}}};
++    let tick = 0;
++    const io = {getClockTicks: () => tick};
++    ctx.apple2plus = {hwObj: () => ({io, setIRQSource() {}})};
++    vm.runInContext(fs.readFileSync(root + '/res/EMU_CARD_mockingboard.js', 'utf8'), ctx);
++    const card = new ctx.mockingboard();
++    card.restart();
++    return {
++        ctx,
++        card,
++        setTick(v) {
++            tick = v;
++        }
++    };
++}
++function write(c, reg, value, tick = 0)
++{
++    const ctx = {cpuTick: tick};
++    c.writeSlotROM(2, 7, ctx);
++    c.writeSlotROM(3, 255, ctx);
++    c.writeSlotROM(0, 4, ctx);
++    c.writeSlotROM(1, reg, ctx);
++    c.writeSlotROM(0, 7, ctx);
++    c.writeSlotROM(0, 4, ctx);
++    c.writeSlotROM(1, value, ctx);
++    c.writeSlotROM(0, 6, ctx);
++    c.writeSlotROM(0, 4, ctx);
++}
++function setup(c)
++{
++    write(c, 0, 100);
++    write(c, 7, 56);
++    write(c, 8, 15);
++    c.setAudioConsumerActive(true);
++}
++test('real Mockingboard source shortens notes at 2x without changing tone PCM', () => {
++    const nominal = card(), fast = card(2), slow = card(.5);
++    for (const h of [nominal, fast, slow]) setup(h.card);
++    nominal.card.advanceTo(40000);
++    fast.card.advanceTo(80000);
++    slow.card.advanceTo(20000);
++    const data = [nominal, fast, slow].map(h => h.card.drainAudioFrames(100000));
++    assert.equal(data[0].frames, 882);
++    assert.deepEqual(data[0].left, data[1].left);
++    assert.deepEqual(data[0].left, data[2].left);
++    for (const h of [nominal, fast, slow])
++        assert.ok(h.card.getAYDiagnostics, 'Core diagnostics must be available');
++});
++test('live backend selection restarts explicitly and retains JS/WASM PCM parity', async () => {
++    const js = card(), wasm = card();
++    assert.ok(wasm.card.setAYBackend, 'Peripheral exposes explicit AY backend selection');
++    await wasm.card.setAYBackend('wasm');
++    setup(js.card);
++    setup(wasm.card);
++    js.card.advanceTo(40000);
++    wasm.card.advanceTo(40000);
++    const a = js.card.drainAudioFrames(100000), b = wasm.card.drainAudioFrames(100000);
++    assert.equal(wasm.card.getAYDiagnostics().backend, 'wasm');
++    for (let i = 0; i < a.frames; i++) assert.ok(Math.abs(a.left[i] - b.left[i]) < 1e-6);
++});
++test(
++    'speed transition preserves phase and raw bus timestamps while splitting mapped deadlines',
++    () => {
++        const h = card(), base = card();
++        setup(h.card);
++        setup(base.card);
++        h.card.advanceTo(20000);
++        h.ctx._o.CPU_TargetTicks_s = 2000000;
++        h.card.advanceTo(60000);
++        base.card.advanceTo(40000);
++        assert.deepEqual(
++            h.card.drainAudioFrames(100000).left, base.card.drainAudioFrames(100000).left);
++        assert.equal(h.card.getAYDiagnostics().targetHz, 2000000);
++    });
++
++test('hardware restart retains selected backend and cancels older initialization', async () => {
++    const h = card();
++    await h.card.setAYBackend('wasm');
++    h.card.restart();
++    assert.equal(h.card.getAYDiagnostics().backend, 'wasm');
++    const pending = h.card.setAYBackend('wasm');
++    h.card.onUnmount();
++    assert.equal(await pending, false);
++});
++test('a full peripheral FIFO retains all accepted events until PCM is drained', () => {
++    const h = card();
++    setup(h.card);
++    h.card.advanceTo(1000000);
++    assert.equal(h.card.getAudioStats().queuedFrames, 5513);
++    assert.equal(h.card.getAudioStats().droppedFrames, 0);
++    write(h.card, 13, 10, 1000000);
++    assert.ok(h.card.getAYDiagnostics().pendingEvents > 0);
++    let total = 0;
++    while (h.card.getAudioBufferedSeconds() > 1 / 22050)
++    {
++        const data = h.card.drainAudioFrames(5513);
++        total += data.frames;
++        if (!data.frames) break;
++    }
++    assert.equal(total, 22050);
++    assert.equal(h.card.getAYDiagnostics().pendingEvents, 0);
++});
++
++test('fixed sample-rate guard preserves synchronous AY readback and phase', () => {
++    const h = card();
++    setup(h.card);
++    const epoch=h.card.getAudioEpoch();
++    h.card.setAudioSampleRate(22050);
++    assert.throws(()=>h.card.setAudioSampleRate(48000), e=>e.code==='E_ARGUMENT');
++    assert.equal(h.card.getAudioEpoch(),epoch);
++    assert.equal(h.card.getRegisters(0)[0],100);
++    h.card.advanceTo(40000);
++    assert.equal(h.card.drainAudioFrames(100000).frames,882);
++    assert.equal(h.card.getAudioFormat().sampleRate,22050);
++});
++test('zero-speed stepping advances core state without presenting PCM', () => {
++    const h = card();
++    setup(h.card);
++    h.card.advanceTo(10000);
++    h.ctx._o.CPU_TargetTicks_s = 0;
++    h.card.advanceTo(10001);
++    assert.equal(h.card.getAudioFramesAvailable(), 0);
++    assert.ok(h.card.getAYDiagnostics().renderedFrames >= 220);
++    assert.equal(h.card.getAYDiagnostics().targetHz, 0);
++});
++
++test('rejected rate request leaves pending backend activation valid', async () => {
++    const h = card();
++    const pending=h.card.setAYBackend('wasm');
++    assert.throws(()=>h.card.setAudioSampleRate(48000), e=>e.code==='E_ARGUMENT');
++    assert.equal(await pending,true);
++    setup(h.card);
++    h.card.advanceTo(10000);
++    assert.equal(h.card.drainAudioFrames(100000).frames,220);
++});
++
++test('consumer detach consumes committed synthesis without replaying it on reattach', () => {
++    const h = card();
++    setup(h.card);
++    h.card.advanceTo(10000);
++    h.card.setAudioConsumerActive(false);
++    h.card.clearAudioQueue();
++    h.card.setAudioConsumerActive(true);
++    assert.equal(h.card.getAudioFramesAvailable(), 0);
++    assert.equal(h.card.getAYDiagnostics().renderedFrames, 220);
++});
+diff --git a/tests/helpers/mockingboard_scheduler.js b/tests/helpers/mockingboard_scheduler.js
+index ac6a1f84..3fae8dcc 100644
+--- a/tests/helpers/mockingboard_scheduler.js
++++ b/tests/helpers/mockingboard_scheduler.js
+@@ -5,13 +5,17 @@ function load() {
+     const ctx={console,Uint8Array,Float32Array,Float64Array,DataView,ArrayBuffer,WebAssembly,
+         atob:s=>Buffer.from(s,'base64').toString('binary')};
+     ctx.globalThis=ctx;vm.createContext(ctx);
++    loadInto(ctx);
++    return ctx;
++}
++function loadInto(ctx) {
++    if(!('atob' in ctx))ctx.atob=s=>Buffer.from(s,'base64').toString('binary');
+     for(const file of ['ayumi.js','EMU_CHIP_AY_JS.js','EMU_CHIP_AY_WASM.js','EMU_CHIP_AY.js',
+         'EMU_AUDIO_AY_STREAM.js','EMU_DEVICE_ay.js'])
+         vm.runInContext(fs.readFileSync(path.join(root,'res',file),'utf8'),ctx,{filename:file});
+-    return ctx;
+ }
+ 
+-async function scheduler(backend,fps) {
++async function scheduler(backend,fps,options={}) {
+     const ctx=load();let wall=0,hash=0;
+     ctx._o={CPU_ClocksTicks_s:1021800,CPU_TargetTicks_s:1021800,EMU_IntervalTime_ms:1000/fps,EMU_DashboardRefresh_s:2};
+     ctx.oEMU={component:{IO:{ACTION_MAP:{RD:[],WR:[]}},CPU:{}},system:{}};
+@@ -23,11 +27,11 @@ async function scheduler(backend,fps) {
+     // Use the real SYSTEM loop, IO topology, AY synthesis and browser sink.
+     ctx.Cpu6502=function(){this.cycle=()=>false;};
+     ctx.AudioContext=class {
+-        constructor(){this.sampleRate=44100;this.state='running';this.currentTime=0;this.destination={};this.sources=[];this.listeners=[];}
++        constructor(){this.sampleRate=options.contextSampleRate||44100;this.state='running';this.currentTime=0;this.destination={};this.sources=[];this.listeners=[];}
+         addEventListener(name,fn){if(name==='statechange')this.listeners.push(fn);}
+         setState(state){this.state=state;for(const fn of this.listeners)fn();}
+         createGain(){return {gain:{value:1},connect(){}};}
+-        createBuffer(ch,n,rate){const data=Array.from({length:ch},()=>new Float32Array(n));return {duration:n/rate,getChannelData:i=>data[i]};}
++        createBuffer(ch,n,rate){const data=Array.from({length:ch},()=>new Float32Array(n));return {sampleRate:rate,duration:n/rate,getChannelData:i=>data[i]};}
+         createBufferSource(){const src={playbackRate:{value:1},connect(){},disconnect(){this.disconnected=true;},stop(){this.stopped=true;},start(){}};this.sources.push(src);return src;}
+         async resume(){this.setState('running');}
+         async suspend(){this.setState('suspended');}
+@@ -44,4 +48,4 @@ async function scheduler(backend,fps) {
+         ctx.apple2plus.cycle(Math.round(ctx._o.CPU_TargetTicks_s/fps));
+     },close(){io.detach(card);card.onUnmount();}};
+ }
+-module.exports={scheduler};
++module.exports={scheduler,load,loadInto,root};
+diff --git a/tests/mockingboard_audio_cadence.test.js b/tests/mockingboard_audio_cadence.test.js
+index c954dfbf..81015785 100644
+--- a/tests/mockingboard_audio_cadence.test.js
++++ b/tests/mockingboard_audio_cadence.test.js
+@@ -8,7 +8,7 @@ for(const backend of ['js','wasm']) {
+         for(let frame=0;frame<fps*2;frame++)h.frame();
+         assert.equal(h.io.getClockTicks(),2043600,'two seconds of nominal CPU must execute');
+         const stats=h.sink.getStats();
+-        assert.equal(stats.framesScheduled,88200,'both seconds of PCM must be presented');
++        assert.equal(stats.framesScheduled,44100,'both seconds of PCM must be presented');
+         assert.ok(stats.queuedLead_ms<=stats.highWater_ms+.001);
+         assert.ok(stats.underruns<=1,'the selected cadence must not starve every audio slice');
+         h.close();
+@@ -20,7 +20,7 @@ for(const backend of ['js','wasm']) {
+         for(let frame=0;frame<20;frame++)h.frame();
+         assert.equal(h.io.getClockTicks(),2043600);
+         assert.equal(h.card.getAudioStats().queuedFrames,0);
+-        assert.equal(h.card.getAYDiagnostics().renderedFrames,88200,'logical AY phase continues silently');
++        assert.equal(h.card.getAYDiagnostics().renderedFrames,44100,'logical AY phase continues silently');
+         assert.equal(h.sink.getStats().framesScheduled,0);
+         h.close();
+     });
+@@ -37,8 +37,8 @@ for(const backend of ['js','wasm']) {
+         assert.equal(h.sink.getStats().framesScheduled,scheduled);
+         h.sink.audio.setState('running');h.frame();
+         // The fixed-point horizon floors 13/60 s to 216666666 ns:
+-        // 9554 cumulative samples minus 8820 before the resumed slice.
+-        assert.equal(h.sink.getStats().framesScheduled-scheduled,734);
++        // 4777 cumulative samples minus 4410 before the resumed slice.
++        assert.equal(h.sink.getStats().framesScheduled-scheduled,367);
+         assert.equal(h.io.getClockTicks(),221390);
+         h.close();
+     });
+diff --git a/tests/mockingboard_audio_hotpath.test.js b/tests/mockingboard_audio_hotpath.test.js
+new file mode 100644
+index 00000000..77d8ad27
+--- /dev/null
++++ b/tests/mockingboard_audio_hotpath.test.js
+@@ -0,0 +1,69 @@
++'use strict';
++const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
++const {load,root}=require('./helpers/mockingboard_scheduler');
++
++async function environment(backend) {
++    const ctx=load(),counts={maps:0,positions:0};
++    ctx._o={CPU_ClocksTicks_s:1021800,CPU_TargetTicks_s:1021800};
++    ctx.oEMU={component:{IO:{}}};
++    let tick=0;const irq=[];
++    const io={getClockTicks:()=>tick};
++    ctx.apple2plus={hwObj:()=>({io,setIRQSource(source,active){if(active)irq.push(tick);}})};
++    const Clock=ctx.AYSourceClock;
++    ctx.AYSourceClock=function(...args){const clock=new Clock(...args),map=clock.map;clock.map=function(t){counts.maps++;return map(t);};return clock;};
++    const facade=ctx.AYCore.facade;
++    ctx.AYCore.facade=function(...args){const core=facade.apply(this,args),position=core.getPosition;core.getPosition=function(p){counts.positions++;return position(p);};return core;};
++    for(const name of ['EMU_DEVICE_mockingboard_audio.js','EMU_CARD_mockingboard.js'])vm.runInContext(fs.readFileSync(root+'/res/'+name,'utf8'),ctx);
++    const card=new ctx.mockingboard();card.restart();await card.setAYBackend(backend);
++    const sink=new ctx.MockingboardAudio();sink.bindHost(card);sink.bindIO(io);
++    return {ctx,card,sink,counts,irq,setTick(t){tick=t;}};
++}
++
++function write(card,reg,value,tick=0,index=0) {
++    for(const [r,v] of [[2,7],[3,255],[0,4],[1,reg],[0,7],[0,4],[1,value],[0,6],[0,4]])card.writeSlotROM(index*128+r,v,{cpuTick:tick});
++}
++
++for(const backend of ['js','wasm']) {
++    test(backend+': interrupt-driven clock keeps audio projection and position polling bounded',async()=>{
++        const h=await environment(backend),c=h.card;
++        write(c,0,100);write(c,7,56);write(c,8,15);
++        c.writeSlotROM(11,64,{cpuTick:0});c.writeSlotROM(14,192,{cpuTick:0});
++        c.writeSlotROM(4,997&255,{cpuTick:0});c.writeSlotROM(5,997>>8,{cpuTick:0});
++        h.counts.maps=h.counts.positions=0;
++        for(let t=1;t<=1021800;t++) {
++            h.setTick(t);h.sink.tick();
++            if(t%999===0)c.readSlotROM(4,{cpuTick:t});
++        }
++        assert.equal(h.irq.length,Math.floor(1021800/999));
++        assert.ok(h.irq.every((t,i)=>t===(i+1)*999),'VIA IRQ remains exact to one CPU cycle');
++        assert.equal(c.getAudioStats().producedFrames,22050);
++        assert.ok(h.counts.maps<256,'source projections per second: '+h.counts.maps);
++        assert.ok(h.counts.positions<512,'core position queries per second: '+h.counts.positions);
++        c.onUnmount();
++    });
++    test(backend+': per-cycle orchestration matches block orchestration across writes and speed changes',async()=>{
++        const fine=await environment(backend),coarse=await environment(backend);
++        for(const h of [fine,coarse]) {
++            for(const chip of [0,1]){write(h.card,0,100+chip*70,0,chip);write(h.card,7,56,0,chip);write(h.card,8,15,0,chip);}
++            h.card.setAudioConsumerActive(true);
++        }
++        const actions=[[11111,0,13,10],[17389,1,8,9],[23456,0,13,10],[30000,1,0,140]];
++        for(let t=1;t<=80000;t++) {
++            fine.setTick(t);fine.card.advanceTo(t);
++            if(t===21001 || t===51001) {
++                coarse.setTick(t);coarse.card.advanceTo(t);
++                const rate=t===21001?2043600:510900;
++                fine.ctx._o.CPU_TargetTicks_s=coarse.ctx._o.CPU_TargetTicks_s=rate;
++            }
++            for(const [at,chip,reg,value] of actions)if(t===at) {
++                coarse.setTick(t);write(fine.card,reg,value,t,chip);write(coarse.card,reg,value,t,chip);
++                assert.equal(fine.card.getRegisters(chip)[reg],value);
++            }
++        }
++        coarse.card.advanceTo(80000);
++        const a=fine.card.drainAudioFrames(11025),b=coarse.card.drainAudioFrames(11025);
++        assert.deepEqual(a.left,b.left);assert.deepEqual(a.right,b.right);
++        assert.equal(fine.card.getAYDiagnostics().mappedHorizon,coarse.card.getAYDiagnostics().mappedHorizon);
++        fine.card.onUnmount();coarse.card.onUnmount();
++    });
++}
+diff --git a/tests/mockingboard_card.test.js b/tests/mockingboard_card.test.js
+new file mode 100644
+index 00000000..b603ebd5
+--- /dev/null
++++ b/tests/mockingboard_card.test.js
+@@ -0,0 +1,101 @@
++'use strict';
++const test=require('node:test');
++const assert=require('node:assert/strict');
++const fs=require('node:fs');
++const path=require('node:path');
++const vm=require('node:vm');
++
++function harness(clockRate=44100)
++{
++  let ticks=0; const irq={};
++  const io={FLOATING_BUS:-1,getClockTicks(){return ticks;}};
++  const hw={io,setIRQSource(source,active){ irq[source]=!!active; }};
++  const ctx={console,_o:{CPU_ClocksTicks_s:clockRate},oEMU:{component:{IO:{}}},apple2plus:{hwObj(){return hw;}}};
++  vm.createContext(ctx);require('./helpers/mockingboard_scheduler').loadInto(ctx);
++  vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res','EMU_CARD_mockingboard.js'),'utf8'),ctx);
++  const card=new ctx.mockingboard(); card.mount={hash:1234,slotN:4}; card.restart();
++  return {ctx,card,irq,io,hw,setTicks(v){ticks=v;}};
++}
++
++function cctx(t,bRO=false,io=null){ return {cpuTick:t,bRO,io:io||{FLOATING_BUS:-1}}; }
++
++test('strict slot-page decode maps only $00-$0F and $80-$8F',()=>{
++  const h=harness(), card=h.card;
++  card.writeSlotROM(0x03,0xAA,cctx(1,false,h.io));
++  card.writeSlotROM(0x83,0x55,cctx(2,false,h.io));
++  assert.equal(card.readSlotROM(0x03,cctx(2,true,h.io)),0xAA);
++  assert.equal(card.readSlotROM(0x83,cctx(2,true,h.io)),0x55);
++  card.writeSlotROM(0x13,0x11,cctx(3,false,h.io)); card.writeSlotROM(0x93,0x22,cctx(4,false,h.io));
++  assert.equal(card.readSlotROM(0x03,cctx(4,true,h.io)),0xAA);
++  assert.equal(card.readSlotROM(0x83,cctx(4,true,h.io)),0x55);
++  assert.equal(card.readSlotROM(0x10,cctx(4,false,h.io)),-1);
++  assert.equal(card.readSlotROM(0x90,cctx(4,false,h.io)),-1);
++});
++
++test('read-only slot reads use peek semantics and do not clear timer IFR',()=>{
++  const h=harness(), card=h.card, F=h.ctx.MockingboardR6522.IFR;
++  card.writeSlotROM(0x04,0x02,cctx(0,false,h.io)); card.writeSlotROM(0x05,0x00,cctx(0,false,h.io));
++  card.advanceTo(4); assert.equal(card.getViaState(0).ifr & F.T1,F.T1);
++  card.readSlotROM(0x04,cctx(4,true,h.io)); assert.equal(card.getViaState(0).ifr & F.T1,F.T1);
++  card.readSlotROM(0x04,cctx(4,false,h.io)); assert.equal(card.getViaState(0).ifr & F.T1,0);
++});
++
++test('AY register write and readback travel through VIA pins and DDRA direction',()=>{
++  const h=harness(), card=h.card;
++  card.writeSlotROM(0x02,0x07,cctx(1,false,h.io));
++  card.writeSlotROM(0x03,0xFF,cctx(2,false,h.io));
++  card.writeSlotROM(0x00,0x04,cctx(3,false,h.io));
++  card.writeSlotROM(0x01,0x08,cctx(4,false,h.io));
++  card.writeSlotROM(0x00,0x07,cctx(5,false,h.io));
++  card.writeSlotROM(0x00,0x04,cctx(6,false,h.io));
++  card.writeSlotROM(0x01,0x0F,cctx(7,false,h.io));
++  card.writeSlotROM(0x00,0x06,cctx(8,false,h.io));
++  card.writeSlotROM(0x00,0x04,cctx(9,false,h.io));
++  assert.equal(Array.from(card.getRegisters(0))[8],0x0F);
++  card.writeSlotROM(0x03,0x00,cctx(10,false,h.io));
++  card.writeSlotROM(0x00,0x05,cctx(11,false,h.io));
++  assert.equal(card.readSlotROM(0x01,cctx(11,false,h.io)),0x0F);
++  card.writeSlotROM(0x00,0x04,cctx(12,false,h.io));
++});
++
++test('absolute timing is idempotent and card ORs both VIA IRQs',()=>{
++  const h=harness(), card=h.card, F=h.ctx.MockingboardR6522.IFR;
++  // VIA0 T1=2, IRQ enabled
++  card.writeSlotROM(0x04,2,cctx(0,false,h.io)); card.writeSlotROM(0x05,0,cctx(0,false,h.io)); card.writeSlotROM(0x0E,0xC0,cctx(0,false,h.io));
++  card.advanceTo(4); const a=card.getViaState(0); assert.equal(a.ifr&F.T1,F.T1); assert.equal(h.irq['MOCK:1234'],true);
++  const counter=a.t1Counter; card.advanceTo(4); assert.equal(card.getViaState(0).t1Counter,counter);
++  // VIA1 T1=2 too
++  card.writeSlotROM(0x84,2,cctx(4,false,h.io)); card.writeSlotROM(0x85,0,cctx(4,false,h.io)); card.writeSlotROM(0x8E,0xC0,cctx(4,false,h.io));
++  card.advanceTo(8); assert.equal(card.getViaState(1).ifr&F.T1,F.T1);
++  card.writeSlotROM(0x0D,F.T1,cctx(8,false,h.io)); assert.equal(h.irq['MOCK:1234'],true);
++  card.writeSlotROM(0x8D,F.T1,cctx(8,false,h.io)); assert.equal(h.irq['MOCK:1234'],false);
++  card.reset(); assert.equal(h.irq['MOCK:1234'],false);
++});
++
++test('deterministic audio ring is CPU-time driven, bounded, and mute only stops capture',()=>{
++  const h=harness(44100), card=h.card;
++  card.setAudioConsumerActive(true); card.advanceTo(11);
++  assert.equal(card.getAudioFramesAvailable(),5); assert.equal(card.getAudioStats().producedFrames,5);
++  const d=card.drainAudioFrames(4); assert.equal(d.frames,4); assert.ok(ArrayBuffer.isView(d.left)); assert.ok(ArrayBuffer.isView(d.right)); assert.equal(card.getAudioFramesAvailable(),1);
++  const before=card.getAudioStats().producedFrames; card.setAudioConsumerActive(false); card.advanceTo(20); const after=card.getAudioStats().producedFrames;
++  assert.ok(after>before); assert.equal(card.getAudioFramesAvailable(),1);
++  card.clearAudioQueue(); card.setAudioConsumerActive(true); card.advanceTo(11060);
++  assert.equal(card.getAudioFramesAvailable(),5513); assert.equal(card.getAudioStats().droppedFrames,1); assert.equal(card.getAudioStats().overruns,0);
++});
++
++test('mb-audit timing: slot accesses observe counters at ctx.cpuTick timestamps',()=>{
++  const {card}=harness(); const base=0xC400;
++  card.writeSlotROM(base+4,0x02,{cpuTick:100});
++  card.writeSlotROM(base+5,0x00,{cpuTick:100});
++  assert.equal(card.readSlotROM(base+4,{cpuTick:103}),0xFF,'N+1 reaches $FFFF gap');
++  const ifr=card.readSlotROM(base+13,{cpuTick:104});
++  assert.equal(ifr & 0x40,0x40,'N+2 timestamp observes T1 underflow');
++});
++
++test('mb-audit Detect6522 sees timer motion through slot reads before timer is armed',()=>{
++  const {card}=harness(); const base=0xC400;
++  const first=card.readSlotROM(base+8,{cpuTick:10});
++  const second=card.readSlotROM(base+8,{cpuTick:18});
++  assert.equal((first-second)&0xFF,8);
++  assert.equal(card.readSlotROM(base+13,{cpuTick:18})&0x60,0);
++});
+diff --git a/tests/mockingboard_fixed_rate.test.js b/tests/mockingboard_fixed_rate.test.js
+new file mode 100644
+index 00000000..d706df53
+--- /dev/null
++++ b/tests/mockingboard_fixed_rate.test.js
+@@ -0,0 +1,69 @@
++'use strict';
++const test=require('node:test'),assert=require('node:assert/strict');
++const {scheduler}=require('./helpers/mockingboard_scheduler');
++
++for(const backend of ['js','wasm'])for(const rate of [44100,48000])
++    test(backend+': browser '+rate+' Hz preserves fixed 22050 Hz synthesis',async()=>{
++        const h=await scheduler(backend,10,{contextSampleRate:rate});
++        try {
++            for(let i=0;i<20;i++)h.frame();
++            assert.equal(h.io.getClockTicks(),2043600);
++            assert.equal(h.sink.getStats().framesScheduled,44100,'two seconds at the synthesis rate');
++            assert.equal(h.card.getAudioStats().capacityFrames,5513,'FIFO remains 250 ms');
++            assert.ok(h.sink.audio.sources.every(s=>s.buffer.sampleRate===22050));
++            assert.ok(h.sink.audio.sources.every(s=>s.playbackRate.value===1));
++            assert.equal(h.card.getAudioFormat().sampleRate,22050);
++            assert.equal(h.card.getAYDiagnostics().renderProfile,'economy');
++            const epoch=h.card.getAudioEpoch();
++            assert.throws(()=>h.card.setAudioSampleRate(48000),e=>e.code==='E_ARGUMENT');
++            assert.equal(h.card.getAudioEpoch(),epoch,'incompatible rate requests leave phase intact');
++            // Switching numerical backends keeps the same presentation rate/profile.
++            await h.card.setAYBackend(backend==='js'?'wasm':'js');
++            h.frame();
++            assert.equal(h.card.getAudioFormat().sampleRate,22050);
++            assert.equal(h.card.getAYDiagnostics().renderProfile,'economy');
++        } finally {h.close();}
++    });
++
++for(const backend of ['js','wasm'])test(backend+': CPU speed changes duration without changing PCM rate',async()=>{
++    const h=await scheduler(backend,10);
++    try {
++        for(let i=0;i<5;i++)h.frame();
++        h.ctx._o.CPU_TargetTicks_s=2043600;
++        for(let i=0;i<5;i++)h.frame();
++        h.ctx._o.CPU_TargetTicks_s=510900;
++        for(let i=0;i<10;i++)h.frame();
++        assert.equal(h.io.getClockTicks(),2043600);
++        assert.equal(h.sink.getStats().framesScheduled,44100);
++        assert.equal(h.card.getAudioFormat().sampleRate,22050);
++    } finally {h.close();}
++});
++
++function write(card,reg,value,tick) {
++    for(const [r,v] of [[2,7],[3,255],[0,4],[1,reg],[0,7],[0,4],[1,value],[0,6],[0,4]])
++        card.writeSlotROM(r,v,{cpuTick:tick});
++}
++for(const backend of ['js','wasm'])test(backend+': CPU-orchestrated notes last 0.1/0.2/0.4 s with identical pitch',async()=>{
++    const recordings=[];
++    for(const [target,offFrame,offSample] of [[1021800,2,4410],[2043600,1,2205],[510900,4,8820]]) {
++        const h=await scheduler(backend,10);
++        try {
++            h.ctx._o.CPU_TargetTicks_s=target;
++            write(h.card,0,100,0);write(h.card,7,0x3e,0);write(h.card,8,15,0);
++            for(let frame=0;frame<5;frame++) {
++                if(frame===offFrame)write(h.card,8,0,h.io.getClockTicks());
++                h.frame();
++            }
++            const samples=Float32Array.from(h.sink.audio.sources.flatMap(s=>Array.from(s.buffer.getChannelData(0))));
++            assert.equal(samples.length,11025);
++            assert.ok(samples.slice(offSample-220,offSample).some(x=>Math.abs(x)>.05),'tone lasts until CPU write');
++            assert.ok(samples.slice(offSample+1323).every(x=>Math.abs(x)<1e-7),'tone and filter tail finish after CPU write');
++            let crossings=0;
++            for(let i=442;i<1764;i++)if(samples[i-1]<=0&&samples[i]>0)crossings++;
++            assert.ok(crossings>=37&&crossings<=40,'638.625 Hz stays fixed, got '+crossings+' periods in 60 ms');
++            recordings.push(samples.slice(0,2205));
++        } finally {h.close();}
++    }
++    assert.deepEqual(recordings[0],recordings[1]);
++    assert.deepEqual(recordings[0],recordings[2]);
++});
+diff --git a/tools/ay_core/ay_core.c b/tools/ay_core/ay_core.c
+index 04b50858..db78d222 100644
+--- a/tools/ay_core/ay_core.c
++++ b/tools/ay_core/ay_core.c
+@@ -289,6 +289,55 @@ static double decimate(double *x)
+     }
+     return y;
+ }
++static void remove_dc(Chip *p)
++{
++    p->dcSumLeft += -p->dcLeft[p->dcIndex] + p->left;
++    p->dcLeft[p->dcIndex] = p->left;
++    p->left -= p->dcSumLeft / 1024;
++    p->dcSumRight += -p->dcRight[p->dcIndex] + p->right;
++    p->dcRight[p->dcIndex] = p->right;
++    p->right -= p->dcSumRight / 1024;
++    p->dcIndex = (p->dcIndex + 1) & 1023;
++}
++static void process_economy(Chip *p)
++{
++    /* Same box integration and seven-tap half-band filter as AYCoreJS.
++     * y[0] retains the raw mixer level while left/right carry filtered PCM.
++     * Generator updates stay clock/8, independently of the PCM rate. */
++    double heldLeft = p->yLeft[0], heldRight = p->yRight[0];
++    for (int point = 0; point < 2; point++)
++    {
++        double remaining = p->step, left = 0, right = 0;
++        while (remaining > 0)
++        {
++            double until = 1 - p->x;
++            double width = remaining < until ? remaining : until;
++            left += heldLeft * width;
++            right += heldRight * width;
++            remaining -= width;
++            p->x += width;
++            if (p->x >= 1)
++            {
++                p->x = 0;
++                update_mixer(p);
++                heldLeft = p->left;
++                heldRight = p->right;
++            }
++        }
++        p->firLeft[p->firIndex] = left / p->step;
++        p->firRight[p->firIndex] = right / p->step;
++        p->firIndex = (p->firIndex + 1) % 7;
++    }
++    p->yLeft[0] = heldLeft;
++    p->yRight[0] = heldRight;
++    uint32_t i = p->firIndex;
++    double *l = p->firLeft, *r = p->firRight;
++    p->left = -(l[i] + l[(i + 6) % 7]) / 32 +
++              (l[(i + 2) % 7] + l[(i + 4) % 7]) * (9.0 / 32) + l[(i + 3) % 7] / 2;
++    p->right = -(r[i] + r[(i + 6) % 7]) / 32 +
++               (r[(i + 2) % 7] + r[(i + 4) % 7]) * (9.0 / 32) + r[(i + 3) % 7] / 2;
++    remove_dc(p);
++}
+ static void process(Chip *p)
+ {
+     double *cl = p->cLeft, *yl = p->yLeft, *cr = p->cRight, *yr = p->yRight;
+@@ -324,13 +373,7 @@ static void process(Chip *p)
+     }
+     p->left = decimate(fl);
+     p->right = decimate(fr);
+-    p->dcSumLeft += -p->dcLeft[p->dcIndex] + p->left;
+-    p->dcLeft[p->dcIndex] = p->left;
+-    p->left -= p->dcSumLeft / 1024;
+-    p->dcSumRight += -p->dcRight[p->dcIndex] + p->right;
+-    p->dcRight[p->dcIndex] = p->right;
+-    p->right -= p->dcSumRight / 1024;
+-    p->dcIndex = (p->dcIndex + 1) & 1023;
++    remove_dc(p);
+ }
+ typedef struct
+ {
+@@ -402,7 +445,7 @@ int32_t ay_create(uint32_t ptr)
+     Config c = setup;
+     if (c.size != 40 || c.abi != 1 || c.chipCount < 1 || c.chipCount > 2 || !c.timebaseHz ||
+         c.sampleRate < 8000 || c.sampleRate > 192000 || !c.maxFrames || c.maxFrames > 16384 ||
+-        !c.maxEvents || c.maxEvents > 16384 || c.flags || !tick_ok(c.origin))
++        !c.maxEvents || c.maxEvents > 16384 || (c.flags & ~AY_RENDER_ECONOMY) || !tick_ok(c.origin))
+         return E_ARGUMENT;
+     uint32_t i = 0;
+     while (i < MAX_INSTANCES && (slots[i].base || slots[i].generation >= 0x3ffffffu))
+@@ -431,7 +474,7 @@ int32_t ay_create(uint32_t ptr)
+     {
+         Chip *p = &s->state->chips[j];
+         p->clockHz = c.sampleRate * 8;
+-        p->step = p->clockHz / (c.sampleRate * 64.0);
++        p->step = p->clockHz / (c.sampleRate * (c.flags & AY_RENDER_ECONOMY ? 16.0 : 64.0));
+         for (int k = 0; k < 3; k++)
+             p->channels[k].panLeft = p->channels[k].panRight = 1;
+         reset_digital(p);
+@@ -451,7 +494,8 @@ int32_t ay_configure_chip(int32_t h, uint32_t chip, uint32_t model, uint32_t clo
+     Chip *p = &s->state->chips[chip];
+     p->model = model;
+     p->clockHz = clock;
+-    p->step = clock / (s->state->config.sampleRate * 64.0);
++    p->step = clock / (s->state->config.sampleRate *
++                      (s->state->config.flags & AY_RENDER_ECONOMY ? 16.0 : 64.0));
+     return 0;
+ }
+ int32_t ay_set_mix(int32_t h, uint32_t chip, uint32_t ptr)
+@@ -515,7 +559,7 @@ int32_t ay_reset_transport(int32_t h, double origin)
+         zero(c, sizeof(Chip));
+         c->model = model;
+         c->clockHz = clock;
+-        c->step = clock / (p->config.sampleRate * 64.0);
++        c->step = clock / (p->config.sampleRate * (p->config.flags & AY_RENDER_ECONOMY ? 16.0 : 64.0));
+         for (int j = 0; j < 3; j++)
+         {
+             c->channels[j].panLeft = weights[j * 2];
+@@ -580,7 +624,10 @@ int32_t ay_render_until(int32_t h, double end, uint32_t ep, uint32_t count, uint
+             double l = 0, r = 0;
+             for (uint32_t k = 0; k < c->chipCount; k++)
+             {
+-                process(&s->chips[k]);
++                if (c->flags & AY_RENDER_ECONOMY)
++                    process_economy(&s->chips[k]);
++                else
++                    process(&s->chips[k]);
+                 l += s->chips[k].left;
+                 r += s->chips[k].right;
+             }
+@@ -698,11 +745,13 @@ int32_t ay_load_state(int32_t h, uint32_t ptr, uint32_t length)
+     {
+         Chip *p = &candidate.chips[i];
+         if (p->model > 1 || !p->clockHz || p->clockHz > 64 * candidate.config.sampleRate ||
+-            p->step != p->clockHz / (candidate.config.sampleRate * 64.0) || !finite(p->x) ||
++            p->step != p->clockHz / (candidate.config.sampleRate *
++                (candidate.config.flags & AY_RENDER_ECONOMY ? 16.0 : 64.0)) || !finite(p->x) ||
+             p->x < 0 || p->x >= 1 || p->noise > 131071 || p->noisePeriod > 31 ||
+             p->noiseCounter > 62 || p->envelopeShape > 15 || p->envelopeSegment > 1 ||
+             p->envelope > 31 || !p->envelopePeriod || p->envelopePeriod > 65535 ||
+-            p->envelopeCounter > 65535 || p->firIndex >= 23 || p->dcIndex >= 1024)
++            p->envelopeCounter > 65535 ||
++            p->firIndex >= (candidate.config.flags & AY_RENDER_ECONOMY ? 7u : 23u) || p->dcIndex >= 1024)
+             return E_STATE;
+         for (int j = 0; j < 14; j++)
+             if ((p->regs[j] & masks[j]) != p->regs[j])
+diff --git a/tools/ay_core/ay_core.h b/tools/ay_core/ay_core.h
+index 6c19f2c0..d8a34553 100644
+--- a/tools/ay_core/ay_core.h
++++ b/tools/ay_core/ay_core.h
+@@ -2,6 +2,8 @@
+ #ifndef AY_CORE_H
+ #define AY_CORE_H
+ #include <stdint.h>
++/* Config.flags: zero retains the reference renderer; bit 0 selects 2x economy. */
++#define AY_RENDER_ECONOMY 1u
+ uint32_t ay_abi_version(void);
+ uint32_t ay_config_buffer(void);
+ int32_t ay_create(uint32_t config_ptr);
+diff --git a/tools/ay_core/benchmark_render.cjs b/tools/ay_core/benchmark_render.cjs
+new file mode 100644
+index 00000000..1f8bde11
+--- /dev/null
++++ b/tools/ay_core/benchmark_render.cjs
+@@ -0,0 +1,22 @@
++// Numerical render benchmark; run with node tools/ay_core/benchmark_render.cjs.
++const {load}=require('../../tests/helpers/mockingboard_scheduler');
++const {performance}=require('node:perf_hooks');
++(async()=>{
++ const results=[];
++ for(const backend of ['js','wasm'])for(const [sampleRate,renderProfile] of [[44100,'reference'],[22050,'reference'],[22050,'economy']]) {
++  const ctx=load(),c=await ctx.AYCore.create({backend,sampleRate,renderProfile,chipCount:2,timebaseHz:sampleRate,maxFrames:1024});
++  for(let i=0;i<2;i++) {
++   c.configureChip(i,{model:'AY',clockHz:1021800});
++   c.setMix(i,[.5,.5,.5,.5,.5,.5]);
++   for(const [r,v] of [[0,100],[2,170],[4,43],[6,3],[7,0],[8,16],[9,15],[10,12],[11,64],[13,10]])c.writeNow(i,r,v);
++  }
++  const out={left:new Float32Array(1024),right:new Float32Array(1024)};
++  let tick=0;for(let b=0;b<500;b++)c.renderUntil(tick+=512,null,out);
++  const runs=[];for(let r=0;r<5;r++) {
++   const start=performance.now();for(let b=0;b<1000;b++)c.renderUntil(tick+=512,null,out);
++   runs.push((performance.now()-start)/(512000/sampleRate));
++  }
++  runs.sort((a,b)=>a-b);results.push({backend,sampleRate,renderProfile,medianMsPerAudioSecond:runs[2],runs});c.destroy();
++ }
++ console.log(JSON.stringify({node:process.version,results},null,2));
++})();
+diff --git a/tools/ay_core/wasm_adapter.js b/tools/ay_core/wasm_adapter.js
+index d0935cb8..b4e2c728 100644
+--- a/tools/ay_core/wasm_adapter.js
++++ b/tools/ay_core/wasm_adapter.js
+@@ -46,7 +46,7 @@ var AYCoreWASM = {
+         }
+         var fields = [
+             40, 1, config.chipCount, config.timebaseHz, config.sampleRate, config.maxFrames,
+-            config.maxEvents, 0
++            config.maxEvents, config.renderProfile === 'economy' ? 1 : 0
+         ];
+         for (var i = 0; i < 8; i++) v.setUint32(ptr + i * 4, fields[i], true);
+         v.setFloat64(ptr + 32, config.originTick, true);

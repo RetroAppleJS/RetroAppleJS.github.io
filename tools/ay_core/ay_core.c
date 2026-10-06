@@ -289,6 +289,55 @@ static double decimate(double *x)
     }
     return y;
 }
+static void remove_dc(Chip *p)
+{
+    p->dcSumLeft += -p->dcLeft[p->dcIndex] + p->left;
+    p->dcLeft[p->dcIndex] = p->left;
+    p->left -= p->dcSumLeft / 1024;
+    p->dcSumRight += -p->dcRight[p->dcIndex] + p->right;
+    p->dcRight[p->dcIndex] = p->right;
+    p->right -= p->dcSumRight / 1024;
+    p->dcIndex = (p->dcIndex + 1) & 1023;
+}
+static void process_economy(Chip *p)
+{
+    /* Same box integration and seven-tap half-band filter as AYCoreJS.
+     * y[0] retains the raw mixer level while left/right carry filtered PCM.
+     * Generator updates stay clock/8, independently of the PCM rate. */
+    double heldLeft = p->yLeft[0], heldRight = p->yRight[0];
+    for (int point = 0; point < 2; point++)
+    {
+        double remaining = p->step, left = 0, right = 0;
+        while (remaining > 0)
+        {
+            double until = 1 - p->x;
+            double width = remaining < until ? remaining : until;
+            left += heldLeft * width;
+            right += heldRight * width;
+            remaining -= width;
+            p->x += width;
+            if (p->x >= 1)
+            {
+                p->x = 0;
+                update_mixer(p);
+                heldLeft = p->left;
+                heldRight = p->right;
+            }
+        }
+        p->firLeft[p->firIndex] = left / p->step;
+        p->firRight[p->firIndex] = right / p->step;
+        p->firIndex = (p->firIndex + 1) % 7;
+    }
+    p->yLeft[0] = heldLeft;
+    p->yRight[0] = heldRight;
+    uint32_t i = p->firIndex;
+    double *l = p->firLeft, *r = p->firRight;
+    p->left = -(l[i] + l[(i + 6) % 7]) / 32 +
+              (l[(i + 2) % 7] + l[(i + 4) % 7]) * (9.0 / 32) + l[(i + 3) % 7] / 2;
+    p->right = -(r[i] + r[(i + 6) % 7]) / 32 +
+               (r[(i + 2) % 7] + r[(i + 4) % 7]) * (9.0 / 32) + r[(i + 3) % 7] / 2;
+    remove_dc(p);
+}
 static void process(Chip *p)
 {
     double *cl = p->cLeft, *yl = p->yLeft, *cr = p->cRight, *yr = p->yRight;
@@ -324,13 +373,7 @@ static void process(Chip *p)
     }
     p->left = decimate(fl);
     p->right = decimate(fr);
-    p->dcSumLeft += -p->dcLeft[p->dcIndex] + p->left;
-    p->dcLeft[p->dcIndex] = p->left;
-    p->left -= p->dcSumLeft / 1024;
-    p->dcSumRight += -p->dcRight[p->dcIndex] + p->right;
-    p->dcRight[p->dcIndex] = p->right;
-    p->right -= p->dcSumRight / 1024;
-    p->dcIndex = (p->dcIndex + 1) & 1023;
+    remove_dc(p);
 }
 typedef struct
 {
@@ -402,7 +445,7 @@ int32_t ay_create(uint32_t ptr)
     Config c = setup;
     if (c.size != 40 || c.abi != 1 || c.chipCount < 1 || c.chipCount > 2 || !c.timebaseHz ||
         c.sampleRate < 8000 || c.sampleRate > 192000 || !c.maxFrames || c.maxFrames > 16384 ||
-        !c.maxEvents || c.maxEvents > 16384 || c.flags || !tick_ok(c.origin))
+        !c.maxEvents || c.maxEvents > 16384 || (c.flags & ~AY_RENDER_ECONOMY) || !tick_ok(c.origin))
         return E_ARGUMENT;
     uint32_t i = 0;
     while (i < MAX_INSTANCES && (slots[i].base || slots[i].generation >= 0x3ffffffu))
@@ -431,7 +474,7 @@ int32_t ay_create(uint32_t ptr)
     {
         Chip *p = &s->state->chips[j];
         p->clockHz = c.sampleRate * 8;
-        p->step = p->clockHz / (c.sampleRate * 64.0);
+        p->step = p->clockHz / (c.sampleRate * (c.flags & AY_RENDER_ECONOMY ? 16.0 : 64.0));
         for (int k = 0; k < 3; k++)
             p->channels[k].panLeft = p->channels[k].panRight = 1;
         reset_digital(p);
@@ -451,7 +494,8 @@ int32_t ay_configure_chip(int32_t h, uint32_t chip, uint32_t model, uint32_t clo
     Chip *p = &s->state->chips[chip];
     p->model = model;
     p->clockHz = clock;
-    p->step = clock / (s->state->config.sampleRate * 64.0);
+    p->step = clock / (s->state->config.sampleRate *
+                      (s->state->config.flags & AY_RENDER_ECONOMY ? 16.0 : 64.0));
     return 0;
 }
 int32_t ay_set_mix(int32_t h, uint32_t chip, uint32_t ptr)
@@ -515,7 +559,7 @@ int32_t ay_reset_transport(int32_t h, double origin)
         zero(c, sizeof(Chip));
         c->model = model;
         c->clockHz = clock;
-        c->step = clock / (p->config.sampleRate * 64.0);
+        c->step = clock / (p->config.sampleRate * (p->config.flags & AY_RENDER_ECONOMY ? 16.0 : 64.0));
         for (int j = 0; j < 3; j++)
         {
             c->channels[j].panLeft = weights[j * 2];
@@ -580,7 +624,10 @@ int32_t ay_render_until(int32_t h, double end, uint32_t ep, uint32_t count, uint
             double l = 0, r = 0;
             for (uint32_t k = 0; k < c->chipCount; k++)
             {
-                process(&s->chips[k]);
+                if (c->flags & AY_RENDER_ECONOMY)
+                    process_economy(&s->chips[k]);
+                else
+                    process(&s->chips[k]);
                 l += s->chips[k].left;
                 r += s->chips[k].right;
             }
@@ -698,11 +745,13 @@ int32_t ay_load_state(int32_t h, uint32_t ptr, uint32_t length)
     {
         Chip *p = &candidate.chips[i];
         if (p->model > 1 || !p->clockHz || p->clockHz > 64 * candidate.config.sampleRate ||
-            p->step != p->clockHz / (candidate.config.sampleRate * 64.0) || !finite(p->x) ||
+            p->step != p->clockHz / (candidate.config.sampleRate *
+                (candidate.config.flags & AY_RENDER_ECONOMY ? 16.0 : 64.0)) || !finite(p->x) ||
             p->x < 0 || p->x >= 1 || p->noise > 131071 || p->noisePeriod > 31 ||
             p->noiseCounter > 62 || p->envelopeShape > 15 || p->envelopeSegment > 1 ||
             p->envelope > 31 || !p->envelopePeriod || p->envelopePeriod > 65535 ||
-            p->envelopeCounter > 65535 || p->firIndex >= 23 || p->dcIndex >= 1024)
+            p->envelopeCounter > 65535 ||
+            p->firIndex >= (candidate.config.flags & AY_RENDER_ECONOMY ? 7u : 23u) || p->dcIndex >= 1024)
             return E_STATE;
         for (int j = 0; j < 14; j++)
             if ((p->regs[j] & masks[j]) != p->regs[j])

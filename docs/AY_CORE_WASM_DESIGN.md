@@ -205,7 +205,7 @@ Create configuration, 40 bytes:
 | 16 | u32 | Sample rate, 8,000–192,000 |
 | 20 | u32 | Maximum frames per call, 1–16,384 |
 | 24 | u32 | Maximum events per call, 1–16,384 |
-| 28 | u32 | Flags, zero |
+| 28 | u32 | Flags: bit 0 selects economy rendering; zero selects reference; other bits must be zero |
 | 32 | f64 | Origin tick, nonnegative safe integer |
 
 Creation uses the module-owned setup staging returned by `ay_config_buffer()`, initialized before any instance exists. Create calls are serialized; the core copies the configuration before returning and retains no pointer to that shared staging. Instances own event, output, 64-byte control, and snapshot scratch buffers. All control/configuration buffers are eight-byte aligned. Getter pointers remain valid until destruction; pointer getters return zero for an invalid handle. The control buffer holds six f64 routing coefficients at offsets 0–47, or a position record: f64 tick at 0, u32 phase at 8, u32 reserved zero at 12, f64 rendered-frame count at 16. These uses are sequential, not concurrent.
@@ -239,7 +239,30 @@ Every R13 write invokes envelope retriggering, including consecutive writes of t
 
 `resetTransport()` performs a cold restart: digital state and all interpolation/filter histories are cleared. Sample phase and rendered-frame count return to zero at the supplied origin.
 
-Keep Float64 numerical state and the current FIR coefficients in the first WASM implementation. Write Float32 only at the PCM boundary. Compile without fast-math/reassociation or floating-point contraction. SIMD and reduced precision require separate benchmark and equivalence decisions.
+Keep Float64 numerical state and the current FIR coefficients in the reference WASM renderer. Write Float32 only at the PCM boundary. Compile without fast-math/reassociation or floating-point contraction. SIMD and reduced precision require separate benchmark and equivalence decisions.
+
+The live Mockingboard uses a fixed 22,050 Hz PCM rate and the `economy` profile.
+Both JS and WASM use two integrated intermediate points per output frame,
+followed by the seven-tap half-band coefficients
+`[-1/32, 0, 9/32, 1/2, 9/32, 0, -1/32]`. Integration averages raw mixer levels
+across every clock/8 generator boundary inside each point; it does not skip
+tone, noise or envelope updates. The raw held levels use the first interpolation
+history entries, and the seven-point FIR ring uses the existing filter storage.
+The reference renderer remains the public API default and retains its exact
+8x numerical path; economical PCM is intentionally different. The creation-only
+`renderProfile` option accepts `reference` or `economy`. ABI v1's existing flags
+word encodes economy as bit 0, preserving the 40-byte config, existing zero-flags
+calls and snapshot layouts. Snapshot configuration includes the profile/flags
+and rejects cross-profile restoration. Old reference JS snapshots lacking the
+option are normalized to `reference`; old WASM snapshots retain flags zero.
+
+The card's PCM rate is independent of AudioContext output rate, SYSTEM fps and
+CPU target speed. Web Audio resamples the fixed-rate buffers. Opening host audio
+does not reconstruct the core. CPU acceleration continues to shorten register
+write intervals without changing AY pitch. The 250 ms stereo FIFO holds 5,513
+frames, and a 256-frame synthesis deadline preserves the previous approximately
+11.6 ms update interval. The standalone FYM player retains reference rendering
+and its own rate configuration.
 
 Mixing is an explicit linear matrix. There is no implicit normalization based on chip count, no limiter, and no silent clipping in the core. Existing adapters choose their gains:
 

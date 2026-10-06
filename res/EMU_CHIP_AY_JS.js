@@ -17,7 +17,7 @@ var AYCoreJS = {
         for (var i = 0; i < config.chipCount; i++)
         {
             var chip = new Ayumi();
-            chip.process = AYCoreJS.process;
+            chip.process = config.renderProfile === 'economy' ? AYCoreJS.processEconomy : AYCoreJS.process;
             chip.firViewsLeft = [];
             chip.firViewsRight = [];
             for (var j = 0; j < 23; j++)
@@ -30,12 +30,13 @@ var AYCoreJS = {
             state.clocks.push(config.sampleRate * 8);
             state.registers.push(new Uint8Array(14));
             chip.configure(false, state.clocks[i], config.sampleRate);
+            chip.step = state.clocks[i] / (config.sampleRate * (config.renderProfile === 'economy' ? 16 : 64));
             AYCoreJS.resetDigital(chip, state.registers[i]);
         }
         state.configure = function(index, model, clock) {
             this.models[index] = model;
             this.clocks[index] = clock;
-            this.chips[index].step = clock / (config.sampleRate * 64);
+            this.chips[index].step = clock / (config.sampleRate * (config.renderProfile === 'economy' ? 16 : 64));
             this.chips[index].dacTable = model === 'YM' ? YM_DAC_TABLE : AY_DAC_TABLE;
         };
         state.mix = function(index, weights) {
@@ -214,6 +215,42 @@ var AYCoreJS = {
     }
 
     ,
+    // Two box-integrated points per PCM frame, followed by a seven-tap
+    // half-band decimator. AY generator ticks remain clock/8, even when
+    // several of them occur inside one substep. No per-sample allocations.
+    processEconomy: function() {
+        var heldLeft = this.interpolatorLeft.y[0], heldRight = this.interpolatorRight.y[0];
+        for (var point = 0; point < 2; point++)
+        {
+            var remaining = this.step, left = 0, right = 0;
+            while (remaining > 0)
+            {
+                var until = 1 - this.x;
+                var width = remaining < until ? remaining : until;
+                left += heldLeft * width;
+                right += heldRight * width;
+                remaining -= width;
+                this.x += width;
+                if (this.x >= 1)
+                {
+                    this.x = 0;
+                    this.updateMixer();
+                    heldLeft = this.left;
+                    heldRight = this.right;
+                }
+            }
+            this.firLeft[this.firIndex] = left / this.step;
+            this.firRight[this.firIndex] = right / this.step;
+            this.firIndex = (this.firIndex + 1) % 7;
+        }
+        this.interpolatorLeft.y[0] = heldLeft;
+        this.interpolatorRight.y[0] = heldRight;
+        var i = this.firIndex, l = this.firLeft, r = this.firRight;
+        this.left = -(l[i] + l[(i + 6) % 7]) / 32 +
+            (l[(i + 2) % 7] + l[(i + 4) % 7]) * (9 / 32) + l[(i + 3) % 7] / 2;
+        this.right = -(r[i] + r[(i + 6) % 7]) / 32 +
+            (r[(i + 2) % 7] + r[(i + 4) % 7]) * (9 / 32) + r[(i + 3) % 7] / 2;
+    },
     // Backend snapshots are deliberately outside rendering. Shape validation and
     // checksum precede restoration; object/function identities stay untouched.
     numeric: function(value) {
@@ -258,6 +295,9 @@ var AYCoreJS = {
             var text = '';
             for (var i = 28; i < bytes.length; i++) text += String.fromCharCode(bytes[i]);
             var saved = JSON.parse(text);
+            // Reference snapshots from before profiles were introduced keep
+            // their existing generator/filter layout and remain compatible.
+            if (saved.config.renderProfile === undefined) saved.config.renderProfile = 'reference';
             var current = AYCoreJS.save(state), templateText = '';
             for (var i = 28; i < current.length; i++)
                 templateText += String.fromCharCode(current[i]);
@@ -299,7 +339,8 @@ var AYCoreJS = {
                 if (!['AY', 'YM'].includes(saved.models[i]) || !Number.isInteger(saved.clocks[i]) ||
                     saved.clocks[i] <= 0 || saved.clocks[i] > 64 * state.config.sampleRate)
                     throw 0;
-                if (!Number.isInteger(p.firIndex) || p.firIndex < 0 || p.firIndex >= 23 ||
+                if (!Number.isInteger(p.firIndex) || p.firIndex < 0 ||
+                    p.firIndex >= (state.config.renderProfile === 'economy' ? 7 : 23) ||
                     !Number.isInteger(p.dcIndex) || p.dcIndex < 0 || p.dcIndex >= 1024 || p.x < 0 ||
                     p.x >= 1 || !Number.isInteger(p.noise) || p.noise < 0 || p.noise > 131071 ||
                     !Number.isInteger(p.envelopeShape) || p.envelopeShape < 0 ||
@@ -307,7 +348,8 @@ var AYCoreJS = {
                     p.envelopeSegment < 0 || p.envelopeSegment > 1 || p.envelope < 0 ||
                     p.envelope > 31)
                     throw 0;
-                if (p.step !== saved.clocks[i] / (state.config.sampleRate * 64) ||
+                if (p.step !== saved.clocks[i] / (state.config.sampleRate *
+                        (state.config.renderProfile === 'economy' ? 16 : 64)) ||
                     p.mastervolume !== 1 || !AYCore.integer(p.noisePeriod, 0, 31) ||
                     !AYCore.integer(p.noiseCounter, 0, 62) ||
                     !AYCore.integer(p.envelopePeriod, 1, 65535) ||

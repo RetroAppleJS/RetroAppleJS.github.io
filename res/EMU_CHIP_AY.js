@@ -52,11 +52,13 @@ var AYCore = {
             timebaseHz: options.timebaseHz === undefined ? 1000000000 : options.timebaseHz,
             originTick: options.originTick === undefined ? 0 : options.originTick,
             maxFrames: options.maxFrames === undefined ? 4096 : options.maxFrames,
-            maxEvents: options.maxEvents === undefined ? 4096 : options.maxEvents
+            maxEvents: options.maxEvents === undefined ? 4096 : options.maxEvents,
+            renderProfile: options.renderProfile === undefined ? 'reference' : options.renderProfile
         };
         if (!this.integer(c.chipCount, 1, 2) || !this.integer(c.sampleRate, 8000, 192000) ||
             !this.integer(c.timebaseHz, 1, 4294967295) || !this.integer(c.maxFrames, 1, 16384) ||
-            !this.integer(c.maxEvents, 1, 16384) || !this.validTick(c.originTick))
+            !this.integer(c.maxEvents, 1, 16384) || !this.validTick(c.originTick) ||
+            !['reference', 'economy'].includes(c.renderProfile))
             throw this.error('E_ARGUMENT');
         return c;
     },

@@ -46,7 +46,7 @@ var AYCoreWASM = {
         }
         var fields = [
             40, 1, config.chipCount, config.timebaseHz, config.sampleRate, config.maxFrames,
-            config.maxEvents, 0
+            config.maxEvents, config.renderProfile === 'economy' ? 1 : 0
         ];
         for (var i = 0; i < 8; i++) v.setUint32(ptr + i * 4, fields[i], true);
         v.setFloat64(ptr + 32, config.originTick, true);

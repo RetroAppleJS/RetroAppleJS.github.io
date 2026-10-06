@@ -8,7 +8,7 @@ for(const backend of ['js','wasm']) {
         for(let frame=0;frame<fps*2;frame++)h.frame();
         assert.equal(h.io.getClockTicks(),2043600,'two seconds of nominal CPU must execute');
         const stats=h.sink.getStats();
-        assert.equal(stats.framesScheduled,88200,'both seconds of PCM must be presented');
+        assert.equal(stats.framesScheduled,44100,'both seconds of PCM must be presented');
         assert.ok(stats.queuedLead_ms<=stats.highWater_ms+.001);
         assert.ok(stats.underruns<=1,'the selected cadence must not starve every audio slice');
         h.close();
@@ -20,7 +20,7 @@ for(const backend of ['js','wasm']) {
         for(let frame=0;frame<20;frame++)h.frame();
         assert.equal(h.io.getClockTicks(),2043600);
         assert.equal(h.card.getAudioStats().queuedFrames,0);
-        assert.equal(h.card.getAYDiagnostics().renderedFrames,88200,'logical AY phase continues silently');
+        assert.equal(h.card.getAYDiagnostics().renderedFrames,44100,'logical AY phase continues silently');
         assert.equal(h.sink.getStats().framesScheduled,0);
         h.close();
     });
@@ -37,8 +37,8 @@ for(const backend of ['js','wasm']) {
         assert.equal(h.sink.getStats().framesScheduled,scheduled);
         h.sink.audio.setState('running');h.frame();
         // The fixed-point horizon floors 13/60 s to 216666666 ns:
-        // 9554 cumulative samples minus 8820 before the resumed slice.
-        assert.equal(h.sink.getStats().framesScheduled-scheduled,734);
+        // 4777 cumulative samples minus 4410 before the resumed slice.
+        assert.equal(h.sink.getStats().framesScheduled-scheduled,367);
         assert.equal(h.io.getClockTicks(),221390);
         h.close();
     });

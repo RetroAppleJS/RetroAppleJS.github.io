@@ -49,6 +49,23 @@ shared stereo browser sink. Detaching an AY source mutes its output; reattaching
 restores the same device and register state. Detaching the sink cancels pending
 activation and stops scheduled audio. Ejecting the card releases its core.
 
+The emulator's Mockingboard synthesizes at a fixed **22,050 Hz**, using the
+`economy` renderer in both JS and WASM. It generates two integrated intermediate
+points per PCM frame (44,100 Hz), then applies a seven-tap half-band filter and
+downsamples. AY generator clocks remain independent of this rate; every required
+clock/8 update runs, including multiple updates inside one intermediate point.
+The browser resamples 22,050 Hz AudioBuffers to its own output rate. Opening an
+AudioContext, changing SYSTEM fps or changing CPU speed does not reconfigure the
+PCM rate. The card's retained `setAudioSampleRate()` guard accepts only 22050;
+other values raise `E_ARGUMENT` without changing state.
+
+The shared API's `renderProfile` creation option accepts `reference` (default,
+original Ayumi 8x renderer) or `economy` (2x integrated renderer). The standalone
+FYM player retains its existing reference profile and rate selection. The two
+profiles deliberately differ in filtering/PCM; backend parity compares JS and
+WASM within the same profile. Profile selection is fixed for an instance and
+snapshots must match it. Existing reference snapshots remain compatible.
+
 The core owns generators, AY/YM DAC behavior, FIR/DC filter state, register
 masks, mixing and PCM. The emulator retains VIA timers, bus pins, synchronous
 register readback, R14/R15 I/O and CPU scheduling. Browser playback owns only
@@ -56,7 +73,7 @@ presentation queues and device lifecycle.
 
 ```js
 const core = await AYCore.create({
-    backend: "wasm", chipCount: 2, sampleRate: 48000,
+    backend: "wasm", chipCount: 2, sampleRate: 22050, renderProfile: "economy",
     timebaseHz: 1000000000, maxFrames: 4096, maxEvents: 4096
 });
 core.configureChip(0, {model: "AY", clockHz: 1020484});
@@ -100,22 +117,22 @@ anchor survives rate changes; target frequencies are canonicalized to millihertz
 VIA interrupt timers still advance on every required CPU cycle. Audio time
 projection and core-position queries run at register events and audio block
 boundaries instead of every CPU cycle. A cheap CPU deadline triggers synthesis
-about every 512 output frames; reads of the audio queue or diagnostics project
-the latest committed CPU horizon. CPU speed and output sample-rate changes
+about every 256 output frames (11.6 ms at 22,050 Hz); reads of the audio queue or
+diagnostics project the latest committed CPU horizon. CPU speed changes
 reschedule that deadline without changing the exact source mapping.
 
 Pause and debugger single-step continue updating logical chip state silently.
 Resuming playback discards obsolete presentation PCM and starts a new bounded
 lead. CPU execution yields under audio backpressure; a full FIFO retains pending
-PCM/events instead of overwriting old samples. The browser uses its actual
-AudioContext sample rate. Its queue ceiling is the larger of 60 ms or one SYSTEM
+PCM/events instead of overwriting old samples. The browser uses the card's fixed
+PCM rate for AudioBuffers and its own output rate for presentation. Its queue
+ceiling is the larger of 60 ms or one SYSTEM
 processing interval plus 30 ms startup lead and 15 ms margin. This admits a
 complete CPU slice at the supported 10–100 fps processing cadences; at 10 fps,
 normal scheduled lead is about 130 ms. The numerical FIFO remains bounded to
 250 ms. A stopped AudioContext disables PCM presentation and releases CPU
 backpressure while logical AY phase continues silently. Resuming the context
-discards obsolete PCM and schedules fresh output. A device sample-rate change
-starts a cold synthesis transition while preserving bus readback.
+discards obsolete PCM and schedules fresh output.
 
 See [Mockingboard audio debugging](MOCKINGBOARD_AUDIO_DEBUGGING.md) for CPU
 pacing diagnostics and the distinction between CPU pace and host utilization.
