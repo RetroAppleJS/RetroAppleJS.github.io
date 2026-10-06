@@ -2,7 +2,7 @@
   "format": "RetroAppleJS-ASM-symbols",
   "version": 2,
   "source": "MOCKINGBOARD SLOT 4",
-  "scopeMode": "operand-addr",
+  "scopeMode": "operand-address",
   "scope": [
     [
       50176,
