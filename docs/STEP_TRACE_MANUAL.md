@@ -656,6 +656,8 @@ Operand lookup can also use the assembler's currently available symbol mapping w
 ### `com`
 
 Instruction comments from an exported symbol file can populate the `com` field.
+Every nonempty displayed comment starts with `; `; an existing leading `;`
+is preserved without adding a duplicate. Empty comments remain blank.
 
 An operand-address table can also supply `comment` records, including
 `targetType: "equ"`. For example, a source comment and hardware comment combine as:

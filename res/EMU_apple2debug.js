@@ -999,6 +999,8 @@ function Apple2Debug()
 
     function formatDecoded(d,lin,lbl,com)
     {
+        com = String(com || "").trim();
+        if(com && com.charAt(0)!==";") com = "; "+com;
         return formatParts({
              "adr":oCOM.getHexWord(d.addr)+":"
             ,"code":d.bytes

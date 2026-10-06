@@ -51,17 +51,17 @@ test('operand scope applies at any PC and appends EQU comments to source comment
     const h=machine();
     h.load({scope:[[0x1100,0x11FF]],symbols:[comment(0x1178,'select sound chip','instruction',[0x8D,0,0xC4])]});
     h.load(hardware());
-    assert.deepEqual(h.row(0x1178),{operand:'MB1_ORB',comment:'select sound chip | AY control bus',label:''});
+    assert.deepEqual(h.row(0x1178),{operand:'MB1_ORB',comment:'; select sound chip | AY control bus',label:''});
     assert.equal(h.row(0xF900).operand,'MB1_ORB');
-    assert.equal(h.row(0xF900).comment,'AY control bus');
-    assert.equal(h.row(0x1178,[0x8E,0,0xC4]).comment,'AY control bus');
+    assert.equal(h.row(0xF900).comment,'; AY control bus');
+    assert.equal(h.row(0x1178,[0x8E,0,0xC4]).comment,'; AY control bus');
 });
 test('PC names win independently of load order and hardware comments survive',()=>{
     for(const reverse of [false,true]){
         const h=machine(),source={scope:[[0x1100,0x11FF]],symbols:[equ('PSG_CONTROL',0xC400)]};
         for(const table of reverse?[hardware(),source]:[source,hardware()])h.load(table);
         assert.equal(h.row(0x1178).operand,'PSG_CONTROL');
-        assert.equal(h.row(0x1178).comment,'AY control bus');
+        assert.equal(h.row(0x1178).comment,'; AY control bus');
         assert.equal(h.row(0x2000).operand,'MB1_ORB');
     }
 });
@@ -101,10 +101,10 @@ test('merge keeps both tables while override affects only intersecting tables in
     const h=machine();h.load({scope:[[0x1100,0x11FF]],symbols:[equ('OLD',0xC400),comment(0x1178,'old')]});
     h.load(hardware());
     h.load({scope:[[0x1100,0x11FF]],symbols:[equ('NEW',0xC400),comment(0x1178,'new')]},'merge');
-    assert.equal(h.row(0x1178).operand,'NEW');assert.equal(h.row(0x1178).comment,'old new | AY control bus');
+    assert.equal(h.row(0x1178).operand,'NEW');assert.equal(h.row(0x1178).comment,'; old new | AY control bus');
     h.load({scope:[[0x1100,0x11FF]],symbols:[equ('REPLACED',0xC400)]},'override');
     assert.equal(h.dbg.resolveSymbol('OLD'),null);assert.equal(h.dbg.resolveSymbol('NEW'),null);
-    assert.equal(h.row(0x1178).operand,'REPLACED');assert.equal(h.row(0x1178).comment,'AY control bus');
+    assert.equal(h.row(0x1178).operand,'REPLACED');assert.equal(h.row(0x1178).comment,'; AY control bus');
 });
 test('overlap dialog exposes mode and cancellation leaves tables intact',()=>{
     const h=machine();h.load(hardware());h.ctx.answer=null;h.load(hardware([equ('NEW',0xC400)]));
@@ -138,7 +138,7 @@ test('operand comments can match without a symbol and PC EQU comments remain exc
     const h=machine();
     h.load({symbols:[comment(0x1178,'instruction'),comment(0x1178,'equ must stay hidden','equ')]});
     h.load(hardware([comment(0xC400,'hardware only','equ')]));
-    assert.deepEqual(h.row(0x1178),{operand:'$C400',comment:'instruction | hardware only',label:''});
+    assert.deepEqual(h.row(0x1178),{operand:'$C400',comment:'; instruction | hardware only',label:''});
 });
 test('supplied slot-4 table resolves both VIA banks alongside the existing Monitor table',()=>{
     const h=machine();
@@ -149,4 +149,11 @@ test('supplied slot-4 table resolves both VIA banks alongside the existing Monit
     assert.equal(h.row(0xF900,[0x8D,0x80,0xC4]).operand,'MB2_ORB');
     assert.match(h.row(0x1178,[0x8D,0x81,0xC4]).comment,/AY2.*data bus/);
     assert.equal(h.row(0x1178,[0x8D,0x8F,0xC4]).operand,'MB2_ORA_NH');
+});
+
+test('source-only comments receive one semicolon and an existing prefix is preserved',()=>{
+    const h=machine();h.load({symbols:[comment(0x1178,'source comment'),comment(0x117B,'; already marked')]});
+    assert.equal(h.row(0x1178).comment,'; source comment');
+    assert.equal(h.row(0x117B).comment,'; already marked');
+    assert.equal(h.row(0x117E).comment,'');
 });
