@@ -19,6 +19,8 @@ function Cpu6502(hwobj)
     var bDebug_boot = false;         // runtime opt-in CPU activity tracking
     var BOOTtrigger_adr = 0x6000;    // null = start logging immediately
     var BOOTstop_adr = null;         // null = stop only when buffer is full / disabled
+    var BOOTtrigger_type = "PC";
+    var BOOTstop_type = "PC";
     var BOOTtrigger_armed = false;   // wait for BOOTtrigger_adr before logging
     var BOOTlogging = false;
     var BOOTcomplete = false;
@@ -123,8 +125,8 @@ function Cpu6502(hwobj)
     const BOOT_RECORD_BYTES = 10;
     const BOOT_GROUP_MARKER_ADR = 0xFFFF;
 
-    var BOOTlog_adr = new Uint16Array(BOOTsiz);     // starting PC of each executed instruction, or $FFFF for a compressed group marker
-    var BOOTlog_cpu = new BigUint64Array(BOOTsiz);  // opcode/op1/op2 + A/X/Y/P/SP, or group/repeat payload for marker rows
+    var BOOTlog_adr = null;     // allocated on capture; released by clearBootLog()
+    var BOOTlog_cpu = null;     // PC and packed CPU/group records retain their export format
     var BOOTcnt = 0;
 
     const memberTable = [
@@ -193,6 +195,8 @@ function Cpu6502(hwobj)
              "bDebug_boot":bDebug_boot
             ,"triggerAddress":BOOTtrigger_adr
             ,"stopAddress":BOOTstop_adr
+            ,"triggerType":BOOTtrigger_type
+            ,"stopType":BOOTstop_type
             ,"triggerArmed":BOOTtrigger_armed
             ,"logging":BOOTlogging
             ,"complete":BOOTcomplete
@@ -202,6 +206,8 @@ function Cpu6502(hwobj)
         };
     }
 
+    // Conditions accept a legacy numeric PC or {type:"PC"|"INS",value:number}.
+    // INS uses the 48-bit completed-instruction count displayed in NAV.
     // startAddr == null: clear and log immediately.
     // stopAddr  == null: keep logging until the fixed buffer is full.
     // Two-argument form (addr,enabled) is retained for older callers.
@@ -213,13 +219,17 @@ function Cpu6502(hwobj)
             stopAddr = null;
         }
 
-        BOOTtrigger_adr = startAddr==null ? null : (Number(startAddr) & 0xffff);
-        BOOTstop_adr = stopAddr==null ? null : (Number(stopAddr) & 0xffff);
+        var start = bootCondition(startAddr), stop = bootCondition(stopAddr);
+        BOOTtrigger_adr = start.value;
+        BOOTstop_adr = stop.value;
+        BOOTtrigger_type = start.type;
+        BOOTstop_type = stop.type;
         bDebug_boot = !!enabled;
         BOOTcomplete = false;
 
         if(!bDebug_boot)
         {
+            flushBootGroupPending();
             BOOTtrigger_armed = false;
             BOOTlogging = false;
             return this.BOOTparam();
@@ -237,7 +247,11 @@ function Cpu6502(hwobj)
     this.armBootLogTrigger = function(addr)
     {
         if(addr!==undefined)
-            BOOTtrigger_adr = addr==null ? null : (Number(addr) & 0xffff);
+        {
+            var start = bootCondition(addr);
+            BOOTtrigger_adr = start.value;
+            BOOTtrigger_type = start.type;
+        }
 
         if(bDebug_boot)
         {
@@ -247,6 +261,18 @@ function Cpu6502(hwobj)
             if(BOOTlogging) this.clearBootLog();
         }
         return this.BOOTparam(); 
+    }
+
+    function bootCondition(condition)
+    {
+        var type = condition && typeof(condition)==="object" ? String(condition.type).toUpperCase() : "PC";
+        var value = condition && typeof(condition)==="object" ? condition.value : condition;
+        if(type!=="PC" && type!=="INS") throw new Error("Unknown bootlog condition type: "+type);
+        if(value==null) return {type:type,value:null};
+        value = Number(value);
+        if(type==="INS" && (!Number.isSafeInteger(value) || value<0 || value>=INSTRUCTION_COUNT_MODULO))
+            throw new Error("Bootlog INS condition must be a 48-bit unsigned integer.");
+        return {type:type,value:type==="PC" ? value & 0xffff : value};
     }
 
     this.setExecutionTrap = function(addr,callback)
@@ -723,6 +749,12 @@ function Cpu6502(hwobj)
     {
         if (!bDebug_boot || BOOTcnt >= BOOTsiz) return;
 
+        if(!BOOTlog_adr)
+        {
+            BOOTlog_adr = new Uint16Array(BOOTsiz);
+            BOOTlog_cpu = new BigUint64Array(BOOTsiz);
+        }
+
         var packed = packBootState(opcode,operand,stackPointer);
         var member = BOOTgroup_lookup[boot_pc & 0xffff];
 
@@ -915,7 +947,7 @@ function Cpu6502(hwobj)
         {
             var boot_pc = instr_pc & 0xffff;
 
-            if(BOOTtrigger_armed && boot_pc == BOOTtrigger_adr)
+            if(BOOTtrigger_armed && (BOOTtrigger_type==="INS" ? instruction_count : boot_pc) == BOOTtrigger_adr)
             {
                 // One-shot start trigger: discard the previous capture and
                 // include this very instruction as record zero.
@@ -927,9 +959,10 @@ function Cpu6502(hwobj)
 
             if(BOOTlogging)
             {
-                // Stop is exclusive: the stop-address instruction is not logged.
-                if(BOOTstop_adr!==null && boot_pc==BOOTstop_adr)
+                // Stop is exclusive for both PC and INS conditions.
+                if(BOOTstop_adr!==null && (BOOTstop_type==="INS" ? instruction_count : boot_pc)==BOOTstop_adr)
                 {
+                    flushBootGroupPending();
                     BOOTlogging = false;
                     BOOTcomplete = true;
                 }
@@ -1540,6 +1573,9 @@ function Cpu6502(hwobj)
     {
         BOOTcnt = 0;
         resetBootGroupState();
+        BOOTlog_adr = null;
+        BOOTlog_cpu = null;
+        BOOTcomplete = false;
     }
 
 }

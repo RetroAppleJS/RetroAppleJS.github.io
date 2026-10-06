@@ -1489,15 +1489,22 @@ function Apple2Debug()
         el.addEventListener("touchcancel",function(){ el._cpuDbgTouchY = null; },{passive:true});
     }
 
+    function bootConditionText(value,type)
+    {
+        if(value==null) return "";
+        return type==="INS" ? "INS $"+value.toString(16).toUpperCase().padStart(12,"0")
+            : "PC $"+oCOM.getHexWord(value);
+    }
+
     function syncBootTriggerInputs(state)
     {
         var start = document.getElementById("cpuDbg_bootStart");
         var stop = document.getElementById("cpuDbg_bootStop");
         var startText = state && state.triggerAddress!=null
-            ? "$"+oCOM.getHexWord(state.triggerAddress)
+            ? bootConditionText(state.triggerAddress,state.triggerType)
             : "";
         var stopText = state && state.stopAddress!=null
-            ? "$"+oCOM.getHexWord(state.stopAddress)
+            ? bootConditionText(state.stopAddress,state.stopType)
             : "";
 
         // Do not fight the user while an address is being edited.
@@ -1508,12 +1515,28 @@ function Apple2Debug()
     function updateBootTriggerIcon(el,state)
     {
         syncBootTriggerInputs(state);
+        var download = document.getElementById("cpuDbg_bootDownload");
+        var icon = document.getElementById("cpuDbg_bootDownloadIcon");
+        var logging = !!(state && state.logging);
+        var ready = !!(state && state.count>0 && !logging);
+        var title = logging ? "bootlog capture in progress" : ready ? "download bootlog and clear capture" : "bootlog is empty";
+        if(download)
+        {
+            download.disabled = !ready;
+            download.style.opacity = logging || ready ? "1" : ".35";
+            download.title = title;
+        }
+        if(icon)
+        {
+            icon.classList.toggle("blink",logging);
+            icon.title = title;
+        }
         if(!el) return;
 
         if(state && state.bDebug_boot)
         {
-            var startText = state.triggerAddress==null ? "immediately" : "$"+oCOM.getHexWord(state.triggerAddress);
-            var stopText = state.stopAddress==null ? "when buffer is full" : "before $"+oCOM.getHexWord(state.stopAddress);
+            var startText = state.triggerAddress==null ? "immediately" : bootConditionText(state.triggerAddress,state.triggerType);
+            var stopText = state.stopAddress==null ? "when buffer is full" : "before "+bootConditionText(state.stopAddress,state.stopType);
             var mode = state.triggerArmed ? "armed"
                 : state.logging ? "logging"
                 : state.full ? "buffer full"
@@ -1746,6 +1769,8 @@ function Apple2Debug()
         // render resumes; INS then shows the true number of executed opcodes.
         if(showLoopSteps || renderAfterBatch || !fixedRunning || !result || result.stalled)
             dbg.cycle({cpu:machine.cpuObj()});
+        else
+            dbg.syncBootLogControls();
 
         // A conditional breakpoint callback can stop fixedRunning from inside a
         // batch. Check ownership again before scheduling the next batch.
@@ -2200,14 +2225,14 @@ function Apple2Debug()
                         +"<i class='fa fa-paw' style='font-size:11px;cursor:pointer' title='step over JSR/BRK (F10)' onclick='oEMU.component.CPU.Apple2Debug.stepOver()'></i>"
                         +"<i class='fa fa-sign-out-alt' style='font-size:11px;cursor:pointer' title='step out of current routine (Shift+F11)' onclick='oEMU.component.CPU.Apple2Debug.stepOut()'></i>"
                         
-                        +"<div style='width:22px'></div>"
+                        +"<div style='width:10px'></div>"
                         
                         +"<div class='appbut skinny'><i id='cpuDbg_bootTrigger' class='fa fa-coffee' style='opacity:.35;font-size:10px' title='bootlog trigger disabled' onclick='oEMU.component.CPU.Apple2Debug.toggleBootLogTrigger(this)'></i></div>"
-                        +"<input id='cpuDbg_bootStart' type='text' value='' maxlength='6' spellcheck='false' placeholder='$....' title='Bootlog start address; blank starts immediately' style='width:43px;height:18px;padding:0 2px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBootLogAddresses()'>"
+                        +"<input id='cpuDbg_bootStart' type='text' value='' maxlength='18' spellcheck='false' placeholder='PC $....' title='Bootlog start: PC $6000 or INS $2C36E41; blank starts immediately' style='width:55px;height:18px;padding:0 2px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBootLogAddresses()'>"
                         //+"<span title='bootlog start → stop'>›</span>"
                         +"<i class='fa fa-play'></i>"
-                        +"<input id='cpuDbg_bootStop' type='text' value='' maxlength='6' spellcheck='false' placeholder='$....' title='Bootlog stop address; blank stops when the buffer is full' style='width:43px;height:18px;padding:0 2px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBootLogAddresses()'>"
-                        +"<div class='appbut skinny' onclick='oEMU.component.CPU.Apple2Debug.downloadBootLog()'><i class='fa fa-cloud-download-alt' style='font-size:10px' title='download bootlog'></i></div>"
+                        +"<input id='cpuDbg_bootStop' type='text' value='' maxlength='18' spellcheck='false' placeholder='PC / INS' title='Bootlog stop: PC $FF69 or INS $2C36E41; exclusive; blank stops when the buffer is full' style='width:55px;height:18px;padding:0 2px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBootLogAddresses()'>"
+                        +"<button id='cpuDbg_bootDownload' type='button' class='appbut skinny' disabled style='opacity:.35' title='bootlog is empty' onclick='oEMU.component.CPU.Apple2Debug.downloadBootLog()'><i id='cpuDbg_bootDownloadIcon' class='fa fa-cloud-download-alt' style='font-size:10px' title='bootlog is empty'></i></button>"
                         +"<span style='flex:1 1 auto'></span>"
                         +"<div class='appbut' onclick=\"oEMU.component.CPU.Apple2Debug.close();oCOM.POPUP.toggle('"+wrapper_id+"');\" style='text-align:center;margin-left:0;padding:4px 6px;font-size:11px'>x</div>"
                     +"</div>"
@@ -2244,7 +2269,7 @@ function Apple2Debug()
                         +"<span id='cpuDbg_breakStatus' aria-live='polite' style='display:none;flex:0 0 auto;white-space:nowrap;font-family:"+listingFontFamily+";font-size:9px'></span>"
                         +"<button id='cpuDbg_breakArm' type='button' title='Arm conditional breakpoint (F9)' onclick='oEMU.component.CPU.Apple2Debug.toggleConditionalBreakpointFromInput()' style='font-size:9px;padding:0 4px'>Arm</button>"
                     +"</div>"
-                    +"<div style='white-space:nowrap'>LISTING&nbsp; Columns <input id='cpuDbg_columns' type='text' value='"+listingColumns+"' spellcheck='false' style='width:220px;font-family:"+listingFontFamily+";font-size:9px' onchange='oEMU.component.CPU.Apple2Debug.setListingColumns(this.value)'></div>"
+                    +"<div style='white-space:nowrap'>LISTING&nbsp; columns <input id='cpuDbg_columns' type='text' value='"+listingColumns+"' spellcheck='false' style='width:240px;font-family:"+listingFontFamily+";font-size:9px' onchange='oEMU.component.CPU.Apple2Debug.setListingColumns(this.value)'></div>"
                     +"<div style='white-space:nowrap;font-size:9px'>"
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('default')\" style='font-size:9px;padding:0 3px'>default ▦</button> "
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('wide')\" style='font-size:9px;padding:0 3px'>wide ▦</button> "
@@ -2347,6 +2372,8 @@ function Apple2Debug()
             return;
         }
 
+        var state = cpu.BOOTparam();
+        if(state.logging || state.count===0) return false;
         var base64 = cpu.getBootLogBase64();
         var filename = "apple2_bootlog_" + new Date().toISOString().replace(/[:.]/g,"-") + ".txt";
         var blob = new Blob([base64],{type:"text/plain;charset=utf-8"});
@@ -2359,6 +2386,18 @@ function Apple2Debug()
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+        cpu.setBootLogTrigger({type:state.triggerType || "PC",value:state.triggerAddress},
+            {type:state.stopType || "PC",value:state.stopAddress},false);
+        cpu.clearBootLog();
+        this.syncBootLogControls();
+        return true;
+    };
+
+    this.syncBootLogControls = function()
+    {
+        var cpu = liveCPU();
+        if(cpu && typeof(cpu.BOOTparam)==="function")
+            updateBootTriggerIcon(document.getElementById("cpuDbg_bootTrigger"),cpu.BOOTparam());
     };
 
     function bootAddressInput(id,label,example)
@@ -2367,10 +2406,12 @@ function Apple2Debug()
         var text = input ? String(input.value || "").trim() : "";
         if(text==="") return {ok:true,value:null};
 
-        var addr = parseAddress(text);
-        if(addr!==null) return {ok:true,value:addr};
+        var match = /^(?:(PC|INS)\s+)?(?:\$|0x)?([0-9a-f]+)$/i.exec(text);
+        var type = match && match[1] ? match[1].toUpperCase() : "PC";
+        if(match && match[2].length<=(type==="INS" ? 12 : 4))
+            return {ok:true,value:{type:type,value:parseInt(match[2],16)}};
 
-        alert("Invalid "+label+" address. Use for example "+example+", or leave blank.");
+        alert("Invalid "+label+" condition. Use "+example+" or INS $2C36E41 (up to 12 hex digits), or leave blank.");
         if(input)
         {
             input.focus();
@@ -2381,9 +2422,9 @@ function Apple2Debug()
 
     function bootRangeFromInputs()
     {
-        var start = bootAddressInput("cpuDbg_bootStart","start","$6000");
+        var start = bootAddressInput("cpuDbg_bootStart","start","PC $6000");
         if(!start.ok) return null;
-        var stop = bootAddressInput("cpuDbg_bootStop","stop","$FF69");
+        var stop = bootAddressInput("cpuDbg_bootStop","stop","PC $FF69");
         if(!stop.ok) return null;
         return {start:start.value,stop:stop.value};
     }
@@ -2412,7 +2453,8 @@ function Apple2Debug()
         var state = cpu.BOOTparam();
         if(state.bDebug_boot)
         {
-            state = cpu.setBootLogTrigger(state.triggerAddress,state.stopAddress,false);
+            state = cpu.setBootLogTrigger({type:state.triggerType || "PC",value:state.triggerAddress},
+                {type:state.stopType || "PC",value:state.stopAddress},false);
             updateBootTriggerIcon(el,state);
             return;
         }

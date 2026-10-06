@@ -538,25 +538,31 @@ complete
 
 ---
 
-### Start address
+### Start condition
 
-These two address fields belong to **boot logging**, not BREAK IF. Capturing a log does not arm a breakpoint or start the CPU. Enter explicit hexadecimal addresses such as `$6000` to avoid number-format ambiguity.
+These two fields belong to **boot logging**, not BREAK IF. Capturing a log does not arm a breakpoint or start the CPU. Each field independently accepts `PC` or `INS` followed by a hexadecimal value. Values without a prefix, such as `$6000`, retain their PC meaning.
 
-The first `$....` field sets an optional start address.
+The first field sets an optional start condition.
 
 - blank: logging can begin immediately;
-- address: logging waits until execution reaches that address.
+- `PC $FD21`: logging waits until execution reaches that address;
+- `INS $2C36E41`: logging waits for that completed-instruction count, using the same 48-bit counter shown in NAV.
 
-### Stop address
+The instruction at the start boundary is included. INS accepts up to 12 hexadecimal digits; PC accepts up to four. INS counts actual instructions, independently of compression in the capture buffer, and returns to zero on CPU reset.
 
-The second `$....` field sets an optional stop address.
+### Stop condition
+
+The second field sets an optional stop condition. Start and stop may use different prefixes, for example start `PC $FD21` and stop `INS $2C36E41`.
 
 - blank: continue until the boot-log buffer is full;
-- address: stop before execution reaches that address.
+- `PC $FF69`: stop before recording the instruction at that address;
+- `INS $2C36E41`: stop before recording the instruction at that counter value.
 
 Stopping logging or filling its buffer does not stop CPU execution. Capture and download are separate from the JavaScript scenario console.
 
 ### Download icon
+
+The icon is disabled when the log is empty. During capture it blinks using the same animation as the assembler's Assemble icon, and downloading is disabled. Once capture finishes (or is manually disabled), a nonempty log enables a steady download icon. After the file is handed to the browser for download, capture is disabled, the bootlog buffers are released, and the icon returns to its disabled state. The conditions remain available for the next capture.
 
 Downloads the current boot log as a `.txt` file containing **Base64-encoded activity records**, not a plain-text assembly listing. The generated timestamped file name looks like:
 
