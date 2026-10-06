@@ -246,9 +246,9 @@ function Apple2Debug()
                 case "iny":
                 case "inx":
                     var name = symbolAtValue(opd);
-                    if(name) return name+" <small>"+op+"h</small>";
+                    if(name) return name+" <small>"+op+"</small>";
                     name = symbolAtValue((opd-1)&0xffff);
-                    if(name) return name+"+1 <small>"+op+"h</small>";
+                    if(name) return name+"+1 <small>"+op+"</small>";
                 break;
             }
             return op;
