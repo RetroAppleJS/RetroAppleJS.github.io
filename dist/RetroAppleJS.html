@@ -19551,7 +19551,7 @@ function Apple2Debug()
     var listingColumnPresets = {
          "default":"{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}"
         ,"wide":"{adr:0,code:6,lin:17,lbl:24,ins:34,opr:40,com:60}"
-        ,"compact":"{adr:0,code:6,lbl:15,ins:24,opr:29,com:45}"
+        ,"small":"{adr:0,code:6,lbl:15,ins:24,opr:29,com:45}"
         ,"tiny":"{adr:0,code:6,ins:15,opr:19,com:28}"
     };
 
@@ -21903,7 +21903,7 @@ function Apple2Debug()
                     +"<div style='white-space:nowrap;font-size:9px'>"
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('default')\" style='font-size:9px;padding:0 3px'>default ▦</button> "
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('wide')\" style='font-size:9px;padding:0 3px'>wide ▦</button> "
-                        +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('compact')\" style='font-size:9px;padding:0 3px'>compact ▦</button>"
+                        +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('small')\" style='font-size:9px;padding:0 3px'>small ▦</button>"
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('tiny')\" title='Use tiny listing columns' style='font-size:9px;padding:0 3px'>tiny ▦</button>"
                         +"&nbsp; SYMBOLS "
                         +"<button type='button' title='Load RetroAppleJS assembler symbol export (.symbols.json) or simple text symbol map' onclick=\"oEMU.component.CPU.Apple2Debug.chooseSymbolFile()\" style='font-size:9px;padding:0 3px'>load</button> "
