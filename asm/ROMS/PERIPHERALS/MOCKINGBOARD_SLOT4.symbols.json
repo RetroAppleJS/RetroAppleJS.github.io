@@ -1,0 +1,477 @@
+{
+  "format": "RetroAppleJS-ASM-symbols",
+  "version": 2,
+  "source": "MOCKINGBOARD SLOT 4",
+  "scopeMode": "operand-address",
+  "scope": [
+    [
+      50176,
+      50191
+    ],
+    [
+      50304,
+      50319
+    ]
+  ],
+  "scopeHex": [
+    [
+      "$C400",
+      "$C40F"
+    ],
+    [
+      "$C480",
+      "$C48F"
+    ]
+  ],
+  "count": 64,
+  "symbols": [
+    {
+      "name": "MB1_ORB",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50176,
+      "hex": "$C400"
+    },
+    {
+      "name": "COMMENT_MB1_ORB",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50176,
+      "comment": "Mockingboard VIA 1: Port B / AY1 control: PB0=BC1, PB1=BDIR, PB2=/RESET; $04 inactive, $05 read, $06 write, $07 latch address; PB2=0 resets AY"
+    },
+    {
+      "name": "MB1_ORA",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50177,
+      "hex": "$C401"
+    },
+    {
+      "name": "COMMENT_MB1_ORA",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50177,
+      "comment": "Mockingboard VIA 1: Port A / AY1 8-bit register-address and data bus; ORB selects latch, read or write operation"
+    },
+    {
+      "name": "MB1_DDRB",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50178,
+      "hex": "$C402"
+    },
+    {
+      "name": "COMMENT_MB1_DDRB",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50178,
+      "comment": "Mockingboard VIA 1: Port B data direction: bit=1 output, bit=0 input; PB0-PB2 drive AY1 control lines"
+    },
+    {
+      "name": "MB1_DDRA",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50179,
+      "hex": "$C403"
+    },
+    {
+      "name": "COMMENT_MB1_DDRA",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50179,
+      "comment": "Mockingboard VIA 1: Port A data direction: $FF outputs register/data bytes to AY1; $00 inputs AY register readback"
+    },
+    {
+      "name": "MB1_T1CL",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50180,
+      "hex": "$C404"
+    },
+    {
+      "name": "COMMENT_MB1_T1CL",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50180,
+      "comment": "Mockingboard VIA 1: Timer 1 counter low (read clears T1 interrupt flag); write updates timer latch low"
+    },
+    {
+      "name": "MB1_T1CH",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50181,
+      "hex": "$C405"
+    },
+    {
+      "name": "COMMENT_MB1_T1CH",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50181,
+      "comment": "Mockingboard VIA 1: Timer 1 counter high; write loads/restarts T1 from the latch and clears T1 interrupt flag"
+    },
+    {
+      "name": "MB1_T1LL",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50182,
+      "hex": "$C406"
+    },
+    {
+      "name": "COMMENT_MB1_T1LL",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50182,
+      "comment": "Mockingboard VIA 1: Timer 1 latch low: read/write low byte of the timer reload value"
+    },
+    {
+      "name": "MB1_T1LH",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50183,
+      "hex": "$C407"
+    },
+    {
+      "name": "COMMENT_MB1_T1LH",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50183,
+      "comment": "Mockingboard VIA 1: Timer 1 latch high: write updates reload high byte and clears T1 interrupt flag without starting T1"
+    },
+    {
+      "name": "MB1_T2CL",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50184,
+      "hex": "$C408"
+    },
+    {
+      "name": "COMMENT_MB1_T2CL",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50184,
+      "comment": "Mockingboard VIA 1: Timer 2 counter low (read clears T2 interrupt flag); write sets timer latch low"
+    },
+    {
+      "name": "MB1_T2CH",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50185,
+      "hex": "$C409"
+    },
+    {
+      "name": "COMMENT_MB1_T2CH",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50185,
+      "comment": "Mockingboard VIA 1: Timer 2 counter high; write loads/starts T2 and clears T2 interrupt flag"
+    },
+    {
+      "name": "MB1_SR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50186,
+      "hex": "$C40A"
+    },
+    {
+      "name": "COMMENT_MB1_SR",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50186,
+      "comment": "Mockingboard VIA 1: Shift register: serial data under ACR control; usually unused for AY sound"
+    },
+    {
+      "name": "MB1_ACR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50187,
+      "hex": "$C40B"
+    },
+    {
+      "name": "COMMENT_MB1_ACR",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50187,
+      "comment": "Mockingboard VIA 1: Auxiliary control: T1 one-shot/free-run and PB7 output, T2 timed/pulse-count mode, shift mode and input latching"
+    },
+    {
+      "name": "MB1_PCR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50188,
+      "hex": "$C40C"
+    },
+    {
+      "name": "COMMENT_MB1_PCR",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50188,
+      "comment": "Mockingboard VIA 1: Peripheral control: CA1/CA2 and CB1/CB2 interrupt-edge, handshake and output modes"
+    },
+    {
+      "name": "MB1_IFR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50189,
+      "hex": "$C40D"
+    },
+    {
+      "name": "COMMENT_MB1_IFR",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50189,
+      "comment": "Mockingboard VIA 1: Interrupt flags: bit7=enabled IRQ summary; bits6..0=T1,T2,CB1,CB2,SR,CA1,CA2; write 1 clears a flag"
+    },
+    {
+      "name": "MB1_IER",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50190,
+      "hex": "$C40E"
+    },
+    {
+      "name": "COMMENT_MB1_IER",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50190,
+      "comment": "Mockingboard VIA 1: Interrupt enable: bits6..0 select interrupt sources; write bit7=1 enables selected bits, bit7=0 disables; read bit7=1"
+    },
+    {
+      "name": "MB1_ORA_NH",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50191,
+      "hex": "$C40F"
+    },
+    {
+      "name": "COMMENT_MB1_ORA_NH",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50191,
+      "comment": "Mockingboard VIA 1: Port A / AY1 data bus without CA1/CA2 handshake effects"
+    },
+    {
+      "name": "MB2_ORB",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50304,
+      "hex": "$C480"
+    },
+    {
+      "name": "COMMENT_MB2_ORB",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50304,
+      "comment": "Mockingboard VIA 2: Port B / AY2 control: PB0=BC1, PB1=BDIR, PB2=/RESET; $04 inactive, $05 read, $06 write, $07 latch address; PB2=0 resets AY"
+    },
+    {
+      "name": "MB2_ORA",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50305,
+      "hex": "$C481"
+    },
+    {
+      "name": "COMMENT_MB2_ORA",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50305,
+      "comment": "Mockingboard VIA 2: Port A / AY2 8-bit register-address and data bus; ORB selects latch, read or write operation"
+    },
+    {
+      "name": "MB2_DDRB",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50306,
+      "hex": "$C482"
+    },
+    {
+      "name": "COMMENT_MB2_DDRB",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50306,
+      "comment": "Mockingboard VIA 2: Port B data direction: bit=1 output, bit=0 input; PB0-PB2 drive AY2 control lines"
+    },
+    {
+      "name": "MB2_DDRA",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50307,
+      "hex": "$C483"
+    },
+    {
+      "name": "COMMENT_MB2_DDRA",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50307,
+      "comment": "Mockingboard VIA 2: Port A data direction: $FF outputs register/data bytes to AY2; $00 inputs AY register readback"
+    },
+    {
+      "name": "MB2_T1CL",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50308,
+      "hex": "$C484"
+    },
+    {
+      "name": "COMMENT_MB2_T1CL",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50308,
+      "comment": "Mockingboard VIA 2: Timer 1 counter low (read clears T1 interrupt flag); write updates timer latch low"
+    },
+    {
+      "name": "MB2_T1CH",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50309,
+      "hex": "$C485"
+    },
+    {
+      "name": "COMMENT_MB2_T1CH",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50309,
+      "comment": "Mockingboard VIA 2: Timer 1 counter high; write loads/restarts T1 from the latch and clears T1 interrupt flag"
+    },
+    {
+      "name": "MB2_T1LL",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50310,
+      "hex": "$C486"
+    },
+    {
+      "name": "COMMENT_MB2_T1LL",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50310,
+      "comment": "Mockingboard VIA 2: Timer 1 latch low: read/write low byte of the timer reload value"
+    },
+    {
+      "name": "MB2_T1LH",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50311,
+      "hex": "$C487"
+    },
+    {
+      "name": "COMMENT_MB2_T1LH",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50311,
+      "comment": "Mockingboard VIA 2: Timer 1 latch high: write updates reload high byte and clears T1 interrupt flag without starting T1"
+    },
+    {
+      "name": "MB2_T2CL",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50312,
+      "hex": "$C488"
+    },
+    {
+      "name": "COMMENT_MB2_T2CL",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50312,
+      "comment": "Mockingboard VIA 2: Timer 2 counter low (read clears T2 interrupt flag); write sets timer latch low"
+    },
+    {
+      "name": "MB2_T2CH",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50313,
+      "hex": "$C489"
+    },
+    {
+      "name": "COMMENT_MB2_T2CH",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50313,
+      "comment": "Mockingboard VIA 2: Timer 2 counter high; write loads/starts T2 and clears T2 interrupt flag"
+    },
+    {
+      "name": "MB2_SR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50314,
+      "hex": "$C48A"
+    },
+    {
+      "name": "COMMENT_MB2_SR",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50314,
+      "comment": "Mockingboard VIA 2: Shift register: serial data under ACR control; usually unused for AY sound"
+    },
+    {
+      "name": "MB2_ACR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50315,
+      "hex": "$C48B"
+    },
+    {
+      "name": "COMMENT_MB2_ACR",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50315,
+      "comment": "Mockingboard VIA 2: Auxiliary control: T1 one-shot/free-run and PB7 output, T2 timed/pulse-count mode, shift mode and input latching"
+    },
+    {
+      "name": "MB2_PCR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50316,
+      "hex": "$C48C"
+    },
+    {
+      "name": "COMMENT_MB2_PCR",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50316,
+      "comment": "Mockingboard VIA 2: Peripheral control: CA1/CA2 and CB1/CB2 interrupt-edge, handshake and output modes"
+    },
+    {
+      "name": "MB2_IFR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50317,
+      "hex": "$C48D"
+    },
+    {
+      "name": "COMMENT_MB2_IFR",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50317,
+      "comment": "Mockingboard VIA 2: Interrupt flags: bit7=enabled IRQ summary; bits6..0=T1,T2,CB1,CB2,SR,CA1,CA2; write 1 clears a flag"
+    },
+    {
+      "name": "MB2_IER",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50318,
+      "hex": "$C48E"
+    },
+    {
+      "name": "COMMENT_MB2_IER",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50318,
+      "comment": "Mockingboard VIA 2: Interrupt enable: bits6..0 select interrupt sources; write bit7=1 enables selected bits, bit7=0 disables; read bit7=1"
+    },
+    {
+      "name": "MB2_ORA_NH",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50319,
+      "hex": "$C48F"
+    },
+    {
+      "name": "COMMENT_MB2_ORA_NH",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50319,
+      "comment": "Mockingboard VIA 2: Port A / AY2 data bus without CA1/CA2 handshake effects"
+    }
+  ]
+}

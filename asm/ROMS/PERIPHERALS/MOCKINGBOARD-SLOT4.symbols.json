@@ -1,0 +1,470 @@
+{
+  "format": "RetroAppleJS-ASM-symbols",
+  "version": 2,
+  "source": "MOCKINGBOARD SLOT 4",
+  "scopeMode": "instruction-pc",
+  "scope": [
+    [
+      0,
+      49151
+    ]
+  ],
+  "scopeHex": [
+    [
+      "$0000",
+      "$BFFF"
+    ]
+  ],
+  "count": 64,
+  "symbols": [
+    {
+      "name": "MB1_ORB",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50176,
+      "hex": "$C400",
+      "comment": "6522 Output Reg"
+    },
+    {
+      "name": "MB1_ORA",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50177,
+      "hex": "$C401"
+    },
+    {
+      "name": "MB1_DDRB",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50178,
+      "hex": "$C402"
+    },
+    {
+      "name": "MB1_DDRA",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50179,
+      "hex": "$C403"
+    },
+    {
+      "name": "MB1_T1CL",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50180,
+      "hex": "$C404"
+    },
+    {
+      "name": "MB1_T1CH",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50181,
+      "hex": "$C405"
+    },
+    {
+      "name": "MB1_T1LL",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50182,
+      "hex": "$C406"
+    },
+    {
+      "name": "MB1_T1LH",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50183,
+      "hex": "$C407"
+    },
+    {
+      "name": "MB1_T2CL",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50184,
+      "hex": "$C408"
+    },
+    {
+      "name": "MB1_T2CH",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50185,
+      "hex": "$C409"
+    },
+    {
+      "name": "MB1_SR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50186,
+      "hex": "$C40A"
+    },
+    {
+      "name": "MB1_ACR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50187,
+      "hex": "$C40B"
+    },
+    {
+      "name": "MB1_PCR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50188,
+      "hex": "$C40C"
+    },
+    {
+      "name": "MB1_IFR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50189,
+      "hex": "$C40D"
+    },
+    {
+      "name": "MB1_IER",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50190,
+      "hex": "$C40E"
+    },
+    {
+      "name": "MB1_ORA_NH",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50191,
+      "hex": "$C40F"
+    },
+    {
+      "name": "MB2_ORB",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50304,
+      "hex": "$C480"
+    },
+    {
+      "name": "MB2_ORA",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50305,
+      "hex": "$C481"
+    },
+    {
+      "name": "MB2_DDRB",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50306,
+      "hex": "$C482"
+    },
+    {
+      "name": "MB2_DDRA",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50307,
+      "hex": "$C483"
+    },
+    {
+      "name": "MB2_T1CL",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50308,
+      "hex": "$C484"
+    },
+    {
+      "name": "MB2_T1CH",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50309,
+      "hex": "$C485"
+    },
+    {
+      "name": "MB2_T1LL",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50310,
+      "hex": "$C486"
+    },
+    {
+      "name": "MB2_T1LH",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50311,
+      "hex": "$C487"
+    },
+    {
+      "name": "MB2_T2CL",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50312,
+      "hex": "$C488"
+    },
+    {
+      "name": "MB2_T2CH",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50313,
+      "hex": "$C489"
+    },
+    {
+      "name": "MB2_SR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50314,
+      "hex": "$C48A"
+    },
+    {
+      "name": "MB2_ACR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50315,
+      "hex": "$C48B"
+    },
+    {
+      "name": "MB2_PCR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50316,
+      "hex": "$C48C"
+    },
+    {
+      "name": "MB2_IFR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50317,
+      "hex": "$C48D"
+    },
+    {
+      "name": "MB2_IER",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50318,
+      "hex": "$C48E"
+    },
+    {
+      "name": "MB2_ORA_NH",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50319,
+      "hex": "$C48F"
+    },
+    {
+      "name": "COMMENT_MB1_ORB",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50176,
+      "comment": "6522 Output Register B / Input Register B; Mockingboard VIA 1: AY control bus (BC1, BDIR and RESET wiring)"
+    },
+    {
+      "name": "COMMENT_MB1_ORA",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50177,
+      "comment": "6522 Output Register A / Input Register A with handshake; Mockingboard VIA 1: AY 8-bit data/register bus"
+    },
+    {
+      "name": "COMMENT_MB1_DDRB",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50178,
+      "comment": "6522 Data Direction Register B; Mockingboard VIA 1: Sets VIA port-B control-line directions"
+    },
+    {
+      "name": "COMMENT_MB1_DDRA",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50179,
+      "comment": "6522 Data Direction Register A; Mockingboard VIA 1: Sets VIA port-A AY data-bus directions"
+    },
+    {
+      "name": "COMMENT_MB1_T1CL",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50180,
+      "comment": "6522 Timer 1 Counter Low; Mockingboard VIA 1: Timer 1 low counter; read also clears T1 interrupt flag"
+    },
+    {
+      "name": "COMMENT_MB1_T1CH",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50181,
+      "comment": "6522 Timer 1 Counter High; Mockingboard VIA 1: Timer 1 high counter"
+    },
+    {
+      "name": "COMMENT_MB1_T1LL",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50182,
+      "comment": "6522 Timer 1 Latch Low; Mockingboard VIA 1: Timer 1 low latch/reload value"
+    },
+    {
+      "name": "COMMENT_MB1_T1LH",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50183,
+      "comment": "6522 Timer 1 Latch High; Mockingboard VIA 1: Timer 1 high latch/reload value"
+    },
+    {
+      "name": "COMMENT_MB1_T2CL",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50184,
+      "comment": "6522 Timer 2 Counter Low; Mockingboard VIA 1: Timer 2 low counter"
+    },
+    {
+      "name": "COMMENT_MB1_T2CH",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50185,
+      "comment": "6522 Timer 2 Counter High; Mockingboard VIA 1: Timer 2 high counter"
+    },
+    {
+      "name": "COMMENT_MB1_SR",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50186,
+      "comment": "6522 Shift Register; Mockingboard VIA 1: 6522 shift register; normally not used for AY register access"
+    },
+    {
+      "name": "COMMENT_MB1_ACR",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50187,
+      "comment": "6522 Auxiliary Control Register; Mockingboard VIA 1: Controls timer, shift-register and PB7 modes"
+    },
+    {
+      "name": "COMMENT_MB1_PCR",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50188,
+      "comment": "6522 Peripheral Control Register; Mockingboard VIA 1: Controls CA1/CA2/CB1/CB2 edge and handshake modes"
+    },
+    {
+      "name": "COMMENT_MB1_IFR",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50189,
+      "comment": "6522 Interrupt Flag Register; Mockingboard VIA 1: Reports pending VIA interrupt sources"
+    },
+    {
+      "name": "COMMENT_MB1_IER",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50190,
+      "comment": "6522 Interrupt Enable Register; Mockingboard VIA 1: Enables or disables VIA interrupt sources"
+    },
+    {
+      "name": "COMMENT_MB1_ORA_NH",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50191,
+      "comment": "6522 Output Register A without handshake; Mockingboard VIA 1: AY data bus access without CA2 handshake"
+    },
+    {
+      "name": "COMMENT_MB2_ORB",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50304,
+      "comment": "6522 Output Register B / Input Register B; Mockingboard VIA 2: AY control bus (BC1, BDIR and RESET wiring)"
+    },
+    {
+      "name": "COMMENT_MB2_ORA",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50305,
+      "comment": "6522 Output Register A / Input Register A with handshake; Mockingboard VIA 2: AY 8-bit data/register bus"
+    },
+    {
+      "name": "COMMENT_MB2_DDRB",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50306,
+      "comment": "6522 Data Direction Register B; Mockingboard VIA 2: Sets VIA port-B control-line directions"
+    },
+    {
+      "name": "COMMENT_MB2_DDRA",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50307,
+      "comment": "6522 Data Direction Register A; Mockingboard VIA 2: Sets VIA port-A AY data-bus directions"
+    },
+    {
+      "name": "COMMENT_MB2_T1CL",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50308,
+      "comment": "6522 Timer 1 Counter Low; Mockingboard VIA 2: Timer 1 low counter; read also clears T1 interrupt flag"
+    },
+    {
+      "name": "COMMENT_MB2_T1CH",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50309,
+      "comment": "6522 Timer 1 Counter High; Mockingboard VIA 2: Timer 1 high counter"
+    },
+    {
+      "name": "COMMENT_MB2_T1LL",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50310,
+      "comment": "6522 Timer 1 Latch Low; Mockingboard VIA 2: Timer 1 low latch/reload value"
+    },
+    {
+      "name": "COMMENT_MB2_T1LH",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50311,
+      "comment": "6522 Timer 1 Latch High; Mockingboard VIA 2: Timer 1 high latch/reload value"
+    },
+    {
+      "name": "COMMENT_MB2_T2CL",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50312,
+      "comment": "6522 Timer 2 Counter Low; Mockingboard VIA 2: Timer 2 low counter"
+    },
+    {
+      "name": "COMMENT_MB2_T2CH",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50313,
+      "comment": "6522 Timer 2 Counter High; Mockingboard VIA 2: Timer 2 high counter"
+    },
+    {
+      "name": "COMMENT_MB2_SR",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50314,
+      "comment": "6522 Shift Register; Mockingboard VIA 2: 6522 shift register; normally not used for AY register access"
+    },
+    {
+      "name": "COMMENT_MB2_ACR",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50315,
+      "comment": "6522 Auxiliary Control Register; Mockingboard VIA 2: Controls timer, shift-register and PB7 modes"
+    },
+    {
+      "name": "COMMENT_MB2_PCR",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50316,
+      "comment": "6522 Peripheral Control Register; Mockingboard VIA 2: Controls CA1/CA2/CB1/CB2 edge and handshake modes"
+    },
+    {
+      "name": "COMMENT_MB2_IFR",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50317,
+      "comment": "6522 Interrupt Flag Register; Mockingboard VIA 2: Reports pending VIA interrupt sources"
+    },
+    {
+      "name": "COMMENT_MB2_IER",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50318,
+      "comment": "6522 Interrupt Enable Register; Mockingboard VIA 2: Enables or disables VIA interrupt sources"
+    },
+    {
+      "name": "COMMENT_MB2_ORA_NH",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 50319,
+      "comment": "6522 Output Register A without handshake; Mockingboard VIA 2: AY data bus access without CA2 handshake"
+    }
+  ]
+}

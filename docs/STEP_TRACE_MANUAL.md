@@ -502,7 +502,7 @@ The chooser accepts `.json`, `.symbols.json`, `.sym`, and `.txt`.
 
 ### `clear`
 
-Removes the externally loaded symbol table and refreshes the listing.
+Removes all externally loaded symbol tables and refreshes the listing.
 
 ### Status
 
@@ -514,7 +514,65 @@ none
 error
 ```
 
-The tooltip provides file name and more detailed counts.
+The tooltip lists every loaded file, its scope mode, and the total counts.
+
+### Scope modes and multiple tables
+
+`scopeMode` controls the meaning of a JSON table's `scope` ranges:
+
+| `scopeMode` | Scope lookup | Names and comments |
+| --- | --- | --- |
+| omitted or `instruction-pc` | Address of the instruction being listed | Source labels/EQU names and instruction comments |
+| `operand-address` | Address encoded in the operand, or resolved relative branch target | Operand names and comments attached to that address |
+
+Missing `scope` means `$0000–$FFFF`. Explicit ranges are inclusive, with endpoints
+between `$0000` and `$FFFF`. Existing JSON files and simple text maps retain
+`instruction-pc` behavior. `scopeHex` is display metadata; `scope` controls lookup.
+
+Tables in different modes coexist even when their numeric ranges are identical.
+Disjoint tables in the same mode also coexist. If a newly loaded table overlaps
+another table in its mode, the dialog identifies the mode and offers `override`,
+`merge`, or cancellation. `override` removes the overlapping tables as whole
+tables; `merge` retains both, with the newest matching name taking precedence
+and matching comments retained in load order. Tables in the other mode are
+unaffected. **clear** removes all externally loaded tables.
+
+Programmatic callers can pass `"override"`, `"merge"`, or `"cancel"` as the
+optional third argument to `Apple2Debug.loadSymbolsText(text, fileName, policy)`
+to select overlap handling without a dialog.
+
+PC-scoped names have priority over operand-scoped names. Operand comments are
+collected independently, even when the source table supplies the operand name
+or the hardware table supplies only a comment. Source comments appear first,
+followed by operand comments separated with ` | `.
+
+For a slot-4 Mockingboard, load
+`asm/ROMS/PERIPHERALS/MOCKINGBOARD_SLOT4.symbols.json` alongside the program or
+Monitor ROM symbol file. This table covers `$C400–$C40F` and `$C480–$C48F`:
+
+```json
+{
+  "format": "RetroAppleJS-ASM-symbols",
+  "version": 2,
+  "scopeMode": "operand-address",
+  "scope": [[50176, 50191], [50304, 50319]],
+  "symbols": [
+    {"name": "MB1_ORB", "type": "equ", "value": 50176},
+    {"name": "COMMENT_MB1_ORB", "type": "comment", "targetType": "equ",
+     "value": 50176, "comment": "Mockingboard VIA 1 Port B / AY1 control bus"}
+  ]
+}
+```
+
+Operand scope applies to `zpg`, `zpx`, `zpy`, `inx`, `iny`, `abs`, `abx`, `aby`,
+`ind`, and `rel`. It does not translate immediate constants, implied operands,
+or accumulator operands. Indexed and indirect modes use the encoded base or
+pointer address, rather than dereferencing memory or adding the current X/Y
+register. Hardware names require an exact address match; the existing source
+symbol `+1` fallback remains available for PC tables.
+
+The supplied comments describe registers. They do not decode the currently
+latched AY register or the value written by each instruction.
 
 ---
 
@@ -581,6 +639,9 @@ A label whose address exactly matches an instruction appears in the `lbl` column
 ### `opr`
 
 Loaded labels and EQU symbols can replace numeric operands in applicable addressing modes.
+Resolved operands show the symbol only, while retaining indexing and parentheses;
+the numeric address is not repeated after the name. Unresolved operands keep
+their normal hexadecimal form.
 
 For example:
 
@@ -595,6 +656,13 @@ Operand lookup can also use the assembler's currently available symbol mapping w
 ### `com`
 
 Instruction comments from an exported symbol file can populate the `com` field.
+
+An operand-address table can also supply `comment` records, including
+`targetType: "equ"`. For example, a source comment and hardware comment combine as:
+
+```text
+STA MB1_ORB    ; select sound chip | Mockingboard VIA 1 Port B / AY1 control bus
+```
 
 When an exported comment includes opcode bytes, STEP TRACE checks those bytes against the currently mapped live memory before showing the comment. This prevents stale source comments from remaining attached after self-modifying code changes an instruction.
 
