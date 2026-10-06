@@ -1,0 +1,447 @@
+diff --git a/docs/STEP_TRACE_MANUAL.md b/docs/STEP_TRACE_MANUAL.md
+index 5ec957c..7926a7c 100644
+--- a/docs/STEP_TRACE_MANUAL.md
++++ b/docs/STEP_TRACE_MANUAL.md
+@@ -538,26 +538,32 @@ complete
+ 
+ ---
+ 
+-### Start address
++### Start condition
+ 
+-These two address fields belong to **boot logging**, not BREAK IF. Capturing a log does not arm a breakpoint or start the CPU. Enter explicit hexadecimal addresses such as `$6000` to avoid number-format ambiguity.
++These two fields belong to **boot logging**, not BREAK IF. Capturing a log does not arm a breakpoint or start the CPU. Each field independently accepts `PC` or `INS` followed by a hexadecimal value. Values without a prefix, such as `$6000`, retain their PC meaning.
+ 
+-The first `$....` field sets an optional start address.
++The first field sets an optional start condition.
+ 
+ - blank: logging can begin immediately;
+-- address: logging waits until execution reaches that address.
++- `PC $FD21`: logging waits until execution reaches that address;
++- `INS $2C36E41`: logging waits for that completed-instruction count, using the same 48-bit counter shown in NAV.
+ 
+-### Stop address
++The instruction at the start boundary is included. INS accepts up to 12 hexadecimal digits; PC accepts up to four. INS counts actual instructions, independently of compression in the capture buffer, and returns to zero on CPU reset.
+ 
+-The second `$....` field sets an optional stop address.
++### Stop condition
++
++The second field sets an optional stop condition. Start and stop may use different prefixes, for example start `PC $FD21` and stop `INS $2C36E41`.
+ 
+ - blank: continue until the boot-log buffer is full;
+-- address: stop before execution reaches that address.
++- `PC $FF69`: stop before recording the instruction at that address;
++- `INS $2C36E41`: stop before recording the instruction at that counter value.
+ 
+ Stopping logging or filling its buffer does not stop CPU execution. Capture and download are separate from the JavaScript scenario console.
+ 
+ ### Download icon
+ 
++The icon is disabled when the log is empty. During capture it blinks using the same animation as the assembler's Assemble icon, and downloading is disabled. Once capture finishes (or is manually disabled), a nonempty log enables a steady download icon. After the file is handed to the browser for download, capture is disabled, the bootlog buffers are released, and the icon returns to its disabled state. The conditions remain available for the next capture.
++
+ Downloads the current boot log as a `.txt` file containing **Base64-encoded activity records**, not a plain-text assembly listing. The generated timestamped file name looks like:
+ 
+ ```text
+diff --git a/res/EMU_apple2debug.js b/res/EMU_apple2debug.js
+index f4eb537..b33468e 100644
+--- a/res/EMU_apple2debug.js
++++ b/res/EMU_apple2debug.js
+@@ -1489,15 +1489,22 @@ function Apple2Debug()
+         el.addEventListener("touchcancel",function(){ el._cpuDbgTouchY = null; },{passive:true});
+     }
+ 
++    function bootConditionText(value,type)
++    {
++        if(value==null) return "";
++        return type==="INS" ? "INS $"+value.toString(16).toUpperCase().padStart(12,"0")
++            : "PC $"+oCOM.getHexWord(value);
++    }
++
+     function syncBootTriggerInputs(state)
+     {
+         var start = document.getElementById("cpuDbg_bootStart");
+         var stop = document.getElementById("cpuDbg_bootStop");
+         var startText = state && state.triggerAddress!=null
+-            ? "$"+oCOM.getHexWord(state.triggerAddress)
++            ? bootConditionText(state.triggerAddress,state.triggerType)
+             : "";
+         var stopText = state && state.stopAddress!=null
+-            ? "$"+oCOM.getHexWord(state.stopAddress)
++            ? bootConditionText(state.stopAddress,state.stopType)
+             : "";
+ 
+         // Do not fight the user while an address is being edited.
+@@ -1508,12 +1515,28 @@ function Apple2Debug()
+     function updateBootTriggerIcon(el,state)
+     {
+         syncBootTriggerInputs(state);
++        var download = document.getElementById("cpuDbg_bootDownload");
++        var icon = document.getElementById("cpuDbg_bootDownloadIcon");
++        var logging = !!(state && state.logging);
++        var ready = !!(state && state.count>0 && !logging);
++        var title = logging ? "bootlog capture in progress" : ready ? "download bootlog and clear capture" : "bootlog is empty";
++        if(download)
++        {
++            download.disabled = !ready;
++            download.style.opacity = logging || ready ? "1" : ".35";
++            download.title = title;
++        }
++        if(icon)
++        {
++            icon.classList.toggle("blink",logging);
++            icon.title = title;
++        }
+         if(!el) return;
+ 
+         if(state && state.bDebug_boot)
+         {
+-            var startText = state.triggerAddress==null ? "immediately" : "$"+oCOM.getHexWord(state.triggerAddress);
+-            var stopText = state.stopAddress==null ? "when buffer is full" : "before $"+oCOM.getHexWord(state.stopAddress);
++            var startText = state.triggerAddress==null ? "immediately" : bootConditionText(state.triggerAddress,state.triggerType);
++            var stopText = state.stopAddress==null ? "when buffer is full" : "before "+bootConditionText(state.stopAddress,state.stopType);
+             var mode = state.triggerArmed ? "armed"
+                 : state.logging ? "logging"
+                 : state.full ? "buffer full"
+@@ -1746,6 +1769,8 @@ function Apple2Debug()
+         // render resumes; INS then shows the true number of executed opcodes.
+         if(showLoopSteps || renderAfterBatch || !fixedRunning || !result || result.stalled)
+             dbg.cycle({cpu:machine.cpuObj()});
++        else
++            dbg.syncBootLogControls();
+ 
+         // A conditional breakpoint callback can stop fixedRunning from inside a
+         // batch. Check ownership again before scheduling the next batch.
+@@ -2189,7 +2214,7 @@ function Apple2Debug()
+     {
+         this.body_id = body_id;
+         oCOM.POPUP.set_state(wrapper_id,true);
+-        return "<div class=appbox style='text-align:left;height:auto;min-height:350px;width:350px;padding:0 0 0 1px;margin:0'>"
++        return "<div class=appbox style='text-align:left;height:auto;min-height:350px;width:500px;padding:0 0 0 1px;margin:0'>"
+ 
+             +"<div class=marginless style='border:0;font-family:Arial,sans-serif;font-size:9px;line-height:18px'>"
+                     +"<div style='display:flex;align-items:center;gap:3px;white-space:nowrap;min-width:0'>"
+@@ -2203,11 +2228,11 @@ function Apple2Debug()
+                         +"<div style='width:22px'></div>"
+                         
+                         +"<div class='appbut skinny'><i id='cpuDbg_bootTrigger' class='fa fa-coffee' style='opacity:.35;font-size:10px' title='bootlog trigger disabled' onclick='oEMU.component.CPU.Apple2Debug.toggleBootLogTrigger(this)'></i></div>"
+-                        +"<input id='cpuDbg_bootStart' type='text' value='' maxlength='6' spellcheck='false' placeholder='$....' title='Bootlog start address; blank starts immediately' style='width:43px;height:18px;padding:0 2px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBootLogAddresses()'>"
++                        +"<input id='cpuDbg_bootStart' type='text' value='' maxlength='18' spellcheck='false' placeholder='PC $....' title='Bootlog start: PC $6000 or INS $2C36E41; blank starts immediately' style='width:115px;height:18px;padding:0 2px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBootLogAddresses()'>"
+                         //+"<span title='bootlog start → stop'>›</span>"
+                         +"<i class='fa fa-play'></i>"
+-                        +"<input id='cpuDbg_bootStop' type='text' value='' maxlength='6' spellcheck='false' placeholder='$....' title='Bootlog stop address; blank stops when the buffer is full' style='width:43px;height:18px;padding:0 2px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBootLogAddresses()'>"
+-                        +"<div class='appbut skinny' onclick='oEMU.component.CPU.Apple2Debug.downloadBootLog()'><i class='fa fa-cloud-download-alt' style='font-size:10px' title='download bootlog'></i></div>"
++                        +"<input id='cpuDbg_bootStop' type='text' value='' maxlength='18' spellcheck='false' placeholder='PC / INS' title='Bootlog stop: PC $FF69 or INS $2C36E41; exclusive; blank stops when the buffer is full' style='width:115px;height:18px;padding:0 2px;box-sizing:border-box;font-family:"+listingFontFamily+";font-size:9px;text-transform:uppercase' onchange='oEMU.component.CPU.Apple2Debug.setBootLogAddresses()'>"
++                        +"<button id='cpuDbg_bootDownload' type='button' class='appbut skinny' disabled style='opacity:.35' title='bootlog is empty' onclick='oEMU.component.CPU.Apple2Debug.downloadBootLog()'><i id='cpuDbg_bootDownloadIcon' class='fa fa-cloud-download-alt' style='font-size:10px' title='bootlog is empty'></i></button>"
+                         +"<span style='flex:1 1 auto'></span>"
+                         +"<div class='appbut' onclick=\"oEMU.component.CPU.Apple2Debug.close();oCOM.POPUP.toggle('"+wrapper_id+"');\" style='text-align:center;margin-left:0;padding:4px 6px;font-size:11px'>x</div>"
+                     +"</div>"
+@@ -2347,6 +2372,8 @@ function Apple2Debug()
+             return;
+         }
+ 
++        var state = cpu.BOOTparam();
++        if(state.logging || state.count===0) return false;
+         var base64 = cpu.getBootLogBase64();
+         var filename = "apple2_bootlog_" + new Date().toISOString().replace(/[:.]/g,"-") + ".txt";
+         var blob = new Blob([base64],{type:"text/plain;charset=utf-8"});
+@@ -2359,6 +2386,18 @@ function Apple2Debug()
+         a.click();
+         document.body.removeChild(a);
+         URL.revokeObjectURL(url);
++        cpu.setBootLogTrigger({type:state.triggerType || "PC",value:state.triggerAddress},
++            {type:state.stopType || "PC",value:state.stopAddress},false);
++        cpu.clearBootLog();
++        this.syncBootLogControls();
++        return true;
++    };
++
++    this.syncBootLogControls = function()
++    {
++        var cpu = liveCPU();
++        if(cpu && typeof(cpu.BOOTparam)==="function")
++            updateBootTriggerIcon(document.getElementById("cpuDbg_bootTrigger"),cpu.BOOTparam());
+     };
+ 
+     function bootAddressInput(id,label,example)
+@@ -2367,10 +2406,12 @@ function Apple2Debug()
+         var text = input ? String(input.value || "").trim() : "";
+         if(text==="") return {ok:true,value:null};
+ 
+-        var addr = parseAddress(text);
+-        if(addr!==null) return {ok:true,value:addr};
++        var match = /^(?:(PC|INS)\s+)?(?:\$|0x)?([0-9a-f]+)$/i.exec(text);
++        var type = match && match[1] ? match[1].toUpperCase() : "PC";
++        if(match && match[2].length<=(type==="INS" ? 12 : 4))
++            return {ok:true,value:{type:type,value:parseInt(match[2],16)}};
+ 
+-        alert("Invalid "+label+" address. Use for example "+example+", or leave blank.");
++        alert("Invalid "+label+" condition. Use "+example+" or INS $2C36E41 (up to 12 hex digits), or leave blank.");
+         if(input)
+         {
+             input.focus();
+@@ -2381,9 +2422,9 @@ function Apple2Debug()
+ 
+     function bootRangeFromInputs()
+     {
+-        var start = bootAddressInput("cpuDbg_bootStart","start","$6000");
++        var start = bootAddressInput("cpuDbg_bootStart","start","PC $6000");
+         if(!start.ok) return null;
+-        var stop = bootAddressInput("cpuDbg_bootStop","stop","$FF69");
++        var stop = bootAddressInput("cpuDbg_bootStop","stop","PC $FF69");
+         if(!stop.ok) return null;
+         return {start:start.value,stop:stop.value};
+     }
+@@ -2412,7 +2453,8 @@ function Apple2Debug()
+         var state = cpu.BOOTparam();
+         if(state.bDebug_boot)
+         {
+-            state = cpu.setBootLogTrigger(state.triggerAddress,state.stopAddress,false);
++            state = cpu.setBootLogTrigger({type:state.triggerType || "PC",value:state.triggerAddress},
++                {type:state.stopType || "PC",value:state.stopAddress},false);
+             updateBootTriggerIcon(el,state);
+             return;
+         }
+diff --git a/res/EMU_cpu6502.js b/res/EMU_cpu6502.js
+index dce8b90..45df530 100644
+--- a/res/EMU_cpu6502.js
++++ b/res/EMU_cpu6502.js
+@@ -19,6 +19,8 @@ function Cpu6502(hwobj)
+     var bDebug_boot = false;         // runtime opt-in CPU activity tracking
+     var BOOTtrigger_adr = 0x6000;    // null = start logging immediately
+     var BOOTstop_adr = null;         // null = stop only when buffer is full / disabled
++    var BOOTtrigger_type = "PC";
++    var BOOTstop_type = "PC";
+     var BOOTtrigger_armed = false;   // wait for BOOTtrigger_adr before logging
+     var BOOTlogging = false;
+     var BOOTcomplete = false;
+@@ -123,8 +125,8 @@ function Cpu6502(hwobj)
+     const BOOT_RECORD_BYTES = 10;
+     const BOOT_GROUP_MARKER_ADR = 0xFFFF;
+ 
+-    var BOOTlog_adr = new Uint16Array(BOOTsiz);     // starting PC of each executed instruction, or $FFFF for a compressed group marker
+-    var BOOTlog_cpu = new BigUint64Array(BOOTsiz);  // opcode/op1/op2 + A/X/Y/P/SP, or group/repeat payload for marker rows
++    var BOOTlog_adr = null;     // allocated on capture; released by clearBootLog()
++    var BOOTlog_cpu = null;     // PC and packed CPU/group records retain their export format
+     var BOOTcnt = 0;
+ 
+     const memberTable = [
+@@ -193,6 +195,8 @@ function Cpu6502(hwobj)
+              "bDebug_boot":bDebug_boot
+             ,"triggerAddress":BOOTtrigger_adr
+             ,"stopAddress":BOOTstop_adr
++            ,"triggerType":BOOTtrigger_type
++            ,"stopType":BOOTstop_type
+             ,"triggerArmed":BOOTtrigger_armed
+             ,"logging":BOOTlogging
+             ,"complete":BOOTcomplete
+@@ -202,6 +206,8 @@ function Cpu6502(hwobj)
+         };
+     }
+ 
++    // Conditions accept a legacy numeric PC or {type:"PC"|"INS",value:number}.
++    // INS uses the 48-bit completed-instruction count displayed in NAV.
+     // startAddr == null: clear and log immediately.
+     // stopAddr  == null: keep logging until the fixed buffer is full.
+     // Two-argument form (addr,enabled) is retained for older callers.
+@@ -213,13 +219,17 @@ function Cpu6502(hwobj)
+             stopAddr = null;
+         }
+ 
+-        BOOTtrigger_adr = startAddr==null ? null : (Number(startAddr) & 0xffff);
+-        BOOTstop_adr = stopAddr==null ? null : (Number(stopAddr) & 0xffff);
++        var start = bootCondition(startAddr), stop = bootCondition(stopAddr);
++        BOOTtrigger_adr = start.value;
++        BOOTstop_adr = stop.value;
++        BOOTtrigger_type = start.type;
++        BOOTstop_type = stop.type;
+         bDebug_boot = !!enabled;
+         BOOTcomplete = false;
+ 
+         if(!bDebug_boot)
+         {
++            flushBootGroupPending();
+             BOOTtrigger_armed = false;
+             BOOTlogging = false;
+             return this.BOOTparam();
+@@ -237,7 +247,11 @@ function Cpu6502(hwobj)
+     this.armBootLogTrigger = function(addr)
+     {
+         if(addr!==undefined)
+-            BOOTtrigger_adr = addr==null ? null : (Number(addr) & 0xffff);
++        {
++            var start = bootCondition(addr);
++            BOOTtrigger_adr = start.value;
++            BOOTtrigger_type = start.type;
++        }
+ 
+         if(bDebug_boot)
+         {
+@@ -249,6 +263,18 @@ function Cpu6502(hwobj)
+         return this.BOOTparam(); 
+     }
+ 
++    function bootCondition(condition)
++    {
++        var type = condition && typeof(condition)==="object" ? String(condition.type).toUpperCase() : "PC";
++        var value = condition && typeof(condition)==="object" ? condition.value : condition;
++        if(type!=="PC" && type!=="INS") throw new Error("Unknown bootlog condition type: "+type);
++        if(value==null) return {type:type,value:null};
++        value = Number(value);
++        if(type==="INS" && (!Number.isSafeInteger(value) || value<0 || value>=INSTRUCTION_COUNT_MODULO))
++            throw new Error("Bootlog INS condition must be a 48-bit unsigned integer.");
++        return {type:type,value:type==="PC" ? value & 0xffff : value};
++    }
++
+     this.setExecutionTrap = function(addr,callback)
+     {
+         executionTrap = {
+@@ -723,6 +749,12 @@ function Cpu6502(hwobj)
+     {
+         if (!bDebug_boot || BOOTcnt >= BOOTsiz) return;
+ 
++        if(!BOOTlog_adr)
++        {
++            BOOTlog_adr = new Uint16Array(BOOTsiz);
++            BOOTlog_cpu = new BigUint64Array(BOOTsiz);
++        }
++
+         var packed = packBootState(opcode,operand,stackPointer);
+         var member = BOOTgroup_lookup[boot_pc & 0xffff];
+ 
+@@ -915,7 +947,7 @@ function Cpu6502(hwobj)
+         {
+             var boot_pc = instr_pc & 0xffff;
+ 
+-            if(BOOTtrigger_armed && boot_pc == BOOTtrigger_adr)
++            if(BOOTtrigger_armed && (BOOTtrigger_type==="INS" ? instruction_count : boot_pc) == BOOTtrigger_adr)
+             {
+                 // One-shot start trigger: discard the previous capture and
+                 // include this very instruction as record zero.
+@@ -927,9 +959,10 @@ function Cpu6502(hwobj)
+ 
+             if(BOOTlogging)
+             {
+-                // Stop is exclusive: the stop-address instruction is not logged.
+-                if(BOOTstop_adr!==null && boot_pc==BOOTstop_adr)
++                // Stop is exclusive for both PC and INS conditions.
++                if(BOOTstop_adr!==null && (BOOTstop_type==="INS" ? instruction_count : boot_pc)==BOOTstop_adr)
+                 {
++                    flushBootGroupPending();
+                     BOOTlogging = false;
+                     BOOTcomplete = true;
+                 }
+@@ -1540,6 +1573,9 @@ function Cpu6502(hwobj)
+     {
+         BOOTcnt = 0;
+         resetBootGroupState();
++        BOOTlog_adr = null;
++        BOOTlog_cpu = null;
++        BOOTcomplete = false;
+     }
+ 
+ }
+diff --git a/tests/bootlog_trigger.test.js b/tests/bootlog_trigger.test.js
+new file mode 100644
+index 0000000..b3faf59
+--- /dev/null
++++ b/tests/bootlog_trigger.test.js
+@@ -0,0 +1,99 @@
++'use strict';
++const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
++function machine()
++{
++    const ram=new Uint8Array(65536).fill(0xEA),elements={},alerts=[],downloads=[];
++    const ctx={console,btoa:s=>Buffer.from(s,'binary').toString('base64'),Blob,
++        oEMU:{component:{CPU:{}}},oCOM:{getHexWord:n=>n.toString(16).toUpperCase().padStart(4,'0'),POPUP:{set_state(){}}},
++        alert:s=>alerts.push(s),URL:{createObjectURL:b=>{downloads.push(b);return 'blob:test';},revokeObjectURL(){}},
++        document:{activeElement:null,getElementById:id=>elements[id]||null,
++            createElement:()=>({style:{},click(){}}),body:{appendChild(){},removeChild(){}}}};
++    vm.createContext(ctx);
++    for(const name of ['EMU_cpu6502.js','EMU_apple2debug.js'])
++        vm.runInContext(fs.readFileSync(path.join(__dirname,'../res',name),'utf8'),ctx,{filename:name});
++    const cpu=new ctx.Cpu6502({read:a=>ram[a],write:(a,v)=>ram[a]=v}),dbg=ctx.oEMU.component.CPU.Apple2Debug;
++    ctx.apple2plus={cpuObj:()=>cpu};cpu.setState({pc:0x6000,ic:0});
++    function element(value='')
++    {
++        const classes=new Set();
++        return {value,style:{},disabled:false,title:'',focus(){},select(){},
++            classList:{toggle(k,v){v?classes.add(k):classes.delete(k);},contains:k=>classes.has(k)}};
++    }
++    for(const id of ['cpuDbg_bootStart','cpuDbg_bootStop','cpuDbg_bootTrigger','cpuDbg_bootDownload','cpuDbg_bootDownloadIcon'])elements[id]=element();
++    function step(){const before=cpu.watch().ic;do{cpu.cycle();}while(cpu.watch().ic===before);}
++    function arm(start,stop){elements.cpuDbg_bootStart.value=start;elements.cpuDbg_bootStop.value=stop;dbg.toggleBootLogTrigger(elements.cpuDbg_bootTrigger);}
++    return {ctx,cpu,dbg,ram,elements,alerts,downloads,step,arm};
++}
++test('PC start and INS stop use the NAV boundary count without truncating to 16 bits',()=>{
++    const h=machine();h.cpu.setState({pc:0x6000,ic:0x2C36E40});h.arm('PC $6001','INS $2C36E43');
++    h.step();assert.equal(h.cpu.BOOTparam().count,0);h.step();h.step();h.step();
++    assert.deepEqual(Array.from(h.cpu.getBootLog(),r=>r.adr),[0x6001,0x6002]);
++    assert.equal(h.cpu.BOOTparam().complete,true);
++});
++test('INS start and PC stop can be independently selected',()=>{
++    const h=machine();h.arm('INS $2','PC $6004');for(let i=0;i<5;i++)h.step();
++    assert.deepEqual(Array.from(h.cpu.getBootLog(),r=>r.adr),[0x6002,0x6003]);
++});
++test('unprefixed hex values retain PC semantics and stop is exclusive',()=>{
++    const h=machine();h.arm('$6001','$6003');for(let i=0;i<4;i++)h.step();
++    assert.deepEqual(Array.from(h.cpu.getBootLog(),r=>r.adr),[0x6001,0x6002]);
++});
++test('both blank conditions capture immediately and stop at buffer capacity',()=>{
++    const h=machine();h.arm('','');const capacity=h.cpu.BOOTparam().capacity;
++    for(let i=0;i<capacity+1;i++){h.cpu.setState({pc:0x6000,cycle_delay:0});h.step();}
++    assert.equal(h.cpu.BOOTparam().count,capacity);assert.equal(h.cpu.BOOTparam().logging,false);
++    assert.equal(h.cpu.BOOTparam().complete,true);
++});
++test('12-digit INS values survive normalization, input synchronization and disabling',()=>{
++    const h=machine();h.arm('ins $123456789ABC','INS $FFFFFFFFFFFF');
++    assert.equal(h.alerts.length,0);assert.equal(h.cpu.BOOTparam().triggerAddress,0x123456789ABC);
++    assert.equal(h.elements.cpuDbg_bootStart.value,'INS $123456789ABC');
++    h.dbg.toggleBootLogTrigger(h.elements.cpuDbg_bootTrigger);
++    assert.equal(h.cpu.BOOTparam().triggerAddress,0x123456789ABC);
++});
++test('invalid prefixes and out-of-range counters do not arm or overwrite a capture',()=>{
++    for(const value of ['INS $1000000000000','PC $10000','FOO $6000','INS -1','INS $1junk']){
++        const h=machine();h.arm(value,'');assert.equal(h.cpu.BOOTparam().bDebug_boot,false,value);assert.equal(h.alerts.length,1,value);
++    }
++});
++test('reset re-arms an INS capture against the reset instruction count',()=>{
++    const h=machine();h.ram[0xFFFC]=0;h.ram[0xFFFD]=0x60;h.arm('INS $1','INS $3');
++    for(let i=0;i<4;i++)h.step();h.cpu.reset();for(let i=0;i<4;i++)h.step();
++    assert.deepEqual(Array.from(h.cpu.getBootLog(),r=>r.adr),[0x6001,0x6002]);
++});
++test('empty and armed downloads are disabled, capture blinks, completion is steady',()=>{
++    const h=machine(),button=h.elements.cpuDbg_bootDownload,icon=h.elements.cpuDbg_bootDownloadIcon;
++    h.dbg.setBootLogAddresses();assert.equal(button.disabled,true);h.arm('INS $1','INS $2');assert.equal(button.disabled,true);
++    h.step();h.step();h.dbg.syncBootLogControls();assert.equal(button.disabled,true);assert.equal(icon.classList.contains('blink'),true);
++    h.step();h.dbg.syncBootLogControls();assert.equal(button.disabled,false);assert.equal(icon.classList.contains('blink'),false);
++});
++test('download is guarded while empty or capturing and releases data after handing off the file',async()=>{
++    const h=machine();h.dbg.downloadBootLog();assert.equal(h.downloads.length,0);h.arm('','INS $1');
++    h.step();h.dbg.downloadBootLog();assert.equal(h.downloads.length,0);h.step();h.dbg.downloadBootLog();
++    assert.equal(h.downloads.length,1);assert.equal(h.cpu.BOOTparam().count,0);assert.equal(h.cpu.BOOTparam().bDebug_boot,false);
++    assert.equal(h.elements.cpuDbg_bootDownload.disabled,true);assert.equal(h.cpu.getBootLogBase64(),'');
++    const bytes=Buffer.from(await h.downloads[0].text(),'base64');
++    assert.equal(bytes.length,10);assert.equal(bytes.readUInt16LE(0),0x6000);assert.equal(bytes[2],0xEA);
++    h.dbg.downloadBootLog();assert.equal(h.downloads.length,1);
++    h.arm('','INS $4');h.step();assert.equal(h.cpu.BOOTparam().count,1,'new capture allocates a usable buffer');
++});
++test('INS zero matches after the 48-bit counter wraps',()=>{
++    const h=machine();h.cpu.setState({ic:0xFFFFFFFFFFFF});h.arm('INS $0','INS $1');
++    h.step();h.step();h.step();assert.deepEqual(Array.from(h.cpu.getBootLog(),r=>r.adr),[0x6001]);
++});
++test('legacy numeric CPU trigger APIs retain the PC default',()=>{
++    const h=machine();h.cpu.setBootLogTrigger(0x6001,true);h.step();h.step();
++    assert.equal(h.cpu.BOOTparam().count,1);assert.equal(h.cpu.BOOTparam().triggerType,'PC');
++    h.cpu.armBootLogTrigger(0x6003);h.step();h.step();assert.equal(h.cpu.getBootLog()[0].adr,0x6003);
++});
++test('manual disabling flushes a pending compressed instruction and enables download',()=>{
++    const h=machine(),entry=h.cpu.getBootLogFilters()[0];h.cpu.setState({pc:parseInt(entry.pc.slice(1),16)});
++    h.arm('','');h.step();h.dbg.toggleBootLogTrigger(h.elements.cpuDbg_bootTrigger);
++    assert.equal(h.cpu.BOOTparam().count,1);assert.equal(h.elements.cpuDbg_bootDownload.disabled,false);
++    assert.equal(h.elements.cpuDbg_bootDownloadIcon.classList.contains('blink'),false);
++});
++test('capture ending inside a compression group flushes its incomplete tail',()=>{
++    const h=machine(),entry=h.cpu.getBootLogFilters()[0];h.cpu.setState({pc:parseInt(entry.pc.slice(1),16),ic:0});
++    h.arm('','INS $1');h.step();h.step();
++    assert.equal(h.cpu.BOOTparam().complete,true);assert.equal(h.cpu.BOOTparam().count,1);
++});
