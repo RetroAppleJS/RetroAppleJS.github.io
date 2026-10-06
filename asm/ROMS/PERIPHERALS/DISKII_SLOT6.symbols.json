@@ -1,0 +1,674 @@
+{
+  "format": "RetroAppleJS-ASM-symbols",
+  "version": 2,
+  "source": "DISK II SLOT 6 - I/O AND BOOT0 TARGETS",
+  "scopeMode": "operand-address",
+  "scope": [
+    [
+      49376,
+      49391
+    ],
+    [
+      50688,
+      50943
+    ]
+  ],
+  "scopeHex": [
+    [
+      "$C0E0",
+      "$C0EF"
+    ],
+    [
+      "$C600",
+      "$C6FF"
+    ]
+  ],
+  "count": 90,
+  "symbols": [
+    {
+      "name": "D2_PH0_OFF",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49376,
+      "hex": "$C0E0"
+    },
+    {
+      "name": "COMMENT_D2_PH0_OFF",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49376,
+      "comment": "Disk II slot 6: release stepper phase 0; read or write activates this soft switch. Head movement depends on the phase sequence, not this address alone."
+    },
+    {
+      "name": "D2_PH0_ON",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49377,
+      "hex": "$C0E1"
+    },
+    {
+      "name": "COMMENT_D2_PH0_ON",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49377,
+      "comment": "Disk II slot 6: energize stepper phase 0; read or write activates this soft switch. Head movement depends on the phase sequence, not this address alone."
+    },
+    {
+      "name": "D2_PH1_OFF",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49378,
+      "hex": "$C0E2"
+    },
+    {
+      "name": "COMMENT_D2_PH1_OFF",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49378,
+      "comment": "Disk II slot 6: release stepper phase 1; read or write activates this soft switch. Head movement depends on the phase sequence, not this address alone."
+    },
+    {
+      "name": "D2_PH1_ON",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49379,
+      "hex": "$C0E3"
+    },
+    {
+      "name": "COMMENT_D2_PH1_ON",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49379,
+      "comment": "Disk II slot 6: energize stepper phase 1; read or write activates this soft switch. Head movement depends on the phase sequence, not this address alone."
+    },
+    {
+      "name": "D2_PH2_OFF",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49380,
+      "hex": "$C0E4"
+    },
+    {
+      "name": "COMMENT_D2_PH2_OFF",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49380,
+      "comment": "Disk II slot 6: release stepper phase 2; read or write activates this soft switch. Head movement depends on the phase sequence, not this address alone."
+    },
+    {
+      "name": "D2_PH2_ON",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49381,
+      "hex": "$C0E5"
+    },
+    {
+      "name": "COMMENT_D2_PH2_ON",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49381,
+      "comment": "Disk II slot 6: energize stepper phase 2; read or write activates this soft switch. Head movement depends on the phase sequence, not this address alone."
+    },
+    {
+      "name": "D2_PH3_OFF",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49382,
+      "hex": "$C0E6"
+    },
+    {
+      "name": "COMMENT_D2_PH3_OFF",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49382,
+      "comment": "Disk II slot 6: release stepper phase 3; read or write activates this soft switch. Head movement depends on the phase sequence, not this address alone."
+    },
+    {
+      "name": "D2_PH3_ON",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49383,
+      "hex": "$C0E7"
+    },
+    {
+      "name": "COMMENT_D2_PH3_ON",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49383,
+      "comment": "Disk II slot 6: energize stepper phase 3; read or write activates this soft switch. Head movement depends on the phase sequence, not this address alone."
+    },
+    {
+      "name": "D2_MOTOR_OFF",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49384,
+      "hex": "$C0E8"
+    },
+    {
+      "name": "COMMENT_D2_MOTOR_OFF",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49384,
+      "comment": "Disk II slot 6: Disable the selected drive motor; hardware spin-down is not instantaneous. Access is a control strobe, not a stored byte."
+    },
+    {
+      "name": "D2_MOTOR_ON",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49385,
+      "hex": "$C0E9"
+    },
+    {
+      "name": "COMMENT_D2_MOTOR_ON",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49385,
+      "comment": "Disk II slot 6: Enable the selected drive motor; allow spin-up time before reading or writing disk data."
+    },
+    {
+      "name": "D2_DRIVE1",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49386,
+      "hex": "$C0EA"
+    },
+    {
+      "name": "COMMENT_D2_DRIVE1",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49386,
+      "comment": "Disk II slot 6: Select physical drive 1 (connector 1; emulator drive index 0); shared controller signals now address this drive."
+    },
+    {
+      "name": "D2_DRIVE2",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49387,
+      "hex": "$C0EB"
+    },
+    {
+      "name": "COMMENT_D2_DRIVE2",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49387,
+      "comment": "Disk II slot 6: Select physical drive 2 (connector 2; emulator drive index 1); shared controller signals now address this drive."
+    },
+    {
+      "name": "D2_Q6L_DATA",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49388,
+      "hex": "$C0EC"
+    },
+    {
+      "name": "COMMENT_D2_Q6L_DATA",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49388,
+      "comment": "Disk II slot 6: Set Q6=0: with Q7=0 read the disk data latch (bit 7 marks a complete disk nibble); with Q7=1 shift/write the loaded byte. Current emulator advances its disk byte position here."
+    },
+    {
+      "name": "D2_Q6H_LOAD",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49389,
+      "hex": "$C0ED"
+    },
+    {
+      "name": "COMMENT_D2_Q6H_LOAD",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49389,
+      "comment": "Disk II slot 6: Set Q6=1: with Q7=0 select write-protect sensing; with Q7=1 load the write-data latch from the CPU bus. STA supplies the outgoing byte; this is not a general RAM register."
+    },
+    {
+      "name": "D2_Q7L_READ",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49390,
+      "hex": "$C0EE"
+    },
+    {
+      "name": "COMMENT_D2_Q7L_READ",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49390,
+      "comment": "Disk II slot 6: Set Q7=0: with Q6=0 select disk read; with Q6=1 select write-protect sense (hardware D7=1 means protected). Current emulator does not expose full hardware write-protect readback."
+    },
+    {
+      "name": "D2_Q7H_WRITE",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49391,
+      "hex": "$C0EF"
+    },
+    {
+      "name": "COMMENT_D2_Q7H_WRITE",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49391,
+      "comment": "Disk II slot 6: Set Q7=1: with Q6=0 select disk write/shift; with Q6=1 select write-data load. Switching Q7 changes the meaning of the Q6 strobes."
+    },
+    {
+      "name": "D2_GCR_CAND",
+      "type": "label",
+      "bytes": 2,
+      "value": 50694,
+      "hex": "$C606"
+    },
+    {
+      "name": "COMMENT_D2_GCR_CAND",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50694,
+      "comment": "Disk II BOOT0: Test a candidate disk nibble while building the inverse 6-and-2 GCR translation table."
+    },
+    {
+      "name": "D2_GCR_BITS",
+      "type": "label",
+      "bytes": 2,
+      "value": 50708,
+      "hex": "$C614"
+    },
+    {
+      "name": "COMMENT_D2_GCR_BITS",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50708,
+      "comment": "Disk II BOOT0: Shift and test the candidate bit pattern to determine whether it belongs in the GCR decode table."
+    },
+    {
+      "name": "D2_GCR_NEXT",
+      "type": "label",
+      "bytes": 2,
+      "value": 50718,
+      "hex": "$C61E"
+    },
+    {
+      "name": "COMMENT_D2_GCR_NEXT",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50718,
+      "comment": "Disk II BOOT0: Advance to the next candidate disk nibble; accepted values map to six-bit values in page 3."
+    },
+    {
+      "name": "D2_SEEK_ZERO",
+      "type": "label",
+      "bytes": 2,
+      "value": 50749,
+      "hex": "$C63D"
+    },
+    {
+      "name": "COMMENT_D2_SEEK_ZERO",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50749,
+      "comment": "Disk II BOOT0: Recalibrate the selected drive toward track 0 by cycling stepper phases and allowing mechanical settling time."
+    },
+    {
+      "name": "D2_READ_SECTOR",
+      "type": "label",
+      "bytes": 2,
+      "value": 50780,
+      "hex": "$C65C"
+    },
+    {
+      "name": "COMMENT_D2_READ_SECTOR",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50780,
+      "comment": "Disk II BOOT0: Sector-read entry; clear carry and scan disk nibbles for an address prologue. Boot parameters use $3D for sector, $41 for track, and $26/$27 for destination."
+    },
+    {
+      "name": "D2_SCAN_PROLOG",
+      "type": "label",
+      "bytes": 2,
+      "value": 50781,
+      "hex": "$C65D"
+    },
+    {
+      "name": "COMMENT_D2_SCAN_PROLOG",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50781,
+      "comment": "Disk II BOOT0: Save the address/data search phase in carry before scanning for a prologue; PHP preserves that phase across byte comparisons."
+    },
+    {
+      "name": "D2_WAIT_D5",
+      "type": "label",
+      "bytes": 2,
+      "value": 50782,
+      "hex": "$C65E"
+    },
+    {
+      "name": "COMMENT_D2_WAIT_D5",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50782,
+      "comment": "Disk II BOOT0: Poll the disk read latch until bit 7 is set, then look for the first prologue byte $D5."
+    },
+    {
+      "name": "D2_MATCH_D5",
+      "type": "label",
+      "bytes": 2,
+      "value": 50787,
+      "hex": "$C663"
+    },
+    {
+      "name": "COMMENT_D2_MATCH_D5",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50787,
+      "comment": "Disk II BOOT0: Check/recheck a candidate $D5 prologue byte after the polling read."
+    },
+    {
+      "name": "D2_WAIT_AA",
+      "type": "label",
+      "bytes": 2,
+      "value": 50791,
+      "hex": "$C667"
+    },
+    {
+      "name": "COMMENT_D2_WAIT_AA",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50791,
+      "comment": "Disk II BOOT0: Poll for a complete disk nibble and verify the second prologue byte $AA."
+    },
+    {
+      "name": "D2_WAIT_MARK",
+      "type": "label",
+      "bytes": 2,
+      "value": 50801,
+      "hex": "$C671"
+    },
+    {
+      "name": "COMMENT_D2_WAIT_MARK",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50801,
+      "comment": "Disk II BOOT0: Read the third prologue byte: $96 identifies an address field; $AD identifies a data field after the requested address was found."
+    },
+    {
+      "name": "D2_ADDR_START",
+      "type": "label",
+      "bytes": 2,
+      "value": 50819,
+      "hex": "$C683"
+    },
+    {
+      "name": "COMMENT_D2_ADDR_START",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50819,
+      "comment": "Disk II BOOT0: Start decoding the three useful 4-and-4 address-field bytes: volume, track and sector."
+    },
+    {
+      "name": "D2_ADDR_SAVE",
+      "type": "label",
+      "bytes": 2,
+      "value": 50821,
+      "hex": "$C685"
+    },
+    {
+      "name": "COMMENT_D2_ADDR_SAVE",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50821,
+      "comment": "Disk II BOOT0: Save the previous decoded address value; repeated passes leave the decoded track in $40 and sector in A."
+    },
+    {
+      "name": "D2_ADDR_ODD",
+      "type": "label",
+      "bytes": 2,
+      "value": 50823,
+      "hex": "$C687"
+    },
+    {
+      "name": "COMMENT_D2_ADDR_ODD",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50823,
+      "comment": "Disk II BOOT0: Read the first disk nibble of a 4-and-4 encoded address byte; rotate it to prepare the odd data bits."
+    },
+    {
+      "name": "D2_ADDR_EVEN",
+      "type": "label",
+      "bytes": 2,
+      "value": 50831,
+      "hex": "$C68F"
+    },
+    {
+      "name": "COMMENT_D2_ADDR_EVEN",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50831,
+      "comment": "Disk II BOOT0: Read the second address nibble and AND it with the rotated first nibble to reconstruct the address byte."
+    },
+    {
+      "name": "D2_AUX_START",
+      "type": "label",
+      "bytes": 2,
+      "value": 50854,
+      "hex": "$C6A6"
+    },
+    {
+      "name": "COMMENT_D2_AUX_START",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50854,
+      "comment": "Disk II BOOT0: Start reading the 86 auxiliary 6-and-2 values that carry the low two bits of each sector byte."
+    },
+    {
+      "name": "D2_AUX_INDEX",
+      "type": "label",
+      "bytes": 2,
+      "value": 50856,
+      "hex": "$C6A8"
+    },
+    {
+      "name": "COMMENT_D2_AUX_INDEX",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50856,
+      "comment": "Disk II BOOT0: Preserve the descending auxiliary-buffer index in $3C before a disk read overwrites Y."
+    },
+    {
+      "name": "D2_AUX_READ",
+      "type": "label",
+      "bytes": 2,
+      "value": 50858,
+      "hex": "$C6AA"
+    },
+    {
+      "name": "COMMENT_D2_AUX_READ",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50858,
+      "comment": "Disk II BOOT0: Poll for a complete disk nibble in Y, translate it through the GCR table, and XOR-decode the auxiliary stream."
+    },
+    {
+      "name": "D2_MAIN_INDEX",
+      "type": "label",
+      "bytes": 2,
+      "value": 50874,
+      "hex": "$C6BA"
+    },
+    {
+      "name": "COMMENT_D2_MAIN_INDEX",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50874,
+      "comment": "Disk II BOOT0: Preserve the destination byte index in $3C before reading the next main data nibble."
+    },
+    {
+      "name": "D2_MAIN_READ",
+      "type": "label",
+      "bytes": 2,
+      "value": 50876,
+      "hex": "$C6BC"
+    },
+    {
+      "name": "COMMENT_D2_MAIN_READ",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50876,
+      "comment": "Disk II BOOT0: Read and GCR/XOR-decode the main six-bit sector data; store it through the destination pointer at $26/$27."
+    },
+    {
+      "name": "D2_CHECK_READ",
+      "type": "label",
+      "bytes": 2,
+      "value": 50891,
+      "hex": "$C6CB"
+    },
+    {
+      "name": "COMMENT_D2_CHECK_READ",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50891,
+      "comment": "Disk II BOOT0: Read and translate the final checksum nibble; the accumulated XOR should reduce to zero."
+    },
+    {
+      "name": "D2_CHECKSUM",
+      "type": "label",
+      "bytes": 2,
+      "value": 50899,
+      "hex": "$C6D3"
+    },
+    {
+      "name": "COMMENT_D2_CHECKSUM",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50899,
+      "comment": "Disk II BOOT0: Reject a nonzero checksum and restart sector search; on success proceed to reconstruct the original eight-bit sector bytes."
+    },
+    {
+      "name": "D2_AUX_RESET",
+      "type": "label",
+      "bytes": 2,
+      "value": 50903,
+      "hex": "$C6D7"
+    },
+    {
+      "name": "COMMENT_D2_AUX_RESET",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50903,
+      "comment": "Disk II BOOT0: Reset the auxiliary-buffer index for distributing the stored low-bit pairs across the 256 sector bytes."
+    },
+    {
+      "name": "D2_RECOMBINE",
+      "type": "label",
+      "bytes": 2,
+      "value": 50905,
+      "hex": "$C6D9"
+    },
+    {
+      "name": "COMMENT_D2_RECOMBINE",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50905,
+      "comment": "Disk II BOOT0: Recover two low bits from the auxiliary buffer, rotate them into each six-bit byte, and write the reconstructed byte back to the sector buffer."
+    },
+    {
+      "name": "D2_BOOT0",
+      "type": "label",
+      "bytes": 2,
+      "value": 50688,
+      "hex": "$C600"
+    },
+    {
+      "name": "COMMENT_D2_BOOT0",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50688,
+      "comment": "Disk II BOOT0: Bootstrap entry and controller signature; build the GCR table, identify the slot, spin up drive 1, seek track 0, and load BOOT1."
+    },
+    {
+      "name": "D2_FIND_SLOT",
+      "type": "label",
+      "bytes": 2,
+      "value": 50721,
+      "hex": "$C621"
+    },
+    {
+      "name": "COMMENT_D2_FIND_SLOT",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50721,
+      "comment": "Disk II BOOT0: Call the Monitor RTS at $FF58 and inspect its return-address bytes on the stack to derive slot*16; TSX reads the stack pointer, not the processor status."
+    },
+    {
+      "name": "D2_INIT_IO",
+      "type": "label",
+      "bytes": 2,
+      "value": 50735,
+      "hex": "$C62F"
+    },
+    {
+      "name": "COMMENT_D2_INIT_IO",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50735,
+      "comment": "Disk II BOOT0: Configure Q7 low, Q6 low, drive 1, and motor on using slot-relative $C08x,X operands."
+    },
+    {
+      "name": "D2_INIT_BUFFER",
+      "type": "label",
+      "bytes": 2,
+      "value": 50770,
+      "hex": "$C652"
+    },
+    {
+      "name": "COMMENT_D2_INIT_BUFFER",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50770,
+      "comment": "Disk II BOOT0: Initialize the sector destination pointer to $0800 and the requested track and sector to zero."
+    },
+    {
+      "name": "D2_NEXT_SECTOR",
+      "type": "label",
+      "bytes": 2,
+      "value": 50925,
+      "hex": "$C6ED"
+    },
+    {
+      "name": "COMMENT_D2_NEXT_SECTOR",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50925,
+      "comment": "Disk II BOOT0: Advance the requested sector after decoding one page; compare against the sector count in the boot block at $0800."
+    },
+    {
+      "name": "D2_ENTER_BOOT1",
+      "type": "label",
+      "bytes": 2,
+      "value": 50936,
+      "hex": "$C6F8"
+    },
+    {
+      "name": "COMMENT_D2_ENTER_BOOT1",
+      "type": "comment",
+      "targetType": "label",
+      "value": 50936,
+      "comment": "Disk II BOOT0: Jump to $0801 to execute the next-stage loader; $0800 is its requested-sector count, not a BASIC program header."
+    }
+  ],
+  "notes": [
+    "All 16 slot-6 controller I/O offsets are named, plus 29 descriptive BOOT0 code-target labels derived from the supplied PROM file.",
+    "Names and comments resolve encoded operand addresses. ROM label records name branch/JSR/JMP targets; this operand-address table does not populate the listing lbl column.",
+    "Load the PC-scoped DISKII_PROM_ANNOTATED.symbols.json companion for descriptive listing labels, indexed operands and source comments. It retains the original PROM names as aliases.",
+    "Indexed slot-relative operands such as $C08C,X are not $C0EC until X=$60 is added. This dataset deliberately does not claim the $C080-$C08F slot-0/language-card addresses as Disk II.",
+    "For another slot s, controller base=$C080+$10*s and ROM base=$C000+$100*s. Relocate value, hex, scope and scopeHex consistently.",
+    "The Q6/Q7 descriptions identify hardware modes and note relevant simplifications in the current emulator; they do not promise emulation of every electrical side effect."
+  ],
+  "references": [
+    "Uploaded DISKII_PROM.symbols.json",
+    "https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/9d1e754b742c289d2a5e5d6d19144f992ae17c91/res/EMU_CARD_appledisk2.js",
+    "https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/9d1e754b742c289d2a5e5d6d19144f992ae17c91/asm/ROMS/PERIPHERALS/DISKII_PROM.S",
+    "https://yesterbits.com/media/pubs/AppleOrchard/articles/disk-ii-part-1-1983-apr.pdf",
+    "https://manuals.plus/m/c97e6936bc5fced400673b004ae56895591c5017086369e4a116b2448b6d58bd"
+  ]
+}

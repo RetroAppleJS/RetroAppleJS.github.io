@@ -1,0 +1,1830 @@
+{
+  "format": "RetroAppleJS-ASM-symbols",
+  "version": 2,
+  "source": "DISKII_PROM.S - DESCRIPTIVE SLOT 6 ANNOTATIONS",
+  "scopeMode": "instruction-pc",
+  "scope": [
+    [
+      50688,
+      50943
+    ]
+  ],
+  "scopeHex": [
+    [
+      "$C600",
+      "$C6FF"
+    ]
+  ],
+  "count": 208,
+  "symbols": [
+    {
+      "name": "D2_GCR_CAND",
+      "type": "label",
+      "bytes": 2,
+      "value": 50694,
+      "hex": "$C606"
+    },
+    {
+      "name": "D2_GCR_BITS",
+      "type": "label",
+      "bytes": 2,
+      "value": 50708,
+      "hex": "$C614"
+    },
+    {
+      "name": "D2_GCR_NEXT",
+      "type": "label",
+      "bytes": 2,
+      "value": 50718,
+      "hex": "$C61E"
+    },
+    {
+      "name": "D2_SEEK_ZERO",
+      "type": "label",
+      "bytes": 2,
+      "value": 50749,
+      "hex": "$C63D"
+    },
+    {
+      "name": "D2_READ_SECTOR",
+      "type": "label",
+      "bytes": 2,
+      "value": 50780,
+      "hex": "$C65C"
+    },
+    {
+      "name": "D2_SCAN_PROLOG",
+      "type": "label",
+      "bytes": 2,
+      "value": 50781,
+      "hex": "$C65D"
+    },
+    {
+      "name": "D2_WAIT_D5",
+      "type": "label",
+      "bytes": 2,
+      "value": 50782,
+      "hex": "$C65E"
+    },
+    {
+      "name": "D2_MATCH_D5",
+      "type": "label",
+      "bytes": 2,
+      "value": 50787,
+      "hex": "$C663"
+    },
+    {
+      "name": "D2_WAIT_AA",
+      "type": "label",
+      "bytes": 2,
+      "value": 50791,
+      "hex": "$C667"
+    },
+    {
+      "name": "D2_WAIT_MARK",
+      "type": "label",
+      "bytes": 2,
+      "value": 50801,
+      "hex": "$C671"
+    },
+    {
+      "name": "D2_ADDR_START",
+      "type": "label",
+      "bytes": 2,
+      "value": 50819,
+      "hex": "$C683"
+    },
+    {
+      "name": "D2_ADDR_SAVE",
+      "type": "label",
+      "bytes": 2,
+      "value": 50821,
+      "hex": "$C685"
+    },
+    {
+      "name": "D2_ADDR_ODD",
+      "type": "label",
+      "bytes": 2,
+      "value": 50823,
+      "hex": "$C687"
+    },
+    {
+      "name": "D2_ADDR_EVEN",
+      "type": "label",
+      "bytes": 2,
+      "value": 50831,
+      "hex": "$C68F"
+    },
+    {
+      "name": "D2_AUX_START",
+      "type": "label",
+      "bytes": 2,
+      "value": 50854,
+      "hex": "$C6A6"
+    },
+    {
+      "name": "D2_AUX_INDEX",
+      "type": "label",
+      "bytes": 2,
+      "value": 50856,
+      "hex": "$C6A8"
+    },
+    {
+      "name": "D2_AUX_READ",
+      "type": "label",
+      "bytes": 2,
+      "value": 50858,
+      "hex": "$C6AA"
+    },
+    {
+      "name": "D2_MAIN_INDEX",
+      "type": "label",
+      "bytes": 2,
+      "value": 50874,
+      "hex": "$C6BA"
+    },
+    {
+      "name": "D2_MAIN_READ",
+      "type": "label",
+      "bytes": 2,
+      "value": 50876,
+      "hex": "$C6BC"
+    },
+    {
+      "name": "D2_CHECK_READ",
+      "type": "label",
+      "bytes": 2,
+      "value": 50891,
+      "hex": "$C6CB"
+    },
+    {
+      "name": "D2_CHECKSUM",
+      "type": "label",
+      "bytes": 2,
+      "value": 50899,
+      "hex": "$C6D3"
+    },
+    {
+      "name": "D2_AUX_RESET",
+      "type": "label",
+      "bytes": 2,
+      "value": 50903,
+      "hex": "$C6D7"
+    },
+    {
+      "name": "D2_RECOMBINE",
+      "type": "label",
+      "bytes": 2,
+      "value": 50905,
+      "hex": "$C6D9"
+    },
+    {
+      "name": "D2_BOOT0",
+      "type": "label",
+      "bytes": 2,
+      "value": 50688,
+      "hex": "$C600"
+    },
+    {
+      "name": "D2_FIND_SLOT",
+      "type": "label",
+      "bytes": 2,
+      "value": 50721,
+      "hex": "$C621"
+    },
+    {
+      "name": "D2_INIT_IO",
+      "type": "label",
+      "bytes": 2,
+      "value": 50735,
+      "hex": "$C62F"
+    },
+    {
+      "name": "D2_INIT_BUFFER",
+      "type": "label",
+      "bytes": 2,
+      "value": 50770,
+      "hex": "$C652"
+    },
+    {
+      "name": "D2_NEXT_SECTOR",
+      "type": "label",
+      "bytes": 2,
+      "value": 50925,
+      "hex": "$C6ED"
+    },
+    {
+      "name": "D2_ENTER_BOOT1",
+      "type": "label",
+      "bytes": 2,
+      "value": 50936,
+      "hex": "$C6F8"
+    },
+    {
+      "name": "D2I_PH0_OFF",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49280,
+      "hex": "$C080"
+    },
+    {
+      "name": "COMMENT_D2I_PH0_OFF",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49280,
+      "comment": "Slot-relative Disk II operand base; add X=slot*16 (normally $60 for slot 6)."
+    },
+    {
+      "name": "D2I_PH0_ON",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49281,
+      "hex": "$C081"
+    },
+    {
+      "name": "COMMENT_D2I_PH0_ON",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49281,
+      "comment": "Slot-relative Disk II operand base; add X=slot*16 (normally $60 for slot 6)."
+    },
+    {
+      "name": "D2I_PH1_OFF",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49282,
+      "hex": "$C082"
+    },
+    {
+      "name": "COMMENT_D2I_PH1_OFF",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49282,
+      "comment": "Slot-relative Disk II operand base; add X=slot*16 (normally $60 for slot 6)."
+    },
+    {
+      "name": "D2I_PH1_ON",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49283,
+      "hex": "$C083"
+    },
+    {
+      "name": "COMMENT_D2I_PH1_ON",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49283,
+      "comment": "Slot-relative Disk II operand base; add X=slot*16 (normally $60 for slot 6)."
+    },
+    {
+      "name": "D2I_PH2_OFF",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49284,
+      "hex": "$C084"
+    },
+    {
+      "name": "COMMENT_D2I_PH2_OFF",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49284,
+      "comment": "Slot-relative Disk II operand base; add X=slot*16 (normally $60 for slot 6)."
+    },
+    {
+      "name": "D2I_PH2_ON",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49285,
+      "hex": "$C085"
+    },
+    {
+      "name": "COMMENT_D2I_PH2_ON",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49285,
+      "comment": "Slot-relative Disk II operand base; add X=slot*16 (normally $60 for slot 6)."
+    },
+    {
+      "name": "D2I_PH3_OFF",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49286,
+      "hex": "$C086"
+    },
+    {
+      "name": "COMMENT_D2I_PH3_OFF",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49286,
+      "comment": "Slot-relative Disk II operand base; add X=slot*16 (normally $60 for slot 6)."
+    },
+    {
+      "name": "D2I_PH3_ON",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49287,
+      "hex": "$C087"
+    },
+    {
+      "name": "COMMENT_D2I_PH3_ON",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49287,
+      "comment": "Slot-relative Disk II operand base; add X=slot*16 (normally $60 for slot 6)."
+    },
+    {
+      "name": "D2I_MOTOR_OFF",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49288,
+      "hex": "$C088"
+    },
+    {
+      "name": "COMMENT_D2I_MOTOR_OFF",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49288,
+      "comment": "Slot-relative Disk II operand base; add X=slot*16 (normally $60 for slot 6)."
+    },
+    {
+      "name": "D2I_MOTOR_ON",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49289,
+      "hex": "$C089"
+    },
+    {
+      "name": "COMMENT_D2I_MOTOR_ON",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49289,
+      "comment": "Slot-relative Disk II operand base; add X=slot*16 (normally $60 for slot 6)."
+    },
+    {
+      "name": "D2I_DRIVE1",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49290,
+      "hex": "$C08A"
+    },
+    {
+      "name": "COMMENT_D2I_DRIVE1",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49290,
+      "comment": "Slot-relative Disk II operand base; add X=slot*16 (normally $60 for slot 6)."
+    },
+    {
+      "name": "D2I_DRIVE2",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49291,
+      "hex": "$C08B"
+    },
+    {
+      "name": "COMMENT_D2I_DRIVE2",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49291,
+      "comment": "Slot-relative Disk II operand base; add X=slot*16 (normally $60 for slot 6)."
+    },
+    {
+      "name": "D2I_Q6L",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49292,
+      "hex": "$C08C"
+    },
+    {
+      "name": "COMMENT_D2I_Q6L",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49292,
+      "comment": "Slot-relative Disk II operand base; add X=slot*16 (normally $60 for slot 6)."
+    },
+    {
+      "name": "D2I_Q6H",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49293,
+      "hex": "$C08D"
+    },
+    {
+      "name": "COMMENT_D2I_Q6H",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49293,
+      "comment": "Slot-relative Disk II operand base; add X=slot*16 (normally $60 for slot 6)."
+    },
+    {
+      "name": "D2I_Q7L",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49294,
+      "hex": "$C08E"
+    },
+    {
+      "name": "COMMENT_D2I_Q7L",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49294,
+      "comment": "Slot-relative Disk II operand base; add X=slot*16 (normally $60 for slot 6)."
+    },
+    {
+      "name": "D2I_Q7H",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49295,
+      "hex": "$C08F"
+    },
+    {
+      "name": "COMMENT_D2I_Q7H",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49295,
+      "comment": "Slot-relative Disk II operand base; add X=slot*16 (normally $60 for slot 6)."
+    },
+    {
+      "name": "D2_SLOT16",
+      "type": "equ",
+      "bytes": 2,
+      "value": 43,
+      "hex": "$002B"
+    },
+    {
+      "name": "COMMENT_D2_SLOT16",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 43,
+      "comment": "Detected slot number multiplied by 16; used as the slot I/O index."
+    },
+    {
+      "name": "D2_TEMP",
+      "type": "equ",
+      "bytes": 2,
+      "value": 60,
+      "hex": "$003C"
+    },
+    {
+      "name": "COMMENT_D2_TEMP",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 60,
+      "comment": "BOOT0 scratch byte reused for GCR candidates, 4-and-4 address decode and data-buffer indexing."
+    },
+    {
+      "name": "D2_SECTOR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 61,
+      "hex": "$003D"
+    },
+    {
+      "name": "COMMENT_D2_SECTOR",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 61,
+      "comment": "Requested sector number; starts at zero and advances as boot pages are loaded."
+    },
+    {
+      "name": "D2_ADDR_TRACK",
+      "type": "equ",
+      "bytes": 2,
+      "value": 64,
+      "hex": "$0040"
+    },
+    {
+      "name": "COMMENT_D2_ADDR_TRACK",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 64,
+      "comment": "Track value decoded from the disk address field."
+    },
+    {
+      "name": "D2_TRACK",
+      "type": "equ",
+      "bytes": 2,
+      "value": 65,
+      "hex": "$0041"
+    },
+    {
+      "name": "COMMENT_D2_TRACK",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 65,
+      "comment": "Requested track number; initialized to zero for booting."
+    },
+    {
+      "name": "D2_DEST_LO",
+      "type": "equ",
+      "bytes": 2,
+      "value": 38,
+      "hex": "$0026"
+    },
+    {
+      "name": "COMMENT_D2_DEST_LO",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 38,
+      "comment": "Low byte of the BOOT0 destination pointer; reused Monitor zero-page storage."
+    },
+    {
+      "name": "D2_DEST_HI",
+      "type": "equ",
+      "bytes": 2,
+      "value": 39,
+      "hex": "$0027"
+    },
+    {
+      "name": "COMMENT_D2_DEST_HI",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 39,
+      "comment": "High byte of the BOOT0 destination pointer; initially $08."
+    },
+    {
+      "name": "CPU_STACK",
+      "type": "equ",
+      "bytes": 2,
+      "value": 256,
+      "hex": "$0100"
+    },
+    {
+      "name": "COMMENT_CPU_STACK",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 256,
+      "comment": "6502 stack page; inspect the pushed return address to identify the slot."
+    },
+    {
+      "name": "D2_GCR_TABLE",
+      "type": "equ",
+      "bytes": 2,
+      "value": 854,
+      "hex": "$0356"
+    },
+    {
+      "name": "COMMENT_D2_GCR_TABLE",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 854,
+      "comment": "Base used when constructing the sparse inverse 6-and-2 GCR conversion table."
+    },
+    {
+      "name": "D2_GCR_INDEX",
+      "type": "equ",
+      "bytes": 2,
+      "value": 726,
+      "hex": "$02D6"
+    },
+    {
+      "name": "COMMENT_D2_GCR_INDEX",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 726,
+      "comment": "GCR decode-table base biased by -$80, so raw nibble values in Y select the correct translation byte."
+    },
+    {
+      "name": "D2_AUX_BITS",
+      "type": "equ",
+      "bytes": 2,
+      "value": 768,
+      "hex": "$0300"
+    },
+    {
+      "name": "COMMENT_D2_AUX_BITS",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 768,
+      "comment": "86-byte temporary buffer carrying the low two bits of the 256 reconstructed sector bytes."
+    },
+    {
+      "name": "D2_BOOT_COUNT",
+      "type": "equ",
+      "bytes": 2,
+      "value": 2048,
+      "hex": "$0800"
+    },
+    {
+      "name": "COMMENT_D2_BOOT_COUNT",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 2048,
+      "comment": "Sector count in the first loaded boot block; this byte is not a BASIC program header."
+    },
+    {
+      "name": "D2_BOOT1",
+      "type": "equ",
+      "bytes": 2,
+      "value": 2049,
+      "hex": "$0801"
+    },
+    {
+      "name": "COMMENT_D2_BOOT1",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 2049,
+      "comment": "Entry point of the loaded next-stage disk bootstrap."
+    },
+    {
+      "name": "MON_WAIT",
+      "type": "equ",
+      "bytes": 2,
+      "value": 64680,
+      "hex": "$FCA8"
+    },
+    {
+      "name": "COMMENT_MON_WAIT",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 64680,
+      "comment": "Monitor busy-wait routine; A controls the delay."
+    },
+    {
+      "name": "MON_IORTS",
+      "type": "equ",
+      "bytes": 2,
+      "value": 65368,
+      "hex": "$FF58"
+    },
+    {
+      "name": "COMMENT_MON_IORTS",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 65368,
+      "comment": "Monitor RTS instruction called to leave a return address on the stack for slot detection."
+    },
+    {
+      "name": "LSLOT",
+      "type": "equ",
+      "bytes": 1,
+      "value": 43,
+      "hex": "$2B"
+    },
+    {
+      "name": "SLOTIO",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49280,
+      "hex": "$C080"
+    },
+    {
+      "name": "M.WAIT",
+      "type": "equ",
+      "bytes": 2,
+      "value": 64680,
+      "hex": "$FCA8"
+    },
+    {
+      "name": "DOS.1",
+      "type": "equ",
+      "bytes": 1,
+      "value": 60,
+      "hex": "$3C"
+    },
+    {
+      "name": "DOS.2",
+      "type": "equ",
+      "bytes": 1,
+      "value": 61,
+      "hex": "$3D"
+    },
+    {
+      "name": "DOS.3",
+      "type": "equ",
+      "bytes": 1,
+      "value": 64,
+      "hex": "$40"
+    },
+    {
+      "name": "DOS.4",
+      "type": "equ",
+      "bytes": 1,
+      "value": 65,
+      "hex": "$41"
+    },
+    {
+      "name": "L01",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50694,
+      "hex": "$C606"
+    },
+    {
+      "name": "L02",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50708,
+      "hex": "$C614"
+    },
+    {
+      "name": "L03",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50718,
+      "hex": "$C61E"
+    },
+    {
+      "name": "L04",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50749,
+      "hex": "$C63D"
+    },
+    {
+      "name": "L05",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50780,
+      "hex": "$C65C"
+    },
+    {
+      "name": "L06",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50781,
+      "hex": "$C65D"
+    },
+    {
+      "name": "L07",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50782,
+      "hex": "$C65E"
+    },
+    {
+      "name": "L08",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50787,
+      "hex": "$C663"
+    },
+    {
+      "name": "L09",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50791,
+      "hex": "$C667"
+    },
+    {
+      "name": "L10",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50801,
+      "hex": "$C671"
+    },
+    {
+      "name": "L11",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50819,
+      "hex": "$C683"
+    },
+    {
+      "name": "L12",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50821,
+      "hex": "$C685"
+    },
+    {
+      "name": "L13",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50823,
+      "hex": "$C687"
+    },
+    {
+      "name": "L14",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50831,
+      "hex": "$C68F"
+    },
+    {
+      "name": "L15",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50854,
+      "hex": "$C6A6"
+    },
+    {
+      "name": "L16",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50856,
+      "hex": "$C6A8"
+    },
+    {
+      "name": "L17",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50858,
+      "hex": "$C6AA"
+    },
+    {
+      "name": "L18",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50874,
+      "hex": "$C6BA"
+    },
+    {
+      "name": "L19",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50876,
+      "hex": "$C6BC"
+    },
+    {
+      "name": "L20",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50891,
+      "hex": "$C6CB"
+    },
+    {
+      "name": "L21",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50899,
+      "hex": "$C6D3"
+    },
+    {
+      "name": "L22",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50903,
+      "hex": "$C6D7"
+    },
+    {
+      "name": "L23",
+      "type": "equ",
+      "bytes": 2,
+      "value": 50905,
+      "hex": "$C6D9"
+    },
+    {
+      "name": "COMMENT_LSLOT",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 43,
+      "comment": "Last booted slot number * 16"
+    },
+    {
+      "name": "COMMENT_SLOTIO",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49280,
+      "comment": "Slot I/O"
+    },
+    {
+      "name": "COMMENT_M.WAIT",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 64680,
+      "comment": "ROM WAIT"
+    },
+    {
+      "name": "COMMENT_DOS.1",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 60,
+      "comment": "VARIABLE 1"
+    },
+    {
+      "name": "COMMENT_DOS.2",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 61,
+      "comment": "VARIABLE 2"
+    },
+    {
+      "name": "COMMENT_DOS.3",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 64,
+      "comment": "VARIABLE 3"
+    },
+    {
+      "name": "COMMENT_DOS.4",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 65,
+      "comment": "VARIABLE 4"
+    },
+    {
+      "name": "COMMENT_C600_7",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50688,
+      "comment": "Controller signature / boot entry; initial X=$20 is overwritten by X=$03 before GCR-table construction.",
+      "opcode": [
+        162,
+        32
+      ]
+    },
+    {
+      "name": "COMMENT_C606_8",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50694,
+      "comment": "Preserve the candidate disk-nibble pattern for the GCR validity test.",
+      "opcode": [
+        134,
+        60
+      ]
+    },
+    {
+      "name": "COMMENT_C609_9",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50697,
+      "comment": "Shift the candidate left to test adjacent bit positions.",
+      "opcode": [
+        10
+      ]
+    },
+    {
+      "name": "COMMENT_C60A_10",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50698,
+      "comment": "Set flags from candidate AND shifted candidate; BIT does not modify A.",
+      "opcode": [
+        36,
+        60
+      ]
+    },
+    {
+      "name": "COMMENT_C60C_11",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50700,
+      "comment": "Skip a candidate when the BIT test sets Z.",
+      "opcode": [
+        240,
+        16
+      ]
+    },
+    {
+      "name": "COMMENT_C60E_12",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50702,
+      "comment": "Combine the original candidate with the shifted candidate.",
+      "opcode": [
+        5,
+        60
+      ]
+    },
+    {
+      "name": "COMMENT_C610_13",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50704,
+      "comment": "Invert the candidate-test pattern to expose zero-bit runs.",
+      "opcode": [
+        73,
+        255
+      ]
+    },
+    {
+      "name": "COMMENT_C612_14",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50706,
+      "comment": "Ignore the endpoint bits while testing the interior bit pattern.",
+      "opcode": [
+        41,
+        126
+      ]
+    },
+    {
+      "name": "COMMENT_C61A_15",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50714,
+      "comment": "Map this accepted encoded nibble to the next six-bit value in the sparse page-3 GCR table.",
+      "opcode": [
+        157,
+        86,
+        3
+      ]
+    },
+    {
+      "name": "COMMENT_C621_16",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50721,
+      "comment": "Call a Monitor RTS so its return-address bytes remain in stack RAM for slot detection.",
+      "opcode": [
+        32,
+        88,
+        255
+      ]
+    },
+    {
+      "name": "COMMENT_C624_17",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50724,
+      "comment": "Copy the stack pointer into X; this does not copy the processor status register.",
+      "opcode": [
+        186
+      ]
+    },
+    {
+      "name": "COMMENT_C625_18",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50725,
+      "comment": "Read the saved return-address high byte from stack RAM to identify the controller slot.",
+      "opcode": [
+        189,
+        0,
+        1
+      ]
+    },
+    {
+      "name": "COMMENT_C62B_19",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50731,
+      "comment": "Fourth shift derives slot*16 for indexed accesses to the $C08x controller bases.",
+      "opcode": [
+        10
+      ]
+    },
+    {
+      "name": "COMMENT_C62F_20",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50735,
+      "comment": "Set Q7 low to select controller input/read mode; effective address is $C0EE when X=$60.",
+      "opcode": [
+        189,
+        142,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C632_21",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50738,
+      "comment": "Set Q6 low so Q7=0,Q6=0 selects disk-data reading; effective address is $C0EC when X=$60.",
+      "opcode": [
+        189,
+        140,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C635_22",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50741,
+      "comment": "Select drive 1 through the slot-relative drive-select strobe.",
+      "opcode": [
+        189,
+        138,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C638_23",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50744,
+      "comment": "Turn the selected drive motor on before head recalibration and sector reading.",
+      "opcode": [
+        189,
+        137,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C63B_24",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50747,
+      "comment": "Initialize the outward head-recalibration phase-step countdown.",
+      "opcode": [
+        160,
+        80
+      ]
+    },
+    {
+      "name": "COMMENT_C63D_25",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50749,
+      "comment": "Release the currently indexed stepper phase; X contains slot and phase offset.",
+      "opcode": [
+        189,
+        128,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C641_26",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50753,
+      "comment": "Reduce the countdown to phase number 0..3.",
+      "opcode": [
+        41,
+        3
+      ]
+    },
+    {
+      "name": "COMMENT_C643_27",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50755,
+      "comment": "Convert the phase number to the corresponding two-byte soft-switch offset.",
+      "opcode": [
+        10
+      ]
+    },
+    {
+      "name": "COMMENT_C647_28",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50759,
+      "comment": "Energize the newly selected phase; X now includes the selected phase offset.",
+      "opcode": [
+        189,
+        129,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C64A_29",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50762,
+      "comment": "Set A for a short mechanical-settling delay between stepper phase changes.",
+      "opcode": [
+        169,
+        86
+      ]
+    },
+    {
+      "name": "COMMENT_C64C_30",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50764,
+      "comment": "Call the Monitor delay with A=$56 (about 19,664 CPU cycles per step, not 1.9664 seconds).",
+      "opcode": [
+        32,
+        168,
+        252
+      ]
+    },
+    {
+      "name": "COMMENT_C650_31",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50768,
+      "comment": "Repeat outward phase stepping while the countdown remains nonnegative.",
+      "opcode": [
+        16,
+        235
+      ]
+    },
+    {
+      "name": "COMMENT_C652_32",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50770,
+      "comment": "Initialize the destination-pointer low byte for sector data at $0800.",
+      "opcode": [
+        133,
+        38
+      ]
+    },
+    {
+      "name": "COMMENT_C654_33",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50772,
+      "comment": "Initialize the requested sector to zero.",
+      "opcode": [
+        133,
+        61
+      ]
+    },
+    {
+      "name": "COMMENT_C656_34",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50774,
+      "comment": "Initialize the requested track to zero.",
+      "opcode": [
+        133,
+        65
+      ]
+    },
+    {
+      "name": "COMMENT_C65A_35",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50778,
+      "comment": "Initialize the destination-pointer high byte to $08.",
+      "opcode": [
+        133,
+        39
+      ]
+    },
+    {
+      "name": "COMMENT_C65D_36",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50781,
+      "comment": "Preserve carry, which records whether the search expects an address field or a data field.",
+      "opcode": [
+        8
+      ]
+    },
+    {
+      "name": "COMMENT_C65E_37",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50782,
+      "comment": "Poll disk data until a complete nibble is available in bit 7.",
+      "opcode": [
+        189,
+        140,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C661_38",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50785,
+      "comment": "BPL retries while bit 7 is clear; the nibble is not ready yet.",
+      "opcode": [
+        16,
+        251
+      ]
+    },
+    {
+      "name": "COMMENT_C665_39",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50789,
+      "comment": "Retry until the candidate equals the prologue byte $D5.",
+      "opcode": [
+        208,
+        247
+      ]
+    },
+    {
+      "name": "COMMENT_C667_40",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50791,
+      "comment": "Poll for the next complete prologue nibble.",
+      "opcode": [
+        189,
+        140,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C66A_41",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50794,
+      "comment": "BPL retries while bit 7 is clear.",
+      "opcode": [
+        16,
+        251
+      ]
+    },
+    {
+      "name": "COMMENT_C66E_42",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50798,
+      "comment": "Reject a second prologue byte other than $AA; recheck the candidate sequence.",
+      "opcode": [
+        208,
+        243
+      ]
+    },
+    {
+      "name": "COMMENT_C671_43",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50801,
+      "comment": "Poll for the third prologue byte identifying an address or data field.",
+      "opcode": [
+        189,
+        140,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C674_44",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50804,
+      "comment": "BPL retries while bit 7 is clear.",
+      "opcode": [
+        16,
+        251
+      ]
+    },
+    {
+      "name": "COMMENT_C678_45",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50808,
+      "comment": "Recognize $D5,$AA,$96 as an address-field prologue.",
+      "opcode": [
+        240,
+        9
+      ]
+    },
+    {
+      "name": "COMMENT_C67A_46",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50810,
+      "comment": "Restore the carry flag that identifies the current prologue-search phase.",
+      "opcode": [
+        40
+      ]
+    },
+    {
+      "name": "COMMENT_C67B_47",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50811,
+      "comment": "If no matching address was found, restart the address-field search.",
+      "opcode": [
+        144,
+        223
+      ]
+    },
+    {
+      "name": "COMMENT_C67F_48",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50815,
+      "comment": "Recognize the $AD data-field marker after the requested address was found.",
+      "opcode": [
+        240,
+        37
+      ]
+    },
+    {
+      "name": "COMMENT_C681_49",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50817,
+      "comment": "Restart the sector search when the data-field marker is not $AD.",
+      "opcode": [
+        208,
+        217
+      ]
+    },
+    {
+      "name": "COMMENT_C685_50",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50821,
+      "comment": "Save the previously decoded address-field byte; after three passes $40 holds the track.",
+      "opcode": [
+        133,
+        64
+      ]
+    },
+    {
+      "name": "COMMENT_C687_51",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50823,
+      "comment": "Poll for the first nibble of a 4-and-4 encoded address byte.",
+      "opcode": [
+        189,
+        140,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C68A_52",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50826,
+      "comment": "Wait until this first address nibble has bit 7 set.",
+      "opcode": [
+        16,
+        251
+      ]
+    },
+    {
+      "name": "COMMENT_C68F_53",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50831,
+      "comment": "Poll for the second nibble of the 4-and-4 address byte.",
+      "opcode": [
+        189,
+        140,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C692_54",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50834,
+      "comment": "Wait until the second address nibble has bit 7 set.",
+      "opcode": [
+        16,
+        251
+      ]
+    },
+    {
+      "name": "COMMENT_C694_55",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50836,
+      "comment": "Combine the second nibble with the rotated first nibble to reconstruct an address byte.",
+      "opcode": [
+        37,
+        60
+      ]
+    },
+    {
+      "name": "COMMENT_C697_56",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50839,
+      "comment": "Decode all three useful address bytes: volume, track and sector.",
+      "opcode": [
+        208,
+        236
+      ]
+    },
+    {
+      "name": "COMMENT_C699_57",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50841,
+      "comment": "Restore the saved search-phase carry flag after decoding the address field.",
+      "opcode": [
+        40
+      ]
+    },
+    {
+      "name": "COMMENT_C69A_58",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50842,
+      "comment": "Compare the decoded sector in A with the requested sector.",
+      "opcode": [
+        197,
+        61
+      ]
+    },
+    {
+      "name": "COMMENT_C69C_59",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50844,
+      "comment": "Resume scanning if this is not the requested sector.",
+      "opcode": [
+        208,
+        190
+      ]
+    },
+    {
+      "name": "COMMENT_C69E_60",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50846,
+      "comment": "Load the decoded track from the preceding address-field byte.",
+      "opcode": [
+        165,
+        64
+      ]
+    },
+    {
+      "name": "COMMENT_C6A0_61",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50848,
+      "comment": "Compare the decoded track with the requested track.",
+      "opcode": [
+        197,
+        65
+      ]
+    },
+    {
+      "name": "COMMENT_C6A2_62",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50850,
+      "comment": "Resume scanning if this is not the requested track.",
+      "opcode": [
+        208,
+        184
+      ]
+    },
+    {
+      "name": "COMMENT_C6A4_63",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50852,
+      "comment": "With a matching address, preserve carry set and search for its following data prologue.",
+      "opcode": [
+        176,
+        183
+      ]
+    },
+    {
+      "name": "COMMENT_C6A6_64",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50854,
+      "comment": "Prepare to read the 86 auxiliary six-bit values into the low-bit buffer.",
+      "opcode": [
+        160,
+        86
+      ]
+    },
+    {
+      "name": "COMMENT_C6A8_65",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50856,
+      "comment": "Save the auxiliary-buffer index while Y is used for a raw disk nibble.",
+      "opcode": [
+        132,
+        60
+      ]
+    },
+    {
+      "name": "COMMENT_C6AA_66",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50858,
+      "comment": "Read an auxiliary disk nibble into Y for GCR translation.",
+      "opcode": [
+        188,
+        140,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C6AF_67",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50863,
+      "comment": "Translate the raw nibble and accumulate XOR decoding of the auxiliary data stream.",
+      "opcode": [
+        89,
+        214,
+        2
+      ]
+    },
+    {
+      "name": "COMMENT_C6B2_68",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50866,
+      "comment": "Recover the saved auxiliary-buffer index.",
+      "opcode": [
+        164,
+        60
+      ]
+    },
+    {
+      "name": "COMMENT_C6B5_69",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50869,
+      "comment": "Store decoded auxiliary bits in the page-3 temporary buffer.",
+      "opcode": [
+        153,
+        0,
+        3
+      ]
+    },
+    {
+      "name": "COMMENT_C6BA_70",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50874,
+      "comment": "Save the main-sector destination index while Y is used for a raw disk nibble.",
+      "opcode": [
+        132,
+        60
+      ]
+    },
+    {
+      "name": "COMMENT_C6BC_71",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50876,
+      "comment": "Read the next main data nibble into Y for GCR translation.",
+      "opcode": [
+        188,
+        140,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C6C1_72",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50881,
+      "comment": "Translate the main data nibble and apply the cumulative XOR decode.",
+      "opcode": [
+        89,
+        214,
+        2
+      ]
+    },
+    {
+      "name": "COMMENT_C6C4_73",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50884,
+      "comment": "Recover the saved sector-buffer index.",
+      "opcode": [
+        164,
+        60
+      ]
+    },
+    {
+      "name": "COMMENT_C6C6_74",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50886,
+      "comment": "Store the decoded six-bit value through the BOOT0 destination pointer.",
+      "opcode": [
+        145,
+        38
+      ]
+    },
+    {
+      "name": "COMMENT_C6CB_75",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50891,
+      "comment": "Read the final checksum nibble into Y.",
+      "opcode": [
+        188,
+        140,
+        192
+      ]
+    },
+    {
+      "name": "COMMENT_C6D0_76",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50896,
+      "comment": "Translate and XOR the checksum nibble; a valid data stream leaves A=0.",
+      "opcode": [
+        89,
+        214,
+        2
+      ]
+    },
+    {
+      "name": "COMMENT_C6DA_77",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50906,
+      "comment": "When X runs below zero, reload the 86-byte auxiliary index for the next low-bit distribution pass.",
+      "opcode": [
+        48,
+        251
+      ]
+    },
+    {
+      "name": "COMMENT_C6DC_78",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50908,
+      "comment": "Load the six-bit sector value before restoring its two missing low bits.",
+      "opcode": [
+        177,
+        38
+      ]
+    },
+    {
+      "name": "COMMENT_C6DE_79",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50910,
+      "comment": "Shift the next auxiliary low bit into carry.",
+      "opcode": [
+        94,
+        0,
+        3
+      ]
+    },
+    {
+      "name": "COMMENT_C6E2_80",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50914,
+      "comment": "Shift the second auxiliary low bit into carry.",
+      "opcode": [
+        94,
+        0,
+        3
+      ]
+    },
+    {
+      "name": "COMMENT_C6E6_81",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50918,
+      "comment": "Write the reconstructed eight-bit byte back through the destination pointer.",
+      "opcode": [
+        145,
+        38
+      ]
+    },
+    {
+      "name": "COMMENT_C6EB_82",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50923,
+      "comment": "Advance the destination pointer by one 256-byte page.",
+      "opcode": [
+        230,
+        39
+      ]
+    },
+    {
+      "name": "COMMENT_C6ED_83",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50925,
+      "comment": "Advance the requested sector for the next boot page.",
+      "opcode": [
+        230,
+        61
+      ]
+    },
+    {
+      "name": "COMMENT_C6EF_84",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50927,
+      "comment": "Load the updated sector number.",
+      "opcode": [
+        165,
+        61
+      ]
+    },
+    {
+      "name": "COMMENT_C6F1_85",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50929,
+      "comment": "Compare against the sector count stored in the boot block at $0800.",
+      "opcode": [
+        205,
+        0,
+        8
+      ]
+    },
+    {
+      "name": "COMMENT_C6F8_86",
+      "type": "comment",
+      "targetType": "instruction",
+      "value": 50936,
+      "comment": "Execute BOOT1 at $0801 after the requested initial boot pages have been decoded.",
+      "opcode": [
+        76,
+        1,
+        8
+      ]
+    }
+  ],
+  "notes": [
+    "PC-scoped companion for DISKII_SLOT6.symbols.json. Load with override when replacing the original uploaded PROM table.",
+    "Every original symbol name is retained. Original L01..L23 names remain EQU aliases, while descriptive labels populate lbl and branch operands.",
+    "All original opcode guards are retained. Comments correct BIT, TSX, BPL, the Monitor step delay, BOOT0 scratch pointers, and the $0800/$0801 boot-block meanings.",
+    "The D2I_* aliases are meaningful only inside this ROM scope; X supplies slot*16 and, during seeks, the stepper phase offset.",
+    "No card-I/O addresses are moved into a global PC scope, and the two hardware datasets remain independent."
+  ],
+  "references": [
+    "Uploaded DISKII_PROM.symbols.json",
+    "https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/9d1e754b742c289d2a5e5d6d19144f992ae17c91/res/EMU_CARD_appledisk2.js",
+    "https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/9d1e754b742c289d2a5e5d6d19144f992ae17c91/asm/ROMS/PERIPHERALS/DISKII_PROM.S",
+    "https://yesterbits.com/media/pubs/AppleOrchard/articles/disk-ii-part-1-1983-apr.pdf",
+    "https://manuals.plus/m/c97e6936bc5fced400673b004ae56895591c5017086369e4a116b2448b6d58bd"
+  ]
+}

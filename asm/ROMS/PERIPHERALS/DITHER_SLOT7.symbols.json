@@ -1,0 +1,423 @@
+{
+  "format": "RetroAppleJS-ASM-symbols",
+  "version": 2,
+  "source": "DITHER / DITHER2 SLOT 7 - I/O AND HGR SUPPORT",
+  "scopeMode": "operand-address",
+  "scope": [
+    [
+      8192,
+      8192
+    ],
+    [
+      16384,
+      16384
+    ],
+    [
+      49232,
+      49239
+    ],
+    [
+      49392,
+      49407
+    ]
+  ],
+  "scopeHex": [
+    [
+      "$2000",
+      "$2000"
+    ],
+    [
+      "$4000",
+      "$4000"
+    ],
+    [
+      "$C050",
+      "$C057"
+    ],
+    [
+      "$C0F0",
+      "$C0FF"
+    ]
+  ],
+  "count": 52,
+  "symbols": [
+    {
+      "name": "DITH_SYNC_THR",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49392,
+      "hex": "$C0F0"
+    },
+    {
+      "name": "COMMENT_DITH_SYNC_THR",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49392,
+      "comment": "DITHER slot 7: RD returns video-sync state in D7 ($00 low, $80 high) and stops capture; WR stops capture and latches the 8-bit threshold. V1 uses the threshold for monochrome capture; V2 retains it and uses it for luminance-source fallback."
+    },
+    {
+      "name": "DITH_UNUSED_1",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49393,
+      "hex": "$C0F1"
+    },
+    {
+      "name": "COMMENT_DITH_UNUSED_1",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49393,
+      "comment": "DITHER slot 7 offset $01: unused by both current drivers; RD returns $00 and WR has no effect. This is not an additional capture, color or timing register."
+    },
+    {
+      "name": "DITH_UNUSED_2",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49394,
+      "hex": "$C0F2"
+    },
+    {
+      "name": "COMMENT_DITH_UNUSED_2",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49394,
+      "comment": "DITHER slot 7 offset $02: unused by both current drivers; RD returns $00 and WR has no effect. This is not an additional capture, color or timing register."
+    },
+    {
+      "name": "DITH_UNUSED_3",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49395,
+      "hex": "$C0F3"
+    },
+    {
+      "name": "COMMENT_DITH_UNUSED_3",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49395,
+      "comment": "DITHER slot 7 offset $03: unused by both current drivers; RD returns $00 and WR has no effect. This is not an additional capture, color or timing register."
+    },
+    {
+      "name": "DITH_UNUSED_4",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49396,
+      "hex": "$C0F4"
+    },
+    {
+      "name": "COMMENT_DITH_UNUSED_4",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49396,
+      "comment": "DITHER slot 7 offset $04: unused by both current drivers; RD returns $00 and WR has no effect. This is not an additional capture, color or timing register."
+    },
+    {
+      "name": "DITH_UNUSED_5",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49397,
+      "hex": "$C0F5"
+    },
+    {
+      "name": "COMMENT_DITH_UNUSED_5",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49397,
+      "comment": "DITHER slot 7 offset $05: unused by both current drivers; RD returns $00 and WR has no effect. This is not an additional capture, color or timing register."
+    },
+    {
+      "name": "DITH_UNUSED_6",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49398,
+      "hex": "$C0F6"
+    },
+    {
+      "name": "COMMENT_DITH_UNUSED_6",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49398,
+      "comment": "DITHER slot 7 offset $06: unused by both current drivers; RD returns $00 and WR has no effect. This is not an additional capture, color or timing register."
+    },
+    {
+      "name": "DITH_UNUSED_7",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49399,
+      "hex": "$C0F7"
+    },
+    {
+      "name": "COMMENT_DITH_UNUSED_7",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49399,
+      "comment": "DITHER slot 7 offset $07: unused by both current drivers; RD returns $00 and WR has no effect. This is not an additional capture, color or timing register."
+    },
+    {
+      "name": "DITH_CAPTURE",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49400,
+      "hex": "$C0F8"
+    },
+    {
+      "name": "COMMENT_DITH_CAPTURE",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49400,
+      "comment": "DITHER slot 7: RD enables capture and copies a frame into the currently selected HGR page; emulator return value is $00. WR is ignored. V1 outputs monochrome bits 0-6; V2 preserves supplied HGR color phase bit 7."
+    },
+    {
+      "name": "DITH_UNUSED_9",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49401,
+      "hex": "$C0F9"
+    },
+    {
+      "name": "COMMENT_DITH_UNUSED_9",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49401,
+      "comment": "DITHER slot 7 offset $09: unused by both current drivers; RD returns $00 and WR has no effect. This is not an additional capture, color or timing register."
+    },
+    {
+      "name": "DITH_UNUSED_A",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49402,
+      "hex": "$C0FA"
+    },
+    {
+      "name": "COMMENT_DITH_UNUSED_A",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49402,
+      "comment": "DITHER slot 7 offset $0A: unused by both current drivers; RD returns $00 and WR has no effect. This is not an additional capture, color or timing register."
+    },
+    {
+      "name": "DITH_UNUSED_B",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49403,
+      "hex": "$C0FB"
+    },
+    {
+      "name": "COMMENT_DITH_UNUSED_B",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49403,
+      "comment": "DITHER slot 7 offset $0B: unused by both current drivers; RD returns $00 and WR has no effect. This is not an additional capture, color or timing register."
+    },
+    {
+      "name": "DITH_UNUSED_C",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49404,
+      "hex": "$C0FC"
+    },
+    {
+      "name": "COMMENT_DITH_UNUSED_C",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49404,
+      "comment": "DITHER slot 7 offset $0C: unused by both current drivers; RD returns $00 and WR has no effect. This is not an additional capture, color or timing register."
+    },
+    {
+      "name": "DITH_UNUSED_D",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49405,
+      "hex": "$C0FD"
+    },
+    {
+      "name": "COMMENT_DITH_UNUSED_D",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49405,
+      "comment": "DITHER slot 7 offset $0D: unused by both current drivers; RD returns $00 and WR has no effect. This is not an additional capture, color or timing register."
+    },
+    {
+      "name": "DITH_UNUSED_E",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49406,
+      "hex": "$C0FE"
+    },
+    {
+      "name": "COMMENT_DITH_UNUSED_E",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49406,
+      "comment": "DITHER slot 7 offset $0E: unused by both current drivers; RD returns $00 and WR has no effect. This is not an additional capture, color or timing register."
+    },
+    {
+      "name": "DITH_UNUSED_F",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49407,
+      "hex": "$C0FF"
+    },
+    {
+      "name": "COMMENT_DITH_UNUSED_F",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49407,
+      "comment": "DITHER slot 7 offset $0F: unused by both current drivers; RD returns $00 and WR has no effect. This is not an additional capture, color or timing register."
+    },
+    {
+      "name": "VIDEO_GRAPHICS",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49232,
+      "hex": "$C050"
+    },
+    {
+      "name": "COMMENT_VIDEO_GRAPHICS",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49232,
+      "comment": "Apple II motherboard soft switch: select graphics display; pair with HIRES and the desired page for HGR."
+    },
+    {
+      "name": "VIDEO_TEXT",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49233,
+      "hex": "$C051"
+    },
+    {
+      "name": "COMMENT_VIDEO_TEXT",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49233,
+      "comment": "Apple II motherboard soft switch: select text display; this is not a DITHER threshold or capture register."
+    },
+    {
+      "name": "VIDEO_FULL",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49234,
+      "hex": "$C052"
+    },
+    {
+      "name": "COMMENT_VIDEO_FULL",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49234,
+      "comment": "Apple II motherboard soft switch: disable mixed text/graphics mode and display a full graphics screen."
+    },
+    {
+      "name": "VIDEO_MIXED",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49235,
+      "hex": "$C053"
+    },
+    {
+      "name": "COMMENT_VIDEO_MIXED",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49235,
+      "comment": "Apple II motherboard soft switch: enable mixed graphics/text display; the digitizer still captures its full HGR frame."
+    },
+    {
+      "name": "VIDEO_PAGE1",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49236,
+      "hex": "$C054"
+    },
+    {
+      "name": "COMMENT_VIDEO_PAGE1",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49236,
+      "comment": "Apple II motherboard soft switch: select video page 1; both DITHER drivers follow this page state and target HGR RAM at $2000."
+    },
+    {
+      "name": "VIDEO_PAGE2",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49237,
+      "hex": "$C055"
+    },
+    {
+      "name": "COMMENT_VIDEO_PAGE2",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49237,
+      "comment": "Apple II motherboard soft switch: select video page 2; both DITHER drivers follow this page state and target HGR RAM at $4000."
+    },
+    {
+      "name": "VIDEO_LORES",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49238,
+      "hex": "$C056"
+    },
+    {
+      "name": "COMMENT_VIDEO_LORES",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49238,
+      "comment": "Apple II motherboard soft switch: select low-resolution graphics display; the DITHER drivers write HGR buffers rather than a private lores buffer."
+    },
+    {
+      "name": "VIDEO_HIRES",
+      "type": "equ",
+      "bytes": 2,
+      "value": 49239,
+      "hex": "$C057"
+    },
+    {
+      "name": "COMMENT_VIDEO_HIRES",
+      "type": "comment",
+      "targetType": "equ",
+      "value": 49239,
+      "comment": "Apple II motherboard soft switch: select high-resolution graphics display; captured data uses Apple II HGR memory layout."
+    },
+    {
+      "name": "HGR_PAGE1",
+      "type": "label",
+      "bytes": 2,
+      "value": 8192,
+      "hex": "$2000"
+    },
+    {
+      "name": "COMMENT_HGR_PAGE1",
+      "type": "comment",
+      "targetType": "label",
+      "value": 8192,
+      "comment": "First address of the page-1 HGR buffer ($2000-$3FFF); selected by VIDEO_PAGE1. Scan lines use the Apple II interleaved layout rather than consecutive linear rows."
+    },
+    {
+      "name": "HGR_PAGE2",
+      "type": "label",
+      "bytes": 2,
+      "value": 16384,
+      "hex": "$4000"
+    },
+    {
+      "name": "COMMENT_HGR_PAGE2",
+      "type": "comment",
+      "targetType": "label",
+      "value": 16384,
+      "comment": "First address of the page-2 HGR buffer ($4000-$5FFF); selected by VIDEO_PAGE2. V2 preserves the HGR color-phase bit when copying a prepared page."
+    }
+  ],
+  "notes": [
+    "All 16 slot-7 offsets are named. Only $C0F0 and $C0F8 implement card operations in the current DITHER and DITHER2 drivers; 14 offsets are explicitly unused.",
+    "This table covers both current emulator variants and distinguishes RD/WR behavior in each comment. The color converter controls in the host UI are not guest-visible slot registers.",
+    "VIDEO_* symbols are shared Apple II motherboard switches, not registers on the DITHER card. HGR_PAGE1/2 label only the two buffer base addresses, not every byte in their RAM pages.",
+    "Read-only debugger peeks (ctx.bRO=true) do not stop or start capture. Ordinary emulated CPU reads have the side effects described in the comments.",
+    "No DSCAN RAM entry-point labels are invented: those would need a separate instruction-pc table for the exact loaded software version.",
+    "For another slot s, relocate only $C0F0-$C0FF using base=$C080+$10*s. The shared VIDEO_* and HGR_PAGE* addresses do not move.",
+    "The unused-offset and sync-value claims describe the current RetroAppleJS drivers, rather than undocumented electrical behavior of every historical board."
+  ],
+  "references": [
+    "https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/9d1e754b742c289d2a5e5d6d19144f992ae17c91/res/EMU_CARD_dithertizer.js",
+    "https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/9d1e754b742c289d2a5e5d6d19144f992ae17c91/res/EMU_CARD_dithertizer2.js",
+    "https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/9d1e754b742c289d2a5e5d6d19144f992ae17c91/asm/ROMS/PERIPHERALS/DITHERIZER_TEST.S"
+  ]
+}
