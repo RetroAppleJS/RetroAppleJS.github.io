@@ -19556,11 +19556,12 @@ function Apple2Debug()
 
     // A symbol export from the assembler can be attached to the live trace.
     // Labels populate lbl, label/EQU values can replace numeric operands, and
-    // instruction comments populate com.  The maps are address keyed to keep
-    // lookup cost constant while the live CPU is running.
-    var loadedLabels = new Array(0x10000);
-    var loadedSymbols = new Array(0x10000);
-    var loadedComments = new Array(0x10000);
+    // instruction comments populate com. Scope indexes keep PC and operand
+    // namespaces independent and avoid scanning unrelated tables per row.
+    var loadedSymbolTables = [];
+    var pcSymbolAddressIndex = new Array(0x10000);
+    var operandSymbolAddressIndex = new Array(0x10000);
+    var disassemblyPC = 0;
     var loadedSymbolNames = Object.create(null);
     var symbolState = {
          file:""
@@ -19686,42 +19687,65 @@ function Apple2Debug()
         return null;
     }
 
-    function symbolAtValue(value)
+    function symbolAtValue(value,pc)
     {
         value &= 0xffff;
-        if(loadedSymbols[value]) return loadedSymbols[value];
+        var name = tableValueAt(pcSymbolAddressIndex,pc,"symbols",value);
+        if(name) return name;
         var symlink = currentAsmSymlink();
         return symlink && typeof(symlink[value])!=="undefined" ? symlink[value] : null;
     }
 
+    function tableValueAt(index,scopeAddress,field,value)
+    {
+        var tables = index[scopeAddress & 0xffff] || [];
+        for(var i=tables.length-1;i>=0;i--)
+        {
+            var found = tables[i][field][value & 0xffff];
+            if(found) return found;
+        }
+        return null;
+    }
+
     function labelAtAddress(addr)
     {
-        return loadedLabels[addr & 0xffff] || "";
+        return tableValueAt(pcSymbolAddressIndex,addr,"labels",addr) || "";
+    }
+
+    function commentsAtValue(index,scopeAddress,value,d)
+    {
+        var tables = index[scopeAddress & 0xffff] || [];
+        var bytes = [d.b0,d.b1,d.b2];
+        var out = [];
+        for(var t=0;t<tables.length;t++)
+        {
+            var records = tables[t].comments[value & 0xffff] || [];
+            for(var i=0;i<records.length;i++)
+            {
+                var record = records[i];
+                var opcode = record.opcode || [];
+                var match = true;
+                for(var j=0;j<opcode.length;j++)
+                {
+                    if((bytes[j]&0xff)!==(opcode[j]&0xff))
+                    {
+                        match = false;
+                        break;
+                    }
+                }
+                if(match && record.text && out.indexOf(record.text)<0) out.push(record.text);
+            }
+        }
+        return out;
     }
 
     function commentAtAddress(addr,d)
     {
-        var records = loadedComments[addr & 0xffff];
-        if(!records || !records.length) return "";
-        var bytes = [d.b0,d.b1,d.b2];
-        var out = [];
-
-        for(var i=0;i<records.length;i++)
-        {
-            var record = records[i];
-            var opcode = record.opcode || [];
-            var match = true;
-            for(var j=0;j<opcode.length;j++)
-            {
-                if((bytes[j]&0xff)!==(opcode[j]&0xff))
-                {
-                    match = false;
-                    break;
-                }
-            }
-            if(match && record.text) out.push(record.text);
-        }
-        return out.join(" ");
+        var source = commentsAtValue(pcSymbolAddressIndex,addr,addr,d).join(" ");
+        // val is an encoded address (or resolved branch target), never an
+        // immediate, accumulator, implied operand or runtime effective address.
+        var operand = d.val===null ? "" : commentsAtValue(operandSymbolAddressIndex,d.val,d.val,d).join(" | ");
+        return source && operand ? source+" | "+operand : source || operand;
     }
 
     function invalidateDecodeCache()
@@ -19756,10 +19780,14 @@ function Apple2Debug()
                 case "ind":
                 case "iny":
                 case "inx":
-                    var name = symbolAtValue(opd);
-                    if(name) return name+" <small>"+op+"</small>";
-                    name = symbolAtValue((opd-1)&0xffff);
-                    if(name) return name+"+1 <small>"+op+"</small>";
+                    var name = symbolAtValue(opd,disassemblyPC);
+                    if(name) return name;
+                    name = symbolAtValue((opd-1)&0xffff,disassemblyPC);
+                    if(name) return name+"+1";
+                    // Hardware registers require an exact match: MB1_ORB+1
+                    // must not masquerade as an unnamed neighbouring register.
+                    name = tableValueAt(operandSymbolAddressIndex,opd,"symbols",opd);
+                    if(name) return name;
                 break;
             }
             return op;
@@ -19838,6 +19866,7 @@ function Apple2Debug()
                 break;
         }
 
+        disassemblyPC = addr;
         var ret = oDASM_debug.disassemble({
              "code_arr":[b0,b1,b2]
             ,"pc":addr
@@ -19879,15 +19908,20 @@ function Apple2Debug()
         return parseInt(s,16) & 0xffff;
     }
 
-    function parseSymbolValue(value)
+    function parseSymbolValue(value,strict)
     {
-        if(typeof(value)==="number" && Number.isFinite(value)) return value&0xffff;
-        var s = String(value==null ? "" : value).trim();
-        if(/^\$[0-9a-f]+$/i.test(s)) return parseInt(s.substring(1),16)&0xffff;
-        if(/^0x[0-9a-f]+$/i.test(s)) return parseInt(s.substring(2),16)&0xffff;
-        if(/^[0-9]+$/.test(s)) return parseInt(s,10)&0xffff;
-        if(/^[0-9a-f]+$/i.test(s)) return parseInt(s,16)&0xffff;
-        return null;
+        var parsed = null;
+        if(typeof(value)==="number" && Number.isFinite(value)) parsed = value;
+        else
+        {
+            var s = String(value==null ? "" : value).trim();
+            if(/^\$[0-9a-f]+$/i.test(s)) parsed = parseInt(s.substring(1),16);
+            else if(/^0x[0-9a-f]+$/i.test(s)) parsed = parseInt(s.substring(2),16);
+            else if(/^[0-9]+$/.test(s)) parsed = parseInt(s,10);
+            else if(/^[0-9a-f]+$/i.test(s)) parsed = parseInt(s,16);
+        }
+        if(parsed===null || (strict && (!Number.isInteger(parsed) || parsed<0 || parsed>0xffff))) return null;
+        return parsed&0xffff;
     }
 
     function parseSymbolByte(value)
@@ -19900,23 +19934,105 @@ function Apple2Debug()
         return null;
     }
 
-    function commitLoadedSymbols(nextLabels,nextSymbols,nextComments,nextNames,state)
+    function parseSymbolScope(raw)
     {
-        loadedLabels = nextLabels;
-        loadedSymbols = nextSymbols;
-        loadedComments = nextComments;
-        loadedSymbolNames = nextNames || Object.create(null);
-        symbolState = state;
+        var scope = raw && raw.scope;
+        if(scope===undefined) return [[0,0xffff]];
+        if(!Array.isArray(scope) || !scope.length) throw new Error("Symbol scope must contain address ranges");
+        return scope.map(function(range)
+        {
+            if(!Array.isArray(range) || range.length!==2) throw new Error("Invalid symbol scope range");
+            var start = parseSymbolValue(range[0],true);
+            var end = parseSymbolValue(range[1],true);
+            if(start===null || end===null || start>end) throw new Error("Invalid symbol scope range");
+            return [start,end];
+        });
+    }
+
+    function symbolScopesOverlap(a,b)
+    {
+        if(a.scopeMode!==b.scopeMode) return false;
+        for(var i=0;i<a.scope.length;i++)
+            for(var j=0;j<b.scope.length;j++)
+                if(a.scope[i][0]<=b.scope[j][1] && b.scope[j][0]<=a.scope[i][1]) return true;
+        return false;
+    }
+
+    function rebuildSymbolIndexes()
+    {
+        pcSymbolAddressIndex = new Array(0x10000);
+        operandSymbolAddressIndex = new Array(0x10000);
+        loadedSymbolNames = Object.create(null);
+        symbolState = {file:"",source:"",format:"",labels:0,equs:0,comments:0,error:"",tables:[]};
+        for(var i=0;i<loadedSymbolTables.length;i++)
+        {
+            var table = loadedSymbolTables[i];
+            var state = table.state;
+            var index = table.scopeMode==="operand-address" ? operandSymbolAddressIndex : pcSymbolAddressIndex;
+            for(var r=0;r<table.scope.length;r++)
+            {
+                for(var addr=table.scope[r][0];addr<=table.scope[r][1];addr++)
+                {
+                    if(!index[addr]) index[addr] = [];
+                    if(index[addr].indexOf(table)<0) index[addr].push(table);
+                }
+            }
+            symbolState.labels += state.labels;
+            symbolState.equs += state.equs;
+            symbolState.comments += state.comments;
+            symbolState.file = state.file;
+            symbolState.source = state.source;
+            symbolState.format = state.format;
+            symbolState.tables.push({file:state.file,source:state.source,scopeMode:table.scopeMode,scope:table.scope});
+        }
+        // Scenario/BREAK IF name lookup retains the union of loaded names.
+        // If a name is reused, PC tables take priority over hardware tables.
+        ["operand-address","instruction-pc"].forEach(function(mode)
+        {
+            loadedSymbolTables.forEach(function(table)
+            {
+                if(table.scopeMode!==mode) return;
+                Object.keys(table.names).forEach(function(key){loadedSymbolNames[key] = table.names[key]});
+            });
+        });
         invalidateDecodeCache();
         syncSymbolControls();
         if(currentPC!==null) renderListing(currentPC,true);
+    }
+
+    function commitLoadedSymbols(nextLabels,nextSymbols,nextComments,nextNames,state,overlapPolicy)
+    {
+        var next = {labels:nextLabels,symbols:nextSymbols,comments:nextComments,names:nextNames,state:state,
+            scopeMode:state.scopeMode || "instruction-pc",scope:state.scope || [[0,0xffff]]};
+        var overlaps = loadedSymbolTables.filter(function(table){return symbolScopesOverlap(table,next)});
+        var policy = overlapPolicy;
+        if(overlaps.length && !policy)
+        {
+            if(typeof(prompt)==="function")
+                policy = prompt("Symbol tables overlap. Scope mode: "+next.scopeMode+"\n"+
+                    overlaps.map(function(table){return table.state.file}).join("\n")+
+                    "\nEnter override to replace overlapping tables, merge to keep both, or cancel.","override");
+            else policy = "override";
+            if(policy===null) return Object.assign({},symbolState);
+        }
+        policy = String(policy || "override").trim().toLowerCase();
+        if(policy==="cancel") return Object.assign({},symbolState);
+        if(policy!=="override" && policy!=="merge") throw new Error("Unsupported symbol overlap policy: "+policy);
+        if(policy==="override")
+            loadedSymbolTables = loadedSymbolTables.filter(function(table){return !symbolScopesOverlap(table,next)});
+        loadedSymbolTables.push(next);
+        rebuildSymbolIndexes();
         return Object.assign({},symbolState);
     }
 
-    function loadSymbolObject(raw,fileName)
+    function loadSymbolObject(raw,fileName,overlapPolicy)
     {
         var records = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.symbols) ? raw.symbols : null);
         if(!records) throw new Error("Symbol JSON must contain a symbols array");
+        var scopeMode = raw && raw.scopeMode!==undefined ? String(raw.scopeMode).trim().toLowerCase() : "instruction-pc";
+        if(scopeMode!=="instruction-pc" && scopeMode!=="operand-address")
+            throw new Error("Unsupported symbol scope mode: "+scopeMode);
+        var scope = parseSymbolScope(raw);
 
         var nextLabels = new Array(0x10000);
         var nextSymbols = new Array(0x10000);
@@ -19954,7 +20070,7 @@ function Apple2Debug()
                 continue;
             }
 
-            if(type==="comment" && (!record.targetType || String(record.targetType).toLowerCase()==="instruction"))
+            if(type==="comment" && (scopeMode==="operand-address" || !record.targetType || String(record.targetType).toLowerCase()==="instruction"))
             {
                 var text = String(record.text || record.comment || "").trim();
                 if(!text) continue;
@@ -19982,16 +20098,18 @@ function Apple2Debug()
 
         return commitLoadedSymbols(nextLabels,nextSymbols,nextComments,nextNames,{
              file:String(fileName || "symbols.json")
-            ,source:raw && !Array.isArray(raw) ? String(raw.sourceName || "") : ""
+            ,source:raw && !Array.isArray(raw) ? String(raw.source || raw.sourceName || "") : ""
             ,format:fmt
+            ,scopeMode:scopeMode
+            ,scope:scope
             ,labels:labels
             ,equs:equs
             ,comments:comments
             ,error:""
-        });
+        },overlapPolicy);
     }
 
-    function loadSymbolTextMap(text,fileName)
+    function loadSymbolTextMap(text,fileName,overlapPolicy)
     {
         var nextLabels = new Array(0x10000);
         var nextSymbols = new Array(0x10000);
@@ -20046,19 +20164,13 @@ function Apple2Debug()
             ,equs:0
             ,comments:0
             ,error:""
-        });
+        },overlapPolicy);
     }
 
     function resetLoadedSymbols()
     {
-        loadedLabels = new Array(0x10000);
-        loadedSymbols = new Array(0x10000);
-        loadedComments = new Array(0x10000);
-        loadedSymbolNames = Object.create(null);
-        symbolState = {file:"",source:"",format:"",labels:0,equs:0,comments:0,error:""};
-        invalidateDecodeCache();
-        syncSymbolControls();
-        if(currentPC!==null) renderListing(currentPC,true);
+        loadedSymbolTables = [];
+        rebuildSymbolIndexes();
         return true;
     }
 
@@ -20753,7 +20865,11 @@ function Apple2Debug()
             status.title = symbolState.error
                 ? symbolState.error
                 : (loaded
-                    ? (symbolState.file+(symbolState.source ? " · "+symbolState.source : "")+" · "+symbolState.labels+" labels, "+symbolState.equs+" EQU, "+symbolState.comments+" comments")
+                    ? (loadedSymbolTables.map(function(table)
+                        {
+                            return table.state.file+(table.state.source ? " · "+table.state.source : "")+
+                                " ["+table.scopeMode+"]";
+                        }).join("\n")+"\n"+symbolState.labels+" labels, "+symbolState.equs+" EQU, "+symbolState.comments+" comments")
                     : "No external symbol table loaded");
         }
         if(clear) clear.disabled = !loaded;
@@ -21787,7 +21903,7 @@ function Apple2Debug()
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('compact')\" style='font-size:9px;padding:0 3px'>compact ▦</button>"
                         +"&nbsp; SYMBOLS "
                         +"<button type='button' title='Load RetroAppleJS assembler symbol export (.symbols.json) or simple text symbol map' onclick=\"oEMU.component.CPU.Apple2Debug.chooseSymbolFile()\" style='font-size:9px;padding:0 3px'>load</button> "
-                        +"<button id='cpuDbg_symbolClear' type='button' title='Clear loaded symbol table' onclick=\"oEMU.component.CPU.Apple2Debug.clearSymbols()\" style='font-size:9px;padding:0 3px'>clear</button> "
+                        +"<button id='cpuDbg_symbolClear' type='button' title='Clear loaded symbol tables' onclick=\"oEMU.component.CPU.Apple2Debug.clearSymbols()\" style='font-size:9px;padding:0 3px'>clear</button> "
                         +"<span id='cpuDbg_symbolStatus' title='No external symbol table loaded'>none</span>"
                         +"<input id='cpuDbg_symbolFile' type='file' accept='.symbols.json,.json,.sym,.txt,application/json,text/plain' style='display:none' onchange='if(this.files&&this.files[0]) oEMU.component.CPU.Apple2Debug.loadSymbolFile(this.files[0]);this.value=\"\";'>"
                     +"</div>"
@@ -21803,15 +21919,15 @@ function Apple2Debug()
         if(input) input.click();
     };
 
-    this.loadSymbolsText = function(text,fileName)
+    this.loadSymbolsText = function(text,fileName,overlapPolicy)
     {
         text = String(text==null ? "" : text);
         var trimmed = text.trim();
         try
         {
             if(trimmed.charAt(0)==="{" || trimmed.charAt(0)==="[")
-                return loadSymbolObject(JSON.parse(trimmed),fileName);
-            return loadSymbolTextMap(text,fileName);
+                return loadSymbolObject(JSON.parse(trimmed),fileName,overlapPolicy);
+            return loadSymbolTextMap(text,fileName,overlapPolicy);
         }
         catch(err)
         {
