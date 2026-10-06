@@ -27,10 +27,11 @@ function MockingboardAudio()
     var playbackEnabled=false;
     var presentationPaused=false;
     var lifecycleRequest=0;
+    var contextRunning=null;
     var gain=null;
     var activeSources=[];
     var nextStartTime=0;
-    var stats={buffersScheduled:0,framesScheduled:0,underruns:0,minLead_ms:Infinity};
+    var stats={buffersScheduled:0,framesScheduled:0,underruns:0,minLead_ms:Infinity,cpuBudgetChecks:0,cpuBudgetBlocked:0};
 
     this.audio=undefined;
 
@@ -40,7 +41,7 @@ function MockingboardAudio()
     }
     function clearStats()
     {
-        stats={buffersScheduled:0,framesScheduled:0,underruns:0,minLead_ms:Infinity};
+        stats={buffersScheduled:0,framesScheduled:0,underruns:0,minLead_ms:Infinity,cpuBudgetChecks:0,cpuBudgetBlocked:0};
     }
     function stopSources()
     {
@@ -59,6 +60,8 @@ function MockingboardAudio()
             ? owner.getAudioFormat()
             : {sampleRate:44100};
         device.audio=new AudioContext({latencyHint:"interactive",sampleRate:format.sampleRate||44100});
+        if(typeof(device.audio.addEventListener)==="function")
+            device.audio.addEventListener("statechange",syncAudioContext);
         if(owner && typeof(owner.setAudioSampleRate)==="function")owner.setAudioSampleRate(device.audio.sampleRate);
         gain=device.audio.createGain();
         gain.gain.value=0.25;
@@ -69,13 +72,38 @@ function MockingboardAudio()
     {
         return typeof(_o)!=="undefined" && Number.isFinite(_o.CPU_TargetTicks_s)?_o.CPU_TargetTicks_s:1021800;
     }
+    function highWaterMs()
+    {
+        var interval=typeof(_o)!=="undefined"?Number(_o.EMU_IntervalTime_ms):0;
+        // One SYSTEM slice must fit, even at the default 10 fps (100 ms).
+        return Math.max(QUEUE_HIGH_MS,QUEUE_LEAD_MS+
+            (Number.isFinite(interval)&&interval>0?interval:0)+QUEUE_LOW_MS);
+    }
+    function syncAudioContext()
+    {
+        var running=!!(device.audio && device.audio.state==="running");
+        if(running!==contextRunning)
+        {
+            contextRunning=running;
+            stopSources();ownerEpoch=null;nextStartTime=0;
+            if(owner)
+            {
+                if(typeof(owner.setAudioConsumerActive)==="function")
+                    owner.setAudioConsumerActive(playbackEnabled&&!presentationPaused&&running);
+                if(typeof(owner.clearAudioQueue)==="function")owner.clearAudioQueue();
+            }
+            if(running&&playbackEnabled&&!presentationPaused)
+                nextStartTime=device.audio.currentTime+QUEUE_LEAD_MS/1000;
+        }
+        return running;
+    }
     this.setPresentationPaused=function(paused)
     {
         paused=!!paused;if(paused===presentationPaused)return;
         presentationPaused=paused;stopSources();nextStartTime=0;
         if(owner)
         {
-            if(typeof(owner.setAudioConsumerActive)==="function")owner.setAudioConsumerActive(playbackEnabled&&!paused);
+            if(typeof(owner.setAudioConsumerActive)==="function")owner.setAudioConsumerActive(playbackEnabled&&!paused&&this.audio?.state==="running");
             if(typeof(owner.clearAudioQueue)==="function")owner.clearAudioQueue();
         }
         if(!paused&&this.audio)nextStartTime=this.audio.currentTime+QUEUE_LEAD_MS/1000;
@@ -83,12 +111,16 @@ function MockingboardAudio()
     this.getCpuSliceBudget=function(requested)
     {
         if(!playbackEnabled||presentationPaused||!owner||!device.audio)return requested;
+        stats.cpuBudgetChecks++;
+        if(!syncAudioContext())return requested; // Unavailable host output must not halt the Apple II.
         if(targetHz()===0)return requested; // debugger stepping is numerically live, presentation silent
         if(io && typeof(io.getClockTicks)==="function")owner.advanceTo(io.getClockTicks());
         var scheduled=Math.max(0,nextStartTime-device.audio.currentTime);
         var pending=typeof(owner.getAudioBufferedSeconds)==="function"?owner.getAudioBufferedSeconds():0;
-        var room=Math.max(0,QUEUE_HIGH_MS/1000-scheduled-pending);
-        return Math.min(requested,4096,Math.floor(room*targetHz()));
+        var room=Math.max(0,highWaterMs()/1000-scheduled-pending);
+        var budget=Math.min(requested,4096,Math.floor(room*targetHz()));
+        if(budget===0)stats.cpuBudgetBlocked++;
+        return budget;
     };
 
     this.bindHost=function(host)
@@ -148,8 +180,9 @@ function MockingboardAudio()
                 if(ac && ac.state==="suspended" && typeof(ac.resume)==="function")await ac.resume();
                 if(request!==lifecycleRequest)return;
                 playbackEnabled=!!ac;
-                if(owner && typeof(owner.setAudioConsumerActive)==="function")owner.setAudioConsumerActive(playbackEnabled&&!presentationPaused);
-                if(ac)nextStartTime=ac.currentTime+QUEUE_LEAD_MS/1000;
+                contextRunning=!!(ac && ac.state==="running");
+                if(owner && typeof(owner.setAudioConsumerActive)==="function")owner.setAudioConsumerActive(playbackEnabled&&!presentationPaused&&contextRunning);
+                nextStartTime=contextRunning?ac.currentTime+QUEUE_LEAD_MS/1000:0;
                 refreshHooks();
                 break;
             }
@@ -171,6 +204,7 @@ function MockingboardAudio()
     this.cycle=function()
     {
         if(!playbackEnabled || !owner || !io) return;
+        if(!syncAudioContext())return;
         if(typeof(io.getClockTicks)==="function") owner.advanceTo(io.getClockTicks());
         var ac=ensureAudio();
         if(!ac || !gain) return;
@@ -182,7 +216,7 @@ function MockingboardAudio()
         if(!nextStartTime)nextStartTime=ac.currentTime+QUEUE_LEAD_MS/1000;
         if(nextStartTime<ac.currentTime){stats.underruns++;nextStartTime=ac.currentTime+QUEUE_LEAD_MS/1000;}
         var scheduledLead=Math.max(0,nextStartTime-ac.currentTime);
-        var frameBudget=Math.max(0,Math.floor((QUEUE_HIGH_MS/1000-scheduledLead)*owner.getAudioFormat().sampleRate));
+        var frameBudget=Math.max(0,Math.floor((highWaterMs()/1000-scheduledLead)*owner.getAudioFormat().sampleRate));
         if(frameBudget===0)return;
         var data=owner.drainAudioFrames(Math.min(available,frameBudget));
         if(!data || !data.frames) return;
@@ -222,7 +256,7 @@ function MockingboardAudio()
         nextStartTime=0;
         clearStats();
         if(owner && typeof(owner.clearAudioQueue)==="function") owner.clearAudioQueue();
-        if(owner && typeof(owner.setAudioConsumerActive)==="function") owner.setAudioConsumerActive(playbackEnabled&&!presentationPaused);
+        if(owner && typeof(owner.setAudioConsumerActive)==="function") owner.setAudioConsumerActive(playbackEnabled&&!presentationPaused&&this.audio?.state==="running");
     };
     this.restart=function()
     {
@@ -251,7 +285,11 @@ function MockingboardAudio()
             ,underruns:stats.underruns
             ,queuedLead_ms:this.audio ? Math.max(0,(nextStartTime-this.audio.currentTime)*1000) : 0
             ,minLead_ms:Number.isFinite(stats.minLead_ms)?stats.minLead_ms:0
-            ,lowWater_ms:QUEUE_LOW_MS,highWater_ms:QUEUE_HIGH_MS,playbackRate:1
+            ,lowWater_ms:QUEUE_LOW_MS,highWater_ms:highWaterMs(),playbackRate:1
+            ,contextState:this.audio?this.audio.state:"uninitialized"
+            ,contextTime:this.audio?this.audio.currentTime:null
+            ,playbackEnabled:playbackEnabled,presentationPaused:presentationPaused
+            ,cpuBudgetChecks:stats.cpuBudgetChecks,cpuBudgetBlocked:stats.cpuBudgetBlocked
         };
     };
 }

@@ -107,9 +107,18 @@ reschedule that deadline without changing the exact source mapping.
 Pause and debugger single-step continue updating logical chip state silently.
 Resuming playback discards obsolete presentation PCM and starts a new bounded
 lead. CPU execution yields under audio backpressure; a full FIFO retains pending
-PCM/events instead of overwriting old samples. The browser schedules at most
-60 ms of lead and uses its actual AudioContext sample rate. A device sample-rate
-change starts a cold synthesis transition while preserving bus readback.
+PCM/events instead of overwriting old samples. The browser uses its actual
+AudioContext sample rate. Its queue ceiling is the larger of 60 ms or one SYSTEM
+processing interval plus 30 ms startup lead and 15 ms margin. This admits a
+complete CPU slice at the supported 10–100 fps processing cadences; at 10 fps,
+normal scheduled lead is about 130 ms. The numerical FIFO remains bounded to
+250 ms. A stopped AudioContext disables PCM presentation and releases CPU
+backpressure while logical AY phase continues silently. Resuming the context
+discards obsolete PCM and schedules fresh output. A device sample-rate change
+starts a cold synthesis transition while preserving bus readback.
+
+See [Mockingboard audio debugging](MOCKINGBOARD_AUDIO_DEBUGGING.md) for CPU
+pacing diagnostics and the distinction between CPU pace and host utilization.
 
 Chip reset clears digital generators/registers while retaining filter history.
 Transport reset clears synthesis and establishes a new timeline origin. History
