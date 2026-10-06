@@ -104,6 +104,15 @@ function MockingboardAudio()
         io=hostIO||null;
         return !!io;
     };
+    this.unbindHost=function(host)
+    {
+        if(owner!==host) return false;
+        this.onUnmount();
+        owner=null;
+        io=null;
+        ownerEpoch=null;
+        return true;
+    };
     this.isTickActive=function()
     {
         return !!(owner && typeof(owner.needsRealtimeTick)==="function" && owner.needsRealtimeTick());

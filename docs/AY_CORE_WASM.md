@@ -15,14 +15,17 @@ shared song ends at the shorter file and loops both chips at the later loop poin
 Seeking rebuilds numerical state from the selected frame and latest envelope
 shape; it does not restore the exact earlier oscillator/filter phase.
 
-The emulator defaults to JS. On its mounted Mockingboard card, call
-`await card.setAYBackend("wasm")` to select WASM explicitly; use
-`card.getAYDiagnostics()` to inspect the active backend. Backend selection starts
-a new audio epoch and rebuilds chip synthesis from bus register mirrors. It is
-a cold audio transition, not a phase-preserving backend migration.
+The emulator's Mockingboard defaults to WASM. Its toolbox offers WASM and JS;
+JS is the alternative backend. If WASM cannot initialize, the card uses JS and
+shows the reason in the toolbox. The embedded module initializes synchronously
+and is cached, so CPU writes can start immediately. Programmatic selection remains
+available through `await card.setAYBackend("js")` or `"wasm"`; inspect the active
+backend with `card.getAYDiagnostics()`. Backend selection starts a new audio epoch
+and rebuilds synthesis from both bus register mirrors, preserving VIA and bus
+state. Oscillator and filter phase restart at this transition.
 
-`Auto` currently selects JS. Browser performance and listening acceptance must
-pass before changing that default. `tools/AY_Core_Benchmark.html` compares the
+The standalone player and public API retain their existing `Auto` policy, which
+selects JS. `tools/AY_Core_Benchmark.html` compares the
 complete projection, event packing, rendering and PCM copying path at several
 sample rates. Its timing results alone do not establish emulator latency or
 audible correctness.
@@ -35,6 +38,16 @@ Load these scripts in order after `res/ayumi.js`:
 2. `res/EMU_CHIP_AY_JS.js`
 3. `res/EMU_CHIP_AY_WASM.js`
 4. `res/EMU_AUDIO_AY_STREAM.js`
+5. `res/EMU_DEVICE_ay.js` (emulator only)
+
+These emulator includes belong in `index.html`. Each Mockingboard owns two
+`AYChipDevice` instances, AY0 and AY1, mounted as `AY8910` devices 1 and 2.
+Each has independent three-channel chip state, register readback and mixing.
+Both use indexed slices of one two-chip core for batched six-channel rendering;
+the cached WASM module serves that core. `MockingboardAudio`, device 3, is the
+shared stereo browser sink. Detaching an AY source mutes its output; reattaching
+restores the same device and register state. Detaching the sink cancels pending
+activation and stops scheduled audio. Ejecting the card releases its core.
 
 The core owns generators, AY/YM DAC behavior, FIR/DC filter state, register
 masks, mixing and PCM. The emulator retains VIA timers, bus pins, synchronous
@@ -83,6 +96,13 @@ AY clocks, output sample rate and browser `playbackRate` stay fixed. CPU speed
 changes the spacing of CPU-orchestrated register writes: twice the speed halves
 the note intervals, and half the speed doubles them. A fractional Q64.32 source
 anchor survives rate changes; target frequencies are canonicalized to millihertz.
+
+VIA interrupt timers still advance on every required CPU cycle. Audio time
+projection and core-position queries run at register events and audio block
+boundaries instead of every CPU cycle. A cheap CPU deadline triggers synthesis
+about every 512 output frames; reads of the audio queue or diagnostics project
+the latest committed CPU horizon. CPU speed and output sample-rate changes
+reschedule that deadline without changing the exact source mapping.
 
 Pause and debugger single-step continue updating logical chip state silently.
 Resuming playback discards obsolete presentation PCM and starts a new bounded

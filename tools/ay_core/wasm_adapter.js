@@ -4,19 +4,32 @@ var AYCoreWASM = {
     exports: null,
     initialize: function() {
         if (!this.modulePromise)
-            this.modulePromise = (async function() {
-                if (typeof WebAssembly !== 'object')
-                    throw AYCore.error('E_MEMORY', 'WebAssembly unavailable');
-                var binary = atob(AYCoreWASMAsset.base64), bytes = new Uint8Array(binary.length);
-                for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-                var result = await WebAssembly.instantiate(bytes, {}),
-                    exports = result.instance.exports;
-                if (exports.ay_abi_version() !== 1 || exports.memory.buffer.byteLength !== 2097152)
-                    throw AYCore.error('E_STATE', 'Unsupported AY WASM ABI/memory');
-                AYCoreWASM.exports = exports;
-                return exports;
-            })();
+        {
+            try
+            {
+                this.initializeSync();
+            }
+            catch (error)
+            {
+                return Promise.reject(error);
+            }
+        }
         return this.modulePromise;
+    },
+    initializeSync: function() {
+        if (this.exports)
+            return this.exports;
+        if (typeof WebAssembly !== 'object')
+            throw AYCore.error('E_MEMORY', 'WebAssembly unavailable');
+        var binary = atob(AYCoreWASMAsset.base64), bytes = new Uint8Array(binary.length);
+        for (var i = 0; i < binary.length; i++)
+            bytes[i] = binary.charCodeAt(i);
+        var exports = new WebAssembly.Instance(new WebAssembly.Module(bytes), {}).exports;
+        if (exports.ay_abi_version() !== 1 || exports.memory.buffer.byteLength !== 2097152)
+            throw AYCore.error('E_STATE', 'Unsupported AY WASM ABI/memory');
+        this.exports = exports;
+        this.modulePromise = Promise.resolve(exports);
+        return exports;
     },
     create: async function(config) {
         await this.initialize();

@@ -18,10 +18,16 @@ function mockingboard()
     this.id={"PCODE":"MOCK","icon":"fa fa-assistive-listening-systems"};
     this.state={"active":true,"irq":false,"audio":true};
     this.deviceConfig=[{
+         "DCODE":"AY8910","hostPCODE":"MOCK","coID":"AYChipDevice","deviceN":1,
+         "chipIndex":0,"icon":"fa fa-music","description":"AY0 — channels A, B, C","autoAttach":true
+    },{
+         "DCODE":"AY8910","hostPCODE":"MOCK","coID":"AYChipDevice","deviceN":2,
+         "chipIndex":1,"icon":"fa fa-music","description":"AY1 — channels D, E, F","autoAttach":true
+    },{
          "DCODE":"MOCKAUDIO"
         ,"hostPCODE":"MOCK"
         ,"coID":"MockingboardAudio"
-        ,"deviceN":1
+        ,"deviceN":3
         ,"icon":"fa fa-volume-up"
         ,"description":"Mockingboard stereo audio output"
         ,"autoAttach":true
@@ -35,13 +41,14 @@ function mockingboard()
     var irqSource="MOCK:0";
     var lastCpuTick=0;
     var clockRate=(typeof(_o)!="undefined" && Number(_o.CPU_ClocksTicks_s)>0) ? Number(_o.CPU_ClocksTicks_s) : 1021800;
-    var core=null, coreRequest=0, backend="js";
+    var core=null, coreRequest=0, backend="wasm";
+    var backendChoice="wasm",backendLoading=false,backendError="",backendUIRequest=0;
     var sourceClock=null, sourceTarget=clockRate;
     const CORE_FRAMES=4096, CORE_EVENTS=4096, AUDIO_TIMEBASE=1000000000;
     var pendingEvents=new Uint8Array(CORE_EVENTS*16),pendingView=new DataView(pendingEvents.buffer),pendingCount=0;
     var renderEvents=new Uint8Array(CORE_EVENTS*16),renderBatch={data:renderEvents,count:0};
     var pcm={left:new Float32Array(CORE_FRAMES),right:new Float32Array(CORE_FRAMES)},corePosition={};
-    var mappedHorizon=0, transportEpoch=0;
+    var mappedHorizon=0, transportEpoch=0, nextAudioTick=0;
     var pendingHighWater=0;
     var psgBuses=[];
     var vias=[];
@@ -50,6 +57,19 @@ function mockingboard()
     var history=new MockingboardHistory(64);
     this.history=history;
     var historyRefreshRegistered=false;
+    var ayDevices=[makeAYDevice(0),makeAYDevice(1)];
+
+    function makeAYDevice(index)
+    {
+        return new AYChipDevice({chipIndex:index,
+            getRegisters:function(){return psgBuses[index]?psgBuses[index].getRegisters():new Uint8Array(16);},
+            onSoundEvent:function(op,reg,value,cycle){appendEvent(index,op,reg,value,cycle);}});
+    }
+    this.getAYDevice=function(index){return ayDevices[index]||null;};
+    this.createDeviceInstance=function(info)
+    {
+        return info.coID==="AYChipDevice"?ayDevices[Number(info.deviceN)-1]||null:null;
+    };
 
 
     var audioConsumerActive=false;
@@ -68,6 +88,14 @@ function mockingboard()
         sourceClock=new AYSourceClock(clockRate,cpuOrigin,0);
         sourceTarget=cpuTarget();sourceClock.setRate(cpuOrigin,sourceTarget);
         mappedHorizon=0;pendingCount=0;pendingHighWater=0;transportEpoch++;
+        scheduleAudioFlush();
+    }
+    function scheduleAudioFlush()
+    {
+        // Only the cheap CPU deadline is checked on IRQ-driven per-cycle ticks.
+        // Exact Q64.32 projection stays at event and audio block boundaries.
+        nextAudioTick=lastCpuTick+Math.max(1,Math.floor(512*sourceClock.rateNumerator/
+            (sourceClock.rateDenominator*SAMPLE_RATE)));
     }
     function prepareEvent()
     {
@@ -81,16 +109,23 @@ function mockingboard()
         AYCore.packEvent(pendingView,pendingCount++,tick,index,op,reg,value);
         pendingHighWater=Math.max(pendingHighWater,pendingCount);
     }
-    function buildSoundChips(candidate)
+    function buildSoundChips(candidate,preserveBus)
     {
         if(core)core.destroy();
         var config=AYCore.configuration({chipCount:2,sampleRate:SAMPLE_RATE,timebaseHz:AUDIO_TIMEBASE,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
-        core=candidate||(backend==="wasm"?AYCore.facade(AYCoreWASM.createReady(config),"wasm",""):AYCore.createJS(config));
+        if(candidate)core=candidate;
+        else
+        {
+            try{core=AYChipDevice.createCore(config,backend);}
+            catch(error){backendError=error.message||String(error);core=AYCore.createJS(config);backendChoice="js";}
+        }
         backend=core.backend;
         for(var i=0;i<2;i++)
         {
-            core.configureChip(i,{model:"AY",clockHz:clockRate});
-            core.setMix(i,i===0?[.5,0,.5,0,.5,0]:[0,.5,0,.5,0,.5]);
+            ayDevices[i].bindCore(core);
+            ayDevices[i].configure("AY",clockRate);
+            ayDevices[i].setMix(i===0?[.5,0,.5,0,.5,0]:[0,.5,0,.5,0,.5]);
+            if(preserveBus)for(var r=0;r<14;r++)ayDevices[i].writeNow(r,psgBuses[i].regs[r]);
         }
         establishSource(lastCpuTick);
         function busOptions(index)
@@ -98,11 +133,11 @@ function mockingboard()
             return {
                  "name":"AY"+index
                 ,"beforeSoundEvent":prepareEvent
-                ,"onRegisterWrite":function(reg,value,cycle){if(reg<14)appendEvent(index,0,reg,value,cycle);history.recordWrite(index,reg,value,cycle);}
-                ,"onReset":function(cycle){appendEvent(index,1,0,0,cycle);history.recordReset(index,cycle);}
+                ,"onRegisterWrite":function(reg,value,cycle){if(reg<14)ayDevices[index].acceptWrite(reg,value,cycle);history.recordWrite(index,reg,value,cycle);}
+                ,"onReset":function(cycle){ayDevices[index].acceptReset(cycle);history.recordReset(index,cycle);}
             };
         }
-        psgBuses=[new MockingboardAYBus(null,busOptions(0)),new MockingboardAYBus(null,busOptions(1))];
+        if(!preserveBus)psgBuses=[new MockingboardAYBus(null,busOptions(0)),new MockingboardAYBus(null,busOptions(1))];
     }
     function syncBus(index)
     {
@@ -226,7 +261,10 @@ function mockingboard()
     }
     function flushAudio()
     {
+        if(!core)return;
         core.getPosition(corePosition);
+        mappedHorizon=sourceClock.map(lastCpuTick);
+        scheduleAudioFlush();
         while(corePosition.tick<mappedHorizon || pendingCount && AYCore.eventTick(pendingEvents,0)<=corePosition.tick)
         {
             var capacity=audioConsumerActive?Math.min(CORE_FRAMES,AUDIO_CAPACITY-audioCount):CORE_FRAMES;
@@ -250,26 +288,65 @@ function mockingboard()
 
     this.getAYDiagnostics=function()
     {
-        core.getPosition(corePosition);
+        if(core)core.getPosition(corePosition);
         return {backend:backend,targetHz:sourceTarget,playbackRate:1,cpuTick:lastCpuTick,
-            mappedHorizon:mappedHorizon,coreTick:corePosition.tick,samplePhase:corePosition.samplePhase,
+            mappedHorizon:sourceClock.map(lastCpuTick),coreTick:corePosition.tick,samplePhase:corePosition.samplePhase,
             renderedFrames:corePosition.renderedFrames,pendingEvents:pendingCount,eventHighWater:pendingHighWater,
             queuedFrames:audioCount,epoch:transportEpoch,mapping:sourceClock.saveState()};
     };
     this.getAudioBufferedSeconds=function()
     {
+        if(!core)return 0;
         core.getPosition(corePosition);
+        mappedHorizon=sourceClock.map(lastCpuTick);
         return audioCount/SAMPLE_RATE+(mappedHorizon-corePosition.tick)/AUDIO_TIMEBASE;
     };
     this.setAYBackend=async function(requested)
     {
+        if(!this.state.active)return false;
         var request=++coreRequest;
-        var candidate=await AYCore.create({backend:requested,chipCount:2,sampleRate:SAMPLE_RATE,timebaseHz:AUDIO_TIMEBASE,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
-        if(request!==coreRequest){candidate.destroy();return false;}
-        if(history.isCapturing())history.stop(lastCpuTick);
-        this.clearAudioQueue();buildSoundChips(candidate);syncBus(0);syncBus(1);
-        if(timingRefresh)timingRefresh();return true;
+        backendUIRequest=request;backendLoading=true;backendError="";syncAYControls(requested);
+        try
+        {
+            var candidate=await AYCore.create({backend:requested,chipCount:2,sampleRate:SAMPLE_RATE,timebaseHz:AUDIO_TIMEBASE,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
+            if(request!==coreRequest){candidate.destroy();return false;}
+            if(history.isCapturing())history.stop(lastCpuTick);
+            this.clearAudioQueue();buildSoundChips(candidate,true);syncBus(0);syncBus(1);
+            backendChoice=core.backend;syncHistoryControls();
+            if(timingRefresh)timingRefresh();return true;
+        }
+        catch(error)
+        {
+            if(request!==coreRequest)return false;
+            backendError=error.message||String(error);throw error;
+        }
+        finally
+        {
+            if(backendUIRequest===request){backendLoading=false;syncAYControls();}
+        }
     };
+    this.deviceToolAYBackendChange=async function(requested)
+    {
+        try{return await this.setAYBackend(requested);}
+        catch(error){return false;} // The toolbox reports errors without an unhandled UI promise.
+    };
+
+    function syncAYControls(requested)
+    {
+        if(typeof(document)!=="object")return;
+        var select=document.getElementById(historyID("backend"));
+        var status=document.getElementById(historyID("backend_status"));
+        if(select){select.value=requested||backendChoice;select.disabled=backendLoading;}
+        if(status)
+        {
+            status.textContent=backendStatusText();
+            status.style.color=backendError?"#a00":"";
+        }
+    }
+    function backendStatusText()
+    {
+        return backendLoading?"Loading…":backend.toUpperCase()+(backendError?" — "+backendError:"");
+    }
     this.getAudioEpoch=function(){return transportEpoch;};
     this.flushAudio=flushAudio;
 
@@ -292,7 +369,9 @@ function mockingboard()
         }
         catch(error){candidate.destroy();throw error;}
         core.destroy();core=candidate;SAMPLE_RATE=rate;AUDIO_CAPACITY=Math.ceil(rate*.25);
+        for(var i=0;i<2;i++)ayDevices[i].bindCore(core);
         this.clearAudioQueue();audioLeft=new Float32Array(AUDIO_CAPACITY);audioRight=new Float32Array(AUDIO_CAPACITY);transportEpoch++;
+        scheduleAudioFlush();
     };
     this.setTimingRefreshCallback=function(callback)
     {
@@ -328,6 +407,7 @@ function mockingboard()
         if(target!==sourceTarget)
         {
             sourceClock.setRate(lastCpuTick,target);sourceTarget=target;
+            nextAudioTick=lastCpuTick;
             history.recordTiming(sourceClock.saveState(lastCpuTick));
             if(target===0){this.clearAudioQueue();transportEpoch++;}
         }
@@ -335,9 +415,7 @@ function mockingboard()
         if(elapsed<=0) return;
         vias[0].tick(elapsed); vias[1].tick(elapsed);
         lastCpuTick=cpuTick;
-        mappedHorizon=sourceClock.map(cpuTick);
-        core.getPosition(corePosition);
-        if(mappedHorizon-corePosition.tick>=Math.floor(512*AUDIO_TIMEBASE/SAMPLE_RATE))flushAudio();
+        if(cpuTick>=nextAudioTick)flushAudio();
     };
     this.syncClock=function(cpuTick){ this.advanceTo(cpuTick); };
     this.needsRealtimeTick=function(){ return vias[0].needsRealtimeTick()||vias[1].needsRealtimeTick(); };
@@ -571,6 +649,7 @@ function mockingboard()
         audioStats={producedFrames:0,drainedFrames:0,droppedFrames:0,overruns:0,highWaterFrames:0};
         lastCpuTick=(io && typeof(io.getClockTicks)==="function") ? Number(io.getClockTicks())||0 : 0;
         syncBus(0); syncBus(1);
+        backendLoading=false;syncAYControls();syncHistoryControls();
     };
     this.restart=function()
     {
@@ -592,6 +671,9 @@ function mockingboard()
         this.state.active=false;
         audioConsumerActive=false;
         this.clearAudioQueue();
+        if(core){core.getPosition(corePosition);core.destroy();core=null;}
+        for(var i=0;i<2;i++)ayDevices[i].bindCore(null);
+        backendLoading=false;syncAYControls();
     };
     this.deviceToolSlotHTML=function(ctx)
     {
@@ -604,6 +686,12 @@ function mockingboard()
             historyRefreshRegistered=true;
         }
         return "<div class=toolbox id='"+(ctx.toolboxID || "device_tool_"+ctx.slotID)+"' hidden>"
+            +"<div class=appbox style='padding:4px 6px;display:flex;align-items:center;gap:6px'>"
+            +"<label for='"+historyID("backend")+"'>AY core</label>"
+            +"<select id='"+historyID("backend")+"' onchange='"+access+"?.deviceToolAYBackendChange(this.value)' title='Sound backend for AY0 and AY1'"+(backendLoading?" disabled":"")+">"
+            +'<option value="wasm"'+(backendChoice==="wasm"?' selected':'')+'>WASM</option>'
+            +'<option value="js"'+(backendChoice==="js"?' selected':'')+'>JS</option></select>'
+            +"<span id='"+historyID("backend_status")+"' role=status aria-live=polite style='font-size:10px"+(backendError?";color:#a00":"")+"'>"+backendStatusText().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")+"</span></div>"
             +"<div class=appbox style='padding:4px 6px;min-height:32px' title='Mockingboard music/command history'>"
             +"<div style='display:flex;align-items:center;gap:6px;white-space:nowrap'>"
             +"<button class=appbut title='Start/stop Mockingboard history capture' onclick='"+access+"?.toggleHistoryCapture()'>"
@@ -624,11 +712,12 @@ function mockingboard()
             //+"<span style='font-size:9px'>FYM1</span>&nbsp;<i class='fa fa-cloud-download-alt'></i></button>"
 
             +"<style>"
-            +".splitFYM .left { clip-path: inset(0 53% 0 0); margin-right:-7px }"
-            +".splitFYM .right { clip-path: inset(0 0 0 41%); margin-left:-7px;}"
-            +".splitFYM .hit { position: absolute; top: 0; width: 50%; height: 100%; cursor: pointer; }"
-            +".splitFYM .hit0 { left: 0; }"
-            +".splitFYM .hit1 { right: 0; }"
+            +".splitFYM { position:relative; display:inline-flex; align-items:center; }"
+            +".splitFYM .left { clip-path: inset(0 53% 0 0); margin-right:-7px; }"
+            +".splitFYM .right { clip-path: inset(0 0 0 41%); margin-left:-7px; }"
+            +".splitFYM .hit { position:absolute; top:0; width:50%; height:100%; cursor:pointer; }"
+            +".splitFYM .hit0 { left:0; }"
+            +".splitFYM .hit1 { right:0; }"
             +"</style>"
             +"<button class=appbut>"
                 +"<span class=splitFYM>"

@@ -1380,6 +1380,7 @@ function mergeActionMap(dst,src)
                 var existing=this.attachments[existingKey];
                 if(existing && existing.owner===owner &&
                    existing.device?.id?.DCODE===dcode &&
+                   (device_info.deviceN===undefined || Number(existing.device?.id?.deviceN)===Number(device_info.deviceN)) &&
                    existing.explicitInstance!==true)
                 {
                     entry=existing;
@@ -1397,7 +1398,9 @@ function mergeActionMap(dst,src)
             var Device=globalThis[device_info.coID];
             if(typeof(Device)!="function") return null;
 
-            device=new Device(device_info);
+            device=!newInstance && typeof(owner.createDeviceInstance)==="function"
+                ? owner.createDeviceInstance(device_info) : null;
+            if(!device)device=new Device(device_info);
             createdInstance=true;
             if(!device.id) device.id={};
             if(device.id.DCODE && device.id.DCODE != dcode) return null;
