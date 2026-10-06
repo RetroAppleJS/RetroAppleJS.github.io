@@ -37,7 +37,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50176,
-      "comment": "MOCK VIA1: pB/AY1 ctrl: PB0=BC1, PB1=BDIR, PB2=/RESET; $04 inactive, $05 read, $06 write, $07 latch addr; PB2=0 resets AY"
+      "comment": "MOCK B/AY1 ctrl: PB0=BC1, PB1=BDIR, PB2=/RESET; $04 inactive, $05 read, $06 write, $07 latch addr; PB2=0 resets AY"
     },
     {
       "name": "MB1_ORA",
@@ -51,7 +51,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50177,
-      "comment": "MOCK VIA1: pA/AY1 8bit reg.-addr and data bus; ORB selects latch, read or write operation"
+      "comment": "MOCK A/AY1 8bit reg.-addr and data bus; ORB selects latch, read or write operation"
     },
     {
       "name": "MB1_DDRB",
@@ -65,7 +65,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50178,
-      "comment": "MOCK VIA1: pB data dir.: bit=1 out, bit=0 in; PB0-PB2 drive AY1 ctrl lines"
+      "comment": "MOCK B data dir.: bit=1 out, bit=0 in; PB0-PB2 drive AY1 ctrl lines"
     },
     {
       "name": "MB1_DDRA",
@@ -79,7 +79,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50179,
-      "comment": "MOCK VIA1: pA data dir.: $FF outs reg./data bytes to AY1; $00 ins AY reg. readback"
+      "comment": "MOCK A data dir.: $FF outs reg./data bytes to AY1; $00 ins AY reg. readback"
     },
     {
       "name": "MB1_T1CL",
@@ -93,7 +93,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50180,
-      "comment": "MOCK VIA1: T1 cnt low (read clears T1 interrupt flag); write updates timer latch low"
+      "comment": "MOCK T1 cnt low (read clears T1 interrupt flag); write updates timer latch low"
     },
     {
       "name": "MB1_T1CH",
@@ -107,7 +107,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50181,
-      "comment": "MOCK VIA1: T1 cnt high; write loads/restarts T1 from the latch and clears T1 interrupt flag"
+      "comment": "MOCK T1 cnt high; write loads/restarts T1 from the latch and clears T1 interrupt flag"
     },
     {
       "name": "MB1_T1LL",
@@ -121,7 +121,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50182,
-      "comment": "MOCK VIA1: T1 latch low: read/write low byte of the timer reload value"
+      "comment": "MOCK T1 latch low: read/write low byte of the timer reload value"
     },
     {
       "name": "MB1_T1LH",
@@ -135,7 +135,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50183,
-      "comment": "MOCK VIA1: T1 latch high: write updates reload high byte and clears T1 interrupt flag without starting T1"
+      "comment": "MOCK T1 latch high: write updates reload high byte and clears T1 interrupt flag without starting T1"
     },
     {
       "name": "MB1_T2CL",
@@ -149,7 +149,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50184,
-      "comment": "MOCK VIA1: T2 cnt low (read clears T2 interrupt flag); write sets timer latch low"
+      "comment": "MOCK T2 cnt low (read clears T2 interrupt flag); write sets timer latch low"
     },
     {
       "name": "MB1_T2CH",
@@ -163,7 +163,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50185,
-      "comment": "MOCK VIA1: T2 cnt high; write loads/starts T2 and clears T2 interrupt flag"
+      "comment": "MOCK T2 cnt high; write loads/starts T2 and clears T2 interrupt flag"
     },
     {
       "name": "MB1_SR",
@@ -177,7 +177,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50186,
-      "comment": "MOCK VIA1: Shift reg.: serial data under ACR ctrl; usually unused for AY sound"
+      "comment": "MOCK Shift reg.: serial data under ACR ctrl; usually unused for AY sound"
     },
     {
       "name": "MB1_ACR",
@@ -191,7 +191,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50187,
-      "comment": "MOCK VIA1: Aux ctrl: T1 one-shot/free-run and PB7 out, T2 timed/pulse-count mode, shift mode and in latching"
+      "comment": "MOCK Aux ctrl: T1 one-shot/free-run and PB7 out, T2 timed/pulse-count mode, shift mode and in latching"
     },
     {
       "name": "MB1_PCR",
@@ -205,7 +205,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50188,
-      "comment": "MOCK VIA1: Peripheral ctrl: CA1/CA2 and CB1/CB2 interrupt-edge, handshake and out modes"
+      "comment": "MOCK Peripheral ctrl: CA1/CA2 and CB1/CB2 interrupt-edge, handshake and out modes"
     },
     {
       "name": "MB1_IFR",
@@ -219,7 +219,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50189,
-      "comment": "MOCK VIA1: Interrupt flags: bit7=enabled IRQ summary; bits6..0=T1,T2,CB1,CB2,SR,CA1,CA2; write 1 clears a flag"
+      "comment": "MOCK Interrupt flags: bit7=enabled IRQ summary; bits6..0=T1,T2,CB1,CB2,SR,CA1,CA2; write 1 clears a flag"
     },
     {
       "name": "MB1_IER",
@@ -233,7 +233,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50190,
-      "comment": "MOCK VIA1: Interrupt enable: bits6..0 select interrupt sources; write bit7=1 enables selected bits, bit7=0 disables; read bit7=1"
+      "comment": "MOCK Interrupt enable: bits6..0 select interrupt sources; write bit7=1 enables selected bits, bit7=0 disables; read bit7=1"
     },
     {
       "name": "MB1_ORA_NH",
@@ -247,7 +247,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50191,
-      "comment": "MOCK VIA1: pA/AY1 data bus without CA1/CA2 handshake effects"
+      "comment": "MOCK A/AY1 data bus without CA1/CA2 handshake effects"
     },
     {
       "name": "MB2_ORB",
@@ -261,7 +261,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50304,
-      "comment": "MOCK VIA2: pB/AY2 ctrl: PB0=BC1, PB1=BDIR, PB2=/RESET; $04 inactive, $05 read, $06 write, $07 latch addr; PB2=0 resets AY"
+      "comment": "MOCK B/AY2 ctrl: PB0=BC1, PB1=BDIR, PB2=/RESET; $04 inactive, $05 read, $06 write, $07 latch addr; PB2=0 resets AY"
     },
     {
       "name": "MB2_ORA",
@@ -275,7 +275,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50305,
-      "comment": "MOCK VIA2: pA/AY2 8bit reg.-addr and data bus; ORB selects latch, read or write operation"
+      "comment": "MOCK A/AY2 8bit reg.-addr and data bus; ORB selects latch, read or write operation"
     },
     {
       "name": "MB2_DDRB",
@@ -289,7 +289,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50306,
-      "comment": "MOCK VIA2: pB data dir.: bit=1 out, bit=0 in; PB0-PB2 drive AY2 ctrl lines"
+      "comment": "MOCK B data dir.: bit=1 out, bit=0 in; PB0-PB2 drive AY2 ctrl lines"
     },
     {
       "name": "MB2_DDRA",
@@ -303,7 +303,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50307,
-      "comment": "MOCK VIA2: pA data dir.: $FF outs reg./data bytes to AY2; $00 ins AY reg. readback"
+      "comment": "MOCK A data dir.: $FF outs reg./data bytes to AY2; $00 ins AY reg. readback"
     },
     {
       "name": "MB2_T1CL",
@@ -317,7 +317,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50308,
-      "comment": "MOCK VIA2: T1 cnt low (read clears T1 interrupt flag); write updates timer latch low"
+      "comment": "MOCK T1 cnt low (read clears T1 interrupt flag); write updates timer latch low"
     },
     {
       "name": "MB2_T1CH",
@@ -331,7 +331,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50309,
-      "comment": "MOCK VIA2: T1 cnt high; write loads/restarts T1 from the latch and clears T1 interrupt flag"
+      "comment": "MOCK T1 cnt high; write loads/restarts T1 from the latch and clears T1 interrupt flag"
     },
     {
       "name": "MB2_T1LL",
@@ -345,7 +345,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50310,
-      "comment": "MOCK VIA2: T1 latch low: read/write low byte of the timer reload value"
+      "comment": "MOCK T1 latch low: read/write low byte of the timer reload value"
     },
     {
       "name": "MB2_T1LH",
@@ -359,7 +359,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50311,
-      "comment": "MOCK VIA2: T1 latch high: write updates reload high byte and clears T1 interrupt flag without starting T1"
+      "comment": "MOCK T1 latch high: write updates reload high byte and clears T1 interrupt flag without starting T1"
     },
     {
       "name": "MB2_T2CL",
@@ -373,7 +373,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50312,
-      "comment": "MOCK VIA2: T2 cnt low (read clears T2 interrupt flag); write sets timer latch low"
+      "comment": "MOCK T2 cnt low (read clears T2 interrupt flag); write sets timer latch low"
     },
     {
       "name": "MB2_T2CH",
@@ -387,7 +387,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50313,
-      "comment": "MOCK VIA2: T2 cnt high; write loads/starts T2 and clears T2 interrupt flag"
+      "comment": "MOCK T2 cnt high; write loads/starts T2 and clears T2 interrupt flag"
     },
     {
       "name": "MB2_SR",
@@ -401,7 +401,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50314,
-      "comment": "MOCK VIA2: Shift reg.: serial data under ACR ctrl; usually unused for AY sound"
+      "comment": "MOCK Shift reg.: serial data under ACR ctrl; usually unused for AY sound"
     },
     {
       "name": "MB2_ACR",
@@ -415,7 +415,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50315,
-      "comment": "MOCK VIA2: Aux ctrl: T1 one-shot/free-run and PB7 out, T2 timed/pulse-count mode, shift mode and in latching"
+      "comment": "MOCK Aux ctrl: T1 one-shot/free-run and PB7 out, T2 timed/pulse-count mode, shift mode and in latching"
     },
     {
       "name": "MB2_PCR",
@@ -429,7 +429,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50316,
-      "comment": "MOCK VIA2: Peripheral ctrl: CA1/CA2 and CB1/CB2 interrupt-edge, handshake and out modes"
+      "comment": "MOCK Peripheral ctrl: CA1/CA2 and CB1/CB2 interrupt-edge, handshake and out modes"
     },
     {
       "name": "MB2_IFR",
@@ -443,7 +443,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50317,
-      "comment": "MOCK VIA2: Interrupt flags: bit7=enabled IRQ summary; bits6..0=T1,T2,CB1,CB2,SR,CA1,CA2; write 1 clears a flag"
+      "comment": "MOCK Interrupt flags: bit7=enabled IRQ summary; bits6..0=T1,T2,CB1,CB2,SR,CA1,CA2; write 1 clears a flag"
     },
     {
       "name": "MB2_IER",
@@ -457,7 +457,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50318,
-      "comment": "MOCK VIA2: Interrupt enable: bits6..0 select interrupt sources; write bit7=1 enables selected bits, bit7=0 disables; read bit7=1"
+      "comment": "MOCK Interrupt enable: bits6..0 select interrupt sources; write bit7=1 enables selected bits, bit7=0 disables; read bit7=1"
     },
     {
       "name": "MB2_ORA_NH",
@@ -471,7 +471,7 @@
       "type": "comment",
       "targetType": "equ",
       "value": 50319,
-      "comment": "MOCK VIA2: pA/AY2 data bus without CA1/CA2 handshake effects"
+      "comment": "MOCK A/AY2 data bus without CA1/CA2 handshake effects"
     }
   ]
 }
