@@ -450,9 +450,10 @@ A field can be omitted by leaving it out of the column specification.
 
 ### Presets
 
-The **default**, **wide**, and **compact** buttons replace the current column definition with predefined layouts.
+The **default**, **wide**, **compact**, and **tiny** buttons replace the current column definition with predefined layouts.
 
 The compact preset removes some source/decorative fields so more assembly text fits in the small realtime window.
+The tiny preset uses `{adr:0,code:6,ins:15,opr:19,com:28}`, omitting branch guides and labels and bringing comments closer to the operand.
 
 ### Unicode branch lines — `lin`
 
@@ -477,10 +478,10 @@ The `lin` field owns the complete interval up to the next configured column so t
 The SYMBOLS row contains:
 
 ```text
-SYMBOLS  [load] [clear]  <status>
+SYMBOLS  [load] [clr]  <status>
 ```
 
-The `clear` here belongs to **symbol-table management**; it is unrelated to `BREAK IF`.
+The `clr` here belongs to **symbol-table management**; it is unrelated to `BREAK IF`.
 
 ### `load`
 
@@ -500,7 +501,7 @@ The loader recognises:
 
 The chooser accepts `.json`, `.symbols.json`, `.sym`, and `.txt`.
 
-### `clear`
+### `clr`
 
 Removes all externally loaded symbol tables and refreshes the listing.
 
@@ -656,14 +657,14 @@ Operand lookup can also use the assembler's currently available symbol mapping w
 ### `com`
 
 Instruction comments from an exported symbol file can populate the `com` field.
-Every nonempty displayed comment starts with `; `; an existing leading `;`
-is preserved without adding a duplicate. Empty comments remain blank.
+Every nonempty displayed comment starts with `;` immediately followed by its text.
+An existing leading `;` is retained and whitespace after it is removed. Empty comments remain blank.
 
 An operand-address table can also supply `comment` records, including
 `targetType: "equ"`. For example, a source comment and hardware comment combine as:
 
 ```text
-STA MB1_ORB    ; select sound chip | Mockingboard VIA 1 Port B / AY1 control bus
+STA MB1_ORB    ;select sound chip | Mockingboard VIA 1 Port B / AY1 control bus
 ```
 
 When an exported comment includes opcode bytes, STEP TRACE checks those bytes against the currently mapped live memory before showing the comment. This prevents stale source comments from remaining attached after self-modifying code changes an instruction.
@@ -1058,6 +1059,7 @@ The editor's top-level code runs once when arming. Only the function passed to `
 | **HALT at breakpoint / RUN script at breakpoint** | Toggle between ordinary breakpoint halting and the registered JavaScript action. Switching back to HALT removes the callback but does not itself pause CPU execution or disarm BREAK IF. |
 | **JAVASCRIPT** editor | Define the callback and persistent variables; Ctrl/Cmd+Enter performs the arm action when in HALT mode. |
 | **CONSOLE / REPL** | Show `print()` output, PASS/FAIL messages, RAM dumps, and script errors. In the live scenario interface, console input directs you to the editor and HALT/RUN control; it is not a general JavaScript evaluator. |
+| **copy** / copy icon | Copy the complete console output as plain text, including scrolled-off lines, to the clipboard. |
 | **clear** / trash icon | Clear console output. This does not clear RAM, BREAK IF, or the registered callback. |
 | **RAM I/O** | Read or inject live mapped RAM using the fields and buttons described below. |
 | **x** | Hide the scenario window. The registered callback remains active. Close STEP TRACE itself to clear its breakpoint action and condition. |
@@ -1319,13 +1321,14 @@ These choices favour correctness of the live machine over making the debugger di
 | Main Run/Pause | start execution after arming, or pause execution |
 | 1/10/100/1000 IPS | debugger-controlled live execution |
 | Max (SYSTEM) | normal emulator scheduler |
-| default/wide/compact | listing-column presets |
+| default/wide/compact/tiny | listing-column presets |
 | SYMBOLS load | load labels/EQU/comments |
-| SYMBOLS clear | remove loaded symbol table |
+| SYMBOLS clr | clear all loaded symbol tables |
 | Coffee icon | enable/disable boot log |
 | Cloud-download icon | download boot log |
 | SCENARIO HALT/RUN | remove/register the JavaScript breakpoint callback; does not start the CPU |
 | Ctrl/Cmd+Enter in scenario editor | register editor text while in HALT mode |
+| SCENARIO copy | copy console output to the clipboard |
 | SCENARIO clear | clear console output only |
 | SCENARIO RAM read / inject | inspect/inject live mapped RAM |
 | SCENARIO x | hide the companion; registered callback stays active |

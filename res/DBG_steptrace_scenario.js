@@ -91,6 +91,37 @@ S.onBreakpoint=onBreakpoint;S.haltAtBreakpoint=haltAtBreakpoint;S.arm=armScript;
 function evaluateEditor(code){try{return armScript(code)}catch(_){clearAction();return false}}
 function rename(root){if(!root)return;var a=[root];if(root.querySelectorAll)a=a.concat([].slice.call(root.querySelectorAll('[id]')));a.forEach(function(n){if(n.id&&/^DBG_test/.test(n.id))n.id=n.id.replace(/^DBG_test/,'DBG_steptrace')})}
 function loadExample(){var e=E('DBG_steptraceScript');if(!e)return;e.value="let vector = 0;\nonBreakpoint(function(bp) {\n  print('break', hex(bp.PC,4), 'hit', bp.hit);\n  if (++vector >= 3) haltAtBreakpoint();\n});";if(e.focus)e.focus()}
+async function copyConsole()
+{
+  var host=E('DBG_steptraceConsole'),fallback=E('DBG_steptraceConsoleFallback');
+  var output=host&&host.querySelector?host.querySelector('output'):null;
+  var text=fallback?fallback.value:output?(typeof output.innerText==='string'?output.innerText:output.textContent):'';
+  try
+  {
+    if(g.navigator&&g.navigator.clipboard&&typeof g.navigator.clipboard.writeText==='function')
+    {
+      try{await g.navigator.clipboard.writeText(text);return true}catch(_){}
+    }
+    // Retain copy support for local/insecure pages without the Clipboard API.
+    var field=D.createElement('textarea'),active=D.activeElement;
+    field.value=text;field.readOnly=true;field.tabIndex=-1;
+    field.setAttribute('aria-hidden','true');
+    field.style.cssText='position:fixed;left:0;top:0;opacity:0;pointer-events:none';
+    D.body.appendChild(field);
+    try
+    {
+      field.focus();field.select();
+      if(!D.execCommand||!D.execCommand('copy'))throw Error('Copy unavailable.');
+    }
+    finally
+    {
+      field.parentNode.removeChild(field);
+      if(active&&active.focus)active.focus({preventScroll:true});
+    }
+    return true;
+  }
+  catch(_){out('Clipboard copy failed; select and copy console text manually.','error');return false}
+}
 function initTerminal(){
   if(term||typeof g.TERMINAL!=='function'||!E('DBG_steptraceConsole'))return;
   try{
@@ -139,6 +170,13 @@ function buildPopup(){
   var run=E('DBG_steptraceRunButton');if(run)run.onclick=function(){if(armed)clearAction();else{var x=E('DBG_steptraceScript');if(x)evaluateEditor(x.value)};syncButton()};
   var example=E('DBG_steptraceExampleButton');if(example)example.onclick=loadExample;
   var clear=E('DBG_steptraceClearConsoleButton');if(clear)clear.onclick=function(){if(term&&term.clear)term.clear();var f=E('DBG_steptraceConsoleFallback');if(f)f.value=''};
+  if(clear&&clear.parentNode&&D.createElement)
+  {
+    var copy=D.createElement('button');copy.id='DBG_steptraceCopyConsoleButton';
+    copy.type='button';copy.className=clear.className;copy.title='Copy console output to clipboard';
+    copy.innerHTML='<i class="fa fa-copy" aria-hidden="true"></i> copy';copy.onclick=copyConsole;
+    clear.parentNode.insertBefore(copy,clear);
+  }
   var inj=E('DBG_steptraceRamInjectButton');if(inj)inj.onclick=function(){S.ram.write(E('DBG_steptraceRamAddress').value,E('DBG_steptraceRamData').value)};
   var rd=E('DBG_steptraceRamReadButton');if(rd)rd.onclick=function(){var a=E('DBG_steptraceRamAddress').value,n=parseInt(E('DBG_steptraceRamLength').value,10)||16;out(S.ram.dump(a,n))};
   syncButton();return true;

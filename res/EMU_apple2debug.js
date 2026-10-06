@@ -41,6 +41,7 @@ function Apple2Debug()
          "default":"{adr:0,code:6,lin:15,lbl:21,ins:30,opr:35,com:51}"
         ,"wide":"{adr:0,code:6,lin:17,lbl:24,ins:34,opr:40,com:60}"
         ,"compact":"{adr:0,code:6,lbl:15,ins:24,opr:29,com:45}"
+        ,"tiny":"{adr:0,code:6,ins:15,opr:19,com:28}"
     };
 
     // A symbol export from the assembler can be attached to the live trace.
@@ -1000,7 +1001,7 @@ function Apple2Debug()
     function formatDecoded(d,lin,lbl,com)
     {
         com = String(com || "").trim();
-        if(com && com.charAt(0)!==";") com = "; "+com;
+        if(com) com = ";"+com.replace(/^;\s*/,"");
         return formatParts({
              "adr":oCOM.getHexWord(d.addr)+":"
             ,"code":d.bytes
@@ -2392,9 +2393,10 @@ function Apple2Debug()
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('default')\" style='font-size:9px;padding:0 3px'>default ▦</button> "
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('wide')\" style='font-size:9px;padding:0 3px'>wide ▦</button> "
                         +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('compact')\" style='font-size:9px;padding:0 3px'>compact ▦</button>"
+                        +"<button type='button' onclick=\"oEMU.component.CPU.Apple2Debug.applyListingPreset('tiny')\" title='Use tiny listing columns' style='font-size:9px;padding:0 3px'>tiny ▦</button>"
                         +"&nbsp; SYMBOLS "
                         +"<button type='button' title='Load RetroAppleJS assembler symbol export (.symbols.json) or simple text symbol map' onclick=\"oEMU.component.CPU.Apple2Debug.chooseSymbolFile()\" style='font-size:9px;padding:0 3px'>load</button> "
-                        +"<button id='cpuDbg_symbolClear' type='button' title='Clear loaded symbol tables' onclick=\"oEMU.component.CPU.Apple2Debug.clearSymbols()\" style='font-size:9px;padding:0 3px'>clear</button> "
+                        +"<button id='cpuDbg_symbolClear' type='button' title='Clear loaded symbol tables' onclick=\"oEMU.component.CPU.Apple2Debug.clearSymbols()\" style='font-size:9px;padding:0 3px'>clr</button> "
                         +"<span id='cpuDbg_symbolStatus' title='No external symbol table loaded'>none</span>"
                         +"<input id='cpuDbg_symbolFile' type='file' accept='.symbols.json,.json,.sym,.txt,application/json,text/plain' style='display:none' onchange='if(this.files&&this.files[0]) oEMU.component.CPU.Apple2Debug.loadSymbolFile(this.files[0]);this.value=\"\";'>"
                     +"</div>"
