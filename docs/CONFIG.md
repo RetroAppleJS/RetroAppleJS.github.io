@@ -51,7 +51,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 | A2P     | Apple II Plus      |6502       | 1.023     | A2_hgr   | [0-7] [0-7] | A2P_R | A2_US         |
 | A2PE    | Apple II EuroPlus  |6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A2_US         |
 | A2JP    | Apple II J-Plus    |6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A2_JP         |
-| A2B     | Bell & Howell      |6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A1_US_blk     |
+| A2B     | Bell & Howell      |6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A2B_US_blk    |
 | A3      | Apple III          |6502B      | 1.8       | A3_dhgr  | [0-7] [1-4] |       | A3_US         |
 | A3R     | Apple III Revised  |6502B      | 1.8       | A2_hgr   | [0-7] [1-4] |       | A3_US         |
 | A2e     | Apple IIe RevA/B   |6502       | 1.023     | A2_hgr   | [0-7] [1-7] |       | A2e_US, A2e_UK, A2e_CA, A2e_FR |
