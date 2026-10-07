@@ -110,3 +110,7 @@ include fixtures match native ACME 0.97 for byte output or rejection. Those
 comparisons cover nested root paths, filename escapes, case-sensitive file
 identity, labels across includes and inline macro includes. Intentional legacy
 syntax and address-width differences retain their dedicated regression tests.
+
+Stage 4 adds basic conditionals, messages and plain output metadata. Its optional
+source compatibility patch allows mb-audit to build through the 6502-only core
+with the original native byte stream. See [ASM_ACME_STAGE4.md](ASM_ACME_STAGE4.md).

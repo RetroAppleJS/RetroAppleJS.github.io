@@ -51,7 +51,7 @@ function ASM(options)
     var root = (typeof globalThis !== "undefined") ? globalThis : ((typeof window !== "undefined") ? window : this);
     var self = this;
 
-    this.version = "0.6.14";
+    this.version = "0.6.15";
     this.maxNumBytes = options.maxNumBytes || 2;
     // Retained for callers that still inspect it. Symbol identity is no longer truncated.
     this.label_len = options.label_len || 8;
@@ -317,6 +317,11 @@ function ASM(options)
     this.pragma["!ZONE"] = mkPragma("ACME_ZONE", ["ACME"], parsePragmaACMEZone);
     this.pragma["!ZN"] = this.pragma["!ZONE"];
     this.pragma["!SOURCE"] = mkPragma("ACME_SOURCE", ["ACME"], parsePragmaACMESource);
+    this.pragma["!IF"] = mkPragma("ACME_IF", ["ACME"], parsePragmaNoop);
+    this.pragma["!WARN"] = mkPragma("ACME_WARN", ["ACME"], parsePragmaACMEMessage);
+    this.pragma["!SERIOUS"] = mkPragma("ACME_SERIOUS", ["ACME"], parsePragmaACMEMessage);
+    this.pragma["!TO"] = mkPragma("ACME_TO", ["ACME"], parsePragmaACMEOutput);
+    this.pragma["!SL"] = mkPragma("ACME_SL", ["ACME"], parsePragmaACMEOutput);
 
     // Metadata / non-code classifications, also table-driven.
     this.metadata = {
@@ -454,6 +459,7 @@ function ASM(options)
         for (var i = 0; i < statements.length; i++) {
             var row = statements[i];
             // ACME macro scopes must not open or rewrite S-C numeric scopes.
+            if (row.acmeInactive) continue;
             if (row.acmeMacro || row.acmeControl)
             {
                 // A top-level argument belongs to the caller's S-C scope.
@@ -538,7 +544,7 @@ function ASM(options)
         for (var i = 0; i < statements.length; i++)
         {
             var row = statements[i];
-            if (row.acmeControl || (row.acmeMacro && !row.macroArgument)) continue;
+            if (row.acmeInactive || row.acmeControl || (row.acmeMacro && !row.macroArgument)) continue;
             if (!row.sourceSym) row.sourceSym = row.sym.slice();
             // A standalone or assigned dot name can coincide with a ca65/S-C
             // directive. Operand-bearing foreign directives keep their tags.
@@ -650,7 +656,7 @@ function ASM(options)
             var pgm = this.getTokenIndexByTag(statement.tag, "PGM");
             // Only expression-bearing directives participate. Legacy ASC/.AS
             // payloads may be raw or use '/'/'-' delimiters, not just quotes.
-            if (pgm >= 0 && !/^(?:ORG|EQU|BYTE|WORD|WORD_BE|SC_DA|RES|SC_RES|ASSERT|ACME_BYTE|ACME_WORD|ACME_WORD_BE|ACME_TEXT|ACME_FILL|ACME_ALIGN)$/.test(this.pragmaInfo(statement.sym[pgm]).ref)) continue;
+            if (pgm >= 0 && !/^(?:ORG|EQU|BYTE|WORD|WORD_BE|SC_DA|RES|SC_RES|ASSERT|ACME_BYTE|ACME_WORD|ACME_WORD_BE|ACME_TEXT|ACME_FILL|ACME_ALIGN|ACME_IF|ACME_WARN|ACME_SERIOUS)$/.test(this.pragmaInfo(statement.sym[pgm]).ref)) continue;
             if (opr >= 0)
             {
                 var text = statement.sym.slice(opr).join(" ");
@@ -756,6 +762,7 @@ function ASM(options)
             var lines = asm.splitACMEMacroBlocks(asm.splitSource(text).map(function(raw, i) {
                 return {source:raw, sourceName:name, sourceLine:i + 1};
             }));
+            var blocks = [], pendingBlock = null, closedBlock = null;
             for (var i = 0; i < lines.length; i++) {
                 var record = lines[i];
                 var raw = record.source;
@@ -764,6 +771,13 @@ function ASM(options)
                 var sym = asm.statement_splitter(raw);
                 var tag = sym.length ? asm.statement_tagger(sym) : [];
                 var pgmIndex = asm.getTokenIndexByTag(tag, "PGM");
+                var text = asm.stripRightComment(raw).trim();
+                if (pgmIndex >= 0 && /^!if$/i.test(sym[pgmIndex])) pendingBlock = "conditional";
+                else if (/^!macro\b/i.test(text)) pendingBlock = "macro";
+                else if (/^else\b/i.test(text) && closedBlock === "conditional") pendingBlock = "conditional";
+                else if (record.acmeBrace === "{") { blocks.push(pendingBlock || "other"); pendingBlock = null; closedBlock = null; }
+                else if (record.acmeBrace === "}") closedBlock = blocks.pop();
+                else if (text) closedBlock = null;
                 if (pgmIndex < 0) continue;
                 var pinfo = asm.pragmaInfo(sym[pgmIndex]);
                 if (!pinfo || (pinfo.ref !== "SC_INCLUDE" && pinfo.ref !== "ACME_SOURCE")) continue;
@@ -771,6 +785,14 @@ function ASM(options)
 
                 var acme = pinfo.ref === "ACME_SOURCE";
                 var syntax = acme ? "ACME" : "S-C";
+                if (blocks.indexOf("conditional") >= 0)
+                {
+                    // Conditional source loading needs lazy preprocessing, not
+                    // textual insertion ahead of branch selection. Reject it
+                    // when active; an inactive marker is ignored by the pass.
+                    record.err = syntax + " source includes inside conditional blocks are not implemented";
+                    continue;
+                }
                 var operand = sym.slice(pgmIndex + 1).join(" ");
                 var includeName;
                 if (acme)
@@ -942,6 +964,7 @@ function ASM(options)
         if (row.tag[0] !== "LBL") return;
         var label = this.getID(row.sym[0]);
         if (!label) return;
+        if (this.conditionalSymbols) this.conditionalSymbols[label] = this.pc;
         if (row.scLocalLabel) {
             var anchorValue = this.symtab[row.scLocalLabel.anchor];
             if (typeof anchorValue === "number") {
@@ -960,9 +983,18 @@ function ASM(options)
     };
 
     this.registerLabelDefinition = function (row, passNo, value) {
-        if (passNo !== 1 || row.tag[0] !== "LBL") return;
+        if (row.tag[0] !== "LBL") return;
         var label = this.getID(row.sym[0]);
         if (!label) return;
+        if (this.conditionalSymbols)
+        {
+            // Conditions require values known at their source position, as in
+            // ACME. A prior-pass seed must not make a forward value look known.
+            var index = this.getTokenIndexByTag(row.tag, "PGM");
+            var known = this.getExpression(row.sym.slice(index + 1).join(" "), this.conditionalSymbols);
+            if (!known.err) this.conditionalSymbols[label] = known.val;
+        }
+        if (passNo !== 1) return;
         var storedValue = row.scalarConstant ? value : value & 0xffff;
         this.symtab[label] = storedValue;
         this.symlink[label] = { type: "def", val: storedValue };
@@ -1050,6 +1082,7 @@ function ASM(options)
 
         var hiLo = text.charAt(0);
         if (hiLo === ">" || hiLo === "<" || hiLo === "/") {
+            if (this.acmeExpressionMode) return this.getExpression(text, symtab);
             var selected = this.getExpression(text.substring(1), symtab);
             if (selected.err) return selected;
             var selectedValue = hiLo === "<"
@@ -1215,6 +1248,12 @@ function ASM(options)
             if (ch === ")") { push("rparen", ch, ch); i++; continue; }
 
             var pair = text.substring(i, i + 2);
+            if (pair === "><" && this.acmeExpressionMode)
+            {
+                push("operator", "!=", pair);
+                i += 2;
+                continue;
+            }
             if (pair === "<<" || pair === ">>"
                 || pair === "<=" || pair === ">="
                 || pair === "==" || pair === "!="
@@ -1247,6 +1286,13 @@ function ASM(options)
     };
 
     this.expressionPrecedence = function (operator) {
+        if (this.acmeExpressionMode)
+        {
+            var acme = {"|":0, "&":2, "=":3, "==":3, "!=":4, "<>":4,
+                "<":5, "<=":5, ">":5, ">=":5, "<<":6, ">>":6,
+                "+":7, "-":7, "*":8, "/":8, "%":8};
+            return Object.prototype.hasOwnProperty.call(acme, operator) ? acme[operator] : -1;
+        }
         switch (operator) {
             case "=":
             case "==":
@@ -1333,6 +1379,7 @@ function ASM(options)
             case "<":
             case ">":
             case "/":
+                if (this.acmeExpressionMode) break;
                 var selected = this.getExpression(text.substring(1), symtab);
                 if (selected.err) return selected;
                 var selectedValue = text.charAt(0) === "<"
@@ -1408,9 +1455,9 @@ function ASM(options)
                 case "-": take(); return -parseUnary();
                 case "~": take(); return ~parseUnary();
                 case "!": take(); return ~parseUnary();
-                case "<": take(); return parseUnary() & 0xff;
-                case ">": take(); return (parseUnary() >> 8) & 0xff;
-                case "/": take(); return (parseUnary() >> 8) & 0xff;
+                case "<": take(); return (asm.acmeExpressionMode ? parseBinary(6) : parseUnary()) & 0xff;
+                case ">": take(); return ((asm.acmeExpressionMode ? parseBinary(6) : parseUnary()) >> 8) & 0xff;
+                case "/": take(); return ((asm.acmeExpressionMode ? parseBinary(6) : parseUnary()) >> 8) & 0xff;
 
                 // At a value position '*' is the current program counter.
                 // Between two values it remains multiplication in parseBinary().
@@ -1611,7 +1658,7 @@ function ASM(options)
         return text.length;
     };
 
-    /* Split braces only in macro definitions. Existing dialect text outside
+    /* Split braces only in macro/conditional blocks. Existing dialect text outside
        these blocks keeps its original delimiters and comment conventions. */
     this.splitACMEMacroBlocks = function(records)
     {
@@ -1620,7 +1667,10 @@ function ASM(options)
         {
             var record = records[r];
             var text = this.stripRightComment(record.source);
-            if (!active && !/^\s*!macro\b/i.test(text)) { out.push(record); continue; }
+            var sym = this.statement_splitter(text), tags = this.statement_tagger(sym);
+            var index = this.getTokenIndexByTag(tags, "PGM");
+            var conditional = index >= 0 && /^!if$/i.test(sym[index]);
+            if (!active && !/^\s*!macro\b/i.test(text) && !conditional && !/^\s*else\b[^\{]*\{/i.test(text)) { out.push(record); continue; }
             active = true;
             var quote = "", escaped = false, start = 0, split = false;
             for (var i = 0; i < text.length; i++)
@@ -1637,7 +1687,8 @@ function ASM(options)
                 out.push(Object.assign({}, record, {source:ch, acmeBrace:ch}));
                 depth += ch === "{" ? 1 : -1;
                 start = i + 1;
-                if (depth <= 0) { active = false; depth = 0; break; }
+                active = depth > 0;
+                if (depth < 0) depth = 0;
             }
             if (!split) out.push(record);
             else if (text.substring(start).trim())
@@ -1695,6 +1746,7 @@ function ASM(options)
         var asm = this, macros = Object.create(null), top = [], output = [];
         var enabled = this.dialect === "multi" || this.dialect === "ACME";
         var fragments = this.splitACMEMacroBlocks(records);
+        var conditionalDepth = 0;
         var prefix = "__ACME_MACRO_", count = 0, expandedLines = 0, exhausted = false;
         var allSource = records.map(function(record) { return record.source; }).join("\n");
         while (allSource.indexOf(prefix) >= 0) prefix += "_";
@@ -1723,7 +1775,15 @@ function ASM(options)
         for (var i = 0; i < fragments.length; i++)
         {
             var record = fragments[i], text = asm.stripRightComment(record.source).trim();
-            if (!/^!macro\b/i.test(text)) { top.push(record); continue; }
+            if (!/^!macro\b/i.test(text))
+            {
+                if (conditionalDepth && /^(?:[A-Za-z_.$][A-Za-z0-9_.$]*:?\s+)?\+[A-Za-z_]/.test(text))
+                    record = Object.assign({}, record, {conditionalMacroUnsupported:true});
+                top.push(record);
+                if (record.acmeBrace === "{") conditionalDepth++;
+                if (record.acmeBrace === "}") conditionalDepth = Math.max(0, conditionalDepth - 1);
+                continue;
+            }
             var marker = control(record);
             top.push(marker);
             var match = text.match(/^!macro\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+([\s\S]*))?$/i);
@@ -1746,6 +1806,7 @@ function ASM(options)
             i = j;
             if (depth !== 0) marker.err = "unterminated ACME macro block";
             else if (!enabled) marker.err = "!macro is not supported in " + asm.dialect + " mode";
+            else if (conditionalDepth) marker.err = "ACME macro definitions inside conditional blocks are not implemented";
             else if (!match) marker.err = "ACME macros require a global macro name";
             else if (params.some(function(p) { return !/^\.[A-Za-z_][A-Za-z0-9_]*$/.test(p); }))
                 marker.err = "basic ACME macros require dot-local value parameters; reference/global/cheap-local parameters are not implemented";
@@ -1758,7 +1819,7 @@ function ASM(options)
                 var code = asm.stripRightComment(row.source).replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, "");
                 return /@|(^|[^A-Za-z0-9_.$])\.[0-9]|^\s*[+-]+(?=[:\s]|$)/.test(code);
             })) marker.err = "cheap-local, numeric and anonymous labels inside ACME macros are not implemented";
-            if (!match || !enabled) continue;
+            if (!match || !enabled || conditionalDepth) continue;
             var key = match[1] + "#" + params.length;
             if (Object.prototype.hasOwnProperty.call(macros, key))
             {
@@ -1777,6 +1838,12 @@ function ASM(options)
             var call = text.match(/^(?:([A-Za-z_.$][A-Za-z0-9_.$]*):?\s+)?\+([A-Za-z_][A-Za-z0-9_]*)(?:\s+([\s\S]*))?$/);
             if (!call) { append(record); return; }
             var marker = control(record);
+            if (record.conditionalMacroUnsupported)
+            {
+                marker.err = "ACME macro calls inside conditional blocks are not implemented";
+                append(marker);
+                return;
+            }
             if (call[1])
             {
                 if (!append(Object.assign({}, record, {source:call[1], displaySource:call[1]}))) return;
@@ -1834,8 +1901,74 @@ function ASM(options)
         return output;
     };
 
-    this.preparse = function (sourceText, sourceName) {
-        var lines = this.expandACMEMacros(this.expandSCIncludes(sourceText, sourceName || this.sourceName));
+    this.prepareACMEConditionals = function(records)
+    {
+        var stack = [], closed = null, id = 0, asm = this;
+        function opening(index)
+        {
+            for (var n = index + 1; n < records.length; n++)
+                if (asm.stripRightComment(records[n].source).trim()) return records[n].acmeBrace === "{" ? n : -1;
+            return -1;
+        }
+        for (var i = 0; i < records.length; i++)
+        {
+            var row = records[i], text = this.stripRightComment(row.source).trim();
+            var sym = this.statement_splitter(text), tags = this.statement_tagger(sym);
+            var index = this.getTokenIndexByTag(tags, "PGM");
+            row.conditionalPath = stack.map(function(frame) { return {id:frame.id, branch:frame.branch}; });
+            if (row.acmeControl || !text) continue;
+            if (index >= 0 && /^!if$/i.test(sym[index]))
+            {
+                closed = null;
+                row.acmeConditional = {kind:"if", id:++id};
+                var open = opening(i);
+                if (open < 0) row.err = row.err || "ACME !if requires an opening '{'";
+                else
+                {
+                    records[open].acmeControl = true;
+                    if (sym.length === index + 1) row.err = row.err || "ACME !if requires a condition";
+                    stack.push({id:id, branch:true, row:row});
+                }
+            }
+            else if (/^else\b/i.test(text) && (closed || records[i + 1] && records[i + 1].acmeBrace === "{"))
+            {
+                row.acmeControl = true;
+                var open = opening(i);
+                if (!closed || closed.branch === false) row.err = row.err || "unmatched ACME else";
+                else if (text.toLowerCase() !== "else") row.err = row.err || "ACME else-if/elif blocks are not implemented";
+                else if (row.sourceName !== closed.end.sourceName || row.sourceLine !== closed.end.sourceLine)
+                    row.err = row.err || "ACME else must follow '}' on the same source line";
+                if (open < 0) row.err = row.err || "ACME else requires an opening '{'";
+                else
+                {
+                    records[open].acmeControl = true;
+                    stack.push({id:closed ? closed.id : ++id, branch:false, row:row});
+                }
+                closed = null;
+            }
+            else if (row.acmeBrace === "}" || text === "}")
+            {
+                row.acmeControl = true;
+                if (!stack.length) row.err = row.err || "unmatched ACME '}'";
+                else { closed = stack.pop(); closed.end = row; }
+            }
+            else if (row.acmeBrace === "{")
+            {
+                row.acmeControl = true;
+                row.err = row.err || "unexpected ACME '{'";
+                // Unknown blocks in skipped code still participate in brace
+                // balancing. Their contents never become an active branch.
+                stack.push({id:++id, branch:true, row:row});
+                closed = null;
+            }
+            else closed = null;
+        }
+        stack.forEach(function(frame) { frame.row.err = frame.row.err || "unterminated ACME conditional block"; });
+        return records;
+    };
+
+    this.preparse = function (sourceText, sourceName, deferScopes) {
+        var lines = this.prepareACMEConditionals(this.expandACMEMacros(this.expandSCIncludes(sourceText, sourceName || this.sourceName)));
         var statements = [];
         for (var i = 0; i < lines.length; i++) {
             var raw = lines[i].source;
@@ -1860,9 +1993,12 @@ function ASM(options)
             if (lines[i].acmeControl) row.acmeControl = true;
             if (lines[i].macroArgument) row.macroArgument = true;
             if (lines[i].macroTrace) row.macroTrace = lines[i].macroTrace;
+            if (lines[i].acmeConditional) row.acmeConditional = lines[i].acmeConditional;
+            row.conditionalPath = lines[i].conditionalPath;
             if (lines[i].err) row.err = lines[i].err;
             statements.push(row);
         }
+        if (deferScopes) return statements;
         this.normaliseACMELocalLabels(statements);
         if (this.dialect === "multi" || this.dialect === "raJS" || this.dialect === "S-C")
             this.normaliseSCLocalLabels(statements);
@@ -1871,6 +2007,9 @@ function ASM(options)
 
     this.pass = function (statements, passNo, seedSymtab, emitRows) {
         var out = [];
+        var choices = Object.create(null);
+        this.outputMetadata = {};
+        this.conditionalSymbols = statements.some(function(row) { return row.acmeConditional; }) ? Object.create(null) : null;
         this.passNo = passNo;
         this.set_pc(0);
         if (passNo === 1) {
@@ -1899,10 +2038,47 @@ function ASM(options)
             if (base.macroArgument) row.macroArgument = true;
             if (base.macroTrace) row.macroTrace = base.macroTrace;
             if (base.err) row.err = base.err;
-
-            this.dispatchRow(row, passNo);
+            var inactive = (base.conditionalPath || []).some(function(frame)
+            {
+                return choices[frame.id] !== frame.branch;
+            });
+            if (inactive)
+            {
+                row.acmeInactive = true;
+                delete row.err;
+                var index = this.getTokenIndexByTag(row.tag, "PGM");
+                var info = index >= 0 ? this.pragmaInfo(row.sym[index]) : null;
+                row.asm = row.acmeControl ? ["ACME"] : info ? info.asm.slice() : [];
+            }
+            else if (base.acmeConditional)
+            {
+                row.acmeConditional = base.acmeConditional;
+                row.asm = ["ACME"];
+                if (this.dialect === "multi" || this.dialect === "ACME") this.registerLabelLocation(row, passNo);
+                var index = this.getTokenIndexByTag(row.tag, "PGM");
+                var expression = row.sym.slice(index + 1).join(" ");
+                var mode = this.acmeExpressionMode;
+                this.acmeExpressionMode = true;
+                var value;
+                try { value = this.getExpression(expression, this.conditionalSymbols); }
+                catch (error)
+                {
+                    if (!error.characterEncoding) throw error;
+                    value = {err:error.message};
+                }
+                finally { this.acmeExpressionMode = mode; }
+                if (this.dialect !== "multi" && this.dialect !== "ACME") row.err = "!if is not supported in " + this.dialect + " mode";
+                else if (value.err) row.err = row.err || "ACME condition is not defined: " + value.err;
+                else if (!Number.isInteger(value.val)) row.err = row.err || "ACME condition requires an integer value";
+                choices[base.acmeConditional.id] = row.err ? null : !!value.val;
+                row.conditionalValue = choices[base.acmeConditional.id];
+            }
+            else this.dispatchRow(row, passNo);
             if (passNo === 2 || emitRows) out.push(row);
         }
+        if (passNo === 1 && this.conditionalSymbols)
+            for (var symbol in this.symtab)
+                if (!Object.prototype.hasOwnProperty.call(this.symlink, symbol)) delete this.symtab[symbol];
         return out;
     };
 
@@ -1978,7 +2154,7 @@ function ASM(options)
             var row = rows[i] || {};
             var tag = row.tag || [];
             var sym = row.sym || row.sourceSym || [];
-            if (tag[0] !== "LBL" || !sym[0]) continue;
+            if (row.acmeInactive || row.acmeControl || tag[0] !== "LBL" || !sym[0]) continue;
             var lbl = this.getID(sym[0]);
             if (!lbl) continue;
 
@@ -2045,6 +2221,7 @@ function ASM(options)
         return {
             dialect: this.dialect,
             characterEncoding: this.characterEncoding,
+            outputMetadata: Object.assign({}, this.outputMetadata),
             rows: rows,
             symtab: symtab,
             bytes: byteRecords,
@@ -2062,7 +2239,7 @@ function ASM(options)
     this.compileRow = function (row, symtab) {
         if (!row || !row.tag || row.tag.length === 0) return [];
         if (row.err) return [];
-        if (row.acmeControl) return [];
+        if (row.acmeControl || row.acmeInactive || row.acmeConditional) return [];
         var previousMode = this.acmeExpressionMode;
         var previousPC = this.pc;
         this.acmeExpressionMode = this.rowUsesACMEExpressions(row);
@@ -2144,7 +2321,7 @@ function ASM(options)
         var pinfo = this.pragmaInfo(pgm);
         var ref = pinfo ? pinfo.ref : String(pgm || "").toUpperCase();
         var operands = sym.slice(pgmIndex + 1).join(" ");
-        if (/^ACME_/.test(ref) && ref !== "ACME_CPU" && ref !== "ACME_ZONE" && ref !== "ACME_SOURCE")
+        if (/^ACME_(?:BYTE|WORD|WORD_BE|TEXT|HEX|FILL|ALIGN)$/.test(ref))
         {
             var data = this.evaluateACMEData(ref, operands, symtab, true);
             if (data.err) row.err = row.err || data.err;
@@ -3220,14 +3397,28 @@ function ASM(options)
         var keys = Object.keys(symtab || {}).sort();
         var symbols = keys.map(function (key) { return key + "=" + String(symtab[key]); });
         var layout = (rows || []).map(function (row) {
-            return String(row.pc) + ":" + String(row.mod || "") + ":" + String(row.oby || 0);
+            return String(row.pc) + ":" + String(row.mod || "") + ":" + String(row.oby || 0)
+                + ":" + String(!!row.acmeInactive) + ":" + String(row.conditionalValue);
         });
         return symbols.join("|") + "||" + layout.join("|");
     };
 
     this.tokenise = function (sourceText, sourceName) {
         this.reset();
-        var statements = this.preparse(sourceText, sourceName || this.sourceName);
+        var rawStatements = this.preparse(sourceText, sourceName || this.sourceName, true);
+        var conditional = rawStatements.some(function(row) { return row.acmeConditional; });
+        var statements = rawStatements;
+        var asm = this;
+        function scoped(previous)
+        {
+            var rows = asm.cloneRows(rawStatements);
+            if (previous) rows.forEach(function(row, index) { row.acmeInactive = !!previous[index].acmeInactive; });
+            asm.scLocalLabelSalt = 0;
+            asm.normaliseACMELocalLabels(rows);
+            if (asm.dialect === "multi" || asm.dialect === "raJS" || asm.dialect === "S-C") asm.normaliseSCLocalLabels(rows);
+            return rows;
+        }
+        if (!conditional) statements = scoped();
         var seed = {};
         var previousSignature = null;
         var layoutRows = [];
@@ -3236,6 +3427,7 @@ function ASM(options)
 
         for (var i = 0; i < this.maxLayoutPasses; i++) {
             passCount = i + 1;
+            if (conditional) statements = scoped(i ? layoutRows : null);
             layoutRows = this.pass(statements, 1, seed, true);
             var signature = this.layoutSignature(layoutRows, this.symtab);
             if (signature === previousSignature) {
@@ -3399,6 +3591,69 @@ function ASM(options)
         var row = arg.row;
         row.asm = this.asm.slice();
         if (row.tag[0] === "LBL") arg.asm.registerLabelLocation(row, arg.passNo);
+        return row;
+    }
+
+    function parsePragmaACMEMessage(arg)
+    {
+        var asm = arg.asm, row = arg.row;
+        if (arg.passNo !== 2) return row;
+        var index = asm.getTokenIndexByTag(row.tag, "PGM");
+        var fields = asm.splitCSV(row.sym.slice(index + 1).join(" "), true);
+        var message = "";
+        if (!fields.length) row.err = "ACME message requires arguments";
+        for (var i = 0; i < fields.length && !row.err; i++)
+        {
+            var field = fields[i].trim();
+            if (!field) { row.err = "empty ACME message argument"; break; }
+            if (field.charAt(0) === '"')
+            {
+                var text = asm.decodeACMEString(field, true);
+                if (text.err || !text.complete) { row.err = text.err || "invalid ACME message string"; break; }
+                message += text.bytes.map(function(code) { return String.fromCharCode(code); }).join("");
+            }
+            else
+            {
+                var map = asm.characterMap, value;
+                asm.characterMap = null;
+                try { value = asm.getExpression(field, asm.symtab); }
+                finally { asm.characterMap = map; }
+                if (value.err) { row.err = value.err; break; }
+                if (!Number.isInteger(value.val)) { row.err = "ACME message requires a string or integer argument"; break; }
+                message += String(value.val) + " (0x" + (value.val < 0 ? (value.val >>> 0) : value.val).toString(16) + ")";
+            }
+        }
+        if (!row.err)
+        {
+            message = row.sym[index].toLowerCase() + ": " + message;
+            if (this.ref === "ACME_WARN") row.warn = message;
+            else row.err = message;
+        }
+        return row;
+    }
+
+    function parsePragmaACMEOutput(arg)
+    {
+        var asm = arg.asm, row = arg.row;
+        if (arg.passNo !== 2) return row;
+        var index = asm.getTokenIndexByTag(row.tag, "PGM");
+        var fields = asm.splitCSV(row.sym.slice(index + 1).join(" "), true);
+        var output = this.ref === "ACME_TO";
+        if (fields.length !== (output ? 2 : 1)) row.err = "ACME " + row.sym[index] + (output ? " requires a filename and plain format" : " requires one filename");
+        var filename = (fields[0] || "").trim();
+        if (!/^"(?:\\.|[^"\\])+"$/.test(filename)) row.err = row.err || "ACME output metadata requires a nonempty double-quoted filename";
+        if (output && String(fields[1] || "").trim().toLowerCase() !== "plain") row.err = row.err || "only plain ACME output metadata is supported";
+        var decoded = asm.decodeACMEString(filename, true);
+        if (decoded.err) row.err = row.err || decoded.err;
+        if (row.err) return row;
+        var name = decoded.bytes.map(function(code) { return String.fromCharCode(code); }).join("");
+        if (output)
+        {
+            if (asm.outputMetadata.output) row.warn = "ACME output file name already chosen";
+            else asm.outputMetadata.output = {fileName:name, format:"plain"};
+        }
+        else if (asm.outputMetadata.symbolListFile) row.warn = "ACME symbol list file name already chosen";
+        else asm.outputMetadata.symbolListFile = name;
         return row;
     }
 
