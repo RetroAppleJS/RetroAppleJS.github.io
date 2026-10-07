@@ -65075,7 +65075,7 @@ function ASM(options)
     var root = (typeof globalThis !== "undefined") ? globalThis : ((typeof window !== "undefined") ? window : this);
     var self = this;
 
-    this.version = "0.6.13";
+    this.version = "0.6.14";
     this.maxNumBytes = options.maxNumBytes || 2;
     // Retained for callers that still inspect it. Symbol identity is no longer truncated.
     this.label_len = options.label_len || 8;
@@ -65340,6 +65340,7 @@ function ASM(options)
     this.pragma["!MACRO"] = mkPragma("ACME_MACRO", ["ACME"], parsePragmaNoop);
     this.pragma["!ZONE"] = mkPragma("ACME_ZONE", ["ACME"], parsePragmaACMEZone);
     this.pragma["!ZN"] = this.pragma["!ZONE"];
+    this.pragma["!SOURCE"] = mkPragma("ACME_SOURCE", ["ACME"], parsePragmaACMESource);
 
     // Metadata / non-code classifications, also table-driven.
     this.metadata = {
@@ -65712,17 +65713,48 @@ function ASM(options)
         return text;
     };
 
-    this.resolveSCInclude = function (includeName, fromSource) {
-        includeName = String(includeName == null ? "" : includeName).trim();
+    this.normaliseIncludePath = function(name)
+    {
+        name = String(name || "").replace(/\\/g, "/");
+        var parts = [], rooted = name.charAt(0) === "/";
+        name.split("/").forEach(function(part)
+        {
+            if (!part || part === ".") return;
+            if (part === ".." && parts.length && parts[parts.length - 1] !== "..") parts.pop();
+            else parts.push(part);
+        });
+        return (rooted ? "/" : "") + parts.join("/");
+    };
+
+    this.resolveSCInclude = function (includeName, fromSource, relative) {
+        includeName = String(includeName == null ? "" : includeName);
+        if (!relative) includeName = includeName.trim();
         var resolved;
+        var resolvedName = includeName;
         if (this.includeResolver) resolved = this.includeResolver(includeName, fromSource || this.sourceName);
         if (resolved == null && this.includes) {
-            if (Object.prototype.hasOwnProperty.call(this.includes, includeName)) resolved = this.includes[includeName];
-            else {
-                var wanted = includeName.toUpperCase();
-                for (var key in this.includes) {
-                    if (Object.prototype.hasOwnProperty.call(this.includes, key) && String(key).toUpperCase() === wanted) {
-                        resolved = this.includes[key];
+            var names = [includeName];
+            if (relative)
+            {
+                // ACME resolves source paths from the assembly working directory,
+                // not the parent directory of each nested include. In the browser
+                // that root is represented by the main source's logical path.
+                var from = this.normaliseIncludePath(typeof relative === "string" ? relative : fromSource || this.sourceName);
+                var directory = from.substring(0, from.lastIndexOf("/") + 1);
+                var normalized = this.normaliseIncludePath(includeName);
+                names = [this.normaliseIncludePath(normalized.charAt(0) === "/" ? normalized : directory + includeName), normalized, includeName];
+            }
+            for (var n = 0; n < names.length && resolved == null; n++)
+            {
+                if (Object.prototype.hasOwnProperty.call(this.includes, names[n]))
+                { resolved = this.includes[names[n]]; resolvedName = names[n]; continue; }
+                var wanted = names[n].toUpperCase();
+                for (var key in this.includes)
+                {
+                    var candidate = relative ? this.normaliseIncludePath(key) : String(key);
+                    if (Object.prototype.hasOwnProperty.call(this.includes, key) && candidate.toUpperCase() === wanted)
+                    {
+                        resolved = this.includes[key]; resolvedName = key;
                         break;
                     }
                 }
@@ -65731,10 +65763,10 @@ function ASM(options)
         if (resolved && typeof resolved === "object") {
             return {
                 source: String(resolved.source == null ? "" : resolved.source),
-                sourceName: resolved.sourceName || resolved.name || includeName
+                sourceName: resolved.sourceName || resolved.name || resolvedName
             };
         }
-        if (typeof resolved === "string") return { source: resolved, sourceName: includeName };
+        if (typeof resolved === "string") return { source: resolved, sourceName: resolvedName };
         return null;
     };
 
@@ -65743,10 +65775,14 @@ function ASM(options)
         var records = [];
 
         function visit(text, name, depth, stack) {
-            var lines = asm.splitSource(text);
+            // Expose inline macro-body !source statements before resolving
+            // includes. Fragments retain the original file and line number.
+            var lines = asm.splitACMEMacroBlocks(asm.splitSource(text).map(function(raw, i) {
+                return {source:raw, sourceName:name, sourceLine:i + 1};
+            }));
             for (var i = 0; i < lines.length; i++) {
-                var raw = lines[i];
-                var record = { source: raw, sourceName: name, sourceLine: i + 1 };
+                var record = lines[i];
+                var raw = record.source;
                 records.push(record);
 
                 var sym = asm.statement_splitter(raw);
@@ -65754,26 +65790,38 @@ function ASM(options)
                 var pgmIndex = asm.getTokenIndexByTag(tag, "PGM");
                 if (pgmIndex < 0) continue;
                 var pinfo = asm.pragmaInfo(sym[pgmIndex]);
-                if (!pinfo || pinfo.ref !== "SC_INCLUDE") continue;
+                if (!pinfo || (pinfo.ref !== "SC_INCLUDE" && pinfo.ref !== "ACME_SOURCE")) continue;
                 if (asm.dialect !== "multi" && pinfo.asm.indexOf(asm.dialect) < 0) continue;
 
-                var includeName = asm.decodeSCDelimitedText(sym.slice(pgmIndex + 1).join(" "));
+                var acme = pinfo.ref === "ACME_SOURCE";
+                var syntax = acme ? "ACME" : "S-C";
+                var operand = sym.slice(pgmIndex + 1).join(" ");
+                var includeName;
+                if (acme)
+                {
+                    var filename = operand.match(/^"((?:\\.|[^"\\])*)"$/);
+                    if (!filename) { record.err = "ACME !source requires a double-quoted filename; library paths are not implemented"; continue; }
+                    var decoded = asm.decodeACMEString(operand, true);
+                    if (decoded.err) { record.err = decoded.err; continue; }
+                    includeName = decoded.bytes.map(function(code) { return String.fromCharCode(code); }).join("");
+                }
+                else includeName = asm.decodeSCDelimitedText(operand);
                 if (!includeName) {
-                    record.err = "S-C .IN requires an include name";
+                    record.err = syntax + " requires an include name";
                     continue;
                 }
                 if (depth >= asm.maxIncludeDepth) {
-                    record.err = "S-C include depth exceeds " + asm.maxIncludeDepth + ": " + includeName;
+                    record.err = syntax + " include depth exceeds " + asm.maxIncludeDepth + ": " + includeName;
                     continue;
                 }
-                var resolved = asm.resolveSCInclude(includeName, name);
+                var resolved = asm.resolveSCInclude(includeName, name, acme ? rootName : false);
                 if (!resolved) {
-                    record.err = "S-C include not found: " + includeName;
+                    record.err = syntax + " include not found: " + includeName;
                     continue;
                 }
-                var identity = String(resolved.sourceName || includeName).toUpperCase();
-                if (stack.indexOf(identity) >= 0) {
-                    record.err = "S-C include cycle: " + stack.concat([identity]).join(" -> ");
+                var identity = asm.normaliseIncludePath(resolved.sourceName || includeName);
+                if (stack.some(function(parent) { return acme ? parent === identity : parent.toUpperCase() === identity.toUpperCase(); })) {
+                    record.err = syntax + " include cycle: " + stack.concat([identity]).join(" -> ");
                     continue;
                 }
                 visit(resolved.source, resolved.sourceName || includeName, depth + 1, stack.concat([identity]));
@@ -65781,7 +65829,7 @@ function ASM(options)
         }
 
         var rootName = sourceName || this.sourceName;
-        visit(sourceText, rootName, 0, [String(rootName).toUpperCase()]);
+        visit(sourceText, rootName, 0, [asm.normaliseIncludePath(rootName)]);
         return records;
     };
 
@@ -65974,7 +66022,7 @@ function ASM(options)
 
         var leading = text.match(/^\s*/)[0].length;
         var rest = text.substring(leading);
-        var m = rest.match(/^(\$[0-9a-f]+|%[01]+|&[0-7]+|[+-]?[0-9]+|[A-Za-z_.$][A-Za-z0-9_.$]*|"[^"]*"|'[^']*')/i);
+        var m = rest.match(/^(\$[0-9a-f]+|0x[0-9a-f]+|%[01]+|&[0-7]+|[+-]?[0-9]+|[A-Za-z_.$][A-Za-z0-9_.$]*|"[^"]*"|'[^']*')/i);
         if (!m) return { val: NaN, err: "missing operand after high/low byte operator", consumed: leading };
 
         var token = m[1];
@@ -66037,6 +66085,11 @@ function ASM(options)
         if (/^\$[0-9a-f]+$/i.test(text)) {
             var hv = parseInt(text.substring(1), 16);
             return { val: hv, bytes: Math.max(1, Math.ceil((text.length - 1) / 2)), fmt: "HEX" };
+        }
+        if (/^0x[0-9a-f]+$/i.test(text)) {
+            if (this.acmeExpressionMode && text.charAt(1) === "X")
+                return {val:NaN, err:"ACME hexadecimal prefix requires lowercase 0x"};
+            return {val:parseInt(text.substring(2),16), bytes:Math.max(1,Math.ceil((text.length - 2)/2)), fmt:"HEX"};
         }
         if (/^%[01]+$/.test(text)) {
             var bv = parseInt(text.substring(1), 2);
@@ -66156,6 +66209,16 @@ function ASM(options)
                     i += oct[0].length;
                     continue;
                 }
+            }
+
+            if (/^0x/i.test(text.substring(i))) {
+                if (this.acmeExpressionMode && text.charAt(i + 1) === "X")
+                    return {tokens:tokens, err:"ACME hexadecimal prefix requires lowercase 0x"};
+                var cHex = text.substring(i).match(/^0x[0-9a-f]+(?![A-Za-z0-9_.$])/i);
+                if (!cHex) return {tokens:tokens, err:"invalid C-style hexadecimal literal"};
+                push("value", parseInt(cHex[0].substring(2),16), cHex[0]);
+                i += cHex[0].length;
+                continue;
             }
 
             if (/[0-9]/.test(ch)) {
@@ -66469,7 +66532,7 @@ function ASM(options)
             var expr = this.getExpression(exprText, symtab);
             var resolved = !expr.err && typeof expr.val === "number" && !isNaN(expr.val);
             var fitsZeroPage = resolved && expr.val >= 0 && expr.val <= 0xff;
-            var hexLiteral = exprText.trim().match(/^\$([0-9a-f]+)$/i);
+            var hexLiteral = exprText.trim().match(/^(?:\$|0x)([0-9a-f]+)$/i);
             var hexDigits = hexLiteral ? hexLiteral[1].length : 0;
             var binaryLiteral = exprText.trim().match(/^%([01]+)$/);
             var binaryDigits = binaryLiteral ? binaryLiteral[1].length : 0;
@@ -67105,7 +67168,7 @@ function ASM(options)
         var pinfo = this.pragmaInfo(pgm);
         var ref = pinfo ? pinfo.ref : String(pgm || "").toUpperCase();
         var operands = sym.slice(pgmIndex + 1).join(" ");
-        if (/^ACME_/.test(ref) && ref !== "ACME_CPU" && ref !== "ACME_ZONE")
+        if (/^ACME_/.test(ref) && ref !== "ACME_CPU" && ref !== "ACME_ZONE" && ref !== "ACME_SOURCE")
         {
             var data = this.evaluateACMEData(ref, operands, symtab, true);
             if (data.err) row.err = row.err || data.err;
@@ -67164,7 +67227,7 @@ function ASM(options)
         return out;
     };
 
-    this.decodeACMEString = function(text)
+    this.decodeACMEString = function(text, raw)
     {
         text = String(text).trim();
         var quote = text.charAt(0);
@@ -67182,20 +67245,21 @@ function ASM(options)
                     var hex = text.substring(i + 1, i + 3);
                     if (!/^[0-9a-f]{2}$/i.test(hex))
                         return {bytes:[], complete:true, err:"invalid ACME hexadecimal escape"};
-                    bytes.push(this.appleCharCode(String.fromCharCode(parseInt(hex, 16)), quote));
+                    var value = parseInt(hex, 16);
+                    bytes.push(raw ? value : this.appleCharCode(String.fromCharCode(value), quote));
                     i += 2;
                     continue;
                 }
                 var escapes = {"n":10, "r":13, "t":9, "0":0, "\\":92, "'":39, '"':34};
                 if (!Object.prototype.hasOwnProperty.call(escapes, ch))
                     return {bytes:[], complete:true, err:"unsupported ACME string escape"};
-                bytes.push(this.appleCharCode(String.fromCharCode(escapes[ch]), quote));
+                bytes.push(raw ? escapes[ch] : this.appleCharCode(String.fromCharCode(escapes[ch]), quote));
             }
             else
             {
                 var value = ch.charCodeAt(0);
-                if (value > 255) return {bytes:[], complete:true, err:"ACME raw character exceeds one byte"};
-                bytes.push(this.appleCharCode(ch, quote));
+                if (!raw && value > 255) return {bytes:[], complete:true, err:"ACME raw character exceeds one byte"};
+                bytes.push(raw ? value : this.appleCharCode(ch, quote));
             }
         }
         return {bytes:[], complete:true, err:"unterminated ACME string"};
@@ -68351,6 +68415,14 @@ function ASM(options)
         if (/[{}]/.test(title)) row.err = row.err || "ACME block zones are not implemented";
         else if (!/^(?:[A-Za-z_][A-Za-z0-9_]*)?$/.test(title))
             row.err = row.err || "invalid ACME zone title";
+        return row;
+    }
+
+    function parsePragmaACMESource(arg)
+    {
+        var row = arg.row;
+        row.asm = this.asm.slice();
+        if (row.tag[0] === "LBL") arg.asm.registerLabelLocation(row, arg.passNo);
         return row;
     }
 
