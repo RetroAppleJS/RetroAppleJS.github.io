@@ -92,6 +92,10 @@ The unchanged entry file's diagnostics fall from 375 errors / 342 warnings to
 is still unsupported, those include files are not expanded yet. These counts
 measure progress, not a valid binary.
 
+Stage 3 implements `!source` and C-style hexadecimal literals. With all six
+includes expanded, the unchanged source reaches 58 errors / 20 warnings.
+See [ASM_ACME_STAGE3.md](ASM_ACME_STAGE3.md) for setup and remaining requirements.
+
 ## Applying and checking
 
 Apply `RetroAppleJS-ACME-stage2.patch` after stage 1, against upstream commit

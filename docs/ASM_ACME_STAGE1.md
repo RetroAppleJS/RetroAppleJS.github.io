@@ -165,11 +165,11 @@ Malformed blocks, undefined calls, wrong argument counts, duplicate parameters a
 
 Expansion limits prevent runaway recursion or repeated expansion. API options are `maxMacroDepth` (default 32, capped at 128), `maxMacroExpansions` (default 10,000) and `maxMacroExpandedLines` (default 100,000; includes generated bindings and body records). Exceeding a limit ends further expansion with a source diagnostic.
 
-The test fixture contains all six 6502 macros from [Tom Charlesworth's mb-audit](https://github.com/tomcw/mb-audit/blob/3b6eb43fa3cb8a8825011171649621d664f717a5/mb-audit.a): the four `ENA_*` ROM/RAM switches and `ISR_ENTRY`/`ISR_EXIT`. Their output matches native ACME. This validates the macros, not assembly or execution of the complete application. Stage 2 adds unary complement, zones and labels as described in [ASM_ACME_STAGE2.md](ASM_ACME_STAGE2.md). The full source still requires ACME includes, conditionals, other directives and handling of its 65C02 and 65816 sections.
+The test fixture contains all six 6502 macros from [Tom Charlesworth's mb-audit](https://github.com/tomcw/mb-audit/blob/3b6eb43fa3cb8a8825011171649621d664f717a5/mb-audit.a): the four `ENA_*` ROM/RAM switches and `ISR_ENTRY`/`ISR_EXIT`. Their output matches native ACME. This validates the macros, not assembly or execution of the complete application. Stage 2 adds unary complement, zones and labels as described in [ASM_ACME_STAGE2.md](ASM_ACME_STAGE2.md). Stage 3 adds source includes and C-style hex literals as described in [ASM_ACME_STAGE3.md](ASM_ACME_STAGE3.md). The full source still requires conditionals, other directives and handling of its 65C02 and 65816 sections.
 
 ## Deferred syntax
 
-Advanced macro forms described above, block zones, block conditionals and loops, ACME includes/binary imports, output-file directives, conversion-table directives and pseudopc remain for later stages.
+Advanced macro forms described above, block zones, block conditionals and loops, binary imports, output-file directives, conversion-table directives and pseudopc remain for later stages.
 The full ACME expression grammar is also deferred: for example, ACME exponentiation `^` is rejected rather than interpreted as the legacy XOR operator.
 No additional CPUs are enabled.
 

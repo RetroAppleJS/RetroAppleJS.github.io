@@ -1,0 +1,574 @@
+diff --git a/docs/ASM_ACME_STAGE1.md b/docs/ASM_ACME_STAGE1.md
+index fd38291..01f1ce6 100644
+--- a/docs/ASM_ACME_STAGE1.md
++++ b/docs/ASM_ACME_STAGE1.md
+@@ -165,11 +165,11 @@ Malformed blocks, undefined calls, wrong argument counts, duplicate parameters a
+ 
+ Expansion limits prevent runaway recursion or repeated expansion. API options are `maxMacroDepth` (default 32, capped at 128), `maxMacroExpansions` (default 10,000) and `maxMacroExpandedLines` (default 100,000; includes generated bindings and body records). Exceeding a limit ends further expansion with a source diagnostic.
+ 
+-The test fixture contains all six 6502 macros from [Tom Charlesworth's mb-audit](https://github.com/tomcw/mb-audit/blob/3b6eb43fa3cb8a8825011171649621d664f717a5/mb-audit.a): the four `ENA_*` ROM/RAM switches and `ISR_ENTRY`/`ISR_EXIT`. Their output matches native ACME. This validates the macros, not assembly or execution of the complete application. Stage 2 adds unary complement, zones and labels as described in [ASM_ACME_STAGE2.md](ASM_ACME_STAGE2.md). The full source still requires ACME includes, conditionals, other directives and handling of its 65C02 and 65816 sections.
++The test fixture contains all six 6502 macros from [Tom Charlesworth's mb-audit](https://github.com/tomcw/mb-audit/blob/3b6eb43fa3cb8a8825011171649621d664f717a5/mb-audit.a): the four `ENA_*` ROM/RAM switches and `ISR_ENTRY`/`ISR_EXIT`. Their output matches native ACME. This validates the macros, not assembly or execution of the complete application. Stage 2 adds unary complement, zones and labels as described in [ASM_ACME_STAGE2.md](ASM_ACME_STAGE2.md). Stage 3 adds source includes and C-style hex literals as described in [ASM_ACME_STAGE3.md](ASM_ACME_STAGE3.md). The full source still requires conditionals, other directives and handling of its 65C02 and 65816 sections.
+ 
+ ## Deferred syntax
+ 
+-Advanced macro forms described above, block zones, block conditionals and loops, ACME includes/binary imports, output-file directives, conversion-table directives and pseudopc remain for later stages.
++Advanced macro forms described above, block zones, block conditionals and loops, binary imports, output-file directives, conversion-table directives and pseudopc remain for later stages.
+ The full ACME expression grammar is also deferred: for example, ACME exponentiation `^` is rejected rather than interpreted as the legacy XOR operator.
+ No additional CPUs are enabled.
+ 
+diff --git a/docs/ASM_ACME_STAGE2.md b/docs/ASM_ACME_STAGE2.md
+index 774402c..7d0f63f 100644
+--- a/docs/ASM_ACME_STAGE2.md
++++ b/docs/ASM_ACME_STAGE2.md
+@@ -92,6 +92,10 @@ The unchanged entry file's diagnostics fall from 375 errors / 342 warnings to
+ is still unsupported, those include files are not expanded yet. These counts
+ measure progress, not a valid binary.
+ 
++Stage 3 implements `!source` and C-style hexadecimal literals. With all six
++includes expanded, the unchanged source reaches 58 errors / 20 warnings.
++See [ASM_ACME_STAGE3.md](ASM_ACME_STAGE3.md) for setup and remaining requirements.
++
+ ## Applying and checking
+ 
+ Apply `RetroAppleJS-ACME-stage2.patch` after stage 1, against upstream commit
+diff --git a/docs/ASM_ACME_STAGE3.md b/docs/ASM_ACME_STAGE3.md
+new file mode 100644
+index 0000000..7103e54
+--- /dev/null
++++ b/docs/ASM_ACME_STAGE3.md
+@@ -0,0 +1,112 @@
++# ACME source includes and C-style hexadecimal literals
++
++ASM_core.js v0.6.14 adds `!source` and `0x` numbers after stage 2 and the
++legacy zero-page fix. The default remains `multi`, and the CPU remains 6502.
++
++## Trying mb-audit
++
++1. Upload `mb-audit.a` as the main source using the source upload pictogram.
++2. In the Tools include-file controls, upload `AppleDefs.a`,
++   `MockingboardDefs.a`, `chip-6522.a`, `chip-ay8913.a`, `chip-sc01.a` and
++   `chip-ssi263.a`. Keep their original names.
++3. Select ACME as the dialect and Source / existing behavior as the character
++   conversion for this source, then use the assemble/play button.
++
++`!source` reads supplied include files; it does not automatically fetch files
++from `/asm/AUDIO/mb-audit-main` or the browser's local filesystem.
++
++All seven original source files now participate in assembly. On the unchanged
++mb-audit source used for these patches, diagnostics decrease from 161 errors /
++130 warnings to **58 errors / 20 warnings**. This is an intermediate result,
++not a valid application binary. Conditional blocks, `!warn`/`!serious`, output
++metadata (`!to`/`!sl`) and the source's 65C02/65816 sections still need handling.
++Some remaining label and addressing diagnostics follow from those unsupported
++sections. Block zones and advanced macro forms also remain deferred.
++
++## Source includes
++
++```javascript
++var asm = new ASM({
++    dialect: "ACME", // omit to keep multi-dialect mode
++    sourceName: "mb-audit.a",
++    includes: {
++        "AppleDefs.a": appleDefsText,
++        "MockingboardDefs.a": mockingboardDefsText
++        // Supply the other four include files as well.
++    }
++});
++var result = asm.assemble(mainSourceText);
++```
++
++`!source "filename"` inserts source at that point. Included constants, code and
++macro definitions are available to subsequent statements. Zone and cheap-label
++scopes continue across file boundaries. Repeated includes are expanded again.
++Includes in basic macro bodies work with both inline and multiline definitions;
++their dot-local labels remain private to each invocation.
++
++Each include marker has `row.asm = ["ACME"]` and emits no bytes. Included rows
++and diagnostics retain the included filename and original line number. Macro
++expansions also retain their definition and call trace. The existing listing
++columns and character conversion settings keep their behavior.
++
++As in native ACME, nested paths resolve from the assembly root, rather than the
++directory of the including file. In this browser API, the main source's logical
++directory represents that root. With `sourceName:"project/main.a"`, a nested
++`!source "defs.a"` first looks for `project/defs.a`. Map entries can alternatively
++use plain filenames. Path separators and `.`/`..` segments are normalized.
++Exact names take precedence at each path candidate; existing case-insensitive
++fallback remains available. Distinct exact ACME keys such as `A.a` and `a.a`
++remain distinct for cycle detection. The current UI retains its existing
++case-insensitive include-name replacement behavior.
++
++Map values may also be `{source:text, sourceName:"project/defs.a"}` objects.
++An existing `includeResolver(filename, includingSourceName)` callback is tried
++before map lookup and receives the decoded filename. It may return a source
++string or the same object form; return null/undefined to use map lookup.
++Use consistent source names when resolving aliases so cycle detection can
++identify them.
++
++Filenames require double quotes. Spaces, semicolons and ACME string escapes
++are preserved/decoded independently of emitted-byte character conversion.
++Missing files, include cycles and nesting beyond `maxIncludeDepth` produce
++diagnostics. ACME library paths such as `<filename>` and binary imports remain
++deferred. S-C `.IN` retains its existing behavior; explicit foreign dialects
++reject `!source` without loading its content.
++
++## Hexadecimal literals
++
++`0x` numbers now work in expressions, constants, instructions and ACME data
++directives, including mb-audit's `!text "...", 0xd`. Explicit numeric values
++do not pass through character conversion.
++
++Direct address sizing follows the existing hexadecimal digit policy:
++
++| Operand | Addressing |
++|---|---|
++| `0xF`, `0x0F` | Zero page |
++| `0x00F`, `0x000F` | Absolute |
++
++More than four direct-address hex digits and addresses outside 0–65535 produce
++errors. Immediate, branch and indirect operands retain their required modes;
++symbols and compound expressions retain their existing value-based selection.
++Native ACME requires the lowercase `x` prefix. ACME expressions enforce that;
++generic expressions in multi mode additionally accept `0X`.
++
++## Applying and checking
++
++Apply after `RetroAppleJS-ACME-stage2.patch` and
++`RetroAppleJS-legacy-zero-page-fix.patch`:
++
++```sh
++git apply --check RetroAppleJS-ACME-stage3.patch
++git apply RetroAppleJS-ACME-stage3.patch
++node --test
++```
++
++This patch changes the core, tests and documentation only. Its baseline is the
++previously delivered patches; it has not been checked against a newer upstream
++revision. Validation: 107 Node tests pass; 93 shared-syntax fixtures and 14
++include fixtures match native ACME 0.97 for byte output or rejection. Those
++comparisons cover nested root paths, filename escapes, case-sensitive file
++identity, labels across includes and inline macro includes. Intentional legacy
++syntax and address-width differences retain their dedicated regression tests.
+diff --git a/res/ASM_core.js b/res/ASM_core.js
+index f2ac475..9a7edd9 100644
+--- a/res/ASM_core.js
++++ b/res/ASM_core.js
+@@ -51,7 +51,7 @@ function ASM(options)
+     var root = (typeof globalThis !== "undefined") ? globalThis : ((typeof window !== "undefined") ? window : this);
+     var self = this;
+ 
+-    this.version = "0.6.13";
++    this.version = "0.6.14";
+     this.maxNumBytes = options.maxNumBytes || 2;
+     // Retained for callers that still inspect it. Symbol identity is no longer truncated.
+     this.label_len = options.label_len || 8;
+@@ -316,6 +316,7 @@ function ASM(options)
+     this.pragma["!MACRO"] = mkPragma("ACME_MACRO", ["ACME"], parsePragmaNoop);
+     this.pragma["!ZONE"] = mkPragma("ACME_ZONE", ["ACME"], parsePragmaACMEZone);
+     this.pragma["!ZN"] = this.pragma["!ZONE"];
++    this.pragma["!SOURCE"] = mkPragma("ACME_SOURCE", ["ACME"], parsePragmaACMESource);
+ 
+     // Metadata / non-code classifications, also table-driven.
+     this.metadata = {
+@@ -688,17 +689,48 @@ function ASM(options)
+         return text;
+     };
+ 
+-    this.resolveSCInclude = function (includeName, fromSource) {
+-        includeName = String(includeName == null ? "" : includeName).trim();
++    this.normaliseIncludePath = function(name)
++    {
++        name = String(name || "").replace(/\\/g, "/");
++        var parts = [], rooted = name.charAt(0) === "/";
++        name.split("/").forEach(function(part)
++        {
++            if (!part || part === ".") return;
++            if (part === ".." && parts.length && parts[parts.length - 1] !== "..") parts.pop();
++            else parts.push(part);
++        });
++        return (rooted ? "/" : "") + parts.join("/");
++    };
++
++    this.resolveSCInclude = function (includeName, fromSource, relative) {
++        includeName = String(includeName == null ? "" : includeName);
++        if (!relative) includeName = includeName.trim();
+         var resolved;
++        var resolvedName = includeName;
+         if (this.includeResolver) resolved = this.includeResolver(includeName, fromSource || this.sourceName);
+         if (resolved == null && this.includes) {
+-            if (Object.prototype.hasOwnProperty.call(this.includes, includeName)) resolved = this.includes[includeName];
+-            else {
+-                var wanted = includeName.toUpperCase();
+-                for (var key in this.includes) {
+-                    if (Object.prototype.hasOwnProperty.call(this.includes, key) && String(key).toUpperCase() === wanted) {
+-                        resolved = this.includes[key];
++            var names = [includeName];
++            if (relative)
++            {
++                // ACME resolves source paths from the assembly working directory,
++                // not the parent directory of each nested include. In the browser
++                // that root is represented by the main source's logical path.
++                var from = this.normaliseIncludePath(typeof relative === "string" ? relative : fromSource || this.sourceName);
++                var directory = from.substring(0, from.lastIndexOf("/") + 1);
++                var normalized = this.normaliseIncludePath(includeName);
++                names = [this.normaliseIncludePath(normalized.charAt(0) === "/" ? normalized : directory + includeName), normalized, includeName];
++            }
++            for (var n = 0; n < names.length && resolved == null; n++)
++            {
++                if (Object.prototype.hasOwnProperty.call(this.includes, names[n]))
++                { resolved = this.includes[names[n]]; resolvedName = names[n]; continue; }
++                var wanted = names[n].toUpperCase();
++                for (var key in this.includes)
++                {
++                    var candidate = relative ? this.normaliseIncludePath(key) : String(key);
++                    if (Object.prototype.hasOwnProperty.call(this.includes, key) && candidate.toUpperCase() === wanted)
++                    {
++                        resolved = this.includes[key]; resolvedName = key;
+                         break;
+                     }
+                 }
+@@ -707,10 +739,10 @@ function ASM(options)
+         if (resolved && typeof resolved === "object") {
+             return {
+                 source: String(resolved.source == null ? "" : resolved.source),
+-                sourceName: resolved.sourceName || resolved.name || includeName
++                sourceName: resolved.sourceName || resolved.name || resolvedName
+             };
+         }
+-        if (typeof resolved === "string") return { source: resolved, sourceName: includeName };
++        if (typeof resolved === "string") return { source: resolved, sourceName: resolvedName };
+         return null;
+     };
+ 
+@@ -719,10 +751,14 @@ function ASM(options)
+         var records = [];
+ 
+         function visit(text, name, depth, stack) {
+-            var lines = asm.splitSource(text);
++            // Expose inline macro-body !source statements before resolving
++            // includes. Fragments retain the original file and line number.
++            var lines = asm.splitACMEMacroBlocks(asm.splitSource(text).map(function(raw, i) {
++                return {source:raw, sourceName:name, sourceLine:i + 1};
++            }));
+             for (var i = 0; i < lines.length; i++) {
+-                var raw = lines[i];
+-                var record = { source: raw, sourceName: name, sourceLine: i + 1 };
++                var record = lines[i];
++                var raw = record.source;
+                 records.push(record);
+ 
+                 var sym = asm.statement_splitter(raw);
+@@ -730,26 +766,38 @@ function ASM(options)
+                 var pgmIndex = asm.getTokenIndexByTag(tag, "PGM");
+                 if (pgmIndex < 0) continue;
+                 var pinfo = asm.pragmaInfo(sym[pgmIndex]);
+-                if (!pinfo || pinfo.ref !== "SC_INCLUDE") continue;
++                if (!pinfo || (pinfo.ref !== "SC_INCLUDE" && pinfo.ref !== "ACME_SOURCE")) continue;
+                 if (asm.dialect !== "multi" && pinfo.asm.indexOf(asm.dialect) < 0) continue;
+ 
+-                var includeName = asm.decodeSCDelimitedText(sym.slice(pgmIndex + 1).join(" "));
++                var acme = pinfo.ref === "ACME_SOURCE";
++                var syntax = acme ? "ACME" : "S-C";
++                var operand = sym.slice(pgmIndex + 1).join(" ");
++                var includeName;
++                if (acme)
++                {
++                    var filename = operand.match(/^"((?:\\.|[^"\\])*)"$/);
++                    if (!filename) { record.err = "ACME !source requires a double-quoted filename; library paths are not implemented"; continue; }
++                    var decoded = asm.decodeACMEString(operand, true);
++                    if (decoded.err) { record.err = decoded.err; continue; }
++                    includeName = decoded.bytes.map(function(code) { return String.fromCharCode(code); }).join("");
++                }
++                else includeName = asm.decodeSCDelimitedText(operand);
+                 if (!includeName) {
+-                    record.err = "S-C .IN requires an include name";
++                    record.err = syntax + " requires an include name";
+                     continue;
+                 }
+                 if (depth >= asm.maxIncludeDepth) {
+-                    record.err = "S-C include depth exceeds " + asm.maxIncludeDepth + ": " + includeName;
++                    record.err = syntax + " include depth exceeds " + asm.maxIncludeDepth + ": " + includeName;
+                     continue;
+                 }
+-                var resolved = asm.resolveSCInclude(includeName, name);
++                var resolved = asm.resolveSCInclude(includeName, name, acme ? rootName : false);
+                 if (!resolved) {
+-                    record.err = "S-C include not found: " + includeName;
++                    record.err = syntax + " include not found: " + includeName;
+                     continue;
+                 }
+-                var identity = String(resolved.sourceName || includeName).toUpperCase();
+-                if (stack.indexOf(identity) >= 0) {
+-                    record.err = "S-C include cycle: " + stack.concat([identity]).join(" -> ");
++                var identity = asm.normaliseIncludePath(resolved.sourceName || includeName);
++                if (stack.some(function(parent) { return acme ? parent === identity : parent.toUpperCase() === identity.toUpperCase(); })) {
++                    record.err = syntax + " include cycle: " + stack.concat([identity]).join(" -> ");
+                     continue;
+                 }
+                 visit(resolved.source, resolved.sourceName || includeName, depth + 1, stack.concat([identity]));
+@@ -757,7 +805,7 @@ function ASM(options)
+         }
+ 
+         var rootName = sourceName || this.sourceName;
+-        visit(sourceText, rootName, 0, [String(rootName).toUpperCase()]);
++        visit(sourceText, rootName, 0, [asm.normaliseIncludePath(rootName)]);
+         return records;
+     };
+ 
+@@ -950,7 +998,7 @@ function ASM(options)
+ 
+         var leading = text.match(/^\s*/)[0].length;
+         var rest = text.substring(leading);
+-        var m = rest.match(/^(\$[0-9a-f]+|%[01]+|&[0-7]+|[+-]?[0-9]+|[A-Za-z_.$][A-Za-z0-9_.$]*|"[^"]*"|'[^']*')/i);
++        var m = rest.match(/^(\$[0-9a-f]+|0x[0-9a-f]+|%[01]+|&[0-7]+|[+-]?[0-9]+|[A-Za-z_.$][A-Za-z0-9_.$]*|"[^"]*"|'[^']*')/i);
+         if (!m) return { val: NaN, err: "missing operand after high/low byte operator", consumed: leading };
+ 
+         var token = m[1];
+@@ -1014,6 +1062,11 @@ function ASM(options)
+             var hv = parseInt(text.substring(1), 16);
+             return { val: hv, bytes: Math.max(1, Math.ceil((text.length - 1) / 2)), fmt: "HEX" };
+         }
++        if (/^0x[0-9a-f]+$/i.test(text)) {
++            if (this.acmeExpressionMode && text.charAt(1) === "X")
++                return {val:NaN, err:"ACME hexadecimal prefix requires lowercase 0x"};
++            return {val:parseInt(text.substring(2),16), bytes:Math.max(1,Math.ceil((text.length - 2)/2)), fmt:"HEX"};
++        }
+         if (/^%[01]+$/.test(text)) {
+             var bv = parseInt(text.substring(1), 2);
+             return { val: bv, bytes: Math.max(1, Math.ceil((text.length - 1) / 8)), fmt: "BIN" };
+@@ -1134,6 +1187,16 @@ function ASM(options)
+                 }
+             }
+ 
++            if (/^0x/i.test(text.substring(i))) {
++                if (this.acmeExpressionMode && text.charAt(i + 1) === "X")
++                    return {tokens:tokens, err:"ACME hexadecimal prefix requires lowercase 0x"};
++                var cHex = text.substring(i).match(/^0x[0-9a-f]+(?![A-Za-z0-9_.$])/i);
++                if (!cHex) return {tokens:tokens, err:"invalid C-style hexadecimal literal"};
++                push("value", parseInt(cHex[0].substring(2),16), cHex[0]);
++                i += cHex[0].length;
++                continue;
++            }
++
+             if (/[0-9]/.test(ch)) {
+                 var dec = text.substring(i).match(/^[0-9]+/)[0];
+                 push("value", parseInt(dec, 10), dec);
+@@ -1445,7 +1508,7 @@ function ASM(options)
+             var expr = this.getExpression(exprText, symtab);
+             var resolved = !expr.err && typeof expr.val === "number" && !isNaN(expr.val);
+             var fitsZeroPage = resolved && expr.val >= 0 && expr.val <= 0xff;
+-            var hexLiteral = exprText.trim().match(/^\$([0-9a-f]+)$/i);
++            var hexLiteral = exprText.trim().match(/^(?:\$|0x)([0-9a-f]+)$/i);
+             var hexDigits = hexLiteral ? hexLiteral[1].length : 0;
+             var binaryLiteral = exprText.trim().match(/^%([01]+)$/);
+             var binaryDigits = binaryLiteral ? binaryLiteral[1].length : 0;
+@@ -2081,7 +2144,7 @@ function ASM(options)
+         var pinfo = this.pragmaInfo(pgm);
+         var ref = pinfo ? pinfo.ref : String(pgm || "").toUpperCase();
+         var operands = sym.slice(pgmIndex + 1).join(" ");
+-        if (/^ACME_/.test(ref) && ref !== "ACME_CPU" && ref !== "ACME_ZONE")
++        if (/^ACME_/.test(ref) && ref !== "ACME_CPU" && ref !== "ACME_ZONE" && ref !== "ACME_SOURCE")
+         {
+             var data = this.evaluateACMEData(ref, operands, symtab, true);
+             if (data.err) row.err = row.err || data.err;
+@@ -2140,7 +2203,7 @@ function ASM(options)
+         return out;
+     };
+ 
+-    this.decodeACMEString = function(text)
++    this.decodeACMEString = function(text, raw)
+     {
+         text = String(text).trim();
+         var quote = text.charAt(0);
+@@ -2158,20 +2221,21 @@ function ASM(options)
+                     var hex = text.substring(i + 1, i + 3);
+                     if (!/^[0-9a-f]{2}$/i.test(hex))
+                         return {bytes:[], complete:true, err:"invalid ACME hexadecimal escape"};
+-                    bytes.push(this.appleCharCode(String.fromCharCode(parseInt(hex, 16)), quote));
++                    var value = parseInt(hex, 16);
++                    bytes.push(raw ? value : this.appleCharCode(String.fromCharCode(value), quote));
+                     i += 2;
+                     continue;
+                 }
+                 var escapes = {"n":10, "r":13, "t":9, "0":0, "\\":92, "'":39, '"':34};
+                 if (!Object.prototype.hasOwnProperty.call(escapes, ch))
+                     return {bytes:[], complete:true, err:"unsupported ACME string escape"};
+-                bytes.push(this.appleCharCode(String.fromCharCode(escapes[ch]), quote));
++                bytes.push(raw ? escapes[ch] : this.appleCharCode(String.fromCharCode(escapes[ch]), quote));
+             }
+             else
+             {
+                 var value = ch.charCodeAt(0);
+-                if (value > 255) return {bytes:[], complete:true, err:"ACME raw character exceeds one byte"};
+-                bytes.push(this.appleCharCode(ch, quote));
++                if (!raw && value > 255) return {bytes:[], complete:true, err:"ACME raw character exceeds one byte"};
++                bytes.push(raw ? value : this.appleCharCode(ch, quote));
+             }
+         }
+         return {bytes:[], complete:true, err:"unterminated ACME string"};
+@@ -3330,6 +3394,14 @@ function ASM(options)
+         return row;
+     }
+ 
++    function parsePragmaACMESource(arg)
++    {
++        var row = arg.row;
++        row.asm = this.asm.slice();
++        if (row.tag[0] === "LBL") arg.asm.registerLabelLocation(row, arg.passNo);
++        return row;
++    }
++
+ 
+ 
+     /*
+diff --git a/tests/asm_acme_includes.test.js b/tests/asm_acme_includes.test.js
+new file mode 100644
+index 0000000..99b0cb1
+--- /dev/null
++++ b/tests/asm_acme_includes.test.js
+@@ -0,0 +1,145 @@
++"use strict";
++const assert=require("node:assert/strict");
++const {test}=require("node:test");
++const fs=require("node:fs"),path=require("node:path"),vm=require("node:vm");
++const context=vm.createContext({oCOM:{getHexByte:v=>(v&255).toString(16).padStart(2,"0").toUpperCase()}});
++vm.runInContext(fs.readFileSync(path.join(__dirname,"../res/ASM_core.js"),"utf8"),context);
++function assemble(source,options={}){return new context.ASM({dialect:"ACME",...options}).assemble(source);}
++function values(result){return Array.from(result.bytes,b=>b.val);}
++function clean(result){assert.equal(result.errors.length,0,JSON.stringify(result.errors));}
++
++test("ACME source includes contribute constants and code at the insertion PC",()=>{
++    for(const dialect of ["ACME","multi"]){
++        const result=assemble('*=$2000\n!source "defs.a"\nlda VALUE\n!source "code.a"\n!word entry',{
++            dialect,sourceName:"main.a",includes:{"defs.a":"VALUE=$3c","code.a":"entry rts"}});
++        clean(result);
++        assert.deepEqual(values(result),[0xa5,0x3c,0x60,2,32]);
++        assert.equal(result.symtab.entry,0x2002);
++    }
++});
++test("nested relative includes resolve from the assembly root, as in ACME",()=>{
++    const result=assemble('*=$2000\n!source "sub/one.a"',{sourceName:"project/main.a",includes:{
++        "project/sub/one.a":'!source "defs.a"\n!byte VALUE',
++        "project/defs.a":"VALUE=7"}});
++    clean(result);
++    assert.deepEqual(values(result),[7]);
++});
++test("nested includes do not silently prefer a child-local file over the assembly root",()=>{
++    const result=assemble('!source "sub/one.a"',{sourceName:"project/main.a",includes:{
++        "project/sub/one.a":'!source "defs.a"\n!byte VALUE',
++        "project/defs.a":"VALUE=7", "project/sub/defs.a":"VALUE=9"}});
++    clean(result);
++    assert.deepEqual(values(result),[7]);
++});
++test("include resolver receives the original name and requesting source once",()=>{
++    const requests=[];
++    const result=assemble('!source "defs.a"\n!byte VALUE',{sourceName:"main.a",includeResolver:(name,from)=>{
++        requests.push([name,from]);return {source:"VALUE=17",sourceName:"defs.a"};}});
++    clean(result);
++    assert.deepEqual(values(result),[17]);
++    assert.deepEqual(requests,[["defs.a","main.a"]]);
++});
++test("include filenames retain spaces and semicolons without character conversion",()=>{
++    const result=assemble('!source "a ; b.a" ; caller comment',{characterEncoding:"apple2plus",includes:{"a ; b.a":"!byte 17"}});
++    clean(result);
++    assert.deepEqual(values(result),[17]);
++});
++test("include errors retain child source coordinates",()=>{
++    const result=assemble('!source "bad.a"',{sourceName:"main.a",includes:{"bad.a":{source:'; comment\nlda missing',sourceName:"lib/bad.a"}}});
++    assert.ok(result.errors.some(e=>e.sourceName==="lib/bad.a"&&e.sourceLine===2&&e.statement==='lda missing'));
++});
++test("include rows retain listing syntax compatibility without emitting bytes",()=>{
++    const result=assemble('*=$2000\n!source "code.a"',{includes:{"code.a":"rts"},listingColumns:{adr:0,code:6,ins:20,opr:30,asm:50,com:60}});
++    clean(result);
++    const row=result.rows.find(r=>r.statement==='!source "code.a"');
++    assert.deepEqual(Array.from(row.asm),["ACME"]);
++    assert.equal(row.bytes.length,0);
++    assert.ok(result.listingText.includes('!SOURCE'));
++});
++test("zone and cheap-label scopes continue across include boundaries",()=>{
++    const result=assemble('*=$2000\n!zone code\nentry bne @done\n!source "body.a"\nbne .loop',{
++        includes:{"body.a":".loop nop\n@done rts"}});
++    clean(result);
++    assert.deepEqual(values(result),[0xd0,1,0xea,0x60,0xd0,0xfc]);
++});
++test("macros defined in an include are available afterwards with child trace metadata",()=>{
++    const result=assemble('*=$2000\n!source "macros.a"\n+emit 17',{sourceName:"main.a",includes:{"macros.a":"!macro emit .n { !byte .n }"}});
++    clean(result);
++    assert.deepEqual(values(result),[17]);
++    assert.ok(result.rows.some(r=>r.macroTrace&&r.macroTrace[0].definition.sourceName==='macros.a'));
++});
++test("repeated includes are expanded each time",()=>{
++    const result=assemble('!source "bytes.a"\n!source "bytes.a"',{includes:{"bytes.a":"!byte 1"}});
++    clean(result);
++    assert.deepEqual(values(result),[1,1]);
++});
++test("exact ACME include names differing only by case identify separate files",()=>{
++    const result=assemble('!source "A.a"',{includes:{"A.a":'!source "a.a"\n!byte 1',"a.a":"!byte 2"}});
++    clean(result);
++    assert.deepEqual(values(result),[2,1]);
++    const cycle=assemble('.IN /A.a/',{dialect:"S-C",includes:{"A.a":'.IN /a.a/'}});
++    assert.ok(cycle.errors.some(e=>/cycle/.test(e.err)));
++});
++test("inline and multiline macro includes expand at every call with private local labels",()=>{
++    for(const definition of ['!macro m { !source "code.a" }','!macro m { !source "code.a"\n}','!macro m {\n!source "code.a"\n}']){
++        const result=assemble('*=$2000\n'+definition+'\n+m\n+m',{includes:{"code.a":'.loop !byte 17\nbne .loop'}});
++        clean(result);
++        assert.deepEqual(values(result),[17,0xd0,0xfd,17,0xd0,0xfd]);
++        assert.ok(result.rows.some(r=>r.sourceName==='code.a'&&r.sourceLine===2&&r.macroTrace));
++    }
++});
++test("quoted ACME include escapes decode without applying the output character encoding",()=>{
++    const result=assemble('!source "a\\x20b.a"\n!source "a\\tb.a"',{characterEncoding:"apple2plus",includes:{"a b.a":"!byte 17","a\tb.a":"!byte 18"}});
++    clean(result);
++    assert.deepEqual(values(result),[17,18]);
++    for(const filename of ['"bad\\xG0.a"','"bad\\q.a"'])
++        assert.ok(assemble('!source '+filename).errors.some(e=>/escape/.test(e.err)));
++});
++test("missing files, cycles and maximum nesting produce include diagnostics",()=>{
++    assert.ok(assemble('!source "missing.a"').errors.some(e=>/include not found/.test(e.err)));
++    const cycle=assemble('!source "a.a"',{includes:{"a.a":'!source "./a.a"'}});
++    assert.ok(cycle.errors.some(e=>/cycle/.test(e.err)));
++    const nested=assemble('!source "a.a"',{maxIncludeDepth:1,includes:{"a.a":'!source "b.a"',"b.a":"rts"}});
++    assert.ok(nested.errors.some(e=>/depth/.test(e.err)));
++});
++test("malformed and unsupported library filenames produce diagnostics",()=>{
++    for(const name of ['','""','"unfinished','defs.a','<defs.a>','"defs.a",1'])
++        assert.ok(assemble('!source '+name).errors.some(e=>/filename|include name|library/.test(e.err)));
++});
++test("explicit foreign modes reject source includes without assembling their content",()=>{
++    for(const dialect of ["raJS","ca65","Merlin","S-C"]){
++        const result=assemble('!source "code.a"',{dialect,includes:{"code.a":"rts"}});
++        assert.ok(result.errors.length);
++        assert.deepEqual(values(result),[]);
++    }
++});
++test("S-C includes retain their behavior alongside ACME includes in multi mode",()=>{
++    const result=assemble('ORG $2000\n.IN /one.inc/\n!source "two.a"',{dialect:"multi",includes:{"one.inc":"DFB $11","two.a":"!byte $22"}});
++    clean(result);
++    assert.deepEqual(values(result),[17,34]);
++});
++test("C-style hexadecimal literals work in data, character-independent text and instructions",()=>{
++    for(const dialect of ["multi","ACME"]){
++        const result=assemble('*=0x2000\nN=0x2a\nlda #N\n!text "A",0xd\n!word 0x1234\n!byte !0x20&0xff',{dialect});
++        clean(result);
++        assert.deepEqual(values(result),[0xa9,42,65,13,0x34,0x12,0xdf]);
++    }
++});
++test("C-style direct hex addresses obey the existing digit-width policy",()=>{
++    const result=assemble('lda 0xF\nlda 0x0F\nlda 0x00F\nlda 0x000F\nlda 0x00F,X');
++    clean(result);
++    assert.deepEqual(values(result),[0xa5,15,0xa5,15,0xad,15,0,0xad,15,0,0xbd,15,0]);
++});
++test("malformed C-style numbers and over-wide direct addresses never emit truncated code",()=>{
++    for(const source of ['lda 0x','lda 0xGG','lda 0x1G','lda 0x00001','!byte 0x100']){
++        const result=assemble(source);
++        assert.ok(result.errors.length,source);
++        assert.deepEqual(values(result),[],source);
++    }
++});
++test("ACME requires lowercase x while shared mixed-mode expressions also accept 0X",()=>{
++    assert.ok(assemble('lda #0X2a').errors.length);
++    const result=assemble('lda #0X2a',{dialect:"multi"});
++    clean(result);
++    assert.deepEqual(values(result),[0xa9,42]);
++});
