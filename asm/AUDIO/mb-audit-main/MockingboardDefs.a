@@ -1,0 +1,125 @@
+; Mockingboard defines:
+
+CARD_BASE = $C100
+
+SY6522_A_BASE = $00
+SY6522_A_PH_BASE = $10	; Phasor mode (this is common to both MB & Phasor modes)
+SY6522_B_BASE = $80
+
+SY6522_ORB = 0
+SY6522_IRB = 0
+SY6522_ORA = 1
+SY6522_IRA = 1
+SY6522_DDRB = 2
+SY6522_DDRA = 3
+SY6522_TIMER1L_COUNTER = 4
+SY6522_TIMER1H_COUNTER = 5
+SY6522_TIMER1L_LATCH = 6
+SY6522_TIMER1H_LATCH = 7
+SY6522_TIMER2L_COUNTER = 8
+SY6522_TIMER2H_COUNTER = 9
+SY6522_SR = $A
+SY6522_ACR = $B
+SY6522_PCR = $C
+SY6522_IFR = $D
+SY6522_IER = $E
+
+ACR_ONESHOT     = 0<<6
+ACR_FREERUNNING = 1<<6
+
+IER_SET    = 1<<7
+IER_CLR    = 0<<7
+IxR_TIMER1 = 1<<6
+IxR_TIMER2 = 1<<5
+IxR_VOTRAX = 1<<4	; 6522 CB1
+IxR_SSI263 = 1<<1	; 6522 CA1/Peripheral
+
+AY_AFINE	= 0		; b7:0
+AY_ACOARSE	= 1		; b3:0 - for YM2149, writing $1f will read back as $1f (even though only 4 bits are used)
+AY_BFINE	= 2		; b7:0
+AY_BCOARSE	= 3		; b3:0
+AY_CFINE	= 4		; b7:0
+AY_CCOARSE	= 5		; b3:0
+AY_NOISEPER	= 6		; b4:0
+AY_ENABLE	= 7		; b7:0 - for AY-3-8913, there is no PORTA/B so b7:6 are redundant
+AY_AVOL		= 8		; b4:0
+AY_BVOL		= 9		; b4:0
+AY_CVOL		= 10	; b4:0
+AY_EFINE	= 11	; b7:0
+AY_ECOARSE	= 12	; b7:0
+AY_ESHAPE	= 13	; b3:0
+AY_PORTA	= 14	; b7:0 - not available on AY-3-8913
+AY_PORTB	= 15	; b7:0 - not available on AY-3-8913
+
+AY_NOISE_MASK = $1f		; valid bits of AY_NOISEPER
+AY_AMPLITUDE_MODE = $10	; b4 of AY_xVOL (0=fixed, 1=envelope)
+
+AY_ENA_A	= %00110110	; Enable A (Noise & Tone)
+AY_ENA_B	= %00101101	; Enable B (Noise & Tone)
+AY_ENA_C	= %00011011	; Enable C (Noise & Tone)
+
+AY_DIS_A	= %00001001	; Disable A (Noise & Tone)
+AY_DIS_B	= %00010010	; Disable B (Noise & Tone)
+AY_DIS_C	= %00100100	; Disable C (Noise & Tone)
+
+; 6522 ORB bit:          2    1    0
+; AY inputs on:       /RESET|BDIR|BC1: (BC2=1)
+AY_RESET    = 0     ;    0    -    -
+AY_INACTIVE = 4     ;    1    0    0
+AY_READ     = 5     ;    1    0    1
+AY_WRITE    = 6     ;    1    1    0
+AY_LATCH    = 7     ;    1    1    1
+AY_FUNC_MASK = %00000111
+; Phasor extra chip-select bits (when in native Phasor mode):
+AY_NOT_CS1	= $10
+AY_NOT_CS2	= $08
+AY_CS1		= AY_NOT_CS2
+AY_CS2		= AY_NOT_CS1
+AY_NO_CS	= AY_NOT_CS1|AY_NOT_CS2	; each CS is active low
+AY_BOTH_CS	= $00
+; Echo+ extra chip-select bits:
+AY_ECHO_CS1	= $08
+AY_ECHO_CS2	= $10
+AY_ECHO_NO_CS	= AY_ECHO_CS1|AY_ECHO_CS2	; each CS is active low
+AY_ECHO_BOTH_CS	= $00
+
+; SSI263:
+SSI_DURPHON = 0
+SSI_INFLECT = 1
+SSI_RATEINF = 2
+SSI_CTTRAMP = 3
+SSI_FILFREQ = 4
+SSI_NUM_REGS = SSI_FILFREQ+1
+SSI_A_BASE = $40
+SSI_A_DURPHON = SSI_A_BASE + SSI_DURPHON
+SSI_A_INFLECT = SSI_A_BASE + SSI_INFLECT
+SSI_A_RATEINF = SSI_A_BASE + SSI_RATEINF
+SSI_A_CTTRAMP = SSI_A_BASE + SSI_CTTRAMP
+SSI_A_FILFREQ = SSI_A_BASE + SSI_FILFREQ
+SSI_B_BASE = $20
+SSI_B_DURPHON = SSI_B_BASE + SSI_DURPHON
+SSI_B_INFLECT = SSI_B_BASE + SSI_INFLECT
+SSI_B_RATEINF = SSI_B_BASE + SSI_RATEINF
+SSI_B_CTTRAMP = SSI_B_BASE + SSI_CTTRAMP
+SSI_B_FILFREQ = SSI_B_BASE + SSI_FILFREQ
+
+; Duration/Phoneme
+DURATION_MODE_MASK = $C0
+PHONEME_MASK = $3F
+
+MODE_PHONEME_TRANSITIONED_INFLECTION = $C0	; IRQ active
+MODE_PHONEME_IMMEDIATE_INFLECTION = $80		; IRQ active
+MODE_FRAME_IMMEDIATE_INFLECTION = $40		; IRQ active
+MODE_IRQ_DISABLED = $00
+
+; Ctrl/Art/Amp
+CONTROL_MASK = $80
+CONTROL_H = CONTROL_MASK
+CONTROL_L = 0
+
+REQ_NEW_DATA = 1<<7	; D7 (inverted state of A/!R). Phasor mode only, when reading any register
+
+; Phasor mode
+PH_MOCKINGBOARD = 8
+PH_PHASOR = $D
+PH_ECHOPLUS = $F

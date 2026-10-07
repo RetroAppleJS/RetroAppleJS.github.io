@@ -1,0 +1,3635 @@
+;license:MIT
+;(c) 2021-2026 by Tom Charlesworth
+;
+; AY8913 related
+;
+
+;------------------------------------------------------------------------------
+
+IsEchoPlus
+; Pre: Detected a single, but dual-mapped 6522 at $00 and $80; not //c
+; Post: isEchoPlus, C=0(Echo+), C=1(Not Echo+)
+
+	lda		#SY6522_A_BASE
+	sta		zpTmp3
+	lda		#1
+	sta		isEchoPlus
+	jsr		Init6522ForAY			; pre: zpTmp3, isEchoPlus=1
+
+	ldx		#AY_ECHO_CS1|AY_LATCH
+	ldy		#AY_AFINE
+	lda		#$11
+	jsr		AY_Echo_WriteRegValue
+
+	ldx		#AY_ECHO_CS2|AY_LATCH
+	ldy		#AY_AFINE
+	lda		#$33
+	jsr		AY_Echo_WriteRegValue
+
+	ldx		#AY_ECHO_CS1|AY_LATCH
+	ldy		#AY_AFINE
+	jsr		AY_Echo_ReadRegValue
+	cmp		#$11
+	bne		+
+
+	ldx		#AY_ECHO_CS2|AY_LATCH
+	ldy		#AY_AFINE
+	jsr		AY_Echo_ReadRegValue
+	cmp		#$33
+	clc
+	beq		++
+
++	lda		#0
+	sta		isEchoPlus
+	sec
+++	rts
+
+;------------------------------------------------------------------------------
+
+DetectAY8913
+; Pre: zpTmp1 = 6522 bitmap in b1:0
+;	hasAY8913 = 0
+;	isPhasorCard, isMegaAudioCard, isMB4C, isEchoPlus, isSDMusic
+; Post:
+;	hasAY8913 = %0000,%0001,%0010,%0011 - for Mockingboard or Echo+ or MB4c
+;	hasAY8913 = %0000,%0001,%0010,%0011,%0100,...,%1111 - for Phasor
+;	zpTmp1 = 0
+
+	lda		zpTmp1
+	sta		@smcPh+1
+
+	lda		isPhasorCard
+	beq		+
+		lda		#PH_MOCKINGBOARD
+		jsr		SetPhasorMode
++
+
+	lda		isMegaAudioCard		; Doesn't support AY register reads
+	ora		isSDMusic			; TODO: support SD Music (just like a regular Mockingboard?)
+	beq		+
+		lda		#%00000011
+		sta		hasAY8913		; For now just assume they are all working
+		rts
++
+
+	lda		isEchoPlus			; Echo+ AY detection
+	beq		@mb
+
+	; Echo+
+
+	lda		#SY6522_A_BASE		; only one 6522, but use zpTmp3 (6522-A or 6522-B) to config chip-select
+	sta		zpTmp3
+	lda		#1					; hasAY8913 mask
+	sta		zpTmp2
+
+-		jsr		Init6522ForAY	; pre: zpTmp3 = SY6522_A_BASE or SY6522_A_PH_BASE or SY6522_B_BASE
+
+		ldy		#AY_AFINE
+		lda		#$AA
+		jsr		AY_Echo_WriteRegValueEx
+
+		ldy		#AY_BFINE
+		lda		#$55
+		jsr		AY_Echo_WriteRegValueEx
+
+		ldy		#AY_CFINE
+		lda		#$69
+		jsr		AY_Echo_WriteRegValueEx
+
+		;
+
+		ldy		#AY_AFINE
+		jsr		AY_Echo_ReadRegValueEx
+		cmp		#$AA
+		bne		+
+
+		ldy		#AY_BFINE
+		jsr		AY_Echo_ReadRegValueEx
+		cmp		#$55
+		bne		+
+
+		ldy		#AY_CFINE
+		jsr		AY_Echo_ReadRegValueEx
+		cmp		#$69
+		bne		+
+
+			lda		hasAY8913
+			ora		zpTmp2
+			sta		hasAY8913
+
++		asl		zpTmp2			; AY mask <<= 1
+		lda		zpTmp3
+		eor		#$80
+		sta		zpTmp3
+		bne		-
+
+		rts
+
+		;------------------------------
+
+@mb	; Mockingboard (or Phasor or MB4c)
+
+	lda		#SY6522_A_BASE
+	sta		zpTmp3
+	lda		#1					; hasAY8913 mask
+	sta		zpTmp2
+
+@loop	lda		isMB4C
+		bne		+				; MB4c: ignore the 6522 mask in zpTmp1 (just a single 6522 for AYs at offset $00 & $80)
+		lsr		zpTmp1			; 6522 at this addr?
+		bcc		@next
++
+
+		jsr		Init6522ForAY
+
+		lda		#AY_AFINE
+		ldx		#$AA
+		jsr		AY_WriteRegValue
+
+		lda		#AY_BFINE
+		ldx		#$55
+		jsr		AY_WriteRegValue
+
+		lda		#AY_CFINE
+		ldx		#$69
+		jsr		AY_WriteRegValue
+
+		;
+
+		ldx		#AY_AFINE
+		jsr		AY_ReadRegValue
+		cmp		#$AA
+		bne		@next
+
+		ldx		#AY_BFINE
+		jsr		AY_ReadRegValue
+		cmp		#$55
+		bne		@next
+
+		ldx		#AY_CFINE
+		jsr		AY_ReadRegValue
+		cmp		#$69
+		bne		@next
+
+			lda		hasAY8913
+			ora		zpTmp2
+			sta		hasAY8913
+
+@next	asl		zpTmp2			; AY mask <<= 1
+		lda		zpTmp3
+		eor		#$80
+		sta		zpTmp3
+		bne		@loop
+
+	lda		isPhasorCard
+	beq		@done
+
+	;
+	; Phasor: detect any 2nd-ary AYs
+	;
+
+@smcPh	lda		#0
+	sta		zpTmp1
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	lda		#SY6522_A_PH_BASE
+	sta		zpTmp3				; 6522-A base addr *for Phasor*
+	lda		#%00000100			; hasAY8913 mask
+	sta		zpTmp2
+
+-		lsr		zpTmp1			; 6522 at this addr?
+		bcc		+
+
+		jsr		Init6522ForAY
+
+		lda		#AY_AFINE
+		ldx		#$AA
+		jsr		AY2_WriteRegValue
+
+		lda		#AY_BFINE
+		ldx		#$55
+		jsr		AY2_WriteRegValue
+
+		lda		#AY_CFINE
+		ldx		#$69
+		jsr		AY2_WriteRegValue
+
+		;
+
+		ldx		#AY_AFINE
+		jsr		AY2_ReadRegValue
+		cmp		#$AA
+		bne		+
+
+		ldx		#AY_BFINE
+		jsr		AY2_ReadRegValue
+		cmp		#$55
+		bne		+
+
+		ldx		#AY_CFINE
+		jsr		AY2_ReadRegValue
+		cmp		#$69
+		bne		+
+
+			lda		hasAY8913
+			ora		zpTmp2
+			sta		hasAY8913
+
++		asl		zpTmp2			; AY mask <<= 1
+		lda		#SY6522_B_BASE
+		cmp		zpTmp3
+		beq		+
+		sta		zpTmp3
+		bne		-				; (bra)
+
++	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	;
+
+@done
+	rts
+
+;------------------------------------------------------------------------------
+
+DO_EXTRA_YM2149_READS = 1
+
+!if DO_EXTRA_YM2149_READS {
+NUM_YM_REGS = 8
+} else {
+NUM_YM_REGS = 1
+}
+
+DetectYM2149
+; Pre: zpTmp1 = 6522 bitmap in b1:0
+;	hasYM2149 = 0
+;	isPhasorCard, isMegaAudioCard, isMB4C, isEchoPlus, isSDMusic
+; Post:
+;	hasYM2149 = %0000,%0001,%0010,%0011 - for Mockingboard or Echo+ or MB4c
+;	hasYM2149 = %0000,%0001,%0010,%0011,%0100,...,%1111 - for Phasor
+;	zpTmp1 = 0
+
+	lda		zpTmp1
+	sta		@smcPh+1
+
+	lda		isPhasorCard
+	beq		+
+		lda		#PH_MOCKINGBOARD
+		jsr		SetPhasorMode
++
+
+	lda		isMegaAudioCard
+	ora		isEchoPlus			; AY8913s are soldered directly to the PCB (so can't be YM2149s)
+	ora		isSDMusic			; TODO: support SD Music
+	beq		+
+		rts
++
+
+	; Mockingboard (or Phasor or MB4c)
+
+	lda		#SY6522_A_BASE
+	sta		zpTmp3
+	lda		#1					; hasYM2149 mask
+	sta		zpTmp2
+
+@loop	lda		isMB4C
+		bne		+				; MB4c: ignore the 6522 mask in zpTmp1 (just a single 6522 for AYs at offset $00 & $80)
+		lsr		zpTmp1			; 6522 at this addr?
+		bcc		@next
++
+
+		jsr		Init6522ForAY	; pre: zpTmp3 = SY6522_A_BASE or SY6522_A_PH_BASE or SY6522_B_BASE
+
+		lda		zpTmp3
+		and		#SY6522_B_BASE
+		beq		+
+			lda		#NUM_YM_REGS
++		sta		zpTmp4			; set YMregs index
+
+		;
+		; Detect YM2149 by writing $1F to reg-1, and it will read back as $1F
+		;
+
+		ldx		#$1F
+		jsr		YMWriteThenReadWithoutSelectReg1	; YM2149 returns $1F
+
+!if DO_EXTRA_YM2149_READS {	; Extra test code - could use these results for extra confidence in determining chip is a YM2149
+		ldx		#$3F
+		jsr		YMWriteThenReadWithoutSelectReg1	; YM2149 returns $3F
+
+		ldx		#$7F
+		jsr		YMWriteThenReadWithoutSelectReg1	; YM2149 returns $7F
+
+		ldx		#$FF
+		jsr		YMWriteThenReadWithoutSelectReg1	; YM2149 returns $FF
+
+		;
+
+		lda		#AY_BCOARSE
+		ldx		#$1F
+		jsr		YMWriteThenReadWithoutSelect		; YM2149 returns $1F
+
+		lda		#AY_BCOARSE
+		ldx		#$FF
+		jsr		YMWriteThenReadWithoutSelect		; YM2149 returns $FF
+
+		lda		#AY_CCOARSE
+		ldx		#$1F
+		jsr		YMWriteThenReadWithoutSelect		; YM2149 returns $1F
+
+		lda		#AY_CCOARSE
+		ldx		#$FF
+		jsr		YMWriteThenReadWithoutSelect		; YM2149 returns $FF
+}
+
+		;
+
+		lda		zpTmp4
+		sec
+		sbc		#NUM_YM_REGS
+		tax
+		lda		YMregs,x
+		cmp		#$1F
+		bne		+
+			lda		hasYM2149
+			ora		zpTmp2
+			sta		hasYM2149
++
+
+		;
+
+@next	asl		zpTmp2			; AY mask <<= 1
+		lda		zpTmp3
+		eor		#$80
+		sta		zpTmp3
+		bne		@loop
+
+	lda		isPhasorCard
+	beq		@done
+
+	; Phasor: check any 2nd-ary AYs
+
+@smcPh	lda		#0
+	sta		zpTmp1
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	lda		#SY6522_A_PH_BASE
+	sta		zpTmp3				; 6522-A base addr *for Phasor*
+	lda		#%00000100			; hasAY8913 mask
+	sta		zpTmp2
+
+@loop2	lsr		zpTmp1			; 6522 at this addr?
+		bcc		@next2
+
+		jsr		Init6522ForAY
+
+		; Detect YM2149 by writing $1F to reg-1, and it will read back as $1F
+		ldx		#$1F
+		lda		#AY_ACOARSE
+		jsr		AY_WriteRegValue
+		jsr		AY_SetPortAInput
+		jsr		AY_ReadReg
+		cmp		#$1F
+		bne		+
+			lda		hasYM2149
+			ora		zpTmp2
+			sta		hasYM2149
++
+
+		;
+
+@next2	asl		zpTmp2			; AY mask <<= 1
+		lda		#SY6522_B_BASE
+		cmp		zpTmp3
+		beq		+
+		sta		zpTmp3
+		bne		@loop2			; (bra)
+
++	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	;
+
+@done
+	rts
+
+;
+
+; Pre: X = Value to write
+YMWriteThenReadWithoutSelectReg1
+	lda		#AY_ACOARSE
+; Pre: A = Reg#
+YMWriteThenReadWithoutSelect
+	jsr		AY_WriteRegValue
+	jsr		AY_SetPortAInput
+	jsr		AY_ReadReg
+	ldx		zpTmp4
+	inc		zpTmp4
+	sta		YMregs,x
+	jsr		AY_SetPortAOutput	; DDRA=0xFF
+	rts
+
+YMregs
+	!fill NUM_YM_REGS,0	; AY-0
+	!fill NUM_YM_REGS,0	; AY-1
+
+;------------------------------------------------------------------------------
+
+DO_EXTRA_PORTB_CHECK = 1
+DO_EXTRA_PORT_INPUT_CHECK = 1
+
+!if DO_EXTRA_PORTB_CHECK {
+  !if DO_EXTRA_PORTB_CHECK {
+NUM_AY_REGS = 3+2+2
+  } else {
+NUM_AY_REGS = 3
+  }
+} else {
+NUM_AY_REGS = 2
+}
+
+DetectAY8910
+; Pre: zpTmp1 = 6522 bitmap in b1:0
+;	hasAY8910 = 0
+;	isPhasorCard, isMegaAudioCard, isMB4C, isEchoPlus, isSDMusic
+; Post:
+;	hasAY8910 = %0000,%0001,%0010,%0011 - for Mockingboard or Echo+ or MB4c
+;	hasAY8910 = %0000,%0001,%0010,%0011,%0100,...,%1111 - for Phasor
+;	zpTmp1 = 0
+
+	lda		zpTmp1
+	sta		@smcPh+1
+
+	lda		isPhasorCard
+	beq		+
+		lda		#PH_MOCKINGBOARD
+		jsr		SetPhasorMode
++
+
+	lda		isMegaAudioCard
+	ora		isEchoPlus			; AY8913s are soldered directly to the PCB (so can't be AY8910s)
+	ora		isSDMusic			; TODO: support SD Music
+	beq		+
+		rts
++
+
+	; Mockingboard (or Phasor or MB4c)
+
+	lda		#SY6522_A_BASE
+	sta		zpTmp3
+	lda		#1					; hasYM2149 mask
+	sta		zpTmp2
+
+@loop	lda		isMB4C
+		bne		+				; MB4c: ignore the 6522 mask in zpTmp1 (just a single 6522 for AYs at offset $00 & $80)
+		lsr		zpTmp1			; 6522 at this addr?
+		bcs		+
+		jmp		@next
++
+
+		jsr		Init6522ForAY	; pre: zpTmp3 = SY6522_A_BASE or SY6522_A_PH_BASE or SY6522_B_BASE
+
+		lda		zpTmp3
+		and		#SY6522_B_BASE
+		beq		++
+			lda		#NUM_AY_REGS
+++		sta		zpTmp4			; set AYregs index
+
+		;
+		; Detect AY8910 by writing $FF to reg-7, and it will read back as $FF (or $7F for AY8912 or $3F for AY8913)
+		; + check that PORTA & PORTB are write/readable
+		;
+
+		lda		#AY_ENABLE
+		ldx		#%11000000|AY_DIS_A|AY_DIS_B|AY_DIS_C	; Set ports as output. IOB(b7), IOA(b6): IN=0, OUT=1
+		jsr		AY_WriteRegValue
+
+		lda		#AY_PORTA
+		ldx		#$55
+		jsr		AY_WriteRegValue
+
+		lda		#AY_PORTB
+		ldx		#$69
+		jsr		AY_WriteRegValue
+
+		ldx		#AY_ENABLE
+		jsr		AY_ReadRegValue
+		ldx		zpTmp4
+		inc		zpTmp4
+		sta		AYregs,x
+
+		ldx		#AY_PORTA
+		jsr		AY_ReadRegValue
+		ldx		zpTmp4
+		inc		zpTmp4
+		sta		AYregs,x
+
+!if DO_EXTRA_PORTB_CHECK {	; do extra PORTB check
+		ldx		#AY_PORTB
+		jsr		AY_ReadRegValue
+		ldx		zpTmp4
+		inc		zpTmp4
+		sta		AYregs,x
+
+		;
+  !if DO_EXTRA_PORT_INPUT_CHECK {
+		jsr		AY_SetPortAOutput	; DDRA=0xFF
+
+		lda		#AY_ENABLE
+		ldx		#AY_DIS_A|AY_DIS_B|AY_DIS_C				; Set ports as input. IOB(b7), IOA(b6): IN=0, OUT=1
+		jsr		AY_WriteRegValue
+
+		ldx		#AY_PORTA
+		jsr		AY_ReadRegValue
+		ldx		zpTmp4
+		inc		zpTmp4
+		sta		AYregs,x
+
+		ldx		#AY_PORTB
+		jsr		AY_ReadRegValue
+		ldx		zpTmp4
+		inc		zpTmp4
+		sta		AYregs,x
+
+		;
+
+		jsr		AY_SetPortAOutput	; DDRA=0xFF
+
+		lda		#AY_ENABLE
+		ldx		#%11000000|AY_DIS_A|AY_DIS_B|AY_DIS_C	; Set ports as output. IOB(b7), IOA(b6): IN=0, OUT=1
+		jsr		AY_WriteRegValue
+
+		ldx		#AY_PORTA
+		jsr		AY_ReadRegValue
+		ldx		zpTmp4
+		inc		zpTmp4
+		sta		AYregs,x
+
+		ldx		#AY_PORTB
+		jsr		AY_ReadRegValue
+		ldx		zpTmp4
+		inc		zpTmp4
+		sta		AYregs,x
+  }
+}
+
+		;
+
+		lda		zpTmp4
+		sec
+		sbc		#NUM_AY_REGS
+		tax
+		lda		AYregs+1,x		; AY8913 PORTA returns 0x0E
+		cmp		#$55
+		bne		+
+
+		; PORTA is supported => AY8910/YM2149 or AY8912
+
+		lda		AYregs+0,x
+		cmp		#%01000000|AY_DIS_A|AY_DIS_B|AY_DIS_C	; AY8912 ENABLE returns 0x7F
+		beq		++
+		cmp		#%11000000|AY_DIS_A|AY_DIS_B|AY_DIS_C	; AY8910 ENABLE returns 0xFF
+		bne		+
+
+!if DO_EXTRA_PORTB_CHECK {
+		lda		AYregs+2,x		; AY8913 (& AY8912) PORTB returns 0x0F
+		cmp		#$69
+		bne		+
+}
+
+			lda		hasAY8910
+			ora		zpTmp2
+			sta		hasAY8910
+			bne		+			; (bra)
+
+++			lda		hasAY8912
+			ora		zpTmp2
+			sta		hasAY8912
+
++
+
+		;
+
+@next	asl		zpTmp2			; AY mask <<= 1
+		lda		zpTmp3
+		eor		#$80
+		sta		zpTmp3
+		beq		+
+		jmp		@loop
++
+
+	lda		isPhasorCard
+	beq		@done
+
+	; Phasor: check any 2nd-ary AYs
+
+@smcPh	lda		#0
+	sta		zpTmp1
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	lda		#SY6522_A_PH_BASE
+	sta		zpTmp3				; 6522-A base addr *for Phasor*
+	lda		#%00000100			; hasAY8913 mask
+	sta		zpTmp2
+
+@loop2	lsr		zpTmp1			; 6522 at this addr?
+		bcc		@next2
+
+		jsr		Init6522ForAY
+
+		; Detect AY8910 by writing $FF to reg-7, and it will read back as $FF (or $7F for AY8912 or $3F for AY8913)
+		; + check that PORTA is write/readable
+		lda		#AY_ENABLE
+		ldx		#%11000000|AY_DIS_A|AY_DIS_B|AY_DIS_C	; Set ports as output. IOB(b7), IOA(b6): IN=0, OUT=1
+		jsr		AY_WriteRegValue
+
+		lda		#AY_PORTA		; PORTA (IOA) only exists for AY8910 & AY8912
+		ldx		#$55
+		jsr		AY_WriteRegValue
+
+		ldx		#AY_PORTA
+		jsr		AY_ReadRegValue
+		cmp		#$55
+		bne		+
+
+		; PORTA is supported => AY8910/YM2149 or AY8912
+
+		ldx		#AY_ENABLE
+		jsr		AY_ReadRegValue
+		cmp		#%01000000|AY_DIS_A|AY_DIS_B|AY_DIS_C	; AY8912 ENABLE returns 0x7F
+		beq		++
+		cmp		#%11000000|AY_DIS_A|AY_DIS_B|AY_DIS_C	; AY8912 ENABLE returns 0xFF
+		bne		+
+
+			lda		hasAY8910
+			ora		zpTmp2
+			sta		hasAY8910
+			bne		+			; (bra)
+
+++			lda		hasAY8912
+			ora		zpTmp2
+			sta		hasAY8912
+
++
+
+		;
+
+@next2	asl		zpTmp2			; AY mask <<= 1
+		lda		#SY6522_B_BASE
+		cmp		zpTmp3
+		beq		+
+		sta		zpTmp3
+		bne		@loop2			; (bra)
+
++	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	;
+
+@done
+	; YM2149s will also be detected as AY8910s, so remove these
+	lda		hasAY8910
+	eor		hasYM2149
+	sta		hasAY8910
+	rts
+
+AYregs
+	!fill NUM_AY_REGS,0	; AY-0
+	!fill NUM_AY_REGS,0	; AY-1
+
+;------------------------------------------------------------------------------
+
+; TODO:
+; . Set AY reg without setting INACTIVE state (AppleWin-GH#320)
+; . Write AY reg outside of the 10us spec (AppleWin-GH#742)
+
+TestAY8913
+; Pre: hasAY8913
+; Post: C=0(OK), C=1(NG)
+
+	lda		#COMPONENT_AY8913+1	; test component $21
+	sta		testComponentNum
+
+	lda		MBBaseL						; $00 = tests are for both 6522-A/B
+	jsr		initSoakDisplayTest0
+	jsr		incSoakDisplayTest
+
+@repeat	jsr		incSoakDisplayRept		; NB. "00:nn" - just inc's rept#nn
+
+		lda		isPhasorCard
+		beq		+
+
+			; Phasor
+			lda		#0
+			sta		testNum			; test #00
+			jsr		TestAYEchoPlus	; NB. internally sets Echo+ mode
+			php
+			pha
+			lda		#PH_MOCKINGBOARD
+			jsr		SetPhasorMode
+			pla
+			plp
+			bcs		@error
+
+			inc		testNum			; test #01
+			jsr		TestAYPhasor1	; only do this test once, since it covers both SY6522's
+			bcs		@error
+
+			inc		testNum			; test #02
+			jsr		TestAYPhasor2	; only do this test once, since it covers both SY6522's
+			bcs		@error
+
+			inc		testNum			; test #03
+			jsr		TestAYPhasor3	; only do this test once, since it covers both SY6522's
+			bcs		@error
+
+			inc		testNum			; test #04
+			jsr		TestAYPhasor4	; only do this test once, since it covers both SY6522's
+			bcs		@error
+
+			inc		testNum			; test #05
+			jsr		TestAYPhasor5	; only do this test once, since it covers both SY6522's
+			bcs		@error
+			bcc		@TestMB
+
++		lda		isEchoPlus
+		beq		@TestMB
+
+			; Echo+
+			lda		#8
+			sta		testNum			; test #08
+			jsr		TestAYEchoPlus
+			bcc		@soak
+			bcs		@error
+
+@TestMB	; Mockingboard or Phasor(in PH_MOCKINGBOARD) or MB4c(assume we can read AY regs) or MegaAudio or SD Music
+
+			lda		#$C
+			sta		testNum			; test #0C
+			jsr		TestAYMockingboard
+			bcs		@error
+
+		;
+
+		lda		#$0f
+		sta		testNum
+
+		lda		#SY6522_A_BASE
+		sta		zpTmp3				; 6522-A base addr
+
+		jsr		TestAYs				; test #10,...
+		bcs		@error
+
+@TestPhasor
+		lda		isPhasorCard
+		beq		@soak
+
+		lda		#PH_PHASOR
+		jsr		SetPhasorMode
+
+		lda		#$2f
+		sta		testNum
+
+		lda		#SY6522_A_PH_BASE
+		sta		zpTmp3				; 6522-A base addr *for Phasor*
+
+		jsr		TestAYs				; test #30,...
+
+		php
+		pha
+		lda		#PH_MOCKINGBOARD
+		jsr		SetPhasorMode
+		pla
+		plp
+		bcs		@error
+
+@soak	jsr		incSoakTestNum
+		beq		+
+		jmp		@repeat
++
+
+	clc
+	rts
+
+@error
+; Pre: zpTmp2 = expected value
+;	A = actual value
+
+	ldx		zpTmp2
+	jsr		SetError
+
+	sec
+	rts
+
+;--------------------------------------
+
+NUM_AY_TESTS = 5
+HiZ_TEST = 4
+
+; 1) Test #10,... Called for Mockingboard or Phasor(phasorMode = PH_MOCKINGBOARD) or MB4c or MegaAudio or SD Music
+;		test AY: data lines, addr lines, etc
+; 2) Test #30,... Called for Phasor(phasorMode = PH_PHASOR)
+;		test AY1: data lines, addr lines, etc
+;		test AY2: data lines, addr lines, etc
+
+TestAYs
+; Pre:
+;	zpTmp3 = SY6522_A_BASE or SY6522_A_PH_BASE or SY6522_B_BASE
+; Post: C=0(OK), C=1(NG)
+;	zpTmp2 = expected, A = actual
+
+	lda		hasAY8913
+	and		#%00000011				; NB. b1:0 set => respective 6522 exists
+	sta		zpTmp1
+
+-		lsr		zpTmp1
+		bcs		+
+			clc
+			lda		#NUM_AY_TESTS*2	; # tests x 2 AYs (**)
+			adc		testNum
+			sta		testNum
+			jmp		++
+
++		jsr		Init6522ForAY		; pre: zpTmp3 = SY6522_A_BASE or SY6522_A_PH_BASE or SY6522_B_BASE
+
+		lda		phasorMode
+		cmp		#PH_PHASOR
+		beq		@ph
+
+		; Mockingboard
+
+			lda		#0				; AY select ($00)
+			sta		zpTmp4
+
+			lda		isMegaAudioCard
+			beq		@t0
+
+				; MegaAudio
+				clc
+				lda		#HiZ_TEST	; skip to TestAYReadHiZ
+				adc		testNum
+				sta		testNum
+				bne		@t_HiZ
+
+                                    ; test 6522-A; 6522-B
+@t0			inc		testNum			; test #n+0, #n+A (**)
+			jsr		TestAYDatalines
+			bcs		+
+
+			inc		testNum			; test #n+1, #n+B
+			jsr		TestAYAddrlines
+			bcs		+
+
+			inc		testNum			; test #n+2, #n+C
+			jsr		TestAYWriteReadWithoutSelect
+			bcs		+
+
+			inc		testNum			; test #n+3, #n+D
+			jsr		TestAYLatchAddress
+			bcs		+
+
+@t_HiZ		inc		testNum			; test #n+4, #n+E
+			jsr		TestAYReadHiZ
+			bcs		+
+
+			clc
+			lda		#NUM_AY_TESTS	; skip the Phasor-only tests for 2nd AY
+			adc		testNum
+			sta		testNum
+			bcc		++				; (branch always)
+
+		; Phasor
+
+@ph			lda		#$40			; AY1 select ($40)
+			sta		zpTmp4
+                                        ; test   6522-A   ;  6522-B
+                                        ; test  AY1,  AY2 ; AY1,  AY2
+@ph_next_ay		inc		testNum			; test #n+0, #n+5, #n+A, #n+0F (**)
+				jsr		TestAYDatalines
+				bcs		+
+
+				inc		testNum			; test #n+1, #n+6, #n+B, #n+10
+				jsr		TestAYAddrlines
+				bcs		+
+
+				inc		testNum			; test #n+2, #n+7, #n+C, #n+11
+				jsr		TestAYWriteReadWithoutSelect
+				bcs		+
+
+				inc		testNum			; test #n+3, #n+8, #n+D, #n+12
+				jsr		TestAYLatchAddress
+				bcs		+
+
+				inc		testNum			; test #n+4, #n+9, #n+E, #n+13
+				jsr		TestAYReadHiZ
+				bcs		+
+
+			lda		zpTmp4
+			bmi		++
+			asl		zpTmp4			; AY2 select ($80)
+			bne		@ph_next_ay
+
+++		lda		#SY6522_B_BASE
+		cmp		zpTmp3
+		beq		++
+		sta		zpTmp3
+		jmp		-
+
+++	clc
++	rts
+
+;--------------------------------------
+
+TestAYDatalines
+; Pre:
+;	zpTmp3 = SY6522_A_BASE or SY6522_A_PH_BASE or SY6522_B_BASE
+;	zpTmp4 = AY chip select: 0(MB), $40(Phasor-AY1), $80(Phasor-AY2)
+; Post: C=0(OK), C=1(NG)
+;	zpTmp2 = expected, A = actual
+
+	; Test the 8 data lines:
+	; . Write then read AY reg#0: {$01, $02, $03,... $FF}
+
+	jsr		resetSubTest
+	jsr		incTotalTests
+
+	lda		#SY6522_ORA
+	ora		zpTmp3
+	tay							; init Y for AY_WriteRegValue(), etc.
+
+	lda		#0					; data to test
+	sta		zpTmp2
+
+@loop	lda		#AY_AFINE		; reg#
+		ldx		zpTmp2			; value
+
+		bit		zpTmp4			; N=b7, V=b6
+		bvs		@ph1
+		bmi		@ph2
+
+@mb		jsr		AY_WriteRegValue
+		ldx		#AY_AFINE
+		jsr		AY_ReadRegValue
+		bne		+				; (bra)
+
+@ph1	jsr		AY1_WriteRegValue
+		ldx		#AY_AFINE
+		jsr		AY1_ReadRegValue
+		bne		+				; (bra)
+
+@ph2	jsr		AY2_WriteRegValue
+		ldx		#AY_AFINE
+		jsr		AY2_ReadRegValue
+
++		cmp		zpTmp2
+		beq		@resetPortA
+		sec
+		rts						; C=1(NG)
+
+@resetPortA
+		jsr		AY_SetPortAOutput	; DDRA=0xFF
+
+		inc		zpTmp2
+		bne		@loop
+
+	clc
+	rts							; C=0(OK)
+
+;--------------------------------------
+
+TestAYAddrlines
+; Pre:
+;	zpTmp3 = SY6522_A_BASE or SY6522_A_PH_BASE or SY6522_B_BASE
+;	zpTmp4 = AY chip select: 0(MB), $40(Phasor-AY1), $80(Phasor-AY2)
+; Post: C=0(OK), C=1(NG)
+;	zpTmp2 = expected, A = actual
+
+	; Test the 4 addr lines:
+	; . Write AY regs: [0..$D] with values [0..$D]
+	; . then read back
+
+	jsr		resetSubTest
+	jsr		incTotalTests
+
+	lda		#SY6522_ORA
+	ora		zpTmp3
+	tay							; init Y for AY_WriteRegValue(), etc.
+
+	jsr		WriteAYRegs
+
+	lda		#0					; reg & data to test
+	sta		zpTmp2
+
+@loop_r	ldx		zpTmp2			; reg#
+
+		bit		zpTmp4			; N=b7, V=b6
+		bvs		@ph1_r
+		bmi		@ph2_r
+
+@mb_r	jsr		AY_ReadRegValue
+		bne		+
+
+@ph1_r	jsr		AY1_ReadRegValue
+		bne		+
+
+@ph2_r	jsr		AY2_ReadRegValue
+
++		cmp		zpTmp2
+		beq		+
+		sec
+		rts						; C=1(NG)
+
++
+--		inc		zpTmp2
+		lda		zpTmp2
+		cmp		#AY_AVOL		; skip AVOL/BVOL/CVOL to avoid any clicks (on soak test)
+		bcc		@loop_r			; bra < AY_AVOL
+		cmp		#AY_CVOL+1
+		bcc		--				; bra <= AY_CVOL
+		cmp		#AY_PORTA
+		bne		@loop_r
+
+	jsr		Init6522ForAY
+
+	clc							; C=0(OK)
+	rts
+
+;--------------------------------------
+
+WriteAYRegs
+; Write AY regs: [0..$D] with values [0..$D]
+; Pre:
+; 	Y = SY6522_ORA for chip A or B
+;	zpTmp3 = SY6522_A_BASE or SY6522_A_PH_BASE or SY6522_B_BASE
+;	zpTmp4 = AY chip select: 0(MB), $40(Phasor-AY1), $80(Phasor-AY2)
+
+	lda		#0					; reg & data to test
+	sta		zpTmp2
+
+@loop_w	lda		zpTmp2			; reg#
+		tax						; value
+
+		bit		zpTmp4			; N=b7, V=b6
+		bvs		@ph1_w
+		bmi		@ph2_w
+
+@mb_w	jsr		AY_WriteRegValue
+		bne		+
+
+@ph1_w	jsr		AY1_WriteRegValue
+		bne		+
+
+@ph2_w	jsr		AY2_WriteRegValue
+
++
+--		inc		zpTmp2
+		lda		zpTmp2
+		cmp		#AY_AVOL		; skip AVOL/BVOL/CVOL to avoid any clicks (on soak test)
+		bcc		@loop_w			; bra < AY_AVOL
+		cmp		#AY_CVOL+1
+		bcc		--				; bra <= AY_CVOL
+		cmp		#AY_PORTA
+		bne		@loop_w
+
+	rts
+
+;--------------------------------------
+
+TestAYWriteReadWithoutSelect
+; Similar to TestAYDatalines, just without the reg select each time (and reg#2 instead of reg#0)
+; Pre:
+;	zpTmp3 = SY6522_A_BASE or SY6522_A_PH_BASE or SY6522_B_BASE
+;	zpTmp4 = AY chip select: 0(MB), $40(Phasor-AY1), $80(Phasor-AY2)
+; Post: C=0(OK), C=1(NG)
+;	zpTmp2 = expected, A = actual
+
+	; Test the 8 data lines:
+	; . Write then read AY reg#2: {$01, $02, $03,... $FF}
+	; NB. Don't select AY reg using LATCH/INACTIVE - just write new value using WRITE/INACTIVE
+
+	jsr		resetSubTest
+	jsr		incTotalTests
+
+	lda		#SY6522_ORA
+	ora		zpTmp3
+	tay							; init Y for AY_WriteRegValue(), etc.
+
+	; Select reg#2
+
+	lda		#AY_BFINE			; reg#
+
+	bit		zpTmp4				; N=b7, V=b6
+	bvs		@ph1_s
+	bmi		@ph2_s
+
+@mb_s	jsr		SF_SelectReg
+		bne		+
+
+@ph1_s	jsr		AY1_SelectReg
+		bne		+
+
+@ph2_s	jsr		AY2_SelectReg
+
++	lda		#0					; data to test
+	sta		zpTmp2
+
+@loop	lda		zpTmp2			; value
+
+		bit		zpTmp4			; N=b7, V=b6
+		bvs		@ph1
+		bmi		@ph2
+
+@mb		jsr		SF_WriteReg
+		jsr		AY_SetPortAInput
+		jsr		AY_ReadReg
+		bne		+
+
+@ph1	jsr		AY1_WriteReg
+		jsr		AY_SetPortAInput
+		jsr		AY1_ReadReg
+		bne		+
+
+@ph2	jsr		AY2_WriteReg
+		jsr		AY_SetPortAInput
+		jsr		AY2_ReadReg
+
++		cmp		zpTmp2
+		bne		@error
+		jsr		AY_SetPortAOutput	; DDRA=0xFF
+
+		inc		zpTmp2
+		bne		@loop
+
+	clc
+	rts							; C=0(OK)
+
+@error
+	sec
+	rts							; C=1(NG)
+
+;--------------------------------------
+
+TestAYLatchAddress
+; Set AY's latch address, reset AY, then write (w/out latch) to reg#2 and check that write didn't occur to any reg!
+; Pre:
+;	zpTmp3 = SY6522_A_BASE or SY6522_A_PH_BASE or SY6522_B_BASE
+;	zpTmp4 = AY chip select: 0(MB), $40(Phasor-AY1), $80(Phasor-AY2)
+; Post: C=0(OK), C=1(NG)
+;	zpTmp2 = expected, A = actual
+;	zpTmp5 trashed
+
+	jsr		resetSubTest
+	jsr		incTotalTests
+
+	lda		#SY6522_ORA
+	ora		zpTmp3
+	tay							; init Y for AY_WriteRegValue(), etc.
+
+	; Select reg#2
+
+	lda		#AY_BFINE			; reg#
+
+	bit		zpTmp4				; N=b7, V=b6
+	bvs		@ph1_s
+	bmi		@ph2_s
+
+@mb_s	jsr		SF_SelectReg
+		bne		+
+
+@ph1_s	jsr		AY1_SelectReg
+		bne		+
+
+@ph2_s	jsr		AY2_SelectReg
+
++	jsr		Init6522ForAY		; Post: AY's latch address set to invalid
+
+	lda		#$00
+	sta		zpTmp2				; data to test (on read later)
+
+	lda		#$42
+
+	bit		zpTmp4				; N=b7, V=b6
+	bvs		@ph1
+	bmi		@ph2
+
+@mb		jsr		SF_WriteReg
+		bne		+
+
+@ph1	jsr		AY1_WriteReg
+		bne		+
+
+@ph2	jsr		AY2_WriteReg
+
++	; Check all regs = 0x00
+
+	ldx		#AY_AFINE			; reg#
+	stx		zpTmp5
+
+@loop	stx		subTestNum
+		bit		zpTmp4			; N=b7, V=b6
+		bvs		@ph1_r0
+		bmi		@ph2_r0
+
+@mb_r0	jsr		AY_ReadRegValue
+		bne		+
+
+@ph1_r0	jsr		AY1_ReadRegValue
+		bne		+
+
+@ph2_r0	jsr		AY2_ReadRegValue
+
++		cmp		zpTmp2
+		bne		@error
+
+		inc		zpTmp5
+		ldx		zpTmp5
+		cpx		#AY_PORTA
+		bne		@loop
+
+	clc							; C=0(OK)
+
+@done
+	php
+	pha
+	jsr		AY_SetPortAOutput	; DDRA=0xFF
+	pla
+	plp
+
+	rts
+
+@error
+	sec							; C=1(NG)
+	bcs		@done
+
+;--------------------------------------
+
+HiZ_TEST_VALUE = %01010101			; Value with a mix of 0s and 1s
+
+TestAYReadHiZ
+; Read AY reg after all non-READ funcs - 6522/AY8913 bus is in high impedance - eg. after:
+;   0. AY reset (PSG=INACTIVE)
+;   1. READ (no AY reg selected)
+;   2. LATCH
+;   3. WRITE
+;   4. READ/INACTIVE funcs
+; Pre:
+;	zpTmp3 = SY6522_A_BASE or SY6522_A_PH_BASE or SY6522_B_BASE
+;	zpTmp4 = AY chip select: 0(MB), $40(Phasor-AY1), $80(Phasor-AY2)
+; Post: C=0(OK), C=1(NG)
+;	zpTmp2 = expected, A = actual
+;	can set: warningCount + warnings vars
+;   . EG. WDC W65C22S6TPG-14 (in my hybrid Mockingboard) retains the value read from the AY on the bus even after a WAIT($FF) or $28882 cycles delay
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	jsr		Init6522ForAY			; Post: 6522's AY (or AY's) now reset
+
+	; AY(s) = INACTIVE
+	; . MB: AY selected; Phasor: CS is active low, so both AYs selected
+	jsr		@CheckPortAisFF
+
+	jsr		incSubTestNum			; subTest #1
+	lda		#AY_READ
+	jsr		@SetAYFunction
+	jsr		@CheckPortAisFF
+
+	jsr		incSubTestNum			; subTest #2
+	lda		#AY_AFINE
+	sta		(MBBase),Y
+	lda		#AY_LATCH
+	jsr		@SetAYFunction
+	jsr		@CheckPortAisFF
+
+	jsr		incSubTestNum			; subTest #3
+	lda		#HiZ_TEST_VALUE
+	sta		(MBBase),Y
+	lda		#AY_WRITE
+	jsr		@SetAYFunction
+	jsr		@CheckPortAisFF
+
+	jsr		incSubTestNum			; subTest #4
+	ldx		#AY_AFINE
+
+	bit		zpTmp4					; N=b7, V=b6
+	bvs		@ph1
+	bmi		@ph2
+
+@mb		jsr		AY_ReadRegValue		; R6522/AY8913 bus pulled high immediately (for both Mockingboard & Phasor in MB mode)
+		lda		(MBBase),y			; Read Port-A immediately
+		jmp		++
+
+@ph1	jsr		AY1_ReadRegValue	; Phasor/AY8913 bus pulled high immediately
+		lda		(MBBase),y			; Read Port-A immediately
+		jmp		++
+
+@ph2	jsr		AY2_ReadRegValue	; Phasor/AY8913 bus pulled high immediately
+		lda		(MBBase),y			; Read Port-A immediately
+++		ldx		#$ff
+		cmp		#$ff
+		beq		@done
+
+@errorXA
+	jsr		setWarning			; pre: X = expected; A = actual
+	lda		#SY6522_ORA
+	ora		zpTmp3
+	tay
+
+@done							; pre: Y = SY6522_ORA for chip A or B
+	clc							; C=0(OK / WARNING)
+	jmp		AY_SetPortAOutput	; DDRA=0xFF
+
+;
+
+@CheckPortAisFF
+; Pre: Y = SY6522_ORA for chip A or B
+; Post: Z=1(OK)
+	jsr		AY_SetPortAInput
+	lda		(MBBase),y			; Read Port-A
+	pha
+	jsr		AY_SetPortAOutput
+
+	lda		#AY_INACTIVE
+	jsr		@SetAYFunction		; Set AY back to INACTIVE
+
+	pla
+	ldx		#$ff
+	cmp		#$ff
+	bne		+
+	rts							; OK
+
++	tay
+	pla
+	pla
+	tya
+	jmp		@errorXA
+
+@SetAYFunction
+; Pre: A = AY function
+	bit		zpTmp4				; N=b7, V=b6
+	bvs		@_ph1
+	bmi		@_ph2
+	bpl		@setFunction		; (branch always)
+@_ph1	ora		#AY_CS1
+		bne		@setFunction
+@_ph2	ora		#AY_CS2
+@setFunction
+	dey
+	sta		(MBBase),Y
+	iny
+	rts
+
+;--------------------------------------
+
+TestAYMockingboard
+; Pre: phasorMode = PH_MOCKINGBOARD
+; Post: C=0(OK), C=1(NG)
+;	zpTmp2 = expected, A = actual
+
+	clc
+	lda		isMegaAudioCard					; MegaAudio doesn't support AY reads, so skip this whole test
+	bne		@done
+
+	lda		hasAY8913						; Need a card with AYs on both 6522s (so not Sound/Speech I)
+	and		#3
+	cmp		#3
+	bne		@done
+
+	; MB tests for AY RESET (cf. TestAYPhasor5)
+	; Writing a 6522's ORB(PortB).bit2=0 will reset the AY
+	; . basically ORB.b2 is wired directly to the AY's /RESET pin
+	; NB. 6522-A's AY is independent of 6522-B's AY
+
+	jsr		resetSubTestMinus1
+	jsr		incTotalTests
+
+	; Reset AYs on 6522A, from MB mode
+
+	jsr		MBWriteAllAFINE					; subTest #0
+	ldy		#SY6522_A_BASE+SY6522_ORA
+	lda		#AY_RESET
+	jsr		SetModeAndInactive
+	jsr		MBCheck6522A_AYs
+	bcs		@done
+
+	; Reset AYs on 6522B, from MB mode
+
+	jsr		MBWriteAllAFINE					; subTest #1
+	ldy		#SY6522_B_BASE+SY6522_ORA
+	lda		#AY_RESET
+	jsr		SetModeAndInactive
+	jsr		MBCheck6522B_AYs
+
+@done
+	rts
+
+;------------------
+
+MBCheck6522A_AYs
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;	zpTmp2 = expected, A = actual
+
+	ldy		#SY6522_A_BASE+SY6522_ORA
+
+	ldx		#AY_AFINE
+	jsr		AY_ReadRegValue
+	tax
+	bne		@error0
+
+	ldy		#SY6522_B_BASE+SY6522_ORA
+
+	ldx		#AY_AFINE
+	jsr		AY_ReadRegValue
+	ldx		#$33
+	cmp		#$33
+	bne		@error
+
+	clc
+	rts
+
+@error0
+	ldx		#0
+@error
+	stx		zpTmp2
+	sec
+	rts
+
+;------------------
+
+MBCheck6522B_AYs
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;	zpTmp2 = expected, A = actual
+
+	ldy		#SY6522_B_BASE+SY6522_ORA
+
+	ldx		#AY_AFINE
+	jsr		AY_ReadRegValue
+	tax
+	bne		@error0
+
+	ldy		#SY6522_A_BASE+SY6522_ORA
+
+	ldx		#AY_AFINE
+	jsr		AY_ReadRegValue
+	ldx		#$11
+	cmp		#$11
+	bne		@error
+
+	clc
+	rts
+
+@error0
+	ldx		#0
+@error
+	stx		zpTmp2
+	sec
+	rts
+
+;------------------
+
+MBWriteAllAFINE
+
+	jsr		incSubTestNum
+
+	;
+
+	lda		#SY6522_A_BASE
+	sta		zpTmp3
+
+	jsr		Init6522ForAY		; + reset AY
+
+	lda		#AY_AFINE
+	ldx		#$11
+	jsr		AY1_WriteRegValue
+
+	;
+
+	lda		#SY6522_B_BASE
+	sta		zpTmp3
+
+	jsr		Init6522ForAY		; + reset AY
+
+	lda		#AY_AFINE
+	ldx		#$33
+	jsr		AY1_WriteRegValue
+
+	rts
+
+;--------------------------------------
+
+TestAYEchoPlus
+; Pre: isEcho==1 or isPhasorCard==1
+; Post: C=0(OK), C=1(NG)
+;	zpTmp2 = expected, A = actual
+
+	; Test for 2 AYs
+	; 0) Write to each AY's reg#0 with values: $11,$33; then read back
+	; 1) Check that the AYs are correctly mapped between Phasor & Echo+ modes
+	; 2) (Remaining in Echo+ mode) reset the 2 AYs, and check all 2 AYs' reg#0 are $00
+
+	jsr		resetSubTest		; subTest #0
+	jsr		incTotalTests
+
+	;
+
+	lda		isPhasorCard
+	beq		+
+
+		; Ensure that all 4 AYs are reset for later test (*1)
+
+		lda		#PH_PHASOR
+		jsr		SetPhasorMode
+
+		lda		#SY6522_A_PH_BASE
+		sta		zpTmp3
+		jsr		Init6522ForAY	; Reset 6522-A's 2x AYs
+
+		lda		#SY6522_B_BASE
+		sta		zpTmp3
+		jsr		Init6522ForAY	; Reset 6522-B's 2x AYs
+
+		lda		#PH_ECHOPLUS
+		jsr		SetPhasorMode
+
++	lda		#SY6522_A_BASE
+	sta		zpTmp3
+
+	jsr		Init6522ForAY
+
+	;
+
+	ldx		#AY_ECHO_CS1|AY_LATCH
+	ldy		#AY_AFINE
+	lda		#$11
+	jsr		AY_Echo_WriteRegValue
+
+	ldx		#AY_ECHO_CS2|AY_LATCH
+	ldy		#AY_AFINE
+	lda		#$33
+	jsr		AY_Echo_WriteRegValue
+
+	;
+
+	ldx		#AY_ECHO_CS1|AY_LATCH
+	ldy		#AY_AFINE
+	jsr		AY_Echo_ReadRegValue
+	ldx		#$11
+	cmp		#$11
+	bne		+
+
+	ldx		#AY_ECHO_CS2|AY_LATCH
+	ldy		#AY_AFINE
+	jsr		AY_Echo_ReadRegValue
+	ldx		#$33
+	cmp		#$33
+	bne		+
+
+	lda		isPhasorCard
+	tax							; A==X (don't care about value)
+	beq		+
+
+		;
+		; 1) Check that the AYs are correctly mapped between Phasor & Echo+ modes
+		; Check that the Echo+ AY writes don't write to the 6522-A's AYs (ie. these AYs' reg#0 should read back as 0x00)
+		;
+
+		jsr		incSubTestNum	; subTest #1 (*1)
+		lda		#PH_PHASOR
+		jsr		SetPhasorMode
+
+		ldy		#SY6522_A_PH_BASE+SY6522_ORA
+
+		ldx		#AY_AFINE
+		jsr		AY1_ReadRegValue
+		ldx		#$00
+		cmp		#$00
+		bne		+
+
+		ldx		#AY_AFINE
+		jsr		AY2_ReadRegValue
+		ldx		#$00
+		cmp		#$00
+		bne		+
+
+		;
+
+		ldy		#SY6522_B_BASE+SY6522_ORA
+
+		ldx		#AY_AFINE
+		jsr		AY1_ReadRegValue
+		ldx		#$11
+		cmp		#$11
+		bne		+
+
+		ldx		#AY_AFINE
+		jsr		AY2_ReadRegValue
+		ldx		#$33
+		cmp		#$33
+		bne		+
+
+		lda		#PH_ECHOPLUS
+		jsr		SetPhasorMode
+
+		tax						; A==X (don't care about value)
+
+	;
+
++	stx		zpTmp2				; expected
+	sta		zpTmp1				; actual
+
+	jsr		Init6522ForAY		; Reset 6522's 2x AYs (and ORB with CS=%00nnn, so neither AY selected)
+
+	lda		zpTmp1
+	cmp		zpTmp2
+	bne		@error
+
+	;
+	; 2) Check that reset has cleared all 2 AYs' reg#0
+	; NB. CS=%00nnn, so assume that for a real Echo+ that ORB.b2 is directly wired to both AYs' /RESET (like it is for Phasor Echo+)
+	;
+
+	jsr		incSubTestNum		; subTest #2
+	ldx		#0
+	stx		zpTmp2				; Expected
+
+	ldx		#AY_ECHO_CS1|AY_LATCH
+	ldy		#AY_AFINE
+	jsr		AY_Echo_ReadRegValue
+	tax
+	bne		@error
+
+	ldx		#AY_ECHO_CS2|AY_LATCH
+	ldy		#AY_AFINE
+	jsr		AY_Echo_ReadRegValue
+	tax
+	bne		@error
+
+	clc
+	rts							; C=0(OK)
+
+;
+
+@error	; Pre: zpTmp2 = expected, A = actual
+	sec
+	rts							; C=1(NG)
+
+;--------------------------------------
+
+TestAYPhasor1
+; Pre: isPhasorCard==1
+; Post: C=0(OK), C=1(NG)
+;	zpTmp2 = expected, A = actual
+;	phasorMode = PH_MOCKINGBOARD
+
+	; Test for 4 AYs (Phasor only)
+	; 0) Write to each AY's reg#0 with values: $11,$22,$33,$44; then read back
+	; 1) Switch to MB mode and check that the 1st AY is correctly mapped between Phasor & MB
+	; 2) Switch to Echo+ mode and check that the 1st AY is correctly mapped between Phasor & Echo+
+	; 3) Switch to Phasor mode, reset the 4 AYs, and check all 4 AYs' reg#0 are $00
+	; 4) Switch to MB mode, write to the 2 AYs. Then from Phasor mode check that 2nd-ary AYs weren't written to
+
+	jsr		resetSubTest		; subTest #0
+	jsr		incTotalTests
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	;
+
+	lda		#SY6522_A_PH_BASE
+	sta		zpTmp3
+
+	jsr		Init6522ForAY
+
+	lda		#AY_AFINE
+	ldx		#$11
+	jsr		AY1_WriteRegValue
+
+	lda		#AY_AFINE
+	ldx		#$22
+	jsr		AY2_WriteRegValue
+
+	;
+
+	lda		#SY6522_B_BASE
+	sta		zpTmp3
+
+	jsr		Init6522ForAY
+
+	lda		#AY_AFINE
+	ldx		#$33
+	jsr		AY1_WriteRegValue
+
+	lda		#AY_AFINE
+	ldx		#$44
+	jsr		AY2_WriteRegValue
+
+	;
+
+	ldy		#SY6522_A_PH_BASE+SY6522_ORA
+
+	ldx		#AY_AFINE
+	jsr		AY1_ReadRegValue
+	ldx		#$11
+	cmp		#$11
+	bne		+
+
+	ldx		#AY_AFINE
+	jsr		AY2_ReadRegValue
+	ldx		#$22
+	cmp		#$22
+	bne		+
+
+	;
+
+	ldy		#SY6522_B_BASE+SY6522_ORA
+
+	ldx		#AY_AFINE
+	jsr		AY1_ReadRegValue
+	ldx		#$33
+	cmp		#$33
+	bne		+
+
+	ldx		#AY_AFINE
+	jsr		AY2_ReadRegValue
+	ldx		#$44
+	cmp		#$44
+	bne		+
+
+	;
+	; 1) Check that the 1st AY is correctly mapped between Phasor & Mockingboard modes
+	;
+
+	jsr		incSubTestNum		; subTest #1
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	ldy		#SY6522_A_BASE+SY6522_ORA
+
+	ldx		#AY_AFINE
+	jsr		AY_ReadRegValue
+	ldx		#$11
+	cmp		#$11
+	bne		+
+
+	ldy		#SY6522_B_BASE+SY6522_ORA
+
+	ldx		#AY_AFINE
+	jsr		AY_ReadRegValue
+	ldx		#$33
+	cmp		#$33
+	bne		+
+
+	;
+	; 2) Check that the 6522-B's AYs are correctly mapped between Phasor & Echo+ modes
+	;
+
+	jsr		incSubTestNum		; subTest #2
+	lda		#PH_ECHOPLUS
+	jsr		SetPhasorMode
+
+	ldx		#AY_ECHO_CS1|AY_LATCH
+	ldy		#AY_AFINE
+	jsr		AY_Echo_ReadRegValue
+	ldx		#$33
+	cmp		#$33
+	bne		+
+
+	ldx		#AY_ECHO_CS2|AY_LATCH
+	ldy		#AY_AFINE
+	jsr		AY_Echo_ReadRegValue
+	ldx		#$44
+;	cmp		#$44
+;	bne		+
+
+	;
+
++	stx		zpTmp2				; expected
+	cmp		zpTmp2
+	beq		+
+	jmp		@error
++
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	lda		#SY6522_A_PH_BASE
+	sta		zpTmp3
+	jsr		Init6522ForAY		; Reset 6522-A's 2x AYs
+	lda		#SY6522_B_BASE
+	sta		zpTmp3
+	jsr		Init6522ForAY		; Reset 6522-B's 2x AYs
+
+	;
+	; 3) Check that reset has cleared all 4 AYs' reg#0
+	;
+
+	jsr		incSubTestNum		; subTest #3
+	ldx		#0
+	stx		zpTmp2				; expected
+
+	ldy		#SY6522_A_PH_BASE+SY6522_ORA
+
+	ldx		#AY_AFINE
+	jsr		AY1_ReadRegValue
+	tax
+	bne		@error
+
+	ldx		#AY_AFINE
+	jsr		AY2_ReadRegValue
+	tax
+	bne		@error
+
+	;
+
+	ldy		#SY6522_B_BASE+SY6522_ORA
+
+	ldx		#AY_AFINE
+	jsr		AY1_ReadRegValue
+	tax
+	bne		@error
+
+	ldx		#AY_AFINE
+	jsr		AY2_ReadRegValue
+	tax
+	bne		@error
+
+	;
+	; 4) Check that the MB AY writes don't write to the 2nd-ary AYs (ie. these AYs' reg#0 should read back as 0x00)
+	;
+
+	jsr		incSubTestNum		; subTest #4
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	ldy		#SY6522_A_BASE+SY6522_ORA
+	jsr		AY_SetPortAOutput
+	lda		#AY_AFINE
+	ldx		#$11
+	jsr		AY_WriteRegValue
+
+	ldy		#SY6522_B_BASE+SY6522_ORA
+	jsr		AY_SetPortAOutput
+	lda		#AY_AFINE
+	ldx		#$33
+	jsr		AY_WriteRegValue
+
+	;
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	ldy		#SY6522_A_PH_BASE+SY6522_ORA
+
+	ldx		#AY_AFINE
+	jsr		AY1_ReadRegValue
+	ldx		#$11
+	cmp		#$11
+	bne		@errorXA
+
+	ldx		#AY_AFINE
+	jsr		AY2_ReadRegValue
+	ldx		#$00
+	cmp		#$00
+	bne		@errorXA
+
+	;
+
+	ldy		#SY6522_B_BASE+SY6522_ORA
+
+	ldx		#AY_AFINE
+	jsr		AY1_ReadRegValue
+	ldx		#$33
+	cmp		#$33
+	bne		@errorXA
+
+	ldx		#AY_AFINE
+	jsr		AY2_ReadRegValue
+	ldx		#$00
+	cmp		#$00
+	bne		@errorXA
+
+	;
+
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	clc
+	rts							; C=0(OK)
+
+;
+
+@errorXA	; Pre: X = expected, A = actual
+	stx		zpTmp2
+
+@error	; Pre: zpTmp2 = expected, A = actual
+	pha
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+	pla
+
+	sec
+	rts							; C=1(NG)
+
+;--------------------------------------
+
+; For TestAYPhasor2, TestAYPhasor3 & TestAYPhasor4:
+;
+; Phasor's GAL Logic (AppleWin-GH#1192)
+; . AY2 LATCH func selects AY2 and AY1; sets latch addr for AY2 and AY1
+; . AY1 LATCH func selects AY1; deselects AY2; sets latch addr for AY1
+; . AY2 & AY1 LATCH func selects AY2 and AY1; sets latch addr for AY2 and AY1
+; . AY2 WRITE(READ) func writes(reads) AY2 if it's selected
+; . AY1 WRITE(READ) func writes(reads) AY1; writes(reads) AY2 if it's selected. NB. If both chips, then the READ is the OR-sum.
+;
+
+TestAYPhasor2
+; Pre: isPhasorCard==1
+; Post: C=0(OK), C=1(NG)
+;	zpTmp2 = expected, A = actual
+;	phasorMode = PH_MOCKINGBOARD
+
+	; Phasor specific tests for AY1/AY2 to test discrete AY8913 LATCH & WRITE funcs
+	; 0) Test for Phasor's 6522-A: show that AY2_WriteRegValue() sets both AY2 *and* AY1 latch addr
+	; 1) Same as 0, except for 6522-B
+	; 2) Test for Phasor's 6522-A: show that AY1_WriteReg() writes to both AY1 & AY2
+	; 3) Same as 3, except it calls AY1_WriteRegValue() not AY1_WriteReg()
+	; 4) Show that Phasor's 6522-A's AY1 regs & AY2 regs can have independent latch addr values (just after a reset)
+
+	jsr		resetSubTestMinus1
+	jsr		incTotalTests
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	;
+	; 0) Test for Phasor's 6522-A: show that AY2_WriteRegValue() sets both AY2 *and* AY1 latch addr
+	; 1) Same as 0, except for 6522-B
+	; [Sequence A / AppleWin-GH#1192]
+	;
+
+	lda		#SY6522_A_PH_BASE
+	sta		zpTmp3
+
+-		jsr		incSubTestNum		; subTest #0, #1
+
+		jsr		Init6522ForAY
+
+		lda		#AY_AFINE			; AY1:reg#0
+		ldx		#$55
+		jsr		AY1_WriteRegValue
+
+		lda		#AY_BFINE			; AY2:reg#2 (which also *surprisingly* sets AY1's latch addr=reg#2!)
+		ldx		#$66
+		jsr		AY2_WriteRegValue
+
+		lda		#$77
+		jsr		AY1_WriteReg		; AY1:reg#2 = $77 (no setting of latch addr)
+
+		lda		#$88
+		jsr		AY2_WriteReg		; AY2:reg#2 = $88 (no setting of latch addr)
+
+		ldx		#AY_AFINE			; AY1:reg#0
+		jsr		AY1_ReadRegValue
+		ldx		#$55
+		cmp		#$55
+		beq		+
+		jmp		@errorXA
++
+
+		ldx		#AY_BFINE			; AY1:reg#2
+		jsr		AY1_ReadRegValue
+		ldx		#$77
+		cmp		#$77
+		beq		+
+		jmp		@errorXA
++
+
+		ldx		#AY_AFINE			; AY2:reg#0
+		jsr		AY2_ReadRegValue
+		ldx		#$00
+		cmp		#$00
+		beq		+
+		jmp		@errorXA
++
+
+		ldx		#AY_BFINE			; AY2:reg#2
+		jsr		AY2_ReadRegValue
+		ldx		#$88
+		cmp		#$88
+		bne		@errorXA
+
+		lda		#SY6522_B_BASE
+		cmp		zpTmp3
+		beq		+
+		sta		zpTmp3
+		bne		-
+
++	lda		#SY6522_A_PH_BASE
+	sta		zpTmp3
+
+	;
+	; 2) Test for Phasor's 6522-A: show that AY1_WriteReg() writes to both AY1 & AY2
+	; [Sequence B / AppleWin-GH#1192]
+	; 3) Same as 3, expect calls AY1_WriteRegValue() not AY1_WriteReg()
+	; [Sequence C / AppleWin-GH#1192]
+	;
+
+@loop	jsr		incSubTestNum		; subTest #3, #4
+
+		jsr		Init6522ForAY		; AY1's & AY2's latch address set to invalid
+
+		lda		#AY_BFINE
+		ldx		#$11
+		stx		zpTmp2				; (setup expected value for AY2_ReadRegValue() below)
+		jsr		AY2_WriteRegValue	; AY1:reg#2 (still = 00, latch=reg#2) & AY2:reg#2 = 11
+
+		ldx		#$42
+		lda		#1
+		and		subTestNum
+		beq		+
+			stx		zpTmp2				; (setup expected value for AY2_ReadRegValue() below)
+			txa							; pre: A=value
+			jsr		AY1_WriteReg		; subTest #3: (don't set latch addr) - this writes to both AY1:reg#2 & AY2:reg#2!
+			bne		++
++			lda		#AY_BFINE			; pre: A=reg#, X=value
+			jsr		AY1_WriteRegValue	; subTest #4: Latch & writes to just AY1:reg#2
+++
+
+		ldx		#AY_BFINE
+		jsr		AY1_ReadRegValue
+		ldx		#$42
+		cmp		#$42
+		bne		@errorXA
+
+		ldx		#AY_BFINE
+		jsr		AY2_ReadRegValue	; expect $11, but for subTest #3: actually get $42! / subTest #4: correctly get $11
+		cmp		zpTmp2
+		bne		@error
+
+		lda		#1
+		and		subTestNum
+		bne		@loop
+
+	;
+	; 4) Show that Phasor's 6522-A's AY1 regs & AY2 regs can have independent latch addr values (just after a reset)
+	; . EG: AY1 = AY_BFINE, AY2 = invalid
+	; [Sequence D / AppleWin-GH#1192]
+	;
+
+	jsr		incSubTestNum		; subTest #2
+
+	jsr		Init6522ForAY		; AY1's & AY2's latch address set to invalid
+
+	lda		#AY_BFINE
+	ldx		#$99
+	jsr		AY1_WriteRegValue
+
+	lda		#$69
+	jsr		AY2_WriteReg		; (don't set latch addr) AY2:latch_addr=invalid, so write is ignored. First time AY_CS2 is asserted.
+
+	ldx		#AY_BFINE
+	jsr		AY1_ReadRegValue	; AY1:reg#2 = $99
+	ldx		#$99
+	cmp		#$99
+	bne		@errorXA
+
+	ldx		#AY_BFINE
+	jsr		AY2_ReadRegValue	; AY2:reg#2 = $00
+	ldx		#$00
+	cmp		#$00
+	bne		@errorXA
+
+	;
+
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	clc
+	rts							; C=0(OK)
+
+;
+
+@errorXA	; Pre: X = expected, A = actual
+	stx		zpTmp2
+
+@error	; Pre: zpTmp2 = expected, A = actual
+	pha
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+	pla
+
+	sec
+	rts							; C=1(NG)
+
+;------------------------------------------------------------------------------
+
+TestAYPhasor3
+; Pre: isPhasorCard==1
+; Post: C=0(OK), C=1(NG)
+;	zpTmp2 = expected, A = actual
+;	phasorMode = PH_MOCKINGBOARD
+
+	; Phasor specific tests for AY1/AY2 to test discrete AY8913 LATCH, WRITE & READ funcs
+	; 0) Test WRITE for setting independent latch addr's for AY1 & AY2
+	; 1) Test for AY2_SelectReg + AY1_WriteReg to write to both AY1 & AY2's same register
+	; 2) Test READ for setting independent latch addr's for AY1 & AY2
+	; 3) Test READ for setting the same latch addr's for AY1 & AY2
+
+	jsr		resetSubTestMinus1
+	jsr		incTotalTests
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	lda		#SY6522_A_PH_BASE
+	sta		zpTmp3
+
+	;
+	; 0) Test WRITE for setting independent latch addr's for AY1 & AY2
+	; [Sequence E / AppleWin-GH#1192]
+	;
+
+	jsr		incSubTestNum		; subTest #0
+
+	jsr		Init6522ForAY
+
+	lda		#AY_BFINE
+	jsr		AY2_SelectReg		; selects AY2 and AY1; sets latch addr for AY2 and AY1
+	lda		#AY_AFINE
+	jsr		AY1_SelectReg		; selects AY1; deselects AY2; sets latch addr for AY1
+
+	lda		#$22
+	jsr		AY2_WriteReg		; write ignored (as AY2 not selected)
+	lda		#$11
+	jsr		AY1_WriteReg		; write succeeds
+
+	ldx		#AY_BFINE
+	jsr		AY2_ReadRegValue
+	ldx		#$00
+	cmp		#$00
+	beq		+
+	jmp		@errorXA
++
+
+	ldx		#AY_AFINE
+	jsr		AY1_ReadRegValue
+	ldx		#$11
+	cmp		#$11
+	bne		@errorXA
+
+	;
+	; 1) Test for AY2_SelectReg + AY1_WriteReg to write to both AY1 & AY2's same register
+	;
+
+	jsr		incSubTestNum		; subTest #1
+
+	jsr		Init6522ForAY
+
+	lda		#AY_BFINE
+	jsr		AY2_SelectReg		; selects AY2 and AY1; sets latch addr for AY2 and AY1
+	lda		#$11
+	jsr		AY1_WriteReg		; write to both AY1 & AY2
+
+	ldx		#AY_BFINE
+	jsr		AY2_ReadRegValue
+	ldx		#$11
+	cmp		#$11
+	bne		@errorXA
+
+	ldx		#AY_BFINE
+	jsr		AY1_ReadRegValue	; selects AY1; deselects AY2; sets latch addr for AY1 & read AY1
+	ldx		#$11
+	cmp		#$11
+	bne		@errorXA
+
+	jsr		AY_SetPortAOutput
+
+	lda		#$22
+	jsr		AY1_WriteReg		; write to AY1 - NB. this is to setup for subTest #3, so that AY1:reg2 != AY2:reg2
+	; Post: AY1:reg2 = $22, AY2:reg2 = $11
+
+	;
+	; 2) Test READ for setting independent latch addr's for AY1 & AY2
+	;
+
+	jsr		incSubTestNum		; subTest #2
+
+	; NB. No Init6522ForAY() - re-use previous written values
+
+	lda		#AY_BFINE
+	jsr		AY2_SelectReg		; selects AY2 and AY1; sets latch addr for AY2 and AY1
+	lda		#AY_AFINE
+	jsr		AY1_SelectReg		; selects AY1; deselects AY2; sets latch addr for AY1
+
+	jsr		AY_SetPortAInput
+	jsr		AY2_ReadReg			; read HiZ (as AY2 not selected)
+	ldx		#$ff
+	cmp		#$ff
+	bne		@errorXA
+
+	jsr		AY1_ReadReg			; read succeeds
+	ldx		#$00
+	cmp		#$00
+	bne		@errorXA
+
+	jsr		AY_SetPortAOutput
+
+	;
+	; 3) Test READ for setting the same latch addr's for AY1 & AY2
+	; [Sequence F / AppleWin-GH#1192]
+	;
+
+	jsr		incSubTestNum		; subTest #3
+
+	; NB. No Init6522ForAY() - re-use previous written values
+
+	lda		#AY_BFINE
+	jsr		AY2_SelectReg		; selects AY2 and AY1; sets latch addr for AY2 and AY1
+
+	jsr		AY_SetPortAInput
+	jsr		AY1_ReadReg			; read succeeds = AY2 OR AY1
+	ldx		#$33
+	cmp		#$33
+	bne		@errorXA
+
+	jsr		AY2_ReadReg			; read succeeds
+	ldx		#$11
+	cmp		#$11
+	bne		@errorXA
+
+;	jsr		AY_SetPortAOutput
+
+	;
+
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	clc
+	rts							; C=0(OK)
+
+;
+
+@errorXA	; Pre: X = expected, A = actual
+	stx		zpTmp2
+
+@error	; Pre: zpTmp2 = expected, A = actual
+	pha
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+	pla
+
+	sec
+	rts							; C=1(NG)
+
+;------------------------------------------------------------------------------
+
+TestAYPhasor4
+; Pre: isPhasorCard==1
+; Post: C=0(OK), C=1(NG)
+;	zpTmp2 = expected, A = actual
+;	phasorMode = PH_MOCKINGBOARD
+
+	; Phasor specific tests for AY1/AY2 to test discrete AY8913 LATCH, WRITE & READ funcs
+	; 0) Test that AY1 stays selected after 1st WRITE, by doing a 2nd WRITE
+	; 1) Test that AY2 stays selected after 1st WRITE, by doing a 2nd WRITE
+	; 2) Test for when both AY1 & AY2 are selected via PortB
+	; 3) Test for when both AY1 & AY2 are written via PortB
+
+	jsr		resetSubTestMinus1
+	jsr		incTotalTests
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	lda		#SY6522_A_PH_BASE
+	sta		zpTmp3
+
+	;
+	; 0) Test that AY1 stays selected after 1st WRITE, by doing a 2nd WRITE
+	;
+
+	jsr		incSubTestNum		; subTest #0
+
+	jsr		Init6522ForAY
+
+	lda		#AY_BFINE
+	ldx		#$11
+	jsr		AY1_WriteRegValue	; select AY1; deselect AY2; sets latch addr for AY1 & 1st write AY1
+
+	lda		#$22
+	jsr		AY1_WriteReg		; 2nd write to AY1
+
+	ldx		#AY_BFINE
+	jsr		AY1_ReadRegValue
+	ldx		#$22
+	cmp		#$22
+	beq		+
+	jmp		@errorXA
++
+
+	ldx		#AY_BFINE
+	jsr		AY2_ReadRegValue	; check AY2 reg2
+	ldx		#$00
+	cmp		#$00
+	beq		+
+	jmp		@errorXA
++
+
+	;
+	; 1) Test that AY2 stays selected after 1st WRITE, by doing a 2nd WRITE
+	;
+
+	jsr		incSubTestNum		; subTest #1
+
+	jsr		Init6522ForAY
+
+	lda		#AY_BFINE
+	ldx		#$11
+	jsr		AY2_WriteRegValue	; select AY2 and AY1; sets latch addr for AY2 and AY1 & 1st write AY2
+
+	lda		#$22
+	jsr		AY2_WriteReg		; 2nd write to AY2
+
+	ldx		#AY_BFINE
+	jsr		AY2_ReadRegValue
+	ldx		#$22
+	cmp		#$22
+	bne		@errorXA
+
+	ldx		#AY_BFINE
+	jsr		AY1_ReadRegValue	; check AY1 reg2
+	ldx		#$00
+	cmp		#$00
+	bne		@errorXA
+
+	;
+	; 2) Test for when both AY1 & AY2 are selected via PortB
+	; Since CS is active low, then just use the regular Mockingboard SF_SelectReg() function (*4.2)
+	;
+
+	jsr		incSubTestNum		; subTest #2
+
+	lda		#0
+	sta		zpTmp2
+
+@loop2	jsr		Init6522ForAY
+
+		; GAL logic:
+		; . AY2 & AY1 LATCH func selects AY2 and AY1; sets latch addr for AY2 and AY1
+		lda		#AY_BFINE
+		jsr		SF_SelectReg		; (*4.2) selects AY1 & AY2 via PortB
+
+		lda		zpTmp2
+		jsr		AY1_WriteReg		; writes AY1; writes AY2 since also selected
+
+		ldx		#AY_BFINE
+		jsr		AY2_ReadRegValue
+		cmp		zpTmp2
+		bne		@error
+
+		ldx		#AY_BFINE
+		jsr		AY1_ReadRegValue
+		cmp		zpTmp2
+		bne		@error
+
+		inc		zpTmp2
+		bne		@loop2
+
+	;
+	; 3) Test for when both AY1 & AY2 are written via PortB
+	; Since CS is active low, then just use the regular Mockingboard SF_WriteReg() function (*4.3)
+	;
+
+	jsr		incSubTestNum		; subTest #3
+
+	lda		#0
+	sta		zpTmp2
+
+@loop3	jsr		Init6522ForAY
+
+		lda		#AY_BFINE
+		ldx		#$11
+		jsr		AY1_WriteRegValue	; select AY1; deselect AY2; sets latch addr for AY1 & write AY1
+
+		lda		zpTmp2
+		jsr		SF_WriteReg			; (*4.3) selects AY1 & AY2 via PortB; only writes AY1
+
+		ldx		#AY_BFINE
+		jsr		AY2_ReadRegValue	; check write to AY2 didn't occur
+		cmp		#$00
+		bne		@error
+
+		ldx		#AY_BFINE
+		jsr		AY1_ReadRegValue
+		cmp		zpTmp2
+		bne		@error
+
+		inc		zpTmp2
+		bne		@loop3
+
+;	jsr		AY_SetPortAOutput
+
+	;
+
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	clc
+	rts							; C=0(OK)
+
+;
+
+@errorXA	; Pre: X = expected, A = actual
+	stx		zpTmp2
+
+@error	; Pre: zpTmp2 = expected, A = actual
+	pha
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+	pla
+
+	sec
+	rts							; C=1(NG)
+
+;------------------------------------------------------------------------------
+
+TestAYPhasor5
+; Pre: isPhasorCard==1
+; Post: C=0(OK), C=1(NG)
+;	zpTmp2 = expected, A = actual
+;	phasorMode = PH_MOCKINGBOARD
+
+	; Phasor specific tests for AY RESET
+	; Writing a 6522's ORB(PortB).bit2=0 will reset both AY1 & AY2
+	; . regardless of CS bits & regardless of mode (MB,PH,E+)
+	; . basically ORB.b2 is wired directly to both AY's /RESET pin
+	; NB. 6522-A's AY1/AY2 are independent of 6522-B's AY1/AY2
+
+	jsr		resetSubTestMinus1
+	jsr		incTotalTests
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	; Reset AYs on 6522A (from PH mode)
+
+	jsr		PhasorWriteAllAFINE				; subTest #0
+	ldy		#SY6522_A_PH_BASE+SY6522_ORA
+	lda		#AY_RESET|AY_BOTH_CS
+	jsr		SetModeAndInactive
+	jsr		PhasorCheck6522A_AYs
+	bcc		+
+	jmp		@done
++
+
+	jsr		PhasorWriteAllAFINE				; subTest #1
+	ldy		#SY6522_A_PH_BASE+SY6522_ORA
+	lda		#AY_RESET|AY_NO_CS
+	jsr		SetModeAndInactive
+	jsr		PhasorCheck6522A_AYs
+	bcs		@done
+
+	; Reset AYs on 6522B (from PH mode)
+
+	jsr		PhasorWriteAllAFINE				; subTest #2
+	ldy		#SY6522_B_BASE+SY6522_ORA
+	lda		#AY_RESET|AY_BOTH_CS
+	jsr		SetModeAndInactive
+	jsr		PhasorCheck6522B_AYs
+	bcs		@done
+
+	jsr		PhasorWriteAllAFINE				; subTest #3
+	ldy		#SY6522_B_BASE+SY6522_ORA
+	lda		#AY_RESET|AY_NO_CS
+	jsr		SetModeAndInactive
+	jsr		PhasorCheck6522B_AYs
+	bcs		@done
+
+	; Reset AYs on 6522A, from MB mode
+
+	jsr		PhasorWriteAllAFINE				; subTest #4
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+	ldy		#SY6522_A_BASE+SY6522_DDRB
+	lda		#$07
+	sta		(MBBase),y
+	dey										; Y = ORA
+	lda		#AY_RESET
+	jsr		SetModeAndInactive
+	jsr		PhasorCheck6522A_AYs
+	bcs		@done
+
+	; Reset AYs on 6522B, from MB mode
+
+	jsr		PhasorWriteAllAFINE				; subTest #5
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+	ldy		#SY6522_B_BASE+SY6522_DDRB
+	lda		#$07
+	sta		(MBBase),y
+	dey										; Y = ORA
+	lda		#AY_RESET
+	jsr		SetModeAndInactive
+	jsr		PhasorCheck6522B_AYs
+	bcs		@done
+
+	; Reset AYs on 6522B, from E+ mode
+
+	jsr		PhasorWriteAllAFINE				; subTest #6
+	lda		#PH_ECHOPLUS
+	jsr		SetPhasorMode
+	ldy		#SY6522_A_BASE+SY6522_ORA		; E+ can use any base addr
+	lda		#AY_RESET|AY_ECHO_BOTH_CS
+	jsr		SetModeAndInactive
+	jsr		PhasorCheck6522B_AYs			; E+ only uses 6522B
+	bcs		@done
+
+	jsr		PhasorWriteAllAFINE				; subTest #7
+	lda		#PH_ECHOPLUS
+	jsr		SetPhasorMode
+	ldy		#SY6522_A_BASE+SY6522_ORA		; E+ can use any base addr
+	lda		#AY_RESET|AY_ECHO_NO_CS
+	jsr		SetModeAndInactive
+	jsr		PhasorCheck6522B_AYs			; E+ only uses 6522B
+
+@done
+	php
+	pha
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+	pla
+	plp
+	rts
+
+;------------------
+
+PhasorCheck6522A_AYs
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;	zpTmp2 = expected, A = actual
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	ldy		#SY6522_A_PH_BASE+SY6522_DDRB
+	lda		#$1f
+	sta		(MBBase),y
+	dey										; Y = ORA
+
+	ldx		#AY_AFINE
+	jsr		AY1_ReadRegValue
+	tax
+	bne		@error0
+
+	ldx		#AY_AFINE
+	jsr		AY2_ReadRegValue
+	tax
+	bne		@error0
+
+	ldy		#SY6522_B_BASE+SY6522_ORA
+
+	ldx		#AY_AFINE
+	jsr		AY1_ReadRegValue
+	ldx		#$33
+	cmp		#$33
+	bne		@error
+
+	ldx		#AY_AFINE
+	jsr		AY2_ReadRegValue
+	ldx		#$44
+	cmp		#$44
+	bne		@error
+
+	clc
+	rts
+
+@error0
+	ldx		#0
+@error
+	stx		zpTmp2
+	sec
+	rts
+
+;------------------
+
+PhasorCheck6522B_AYs
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;	zpTmp2 = expected, A = actual
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	;
+
+	ldy		#SY6522_B_BASE+SY6522_DDRB
+	lda		#$1f
+	sta		(MBBase),y
+	dey										; Y = ORA
+
+	ldx		#AY_AFINE
+	jsr		AY1_ReadRegValue
+	tax
+	bne		@error0
+
+	ldx		#AY_AFINE
+	jsr		AY2_ReadRegValue
+	tax
+	bne		@error0
+
+	ldy		#SY6522_A_PH_BASE+SY6522_ORA
+
+	ldx		#AY_AFINE
+	jsr		AY1_ReadRegValue
+	ldx		#$11
+	cmp		#$11
+	bne		@error
+
+	ldx		#AY_AFINE
+	jsr		AY2_ReadRegValue
+	ldx		#$22
+	cmp		#$22
+	bne		@error
+
+	clc
+	rts
+
+@error0
+	ldx		#0
+@error
+	stx		zpTmp2
+	sec
+	rts
+
+;------------------
+
+PhasorWriteAllAFINE
+
+	jsr		incSubTestNum
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	;
+
+	lda		#SY6522_A_PH_BASE
+	sta		zpTmp3
+
+	jsr		Init6522ForAY		; + reset AYs
+
+	lda		#AY_AFINE
+	ldx		#$11
+	jsr		AY1_WriteRegValue
+
+	lda		#AY_AFINE
+	ldx		#$22
+	jsr		AY2_WriteRegValue
+
+	;
+
+	lda		#SY6522_B_BASE
+	sta		zpTmp3
+
+	jsr		Init6522ForAY		; + reset AYs
+
+	lda		#AY_AFINE
+	ldx		#$33
+	jsr		AY1_WriteRegValue
+
+	lda		#AY_AFINE
+	ldx		#$44
+	jsr		AY2_WriteRegValue
+
+	rts
+
+;------------------------------------------------------------------------------
+
+TestAYTones
+; Pre: X=slot#, hasAY8913, isPhasorCard
+; Post:
+
+	; Press 123 for AY8913-A1 ($Cn00) channels A,B,C
+	; Press 456 for AY8913-B1 ($Cn80) channels A,B,C
+	; Press QWE for AY8913-A2 ($Cn00) channels A,B,C (phasor only)
+	; Press RTY for AY8913-B2 ($Cn80) channels A,B,C (phasor only)
+	; Tab to cycle Phasor mode: MB > Phasor > Echo+ > MB > ... (phasor only)
+	; ESC to quit
+
+	sei
+
+	jsr		SetMBBase				; pre: X=slot#
+
+	lda		#<AYTonesISR
+	ldx		#>AYTonesISR
+	jsr		SetIrqNmiVectors
+
+	; Init AY8913 regs
+
+	lda		#AY_DIS_A+AY_DIS_B+AY_DIS_C
+	sta		ayEna+0
+	sta		ayEna+1
+	sta		ayEna+2
+	sta		ayEna+3
+
+	lda		isPhasorCard
+	beq		+
+		; Switch to Echo+, to *actually* use 6522-B, since this is visible from all 3 Phasor modes
+		; ...and we need a way to access & clear the TIMER1 IRQ from AYTonesISR()
+		; (ie. we can't physically access 6522-A when in Echo+ mode)
+		lda		#PH_ECHOPLUS
+		jsr		SetPhasorMode
++
+
+	lda		#$ff
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y
+
+	lda		#ACR_FREERUNNING
+	ldy		#SY6522_ACR
+	sta		(MBBase),y
+
+	lda		#IER_SET|IxR_TIMER1
+	ldy		#SY6522_IER
+	sta		(MBBase),y
+
+	lda		isPhasorCard
+	beq		+
+		lda		#PH_PHASOR
+		jsr		SetPhasorMode
++
+
+	jsr		PrintPhasorMode
+
+	lda		hasAY8913
+	and		#1
+	beq		+
+		lda		#SY6522_A_PH_BASE	; compatible with both Mockingboard & Phasor
+		sta		zpTmp3
+		jsr		Init6522ForAY
+		jsr		@InitAYRegs
++
+
+	lda		hasAY8913
+	and		#2
+	beq		+
+		; NB. for Echo+ (or Phasor in Echo+ mode), this just duplicates the previous setup for the same AYs!
+		lda		#SY6522_B_BASE
+		sta		zpTmp3
+		jsr		Init6522ForAY
+		jsr		@InitAYRegs
++
+
+	cli
+
+	;
+
+@loop	lda		KBD
+		bpl		@loop
+	bit		KBDSTRB
+	cmp		#$80+9					; Tab
+	bne		++
+		lda		isPhasorCard
+		beq		++
+			sei
+			jsr		IncPhasorMode	; Post: hasAY8913 reflects new mode
+			jsr		PrintPhasorMode
+			cli
+			jmp		@loop
+++	cmp		#$80+27					; ESC
+	bne		+
+	jmp		@done
++
+
+	cmp		#$80+'A'
+	bcc		+						; <'A'
+	jmp		@letter
++
+
+	; Keys: 123456
+
+	cmp		#$80+'1'
+	bcc		@loop					; <'1'
+	cmp		#$80+'7'
+	bcs		@loop					; >='7'
+
+	ldx		#0
+	eor		#$80+$30
+	cmp		#4
+	bcc		@ayEnaPre				; < 4
+		sec
+		sbc		#3
+		inx
+
+@ayEnaPre	; Pre: A=1,2,3; X=0,1
+	tay
+	jmp		@ayEna
+
+	;
+
+@letter		; Keys: QWERTY
+
+	ldx		#2
+	ldy		#1
+	cmp		#$80+'Q'
+	beq		@ayEna
+	iny
+	cmp		#$80+'W'
+	beq		@ayEna
+	iny
+	cmp		#$80+'E'
+	beq		@ayEna
+
+	ldx		#3
+	ldy		#1
+	cmp		#$80+'R'
+	beq		@ayEna
+	iny
+	cmp		#$80+'T'
+	beq		@ayEna
+	iny
+	cmp		#$80+'Y'
+	beq		@ayEna
+	jmp		@loop					; invalid key
+
+	;
+
+@ayEna	; Pre: Y=1,2,3; X=index in ayEna[]
+	tya
+	pha								; save Y for later
+	lda		#1
+	dey
+	beq		+
+	asl
+	dey
+	beq		+
+	asl
++		; Pre: A=1,2,4; X=index in ayEna[]
+	eor		ayEna,x					; toggle
+	sta		ayEna,x
+
+	pla
+	clc
+
+	dex
+	bmi		@X0
+	dex
+	bmi		@X1
+	dex
+	bmi		@X2
+@X3	adc		#36
+	bne		@invertLetter
+@X2	adc		#29
+@invertLetter
+	tay
+	lda		(BASL),y
+	cmp		#$80+' '				; if this card has no AY here...
+	beq		+						; ...then skip
+	eor		#$C0
+	sta		(BASL),y
++	jmp 	@loop
+
+@X1	adc		#22
+	bne		@invertNumber
+@X0	adc		#16
+@invertNumber
+	tay
+	lda		(BASL),y
+	cmp		#$80+' '				; if this card has no AY here...
+	beq		+						; ...then skip
+	eor		#$80
+	sta		(BASL),y
++	jmp 	@loop
+
+	;
+
+@done
+	sei
+
+	lda		isPhasorCard
+	beq		+
+		lda		#PH_PHASOR
+		jsr		SetPhasorMode
++
+
+	lda		hasAY8913
+	and		#1
+	beq		+
+		ldy		#SY6522_A_PH_BASE
+		jsr		SF_ChipReset		; NB. resets both AYs if in native Phasor mode
++
+	lda		hasAY8913
+	and		#2
+	beq		+
+		ldy		#SY6522_B_BASE
+		jsr		SF_ChipReset		; NB. resets both AYs if in native Phasor mode
++
+
+	lda		isPhasorCard
+	beq		+
+		lda		#PH_MOCKINGBOARD
+		jsr		SetPhasorMode
++
+
+	lda		#SY6522_B_BASE
+	sta		MBBaseL
+	jsr		WaitT1OneShotUnderflow	; clear & disable any T1 ints
+
+	lda		#SY6522_A_BASE
+	sta		MBBaseL
+	jsr		WaitT1OneShotUnderflow	; clear & disable any T1 ints
+
+	clc
+	rts
+
+;------------------
+
+@InitAYRegs	; Pre: Y = SY6522_ORA for chip A or B
+; NB. In native Phasor mode, calls to AY_WriteRegValue() are done to both A1/A2 (or B1/B2) AY chips
+; NB. In Echo+ mode, calls to AY_WriteRegValue() are done to both B1/B2 AY chips
+
+	sty		zpTmp1
+
+	lda		#<@ayregs_init
+	sta		zpTmpPtrL
+	lda		#>@ayregs_init
+	sta		zpTmpPtrH
+
+	lda		#0
+	sta		zpTmp2
+-		ldy		zpTmp2
+		lda		(zpTmpPtr),y
+		pha							; reg#
+		iny
+		lda		(zpTmpPtr),y
+		tax							; X=value
+		iny
+		sty		zpTmp2
+
+		ldy		zpTmp1
+		pla							; A=reg#
+		jsr		AY_WriteRegValue	; Pre: A=reg#, X=value
+
+		ldy		zpTmp2
+		cpy		#(AY_CVOL+1)*2
+		bne		-
+	rts
+
+;
+
+@ayregs_init
+	; reg#,value
+	!byte 7,$ff	; enable (1=disable)
+	!byte 0,0	; A tone_l
+	!byte 1,4	; A tone_h
+	!byte 2,0	; B tone_l
+	!byte 3,4	; B tone_h
+	!byte 4,0	; C tone_l
+	!byte 5,4	; C tone_h
+	!byte 6,0	; noise period
+	!byte 8,15	; A vol
+	!byte 9,15	; B vol
+	!byte 10,15	; C vol
+
+;
+
+ayEna	; 6522 chip A at $Cn00(+$Cn10), 6522 chip B at $Cn80
+		; . AY8913 A1 (and A2) connected to 6522 chip A
+		; . AY8913 B1 (and B2) connected to 6522 chip B
+	!byte $3f,$3f	; chip A1,B1 (1=dis, 0=ena -- just like reg#7)
+	!byte $3f,$3f	; chip A2,B2 (for Phasor)
+
+;------------------
+
+PrintPhasorMode
+	php
+	sei
+	+ENA_INTERNAL_ROM
+
+	lda		CV
+	pha								; save CV
+	lda		#7						; line 7
+	sta		CV
+	jsr		SafeVTABZ
+	lda		#16
+	sta		CH
+
+	lda		isPhasorCard
+	bne		+
+		jsr		SafeCLREOL
+		jmp		@done
++
+
+	lda		phasorMode
+	cmp		#PH_MOCKINGBOARD
+	beq		@mb
+	cmp		#PH_PHASOR
+	beq		@ph
+@ep	lda		#<msg_phasorModeE
+	ldx		#>msg_phasorModeE
+	bne		+
+@mb	lda		#<msg_phasorModeM
+	ldx		#>msg_phasorModeM
+	bne		+
+@ph	lda		#<msg_phasorModeP
+	ldx		#>msg_phasorModeP
++	jsr		Print
+
+@done
+	lda		#0
+	sta		CH
+	pla								; restore CV
+	sta		CV
+	jsr		SafeVTABZ
+
+	+ENA_LC2_RAM_READONLY			; don't care which bank (restored on program exit)
+	plp
+	rts
+
+;------------------------------------------------------------------------------
+
+AYTonesISR
+; Pre:
+;	6502 has pushed P
+;	Apple ROM has stored A to $45 (not Apple //e ROM!)
+; Uses:
+;	zpTmp1 (alias with StringH)
+;
+
+	+ISR_ENTRY
+
+	lda		isPhasorCard
+	beq		+
+		lda		#SY6522_B_BASE
+		sta		MBBaseL
++
+
+	ldy		#SY6522_IFR
+	lda		(MBBase),y
+	sta		(MBBase),y					; clear IRQ
+	bne		+
+		; Error: Unexpected interrupt!
+		lda		#'I'
+		sta		$400					; Flashing 'I'
+		lda		isPhasorCard
+		beq		@hang
+			lda		#SY6522_A_PH_BASE
+			sta		MBBaseL
+			lda		(MBBase),y			; Y=SY6522_IFR
+			sta		$480				; write to line-1, so that after CTRL+RESET we can retrieve the value
+@hang	jmp		@hang					; ... and hang!
++
+
+	lda		isPhasorCard
+	beq		+
+		lda		#SY6522_A_BASE
+		sta		MBBaseL
+
+		lda		phasorMode
+		cmp		#PH_ECHOPLUS
+		beq		@echoPlus
++
+
+	lda		isEchoPlus
+	beq		@mbOrPhasor
+
+	;------
+
+@echoPlus
+
+	; Echo+
+	lda		hasAY8913
+	and		#1
+	beq		@echo_ay_b
+
+	ldx		#0
+	lda		#AY_ECHO_CS1|AY_LATCH
+@echo_ay_next
+			sta		zpTmp1
+			lda		ayEna,x
+			ldx		zpTmp1
+			ldy		#AY_ENABLE
+			jsr		AY_Echo_WriteRegValue
+
+@echo_ay_b
+		lda		hasAY8913
+		and		#2
+		beq		@echo_done
+
+		ldx		#1
+		lda		#AY_ECHO_CS2|AY_LATCH
+		cmp		zpTmp1
+		bne		@echo_ay_next
+
+@echo_done
+	jmp		@done
+
+	;------
+
+@mbOrPhasor
+
+	ldy		#SY6522_A_PH_BASE+SY6522_ORA
+
+	lda		hasAY8913
+	and		#1
+	beq		@ay_b
+
+	ldx		#0
+@ay_next	lda		ayEna,x
+			tax
+			lda		#AY_ENABLE
+			jsr		AY1_WriteRegValue	; compatible with both Mockingboard & Phasor
+
+@ay_b	lda		hasAY8913
+		and		#2
+		beq		@ay_a2b2
+
+		cpy		#SY6522_B_BASE+SY6522_ORA
+		beq		@ay_a2b2
+		ldy		#SY6522_B_BASE+SY6522_ORA
+		ldx		#1
+		bne		@ay_next
+
+	;
+
+@ay_a2b2
+	ldy		#SY6522_A_PH_BASE+SY6522_ORA
+
+	lda		hasAY8913
+	and		#4							; native Phasor mode only
+	beq		@ay_b2
+
+	ldx		#2
+@ay_next2	lda		ayEna,x
+			tax
+			lda		#AY_ENABLE
+			jsr		AY2_WriteRegValue
+
+@ay_b2	lda		hasAY8913
+		and		#8						; native Phasor mode only
+		beq		@done
+
+		cpy		#SY6522_B_BASE+SY6522_ORA
+		beq		@done
+		ldy		#SY6522_B_BASE+SY6522_ORA
+		ldx		#3
+		bne		@ay_next2
+
+	;
+
+@done
+
+	+ISR_EXIT
+
+;------------------------------------------------------------------------------
+
+AYSetAndReadRegs
+; Pre:
+;	zpTmp3 = SY6522_A_BASE or SY6522_A_PH_BASE or SY6522_B_BASE
+;	zpTmp4 = AY chip select: 0(MB), $40(Phasor-AY1), $80(Phasor-AY2)
+; Trashes:
+;	zpTmp2
+
+	lda		#SY6522_ORA
+	ora		zpTmp3
+	tay							; init Y for AY_WriteRegValue(), etc.
+
+	jsr		WriteAYRegs
+	; fall through...
+
+;------------------------------------------------------------------------------
+
+AYReadRegs
+; Pre:
+;	zpTmp3 = SY6522_A_BASE or SY6522_A_PH_BASE or SY6522_B_BASE
+;	zpTmp4 = AY chip select: 0(MB), $40(Phasor-AY1), $80(Phasor-AY2)
+; Post:
+; 	A = data
+; Trashes:
+;	zpTmp2
+
+	lda		#<ayRegs
+	sta		zpTmpPtr2L
+	lda		#>ayRegs
+	sta		zpTmpPtr2H
+
+	lda		#0
+	sta		zpTmp2
+
+@nextReg
+		lda		#SY6522_ORA
+		ora		zpTmp3
+		tay						; init Y for AY_ReadRegValue(), etc.
+
+		ldx		zpTmp2			; reg#
+
+		bit		zpTmp4			; N=b7, V=b6
+		bvs		@ph1_r
+		bmi		@ph2_r
+
+@mb_r	jsr		AY_ReadRegValue
+		bne		+
+
+@ph1_r	jsr		AY1_ReadRegValue
+		bne		+
+
+@ph2_r	jsr		AY2_ReadRegValue
+
++		ldy		zpTmp2
+		sta		(zpTmpPtr2),y
+		inc		zpTmp2
+		lda		#AY_PORTA
+		cmp		zpTmp2
+		bne		@nextReg
+
+	;
+
+	ldy		#SY6522_A_PH_BASE+SY6522_ORA
+	jsr		AY_SetPortAOutput	; DDRA=0xFF
+
+	ldy		#SY6522_B_BASE+SY6522_ORA
+	jsr		AY_SetPortAOutput	; DDRA=0xFF
+
+	rts
+
+;------------------------------------------------------------------------------
+
+Init6522ForAY
+; Pre: isEchoPlus, isPhasorCard, phasorMode
+;	zpTmp3 = SY6522_A_BASE or SY6522_A_PH_BASE or SY6522_B_BASE
+; Post: Y = SY6522_ORA for chip A or B
+
+	lda		#SY6522_DDRB
+	ora		zpTmp3
+	tay
+
+	lda		isEchoPlus
+	bne		@ph_ep
+	lda		isPhasorCard
+	beq		@mb
+	lda		phasorMode
+	cmp		#PH_MOCKINGBOARD
+	bne		@ph_ep
+@mb		lda		#$07			; Mockingboard
+		bne		+
+@ph_ep	lda		#$1f			; Phasor & Echo+
++	sta		(MBBase),y
+
+	iny							; Y = DDRA
+	lda		#$ff				; output
+	sta		(MBBase),y
+
+	ldy		zpTmp3
+	jmp		SF_ChipReset		; Post: Y=SY6522_ORA for chip A or B
+
+	;
+
+AY_WriteRegValue
+; Pre: Y = SY6522_ORA for chip A or B
+;	A=reg#
+;	X=value
+; Post: Y = SY6522_ORA for chip A or B
+;	Z = 0
+	jsr		SF_SelectReg
+	txa
+	jmp		SF_WriteReg
+
+AY_ReadRegValue
+; Pre: Y = SY6522_ORA for chip A or B
+;	X=reg#
+; Post: Y = SY6522_ORA for chip A or B
+;	A=value
+;	Z = 0
+	jsr		AY_SetPortAOutput
+	txa
+	jsr		SF_SelectReg
+	jsr		AY_SetPortAInput
+	jmp		AY_ReadReg
+
+	;
+
+AY_SetPortAOutput
+; Pre: Y = SY6522_ORA for chip A or B
+; Post: Y = SY6522_ORA for chip A or B
+	iny
+	iny		; Y = DDRA
+	lda		#$ff
+	sta		(MBBase),y
+	dey
+	dey		; Y = ORA
+	rts
+
+AY_SetPortAInput
+; Pre: Y = SY6522_ORA for chip A or B
+; Post: Y = SY6522_ORA for chip A or B
+	iny
+	iny		; Y = DDRA
+	lda		#$0
+	sta		(MBBase),y
+	dey
+	dey		; Y = ORA
+	rts
+
+	;
+
+AY_ReadReg
+; Pre: Y = SY6522_ORA for chip A or B
+;	6522.DDRA = $00 (Port-A direction = input)
+; Post: Y = SY6522_ORA for chip A or B
+;	A = data
+;	Z = 0
+	lda		#AY_READ
+	dey		; Y = ORB (reg#0)
+	sta		(MBBase),y
+	iny		; Y = ORA (reg#1)
+	lda		(MBBase),y		; Read Port-A
+	tax
+	lda		#AY_INACTIVE
+	dey		; Y = ORB (reg#0)
+	sta		(MBBase),y
+	txa
+	iny		; Y = ORA (reg#1)
+	rts
+
+SF_SelectReg
+; Pre: Y = SY6522_ORA for chip A or B
+;	A = reg#
+; Post: Y = SY6522_ORA for chip A or B
+	sta		(MBBase),y
+	lda		#AY_LATCH
+	bne		SetModeAndInactive
+
+SF_WriteReg
+; Pre: Y = SY6522_ORA for chip A or B
+;	6522.DDRA = $FF (Port-A direction = output)
+;	A = data
+; Post: Y = SY6522_ORA for chip A or B
+;	Z = 0
+	sta		(MBBase),y
+	lda		#AY_WRITE
+	bne		SetModeAndInactive
+
+SF_ChipReset
+; NB. For native Phasor mode, reset both AY's, since ORB.b2 is directly wired to both AYs' /RESET.
+; NB. For Echo+ & Phasor(Echo+ mode), reset both AY's.
+; Pre: Y = SY6522_ORB for chip A or B
+; Post: Y = SY6522_ORA for chip A or B
+;	Z = 0
+	lda		#AY_RESET			; Phasor/Echo+: don't need CS due to direct connection from ORB.b2 to AYs' /RESET
+	; NB. For Echo+ (or Phasor in E+ mode) should really use AY_RESET|AY_ECHO_BOTH_CS so that INACTIVE
+	; is set for both AYs (below), but reset has already set them to INACTIVE, so it's OK to skip this.
+	beq		+					; {branch always)
+
+SetModeAndInactive
+; Pre: Y = SY6522_ORA for chip A or B
+;	A = PSG Function | CS bits (or reset)
+	dey		; Y = ORB (reg#0)
+
++	sta		(MBBase),y
+	and		#!(AY_FUNC_MASK)	; clear the 3 low mode bits
+	ora		#AY_INACTIVE		; A = A|AY_INACTIVE to preserve any chip-select bits
+	sta		(MBBase),y
+	iny		; Y = ORA (reg#1)
+	rts
+
+;------------------------------------------------------------------------------
+; Phasor (native mode) routines:
+
+AY1_ReadReg
+; Pre: Y = SY6522_ORA for chip A or B
+;	6522.DDRA = $00 (Port-A direction = input)
+; Post: Y = SY6522_ORA for chip A or B
+;	A = data
+;	Z = 0
+	lda		#AY_READ|AY_CS1
+	dey		; Y = ORB (reg#0)
+	sta		(MBBase),y
+	iny		; Y = ORA (reg#1)
+	lda		(MBBase),y		; Read Port-A
+	tax
+	lda		#AY_INACTIVE|AY_CS1
+	dey		; Y = ORB (reg#0)
+	sta		(MBBase),y
+	txa
+	iny		; Y = ORA (reg#1)
+	rts
+AY2_ReadReg
+	lda		#AY_READ|AY_CS2
+	dey		; Y = ORB (reg#0)
+	sta		(MBBase),y
+	iny		; Y = ORA (reg#1)
+	lda		(MBBase),y		; Read Port-A
+	tax
+	lda		#AY_INACTIVE|AY_CS2
+	dey		; Y = ORB (reg#0)
+	sta		(MBBase),y
+	txa
+	iny		; Y = ORA (reg#1)
+	rts
+
+AY1_SelectReg
+; Pre: Y = SY6522_ORA for chip A or B
+;	A = reg#
+; Post: Y = SY6522_ORA for chip A or B
+	sta		(MBBase),y
+	lda		#AY_LATCH|AY_CS1
+	bne		+
+AY2_SelectReg
+	sta		(MBBase),y
+	lda		#AY_LATCH|AY_CS2
+	bne		++
+
+AY1_WriteReg
+; Pre: Y = SY6522_ORA for chip A or B
+;	6522.DDRA = $FF (Port-A direction = output)
+;	A = data
+; Post: Y = SY6522_ORA for chip A or B
+;	Z = 0
+	sta		(MBBase),y
+	lda		#AY_WRITE|AY_CS1
+	bne		+
+AY2_WriteReg
+	sta		(MBBase),y
+	lda		#AY_WRITE|AY_CS2
+	bne		++
+
++	dey		; Y = ORB (reg#0)
+	sta		(MBBase),y
+	lda		#AY_INACTIVE|AY_CS1
+	sta		(MBBase),y
+	iny		; Y = ORA (reg#1)
+	rts
+
+++	dey		; Y = ORB (reg#0)
+	sta		(MBBase),y
+	lda		#AY_INACTIVE|AY_CS2
+	sta		(MBBase),y
+	iny		; Y = ORA (reg#1)
+	rts
+
+;------------------------------------------------------------------------------
+
+AY1_WriteRegValue
+; Pre: Y = SY6522_ORA for chip A or B
+;	A=reg#
+;	X=value
+; Post:
+;	Z = 0
+	jsr		AY1_SelectReg
+	txa
+	jmp		AY1_WriteReg
+
+AY2_WriteRegValue
+; Pre: Y = SY6522_ORA for chip A or B
+;	A=reg#
+;	X=value
+; Post:
+;	Z = 0
+	jsr		AY2_SelectReg
+	txa
+	jmp		AY2_WriteReg
+
+AY1_ReadRegValue
+; Pre: Y = SY6522_ORA for chip A or B
+;	X=reg#
+; Post:
+;	A=value
+;	Z = 0
+	jsr		AY_SetPortAOutput
+	txa
+	jsr		AY1_SelectReg
+	jsr		AY_SetPortAInput
+	jmp		AY1_ReadReg
+
+AY2_ReadRegValue
+; Pre: Y = SY6522_ORA for chip A or B
+;	X=reg#
+; Post:
+;	A=value
+;	Z = 0
+	jsr		AY_SetPortAOutput
+	txa
+	jsr		AY2_SelectReg
+	jsr		AY_SetPortAInput
+	jmp		AY2_ReadReg
+
+;------------------------------------------------------------------------------
+; Echo+ routines:
+
+AY_Echo_SelectReg
+; Pre: X = [AY_ECHO_CS1|AY_ECHO_CS2]|AY_LATCH
+;	A = reg#
+; Post: X is preserved, Y trashed
+	ldy		#SY6522_A_BASE+SY6522_ORA
+	sta		(MBBase),y
+	dey						; Y = ORB (reg#0)
+	txa						; A = CS_ECHO_x|AY_LATCH
+	sta		(MBBase),y
+	and		#$1C			; A = CS_ECHO_x|AY_INACTIVE
+	sta		(MBBase),y
+	rts
+
+;
+
+AY_Echo_WriteReg
+; Pre: X = [AY_ECHO_CS1|AY_ECHO_CS2]|AY_LATCH
+;	6522.DDRA = $FF (Port-A direction = output)
+;	A = data
+; Post: X is preserved, Y trashed
+;	Z = 0
+	ldy		#SY6522_A_BASE+SY6522_ORA
+	sta		(MBBase),y
+	dey						; Y = ORB (reg#0)
+	txa
+	and		#$1E			; A = CS_ECHO_x|AY_WRITE
+	sta		(MBBase),y
+	and		#$1C			; A = CS_ECHO_x|AY_INACTIVE
+	sta		(MBBase),y
+	rts
+
+;
+
+AY_Echo_ReadReg
+; Pre: X = [AY_ECHO_CS1|AY_ECHO_CS2]|AY_LATCH
+;	6522.DDRA = $00 (Port-A direction = input)
+; Post: X is preserved, Y trashed
+;	A = data
+;	Z = 0
+	ldy		#SY6522_A_BASE+SY6522_ORB
+	txa
+	and		#$1D			; A = CS_ECHO_x|AY_READ
+	sta		(MBBase),y
+	iny						; Y = ORA (reg#1)
+	lda		(MBBase),y		; Read Port-A
+	pha
+	txa
+	and		#$1C			; A = CS_ECHO_x|AY_INACTIVE
+	dey						; Y = ORB (reg#0)
+	sta		(MBBase),y
+	pla
+	rts
+
+;--------------------------------------
+
+AY_Echo_WriteRegValueEx
+; Pre: zpTmp3 = SY6522_A_BASE, SY6522_B_BASE - used to config chip-select
+;	Y=reg#
+;	A=value
+	ldx		zpTmp3
+	bne		+
+	ldx		#AY_ECHO_CS1|AY_LATCH
+	bne		AY_Echo_WriteRegValue
++	ldx		#AY_ECHO_CS2|AY_LATCH
+	; fall through...
+
+AY_Echo_WriteRegValue
+; Pre: X = [AY_ECHO_CS1|AY_ECHO_CS2]|AY_LATCH
+;	Y=reg#
+;	A=value
+; Post:
+;	X is preserved, Y trashed
+;	Z = 0
+	pha						; save value
+	tya
+	jsr		AY_Echo_SelectReg
+	pla						; restore value
+	jmp		AY_Echo_WriteReg
+
+;
+
+AY_Echo_ReadRegValueEx
+; Pre: zpTmp3 = SY6522_A_BASE, SY6522_B_BASE - used to config chip-select
+;	Y=reg#
+	ldx		zpTmp3
+	bne		+
+	ldx		#AY_ECHO_CS1|AY_LATCH
+	bne		AY_Echo_ReadRegValue
++	ldx		#AY_ECHO_CS2|AY_LATCH
+	; fall through...
+
+AY_Echo_ReadRegValue
+; Pre: X = [AY_ECHO_CS1|AY_ECHO_CS2]|AY_LATCH
+;	Y=reg#
+; Post:
+;	A=value
+;	X is preserved, Y trashed
+;	Z = 0
+	tya
+	pha						; save reg#
+	ldy		#SY6522_A_BASE+SY6522_ORA
+	jsr		AY_SetPortAOutput
+	pla						; restore reg#
+	jsr		AY_Echo_SelectReg
+	ldy		#SY6522_A_BASE+SY6522_ORA
+	jsr		AY_SetPortAInput
+	jmp		AY_Echo_ReadReg

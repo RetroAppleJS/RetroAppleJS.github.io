@@ -1,0 +1,3097 @@
+;license:MIT
+;(c) 2021-2025 by Tom Charlesworth
+;
+; SSI263 related
+;
+
+;------------------------------------------------------------------------------
+
+DetectSSI263
+; Pre: zpTmp1 = 6522 bitmap in b1:0
+; Post: hasSSI263
+
+	; SSI263 is only on MB-C & Phasor, both of which have 2x 6522's
+	; - Speech using 6522 PCR w/o IRQ (based on Willy Byte's SSI263 detection code)
+
+	lda		#SSI_A_BASE
+	sta		SSI263BaseL
+	lda		MBBaseH
+	sta		SSI263BaseH
+
+	lda		#SY6522_B_BASE
+	sta		MBBaseL
+
+	lda		#SSI263A_UNKNOWN
+	sta		zpTmp2						; mask
+
+	lda		zpTmp1
+	and		#HAS_6522B					; SSI263A is connected to 2nd 6522
+	beq		@nextSSI263
+
+@loop	lda		#IER_CLR|IxR_SSI263
+		ldy		#SY6522_IER
+		sta		(MBBase),y				; disable CA1(Speech) IRQ
+		dey								; Y=IFR
+		sta		(MBBase),y				; clear CA1(Speech) IRQ flag
+
+		jsr		KickSSI263
+
+		lda		#$FF
+		jsr		myWAIT					; delay for 0x28882 (166018) cycles / ~163ms
+
+		ldy		#SY6522_IFR
+		lda		#IxR_SSI263				; check CA1(Speech) IRQ
+		and		(MBBase),y
+		beq		@nextSSI263
+		sta		(MBBase),y				; clear CA1(Speech) IRQ
+
+			jsr		DisableSSI263
+			lda		zpTmp2
+			ora		hasSSI263
+			sta		hasSSI263
+
+@nextSSI263
+		lda		MBBaseL
+		beq		+
+		lda		#SSI_B_BASE
+		sta		SSI263BaseL
+		lda		#SY6522_A_BASE
+		sta		MBBaseL
+		asl		zpTmp2
+		asl		zpTmp2					; mask<<2 (2 bits per SSI263 type)
+
+		lda		zpTmp1
+		and		#HAS_6522A				; SSI263B is connected to 1st 6522
+		bne		@loop
+
++	rts
+
+;------------------------------------------------------------------------------
+
+DisableSSI263
+; NB. Called from userland & ISR
+
+	lda		#CONTROL_H
+	ldy		#SSI_CTTRAMP
+	sta		(SSI263Base),y
+
+	lda		#MODE_IRQ_DISABLED+$00	; DR1:DR0=0, P5:P0=$00
+	ldy		#SSI_DURPHON
+	sta		(SSI263Base),y
+
+	lda		#CONTROL_L				; H->L sets SSI263 operation mode = DR1:DR0, ie. IRQ inactive
+	ldy		#SSI_CTTRAMP
+	sta		(SSI263Base),y
+
+	rts
+
+;------------------------------------------------------------------------------
+
+KickSSI263_no_PCR
+
+	lda		#$00					; NB. No different to setting to 0x0C
+	beq		+
+
+KickSSI263
+
+	lda		#$0C					; Peripheral for PA port Control: CA2 = low output (Not connected to SSI263)
+									; CA1 = negative active edge (input) (SSI263 Pin4: A/!R)
+									; NB. Can use a value of 0x00 and it still works (tested on real MB & Phasor)
+
++	ldy		#SY6522_PCR
+	sta		(MBBase),y
+
+	lda		#IxR_SSI263
+	ldy		#SY6522_IFR
+	sta		(MBBase),y				; Clear CA1(Speech) IRQ after setting PCR
+
+	lda		#CONTROL_H
+	ldy		#SSI_CTTRAMP
+	sta		(SSI263Base),y
+
+	lda		#MODE_PHONEME_TRANSITIONED_INFLECTION+$00	; DR1:DR0=3 , P5:P0=$00
+	ldy		#SSI_DURPHON
+	sta		(SSI263Base),y
+
+	lda		#CONTROL_L				; H->L sets SSI263 operation mode = DR1:DR0, ie. IRQ active
+	ldy		#SSI_CTTRAMP
+	sta		(SSI263Base),y
+
+	rts
+
+;------------------------------------------------------------------------------
+
+PlaySSI263_no_PCR
+
+	ldy		#1
+	bne		+
+
+PlaySSI263
+; Pre: X:A = phoneme data
+;	MB mode    : MBBaseL = SY6522_A_BASE    / SY6522_B_BASE
+;	Phasor mode: MBBaseL = SY6522_A_PH_BASE / SY6522_B_BASE
+
+	ldy		#0
++	sty		zpTmp2
+
+	sta		SpeechDataL
+	stx		SpeechDataH
+
+	sei
+	inc		doingSpeech
+
+	lda		#0
+	sta		irqT1IntCount
+
+	lda		zpTmp2
+	bne		@noPCR1
+		jsr		KickSSI263
+		jmp		+
+@noPCR1	jsr		KickSSI263_no_PCR
++
+
+	lda		#$ff					; T1C = T1L = $FFFF
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBTimer),y
+	iny								; SY6522_TIMER1H_COUNTER
+	sta		(MBTimer),y				; (and clears IFR.b6)
+
+	lda		#ACR_FREERUNNING
+	ldy		#SY6522_ACR
+	sta		(MBTimer),y				; Free-running timer
+
+	lda		#IER_SET|IxR_TIMER1
+	ldy		#SY6522_IER
+	sta		(MBTimer),y				; Enable Timer1 IRQ
+
+	lda		zpTmp2
+	bne		@noPCR2
+		lda		#IER_SET|IxR_SSI263
+		;ldy	#SY6522_IER
+		sta		(MBBase),y			; Enable CA1(Speech) IRQ
+@noPCR2
+
+	cli
+
+	rts
+
+;------------------------------------------------------------------------------
+
+;            SSI263-A  SSI263-B
+; SSI263Base  $Cs40     $Cs20
+; MBBase      $Cs80     $Cs10    input for CA1 (SSI263 interrupt) to this 6522's IFR
+; MBTimer     $Cs80     $Cs80    same for both SSI263s
+; hasSSI263   .b1:0     .b3:2
+;
+
+TestSSI263
+; Pre: has6522, hasSSI263
+; Post: C=0(OK), C=1(NG)
+
+	lda		has6522
+	and		#HAS_6522A
+	beq		+
+		lda		#IER_CLR|IxR_TIMER1|IxR_TIMER2|IxR_SSI263
+		ldy		#SY6522_A_BASE+SY6522_IER	; disable IRQ
+		sta		(MBBase),y
+		ldy		#SY6522_A_BASE+SY6522_IFR	; clear IRQ flag
+		sta		(MBBase),y
++	lda		has6522
+	and		#HAS_6522B
+	beq		+
+		lda		#IER_CLR|IxR_TIMER1|IxR_TIMER2|IxR_SSI263
+		ldy		#SY6522_B_BASE+SY6522_IER	; disable IRQ
+		sta		(MBBase),y
+		ldy		#SY6522_B_BASE+SY6522_IFR	; clear IRQ flag
+		sta		(MBBase),y
++
+
+	lda		#<TestSSI263ISR
+	ldx		#>TestSSI263ISR
+	jsr		SetIrqVector			; Since we have an SSI263, then MB card won't generate NMI
+
+	lda		#COMPONENT_SSI263+1		; test component $41
+	sta		testComponentNum
+	lda		#$ff
+	sta		testNum					; test #00
+
+	lda		#SSI_A_BASE
+	sta		SSI263BaseL
+	lda		MBBaseH
+	sta		MBTimerH
+	sta		SSI263BaseH
+	lda		#SY6522_B_BASE
+	sta		MBBaseL
+	sta		MBTimerL				; NB. MBTimer is used for TIMER1, and so doesn't change for SSI263A/SSI263B
+
+	lda		hasSSI263
+	and		#HAS_SSI263A
+	beq		@nextSSI263
+
+@loop	inc		testNum				; test #00, $80
+		jsr		T263_0
+		bcs		@error
+
+		inc		testNum				; test #01, $81
+		jsr		T263_1
+		bcs		@error
+
+		inc		testNum				; test #02, $82
+		jsr		T263_2
+		bcs		@error
+
+		inc		testNum				; test #03, $83
+		jsr		T263_3
+		bcs		@error
+
+		inc		testNum				; test #04, $84
+		jsr		T263_4
+		bcs		@error
+
+		inc		testNum				; test #05, $85
+		jsr		T263_5
+		bcs		@error
+
+		inc		testNum				; test #06, $86
+		jsr		T263_6
+		bcs		@error
+
+		inc		testNum				; test #07, $87
+		jsr		T263_7
+		bcs		@error
+
+		inc		testNum				; test #08, $88
+		jsr		T263_8
+		bcs		@error
+
+		inc		testNum				; test #09, $89
+		jsr		T263_9
+		bcs		@error
+
+		inc		testNum				; test #0A, $8A
+		jsr		T263_A
+		bcs		@error
+
+		inc		testNum				; test #0B, $8B
+		jsr		T263_B
+		bcs		@error
+
+@nextSSI263
+		lda		#$7f
+		sta		testNum
+
+		lda		#SSI_B_BASE
+		cmp		SSI263BaseL
+		beq		+
+		sta		SSI263BaseL
+		lda		#SY6522_A_PH_BASE
+		sta		MBBaseL
+
+		lda		hasSSI263
+		and		#HAS_SSI263B
+		bne		@loop
+
++	lda		#SY6522_A_BASE
+	sta		MBBaseL
+
+	clc
+	bcc		@done
+
+@error
+; Pre: zpTmp2 = expected value
+;	A = actual value
+; Post: C=1(NG)
+
+	ldx		zpTmp2
+	jsr		SetError
+
+	sec
+
+@done
+	php
+
+	lda		MBTimerL				; =SY6522_B_BASE
+	sta		MBBaseL
+	jsr		WaitT1OneShotUnderflow	; Pre: MBBaseH/L (restore to one-shot mode)
+
+	lda		#SY6522_A_BASE
+	sta		MBBaseL
+
+	plp
+	rts
+
+;------------------------------------------------------------------------------
+
+CalcPhraseDuration
+
+	lda		irqT1IntCount
+	sta		phraseDuration+0			;# T1 ints
+
+	lda		irqT1H
+	cmp		irqT1H2
+	beq		+
+		; T1 underflow between T1H & T1H2, so use: T1=T1H|00
+		; and irqT1IntCount will account for the underflow
+		lda		#0
+		sta		irqT1L
+
+	; NB. normally for multi-byte subtraction you'd start with T1L, but since there's no borrow ($FFFF-HHLL) it's OK this way!
+	; (do it this way so that the order is: phraseDuration-H,M,L)
++	sec									; $FFFF - T1H|T1L
+	lda		#$ff
+	sbc		irqT1H
+	sta		phraseDuration+1			;T1H
+
+	lda		#$ff
+	sbc		irqT1L
+	sta		phraseDuration+2			;T1L
+
+	rts
+
+;------------------------------------------------------------------------------
+
+T263_0
+; Pre: MBBase, SSI263Base
+; Post: C=0(OK), C=1(NG)
+;
+; Test#0
+; . Play phrase "CLASSIC ADVENTURE" and check total duration is within tolerance
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	lda		#<ClassicAdv
+	ldx		#>ClassicAdv
+	jsr		PlaySSI263
+
+	ldy		#10	; delay of 0x19555F cycles = 1,660,255 = ~1.623s
+-		lda		#$ff
+		jsr		myWAIT
+		lda		doingSpeech			; done? (or user hit ESC to skip)
+		beq		@ok
+		dey
+		bne		-
+
+	beq		@error
+
+@ok	clc								; C=0(OK)
+	bcc		@done
+
+@error
+	; Error: phrase not complete
+	lda		#0
+	sta		zpTmp2					; expected
+	sec								; C=1(NG)
+
+@done
+	sei
+	php
+
+	ldy		#SY6522_IER
+	lda		#IER_CLR|IxR_SSI263
+	sta		(MBBase),y				; Disable CA1(Speech) IRQ
+	lda		#IER_CLR|IxR_TIMER1
+	sta		(MBTimer),y				; Disable Timer1 IRQ
+
+	lda		MBBaseL
+	pha
+	lda		MBTimerL
+	sta		MBBaseL
+	jsr		WaitT1OneShotUnderflow	; Disable the free-running time on MBTimer/$Cs80
+	pla
+	sta		MBBaseL
+
+	jsr		CalcPhraseDuration		; Real MB: 0x132BDD,0x132E59,0x133073 (AppleWin: 0x18D3D8,0x192332/running; ~0x14EFFF,0x14F247/stepping)
+
+	lda		#1						; actual
+	plp
+	rts
+
+;------------------------------------------------------------------------------
+
+T263_1
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;
+; Test#1 (AppleWin-GH#52: the infamous Willy Byte bug!)
+; . With a pending T1 IRQ, writing to SSI_FILFREQ clears the T1 IRQ
+; . With a pending T2 IRQ, writing to reg8 clears the T2 IRQ
+; . test the 3 addr modes: sta addr16,x; sta addr16,y; sta (zp),y
+
+	sei
+
+	; Ensure we are using the 6522 at $Cn00 regardless of the SSI263 we are testing
+	lda		MBBaseL
+	pha
+	lda		#SY6522_A_BASE
+	sta		MBBaseL
+
+	; SMC to set correct addr
+	lda		SSI263BaseL
+	sta		@smc16x+1
+	sta		@smc16y+1
+	lda		SSI263BaseH
+	sta		@smc16x+2
+	sta		@smc16y+2
+
+	lda		#IER_SET|IxR_TIMER1|IxR_TIMER2
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Enable Timer1/Timer2 IRQ
+	ldy		#SY6522_IFR
+	sta		(MBBase),y				; Clear any Timer1/Timer2 IRQ
+
+	lda		#ACR_ONESHOT
+	ldy		#SY6522_ACR
+	sta		(MBBase),y				; T1 one-shot mode
+
+	jsr		resetSubTest
+	dec		subTestNum
+	jsr		incTotalTests
+
+	lda		#2
+	sta		zpTmp2					; addr mode to test
+@loop
+		; Timer1 IRQ
+
+		jsr		incSubTestNum		; subTest #0, 4, 8
+
+		lda		#0					; Set T1C=T1L=$0000
+		ldy		#SY6522_TIMER1L_COUNTER
+		sta		(MBBase),y
+		ldy		#SY6522_TIMER1H_COUNTER
+		sta		(MBBase),y
+
+		ldy		#SY6522_IFR
+		lda		(MBBase),y
+		ldx		#IxR_TIMER1
+		and		#IxR_TIMER1
+		beq		@error
+
+		jsr		incSubTestNum		; subTest #1, 5, 9
+
+		ldy		#SSI_FILFREQ		; reg4
+		jsr		@FalseRead			; write to 6522.T1C_l & the write does a false read from 6522.T1C_l to clear the IRQ!
+
+		lda		zpTmp2
+		bne		+
+		lda		is65C02				; NB. 65816 behaves like 6502 for sta (zp),y
+		beq		+
+
+			; sta (zp),y && 65C02
+			ldy		#SY6522_IFR
+			lda		(MBBase),y
+			ldx		#IxR_TIMER1
+			and		#IxR_TIMER1
+			beq		@error
+			bne		++
+
++		ldy		#SY6522_IFR
+		lda		(MBBase),y
+		ldx		#0
+		and		#IxR_TIMER1
+		bne		@error
+
+++		; Timer2 IRQ
+
+		jsr		incSubTestNum		; subTest #2, 6, A
+
+		lda		#0					; Set T2C=$0000
+		ldy		#SY6522_TIMER2L_COUNTER
+		sta		(MBBase),y
+		ldy		#SY6522_TIMER2H_COUNTER
+		sta		(MBBase),y
+
+		ldy		#SY6522_IFR
+		lda		(MBBase),y
+		ldx		#IxR_TIMER2
+		and		#IxR_TIMER2
+		beq		@error
+
+		jsr		incSubTestNum		; subTest #3, 7, B
+
+		ldy		#8					; reg8 (only 3 addr bits for SSI263, so wraps to SSI_DURPHON)
+		jsr		@FalseRead			; write to 6522.T2C_l & the write does a false read from 6522.T2C_l to clear the IRQ!
+
+		lda		zpTmp2
+		bne		+
+		lda		is65C02				; NB. 65816 behaves like 6502 for sta (zp),y
+		beq		+
+
+			; sta (zp),y && 65C02
+			ldy		#SY6522_IFR
+			lda		(MBBase),y
+			ldx		#IxR_TIMER2
+			and		#IxR_TIMER2
+			beq		@error
+			bne		++
+
++		ldy		#SY6522_IFR
+		lda		(MBBase),y
+		ldx		#0
+		and		#IxR_TIMER2
+		bne		@error
+
+++		dec		zpTmp2
+		bpl		@loop
+
+	jsr		WaitT1OneShotUnderflow
+	jsr		WaitT2OneShotUnderflow
+
+	pla
+	sta		MBBaseL
+	clc
+	rts								; C=0(OK)
+
+@error	; pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	tax
+	pla
+	sta		MBBaseL
+	txa
+	sec
+	rts								; C=1(NG)
+
+;
+
+@FalseRead
+; Pre: zpTmp2=addr mode to test
+;	Y=SSI reg#
+
+	lda		#0
+
+	ldx		zpTmp2
+	beq		@addr8y
+	dex
+	beq		@addr16y
+
+@addr16x
+	tya
+	tax
+	lda		#0
+@smc16x
+	sta		$C440,x					; (smc)
+	rts
+
+@addr16y
+@smc16y
+	sta		$C440,y					; (smc)
+	rts
+
+@addr8y
+	sta		(SSI263Base),y			; false-read only for 6502/65816 (not 65C02)
+	rts
+
+;------------------------------------------------------------------------------
+
+T263_2
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;
+; Test#2 - Phasor only
+; . phoneme request using SSI263.D7 w/o IRQ (mode=MODE_PHONEME_TRANSITIONED_INFLECTION) & check IRQ
+; . phoneme request using SSI263.D7 w/o IRQ (mode=MODE_IRQ_DISABLED) & check *no* IRQ
+; . phoneme request using SSI263.D7 w/o IRQ (mode=MODE_PHONEME_IMMEDIATE_INFLECTION) & check IRQ
+; . phoneme request using SSI263.D7 w/o IRQ (mode=MODE_IRQ_DISABLED) & check *no* IRQ
+; . phoneme request using SSI263.D7 w/o IRQ (mode=MODE_FRAME_IMMEDIATE_INFLECTION) & check IRQ
+; . phoneme request using SSI263.D7 w/o IRQ (mode=MODE_IRQ_DISABLED) & check *no* IRQ
+
+	sei
+
+	lda		isPhasorCard
+	bne		+
+		clc
+		rts
++
+
+	jsr		resetSubTestMinus1		; subTest #-1
+	jsr		incTotalTests
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	lda		#<NullPhrase
+	ldx		#>NullPhrase
+	sta		SpeechDataL
+	stx		SpeechDataH
+
+	lda		#$F0					; RATE[7:4]=$F (quickest), INF[3:0]=$0
+	ldy		#SSI_RATEINF
+	sta		(SSI263Base),y
+
+	lda		#MODE_PHONEME_TRANSITIONED_INFLECTION
+	sta		@deviceMode
+	lda		#0
+	sta		@disableIntsFlag
+
+@loop	; Kick with phoneme $00 && device mode && ena/dis ints
+		; . R = RATE = $F (set above)
+		; loop# - Device Mode:
+		;     0 - $C0:  4ms: FD = 4ms * (16-R) = 4ms; PD = FD * (4-D) = 4ms (where D = %11 = 3) [Phoneme timing mode]
+		;     1 - $00: 16ms (use previous device mode, but D=0, so PD = FD * 4 = 16ms)
+		;     2 - $80:  8ms: FD = 4ms * (16-R) = 4ms; PD = FD * (4-D) = 8ms (where D = %10 = 2) [Phoneme timing mode]
+		;     3 - $00: 16ms (use previous device mode, but D=0, so PD = FD * 4 = 16ms)
+		;     4 - $40:  4ms: FD = 4ms * (16-R) = 4ms  [Frame timing mode]
+		;     5 - $00:  4ms (use previous device mode)
+
+		lda		#CONTROL_H
+		ldy		#SSI_CTTRAMP
+		sta		(SSI263Base),y
+
+		lda		@disableIntsFlag
+		bne		@disInts1
+			lda		@deviceMode
+			bne		+				; (bra)
+@disInts1	lda		#MODE_IRQ_DISABLED
++		ldy		#SSI_DURPHON
+		sta		(SSI263Base),y
+
+		lda		#CONTROL_L
+		ldy		#SSI_CTTRAMP
+		sta		(SSI263Base),y
+
+		jsr		incSubTestNum		; subTest #0,3,6,9,C,F
+		lda		(SSI263Base),y		; Y=$3 (can be $0-$F)
+		and		#REQ_NEW_DATA
+		bne		@errorNot00			; Check D7==0
+
+		lda		#$E0				; NB. pick a big enough delay for AppleWin emulator!
+		jsr		myWAIT				; WAIT($E0) = delay for 0x1F5DD (128,477) cycles / ~128ms
+
+		jsr		incSubTestNum		; subTest #1,4,7,A,D,10
+		ldy		#SSI_DURPHON
+		lda		(SSI263Base),y
+		and		#REQ_NEW_DATA
+		beq		@errorNot80			; Check D7==1
+
+		jsr		incSubTestNum		; subTest #2,5,8,B,E,11
+		lda		#0
+		sta		isrFlag
+		cli
+		sei
+		lda		@disableIntsFlag
+		bne		@disInts2
+			lda		isrFlag
+			beq		@errorNot01		; Check that MODE_PHONEME|FRAME_XXX allows IRQ to occur
+			bne		+				; (bra)
+@disInts2	lda		isrFlag
+			bne		@errorNot00		; Check that MODE_IRQ_DISABLED prevents IRQ from occurring
++
+
+		lda		@disableIntsFlag
+		eor		#1
+		sta		@disableIntsFlag
+		bne		@loop
+
+		lda		@deviceMode
+		sec
+		sbc		#$40
+		beq		@done
+		sta		@deviceMode
+		jmp		@loop
+
+@done
+	clc								; C=0(OK)
+	bcc		@exit
+
+;
+
+@errorNot00	; pre: A=actual; post X=0
+	ldx		#$00
+	beq		+						; (bra)
+@errorNot01	; pre: A=actual; post X=0
+	ldx		#$01
+	bne		+						; (bra)
+@errorNot80	; pre: A=actual; post X=0
+	ldx		#$80
+
++			; pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	sec								; C=1(NG)
+
+@exit
+	php
+	pha
+
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	pla
+	plp
+	rts
+
+@deviceMode			!byte	0
+@disableIntsFlag	!byte	0
+
+;------------------------------------------------------------------------------
+
+T263_3
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;
+; Test#3
+; . Test phoneme playback using 6522 PCR IRQ (MB & Phasor)
+
+	sei
+
+	;
+	; First test Mockingboard (or Phasor in Mockingboard mode)
+	;
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	lda		#<NullPhrase
+	ldx		#>NullPhrase
+	jsr		PlaySSI263
+
+-		lda		doingSpeech
+		beq		+
+		lda		irqT1IntCount
+		cmp		#4					; timeout = ~256ms
+		bcc		-					; loop if < 4
+		bcs		@error
++
+
+	sei
+
+	lda		isPhasorCard
+	beq		@done
+
+	jsr		incSubTestNum			; subTest #1
+
+	;
+	; Now test Phasor in native Phasor mode
+	; NB. Phasor uses direct IRQ (which still works even if PCR is setup)
+	;
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	lda		#<NullPhrase
+	ldx		#>NullPhrase
+	jsr		PlaySSI263
+
+-		lda		doingSpeech
+		beq		+
+		lda		irqT1IntCount
+		cmp		#4					; timeout = ~256ms
+		bcc		-					; loop if < 4
+		bcs		@error
++
+
+@done
+	clc								; C=0(OK)
+	bcc		@exit
+
+;
+
+@error		; pre: A=actual
+	ldx		#0						; X=expected
+	stx		zpTmp2					; expected
+	sec								; C=1(NG)
+
+@exit
+	sei
+	php
+	pha
+
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	lda		#IER_CLR|IxR_TIMER1
+	ldy		#SY6522_IER
+	sta		(MBTimer),y				; Disable Timer1 IRQ
+
+	pla
+	plp
+	rts
+
+;------------------------------------------------------------------------------
+
+T263_4
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;
+; Test#4
+; . Test phoneme playback using direct IRQ (MB & Phasor)
+; NB. Mockingboard must fail, as SSI263 IRQ isn't directly connected
+
+	sei
+
+	lda		#IER_CLR|IxR_SSI263
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Disable CA1(Speech) IRQ
+	ldy		#SY6522_IFR
+	sta		(MBBase),y				; Clear any CA1(Speech) IRQ
+
+	;
+	; First test Mockingboard (or Phasor in Mockingboard mode)
+	; . Show that SSI263 IRQ isn't directly connected
+	;
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	lda		#<NullPhrase
+	ldx		#>NullPhrase
+	jsr		PlaySSI263_no_PCR
+
+	ldx		#1
+-		lda		doingSpeech
+		beq		@error				; speech phrase complete... an error, as expect it to timeout for MB
+		lda		irqT1IntCount
+		cmp		#4					; timeout = ~256ms (expected for Mockingboard)
+		bcc		-					; loop if < 4
++
+
+	sei
+
+	jsr		incSubTestNum			; subTest #1
+
+	; IFR=IxR_SSI263 during the timeout (as CA1=input)
+	ldy		#SY6522_IFR
+	lda		#IxR_SSI263
+	tax								; expected
+	and		(MBBase),y				; Check CA1(Speech) IRQ
+	beq		@error
+	sta		(MBBase),y				; Clear the CA1(Speech) IRQ
+
+	; SSI263 is still asserting A/!R interrupt: switching to Phasor mode will cause a 6502 IRQ! (On CLI opcode)
+	; ...because SSI263 only de-asserts A/!R by writing to regs 0,1 or 2 (or set reg3.CTL=1)
+
+	jsr		KickSSI263
+
+	lda		#$FF
+	jsr		myWAIT					; delay for 0x28882 (166018) cycles / ~163ms
+
+	jsr		incSubTestNum			; subTest #2
+
+	ldy		#SY6522_IFR
+	lda		#IxR_SSI263
+	tax								; expected
+	and		(MBBase),y				; Check CA1(Speech) IRQ
+	beq		@error
+	sta		(MBBase),y				; Clear the CA1(Speech) IRQ
+
+	jsr		DisableSSI263
+
+	;
+
+	lda		isPhasorCard
+	beq		@done
+
+	jsr		incSubTestNum			; subTest #3
+
+	;
+	; Now test Phasor in native Phasor mode
+	;
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	lda		#<NullPhrase
+	ldx		#>NullPhrase
+	jsr		PlaySSI263_no_PCR
+
+-		lda		doingSpeech
+		beq		+
+		lda		irqT1IntCount
+		cmp		#4					; timeout = ~256ms
+		bcc		-					; loop if < 4
+		bcs		@error0
++
+
+@done
+	clc								; C=0(OK)
+	bcc		@exit
+
+;
+
+@error0		; pre: A=actual
+	ldx		#0
+
+@error		; pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	sec								; C=1(NG)
+
+@exit
+	sei
+	php
+	pha
+
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	lda		#IER_CLR|IxR_TIMER1
+	ldy		#SY6522_IER
+	sta		(MBTimer),y				; Disable Timer1 IRQ
+
+	pla
+	plp
+	rts
+
+;------------------------------------------------------------------------------
+
+T263_5
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;
+; Test#5 - Phasor only
+; . Part-1: Test clearing IRQ using writes to all 16 register locations (polling, ints disabled)
+; . Part-2: Test clearing IRQ using writes to all 16 register locations (using ISR, ints enabled)
+
+	lda		isPhasorCard
+	bne		+
+		clc
+		rts
++
+
+	jsr		resetSubTestMinus1		; subTest #-1
+	jsr		incTotalTests
+
+	sei
+
+	lda		#<@T263_5_ISR
+	ldx		#>@T263_5_ISR
+	jsr		SetIrqVector
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	;
+	;-------------- Part-1:
+	;
+
+	; Kick with phoneme $00 && MODE_PHONEME_TRANSITIONED_INFLECTION
+	jsr		KickSSI263_no_PCR
+
+	lda		#0						; Countup from $0 to $F
+	sta		@regNum
+
+-		jsr		incSubTestNum			; subTest# = regNum * 2
+		jsr		@waitPhonemeDone
+		beq		+
+			jmp		@error
++
+
+		jsr		incSubTestNum			; subTest# = regNum * 2 + 1
+
+		lda		@regNum
+		and		#7
+		tay								; y=0..7
+		lda		@regs,y
+		ldy		@regNum					; y=0..F
+		sta		(SSI263Base),y			; Try to clear IRQ by writing to an SSI263 reg
+		lda		(SSI263Base),y
+		and		#REQ_NEW_DATA			; D7
+		cpy		#3						; (reg3 = SSI_CTTRAMP)
+		bcc		@irqClear				; 0 <= y < 3 ?
+		cpy		#8
+		bcc		@irqSet					; 3 <= y < 8 ?
+		cpy		#3+8					; (reg3 = SSI_CTTRAMP)
+		bcc		@irqClear				; 8 <= y < (3+8) ?
+@irqSet	ldx		#REQ_NEW_DATA
+		cmp		#REQ_NEW_DATA
+		beq		+
+			jmp		@error
+@irqClear
+		ldx		#0
+		cmp		#0
+		bne		@error
++
+		;
+
+		iny
+		sty		@regNum
+		cpy		#$10
+		beq		+
+
+		dey
+		tya
+		and		#7
+		beq		-						; already written reg#0, so loop
+
+		lda		@regs+0
+		ldy		#SSI_DURPHON
+		sta		(SSI263Base),y
+		jmp		-
+
++	; done
+	jsr		DisableSSI263			; Clear the IRQ
+
+	;
+	;-------------- Part-2:
+	;
+
+	; Kick with phoneme $00 && MODE_PHONEME_TRANSITIONED_INFLECTION
+	jsr		KickSSI263_no_PCR
+
+	lda		#$0f					; Countdown from $F to $0
+	sta		@regNum
+
+	lda		#0
+	sta		@loopCount
+
+-		jsr		incSubTestNum			; subTest# = $20,$22,$24,...,$2A
+		jsr		@waitPhonemeDone
+		bne		@error
+
+		jsr		incSubTestNum			; subTest# = $21,$23,$25...,$2B
+
+		cli								; let the IRQ occur & vector to ISR
+										; IRQ keeps occurring until a SSI263 write clears IRQ
+		nop
+		nop
+		nop
+		nop
+		;
+		nop
+		nop
+		nop
+		nop
+		sei
+
+		lda		@regNum
+		clc
+		adc		#1						; A = recovered regNum that successfully cleared IRQ
+		ldx		#0						; X = expected (don't care)
+		cmp		#3+8					; (reg3 = SSI_CTTRAMP)
+		bcs		@error					; NG if: regNum >= (3+8)
+		cmp		#3
+		bcc		+						; OK if: regNum < 3
+		cmp		#8
+		bcc		@error					; NG if: regNum < 8
++
+
+		inc		@loopCount
+
+		ldy		@regNum
+		cpy		#$ff
+		beq		+
+
+		iny
+		tya
+		and		#7
+		beq		-						; already written reg#0, so loop
+
+		lda		@regs+0
+		ldy		#SSI_DURPHON
+		sta		(SSI263Base),y
+		jmp		-
+
++	; done
+
+	jsr		incSubTestNum			; subTest# = $2C
+	ldx		#6
+	lda		@loopCount
+	cmp		#6
+	bne		@error
+
+	;--------------
+
+	clc
+	bcc		@cleanup
+
+@error	; A=actual, X=expected
+	stx		zpTmp2
+	sec
+
+@cleanup
+	pha
+	php
+
+	lda		#<TestSSI263ISR
+	ldx		#>TestSSI263ISR
+	jsr		SetIrqVector
+	jsr		DisableSSI263
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	plp
+	pla
+	rts
+
+;------------------
+
+; Wait until phoneme is complete
+; . Don't need a timeout, since earlier tests have shown that D7 is working
+; Post: A = b1:0 = D7:D7' = b#11 (if correct)
+;		X = 3 (expected result)
+;		Z = 1 (if A==3)
+@waitPhonemeDone
+	; NB. Reading reg#0 doesn't clear the IRQ
+	ldy		#SSI_DURPHON
+--		lda		(SSI263Base),y
+		rol							; C=D7
+		bcc		--
+	lda		(SSI263Base),y
+	rol								; b0=D7, C=D7'
+	rol								; b1=D7, b0=D7'
+	and		#3
+	ldx		#3
+	cmp		#3
+	rts
+
+;------------------
+
+@T263_5_ISR
+
+	+ISR_ENTRY
+
+	lda		@regNum
+	and		#7
+	tay							; y=0..7
+	lda		@regs,y
+	ldy		@regNum
+	sta		(SSI263Base),y		; Try to clear IRQ by writing to an SSI263 reg
+	dec		@regNum
+
+	+ISR_EXIT
+
+;------------------
+
+@regNum
+	!byte 0
+
+@loopCount
+	!byte 0
+
+@regs
+	; reg0: DUR[7:6]=3(shortest), PHONEME=$00
+	; reg1: INF[7:0]=$52
+	; reg2: RATE[7:4]=$F(quickest), INF[3:0]=$8
+	; reg3: CTL[7]=0, ART[6:4]=$7, AMP[3:0]=$0
+	; reg4-7: FILTER[7:0]=$E6 (all the same)
+	!byte $C0,$52,$F8,$70, $E6,$E6,$E6,$E6
+
+;------------------------------------------------------------------------------
+
+T263_6
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;
+; Test#6
+; Start phoneme playback. Wait for phoneme to complete. If Phoneme IRQ is then cleared, a new IRQ will occur when the phoneme completes again.
+; . Part-0: MB/Phasor   : Use IRQ for phoneme complete, but in ISR *don't* clear SSI263 int with reg1 write
+; . Part-1: MB/Phasor   : Use IRQ for phoneme complete, and in ISR clear SSI263 int with reg1 write
+; . Part-2: Phasor only : Poll D7 for phoneme complete, and clear SSI263 int with reg1 write
+
+	jsr		resetSubTestMinus1		; subTest #-1
+	jsr		incTotalTests
+
+	sei
+
+	lda		#<@T263_6_ISR
+	ldx		#>@T263_6_ISR
+	jsr		SetIrqVector
+
+	lda		#IER_CLR|IxR_TIMER1
+	ldy		#SY6522_IER
+	sta		(MBTimer),y				; Disable Timer1 IRQ
+
+	;
+	;-------------- Part-0:
+	;
+
+	lda		#1
+	sta		@skipWriteToReg1
+
+	lda		#IER_SET|IxR_SSI263
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Enable SSI263 IRQ
+
+	; Kick with phoneme $00 && MODE_PHONEME_TRANSITIONED_INFLECTION
+	jsr		KickSSI263
+
+	jsr		incSubTestNum			; subTest# = $00
+	jsr		@WaitPhonemeDoneIrqWithTimeout
+	beq		+
+		jmp		@error
++
+
+	jsr		incSubTestNum			; subTest# = $01
+	jsr		@WaitPhonemeDoneIrqWithTimeout
+	beq		@error					; *** Expect timeout! ***
+
+	lda		#IER_CLR|IxR_SSI263
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Disable SSI263 IRQ
+
+	dec		@skipWriteToReg1
+
+	;
+	;-------------- Part-1:
+	;
+
+	lda		#IER_SET|IxR_SSI263
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Enable SSI263 IRQ
+
+	; Kick with phoneme $00 && MODE_PHONEME_TRANSITIONED_INFLECTION
+	jsr		KickSSI263
+
+	lda		#4
+	sta		@loopCount
+@loop	jsr		incSubTestNum		; subTest# = $02, $03, $04, $05
+		jsr		@WaitPhonemeDoneIrqWithTimeout
+		bne		@error
+		dec		@loopCount
+		bne		@loop
+
+	lda		#IER_CLR|IxR_SSI263
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Disable SSI263 IRQ
+
+	;
+	;-------------- Part-2:
+	;
+
+	lda		isPhasorCard
+	bne		+
+		jmp		@exitOK
++
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	; Kick with phoneme $00 && MODE_PHONEME_TRANSITIONED_INFLECTION
+	jsr		KickSSI263_no_PCR
+
+	jsr		incSubTestNum			; subTest# = $06
+	ldx		#$00
+	ldy		#SSI_DURPHON
+	lda		(SSI263Base),y
+	and		#REQ_NEW_DATA
+	bne		@error
+
+	jsr		incSubTestNum			; subTest# = $07
+	jsr		WaitPhonemeDoneD7WithTimeout
+	bne		@error
+
+	lda		#0
+	ldy		#SSI_INFLECT			; reg1
+	sta		(SSI263Base),y			; clear IRQ & set D7=0
+
+	jsr		incSubTestNum			; subTest# = $08
+	ldx		#$00
+	lda		(SSI263Base),y			; Y=$1 (can be $0-$F)
+	and		#REQ_NEW_DATA
+	bne		@error
+
+	jsr		incSubTestNum			; subTest# = $09
+	jsr		WaitPhonemeDoneD7WithTimeout
+	bne		@error
+
+	lda		#0
+	sta		isrFlag
+	cli
+	sei
+	ldx		#1
+	lda		isrFlag
+	bne		@exitOK
+
+@error		; pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	sec								; C=1(NG)
+	bcs		+
+
+@exitOK
+	clc
+
++	php
+	pha
+
+	lda		#<TestSSI263ISR
+	ldx		#>TestSSI263ISR
+	jsr		SetIrqVector
+	jsr		DisableSSI263
+	lda		isPhasorCard
+	beq		+
+		lda		#PH_MOCKINGBOARD
+		jsr		SetPhasorMode
++
+
+	pla
+	plp
+	rts
+
+@loopCount	!byte 0
+
+;------------------
+
+; Wait until phoneme is complete or timeout occurs
+; T263_6_ISR will clear IRQ unless @skipWriteToReg1 flag is set
+; NB. Timeout is 4x 0xFFFF cycles
+
+@WaitPhonemeDoneIrqWithTimeout
+; Pre:	SY6522_IER.TIMER1=0
+; Post: Z = 1(OK) / 0(NG)
+; 	T1 in free-running mode
+;	SEI
+
+	lda		#ACR_FREERUNNING
+	ldy		#SY6522_ACR
+	sta		(MBTimer),y				; Free-running timer
+
+	lda		#0
+	sta		isrFlag
+
+	cli
+	lda		#$ff					; T1C = T1L = $FFFF
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBTimer),y
+	iny								; SY6522_TIMER1H_COUNTER
+	sta		(MBTimer),y				; (and clears IFR.b6)
+	ldx		#4						; timeout = $40000 cycles (longest phoneme)
+-		ldy		#SY6522_IFR
+		lda		(MBTimer),y
+		and		#IxR_TIMER1
+		beq		+
+			sta		(MBTimer),y		; clear int flag
+			dex
+			beq		@timeout
++		lda		isrFlag
+		beq		-
+	lda		#0						; Z=1(OK) or 0(NG)
+	sei
+	rts
+
+@timeout
+			; A = $40 (IxR_TIMER1)
+	dex		; X = $FF				; timeout
+			; Z = 0(NG)
+	sei
+	rts
+
+;------------------
+
+@T263_6_ISR
+
+	+ISR_ENTRY
+
+	inc		isrFlag
+
+	lda		phasorMode
+	cmp		#PH_PHASOR
+	beq		+
+
+	; Part-1
+	lda		#IxR_SSI263
+	ldy		#SY6522_IFR
+	sta		(MBBase),y				; Clear CA1(Speech) IRQ
+
+	lda		@skipWriteToReg1
+	bne		++
+
+	; fall through... (need to do this for "Part-1" for MB-C! ...otherwise get a timeout at subtest#3)
+	; NB. Required, as there's no ACK from the 6522 to the SSI263 (ie. 6522.CA2 isn't connected to SSI263)
+
++	; Part-2
+	lda		#0
+	ldy		#SSI_INFLECT			; reg1
+	sta		(SSI263Base),y			; De-assert IRQ by writing to SSI263 reg1
+
+++
+
+	+ISR_EXIT
+
+@skipWriteToReg1	!byte	0
+
+;------------------------------------------------------------------------------
+
+T263_7
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;
+; Test#7
+; . Start phoneme playback. Wait for phoneme to complete, then:
+;   . CTL=1(power-down) : Check IRQ de-asserted (and D7=0)
+;   . CTL=0(power-up)   : Check IRQ still de-asserted (and D7=0)
+; . Part-1: MB/Phasor   : Use IRQ for phoneme complete
+; . Part-2: Phasor only : Poll D7 for phoneme complete & include checks for D7
+
+	jsr		resetSubTestMinus1		; subTest #-1
+	jsr		incTotalTests
+
+	sei
+
+	lda		#<@T263_7_ISR
+	ldx		#>@T263_7_ISR
+	jsr		SetIrqVector
+
+	lda		#IER_CLR|IxR_TIMER1
+	ldy		#SY6522_IER
+	sta		(MBTimer),y				; Disable Timer1 IRQ
+
+	;
+	;-------------- Part-1:
+	;
+
+	lda		#IER_SET|IxR_SSI263
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Enable SSI263 IRQ
+
+	; Kick with phoneme $00 && MODE_PHONEME_TRANSITIONED_INFLECTION
+	jsr		KickSSI263_no_PCR
+
+	jsr		incSubTestNum			; subTest# = $00
+	jsr		@CheckIRQ
+	bne		@error
+
+	jsr		incSubTestNum			; subTest# = $01
+	lda		#IxR_SSI263				; A = expected result
+	jsr		WaitPhonemeDoneCA1WithTimeoutEx	; Post: SSI263 IRQ pending (but IFR.CA1=0)
+	bne		@error
+
+	lda		#CONTROL_H				; Power-down (de-assert IRQ)
+	ldy		#SSI_CTTRAMP
+	sta		(SSI263Base),y
+
+	jsr		incSubTestNum			; subTest# = $02
+	jsr		@CheckIRQ
+	bne		@error
+
+	lda		#CONTROL_L				; Power-up, and IRQ still de-asserted (also set operating mode=DR1:0 - unchanged)
+	sta		(SSI263Base),y			; Y=SSI_CTTRAMP
+
+	jsr		incSubTestNum			; subTest# = $03
+	jsr		@CheckIRQ
+	bne		@error
+
+	lda		#IER_CLR|IxR_SSI263
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Disable SSI263 IRQ
+
+	;
+	;-------------- Part-2:
+	;
+
+	lda		isPhasorCard
+	beq		@exitOK
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	; Kick with phoneme $00 && MODE_PHONEME_TRANSITIONED_INFLECTION
+	jsr		KickSSI263_no_PCR
+
+	jsr		incSubTestNum			; subTest# = $04
+	ldx		#$00
+	ldy		#SSI_DURPHON
+	lda		(SSI263Base),y
+	and		#REQ_NEW_DATA
+	bne		@error
+
+	jsr		incSubTestNum			; subTest# = $05
+	jsr		WaitPhonemeDoneD7WithTimeout
+	bne		@error
+
+	lda		#CONTROL_H				; Power-down (set D7=0 & de-assert IRQ)
+	ldy		#SSI_CTTRAMP
+	sta		(SSI263Base),y
+
+	jsr		incSubTestNum			; subTest# = $06
+	ldx		#$00
+	lda		(SSI263Base),y			; Y=$3 (can be $0..$f)
+	and		#REQ_NEW_DATA
+	bne		@error
+
+	jsr		incSubTestNum			; subTest# = $07
+	jsr		@CheckIRQ
+	bne		@error
+
+	lda		#CONTROL_L				; Power-up, and IRQ still de-asserted (also set operating mode=DR1:0 - unchanged)
+	sta		(SSI263Base),y			; Y=SSI_CTTRAMP
+
+	jsr		incSubTestNum			; subTest# = $08
+	ldx		#$00
+	lda		(SSI263Base),y			; Y=$3 (can be $0..$f)
+	and		#REQ_NEW_DATA
+	bne		@error
+
+	jsr		incSubTestNum			; subTest# = $09
+	jsr		@CheckIRQ
+	beq		@exitOK
+
+	;
+
+@error		; pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	sec								; C=1(NG)
+	bcs		+
+
+@exitOK
+	clc
+
++	php
+	pha
+
+	lda		#<TestSSI263ISR
+	ldx		#>TestSSI263ISR
+	jsr		SetIrqVector
+	jsr		DisableSSI263
+	lda		isPhasorCard
+	beq		+
+		lda		#PH_MOCKINGBOARD
+		jsr		SetPhasorMode
++
+
+	pla
+	plp
+	rts
+
+;------------------
+
+@CheckIRQ
+; Post: Z=1/EQ(no IRQ) or Z=0/NE(IRQ)
+	lda		#0
+	tax								; (expected value=0)
+	sta		isrFlag
+	cli
+	sei
+	lda		isrFlag
+	rts
+
+;------------------
+
+@T263_7_ISR
+
+	+ISR_ENTRY
+
+	inc		isrFlag
+
+	lda		phasorMode
+	cmp		#PH_PHASOR
+	beq		+
+
+	lda		#IxR_SSI263
+	ldy		#SY6522_IFR
+	sta		(MBBase),y				; Clear CA1(Speech) IRQ
+
+	; fall through...
+
++	lda		#0
+	ldy		#SSI_INFLECT			; reg1
+	sta		(SSI263Base),y			; De-assert IRQ by writing to SSI263 reg1
+
+	+ISR_EXIT
+
+;------------------------------------------------------------------------------
+
+T263_8
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;
+; Test#8 (Phasor only)
+; . Start phoneme playback (with SSI263 IRQ enabled). Wait for phoneme to complete, then:
+;   . Check that 6522.IFR.IxR_SSI263 == 0
+;   . Switch to MB (1st) & E+ (2nd) modes, and check that 6522.IFR.IxR_SSI263 == 1(MB) or 0(E+)
+; . KickSSI263 & wait for phoneme complete
+;   . Switch to PH mode, and check that D7=1 & SSI263 IRQ asserted
+;   . In ISR, switch to MB (1st) & E+ (2nd) modes, which blocks the SSI263 IRQ to the 6502 (allowing the ISR to return)
+
+	lda		isPhasorCard
+	bne		+
+		clc
+		rts
++
+
+	;
+
+	jsr		resetSubTestMinus1		; subTest #-1
+	jsr		incTotalTests
+
+	sei
+
+	lda		#<@T263_8_ISR
+	ldx		#>@T263_8_ISR
+	jsr		SetIrqVector
+
+	lda		#1
+	sta		@T263_8_mode
+
+@loop1	lda		#PH_PHASOR
+		jsr		SetPhasorMode
+
+		; Kick with phoneme $00 && MODE_PHONEME_TRANSITIONED_INFLECTION (not MODE_IRQ_DISABLED, as need SSI263 IRQ enabled)
+		jsr		KickSSI263				; (doesn't matter if PCR = $00 or $0C)
+
+		jsr		incSubTestNum			; subTest# = $00,$03
+		jsr		WaitPhonemeDoneD7WithTimeout
+		bne		@error
+
+		ldx		#0						; (expected)
+		jsr		@CheckIFR				; subTest# = $01,$04
+		bne		@error
+
+		lda		@T263_8_mode
+		beq		@ep1
+
+;@mb1		; Switch to MB mode - expect 6522.IFR.b1 == 1 (ie. IxR_SSI263 to be set)
+			lda		#PH_MOCKINGBOARD
+			jsr		SetPhasorMode		; this masks the SSI263 IRQ to the 6502, but doesn't de-assert it
+
+			ldx		#IxR_SSI263			; (expected)
+			jsr		@CheckIFR			; subTest# = $02
+			beq		@error
+			bne		@clr1
+
+@ep1		; Switch to E+ mode - expect 6522.IFR.b1 == 0 (ie. IxR_SSI263 to be clear)
+			; NB. Checked on real Phasor h/w for both SSI263 A & B
+			lda		#PH_ECHOPLUS
+			jsr		SetPhasorMode		; this masks the SSI263 IRQ to the 6502, but doesn't de-assert it
+
+			lda		MBBaseL
+			cmp		#SY6522_B_BASE		; Echo+: only 6522-B is visible (for SSI263-A/$Cs40)
+			beq		+
+				lda		#PH_PHASOR		; Switch to Phasor mode to see 6522-A (for SSI263-B/$Cs20)
+				jsr		SetPhasorMode
++
+
+			ldx		#IxR_SSI263			; (expected)
+			jsr		@CheckIFR			; subTest# = $05
+			bne		@error
+
+@clr1	lda		#IxR_SSI263
+		sta		(MBBase),y				; (Y=SY6522_IFR) clear IFR.b1
+
+		dec		@T263_8_mode
+		bpl		@loop1
+
+	;
+
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	; Kick with phoneme $00 && MODE_PHONEME_TRANSITIONED_INFLECTION + de-asserts SSI263 IRQ
+	jsr		KickSSI263_no_PCR
+
+	; Wait for phoneme to complete (no timeout!)
+	ldy		#SY6522_IFR
+-		lda		(MBBase),y
+		and		#IxR_SSI263
+		beq		-
+
+	lda		#1
+	sta		@T263_8_mode
+
+@loop2	lda		#PH_PHASOR
+		jsr		SetPhasorMode
+
+		jsr		incSubTestNum			; subTest# = $03, $05
+		lda		(SSI263Base),y			; Y=$D (can be $0-$F)
+		ldx		#REQ_NEW_DATA
+		and		#REQ_NEW_DATA
+		beq		@error
+
+		jsr		incSubTestNum			; subTest# = $04, $06
+		lda		#0
+		sta		isrFlag
+		cli
+		sei								; Post: ISR switches to MB/E+ mode (masks the SSI263 IRQ to the 6502)
+		ldx		#1						; (expected)
+		lda		isrFlag
+		cmp		#1
+		bne		@error
+
+		dec		@T263_8_mode
+		bpl		@loop2
+
+	clc								; C=0(OK)
+	bcc		@exit
+
+@error		; pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	sec								; C=1(NG)
+
+@exit
+	php
+	pha
+
+	lda		#<TestSSI263ISR
+	ldx		#>TestSSI263ISR
+	jsr		SetIrqVector
+	jsr		DisableSSI263
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	pla
+	plp
+	rts
+
+;------------------
+
+@CheckIFR
+; Post: Z=0(IFR.b2==IxR_SSI263) / Z=1(IFR.b2==0)
+	jsr		incSubTestNum
+	ldy		#SY6522_IFR
+	lda		(MBBase),y
+	and		#IxR_SSI263
+	rts
+
+;------------------
+
+@T263_8_ISR
+
+	+ISR_ENTRY
+
+	inc		isrFlag
+
+	lda		isrFlag
+	cmp		#1
+	beq		+
+
+		; Unexpected 2nd ISR! So switching to MB/E+ didn't work - de-assert IRQ like this as a safety measure:
+!if 1 {		; DEBUG: Indicate code is stuck in IRQ!
+		inc		$400
+}
+		lda		#IxR_SSI263
+		ldy		#SY6522_IFR
+		sta		(MBBase),y				; Clear CA1(Speech) IRQ
+
+		lda		#0
+		ldy		#SSI_INFLECT			; reg1
+		sta		(SSI263Base),y			; De-assert IRQ by writing to SSI263 reg1
+		bne		@isrDone				; (bra)
+
++	lda		@T263_8_mode
+	beq		@ep
+	lda		#PH_MOCKINGBOARD			; De-assert IRQ by switching back to MB mode!
+	bne		+							; (bra)
+@ep	lda		#PH_ECHOPLUS				; De-assert IRQ by switching back to E+ mode!
++	jsr		SetPhasorMode
+
+@isrDone
+
+	+ISR_EXIT
+
+@T263_8_mode
+	!byte	0
+
+;------------------------------------------------------------------------------
+
+T263_9
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;
+; Test#9 (Phasor only)
+; . Check SSI263 mapping in $Csnn I/O space
+; . test duration = 8x64ms(timeouts) + 8x8ms(phoneme-complete) = ~576ms
+
+	lda		isPhasorCard
+	bne		+
+		clc
+		rts
++
+
+	;
+
+	jsr		resetSubTestMinus1		; subTest #-1
+	jsr		incTotalTests
+
+	sei
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	; Set phoneme speed to quickest: $1ED8 cycles ~=8ms
+	; . In Phasor mode, timed using: regs[]={$C0, $00, $F0, $00, $00}, ie. reg0.DUR=3, reg2.RATE=$F, time from CTL:1->0 until D7=1
+	; . In theory this should be: FD = (4096 x (16-RATE)) = 4096; PD = FD x (4-DUR) = 4096 cycles
+	lda		#$F0					; RATE[7:4]=$F (quickest), INF[3:0]=$0
+	ldy		#SSI_RATEINF
+	sta		(SSI263Base),y
+
+	lda		SSI263BaseL
+	cmp		#SSI_A_BASE
+	bne		@checkChipB
+
+@checkChipA							; at $Cs40
+	; reset to $Cs03
+	lda		#SSI_CTTRAMP
+	sta		@smcA+1
+	lda		SSI263BaseH
+	sta		@smcA+2
+
+	; test all 16 possible chip I/O locations
+@loopA	jsr		@powerDown_disInts	; Post: A = CONTROL_L
+@smcA	sta		$C703				; attempt to power-up
+		lda		@smcA+1
+		and		#SSI_A_BASE
+		asl							; A = expected result
+		jsr		@waitD7
+		bne		@error
+		clc
+		lda		@smcA+1
+		adc		#$10
+		sta		@smcA+1
+		cmp		#SSI_CTTRAMP
+		bne		@loopA
+
+@exitOK
+	; Pre: Phasor mode=PH_PHASOR, SSI263 device mode=MODE_IRQ_DISABLED, D7=1, A/!R=high (so IRQ de-asserted)
+	; Check that SSI263 IRQ is de-asserted
+	jsr		incSubTestNum			; subTest# = $10
+	jsr		CheckPhasorIrqNotAsserted
+	bne		@error
+
+	clc
+	bcc		@exit
+
+@error		; pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	sec								; C=1(NG)
+
+@exit
+	php
+	pha
+
+	jsr		DisableSSI263			; Needed (set DR1:0=b#00)
+
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	pla
+	plp
+	rts
+
+;------------------
+
+@checkChipB							; at $Cs20
+	; reset to $Cs03
+	lda		#SSI_CTTRAMP
+	sta		@smcB+1
+	lda		SSI263BaseH
+	sta		@smcB+2
+
+	; test all 16 possible chip I/O locations
+@loopB	jsr		@powerDown_disInts	; Post: A = CONTROL_L
+@smcB	sta		$C703				; attempt to power-up
+		lda		@smcB+1
+		and		#SSI_B_BASE
+		asl
+		asl							; A = expected result
+		jsr		@waitD7
+		bne		@error
+		clc
+		lda		@smcB+1
+		adc		#$10
+		sta		@smcB+1
+		cmp		#SSI_CTTRAMP
+		bne		@loopB
+
+	jmp		@exitOK
+
+;------------------
+
+@powerDown_disInts
+; Post: A = CONTROL_L
+
+	jsr		incSubTestNum			; subTest# = n, ie. $Csn0 (16-byte I/O block), n=[0..$F]
+	lda		#CONTROL_H				; Power-down (set D7=0 & de-assert IRQ)
+	ldy		#SSI_CTTRAMP
+	sta		(SSI263Base),y
+	lda		#MODE_IRQ_DISABLED
+	ldy		#SSI_DURPHON
+	sta		(SSI263Base),y			; Set mode=irq disabled, so that the subsequent CTL 1->0 uses this mode
+	lda		#CONTROL_L
+	rts
+
+;------------------
+
+@waitD7
+; Pre: T1 in one shot mode
+;		A = expected result (REQ_NEW_DATA or $00)
+; Post:	Z = 1(OK:got expected), 0(NG: not expected)
+;		A = actual (REQ_NEW_DATA = phoneme complete / $00 = timeout)
+;		X = expected result
+
+	sta		@waitD7expectedResult
+
+	lda		#$C0					; DURATION[7:6]=3 (shortest), PHONEME=$00
+	ldy		#SSI_DURPHON
+	sta		(SSI263Base),y
+
+	lda		#$ff					; T1C = T1L = $FFFF
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBTimer),y
+	iny								; SY6522_TIMER1H_COUNTER
+	sta		(MBTimer),y				; (and clears IFR.b6)
+-		ldy		#SY6522_IFR
+		lda		(MBTimer),y
+		and		#IxR_TIMER1
+		beq		+
+			sta		(MBTimer),y		; clear T1 int flag
+			lda		#0
+			beq		++				; (bra)
++		lda		(SSI263Base),y		; Y=$D (can be $0-$F)
+		and		#REQ_NEW_DATA
+		beq		-
+
+++	ldx		@waitD7expectedResult
+	cmp		@waitD7expectedResult
+	rts
+
+@waitD7expectedResult	!byte 0
+
+;------------------
+
+CheckPhasorIrqNotAsserted			; For Phasor's direct IRQ
+; Called by: T263_9, T263_B
+; Pre: Phasor mode=PH_PHASOR
+; Post: Z=1/EQ(No IRQ), Z=0/NE(IRQ)
+;	X=0
+;	A=isrFlag
+	lda		#<@T263_ISR
+	ldx		#>@T263_ISR
+	jsr		SetIrqVector
+	lda		#0
+	sta		isrFlag
+	cli
+	sei
+	lda		#<TestSSI263ISR
+	ldx		#>TestSSI263ISR
+	jsr		SetIrqVector
+	ldx		#0						; expected
+	lda		isrFlag					; actual
+	rts
+
+; NB. This code is never called (except for the error case) - so never gets exercised & tested!
+@T263_ISR
+
+	+ISR_ENTRY
+
+	inc		isrFlag
+
+	lda		#0
+	ldy		#SSI_INFLECT			; reg1
+	sta		(SSI263Base),y			; De-assert IRQ by writing to SSI263 reg1
+
+	+ISR_EXIT
+
+;------------------------------------------------------------------------------
+
+T263_A
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;
+; Test#A
+; . Check SSI263 mapping in $Csnn I/O space
+; . test duration = 8x64ms(timeouts) + 8x8ms(phoneme-complete) = ~576ms
+
+	jsr		resetSubTestMinus1		; subTest #-1
+	jsr		incTotalTests
+
+	sei
+
+	lda		#IxR_SSI263
+	ldy		#SY6522_IFR
+	sta		(MBBase),y				; clear CA1 int flag (from previous test)
+
+	; Set phoneme speed to quickest: $1ED8 cycles ~=8ms
+	; . In Phasor mode, timed using: regs[]={$C0, $00, $F0, $00, $00}, ie. reg0.DUR=3, reg2.RATE=$F, time from CTL:1->0 until D7=1
+	; . In theory this should be: FD = (4096 x (16-RATE)) = 4096; PD = FD x (4-DUR) = 4096 cycles
+	lda		#$F0					; RATE[7:4]=$F (quickest), INF[3:0]=$0
+	ldy		#SSI_RATEINF
+	sta		(SSI263Base),y
+
+	lda		SSI263BaseL
+	cmp		#SSI_A_BASE
+	bne		@checkChipB
+
+@checkChipA							; at $Cs40
+	; reset to $Cs03
+	lda		#SSI_CTTRAMP
+	sta		@smcA+1
+	lda		SSI263BaseH
+	sta		@smcA+2
+
+	; test all 16 possible chip I/O locations
+@loopA	jsr		@powerDown_enaInts	; Post: A = CONTROL_L
+@smcA	sta		$C703				; attempt to power-up
+		lda		@smcA+1
+		and		#SSI_A_BASE
+		beq		+
+			lda		#IxR_SSI263		; A = expected result
++		jsr		WaitPhonemeDoneCA1WithTimeoutEx
+		bne		@error
+		clc
+		lda		@smcA+1
+		adc		#$10
+		sta		@smcA+1
+		cmp		#SSI_CTTRAMP
+		bne		@loopA
+
+@exitOK
+	clc
+	bcc		@exit					; (bra)
+
+@error		; pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	sec								; C=1(NG)
+
+@exit
+	php
+	pha
+
+	jsr		DisableSSI263			; Needed (de-assert IRQ & set MODE_IRQ_DISABLED)
+
+	pla
+	plp
+	rts
+
+;------------------
+
+@checkChipB							; at $Cs20
+	; reset to $Cs03
+	lda		#SSI_CTTRAMP
+	sta		@smcB+1
+	lda		SSI263BaseH
+	sta		@smcB+2
+
+	; test all 16 possible chip I/O locations
+@loopB	jsr		@powerDown_enaInts	; Post: A = CONTROL_L
+@smcB	sta		$C703				; attempt to power-up
+		lda		@smcB+1
+		and		#SSI_B_BASE
+		beq		+
+			lda		#IxR_SSI263		; A = expected result
++		jsr		WaitPhonemeDoneCA1WithTimeoutEx
+		bne		@error
+		clc
+		lda		@smcB+1
+		adc		#$10
+		sta		@smcB+1
+		cmp		#SSI_CTTRAMP
+		bne		@loopB
+
+	jmp		@exitOK
+
+;------------------
+
+@powerDown_enaInts
+; Post: A = CONTROL_L
+
+	jsr		incSubTestNum			; subTest# = n, ie. $Csn0 (16-byte I/O block), n=[0..$F]
+	lda		#CONTROL_H				; Power-down (set D7=0 & de-assert IRQ)
+	ldy		#SSI_CTTRAMP
+	sta		(SSI263Base),y
+	lda		#MODE_PHONEME_TRANSITIONED_INFLECTION
+	ldy		#SSI_DURPHON
+	sta		(SSI263Base),y			; Set mode=irq enabled, so that the subsequent CTL 1->0 uses this mode
+	lda		#CONTROL_L
+	rts
+
+;------------------------------------------------------------------------------
+
+T263_B
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;
+; Test#B
+; . Start phoneme playback & immediately set CTL=1(power-down)
+; . Check that there's no phoneme IRQ
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	sei
+
+	lda		#$F0					; RATE[7:4]=$F (quickest), INF[3:0]=$0
+	ldy		#SSI_RATEINF
+	sta		(SSI263Base),y
+
+	jsr		KickSSI263				; clear CA1 int flag & DR1:DR0=3 (shortest)
+
+	lda		#CONTROL_H
+	ldy		#SSI_CTTRAMP
+	sta		(SSI263Base),y			; immediately power-down
+
+	jsr		WaitPhonemeDoneCA1WithTimeout
+	beq		@error0					; Z=1: got a CA1 interrupt => this is an error
+									; Z=0: timeout => OK
+
+	lda		isPhasorCard
+	beq		@exitOK
+
+	; Phasor-specific tests
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	jsr		incSubTestNum			; subTest #1
+	ldy		#0
+	lda		(SSI263Base),y
+	ldx		#0
+	and		#CONTROL_MASK
+	bne		@error
+
+	jsr		incSubTestNum			; subTest #2
+	jsr		CheckPhasorIrqNotAsserted
+	bne		@error
+
+@exitOK
+	clc
+	bcc		@exit					; (bra)
+
+@error0
+	lda		#IxR_SSI263
+	ldx		#0
+@error		; pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	sec								; C=1(NG)
+
+@exit
+	php
+	pha
+
+	jsr		DisableSSI263			; config chip back to default state
+
+	lda		#IxR_SSI263
+	ldy		#SY6522_IFR
+	sta		(MBBase),y				; clear CA1 int flag
+
+	lda		isPhasorCard
+	beq		+
+		lda		#PH_MOCKINGBOARD
+		jsr		SetPhasorMode
++
+
+	pla
+	plp
+	rts
+
+;------------------------------------------------------------------------------
+
+; Wait until phoneme is complete or timeout occurs
+; (Doesn't set reg0)
+; (Doesn't clear IFR.CA1 on exit)
+; NB. Timeout is 1x 0xFFFF cycles
+
+WaitPhonemeDoneCA1WithTimeout
+; Pre:
+; Post: (see below)
+
+	lda		#IxR_SSI263
+	ldx		#0						; Don't clear IFR's CA1 int flag
+	beq		+						; {bra)
+
+	;
+
+; Wait until phoneme is complete or timeout occurs
+; Set reg0 = $C0 (which will clear any pending SSI263's IRQ)
+; NB. Timeout is 1x 0xFFFF cycles
+
+WaitPhonemeDoneCA1WithTimeoutEx
+; Pre:	A = expected result (IxR_SSI263 or $00)
+; Post:	Z = 1(OK:got expected), 0(NG: not expected)
+;		A = actual (IxR_SSI263 = phoneme complete / $00 = timeout)
+;		X = expected result
+; 	T1 in one-shot mode
+;	SEI
+
+	tax
+
+	lda		#$C0					; DURATION[7:6]=3 (shortest), PHONEME=$00
+	ldy		#SSI_DURPHON
+	sta		(SSI263Base),y
+
+	txa
+	ldx		#1						; Do clear IFR's CA1 int flag
+
+	;
+
++	; Pre: A=expected, X=clear CA1 mask
+	sta		@waitCA1expectedResult
+	stx		@clearCA1intFlag
+
+	sei
+
+	lda		#ACR_ONESHOT
+	ldy		#SY6522_ACR
+	sta		(MBTimer),y				; One-shot timer
+
+	lda		#$ff					; T1C = T1L = $FFFF
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBTimer),y
+	iny								; SY6522_TIMER1H_COUNTER
+	sta		(MBTimer),y				; (and clears IFR.b6)
+-		ldy		#SY6522_IFR
+		lda		(MBTimer),y
+		and		#IxR_TIMER1
+		beq		+
+			sta		(MBTimer),y		; clear T1 int flag
+			lda		#0
+			beq		@done			; (bra)
++		lda		(MBBase),y			; Y=SY6522_IFR
+		and		#IxR_SSI263
+		beq		-
+
+	ldx		@clearCA1intFlag
+	beq		@done
+		sta		(MBBase),y			; clear CA1 int flag or not
+
+@done
+	ldx		@waitCA1expectedResult
+	cmp		@waitCA1expectedResult
+	rts
+
+@waitCA1expectedResult	!byte 0
+@clearCA1intFlag		!byte 0
+
+;------------------------------------------------------------------------------
+
+; Wait until phoneme is complete or timeout occurs (Phasor only)
+; NB. Timeout is 4x 0xFFFF cycles
+
+WaitPhonemeDoneD7WithTimeout
+; Pre:
+; Post: Z = 1(OK) / 0(NG)
+; 	T1 in free-running mode
+;	SEI
+
+	sei
+
+	lda		#ACR_FREERUNNING
+	ldy		#SY6522_ACR
+	sta		(MBTimer),y				; Free-running timer
+
+	lda		#$ff					; T1C = T1L = $FFFF
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBTimer),y
+	iny								; SY6522_TIMER1H_COUNTER
+	sta		(MBTimer),y				; (and clears IFR.b6)
+	ldx		#4						; timeout = $40000 cycles (longest phoneme)
+-		ldy		#SY6522_IFR
+		lda		(MBTimer),y
+		and		#IxR_TIMER1
+		beq		+
+			sta		(MBTimer),y		; clear int flag
+			dex
+			beq		@timeout
++		lda		(SSI263Base),y		; Y=$D (can be $0-$F)
+		rol							; C=D7
+		bcc		-
+	lda		(SSI263Base),y
+	rol								; b0=D7, C=D7'
+	rol								; b1=D7, b0=D7'
+	and		#3
+	ldx		#3
+	cmp		#3						; Z=1(OK) or 0(NG)
+	rts
+
+@timeout
+			; A = $40 (IxR_TIMER1)
+	dex		; X = $FF				; timeout
+			; Z = 0(NG)
+	rts
+
+;------------------------------------------------------------------------------
+
+TestSSI263ISR
+; Pre:
+;	6502 has pushed P
+;	Apple ROM has stored A to $45 (not Apple //e ROM!)
+;	MBBaseL = $00 or $80
+;	MBTimer (may / may not equal MBBase)
+;	SpeechData
+;	SSI263Base
+; Post:
+;	irqT1IntCount, irqT1H, irqT1H2, irqT1L
+;	isrFlag=1 (on SSI263 IRQ)
+;	SpeechData (incremented)
+;
+; NB. Need separate MBBase (for PCR) and MBTimer (for T1) because:
+; If we were using SSI263B / 6522A with 6522A.TIMER1 active, then:
+;  a) write to SSI263.reg4 will set T1C_L (so on next latch reload, it'll be $ffxx, not $ffff)
+;  b) false-read from SSI263.reg4 (6502-only) will clear any pending T1 IRQ
+;
+
+	+ISR_ENTRY
+
+	ldy		#SY6522_TIMER1H_COUNTER
+	lda		(MBTimer),y
+	sta		irqT1H
+
+	; Read IFR.T1 before reading T1C_l (which clears IFR.T1)
+	; NB. read IFR.T1 between the 2 reads of T1H, so that irqT1IntCount is consistent with T1H vs T1H2
+	; Eg. IFR.T1 could become 1 between reading T1H & T1H2
+
+	ldy		#SY6522_IFR
+	lda		(MBTimer),y
+	and		#IxR_TIMER1
+	tax								; save IFR.T1
+
+	ldy		#SY6522_TIMER1L_COUNTER
+	lda		(MBTimer),y				; (reading T1C_l clears IFR.b6)
+	sta		irqT1L
+	ldy		#SY6522_TIMER1H_COUNTER
+	lda		(MBTimer),y
+	sta		irqT1H2
+
+	txa								; test IFR.T1
+	beq		+
+
+	inc		irqT1IntCount			; Timer1 IRQ
+	jmp		@exit
+
+	;
+
++	ldy		#SY6522_IFR
+	lda		#IxR_SSI263
+	sta		(MBBase),y				; clear all remaining IRQs (ie. Speech - but for Phasor only if in Mockingboard mode)
+									; NB. Phasor in native Phasor mode: IRQ cleared by write to DURPHON (reg0)
+
+	lda		#1
+	sta		isrFlag
+
+	;------
+
+	lda		KBD
+	bpl		+
+		bit		KBDSTRB
+		cmp		#$80+27				; ESC?
+		bne		+
+			lda		#0
+			beq		@endSpeech
++
+
+	;------
+
+	lda		#0
+	ldy		#SSI_FILFREQ			; start with reg4
+-		ora		(SpeechData),y
+		dey
+		bpl		-
+	tay								; tst a
+	bne		+
+
+	; last phoneme complete, so finalise with PAUSE phoneme + disable SSI263 IRQ + disable 6522 T1 IRQ
+@endSpeech
+	sta		doingSpeech				; =0
+	jsr		DisableSSI263
+	lda		#IER_CLR|IxR_TIMER1
+	ldy		#SY6522_IER
+	sta		(MBTimer),y				; Disable Timer1 IRQ
+	jmp		@exit					; NB. don't go via code to set SpeechData+=SSI_NUM_REGS
+
++	ldy		#SSI_FILFREQ			; start with reg4
+-		lda		(SpeechData),y
+		sta		(SSI263Base),y
+		dey
+		bpl		-
+
+	; NB. don't reset T1C to $ffff - just let it continue to count down
+	; So total speech phrase will be more accurate, but individual phonemes won't be. Maybe use T2 for each phoneme?
+
+	lda		SpeechDataL
+	clc
+	adc		#SSI_NUM_REGS
+	sta		SpeechDataL
+	bcc		+
+	inc		SpeechDataH
++
+
+@exit
+	+ISR_EXIT
+
+;------------------------------------------------------------------------------
+
+; SSI263P vs SSI263AP
+; -------------------
+; SSI263P: has a reset bug
+; . !RST doesn't set Power Down (PD), so phoneme keeps playing
+; . if DR1:0 != b#00, then ints can be re-enabled on RST - exploited by the 1st test
+; . if IRQ asserted, then direct IRQ (in native mode) will still be assert after RESET - ie. the 2nd test
+;
+; SSI263AP: has the reset bug fixed
+;
+
+; Test edge-case where RESET will enable SSI263 ints: (GH#175)
+; . SetPhasorMode(PH_PHASOR)
+; . DisableSSI263()
+; . set reg0 = $C0 (or $40 or $80)
+; . SetPhasorMode(PH_MOCKINGBOARD) or remain in PH_PHASOR mode
+; . RESET -> resets Phasor's GAL (so Phasor mode = PH_MOCKINGBOARD) + resets the SSI263?
+; . SetPhasorMode(PH_PHASOR)
+; . CLI
+; . IRQ occurs!
+;
+; Can also replicate this for the Phasor by remaining purely in PH_MOCKINGBOARD mode.
+; (But can't replicate for a RM Mockingboard-C clone)
+; . Phasor mode = PH_MOCKINGBOARD
+; . DisableSSI263()
+; . set reg0 = $C0 (or $40 or $80)
+; . set reg2 = $F0 (RATE=$F)
+; . RESET -> resets Phasor's GAL (so Phasor mode = PH_MOCKINGBOARD) + resets the SSI263?
+; . set reg1 = $00 ; de-assert any SSI263 IRQ
+; . wait for CA1
+; . CLI
+; . IRQ occurs!
+;
+; Probably just the Phasor's GAL toggling the SSI263's !PD/!RTS (pin 18) ?
+;
+
+SetupPhasorWithSSI263ForReset
+; Pre: has6522, isPhasorCard; hasSSI263
+; Post: C=0(OK), C=1(NG)
+;	NG: Called SetError() to set errorExpected & errorActual
+;   OK/NG:
+;	. Phasor mode = PH_MOCKINGBOARD
+;	. MBBaseL = SY6522_A_BASE
+;
+
+	jsr		SetupPhasorWithSSI263ForResetCommon
+	bcc		+
+		clc
+		rts							; OK (skipped)
++
+
+	lda		#<T263_Reset_ISR
+	ldx		#>T263_Reset_ISR
+	jsr		SetIrqVector
+
+	;
+
+	jsr		DisableSSI263			; Set DR1:0=b#00 and disable SSI263 ints
+
+	lda		#$C0
+	ldy		#SSI_DURPHON
+	sta		(SSI263Base),y			; Set DR1:0=b#11
+
+	lda		#$F0					; RATE[7:4]=$F (quickest), INF[3:0]=$0
+	ldy		#SSI_RATEINF
+	sta		(SSI263Base),y
+
+!if 0 {
+	; Don't do this - RESET doesn't bring the device out of power-down mode
+	; And it's impossible to tell if it has set the device mode, as after RESET:
+	; a) CTL=0 => device mode is set to %11 (as reg0=$C0 from above), or
+	; b) reg0=$00 + CTL=0 => device mode is set to %00
+	lda		#CONTROL_H
+	ldy		#SSI_CTTRAMP
+	sta		(SSI263Base),y			; Put device into Power-down / standby mode
+}
+
+	lda		hasSSI263
+	and		#SSI263A_MASK
+	beq		+
+		lda		#IER_SET|IxR_SSI263
+		ldy		#SY6522_IER
+		sta		(MBBase),y			; Enable SSI263 IRQ
+
+		jsr		PhasorCheckIRQ_0	; subTest #0
+		bne		@error				; Error (A=$01, X=$00)
++
+
+	lda		hasSSI263
+	and		#SSI263B_MASK
+	beq		+
+		lda		#IER_SET|IxR_SSI263
+		ldy		#SY6522_B_BASE-SY6522_A_PH_BASE+SY6522_IER
+		sta		(MBBase),y			; Enable SSI263 IRQ
+
+		jsr		PhasorCheckIRQ_0	; subTest #1
+		bne		@error				; Error (A=$01, X=$00)
++
+
+	clc
+	bcc		@done					; (bra)
+
+@error		; Pre: A=actual, X=expected
+	jsr		SetError
+	sec
+
+@done
+	php
+
+	lda		#IER_CLR|IxR_SSI263
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Disable SSI263 IRQ
+	ldy		#SY6522_B_BASE-SY6522_A_PH_BASE+SY6522_IER
+	sta		(MBBase),y				; Disable SSI263 IRQ
+
+	lda		#SY6522_A_BASE
+	sta		MBBaseL
+
+	plp
+	rts
+
+;------------------
+
+PhasorCheckIRQ_0
+	ldx		#0						; expected
+	beq		+						; (bra)
+PhasorCheckIRQ_1
+	ldx		#1						; expected
++	jsr		incSubTestNum
+	lda		#0
+	sta		isrFlag
+	cli
+	sei
+	lda		isrFlag					; actual
+	rts
+
+;------------------
+
+SkipPhasorWithSSI263ForReset
+
+	lda		phasorWithSSI263ResetFlag
+	bne		+
+		rts
++
+
+	; Needed for SetupPhasorWithSSI263ForReset2
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	jmp		DisableSSI263
+
+;------------------
+
+TestPhasorWithSSI263AfterReset
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;	NG: Called SetError() to set errorExpected & errorActual
+;   OK/NG:
+;	. Phasor mode = PH_MOCKINGBOARD
+;	. MBBaseL = SY6522_A_BASE
+;	. $Cs80/6522_B.T1 will timeout and IFR=$40 - not important?
+;
+
+	lda		phasorWithSSI263ResetFlag
+	bne		+
+		clc
+		rts
++
+
+	lda		hasSSI263
+	and		#SSI263A_MASK
+	beq		+						; 0=SSI263A_NONE
+		lda		#SSI263A_UNKNOWN
++	sta		ssi263Type
+	lda		hasSSI263
+	and		#SSI263B_MASK
+	beq		+						; 0=SSI263A_NONE
+		lda		#SSI263A_UNKNOWN
++	sta		ssi263Type+1
+
+	lda		#COMPONENT_SSI263+3		; test component $43
+	sta		testComponentNum
+
+	jsr		resetSubTest
+	jsr		incTotalTests
+
+	ldy		#SY6522_A_PH_BASE		; 6522-A/$Cs10
+	sty		MBBaseL
+
+	; Setup MBTimer for WaitPhonemeDoneCA1WithTimeout() = $Cs80
+	lda		MBBaseH
+	sta		MBTimerH
+	lda		#SY6522_B_BASE
+	sta		MBTimerL				; NB. MBTimer is used for TIMER1, and so doesn't change for SSI263A/SSI263B
+
+	lda		#<T263_Reset_ISR
+	ldx		#>T263_Reset_ISR
+	jsr		SetIrqVector
+
+!if 0 {
+	lda		isPhasorCard
+	beq		@mb
+		; It'll have taken ~117ms [Enh//e] to get here after CTRL+RESET, so the SSI263 IRQ will already be asserted.
+		lda		#PH_PHASOR
+		jsr		SetPhasorMode		; Phasor mode = PH_PHASOR, which causes SSI263 IRQ to be asserted!
+		jmp		@checkIRQ
+
+@mb
+}
+
+	;
+
+		; Already missed the SSI263's IRQ (A/!R) going low - assume this occurs at the point RESET is pressed.
+		; . 6522 only sets CA1 on a "A/!R" H->L level change.
+
+		lda		#0
+		ldy		#SSI_INFLECT		; reg1
+		sta		(SSI263Base),y		; De-assert IRQ by writing to SSI263 reg1
+
+	lda		hasSSI263
+	and		#SSI263A_MASK
+	beq		@nextSSI263
+									; subTest #0
+		lda		#SY6522_B_BASE		; 6522-B/$Cs80
+		sta		MBBaseL
+		jsr		WaitPhonemeDoneCA1WithTimeout
+		beq		+
+			; timeout - expected for a MB-C and Phasor w/SSI263AP
+			ldy		isPhasorCard
+			beq		@nextSSI263		; MB-C
+
+			; Phasor (in either native or MB mode) - must be SSI263A_AP
+			lda		#SSI263A_AP
+			sta		ssi263Type
+			bne		@nextSSI263		; (bra)
+
++		; got IRQ - only expected for Phasor w/SSI263P
+		ldy		isPhasorCard
+		beq		@error				; MB-C, Error (A=$02, X=$02)
+
+		; Phasor (in either native or MB mode) - must be SSI263A_P
+		lda		#SSI263A_P
+		sta		ssi263Type
+		lda		#IER_SET|IxR_SSI263
+		ldy		#SY6522_IER
+		sta		(MBBase),y			; Enable SSI263 IRQ
+
+		jsr		PhasorCheckIRQ_1	; subTest #1
+		beq		@error				; Error (A=$00, X=$01)
+
+	;
+
+@nextSSI263
+	lda		#2
+	sta		subTestNum
+
+	lda		hasSSI263
+	and		#SSI263B_MASK
+	beq		@exitOK
+
+									; subTest #2
+		lda		#SY6522_A_PH_BASE	; 6522-A/$Cs10
+		sta		MBBaseL
+		jsr		WaitPhonemeDoneCA1WithTimeout
+		beq		+
+			; timeout - expected for a MB-C and Phasor w/SSI263AP
+			ldy		isPhasorCard
+			beq		@exitOK			; MB-C
+
+			; Phasor (in either native or MB mode) - must be SSI263A_AP
+			lda		#SSI263A_AP
+			sta		ssi263Type+1
+			bne		@exitOK			; (bra)
+
++		; got IRQ - only expected for Phasor w/SSI263P
+		ldy		isPhasorCard
+		beq		@error				; MB-C, Error (A=$02, X=$02)
+
+		; Phasor (in either native or MB mode) - must be SSI263A_P
+		lda		#SSI263A_P
+		sta		ssi263Type+1
+		lda		#IER_SET|IxR_SSI263
+		ldy		#SY6522_IER
+		sta		(MBBase),y			; Enable SSI263 IRQ
+
+		jsr		PhasorCheckIRQ_1	; subTest #3
+		beq		@error				; Error (A=$00, X=$01)
+
+	;
+
+@exitOK
+	jsr		SetSSI263Type
+	clc
+	bcc		@done					; (bra)
+
+@error		; Pre: A=actual, X=expected
+	jsr		SetError
+	sec
+
+@done
+	php
+
+	jsr		DisableSSI263
+
+	lda		isPhasorCard
+	beq		+
+		lda		#PH_MOCKINGBOARD
+		jsr		SetPhasorMode
++
+
+	lda		#SY6522_A_PH_BASE		; 6522-A/$Cs10
+	sta		MBBaseL
+
+	lda		#IER_CLR|IxR_SSI263
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Disable SSI263 IRQ
+	ldy		#SY6522_B_BASE-SY6522_A_PH_BASE+SY6522_IER
+	sta		(MBBase),y				; Disable SSI263 IRQ
+
+	lda		#SY6522_A_BASE
+	sta		MBBaseL
+
+	plp
+	rts
+
+;------------------
+
+SetSSI263Type
+; Pre:
+; Post: hasSSI263 updated
+
+	lda		hasSSI263
+
+	and		#!(SSI263A_MASK)
+	ora		ssi263Type
+
+	asl		ssi263Type+1
+	asl		ssi263Type+1
+	and		#!(SSI263B_MASK)
+	ora		ssi263Type+1
+
+	sta		hasSSI263
+
+	rts
+
+ssi263Type	!byte SSI263A_UNKNOWN	; SSI263-B / $Cn20
+			!byte SSI263A_UNKNOWN	; SSI263-A / $Cn40
+
+;------------------
+
+; Used by:
+; . SetupPhasorWithSSI263ForReset
+; . TestPhasorWithSSI263AfterReset
+T263_Reset_ISR
+
+	+ISR_ENTRY
+
+!if 1 {		; DEBUG: Visually indicate code is stuck in IRQ!
+	lda		isrFlag
+	beq		+
+		inc		$400
++
+}
+
+	inc		isrFlag
+
+	;
+
+	ldy		#SY6522_IER
+	lda		(MBBase),y
+	and		#IxR_SSI263
+	beq		+
+
+		ldy		#SY6522_IFR
+		lda		(MBBase),y
+		and		#IxR_SSI263
+		beq		+
+			sta		(MBBase),y		; Clear CA1(Speech) IRQ
+
++	; NB. clear the Phasor direct IRQ(s) below
+
+	;
+
+	ldy		#SY6522_B_BASE-SY6522_A_PH_BASE+SY6522_IER
+	lda		(MBBase),y
+	and		#IxR_SSI263
+	beq		+
+
+		ldy		#SY6522_B_BASE-SY6522_A_PH_BASE+SY6522_IFR
+		lda		(MBBase),y
+		and		#IxR_SSI263
+		beq		+
+			sta		(MBBase),y		; Clear CA1(Speech) IRQ
+
++	; Clear one or both direct IRQs from Phasor (or zero from MB)
+	; . For Phasor: no way to know which or if both SSI263s are asserting IRQ
+	; . NB, if there are 2 SSI263s then (SSI263Base) accesses both together
+	lda		#0
+	ldy		#SSI_INFLECT			; reg1
+	sta		(SSI263Base),y			; De-assert IRQ by writing to SSI263 reg1
+
+	+ISR_EXIT
+
+;------------------------------------------------------------------------------
+
+; Test that direct 6502 IRQ from SSI263 (in Phasor mode) gets de-asserted on CTRL+RESET.
+;
+; Setup:
+; . In Phasor native mode
+; . SSI263 A/!R (IRQ) is asserted
+; . 6502 get IRQ when I flag=0 (ie. CLI)
+;
+; CTRL+RESET
+;
+; 6522's are reset
+; AY's are reset
+; SSI263 is *not* reset
+; GAL is reset
+; - Switch back to MB mode
+; - SSI263 A/!R no longer connected to 6502 (instead routed to 6522)
+;
+; So this will de-assert IRQ to the 6502.
+;
+
+SetupPhasorWithSSI263ForReset2
+; Pre: hasSSI263 - set previously by TestPhasorWithSSI263AfterReset
+; Post: C=0(OK), C=1(NG)
+
+	jsr		SetupPhasorWithSSI263ForResetCommon
+	bcc		+
+		clc
+		rts							; OK (skipped)
++
+
+	lda		#<T263_Reset2_ISR
+	ldx		#>T263_Reset2_ISR
+	jsr		SetIrqVector
+
+	;
+
+	lda		#$F0					; RATE[7:4]=$F (quickest), INF[3:0]=$0
+	ldy		#SSI_RATEINF
+	sta		(SSI263Base),y
+
+	jsr		KickSSI263_no_PCR
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	lda		#0
+	sta		isrFlag
+
+	; busy wait for phoneme to complete & Phasor's GAL to assert IRQ to 6502
+	; NB. ISR switches to PH_MOCKINGBOARD mode for GAL to de-assert IRQ
+	cli
+-		lda		isrFlag
+		beq		-
+	sei
+
+	; Switch back to PHASOR mode
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	; Check that GAL is again asserting direct IRQ
+	; NB. Again ISR switches back to PH_MOCKINGBOARD mode
+	jsr		PhasorCheckIRQ_1		; subTest #0
+	beq		@error					; Error (A=$00, X=$01)
+
+	; Setup for when CTRL+RESET is pressed
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	clc
+	bcc		@done					; (bra)
+
+@error		; Pre: A=actual, X=expected
+	jsr		SetError
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+	sec
+
+@done
+	php
+
+	lda		#SY6522_A_BASE
+	sta		MBBaseL
+
+	plp
+	rts
+
+;------------------
+
+TestPhasorWithSSI263AfterReset2
+; Pre: hasSSI263
+; Post: C=0(OK), C=1(NG)
+
+	lda		phasorWithSSI263ResetFlag
+	bne		+
+		clc
+		rts
++
+
+	lda		#COMPONENT_SSI263+3		; test component $43
+	sta		testComponentNum
+
+	jsr		resetSubTestMinus1
+	jsr		incTotalTests
+
+	lda		#<T263_Reset2_ISR
+	ldx		#>T263_Reset2_ISR
+	jsr		SetIrqVector
+
+	;
+
+	; After CTRL+RESET, Phasor is in PH_MOCKINGBOARD mode
+	jsr		PhasorCheckIRQ_0		; subTest #0
+	bne		@error					; Error (A=$01, X=$00)
+
+	lda		#PH_PHASOR
+	jsr		SetPhasorMode
+
+	lda		hasSSI263
+	and		#SSI263A_MASK
+	beq		@nextSSI263				; SSI263A_NONE
+	cmp		#SSI263A_AP
+	beq		@ssi263a_ap
+
+;ssi263a_p
+		; Switch back to PH_PHASOR mode, and the SSI263P is still asserting A/!R, which Phasor's GAL converts to IRQ to 6502
+		jsr		PhasorCheckIRQ_1	; subTest #1
+		beq		@error				; Error (A=$00, X=$01)
+		bne		@nextSSI263			; (bra)
+
+@ssi263a_ap
+		; Switch back to PH_PHASOR mode, and the SSI263AP has de-asserted A/!R
+		lda		hasSSI263
+		and		#SSI263B_MASK
+		cmp		#SSI263B_P			; this SSI263B_P still asserting IRQ
+		beq		@nextSSI263
+
+		jsr		incSubTestNum
+		jsr		PhasorCheckIRQ_0	; subTest #2
+		bne		@error				; Error (A=$01, X=$00)
+
+	;
+
+@nextSSI263
+	lda		#2
+	sta		subTestNum
+
+	lda		hasSSI263
+	and		#SSI263B_MASK
+	beq		@ok						; SSI263B_NONE
+	cmp		#SSI263B_AP
+	beq		@ssi263b_ap
+
+;ssi263b_p
+		; Switch back to PH_PHASOR mode, and the SSI263P is still asserting A/!R, which Phasor's GAL converts to IRQ to 6502
+		lda		hasSSI263
+		and		#SSI263A_MASK
+		cmp		#SSI263A_P			; this SSI263A_P already tested above, irq fired & back in PH_MOCKINGBOARD mode
+		beq		@ok
+
+		jsr		PhasorCheckIRQ_1	; subTest #3
+		beq		@error				; Error (A=$00, X=$01)
+		bne		@ok					; (bra)
+
+@ssi263b_ap
+		; Switch back to PH_PHASOR mode, and the SSI263AP has de-asserted A/!R
+		jsr		incSubTestNum
+		jsr		PhasorCheckIRQ_0	; subTest #4
+		bne		@error				; Error (A=$01, X=$00)
+
+	;
+
+@ok
+	clc
+	bcc		@done					; (bra)
+
+@error		; Pre: A=actual, X=expected
+	jsr		SetError
+	sec
+
+@done
+	php
+
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	jsr		DisableSSI263
+
+	plp
+	rts
+
+;------------------
+
+; Used by:
+; . SetupPhasorWithSSI263ForReset2
+; . TestPhasorWithSSI263AfterReset2
+T263_Reset2_ISR
+
+	+ISR_ENTRY
+
+!if 1 {		; DEBUG: Visually indicate code is stuck in IRQ!
+	lda		isrFlag
+	beq		+
+		inc		$400
++
+}
+
+	inc		isrFlag
+
+	; Disable the direct IRQ by switching out of Phasor native mode
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	+ISR_EXIT
+
+;------------------------------------------------------------------------------
+
+SetupPhasorWithSSI263ForResetCommon
+; Pre: has6522, isPhasorCard; hasSSI263, MBBaseH
+; Post: C=0(OK), C=1(NG)
+; . where NG = doesn't have 2x6522 or at least 1x SSI263
+; Post: MBBaseL = SY6522_A_PH_BASE
+; . SSI263BaseL = SSI_A_BASE|SSI_B_BASE
+
+	lda		#0
+	sta		phasorWithSSI263ResetFlag
+
+	lda		has6522
+	and		#HAS_BOTH_6522s
+	cmp		#HAS_BOTH_6522s
+	bne		+
+	lda		hasSSI263				; Need at least 1x SSI263
+	and		#HAS_SSI263A|HAS_SSI263B
+	bne		++
++		sec
+		rts
+++
+
+	;
+
+	inc		phasorWithSSI263ResetFlag
+
+	lda		#COMPONENT_SSI263+3		; test component $43
+	sta		testComponentNum
+
+	jsr		resetSubTestMinus1
+	jsr		incTotalTests
+
+	; Always write to both SSI263s regardless of whether we have only A, B or both
+	lda		MBBaseH
+	sta		SSI263BaseH
+	lda		#SY6522_A_PH_BASE		; 6522-A/$Cs10
+	sta		MBBaseL
+	lda		#SSI_A_BASE|SSI_B_BASE	; both SSI263-A&B ($Cs60)
+	sta		SSI263BaseL
+
+	clc
+	rts
+
+;------------------
+
+phasorWithSSI263ResetFlag
+	!byte 0
+
+;------------------------------------------------------------------------------
+
+!zone data
+
+doingSpeech		!byte 0
+
+irqT1H			!byte 0
+irqT1L			!byte 0
+irqT1H2			!byte 0
+irqT1IntCount	!byte 0
+phraseDuration	!byte 0,0,0
+
+ClassicAdv
+; SMS's Mockingboard - Crowther and Woods Adventure "CLASSIC ADVENTURE" (duration=1200ms)
+	!byte $29,$52,$B8,$7B,$E6
+	!byte $2D,$52,$B8,$7B,$E6
+	!byte $60,$52,$B8,$7B,$E6
+	!byte $0C,$52,$B8,$7B,$E6
+	!byte $30,$52,$B8,$7B,$E6
+	!byte $47,$52,$B8,$7B,$E6
+	!byte $29,$52,$B8,$7B,$E6
+	!byte $4C,$52,$B8,$7B,$E6
+	!byte $0C,$52,$B8,$7B,$E6
+	!byte $25,$52,$B8,$7B,$E6
+	!byte $33,$52,$B8,$7B,$E6
+	!byte $EC,$52,$B8,$7B,$E6
+	!byte $47,$52,$B8,$7B,$E6
+	!byte $47,$52,$B8,$7B,$E6
+	!byte $78,$52,$B8,$7B,$E6
+	!byte $68,$52,$B8,$7B,$E6
+	!byte $72,$52,$B8,$7B,$E6
+	!byte $5C,$52,$B8,$7B,$E6
+NullPhrase
+	!byte 0,0,0,0,0

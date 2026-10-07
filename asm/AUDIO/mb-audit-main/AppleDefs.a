@@ -1,0 +1,88 @@
+
+WNDLFT  = $20
+WNDWDTH = $21
+WNDTOP  = $22
+WNDBTM  = $23
+CH      = $24
+CV      = $25
+GBASL   = $26
+GBASH   = $27
+BASL    = $28
+BASH    = $29
+BAS2L   = $2A
+BAS2H   = $2B
+
+SOFTEV_L = $3F2
+SOFTEV_H = $3F3
+PWREDUP  = $3F4
+
+NMI		= $3FB	; 3 bytes
+
+IRQL	= $3FE
+IRQH	= $3FF
+
+_6502_NMI_VECTOR			= $FFFA
+_6502_NMI_VECTOR_L			= _6502_NMI_VECTOR
+_6502_NMI_VECTOR_H			= _6502_NMI_VECTOR+1
+_6502_RESET_VECTOR			= $FFFC
+_6502_INTERRUPT_VECTOR		= $FFFE	; IRQ & BRK
+_6502_INTERRUPT_VECTOR_L	= _6502_INTERRUPT_VECTOR
+_6502_INTERRUPT_VECTOR_H	= _6502_INTERRUPT_VECTOR+1
+
+;--------------------------------------
+
+SW_INTCXROM_DIS = $C006
+SW_INTCXROM_ENA = $C007
+SW_INTCXROM_R = $C015	; Active high
+
+SW_SLOTC3ROM_DIS = $C00A
+SW_SLOTC3ROM_ENA = $C00B
+SW_SLOTC3ROM_R = $C017	; Active high
+
+RDLCBNK2 = $C011
+RDLCRAM = $C012
+
+;--------------------------------------
+
+KBD = $C000
+KBDSTRB = $C010
+
+TEXTOFF = $C050
+TEXTON = $C051
+MIXEDOFF = $C052
+MIXEDON = $C053
+PAGE2OFF = $C054
+PAGE2ON = $C055
+HIRESOFF = $C056
+HIRESON = $C057
+DHIRESON = $C05E
+DHIRESOFF = $C05F
+
+BUTTON0 = $C061
+BUTTON1 = $C062
+BUTTON2 = $C063
+
+;--------------------------------------
+
+; See Apple //c TRM, Appendix F, "Machine identification"
+VERSION_II = $38	; II
+VERSION_IIP = $EA	; II+ / Autostart Monitor
+VERSION_IIJP = $C9	; II J-Plus
+VERSION_IIE_OR_HIGHER = $06	; IIe(both variants), IIc(all variants)
+
+VERSION3_IIC = $00	; differentiate between IIe & IIc
+
+PRNTYX = $F940
+PRNTX = $F944
+VERSION = $FBB3		; Signature Byte
+VERSION2 = $FB1E
+VERSION3 = $FBC0
+VERSION4 = $FBBF
+VTAB = $FC22		; pre: CV
+VTABZ = $FC24		; pre: A reg
+HOME = $FC58
+CLREOL = $FC9C		; clears to end of line from current cursor position (ie. CH)
+CLREOLZ = $FC9E		; clears to end of line using contents of Y register as cursor position
+WAIT = $FCA8
+CROUT = $FD8E		; send CR to current output device
+COUT = $FDED

@@ -1,0 +1,4359 @@
+;license:MIT
+;(c) 2021-2024 by Tom Charlesworth
+;
+; 6522 related
+;
+
+;------------------------------------------------------------------------------
+
+Detect6522
+; Pre: X=slot#
+; Post: X=slot#
+
+	jsr		SetMBBase
+
+	jsr		isIIc			; TODO: Really should check for JD Micro's Xdrive2c (in a //c)
+	beq		@checkT1_A		; Use TIMER1 (as MB4c's TIMER2 not readable when Xdrive2c is also installed)
+
+	; 6522's IER.b7 is always 1
+	; . Due to floating bus (and the visible TEXT screen being mainly $A0 values), then empty slots will likely pass this IER.b7 check
+	ldy		#SY6522_A_BASE+SY6522_IER
+	lda		(MBBase),y
+	bmi		@checkT2_A
+
+	;
+	; Could still be MegaAudio, so use TIMER1 (IER.b7 reads as 0, and TIMER2 isn't supported!)
+	;
+
+@checkT1_A
+	ldy		#SY6522_A_BASE+SY6522_TIMER1L_COUNTER
+	jsr		@Check6522
+	bne		+
+		inc		slotInfo,x	; bit0=1
++
+
+@checkT1_B
+	ldy		#SY6522_B_BASE+SY6522_TIMER1L_COUNTER
+	jsr		@Check6522
+	bne		+
+		inc		slotInfo,x
+		inc		slotInfo,x	; bit1=1
++
+
+	rts
+
+	;
+	; For a regular Mockingboard, use TIMER2
+	;
+
+@checkT2_A
+	ldy		#SY6522_A_BASE+SY6522_TIMER2L_COUNTER
+	jsr		@Check6522
+	bne		+
+		inc		slotInfo,x	; bit0=1
++
+
+@checkT2_B
+	ldy		#SY6522_B_BASE+SY6522_TIMER2L_COUNTER
+	jsr		@Check6522
+	bne		+
+		inc		slotInfo,x
+		inc		slotInfo,x	; bit1=1
++
+
+	rts
+
+	;
+
+@Check6522
+; Pre: Y = SY6522_TIMER1L_COUNTER or SY6522_TIMER2L_COUNTER for chip A or B
+; 	NB. Checking with T2 is more robust than with T1, as there's no latch for T2
+; Post: Z=1(OK), Z=0(NG)
+	lda		#4				; try 4 checks (avoid floating bus giving a false-positive)
+	sta		zpTmp1
+	lda		#1				; failures (can have 1 failure - eg. for that flaky card that works most of the time)
+	sta		zpTmp2
+-		jsr		SF_GetTimerL
+		beq		+
+			dec		zpTmp2
+			bmi		++
++		dec		zpTmp1
+		bne		-
+++	rts
+
+	;
+
+SF_GetTimerL				; Based on Skyfox's detection code
+; Pre: Y = SY6522_TIMER1L_COUNTER or SY6522_TIMER2L_COUNTER for chip A or B
+;	MBBaseL=$00 (whether checking chip A or B)
+; Post: Z=1(OK), Z=0(NG)
+	lda		(MBBase),y
+	cmp		MBBaseL			; 3cy, C=1 since A>=0 as (MBBaseL) == 0x00
+	sbc		(MBBase),y		; 5cy
+	cmp		#$08
+	beq		+
+	cmp		#$09			; FASTChip //e (Ref: https://github.com/a2-4am/4cade)
++	rts
+
+;------------------------------------------------------------------------------
+
+DetectMegaAudioCard
+; Pre: zpTmp1 = slotInfo[slot]
+; Post: isMegaAudioCard
+;	Z=1:  no MegaAudio
+
+	lda		#0
+	sta		isMegaAudioCard
+
+	lda		zpTmp1
+	and		#HAS_BOTH_6522s
+	cmp		#HAS_BOTH_6522s
+	bne		@done
+
+	sei
+	lda		#<Check6522ISR
+	ldx		#>Check6522ISR
+	jsr		SetIrqNmiVectors
+
+	lda		#0
+	sta		isrCopyA
+	sta		isrIFR_A
+
+	jsr		WaitT1OneShotUnderflow		; T1C=$0101 (minus a few cycles)
+
+	lda		#ACR_ONESHOT
+	ldy		#SY6522_ACR
+	sta		(MBBase),y
+
+	lda		#IER_SET|IxR_TIMER1
+	ldy		#SY6522_IER
+	sta		(MBBase),y
+
+	lda		#$06
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	lda		#$00
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y					; (and clears IFR.T1)
+
+										;   T1C
+										; $0006
+	lda		#2					; 2cy	; $0004
+	ldx		#1					; 2cy	; $0002
+	cli							; 2cy	; $0000
+	sta		zpTmp2				; 3cy	; $ffff
+										; $0002	: real 6522 - IRQ occurs on 2nd cycle... so IRQ occurs after this 'sta zp'
+										; $0001	: FPGA 6522 - IRQ occurs on 3rd cycle... so IRQ deferred until after next 'stx zp'
+	stx		zpTmp2
+
+	lda		isrCopyA
+	and		#1
+	sta		isMegaAudioCard
+
+@done
+	rts
+
+;------------------------------------------------------------------------------
+
+DetectMB4CorEchoPlusorSDM
+; Pre:
+; Post: isMB4C, isEchoPlus, isSDMusic
+;	Z=1:  no MB4C/EchoPlus/SD Music
+
+	; MB4C/Echo+/SDM only have 1x 6522, but mapped to both $00 and $80
+	; . MB4C: assume it'll use the 6522's b7 addr to determine which AY8913 to write to
+	; . Echo+ uses 6522's PORTB (bits 4 & 3) to chip-select each AY8913
+	; . SD Music / SD Music Deluxe: like MB4C for selecting AY8913
+
+	lda		#0
+	sta		isMB4C
+	sta		isEchoPlus
+	sta		isSDMusic
+
+	ldy		#SY6522_A_BASE+SY6522_DDRB
+	lda		#$FF
+	sta		(MBBase),y
+	iny									; Y=SY6522_DDRA
+	sta		(MBBase),y
+
+	ldy		#SY6522_B_BASE+SY6522_DDRB
+	lda		#$69
+	sta		(MBBase),y
+	lda		#$96
+	iny									; Y=SY6522_DDRA
+	sta		(MBBase),y
+
+	ldy		#SY6522_A_BASE+SY6522_DDRB
+@loop	lda		#$69
+		cmp		(MBBase),y
+		bne		@notDetected
+		lda		#$96
+		iny								; Y=SY6522_DDRA
+		cmp		(MBBase),y
+		bne		@notDetected
+
+		cpy		#SY6522_B_BASE+SY6522_DDRA
+		beq		+
+		ldy		#SY6522_B_BASE+SY6522_DDRB
+		bne		@loop
+
++	; MB4C is only in a //c, and Echo+ is never in a //c
+	jsr		isIIc
+	bne		@EchoPlusOrSDMusic
+
+;@MB4C
+		lda		#1
+		sta		isMB4C
+		rts
+
+@EchoPlusOrSDMusic
+		jsr		IsEchoPlus				; post: isEchoPlus
+		lda		#1						; Z=0: detected something
+		bcc		+						; C=0 => Echo+ detected
+		sta		isSDMusic
++		rts
+
+@notDetected
+	lda		#0
+	rts
+
+;------------------------------------------------------------------------------
+
+Check6522
+; Pre: X=slot#
+; Post: C=0(OK), C=1(NG)
+;	errorActual, errorExpected
+
+	jsr		SetMBBase
+
+	lda		slotInfo,x
+	and		#3							; just 6522's
+	sta		zpTmp1
+
+	; Temporarily set isMegaAudioCard for Check6522Addrlines()
+	jsr		DetectMegaAudioCard			; Pre: zpTmp1; Post: isMegaAudioCard
+
+	lda		#COMPONENT_6522+0			; test component $10
+	sta		testComponentNum
+
+	lda		MBBaseL						; $00 = tests are for both 6522-A/B
+	jsr		initSoakDisplayTest0
+	jsr		incSoakDisplayTest
+
+	lda		#0
+	sta		errorValid
+	sta		errorValid6522B
+	sta		@errorFlag
+
+@repeat	jsr		incSoakDisplayRept		; NB. "00:nn" - just inc's rept#nn
+
+		lda		#$ff
+		sta		testNum
+
+		; Test 6522-B first, then 6522-A
+		; . so that error codes are in the right order for printing!
+
+;@6522_B
+		lda		zpTmp1
+		and		#HAS_6522B
+		beq		@6522_A
+
+		lda		#COMPONENT_6522B		; test component $60
+		sta		testComponentNum
+
+		lda		#SY6522_B_BASE
+		sta		MBBaseL
+
+@next		inc		testNum				; test #00,04
+			jsr		Check6522Datalines1
+			bcs		@error
+
+			inc		testNum				; test #01,05
+			jsr		Check6522Datalines2
+			bcs		@error
+
+			inc		testNum				; test #02,06
+			jsr		Check6522Addrlines
+			bcs		@error
+
+			inc		testNum				; test #03,07
+			jsr		Check6522IRQ
+			bcs		@error
+
+@6522_A	lda		zpTmp1
+		and		#HAS_6522A
+		beq		@done
+
+		lda		MBBaseL
+		bpl		@done
+
+		lda		#$03
+		sta		testNum
+
+		lda		#COMPONENT_6522A		; test component $50
+		sta		testComponentNum
+
+		lda		#SY6522_A_BASE
+		sta		MBBaseL
+		beq		@next					; (bra)
+
+		;
+
+@done	lda		#SY6522_A_BASE
+		sta		MBBaseL
+
+		; if we've had an error from either 6522 then bail
+		lda		@errorFlag
+		bne		@errorDone
+
+		; else: no 6522 errors, so finish with this mixed test
+		lda		#COMPONENT_6522+0		; test component $10
+		sta		testComponentNum
+
+		lda		#$10
+		sta		testNum					; test #$10 (mixed test for 6522 A & B)
+		jsr		Check6522ABDatalines1	; Pre: MBBaseL = 0
+		bcs		@error
+
+		jsr		incSoakTestNum
+		bne		@repeat
+
+	clc		; C=0(OK)
+	rts
+
+@error
+; Pre: X = expected value
+;	A = actual value
+; Post: C=1(NG)
+
+	inc		@errorFlag
+
+	ldy		MBBaseL
+	bpl		+
+
+		; 6522-B failed, save error then test 6522-A
+		jsr		SetError6522B		; for 6522-B
+		jmp		@6522_A
+
++	jsr		SetError				; for 6522-A
+
+@errorDone
+	sec		; C=1(NG)
+	rts
+
+@errorFlag	!byte	0
+
+;------------------
+
+Check6522Datalines1
+; Pre: MBBaseL
+; Post: C=0(OK), C=1(NG)
+;	On C=1: X=expected, A=actual
+; Uses: zpTmp2, zpTmp3
+
+	;
+	; Check r/w of all 8 data lines
+	;
+	;                 subTest:
+	;                 #0   #1   #2   #3
+	; 6522:  DDRB =   $55  $69  $AA  $96
+	; 6522:  DDRA =   $AA  $96  $55  $69
+	; check: DDRB ==  $55  $69  $AA  $96
+	; check: DDRA ==  $AA  $96  $55  $69
+
+	jsr		resetSubTestMinus1
+
+	lda		#0
+	sta		zpTmp2
+
+@loop	jsr		incSubTestNum			; subTest #0,2
+
+		ldy		#SY6522_DDRB
+		lda		#$55
+		eor		zpTmp2
+		sta		(MBBase),y
+		lda		#$aa
+		eor		zpTmp2
+		iny								; Y=SY6522_DDRA
+		sta		(MBBase),y
+
+		dey								; Y=SY6522_DDRB
+		lda		#$55
+		eor		zpTmp2
+		jsr		@check
+		bne		@6522_err
+		lda		#$aa
+		eor		zpTmp2
+		iny								; Y=SY6522_DDRA
+		jsr		@check
+		bne		@6522_err
+
+		;
+
+		jsr		incSubTestNum			; subTest #1,3
+
+		dey								; Y=SY6522_DDRB
+		lda		#$69
+		eor		zpTmp2
+		sta		(MBBase),y
+		lda		#$96
+		eor		zpTmp2
+		iny								; Y=SY6522_DDRA
+		sta		(MBBase),y
+
+		dey								; Y=SY6522_DDRB
+		lda		#$69
+		eor		zpTmp2
+		jsr		@check
+		bne		@6522_err
+		lda		#$96
+		eor		zpTmp2
+		iny								; Y=SY6522_DDRA
+		jsr		@check
+		bne		@6522_err
+
+		lda		#$ff
+		eor		zpTmp2
+		sta		zpTmp2
+		bne		@loop
+
+	clc									; OK
+	rts
+
+@6522_err
+; Pre: zpTmp3 = expected value
+;	A = actual value
+; Post: C=1(NG)
+	ldx		zpTmp3
+	sec
+	rts
+
+;
+
+@check
+	sta		zpTmp3						; expected
+	lda		(MBBase),y					; actual
+	cmp		zpTmp3
+	rts
+
+;------------------
+
+Check6522Datalines2
+; Pre: MBBaseL
+; Post: C=0(OK), C=1(NG)
+;	On C=1: X=expected, A=actual
+; Uses: zpTmp2, zpTmp3
+
+	;
+	; Check r/w of all 8 data lines
+	;
+	; loop n = {0,1,...$ff}
+	;   6522:  DDRB = n
+	;   6522:  DDRA = ~n
+	;   check: DDRB = n
+	;   check: DDRA = ~n
+	;
+
+	jsr		resetSubTest					; subTest #0
+	ldy		#SY6522_DDRB
+
+	lda		#0
+	sta		zpTmp2
+
+@6522_w		lda		zpTmp2
+			sta		(MBBase),y
+			iny								; Y=SY6522_DDRA
+			eor		#$ff
+			sta		(MBBase),y
+
+@6522_r		dey								; Y=SY6522_DDRB
+			lda		zpTmp2
+			jsr		@check
+			bne		@6522_err
+			iny								; Y=SY6522_DDRA
+			lda		zpTmp2
+			eor		#$ff
+			jsr		@check
+			bne		@6522_err
+			dey								; Y=SY6522_DDRB
+
+@next	inc		zpTmp2
+		bne		@6522_w
+
+@6522_ok
+	clc
+	rts
+
+@6522_err
+; Pre: zpTmp3 = expected value
+;	A = actual value
+; Post: C=1(NG)
+	ldx		zpTmp3
+	sec
+	rts
+
+;
+
+@check
+	sta		zpTmp3						; expected
+	lda		(MBBase),y					; actual
+	cmp		zpTmp3
+	rts
+
+;------------------
+
+Check6522ABDatalines1
+; Pre: zpTmp1 = slotInfo[slot]
+;	MBBaseL = 0
+; Post: C=0(OK), C=1(NG)
+;	On C=1: X=expected, A=actual
+; Uses: zpTmp2, zpTmp3
+
+	; Just return OK if same 6522 is mapped to both $00 and $80
+	jsr		DetectMB4CorEchoPlusorSDM	; Pre: MBBaseL = 0
+	beq		+
+		clc
+		rts
++
+
+	;
+	; Check r/w of all 8 data lines
+	; . NB. Check 6522-A interleaved with 6522-B (doesn't work with a single 6522 mapped at both $00 and $80)
+	; (NB. my real Phasor occasionally powers-on with r/w to 2nd 6522's DDRA with b7=1!)
+	;
+	;                 1st loop  2nd loop
+	; 6522-A:  DDRB =   $55       $AA
+	; 6522-A:  DDRA =   $AA       $55
+	; 6522-B:  DDRB =   $69       $96
+	; 6522-B:  DDRA =   $96       $69
+	; check A: DDRB ==  $55       $AA
+	; check A: DDRA ==  $AA       $55
+	; check B: DDRB ==  $69       $96
+	; check B: DDRA ==  $96       $69
+
+	jsr		resetSubTestMinus1
+
+	lda		#0
+	sta		zpTmp2
+
+@loop
+		jsr		incSubTestNum			; subTest #0,1 (for 1st/2nd loop)
+
+;@6522_A_w
+		lda		zpTmp1
+		and		#HAS_6522A
+		beq		@6522_B_w
+
+		ldy		#SY6522_A_BASE+SY6522_DDRB
+		lda		#$55
+		eor		zpTmp2
+		sta		(MBBase),y
+		lda		#$aa
+		eor		zpTmp2
+		iny								; Y=SY6522_DDRA
+		sta		(MBBase),y
+
+@6522_B_w
+		lda		zpTmp1
+		and		#HAS_6522B
+		beq		@6522_A_r
+
+		ldy		#SY6522_B_BASE+SY6522_DDRB
+		lda		#$69
+		eor		zpTmp2
+		sta		(MBBase),y
+		lda		#$96
+		eor		zpTmp2
+		iny								; Y=SY6522_DDRA
+		sta		(MBBase),y
+
+@6522_A_r
+		lda		zpTmp1
+		and		#HAS_6522A
+		beq		@6522_B_r
+
+		ldy		#SY6522_A_BASE+SY6522_DDRB
+		lda		#$55
+		eor		zpTmp2
+		jsr		@check
+		bne		@6522_err
+		lda		#$aa
+		eor		zpTmp2
+		iny								; Y=SY6522_DDRA
+		jsr		@check
+		bne		@6522_err
+
+@6522_B_r
+		lda		zpTmp1
+		and		#HAS_6522B
+		beq		@next
+
+		ldy		#SY6522_B_BASE+SY6522_DDRB
+		lda		#$69
+		eor		zpTmp2
+		jsr		@check
+		bne		@6522_err
+		lda		#$96
+		eor		zpTmp2
+		iny								; Y=SY6522_DDRA
+		jsr		@check
+		bne		@6522_err
+
+@next
+	lda		#$ff
+	eor		zpTmp2
+	sta		zpTmp2
+	bne		@loop
+
+;@6522_ok
+	clc
+	rts
+
+@6522_err
+; Pre: zpTmp3 = expected value
+;	A = actual value
+; Post: C=1(NG)
+	ldx		zpTmp3
+	sec
+	rts
+
+;
+
+@check
+	sta		zpTmp3						; expected
+	lda		(MBBase),y					; actual
+	cmp		zpTmp3
+	rts
+
+;------------------
+
+Check6522Addrlines
+; Pre: MBBaseL
+; Post: C=0(OK), C=1(NG)
+;	On C=1: X=expected, A=actual
+
+	jsr		resetSubTest				; subTest #0
+
+	cli									; No ints generated by this routine, so safe to enable ints
+										; Since IRQ/NMI handler hasn't been setup yet, then any spurious ints will exit to Monitor
+
+	; write
+	lda		#$AA
+	ldy		#SY6522_DDRA				; %0011 (a0)
+	sta		(MBBase),y
+	lda		#$55
+	ldy		#SY6522_DDRB				; %0010 (a1)
+	sta		(MBBase),y
+
+	lda		#$69
+	ldy		#SY6522_TIMER1H_LATCH		; %0111 (a2)
+	sta		(MBBase),y
+	lda		#IER_SET|IxR_TIMER1|IxR_TIMER2	; $E0
+	ldy		#SY6522_IFR
+	sta		(MBBase),y					; Clear any pending T1|T2 ints (just in case)
+	ldy		#SY6522_IER					; %1110 (a3)
+	sta		(MBBase),y					; NB. Writing IER with b7=1 will set the bits=1
+	eor		#$ff
+	sta		(MBBase),y					; NB. Writing IER with b7=0 will clear the bits=1
+
+	; read
+	lda		#$AA
+	ldy		#SY6522_DDRA				; %0011 (a0)
+	jsr		@check
+	bne		@6522_err
+	lda		#$55
+	ldy		#SY6522_DDRB				; %0010 (a1)
+	jsr		@check
+	bne		@6522_err
+
+	lda		#$69
+	ldy		#SY6522_TIMER1H_LATCH		; %0111 (a2)
+	jsr		@check
+	bne		@6522_err
+	lda		isMegaAudioCard
+	beq		+
+		lda		#IER_CLR|IxR_TIMER1|IxR_TIMER2	; $60 - MegaAudio always returns 6522.IER.b7=0
+		bne		++
++		lda		#IER_SET|IxR_TIMER1|IxR_TIMER2	; $E0 - Real 6522 always returns 6522.IER.b7=1
+++	ldy		#SY6522_IER					; %1110 (a3)
+	jsr		@check
+	bne		@6522_err
+	lda		#$7f
+	sta		(MBBase),y					; IER=0
+
+;@6522_ok
+	clc
+	rts
+
+@6522_err
+; Pre: zpTmp3 = expected value
+;	A = actual value
+; Post: C=1(NG)
+	ldx		zpTmp3
+	sec
+	rts
+
+;
+
+@check
+	sta		zpTmp3						; expected
+	lda		(MBBase),y					; actual
+	cmp		zpTmp3
+	rts
+
+;------------------
+
+Check6522IRQ
+; Pre: MBBaseL
+; Post: C=0(OK), C=1(NG)
+;	On C=1: X=expected, A=actual
+
+	;
+	; Check interrupt line(s)
+	;
+
+	jsr		resetSubTest
+
+	sei
+
+	lda		#<Check6522ISR
+	ldx		#>Check6522ISR
+	jsr		SetIrqNmiVectors
+
+	lda		#0
+	sta		isrNMIcount
+	sta		isrIFR_A
+	sta		isrIFR_B
+
+	lda		#1
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	iny									; Y=SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y					; T1C=0x0101
+
+	lda		#ACR_ONESHOT
+	ldy		#SY6522_ACR
+	sta		(MBBase),y
+
+	lda		#IER_SET|IxR_TIMER1
+	ldy		#SY6522_IER
+	sta		(MBBase),y
+
+	lda		#$f							; wait 0x304 cycles (and NMI may have occurred)
+	jsr		myWAIT
+
+	lda		MBBaseL
+	bmi		@6522B
+
+;@6522A
+	lda		isrNMIcount
+	sta		isrNMIcount_A
+	bne		+							; NMI occurred, so IFR.TIMER1 already cleared!
+
+		ldy		#SY6522_IFR				; subTest #0
+		lda		#IxR_TIMER1
+		and		(MBBase),y
+		beq		@6522_err
+
+		cli
+		sei
+
+		jsr		incSubTestNum			; subTest #1
+		and		isrIFR_A
+		beq		@6522_err
+		bne		+						; (bra)
+
+@6522B
+	lda		isrNMIcount
+	sta		isrNMIcount_B
+	bne		+							; NMI occurred, so IFR.TIMER1 already cleared!
+
+		ldy		#SY6522_IFR				; subTest #0
+		lda		#IxR_TIMER1
+		and		(MBBase),y
+		beq		@6522_err
+
+		cli
+		sei
+
+		jsr		incSubTestNum			; subTest #1
+		and		isrIFR_B
+		beq		@6522_err
+
++
+
+;@6522_ok
+	clc
+	rts
+
+@6522_err
+	ldx		#IxR_TIMER1					; expected
+	lda		#0							; actual
+	sec
+	rts
+
+;------------------------------------------------------------------------------
+
+Check6522ISR
+; Pre:
+;	6502 has pushed P
+;	Apple ROM has stored A to $45 (not Apple //e ROM!)
+;
+
+	+ISR_ENTRY
+
+	lda		zpTmp2
+	sta		isrCopyA
+
+	; Cope with the case where a single 6522 is mapped to both $00 and $80
+	; . read IFR from both A & B, *before* clearing IFR
+	; . otherwise reading & clear A first, means that B (read second) will always reads as 0.
+	; NB. Needed for Check6522IRQ, eg. for EchoPlus
+
+	ldx		MBBaseL						; save MBBaseL
+
+	lda		#SY6522_A_BASE
+	sta		MBBaseL
+
+	ldy		#SY6522_A_BASE+SY6522_IFR
+	lda		(MBBase),y
+	sta		isrIFR_A
+
+	ldy		#SY6522_B_BASE+SY6522_IFR
+	lda		(MBBase),y
+	sta		isrIFR_B
+
+	sta		(MBBase),y					; clear 6522_B's IFR
+
+	ldy		#SY6522_A_BASE+SY6522_IFR
+	lda		isrIFR_A
+	sta		(MBBase),y					; clear 6522_A's IFR
+
+	stx		MBBaseL						; restore MBBaseL
+
+	+ISR_EXIT
+
+;------------------------------------------------------------------------------
+; Notes:
+;	. [T6522_0] Check inactive T1+T2 counters don't set IFR bits on underflow
+;	T1:
+;	. [T6522_1, T6522_2] oneshot|continuous x IRQ|poll
+;	. [T6522_3, T6522_5] 6502|65C02 addr modes access of 6522 T1C
+;	. [T6522_7, T6522_9, T6522_A, T6522_C] oneshot|continuous underflow, then T1L -> T1C
+;	. [T6522_B] T1L=$0000, can only read T1C values of $00 and $FF
+;	. [T6522_A, T6522_E] 6522 T1 period is N+2 cycles
+;	. [T6522_F] Alt test that 6522 T1 period is N+2 cycles
+;	. [T6522_15] T1 int cleared/not cleared by certain register r/w's
+;	T2:
+;	. [T6522_2] oneshot x IRQ|poll
+;	. [T6522_4, T6522_6] 6502|65C02 addr modes access of 6522 T2C
+;	. [T6522_8, T6522_9, T6522_D] oneshot underflow, then T1L -> T1C
+;	[T6522_10, T6522_11] Test sub-opcode accuracy for reading IFR
+;	[T6522_12] Test 6522s at $Cn10 and $Cn90
+;	[T6522_13] Test Phasor can switch to Echo+
+;	[T6522_14] Both 6522s: test T1 & T2 (from chips A&B) all running at the same time
+;	[T6522_16] Check T1 & T2 ints occur the correct number of times over a longer interval
+;	[T6522_17] Check T1 int re-triggers every few opcodes when T1L=$0000
+;	[T6522_18] Calls MCT6522_1, except for 1 card (so uses 6522 A & B)
+;	[Test6522MultiCard] 2 cards:
+;	. [MCT6522_0] Both 6522s: test T1 & T2 (from chips A&B) all running at the same time
+;	. [MCT6522_1] 2 timers: 1 high-freq (no IRQ), 1 low-freq (IRQ). Check high-freq doesn't mask IRQ
+;	[Test6522AfterReset] 6522 IRQ pending, CTRL+RESET should clear it
+;
+
+Test6522
+; Pre: has6522
+; Post: C=0(OK), C=1(NG)
+;	MBBaseL = $00
+;	errorActual, errorExpected
+; Uses: zpTmp1 (so don't use in sub-funcs)
+
+	sei
+
+	jsr		isIIc				; TODO: Really should check for Xdrive2c (in a //c)
+	bne		+
+		lda		#<testTbl_MB4c_with_Xdrive2c
+		ldx		#>testTbl_MB4c_with_Xdrive2c
+		bne		++
++	lda		isMegaAudioCard
+	bne		+
+		lda		#<testTbl
+		ldx		#>testTbl
+		bne		++
++		lda		#<testTbl_MegaAudio
+		ldx		#>testTbl_MegaAudio
+++	sta		@testTblX1+1
+	sta		@testTblX2+1
+	stx		@testTblX1+2
+	stx		@testTblX2+2
+
+	lda		#<Test6522ISR
+	ldx		#>Test6522ISR
+	jsr		SetIrqNmiVectors
+
+	lda		#COMPONENT_6522+1	; test component $11
+	sta		testComponentNum
+
+	lda		#$ff
+	sta		testNum				; test #$00
+
+	lda		has6522
+	lsr
+	sta		zpTmp1
+	bcc		@next6522
+
+@loop	lda		#0
+		sta		testTblIdx
+
+		lda		MBBaseL
+		jsr		initSoakDisplayTest0
+
+@nextTest	jsr		incSoakDisplayTest
+
+			ldx		testTblIdx
+@testTblX1	lda		testTbl,x	; smc
+			sta		@jmpTest+1
+			inx
+@testTblX2	lda		testTbl,x	; smc
+			sta		@jmpTest+2
+			inx
+			stx		testTblIdx
+			ora		@jmpTest+1
+			beq		@done
+			inc		testNum
+
+@repeat			jsr		incSoakDisplayRept
+@jmpTest		jsr		$0000
+				bcs		@error
+				jsr		incSoakTestNum
+				bne		@repeat
+
+			jmp		@nextTest
+
+@done	jsr		WaitT1OneShotUnderflow	; clear & disable any T1 ints
+		jsr		WaitT2OneShotUnderflow	; clear & disable any T2 ints
+
+@next6522
+		lda		MBBaseL
+		eor		#$80
+		sta		MBBaseL
+
+		lda		#$1f
+		sta		testNum			; test #$20
+
+		lsr		zpTmp1
+		bcs		@loop
+
+	lda		#0
+	sta		MBBaseL
+
+	clc		; C=0(OK)
+	rts
+
+@error
+Test6522Error
+; Pre: zpTmp2 = expected value
+;	A = actual value
+; Post: C=1(NG)
+
+	ldx		zpTmp2
+	jsr		SetError
+
+	lda		#SY6522_A_BASE
+	sta		MBBaseL
+
+	sec		; C=1(NG)
+	rts
+
+;
+
+testTblIdx
+	!byte	0
+
+testTbl
+	; MBBaseL = $00 and $80
+	!word	T6522_0		; 20
+	!word	T6522_1		; 21
+	!word	T6522_2		; 22
+	!word	T6522_3		; 23
+	!word	T6522_4		; 24
+	!word	T6522_5		; 25
+	!word	T6522_6		; 26
+	!word	T6522_7		; 27
+	!word	T6522_8		; 28
+	!word	T6522_9		; 29
+	!word	T6522_A		; 2A
+	!word	T6522_B		; 2B
+	!word	T6522_C		; 2C
+	!word	T6522_D		; 2D
+	!word	T6522_E		; 2E
+	!word	T6522_F		; 2F
+	!word	T6522_10	; 30
+	!word	T6522_11	; 31
+	!word	T6522_12	; 32
+	!word	T6522_13	; 33
+	!word	T6522_14	; 34
+	!word	T6522_15	; 35
+	!word	T6522_16	; 36
+	!word	T6522_17	; 37
+	!word	T6522_18	; 38
+	!word	0
+
+testTbl_MegaAudio
+	; MBBaseL = $00 and $80
+	!word	T6522_0		; 20
+	!word	T6522_1		; 21
+	!word	T6522_skip	; 22
+	!word	T6522_3		; 23
+	!word	T6522_skip	; 24
+	!word	T6522_5		; 25
+	!word	T6522_skip	; 26
+	!word	T6522_7		; 27
+	!word	T6522_skip	; 28
+	!word	T6522_skip	; 29
+	!word	T6522_A_MA	; 2A
+	!word	T6522_B_MA	; 2B
+	!word	T6522_skip	; 2C	; Emulation test error: 11:0C:01 / Expected:FB Actual:FA (NB. after adding T1 $FFFE underflow support)
+	!word	T6522_skip	; 2D
+	!word	T6522_skip	; 2E
+	!word	T6522_skip	; 2F
+	!word	T6522_skip	; 30	; Emulation test error: 11:10:12 / Expected:12 Actual:13
+	!word	T6522_skip	; 31
+	!word	T6522_12	; 32
+	!word	T6522_13	; 33	; Phasor test - so test just returns 'OK'
+	!word	T6522_skip	; 34
+	!word	T6522_15	; 35
+	!word	T6522_skip	; 36
+	!word	T6522_skip	; 37	; Emulation test error: 11:17:00 / Expected:00 Actual:00 (NB. after supporting T1C=T1L=$0000 as $FFFF)
+	!word	T6522_18	; 38
+	!word	0
+
+testTbl_MB4c_with_Xdrive2c
+	; MBBaseL = $00 and $80
+	!word	T6522_0		; 20
+	!word	T6522_1		; 21
+	!word	T6522_2		; 22
+	!word	T6522_3		; 23
+	!word	T6522_skip	; 24	; Can't read T2C_L
+	!word	T6522_5		; 25
+	!word	T6522_skip	; 26	; Can't read T2C_L
+	!word	T6522_7		; 27
+	!word	T6522_skip	; 28	; Can't read T2C_L
+	!word	T6522_skip	; 29	; Can't read T2C_H
+	!word	T6522_A		; 2A
+	!word	T6522_B		; 2B
+	!word	T6522_C		; 2C
+	!word	T6522_skip	; 2D	; Can't read T2C_L
+	!word	T6522_E		; 2E
+	!word	T6522_F		; 2F
+	!word	T6522_10	; 30
+	!word	T6522_skip	; 31	; Can't read T2C_L
+	!word	T6522_skip	; 32	; 6522's not mirrored across I/O space
+	!word	T6522_13	; 33	; Phasor test - so test just returns 'OK'
+	!word	T6522_14	; 34
+	!word	T6522_15	; 35
+	!word	T6522_16	; 36
+	!word	T6522_17	; 37
+	!word	T6522_18	; 38
+	!word	0
+
+T6522_skip
+	clc
+	rts
+
+;------------------------------------------------------------------------------
+
+T6522_0
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;
+; Test#0 (AppleWin/GH#765)
+; . Enable T1 & T2 IRQs in IER
+; . Wait for T1 underflow
+; . Check no T1|T2 ints are pending in IFR
+; NB. T1C gets set to one-shot via WaitT1OneShotUnderflow(), so counter not active
+; NB. T2C not written to, so it's never armed (and so no T2 int should occur)
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	lda		#0
+	sta		zpTmp2					; expected ($00)
+
+	jsr		WaitT1OneShotUnderflow	; Post: SEI, T1=one-shot, T1L=$0101, IFR.T1=0
+
+	lda		#IER_SET|IxR_TIMER1|IxR_TIMER2
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Enable Timer1&2 IRQ
+	lda		#IER_CLR|IxR_VOTRAX|IxR_SSI263
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Disable speech IRQ
+
+	ldy		#SY6522_TIMER1H_COUNTER
+-		lda		(MBBase),y			; wait $00nn
+		bne		-
+
+	ldy		#SY6522_IFR
+	lda		(MBBase),y
+	and		#IxR_TIMER1|IxR_TIMER2	; Poll Timer1&2 IRQ flag
+	bne		@error
+
+	jsr		incSubTestNum			; subTest #1
+
+	ldy		#SY6522_TIMER1H_COUNTER
+-		lda		(MBBase),y			; wait $NNnn
+		beq		-
+
+	ldy		#SY6522_IFR
+	lda		(MBBase),y
+	and		#IxR_TIMER1|IxR_TIMER2	; Poll Timer1&2 IRQ flag
+	bne		@error
+
+	clc
+	rts
+
+@error
+	sec
+	rts
+
+;------------------------------------------------------------------------------
+
+T6522_1
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;
+; Test#1
+; . Setup T1C=$0404 (mb-audit/GH#6) and ACR=free-running
+; . Enable T1 & T2 IRQs
+; . Poll for T1 int
+; . ACR=one-shot
+; . CLI & expect ISR to immediately set flag (T1 free-running)
+; . wait for ISR to set flag (T1 one-shot)
+; . SEI & wait for T1 underflow & check that no T1|T2 ints pending
+;
+; NB. For IIgs ROM0/1/3, T1C=$0202 is too short: See (*)
+; . it takes ~$100 cycles for the IIgs ROM to call the user ISR
+; . it takes ~$100 cycles on exit of the user ISR to return to user code
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	sei
+	lda		#0
+	sta		isrIFR
+
+	lda		#$04					; T1C=$0404
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y
+
+	lda		#ACR_FREERUNNING
+	ldy		#SY6522_ACR
+	sta		(MBBase),y				; Free-running timer
+
+	lda		#IER_SET|IxR_TIMER1|IxR_TIMER2
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Enable Timer1&2 IRQ
+	eor		#$ff
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Disable all other IRQs
+
+	ldy		#SY6522_IFR
+-		lda		(MBBase),y
+		and		#IxR_TIMER1			; Poll Timer1 IRQ flag
+		beq		-
+
+									; T1C = T1L = $0404, as T1 is free-running (*)
+
+	lda		#ACR_ONESHOT
+	ldy		#SY6522_ACR
+	sta		(MBBase),y				; One-shot timer
+
+	cli								; 1st IRQ
+
+	lda		#IxR_TIMER1
+	sta		zpTmp2					; expected
+	and		isrIFR					; T1 int from free-running mode
+	beq		@error					; subTest #0 (failed)
+	lda		#0
+	sta		isrIFR
+
+	jsr		incSubTestNum			; subTest #1
+	; zpTmp2 = IxR_TIMER1			; expected
+
+									; 2nd IRQ in this loop...
+	ldx		#0						; NB. Need T1C timeout to be longer than IIgs ROM's IRQ handler, else loop will timeout (X->0)! (*)
+-		dex
+		beq		@error				; subTest #1 (failed)
+		lda		#IxR_TIMER1			; T1 int from one-shot mode
+		and		isrIFR
+		beq		-
+
+	sei
+
+	jsr		incSubTestNum			; subTest #2
+
+	; NB. T1C reloaded with T1L
+
+	jsr		WaitT1Underflow
+
+	lda		#0
+	sta		zpTmp2					; expected
+	ldy		#SY6522_IFR
+	lda		(MBBase),y
+	and		#IxR_TIMER1|IxR_TIMER2	; Poll Timer1&2 IRQ flag (expect none set)
+	bne		@error					; subTest #2 (failed)
+
+	clc
+	rts
+
+@error
+	sec
+	rts								; C=0(OK), C=1(NG)
+
+;------------------------------------------------------------------------------
+
+T6522_2
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;
+; Test#2 (AppleWin/GH#567)
+; . Setup T1C=0x0202 and ACR=free-running
+; . Disable T1 IRQ, enable T2 IRQ
+; . CLI
+; . Poll for T1 int
+; . Enable T1 IRQ
+; . Expect ISR to immediately set flag
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	sei
+	lda		#0
+	sta		isrIFR
+
+	lda		#$02
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y
+
+	lda		#ACR_FREERUNNING
+	ldy		#SY6522_ACR
+	sta		(MBBase),y				; Free-running timer
+
+	lda		#IER_SET|IxR_TIMER2
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Enable Timer2 IRQ (to catch any false T2 ints)
+	lda		#IER_CLR|IxR_TIMER1
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Disable Timer1 IRQ
+
+	cli
+
+	ldy		#SY6522_IFR
+-		lda		(MBBase),y
+		and		#IxR_TIMER1			; Poll Timer1 IRQ flag
+		bne		+
+		lda		isrIFR				; For NMI
+		beq		-
++
+
+	lda		#IER_SET|IxR_TIMER1
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Enable Timer1 IRQ - for IRQ to fire
+
+	jsr		WaitT1OneShotUnderflow	; SEI & Disable Timer1 IRQ
+	jsr		WaitT2OneShotUnderflow	; SEI & Disable Timer2 IRQ
+
+	lda		#IxR_TIMER1
+	sta		zpTmp2					; expected
+	and		isrIFR
+	beq		@error
+
+	; Repeat test but for T2
+	; . Setup T2C=0x0202 (implicit one-shot for T2)
+	; . Disable T2 IRQ, enable T1 IRQ
+	; . CLI
+	; . Poll for T2 int
+	; . Enable T2 IRQ
+	; . Expect ISR to immediately set flag
+
+	jsr		incSubTestNum			; subTest #1
+
+	lda		#0
+	sta		isrIFR
+
+	lda		#$02
+	ldy		#SY6522_TIMER2L_COUNTER
+	sta		(MBBase),y
+	ldy		#SY6522_TIMER2H_COUNTER
+	sta		(MBBase),y
+
+	lda		#IER_SET|IxR_TIMER1
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Enable Timer1 IRQ (to catch any false T1 ints)
+	lda		#IER_CLR|IxR_TIMER2
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Disable Timer2 IRQ
+
+	cli
+
+	ldy		#SY6522_IFR
+-		lda		(MBBase),y
+		and		#IxR_TIMER2			; Poll Timer2 IRQ flag
+		bne		+
+		lda		isrIFR				; For NMI
+		beq		-
++
+
+	lda		#IER_SET|IxR_TIMER2
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Enable Timer2 IRQ - for IRQ to fire
+
+	jsr		WaitT1OneShotUnderflow	; SEI & Disable Timer1 IRQ
+	jsr		WaitT2OneShotUnderflow	; SEI & Disable Timer2 IRQ
+
+	lda		#IxR_TIMER2
+	sta		zpTmp2					; expected
+	and		isrIFR
+	beq		@error
+
+	clc
+	rts								; C=0(OK)
+
+@error
+	sec
+	rts								; C=1(NG)
+
+;------------------------------------------------------------------------------
+
+T6522_3
+	lda		#SY6522_TIMER1H_COUNTER
+	sta		zpTmp2
+	bne		+
+T6522_4
+	lda		#SY6522_TIMER2H_COUNTER
+	sta		zpTmp2
++
+; Pre: zpTmp2 = SY6522_TIMER1L_COUNTER or SY6522_TIMER2L_COUNTER
+;	MBBaseL = $00 or $80
+; Post: C=0(OK), C=1(NG)
+;
+; Test#3,#4
+; . Test all the insn's that can write to T1C_h & T2C_h (excluding RMW: DEC,INC,ASL,LSR,ROL,ROR & 65C02/65816: TRB,TSB)
+
+	jsr		resetSubTest
+
+	lda		#$FF
+	ldy		zpTmp2
+	dey								; SY6522_TIMER1|2L_COUNTER
+	sta		(MBBase),y
+	iny								; SY6522_TIMER1|2H_COUNTER
+	sta		(MBBase),y
+
+	lda		MBBaseH
+	sta		@1+2
+	sta		@2+2
+	sta		@3+2
+	sta		@4+2
+	sta		@5+2
+	sta		@6+2
+	sta		@7+2
+	sta		@8+2
+
+	lda		MBBaseL
+	sta		@4+1
+	sta		@5+1
+	sta		@7+1
+	sta		@8+1
+	ora		zpTmp2					; SY6522_TIMER1|2H_COUNTER
+	sta		@1+1
+	sta		@2+1
+	sta		@3+1
+	sta		@6+1
+
+	lda		MBBaseH
+	sta		zpTmpPtrH
+	lda		MBBaseL
+	ora		zpTmp2					; SY6522_TIMER1|2H_COUNTER
+	sta		zpTmpPtrL
+
+	;
+
+	ldy		#$00
+@1	sty		CARD_BASE+SY6522_TIMER1H_COUNTER
+	jsr		@readT1C				; subTest #0
+
+	lda		#$00
+@2	sta		CARD_BASE+SY6522_TIMER1H_COUNTER
+	jsr		@readT1C				; subTest #1
+
+	ldx		#$00
+@3	stx		CARD_BASE+SY6522_TIMER1H_COUNTER
+	jsr		@readT1C				; subTest #2
+
+	lda		#$00
+	ldy		zpTmp2					; y=SY6522_TIMER1|2H_COUNTER
+@4	sta		CARD_BASE,y
+	jsr		@readT1C				; subTest #3
+
+	lda		#$00
+	ldx		zpTmp2					; x=SY6522_TIMER1|2H_COUNTER
+@5	sta		CARD_BASE,x
+	jsr		@readT1C				; subTest #4
+
+	ldx		#0
+	txa
+	sta		(zpTmpPtr,x)
+	jsr		@readT1C				; subTest #5
+
+	lda		#$00
+	ldy		zpTmp2					; y=SY6522_TIMER1|2H_COUNTER
+	sta		(MBBase),y
+	jsr		@readT1C				; subTest #6
+
+!cpu 65c02
+	lda		is65C02or65816
+	beq		+						; NB. no need to 'inc subTest' for the 6502 path, since the 65C02 sub-tests are the final ones
+
+		lda		#$00
+		sta		(zpTmpPtr)
+		jsr		@readT1C			; subTest #7
+
+@6		stz		CARD_BASE+SY6522_TIMER1H_COUNTER
+		jsr		@readT1C			; subTest #8
+
+		ldx		zpTmp2				; x=SY6522_TIMER1|2H_COUNTER
+@7		stz		CARD_BASE,x
+		jsr		@readT1C			; subTest #9
+
++
+!cpu 6502
+
+	lda		#$00
+	ldy		zpTmp2					; y=SY6522_TIMER1|2H_COUNTER
+	ldx		#$8E					; AppleWin/GH#1333 ($8E looks like STX ABS16 - check AppleWin code pick correct opcode!)
+	sta		(MBBase),y
+	jsr		@readT1C				; subTest #A
+
+	clc								; C=0(OK)
+	rts
+
+	;
+
+@readT1C	; or T2C				; 6cy -> T1|2C=$FFFA
+	ldy		zpTmp2					; 3cy -> T1|2C=$FFF7
+	dey								; 2cy -> T1|2C=$FFF5 / y=SY6522_TIMER1|2L_COUNTER
+@8	lda		CARD_BASE,y				; 4cy -> T1|2C=$FFF1
+	cmp		#$F1
+	bne		+
+	jsr		incSubTestNum
+	rts
+
++	tax
+	pla
+	pla
+	lda		#$F1
+	sta		zpTmp2					; expected
+	txa								; actual
+	sec								; C=1(NG)
+	rts
+
+;------------------------------------------------------------------------------
+
+T6522_5
+	lda		#SY6522_TIMER1L_COUNTER
+	sta		zpTmp2
+	bne		+
+T6522_6
+	lda		#SY6522_TIMER2L_COUNTER
+	sta		zpTmp2
++
+; Pre: zpTmp2 = SY6522_TIMER1L_COUNTER or SY6522_TIMER2L_COUNTER
+;	MBBaseL = $00 or $80
+; Post: C=0(OK), C=1(NG)
+;
+; Test#5,#6
+; . Test all the insn's that can read from T1C_l & T2C_l (excluding RMW: DEC,INC,ASL,LSR,ROL,ROR & 65C02/65816: TRB,TSB)
+
+	jsr		resetSubTestMinus1
+
+	lda		MBBaseH
+	sta		@1+2
+	sta		@2+2
+	sta		@3+2
+	sta		@4+2
+	sta		@5+2
+	sta		@6+2
+	sta		@7+2
+	sta		@8+2
+	sta		@A0+2
+	sta		@B0+2
+	sta		@C0+2
+	sta		@A+2
+	sta		@B+2
+	sta		@C+2
+
+	lda		MBBaseL
+	sta		@2+1
+	sta		@6+1
+	sta		@8+1
+	sta		@B0+1
+	sta		@C0+1
+	sta		@B+1
+	sta		@C+1
+	ora		zpTmp2					; SY6522_TIMER1|2L_COUNTER
+	sta		@1+1
+	sta		@3+1
+	sta		@4+1
+	sta		@5+1
+	sta		@7+1
+	sta		@A+1
+	sta		@A0+1
+
+	lda		MBBaseH
+	sta		zpTmpPtrH
+	lda		MBBaseL
+	ora		zpTmp2					; SY6522_TIMER1|2L_COUNTER
+	sta		zpTmpPtrL
+
+	; BIT, BIT addr,x (65C02/65816)
+
+	jsr		@setT1C_2cy				; subTest #0
+	lda		#$FF
+@1	bit		CARD_BASE+SY6522_TIMER1L_COUNTER
+	; Z = 0xFC & Acc  => Z=0
+	; N = 0xFC & 0x80 => N=1
+	; V = 0xFC & 0x40 => V=1
+	beq		++
+	bpl		++
+	bvs		+
+++	jmp		@readErrA
++
+
+!cpu 65c02
+	lda		is65C02or65816
+	bne		@65c02a
+
+		jsr		incSubTestBy1		; 6502: keep subTest# in sync
+		beq		+
+
+@65c02a	jsr		@setT1C_5cy			; subTest #1
+		lda		#$FF
+		ldx		zpTmp2				; x=SY6522_TIMER1|2L_COUNTER
+@2		bit		CARD_BASE,x
+	; Z = 0xFC & Acc  => Z=0
+	; N = 0xFC & 0x80 => N=1
+	; V = 0xFC & 0x40 => V=1
+	beq		++
+	bpl		++
+	bvs		+
+++	jmp		@readErrA
++
+!cpu 6502
+
+	; CPX, CPY
+
+	jsr		@setT1C_2cy				; subTest #2
+	ldx		#$FC
+@3	cpx		CARD_BASE+SY6522_TIMER1L_COUNTER
+	beq		+
+	jmp		@readErrX
++
+
+	jsr		@setT1C_2cy				; subTest #3
+	ldy		#$FC
+@4	cpy		CARD_BASE+SY6522_TIMER1L_COUNTER
+	beq		+
+	jmp		@readErrY
++
+
+	; LDX
+
+	jsr		@setT1C					; subTest #4
+@5	ldx		CARD_BASE+SY6522_TIMER1L_COUNTER
+	cpx		#$FC
+	beq		+
+	jmp		@readErrX
++
+
+	jsr		@setT1C_3cy				; subTest #5
+	ldy		zpTmp2					; y=SY6522_TIMER1|2L_COUNTER
+@6	ldx		CARD_BASE,y
+	cpx		#$FC
+	beq		+
+	jmp		@readErrX
++
+
+	; LDY
+
+	jsr		@setT1C					; subTest #6
+@7	ldy		CARD_BASE+SY6522_TIMER1L_COUNTER
+	cpy		#$FC
+	beq		+
+	jmp		@readErrY
++
+
+	jsr		@setT1C_3cy				; subTest #7
+	ldx		zpTmp2					; x=SY6522_TIMER1|2L_COUNTER
+@8	ldy		CARD_BASE,x
+	cpy		#$FC
+	beq		+
+	jmp		@readErrY
++
+
+	; CMP
+
+	lda		#$1f
+	sta		subTestNum
+
+	jsr		@setT1C_2cy				; subTest #$20
+	lda		#$FC
+@A0	cmp		CARD_BASE+SY6522_TIMER1L_COUNTER
+	bne		@readErrCMP
+
+	jsr		@setT1C_5cy				; subTest #$21
+	ldx		zpTmp2					; x=SY6522_TIMER1|2L_COUNTER
+	lda		#$FC
+@B0	cmp		CARD_BASE,x
+	bne		@readErrCMP
+
+	jsr		@setT1C_5cy				; subTest #$22
+	ldy		zpTmp2					; y=SY6522_TIMER1|2L_COUNTER
+	lda		#$FC
+@C0	cmp		CARD_BASE,y
+	bne		@readErrCMP
+
+	jsr		@setT1C_5cy				; subTest #$23
+	ldy		zpTmp2					; y=SY6522_TIMER1|2L_COUNTER
+	lda		#$FB
+	cmp		(MBBase),y
+	bne		@readErrCMP
+
+!cpu 65c02
+	lda		is65C02or65816
+	bne		@65c02b
+
+		jsr		incSubTestBy1		; 6502: keep subTest# in sync
+		beq		+
+
+@65c02b	jsr		@setT1C_2cy			; subTest #$24
+		lda		#$FB
+		cmp		(zpTmpPtr)
+		bne		@readErrCMP
++
+!cpu 6502
+
+	jsr		@setT1C_4cy				; subTest #$25
+	ldx		#0
+	lda		#$FA
+	cmp		(zpTmpPtr,x)
+	bne		@readErrCMP
+
+	beq		+
+@readErrCMP
+	jmp		@readErrA
++
+
+	; ORA, AND, EOR, ADC, (STA), LDA, CMP, SBC
+	; 0D,  2D,  4D,  6D,  (8D),  AD,  CD,  ED	= ORA,     AND,     ... SBC
+	; 1D,  3D,  5D,  7D,  (9D),  BD,  DD,  FD	= ORA,X,   AND,X,   ... SBC,X
+	; 19,  39,  59,  79,  (99),  B9,  D9,  F9	= ORA,Y,   AND,Y,   ... SBC,Y
+	; 11,  31,  51,  71,  (91),  B1,  D1,  F1	= ORA(),Y, AND(),Y, ... SBC(),Y
+	; 12,  32,  52,  72,  (92),  B2,  D2,  F2	= ORA(),   AND(),   ... SBC()		- 65C02/65816
+	; 01,  21,  41,  61,  (81),  A1,  C1,  E1	= ORA(,X), AND(,X), ... SBC(,X)
+
+	; need to be in ascending cycle-duration order, so that the 'dec @X+1'
+	lda		#$0D	; ora abs
+	sta		@A
+	lda		#$1D	; ora abs,x
+	sta		@B
+	lda		#$19	; ora abs,y
+	sta		@C
+	lda		#$11	; ora (zp),y
+	sta		@D
+	lda		#$12	; ora (zp)
+	sta		@E
+	lda		#$01	; ora (zp,x)
+	sta		@F
+
+	lda		#$00
+	sta		@X+1
+
+	lda		#$2f
+	sta		subTestNum
+
+@loop
+		jsr		@setT1C				; subTest #$30, $40, $50, $60, $70, $80
+@A		ora		CARD_BASE+SY6522_TIMER1L_COUNTER
+		cmp		#$FC
+		bne		@readErrA
+
+		jsr		@setT1C_3cy			; subTest #$31, ...
+		ldx		zpTmp2				; x=SY6522_TIMER1|2L_COUNTER
+@B		ora		CARD_BASE,x
+		cmp		#$FC
+		bne		@readErrA
+
+		jsr		@setT1C_3cy			; subTest #$32, ...
+		ldy		zpTmp2				; y=SY6522_TIMER1|2L_COUNTER
+@C		ora		CARD_BASE,y
+		cmp		#$FC
+		bne		@readErrA
+
+		lda		@D					; subTest #$33, ...
+		cmp		#$F1				; opcode == 'sbc (zp),y' ?
+		bne		+
+			dec		@X+1			; only for sbc opcodes
+			dec		@X+1
++		jsr		@setT1C_3cy
+		ldy		zpTmp2				; y=SY6522_TIMER1|2L_COUNTER
+@D		ora		(MBBase),y
+		cmp		#$FB
+		bne		@readErrA_FB
+
+!cpu 65c02
+		lda		is65C02or65816
+		bne		@65c02c
+
+			jsr		incSubTestBy1	; 6502: keep subTest# in sync
+			beq		+
+
+@65c02c		; NB. Don't dec @X+1, since 'sbc (zp),y' & 'sbc (zp)' are both 5 cycles
+			jsr		@setT1C			; subTest #$34, ...
+@E			ora		(zpTmpPtr)
+			cmp		#$FB
+			bne		@readErrA_FB
++
+!cpu 6502
+
+		lda		@F
+		cmp		#$E1				; opcode == 'sbc (zp,x)' ?
+		bne		+
+			dec		@X+1			; only for sbc opcodes
+			dec		@X+1
++		jsr		@setT1C_2cy			; subTest #$35, ...
+		ldx		#0
+@F		ora		(zpTmpPtr,x)
+		cmp		#$FA
+		bne		@readErrA_FA
+
+		jsr		@nextOpcode
+		bcc		@loop
+
+	clc								; C=0(OK)
+	rts
+
+	;
+
+@readErrY
+	tya
+@readErrA
+	tax
+@readErrX
+	lda		#$FC
+-	sta		zpTmp2					; expected
+	txa								; actual
+	sec								; C=1(NG)
+	rts
+
+@readErrA_FB
+	tax
+	lda		#$FB
+	bne		-
+@readErrA_FA
+	tax
+	lda		#$FA
+	bne		-
+
+	;
+
+@setT1C		; after RTS, 6522 access occurs immediately
+; Post: T1C=nnFF, A=0, C=0
+	lda		#$09
+	bne		+
+
+@setT1C_2cy	; after RTS, 2 cycles until the 6522 access
+; Post: T1C=nn01, A=0, C=0
+	lda		#$0B
+	bne		+
+
+@setT1C_3cy	; after RTS, 3 cycles until the 6522 access
+; Post: T1C=nn02, A=0, C=0
+	lda		#$0C
+	bne		+
+
+@setT1C_4cy	; after RTS, 4 cycles until the 6522 access
+; Post: T1C=nn03, A=0, C=0
+	lda		#$0D
+	bne		+
+
+@setT1C_5cy	; after RTS, 5 cycles until the 6522 access
+; Post: T1C=nn04, A=0, C=0
+	lda		#$0E
+
++	jsr		incSubTestNum
+
+	ldy		zpTmp2						; y=SY6522_TIMER1|2L_COUNTER
+	sta		(MBBase),y
+	iny									; y=SY6522_TIMER1|2H_COUNTER
+	sta		(MBBase),y					; For @setT1C: post: T1C = $0909
+@X	lda		#0							;              post: T1C = $0907
+	clc		; clc for adc/sbc-opcodes	;              post: T1C = $0905
+	rts									;              post: T1C = $08FF (as RTS is 6cy)
+
+	;
+
+@nextOpcode
+; Post: C=0(more), C=1(done)
+	lda		#$00
+	sta		@X+1
+
+-	clc
+	lda		@A
+	adc		#$20
+	sta		@A
+	lda		@B
+	adc		#$20
+	sta		@B
+	lda		@C
+	adc		#$20
+	sta		@C
+	lda		@D
+	adc		#$20
+	sta		@D
+	lda		@E
+	adc		#$20
+	sta		@E
+	lda		@F
+	adc		#$20				; last is (zp,x)
+	sta		@F
+	bcs		++					; overflowed... so done
+
+	cmp		#$81				; skip the STA-opcodes
+	beq		-
+	cmp		#$C1				; skip the CMP-opcodes
+	beq		-
+
+	cmp		#$21				; and (zp,x) ?
+	bne		+
+		lda		#$FF			; for AND-opcodes: "lda #$FF"
+		sta		@X+1
+
++	cmp		#$E1				; sbc (zp,x) ?
+	bne		+
+		lda		#$F9			; for SBC-opcodes: "lda #$F9", where $FC = $1F9 - $FC + (C-1)
+		sta		@X+1
+
++	lda		subTestNum
+	ora		#$0f
+	sta		subTestNum
+	clc
+++	rts
+
+;------------------------------------------------------------------------------
+
+T6522_7
+	lda		#SY6522_TIMER1L_COUNTER
+	sta		zpTmp2
+	bne		+
+T6522_8
+	lda		#SY6522_TIMER2L_COUNTER
+	sta		zpTmp2
++
+; Pre: zpTmp2 = SY6522_TIMER1L_COUNTER or SY6522_TIMER2L_COUNTER
+;	MBBaseL = $00 or $80
+; Post: C=0(OK), C=1(NG)
+;
+; Test#7,8 (AppleWin/GH#833)
+; . Test reading T1|2C_h when T1|2C_l underflows
+
+	jsr		resetSubTest
+	jsr		incTotalTests
+
+	lda		#4						; Set T1|2C=$0104
+	ldy		zpTmp2					; y=SY6522_TIMER1|2L_COUNTER
+	sta		(MBBase),y
+	lda		#1
+	iny								; y=SY6522_TIMER1|2H_COUNTER
+	sta		(MBBase),y
+	lda		(MBBase),y				; 5cy
+	beq		+						; error
+
+	jsr		incSubTestNum			; subTest #1
+
+	ldx		#3
+-		txa							; Set T1|2C=$0103,...,$0100
+		ldy		zpTmp2				; y=SY6522_TIMER1|2L_COUNTER
+		sta		(MBBase),y
+		lda		#1
+		iny							; y=SY6522_TIMER1|2H_COUNTER
+		sta		(MBBase),y
+		lda		(MBBase),y			; 5cy
+		bne		+					; error
+		dex
+		bpl		-
+
+	clc								; C=0(OK)
+	rts
+
++	tax
+	lda		#$00
+	sta		zpTmp2					; expected
+	txa								; actual
+	sec								; C=1(NG)
+	rts
+
+;------------------------------------------------------------------------------
+
+T6522_9
+; Pre: MBBaseL = $00 or $80
+; Post: C=0(OK), C=1(NG)
+;
+; Test#9 (AppleWin/GH#833)
+; . Test 4x that T1C in free-running mode (on underflow) gets reloaded with T1C_h=$01
+; . Test 4x that T1C in one-shot mode (on underflow) gets reloaded with T1C_h=$02
+; . Test 1x that T2C (on underflow) gets reloaded with T2C_h=$ff
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	lda		#$80					; set T1C = T1L = $0180
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	lda		#$01
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y
+	tax
+
+	lda		#ACR_FREERUNNING
+	ldy		#SY6522_ACR
+	sta		(MBBase),y				; Free-running timer
+
+	lda		#4
+	sta		zpTmp2
+
+-		jsr		WaitT1Underflow
+		ldy		#SY6522_TIMER1H_COUNTER
+		lda		(MBBase),y
+		cmp		#$01
+		bne		@error
+		dec		zpTmp2
+		bne		-
+
+	;
+
+	jsr		incSubTestNum			; subTest #1
+
+	lda		#$80					; set T1C = T1L = $0280
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	lda		#$02
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y
+	tax
+
+	lda		#ACR_ONESHOT
+	ldy		#SY6522_ACR
+	sta		(MBBase),y				; One-shot timer
+
+	lda		#4
+	sta		zpTmp2
+
+-		jsr		WaitT1Underflow
+		ldy		#SY6522_TIMER1H_COUNTER
+		lda		(MBBase),y
+		cmp		#$02
+		bne		@error
+		dec		zpTmp2
+		bne		-
+
+	;
+
+	jsr		incSubTestNum			; subTest #2
+
+	lda		#$80					; set T2C = $0380 (only one-shot for timer2)
+	ldy		#SY6522_TIMER2L_COUNTER
+	sta		(MBBase),y
+	lda		#$03
+	ldy		#SY6522_TIMER2H_COUNTER
+	sta		(MBBase),y
+	tax
+
+	jsr		WaitT2Underflow
+	ldy		#SY6522_TIMER2H_COUNTER
+	lda		(MBBase),y
+	cmp		#$FF					; there is no latch, so continues decrementing
+	bne		@error
+
+	clc								; C=0(OK)
+	rts
+
+@error	; Pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	sec								; C=1(NG)
+	rts
+
+;------------------------------------------------------------------------------
+
+T6522_A
+; Pre: MBBaseL = $00 or $80
+; Post: C=0(OK), C=1(NG)
+;
+; Test#A
+; . Check T1's bounds on underflow
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	lda		#ACR_ONESHOT
+	ldy		#SY6522_ACR
+	sta		(MBBase),y				; One-shot timer
+
+	lda		#7
+	sta		zpTmp2					; T1C_l
+
+	; subTest#            0,     1,     2,     3,     4,     5,     6,     7
+	; set T1C = T1L = $0007, $0006, $0005, $0004, $0003, $0002, $0001, $0000
+	; expected read :   $01,   $00,   $FF,   $04,   $02,   $00,   $01,   $00
+-		lda		zpTmp2
+		ldy		#SY6522_TIMER1L_COUNTER
+		sta		(MBBase),y
+		lda		#$00
+		ldy		#SY6522_TIMER1H_COUNTER
+		sta		(MBBase),y
+
+		ldy		#SY6522_TIMER1L_COUNTER	; 2cy
+		lda		(MBBase),y				; 5cy
+		sta		zpTmp3
+
+		; calc the expected T1C_l
+		lda		zpTmp2
+		sec
+		sbc		#6					; 2cy + (5cy - 1cy)
+--			bpl		+				; repeat until in range...
+			cmp		#$ff
+			beq		+
+			clc
+			adc		zpTmp2			; += T1C_l
+			clc
+			adc		#2				; += 2 (as 6522 counts N+2 cycles)
+			jmp		--
++		tax							; expected
+		lda		zpTmp3				; actual
+		cpx		zpTmp3
+		bne		@error
+		jsr		incSubTestNum		; subTest (next)
+		dec		zpTmp2
+		bpl		-
+
+	jsr		WaitT1OneShotUnderflow
+	clc
+	rts
+
+@error	; Pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	pha
+	jsr		WaitT1OneShotUnderflow	; don't leave T1L set to a very small value (else 6522 detection will fail next time!)
+	pla
+	sec
+	rts								; C=0(OK), C=1(NG)
+
+;--------------------------------------
+
+; Wrap T6522_A for MegaAudio
+; mb-audit/GH#9: Test 11:0A:03 / Expected:04 Actual:FE
+; Test MegaAudio's T1 counter underflows to $FFFE (not $FFFF as it does for a real Mockingboard)
+T6522_A_MA
+	jsr		T6522_A
+	bcc		@error
+	cmp		#$FE
+	bne		@error
+	ldx		#$04
+	cpx		zpTmp2
+	bne		@error
+	clc
+	rts
+@error
+	sec
+	rts
+
+;------------------------------------------------------------------------------
+
+T6522_B
+; Pre: MBBaseL = $00 or $80
+; Post: C=0(OK), C=1(NG)
+;
+; Test#B (AppleWin/GH#652)
+; . Check T1's bounds on $ffff underflow, with big gaps between 6522 accesses
+; EG.
+;    ]CALL-151
+;    *C404:0 0	; T1C=T1L=$0000
+;    *C400.C47F
+; Then verify that both $C4n4(l) and $C4n5(h) = $00 or $FF (and nothing else - but one can be $00, the other $FF)
+;
+
+	sei								; cycle-accurate test, so prevent other IIgs IRQs occurring
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	lda		#ACR_ONESHOT
+	ldy		#SY6522_ACR
+	sta		(MBBase),y				; One-shot timer
+
+	lda		#$00					; T1C = T1L = $0000
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	lda		#$00
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y
+
+	; Delay for ~$9000cy (ie. T1C -> ~$7000)
+	; . For just-in-time 6522 emulation, then 6522 T1 won't be updated after every opcode (or 6502 cycle)
+	;   so a "big" gap between 6522 accesses may result in an out of bounds value.
+	ldx		#0						; 2cy (*)
+	lda		#$78
+	jsr		myWAIT					; WAIT $9301cy => T1=$7nnn (ie. sign extended it's now +ve)
+
+	ldy		#SY6522_TIMER1H_COUNTER
+	lda		(MBBase),y
+	ldx		#$FF					; expected
+	cmp		#$FF
+	bne		@error
+
+	;
+
+	jsr		incSubTestNum			; subTest #1
+
+	lda		#$00					; T1C = T1L = $0000
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	lda		#$00
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y
+
+	; Delay for ~$9000cy (ie. T1C -> ~$7000)
+	; . For just-in-time 6522 emulation, then 6522 T1 won't be updated after every opcode (or 6502 cycle)
+	;   so a "big" gap between 6522 accesses may result in an out of bounds value.
+	ldx		0						; 3cy (*)
+	lda		#$78
+	jsr		myWAIT					; WAIT $9301cy => T1=$7nnn (ie. sign extended it's now +ve)
+
+	ldy		#SY6522_TIMER1H_COUNTER
+	lda		(MBBase),y
+	ldx		#$00					; expected
+	cmp		#$00
+	bne		@error
+
+	jsr		WaitT1OneShotUnderflow
+	clc
+	rts								; C=0(OK)
+
+@error	; Pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	pha
+	jsr		WaitT1OneShotUnderflow	; don't leave T1L set to a very small value (else 6522 detection will fail next time!)
+	pla
+	sec
+	rts								; C=1(NG)
+
+;--------------------------------------
+
+; Wrap T6522_B for MegaAudio
+; mb-audit/GH#9: Test 11:0B:00 / Expected:FF Actual:6C
+; Test MegaAudio interprets T1 latch of $0000 as $10000 (or $FFFF)
+T6522_B_MA
+	jsr		T6522_B
+	bcc		@error
+	cmp		#$6C
+	bne		@error
+	ldx		#$FF
+	cpx		zpTmp2
+	bne		@error
+	clc
+	rts
+@error
+	sec
+	rts
+
+;------------------------------------------------------------------------------
+
+T6522_C
+; Pre: MBBaseL = $00 or $80
+; Post: C=0(OK), C=1(NG)
+;
+; Test#C
+; . Check MB detection by reading T1C_l either side of the underflow
+; (ie. in these cases, MB detection will correctly fail!)
+;
+
+	sei								; cycle-accurate test, so prevent other IIgs IRQs occurring
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	; #0: Start with a sanity check for the mainline case (no underflow)
+	jsr		WaitT1OneShotUnderflow	; T1C = T1L = $0101
+	sec
+	ldy		#SY6522_TIMER1L_COUNTER
+	lda		(MBBase),y
+	sbc		(MBBase),y
+	ldx		#$05					; expect: $E0-$DB = $05
+	cmp		#$05
+	bne		@error
+
+	;
+
+	jsr		incSubTestNum			; subTest #1
+
+	; #1: A very small latch (MB detection will fail)
+	lda		#$08					; T1C = T1L = $0008
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	lda		#$00
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y				; --- T1C=$0008
+
+	sec								; 2cy T1C=$0006
+	ldy		#SY6522_TIMER1L_COUNTER	; 2cy T1C=$0004
+	lda		(MBBase),y				; 5cy T1C=$ffff read:$00
+	sbc		(MBBase),y				; 5cy T1C=$0004 read:$05
+	ldx		#$FB					; expect: $00-$05 = $FB
+	cmp		#$FB
+	bne		@error
+
+	;
+
+	jsr		incSubTestNum			; subTest #2
+
+	; #2: T1C_l reads $FF for 2 cycles (MB detection will fail)
+	lda		#$ff					; T1C = T1L = $00ff
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	lda		#$00
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y				; --- T1C=$00ff
+
+	; delay $f7 cycles: $e8 + 12 + 3
+	; NB. timing sensitive, so avoid any "Bcc" opcodes that could page-cross (when taken)
+	lda		#7						;$e8 cycles
+	jsr		myWAIT
+	jsr		@rts					;12cy
+	lda		0						; 3cy
+
+									; --- T1C=$0008
+	sec								; 2cy T1C=$0006
+	ldy		#SY6522_TIMER1L_COUNTER	; 2cy T1C=$0004
+	lda		(MBBase),y				; 5cy T1C=$ffff read:$00
+	sbc		(MBBase),y				; 5cy T1C=$00fb read:$fc
+	ldx		#$04					; expect: $00-$FC = $04
+	cmp		#$04
+	bne		@error
+
+	clc
+@rts
+	rts								; C=0(OK)
+
+@error	; Pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	pha
+	jsr		WaitT1OneShotUnderflow	; don't leave T1L set to a very small value (else 6522 detection will fail next time!)
+	pla
+	sec
+	rts								; C=1(NG)
+
+;------------------------------------------------------------------------------
+
+T6522_D
+; Pre: MBBaseL = $00 or $80
+; Post: C=0(OK), C=1(NG)
+;
+; Test#D
+; . Check reading T2C_l either side of the underflow
+;
+
+	sei								; cycle-accurate test, so prevent other IIgs IRQs occurring
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	; #0: Start with a sanity check for the mainline case (no underflow)
+	jsr		WaitT2OneShotUnderflow	; T2C =$0101
+	sec
+	ldy		#SY6522_TIMER2L_COUNTER
+	lda		(MBBase),y
+	sbc		(MBBase),y
+	ldx		#$05					; expect: $DD-$D8 = $05
+	cmp		#$05
+	bne		@error
+
+	;
+
+	jsr		incSubTestNum			; subTest #1
+
+	; #1: No latch, so T2C continues counting down from $ffff
+	lda		#$08					; T2C = $0008
+	ldy		#SY6522_TIMER2L_COUNTER
+	sta		(MBBase),y
+	lda		#$00
+	ldy		#SY6522_TIMER2H_COUNTER
+	sta		(MBBase),y				; --- T2C=$0008
+
+	sec								; 2cy T2C=$0006
+	ldy		#SY6522_TIMER2L_COUNTER	; 2cy T2C=$0004
+	lda		(MBBase),y				; 5cy T2C=$ffff read:$00
+	sbc		(MBBase),y				; 5cy T2C=$fffa read:$fb
+	ldx		#$05					; expect: $00-$FB = $05
+	cmp		#$05
+	bne		@error
+
+	;
+
+	jsr		incSubTestNum			; subTest #2
+
+	; #2: T2C_l reads $FF for 1 cycle (cf. T1C_l reads $FF for 2 cycles)
+	lda		#$ff					; T2C = $00ff
+	ldy		#SY6522_TIMER2L_COUNTER
+	sta		(MBBase),y
+	lda		#$00
+	ldy		#SY6522_TIMER2H_COUNTER
+	sta		(MBBase),y				; --- T2C=$00ff
+
+	; delay $f7 cycles: $e8 + 12 + 3
+	; NB. timing sensitive, so avoid any "Bcc" opcodes that could page-cross (when taken)
+	lda		#7						;$e8 cycles
+	jsr		myWAIT
+	jsr		@rts					;12cy
+	lda		0						; 3cy
+
+									; --- T2C=$0008
+	sec								; 2cy T2C=$0006
+	ldy		#SY6522_TIMER2L_COUNTER	; 2cy T2C=$0004
+	lda		(MBBase),y				; 5cy T2C=$ffff read:$00
+	sbc		(MBBase),y				; 5cy T2C=$fffa read:$fb
+	ldx		#$05					; expect: $00-$FB = $05
+	cmp		#$05
+	bne		@error
+
+	clc
+@rts
+	rts								; C=0(OK)
+
+@error	; Pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	sec
+	rts								; C=1(NG)
+
+;------------------------------------------------------------------------------
+
+T6522_E
+; Pre: MBBaseL = $00 or $80
+; Post: C=0(OK), C=1(NG)
+;
+; Test#E
+; . Test 6522 T1 period is N+2 cycles
+;	use IRQ to trigger at start of opcode
+;	NB. 6522 connected to NMI isn't supported
+; . Assume this won't work on MegaAudio - TODO: confirm this.
+;
+
+	lda		MBBaseL
+	bne		+
+		lda		isrNMIcount_A
+		beq		@doTest
+			clc
+			rts
++		lda		isrNMIcount_B
+		beq		@doTest
+			clc
+			rts
+
+@doTest
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	jsr		WaitT2OneShotUnderflow	; clear any T2 ints
+
+	;
+
+	lda		#0
+	sta		isrIFR
+
+	jsr		WaitT1OneShotUnderflow
+
+	cli
+
+	lda		#$0B
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	lda		#$00
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y				; T1=$000B Clear T1 IRQ
+
+	lda		#IER_SET|IxR_TIMER1		; T1=$0009
+	ldy		#SY6522_IER				; T1=$0007
+	sta		(MBBase),y				; T1=$0001 Enable T1 IRQ
+	sei								; T1=$FFFF Disable ints just *before* 6522 asserts IRQ
+	nop								; IRQ asserted on 1st cycle
+
+	ldx		#0
+	lda		isrIFR
+	bne		@error
+
+	;
+
+	jsr		incSubTestNum			; subTest #1
+
+	jsr		WaitT1OneShotUnderflow
+
+	cli
+
+	lda		#$0A
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	lda		#$00
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y				; T1=$000A Clear T1 IRQ
+
+	lda		#IER_SET|IxR_TIMER1		; T1=$0008
+	ldy		#SY6522_IER				; T1=$0006
+	sta		(MBBase),y				; T1=$0000 Enable T1 IRQ
+	ora		$00						; T1=$FFFF/$000A/$0009 IRQ asserted on 2nd cycle
+									; Vector to ISR
+	sei								; Disable ints just *after* return from ISR
+
+	ldx		#IxR_TIMER1
+	lda		isrIFR
+	beq		@error
+
+	;
+
+	jsr		WaitT1OneShotUnderflow
+	clc
+	rts
+
+@error	; Pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	pha
+	jsr		WaitT1OneShotUnderflow
+	pla
+	sec								; C=1(NG)
+	rts
+
+;------------------------------------------------------------------------------
+
+T6522_F
+; Pre: MBBaseL = $00 or $80
+; Post: C=0(OK), C=1(NG)
+;
+; Test#F
+; . Test 6522 T1 period is N+2 cycles
+;	alt version (cf. Test#E): just read IFR, not using IRQ - emulators must support sub-opcode accuracy for reading IFR
+; . Assume this won't work on MegaAudio - TODO: confirm this.
+;
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	sei
+
+	lda		#$10
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	lda		#$00
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y				; T1=$0010 Clear T1 IRQ
+
+	lda		#IER_SET|IxR_TIMER1		; T1=$000E
+	ldy		#SY6522_IER				; T1=$000C
+	sta		(MBBase),y				; T1=$0006 Enable T1 IRQ
+	dey								; T1=$0004 Y=IFR
+	lda		(MBBase),y				; T1=$FFFF IFR read on 5th cycle, so just before IRQ asserted
+	ldx		#0
+	and		#IxR_TIMER1
+	bne		@error
+
+	;
+
+	lda		#$0F
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	lda		#$00
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y				; T1=$000F Clear T1 IRQ
+
+	lda		#IER_SET|IxR_TIMER1		; T1=$000D
+	ldy		#SY6522_IER				; T1=$000B
+	sta		(MBBase),y				; T1=$0005 Enable T1 IRQ
+	dey								; T1=$0003 Y=IFR
+	lda		(MBBase),y				; T1=$000F IFR read on 5th cycle, so just after IRQ asserted
+	ldx		#IxR_TIMER1
+	and		#IxR_TIMER1
+	beq		@error
+
+	jsr		WaitT1OneShotUnderflow
+	clc								; C=0(OK)
+	rts
+
+@error	; Pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	pha
+	jsr		WaitT1OneShotUnderflow
+	pla
+	sec								; C=1(NG)
+	rts
+
+;------------------------------------------------------------------------------
+
+T6522_10
+	lda		#<T6522_10_data
+	sta		zpTmpPtrL
+	lda		#>T6522_10_data
+	sta		zpTmpPtrH
+
+	lda		#SY6522_TIMER1L_COUNTER
+	bne		+
+
+T6522_11
+	lda		#<T6522_11_data
+	sta		zpTmpPtrL
+	lda		#>T6522_11_data
+	sta		zpTmpPtrH
+
+	lda		#SY6522_TIMER2L_COUNTER
++	sta		zpTmp6
+@T6522_11_prealign
+
+; NB. Align to a page boundary, as the 2 branches in the inner-loop "@loop" can't page-cross
+;     as this incurs an extra cycle, and the loop+results are timing sensitive.
+; The following "align" currently adds ~110 bytes of padding:
+!align 255, 0, $EA		; align to 256 bytes (pad with $EA's)
+!warn "T6522_11 padding = ", * - @T6522_11_prealign
+
+; Pre: zpTmp6 = SY6522_TIMER1L_COUNTER or SY6522_TIMER2L_COUNTER
+;	MBBaseL = $00 or $80
+; Post: C=0(OK), C=1(NG)
+;
+; Test#10,11 (generalised from AppleWin/GH#496)
+; Test polling IFR.Timer1 or IFR.Timer2 (NB. with Interrupt Enable off, ie. IER.Timer1=IER.Timer2=0)
+; - relies on sub-opcode accuracy for reading IFR
+
+	jsr		resetSubTestMinus1
+
+	lda		#IER_CLR|IxR_TIMER1|IxR_TIMER2
+	ldy		#SY6522_IER
+	sta		(MBBase),y					; Disable Timer1&2 IRQs
+
+	cli									; IER.T1=IER.T2=0, so IRQ won't fire
+
+	lda		#ACR_ONESHOT
+	ldy		#SY6522_ACR
+	sta		(MBBase),y
+
+@t1_loop
+		ldy		#0
+		lda		(zpTmpPtr),y
+		ldy		zpTmp6
+		sta		(MBBase),y
+		ldy		#1
+		lda		(zpTmpPtr),y
+		ldy		zpTmp6
+		iny
+		sta		(MBBase),y				; clear IFR.T1 & start (eg. countdown from 0x100)
+
+		ldx		#0
+		ldy		#SY6522_IFR
+
+@loop		lda		(MBBase),y			; EG. For initial T1C/T2C=0x100; for loop X=$12, for the 5 cycles of "lda (zp),y":
+										;  T1C=$0000, IFR.T1=0      T2C=$0000, IFR.T2=0
+										;  T1C=$FFFF, IFR.T1=0      T2C=$FFFF, IFR.T2=0 <-- just like IFR.T1, this reads as 0 for this cycle!
+										;  T1C=$0100, IFR.T1=1      T2C=$FFFE, IFR.T2=1
+										;  T1C=$00FF, IFR.T1=1      T2C=$FFFD, IFR.T2=1
+										;  T1C=$00FE, IFR.T1=1      T2C=$FFFC, IFR.T2=1
+			and		#IxR_TIMER1|IxR_TIMER2
+			bne		@timer_set
+			inx
+			bne		@loop
+
+		jsr		resetSubTestMinus1		; subTest #$ff
+		bne		@error					; timeout
+
+@timer_set
+		ldy		zpTmp6					; y=SY6522_TIMER1L_COUNTER or SY6522_TIMER2L_COUNTER
+		lda		(MBBase),y				; (reading T1C_l clears IFR.T1)
+		sta		zpTmp5					; T1C_l
+		iny								; y=SY6522_TIMER1H_COUNTER or SY6522_TIMER2H_COUNTER
+		lda		(MBBase),y
+		sta		zpTmp2					; T1C_h
+
+		jsr		incSubTestNum			; subTest #0,3,..
+		ldy		#2
+		txa
+		cmp		(zpTmpPtr),y			; x (loop count)
+		bne		@error
+
+		jsr		incSubTestNum			; subTest #1,4,...
+		iny
+		lda		zpTmp5
+		cmp		(zpTmpPtr),y			; T1C_l
+		bne		@error
+
+		jsr		incSubTestNum			; subTest #2,5,...
+		iny
+		lda		zpTmp2
+		cmp		(zpTmpPtr),y			; T1C_h
+		bne		@error
+
+		clc
+		lda		zpTmpPtrL
+		adc		#5
+		sta		zpTmpPtrL
+		bcc		+
+			inc		zpTmpPtrH
++
+		ldy		#0
+		lda		(zpTmpPtr),y
+		bne		@t1_loop
+		iny
+		lda		(zpTmpPtr),y
+		bne		@t1_loop
+
+	clc
+	rts
+
+@error	; Pre: A=actual, (zpTmpPtr),y=actual
+	tax
+	lda		(zpTmpPtr),y
+	sta		zpTmp2						; expected
+	txa									; actual
+	sec									; C=1(NG)
+	rts
+
+T6522_10_data
+	; start-T1L, start-T1H, result-X; result-T1L, result-T1H
+	!byte	$04,$01, $13,$eb,$00		; T1C=$0104
+	!byte	$03,$01, $12,$f7,$00		; T1C=$0103
+	!byte	$02,$01, $12,$f5,$00		; T1C=$0102
+	!byte	$01,$01, $12,$f3,$00		; T1C=$0101
+	!byte	$00,$01, $12,$f1,$00		; T1C=$0100
+	!byte	$ff,$00, $12,$ef,$00		; T1C=$00FF
+	!byte	$fe,$00, $12,$ed,$00		; T1C=$00FE
+	!byte	$fd,$00, $12,$eb,$00		; T1C=$00FD
+	!byte	$fc,$00, $12,$e9,$00		; T1C=$00FC
+	!byte	$fb,$00, $12,$e7,$00		; T1C=$00FB
+	!byte	$fa,$00, $12,$e5,$00		; T1C=$00FA
+	!byte	$f9,$00, $12,$e3,$00		; T1C=$00F9
+	!byte	$f8,$00, $12,$e1,$00		; T1C=$00F8
+	!byte	$f7,$00, $12,$df,$00		; T1C=$00F7
+	!byte	$f6,$00, $12,$dd,$00		; T1C=$00F6
+	!byte	$f5,$00, $11,$e9,$00		; T1C=$00F5
+	!byte	0,0							; end
+
+T6522_11_data
+	; start-T2L, start-T2H, result-X; result-T2L, result-T2H
+	!byte	$04,$01, $13,$e5,$ff		; T2C=$0104
+	!byte	$03,$01, $12,$f2,$ff		; T2C=$0103
+	!byte	$02,$01, $12,$f1,$ff		; T2C=$0102
+	!byte	$01,$01, $12,$f0,$ff		; T2C=$0101
+	!byte	$00,$01, $12,$ef,$ff		; T2C=$0100
+	!byte	$ff,$00, $12,$ee,$ff		; T2C=$00FF
+	!byte	$fe,$00, $12,$ed,$ff		; T2C=$00FE
+	!byte	$fd,$00, $12,$ec,$ff		; T2C=$00FD
+	!byte	$fc,$00, $12,$eb,$ff		; T2C=$00FC
+	!byte	$fb,$00, $12,$ea,$ff		; T2C=$00FB
+	!byte	$fa,$00, $12,$e9,$ff		; T2C=$00FA
+	!byte	$f9,$00, $12,$e8,$ff		; T2C=$00F9
+	!byte	$f8,$00, $12,$e7,$ff		; T2C=$00F8
+	!byte	$f7,$00, $12,$e6,$ff		; T2C=$00F7
+	!byte	$f6,$00, $12,$e5,$ff		; T2C=$00F6
+	!byte	$f5,$00, $11,$f2,$ff		; T2C=$00F5
+	!byte	0,0							; end
+
+;------------------------------------------------------------------------------
+
+T6522_12
+; Pre: MBBaseL = $00
+;	has6522
+; Post: C=0(OK), C=1(NG)
+;
+; Test#12
+; . test accessing 6522 at $10 (ie. not $00) - avoid $20, $40 (and combinations) as this is the SSI263
+; . test accessing 6522 at $90 (ie. not $80)
+;
+
+	lda		MBBaseL					; must be $00 for Check6522ABDatalines1 (and because this test uses both 6522s)
+	beq		+
+		clc
+		rts
++
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	lda		zpTmp1
+	pha								; save (as used by parent)
+
+	lda		MBBaseL
+	pha								; save
+	clc
+	adc		#$10
+	sta		MBBaseL
+
+	lda		has6522
+	sta		zpTmp1
+	jsr		Check6522ABDatalines1	; Post: C
+
+	pla
+	sta		MBBaseL
+	pla
+	sta		zpTmp1
+
+	rts
+
+;------------------------------------------------------------------------------
+
+T6522_13
+; Pre: MBBaseL = $00
+;	has6522
+; Post: C=0(OK), C=1(NG)
+;
+; Test#13
+; . For Phasor check the Echo+ mode
+;
+
+	lda		MBBaseL
+	bne		@out
+	lda		isPhasorCard
+	bne		+
+@out	clc
+		rts
++
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	lda		#PH_ECHOPLUS
+	jsr		SetPhasorMode
+
+	; NB. if either of the 6522B's AYs are missing then DetectMB4CorEchoPlusorSDM() returns with isSDMusic=1
+	; because IsEchoPlus() has failed.
+	; TODO: If ((hasAY8913 & %1010) != %1010) then output a warning for this test.
+	jsr		DetectMB4CorEchoPlusorSDM
+	lda		isMB4C
+	ora		isSDMusic
+	bne		@error					; can only happen if there are missing AYs (see above)
+	lda		isEchoPlus
+	beq		@error					; if no Echo+, then bug in an emulator's Phasor support
+
+	;
+	; Check that in Echo+ mode, 6522-A can generate IRQs (even though it's unmapped)
+	;
+
+	sei
+
+	lda		#<T6522_13_ISR
+	ldx		#>T6522_13_ISR
+	jsr		SetIrqNmiVectors
+
+	jsr		incSubTestNum			; subTest #1
+	lda		#PH_MOCKINGBOARD		; use PH_MOCKINGBOARD (not PH_PHASOR) as T6522_13_ISR() r/w's 6522 at $Cn00
+	jsr		SetPhasorMode
+
+	lda		#$01
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y
+
+	lda		#ACR_ONESHOT
+	ldy		#SY6522_ACR
+	sta		(MBBase),y
+
+	lda		#IER_SET|IxR_TIMER1
+	ldy		#SY6522_IER
+	sta		(MBBase),y
+
+	lda		#0
+	sta		isrFlag
+
+	lda		#PH_ECHOPLUS
+	jsr		SetPhasorMode			; Post: only 6522-B is visible
+
+	cli
+
+	lda		#$8						; wait 0x119 cycles, and 6522-A has underflowed
+	jsr		myWAIT					; NB. ISR reverts to PH_MOCKINGBOARD mode
+
+	sei
+
+	lda		isrFlag
+	beq		@error
+
+	;
+
+	clc
+	bcc		+
+@error
+	sec
++	php
+
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode
+
+	lda		#0
+	sta		isMB4C
+	sta		isEchoPlus
+
+	plp
+	rts
+
+;
+
+T6522_13_ISR
+; Pre:
+;	6502 has pushed P
+;	Apple ROM has stored A to $45 (not Apple //e ROM!)
+;
+
+	+ISR_ENTRY
+
+	lda		#PH_MOCKINGBOARD
+	jsr		SetPhasorMode		; Map 6522-A back in
+
+	ldy		#SY6522_IFR
+	lda		(MBBase),y
+	sta		(MBBase),y
+	sta		isrFlag
+
+	+ISR_EXIT
+
+;------------------------------------------------------------------------------
+
+T6522_14
+; Pre: MBBaseL = $00
+;	has6522
+; Post: C=0(OK), C=1(NG)
+;
+; Test#14
+; . Setup counters on all the 6522's T1+T2
+;	6522-A T1 is free-running
+;	6522-A T2 is one-shot
+;	6522-B T1 is free-running
+;	6522-B T2 is one-shot
+; . NB T6522_MultiCard_ISR handles ints in any order, and simultaneously too.
+; . ISR disables the T1/T2 int so it only generates an IRQ once.
+; . Don't use 6522 if it's connected to NMI (as nested IRQ then NMI aren't supported by my ISR)
+;
+
+	lda		MBBaseL					; must be $00 for ISR (and because this test uses both 6522s)
+	beq		+
+		clc
+		rts
++
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	sei
+
+	lda		#<T6522_MultiCard_ISR
+	ldx		#>T6522_MultiCard_ISR
+	jsr		SetIrqNmiVectors
+
+	lda		#0
+	sta		MBBase2H				; In ISR: not using MB card#2
+
+	ldx		#-1						; timerConfig index
+
+@loop	sei
+
+		lda		#0
+		sta		intsRemaining
+
+;@6522_A
+		lda		has6522
+		and		#HAS_6522A
+		beq		@6522_B
+		lda		isrNMIcount_A
+		bne		@6522_B
+
+		lda		#ACR_FREERUNNING
+		ldy		#SY6522_A_BASE+SY6522_ACR
+		sta		(MBBase),y
+
+		inx
+		lda		@timerConfig,x
+		ldy		#SY6522_A_BASE+SY6522_TIMER1L_COUNTER
+		sta		(MBBase),y
+		inx
+		lda		@timerConfig,x
+		ldy		#SY6522_A_BASE+SY6522_TIMER1H_COUNTER
+		sta		(MBBase),y
+
+		inx
+		lda		@timerConfig,x
+		ldy		#SY6522_A_BASE+SY6522_TIMER2L_COUNTER
+		sta		(MBBase),y
+		inx
+		lda		@timerConfig,x
+		ldy		#SY6522_A_BASE+SY6522_TIMER2H_COUNTER
+		sta		(MBBase),y						; T2=$0010 (eg)
+
+		lda		#IER_SET|IxR_TIMER1|IxR_TIMER2	; T2=$000E
+		ldy		#SY6522_A_BASE+SY6522_IER		; T2=$000C
+		sta		(MBBase),y						; T2=$0006 Enable T1 & T2 IRQs
+		ldy		#SY6522_A_BASE+SY6522_IFR		; T2=$0004
+		sta		(MBBase),y						; T2=$0010 Clear any T1 & T2 IRQs && T2C underflow occur on same cycle! [*1]
+
+		lda		#%00000011
+		sta		intsRemaining
+
+@6522_B
+		lda		has6522
+		and		#HAS_6522B
+		beq		@test
+		lda		isrNMIcount_B
+		bne		@test
+
+		lda		#ACR_FREERUNNING
+		ldy		#SY6522_B_BASE+SY6522_ACR
+		sta		(MBBase),y
+
+		inx
+		lda		@timerConfig,x
+		ldy		#SY6522_B_BASE+SY6522_TIMER1L_COUNTER
+		sta		(MBBase),y
+		inx
+		lda		@timerConfig,x
+		ldy		#SY6522_B_BASE+SY6522_TIMER1H_COUNTER
+		sta		(MBBase),y
+
+		inx
+		lda		@timerConfig,x
+		ldy		#SY6522_B_BASE+SY6522_TIMER2L_COUNTER
+		sta		(MBBase),y
+		inx
+		lda		@timerConfig,x
+		ldy		#SY6522_B_BASE+SY6522_TIMER2H_COUNTER
+		sta		(MBBase),y
+
+		lda		#IER_SET|IxR_TIMER1|IxR_TIMER2
+		ldy		#SY6522_B_BASE+SY6522_IER
+		sta		(MBBase),y						; Enable T1 & T2 IRQs
+		ldy		#SY6522_B_BASE+SY6522_IFR
+		sta		(MBBase),y						; Clear any T1 & T2 IRQs
+
+		lda		#%00001100
+		ora		intsRemaining
+		sta		intsRemaining
+
+@test	stx		@timerConfigIdx
+
+		ldx		#0					; timeout_l
+		stx		zpTmp3				; timeout_h
+		stx		isrError+0
+		stx		isrError+1
+
+		cli
+
+-		lda		intsRemaining
+			beq		+
+			lda		isrError+0
+			bne		@error0
+			;
+			dex
+			bne		-
+			dec		zpTmp3
+			bne		-
+			; timeout:
+			beq		@error			; A=X=0
+
++		lda		@timerConfigIdx
+		ora		#$07				; round-up: each block of timerConfig values is 8 bytes
+		tax
+		inx
+		lda		@timerConfig,x
+		inx
+		and		@timerConfig,x
+		cmp		#$ff
+		beq		+
+
+		jsr		incSubTestNum		; subTest #1,2,3
+		dex
+		dex
+		jmp		@loop
+
++	sei
+
+	lda		#<Test6522ISR
+	ldx		#>Test6522ISR
+	jsr		SetIrqNmiVectors
+
+	jsr		@cleanup
+	clc								; C=0(OK)
+	rts
+
+@error0
+	ldx		isrError+1
+
+@error	; Pre: A=actual, X=expected
+	sei
+	pha
+	stx		zpTmp2					; expected
+	jsr		@cleanup
+	pla
+	sec								; C=1(NG)
+	rts
+
+	;
+
+@cleanup
+; Post:	MBBaseL = SY6522_A_BASE
+	lda		#SY6522_B_BASE
+	sta		MBBaseL
+	jsr		WaitT1OneShotUnderflow
+	jsr		WaitT2OneShotUnderflow
+	lda		#SY6522_A_BASE
+	sta		MBBaseL
+	jsr		WaitT1OneShotUnderflow
+	jmp		WaitT2OneShotUnderflow
+
+;
+
+@timerConfigIdx
+	!byte	0
+
+@timerConfig
+	; subTest #0
+	!word	$0707
+	!word	$0505
+	!word	$0303
+	!word	$0101
+	;
+	; subTest #1
+	!word	$0101
+	!word	$0101
+	!word	$0101
+	!word	$0101
+	;
+	; subTest #2
+	!word	$0000
+	!word	$0011					; T2: $11 cycles to set IER.T2
+	!word	$0000
+	!word	$0011					; T2: $11 cycles to set IER.T2
+	;
+	; subTest #3
+	; Once written, all 4 timers will be in sync with the same values, so IRQ will occur on the same cycle for all 4 timers
+	!word	$0100+$62+$1C
+	!word	$0100+$62+$00
+	!word	$0100+$1C
+	!word	$0100+$00
+	;
+	; subTest #4
+	; Once written, adjacent timers will have values differing by 1 cycle, eg. N,N+1,N+2,N+3
+	; . with the current above test code, the first underflow will occur on a 4-cycle opcode (lda abs16), so all counters will underflow
+	!word	$0100+$62+$1C+0
+	!word	$0100+$62+$00+1
+	!word	$0100+$1C+2
+	!word	$0100+$00+3
+	;
+!if 0{
+	; subTest #5
+	; [*1] See above, where write to IFR (clear T2 IRQ) and T2 underflow occur on same cycle - the "clear T2 IRQ" wins
+	!word	$0000
+	!word	$0010					; T2: $10 cycles to set IER.T2 - no good on real h/w
+	!word	$0000
+	!word	$0010					; T2: $10 cycles to set IER.T2 - no good on real h/w
+}
+	;
+	!word	$ffff					; done
+
+;------------------------------------------------------------------------------
+
+T6522_15
+; Pre: isrNMIcount_A, isrNMIcount_B
+; Post: C=0(OK), C=1(NG)
+;
+; Test#15
+; . Poll for T1 IRQ, then check that IRQ is:
+; . not cleared by:
+;	. writing T1C_L (via 'STA ABS'), T1L_L
+; . cleared by:
+;	. writing T1C_L (via 'STA (ZP),Y')
+;	. reading T1C_L
+;	. writing T1C_H, T1L_H
+
+	lda		MBBaseL
+	bne		+
+		lda		isrNMIcount_A
+		beq		@doTest
+			clc
+			rts
++		lda		isrNMIcount_B
+		beq		@doTest
+			clc
+			rts
+
+@doTest
+
+	lda		MBBaseH
+	sta		@0+2
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	lda		#ACR_ONESHOT
+	ldy		#SY6522_ACR
+	sta		(MBBase),y
+
+	jsr		@setupIFR_T1			; subTest #$ff (!0)
+	bcs		@error
+
+	jsr		incSubTestNum			; subTest #1
+	lda		#$00
+@0	sta		CARD_BASE+SY6522_TIMER1L_COUNTER	; mustn't clear IFR.T1 -- use STA ABS, as it doesn't do a false-read
+	jsr		@checkIFR_T1
+	beq		@error
+
+	jsr		incSubTestNum			; subTest #2
+	lda		is65C02
+	bne		+
+
+		lda		#$00
+		ldy		#SY6522_TIMER1L_COUNTER
+		sta		(MBBase),y			; *must* clear IFR.T1 -- due to STA (ZP),Y false read (6502/65816 only)
+		jsr		@checkIFR_T1_expect00
+		bne		@error
+
+		jsr		@setupIFR_T1		; subTest #$fd (!2)
+		bcs		@error
+
++	jsr		incSubTestNum			; subTest #3
+	lda		#$00
+	ldy		#SY6522_TIMER1L_LATCH	; mustn't clear IFR.T1
+	sta		(MBBase),y
+	jsr		@checkIFR_T1
+	beq		@error
+
+	jsr		incSubTestNum			; subTest #4
+	lda		#$00
+	ldy		#SY6522_TIMER1H_LATCH	; *must* clear IFR.T1
+	sta		(MBBase),y
+	jsr		@checkIFR_T1_expect00
+	bne		@error
+
+	jsr		@setupIFR_T1			; subTest #$fb (!4)
+	bcs		@error
+
+	jsr		incSubTestNum			; subTest #5
+	ldy		#SY6522_TIMER1L_COUNTER	; *must* clear IFR.T1
+	lda		(MBBase),y
+	jsr		@checkIFR_T1_expect00
+	bne		@error
+
+	jsr		@setupIFR_T1			; subTest #$fa (!5)
+	bcs		@error
+
+	jsr		incSubTestNum			; subTest #6
+	lda		#$01
+	ldy		#SY6522_TIMER1H_COUNTER	; *must* clear IFR.T1
+	sta		(MBBase),y
+	jsr		@checkIFR_T1_expect00
+	bne		@error
+
+	clc
+	rts
+
+@error	; Pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	sec								; C=1(NG)
+	rts
+
+;
+
+@setupIFR_T1
+; Post: C=0(OK), IFR.T1=1
+;	C=1(NG), subTestNum=!subTestNum, A=actual, X=expected
+	lda		#IER_CLR|IxR_TIMER1
+	ldy		#SY6522_IER
+	sta		(MBBase),y
+	ldy		#SY6522_IFR
+	sta		(MBBase),y
+
+	; NB. mb-audit/GH#9 - MegaAudio: don't use $0000 for TIMER1
+	lda		#$01
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	lda		#$00
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y
+
+	jsr		@checkIFR_T1
+	beq		+
+	clc
+	rts		; C=0(OK)
+
++	pha
+	lda		#$ff
+	eor		subTestNum
+	sta		subTestNum
+	pla
+	sec
+	rts		; C=1(NG)
+
+;
+
+@checkIFR_T1_expect00
+	ldx		#0
+	beq		+
+@checkIFR_T1
+	ldx		#IxR_TIMER1
++	ldy		#SY6522_IFR
+	lda		(MBBase),y
+	and		#IxR_TIMER1
+	rts
+
+;------------------------------------------------------------------------------
+
+T6522_16
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;
+; Test#16
+; . Check that timer intervals are correct:
+;   . Count number of T1 free-running IRQs over a fixed number of WAIT cycles.
+;   . Count number of T2 one-shot IRQs over a period of T1 counting down from $FFFF.
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	sei
+
+	lda		#<Test6522ISR
+	ldx		#>Test6522ISR
+	jsr		SetIrqNmiVectors
+
+	lda		#0
+	sta		isrCount
+
+	; T1 Latch = $4000 (NB. must be longer than IIgs ROM's IRQ handler duration * isrCount)
+	lda		#$00
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	lda		#$40
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y				; Clear T1 IRQ
+
+	lda		#ACR_FREERUNNING
+	ldy		#SY6522_ACR
+	sta		(MBBase),y
+
+	lda		#IER_SET|IxR_TIMER1
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Enable T1 IRQ
+
+	cli
+
+	; delay for $2800D cycles (~160ms) + ISR overhead
+	lda		#$0A
+	jsr		myWAIT					; delay $0018E cycles
+	lda		#$FD
+	jsr		myWAIT					; delay $27E7B cycles
+									; .     //e: $28391 = $2800D + $384 =>  90cy overhead/interrupt (same for II/II+)
+									; . Enh //e: $28D5F = $2800D + $D52 => 341cy overhead/interrupt
+									; .    IIgs: ROM03 works under MAME
+
+	sei
+
+	jsr		WaitT1OneShotUnderflow
+
+	lda		isrCount				; should be $28nnn / $4000 = $A
+	ldx		#$A
+	cmp		#$A
+	bne		@error
+
+	;
+
+	jsr		incSubTestNum			; subTest #1
+
+	ldx		#0						; count # of T2 underflows
+
+	; T1 one-shot from above
+	lda		#$ff
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y				; clear T1 IRQ
+
+@reset_t2
+		lda		#$ff
+		ldy		#SY6522_TIMER2L_COUNTER
+		sta		(MBBase),y
+		lda		#$0f
+		ldy		#SY6522_TIMER2H_COUNTER
+		sta		(MBBase),y			; clear T2 IRQ
+
+		ldy		#SY6522_IFR
+@loop		lda		(MBBase),y
+			asl						; T1 flag -> b7
+			bmi		+
+			asl						; T2 flag -> b7
+			bpl		@loop
+		inx
+		bne		@reset_t2
+
+	lda		#$fe
+	sta		subTestNum				; subTest #$fe (!1)
+
++	jsr		WaitT2Underflow
+
+	lda		#IxR_TIMER1|IxR_TIMER2
+	ldy		#SY6522_IFR
+	sta		(MBBase),y				; clear T1 & T2 int flags
+
+	txa								; should be $FFnn / $1000 = $F
+	ldx		#$F
+	cmp		#$F
+	bne		@error
+
+	clc
+	rts
+
+@error	; Pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	sec								; C=1(NG)
+	rts
+
+;------------------------------------------------------------------------------
+
+T6522_17
+; Pre: MBBaseL = $00 or $80
+; Post: C=0(OK), C=1(NG)
+;
+; Test#17
+; . Check T1 int re-triggers every opcode when T1L=$0000
+; Specifically check the case when T1C underflows and gets reloaded to $FFFF (AppleWin/GH#1175)
+; NB. 6522 connected to NMI isn't supported (mb-audit/GH#30)
+;
+
+	lda		MBBaseL
+	bne		+
+		lda		isrNMIcount_A
+		beq		@doTest
+			clc
+			rts
++		lda		isrNMIcount_B
+		beq		@doTest
+			clc
+			rts
+
+@doTest
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	sei
+
+	lda		#<Test6522ISR
+	ldx		#>Test6522ISR
+	jsr		SetIrqNmiVectors
+
+	lda		#ACR_FREERUNNING
+	ldy		#SY6522_A_BASE+SY6522_ACR
+	sta		(MBBase),y
+
+	lda		#IER_CLR|IxR_TIMER1
+	ldy		#SY6522_A_BASE+SY6522_IER
+	sta		(MBBase),y				; Disable T1 IRQ
+
+	lda		#$00					; T1C=T1L=$0000
+	ldy		#SY6522_A_BASE+SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	ldy		#SY6522_A_BASE+SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y
+
+	; NB. T1 will immediately underflow on next opcode & IFR = TIMER1
+
+	; AppleWin/GH#1175: need an opcode to end on T1C=$FFFF (to check that AppleWin syncEvent gets reloaded with 0x00001, not 0x10001)
+	lda		0						; 3cy - post: T1C=$FFFF
+	; lda zp: cycle 1: T1C: 0000->FFFF
+	; lda zp: cycle 2: T1C: FFFF->(underflow)->0000
+	; lda zp: cycle 3: T1C: 0000->FFFF
+
+	ldx		#$00					; loop 128 times - each iteration is a subTest:[00..7f]
+	ldy		#SY6522_A_BASE+SY6522_IFR
+	lda		#IxR_TIMER1
+
+@loop	and		(MBBase),y
+		beq		@error1
+		sta		(MBBase),y			; clear T1 int (and it'll immediately get set again)
+		inx
+		bpl		@loop
+
+	stx		subTestNum				; subTest #$80
+
+	lda		#IER_SET|IxR_TIMER1
+	ldy		#SY6522_A_BASE+SY6522_IER
+	sta		(MBBase),y				; Enable T1 IRQ
+
+	lda		#IER_CLR|IxR_TIMER1
+	sta		isrDisableIER			; ISR will disable T1 IRQ (need to do this due to very short T1L interval)
+
+	lda		#0
+	sta		isrFlag
+	cli
+	nop		; required if 6522 asserts IRQ on above 'cli' opcode
+	sei
+	lda		#0
+	sta		isrDisableIER
+	lda		isrFlag
+	beq		@error2
+
+	jsr		WaitT1OneShotUnderflow	; cleanup
+
+	clc
+	rts
+
+@error1
+	stx		subTestNum
+	jsr		WaitT1OneShotUnderflow	; cleanup
+	ldx		#IxR_TIMER1
+	bne		@error					; (bra)
+
+@error2
+	jsr		WaitT1OneShotUnderflow	; cleanup
+	ldx		#1
+
+@error
+	stx		zpTmp2					; expected
+	lda		#0						; actual
+	sec
+	rts
+
+;------------------------------------------------------------------------------
+
+T6522_18
+; Pre:
+; Post: C=0(OK), C=1(NG)
+;
+; Test#18
+; . Call multicard test #1, but for a single card using 6522s A & B (AppleWin/GH#1173)
+; . NB. Since "Card #2" (ie. 6522-B here) doesn't generate ints, then OK to use a card where 6522-B is connected to NMI, eg. SMS Sound II. (mb-audit/GH#30)
+
+	; Require MB with 2x 6522s
+	lda		has6522
+	and		#HAS_BOTH_6522s
+	cmp		#HAS_BOTH_6522s
+	beq		+
+-		clc
+		rts
++
+	; Only do test for 6522-A (because this test uses both 6522s)
+	lda		MBBaseL
+	bne		-
+
+	lda		zpTmp1					; save as used by Test6522()
+	pha
+	lda		has6522
+	sta		zpTmp1
+
+	lda		#SY6522_B_BASE
+	sta		MBBase2L
+	lda		MBBaseH
+	sta		MBBase2H
+
+	jsr		MCT6522_1
+
+	lda		#0
+	sta		MBBaseL
+
+	pla
+	sta		zpTmp1					; restore
+
+	rts
+
+;------------------------------------------------------------------------------
+
+Test6522MultiCard
+; Pre: There are at least 2 MB cards each with 2x 6522s(*)
+; Post: C=0(OK), C=1(NG)
+;
+; (*) 2x 6522 required, as the ISR can't correctly handle a single 6522 mapped to $Cn00 and $Cn80, eg:
+; . Card #2 is Echo+ (single 6522)
+; . End up with an isrError, eg. expected(intsRemaining) = $CF, actual = $10(for an IRQ from card #2, TIMER2)
+;
+
+	lda		#COMPONENT_6522+2	; test component $12
+	sta		testComponentNum
+
+@repeat
+
+		lda		#$00
+		sta		testNum				; test #00
+		jsr		FindMultiCards
+		jsr		MCT6522_0
+		bcs		@error
+
+		inc		testNum				; test #01
+		jsr		FindMultiCards
+		jsr		MCT6522_1
+		bcs		@error
+
+@error
+; Pre: zpTmp2 = expected value
+;	A = actual value
+;	C=1(NG)
+; Post: C=1(NG)
+
+	sta		errorActual
+	lda		zpTmp2
+	sta		errorExpected
+	rts
+
+;------------------------------------------------------------------------------
+
+FindMultiCards
+; Pre:
+; Post: (MBBase) = card #1 at higher I/O addr
+;		(MBBase2) = card #2 at lower I/O addr
+;		zpTmp1 = "has6522" for card #2
+;
+
+	ldx		#7
+@findCard1
+		lda		slotInfo,x
+		bne		+
+		dex
+		bne		@findCard1
+
++	sta		has6522					; also includes "NMI for 6522" info
+	jsr		SetMBBase
+
+	dex
+@findCard2
+		lda		slotInfo,x
+		bne		+
+		dex
+		bne		@findCard2
+
++	sta		zpTmp1					; "has6522" for card #2
+	txa
+	ora		#$c0
+	sta		MBBase2H
+	lda		#0
+	sta		MBBase2L
+
+	rts
+
+;------------------------------------------------------------------------------
+
+MCT6522_0
+; Pre: MBBase & MBase2 setup
+;	has6522 for card #1
+;	zpTmp1 = equivalent "has6522" for card #2
+; Post: C=0(OK), C=1(NG)
+;
+; MultiCard Test#0
+; . Setup counters on both cards & all the 6522's T1+T2
+;	Card1/2: 6522-A T1 is free-running
+;	Card1/2: 6522-A T2 is one-shot
+;	Card1/2: 6522-B T1 is free-running
+;	Card1/2: 6522-B T2 is one-shot
+; . NB T6522_MultiCard_ISR handles ints in any order, and simultaneously too.
+; . ISR disables the T1/T2 int so it only generates an IRQ once.
+; . Don't use 6522 if it's connected to NMI (as nested IRQ then NMI aren't supported by my ISR)
+;
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	sei
+
+	lda		#<T6522_MultiCard_ISR
+	ldx		#>T6522_MultiCard_ISR
+	jsr		SetIrqNmiVectors
+
+	ldx		#-1						; timerConfig index
+
+@loop	sei
+
+		lda		has6522
+		pha
+		lda		MBBaseH
+		pha
+
+		lda		#0
+		sta		intsRemaining
+
+		lda		#%00000011
+		sta		zpTmp2				; mask (also used by ISR, but OK since we have SEI)
+
+@6522_A		lda		has6522
+			and		#HAS_6522A
+			beq		@6522_B
+			lda		has6522
+			and		#NMI_FOR_6522A
+			bne		@6522_B
+
+			lda		#ACR_FREERUNNING
+			ldy		#SY6522_A_BASE+SY6522_ACR
+			sta		(MBBase),y
+
+			inx
+			lda		@timerConfig,x
+			ldy		#SY6522_A_BASE+SY6522_TIMER1L_COUNTER
+			sta		(MBBase),y
+			inx
+			lda		@timerConfig,x
+			ldy		#SY6522_A_BASE+SY6522_TIMER1H_COUNTER
+			sta		(MBBase),y
+
+			inx
+			lda		@timerConfig,x
+			ldy		#SY6522_A_BASE+SY6522_TIMER2L_COUNTER
+			sta		(MBBase),y
+			inx
+			lda		@timerConfig,x
+			ldy		#SY6522_A_BASE+SY6522_TIMER2H_COUNTER
+			sta		(MBBase),y
+
+			lda		#IER_SET|IxR_TIMER1|IxR_TIMER2
+			ldy		#SY6522_A_BASE+SY6522_IER
+			sta		(MBBase),y						; Enable T1 & T2 IRQs
+			ldy		#SY6522_A_BASE+SY6522_IFR
+			sta		(MBBase),y						; Clear any T1 & T2 IRQs && T2C underflow occur on same cycle! [*1]
+
+			lda		zpTmp2
+			ora		intsRemaining
+			sta		intsRemaining
+
+@6522_B		asl		zpTmp2
+			asl		zpTmp2
+
+			lda		has6522
+			and		#HAS_6522B
+			beq		@nextCard
+			lda		has6522
+			and		#NMI_FOR_6522B
+			bne		@nextCard
+
+			lda		#ACR_FREERUNNING
+			ldy		#SY6522_B_BASE+SY6522_ACR
+			sta		(MBBase),y
+
+			inx
+			lda		@timerConfig,x
+			ldy		#SY6522_B_BASE+SY6522_TIMER1L_COUNTER
+			sta		(MBBase),y
+			inx
+			lda		@timerConfig,x
+			ldy		#SY6522_B_BASE+SY6522_TIMER1H_COUNTER
+			sta		(MBBase),y
+
+			inx
+			lda		@timerConfig,x
+			ldy		#SY6522_B_BASE+SY6522_TIMER2L_COUNTER
+			sta		(MBBase),y
+			inx
+			lda		@timerConfig,x
+			ldy		#SY6522_B_BASE+SY6522_TIMER2H_COUNTER
+			sta		(MBBase),y
+
+			lda		#IER_SET|IxR_TIMER1|IxR_TIMER2
+			ldy		#SY6522_B_BASE+SY6522_IER
+			sta		(MBBase),y						; Enable T1 & T2 IRQs
+			ldy		#SY6522_B_BASE+SY6522_IFR
+			sta		(MBBase),y						; Clear any T1 & T2 IRQs
+
+			lda		zpTmp2
+			ora		intsRemaining
+			sta		intsRemaining
+
+@nextCard	lda		zpTmp1
+			sta		has6522
+			lda		MBBase2H
+			sta		MBBaseH
+
+			asl		zpTmp2
+			asl		zpTmp2
+			beq		+
+			jmp		@6522_A
+
++		pla
+		sta		MBBaseH
+		pla
+		sta		has6522
+
+@test	stx		@timerConfigIdx
+
+		ldx		#0					; timeout_l
+		stx		zpTmp3				; timeout_h
+		stx		isrError+0
+		stx		isrError+1
+
+		cli
+
+-		lda		intsRemaining
+			beq		+
+			lda		isrError+0
+			bne		@error0
+			;
+			dex
+			bne		-
+			dec		zpTmp3
+			bne		-
+			; timeout:
+			beq		@error			; A=X=0
+
++		lda		@timerConfigIdx
+		ora		#$0f				; round-up: each block of timerConfig values is 16 bytes
+		tax
+		inx
+		lda		@timerConfig,x
+		inx
+		and		@timerConfig,x
+		cmp		#$ff
+		beq		+
+
+		jsr		incSubTestNum		; subTest #1,2,3
+		dex
+		dex
+		jmp		@loop
+
++	sei
+
+	lda		#<Test6522ISR
+	ldx		#>Test6522ISR
+	jsr		SetIrqNmiVectors
+
+	jsr		@cleanup
+	clc								; C=0(OK)
+	rts
+
+@error0
+	ldx		isrError+1
+
+@error	; Pre: A=actual, X=expected
+	sei
+	pha
+	stx		zpTmp2					; expected
+	jsr		@cleanup
+	pla
+	sec								; C=1(NG)
+	rts
+
+	;
+
+@cleanup
+; Post:	MBBaseH = 2nd card (ie. card at lower I/O addr), MBBaseL = SY6522_A_BASE
+
+	lda		#SY6522_B_BASE
+	sta		MBBaseL
+	jsr		WaitT1OneShotUnderflow
+	jsr		WaitT2OneShotUnderflow
+
+	lda		#SY6522_A_BASE
+	sta		MBBaseL
+	jsr		WaitT1OneShotUnderflow
+	jsr		WaitT2OneShotUnderflow
+
+	lda		MBBase2H
+	cmp		MBBaseH
+	sta		MBBaseH					; (no flags affected)
+	bne		@cleanup
+
+	rts
+
+;
+
+@timerConfigIdx
+	!byte	0
+
+@timerConfig
+	; subTest #0
+	!word	$0F0F,$0D0D				; Card#1+6522A: T1,T2
+	!word	$0B0B,$0909				;        6522B: T1,T2
+	!word	$0707,$0505				; Card#2+6522A: T1,T2
+	!word	$0303,$0101				;        6522B: T1,T2
+	;
+	; subTest #1
+	!word	$0101,$0101
+	!word	$0101,$0101
+	!word	$0101,$0101
+	!word	$0101,$0101
+	;
+	; subTest #2
+	!word	$0000,$0011
+	!word	$0000,$0011				; T1,T2: $11 cycles to set IER.T1/T2
+	!word	$0000,$0011
+	!word	$0000,$0011				; T1,T2: $11 cycles to set IER.T1/T2
+	;
+!if 0{
+	; subTest #3 (untested on real h/w)
+	; [*1] See above, where write to IFR (clear T2 IRQ) and T2 underflow occur on same cycle - the "clear T2 IRQ" wins
+	!word	$0000,$0010
+	!word	$0000,$0010				; T1,T2: $10 cycles to set IER.T1/T2
+	!word	$0000,$0010
+	!word	$0000,$0010				; T1,T2: $10 cycles to set IER.T1/T2
+}
+	;
+	!word	$ffff					; done
+
+;------------------------------------------------------------------------------
+
+MCT6522_1
+; Pre: MBBase(card #1) & MBase2(card #2) setup
+;	zpTmp1 = has6522 for card #2
+; Post: C=0(OK), C=1(NG)
+;
+; MultiCard Test#1 (AppleWin/GH#1173)
+; . Setup card #1: T1C=T1L=0x0303, One-shot timer, IFR=IER=TIMER1 -- so *does* generate 6502 IRQ
+; . Setup card #2: T1C=T1L=0x0000, Free-running timer, IFR=TIMER1, IER=0 -- so does *not* generate 6502 IRQ
+; . NB. Since test only uses 6522-A, then OK to use a card where 6522-B is connected to NMI, eg. SMS Sound II. (mb-audit/GH#30)
+;
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	sei
+
+	lda		#<Test6522ISR
+	ldx		#>Test6522ISR
+	jsr		SetIrqNmiVectors
+
+	lda		#$ff
+	sta		zpTmp2					; repeat
+
+@loop	lda		#ACR_ONESHOT
+		ldy		#SY6522_A_BASE+SY6522_ACR
+		sta		(MBBase),y
+
+		lda		#$03							; T1C=T1L=$0303
+		ldy		#SY6522_A_BASE+SY6522_TIMER1L_COUNTER
+		sta		(MBBase),y
+		ldy		#SY6522_A_BASE+SY6522_TIMER1H_COUNTER
+		sta		(MBBase),y
+
+		lda		#IER_SET|IxR_TIMER1
+		ldy		#SY6522_A_BASE+SY6522_IER
+		sta		(MBBase),y						; Enable T1 IRQ
+		lda		#IxR_TIMER1|IxR_TIMER2
+		ldy		#SY6522_A_BASE+SY6522_IFR
+		sta		(MBBase),y						; Clear any T1 & T2 IRQs
+
+		;
+
+		lda		#ACR_FREERUNNING
+		ldy		#SY6522_A_BASE+SY6522_ACR
+		sta		(MBBase2),y
+
+		lda		#$00							; T1C=T1L=$0000
+		ldy		#SY6522_A_BASE+SY6522_TIMER1L_COUNTER
+		sta		(MBBase2),y
+		ldy		#SY6522_A_BASE+SY6522_TIMER1H_COUNTER
+		sta		(MBBase2),y
+
+		lda		#IER_CLR|IxR_TIMER1|IxR_TIMER2
+		ldy		#SY6522_A_BASE+SY6522_IER
+		sta		(MBBase2),y						; Disable T1 & T2 IRQs
+		; T1 immediately underflows & IFR = TIMER1
+
+		;
+
+		lda		#$f								; wait 0x304 cycles (and IRQ will have occurred)
+		jsr		myWAIT
+
+		lda		#0
+		sta		isrFlag
+
+		cli
+		sei
+
+		lda		isrFlag
+		beq		@error
+
+		dec		zpTmp2
+		beq		+
+		jsr		incSubTestNum
+		jmp		@loop
+
++	lda		MBBase2H
+	sta		MBBaseH
+	lda		MBBase2L				; required if called by T6522_18
+	sta		MBBaseL
+	jsr		WaitT1OneShotUnderflow	; cleanup
+
+	clc
+	rts
+
+@error	; Pre: A=actual
+	lda		MBBase2H
+	sta		MBBaseH
+	lda		MBBase2L				; required if called by T6522_18
+	sta		MBBaseL
+	jsr		WaitT1OneShotUnderflow	; cleanup
+
+	lda		#0
+	ldx		#1
+	stx		zpTmp2					; expected
+	sec								; C=1(NG)
+	rts
+
+;------------------------------------------------------------------------------
+
+T6522_MultiCard_ISR
+; Pre:
+;	6502 has pushed P
+;	Apple ROM has stored A to $45 (not Apple //e ROM!)
+; Uses: zpTmp2
+
+	+ISR_ENTRY
+
+	; Handles all combos of:
+	; . chipA: T1 or T2 ints
+	; . chipB: T1 or T2 ints
+
+;@chipA
+	ldy		#SY6522_A_BASE+SY6522_IFR
+	lda		(MBBase),y
+	beq		@chipB
+		and		#!(IER_SET)&0xff
+		iny							; Y = SY6522_IER
+		and		(MBBase),y			; is this interrupt enabled?
+		beq		@chipB				; NB. not an error - may've been disabled on a prior call to the ISR
+		;
+		sta		(MBBase),y			; disable this interrupt (+ stops the IRQ to the 6502)
+		dey							; Y = SY6522_IFR
+		sta		(MBBase),y			; clear this interrupt
+
+		clc
+				; C -XX- ----
+		rol		; C XX-- ----
+		rol		; X X--- ----
+		rol		; X ---- ---X
+		rol		; C ---- --XX
+		jsr		@checkInts
+
+@chipB
+	ldy		#SY6522_B_BASE+SY6522_IFR
+	lda		(MBBase),y
+	beq		@card2
+		and		#!(IER_SET)&0xff
+		iny							; Y = SY6522_IER
+		and		(MBBase),y			; is this interrupt enabled?
+		beq		@card2				; NB. not an error - may've been disabled on a prior call to the ISR
+		;
+		sta		(MBBase),y			; disable this interrupt (+ stops the IRQ to the 6502)
+		dey							; Y = SY6522_IFR
+		sta		(MBBase),y			; clear this interrupt
+
+				; -XX- ----
+		lsr		; --XX ----
+		lsr		; ---X X---
+		lsr		; ---- XX--
+		jsr		@checkInts
+
+	;
+
+@card2
+	lda		MBBase2H
+	beq		@done					; card #2 not being used for the current test
+
+;@card2_chipA
+	ldy		#SY6522_A_BASE+SY6522_IFR
+	lda		(MBBase2),y
+	beq		@card2_chipB
+		and		#!(IER_SET)&0xff
+		iny							; Y = SY6522_IER
+		and		(MBBase2),y			; is this interrupt enabled?
+		beq		@card2_chipB		; NB. not an error - may've been disabled on a prior call to the ISR
+		;
+		sta		(MBBase2),y			; disable this interrupt (+ stops the IRQ to the 6502)
+		dey							; Y = SY6522_IFR
+		sta		(MBBase2),y			; clear this interrupt
+
+				; -XX- ----
+		lsr		; --XX ----
+		jsr		@checkInts
+
+@card2_chipB
+	ldy		#SY6522_B_BASE+SY6522_IFR
+	lda		(MBBase2),y
+	beq		@done
+		and		#!(IER_SET)&0xff
+		iny							; Y = SY6522_IER
+		and		(MBBase2),y			; is this interrupt enabled?
+		beq		@done				; NB. not an error - may've been disabled on a prior call to the ISR
+		;
+		sta		(MBBase2),y			; disable this interrupt (+ stops the IRQ to the 6502)
+		dey							; Y = SY6522_IFR
+		sta		(MBBase2),y			; clear this interrupt
+
+				; -XX- ----
+		asl		; XX-- ----
+		jsr		@checkInts
+
+@done
+	+ISR_EXIT
+
+;
+
+@checkInts
+	sta		zpTmp2
+	and		intsRemaining			; T1 or T2 or T1|T2 have occurred
+	cmp		zpTmp2					; ...so check against those remaining int(s)
+	bne		@error					; error: unexpected int
+	eor		#$ff
+	and		intsRemaining
+	sta		intsRemaining			; clear the bits of those int(s) that just occurred
+	rts
+
+@error
+	lda		zpTmp2
+	sta		isrError+0				; actual: int(s)
+	lda		intsRemaining
+	sta		isrError+1				; expected: int(s) remaining
+	rts
+
+;
+
+intsRemaining
+	!byte	0
+
+;------------------------------------------------------------------------------
+
+WaitT1OneShotUnderflow
+; Set to T1 one-shot mode, and wait for underflow to clear internal 6522 state
+
+	sei
+
+	lda		#IER_CLR|IxR_TIMER1
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Disable Timer1 IRQ (do here to prevent any NMI from firing)
+
+	lda		#ACR_ONESHOT
+	ldy		#SY6522_ACR
+	sta		(MBBase),y				; T1 one-shot mode
+
+	lda		#1						; Set T1C=T1L=$0101
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y
+
+	jsr		WaitT1Underflow
+
+	lda		#IxR_TIMER1
+	ldy		#SY6522_IFR
+	sta		(MBBase),y				; Clear any Timer1 IRQ
+
+	rts
+
+WaitT1Underflow
+	ldy		#SY6522_TIMER1H_COUNTER
+-		lda		(MBBase),y			; wait $00nn
+		bne		-
+-		lda		(MBBase),y			; wait $NNnn, where T1L_h = NN (assume it's not $00!)
+		beq		-
+	rts
+
+;--------------------------------------
+
+WaitT2OneShotUnderflow
+; (T2 only supports one-shot mode) and wait for underflow to clear internal 6522 state
+
+	sei
+
+	lda		#IER_CLR|IxR_TIMER2
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Disable Timer2 IRQ (do here to prevent any NMI from firing)
+
+	lda		#1						; Set T2C=$0101
+	ldy		#SY6522_TIMER2L_COUNTER
+	sta		(MBBase),y
+	ldy		#SY6522_TIMER2H_COUNTER
+	sta		(MBBase),y
+
+	jsr		WaitT2Underflow
+
+	lda		#IxR_TIMER2
+	ldy		#SY6522_IFR
+	sta		(MBBase),y				; Clear any Timer2 IRQ
+
+	rts
+
+WaitT2Underflow
+	jsr		isIIc					; TODO: Really should check for Xdrive2c (in a //c)
+	beq		@wait
+	lda		isMegaAudioCard
+	beq		+
+@wait	lda		#$8					; wait 0x119 cycles - MegaAudio & MB4c(w/Xdrive2c) can't read Timer2!
+		jmp		myWAIT
++
+
+	ldy		#SY6522_TIMER2H_COUNTER
+-		lda		(MBBase),y			; wait $00nn
+		bne		-
+-		lda		(MBBase),y			; wait $FFnn (as there's no T2L_h, then "after timing out, the counter will continue to decrement")
+		beq		-
+	rts
+
+;------------------------------------------------------------------------------
+
+Test6522ISR
+; Pre:
+;	6502 has pushed P
+;	Apple ROM has stored A to $45 (not Apple //e ROM!)
+;
+
+	+ISR_ENTRY
+
+	ldy		#SY6522_IFR
+	lda		(MBBase),y
+	sta		(MBBase),y
+	sta		isrIFR
+
+	lda		isrDisableIER
+	beq		+
+		ldy		#SY6522_IER
+		sta		(MBBase),y	; NB. b7 must be zero to clear IER bits
++
+
+	lda		#1
+	sta		isrFlag
+
+	inc		isrCount
+
+	+ISR_EXIT
+
+;------------------------------------------------------------------------------
+
+RESET_T1L_l = $34
+RESET_T1L_h = $02
+
+Setup6522ForReset
+; Pre: has6522, hasAY8913; isSDMusic, isMegaAudioCard, isMB4C, isEchoPlus, isPhasorCard; hasSSI263, hasSC01
+; Post: C=0(OK), C=1(NG)
+;	NG: Called SetError() to set errorExpected & errorActual
+;
+; Notes:
+; 6522 regs that persist across reset: T1L_l ,T1L_h
+; 6522 state that is cleared on reset: IRQ, DDRB, DDRA, ACR, PCR, IFR, IER
+; TODO: test 6522-B too; test that for Phasor card its mode reverts to PH_MOCKINGBOARD
+; TODO: account for 6522 connected to NMI
+;
+
+	sei
+
+	lda		#COMPONENT_6522+3		; test component $13
+	sta		testComponentNum
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	lda		has6522
+	lsr
+	bcs		+
+		lda		#SY6522_B_BASE
+		sta		MBBaseL
++
+
+	lda		#$ff
+	ldy		#SY6522_DDRB
+	sta		(MBBase),y				; Port-B: all bits output
+
+	lda		#$ff
+	ldy		#SY6522_DDRA
+	sta		(MBBase),y				; Port-A: all bits output
+
+	lda		#ACR_FREERUNNING
+	ldy		#SY6522_ACR
+	sta		(MBBase),y				; Free-running timer
+
+	lda		#$0C
+	ldy		#SY6522_PCR
+	sta		(MBBase),y				; Setup PCR for SSI263
+
+	lda		#IER_SET|IxR_TIMER1|IxR_TIMER2
+	ldy		#SY6522_IER
+	sta		(MBBase),y				; Enable T1 & T2 IRQ
+
+	lda		#RESET_T1L_l			; T1C = T1L = $0234
+	ldy		#SY6522_TIMER1L_COUNTER
+	sta		(MBBase),y
+	lda		#RESET_T1L_h
+	ldy		#SY6522_TIMER1H_COUNTER
+	sta		(MBBase),y
+
+	lda		#$00					; T2C = $0000
+	ldy		#SY6522_TIMER2L_COUNTER
+	sta		(MBBase),y
+	ldy		#SY6522_TIMER2H_COUNTER
+	sta		(MBBase),y				; will underflow immediately & assert T2 IRQ (even for MegaAudio)
+
+	jsr		WaitT1Underflow			; Post: T1 IRQ asserted
+
+	ldy		#SY6522_IFR
+	lda		(MBBase),y
+	and		#IER_SET|IxR_TIMER1|IxR_TIMER2		; NB. use 'IxR_TIMER2' in the bit-mask (even for MegaAudio)
+	ldx		#IER_SET|IxR_TIMER1|IxR_TIMER2		; expected
+	cmp		#IER_SET|IxR_TIMER1|IxR_TIMER2
+	bne		@error					; subTest #0
+
+	clc
+	rts								; C=0(OK)
+
+@error		; Pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	jmp		Test6522Error			; C=1(NG)
+
+;------------------------------------------------------------------------------
+
+Skip6522ForReset
+; TODO: clean-up for 6522-B; for Phasor card revert to PH_MOCKINGBOARD
+
+	jsr		WaitT1OneShotUnderflow	; de-assert T1 IRQ & set T1L to a sensible value
+	jmp		WaitT2OneShotUnderflow	; de-assert T2 IRQ
+
+;------------------------------------------------------------------------------
+
+Test6522AfterReset
+; Pre: has6522, isMegaAudioCard
+;	MBBaseL = value from Setup6522ForReset()
+; Post: C=0(OK), C=1(NG)
+;	MBBaseL = SY6522_A_BASE
+;	NG: Called SetError() to set errorExpected & errorActual
+;	can set: warningCount + warnings vars
+;
+
+	lda		#<Test6522ISR
+	ldx		#>Test6522ISR
+	jsr		SetIrqVector
+
+	lda		#COMPONENT_6522+3		; test component $13
+	sta		testComponentNum
+
+	jsr		resetSubTest			; subTest #0
+	jsr		incTotalTests
+
+	; Test ACR
+	ldy		#SY6522_ACR
+	lda		(MBBase),y
+	ldx		#$00
+	cmp		#$00
+	beq		+
+		jmp		@error
++
+
+	; Test PCR
+	jsr		incSubTestNum			; subTest #1
+	ldy		#SY6522_PCR
+	lda		(MBBase),y
+	ldx		#$00
+	cmp		#$00
+	beq		+
+		jmp		@error
++
+
+	; Test T1L_l/h
+	jsr		incSubTestNum			; subTest #2
+	ldy		#SY6522_TIMER1L_LATCH
+	lda		(MBBase),y
+	ldx		#RESET_T1L_l
+	cmp		#RESET_T1L_l
+	beq		+
+		jmp		@error
++	ldy		#SY6522_TIMER1H_LATCH
+	lda		(MBBase),y
+	ldx		#RESET_T1L_h
+	cmp		#RESET_T1L_h
+	beq		+
+		jmp		@error
++
+
+	; Test that all IRQs are disabled
+	jsr		incSubTestNum			; subTest #3
+	ldy		#SY6522_IER
+	lda		(MBBase),y
+	ldx		isMegaAudioCard
+	bne		+
+		ldx		#IER_SET			; expected
+		cmp		#IER_SET
+		bne		@error
+		beq		++
++		; MegaAudio
+		ldx		#IER_CLR			; expected
+		cmp		#IER_CLR
+		bne		@error
+++
+
+	; Test that T1 & T2 IRQs are now de-asserted
+	jsr		incSubTestNum			; subTest #4
+	ldy		#SY6522_IFR
+	lda		(MBBase),y
+	ldx		#0						; expected
+	and		#IxR_TIMER1|IxR_TIMER2
+	cmp		#0
+	bne		@error
+
+	; Test that no IRQs are still asserted
+	jsr		incSubTestNum			; subTest #5
+	ldx		#0						; expected
+	stx		isrIFR
+	stx		isrFlag
+	cli
+	sei
+	lda		isrIFR
+	bne		@error
+	jsr		incSubTestNum			; subTest #6
+	lda		isrFlag
+	bne		@error
+
+	; Test reading DDRB/IRB, checking that DDRB bits set as inputs read back as 1's (AppleWin/GH#1260)
+	jsr		incSubTestNum			; subTest #7
+	ldy		#SY6522_DDRB
+	lda		(MBBase),y
+	ldx		#$00
+	cmp		#$00
+	bne		@error
+	jsr		incSubTestNum			; subTest #8
+	ldy		#SY6522_IRB
+	lda		(MBBase),y
+	ldx		#$ff
+	cmp		#$ff
+	bne		@warning				; eg. this fails for the WDC W65C22S6TPG-14 in my hybrid Mockingboard
+
+	; Test reading DDRA/IRA, checking that DDRB bits set as inputs read back as 1's
+	jsr		incSubTestNum			; subTest #9
+	ldy		#SY6522_DDRA
+	lda		(MBBase),y
+	ldx		#$00
+	cmp		#$00
+	bne		@error
+	jsr		incSubTestNum			; subTest #$A
+	ldy		#SY6522_IRA
+	lda		(MBBase),y
+	ldx		#$ff
+	cmp		#$ff
+	bne		@warning				; (see above)
+
+	beq		@ok
+
+	;
+
+@warning	; Pre: A=actual, X=expected
+	jsr		setWarning				; pre: X = expected; A = actual
+	; fall through...
+
+@ok
+	lda		#SY6522_A_BASE
+	sta		MBBaseL
+
+	clc
+	rts								; C=0(OK)
+
+@error		; Pre: A=actual, X=expected
+	stx		zpTmp2					; expected
+	jmp		Test6522Error			; C=1(NG)
