@@ -1572,6 +1572,18 @@
                     <span id="ASM_byteCodeInfo" style="color:#000000;font-family:arial;font-size:11px;padding:0px 6px;white-space:nowrap;">0 bytes</span>
                     <input type="button" value="X" onclick="javascript:oCOM.POPUP.off('tab2.2')">
                   </form>
+                  <div style="color:black;padding:3px 6px;"
+                       title="Start address used when byte-encoding the source pane into monitor byte code">
+                    byte encode source
+                    <input id="ASM_sourceByteCodeStartInput"
+                           type="text"
+                           value="$6000"
+                           maxlength="6"
+                           spellcheck="false"
+                           style="width:64px;min-height:20px;font:12px/1.2 courier,monospace;text-transform:uppercase;box-sizing:border-box;">
+                    <span id="ASM_sourceByteCodeRangeInfo"
+                          style="color:#000000;font-family:arial;font-size:11px;padding:0px 4px;white-space:nowrap;">A$6000 L$0000</span>
+                  </div>
                 </div>
 
                 <!--  ASM ACTION BUTTONS -->
@@ -1586,30 +1598,9 @@
                 <div class=toolbox>
                   <div class=appbox style="min-height:63px;height:auto;padding:0px 6px 0px 6px;">
                     <div class=appbut style="color:black">
-                      load include files<input id="ASM_includeFileInput" style="display:inline-block" type="file" multiple accept=".INC,.inc,.S,.s,.ASM,.asm,.txt,.src,.a65,.mac,text/plain">
+                      load include files<input id="ASM_includeFileInput" style="display:inline-block" type="file" multiple accept=".INC,.inc,.S,.s,.ASM,.asm,.a,.A,.txt,.src,.a65,.mac,text/plain">
                     </div>
                     <div id="ASM_includeLabelWrap" class="ASM_includeLabelWrap"></div>
-                    <div class=appbut style="color:black">
-                      load assembler code<input id="ASM_fileInput" style="display:inline-block" type="file" accept=".S,.s,.ASM,.asm,.INC,.inc,.txt,text/plain">
-                    </div>
-                    <div class="appbut" style="color:black"
-                          title="Start address used when byte-encoding the source pane into monitor byte code">
-                      byte encode source
-                      <input id="ASM_sourceByteCodeStartInput"
-                             type="text"
-                             value="$6000"
-                             maxlength="6"
-                             spellcheck="false"
-                             style="width:64px;min-height:20px;font:12px/1.2 courier,monospace;text-transform:uppercase;box-sizing:border-box;">
-                      <div id="ASM_encodeSourceButton"
-                           class="appbut mini"
-                           style="color:black"
-                           title="Byte encode source at this address"
-                           role="button"
-                           tabindex="0"><i class="fa fa-scroll"></i></div>
-                      <span id="ASM_sourceByteCodeRangeInfo"
-                            style="color:#000000;font-family:arial;font-size:11px;padding:0px 4px;white-space:nowrap;">A$6000 L$0000</span>
-                  </div>
                     <!-- Status is logged through ASM_setStatus(); find/replace lives in the Source pane header. -->
                   </div>
                 </div>
@@ -1624,6 +1615,12 @@
                             onclick="ASM_sourceCatalogOpen();event.stopPropagation();">
                       <i class="fa fa-cat"></i>
                     </button>
+                    <br>
+                    <button id="ASM_encodeSourceButton"
+                            class=appbut
+                            type="button"
+                            title="Byte encode source at the address in Tools"
+                            aria-label="Byte encode source"><i class="fa fa-scroll"></i></button>
                   </div>
                 </div>
 
@@ -1641,6 +1638,13 @@
                              title="Source filename"
                              spellcheck="false"
                              style="width:150px;max-width:22vw;border:1px solid rgba(0,0,0,0.25);border-radius:4px;background:#ffffff;color:#000000;padding:2px 5px;font:11px/1.2 courier,monospace;">           
+                      <input id="ASM_fileInput" type="file" hidden
+                             accept=".S,.s,.ASM,.asm,.INC,.inc,.a,.A,.txt,text/plain">
+                      <button id="ASM_uploadSourceButton"
+                              class="ASM_paneTitleButton"
+                              type="button"
+                              title="Upload source"
+                              aria-label="Upload source"><i class="fa fa-cloud-upload-alt"></i></button>
                       <button id="ASM_downloadSourceButton"
                               class="ASM_paneTitleButton"
                               type="button"
@@ -4025,6 +4029,7 @@ Label1 TXA
               var sourceFileNameInput = ASM_el("ASM_sourceFileNameInput");
               var symbolFileNameInput = ASM_el("ASM_symbolFileNameInput");
               var downloadSourceButton = ASM_el("ASM_downloadSourceButton");
+              var uploadSourceButton = ASM_el("ASM_uploadSourceButton");
               var copyByteCodeButton = ASM_el("ASM_copyByteCodeButton");
               var copyIncludeButton = ASM_el("ASM_copyIncludeButton");
               var closeIncludeButton = ASM_el("ASM_closeIncludeButton");
@@ -4055,7 +4060,22 @@ Label1 TXA
                 ASM_clearOutputs("Dialect changed. Reassemble to refresh the listing and byte code.","warn");
               });
               var listingPresetButtons = document.querySelectorAll(".ASM_listingPreset[data-listing-preset]");
-              if(fileInput) fileInput.addEventListener("change",function(){ ASM_loadFile(fileInput.files && fileInput.files[0]); });
+              if(uploadSourceButton && fileInput) uploadSourceButton.addEventListener("click",function(){ fileInput.click(); });
+              if(fileInput) fileInput.addEventListener("change",async function()
+              {
+                try
+                {
+                  await ASM_loadFile(fileInput.files && fileInput.files[0]);
+                }
+                catch(err)
+                {
+                  ASM_setStatus("Source load failed: " + (err && err.message ? err.message : err),"bad");
+                }
+                finally
+                {
+                  fileInput.value = "";
+                }
+              });
               if(includeFileInput) includeFileInput.addEventListener("change",async function()
               {
                 try
@@ -4113,13 +4133,6 @@ Label1 TXA
               if(encodeSourceButton)
               {
                 encodeSourceButton.addEventListener("click",ASM_byteEncodeSource);
-                encodeSourceButton.addEventListener("keydown",function(ev){
-                  if(ev.key == "Enter" || ev.key == " ")
-                  {
-                    ev.preventDefault();
-                    ASM_byteEncodeSource();
-                  }
-                });
               }   
               
               if(sourceByteCodeStartInput)

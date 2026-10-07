@@ -136,7 +136,7 @@ test("CPU selection accepts 6502 and rejects unavailable CPUs", () => {
     assert.ok(assemble("!cpu 65816").result.errors.length);
 });
 test("unimplemented ACME directives and macro calls never become ordinary labels", () => {
-    for (const source of ["!macro", "!zone", "+routine"]) {
+    for (const source of ["!macro", "!source", "+routine"]) {
         const {result} = assemble(source);
         assert.ok(result.errors.length, source);
     }
@@ -230,10 +230,37 @@ test("current-PC instruction operands work in mixed mode without a zero-page pre
     clean(result);
     assert.deepEqual(values(result), [0xad,3,8,0xd0,0xfe]);
 });
-test("legacy star-dollar operands produce a diagnostic instead of being mistaken for current-PC math", () => {
-    const {result} = assemble('lda *$10');
+test("legacy star-dollar operands retain forced zero page in existing dialect modes", () => {
+    for(const dialect of ["multi","raJS","ca65","Merlin","S-C"]){
+        const {result} = assemble('STX *$3C\nBIT *$3C\nORA *$3C\nSTA *$3D\nSTY *$3F\nSTA *$3E\nLDA *$3E\nLDA *$3D\nLDA *$3E\nSTA *$3E\nLDA *$3E\nLDY *$3F',{dialect});
+        clean(result);
+        assert.deepEqual(values(result),[0x86,0x3c,0x24,0x3c,0x05,0x3c,0x85,0x3d,0x84,0x3f,0x85,0x3e,0xa5,0x3e,0xa5,0x3d,0xa5,0x3e,0x85,0x3e,0xa5,0x3e,0xa4,0x3f]);
+    }
+});
+test("legacy prefix overrides padding and handles direct indexed operands", () => {
+    const {result} = assemble('lda *$003C\nlda * $003C,X\nldx *$003C,Y\nlda $003C');
+    clean(result);
+    assert.deepEqual(values(result),[0xa5,0x3c,0xb5,0x3c,0xb6,0x3c,0xad,0x3c,0]);
+});
+test("legacy prefix never truncates an out-of-range address or falls back to absolute", () => {
+    for(const source of ['lda *$100','lda *$FF+1','jsr *$3C','lda *$3C,Y']){
+        const {result}=assemble(source);
+        assert.ok(result.errors.length,source);
+        assert.deepEqual(values(result),[],source);
+    }
+});
+test("legacy prefix coexists with current PC and is retained in source listings", () => {
+    const {result}=assemble('ORG $0800\nL01 STX *$3C ; Store X\nlda *+3\nbne *');
+    clean(result);
+    assert.deepEqual(values(result),[0x86,0x3c,0xad,5,8,0xd0,0xfe]);
+    assert.equal(result.rows[1].val,0x3c);
+    assert.ok(result.listingText.includes('*$3C'));
+    assert.equal(result.symtab.L01,0x800);
+});
+test("explicit ACME mode rejects the foreign legacy zero-page prefix", () => {
+    const {result}=assemble('lda *$3C',{dialect:"ACME"});
     assert.ok(result.errors.length);
-    assert.deepEqual(values(result), []);
+    assert.deepEqual(values(result),[]);
 });
 
 test("decimal and octal direct addresses select size by numeric value", () => {

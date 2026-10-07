@@ -51,7 +51,7 @@ function ASM(options)
     var root = (typeof globalThis !== "undefined") ? globalThis : ((typeof window !== "undefined") ? window : this);
     var self = this;
 
-    this.version = "0.6.11";
+    this.version = "0.6.13";
     this.maxNumBytes = options.maxNumBytes || 2;
     // Retained for callers that still inspect it. Symbol identity is no longer truncated.
     this.label_len = options.label_len || 8;
@@ -314,6 +314,8 @@ function ASM(options)
         this.pragma[acmePragma] = mkPragma(acmeDataPragmas[acmePragma], ["ACME"], parsePragmaACMEData);
     this.pragma["!CPU"] = mkPragma("ACME_CPU", ["ACME"], parsePragmaACMECPU);
     this.pragma["!MACRO"] = mkPragma("ACME_MACRO", ["ACME"], parsePragmaNoop);
+    this.pragma["!ZONE"] = mkPragma("ACME_ZONE", ["ACME"], parsePragmaACMEZone);
+    this.pragma["!ZN"] = this.pragma["!ZONE"];
 
     // Metadata / non-code classifications, also table-driven.
     this.metadata = {
@@ -460,9 +462,9 @@ function ASM(options)
                         row.sym[a] = this.replaceSCLocalReferences(row.sym[a], localMap, anchor.line, salt);
                 continue;
             }
-            row.sourceSym = row.sym.slice();
+            if (!row.sourceSym) row.sourceSym = row.sym.slice();
 
-            if (row.tag[0] === "LBL" && row.sym[0] && !this.isSCLocalLabel(row.sym[0])) {
+            if (row.tag[0] === "LBL" && row.sym[0] && !row.acmeLocalLabel && !this.isSCLocalLabel(row.sym[0])) {
                 anchor = {
                     line: row.line,
                     id: this.getID(row.sym[0])
@@ -504,6 +506,154 @@ function ASM(options)
                 row.sym[s] = this.replaceSCLocalReferences(
                     row.sym[s], localMap, anchor.line, salt
                 );
+            }
+        }
+        return statements;
+    };
+
+    /* Named dot locals and anonymous labels use a zone instance, not its title.
+       Cheap locals use the last global location label; assignments do not open
+       a new cheap scope. Macro-private dot symbols are already normalized. */
+    this.normaliseACMELocalLabels = function(statements)
+    {
+        var asm = this;
+        var enabled = this.dialect === "multi" || this.dialect === "ACME";
+        this.acmeLabelAliases = Object.create(null);
+        if (!enabled) return statements;
+        var prefix = "__ACME_LABEL_";
+        var source = statements.map(function(row) { return row.source; }).join("\n");
+        while (source.indexOf(prefix) >= 0) prefix += "_";
+        var zone = 0, cheap = 0, zoneActive = this.dialect === "ACME";
+        var definitions = Object.create(null), anonymous = Object.create(null);
+
+        function localID(name, row)
+        {
+            var id = prefix + (name.charAt(0) === "@" ? "C" + row.acmeCheap : "Z" + row.acmeZone)
+                + "_" + name.substring(1);
+            asm.acmeLabelAliases[id] = name;
+            return id;
+        }
+
+        for (var i = 0; i < statements.length; i++)
+        {
+            var row = statements[i];
+            if (row.acmeControl || (row.acmeMacro && !row.macroArgument)) continue;
+            if (!row.sourceSym) row.sourceSym = row.sym.slice();
+            // A standalone or assigned dot name can coincide with a ca65/S-C
+            // directive. Operand-bearing foreign directives keep their tags.
+            if (zoneActive && /^\.[A-Za-z_][A-Za-z0-9_.$]*:?$/.test(row.sym[0] || ""))
+            {
+                if (row.sym.length === 1) row.tag = ["LBL"];
+                else if (row.sym[1] === "=") row.tag = ["LBL", "PGM", "OPR"];
+                if (row.tag[0] === "LBL") row.sym[0] = row.sym[0].replace(/:$/, "");
+            }
+            if (this.dialect === "ACME" && row.tag[0] === "LBL" && /^\.[0-9]/.test(row.sym[0]))
+                row.err = row.err || "S-C numeric local labels are not supported in ACME mode";
+            var pgm = this.getTokenIndexByTag(row.tag, "PGM");
+            if (pgm >= 0 && /^!z(?:one|n)$/i.test(row.sym[pgm]))
+            {
+                var title = row.sym.slice(pgm + 1).join(" ");
+                if (/^(?:[A-Za-z_][A-Za-z0-9_]*)?$/.test(title))
+                { zone++; zoneActive = true; }
+            }
+            var label = row.tag[0] === "LBL" ? row.sym[0] : "";
+            var local = /^@[A-Za-z0-9_][A-Za-z0-9_.$]*$/.test(label)
+                || (zoneActive && /^\.[A-Za-z_][A-Za-z0-9_.$]*$/.test(label));
+            var anon = /^(?:\++|-+)$/.test(label);
+            var assignment = pgm >= 0 && this.pragmaInfo(row.sym[pgm]).ref === "EQU";
+            if (label && !local && !anon && !assignment && !row.acmeMacro
+                && !/^\./.test(label)) cheap++;
+            row.acmeZone = zone;
+            row.acmeCheap = cheap;
+            row.acmeDotScope = zoneActive;
+            if (local || anon)
+            {
+                row.acmeLocalLabel = true;
+                row.acmeLabelSyntax = true;
+                var id;
+                if (anon)
+                {
+                    var key = zone + ":" + label;
+                    if (!anonymous[key]) anonymous[key] = [];
+                    id = prefix + "A" + i;
+                    anonymous[key].push({index:i, id:id});
+                    asm.acmeLabelAliases[id] = label;
+                }
+                else
+                {
+                    id = localID(label, row);
+                    if (definitions[id]) row.err = row.err || "duplicate ACME local label " + label;
+                    definitions[id] = true;
+                }
+                row.sym[0] = id;
+            }
+        }
+
+        // Scan only operand fields. Strings, directive names, global identifiers
+        // containing dots, negative numbers and arithmetic signs stay intact.
+        function rewrite(text, row, index)
+        {
+            var out = "", quote = "", escaped = false, expectValue = true;
+            for (var p = 0; p < text.length;)
+            {
+                var ch = text.charAt(p);
+                if (escaped) { out += ch; escaped = false; p++; continue; }
+                if (ch === "\\") { out += ch; escaped = true; p++; continue; }
+                if (quote) { out += ch; if (ch === quote) { quote = ""; expectValue = false; } p++; continue; }
+                if (ch === "'" || ch === '"') { out += ch; quote = ch; p++; continue; }
+                var match = text.substring(p).match(/^[A-Za-z_.$@][A-Za-z0-9_.$@]*/);
+                if (match)
+                {
+                    var name = match[0];
+                    var scoped = /^@[A-Za-z0-9_]/.test(name)
+                        || (row.acmeDotScope && /^\.[A-Za-z_]/.test(name));
+                    out += scoped ? localID(name, row) : name;
+                    if (scoped) row.acmeLabelSyntax = true;
+                    p += name.length; expectValue = false; continue;
+                }
+                if (expectValue && (ch === "+" || ch === "-"))
+                {
+                    var signs = text.substring(p).match(ch === "+" ? /^\++/ : /^-+/)[0];
+                    var next = text.substring(p + signs.length).replace(/^\s*/, "").charAt(0);
+                    // ACME only treats '-' as a label before end/comma/')'.
+                    // Before another unary operator or number prefix it is
+                    // negation (for example -%1, -!0 and - -1).
+                    if (!next || (ch === "-" ? /[),]/.test(next) : /[),+\-*\/%&|^<>=!]/.test(next)))
+                    {
+                        var candidates = anonymous[row.acmeZone + ":" + signs] || [];
+                        var target = null;
+                        for (var a = 0; a < candidates.length; a++)
+                        {
+                            if (ch === "+" && candidates[a].index > index) { target = candidates[a]; break; }
+                            if (ch === "-" && candidates[a].index <= index) target = candidates[a];
+                        }
+                        if (!target) row.err = row.err || "unresolved ACME anonymous label " + signs;
+                        out += target ? target.id : "0";
+                        row.acmeLabelSyntax = true;
+                        p += signs.length; expectValue = false; continue;
+                    }
+                }
+                out += ch;
+                if (/\d/.test(ch) || ch === ")") expectValue = false;
+                else if (ch === "*" && expectValue) expectValue = false;
+                else if (/[#(,+\-*\/%&|^~<>=!]/.test(ch)) expectValue = true;
+                p++;
+            }
+            return out;
+        }
+        for (var r = 0; r < statements.length; r++)
+        {
+            var statement = statements[r];
+            if (statement.acmeZone == null) continue;
+            var opr = this.getTokenIndexByTag(statement.tag, "OPR");
+            var pgm = this.getTokenIndexByTag(statement.tag, "PGM");
+            // Only expression-bearing directives participate. Legacy ASC/.AS
+            // payloads may be raw or use '/'/'-' delimiters, not just quotes.
+            if (pgm >= 0 && !/^(?:ORG|EQU|BYTE|WORD|WORD_BE|SC_DA|RES|SC_RES|ASSERT|ACME_BYTE|ACME_WORD|ACME_WORD_BE|ACME_TEXT|ACME_FILL|ACME_ALIGN)$/.test(this.pragmaInfo(statement.sym[pgm]).ref)) continue;
+            if (opr >= 0)
+            {
+                var text = statement.sym.slice(opr).join(" ");
+                statement.sym = statement.sym.slice(0, opr).concat([rewrite(text, statement, r)]);
             }
         }
         return statements;
@@ -664,7 +814,7 @@ function ASM(options)
         if (!text) return [];
         // Only normalize a leading assignment, leaving quoted text and operand
         // comparisons untouched. Both '*=$0800' and '* = $0800' are origins.
-        var assignment = text.match(/^(\*|[A-Za-z_.$][A-Za-z0-9_.$]*:?)\s*=(?!=)\s*([\s\S]*)$/);
+        var assignment = text.match(/^(\*|[A-Za-z_.$@][A-Za-z0-9_.$@]*:?)\s*=(?!=)\s*([\s\S]*)$/);
         if (assignment)
             text = assignment[1] === "*" ? "*= " + assignment[2]
                 : assignment[1] + " = " + assignment[2];
@@ -772,6 +922,10 @@ function ASM(options)
 
     this.cleanOperandValue = function (operand, mode) {
         var s = String(operand == null ? "" : operand).trim();
+        // Keep the old unambiguous '*$...' spelling only for direct zero-page
+        // modes. Bare '*' and arithmetic such as '*+3' still mean current PC.
+        if (this.dialect !== "ACME" && (mode === 6 || mode === 7 || mode === 8)
+            && /^\*\s*\$/.test(s)) s = s.substring(1).trim();
         var u = s.toUpperCase();
         if (mode === 2) return s.charAt(0) === "#" ? s.substring(1) : s;
         u = s.toUpperCase();
@@ -1007,6 +1161,13 @@ function ASM(options)
                 continue;
             }
 
+            // ACME's unary '!' is bitwise complement. Match '!=' above first.
+            if (ch === "!" && (this.acmeExpressionMode || this.dialect === "multi")) {
+                push("operator", ch, ch);
+                i++;
+                continue;
+            }
+
             if (/[+\-*\/%&|^~<>=]/.test(ch)) {
                 var currentPC = ch === "*" && expectValue;
                 push("operator", ch, ch);
@@ -1156,7 +1317,7 @@ function ASM(options)
                 case "identifier":
                     var id = asm.getID(token.value);
                     if (Object.prototype.hasOwnProperty.call(symtab, id)) return Number(symtab[id]);
-                    unresolved.push(token.value);
+                    unresolved.push((asm.acmeLabelAliases && asm.acmeLabelAliases[token.value]) || token.value);
                     return 0;
 
                 case "lparen":
@@ -1183,6 +1344,7 @@ function ASM(options)
                 case "+": take(); return +parseUnary();
                 case "-": take(); return -parseUnary();
                 case "~": take(); return ~parseUnary();
+                case "!": take(); return ~parseUnary();
                 case "<": take(); return parseUnary() & 0xff;
                 case ">": take(); return (parseUnary() >> 8) & 0xff;
                 case "/": take(); return (parseUnary() >> 8) & 0xff;
@@ -1266,7 +1428,10 @@ function ASM(options)
         else if (addr.charAt(0) === "#") mode = 2;
         else if (addr.charAt(0) === "/" && this.isValidMode(entry, 2)) mode = 2;
         else if (/^\*\s*\$/.test(addr)) {
-            return {mode:null, bytes:0, err:"legacy '*' zero-page prefix is no longer supported; use $FF for zero page or $00FF for absolute"};
+            if (this.dialect === "ACME")
+                return {mode:null, bytes:0, err:"legacy '*' zero-page prefix is not ACME syntax; use $3C for zero page or $003C for absolute"};
+            mode = indexedX ? 7 : (indexedY ? 8 : 6);
+            forcedZeroPage = true;
         } else if (addr.charAt(0) === "(") {
             if (upper.indexOf(",X)") > 0 && upper.indexOf(",X)") === upper.length - 3) mode = 10;
             else if (upper.indexOf("),Y") > 0 && upper.indexOf("),Y") === upper.length - 3) mode = 11;
@@ -1635,6 +1800,7 @@ function ASM(options)
             if (lines[i].err) row.err = lines[i].err;
             statements.push(row);
         }
+        this.normaliseACMELocalLabels(statements);
         if (this.dialect === "multi" || this.dialect === "raJS" || this.dialect === "S-C")
             this.normaliseSCLocalLabels(statements);
         return statements;
@@ -1664,6 +1830,7 @@ function ASM(options)
                 sym: base.sym.slice()
             };
             if (base.scLocalLabel) row.scLocalLabel = Object.assign({}, base.scLocalLabel);
+            if (base.acmeLabelSyntax) row.acmeLabelSyntax = true;
             if (base.acmeMacro) row.acmeMacro = true;
             if (base.acmeControl) row.acmeControl = true;
             if (base.macroArgument) row.macroArgument = true;
@@ -1914,7 +2081,7 @@ function ASM(options)
         var pinfo = this.pragmaInfo(pgm);
         var ref = pinfo ? pinfo.ref : String(pgm || "").toUpperCase();
         var operands = sym.slice(pgmIndex + 1).join(" ");
-        if (/^ACME_/.test(ref) && ref !== "ACME_CPU")
+        if (/^ACME_/.test(ref) && ref !== "ACME_CPU" && ref !== "ACME_ZONE")
         {
             var data = this.evaluateACMEData(ref, operands, symtab, true);
             if (data.err) row.err = row.err || data.err;
@@ -2854,7 +3021,7 @@ function ASM(options)
         row = row || {};
         bytes = bytes || [];
         var tag = row.tag || [];
-        var sym = row.acmeMacro && row.sourceSym ? row.sourceSym : row.sym || [];
+        var sym = (row.acmeMacro || row.acmeLabelSyntax) && row.sourceSym ? row.sourceSym : row.sym || [];
         var parts = { adr: "", code: "", lin: row.lin || "", num: row.num || "", lbl: "", ins: "", opr: "", asm: "", com: "" };
         var split = this.splitStatementAndComment(row.source != null ? row.source : row.statement);
         parts.com = split.comment || "";
@@ -3148,6 +3315,18 @@ function ASM(options)
         row.asm = this.asm.slice();
         if (row.sym.slice(index + 1).join(" ").trim() !== "6502")
             row.err = row.err || "only !cpu 6502 is supported";
+        return row;
+    }
+
+    function parsePragmaACMEZone(arg)
+    {
+        var row = arg.row;
+        var index = arg.asm.getTokenIndexByTag(row.tag, "PGM");
+        var title = row.sym.slice(index + 1).join(" ").trim();
+        row.asm = this.asm.slice();
+        if (/[{}]/.test(title)) row.err = row.err || "ACME block zones are not implemented";
+        else if (!/^(?:[A-Za-z_][A-Za-z0-9_]*)?$/.test(title))
+            row.err = row.err || "invalid ACME zone title";
         return row;
     }
 
