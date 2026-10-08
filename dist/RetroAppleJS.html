@@ -61018,6 +61018,31 @@ function mergeActionMap(dst,src)
         oCOM.POPUP.toggle("slotConfig_popup");
     }
 
+    this.slotConfig_control = function(slotN)
+    {
+        slotN = Number(slotN);
+        var slot = this.slots[slotN];
+
+        if(!Number.isInteger(slotN) || !slot || !slot.peripheral)
+            return false;
+
+        /*
+         * Select this slot in the peripheral-control toolbox before changing
+         * from SETTINGS (tab1.1) to TOOLS (tab1.2).
+         */
+        this.refreshDeviceToolboxes({
+             "id":"devices"
+            ,"default_slot":this.slot2ID(slotN)
+        });
+
+        this.deviceConfig_close();
+        oCOM.POPUP.runRule("tab1.2");
+        if(typeof(onBoardPasteRefresh)=="function")
+            onBoardPasteRefresh();
+
+        return true;
+    }
+
     this.slotConfig_download = function(slotN)
     {
         slotN = Number(slotN);
@@ -61218,6 +61243,10 @@ function mergeActionMap(dst,src)
             + "<div><b>"+oCOM.escapeHTML(peripheralPCODE(peripheral))+"</b>"
             + (peripheralDescription(peripheral) ? " &mdash; "+oCOM.escapeHTML(peripheralDescription(peripheral)) : "")
             + " &mdash; " + slotN2name(slot.peripheral.mount.slotN)
+            + "&nbsp;<button class=\"appbut\" type=\"button\""
+            + " title=\"Peripheral control\""
+            + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.slotConfig_control("+slotN+")\">"
+            + "<i class=\"fa fa-tachometer-alt\"></i></button>"
             + "&nbsp;<button class=\"appbut\" type=\"button\""
             + " title=\"Download slot JSON\""
             + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.slotConfig_download("+slotN+")\">"
