@@ -14,6 +14,42 @@ function SerialProLine()
     var line = this;
     var host = null;
     var listeners = [];
+    var scriptPorts = [];
+
+    this.API = {
+        NAME:"SPSERIAL",
+        DESCRIPTION:"Remote endpoint: write sends to the Apple II UART; read observes Apple II output. Raw 8-bit bytes, independent of terminal ASCII mode.",
+        METHODS:{
+            write:{signature:"await port.write(data)",description:"Queue an 8-bit string, byte, byte array or ArrayBuffer into the UART. Returns accepted byte count. Does not append CR."},
+            read:{signature:"await port.read(count?)",description:"Consume up to count bytes from this facade, or all available bytes. Returns Uint8Array. Cannot read while waitFor is pending."},
+            available:{signature:"await port.available()",description:"Number of bytes in this facade's receive buffer (maximum 65536). Overflow raises RangeError and clears the buffer."},
+            flush:{signature:"await port.flush()",description:"Clear this facade's receive buffer and cancel its wait. Returns discarded byte count; leaves UART and terminal data intact."},
+            waitFor:{signature:"await port.waitFor(pattern, timeout=3000)",description:"Match a string or RegExp in raw byte text. Returns text through the first match, consumes those bytes and retains trailing bytes. One pending wait. TimeoutError on expiry."},
+            onReceive:{signature:"const off = port.onReceive(callback)",description:"Observe Uint8Array chunks without consuming them. Call off() to unsubscribe; callbacks end with the script."}
+        },
+        EVENTS:{receive:{signature:"receive(bytes)",description:"Apple II output arriving at the remote endpoint. Raw byte chunks; high bits are preserved."}}
+    };
+
+    this.getScriptAPI = function()
+    {
+        var facade = new EMU_SCRIPT_PORT({
+            write:function(bytes)
+            {
+                if(!host) throw new Error("SPSERIAL is not attached");
+                return line.receiveBytes(bytes,{source:"script"});
+            },
+            subscribe:function(callback) { return line.subscribe(callback); }
+        });
+        var dispose = facade.dispose;
+        facade.dispose = function()
+        {
+            dispose();
+            var index = scriptPorts.indexOf(facade);
+            if(index>=0) scriptPorts.splice(index,1);
+        };
+        scriptPorts.push(facade);
+        return facade;
+    };
 
     this.id = {
          "DCODE":"SPSERIAL"
@@ -68,6 +104,16 @@ function SerialProLine()
             host.bindSerialLineDevice(line);
 
         return !!host;
+    };
+
+    this.unbindHost = function()
+    {
+        scriptPorts.slice().forEach(function(port) { port.dispose(); });
+        if(host && typeof(host.bindSerialLineDevice)==="function" &&
+            (typeof(host.getSerialLineDevice)!=="function" || host.getSerialLineDevice()===line))
+            host.bindSerialLineDevice(null);
+        host = null;
+        return true;
     };
 
     /*

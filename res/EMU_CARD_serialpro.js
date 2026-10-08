@@ -1202,6 +1202,7 @@ function SerialProCard()
      */
     this.bindSerialLineDevice = function(device)
     {
+        if(serialLineDevice!==device) serialScriptDispose();
         if(serialLineUnsubscribe)
         {
             serialLineUnsubscribe();
@@ -1243,6 +1244,7 @@ function SerialProCard()
 
     this.bindSerialTerminalConsoleDevice = function(device)
     {
+        if(serialTerminalConsoleDevice!==device) serialScriptDispose();
         serialTerminalConsoleDevice = device || null;
         return !!serialTerminalConsoleDevice;
     };
@@ -1267,6 +1269,17 @@ function SerialProCard()
         for(var i=0;i<bytes.length;i++)
             serialTerminalState.toCard.push(bytes[i] & 0xFF);
 
+        if(meta && meta.source==="script")
+        {
+            var text = "";
+            for(var j=0;j<bytes.length;j++)
+            {
+                var d8 = bytes[j] & 0xFF;
+                text += d8===13 ? "\n" : (d8===10 ? "\n" :
+                    (d8>=32 && d8<=126 ? String.fromCharCode(d8) : "[$"+serialTerminalHexByte(d8)+"]"));
+            }
+            serialpro.serialTerminalScriptWrite(text,"tx");
+        }
         aciaPrimeReceiver();
         return bytes.length;
     };
@@ -3168,9 +3181,16 @@ function SerialProCard()
         if(!text.length) return 0;
         if(text.charAt(text.length-1)!="\n") text += "\n";
 
-        serialTerminalRemember("meta",text);
+        return serialpro.serialTerminalScriptWrite(text,"meta");
+    };
+
+    this.serialTerminalScriptWrite = function(text,channel)
+    {
+        text = String(text===undefined ? "" : text);
+        channel = channel || "meta";
+        serialTerminalRemember(channel,text);
         var terminal = serialTerminalLive();
-        if(terminal) terminal.write(text,"meta");
+        if(terminal && text.length) terminal.write(text,channel);
         return text.length;
     };
 
@@ -3669,7 +3689,7 @@ function SerialProCard()
         popup.className = "appbox com_popup_frame serialpro_terminal_popup";
         popup.style.cssText =
             "position:absolute;z-index:3;left:800px;top:32px;"
-            +"width:450px;height:450px;text-align:left;"
+            +"width:650px;height:600px;max-width:calc(100vw - 20px);text-align:left;"
             +"padding:0px;margin:0px";
         document.body.appendChild(popup);
         return popup;
@@ -3678,6 +3698,19 @@ function SerialProCard()
     function serialTerminalSlotN()
     {
         return serialpro.mount ? Number(serialpro.mount.slotN) : null;
+    }
+
+    function serialScriptDispose()
+    {
+        if(typeof(document)==="undefined") return;
+        var popup = document.getElementById("serialProTerminal_popup");
+        if(!popup || popup._serialProOwner!==serialpro) return;
+        if(popup._portScript) popup._portScript.destroy();
+        popup._portScript = null;
+        popup._terminal = null;
+        popup._serialProOwner = null;
+        popup.removeAttribute("data-slotN");
+        popup.hidden = true;
     }
 
     function serialTerminalLive()
@@ -4160,7 +4193,7 @@ function SerialProCard()
         var io = apple2plus.hwObj().io;
         var slotID = io.slot2ID(slotN);
         var popup = serialTerminalPopup();
-        var sameSlot = Number(popup.getAttribute("data-slotN"))===slotN;
+        var sameSlot = popup._serialProOwner===serialpro && Number(popup.getAttribute("data-slotN"))===slotN;
 
         if(popup.hidden===false && sameSlot)
         {
@@ -4179,11 +4212,15 @@ function SerialProCard()
         }
 
         var call = "apple2plus.hwObj().io.SLOT2obj("+slotN+")";
+        var hasPortScript = serialLineDevice && serialTerminalConsoleDevice && typeof(EMU_PORT_SCRIPT)==="function";
+        if(popup._portScript) popup._portScript.destroy();
+        popup._serialProOwner = serialpro;
         popup.setAttribute("data-slotN",String(slotN));
         popup.innerHTML = ""
-            + "<div class=\"com_popup_title\" style=\"height:30px;padding:0px 6px;display:flex;align-items:center;gap:6px;\">"
-            + "  <b>Serial Pro #"+slotID+" terminal</b>"
-            + "  <span style=\"flex:1 1 auto\"></span>"
+            + "<div class=\"com_popup_body\" data-port-script-container>"
+            + "<div data-port-script-terminal>"
+            + "<div class=\"com_popup_title emu_port_script_terminal_toolbar\">"
+            + "  <span class=\"emu_port_script_title\">Serial Pro #"+slotID+" terminal</span>"
             + "  <button class=\"appbut skinny\" type=button data-serial-terminal-display"
             + "          title=\"APPLE ASCII display: bit 7 stripped; click for raw byte display\""
             + "          onclick=\""+call+".serialTerminalDisplayToggle()\">ASCII</button>"
@@ -4204,14 +4241,30 @@ function SerialProCard()
             + "          onclick=\""+call+".serialTerminalHelp()\">?</button>"
             + "  <button class=\"appbut skinny\" type=button title=\"Clear terminal display\""
             + "          onclick=\""+call+".serialTerminalClear()\">CLEAR</button>"
-            + "  <button class=\"appbut skinny\" type=button title=\"Close serial terminal\""
-            + "          onclick=\"oCOM.POPUP.off('serialProTerminal_popup')\">X</button>"
+            + (hasPortScript ? "" : "<button class=\"appbut skinny\" type=button title=\"Close port console\""
+                + " onclick=\"oCOM.POPUP.off('serialProTerminal_popup')\">X</button>")
             + "</div>"
-            + "<div class=\"com_popup_body\">"
             + "  <div id=\"serialProTerminal_host\" class=\"serialpro_terminal_host\"></div>"
+            + "</div>"
             + "</div>";
 
         oCOM.POPUP.on("serialProTerminal_popup");
+
+        if(hasPortScript)
+        {
+            popup._portScript = new EMU_PORT_SCRIPT({
+                container:popup.querySelector("[data-port-script-container]"),
+                lowerPane:popup.querySelector("[data-port-script-terminal]"),
+                port:serialLineDevice.getScriptAPI(),
+                api:serialLineDevice.API,
+                console:serialTerminalConsoleDevice.getScriptAPI(),
+                consoleAPI:serialTerminalConsoleDevice.API,
+                storageKey:"SerialProScript_"+slotID,
+                visibilityElement:popup,
+                onClose:function() { oCOM.POPUP.off("serialProTerminal_popup"); },
+                source:"// Script is the remote end of SPSERIAL.\nawait terminal.write(\"Sending HELLO\\n\", \"meta\");\nawait port.write(\"HELLO\\r\");\n// const reply = await port.waitFor(\"OK\", 3000);\n// await terminal.write(\"Received: \" + reply + \"\\n\", \"rx\");"
+            });
+        }
 
         var terminal = new TERMINAL({
              "container":"serialProTerminal_host"
@@ -4469,6 +4522,7 @@ function SerialProCard()
 
     this.onUnmount = function()
     {
+        serialScriptDispose();
         /*
          * deviceToolSlotHTML() registers dashboard refresh callbacks whose
          * control IDs refer to DOM elements owned by this peripheral toolbox.

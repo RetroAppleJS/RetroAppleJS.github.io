@@ -1,0 +1,134 @@
+.emu_port_script_split {
+    display:flex;
+    flex-direction:column;
+    width:100%;
+    height:100%;
+    min-height:0;
+    overflow:hidden;
+}
+.emu_port_script {
+    display:flex;
+    flex-direction:column;
+    flex:0 0 50%;
+    min-height:0;
+    min-width:0;
+    border:1px solid rgba(0,0,0,.22);
+    border-radius:6px;
+    box-sizing:border-box;
+    background:rgba(255,255,255,.35);
+    color:#111;
+    overflow:hidden;
+}
+.emu_port_script_toolbar,
+.serialpro_terminal_popup .emu_port_script_terminal_toolbar {
+    display:flex;
+    align-items:center;
+    flex:0 0 auto;
+    flex-wrap:nowrap;
+    gap:5px;
+    padding:1px 4px;
+    min-height:23px;
+    box-sizing:border-box;
+    border-bottom:1px solid rgba(0,0,0,.18);
+    font:11px/1.2 Arial,sans-serif;
+    white-space:nowrap;
+    background:rgba(240,240,240,.75);
+    color:#111;
+}
+.emu_port_script_title {
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    font-weight:400;
+}
+.emu_port_script_terminal_toolbar .emu_port_script_title { flex:1; }
+.emu_port_script_status {
+    flex:1;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    color:#555;
+}
+.emu_port_script_toolbar .appbut.skinny,
+.emu_port_script_terminal_toolbar .appbut.skinny {
+    flex:0 0 auto;
+    min-width:18px;
+    padding:2px 3px;
+    color:#111;
+    line-height:14px;
+}
+.emu_port_script_toolbar .appbut:focus-visible,
+.emu_port_script_terminal_toolbar .appbut:focus-visible {
+    outline:2px solid #555;
+    outline-offset:1px;
+}
+.emu_port_script_editor {
+    display:block;
+    flex:1 1 auto;
+    min-height:0;
+    width:100%;
+    box-sizing:border-box;
+    resize:none;
+    border:0;
+    border-radius:0;
+    margin:0;
+    padding:6px 8px;
+    background:rgba(255,255,255,.78);
+    color:#111;
+    font:9px/12px "DejaVu Sans Mono",Menlo,Consolas,"Courier New",monospace;
+    tab-size:4;
+}
+.emu_port_script_log {
+    flex:0 1 60px;
+    min-height:24px;
+    overflow:auto;
+    border:0;
+    border-top:1px solid rgba(0,0,0,.18);
+    margin:0;
+    padding:4px 8px;
+    white-space:pre-wrap;
+    overflow-wrap:anywhere;
+    background:#101418;
+    color:#d7e0e7;
+    font:9px/12px "DejaVu Sans Mono",Menlo,Consolas,"Courier New",monospace;
+}
+.emu_port_script_api {
+    flex:1;
+    overflow:auto;
+    padding:0 8px 8px;
+    font:12px/1.4 Arial,sans-serif;
+    user-select:text;
+}
+.emu_port_script_api h4 { margin:8px 0; }
+.emu_port_script_api p { margin:4px 0 10px; }
+.emu_port_script_api code { color:#111; }
+.emu_port_script [hidden] { display:none !important; }
+.emu_port_script_divider {
+    flex:0 0 5px;
+    background:rgba(128,128,128,.08);
+    cursor:row-resize;
+    touch-action:none;
+}
+.emu_port_script_divider:focus { outline:2px solid #555; outline-offset:-2px; }
+.emu_port_script_lower {
+    display:flex;
+    flex-direction:column;
+    flex:1 1 auto;
+    min-height:0;
+    border:1px solid rgba(0,0,0,.22);
+    border-radius:6px;
+    box-sizing:border-box;
+    overflow:hidden;
+}
+.emu_port_script_lower .serialpro_terminal_host { flex:1; height:auto; box-sizing:border-box; }
+.serialpro_terminal_popup .com_popup_body { background:transparent; }
+.serialpro_terminal_popup .serialpro_terminal_host.VanillaTerm:not(.serialpro_terminal_light) {
+    background:#101418;
+    color:#d7e0e7;
+}
+.serialpro_terminal_popup .serialpro_terminal_host .container {
+    box-sizing:border-box;
+    padding:5px 7px;
+    font:9px/12px "DejaVu Sans Mono",Menlo,Consolas,"Courier New",monospace;
+}
+.serialpro_terminal_popup { resize:both; min-width:450px; min-height:360px; }

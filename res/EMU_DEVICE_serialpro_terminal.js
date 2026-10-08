@@ -12,6 +12,34 @@ function SerialProTerminalDevice()
     var host = null;
     var listeners = [];
 
+    this.API = {
+        NAME:"SPTERM",
+        DESCRIPTION:"Browser console reporting only; these calls never inject UART bytes.",
+        METHODS:{
+            write:{signature:"await terminal.write(text, channel=\"meta\")",description:"Append exact text to the lower console. Channels: tx, rx or meta. No automatic newline. console.write() is an alias."},
+            clear:{signature:"await terminal.clear()",description:"Clear the terminal display/transcript, leaving the serial buffers intact."}
+        }
+    };
+
+    this.getScriptAPI = function()
+    {
+        return {
+            write:function(text,channel)
+            {
+                if(!host) throw new Error("SPTERM is not attached");
+                if(typeof(text)!=="string") throw new TypeError("Console text must be a string");
+                if(channel===undefined) channel = "meta";
+                if(["tx","rx","meta"].indexOf(channel)<0) throw new TypeError("Invalid console channel");
+                return host.serialTerminalScriptWrite(text,channel);
+            },
+            clear:function()
+            {
+                if(!host) throw new Error("SPTERM is not attached");
+                return host.serialTerminalClear();
+            }
+        };
+    };
+
     this.id = {
          "DCODE":"SPTERM"
         ,"hostPCODE":"SPC"
@@ -49,6 +77,15 @@ function SerialProTerminalDevice()
             host.bindSerialTerminalConsoleDevice(device);
 
         return !!host;
+    };
+
+    this.unbindHost = function()
+    {
+        if(host && typeof(host.bindSerialTerminalConsoleDevice)==="function" &&
+            (typeof(host.getSerialTerminalConsoleDevice)!=="function" || host.getSerialTerminalConsoleDevice()===device))
+            host.bindSerialTerminalConsoleDevice(null);
+        host = null;
+        return true;
     };
 
     /*
