@@ -1695,11 +1695,7 @@
             found = true;
             var active = state.enabled && state.mode===info.mode;
 
-            button.title = active
-                ? "Stop "+info.label+" "+info.description+" serial session"
-                : (state.enabled
-                    ? "Switch GPT serial session to "+info.label+" "+info.description
-                    : "Start "+info.label+" "+info.description+" serial session");
+            button.title = "Load "+info.label+" "+info.description+" script into PORT SCRIPT; press Run to start";
 
             button.setAttribute("aria-label",button.title);
             button.style.fontWeight = active ? "bold" : "normal";
@@ -1715,7 +1711,7 @@
         var popup = serialGPTPopup(card);
         if(!popup) return false;
 
-        var title = popup.querySelector(".com_popup_title");
+        var title = popup._portScript && popup._portScript.toolbar;
         if(!title) return false;
 
         // Remove the single-mode control left by an older live DOM, if any.
@@ -1723,13 +1719,16 @@
         if(legacy && legacy.parentNode)
             legacy.parentNode.removeChild(legacy);
 
-        var plugIcon = title.querySelector("[data-serial-webserial]");
-        var plugButton = plugIcon && plugIcon.closest ? plugIcon.closest("button") : null;
+        var firstControl = title.querySelector("[data-port-script-api]");
 
         function ensureModeButton(mode,label,buttonAttr,iconAttr)
         {
-            var existing = title.querySelector("["+buttonAttr+"]");
-            if(existing) return existing;
+            var existing = popup.querySelector("["+buttonAttr+"]");
+            if(existing)
+            {
+                title.insertBefore(existing,firstControl);
+                return existing;
+            }
 
             var button = document.createElement("button");
             button.className = "appbut skinny";
@@ -1739,10 +1738,9 @@
             button.innerHTML =
                 '<i class="fa fa-robot" '+iconAttr+'></i>&nbsp;'+label;
             button.addEventListener("mousedown",function(event){ event.preventDefault(); });
-            button.addEventListener("click",function(){ card.serialGPTToggle(mode); });
+            button.addEventListener("click",function(){ card.serialGPTLoadScript(mode); });
 
-            if(plugButton) title.insertBefore(button,plugButton);
-            else title.appendChild(button);
+            title.insertBefore(button,firstControl);
             return button;
         }
 
@@ -2496,6 +2494,8 @@
             masked.textContent = "";
             status.textContent = "";
             popup.onkeydown = null;
+            popup._serialGPTPromptOwner = null;
+            popup._serialGPTCancelPrompt = null;
             popupAPI.off(popupId);
             resolvePrompt(value);
         }
@@ -2573,6 +2573,8 @@
         {
             finish(null);
         };
+        popup._serialGPTPromptOwner = card;
+        popup._serialGPTCancelPrompt = function() { finish(null); };
 
         ok.onclick = function()
         {
@@ -2607,9 +2609,10 @@
         return promptPromise;
     }
 
-    async function serialGPTEnable(card,mode)
+    async function serialGPTEnable(card,mode,signal)
     {
         var state = serialGPTState(card);
+        if(signal && signal.aborted) return false;
 
         mode = mode===SERIAL_GPT_MODE_ASCII
             ? SERIAL_GPT_MODE_ASCII
@@ -2663,6 +2666,7 @@
 
 
         var key = await serialGPTRequestAPIKey(card);
+        if(signal && signal.aborted) return false;
         key = key===null || key===undefined ? "" : String(key).trim();
         if(!key.length) return false;
         /*
@@ -2671,7 +2675,7 @@
          * request performs the normal GPT8/GPT16 switch/reset logic.
          */
         if(state.enabled)
-            return serialGPTEnable(card,mode);
+            return serialGPTEnable(card,mode,signal);
 
         if(typeof(card.serialLineResetReceiveSession)=="function")
             card.serialLineResetReceiveSession();
@@ -2708,6 +2712,8 @@
     function serialGPTDisable(card)
     {
         var state = serialGPTState(card);
+        if(state.scriptAbortCleanup) state.scriptAbortCleanup();
+        state.scriptAbortCleanup = null;
 
         if(state.abortController)
         {
@@ -2783,9 +2789,9 @@
                 {
                     terminal.output(
                         "<br><b>GPT serial peer</b><br>"
-                        +"Use <i class=\"fa fa-robot\"></i> GPT8 for one-byte US-ASCII or <i class=\"fa fa-robot\"></i> GPT16 for UTF-16LE. Only one mode is active at a time.<br>"
-                        +"Click the active mode again to stop GPT; click the other mode to switch without re-entering the API key.<br>"
-                        +"Enabling opens a masked OpenAI API-key popup and validates the key before OK is enabled; the key stays only in page memory and is cleared when disabled/reloaded.<br>"
+                        +"GPT8 and GPT16 in the PORT SCRIPT header load editable session scripts for US-ASCII and UTF-16LE. Loading does not start a session.<br>"
+                        +"Press Run to start the loaded script; Stop, completion or closing the window ends its GPT session.<br>"
+                        +"Run opens a masked OpenAI API-key popup and validates the key before OK is enabled; the key stays only in page memory and is cleared when stopped/reloaded.<br>"
                         +"SPSERIAL remains a raw byte transport (<code>application/octet-stream</code>). SPGPT declares the text representation in MIME: <code>text/plain; charset=us-ascii</code> or <code>text/plain; charset=utf-16le</code>.<br>"
                         +"GPT8 collects one ASCII character per byte (bit 7 is ignored on receive); CR is $0D. GPT16 collects UTF-16LE code units; CR is bytes $0D $00.<br>"
                         +"Use 8 data bits on the 6551 for unrestricted GPT16 byte values. An exact echo of a GPT reply is suppressed briefly to avoid a terminal echo feedback loop."
@@ -2794,6 +2800,72 @@
                 return result;
             };
         }
+
+        card.serialGPTScript = function(mode)
+        {
+            if(mode!==SERIAL_GPT_MODE_ASCII && mode!==SERIAL_GPT_MODE_UTF16LE)
+                throw new TypeError("GPT mode must be ascii or utf16le");
+            return [
+                "// GPT session using the attached SPGPT peer.",
+                "// Existing API-key validation, echo guard, G16 and Kermit are preserved.",
+                "// Edit the encoding or add your own port/terminal calls below.",
+                "const mode = "+JSON.stringify(mode)+"; // ascii (GPT8) or utf16le (GPT16)",
+                "if (!await port.startGPT(mode)) return; // API-key dialog cancelled",
+                "try {",
+                '    await terminal.write("GPT session running; press Stop to end.\\n", "meta");',
+                "    while ((await port.gptInfo()).enabled) {",
+                "        await port.flush(); // discard only this script's copy of incoming bytes",
+                "        await sleep(250);",
+                "    }",
+                "} finally {",
+                "    await port.stopGPT();",
+                "}",
+                "// Stop/close also cancels the peer and pending API requests."
+            ].join("\n");
+        };
+
+        card.serialGPTLoadScript = function(mode)
+        {
+            var popup = serialGPTPopup(card);
+            return !!(popup && popup._portScript && popup._portScript.loadSource(card.serialGPTScript(mode)));
+        };
+
+        card.serialGPTStart = async function(mode,signal)
+        {
+            if(mode!==SERIAL_GPT_MODE_ASCII && mode!==SERIAL_GPT_MODE_UTF16LE)
+                throw new TypeError("GPT mode must be ascii or utf16le");
+            if(signal && signal.aborted) return false;
+            var state = serialGPTState(card);
+            if(state.scriptAbortCleanup) state.scriptAbortCleanup();
+            state.scriptAbortCleanup = null;
+            if(signal)
+            {
+                var abort = function()
+                {
+                    var prompt = typeof(document)!=="undefined" && document.getElementById("serialGPTKey_popup");
+                    if(prompt && prompt._serialGPTPromptOwner===card && prompt._serialGPTCancelPrompt)
+                        prompt._serialGPTCancelPrompt();
+                    serialGPTDisable(card);
+                };
+                signal.addEventListener("abort",abort,{once:true});
+                state.scriptAbortCleanup = function() { signal.removeEventListener("abort",abort); };
+            }
+            try
+            {
+                var started = await serialGPTEnable(card,mode,signal);
+                if(!started)
+                {
+                    if(state.scriptAbortCleanup) state.scriptAbortCleanup();
+                    state.scriptAbortCleanup = null;
+                }
+                return started;
+            }
+            catch(error)
+            {
+                serialGPTDisable(card);
+                throw error;
+            }
+        };
 
         card.serialGPTToggle = function(mode)
         {

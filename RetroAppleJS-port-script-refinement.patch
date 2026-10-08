@@ -1,0 +1,520 @@
+diff --git a/docs/PORT_SCRIPT.md b/docs/PORT_SCRIPT.md
+index 69b61cb..42d3193 100644
+--- a/docs/PORT_SCRIPT.md
++++ b/docs/PORT_SCRIPT.md
+@@ -10,6 +10,29 @@ pictogram to read the attached port and console contracts. **Clear** in the scri
+ toolbar clears its execution log; the terminal CLEAR control clears the lower
+ transcript. Closing the window stops execution and preserves its contents.
+ 
++The window sits 5 pixels to the right of the peripheral controls. Its width is
++limited to the blue Emulator panel's right edge with a 5-pixel inset, including
++after a browser resize. The script execution log takes no space while empty;
++`log()` or an execution error reveals it, and clearing it collapses it again.
++
++## GPT8 and GPT16 presets
++
++The GPT8/GPT16 buttons in the PORT SCRIPT header **load source into the editor**.
++They do not start, stop or switch a GPT session. Edit the source, then press Run.
++Loading a preset replaces the saved editor source for that slot.
++
++The preset calls `await port.startGPT("ascii")` for GPT8, or
++`await port.startGPT("utf16le")` for GPT16. These APIs use the existing attached
++SPGPT service, preserving its API-key validation dialog, encoding, echo guard,
++G16 negotiation and Kermit handling. Credentials stay in the driver's memory
++and are never copied into the editor or worker. `await port.gptInfo()` returns
++session status; `await port.stopGPT()` ends the script's session.
++
++The example stays running until Stop. Completion, Stop, closing, switching slots
++or removing the device cancels its GPT session and pending API requests, clears
++the API key, and cancels an unfinished key prompt. The preset flushes only its
++own observation buffer so a long session does not accumulate unused bytes.
++
+ ## Serial direction and bytes
+ 
+ The script acts as the remote endpoint of SPSERIAL. `port.write()` queues data
+diff --git a/res/EMU_CARD_serialpro.js b/res/EMU_CARD_serialpro.js
+index d1de275..ef34ac1 100644
+--- a/res/EMU_CARD_serialpro.js
++++ b/res/EMU_CARD_serialpro.js
+@@ -3688,13 +3688,54 @@ function SerialProCard()
+         popup.hidden = true;
+         popup.className = "appbox com_popup_frame serialpro_terminal_popup";
+         popup.style.cssText =
+-            "position:absolute;z-index:3;left:800px;top:32px;"
+-            +"width:650px;height:600px;max-width:calc(100vw - 20px);text-align:left;"
++            "position:absolute;z-index:3;left:400px;top:32px;"
++            +"width:480px;height:600px;max-width:calc(100vw - 20px);text-align:left;"
+             +"padding:0px;margin:0px";
+         document.body.appendChild(popup);
+         return popup;
+     }
+ 
++    this.serialTerminalPosition = function()
++    {
++        var popup = document.getElementById("serialProTerminal_popup");
++        var panel = document.getElementById("tab1");
++        if(!popup || !panel || popup.hidden || popup._serialProOwner!==serialpro) return false;
++        var field = document.getElementById(serialUI.controlID+"_rtc_date");
++        var anchor = field && field.closest(".appbox");
++        var bounds = panel.getBoundingClientRect();
++        if(!bounds.width) return false;
++        var controls = anchor && anchor.getBoundingClientRect();
++        var gap = 5;
++        var left = controls && controls.width ? controls.right+gap : bounds.left+gap;
++        var right = Math.min(bounds.right,window.innerWidth)-gap;
++        var width = Math.max(0,right-left);
++        popup.style.left = (left+window.pageXOffset)+"px";
++        popup.style.top = ((controls && controls.width ? controls.top : bounds.top+gap)+window.pageYOffset)+"px";
++        popup.style.width = width+"px";
++        popup.style.maxWidth = width+"px";
++        popup.style.minWidth = Math.min(300,width)+"px";
++
++        if(!popup._serialProPositionListener)
++        {
++            popup._serialProPositionListener = function()
++            {
++                var owner = popup._serialProOwner;
++                if(owner) owner.serialTerminalPosition();
++            };
++            window.addEventListener("resize",popup._serialProPositionListener);
++            if(typeof(ResizeObserver)==="function")
++                popup._serialProPositionObserver = new ResizeObserver(popup._serialProPositionListener);
++        }
++        if(popup._serialProPositionObserver && popup._serialProPositionAnchor!==anchor)
++        {
++            popup._serialProPositionObserver.disconnect();
++            popup._serialProPositionObserver.observe(panel);
++            if(anchor) popup._serialProPositionObserver.observe(anchor);
++            popup._serialProPositionAnchor = anchor;
++        }
++        return true;
++    };
++
+     function serialTerminalSlotN()
+     {
+         return serialpro.mount ? Number(serialpro.mount.slotN) : null;
+@@ -4205,6 +4246,7 @@ function SerialProCard()
+         if(sameSlot && popup._terminal)
+         {
+             oCOM.POPUP.on("serialProTerminal_popup");
++            this.serialTerminalPosition();
+             serialPhysicalUpdateButton();
+             serialTerminalApplyDisplayMode();
+             setTimeout(function(){ popup._terminal._o.DOM.input.focus(); },0);
+@@ -4249,6 +4291,7 @@ function SerialProCard()
+             + "</div>";
+ 
+         oCOM.POPUP.on("serialProTerminal_popup");
++        this.serialTerminalPosition();
+ 
+         if(hasPortScript)
+         {
+diff --git a/res/EMU_CARD_serialpro_gpt.js b/res/EMU_CARD_serialpro_gpt.js
+index f005827..4dc7443 100644
+--- a/res/EMU_CARD_serialpro_gpt.js
++++ b/res/EMU_CARD_serialpro_gpt.js
+@@ -1695,11 +1695,7 @@
+             found = true;
+             var active = state.enabled && state.mode===info.mode;
+ 
+-            button.title = active
+-                ? "Stop "+info.label+" "+info.description+" serial session"
+-                : (state.enabled
+-                    ? "Switch GPT serial session to "+info.label+" "+info.description
+-                    : "Start "+info.label+" "+info.description+" serial session");
++            button.title = "Load "+info.label+" "+info.description+" script into PORT SCRIPT; press Run to start";
+ 
+             button.setAttribute("aria-label",button.title);
+             button.style.fontWeight = active ? "bold" : "normal";
+@@ -1715,7 +1711,7 @@
+         var popup = serialGPTPopup(card);
+         if(!popup) return false;
+ 
+-        var title = popup.querySelector(".com_popup_title");
++        var title = popup._portScript && popup._portScript.toolbar;
+         if(!title) return false;
+ 
+         // Remove the single-mode control left by an older live DOM, if any.
+@@ -1723,13 +1719,16 @@
+         if(legacy && legacy.parentNode)
+             legacy.parentNode.removeChild(legacy);
+ 
+-        var plugIcon = title.querySelector("[data-serial-webserial]");
+-        var plugButton = plugIcon && plugIcon.closest ? plugIcon.closest("button") : null;
++        var firstControl = title.querySelector("[data-port-script-api]");
+ 
+         function ensureModeButton(mode,label,buttonAttr,iconAttr)
+         {
+-            var existing = title.querySelector("["+buttonAttr+"]");
+-            if(existing) return existing;
++            var existing = popup.querySelector("["+buttonAttr+"]");
++            if(existing)
++            {
++                title.insertBefore(existing,firstControl);
++                return existing;
++            }
+ 
+             var button = document.createElement("button");
+             button.className = "appbut skinny";
+@@ -1739,10 +1738,9 @@
+             button.innerHTML =
+                 '<i class="fa fa-robot" '+iconAttr+'></i>&nbsp;'+label;
+             button.addEventListener("mousedown",function(event){ event.preventDefault(); });
+-            button.addEventListener("click",function(){ card.serialGPTToggle(mode); });
++            button.addEventListener("click",function(){ card.serialGPTLoadScript(mode); });
+ 
+-            if(plugButton) title.insertBefore(button,plugButton);
+-            else title.appendChild(button);
++            title.insertBefore(button,firstControl);
+             return button;
+         }
+ 
+@@ -2496,6 +2494,8 @@
+             masked.textContent = "";
+             status.textContent = "";
+             popup.onkeydown = null;
++            popup._serialGPTPromptOwner = null;
++            popup._serialGPTCancelPrompt = null;
+             popupAPI.off(popupId);
+             resolvePrompt(value);
+         }
+@@ -2573,6 +2573,8 @@
+         {
+             finish(null);
+         };
++        popup._serialGPTPromptOwner = card;
++        popup._serialGPTCancelPrompt = function() { finish(null); };
+ 
+         ok.onclick = function()
+         {
+@@ -2607,9 +2609,10 @@
+         return promptPromise;
+     }
+ 
+-    async function serialGPTEnable(card,mode)
++    async function serialGPTEnable(card,mode,signal)
+     {
+         var state = serialGPTState(card);
++        if(signal && signal.aborted) return false;
+ 
+         mode = mode===SERIAL_GPT_MODE_ASCII
+             ? SERIAL_GPT_MODE_ASCII
+@@ -2663,6 +2666,7 @@
+ 
+ 
+         var key = await serialGPTRequestAPIKey(card);
++        if(signal && signal.aborted) return false;
+         key = key===null || key===undefined ? "" : String(key).trim();
+         if(!key.length) return false;
+         /*
+@@ -2671,7 +2675,7 @@
+          * request performs the normal GPT8/GPT16 switch/reset logic.
+          */
+         if(state.enabled)
+-            return serialGPTEnable(card,mode);
++            return serialGPTEnable(card,mode,signal);
+ 
+         if(typeof(card.serialLineResetReceiveSession)=="function")
+             card.serialLineResetReceiveSession();
+@@ -2708,6 +2712,8 @@
+     function serialGPTDisable(card)
+     {
+         var state = serialGPTState(card);
++        if(state.scriptAbortCleanup) state.scriptAbortCleanup();
++        state.scriptAbortCleanup = null;
+ 
+         if(state.abortController)
+         {
+@@ -2783,9 +2789,9 @@
+                 {
+                     terminal.output(
+                         "<br><b>GPT serial peer</b><br>"
+-                        +"Use <i class=\"fa fa-robot\"></i> GPT8 for one-byte US-ASCII or <i class=\"fa fa-robot\"></i> GPT16 for UTF-16LE. Only one mode is active at a time.<br>"
+-                        +"Click the active mode again to stop GPT; click the other mode to switch without re-entering the API key.<br>"
+-                        +"Enabling opens a masked OpenAI API-key popup and validates the key before OK is enabled; the key stays only in page memory and is cleared when disabled/reloaded.<br>"
++                        +"GPT8 and GPT16 in the PORT SCRIPT header load editable session scripts for US-ASCII and UTF-16LE. Loading does not start a session.<br>"
++                        +"Press Run to start the loaded script; Stop, completion or closing the window ends its GPT session.<br>"
++                        +"Run opens a masked OpenAI API-key popup and validates the key before OK is enabled; the key stays only in page memory and is cleared when stopped/reloaded.<br>"
+                         +"SPSERIAL remains a raw byte transport (<code>application/octet-stream</code>). SPGPT declares the text representation in MIME: <code>text/plain; charset=us-ascii</code> or <code>text/plain; charset=utf-16le</code>.<br>"
+                         +"GPT8 collects one ASCII character per byte (bit 7 is ignored on receive); CR is $0D. GPT16 collects UTF-16LE code units; CR is bytes $0D $00.<br>"
+                         +"Use 8 data bits on the 6551 for unrestricted GPT16 byte values. An exact echo of a GPT reply is suppressed briefly to avoid a terminal echo feedback loop."
+@@ -2795,6 +2801,72 @@
+             };
+         }
+ 
++        card.serialGPTScript = function(mode)
++        {
++            if(mode!==SERIAL_GPT_MODE_ASCII && mode!==SERIAL_GPT_MODE_UTF16LE)
++                throw new TypeError("GPT mode must be ascii or utf16le");
++            return [
++                "// GPT session using the attached SPGPT peer.",
++                "// Existing API-key validation, echo guard, G16 and Kermit are preserved.",
++                "// Edit the encoding or add your own port/terminal calls below.",
++                "const mode = "+JSON.stringify(mode)+"; // ascii (GPT8) or utf16le (GPT16)",
++                "if (!await port.startGPT(mode)) return; // API-key dialog cancelled",
++                "try {",
++                '    await terminal.write("GPT session running; press Stop to end.\\n", "meta");',
++                "    while ((await port.gptInfo()).enabled) {",
++                "        await port.flush(); // discard only this script's copy of incoming bytes",
++                "        await sleep(250);",
++                "    }",
++                "} finally {",
++                "    await port.stopGPT();",
++                "}",
++                "// Stop/close also cancels the peer and pending API requests."
++            ].join("\n");
++        };
++
++        card.serialGPTLoadScript = function(mode)
++        {
++            var popup = serialGPTPopup(card);
++            return !!(popup && popup._portScript && popup._portScript.loadSource(card.serialGPTScript(mode)));
++        };
++
++        card.serialGPTStart = async function(mode,signal)
++        {
++            if(mode!==SERIAL_GPT_MODE_ASCII && mode!==SERIAL_GPT_MODE_UTF16LE)
++                throw new TypeError("GPT mode must be ascii or utf16le");
++            if(signal && signal.aborted) return false;
++            var state = serialGPTState(card);
++            if(state.scriptAbortCleanup) state.scriptAbortCleanup();
++            state.scriptAbortCleanup = null;
++            if(signal)
++            {
++                var abort = function()
++                {
++                    var prompt = typeof(document)!=="undefined" && document.getElementById("serialGPTKey_popup");
++                    if(prompt && prompt._serialGPTPromptOwner===card && prompt._serialGPTCancelPrompt)
++                        prompt._serialGPTCancelPrompt();
++                    serialGPTDisable(card);
++                };
++                signal.addEventListener("abort",abort,{once:true});
++                state.scriptAbortCleanup = function() { signal.removeEventListener("abort",abort); };
++            }
++            try
++            {
++                var started = await serialGPTEnable(card,mode,signal);
++                if(!started)
++                {
++                    if(state.scriptAbortCleanup) state.scriptAbortCleanup();
++                    state.scriptAbortCleanup = null;
++                }
++                return started;
++            }
++            catch(error)
++            {
++                serialGPTDisable(card);
++                throw error;
++            }
++        };
++
+         card.serialGPTToggle = function(mode)
+         {
+             var state = serialGPTState(card);
+diff --git a/res/EMU_DEVICE_serialpro_line.js b/res/EMU_DEVICE_serialpro_line.js
+index 167a9aa..5e056e1 100644
+--- a/res/EMU_DEVICE_serialpro_line.js
++++ b/res/EMU_DEVICE_serialpro_line.js
+@@ -24,7 +24,10 @@ function SerialProLine()
+             read:{signature:"await port.read(count?)",description:"Consume up to count bytes from this facade, or all available bytes. Returns Uint8Array. Cannot read while waitFor is pending."},
+             available:{signature:"await port.available()",description:"Number of bytes in this facade's receive buffer (maximum 65536). Overflow raises RangeError and clears the buffer."},
+             flush:{signature:"await port.flush()",description:"Clear this facade's receive buffer and cancel its wait. Returns discarded byte count; leaves UART and terminal data intact."},
+-            waitFor:{signature:"await port.waitFor(pattern, timeout=3000)",description:"Match a string or RegExp in raw byte text. Returns text through the first match, consumes those bytes and retains trailing bytes. One pending wait. TimeoutError on expiry."},
++            waitFor:{signature:"await port.waitFor(pattern, timeout=3000)",abortArgument:2,description:"Match a string or RegExp in raw byte text. Returns text through the first match, consumes those bytes and retains trailing bytes. One pending wait. TimeoutError on expiry."},
++            startGPT:{signature:'await port.startGPT("ascii" | "utf16le")',abortArgument:1,description:"Start the attached SPGPT peer with the validated API-key dialog and existing GPT8/GPT16 protocols. Returns false if cancelled. Stop/completion/disposal ends this script's GPT session."},
++            stopGPT:{signature:"await port.stopGPT()",description:"End this script's GPT session and clear its API key from memory."},
++            gptInfo:{signature:"await port.gptInfo()",description:"Read the attached GPT peer's status and encoding. Never returns the API key."},
+             onReceive:{signature:"const off = port.onReceive(callback)",description:"Observe Uint8Array chunks without consuming them. Call off() to unsubscribe; callbacks end with the script."}
+         },
+         EVENTS:{receive:{signature:"receive(bytes)",description:"Apple II output arriving at the remote endpoint. Raw byte chunks; high bits are preserved."}}
+@@ -40,9 +43,51 @@ function SerialProLine()
+             },
+             subscribe:function(callback) { return line.subscribe(callback); }
+         });
++        var gptAbort = null;
++        var unlinkGPT = null;
++        var disposed = false;
++        function stopGPT()
++        {
++            if(unlinkGPT) unlinkGPT();
++            unlinkGPT = null;
++            if(gptAbort) gptAbort.abort();
++            gptAbort = null;
++            return true;
++        }
++        facade.startGPT = function(mode,signal)
++        {
++            if(disposed) throw new Error("Script port is closed");
++            if(!host || typeof(host.serialGPTStart)!=="function")
++                throw new Error("SPGPT peer is not attached");
++            if(mode!=="ascii" && mode!=="utf16le") throw new TypeError("GPT mode must be ascii or utf16le");
++            stopGPT();
++            gptAbort = new AbortController();
++            var controller = gptAbort;
++            if(signal)
++            {
++                if(signal.aborted) controller.abort();
++                else
++                {
++                    var abort = function() { controller.abort(); };
++                    signal.addEventListener("abort",abort,{once:true});
++                    unlinkGPT = function() { signal.removeEventListener("abort",abort); };
++                }
++            }
++            return host.serialGPTStart(mode,controller.signal);
++        };
++        facade.stopGPT = stopGPT;
++        facade.gptInfo = function()
++        {
++            if(disposed) throw new Error("Script port is closed");
++            if(!host || typeof(host.serialGPTInfo)!=="function")
++                throw new Error("SPGPT peer is not attached");
++            return host.serialGPTInfo();
++        };
+         var dispose = facade.dispose;
+         facade.dispose = function()
+         {
++            disposed = true;
++            stopGPT();
+             dispose();
+             var index = scriptPorts.indexOf(facade);
+             if(index>=0) scriptPorts.splice(index,1);
+diff --git a/res/EMU_PORT_SCRIPT.css b/res/EMU_PORT_SCRIPT.css
+index 28ba0ab..74d27b6 100644
+--- a/res/EMU_PORT_SCRIPT.css
++++ b/res/EMU_PORT_SCRIPT.css
+@@ -92,6 +92,7 @@
+     color:#d7e0e7;
+     font:9px/12px "DejaVu Sans Mono",Menlo,Consolas,"Courier New",monospace;
+ }
++.emu_port_script_log:empty { display:none; }
+ .emu_port_script_api {
+     flex:1;
+     overflow:auto;
+@@ -131,4 +132,4 @@
+     padding:5px 7px;
+     font:9px/12px "DejaVu Sans Mono",Menlo,Consolas,"Courier New",monospace;
+ }
+-.serialpro_terminal_popup { resize:both; min-width:450px; min-height:360px; }
++.serialpro_terminal_popup { resize:both; min-width:0; min-height:360px; }
+diff --git a/res/EMU_PORT_SCRIPT.js b/res/EMU_PORT_SCRIPT.js
+index 661457a..a76214f 100644
+--- a/res/EMU_PORT_SCRIPT.js
++++ b/res/EMU_PORT_SCRIPT.js
+@@ -111,6 +111,7 @@ function EMU_PORT_SCRIPT(cfg)
+         toolbar.appendChild(button("Clear script log","fa fa-trash","data-port-script-clear",function() { component.clear(); }));
+         if(typeof(cfg.onClose)==="function")
+             toolbar.appendChild(button("Close port console","fa fa-times","data-port-script-close",cfg.onClose));
++        this.toolbar = toolbar;
+         this.editor = element("textarea","emu_port_script_editor");
+         this.editor.value = state.source;
+         this.editor.spellcheck = false;
+@@ -236,7 +237,12 @@ function EMU_PORT_SCRIPT(cfg)
+                         || typeof(target[message.method])!=="function" || message.method==="onReceive")
+                         throw new Error("Unknown script API method");
+                     var args = message.args;
+-                    if(message.target==="port" && message.method==="waitFor") args = [args[0],args[1],run.abort.signal];
++                    var abortArgument = contract.METHODS[message.method].abortArgument;
++                    if(Number.isInteger(abortArgument))
++                    {
++                        args = args.slice();
++                        args[abortArgument] = run.abort.signal;
++                    }
+                     var result = await target[message.method].apply(target,args);
+                     if(session===run) run.worker.postMessage({type:"result",id:message.id,value:result});
+                 }
+@@ -258,6 +264,18 @@ function EMU_PORT_SCRIPT(cfg)
+         finish("stopped");
+     };
+ 
++    this.loadSource = function(source)
++    {
++        if(destroyed) return false;
++        this.editor.value = String(source);
++        this.help.hidden = true;
++        this.editor.hidden = this.output.hidden = false;
++        if(!this.isRunning) this.status.textContent = "ready";
++        save();
++        this.editor.focus();
++        return true;
++    };
++
+     this.clear = function()
+     {
+         this.output.textContent = "";
+diff --git a/tests/port_script_runtime.test.js b/tests/port_script_runtime.test.js
+index 8b58a59..f7e3d8d 100644
+--- a/tests/port_script_runtime.test.js
++++ b/tests/port_script_runtime.test.js
+@@ -13,7 +13,7 @@ function element()
+         setAttribute() {},appendChild() {},replaceChildren() {},remove() {}};
+ }
+ 
+-function harness(t)
++function harness(t,peer)
+ {
+     const ctx = {console,Worker:require('./helpers/web_worker'),Blob,URL,AbortController,
+         setTimeout,clearTimeout,Uint8Array,ArrayBuffer,document:{createElement:element},
+@@ -23,12 +23,12 @@ function harness(t)
+         vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res',file),'utf8'),ctx);
+     const line = new ctx.SerialProLine(), terminal = new ctx.SerialProTerminalDevice();
+     const sent = [], rows = [];
+-    line.bindHost({serialLineReceiveBytes(bytes)
++    line.bindHost(Object.assign({serialLineReceiveBytes(bytes)
+     {
+         sent.push(...bytes);
+         line.transmitBytes(new Uint8Array([79,75,13]));
+         return bytes.length;
+-    }});
++    }},peer));
+     terminal.bindHost({serialTerminalScriptWrite(text,channel)
+         { rows.push({text,channel}); return text.length; },serialTerminalClear() { rows.length=0; return true; }});
+     const ui = new ctx.EMU_PORT_SCRIPT({container:element(),port:line.getScriptAPI(),api:line.API,
+@@ -37,6 +37,47 @@ function harness(t)
+     return {ui,line,sent,rows};
+ }
+ 
++test('a script starts GPT through the port contract and Stop aborts its session', async t =>
++{
++    let signal,mode,enabled=false;
++    const h = harness(t,{
++        serialGPTStart(selected,abortSignal)
++        {
++            mode=selected; signal=abortSignal; enabled=true;
++            signal.addEventListener('abort',() => { enabled=false; },{once:true});
++            return true;
++        },
++        serialGPTInfo() { return {enabled}; }
++    });
++    const running=h.ui.run('await port.startGPT("ascii"); log((await port.gptInfo()).enabled); await sleep(60000);');
++    await until(() => h.ui.output.textContent.includes('true'));
++    assert.equal(mode,'ascii');
++    assert.equal(enabled,true);
++    h.ui.stop();
++    assert.equal((await running).status,'stopped');
++    assert.equal(signal.aborted,true);
++    assert.equal(enabled,false);
++});
++
++test('disposal cancels a pending GPT start and a closed facade cannot start another session', async t =>
++{
++    let signal;
++    const h=harness(t,{
++        serialGPTStart(mode,abortSignal)
++        {
++            signal=abortSignal;
++            return new Promise(resolve => signal.addEventListener('abort',() => resolve(false),{once:true}));
++        }
++    });
++    const running=h.ui.run('await port.startGPT("utf16le");');
++    await until(() => signal);
++    const port=h.ui.port;
++    h.ui.destroy();
++    assert.equal((await running).status,'stopped');
++    assert.equal(signal.aborted,true);
++    assert.throws(() => port.startGPT('ascii'),/closed/i);
++});
++
+ async function until(condition)
+ {
+     const start = Date.now();

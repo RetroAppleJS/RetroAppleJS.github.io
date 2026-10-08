@@ -13,7 +13,7 @@ function element()
         setAttribute() {},appendChild() {},replaceChildren() {},remove() {}};
 }
 
-function harness(t)
+function harness(t,peer)
 {
     const ctx = {console,Worker:require('./helpers/web_worker'),Blob,URL,AbortController,
         setTimeout,clearTimeout,Uint8Array,ArrayBuffer,document:{createElement:element},
@@ -23,12 +23,12 @@ function harness(t)
         vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res',file),'utf8'),ctx);
     const line = new ctx.SerialProLine(), terminal = new ctx.SerialProTerminalDevice();
     const sent = [], rows = [];
-    line.bindHost({serialLineReceiveBytes(bytes)
+    line.bindHost(Object.assign({serialLineReceiveBytes(bytes)
     {
         sent.push(...bytes);
         line.transmitBytes(new Uint8Array([79,75,13]));
         return bytes.length;
-    }});
+    }},peer));
     terminal.bindHost({serialTerminalScriptWrite(text,channel)
         { rows.push({text,channel}); return text.length; },serialTerminalClear() { rows.length=0; return true; }});
     const ui = new ctx.EMU_PORT_SCRIPT({container:element(),port:line.getScriptAPI(),api:line.API,
@@ -36,6 +36,47 @@ function harness(t)
     t.after(() => ui.destroy());
     return {ui,line,sent,rows};
 }
+
+test('a script starts GPT through the port contract and Stop aborts its session', async t =>
+{
+    let signal,mode,enabled=false;
+    const h = harness(t,{
+        serialGPTStart(selected,abortSignal)
+        {
+            mode=selected; signal=abortSignal; enabled=true;
+            signal.addEventListener('abort',() => { enabled=false; },{once:true});
+            return true;
+        },
+        serialGPTInfo() { return {enabled}; }
+    });
+    const running=h.ui.run('await port.startGPT("ascii"); log((await port.gptInfo()).enabled); await sleep(60000);');
+    await until(() => h.ui.output.textContent.includes('true'));
+    assert.equal(mode,'ascii');
+    assert.equal(enabled,true);
+    h.ui.stop();
+    assert.equal((await running).status,'stopped');
+    assert.equal(signal.aborted,true);
+    assert.equal(enabled,false);
+});
+
+test('disposal cancels a pending GPT start and a closed facade cannot start another session', async t =>
+{
+    let signal;
+    const h=harness(t,{
+        serialGPTStart(mode,abortSignal)
+        {
+            signal=abortSignal;
+            return new Promise(resolve => signal.addEventListener('abort',() => resolve(false),{once:true}));
+        }
+    });
+    const running=h.ui.run('await port.startGPT("utf16le");');
+    await until(() => signal);
+    const port=h.ui.port;
+    h.ui.destroy();
+    assert.equal((await running).status,'stopped');
+    assert.equal(signal.aborted,true);
+    assert.throws(() => port.startGPT('ascii'),/closed/i);
+});
 
 async function until(condition)
 {

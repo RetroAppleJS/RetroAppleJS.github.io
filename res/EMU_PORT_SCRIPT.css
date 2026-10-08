@@ -92,6 +92,7 @@
     color:#d7e0e7;
     font:9px/12px "DejaVu Sans Mono",Menlo,Consolas,"Courier New",monospace;
 }
+.emu_port_script_log:empty { display:none; }
 .emu_port_script_api {
     flex:1;
     overflow:auto;
@@ -131,4 +132,4 @@
     padding:5px 7px;
     font:9px/12px "DejaVu Sans Mono",Menlo,Consolas,"Courier New",monospace;
 }
-.serialpro_terminal_popup { resize:both; min-width:450px; min-height:360px; }
+.serialpro_terminal_popup { resize:both; min-width:0; min-height:360px; }

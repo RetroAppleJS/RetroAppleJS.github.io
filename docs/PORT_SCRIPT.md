@@ -10,6 +10,29 @@ pictogram to read the attached port and console contracts. **Clear** in the scri
 toolbar clears its execution log; the terminal CLEAR control clears the lower
 transcript. Closing the window stops execution and preserves its contents.
 
+The window sits 5 pixels to the right of the peripheral controls. Its width is
+limited to the blue Emulator panel's right edge with a 5-pixel inset, including
+after a browser resize. The script execution log takes no space while empty;
+`log()` or an execution error reveals it, and clearing it collapses it again.
+
+## GPT8 and GPT16 presets
+
+The GPT8/GPT16 buttons in the PORT SCRIPT header **load source into the editor**.
+They do not start, stop or switch a GPT session. Edit the source, then press Run.
+Loading a preset replaces the saved editor source for that slot.
+
+The preset calls `await port.startGPT("ascii")` for GPT8, or
+`await port.startGPT("utf16le")` for GPT16. These APIs use the existing attached
+SPGPT service, preserving its API-key validation dialog, encoding, echo guard,
+G16 negotiation and Kermit handling. Credentials stay in the driver's memory
+and are never copied into the editor or worker. `await port.gptInfo()` returns
+session status; `await port.stopGPT()` ends the script's session.
+
+The example stays running until Stop. Completion, Stop, closing, switching slots
+or removing the device cancels its GPT session and pending API requests, clears
+the API key, and cancels an unfinished key prompt. The preset flushes only its
+own observation buffer so a long session does not accumulate unused bytes.
+
 ## Serial direction and bytes
 
 The script acts as the remote endpoint of SPSERIAL. `port.write()` queues data

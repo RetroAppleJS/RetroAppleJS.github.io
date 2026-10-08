@@ -3688,12 +3688,53 @@ function SerialProCard()
         popup.hidden = true;
         popup.className = "appbox com_popup_frame serialpro_terminal_popup";
         popup.style.cssText =
-            "position:absolute;z-index:3;left:800px;top:32px;"
-            +"width:650px;height:600px;max-width:calc(100vw - 20px);text-align:left;"
+            "position:absolute;z-index:3;left:400px;top:32px;"
+            +"width:480px;height:600px;max-width:calc(100vw - 20px);text-align:left;"
             +"padding:0px;margin:0px";
         document.body.appendChild(popup);
         return popup;
     }
+
+    this.serialTerminalPosition = function()
+    {
+        var popup = document.getElementById("serialProTerminal_popup");
+        var panel = document.getElementById("tab1");
+        if(!popup || !panel || popup.hidden || popup._serialProOwner!==serialpro) return false;
+        var field = document.getElementById(serialUI.controlID+"_rtc_date");
+        var anchor = field && field.closest(".appbox");
+        var bounds = panel.getBoundingClientRect();
+        if(!bounds.width) return false;
+        var controls = anchor && anchor.getBoundingClientRect();
+        var gap = 5;
+        var left = controls && controls.width ? controls.right+gap : bounds.left+gap;
+        var right = Math.min(bounds.right,window.innerWidth)-gap;
+        var width = Math.max(0,right-left);
+        popup.style.left = (left+window.pageXOffset)+"px";
+        popup.style.top = ((controls && controls.width ? controls.top : bounds.top+gap)+window.pageYOffset)+"px";
+        popup.style.width = width+"px";
+        popup.style.maxWidth = width+"px";
+        popup.style.minWidth = Math.min(300,width)+"px";
+
+        if(!popup._serialProPositionListener)
+        {
+            popup._serialProPositionListener = function()
+            {
+                var owner = popup._serialProOwner;
+                if(owner) owner.serialTerminalPosition();
+            };
+            window.addEventListener("resize",popup._serialProPositionListener);
+            if(typeof(ResizeObserver)==="function")
+                popup._serialProPositionObserver = new ResizeObserver(popup._serialProPositionListener);
+        }
+        if(popup._serialProPositionObserver && popup._serialProPositionAnchor!==anchor)
+        {
+            popup._serialProPositionObserver.disconnect();
+            popup._serialProPositionObserver.observe(panel);
+            if(anchor) popup._serialProPositionObserver.observe(anchor);
+            popup._serialProPositionAnchor = anchor;
+        }
+        return true;
+    };
 
     function serialTerminalSlotN()
     {
@@ -4205,6 +4246,7 @@ function SerialProCard()
         if(sameSlot && popup._terminal)
         {
             oCOM.POPUP.on("serialProTerminal_popup");
+            this.serialTerminalPosition();
             serialPhysicalUpdateButton();
             serialTerminalApplyDisplayMode();
             setTimeout(function(){ popup._terminal._o.DOM.input.focus(); },0);
@@ -4249,6 +4291,7 @@ function SerialProCard()
             + "</div>";
 
         oCOM.POPUP.on("serialProTerminal_popup");
+        this.serialTerminalPosition();
 
         if(hasPortScript)
         {

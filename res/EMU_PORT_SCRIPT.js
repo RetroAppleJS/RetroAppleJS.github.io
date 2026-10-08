@@ -111,6 +111,7 @@ function EMU_PORT_SCRIPT(cfg)
         toolbar.appendChild(button("Clear script log","fa fa-trash","data-port-script-clear",function() { component.clear(); }));
         if(typeof(cfg.onClose)==="function")
             toolbar.appendChild(button("Close port console","fa fa-times","data-port-script-close",cfg.onClose));
+        this.toolbar = toolbar;
         this.editor = element("textarea","emu_port_script_editor");
         this.editor.value = state.source;
         this.editor.spellcheck = false;
@@ -236,7 +237,12 @@ function EMU_PORT_SCRIPT(cfg)
                         || typeof(target[message.method])!=="function" || message.method==="onReceive")
                         throw new Error("Unknown script API method");
                     var args = message.args;
-                    if(message.target==="port" && message.method==="waitFor") args = [args[0],args[1],run.abort.signal];
+                    var abortArgument = contract.METHODS[message.method].abortArgument;
+                    if(Number.isInteger(abortArgument))
+                    {
+                        args = args.slice();
+                        args[abortArgument] = run.abort.signal;
+                    }
                     var result = await target[message.method].apply(target,args);
                     if(session===run) run.worker.postMessage({type:"result",id:message.id,value:result});
                 }
@@ -256,6 +262,18 @@ function EMU_PORT_SCRIPT(cfg)
     this.stop = function()
     {
         finish("stopped");
+    };
+
+    this.loadSource = function(source)
+    {
+        if(destroyed) return false;
+        this.editor.value = String(source);
+        this.help.hidden = true;
+        this.editor.hidden = this.output.hidden = false;
+        if(!this.isRunning) this.status.textContent = "ready";
+        save();
+        this.editor.focus();
+        return true;
     };
 
     this.clear = function()
