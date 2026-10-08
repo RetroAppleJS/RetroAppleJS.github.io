@@ -88,6 +88,28 @@ async function until(condition)
     }
 }
 
+test('a physical connection started by a worker is aborted by Stop', async t =>
+{
+    let signal,connected=false;
+    const h=harness(t,{
+        serialPhysicalScriptConnect(abortSignal)
+        {
+            signal=abortSignal; connected=true;
+            signal.addEventListener('abort',() => { connected=false; },{once:true});
+            return true;
+        },
+        serialPhysicalState() { return {connected}; },
+        serialPhysicalScriptDisconnect() { connected=false; return true; }
+    });
+    assert.equal(typeof h.ui.port.connectPhysical,'function');
+    const running=h.ui.run('await port.connectPhysical(); log((await port.physicalInfo()).connected); await sleep(60000);');
+    await until(() => h.ui.output.textContent.includes('true'));
+    h.ui.stop();
+    assert.equal((await running).status,'stopped');
+    assert.equal(signal.aborted,true);
+    assert.equal(connected,false);
+});
+
 test('worker RPC honors default wait timeout and separate console reporting', async t =>
 {
     const h = harness(t);

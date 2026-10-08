@@ -3165,6 +3165,9 @@ function SerialProCard()
         ,"lastIncomingCR":false
         ,"lastError":""
         ,"lastSignalError":""
+        ,"scriptConnectTask":null
+        ,"scriptCloseTask":null
+        ,"scriptAbortCleanup":null
     };
 
     function serialPhysicalErrorText(error)
@@ -3263,25 +3266,28 @@ function SerialProCard()
         var icon = popup.querySelector("[data-serial-webserial]");
         if(!icon) return false;
 
-        var title;
+        var title = "Load physical USB serial script into PORT SCRIPT; press Run to connect";
         if(serialPhysical.connected && serialPhysical.configStale)
         {
-            title = "USB serial connected, but ACIA format changed; reconnect to apply it";
+            title += " (connected; ACIA format changed, reconnect to apply it)";
             icon.style.color = "#C07000";
         }
         else if(serialPhysical.connected)
         {
-            title = "Disconnect physical USB serial port";
+            title += " (connected)";
             icon.style.color = "#008000";
         }
         else
         {
-            title = "Connect physical USB serial port (Web Serial)";
             icon.style.color = "";
         }
 
         icon.title = title;
-        if(icon.parentElement) icon.parentElement.title = title;
+        if(icon.parentElement)
+        {
+            icon.parentElement.title = title;
+            icon.parentElement.setAttribute("aria-label",title);
+        }
         return serialPhysical.connected;
     }
 
@@ -3497,8 +3503,9 @@ function SerialProCard()
         return parts.length ? parts.join(" ") : "USB serial port";
     }
 
-    async function serialPhysicalConnect()
+    async function serialPhysicalConnect(signal)
     {
+        if(signal && signal.aborted) return false;
         if(serialPhysical.connected) return true;
 
         if(typeof(navigator)=="undefined" || !navigator.serial)
@@ -3522,7 +3529,13 @@ function SerialProCard()
             // Deliberately unfiltered: let the browser chooser select the CH340
             // or another compatible USB serial adapter explicitly.
             port = await navigator.serial.requestPort();
+            if(signal && signal.aborted) return false;
             await port.open(config.options);
+            if(signal && signal.aborted)
+            {
+                await port.close();
+                return false;
+            }
 
             if(!port.writable)
                 throw new Error("Selected serial port has no writable stream");
@@ -3538,7 +3551,9 @@ function SerialProCard()
 
             serialPhysicalUpdateButton();
             await serialPhysicalSyncOutputs();
+            if(signal && signal.aborted) return false;
             await serialPhysicalPollSignals();
+            if(signal && signal.aborted) return false;
 
             serialPhysical.readTask = serialPhysicalReadLoop(port);
             serialPhysical.signalTimer = setInterval(serialPhysicalPollSignals,500);
@@ -3659,6 +3674,75 @@ function SerialProCard()
     this.serialPhysicalConnect = function()
     {
         return serialPhysicalConnect();
+    };
+
+    this.serialPhysicalScriptConnect = async function(signal)
+    {
+        if(serialPhysical.scriptConnectTask) await serialPhysical.scriptConnectTask;
+        if(serialPhysical.scriptCloseTask)
+        {
+            await serialPhysical.scriptCloseTask;
+            serialPhysical.scriptCloseTask = null;
+        }
+        if(signal && signal.aborted) return false;
+        if(serialPhysical.scriptAbortCleanup) serialPhysical.scriptAbortCleanup();
+        serialPhysical.scriptAbortCleanup = null;
+        if(signal)
+        {
+            var abort = function()
+            {
+                serialPhysical.scriptCloseTask = serialPhysicalDisconnect(false);
+            };
+            signal.addEventListener("abort",abort,{once:true});
+            serialPhysical.scriptAbortCleanup = function() { signal.removeEventListener("abort",abort); };
+        }
+        var task = serialPhysicalConnect(signal);
+        serialPhysical.scriptConnectTask = task;
+        try { return await task; }
+        finally
+        {
+            if(serialPhysical.scriptConnectTask===task) serialPhysical.scriptConnectTask = null;
+            if(!serialPhysical.connected && serialPhysical.scriptAbortCleanup)
+            {
+                serialPhysical.scriptAbortCleanup();
+                serialPhysical.scriptAbortCleanup = null;
+            }
+        }
+    };
+
+    this.serialPhysicalScriptDisconnect = function()
+    {
+        if(serialPhysical.scriptAbortCleanup) serialPhysical.scriptAbortCleanup();
+        serialPhysical.scriptAbortCleanup = null;
+        return serialPhysical.scriptCloseTask || serialPhysicalDisconnect(false);
+    };
+
+    this.serialPhysicalScript = function()
+    {
+        return [
+            "// Physical USB-to-Serial bridge using the current ACIA settings.",
+            "// Click Run (or Ctrl/Cmd-Enter) to choose the adapter.",
+            "// Keep connectPhysical first: the browser chooser needs user activation.",
+            "if (!await port.connectPhysical()) return;",
+            "try {",
+            '    await terminal.write("Physical serial bridge running; press Stop to disconnect.\\n", "meta");',
+            "    while ((await port.physicalInfo()).connected) {",
+            "        await port.flush(); // discard only this script's observation buffer",
+            "        await sleep(250);",
+            "    }",
+            "} finally {",
+            "    await port.disconnectPhysical();",
+            "}",
+            "// Existing USB RX/TX, DTR/RTS and modem monitoring remain active.",
+            "// Stop/close also disconnects this script's physical link."
+        ].join("\n");
+    };
+
+    this.serialPhysicalLoadScript = function()
+    {
+        var popup = document.getElementById("serialProTerminal_popup");
+        return !!(popup && popup._serialProOwner===serialpro && popup._portScript &&
+            popup._portScript.loadSource(this.serialPhysicalScript()));
     };
 
     this.serialPhysicalDisconnect = function()
@@ -4212,7 +4296,7 @@ function SerialProCard()
             +"Select terminal output normally and use Cmd/Ctrl-C for that selection. The copy pictogram always copies the complete terminal transcript.<br>"
             +"A live stream continues while text is selected without forcing the view back to the newest output.<br>"            
             +"Use <i class=\"fa fa-adjust\"></i> to switch between dark terminal mode and light dot-matrix paper mode.<br>"
-            +"Use <i class=\"fa fa-plug\"></i> to connect/disconnect an optional physical USB serial port through Web Serial.<br>"
+            +"Use <i class=\"fa fa-plug\"></i> in PORT SCRIPT to load the physical USB serial bridge script. Run connects through Web Serial; Stop disconnects.<br>"
             +"Physical RX/TX shares the same 6551 endpoint; modem inputs are diagnostic-only in Stage 3A.<br>"
             +"CPU sync makes serial timing follow CPU acceleration; uncheck it to keep the selected baud approximately at x1 timing.<br>"
             +"<i>Current stage:</i> cycle-paced 6551 character timing + Stage 3A physical byte transport; individual serial waveform edges remain deferred."
@@ -4270,17 +4354,13 @@ function SerialProCard()
             + "          onmousedown=\"event.preventDefault()\""
             + "          onclick=\""+call+".serialTerminalCopy()\"><i class=\"fa fa-copy\"></i></button>"
             + "  <button class=\"appbut skinny\" type=button"
-            + "          title=\"Connect physical USB serial port (Web Serial)\""
-            + "          onclick=\""+call+".serialPhysicalToggle()\">"
-            + "    <i class=\"fa fa-plug\" data-serial-webserial></i>"
-            + "  </button>"
-            + "  <button class=\"appbut skinny\" type=button"
             + "          title=\"Switch terminal to light dot-matrix paper mode\""
             + "          onclick=\""+call+".serialTerminalThemeToggle()\">"
             + "    <i class=\"fa fa-adjust\" data-serial-terminal-theme></i>"
             + "  </button>"
             + "  <button class=\"appbut skinny\" type=button title=\"Terminal help\""
-            + "          onclick=\""+call+".serialTerminalHelp()\">?</button>"
+            + "          aria-label=\"Terminal help\""
+            + "          onclick=\""+call+".serialTerminalHelp()\"><i class=\"fa fa-info-circle\"></i></button>"
             + "  <button class=\"appbut skinny\" type=button title=\"Clear terminal display\""
             + "          onclick=\""+call+".serialTerminalClear()\">CLEAR</button>"
             + (hasPortScript ? "" : "<button class=\"appbut skinny\" type=button title=\"Close port console\""
@@ -4307,6 +4387,12 @@ function SerialProCard()
                 onClose:function() { oCOM.POPUP.off("serialProTerminal_popup"); },
                 source:"// Script is the remote end of SPSERIAL.\nawait terminal.write(\"Sending HELLO\\n\", \"meta\");\nawait port.write(\"HELLO\\r\");\n// const reply = await port.waitFor(\"OK\", 3000);\n// await terminal.write(\"Received: \" + reply + \"\\n\", \"rx\");"
             });
+            var physicalButton = document.createElement("button");
+            physicalButton.className = "appbut skinny";
+            physicalButton.type = "button";
+            physicalButton.innerHTML = '<i class="fa fa-plug" data-serial-webserial></i>';
+            physicalButton.onclick = function() { serialpro.serialPhysicalLoadScript(); };
+            popup._portScript.toolbar.insertBefore(physicalButton,popup._portScript.runButton);
         }
 
         var terminal = new TERMINAL({

@@ -182,6 +182,81 @@ test('removing an inactive child device does not unbind the active serial/consol
     h.port.dispose();
 });
 
+function physicalHarness(t,requestPort)
+{
+    const h=harness();
+    let ticks=0;
+    const hw={io:{getClockTicks:() => ticks},setIRQSource() {},setNMISource() {}};
+    Object.assign(h.ctx,{document:{getElementById:() => null},navigator:{serial:{requestPort}},
+        apple2plus:{hwObj:() => hw},_o:{CPU_ClocksTicks_s:1020484},oEMU:{component:{IO:{}}},oCOM:{},
+        setInterval,clearInterval});
+    vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res','EMU_CARD_serialpro.js'),'utf8'),h.ctx);
+    const card=new h.ctx.SerialProCard();card.mount={slotN:2};h.line.bindHost(card);
+    card.writeSlotIO(0xC0AB,0x1E);card.writeSlotIO(0xC0AA,0x0B);
+    t.after(async () => { h.port.dispose(); await card.serialPhysicalScriptDisconnect(); });
+    return {...h,card,advance() { ticks+=5000;card.syncClock(ticks); }};
+}
+
+test('the USB preset transport keeps UART timing and releases stream locks on Stop', async t =>
+{
+    let read,options,readerReleased=0,writerReleased=0,closed=0;
+    const writes=[];
+    const reader={
+        read:() => new Promise(resolve => { read=resolve; }),
+        cancel:async () => { read({done:true}); },
+        releaseLock() { readerReleased++; }
+    };
+    const selected={
+        open:async config => { options=config; },close:async () => { closed++; },
+        readable:{getReader:() => reader},
+        writable:{getWriter:() => ({write:async bytes => writes.push(...bytes),releaseLock() { writerReleased++; }})},
+        setSignals:async () => {},getSignals:async () => ({}),getInfo:() => ({usbVendorId:0x1A86})
+    };
+    const h=physicalHarness(t,async () => selected);
+    const abort=new AbortController();
+    assert.equal(await h.port.connectPhysical(abort.signal),true);
+    assert.deepEqual({...options},{baudRate:9600,dataBits:8,stopBits:1,parity:'none',flowControl:'none'});
+    read({done:false,value:new Uint8Array([65])});
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(h.card.serialTerminalReadByte(),null);
+    h.advance();assert.equal(h.card.serialTerminalReadByte(),65);
+    h.card.writeSlotIO(0xC0A8,66);h.advance();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(writes,[66]);
+    abort.abort();await h.port.disconnectPhysical();
+    assert.equal(h.port.physicalInfo().connected,false);
+    assert.equal(readerReleased,1);assert.equal(writerReleased,1);assert.equal(closed,1);
+});
+
+test('Stop before the USB chooser returns does not open the selected port', async t =>
+{
+    let select,opens=0;
+    const h=physicalHarness(t,() => new Promise(resolve => { select=resolve; }));
+    assert.equal(typeof h.port.connectPhysical,'function');
+    const abort=new AbortController();
+    const connect=h.port.connectPhysical(abort.signal);
+    abort.abort();
+    select({open:async () => { opens++; }});
+    assert.equal(await connect,false);
+    assert.equal(opens,0);
+    assert.equal(h.card.serialPhysicalState().connected,false);
+});
+
+test('Stop while USB open is pending closes the late port', async t =>
+{
+    let finishOpen,closes=0;
+    const h=physicalHarness(t,async () => ({
+        open:() => new Promise(resolve => { finishOpen=resolve; }),close:async () => { closes++; }
+    }));
+    assert.equal(typeof h.port.connectPhysical,'function');
+    const abort=new AbortController();const connect=h.port.connectPhysical(abort.signal);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.ok(finishOpen);abort.abort();finishOpen();
+    assert.equal(await connect,false);
+    assert.equal(closes,1);
+    assert.equal(h.card.serialPhysicalState().connected,false);
+});
+
 test('a backtracking RegExp cannot block the receive timeout or next wait', async () =>
 {
     const h = harness();

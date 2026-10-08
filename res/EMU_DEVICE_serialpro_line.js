@@ -28,6 +28,9 @@ function SerialProLine()
             startGPT:{signature:'await port.startGPT("ascii" | "utf16le")',abortArgument:1,description:"Start the attached SPGPT peer with the validated API-key dialog and existing GPT8/GPT16 protocols. Returns false if cancelled. Stop/completion/disposal ends this script's GPT session."},
             stopGPT:{signature:"await port.stopGPT()",description:"End this script's GPT session and clear its API key from memory."},
             gptInfo:{signature:"await port.gptInfo()",description:"Read the attached GPT peer's status and encoding. Never returns the API key."},
+            connectPhysical:{signature:"await port.connectPhysical()",abortArgument:0,description:"Choose and connect a physical USB serial adapter using the current ACIA format. Call first after Run while browser user activation is available. Stop/completion/disposal disconnects this script's link."},
+            disconnectPhysical:{signature:"await port.disconnectPhysical()",description:"Disconnect this script's physical link and wait for its streams and port to close."},
+            physicalInfo:{signature:"await port.physicalInfo()",description:"Read physical connection, ACIA format, USB IDs and modem-signal status."},
             onReceive:{signature:"const off = port.onReceive(callback)",description:"Observe Uint8Array chunks without consuming them. Call off() to unsubscribe; callbacks end with the script."}
         },
         EVENTS:{receive:{signature:"receive(bytes)",description:"Apple II output arriving at the remote endpoint. Raw byte chunks; high bits are preserved."}}
@@ -46,6 +49,55 @@ function SerialProLine()
         var gptAbort = null;
         var unlinkGPT = null;
         var disposed = false;
+        var physicalAbort = null;
+        var unlinkPhysical = null;
+        var physicalHost = null;
+        function disconnectPhysical()
+        {
+            if(unlinkPhysical) unlinkPhysical();
+            unlinkPhysical = null;
+            if(!physicalAbort) return Promise.resolve(false);
+            physicalAbort.abort();
+            physicalAbort = null;
+            return physicalHost.serialPhysicalScriptDisconnect();
+        }
+        facade.connectPhysical = function(signal)
+        {
+            if(disposed) throw new Error("Script port is closed");
+            if(!host || typeof(host.serialPhysicalScriptConnect)!=="function")
+                throw new Error("Physical serial transport is not attached");
+            physicalHost = host;
+            if(!physicalAbort || physicalAbort.signal.aborted)
+            {
+                if(unlinkPhysical) unlinkPhysical();
+                unlinkPhysical = null;
+                physicalAbort = new AbortController();
+                var controller = physicalAbort;
+                if(signal)
+                {
+                    if(signal.aborted) controller.abort();
+                    else
+                    {
+                        var abort = function() { controller.abort(); };
+                        signal.addEventListener("abort",abort,{once:true});
+                        unlinkPhysical = function() { signal.removeEventListener("abort",abort); };
+                    }
+                }
+            }
+            return physicalHost.serialPhysicalScriptConnect(physicalAbort.signal);
+        };
+        facade.disconnectPhysical = function()
+        {
+            if(disposed) throw new Error("Script port is closed");
+            return disconnectPhysical();
+        };
+        facade.physicalInfo = function()
+        {
+            if(disposed) throw new Error("Script port is closed");
+            if(!host || typeof(host.serialPhysicalState)!=="function")
+                throw new Error("Physical serial transport is not attached");
+            return host.serialPhysicalState();
+        };
         function stopGPT()
         {
             if(unlinkGPT) unlinkGPT();
@@ -88,6 +140,7 @@ function SerialProLine()
         {
             disposed = true;
             stopGPT();
+            disconnectPhysical();
             dispose();
             var index = scriptPorts.indexOf(facade);
             if(index>=0) scriptPorts.splice(index,1);

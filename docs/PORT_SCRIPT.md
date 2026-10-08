@@ -33,6 +33,27 @@ or removing the device cancels its GPT session and pending API requests, clears
 the API key, and cancels an unfinished key prompt. The preset flushes only its
 own observation buffer so a long session does not accumulate unused bytes.
 
+## Physical USB serial preset
+
+The plug pictogram in the PORT SCRIPT header loads an editable physical serial
+bridge script. Loading does not open the browser chooser or change a connection.
+Press Run or Ctrl/Cmd-Enter to select an adapter. The script calls
+`await port.connectPhysical()` first, while browser user activation is available,
+and keeps the existing USB RX/TX bridge and modem monitoring running.
+
+The adapter uses the current ACIA baud rate, data bits, parity and stop bits.
+Existing DTR/RTS/BREAK synchronization and configuration-change checks remain in
+the driver. `await port.physicalInfo()` reads connection status and
+`await port.disconnectPhysical()` closes the script's connection, releasing the
+reader and writer locks. Stop, completion, closing or disposal also disconnects.
+If Stop occurs during the native chooser or opening, a late selection is ignored
+or the late-opened port is closed. The native chooser itself belongs to the
+browser and cannot be dismissed by the script.
+
+Keep the connection call before delays or other awaited operations: Web Serial
+requires recent user activation for its chooser. If an edited script loses that
+activation, rerun it immediately or move connection to the beginning.
+
 ## Serial direction and bytes
 
 The script acts as the remote endpoint of SPSERIAL. `port.write()` queues data
