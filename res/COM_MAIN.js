@@ -3015,10 +3015,17 @@ function PANE()
         if(typeof target == "string") target = document.getElementById(target);
         if(!target || target.tagName.toUpperCase() != "TEXTAREA") return null;
 
-        var uid = cfg.id || ("com_pane_findreplace_" + (target.id || Math.random().toString(36).slice(2)));
+        var uid = cfg.id || target.getAttribute("data-com-pane-findreplace-id");
+        if(!uid)
+        {
+            this.findReplaceAutoId = (this.findReplaceAutoId || 0) + 1;
+            uid = "com_pane_findreplace_" + (target.id || ("auto_" + this.findReplaceAutoId));
+            target.setAttribute("data-com-pane-findreplace-id", uid);
+        }
+        
         var bar = document.getElementById(uid);
-
-        if(!bar) {
+        if(!bar)
+        {
             var mount = cfg.mount;
             if(typeof mount == "string") mount = document.getElementById(mount);
             if(mount) mount.insertAdjacentHTML("beforeend", this.findReplaceHTML(uid, cfg));
