@@ -45,7 +45,8 @@ function inlineBuild(html) {
     if (!hrefMatch) return tag;
 
     const href = hrefMatch[1].trim();
-    if (shouldExclude(href, tag)) return "";
+    // Keep a boundary so removing an include cannot join text into a new tag.
+    if (shouldExclude(href, tag)) return "<!-- ExcludeFromDistro -->";
     if (isRemote(href)) return tag;
 
     const cssPath = path.join(repoRoot, href);
@@ -57,10 +58,24 @@ function inlineBuild(html) {
   const scriptRe =
     /<script\b([^>]*)\bsrc\s*=\s*["']([^"']+)["']([^>]*)>\s*<\/script>/gi;
 
-  html = html.replace(scriptRe, (full, preAttrs, src, postAttrs) => {
+  // This is a trusted-source bundler, not an HTML sanitizer. Assemble each
+  // matched include once; do not delete tags and concatenate their neighbours.
+  const parts = [];
+  let cursor = 0;
+  let match;
+  while ((match = scriptRe.exec(html)) !== null) {
+    const [full, preAttrs, src, postAttrs] = match;
+    parts.push(html.slice(cursor, match.index));
+    cursor = scriptRe.lastIndex;
     const s = src.trim();
-    if (shouldExclude(s, full)) return "";
-    if (isRemote(s)) return full;
+    if (shouldExclude(s, full)) {
+      parts.push("<!-- ExcludeFromDistro -->");
+      continue;
+    }
+    if (isRemote(s)) {
+      parts.push(full);
+      continue;
+    }
 
     const jsPath = path.join(repoRoot, s);
     const js = readUtf8(jsPath);
@@ -68,10 +83,11 @@ function inlineBuild(html) {
     const attrs = (preAttrs + " " + postAttrs).replace(/\s+/g, " ").trim();
     const cleanedAttrs = attrs.replace(/\bsrc\s*=\s*["'][^"']+["']/i, "").trim();
 
-    return `<script${cleanedAttrs ? " " + cleanedAttrs : ""}>\n${js}\n</script>`;
-  });
+    parts.push(`<script${cleanedAttrs ? " " + cleanedAttrs : ""}>\n${js}\n</script>`);
+  }
 
-  return html;
+  parts.push(html.slice(cursor));
+  return parts.join("");
 }
 
 function main() {
