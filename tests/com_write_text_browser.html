@@ -1,0 +1,82 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>COM.writeText regression tests</title>
+<script src="../res/COM_MAIN.js"></script>
+<pre id="results"></pre>
+<script>
+// Open through the project's web server; no extra test dependencies are needed.
+var COM_writeTextTestResults = [];
+function check(condition,message) { if(!condition) throw new Error(message); }
+function test(name,run)
+{
+    try { run(); COM_writeTextTestResults.push({name:name,passed:true}); }
+    catch(error) { COM_writeTextTestResults.push({name:name,passed:false,error:error.message}); }
+}
+function target() { return document.createElement("div"); }
+test("markup and entities remain literal in every output mode",function()
+{
+    var payload='<img src=x onerror=alert(1)><script>alert(1)</scr'+'ipt><b>bold</b> &lt;i&gt; & "quoted"';
+    [false,true].forEach(function(append)
+    {
+        [false,true].forEach(function(lineBreaks)
+        {
+            var el=target();
+            oCOM.writeText(el,payload,{append:append,lineBreaks:lineBreaks});
+            check(el.textContent===payload,"text was reinterpreted");
+            check(el.children.length===0,"markup created elements");
+        });
+    });
+});
+test("default output replaces existing children",function()
+{
+    var el=target(); el.appendChild(document.createElement("b"));
+    oCOM.writeText(el,"replacement");
+    check(el.textContent==="replacement" && el.children.length===0,"contents were not replaced");
+});
+test("append preserves existing nodes and event listeners",function()
+{
+    var el=target(), button=document.createElement("button"), clicks=0;
+    button.textContent="existing";
+    button.addEventListener("click",function(){clicks++;}); el.appendChild(button);
+    oCOM.writeText(el," appended",{append:true}); button.click();
+    check(el.firstChild===button && clicks===1,"existing node was rebuilt");
+    check(el.textContent==="existing appended","append lost text");
+});
+test("line breaks preserve blank and trailing lines",function()
+{
+    var el=target(); el.textContent="old";
+    oCOM.writeText(el,"first\n\nlast\n",{lineBreaks:true});
+    check(el.querySelectorAll("br").length===3,"line breaks were lost");
+    check(el.textContent==="firstlast","line text changed");
+});
+test("line break mode handles CRLF and CR",function()
+{
+    var el=target(); oCOM.writeText(el,"a\r\nb\rc",{lineBreaks:true});
+    check(el.children.length===2 && el.textContent==="abc","CR/CRLF splitting failed");
+});
+test("plain output preserves whitespace and Unicode",function()
+{
+    var el=target(), text="  A\tB\nC\r\nD é Ω 🍎"; oCOM.writeText(el,text);
+    check(el.textContent===text && el.children.length===0,"literal text changed");
+});
+test("empty values clear output while zero and false remain visible",function()
+{
+    var el=target();
+    [null,undefined,""].forEach(function(value)
+    { el.textContent="old"; oCOM.writeText(el,value); check(el.textContent==="","empty value did not clear"); });
+    [0,false].forEach(function(value)
+    { oCOM.writeText(el,value); check(el.textContent===String(value),"falsy value was lost"); });
+});
+test("foreign-document targets use their own document",function()
+{
+    var doc=document.implementation.createHTMLDocument("other"), el=doc.createElement("div");
+    oCOM.writeText(el,"a\nb",{lineBreaks:true});
+    check(el.childNodes.length===3,"wrong output structure");
+    Array.from(el.childNodes).forEach(function(node)
+    { check(node.ownerDocument===doc,"node belongs to wrong document"); });
+});
+var failures=COM_writeTextTestResults.filter(function(result){return !result.passed;});
+document.getElementById("results").textContent=COM_writeTextTestResults.map(function(result)
+{ return (result.passed?"PASS: ":"FAIL: ")+result.name+(result.error?" — "+result.error:""); }).join("\n");
+document.title=(failures.length?"FAIL":"PASS")+": COM.writeText";
+</script>

@@ -650,6 +650,37 @@ function COM()
       }
   }
 
+  // Display literal text without interpreting markup or decoding entities.
+  // options: append (default false), lineBreaks (default false).
+  this.writeText = function(element,value,options)
+  {
+    if(!element || element.nodeType!==1)
+      throw new TypeError("writeText requires a DOM element");
+
+    options = options || {};
+    var text = value==null ? "" : String(value);
+    var doc = element.ownerDocument;
+
+    if(!options.lineBreaks)
+    {
+      if(options.append) element.appendChild(doc.createTextNode(text));
+      else element.textContent = text;
+    }
+    else
+    {
+      var fragment = doc.createDocumentFragment();
+      var lines = text.split(/\r\n|\r|\n/);
+      for(var i=0;i<lines.length;i++)
+      {
+        if(i>0) fragment.appendChild(doc.createElement("br"));
+        fragment.appendChild(doc.createTextNode(lines[i]));
+      }
+      if(options.append) element.appendChild(fragment);
+      else element.replaceChildren(fragment);
+    }
+    return element;
+  };
+
   this.escapeHTML = function(str) 
   {
     return String(str)

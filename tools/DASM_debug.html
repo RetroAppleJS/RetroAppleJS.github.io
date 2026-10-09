@@ -37,7 +37,7 @@ function init_gui(_o)
     var adr = arr[i].slice(0,4);
     var hexcode = arr[i].slice(5,11);
     hexcode = hexcode.slice(0,2)+" "+hexcode.slice(2,4)+" "+hexcode.slice(4,6)
-    out_el.innerHTML += adr+": "+hexcode+"<br>";
+    oCOM.writeText(out_el,adr+": "+hexcode+"\n",{append:true,lineBreaks:true});
   }
 }
 
