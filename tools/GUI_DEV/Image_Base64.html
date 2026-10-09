@@ -32,7 +32,7 @@
         <div style="padding: 5px 10px;">
           <b>IMAGE → BASE64</b>
         </div>
-        <input id="myinput" type="file" accept="image/*" onchange="encode();" style="padding: 5px 10px; margin: 10px;" />
+        <input id="myinput" type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/bmp" onchange="encode();" style="padding: 5px 10px; margin: 10px;" />
         <button style="padding: 5px 10px; margin: 10px;" onclick="copy(document.getElementById('txt').value)">COPY BASE64</button>
 
         <div style="padding: 5px 10px; margin-top: 5px;">
@@ -45,25 +45,35 @@
         <div id="dummy" style="padding: 10px;">
         </div>
         <div>
-          <textarea style="width:98%;height:500px;" id="txt" placeholder="Image Base64 data URL, or raw Base64 image data"></textarea>
+          <textarea style="width:98%;height:500px;" id="txt" placeholder="PNG, JPEG, GIF, WebP or BMP: Base64 data URL or raw Base64"></textarea>
         </div>
 
         <script>
         var CONF_version="0.0.3"
         var CONF_builddate="20260926-153400"
-        var decodedDataURL=""
+        var imageObjectURL=""
         var decodedMime=""
 
           function encode() {
+            clearImage();
             var selectedfile = document.getElementById("myinput").files;
             if (selectedfile.length > 0) {
               var imageFile = selectedfile[0];
               var fileReader = new FileReader();
               fileReader.onload = function(fileLoadedEvent) {
-                var srcData = fileLoadedEvent.target.result;
-                showImage(srcData);
-                document.getElementById("txt").value = srcData;
-                setStatus("");
+                try {
+                  var srcData = fileLoadedEvent.target.result;
+                  showImage(srcData);
+                  document.getElementById("txt").value = srcData;
+                  setStatus("");
+                } catch (err) {
+                  clearImage();
+                  setStatus(err.message, true);
+                }
+              }
+              fileReader.onerror = function() {
+                clearImage();
+                setStatus("The image file could not be read.", true);
               }
               fileReader.readAsDataURL(imageFile);
             }
@@ -76,21 +86,22 @@
             }
 
             var dataUrlMatch = value.match(/^data:(image\/[a-z0-9.+-]+);base64,([\s\S]*)$/i);
-            if (dataUrlMatch) {
-              var dataUrlPayload = cleanBase64(dataUrlMatch[2]);
-              validateBase64(dataUrlPayload);
-              return "data:" + dataUrlMatch[1].toLowerCase() + ";base64," + dataUrlPayload;
-            }
-
-            if (/^data:/i.test(value)) {
+            if (!dataUrlMatch && /^data:/i.test(value)) {
               throw new Error("The data URL must contain an image MIME type and Base64 data.");
             }
 
-            var payload = cleanBase64(value);
+            var declaredMime = dataUrlMatch ? dataUrlMatch[1].toLowerCase() : "";
+            if (declaredMime && !/^image\/(png|jpeg|gif|webp|bmp)$/.test(declaredMime)) {
+              throw new Error("Only PNG, JPEG, GIF, WebP and BMP images are supported.");
+            }
+            var payload = cleanBase64(dataUrlMatch ? dataUrlMatch[2] : value);
             validateBase64(payload);
             var mime = detectImageMime(payload);
             if (!mime) {
-              throw new Error("Base64 is valid, but the image type could not be detected. Paste a complete data:image/...;base64,... URL instead.");
+              throw new Error("The data is not a supported PNG, JPEG, GIF, WebP or BMP image.");
+            }
+            if (declaredMime && declaredMime !== mime) {
+              throw new Error("The image MIME type does not match its contents.");
             }
             return "data:" + mime + ";base64," + payload;
           }
@@ -111,45 +122,58 @@
           }
 
           function detectImageMime(payload) {
-            if (payload.indexOf("iVBORw0KGgo") === 0) return "image/png";
-            if (payload.indexOf("/9j/") === 0) return "image/jpeg";
-            if (payload.indexOf("R0lGOD") === 0) return "image/gif";
-            if (payload.indexOf("UklGR") === 0) return "image/webp";
-            if (payload.indexOf("Qk") === 0) return "image/bmp";
-            if (payload.indexOf("PHN2Zy") === 0 || payload.indexOf("PD94bWwg") === 0) return "image/svg+xml";
+            var bytes = atob(payload);
+            if (bytes.slice(0,8) === "\x89PNG\r\n\x1a\n") return "image/png";
+            if (bytes.slice(0,3) === "\xff\xd8\xff") return "image/jpeg";
+            if (bytes.slice(0,6) === "GIF87a" || bytes.slice(0,6) === "GIF89a") return "image/gif";
+            if (bytes.slice(0,4) === "RIFF" && bytes.slice(8,12) === "WEBP") return "image/webp";
+            if (bytes.length >= 14 && bytes.slice(0,2) === "BM") return "image/bmp";
             return "";
           }
 
           function decode() {
             try {
-              decodedDataURL = toImageDataURL(document.getElementById("txt").value);
-              decodedMime = decodedDataURL.match(/^data:([^;]+);base64,/i)[1];
-              showImage(decodedDataURL);
+              decodedMime = showImage(document.getElementById("txt").value);
               document.getElementById("downloadButton").disabled = false;
               setStatus("Image decoded.");
             } catch (err) {
-              decodedDataURL = "";
-              decodedMime = "";
-              document.getElementById("dummy").innerHTML = "";
-              document.getElementById("downloadButton").disabled = true;
+              clearImage();
               setStatus(err.message, true);
             }
           }
 
           function showImage(srcData) {
+            var dataURL = toImageDataURL(srcData);
+            var separator = dataURL.indexOf(",");
+            var mime = dataURL.slice(5, dataURL.indexOf(";"));
+            var binary = atob(dataURL.slice(separator+1));
+            var bytes = new Uint8Array(binary.length);
+            for (var i=0; i<binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            // Only a browser-generated URL for validated raster bytes reaches the DOM.
+            var objectURL = URL.createObjectURL(new Blob([bytes], {type:mime}));
+            clearImage();
+            imageObjectURL = objectURL;
             var newImage = document.createElement("img");
-            newImage.src = srcData;
+            newImage.src = imageObjectURL;
             newImage.alt = "Decoded image";
             newImage.style.maxWidth = "98%";
             newImage.style.height = "auto";
-            document.getElementById("dummy").innerHTML = "";
             document.getElementById("dummy").appendChild(newImage);
+            return mime;
+          }
+
+          function clearImage() {
+            document.getElementById("dummy").replaceChildren();
+            if (imageObjectURL) URL.revokeObjectURL(imageObjectURL);
+            imageObjectURL = "";
+            decodedMime = "";
+            document.getElementById("downloadButton").disabled = true;
           }
 
           function downloadDecodedImage() {
-            if (!decodedDataURL) return;
+            if (!imageObjectURL || !decodedMime) return;
             var link = document.createElement("a");
-            link.href = decodedDataURL;
+            link.href = imageObjectURL;
             link.download = "decoded-image." + extensionForMime(decodedMime);
             document.body.appendChild(link);
             link.click();
@@ -162,8 +186,7 @@
               "image/jpeg": "jpg",
               "image/gif": "gif",
               "image/webp": "webp",
-              "image/bmp": "bmp",
-              "image/svg+xml": "svg"
+              "image/bmp": "bmp"
             };
             return extensions[mime] || "img";
           }
