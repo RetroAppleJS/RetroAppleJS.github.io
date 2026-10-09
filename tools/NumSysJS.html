@@ -87,7 +87,7 @@ table.html_edit_table td:nth-child(2) {
   /* border-color: #E6CBC0; */
 }
 
-#myInput {
+.dropdown-filter {
   box-sizing: border-box;
   background-image: url('data:image/gif;base64,R0lGODdhFQAVAPMAAP///+/v79ra2srKyr+/v7m5uQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACwAAAAAFQAVAAMEbhBIKQYhQ8zNgSjFdYFDtw0hAYIjYXppIQSBoKpll7ocqgacj+olyk0sslcgVOCMgC+m8/cCSE8qjWk53NguLwuGw00GmdATkwAN+Lqdm2olGoV3IpZ9i6LTdgVpVRNcT4NkgIKHhWCHG4yOcWwRADs=');
 
@@ -99,7 +99,7 @@ table.html_edit_table td:nth-child(2) {
   border-bottom: 1px solid #ddd;
 }
 
-#myInput:focus {outline: 3px solid #ddd;}
+.dropdown-filter:focus {outline: 3px solid #ddd;}
 
 .dropdown {
   position: relative;
@@ -200,7 +200,6 @@ table.html_edit_table td:nth-child(2) {
 --> 
 
 <script type="text/javascript" src="../res/COM_base_converter.js"></script>
-<script type="text/javascript" src="../res/purify.min.js"></script>
 
 <body style="background-color:#808080;height:100%;margin:0px;padding:0px" class="slider_main">
 
@@ -366,125 +365,163 @@ function dropdown_show(tag_name) {
   document.getElementById(tag_name).classList.toggle("show");
 }
 
-function dropdown_filter(tag_name) {
-  var input, filter, ul, li, a, i;
-  input = document.getElementById("myInput");
-  filter = input.value.toUpperCase();
-  div = document.getElementById(tag_name);
-  a = div.getElementsByTagName("a");
-  for (i = 0; i < a.length; i++) {
-    txtValue = a[i].textContent || a[i].innerText;
-    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-      a[i].style.display = "";
-    } else {
-      a[i].style.display = "none";
-    }
+function dropdown_filter(tag_name,input) {
+  var filter = input.value.toUpperCase();
+  var links = document.getElementById(tag_name).getElementsByTagName("a");
+  for (var i=0; i<links.length; i++) {
+    links[i].style.display = links[i].textContent.toUpperCase().indexOf(filter)>-1 ? "" : "none";
   }
 }
 
 function charBox(str,symbols)
 {
-	var html = "";
+  var cells = document.createDocumentFragment();
+  // Preserve the glyphs formerly produced by HTML's numeric entity mapping.
+  var windows1252 = "\u20AC\u0081\u201A\u0192\u201E\u2026\u2020\u2021\u02C6\u2030\u0160\u2039\u0152\u008D\u017D\u008F\u0090\u2018\u2019\u201C\u201D\u2022\u2013\u2014\u02DC\u2122\u0161\u203A\u0153\u009D\u017E\u0178";
   for(var i=0;i<str.length;i++)
   {
-    var bPrint = /[\x00-\x20\x7F\x81\x8D\x8F\x90\x9D\xA0\xAD]/.test(str.charAt(i));  // is this a printable character ?
-    var bRange = symbols?(symbols.indexOf(str.charAt(i))>=0):true;
-    var attr   = bPrint?(" style='background-color:"+(bRange?"#E0E0E0":"#FF0000")+";border-color:#D0D0D0;padding:1px;opacity:0.2'")
-                       :(" style='padding:2px;"+(bRange?"":"background-color:#FF0000")+"' ");
-    var chr    = bPrint?"<small>"+("0"+str.charCodeAt(i).toString(16)).slice(-2).toUpperCase()+"</small>":("&#"+str.charCodeAt(i)+";");
-    html      += "<div"+attr+" class='tooltip'>"+chr+"<span class='tooltiptext'>("+i+") #"+str.charCodeAt(i)+" $"+("0"+str.charCodeAt(i).toString(16)).slice(-2).toUpperCase()
-                +"</span></div>";
+    var character = str.charAt(i), code = str.charCodeAt(i);
+    var hex = ("0"+code.toString(16)).slice(-2).toUpperCase();
+    var control = /[\x00-\x20\x7F\x81\x8D\x8F\x90\x9D\xA0\xAD]/.test(character);
+    var inRange = symbols ? symbols.indexOf(character)>=0 : true;
+    var cell = document.createElement("div");
+    cell.className = "tooltip";
+    cell.style.padding = control ? "1px" : "2px";
+    if(!inRange) cell.style.backgroundColor = "#FF0000";
+    if(control)
+    {
+      if(inRange) cell.style.backgroundColor = "#E0E0E0";
+      cell.style.borderColor = "#D0D0D0";
+      cell.style.opacity = "0.2";
+      var small = document.createElement("small");
+      small.textContent = hex;
+      cell.appendChild(small);
+    }
+    else cell.textContent = code>=128 && code<=159 ? windows1252.charAt(code-128) : character;
+    var tooltip = document.createElement("span");
+    tooltip.className = "tooltiptext";
+    tooltip.textContent = "("+i+") #"+code+" $"+hex;
+    cell.appendChild(tooltip);
+    cells.appendChild(cell);
   }
-  return html;
+  return cells;
+}
+
+function baseLabel(text)
+{
+  var label = document.createElement("div");
+  label.style.cssText = "background-color:#C6ABA0;border-color:#C6ABA0;padding:1px;max-width:85px;min-width:92px";
+  label.textContent = text;
+  return label;
 }
 
 function update_base(element,base_tagname,dest_tagname)
 {
-    document.getElementById(base_tagname).innerHTML =  DOMPurify.sanitize(element.value);
-    var attr = " style='background-color:#C6ABA0;border-color:#C6ABA0;padding:1px;max-width:85px;min-width:92px' "
-    function getbase(value) { return "<sup>"+(isNaN(value)?oBASE.getsymbols(value).length:"")+"</sup>" }
+  var value = String(element.value);
+  document.getElementById(base_tagname).textContent = value;
+  var symbols = oBASE.getsymbols(value);
+  var dropdown = baseLabel("");
+  dropdown.className = "dropdown";
+  var title = document.createElement("div");
+  title.className = "dropbtn";
+  title.textContent = (isNaN(value)?"":"BASE")+value.replace(/ /g,"\u00a0");
+  title.onclick = function() { dropdown_show(base_tagname+"_dropdown"); };
+  var count = document.createElement("sup");
+  count.textContent = isNaN(value) ? String(symbols.length) : "";
+  title.appendChild(count);
+  dropdown.appendChild(title);
 
-    var searcher = "";
-    for(var obj in oBASE.symbols)
-      if(isNaN(obj))
-        searcher += "<a href='#' onclick=update_base({value:this.innerHTML},'"+base_tagname+"','"+dest_tagname+"');"
-        +"keypress('input','frombase','charmap_input');convert('input','frombase','tobase','charmap_output','output')>"+obj+"</a>"
-
-    html = "<div class='dropdown' "+attr+">"
-    +"<div onclick=dropdown_show('"+base_tagname+"_dropdown') class='dropbtn' >"
-    +(isNaN(element.value)?"":"BASE") + element.value.replace(/ /g,"&nbsp;") + getbase(element.value)
-    +"</div>"
-    +"<div id='"+base_tagname+"_dropdown' class='dropdown-content'>"
-    +"<input type='text' placeholder='Search..' id='myInput' onkeyup=dropdown_filter('"+base_tagname+"_dropdown')>"
-    +searcher
-    +"</div></div>"
-
-    // IF SANITIZED, COMBO BOX STOPS WORKING
- 		//document.getElementById(dest_tagname).innerHTML = DOMPurify.sanitize( html+charBox(oBASE.getsymbols(element.value)) );
-    document.getElementById(dest_tagname).innerHTML = html+charBox(oBASE.getsymbols(element.value));
-
+  var menu = document.createElement("div");
+  menu.id = base_tagname+"_dropdown";
+  menu.className = "dropdown-content";
+  var search = document.createElement("input");
+  search.type = "text";
+  search.placeholder = "Search..";
+  search.id = base_tagname+"_filter";
+  search.className = "dropdown-filter";
+  search.onkeyup = function() { dropdown_filter(menu.id,search); };
+  menu.appendChild(search);
+  Object.keys(oBASE.symbols).forEach(function(name)
+  {
+    if(!isNaN(name)) return;
+    var link = document.createElement("a");
+    link.href = "#";
+    link.textContent = name;
+    link.onclick = function(event)
+    {
+      event.preventDefault();
+      update_base({value:name},base_tagname,dest_tagname);
+      keypress("input","frombase","charmap_input");
+      convert("input","frombase","tobase","charmap_output","output");
+    };
+    menu.appendChild(link);
+  });
+  dropdown.appendChild(menu);
+  document.getElementById(dest_tagname).replaceChildren(dropdown,charBox(symbols));
 }
 
 function keypress(src_tag,base_tagname,dest_tagname)
 {
-		var txt  = document.getElementById(src_tag).value;
-		var valid_symbols = oBASE.getsymbols(document.getElementById(base_tagname).innerHTML);
-		var attr = " style='background-color:#C6ABA0;border-color:#C6ABA0;padding:1px;max-width:85px;min-width:92px' ";
-		var html = "<div class='dropdown' "+attr+">INPUT</div>";
-		html += charBox(txt,valid_symbols);
-    document.getElementById(dest_tagname).innerHTML = html;
+  var text = document.getElementById(src_tag).value;
+  var symbols = oBASE.getsymbols(document.getElementById(base_tagname).textContent);
+  var label = baseLabel("INPUT");
+  label.className = "dropdown";
+  document.getElementById(dest_tagname).replaceChildren(label,charBox(text,symbols));
 }
 
 function convert(src_tag,frombase_tag,tobase_tag,dest_tag,out_tag)
 {
-    var str      	= document.getElementById(src_tag).value;
-		var frombase 	= document.getElementById(frombase_tag).innerHTML;
-    var tobase   	= document.getElementById(tobase_tag).innerHTML;
-    var symbols		= oBASE.getsymbols(frombase);
-    var arr       = str==null?[]:str.split("");
-
-    // BTOA
-    //document.getElementById("btoa").value = btoa(document.getElementById(dest_tag).value)+" "+document.getElementById(dest_tag).value.length
-
-    for(var i=0;i<arr.length;i++)
-  		if(symbols.indexOf(arr[i])<0) arr[i] = "";
-    var regstr = arr.join("");
-
-    var outstr   = oBASE.convert(regstr,frombase,tobase);
-		var attr = " style='background-color:#C6ABA0;border-color:#C6ABA0;padding:1px;max-width:85px;min-width:92px' "
-    var excl_img = "<img style='all:initial;width:21px;height:21px' src='data:image/gif;base64,"
-+"R0lGODlhFQAVAPMAANbT0+oFBfSlpf76+razswgICAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH5BAEAAAAALAAAAAAVABUAAwRhEMg5RRA06xn6/pLVYaDW"
-+"nWUmril3DWILiAMxjO1JFARarjsCC3Sq8W6ez8poG5o6A2bUpxpFg1GnKxCVTpMVa3cMw23H2C512S24x8Mi+jhGiS6CvH6fP91PgIGCg4SCEQA7'>"
-
-    document.getElementById("btoa").value = btoa(str)
-    document.getElementById("btoa2").value = btoa(outstr)
-
-    var html = "<div "+attr+">OUTPUT</div>"
-               + (str.length==0?"":charBox(outstr))
-               + (str.length==regstr.length?"":excl_img);
-    document.getElementById(dest_tag).innerHTML =  html;
-    document.getElementById(out_tag).value =  outstr;
-
-    if(str.length>0)
+  var str = document.getElementById(src_tag).value;
+  var frombase = document.getElementById(frombase_tag).textContent;
+  var tobase = document.getElementById(tobase_tag).textContent;
+  var symbols = oBASE.getsymbols(frombase);
+  var arr = str==null ? [] : str.split("");
+  for(var i=0;i<arr.length;i++)
+    if(symbols.indexOf(arr[i])<0) arr[i] = "";
+  var regstr = arr.join("");
+  var outstr = oBASE.convert(regstr,frombase,tobase);
+  document.getElementById("btoa").value = btoa(str);
+  document.getElementById("btoa2").value = btoa(outstr);
+  var output = document.getElementById(dest_tag);
+  output.replaceChildren(baseLabel("OUTPUT"));
+  if(str.length) output.appendChild(charBox(outstr));
+  if(str.length!==regstr.length)
+  {
+    var warning = document.createElement("img");
+    warning.style.cssText = "all:initial;width:21px;height:21px";
+    warning.alt = "Input contains invalid digits";
+    warning.src = "data:image/gif;base64,R0lGODlhFQAVAPMAANbT0+oFBfSlpf76+razswgICAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH5BAEAAAAALAAAAAAVABUAAwRhEMg5RRA06xn6/pLVYaDW"
+      +"nWUmril3DWILiAMxjO1JFARarjsCC3Sq8W6ez8poG5o6A2bUpxpFg1GnKxCVTpMVa3cMw23H2C512S24x8Mi+jhGiS6CvH6fP91PgIGCg4SCEQA7";
+    output.appendChild(warning);
+  }
+  document.getElementById(out_tag).value = outstr;
+  var stats = document.getElementById("stats");
+  stats.replaceChildren();
+  if(!str.length) return;
+  try
+  {
+    var check = oBASE.check(str)[0];
+    var row = document.createElement("div");
+    row.className = "wrapper";
+    function addStat(text)
     {
-    try{
-      var attr2 = " style='max-width:100px' "
-      var nbsp = "&nbsp;"
-      var chk = oBASE.check(str)[0];
-    	var html = "<div class='wrapper'><div "+attr+">STATS</div>"
-      +"<div "+attr+">INPUT</div>"
-      +"<div "+attr2+">digits"+nbsp+regstr.length+"</div>"
-      +"<div "+attr2+">bad"+nbsp+(str.length-regstr.length)+"</div>"
-      +"<div "+attr2+">"+(isNaN(chk)?chk:"BASE"+chk) +"</div>"
-      +"<div "+attr+">OUTPUT</div>"
-      +"<div "+attr2+">digits"+nbsp+outstr.length+"</div>"
-      +"<div "+attr2+">bad"+nbsp+Math.ceil((str.length-regstr.length)*outstr.length/regstr.length)+"</div>"
-      +"<div "+attr2+">dif"+nbsp+(outstr.length>regstr.length?"+":"")+(Math.round(outstr.length/regstr.length*100)-100)+"%</div>"
-      +"</div>"
-      } catch(e) {alert(e)}
-      document.getElementById("stats").innerHTML =  html;
+      var cell = document.createElement("div");
+      cell.style.maxWidth = "100px";
+      cell.textContent = text;
+      row.appendChild(cell);
     }
-    else document.getElementById("stats").innerHTML = "";
+    row.appendChild(baseLabel("STATS"));
+    row.appendChild(baseLabel("INPUT"));
+    addStat("digits\u00a0"+regstr.length);
+    addStat("bad\u00a0"+(str.length-regstr.length));
+    addStat(isNaN(check) ? check : "BASE"+check);
+    row.appendChild(baseLabel("OUTPUT"));
+    addStat("digits\u00a0"+outstr.length);
+    addStat("bad\u00a0"+Math.ceil((str.length-regstr.length)*outstr.length/regstr.length));
+    addStat("dif\u00a0"+(outstr.length>regstr.length?"+":"")+(Math.round(outstr.length/regstr.length*100)-100)+"%");
+    stats.appendChild(row);
+  }
+  catch(error) { alert(error); }
 }
 
 
