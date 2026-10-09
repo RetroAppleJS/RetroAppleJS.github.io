@@ -1617,8 +1617,11 @@
     {
         if(typeof(document)==="undefined") return null;
 
-        var popup = document.getElementById("serialProTerminal_popup");
+        var popupID = card && typeof(card.serialTerminalPopupID)==="function"
+            ? card.serialTerminalPopupID() : null;
+        var popup = popupID && document.getElementById(popupID);
         if(!popup) return null;
+        if(popup._serialProOwner!==card) return null;
 
         var slotN = card && card.mount ? Number(card.mount.slotN) : null;
         var popupSlotN = Number(popup.getAttribute("data-slotN"));
@@ -2343,11 +2346,18 @@
         };
     }
 
+    function serialGPTKeyPopupID(card)
+    {
+        var slotN = card && card.mount ? Number(card.mount.slotN) : NaN;
+        return Number.isInteger(slotN) && slotN>=0 && slotN<=7
+            ? "serialGPTKey_popup_"+slotN : null;
+    }
+
     function serialGPTRequestAPIKey(card)
     {
         var popupAPI = global.oCOM && global.oCOM.POPUP;
         if(
-            typeof(document)==="undefined" ||
+            typeof(document)==="undefined" || !serialGPTKeyPopupID(card) ||
             !popupAPI ||
             typeof(popupAPI.on)!=="function" ||
             typeof(popupAPI.off)!=="function" ||
@@ -2358,7 +2368,7 @@
             return Promise.resolve(null);
         }
 
-        var popupId = "serialGPTKey_popup";
+        var popupId = serialGPTKeyPopupID(card);
         var popup = document.getElementById(popupId);
 
         if(!popup)
@@ -2369,7 +2379,7 @@
             popup.hidden = true;
             popup.setAttribute("role","dialog");
             popup.setAttribute("aria-modal","true");
-            popup.setAttribute("aria-labelledby","serialGPTKey_title");
+            popup.setAttribute("aria-labelledby",popupId+"_title");
             popup.style.position = "fixed";
             popup.style.zIndex = "10000";
             popup.style.left = "50%";
@@ -2380,18 +2390,19 @@
             popup.style.fontSize = "13px";
             document.body.appendChild(popup);
         }
+        card._serialGPTKeyPopup = popup;
 
         /*
-         * Reuse one outstanding prompt. This prevents rapid GPT8/GPT16 clicks
+         * Reuse this slot's outstanding prompt. This prevents rapid GPT8/GPT16 clicks
          * from replacing the DOM underneath an unresolved key-entry promise.
          */
         if(popup._serialGPTPromptPromise)
             return popup._serialGPTPromptPromise;
 
         var titleHtml =
-            "<span id='serialGPTKey_title' "
+            "<span id='"+popupId+"_title' "
             +"style='white-space:nowrap;font-size:14px'>"
-            +"<i class='fa fa-key'></i>&nbsp;OpenAI API key"
+            +"<i class='fa fa-key'></i>&nbsp;OpenAI API key #"+card.mount.slotN
             +"</span>"
             +"<button type='button' class='appbut skinny' data-gpt-key-close "
             +"aria-label='Close API key dialog' title='Close' "
@@ -2403,7 +2414,7 @@
          */
 
         var bodyHtml =
-            "<input id='serialGPTKey_input' data-gpt-key-input "
+            "<input id='"+popupId+"_input' data-gpt-key-input "
             +"type='password' autocomplete='off' autocorrect='off' "
             +"autocapitalize='off' spellcheck='false' "
             +"aria-label='OpenAI API key' "
@@ -2428,7 +2439,7 @@
         popup.innerHTML = popupAPI.title_body_html(
             titleHtml,
             bodyHtml,
-            "serialGPTKey_body",
+            popupId+"_body",
             "com_popup_body"
         );
 
@@ -2761,6 +2772,23 @@
 
         serialGPTState(card);
 
+        var baseUnmount = card.onUnmount;
+        card.onUnmount = function()
+        {
+            var popup = card._serialGPTKeyPopup;
+            if(popup && popup._serialGPTPromptOwner===card && popup._serialGPTCancelPrompt)
+                popup._serialGPTCancelPrompt();
+            if(typeof(baseUnmount)==="function") baseUnmount.apply(card,arguments);
+            serialGPTDisable(card);
+            if(popup)
+            {
+                if(global.oCOM && global.oCOM.POPUP && global.oCOM.POPUP.states)
+                    delete global.oCOM.POPUP.states[popup.id];
+                popup.remove();
+                delete card._serialGPTKeyPopup;
+            }
+        };
+
         /*
          * Do not wrap serialTerminalWriteByte(). SPGPT now observes the real
          * SPSERIAL output stream through its device connection instead of
@@ -2842,7 +2870,7 @@
             {
                 var abort = function()
                 {
-                    var prompt = typeof(document)!=="undefined" && document.getElementById("serialGPTKey_popup");
+                    var prompt = typeof(document)!=="undefined" && document.getElementById(serialGPTKeyPopupID(card));
                     if(prompt && prompt._serialGPTPromptOwner===card && prompt._serialGPTCancelPrompt)
                         prompt._serialGPTCancelPrompt();
                     serialGPTDisable(card);

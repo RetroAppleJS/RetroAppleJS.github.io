@@ -70,10 +70,36 @@ function EMU_PORT_SCRIPT(cfg)
         {
             if(typeof(value)==="string") return value;
             if(ArrayBuffer.isView(value)) return JSON.stringify(Array.from(value));
-            try { return JSON.stringify(value); } catch(ignore) { return String(value); }
+            try
+            {
+                var serialized = JSON.stringify(value);
+                return serialized===undefined ? String(value) : serialized;
+            }
+            catch(ignore) { return String(value); }
         }).join(" ");
-        component.output.textContent = (component.output.textContent+text+"\n").slice(-65536);
-        component.output.scrollTop = component.output.scrollHeight;
+        try
+        {
+            if(component.console)
+            {
+                var written = component.console.write(text+"\n","meta");
+                if(written && typeof(written.catch)==="function")
+                    written.catch(function(failure) { console.error("Script console output failed",failure); });
+            }
+            else console.log(text);
+        }
+        catch(failure) { console.error("Script console output failed",failure); }
+    }
+
+    function updateExecutionButton()
+    {
+        var running = component.isRunning;
+        var control = component.runButton;
+        control.disabled = destroyed;
+        control.title = running ? "Stop script" : "Run script";
+        control.setAttribute("aria-label",control.title);
+        control.children[0].className = running ? "fa fa-stop" : "fa fa-play";
+        control.removeAttribute(running ? "data-port-script-run" : "data-port-script-stop");
+        control.setAttribute(running ? "data-port-script-stop" : "data-port-script-run","");
     }
 
     function finish(status,failure)
@@ -86,8 +112,7 @@ function EMU_PORT_SCRIPT(cfg)
         if(run.worker) run.worker.terminate();
         if(run.url) URL.revokeObjectURL(run.url);
         component.isRunning = false;
-        component.runButton.disabled = destroyed;
-        component.stopButton.disabled = true;
+        updateExecutionButton();
         component.status.textContent = status;
         if(failure) appendLog([failure.name+": "+failure.message]);
         run.resolve({status:status,error:failure || null});
@@ -98,17 +123,18 @@ function EMU_PORT_SCRIPT(cfg)
         var root = element("div","emu_port_script_split");
         var pane = element("section","emu_port_script");
         var toolbar = element("div","emu_port_script_toolbar");
-        toolbar.appendChild(element("span","emu_port_script_title","PORT SCRIPT"));
+        toolbar.appendChild(element("span","emu_port_script_title",cfg.title || "PORT SCRIPT"));
         this.status = element("span","emu_port_script_status","ready");
         this.status.setAttribute("role","status");
         toolbar.appendChild(this.status);
         toolbar.appendChild(button("Port and console API","fa fa-info-circle","data-port-script-api",function() { component.showAPI(); }));
-        this.runButton = button("Run script","fa fa-play","data-port-script-run",function() { component.run(); });
-        this.stopButton = button("Stop script","fa fa-stop","data-port-script-stop",function() { component.stop(); });
-        this.stopButton.disabled = true;
+        this.runButton = button("Run script","fa fa-play","data-port-script-run",function()
+        {
+            if(component.isRunning) component.stop();
+            else component.run();
+        });
         toolbar.appendChild(this.runButton);
-        toolbar.appendChild(this.stopButton);
-        toolbar.appendChild(button("Clear script log","fa fa-trash","data-port-script-clear",function() { component.clear(); }));
+        toolbar.appendChild(button("Clear script source","fa fa-trash","data-port-script-clear",function() { component.clear(); }));
         if(typeof(cfg.onClose)==="function")
             toolbar.appendChild(button("Close port console","fa fa-times","data-port-script-close",cfg.onClose));
         this.toolbar = toolbar;
@@ -129,13 +155,10 @@ function EMU_PORT_SCRIPT(cfg)
                 save();
             }
         };
-        this.output = element("pre","emu_port_script_log");
-        this.output.setAttribute("aria-label","Script execution log");
         this.help = element("div","emu_port_script_api");
         this.help.hidden = true;
         pane.appendChild(toolbar);
         pane.appendChild(this.editor);
-        pane.appendChild(this.output);
         pane.appendChild(this.help);
         root.appendChild(pane);
         this.root = root;
@@ -189,8 +212,7 @@ function EMU_PORT_SCRIPT(cfg)
         run.promise = new Promise(function(resolve) { run.resolve = resolve; });
         session = run;
         this.isRunning = true;
-        this.runButton.disabled = true;
-        this.stopButton.disabled = false;
+        updateExecutionButton();
         this.status.textContent = "running";
         try
         {
@@ -269,7 +291,7 @@ function EMU_PORT_SCRIPT(cfg)
         if(destroyed) return false;
         this.editor.value = String(source);
         this.help.hidden = true;
-        this.editor.hidden = this.output.hidden = false;
+        this.editor.hidden = false;
         if(!this.isRunning) this.status.textContent = "ready";
         save();
         this.editor.focus();
@@ -278,13 +300,13 @@ function EMU_PORT_SCRIPT(cfg)
 
     this.clear = function()
     {
-        this.output.textContent = "";
+        return this.loadSource("");
     };
 
     this.showAPI = function()
     {
         this.help.hidden = !this.help.hidden;
-        this.editor.hidden = this.output.hidden = !this.help.hidden;
+        this.editor.hidden = !this.help.hidden;
         if(this.help.hidden) return;
         this.help.replaceChildren();
         [this.contract,this.consoleContract].forEach(function(contract)
@@ -303,7 +325,7 @@ function EMU_PORT_SCRIPT(cfg)
             });
         });
         this.help.appendChild(element("code","","sleep(ms) · log(...) · hex(value, width=2)"));
-        this.help.appendChild(element("p","","Await port/terminal calls. log() writes here; terminal.write() or console.write() reports to the lower console. Stop terminates the worker and pending waits. Ctrl/Cmd-Enter runs. Clear clears this log only."));
+        this.help.appendChild(element("p","","Await port/terminal calls. log() and script errors report to the terminal below; terminal.write() or console.write() reports there too. Stop terminates the worker and pending waits. Ctrl/Cmd-Enter runs. The script trashcan clears the source; the terminal trashcan clears the transcript."));
     };
 
     this.destroy = function()

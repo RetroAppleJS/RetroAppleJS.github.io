@@ -78,21 +78,6 @@
     font:9px/12px "DejaVu Sans Mono",Menlo,Consolas,"Courier New",monospace;
     tab-size:4;
 }
-.emu_port_script_log {
-    flex:0 1 60px;
-    min-height:24px;
-    overflow:auto;
-    border:0;
-    border-top:1px solid rgba(0,0,0,.18);
-    margin:0;
-    padding:4px 8px;
-    white-space:pre-wrap;
-    overflow-wrap:anywhere;
-    background:#101418;
-    color:#d7e0e7;
-    font:9px/12px "DejaVu Sans Mono",Menlo,Consolas,"Courier New",monospace;
-}
-.emu_port_script_log:empty { display:none; }
 .emu_port_script_api {
     flex:1;
     overflow:auto;

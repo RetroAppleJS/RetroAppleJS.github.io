@@ -5,15 +5,28 @@ is a JavaScript editor; the lower pane is the existing terminal. Drag the divide
 to resize the panes, or focus it and use Up/Down. Source and divider position are
 remembered per slot. The window itself can also be resized.
 
-Use **Run** or Ctrl/Cmd-Enter to execute, **Stop** to terminate, and the information
-pictogram to read the attached port and console contracts. **Clear** in the script
-toolbar clears its execution log; the terminal CLEAR control clears the lower
-transcript. Closing the window stops execution and preserves its contents.
+Each mounted Serial Pro has its own window, identified by the slot number in
+both headers. Two cards can keep their windows open and run scripts at the same
+time. Source, divider position, terminal history and transcript, receive buffers,
+display mode, theme, GPT session/key dialog and physical serial link belong to
+that card. Opening, stopping, clearing or closing one slot does not affect another.
+Unmounting removes only that slot's window and cancels its pending operations.
+Reopening a mounted card keeps its editor and terminal instances; replacing a
+card restores the source and history saved for that slot with fresh endpoints.
+
+Use the **play** button or Ctrl/Cmd-Enter to execute. The same button becomes
+**stop** while running and returns to play after stopping, completion or an error.
+Use the information
+pictogram to read the attached port and console contracts. The PORT SCRIPT
+trashcan clears the editor's source code and saves the empty source for that
+slot. It leaves the current run and terminal transcript alone. The terminal
+trashcan clears the transcript, leaving source code and serial buffers intact.
+Closing the window stops execution and preserves its contents.
 
 The window sits 5 pixels to the right of the peripheral controls. Its width is
 limited to the blue Emulator panel's right edge with a 5-pixel inset, including
-after a browser resize. The script execution log takes no space while empty;
-`log()` or an execution error reveals it, and clearing it collapses it again.
+after a browser resize. Script messages and errors appear in the terminal below;
+there is no separate script output area.
 
 ## GPT8 and GPT16 presets
 
@@ -74,7 +87,9 @@ text, convert bytes explicitly when displaying or interpreting them.
 facade. `terminal.write(text, channel)` appends exact text with channel `tx`, `rx`
 or `meta` (default). It adds no newline and sends no serial data. `terminal.clear()`
 clears the displayed transcript without flushing the UART or script buffer.
-`log(...)` writes to the upper execution log.
+`log(...)` formats its arguments and writes a newline to this terminal's `meta`
+channel. Syntax errors, runtime errors, callback errors and timeouts also appear
+there. These messages never inject UART bytes.
 
 ```javascript
 await terminal.write("Starting serial exchange\n", "meta");
