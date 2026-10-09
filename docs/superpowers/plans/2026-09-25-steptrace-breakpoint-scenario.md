@@ -61,7 +61,7 @@
 
 ### Keep unchanged unless a regression test proves a required edit
 
-- `res/DBG_testbench_legacy.js` — isolated TEST BENCH implementation.
+- `res/DBG_testbench.js` — isolated TEST BENCH implementation.
 - `res/DBG_steptrace_scenario_layout.js` — popup placement/tab lifecycle only.
 - `res/EMU_cpu6502.js` — existing persistent execution-condition mechanism already stops before opcode fetch.
 - Historical `docs/superpowers/specs/*` and `docs/superpowers/plans/*` files — project history, not runtime/user guidance.
@@ -265,7 +265,7 @@ The existing cloned `DBG_steptraceRunButton` becomes a two-state **breakpoint ac
 - Existing Assembler **to emulator** and **to debugger** workflows are untouched. Only the special direct **LOAD LIVE** control/service is removed.
 - Existing STEP TRACE symbol JSON loading becomes the only symbol source for scenarios and symbolic BREAK IF identifiers.
 - Runtime globals/events removed with the dead path: `ASM_BUILD`, `ASM_INPUT`, `EMU_ASM_BUILD`, `ASM_loadLive`, `RetroAppleBuildError`, `retroapple:asm-*`, `retroapple:emu-build-*`, and the assembler `LIVE #n` status/control.
-- TEST BENCH continues to use `DBG_testbench_legacy.js` and its own debugger RAM/CPU exactly as before.
+- TEST BENCH continues to use `DBG_testbench.js` and its own debugger RAM/CPU exactly as before.
 - `docs/ASM_BUILD_LIVE_HANDOFF.md` is deleted so normal documentation cannot point users toward a removed workflow. Historical superpowers design/plan documents remain for provenance.
 
 ---
@@ -741,7 +741,7 @@ Expected `res/DBG_testbench.js` script order:
 
 ```js
 [
-  'res/DBG_testbench_legacy.js',
+  'res/DBG_testbench.js',
   'res/DBG_steptrace_scenario.js',
   'res/DBG_steptrace_scenario_layout.js'
 ]
