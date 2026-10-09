@@ -40861,11 +40861,12 @@ function AppleDisk2()
             case "audio_off":
                 this.dNd.enable = false;
                 if(this.audio===undefined) return;
-                //try{ this.gain.disconnect(this.audio.destination) } catch(e) { console.warn("this.gain.disconnect(this.audio.destination)") }
+                // Stop loops so repeated mute is safe and unmute can start fresh noise.
                 for(var name in this.AUD_buffer)
-                    if(this.AUD_buffer[name].loop) try{ this.AUD_buffer[name].disconnect(this.gain) } catch(e) { console.warn("this.AUD_buffer['"+name+"'].disconnect(this.gain)") }
-  
-                this.audio.suspend();
+                    if(this.AUD_buffer[name].loop) this.dN_stop(name);
+                this.dNd.motor = "OFF";
+
+                await this.audio.suspend();
             break;
         }
     }
