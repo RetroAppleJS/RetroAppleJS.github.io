@@ -8,6 +8,8 @@ on:
       - "res/**"
       - "build/**"
       - ".github/workflows/build-standalone.yml"
+      - ".github/scripts/inline.cjs"
+      - "tests/inline_build_security.test.js"
       - '!dist/**'
   workflow_dispatch:
 
@@ -34,6 +36,9 @@ jobs:
           ls -la dist || true
           echo "---- dist stat ----"
           stat dist || true
+
+      - name: Test standalone include transformations
+        run: node --test tests/inline_build_security.test.js
 
       - name: Build dist/RetroAppleJS.html
         run: node .github/scripts/inline.cjs
