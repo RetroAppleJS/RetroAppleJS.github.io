@@ -6131,7 +6131,10 @@ showdown.Converter = function (converterOptions) {
           content = showdown.helper.escapeHtml(content);
 
           presPH.push(content);
-          pres[i].outerHTML = '<precode language="' + language + '" precodenum="' + i.toString() + '"></precode>';
+          var placeholder = pres[i].ownerDocument.createElement('precode');
+          placeholder.setAttribute('language', language);
+          placeholder.setAttribute('precodenum', i.toString());
+          pres[i].parentNode.replaceChild(placeholder, pres[i]);
         } else {
           presPH.push(pres[i].innerHTML);
           pres[i].innerHTML = '';
