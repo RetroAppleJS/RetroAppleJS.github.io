@@ -36,7 +36,9 @@ function Apple2RasterKernel(bytes,modes,rom,pal,chrome,flash)
     var xp=Math.floor(this.thread.x/this.constants.scale);
     var y=191-Math.floor(this.thread.y/this.constants.scale);
     var col=Math.floor(xp/7), bit=xp-col*7, i=y*40+col;
-    var d=bytes[i], mode=modes[i], cp=chrome*4;
+    var d=bytes[i], mode=modes[i];
+    // GPU.js cannot combine declarations with different inferred scalar types.
+    var cp=chrome*4;
     if(mode===2)
     {
         var left=0, right=0;
@@ -50,7 +52,8 @@ function Apple2RasterKernel(bytes,modes,rom,pal,chrome,flash)
     else if(mode===1) cp+=((d>>((y>>2&1)*4))&15)<<4;
     else
     {
-        var glyph=rom[(((d&63)^32)*8)+(y&7)], attr=d>>6;
+        var glyph=rom[(((d&63)^32)*8)+(y&7)];
+        var attr=d>>6;
         var on=((glyph>>bit)&1)^((1>>attr)&1)^((2>>attr)&flash);
         cp+=on*240;
     }
