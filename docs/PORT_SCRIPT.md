@@ -6,7 +6,7 @@ to resize the panes, or focus it and use Up/Down. Source and divider position ar
 remembered per slot. The window itself can also be resized.
 
 Each mounted Serial Pro has its own window, identified by the slot number in
-both headers. Two cards keep independent editor and terminal instances.
+both headers. Two cards keep independent editor, terminal and running script instances.
 Source, divider position, terminal history and transcript, receive buffers,
 display mode, theme, GPT session/key dialog and physical serial link belong to
 that card. Opening, stopping, clearing or closing one slot does not affect another.
@@ -15,8 +15,8 @@ Reopening a mounted card keeps its editor and terminal instances; replacing a
 card restores the source and history saved for that slot with fresh endpoints.
 
 The window follows its slot's Peripheral controls panel. Selecting another
-peripheral, closing Tools or leaving the Emulator tab hides it and stops its
-running script. Returning restores that slot's window if it was left open,
+peripheral, closing Tools or leaving the Emulator tab hides it while its script
+keeps running. Returning restores that slot's window if it was left open,
 with its source and terminal contents intact. A manually closed window stays closed.
 
 Use the **play** button or Ctrl/Cmd-Enter to execute. The same button becomes
@@ -26,7 +26,10 @@ pictogram to read the attached port and console contracts. The PORT SCRIPT
 trashcan clears the editor's source code and saves the empty source for that
 slot. It leaves the current run and terminal transcript alone. The terminal
 trashcan clears the transcript, leaving source code and serial buffers intact.
-Closing the window stops execution and preserves its contents.
+Closing the window hides it and keeps the script running by default, without a
+confirmation dialog. Reopen the console to view background output or press
+Stop. Scripts end on explicit Stop, normal completion or an error. Removing the
+owning peripheral stops its script and releases its resources.
 
 The window sits 5 pixels to the right of the peripheral controls. Its width is
 limited to the blue Emulator panel's right edge with a 5-pixel inset, including

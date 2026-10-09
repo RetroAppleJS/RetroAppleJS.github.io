@@ -3871,7 +3871,7 @@ function SerialProCard()
         var popup = serialTerminalFindPopup();
         var slotN = serialTerminalSlotN();
 
-        if(!popup || popup.hidden!==false || slotN===null) return null;
+        if(!popup || slotN===null) return null;
         if(Number(popup.getAttribute("data-slotN"))!==slotN) return null;
         return popup._terminal || null;
     }
@@ -4414,7 +4414,6 @@ function SerialProCard()
                 consoleAPI:serialTerminalConsoleDevice.API,
                 title:"PORT SCRIPT #"+slotID,
                 storageKey:"SerialProScript_"+slotID,
-                visibilityElement:popup,
                 onClose:function() { oCOM.POPUP.off(popup.id); },
                 source:"// Script is the remote end of SPSERIAL.\nawait terminal.write(\"Sending HELLO\\n\", \"meta\");\nawait port.write(\"HELLO\\r\");\n// const reply = await port.waitFor(\"OK\", 3000);\n// await terminal.write(\"Received: \" + reply + \"\\n\", \"rx\");"
             });

@@ -85,9 +85,11 @@ async function verifySerialProSlotWindows()
         pa.querySelector('[data-serial-webserial]').closest('button').click();
         check(ua.editor.value.includes('port.connectPhysical') && ub.editor.value==='log("saved-three");',"USB preset targets its own editor");
         pa.querySelector('[data-port-script-close]').click();
-        check((await arun).status==='stopped' && ub.isRunning && !pb.hidden,"closing slot 2 must not stop slot 3");
+        await new Promise(function(resolve) { setTimeout(resolve,30); });
+        check(ua.isRunning && ub.isRunning && pa.hidden && !pb.hidden,"closing slot 2 keeps both scripts running");
         a.card.serialTerminalToggle();
         check(pa._portScript===ua && pa._terminal===ta && !pa.hidden,"reopening retains the slot's instances");
+        ua.stop(); check((await arun).status==='stopped',"slot 2 stops only when explicitly requested");
         ub.stop(); check((await brun).status==='stopped',"slot 3 stop succeeds independently");
 
         var ga = ua.run(a.card.serialGPTScript('ascii'));
@@ -119,6 +121,13 @@ async function verifySerialProSlotWindows()
         await until(function() { return b.card.serialPhysicalState().connected; });
         check(pa.querySelector('[data-serial-webserial]').title.includes('(connected)') &&
             pb.querySelector('[data-serial-webserial]').title.includes('(connected)'),"USB indicators belong to their slots");
+        pa.querySelector('[data-port-script-close]').click();
+        oCOM.POPUP.off('tab1.2');
+        await new Promise(function(resolve) { setTimeout(resolve,30); });
+        check(ua.isRunning && ub.isRunning && a.card.serialPhysicalState().connected &&
+            b.card.serialPhysicalState().connected && usbA.closed===0 && usbB.closed===0,
+            "closing a console and hiding Tools keep both USB scripts and connections active");
+        oCOM.POPUP.on('tab1.2'); a.card.serialTerminalToggle();
         ua.stop(); await arun; await a.card.serialPhysicalScriptDisconnect();
         check(usbA.closed===1 && usbB.closed===0 && b.card.serialPhysicalState().connected && ub.isRunning,
             "stopping one physical bridge keeps the other slot connected");
@@ -128,13 +137,15 @@ async function verifySerialProSlotWindows()
 
         arun = ua.run('await sleep(60000);'); brun = ub.run('await sleep(60000);');
         oCOM.POPUP.off('tab1.2');
-        await until(function() { return !ua.isRunning && !ub.isRunning; });
+        await new Promise(function(resolve) { setTimeout(resolve,30); });
+        check(ua.isRunning && ub.isRunning,"hiding Tools keeps both slot scripts running");
         check(pa.hidden && pb.hidden,"all slot windows follow the peripheral toolbox scope");
-        await Promise.all([arun,brun]); oCOM.POPUP.on('tab1.2');
+        oCOM.POPUP.on('tab1.2');
         check(!pa.hidden && !pb.hidden,"toolbox reopening restores each slot window's requested visibility");
         brun = ub.run('await sleep(60000);');
         var wait = ua.port.waitFor('never',60000).catch(function(error) { return error.name; });
         a.card.onUnmount();
+        check((await arun).status==='stopped',"unmount stops the removed slot's background script");
         check(document.getElementById(pa.id)===null && pa._portScript===null,"unmount removes only that slot's window");
         check(document.getElementById(ka.id)===null && document.getElementById(kb.id)===kb,
             "unmount removes only its own GPT key dialog");

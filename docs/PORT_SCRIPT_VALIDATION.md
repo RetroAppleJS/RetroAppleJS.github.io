@@ -10,6 +10,16 @@ Base commit: `01aa9a934723ec0e2f76f859409435d2a7e3229f`.
 
 ## Existing upstream failures
 
+## Background script lifecycle
+
+Verified against `5681de7` on 2026-10-09:
+
+- Closing the port console, navigating between peripherals, closing Tools and switching Emulator tabs keep scripts running. Reopening retains the same worker and Stop control.
+- Two-slot DOM/worker integration verifies that hidden USB bridge scripts keep both physical connections open. Explicit Stop still releases the selected slot's connection; unmount stops only that slot's worker and pending waits.
+- The navigation regression verifies hidden UART/log output, natural completion while closed and output preservation on reopening.
+- All 25 Port Script unit/runtime tests pass. The archived suite remains at 792 tests: 760 pass, with the same 32 baseline failures named in the navigation and original-failure records below.
+- This supersedes the navigation fix's earlier stop-on-hide behavior. Native browser rendering remains unverified for the Chromium startup limitation above.
+
 ## Peripheral controls navigation fix
 
 Verified against `4367a00` on 2026-10-09:

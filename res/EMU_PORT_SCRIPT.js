@@ -8,7 +8,6 @@ function EMU_PORT_SCRIPT(cfg)
     var state = {source:cfg.source || "// Remote endpoint: send bytes to the emulated device.\nawait port.write(\"HELLO\\r\");\nlog(\"Bytes queued\");",split:50};
     var session = null;
     var destroyed = false;
-    var observer = null;
 
     this.port = cfg.port;
     this.contract = cfg.api || {};
@@ -334,22 +333,11 @@ function EMU_PORT_SCRIPT(cfg)
         save();
         destroyed = true;
         this.stop();
-        if(observer) observer.disconnect();
         if(typeof(this.port.dispose)==="function") this.port.dispose();
         this.root.remove();
     };
 
     this.build();
-    // Popup hiding via any existing close/scope path ends a run, but preserves
-    // the live facade and editor for reopening. No popup-manager changes needed.
-    if(cfg.visibilityElement)
-    {
-        observer = new MutationObserver(function()
-        {
-            if(cfg.visibilityElement.hidden) component.stop();
-        });
-        observer.observe(cfg.visibilityElement,{attributes:true,attributeFilter:["hidden"]});
-    }
 }
 
 EMU_PORT_SCRIPT.workerMain = function()
