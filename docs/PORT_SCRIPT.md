@@ -6,13 +6,18 @@ to resize the panes, or focus it and use Up/Down. Source and divider position ar
 remembered per slot. The window itself can also be resized.
 
 Each mounted Serial Pro has its own window, identified by the slot number in
-both headers. Two cards can keep their windows open and run scripts at the same
-time. Source, divider position, terminal history and transcript, receive buffers,
+both headers. Two cards keep independent editor and terminal instances.
+Source, divider position, terminal history and transcript, receive buffers,
 display mode, theme, GPT session/key dialog and physical serial link belong to
 that card. Opening, stopping, clearing or closing one slot does not affect another.
 Unmounting removes only that slot's window and cancels its pending operations.
 Reopening a mounted card keeps its editor and terminal instances; replacing a
 card restores the source and history saved for that slot with fresh endpoints.
+
+The window follows its slot's Peripheral controls panel. Selecting another
+peripheral, closing Tools or leaving the Emulator tab hides it and stops its
+running script. Returning restores that slot's window if it was left open,
+with its source and terminal contents intact. A manually closed window stays closed.
 
 Use the **play** button or Ctrl/Cmd-Enter to execute. The same button becomes
 **stop** while running and returns to play after stopping, completion or an error.

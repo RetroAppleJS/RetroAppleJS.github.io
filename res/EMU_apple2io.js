@@ -4284,10 +4284,13 @@ function mergeActionMap(dst,src)
         for(var i=0;i<all.length;i++)
             all[i].hidden = true;
 
-        if(slot == null) return;
-
-        var el = document.getElementById("device_tool_" + (slot==="H" ? "H" : slot));
-        if(el) el.hidden = false;
+        if(slot != null)
+        {
+            var el = document.getElementById("device_tool_" + (slot==="H" ? "H" : slot));
+            if(el) el.hidden = false;
+        }
+        if(typeof(oCOM.POPUP.syncScopes)==="function")
+            oCOM.POPUP.syncScopes();
     }
 
     this.deviceToolSlotHTML = function(slotID)

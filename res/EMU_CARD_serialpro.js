@@ -3794,7 +3794,7 @@ function SerialProCard()
             +"padding:0px;margin:0px";
         document.body.appendChild(popup);
         if(typeof(oCOM.POPUP.addScope)==="function")
-            oCOM.POPUP.addScope(popup.id,"tab1.2");
+            oCOM.POPUP.addScope(popup.id,"device_tool_"+apple2plus.hwObj().io.slot2ID(serialTerminalSlotN()));
         return popup;
     }
 

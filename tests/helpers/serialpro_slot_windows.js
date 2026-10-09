@@ -12,7 +12,10 @@ async function verifySerialProSlotWindows()
             await new Promise(function(resolve) { setTimeout(resolve,5); });
         }
     }
-    document.body.innerHTML = '<div id="tab1"><div id="tab1.2"></div></div>';
+    // Both owner panels are kept visible here to exercise instance isolation.
+    // serialpro_navigation.js separately checks real single-slot navigation.
+    document.body.innerHTML = '<div id="tab1"><div id="tab1.2">'
+        + '<div id="device_tool_2"></div><div id="device_tool_3"></div></div></div>';
     localStorage.clear();
     var cards = {};
     var io = {getClockTicks:function() { return 0; },slot2ID:function(n) { return String(n); },

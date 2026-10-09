@@ -10,6 +10,23 @@ Base commit: `01aa9a934723ec0e2f76f859409435d2a7e3229f`.
 
 ## Existing upstream failures
 
+## Peripheral controls navigation fix
+
+Verified against `4367a00` on 2026-10-09:
+
+- The navigation regression failed before the fix: Peripheral controls left the previous slot's window visible.
+- The DOM regression now passes using the real `deviceBtn`, peripheral panel selection and popup manager. It covers two Serial Pro slots, a non-Serial Pro peripheral, Tools closing/reopening, leaving/returning to Emulator, source preservation, script stopping on hide and explicitly closed windows.
+- Existing two-slot DOM/worker integration passes; all 25 Port Script unit/runtime tests pass.
+- The archived upstream suite plus Port Script tests has 792 tests: 760 pass and 32 fail both before and after this fix. No new failures.
+- The 32 failures consist of the 28 named below and these four additional baseline failures:
+  - Disk II topology patch is loaded by the browser bootstrap
+  - Disk II UI-state patch is loaded by the browser bootstrap
+  - DBG_testbench loader keeps TEST BENCH and STEP TRACE but no live-build services
+  - SmartPort detach media policy is loaded by the browser bootstrap
+- Native browser rendering remains unverified for the Chromium startup limitation above; the regression is also included in the Playwright suite.
+
+## Original upstream failures
+
 These were present in the original archived `tests.zip` suite and remain unchanged:
 
 - active emulator and Composer layouts carry all four persistent Disk II semantic IDs

@@ -152,4 +152,10 @@ test('Port Script browser behavior', async t =>
         await page.addScriptTag({url:'/tests/helpers/serialpro_slot_windows.js'});
         assert.equal(await page.evaluate(() => verifySerialProSlotWindows()),true);
     });
+    await t.test('Peripheral controls navigation scopes each Serial Pro window to its slot',async () =>
+    {
+        await page.addScriptTag({url:'/res/EMU_apple2io.js'});
+        await page.addScriptTag({url:'/tests/helpers/serialpro_navigation.js'});
+        assert.equal(await page.evaluate(() => verifySerialProNavigation()),true);
+    });
 });

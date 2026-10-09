@@ -1796,6 +1796,7 @@ function prettyJsonAllman(value, indent) {
       var node = owner;
       while(node && node.parentElement)
       {
+        if(node.hidden) return false;
         if(node.parentElement.classList &&
            node.parentElement.classList.contains("tabs"))
           return node.classList.contains("active");
