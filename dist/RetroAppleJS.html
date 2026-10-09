@@ -2599,7 +2599,7 @@ table { border-collapse: collapse; position: relative;}
 </style>
     <style>
 /*
- * COM_oTERM.css
+ * COM_TERM.css
  *
  * Terminal rules extracted from the VanillaTerm section of AsciiCAD.css,
  * scoped for RetroAppleJS.  Page-global AsciiCAD styles are intentionally
@@ -8419,7 +8419,7 @@ var composer =
 </script>
     <script type="text/javascript">
 /*
- * COM_oTERM.js
+ * COM_TERM.js
  *
  * RetroAppleJS extraction/adaptation of the oTERM/TERMINAL framework supplied
  * from AsciiCAD_CMD.js.  The framework remains a generic DOM terminal and
@@ -11427,7 +11427,7 @@ function TERMINAL(props)
       catch(err)
       {
         host.innerHTML = "";
-        termWrite("COM_oTERM initialization failed: " + err.message,"error");
+        termWrite("COM_TERM initialization failed: " + err.message,"error");
       }
     }
 
@@ -11436,7 +11436,7 @@ function TERMINAL(props)
     fallback.readOnly = true;
     fallback.spellcheck = false;
     host.appendChild(fallback);
-    termWrite("Fallback console active; COM_oTERM.js was not available.","warn");
+    termWrite("Fallback console active; COM_TERM.js was not available.","warn");
   }
 
   function layoutToolbox()
@@ -56918,7 +56918,7 @@ function SerialProCard()
     {
         if(typeof(TERMINAL)!="function")
         {
-            console.error("Serial Pro terminal requires COM_oTERM.js");
+            console.error("Serial Pro terminal requires COM_TERM.js");
             return false;
         }
 
