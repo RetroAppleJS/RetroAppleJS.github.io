@@ -378,7 +378,8 @@ function A2Pkeys()
             }
             else if(val.length==1 && val.match(/[a-z]/))
                 return (val.codePointAt(0)-0x20) | 0x80;
-            else if(val.length==1 && val.match(/[A-Z1-9$*#!()'"%&-_ ]/))
+            // Apple II printable ASCII: space through underscore (lowercase handled above).
+            else if(val.length==1 && val.codePointAt(0)>=0x20 && val.codePointAt(0)<=0x5F)
                 return val.codePointAt(0) | 0x80;
             else
             {
