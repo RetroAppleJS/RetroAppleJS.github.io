@@ -74327,12 +74327,9 @@ Label1 TXA
     }
 
     function DBG_decodeDASMText(text) {
-      return String(text || "")
-        .replace(/<[^>]*>/g, "")
-        .replace(/&nbsp;/g, " ")
-        .replace(/&lt;/g, "<")
-        .replace(/&gt;/g, ">")
-        .replace(/&amp;/g, "&")
+      // Extract text from an inert document; this is not an HTML sanitizer.
+      var parsed = new DOMParser().parseFromString(String(text || ""), "text/html");
+      return parsed.body.textContent
         .replace(/\s+/g, " ")
         .trim();
     }
