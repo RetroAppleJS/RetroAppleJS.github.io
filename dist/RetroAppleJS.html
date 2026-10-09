@@ -2775,21 +2775,6 @@ table { border-collapse: collapse; position: relative;}
     font:9px/12px "DejaVu Sans Mono",Menlo,Consolas,"Courier New",monospace;
     tab-size:4;
 }
-.emu_port_script_log {
-    flex:0 1 60px;
-    min-height:24px;
-    overflow:auto;
-    border:0;
-    border-top:1px solid rgba(0,0,0,.18);
-    margin:0;
-    padding:4px 8px;
-    white-space:pre-wrap;
-    overflow-wrap:anywhere;
-    background:#101418;
-    color:#d7e0e7;
-    font:9px/12px "DejaVu Sans Mono",Menlo,Consolas,"Courier New",monospace;
-}
-.emu_port_script_log:empty { display:none; }
 .emu_port_script_api {
     flex:1;
     overflow:auto;
@@ -32794,10 +32779,36 @@ function EMU_PORT_SCRIPT(cfg)
         {
             if(typeof(value)==="string") return value;
             if(ArrayBuffer.isView(value)) return JSON.stringify(Array.from(value));
-            try { return JSON.stringify(value); } catch(ignore) { return String(value); }
+            try
+            {
+                var serialized = JSON.stringify(value);
+                return serialized===undefined ? String(value) : serialized;
+            }
+            catch(ignore) { return String(value); }
         }).join(" ");
-        component.output.textContent = (component.output.textContent+text+"\n").slice(-65536);
-        component.output.scrollTop = component.output.scrollHeight;
+        try
+        {
+            if(component.console)
+            {
+                var written = component.console.write(text+"\n","meta");
+                if(written && typeof(written.catch)==="function")
+                    written.catch(function(failure) { console.error("Script console output failed",failure); });
+            }
+            else console.log(text);
+        }
+        catch(failure) { console.error("Script console output failed",failure); }
+    }
+
+    function updateExecutionButton()
+    {
+        var running = component.isRunning;
+        var control = component.runButton;
+        control.disabled = destroyed;
+        control.title = running ? "Stop script" : "Run script";
+        control.setAttribute("aria-label",control.title);
+        control.children[0].className = running ? "fa fa-stop" : "fa fa-play";
+        control.removeAttribute(running ? "data-port-script-run" : "data-port-script-stop");
+        control.setAttribute(running ? "data-port-script-stop" : "data-port-script-run","");
     }
 
     function finish(status,failure)
@@ -32810,8 +32821,7 @@ function EMU_PORT_SCRIPT(cfg)
         if(run.worker) run.worker.terminate();
         if(run.url) URL.revokeObjectURL(run.url);
         component.isRunning = false;
-        component.runButton.disabled = destroyed;
-        component.stopButton.disabled = true;
+        updateExecutionButton();
         component.status.textContent = status;
         if(failure) appendLog([failure.name+": "+failure.message]);
         run.resolve({status:status,error:failure || null});
@@ -32822,17 +32832,18 @@ function EMU_PORT_SCRIPT(cfg)
         var root = element("div","emu_port_script_split");
         var pane = element("section","emu_port_script");
         var toolbar = element("div","emu_port_script_toolbar");
-        toolbar.appendChild(element("span","emu_port_script_title","PORT SCRIPT"));
+        toolbar.appendChild(element("span","emu_port_script_title",cfg.title || "PORT SCRIPT"));
         this.status = element("span","emu_port_script_status","ready");
         this.status.setAttribute("role","status");
         toolbar.appendChild(this.status);
         toolbar.appendChild(button("Port and console API","fa fa-info-circle","data-port-script-api",function() { component.showAPI(); }));
-        this.runButton = button("Run script","fa fa-play","data-port-script-run",function() { component.run(); });
-        this.stopButton = button("Stop script","fa fa-stop","data-port-script-stop",function() { component.stop(); });
-        this.stopButton.disabled = true;
+        this.runButton = button("Run script","fa fa-play","data-port-script-run",function()
+        {
+            if(component.isRunning) component.stop();
+            else component.run();
+        });
         toolbar.appendChild(this.runButton);
-        toolbar.appendChild(this.stopButton);
-        toolbar.appendChild(button("Clear script log","fa fa-trash","data-port-script-clear",function() { component.clear(); }));
+        toolbar.appendChild(button("Clear script source","fa fa-trash","data-port-script-clear",function() { component.clear(); }));
         if(typeof(cfg.onClose)==="function")
             toolbar.appendChild(button("Close port console","fa fa-times","data-port-script-close",cfg.onClose));
         this.toolbar = toolbar;
@@ -32853,13 +32864,10 @@ function EMU_PORT_SCRIPT(cfg)
                 save();
             }
         };
-        this.output = element("pre","emu_port_script_log");
-        this.output.setAttribute("aria-label","Script execution log");
         this.help = element("div","emu_port_script_api");
         this.help.hidden = true;
         pane.appendChild(toolbar);
         pane.appendChild(this.editor);
-        pane.appendChild(this.output);
         pane.appendChild(this.help);
         root.appendChild(pane);
         this.root = root;
@@ -32913,8 +32921,7 @@ function EMU_PORT_SCRIPT(cfg)
         run.promise = new Promise(function(resolve) { run.resolve = resolve; });
         session = run;
         this.isRunning = true;
-        this.runButton.disabled = true;
-        this.stopButton.disabled = false;
+        updateExecutionButton();
         this.status.textContent = "running";
         try
         {
@@ -32993,7 +33000,7 @@ function EMU_PORT_SCRIPT(cfg)
         if(destroyed) return false;
         this.editor.value = String(source);
         this.help.hidden = true;
-        this.editor.hidden = this.output.hidden = false;
+        this.editor.hidden = false;
         if(!this.isRunning) this.status.textContent = "ready";
         save();
         this.editor.focus();
@@ -33002,13 +33009,13 @@ function EMU_PORT_SCRIPT(cfg)
 
     this.clear = function()
     {
-        this.output.textContent = "";
+        return this.loadSource("");
     };
 
     this.showAPI = function()
     {
         this.help.hidden = !this.help.hidden;
-        this.editor.hidden = this.output.hidden = !this.help.hidden;
+        this.editor.hidden = !this.help.hidden;
         if(this.help.hidden) return;
         this.help.replaceChildren();
         [this.contract,this.consoleContract].forEach(function(contract)
@@ -33027,7 +33034,7 @@ function EMU_PORT_SCRIPT(cfg)
             });
         });
         this.help.appendChild(element("code","","sleep(ms) · log(...) · hex(value, width=2)"));
-        this.help.appendChild(element("p","","Await port/terminal calls. log() writes here; terminal.write() or console.write() reports to the lower console. Stop terminates the worker and pending waits. Ctrl/Cmd-Enter runs. Clear clears this log only."));
+        this.help.appendChild(element("p","","Await port/terminal calls. log() and script errors report to the terminal below; terminal.write() or console.write() reports there too. Stop terminates the worker and pending waits. Ctrl/Cmd-Enter runs. The script trashcan clears the source; the terminal trashcan clears the transcript."));
     };
 
     this.destroy = function()
@@ -53337,7 +53344,7 @@ function SerialProCard()
 
     function serialPhysicalUpdateButton()
     {
-        var popup = document.getElementById("serialProTerminal_popup");
+        var popup = serialTerminalFindPopup();
         if(!popup) return false;
 
         var icon = popup.querySelector("[data-serial-webserial]");
@@ -53817,7 +53824,7 @@ function SerialProCard()
 
     this.serialPhysicalLoadScript = function()
     {
-        var popup = document.getElementById("serialProTerminal_popup");
+        var popup = serialTerminalFindPopup();
         return !!(popup && popup._serialProOwner===serialpro && popup._portScript &&
             popup._portScript.loadSource(this.serialPhysicalScript()));
     };
@@ -53839,13 +53846,30 @@ function SerialProCard()
         return serialPhysicalPollSignals();
     };
 
+    var serialTerminalWindow = null;
+
+    this.serialTerminalPopupID = function()
+    {
+        var slotN = serialTerminalSlotN();
+        return slotN===null ? null : "serialProTerminal_popup_"+slotN;
+    };
+
+    function serialTerminalFindPopup()
+    {
+        var id = serialpro.serialTerminalPopupID();
+        var popup = id && document.getElementById(id);
+        return popup && popup._serialProOwner===serialpro ? popup : null;
+    }
+
     function serialTerminalPopup()
     {
-        var popup = document.getElementById("serialProTerminal_popup");
+        var popup = serialTerminalFindPopup();
         if(popup) return popup;
 
         popup = document.createElement("div");
-        popup.id = "serialProTerminal_popup";
+        popup.id = serialpro.serialTerminalPopupID();
+        popup._serialProOwner = serialpro;
+        serialTerminalWindow = popup;
         popup.hidden = true;
         popup.className = "appbox com_popup_frame serialpro_terminal_popup";
         popup.style.cssText =
@@ -53853,12 +53877,14 @@ function SerialProCard()
             +"width:480px;height:600px;max-width:calc(100vw - 20px);text-align:left;"
             +"padding:0px;margin:0px";
         document.body.appendChild(popup);
+        if(typeof(oCOM.POPUP.addScope)==="function")
+            oCOM.POPUP.addScope(popup.id,"tab1.2");
         return popup;
     }
 
     this.serialTerminalPosition = function()
     {
-        var popup = document.getElementById("serialProTerminal_popup");
+        var popup = serialTerminalFindPopup();
         var panel = document.getElementById("tab1");
         if(!popup || !panel || popup.hidden || popup._serialProOwner!==serialpro) return false;
         var field = document.getElementById(serialUI.controlID+"_rtc_date");
@@ -53899,25 +53925,34 @@ function SerialProCard()
 
     function serialTerminalSlotN()
     {
-        return serialpro.mount ? Number(serialpro.mount.slotN) : null;
+        var slotN = serialpro.mount ? Number(serialpro.mount.slotN) : NaN;
+        return Number.isInteger(slotN) && slotN>=0 && slotN<=7 ? slotN : null;
     }
 
     function serialScriptDispose()
     {
         if(typeof(document)==="undefined") return;
-        var popup = document.getElementById("serialProTerminal_popup");
+        var popup = serialTerminalWindow;
         if(!popup || popup._serialProOwner!==serialpro) return;
         if(popup._portScript) popup._portScript.destroy();
         popup._portScript = null;
         popup._terminal = null;
         popup._serialProOwner = null;
-        popup.removeAttribute("data-slotN");
-        popup.hidden = true;
+        if(popup._serialProPositionListener)
+            window.removeEventListener("resize",popup._serialProPositionListener);
+        if(popup._serialProPositionObserver) popup._serialProPositionObserver.disconnect();
+        if(oCOM.POPUP)
+        {
+            if(oCOM.POPUP.scopes) delete oCOM.POPUP.scopes[popup.id];
+            if(oCOM.POPUP.states) delete oCOM.POPUP.states[popup.id];
+        }
+        popup.remove();
+        serialTerminalWindow = null;
     }
 
     function serialTerminalLive()
     {
-        var popup = document.getElementById("serialProTerminal_popup");
+        var popup = serialTerminalFindPopup();
         var slotN = serialTerminalSlotN();
 
         if(!popup || popup.hidden!==false || slotN===null) return null;
@@ -54251,7 +54286,7 @@ function SerialProCard()
 
     function serialTerminalApplyDisplayMode()
     {
-        var popup = document.getElementById("serialProTerminal_popup");
+        var popup = serialTerminalFindPopup();
         if(!popup) return false;
 
         var button = popup.querySelector("[data-serial-terminal-display]");
@@ -54320,13 +54355,13 @@ function SerialProCard()
 
     function serialTerminalApplyTheme()
     {
-        var popup = document.getElementById("serialProTerminal_popup");
+        var popup = serialTerminalFindPopup();
         if(!popup) return false;
 
         var terminal = popup._terminal;
         var root = terminal && terminal._o && terminal._o.DOM
             ? terminal._o.DOM.root
-            : document.getElementById("serialProTerminal_host");
+            : popup.querySelector(".serialpro_terminal_host");
         if(!root) return false;
 
         var light = serialTerminalState.theme==="light";
@@ -54399,14 +54434,14 @@ function SerialProCard()
 
         if(popup.hidden===false && sameSlot)
         {
-            oCOM.POPUP.off("serialProTerminal_popup");
+            oCOM.POPUP.off(popup.id);
             return false;
         }
 
         // Reopening the same slot keeps the live oTERM instance and its DOM.
         if(sameSlot && popup._terminal)
         {
-            oCOM.POPUP.on("serialProTerminal_popup");
+            oCOM.POPUP.on(popup.id);
             this.serialTerminalPosition();
             serialPhysicalUpdateButton();
             serialTerminalApplyDisplayMode();
@@ -54415,6 +54450,7 @@ function SerialProCard()
         }
 
         var call = "apple2plus.hwObj().io.SLOT2obj("+slotN+")";
+        var hostID = "serialProTerminal_host_"+slotN;
         var hasPortScript = serialLineDevice && serialTerminalConsoleDevice && typeof(EMU_PORT_SCRIPT)==="function";
         if(popup._portScript) popup._portScript.destroy();
         popup._serialProOwner = serialpro;
@@ -54439,15 +54475,16 @@ function SerialProCard()
             + "          aria-label=\"Terminal help\""
             + "          onclick=\""+call+".serialTerminalHelp()\"><i class=\"fa fa-info-circle\"></i></button>"
             + "  <button class=\"appbut skinny\" type=button title=\"Clear terminal display\""
-            + "          onclick=\""+call+".serialTerminalClear()\">CLEAR</button>"
+            + "          aria-label=\"Clear terminal display\""
+            + "          onclick=\""+call+".serialTerminalClear()\"><i class=\"fa fa-trash\"></i></button>"
             + (hasPortScript ? "" : "<button class=\"appbut skinny\" type=button title=\"Close port console\""
-                + " onclick=\"oCOM.POPUP.off('serialProTerminal_popup')\">X</button>")
+                + " onclick=\"oCOM.POPUP.off('"+popup.id+"')\">X</button>")
             + "</div>"
-            + "  <div id=\"serialProTerminal_host\" class=\"serialpro_terminal_host\"></div>"
+            + "  <div id=\""+hostID+"\" class=\"serialpro_terminal_host\"></div>"
             + "</div>"
             + "</div>";
 
-        oCOM.POPUP.on("serialProTerminal_popup");
+        oCOM.POPUP.on(popup.id);
         this.serialTerminalPosition();
 
         if(hasPortScript)
@@ -54459,9 +54496,10 @@ function SerialProCard()
                 api:serialLineDevice.API,
                 console:serialTerminalConsoleDevice.getScriptAPI(),
                 consoleAPI:serialTerminalConsoleDevice.API,
+                title:"PORT SCRIPT #"+slotID,
                 storageKey:"SerialProScript_"+slotID,
                 visibilityElement:popup,
-                onClose:function() { oCOM.POPUP.off("serialProTerminal_popup"); },
+                onClose:function() { oCOM.POPUP.off(popup.id); },
                 source:"// Script is the remote end of SPSERIAL.\nawait terminal.write(\"Sending HELLO\\n\", \"meta\");\nawait port.write(\"HELLO\\r\");\n// const reply = await port.waitFor(\"OK\", 3000);\n// await terminal.write(\"Received: \" + reply + \"\\n\", \"rx\");"
             });
             var physicalButton = document.createElement("button");
@@ -54473,7 +54511,7 @@ function SerialProCard()
         }
 
         var terminal = new TERMINAL({
-             "container":"serialProTerminal_host"
+             "container":hostID
             ,"welcome":""
             ,"prompt":""
             ,"separator":">"
@@ -56375,8 +56413,11 @@ function SerialProCard()
     {
         if(typeof(document)==="undefined") return null;
 
-        var popup = document.getElementById("serialProTerminal_popup");
+        var popupID = card && typeof(card.serialTerminalPopupID)==="function"
+            ? card.serialTerminalPopupID() : null;
+        var popup = popupID && document.getElementById(popupID);
         if(!popup) return null;
+        if(popup._serialProOwner!==card) return null;
 
         var slotN = card && card.mount ? Number(card.mount.slotN) : null;
         var popupSlotN = Number(popup.getAttribute("data-slotN"));
@@ -57101,11 +57142,18 @@ function SerialProCard()
         };
     }
 
+    function serialGPTKeyPopupID(card)
+    {
+        var slotN = card && card.mount ? Number(card.mount.slotN) : NaN;
+        return Number.isInteger(slotN) && slotN>=0 && slotN<=7
+            ? "serialGPTKey_popup_"+slotN : null;
+    }
+
     function serialGPTRequestAPIKey(card)
     {
         var popupAPI = global.oCOM && global.oCOM.POPUP;
         if(
-            typeof(document)==="undefined" ||
+            typeof(document)==="undefined" || !serialGPTKeyPopupID(card) ||
             !popupAPI ||
             typeof(popupAPI.on)!=="function" ||
             typeof(popupAPI.off)!=="function" ||
@@ -57116,7 +57164,7 @@ function SerialProCard()
             return Promise.resolve(null);
         }
 
-        var popupId = "serialGPTKey_popup";
+        var popupId = serialGPTKeyPopupID(card);
         var popup = document.getElementById(popupId);
 
         if(!popup)
@@ -57127,7 +57175,7 @@ function SerialProCard()
             popup.hidden = true;
             popup.setAttribute("role","dialog");
             popup.setAttribute("aria-modal","true");
-            popup.setAttribute("aria-labelledby","serialGPTKey_title");
+            popup.setAttribute("aria-labelledby",popupId+"_title");
             popup.style.position = "fixed";
             popup.style.zIndex = "10000";
             popup.style.left = "50%";
@@ -57138,18 +57186,19 @@ function SerialProCard()
             popup.style.fontSize = "13px";
             document.body.appendChild(popup);
         }
+        card._serialGPTKeyPopup = popup;
 
         /*
-         * Reuse one outstanding prompt. This prevents rapid GPT8/GPT16 clicks
+         * Reuse this slot's outstanding prompt. This prevents rapid GPT8/GPT16 clicks
          * from replacing the DOM underneath an unresolved key-entry promise.
          */
         if(popup._serialGPTPromptPromise)
             return popup._serialGPTPromptPromise;
 
         var titleHtml =
-            "<span id='serialGPTKey_title' "
+            "<span id='"+popupId+"_title' "
             +"style='white-space:nowrap;font-size:14px'>"
-            +"<i class='fa fa-key'></i>&nbsp;OpenAI API key"
+            +"<i class='fa fa-key'></i>&nbsp;OpenAI API key #"+card.mount.slotN
             +"</span>"
             +"<button type='button' class='appbut skinny' data-gpt-key-close "
             +"aria-label='Close API key dialog' title='Close' "
@@ -57161,7 +57210,7 @@ function SerialProCard()
          */
 
         var bodyHtml =
-            "<input id='serialGPTKey_input' data-gpt-key-input "
+            "<input id='"+popupId+"_input' data-gpt-key-input "
             +"type='password' autocomplete='off' autocorrect='off' "
             +"autocapitalize='off' spellcheck='false' "
             +"aria-label='OpenAI API key' "
@@ -57186,7 +57235,7 @@ function SerialProCard()
         popup.innerHTML = popupAPI.title_body_html(
             titleHtml,
             bodyHtml,
-            "serialGPTKey_body",
+            popupId+"_body",
             "com_popup_body"
         );
 
@@ -57519,6 +57568,23 @@ function SerialProCard()
 
         serialGPTState(card);
 
+        var baseUnmount = card.onUnmount;
+        card.onUnmount = function()
+        {
+            var popup = card._serialGPTKeyPopup;
+            if(popup && popup._serialGPTPromptOwner===card && popup._serialGPTCancelPrompt)
+                popup._serialGPTCancelPrompt();
+            if(typeof(baseUnmount)==="function") baseUnmount.apply(card,arguments);
+            serialGPTDisable(card);
+            if(popup)
+            {
+                if(global.oCOM && global.oCOM.POPUP && global.oCOM.POPUP.states)
+                    delete global.oCOM.POPUP.states[popup.id];
+                popup.remove();
+                delete card._serialGPTKeyPopup;
+            }
+        };
+
         /*
          * Do not wrap serialTerminalWriteByte(). SPGPT now observes the real
          * SPSERIAL output stream through its device connection instead of
@@ -57600,7 +57666,7 @@ function SerialProCard()
             {
                 var abort = function()
                 {
-                    var prompt = typeof(document)!=="undefined" && document.getElementById("serialGPTKey_popup");
+                    var prompt = typeof(document)!=="undefined" && document.getElementById(serialGPTKeyPopupID(card));
                     if(prompt && prompt._serialGPTPromptOwner===card && prompt._serialGPTCancelPrompt)
                         prompt._serialGPTCancelPrompt();
                     serialGPTDisable(card);
@@ -65943,7 +66009,6 @@ function Apple2Plus(context)
                         oCOM.POPUP.addScope("softwareCat_popup","tab1.2");
                         oCOM.POPUP.addScope("surfaceMap_popup","tab1.2");
                         oCOM.POPUP.addScope("lironSurfaceMap_popup","tab1.2");
-                        oCOM.POPUP.addScope("serialProTerminal_popup","tab1.2");
 
                         function system_tab_update()
                         {
