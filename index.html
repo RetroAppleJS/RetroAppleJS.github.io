@@ -15,7 +15,12 @@
     <script type="text/javascript" src="res/COM_A2P_LAYOUT.js"></script>
     <script type="text/javascript" src="res/COM_LAYOUT_CONFIG.js"></script>
     <script type="text/javascript" src="res/COM_oTERM.js"></script>
-    <script type="text/javascript" src="res/DBG_testbench.js"></script>
+    <script type="text/javascript" src="res/EMU_CARD_appledisk2_topology.js"></script>
+    <script type="text/javascript" src="res/EMU_CARD_appledisk2_ui_state.js"></script>
+    <script type="text/javascript" src="res/EMU_CARD_smartport_topology.js"></script>
+    <script type="text/javascript" src="res/DBG_testbench_legacy.js"></script>
+    <script type="text/javascript" src="res/DBG_steptrace_scenario.js"></script>
+    <script type="text/javascript" src="res/DBG_steptrace_scenario_layout.js"></script>
     <script type="text/javascript" src="res/COM_CONFIG.js"></script>  <!-- load all the help, documentation & configuration data-->
     <script type="text/javascript" src="res/pako.min.js"></script>    <!-- compression/decompression library -->
     <!--script type="text/javascript" src="res/purify.min.js"></script-->  <!-- safely filter out all HTML tags -->
@@ -6867,7 +6872,7 @@ Label1 TXA
        return result;
      }
 
-     /* Narrow public surface consumed by res/DBG_testbench.js. */
+     /* Narrow public surface consumed by res/DBG_testbench_legacy.js. */
      window.DBG_TEST_CPU = {
        start:DBG_testCpuStart,
        state:DBG_testCpuState,
