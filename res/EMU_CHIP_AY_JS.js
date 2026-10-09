@@ -376,6 +376,9 @@ var AYCoreJS = {
             {
                 for (var key of Object.keys(src))
                 {
+                    if (key === '__proto__' || key === 'constructor' || key === 'prototype' ||
+                        !Object.prototype.hasOwnProperty.call(dest, key))
+                        throw 0;
                     if (ArrayBuffer.isView(dest[key]))
                         dest[key].set(src[key]);
                     else if (typeof (src[key]) === 'object')
