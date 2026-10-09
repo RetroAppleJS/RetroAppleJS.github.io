@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Freddy Vandriessche.
 // notice: https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/LICENSE.md
 // EMU_CARD_ramfactor.js — Applied Engineering RAMFactor, default 8 MB.
-// Include from index.html: <script src="res/EMU_CARD_ramfactor.js"></script>
+// Declare res/EMU_CARD_ramfactor.js explicitly in index.html.
 // Replace the RAMFAC entry in _CFG_PSLOT (res/COM_CONFIG.js) with:
 // ,"RAMFAC":{"NAME":"AE RAMFactor 8 MB", "HostIO":"", "SlotIO":"X",
 // "SlotROM":"X", "HostROM":"X", "SLOTrange":"1,2,3,4,5,6,7",
