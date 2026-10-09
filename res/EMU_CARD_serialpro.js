@@ -4336,7 +4336,7 @@ function SerialProCard()
     {
         if(typeof(TERMINAL)!="function")
         {
-            console.error("Serial Pro terminal requires COM_oTERM.js");
+            console.error("Serial Pro terminal requires COM_TERM.js");
             return false;
         }
 
