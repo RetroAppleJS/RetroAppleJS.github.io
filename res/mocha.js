@@ -17688,9 +17688,9 @@
       // suite
       var url = self.suiteURL(suite);
       var el = fragment(
-        '<li class="suite"><h1><a href="%s">%s</a></h1></li>',
+        '<li class="suite"><h1><a href="%e">%e</a></h1></li>',
         url,
-        escape(suite.title),
+        suite.title,
       );
 
       // container
@@ -17715,7 +17715,7 @@
       var url = self.testURL(test);
       var markup =
         '<li class="test pass %e"><h2>%e<span class="duration">%ems</span> ' +
-        '<a href="%s" class="replay">' +
+        '<a href="%e" class="replay">' +
         playIcon +
         "</a></h2></li>";
       var el = fragment(markup, test.speed, test.title, test.duration, url);
