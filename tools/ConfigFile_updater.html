@@ -286,7 +286,6 @@ function PROCESS()
       var url = rawDocsURL + arr[i];
       console.log("URL = "+url);
 
-
       GetHTTP(url, 
       function()
       {
@@ -299,6 +298,16 @@ function PROCESS()
       //lst[lst.length] = arr[i];
     }
     el_cnt = i-1;
+  }
+
+  function docHtmlToGeneratedStringLiteral(str)
+  {
+    return JSON.stringify(
+      str.replace(/\r\n/g,"\n")
+         .replace(/\r/g,"\n")
+         .replace(/\n/g,"<br>")
+         + "<br>"
+    );
   }
 
   this.process = function(txt,url)
@@ -317,8 +326,8 @@ function PROCESS()
     document.getElementById("markdown").innerHTML = HTML2Markdown(html);
     //var html = "<p>TEST</p>";
 
-    var js1 = "_DOCS[\""+filename.replace(new RegExp('.md','g'),"")+"\"]"+" = \"";
-    var js2 = (html.replace(new RegExp('\"','g'),'\\"').replace(new RegExp('\n','g'),"<br>\"\n+\"")+"<br>"+"\"\n\n");
+    var js1 = "_DOCS[" + JSON.stringify(filename.replace(new RegExp('.md','g'),"")) + "] = ";
+    var js2 = docHtmlToGeneratedStringLiteral(html) + "\n\n";    
     var js3 = js2.replace(new RegExp('<br /><br>','g'),"<br>");
     var js4 = js3.replace(new RegExp(regexURL,'g'),"res/");
 
