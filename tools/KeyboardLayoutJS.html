@@ -47,6 +47,47 @@ function GetHTTP(url,callback_function)
 var oPROCESS = new function()
 {
 
+  this.render_preview = function(preview)
+  {
+    // Parse inertly, then copy only keyboard layout nodes into the live page.
+    // Never copy script, navigation, embedded documents or event attributes.
+    var parsed = new DOMParser().parseFromString(preview.markup, "text/html");
+    var allowed = new Set(["div","span","a","br","b","i","strong","em","small","sup","sub","p"]);
+    function copy(node)
+    {
+      if(node.nodeType===3) return document.createTextNode(node.textContent);
+      if(node.nodeType!==1 || !allowed.has(node.localName)) return null;
+      var clean = document.createElement(node.localName);
+      for(var attr of ["class","style","title"])
+        if(node.hasAttribute(attr)) clean.setAttribute(attr,node.getAttribute(attr));
+      var id = node.getAttribute("id");
+      if(id==="keyboard" || id==="keyboard-bg" || id==="glyphScroller")
+        clean.id = id;
+      for(var child of node.childNodes)
+      {
+        var safe = copy(child);
+        if(safe) clean.appendChild(safe);
+      }
+      if(clean.classList.contains("keycap") || clean.classList.contains("selected"))
+      {
+        clean.addEventListener("mouseover",function(){ keycap_over(clean); });
+        clean.addEventListener("mouseout",function(){ keycap_out(clean); });
+        clean.addEventListener("click",function(){ keycap_click(clean); });
+      }
+      return clean;
+    }
+    var fragment = document.createDocumentFragment();
+    var style = document.createElement("style");
+    style.textContent = preview.css;
+    fragment.appendChild(style);
+    for(var child of parsed.body.childNodes)
+    {
+      var safe = copy(child);
+      if(safe) fragment.appendChild(safe);
+    }
+    document.getElementById("kbsnippet").replaceChildren(fragment);
+  };
+
   this.b64EncodeUnicode = function(str)
   {
     // first we use encodeURIComponent to get percent-encoded Unicode,
@@ -97,7 +138,7 @@ var oPROCESS = new function()
       var dd = new TextDecoder().decode(inflator.result);
 
       var res = oPROCESS.process_layout(this.KBCSS_FILE,dd);
-      document.getElementById("kbsnippet").innerHTML = "<style>"+res.kbcss+"\n"+res.styl+"</style>" + res.kbsnippet;
+      this.render_preview({css:res.kbcss+"\n"+res.styl,markup:res.kbsnippet});
 
       alert(Math.round(inp.length/1024)+"KB"
         +" -> "+Math.round(b64body.length/1024)+"KB"
@@ -115,7 +156,7 @@ var oPROCESS = new function()
       document.getElementById(id_txt).value = dd;
 
       var res = oPROCESS.process_layout(this.KBCSS_FILE,dd);
-      document.getElementById("kbsnippet").innerHTML = "<style>"+res.kbcss+"\n"+res.styl+"</style>" + res.kbsnippet;
+      this.render_preview({css:res.kbcss+"\n"+res.styl,markup:res.kbsnippet});
 
       alert(Math.round(b64body.length/1024)+"KB"
       +" -> "+Math.round(res.kbcss.length/1024)+"(kb.css) +"+Math.round(res.styl.length/1024)+"(custom styles)+"+Math.round(res.kbsnippet.length/1024)+"(inflated HTML) = "+Math.round( (res.kbcss.length+res.styl.length+res.kbsnippet.length)/1024)+"KB")
@@ -164,7 +205,7 @@ var oPROCESS = new function()
       var pos2 = HTMLsrc.indexOf('<div style="clear:both"></div>');
       var snippet = HTMLsrc.substring(pos1,pos2);
       var snippet = snippet.replace(/( ng-[a-zA-Z0-9:;\.\s\(\)\-\,]*)="([^"]*)"/g," ");
-      var snippet = snippet.replace(/(class="  keycap")/g," onmouseover=keycap_over(this) onclick=keycap_click(this)");
+      var snippet = snippet.replace(/(class="  keycap")/g,'class="keycap"');
       //console.log("snippet="+(snippet.length/1024)+"KB");
 
       res["kbsnippet"] = snippet;
@@ -245,7 +286,7 @@ var oPROCESS = new function()
       var exe_now = "<style>\n"+imp+"\n"+css+"\n"+styl+"\n</style>\n"
                     +"<div id=\"glyphScroller\">\n" + snippet + "\n</div>\n"
       console.log(exe_now);
-      return {"exe_now":exe_now,"exe_later":code}
+      return {"exe_now":exe_now,"exe_later":code,"preview":{css:imp+css+"\n"+styl,markup:'<div id="glyphScroller">'+snippet+'</div>'}}
     }
 
 
@@ -325,7 +366,7 @@ var oPROCESS = new function()
       var exe_now = "<style>\n"+imp+"\n"+css+"\n"+styl+"\n</style>\n"
                     +"<div id=\"glyphScroller\">\n" + snippet + "\n</div>\n"
       console.log(exe_now);
-      return {"exe_now":exe_now,"exe_later":code}
+      return {"exe_now":exe_now,"exe_later":code,"preview":{css:imp+css+"\n"+styl,markup:'<div id="glyphScroller">'+snippet+'</div>'}}
     }
 
 }()
@@ -562,9 +603,9 @@ function css_dl(t,filename)
             <textarea id="HTMLcode" style="width:600px;height:100px"></textarea>
             <br>
             <!--
-            <button onclick="var o = oPROCESS.gen_JScode({id_css:'CSScode',id_txt:'inputUTF8',filename:'kb_new.css'});document.getElementById('kbsnippet').innerHTML=o.exe_now;document.getElementById('JScode').value=o.exe_later">GENERATE JS & RUN</button>
+            <button onclick="var o = oPROCESS.gen_JScode({id_css:'CSScode',id_txt:'inputUTF8',filename:'kb_new.css'});oPROCESS.render_preview(o.preview);document.getElementById('JScode').value=o.exe_later">GENERATE JS & RUN</button>
             -->
-            <button onclick="var o = oPROCESS.gen_HTMLcode({id_css:'CSScode',id_txt:'inputUTF8',filename:'kb_new.css'});document.getElementById('kbsnippet').innerHTML=o.exe_now;document.getElementById('HTMLcode').value=o.exe_later">GENERATE HTML & RUN</button>
+            <button onclick="var o = oPROCESS.gen_HTMLcode({id_css:'CSScode',id_txt:'inputUTF8',filename:'kb_new.css'});oPROCESS.render_preview(o.preview);document.getElementById('HTMLcode').value=o.exe_later">GENERATE HTML & RUN</button>
           </td>
         </tr>
       </table>
