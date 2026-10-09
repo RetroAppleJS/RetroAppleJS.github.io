@@ -66989,7 +66989,8 @@ function A2Pkeys()
             }
             else if(val.length==1 && val.match(/[a-z]/))
                 return (val.codePointAt(0)-0x20) | 0x80;
-            else if(val.length==1 && val.match(/[A-Z1-9$*#!()'"%&-_ ]/))
+            // Apple II printable ASCII: space through underscore (lowercase handled above).
+            else if(val.length==1 && val.codePointAt(0)>=0x20 && val.codePointAt(0)<=0x5F)
                 return val.codePointAt(0) | 0x80;
             else
             {
@@ -67719,6 +67720,7 @@ padding: 0;
     // https://retrocomputing.stackexchange.com/questions/12510/on-what-apple-ii-and-ii-keyboards-can-the-character-be-generated
     // http://absurdengineering.org/library/MASTER%20Tech%20Info%20Library/Apple%20II%20Hardware/Hardware%20Specifications/TIL01298%20-%20Apple%20II,%20II+,%20IIe,%20IIc%20-%20ASCII%20characters,%20values%20&%20keystrokes.pdf
 }
+
 </script>
             <script type="text/javascript">
 //
