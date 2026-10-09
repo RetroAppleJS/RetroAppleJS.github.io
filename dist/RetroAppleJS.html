@@ -8937,8 +8937,12 @@ function TERMINAL(props)
 
     if(fmt=="literal")
     {
-      var s = obj.toString().replace(/\"/g,"\\\"").replace(/\n/g,"\\n\"\n+\"");
-      this.output("<pre>\""+oCOM.escapeHTML(s)+"\"</pre>");
+      var lines = obj.toString().split("\n");
+      var s = lines.map(function(line, index)
+      {
+        return JSON.stringify(line + (index < lines.length - 1 ? "\n" : ""));
+      }).join("\n+");
+      this.output("<pre>"+oCOM.escapeHTML(s)+"</pre>");
       return;
     }
 
