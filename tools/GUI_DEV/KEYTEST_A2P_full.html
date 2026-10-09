@@ -128,6 +128,13 @@ String.fromHtmlEntities = function(string) {
 };
 
 function stripHTML(str) { return str.replace(/(&nbsp;|<([^>]+)>)/ig,"") }
+function escapeGeneratedJsString(str)
+{
+   return str.replace(/\\/g,"\\\\")
+             .replace(/"/g,"\\\"")
+             .replace(/\r/g,"\\r")
+             .replace(/\n/g,"\"\ncode +=\"");
+}
 function keycap_over(t) { t.classList.replace("keycap","selected") }
 function keycap_out(t) { t.classList.replace("selected","keycap") }
 function keycap_click(t)
@@ -150,11 +157,8 @@ function keycap_click(t)
 
    t.id = hash16;
 
-   document.getElementById("source").innerHTML = document.getElementById("glyphScroller").innerHTML
-                                                                                    .replace(/</g,"&lt;")
-                                                                                    .replace(/>/g,"&gt;")
-                                                                                    .replace(/"/g,"\\\"")
-                                                                                    .replace(/\n/g,"\"\n\code +=\"")
+   document.getElementById("source").textContent =
+      escapeGeneratedJsString(document.getElementById("glyphScroller").innerHTML);
 
    add_mapping(hash16, msg.toHtmlEntities().replace(/&#38;amp&#59;/g,"&") );
    //console.log(oCOM.getHexMulti(d,4));
