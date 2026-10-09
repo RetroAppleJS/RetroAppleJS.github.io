@@ -9362,28 +9362,2534 @@ function TERMINAL(props)
 </script>
     <script type="text/javascript">
 /*
+ * EMU_CARD_appledisk2_topology.js
+ *
+ * Runtime topology policy for the Disk II controller.
+ *
+ * Apple2IO owns the list of attached child devices.  The Disk II controller
+ * still owns two soft-switch-addressable hardware slots, so detached drives
+ * must be suppressed at the controller boundary as well as in the layout.
+ */
+(function(root,factory){
+    "use strict";
+    var api = factory(root || null);
+    if(typeof module == "object" && module.exports) module.exports = api;
+    if(root) api.installDiskIITopologyPatch(root);
+})(typeof window != "undefined" ? window : null,function(root){
+    "use strict";
+
+    function diskDeviceID(device)
+    {
+        if(device==null) return null;
+
+        var DCODE = typeof(device)=="string"
+            ? device
+            : (device.id && device.id.DCODE!==undefined ? device.id.DCODE : device.DCODE);
+
+        return DCODE==null ? null : String(DCODE).toUpperCase();
+    }
+
+    function diskDeviceN(device)
+    {
+        var id = diskDeviceID(device);
+        if(id=="D1") return 0;
+        if(id=="D2") return 1;
+        return null;
+    }
+
+    function diskDriveID(deviceN)
+    {
+        deviceN = Number(deviceN);
+        return Number.isInteger(deviceN) && deviceN>=0 && deviceN<=1
+            ? "D" + (deviceN + 1)
+            : null;
+    }
+
+    function isDriveAttached(card,deviceN)
+    {
+        deviceN = Number(deviceN);
+        if(!Number.isInteger(deviceN) || deviceN<0 || deviceN>1) return false;
+        if(!card || !Array.isArray(card.devices)) return false;
+
+        var code = "D" + (deviceN + 1);
+        for(var i=0;i<card.devices.length;i++)
+            if(diskDeviceID(card.devices[i])==code) return true;
+
+        return false;
+    }
+
+    function diskState(card)
+    {
+        return card && typeof card.getState == "function" ? card.getState() : null;
+    }
+
+    function attachedDiskDevices(card)
+    {
+        var devices = Array.isArray(card && card.devices) ? card.devices.slice() : [];
+        devices = devices.filter(function(device)
+        {
+            return diskDeviceN(device)!==null;
+        });
+        devices.sort(function(a,b)
+        {
+            var A = diskDeviceID(a) || "";
+            var B = diskDeviceID(b) || "";
+            return A < B ? -1 : (A > B ? 1 : 0);
+        });
+        return devices;
+    }
+
+    function driveFileDisplayName(card,deviceN)
+    {
+        var state = diskState(card);
+        deviceN = Number(deviceN);
+        if(!state || !Number.isInteger(deviceN) || deviceN<0 || deviceN>1) return null;
+        if(!Array.isArray(state.diskData) || state.diskData[deviceN]==null) return null;
+
+        var name = Array.isArray(state.diskName) ? state.diskName[deviceN] : null;
+        name = name==null ? "" : String(name);
+        return name || "disk image";
+    }
+
+    function shouldSuppressDiskNoise(card,status)
+    {
+        status = String(status || "");
+        if(status!="MOTOR_ON" && status!="ARM_IN" && status!="ARM_OUT" && status!="CLICK_IN" && status!="CLICK_OUT")
+            return false;
+
+        var state = diskState(card);
+        var deviceN = state ? Number(state.drv) : NaN;
+        return !isDriveAttached(card,deviceN);
+    }
+
+    function documentRef()
+    {
+        if(root && root.document) return root.document;
+        if(typeof document == "object") return document;
+        return null;
+    }
+
+    function refreshVisibleSurfaceMap(card)
+    {
+        var doc = documentRef();
+        var popup = doc && typeof doc.getElementById == "function"
+            ? doc.getElementById("surfaceMap_popup")
+            : null;
+
+        if(!popup || popup.hidden===true) return false;
+
+        if(typeof card.surfaceMap_render == "function")
+            return card.surfaceMap_render("surfaceMap_popup");
+
+        if(typeof card.surfaceMap_update == "function")
+            return card.surfaceMap_update("surfaceMap_popup");
+
+        return false;
+    }
+
+    function clearDetachedDriveState(card,deviceN)
+    {
+        deviceN = Number(deviceN);
+        if(!card || !Number.isInteger(deviceN) || deviceN<0 || deviceN>1) return false;
+
+        var state = diskState(card);
+        if(!state) return false;
+
+        var selected = Number(state.drv) == deviceN;
+        var wasMotorOn = !!(Array.isArray(state.hw) && state.hw[deviceN] && state.hw[deviceN].motor);
+
+        if(typeof card.cancelTrackStatsFlush == "function")
+            card.cancelTrackStatsFlush(deviceN);
+
+        if(Array.isArray(state.diskData)) state.diskData[deviceN] = null;
+        if(Array.isArray(state.diskName)) state.diskName[deviceN] = null;
+
+        if(Array.isArray(state.hw) && state.hw[deviceN])
+        {
+            state.hw[deviceN].motor = 0;
+            state.hw[deviceN].q6 = 0;
+            state.hw[deviceN].q7 = 0;
+            state.hw[deviceN].offset = 0;
+            state.hw[deviceN].data_latch = 0;
+
+            if(state.hw[deviceN].stats)
+            {
+                state.hw[deviceN].stats.read = 0;
+                state.hw[deviceN].stats.write = 0;
+                state.hw[deviceN].stats.motorOffTimer = null;
+            }
+        }
+
+        if(selected)
+            state.drive_enable = 0;
+
+        if((wasMotorOn || selected) && typeof card.dN_update == "function")
+            card.dN_update("MOTOR_OFF");
+
+        if(typeof card.surfaceMap_clear_drive == "function")
+            card.surfaceMap_clear_drive(deviceN);
+
+        if(typeof card.setDriveLED == "function") card.setDriveLED(deviceN,false);
+        if(typeof card.setDriveLidClosed == "function") card.setDriveLidClosed(deviceN,false);
+
+        return true;
+    }
+
+    function renderAttachedDiskIIRows(card,ctx,nativeToolSlotHTML)
+    {
+        ctx = ctx || {};
+        var slotN = Number(ctx.slotN);
+        var slotID = ctx.slotID;
+        var rowFactory = root && typeof root.EMU_deviceMediaRowHTML == "function"
+            ? root.EMU_deviceMediaRowHTML
+            : (typeof EMU_deviceMediaRowHTML == "function" ? EMU_deviceMediaRowHTML : null);
+
+        if(!Number.isInteger(slotN) || !slotID || !rowFactory || typeof card.driveElementID != "function")
+            return nativeToolSlotHTML ? nativeToolSlotHTML.call(card,ctx) : "";
+
+        function mediaRow(deviceID,label)
+        {
+            var deviceN = diskDeviceN(deviceID);
+            var displayName = driveFileDisplayName(card,deviceN);
+            var spec = {
+                 "label":label
+                ,"buttonID":card.driveElementID("but",deviceID)
+                ,"formID":card.driveElementID("f",deviceID)
+                ,"fileID":card.driveElementID("file",deviceID)
+                ,"downloadID":card.driveElementID("dump",deviceID)
+                ,"fileName":deviceID
+                ,"buttonTitle":displayName ? (label+" loaded: "+displayName) : (label+": no disk")
+                ,"buttonOnClick":"ejectDisk(this,"+slotN+",'"+deviceID+"')"
+                ,"buttonOnMouseOver":"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,true)"
+                ,"buttonOnMouseOut":"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,false)"
+                ,"fileOnChange":"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'"+deviceID+"')"
+                ,"downloadOnClick":"apple2plus.hwObj().io.SLOT2obj("+slotN+").downloadDisk('"+deviceID+"')"
+                ,"downloadTitle":"Save disk"
+            };
+
+            if(displayName)
+                spec.fileDisplayName = displayName;
+
+            return rowFactory(spec);
+        }
+
+        var rows = "";
+        var devices = attachedDiskDevices(card);
+        for(var i=0;i<devices.length;i++)
+        {
+            var id = diskDeviceID(devices[i]);
+            if(id=="D1") rows += mediaRow("D1","Drive1");
+            if(id=="D2") rows += mediaRow("D2","Drive2");
+        }
+
+        return ""
+            + "<div class=toolbox id=\""+(ctx.toolboxID || ("device_tool_"+slotID))+"\" hidden>"
+            + "  <div class=appbox style=\"height:63px;padding:0px 6px 0px 6px;\">"
+            + rows
+            + "  </div>"
+            + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
+            + "    <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'softwareCat'})\" title=\"Software Catalog\"><i class=\"fa fa-cat\"></i></button><br>"
+            + "    <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'surfaceMap'})\" title=\"Disk Surface Map\"><i class=\"fa fa-th\"></i></button>"
+            + "  </div>"
+            + "</div>";
+    }
+
+    function renderAttachedDiskIISurfaceMap(card,popupID,nativeSurfaceMapHTML)
+    {
+        if(typeof nativeSurfaceMapHTML != "function") return "";
+        var html = String(nativeSurfaceMapHTML.call(card,popupID));
+        if(typeof card.surfaceMap_grid_html != "function") return html;
+
+        var nativeGrids = card.surfaceMap_grid_html(0) + card.surfaceMap_grid_html(1);
+        var attachedGrids = "";
+        var devices = attachedDiskDevices(card);
+
+        for(var i=0;i<devices.length;i++)
+        {
+            var deviceN = diskDeviceN(devices[i]);
+            if(deviceN!==null)
+                attachedGrids += card.surfaceMap_grid_html(deviceN);
+        }
+
+        return html.replace(nativeGrids,attachedGrids);
+    }
+
+    function decorateDiskIITopology(card)
+    {
+        if(!card || !card.id || card.id.PCODE!="DISKII") return card;
+        if(card.__A2PDiskIITopologyDecorated) return card;
+        card.__A2PDiskIITopologyDecorated = true;
+
+        var nativeSetDriveLED = card.setDriveLED;
+        var nativeSetDriveLidClosed = card.setDriveLidClosed;
+        var nativeSyncDriveVisuals = card.syncDriveVisuals;
+        var nativeDeviceToolSlotHTML = card.deviceToolSlotHTML;
+        var nativeSurfaceMapHTML = card.surfaceMap_html;
+        var nativeTopologyChanged = card.onDeviceTopologyChanged;
+        var nativeDNUpdate = card.dN_update;
+
+        card.isDriveAttached = function(deviceN)
+        {
+            return isDriveAttached(this,deviceN);
+        };
+
+        card.setDriveLED = function(deviceN,on)
+        {
+            if(!this.isDriveAttached(deviceN)) on = false;
+            return typeof nativeSetDriveLED == "function"
+                ? nativeSetDriveLED.call(this,deviceN,!!on)
+                : false;
+        };
+
+        card.setDriveLidClosed = function(deviceN,closed)
+        {
+            if(!this.isDriveAttached(deviceN)) closed = false;
+            return typeof nativeSetDriveLidClosed == "function"
+                ? nativeSetDriveLidClosed.call(this,deviceN,!!closed)
+                : false;
+        };
+
+        card.dN_update = function(status)
+        {
+            if(shouldSuppressDiskNoise(this,status)) return false;
+            return typeof nativeDNUpdate == "function"
+                ? nativeDNUpdate.apply(this,arguments)
+                : false;
+        };
+
+        card.applyDriveEnable = function(reason)
+        {
+            var state = diskState(this);
+            if(!state || !Array.isArray(state.hw)) return false;
+
+            var deviceN = Number(state.drv);
+            var enabled = state.drive_enable ? 1 : 0;
+
+            for(var i=0;i<state.hw.length;i++)
+            {
+                var oldMotor = state.hw[i] ? state.hw[i].motor : 0;
+                var newMotor = (enabled && i == deviceN && this.isDriveAttached(i)) ? 1 : 0;
+                if(state.hw[i]) state.hw[i].motor = newMotor;
+                this.setDriveLED(i,newMotor);
+
+                if(oldMotor != newMotor)
+                {
+                    if(typeof this.traceChange == "function")
+                        this.traceChange(
+                            newMotor ? "MOTOR_ON" : "MOTOR_OFF",
+                            i,
+                            "motor",
+                            oldMotor,
+                            newMotor,
+                            {"reason":reason}
+                        );
+
+                    if(newMotor && typeof this.cancelTrackStatsFlush == "function")
+                        this.cancelTrackStatsFlush(i);
+                    else if(!newMotor && typeof this.scheduleTrackStatsFlush == "function")
+                        this.scheduleTrackStatsFlush(i,"SPINDOWN",1000);
+                }
+            }
+            return true;
+        };
+
+        card.detachDriveDevice = function(deviceN)
+        {
+            var cleared = clearDetachedDriveState(this,deviceN);
+            if(cleared)
+            {
+                if(typeof this.syncDriveVisuals == "function") this.syncDriveVisuals();
+                refreshVisibleSurfaceMap(this);
+            }
+            return cleared;
+        };
+
+        card.syncDriveVisuals = function()
+        {
+            var state = diskState(this);
+            if(state && Array.isArray(state.hw))
+            {
+                for(var i=0;i<state.hw.length;i++)
+                    if(!this.isDriveAttached(i) && state.hw[i]) state.hw[i].motor = 0;
+            }
+
+            var result = typeof nativeSyncDriveVisuals == "function"
+                ? nativeSyncDriveVisuals.apply(this,arguments)
+                : false;
+
+            for(var d=0;d<2;d++)
+            {
+                if(!this.isDriveAttached(d))
+                {
+                    this.setDriveLED(d,false);
+                    this.setDriveLidClosed(d,false);
+                }
+            }
+            return result;
+        };
+
+        card.onDeviceTopologyChanged = function(change)
+        {
+            if(typeof nativeTopologyChanged == "function")
+                nativeTopologyChanged.apply(this,arguments);
+
+            var deviceN = diskDeviceN(change && change.DCODE);
+            if(change && change.type == "detach" && deviceN!==null)
+                this.detachDriveDevice(deviceN);
+            else
+            {
+                if(typeof this.syncDriveVisuals == "function") this.syncDriveVisuals();
+                refreshVisibleSurfaceMap(this);
+            }
+
+            return true;
+        };
+
+        card.deviceToolSlotHTML = function(ctx)
+        {
+            return renderAttachedDiskIIRows(this,ctx,nativeDeviceToolSlotHTML);
+        };
+
+        card.surfaceMap_html = function(popupID)
+        {
+            return renderAttachedDiskIISurfaceMap(this,popupID,nativeSurfaceMapHTML);
+        };
+
+        if(typeof card.syncDriveVisuals == "function") card.syncDriveVisuals();
+        return card;
+    }
+
+    function decorateKnownDiskIICards(rootWindow)
+    {
+        var changed = false;
+
+        if(rootWindow.oEMU && rootWindow.oEMU.component && rootWindow.oEMU.component.IO)
+        {
+            var discovery = rootWindow.oEMU.component.IO.AppleDisk2;
+            if(discovery && discovery.id && discovery.id.PCODE=="DISKII")
+            {
+                decorateDiskIITopology(discovery);
+                changed = true;
+            }
+        }
+
+        try
+        {
+            if(rootWindow.apple2plus && typeof rootWindow.apple2plus.hwObj == "function")
+            {
+                var hw = rootWindow.apple2plus.hwObj();
+                var io = hw && hw.io;
+                if(io && Array.isArray(io.slots))
+                {
+                    for(var slotN=0;slotN<io.slots.length;slotN++)
+                    {
+                        var owner = typeof io.SLOT2obj == "function" ? io.SLOT2obj(slotN) : null;
+                        if(owner && owner.id && owner.id.PCODE=="DISKII")
+                        {
+                            decorateDiskIITopology(owner);
+                            changed = true;
+                        }
+                    }
+                }
+            }
+        }
+        catch(e) {}
+
+        return changed;
+    }
+
+    function wrapDiskIIConstructor(rootWindow)
+    {
+        if(!rootWindow || typeof rootWindow.AppleDisk2 != "function") return false;
+        if(rootWindow.AppleDisk2.__A2PDiskIITopologyWrapped) return true;
+
+        var OriginalAppleDisk2 = rootWindow.AppleDisk2;
+        var WrappedAppleDisk2 = function AppleDisk2()
+        {
+            var instance = Object.create(OriginalAppleDisk2.prototype || Object.prototype);
+            var result = OriginalAppleDisk2.apply(instance,arguments);
+            var card = result && (typeof result == "object" || typeof result == "function")
+                ? result
+                : instance;
+            return decorateDiskIITopology(card);
+        };
+
+        WrappedAppleDisk2.prototype = OriginalAppleDisk2.prototype;
+        WrappedAppleDisk2.prototype.constructor = WrappedAppleDisk2;
+        for(var key in OriginalAppleDisk2)
+            if(Object.prototype.hasOwnProperty.call(OriginalAppleDisk2,key))
+                WrappedAppleDisk2[key] = OriginalAppleDisk2[key];
+
+        WrappedAppleDisk2.__A2PDiskIITopologyWrapped = true;
+        WrappedAppleDisk2.__A2POriginalAppleDisk2 = OriginalAppleDisk2;
+        rootWindow.AppleDisk2 = WrappedAppleDisk2;
+        return true;
+    }
+
+    function installDiskIITopologyPatch(rootWindow)
+    {
+        rootWindow = rootWindow || root;
+        if(!rootWindow || rootWindow.__A2PDiskIITopologyPatchInstalled) return false;
+        rootWindow.__A2PDiskIITopologyPatchInstalled = true;
+
+        var attempts = 0;
+        var timer = null;
+
+        function poll()
+        {
+            attempts++;
+            wrapDiskIIConstructor(rootWindow);
+            decorateKnownDiskIICards(rootWindow);
+
+            if(attempts > 200 && timer)
+            {
+                rootWindow.clearInterval(timer);
+                timer = null;
+            }
+        }
+
+        poll();
+        if(typeof rootWindow.setInterval == "function")
+            timer = rootWindow.setInterval(poll,50);
+        if(rootWindow.addEventListener)
+            rootWindow.addEventListener("load",poll,{once:true});
+
+        return true;
+    }
+
+    return {
+         "diskDeviceID":diskDeviceID
+        ,"diskDeviceN":diskDeviceN
+        ,"diskDriveID":diskDriveID
+        ,"isDriveAttached":isDriveAttached
+        ,"clearDetachedDriveState":clearDetachedDriveState
+        ,"decorateDiskIITopology":decorateDiskIITopology
+        ,"installDiskIITopologyPatch":installDiskIITopologyPatch
+    };
+});
+
+</script>
+    <script type="text/javascript">
+/*
+ * EMU_CARD_appledisk2_ui_state.js
+ *
+ * UI-state policy for Disk II topology changes.
+ *
+ * The runtime controller owns motor/media cleanup, while this layer keeps the
+ * peripheral toolbox and disk surface-map views derived from the currently
+ * attached physical drives.  Rebuilding a device row must not erase the
+ * remaining drive's mounted filename.
+ */
+(function(root,factory){
+    "use strict";
+    var api = factory(root || null);
+    if(typeof module == "object" && module.exports) module.exports = api;
+    if(root) api.installDiskIIUIStatePatch(root);
+})(typeof window != "undefined" ? window : null,function(root){
+    "use strict";
+
+    function diskDeviceID(device)
+    {
+        if(device==null) return null;
+
+        var DCODE = typeof(device)=="string"
+            ? device
+            : (device.id && device.id.DCODE!==undefined ? device.id.DCODE : device.DCODE);
+
+        return DCODE==null ? null : String(DCODE).toUpperCase();
+    }
+
+    function diskDeviceN(device)
+    {
+        var id = diskDeviceID(device);
+        if(id=="D1") return 0;
+        if(id=="D2") return 1;
+        return null;
+    }
+
+    function diskState(card)
+    {
+        return card && typeof card.getState == "function" ? card.getState() : null;
+    }
+
+    function attachedDiskDevices(card)
+    {
+        var devices = Array.isArray(card && card.devices) ? card.devices.slice() : [];
+        devices = devices.filter(function(device)
+        {
+            return diskDeviceN(device)!==null;
+        });
+        devices.sort(function(a,b)
+        {
+            var A = diskDeviceID(a) || "";
+            var B = diskDeviceID(b) || "";
+            return A < B ? -1 : (A > B ? 1 : 0);
+        });
+        return devices;
+    }
+
+    function driveFileDisplayName(card,deviceN)
+    {
+        var state = diskState(card);
+        deviceN = Number(deviceN);
+        if(!state || !Number.isInteger(deviceN) || deviceN<0 || deviceN>1) return null;
+        if(!Array.isArray(state.diskData) || state.diskData[deviceN]==null) return null;
+
+        var name = Array.isArray(state.diskName) ? state.diskName[deviceN] : null;
+        name = name==null ? "" : String(name);
+        return name || "disk image";
+    }
+
+    function mediaRowFactory()
+    {
+        if(root && typeof root.EMU_deviceMediaRowHTML == "function")
+            return root.EMU_deviceMediaRowHTML;
+        if(typeof EMU_deviceMediaRowHTML == "function")
+            return EMU_deviceMediaRowHTML;
+        return null;
+    }
+
+    function renderAttachedDiskIIRows(card,ctx,nativeToolSlotHTML)
+    {
+        ctx = ctx || {};
+        var slotN = Number(ctx.slotN);
+        var slotID = ctx.slotID;
+        var rowFactory = mediaRowFactory();
+
+        if(!Number.isInteger(slotN) || !slotID || !rowFactory || typeof card.driveElementID != "function")
+            return nativeToolSlotHTML ? nativeToolSlotHTML.call(card,ctx) : "";
+
+        function mediaRow(deviceID,label)
+        {
+            var deviceN = diskDeviceN(deviceID);
+            var displayName = driveFileDisplayName(card,deviceN);
+            var spec = {
+                 "label":label
+                ,"buttonID":card.driveElementID("but",deviceID)
+                ,"formID":card.driveElementID("f",deviceID)
+                ,"fileID":card.driveElementID("file",deviceID)
+                ,"downloadID":card.driveElementID("dump",deviceID)
+                ,"fileName":deviceID
+                ,"buttonTitle":displayName ? (label+" loaded: "+displayName) : (label+": no disk")
+                ,"buttonOnClick":"ejectDisk(this,"+slotN+",'"+deviceID+"')"
+                ,"buttonOnMouseOver":"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,true)"
+                ,"buttonOnMouseOut":"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,false)"
+                ,"fileOnChange":"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'"+deviceID+"')"
+                ,"downloadOnClick":"apple2plus.hwObj().io.SLOT2obj("+slotN+").downloadDisk('"+deviceID+"')"
+                ,"downloadTitle":"Save disk"
+            };
+
+            if(displayName)
+                spec.fileDisplayName = displayName;
+
+            return rowFactory(spec);
+        }
+
+        var rows = "";
+        var devices = attachedDiskDevices(card);
+        for(var i=0;i<devices.length;i++)
+        {
+            var id = diskDeviceID(devices[i]);
+            if(id=="D1") rows += mediaRow("D1","Drive1");
+            if(id=="D2") rows += mediaRow("D2","Drive2");
+        }
+
+        return ""
+            + "<div class=toolbox id=\""+(ctx.toolboxID || ("device_tool_"+slotID))+"\" hidden>"
+            + "  <div class=appbox style=\"height:63px;padding:0px 6px 0px 6px;\">"
+            + rows
+            + "  </div>"
+            + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
+            + "    <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'softwareCat'})\" title=\"Software Catalog\"><i class=\"fa fa-cat\"></i></button><br>"
+            + "    <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'surfaceMap'})\" title=\"Disk Surface Map\"><i class=\"fa fa-th\"></i></button>"
+            + "  </div>"
+            + "</div>";
+    }
+
+    function renderAttachedDiskIISurfaceMap(card,popupID,nativeSurfaceMapHTML)
+    {
+        if(typeof nativeSurfaceMapHTML != "function") return "";
+        var html = String(nativeSurfaceMapHTML.call(card,popupID));
+        if(typeof card.surfaceMap_grid_html != "function") return html;
+
+        var nativeGrids = card.surfaceMap_grid_html(0) + card.surfaceMap_grid_html(1);
+        var attachedGrids = "";
+        var devices = attachedDiskDevices(card);
+
+        for(var i=0;i<devices.length;i++)
+        {
+            var deviceN = diskDeviceN(devices[i]);
+            if(deviceN!==null)
+                attachedGrids += card.surfaceMap_grid_html(deviceN);
+        }
+
+        return html.replace(nativeGrids,attachedGrids);
+    }
+
+    function documentRef()
+    {
+        if(root && root.document) return root.document;
+        if(typeof document == "object") return document;
+        return null;
+    }
+
+    function refreshVisibleSurfaceMap(card)
+    {
+        var doc = documentRef();
+        var popup = doc && typeof doc.getElementById == "function"
+            ? doc.getElementById("surfaceMap_popup")
+            : null;
+
+        if(!popup || popup.hidden===true) return false;
+
+        if(typeof card.surfaceMap_render == "function")
+            return card.surfaceMap_render("surfaceMap_popup");
+
+        if(typeof card.surfaceMap_update == "function")
+            return card.surfaceMap_update("surfaceMap_popup");
+
+        return false;
+    }
+
+    function decorateDiskIIUIState(card)
+    {
+        if(!card || !card.id || card.id.PCODE!="DISKII") return card;
+        if(card.__A2PDiskIIUIStateDecorated) return card;
+        card.__A2PDiskIIUIStateDecorated = true;
+
+        var nativeDeviceToolSlotHTML = card.deviceToolSlotHTML;
+        var nativeSurfaceMapHTML = card.surfaceMap_html;
+        var nativeTopologyChanged = card.onDeviceTopologyChanged;
+
+        card.deviceToolSlotHTML = function(ctx)
+        {
+            return renderAttachedDiskIIRows(this,ctx,nativeDeviceToolSlotHTML);
+        };
+
+        card.surfaceMap_html = function(popupID)
+        {
+            return renderAttachedDiskIISurfaceMap(this,popupID,nativeSurfaceMapHTML);
+        };
+
+        card.onDeviceTopologyChanged = function(change)
+        {
+            var result = typeof nativeTopologyChanged == "function"
+                ? nativeTopologyChanged.apply(this,arguments)
+                : true;
+
+            if(change && (change.type=="attach" || change.type=="detach"))
+                refreshVisibleSurfaceMap(this);
+
+            return result;
+        };
+
+        return card;
+    }
+
+    function decorateKnownDiskIICards(rootWindow)
+    {
+        var changed = false;
+
+        if(rootWindow.oEMU && rootWindow.oEMU.component && rootWindow.oEMU.component.IO)
+        {
+            var discovery = rootWindow.oEMU.component.IO.AppleDisk2;
+            if(discovery && discovery.id && discovery.id.PCODE=="DISKII")
+            {
+                decorateDiskIIUIState(discovery);
+                changed = true;
+            }
+        }
+
+        try
+        {
+            if(rootWindow.apple2plus && typeof rootWindow.apple2plus.hwObj == "function")
+            {
+                var hw = rootWindow.apple2plus.hwObj();
+                var io = hw && hw.io;
+                if(io && Array.isArray(io.slots))
+                {
+                    for(var slotN=0;slotN<io.slots.length;slotN++)
+                    {
+                        var owner = typeof io.SLOT2obj == "function" ? io.SLOT2obj(slotN) : null;
+                        if(owner && owner.id && owner.id.PCODE=="DISKII")
+                        {
+                            decorateDiskIIUIState(owner);
+                            changed = true;
+                        }
+                    }
+                }
+            }
+        }
+        catch(e) {}
+
+        return changed;
+    }
+
+    function wrapDiskIIConstructor(rootWindow)
+    {
+        if(!rootWindow || typeof rootWindow.AppleDisk2 != "function") return false;
+        if(rootWindow.AppleDisk2.__A2PDiskIIUIStateWrapped) return true;
+
+        var OriginalAppleDisk2 = rootWindow.AppleDisk2;
+        var WrappedAppleDisk2 = function AppleDisk2()
+        {
+            var instance = Object.create(OriginalAppleDisk2.prototype || Object.prototype);
+            var result = OriginalAppleDisk2.apply(instance,arguments);
+            var card = result && (typeof result == "object" || typeof result == "function")
+                ? result
+                : instance;
+            return decorateDiskIIUIState(card);
+        };
+
+        WrappedAppleDisk2.prototype = OriginalAppleDisk2.prototype;
+        WrappedAppleDisk2.prototype.constructor = WrappedAppleDisk2;
+        for(var key in OriginalAppleDisk2)
+            if(Object.prototype.hasOwnProperty.call(OriginalAppleDisk2,key))
+                WrappedAppleDisk2[key] = OriginalAppleDisk2[key];
+
+        WrappedAppleDisk2.__A2PDiskIIUIStateWrapped = true;
+        WrappedAppleDisk2.__A2POriginalAppleDisk2 = OriginalAppleDisk2;
+        rootWindow.AppleDisk2 = WrappedAppleDisk2;
+        return true;
+    }
+
+    function installDiskIIUIStatePatch(rootWindow)
+    {
+        rootWindow = rootWindow || root;
+        if(!rootWindow || rootWindow.__A2PDiskIIUIStatePatchInstalled) return false;
+        rootWindow.__A2PDiskIIUIStatePatchInstalled = true;
+
+        var attempts = 0;
+        var timer = null;
+
+        function poll()
+        {
+            attempts++;
+            wrapDiskIIConstructor(rootWindow);
+            decorateKnownDiskIICards(rootWindow);
+
+            if(attempts > 200 && timer)
+            {
+                rootWindow.clearInterval(timer);
+                timer = null;
+            }
+        }
+
+        poll();
+        if(typeof rootWindow.setInterval == "function")
+            timer = rootWindow.setInterval(poll,50);
+        if(rootWindow.addEventListener)
+            rootWindow.addEventListener("load",poll,{once:true});
+
+        return true;
+    }
+
+    return {
+         "diskDeviceID":diskDeviceID
+        ,"diskDeviceN":diskDeviceN
+        ,"attachedDiskDevices":attachedDiskDevices
+        ,"driveFileDisplayName":driveFileDisplayName
+        ,"decorateDiskIIUIState":decorateDiskIIUIState
+        ,"installDiskIIUIStatePatch":installDiskIIUIStatePatch
+    };
+});
+
+</script>
+    <script type="text/javascript">
+/*
+ * EMU_CARD_smartport_topology.js
+ *
+ * Runtime topology policy for SmartPort-style child devices.
+ *
+ * A physical device detach must also release/eject any mounted media owned by
+ * that child device. This is particularly important for HD20-sized images:
+ * removing the device must not keep a stale 20 MiB backing store alive.
+ *
+ * LIRON device visuals use Composer semantic BODY/LED ids through visibleAt().
+ * UniDisk visuals are layout positions filled by the first/second attached
+ * UniDisk, independently of their SmartPort unit numbers. The two HD20 BODY
+ * and LED pairs are layout positions: visual 1 is the standalone position,
+ * while visual 2 is the stacked position used when UniDisks are present.
+ * Device activity is sampled by the existing 500 ms surface-map dashboard
+ * refresh hook; no additional timer is introduced here.
+ */
+(function(root,factory){
+    "use strict";
+    var api = factory(root || null);
+    if(typeof module == "object" && module.exports) module.exports = api;
+    if(root) api.installSmartPortTopologyPatch(root);
+})(typeof window != "undefined" ? window : (typeof globalThis != "undefined" ? globalThis : null),function(root){
+    "use strict";
+
+    function deviceCode(device)
+    {
+        return String(device && device.id ? device.id.DCODE || "" : "").toUpperCase();
+    }
+
+    function deviceUnit(device)
+    {
+        var unit = device && typeof device.getUnit == "function"
+            ? Number(device.getUnit())
+            : Number(device && device.id ? device.id.deviceN : NaN);
+        return Number.isInteger(unit) && unit>=1 && unit<=8 ? unit : null;
+    }
+
+    function deviceHash(device)
+    {
+        var hash = Number(device && device.attach ? device.attach.hash : NaN);
+        return Number.isInteger(hash) ? hash : null;
+    }
+
+    function trackDeviceActivity(device)
+    {
+        if(!device || (typeof device!="object" && typeof device!="function")) return device;
+        if(device.__A2PSmartPortActivityTracked) return device;
+
+        device.__A2PSmartPortActivityTracked = true;
+        device.__A2PSmartPortActivityGeneration = 0;
+
+        ["readBlock","writeBlock","format"].forEach(function(name)
+        {
+            var nativeMethod = device[name];
+            if(typeof nativeMethod != "function") return;
+
+            device[name] = function()
+            {
+                var result = nativeMethod.apply(this,arguments);
+                if(result && result.error!==undefined && (Number(result.error)&0xFF)===0)
+                    this.__A2PSmartPortActivityGeneration =
+                        (Number(this.__A2PSmartPortActivityGeneration)||0)+1;
+                return result;
+            };
+        });
+
+        return device;
+    }
+
+    function deviceActivityGeneration(device)
+    {
+        trackDeviceActivity(device);
+        var generation = Number(device && device.__A2PSmartPortActivityGeneration);
+        return Number.isFinite(generation) && generation>=0 ? generation : 0;
+    }
+
+    function copyStatics(from,to)
+    {
+        for(var key in from)
+            if(Object.prototype.hasOwnProperty.call(from,key))
+                to[key] = from[key];
+    }
+
+    function lironLayout(owner)
+    {
+        if(root && root.oLAYOUT) return root.oLAYOUT;
+        if(root && root.oCOM && root.oCOM.LAYOUT) return root.oCOM.LAYOUT;
+        return null;
+    }
+
+    function lironLayoutSlotN(owner)
+    {
+        var slotN = owner && owner.mount ? Number(owner.mount.slotN) : NaN;
+        return Number.isInteger(slotN) && slotN>=0 && slotN<=8 ? slotN : null;
+    }
+
+    function lironDevices(owner,code)
+    {
+        code = String(code || "").toUpperCase();
+        var devices = Array.isArray(owner && owner.devices) ? owner.devices : [];
+        return devices.filter(function(device){ return deviceCode(device)===code; });
+    }
+
+    function lironVisualState(owner)
+    {
+        var unidiskCount = 0;
+        var hd20 = false;
+        var devices = Array.isArray(owner && owner.devices) ? owner.devices : [];
+
+        for(var i=0;i<devices.length;i++)
+        {
+            var code = deviceCode(devices[i]);
+            if(code=="UNIDISK") unidiskCount++;
+            else if(code=="HD20") hd20 = true;
+        }
+
+        return {
+            unidiskCount: unidiskCount,
+            hd20: hd20
+        };
+    }
+
+    function ensureLironLedState(owner)
+    {
+        if(!owner.__A2PSmartPortLedState)
+            owner.__A2PSmartPortLedState = {"unidisk":[false,false],"hd20":false};
+        if(!Array.isArray(owner.__A2PSmartPortLedState.unidisk))
+            owner.__A2PSmartPortLedState.unidisk = [false,false];
+        return owner.__A2PSmartPortLedState;
+    }
+
+    function lironActivityRecords(owner)
+    {
+        if(!Array.isArray(owner.__A2PSmartPortActivityRecords))
+            owner.__A2PSmartPortActivityRecords = [];
+        return owner.__A2PSmartPortActivityRecords;
+    }
+
+    function lironActivityRecord(owner,device)
+    {
+        var records = lironActivityRecords(owner);
+        for(var i=0;i<records.length;i++)
+            if(records[i].device===device) return records[i];
+        return null;
+    }
+
+    function primeLironDeviceActivity(owner,device)
+    {
+        if(!device) return null;
+        trackDeviceActivity(device);
+        var record = lironActivityRecord(owner,device);
+        if(record) return record;
+
+        record = {"device":device,"generation":deviceActivityGeneration(device)};
+        lironActivityRecords(owner).push(record);
+        return record;
+    }
+
+    function prepareLironActivity(owner)
+    {
+        if(!owner) return false;
+        ensureLironLedState(owner);
+
+        var devices = Array.isArray(owner.devices) ? owner.devices : [];
+        for(var i=0;i<devices.length;i++) primeLironDeviceActivity(owner,devices[i]);
+
+        var records = lironActivityRecords(owner);
+        owner.__A2PSmartPortActivityRecords = records.filter(function(record)
+        {
+            return devices.indexOf(record.device)>=0;
+        });
+        return true;
+    }
+
+    function sampleLironDeviceActivity(owner,device)
+    {
+        if(!device) return false;
+        var record = primeLironDeviceActivity(owner,device);
+        var current = deviceActivityGeneration(device);
+        var active = current!==record.generation;
+        record.generation = current;
+        return active;
+    }
+
+    function lironTopologySignature(owner)
+    {
+        var slotN = lironLayoutSlotN(owner);
+        if(slotN===null) return null;
+
+        var state = lironVisualState(owner);
+        return slotN + "|U" + Math.min(state.unidiskCount,2) + "|H" + (state.hd20 ? 1 : 0);
+    }
+
+    function lironVisualEntries(layout,slotN,query)
+    {
+        if(!layout || typeof layout.find != "function") return [];
+        var found = layout.find(query);
+        if(!Array.isArray(found)) return [];
+        return found.filter(function(entry)
+        {
+            return !!entry && (entry.slotN === null || entry.slotN === undefined || entry.slotN === slotN);
+        });
+    }
+
+    function lironVisualId(entries,index,fallback)
+    {
+        var entry = entries[index];
+        return entry && entry.id ? entry.id : fallback;
+    }
+
+    function syncLironLayout(owner)
+    {
+        if(!owner || !owner.id || owner.id.PCODE!="LIRON") return false;
+
+        var layout = lironLayout(owner);
+        var slotN = lironLayoutSlotN(owner);
+        if(slotN===null || !layout || typeof layout.visibleAt != "function") return false;
+
+        var state = lironVisualState(owner);
+        var ledState = ensureLironLedState(owner);
+        var hasUniDisk = state.unidiskCount > 0;
+        var unidisks = lironVisualEntries(layout,slotN,{PCODE:"LIRON",DCODE:"UNIDISK",ROLE:"BODY"});
+        var standalone = lironVisualEntries(layout,slotN,{PCODE:"LIRON",DCODE:"HD20",ROLE:"BODY",LAYOUT:"STANDALONE"});
+        var stacked = lironVisualEntries(layout,slotN,{PCODE:"LIRON",DCODE:"HD20",ROLE:"BODY",LAYOUT:"STACKED"});
+        var unidiskLEDs = lironVisualEntries(layout,slotN,{PCODE:"LIRON",DCODE:"UNIDISK",ROLE:"LED"});
+        var standaloneLEDs = lironVisualEntries(layout,slotN,{PCODE:"LIRON",DCODE:"HD20",ROLE:"LED",LAYOUT:"STANDALONE"});
+        var stackedLEDs = lironVisualEntries(layout,slotN,{PCODE:"LIRON",DCODE:"HD20",ROLE:"LED",LAYOUT:"STACKED"});
+
+        layout.visibleAt(slotN,lironVisualId(unidisks,0,"LIRON.UNIDISK.1.BODY"),state.unidiskCount >= 1);
+        layout.visibleAt(slotN,lironVisualId(unidisks,1,"LIRON.UNIDISK.2.BODY"),state.unidiskCount >= 2);
+        layout.visibleAt(slotN,lironVisualId(standalone,0,"LIRON.HD20.1.BODY"),state.hd20 && !hasUniDisk);
+        layout.visibleAt(slotN,lironVisualId(stacked,0,"LIRON.HD20.2.BODY"),state.hd20 && hasUniDisk);
+
+        // LED layers were added with Composer v3. Keep older/runtime fixtures that
+        // do not contain them compatible by touching LED visibility only when the
+        // corresponding semantic layer actually exists.
+        if(unidiskLEDs.length>0)
+            layout.visibleAt(slotN,lironVisualId(unidiskLEDs,0,"LIRON.UNIDISK.1.LED"),
+                state.unidiskCount>=1 && !!ledState.unidisk[0]);
+        if(unidiskLEDs.length>1)
+            layout.visibleAt(slotN,lironVisualId(unidiskLEDs,1,"LIRON.UNIDISK.2.LED"),
+                state.unidiskCount>=2 && !!ledState.unidisk[1]);
+        if(standaloneLEDs.length>0)
+            layout.visibleAt(slotN,lironVisualId(standaloneLEDs,0,"LIRON.HD20.1.LED"),
+                state.hd20 && !hasUniDisk && !!ledState.hd20);
+        if(stackedLEDs.length>0)
+            layout.visibleAt(slotN,lironVisualId(stackedLEDs,0,"LIRON.HD20.2.LED"),
+                state.hd20 && hasUniDisk && !!ledState.hd20);
+        return true;
+    }
+
+    function syncLironLayoutTracked(owner,force)
+    {
+        var signature = lironTopologySignature(owner);
+        if(!force && signature!==null && owner && owner.__A2PSmartPortLayoutSignature===signature)
+            return true;
+
+        var synced = syncLironLayout(owner);
+        if(synced && owner)
+            owner.__A2PSmartPortLayoutSignature = signature;
+        return synced;
+    }
+
+    function syncLironActivity(owner)
+    {
+        if(!owner || !owner.id || owner.id.PCODE!="LIRON") return false;
+        prepareLironActivity(owner);
+
+        var unidisks = lironDevices(owner,"UNIDISK");
+        var hd20s = lironDevices(owner,"HD20");
+        var ledState = ensureLironLedState(owner);
+
+        ledState.unidisk[0] = unidisks[0] ? sampleLironDeviceActivity(owner,unidisks[0]) : false;
+        ledState.unidisk[1] = unidisks[1] ? sampleLironDeviceActivity(owner,unidisks[1]) : false;
+        ledState.hd20 = hd20s[0] ? sampleLironDeviceActivity(owner,hd20s[0]) : false;
+
+        return syncLironLayout(owner);
+    }
+
+    function wrapLironRefreshMonitor(owner)
+    {
+        if(!owner || typeof owner.deviceToolSurfaceMapMonitoring != "function") return false;
+        var nativeMonitoring = owner.deviceToolSurfaceMapMonitoring;
+        if(nativeMonitoring.__A2PSmartPortActivityMonitorOwner===owner) return true;
+
+        var wrapped = function()
+        {
+            var outermost = !this.__A2PSmartPortActivityMonitorBusy;
+            if(outermost)
+            {
+                this.__A2PSmartPortActivityMonitorBusy = true;
+                syncLironActivity(this);
+            }
+            try
+            {
+                return nativeMonitoring.apply(this,arguments);
+            }
+            finally
+            {
+                if(outermost) this.__A2PSmartPortActivityMonitorBusy = false;
+            }
+        };
+        wrapped.__A2PSmartPortActivityMonitorOwner = owner;
+        wrapped.__A2PSmartPortActivityMonitorBase = nativeMonitoring;
+        owner.deviceToolSurfaceMapMonitoring = wrapped;
+        return true;
+    }
+
+    function patchHD20Constructor(rootWindow)
+    {
+        if(!rootWindow || typeof rootWindow.HD20Device != "function") return false;
+        if(rootWindow.HD20Device.__A2PMediaReleasePatched) return true;
+
+        var OriginalHD20Device = rootWindow.HD20Device;
+        var source = Function.prototype.toString.call(OriginalHD20Device);
+        var patched = source;
+
+        var oldGetImage = "this.getImage = function() { return media===null ? new Uint8Array(BLOCK_SIZE*BLOCK_COUNT) : media.slice(); };";
+        var newGetImage = "this.getImage = function() { return media===null ? null : media.slice(); };";
+        if(patched.indexOf(oldGetImage)>=0)
+            patched = patched.replace(oldGetImage,newGetImage);
+
+        var marker = "    this.readBlock = function(blockNumber)\n    {";
+        if(patched.indexOf("this.releaseMedia = function()")<0 && patched.indexOf(marker)>=0)
+        {
+            patched = patched.replace(marker,
+                "    this.releaseMedia = function()\n"+
+                "    {\n"+
+                "        var previous=suggestedFilename();\n"+
+                "        media=null;\n"+
+                "        state.online=false;\n"+
+                "        state.mediaFilename=\"\";\n"+
+                "        state.dirty=false;\n"+
+                "        state.lastBlock=null;\n"+
+                "        notifyFilenameChange(previous);\n"+
+                "        return true;\n"+
+                "    };\n\n"+
+                marker
+            );
+        }
+
+        if(patched===source) return false;
+
+        var PatchedHD20Device;
+        try
+        {
+            PatchedHD20Device = Function("return ("+patched+");")();
+        }
+        catch(e)
+        {
+            console.error("HD20 media-release patch failed",e);
+            return false;
+        }
+
+        PatchedHD20Device.prototype = OriginalHD20Device.prototype;
+        PatchedHD20Device.prototype.constructor = PatchedHD20Device;
+        copyStatics(OriginalHD20Device,PatchedHD20Device);
+        PatchedHD20Device.__A2PMediaReleasePatched = true;
+        PatchedHD20Device.__A2POriginalHD20Device = OriginalHD20Device;
+        rootWindow.HD20Device = PatchedHD20Device;
+        return true;
+    }
+
+    function releaseDeviceMedia(device)
+    {
+        if(!device) return false;
+
+        if(typeof device.releaseMedia == "function")
+            return device.releaseMedia()!==false;
+
+        if(typeof device.ejectImage == "function")
+            return device.ejectImage()!==false;
+
+        return false;
+    }
+
+    function refreshLironMediaUI(owner,device,clearFile)
+    {
+        if(!owner || !device) return false;
+
+        var unit = deviceUnit(device);
+        if(unit!==null && typeof owner.deviceToolSyncMediaControls == "function")
+            owner.deviceToolSyncMediaControls(unit,{"clearFile":!!clearFile});
+
+        if(typeof owner.deviceToolSurfaceMapRefresh == "function")
+            owner.deviceToolSurfaceMapRefresh();
+
+        try
+        {
+            if(typeof apple2plus == "object" && apple2plus && owner.mount)
+            {
+                var io = apple2plus.hwObj().io;
+                var slotN = Number(owner.mount.slotN);
+                var slotID = Number.isInteger(slotN) && io && typeof io.slot2ID == "function"
+                    ? io.slot2ID(slotN)
+                    : undefined;
+
+                if(io && typeof io.refreshDeviceToolboxes == "function")
+                    io.refreshDeviceToolboxes({"id":"devices","default_slot":slotID});
+            }
+        }
+        catch(e) {}
+
+        return true;
+    }
+
+    function decorateLironTopology(owner)
+    {
+        if(!owner || !owner.id || owner.id.PCODE!="LIRON") return owner;
+        prepareLironActivity(owner);
+        wrapLironRefreshMonitor(owner);
+
+        if(owner.__A2PSmartPortTopologyDecorated)
+        {
+            // Discovery may encounter the card before its slot/device topology is
+            // initialized. Retry only until a new visual topology is synchronized.
+            syncLironLayoutTracked(owner,false);
+            return owner;
+        }
+        owner.__A2PSmartPortTopologyDecorated = true;
+
+        // Standard hooks used by Peripheral-controls navigation and the shared
+        // 500 ms surface-map refresh cycle.
+        owner.syncLayoutVisuals = function()
+        {
+            prepareLironActivity(this);
+            wrapLironRefreshMonitor(this);
+            return syncLironLayoutTracked(this,true);
+        };
+        owner.syncLayoutActivity = function()
+        {
+            return syncLironActivity(this);
+        };
+
+        var nativeDetachSmartPortDevice = owner.detachSmartPortDevice;
+        var nativeDetachUniDisk = owner.detachUniDisk;
+        var nativeTopologyChanged = owner.onDeviceTopologyChanged;
+
+        owner.detachSmartPortDevice = function(device)
+        {
+            releaseDeviceMedia(device);
+            var result = typeof nativeDetachSmartPortDevice == "function"
+                ? nativeDetachSmartPortDevice.apply(this,arguments)
+                : false;
+            refreshLironMediaUI(this,device,true);
+            prepareLironActivity(this);
+            syncLironLayoutTracked(this,true);
+            return result;
+        };
+
+        owner.detachUniDisk = function(device)
+        {
+            releaseDeviceMedia(device);
+            var result = typeof nativeDetachUniDisk == "function"
+                ? nativeDetachUniDisk.apply(this,arguments)
+                : false;
+            refreshLironMediaUI(this,device,true);
+            prepareLironActivity(this);
+            syncLironLayoutTracked(this,true);
+            return result;
+        };
+
+        owner.onDeviceTopologyChanged = function(change)
+        {
+            var result = typeof nativeTopologyChanged == "function"
+                ? nativeTopologyChanged.apply(this,arguments)
+                : true;
+
+            if(change && change.type=="detach" && change.device)
+            {
+                releaseDeviceMedia(change.device);
+                refreshLironMediaUI(this,change.device,true);
+            }
+            else if(change && change.type=="attach" && change.device)
+            {
+                primeLironDeviceActivity(this,change.device);
+                refreshLironMediaUI(this,change.device,false);
+            }
+
+            prepareLironActivity(this);
+            wrapLironRefreshMonitor(this);
+            syncLironLayoutTracked(this,true);
+            return result;
+        };
+
+        syncLironLayoutTracked(owner,true);
+        return owner;
+    }
+
+    function wrapLironConstructor(rootWindow)
+    {
+        if(!rootWindow || typeof rootWindow.AppleLiron != "function") return false;
+        if(rootWindow.AppleLiron.__A2PSmartPortTopologyWrapped) return true;
+
+        var OriginalAppleLiron = rootWindow.AppleLiron;
+        var WrappedAppleLiron = function AppleLiron()
+        {
+            var instance = Object.create(OriginalAppleLiron.prototype || Object.prototype);
+            var result = OriginalAppleLiron.apply(instance,arguments);
+            var card = result && (typeof result == "object" || typeof result == "function")
+                ? result
+                : instance;
+            return decorateLironTopology(card);
+        };
+
+        WrappedAppleLiron.prototype = OriginalAppleLiron.prototype;
+        WrappedAppleLiron.prototype.constructor = WrappedAppleLiron;
+        copyStatics(OriginalAppleLiron,WrappedAppleLiron);
+        WrappedAppleLiron.__A2PSmartPortTopologyWrapped = true;
+        WrappedAppleLiron.__A2POriginalAppleLiron = OriginalAppleLiron;
+        rootWindow.AppleLiron = WrappedAppleLiron;
+        return true;
+    }
+
+    function decorateKnownLironCards(rootWindow)
+    {
+        var changed = false;
+
+        if(rootWindow.oEMU && rootWindow.oEMU.component && rootWindow.oEMU.component.IO)
+        {
+            var discovery = rootWindow.oEMU.component.IO.AppleLiron;
+            if(discovery && discovery.id && discovery.id.PCODE=="LIRON")
+            {
+                decorateLironTopology(discovery);
+                changed = true;
+            }
+        }
+
+        try
+        {
+            if(rootWindow.apple2plus && typeof rootWindow.apple2plus.hwObj == "function")
+            {
+                var hw = rootWindow.apple2plus.hwObj();
+                var io = hw && hw.io;
+                if(io && Array.isArray(io.slots))
+                {
+                    for(var slotN=0;slotN<io.slots.length;slotN++)
+                    {
+                        var owner = typeof io.SLOT2obj == "function" ? io.SLOT2obj(slotN) : null;
+                        if(owner && owner.id && owner.id.PCODE=="LIRON")
+                        {
+                            decorateLironTopology(owner);
+                            changed = true;
+                        }
+                    }
+                }
+            }
+        }
+        catch(e) {}
+
+        return changed;
+    }
+
+    function installSmartPortTopologyPatch(rootWindow)
+    {
+        rootWindow = rootWindow || root;
+        if(!rootWindow || rootWindow.__A2PSmartPortTopologyPatchInstalled) return false;
+        rootWindow.__A2PSmartPortTopologyPatchInstalled = true;
+
+        var attempts = 0;
+        var timer = null;
+
+        function poll()
+        {
+            attempts++;
+            patchHD20Constructor(rootWindow);
+            wrapLironConstructor(rootWindow);
+            decorateKnownLironCards(rootWindow);
+
+            if(attempts > 200 && timer)
+            {
+                rootWindow.clearInterval(timer);
+                timer = null;
+            }
+        }
+
+        poll();
+        if(typeof rootWindow.setInterval == "function")
+            timer = rootWindow.setInterval(poll,50);
+        if(rootWindow.addEventListener)
+            rootWindow.addEventListener("load",poll,{once:true});
+
+        return true;
+    }
+
+    return {
+         "deviceCode":deviceCode
+        ,"deviceUnit":deviceUnit
+        ,"deviceHash":deviceHash
+        ,"deviceActivityGeneration":deviceActivityGeneration
+        ,"syncLironLayout":syncLironLayout
+        ,"syncLironActivity":syncLironActivity
+        ,"releaseDeviceMedia":releaseDeviceMedia
+        ,"decorateLironTopology":decorateLironTopology
+        ,"installSmartPortTopologyPatch":installSmartPortTopologyPatch
+    };
+});
+</script>
+    <script type="text/javascript">
+/*
  * DBG_testbench.js
  *
- * Compatibility loader.  The original isolated TEST BENCH implementation is
- * preserved byte-for-byte as DBG_testbench_legacy.js.  STEP TRACE SCENARIO is
- * attached independently to the live emulator breakpoint flow.
+ * First-pass algorithm test harness for Debugger tab 3.2.
+ * Deliberately small: UI plumbing + a trusted JavaScript REPL/editor +
+ * direct debugger-RAM helpers. Test profiles/generators/assertions come later.
  */
 (function(global){
   "use strict";
-  var scripts = [
-    "res/EMU_CARD_appledisk2_topology.js",
-    "res/EMU_CARD_appledisk2_ui_state.js",
-    "res/EMU_CARD_smartport_topology.js",
-    "res/DBG_testbench_legacy.js",
-    "res/DBG_steptrace_scenario.js",
-    "res/DBG_steptrace_scenario_layout.js"
-  ];
-  if(global.document && global.document.readyState === "loading" && typeof global.document.write === "function"){
-    for(var i=0;i<scripts.length;i++) global.document.write('<script type="text/javascript" src="'+scripts[i]+'"></script>');
-    return;
+
+  var terminal = null;
+
+  function el(id){ return document.getElementById(id); }
+
+  function hex(v,width)
+  {
+    width = width || 2;
+    var mask = width <= 2 ? 0xff : 0xffff;
+    return "$" + ("0000" + ((Number(v)||0) & mask).toString(16).toUpperCase()).slice(-width);
   }
-  function loadAt(index){if(index>=scripts.length||!global.document)return;var node=global.document.createElement("script");node.type="text/javascript";node.src=scripts[index];node.async=false;node.onload=function(){loadAt(index+1)};(global.document.head||global.document.documentElement||global.document.body).appendChild(node)}
-  loadAt(0);
+
+
+  function debuggerSymbols()
+  {
+    var tables = Array.isArray(global.DBG_symbolTables) ? global.DBG_symbolTables : [];
+    var out = [];
+
+    // Newest imported table first.  This mirrors the useful expectation that
+    // the most recently attached symbol set is the first one consulted.
+    for(var ti=tables.length-1;ti>=0;ti--)
+    {
+      var table = tables[ti] || {};
+      var records = Array.isArray(table.symbols)
+        ? table.symbols
+        : (table.raw && Array.isArray(table.raw.symbols) ? table.raw.symbols : []);
+
+      for(var si=0;si<records.length;si++)
+      {
+        var symbol = records[si] || {};
+        if(symbol.type === "comment") continue;
+        if(!symbol.name || typeof symbol.value !== "number" || !isFinite(symbol.value)) continue;
+
+        out.push({
+          name: String(symbol.name),
+          type: symbol.type || "symbol",
+          value: symbol.value & 0xffff,
+          bytes: symbol.bytes === 1 ? 1 : 2,
+          source: table.source || table.filename || (table.raw && table.raw.source) || "debugger"
+        });
+      }
+    }
+    return out;
+  }
+
+  function assemblerSymbols()
+  {
+    var asm = global.oASM || global.asm;
+    var tab = asm && asm.symtab ? asm.symtab : null;
+    var out = [];
+    if(!tab || typeof tab !== "object") return out;
+
+    Object.keys(tab).forEach(function(name){
+      var value = tab[name];
+      if(typeof value !== "number" || !isFinite(value)) return;
+      out.push({
+        name: String(name),
+        type: "assembler",
+        value: value & 0xffff,
+        bytes: 2,
+        source: "assembler"
+      });
+    });
+    return out;
+  }
+
+  function allSymbols()
+  {
+    var out = debuggerSymbols();
+    var seen = {};
+
+    // Keep debugger-imported records first, then expose live assembler-only names.
+    for(var i=0;i<out.length;i++)
+      seen[out[i].name.toLowerCase()] = true;
+
+    var asm = assemblerSymbols();
+    for(var j=0;j<asm.length;j++)
+      if(!seen[asm[j].name.toLowerCase()]) out.push(asm[j]);
+
+    return out;
+  }
+
+  function findSymbol(name)
+  {
+    name = String(name == null ? "" : name).trim();
+    if(!name) return null;
+
+    var dbgSymbols = debuggerSymbols();
+    var i;
+
+    // Prefer exact case, then accept the case-insensitive spelling users normally
+    // expect from an assembler/debugger console.
+    for(i=0;i<dbgSymbols.length;i++)
+      if(dbgSymbols[i].name === name) return dbgSymbols[i];
+
+    var lower = name.toLowerCase();
+    for(i=0;i<dbgSymbols.length;i++)
+      if(dbgSymbols[i].name.toLowerCase() === lower) return dbgSymbols[i];
+
+    var assembler = assemblerSymbols();
+    for(i=0;i<assembler.length;i++)
+      if(assembler[i].name === name) return assembler[i];
+    for(i=0;i<assembler.length;i++)
+      if(assembler[i].name.toLowerCase() === lower) return assembler[i];
+
+    return null;
+  }
+
+  function parseNumericAddress(text)
+  {
+    var s = String(text == null ? "" : text).trim();
+    if(/^\$[0-9a-f]+$/i.test(s)) return parseInt(s.slice(1),16);
+    if(/^0x[0-9a-f]+$/i.test(s)) return parseInt(s,16);
+    if(/^[0-9]+$/.test(s)) return parseInt(s,10);
+    return null;
+  }
+  function parseAddress(value)
+  {
+    if(typeof value === "number") return value & 0xffff;
+
+    var s = String(value == null ? "" : value).trim();
+    if(!s) throw new Error("Address is required.");
+
+    var numeric = parseNumericAddress(s);
+    if(numeric !== null) return numeric & 0xffff;
+
+    var symbol = findSymbol(s);
+    if(symbol) return symbol.value & 0xffff;
+
+    // Small convenience for the RAM field: label+N / label-N.  JavaScript
+    // scripts can of course use TB.sym("label") + N directly.
+    var offset = /^(.*?)\s*([+-])\s*(\$[0-9a-f]+|0x[0-9a-f]+|[0-9]+)$/i.exec(s);
+    if(offset && offset[1].trim())
+    {
+      var base = findSymbol(offset[1].trim());
+      var delta = parseNumericAddress(offset[3]);
+      if(base && delta !== null)
+        return (base.value + (offset[2] === "-" ? -delta : delta)) & 0xffff;
+    }
+
+    throw new Error(
+      "Unknown address/symbol '" + s + "'. Use $0000, 0x0000, decimal, or an imported assembler label."
+    );
+  }
+
+  function parseBytes(value)
+  {
+    if(value instanceof Uint8Array) return new Uint8Array(value);
+    if(Array.isArray(value)) return Uint8Array.from(value.map(function(v){ return Number(v) & 0xff; }));
+    if(typeof value === "number") return Uint8Array.of(value & 0xff);
+
+    var s = String(value == null ? "" : value).trim();
+    if(!s) return new Uint8Array(0);
+
+    // Trusted concept tool: allow an inline JS array/expression when prefixed with '='.
+    if(s.charAt(0) === "=")
+    {
+      var evaluated = (0,eval)(s.slice(1));
+      return parseBytes(evaluated);
+    }
+
+    var tokens = s.split(/[\s,;]+/).filter(Boolean);
+    return Uint8Array.from(tokens.map(function(tok){
+      if(/^\$[0-9a-f]+$/i.test(tok)) return parseInt(tok.slice(1),16) & 0xff;
+      if(/^0x[0-9a-f]+$/i.test(tok)) return parseInt(tok,16) & 0xff;
+      if(/^[0-9a-f]{1,2}$/i.test(tok)) return parseInt(tok,16) & 0xff;
+      if(/^[0-9]+$/.test(tok)) return parseInt(tok,10) & 0xff;
+      throw new Error("Invalid byte '" + tok + "'.");
+    }));
+  }
+
+  function formatValue(value)
+  {
+    if(value === undefined) return "undefined";
+    if(value === null) return "null";
+    if(typeof value === "string") return value;
+    if(value instanceof Uint8Array)
+      return Array.from(value).map(function(v){ return hex(v,2); }).join(" ");
+    if(Array.isArray(value))
+      return "[" + value.map(function(v){ return typeof v === "number" ? hex(v,2) : String(v); }).join(", ") + "]";
+    if(typeof value === "object")
+    {
+      try { return JSON.stringify(value,null,2); }
+      catch(_) { return String(value); }
+    }
+    return String(value);
+  }
+
+  function termWrite(text,channel)
+  {
+    text = String(text == null ? "" : text);
+    if(terminal && typeof terminal.write === "function")
+      terminal.write(text + (text.endsWith("\n") ? "" : "\n"),channel || "host");
+    else
+    {
+      var fallback = el("DBG_testConsoleFallback");
+      if(fallback)
+      {
+        fallback.value += text + (text.endsWith("\n") ? "" : "\n");
+        fallback.scrollTop = fallback.scrollHeight;
+      }
+    }
+  }
+
+  var TB = {
+    version: "0.6-cpu-hexdump",
+
+    get RAM(){
+      if(!(global.DBG_RAM instanceof Uint8Array)) throw new Error("DBG_RAM is not available.");
+      return global.DBG_RAM;
+    },
+
+    hex: hex,
+    address: parseAddress,
+    bytes: parseBytes,
+
+    sym: function(name,defaultValue)
+    {
+      var symbol = findSymbol(name);
+      if(symbol) return symbol.value & 0xffff;
+      if(arguments.length > 1) return defaultValue;
+      throw new Error("Unknown assembler symbol '" + name + "'.");
+    },
+
+    symbol: function(name)
+    {
+      var symbol = findSymbol(name);
+      return symbol ? Object.assign({},symbol) : null;
+    },
+
+    symbols: function()
+    {
+      return allSymbols().map(function(symbol){ return Object.assign({},symbol); });
+    },
+
+    print: function(){
+      var parts = Array.prototype.slice.call(arguments).map(formatValue);
+      termWrite(parts.join(" "),"host");
+      return arguments.length ? arguments[arguments.length-1] : undefined;
+    },
+
+    ram: {
+      read: function(address,length)
+      {
+        var ram = TB.RAM;
+        var a = parseAddress(address);
+        length = length == null ? 1 : Math.max(0,Number(length)|0);
+        if(length === 1) return ram[a] & 0xff;
+        var out = new Uint8Array(length);
+        for(var i=0;i<length;i++) out[i] = ram[(a+i)&0xffff] & 0xff;
+        return out;
+      },
+
+      read16: function(address)
+      {
+        var ram = TB.RAM;
+        var a = parseAddress(address);
+        return (ram[a] | (ram[(a+1)&0xffff] << 8)) & 0xffff;
+      },
+
+      write16: function(address,value)
+      {
+        var ram = TB.RAM;
+        var a = parseAddress(address);
+        var v = Number(value) & 0xffff;
+        ram[a] = v & 0xff;
+        ram[(a+1)&0xffff] = (v >>> 8) & 0xff;
+        return v;
+      },
+
+      write: function(address,value)
+      {
+        var ram = TB.RAM;
+        var a = parseAddress(address);
+        var bytes = parseBytes(value);
+        for(var i=0;i<bytes.length;i++) ram[(a+i)&0xffff] = bytes[i] & 0xff;
+        return bytes.length;
+      },
+
+      load: function(address,value){ return TB.ram.write(address,value); },
+
+      fill: function(address,length,value)
+      {
+        var ram = TB.RAM;
+        var a = parseAddress(address);
+        var n = Math.max(0,Number(length)|0);
+        var b = Number(value) & 0xff;
+        for(var i=0;i<n;i++) ram[(a+i)&0xffff] = b;
+        return n;
+      },
+
+      dump: function(address,length,columns)
+      {
+        var ram = TB.RAM;
+        var a = parseAddress(address);
+        var n = Math.max(0,Number(length == null ? 16 : length)|0);
+        var cols = Math.max(1,Number(columns == null ? 16 : columns)|0);
+        var lines = [];
+        for(var offset=0;offset<n;offset+=cols)
+        {
+          var row = [];
+          var ascii = "";
+          var count = Math.min(cols,n-offset);
+          for(var i=0;i<count;i++)
+          {
+            var b = ram[(a+offset+i)&0xffff] & 0xff;
+            row.push(("0"+b.toString(16).toUpperCase()).slice(-2));
+            ascii += b>=32 && b<127 ? String.fromCharCode(b) : ".";
+          }
+          lines.push(hex((a+offset)&0xffff,4) + "  " + row.join(" ").padEnd(cols*3-1," ") + "  " + ascii);
+        }
+        return lines.join("\n");
+      }
+    }
+  };
+
+  function debuggerCpuBridge()
+  {
+    var bridge = global.DBG_TEST_CPU;
+
+    if(!bridge ||
+       typeof bridge.start !== "function" ||
+       typeof bridge.runUntil !== "function")
+    {
+      throw new Error("Debugger CPU bridge is not available.");
+    }
+
+    return bridge;
+  }
+
+  TB.cpu = {
+    start: function(address)
+    {
+      var state = debuggerCpuBridge().start(parseAddress(address));
+      if(!state) throw new Error("Unable to start debugger CPU.");
+      return state;
+    },
+
+    state: function()
+    {
+      return debuggerCpuBridge().state();
+    },
+
+    step: function(options)
+    {
+      return debuggerCpuBridge().step(options || {});
+    },
+
+    runUntil: function(address,maxInstructions,options)
+    {
+      return debuggerCpuBridge().runUntil(
+        parseAddress(address),
+        maxInstructions,
+        options || {}
+      );
+    },
+
+    describe: function(result)
+    {
+      if(result && result.diagnostic) return result.diagnostic;
+      var bridge = debuggerCpuBridge();
+      return typeof bridge.diagnostic === "function"
+        ? bridge.diagnostic(result || {})
+        : String(result && result.reason || "unknown result");
+
+    }
+  };
+
+  /*
+   * Call an assembler routine through a tiny JSR trampoline.
+   *
+   *   trampoline+0: JSR entry
+   *   trampoline+3: JMP trampoline+3
+   *
+   * runUntil() stops on trampoline+3 before the JMP executes, proving that
+   * the routine actually returned with RTS.
+   */
+  TB.call = function(entry,options)
+  {
+    options = options || {};
+
+    var entryAddress = parseAddress(entry);
+    var trampoline = options.trampoline == null
+      ? 0x0200
+      : parseAddress(options.trampoline);
+    var returnPC = (trampoline + 3) & 0xffff;
+
+    TB.ram.write(trampoline,[
+      0x20,
+      entryAddress & 0xff,
+      (entryAddress >>> 8) & 0xff,
+      0x4c,
+      returnPC & 0xff,
+      (returnPC >>> 8) & 0xff
+    ]);
+
+    TB.cpu.start(trampoline);
+
+    var result = TB.cpu.runUntil(
+      returnPC,
+      options.maxInstructions || 1000000,
+      {
+        captureWrites:!!options.captureWrites,
+        timeoutMs:options.timeoutMs == null ? 5000 : options.timeoutMs,
+        detectPcLoops:options.detectPcLoops !== false,
+        pcLoopMaxPeriod:options.pcLoopMaxPeriod == null ? 8 : options.pcLoopMaxPeriod,
+        pcLoopRepeatLimit:options.pcLoopRepeatLimit == null ? 1024 : options.pcLoopRepeatLimit,
+        inputPointerAddress:options.inputPointerAddress == null
+          ? TB.sym("inputPointer",null)
+          : parseAddress(options.inputPointerAddress),
+        outputPointerAddress:options.outputPointerAddress == null
+          ? TB.sym("outputPointer",null)
+          : parseAddress(options.outputPointerAddress)
+      }
+    );
+
+    result.entry = entryAddress;
+    result.trampoline = trampoline;
+    result.returnPC = returnPC;
+    return result;
+  };
+
+  /*
+   * Concise one-line algorithm result.  `checks` is an object of named boolean
+   * assertions.  A CPU timeout/loop/limit automatically makes the test fail.
+   * Details are printed only for a failure.
+   *
+   * Example:
+   *   TB.report("stored_000", {
+   *     inputConsumed: inputPointer === INPUT + 5,
+   *     zeroOutput: outputPointer === OUTPUT,
+   *     stackRestored: run.state && run.state.sp === 0xff
+   *   }, run);
+   */
+  TB.report = function(name,checks,run)
+  {
+    name = String(name || "test");
+    checks = checks || {};
+
+    var failed = [];
+    Object.keys(checks).forEach(function(key){
+      if(!checks[key]) failed.push(key);
+    });
+
+    var cpuFailed = !!run && !run.ok;
+    var pass = !cpuFailed && failed.length === 0;
+    var line;
+
+    if(pass)
+    {
+      line = "PASS " + name;
+      if(run)
+        line += " — " + run.instructions + " ins / "
+          + run.cycles + " cyc / "
+          + (Number(run.elapsedMs) || 0).toFixed(1) + " ms";
+    }
+    else
+    {
+      var parts = [];
+      if(failed.length) parts.push("checks: " + failed.join(", "));
+      if(run) parts.push(run.failureDiagnostic || TB.cpu.describe(run));
+      line = "FAIL " + name + (parts.length ? " — " + parts.join("; ") : "");
+    }
+
+    TB.print(line);
+
+    return {
+      pass:pass,
+      failed:failed,
+      line:line,
+      run:run || null
+    };
+  };
+
+
+  function harnessConsole()
+  {
+    return {
+      log: function(){ TB.print.apply(TB,arguments); },
+      info: function(){ TB.print.apply(TB,arguments); },
+      warn: function(){ termWrite(Array.prototype.slice.call(arguments).map(formatValue).join(" "),"warn"); },
+      error:function(){ termWrite(Array.prototype.slice.call(arguments).map(formatValue).join(" "),"error"); }
+    };
+  }
+
+  TB.eval = function(code)
+  {
+    code = String(code == null ? "" : code);
+    var RAM = TB.RAM;
+    var ram = TB.ram;
+    var sym = TB.sym;
+    var print = TB.print;
+    var console = harnessConsole();
+    // Deliberately trusted eval() test harness for this concept/debugging project.
+    return eval(code);
+  };
+
+  function runCode(code,echoResult)
+  {
+    try
+    {
+      var result = TB.eval(code);
+      if(echoResult && result !== undefined) termWrite("← " + formatValue(result),"result");
+      setStatus("ready");
+      return result;
+    }
+    catch(err)
+    {
+      termWrite("[ERROR] " + (err && err.stack ? err.stack : String(err)),"error");
+      setStatus("error");
+      return undefined;
+    }
+  }
+
+  function setStatus(text)
+  {
+    var node = el("DBG_testbenchStatus");
+    if(node) node.textContent = text;
+  }
+
+  function runEditor()
+  {
+    var editor = el("DBG_testScript");
+    if(!editor) return;
+    termWrite("▶ run script","command");
+    runCode(editor.value,false);
+  }
+
+  function clearConsole()
+  {
+    if(terminal && typeof terminal.clear === "function") terminal.clear();
+    var fallback = el("DBG_testConsoleFallback");
+    if(fallback) fallback.value = "";
+  }
+
+  function injectRam()
+  {
+    try
+    {
+      var address = parseAddress(el("DBG_testRamAddress").value);
+      var bytes = parseBytes(el("DBG_testRamData").value);
+      TB.ram.write(address,bytes);
+      termWrite("RAM ← " + bytes.length + " byte(s) @ " + hex(address,4),"ram");
+      setStatus(bytes.length + " byte(s) injected");
+    }
+    catch(err){ termWrite("[ERROR] " + err.message,"error"); setStatus("error"); }
+  }
+
+  function readRam()
+  {
+    try
+    {
+      var address = parseAddress(el("DBG_testRamAddress").value);
+      var length = Math.max(0,parseInt(el("DBG_testRamLength").value,10) || 16);
+      var dump = TB.ram.dump(address,length,16);
+      termWrite(dump,"ram");
+      var data = el("DBG_testRamData");
+      if(data) data.value = Array.from(TB.ram.read(address,length)).map(function(v){ return ("0"+v.toString(16).toUpperCase()).slice(-2); }).join(" ");
+      setStatus(length + " byte(s) read");
+    }
+    catch(err){ termWrite("[ERROR] " + err.message,"error"); setStatus("error"); }
+  }
+
+  function loadExample()
+  {
+    var editor = el("DBG_testScript");
+    if(!editor) return;
+    editor.value = [
+      "// DBG_RAM is exposed as RAM; helpers live under TB.",
+      "// Imported assembler labels work directly as RAM addresses:",
+      "// print(TB.hex(TB.sym('inflate'),4));",
+      "// print(TB.ram.dump('inflate_data', 32));",
+      "TB.ram.fill(0x3000, 16, 0xA5);",
+      "TB.ram.write(0x3004, [0x44,0x45,0x46,0x4C,0x41,0x54,0x45]);",
+      "print(TB.ram.dump(0x3000, 32));",
+      "",
+      "// Expressions also work directly in the console:",
+      "// TB.ram.read(0x3004, 7)",
+      "// TB.ram.read('inputPointer')",
+      "// RAM[0x3000]"
+    ].join("\n");
+    editor.focus();
+  }
+
+  function bindButton(id,handler)
+  {
+    var node = el(id);
+    if(node) node.addEventListener("click",handler);
+  }
+
+  function initTerminal()
+  {
+    var host = el("DBG_testConsole");
+    if(!host) return;
+
+    if(typeof global.TERMINAL === "function")
+    {
+      try
+      {
+        terminal = new global.TERMINAL({
+          container:"DBG_testConsole",
+          welcome:"JavaScript test harness ready.  Try <b>TB.sym(&quot;label&quot;)</b> or <b>TB.ram.dump(&quot;label&quot;,16)</b>.",
+          prompt:"JS",
+          separator:"&gt;",
+          storageKey:"RetroAppleJS.Debugger.TestBench",
+          preserveWhitespace:true,
+          allowEmptyInput:false
+        });
+        terminal.onInput(function(command,params,commandLine){
+          runCode(commandLine,true);
+          return true;
+        });
+        return;
+      }
+      catch(err)
+      {
+        host.innerHTML = "";
+        termWrite("COM_oTERM initialization failed: " + err.message,"error");
+      }
+    }
+
+    var fallback = document.createElement("textarea");
+    fallback.id = "DBG_testConsoleFallback";
+    fallback.readOnly = true;
+    fallback.spellcheck = false;
+    host.appendChild(fallback);
+    termWrite("Fallback console active; COM_oTERM.js was not available.","warn");
+  }
+
+  function layoutToolbox()
+  {
+    var tools = el("tab3.2");
+    var bench = tools ? tools.querySelector(".DBG_testbenchToolbox") : null;
+    var symbolBox = tools ? tools.querySelector(".DBG_symbolBox") : null;
+    var symbolToolbox = symbolBox && symbolBox.closest ? symbolBox.closest(".toolbox") : null;
+    var debuggerBox = el("tab3");
+
+    /* getBoundingClientRect() is zero while tab3.2 is hidden. */
+    if(!tools || tools.hidden || !bench || !symbolToolbox || !debuggerBox) return false;
+
+    var toolsRect = tools.getBoundingClientRect();
+    var symbolRect = symbolToolbox.getBoundingClientRect();
+    var debuggerRect = debuggerBox.getBoundingClientRect();
+
+    /*
+     * Keep a 10px gutter after SYMBOL TABLE, then consume all remaining
+     * horizontal space up to 10px before the Debugger's right edge.
+     */
+    var left = Math.round(symbolRect.right - toolsRect.left + 10);
+    var pageLeft = toolsRect.left + left;
+    var width = Math.max(350,Math.round(debuggerRect.right - pageLeft - 10));
+
+    bench.style.left = left + "px";
+    bench.style.top = "0px";
+    bench.style.width = width + "px";
+    bench.style.maxWidth = "none";
+    return true;
+  }
+
+  function bindToolboxLayout()
+  {
+    var tools = el("tab3.2");
+    var symbolBox = tools ? tools.querySelector(".DBG_symbolBox") : null;
+    var symbolToolbox = symbolBox && symbolBox.closest ? symbolBox.closest(".toolbox") : null;
+    var debuggerBox = el("tab3");
+
+    if(!tools) return;
+
+    function scheduleLayout()
+    {
+      if(typeof global.requestAnimationFrame === "function")
+        global.requestAnimationFrame(layoutToolbox);
+      else
+        global.setTimeout(layoutToolbox,0);
+    }
+
+    /* Re-layout when Debugger Tools is opened/closed. */
+    if(typeof global.MutationObserver === "function")
+    {
+      var observer = new global.MutationObserver(scheduleLayout);
+      observer.observe(tools,{attributes:true,attributeFilter:["hidden","style","class"]});
+    }
+
+    /* Also follow later toolbox-width/theme/layout changes. */
+    if(typeof global.ResizeObserver === "function")
+    {
+      var resizeObserver = new global.ResizeObserver(scheduleLayout);
+      if(symbolToolbox) resizeObserver.observe(symbolToolbox);
+      if(debuggerBox) resizeObserver.observe(debuggerBox);
+    }
+
+    global.addEventListener("resize",scheduleLayout);
+    scheduleLayout();
+  }
+
+  function init()
+  {
+    if(!el("DBG_testbenchBox")) return false;
+    global.DBG_TESTBENCH = TB;
+    global.TB = TB;
+
+    initTerminal();
+    bindToolboxLayout();
+    bindButton("DBG_testRunButton",runEditor);
+    bindButton("DBG_testClearConsoleButton",clearConsole);
+    bindButton("DBG_testRamInjectButton",injectRam);
+    bindButton("DBG_testRamReadButton",readRam);
+    bindButton("DBG_testExampleButton",loadExample);
+
+    var editor = el("DBG_testScript");
+    if(editor)
+      editor.addEventListener("keydown",function(ev){
+        if((ev.ctrlKey || ev.metaKey) && ev.key === "Enter")
+        {
+          ev.preventDefault();
+          runEditor();
+        }
+      });
+
+    setStatus("ready");
+    return true;
+  }
+
+  TB.ui = {
+    init:init,
+    run:runEditor,
+    clear:clearConsole,
+    inject:injectRam,
+    read:readRam,
+    example:loadExample,
+    layout:layoutToolbox
+  };
+
+  global.DBG_TESTBENCH = TB;
+  global.TB = TB;
+
+  if(global.oCOM && typeof global.oCOM.addToEventStack === "function")
+    global.oCOM.addToEventStack("onload",init);
+  else
+    global.addEventListener("load",init);
+
+})(window);
+
+</script>
+    <script type="text/javascript">
+(function(g){
+'use strict';
+
+var D=g.document||null,term=null,armed=false,arming=false,callback=null,inCallback=false,haltRequested=false;
+
+function E(id){return D&&D.getElementById?D.getElementById(id):null}
+function DBG(){return g.oEMU&&g.oEMU.component&&g.oEMU.component.CPU?g.oEMU.component.CPU.Apple2Debug:null}
+function M(){var m=g.apple2plus;if(!m||!m.cpuObj||!m.hwObj)throw Error('Live Apple II runtime is not available.');return m}
+function C(){var c=M().cpuObj();if(!c||!c.watch)throw Error('Live 6502 state API is not available.');return c}
+function W(){var h=M().hwObj();if(!h||!h.safe_read||!Array.isArray(h.WR)||!h.lineDecode)throw Error('Live mapped-memory API is not available.');return h}
+function H(v,w){w=w||2;var mask=w<=2?255:65535;return '$'+('000000000000'+((Number(v)||0)&mask).toString(16).toUpperCase()).slice(-w)}
+function num(s){s=String(s==null?'':s).trim();if(/^\$[\da-f]+$/i.test(s))return parseInt(s.slice(1),16);if(/^0x[\da-f]+$/i.test(s))return parseInt(s,16);if(/^\d+$/.test(s))return parseInt(s,10);return null}
+function out(t,ch){t=String(t==null?'':t);if(term&&term.write)term.write(t+(t.endsWith('\n')?'':'\n'),ch||'host');else{var f=E('DBG_steptraceConsoleFallback');if(f){f.value+=t+(t.endsWith('\n')?'':'\n');f.scrollTop=f.scrollHeight}else if(g.console&&g.console.log)g.console.log(t)}}
+function bytes(v){
+  if(v instanceof Uint8Array)return new Uint8Array(v);
+  if(Array.isArray(v))return Uint8Array.from(v.map(function(x){return Number(x)&255}));
+  if(typeof v==='number')return Uint8Array.of(v&255);
+  var s=String(v==null?'':v).trim();if(!s)return new Uint8Array(0);
+  return Uint8Array.from(s.split(/[\s,;]+/).filter(Boolean).map(function(t){
+    if(/^\$[\da-f]+$/i.test(t))return parseInt(t.slice(1),16)&255;
+    if(/^0x[\da-f]+$/i.test(t))return parseInt(t,16)&255;
+    if(/^[\da-f]{1,2}$/i.test(t))return parseInt(t,16)&255;
+    if(/^\d+$/.test(t))return parseInt(t,10)&255;
+    throw Error("Invalid byte '"+t+"'.");
+  }));
+}
+function symValue(name){var d=DBG();return d&&typeof d.resolveSymbol==='function'?d.resolveSymbol(name):null}
+function adr(v){
+  if(typeof v==='number')return v&65535;
+  var s=String(v==null?'':v).trim(),n=num(s);if(n!==null)return n&65535;
+  var m=/^(.*?)\s*([+-])\s*(\$[\da-f]+|0x[\da-f]+|\d+)$/i.exec(s);
+  if(m){var base=symValue(m[1].trim()),delta=num(m[3]);if(base!==null&&delta!==null)return(base+(m[2]==='-'?-delta:delta))&65535}
+  n=symValue(s);if(n!==null)return n&65535;
+  throw Error("Unknown STEP TRACE symbol/address '"+s+"'.");
+}
+function rb(a){a&=65535;if(a>=0xc000&&a<0xc100)throw Error('STEP TRACE safe read masks Apple II I/O at '+H(a,4)+'.');var v=W().safe_read(a);if(v==null)throw Error('Mapped memory unreadable at '+H(a,4)+'.');return Number(v)&255}
+function wb(a,v){a&=65535;v=Number(v)&255;if(a>=0xc000&&a<=0xcfff)throw Error('Scenario RAM injection refuses Apple II I/O/slot space '+H(a,4)+'.');var h=W(),f=h.WR[h.lineDecode(a)];if(typeof f!=='function')throw Error('Mapped memory not writable at '+H(a,4)+'.');f(a,v);if((a<0xc000||a>=0xc100)&&rb(a)!==v)throw Error('Write did not stick at '+H(a,4)+'.');return v}
+function state(){var s=C().watch();return{pc:+s.pc&65535,a:+s.a&255,x:+s.x&255,y:+s.y&255,sp:+s.sp&255,p:+s.p&255,cycle_delay:+s.cycle_delay|0,ic:Math.max(0,Math.floor(+s.ic||0))}}
+function syncButton(){
+  var b=E('DBG_steptraceRunButton');if(!b)return;
+  b.setAttribute('aria-pressed',armed?'true':'false');
+  b.title=armed?'RUN script at breakpoint — execute scenario callback and continue':'HALT at breakpoint — BREAK IF pauses execution';
+  b.innerHTML=armed?'<i class="fa fa-sign-in-alt"></i> RUN script at breakpoint':'<i class="fa fa-pause"></i> HALT at breakpoint';
+}
+function clearAction(){var d=DBG();if(d&&typeof d.setBreakpointActionHandler==='function')d.setBreakpointActionHandler(null);armed=false;callback=null;syncButton();return true}
+function onBreakpoint(fn){
+  if(!arming)throw Error('onBreakpoint() is only valid while arming the scenario script.');
+  if(typeof fn!=='function')throw TypeError('onBreakpoint() requires a function.');
+  if(callback)throw Error('Scenario script may register exactly one onBreakpoint() callback.');
+  callback=fn;return fn;
+}
+function haltAtBreakpoint(){if(!inCallback)throw Error('haltAtBreakpoint() is only valid inside onBreakpoint().');haltRequested=true;return true}
+function dispatch(bp){
+  if(!armed||typeof callback!=='function')return;
+  haltRequested=false;inCallback=true;
+  try{callback(bp)}catch(err){armed=false;var d=DBG();if(d&&d.setBreakpointActionHandler)d.setBreakpointActionHandler(null);out('ERROR breakpoint scenario — '+(err&&err.message?err.message:String(err))+(err&&err.stack?'\n'+err.stack:''),'error');syncButton();throw err}
+  finally{inCallback=false}
+  if(haltRequested){var dbg=DBG();armed=false;if(dbg&&dbg.setBreakpointActionHandler)dbg.setBreakpointActionHandler(null);syncButton();return{halt:true}}
+}
+function armScript(code){
+  if(armed)return true;
+  var d=DBG();if(!d||typeof d.setBreakpointActionHandler!=='function')throw Error('STEP TRACE breakpoint-action API is unavailable.');
+  callback=null;arming=true;
+  try{
+    var ram=S.ram,cpu=S.cpu,assert=S.assert,sym=S.sym,symbol=S.symbol,symbols=S.symbols,print=S.print;
+    eval(String(code||''));
+  }catch(err){callback=null;out('ERROR arming breakpoint scenario — '+(err&&err.message?err.message:String(err))+(err&&err.stack?'\n'+err.stack:''),'error');throw err}
+  finally{arming=false}
+  if(typeof callback!=='function'){callback=null;throw Error('Scenario script must register exactly one onBreakpoint() callback.');}
+  d.setBreakpointActionHandler(dispatch);armed=true;syncButton();return true;
+}
+function mode(){var d=DBG(),st=d&&typeof d.breakpointActionState==='function'?d.breakpointActionState():null;if(st&&!st.active&&armed){armed=false;callback=null}return armed?'run':'halt'}
+
+var S={version:'0.3-breakpoint-scenario',hex:H,address:adr,bytes:bytes,print:function(){out([].slice.call(arguments).map(String).join(' '));return arguments[arguments.length-1]}};
+S.ram={
+  read:function(a,n){a=adr(a);n=n==null?1:Math.max(0,+n|0);if(n===1)return rb(a);var x=new Uint8Array(n);for(var i=0;i<n;i++)x[i]=rb(a+i);return x},
+  read16:function(a){a=adr(a);return rb(a)|(rb(a+1)<<8)},
+  write:function(a,v){a=adr(a);var x=bytes(v);for(var i=0;i<x.length;i++)wb(a+i,x[i]);return x.length},
+  load:function(a,v){return S.ram.write(a,v)},
+  write16:function(a,v){a=adr(a);v=+v&65535;wb(a,v);wb(a+1,v>>8);return v},
+  fill:function(a,n,v){a=adr(a);for(var i=0;i<(+n|0);i++)wb(a+i,v);return+n|0},
+  dump:function(a,n,c){a=adr(a);n=Math.max(0,n==null?16:+n|0);c=Math.max(1,c==null?16:+c|0);var z=[];for(var o=0;o<n;o+=c){var r=[],q='';for(var i=0;i<Math.min(c,n-o);i++){var b=rb(a+o+i);r.push(('0'+b.toString(16).toUpperCase()).slice(-2));q+=b>=32&&b<127?String.fromCharCode(b):'.'}z.push(H(a+o,4)+'  '+r.join(' ')+'  '+q)}return z.join('\n')}
+};
+S.cpu={state:state};
+S.assert=function(value,description){if(typeof value!=='boolean')throw TypeError('assert() requires a JavaScript boolean.');var text=String(description||'assertion');out((value?'PASS ':'FAIL ')+text,value?'result':'error');return value};
+S.sym=function(name,fallback){var v=symValue(name);if(v!==null)return v;if(arguments.length>1)return fallback;var e=Error("Unknown STEP TRACE symbol '"+name+"'.");e.code='STB_UNKNOWN_SYMBOL';throw e};
+S.symbol=function(name){var d=DBG();return d&&typeof d.symbol==='function'?d.symbol(name):null};
+S.symbols=function(){var d=DBG();return d&&typeof d.symbols==='function'?d.symbols():[]};
+S.onBreakpoint=onBreakpoint;S.haltAtBreakpoint=haltAtBreakpoint;S.arm=armScript;S.disarm=clearAction;S.mode=mode;
+
+function evaluateEditor(code){try{return armScript(code)}catch(_){clearAction();return false}}
+function rename(root){if(!root)return;var a=[root];if(root.querySelectorAll)a=a.concat([].slice.call(root.querySelectorAll('[id]')));a.forEach(function(n){if(n.id&&/^DBG_test/.test(n.id))n.id=n.id.replace(/^DBG_test/,'DBG_steptrace')})}
+function loadExample(){var e=E('DBG_steptraceScript');if(!e)return;e.value="let vector = 0;\nonBreakpoint(function(bp) {\n  print('break', hex(bp.PC,4), 'hit', bp.hit);\n  if (++vector >= 3) haltAtBreakpoint();\n});";if(e.focus)e.focus()}
+async function copyConsole()
+{
+  var host=E('DBG_steptraceConsole'),fallback=E('DBG_steptraceConsoleFallback');
+  var output=host&&host.querySelector?host.querySelector('output'):null;
+  var text=fallback?fallback.value:output?(typeof output.innerText==='string'?output.innerText:output.textContent):'';
+  try
+  {
+    if(g.navigator&&g.navigator.clipboard&&typeof g.navigator.clipboard.writeText==='function')
+    {
+      try{await g.navigator.clipboard.writeText(text);return true}catch(_){}
+    }
+    // Retain copy support for local/insecure pages without the Clipboard API.
+    var field=D.createElement('textarea'),active=D.activeElement;
+    field.value=text;field.readOnly=true;field.tabIndex=-1;
+    field.setAttribute('aria-hidden','true');
+    field.style.cssText='position:fixed;left:0;top:0;opacity:0;pointer-events:none';
+    D.body.appendChild(field);
+    try
+    {
+      field.focus();field.select();
+      if(!D.execCommand||!D.execCommand('copy'))throw Error('Copy unavailable.');
+    }
+    finally
+    {
+      field.parentNode.removeChild(field);
+      if(active&&active.focus)active.focus({preventScroll:true});
+    }
+    return true;
+  }
+  catch(_){out('Clipboard copy failed; select and copy console text manually.','error');return false}
+}
+function initTerminal(){
+  if(term||typeof g.TERMINAL!=='function'||!E('DBG_steptraceConsole'))return;
+  try{
+    term=new g.TERMINAL({container:'DBG_steptraceConsole',welcome:'STEP TRACE breakpoint scenario ready.',prompt:'ST',separator:'&gt;',storageKey:'RetroAppleJS.Debugger.StepTraceScenario',preserveWhitespace:true,allowEmptyInput:false});
+    if(term&&typeof term.onInput==='function')term.onInput(function(){out('Use the scenario editor and HALT/RUN control.','host');return true});
+  }catch(_){term=null}
+}
+var uiObserver=null,resizeBound=false;
+function setTriggerState(open){var button=E('cpuDbg_scenario');if(!button)return;button.style.opacity=open?'1':'.45';button.setAttribute('aria-pressed',open?'true':'false')}
+function companionPopup(){
+  var p=E('DBG_steptraceScenarioPopup');
+  if(p)return p;
+  if(!D||!D.createElement)return null;
+
+  p=D.createElement('div');
+  p.id='DBG_steptraceScenarioPopup';
+
+  // Match the visual shell of SYSTEM/SLOTS/STEP TRACE,
+  // while enabling scenario-specific CSS overrides.
+  p.className='appbox DBG_steptraceScenarioPopup';
+
+  p.hidden=true;
+  p.style.cssText='position:absolute;z-index:2000;';
+  (D.body||D.documentElement).appendChild(p);
+  return p;
+}
+function positionPopup(){
+  var p=E('DBG_steptraceScenarioPopup'),d=E('cpuDbg_popup');
+  if(!p||!d||p.hidden||!d.getBoundingClientRect)return false;
+
+  var r=d.getBoundingClientRect();
+  var sx=g.pageXOffset || D.documentElement.scrollLeft || D.body.scrollLeft || 0;
+  var sy=g.pageYOffset || D.documentElement.scrollTop  || D.body.scrollTop  || 0;
+
+  p.style.left=Math.round(r.right+sx+4)+'px';
+  p.style.top=Math.round(r.top+sy)+'px';
+  return true;
+}
+function buildPopup(){
+  var p=companionPopup();if(!p)return false;if(E('DBG_steptracebenchBox')){syncButton();return true}var b=E('DBG_testbenchBox');if(!b||!b.cloneNode)return false;
+  var q=b.cloneNode(true);rename(q);if(q.classList)q.classList.remove('appbox');var title=q.querySelector&&q.querySelector('.DBG_testbenchTitle');if(title)title.textContent='STEP TRACE SCENARIO';
+  var header=q.querySelector&&q.querySelector('.DBG_testbenchHeader'),headerButtons=q.querySelector&&q.querySelector('.DBG_testbenchHeaderButtons');
+  if(header&&D.createElement){var close=D.createElement('button');close.type='button';close.textContent='×';close.title='Close STEP TRACE scenario';close.style.cssText='float:right;margin-left:6px;padding:0 5px;font-size:11px';close.onclick=function(){S.ui.close()};(headerButtons||header).appendChild(close)}
+  var ed=q.querySelector&&q.querySelector('#DBG_steptraceScript');if(ed){ed.value="let vector = 0;\nonBreakpoint(function(bp) {\n  print('break', hex(bp.PC,4), 'hit', bp.hit);\n  if (++vector >= 3) haltAtBreakpoint();\n});";ed.onkeydown=function(ev){if((ev.ctrlKey||ev.metaKey)&&ev.key==='Enter'&&!armed){ev.preventDefault();evaluateEditor(ed.value)}}}
+  p.appendChild(q);initTerminal();
+  var run=E('DBG_steptraceRunButton');if(run)run.onclick=function(){if(armed)clearAction();else{var x=E('DBG_steptraceScript');if(x)evaluateEditor(x.value)};syncButton()};
+  var example=E('DBG_steptraceExampleButton');if(example)example.onclick=loadExample;
+  var clear=E('DBG_steptraceClearConsoleButton');if(clear)clear.onclick=function(){if(term&&term.clear)term.clear();var f=E('DBG_steptraceConsoleFallback');if(f)f.value=''};
+  if(clear&&clear.parentNode&&D.createElement)
+  {
+    var copy=D.createElement('button');copy.id='DBG_steptraceCopyConsoleButton';
+    copy.type='button';copy.className=clear.className;copy.title='Copy console output to clipboard';
+    copy.innerHTML='<i class="fa fa-copy" aria-hidden="true"></i> copy';copy.onclick=copyConsole;
+    clear.parentNode.insertBefore(copy,clear);
+  }
+  var inj=E('DBG_steptraceRamInjectButton');if(inj)inj.onclick=function(){S.ram.write(E('DBG_steptraceRamAddress').value,E('DBG_steptraceRamData').value)};
+  var rd=E('DBG_steptraceRamReadButton');if(rd)rd.onclick=function(){var a=E('DBG_steptraceRamAddress').value,n=parseInt(E('DBG_steptraceRamLength').value,10)||16;out(S.ram.dump(a,n))};
+  syncButton();return true;
+}
+function installTrigger(){if(E('cpuDbg_scenario'))return true;var play=E('cpuDbg_play');if(!play||!play.parentNode||!D.createElement)return false;var button=D.createElement('i');button.id='cpuDbg_scenario';button.className='fa fa-code';button.setAttribute('role','button');button.setAttribute('aria-pressed','false');button.title='Open STEP TRACE scenario test script';button.style.cssText='font-size:11px;cursor:pointer;opacity:.45;margin-left:2px';button.onclick=function(){S.ui.toggle()};if(play.nextSibling)play.parentNode.insertBefore(button,play.nextSibling);else play.parentNode.appendChild(button);return true}
+function init(){
+  var ok=installTrigger();
+  companionPopup();
+  return ok;
+}
+S.ui={init:init,open:function(){init();if(!buildPopup())return false;var p=E('DBG_steptraceScenarioPopup');if(!p)return false;p.hidden=false;setTriggerState(true);syncButton();positionPopup();return true},close:function(){var p=E('DBG_steptraceScenarioPopup');if(p)p.hidden=true;setTriggerState(false);return true},toggle:function(){var p=E('DBG_steptraceScenarioPopup');if(!p||p.hidden)return S.ui.open();return S.ui.close()},position:positionPopup,example:loadExample};
+
+g.DBG_STEPTRACE_SCENARIO=S;g.STB=S;
+g.onBreakpoint=onBreakpoint;g.haltAtBreakpoint=haltAtBreakpoint;g.ram=S.ram;g.cpu=S.cpu;g.assert=S.assert;g.sym=S.sym;g.symbol=S.symbol;g.symbols=S.symbols;g.print=S.print;
+if(g.oCOM&&g.oCOM.addToEventStack)g.oCOM.addToEventStack('onload',init);else if(g.addEventListener)g.addEventListener('load',init);
+})(window);
+
+</script>
+    <script type="text/javascript">
+(function(g){
+'use strict';
+var D=g.document,resizeBound=false,wrapped=false,tracePositioned=false;
+function E(id){return D&&D.getElementById?D.getElementById(id):null}
+function referenceToolboxes()
+{
+  var tab=E('tab1.1'),boxes=[];
+  if(!tab||!tab.children)return boxes;
+  for(var i=0;i<tab.children.length;i++)
+  {
+    var n=tab.children[i];
+    if(n&&n.classList&&n.classList.contains('toolbox')&&n.id!=='feature_box')boxes.push(n);
+  }
+  return boxes;
+}
+function toolboxReferenceGap()
+{
+  var boxes=referenceToolboxes();
+  if(boxes.length<2||!boxes[0].getBoundingClientRect||!boxes[1].getBoundingClientRect)return 3;
+  var gap=Math.round(boxes[1].getBoundingClientRect().left-boxes[0].getBoundingClientRect().right);
+  return gap>=1&&gap<=16?gap:3;
+}
+function normalizeTracePosition(gap)
+{
+  var boxes=referenceToolboxes(),dbg=E('cpuDbg_popup');
+  if(tracePositioned||boxes.length<2||!dbg||!dbg.getBoundingClientRect)return;
+  var slot=boxes[1].getBoundingClientRect(),r=dbg.getBoundingClientRect();
+  if(!slot.width||!r.width)return;
+  var delta=Math.round(slot.right+gap-r.left);
+  if(Math.abs(delta)<=24)
+  {
+    dbg.style.position='relative';
+    dbg.style.left=delta+'px';
+    tracePositioned=true;
+  }
+}
+function normalizeTraceWidth(gap)
+{
+  var dbg=E('cpuDbg_popup');
+  if(!dbg||!dbg.getBoundingClientRect)return 0;
+  var delta=Math.max(0,8-gap);
+  if(dbg._stepTraceScenarioBaseWidth==null)
+    dbg._stepTraceScenarioBaseWidth=dbg.getBoundingClientRect().width;
+  if(dbg._stepTraceScenarioBaseWidth>0)
+  {
+    dbg.style.boxSizing='border-box';
+    dbg.style.width=Math.round(dbg._stepTraceScenarioBaseWidth+delta)+'px';
+  }
+  return delta;
+}
+function positionPopup()
+{
+  var p=E('DBG_steptraceScenarioPopup'),dbg=E('cpuDbg_popup');
+  if(!p||!dbg||p.hidden||!dbg.getBoundingClientRect)return false;
+  var gap=toolboxReferenceGap(),vw=g.innerWidth||(D.documentElement&&D.documentElement.clientWidth)||1024;
+  normalizeTracePosition(gap);
+  normalizeTraceWidth(gap);
+  var r=dbg.getBoundingClientRect(),preferred=460;
+  var rightRoom=Math.max(0,vw-gap-r.right),pw=Math.min(preferred,rightRoom);
+  var left;
+  if(pw>=320) left=r.right+gap;
+  else
+  {
+    pw=Math.min(preferred,Math.max(320,r.left-gap*2));
+    left=Math.max(gap,r.left-pw-gap);
+  }
+  p.style.width=Math.round(pw)+'px';
+  p.style.maxWidth='calc(100vw - '+(gap*2)+'px)';
+  p.style.left=Math.round(left)+'px';
+  p.style.top=Math.round(r.top)+'px';
+  return true;
+}
+function loadStyle()
+{
+  if(!D||E('DBG_steptraceScenarioLayoutStyle'))return;
+  var link=D.createElement('link');
+  link.id='DBG_steptraceScenarioLayoutStyle';
+  link.rel='stylesheet';
+  link.href='res/DBG_steptrace_scenario_layout.css';
+  (D.head||D.documentElement).appendChild(link);
+}
+function scopePopup()
+{
+  var p=E('DBG_steptraceScenarioPopup');
+  if(!p||!g.oCOM||!oCOM.POPUP||typeof oCOM.POPUP.addScope!=='function')return false;
+  oCOM.POPUP.addScope("DBG_steptraceScenarioPopup","tab1.1");
+  return true;
+}
+function tabActive()
+{
+  var tab=E('tab1.1');
+  return !!(tab&&!tab.hidden);
+}
+function wrapUi()
+{
+  var S=g.DBG_STEPTRACE_SCENARIO||g.STB;
+  if(wrapped||!S||!S.ui)return false;
+  wrapped=true;
+  var open=S.ui.open,close=S.ui.close;
+  S.ui.open=function()
+  {
+    var ok=open.apply(S.ui,arguments);
+    scopePopup();
+    if(g.oCOM&&oCOM.POPUP&&typeof oCOM.POPUP.set_state==='function')
+      oCOM.POPUP.set_state("DBG_steptraceScenarioPopup",false);
+    positionPopup();
+    return ok;
+  };
+  S.ui.close=function()
+  {
+    if(!tabActive()&&g.oCOM&&oCOM.POPUP&&typeof oCOM.POPUP.syncScopes==='function')
+    {
+      oCOM.POPUP.syncScopes();
+      return true;
+    }
+    var ok=close.apply(S.ui,arguments);
+    if(g.oCOM&&oCOM.POPUP&&typeof oCOM.POPUP.set_state==='function')
+      oCOM.POPUP.set_state("DBG_steptraceScenarioPopup",true);
+    return ok;
+  };
+  S.ui.position=positionPopup;
+  return true;
+}
+function apply()
+{
+  loadStyle();
+  var S=g.DBG_STEPTRACE_SCENARIO||g.STB;
+  if(S&&S.ui&&typeof S.ui.init==='function')S.ui.init();
+  scopePopup();
+  wrapUi();
+  var gap=toolboxReferenceGap();
+  normalizeTracePosition(gap);
+  normalizeTraceWidth(gap);
+  positionPopup();
+}
+function init()
+{
+  apply();
+  if(!resizeBound&&g.addEventListener){g.addEventListener('resize',apply);resizeBound=true}
+}
+if(g.oCOM&&g.oCOM.addToEventStack)g.oCOM.addToEventStack('onload',init);
+else if(g.addEventListener)g.addEventListener('load',init);
 })(window);
 
 </script>
@@ -76733,7 +79239,7 @@ Label1 TXA
        return result;
      }
 
-     /* Narrow public surface consumed by res/DBG_testbench.js. */
+     /* Narrow public surface consumed by res/DBG_testbench_legacy.js. */
      window.DBG_TEST_CPU = {
        start:DBG_testCpuStart,
        state:DBG_testCpuState,
