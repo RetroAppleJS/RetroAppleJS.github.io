@@ -64,13 +64,13 @@ Completed items remain checked; unchecked items are planned or still need furthe
 - [ ] EMULATOR: KATAKANA apple][ J-plus keyboard & font logic
 - [ ] EMULATOR: Pasteboard macro scripting with keyboard/paddle/mouse recording, playback, and conditional stops
 - [ ] EMULATOR: Switch between US and Japanese Apple II keyboard layouts
-- [ ] EMULATOR: Complete Mockingboard sound emulation and integrate Saturn RAM expansion
+- [ ] EMULATOR: Complete Mockingboard sound emulation
 - [x] EMULATOR: Add memory expansion peripherals to complete compatibility (MS16K, SATURN, LEGEND, RAMFAC)
 - [ ] EMULATOR: Extended URL instant configuration options
 - [ ] EMULATOR: LIRON HD20 & UNIDISK - track-by-track compression/decompression (saving browser RAM)
 - [ ] EMULATOR: HGR/HGR2/GR screen capture (.bin / .png / .animgif with timer or variable interval stopframe)
 - [x] EMULATOR: VIDEO vaporlock compatibility (detect and display vertical blank)
-- [ ] EMULATOR: Peripherals optionally expose a generic scriptable port facade together with a machine-readable API contract. EMU_PORT_SCRIPT consumes that interface and provides a reusable JavaScript scripting console. Serial Pro should be the first peripheral using it.
+- [x] EMULATOR: Peripherals optionally expose a generic scriptable port facade together with a machine-readable API contract. EMU_PORT_SCRIPT consumes that interface and provides a reusable JavaScript scripting console. Serial Pro should be the first peripheral using it.
 - [ ] ASSEMBLER - disassembler tool
 - [x] RETRO LAB: Real-time camera processing and a configurable [ConvertHGR tool](tools/ConvertHGR.html)
 - [ ] RETRO LAB: HGR paint tool (https://hgrtool.art/imgedit.html)
