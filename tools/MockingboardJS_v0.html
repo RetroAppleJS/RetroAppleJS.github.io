@@ -101,12 +101,12 @@
 
     function showvol(pos)
     {
-        document.getElementById('voldisp').innerHTML = pos;
+        document.getElementById('voldisp').textContent = pos;
     }
 
     function change_volume(pos)
     {
-        document.getElementById('voldisp').innerHTML = pos;
+        document.getElementById('voldisp').textContent = pos;
         var scale = Math.round(pos/100*255);
         ayumi.setMasterVolume(scale);
     }
