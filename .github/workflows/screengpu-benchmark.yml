@@ -1,0 +1,33 @@
+name: ScreenGPU benchmark smoke
+on:
+  pull_request:
+    paths:
+      - 'tools/ScreenGPU*'
+      - 'res/EMU_DEVICE_video_GPU.js'
+      - 'res/EMU_VIDEO_raster.js'
+      - 'res/EMU_apple2roms.js'
+      - 'tests/screengpu_benchmark.test.js'
+      - 'tests/run_screengpu_browser.cjs'
+      - '.github/workflows/screengpu-benchmark.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run Node regression suite
+        run: node --test tests/*.test.js
+      - name: Install browser
+        run: |
+          npm install --prefix "$RUNNER_TEMP/screengpu-tests" --no-audit --no-fund playwright@1.62.1
+          node "$RUNNER_TEMP/screengpu-tests/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Exercise GPU.js kernels and benchmark controls
+        env:
+          NODE_PATH: '${{ runner.temp }}/screengpu-tests/node_modules'
+        run: node tests/run_screengpu_browser.cjs
