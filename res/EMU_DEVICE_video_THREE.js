@@ -372,10 +372,26 @@ var APPLE2_THREE_CFG_DEFAULT =
         var cfg = Apple2VideoTHREE_copyConfig();
 
         var renderLoopStarted = false;
+        var renderLoopRequest = null;
+        var rendererActive = true;
         var resizeListenerInstalled = false;
         var lastTextureUpdate = 0;
         var lastRenderUpdate = 0;
         var sceneLoadStarted = false;
+
+        this.setActive = function(active)
+        {
+            rendererActive = !!active;
+            if(this.video2D && typeof(this.video2D.setActive)==="function")
+                this.video2D.setActive(rendererActive);
+            if(!rendererActive)
+            {
+                if(renderLoopRequest!==null) window.cancelAnimationFrame(renderLoopRequest);
+                renderLoopRequest = null;
+                renderLoopStarted = false;
+            }
+            else if(this.renderer) this.startRenderLoop();
+        };
 
         this.ctx = canvas || null;            // For Apple2Plus this is the visible canvas.
         this.canvas = canvas || null;
@@ -474,6 +490,7 @@ var APPLE2_THREE_CFG_DEFAULT =
             }
 
             this.video2D = new Apple2VideoTHREE_2D(this.videoCanvas);
+            if(typeof(this.video2D.setActive)==="function") this.video2D.setActive(rendererActive);
             this.video2D.vidram = this.vidram;
             this.video2D.hw = this.hw;
 
@@ -1162,7 +1179,7 @@ var APPLE2_THREE_CFG_DEFAULT =
 
         this.renderTHREEScene = function()
         {
-            if (!this.renderer || !this.scene || !this.camera) return;
+            if (!rendererActive || !this.renderer || !this.scene || !this.camera) return;
 
             this.renderer.setRenderTarget(null);
             this.renderer.render(this.scene,this.camera);           
@@ -1928,12 +1945,13 @@ var APPLE2_THREE_CFG_DEFAULT =
 
         this.startRenderLoop = function()
         {
-            if (renderLoopStarted) return;
+            if (!rendererActive || renderLoopStarted) return;
             renderLoopStarted = true;
 
             function animate(now)
             {
-                window.requestAnimationFrame(animate);
+                if(!rendererActive) return;
+                renderLoopRequest = window.requestAnimationFrame(animate);
 
                 var renderInterval = 1000 / Math.max(1, cfg.renderFPS | 0);
                 if (video3D.frameTiming!=="vblank" && now - lastRenderUpdate < renderInterval)
@@ -1948,7 +1966,7 @@ var APPLE2_THREE_CFG_DEFAULT =
                 video3D.renderTHREEScene();
             }
 
-            window.requestAnimationFrame(animate);
+            renderLoopRequest = window.requestAnimationFrame(animate);
         };
 
         this.pumpTexture = function(now)

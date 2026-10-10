@@ -1,0 +1,37 @@
+name: WebGPU video regression
+
+on:
+  pull_request:
+    paths:
+      - 'res/EMU_DEVICE_video_*.js'
+      - 'res/EMU_VIDEO_raster.js'
+      - 'res/EMU_apple2roms.js'
+      - 'index.html'
+      - 'tests/video_webgpu*'
+      - 'tests/video_mux_lifecycle.test.js'
+      - 'tests/run_video_webgpu_browser.cjs'
+      - '.github/workflows/webgpu-video.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run Node regression suite
+        run: node --test tests/*.test.js
+      - name: Install test browser
+        run: |
+          npm install --prefix "$RUNNER_TEMP/webgpu-tests" --no-audit --no-fund playwright@1.62.1
+          node "$RUNNER_TEMP/webgpu-tests/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Compare WebGPU shader pixels against the raster reference
+        env:
+          NODE_PATH: '${{ runner.temp }}/webgpu-tests/node_modules'
+        run: node tests/run_video_webgpu_browser.cjs
