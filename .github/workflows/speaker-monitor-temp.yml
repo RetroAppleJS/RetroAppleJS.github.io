@@ -1,0 +1,19 @@
+name: Speaker monitor temporary verification
+
+on:
+  push:
+    branches:
+      - "feat/speaker-audio-monitor"
+
+jobs:
+  speaker-monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Run speaker monitor regression
+        run: node --test tests/apple_speaker_monitor.test.js
+      - name: Syntax check speaker
+        run: node --check res/EMU_DEVICE_speaker.js
