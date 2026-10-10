@@ -1,0 +1,75 @@
+<!doctype html>
+<!-- Copyright (c) 2026 Freddy Vandriessche. Standalone GPU.js kernel stress test. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ScreenGPU — GPU.js stress test</title>
+<style>
+* { box-sizing:border-box; }
+body { margin:0; background:#edf0f3; color:#202a36; font:15px Arial,sans-serif; }
+main { max-width:1280px; margin:auto; padding:24px; }
+h1 { margin:0 0 8px; } h2 { font-size:18px; margin:0 0 12px; }
+p { line-height:1.5; } a { color:#1757ab; }
+.panel { background:white; border:1px solid #d1d8e0; border-radius:8px; padding:18px; margin:18px 0; }
+.controls { display:flex; flex-wrap:wrap; gap:14px; align-items:end; }
+label { display:flex; flex-direction:column; gap:6px; font-size:13px; }
+label.check { flex-direction:row; align-items:center; padding-bottom:9px; }
+input,select,button { font:inherit; padding:8px; border:1px solid #aab6c4; border-radius:4px; }
+input[type=number] { width:100px; } #rates { width:300px; }
+button { cursor:pointer; } button.primary { background:#1757ab; color:white; border-color:#1757ab; }
+button:disabled { opacity:.5; cursor:default; }
+.actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
+#status { min-height:24px; } #capabilities { font-size:13px; color:#485669; }
+.preview { display:flex; flex-wrap:wrap; gap:24px; align-items:start; }
+#applescreen { width:min(100%,560px); height:auto; background:black; image-rendering:pixelated; }
+#summary { flex:1; min-width:230px; line-height:1.7; }
+.chart { width:100%; height:auto; display:block; } .legend { font-size:13px; color:#485669; }
+.table-scroll { overflow:auto; } table { border-collapse:collapse; width:100%; font-size:13px; }
+th,td { padding:9px; text-align:right; border-bottom:1px solid #dce2e9; white-space:nowrap; }
+th:first-child,td:first-child { text-align:left; } .pass { color:#18733b; } .fail { color:#ab3828; }
+pre { max-height:320px; overflow:auto; font-size:12px; } details { line-height:1.6; }
+</style>
+<script>var oEMU={component:{Video:{},ROM:{}}};</script>
+<script src="../res/COM_CONFIG.js"></script>
+<script src="../res/gpu-browser.min.js"></script>
+<script src="../res/EMU_apple2roms.js"></script>
+<script src="../res/EMU_VIDEO_raster.js"></script>
+<script src="../res/EMU_DEVICE_video_GPU.js"></script>
+<script>var Apple2VideoGPU=Apple2Video;</script>
+<script src="ScreenGPU_benchmark.js"></script>
+<script src="ScreenGPU.js" defer></script>
+</head>
+<body><main>
+<a href="../index.html">← RetroAppleJS</a>
+<h1>GPU.js kernel stress test</h1>
+<p>Direct calls to the current Apple II video kernels at 560 × 384. The harness controls demand and completion independently of emulator clocks, FPS sliders and animation frames.</p>
+<form id="settings" class="panel">
+<div class="controls">
+<label>Video mode<select id="mode"><option value="hires">Hires</option><option value="mixed-hires">Mixed hires</option><option value="lores">Lores</option><option value="mixed-lores">Mixed lores</option><option value="text">Text</option></select></label>
+<label>Input path<select id="input"><option value="ram">RAM / kProcess_v6</option><option value="capture">Beam capture / raster kernel</option></select></label>
+<label>Dispatch driver<select id="driver"><option value="both">JavaScript + WASM</option><option value="javascript">JavaScript</option><option value="wasm">WASM</option></select></label>
+<label>Monitor<select id="chrome"><option value="0">Color</option><option value="1">B&amp;W</option><option value="2">Green</option><option value="3">Amber</option></select></label>
+<label>Character ROM<select id="rom"></select></label>
+<label class="check"><input type="checkbox" id="page2"> Page 2</label>
+<label class="check"><input type="checkbox" id="snapshot"> Include RAM snapshot allocation/copy</label>
+</div>
+<div class="controls" style="margin-top:16px">
+<label>Requested FPS sweep<input id="rates" value="30,60,120,240,480,960,1920,3840" required></label>
+<label>Frames per batch<input id="batch" type="number" min="1" max="128" value="8" required></label>
+<label>Seconds per point<input id="duration" type="number" min="0.1" max="30" step="0.1" value="1.5" required></label>
+<label>Repetitions<input id="repeats" type="number" min="1" max="5" value="2" required></label>
+<label class="check"><input type="checkbox" id="uncapped" checked> Include uncapped run</label>
+<label class="check"><input type="checkbox" id="profile" checked> Separate upload/GPU profile</label>
+</div>
+<div class="actions"><button class="primary" id="run" type="submit">Run stress test</button><button id="stop" type="button" disabled>Stop</button><button id="json" type="button" disabled>Export JSON</button><button id="csv" type="button" disabled>Export CSV</button></div>
+<p id="status" role="status" aria-live="polite">Ready. Keep this tab visible during testing.</p>
+<div id="capabilities"></div>
+</form>
+<div class="panel preview"><canvas id="applescreen" width="560" height="384"></canvas><div id="summary">Results will identify the highest sustainable tested rate and the measured throughput ceiling for each dispatch driver.</div></div>
+<div class="panel"><h2>Completed rendering throughput</h2><canvas id="throughput" class="chart" width="1100" height="280"></canvas><p class="legend">Blue: JavaScript · Orange: WASM · Dashed grey: requested rate. FPS counts completed kernel renders, not displayed screen refreshes. MAX is an uncapped demand run.</p></div>
+<div class="panel"><h2>Batch completion latency — p95</h2><canvas id="latency" class="chart" width="1100" height="280"></canvas><p class="legend">Blue: JavaScript · Orange: WASM. Time from the first kernel call until the batch's completion is observed, including browser notification/polling delay.</p></div>
+<div class="panel"><h2>CPU submission, upload calls and GPU draw time</h2><canvas id="timing" class="chart" width="1100" height="280"></canvas><p class="legend">Blue: JavaScript · Orange: WASM. Solid: CPU ms/render · Dashed: upload-call ms/render · Dotted: isolated GPU draw ms. Profiling is separate from throughput; unavailable GPU timers show N/A.</p></div>
+<div class="panel"><h2>Measurements</h2><div class="table-scroll"><table><thead><tr><th>Driver / repeat</th><th>Request FPS</th><th>Completed FPS</th><th>CPU ms/render</th><th>Batch p50 ms</th><th>Batch p95 ms</th><th>Upload call ms</th><th>Upload KiB/render</th><th>GPU draw ms</th><th>Missed budget</th><th>Target met</th></tr></thead><tbody id="measurements"></tbody></table></div></div>
+<div class="panel"><details><summary>How to interpret the test</summary><p>One batch is outstanding at a time. WebGL2 uses asynchronous completion fences; WebGL1 is explicitly labelled when it uses blocking gl.finish. The sustainable threshold requires at least 95% of requested throughput and p95 batch latency within the batch interval in every repetition. The boundary is refined with two additional requested rates when a passing/failing bracket exists.</p><p>The default reuses deterministic precomputed inputs. The optional RAM snapshot setting includes the production-style 24 KiB slice allocation/copy. WASM changes only the dispatch loop; GPU.js still executes in JavaScript. GPU timers and upload-call timings are diagnostic measurements, not physical DMA time. Tests stop when this tab becomes hidden.</p><p><a href="../docs/SCREENGPU_BENCHMARK.md">Benchmark methodology and WASM source</a></p></details><details><summary>Active kernel source</summary><pre id="source"></pre></details></div>
+</main></body></html>
