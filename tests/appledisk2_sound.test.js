@@ -103,3 +103,22 @@ test('muting before audio initialization is safe', async()=>{
     assert.equal(disk.dNd.enable, false);
     assert.deepEqual(warnings, []);
 });
+
+test('partial sample preload retries missing samples without decoding healthy samples', async()=>{
+    const {disk}=loadDisk();
+    await disk.init('audio_ctx');
+    let calls=0;
+    const original=disk.s_getFile;
+    disk.s_getFile=async function(url) {
+        calls++;
+        if(calls===1) throw new Error('transient decode failure');
+        return original.call(this,url);
+    };
+    await disk.init('audio_buffer');
+    const first=calls;
+    assert.ok(first>1);
+    await disk.init('audio_buffer');
+    assert.equal(calls,first+1, 'only the failed sample should be retried');
+    await disk.init('audio_buffer');
+    assert.equal(calls,first+1,'fully loaded buffers should remain cached');
+});

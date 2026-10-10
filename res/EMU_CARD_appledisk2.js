@@ -1001,12 +1001,18 @@ function AppleDisk2()
                 if(this.audio===undefined)
                     await this.init("audio_ctx");
 
-                for (var sample in dN_samples)
-                    if (typeof(dN_samples[sample].audio) != "undefined") return;
+                // A partially decoded set must not cause every subsequent
+                // attempt to return immediately. Retry only missing samples.
+                var missing={};
+                for(var sample in dN_samples)
+                    if(!dN_samples[sample].audio && typeof(dN_samples[sample].src)==="string")
+                        missing[sample]=dN_samples[sample];
+
+                if(Object.keys(missing).length===0) return;
 
                 try
                 {
-                    const response = await this.s_load_all(dN_samples);
+                    const response = await this.s_load_all(missing);
                     for (const item of response)
                     {
                         dN_samples[item.name].audio = item.audio;
