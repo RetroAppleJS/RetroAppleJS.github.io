@@ -50,6 +50,10 @@ jobs:
         with:
           node-version: 20
 
+      - name: Test Apple speaker monitor
+        working-directory: source
+        run: node --test tests/apple_speaker_monitor.test.js
+
       - name: Test LIRON device LED activity
         working-directory: source
         run: node --test tests/liron_led_activity_v3.test.js
