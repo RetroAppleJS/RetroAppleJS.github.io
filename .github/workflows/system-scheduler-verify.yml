@@ -1,0 +1,14 @@
+name: Scheduler regression
+on:
+  push:
+    branches: ["fix/system-wall-clock-catchup"]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --test tests/system_scheduler_catchup.test.js
+      - run: node --check res/EMU_apple2main.js
