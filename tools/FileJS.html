@@ -143,6 +143,78 @@
         reader.readAsText(file_obj);
     }
 
+    function show_file_text(text)
+    {
+        var popup = oCOM.POPUP.toggle(oCOM.POPUP.target_id.html);
+        if(popup && !popup.hidden)
+            oCOM.writeText(document.getElementById(oCOM.POPUP.target_id.html_txt),text,{lineBreaks:true});
+    }
+
+    function append_file_output(output,data)
+    {
+        var row = document.createElement("div");
+        row.style.border = "1px solid rgba(0,0,0,0)";
+        var browsers = {"safari":80000,"firefox":65536,"chrome":2083,"edge":2083,"opera":1000000};
+        Object.keys(browsers).forEach(function(name)
+        {
+            var box = document.createElement("div");
+            box.style.cssFloat = "left";
+            box.title = "max. "+browsers[name]+" bytes";
+            var icon = document.createElement("img");
+            icon.style.width = "12px";
+            icon.style.marginRight = "5px";
+            icon.src = "../res/i_"+name+".png";
+            var status = document.createElement("img");
+            status.src = "../res/"+(data.url.length<=browsers[name]?"i_ok.png":"i_nok.png");
+            status.style.width = "10px";
+            status.style.paddingLeft = "3px";
+            box.append(icon,document.createElement("br"),status);
+            row.appendChild(box);
+        });
+
+        function link(label)
+        {
+            var anchor = document.createElement("a");
+            oCOM.writeText(anchor,label);
+            oCOM.writeText(row," ",{append:true});
+            row.appendChild(anchor);
+            return anchor;
+        }
+        var urlLink = link("[ZLIB_URL]");
+        urlLink.target = "_blank";
+        urlLink.rel = "noopener";
+        try
+        {
+            var parsed = new URL(data.url,document.baseURI);
+            // URL assignment prevents attribute injection; restrict executable schemes too.
+            if(parsed.protocol==="http:" || parsed.protocol==="https:" ||
+               (parsed.protocol==="file:" && new URL(document.baseURI).protocol==="file:"))
+                urlLink.href = parsed.href;
+            else urlLink.title = "Unsupported URL scheme";
+        }
+        catch(error) { urlLink.title = "Invalid URL"; }
+
+        var gzipLink = link("[ZLIB_GZ_FILE]");
+        gzipLink.href = data.gzipURL;
+        gzipLink.download = data.gzipFilename;
+
+        function action(label,getText)
+        {
+            var anchor = link(label);
+            anchor.href = "#";
+            anchor.addEventListener("click",function(event)
+            {
+                event.preventDefault();
+                show_file_text(getText());
+            });
+        }
+        var hex = Array.from(data.bytes,function(value){return "0x"+oCOM.getHexByte(value);}).join(",");
+        action("[ZLIB_BASE64]",function(){return oCOM.DumpBase64(data.uri,255,"\n");});
+        action("[JS_HEX_LF]",function(){return "var ui8 = new Uint8Array(["+oCOM.DumpTxt(hex+"])",255,"\n");});
+        action("[JS_HEX]",function(){return "var ui8 = new Uint8Array(["+hex+"])";});
+        output.appendChild(row);
+    }
+
     function load_file(file_obj)
     {
         var json_txt = oCOM.trim(document.getElementById("JSON").value);
@@ -222,29 +294,13 @@
                 }
 
                 // CONSTRUCT URL AND URI
-                var browsers = {"safari":80000,"firefox":65536,"chrome":2083,"edge":2083,"opera":1000000};
-
                 var uri = oCOM.ArrayBufferTobase64(dump);
 
                 var url = url+"?"+uri_arg+"="+uri+"#"+uri_hash;
 
-                var brows = "";
-                for(var i in browsers) brows += "<div style=float:left title=\"max. "+browsers[i]+" bytes\" ><img style='width:12px;margin-right:5px' src=../res/i_"+i+".png><br><img src=../res/"+(url.length<=browsers[i]?"i_ok.png":"i_nok.png")+" style=width:10px;padding-left:3px></div>"
-
                 var URI_stats = "format:"+ext+" bytes:"+l1+">"+url.length+" gain:"+(100-Math.round(100*url.length/l1))+"%"
-
-                var link =  "<div style='border:1px solid rgb(0,0,0,0)'>"
-                            + brows
-                            +"<a target=_blank href="+url+">[ZLIB_URL]</a>"
-                            + " <a href=\""+gz_url+"\" download=\""+gz_filename.replace(/&/g,"&amp;").replace(/\"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;")+"\">[ZLIB_GZ_FILE]</a>"
-                            + " <a href=javascript:oCOM.POPUP.html(oCOM.DumpBase64('"+uri+"',255,'&lt;br&gt;'))>[ZLIB_BASE64]</a>"
-                            + " <a href=javascript:oCOM.POPUP.html('var&nbsp;ui8&nbsp;=&nbsp;new&nbsp;Uint8Array(['+oCOM.DumpTxt('"+[...bin].map((v)=>"0x"+oCOM.getHexByte(v)).join(",")+"])',255,'&lt;br&gt;'))>[JS_HEX_LF]</a>"
-                            + " <a href=javascript:oCOM.POPUP.html('var&nbsp;ui8&nbsp;=&nbsp;new&nbsp;Uint8Array(["+[...bin].map((v)=>"0x"+oCOM.getHexByte(v)).join(",")+"])')>[JS_HEX]</a>"
-                            //+ " <a href=javascript:oCOM.POPUP.html(''+oCOM.DumpTxt('"+[...bin].map((v)=>""+oCOM.getHexByte(v)).join("&nbsp;")+"',3*8,'&lt;br&gt;'))>[LST_HEX]</a>"
-                            +"</div>"
- 
                 var el = document.getElementById("output");
-                el.innerHTML += link;
+                append_file_output(el,{url:url,uri:uri,gzipURL:gz_url,gzipFilename:gz_filename,bytes:bin});
 
                 //selectElementText(document.getElementById("COM_popup_text"));
             }

@@ -12,6 +12,7 @@
 <script type="text/javascript" src="TOOLS_Header.js"></script>
 <script type="text/javascript" src="../res/COM_MAIN.js"></script>
 <script type="text/javascript" src="../res/pako.min.js"></script>
+<script type="text/javascript" src="../res/purify-3.4.16.min.js"></script>
 
 
 <script>
@@ -49,10 +50,16 @@ var oPROCESS = new function()
 
   this.render_preview = function(preview)
   {
-    // Parse inertly, then copy only keyboard layout nodes into the live page.
-    // Never copy script, navigation, embedded documents or event attributes.
-    var parsed = new DOMParser().parseFromString(preview.markup, "text/html");
+    // Rich keyboard markup requires sanitization, rather than plain-text output.
     var allowed = new Set(["div","span","a","br","b","i","strong","em","small","sup","sub","p"]);
+    if(!DOMPurify.isSupported) throw new Error("Keyboard preview sanitization is unavailable");
+    var parsed = DOMPurify.sanitize(preview.markup,{
+      ALLOWED_TAGS:Array.from(allowed),
+      ALLOWED_ATTR:["class","style","title","id"],
+      ALLOW_DATA_ATTR:false,
+      ALLOW_ARIA_ATTR:false,
+      RETURN_DOM_FRAGMENT:true
+    });
     function copy(node)
     {
       if(node.nodeType===3) return document.createTextNode(node.textContent);
@@ -78,9 +85,9 @@ var oPROCESS = new function()
     }
     var fragment = document.createDocumentFragment();
     var style = document.createElement("style");
-    style.textContent = preview.css;
+    oCOM.writeText(style,preview.css);
     fragment.appendChild(style);
-    for(var child of parsed.body.childNodes)
+    for(var child of parsed.childNodes)
     {
       var safe = copy(child);
       if(safe) fragment.appendChild(safe);
@@ -372,21 +379,22 @@ var oPROCESS = new function()
 }()
 
 var myscript = "var keycapmap = {\"keylabel0\":\"top-left\",\"keylabel1\":\"top-center\",\"keylabel2\":\"top-right\",\"keylabel3\":\"center-left\",\"keylabel4\":\"center-center\",\"keylabel5\":\"center-right\",\"keylabel6\":\"bottom-left\",\"keylabel7\":\"bottom-center\",\"keylabel8\":\"bottom-right\",\"keylabel9\":\"front-left\",\"keylabel10\":\"front-center\",\"keylabel11\":\"front-right\"}\n"
-      +"function stripHTML(str) { return str.replace(/(&nbsp;|<([^>]+)>)/ig,\"\") }\n"
       +"function keycap_over(t) { t.classList.replace(\"keycap\",\"selected\") }\n"
       +"function keycap_out(t) { t.classList.replace(\"selected\",\"keycap\") }\n"
       +"function keycap_click(t)\n"
       +"{\n"
-      +"   console.log(\"\");const matches = t.innerHTML.matchAll(/keylabel (keylabel[0-9]{1,2})/gm);s=\"\"\n"
-      +"   for(const match of matches)\n"
+      +"   var lines=[], labels=t.getElementsByClassName(\"keylabel\");\n"
+      +"   for(const label of labels)\n"
       +"   {\n"
-      +"      var el = t.getElementsByClassName(match[1]);\n"
-      +"      var child = el[0].firstElementChild.innerHTML;\n"
-      +"      var log = [keycapmap[match[1]],stripHTML(child),child];\n"
-      +"      console.log(log[0]+\" \"+log[1],log[2]);\n"
-      +"      s+= log[0]+\" \"+log[1]+\"<br>\";\n"
+      +"      var position=Array.from(label.classList).find(function(name){return Object.prototype.hasOwnProperty.call(keycapmap,name);});\n"
+      +"      if(position===undefined) continue;\n"
+      +"      var child=label.firstElementChild || label;\n"
+      +"      var text=child.textContent.replace(/\\u00a0/g,\"\");\n"
+      +"      console.log(keycapmap[position]+\" \"+text);\n"
+      +"      lines.push(keycapmap[position]+\" \"+text);\n"
       +"   }\n"
-      +"  oCOM.POPUP.html(s);\n"
+      +"   var popup=oCOM.POPUP.toggle(oCOM.POPUP.target_id.html);\n"
+      +"   if(popup && !popup.hidden) oCOM.writeText(document.getElementById(oCOM.POPUP.target_id.html_txt),lines.join(\"\\n\")+\"\\n\",{lineBreaks:true});\n"
       +"}\n"
 
 document.write("<"+"script>\n"+myscript+"\n<"+"/script>\n")
