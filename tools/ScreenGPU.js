@@ -1,4 +1,6 @@
 // Copyright (c) 2026 Freddy Vandriessche.
+var ScreenBenchmark = window.ScreenBenchmark || ScreenGPUBenchmark;
+var ScreenBenchmarkConfig = window.ScreenBenchmarkConfig || {};
 var ScreenGPUApp =
 {
     running:false,results:[],controller:null,metadata:null,
@@ -10,7 +12,7 @@ var ScreenGPUApp =
         var e = this.element;
         return {mode:e("mode").value,input:e("input").value,driver:e("driver").value,
             chrome:Number(e("chrome").value),rom:e("rom").value,page2:e("page2").checked,
-            snapshot:e("snapshot").checked,rates:ScreenGPUBenchmark.parseRates(e("rates").value),
+            snapshot:e("snapshot").checked,rates:ScreenBenchmark.parseRates(e("rates").value),
             batchSize:Number(e("batch").value),durationMs:Number(e("duration").value)*1000,
             repeats:Number(e("repeats").value),uncapped:e("uncapped").checked,profile:e("profile").checked};
     },
@@ -23,7 +25,7 @@ var ScreenGPUApp =
             !Number.isInteger(options.batchSize) || options.batchSize<1 || options.batchSize>128 ||
             !Number.isFinite(options.durationMs) || options.durationMs<100 || options.durationMs>30000)
             throw new Error("Check batch size, duration and repetitions");
-        options.rates = ScreenGPUBenchmark.parseRates(options.rates.join(","));
+        options.rates = ScreenBenchmark.parseRates(options.rates.join(","));
         if(options.input==="capture") options.snapshot = false;
         var app = this, adapter = null;
         this.running = true;this.results = [];this.controller = new AbortController();
@@ -37,11 +39,12 @@ var ScreenGPUApp =
             resolution:[560,384],options:options,cancelled:false};
         try
         {
-            this.element("status").textContent = "Compiling and warming the GPU.js kernel…";
+            this.element("status").textContent = ScreenBenchmarkConfig.startingMessage ||
+                "Compiling and warming the GPU.js kernel…";
             // A canvas context cannot change after creation. Use a fresh canvas per run.
             var previous = this.element("applescreen"), canvas = previous.cloneNode(false);
             previous.replaceWith(canvas);
-            adapter = ScreenGPUBenchmark.createRenderer(canvas,options);
+            adapter = await ScreenBenchmark.createRenderer(canvas,options);
             this.metadata.capabilities = adapter.info;
             this.element("capabilities").textContent = adapter.info.backend+" · "+adapter.info.kernel+" · "+
                 adapter.info.completion+" · GPU timer: "+(adapter.info.gpuTiming?"available":"unavailable")+
@@ -59,7 +62,7 @@ var ScreenGPUApp =
                     {
                         app.element("status").textContent = driver+" · "+(rate===null?"MAX":rate+" FPS")+
                             " · repetition "+(repeat+1)+"/"+options.repeats;
-                        var row = await ScreenGPUBenchmark.measurePoint(adapter,driver,
+                        var row = await ScreenBenchmark.measurePoint(adapter,driver,
                             {targetFps:rate,durationMs:options.durationMs,batchSize:options.batchSize,
                                 warmupBatches:3,signal:signal});
                         row.repeat = repeat+1;
@@ -71,12 +74,15 @@ var ScreenGPUApp =
                                 if(signal.aborted) throw new Error("Benchmark cancelled");
                                 profiles.push(await adapter.profile());
                             }
-                            row.uploadCallMs = ScreenGPUBenchmark.percentile(profiles.map(function(p) { return p.uploadCallMs; }),0.5);
-                            row.uploadBytes = ScreenGPUBenchmark.percentile(profiles.map(function(p) { return p.uploadBytes; }),0.5);
+                            row.uploadCallMs = ScreenBenchmark.percentile(profiles.map(function(p) { return p.uploadCallMs; }),0.5);
+                            row.uploadBytes = ScreenBenchmark.percentile(profiles.map(function(p) { return p.uploadBytes; }),0.5);
+                            var completion = profiles.map(function(p) { return p.uploadCompletionMs; })
+                                .filter(function(t) { return t!==null && t!==undefined; });
+                            row.uploadCompletionMs = ScreenBenchmark.percentile(completion,0.5);
                             var gpu = profiles.map(function(p) { return p.gpuDrawMs; }).filter(function(t) { return t!==null; });
-                            row.gpuDrawMs = ScreenGPUBenchmark.percentile(gpu,0.5);
+                            row.gpuDrawMs = ScreenBenchmark.percentile(gpu,0.5);
                         }
-                        else row.uploadCallMs = row.uploadBytes = row.gpuDrawMs = null;
+                        else row.uploadCallMs = row.uploadBytes = row.uploadCompletionMs = row.gpuDrawMs = null;
                         app.results.push(row);app.addRow(row);app.renderResults();
                         if(signal.aborted) throw new Error("Benchmark cancelled");
                     }
@@ -90,7 +96,7 @@ var ScreenGPUApp =
                 var extra = [];
                 drivers.forEach(function(driver)
                 {
-                    var summary = ScreenGPUBenchmark.summarize(app.results,driver);
+                    var summary = ScreenBenchmark.summarize(app.results,driver);
                     if(summary.sustainableFps!==null && summary.firstFailedFps!==null)
                     {
                         var midpoint = Math.round((summary.sustainableFps+summary.firstFailedFps)/2);
@@ -117,8 +123,9 @@ var ScreenGPUApp =
                 {
                     // One final preview render/readback after timing.
                     var preview = this.element("applescreen"), frozen = preview.cloneNode(false);
+                    var pixels = await adapter.snapshotPixels();
                     frozen.getContext("2d").putImageData(new ImageData(
-                        new Uint8ClampedArray(adapter.snapshotPixels()),560,384),0,0);
+                        new Uint8ClampedArray(pixels),560,384),0,0);
                     preview.replaceWith(frozen);
                 }
                 catch(error) { this.metadata.previewError = error.message; }
@@ -142,12 +149,13 @@ var ScreenGPUApp =
         var values = [row.driver+" / "+row.repeat,row.targetFps===null?"MAX":row.targetFps,
             this.number(row.completedFps,1),this.number(row.cpuMsPerFrame,3),this.number(row.latencyMedianMs),
             this.number(row.latencyP95Ms),this.number(row.uploadCallMs,3),
-            row.uploadBytes===null?"N/A":this.number(row.uploadBytes/1024),this.number(row.gpuDrawMs,3),
+            row.uploadBytes===null?"N/A":this.number(row.uploadBytes/1024),
+            this.number(row.uploadCompletionMs,3),this.number(row.gpuDrawMs,3),
             row.missedFrames===null?"N/A":row.missedFrames,row.metTarget===null?"N/A":row.metTarget?"Yes":"No"];
         values.forEach(function(value,index)
         {
             var td = document.createElement("td");td.textContent = value;
-            if(index===10) td.className = row.metTarget?"pass":"fail";
+            if(index===11) td.className = row.metTarget?"pass":"fail";
             tr.appendChild(td);
         });
         app.element("measurements").appendChild(tr);
@@ -159,7 +167,7 @@ var ScreenGPUApp =
         ["javascript","wasm"].forEach(function(driver)
         {
             if(!app.results.some(function(row) { return row.driver===driver; })) return;
-            var s = ScreenGPUBenchmark.summarize(app.results,driver);
+            var s = ScreenBenchmark.summarize(app.results,driver);
             summaries.push(driver+": sustainable tested rate "+(s.sustainableFps===null?"not established":s.sustainableFps+" FPS")+
                 "; first failing rate "+(s.firstFailedFps===null?"not reached":s.firstFailedFps+" FPS")+
                 "; maximum completed "+app.number(s.maximumCompletedFps,1)+" FPS.");
@@ -167,7 +175,7 @@ var ScreenGPUApp =
         this.element("summary").textContent = summaries.join("\n");
         this.chart("throughput",["completedFps"],"Completed renders / second",true);
         this.chart("latency",["latencyP95Ms"],"p95 batch latency / ms",false);
-        this.chart("timing",["cpuMsPerFrame","uploadCallMs","gpuDrawMs"],"Milliseconds / render",false);
+        this.chart("timing",["cpuMsPerFrame","uploadCallMs","uploadCompletionMs","gpuDrawMs"],"Milliseconds / render",false);
     },
 
     chart:function(id,metrics,label,ideal)
@@ -217,10 +225,10 @@ var ScreenGPUApp =
                 {
                     var values = rows.filter(function(row) { return row.driver===driver && row.targetFps===rate && row[metric]!==null; })
                         .map(function(row) { return row[metric]; });
-                    if(values.length) points.push({rate:rate,value:ScreenGPUBenchmark.percentile(values,0.5)});
+                    if(values.length) points.push({rate:rate,value:ScreenBenchmark.percentile(values,0.5)});
                 });
                 ctx.strokeStyle = ctx.fillStyle = index?"#c26912":"#1757ab";
-                ctx.setLineDash(m===1?[7,4]:m===2?[2,4]:[]);ctx.beginPath();
+                ctx.setLineDash(m===1?[7,4]:m===2?[10,3,2,3]:m===3?[2,4]:[]);ctx.beginPath();
                 points.forEach(function(point,i) { if(i===0) ctx.moveTo(x(point.rate),y(point.value));else ctx.lineTo(x(point.rate),y(point.value)); });
                 ctx.stroke();
                 points.forEach(function(point) { ctx.beginPath();ctx.arc(x(point.rate),y(point.value),3,0,Math.PI*2);ctx.fill(); });
@@ -232,12 +240,13 @@ var ScreenGPUApp =
     exportResults:function(format)
     {
         var fields = ["driver","repeat","targetFps","batchSize","frames","elapsedMs","completedFps","cpuMsPerFrame",
-            "latencyMedianMs","latencyP95Ms","uploadCallMs","uploadBytes","gpuDrawMs","missedFrames","metTarget"];
+            "latencyMedianMs","latencyP95Ms","uploadCallMs","uploadBytes","uploadCompletionMs","gpuDrawMs","missedFrames","metTarget"];
         var data = format==="json"?JSON.stringify({metadata:this.metadata,results:this.results},null,2)
             :fields.join(",")+"\n"+this.results.map(function(row)
-            { return fields.map(function(field) { return row[field]===null?"":String(row[field]); }).join(","); }).join("\n");
+            { return fields.map(function(field) { return row[field]===null || row[field]===undefined?"":String(row[field]); }).join(","); }).join("\n");
         var url = URL.createObjectURL(new Blob([data],{type:format==="json"?"application/json":"text/csv"}));
-        var link = document.createElement("a");link.href = url;link.download = "screengpu-results."+format;link.click();
+        var link = document.createElement("a");link.href = url;
+        link.download = (ScreenBenchmarkConfig.exportName || "screengpu-results")+"."+format;link.click();
         setTimeout(function() { URL.revokeObjectURL(url); },1000);
     }
 };
@@ -267,3 +276,4 @@ document.addEventListener("visibilitychange",function()
 });
 window.addEventListener("pagehide",function() { if(ScreenGPUApp.running) ScreenGPUApp.controller.abort(); });
 ScreenGPUApp.renderResults();
+if(ScreenBenchmarkConfig.appName) window[ScreenBenchmarkConfig.appName] = ScreenGPUApp;

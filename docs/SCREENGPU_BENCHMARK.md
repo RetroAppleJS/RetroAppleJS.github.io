@@ -1,6 +1,6 @@
 # ScreenGPU: raw GPU.js performance test
 
-Open `tools/ScreenGPU.html` through the project website or a local HTTP server. This tool benchmarks the current `EMU_DEVICE_video_GPU.js` implementation directly, using the bundled GPU.js library. It does not run the emulator hardware loop, call `cycle()`/`redraw()`, use the FPS slider, or pace submissions through requestAnimationFrame. WebGPU is outside this benchmark's scope.
+Open `tools/ScreenGPU_BENCH.html` through the project website or a local HTTP server. This tool benchmarks the current `EMU_DEVICE_video_GPU.js` implementation directly, using the bundled GPU.js library. It does not run the emulator hardware loop, call `cycle()`/`redraw()`, use the FPS slider, or pace submissions through requestAnimationFrame. WebGPU is outside this benchmark's scope.
 
 ## Workload
 
