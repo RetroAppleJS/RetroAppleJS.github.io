@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Apple II WebGPU pixel parity</title>
+<style>body{font:16px monospace;background:#111;color:#ddd}canvas{image-rendering:pixelated}pre{white-space:pre-wrap}</style>
+<h1>Apple II WebGPU pixel parity</h1>
+<canvas id="screen" width="560" height="384"></canvas>
+<pre id="result">Running…</pre>
+<script>
+var _o={CPU_ClocksTicks_s:1000000};
+var _CFG_CHROMA=[{COL_name:'Color'},{COL_name:'B&W'},{COL_name:'Green'},{COL_name:'Amber'}];
+</script>
+<script src="../res/EMU_apple2roms.js"></script>
+<script src="../res/EMU_VIDEO_raster.js"></script>
+<script src="../res/EMU_DEVICE_video_WebGPU.js"></script>
+<script>
+'use strict';
+
+window.webgpuTestResult={done:false};
+(async function()
+{
+    var device, video, readback, texture, format, submissions=0, checks=0, cases=0, errors=[];
+    var originalRequest;
+    try
+    {
+        if(!navigator.gpu) throw new Error('WebGPU unavailable');
+        originalRequest=navigator.gpu.requestAdapter.bind(navigator.gpu);
+        navigator.gpu.requestAdapter=async function(options)
+        {
+            var adapter=await originalRequest(options);
+            if(!adapter) return null;
+            return {requestDevice:async function()
+            {
+                device=await adapter.requestDevice();
+                readback=device.createBuffer({size:2304*384,usage:GPUBufferUsage.COPY_DST|GPUBufferUsage.MAP_READ});
+                device.addEventListener('uncapturederror',function(event) {errors.push(event.error.message);});
+                var submit=device.queue.submit.bind(device.queue);
+                device.queue.submit=function(commands)
+                {
+                    // Read the actual rendered texture in the same task, before
+                    // the canvas's automatically expiring texture is presented.
+                    var copy=device.createCommandEncoder();
+                    copy.copyTextureToBuffer({texture:texture},{buffer:readback,bytesPerRow:2304},{width:560,height:384});
+                    submissions++;
+                    return submit(commands.concat([copy.finish()]));
+                };
+                return device;
+            }};
+        };
+        var canvas=document.getElementById('screen');
+        var realContext=canvas.getContext('webgpu');
+        canvas.getContext=function()
+        {
+            return {
+                configure:function(options)
+                {
+                    format=options.format;
+                    realContext.configure(Object.assign({},options,{usage:GPUTextureUsage.RENDER_ATTACHMENT|GPUTextureUsage.COPY_SRC}));
+                },
+                getCurrentTexture:function() {texture=realContext.getCurrentTexture();return texture;},
+                unconfigure:function() {realContext.unconfigure();}
+            };
+        };
+        video=new Apple2VideoWebGPU(canvas);
+        video.vidram=new Uint8Array(0x6000);
+        var seed=0x12345678;
+        for(var i=0;i<video.vidram.length;i++)
+        {
+            seed=(Math.imul(seed,1664525)+1013904223)>>>0;
+            video.vidram[i]=seed>>>24;
+        }
+        video.reset();
+        video.setFrameTiming('vblank');
+        if(!await video.activate()) throw new Error(video.getStatus().message);
+
+        function snapshot(gfx,mix,hires,page2)
+        {
+            var bytes=new Uint8Array(7680), modes=new Uint8Array(7680);
+            for(var y=0;y<192;y++) for(var col=0;col<40;col++)
+            {
+                var graphics=gfx && !(mix && y>=160);
+                var high=graphics && hires;
+                var row=((y&0x38)<<4)+Math.floor(y/64)*40+col;
+                var address=high?(page2?0x4000:0x2000)+(y&7)*1024+row
+                    :(page2?0x800:0x400)+row;
+                bytes[y*40+col]=video.vidram[address];
+                modes[y*40+col]=graphics?(high?2:1):0;
+            }
+            return {bytes:bytes,modes:modes,flash:false};
+        }
+
+        async function compare(frame,chrome,label)
+        {
+            await device.queue.onSubmittedWorkDone();
+            if(!video.isReady() || errors.length) throw new Error(errors.join('\n') || video.getStatus().message);
+            await readback.mapAsync(GPUMapMode.READ);
+            var actual=new Uint8Array(readback.getMappedRange());
+            var pixel={thread:{x:0,y:0},constants:{scale:2},color:function(r,g,b)
+            {
+                this.rgb=[Math.round(r*255),Math.round(g*255),Math.round(b*255)];
+            }};
+            for(var y=0;y<192;y++) for(var x=0;x<280;x++)
+            {
+                pixel.thread.x=x*2; pixel.thread.y=(191-y)*2;
+                Apple2RasterKernel.call(pixel,frame.bytes,frame.modes,video.charRom,video.INTCols,chrome,frame.flash?1:0);
+                for(var dy=0;dy<2;dy++) for(var dx=0;dx<2;dx++)
+                {
+                    var index=(y*2+dy)*2304+(x*2+dx)*4;
+                    for(var c=0;c<3;c++)
+                    {
+                        var component=format.startsWith('bgra')?2-c:c;
+                        if(Math.abs(actual[index+component]-pixel.rgb[c])>1)
+                            throw new Error(label+' mismatch at '+x+','+y+' channel '+c+': '+actual[index+c]+' vs '+pixel.rgb[c]);
+                    }
+                    if(actual[index+3]!==255) throw new Error(label+' alpha mismatch');
+                }
+                checks++;
+            }
+            readback.unmap();
+            cases++;
+        }
+
+        var modes=[[false,false,false],[true,false,false],[true,true,false],[true,false,true],[true,true,true]];
+        var roms=Apple2CharROM_keys();
+        for(var romKey of roms)
+        {
+            video.setCharRom(Apple2CharROM_get(romKey),romKey);
+            for(var mode of modes) for(var page2 of [false,true]) for(var chrome=0;chrome<4;chrome++)
+            {
+                var frame=snapshot(mode[0],mode[1],mode[2],page2);
+                for(var flashing of [false,true])
+                {
+                    frame.flash=flashing;
+                    video.presentRasterFrame(frame,{chrome:chrome});
+                    await compare(frame,chrome,'raster '+romKey+' '+mode+' page2='+page2+' chrome='+chrome+' flash='+flashing);
+                }
+            }
+        }
+        // Captured mode changes within a line must also constrain HGR neighbor reads.
+        var split=snapshot(true,false,true,false);
+        for(var i=0;i<7680;i++) split.modes[i]=(Math.floor(i/3)%3);
+        video.presentRasterFrame(split,{chrome:0}); await compare(split,0,'per-fetch mode transitions');
+
+        video.setFrameTiming('timer'); video.setFrameRate(60);
+        for(var mode of modes) for(var page2 of [false,true]) for(var chrome=0;chrome<4;chrome++)
+        {
+            video.reset(); video.setGfx(mode[0]); video.setMix(mode[1]);
+            video.setHires(mode[2]); video.setPage2(page2); video.setMonitor(chrome);
+            for(var flashing of [true,false])
+            {
+                if(!flashing) video.cycle(250000);
+                var before=submissions;
+                video.redraw();
+                var deadline=performance.now()+3000;
+                while(submissions===before)
+                {
+                    if(performance.now()>deadline) throw new Error('Timed out waiting for timer submission');
+                    await new Promise(requestAnimationFrame);
+                }
+                var frame=snapshot(mode[0],mode[1],mode[2],page2); frame.flash=flashing;
+                await compare(frame,chrome,'timer '+mode+' page2='+page2+' chrome='+chrome+' flash='+flashing);
+            }
+        }
+        video.setCol(3,0,'#123456');
+        video.setFrameTiming('vblank');
+        var edit=snapshot(true,false,true,false);
+        video.presentRasterFrame(edit,{chrome:0}); await compare(edit,0,'edited palette');
+        window.webgpuTestResult={done:true,passed:true,cases:cases,logicalPixels:checks,roms:roms,errors:errors};
+    }
+    catch(error)
+    {
+        window.webgpuTestResult={done:true,passed:false,error:error.stack || String(error),cases:cases,errors:errors};
+    }
+    finally
+    {
+        if(video) video.dispose();
+        if(readback) readback.destroy();
+        if(originalRequest) navigator.gpu.requestAdapter=originalRequest;
+        document.getElementById('result').textContent=JSON.stringify(window.webgpuTestResult,null,2);
+    }
+})();
+</script>
+</html>

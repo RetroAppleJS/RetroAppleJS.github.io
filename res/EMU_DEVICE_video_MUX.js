@@ -23,6 +23,13 @@ function Apple2VideoMUX(canvas)
     this.frameTiming = "timer";
     this.rasterFrame = null;
     var rasterPresentationPending = false;
+    var rendererSelectionGeneration = 0;
+
+    function applyFrameTiming(renderer,mode)
+    {
+        if(typeof(renderer.setFrameTiming)==="function") renderer.setFrameTiming(mode);
+        else renderer.frameTiming = mode;
+    }
 
     this.setFrameTiming = function(mode)
     {
@@ -31,7 +38,7 @@ function Apple2VideoMUX(canvas)
         this.frameTiming=mode;
         this.rasterFrame=null;
         if(this.hw) this.hw.setVideoRasterCapture(mode==="vblank");
-        if(this.active) this.active.frameTiming=mode;
+        if(this.active) applyFrameTiming(this.active,mode);
         if(mode==="timer" && this.active) { this.applyState(this.active); this.redraw(); }
         return mode;
     };
@@ -82,6 +89,8 @@ function Apple2VideoMUX(canvas)
         { name: "threejs", ctor: Apple2VideoTHREE,  context: "canvas" },
         { name: "canvas",   ctor: Apple2VideoCanvas, context: "2d"     }
     ];
+    if(typeof(Apple2VideoWebGPU)==="function")
+        this.renderModes.push({ name: "webgpu", ctor: Apple2VideoWebGPU, context: "canvas" });
 
     this.getRenderModes = function()
     {
@@ -315,6 +324,7 @@ function Apple2VideoMUX(canvas)
         var canvas = this.getCanvasFor(spec);
         var context = spec.context == "2d" ? canvas.getContext("2d") : canvas;
         renderer = new spec.ctor(context);
+        if(renderer && typeof(renderer.setActive)==="function") renderer.setActive(false);
 
         if(!renderer || !renderer.id || !renderer.id.DCODE)
         {
@@ -427,7 +437,7 @@ function Apple2VideoMUX(canvas)
 
         r.vidram = this.vidram;
         r.hw = this.hw;
-        r.frameTiming = this.frameTiming;
+        applyFrameTiming(r,this.frameTiming);
 
         if(typeof(r.setGfx) == "function")   r.setGfx(this.state.gfx);
         if(typeof(r.setMix) == "function")   r.setMix(this.state.mix);
@@ -613,10 +623,14 @@ function Apple2VideoMUX(canvas)
 
     this.setMode = function(idx, uiEl, forceReset)
     {
+        var generation = ++rendererSelectionGeneration;
+        var previous = this.active;
         var enabledIndex = this.getEnabledModeIndex(idx);
 
         if(enabledIndex < 0)
         {
+            if(previous && typeof(previous.setActive)==="function") previous.setActive(false);
+            if(previous && typeof(previous.deactivate)==="function") previous.deactivate();
             this.active = null;
             this.activeName = "";
             this.updateRenderModeUI(uiEl);
@@ -628,14 +642,62 @@ function Apple2VideoMUX(canvas)
         var spec = this.renderModes[this.modeIndex];
         var c = this.getCanvasFor(spec);
 
-        this.attachCanvas(c);
-
         this.active = this.getRenderer(spec, !!forceReset);
         this.activeName = spec.name;
 
-        if(this.frameTiming==="vblank") this.presentRasterFrame();
-        else if(typeof(this.active.redraw) == "function")
-            this.active.redraw();
+        var renderer = this.active;
+        if(previous && previous!==renderer && typeof(previous.setActive)==="function")
+            previous.setActive(false);
+        if(previous && previous!==renderer && typeof(previous.deactivate)==="function")
+            previous.deactivate();
+        if(renderer && typeof(renderer.setActive)==="function") renderer.setActive(true);
+
+        function stillSelected()
+        {
+            return generation===rendererSelectionGeneration && mux.active===renderer;
+        }
+
+        function presentSelected()
+        {
+            if(!stillSelected()) return;
+            mux.attachCanvas(c);
+            if(mux.frameTiming==="vblank") mux.presentRasterFrame();
+            else if(typeof(renderer.redraw)==="function") renderer.redraw();
+        }
+
+        function fallback()
+        {
+            if(!stillSelected()) return;
+            console.warn("Video renderer '"+spec.name+"' unavailable; selecting canvas");
+            var fallbackDevice = mux.getRendererInstance("canvas",true);
+            if(fallbackDevice) mux.setModeByDCODE(fallbackDevice.id.DCODE,uiEl,false);
+        }
+
+        if(renderer && typeof(renderer.activate)==="function")
+        {
+            // Selection stays synchronous. GPU readiness may arrive after a
+            // reset or another selection; only the latest activation may attach.
+            renderer.onStatusChange = function(status)
+            {
+                if(status.state==="lost" || status.state==="unavailable")
+                    Promise.resolve().then(fallback);
+            };
+            if(typeof(renderer.isReady)==="function" && renderer.isReady())
+                this.attachCanvas(c);
+            Promise.resolve(renderer.activate()).then(function(ready)
+            {
+                if(ready) presentSelected();
+                else fallback();
+            },fallback);
+        }
+        else
+        {
+            presentSelected();
+        }
+
+        // An initializing device retains just the newest complete capture.
+        if(renderer && typeof(renderer.activate)==="function" && this.frameTiming==="vblank")
+            this.presentRasterFrame();
 
         this.updateRenderModeUI(uiEl);
         return this;
@@ -664,8 +726,13 @@ function Apple2VideoMUX(canvas)
                 currentIndex = i;
         }
 
-        var nextDevice = devices[(currentIndex+1)%devices.length];
-        return this.setModeByDCODE(nextDevice.id.DCODE,uiEl,false);
+        for(var offset=1;offset<=devices.length;offset++)
+        {
+            var nextDevice = devices[(currentIndex+offset)%devices.length];
+            if(typeof(nextDevice.isAvailable)==="function" && !nextDevice.isAvailable()) continue;
+            return this.setModeByDCODE(nextDevice.id.DCODE,uiEl,false);
+        }
+        return false;
     };
 
     this.nextMode = function(uiEl)
@@ -921,7 +988,7 @@ function Apple2VideoMUX(canvas)
 
         r.vidram = this.vidram;
         r.hw = this.hw;
-        r.frameTiming = this.frameTiming;
+        applyFrameTiming(r,this.frameTiming);
 
         if (typeof(r.setCharRom) == "function")
             r.setCharRom(this.state.charRom, this.state.charRomKey);
