@@ -1,0 +1,34 @@
+name: ScreenWEBGPU benchmark smoke
+on:
+  pull_request:
+    paths:
+      - 'tools/ScreenWEBGPU*'
+      - 'tools/ScreenGPU.js'
+      - 'tools/ScreenGPU_benchmark.js'
+      - 'res/EMU_DEVICE_video_WebGPU.js'
+      - 'res/EMU_apple2roms.js'
+      - 'tests/screenwebgpu_benchmark.test.js'
+      - 'tests/run_screenwebgpu_browser.cjs'
+      - '.github/workflows/screenwebgpu-benchmark.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run Node regression suite
+        run: node --test tests/*.test.js
+      - name: Install browser
+        run: |
+          npm install --prefix "$RUNNER_TEMP/screenwebgpu-tests" --no-audit --no-fund playwright@1.62.1
+          node "$RUNNER_TEMP/screenwebgpu-tests/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Exercise raw WebGPU shader benchmark
+        env:
+          NODE_PATH: '${{ runner.temp }}/screenwebgpu-tests/node_modules'
+        run: node tests/run_screenwebgpu_browser.cjs

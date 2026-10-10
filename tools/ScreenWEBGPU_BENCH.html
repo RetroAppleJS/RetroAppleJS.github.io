@@ -1,10 +1,10 @@
 <!doctype html>
-<!-- Copyright (c) 2026 Freddy Vandriessche. Standalone GPU.js kernel stress test. -->
+<!-- Copyright (c) 2026 Freddy Vandriessche. Standalone WebGPU shader stress test. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ScreenGPU — GPU.js stress test</title>
+<title>ScreenWEBGPU — WebGPU stress test</title>
 <style>
 * { box-sizing:border-box; }
 body { margin:0; background:#edf0f3; color:#202a36; font:15px Arial,sans-serif; }
@@ -32,22 +32,25 @@ pre { max-height:320px; overflow:auto; font-size:12px; } details { line-height:1
 </style>
 <script>var oEMU={component:{Video:{},ROM:{}}};</script>
 <script src="../res/COM_CONFIG.js"></script>
-<script src="../res/gpu-browser.min.js"></script>
 <script src="../res/EMU_apple2roms.js"></script>
-<script src="../res/EMU_VIDEO_raster.js"></script>
-<script src="../res/EMU_DEVICE_video_GPU.js"></script>
-<script>var Apple2VideoGPU=Apple2Video;</script>
+<script src="../res/EMU_DEVICE_video_WebGPU.js"></script>
 <script src="ScreenGPU_benchmark.js"></script>
+<script src="ScreenWEBGPU_benchmark.js"></script>
+<script>
+window.ScreenBenchmark=ScreenWEBGPUBenchmark;
+window.ScreenBenchmarkConfig={appName:"ScreenWEBGPUApp",exportName:"screenwebgpu-results",
+    startingMessage:"Creating and warming the WebGPU render pipeline…"};
+</script>
 <script src="ScreenGPU.js" defer></script>
 </head>
 <body><main>
 <a href="../index.html">← RetroAppleJS</a>
-<h1>GPU.js kernel stress test</h1>
-<p>Direct calls to the current Apple II video kernels at 560 × 384. The harness controls demand and completion independently of emulator clocks, FPS sliders and animation frames.</p>
+<h1>WebGPU shader stress test</h1>
+<p>Raw submissions to the current Apple II WebGPU shader at 560 × 384. The harness controls demand and queue completion independently of emulator clocks, the renderer's two-frame queue, FPS controls and animation frames.</p>
 <form id="settings" class="panel">
 <div class="controls">
 <label>Video mode<select id="mode"><option value="hires">Hires</option><option value="mixed-hires">Mixed hires</option><option value="lores">Lores</option><option value="mixed-lores">Mixed lores</option><option value="text">Text</option></select></label>
-<label>Input path<select id="input"><option value="ram">RAM / kProcess_v6</option><option value="capture">Beam capture / raster kernel</option></select></label>
+<label>Input path<select id="input"><option value="ram">RAM decoding</option><option value="capture">Beam capture decoding</option></select></label>
 <label>Dispatch driver<select id="driver"><option value="both">JavaScript + WASM</option><option value="javascript">JavaScript</option><option value="wasm">WASM</option></select></label>
 <label>Monitor<select id="chrome"><option value="0">Color</option><option value="1">B&amp;W</option><option value="2">Green</option><option value="3">Amber</option></select></label>
 <label>Character ROM<select id="rom"></select></label>
@@ -63,13 +66,13 @@ pre { max-height:320px; overflow:auto; font-size:12px; } details { line-height:1
 <label class="check"><input type="checkbox" id="profile" checked> Separate upload/GPU profile</label>
 </div>
 <div class="actions"><button class="primary" id="run" type="submit">Run stress test</button><button id="stop" type="button" disabled>Stop</button><button id="json" type="button" disabled>Export JSON</button><button id="csv" type="button" disabled>Export CSV</button></div>
-<p id="status" role="status" aria-live="polite">Ready. Keep this tab visible during testing.</p>
+<p id="status" role="status" aria-live="polite">Ready. WebGPU requires a supported browser and secure context; keep this tab visible during testing.</p>
 <div id="capabilities"></div>
 </form>
-<div class="panel preview"><canvas id="applescreen" width="560" height="384"></canvas><div id="summary">Results will identify the highest sustainable tested rate and the measured throughput ceiling for each dispatch driver.</div></div>
-<div class="panel"><h2>Completed rendering throughput</h2><canvas id="throughput" class="chart" width="1100" height="280"></canvas><p class="legend">Blue: JavaScript · Orange: WASM · Dashed grey: requested rate. FPS counts completed kernel renders, not displayed screen refreshes. MAX is an uncapped demand run.</p></div>
-<div class="panel"><h2>Batch completion latency — p95</h2><canvas id="latency" class="chart" width="1100" height="280"></canvas><p class="legend">Blue: JavaScript · Orange: WASM. Time from the first kernel call until the batch's completion is observed, including browser notification/polling delay.</p></div>
-<div class="panel"><h2>CPU submission, upload calls and GPU draw time</h2><canvas id="timing" class="chart" width="1100" height="280"></canvas><p class="legend">Blue: JavaScript · Orange: WASM. Solid: CPU ms/render · Dashed: upload-call ms/render · Dotted: isolated GPU draw ms. Profiling is separate from throughput; unavailable measurements show N/A.</p></div>
+<div class="panel preview"><canvas id="applescreen" width="560" height="384"></canvas><div id="summary">Results will identify the highest sustainable tested rate and measured WebGPU throughput ceiling for each dispatch driver.</div></div>
+<div class="panel"><h2>Completed rendering throughput</h2><canvas id="throughput" class="chart" width="1100" height="280"></canvas><p class="legend">Blue: JavaScript · Orange: WASM · Dashed grey: requested rate. FPS counts completed shader renders, not displayed refreshes. MAX is uncapped demand.</p></div>
+<div class="panel"><h2>Batch completion latency — p95</h2><canvas id="latency" class="chart" width="1100" height="280"></canvas><p class="legend">Blue: JavaScript · Orange: WASM. Time from the first submission call until completion of all work in the batch is observed through the WebGPU queue.</p></div>
+<div class="panel"><h2>CPU submission, uploads and GPU render-pass time</h2><canvas id="timing" class="chart" width="1100" height="280"></canvas><p class="legend">Blue: JavaScript · Orange: WASM. Solid: CPU ms/render · Dashed: writeBuffer call ms · Dash-dot: upload-only queue completion ms · Dotted: isolated GPU render-pass ms. Profiling is separate from throughput; unavailable timestamp queries show N/A.</p></div>
 <div class="panel"><h2>Measurements</h2><div class="table-scroll"><table><thead><tr><th>Driver / repeat</th><th>Request FPS</th><th>Completed FPS</th><th>CPU ms/render</th><th>Batch p50 ms</th><th>Batch p95 ms</th><th>Upload call ms</th><th>Upload KiB/render</th><th>Upload complete ms</th><th>GPU draw ms</th><th>Missed budget</th><th>Target met</th></tr></thead><tbody id="measurements"></tbody></table></div></div>
-<div class="panel"><details><summary>How to interpret the test</summary><p>One batch is outstanding at a time. WebGL2 uses asynchronous completion fences; WebGL1 is explicitly labelled when it uses blocking gl.finish. The sustainable threshold requires at least 95% of requested throughput and p95 batch latency within the batch interval in every repetition. The boundary is refined with two additional requested rates when a passing/failing bracket exists.</p><p>The default reuses deterministic precomputed inputs. The optional RAM snapshot setting includes the production-style 24 KiB slice allocation/copy. WASM changes only the dispatch loop; GPU.js still executes in JavaScript. GPU timers and upload-call timings are diagnostic measurements, not physical DMA time. Tests stop when this tab becomes hidden.</p><p><a href="../docs/SCREENGPU_BENCHMARK.md">Benchmark methodology and WASM source</a></p></details><details><summary>Active kernel source</summary><pre id="source"></pre></details></div>
+<div class="panel"><details><summary>How to interpret the test</summary><p>One bounded batch is outstanding at a time. Every batch is counted only after <code>queue.onSubmittedWorkDone()</code> resolves. The sustainable threshold requires at least 95% of requested throughput and p95 batch latency within the batch interval in every repetition. Two midpoint measurements refine a passing/failing bracket.</p><p>The default reuses deterministic inputs. The optional RAM snapshot setting includes a fresh 24 KiB copy. WASM changes only the dispatch loop; WebGPU calls and shader execution remain browser operations. Upload completion includes queue and promise-notification overhead and is not physical DMA time. Tests stop when this tab becomes hidden.</p><p><a href="../docs/SCREENWEBGPU_BENCHMARK.md">Benchmark methodology</a></p></details><details><summary>Active WGSL shader source</summary><pre id="source"></pre></details></div>
 </main></body></html>
