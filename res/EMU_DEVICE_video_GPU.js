@@ -167,6 +167,19 @@ function Apple2Video(ctx)
     var frame_submit_count = 0;
     var frame_measurement_start_ms = 0;
     var frame_rate_measured = 0;
+    var rendererActive = true;
+    var queuedFrames = new Set();
+
+    this.setActive = function(active)
+    {
+        rendererActive = !!active;
+        if(!rendererActive)
+        {
+            queuedFrames.forEach(function(id) { window.cancelAnimationFrame(id); });
+            queuedFrames.clear();
+        }
+        frame_redraw = true;
+    };
 
     if(ctx) this.ctx = ctx;
 
@@ -322,7 +335,7 @@ function Apple2Video(ctx)
 
     this.cycle = function(ticks)
     {
-      if(this.frameTiming==="vblank") return;
+      if(!rendererActive || this.frameTiming==="vblank") return;
       ticks = Number(ticks);
       if(!Number.isFinite(ticks) || ticks<=0) return;   
       frame_count += ticks;
@@ -353,16 +366,17 @@ function Apple2Video(ctx)
 
   this.redraw = function()
   {
-      if(this.frameTiming==="vblank") return;
+      if(!rendererActive || this.frameTiming==="vblank") return;
       this.serial8[ this.idx8("CHROME_MODE") ] = chrome_mode;
       this.serial8[ this.idx8("GFX_FLG") ]     = this.register_mode();
       this.serial8[ this.idx8("FLASH") ]       = flash_on ? 1 : 0;
 
       const video = this;
 
-window.requestAnimationFrame(function(rafNow)
+var request = window.requestAnimationFrame(function(rafNow)
 {
-    if(video.frameTiming==="vblank") return;
+    queuedFrames.delete(request);
+    if(!rendererActive || video.frameTiming==="vblank") return;
     if (!video.hw || typeof(video.hw.safe_videodump) !== "function") return;
     if (typeof(video.kernel) !== "function") return;
 
@@ -377,13 +391,14 @@ window.requestAnimationFrame(function(rafNow)
      && typeof(oEMU.component.IO.AppleSpeaker.toggle) === "function")
         oEMU.component.IO.AppleSpeaker.toggle();
 });
+queuedFrames.add(request);
 
       frame_redraw = false;
   }
 
     this.presentRasterFrame = function(frame,state)
     {
-        if(!this.gpu) return;
+        if(!rendererActive || !this.gpu) return;
         if(!this.rasterKernel) this.rasterKernel=Apple2RasterCreateKernel(this.gpu,2);
         this.rasterKernel(frame.bytes,frame.modes,this.charRom,this.INTCols,state.chrome,frame.flash?1:0);
         this.recordFrameSubmit(this.nowMs());
