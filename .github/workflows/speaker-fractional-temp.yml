@@ -1,0 +1,14 @@
+name: Speaker fractional regression
+on:
+  push:
+    branches: ["fix/speaker-fractional-frame-samples"]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --test tests/apple_speaker_monitor.test.js
+      - run: node --check res/EMU_DEVICE_speaker.js
