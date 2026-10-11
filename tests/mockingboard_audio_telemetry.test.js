@@ -158,3 +158,20 @@ test('Mockingboard card offers dedicated 450px telemetry and 500ms dashboard-syn
     r.card.resetAudioTelemetry();
     assert.equal(r.card.peekAudioStats().overruns,0);
 });
+
+test('Mockingboard telemetry retains a bounded rolling history and reset clears it',()=>{
+    const r=cardRig();
+    r.card.deviceToolSlotHTML({slotID:4,toolboxID:'device_tool_4'});
+    r.card.openAudioTelemetry();
+    for(let i=1;i<=130;i++)
+    {
+        r.setTime(i*500);
+        r.card.audioTelemetryRefresh();
+    }
+    const history=r.card.getAudioTelemetryHistory();
+    assert.equal(history.length,120);
+    assert.equal(history[0].sampleRate,22050);
+    assert.equal(history.at(-1).sink.contextState,'running');
+    r.card.resetAudioTelemetry();
+    assert.equal(r.card.getAudioTelemetryHistory().length,0);
+});
