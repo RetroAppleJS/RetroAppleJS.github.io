@@ -357,6 +357,7 @@ function AppleSpeaker()
             break;
 
             case "audio_on":
+                flushAudioQueue();
                 this.enabled = true;
                 refreshIOHooks();
 
