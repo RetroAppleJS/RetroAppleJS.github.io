@@ -83,6 +83,8 @@ function mockingboard()
     var audioLastError="";
     var eventQueueCapacityHits=0;
     var audioRenderCalls=0;
+    var telemetryHistory=[];
+    const TELEMETRY_HISTORY_LIMIT=120;
 
     function cpuTarget()
     {
@@ -288,13 +290,15 @@ function mockingboard()
             overruns:0,highWaterFrames:audioCount};
         pendingHighWater=pendingCount;
         audioLastError="";eventQueueCapacityHits=0;audioRenderCalls=0;
-        telemetryBaseline=null;
+        telemetryBaseline=null;telemetryHistory=[];
         telemetryRates={producedPerSecond:0,drainedPerSecond:0,cpuPacePercent:0};
         return this.getAudioTelemetry();
     };
     this.audioTelemetryRefresh=function()
     {
         var t=this.getAudioTelemetry(),q=t.pcm,sk=t.sink||{};
+        telemetryHistory.push({wallTime:Date.now(),...t});
+        if(telemetryHistory.length>TELEMETRY_HISTORY_LIMIT)telemetryHistory.shift();
         telemetryText("backend",t.backend.toUpperCase()+(t.backendError?" — "+t.backendError:""));
         telemetryText("context",sk.contextState||"unavailable");
         telemetryText("rates",t.sampleRate+" Hz / "+(sk.outputSampleRate||"—")+" Hz");
@@ -322,6 +326,22 @@ function mockingboard()
         telemetryText("sources",sk.activeSources===undefined?"—":sk.activeSources);
         telemetryText("error",q.lastError||"none");
         return t;
+    };
+    this.getAudioTelemetryHistory=function(){return telemetryHistory.slice();};
+    this.downloadAudioTelemetry=function()
+    {
+        if(typeof(oCOM)==="undefined" || typeof(oCOM.Download)!=="function")return false;
+        var data={
+            format:"RetroAppleJS.MockingboardAudioTelemetry",
+            version:1,slot:historySlotNumber(),
+            sampleRate:SAMPLE_RATE,
+            latest:this.getAudioTelemetry(),
+            history:this.getAudioTelemetryHistory()
+        };
+        oCOM.Download("Mockingboard_slot"+(data.slot===null?"x":data.slot)+
+            "_audio_telemetry.json",
+            new TextEncoder("utf-8").encode(JSON.stringify(data,null,2)));
+        return true;
     };
     this.toggleAudioTelemetrySync=function()
     {
@@ -376,7 +396,9 @@ function mockingboard()
             +"<button class=appbut title='Toggle 500 ms monitoring' onclick='"+access+"?.toggleAudioTelemetrySync()'>"
             +"<i id='"+historyID("audio_sync")+"' class='fa "+(active?"fa-stop-circle":"fa-sync-alt")+"'></i></button>"
             +"<button class=appbut title='Zero telemetry without clearing audio' onclick='"+access+"?.resetAudioTelemetry();"+access+"?.audioTelemetryRefresh()'>"
-            +"<i class='fa fa-undo'></i> Reset</button></div>"
+            +"<i class='fa fa-undo'></i> Reset</button>"
+            +"<button class=appbut title='Export up to 60 seconds of audio telemetry as JSON' onclick='"+access+"?.downloadAudioTelemetry()'>"
+            +"<i class='fa fa-cloud-download-alt'></i></button></div>"
             +"<table style='width:100%;border-collapse:collapse'>";
         for(var i=0;i<rows.length;i++)
             html+="<tr><td style='padding:2px 8px 2px 0'>"+rows[i][1]+
@@ -470,7 +492,13 @@ function mockingboard()
             var consumed=0;
             while(consumed<pendingCount && AYCore.eventTick(pendingEvents,consumed*16)<=end)consumed++;
             for(var i=0;i<consumed*16;i++)renderEvents[i]=pendingEvents[i];renderBatch.count=consumed;
-            var frames=core.renderUntil(end,renderBatch,pcm);
+            var frames;
+            try {frames=core.renderUntil(end,renderBatch,pcm);}
+            catch(error)
+            {
+                audioLastError="AY render: "+String(error&&error.message||error);
+                throw error;
+            }
             audioRenderCalls++;
             pendingEvents.copyWithin(0,consumed*16,pendingCount*16);pendingCount-=consumed;
             audioStats.producedFrames+=frames;
@@ -840,6 +868,7 @@ function mockingboard()
         telemetryBaseline=null;
         telemetryRates={producedPerSecond:0,drainedPerSecond:0,cpuPacePercent:0};
         audioLastError="";eventQueueCapacityHits=0;audioRenderCalls=0;
+        telemetryHistory=[];
         lastCpuTick=(io && typeof(io.getClockTicks)==="function") ? Number(io.getClockTicks())||0 : 0;
         syncBus(0); syncBus(1);
         backendLoading=false;syncAYControls();syncHistoryControls();
@@ -867,6 +896,8 @@ function mockingboard()
         if(core){core.getPosition(corePosition);core.destroy();core=null;}
         for(var i=0;i<2;i++)ayDevices[i].bindCore(null);
         backendLoading=false;syncAYControls();
+        if(typeof(oCOM)!=="undefined" && oCOM && typeof(oCOM.enableRefreshEvent)==="function")
+            oCOM.enableRefreshEvent(telemetryEventName(),false);
     };
     this.deviceToolSlotHTML=function(ctx)
     {
