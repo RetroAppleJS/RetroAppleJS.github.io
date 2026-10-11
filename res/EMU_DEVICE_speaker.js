@@ -30,16 +30,20 @@ function AppleSpeaker()
             tickCycle = round(1021800 / 21760) = 47
             samples at 10 fps = floor((1021800 / 10) / 47) = 2174
 
-        Keep the tick granularity, but recalculate the buffer geometry whenever
-        the processing frame rate changes.  samplerate = samples * fps keeps
-        every audio buffer exactly one processing frame long.
+        Keep the tick granularity. The true sample clock is therefore
+        CPU_ClocksTicks_s / tickCycle, which is fractional relative to most
+        processing-frame rates. Carry the fractional sample-frame phase forward
+        so frames naturally alternate between adjacent integer sample counts
+        instead of silently discarding the extra sample.
     */
     var targetSamplerate = 21760;
 
     this.tickCycle = Math.round(_o.CPU_ClocksTicks_s / targetSamplerate);
 
     var blockSamples = 0;
-    var samplerate   = targetSamplerate;
+    var samplerate   = _o.CPU_ClocksTicks_s / this.tickCycle;
+    var samplesPerFrameExact = 0;
+    var sampleFrameFraction = 0;
     var data         = [];
     var frameRate    = _o.EMU_Updates_s;
     var frameExcessSamples = 0;
@@ -60,6 +64,8 @@ function AppleSpeaker()
             ,monitorLastFrameCount:0
             ,monitorLastCpuTicks:null
             ,cpuPacePercent:0
+            ,lastExpectedSamples:0
+            ,lastGeneratedSamples:0
             ,lastMissingSamples:0
             ,lastExcessSamples:0
             ,lastSampleDelta:0
@@ -111,12 +117,15 @@ function AppleSpeaker()
         diagnostics.frameCount++;
     }
 
-    function recordSampleBalance(missing,excess)
+    function recordSampleBalance(expected,missing,excess)
     {
+        expected = Math.max(0,Math.round(Number(expected)||0));
         missing = Math.max(0,Math.round(Number(missing)||0));
         excess = Math.max(0,Math.round(Number(excess)||0));
 
         var delta = excess - missing;
+        diagnostics.lastExpectedSamples = expected;
+        diagnostics.lastGeneratedSamples = expected - missing + excess;
         diagnostics.lastMissingSamples = missing;
         diagnostics.lastExcessSamples = excess;
         diagnostics.lastSampleDelta = delta;
@@ -240,16 +249,47 @@ function AppleSpeaker()
     var ccnt = 0;
     var floatval = 0;
 
+    function nextBlockSampleCount()
+    {
+        var total = sampleFrameFraction + samplesPerFrameExact;
+        var count = Math.floor(total + 1e-12);
+        sampleFrameFraction = total - count;
+
+        // Avoid floating-point residue around exact rational boundaries.
+        if(Math.abs(sampleFrameFraction) < 1e-12) sampleFrameFraction = 0;
+        if(sampleFrameFraction > 1-1e-12) sampleFrameFraction = 0;
+
+        return Math.max(1,count);
+    }
+
+    function alignSampleFramePhase(startTick)
+    {
+        startTick = Number(startTick);
+        if(!Number.isFinite(startTick)) startTick = 0;
+        startTick = Math.floor(startTick);
+
+        // Samples are emitted for tick phases n % tickCycle == 0. The
+        // fractional state at a frame boundary is frac((startTick-1)/tickCycle).
+        var phase = (startTick - 1) % speaker.tickCycle;
+        if(phase < 0) phase += speaker.tickCycle;
+        sampleFrameFraction = phase / speaker.tickCycle;
+    }
+
     this.setFrameRate = function(fps)
     {
         fps = Math.round(Number(fps));
         if(!Number.isFinite(fps) || fps < 1) return;
 
-        var cpuTicksPerBlock = _o.CPU_ClocksTicks_s / fps;
+        var cpuTicksPerBlock = Number(_o.CPU_ClockTicks);
+        if(!Number.isFinite(cpuTicksPerBlock) || cpuTicksPerBlock<=0)
+            cpuTicksPerBlock = _o.CPU_ClocksTicks_s / fps;
 
         frameRate = fps;
-        blockSamples = Math.max(1, Math.floor(cpuTicksPerBlock / this.tickCycle));
-        samplerate   = blockSamples * fps;
+        samplerate = _o.CPU_ClocksTicks_s / this.tickCycle;
+        samplesPerFrameExact = cpuTicksPerBlock / this.tickCycle;
+        alignSampleFramePhase(cpuClockTicks());
+
+        blockSamples = nextBlockSampleCount();
         data         = new Array(blockSamples).fill(floatval);
         this.pos     = data.length;
     };
@@ -395,7 +435,7 @@ function AppleSpeaker()
         cnt = (cnt % 10) + 1;
 
         recordFrameWallTime();
-        recordSampleBalance(this.pos,frameExcessSamples);
+        recordSampleBalance(data.length,this.pos,frameExcessSamples);
         frameExcessSamples = 0;
 
         /*
@@ -408,8 +448,6 @@ function AppleSpeaker()
             for(var k = this.pos - 1; k >= 0; k--)
                 data[k] = floatval;
         }
-
-        this.pos = data.length;
 
         var buffer = this.audio.createBuffer(1, data.length, samplerate);
         var ch0 = buffer.getChannelData(0);
@@ -469,6 +507,13 @@ function AppleSpeaker()
 
         this.activeSources.push(src);
 
+        // Advance the fractional geometry only after the completed frame has
+        // been copied into its AudioBuffer. The next CPU frame then receives
+        // exactly the number of sample slots implied by the 47-tick cadence.
+        blockSamples = nextBlockSampleCount();
+        data = new Array(blockSamples).fill(floatval);
+        this.pos = data.length;
+
         src.onended = () =>
         {
             try { src.disconnect(); } catch(e) {}
@@ -497,8 +542,10 @@ function AppleSpeaker()
             ,frameIntervalMax_ms:finiteOrNull(diagnostics.frameIntervalMax_ms)
             ,internalSampleRate:samplerate
             ,audioContextSampleRate:this.audio ? Number(this.audio.sampleRate) : null
-            ,expectedSamples:data.length
-            ,generatedSamples:data.length-diagnostics.lastMissingSamples+diagnostics.lastExcessSamples
+            ,expectedSamples:diagnostics.lastExpectedSamples || data.length
+            ,generatedSamples:diagnostics.lastExpectedSamples
+                ? diagnostics.lastGeneratedSamples
+                : data.length
             ,lastMissingSamples:diagnostics.lastMissingSamples
             ,lastExcessSamples:diagnostics.lastExcessSamples
             ,lastSampleDelta:diagnostics.lastSampleDelta
