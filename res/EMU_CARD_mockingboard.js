@@ -246,6 +246,20 @@ function mockingboard()
         // Neither inspect nor render advancing the card's audio horizon.
         var sink=telemetrySink();
         var output=sink && typeof(sink.getStats)==="function" ? sink.getStats() : null;
+        var cpuState=null;
+        try
+        {
+            var cpu=typeof(apple2plus)!=="undefined" && apple2plus
+                && typeof(apple2plus.cpuObj)==="function" ? apple2plus.cpuObj() : null;
+            if(cpu && typeof(cpu.watch)==="function")
+            {
+                var registers=cpu.watch();
+                cpuState={pc:registers.pc,ic:registers.ic,
+                    a:registers.a,x:registers.x,y:registers.y,p:registers.p,
+                    sp:registers.sp,cycleDelay:registers.cycle_delay};
+            }
+        }
+        catch(e){}
         if(core)core.getPosition(corePosition);
         var fifo=this.peekAudioStats();
         var now=typeof(performance)!=="undefined" && typeof(performance.now)==="function"
@@ -270,7 +284,10 @@ function mockingboard()
         }
         return {
             backend:backend,backendError:backendError,sampleRate:SAMPLE_RATE,
-            cpuTick:lastCpuTick,irq:this.state.irq,
+            cpuTick:lastCpuTick,cpu:cpuState,
+            systemMode:typeof(oApple2Video)!=="undefined" && oApple2Video
+                ? oApple2Video.frameTiming : "unknown",
+            irq:this.state.irq,
             via0Irq:!!(vias[0] && vias[0].irqLevel),
             via1Irq:!!(vias[1] && vias[1].irqLevel),
             pendingEvents:pendingCount,eventHighWater:pendingHighWater,
@@ -321,6 +338,10 @@ function mockingboard()
         telemetryText("projected",telemetryNumber(t.projectedMs,2," ms"));
         telemetryText("budget",(sk.cpuBudgetBlocked||0)+" / "+(sk.cpuBudgetChecks||0));
         telemetryText("cpu",telemetryNumber(t.rates.cpuPacePercent,1," %"));
+        telemetryText("pc",t.cpu && Number.isFinite(t.cpu.pc)
+            ? "$"+(t.cpu.pc&0xFFFF).toString(16).toUpperCase().padStart(4,"0")+
+              " / "+t.cpu.ic : "—");
+        telemetryText("mode",t.systemMode);
         telemetryText("irq",(t.irq?"ON":"off")+" (VIA0 "+(t.via0Irq?"1":"0")+
             ", VIA1 "+(t.via1Irq?"1":"0")+")");
         telemetryText("sources",sk.activeSources===undefined?"—":sk.activeSources);
@@ -388,7 +409,8 @@ function mockingboard()
             ["late","UNDERRUN / LAST / WORST"],["producer","PRODUCED / DRAINED / DROP"],
             ["overruns","PCM / EVENT OVERRUNS"],["render","RENDER / EVENTS / PEAK"],
             ["projected","UNRENDERED HORIZON"],["budget","CPU BUDGET BLOCK / CHECK"],
-            ["cpu","CPU WALL PACE"],["irq","CARD IRQ"],["sources","WEB AUDIO SOURCES"],
+            ["cpu","CPU WALL PACE"],["mode","SYSTEM TIMING MODE"],
+            ["pc","CPU PC / INS"],["irq","CARD IRQ"],["sources","WEB AUDIO SOURCES"],
             ["error","LAST CAPACITY ERROR"]
         ];
         var html="<div style='font-family:monospace;font-size:12px'>"
