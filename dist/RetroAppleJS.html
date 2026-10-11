@@ -22559,6 +22559,25 @@ function AppleSpeaker()
         };
     }
 
+
+    function flushAudioQueue()
+    {
+        for(var i=0; i<speaker.activeSources.length; i++)
+        {
+            try { speaker.activeSources[i].stop(); } catch(e) {}
+            try { speaker.activeSources[i].disconnect(); } catch(e) {}
+        }
+
+        speaker.activeSources = [];
+        speaker.nextStartTime = 0;
+
+        frameExcessSamples = 0;
+        alignSampleFramePhase(cpuClockTicks());
+
+        blockSamples = nextBlockSampleCount();
+        data = new Array(blockSamples).fill(floatval);
+        speaker.pos = data.length;
+    }
     var diagnostics = emptyDiagnostics();
 
     function finiteOrNull(value)
@@ -22832,6 +22851,7 @@ function AppleSpeaker()
             case "audio_off":
                 this.enabled = false;
                 refreshIOHooks();
+                flushAudioQueue();
 
                 for(var i = 0; i < this.activeSources.length; i++)
                 {
