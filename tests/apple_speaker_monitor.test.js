@@ -78,6 +78,7 @@ function loadSpeaker() {
         _o:{
             CPU_ClocksTicks_s:1021800,
             CPU_TargetTicks_s:1021800,
+            CPU_ClockTicks:17030,
             EMU_Updates_s:60,
             EMU_DashboardRefresh_s:2
         },
@@ -133,7 +134,7 @@ test('speaker diagnostics distinguish missing and excess samples at frame bounda
     const expected = speaker.getDiagnostics().expectedSamples;
 
     for(let i=0;i<expected-3;i++)
-        speaker.tick((i+1)*speaker.tickCycle);
+        speaker.tick(i*speaker.tickCycle);
     env.setNow(16.7);
     speaker.cycle();
 
@@ -143,8 +144,9 @@ test('speaker diagnostics distinguish missing and excess samples at frame bounda
     assert.equal(d.lastSampleDelta,-3);
     assert.equal(d.cumulativeMissingSamples,3);
 
-    for(let i=0;i<expected+2;i++)
-        speaker.tick((i+1)*speaker.tickCycle);
+    // The next 60-Hz frame has 362 slots; drive 364 sample events.
+    for(let i=0;i<364;i++)
+        speaker.tick((363+i)*speaker.tickCycle);
     env.setNow(33.4);
     speaker.cycle();
 
@@ -154,6 +156,39 @@ test('speaker diagnostics distinguish missing and excess samples at frame bounda
     assert.equal(d.lastSampleDelta,2);
     assert.equal(d.cumulativeExcessSamples,2);
     assert.equal(d.sampleOverrunFrames,1);
+});
+
+test('fractional speaker geometry follows the 47-tick sample clock without steady excess', async () => {
+    const env = loadSpeaker();
+    const speaker = env.speaker;
+    await speaker.init('audio_ctx');
+    await speaker.init('audio_on');
+
+    const expectedSequence = [363,362,363,362,362,363];
+    const observed = [];
+
+    for(let frame=0;frame<expectedSequence.length;frame++)
+    {
+        const start = frame*17030;
+        const end = start+17030;
+        for(let n=start;n<end;n++)
+            speaker.tick(n);
+        env.setCpuTicks(end);
+        env.setNow((frame+1)*1000/60);
+        speaker.cycle();
+
+        const d = speaker.getDiagnostics();
+        observed.push(d.expectedSamples);
+        assert.equal(d.generatedSamples,d.expectedSamples);
+        assert.equal(d.lastSampleDelta,0);
+    }
+
+    assert.deepEqual(observed,expectedSequence);
+    const d = speaker.getDiagnostics();
+    assert.equal(d.cumulativeExcessSamples,0);
+    assert.equal(d.cumulativeMissingSamples,0);
+    assert.equal(d.sampleOverrunFrames,0);
+    assert.ok(Math.abs(d.internalSampleRate-(1021800/47))<1e-9);
 });
 
 test('speaker diagnostics retain scheduler lateness and queue headroom', async () => {
@@ -223,5 +258,5 @@ test('speaker diagnostic reset clears accumulated faults but keeps geometry', as
     assert.equal(d.cumulativeMissingSamples,0);
     assert.equal(d.cumulativeExcessSamples,0);
     assert.equal(d.sampleOverrunFrames,0);
-    assert.equal(d.expectedSamples,expected);
+    assert.ok(d.expectedSamples===expected || Math.abs(d.expectedSamples-expected)===1);
 });
