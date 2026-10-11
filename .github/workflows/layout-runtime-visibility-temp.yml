@@ -1,0 +1,14 @@
+name: Layout runtime visibility regression
+on:
+  push:
+    branches: ["fix/layout-runtime-led-visibility"]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --test tests/layout_runtime_visibility.test.js
+      - run: node --check res/COM_A2P_LAYOUT.js
