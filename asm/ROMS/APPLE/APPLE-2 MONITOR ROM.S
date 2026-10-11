@@ -16,7 +16,7 @@
 ;* operands ARE generally formatted as they appear in THE original listing.     *
 ;* Last updated by Freddy Vandriessche on 2026/06/05                            *
 ;********************************************************************************
-IOADR       EQU     $c000  
+IOADR       EQU     $C000  
 LOC0        EQU     $00     ; SLOTROM VECTOR - LO
 LOC1        EQU     $01     ; SLOTROM VECTOR - HI
 WNDLFT      EQU     $20
@@ -1175,5 +1175,5 @@ SUBTBL      .BYTE    <BASCONT-1
             .BYTE    <CRMON-1
             .BYTE    <BLANK-1
             .WORD    NMI                ;NMI vector
-            .WORD    RESET              ;reset vector
-            .WORD    OLDRST             ;IRQ vector
+            .WORD    RESET              ;RESET vector
+            .WORD    IRQ                ;IRQ vector
