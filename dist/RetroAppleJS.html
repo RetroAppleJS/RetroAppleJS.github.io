@@ -7383,7 +7383,17 @@ function LAYOUT(rootWindow)
             return state;
         }
 
-        return applyLayerVisibility(entry,state,entryPresentationState(entry));
+        /*
+         * Presentation filtering depends on entry.model.visible. Apply the new
+         * intrinsic visibility before evaluating the current peripheral scene.
+         * Evaluating entryPresentationState() first observes the old state,
+         * causing hidden runtime layers such as drive LEDs to remain hidden
+         * when switched on (and visible layers to remain visible when switched
+         * off).
+         */
+        entry.model.visible = state;
+        applyLayerPresentation(entry,entryPresentationState(entry));
+        return state;
     };
 
     this.visibleAt = function(slotN,id,state)
@@ -7535,7 +7545,9 @@ function LAYOUT(rootWindow)
                     var entry = resolveLayerEntry(id);
                     if(entry)
                     {
-                        applyLayerVisibility(entry,pending[id],entryPresentationState(entry));
+                        var pendingState = !!pending[id];
+                        entry.model.visible = pendingState;
+                        applyLayerPresentation(entry,entryPresentationState(entry));
                         delete pending[id];
                     }
                 });
