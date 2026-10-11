@@ -1000,12 +1000,25 @@ function ASM(options)
         this.symlink[label] = { type: "def", val: storedValue };
     };
 
+    // In the RetroAppleJS dialect, '*' before an operand forces direct
+    // zero-page addressing (e.g. *MASK, *MASK,X or *(MASK+1)). Do not
+    // confuse this with the current-PC expressions *, *+3 and *-3.
+    this.isRAJSZeroPagePrefix = function (operand) {
+        if (this.dialect !== "raJS") return false;
+        var s = String(operand == null ? "" : operand).trim();
+        if (s.charAt(0) !== "*") return false;
+        var rest = s.substring(1).trim();
+        return !!rest && rest.charAt(0) !== "+" && rest.charAt(0) !== "-";
+    };
+
     this.cleanOperandValue = function (operand, mode) {
         var s = String(operand == null ? "" : operand).trim();
-        // Keep the old unambiguous '*$...' spelling only for direct zero-page
-        // modes. Bare '*' and arithmetic such as '*+3' still mean current PC.
-        if (this.dialect !== "ACME" && (mode === 6 || mode === 7 || mode === 8)
-            && /^\*\s*\$/.test(s)) s = s.substring(1).trim();
+        // raJS accepts *SYMBOL as well as *$NN. Other non-ACME dialects
+        // retain only the existing *$NN compatibility spelling.
+        if ((mode === 6 || mode === 7 || mode === 8)
+            && (this.isRAJSZeroPagePrefix(s)
+                || (this.dialect !== "ACME" && /^\*\s*\$/.test(s))))
+            s = s.substring(1).trim();
         var u = s.toUpperCase();
         if (mode === 2) return s.charAt(0) === "#" ? s.substring(1) : s;
         u = s.toUpperCase();
@@ -1537,7 +1550,10 @@ function ASM(options)
         if (upper === "A" && this.isValidMode(entry, 1)) mode = 1;
         else if (addr.charAt(0) === "#") mode = 2;
         else if (addr.charAt(0) === "/" && this.isValidMode(entry, 2)) mode = 2;
-        else if (/^\*\s*\$/.test(addr)) {
+        else if (this.isRAJSZeroPagePrefix(addr)) {
+            mode = indexedX ? 7 : (indexedY ? 8 : 6);
+            forcedZeroPage = true;
+        } else if (/^\*\s*\$/.test(addr)) {
             if (this.dialect === "ACME")
                 return {mode:null, bytes:0, err:"legacy '*' zero-page prefix is not ACME syntax; use $3C for zero page or $003C for absolute"};
             mode = indexedX ? 7 : (indexedY ? 8 : 6);
