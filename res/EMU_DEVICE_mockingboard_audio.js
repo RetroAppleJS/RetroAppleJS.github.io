@@ -31,7 +31,13 @@ function MockingboardAudio()
     var gain=null;
     var activeSources=[];
     var nextStartTime=0;
-    var stats={buffersScheduled:0,framesScheduled:0,underruns:0,minLead_ms:Infinity,cpuBudgetChecks:0,cpuBudgetBlocked:0};
+    function initialStats()
+    {
+        return {buffersScheduled:0,framesScheduled:0,underruns:0,minLead_ms:Infinity,
+            maxLead_ms:-Infinity,lastLead_ms:null,lastLate_ms:0,worstLate_ms:0,
+            cpuBudgetChecks:0,cpuBudgetBlocked:0,cycleCalls:0,emptyFifoCycles:0};
+    }
+    var stats=initialStats();
 
     this.audio=undefined;
 
@@ -41,7 +47,7 @@ function MockingboardAudio()
     }
     function clearStats()
     {
-        stats={buffersScheduled:0,framesScheduled:0,underruns:0,minLead_ms:Infinity,cpuBudgetChecks:0,cpuBudgetBlocked:0};
+        stats=initialStats();
     }
     function stopSources()
     {
@@ -202,6 +208,7 @@ function MockingboardAudio()
     this.cycle=function()
     {
         if(!playbackEnabled || !owner || !io) return;
+        stats.cycleCalls++;
         if(!syncAudioContext())return;
         if(typeof(io.getClockTicks)==="function") owner.advanceTo(io.getClockTicks());
         var ac=ensureAudio();
@@ -210,9 +217,16 @@ function MockingboardAudio()
         var epoch=typeof(owner.getAudioEpoch)==="function"?owner.getAudioEpoch():null;
         if(epoch!==ownerEpoch){stopSources();nextStartTime=ac.currentTime+QUEUE_LEAD_MS/1000;ownerEpoch=epoch;}
         if(presentationPaused||targetHz()===0){stopSources();nextStartTime=0;if(typeof(owner.clearAudioQueue)==="function")owner.clearAudioQueue();return;}
-        if(available<=0)return;
+        if(available<=0){stats.emptyFifoCycles++;return;}
         if(!nextStartTime)nextStartTime=ac.currentTime+QUEUE_LEAD_MS/1000;
-        if(nextStartTime<ac.currentTime){stats.underruns++;nextStartTime=ac.currentTime+QUEUE_LEAD_MS/1000;}
+        if(nextStartTime<ac.currentTime)
+        {
+            var late=(ac.currentTime-nextStartTime)*1000;
+            stats.lastLate_ms=late;
+            stats.worstLate_ms=Math.max(stats.worstLate_ms,late);
+            stats.underruns++;
+            nextStartTime=ac.currentTime+QUEUE_LEAD_MS/1000;
+        }
         var scheduledLead=Math.max(0,nextStartTime-ac.currentTime);
         var frameBudget=Math.max(0,Math.floor((highWaterMs()/1000-scheduledLead)*owner.getAudioFormat().sampleRate));
         if(frameBudget===0)return;
@@ -231,6 +245,9 @@ function MockingboardAudio()
         if(!nextStartTime) nextStartTime=now+QUEUE_LEAD_MS/1000;
         if(nextStartTime<now)
         {
+            var late=(now-nextStartTime)*1000;
+            stats.lastLate_ms=late;
+            stats.worstLate_ms=Math.max(stats.worstLate_ms,late);
             stats.underruns++;
             nextStartTime=now+QUEUE_LEAD_MS/1000;
         }
@@ -239,6 +256,8 @@ function MockingboardAudio()
         nextStartTime=start+(buffer.duration/playbackRate);
         var lead=(nextStartTime-now)*1000;
         if(lead<stats.minLead_ms) stats.minLead_ms=lead;
+        if(lead>stats.maxLead_ms) stats.maxLead_ms=lead;
+        stats.lastLead_ms=lead;
         stats.buffersScheduled++;
         stats.framesScheduled+=data.frames;
         activeSources.push(src);
@@ -275,6 +294,9 @@ function MockingboardAudio()
         nextStartTime=0;
         refreshHooks();
     };
+    // Diagnostics reset is intentionally non-disruptive: never clear PCM or
+    // stop scheduled WebAudio sources merely to zero telemetry counters.
+    this.resetAudioTelemetry=function(){clearStats();return this.getStats();};
     this.getStats=function()
     {
         return {
@@ -282,7 +304,13 @@ function MockingboardAudio()
             ,framesScheduled:stats.framesScheduled
             ,underruns:stats.underruns
             ,queuedLead_ms:this.audio ? Math.max(0,(nextStartTime-this.audio.currentTime)*1000) : 0
-            ,minLead_ms:Number.isFinite(stats.minLead_ms)?stats.minLead_ms:0
+            ,minLead_ms:Number.isFinite(stats.minLead_ms)?stats.minLead_ms:null
+            ,maxLead_ms:Number.isFinite(stats.maxLead_ms)?stats.maxLead_ms:null
+            ,lastLead_ms:stats.lastLead_ms
+            ,lastLate_ms:stats.lastLate_ms,worstLate_ms:stats.worstLate_ms
+            ,activeSources:activeSources.length
+            ,outputSampleRate:this.audio ? this.audio.sampleRate : null
+            ,cycleCalls:stats.cycleCalls,emptyFifoCycles:stats.emptyFifoCycles
             ,lowWater_ms:QUEUE_LOW_MS,highWater_ms:highWaterMs(),playbackRate:1
             ,contextState:this.audio?this.audio.state:"uninitialized"
             ,contextTime:this.audio?this.audio.currentTime:null
