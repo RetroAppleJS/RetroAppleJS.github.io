@@ -80,6 +80,66 @@ console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms
 
 var appleIntervalHandle,apple2plus,KeyboardFocus,keys;
 
+// Browser intervals are wake-up requests, not the emulated machine clock.
+// Keep processing/sound frames fixed; make up late timer delivery with a
+// bounded number of complete frames rather than silently losing CPU time.
+var systemScheduler = {
+    previousWake_ms:null,
+    accumulated_ms:0,
+    maximumCatchUpFrames:4,
+    maximumStall_ms:250
+};
+
+function EMU_systemSchedulerReset()
+{
+    systemScheduler.previousWake_ms = null;
+    systemScheduler.accumulated_ms = 0;
+}
+
+function EMU_systemSchedulerWake()
+{
+    var now=performance.now();
+    var frameMs=Number(_o.EMU_IntervalTime_ms);
+    if(!Number.isFinite(frameMs) || frameMs<=0) return;
+
+    if(systemScheduler.previousWake_ms===null)
+    {
+        systemScheduler.previousWake_ms=now;
+        // First callback executes a full processing frame.
+        systemScheduler.accumulated_ms=frameMs;
+    }
+    else
+    {
+        var elapsed=now-systemScheduler.previousWake_ms;
+        systemScheduler.previousWake_ms=now;
+        if(!Number.isFinite(elapsed) || elapsed<0 || elapsed>systemScheduler.maximumStall_ms)
+            systemScheduler.accumulated_ms=frameMs;
+        else
+            systemScheduler.accumulated_ms+=elapsed;
+    }
+
+    var executed=0;
+    while(systemScheduler.accumulated_ms+1e-7>=frameMs
+        && executed<systemScheduler.maximumCatchUpFrames)
+    {
+        // Each frame retains its own IO/audio-cycle boundary.
+        apple2plus.cycle(_o.CPU_ClockTicks);
+        systemScheduler.accumulated_ms-=frameMs;
+        executed++;
+    }
+
+    // Do not try to replay seconds of CPU history after browser suspension.
+    if(systemScheduler.accumulated_ms>=frameMs)
+        systemScheduler.accumulated_ms=systemScheduler.accumulated_ms%frameMs;
+}
+
+function EMU_systemSchedulerStart()
+{
+    EMU_systemSchedulerReset();
+    var wakeMs=Math.max(4,Math.min(_o.EMU_IntervalTime_ms/2,16));
+    return window.setInterval(EMU_systemSchedulerWake,wakeMs);
+}
+
 function EMU_slotPeripheral(slotN,PCODE)
 {
     if(typeof(apple2plus)!="object" || !apple2plus) return null;
@@ -622,7 +682,7 @@ function EMU_init()
     }
 
     apple2plus.restart(); // restart the AppleII+
-    appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
+    appleIntervalHandle = EMU_systemSchedulerStart();
 
 
 
@@ -1141,8 +1201,8 @@ function EMUI()
 
         if(appleIntervalHandle != null)
         {
-            window.clearInterval(appleIntervalHandle);
-            appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
+            window.clearInterval(appleIntervalHandle); EMU_systemSchedulerReset();
+            appleIntervalHandle = EMU_systemSchedulerStart();
         }
 
         if(typeof(apple2plus)=="object" && apple2plus
@@ -1158,8 +1218,8 @@ function EMUI()
     {
         _o.CPU_TargetTicks_s = _o.CPU_ClocksTicks_s * pct;
         _o.CPU_ClockTicks = Math.round( _o.CPU_TargetTicks_s / _o.EMU_Updates_s );
-        window.clearInterval(appleIntervalHandle);
-        appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
+        window.clearInterval(appleIntervalHandle); EMU_systemSchedulerReset();
+        appleIntervalHandle = EMU_systemSchedulerStart();
         
         if(typeof(apple2plus)=="object" && apple2plus
             && typeof(apple2plus.CPU_pace_reset)=="function")
@@ -1265,12 +1325,12 @@ function EMUI()
 
         if (bPause) {
             if(keys) keys.isActive(false);
-            window.clearInterval(appleIntervalHandle); appleIntervalHandle = null;
+            window.clearInterval(appleIntervalHandle); EMU_systemSchedulerReset(); appleIntervalHandle = null;
             document.getElementById(arg.id).value = 'Pause ';
             document.getElementById(arg.id).innerHTML = '<i class="fa '+arg.class2+'"></i>';
         } else {
             if(keys) keys.isActive(true);
-            appleIntervalHandle = window.setInterval(apple2plus.cycle,_o.EMU_IntervalTime_ms,_o.CPU_ClockTicks);
+            appleIntervalHandle = EMU_systemSchedulerStart();
             document.getElementById(arg.id).value = 'Resume';
             document.getElementById(arg.id).innerHTML = '<i class="fa '+arg.class1+'"></i>';
         }
