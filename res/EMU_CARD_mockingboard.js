@@ -78,6 +78,11 @@ function mockingboard()
     var audioRight=new Float32Array(AUDIO_CAPACITY);
     var audioRead=0, audioWrite=0, audioCount=0;
     var audioStats={producedFrames:0,drainedFrames:0,droppedFrames:0,overruns:0,highWaterFrames:0};
+    var telemetryBaseline=null;
+    var telemetryRates={producedPerSecond:0,drainedPerSecond:0,cpuPacePercent:0};
+    var audioLastError="";
+    var eventQueueCapacityHits=0;
+    var audioRenderCalls=0;
 
     function cpuTarget()
     {
@@ -101,7 +106,12 @@ function mockingboard()
     function prepareEvent()
     {
         if(pendingCount===CORE_EVENTS)flushAudio();
-        if(pendingCount===CORE_EVENTS)throw AYCore.error("E_CAPACITY","Mockingboard event queue full; audio backpressure required");
+        if(pendingCount===CORE_EVENTS)
+        {
+            eventQueueCapacityHits++;
+            audioLastError="Event queue capacity exhausted";
+            throw AYCore.error("E_CAPACITY","Mockingboard event queue full; audio backpressure required");
+        }
     }
     function appendEvent(index,op,reg,value,cycle)
     {
@@ -202,6 +212,190 @@ function mockingboard()
         var hash=card.mount && card.mount.hash!==undefined ? Number(card.mount.hash) : 0;
         return "MOCK_history_"+hash+"_"+suffix;
     }
+    function telemetrySink()
+    {
+        var attached=Array.isArray(card.devices) ? card.devices : [];
+        for(var i=0;i<attached.length;i++)
+            if(attached[i] && attached[i].id && attached[i].id.DCODE==="MOCKAUDIO")
+                return attached[i];
+        return null;
+    }
+    function telemetryEventName(){return historyID("audio_refresh");}
+    function telemetryText(id,value)
+    {
+        if(typeof(document)!=="object" || !document.getElementById)return;
+        var el=document.getElementById(historyID("audio_"+id));
+        if(el)el.textContent=String(value);
+    }
+    function telemetryNumber(value,digits,suffix)
+    {
+        return Number.isFinite(value) ? value.toFixed(digits)+(suffix||"") : "—";
+    }
+    function ensureTelemetryEvent()
+    {
+        if(typeof(oCOM)==="undefined" || !oCOM || typeof(oCOM.addRefreshEvent)!=="function")return false;
+        var name=telemetryEventName();
+        if(!oCOM.RefreshEvent_arr || !oCOM.RefreshEvent_arr[name])
+            oCOM.addRefreshEvent(function(){card.audioTelemetryRefresh();},name,false);
+        return !!(oCOM.RefreshEvent_arr && oCOM.RefreshEvent_arr[name]);
+    }
+    this.getAudioTelemetry=function()
+    {
+        // Neither inspect nor render advancing the card's audio horizon.
+        var sink=telemetrySink();
+        var output=sink && typeof(sink.getStats)==="function" ? sink.getStats() : null;
+        if(core)core.getPosition(corePosition);
+        var fifo=this.peekAudioStats();
+        var now=typeof(performance)!=="undefined" && typeof(performance.now)==="function"
+            ? performance.now() : null;
+        if(Number.isFinite(now))
+        {
+            if(telemetryBaseline && now>telemetryBaseline.time)
+            {
+                var seconds=(now-telemetryBaseline.time)/1000;
+                telemetryRates={
+                    producedPerSecond:(fifo.producedFrames-telemetryBaseline.produced)/seconds,
+                    drainedPerSecond:(fifo.drainedFrames-telemetryBaseline.drained)/seconds,
+                    cpuPacePercent:cpuTarget()>0
+                        ? 100*(lastCpuTick-telemetryBaseline.cpuTick)/(cpuTarget()*seconds)
+                        : 0
+                };
+            }
+            telemetryBaseline={
+                time:now,produced:fifo.producedFrames,
+                drained:fifo.drainedFrames,cpuTick:lastCpuTick
+            };
+        }
+        return {
+            backend:backend,backendError:backendError,sampleRate:SAMPLE_RATE,
+            cpuTick:lastCpuTick,irq:this.state.irq,
+            via0Irq:!!(vias[0] && vias[0].irqLevel),
+            via1Irq:!!(vias[1] && vias[1].irqLevel),
+            pendingEvents:pendingCount,eventHighWater:pendingHighWater,
+            renderedFrames:corePosition.renderedFrames,
+            projectedMs:core && sourceClock
+                ? Math.max(0,(sourceClock.map(lastCpuTick)-corePosition.tick)/AUDIO_TIMEBASE*1000)
+                : 0,
+            pcm:fifo,sink:output,rates:{...telemetryRates}
+        };
+    };
+    this.resetAudioTelemetry=function()
+    {
+        // Keep sound, FIFO contents, and AY/VIA phases intact.
+        var sink=telemetrySink();
+        if(sink && typeof(sink.resetAudioTelemetry)==="function")sink.resetAudioTelemetry();
+        audioStats={producedFrames:0,drainedFrames:0,droppedFrames:0,
+            overruns:0,highWaterFrames:audioCount};
+        pendingHighWater=pendingCount;
+        audioLastError="";eventQueueCapacityHits=0;audioRenderCalls=0;
+        telemetryBaseline=null;
+        telemetryRates={producedPerSecond:0,drainedPerSecond:0,cpuPacePercent:0};
+        return this.getAudioTelemetry();
+    };
+    this.audioTelemetryRefresh=function()
+    {
+        var t=this.getAudioTelemetry(),q=t.pcm,sk=t.sink||{};
+        telemetryText("backend",t.backend.toUpperCase()+(t.backendError?" — "+t.backendError:""));
+        telemetryText("context",sk.contextState||"unavailable");
+        telemetryText("rates",t.sampleRate+" Hz / "+(sk.outputSampleRate||"—")+" Hz");
+        telemetryText("rate",telemetryNumber(t.rates.producedPerSecond,1," /s")+" / "+
+            telemetryNumber(t.rates.drainedPerSecond,1," /s"));
+        telemetryText("fifo",q.queuedFrames+" / "+q.capacityFrames+
+            " ("+telemetryNumber(q.queuedFrames*1000/t.sampleRate,1," ms")+")");
+        telemetryText("fifo_high",q.highWaterFrames+" / "+q.capacityFrames);
+        telemetryText("lead",telemetryNumber(sk.queuedLead_ms,1," ms")+" / "+
+            telemetryNumber(sk.minLead_ms,1," ms"));
+        telemetryText("lead_max",telemetryNumber(sk.maxLead_ms,1," ms"));
+        telemetryText("late",sk.underruns===undefined?"—":sk.underruns+" / "+
+            telemetryNumber(sk.lastLate_ms,1," ms")+" / "+
+            telemetryNumber(sk.worstLate_ms,1," ms"));
+        telemetryText("producer",q.producedFrames+" / "+q.drainedFrames+
+            " / "+q.droppedFrames);
+        telemetryText("overruns",q.overruns+" / "+q.eventQueueCapacityHits);
+        telemetryText("render",q.renderCalls+" / "+t.pendingEvents+
+            " / "+t.eventHighWater);
+        telemetryText("projected",telemetryNumber(t.projectedMs,2," ms"));
+        telemetryText("budget",(sk.cpuBudgetBlocked||0)+" / "+(sk.cpuBudgetChecks||0));
+        telemetryText("cpu",telemetryNumber(t.rates.cpuPacePercent,1," %"));
+        telemetryText("irq",(t.irq?"ON":"off")+" (VIA0 "+(t.via0Irq?"1":"0")+
+            ", VIA1 "+(t.via1Irq?"1":"0")+")");
+        telemetryText("sources",sk.activeSources===undefined?"—":sk.activeSources);
+        telemetryText("error",q.lastError||"none");
+        return t;
+    };
+    this.toggleAudioTelemetrySync=function()
+    {
+        if(!ensureTelemetryEvent())return false;
+        var enabled=oCOM.toggleRefreshEvent(telemetryEventName());
+        var icon=typeof(document)==="object"
+            ? document.getElementById(historyID("audio_sync")) : null;
+        if(icon)
+        {
+            icon.className=enabled?"fa fa-stop-circle":"fa fa-sync-alt";
+            icon.title=enabled?"Pause Mockingboard telemetry refresh":"Resume Mockingboard telemetry refresh";
+        }
+        if(enabled)this.audioTelemetryRefresh();
+        return enabled;
+    };
+    this.openAudioTelemetry=function()
+    {
+        if(typeof(document)!=="object" || !document.createElement ||
+           typeof(oCOM)==="undefined" || !oCOM.POPUP)return false;
+        ensureTelemetryEvent();
+        var id=historyID("audio_popup"),host=document.getElementById("tab1.2")||document.body;
+        var popup=document.getElementById(id);
+        if(!popup)
+        {
+            popup=document.createElement("div");
+            popup.id=id;popup.hidden=true;
+            popup.className="appbox com_popup_frame";
+            popup.style.cssText="position:absolute;left:800px;width:450px;height:450px;text-align:left;padding:0;margin:0";
+        }
+        if(popup.parentNode!==host)host.appendChild(popup);
+        if(!popup.hidden)
+        {
+            oCOM.POPUP.toggle(id);
+            return false;
+        }
+        var access="apple2plus.hwObj().io.HASH2obj("+Number(this.mount.hash)+")";
+        var active=!!(oCOM.RefreshEvent_arr &&
+            oCOM.RefreshEvent_arr[telemetryEventName()] &&
+            oCOM.RefreshEvent_arr[telemetryEventName()].active);
+        var rows=[
+            ["backend","AY CORE"],["context","AUDIO CONTEXT"],["rates","SAMPLE RATES (PCM/OUT)"],
+            ["rate","PRODUCED / DRAINED"],["fifo","PCM FIFO"],["fifo_high","FIFO HIGH WATER"],
+            ["lead","QUEUE LEAD / MIN"],["lead_max","QUEUE LEAD MAX"],
+            ["late","UNDERRUN / LAST / WORST"],["producer","PRODUCED / DRAINED / DROP"],
+            ["overruns","PCM / EVENT OVERRUNS"],["render","RENDER / EVENTS / PEAK"],
+            ["projected","UNRENDERED HORIZON"],["budget","CPU BUDGET BLOCK / CHECK"],
+            ["cpu","CPU WALL PACE"],["irq","CARD IRQ"],["sources","WEB AUDIO SOURCES"],
+            ["error","LAST CAPACITY ERROR"]
+        ];
+        var html="<div style='font-family:monospace;font-size:12px'>"
+            +"<div style='display:flex;gap:8px;margin-bottom:10px'>"
+            +"<button class=appbut title='Toggle 500 ms monitoring' onclick='"+access+"?.toggleAudioTelemetrySync()'>"
+            +"<i id='"+historyID("audio_sync")+"' class='fa "+(active?"fa-stop-circle":"fa-sync-alt")+"'></i></button>"
+            +"<button class=appbut title='Zero telemetry without clearing audio' onclick='"+access+"?.resetAudioTelemetry();"+access+"?.audioTelemetryRefresh()'>"
+            +"<i class='fa fa-undo'></i> Reset</button></div>"
+            +"<table style='width:100%;border-collapse:collapse'>";
+        for(var i=0;i<rows.length;i++)
+            html+="<tr><td style='padding:2px 8px 2px 0'>"+rows[i][1]+
+                "</td><td id='"+historyID("audio_"+rows[i][0])+"'>—</td></tr>";
+        html+="</table><div style='margin-top:8px;font:11px Arial'>"+
+            "PCM FIFO shows emulated samples awaiting the WebAudio sink; queue lead is "+
+            "already scheduled browser audio. CPU budget blocks are intentional backpressure; "+
+            "PCM/event capacity overruns are potential execution failures.</div></div>";
+        var close="<div class=appbut onclick=\"oCOM.POPUP.toggle('"+id+"');event.stopPropagation()\" "+
+            "style='text-align:center;float:right'>x</div>";
+        popup.innerHTML=oCOM.POPUP.title_body_html(
+            "MOCKINGBOARD AUDIO CONTROLS"+close,
+            "<div style='padding:8px'>"+html+"</div>",
+            historyID("audio_body"),"com_popup_body com_scroll_xy");
+        oCOM.POPUP.toggle(id);
+        this.audioTelemetryRefresh();
+        return true;
+    };
+
     function historySlotNumber()
     {
         if(!io || !io.slots || typeof(io.SLOT2obj)!=="function") return null;
@@ -252,6 +446,7 @@ function mockingboard()
         if(audioCount===AUDIO_CAPACITY)
         {
             audioStats.overruns++;
+            audioLastError="PCM queue capacity exhausted";
             throw AYCore.error("E_CAPACITY","Mockingboard PCM queue full");
         }
         audioLeft[audioWrite]=left;
@@ -276,6 +471,7 @@ function mockingboard()
             while(consumed<pendingCount && AYCore.eventTick(pendingEvents,consumed*16)<=end)consumed++;
             for(var i=0;i<consumed*16;i++)renderEvents[i]=pendingEvents[i];renderBatch.count=consumed;
             var frames=core.renderUntil(end,renderBatch,pcm);
+            audioRenderCalls++;
             pendingEvents.copyWithin(0,consumed*16,pendingCount*16);pendingCount-=consumed;
             audioStats.producedFrames+=frames;
             if(audioConsumerActive && sourceTarget!==0)for(var i=0;i<frames;i++)enqueueFrame(pcm.left[i],pcm.right[i]);
@@ -429,9 +625,9 @@ function mockingboard()
         return {frames:count,left:left,right:right};
     };
     this.clearAudioQueue=function(){ audioStats.droppedFrames+=audioCount;audioRead=audioWrite=audioCount=0; };
-    this.getAudioStats=function()
+    this.peekAudioStats=function()
     {
-        flushAudio();
+        // Passive snapshot: never run the sound renderer from a UI refresh.
         return {
              producedFrames:audioStats.producedFrames
             ,queuedFrames:audioCount
@@ -440,7 +636,16 @@ function mockingboard()
             ,overruns:audioStats.overruns
             ,highWaterFrames:audioStats.highWaterFrames
             ,capacityFrames:AUDIO_CAPACITY
+            ,consumerActive:audioConsumerActive
+            ,eventQueueCapacityHits:eventQueueCapacityHits
+            ,renderCalls:audioRenderCalls
+            ,lastError:audioLastError
         };
+    };
+    this.getAudioStats=function()
+    {
+        flushAudio();
+        return this.peekAudioStats();
     };
     this.getRegisters=function(index)
     {
@@ -632,6 +837,9 @@ function mockingboard()
         buildSoundChips();
         this.clearAudioQueue();
         audioStats={producedFrames:0,drainedFrames:0,droppedFrames:0,overruns:0,highWaterFrames:0};
+        telemetryBaseline=null;
+        telemetryRates={producedPerSecond:0,drainedPerSecond:0,cpuPacePercent:0};
+        audioLastError="";eventQueueCapacityHits=0;audioRenderCalls=0;
         lastCpuTick=(io && typeof(io.getClockTicks)==="function") ? Number(io.getClockTicks())||0 : 0;
         syncBus(0); syncBus(1);
         backendLoading=false;syncAYControls();syncHistoryControls();
@@ -676,7 +884,9 @@ function mockingboard()
             +"<select id='"+historyID("backend")+"' onchange='"+access+"?.deviceToolAYBackendChange(this.value)' title='Sound backend for AY0 and AY1'"+(backendLoading?" disabled":"")+">"
             +'<option value="wasm"'+(backendChoice==="wasm"?' selected':'')+'>WASM</option>'
             +'<option value="js"'+(backendChoice==="js"?' selected':'')+'>JS</option></select>'
-            +"<span id='"+historyID("backend_status")+"' role=status aria-live=polite style='font-size:10px"+(backendError?";color:#a00":"")+"'>"+backendStatusText().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")+"</span></div>"
+            +"<span id='"+historyID("backend_status")+"' role=status aria-live=polite style='font-size:10px"+(backendError?";color:#a00":"")+"'>"+backendStatusText().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")+"</span>"
+            +"<button class=appbut title='Mockingboard live audio telemetry' onclick='"+access+"?.openAudioTelemetry()'>"
+            +"<i class='fa fa-sliders-h'></i></button></div>"
             +"<div class=appbox style='padding:4px 6px;min-height:32px' title='Mockingboard music/command history'>"
             +"<div style='display:flex;align-items:center;gap:6px;white-space:nowrap'>"
             +"<button class=appbut title='Start/stop Mockingboard history capture' onclick='"+access+"?.toggleHistoryCapture()'>"
