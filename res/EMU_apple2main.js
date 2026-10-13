@@ -931,8 +931,7 @@ function EMUI()
 
     var CPU_SLD_MODES =
     {
-         "pct400":{"min":0,"max":400,"step":20,"next":"pct100","nextName":"0-100%"}
-        ,"pct100":{"min":0,"max":100,"step":5,"next":"factor","nextName":"factor range"}
+         "pct400":{"min":0,"max":400,"step":20,"next":"factor","nextName":"factor range"}
         ,"factor":{"min":0,"max":CPU_SLD_FACTORS.length-1,"step":1,"next":"pct400","nextName":"0-400%"}
     };
 
@@ -940,7 +939,7 @@ function EMUI()
     {
         var mode = el.getAttribute("data-speed-mode");
         if(CPU_SLD_MODES[mode]===undefined)
-            mode = Number(el.max)>100 ? "pct400" : "pct100";
+            mode = "pct400";
         return mode;
     }
 
@@ -1128,7 +1127,7 @@ function EMUI()
         this.cpuSldRange(indicator,sliderId);
     }
 
-    // CYCLE 0-400%/20%, 0-100%/5%, AND THE 20-POSITION FACTOR SCALE
+    // CYCLE 0-400%/20% AND THE 20-POSITION FACTOR SCALE
     this.cpuSldRange = function(indicator,sliderId)
     {
         var el = document.getElementById(sliderId);
