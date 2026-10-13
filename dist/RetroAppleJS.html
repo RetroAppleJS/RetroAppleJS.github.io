@@ -44380,8 +44380,10 @@ this.detectDiskImageType = function(imageBytes, filepath)
     //  ██   ██ ██      ██ ██  ██      ██  ██ ██ ██    ██ ██      ██ ██      
     //  ██████  ██ ███████ ██   ██     ██   ████  ██████  ██ ███████ ███████ 
 
-    // Disk-noise volume is local to this AppleDisk2 instance. 100% keeps the
-    // historical Disk II gain (0.1); 75% is the per-instance default.
+    // Disk-noise volume is local to this AppleDisk2 instance.
+    // The recordings are mastered at high amplitude; 100% now matches
+    // the previous 25% loudness (0.025 gain). 75% remains the default.
+    const DISK_NOISE_MAX_GAIN = 0.025;
     this.dN_volume_levels = [0,25,75,100];
     this.dNd = {enable:false,volumePct:75,motor:"OFF",status:"",detune:0,rept:0,motorOffTimer:null,last:{}};  // disk Noise data
     this.AUD_buffer={};
@@ -44404,8 +44406,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
 
     this.dN_volume_gain = function()
     {
-        // Preserve the old 0.1 gain as the 100% reference level.
-        return 0.1 * this.dNd.volumePct / 100;
+        return DISK_NOISE_MAX_GAIN * this.dNd.volumePct / 100;
     }
 
     this.dN_volume_apply = function()
