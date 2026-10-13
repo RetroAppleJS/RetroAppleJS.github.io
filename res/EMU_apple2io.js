@@ -386,10 +386,18 @@ function Apple2IO(vid,hostHardware)
             var slotObj = this.slots[slotN];
             if(slotObj===undefined) { continue; }
 
-            if(slotObj.peripheral?.mount?.source == "COM_CONFIG") continue;     // avoid re-mounting pre-configured peripherals at the next restart
+            // A URL assignment overrides COM_CONFIG at initial startup.  Once
+            // mounted, either origin must survive normal emulator restarts.
+            if(slotObj.peripheral?.mount?.source == "COM_CONFIG" ||
+               slotObj.peripheral?.mount?.source == "URL") continue;
 
             var o = this.mount(cinfo,pinfo,slotN,slotR.slotFit[slotN]);
             if(!o || !o.pObj) continue;
+
+            // The same discovery/mount path is used for both origins; expose
+            // the URL provenance and preserve it across warm restarts.
+            if(urlSlotAssignment[slotN]===pinfo.PCODE)
+                o.pObj.mount.source = "URL";
 
             for(var so in o.sInfo) slotObj[so] = o.sInfo[so];
             slotObj.peripheral = o.pObj;
@@ -2531,7 +2539,8 @@ function mergeActionMap(dst,src)
         var slot_count = slotAvail.logSlots_n;
     }
 
-    var slotR = {};  // TODO: remove as this is now in CONFIG     
+    var slotR = {};  // TODO: remove as this is now in CONFIG
+    var urlSlotAssignment = {}; // internal slot index -> explicitly requested PCODE     
     
     if(typeof(_CFG_PSLOT)!="undefined") // DO WE HAVE A CONFIGURATION FILE FOR OUR PERIPHERALS?
     {
@@ -2558,6 +2567,10 @@ function mergeActionMap(dst,src)
             slotAvail && slotAvail.phySlots,
             this.scanPeripheralContainers()
         );
+        urlSlotResult.applied.forEach(function(assignment)
+        {
+            urlSlotAssignment[assignment.slot+1] = assignment.PCODE;
+        });
         urlSlotResult.warnings.forEach(function(warning)
         {
             console.warn("URL slots: "+warning);
