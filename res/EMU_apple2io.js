@@ -1355,7 +1355,9 @@ function mergeActionMap(dst,src)
         if(!owner || !owner.id?.PCODE || !device_info || !device_info.coID) return null;
 
         options=options || {};
-        var newInstance=options.newInstance===true;
+        // A declared physical singleton uses its host-owned instance even
+        // through the explicit device picker; other devices retain duplicates.
+        var newInstance=options.newInstance===true && device_info.singleton!==true;
         var hostPCODE=owner.id.PCODE;
         var dcode=device_info.DCODE || device_info.coID;
         if(device_info.hostPCODE && device_info.hostPCODE != hostPCODE) return null;
@@ -3335,13 +3337,15 @@ function mergeActionMap(dst,src)
                     if(devices[d]?.id?.DCODE===dcode) attachedCount++;
 
                 var ctor=globalThis[info.coID];
-                var available=typeof(ctor)==="function";
-                var state=available
+                var hasConstructor=typeof(ctor)==="function";
+                var singletonAttached=info.singleton===true && attachedCount>0;
+                var available=hasConstructor && !singletonAttached;
+                var state=singletonAttached ? "Attached" : hasConstructor
                     ? (attachedCount ? "Add another · Attached: "+attachedCount : "Available")
                     : "Unavailable";
                 var title=info.description || dcode;
                 if(attachedCount) title += " — "+attachedCount+" attached";
-                if(typeof(ctor)!=="function") title += " — device constructor unavailable";
+                if(!hasConstructor) title += " — device constructor unavailable";
 
                 html += "<button class='appbut label device-picker-entry"+(available ? "" : " greyed")+"' type='button'"
                     + " style='width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 8px;text-align:left;cursor:"+(available ? "pointer" : "default")+";'"

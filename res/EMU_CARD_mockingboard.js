@@ -19,19 +19,17 @@ function mockingboard()
     this.id={"PCODE":"MOCK","icon":"fa fa-assistive-listening-systems"};
     this.state={"active":true,"irq":false,"audio":true};
     this.deviceConfig=[{
-         "DCODE":"AY8910","hostPCODE":"MOCK","coID":"AYChipDevice","deviceN":1,
-         "chipIndex":0,"icon":"fa fa-music","description":"AY0 — channels A, B, C","autoAttach":true
-    },{
-         "DCODE":"AY8910","hostPCODE":"MOCK","coID":"AYChipDevice","deviceN":2,
-         "chipIndex":1,"icon":"fa fa-music","description":"AY1 — channels D, E, F","autoAttach":true
-    },{
          "DCODE":"MOCKAUDIO"
         ,"hostPCODE":"MOCK"
         ,"coID":"MockingboardAudio"
         ,"deviceN":3
+        ,"singleton":true
         ,"icon":"fa fa-volume-up"
         ,"description":"Mockingboard stereo audio output"
         ,"autoAttach":true
+    },{
+         "DCODE":"MOCKVOICE","hostPCODE":"MOCK","coID":"MockingboardVoice","deviceN":4,
+         "icon":"fa fa-comment","description":"SSI-263 speech synthesizer","autoAttach":true,"singleton":true
     }];
     this.action={"SlotROM":{
          "RD":{"callback":function(addr,ctx){ return card.readSlotROM(addr,ctx); }}
@@ -55,10 +53,21 @@ function mockingboard()
     var vias=[];
     var syncingBus=[false,false];
     var timingRefresh=null;
+    var voiceUIRequest=0;
     var history=new MockingboardHistory(64);
     this.history=history;
     var historyRefreshRegistered=false;
     var ayDevices=[makeAYDevice(0),makeAYDevice(1)];
+    var voiceDevice=new MockingboardVoice({
+        mapCpuTick:function(tick){return sourceClock.map(tick);},
+        flushAudio:function(){flushAudio();},
+        onRequestChange:function(request){
+            if(vias[1])vias[1].setCA1(request?0:1);
+            if(timingRefresh)timingRefresh();
+            syncVoiceControls();
+        }
+    });
+    this.getVoiceDevice=function(){return voiceDevice;};
 
     function makeAYDevice(index)
     {
@@ -69,6 +78,7 @@ function mockingboard()
     this.getAYDevice=function(index){return ayDevices[index]||null;};
     this.createDeviceInstance=function(info)
     {
+        if(info.coID==="MockingboardVoice")return voiceDevice;
         return info.coID==="AYChipDevice"?ayDevices[Number(info.deviceN)-1]||null:null;
     };
 
@@ -141,6 +151,7 @@ function mockingboard()
             if(preserveBus)for(var r=0;r<14;r++)ayDevices[i].writeNow(r,psgBuses[i].regs[r]);
         }
         establishSource(lastCpuTick);
+        voiceDevice.rebaseAudio(0);
         function busOptions(index)
         {
             return {
@@ -170,7 +181,7 @@ function mockingboard()
     }
     function updateIRQ()
     {
-        setCardIRQ(!!((vias[0]&&vias[0].irqLevel)||(vias[1]&&vias[1].irqLevel)),false);
+        setCardIRQ(card.state.active && !!((vias[0]&&vias[0].irqLevel)||(vias[1]&&vias[1].irqLevel)),false);
     }
     function buildVias()
     {
@@ -313,6 +324,7 @@ function mockingboard()
     };
     this.audioTelemetryRefresh=function()
     {
+        syncVoiceControls();
         var t=this.getAudioTelemetry(),q=t.pcm,sk=t.sink||{};
         telemetryHistory.push({wallTime:Date.now(),...t});
         if(telemetryHistory.length>TELEMETRY_HISTORY_LIMIT)telemetryHistory.shift();
@@ -390,7 +402,8 @@ function mockingboard()
             popup=document.createElement("div");
             popup.id=id;popup.hidden=true;
             popup.className="appbox com_popup_frame";
-            popup.style.cssText="position:absolute;left:800px;width:450px;height:450px;text-align:left;padding:0;margin:0";
+            var left=typeof(window)==="object" && Number(window.innerWidth)>0?Math.max(12,Math.min(800,window.innerWidth-820)):12;
+            popup.style.cssText="position:absolute;left:"+left+"px;width:800px;max-width:calc(100vw - 24px);height:640px;max-height:calc(100vh - 24px);text-align:left;padding:0;margin:0";
         }
         if(popup.parentNode!==host)host.appendChild(popup);
         if(!popup.hidden)
@@ -432,12 +445,80 @@ function mockingboard()
         var close="<div class=appbut onclick=\"oCOM.POPUP.toggle('"+id+"');event.stopPropagation()\" "+
             "style='text-align:center;float:right'>x</div>";
         popup.innerHTML=oCOM.POPUP.title_body_html(
-            "MOCKINGBOARD AUDIO CONTROLS"+close,
-            "<div style='padding:8px'>"+html+"</div>",
+            "MOCKINGBOARD AUDIO / VOICE CONTROLS"+close,
+            "<div class='mockingboard-control-columns' style='padding:8px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px'>"+
+                "<div class='mockingboard-audio-controls'>"+html+"</div><div class='mockingboard-voice-controls'>"+
+                voiceDevice.controlsHTML(access,function(key){return historyID("voice_"+key);})+"</div></div>",
             historyID("audio_body"),"com_popup_body com_scroll_xy");
         oCOM.POPUP.toggle(id);
         this.audioTelemetryRefresh();
         return true;
+    };
+    function syncVoiceControls()
+    {
+        if(typeof(document)!=="object")return;
+        var popup=document.getElementById(historyID("audio_popup"));
+        if(!popup || popup.hidden)return;
+        var s=voiceDevice.getState();
+        for(var key of ["duration","rate","inflection","articulation","amplitude","filter","xck","sampleRate"])
+        {
+            var input=document.getElementById(historyID("voice_"+key));
+            if(input && document.activeElement!==input)input.value=String(s[key]);
+            var label=document.getElementById(historyID("voice_"+key+"_value"));
+            if(label)label.textContent=String(s[key]);
+        }
+        var status=document.getElementById(historyID("voice_status"));
+        if(status)status.textContent=(s.poweredDown?"Power down":s.requesting?"Requesting next phoneme":s.sounding?"Speaking":"Idle")+
+            " · "+(s.phonemeDurationSec*1000).toFixed(2)+" ms · "+
+            Math.max(30,Math.min(400,s.pitchHz)).toFixed(1)+" Hz · "+
+            s.registers.map(function(v){return "$"+v.toString(16).toUpperCase().padStart(2,"0");}).join(" ");
+    }
+    this.deviceToolVoiceChange=function(name,value)
+    {
+        try
+        {
+            this.advanceTo(resolveTick(null));voiceDevice.setParameter(name,value,lastCpuTick);
+            syncVoiceControls();return true;
+        }
+        catch(error)
+        {
+            var status=typeof(document)==="object"?document.getElementById(historyID("voice_status")):null;
+            if(status)status.textContent=error.message;return false;
+        }
+    };
+    this.deviceToolVoicePlay=async function()
+    {
+        var request=++voiceUIRequest;
+        if(!this.state.active || !voiceDevice.isEnabled())return false;
+        var select=typeof(document)==="object"?document.getElementById(historyID("voice_phoneme")):null;
+        var sink=telemetrySink();
+        try
+        {
+            if(!sink || typeof(sink.init)!=="function")throw new Error("Attach the audio output device to audition speech.");
+            await sink.init("audio_on");
+            if(request!==voiceUIRequest || !this.state.active || !voiceDevice.isEnabled() || telemetrySink()!==sink)return false;
+            if(typeof(sink.getStats)==="function" && sink.getStats().playbackEnabled===false)return false;
+            if(sink.audioDevice===true && sink.audio?.state!=="running")throw new Error("Browser audio is not running.");
+            this.advanceTo(resolveTick(null));voiceDevice.playPhoneme(select?Number(select.value):1,lastCpuTick);
+            syncVoiceControls();return true;
+        }
+        catch(error)
+        {
+            var status=typeof(document)==="object"?document.getElementById(historyID("voice_status")):null;
+            if(status && request===voiceUIRequest)status.textContent=error.message;
+            return false;
+        }
+    };
+    this.deviceToolVoiceStop=function()
+    {
+        voiceUIRequest++;
+        this.advanceTo(resolveTick(null));voiceDevice.stop(lastCpuTick);syncVoiceControls();
+    };
+    this.deviceToolVoiceDefaults=function()
+    {
+        for(var entry of [["duration",0],["rate",4],["inflection",1536],["articulation",4],
+            ["amplitude",15],["filter",211],["xck",1789772.5],["sampleRate",44100]])
+            this.deviceToolVoiceChange(entry[0],entry[1]);
     };
 
     function historySlotNumber()
@@ -505,16 +586,18 @@ function mockingboard()
         core.getPosition(corePosition);
         mappedHorizon=sourceClock.map(lastCpuTick);
         scheduleAudioFlush();
-        while(corePosition.tick<mappedHorizon || pendingCount && AYCore.eventTick(pendingEvents,0)<=corePosition.tick)
+        while(corePosition.tick<mappedHorizon || pendingCount && AYCore.eventTick(pendingEvents,0)<=corePosition.tick ||
+            voiceDevice.hasRenderEventsThrough(corePosition.tick))
         {
             var capacity=audioConsumerActive?Math.min(CORE_FRAMES,AUDIO_CAPACITY-audioCount):CORE_FRAMES;
             var maxDelta=Math.max(0,Math.floor(((capacity+1)*AUDIO_TIMEBASE-1-corePosition.samplePhase)/SAMPLE_RATE));
             var end=Math.min(mappedHorizon,corePosition.tick+Math.min(4294967295,maxDelta));
-            if(end===corePosition.tick && (!pendingCount||AYCore.eventTick(pendingEvents,0)>end))break;
+            if(end===corePosition.tick && (!pendingCount||AYCore.eventTick(pendingEvents,0)>end) &&
+                !voiceDevice.hasRenderEventsThrough(end))break;
             var consumed=0;
             while(consumed<pendingCount && AYCore.eventTick(pendingEvents,consumed*16)<=end)consumed++;
             for(var i=0;i<consumed*16;i++)renderEvents[i]=pendingEvents[i];renderBatch.count=consumed;
-            var frames;
+            var frames,startTick=corePosition.tick,startPhase=corePosition.samplePhase;
             try {frames=core.renderUntil(end,renderBatch,pcm);}
             catch(error)
             {
@@ -522,6 +605,7 @@ function mockingboard()
                 throw error;
             }
             audioRenderCalls++;
+            voiceDevice.mixFrames(startTick,startPhase,frames,pcm,end);
             pendingEvents.copyWithin(0,consumed*16,pendingCount*16);pendingCount-=consumed;
             audioStats.producedFrames+=frames;
             if(audioConsumerActive && sourceTarget!==0)for(var i=0;i<frames;i++)enqueueFrame(pcm.left[i],pcm.right[i]);
@@ -532,6 +616,7 @@ function mockingboard()
 
     buildSoundChips();
     buildVias();
+    voiceDevice.reset(clockRate,lastCpuTick);
 
     this.getAYDiagnostics=function()
     {
@@ -620,10 +705,13 @@ function mockingboard()
     this.writeSlotROM=function(addr,d8,ctx)
     {
         var d=decodeAddress(addr);
-        if(!d || (ctx && ctx.bRO===true)) return false;
+        var speech=!!(Number(addr)&0x40) && voiceDevice.isEnabled();
+        if((!d && !speech) || (ctx && ctx.bRO===true)) return false;
         this.advanceTo(resolveTick(ctx));
-        vias[d.via].writeRegister(d.reg,Number(d8)&0xFF);
+        if(d)vias[d.via].writeRegister(d.reg,Number(d8)&0xFF);
+        if(speech){voiceDevice.writeRegister(Number(addr)&7,Number(d8)&255,lastCpuTick);syncVoiceControls();}
         if(timingRefresh) timingRefresh();
+        else if(typeof(voiceDevice._ioRefreshHooks)==="function")voiceDevice._ioRefreshHooks();
         return true;
     };
     this.advanceTo=function(cpuTick)
@@ -645,11 +733,15 @@ function mockingboard()
         var elapsed=cpuTick-lastCpuTick;
         if(elapsed<=0) return;
         vias[0].tick(elapsed); vias[1].tick(elapsed);
+        voiceDevice.advanceTo(cpuTick);
         lastCpuTick=cpuTick;
         if(cpuTick>=nextAudioTick)flushAudio();
     };
     this.syncClock=function(cpuTick){ this.advanceTo(cpuTick); };
-    this.needsRealtimeTick=function(){ return vias[0].needsRealtimeTick()||vias[1].needsRealtimeTick(); };
+    this.needsRealtimeTick=function(){
+        return vias[0].needsRealtimeTick()||vias[1].needsRealtimeTick()||
+            (voiceDevice.needsRealtimeTick() && !!(vias[1].ier&2));
+    };
     this.getAudioFormat=function(){ return {sampleRate:SAMPLE_RATE,channels:2,format:"float32"}; };
     this.setAudioConsumerActive=function(active)
     {
@@ -872,6 +964,7 @@ function mockingboard()
     };
     this.reset=function()
     {
+        voiceUIRequest++;
         coreRequest++;
         var resetTick=resolveTick(null);
         if(history.isCapturing())
@@ -885,6 +978,7 @@ function mockingboard()
         vias[0].reset(); vias[1].reset();
         lastCpuTick=(io && typeof(io.getClockTicks)==="function") ? Number(io.getClockTicks())||0 : 0;
         buildSoundChips();
+        voiceDevice.reset(clockRate,lastCpuTick);
         this.clearAudioQueue();
         audioStats={producedFrames:0,drainedFrames:0,droppedFrames:0,overruns:0,highWaterFrames:0};
         telemetryBaseline=null;
@@ -909,11 +1003,13 @@ function mockingboard()
     };
     this.onUnmount=function()
     {
+        voiceUIRequest++;
         coreRequest++;
         if(history.isCapturing()) history.stop(resolveTick(null));
         setCardIRQ(false,true);
         this.state.active=false;
         audioConsumerActive=false;
+        voiceDevice.reset(clockRate,lastCpuTick);
         this.clearAudioQueue();
         if(core){core.getPosition(corePosition);core.destroy();core=null;}
         for(var i=0;i<2;i++)ayDevices[i].bindCore(null);
@@ -932,16 +1028,14 @@ function mockingboard()
             historyRefreshRegistered=true;
         }
         return "<div class=toolbox id='"+(ctx.toolboxID || "device_tool_"+ctx.slotID)+"' hidden>"
-            +"<div class=appbox style='padding:4px 6px;display:flex;align-items:center;gap:6px'>"
+            +"<div class=appbox style='padding:4px 6px;display:flex;align-items:center;gap:6px;flex-wrap:nowrap;white-space:nowrap'>"
             +"<label for='"+historyID("backend")+"'>AY core</label>"
             +"<select id='"+historyID("backend")+"' onchange='"+access+"?.deviceToolAYBackendChange(this.value)' title='Sound backend for AY0 and AY1'"+(backendLoading?" disabled":"")+">"
             +'<option value="wasm"'+(backendChoice==="wasm"?' selected':'')+'>WASM</option>'
             +'<option value="js"'+(backendChoice==="js"?' selected':'')+'>JS</option></select>'
             +"<span id='"+historyID("backend_status")+"' role=status aria-live=polite style='font-size:10px"+(backendError?";color:#a00":"")+"'>"+backendStatusText().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")+"</span>"
             +"<button class=appbut title='Mockingboard live audio telemetry' onclick='"+access+"?.openAudioTelemetry()'>"
-            +"<i class='fa fa-sliders-h'></i></button></div>"
-            +"<div class=appbox style='padding:4px 6px;min-height:32px' title='Mockingboard music/command history'>"
-            +"<div style='display:flex;align-items:center;gap:6px;white-space:nowrap'>"
+            +"<i class='fa fa-sliders-h'></i></button>"
             +"<button class=appbut title='Start/stop Mockingboard history capture' onclick='"+access+"?.toggleHistoryCapture()'>"
             +"<i id='"+historyID("toggle")+"' class='fa fa-coffee' style='opacity:"+(state.capturing?"1":".35")+"'></i></button>"
             +"<span id='"+historyID("kbwrap")+"' style='display:"+(state.capturing?"none":"inline-flex")+";align-items:center;gap:3px'>"
@@ -978,7 +1072,7 @@ function mockingboard()
                 +"</span>"
             +"</button>"
 
-            +"</div></div></div>";
+            +"</div></div>";
     };
 }
 

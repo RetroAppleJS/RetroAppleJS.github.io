@@ -126,6 +126,7 @@ function cardRig()
         window:{},setTimeout,clearTimeout
     });
     const src=fs.readFileSync(path.join(__dirname,'../res/EMU_CARD_mockingboard.js'),'utf8');
+    vm.runInContext(fs.readFileSync(path.join(__dirname,'../res/EMU_DEVICE_mockingboard_voice.js'),'utf8'),context);
     vm.runInContext(src,context);
     const card=context.oEMU.component.IO.mockingboard;
     card.mount={hash:42,slotN:4};
@@ -137,14 +138,16 @@ function cardRig()
     return {card,doc,refresh,setTime(x){time=x;}};
 }
 
-test('Mockingboard card offers dedicated 450px telemetry and 500ms dashboard-sync toggle',()=>{
+test('Mockingboard card offers two-column audio/voice controls and 500ms dashboard-sync toggle',()=>{
     const r=cardRig();
     const html=r.card.deviceToolSlotHTML({slotID:4,toolboxID:'device_tool_4'});
     assert.match(html,/openAudioTelemetry/);
     assert.equal(r.card.openAudioTelemetry(),true);
     const popup=r.doc.getElementById('MOCK_history_42_audio_popup');
     assert.ok(popup);
-    assert.match(popup.style.cssText,/width:450px/);
+    assert.match(popup.style.cssText,/width:800px/);
+    assert.match(popup.innerHTML,/mockingboard-control-columns/);
+    assert.match(popup.innerHTML,/SSI-263 voice/);
     assert.match(popup.innerHTML,/PCM FIFO/);
     assert.match(popup.innerHTML,/CPU BUDGET BLOCK/);
     assert.equal(r.refresh.MOCK_history_42_audio_refresh.active,false);
