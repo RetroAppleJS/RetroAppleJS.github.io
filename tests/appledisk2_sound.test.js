@@ -39,6 +39,7 @@ function loadDisk()
         AudioContext,
         console:{log(){}, warn(...args){ warnings.push(args); }},
         fetch:async()=>({arrayBuffer:async()=>new ArrayBuffer(0)}),
+        EMU_deviceMediaRowHTML:spec=>'<div data-media-row="'+spec.label+'"></div>',
         setTimeout, clearTimeout
     });
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../res/EMU_CARD_appledisk2.js'), 'utf8'), context);
@@ -74,6 +75,29 @@ test('disk noise volume is per-instance, defaults to 75%, and cycles 100-0-25-75
     assert.equal(first.gain.gain.value,0.075);
 
     assert.equal(second.dN_volume_get(),75,'another Disk II instance keeps its own volume');
+});
+
+test('Disk II toolbox renders the per-instance noise volume control beside Software Catalog', ()=>{
+    const {disk}=loadDisk();
+    const html=disk.deviceToolSlotHTML({
+        slotN:6,
+        slotID:5,
+        toolboxID:'device_tool_5',
+        devices:disk.devices
+    });
+
+    assert.match(html,/id="diskNoiseVolume_6"/);
+    assert.match(html,/data-volume="75"/);
+    assert.match(html,/title="Disk noise volume: 75%"/);
+    assert.match(html,/fa fa-volume-down/);
+    assert.match(html,/SLOT2obj\(6\)\.dN_volume_cycle\(this\)/);
+
+    const catalog=html.indexOf('Software Catalog');
+    const volume=html.indexOf('diskNoiseVolume_6');
+    const surface=html.indexOf('Disk Surface Map');
+
+    assert.ok(catalog>=0 && volume>catalog,'volume control follows Software Catalog');
+    assert.ok(surface>volume,'Disk Surface Map remains on the following row');
 });
 
 test('repeated mute stops the spin loop without disconnect warnings', async()=>{
