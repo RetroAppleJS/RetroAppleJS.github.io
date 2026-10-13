@@ -358,8 +358,8 @@
               font-size:11px;
             "
             onclick="oEMUI.cpuSldIndicator(event,this,'myRange','feature_box')"
-            title="CPU speed: 100%. Click to switch to 0-100%."
-            aria-label="CPU speed: 100%. Click to switch to 0-100%.">100%</button>
+            title="CPU speed: 100%. Click to switch to factor range."
+            aria-label="CPU speed: 100%. Click to switch to factor range.">100%</button>
 
     <input id="myRange"
            type="range"
@@ -398,7 +398,7 @@
     <input id="fpsRange"
            type="range"
            min="10"
-           max="100"
+           max="60"
            value="10"
            step="1"
            class="slider"
@@ -414,8 +414,7 @@
 
 </div>
 
-<div id="all_components"></div>
-                        <div id="all_components"></div>
+<div id="all_components" style="display:grid;grid-template-columns:minmax(0,1fr) 23px minmax(0,1fr);column-gap:3px;row-gap:3px;align-items:center;width:110px;margin-top:3px;text-align:center;"></div>
                       <script>
                         oCOM.POPUP.addRule("tab1.1", function(o) { o.toggle("tab1.1"); o.off("tab1.2") });
                         oCOM.POPUP.addRule("tab1.2", function(o) { o.toggle("tab1.2"); o.off("tab1.1") });
@@ -430,33 +429,49 @@
                         oCOM.POPUP.addScope("surfaceMap_popup","tab1.2");
                         oCOM.POPUP.addScope("lironSurfaceMap_popup","tab1.2");
 
+                        function system_monitor_cycle()
+                        {
+                            var video = apple2plus.vidObj();
+                            // The MUX owns the selected monitor mode; do not
+                            // maintain a separate click count on the icon.
+                            video.setMonitor(((video.state.chrome || 0) + 1) & 3);
+                            system_tab_update();
+                        }
+
                         function system_tab_update()
                         {
                             var video = apple2plus.vidObj();
                             var charRomKey = video.getCharRomKey();
+                            var names = ["COLOR", "B&W", "GREEN", "AMBER"];
+                            var monitorName = names[(video.state.chrome || 0) & 3];
+                            var driverName = video.getRenderMode();
+                            var modelName = "A2P";
 
-                            document.getElementById("cpu_component").innerHTML =
+                            document.getElementById("cpu_component").textContent =
                                 _CFG_SYSCODE.A2P.CPU;
 
+                            // Keep the original toolbox font; the screenshot
+                            // supplies placement, not typography or icon sizes.
                             document.getElementById("all_components").innerHTML =
-                                  _CFG_SYSCODE.A2P.Display
-                                + " Vid "
-                                + "<div class=\"appbut skinny\" style=\"display:inline\">"
-                                +   "<i class=\"fa fa-palette\" id=\"clr\" onclick=\"this.name=(this.name?Number(this.name)+1:1);"
-                                +   "var m=apple2plus.monitor(this.name); this.style.color=m.color;this.title=m.name\" title=\"Color mode\"></i>"
-                                + "</div>"
-                                + "<div class=\"appbut skinny\" style=\"display:inline\">"
-                                +   "<i class=\"fa fa-eye\" id=\"render_mode\" title=\"canvas\""
-                                +   " onclick=\"if(typeof(apple2plus)=='object') apple2plus.vidObj().nextMode(this);\"></i>"
-                                + "</div><br>"
-                                + charRomKey + " ROM "
-                                + "<div class=\"appbut skinny\" style=\"display:inline\">"
-                                +   "<i class=\"fa fa-keyboard\" id=\"char_rom\""
-                                +   " title=\"Character ROM: " + charRomKey + "\""
-                                +   " onclick=\"apple2plus.vidObj().nextCharRom(this);"
-                                +   " system_tab_update();\"></i>"
-                                + "</div>"
-                                + "<i class=\"fa fa-cog\"></i>";
+                                  '<span id="monitor_name" style="white-space:nowrap;text-align:right">' + monitorName + '</span>'
+                                + '<i class="fa fa-palette" id="clr" role="button" tabindex="0"'
+                                + ' style="color:#000;cursor:pointer" title="Monitor chroma: ' + monitorName + '"'
+                                + ' onclick="system_monitor_cycle()"'
+                                + ' onkeydown="if(event.key===\'Enter\'||event.key===\' \' ){event.preventDefault();system_monitor_cycle()}"></i>'
+                                + '<span style="display:flex;align-items:center;gap:3px;white-space:nowrap">'
+                                + '<i class="fa fa-eye" id="render_mode" role="button" tabindex="0"'
+                                + ' style="cursor:pointer" title="' + driverName + '"'
+                                + ' onclick="apple2plus.vidObj().nextMode(this)"'
+                                + ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();apple2plus.vidObj().nextMode(this)}"></i>'
+                                + '<span id="render_mode_name">' + driverName + '</span></span>'
+                                + '<span id="keyfont_name" style="white-space:nowrap;text-align:right">' + charRomKey + '</span>'
+                                + '<i class="fa fa-keyboard" id="char_rom" role="button" tabindex="0"'
+                                + ' style="cursor:pointer" title="Key font: ' + charRomKey + '"'
+                                + ' onclick="apple2plus.vidObj().nextCharRom(this);system_tab_update()"'
+                                + ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();apple2plus.vidObj().nextCharRom(this);system_tab_update()}"></i>'
+                                + '<span style="display:flex;align-items:center;gap:3px;white-space:nowrap">'
+                                + '<i class="fa fa-cog" title="Apple II model (not selectable)"></i>'
+                                + '<span id="system_model_name">' + modelName + '</span></span>';
                         }
                       </script>
                     </div>
