@@ -60,34 +60,6 @@
         return card && typeof card.getState == "function" ? card.getState() : null;
     }
 
-    function attachedDiskDevices(card)
-    {
-        var devices = Array.isArray(card && card.devices) ? card.devices.slice() : [];
-        devices = devices.filter(function(device)
-        {
-            return diskDeviceN(device)!==null;
-        });
-        devices.sort(function(a,b)
-        {
-            var A = diskDeviceID(a) || "";
-            var B = diskDeviceID(b) || "";
-            return A < B ? -1 : (A > B ? 1 : 0);
-        });
-        return devices;
-    }
-
-    function driveFileDisplayName(card,deviceN)
-    {
-        var state = diskState(card);
-        deviceN = Number(deviceN);
-        if(!state || !Number.isInteger(deviceN) || deviceN<0 || deviceN>1) return null;
-        if(!Array.isArray(state.diskData) || state.diskData[deviceN]==null) return null;
-
-        var name = Array.isArray(state.diskName) ? state.diskName[deviceN] : null;
-        name = name==null ? "" : String(name);
-        return name || "disk image";
-    }
-
     function shouldSuppressDiskNoise(card,status)
     {
         status = String(status || "");
@@ -97,31 +69,6 @@
         var state = diskState(card);
         var deviceN = state ? Number(state.drv) : NaN;
         return !isDriveAttached(card,deviceN);
-    }
-
-    function documentRef()
-    {
-        if(root && root.document) return root.document;
-        if(typeof document == "object") return document;
-        return null;
-    }
-
-    function refreshVisibleSurfaceMap(card)
-    {
-        var doc = documentRef();
-        var popup = doc && typeof doc.getElementById == "function"
-            ? doc.getElementById("surfaceMap_popup")
-            : null;
-
-        if(!popup || popup.hidden===true) return false;
-
-        if(typeof card.surfaceMap_render == "function")
-            return card.surfaceMap_render("surfaceMap_popup");
-
-        if(typeof card.surfaceMap_update == "function")
-            return card.surfaceMap_update("surfaceMap_popup");
-
-        return false;
     }
 
     function clearDetachedDriveState(card,deviceN)
@@ -172,85 +119,6 @@
         return true;
     }
 
-    function renderAttachedDiskIIRows(card,ctx,nativeToolSlotHTML)
-    {
-        ctx = ctx || {};
-        var slotN = Number(ctx.slotN);
-        var slotID = ctx.slotID;
-        var rowFactory = root && typeof root.EMU_deviceMediaRowHTML == "function"
-            ? root.EMU_deviceMediaRowHTML
-            : (typeof EMU_deviceMediaRowHTML == "function" ? EMU_deviceMediaRowHTML : null);
-
-        if(!Number.isInteger(slotN) || !slotID || !rowFactory || typeof card.driveElementID != "function")
-            return nativeToolSlotHTML ? nativeToolSlotHTML.call(card,ctx) : "";
-
-        function mediaRow(deviceID,label)
-        {
-            var deviceN = diskDeviceN(deviceID);
-            var displayName = driveFileDisplayName(card,deviceN);
-            var spec = {
-                 "label":label
-                ,"buttonID":card.driveElementID("but",deviceID)
-                ,"formID":card.driveElementID("f",deviceID)
-                ,"fileID":card.driveElementID("file",deviceID)
-                ,"downloadID":card.driveElementID("dump",deviceID)
-                ,"fileName":deviceID
-                ,"buttonTitle":displayName ? (label+" loaded: "+displayName) : (label+": no disk")
-                ,"buttonOnClick":"ejectDisk(this,"+slotN+",'"+deviceID+"')"
-                ,"buttonOnMouseOver":"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,true)"
-                ,"buttonOnMouseOut":"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,false)"
-                ,"fileOnChange":"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'"+deviceID+"')"
-                ,"downloadOnClick":"apple2plus.hwObj().io.SLOT2obj("+slotN+").downloadDisk('"+deviceID+"')"
-                ,"downloadTitle":"Save disk"
-            };
-
-            if(displayName)
-                spec.fileDisplayName = displayName;
-
-            return rowFactory(spec);
-        }
-
-        var rows = "";
-        var devices = attachedDiskDevices(card);
-        for(var i=0;i<devices.length;i++)
-        {
-            var id = diskDeviceID(devices[i]);
-            if(id=="D1") rows += mediaRow("D1","Drive1");
-            if(id=="D2") rows += mediaRow("D2","Drive2");
-        }
-
-        return ""
-            + "<div class=toolbox id=\""+(ctx.toolboxID || ("device_tool_"+slotID))+"\" hidden>"
-            + "  <div class=appbox style=\"height:63px;padding:0px 6px 0px 6px;\">"
-            + rows
-            + "  </div>"
-            + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
-            + "    <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'softwareCat'})\" title=\"Software Catalog\"><i class=\"fa fa-cat\"></i></button><br>"
-            + "    <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'surfaceMap'})\" title=\"Disk Surface Map\"><i class=\"fa fa-th\"></i></button>"
-            + "  </div>"
-            + "</div>";
-    }
-
-    function renderAttachedDiskIISurfaceMap(card,popupID,nativeSurfaceMapHTML)
-    {
-        if(typeof nativeSurfaceMapHTML != "function") return "";
-        var html = String(nativeSurfaceMapHTML.call(card,popupID));
-        if(typeof card.surfaceMap_grid_html != "function") return html;
-
-        var nativeGrids = card.surfaceMap_grid_html(0) + card.surfaceMap_grid_html(1);
-        var attachedGrids = "";
-        var devices = attachedDiskDevices(card);
-
-        for(var i=0;i<devices.length;i++)
-        {
-            var deviceN = diskDeviceN(devices[i]);
-            if(deviceN!==null)
-                attachedGrids += card.surfaceMap_grid_html(deviceN);
-        }
-
-        return html.replace(nativeGrids,attachedGrids);
-    }
-
     function decorateDiskIITopology(card)
     {
         if(!card || !card.id || card.id.PCODE!="DISKII") return card;
@@ -260,8 +128,6 @@
         var nativeSetDriveLED = card.setDriveLED;
         var nativeSetDriveLidClosed = card.setDriveLidClosed;
         var nativeSyncDriveVisuals = card.syncDriveVisuals;
-        var nativeDeviceToolSlotHTML = card.deviceToolSlotHTML;
-        var nativeSurfaceMapHTML = card.surfaceMap_html;
         var nativeTopologyChanged = card.onDeviceTopologyChanged;
         var nativeDNUpdate = card.dN_update;
 
@@ -336,7 +202,7 @@
             if(cleared)
             {
                 if(typeof this.syncDriveVisuals == "function") this.syncDriveVisuals();
-                refreshVisibleSurfaceMap(this);
+                this.refreshVisibleSurfaceMap();
             }
             return cleared;
         };
@@ -376,20 +242,10 @@
             else
             {
                 if(typeof this.syncDriveVisuals == "function") this.syncDriveVisuals();
-                refreshVisibleSurfaceMap(this);
+                this.refreshVisibleSurfaceMap();
             }
 
             return true;
-        };
-
-        card.deviceToolSlotHTML = function(ctx)
-        {
-            return renderAttachedDiskIIRows(this,ctx,nativeDeviceToolSlotHTML);
-        };
-
-        card.surfaceMap_html = function(popupID)
-        {
-            return renderAttachedDiskIISurfaceMap(this,popupID,nativeSurfaceMapHTML);
         };
 
         if(typeof card.syncDriveVisuals == "function") card.syncDriveVisuals();

@@ -39,11 +39,11 @@ function loadDisk()
         AudioContext,
         console:{log(){}, warn(...args){ warnings.push(args); }},
         fetch:async()=>({arrayBuffer:async()=>new ArrayBuffer(0)}),
-        EMU_deviceMediaRowHTML:spec=>'<div data-media-row="'+spec.label+'"></div>',
+        EMU_deviceMediaRowHTML:spec=>'<div data-media-row="'+spec.label+'" data-file-name="'+(spec.fileDisplayName || '')+'"></div>',
         setTimeout, clearTimeout
     });
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../res/EMU_CARD_appledisk2.js'), 'utf8'), context);
-    return {disk:context.oEMU.component.IO.AppleDisk2, warnings};
+    return {disk:context.oEMU.component.IO.AppleDisk2, context, warnings};
 }
 
 async function startMotor(disk)
@@ -98,6 +98,70 @@ test('Disk II toolbox renders the per-instance noise volume control beside Softw
 
     assert.ok(catalog>=0 && volume>catalog,'volume control follows Software Catalog');
     assert.ok(surface>volume,'Disk Surface Map remains on the following row');
+});
+
+test('toolbox reflects attached drives and retains remaining disk filename', ()=>{
+    const {disk}=loadDisk();
+    disk.mount={slotN:6};
+    disk.devices=[{id:{DCODE:'D1'}},{id:{DCODE:'D2'}}];
+    disk.getState().diskData[0]=new Uint8Array([1,2]);
+    disk.getState().diskName[0]='Sample Disk.dsk';
+    disk.getState().diskData[1]=new Uint8Array([3,4]);
+    disk.getState().diskName[1]='Remaining Disk.po';
+
+    const ctx={slotN:6,slotID:5,toolboxID:'device_tool_5'};
+    const both=disk.deviceToolSlotHTML(ctx);
+    assert.match(both,/data-media-row="Drive1"/);
+    assert.match(both,/data-media-row="Drive2"/);
+    assert.match(both,/data-file-name="Sample Disk\.dsk"/);
+    assert.match(both,/data-file-name="Remaining Disk\.po"/);
+    assert.match(both,/id="diskNoiseVolume_6"/);
+
+    disk.devices=[{id:{DCODE:'D2'}}];
+    const detached=disk.deviceToolSlotHTML(ctx);
+    assert.doesNotMatch(detached,/data-media-row="Drive1"/);
+    assert.match(detached,/data-media-row="Drive2"/);
+    assert.match(detached,/data-file-name="Remaining Disk\.po"/);
+    assert.match(detached,/id="diskNoiseVolume_6"/);
+});
+
+test('surface map includes only the attached Disk II drives', ()=>{
+    const {disk,context}=loadDisk();
+    context.apple2plus={hwObj:()=>({io:{slot2ID:slotN=>slotN-1}})};
+    disk.getDiskCatalogContext=()=>({slotN:6});
+    disk.surfaceMap_grid_html=deviceN=>'<grid data-drive="'+(deviceN+1)+'"></grid>';
+
+    disk.devices=[{id:{DCODE:'D1'}},{id:{DCODE:'D2'}}];
+    const both=disk.surfaceMap_html('surfaceMap_popup');
+    assert.match(both,/data-drive="1"/);
+    assert.match(both,/data-drive="2"/);
+
+    disk.devices=[{id:{DCODE:'D2'}}];
+    const one=disk.surfaceMap_html('surfaceMap_popup');
+    assert.doesNotMatch(one,/data-drive="1"/);
+    assert.match(one,/data-drive="2"/);
+});
+
+test('topology decorator does not replace Disk II toolbox or surface-map renderer', ()=>{
+    const topology=require('../res/EMU_CARD_appledisk2_topology.js');
+    const {disk,context}=loadDisk();
+    disk.mount={slotN:6};
+    disk.devices=[{id:{DCODE:'D1'}},{id:{DCODE:'D2'}}];
+    const toolboxRenderer=disk.deviceToolSlotHTML;
+    const mapRenderer=disk.surfaceMap_html;
+    const popup={hidden:false};
+    context.document={getElementById:id=>id==='surfaceMap_popup' ? popup : null};
+    let mapRefreshes=0;
+    disk.surfaceMap_render=()=>{mapRefreshes++;return true;};
+
+    topology.decorateDiskIITopology(disk);
+    assert.strictEqual(disk.deviceToolSlotHTML,toolboxRenderer);
+    assert.strictEqual(disk.surfaceMap_html,mapRenderer);
+
+    const html=disk.deviceToolSlotHTML({slotN:6,slotID:5});
+    assert.match(html,/id="diskNoiseVolume_6"/);
+    disk.onDeviceTopologyChanged({type:'attach',DCODE:'D2'});
+    assert.equal(mapRefreshes,1,'topology change refreshes the card-owned map');
 });
 
 test('repeated mute stops the spin loop without disconnect warnings', async()=>{
