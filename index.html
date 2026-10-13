@@ -414,7 +414,7 @@
 
 </div>
 
-<div id="all_components" style="display:grid;grid-template-columns:minmax(0,1fr) 23px minmax(0,1fr);column-gap:3px;row-gap:3px;align-items:center;width:110px;margin-top:3px;text-align:center;"></div>
+<div id="all_components" style="display:grid;grid-template-columns:minmax(0,1fr) 16px 16px minmax(0,1fr);column-gap:2px;row-gap:3px;align-items:center;width:110px;margin-top:3px;text-align:center;font-family:arial;font-size:11px;"></div>
                       <script>
                         oCOM.POPUP.addRule("tab1.1", function(o) { o.toggle("tab1.1"); o.off("tab1.2") });
                         oCOM.POPUP.addRule("tab1.2", function(o) { o.toggle("tab1.2"); o.off("tab1.1") });
@@ -458,20 +458,18 @@
                                 + ' style="color:#000;cursor:pointer" title="Monitor chroma: ' + monitorName + '"'
                                 + ' onclick="system_monitor_cycle()"'
                                 + ' onkeydown="if(event.key===\'Enter\'||event.key===\' \' ){event.preventDefault();system_monitor_cycle()}"></i>'
-                                + '<span style="display:flex;align-items:center;gap:3px;white-space:nowrap">'
                                 + '<i class="fa fa-eye" id="render_mode" role="button" tabindex="0"'
                                 + ' style="cursor:pointer" title="' + driverName + '"'
                                 + ' onclick="apple2plus.vidObj().nextMode(this)"'
                                 + ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();apple2plus.vidObj().nextMode(this)}"></i>'
-                                + '<span id="render_mode_name">' + driverName + '</span></span>'
+                                + '<span id="render_mode_name" style="white-space:nowrap;text-align:left">' + driverName + '</span>'
                                 + '<span id="keyfont_name" style="white-space:nowrap;text-align:right">' + charRomKey + '</span>'
                                 + '<i class="fa fa-keyboard" id="char_rom" role="button" tabindex="0"'
                                 + ' style="cursor:pointer" title="Key font: ' + charRomKey + '"'
                                 + ' onclick="apple2plus.vidObj().nextCharRom(this);system_tab_update()"'
                                 + ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();apple2plus.vidObj().nextCharRom(this);system_tab_update()}"></i>'
-                                + '<span style="display:flex;align-items:center;gap:3px;white-space:nowrap">'
                                 + '<i class="fa fa-cog" title="Apple II model (not selectable)"></i>'
-                                + '<span id="system_model_name">' + modelName + '</span></span>';
+                                + '<span id="system_model_name" style="white-space:nowrap;text-align:left">' + modelName + '</span>';
                         }
                       </script>
                     </div>
