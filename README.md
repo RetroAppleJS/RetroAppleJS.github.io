@@ -65,7 +65,7 @@ Completed items remain checked; unchecked items are planned or still need furthe
 - [ ] EMULATOR: Pasteboard macro scripting with keyboard/paddle/mouse recording, playback, and conditional stops
 - [ ] EMULATOR: Switch between US and Japanese Apple II keyboard layouts
 - [x] EMULATOR: Mockingboard sound emulation
-- [ ] EMULATOR: Extend Mockingboard with voice emulation
+- [x] EMULATOR: Extend Mockingboard with voice emulation
 - [x] EMULATOR: Add memory expansion peripherals to complete compatibility (MS16K, SATURN, LEGEND, RAMFAC)
 - [ ] EMULATOR: Extended URL instant configuration options
 - [ ] EMULATOR: LIRON HD20 & UNIDISK - track-by-track compression/decompression (saving browser RAM)
