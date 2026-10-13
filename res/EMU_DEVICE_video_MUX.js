@@ -749,6 +749,8 @@ function Apple2VideoMUX(canvas)
     {
         var el = uiEl || document.getElementById("render_mode");
         if(el) el.title = this.getRenderMode();
+        var label = document.getElementById("render_mode_name");
+        if(label) label.textContent = this.getRenderMode();
     };
 
     this.ensureActive = function()
