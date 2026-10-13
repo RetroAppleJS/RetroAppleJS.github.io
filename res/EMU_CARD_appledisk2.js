@@ -461,6 +461,42 @@ function AppleDisk2()
         return io ? diskUI.surfaceMapCycleSlot(io) : false;
     };
 
+    // Disk II UI has a single owner: this card. Topology decorators may
+    // suppress hardware activity, but must not replace toolbox or map HTML.
+    this.attachedDriveIDs = function()
+    {
+        var devices = Array.isArray(this.devices) ? this.devices : [];
+        var attached = {D1:false,D2:false};
+        for(var i=0;i<devices.length;i++)
+        {
+            var device = devices[i];
+            var code = device && (device.id && device.id.DCODE || device.DCODE);
+            code = code==null ? "" : String(code).toUpperCase();
+            if(code=="D1" || code=="D2") attached[code] = true;
+        }
+        return ["D1","D2"].filter(function(code){return attached[code];});
+    };
+
+    this.driveFileDisplayName = function(deviceN)
+    {
+        deviceN = Number(deviceN);
+        if(!Number.isInteger(deviceN) || deviceN<0 || deviceN>1 ||
+           state.diskData[deviceN]==null) return null;
+        var name = state.diskName[deviceN];
+        return name==null || String(name)==="" ? "disk image" : String(name);
+    };
+
+    this.refreshVisibleSurfaceMap = function()
+    {
+        if(typeof document=="undefined") return false;
+        var popup = document.getElementById("surfaceMap_popup");
+        if(!popup || popup.hidden===true) return false;
+        if(typeof this.surfaceMap_render=="function")
+            return this.surfaceMap_render("surfaceMap_popup");
+        return typeof this.surfaceMap_update=="function"
+            ? this.surfaceMap_update("surfaceMap_popup") : false;
+    };
+
     this.deviceToolSlotHTML = function(ctx)
     {
         ctx = ctx || {};
@@ -470,31 +506,38 @@ function AppleDisk2()
         var diskNoisePct = this.dN_volume_get();
         var diskNoiseIcon = this.dN_volume_icon();
 
-
         function mediaRow(deviceID,label)
         {
-            return EMU_deviceMediaRowHTML({
+            var deviceN = deviceID=="D1" ? 0 : 1;
+            var displayName = card.driveFileDisplayName(deviceN);
+            var spec = {
                  "label":label
                 ,"buttonID":card.driveElementID("but",deviceID)
                 ,"formID":card.driveElementID("f",deviceID)
                 ,"fileID":card.driveElementID("file",deviceID)
                 ,"downloadID":card.driveElementID("dump",deviceID)
                 ,"fileName":deviceID
-                ,"buttonTitle":label+": no disk"
+                ,"buttonTitle":displayName ? label+" loaded: "+displayName : label+": no disk"
                 ,"buttonOnClick":"ejectDisk(this,"+slotN+",'"+deviceID+"')"
                 ,"buttonOnMouseOver":"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,true)"
                 ,"buttonOnMouseOut":"apple2plus.hwObj().io.SLOT2obj("+slotN+").driveButtonHover(this,false)"
                 ,"fileOnChange":"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this,"+slotN+",'"+deviceID+"')"
                 ,"downloadOnClick":"apple2plus.hwObj().io.SLOT2obj("+slotN+").downloadDisk('"+deviceID+"')"
                 ,"downloadTitle":"Save disk"
-            });
+            };
+            if(displayName) spec.fileDisplayName = displayName;
+            return EMU_deviceMediaRowHTML(spec);
         }
+
+        var rows = "";
+        var attached = this.attachedDriveIDs();
+        for(var i=0;i<attached.length;i++)
+            rows += mediaRow(attached[i],attached[i]=="D1" ? "Drive1" : "Drive2");
 
         return ""
             + "<div class=toolbox id=\""+(ctx.toolboxID || ("device_tool_"+slotID))+"\" hidden>"
             + "  <div class=appbox style=\"height:63px;padding:0px 6px 0px 6px;\">"
-            + mediaRow("D1","Drive1")
-            + mediaRow("D2","Drive2")
+            + rows
             + "  </div>"
             + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
             + "    <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'softwareCat'})\" title=\"Software Catalog\"><i class=\"fa fa-cat\"></i></button>"
@@ -3795,6 +3838,12 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
                 +"</button>"
             : "";
 
+        var grids = "";
+        var attached = this.attachedDriveIDs();
+        for(var drive=0;drive<2;drive++)
+            if(attached.indexOf("D"+(drive+1))>=0)
+                grids += this.surfaceMap_grid_html(drive);
+
         var ret = "<div>"
         + "  <div style=\"display:flex;align-items:center;gap:6px;white-space:nowrap;min-width:0px;\">"
         + "      <button class=\"appbut\" style=\"text-align:center;\" title=\"Disk surface map sync\">"
@@ -3809,8 +3858,7 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
         +        closeBtn
         + "  </div>"
         + "  <div id=\"surfaceMap_body\" style=\"margin-left:48px;white-space:nowrap\">"
-        +      this.surfaceMap_grid_html(0)
-        +      this.surfaceMap_grid_html(1)
+        +      grids
         + "  </div>"
         + "</div>";
 
@@ -3849,9 +3897,11 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
     this.surfaceMap_update = function(popup_id)
     {
         var pal = this.surfaceMap_build_palette();
+        var attached = this.attachedDriveIDs();
 
         for(var deviceN=0; deviceN<2; deviceN++)
         {
+            if(attached.indexOf("D"+(deviceN+1))<0) continue;
             var deviceID = apple2plus.hwObj().io.deviceN2ID(
                  deviceN
                 ,"DISKII"
