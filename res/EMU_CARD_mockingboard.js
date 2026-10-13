@@ -517,7 +517,7 @@ function mockingboard()
     this.deviceToolVoiceDefaults=function()
     {
         for(var entry of [["duration",0],["rate",4],["inflection",1536],["articulation",4],
-            ["amplitude",15],["filter",211],["xck",1789772.5],["sampleRate",44100]])
+            ["amplitude",15],["filter",211],["xck",1023000],["sampleRate",44100]])
             this.deviceToolVoiceChange(entry[0],entry[1]);
     };
 

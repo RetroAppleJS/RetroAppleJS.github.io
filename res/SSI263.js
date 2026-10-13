@@ -818,7 +818,7 @@ Source: https://github.com/relmer/Casso
     return value;
   }
   class SSI263 {
-    constructor(xckHz = 1789772.5) {
+    constructor(xckHz = 1023000) {
       this.m_xckHz = requirePositive(xckHz, "XCK");
       this.m_tickClockHz = 0;
       this.m_sampleRate = 0;
@@ -1019,7 +1019,7 @@ Source: https://github.com/relmer/Casso
   SSI263.kModePhonemeImmediate = 2;
   SSI263.kModeFrameImmediate = 1;
   SSI263.kModeArDisabled = 0;
-  SSI263.kDefaultXckHz = 1789772.5;
+  SSI263.kDefaultXckHz = 1023000;
   SSI263.kNominalFilterHz = 20000.0;
   SSI263.PHONEMES = PHONEMES;
   SSI263.VERSION = "0.1.0";
@@ -1047,7 +1047,7 @@ Source: https://github.com/relmer/Casso
     if (!codes.length || codes.length > 4096) throw new RangeError("Enter 1 to 4096 phonemes");
     codes.forEach(p => requireInteger(p, 0, 63, "Phoneme code"));
     const config = {
-      sampleRate: 44100, xck: 1789772.5, tickClock: 1020484,
+      sampleRate: 44100, xck: 1023000, tickClock: 1020484,
       duration: 0, rate: 4, inflection: 1536, articulation: 4, amplitude: 15, filter: 211,
       ...options
     };
