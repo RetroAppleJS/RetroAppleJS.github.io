@@ -63,9 +63,11 @@ test('relocating default Disk II to slot 5 removes its slot 6 default',()=>{
     assert.deepEqual(map,{'0':['A2BO'],'1':['MS16K'],'6':['DISKII']});
 });
 
-test('replacing default Disk II in slot 6 leaves it unmounted',()=>{
-    const {map}=setup('6:MOCK');
+test('URL assignment takes precedence over the default Disk II in slot 6',()=>{
+    const {map,result}=setup('6:MOCK');
     assert.deepEqual(map,{'0':['A2BO'],'1':['MS16K'],'7':['MOCK']});
+    assert.deepEqual(result.applied,[{slot:6,PCODE:'MOCK'}]);
+    assert.equal(result.warnings.length,0);
 });
 
 test('NONE leaves a slot empty without affecting other defaults',()=>{
@@ -113,11 +115,27 @@ test('refuses a fixed-slot peripheral',()=>{
     assert.match(result.warnings[0],/fixed slot/);
 });
 
-test('startup integration applies URL overrides after slot fit/default map construction',()=>{
+test('startup integration applies URL overrides after COM_CONFIG default map construction',()=>{
     assert.ok(code.includes('oCOM.URL.uri.slots'));
     const indexOfMap=code.indexOf('var slotR = {};');
     const indexOfApply=code.indexOf('var urlSlotResult = EMU_applyURLSlotOverrides(',indexOfMap);
     const indexOfMount=code.indexOf('this.mount(cinfo,pinfo,slotN,slotR.slotFit[slotN])');
     assert.ok(indexOfMap>=0 && indexOfApply>indexOfMap);
     assert.ok(indexOfMount>=0,'Apple2IO.restart() retains normal mount() logic');
+    assert.ok(code.includes('urlSlotAssignment[assignment.slot+1] = assignment.PCODE'));
+    assert.ok(code.includes('o.pObj.mount.source = "URL"'));
+    assert.ok(code.includes('slotObj.peripheral?.mount?.source == "URL"'));
+});
+
+test('invalid URL override never removes a COM_CONFIG prefilled card',()=>{
+    const {map,result}=setup('6:VIDEX');
+    assert.deepEqual(map,{'0':['A2BO'],'1':['MS16K'],'7':['DISKII']});
+    assert.equal(result.applied.length,0);
+    assert.equal(result.warnings.length,1);
+});
+
+test('empty explicit URL assignment does not alter COM_CONFIG defaults',()=>{
+    const {map,result}=setup('');
+    assert.deepEqual(map,{'0':['A2BO'],'1':['MS16K'],'7':['DISKII']});
+    assert.equal(result.applied.length,0);
 });
