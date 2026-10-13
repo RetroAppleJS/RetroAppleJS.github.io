@@ -1,0 +1,134 @@
+diff --git a/res/EMU_CARD_appledisk2.js b/res/EMU_CARD_appledisk2.js
+--- a/res/EMU_CARD_appledisk2.js
++++ b/res/EMU_CARD_appledisk2.js
+@@ -466,6 +466,9 @@ function AppleDisk2()
+         var slotN = Number(ctx.slotN);
+         var slotID = ctx.slotID;
+         var card = this;
++        var diskNoisePct = this.dN_volume_get();
++        var diskNoiseIcon = this.dN_volume_icon();
++
+ 
+         function mediaRow(deviceID,label)
+         {
+@@ -494,7 +497,11 @@ function AppleDisk2()
+             + mediaRow("D2","Drive2")
+             + "  </div>"
+             + "  <div class=appbox style=\"text-align:left;height:63px;padding:0px 6px 0px 6px;\">"
+-            + "    <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'softwareCat'})\" title=\"Software Catalog\"><i class=\"fa fa-cat\"></i></button><br>"
++            + "    <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'softwareCat'})\" title=\"Software Catalog\"><i class=\"fa fa-cat\"></i></button>"
++            + "    <button class=appbut id=\"diskNoiseVolume_"+slotN+"\""
++            + " onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").dN_volume_cycle(this)\""
++            + " data-volume=\""+diskNoisePct+"\" title=\"Disk noise volume: "+diskNoisePct+"%\""
++            + " aria-label=\"Disk noise volume: "+diskNoisePct+"%\"><i class=\"fa "+diskNoiseIcon+"\"></i></button><br>"
+             + "    <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'surfaceMap'})\" title=\"Disk Surface Map\"><i class=\"fa fa-th\"></i></button>"
+             + "  </div>"
+             + "</div>";
+@@ -993,7 +1001,7 @@ function AppleDisk2()
+ 
+                     this.audio = new AudioContext(audioOptions);
+                     this.gain  =  this.audio.createGain();
+-                    this.gain.gain.value = 0.1;
++                    this.dN_volume_apply();
+                 } else await this.audio.resume();
+                 this.dNd.enable = true;
+             break;
+@@ -2336,5 +2344,64 @@ function AppleDisk2()
+-    this.dNd = {enable:false,motor:"OFF",status:"",detune:0,rept:0,motorOffTimer:null,last:{}};  // disk Noise data
++    // Disk-noise volume is local to this AppleDisk2 instance. 100% keeps the
++    // historical Disk II gain (0.1); 75% is the per-instance default.
++    this.dN_volume_levels = [0,25,75,100];
++    this.dNd = {enable:false,volumePct:75,motor:"OFF",status:"",detune:0,rept:0,motorOffTimer:null,last:{}};  // disk Noise data
+     this.AUD_buffer={};
+ 
++    this.dN_volume_get = function()
++    {
++        return this.dNd.volumePct;
++    }
++
++    this.dN_volume_icon = function()
++    {
++        switch(this.dNd.volumePct)
++        {
++            case 0:   return "fa-volume-mute";
++            case 25:  return "fa-volume-off";
++            case 75:  return "fa-volume-down";
++            default:  return "fa-volume-up";
++        }
++    }
++
++    this.dN_volume_gain = function()
++    {
++        // Preserve the old 0.1 gain as the 100% reference level.
++        return 0.1 * this.dNd.volumePct / 100;
++    }
++
++    this.dN_volume_apply = function()
++    {
++        if(this.gain && this.gain.gain)
++            this.gain.gain.value = this.dN_volume_gain();
++
++        return this.dNd.volumePct;
++    }
++
++    this.dN_volume_sync_button = function(button)
++    {
++        if(!button) return;
++
++        var pct = this.dNd.volumePct;
++        var icon = button.getElementsByTagName("i")[0];
++        if(icon) icon.className = "fa " + this.dN_volume_icon();
++
++        var label = "Disk noise volume: " + pct + "%";
++        button.title = label;
++        button.setAttribute("aria-label",label);
++        button.setAttribute("data-volume",pct);
++    }
++
++    this.dN_volume_cycle = function(button)
++    {
++        var levels = this.dN_volume_levels;
++        var idx = levels.indexOf(this.dNd.volumePct);
++
++        this.dNd.volumePct = levels[(idx < 0 ? 0 : idx + 1) % levels.length];
++        this.dN_volume_apply();
++        this.dN_volume_sync_button(button);
++
++        return this.dNd.volumePct;
++    }
++
+     this.s_load_all = async function(samplesDS)
+     {
+diff --git a/tests/appledisk2_sound.test.js b/tests/appledisk2_sound.test.js
+--- a/tests/appledisk2_sound.test.js
++++ b/tests/appledisk2_sound.test.js
+@@ -48,6 +48,29 @@ async function startMotor(disk)
+     return disk.AUD_buffer.DiskII_spin;
+ }
+ 
++test('disk noise volume is per-instance, defaults to 75%, and cycles 100-0-25-75', async()=>{
++    const {disk:first}=loadDisk();
++    const {disk:second}=loadDisk();
++
++    assert.equal(first.dN_volume_get(),75);
++    assert.equal(second.dN_volume_get(),75);
++    assert.equal(first.dN_volume_icon(),'fa-volume-down');
++
++    await first.init('audio_ctx');
++    assert.equal(first.gain.gain.value,0.075);
++
++    assert.equal(first.dN_volume_cycle(null),100);
++    assert.equal(first.gain.gain.value,0.1);
++    assert.equal(first.dN_volume_cycle(null),0);
++    assert.equal(first.gain.gain.value,0);
++    assert.equal(first.dN_volume_cycle(null),25);
++    assert.equal(first.gain.gain.value,0.025);
++    assert.equal(first.dN_volume_cycle(null),75);
++    assert.equal(first.gain.gain.value,0.075);
++
++    assert.equal(second.dN_volume_get(),75,'another Disk II instance keeps its own volume');
++});
++
+ test('repeated mute stops the spin loop without disconnect warnings', async()=>{
+     const {disk, warnings} = loadDisk();
+     const spin = await startMotor(disk);

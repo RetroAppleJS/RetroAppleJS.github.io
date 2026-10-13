@@ -53,6 +53,29 @@ async function startMotor(disk)
     return disk.AUD_buffer.DiskII_spin;
 }
 
+test('disk noise volume is per-instance, defaults to 75%, and cycles 100-0-25-75', async()=>{
+    const {disk:first}=loadDisk();
+    const {disk:second}=loadDisk();
+
+    assert.equal(first.dN_volume_get(),75);
+    assert.equal(second.dN_volume_get(),75);
+    assert.equal(first.dN_volume_icon(),'fa-volume-down');
+
+    await first.init('audio_ctx');
+    assert.equal(first.gain.gain.value,0.075);
+
+    assert.equal(first.dN_volume_cycle(null),100);
+    assert.equal(first.gain.gain.value,0.1);
+    assert.equal(first.dN_volume_cycle(null),0);
+    assert.equal(first.gain.gain.value,0);
+    assert.equal(first.dN_volume_cycle(null),25);
+    assert.equal(first.gain.gain.value,0.025);
+    assert.equal(first.dN_volume_cycle(null),75);
+    assert.equal(first.gain.gain.value,0.075);
+
+    assert.equal(second.dN_volume_get(),75,'another Disk II instance keeps its own volume');
+});
+
 test('repeated mute stops the spin loop without disconnect warnings', async()=>{
     const {disk, warnings} = loadDisk();
     const spin = await startMotor(disk);
