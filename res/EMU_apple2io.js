@@ -2259,22 +2259,6 @@ function mergeActionMap(dst,src)
         return mask; // [0]:compatible slotrange for peripheral  [1]:pre-installed slots with peripheral
     }
 
-    // Process URL placements after discovering the configured defaults, but
-    // before the first Apple2IO.restart() mounts any peripheral.
-    var urlSlots = oCOM && oCOM.URL && oCOM.URL.uri ? oCOM.URL.uri.slots : undefined;
-    if(urlSlots!==undefined)
-    {
-        var urlSlotResult = EMU_applyURLSlotOverrides(
-            slotR,urlSlots,_CFG_PSLOT,
-            slotAvail && slotAvail.phySlots,
-            this.scanPeripheralContainers()
-        );
-        urlSlotResult.warnings.forEach(function(warning)
-        {
-            console.warn("URL slots: "+warning);
-        });
-    }
-
 
     function extract_slotrange(str)
     {
@@ -2563,6 +2547,23 @@ function mergeActionMap(dst,src)
         //        ,"slotFit":[["A2BO"],["MS16K"],["DISKII","MOCK"],["DISKII","MOCK"],["DISKII","VIDEX","MOCK"],["DISKII","MOCK"],["DISKII","MOCK"],["DISKII","MOCK"],["DISKII","MOCK"]]}
 
     }
+
+    // Process URL placements after discovering the configured defaults, but
+    // before the first Apple2IO.restart() mounts any peripheral.
+    var urlSlots = oCOM && oCOM.URL && oCOM.URL.uri ? oCOM.URL.uri.slots : undefined;
+    if(urlSlots!==undefined)
+    {
+        var urlSlotResult = EMU_applyURLSlotOverrides(
+            slotR,urlSlots,_CFG_PSLOT,
+            slotAvail && slotAvail.phySlots,
+            this.scanPeripheralContainers()
+        );
+        urlSlotResult.warnings.forEach(function(warning)
+        {
+            console.warn("URL slots: "+warning);
+        });
+    }
+
 
 
 
