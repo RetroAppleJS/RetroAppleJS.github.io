@@ -1,0 +1,33 @@
+name: Disk II UI regression tests
+
+on:
+  pull_request:
+    paths:
+      - 'res/EMU_CARD_appledisk2.js'
+      - 'res/EMU_CARD_appledisk2_topology.js'
+      - 'res/EMU_CARD_appledisk2_ui_state.js'
+      - 'tests/appledisk2_sound.test.js'
+      - '.github/workflows/diskii-ui-regression.yml'
+  push:
+    paths:
+      - 'res/EMU_CARD_appledisk2.js'
+      - 'res/EMU_CARD_appledisk2_topology.js'
+      - 'res/EMU_CARD_appledisk2_ui_state.js'
+      - 'tests/appledisk2_sound.test.js'
+      - '.github/workflows/diskii-ui-regression.yml'
+  workflow_dispatch:
+
+jobs:
+  node-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: |
+          node --check res/EMU_CARD_appledisk2.js
+          node --check res/EMU_CARD_appledisk2_topology.js
+      - name: Run Disk II sound and UI regressions
+        run: node --test tests/appledisk2_sound.test.js
