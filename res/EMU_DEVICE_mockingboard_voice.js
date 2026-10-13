@@ -1127,6 +1127,9 @@ function MockingboardVoice(options)
     var previousSample=0, heldSample=0, lastSample=0, events=[], head=0;
     var lastRequest=false, generatedSamples=0;
     const TIMEBASE=1000000000, EVENT_CAPACITY=4096;
+    // Level-12 voiced phonemes average about one quarter of an AY channel
+    // at the old 0.5 gain. Keep the calibrated mix ahead of the shared gain.
+    const VOICE_MIX_GAIN=2.0;
     this.soundSourceDevice=true;
     this.id={DCODE:"MOCKVOICE",coID:"MockingboardVoice",hostPCODE:"MOCK",deviceN:4,
         icon:"fa fa-comment",description:"SSI-263 speech synthesizer"};
@@ -1228,9 +1231,10 @@ function MockingboardVoice(options)
         for(var i=0;i<frames;i++)
         {
             var tick=startTick+Math.ceil(((i+1)*TIMEBASE-startPhase)/22050);
-            var mono=this.sampleAt(tick)*0.5;
-            output.left[i]=Math.max(-1,Math.min(1,output.left[i]+mono));
-            output.right[i]=Math.max(-1,Math.min(1,output.right[i]+mono));
+            var mono=this.sampleAt(tick)*VOICE_MIX_GAIN;
+            // Float PCM retains headroom; the output sink supplies master gain.
+            output.left[i]+=mono;
+            output.right[i]+=mono;
         }
         this.sampleAt(end);
     };

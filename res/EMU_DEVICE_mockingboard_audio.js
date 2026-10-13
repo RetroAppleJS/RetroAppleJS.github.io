@@ -11,6 +11,8 @@ function MockingboardAudio()
     var device=this;
     const QUEUE_LEAD_MS=30;
     const QUEUE_LOW_MS=15, QUEUE_HIGH_MS=60;
+    const MASTER_GAIN=0.25, VOLUME_RAMP_SECONDS=0.010;
+    var volumePct=100, rampStart=0, rampFrom=MASTER_GAIN, rampTo=MASTER_GAIN;
     var ownerEpoch=null;
 
     this.audioDevice=true;
@@ -68,7 +70,9 @@ function MockingboardAudio()
         if(typeof(device.audio.addEventListener)==="function")
             device.audio.addEventListener("statechange",syncAudioContext);
         gain=device.audio.createGain();
-        gain.gain.value=0.25;
+        rampFrom=rampTo=MASTER_GAIN*volumePct/100;
+        rampStart=device.audio.currentTime;
+        gain.gain.value=rampTo;
         gain.connect(device.audio.destination);
         return device.audio;
     }
@@ -127,10 +131,35 @@ function MockingboardAudio()
         return budget;
     };
 
+    this.setVolume=function(percent)
+    {
+        percent=Number(percent);
+        if(!Number.isInteger(percent) || percent<0 || percent>100)
+            throw new RangeError("Mockingboard volume must be an integer from 0 to 100");
+        volumePct=percent;
+        if(gain && device.audio)
+        {
+            var now=device.audio.currentTime;
+            var progress=Math.max(0,Math.min(1,(now-rampStart)/VOLUME_RAMP_SECONDS));
+            var current=rampFrom+(rampTo-rampFrom)*progress;
+            var param=gain.gain;
+            rampStart=now;rampFrom=current;rampTo=MASTER_GAIN*volumePct/100;
+            if(typeof(param.cancelScheduledValues)==="function" && typeof(param.setValueAtTime)==="function"
+                && typeof(param.linearRampToValueAtTime)==="function")
+            {
+                param.cancelScheduledValues(now);
+                param.setValueAtTime(current,now);
+                param.linearRampToValueAtTime(rampTo,now+VOLUME_RAMP_SECONDS);
+            }
+            else {param.value=rampTo;rampFrom=rampTo;}
+        }
+        return volumePct;
+    };
     this.bindHost=function(host)
     {
         if(!host || !host.id || host.id.PCODE!=="MOCK") return false;
         owner=host;
+        if(typeof(owner.volume_get)==="function")this.setVolume(owner.volume_get());
         if(typeof(owner.setTimingRefreshCallback)==="function")
             owner.setTimingRefreshCallback(function(){ refreshHooks(); });
         return true;
@@ -315,6 +344,7 @@ function MockingboardAudio()
             ,contextState:this.audio?this.audio.state:"uninitialized"
             ,contextTime:this.audio?this.audio.currentTime:null
             ,playbackEnabled:playbackEnabled,presentationPaused:presentationPaused
+            ,masterVolumePct:volumePct,masterGain:MASTER_GAIN*volumePct/100
             ,cpuBudgetChecks:stats.cpuBudgetChecks,cpuBudgetBlocked:stats.cpuBudgetBlocked
         };
     };

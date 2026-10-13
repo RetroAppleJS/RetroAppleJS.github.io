@@ -8,10 +8,15 @@ const vm=require('node:vm');
 function sinkRig()
 {
     let now=0;
-    const buffers=[];
+    const buffers=[],gains=[];
     class FakeAudioContext {
         constructor(){this.state='running';this.sampleRate=48000;this.currentTime=0;this.destination={};}
-        createGain(){return {gain:{value:0},connect(){}};}
+        createGain(){
+            const param={value:0,calls:[],cancelScheduledValues(t){this.calls.push(['cancel',t]);},
+                setValueAtTime(v,t){this.calls.push(['set',v,t]);},
+                linearRampToValueAtTime(v,t){this.calls.push(['ramp',v,t]);}};
+            gains.push(param);return {gain:param,connect(){}};
+        }
         createBuffer(channels,length,rate){
             const data=[new Float32Array(length),new Float32Array(length)];
             const b={duration:length/rate,getChannelData(i){return data[i];}};
@@ -42,8 +47,26 @@ function sinkRig()
     };
     sink.bindHost(owner);
     sink.bindIO({getClockTicks(){return 17030;}});
-    return {sink,buffers,owner,setNow(t){now=t;}};
+    return {sink,buffers,gains,owner,setNow(t){now=t;}};
 }
+
+test('master volume applies to queued buffers without restarting playback and ramps rapid changes',async()=>{
+    const r=sinkRig();r.owner.volume_get=()=>75;r.sink.bindHost(r.owner);
+    assert.equal(r.sink.audio,undefined);
+    await r.sink.init('audio_on');r.sink.cycle();
+    assert.equal(r.gains[0].value,.1875);
+    const before=r.sink.getStats();
+    r.sink.setVolume(0);
+    assert.deepEqual(r.gains[0].calls.slice(-2),[['set',.1875,0],['ramp',0,.01]]);
+    r.sink.audio.currentTime=.005;r.sink.setVolume(100);
+    assert.deepEqual(r.gains[0].calls.slice(-2),[['set',.09375,.005],['ramp',.25,.015]]);
+    const after=r.sink.getStats();
+    for(const field of ['activeSources','framesScheduled','buffersScheduled','playbackEnabled'])assert.equal(after[field],before[field]);
+    assert.equal(after.masterVolumePct,100);assert.equal(after.masterGain,.25);
+    assert.throws(()=>r.sink.setVolume(101));
+    await r.sink.init('audio_off');r.sink.setVolume(25);await r.sink.init('audio_on');
+    assert.equal(r.sink.getStats().masterVolumePct,25);
+});
 
 test('Mockingboard audio telemetry retains active playback when counters reset',async()=>{
     const r=sinkRig();

@@ -12,6 +12,8 @@ function mockingboard()
 {
     var bDebug = false;
     var card=this;
+    var volumePct=100;
+    const VOLUME_LEVELS=[0,25,75,100];
     const SAMPLE_RATE=22050;
     const RENDER_PROFILE="economy";
     const AUDIO_CAPACITY=Math.ceil(SAMPLE_RATE*0.25);
@@ -233,6 +235,47 @@ function mockingboard()
                 return attached[i];
         return null;
     }
+    function volumeIcon()
+    {
+        return "fa "+(volumePct===0?"fa-volume-mute":volumePct<=25?"fa-volume-off":volumePct<=75?"fa-volume-down":"fa-volume-up");
+    }
+    function volumeTitle()
+    {
+        return "Mockingboard volume: "+volumePct+"% (click to cycle 0 / 25 / 75 / 100%)";
+    }
+    function syncVolumeButton(button)
+    {
+        if(!button && typeof(document)==="object" && document.getElementById)
+            button=document.getElementById(historyID("volume"));
+        if(!button)return;
+        button.title=volumeTitle();
+        if(typeof(button.setAttribute)==="function")
+        {
+            button.setAttribute("aria-label",volumeTitle());
+            button.setAttribute("data-volume",String(volumePct));
+        }
+        var icons=typeof(button.getElementsByTagName)==="function"?button.getElementsByTagName("i"):[];
+        if(icons.length)icons[0].className=volumeIcon();
+    }
+    this.volume_get=function(){return volumePct;};
+    this.volume_set=function(percent,button)
+    {
+        percent=Number(percent);
+        if(!Number.isInteger(percent) || percent<0 || percent>100)
+            throw new RangeError("Mockingboard volume must be an integer from 0 to 100");
+        volumePct=percent;
+        var sink=telemetrySink();
+        if(sink && typeof(sink.setVolume)==="function")sink.setVolume(volumePct);
+        syncVolumeButton(button);
+        return volumePct;
+    };
+    this.volume_cycle=function(button)
+    {
+        var next=0;
+        for(var i=0;i<VOLUME_LEVELS.length;i++)
+            if(VOLUME_LEVELS[i]>volumePct){next=VOLUME_LEVELS[i];break;}
+        return this.volume_set(next,button);
+    };
     function telemetryEventName(){return historyID("audio_refresh");}
     function telemetryText(id,value)
     {
@@ -1028,14 +1071,13 @@ function mockingboard()
             historyRefreshRegistered=true;
         }
         return "<div class=toolbox id='"+(ctx.toolboxID || "device_tool_"+ctx.slotID)+"' hidden>"
-            +"<div class=appbox style='padding:4px 6px;display:flex;align-items:center;gap:6px;flex-wrap:nowrap;white-space:nowrap'>"
+            +"<div class=appbox style='padding:4px 6px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;height:auto;white-space:nowrap'>"
+            +"<div data-mockingboard-row='1' style='display:flex;align-items:center;gap:6px;flex-wrap:nowrap'>"
             +"<label for='"+historyID("backend")+"'>AY core</label>"
             +"<select id='"+historyID("backend")+"' onchange='"+access+"?.deviceToolAYBackendChange(this.value)' title='Sound backend for AY0 and AY1'"+(backendLoading?" disabled":"")+">"
             +'<option value="wasm"'+(backendChoice==="wasm"?' selected':'')+'>WASM</option>'
             +'<option value="js"'+(backendChoice==="js"?' selected':'')+'>JS</option></select>'
             +"<span id='"+historyID("backend_status")+"' role=status aria-live=polite style='font-size:10px"+(backendError?";color:#a00":"")+"'>"+backendStatusText().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")+"</span>"
-            +"<button class=appbut title='Mockingboard live audio telemetry' onclick='"+access+"?.openAudioTelemetry()'>"
-            +"<i class='fa fa-sliders-h'></i></button>"
             +"<button class=appbut title='Start/stop Mockingboard history capture' onclick='"+access+"?.toggleHistoryCapture()'>"
             +"<i id='"+historyID("toggle")+"' class='fa fa-coffee' style='opacity:"+(state.capturing?"1":".35")+"'></i></button>"
             +"<span id='"+historyID("kbwrap")+"' style='display:"+(state.capturing?"none":"inline-flex")+";align-items:center;gap:3px'>"
@@ -1072,7 +1114,12 @@ function mockingboard()
                 +"</span>"
             +"</button>"
 
-            +"</div></div>";
+            +"</div><div data-mockingboard-row='2' style='display:flex;align-items:center;gap:6px;flex-wrap:nowrap'>"
+            +"<button class=appbut id='"+historyID("volume")+"' title='"+volumeTitle()+"' aria-label='"+volumeTitle()+"' data-volume='"+volumePct+"' onclick='"+access+"?.volume_cycle(this)'>"
+            +"<i class='"+volumeIcon()+"'></i></button>"
+            +"<button class=appbut title='Mockingboard live audio telemetry' aria-label='Mockingboard live audio telemetry' onclick='"+access+"?.openAudioTelemetry()'>"
+            +"<i class='fa fa-sliders-h'></i></button>"
+            +"</div></div></div>";
     };
 }
 

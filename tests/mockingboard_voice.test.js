@@ -74,12 +74,14 @@ if(fs.existsSync(voicePath)){
     }
   });
   test('reset powers down speech and unmount deasserts its IRQ',()=>{
-    const r=rig();arm(r);r.card.advanceTo(160000);assert.equal(r.card.state.irq,true);
+    const r=rig();arm(r);
+    r.card.advanceTo(Math.ceil(r.voice.getState().phonemeDurationSec*1021800));
+    assert.equal(r.card.state.irq,true);
     r.card.reset();assert.equal(r.voice.getState().poweredDown,true);assert.equal(r.card.state.irq,false);
     arm(r);r.card.onUnmount();assert.equal(r.card.state.irq,false);
     assert.equal(r.voice.getState().poweredDown,true);
   });
-  test('toolbox is one appbox row and the popup has both columns and all screenshot controls',()=>{
+  test('toolbox is one appbox and the popup has both columns and all screenshot controls',()=>{
     const r=rig();const html=r.card.deviceToolSlotHTML({toolboxID:'device_tool_4'});
     assert.equal((html.match(/class=appbox/g)||[]).length,1);
     assert.match(html,/flex-wrap:nowrap/);assert.match(html,/toggleHistoryCapture/);
@@ -94,17 +96,19 @@ if(fs.existsSync(voicePath)){
     assert.equal(s.inflection,1536);assert.equal(s.amplitude,15);assert.equal(s.sampleRate,44100);
   });
   test('speech transport rebases across AY backend changes and survives mute, CPU speed changes and removal',async()=>{
-    const r=rig();arm(r);r.card.advanceTo(40000);
+    const r=rig();arm(r);
+    const completionTick=Math.ceil(r.voice.getState().phonemeDurationSec*1021800);
+    r.card.advanceTo(40000);
     await r.card.setAYBackend('js');
     r.context._o.CPU_TargetTicks_s=2043600;
     r.card.advanceTo(80000);r.card.setAudioConsumerActive(true);
     r.card.advanceTo(110000);assert.ok(r.card.drainAudioFrames(5000).left.some(v=>v!==0));
-    r.card.setAudioConsumerActive(false);r.card.clearAudioQueue();r.card.advanceTo(160000);
+    r.card.setAudioConsumerActive(false);r.card.clearAudioQueue();r.card.advanceTo(completionTick);
     assert.equal(r.voice.getState().requesting,true);
     assert.equal(r.voice.bindHost(r.card),true);
     assert.equal(r.voice.unbindHost(r.card),true);
     assert.equal(r.voice.getState().poweredDown,true);assert.equal(r.voice.getState().requesting,false);
-    assert.equal(r.card.writeSlotROM(0x40,1,{cpuTick:160000}),false);
+    assert.equal(r.card.writeSlotROM(0x40,1,{cpuTick:completionTick}),false);
   });
   test('same-tick speech writes can be consumed without needing an AY event or PCM sample',()=>{
     const r=rig();
@@ -153,6 +157,23 @@ if(fs.existsSync(voicePath)){
     const audio=r.card.devices.find(d=>d.id.DCODE==='MOCKAUDIO');
     assert.equal(r.io.attach(r.card,r.card.deviceConfig[0],{newInstance:true}),audio);
     assert.equal(r.card.devices.length,2);
+  });
+  test('master mute preserves speech IRQ and history, and reattached output inherits volume',()=>{
+    const r=ioRig();r.card.toggleHistoryCapture();arm(r);
+    const cycles=Math.ceil(r.voice.getState().phonemeDurationSec*1021800);
+    r.card.volume_set(0);
+    const audio=r.card.devices.find(d=>d.id.DCODE==='MOCKAUDIO');
+    assert.equal(audio.getStats().masterVolumePct,0);assert.equal(audio.audio,undefined);
+    for(let i=0;i<cycles;i++)r.io.tick();
+    assert.equal(r.voice.getState().requesting,true);assert.equal(r.card.state.irq,true);
+    assert.equal(r.card.getHistoryState().capturing,true);
+    const before=r.card.getHistoryJSON();r.card.volume_set(25);
+    assert.deepEqual(r.card.getHistoryJSON(),before);
+    assert.equal(r.io.detach(r.card,'MOCKAUDIO'),true);
+    r.card.volume_set(75);
+    const attached=r.io.attach(r.card,r.card.deviceConfig[0],{newInstance:true});
+    assert.equal(attached.getStats().masterVolumePct,75);
+    assert.equal(attached.audio,undefined);assert.equal(r.card.volume_get(),75);
   });
   test('powered-up mode-zero idle is represented separately from active speech',()=>{
     const r=rig();r.write(0x43,15); // DR=0 at CTL falling edge disables requests and starts idle.
