@@ -62091,6 +62091,98 @@ function EMU_deviceMediaRowHTML(spec)
         + "    </div>";
 }
 
+/*
+ * Optional URL pre-mount configuration.  The user-facing slot number is
+ * physical (0-7), while Apple2IO.slots[] uses physical slot + 1 (0=board).
+ * Apply this only to the initial slot plan: regular mount(), peripheral
+ * discovery, address mapping and device provisioning remain authoritative.
+ */
+function EMU_applyURLSlotOverrides(slotR, raw, catalog, physicalSlots, discovered)
+{
+    var result = {"applied":[],"warnings":[]};
+    if(raw===undefined || raw===null || raw==="") return result;
+    if(typeof(raw)!=="string" || !slotR || !slotR.slotMap || !slotR.slotFit)
+    {
+        result.warnings.push("cannot apply overrides without a valid slot configuration");
+        return result;
+    }
+
+    var requestedSlots = new Set();
+    var accepted = [];
+    raw.split(",").forEach(function(part)
+    {
+        var token = part.trim();
+        var match = /^([0-7]):([A-Z][A-Z0-9_]*)$/i.exec(token);
+        if(!match)
+        {
+            result.warnings.push("invalid assignment '"+token+"' (expected slot:PCODE)");
+            return;
+        }
+
+        var physicalSlot = Number(match[1]);
+        var internalSlot = physicalSlot + 1;
+        var PCODE = match[2].toUpperCase();
+
+        if(!Array.isArray(physicalSlots) || physicalSlots.indexOf(physicalSlot)<0)
+        {
+            result.warnings.push("slot "+physicalSlot+" is unavailable for this system");
+            return;
+        }
+        if(requestedSlots.has(physicalSlot))
+        {
+            result.warnings.push("slot "+physicalSlot+" specified more than once; keeping the first valid assignment");
+            return;
+        }
+        if(PCODE!=="NONE")
+        {
+            if(!catalog || !Object.prototype.hasOwnProperty.call(catalog,PCODE) ||
+               !discovered || !Object.prototype.hasOwnProperty.call(discovered,PCODE))
+            {
+                result.warnings.push("peripheral '"+PCODE+"' is not available");
+                return;
+            }
+            if(!Array.isArray(slotR.slotFit[internalSlot]) ||
+               slotR.slotFit[internalSlot].indexOf(PCODE)<0)
+            {
+                result.warnings.push("peripheral '"+PCODE+"' is not compatible with slot "+physicalSlot);
+                return;
+            }
+            if(discovered[PCODE].slotLock===true)
+            {
+                result.warnings.push("peripheral '"+PCODE+"' has a fixed slot and cannot be reassigned");
+                return;
+            }
+        }
+        requestedSlots.add(physicalSlot);
+        accepted.push({"slot":physicalSlot,"internalSlot":internalSlot,"PCODE":PCODE});
+    });
+
+    // Relocating a default card must not leave a second default instance.
+    // Explicitly requested repeated PCODEs are allowed for multi-card setups.
+    var relocatedCodes = new Set(accepted.filter(function(a)
+    {
+        return a.PCODE!=="NONE";
+    }).map(function(a) { return a.PCODE; }));
+
+    Object.keys(slotR.slotMap).forEach(function(slotIndex)
+    {
+        if(Number(slotIndex)===0) return; // never alter the motherboard
+        var defaults = slotR.slotMap[slotIndex];
+        if(!Array.isArray(defaults)) return;
+        var retained = defaults.filter(function(code) { return !relocatedCodes.has(code); });
+        if(retained.length) slotR.slotMap[slotIndex] = retained;
+        else delete slotR.slotMap[slotIndex];
+    });
+
+    accepted.forEach(function(a)
+    {
+        if(a.PCODE==="NONE") delete slotR.slotMap[a.internalSlot];
+        else slotR.slotMap[a.internalSlot] = [a.PCODE];
+        result.applied.push({"slot":a.slot,"PCODE":a.PCODE});
+    });
+    return result;
+}
+
 function Apple2IO(vid,hostHardware)
 {
     const bDebug = false;
@@ -62279,10 +62371,18 @@ function Apple2IO(vid,hostHardware)
             var slotObj = this.slots[slotN];
             if(slotObj===undefined) { continue; }
 
-            if(slotObj.peripheral?.mount?.source == "COM_CONFIG") continue;     // avoid re-mounting pre-configured peripherals at the next restart
+            // A URL assignment overrides COM_CONFIG at initial startup.  Once
+            // mounted, either origin must survive normal emulator restarts.
+            if(slotObj.peripheral?.mount?.source == "COM_CONFIG" ||
+               slotObj.peripheral?.mount?.source == "URL") continue;
 
             var o = this.mount(cinfo,pinfo,slotN,slotR.slotFit[slotN]);
             if(!o || !o.pObj) continue;
+
+            // The same discovery/mount path is used for both origins; expose
+            // the URL provenance and preserve it across warm restarts.
+            if(urlSlotAssignment[slotN]===pinfo.PCODE)
+                o.pObj.mount.source = "URL";
 
             for(var so in o.sInfo) slotObj[so] = o.sInfo[so];
             slotObj.peripheral = o.pObj;
@@ -64152,6 +64252,7 @@ function mergeActionMap(dst,src)
         return mask; // [0]:compatible slotrange for peripheral  [1]:pre-installed slots with peripheral
     }
 
+
     function extract_slotrange(str)
     {
         var  slotPut = [], slotFit = [];
@@ -64423,7 +64524,8 @@ function mergeActionMap(dst,src)
         var slot_count = slotAvail.logSlots_n;
     }
 
-    var slotR = {};  // TODO: remove as this is now in CONFIG     
+    var slotR = {};  // TODO: remove as this is now in CONFIG
+    var urlSlotAssignment = {}; // internal slot index -> explicitly requested PCODE     
     
     if(typeof(_CFG_PSLOT)!="undefined") // DO WE HAVE A CONFIGURATION FILE FOR OUR PERIPHERALS?
     {
@@ -64439,6 +64541,27 @@ function mergeActionMap(dst,src)
         //        ,"slotFit":[["A2BO"],["MS16K"],["DISKII","MOCK"],["DISKII","MOCK"],["DISKII","VIDEX","MOCK"],["DISKII","MOCK"],["DISKII","MOCK"],["DISKII","MOCK"],["DISKII","MOCK"]]}
 
     }
+
+    // Process URL placements after discovering the configured defaults, but
+    // before the first Apple2IO.restart() mounts any peripheral.
+    var urlSlots = oCOM && oCOM.URL && oCOM.URL.uri ? oCOM.URL.uri.slots : undefined;
+    if(urlSlots!==undefined)
+    {
+        var urlSlotResult = EMU_applyURLSlotOverrides(
+            slotR,urlSlots,_CFG_PSLOT,
+            slotAvail && slotAvail.phySlots,
+            this.scanPeripheralContainers()
+        );
+        urlSlotResult.applied.forEach(function(assignment)
+        {
+            urlSlotAssignment[assignment.slot+1] = assignment.PCODE;
+        });
+        urlSlotResult.warnings.forEach(function(warning)
+        {
+            console.warn("URL slots: "+warning);
+        });
+    }
+
 
 
 
