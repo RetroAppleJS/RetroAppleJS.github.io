@@ -112,7 +112,22 @@ function EMU_deviceMediaRowHTML(spec)
  * Apply this only to the initial slot plan: regular mount(), peripheral
  * discovery, address mapping and device provisioning remain authoritative.
  */
-function EMU_applyURLSlotOverrides(slotR, raw, catalog, physicalSlots, discovered)
+/*
+ * Match the actual selected machine against the PSLOT system whitelist.
+ * SYScode is authored in CONFIG.md and may contain legacy <br> separators.
+ * A missing/empty whitelist is not a wildcard: it is not a supported card.
+ */
+function EMU_peripheralSupportsSystem(cinfo,model)
+{
+    if(!cinfo || !cinfo.SYScode || !model) return false;
+    var target=String(model).trim().toUpperCase();
+    return String(cinfo.SYScode)
+        .replace(/<br\s*\/?\s*>/gi,"")
+        .split(",")
+        .some(function(code) { return code.trim().toUpperCase()===target; });
+}
+
+function EMU_applyURLSlotOverrides(slotR, raw, catalog, physicalSlots, discovered, systemModel)
 {
     var result = {"applied":[],"warnings":[]};
     if(raw===undefined || raw===null || raw==="") return result;
@@ -165,6 +180,15 @@ function EMU_applyURLSlotOverrides(slotR, raw, catalog, physicalSlots, discovere
             if(discovered[PCODE].slotLock===true)
             {
                 result.warnings.push("peripheral '"+PCODE+"' has a fixed slot and cannot be reassigned");
+                return;
+            }
+            // Reject system-incompatible URL choices *before* replacing the
+            // default: a bad URL must not evict a valid COM_CONFIG card.
+            if(systemModel && !EMU_peripheralSupportsSystem(catalog[PCODE],systemModel))
+            {
+                result.warnings.push("peripheral '"+PCODE+"' in slot "+physicalSlot+
+                    " cannot mount on system "+systemModel+
+                    " (supports: "+(catalog[PCODE].SYScode || "none")+")");
                 return;
             }
         }
@@ -2565,7 +2589,7 @@ function mergeActionMap(dst,src)
         var urlSlotResult = EMU_applyURLSlotOverrides(
             slotR,urlSlots,_CFG_PSLOT,
             slotAvail && slotAvail.phySlots,
-            this.scanPeripheralContainers()
+            this.scanPeripheralContainers(),model
         );
         urlSlotResult.applied.forEach(function(assignment)
         {
@@ -2573,7 +2597,7 @@ function mergeActionMap(dst,src)
         });
         urlSlotResult.warnings.forEach(function(warning)
         {
-            console.warn("URL slots: "+warning);
+            io.recordMountWarning("URL slots: "+warning);
         });
     }
 
