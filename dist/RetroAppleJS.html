@@ -11652,26 +11652,6 @@ const _CFG_IOADDR = {
 ,"$C07Fb":{"Name":"RDDHIRES" ,"SYScode":"A2E,A2Ee,A2eP,A2c<br>,A2cM" ,"Range":"HI" ,"Behaviors":"RD,BI" ,"Description":"Status of Double HiRes"}
 }
 
-const _CFG_PCODE = {
- "MS16K":{"NAME":"Microsoft 16K Language card" ,"IOrange":"$C08<sub>n</sub>0,$C08<sub>n</sub>F" ,"ROMrange":"" ,"LROMrange":"" ,"SLOTrange":"0" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf)"}
-,"TCLKP":{"NAME":"Thunderclock Plus" ,"IOrange":"$C08<sub>n</sub>0,$C08<sub>n</sub>F" ,"ROMrange":"$C0<sub>n</sub>00,$C0<sub>n</sub>FF" ,"LROMrange":"" ,"SLOTrange":"1*,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e"}
-,"SSC":{"NAME":"Apple Super Serial Card" ,"IOrange":"$C08<sub>n</sub>0,$C08<sub>n</sub>F" ,"ROMrange":"$C0<sub>n</sub>00,$C0<sub>n</sub>FF" ,"LROMrange":"" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/io/super_serial_card/Apple%20II%20Super%20Serial%20Card%20User%27s%20Manual.pdf)"}
-,"LIRON":{"NAME":"Apple 3.5 Floppy Disk Drive Interface Card" ,"IOrange":"$C08<sub>n</sub>0,$C08<sub>n</sub>F" ,"ROMrange":"$C0<sub>n</sub>00,$C0<sub>n</sub>FF" ,"LROMrange":"" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/disks/Apple%20II%203.5%20Disk%20Controller%20Card%20Owner%27s%20Guide.pdf)"}
-,"DISKII":{"NAME":"Apple Disk II Floppy Disk Subsystem" ,"IOrange":"$C08<sub>n</sub>0,$C08<sub>n</sub>F" ,"ROMrange":"$C0<sub>n</sub>00,$C0<sub>n</sub>FF" ,"LROMrange":"" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)"}
-,"VIDEX":{"NAME":"Videx Videoterm 80 Column Display" ,"IOrange":"$C08<sub>n</sub>0,$C08<sub>n</sub>F" ,"ROMrange":"$C0<sub>n</sub>00,$C0<sub>n</sub>FF" ,"LROMrange":"$C800,$CFFF" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)"}
-}
-
-const _CFG_SLOT = {
- 0:{"PCODE":"MS16K","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":[""],"LROMrange":[""] ,"DESCRIPTION":"[16K language card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md#the-16k-language-cards)"}
-,1:{"PCODE":"TCLKP","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":[""] ,"DESCRIPTION":""}
-,2:{"PCODE":"SPC" ,"DESCRIPTION":""}
-,3:{"PCODE":"VIDEX","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":["$C800","$CFFF"] ,"DESCRIPTION":""}
-,4:{"PCODE":"" ,"DESCRIPTION":""}
-,5:{"PCODE":"LIRON","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":[""] ,"DESCRIPTION":""}
-,6:{"PCODE":"DISKII","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":[""] ,"DESCRIPTION":""}
-,7:{"PCODE":"" ,"DESCRIPTION":""}
-}
-
 const _CFG_PSLOT = {
  "A2BO":{"NAME":"Motherboard peripheral" ,"HostIO":"X" ,"SlotIO":"" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"H*" ,"SYScode":"A2,A2P,A2e" ,"Manuals":""}
 ,"MS16K":{"NAME":"Microsoft 16K Language card" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"0*" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf)"}
@@ -14579,6 +14559,10 @@ function EMU_init()
     }
 
     apple2plus.restart(); // restart the AppleII+
+    // Display every initial compatibility rejection in one acknowledgement
+    // dialog after the first mount pass.  Never interrupt mount() per card.
+    if(apple2plus.hwObj()?.io?.showStartupMountWarnings)
+        apple2plus.hwObj().io.showStartupMountWarnings();
     appleIntervalHandle = EMU_systemSchedulerStart();
 
 
@@ -62097,7 +62081,22 @@ function EMU_deviceMediaRowHTML(spec)
  * Apply this only to the initial slot plan: regular mount(), peripheral
  * discovery, address mapping and device provisioning remain authoritative.
  */
-function EMU_applyURLSlotOverrides(slotR, raw, catalog, physicalSlots, discovered)
+/*
+ * Match the actual selected machine against the PSLOT system whitelist.
+ * SYScode is authored in CONFIG.md and may contain legacy <br> separators.
+ * A missing/empty whitelist is not a wildcard: it is not a supported card.
+ */
+function EMU_peripheralSupportsSystem(cinfo,model)
+{
+    if(!cinfo || !cinfo.SYScode || !model) return false;
+    var target=String(model).trim().toUpperCase();
+    return String(cinfo.SYScode)
+        .replace(/<br\s*\/?\s*>/gi,"")
+        .split(",")
+        .some(function(code) { return code.trim().toUpperCase()===target; });
+}
+
+function EMU_applyURLSlotOverrides(slotR, raw, catalog, physicalSlots, discovered, systemModel)
 {
     var result = {"applied":[],"warnings":[]};
     if(raw===undefined || raw===null || raw==="") return result;
@@ -62152,6 +62151,15 @@ function EMU_applyURLSlotOverrides(slotR, raw, catalog, physicalSlots, discovere
                 result.warnings.push("peripheral '"+PCODE+"' has a fixed slot and cannot be reassigned");
                 return;
             }
+            // Reject system-incompatible URL choices *before* replacing the
+            // default: a bad URL must not evict a valid COM_CONFIG card.
+            if(systemModel && !EMU_peripheralSupportsSystem(catalog[PCODE],systemModel))
+            {
+                result.warnings.push("peripheral '"+PCODE+"' in slot "+physicalSlot+
+                    " cannot mount on system "+systemModel+
+                    " (supports: "+(catalog[PCODE].SYScode || "none")+")");
+                return;
+            }
         }
         requestedSlots.add(physicalSlot);
         accepted.push({"slot":physicalSlot,"internalSlot":internalSlot,"PCODE":PCODE});
@@ -62194,6 +62202,94 @@ function Apple2IO(vid,hostHardware)
     this.slot_ctx = {};
     this.slots = [];
     this.attachments = {};
+
+    // Report every rejected startup assignment in one acknowledgement dialog.
+    // Retain a single copy of each warning across warm restarts.
+    var mountWarnings = [];
+    var reportedMountWarnings = new Set();
+
+    this.recordMountWarning = function(message)
+    {
+        message=String(message || "").trim();
+        if(!message || reportedMountWarnings.has(message)) return false;
+        reportedMountWarnings.add(message);
+        mountWarnings.push(message);
+        console.warn("Peripheral mount: "+message);
+        return true;
+    };
+
+    this.getMountWarnings = function()
+    {
+        return mountWarnings.slice();
+    };
+
+    this.showStartupMountWarnings = function()
+    {
+        if(!mountWarnings.length || typeof(document)==="undefined" || !document.body)
+            return false;
+
+        var messages=mountWarnings.splice(0);
+        var dialog=document.createElement("dialog");
+        dialog.id="peripheral_mount_warnings";
+        dialog.setAttribute("aria-labelledby","peripheral_mount_warnings_title");
+        dialog.style.cssText="width:min(560px,calc(100vw - 32px));max-height:80vh;"
+            +"overflow:auto;box-sizing:border-box;border:1px solid #888;"
+            +"border-radius:7px;padding:18px 22px;background:#20252b;color:#f0f0f0;"
+            +"box-shadow:0 8px 40px #0008;z-index:10000;";
+
+        var title=document.createElement("h3");
+        title.id="peripheral_mount_warnings_title";
+        title.textContent="Peripheral compatibility warnings";
+        title.style.margin="0 0 12px";
+        dialog.appendChild(title);
+
+        var intro=document.createElement("p");
+        intro.textContent=messages.length+" peripheral configuration "+
+            (messages.length===1?"warning was":"warnings were")+
+            " detected. Incompatible cards were not mounted.";
+        dialog.appendChild(intro);
+
+        var list=document.createElement("ul");
+        list.style.cssText="max-height:45vh;overflow-y:auto;padding-left:23px;";
+        messages.forEach(function(message)
+        {
+            var item=document.createElement("li");
+            item.textContent=message; // untrusted URL values are always text, not HTML
+            item.style.marginBottom="8px";
+            list.appendChild(item);
+        });
+        dialog.appendChild(list);
+
+        var button=document.createElement("button");
+        button.type="button";
+        button.className="appbut";
+        button.textContent="Acknowledge";
+        button.style.cssText="display:block;margin:16px 0 0 auto;padding:7px 15px;";
+        button.addEventListener("click",function() { if(typeof(dialog.close)==="function") dialog.close();else dialog.remove(); });
+        dialog.appendChild(button);
+        // Require the explicit acknowledgement rather than silently closing
+        // the warning with Escape before it has been read.
+        dialog.addEventListener("cancel",function(event) { event.preventDefault(); });
+        dialog.addEventListener("close",function() { dialog.remove(); },{once:true});
+        document.body.appendChild(dialog);
+
+        if(typeof(dialog.showModal)==="function")
+        {
+            dialog.showModal();
+            button.focus();
+        }
+        else
+        {
+            // Legacy browser fallback: same single dismissible popup.
+            dialog.setAttribute("open","");
+            dialog.style.position="fixed";
+            dialog.style.left="50%";
+            dialog.style.top="20%";
+            dialog.style.transform="translateX(-50%)";
+            button.focus();
+        }
+        return true;
+    };
 
     /*
      * Device hook lists are rebuilt only when attachments or their active
@@ -63826,9 +63922,30 @@ function mergeActionMap(dst,src)
         if(!Number.isInteger(slotIdx))
             return {"sInfo":slot_info,"pObj":null};
 
-        if(Array.isArray(slotFit) && slotFit.length>0 &&
-           slotFit.indexOf(peripheral_info.PCODE)<0)
+        // _CFG_PSLOT is the authoritative compatibility whitelist, regardless
+        // of whether this is a URL, COM_CONFIG, picker or drag/drop mount.
+        var model = typeof(EMU_system_get)==="function" ? EMU_system_get() : "A2P";
+        var PCODE = String(peripheral_info.PCODE || "");
+        var official = typeof(_CFG_PSLOT)!=="undefined" && _CFG_PSLOT[PCODE];
+        var readableSlot = slotIdx===0 ? "motherboard" : "slot "+(slotIdx-1);
+        if(!official || !EMU_peripheralSupportsSystem(official,model))
+        {
+            this.recordMountWarning(PCODE+" ("+(official?.NAME || "Unknown peripheral")+
+                ") rejected in "+readableSlot+" for system "+model+
+                "; compatible systems: "+(official?.SYScode || "none"));
             return {"sInfo":slot_info,"pObj":null};
+        }
+
+        // Enforce the configured slot whitelist as well as the model check.
+        // Never accept an empty/missing caller-provided slotFit array as an override.
+        if(!Array.isArray(slotR.slotFit[slotIdx]) ||
+           slotR.slotFit[slotIdx].indexOf(PCODE)<0 ||
+           (Array.isArray(slotFit) && slotFit.indexOf(PCODE)<0))
+        {
+            this.recordMountWarning(PCODE+" rejected in "+readableSlot+
+                ": incompatible slot (allowed: "+official.SLOTrange+")");
+            return {"sInfo":slot_info,"pObj":null};
+        }
 
         if(oEMU.system["IORANGES"] && peripheral_info)
         {
@@ -64550,7 +64667,7 @@ function mergeActionMap(dst,src)
         var urlSlotResult = EMU_applyURLSlotOverrides(
             slotR,urlSlots,_CFG_PSLOT,
             slotAvail && slotAvail.phySlots,
-            this.scanPeripheralContainers()
+            this.scanPeripheralContainers(),model
         );
         urlSlotResult.applied.forEach(function(assignment)
         {
@@ -64558,7 +64675,7 @@ function mergeActionMap(dst,src)
         });
         urlSlotResult.warnings.forEach(function(warning)
         {
-            console.warn("URL slots: "+warning);
+            io.recordMountWarning("URL slots: "+warning);
         });
     }
 
