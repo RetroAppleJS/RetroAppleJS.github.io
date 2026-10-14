@@ -62,7 +62,7 @@ Rules:
 - A valid assignment replaces anything pre-filled in that slot from `COM_CONFIG.js`. An unmentioned slot retains its normal default unless its original default card is explicitly assigned elsewhere. For example, `slots=5:DISKII` moves the Disk II default from slot 6 to slot 5.
 - Multiple assignments allow simultaneous peripherals; the same PCODE may be requested in more than one compatible slot. If a slot is repeated, the first **valid** assignment wins, with a console warning for later duplicates.
 - `NONE` removes a pre-filled default; it does not require a peripheral to be installed.
-- Invalid syntax, unknown PCODEs, unregistered card types, locked cards, slots unavailable on the selected system and disallowed slot placements are ignored with `console.warn`. They do **not** cause a forced mount.
+- Invalid syntax, unknown PCODEs, unregistered card types, locked cards, slots unavailable on the selected system, disallowed slot placements, and cards whose `_CFG_PSLOT.SYScode` excludes the selected system are rejected **before any configured default is displaced**. The initial boot collects the warnings in one popup with an **Acknowledge** button; each warning is also logged to the browser console.
 - URL-selected cards use the normal peripheral discovery, `mount()`, address mapping and device setup, and persist through ordinary emulator restarts. The URL must be reloaded to change its initial slot plan.
 - For a disk-image URL such as `D1_DIR`, keep a `DISKII` card mounted in a compatible slot so there is a drive-1 target.
 

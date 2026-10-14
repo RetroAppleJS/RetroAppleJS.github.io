@@ -682,6 +682,10 @@ function EMU_init()
     }
 
     apple2plus.restart(); // restart the AppleII+
+    // Display every initial compatibility rejection in one acknowledgement
+    // dialog after the first mount pass.  Never interrupt mount() per card.
+    if(apple2plus.hwObj()?.io?.showStartupMountWarnings)
+        apple2plus.hwObj().io.showStartupMountWarnings();
     appleIntervalHandle = EMU_systemSchedulerStart();
 
 

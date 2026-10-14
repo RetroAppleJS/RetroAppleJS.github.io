@@ -112,7 +112,22 @@ function EMU_deviceMediaRowHTML(spec)
  * Apply this only to the initial slot plan: regular mount(), peripheral
  * discovery, address mapping and device provisioning remain authoritative.
  */
-function EMU_applyURLSlotOverrides(slotR, raw, catalog, physicalSlots, discovered)
+/*
+ * Match the actual selected machine against the PSLOT system whitelist.
+ * SYScode is authored in CONFIG.md and may contain legacy <br> separators.
+ * A missing/empty whitelist is not a wildcard: it is not a supported card.
+ */
+function EMU_peripheralSupportsSystem(cinfo,model)
+{
+    if(!cinfo || !cinfo.SYScode || !model) return false;
+    var target=String(model).trim().toUpperCase();
+    return String(cinfo.SYScode)
+        .replace(/<br\s*\/?\s*>/gi,"")
+        .split(",")
+        .some(function(code) { return code.trim().toUpperCase()===target; });
+}
+
+function EMU_applyURLSlotOverrides(slotR, raw, catalog, physicalSlots, discovered, systemModel)
 {
     var result = {"applied":[],"warnings":[]};
     if(raw===undefined || raw===null || raw==="") return result;
@@ -167,6 +182,15 @@ function EMU_applyURLSlotOverrides(slotR, raw, catalog, physicalSlots, discovere
                 result.warnings.push("peripheral '"+PCODE+"' has a fixed slot and cannot be reassigned");
                 return;
             }
+            // Reject system-incompatible URL choices *before* replacing the
+            // default: a bad URL must not evict a valid COM_CONFIG card.
+            if(systemModel && !EMU_peripheralSupportsSystem(catalog[PCODE],systemModel))
+            {
+                result.warnings.push("peripheral '"+PCODE+"' in slot "+physicalSlot+
+                    " cannot mount on system "+systemModel+
+                    " (supports: "+(catalog[PCODE].SYScode || "none")+")");
+                return;
+            }
         }
         requestedSlots.add(physicalSlot);
         accepted.push({"slot":physicalSlot,"internalSlot":internalSlot,"PCODE":PCODE});
@@ -209,6 +233,94 @@ function Apple2IO(vid,hostHardware)
     this.slot_ctx = {};
     this.slots = [];
     this.attachments = {};
+
+    // Report every rejected startup assignment in one acknowledgement dialog.
+    // Retain a single copy of each warning across warm restarts.
+    var mountWarnings = [];
+    var reportedMountWarnings = new Set();
+
+    this.recordMountWarning = function(message)
+    {
+        message=String(message || "").trim();
+        if(!message || reportedMountWarnings.has(message)) return false;
+        reportedMountWarnings.add(message);
+        mountWarnings.push(message);
+        console.warn("Peripheral mount: "+message);
+        return true;
+    };
+
+    this.getMountWarnings = function()
+    {
+        return mountWarnings.slice();
+    };
+
+    this.showStartupMountWarnings = function()
+    {
+        if(!mountWarnings.length || typeof(document)==="undefined" || !document.body)
+            return false;
+
+        var messages=mountWarnings.splice(0);
+        var dialog=document.createElement("dialog");
+        dialog.id="peripheral_mount_warnings";
+        dialog.setAttribute("aria-labelledby","peripheral_mount_warnings_title");
+        dialog.style.cssText="width:min(560px,calc(100vw - 32px));max-height:80vh;"
+            +"overflow:auto;box-sizing:border-box;border:1px solid #888;"
+            +"border-radius:7px;padding:18px 22px;background:#20252b;color:#f0f0f0;"
+            +"box-shadow:0 8px 40px #0008;z-index:10000;";
+
+        var title=document.createElement("h3");
+        title.id="peripheral_mount_warnings_title";
+        title.textContent="Peripheral compatibility warnings";
+        title.style.margin="0 0 12px";
+        dialog.appendChild(title);
+
+        var intro=document.createElement("p");
+        intro.textContent=messages.length+" peripheral configuration "+
+            (messages.length===1?"warning was":"warnings were")+
+            " detected. Incompatible cards were not mounted.";
+        dialog.appendChild(intro);
+
+        var list=document.createElement("ul");
+        list.style.cssText="max-height:45vh;overflow-y:auto;padding-left:23px;";
+        messages.forEach(function(message)
+        {
+            var item=document.createElement("li");
+            item.textContent=message; // untrusted URL values are always text, not HTML
+            item.style.marginBottom="8px";
+            list.appendChild(item);
+        });
+        dialog.appendChild(list);
+
+        var button=document.createElement("button");
+        button.type="button";
+        button.className="appbut";
+        button.textContent="Acknowledge";
+        button.style.cssText="display:block;margin:16px 0 0 auto;padding:7px 15px;";
+        button.addEventListener("click",function() { if(typeof(dialog.close)==="function") dialog.close();else dialog.remove(); });
+        dialog.appendChild(button);
+        // Require the explicit acknowledgement rather than silently closing
+        // the warning with Escape before it has been read.
+        dialog.addEventListener("cancel",function(event) { event.preventDefault(); });
+        dialog.addEventListener("close",function() { dialog.remove(); },{once:true});
+        document.body.appendChild(dialog);
+
+        if(typeof(dialog.showModal)==="function")
+        {
+            dialog.showModal();
+            button.focus();
+        }
+        else
+        {
+            // Legacy browser fallback: same single dismissible popup.
+            dialog.setAttribute("open","");
+            dialog.style.position="fixed";
+            dialog.style.left="50%";
+            dialog.style.top="20%";
+            dialog.style.transform="translateX(-50%)";
+            button.focus();
+        }
+        return true;
+    };
 
     /*
      * Device hook lists are rebuilt only when attachments or their active
@@ -1841,9 +1953,30 @@ function mergeActionMap(dst,src)
         if(!Number.isInteger(slotIdx))
             return {"sInfo":slot_info,"pObj":null};
 
-        if(Array.isArray(slotFit) && slotFit.length>0 &&
-           slotFit.indexOf(peripheral_info.PCODE)<0)
+        // _CFG_PSLOT is the authoritative compatibility whitelist, regardless
+        // of whether this is a URL, COM_CONFIG, picker or drag/drop mount.
+        var model = typeof(EMU_system_get)==="function" ? EMU_system_get() : "A2P";
+        var PCODE = String(peripheral_info.PCODE || "");
+        var official = typeof(_CFG_PSLOT)!=="undefined" && _CFG_PSLOT[PCODE];
+        var readableSlot = slotIdx===0 ? "motherboard" : "slot "+(slotIdx-1);
+        if(!official || !EMU_peripheralSupportsSystem(official,model))
+        {
+            this.recordMountWarning(PCODE+" ("+(official?.NAME || "Unknown peripheral")+
+                ") rejected in "+readableSlot+" for system "+model+
+                "; compatible systems: "+(official?.SYScode || "none"));
             return {"sInfo":slot_info,"pObj":null};
+        }
+
+        // Enforce the configured slot whitelist as well as the model check.
+        // Never accept an empty/missing caller-provided slotFit array as an override.
+        if(!Array.isArray(slotR.slotFit[slotIdx]) ||
+           slotR.slotFit[slotIdx].indexOf(PCODE)<0 ||
+           (Array.isArray(slotFit) && slotFit.indexOf(PCODE)<0))
+        {
+            this.recordMountWarning(PCODE+" rejected in "+readableSlot+
+                ": incompatible slot (allowed: "+official.SLOTrange+")");
+            return {"sInfo":slot_info,"pObj":null};
+        }
 
         if(oEMU.system["IORANGES"] && peripheral_info)
         {
@@ -2565,7 +2698,7 @@ function mergeActionMap(dst,src)
         var urlSlotResult = EMU_applyURLSlotOverrides(
             slotR,urlSlots,_CFG_PSLOT,
             slotAvail && slotAvail.phySlots,
-            this.scanPeripheralContainers()
+            this.scanPeripheralContainers(),model
         );
         urlSlotResult.applied.forEach(function(assignment)
         {
@@ -2573,7 +2706,7 @@ function mergeActionMap(dst,src)
         });
         urlSlotResult.warnings.forEach(function(warning)
         {
-            console.warn("URL slots: "+warning);
+            io.recordMountWarning("URL slots: "+warning);
         });
     }
 
