@@ -203,7 +203,7 @@ function PROCESS()
           + q + d.FIELDname + q
           +":"
           + q + d.FIELDdata  + q
-          + this.insertDATA(ROWname,FIELDname,FIELDdata);
+          + (this.insertDATA(ROWname,FIELDname,FIELDdata) || ""); // optional hook must not emit 'undefined'
       }
       table_struct+= "}\n"
     }
