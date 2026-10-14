@@ -88,6 +88,24 @@ test('config updater no longer requires missing legacy tables or their row injec
     assert.doesNotMatch(updater,/this\.LData\[FIELDdata\]/);
     assert.match(updater,/process_table\(\["\[PSLOT\]"/);
 });
+test('PSLOT generator regenerates exactly the retained peripheral catalog',()=>{
+    const from=updater.indexOf('function PROCESS()');
+    const to=updater.indexOf('function MathParser()',from);
+    assert.ok(from>=0 && to>from);
+    const PROCESS=vm.runInNewContext(updater.slice(from,to)+'\n;PROCESS',{
+        trim:value=>String(value).trim()
+    });
+    const generated=new PROCESS().process_table(
+        ['[PSLOT]','|','\n|','|\n\n'],'const _CFG_PSLOT',configDoc,'CONFIG.md'
+    );
+    const parsed=vm.runInNewContext(generated+'\n;_CFG_PSLOT');
+    assert.deepEqual(Object.keys(parsed),Object.keys(config.PSLOT));
+    for(const PCODE of Object.keys(config.PSLOT))
+        assert.deepEqual(JSON.parse(JSON.stringify(parsed[PCODE])),
+            JSON.parse(JSON.stringify(config.PSLOT[PCODE])),
+            'PSLOT regeneration mismatch for '+PCODE);
+});
+
 
 test('SYScode compatibility uses exact case-insensitive matches and legacy br tags',()=>{
     const {context}=fixture();
