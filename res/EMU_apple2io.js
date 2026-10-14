@@ -298,6 +298,9 @@ function Apple2IO(vid,hostHardware)
         button.style.cssText="display:block;margin:16px 0 0 auto;padding:7px 15px;";
         button.addEventListener("click",function() { if(typeof(dialog.close)==="function") dialog.close();else dialog.remove(); });
         dialog.appendChild(button);
+        // Require the explicit acknowledgement rather than silently closing
+        // the warning with Escape before it has been read.
+        dialog.addEventListener("cancel",function(event) { event.preventDefault(); });
         dialog.addEventListener("close",function() { dialog.remove(); },{once:true});
         document.body.appendChild(dialog);
 
