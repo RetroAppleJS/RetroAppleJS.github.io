@@ -172,32 +172,32 @@ const _CFG_IOADDR = {
 }
 
 const _CFG_PSLOT = {
- "A2BO":{"NAME":"Motherboard peripheral"undefined ,"HostIO":"X"undefined ,"SlotIO":""undefined ,"SlotROM":""undefined ,"HostROM":""undefined ,"SLOTrange":"H*"undefined ,"SYScode":"A2,A2P,A2e"undefined ,"Manuals":""undefined}
-,"MS16K":{"NAME":"Microsoft 16K Language card"undefined ,"HostIO":""undefined ,"SlotIO":"X"undefined ,"SlotROM":""undefined ,"HostROM":""undefined ,"SLOTrange":"0*"undefined ,"SYScode":"A2,A2P,A2e"undefined ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf)"undefined}
-,"SATURN":{"NAME":"Saturn RAM card"undefined ,"HostIO":""undefined ,"SlotIO":"X"undefined ,"SlotROM":""undefined ,"HostROM":""undefined ,"SLOTrange":"0,1,2,3,4,5,6,7"undefined ,"SYScode":"A2,A2P,A2e"undefined ,"Manuals":"[user_manual](http://www.applelogic.org/files/SATURN128MAN.pdf)"undefined}
-,"LEGEND":{"NAME":"Legend RAM card"undefined ,"HostIO":""undefined ,"SlotIO":"X"undefined ,"SlotROM":""undefined ,"HostROM":""undefined ,"SLOTrange":"0,1,2,3,4,5,6,7"undefined ,"SYScode":"A2,A2P,A2e"undefined ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Memory/Legend%20S-Card/Manuals/Legend%20Industries%20RAM%20Card%20Operation%20Manual.pdf)"undefined}
-,"RAMFAC":{"NAME":"Ramfactor/Slinky RAM card (slot limit: UCSD Pascal)"undefined ,"HostIO":""undefined ,"SlotIO":"X"undefined ,"SlotROM":"X"undefined ,"HostROM":"X"undefined ,"SLOTrange":"4,5,6"undefined ,"SYScode":"A2,A2P,A2e"undefined ,"Manuals":"[user_manual](https://garrettsworkshop.com/files/GR8RAM/ae_ramfactor_manual.pdf)"undefined}
-,"TCLKP":{"NAME":"Thunderclock Plus"undefined ,"HostIO":""undefined ,"SlotIO":"X"undefined ,"SlotROM":"X"undefined ,"HostROM":"X"undefined ,"SLOTrange":"1,2,3,4,5,6,7"undefined ,"SYScode":"A2,A2P,A2e"undefined ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/clocks/ThunderClock%20Plus.pdf)"undefined}
-,"AMOUSE":{"NAME":"AppleMouse II Interface"undefined ,"HostIO":""undefined ,"SlotIO":"X"undefined ,"SlotROM":"X"undefined ,"HostROM":""undefined ,"SLOTrange":"1,2,3,4,5,6,7"undefined ,"SYScode":"A2,A2P,A2e"undefined ,"Manuals":"[user_manual](https://github.com/freitz85/AppleIIMouse/blob/master/AppleMouse%20II%20User's%20Manual.pdf)"undefined}
-,"LIRON":{"NAME":"Apple 3.5 Floppy Disk Drive Interface Card"undefined ,"HostIO":""undefined ,"SlotIO":"X"undefined ,"SlotROM":"X"undefined ,"HostROM":"X"undefined ,"SLOTrange":"1,2,3,4,5,6,7"undefined ,"SYScode":"A2,A2P,A2e"undefined ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/disks/Apple%20II%203.5%20Disk%20Controller%20Card%20Owner%27s%20Guide.pdf)"undefined}
-,"DISKII":{"NAME":"Apple Disk II Floppy Disk Subsystem"undefined ,"HostIO":""undefined ,"SlotIO":"X"undefined ,"SlotROM":"X"undefined ,"HostROM":""undefined ,"SLOTrange":"1,2,3,4,5,6*,7"undefined ,"SYScode":"A2,A2P,A2e"undefined ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)"undefined}
-,"VIDEX":{"NAME":"Videx Videoterm 80 Column Display"undefined ,"HostIO":""undefined ,"SlotIO":"X"undefined ,"SlotROM":"X"undefined ,"HostROM":"X"undefined ,"SLOTrange":"3"undefined ,"SYScode":"A2,A2P,A2e"undefined ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)"undefined}
-,"MOCK":{"NAME":"Mockingboard C"undefined ,"HostIO":""undefined ,"SlotIO":""undefined ,"SlotROM":"X"undefined ,"HostROM":""undefined ,"SLOTrange":"1,2,3,4,5,6,7"undefined ,"SYScode":"A2,A2P,A2e"undefined ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)"undefined}
-,"SSC":{"NAME":"Apple Super Serial Card"undefined ,"HostIO":""undefined ,"SlotIO":""undefined ,"SlotROM":"X"undefined ,"HostROM":""undefined ,"SLOTrange":"1,2,3,4,5,6,7"undefined ,"SYScode":"A2,A2P,A2e"undefined ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/io/super_serial_card/Apple%20II%20Super%20Serial%20Card%20User%27s%20Manual.pdf)"undefined}
-,"SPC":{"NAME":"Apple Serial Pro Card"undefined ,"HostIO":""undefined ,"SlotIO":"X"undefined ,"SlotROM":"X"undefined ,"HostROM":"X"undefined ,"SLOTrange":"1,2,3,4,5,6,7"undefined ,"SYScode":"A2,A2P,A2e"undefined ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf)"undefined}
-,"DITHER":{"NAME":"Dithertizer II Card"undefined ,"HostIO":""undefined ,"SlotIO":"X"undefined ,"SlotROM":"X"undefined ,"HostROM":""undefined ,"SLOTrange":"1,2,3,4,5,6,7"undefined ,"SYScode":"A2,A2P,A2e"undefined ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf)"undefined}
-,"DITHER2":{"NAME":"Dithertizer II Card"undefined ,"HostIO":""undefined ,"SlotIO":"X"undefined ,"SlotROM":"X"undefined ,"HostROM":""undefined ,"SLOTrange":"1,2,3,4,5,6,7"undefined ,"SYScode":"A2,A2P,A2e"undefined ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf)"undefined}
+ "A2BO":{"NAME":"Motherboard peripheral" ,"HostIO":"X" ,"SlotIO":"" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"H*" ,"SYScode":"A2,A2P,A2e" ,"Manuals":""}
+,"MS16K":{"NAME":"Microsoft 16K Language card" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"0*" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf)"}
+,"SATURN":{"NAME":"Saturn RAM card" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"0,1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](http://www.applelogic.org/files/SATURN128MAN.pdf)"}
+,"LEGEND":{"NAME":"Legend RAM card" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"0,1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Memory/Legend%20S-Card/Manuals/Legend%20Industries%20RAM%20Card%20Operation%20Manual.pdf)"}
+,"RAMFAC":{"NAME":"Ramfactor/Slinky RAM card (slot limit: UCSD Pascal)" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"X" ,"HostROM":"X" ,"SLOTrange":"4,5,6" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://garrettsworkshop.com/files/GR8RAM/ae_ramfactor_manual.pdf)"}
+,"TCLKP":{"NAME":"Thunderclock Plus" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"X" ,"HostROM":"X" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/clocks/ThunderClock%20Plus.pdf)"}
+,"AMOUSE":{"NAME":"AppleMouse II Interface" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"X" ,"HostROM":"" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://github.com/freitz85/AppleIIMouse/blob/master/AppleMouse%20II%20User's%20Manual.pdf)"}
+,"LIRON":{"NAME":"Apple 3.5 Floppy Disk Drive Interface Card" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"X" ,"HostROM":"X" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/disks/Apple%20II%203.5%20Disk%20Controller%20Card%20Owner%27s%20Guide.pdf)"}
+,"DISKII":{"NAME":"Apple Disk II Floppy Disk Subsystem" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"X" ,"HostROM":"" ,"SLOTrange":"1,2,3,4,5,6*,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)"}
+,"VIDEX":{"NAME":"Videx Videoterm 80 Column Display" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"X" ,"HostROM":"X" ,"SLOTrange":"3" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)"}
+,"MOCK":{"NAME":"Mockingboard C" ,"HostIO":"" ,"SlotIO":"" ,"SlotROM":"X" ,"HostROM":"" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)"}
+,"SSC":{"NAME":"Apple Super Serial Card" ,"HostIO":"" ,"SlotIO":"" ,"SlotROM":"X" ,"HostROM":"" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/io/super_serial_card/Apple%20II%20Super%20Serial%20Card%20User%27s%20Manual.pdf)"}
+,"SPC":{"NAME":"Apple Serial Pro Card" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"X" ,"HostROM":"X" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf)"}
+,"DITHER":{"NAME":"Dithertizer II Card" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"X" ,"HostROM":"" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf)"}
+,"DITHER2":{"NAME":"Dithertizer II Card" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"X" ,"HostROM":"" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf)"}
 }
 
 const _CFG_KEYFONT = {
- "A2_US":{"MAP_FORMULA":"ch"undefined ,"MAP_JSON":"0x80"undefined ,"":"{'é': [0x45],'“': [0x22],'”': [0x22],'…': [0x2E, 0x2E, 0x2E]}"undefined}
+ "A2_US":{"MAP_FORMULA":"ch" ,"MAP_JSON":"0x80" ,"":"{'é': [0x45],'“': [0x22],'”': [0x22],'…': [0x2E, 0x2E, 0x2E]}"}
 }
 
 const _CFG_CHROMA = {
- 0:{"COL_num":""undefined ,"COL_name":"FULL-COLOR"undefined}
-,1:{"COL_num":"#FFFFFF"undefined ,"COL_name":"B&W"undefined}
-,2:{"COL_num":"#A0FFF0"undefined ,"COL_name":"GREEN"undefined}
-,3:{"COL_num":"#FCE7A1"undefined ,"COL_name":"AMBER"undefined}
+ 0:{"COL_num":"" ,"COL_name":"FULL-COLOR"}
+,1:{"COL_num":"#FFFFFF" ,"COL_name":"B&W"}
+,2:{"COL_num":"#A0FFF0" ,"COL_name":"GREEN"}
+,3:{"COL_num":"#FCE7A1" ,"COL_name":"AMBER"}
 }
 
 var _TABS = {
@@ -208,16 +208,16 @@ var _TABS = {
 }
 
 const _CFG_TFUNCTION = {
- ".eq":{"COMPILER":"SourceGen"undefined ,"REGXEP_INPUT":"(^[^;]*)(\\.eq |\\.EQ )(.+)"undefined ,"REGEXP_OUTPUT":"'$1EQU$3'"undefined ,"DESCRIPTION":"Replace .eq   by EQU until ;"undefined}
-,".var":{"COMPILER":"SourceGen"undefined ,"REGXEP_INPUT":"(^[^;]*)(\\.var |\\.VAR )(.+)"undefined ,"REGEXP_OUTPUT":"'$1EQU$3'"undefined ,"DESCRIPTION":"Replace .var  by EQU until ;"undefined}
-,".org":{"COMPILER":"SourceGen"undefined ,"REGXEP_INPUT":"(^[^;]*)(\\.org |\\.ORG )(.+)"undefined ,"REGEXP_OUTPUT":"'$1ORG$3'"undefined ,"DESCRIPTION":"Replace .org  by ORG until ;"undefined}
-,".str":{"COMPILER":"SourceGen"undefined ,"REGXEP_INPUT":"(^[^;]*)(\\.str |\\.STR )(.+)"undefined ,"REGEXP_OUTPUT":"'$1ASC$3'"undefined ,"DESCRIPTION":"Replace .str  by ASC until ;"undefined}
-,".bulk":{"COMPILER":"SourceGen"undefined ,"REGXEP_INPUT":"\\x20.bulk\\x20([\\s\\S]*)$"undefined ,"REGEXP_OUTPUT":"'HEX '+x.split('.bulk')[1].replace(/[,$]/g,' ').replace(/\\s\\s+/g,' ').toUpperCase()"undefined ,"DESCRIPTION":"Replace .bulk by HEX, remove strings and commas"undefined}
-,"+":{"COMPILER":"SourceGen"undefined ,"REGXEP_INPUT":"\\x20\\+\\x20([\\s\\S]*)$"undefined ,"REGEXP_OUTPUT":"'HEX '+x.split(' + ')[1].replace(/[,$]/g,' ').replace(/\\s\\s+/g,' ').toUpperCase()"undefined ,"DESCRIPTION":"Replace + by HEX, remove strings and commas"undefined}
-,".fill":{"COMPILER":"SourceGen"undefined ,"REGXEP_INPUT":".fill\\x20([\\s\\S]*)$"undefined ,"REGEXP_OUTPUT":"'HEX'+(' '+x.split(',')[1].replace(/[ \\n\\$]/g,'')).toUpperCase().repeat(x.split(',')[0].replace(/[^0-9]/g,''))+' '"undefined ,"DESCRIPTION":"Substitute .fill by HEX array"undefined}
-,"remove {..}":{"COMPILER":"SourceGen"undefined ,"REGXEP_INPUT":"\\{[^{}]*\\}"undefined ,"REGEXP_OUTPUT":"''"undefined ,"DESCRIPTION":"Remove everything between accolades"undefined}
-,"*":{"COMPILER":"SourceGen"undefined ,"REGXEP_INPUT":"^\\*"undefined ,"REGEXP_OUTPUT":"';*'"undefined ,"DESCRIPTION":"Add semicolumn before any line starting with asterisk"undefined}
-,"upper_before;":{"COMPILER":"SourceGen"undefined ,"REGXEP_INPUT":"^[^;^n]*"undefined ,"REGEXP_OUTPUT":"x.toUpperCase()"undefined ,"DESCRIPTION":"Uppercase everything until bumping into a semicolumn"undefined}
+ ".eq":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"(^[^;]*)(\\.eq |\\.EQ )(.+)" ,"REGEXP_OUTPUT":"'$1EQU$3'" ,"DESCRIPTION":"Replace .eq   by EQU until ;"}
+,".var":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"(^[^;]*)(\\.var |\\.VAR )(.+)" ,"REGEXP_OUTPUT":"'$1EQU$3'" ,"DESCRIPTION":"Replace .var  by EQU until ;"}
+,".org":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"(^[^;]*)(\\.org |\\.ORG )(.+)" ,"REGEXP_OUTPUT":"'$1ORG$3'" ,"DESCRIPTION":"Replace .org  by ORG until ;"}
+,".str":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"(^[^;]*)(\\.str |\\.STR )(.+)" ,"REGEXP_OUTPUT":"'$1ASC$3'" ,"DESCRIPTION":"Replace .str  by ASC until ;"}
+,".bulk":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\x20.bulk\\x20([\\s\\S]*)$" ,"REGEXP_OUTPUT":"'HEX '+x.split('.bulk')[1].replace(/[,$]/g,' ').replace(/\\s\\s+/g,' ').toUpperCase()" ,"DESCRIPTION":"Replace .bulk by HEX, remove strings and commas"}
+,"+":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\x20\\+\\x20([\\s\\S]*)$" ,"REGEXP_OUTPUT":"'HEX '+x.split(' + ')[1].replace(/[,$]/g,' ').replace(/\\s\\s+/g,' ').toUpperCase()" ,"DESCRIPTION":"Replace + by HEX, remove strings and commas"}
+,".fill":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":".fill\\x20([\\s\\S]*)$" ,"REGEXP_OUTPUT":"'HEX'+(' '+x.split(',')[1].replace(/[ \\n\\$]/g,'')).toUpperCase().repeat(x.split(',')[0].replace(/[^0-9]/g,''))+' '" ,"DESCRIPTION":"Substitute .fill by HEX array"}
+,"remove {..}":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"\\{[^{}]*\\}" ,"REGEXP_OUTPUT":"''" ,"DESCRIPTION":"Remove everything between accolades"}
+,"*":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"^\\*" ,"REGEXP_OUTPUT":"';*'" ,"DESCRIPTION":"Add semicolumn before any line starting with asterisk"}
+,"upper_before;":{"COMPILER":"SourceGen" ,"REGXEP_INPUT":"^[^;^n]*" ,"REGEXP_OUTPUT":"x.toUpperCase()" ,"DESCRIPTION":"Uppercase everything until bumping into a semicolumn"}
 }
 
 var _DOCS = new Array();
