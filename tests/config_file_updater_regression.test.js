@@ -97,3 +97,20 @@ test('removed config tables are not referenced by generator', () =>
     assert.doesNotMatch(updater, /process_table\(\s*\[\s*"\[(?:PCODE|SLOT#)\]"/);
     assert.match(updater, /oPROCESS\.insertDATA\s*=\s*function\(\)\s*\{\s*return\s+["']{2}\s*;\s*\}/);
 });
+
+test('a missing optional generator-hook return cannot corrupt table output', () =>
+{
+    const start = updater.indexOf('function PROCESS()');
+    const end = updater.indexOf('function ltrim(s)', start);
+    const PROCESS = vm.runInNewContext(updater.slice(start, end) + '\n;PROCESS', {
+        trim: value=>String(value).trim()
+    });
+    const processor = new PROCESS();
+    processor.insertDATA = function() {}; // simulate the exact regression
+    const table = processor.process_table(
+        ['[PSLOT]', '|', '\n|', '|\n\n'],
+        'const _CFG_PSLOT', markdown, 'docs/CONFIG.md'
+    );
+    assert.doesNotMatch(table, /"undefined(?=[ ,}])/);
+    assert.doesNotThrow(() => new vm.Script(table));
+});
