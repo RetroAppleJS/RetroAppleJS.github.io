@@ -107,66 +107,12 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     oPROCESS.changeDATA = bck_method; // restore the abstract method
 
 
-    // EXECUTE
-    var s = oPROCESS.process_table(["[PCODE]","\|","\n|","\|\n\n"],"const _CFG_PCODE",this.responseText,this.responseURL);
-    document.getElementById('dest').innerHTML += s;
-
-
-    // METHOD TAILORING
-    oPROCESS.linkDATA = function(ROWname,FIELDname,FIELDdata){}; // method override
-    oPROCESS.changeDATA = bck_method; // restore the abstract method
-
-    /*
-    oPROCESS.insertDATA = function(ROWname,FIELDname,FIELDdata)  // method override
-    {
-      var s = "";
-      var IOrange_addr = Number(ROWname)*16+0xC800
-      if(FIELDname=="PCODE" && typeof(this.LData[FIELDdata])=="object")
-          s+=//",\"IOrange\":[0x"+getHexWord(IOrange_addr)+",0x"+getHexWord(IOrange_addr+15)+"]"
-             ",\"IOrange\":["+HexSTR2NUM(this.LData[FIELDdata].IOrange,{"n":ROWname,"_locate_":["<sub>","</sub>"]}).join(",")+"]"
-           +",\"ROMrange\":["+HexSTR2NUM(this.LData[FIELDdata].ROMrange,{"n":ROWname,"_locate_":["<sub>","</sub>"]}).join(",")+"]"
-           +",\"LROMrange\":["+HexSTR2NUM(this.LData[FIELDdata].LROMrange,{"n":ROWname,"_locate_":["<sub>","</sub>"]}).join(",")+"]";
-      return s
-    }
-    */
-
-
-    //oCOM.parseRngExpr("$C08<sub>n*2</sub>-$C<sub>n</sub>F0/$<sub>m</sub>", {n:3,m:10})
-    oPROCESS.insertDATA = function(ROWname,FIELDname,FIELDdata)  // method override
-    {
-      var s = "";
-      var IOrange_addr = Number(ROWname)*16+0xC800
-      if(FIELDname=="PCODE" && typeof(this.LData[FIELDdata])=="object")
-      {
-          //var a = [this.LData[FIELDdata].IOrange.split(","),this.LData[FIELDdata].ROMrange.split(","),this.LData[FIELDdata].LROMrange.split(",")]
-          //a[0] = [oCOM.parseRngExpr(a[0][0]),oCOM.parseRngExpr(a[0][1])];
-          //a[0] =  oCOM.format("0x%4x-0x%4x",a[0][0],a[0][1]);
-          
-
-
-          s+= ",\"IOrange\":[\""+this.LData[FIELDdata].IOrange.split(",").join("\",\"")+"\"]"
-           +",\"ROMrange\":[\""+this.LData[FIELDdata].ROMrange.split(",").join("\",\"")+"\"]"
-           +",\"LROMrange\":[\""+this.LData[FIELDdata].LROMrange.split(",").join("\",\"")+"\"]";
-
-      }
-      return s
-    }
-
-/*
-const _CFG_SLOT = {
- 0:{"PCODE":"MS16K","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":[""],"LROMrange":[""] ,"DESCRIPTION":"[16K language card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md#the-16k-language-cards)"}
-,1:{"PCODE":"" ,"DESCRIPTION":""}
-,2:{"PCODE":"" ,"DESCRIPTION":""}
-,3:{"PCODE":"VIDEX","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":["$C800","$CFFF"] ,"DESCRIPTION":""}
-,4:{"PCODE":"" ,"DESCRIPTION":""}
-,5:{"PCODE":"" ,"DESCRIPTION":""}
-,6:{"PCODE":"DISKII","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":[""] ,"DESCRIPTION":""}
-,7:{"PCODE":"" ,"DESCRIPTION":""}
-*/
-
-    // EXECUTE
-    var s = oPROCESS.process_table(["[SLOT#]","\|","\n|","\|\n\n"],"const _CFG_SLOT",this.responseText,this.responseURL);
-    document.getElementById('dest').innerHTML += s;
+    // PCODE and SLOT# are obsolete.  PSLOT alone is the canonical card and
+    // compatibility catalog.  Reset any table-specific generator hooks before
+    // processing it so removed legacy tables are never accessed.
+    oPROCESS.linkDATA = function(){};
+    oPROCESS.insertDATA = function(){};
+    oPROCESS.changeDATA = bck_method;
 
     // EXECUTE
    var s = oPROCESS.process_table(["[PSLOT]","\|","\n|","\|\n\n"],"const _CFG_PSLOT",this.responseText,this.responseURL);
@@ -174,8 +120,6 @@ const _CFG_SLOT = {
 
 
     // EXECUTE
-    //var s = "const _CFG = {\"SYS\":{\"A2\":false,\"A2P\":true,\"A2E\":false,\"A2C\":false},\"PCODE\":_CFG_PCODE,\"SLOT\":_CFG_SLOT};\n\n";
-    //document.getElementById('dest').innerHTML += s;
 
    // EXECUTE
    var s = oPROCESS.process_table(["[KEYFONT]","\|","\n|","\|\n\n"],"const _CFG_KEYFONT",this.responseText,this.responseURL);
