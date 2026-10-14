@@ -171,26 +171,6 @@ const _CFG_IOADDR = {
 ,"$C07Fb":{"Name":"RDDHIRES" ,"SYScode":"A2E,A2Ee,A2eP,A2c<br>,A2cM" ,"Range":"HI" ,"Behaviors":"RD,BI" ,"Description":"Status of Double HiRes"}
 }
 
-const _CFG_PCODE = {
- "MS16K":{"NAME":"Microsoft 16K Language card" ,"IOrange":"$C08<sub>n</sub>0,$C08<sub>n</sub>F" ,"ROMrange":"" ,"LROMrange":"" ,"SLOTrange":"0" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf)"}
-,"TCLKP":{"NAME":"Thunderclock Plus" ,"IOrange":"$C08<sub>n</sub>0,$C08<sub>n</sub>F" ,"ROMrange":"$C0<sub>n</sub>00,$C0<sub>n</sub>FF" ,"LROMrange":"" ,"SLOTrange":"1*,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e"}
-,"SSC":{"NAME":"Apple Super Serial Card" ,"IOrange":"$C08<sub>n</sub>0,$C08<sub>n</sub>F" ,"ROMrange":"$C0<sub>n</sub>00,$C0<sub>n</sub>FF" ,"LROMrange":"" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/io/super_serial_card/Apple%20II%20Super%20Serial%20Card%20User%27s%20Manual.pdf)"}
-,"LIRON":{"NAME":"Apple 3.5 Floppy Disk Drive Interface Card" ,"IOrange":"$C08<sub>n</sub>0,$C08<sub>n</sub>F" ,"ROMrange":"$C0<sub>n</sub>00,$C0<sub>n</sub>FF" ,"LROMrange":"" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/disks/Apple%20II%203.5%20Disk%20Controller%20Card%20Owner%27s%20Guide.pdf)"}
-,"DISKII":{"NAME":"Apple Disk II Floppy Disk Subsystem" ,"IOrange":"$C08<sub>n</sub>0,$C08<sub>n</sub>F" ,"ROMrange":"$C0<sub>n</sub>00,$C0<sub>n</sub>FF" ,"LROMrange":"" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Peripherals/Disk%20Drives/Apple%20Disk%20II/Manuals/Apple%20Disk%20II%20Floppy%20Disk%20Subsystem%20-%20Installation%20and%20Operating%20Manual.pdf),[technical_manual](https://www.bigmessowires.com/2021/11/12/the-amazing-disk-ii-controller-card/) [deepdive](https://archive.org/details/Beneath_Apple_DOS_alt/page/n15/mode/2up?view=theater)"}
-,"VIDEX":{"NAME":"Videx Videoterm 80 Column Display" ,"IOrange":"$C08<sub>n</sub>0,$C08<sub>n</sub>F" ,"ROMrange":"$C0<sub>n</sub>00,$C0<sub>n</sub>FF" ,"LROMrange":"$C800,$CFFF" ,"SLOTrange":"1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/80%20Column%20Cards/Videx%20Videoterm/Manuals/)"}
-}
-
-const _CFG_SLOT = {
- 0:{"PCODE":"MS16K","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":[""],"LROMrange":[""] ,"DESCRIPTION":"[16K language card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md#the-16k-language-cards)"}
-,1:{"PCODE":"TCLKP","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":[""] ,"DESCRIPTION":""}
-,2:{"PCODE":"SPC" ,"DESCRIPTION":""}
-,3:{"PCODE":"VIDEX","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":["$C800","$CFFF"] ,"DESCRIPTION":""}
-,4:{"PCODE":"" ,"DESCRIPTION":""}
-,5:{"PCODE":"LIRON","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":[""] ,"DESCRIPTION":""}
-,6:{"PCODE":"DISKII","IOrange":["$C08<sub>n</sub>0","$C08<sub>n</sub>F"],"ROMrange":["$C0<sub>n</sub>00","$C0<sub>n</sub>FF"],"LROMrange":[""] ,"DESCRIPTION":""}
-,7:{"PCODE":"" ,"DESCRIPTION":""}
-}
-
 const _CFG_PSLOT = {
  "A2BO":{"NAME":"Motherboard peripheral" ,"HostIO":"X" ,"SlotIO":"" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"H*" ,"SYScode":"A2,A2P,A2e" ,"Manuals":""}
 ,"MS16K":{"NAME":"Microsoft 16K Language card" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"0*" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf)"}
