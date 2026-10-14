@@ -111,7 +111,7 @@ GetHTTP(rawDocsURL+"CONFIG.md",
     // compatibility catalog.  Reset any table-specific generator hooks before
     // processing it so removed legacy tables are never accessed.
     oPROCESS.linkDATA = function(){};
-    oPROCESS.insertDATA = function(){};
+    oPROCESS.insertDATA = function(){ return ""; }; // process_table concatenates this return value
     oPROCESS.changeDATA = bck_method;
 
     // EXECUTE
@@ -203,7 +203,7 @@ function PROCESS()
           + q + d.FIELDname + q
           +":"
           + q + d.FIELDdata  + q
-          + this.insertDATA(ROWname,FIELDname,FIELDdata);
+          + (this.insertDATA(ROWname,FIELDname,FIELDdata) || ""); // optional hook must not emit 'undefined'
       }
       table_struct+= "}\n"
     }
