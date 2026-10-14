@@ -235,6 +235,25 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## PERIPHERALS & SLOT ASSIGNMENTS
 
+The **[PSLOT]** table is the sole source of peripheral metadata. The old [PCODE]
+and [SLOT#] tables have been retired: the card's actual `this.action` map owns
+its read/write callbacks and the system's `IORANGES` defines physical address
+windows. `PSLOT` retains the user-facing card name, `HostIO`/`SlotIO`/
+`SlotROM`/`HostROM` mapping flags, supported `SLOTrange`, allowed
+`SYScode` systems, manuals and the default-slot `*` marker.
+
+At runtime, **`Apple2IO.mount()` rejects cards whose `SYScode` does not
+include the selected machine** or whose slot is not in `SLOTrange`. These
+checks also apply to URL pre-mounts and the peripheral picker. Invalid
+URL choices are rejected before they replace any configured default.
+Boot-time rejections are collected into **one dismissible warning dialog**
+with an explicit Acknowledge button, rather than interrupting the boot once
+per invalid card.
+
+To regenerate `res/COM_CONFIG.js`, run `tools/ConfigFile_updater.html`
+after modifying the tables in this document. The generator no longer
+expects the removed `[PCODE]` and `[SLOT#]` tables.
+
 |[PSLOT]  | NAME                                 | HostIO | SlotIO | SlotROM | HostROM      | SLOTrange     | SYScode     | Manuals       |
 | :-----: | :----------------------------------- | :----- | :----- | :------ | :----------- |:------------- |:----------- | :------------ |
 | A2BO    | Motherboard peripheral               | X      |        |         |              | H*            | A2,A2P,A2e  |               | 
