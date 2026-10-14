@@ -235,8 +235,8 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## PERIPHERALS & SLOT ASSIGNMENTS
 
-The **[PSLOT]** table is the sole source of peripheral metadata. The old [PCODE]
-and [SLOT#] tables have been retired: the card's actual `this.action` map owns
+The **[PSLOT]** table is the sole source of peripheral metadata. The old PCODE
+and SLOT# tables have been retired: the card's actual `this.action` map owns
 its read/write callbacks and the system's `IORANGES` defines physical address
 windows. `PSLOT` retains the user-facing card name, `HostIO`/`SlotIO`/
 `SlotROM`/`HostROM` mapping flags, supported `SLOTrange`, allowed
@@ -252,7 +252,7 @@ per invalid card.
 
 To regenerate `res/COM_CONFIG.js`, run `tools/ConfigFile_updater.html`
 after modifying the tables in this document. The generator no longer
-expects the removed `[PCODE]` and `[SLOT#]` tables.
+expects the removed PCODE and SLOT# tables.
 
 |[PSLOT]  | NAME                                 | HostIO | SlotIO | SlotROM | HostROM      | SLOTrange     | SYScode     | Manuals       |
 | :-----: | :----------------------------------- | :----- | :----- | :------ | :----------- |:------------- |:----------- | :------------ |
