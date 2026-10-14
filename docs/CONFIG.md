@@ -235,7 +235,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## PERIPHERALS & SLOT ASSIGNMENTS
 
-The **[PSLOT]** table is the sole source of peripheral metadata. The old PCODE
+The **PSLOT table** is the sole source of peripheral metadata. The old PCODE
 and SLOT# tables have been retired: the card's actual `this.action` map owns
 its read/write callbacks and the system's `IORANGES` defines physical address
 windows. `PSLOT` retains the user-facing card name, `HostIO`/`SlotIO`/
