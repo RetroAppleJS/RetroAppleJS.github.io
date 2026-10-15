@@ -2385,61 +2385,87 @@ function mergeActionMap(dst,src)
 
         return discovered;
     }
+    // SLOTrange syntax: H or physical slot 0-7, followed by optional
+    // * (pre-install) and/or $ (preferred, visual hint only).
+    // A preferred slot remains compatible but is never auto-mounted by $.
+    function parseSlotRangeEntry(value)
+    {
+        var match = /^(H|[0-7])([*$]{0,2})$/i.exec(String(value).trim());
+        if(!match) return null;
+        var flags = match[2];
+        if(flags.indexOf("*")!==flags.lastIndexOf("*") ||
+           flags.indexOf("$")!==flags.lastIndexOf("$")) return null;
+        var physical = match[1].toUpperCase();
+        return {
+            "physical":physical,
+            "slotN":slotID2n(physical),
+            "preAssigned":flags.indexOf("*")>=0,
+            "preferred":flags.indexOf("$")>=0
+        };
+    }
+
     function extract_slotrange_mask(str)
     {
         var mask = new Uint16Array(2);
-        mask[0] = 0; mask[1] = 0;
-
-        var arr = str.split(",");
-        for(var i=0;i<arr.length;i++)
+        String(str).split(",").forEach(function(token)
         {
-            var n = Number( arr[i].replace(RegExp("\\*","g"),"") );
-            if(isNaN(n)==false)         mask[0] |= 1<<n
-            if(arr[i].indexOf("*")>=0)  mask[1] |= 1<<n
-        } 
-        return mask; // [0]:compatible slotrange for peripheral  [1]:pre-installed slots with peripheral
+            var entry = parseSlotRangeEntry(token);
+            if(!entry) return;
+            var bit = entry.physical==="H" ? 0 : Number(entry.physical);
+            mask[0] |= 1<<bit;
+            if(entry.preAssigned) mask[1] |= 1<<bit;
+        });
+        return mask;
     }
-
 
     function extract_slotrange(str)
     {
-        var  slotPut = [], slotFit = [];
-        var arr = str.split(",");
-        for(var i=0;i<arr.length;i++)
+        var slotPut = [], slotFit = [];
+        String(str).split(",").forEach(function(token)
         {
-            var n = Number( arr[i].replace(RegExp("\\*","g"),"") );
-            if(isNaN(n)==false)
-            {
-                slotFit.push( n );
-            }
-            if(arr[i].indexOf("*")>=0)  
-            { 
-                slotPut.push( n );
-            }
-        } 
-        return {"slotPut":slotPut, "slotFit":slotFit}
-    }    
+            var entry = parseSlotRangeEntry(token);
+            if(!entry) return;
+            var physical = entry.physical==="H" ? 0 : Number(entry.physical);
+            slotFit.push(physical);
+            if(entry.preAssigned) slotPut.push(physical);
+        });
+        return {"slotPut":slotPut,"slotFit":slotFit};
+    }
 
     function extract_slotRef(str,PCODE,ref)
     {
         if(ref.slotFit===undefined) ref.slotFit = [];
         if(ref.slotMap===undefined) ref.slotMap = [];
-        var arr = str.split(",");
-        for(var i=0;i<arr.length;i++)
+        if(ref.slotPreferred===undefined) ref.slotPreferred = [];
+
+        String(str).split(",").forEach(function(token)
         {
-            var n = slotID2n( arr[i].replace(RegExp("\\*","g"),"") );
-
-            if(ref.slotFit[n]===undefined) { ref.slotFit[n] = [] };
-            ref.slotFit[n].push(PCODE);
-
-            if(arr[i].indexOf("*")>=0)  
-            {       
-                if(ref.slotMap[n]===undefined) { ref.slotMap[n] = [] };
-                ref.slotMap[n].push(PCODE);
+            var entry = parseSlotRangeEntry(token);
+            if(!entry)
+            {
+                console.warn("Ignoring invalid PSLOT SLOTrange '"+token+"' for "+PCODE);
+                return;
             }
-        } 
-        return {"slotMap":ref.slotMap, "slotFit":ref.slotFit}
-    }     
+
+            var slotN = entry.slotN;
+            if(ref.slotFit[slotN]===undefined) ref.slotFit[slotN] = [];
+            ref.slotFit[slotN].push(PCODE);
+
+            if(entry.preAssigned)
+            {
+                if(ref.slotMap[slotN]===undefined) ref.slotMap[slotN] = [];
+                ref.slotMap[slotN].push(PCODE);
+            }
+
+            // Only the peripheral picker reads this metadata.
+            if(entry.preferred)
+            {
+                if(ref.slotPreferred[slotN]===undefined) ref.slotPreferred[slotN] = [];
+                ref.slotPreferred[slotN].push(PCODE);
+            }
+        });
+        return ref;
+    }
 
     function slotID2n(slotID)
     {
@@ -4268,6 +4294,11 @@ function mergeActionMap(dst,src)
             var id = names[pcodes[i]];
             var cinfo = typeof(_CFG_PSLOT)!="undefined" ? _CFG_PSLOT[id.PCODE] : null;
             var compatible = slotFit.indexOf(id.PCODE)>=0;
+            // A $ marker highlights only this card in its preferred slot.
+            // It is advisory and must not affect compatibility or addability.
+            var preferred = compatible && slotR.slotPreferred &&
+                Array.isArray(slotR.slotPreferred[slotN]) &&
+                slotR.slotPreferred[slotN].indexOf(id.PCODE)>=0;
             var addable = !!(
                 targetSlot &&
                 !targetSlot.lock &&
@@ -4282,8 +4313,10 @@ function mergeActionMap(dst,src)
                 title += " — fixed peripheral";
             else if(!compatible)
                 title += " — not compatible with "+slotTitle;
+            if(preferred)
+                title += " — preferred "+slotTitle;
 
-            html += "<div class='appbut label"+(addable ? "" : " greyed")+"'"
+            html += "<div class='appbut label"+(preferred ? " peripheral-preferred" : "")+(addable ? "" : " greyed")+"'"
                 +" style='cursor:default;white-space:nowrap;'"
                 +" title='"+oCOM.escapeHTML(title)+"'>"
                 +"<button class='appbut skinny' type='button'"
