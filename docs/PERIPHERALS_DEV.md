@@ -24,8 +24,6 @@ For physical slot `n` (0–7), its 16-byte I/O window starts at **`$C080 + $10 �
 
 The emulator uses names like *SlotROM* to identify **CPU address spaces**, not necessarily ROM chips. A card can put read/write registers into the `$Cn00` page and therefore use the `SlotROM` routing window **without containing a boot ROM**. The Mockingboard driver provides a concrete example.
 
-> **SCREENSHOT PLACEHOLDER D02 — Apple II address map.** Capture the CPU memory-map display, highlighting $C080–$C0FF, $C100–$C7FF, $C800–$CFFF and $D000–$FFFF. Suggested filename: `docs/assets/PERIPHERALS-D02-bus-map.png`.
-
 ![Apple II address map](assets/PERIPHERALS-D02-bus-map.png)
 
 ### 1.2 Why different peripheral mapping combinations exist
