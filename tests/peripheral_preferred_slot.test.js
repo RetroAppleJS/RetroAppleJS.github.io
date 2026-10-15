@@ -70,7 +70,7 @@ function labelOf(html,pcode)
 {
     // The label is a div and contains exactly the plus, icon and PCODE.
     const labels=[...html.matchAll(/<div class='appbut label[^']*'[^>]*>[\s\S]*?<\/div>/g)];
-    return labels.map(match=>match[0]).find(tag=>tag.includes('>'+pcode+'</div>'))||'';
+    return labels.map(match=>match[0]).find(tag=>tag.includes('&nbsp;'+pcode+'</div>'))||'';
 }
 
 test('DITHER2 default preferred marker lives in canonical source and compiled data',()=>{
@@ -114,23 +114,38 @@ test('Add Peripheral for other compatible slots uses ordinary label',()=>{
     assert.doesNotMatch(dither2,/disabled/);
 });
 
-test('pre-install marker * and preferred marker $ are independent',()=>{
-    const preferredOnly=setup({range:'6$,7$'});
-    assert.equal(preferredOnly.io.slots[7].peripheral,undefined);
-    assert.equal(preferredOnly.io.slots[8].peripheral,undefined);
+test('pre-install * and preferred $ create separate independent slot plans',()=>{
+    // Run the actual slot-ref parser, extracted without modifying its source.
+    const start=code.indexOf('function parseSlotRangeEntry(');
+    const end=code.indexOf('this.slot2ID = function(',start);
+    assert.ok(start>=0 && end>start);
+    const parse=vm.runInNewContext('(function(){'+code.slice(start,end)+
+        '\nreturn extract_slotRef;})()',{console});
 
-    const both=setup({range:'6*,$7'}); // invalid $ prefix is ignored
-    assert.equal(both.io.slots[8].peripheral,undefined);
+    const preferredOnly=parse('1,2,3,4,5,6,7
 
-    const combined=setup({range:'6*$,7'});
-    // The preassigned slot is installed on io.restart(), not construction.
-    // It must therefore be in the boot slot plan and remain selectable after restart.
-    const io=combined.io;
-    const info=io.scanPeripheralContainers();
-    // Only the metadata parser is relevant: inspect the preferred slot via picker.
-    io.slotPicker_popup({hostId:'peripheral_slots'},'PR#6');
-    assert.match(labelOf(combined.elements.slotConfig_popup.innerHTML,'DITHER2'),/peripheral-preferred/);
-    assert.equal(info.DITHER2.PCODE,'DITHER2');
+test('a disabled card remains disabled even when its slot is preferred',()=>{
+    const {io,elements}=setup();
+    io.slots[8].peripheral={id:{PCODE:'OTHER'}};
+    io.slotPicker_popup({hostId:'peripheral_slots'},'PR#7');
+    assert.match(labelOf(elements.slotConfig_popup.innerHTML,'DITHER2'),
+        /class='appbut label peripheral-preferred greyed'/);
+});
+,'DITHER2',{});
+    assert.ok(preferredOnly.slotFit[8].includes('DITHER2'));
+    assert.deepEqual(Object.keys(preferredOnly.slotMap),[]);
+    assert.deepEqual(Array.from(preferredOnly.slotPreferred[8]),['DITHER2']);
+    assert.equal(preferredOnly.slotPreferred[7],undefined);
+
+    const preinstalled=parse('6*','DISKII',{});
+    assert.deepEqual(Array.from(preinstalled.slotMap[7]),['DISKII']);
+    assert.equal(preinstalled.slotPreferred[7],undefined);
+
+    const combined=parse('6*$,7$*','MOCK',{});
+    assert.deepEqual(Array.from(combined.slotMap[7]),['MOCK']);
+    assert.deepEqual(Array.from(combined.slotMap[8]),['MOCK']);
+    assert.deepEqual(Array.from(combined.slotPreferred[7]),['MOCK']);
+    assert.deepEqual(Array.from(combined.slotPreferred[8]),['MOCK']);
 });
 
 test('a disabled card remains disabled even when its slot is preferred',()=>{
