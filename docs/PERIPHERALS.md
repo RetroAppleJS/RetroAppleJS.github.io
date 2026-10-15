@@ -4,7 +4,7 @@ RetroAppleJS emulates Apple II expansion cards (**peripherals**) and, for some c
 
 **Quick route:** **Emulator → Settings** (sliders icon) for the slot layout; **Emulator → Tools** (toolbox icon) for **Peripheral controls**.
 
-For implementation details see the [Peripheral Developer Reference](PERIPHERALS_DEV.md). The [16K Language Card](PERIPHERALS_16K_LANGUAGE_CARDS.md) has a separate hardware note; see [URL Arguments](URL_ARGUMENTS.md) for automated setups.
+For implementation details see the [Peripheral Developer Reference](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS_DEV.md). The [16K Language Card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS_16K_LANGUAGE_CARDS.md) has a separate hardware note; see [URL Arguments](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/URL_ARGUMENTS.md) for automated setups.
 
 > **SCREENSHOT PLACEHOLDER U01 — Emulator toolbar.** Mark the Settings/sliders icon and Tools/toolbox icon. Suggested filename: `docs/assets/PERIPHERALS-U01-toolbar.png`.
 
@@ -95,7 +95,7 @@ index.html?slots=2:SPC,4:MOCK,6:DISKII
 
 Numbers mean **physical slots**, followed by each card's **PCODE**. `slots=6:NONE` leaves slot 6 empty. The `$` marker is **not** part of a URL: use `slots=7:DITHER2`, not `slots=7$:DITHER2`. Other unspecified defaults stay in place unless their card has been moved by the URL.
 
-See [URL Arguments: Pre-mounted peripherals](URL_ARGUMENTS.md#pre-mounted-peripherals-slots) for the exact behavior and more examples.
+See [URL Arguments: Pre-mounted peripherals](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/URL_ARGUMENTS.md#pre-mounted-peripherals-slots) for the exact behavior and more examples.
 
 > **SCREENSHOT PLACEHOLDER U09 — URL and resulting layout.** Show a launch URL and the Slot Manager after boot. Suggested filename: `docs/assets/PERIPHERALS-U09-url.png`.
 
@@ -110,4 +110,4 @@ See [URL Arguments: Pre-mounted peripherals](URL_ARGUMENTS.md#pre-mounted-periph
 | Several cards fail at startup | Read the **single Peripheral compatibility warnings** popup and click **Acknowledge** after reviewing all entries. |
 | A card moved but the program still fails | Restart or reload the software so it can use the new slot. |
 
-For ROM analysis and implementing new card types, see the [Peripheral Developer Reference](PERIPHERALS_DEV.md).
+For ROM analysis and implementing new card types, see the [Peripheral Developer Reference](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS_DEV.md).
