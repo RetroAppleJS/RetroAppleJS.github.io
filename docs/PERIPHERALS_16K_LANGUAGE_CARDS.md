@@ -1,6 +1,6 @@
 # 16K Language Cards — Apple II Hardware and Emulator Note
 
-This is a **card-specific reference**, split out of the general [Peripheral User Guide](PERIPHERALS.md) and [Peripheral Developer Reference](PERIPHERALS_DEV.md). It is useful when writing 6502 software that controls language-card banks, or when examining the RetroAppleJS `MS16K` driver.
+This is a **card-specific reference**, split out of the general [Peripheral User Guide](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md) and [Peripheral Developer Reference](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS_DEV.md). It is useful when writing 6502 software that controls language-card banks, or when examining the RetroAppleJS `MS16K` driver.
 
 ## What the card adds
 
@@ -63,7 +63,7 @@ The following table retains the classic language-card switch layout. **Accesses 
 
 ## RetroAppleJS implementation and testing
 
-The emulator's card driver is [`res/EMU_CARD_ramcard.js`](../res/EMU_CARD_ramcard.js) (PCODE `MS16K`). Its `this.action.SlotIO` callback interprets soft switches; `Apple2IO.MEMORY_MAP` rules then map RAM reads/writes into 4KB-aligned CPU-memory regions or restore the normal system ROM mapping. The configuration master is [`docs/CONFIG.md`](CONFIG.md) (`[PSLOT]`); the general mechanism is documented in the [Developer Reference](PERIPHERALS_DEV.md#25-dynamic-cpu-overlays-and-attached-devices).
+The emulator's card driver is [`res/EMU_CARD_ramcard.js`](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/res/EMU_CARD_ramcard.js) (PCODE `MS16K`). Its `this.action.SlotIO` callback interprets soft switches; `Apple2IO.MEMORY_MAP` rules then map RAM reads/writes into 4KB-aligned CPU-memory regions or restore the normal system ROM mapping. The configuration master is [`docs/CONFIG.md`](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/CONFIG.md) (`[PSLOT]`); the general mechanism is documented in the [Developer Reference](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS_DEV.md#25-dynamic-cpu-overlays-and-attached-devices).
 
 When verifying behavior:
 
@@ -74,6 +74,6 @@ When verifying behavior:
 5. Test the write-protect / double-access sequence, then restore ROM mapping.
 6. Confirm a warm reset and reconfiguration do not leave stale CPU read/write callbacks.
 
-For interactive execution analysis use [STEP TRACE](STEP_TRACE_MANUAL.md) and [Debugger](DEBUGGER.md). Historical testing material also exists in the [KansasFest MemUtil collection](http://www.ivanhogan.com/kfest/MemUtil/).
+For interactive execution analysis use [STEP TRACE](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/STEP_TRACE_MANUAL.md) and [Debugger](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/DEBUGGER.md). Historical testing material also exists in the [KansasFest MemUtil collection](http://www.ivanhogan.com/kfest/MemUtil/).
 
 > **SCREENSHOT PLACEHOLDER L04 — Validation sequence.** Capture a memory monitor comparing bank A, bank B and the common 8KB region, with a STEP TRACE stop on a language-card soft switch. Suggested filename: `docs/assets/PERIPHERALS-L04-bank-verification.png`.
