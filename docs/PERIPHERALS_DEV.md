@@ -48,7 +48,7 @@ The last row is intentionally a **dynamic mapping overlay**, not another fixed `
 - **SlotIO + onboard ROM:** controllers such as Serial Pro route control registers through SlotIO and firmware through their slot/expansion ROM windows.
 - **SlotIO + dynamic mapped RAM/ROM:** a language card switches which physical memory responds at system ROM addresses; its 16-byte soft-switch interface is not itself the switched RAM.
 
-> **SCREENSHOT PLACEHOLDER D03 — Compare mapping patterns.** Capture slot-details mappings for DISKII, MOCK, SPC and MS16K, preferably annotated with the active space/handler differences. Suggested filename: `docs/assets/PERIPHERALS-D03-patterns.png`.
+![Apple II address map](assets/PERIPHERALS-D03-patterns.png)
 
 ### 1.3 Writing position-independent slot-aware 6502 code
 
