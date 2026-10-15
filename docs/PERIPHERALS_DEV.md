@@ -1,6 +1,6 @@
 # Peripheral Developer Reference
 
-This reference is for two different jobs: **writing 6502 software for an Apple II expansion card**, and **implementing or maintaining that card in RetroAppleJS**. The companion [Peripheral User Guide](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md) covers the Slot Manager and controls; the [16K Language Cards](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS_16K_LANGUAGE_CARDS.md) have their own dedicated hardware note.
+This reference is for two different jobs: **writing 6502 software for an Apple II expansion card**, and **implementing or maintaining that card in RetroAppleJS**. The companion [Peripheral User Guide](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md) covers the Slot Manager and controls; and each peripheral has it's own dedicated hardware note.
 
 **Reading order:** Chapter 1 starts with real Apple II address decoding, access patterns and ROM analysis. Chapter 2 explains emulator source files, `_CFG_PSLOT`, callbacks, mounts, memory overlays, child devices and testing.
 
