@@ -115,23 +115,14 @@ test('Add Peripheral for other compatible slots uses ordinary label',()=>{
 });
 
 test('pre-install * and preferred $ create separate independent slot plans',()=>{
-    // Run the actual slot-ref parser, extracted without modifying its source.
-    const start=code.indexOf('function parseSlotRangeEntry(');
-    const end=code.indexOf('this.slot2ID = function(',start);
-    assert.ok(start>=0 && end>start);
-    const parse=vm.runInNewContext('(function(){'+code.slice(start,end)+
+    // Run the exact existing parser without modifying its source.
+    const begin=code.indexOf('function parseSlotRangeEntry(');
+    const end=code.indexOf('this.slot2ID = function(',begin);
+    assert.ok(begin>=0 && end>begin);
+    const parse=vm.runInNewContext('(function(){'+code.slice(begin,end)+
         '\nreturn extract_slotRef;})()',{console});
 
-    const preferredOnly=parse('1,2,3,4,5,6,7
-
-test('a disabled card remains disabled even when its slot is preferred',()=>{
-    const {io,elements}=setup();
-    io.slots[8].peripheral={id:{PCODE:'OTHER'}};
-    io.slotPicker_popup({hostId:'peripheral_slots'},'PR#7');
-    assert.match(labelOf(elements.slotConfig_popup.innerHTML,'DITHER2'),
-        /class='appbut label peripheral-preferred greyed'/);
-});
-,'DITHER2',{});
+    const preferredOnly=parse('1,2,3,4,5,6,7$','DITHER2',{});
     assert.ok(preferredOnly.slotFit[8].includes('DITHER2'));
     assert.deepEqual(Object.keys(preferredOnly.slotMap),[]);
     assert.deepEqual(Array.from(preferredOnly.slotPreferred[8]),['DITHER2']);
