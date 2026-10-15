@@ -4,7 +4,7 @@ This reference is for two different jobs: **writing 6502 software for an Apple I
 
 **Reading order:** Chapter 1 starts with real Apple II address decoding, access patterns and ROM analysis. Chapter 2 explains emulator source files, `_CFG_PSLOT`, callbacks, mounts, memory overlays, child devices and testing.
 
-> **SCREENSHOT PLACEHOLDER D01 — Tool overview.** Capture the Emulator Slot Manager, live STEP TRACE and Assembler/Debugger interfaces side by side, with labels identifying their roles. Suggested filename: `docs/assets/PERIPHERALS-D01-tool-overview.png`.
+![Board Installed in System: Interior View](assets/PERIPHERALS-D01-tool-overview.png)
 
 ## 1. Apple II software developer: using peripherals and analyzing firmware
 
