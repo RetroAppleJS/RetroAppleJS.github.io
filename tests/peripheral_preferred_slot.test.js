@@ -76,7 +76,7 @@ function labelOf(html,pcode)
 test('DITHER2 default preferred marker lives in canonical source and compiled data',()=>{
     assert.equal(config.PSLOT.DITHER2.SLOTrange,'1,2,3,4,5,6,7$');
     assert.match(markdown,/\|\s*DITHER2\s*\|[^\n]*\b7\$\s*\|/);
-    assert.match(markdown,/\\\$\s*=\s*preferred/);
+    assert.match(markdown,/^\$\s*=\s*preferred/m);
 });
 
 test('$ declares compatible/preferred but does not install the peripheral',()=>{
