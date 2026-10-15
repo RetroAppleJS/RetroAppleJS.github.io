@@ -1,121 +1,113 @@
-## PERIPHERAL interfacing Explained
+# Peripheral cards and the Slot Manager — User Guide
 
-As we can ignore the electrical and signal layer of the peripheral interface, our only real concern is software compatibility.
-We only need to mind about the memory map dedicated to I/O, called memory-mapped I/O, which is exactly 4K wide  (between $C000 - $D000). Here is an enlarged map of this memory space :
+RetroAppleJS emulates Apple II expansion cards (**peripherals**) and, for some cards, attached **devices** such as disk drives or sound engines. This manual explains where to find the Slot Manager, how to change a slot, and where to operate a mounted card.
 
-          <div style=width:800px>
-     D000 ┌────────────────────────────────────┐   ▲                  ▲
-          │                                    │   │                  │
-          │   Open for large ROM programs      │  2048 Bytes HostROM  │
-          │   Activated by I/O strobe (pin 20) │   │                  │
-          │                                    │   │                  │
-     C800 ├────────────────────────────────────┤  ─┘                  │
-          │                                    │   ▲                  │
-          │  RAM/ROM open for slot#7           │   │                  │
-          │                                    │  256 Bytes SlotROM   │
-     C700 ├────────────────────────────────────┤  ─┘                  │
-          │                                    │   ▲                  │
-          │  RAM/ROM open for slot#6           │   │                  │
-          │                                    │  256 Bytes SlotROM   │
-     C600 ├────────────────────────────────────┤  ─┘                 4096 bytes
-          │                                    │   ▲                  │
-          │  RAM/ROM open for slot#5           │   │                  │
-          │                                    │  256 Bytes SlotROM   │
-     C500 ├────────────────────────────────────┤  ─┘                  │
-          │                                    │   ▲                  │
-          │  RAM/ROM open for slot#4           │   │                  │
-          │                                    │  256 Bytes SlotROM   │
-     C400 ├────────────────────────────────────┤  ─┘                  │
-          │                                    │   ▲                  │
-          │  RAM/ROM open for slot#3           │   │                  │
-          │                                    │  256 Bytes SlotROM   │
-     C300 ├────────────────────────────────────┤  ─┘                  │
-          │                                    │   ▲                  │
-          │  RAM/ROM open for slot#2           │   │                  │
-          │                                    │  256 Bytes SlotROM   │
-     C200 ├────────────────────────────────────┤  ─┘                  │
-          │                                    │   ▲                  │
-          │  RAM/ROM open for slot#1           │   │                  │
-          │  (No mem mapped for slot#0)        │  256 Bytes SlotROM   │
-     C100 └────┬───────────────────────────────┤  ─┘                  │
-          C0F0 │ I/O slot #7  ─┐               │   ▲                  │
-          C0E0 │ I/O slot #6  ─┘ 16 Bytes      │   │                  │
-          C0D0 │ I/O slot #5                   │  128 Bytes SlotIO    │
-          C0C0 │ I/O slot #4     X 8           │   │                  │
-          C0B0 │ I/O slot #3                   │   │                  │
-          C0A0 │ I/O slot #2                   │   │                  │
-          C090 │ I/O slot #1                   │   │                  │
-          C080 │ I/O slot #0                   │   │                  │
-     C080 ┌────┴───────────────────────────────┤  ─┘                  │
-          │  Built-in I/O locations            │   ▲                  │
-          │  (keyboard,speaker,casette,game..  │  128 Bytes HostIO    │
-     C000 └────────────────────────────────────┘  ─┘                  ▼
-  
+**Quick route:** **Emulator → Settings** (sliders icon) for the slot layout; **Emulator → Tools** (toolbox icon) for **Peripheral controls**.
 
-          </div>
-         
-## The 16K Language cards
+For implementation details see the [Peripheral Developer Reference](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS_DEV.md). The [16K Language Card](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS_16K_LANGUAGE_CARDS.md) has a separate hardware note; see [URL Arguments](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/URL_ARGUMENTS.md) for automated setups.
 
-We will discuss two similar cards, with the same functions and same soft switches.
-* [Apple Language Card](http://www.applelogic.org/files/LANGCARDMAN.pdf)  
-* [Microsoft Ramcard](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Language%20Cards/Microsoft%2016K%20RAM%20Card/Manuals/Microsoft%20RAMCard%20-%20Manual.pdf)  
-* [Applied Engineering - Pocket Rocket RamCard](https://usermanual.wiki/Document/ae16kpocketrocketbrochure.1819483971.pdf)
+> **SCREENSHOT PLACEHOLDER U01 — Emulator toolbar.** Mark the Settings/sliders icon and Tools/toolbox icon. Suggested filename: `docs/assets/PERIPHERALS-U01-toolbar.png`.
 
-The only difference between Apple vs Microsoft and others, is that the Apple card overrides KICKSTART ROM addresses F800-FFFF permanently, which only served as a ROM upgrade for old Apple II's. As we emulate the Apple II+, the Kickstart ROM on Apple Language card is bit-by-bit equal with the Kickstart ROM shipped with the Apple II+.  All other functions are identical.
+## 1. Slot Manager: install, inspect, move and eject
 
-[Apple II+ motherboard schematics](https://archive.org/details/Schematic_Diagram_of_the_Apple_II/page/n1/mode/2up)
-TODO: check which chip has to be removed, and to which address locations this chip corresponds.
+1. Open the **Emulator** tab and click **Settings** (the sliders icon).
+2. Find the **slot layout**. Installed cards display their pictogram/name; empty slots offer an **add (+)** button.
+3. Click an installed card to inspect its **slot details**. Click the **+ on an empty slot** to open **ADD PERIPHERAL**.
+4. Close a popup using its **×** control.
 
-Language Card Memory map
+Slots labeled `PR#0`–`PR#7` are physical Apple II peripheral slots. The **board** is shown separately. Which slots are available depends on the configured machine. In the current default Apple II+ layout, a language card may occupy `PR#0` and Disk II occupies `PR#6`; a different configuration or a launch URL can override defaults.
 
-          <div style=width:800px>
-     FFFF ┌────────────────┐ - - >┌───────────────┐ - -▲    ▲
-          │  KICKSTART ROM │      │               │    │    │
-     F800 ├────────────────┤      │  RAMCARD RAM  │    8K   │
-          │  APPLE ROM     │      │               │    │    │
-     E000 │                │ - - >├───────────────┤    ▼    │ 16K    
-          │                │      │  BANK A or B  │    ▲    │
-          │                │      │  (switchable) │  2 X 4K │
-     D000 ├────────────────┤ - - >└───────────────┘ - -▼    ▼ 
-          │ large ROM prog │                           ▲ 
-          │  (unused)      │                           ▼ 2K
-     C800 ├────────────────┤- - - - - - - - - - - - - -          
-          │  SLOT ROM/RAM  │                
-          │  (unused)      │              
-          │                │             
-     C100 └──┬─────────────┤                
-        C0F0 │ I/O slot #7 │
-        C0E0 │ I/O slot #6 │
-        C0D0 │ I/O slot #5 │
-        C0C0 │ I/O slot #4 │
-        C0B0 │ I/O slot #3 │
-        C0A0 │ I/O slot #2 │
-        C090 │ I/O slot #1 │     ┌─────────────────┐   
-        C080 │ I/O slot #0 ├─────┤ 8 soft switches │
-             └─────────────┘     └─────────────────┘  
+> **SCREENSHOT PLACEHOLDER U02 — Slot layout.** Capture the full Slot Manager showing board, PR#0–PR#7, an installed Disk II card and an empty slot's plus icon. Suggested filename: `docs/assets/PERIPHERALS-U02-slots.png`.
 
-          </div>
-          
-[video](https://www.youtube.com/watch?v=1KPIAoO1dTU)  
-[schematics]( https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Language%20Cards/Apple%20Language%20Card/Schematics/Apple%20Language%20Card%20-%20Schematics%20050-0019-01.pdf) 
+### Add a peripheral
 
-|  Language card soft switches   |
-| --------------------------------- |
+Click **+ on an empty slot**, locate a card by its short code (for example `MOCK`, `DISKII`, `SPC` or `DITHER2`), and click the **+ inside its label**. The card appears in the slot layout. Entries shown **greyed out** are not available in the current context; for example the slot may be incompatible or the card may be fixed/locked. Mounting is also checked against the chosen Apple II system.
 
-| Address | ROM | RAMCARD | BANKA | BANKB | Description       |
-| :-----: | --- |  ------ | ----- | ----- | ----------------- |
-|  C080   |     |  R      |       |  R    | write-protect     | 
-| *C081   |  R  |  W      |       |  W    | write (access 2x) |
-|  C082   |  R  |         |       |       | ROM-only          | 
-|  C083   |     |  R/W    |       |  R/W  | write (access 2x) |
-|  C088   |     |  R      |  R    |       | write-protect     |
-|  C089   |  R  |  W      |  W    |       | write (access 2x) |
-|  C08A   |  R  |         |       |       | ROM-only          |
-|  C08B   |     |  R/W    |  R/W  |       | write (access 2x) |
+> **SCREENSHOT PLACEHOLDER U03 — ADD PERIPHERAL.** Show the complete picker, with both an available choice and a greyed-out choice. Suggested filename: `docs/assets/PERIPHERALS-U03-picker.png`.
 
-\* default setting after cold boot
+### Inverse colors identify the usual slot
 
-### Testing
+Some Apple II titles assume a particular card slot rather than detecting it. When opening the Add Peripheral picker for that slot, an **inverse-colored label** (dark background, light text) identifies a card for which this is the **preferred/usual** location. The complete label—plus, pictogram and code—is highlighted.
 
-http://www.ivanhogan.com/kfest/MemUtil/
+This is a **recommendation, not a restriction or an automatic installation**. For example, `DITHER2` is compatible with slots 1–7, but the configuration string `1,2,3,4,5,6,7$` makes **slot 7** the preferred one. In the configuration master, `*` means *automatically pre-install*; `$` means *highlight the usual slot*. They can be combined.
 
+> **SCREENSHOT PLACEHOLDER U04 — Preferred slot comparison.** Capture ADD PERIPHERAL for PR#7 showing DITHER2 in inverse colors, alongside PR#6 showing DITHER2 normally. Suggested filename: `docs/assets/PERIPHERALS-U04-preferred.png`.
+
+### Move or eject a card
+
+- **Move:** drag an installed card by its drag handle to an **empty, compatible** slot. Locked cards are not movable.
+- **Eject:** click an installed card, then use **Eject peripheral** in its details popup. Locked cards cannot be ejected.
+- **Inspect:** the same details popup shows card identification, mapped address spaces, read/write handlers and any attached devices.
+
+After moving a peripheral, software already running may still refer to its old slot address. Reload or restart the Apple II program if necessary.
+
+> **SCREENSHOT PLACEHOLDER U05 — Slot details and move.** Show the drag handle and the slot-details header containing the gauge (Peripheral control), Download slot JSON and Eject buttons. Suggested filename: `docs/assets/PERIPHERALS-U05-details.png`.
+
+## 2. Find the controls for an installed card
+
+**Slot management** is separate from **peripheral controls**.
+
+**From Settings:** click an installed card, then click the **Peripheral control** **gauge/tachometer icon** in its slot-details popup. This changes to **Emulator → Tools** and selects that card's controls.
+
+**From Tools:** click the **Tools** toolbox icon in the Emulator toolbar. Find the **Peripheral controls** slot selector. Click it to cycle through mounted cards. The toolbox below follows the selected card.
+
+Controls differ by peripheral. For example, Disk II exposes drive-related controls and Mockingboard exposes sound controls; memory expansion cards can expose bank/memory monitoring. Some cards provide very few controls.
+
+> **SCREENSHOT PLACEHOLDER U06 — Peripheral controls.** Capture the gauge button in slot details and a second view of the Tools popup with the active slot selector and card controls. Suggested filename: `docs/assets/PERIPHERALS-U06-controls.png`.
+
+### Peripheral cards are not attached devices
+
+A **peripheral** is the slot-mounted controller. A **device** is a unit that the controller manages, such as a disk drive. Not every card exposes attachable devices.
+
+For cards that do:
+
+1. In **Settings**, click the **mounted card** to open slot details.
+2. Look beneath the mapping table for the **devices** table: device, instance and ports.
+3. Use **Attach device (+)** if enabled; this opens a *device picker*, not the Add Peripheral picker.
+4. Click an attached device's label to inspect its instance. Depending on the implementation, you may be able to change its unit number or detach it.
+5. **Download device JSON** exports device metadata for diagnostics—it does **not** save a disk image.
+
+> **SCREENSHOT PLACEHOLDER U07 — Devices.** Capture a controller's devices table, Attach device (+), and one selected device's controls. Suggested filename: `docs/assets/PERIPHERALS-U07-devices.png`.
+
+## 3. Reading the slot address map
+
+The **slot details** display active CPU address ranges and their **RD** (read) and **WR** (write) callbacks. These describe the emulator's memory-mapped interface; they are mainly useful for troubleshooting.
+
+| Name in details | Typical Apple II CPU addresses | Meaning |
+| --- | --- | --- |
+| **HostIO** | `$C000–$C07F` | Built-in motherboard keyboard, speaker and other I/O. |
+| **SlotIO** | `$C080–$C0FF` | Eight 16-byte regions; for example slot 6 uses `$C0E0–$C0EF`. |
+| **SlotROM** | `$C100–$C7FF` | A 256-byte window per slot 1–7; may contain firmware **or registers**. |
+| **HostROM** | `$C800–$CFFF` | Shared 2KB expansion firmware window, selected by the active peripheral. |
+| **Dynamic mapping** | e.g. `$D000–$FFFF` | ROM/RAM overlays supplied by a memory expansion card. |
+
+A name such as *SlotROM* denotes a CPU address **window**, not proof that an actual ROM chip is present.
+
+> **SCREENSHOT PLACEHOLDER U08 — Mapping table.** Capture a card's Space, CPU address, I/O offset and R/W columns. Suggested filename: `docs/assets/PERIPHERALS-U08-mapping.png`.
+
+## 4. Preselecting cards at launch
+
+A launch URL can select a layout **before** the Apple II boots, replacing individual pre-filled settings without changing the configuration source:
+
+```text
+index.html?slots=2:SPC,4:MOCK,6:DISKII
+```
+
+Numbers mean **physical slots**, followed by each card's **PCODE**. `slots=6:NONE` leaves slot 6 empty. The `$` marker is **not** part of a URL: use `slots=7:DITHER2`, not `slots=7$:DITHER2`. Other unspecified defaults stay in place unless their card has been moved by the URL.
+
+See [URL Arguments: Pre-mounted peripherals](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/URL_ARGUMENTS.md#pre-mounted-peripherals-slots) for the exact behavior and more examples.
+
+> **SCREENSHOT PLACEHOLDER U09 — URL and resulting layout.** Show a launch URL and the Slot Manager after boot. Suggested filename: `docs/assets/PERIPHERALS-U09-url.png`.
+
+## 5. Troubleshooting
+
+| Problem | Check |
+| --- | --- |
+| A card is greyed out in ADD PERIPHERAL | The slot is occupied/locked, the card cannot move, or the card is not compatible with this slot/system. |
+| A title fails to find an installed peripheral | Does the software assume a particular slot? Try the inverse-highlighted **preferred** slot or consult the title's instructions. |
+| You cannot find the peripheral's buttons | **Settings → card → Peripheral control (gauge)**, or **Tools → Peripheral controls** selector. |
+| A drive or unit is missing | First mount its **parent card**, then inspect the card's attached **devices**. |
+| Several cards fail at startup | Read the **single Peripheral compatibility warnings** popup and click **Acknowledge** after reviewing all entries. |
+| A card moved but the program still fails | Restart or reload the software so it can use the new slot. |
+
+For ROM analysis and implementing new card types, see the [Peripheral Developer Reference](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS_DEV.md).
