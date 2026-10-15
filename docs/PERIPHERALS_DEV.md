@@ -4,7 +4,7 @@ This reference is for two different jobs: **writing 6502 software for an Apple I
 
 **Reading order:** Chapter 1 starts with real Apple II address decoding, access patterns and ROM analysis. Chapter 2 explains emulator source files, `_CFG_PSLOT`, callbacks, mounts, memory overlays, child devices and testing.
 
-![Board Installed in System: Interior View](assets/PERIPHERALS-D01-tool-overview.png)
+![Peripheral UI](assets/PERIPHERALS-D01-tool-overview.png)
 
 ## 1. Apple II software developer: using peripherals and analyzing firmware
 
@@ -24,9 +24,7 @@ For physical slot `n` (0–7), its 16-byte I/O window starts at **`$C080 + $10 �
 
 The emulator uses names like *SlotROM* to identify **CPU address spaces**, not necessarily ROM chips. A card can put read/write registers into the `$Cn00` page and therefore use the `SlotROM` routing window **without containing a boot ROM**. The Mockingboard driver provides a concrete example.
 
-> **SCREENSHOT PLACEHOLDER D02 — Apple II address map.** Capture the CPU memory-map display, highlighting $C080–$C0FF, $C100–$C7FF, $C800–$CFFF and $D000–$FFFF. Suggested filename: `docs/assets/PERIPHERALS-D02-bus-map.png`.
-
-PERIPHERALS-D02-bus-map.png
+![Apple II address map](assets/PERIPHERALS-D02-bus-map.png)
 
 ### 1.2 Why different peripheral mapping combinations exist
 
