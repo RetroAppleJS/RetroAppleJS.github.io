@@ -240,7 +240,7 @@ and SLOT# tables have been retired: the card's actual `this.action` map owns
 its read/write callbacks and the system's `IORANGES` defines physical address
 windows. `PSLOT` retains the user-facing card name, `HostIO`/`SlotIO`/
 `SlotROM`/`HostROM` mapping flags, supported `SLOTrange`, allowed
-`SYScode` systems, manuals and the default-slot `*` marker.
+`SYScode` systems, manuals, the auto-install `*` marker and the preferred-slot `$` marker.
 
 At runtime, **`Apple2IO.mount()` rejects cards whose `SYScode` does not
 include the selected machine** or whose slot is not in `SLOTrange`. These
@@ -270,10 +270,17 @@ expects the removed PCODE and SLOT# tables.
 | SSC  | Apple Super Serial Card                 |        |        | X        |             | 1,2,3,4,5,6,7| A2,A2P,A2e  | [user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/io/super_serial_card/Apple%20II%20Super%20Serial%20Card%20User%27s%20Manual.pdf) |
 | SPC  | Apple Serial Pro Card                 |        | X      | X        | X            | 1,2,3,4,5,6,7| A2,A2P,A2e  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf) |
 | DITHER   | Dithertizer II Card               |        | X      | X        |              | 1,2,3,4,5,6,7| A2,A2P,A2e  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf) |
-| DITHER2   | Dithertizer II Card               |        | X      | X        |              | 1,2,3,4,5,6,7| A2,A2P,A2e  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf) |
+| DITHER2   | Dithertizer II Card               |        | X      | X        |              | 1,2,3,4,5,6,7$| A2,A2P,A2e  | [user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Serial/AE%20Serial%20Pro/Manuals/AE%20Serial%20Pro%20-%20Manual.pdf) |
 
 
-\* = pre-assigned slot
+\* = pre-assigned slot: the peripheral is installed automatically at startup.
+
+$ = preferred / usual slot: the Add Peripheral popup highlights the entire
+peripheral label in inverse colors **only when opened for that slot**. This
+annotation does not mount, move, or restrict the card; all listed slots remain
+compatible. For example, `1,2,3,4,5,6,7$` gives slot 7 a visual recommendation
+without pre-installation. Markers can be combined (`6*$`) when the default
+installation is also the usual slot.
 
 ## ASCII MAPPING
 
