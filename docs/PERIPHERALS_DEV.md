@@ -26,6 +26,8 @@ The emulator uses names like *SlotROM* to identify **CPU address spaces**, not n
 
 > **SCREENSHOT PLACEHOLDER D02 — Apple II address map.** Capture the CPU memory-map display, highlighting $C080–$C0FF, $C100–$C7FF, $C800–$CFFF and $D000–$FFFF. Suggested filename: `docs/assets/PERIPHERALS-D02-bus-map.png`.
 
+PERIPHERALS-D02-bus-map.png
+
 ### 1.2 Why different peripheral mapping combinations exist
 
 Here **X** means that the current `[PSLOT]` catalog declares a range for that card. It does **not**, by itself, guarantee a particular ROM binary or callback implementation; inspect the card's `this.action` and any dynamic mapping rules.
