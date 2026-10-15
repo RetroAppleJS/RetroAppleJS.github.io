@@ -879,6 +879,22 @@ table { border-collapse: collapse; position: relative;}
     gap: 2px;
 }
 
+/* $ in PSLOT.SLOTrange: inverse the complete card choice in its usual slot.
+   The nested "+" control stays part of the same inverted visual label. */
+.peripheral-add-list .appbut.label.peripheral-preferred {
+    background: #181818;
+    color: #fff;
+    border-color: #181818;
+}
+.peripheral-add-list .appbut.label.peripheral-preferred .appbut.skinny {
+    background: transparent;
+    color: inherit;
+}
+.peripheral-add-list .appbut.label.peripheral-preferred .appbut.skinny:not(:disabled):hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: inherit;
+}
+
 .slot-add
 {
   border:0;
