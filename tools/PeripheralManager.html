@@ -825,10 +825,10 @@ function Apple2IO()
       switch(fmt1)
       {
         case "lbl": 
-          if(fmt2) 
-            ret.push(lbl_ref[str][fmt2] || ""); 
-          else 
-            ret.push(lbl_ref[str] || ""); 
+          if(fmt2)
+            ret.push(lbl_ref[str]?.[fmt2] || "");
+          else
+            ret.push(lbl_ref[str] || "");
           break;
         default: console.warn("config_slotName('"+fmt1+"') unknown format");
       }
@@ -859,7 +859,10 @@ function Apple2IO()
       var arr = str.split(",");
       for(var i=0;i<arr.length;i++)
       {
-          var lbl =  arr[i].replace(RegExp("\\*","g"),"");
+          // * marks an installed card; $ marks a preferred slot.
+          // Neither marker is part of the slot identifier.
+          var lbl = arr[i].trim().replace(/[*$]/g,"");
+          if(!/^[B0-7]$/.test(lbl)) continue;
           if(lbl.length==1)
           {
               slotFit.push( lbl );
