@@ -74223,18 +74223,6 @@ var ASM_OfflineSources =
                     <span id="ASM_byteCodeInfo" style="color:#000000;font-family:arial;font-size:11px;padding:0px 6px;white-space:nowrap;">0 bytes</span>
                     <input type="button" value="X" onclick="javascript:oCOM.POPUP.off('tab2.2')">
                   </form>
-                  <div style="color:black;padding:3px 6px;"
-                       title="Start address used when byte-encoding the source pane into monitor byte code">
-                    byte encode source
-                    <input id="ASM_sourceByteCodeStartInput"
-                           type="text"
-                           value="$6000"
-                           maxlength="6"
-                           spellcheck="false"
-                           style="width:64px;min-height:20px;font:12px/1.2 courier,monospace;text-transform:uppercase;box-sizing:border-box;">
-                    <span id="ASM_sourceByteCodeRangeInfo"
-                          style="color:#000000;font-family:arial;font-size:11px;padding:0px 4px;white-space:nowrap;">A$6000 L$0000</span>
-                  </div>
                 </div>
 
                 <!--  ASM ACTION BUTTONS -->
@@ -74250,6 +74238,18 @@ var ASM_OfflineSources =
                   <div class=appbox style="min-height:63px;height:auto;padding:0px 6px 0px 6px;">
                     <div class=appbut style="color:black">
                       load include files<input id="ASM_includeFileInput" style="display:inline-block" type="file" multiple accept=".INC,.inc,.S,.s,.ASM,.asm,.a,.A,.txt,.src,.a65,.mac,text/plain">
+                    </div>
+                    <div style="color:black;padding:3px 0;white-space:nowrap;"
+                         title="Start address used when byte-encoding the source pane into monitor byte code">
+                      byte encode source
+                      <input id="ASM_sourceByteCodeStartInput"
+                             type="text"
+                             value="$6000"
+                             maxlength="6"
+                             spellcheck="false"
+                             style="width:64px;min-height:20px;font:12px/1.2 courier,monospace;text-transform:uppercase;box-sizing:border-box;">
+                      <span id="ASM_sourceByteCodeRangeInfo"
+                            style="color:#000000;font-family:arial;font-size:11px;padding:0px 4px;white-space:nowrap;">A$6000 L$0000</span>
                     </div>
                     <div id="ASM_includeLabelWrap" class="ASM_includeLabelWrap"></div>
                     <!-- Status is logged through ASM_setStatus(); find/replace lives in the Source pane header. -->
