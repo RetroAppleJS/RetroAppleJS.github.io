@@ -2270,15 +2270,10 @@ function prettyJsonAllman(value, indent) {
         if(arg.basepath && parentArg.path.indexOf(arg.basepath) !== 0) parentArg.path = arg.basepath;
 
         // Keep the parent action and path display in the same directory header.
-        // Strip only the repository catalog root (e.g. disks), preserving
+        // Strip only the first repository root directory (e.g. disks), preserving
         // the complete user-facing path: Experiments ← Vaporlock.
         var pathParts = String(arg.path || "").split("/").filter(Boolean);
-        var rootParts = String(arg.basepath || "").split("/").filter(Boolean);
-        var visibleParts = pathParts.slice();
-        if(rootParts.length && rootParts.every(function(part,i){ return pathParts[i] === part; }))
-        {
-          visibleParts = pathParts.slice(Math.max(0,rootParts.length - 1));
-        }
+        var visibleParts = pathParts.slice(1);
         var breadcrumb = visibleParts.map(function(part)
         {
           return _COM_this.escapeHTML(part);
