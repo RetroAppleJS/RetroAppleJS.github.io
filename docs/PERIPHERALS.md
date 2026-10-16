@@ -4,8 +4,7 @@ RetroAppleJS emulates Apple II expansion cards (**peripherals**) and, for some c
 
 **Quick route:** **Emulator → Settings** (sliders icon) for the slot layout; **Emulator → Tools** (toolbox icon) for **Peripheral controls**.
 
-For implementation details see the [Peripheral Developer Reference](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS_DEV.md)
-> **SCREENSHOT PLACEHOLDER U01 — Emulator toolbar.** Mark the Settings/sliders icon and Tools/toolbox icon. Suggested filename: `docs/assets/PERIPHERALS-U01-toolbar.png`.
+![Apple II address map](assets/PERIPHERALS-U01-toolbar.png)
 
 ## 1. Slot Manager: install, inspect, move and eject
 
