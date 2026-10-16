@@ -81,7 +81,7 @@ First check **[`asm/ROMS/PERIPHERALS/`](https://github.com/RetroAppleJS/RetroApp
 
 **Check the exact firmware revision and slot before trusting labels.** A `.symbols.json` file describes addresses; it does not install a ROM or guarantee the running binary matches. Sources with `_STRUCTURED_EXACT` and `.S.txt` may need dialect/format review before assembling them directly.
 
-> **SCREENSHOT PLACEHOLDER D04 — ROM source tree.** Capture the repository browser at `asm/ROMS/PERIPHERALS/` with Disk II, Serial Pro and symbol files visible. Suggested filename: `docs/assets/PERIPHERALS-D04-rom-tree.png`.
+![Apple II address map](assets/PERIPHERALS-D04-rom-tree.png)
 
 ### 1.5 When you only have ROM bytes: a reproducible investigation
 
