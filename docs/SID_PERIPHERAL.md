@@ -109,3 +109,12 @@ counters. An underrun indicates the next scheduled block was already in the
 past when new data arrived. Audio-off still cancels and flushes all buffered
 audio. The test in `tests/sid_card.test.js` verifies gap-free buffers during
 20 consecutive simulated 10 FPS cycles.
+
+
+## Phase 2A — Unmodified native Mr. Heli music
+
+See [SID Phase 2A](SID_PHASE2A.md) for the first foreground player executing
+the original 4,715-byte Mr. Heli C64 music program directly on the Apple II
+6502. It calls the original INIT and PLAY routines, writes native $D400 SID
+registers and restores Apple II zero page on keypress. No SID-to-AY conversion,
+C64 emulation or changes to EMU_CARD_SID / EMU_DEVICE_SID_audio are required.
