@@ -5,9 +5,10 @@
     var FEATURES = [
         ['Oscillators', [
             ['triangle','Triangle waveform'],['sawtooth','Sawtooth waveform'],
-            ['pulse','Pulse / square waveform'],['noise','Noise waveform'],
+            ['pulse','Pulse waveform'],['squarePulse','Pulse near 50% (square)'],['noise','Noise waveform'],
             ['combinedWaveforms','Combined waveforms'],['frequencyWrites','Frequency-register writes'],
-            ['pulseWidthWrites','Pulse-width-register writes']]],
+            ['pulseWidthWrites','Pulse-width-register writes'],
+            ['pulseWidthModulation','Pulse width updates while pulse enabled']]],
         ['Modulation and gates',[
             ['hardSync','Oscillator hard sync'],['ringModulation','Ring modulation'],
             ['oscillatorTest','Oscillator TEST'],['gateOn','Gate on / attack triggered'],
@@ -17,11 +18,13 @@
             ['sustainReleaseWrites','Sustain/release configuration writes']]],
         ['Filter',[
             ['cutoffWrites','Filter cutoff writes'],['resonanceWrites','Resonance changes'],
-            ['filterRouting','Newly enabled filtered inputs'],['lowPass','Low-pass enabled'],
-            ['bandPass','Band-pass enabled'],['highPass','High-pass enabled']]],
+            ['filterRouting','Newly enabled filtered inputs'],['filterExternalInput','EXT IN routed to filter'],
+            ['lowPass','Low-pass enabled'],
+            ['bandPass','Band-pass enabled'],['highPass','High-pass enabled'],
+            ['filterModeCombinations','Combined filter modes']]],
         ['Output and SID reads',[
             ['voice3Mute','Voice 3 output muted'],['masterVolumeWrites','Master-volume register writes'],
-            ['volumeChanges','Volume changes'],['possibleDigiWrites','Potential digital sample writes'],
+            ['volumeChanges','Volume changes'],['possibleDigiWrites','Rapid volume changes (possible PCM)'],
             ['potXReads','POTX reads'],['potYReads','POTY reads'],
             ['osc3Reads','OSC3 reads'],['env3Reads','ENV3 reads']]]
     ];
@@ -187,10 +190,12 @@
         pendingTimer=setTimeout(next,0);
     }
     function schedule() {
-        if ($('sidAnalysisAuto') && $('sidAnalysisAuto').checked) {
-            if(pendingTimer!==null)clearTimeout(pendingTimer);
+        // The audio player can load another file while analysis is underway.
+        // Cancel the old job rather than appending results to the new tune.
+        currentJob++;
+        if(pendingTimer!==null){clearTimeout(pendingTimer);pendingTimer=null;}
+        if ($('sidAnalysisAuto') && $('sidAnalysisAuto').checked)
             pendingTimer=setTimeout(analyze,0);
-        }
     }
     window.sidAnalysisRun=analyze;
     window.sidAnalysisCancel=cancel;
