@@ -170,6 +170,8 @@ VALIDATE_PSID
             CMP #$0C
             BNE PSID_BAD
             LDA $607E
+            BNE PSID_BAD             ; Mr. Heli payload starts $00,$A9
+            LDA $607F
             CMP #$A9
             BNE PSID_BAD
             ; Match "Mr. Heli" so another PSID cannot overwrite unrelated RAM.
