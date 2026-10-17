@@ -5,13 +5,14 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const build=require('../tools/SID_Phase2A_build.js');
 const ROOT=path.resolve(__dirname,'..');
 
-function setup({slot=4,frameLimit=12,corruptHeader=false,withSID=true}={}){
+function setup({slot=4,frameLimit=12,corruptHeader=false,corruptPayload=false,withSID=true}={}){
     const driver=build.assemble(),sid=fs.readFileSync(build.PSID);
     build.validatePSID(sid);
     const mem=new Uint8Array(65536);
     mem.set(sid,0x6000);
     mem.set(driver.bytes,0x2000);
     if(corruptHeader)mem[0x6000]=0;
+    if(corruptPayload)mem[0x6500]^=0x20; // valid header, corrupted body
     // Applesoft's zero page must be restored on normal exit.
     const originalZP=new Uint8Array(256);
     for(let i=0;i<256;i++)originalZP[i]=(i*73+11)&0xFF;
@@ -111,6 +112,9 @@ test('original Mr Heli PSID metadata is validated and executable remains unmodif
     assert.equal(info.defaultSong,5);
     assert.equal(info.data.length,4715);
     assert.throws(()=>build.validatePSID(original.subarray(0,-1)),/Mr. Heli/);
+    const modified=Buffer.from(original);
+    modified[0x500]^=0x20;
+    assert.throws(()=>build.validatePSID(modified),/checksum mismatch/);
     const program=build.assemble();
     assert.ok(program.bytes.length>300&&program.bytes.length<0x1000);
     assert.deepEqual([...program.bytes.subarray(0,12).filter((_,i)=>i%3===0)],
@@ -119,6 +123,9 @@ test('original Mr Heli PSID metadata is validated and executable remains unmodif
     assert.equal(program.symbols.STOP,0x2003);
     assert.equal(program.symbols.RESTART,0x2006);
     assert.equal(program.symbols.STATUS,0x2009);
+    const monitor=fs.readFileSync(path.join(ROOT,'asm/AUDIO/SID_PHASE2A_MR_HELI_monitor.txt'),'utf8');
+    assert.equal(monitor,build.monitorText(program.bytes,0x2000),
+        'checked-in monitor image must match latest assembled source');
 });
 
 test('Phase 2A runs original subtune 5 on actual RetroAppleJS CPU, then restores host ZP',()=>{
@@ -150,7 +157,7 @@ test('12 foreground PLAY calls have bounded near-50-Hz cadence',()=>{
 });
 
 test('bad PSID and missing SID never copy the payload or modify Applesoft zero page',()=>{
-    for(const cfg of [{withSID:false,error:2},{corruptHeader:true,error:1}]){
+    for(const cfg of [{withSID:false,error:2},{corruptHeader:true,error:1},{corruptPayload:true,error:1}]){
         const f=setup(cfg),before=Array.from(f.mem.subarray(0,256));
         const r=f.run(15000);
         assert.equal(r.mem[r.driver.symbols.ERRORCD],cfg.error);
