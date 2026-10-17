@@ -275,7 +275,9 @@ function SIDCard()
                 envelope:env?env[v]:null});
         }
         return {
-            slot:card.mount&&card.mount.slotN!==undefined?card.mount.slotN:null,
+            // mount.slotN is the emulator's +1 internal slot index.
+            slot:card.mount&&Number.isInteger(Number(card.mount.slotN)) ?
+                Math.max(0,Number(card.mount.slotN)-1):null,
             cpu:{tick:tick,clockHz:cpuClockRate(),state:cpuState,
                 timingMode:typeof(oApple2Video)!=="undefined" && oApple2Video ?
                     oApple2Video.frameTiming:"unknown"},
