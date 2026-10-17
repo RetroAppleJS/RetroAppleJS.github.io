@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const pack=require('../tools/SID_Phase1_pack.js');
 
-function rig(cardDetected=true){
+function rig(cardSlot=4){
     const sandbox=vm.createContext({
         console,Uint8Array,Float32Array,Math,Number,
         oEMU:{component:{CPU:{},IO:{}}}
@@ -28,7 +28,7 @@ function rig(cardDetected=true){
     const hw={
         irq_signal:false,nmi_signal:0,
         read(addr){
-            if(addr===0xC0C0)return cardDetected?0x53:0xFF;
+            if(addr>=0xC090 && addr<=0xC0F0 && (addr&15)===0)\n                return cardSlot && addr===(0xC080+cardSlot*16)?0x53:0xFF;
             if(addr===0xFDED)return 0x60; // unit-test COUT ROM stub (RTS)
             return memory[addr&0xFFFF];
         },
@@ -129,13 +129,31 @@ test('standalone WAIT50 delay stays within ±5% of PAL 50 Hz on a 1.02 MHz host'
         'software cadence must be within 5%, got '+delay+' cycles');
 });
 
-test('standalone demo reports a missing slot-5 SID card before returning',()=>{
-    const r=rig(false),printed=[];
+test('standalone demo reports a missing SID in slots 1-7 before returning',()=>{
+    const r=rig(0),printed=[];
     r.cpu.setExecutionCondition(state=>{
         printed.push(state.a&0x7F);
         return false; // continue into the stub COUT ROM RTS
     },0xFDED);
     r.call(0x6000,5000);
-    assert.equal(String.fromCharCode(...printed),'SID NOT DETECTED IN SLOT 4\r');
+    assert.equal(String.fromCharCode(...printed),'SID NOT DETECTED\r');
     assert.equal(r.writes.length,0,'no SID writes on failed signature check');
+});
+
+test('standalone demo locates SID signatures in slot 4 and slot 5',()=>{
+    for(const slot of [4,5]){
+        const r=rig(slot);
+        // Running the complete demo is not necessary: stop after INIT's
+        // first native SID register write, which proves the scan succeeded.
+        r.memory[0x1FE]=0xFF;r.memory[0x1FF]=0xFE;
+        r.cpu.setState({pc:0x6000,sp:0xFD,p:0x24});
+        let reachedSID=false;
+        r.cpu.setExecutionCondition(state=>{
+            reachedSID=true;
+            return true;
+        },r.binary.symbols.CLEAR_SID);
+        let n=0;
+        while(!reachedSID && n<5000){r.cpu.cycle();n++;}
+        assert.ok(reachedSID,'SID card in slot '+slot+' was not discovered');
+    }
 });
