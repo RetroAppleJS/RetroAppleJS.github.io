@@ -12,8 +12,10 @@ function SIDAudio()
     var device=this, owner=null, io=null;
     const SAMPLE_RATE=22050, FIFO_LENGTH=8192, MAX_BLOCK=2048;
     const TARGET_AUDIO_LEAD=0.15, MAX_BLOCKS_PER_CYCLE=8, START_LEAD=0.025;
-    const ATTACK=[.002,.008,.016,.024,.038,.056,.068,.080,.100,.250,.500,.800,1,3,5,8];
-    const DECAY=[.006,.024,.048,.072,.114,.168,.204,.240,.300,.750,1.5,2.4,3,9,15,24];
+    // SID ADSR rate-counter periods, measured in SID clock cycles.
+    // Levels are eight-bit, with stepped exponential decay/release.
+    const RATE_PERIODS=[9,32,63,95,149,220,267,313,392,977,1954,3126,3907,11720,19532,31251];
+    const RATE_WRAP=0x8000;
     const PHASE=16777216;
     var registers=new Uint8Array(32);
     var voices=[], sidModel=6581, sidClock=985248, hostClock=1021800;
@@ -29,8 +31,8 @@ function SIDAudio()
 
     function newVoice()
     {
-        return {phase:0,noise:0x7ffff8,envelope:0,stage:"release",
-                releaseSlope:0,wrap:false};
+        return {phase:0,noise:0x7ffff8,level:0,stage:"release",
+                rateCounter:0,expCounter:0,wrap:false};
     }
     function clearVoices(){ voices=[newVoice(),newVoice(),newVoice()]; }
     clearVoices();
@@ -62,27 +64,62 @@ function SIDAudio()
         gain.connect(audio.destination);
         return audio;
     }
+    function expDivider(level)
+    {
+        // Exponential threshold stages from the established SID/reSID model.
+        if(level>=0x5d)return 1;
+        if(level>=0x36)return 2;
+        if(level>=0x1a)return 4;
+        if(level>=0x0e)return 8;
+        if(level>=0x06)return 16;
+        return 30;
+    }
+    function clockEnvelope(v,sustain)
+    {
+        if(v.stage==="attack"){
+            if(v.level<255)v.level++;
+            if(v.level===255){v.stage="decay";v.expCounter=0;}
+        }else if(v.stage==="decay" || v.stage==="release"){
+            if(v.stage==="decay" && v.level<=sustain){
+                v.stage="sustain";
+                return;
+            }
+            if(!v.level)return;
+            if(++v.expCounter>=expDivider(v.level)){
+                v.expCounter=0;
+                v.level--;
+                if(v.stage==="decay" && v.level<=sustain)
+                    v.stage="sustain";
+            }
+        }
+    }
     function envelopeStep(v,base)
     {
-        var ad=registers[base+5],sr=registers[base+6],ctrl=registers[base+4];
-        var sustain=((sr>>4)&15)/15,dt=1/SAMPLE_RATE;
-        if(!(ctrl&1) && v.stage!=="release") {
-            v.stage="release";
-            v.releaseSlope=v.envelope/Math.max(dt,DECAY[sr&15]);
+        var ad=registers[base+5],sr=registers[base+6];
+        var sustain=((sr>>4)&15)*17;
+        if(v.stage==="sustain" && v.level>sustain)v.stage="decay";
+
+        // Each PCM sample spans ~45 SID clock cycles at PAL / 22.05 kHz.
+        // Clock the 15-bit rate counter and process multiple envelope steps
+        // where necessary, including the nine-cycle fastest attack.
+        // Changing a period does not reset the counter: if the new period
+        // is already passed, wait for 0x8000 wrap (SID ADSR delay behavior).
+        var remaining=sidClock/SAMPLE_RATE;
+        var guard=0;
+        while(remaining>0 && guard++<16){
+            var period=RATE_PERIODS[v.stage==="attack" ? (ad>>4)&15 :
+                         (v.stage==="decay"||v.stage==="sustain") ? ad&15 : sr&15];
+            var until=period>v.rateCounter ? period-v.rateCounter :
+                      RATE_WRAP-v.rateCounter+period;
+            if(remaining<until){
+                v.rateCounter=(v.rateCounter+remaining)%RATE_WRAP;
+                break;
+            }
+            remaining-=until;
+            v.rateCounter=0;
+            clockEnvelope(v,sustain);
         }
-        if(v.stage==="attack"){
-            v.envelope+=dt/ATTACK[(ad>>4)&15];
-            if(v.envelope>=1){v.envelope=1;v.stage="decay";}
-        }else if(v.stage==="decay"){
-            v.envelope-=dt*(1-sustain)/DECAY[ad&15];
-            if(v.envelope<=sustain){v.envelope=sustain;v.stage="sustain";}
-        }else if(v.stage==="sustain"){
-            // Sustain-level register writes take effect without a new GATE.
-            v.envelope=sustain;
-        }else{
-            v.envelope=Math.max(0,v.envelope-dt*v.releaseSlope);
-        }
-        return v.envelope;
+        return v.level/255;
     }
     function voiceOutput(index)
     {
@@ -184,10 +221,10 @@ function SIDAudio()
         var old=registers[reg];registers[reg]=value;
         if(reg<21 && reg%7===4){
             var v=voices[(reg/7)|0],gate=value&1,oldGate=old&1;
-            if(gate&&!oldGate){v.stage="attack";}
+            if(gate&&!oldGate){v.stage="attack";v.expCounter=0;}
             if(!gate&&oldGate){
                 v.stage="release";
-                v.releaseSlope=v.envelope/DECAY[registers[(reg/7|0)*7+6]&15];
+                v.expCounter=0;
             }
             if(value&8){v.phase=0;v.noise=0x7ffff8;}
         }
@@ -199,10 +236,12 @@ function SIDAudio()
         reg=Number(reg)&31;
         if(reg===0x19||reg===0x1A)return 0xFF; // unconnected POT lines
         if(reg===0x1B)return (voices[2].phase>>>16)&255;
-        if(reg===0x1C)return Math.round(voices[2].envelope*255)&255;
+        if(reg===0x1C)return voices[2].level&255;
         return 0xFF; // write-only registers do not expose shadow as readback
     };
     this.getRegisters=function(){return new Uint8Array(registers);};
+    // Useful for per-voice ADSR regressions; these are raw ENV levels, 0..255.
+    this.getEnvelopeLevels=function(){return new Uint8Array(voices.map(v=>v.level));};
     this.setModel=function(model)
     {
         model=Number(model);

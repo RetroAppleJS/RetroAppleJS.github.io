@@ -201,3 +201,69 @@ test('SID scheduler keeps 10 FPS audio continuous by draining more than one bloc
   await device.init('audio_off');
   assert.equal(device.getAudioStats().queued,0,'audio-off flushes queued buffers');
 });
+
+
+test('SID 6581 release 9 drops early with exponential envelope, rather than lingering linearly',()=>{
+  const {device}=rig();
+  device.writeRegister(0x05,0x00); // fastest attack / fastest decay
+  device.writeRegister(0x06,0xF9); // sustain=15, release=9 (~750 ms)
+  device.writeRegister(0x04,0x11); // triangle + GATE
+  device.renderOffline(2205); // 100 ms: envelope must have reached 255
+  assert.equal(device.getEnvelopeLevels()[0],255);
+  device.writeRegister(0x04,0x10); // gate OFF, keep triangle oscillator enabled
+
+  device.renderOffline(2205); // +100 ms
+  const after100=device.getEnvelopeLevels()[0];
+  assert.ok(after100>=125&&after100<=180,
+    'exponential release should fall to ~155/255 by 100 ms, got '+after100);
+
+  device.renderOffline(4410); // +200 ms = 300 ms total
+  const after300=device.getEnvelopeLevels()[0];
+  assert.ok(after300>=15&&after300<=55,
+    'release should be quiet after 300 ms, got '+after300);
+  device.renderOffline(11025); // +500 ms
+  assert.equal(device.getEnvelopeLevels()[0],0,'release must reach zero by ~800 ms');
+});
+
+test('SID GATE retriggers attack from current envelope without abrupt silence',()=>{
+  const {device}=rig();
+  device.writeRegister(0x05,0x80); // 100 ms attack
+  device.writeRegister(0x06,0xF9); // sustain max, release 9
+  device.writeRegister(0x04,0x11);
+  device.renderOffline(3000); // ~136 ms: reached 255
+  assert.equal(device.getEnvelopeLevels()[0],255);
+  device.writeRegister(0x04,0x10);
+  device.renderOffline(2205);
+  const current=device.getEnvelopeLevels()[0];
+  assert.ok(current>100&&current<200);
+  device.writeRegister(0x04,0x11);
+  assert.equal(device.getEnvelopeLevels()[0],current,
+    'a note-on does not reset the SID envelope to zero');
+  device.renderOffline(441); // 20 ms; a SID rate-counter change may delay attack
+  assert.ok(device.getEnvelopeLevels()[0]>=current,
+    'retrigger must never clear the current envelope level');
+  device.renderOffline(1102); // another 50 ms, long enough for counter wrap
+  assert.ok(device.getEnvelopeLevels()[0]>current,
+    'attack resumes after the SID rate-counter transition');
+});
+
+test('SID sustain changes and oscillator TEST do not instantly overwrite the ADSR envelope',()=>{
+  const {device}=rig();
+  device.writeRegister(0x05,0x00);
+  device.writeRegister(0x06,0xF9);
+  device.writeRegister(0x04,0x11);
+  device.renderOffline(2205);
+  assert.equal(device.getEnvelopeLevels()[0],255);
+  device.writeRegister(0x04,0x19); // TEST set, GATE still held
+  assert.equal(device.getEnvelopeLevels()[0],255);
+  device.renderOffline(1000);
+  assert.equal(device.getEnvelopeLevels()[0],255);
+  device.writeRegister(0x06,0x89); // reduce sustain from F to 8
+  assert.equal(device.getEnvelopeLevels()[0],255,
+    'sustain register change should not instantly jump envelope');
+  device.renderOffline(1000);
+  assert.ok(device.getEnvelopeLevels()[0]<255,
+    'lower sustain should start a decay, rather than hard stepping');
+  device.reset();
+  assert.deepEqual(Array.from(device.getEnvelopeLevels()),[0,0,0]);
+});

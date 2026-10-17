@@ -118,3 +118,35 @@ the original 4,715-byte Mr. Heli C64 music program directly on the Apple II
 6502. It calls the original INIT and PLAY routines, writes native $D400 SID
 registers and restores Apple II zero page on keypress. No SID-to-AY conversion,
 C64 emulation or changes to EMU_CARD_SID / EMU_DEVICE_SID_audio are required.
+
+
+## SID ADSR articulation improvement
+
+The native Mr. Heli Phase 2A test revealed notes lingering into later notes even
+though the original 6502 player correctly toggles the SID voice GATE bits.
+The original `SIDAUDIO` used one floating-point, **linear envelope ramp** per
+voice; decay and release remained too prominent until the very end.
+
+`EMU_DEVICE_SID_audio.js` now uses a **0–255 envelope counter**, 15-bit SID
+rate timing and the standard six stepped exponential decay/release dividers
+from the reSID envelope model. Clocking uses the selected PAL/NTSC *SID chip*
+frequency and occurs at the audio sample times; no changes are made to
+Apple II CPU timing, the native SID register bus, or the foreground PSID
+player. GATE transitions switch stages, TEST resets the oscillator without
+clearing the envelope, and note-on can retrigger attack from a partial release.
+The 15-bit counter is preserved across rate changes to approximate the
+documented SID ADSR delay behavior.
+
+For example, on a fully raised envelope with a release nibble of `$9`, the
+new renderer drops to approximately **155/255 after 100 ms**, **38/255 after
+300 ms**, and **0 by approximately 800 ms**, instead of a linear fade which
+would remain much louder. The sound should stop masking subsequent notes much
+earlier, although the underlying release still has the proper quiet tail.
+
+For diagnostics, `getEnvelopeLevels()` returns a snapshot of the three raw
+ADSR counters (0–255). `tests/sid_card.test.js` includes the release curve,
+GATE retrigger, oscillator TEST, and sustain-change regressions.
+
+This is an **ADSR-focused** correction, not a complete reSID port. The SID
+analog filter, combined waveforms, some oscillator/noise details and possible
+subsample GATE transition effects remain approximations.
