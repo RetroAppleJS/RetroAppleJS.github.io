@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const pack=require('../tools/SID_Phase1_pack.js');
 
-function rig(){
+function rig(cardDetected=true){
     const sandbox=vm.createContext({
         console,Uint8Array,Float32Array,Math,Number,
         oEMU:{component:{CPU:{},IO:{}}}
@@ -27,7 +27,11 @@ function rig(){
     card.restart();
     const hw={
         irq_signal:false,nmi_signal:0,
-        read(addr){return addr===0xC0D0?0x53:memory[addr&0xFFFF];},
+        read(addr){
+            if(addr===0xC0D0)return cardDetected?0x53:0xFF;
+            if(addr===0xFDED)return 0x60; // unit-test COUT ROM stub (RTS)
+            return memory[addr&0xFFFF];
+        },
         write(addr,value,offset){
             addr&=0xFFFF;value&=255;
             if(addr<0xC000)memory[addr]=value;
@@ -85,7 +89,7 @@ test('PSID version 2 packs the SAME executable bytes and original INIT/PLAY addr
     assert.deepEqual(Array.from(sid.subarray(0x7E)),Array.from(program.bytes));
 });
 
-test('real emulator 6502 runs INIT then five playback stages with native SID writes',()=>{
+test('real emulator 6502 runs INIT then six playback stages with native SID writes',()=>{
     const r=rig();
     r.call(0x6003);
     let registers=r.audio.getRegisters();
@@ -123,4 +127,15 @@ test('standalone WAIT50 delay stays within ±5% of PAL 50 Hz on a 1.02 MHz host'
     const nominal=1021800/50;
     assert.ok(Math.abs(delay-nominal)/nominal<0.05,
         'software cadence must be within 5%, got '+delay+' cycles');
+});
+
+test('standalone demo reports a missing slot-5 SID card before returning',()=>{
+    const r=rig(false),printed=[];
+    r.cpu.setExecutionCondition(state=>{
+        printed.push(state.a&0x7F);
+        return false; // continue into the stub COUT ROM RTS
+    },0xFDED);
+    r.call(0x6000,5000);
+    assert.equal(String.fromCharCode(...printed),'SID NOT DETECTED IN SLOT 5\r');
+    assert.equal(r.writes.length,0,'no SID writes on failed signature check');
 });
