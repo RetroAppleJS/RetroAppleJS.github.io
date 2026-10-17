@@ -37,7 +37,19 @@ SIDVOL      EQU $D418
 DEMO
             LDA SIDSIG
             CMP #$53
-            BNE NO_CARD
+            BEQ CARD_FOUND
+            ; A failed slot-signature check used to return silently.
+            ; Print an explicit message through the Apple II monitor COUT.
+            LDX #$00
+SID_MISSING
+            LDA SID_ERROR,X
+            BEQ DEMO_EXIT
+            ORA #$80
+            JSR $FDED               ; Apple II monitor character output
+            INX
+            BNE SID_MISSING
+DEMO_EXIT   RTS
+CARD_FOUND
             JSR MUSIC_INIT
 DEMO_LOOP
             JSR WAIT50
@@ -45,7 +57,7 @@ DEMO_LOOP
             LDA PHASE
             CMP #$06
             BCC DEMO_LOOP
-NO_CARD     RTS
+            RTS
 
 ; Entry INIT: A is PSID subtune index (ignored: this fixture has one subtune).
 MUSIC_INIT
@@ -225,6 +237,11 @@ WAIT_INNER
             DEX
             BNE WAIT_OUTER
             RTS
+
+SID_ERROR
+            .BYTE $53,$49,$44,$20,$4E,$4F,$54,$20,$44,$45,$54,$45
+            .BYTE $43,$54,$45,$44,$20,$49,$4E,$20,$53,$4C,$4F,$54
+            .BYTE $20,$35,$0D,$00
 
 PHASE       .BYTE $00
 FRAME       .BYTE $00
