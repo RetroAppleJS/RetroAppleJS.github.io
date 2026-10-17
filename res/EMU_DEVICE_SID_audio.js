@@ -54,7 +54,6 @@ function SIDAudio()
                  (typeof webkitAudioContext!=="undefined" ? webkitAudioContext : null);
         if(!Ctor)return null;
         audio=new Ctor({latencyHint:"interactive"});
-        this.audio=audio;
         device.audio=audio;
         gain=audio.createGain();
         gain.gain.value=.25*volume/100;
