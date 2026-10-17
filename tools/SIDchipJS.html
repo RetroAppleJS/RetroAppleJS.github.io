@@ -21,6 +21,7 @@
   <script type="text/javascript" src="TOOLS_Header.js"></script>
   <script type="text/javascript" src="../res/COM_MAIN.js"></script>
   <script type="text/javascript" src="../res/jsSID.js"></script>
+  <script type="text/javascript" src="SID2MB_capture.js"></script>
   <script type="text/javascript" src="../res/pako.min.js"></script>
 
   <meta name="description" content="">
@@ -158,21 +159,28 @@ function init_gui(_o)
 
   <br><br>
 
-  <table class=nomargins style='display:inline-block;border:1px solid gray; vertical-align: top;color:black'>
+  <table class=nomargins style='display:inline-block;border:1px solid gray;vertical-align:top;color:black'>
     <tr>
       <td class=no_margins style="vertical-align:top;">
-        <textarea style="width:500px;height:100px" id="hexcode">
-        &#10;&#10;      >> APPLE II EXPORT <<
-        </textarea>
+        <b>Extract SID register stream for Apple II Mockingboard</b><br>
+        <textarea id="hexcode" readonly style="width:500px;height:180px;box-sizing:border-box;font:12px monospace"
+          placeholder="50 Hz SREG monitor dump will appear here."></textarea>
       </td>
       <td class=no_margins style="vertical-align:top;">
         <small>
-        Start at $<input value="6000" id=hexadr size="4">Hex<br>
-        <button onclick="export_apple()">Export to Apple II</button>
+          Subtune (1-based) <input id="sid2mbSubtune" type="number" min="1" max="256" value="1" style="width:5em"><br>
+          Duration (seconds) <input id="sid2mbSeconds" type="number" min="1" max="240" value="30" style="width:5em"><br>
+          <label><input id="sid2mbLoop" type="checkbox" checked> Loop</label><br>
+          <button type="button" onclick="sid2mbCapture()">Extract SID registers</button><br>
+          <button id="sid2mbDownload" type="button" onclick="sid2mbDownload()" disabled>Download .SREG</button>
         </small>
       </td>
     </tr>
   </table>
+  <p id="sid2mbStatus" style="color:black" role="status">Load a PSID, choose a subtune, then extract a 50 Hz register stream.</p>
+  <small>Data is encoded for the resident SID2MB player at $6000; no C64 machine code is exported.
+    The stream is limited to $6000-$BFFF. DOS and ProDOS may occupy part of this memory.
+    SID analog filters and mid-frame register changes cannot be reproduced by this snapshot format.</small>
   <hr>
   
   <footer><small>Based on jsSID <span id="ver"></span> by Hermit - a javascript SID emulator and player for the Web Audio API</small></footer>
@@ -274,6 +282,8 @@ function init_gui(_o)
     oCOM.writeText(document.getElementById('titledisp'),SIDplayer.gettitle());
     oCOM.writeText(document.getElementById('authdisp'),SIDplayer.getauthor());
     oCOM.writeText(document.getElementById('infodisp'),SIDplayer.getinfo());
+    var captureSubtune = document.getElementById('sid2mbSubtune');
+    if (captureSubtune) { captureSubtune.max = SIDplayer.getsubtunes(); captureSubtune.value = st+1; }
   }
 
   function showvol(pos) {
@@ -297,30 +307,6 @@ function init_gui(_o)
   //     ██    ███████ ██ ██          █████   ██    ██ ██ ██  ██ ██         ██    ██ ██    ██ ██ ██  ██ ███████ 
   //     ██    ██   ██ ██ ██          ██      ██    ██ ██  ██ ██ ██         ██    ██ ██    ██ ██  ██ ██      ██ 
   //     ██    ██   ██ ██ ███████     ██       ██████  ██   ████  ██████    ██    ██  ██████  ██   ████ ███████
-
-  var hextab= ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F'];
-  var getHexByte    = function(v) { return hextab[v>>4]+hextab[v&0xf] }
-  var getHexWord    = function(v) { return ''+hextab[Math.floor(v/0x1000)]+hextab[Math.floor((v&0x0f00)/256)]+hextab[Math.floor((v&0xf0)/16)]+hextab[v&0x000f] }
-
-  function export_apple()
-  {
-      var b64 = document.getElementById("b64").value;
-      if(b64.charCodeAt(1)==32) { alert("First paste a Base64 string into the text area"); return} 
-      var bin = SIDplayer._base64ToArray(b64);
-      var org_adr = parseInt(document.getElementById("hexadr").value,16);
-      var adr = org_adr;
-    
-      document.getElementById("hexcode").value = "CALL-151\n"
-      for(var i=0;i<bin.length;i+=16)
-      {
-      document.getElementById("hexcode").value += getHexWord(adr)+": ";
-      for(var j=0;j<16;j++) document.getElementById("hexcode").value += getHexByte(bin[i+j])+" ";
-      adr += 16;
-      document.getElementById("hexcode").value += "\n"
-      }
-      document.getElementById("hexcode").value += String.fromCharCode(2)+"\n"
-      document.getElementById("hexcode").value += "BSAVE SONG.SID,A$"+org_adr+",L$"+getHexWord(bin.length)+"\n"
-  }
 
   function load_file(file_obj)
   {
