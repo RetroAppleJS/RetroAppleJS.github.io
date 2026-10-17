@@ -3,7 +3,7 @@
 ; Assembler: RetroAppleJS ASM_core, dialect raJS (also multi)
 ; Load address: $6000 (screen must not use HGR page 2 at $4000-$5FFF)
 ;
-; CALL 24576 ($6000) = run five-second self-contained demo
+; CALL 24576 ($6000) = run six-second self-contained demo
 ; CALL 24579 ($6003) = initialize music player (PSID INIT)
 ; CALL 24582 ($6006) = advance one music tick (PSID PLAY, 50 Hz expected)
 ; CALL 24585 ($6009) = stop, silence SID
@@ -43,7 +43,7 @@ DEMO_LOOP
             JSR WAIT50
             JSR MUSIC_PLAY
             LDA PHASE
-            CMP #$05
+            CMP #$06
             BCC DEMO_LOOP
 NO_CARD     RTS
 
@@ -63,7 +63,7 @@ CLEAR_SID
 ; Entry PLAY: exactly one scheduled callback. No clock or ROM dependencies.
 MUSIC_PLAY
             LDA PHASE
-            CMP #$05
+            CMP #$06
             BCS PLAY_EXIT
             INC FRAME
             LDA FRAME
@@ -88,13 +88,18 @@ MUSIC_STOP
 ; Stage 2: sawtooth
 ; Stage 3: noise percussion/timbre
 ; Stage 4: three-voice C major chord, all routed through low-pass filter
-; Stage 5: stop with GATE off and master volume zero.
+; Stage 5: same instruments with ring modulation and hard sync
+; Stage 6: stop with GATE off and master volume zero.
 APPLY_PHASE
             JSR MUSIC_STOP
             LDA PHASE
-            CMP #$05
-            BCC CHECK_PHASE4
+            CMP #$06
+            BCC CHECK_PHASE5
             JMP PHASE_DONE
+CHECK_PHASE5
+            CMP #$05
+            BNE CHECK_PHASE4
+            JMP MOD_SOUND
 CHECK_PHASE4
             CMP #$04
             BEQ CHORD
@@ -120,7 +125,9 @@ PULSE_SOUND
             STA $D406               ; sustain max, short release
             LDA #$0F
             STA SIDVOL
-            LDA #$41                 ; pulse + gate
+            LDA #$48                 ; pulse + TEST, reset phase
+            STA SIDCTRL1
+            LDA #$41                 ; release TEST, pulse + gate
             STA SIDCTRL1
             RTS
 
@@ -189,6 +196,20 @@ CHORD
             STA SIDCTRL2             ; triangle + gate
             LDA #$41
             STA SIDCTRL3             ; pulse + gate
+            RTS
+
+MOD_SOUND
+            ; The chord retains the three frequencies, ADSR and filter setup
+            ; from the preceding phase. Ring uses previous oscillator as its
+            ; source; SYNC uses the preceding oscillator's phase wrap.
+            LDA #$1F
+            STA SIDVOL
+            LDA #$21
+            STA SIDCTRL1             ; saw + gate
+            LDA #$15
+            STA SIDCTRL2             ; triangle + RING + gate
+            LDA #$43
+            STA SIDCTRL3             ; pulse + SYNC + gate
 PHASE_DONE  RTS
 
 ; A simple CPU-only ~50 Hz polling delay. This is not an interrupt source.
