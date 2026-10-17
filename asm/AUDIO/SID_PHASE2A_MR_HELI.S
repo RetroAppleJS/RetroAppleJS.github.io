@@ -187,9 +187,61 @@ VALIDATE_PSID
             LDA $601A
             CMP #$48
             BNE PSID_BAD
-            CLC
+            ; Reject partial/corrupted copies of the staged PSID body.
+            JSR CHECK_PSID_SUM
             RTS
 PSID_BAD
+            SEC
+            RTS
+
+; 16-bit additive checksum of all 4715 payload bytes, reference $3B46.
+; Not a cryptographic signature; catches common incomplete/corrupt transfers.
+CHECK_PSID_SUM
+            LDA #$00
+            STA SUMLO
+            STA SUMHI
+            LDA #$7E
+            STA SUMSRC+1
+            LDA #$60
+            STA SUMSRC+2
+            LDY #$12
+SUM_PAGE
+            LDX #$00
+SUMSRC
+            LDA $607E,X
+            CLC
+            ADC SUMLO
+            STA SUMLO
+            BCC SUM_NOCARRY
+            INC SUMHI
+SUM_NOCARRY
+            INX
+            BNE SUMSRC
+            INC SUMSRC+2
+            DEY
+            BNE SUM_PAGE
+
+            LDX #$00
+SUM_TAIL
+            LDA $727E,X
+            CLC
+            ADC SUMLO
+            STA SUMLO
+            BCC SUM_T_NOCARRY
+            INC SUMHI
+SUM_T_NOCARRY
+            INX
+            CPX #$6B
+            BNE SUM_TAIL
+            LDA SUMLO
+            CMP #$46
+            BNE BAD_SUM
+            LDA SUMHI
+            CMP #$3B
+            BNE BAD_SUM
+            CLC
+            RTS
+BAD_SUM
             SEC
             RTS
 
@@ -274,5 +326,7 @@ ERROR_TEXT
 
 ERRORCD     .BYTE $00
 ACTIVE      .BYTE $00
+SUMLO       .BYTE $00
+SUMHI       .BYTE $00
 
             .END
