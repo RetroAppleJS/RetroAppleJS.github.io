@@ -256,6 +256,25 @@ function jsSID(bufferlen, background_noise)
     this.getplaytime = function() {
         return parseInt(playtime);
     }
+    // Produce SID register snapshots without going through WebAudio output.
+    // Intended for Apple II SID2MB SREG playback-stream export.
+    // "subt" is zero-based; C64 SID file song numbers begin at 1.
+    this.captureSIDFrames = function(frameCount, subt, rate) {
+        frameCount = Math.max(0, Math.min(12000, frameCount | 0));
+        rate = Number(rate) || 50;
+        if (rate !== 50) throw new Error('SID2MB v1 supports 50 Hz capture only');
+        if (!loaded) throw new Error('Load a SID file first');
+        try { this.pause(); } catch (e) { /* no WebAudio connection */ }
+        init((subt == null ? subtune : subt) | 0);
+        var samples = 0;
+        var frames = [];
+        for (var i = 0; i < frameCount; i++) {
+            var end = Math.round((i + 1) * samplerate / rate);
+            while (samples < end) { play(); ++samples; }
+            frames.push(new Uint8Array(memory.subarray(0xD400, 0xD419)));
+        }
+        return frames;
+    };
     this.setmodel = function(model) {
         SID_model = model;
     }
