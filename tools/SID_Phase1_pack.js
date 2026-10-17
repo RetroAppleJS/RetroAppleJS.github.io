@@ -30,7 +30,8 @@ function assemble(){
     if(bytes[0]!==0x4C || bytes[3]!==0x4C ||
        bytes[6]!==0x4C || bytes[9]!==0x4C)
         throw new Error('Expected four JMP entry stubs');
-    return {bytes,listing:result.listingText,entry:{run:LOAD,init:INIT,play:PLAY,stop:0x6009}};
+    return {bytes,listing:result.listingText,symbols:result.symtab,
+        entry:{run:LOAD,init:INIT,play:PLAY,stop:0x6009}};
 }
 function packPSID(bytes){
     if(!(bytes instanceof Uint8Array))throw new TypeError('Expected assembled bytes');
