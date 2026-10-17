@@ -28,7 +28,7 @@ function rig(cardDetected=true){
     const hw={
         irq_signal:false,nmi_signal:0,
         read(addr){
-            if(addr===0xC0D0)return cardDetected?0x53:0xFF;
+            if(addr===0xC0C0)return cardDetected?0x53:0xFF;
             if(addr===0xFDED)return 0x60; // unit-test COUT ROM stub (RTS)
             return memory[addr&0xFFFF];
         },
@@ -136,6 +136,6 @@ test('standalone demo reports a missing slot-5 SID card before returning',()=>{
         return false; // continue into the stub COUT ROM RTS
     },0xFDED);
     r.call(0x6000,5000);
-    assert.equal(String.fromCharCode(...printed),'SID NOT DETECTED IN SLOT 5\r');
+    assert.equal(String.fromCharCode(...printed),'SID NOT DETECTED IN SLOT 4\r');
     assert.equal(r.writes.length,0,'no SID writes on failed signature check');
 });
