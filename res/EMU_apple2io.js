@@ -427,6 +427,23 @@ function Apple2IO(vid,hostHardware)
         rebuildDeviceHooks();
     }
 
+    // Appended bus listener rather than mapped memory handler: allows the
+    // motherboard ROM, MS16K and other memory cards to retain their writes.
+    // Only the 32 SID address cycles incur this expansion-card lookup.
+    this.observeSIDWrite=function(addr,value,ctx)
+    {
+        if((Number(addr)&0xFFE0)!==0xD400)return false;
+        var observed=false;
+        for(var slotN in this.slots)
+        {
+            var card=this.SLOT2obj(slotN);
+            if(card && card.id && card.id.PCODE==="SID" &&
+               typeof card.observeBusWrite==="function")
+                observed=card.observeBusWrite(addr,value,ctx)||observed;
+        }
+        return observed;
+    };
+
     this.provisionPeripheral = function(owner,model)
     {
         if(!owner) return false;
