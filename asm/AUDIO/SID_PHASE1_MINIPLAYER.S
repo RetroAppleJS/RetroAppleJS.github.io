@@ -8,7 +8,7 @@
 ; CALL 24582 ($6006) = advance one music tick (PSID PLAY, 50 Hz expected)
 ; CALL 24585 ($6009) = stop, silence SID
 ;
-; Built for PCODE SID in preferred SLOT 4; $C0C0 must read 'S' ($53).
+; Auto-detects SID in physical slots 1-7; preferred slot 4 ($C0C0).
 ; Writes go DIRECTLY to C64-style $D400-$D418, no address translation.
 ; The demo uses CPU busy waiting for approximately 50 Hz: not a CIA/VIA IRQ.
 ; Host CPU ~1021800 Hz -> ~50 ticks/s. Never pretend cycle accuracy here.
@@ -25,7 +25,6 @@ INIT        JMP MUSIC_INIT
 PLAY        JMP MUSIC_PLAY
 STOP        JMP MUSIC_STOP
 
-SIDSIG      EQU $C0C0
 SIDFREQ1    EQU $D400
 SIDFREQ2    EQU $D407
 SIDFREQ3    EQU $D40E
@@ -35,17 +34,26 @@ SIDCTRL3    EQU $D412
 SIDVOL      EQU $D418
 
 DEMO
-            LDA SIDSIG
-            CMP #$53
+            ; Probe the signature register ($C080 + slot*16).
+            ; Native $D400 writes are slot-independent once SID is found.
+            LDX #$10                 ; slot 1: $C090
+FIND_SID
+            LDA $C080,X
+            CMP #$53                 ; "S" = SID card signature
             BEQ CARD_FOUND
-            ; A failed slot-signature check used to return silently.
-            ; Print an explicit message through the Apple II monitor COUT.
+            TXA
+            CLC
+            ADC #$10
+            TAX
+            CPX #$80                 ; slots 1 through 7 only
+            BCC FIND_SID
+            ; No SID signature: explain instead of silently returning.
             LDX #$00
 SID_MISSING
             LDA SID_ERROR,X
             BEQ DEMO_EXIT
             ORA #$80
-            JSR $FDED               ; Apple II monitor character output
+            JSR $FDED                ; Apple II monitor character output
             INX
             BNE SID_MISSING
 DEMO_EXIT   RTS
@@ -240,8 +248,7 @@ WAIT_INNER
 
 SID_ERROR
             .BYTE $53,$49,$44,$20,$4E,$4F,$54,$20,$44,$45,$54,$45
-            .BYTE $43,$54,$45,$44,$20,$49,$4E,$20,$53,$4C,$4F,$54
-            .BYTE $20,$34,$0D,$00
+            .BYTE $43,$54,$45,$44,$0D,$00
 
 PHASE       .BYTE $00
 FRAME       .BYTE $00
