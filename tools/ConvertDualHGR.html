@@ -1,0 +1,1239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ConvertDualHGR — dual-page compositor with WebGL 120 Hz preview</title>
+<style>
+:root { color-scheme:dark; --bg:#101419; --pane:#192129; --pane2:#202a34; --edge:#354452; --fg:#ecf2f8; --soft:#b4c2d0; --accent:#76d7f8; --ok:#9be5b5; --warn:#edc17b; --err:#f68e93; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.48 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+button, select, input { font:inherit; color:inherit; }
+button,select { padding:7px 10px; background:#25313b; border:1px solid #435365; border-radius:7px; }
+button { cursor:pointer; } button:hover:enabled { background:#32424f; border-color:var(--accent); } button:disabled { opacity:.42; cursor:not-allowed; }
+button.primary { color:#081c2b; background:#7ad8f7; border-color:#7ad8f7; font-weight:700; }
+button.primary:hover:enabled { background:#a3e8ff; }
+button.flat { background:transparent; }
+select { max-width:100%; }
+input[type="range"] { accent-color:var(--accent); width:100%; }
+.app { max-width:1600px; margin:auto; padding:15px; }
+header { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:14px; }
+h1 { font-size:21px; letter-spacing:.01em; margin:0; line-height:1.15; }
+h1 small { display:block; font-size:12px; color:var(--soft); font-weight:400; margin-top:4px; }
+h2 { font-size:16px; margin:0 0 9px; } h3 { margin:0 0 6px; font-size:13px; color:#d8e5f2; }
+p { margin:8px 0; }
+.tag { font-size:12px; padding:3px 9px; border:1px solid #405362; border-radius:20px; color:#afcadd; }
+.header-actions { margin-left:auto; display:flex; gap:7px; align-items:center; flex-wrap:wrap; }
+.layout { display:grid; grid-template-columns: 310px minmax(0, 1fr); gap:12px; }
+.panel { border:1px solid var(--edge); border-radius:11px; background:var(--pane); padding:13px; min-width:0; }
+.control-panel { align-self:start; }
+.group { border-top:1px solid #354452; margin-top:15px; padding-top:12px; }
+.group:first-of-type { margin-top:0; padding-top:0; border-top:0; }
+.item { display:grid; grid-template-columns:1fr auto; align-items:center; gap:8px; margin:10px 0 4px; }
+.item label { color:#c4d1df; } .item output { color:#e9f1f9; font-variant-numeric:tabular-nums; }
+.field { width:100%; margin-top:4px; }
+.buttonrow { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+small,.muted { color:var(--soft); }
+.main { min-width:0; }
+.top-preview { display:grid; grid-template-columns:minmax(0, 1fr) minmax(210px,280px); gap:12px; }
+.output-panel { display:flex; flex-direction:column; gap:8px; }
+.canvas-frame { background:#030608; border:1px solid #42515f; border-radius:7px; overflow:hidden; position:relative; aspect-ratio:280/192; }
+canvas { width:100%; height:100%; display:block; image-rendering:pixelated; }
+#animated, #animatedFallback { position:absolute; inset:0; pointer-events:none; }
+.check-line { display:flex; align-items:flex-start; gap:8px; margin:9px 0; cursor:pointer; }
+.check-line input { margin-top:3px; accent-color:var(--accent); }
+.canvas-frame.dragover { outline:3px dashed var(--accent); outline-offset:-5px; }
+.subline { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+.pill { background:#243d42; color:#c1fff0; padding:4px 10px; border-radius:20px; font-size:12px; font-variant-numeric:tabular-nums; }
+.status { font-size:12px; padding:8px 10px; border:1px solid #354452; background:#121a21; border-radius:7px; min-height:37px; }
+.status.error { color:var(--err); } .status.good { color:var(--ok); } .status.running { color:var(--warn); }
+.info-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.metric { border:1px solid #3b4a57; border-radius:7px; padding:7px; background:#151f27; }
+.metric dt { font-size:11px; color:var(--soft); } .metric dd { margin:0; font-size:16px; font-weight:700; font-variant-numeric:tabular-nums; }
+.inspector { font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace; white-space:pre-wrap; word-break:break-word; background:#111920; border:1px solid #364651; padding:9px; border-radius:7px; }
+.thumbs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:12px; }
+.thumb-title { display:flex; justify-content:space-between; align-items:baseline; gap:4px; margin-bottom:8px; }
+.thumb-title h2 { margin:0; }
+.note { font-size:12px; color:#a9b9c8; margin-top:10px; }
+.checks { margin-top:12px; }
+.checklog { font:12px/1.4 ui-monospace,Consolas,monospace; white-space:pre-wrap; color:#afd9c8; margin-top:8px; }
+.copy { font-size:11px; color:var(--soft); margin:16px 3px 0; }
+.hidden { display:none !important; }
+@media(max-width:1130px) { .top-preview { grid-template-columns:1fr; } .summary-panel { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; } .summary-panel > h2 { grid-column:1/-1; } .summary-panel > .group { margin-top:0; padding-top:0; border-top:0; } }
+@media(max-width:800px) { .layout { grid-template-columns:1fr; } .top-preview { grid-template-columns:1fr; } .summary-panel { display:block; } .thumbs { grid-template-columns:1fr; } .app { padding:10px; } }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+<header>
+  <div><h1>ConvertDualHGR<small>Apple II HGR + HGR2 · selectable 75/25 or 50/50 duty cycle</small></h1></div>
+  <span class="tag" id="backendTag">WASM optimizer · default</span><span class="tag">WebGL page animation</span>
+  <div class="header-actions"><button id="openBtn">Open image…</button><button id="demoBtn">Load demo</button><button id="cameraStart">Start camera</button><button id="cameraStop" disabled>Stop camera</button><button id="convertBtn" class="primary">Convert</button><button id="cancelBtn" disabled>Cancel</button></div>
+  <input id="openFile" type="file" accept="image/*" class="hidden">
+  <video id="cameraVideo" autoplay muted playsinline class="hidden" aria-hidden="true"></video>
+</header>
+<div class="layout">
+<aside class="panel control-panel">
+  <h2>Conversion controls</h2>
+  <div class="group">
+    <h3>Image preparation</h3>
+    <div class="item"><label for="fit">Fit source</label></div>
+    <select class="field" id="fit"><option value="cover">Fill and crop</option><option value="contain">Fit with black bars</option><option value="stretch">Stretch to 280 × 192</option></select>
+    <div class="note">Drop a photograph anywhere on this tool, or open a local image. Conversion uses the 280 × 192 source canvas.</div>
+  </div>
+  <div class="group">
+    <h3>Live camera capture</h3>
+    <div class="item"><label for="cameraFps">Capture limit</label><output id="cameraFpsOut">10 fps</output></div>
+    <input id="cameraFps" type="range" min="1" max="30" step="1" value="10">
+    <div id="cameraStatus" class="status" role="status" aria-live="polite" style="margin-top:9px">Camera stopped.</div>
+    <div class="note">Start camera to capture frames continuously and convert each latest available frame in a Web Worker. Capture may run faster than HGR optimization; intermediate frames are intentionally dropped. Use <strong>Fast</strong> search quality for higher throughput. Camera capture converts automatically even if Auto-convert is unchecked.</div>
+  </div>
+  <div class="group">
+    <h3>Optimization</h3>
+    <div class="item"><label for="backend">Processing backend</label></div>
+    <select class="field" id="backend"><option value="wasm" selected>WebAssembly (WASM) · default</option><option value="javascript">JavaScript · reference</option></select>
+    <div class="note">The same 7-pixel byte-pair search and spatial dithering algorithm runs as compiled native WebAssembly or JavaScript. WASM is the default; if unavailable, the tool reports the issue and falls back to JavaScript. The WebGL animation remains independent of the conversion worker.</div>
+    <div class="item"><label for="quality">Search quality</label></div>
+    <select class="field" id="quality"><option value="fast">Fast · greedy search</option><option value="balanced" selected>Balanced · local + joint refinement</option><option value="high">High · additional refinement</option></select>
+    <div class="item"><label for="duty">HGR / HGR2 duty cycle</label></div>
+    <select class="field" id="duty"><option value="0.75" selected>75% HGR / 25% HGR2</option><option value="0.5">50% HGR / 50% HGR2</option></select>
+    <div class="item"><label for="blend">Composite color model</label></div>
+    <select class="field" id="blend"><option value="srgb" selected>Direct RGB (weighted page mixing)</option><option value="linear-light">Linear-light mixing (optional)</option></select>
+    <div class="item"><label for="ordered">Ordered dither strength</label><output id="orderedOut">5</output></div>
+    <input id="ordered" type="range" min="0" max="30" step="1" value="5">
+    <div class="item"><label for="diffusion">Error diffusion</label><output id="diffusionOut">80%</output></div>
+    <input id="diffusion" type="range" min="0" max="100" step="5" value="80">
+    <div class="item"><label for="luma">Luminance emphasis</label><output id="lumaOut">1.6×</output></div>
+    <input id="luma" type="range" min="0.5" max="4" step="0.1" value="1.6">
+    <div class="item"><label for="flicker">Color-switch penalty</label><output id="flickerOut">0.006</output></div>
+    <input id="flicker" type="range" min="0" max="0.05" step="0.001" value="0.006">
+    <div class="note">The color-switch penalty discourages widely different page colors in the optimizer.</div>
+  </div>
+  <div class="group">
+    <h3>Preview &amp; updates</h3>
+    <label class="check-line" for="animate"><input id="animate" type="checkbox"><span>Animate HGR/HGR2 page flipping</span></label>
+    <div class="item"><label for="flipFps">Page-flip frame rate</label><output id="flipFpsOut">60 Hz</output></div>
+    <input id="flipFps" type="range" min="10" max="120" step="1" value="60">
+    <div id="flipStatus" class="note" aria-live="off">Preview renderer idle. Supports up to 120 Hz where browser and monitor permit.</div>
+    <div class="note">WebGL alternates three HGR frames per HGR2 frame at 75/25, or one of each at 50/50. The clock stays active while new camera conversions replace both page textures atomically. The selected 10–120 Hz flip rate is limited by the actual display/browser refresh; WebGL cannot force a 60 Hz monitor to show 120 distinct frames.</div>
+    <label class="check-line" for="autoConvert"><input id="autoConvert" type="checkbox" checked><span>Auto-convert after changing a control</span></label>
+    <div class="note">Optimization changes and new still images automatically restart conversion after a short debounce. Live camera capture continuously converts the newest frame independently of this checkbox. Animation controls do not require reconversion.</div>
+  </div>
+  <div class="group">
+    <h3>Output files</h3>
+    <div class="buttonrow"><button id="save1" disabled>HGR ($2000)</button><button id="save2" disabled>HGR2 ($4000)</button></div>
+    <div class="buttonrow"><button id="saveBoth" disabled>Both pages · 16 KB</button><button id="savePng" disabled>Composite PNG</button></div>
+    <div class="note">Each binary image is 8,192 bytes in native Apple II scanline memory layout. The combined download contains the HGR page followed by HGR2.</div>
+  </div>
+  <div class="group">
+    <h3>Verification</h3>
+    <button id="testBtn" class="flat">Run self-tests</button>
+    <div id="testOutput" class="checklog" aria-live="polite"></div>
+  </div>
+</aside>
+<main class="main">
+  <div class="top-preview">
+    <section class="panel output-panel">
+      <div class="subline"><h2 id="combinedTitle">Combined output — 75% HGR + 25% HGR2</h2><span class="pill" id="previewMode">Static composite</span></div>
+      <div class="canvas-frame" id="outputFrame"><canvas id="mixed" width="280" height="192" aria-label="Weighted HGR and HGR2 composite output"></canvas><canvas id="animated" width="280" height="192" class="hidden" aria-label="WebGL alternating HGR and HGR2 images at selected duty cycle"></canvas><canvas id="animatedFallback" width="280" height="192" class="hidden" aria-label="2D fallback HGR/HGR2 animation"></canvas></div>
+      <div class="muted" style="font-size:12px" id="previewCaption">Static bitmap decoded from both exported HGR pages. Enable animation to compare actual page flipping against the averaged preview.</div>
+      <div id="status" class="status">Demo source is being prepared.</div>
+    </section>
+    <section class="panel summary-panel">
+      <h2>Conversion results</h2>
+      <dl class="info-grid">
+        <div class="metric"><dt>RGB error (RMSE)</dt><dd id="rmse">—</dd></div>
+        <div class="metric"><dt>YUV objective / px</dt><dd id="objective">—</dd></div>
+        <div class="metric"><dt>Convert time</dt><dd id="elapsed">—</dd></div>
+        <div class="metric"><dt>Processing</dt><dd id="backendUsed">—</dd></div>
+        <div class="metric"><dt>Output pages</dt><dd>2 × 8 KB</dd></div>
+      </dl>
+      <div class="group"><h3>Pixel inspector</h3>
+        <div class="note">Move the pointer over the combined image to inspect decoded colors from both pages.</div>
+        <div id="inspector" class="inspector" style="margin-top:8px">X/Y: —
+Source: —
+HGR / HGR2: —
+Composite: —
+Bytes: —</div>
+      </div>
+    </section>
+  </div>
+  <div class="thumbs">
+    <section class="panel"><div class="thumb-title"><h2>Source image / live camera</h2><small>280 × 192</small></div><div class="canvas-frame"><canvas id="source" width="280" height="192"></canvas></div></section>
+    <section class="panel"><div class="thumb-title"><h2>HGR</h2><small id="hgrDutyLabel">75% duty / $2000</small></div><div class="canvas-frame"><canvas id="layer1" width="280" height="192"></canvas></div></section>
+    <section class="panel"><div class="thumb-title"><h2>HGR2</h2><small id="hgr2DutyLabel">25% duty / $4000</small></div><div class="canvas-frame"><canvas id="layer2" width="280" height="192"></canvas></div></section>
+  </div>
+  <div class="panel checks"><h2>Interpretation</h2>
+    <p>The core optimizer runs in <strong>WebAssembly by default</strong> (with a JavaScript alternative) and chooses two legal HGR byte streams jointly for the <strong>selected duty cycle</strong>. Each pixel's displayed color is decoded from its own byte phase bit and neighboring pixel bits, including transitions between bytes. The static preview and PNG use the weighted mix <code>duty × HGR_RGB + (1 − duty) × HGR2_RGB</code> by default, reconstructed from the actual exported HGR bytes.</p>
+    <p class="muted">WebGL displays a repeating 3:1 sequence at 75/25 or 1:1 at 50/50, with two pairs of GPU textures so newly converted camera frames replace both pages on a single animation callback. This is a display-rate preview, not a raster/Vaporlock hardware emulator. A browser or display below 120 Hz cannot present 120 unique frames per second; the preview adapts to the measured refresh rate and reports its achieved rate. The static PNG export always uses the selected duty ratio.</p>
+  </div>
+</main>
+</div>
+<div class="copy">Standalone HTML; all scripts are embedded. Camera access requires browser permission and a secure context (HTTPS or localhost; local file access varies by browser). Camera frames and local images never leave your browser.</div>
+</div>
+<script id="dualhgr-core">
+/*
+ * DualHGR — dependency-free Apple II HGR/HGR2 temporal-color quantizer.
+ *
+ * Input: 280x192 RGB (or RGBA) bytes. Output: two 8192-byte HGR pages.
+ * JavaScript reference implementation; equivalent compiled WebAssembly engine
+ * is embedded below and used by default. Neither engine requires downloads.
+ *
+ * The displayed preview models the selected duty cycle (75/25 or 50/50).
+ * This is a software MODEL, not proof that a real CRT will integrate page
+ * alternation into a stable color without visible flicker.
+ *
+ * Palette and 3-pixel artifact rule correspond to RetroAppleJS's native
+ * WebGPU HGR renderer (res/EMU_DEVICE_video_WebGPU.js, October 2026).
+ */
+(function(root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.DualHGR = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function() {
+  'use strict';
+  const W = 280, H = 192, COLS = 40, PAGE_SIZE = 8192;
+  const PHASE_COLORS = [
+    [0, 0, 0],       // 0 black
+    [208, 67, 229], // 3 violet/purple
+    [47, 149, 229], // 6 medium blue
+    [208, 106, 26], // 9 orange
+    [47, 188, 26],  // 12 light green
+    [255, 255, 255] // 15 white
+  ];
+  const palette = new Float32Array(16 * 3);
+  for (let i = 0; i < PHASE_COLORS.length; i++) {
+    const p = [0, 3, 6, 9, 12, 15][i];
+    for (let c = 0; c < 3; c++) palette[p * 3 + c] = PHASE_COLORS[i][c];
+  }
+  // Indexed by (phase*2 + horizontal_parity)*8 + 3-bit neighbor pattern.
+  const artifactLUT = new Uint8Array(32);
+  for (let phase = 0; phase < 2; phase++)
+    for (let parity = 0; parity < 2; parity++)
+      for (let bits = 0; bits < 8; bits++) {
+        const white = (200 >> bits) & 1;
+        const colored = (36 >> bits) & 1;
+        const phaseIndex = 1 + ((((parity ^ bits) << 1) & 2) |
+                                 (((parity ^ bits) & 1) ^ phase));
+        artifactLUT[(phase * 2 + parity) * 8 + bits] =
+          white ? 15 : (colored ? phaseIndex * 3 : 0);
+      }
+
+  const bayer4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const srgbToLinear = v => {
+    const s = v / 255;
+    return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  const linearToSrgb = v => {
+    const s = clamp(v, 0, 1);
+    return 255 * (s <= 0.0031308 ? 12.92 * s : 1.055 * Math.pow(s, 1 / 2.4) - 0.055);
+  };
+  function toMetric(r, g, b, dst, off) {
+    dst[off] = 0.299 * r + 0.587 * g + 0.114 * b;
+    dst[off + 1] = 0.500 * r - 0.419 * g - 0.081 * b;
+    dst[off + 2] = -0.169 * r - 0.331 * g + 0.500 * b;
+  }
+  // Pixel colors are decoded from real HGR byte bits, not from a fictitious
+  // independently selectable six-color pixel palette.
+  function colorAt(linearRow, x) {
+    if (x < 0 || x >= W) return 0;
+    const col = (x / 7) | 0;
+    const bit = x - 7 * col;
+    const word = linearRow[col];
+    const left = bit === 0 ? (col ? (linearRow[col - 1] >> 6) & 1 : 0)
+                           : (word >> (bit - 1)) & 1;
+    const me = (word >> bit) & 1;
+    const right = bit === 6 ? (col < COLS - 1 ? linearRow[col + 1] & 1 : 0)
+                             : (word >> (bit + 1)) & 1;
+    return artifactLUT[(((word >> 7) * 2 + (x & 1)) * 8) + left + (me << 1) + (right << 2)];
+  }
+  function offset(y, col) {
+    if (!(y >= 0 && y < H && col >= 0 && col < COLS)) throw new RangeError('HGR address out of range');
+    return ((y & 7) << 10) + ((y & 0x38) << 4) + ((y >> 6) * 40) + col;
+  }
+  function pack(linear) {
+    if (linear.length !== H * COLS) throw new RangeError('Expected 7680 consecutive HGR bytes');
+    const page = new Uint8Array(PAGE_SIZE);
+    for (let y = 0; y < H; y++)
+      for (let col = 0; col < COLS; col++) page[offset(y, col)] = linear[y * COLS + col];
+    return page;
+  }
+  function unpack(page) {
+    if (page.length !== PAGE_SIZE) throw new RangeError('Expected an 8192-byte HGR page');
+    const linear = new Uint8Array(H * COLS);
+    for (let y = 0; y < H; y++)
+      for (let col = 0; col < COLS; col++) linear[y * COLS + col] = page[offset(y, col)];
+    return linear;
+  }
+  function makeModel(duty, mode, flickerPenalty) {
+    const rgb = new Float32Array(16 * 16 * 3);
+    const metric = new Float32Array(16 * 16 * 3);
+    const instability = new Float32Array(16 * 16);
+    for (let a = 0; a < 16; a++) for (let b = 0; b < 16; b++) {
+      const o = (a * 16 + b) * 3;
+      let difference = 0;
+      for (let c = 0; c < 3; c++) {
+        const ca = palette[a * 3 + c], cb = palette[b * 3 + c];
+        difference += (ca - cb) * (ca - cb);
+        rgb[o + c] = mode === 'srgb'
+          ? duty * ca + (1 - duty) * cb
+          : linearToSrgb(duty * srgbToLinear(ca) + (1 - duty) * srgbToLinear(cb));
+      }
+      instability[a * 16 + b] = flickerPenalty * difference;
+      toMetric(rgb[o], rgb[o + 1], rgb[o + 2], metric, o);
+    }
+    return { rgb, metric, instability };
+  }
+  // Evaluate the modified 7-pixel byte AND its two affected boundary pixels.
+  // Each other page is simultaneously decoded and the *combined* color scored.
+  function localScore(A, B, col, target, model, luminanceWeight) {
+    let score = 0;
+    const lo = Math.max(0, 7 * col - 1), hi = Math.min(W - 1, 7 * col + 7);
+    const mix = model.metric, flicker = model.instability;
+    for (let x = lo; x <= hi; x++) {
+      const pair = colorAt(A, x) * 16 + colorAt(B, x);
+      const po = pair * 3, tx = x * 3;
+      const dy = target[tx] - mix[po];
+      const du = target[tx + 1] - mix[po + 1];
+      const dv = target[tx + 2] - mix[po + 2];
+      score += luminanceWeight * dy * dy + du * du + dv * dv + flicker[pair];
+    }
+    return score;
+  }
+  function chooseByte(A, B, layer, col, target, model, lumaWeight) {
+    const row = layer === 0 ? A : B;
+    let best = row[col], bestScore = Infinity;
+    for (let p = 0; p < 256; p++) {
+      row[col] = p;
+      const score = localScore(A, B, col, target, model, lumaWeight);
+      if (score < bestScore) { best = p; bestScore = score; }
+    }
+    row[col] = best;
+    return bestScore;
+  }
+  // Candidate shortlist allows both bytes to move at once, escaping some of
+  // the local minima of pure layer-by-layer coordinate descent.
+  function shortlist(A, B, layer, col, target, model, lumaWeight, width) {
+    const row = layer === 0 ? A : B, original = row[col];
+    const best = [];
+    for (let p = 0; p < 256; p++) {
+      row[col] = p;
+      const cost = localScore(A, B, col, target, model, lumaWeight);
+      if (best.length === width && cost >= best[best.length - 1][0]) continue;
+      let k = best.length;
+      while (k > 0 && cost < best[k - 1][0]) k--;
+      best.splice(k, 0, [cost, p]);
+      if (best.length > width) best.pop();
+    }
+    row[col] = original;
+    const patterns = best.map(p => p[1]);
+    for (const extra of [original, original ^ 0x80, 0, 127, 128, 255, 0x55, 0xaa])
+      if (!patterns.includes(extra)) patterns.push(extra);
+    return patterns;
+  }
+  function choosePair(A, B, col, target, model, lumaWeight, width) {
+    const pa = shortlist(A, B, 0, col, target, model, lumaWeight, width);
+    const pb = shortlist(A, B, 1, col, target, model, lumaWeight, width);
+    let bestA = A[col], bestB = B[col];
+    let best = localScore(A, B, col, target, model, lumaWeight);
+    for (const a of pa) {
+      A[col] = a;
+      for (const b of pb) {
+        B[col] = b;
+        const score = localScore(A, B, col, target, model, lumaWeight);
+        if (score < best) { best = score; bestA = a; bestB = b; }
+      }
+    }
+    A[col] = bestA; B[col] = bestB;
+  }
+  function pairOutput(A, B, x, model, output, off) {
+    const idx = (colorAt(A, x) * 16 + colorAt(B, x)) * 3;
+    output[off] = model.rgb[idx];
+    output[off + 1] = model.rgb[idx + 1];
+    output[off + 2] = model.rgb[idx + 2];
+  }
+  function sourceRGB(input, opts) {
+    if (!(input instanceof Uint8Array || input instanceof Uint8ClampedArray))
+      throw new TypeError('Source must be Uint8Array or Uint8ClampedArray');
+    const pixels = W * H;
+    const channels = input.length === pixels * 3 ? 3 : input.length === pixels * 4 ? 4 : 0;
+    if (!channels) throw new RangeError('Source image must be 280x192 RGB or RGBA');
+    if (channels === 3) return input;
+    const out = new Uint8Array(pixels * 3), bg = opts.background || [0, 0, 0];
+    for (let p = 0; p < pixels; p++) {
+      const so = p * 4, to = p * 3, alpha = input[so + 3] / 255;
+      for (let c = 0; c < 3; c++) out[to + c] = Math.round(input[so + c] * alpha + bg[c] * (1 - alpha));
+    }
+    return out;
+  }
+  function convert(input, options = {}) {
+    const opts = {
+      duty: 0.75, blend: 'linear-light', passes: 2,
+      jointCandidates: 6, orderedStrength: 5, diffusion: 0.8,
+      flickerPenalty: 0.006, luminanceWeight: 1.6, ...options
+    };
+    if (!(opts.duty > 0 && opts.duty < 1)) throw new RangeError('duty must be between 0 and 1');
+    if (!['srgb', 'linear-light'].includes(opts.blend)) throw new RangeError('blend must be srgb or linear-light');
+    if (!Number.isInteger(opts.passes) || opts.passes < 0 || opts.passes > 10)
+      throw new RangeError('passes must be an integer between 0 and 10');
+    if (!Number.isInteger(opts.jointCandidates) || opts.jointCandidates < 0 || opts.jointCandidates > 32)
+      throw new RangeError('jointCandidates must be an integer between 0 and 32');
+    for (const k of ['orderedStrength', 'diffusion', 'flickerPenalty', 'luminanceWeight'])
+      if (!Number.isFinite(opts[k]) || opts[k] < 0) throw new RangeError(k + ' must be non-negative');
+    const original = sourceRGB(input, opts);
+    const model = makeModel(opts.duty, opts.blend, opts.flickerPenalty);
+    const linearHgr = new Uint8Array(H * COLS), linearHgr2 = new Uint8Array(H * COLS);
+    const previewRGB = new Uint8Array(W * H * 3);
+    const err = new Float32Array((W + 2) * 3), nextErr = new Float32Array((W + 2) * 3);
+    const target = new Float32Array(W * 3), tmp = new Float32Array(3);
+    const A = new Uint8Array(COLS), B = new Uint8Array(COLS);
+    let sumSquaredRGB = 0, sumColorObjective = 0, sumFlickerPenalty = 0;
+
+    for (let y = 0; y < H; y++) {
+      A.fill(0); B.fill(0); nextErr.fill(0);
+      // Target includes carried error from the preceding scanline and a
+      // zero-mean 4x4 ordered threshold (dithers within and between bytes).
+      for (let x = 0; x < W; x++) {
+        const so = (y * W + x) * 3, to = x * 3;
+        const bias = opts.orderedStrength * ((bayer4[(y & 3) * 4 + (x & 3)] + .5) / 16 - .5);
+        const eo = (x + 1) * 3;
+        toMetric(
+          clamp(original[so] + opts.diffusion * err[eo] + bias, 0, 255),
+          clamp(original[so + 1] + opts.diffusion * err[eo + 1] + bias, 0, 255),
+          clamp(original[so + 2] + opts.diffusion * err[eo + 2] + bias, 0, 255),
+          target, to
+        );
+      }
+      const carry = new Float32Array(3);
+      // Left-to-right greedy byte-pair construction, with blockwise horizontal
+      // error transmission (the seven pixels cannot be selected independently).
+      for (let col = 0; col < COLS; col++) {
+        const x0 = col * 7;
+        for (let x = x0; x < x0 + 7; x++) {
+          const o = x * 3;
+          for (let c = 0; c < 3; c++) target[o + c] += carry[c];
+        }
+        chooseByte(A, B, 0, col, target, model, opts.luminanceWeight);
+        chooseByte(A, B, 1, col, target, model, opts.luminanceWeight);
+        chooseByte(A, B, 0, col, target, model, opts.luminanceWeight);
+        // YUV residual, averaged over this indivisible seven-pixel block.
+        carry.fill(0);
+        for (let x = x0; x < x0 + 7; x++) {
+          const p = (colorAt(A, x) * 16 + colorAt(B, x)) * 3;
+          const o = x * 3;
+          for (let c = 0; c < 3; c++) carry[c] += target[o + c] - model.metric[p + c];
+        }
+        for (let c = 0; c < 3; c++) carry[c] = clamp(carry[c] * (7 / 16 / 7), -25, 25);
+      }
+      // Joint refinement: re-evaluate changed boundary pixels on BOTH sides;
+      // sweep direction alternates to reduce left-to-right bias.
+      for (let pass = 0; pass < opts.passes; pass++) {
+        const reverse = (pass & 1) !== 0;
+        for (let i = 0; i < COLS; i++) {
+          const col = reverse ? COLS - 1 - i : i;
+          chooseByte(A, B, 0, col, target, model, opts.luminanceWeight);
+          chooseByte(A, B, 1, col, target, model, opts.luminanceWeight);
+          if (opts.jointCandidates)
+            choosePair(A, B, col, target, model, opts.luminanceWeight, opts.jointCandidates);
+        }
+      }
+      linearHgr.set(A, y * COLS);
+      linearHgr2.set(B, y * COLS);
+      // Next-scanline diffusion uses residuals against the non-dithered source.
+      for (let x = 0; x < W; x++) {
+        const po = (y * W + x) * 3;
+        pairOutput(A, B, x, model, tmp, 0);
+        for (let c = 0; c < 3; c++) {
+          const made = tmp[c], wanted = original[po + c];
+          previewRGB[po + c] = Math.round(made);
+          const delta = wanted - made;
+          sumSquaredRGB += delta * delta;
+          // Vertical taps of Floyd–Steinberg; the horizontal component is
+          // approximated above by transmitting error to the next 7px group.
+          const e = clamp(err[(x + 1) * 3 + c] * opts.diffusion + delta, -96, 96);
+          nextErr[x * 3 + c] += e * 3 / 16;
+          nextErr[(x + 1) * 3 + c] += e * 5 / 16;
+          nextErr[(x + 2) * 3 + c] += e * 1 / 16;
+        }
+        const pair = colorAt(A, x) * 16 + colorAt(B, x);
+        const mixOffset = pair * 3;
+        toMetric(original[po], original[po + 1], original[po + 2], tmp, 0);
+        const dy = tmp[0] - model.metric[mixOffset];
+        const du = tmp[1] - model.metric[mixOffset + 1];
+        const dv = tmp[2] - model.metric[mixOffset + 2];
+        sumColorObjective += opts.luminanceWeight * dy * dy + du * du + dv * dv;
+        sumFlickerPenalty += model.instability[pair];
+      }
+      err.set(nextErr);
+      if (typeof opts.onProgress === 'function') opts.onProgress(y + 1, H);
+    }
+    return {
+      hgrPage: pack(linearHgr), hgr2Page: pack(linearHgr2),
+      linearHgr, linearHgr2, previewRGB,
+      rgbRMSE: Math.sqrt(sumSquaredRGB / (W * H * 3)),
+      // Mean YUV+flicker objective (lower is better), without spatial dither bias.
+      objectiveMSE: (sumColorObjective + sumFlickerPenalty) / (W * H),
+      colorMSE: sumColorObjective / (W * H),
+      duty: opts.duty, blend: opts.blend,
+      // This preview is not a flicker simulation. Its RGB pixels are averaged.
+      width: W, height: H
+    };
+  }
+  function decodeCombined(hgrPage, hgr2Page, options = {}) {
+    const A = unpack(hgrPage), B = unpack(hgr2Page);
+    const model = makeModel(options.duty === undefined ? 0.75 : options.duty,
+                            options.blend || 'linear-light', 0);
+    const rgb = new Uint8Array(W * H * 3), lineA = new Uint8Array(COLS), lineB = new Uint8Array(COLS);
+    const tmp = new Float32Array(3);
+    for (let y = 0; y < H; y++) {
+      lineA.set(A.subarray(y * COLS, (y + 1) * COLS));
+      lineB.set(B.subarray(y * COLS, (y + 1) * COLS));
+      for (let x = 0; x < W; x++) {
+        const o = (y * W + x) * 3;
+        pairOutput(lineA, lineB, x, model, tmp, 0);
+        for (let c = 0; c < 3; c++) rgb[o + c] = Math.round(tmp[c]);
+      }
+    }
+    return rgb;
+  }
+  return { convert, decodeCombined, pack, unpack, offset, colorAt, palette, makeModel };
+});
+
+</script>
+<!-- Freestanding C99 optimizer compiled to wasm32 (-O3), embedded for offline use.
+     Source: dualhgr_wasm.c. Exports all buffers as WebAssembly.Memory offsets. -->
+<script id="dualhgr-wasm" type="text/plain">
+AGFzbQEAAAABIQVgAAF/YAABfGAFf398fHwBf2ACf3wBfGAFf398f38BfwMODQAAAAAAAAABAQECAwQEBQFwAQEBBQQBARAQBggBfwFB0OgZCweI
+AQwGbWVtb3J5AgAKc291cmNlX3B0cgAAB3JnYl9wdHIAAQd5dXZfcHRyAAILcGVuYWx0eV9wdHIAAwlwYWdlMV9wdHIABAlwYWdlMl9wdHIABQtw
+cmV2aWV3X3B0cgAGBHJtc2UABwlvYmplY3RpdmUACAljb2xvcl9tc2UACQdjb252ZXJ0AAoKjDoNCABBkIiAgAALCABBkPSJgAALCABBkIyKgAAL
+CABBkKSKgAALCABBkKyKgAALCABBkOyKgAALCABBkKyLgAALCwBBACsDkJiVgAALCwBBACsDmJiVgAALCwBBACsDoJiVgAAL3yoJBX8DfAZ/A3wB
+fQJ/An0KfwR8I4CAgIAAQeAAayIFJICAgIAAQX8hBgJAIABBCksNACABQSBLDQAgAkQAAAAAAAAAAGMNACADRAAAAAAAAAAAYw0AIAREAAAAAAAA
+AABjDQBBAEKAgKT4gMDBhw83A8jolYAAQQBCgICY+ICgwocPNwPA6JWAAEEAQoCAsPiA4MCHDzcDuOiVgABBAEKAgIz4gIDDhw83A7DolYAAQQAh
+BgNAIAZB0JiVgABqQQA2AgAgBkHImJWAAGpCADcCACAGQcCYlYAAakIANwIAIAZBuJiVgABqQgA3AgAgBkGwmJWAAGpCADcCACAGQSRqIgZBuBpH
+DQALQYBAIQYDQCAGQZDsioAAakEAOgAAIAZBkKyLgABqQQA7AQAgBkGR7IqAAGpBADoAACAGQZKsi4AAakEAOgAAIAZBkuyKgABqQQA6AAAgBkGT
+rIuAAGpBADoAACAGQZPsioAAakEAOgAAIAZBBGoiBg0AC0EAIQdBACEIQZCIgIAAIQlEAAAAAAAAAAAhCkQAAAAAAAAAACELRAAAAAAAAAAAIQxB
+ACENA0BBAEIANwH2spWAAEEAQgA3AKezlYAAQQBCADcB/rKVgABBAEIANwCvs5WAAEEAQgA3AYazlYAAQQBCADcAt7OVgABBAEIANwGOs5WAAEEA
+QgA3AL+zlYAAQQBBADoAoLOVgABBAEEAOwHwspWAAEEAQQA7AKGzlYAAQQBBADYB8rKVgABBAEEANgCjs5WAAEEAQQA7AZazlYAAQQBBADoAx7OV
+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
+</script>
+<script type="text/plain" id="worker-boot">
+// Only JS control/serialization and the sRGB/linear-light mixture LUT stay in
+// JavaScript. WASM owns the full byte-pair pattern search, spatial dithering,
+// HGR memory packing, and reconstructed composite RGB output.
+let wasmReady=null;
+function wasmBase64Bytes(encoded) {
+  const text=atob(encoded.replace(/\s+/g,''));
+  const bytes=new Uint8Array(text.length);
+  for(let i=0;i<text.length;i++)bytes[i]=text.charCodeAt(i);
+  return bytes;
+}
+async function getWasm() {
+  if(!wasmReady) {
+    wasmReady=WebAssembly.instantiate(wasmBase64Bytes(WASM_BASE64),{})
+      .then(result=>result.instance.exports)
+      .catch(error=>{wasmReady=null;throw error;});
+  }
+  return wasmReady;
+}
+async function convertWasm(rgb, options) {
+  if(!(typeof WebAssembly==='object' && typeof WebAssembly.instantiate==='function'))
+    throw new Error('WebAssembly is unavailable');
+  if(rgb.length!==280*192*3)throw new Error('Expected 280×192 RGB input');
+  const w=await getWasm();
+  const model=DualHGR.makeModel(options.duty,options.blend,options.flickerPenalty);
+  const memory=w.memory.buffer;
+  const copy=(name,values,Type)=>{
+    const offset=w[name]();
+    if(offset+values.byteLength>memory.byteLength)throw new Error('WASM buffer out of bounds: '+name);
+    new Type(memory,offset,values.length).set(values);
+  };
+  copy('source_ptr',rgb,Uint8Array);
+  copy('rgb_ptr',model.rgb,Float32Array);
+  copy('yuv_ptr',model.metric,Float32Array);
+  copy('penalty_ptr',model.instability,Float32Array);
+  const code=w.convert(options.passes,options.jointCandidates,options.orderedStrength,
+    options.diffusion,options.luminanceWeight);
+  if(code!==0)throw new Error('WASM optimizer rejected conversion settings (status '+code+')');
+  const bytes=(name,length)=>new Uint8Array(memory,w[name](),length).slice();
+  return {hgrPage:bytes('page1_ptr',8192),hgr2Page:bytes('page2_ptr',8192),
+    previewRGB:bytes('preview_ptr',280*192*3),
+    rgbRMSE:w.rmse(),objectiveMSE:w.objective(),colorMSE:w.color_mse()};
+}
+self.onmessage=async function(event) {
+  const rgb=new Uint8Array(event.data.rgb),opts=event.data.options;
+  const requested=event.data.backend==='javascript'?'javascript':'wasm';
+  let used=requested,fallbackReason='',r;
+  try {
+    if(requested==='wasm') {
+      try {r=await convertWasm(rgb,opts);}
+      catch(error) {
+        // No WebAssembly in the browser? Keep the tool functional, but surface
+        // the fallback clearly instead of misrepresenting JS as WASM.
+        fallbackReason=String(error&&error.message||error);
+        used='javascript';r=DualHGR.convert(rgb,opts);
+      }
+    } else r=DualHGR.convert(rgb,opts);
+    postMessage({kind:'done',backendUsed:used,backendRequested:requested,fallbackReason,
+      hgrPage:r.hgrPage,hgr2Page:r.hgr2Page,
+      previewRGB:r.previewRGB,rgbRMSE:r.rgbRMSE,
+      objectiveMSE:r.objectiveMSE,colorMSE:r.colorMSE},
+      [r.hgrPage.buffer,r.hgr2Page.buffer,r.previewRGB.buffer]);
+  } catch(error) {postMessage({kind:'error',message:String(error&&error.stack||error)});}
+};
+</script>
+<script>
+'use strict';
+const W=280, H=192;
+const $=id=>document.getElementById(id);
+const sourceCanvas=$('source'), mixedCanvas=$('mixed');
+const sourceCtx=sourceCanvas.getContext('2d',{willReadFrequently:true});
+let sourceRGB=null, pages=null, layerRGB=null, compositeRGB=null, imageSource=null, worker=null, lastResult=null, lastOptions=null, completedOptions=null;
+let startedAt=0, jobId=0, autoTimer=null, outputDirty=true;
+let convertedSourceRGB=null, activeSourceSnapshot=null;
+const cameraVideo=$('cameraVideo');
+let cameraStream=null, cameraRunning=false, cameraOpening=false;
+let cameraRaf=null, cameraToken=0, cameraLastCapture=-Infinity;
+let cameraCaptured=0, cameraConverted=0, cameraPending=false;
+let cameraStartTime=0, cameraLastStatus=0;
+
+// WebGL animation is independent of the (potentially slow) optimization worker.
+// Two GPU texture PAIRS permit atomic HGR/HGR2 updates at animation boundaries.
+let animationFrame=null, animationLastLayer=-1;
+let animationLastTime=null, animationSlot=0, animationFraction=0;
+let animationRafTimes=[], animationRefreshHz=0, animationCount=0, animationFlips=0, animationStatsAt=0;
+const AUTO_DELAY_MS=360;
+// Deterministic temporal page selection: 3:1 at 75/25, 1:1 at 50/50.
+function layerForSlot(slot, duty=0.75) {
+  return duty===0.5 ? slot%2 : (slot%4===3 ? 1 : 0);
+}
+function dutyLabel(duty) {
+  const a=Math.round(duty*100);
+  return {hgr:a,hgr2:100-a, ratio:duty===0.5?'1 HGR frame, then 1 HGR2 frame':'3 HGR frames, then 1 HGR2 frame'};
+}
+function updateDutyLabels(duty) {
+  const label=dutyLabel(duty);
+  $('combinedTitle').textContent=`Combined output — ${label.hgr}% HGR + ${label.hgr2}% HGR2`;
+  $('hgrDutyLabel').textContent=`${label.hgr}% duty / $2000`;
+  $('hgr2DutyLabel').textContent=`${label.hgr2}% duty / $4000`;
+}
+const pageFlipper=(() => {
+  const canvas=$('animated'), fallback=$('animatedFallback');
+  let gl=null, ready=false, tried=false, program=null, posBuffer=null, attr=-1, sampler=null;
+  let pairs=null, active=0, pending=null, backend='not initialized', uploads=0, swaps=0;
+  function updateCanvas() {
+    const enabled=$('animate').checked && !!pages && !!layerRGB;
+    canvas.classList.toggle('hidden',!enabled||!ready);
+    fallback.classList.toggle('hidden',!enabled||ready);
+  }
+  function showFallback(reason) {
+    ready=false;backend=reason||'Canvas 2D fallback';updateCanvas();
+  }
+  canvas.addEventListener('webglcontextlost',e=>{
+    e.preventDefault();showFallback('Canvas 2D fallback (WebGL context lost)');
+  });
+  canvas.addEventListener('webglcontextrestored',()=>{
+    ready=false;tried=false;gl=null;
+    initialize();
+    if(layerRGB)pending=layerRGB;
+    updateCanvas();
+  });
+  function shader(type,source) {
+    const item=gl.createShader(type);
+    gl.shaderSource(item,source);gl.compileShader(item);
+    if(!gl.getShaderParameter(item,gl.COMPILE_STATUS)) {
+      const message=gl.getShaderInfoLog(item);gl.deleteShader(item);throw new Error(message);
+    }
+    return item;
+  }
+  function initialize() {
+    if(ready)return true;
+    if(tried)return false;
+    tried=true;
+    try {
+      gl=canvas.getContext('webgl2',{alpha:false,antialias:false,depth:false,stencil:false,preserveDrawingBuffer:true}) ||
+         canvas.getContext('webgl',{alpha:false,antialias:false,depth:false,stencil:false,preserveDrawingBuffer:true});
+      if(!gl)throw new Error('WebGL unavailable');
+      const v=shader(gl.VERTEX_SHADER,`attribute vec2 aPos; varying vec2 vUV;
+        void main(){gl_Position=vec4(aPos,0.0,1.0);vUV=vec2((aPos.x+1.0)*0.5,(1.0-aPos.y)*0.5);}`);
+      const f=shader(gl.FRAGMENT_SHADER,`precision mediump float;varying vec2 vUV;uniform sampler2D uImage;
+        void main(){gl_FragColor=texture2D(uImage,vUV);}`);
+      program=gl.createProgram();gl.attachShader(program,v);gl.attachShader(program,f);
+      gl.linkProgram(program);gl.deleteShader(v);gl.deleteShader(f);
+      if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program));
+      gl.useProgram(program);attr=gl.getAttribLocation(program,'aPos');
+      sampler=gl.getUniformLocation(program,'uImage');
+      posBuffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,posBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(attr);gl.vertexAttribPointer(attr,2,gl.FLOAT,false,0,0);
+      gl.uniform1i(sampler,0);gl.viewport(0,0,W,H);
+      gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
+      pairs=[[],[]];
+      for(let bank=0;bank<2;bank++)for(let layer=0;layer<2;layer++) {
+        const tex=gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D,tex);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+        gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,W,H,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+        pairs[bank].push(tex);
+      }
+      active=0;ready=true;
+      backend=typeof WebGL2RenderingContext!=='undefined' && gl instanceof WebGL2RenderingContext?'WebGL2':'WebGL1';
+      if(layerRGB)pending=layerRGB;
+      updateCanvas();return true;
+    } catch(error) {
+      showFallback('Canvas 2D fallback ('+(error.message||error)+')');return false;
+    }
+  }
+  function toRGBA(rgb) {
+    const rgba=new Uint8Array(W*H*4);
+    for(let i=0,j=0;i<rgb.length;i+=3,j+=4){
+      rgba[j]=rgb[i];rgba[j+1]=rgb[i+1];rgba[j+2]=rgb[i+2];rgba[j+3]=255;
+    }
+    return rgba;
+  }
+  function stage(newLayers) { pending=newLayers; }
+  function hasPending() { return !!pending; }
+  function draw(layer) {
+    if(!ready)initialize();
+    if(ready) {
+      if(pending) {
+        // Upload both decoded pages to the INACTIVE texture bank, then
+        // atomically swap banks on the same presentation callback.
+        const staging=1-active;
+        for(let i=0;i<2;i++) {
+          gl.bindTexture(gl.TEXTURE_2D,pairs[staging][i]);
+          gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,W,H,gl.RGBA,gl.UNSIGNED_BYTE,toRGBA(pending[i]));
+        }
+        active=staging;pending=null;uploads++;swaps++;
+      }
+      gl.useProgram(program);gl.bindBuffer(gl.ARRAY_BUFFER,posBuffer);
+      gl.enableVertexAttribArray(attr);gl.vertexAttribPointer(attr,2,gl.FLOAT,false,0,0);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D,pairs[active][layer]);
+      gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+    } else {
+      const ctx=fallback.getContext('2d');
+      ctx.drawImage($(layer===0?'layer1':'layer2'),0,0,W,H);
+      // Texture uploads are not relevant until the WebGL context recovers.
+    }
+    updateCanvas();
+  }
+  return {initialize,stage,hasPending,draw,updateCanvas,
+    status:()=>({backend,uploads,swaps,ready,pending:!!pending})};
+})();
+function stopAnimation() {
+  if(animationFrame!==null)cancelAnimationFrame(animationFrame);
+  animationFrame=null;animationLastLayer=-1;
+  animationLastTime=null;animationFraction=0;
+  $('animated').classList.add('hidden');
+  $('animatedFallback').classList.add('hidden');
+  $('previewMode').textContent='Static composite';
+  $('flipStatus').textContent='Preview renderer idle. Supports up to 120 Hz where browser and monitor permit.';
+  $('previewCaption').textContent='Static bitmap decoded from both exported HGR pages. Enable animation to compare actual page flipping against the averaged preview.';
+}
+function animationTick(now) {
+  animationFrame=null;
+  if(!$('animate').checked || !pages || !layerRGB){stopAnimation();return;}
+  const duty=completedOptions.duty, label=dutyLabel(duty);
+  const requested=Number($('flipFps').value);
+  if(animationLastTime!==null) {
+    const dt=now-animationLastTime;
+    if(dt>=3 && dt<40) {
+      animationRafTimes.push(dt);
+      if(animationRafTimes.length>70)animationRafTimes.shift();
+    }
+    // Use the median refresh interval, ignoring occasional long conversions.
+    if(animationRafTimes.length>=12) {
+      const sorted=animationRafTimes.slice().sort((a,b)=>a-b);
+      animationRefreshHz=1000/sorted[(sorted.length/2)|0];
+    }
+    // Never skip temporal sequence members. Capping to the measured browser
+    // repaint rate preserves the selected 3:1 or 1:1 duty ratio even when the
+    // user requests 120 Hz on a 60 Hz display (which cannot present 120 flips).
+    const actualTarget=Math.min(requested,animationRefreshHz>0?animationRefreshHz:60);
+    if(dt>=0 && dt<250)animationFraction+=Math.min(dt,50)*actualTarget/1000;
+    if(animationFraction>=1) {
+      animationSlot++;
+      animationFraction=Math.max(0,animationFraction-1);
+      // Deliberately do not catch up multiple lost presentation frames.
+      animationFraction=Math.min(animationFraction,0.999);
+    }
+  }
+  animationLastTime=now;
+  const layer=layerForSlot(animationSlot,duty);
+  if(layer!==animationLastLayer)animationFlips++;
+  animationLastLayer=layer;
+  // Draw on each repaint; new conversion results are swapped in here without
+  // restarting the clock or disconnecting the requestAnimationFrame loop.
+  pageFlipper.draw(layer);
+  $('previewMode').textContent=layer===0?`HGR · ${label.hgr}% duty`:`HGR2 · ${label.hgr2}% duty`;
+  animationCount++;
+  if(!animationStatsAt)animationStatsAt=now;
+  if(now-animationStatsAt>=1000) {
+    const seconds=(now-animationStatsAt)/1000;
+    const renderHz=animationCount/seconds;
+    const flipHz=animationFlips/seconds;
+    const available=animationRefreshHz||renderHz;
+    $('flipStatus').textContent=`${pageFlipper.status().backend} · ${requested} Hz requested · browser ~${available.toFixed(0)} Hz · ${flipHz.toFixed(1)} visible page changes/s${requested>available+3?' (refresh-limited)':''}`;
+    animationCount=0;animationFlips=0;animationStatsAt=now;
+  }
+  animationFrame=requestAnimationFrame(animationTick);
+}
+function startAnimation() {
+  if(!$('animate').checked || !pages || !layerRGB){stopAnimation();return;}
+  const fps=Number($('flipFps').value),label=dutyLabel(completedOptions.duty);
+  $('previewCaption').textContent=`WebGL page flipping at up to ${fps} Hz: ${label.ratio}. New converted pages swap in together without restarting the clock. PNG export stays a static ${label.hgr}/${label.hgr2} composite.`;
+  if(animationFrame!==null)return; // Keep the existing frame clock during live conversion.
+  animationLastLayer=-1;animationSlot=0;animationFraction=0;animationLastTime=null;
+  animationRafTimes=[];animationRefreshHz=0;animationCount=0;animationFlips=0;animationStatsAt=0;
+  pageFlipper.initialize();pageFlipper.stage(layerRGB);
+  pageFlipper.draw(0);
+  pageFlipper.updateCanvas();
+  animationFrame=requestAnimationFrame(animationTick);
+}
+function queueAutoConvert() {
+  if(autoTimer!==null)clearTimeout(autoTimer);
+  autoTimer=null;
+  if(!sourceRGB || !$('autoConvert').checked)return;
+  autoTimer=setTimeout(()=>{autoTimer=null;convert();},AUTO_DELAY_MS);
+}
+function message(text,kind='') { $('status').textContent=text; $('status').className='status'+(kind?' '+kind:''); }
+function rgbaFromRGB(rgb) {
+  const image = new ImageData(W,H);
+  for(let i=0,p=0;i<rgb.length;i+=3,p+=4) {
+    image.data[p]=rgb[i];image.data[p+1]=rgb[i+1];image.data[p+2]=rgb[i+2];image.data[p+3]=255;
+  }
+  return image;
+}
+function renderRGB(canvas,rgb) { canvas.getContext('2d').putImageData(rgbaFromRGB(rgb),0,0); }
+function cameraInfo(text) { $('cameraStatus').textContent=text; }
+function updateCameraButtons() {
+  $('cameraStart').disabled=cameraRunning||cameraOpening;
+  $('cameraStop').disabled=!cameraRunning&&!cameraOpening;
+}
+function stopCamera() {
+  const wasActive=cameraRunning||cameraOpening||cameraStream!==null;
+  // Invalidate any pending getUserMedia()/play() promise too.
+  ++cameraToken;
+  cameraRunning=false;cameraOpening=false;cameraPending=false;
+  if(cameraRaf!==null)cancelAnimationFrame(cameraRaf);
+  cameraRaf=null;
+  if(cameraStream)cameraStream.getTracks().forEach(track=>track.stop());
+  cameraStream=null;
+  cameraVideo.pause();cameraVideo.srcObject=null;
+  updateCameraButtons();
+  cameraInfo(wasActive?'Camera stopped. Last captured and converted images remain available.':'Camera stopped.');
+}
+function drawFitted(source, width, height) {
+  const fit=$('fit').value;
+  sourceCtx.fillStyle='#000';sourceCtx.fillRect(0,0,W,H);
+  sourceCtx.imageSmoothingEnabled=true;sourceCtx.imageSmoothingQuality='high';
+  if(fit==='stretch')sourceCtx.drawImage(source,0,0,W,H);
+  else {
+    const scale=fit==='cover'?Math.max(W/width,H/height):Math.min(W/width,H/height);
+    const dw=width*scale,dh=height*scale;
+    sourceCtx.drawImage(source,(W-dw)/2,(H-dh)/2,dw,dh);
+  }
+}
+function rgbFromCanvas() {
+  const data=sourceCtx.getImageData(0,0,W,H).data;
+  const rgb=new Uint8Array(W*H*3);
+  for(let i=0,p=0;i<data.length;i+=4,p+=3) {rgb[p]=data[i];rgb[p+1]=data[i+1];rgb[p+2]=data[i+2];}
+  return rgb;
+}
+function maybeConvertCamera() {
+  if(!cameraRunning||!cameraPending||worker||autoTimer!==null||!sourceRGB)return;
+  cameraPending=false;
+  convert();
+}
+function cameraTick(now) {
+  cameraRaf=null;
+  if(!cameraRunning)return;
+  const interval=1000/Math.max(1,Number($('cameraFps').value));
+  if(now-cameraLastCapture>=interval && cameraVideo.readyState>=HTMLMediaElement.HAVE_CURRENT_DATA
+      && cameraVideo.videoWidth>0 && cameraVideo.videoHeight>0) {
+    try {
+      drawFitted(cameraVideo,cameraVideo.videoWidth,cameraVideo.videoHeight);
+      sourceRGB=rgbFromCanvas();
+      cameraLastCapture=now;cameraCaptured++;cameraPending=true;outputDirty=true;
+      maybeConvertCamera();
+    } catch(error) {
+      stopCamera();message('Camera frame capture failed: '+error.message,'error');return;
+    }
+  }
+  if(now-cameraLastStatus>=800) {
+    const elapsed=Math.max(0.001,(now-cameraStartTime)/1000);
+    cameraInfo(`Camera active · ${cameraCaptured} captured (${(cameraCaptured/elapsed).toFixed(1)} fps) · ${cameraConverted} converted (${(cameraConverted/elapsed).toFixed(2)} fps) · ${worker?'optimizing':'ready'}${cameraPending?' · newer frame pending':''}`);
+    cameraLastStatus=now;
+  }
+  cameraRaf=requestAnimationFrame(cameraTick);
+}
+async function startCamera() {
+  if(cameraRunning||cameraOpening)return;
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    message('Camera API unavailable. Open this file through HTTPS or localhost in a compatible browser.','error');
+    cameraInfo('Camera access unavailable (requires a supported secure context).');
+    return;
+  }
+  const token=++cameraToken;
+  cameraOpening=true;updateCameraButtons();
+  cameraInfo('Requesting camera permission…');
+  let stream=null;
+  try {
+    stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640},height:{ideal:480}},audio:false});
+    if(token!==cameraToken){stream.getTracks().forEach(track=>track.stop());return;}
+    cameraStream=stream;
+    cameraVideo.srcObject=stream;
+    await cameraVideo.play();
+    if(token!==cameraToken)return;
+    imageSource=null;
+    markDirty(true); // preserve the last animated output while first camera frame is optimized
+    cameraOpening=false;cameraRunning=true;
+    cameraCaptured=0;cameraConverted=0;cameraPending=false;
+    cameraLastCapture=-Infinity;cameraLastStatus=0;cameraStartTime=performance.now();
+    updateCameraButtons();
+    cameraInfo('Camera active · capturing first frame…');
+    const track=stream.getVideoTracks()[0];
+    if(track)track.addEventListener('ended',()=>{if(cameraStream===stream)stopCamera();});
+    cameraRaf=requestAnimationFrame(cameraTick);
+  } catch(error) {
+    if(token!==cameraToken)return;
+    stopCamera();
+    const why=error && (error.name||error.message)||String(error);
+    message('Could not open camera: '+why+'. Check permission and secure-context requirements.','error');
+    cameraInfo('Camera error: '+why);
+  }
+}
+function collectSource() {
+  sourceRGB=rgbFromCanvas();
+  markDirty();
+  if($('autoConvert').checked) {
+    message('Source changed. Automatic conversion scheduled…','running');
+    queueAutoConvert();
+  }
+}
+function markDirty(preservePreview=false) {
+  if(autoTimer!==null){clearTimeout(autoTimer);autoTimer=null;}
+  if(worker) cancelJob(false);
+  outputDirty=true;
+  if(preservePreview && pages) {
+    message('Camera starting; showing the previous HGR pages until the first live conversion is ready.','running');
+    return;
+  }
+  stopAnimation();
+  pages=null; layerRGB=null; compositeRGB=null; lastResult=null; completedOptions=null;
+  updateDutyLabels(Number($('duty').value));
+  ['save1','save2','saveBoth','savePng'].forEach(id=>$(id).disabled=true);
+  ['rmse','objective','elapsed','backendUsed'].forEach(id=>$(id).textContent='—');
+  $('inspector').textContent='X/Y: —\nSource: —\nHGR / HGR2: —\nComposite: —\nBytes: —';
+  const ctx=mixedCanvas.getContext('2d');ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+  ['layer1','layer2'].forEach(id=>{const context=$(id).getContext('2d');context.fillStyle='#000';context.fillRect(0,0,W,H);});
+  message('Source ready. Select Convert to optimize both pages.');
+}
+function loadDemo() {
+  stopCamera();imageSource=null;
+  const ctx=sourceCtx;
+  const gradient=ctx.createLinearGradient(0,0,W,H);
+  gradient.addColorStop(0,'#16194d');gradient.addColorStop(.32,'#bc339b');gradient.addColorStop(.63,'#ff974a');gradient.addColorStop(1,'#a8edc0');
+  ctx.fillStyle=gradient;ctx.fillRect(0,0,W,H);
+  const glow=ctx.createRadialGradient(188,77,4,188,77,102);
+  glow.addColorStop(0,'rgba(255,250,196,.95)');glow.addColorStop(.42,'rgba(255,210,84,.33)');glow.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=glow;ctx.fillRect(0,0,W,H);
+  for(let j=0;j<6;j++) {
+    ctx.fillStyle=`rgba(${38+j*34},${68+j*29},${240-j*25},.9)`;
+    ctx.beginPath();ctx.arc(34+j*34,147-(j%3)*14,15+(j%2)*7,0,Math.PI*2);ctx.fill();
+  }
+  ctx.font='bold 29px system-ui';ctx.fillStyle='#ffffff';ctx.fillText('DUAL HGR',16,41);
+  ctx.font='14px system-ui';ctx.fillText('TWO-PAGE COLOR MIX',18,60);
+  for(let y=169;y<192;y++)for(let x=0;x<W;x+=10) {
+    ctx.fillStyle=(x/10+y)%3?'rgba(7,16,48,.24)':'rgba(240,248,255,.28)';ctx.fillRect(x,y,8,2);
+  }
+  collectSource();
+}
+function drawLoadedImage() {
+  if(!imageSource)return;
+  drawFitted(imageSource,imageSource.width,imageSource.height);
+  collectSource();
+}
+function readFile(file) {
+  if(!file)return;
+  if(!file.type.startsWith('image/')) { message('Please select an image file.','error'); return; }
+  stopCamera();
+  const url=URL.createObjectURL(file),img=new Image();
+  img.onload=()=>{URL.revokeObjectURL(url);imageSource=img;drawLoadedImage();};
+  img.onerror=()=>{URL.revokeObjectURL(url);message('Could not decode this image.','error');};
+  img.src=url;
+}
+function options() {
+  const quality={fast:{passes:0,jointCandidates:0},balanced:{passes:1,jointCandidates:5},high:{passes:2,jointCandidates:8}}[$('quality').value];
+  return {duty:Number($('duty').value),blend:$('blend').value, ...quality,
+    orderedStrength:+$('ordered').value,diffusion:+$('diffusion').value/100,
+    luminanceWeight:+$('luma').value,flickerPenalty:+$('flicker').value};
+}
+function updateReadouts() {
+  $('orderedOut').textContent=$('ordered').value;
+  $('diffusionOut').textContent=$('diffusion').value+'%';
+  $('lumaOut').textContent=Number($('luma').value).toFixed(1)+'×';
+  $('flickerOut').textContent=Number($('flicker').value).toFixed(3);
+  $('flipFpsOut').textContent=$('flipFps').value+' Hz';
+  $('cameraFpsOut').textContent=$('cameraFps').value+' fps';
+  $('backendTag').textContent=$('backend').value==='wasm'?'WASM optimizer · default':'JavaScript optimizer';
+}
+function controlChanged() {
+  updateReadouts();
+  outputDirty=true;
+  if(!pages)updateDutyLabels(Number($('duty').value));
+  if(worker)cancelJob(false);
+  ['save1','save2','saveBoth','savePng'].forEach(id=>$(id).disabled=true);
+  if(cameraRunning) {
+    cameraPending=true;
+    if($('autoConvert').checked) {
+      message('Camera optimization settings changed. Conversion scheduled…','running');
+      queueAutoConvert();
+    } else {
+      message('Camera settings updated. Using them for the next captured frame.','running');
+      maybeConvertCamera();
+    }
+  } else if($('autoConvert').checked) {
+    message('Optimization settings changed. Auto-convert scheduled…','running');
+    queueAutoConvert();
+  } else message('Optimization settings changed. Select Convert to update the pages.');
+}
+function cancelJob(report=true) {
+  if(report && autoTimer!==null){clearTimeout(autoTimer);autoTimer=null;}
+  if(worker) {worker.terminate();worker=null;jobId++;}
+  $('cancelBtn').disabled=true;$('convertBtn').disabled=!sourceRGB;
+  if(report)message('Conversion canceled.');
+}
+function decodeLayer(page) {
+  const linear=DualHGR.unpack(page),rgb=new Uint8Array(W*H*3);
+  for(let y=0;y<H;y++) {
+    const row=linear.subarray(y*40,(y+1)*40);
+    for(let x=0;x<W;x++) {
+      const code=DualHGR.colorAt(row,x),i=(y*W+x)*3,p=code*3;
+      rgb[i]=DualHGR.palette[p];rgb[i+1]=DualHGR.palette[p+1];rgb[i+2]=DualHGR.palette[p+2];
+    }
+  }
+  return rgb;
+}
+function convert() {
+  if(!sourceRGB) {message('Open an image first.','error');return;}
+  if(autoTimer!==null){clearTimeout(autoTimer);autoTimer=null;}
+  cancelJob(false);
+  const id=++jobId;
+  lastOptions=options();startedAt=performance.now();
+  activeSourceSnapshot=sourceRGB.slice();
+  if(cameraRunning)cameraPending=false;
+  $('convertBtn').disabled=true;$('cancelBtn').disabled=false;
+  message('Optimizing both HGR pages using '+($('backend').value==='wasm'?'WebAssembly':'JavaScript')+'…','running');
+  const blob=new Blob([$('dualhgr-core').textContent,'\nconst WASM_BASE64=',JSON.stringify($('dualhgr-wasm').textContent.trim()),';\n',$('worker-boot').textContent],{type:'text/javascript'});
+  const url=URL.createObjectURL(blob);
+  try { worker=new Worker(url); }
+  catch(error) {URL.revokeObjectURL(url);worker=null;if(cameraRunning)stopCamera();message('Unable to start JavaScript worker: '+error.message,'error');$('convertBtn').disabled=false;return;}
+  URL.revokeObjectURL(url);
+  worker.onmessage=e=>{
+    if(id!==jobId)return;
+    if(e.data.kind==='error') {
+      if(cameraRunning)stopCamera();
+      cancelJob(false);message('Conversion failed: '+e.data.message,'error');return;
+    }
+    if(e.data.kind!=='done')return;
+    const t=performance.now()-startedAt;
+    pages=[e.data.hgrPage,e.data.hgr2Page];lastResult=e.data;
+    completedOptions=lastOptions;
+    updateDutyLabels(completedOptions.duty);
+    convertedSourceRGB=activeSourceSnapshot;
+    if(cameraRunning)cameraConverted++;
+    $('backendUsed').textContent=e.data.backendUsed==='wasm'?'WASM':'JavaScript';
+    const l1=decodeLayer(pages[0]),l2=decodeLayer(pages[1]);layerRGB=[l1,l2];
+    renderRGB($('layer1'),l1);renderRGB($('layer2'),l2);
+    // Reconstruct from the exact exported HGR byte streams.
+    const reconstructed=DualHGR.decodeCombined(pages[0],pages[1],lastOptions);
+    compositeRGB=reconstructed;
+    renderRGB(mixedCanvas,reconstructed);
+    let mismatch=0;for(let i=0;i<reconstructed.length;i++)if(reconstructed[i]!==e.data.previewRGB[i])mismatch++;
+    $('rmse').textContent=e.data.rgbRMSE.toFixed(2);
+    $('objective').textContent=e.data.objectiveMSE.toFixed(1);
+    $('elapsed').textContent=(t/1000).toFixed(2)+' s';
+    outputDirty=cameraRunning && cameraPending;
+    ['save1','save2','saveBoth','savePng'].forEach(k=>$(k).disabled=false);
+    cancelJob(false);
+    // Atomically stage new textures; DO NOT restart the live page-flip clock.
+    pageFlipper.stage(layerRGB);
+    startAnimation();
+    message(mismatch?`Converted, but preview parity failed in ${mismatch} channels.`:
+      e.data.fallbackReason?`WebAssembly unavailable (${e.data.fallbackReason}); converted using JavaScript fallback.`:
+      cameraRunning?`Live camera: converted ${cameraConverted} frame(s); new captures continue in the background.`:
+      `Converted successfully. Both pages are hardware-valid 8 KB HGR images; composite verified against exported bytes.`,mismatch?'error':'good');
+    maybeConvertCamera(); // latest-frame-wins: one worker, never an accumulating queue
+  };
+  worker.onerror=e=>{if(id===jobId){if(cameraRunning)stopCamera();cancelJob(false);message('Worker error: '+(e.message||'unknown error'),'error');}};
+  const copy=sourceRGB.slice();
+  worker.postMessage({rgb:copy.buffer,options:lastOptions,backend:$('backend').value},[copy.buffer]);
+}
+function download(name,blob) {
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+function rgbLabel(rgb,x,y) {const i=(y*W+x)*3;return [rgb[i],rgb[i+1],rgb[i+2]].join(', ');}
+function inspect(e) {
+  if(!pages||!layerRGB||!lastResult)return;
+  const r=mixedCanvas.getBoundingClientRect();
+  const x=Math.min(W-1,Math.max(0,Math.floor((e.clientX-r.left)/r.width*W)));
+  const y=Math.min(H-1,Math.max(0,Math.floor((e.clientY-r.top)/r.height*H)));
+  const col=(x/7)|0,off=DualHGR.offset(y,col);
+  const pct=lastOptions.blend==='srgb'?'RGB':'linear-light';
+  const composite=compositeRGB;
+  $('inspector').textContent=`X/Y: ${x} / ${y}  | byte ${col}\nSource (converted): ${rgbLabel(convertedSourceRGB||sourceRGB,x,y)}\nHGR: ${rgbLabel(layerRGB[0],x,y)}\nHGR2: ${rgbLabel(layerRGB[1],x,y)}\nComposite (${pct}): ${rgbLabel(composite,x,y)}\nBytes: $${pages[0][off].toString(16).padStart(2,'0').toUpperCase()} / $${pages[1][off].toString(16).padStart(2,'0').toUpperCase()}  offset $${off.toString(16).padStart(4,'0').toUpperCase()}`;
+}
+function runChecks() {
+  const logs=[],assert=(condition,label)=>{if(!condition)throw new Error(label);logs.push('✓ '+label);};
+  try {
+    assert($('backend').value==='wasm'||$('backend').value==='javascript','Selectable WASM and JavaScript backends');
+    assert($('dualhgr-wasm').textContent.replace(/\s+/g,'').length>10000,'Offline WebAssembly binary embedded');
+    const linear=new Uint8Array(H*40);
+    for(let i=0;i<linear.length;i++)linear[i]=(i*57+29)&255;
+    const packed=DualHGR.pack(linear),round=DualHGR.unpack(packed);
+    assert(round.every((v,i)=>v===linear[i]),'HGR 8192-byte packing roundtrip');
+    assert(DualHGR.offset(0,0)===0&&DualHGR.offset(1,0)===1024&&DualHGR.offset(8,0)===128&&DualHGR.offset(64,0)===40,'Apple II interleaved address mapping');
+    const row=new Uint8Array(40);row[0]=1;
+    assert(DualHGR.colorAt(row,0)===3,'Isolated purple artifact pixel');
+    row[0]=3;assert(DualHGR.colorAt(row,0)===15,'Adjacent illuminated pixels produce white');
+    row[0]=0x40;row[1]=0x01;
+    assert(DualHGR.colorAt(row,6)===15,'Byte-boundary neighbors');
+    const black=new Uint8Array(8192),white=new Uint8Array(8192).fill(0x7f);
+    const mixed=DualHGR.decodeCombined(black,white,{duty:.75,blend:'srgb'});
+    assert(mixed[0]===64&&mixed[1]===64&&mixed[2]===64,'75% black + 25% white = RGB(64,64,64)');
+    const half=DualHGR.decodeCombined(black,white,{duty:.5,blend:'srgb'});
+    assert(half[0]===128&&half[1]===128&&half[2]===128,'50% black + 50% white = RGB(128,128,128)');
+    assert([0,1,2,3,4,5,6,7].map(slot=>layerForSlot(slot,.75)).join(',')==='0,0,0,1,0,0,0,1','75/25 animation: 3 HGR + 1 HGR2');
+    assert([0,1,2,3,4,5,6,7].map(slot=>layerForSlot(slot,.5)).join(',')==='0,1,0,1,0,1,0,1','50/50 animation: alternating HGR / HGR2');
+    assert([.75,.5].includes(+$('duty').value) && $('duty').options.length===2,'75/25 and 50/50 duty cycle options');
+    assert(!$('progress'),'Optimization progress bar removed');
+    assert(+$('flipFps').min===10 && +$('flipFps').max===120 && +$('flipFps').step===1,'Flip rate slider: 10–120 Hz in 1 Hz steps');
+    assert(pageFlipper && typeof pageFlipper.stage==='function' && typeof pageFlipper.draw==='function','WebGL texture staging and rendering');
+    if(pages) {
+      const result=DualHGR.decodeCombined(pages[0],pages[1],lastOptions),pixel=mixedCanvas.getContext('2d').getImageData(0,0,W,H).data;
+      assert(result.every((v,i)=>v===pixel[((i/3)|0)*4+i%3]),'Visible composite equals decoded exported pages');
+    }
+    $('testOutput').textContent=logs.join('\n')+'\nAll checks passed.';
+  } catch(error) { $('testOutput').textContent=logs.join('\n')+'\n✗ '+error.message; }
+}
+$('openBtn').onclick=()=>$('openFile').click();
+$('openFile').onchange=e=>{readFile(e.target.files[0]);e.target.value='';};
+$('demoBtn').onclick=loadDemo;
+$('cameraStart').onclick=startCamera;
+$('cameraStop').onclick=stopCamera;
+$('cameraFps').oninput=updateReadouts;
+$('fit').onchange=()=>{if(!cameraRunning)drawLoadedImage();};
+$('convertBtn').onclick=convert;
+$('cancelBtn').onclick=()=>{if(cameraRunning||cameraOpening)stopCamera();cancelJob();};
+$('animate').onchange=startAnimation;
+$('flipFps').oninput=()=>{updateReadouts();if($('animate').checked)startAnimation();}; // no clock reset
+$('autoConvert').onchange=()=>{
+  if($('autoConvert').checked && outputDirty) {
+    message('Auto-convert enabled. Conversion scheduled…','running');
+    queueAutoConvert();
+  } else if(autoTimer!==null){clearTimeout(autoTimer);autoTimer=null;message('Auto-convert disabled. Select Convert to update the pages.');}
+};
+$('save1').onclick=()=>{if(pages)download('HGR_PAGE1_2000.bin',new Blob([pages[0]],{type:'application/octet-stream'}));};
+$('save2').onclick=()=>{if(pages)download('HGR2_PAGE2_4000.bin',new Blob([pages[1]],{type:'application/octet-stream'}));};
+$('saveBoth').onclick=()=>{if(pages){const both=new Uint8Array(16384);both.set(pages[0]);both.set(pages[1],8192);download('DUAL_HGR_2000_4000.bin',new Blob([both],{type:'application/octet-stream'}));}};
+$('savePng').onclick=()=>{if(!pages)return;const label=dutyLabel(completedOptions.duty);mixedCanvas.toBlob(blob=>{if(blob)download(`DUAL_HGR_${label.hgr}_${label.hgr2}.png`,blob);},'image/png');};
+$('testBtn').onclick=runChecks;
+mixedCanvas.onpointermove=inspect;
+['backend','duty','quality','blend','ordered','diffusion','luma','flicker'].forEach(id=>$(id).addEventListener('input',controlChanged));
+let dragDepth=0;
+document.addEventListener('dragenter',e=>{e.preventDefault();dragDepth++;$('outputFrame').classList.add('dragover');});
+document.addEventListener('dragleave',e=>{e.preventDefault();dragDepth--;if(dragDepth<=0){dragDepth=0;$('outputFrame').classList.remove('dragover');}});
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('drop',e=>{e.preventDefault();dragDepth=0;$('outputFrame').classList.remove('dragover');readFile(e.dataTransfer.files[0]);});
+window.addEventListener('pagehide',stopCamera);
+updateReadouts();updateCameraButtons();loadDemo();
+</script>
+</body>
+</html>
