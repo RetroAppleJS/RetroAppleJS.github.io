@@ -18,16 +18,16 @@ This phase exercises **Apple II 6502 → native $D400 writes → EMU_CARD_SID �
 
 ## Run the native Apple II demo
 
-1. Mount **MOS 6581 / 8580 SID synthesizer** (PCODE SID) in **slot 5**, with its audio device attached. Use the regular JavaScript 6502, not the WASM accelerator.
+1. Mount **MOS 6581 / 8580 SID synthesizer** (PCODE SID) in **slot 4**, with its audio device attached. Use the regular JavaScript 6502, not the WASM accelerator.
 2. In the toolbox, select **6581**, **PAL 985248 Hz**, enable **Native $D400 writes** and choose a nonzero output volume.
 3. Turn on the emulator audio; the browser may need an explicit click to unlock Web Audio.
 4. In the RetroAppleJS assembler, open **asm/AUDIO/SID_PHASE1_MINIPLAYER.S** (raJS dialect), assemble and load it into $6000–$6186 (391 bytes).
 5. From Applesoft BASIC, enter **CALL 24576**; alternatively execute $6000 from the machine monitor.
 
 **Troubleshooting:** If the SID card's SlotIO signature is unavailable, the
-diagnostic now prints `SID NOT DETECTED IN SLOT 5` and returns without
+diagnostic now prints `SID NOT DETECTED IN SLOT 4` and returns without
 initializing the synthesizer. Verify that PCODE `SID` is actually mounted in
-physical slot 5 and that `$C0D0` reads `$53`. The card's PSLOT configuration
+physical slot 4 and that `$C0C0` reads `$53`. The card's PSLOT configuration
 must include `"SlotIO":"X"`. After updating configuration, reload the emulator
 to rebuild the slot I/O action map. The CPU slider must be above 0%, audio must
 be switched on, and the browser must allow Web Audio playback.
@@ -61,7 +61,7 @@ The tool generates two files in tools/music:
 
 Or paste the supplied Base64 text fixture into **tools/SIDchipJS.html**, then choose **Load from Base64** and play subtune 1.
 
-The PSID player and the Apple II use the **same 6502 INIT and PLAY implementation**. Only the standalone RUN entry contains the Apple II-specific $C0D0 signature check and polling delay, so normal PSID execution does not depend on Apple II hardware.
+The PSID player and the Apple II use the **same 6502 INIT and PLAY implementation**. Only the standalone RUN entry contains the Apple II-specific $C0C0 signature check and polling delay, so normal PSID execution does not depend on Apple II hardware.
 
 The two synthesizers (jsSID and our new SIDAudio) are not identical, so the sounds do not yet have to match sample-for-sample. This experiment checks that native 6502 control, SID register writes, gate transitions and music callback structure work.
 
