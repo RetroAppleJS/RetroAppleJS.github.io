@@ -105,3 +105,44 @@ test('card soft reset preserves SID model and clock while resetting registers',(
   assert.equal(card.getModel(),8580);
   assert.equal(card.getClock(),1022727);
 });
+
+test('SIDAUDIO owns WebAudio output and schedules nonzero PCM through its own context',async()=>{
+  const scheduled=[];
+  class FakeAudioContext {
+    constructor(){this.currentTime=1;this.state='running';this.destination={};this.sampleRate=48000;}
+    createGain(){return {gain:{value:1},connect(){}};}
+    createBuffer(channels,length,rate){
+      const buffers=Array.from({length:channels},()=>new Float32Array(length));
+      return {duration:length/rate,getChannelData:index=>buffers[index]};
+    }
+    createBufferSource(){
+      return {buffer:null,connect(){},disconnect(){},stop(){},
+        start(tick){scheduled.push({time:tick,buffer:this.buffer});}};
+    }
+    resume(){return Promise.resolve();}
+    suspend(){this.state='suspended';return Promise.resolve();}
+    close(){this.state='closed';return Promise.resolve();}
+  }
+  const context=vm.createContext({
+    console,Float32Array,Uint8Array,AudioContext:FakeAudioContext,
+    oEMU:{component:{IO:{}}}
+  });
+  for(const filename of ['EMU_DEVICE_SID_audio.js','EMU_CARD_SID.js'])
+    vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res',filename),'utf8'),
+                    context,{filename});
+  const card=new context.SIDCard(),device=new context.SIDAudio();
+  let tick=0;
+  card.devices=[device];
+  device.bindHost(card);
+  device.bindIO({getClockTicks(){return tick},refreshDeviceHooks(){}});
+  card.reset();
+  await device.init('audio_on');
+  configureVoice(card);
+  tick=40000;
+  device.cycle();
+  assert.equal(scheduled.length,1);
+  assert.ok(energy(scheduled[0].buffer.getChannelData(0))>0.001);
+  assert.ok(device.getAudioStats().scheduled>0);
+  await device.init('audio_off');
+  assert.equal(device.getAudioStats().playbackEnabled,false);
+});
