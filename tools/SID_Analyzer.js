@@ -2,6 +2,7 @@
 (function () {
     'use strict';
     var currentJob = 0, pendingTimer = null;
+    var analysisExport = null;
     var FEATURES = [
         ['Oscillators', [
             ['triangle','Triangle waveform'],['sawtooth','Sawtooth waveform'],
@@ -144,6 +145,7 @@
     function status(text) { $('sidAnalysisStatus').textContent=text; }
     function cancel() {
         currentJob++;
+        if (analysisExport) analysisExport.status = 'partial';
         if(pendingTimer!==null){clearTimeout(pendingTimer);pendingTimer=null;}
         status('Analysis cancelled.');
     }
@@ -152,6 +154,8 @@
         var job=++currentJob, meta, maxSeconds;
         var result=$('sidAnalysisResults');
         result.textContent='';
+        analysisExport=null;
+        $('sidAnalysisJSON').disabled=true;
         try {
             meta=parsePSID();
             maxSeconds=Number($('sidAnalysisSeconds').value);
@@ -160,11 +164,26 @@
             if (typeof jsSID!=='function')
                 throw new Error('jsSID is not loaded.');
         }catch(e){status('Error: '+e.message);return;}
+        analysisExport={
+            format:'RetroAppleJS.PSIDAnalysis',
+            version:1,
+            title:meta.title,
+            author:meta.author,
+            declaredSubtunes:meta.songs,
+            defaultSubtune:meta.start,
+            analysisLimitSeconds:maxSeconds,
+            registerRange:'32 addresses per SID',
+            counting:'CPU reads/writes and feature events, until first state-loop or analysis limit',
+            status:'running',
+            subtunes:[]
+        };
+        $('sidAnalysisJSON').disabled=false;
         status('Analyzing '+(meta.title||'PSID')+' ('+meta.songs+' subtunes)...');
         var tune=0, loops=0, incomplete=0;
         function next() {
             if(job!==currentJob)return;
             if(tune>=meta.songs){
+                analysisExport.status = incomplete ? 'partial' : 'complete';
                 status('Analyzed '+meta.songs+' subtunes. Loops detected: '+loops+
                     '; not proven to loop before cutoff: '+incomplete+'.');
                 return;
@@ -178,9 +197,14 @@
                 engine.loadinit_b64(meta.source,tune);
                 var report=engine.analyzeSIDSubtune(tune,maxSeconds);
                 showTune(report,tune);
+                analysisExport.subtunes.push(report);
                 if(report.complete)loops++;else incomplete++;
             }catch(e) {
                 incomplete++;
+                analysisExport.subtunes.push({
+                    subtune:tune+1,complete:false,reason:'error',
+                    error:e.message, chips:[],warnings:[e.message]
+                });
                 result.appendChild(element('p','sid-analysis-warning',
                     'Subtune '+(tune+1)+': '+e.message));
             }
@@ -194,9 +218,30 @@
         // Cancel the old job rather than appending results to the new tune.
         currentJob++;
         if(pendingTimer!==null){clearTimeout(pendingTimer);pendingTimer=null;}
+        analysisExport=null;
+        $('sidAnalysisJSON').disabled=true;
         if ($('sidAnalysisAuto') && $('sidAnalysisAuto').checked)
             pendingTimer=setTimeout(analyze,0);
     }
+    function exportJSON() {
+        if (!analysisExport || !analysisExport.subtunes.length) {
+            status('No analysis results available to export.');
+            return;
+        }
+        var json=JSON.stringify(analysisExport,null,2)+'\n';
+        var blob=new Blob([json],{type:'application/json;charset=utf-8'});
+        var url=URL.createObjectURL(blob);
+        var link=document.createElement('a');
+        var name=(analysisExport.title||'PSID').replace(/[^a-z0-9_-]+/gi,'_')
+            .replace(/^_+|_+$/g,'')||'PSID';
+        link.href=url;
+        link.download=name+'_analysis.json';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(function(){URL.revokeObjectURL(url);},1000);
+    }
+    window.sidAnalysisExportJSON=exportJSON;
     window.sidAnalysisRun=analyze;
     window.sidAnalysisCancel=cancel;
     window.sidAnalysisSchedule=schedule;
