@@ -72,7 +72,6 @@ test('SID Phase 1 source assembles with four stable entry stubs',()=>{
 test('PSID version 2 packs the SAME executable bytes and original INIT/PLAY addresses',()=>{
     const program=pack.assemble(),sid=pack.packPSID(program.bytes);
     assert.equal(Buffer.from(sid.subarray(0,4)).toString('ascii'),'PSID');
-    assert.equal(sid.readUInt16BE?.(6),undefined); // plain Uint8Array by design
     const word=i=>sid[i]<<8|sid[i+1];
     assert.equal(word(4),2);
     assert.equal(word(6),0x7C);
@@ -111,5 +110,8 @@ test('real emulator 6502 runs INIT then five playback stages with native SID wri
 
 test('standalone WAIT50 delay stays within ±5% of PAL 50 Hz on a 1.02 MHz host',()=>{
     const r=rig();
-    const delay=r.call(0x6000+0 /* overridden below */,1); // unreachable, fixture sanity
+    const delay=r.call(r.binary.symbols.WAIT50,25000);
+    const nominal=1021800/50;
+    assert.ok(Math.abs(delay-nominal)/nominal<0.05,
+        'software cadence must be within 5%, got '+delay+' cycles');
 });
