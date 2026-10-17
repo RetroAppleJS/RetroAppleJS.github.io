@@ -239,9 +239,12 @@ test('SID GATE retriggers attack from current envelope without abrupt silence',(
   device.writeRegister(0x04,0x11);
   assert.equal(device.getEnvelopeLevels()[0],current,
     'a note-on does not reset the SID envelope to zero');
-  device.renderOffline(441);
+  device.renderOffline(441); // 20 ms; a SID rate-counter change may delay attack
+  assert.ok(device.getEnvelopeLevels()[0]>=current,
+    'retrigger must never clear the current envelope level');
+  device.renderOffline(1102); // another 50 ms, long enough for counter wrap
   assert.ok(device.getEnvelopeLevels()[0]>current,
-    'attack resumes upward from the release level');
+    'attack resumes after the SID rate-counter transition');
 });
 
 test('SID sustain changes and oscillator TEST do not instantly overwrite the ADSR envelope',()=>{
