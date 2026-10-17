@@ -19,10 +19,10 @@ test('SID has exactly one PSLOT entry in source and configuration documentation'
     assert.equal(sidRows.length,1,'SID should have only one documentation row');
     assert.match(sidRows[0],/\|\s*X\s*\|/);
     assert.equal(config.PSLOT.SID.SlotIO,'X');
-    assert.match(config.PSLOT.SID.SLOTrange,/(?:^|,)5\$/);
+    assert.match(config.PSLOT.SID.SLOTrange,/(?:^|,)4\$/);
 });
 
-test('actual Apple2IO mounts SID in slot 5 and exposes C0D0 signature and writable registers',()=>{
+test('actual Apple2IO mounts SID in slot 4 and exposes C0D0 signature and writable registers',()=>{
     const emu={component:{IO:{ACTION_MAP:{RD:[],WR:[],Hslot:null}}},
         system:{IORANGES:{
             HostIO:'$C000-$C07F',SlotIO:'$C080-$C0FF',
@@ -60,19 +60,19 @@ test('actual Apple2IO mounts SID in slot 5 and exposes C0D0 signature and writab
     io.slots=Array.from({length:9},(_,i)=>({slotTitle:i?'PR#'+(i-1):'board',lock:false}));
     io.slot_ctx.peripheral_slots={slots:io.slots};
     const mount=io.mount(config.PSLOT.SID,
-        {PCODE:'SID',ctor:context.SIDCard,coID:'SIDCard'},6,['SID']);
+        {PCODE:'SID',ctor:context.SIDCard,coID:'SIDCard'},5,['SID']);
     const card=mount.pObj;
-    assert.ok(card,'SID should mount in physical slot 5');
+    assert.ok(card,'SID should mount in physical slot 4');
     assert.deepEqual({from:card.mount.ranges.SlotIO.from,
-        to:card.mount.ranges.SlotIO.to},{from:0xD0,to:0xDF});
+        to:card.mount.ranges.SlotIO.to},{from:0xC0,to:0xCF});
     const device=new context.SIDAudio();
     card.devices=[device];
     device.bindHost(card);device.bindIO(io);
-    io.slots[6].peripheral=card;
-    assert.equal(io.read(0xD0),0x53,'slot-5 signature must equal ASCII S');
-    assert.equal(io.read(0xD1)&0x0B,0x0B,'enabled, snoop, device present');
-    io.write(0xD2,0x04);  // choose control register 1
-    io.write(0xD3,0x41);  // pulse + gate
+    io.slots[5].peripheral=card;
+    assert.equal(io.read(0xC0),0x53,'slot-4 signature must equal ASCII S');
+    assert.equal(io.read(0xC1)&0x0B,0x0B,'enabled, snoop, device present');
+    io.write(0xC2,0x04);  // choose control register 1
+    io.write(0xC3,0x41);  // pulse + gate
     assert.equal(device.getRegisters()[4],0x41);
     assert.equal(card.getStatistics().slotWrites,1);
 });
