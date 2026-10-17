@@ -84,3 +84,12 @@ The browser AudioContext is created only when the normal emulator audio output i
 - `res/EMU_apple2io.js`: dispatch to mounted SID cards.
 - `docs/CONFIG.md` and `res/COM_CONFIG.js`: PSLOT registration.
 - `tests/sid_card.test.js`: bus, slot controls, model selection and synthesis smoke tests.
+
+
+## Phase 1 native diagnostic and minimal PSID fixture
+
+See [SID Phase 1](SID_PHASE1.md) for the native Apple II assembly diagnostic,
+the same 6502 music routines packaged as a PSID v2 file for jsSID,
+a reproducible Base64 fixture and integration tests covering waveforms,
+oscillator TEST, ring modulation, hard sync, filter routing and GATE.
+This is a diagnostic music driver, not a general C64 PSID loader.
