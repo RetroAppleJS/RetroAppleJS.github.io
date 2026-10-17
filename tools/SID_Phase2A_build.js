@@ -27,6 +27,9 @@ function validatePSID(bytes)
         throw Error('Expected untouched 4841-byte Mr. Heli PSID v2');
     if(ORIGINAL_LOAD+bytes.length-0x7E-1!==0x1F0A)
         throw Error('Unexpected payload destination range');
+    const checksum=bytes.subarray(0x7E).reduce((sum,value)=>(sum+value)&0xFFFF,0);
+    if(checksum!==0x3B46)
+        throw Error('Mr. Heli payload checksum mismatch');
     return {load:ORIGINAL_LOAD,init:ORIGINAL_INIT,play:ORIGINAL_PLAY,
             songs:be16(14),defaultSong:be16(16),
             data:bytes.subarray(0x7E),staging:STAGING};
