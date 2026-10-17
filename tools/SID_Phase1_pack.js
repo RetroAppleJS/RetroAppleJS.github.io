@@ -35,12 +35,12 @@ function assemble(){
 }
 function packPSID(bytes){
     if(!(bytes instanceof Uint8Array))throw new TypeError('Expected assembled bytes');
-    const offset=0x7C,out=new Uint8Array(offset+bytes.length);
+    const offset=0x7C,out=new Uint8Array(offset+2+bytes.length);
     out.set([0x50,0x53,0x49,0x44],0); // PSID
     function be16(at,v){out[at]=(v>>>8)&255;out[at+1]=v&255;}
     be16(4,2);                  // PSID v2
     be16(6,offset);             // data offset
-    be16(8,LOAD);               // explicit load address (no leading PRG address)
+    be16(8,0);                  // standard PSID embedded little-endian load address
     be16(10,INIT);be16(12,PLAY);
     be16(14,1);be16(16,1);     // one song, default song 1
     // speed dword 0: call play once per video frame
@@ -49,7 +49,8 @@ function packPSID(bytes){
     title(0x36,'RetroAppleJS');
     title(0x56,'2026 Phase 1');
     be16(0x76,0x0014);          // PAL clock + MOS 6581 model preference
-    out.set(bytes,offset);
+    out[offset]=LOAD&255;out[offset+1]=(LOAD>>>8)&255;
+    out.set(bytes,offset+2);
     return out;
 }
 function main(){
