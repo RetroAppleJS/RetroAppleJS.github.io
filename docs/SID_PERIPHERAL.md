@@ -4,7 +4,7 @@ The SID card models an Apple II expansion PCB hosting a MOS 6581 or MOS 8580. It
 
 ## Installation
 
-Select **MOS 6581 / 8580 SID synthesizer** from the Slot Manager (PCODE `SID`), preferably slot 5. The card is not installed by default; the audio device `SIDAUDIO` is automatically attached when the card is mounted. Use the existing emulator speaker/audio control to activate the output.
+Select **MOS 6581 / 8580 SID synthesizer** from the Slot Manager (PCODE `SID`), preferably slot 4. The card is not installed by default; the audio device `SIDAUDIO` is automatically attached when the card is mounted. Use the existing emulator speaker/audio control to activate the output.
 
 The slot toolbox has:
 
@@ -30,7 +30,7 @@ The card intentionally **does not intercept reads** at `$D419–$D41C`: motherbo
 
 ## Slot I/O registers
 
-In slot `n`, use `$C080 + n*16` through `$C08F + n*16` (for slot 5: `$C0D0–$C0DF`).
+In slot `n`, use `$C080 + n*16` through `$C08F + n*16` (for slot 4: `$C0C0–$C0CF`).
 
 | Offset | Read | Write |
 |---|---|---|
@@ -51,15 +51,15 @@ In slot `n`, use `$C080 + n*16` through `$C08F + n*16` (for slot 5: `$C0D0–$C0
 | E | Low byte of snooped write count | — |
 | F | High byte of snooped write count | — |
 
-Example for slot 5:
+Example for slot 4:
 
 ```asm
 LDA #$00
 STA $C0D4    ; Select 6581 (0), or use #$01 for 8580
 LDA #$04
-STA $C0D2    ; SID control register index $04
+STA $C0C2    ; SID control register index $04
 LDA #$41
-STA $C0D3    ; Write pulse + GATE to voice 1
+STA $C0C3    ; Write pulse + GATE to voice 1
 ```
 
 ## Sound engine — revision 1
