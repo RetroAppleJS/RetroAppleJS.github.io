@@ -51,7 +51,8 @@ function rig(){
         vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res',name),'utf8'),
             sandbox,{filename:name});
     const card=new sandbox.SIDCard(),device=new sandbox.SIDAudio();
-    card.mount={hash:54,slotN:5}; // physical slot 4, internal +1card.devices=[device];
+    card.mount={hash:54,slotN:5}; // physical slot 4, internal +1
+    card.devices=[device];
     device.bindHost(card);
     const io={getClockTicks(){return tick},refreshDeviceHooks(){}};
     device.bindIO(io);card.reset();
