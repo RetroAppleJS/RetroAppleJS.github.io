@@ -8,7 +8,7 @@
 ; CALL 24582 ($6006) = advance one music tick (PSID PLAY, 50 Hz expected)
 ; CALL 24585 ($6009) = stop, silence SID
 ;
-; Built for PCODE SID in preferred SLOT 5; $C0D0 must read 'S' ($53).
+; Built for PCODE SID in preferred SLOT 4; $C0C0 must read 'S' ($53).
 ; Writes go DIRECTLY to C64-style $D400-$D418, no address translation.
 ; The demo uses CPU busy waiting for approximately 50 Hz: not a CIA/VIA IRQ.
 ; Host CPU ~1021800 Hz -> ~50 ticks/s. Never pretend cycle accuracy here.
@@ -25,7 +25,7 @@ INIT        JMP MUSIC_INIT
 PLAY        JMP MUSIC_PLAY
 STOP        JMP MUSIC_STOP
 
-SIDSIG      EQU $C0D0
+SIDSIG      EQU $C0C0
 SIDFREQ1    EQU $D400
 SIDFREQ2    EQU $D407
 SIDFREQ3    EQU $D40E
