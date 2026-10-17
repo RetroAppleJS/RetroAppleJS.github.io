@@ -11,6 +11,7 @@ function SIDAudio()
 {
     var device=this, owner=null, io=null;
     const SAMPLE_RATE=22050, FIFO_LENGTH=8192, MAX_BLOCK=2048;
+    const TARGET_AUDIO_LEAD=0.15, MAX_BLOCKS_PER_CYCLE=8, START_LEAD=0.025;
     const ATTACK=[.002,.008,.016,.024,.038,.056,.068,.080,.100,.250,.500,.800,1,3,5,8];
     const DECAY=[.006,.024,.048,.072,.114,.168,.204,.240,.300,.750,1.5,2.4,3,9,15,24];
     const PHASE=16777216;
@@ -20,6 +21,7 @@ function SIDAudio()
     var queue=new Float32Array(FIFO_LENGTH),readIndex=0,writeIndex=0,queued=0;
     var audio=null,gain=null,sources=[],nextStart=0,playing=false,paused=false,volume=100;
     var audioEpoch=0,produced=0,dropped=0,scheduled=0;
+    var underruns=0,lateSeconds=0,blocksScheduled=0,maxQueueDepth=0;
     var filterLow=0,filterBand=0;
     this.id={DCODE:"SIDAUDIO",coID:"SIDAudio",hostPCODE:"SID",icon:"fa fa-volume-up"};
     this.audioDevice=true;
@@ -151,6 +153,7 @@ function SIDAudio()
                 if(playing&&!paused && audio && audio.state==="running"){
                     if(queued<FIFO_LENGTH){
                         queue[writeIndex]=value;writeIndex=(writeIndex+1)%FIFO_LENGTH;queued++;
+                        if(queued>maxQueueDepth)maxQueueDepth=queued;
                     }else dropped++;
                 }
             }else result[i]=value;
@@ -224,7 +227,12 @@ function SIDAudio()
     };
     this.getVolume=function(){return volume;};
     this.getAudioStats=function(){
+        var now=audio?audio.currentTime:0;
         return {produced:produced,queued:queued,dropped:dropped,scheduled:scheduled,
+            blocksScheduled:blocksScheduled,underruns:underruns,
+            lateSeconds:lateSeconds,maxQueueDepth:maxQueueDepth,
+            queuedMs:queued*1000/SAMPLE_RATE,
+            scheduledLeadMs:audio?Math.max(0,(nextStart-now)*1000):0,
             sidModel:sidModel,sidClock:sidClock,hostClock:hostClock,
             contextState:audio?audio.state:"uninitialized",playbackEnabled:playing};
     };
@@ -257,23 +265,47 @@ function SIDAudio()
         if(!playing||paused||!audio||audio.state!=="running")return;
         if(io&&typeof io.getClockTicks==="function")this.advanceTo(io.getClockTicks());
         if(!queued)return;
+
         var now=audio.currentTime;
-        if(nextStart<now)nextStart=now+.025;
-        if(nextStart-now>.09)return;
-        var count=Math.min(queued,MAX_BLOCK);
-        var buffer=audio.createBuffer(1,count,SAMPLE_RATE);
-        var channel=buffer.getChannelData(0);
-        for(var i=0;i<count;i++){channel[i]=queue[readIndex];readIndex=(readIndex+1)%FIFO_LENGTH;}
-        queued-=count;
-        var source=audio.createBufferSource();
-        source.buffer=buffer;source.connect(gain);
-        source.start(nextStart);
-        nextStart+=buffer.duration;scheduled+=count;
-        sources.push(source);
-        source.onended=function(){
-            try{source.disconnect();}catch(e){}
-            var pos=sources.indexOf(source);if(pos>=0)sources.splice(pos,1);
-        };
+        if(nextStart<now){
+            // A short startup lead is needed only after an underrun or the
+            // initial audio-on. Do not inject a gap on every display cycle.
+            if(nextStart>0){
+                underruns++;
+                lateSeconds+=now-nextStart;
+            }
+            nextStart=now+START_LEAD;
+        }
+        // One block represents 92.9 ms of audio at 22.05 kHz.
+        // At 10 display FPS the CPU can generate ~100 ms between calls.
+        // Schedule *all* available samples (subject to a bounded horizon)
+        // rather than just one block per display frame.
+        var blocks=0;
+        while(queued>0 && blocks<MAX_BLOCKS_PER_CYCLE &&
+              nextStart-now<TARGET_AUDIO_LEAD){
+            var count=Math.min(queued,MAX_BLOCK);
+            var buffer=audio.createBuffer(1,count,SAMPLE_RATE);
+            var channel=buffer.getChannelData(0);
+            for(var i=0;i<count;i++){
+                channel[i]=queue[readIndex];
+                readIndex=(readIndex+1)%FIFO_LENGTH;
+            }
+            queued-=count;
+            var source=audio.createBufferSource();
+            source.buffer=buffer;
+            source.connect(gain);
+            source.start(nextStart);
+            nextStart+=buffer.duration;
+            scheduled+=count;
+            blocksScheduled++;
+            blocks++;
+            sources.push(source);
+            source.onended=function(){
+                try{this.disconnect();}catch(e){}
+                var pos=sources.indexOf(this);
+                if(pos>=0)sources.splice(pos,1);
+            };
+        }
     };
     this.init=async function(action)
     {
