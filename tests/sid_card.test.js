@@ -146,3 +146,58 @@ test('SIDAUDIO owns WebAudio output and schedules nonzero PCM through its own co
   await device.init('audio_off');
   assert.equal(device.getAudioStats().playbackEnabled,false);
 });
+
+
+test('SID scheduler keeps 10 FPS audio continuous by draining more than one block',async()=>{
+  const scheduled=[];
+  class FakeAudioContext{
+    constructor(){this.currentTime=1;this.state='running';this.destination={};}
+    createGain(){return {gain:{value:1},connect(){}};}
+    createBuffer(channels,length,rate){
+      const samples=new Float32Array(length);
+      return {duration:length/rate,getChannelData(){return samples;}};
+    }
+    createBufferSource(){
+      return {buffer:null,connect(){},disconnect(){},stop(){},
+        start(t){scheduled.push({start:t,end:t+this.buffer.duration,
+          length:this.buffer.getChannelData(0).length});}};
+    }
+    resume(){return Promise.resolve();}
+    suspend(){this.state='suspended';return Promise.resolve();}
+    close(){return Promise.resolve();}
+  }
+  const context=vm.createContext({
+    console,Float32Array,Uint8Array,AudioContext:FakeAudioContext,
+    oEMU:{component:{IO:{}}}
+  });
+  for(const filename of ['EMU_DEVICE_SID_audio.js','EMU_CARD_SID.js'])
+    vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res',filename),'utf8'),
+      context,{filename});
+  const card=new context.SIDCard(),device=new context.SIDAudio();
+  card.devices=[device];
+  let cpuTicks=0;
+  device.bindHost(card);
+  device.bindIO({getClockTicks(){return cpuTicks;},refreshDeviceHooks(){}});
+  card.reset();
+  await device.init('audio_on');
+  configureVoice(card);
+  const audio=device.audio;
+  for(let frame=1;frame<=20;frame++){
+    cpuTicks=Math.round(frame*1021800/10);
+    audio.currentTime=1+(frame-1)/10;
+    device.cycle();
+  }
+  const stats=device.getAudioStats();
+  assert.ok(scheduled.length>20,'requires multiple WebAudio buffers at 10 FPS');
+  assert.ok(stats.blocksScheduled>20);
+  assert.equal(stats.dropped,0,'FIFO should not overrun at 10 FPS');
+  assert.equal(stats.underruns,0,'continuous 10 FPS playback should not underrun');
+  for(let i=1;i<scheduled.length;i++){
+    assert.ok(Math.abs(scheduled[i].start-scheduled[i-1].end)<1e-7,
+      'buffer gap between '+(i-1)+' and '+i);
+  }
+  assert.ok(stats.scheduledLeadMs>=0);
+  assert.ok(stats.maxQueueDepth>2048);
+  await device.init('audio_off');
+  assert.equal(device.getAudioStats().queued,0,'audio-off flushes queued buffers');
+});
