@@ -298,17 +298,20 @@ function jsSID(bufferlen, background_noise, options)
                 base: base, preferredModel: preferred_SID_model[bases.indexOf(base)],
                 reads: Array(32).fill(0), writes: Array(32).fill(0),
                 features: {
-                    triangle:0, sawtooth:0, pulse:0, noise:0, combinedWaveforms:0,
+                    triangle:0, sawtooth:0, pulse:0, squarePulse:0, noise:0, combinedWaveforms:0,
                     hardSync:0, ringModulation:0, oscillatorTest:0,
                     gateOn:0, gateOff:0, frequencyWrites:0, pulseWidthWrites:0,
+                    pulseWidthModulation:0,
                     attackDecayWrites:0, sustainReleaseWrites:0,
                     cutoffWrites:0, resonanceWrites:0, filterRouting:0,
-                    lowPass:0, bandPass:0, highPass:0, voice3Mute:0,
+                    lowPass:0, bandPass:0, highPass:0, filterModeCombinations:0,
+                    filterExternalInput:0, voice3Mute:0,
                     masterVolumeWrites:0, volumeChanges:0, possibleDigiWrites:0,
                     potXReads:0, potYReads:0, osc3Reads:0, env3Reads:0
                 }
             };
         });
+        var volumeInTick = Array(bases.length).fill(0);
         var sidWindow = function(address) {
             for (var i=0;i<bases.length;i++)
                 if (address >= bases[i] && address < bases[i]+32)
@@ -349,7 +352,11 @@ function jsSID(bufferlen, background_noise, options)
             if (reg < 21) {
                 var voice=(reg/7)|0, r=reg%7;
                 if(r<2)f.frequencyWrites++;
-                else if(r<4)f.pulseWidthWrites++;
+                else if(r<4){
+                    f.pulseWidthWrites++;
+                    var ctrlAddress = chip.base + voice*7 + 4;
+                    if(raw[ctrlAddress] & 0x40)f.pulseWidthModulation++;
+                }
                 else if(r===5)f.attackDecayWrites++;
                 else if(r===6)f.sustainReleaseWrites++;
                 else if(r===4){
@@ -362,6 +369,12 @@ function jsSID(bufferlen, background_noise, options)
                     for(var w=0;w<waves.length;w++){
                         var b=waves[w][1];
                         if((waveBits&b) && (!(oldBits&b) || risingGate))f[waves[w][0]]++;
+                    }
+                    if((waveBits&0x40) && (risingGate || !(oldBits&0x40))){
+                        var pwLow=raw[chip.base+voice*7+2];
+                        var pwHigh=raw[chip.base+voice*7+3]&15;
+                        var pw=(pwHigh<<8)|pwLow;
+                        if(pw>=0x7F0 && pw<=0x810)f.squarePulse++;
                     }
                     var multiple=(waveBits & (waveBits-1))!==0;
                     var wasMultiple=(oldBits & (oldBits-1))!==0;
@@ -377,14 +390,21 @@ function jsSID(bufferlen, background_noise, options)
                 var newlyRouted=(value&15)&~(oldValue&15);
                 if(newlyRouted)f.filterRouting+=((newlyRouted&1)?1:0)+((newlyRouted&2)?1:0)+
                     ((newlyRouted&4)?1:0)+((newlyRouted&8)?1:0);
+                if(newlyRouted&8)f.filterExternalInput++;
             }else if(reg===0x18){
                 var modes=[['lowPass',0x10],['bandPass',0x20],['highPass',0x40],['voice3Mute',0x80]];
                 for(var m=0;m<modes.length;m++){
                     var mode=modes[m];
                     if((value&mode[1])&&!(oldValue&mode[1]))f[mode[0]]++;
                 }
+                var filterModes=value&0x70, oldModes=oldValue&0x70;
+                var isCombined=!!(filterModes&&(filterModes&(filterModes-1)));
+                if(isCombined && (filterModes!==oldModes))f.filterModeCombinations++;
                 f.masterVolumeWrites++;
-                if((value&15)!==(oldValue&15))f.volumeChanges++;
+                if((value&15)!==(oldValue&15)){
+                    f.volumeChanges++;
+                    volumeInTick[slot[0]]++;
+                }
             }
         }
         function observableAddress(prop) {
@@ -464,6 +484,10 @@ function jsSID(bufferlen, background_noise, options)
                     }
                 }
                 totalInstructions+=steps;
+                volumeInTick.forEach(function(n,i){
+                    if(n>=8)chips[i].features.possibleDigiWrites+=n;
+                    volumeInTick[i]=0;
+                });
                 if(!finishedTick){
                     result.reason='cpu-limit';
                     result.warnings.push('Player routine did not return within the CPU safety limit.');
