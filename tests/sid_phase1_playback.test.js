@@ -75,13 +75,14 @@ test('PSID version 2 packs the SAME executable bytes and original INIT/PLAY addr
     const word=i=>sid[i]<<8|sid[i+1];
     assert.equal(word(4),2);
     assert.equal(word(6),0x7C);
-    assert.equal(word(8),0x6000);
+    assert.equal(word(8),0); // standard embedded PRG-style load address
     assert.equal(word(10),0x6003);
     assert.equal(word(12),0x6006);
     assert.equal(word(14),1);
     assert.equal(word(16),1);
     assert.equal(word(0x76),0x0014);
-    assert.deepEqual(Array.from(sid.subarray(0x7C)),Array.from(program.bytes));
+    assert.deepEqual(Array.from(sid.subarray(0x7C,0x7E)),[0x00,0x60]);
+    assert.deepEqual(Array.from(sid.subarray(0x7E)),Array.from(program.bytes));
 });
 
 test('real emulator 6502 runs INIT then five playback stages with native SID writes',()=>{
