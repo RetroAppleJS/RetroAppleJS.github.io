@@ -182,6 +182,7 @@ function init_gui(_o)
     <div class="sid-analysis-toolbar">
       <button type="button" onclick="sidAnalysisRun()">Analyze PSID</button>
       <button type="button" onclick="sidAnalysisCancel()">Cancel</button>
+      <button id="sidAnalysisJSON" type="button" onclick="sidAnalysisExportJSON()" disabled>Export JSON</button>
       <label><input id="sidAnalysisAuto" type="checkbox" checked> Analyze on load</label>
       <label>Maximum duration/subtune (s):
         <input id="sidAnalysisSeconds" type="number" min="1" max="600" value="180">
