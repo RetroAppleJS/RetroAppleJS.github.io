@@ -22,8 +22,9 @@ function playSID_b64(b64, subtune) {
     SIDplayer.loadstart_b64(b64, subtune);
 }
 
-function jsSID(bufferlen, background_noise)
+function jsSID(bufferlen, background_noise, options)
 {
+    options = options || {};
 
     this.author = 'Hermit';
     this.sourcecode = 'http://hermit.sidrip.com';
@@ -31,26 +32,24 @@ function jsSID(bufferlen, background_noise)
     this.year = '2016';
 
     //create Web Audio context and scriptNode at jsSID object initialization (at the moment only mono output)
-    if (typeof AudioContext !== 'undefined') {
-        var jsSID_audioCtx = new AudioContext();
+    var jsSID_audioCtx = null, jsSID_scriptNode = null;
+    if (!options.headless) {
+        jsSID_audioCtx = (typeof AudioContext !== 'undefined') ?
+            new AudioContext() : new webkitAudioContext();
+        if (typeof jsSID_audioCtx.createJavaScriptNode === 'function') {
+            jsSID_scriptNode = jsSID_audioCtx.createJavaScriptNode(bufferlen, 0, 1);
+            console.log("using createJavaScriptNode");
+        }
+        else {
+            jsSID_scriptNode = jsSID_audioCtx.createScriptProcessor(bufferlen, 0, 1);
+            console.log("using createScriptProcessor --- unfortunately deprecated, must be replaced by AudioWorkletNode");
+        }
     }
-    else {
-        var jsSID_audioCtx = new webkitAudioContext();
-    }
-    
-    var samplerate = jsSID_audioCtx.sampleRate;
-    if (typeof jsSID_audioCtx.createJavaScriptNode === 'function') {
-        var jsSID_scriptNode = jsSID_audioCtx.createJavaScriptNode(bufferlen, 0, 1);
-        console.log("using createJavaScriptNode")
-    }
-    else {
-        var jsSID_scriptNode = jsSID_audioCtx.createScriptProcessor(bufferlen, 0, 1);
-        console.log("using createScriptProcessor --- unfortunately deprecated, must be replaced by AudioWorkletNode")
-    }
+    var samplerate = jsSID_audioCtx ? jsSID_audioCtx.sampleRate : 11025;
 
     
 
-    jsSID_scriptNode.onaudioprocess = function(e) {
+    if (jsSID_scriptNode) jsSID_scriptNode.onaudioprocess = function(e) {
         //scriptNode will be replaced by AudioWorker in new browsers sooner or later
         var outBuffer = e.outputBuffer;
         var outData = outBuffer.getChannelData(0);
@@ -141,6 +140,7 @@ function jsSID(bufferlen, background_noise)
         SID_address[1] = filedata[0x7A] >= 0x42 && (filedata[0x7A] < 0x80 || filedata[0x7A] >= 0xE0) ? 0xD000 + filedata[0x7A] * 16 : 0;
         SID_address[2] = filedata[0x7B] >= 0x42 && (filedata[0x7B] < 0x80 || filedata[0x7B] >= 0xE0) ? 0xD000 + filedata[0x7B] * 16 : 0;
         SIDamount = 1 + (SID_address[1] > 0) + (SID_address[2] > 0);
+        analysisInitialMemory = memory.slice();
         loaded = 1;
         if (loadcallback !== null )
             loadcallback();
@@ -219,10 +219,10 @@ function jsSID(bufferlen, background_noise)
         this.playcont();
     }
     this.playcont = function() {
-        jsSID_scriptNode.connect(jsSID_audioCtx.destination);
+        if (jsSID_scriptNode) jsSID_scriptNode.connect(jsSID_audioCtx.destination);
     }
     this.pause = function() {
-        if (loaded && initialized)
+        if (loaded && initialized && jsSID_scriptNode)
             jsSID_scriptNode.disconnect(jsSID_audioCtx.destination);
     }
     //(Checking state before disconnecting is a workaround for Opera: gave error when code tried disconnecting what is not connected.
@@ -275,6 +275,223 @@ function jsSID(bufferlen, background_noise)
         }
         return frames;
     };
+
+    // Offline CPU-bus profiler: uses the existing PSID init and play routines,
+    // but never creates/connects WebAudio and never runs SID sample synthesis.
+    // SID reads are recorded; OSC3/ENV3 values are not cycle-accurate here.
+    // Counts stop at the FIRST repeated complete player state (RAM, CPU registers).
+    this.analyzeSIDSubtune = function(subt, maxSeconds) {
+        if (!loaded || !analysisInitialMemory) throw new Error('Load a PSID before analysis');
+        if (subt < 0 || subt >= subtune_amount || subt !== (subt | 0))
+            throw new Error('Invalid subtune');
+        maxSeconds = Number(maxSeconds) || 180;
+        if (maxSeconds < 1 || maxSeconds > 600) throw new Error('Analysis duration must be 1–600 seconds');
+
+        var raw = memory;
+        raw.set(analysisInitialMemory);
+        var previousCPU = CPU;
+        var inInstruction = false, instruction = 0, lastReads = {}, lastWrites = {};
+        var hashA = 0, hashB = 0, instructionPC = 0;
+        var bases = [0xD400, SID_address[1], SID_address[2]].slice(0, SIDamount);
+        var chips = bases.map(function(base) {
+            return {
+                base: base, preferredModel: preferred_SID_model[bases.indexOf(base)],
+                reads: Array(32).fill(0), writes: Array(32).fill(0),
+                features: {
+                    triangle:0, sawtooth:0, pulse:0, noise:0, combinedWaveforms:0,
+                    hardSync:0, ringModulation:0, oscillatorTest:0,
+                    gateOn:0, gateOff:0, frequencyWrites:0, pulseWidthWrites:0,
+                    attackDecayWrites:0, sustainReleaseWrites:0,
+                    cutoffWrites:0, resonanceWrites:0, filterRouting:0,
+                    lowPass:0, bandPass:0, highPass:0, voice3Mute:0,
+                    masterVolumeWrites:0, volumeChanges:0, possibleDigiWrites:0,
+                    potXReads:0, potYReads:0, osc3Reads:0, env3Reads:0
+                }
+            };
+        });
+        var sidWindow = function(address) {
+            for (var i=0;i<bases.length;i++)
+                if (address >= bases[i] && address < bases[i]+32)
+                    return [i,address-bases[i]];
+            return null;
+        };
+        function mix(address,value,seed) {
+            var x = Math.imul(address+1, 0x9E3779B9) ^
+                    Math.imul(value+1, 0x85EBCA6B) ^ seed;
+            x ^= x>>>16; x = Math.imul(x,0x7FEB352D);
+            x ^= x>>>15; x = Math.imul(x,0x846CA68B);
+            return (x ^ (x>>>16))>>>0;
+        }
+        function rehash() {
+            hashA=0; hashB=0;
+            for(var i=0;i<65536;i++){
+                hashA ^= mix(i,raw[i],0x13579BDF);
+                hashB ^= mix(i,raw[i],0x2468ACE0);
+            }
+        }
+        function onAccess(type,address,value,oldValue) {
+            var slot=sidWindow(address);
+            if(!slot)return;
+            var chip=chips[slot[0]], reg=slot[1],f=chip.features;
+            var key=slot[0]*32+reg;
+            var last=type==='read'?lastReads:lastWrites;
+            if(last[key]===instruction) return; // one bus access per instruction and direction
+            last[key]=instruction;
+            if(type==='read'){
+                chip.reads[reg]++;
+                if(reg===0x19)f.potXReads++;
+                if(reg===0x1A)f.potYReads++;
+                if(reg===0x1B)f.osc3Reads++;
+                if(reg===0x1C)f.env3Reads++;
+                return;
+            }
+            chip.writes[reg]++;
+            if (reg < 21) {
+                var voice=(reg/7)|0, r=reg%7;
+                if(r<2)f.frequencyWrites++;
+                else if(r<4)f.pulseWidthWrites++;
+                else if(r===5)f.attackDecayWrites++;
+                else if(r===6)f.sustainReleaseWrites++;
+                else if(r===4){
+                    var risingGate = !!((value&1)&&!(oldValue&1));
+                    var fallingGate = !!(!(value&1)&&(oldValue&1));
+                    if(risingGate)f.gateOn++;
+                    if(fallingGate)f.gateOff++;
+                    var waves=[['triangle',0x10],['sawtooth',0x20],['pulse',0x40],['noise',0x80]];
+                    var waveBits=value&0xF0, oldBits=oldValue&0xF0;
+                    for(var w=0;w<waves.length;w++){
+                        var b=waves[w][1];
+                        if((waveBits&b) && (!(oldBits&b) || risingGate))f[waves[w][0]]++;
+                    }
+                    var multiple=(waveBits & (waveBits-1))!==0;
+                    var wasMultiple=(oldBits & (oldBits-1))!==0;
+                    if(multiple && (!wasMultiple || risingGate || oldBits!==waveBits))f.combinedWaveforms++;
+                    for(var j=0;j<3;j++){
+                        var mod=[['hardSync',2],['ringModulation',4],['oscillatorTest',8]][j];
+                        if((value&mod[1]) && !(oldValue&mod[1]))f[mod[0]]++;
+                    }
+                }
+            }else if(reg===0x15 || reg===0x16)f.cutoffWrites++;
+            else if(reg===0x17){
+                if((value>>4)!==(oldValue>>4))f.resonanceWrites++;
+                var newlyRouted=(value&15)&~(oldValue&15);
+                if(newlyRouted)f.filterRouting+=((newlyRouted&1)?1:0)+((newlyRouted&2)?1:0)+
+                    ((newlyRouted&4)?1:0)+((newlyRouted&8)?1:0);
+            }else if(reg===0x18){
+                var modes=[['lowPass',0x10],['bandPass',0x20],['highPass',0x40],['voice3Mute',0x80]];
+                for(var m=0;m<modes.length;m++){
+                    var mode=modes[m];
+                    if((value&mode[1])&&!(oldValue&mode[1]))f[mode[0]]++;
+                }
+                f.masterVolumeWrites++;
+                if((value&15)!==(oldValue&15))f.volumeChanges++;
+            }
+        }
+        function observableAddress(prop) {
+            if(typeof prop!=='string' || !/^(0|[1-9][0-9]*)$/.test(prop))return -1;
+            var n=Number(prop);
+            return n>=0 && n<65536 ? n : -1;
+        }
+        var proxy = new Proxy(raw,{
+            get:function(target,prop) {
+                var addr=observableAddress(prop);
+                if(inInstruction && addr>=0)onAccess('read',addr,target[addr],target[addr]);
+                var val=Reflect.get(target,prop,target);
+                return typeof val==='function' ? val.bind(target) : val;
+            },
+            set:function(target,prop,value) {
+                var addr=observableAddress(prop);
+                if(addr>=0){
+                    var old=target[addr], next=value&255;
+                    if(inInstruction)onAccess('write',addr,next,old);
+                    if(old!==next){
+                        hashA^=mix(addr,old,0x13579BDF)^mix(addr,next,0x13579BDF);
+                        hashB^=mix(addr,old,0x2468ACE0)^mix(addr,next,0x2468ACE0);
+                    }
+                    target[addr]=next;
+                    return true;
+                }
+                return Reflect.set(target,prop,value,target);
+            }
+        });
+        memory=proxy;
+        CPU=function(){
+            inInstruction=true;instruction++;instructionPC=PC;
+            try{return previousCPU();}
+            finally{inInstruction=false;}
+        };
+        var result={subtune:subt+1, chips:chips, frames:0, seconds:0,
+                    loopStartFrame:null, loopLengthFrames:null,
+                    complete:false, reason:'limit', warnings:[], instructionCount:0};
+        try{
+            // init() invokes the actual PSID initialization subroutine, which is counted.
+            init(subt);
+            rehash();
+            var fingerprints=new Map();
+            var elapsed=0, maxTicks=36000, totalInstructions=0;
+            var stopped=false, frames=0;
+            while(elapsed<maxSeconds && frames<maxTicks){
+                // Repeated full CPU/RAM state at a playback boundary defines a
+                // deterministic player loop (modulo real SID readback / external hardware).
+                var state=hashA.toString(16)+':'+hashB.toString(16)+
+                  ':'+[A,X,Y,ST,SP].join(',')+':'+playaddr;
+                if(fingerprints.has(state)){
+                    result.loopStartFrame=fingerprints.get(state);
+                    result.loopLengthFrames=frames-result.loopStartFrame;
+                    result.complete=true;
+                    result.reason='loop';
+                    break;
+                }
+                fingerprints.set(state,frames);
+                PC=playaddr; SP=0xFF;
+                var running=0, steps=0, finishedTick=false;
+                // C64 CPU clock budget between music callbacks; fails safely
+                // on unsupported programs that never return.
+                while(running<120000 && steps<60000){
+                    var beforePC=PC;
+                    var rc=CPU();
+                    steps++;running+=cycles;
+                    if(rc>=0xFE){finishedTick=true;break;}
+                    if((raw[1]&3)>1 && beforePC<0xE000 &&
+                       (PC===0xEA31 || PC===0xEA81)){finishedTick=true;break;}
+                    if((addr===0xDC05 || addr===0xDC04) &&
+                       (raw[1]&3) && timermode[subtune])
+                        frame_sampleperiod=(raw[0xDC04]+raw[0xDC05]*256)/clk_ratio;
+                    if(storadd>=0xD420 && storadd<0xD800 && (raw[1]&3)){
+                        if(!(SID_address[1]<=storadd && storadd<SID_address[1]+0x1F) &&
+                           !(SID_address[2]<=storadd && storadd<SID_address[2]+0x1F))
+                            memory[storadd&0xD41F]=raw[storadd];
+                    }
+                }
+                totalInstructions+=steps;
+                if(!finishedTick){
+                    result.reason='cpu-limit';
+                    result.warnings.push('Player routine did not return within the CPU safety limit.');
+                    break;
+                }
+                frames++;
+                var tick=frame_sampleperiod/samplerate;
+                if(!Number.isFinite(tick) || tick<=0 || tick>1){
+                    result.reason='invalid-timer';
+                    result.warnings.push('Unsupported CIA timing configuration.');
+                    break;
+                }
+                elapsed+=tick;
+            }
+            result.frames=frames;
+            result.seconds=elapsed;
+            result.instructionCount=totalInstructions;
+            if(!result.complete && result.reason==='limit')
+                result.warnings.push('No provable full-state loop detected within analysis time; counts are partial.');
+            if(chips.some(function(c){return c.reads[0x1B]||c.reads[0x1C]||c.reads[0x19]||c.reads[0x1A];}))
+                result.warnings.push('SID readback detected. OSC3/ENV3/POT values are not physically simulated by this fast profiler.');
+            return result;
+        }finally{
+            memory=raw;
+            CPU=previousCPU;
+        }
+    };
+
     this.setmodel = function(model) {
         SID_model = model;
     }
@@ -320,6 +537,7 @@ function jsSID(bufferlen, background_noise)
     var SID_model = 8580.0;
     var SID_address = [0xD400, 0, 0];
     var memory = new Uint8Array(65536);
+    var analysisInitialMemory = null;
     //for(var i=0;i<memory.length;i++) memory[i]=0;
     var loaded = 0
       , initialized = 0
