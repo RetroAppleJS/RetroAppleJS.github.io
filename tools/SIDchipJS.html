@@ -168,6 +168,7 @@ function init_gui(_o)
       </td>
       <td class=no_margins style="vertical-align:top;">
         <small>
+          Start at $ <input id="hexadr" type="text" value="6000" size="4" maxlength="4" title="Hexadecimal Apple II memory address" style="width:5em"> (hex)<br>
           Subtune (1-based) <input id="sid2mbSubtune" type="number" min="1" max="256" value="1" style="width:5em"><br>
           Duration (seconds) <input id="sid2mbSeconds" type="number" min="1" max="240" value="30" style="width:5em"><br>
           <label><input id="sid2mbLoop" type="checkbox" checked> Loop</label><br>
@@ -178,8 +179,10 @@ function init_gui(_o)
     </tr>
   </table>
   <p id="sid2mbStatus" style="color:black" role="status">Load a PSID, choose a subtune, then extract a 50 Hz register stream.</p>
-  <small>Data is encoded for the resident SID2MB player at $6000; no C64 machine code is exported.
-    The stream is limited to $6000-$BFFF. DOS and ProDOS may occupy part of this memory.
+  <small>Exports SREG data at the chosen start address ($6000 by default), not C64 machine code.
+    The stream must fit in $6000-$BFFF. The current SID2MB resident player expects its stream at $6000;
+    loading elsewhere requires changing the resident player's stream base.
+    DOS and ProDOS may occupy some of this memory.
     SID analog filters and mid-frame register changes cannot be reproduced by this snapshot format.</small>
   <hr>
   

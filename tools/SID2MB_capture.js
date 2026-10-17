@@ -7,8 +7,19 @@
     var output = null;
     var outputName = 'SONG.SREG';
     var RATE = 50;
-    var LOAD_ADDRESS = 0x6000;
-    var MAX_BYTES = 0x6000; // Excludes $C000 I/O and ROM space.
+    var DEFAULT_LOAD_ADDRESS = 0x6000;
+    var RAM_END = 0xC000; // Exclusive: Apple II I/O starts at $C000.
+
+    function getLoadAddress() {
+        var field = get('hexadr');
+        var value = field ? field.value.trim().replace(/^(?:\$|0x)/i, '') : '6000';
+        if (!/^[0-9a-f]{1,4}$/i.test(value))
+            throw new Error('Start address must be one to four hexadecimal digits.');
+        var address = parseInt(value, 16);
+        if (address < DEFAULT_LOAD_ADDRESS || address >= RAM_END)
+            throw new Error('Address must be $6000-$BFFF, outside the resident player and I/O space.');
+        return address;
+    }
 
     function get(id) { return document.getElementById(id); }
     function hex(value, width) { return value.toString(16).toUpperCase().padStart(width, '0'); }
@@ -48,7 +59,7 @@
         return { songs: songs, name: (name || 'SONG').slice(0, 32) + '.SREG' };
     }
 
-    function encodeFrames(frames, loop) {
+    function encodeFrames(frames, loop, maxBytes) {
         var data = [0x53, 0x52, 0x45, 0x47, 1, RATE]; // SREG v1 header
         var previous = new Uint8Array(25);
         var count = 0;
@@ -60,7 +71,7 @@
             for (var reg = 0; reg < 25; ++reg)
                 if (frame[reg] !== previous[reg]) changed.push(reg, frame[reg]);
             // Leave room for the frame terminator and final loop/end marker.
-            if (data.length + changed.length + 2 > MAX_BYTES) break;
+            if (data.length + changed.length + 2 > maxBytes) break;
             for (var j = 0; j < changed.length; ++j) data.push(changed[j]);
             data.push(0xFF);
             previous.set(frame);
@@ -71,16 +82,16 @@
         return { bytes: new Uint8Array(data), count: count };
     }
 
-    function asMonitorText(data) {
+    function asMonitorText(data, address) {
         var lines = ['CALL-151'];
         for (var i = 0; i < data.length; i += 16) {
             var chunk = data.subarray(i, i + 16);
-            var line = hex(LOAD_ADDRESS + i, 4) + ': ';
+            var line = hex(address + i, 4) + ': ';
             for (var j = 0; j < chunk.length; ++j)
                 line += (j ? ' ' : '') + hex(chunk[j], 2);
             lines.push(line);
         }
-        lines.push('BSAVE SONG.SREG,A$6000,L$' + hex(data.length, 4));
+        lines.push('BSAVE SONG.SREG,A$' + hex(address, 4) + ',L$' + hex(data.length, 4));
         return lines.join('\n');
     }
 
@@ -97,6 +108,7 @@
         // Yield once to let the UI show the status before a CPU-bound capture.
         setTimeout(function () {
             try {
+                var address = getLoadAddress();
                 var source = readSIDBase64();
                 var meta = readPSIDHeader(source.bytes);
                 var subtune = Number(get('sid2mbSubtune').value);
@@ -115,16 +127,18 @@
                 player.loadinit_b64(source.base64, subtune - 1);
                 var frameCount = Math.round(seconds * RATE);
                 var frames = player.captureSIDFrames(frameCount, subtune - 1, RATE);
-                var stream = encodeFrames(frames, get('sid2mbLoop').checked);
+                var stream = encodeFrames(frames, get('sid2mbLoop').checked, RAM_END - address);
                 output = stream.bytes;
                 outputName = meta.name;
-                monitor.value = asMonitorText(output);
+                monitor.value = asMonitorText(output, address);
                 download.disabled = false;
                 var actualSeconds = (stream.count / RATE).toFixed(2);
                 var truncated = stream.count !== frameCount;
                 showStatus('Captured ' + stream.count + ' frames (' + actualSeconds + ' s), ' +
-                    output.length + ' bytes at $6000.' +
-                    (truncated ? ' TRUNCATED to fit $6000-$BFFF.' : ''));
+                    output.length + ' bytes at $' + hex(address, 4) + '.' +
+                    (truncated ? ' TRUNCATED to fit $' + hex(address, 4) + '-$BFFF.' : '') +
+                    (address !== DEFAULT_LOAD_ADDRESS ?
+                    ' Note: the current SID2MB resident player expects its stream at $6000.' : ''));
             } catch (err) {
                 showStatus('Error: ' + (err && err.message ? err.message : String(err)));
             }
