@@ -91,8 +91,8 @@ test('real emulator 6502 runs INIT then five playback stages with native SID wri
     let registers=r.audio.getRegisters();
     assert.equal(registers[0x04],0x41);
     assert.equal(registers[0x18],15);
-    const expected=[0x11,0x21,0x81,0x21,0x00];
-    for(let stage=0;stage<5;stage++){
+    const expected=[0x11,0x21,0x81,0x21,0x21,0x00];
+    for(let stage=0;stage<6;stage++){
         for(let frame=0;frame<50;frame++)r.call(0x6006);
         registers=r.audio.getRegisters();
         assert.equal(registers[4],expected[stage],'wrong waveform after phase '+(stage+1));
@@ -102,11 +102,19 @@ test('real emulator 6502 runs INIT then five playback stages with native SID wri
             assert.equal(registers[0x17],0x87,'filter routing/resonance');
             assert.equal(registers[0x18],0x1F,'low-pass and full volume');
         }
+        if(stage===4){
+            assert.equal(registers[0x0B],0x15,'voice 2 must use ring modulation');
+            assert.equal(registers[0x12],0x43,'voice 3 must use hard sync');
+            assert.equal(registers[0x18],0x1F);
+        }
     }
     assert.equal(r.audio.getRegisters()[0x18],0);
     assert.equal(r.audio.getRegisters()[0x12],0);
     assert.ok(r.card.getStatistics().snoopWrites>=80);
     assert.ok(r.writes.some(w=>w.addr===0xD404 && w.value===0x41));
+    assert.ok(r.writes.some(w=>w.addr===0xD404 && w.value===0x48),'TEST should toggle before gate');
+    assert.ok(r.writes.some(w=>w.addr===0xD40B && w.value===0x15),'RING should be set');
+    assert.ok(r.writes.some(w=>w.addr===0xD412 && w.value===0x43),'SYNC should be set');
 });
 
 test('standalone WAIT50 delay stays within ±5% of PAL 50 Hz on a 1.02 MHz host',()=>{
