@@ -93,3 +93,19 @@ the same 6502 music routines packaged as a PSID v2 file for jsSID,
 a reproducible Base64 fixture and integration tests covering waveforms,
 oscillator TEST, ring modulation, hard sync, filter routing and GATE.
 This is a diagnostic music driver, not a general C64 PSID loader.
+
+## Audio scheduler continuity at low display frame rates
+
+The device-owned Web Audio scheduler drains as many queued SID PCM blocks as
+needed per processing cycle, up to a bounded 150 ms scheduling horizon. Each
+block is at most 2,048 samples (92.88 ms at 22,050 Hz), but a 10 FPS emulator
+cycle can generate approximately 2,205 samples (100 ms). Scheduling only one
+block per cycle previously starved playback at 10 FPS.
+
+`SIDAUDIO.getAudioStats()` exposes `underruns`, `lateSeconds`,
+`blocksScheduled`, `maxQueueDepth`, `queuedMs` and `scheduledLeadMs`
+alongside the existing `queued`, `dropped`, `produced` and `scheduled`
+counters. An underrun indicates the next scheduled block was already in the
+past when new data arrived. Audio-off still cancels and flushes all buffered
+audio. The test in `tests/sid_card.test.js` verifies gap-free buffers during
+20 consecutive simulated 10 FPS cycles.
