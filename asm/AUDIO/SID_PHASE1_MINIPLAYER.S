@@ -93,7 +93,9 @@ APPLY_PHASE
             JSR MUSIC_STOP
             LDA PHASE
             CMP #$05
-            BCS PHASE_DONE
+            BCC CHECK_PHASE4
+            JMP PHASE_DONE
+CHECK_PHASE4
             CMP #$04
             BEQ CHORD
             CMP #$03
@@ -203,7 +205,7 @@ WAIT_INNER
             BNE WAIT_OUTER
             RTS
 
-PHASE       BYTE $00
-FRAME       BYTE $00
+PHASE       .BYTE $00
+FRAME       .BYTE $00
 
             .END
