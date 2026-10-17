@@ -127,7 +127,11 @@ function SIDAudio()
         }
         // Simple stable filter placeholder, NOT an accurate analog SID filter.
         var fc=((registers[0x16]<<3)|(registers[0x15]&7))/2047;
-        var hz=40+fc*8000,alpha=1-Math.exp(-2*Math.PI*hz/SAMPLE_RATE);
+        // An intentionally approximate model-dependent filter curve:
+        // the original 6581 varies widely between individual chips; the 8580
+        // is cleaner and more linear. Replace with an accurate analog core later.
+        var hz=sidModel===6581 ? 40+7200*Math.pow(fc,1.65) : 30+9500*fc;
+        var alpha=1-Math.exp(-2*Math.PI*hz/SAMPLE_RATE);
         var oldLow=filterLow;
         filterLow+=alpha*(filtered-filterLow);
         filterBand=filterBand*.96+(filterLow-oldLow)*4;
