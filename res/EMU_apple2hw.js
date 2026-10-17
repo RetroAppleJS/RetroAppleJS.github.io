@@ -282,7 +282,14 @@ function Apple2Hw(vid,keys)
         var offset = Number(cycleOffset) || 0;
         // Snapshot preceding the write, for the same phase reason as readIO.
         noteBusAccess(addr,"W",offset,d8,0xFF);
-        return this.WR[this.lineDecode(addr)](addr,d8,offset);
+        // Passive physical-bus observer: a real SID expansion card can latch
+        // writes at $D400-$D41F without inhibiting the motherboard ROM.
+        // Dispatch the ordinary RAM/ROM/Language Card write first, unmodified.
+        var result=this.WR[this.lineDecode(addr)](addr,d8,offset);
+        if((addr&0xFFE0)===0xD400 && this.io &&
+           typeof this.io.observeSIDWrite==="function")
+            this.io.observeSIDWrite(addr,d8,{cpuTick:cpuTicks+offset,bRO:hw.bRO});
+        return result;
     };
 
     /*
