@@ -35,5 +35,5 @@ test('native Phase 2B.2 title reaches physical text screen through real Apple II
  }
  const chars=Array.from(mem.subarray(0x400,0x800),b=>String.fromCharCode(b&0x7f)).join('');
  assert.ok(getln,'Expected to reach Apple II monitor GETLN; cout '+cout+' PC $'+cpu.watch().pc.toString(16)+' trace '+trace.join(' '));
- assert.ok(chars.includes('SID PLAYER'),'Title absent from physical text page; COUT calls '+cout+' screen '+JSON.stringify(chars.slice(0,160))+' trace '+trace.join(' '));
+ assert.ok(chars.includes('SID PLAYER'),'Title absent from physical text page; COUT calls '+cout+' screen '+JSON.stringify(chars.slice(0,160))+' trace '+trace.join(' ')+' output '+JSON.stringify(output.join(''))+' vectors '+Array.from(mem.subarray(0x36,0x3A)).join(','));
 });
