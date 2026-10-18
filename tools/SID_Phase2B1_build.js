@@ -47,7 +47,7 @@ function info(bytes,{subtune,clock}={}){
   const period=selectedClock==='PAL'?20436:17030;
   const title=Array.from(bytes.subarray(0x16,0x36)).map(c=>c>=32&&c<127?String.fromCharCode(c):'').join('').replace(/\0/g,'').trim();
   return {version,title,songs,subtune:selected,clock:selectedClock,period,
-    load,end:init===-1?end:end,init,play,data:payload,dataOffset:dataAt,sourceLength:bytes.length};
+    load,end,init,play,data:payload,dataOffset:dataAt,sourceLength:bytes.length};
 }
 function assembler(){
   const c=vm.createContext({console});
