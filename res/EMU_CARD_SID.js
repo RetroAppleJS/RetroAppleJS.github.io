@@ -18,6 +18,10 @@ function SIDCard()
     var enabled=true,snoop=true,regIndex=0,model=6581,clock=985248,volume=100;
     var sniffedWrites=0,slotWrites=0;
     var lastWrite={address:0,value:0,tick:0};
+    // Emulator-only read-only extension: selecting $1E and reading slot
+    // data latches the low 16 bits of CPU ticks; selecting $1F reads its
+    // high byte from the *same* snapshot. Does not alter SID chip registers.
+    var clockLatch=0;
     const BURST_GAP_TICKS=3500,TELEMETRY_HISTORY_LIMIT=120;
     var burstCount=0,lastWriteTick=null,lastBurstTick=null;
     var currentBurstWrites=0,maxBurstWrites=0,periodCount=0,periodSum=0;
@@ -165,7 +169,14 @@ function SIDCard()
         if(r===0)return 0x53;                 // SID signature
         if(r===1)return status();
         if(r===2)return regIndex;
-        if(r===3)return d?d.readRegister(regIndex,ctx?.bRO?undefined:timestamp(ctx)):0xFF;
+        if(r===3){
+            if(regIndex===0x1E){
+                clockLatch=timestamp(ctx)&0xFFFF;
+                return clockLatch&0xFF;
+            }
+            if(regIndex===0x1F)return (clockLatch>>>8)&0xFF;
+            return d?d.readRegister(regIndex,ctx?.bRO?undefined:timestamp(ctx)):0xFF;
+        }
         if(r===4)return model===8580?1:0;
         if(r===5)return clock===1022727?1:0;
         if(r===6)return enabled?1:0;
@@ -536,6 +547,7 @@ function SIDCard()
         // Model, clock and user volume intentionally survive a soft reset.
         enabled=true;snoop=true;regIndex=0;sniffedWrites=slotWrites=0;
         lastWrite={address:0,value:0,tick:0};
+        clockLatch=0;
         resetBurstStats();telemetryBaseline=null;telemetryRates={};
         telemetryHistory=[];
         var d=audioDevice();
