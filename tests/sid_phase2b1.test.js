@@ -107,7 +107,7 @@ test('real 6502 runs original loaded code at different locations and restores or
     const r=cpuRig({load,period:clock,slot});
     assert.ok(r.done,'CPU loop should exit on keypress');
     assert.equal(r.mem[0x200],1,'zero-based selected subtune 2 passed in A');
-    assert.equal(r.sidWrites.length,10);
+    assert.equal(r.sidWrites.length,r.entry.length+4,'PLAY writes plus four final mute writes');
     assert.deepEqual(Array.from(r.mem.subarray(0,256)),Array.from(r.before));
     const intervals=r.entry.slice(1).map((t,i)=>t-r.entry[i]);
     const desired=clock==='PAL'?20436:17030;
