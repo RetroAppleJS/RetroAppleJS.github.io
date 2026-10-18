@@ -15,7 +15,7 @@ oEMU.component.IO.sid=new SIDCard();
 function SIDCard()
 {
     var card=this,io=null;
-    var enabled=true,snoop=true,regIndex=0,model=6581,clock=985248,volume=100;
+    var enabled=true,snoop=true,regIndex=0,model=6581,clock=1022727,volume=100;
     var sniffedWrites=0,slotWrites=0;
     var lastWrite={address:0,value:0,tick:0};
     // Emulator-only read-only extension: selecting $1E and reading slot
