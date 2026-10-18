@@ -1,5 +1,4 @@
 CALL-151
-; Monitor memory-entry lines below; enter from the Apple II monitor.
 6000: 50 53 49 44 00 02 00 7C 00 00 1E F3 0E 34 00 05
 6010: 00 05 00 00 00 00 4D 72 2E 20 48 65 6C 69 00 00
 6020: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
@@ -303,6 +302,4 @@ CALL-151
 72C0: 0D DC 58 20 E4 FF C9 31 90 F9 C9 36 B0 F5 38 E9
 72D0: 31 A8 4C A1 0C 4C E5 1E A9 01 8D 19 D0 CE 20 D0
 72E0: 20 34 0E EE 20 D0 4C 31 EA
-; After memory entry, leave Monitor and return to BASIC.
-; For DOS 3.3 save the bytes from BASIC if needed:
-; BSAVE FILE,A$6000,L$12E9
+
