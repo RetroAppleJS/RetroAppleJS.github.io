@@ -46,16 +46,72 @@ function jsSID(bufferlen, background_noise, options)
         }
     }
     var samplerate = jsSID_audioCtx ? jsSID_audioCtx.sampleRate : 11025;
+    // Passive, optional hooks for the standalone live telemetry panel.  The
+    // sampler and its scheduling are not changed by enabling these counters.
+    var liveTelemetryObserver = null, liveTelemetryPlaying = false;
+    var liveTelemetry = {callbacks:0,samples:0,instructions:0,
+        lastCallbackMs:0,worstCallbackMs:0,lastGapMs:0,worstGapMs:0,
+        callbackOverruns:0,lastCallbackAt:null};
+    function liveNow() {
+        return typeof performance !== 'undefined' && performance.now ?
+            performance.now() : Date.now();
+    }
+    this.setLiveTelemetryObserver = function(fn) {
+        liveTelemetryObserver = typeof fn === 'function' ? fn : null;
+    };
+    this.resetLiveTelemetryCounters = function() {
+        liveTelemetry.callbacks = liveTelemetry.samples = liveTelemetry.instructions = 0;
+        liveTelemetry.lastCallbackMs = liveTelemetry.worstCallbackMs = 0;
+        liveTelemetry.lastGapMs = liveTelemetry.worstGapMs = 0;
+        liveTelemetry.callbackOverruns = 0;
+        liveTelemetry.lastCallbackAt = null;
+    };
+    this.getLiveTelemetryState = function() {
+        return {
+            model:SID_model,clockHz:C64_PAL_CPUCLK,volumePct:Math.round(volume*100),
+            subtune:subtune+1,playtime:playtime,
+            initialized:!!initialized,playing:liveTelemetryPlaying,
+            cpu:{tick:Math.floor(playtime*C64_PAL_CPUCLK),
+                pc:PC,ic:liveTelemetry.instructions,sp:SP},
+            registers:Array.from(memory.slice(0xD400,0xD420)),
+            envelopes:envcnt.slice(0,3),
+            audio:{sampleRate:samplerate,outputSampleRate:jsSID_audioCtx ?
+                jsSID_audioCtx.sampleRate : null,
+                contextState:jsSID_audioCtx ? jsSID_audioCtx.state : 'uninitialized',
+                playbackEnabled:liveTelemetryPlaying,bufferFrames:bufferlen,
+                callbacks:liveTelemetry.callbacks,produced:liveTelemetry.samples,
+                lastCallbackMs:liveTelemetry.lastCallbackMs,
+                worstCallbackMs:liveTelemetry.worstCallbackMs,
+                lastGapMs:liveTelemetry.lastGapMs,
+                worstGapMs:liveTelemetry.worstGapMs,
+                callbackOverruns:liveTelemetry.callbackOverruns}
+        };
+    };
 
     
 
     if (jsSID_scriptNode) jsSID_scriptNode.onaudioprocess = function(e) {
-        //scriptNode will be replaced by AudioWorker in new browsers sooner or later
+        // ScriptProcessor delivers browser-requested blocks; there is no
+        // application-owned PCM FIFO or AudioBufferSource scheduling here.
+        var started = liveNow();
+        if (liveTelemetry.lastCallbackAt !== null) {
+            var gap = started - liveTelemetry.lastCallbackAt;
+            liveTelemetry.lastGapMs = gap;
+            liveTelemetry.worstGapMs = Math.max(gap,liveTelemetry.worstGapMs);
+        }
+        liveTelemetry.lastCallbackAt = started;
         var outBuffer = e.outputBuffer;
         var outData = outBuffer.getChannelData(0);
         for (var sample = 0; sample < outBuffer.length; sample++) {
             outData[sample] = play();
         }
+        var duration = liveNow()-started;
+        liveTelemetry.callbacks++;
+        liveTelemetry.samples += outBuffer.length;
+        liveTelemetry.lastCallbackMs = duration;
+        liveTelemetry.worstCallbackMs = Math.max(duration,liveTelemetry.worstCallbackMs);
+        if (duration > 1000*outBuffer.length/samplerate)
+            liveTelemetry.callbackOverruns++;
     }
 
 
@@ -219,11 +275,16 @@ function jsSID(bufferlen, background_noise, options)
         this.playcont();
     }
     this.playcont = function() {
-        if (jsSID_scriptNode) jsSID_scriptNode.connect(jsSID_audioCtx.destination);
+        if (jsSID_scriptNode) {
+            jsSID_scriptNode.connect(jsSID_audioCtx.destination);
+            liveTelemetryPlaying = true;
+        }
     }
     this.pause = function() {
         if (loaded && initialized && jsSID_scriptNode)
             jsSID_scriptNode.disconnect(jsSID_audioCtx.destination);
+        liveTelemetryPlaying = false;
+        liveTelemetry.lastCallbackAt = null;
     }
     //(Checking state before disconnecting is a workaround for Opera: gave error when code tried disconnecting what is not connected.
     //Checking inner state variables here, but maybe audioContext status info could be more reliable. I just didn't want to rely too many Audio API function.)
@@ -635,7 +696,17 @@ function jsSID(bufferlen, background_noise, options)
             if (finished == 0) {
                 while (CPUtime <= clk_ratio) {
                     pPC = PC;
-                    if (CPU() >= 0xFE) {
+                    var result = CPU();
+                    liveTelemetry.instructions++;
+                    // Observe actual SID register stores from the running C64
+                    // player, including indirect and self-modifying addresses.
+                    // The tick is the PAL playback-time estimate plus the CPU
+                    // cycles already spent in this audio sample.
+                    if (liveTelemetryObserver && storadd >= 0xD400 &&
+                        storadd < 0xD420)
+                        liveTelemetryObserver(storadd,memory[storadd],
+                            Math.max(0,Math.floor(playtime*C64_PAL_CPUCLK+CPUtime)));
+                    if (result >= 0xFE) {
                         finished = 1;
                         break;
                     } else
@@ -882,6 +953,7 @@ function jsSID(bufferlen, background_noise, options)
                     T &= 0xFF;
                     ST |= (!T) << 1;
                     memory[addr] = T;
+                    storadd = addr;
                     cycles += 2;
                 }
                 break;
@@ -905,6 +977,7 @@ function jsSID(bufferlen, background_noise, options)
                     T &= 0xFF;
                     ST |= (!T) << 1;
                     memory[addr] = T;
+                    storadd = addr;
                     cycles += 2;
                 }
                 break;
@@ -913,6 +986,7 @@ function jsSID(bufferlen, background_noise, options)
                 if (IR & 4) {
                     memory[addr]--;
                     memory[addr] &= 0xFF;
+                    storadd = addr;
                     ST &= 125;
                     ST |= (!memory[addr]) << 1 | (memory[addr] & 128);
                     cycles += 2;
@@ -955,6 +1029,7 @@ function jsSID(bufferlen, background_noise, options)
                 if (IR & 4) {
                     memory[addr]++;
                     memory[addr] &= 0xFF;
+                    storadd = addr;
                     ST &= 125;
                     ST |= (!memory[addr]) << 1 | (memory[addr] & 128);
                     cycles += 2;
