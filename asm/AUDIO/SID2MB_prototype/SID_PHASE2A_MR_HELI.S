@@ -13,6 +13,8 @@
 ;
 ; Errors: 0=none, 1=unexpected PSID header, 2=SID not found.
 ; SID slot auto-detection probes SlotIO base $C090..$C0F0.
+; Emulator SID clock extension: slot data index $1E/$1F latches CPU ticks.
+; CPU-clock deadline: exactly 20,436 Apple II ticks per PLAY (50 Hz).
 ;
 ; Original code is copied UNMODIFIED to $0CA0-$1F0A. INIT=$1EF3, PLAY=$0E34.
 ; Apple II zero page saved once at $5D00-$5DFF, restored before returning.
@@ -49,6 +51,15 @@ INSTALL
             STA ERRORCD
             JMP BAD_START
 HAS_CARD
+            ; X was slot*16 from signature scan. Patch the two SlotIO
+            ; operands to physical slot: $C082/$C083 + X, slots 1..7.
+            TXA
+            CLC
+            ADC #$82
+            STA CLOCKSEL+1
+            CLC
+            ADC #$01
+            STA CLOCKDATA+1
             JSR VALIDATE_PSID
             BCC VALID_FILE
             LDA #$01
@@ -71,12 +82,32 @@ CLEAR_C64_ZP
             LDA #$01
             STA ACTIVE
             LDA KBDSTRB             ; discard stale RUN / RETURN keypress
+            JSR READ_CLOCK
+            CLC
+            LDA NOWLO
+            ADC #$D4                ; 20436 = $4FD4 CPU ticks = 20ms
+            STA DEADLINELO
+            LDA NOWHI
+            ADC #$4F
+            STA DEADLINEHI
 
 PLAY_LOOP
-            JSR WAIT50              ; ~50 Hz when CPU is at normal speed
+            JSR WAIT50              ; CPU-cycle absolute deadline
             JSR $0E34               ; original C64 PLAY ($D400 writes untouched)
             LDA KBD
-            BPL PLAY_LOOP           ; stop on the next keyboard keypress
+            BMI END_KEY
+            ; Advance *absolute* deadline: PLAY execution time does not
+            ; accumulate as tempo error. Any overshoot is recovered by
+            ; the next wait rather than adding another full delay.
+            CLC
+            LDA DEADLINELO
+            ADC #$D4
+            STA DEADLINELO
+            LDA DEADLINEHI
+            ADC #$4F
+            STA DEADLINEHI
+            JMP PLAY_LOOP
+END_KEY
             LDA KBDSTRB
 
 END_PLAY
@@ -306,19 +337,34 @@ SILENCE
             STA SIDVOL
             RTS
 
-; Approximate CPU polling interval, similar to SID Phase 1.
-; Tune code averages ~773 emulated CPU cycles per PLAY invocation; this
-; foreground wait is deliberately compensated versus the Phase 1 delay.
-; Tempo is not cycle-exact; precise interrupt scheduling is Phase 2C.
+; Emulator-only SID slot clock extension (not physical MOS 6581):
+; SlotIO index=$1E reads a latched CPU tick LOW; $1F reads that same
+; snapshot HIGH. 16-bit wrap is safe for a 20,436-cycle period.
+; No audio/SID waveform state is affected by clock-register reads.
+READ_CLOCK
+            LDA #$1E
+CLOCKSEL
+            STA $C0C2
+CLOCKDATA
+            LDA $C0C3
+            STA NOWLO
+            LDA #$1F
+            STA CLOCKSEL
+            LDA CLOCKDATA
+            STA NOWHI
+            RTS
+
+; Signed modulo-16-bit delta: while (now - deadline) < 0, wait.
+; Each loop takes only a few dozen 6502 cycles. The host $1E/$1F
+; register pair prevents PLAY routine cost from shifting the next beat.
 WAIT50
-            LDX #$0F
-WAIT_OUTER
-            LDY #$FE
-WAIT_INNER
-            DEY
-            BNE WAIT_INNER
-            DEX
-            BNE WAIT_OUTER
+            JSR READ_CLOCK
+            SEC
+            LDA NOWLO
+            SBC DEADLINELO
+            LDA NOWHI
+            SBC DEADLINEHI
+            BMI WAIT50
             RTS
 
 ERROR_TEXT
@@ -328,5 +374,9 @@ ERRORCD     .BYTE $00
 ACTIVE      .BYTE $00
 SUMLO       .BYTE $00
 SUMHI       .BYTE $00
+NOWLO       .BYTE $00
+NOWHI       .BYTE $00
+DEADLINELO  .BYTE $00
+DEADLINEHI  .BYTE $00
 
             .END
