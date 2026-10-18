@@ -293,8 +293,10 @@ test('SID sustain changes and oscillator TEST do not instantly overwrite the ADS
 });
 
 
-function sidSchedulerHarness(){
+function sidSchedulerHarness(multiplier=1){
   const scheduled=[];
+  const speed={CPU_ClocksTicks_s:1021800,
+    CPU_TargetTicks_s:1021800*multiplier};
   class FakeAudioContext{
     constructor(){this.currentTime=0;this.state='running';this.destination={};}
     createGain(){return {gain:{value:1},connect(){}};}
@@ -302,15 +304,19 @@ function sidSchedulerHarness(){
       return {duration:length/rate,getChannelData(){return new Float32Array(length);}};
     }
     createBufferSource(){
-      return {buffer:null,connect(){},disconnect(){},stop(){},
-        start(t){scheduled.push({start:t,end:t+this.buffer.duration});}};
+      return {buffer:null,playbackRate:{value:1},
+        connect(){},disconnect(){},stop(){},
+        start(t){scheduled.push({start:t,
+          end:t+this.buffer.duration/this.playbackRate.value,
+          rate:this.playbackRate.value,
+          samples:this.buffer.getChannelData(0).length});}};
     }
     resume(){return Promise.resolve();}
     suspend(){this.state='suspended';return Promise.resolve();}
     close(){return Promise.resolve();}
   }
   const context=vm.createContext({
-    console,Float32Array,Uint8Array,AudioContext:FakeAudioContext,
+    console,Float32Array,Uint8Array,AudioContext:FakeAudioContext,_o:speed,
     oEMU:{component:{IO:{}}}
   });
   for(const name of ['EMU_DEVICE_SID_audio.js','EMU_CARD_SID.js'])
@@ -322,7 +328,7 @@ function sidSchedulerHarness(){
   device.bindHost(card);
   device.bindIO({getClockTicks(){return cpuTicks;},refreshDeviceHooks(){}});
   card.reset();
-  return {card,device,scheduled,
+  return {card,device,scheduled,speed,
     tick(t){cpuTicks=t;},
     frame(n,wallSeconds){cpuTicks=Math.round(n*102180);
       device.audio.currentTime=wallSeconds;device.cycle();}};
@@ -435,6 +441,69 @@ test('SID realtime audio services each 10ms of CPU ticks without display-frame b
     assert.ok(t.scheduledLeadMs>80 && t.scheduledLeadMs<175);
     await h.device.init('audio_off');
   }
+});
+
+test('SID audio keeps up with slow, nominal and turbo CPU speeds without throttling tempo',async()=>{
+  for(const rate of [0.5,1,2,4,24]){
+    const h=sidSchedulerHarness(rate);
+    await h.device.init('audio_on');
+    const quantum=Math.round(10218*rate);
+    assert.equal(h.device.getRealtimeAudioQuantumTicks(),quantum);
+    let ticks=0;
+    for(let step=1;step<=60;step++){
+      h.device.audio.currentTime=step*.01;
+      h.tick(ticks);
+      const granted=h.device.getCpuSliceBudget(quantum);
+      assert.equal(granted,quantum,
+        'audio pacing must not cap '+rate+'x CPU at step '+step);
+      ticks+=granted;
+      h.tick(ticks);
+      h.device.serviceRealtimeAudio();
+    }
+    const stats=h.device.getAudioStats();
+    assert.equal(ticks,quantum*60);
+    assert.equal(stats.cpuBudgetBlocked,0);
+    assert.equal(stats.dropped,0);
+    assert.equal(stats.underruns,0);
+    assert.equal(stats.cpuPlaybackRate,rate);
+    assert.ok(h.scheduled.length>0);
+    assert.ok(h.scheduled.every(buffer=>buffer.rate===rate),
+      'AudioBufferSource playbackRate must match selected CPU speed');
+    for(let i=1;i<h.scheduled.length;i++)
+      assert.ok(Math.abs(h.scheduled[i].start-h.scheduled[i-1].end)<1e-7,
+        'consecutive SID buffers must join without a gap');
+    assert.ok(stats.scheduledLeadMs>0 && stats.scheduledLeadMs<300);
+    await h.device.init('audio_off');
+  }
+});
+test('changing CPU speed scales newly scheduled SID buffers without resetting the song',async()=>{
+  const h=sidSchedulerHarness(1);
+  await h.device.init('audio_on');
+  let ticks=0;
+  for(let step=1;step<=10;step++){
+    h.device.audio.currentTime=step*.01;
+    ticks+=h.device.getRealtimeAudioQuantumTicks();
+    h.tick(ticks);
+    h.device.serviceRealtimeAudio();
+  }
+  const original=h.scheduled.length;
+  assert.ok(original>0);
+  h.speed.CPU_TargetTicks_s=1021800*4;
+  assert.equal(h.device.getRealtimeAudioQuantumTicks(),40872);
+  for(let step=11;step<=20;step++){
+    h.device.audio.currentTime=step*.01;
+    const quantum=h.device.getRealtimeAudioQuantumTicks();
+    h.tick(ticks);
+    assert.equal(h.device.getCpuSliceBudget(quantum),quantum);
+    ticks+=quantum;
+    h.tick(ticks);
+    h.device.serviceRealtimeAudio();
+  }
+  assert.ok(h.scheduled.slice(original).some(buffer=>buffer.rate===4));
+  for(let i=1;i<h.scheduled.length;i++)
+    assert.ok(Math.abs(h.scheduled[i].start-h.scheduled[i-1].end)<1e-7);
+  assert.equal(h.device.getAudioStats().dropped,0);
+  await h.device.init('audio_off');
 });
 
 test('SID FIFO overflow logs an onset event with CPU tick and audio state',async()=>{
