@@ -1,112 +1,110 @@
-# SID Phase 2B.2 — Interactive PSID v1/v2 loading and playback
+# SID Phase 2B.2 — native Apple II PSID v1/v2 player
 
-Phase 2B.2 adds a **browser-only** PSID selector to the SID card's existing
-**Peripheral Controls** toolbox. No Node.js, terminal, external service,
-C64 emulator or pre-rendering is required. The selected .sid file is read
-locally by the browser; RetroAppleJS executes the original 6502 music code
-and observes its unmodified $D400–$D41F SID register writes.
+**The Apple II 6502 assembly source is authoritative.** The browser is only a
+binary file-transfer utility and does not parse PSID music, select subtunes,
+build descriptors, run a substitute player, or inject playback commands.
 
-## User guide
+## What to do
 
-1. Start a **disposable** Apple II/II+ emulator session in **TEXT** mode,
-   with the JavaScript 6502, CPU speed 100%, and the **Applesoft BASIC prompt**
-   visible. Do not run DOS/ProDOS, games, interrupt-dependent programs, or
-   unsaved BASIC code alongside the foreground player. A PSID's absolute
-   memory references may overwrite BASIC workspace and other RAM.
-2. Mount **MOS 6581/8580 SID** (PCODE `SID`) through the Slot Manager,
-   preferably in slot 4. Enable the emulator's main sound control and
-   ensure `SIDAUDIO` is attached.
-3. Open **Tools → Peripheral controls → SID**. Click **PSID** beside
-   **Telemetry**, then select a local `.sid` file.
-4. The window displays detected PSID version, song count, executable
-   address, INIT/PLAY, clock rate, and payload size.
-5. Optionally choose a **subtune** and the **staging address** (hex without
-   the dollar sign, default `6000` or `2000` for larger songs).
-   Only the entire file's staging origin changes; the native executable's
-   original C64 absolute load address remains unmodified.
-6. Click **Play** from the Applesoft prompt. RetroAppleJS installs the file,
-   player and descriptor directly in Apple II RAM, then sends
-   `CALL 7168` plus RETURN through the **existing Apple II keyboard
-   text pipe**. The Apple II's *own CPU* runs the resident foreground player.
-   It does **not** force the CPU PC to a new value or reset the system.
-7. Click **Stop** (or press any key on the emulator keyboard) to end
-   playback. The player silences SID and restores its saved Apple II zero
-   page. Click Play again to reinstall the original source file and restart.
+1. Mount the SID peripheral in any Apple II slot 1–7 with audio enabled.
+2. Load the **assembled native player images** from the Phase 2B.2 build:
+   - `SID_Phase2B2_bootstrap.bin` at **$1C00**
+   - `SID_Phase2B2_runtime.bin` at **$9000**
+   These are distinct RAM segments, generated exclusively from
+   `asm/AUDIO/SID_PHASE2B2_NATIVE_PLAYER.S`. Matching Apple II monitor
+   listings are generated for either segment. The native player needs a
+   disposable Apple II session; never execute alongside unsaved BASIC work.
+3. In **Tools → Peripheral controls → SID → PSID**, choose a local raw
+   `.sid` file and a hexadecimal start address in the **$2000–$8FFF**
+   staging window. The transfer tool checks `start + file_length <= $9000`
+   and copies **all original file bytes without modification**.
+4. At the Applesoft prompt, enter `CALL 7168`. The Apple II player asks
+   **PSID START ($HEX, ENTER=TRANSFER):**. Press Return to accept the
+   browser-transfer address, or enter another hexadecimal address.
+5. If you typed an address other than the recorded transfer address, the
+   Apple II asks for the **complete raw PSID file length in hex** (for
+   example, `12E9` for a 4,841-byte file). This makes manual uploads possible
+   without the browser.
+6. The native parser validates PSID v1/v2, shows the title, number of subtunes
+   and default subtune, then asks for a **decimal subtune**. Press Return
+   to accept the default or enter a value from 1 through the song count.
+7. The Apple II calculates the executable payload start and length from the
+   original PSID header plus the transfer byte count, checks destination and
+   INIT/PLAY addresses, runs original INIT, and invokes original PLAY
+   every 20,436 ticks (PAL) or 17,030 ticks (NTSC).
+8. **Press any key** to stop; the native player mutes SID, restores the
+   Apple II zero page and public entry stub, then returns to Applesoft.
+   It does **not** automatically stop at the end of a composition.
 
-**Important:** The Play button sends a BASIC command. It does not detect
-whether Applesoft is waiting at its prompt; issuing it during another
-running program may type characters into that program instead. The
-interface reports that the command was sent, not that playback is proven
-audible. Similarly, Stop sends an ordinary keyboard character; it does not
-interrupt and forcibly terminate native CPU execution.
+Do **not** expect arbitrary C64 programs to work. This executes raw original
+6502 music code, not a C64 ROM, VIC, CIA or 6510 environment.
 
-The browser uses the SID peripheral's existing controls for chip model,
-clock, volume and native $D400 writes. When Play is requested, it enables
-native interception, sets PAL (50 Hz) or NTSC (60 Hz) SID clock as indicated
-by the compatible PSID's metadata, and honours an explicit 6581/8580
-model preference. Where the header has no model preference, the user's
-selected model remains unchanged.
+## Transfer record (not a PSID descriptor)
 
-## Supported and rejected formats
+A successful browser upload creates precisely eight bytes at **$9E00**:
 
-Browser preflight mirrors **Phase 2B.1**:
-
-- Accept PSID **v1 or v2**, fixed or embedded little-endian PRG load address,
-  one SID, explicit INIT/PLAY within a RAM-resident payload, selected VBI
-  subtune at 50 or 60 Hz.
-- Reject RSID, PSID v3/v4, MUS, PlaySID-specific samples, CIA-timed subtunes,
-  multi-SID tunes, PLAY=$0000 IRQ-vector drivers, unsafe declared executable
-  addresses, and oversized/out-of-window complete files.
-- The file may be staged anywhere from **$2000 through $8FFF** provided the
-  whole file fits, including its PSID header. Maximum is **28 KiB total**.
-- Original executable destination may lie in **$0C00–$BFFF** but cannot
-  overlap the resident **$9000–$95FF** work area. Mr. Heli's original
-  $0CA0–$1F0A code overlaps the $1C00 entry stub, which the player
-  restores after returning.
-- Successful header preflight does **not** guarantee arbitrary C64 tunes
-  work: undocumented opcodes, C64 ROM/6510/VIC/CIA dependencies and
-  out-of-payload RAM assumptions remain unsupported.
-
-## Memory and implementation
-
-| Address | What occupies it |
+| Offset | Contents |
 |---|---|
-| $1C00–$1C0B | Compiled public Phase 2B.1 entry stub |
-| $2000–$8FFF | Variable complete PSID file staging (28 KiB window) |
-| $9000–$92A3 | Exact compiled Phase 2B.1 676-byte foreground runtime |
-| $9400–$9411 | 18-byte playback descriptor |
-| $9500–$95FF | Original Apple II zero page backup |
+| +0..+3 | ASCII `SIDF` (magic) |
+| +4..+5 | 16-bit little-endian file start address |
+| +6..+7 | 16-bit little-endian **complete** file byte length |
 
-The new `res/EMU_SID_PSID.js` supplies a dependency-free browser parser,
-descriptor generator, RAM installer and user interface. The native player
-binary is compiled from `asm/AUDIO/SID_PHASE2B1_PLAYER.S` and
-embedded in this browser module as byte arrays: the tests check that
-**all 688 bytes match** the existing assembly output. No runtime assembler,
-external fetch, dynamic compilation or WebAudio replacement is involved.
+The file itself occupies **only** the selected staging addresses. Its
+PSID header, optional embedded PRG load word, original music code and data
+are not changed. The host knows the exact file size and contiguous RAM
+capacity without interpreting PSID music. The native player can use the
+record or accept manually entered start/length values.
 
-Before modifying RAM, the browser parses and validates the whole file and
-staging footprint. It refuses to overwrite RAM while the installed foreground
-player's ACTIVE byte is asserted. It obtains a physical RAM snapshot with
-`hw.safe_flashdump()`, applies staged PSID, entry stub, runtime and descriptor
-to a copy, and loads the result through `hw.load_ram64k()`. The normal
-video RAM shares the same physical RAM buffer, and unrelated bytes are
-preserved. The existing native checksum verifies the staged payload again
-**inside the 6502** before copying its original code into place.
+The PSID v1/v2 header contains a *data offset* but no total file length.
+The Apple II therefore computes:
+`executable_length = recorded_file_length - data_offset - optional_PRG_word_bytes`.
+This is the length of data copied to its **original declared C64 address**.
+The music's *duration* is independent and is not used to determine copying.
 
-The JS module retains an in-memory copy of the selected file, so replay is
-possible even when the previous native copy overwrote its original staging
-area. No file contents leave the browser.
+## Native memory contract
 
-## Tests and future work
+| Address | Role |
+|---|---|
+| $1C00–$1C0B | Public 12-byte jump table, reconstructed after playback |
+| $2000–$8FFF | Complete raw PSID file staging: 28 KiB including header |
+| $9000–$9CFF | Resident native assembly code and variables (builder checks end) |
+| $9D00–$9D11 | Native-generated 18-byte descriptor for existing playback core |
+| $9E00–$9E07 | Raw-transfer size/location record |
+| $9F00–$9FFF | Original Apple II zero-page backup |
 
-`tests/sid_phase2b2.test.js` runs in the repository's dedicated GitHub
-Actions SID-native workflow alongside Phase 2A, Phase 2B.1 and SID peripheral
-regressions. It covers v1/v2 original Mr. Heli metadata, identical payload,
-byte-exact embedded player image, atomic RAM installation, rejection without
-RAM mutation, staging limits and **actual RetroAppleJS 6502 execution of both
-formats** with identical native SID register writes, 50 Hz timing, zero-page
-restoration and mute-on-exit. The user does not need a local test tool.
+The copy target must be entirely in $0C00–$BFFF and must **not** intersect
+$9000–$9FFF. Header processing and keyboard/ROM I/O run before music zero
+page is initialised. The original PLAY loop continues using the Phase 2B.1
+deadline logic and unmodified SID $D400–$D41F bus writes.
 
-Interactive browser listening and keyboard focus still deserve a smoke test
-on target browsers. This is foreground playback, not an IRQ/background player.
-That separate scheduling work belongs to Phase 2C.
+## Compatibility and safety
+
+Native parser supports genuine PSID v1/v2 with a compatible 6502 payload,
+header-declared or embedded little-endian PRG load address, valid INIT and
+PLAY inside the declared executable range, one SID, and VBI-timed subtunes.
+Selected v1 speed flags repeat every 32 tunes; v2 uses bit 31 for higher
+subtunes. Unsupported cases are rejected before executing the music:
+RSID, v3/v4, PlaySID-specific samples/MUS, CIA-timed subtunes, additional
+SID chips, IRQ-vector PLAY=0, illegal range/entrypoints, or insufficient data.
+
+PSID header validation **cannot** prove that original code is independent
+of other C64 ROM/RAM/CIA/VIC/6510 features or undocumented opcodes.
+Use a disposable Apple II state. Only the zero page and overwritten
+public entry stub are restored automatically; other overwritten memory
+is not backed up.
+
+## Build and verification
+
+The new **single source of truth** is
+`asm/AUDIO/SID_PHASE2B2_NATIVE_PLAYER.S`. The project CI assembles it with
+the existing `ASM_core.js` (RetroAppleJS dialect), verifies every emitted
+byte fits outside protected memory, and runs native emulator regressions.
+The build-time helper `tools/SID_Phase2B2_build.js` emits the two binary
+images, their monitor listings and a memory manifest; CI can publish these
+as downloadable artifacts. You do not need to install Node.
+
+The regression harness uses the **actual RetroAppleJS 6502** to exercise
+ROM-style keyboard prompts and original SID register writes with v1/v2
+containers, different staging addresses and the no-transfer-record path.
+The browser transfer utility has independent tests checking exact copy,
+file size, destination end and its eight-byte record.
