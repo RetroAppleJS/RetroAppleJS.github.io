@@ -116,6 +116,8 @@ test('PSID preflight rejects unsupported formats, CIA, unsafe memory and collisi
     assert.throws(()=>build.prepare(cia),e=>e.code==='CIA_TIMING');
     const mult=fixture();mult[0x7A]=0x42;
     assert.throws(()=>build.prepare(mult),e=>e.code==='MULTISID');
+    const playsid=fixture();playsid[0x77]|=0x02;
+    assert.throws(()=>build.prepare(playsid),e=>e.code==='PLAYSID_UNSUPPORTED');
     assert.throws(()=>build.prepare(fixture({load:0x9000,play:0x9006})),
         e=>e.code==='PLAYER_COLLISION');
     assert.throws(()=>build.prepare(fixture({load:0x0400,play:0x0406})),
@@ -196,4 +198,15 @@ test('native player rejects corrupted staged RAM before installing original exec
     assert.deepEqual(Array.from(r.mem.subarray(0,256)),Array.from(r.zp),
         'ZP must be restored on checksum failure');
     assert.equal(r.writes.length,0,'corrupted file cannot write to SID registers');
+});
+
+test('PSID version-specific timing bits and SID model flags are interpreted correctly',()=>{
+    const v1=fixture({version:1,songs:34,speed:1});
+    assert.throws(()=>build.parsePSID(v1,{subtune:33}),e=>e.code==='CIA_TIMING');
+    const v2=fixture({version:2,songs:34,speed:1});
+    assert.equal(build.parsePSID(v2,{subtune:33}).selectedSong,33);
+    const chip=fixture();chip.writeUInt16BE(0x14,0x76); // PAL + 6581
+    assert.equal(build.parsePSID(chip).preferredSIDModel,6581);
+    chip.writeUInt16BE(0x24,0x76); // PAL + 8580
+    assert.equal(build.parsePSID(chip).preferredSIDModel,8580);
 });
