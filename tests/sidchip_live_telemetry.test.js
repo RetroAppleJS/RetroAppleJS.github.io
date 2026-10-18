@@ -19,10 +19,10 @@ function rig(){
     sandbox.window=sandbox;
     vm.runInContext(fs.readFileSync(path.join(root,'tools','SID_LiveTelemetry.js'),'utf8'),sandbox);
     const state={model:6581,clockHz:985248,volumePct:100,subtune:5,
-        playtime:0,initialized:true,
+        playtime:0,initialized:true,videoStandard:'PAL',frameRate:50,playCallHz:50,
         cpu:{tick:0,pc:8192,ic:0,sp:255},
         registers:Array(32).fill(0),envelopes:[2,3,4],
-        audio:{sampleRate:48000,outputSampleRate:48000,
+        audio:{sampleRate:48000,requestedSampleRate:48000,outputSampleRate:48000,
             contextState:'running',playbackEnabled:true,bufferFrames:16384,
             callbacks:2,produced:32768,lastCallbackMs:2,worstCallbackMs:3,
             lastGapMs:340,worstGapMs:350,callbackOverruns:0}};

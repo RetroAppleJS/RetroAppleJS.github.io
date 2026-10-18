@@ -2,7 +2,7 @@
 // Same top-level format as EMU_CARD_SID, with tool-specific audio diagnostics.
 (function(root){
     'use strict';
-    var GAP_TICKS=3500, CLOCK=985248, HISTORY_LIMIT=120;
+    var GAP_TICKS=3500, CLOCK=985248, VIDEO_HZ=50, HISTORY_LIMIT=120;
     var player=null,live=false,timer=null,history=[],baseline=null,rates={};
     var writes=0,bursts=0,currentWrites=0,maxWrites=0;
     var lastWriteTick=null,lastBurstTick=null,periodCount=0,periodSum=0;
@@ -24,8 +24,8 @@
                 lastPeriod=delta;periodCount++;periodSum+=delta;
                 minPeriod=minPeriod===null?delta:Math.min(minPeriod,delta);
                 maxPeriod=Math.max(maxPeriod,delta);
-                if(delta<0.70*20436)shortPeriods++;
-                if(delta>1.40*20436)longPeriods++;
+                if(delta<0.70*CLOCK/VIDEO_HZ)shortPeriods++;
+                if(delta>1.40*CLOCK/VIDEO_HZ)longPeriods++;
             }
             lastBurstTick=tick;currentWrites=0;bursts++;
         }
@@ -36,8 +36,12 @@
         if(player && player!==p && player.setLiveTelemetryObserver)
             player.setLiveTelemetryObserver(null);
         player=p||null;
-        if(player && player.setLiveTelemetryObserver)
+        if(player && player.setLiveTelemetryObserver){
+            var state=player.getLiveTelemetryState();
+            CLOCK=state.clockHz;
+            VIDEO_HZ=state.frameRate;
             player.setLiveTelemetryObserver(observeWrite);
+        }
     }
     function reset(){
         writes=bursts=currentWrites=maxWrites=periodCount=periodSum=0;
@@ -50,6 +54,8 @@
     function snapshot(){
         if(!player || !player.getLiveTelemetryState)return null;
         var state=player.getLiveTelemetryState(), t=now(),audio=state.audio||{};
+        CLOCK=state.clockHz;
+        VIDEO_HZ=state.frameRate;
         var tick=state.cpu.tick;
         if(baseline && t>baseline.time && tick>=baseline.tick &&
             audio.produced>=baseline.produced && writes>=baseline.writes){
@@ -74,7 +80,8 @@
             queued:null,queuedMs:null,capacityFrames:null,maxQueueDepth:null,
             scheduledLeadMs:null,minLeadMs:null,maxLeadMs:null,
             underruns:null,lastLateMs:null,worstLateMs:null,activeSources:null,
-            sampleRate:audio.sampleRate,outputSampleRate:audio.outputSampleRate,
+            sampleRate:audio.sampleRate,requestedSampleRate:audio.requestedSampleRate,
+            outputSampleRate:audio.outputSampleRate,
             contextState:audio.contextState,playbackEnabled:audio.playbackEnabled,
             // ScriptProcessor-specific: not equivalent to emulator underruns.
             callbackFrames:audio.bufferFrames,callbacks:audio.callbacks,
@@ -86,8 +93,11 @@
             slot:null,
             cpu:{tick:tick,clockHz:CLOCK,
                 state:{pc:state.cpu.pc,ic:state.cpu.ic,sp:state.cpu.sp},
-                timingMode:'PSID '+(state.initialized?'playback':'not initialized')},
-            sid:{model:state.model,clockHz:state.clockHz,volumePct:state.volumePct,
+                timingMode:'PSID '+state.videoStandard+' / '+state.frameRate+' Hz'+
+                    (state.initialized?' playback':' (not initialized)')},
+            sid:{model:state.model,clockHz:state.clockHz,videoStandard:state.videoStandard,
+                frameRate:state.frameRate,playCallHz:state.playCallHz,
+                volumePct:state.volumePct,
                 snooping:true,voices:voices,nativeWrites:writes,slotWrites:0,
                 lastWrite:Object.assign({},lastWrite)},
             bursts:{count:bursts,gapThresholdTicks:GAP_TICKS,
@@ -109,16 +119,19 @@
         history.push(Object.assign({wallTime:Date.now()},s));
         if(history.length>HISTORY_LIMIT)history.shift();
         function ms(ticks){return ticks===null?'—':number(ticks*1000/CLOCK,2,' ms');}
-        set('model',s.sid.model+' / PAL / '+s.sid.clockHz+' Hz');
+        set('model',s.sid.model+' / '+s.sid.videoStandard+' / '+s.sid.clockHz+' Hz');
         set('context',a.contextState+' / '+(a.playbackEnabled?'ON':'off'));
-        set('rates',a.sampleRate+' / '+(a.outputSampleRate||'—')+' Hz');
+        set('rates',a.sampleRate+' / '+(a.outputSampleRate||'—')+
+            ' Hz (requested '+(a.requestedSampleRate||'default')+')');
         set('cpu',number(r.cpuPacePercent,1,'%'));
         set('mode',s.cpu.timingMode+' / subtune '+s.subtune);
         set('pc','$'+hex(s.cpu.state.pc,4)+' / '+s.cpu.state.ic);
         set('writes',s.sid.nativeWrites+' / '+number(r.nativeWritesPerSecond,1,' /s'));
         set('burst',b.count+' / '+number(r.burstsPerSecond,1,' /s'));
         set('interval',ms(b.lastTicks)+' / '+ms(b.minTicks)+' / '+ms(b.maxTicks));
-        set('burst_warn',b.shortPeriods+' / '+b.longPeriods+' (under 14 / over 28 ms)');
+        set('burst_warn',b.shortPeriods+' / '+b.longPeriods+
+            ' (under '+number(700/VIDEO_HZ,1,' ms')+' / over '+
+            number(1400/VIDEO_HZ,1,' ms')+')');
         set('burst_size',b.currentWrites+' / '+b.maxWrites);
         set('envelopes',s.sid.voices.map(function(v){
             return 'V'+v.voice+' '+(v.gate?'GATE':'off')+' / '+v.envelope;
@@ -162,7 +175,9 @@
         if(!s)return false;
         var data={format:'RetroAppleJS.SIDAudioTelemetry',version:1,
             slot:null,sampleRate:s.audio.sampleRate,capturedAt:new Date().toISOString(),
-            source:'SIDchipJS',latest:s,history:history.slice(),
+            source:'SIDchipJS',videoStandard:s.sid.videoStandard,
+            requestedSampleRate:s.audio.requestedSampleRate,
+            latest:s,history:history.slice(),
             notes:'ScriptProcessor callback timing is not the emulator AudioBufferSource scheduling telemetry. Null means unavailable, not zero.'};
         var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
         var url=URL.createObjectURL(blob),a=document.createElement('a');
