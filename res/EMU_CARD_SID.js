@@ -171,8 +171,9 @@ function SIDCard()
         if(r===2)return regIndex;
         if(r===3){
             if(regIndex===0x1E){
-                clockLatch=timestamp(ctx)&0xFFFF;
-                return clockLatch&0xFF;
+                var sampled=timestamp(ctx)&0xFFFF;
+                if(ctx?.bRO!==true)clockLatch=sampled;
+                return sampled&0xFF;
             }
             if(regIndex===0x1F)return (clockLatch>>>8)&0xFF;
             return d?d.readRegister(regIndex,ctx?.bRO?undefined:timestamp(ctx)):0xFF;
