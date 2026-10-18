@@ -213,19 +213,24 @@ The standalone telemetry JSON retains the `RetroAppleJS.SIDAudioTelemetry` versi
 ### SID 10 FPS audio flow control and 50 Hz native clock
 
 The SID output path services **Web Audio independently of screen refresh**
-using a lightweight audio-only callback after each **10,218 emulated CPU ticks**
-(approximately 10 ms at 1.0218 MHz). At 10 FPS, a 100 ms CPU slice offers
-approximately **10 opportunities** to drain pending PCM before the next
-screen refresh; VBLANK continues its regular per-frame service. Audio-only
+using a lightweight audio-only callback approximately every **10 ms of
+wall time** (10,218 emulated CPU ticks at 100%, proportionally scaled for
+other CPU speeds). At 10 FPS, the normal 100 ms processing slice therefore
+provides approximately **10 opportunities** to drain pending PCM before the
+next screen refresh; VBLANK continues its regular per-frame service. Audio-only
 callbacks never update peripheral UIs, disk state or screen rendering, and
 preserve the original SID register-write ordering.
 
-The SID audio child also participates in the emulator's CPU audio budget.
-If browser-scheduled sound plus waiting PCM would exceed **500 ms**, an
-excessively fast CPU producer is temporarily restricted. This prevents
-repeated FIFO overflow under turbo execution without deleting, muting or
-reordering already-rendered samples. When enabled, audio flow control may
-intentionally limit maximum CPU speed.
+The SID sound source now follows the CPU-speed setting: at 200% / 400% CPU,
+Web Audio plays the synthesized SID samples at 2x / 4x their nominal rate,
+accelerating music tempo and pitch with the emulated CPU. The CPU audio-budget
+guard remains active to prevent unbounded buffering, but it computes **both
+queued and scheduled audio in wall-time duration at the selected playback
+rate** (maximum 500 ms), rather than mistaking expected turbo audio production
+for an overload. Larger Web Audio buffers at high speed reduce source-node
+creation overhead. Host CPU limitations can still prevent extreme turbo
+speeds, but merely mounting the SID must not force normal-speed playback.
+The actual multiplier is reported as `cpuPlaybackRate` in audio stats.
 
 **FIFO overflow telemetry:** a new `fifo_overflow` event records the first
 lost sample of each continuous overflow with CPU tick, Web Audio timestamp,
