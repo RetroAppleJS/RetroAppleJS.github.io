@@ -23169,9 +23169,8 @@ function SIDAudio()
     // shorter restart lead to avoid *adding* another audible gap.
     const TARGET_AUDIO_LEAD=0.25, MAX_BLOCKS_PER_CYCLE=8;
     const START_LEAD=0.125, RECOVERY_LEAD=0.008;
-    // Audio service is independent of display FPS (about 10 ms CPU-time).
-    // Throttle unusually fast CPU production only when all pending audio
-    // would exceed half a second. VBLANK and nominal 10 FPS stay unaffected.
+    // Service every ~10 ms of wall time at the chosen CPU speed. All queue
+    // and CPU-budget limits must use the same playback-time units.
     const SERVICE_QUANTUM_TICKS=10218, CPU_AUDIO_HIGH_WATER_SEC=0.50;
     // Bus write timestamps may include an instruction-local cycle offset.
     const MINOR_CLOCK_SKEW_TICKS=32, AUDIO_EVENT_LIMIT=32;
@@ -23521,6 +23520,7 @@ function SIDAudio()
             recentAudioEvents:eventHistory.length,
             cpuTick:lastTick,
             sidModel:sidModel,sidClock:sidClock,hostClock:hostClock,
+            cpuPlaybackRate:cpuPlaybackRate(),
             contextState:audio?audio.state:"uninitialized",playbackEnabled:playing};
     };
     this.resetAudioTelemetry=function()
@@ -23563,9 +23563,20 @@ function SIDAudio()
     this.setPresentationPaused=function(v){paused=!!v;if(paused){stopSources();clearQueue();}};
     this.isCycleActive=function(){return !!(playing&&!paused);};
     this.isTickActive=function(){return false;};
+    // PCM is produced in emulated CPU time. Each sample must play faster
+    // (or slower) as the user changes the Apple II CPU-speed multiplier.
+    // Otherwise turbo outruns real-time Web Audio and flow control halts CPU.
+    function cpuPlaybackRate()
+    {
+        if(typeof _o==="undefined" || !_o)return 1;
+        var base=Number(_o.CPU_ClocksTicks_s);
+        var target=Number(_o.CPU_TargetTicks_s);
+        var rate=target/base;
+        return Number.isFinite(rate) && rate>0 ? rate : 1;
+    }
     this.getRealtimeAudioQuantumTicks=function(){
         return playing&&!paused&&audio&&audio.state==="running"?
-            SERVICE_QUANTUM_TICKS:0;
+            Math.max(1,Math.round(SERVICE_QUANTUM_TICKS*cpuPlaybackRate())):0;
     };
     this.serviceRealtimeAudio=function(){
         realtimeServices++;
@@ -23578,11 +23589,13 @@ function SIDAudio()
         // Force accounting of any CPU time since the previous SID write.
         // The high-water bound includes *both* scheduled and unscheduled PCM.
         this.advanceTo(io.getClockTicks());
+        var rate=cpuPlaybackRate();
         var lead=Math.max(0,nextStart-audio.currentTime);
-        var pending=queued/SAMPLE_RATE;
+        var pending=queued/(SAMPLE_RATE*rate);
         var room=Math.max(0,CPU_AUDIO_HIGH_WATER_SEC-lead-pending);
-        var budget=Math.min(requested,SERVICE_QUANTUM_TICKS,
-            Math.floor(room*hostClock));
+        var budget=Math.min(requested,
+            Math.max(1,Math.round(SERVICE_QUANTUM_TICKS*rate)),
+            Math.floor(room*hostClock*rate));
         if(budget<=0){cpuBudgetBlocked++;return 0;}
         return Math.max(1,budget);
     };
@@ -23621,9 +23634,14 @@ function SIDAudio()
         // Schedule *all* available samples (subject to a bounded horizon)
         // rather than just one block per display frame.
         var blocks=0;
+        var rate=cpuPlaybackRate();
+        // At turbo speed, a fixed 2048-sample block is only a few wall-time
+        // milliseconds. Batch samples to avoid excessive Web Audio sources.
+        var blockLimit=Math.min(FIFO_LENGTH,
+            Math.max(MAX_BLOCK,Math.round(MAX_BLOCK*rate)));
         while(queued>0 && blocks<MAX_BLOCKS_PER_CYCLE &&
               nextStart-now<TARGET_AUDIO_LEAD){
-            var count=Math.min(queued,MAX_BLOCK);
+            var count=Math.min(queued,blockLimit);
             var buffer=audio.createBuffer(1,count,SAMPLE_RATE);
             var channel=buffer.getChannelData(0);
             for(var i=0;i<count;i++){
@@ -23633,9 +23651,11 @@ function SIDAudio()
             queued-=count;
             var source=audio.createBufferSource();
             source.buffer=buffer;
+            // Preserve sample order and pitch/tempo scaling together.
+            if(source.playbackRate)source.playbackRate.value=rate;
             source.connect(gain);
             source.start(nextStart);
-            nextStart+=buffer.duration;
+            nextStart+=buffer.duration/rate;
             var lead=Math.max(0,1000*(nextStart-now));
             minLeadMs=minLeadMs===null?lead:Math.min(minLeadMs,lead);
             maxLeadMs=Math.max(maxLeadMs,lead);
