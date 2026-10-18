@@ -255,3 +255,28 @@ driver binary at `$2000`; the original staged Mr. Heli PSID at `$6000`
 remains unchanged. See [SID Phase 2A](SID_PHASE2A.md) for the updated memory
 map and entrypoints. Existing older 500-byte players still use the previous
 fixed-delay timing until replaced.
+
+## Phase 2B.1 — Generic PSID v1/v2 staging and native playback
+
+Phase 2A (original Mr. Heli) is complete. **Phase 2B.1** introduces a
+generic, host-validated PSID loader while retaining native 6502 INIT/PLAY
+execution and unchanged `$D400–$D41F` writes.
+
+- Stage any compatible complete PSID file anywhere inside **`$2000–$8FFF`**
+  (28 KiB total **including the header**, not 28 KiB of executable plus
+  a header). A selected file's original execution address remains authoritative.
+- Start at **`CALL 7168`** (public jump table `$1C00`); a protected player
+  runtime at `$9000` avoids collision with original Mr. Heli bytes near
+  `$1C00`. The runtime is separate from the staging window.
+- `tools/SID_Phase2B1_build.js` validates PSID v1/v2, selects a subtune,
+  checks memory layout and 50/60 Hz VBI timing, and emits a descriptor
+  plus ready-to-enter Apple II monitor images.
+- The 6502 checks a **payload checksum in staged RAM before copying**,
+  copies overlapping ranges in the correct direction, starts the original
+  INIT/PLAY and restores zero page and the `$1C00` jump table on exit.
+- PSIDs needing CIA timers, multiple SID chips, RSID/C64 ROM, PlaySID
+  samples, BASIC startup or IRQ-defined PLAY routines are not supported
+  in this milestone; header validation cannot detect every C64 dependency.
+
+See **[Phase 2B.1 user/developer guide](SID_PHASE2B1.md)** for memory
+layout, file preparation, error codes, first-play commands and limitations.
