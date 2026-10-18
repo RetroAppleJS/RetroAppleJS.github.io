@@ -435,11 +435,15 @@ ASK_START
             LDX #>START_TEXT
             JSR PRINT_AX
             JSR READ_HEX
-            BCS INPUT_ERROR
+            BCC LONG_SKIP_1
+            JMP INPUT_ERROR
+LONG_SKIP_1
             LDA DIGITS
             BNE MANUAL_START
             LDA RECORD_OK
-            BEQ INPUT_ERROR
+            BNE LONG_SKIP_2
+            JMP INPUT_ERROR
+LONG_SKIP_2
             LDA RECORD+4
             STA FILEBASE
             LDA RECORD+5
@@ -473,9 +477,13 @@ ASK_LENGTH
             LDX #>LENGTH_TEXT
             JSR PRINT_AX
             JSR READ_HEX
-            BCS INPUT_ERROR
+            BCC LONG_SKIP_3
+            JMP INPUT_ERROR
+LONG_SKIP_3
             LDA DIGITS
-            BEQ INPUT_ERROR
+            BNE LONG_SKIP_4
+            JMP INPUT_ERROR
+LONG_SKIP_4
             LDA VALUE16
             STA FILELEN
             LDA VALUE16+1
@@ -484,14 +492,20 @@ CHECK_FILE
             ; Source range: $2000 <= start, end exclusive <= $9000.
             LDA FILEBASE+1
             CMP #$20
-            BCC INPUT_ERROR
+            BCS LONG_SKIP_5
+            JMP INPUT_ERROR
+LONG_SKIP_5
             CMP #$90
-            BCS INPUT_ERROR
+            BCC LONG_SKIP_6
+            JMP INPUT_ERROR
+LONG_SKIP_6
             LDA FILELEN+1
             BNE FILE_LENGTH_VALID
             LDA FILELEN
             CMP #$76
-            BCC INPUT_ERROR
+            BCS LONG_SKIP_7
+            JMP INPUT_ERROR
+LONG_SKIP_7
 FILE_LENGTH_VALID
             CLC
             LDA FILEBASE
@@ -500,13 +514,19 @@ FILE_LENGTH_VALID
             LDA FILEBASE+1
             ADC FILELEN+1
             STA FILEEND+1
-            BCS INPUT_ERROR
+            BCC LONG_SKIP_8
+            JMP INPUT_ERROR
+LONG_SKIP_8
             LDA FILEEND+1
             CMP #$90
             BCC FILE_RANGE_OK
-            BNE INPUT_ERROR
+            BEQ LONG_SKIP_9
+            JMP INPUT_ERROR
+LONG_SKIP_9
             LDA FILEEND
-            BNE INPUT_ERROR
+            BEQ LONG_SKIP_10
+            JMP INPUT_ERROR
+LONG_SKIP_10
 FILE_RANGE_OK
             LDA FILEBASE
             STA SRCZ
@@ -515,29 +535,40 @@ FILE_RANGE_OK
             LDY #$00
             LDA (SRCZ),Y
             CMP #$50            ; P
-            BNE INPUT_ERROR
+            BEQ LONG_SKIP_11
+            JMP INPUT_ERROR
+LONG_SKIP_11
             INY
             LDA (SRCZ),Y
             CMP #$53            ; S
-            BNE INPUT_ERROR
+            BEQ LONG_SKIP_12
+            JMP INPUT_ERROR
+LONG_SKIP_12
             INY
             LDA (SRCZ),Y
             CMP #$49            ; I
-            BNE INPUT_ERROR
+            BEQ LONG_SKIP_13
+            JMP INPUT_ERROR
+LONG_SKIP_13
             INY
             LDA (SRCZ),Y
             CMP #$44            ; D
-            BNE INPUT_ERROR
-            ; version, 16-bit big-endian at +4
+            BEQ LONG_SKIP_14 ; version, 16-bit big-endian at +4
+            JMP INPUT_ERROR
+LONG_SKIP_14
             LDY #$04
             LDA (SRCZ),Y
-            BNE INPUT_ERROR
+            BEQ LONG_SKIP_15
+            JMP INPUT_ERROR
+LONG_SKIP_15
             INY
             LDA (SRCZ),Y
             CMP #$01
             BEQ VERSION_OK
             CMP #$02
-            BNE INPUT_ERROR
+            BEQ LONG_SKIP_16
+            JMP INPUT_ERROR
+LONG_SKIP_16
 VERSION_OK
             STA VERSION
             ; header data offset, 16-bit big-endian
@@ -554,20 +585,28 @@ VERSION_OK
             CPX #$02
             BNE TEST_V1_HEADER
             CMP #$7C
-            BCC INPUT_ERROR
+            BCS LONG_SKIP_17
+            JMP INPUT_ERROR
+LONG_SKIP_17
             JMP MIN_HEADER_OK
 TEST_V1_HEADER
             CMP #$76
-            BCC INPUT_ERROR
+            BCS LONG_SKIP_18
+            JMP INPUT_ERROR
+LONG_SKIP_18
 MIN_HEADER_OK
             ; offset < file length, so payload can start inside the file
             LDA OFFSET+1
             CMP FILELEN+1
             BCC HEADER_END_OK
-            BNE INPUT_ERROR
+            BEQ LONG_SKIP_19
+            JMP INPUT_ERROR
+LONG_SKIP_19
             LDA OFFSET
             CMP FILELEN
-            BCS INPUT_ERROR
+            BCC LONG_SKIP_20
+            JMP INPUT_ERROR
+LONG_SKIP_20
 HEADER_END_OK
             ; flags, clock and multiple SIDs (v2 only)
             LDA #$00
@@ -579,7 +618,9 @@ HEADER_END_OK
             LDA (SRCZ),Y
             TAX
             AND #$03
-            BNE INPUT_ERROR  ; MUS or PlaySID-specific samples
+            BEQ LONG_SKIP_21 ; MUS or PlaySID-specific samples
+            JMP INPUT_ERROR
+LONG_SKIP_21
             TXA
             AND #$0C
             CMP #$08
@@ -589,10 +630,14 @@ HEADER_END_OK
 TEST_MULTISID
             LDY #$7A
             LDA (SRCZ),Y
-            BNE INPUT_ERROR
+            BEQ LONG_SKIP_22
+            JMP INPUT_ERROR
+LONG_SKIP_22
             INY
             LDA (SRCZ),Y
-            BNE INPUT_ERROR
+            BEQ LONG_SKIP_23
+            JMP INPUT_ERROR
+LONG_SKIP_23
 READ_SONGS
             ; song count and default subtune are big-endian
             LDY #$0E
@@ -610,27 +655,41 @@ READ_SONGS
             ; accepted count 1..256, default within that count
             LDA SONGS+1
             CMP #$02
-            BCS INPUT_ERROR
-            BEQ INPUT_ERROR
+            BCC LONG_SKIP_24
+            JMP INPUT_ERROR
+LONG_SKIP_24
+            BNE LONG_SKIP_25
+            JMP INPUT_ERROR
+LONG_SKIP_25
             CMP #$01
             BNE TEST_COUNT_LOW
             LDA SONGS
-            BNE INPUT_ERROR
+            BEQ LONG_SKIP_26
+            JMP INPUT_ERROR
+LONG_SKIP_26
 TEST_COUNT_LOW
             LDA SONGS
             ORA SONGS+1
-            BEQ INPUT_ERROR
+            BNE LONG_SKIP_27
+            JMP INPUT_ERROR
+LONG_SKIP_27
             LDA DEFAULT_SONG
             ORA DEFAULT_SONG+1
-            BEQ INPUT_ERROR
+            BNE LONG_SKIP_28
+            JMP INPUT_ERROR
+LONG_SKIP_28
             LDA DEFAULT_SONG+1
             CMP SONGS+1
             BCC DEFAULT_OK
-            BNE INPUT_ERROR
+            BEQ LONG_SKIP_29
+            JMP INPUT_ERROR
+LONG_SKIP_29
             LDA DEFAULT_SONG
             CMP SONGS
             BCC DEFAULT_OK
-            BNE INPUT_ERROR
+            BEQ LONG_SKIP_30
+            JMP INPUT_ERROR
+LONG_SKIP_30
 DEFAULT_OK
             LDA #<VERSION_TEXT
             LDX #>VERSION_TEXT
@@ -676,7 +735,9 @@ TITLE_DONE
             LDX #>SELECT_TEXT
             JSR PRINT_AX
             JSR READ_DECIMAL
-            BCS INPUT_ERROR
+            BCC LONG_SKIP_31
+            JMP INPUT_ERROR
+LONG_SKIP_31
             LDA DIGITS
             BNE SELECTED_MANUALLY
             LDA DEFAULT_SONG
@@ -692,15 +753,21 @@ SELECTED_MANUALLY
 CHECK_SELECTION
             LDA SELECTED
             ORA SELECTED+1
-            BEQ INPUT_ERROR
+            BNE LONG_SKIP_32
+            JMP INPUT_ERROR
+LONG_SKIP_32
             LDA SELECTED+1
             CMP SONGS+1
             BCC SONG_RANGE_OK
-            BNE INPUT_ERROR
+            BEQ LONG_SKIP_33
+            JMP INPUT_ERROR
+LONG_SKIP_33
             LDA SELECTED
             CMP SONGS
             BCC SONG_RANGE_OK
-            BNE INPUT_ERROR
+            BEQ LONG_SKIP_34
+            JMP INPUT_ERROR
+LONG_SKIP_34
 SONG_RANGE_OK
             ; PSID speed bitmap, v1 wraps every 32 tunes, v2 extends bit31.
             LDA SELECTED
@@ -744,8 +811,9 @@ SPEED_SHIFT
             JMP SPEED_SHIFT
 SPEED_MASK
             AND SPEEDBYTE
-            BNE CIA_ERROR
-            ; Copy original header metadata into native descriptor.
+            BEQ LONG_SKIP_35 ; Copy original header metadata into native descriptor.
+            JMP CIA_ERROR
+LONG_SKIP_35
             LDA #$53
             STA DESC
             LDA #$32
@@ -811,14 +879,19 @@ HAVE_LOAD
             LDA FILELEN+1
             SBC OFFSET+1
             STA DESC+9
-            BCC INPUT_ERROR
+            BCS LONG_SKIP_36
+            JMP INPUT_ERROR
+LONG_SKIP_36
             LDA DESC+8
             ORA DESC+9
-            BEQ INPUT_ERROR
-            ; destination must be >= $0C00, end <= $C000
+            BNE LONG_SKIP_37 ; destination must be >= $0C00, end <= $C000
+            JMP INPUT_ERROR
+LONG_SKIP_37
             LDA DESC+7
             CMP #$0C
-            BCC INPUT_ERROR
+            BCS LONG_SKIP_38
+            JMP INPUT_ERROR
+LONG_SKIP_38
             CLC
             LDA DESC+6
             ADC DESC+8
@@ -826,13 +899,19 @@ HAVE_LOAD
             LDA DESC+7
             ADC DESC+9
             STA EXECEND+1
-            BCS INPUT_ERROR
+            BCC LONG_SKIP_39
+            JMP INPUT_ERROR
+LONG_SKIP_39
             LDA EXECEND+1
             CMP #$C0
             BCC EXEC_RANGE_OK
-            BNE INPUT_ERROR
+            BEQ LONG_SKIP_40
+            JMP INPUT_ERROR
+LONG_SKIP_40
             LDA EXECEND
-            BNE INPUT_ERROR
+            BEQ LONG_SKIP_41
+            JMP INPUT_ERROR
+LONG_SKIP_41
 EXEC_RANGE_OK
             ; protected resident player $9000-$9FFF.
             LDA DESC+7
@@ -840,7 +919,9 @@ EXEC_RANGE_OK
             BCS READ_ENTRIES
             LDA EXECEND+1
             CMP #$90
-            BCS INPUT_ERROR
+            BCC LONG_SKIP_42
+            JMP INPUT_ERROR
+LONG_SKIP_42
 READ_ENTRIES
             LDY #$0A
             LDA (SRCZ),Y
@@ -864,20 +945,25 @@ INIT_NONZERO
             STA DESC+12
             LDA DESC+12
             ORA DESC+13
-            BEQ INPUT_ERROR
+            BNE LONG_SKIP_43
+            JMP INPUT_ERROR
+LONG_SKIP_43
             LDA DESC+10
             STA VALUE16
             LDA DESC+11
             STA VALUE16+1
             JSR CHECK_ENTRY
-            BCS INPUT_ERROR
+            BCC LONG_SKIP_44
+            JMP INPUT_ERROR
+LONG_SKIP_44
             LDA DESC+12
             STA VALUE16
             LDA DESC+13
             STA VALUE16+1
             JSR CHECK_ENTRY
-            BCS INPUT_ERROR
-            ; Descriptor checksum is computed by native 6502, not the host.
+            BCC LONG_SKIP_45 ; Descriptor checksum is computed by native 6502, not the host.
+            JMP INPUT_ERROR
+LONG_SKIP_45
             JSR CALC_PAYLOAD_SUM
             LDA SUMLO
             STA DESC+16
