@@ -573,10 +573,16 @@ function SIDCard()
     };
     this.onUnmount=function()
     {
+        if(typeof SIDPSID!=="undefined" && SIDPSID)SIDPSID.dispose(this);
         if(telemetryActive())oCOM.toggleRefreshEvent(eventName());
         this.state.active=false;
         var d=audioDevice();
         if(d&&typeof d.onUnmount==="function")d.onUnmount();
+    };
+    this.openPSIDPlayer=function()
+    {
+        if(typeof SIDPSID==="undefined" || !SIDPSID) return false;
+        return SIDPSID.open(this);
     };
     this.deviceToolSlotHTML=function(ctx)
     {
@@ -605,7 +611,9 @@ function SIDCard()
             "<div class='sid-toolbox-row' style='display:flex;gap:7px;align-items:center;white-space:nowrap'>"+
             "<button class='appbut' title='SID live audio telemetry' aria-label='SID live audio telemetry' onclick='"+
             access+"?.openAudioTelemetry()'><i class='fa fa-chart-line'></i> Telemetry</button>"+
-            "<span style='font:11px Arial' title='Unchanged Apple II ROM and Language Card mapping'>"+
+            "<button class='appbut' title='Interactive PSID v1/v2 player' aria-label='Open PSID player' onclick='"+
+            access+"?.openPSIDPlayer()'><i class='fa fa-folder-open'></i> PSID</button>"+
+            "<span style='font:11px Arial;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis' title='Unchanged Apple II ROM and Language Card mapping'>"+
             "$D400–$D41F · "+(audioDevice()?"Audio attached":"Attach SIDAUDIO")+"</span>"+
             "</div></div></div>";
     };
