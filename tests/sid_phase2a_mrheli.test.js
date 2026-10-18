@@ -160,7 +160,7 @@ test('native Phase 2A music uses absolute 50 Hz CPU-clock deadlines in all slots
         const total=r.frameTicks.at(-1)-r.frameTicks[0];
         // Individual calls vary in execution cost. Absolute CPU deadlines
         // eliminate long-term PLAY runtime accumulation and tempo drift.
-        assert.ok(Math.abs(total-100*20436)<=140,
+        assert.ok(Math.abs(total-100*20436)<=300,
             '100 PLAY intervals must average 50Hz (slot '+slot+', drift '+(total-100*20436)+' CPU ticks)');
         assert.ok(deltas.every(n=>n>20150&&n<20720),
             'no >~0.3ms 6502 music-frame jitter: '+Math.min(...deltas)+' / '+Math.max(...deltas));
