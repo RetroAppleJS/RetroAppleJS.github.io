@@ -935,7 +935,7 @@ function EMUI()
 
     var CPU_SLD_MODES =
     {
-         "pct400":{"min":0,"max":400,"step":20,"next":"factor","nextName":"factor range"}
+         "pct400":{"min":0,"max":400,"step":10,"next":"factor","nextName":"factor range"}
         ,"factor":{"min":0,"max":CPU_SLD_FACTORS.length-1,"step":1,"next":"pct400","nextName":"0-400%"}
     };
 
@@ -1082,12 +1082,14 @@ function EMUI()
             Math.round(multiplier*100/cfg.step)*cfg.step));
     }
 
-    // CPU SPEED SLIDER
-    this.cpuSld = function(el,id)
+    // CPU SPEED SLIDER: preview on input; commit the CPU clock on change.
+    // This keeps the speed readout responsive without restarting the scheduler
+    // for every intermediate position while the user drags the thumb.
+    this.cpuSldPreview = function(el,id)
     {
         var mode = cpuSldMode(el);
         var multiplier = cpuSldMultiplier(el,mode);
-        if(multiplier===null) return;
+        if(multiplier===null) return null;
 
         var label = mode=="factor"
             ? "x"+cpuSldFactorText(multiplier)
@@ -1109,6 +1111,13 @@ function EMUI()
             indicator.setAttribute("aria-label",indicator.title);
         }
 
+        return multiplier;
+    }
+
+    this.cpuSld = function(el,id)
+    {
+        var multiplier = this.cpuSldPreview(el,id);
+        if(multiplier===null) return;
         this.cpuSpd(multiplier);
     }
 
@@ -1131,7 +1140,7 @@ function EMUI()
         this.cpuSldRange(indicator,sliderId);
     }
 
-    // CYCLE 0-400%/20% AND THE 20-POSITION FACTOR SCALE
+    // CYCLE 0-400%/10% AND THE 20-POSITION FACTOR SCALE
     this.cpuSldRange = function(indicator,sliderId)
     {
         var el = document.getElementById(sliderId);
