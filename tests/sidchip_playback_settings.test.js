@@ -105,10 +105,40 @@ test('SIDchipJS exposes both selectors and restarts at the same subtune',()=>{
 });
 
 
+// This test evaluates the controller in a known, checked HTML fixture.
+// Avoid regex-based HTML tag filtering (CodeQL js/bad-tag-filter); this
+// requires exactly one plain inline controller script in SIDchipJS.html.
+function extractSIDControllerScript(source) {
+    const lower=source.toLowerCase();
+    const opening='<script type="text/javascript">';
+    const closing='</script>';
+    const start=lower.indexOf(opening);
+    assert.notEqual(start,-1,'SID controller opening script tag missing');
+    assert.equal(lower.indexOf(opening,start+opening.length),-1,
+        'Expected exactly one SID controller inline script');
+    const bodyStart=start+opening.length;
+    const end=lower.indexOf(closing,bodyStart);
+    assert.notEqual(end,-1,'SID controller closing script tag missing');
+    const inline=source.slice(bodyStart,end);
+    assert.ok(inline.includes('function applySIDPlaybackSettings'),
+        'SID controller script was not found');
+    return inline;
+}
+
+test('SID controller script lookup handles uppercase tags and rejects malformed fixtures',()=>{
+    const script='function applySIDPlaybackSettings() {}';
+    assert.equal(extractSIDControllerScript(
+        '<SCRIPT TYPE="TEXT/JAVASCRIPT">'+script+'</SCRIPT>'),script);
+    assert.throws(()=>extractSIDControllerScript(
+        '<script type="text/javascript">'+script),/closing script tag missing/);
+    assert.throws(()=>extractSIDControllerScript(
+        '<script type="text/javascript">'+script+'</script>'+
+        '<SCRIPT TYPE="TEXT/JAVASCRIPT">'+script+'</SCRIPT>'),
+        /Expected exactly one/);
+});
+
 test('changing selectors restarts the same subtune and preserves pause state',()=>{
-    const scripts=Array.from(html.matchAll(/<script>([\s\S]*?)<\/script>/g),m=>m[1]);
-    const inline=scripts.at(-1);
-    assert.ok(inline && inline.includes('function applySIDPlaybackSettings'));
+    const inline=extractSIDControllerScript(html);
     const elements={
         sidVideoStandard:{value:'PAL'},
         sidOutputRate:{value:'44100'},
