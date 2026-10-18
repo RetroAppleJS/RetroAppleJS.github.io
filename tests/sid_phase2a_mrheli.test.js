@@ -19,7 +19,7 @@ function setup({slot=4,frameLimit=12,corruptHeader=false,corruptPayload=false,wi
     mem.set(originalZP,0);
     mem[0x1FE]=0xFF;mem[0x1FF]=0xFE; // RTS sentinel -> $FF00
     let cpuTicks=0,frame=0,printed='',done=false;
-    const frameTicks=[],sidWrites=[],unexpectedWrites=[];
+    const frameTicks=[],playEntryTicks=[],sidWrites=[],unexpectedWrites=[];
     const context=vm.createContext({console,Uint8Array,Float32Array,Math,Number,
         oEMU:{component:{CPU:{},IO:{}}}});
     for(const name of ['EMU_cpu6502.js','EMU_DEVICE_SID_audio.js','EMU_CARD_SID.js']){
@@ -66,10 +66,16 @@ function setup({slot=4,frameLimit=12,corruptHeader=false,corruptPayload=false,wi
     cpu.setExecutionTrap(0xFF00,()=>{done=true;return true});
     cpu.setExecutionCondition(s=>{printed+=String.fromCharCode(s.a&0x7F);return false},0xFDED);
     function run(limit=2000000){
-        while(!done&&cpuTicks<limit){cpu.cycle();cpuTicks++;}
+        let atPlay=false;
+        while(!done&&cpuTicks<limit){
+            const nextAtPlay=cpu.watch().pc===0x0E34;
+            if(nextAtPlay&&!atPlay)playEntryTicks.push(cpuTicks);
+            atPlay=nextAtPlay;
+            cpu.cycle();cpuTicks++;
+        }
         assert.ok(done,'driver exceeded CPU tick limit (PC=$'+cpu.watch().pc.toString(16)+')');
         return {driver,sid,mem,cpu,card,audio,sidWrites,
-                frameTicks,printed,frame,unexpectedWrites,cpuTicks,
+                frameTicks,playEntryTicks,printed,frame,unexpectedWrites,cpuTicks,
                 originalZP};
     }
     return {run,mem,driver};
@@ -156,14 +162,15 @@ test('native Phase 2A music uses absolute 50 Hz CPU-clock deadlines in all slots
     for(const slot of [1,4,7]){
         const r=setup({slot,frameLimit:101}).run(3500000);
         assert.equal(r.frame,101);
-        const deltas=r.frameTicks.slice(1).map((t,i)=>t-r.frameTicks[i]);
-        const total=r.frameTicks.at(-1)-r.frameTicks[0];
+        assert.equal(r.playEntryTicks.length,101);
+        const deltas=r.playEntryTicks.slice(1).map((t,i)=>t-r.playEntryTicks[i]);
+        const total=r.playEntryTicks.at(-1)-r.playEntryTicks[0];
         // Individual calls vary in execution cost. Absolute CPU deadlines
         // eliminate long-term PLAY runtime accumulation and tempo drift.
         assert.ok(Math.abs(total-100*20436)<=300,
             '100 PLAY intervals must average 50Hz (slot '+slot+', drift '+(total-100*20436)+' CPU ticks)');
-        assert.ok(deltas.every(n=>n>20150&&n<20720),
-            'no >~0.3ms 6502 music-frame jitter: '+Math.min(...deltas)+' / '+Math.max(...deltas));
+        assert.ok(deltas.every(n=>n>20250&&n<20600),
+            'PLAY entry deadlines should stay within ~0.2ms: '+Math.min(...deltas)+' / '+Math.max(...deltas));
     }
 });
 
