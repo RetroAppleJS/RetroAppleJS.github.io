@@ -267,3 +267,103 @@ test('SID sustain changes and oscillator TEST do not instantly overwrite the ADS
   device.reset();
   assert.deepEqual(Array.from(device.getEnvelopeLevels()),[0,0,0]);
 });
+
+
+function sidSchedulerHarness(){
+  const scheduled=[];
+  class FakeAudioContext{
+    constructor(){this.currentTime=0;this.state='running';this.destination={};}
+    createGain(){return {gain:{value:1},connect(){}};}
+    createBuffer(channels,length,rate){
+      return {duration:length/rate,getChannelData(){return new Float32Array(length);}};
+    }
+    createBufferSource(){
+      return {buffer:null,connect(){},disconnect(){},stop(){},
+        start(t){scheduled.push({start:t,end:t+this.buffer.duration});}};
+    }
+    resume(){return Promise.resolve();}
+    suspend(){this.state='suspended';return Promise.resolve();}
+    close(){return Promise.resolve();}
+  }
+  const context=vm.createContext({
+    console,Float32Array,Uint8Array,AudioContext:FakeAudioContext,
+    oEMU:{component:{IO:{}}}
+  });
+  for(const name of ['EMU_DEVICE_SID_audio.js','EMU_CARD_SID.js'])
+    vm.runInContext(fs.readFileSync(path.join(__dirname,'..','res',name),'utf8'),
+      context,{filename:name});
+  const card=new context.SIDCard(),device=new context.SIDAudio();
+  let cpuTicks=0;
+  card.devices=[device];
+  device.bindHost(card);
+  device.bindIO({getClockTicks(){return cpuTicks;},refreshDeviceHooks(){}});
+  card.reset();
+  return {card,device,scheduled,
+    tick(t){cpuTicks=t;},
+    frame(n,wallSeconds){cpuTicks=Math.round(n*102180);
+      device.audio.currentTime=wallSeconds;device.cycle();}};
+}
+test('SID startup reserves 125 ms and tolerates a late 10 FPS frame without silence',async()=>{
+  const h=sidSchedulerHarness();
+  await h.device.init('audio_on');
+  for(const [frame,seconds] of [[1,0],[2,.1],[3,.2],[4,.37],[5,.4]])
+    h.frame(frame,seconds);
+  const stats=h.device.getAudioStats();
+  assert.equal(stats.underruns,0);
+  assert.equal(stats.dropped,0);
+  assert.equal(stats.clearedSamples,0);
+  assert.ok(Math.abs(h.scheduled[0].start-.125)<1e-6,
+    'even AudioContext time zero must use the initial buffer lead');
+  for(let i=1;i<h.scheduled.length;i++)
+    assert.ok(Math.abs(h.scheduled[i].start-h.scheduled[i-1].end)<1e-6,
+      '50–70 ms late processing wake must not create inter-buffer silence');
+  assert.ok(stats.minPreScheduleLeadMs>0);
+  await h.device.init('audio_off');
+});
+test('SID ignores tiny CPU instruction clock reversals but counts genuine queue invalidation',async()=>{
+  const h=sidSchedulerHarness();
+  await h.device.init('audio_on');
+  h.device.advanceTo(102180);
+  const queued=h.device.getAudioStats().queued;
+  assert.ok(queued>2000);
+  h.device.advanceTo(102175); // 5 CPU ticks (~5 µs) behind SID bus timestamp
+  let stats=h.device.getAudioStats();
+  assert.equal(stats.queued,queued,'micro-rollback cannot destroy pending audio');
+  assert.equal(stats.clearedSamples,0);
+  assert.equal(stats.smallClockBacksteps,1);
+  assert.equal(stats.maxClockBackstepTicks,5);
+  assert.equal(stats.clockRewinds,0);
+
+  h.device.advanceTo(500); // real epoch rewind
+  stats=h.device.getAudioStats();
+  assert.equal(stats.queued,0);
+  assert.equal(stats.clockRewinds,1);
+  assert.equal(stats.clearedSamples,queued);
+  assert.equal(stats.queueClears,1);
+  const types=h.device.getAudioEvents().map(x=>x.type);
+  assert.ok(types.includes('clock_rewind'));
+  assert.ok(types.includes('queue_flush'));
+  await h.device.init('audio_off');
+});
+test('SID underrun recovery starts promptly and records precise deadline evidence',async()=>{
+  const h=sidSchedulerHarness();
+  await h.device.init('audio_on');
+  for(const [frame,seconds] of [[1,0],[2,.1],[3,.2],[4,.55]])
+    h.frame(frame,seconds);
+  const stats=h.device.getAudioStats(),events=h.device.getAudioEvents();
+  assert.equal(stats.underruns,1,'unavoidable long stall must be counted');
+  assert.ok(stats.lastLateMs>120&&stats.lastLateMs<130);
+  assert.equal(events.filter(e=>e.type==='underrun').length,1);
+  assert.equal(events.at(-1).cpuTick,Math.round(4*102180));
+  const prev=h.scheduled[h.scheduled.length-3];
+  const next=h.scheduled[h.scheduled.length-2];
+  assert.ok(stats.preScheduleLeadMs<-120);
+  assert.ok(Math.abs(next.start-.558)<1e-6,
+    'recovery uses short 8 ms lead, not a second 125 ms silence');
+  const before=h.device.getAudioStats().queued;
+  h.device.resetAudioTelemetry();
+  assert.equal(h.device.getAudioStats().queued,before,
+    'clearing telemetry must not flush audio');
+  assert.deepEqual(h.device.getAudioEvents(),[]);
+  await h.device.init('audio_off');
+});
