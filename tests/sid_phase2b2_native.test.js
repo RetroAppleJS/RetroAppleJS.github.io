@@ -102,3 +102,32 @@ test('native player accepts manually loaded file with start and length typed on 
     assert.ok(r.executed);
     assert.equal(r.playTicks.length,12);
 });
+
+test('native parser rejects CIA subtunes without executing INIT or writing SID registers',()=>{
+    const cia=Buffer.from(original);
+    // Selected subtune 3: speed bitmap bit 2 requests CIA rather than VBI.
+    cia.writeUInt32BE(1<<2,18);
+    const r=simulate(cia,{stage:0x6000,subtune:'3'});
+    assert.equal(r.queries,2);
+    assert.equal(r.executed,false);
+    assert.equal(r.playTicks.length,0);
+    assert.equal(r.writes.length,0);
+    assert.deepEqual(Array.from(r.mem.subarray(0,256)),Array.from(r.originalZP));
+});
+test('native parser rejects invalid signature before any music execution',()=>{
+    const invalid=Buffer.from(original);
+    invalid.write('NOT!',0,'ascii');
+    const r=simulate(invalid,{stage:0x6000});
+    assert.equal(r.queries,1);
+    assert.equal(r.executed,false);
+    assert.equal(r.writes.length,0);
+    assert.deepEqual(Array.from(r.mem.subarray(0,256)),Array.from(r.originalZP));
+});
+test('native parser rejects executable in the resident player workspace',()=>{
+    const unsafe=Buffer.from(original);
+    unsafe.writeUInt16BE(0x9000,8);
+    const r=simulate(unsafe,{stage:0x6000,subtune:'5'});
+    assert.equal(r.executed,false);
+    assert.equal(r.writes.length,0);
+    assert.deepEqual(Array.from(r.mem.subarray(0,256)),Array.from(r.originalZP));
+});
