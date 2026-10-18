@@ -376,6 +376,11 @@ function SIDCard()
         telemetryText("discard",String(p.clearedSamples||0)+" / "+
             String(p.skippedSamples||0)+" / "+String(p.queueClears||0));
         telemetryText("events",String(p.recentAudioEvents||0));
+        telemetryText("overflow",String(p.overflowIncidents||0)+" / "+
+            String(p.dropped||0)+" frames / last @ "+
+            (p.overflowLastCpuTick===null?"—":p.overflowLastCpuTick));
+        telemetryText("service",String(p.realtimeServices||0)+" / "+
+            String(p.cpuBudgetChecks||0)+" / "+String(p.cpuBudgetBlocked||0));
         telemetryText("underrun",(p.underruns||0)+" / "+
             telemetryNumber(p.lastLateMs,1," ms")+" / "+
             telemetryNumber(p.worstLateMs,1," ms"));
@@ -490,6 +495,8 @@ function SIDCard()
             ["clock","CLOCK BACKSTEPS / REWINDS / MAX"],
             ["discard","PCM QUEUE-CLEARED / SKIPPED / EVENTS"],
             ["events","AUDIO EXCEPTION EVENTS (JSON)"],
+            ["overflow","FIFO OVERFLOWS / DROPPED / LAST CPU TICK"],
+            ["service","AUDIO SERVICE / CPU BUDGET / BLOCKED"],
             ["underrun","UNDERRUNS / LAST LATE / WORST LATE"],
             ["sources","ACTIVE BROWSER SOURCES"],
             ["last","LAST SID WRITE / CPU TICK"]
