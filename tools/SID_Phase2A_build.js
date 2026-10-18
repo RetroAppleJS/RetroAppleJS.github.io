@@ -4,9 +4,9 @@
 // validates but does NOT modify original Mr. Heli PSID data.
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const ROOT=path.resolve(__dirname,'..');
-const DRIVER=path.join(ROOT,'asm/AUDIO/SID_PHASE2A_MR_HELI.S');
+const DRIVER=path.join(ROOT,'asm/AUDIO/SID2MB_prototype/SID_PHASE2A_MR_HELI.S');
 const ASM_CORE=path.join(ROOT,'res/ASM_core.js');
-const PSID=path.join(ROOT,'asm/AUDIO/SID2MB_native_MrHeli_prototype/Mr_Heli_original.sid');
+const PSID=path.join(ROOT,'asm/AUDIO/SID2MB_prototype/Mr_Heli_original.sid');
 const LOAD=0x2000;
 const ORIGINAL_LOAD=0x0CA0,ORIGINAL_INIT=0x1EF3,ORIGINAL_PLAY=0x0E34;
 const STAGING=0x6000,ORIGINAL_LENGTH=4841;
