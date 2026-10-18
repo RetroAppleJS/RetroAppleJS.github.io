@@ -40,6 +40,30 @@ test('SID card is discoverable, has SlotIO and automatically attaches an audio d
   assert.equal(card.action.SlotIO.RD.callback(0xC0D0),0x53);
   assert.equal(device.audioDevice,true);
 });
+test('SID card and standalone audio device initialize with NTSC selected',()=>{
+  const {card,device}=rig();
+  assert.equal(card.getClock(),1022727);
+  assert.equal(device.getClock(),1022727);
+  assert.equal(card.getConfiguration().clockHz,1022727);
+  assert.equal(card.readSlotIO(5),1);
+  const html=card.deviceToolSlotHTML({toolboxID:'sid_test'});
+  assert.match(html,/<option value='1022727' selected>NTSC 1022727 Hz<\/option>/);
+  assert.doesNotMatch(html,/<option value='985248' selected>/);
+});
+test('PAL remains selectable and persists across soft reset',()=>{
+  const {card,device}=rig();
+  card.setClock(985248);
+  assert.equal(device.getClock(),985248);
+  assert.equal(card.readSlotIO(5),0);
+  assert.match(card.deviceToolSlotHTML({toolboxID:'sid_test'}),/<option value='985248' selected>PAL 985248 Hz<\/option>/);
+  card.reset();
+  assert.equal(card.getClock(),985248);
+  assert.equal(device.getClock(),985248);
+  card.writeSlotIO(5,1);
+  assert.equal(card.getClock(),1022727);
+  assert.equal(device.getClock(),1022727);
+});
+
 test('native D400 writes and slot register writes reach the attached synthesizer',()=>{
   const {card,device}=rig();
   assert.equal(card.observeBusWrite(0xD404,0x41,{cpuTick:0}),true);

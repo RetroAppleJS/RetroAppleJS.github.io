@@ -9,11 +9,11 @@ Select **MOS 6581 / 8580 SID synthesizer** from the Slot Manager (PCODE `SID`), 
 The slot toolbox has:
 
 - **SID model:** 6581 or 8580; default 6581.
-- **Clock:** PAL 985248 Hz (default) or NTSC 1022727 Hz.
+- **Clock:** NTSC 1022727 Hz (default) or PAL 985248 Hz.
 - **Native $D400 writes:** enable/disable passive CPU write listening; enabled by default.
 - **Volume:** output volume 0–100%.
 
-Model, clock and volume survive a card soft reset, but page reloads initialize them to the defaults.
+The PAL/NTSC selector chooses the **SID sound-chip oscillator frequency**, independently of the Apple II+ motherboard video standard. RetroAppleJS defaults the SID card to NTSC, consistent with its NTSC Apple II+ configuration; PAL remains available for PAL-tuned SID music. Model, clock and volume survive a card soft reset, but page reloads initialize them to the defaults.
 
 ## How native SID writes work
 

@@ -19,7 +19,7 @@ This phase exercises **Apple II 6502 → native $D400 writes → EMU_CARD_SID �
 ## Run the native Apple II demo
 
 1. Mount **MOS 6581 / 8580 SID synthesizer** (PCODE SID) in any slot **1–7** (slot 4 is preferred), with its audio device attached. Use the regular JavaScript 6502, not the WASM accelerator.
-2. In the toolbox, select **6581**, **PAL 985248 Hz**, enable **Native $D400 writes** and choose a nonzero output volume.
+2. In the toolbox, select **6581** and explicitly switch the SID clock to **PAL 985248 Hz** for this PAL-tuned test fixture (the general-purpose SID default is NTSC). Enable **Native $D400 writes** and choose a nonzero output volume.
 3. Turn on the emulator audio; the browser may need an explicit click to unlock Web Audio.
 4. In the RetroAppleJS assembler, open **asm/AUDIO/SID_PHASE1_MINIPLAYER.S** (raJS dialect), assemble and load it into $6000–$6187 (392 bytes).
 5. From Applesoft BASIC, enter **CALL 24576**; alternatively execute $6000 from the machine monitor.

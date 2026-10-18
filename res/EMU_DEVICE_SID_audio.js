@@ -29,7 +29,7 @@ function SIDAudio()
     const RATE_WRAP=0x8000;
     const PHASE=16777216;
     var registers=new Uint8Array(32);
-    var voices=[], sidModel=6581, sidClock=985248, hostClock=1021800;
+    var voices=[], sidModel=6581, sidClock=1022727, hostClock=1021800;
     var lastTick=0, fraction=0;
     var queue=new Float32Array(FIFO_LENGTH),readIndex=0,writeIndex=0,queued=0;
     var audio=null,gain=null,sources=[],nextStart=0,playing=false,paused=false,volume=100;
