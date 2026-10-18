@@ -25,6 +25,11 @@ function playSID_b64(b64, subtune) {
 function jsSID(bufferlen, background_noise, options)
 {
     options = options || {};
+    // PAL/NTSC and output sample-rate configuration must be fixed before
+    // creating the Web Audio context; changing the rate means new context.
+    var videoStandard = options.videoStandard === 'NTSC' ? 'NTSC' : 'PAL';
+    var requestedSampleRate = (options.sampleRate === 44100 ||
+        options.sampleRate === 22050) ? options.sampleRate : null;
 
     this.author = 'Hermit';
     this.sourcecode = 'http://hermit.sidrip.com';
@@ -34,8 +39,17 @@ function jsSID(bufferlen, background_noise, options)
     //create Web Audio context and scriptNode at jsSID object initialization (at the moment only mono output)
     var jsSID_audioCtx = null, jsSID_scriptNode = null;
     if (!options.headless) {
-        jsSID_audioCtx = (typeof AudioContext !== 'undefined') ?
-            new AudioContext() : new webkitAudioContext();
+        var Context = typeof AudioContext !== 'undefined' ?
+            AudioContext : webkitAudioContext;
+        // ScriptProcessor samples are synthesized at the AudioContext's actual
+        // sample rate. Never claim 22.05 kHz unless the browser accepts it.
+        try {
+            jsSID_audioCtx = requestedSampleRate ?
+                new Context({sampleRate:requestedSampleRate}) : new Context();
+        } catch (error) {
+            // Some browsers do not implement requested AudioContext rates.
+            jsSID_audioCtx = new Context();
+        }
         if (typeof jsSID_audioCtx.createJavaScriptNode === 'function') {
             jsSID_scriptNode = jsSID_audioCtx.createJavaScriptNode(bufferlen, 0, 1);
             console.log("using createJavaScriptNode");
@@ -68,14 +82,19 @@ function jsSID(bufferlen, background_noise, options)
     };
     this.getLiveTelemetryState = function() {
         return {
-            model:SID_model,clockHz:C64_PAL_CPUCLK,volumePct:Math.round(volume*100),
+            model:SID_model,clockHz:C64_CPUCLK,videoStandard:videoStandard,
+            frameRate:VIDEO_FRAMERATE,
+            playCallHz:loaded && initialized && frame_sampleperiod>0 ?
+                samplerate/frame_sampleperiod : null,
+            volumePct:Math.round(volume*100),
             subtune:subtune+1,playtime:playtime,
             initialized:!!initialized,playing:liveTelemetryPlaying,
-            cpu:{tick:Math.floor(playtime*C64_PAL_CPUCLK),
+            cpu:{tick:Math.floor(playtime*C64_CPUCLK),
                 pc:PC,ic:liveTelemetry.instructions,sp:SP},
             registers:Array.from(memory.slice(0xD400,0xD420)),
             envelopes:envcnt.slice(0,3),
-            audio:{sampleRate:samplerate,outputSampleRate:jsSID_audioCtx ?
+            audio:{sampleRate:samplerate,requestedSampleRate:requestedSampleRate,
+                outputSampleRate:jsSID_audioCtx ?
                 jsSID_audioCtx.sampleRate : null,
                 contextState:jsSID_audioCtx ? jsSID_audioCtx.state : 'uninitialized',
                 playbackEnabled:liveTelemetryPlaying,bufferFrames:bufferlen,
@@ -275,16 +294,32 @@ function jsSID(bufferlen, background_noise, options)
         this.playcont();
     }
     this.playcont = function() {
-        if (jsSID_scriptNode) {
+        if (jsSID_scriptNode && !liveTelemetryPlaying) {
             jsSID_scriptNode.connect(jsSID_audioCtx.destination);
             liveTelemetryPlaying = true;
         }
     }
     this.pause = function() {
-        if (loaded && initialized && jsSID_scriptNode)
-            jsSID_scriptNode.disconnect(jsSID_audioCtx.destination);
+        if (jsSID_scriptNode && liveTelemetryPlaying)
+            jsSID_scriptNode.disconnect();
         liveTelemetryPlaying = false;
         liveTelemetry.lastCallbackAt = null;
+    }
+    // Release an old context before constructing a player at a new rate.
+    this.destroy = function() {
+        this.pause();
+        liveTelemetryObserver = null;
+        loaded = initialized = 0;
+        if (jsSID_scriptNode) {
+            jsSID_scriptNode.onaudioprocess = null;
+            jsSID_scriptNode = null;
+        }
+        if (jsSID_audioCtx && typeof jsSID_audioCtx.close === 'function') {
+            var closed = jsSID_audioCtx.close();
+            if (closed && typeof closed.catch === 'function')
+                closed.catch(function(){}); // context may already be closed
+        }
+        jsSID_audioCtx = null;
     }
     //(Checking state before disconnecting is a workaround for Opera: gave error when code tried disconnecting what is not connected.
     //Checking inner state variables here, but maybe audioContext status info could be more reliable. I just didn't want to rely too many Audio API function.)
@@ -595,10 +630,10 @@ function jsSID(bufferlen, background_noise, options)
     }
 
     var //emulated machine constants
-    C64_PAL_CPUCLK = 985248
-      , //Hz
-    PAL_FRAMERATE = 50
-      , //NTSC_FRAMERATE = 60;
+    C64_CPUCLK = videoStandard === 'NTSC' ? 1022727 : 985248
+      , // C64 VIC-II oscillator clocks (PAL / NTSC)
+    VIDEO_FRAMERATE = videoStandard === 'NTSC' ? 60 : 50
+      , // PSID VBI play calls per second; CIA tunes use their timer
     SID_CHANNEL_AMOUNT = 3
       ,
     OUTPUT_SCALEDOWN = 0x10000 * SID_CHANNEL_AMOUNT * 16;
@@ -632,9 +667,9 @@ function jsSID(bufferlen, background_noise, options)
     endcallback = null ,
     playtime = 0,
     ended = 0;
-    var clk_ratio = C64_PAL_CPUCLK / samplerate;
-    var frame_sampleperiod = samplerate / PAL_FRAMERATE;
-    //samplerate/(PAL_FRAMERATE*framespeed);
+    var clk_ratio = C64_CPUCLK / samplerate;
+    var frame_sampleperiod = samplerate / VIDEO_FRAMERATE;
+    //samplerate/(VIDEO_FRAMERATE*framespeed);
     var framecnt = 1, volume = 1.0, CPUtime = 0, pPC;
     var SIDamount = 1
       , mix = 0;
@@ -661,9 +696,9 @@ function jsSID(bufferlen, background_noise, options)
                 frame_sampleperiod = (memory[0xDC04] + memory[0xDC05] * 256) / clk_ratio;
             }
             else
-                frame_sampleperiod = samplerate / PAL_FRAMERATE;
+                frame_sampleperiod = samplerate / VIDEO_FRAMERATE;
             //Vsync timing
-            //frame_sampleperiod = (memory[0xDC05]!=0 || (!timermode[subtune] && playaddf))? samplerate/PAL_FRAMERATE : (memory[0xDC04] + memory[0xDC05]*256) / clk_ratio;
+            //frame_sampleperiod = (memory[0xDC05]!=0 || (!timermode[subtune] && playaddf))? samplerate/VIDEO_FRAMERATE : (memory[0xDC04] + memory[0xDC05]*256) / clk_ratio;
             if (playaddf == 0)
                 playaddr = ((memory[1] & 3) < 2) ? memory[0xFFFE] + memory[0xFFFF] * 256 : memory[0x314] + memory[0x315] * 256;
             else {
@@ -705,7 +740,7 @@ function jsSID(bufferlen, background_noise, options)
                     if (liveTelemetryObserver && storadd >= 0xD400 &&
                         storadd < 0xD420)
                         liveTelemetryObserver(storadd,memory[storadd],
-                            Math.max(0,Math.floor(playtime*C64_PAL_CPUCLK+CPUtime)));
+                            Math.max(0,Math.floor(playtime*C64_CPUCLK+CPUtime)));
                     if (result >= 0xFE) {
                         finished = 1;
                         break;
