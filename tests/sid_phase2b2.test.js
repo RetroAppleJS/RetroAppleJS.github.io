@@ -222,3 +222,90 @@ test('SID card toolbox exposes browser PSID player without altering telemetry la
     assert.match(html,/Telemetry/);
     assert.equal((html.match(/class='sid-toolbox-row'/g)||[]).length,3);
 });
+
+test('browser PSID panel uploads a local file and queues Play/Stop through the Apple II keyboard',async()=>{
+    class Node {
+        constructor(tag){
+            this.tag=tag;this.children=[];this.parentNode=null;this.attrs={};
+            this.style={};this._text='';this._value='';this.disabled=false;
+        }
+        setAttribute(key,value){this.attrs[key]=String(value);
+            if(key==='value')this._value=String(value);}
+        appendChild(child){this.children.push(child);child.parentNode=this;return child;}
+        removeChild(child){const n=this.children.indexOf(child);
+            if(n>=0)this.children.splice(n,1);child.parentNode=null;return child;}
+        set textContent(v){this._text=String(v);this.children=[];}
+        get textContent(){return this._text;}
+        set value(v){this._value=String(v);}
+        get value(){
+            if(this.tag==='select'){
+                const selected=this.children.find(x=>x.selected)||this.children[0];
+                return selected?selected.value:'';
+            }
+            return this._value;
+        }
+    }
+    const body=new Node('body'),timers=new Map(),pipe=[];
+    let timerID=0,unlocked=0;
+    const fakeDocument={body,createElement:tag=>new Node(tag)};
+    const hw=mockHardware();
+    const io={pipeSend(from,to,message){
+        pipe.push({from,to,data:message.data});
+        return true;
+    }};
+    hw.io=io;
+    const card={state:{active:true},model:null,clock:null,enabled:false,snoop:false,
+        setEnabled(v){this.enabled=v;},
+        setSnoopEnabled(v){this.snoop=v;},
+        setClock(v){this.clock=v;},
+        setModel(v){this.model=v;}};
+    const ctx=contextWithLoader({
+        document:fakeDocument,apple2plus:{hwObj:()=>hw},
+        setInterval:(fn)=>{const id=++timerID;timers.set(id,fn);return id;},
+        clearInterval:id=>timers.delete(id),
+        EMU_audio_event_unlock:()=>{unlocked++;}
+    });
+    const loader=ctx.SIDPSID;
+    assert.equal(loader.open(card),true);
+    function find(match,node=body){
+        if(match(node))return node;
+        for(const child of node.children){
+            const got=find(match,child);if(got)return got;
+        }
+        return null;
+    }
+    const chooser=find(n=>n.tag==='input'&&n.attrs.type==='file');
+    const play=find(n=>n.tag==='button'&&n.textContent==='▶ Play');
+    const stop=find(n=>n.tag==='button'&&n.textContent==='■ Stop');
+    const song=find(n=>n.tag==='select');
+    const stage=find(n=>n.tag==='input'&&n.attrs['aria-label']==='PSID staging address');
+    assert.ok(chooser&&play&&stop&&song&&stage);
+    assert.equal(play.disabled,true);
+    const file=v1MrHeli();
+    chooser.files=[{name:'MrHeli_v1.sid',size:file.length,
+        arrayBuffer:async()=>file.buffer.slice(file.byteOffset,file.byteOffset+file.byteLength)}];
+    await chooser.onchange();
+    assert.equal(play.disabled,false);
+    assert.equal(song.value,'5');
+    assert.equal(stage.value,'6000');
+    stage.value='2000'; // arbitrary non-default source origin
+    play.onclick();
+    assert.equal(hw.count(),1,'binary images loaded into physical RAM');
+    assert.equal(hw.memory[0x2000],0x50,'complete staged PSID header remains in RAM');
+    assert.equal(card.enabled,true);assert.equal(card.snoop,true);
+    assert.equal(card.clock,985248);
+    assert.equal(unlocked,1);
+    assert.deepEqual(pipe,[{from:'0:PASTEBO:text',to:'0:A2KBD:text',data:'CALL 7168\n'}]);
+    assert.equal(play.disabled,true,'prevent another load while command pending');
+    hw.memory[0x929B]=1;
+    for(const tick of timers.values())tick();
+    assert.equal(stop.disabled,false);
+    stop.onclick();
+    assert.equal(pipe.at(-1).data,' ');
+    hw.memory[0x929B]=0;
+    for(const tick of timers.values())tick();
+    assert.equal(play.disabled,false,'allow fresh play after native exit');
+    loader.dispose(card);
+    assert.equal(body.children.length,0);
+    assert.equal(timers.size,0);
+});
