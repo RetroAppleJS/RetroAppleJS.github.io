@@ -6,6 +6,7 @@ on:
       - 'asm/AUDIO/**'
       - 'tools/SID_Phase2A_build.js'
       - 'tools/SID_Phase2B1_build.js'
+      - 'tools/SID_Phase2B2_build.js'
       - 'res/EMU_SID_PSID.js'
       - 'index.html'
       - 'res/EMU_CARD_SID.js'
@@ -31,5 +32,5 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run native and browser PSID regressions
-        run: node --test tests/sid_phase2a_mrheli.test.js tests/sid_phase2b1.test.js tests/sid_phase2b2.test.js tests/sid_card.test.js tests/sid_telemetry.test.js
+      - name: Run native PSID interpreter and raw transfer tests
+        run: node --test tests/sid_phase2a_mrheli.test.js tests/sid_phase2b1.test.js tests/sid_phase2b2.test.js tests/sid_phase2b2_native.test.js tests/sid_card.test.js tests/sid_telemetry.test.js
