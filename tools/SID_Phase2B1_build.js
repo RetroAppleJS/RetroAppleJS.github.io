@@ -40,14 +40,21 @@ function parsePSID(input,opts={}){
         fail('BAD_SONGS','Invalid PSID songs/default subtune information');
     const song=opts.subtune===undefined?startSong:numeric(opts.subtune,'subtune');
     if(song<1||song>songs)fail('SUBTUNE_RANGE','Subtune must be 1–'+songs);
-    const speedBit=(speed>>>(Math.min(song-1,31)))&1;
-    if(speedBit)fail('CIA_TIMING','CIA-timed subtune requires a timer not supported in Phase 2B.1');
     const flags=version===2?be16(0x76):0;
     if(flags&1)fail('MUS_UNSUPPORTED','MUS player format requires a C64 driver');
-    if(flags&2)fail('BASIC_UNSUPPORTED','PSID BASIC initialization requires C64 ROM');
+    // In PSID (unlike RSID), flag bit 1 means PlaySID-specific samples,
+    // NOT the C64 BASIC loader. It is outside the native MOS SID model.
+    if(flags&2)fail('PLAYSID_UNSUPPORTED','PlaySID-specific extensions are not supported');
+    // HVSC: v1 cycles speed bits; v2NG with normal C64-compatible PSID
+    // uses the 32nd speed flag for all subsequent tunes.
+    const speedIndex=version===1?((song-1)&31):Math.min(song-1,31);
+    const speedBit=(speed>>>speedIndex)&1;
+    if(speedBit)fail('CIA_TIMING','CIA-timed subtune requires a timer not supported in Phase 2B.1');
     if(version===2&&(data[0x7A]||data[0x7B]))
         fail('MULTISID','Second or third SID chips are not supported');
     const clockBits=(flags>>2)&3; // 0 unspecified, 1 PAL, 2 NTSC, 3 both
+    const sidModelBits=(flags>>4)&3;
+    const preferredSIDModel=sidModelBits===1?6581:sidModelBits===2?8580:null;
     let hz=opts.videoHz===undefined?(clockBits===2?60:50):numeric(opts.videoHz,'videoHz');
     if(hz!==50&&hz!==60)fail('FRAME_RATE','Supported VBI music timing is 50 or 60 Hz');
     if(clockBits===1&&hz!==50||clockBits===2&&hz!==60)
@@ -75,6 +82,7 @@ function parsePSID(input,opts={}){
         payloadOffset,payloadLength:length,loadAddress,executableEnd:end,
         initAddress:init,playAddress:play,songs,defaultSong:startSong,
         selectedSong:song,rateHz:hz,flags,speed,clockBits,
+        sidModelBits,preferredSIDModel,
         title:clean(data.toString('latin1',0x16,0x36)),
         author:clean(data.toString('latin1',0x36,0x56)),
         released:clean(data.toString('latin1',0x56,0x76)),
@@ -164,7 +172,8 @@ function main(args=process.argv.slice(2)){
         originalLoad:hex(meta.loadAddress),end:hex(meta.executableEnd-1),
         executableBytes:meta.payloadLength,init:hex(meta.initAddress),
         play:hex(meta.playAddress),song:meta.selectedSong,songs:meta.songs,
-        rateHz:meta.rateHz,playerStub:hex(TRAMP),runtime:hex(RUNTIME),
+        rateHz:meta.rateHz,preferredSIDModel:meta.preferredSIDModel,
+        playerStub:hex(TRAMP),runtime:hex(RUNTIME),
         descriptor:hex(DESCRIPTOR),
         payloadChecksum:hex(meta.payloadChecksum),warnings:meta.warnings};
     out('manifest.json',JSON.stringify(summary,null,2)+'\n');
