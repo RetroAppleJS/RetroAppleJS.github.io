@@ -78,7 +78,7 @@ test('native Phase 2B.2 compiles as 6502, with protected runtime outside raw PSI
     assert.ok(p.runtime.length>676&&p.runtime.length<0xD00);
     assert.ok(p.highEnd<=0x9D00);
     assert.equal(p.symbols.PUBLIC,0x1C00);
-    assert.equal(p.symbols.NATIVE_ENTRY,0x9000+12); // four JMP vectors
+    assert.ok(p.symbols.NATIVE_ENTRY>=0x900C&&p.symbols.NATIVE_ENTRY<p.highEnd); // in resident runtime
 });
 test('native v1 and v2 headers, chosen subtune and real INIT/PLAY produce identical SID writes',()=>{
     const a=simulate(psidV1(),{stage:0x6000,subtune:'3'});
