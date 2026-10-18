@@ -129,7 +129,7 @@ test('SID telemetry snapshots are passive and reset never changes SID state or P
     assert.ok(stats.scheduledLeadMs>0);
     await d.init('audio_off');
 });
-test('SID wall-time pace, live popup, auto refresh and JSON export match Mockingboard conventions',()=>{
+test('SID wall-time pace, compact popup, manual live refresh and JSON export',()=>{
     const r=rig();
     writeBurst(r,100);
     r.now(1000);
@@ -149,7 +149,14 @@ test('SID wall-time pace, live popup, auto refresh and JSON export match Mocking
     assert.match(popup.innerHTML,/BROWSER LEAD/);
     assert.match(popup.innerHTML,/JSON/);
     const event=r.oCOM.RefreshEvent_arr['sid_audio_54_refresh'];
-    assert.ok(event&&event.active,'live refresh starts when popup opens');
+    assert.ok(event&&!event.active,'live refresh is disabled by default');
+    assert.match(popup.innerHTML,/width:47%;padding:2px/);
+    assert.match(popup.innerHTML,/text-align:left;overflow-wrap:anywhere/);
+    assert.equal(popup.style.cssText.includes('width:560px'),true);
+    assert.equal(popup.style.cssText.includes('height:410px'),true);
+    assert.match(popup.innerHTML,/sid_audio_54_sync_label/);
+    assert.equal(r.card.toggleAudioTelemetrySync(),true);
+    assert.equal(event.active,true,'Start explicitly enables live refresh');
     for(let i=0;i<130;i++){r.now(2500+500*i);r.card.audioTelemetryRefresh();}
     assert.equal(r.card.getAudioTelemetryHistory().length,120,
         'only the latest 60 seconds of half-second snapshots are retained');
@@ -168,9 +175,19 @@ test('SID wall-time pace, live popup, auto refresh and JSON export match Mocking
     assert.equal(popup.hidden,true);
     assert.equal(event.active,false,'close must stop the refresh event');
     assert.equal(r.card.openAudioTelemetry(),true,'can be reopened');
-    assert.equal(event.active,true);
+    assert.equal(event.active,false,'reopening must start paused');
+    assert.equal(r.card.toggleAudioTelemetrySync(),true);
     popup.hidden=true;
     assert.equal(r.card.audioTelemetryRefresh(),false,
         'closing with popup X must also stop the refresh callback');
     assert.equal(event.active,false);
+});
+
+test('SID toolbox uses three compact logical rows',()=>{
+    const r=rig();
+    const html=r.card.deviceToolSlotHTML({toolboxID:'device_tool_4',slotID:4});
+    assert.equal((html.match(/class='sid-toolbox-row'/g)||[]).length,3);
+    assert.match(html,/width:340px;height:80px/);
+    assert.match(html,/Native \$D400 writes/);
+    assert.match(html,/Telemetry/);
 });
