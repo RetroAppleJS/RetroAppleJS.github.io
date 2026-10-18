@@ -395,7 +395,7 @@ test('SID realtime audio services each 10ms of CPU ticks without display-frame b
       // Every 10ms, independent of whether display updates at 10 or 60 FPS.
       serviceTick=step*10218;
       h.tick(serviceTick);
-      h.audio().currentTime=step*.01;
+      h.device.audio.currentTime=step*.01;
       const granted=h.device.getCpuSliceBudget(10218);
       assert.ok(granted>0&&granted<=10218);
       h.device.serviceRealtimeAudio();
@@ -427,10 +427,14 @@ test('SID FIFO overflow logs an onset event with CPU tick and audio state',async
   assert.ok(h.device.getAudioEvents().some(e=>
     e.type==='fifo_overflow' && e.cpuTick===1021800 &&
     e.queuedFrames===8192 && e.capacityFrames===8192));
+  // Force queued + already scheduled audio above the 500ms producer bound.
+  h.device.serviceRealtimeAudio();
+  h.tick(2043600);
+  h.device.advanceTo(2043600);
   assert.equal(h.device.getCpuSliceBudget(10218),0,
     'CPU producer should stop when scheduled plus pending PCM is excessive');
   h.device.serviceRealtimeAudio();
-  h.audio().currentTime+=.40;
+  h.device.audio.currentTime+=.40;
   assert.ok(h.device.getCpuSliceBudget(10218)>0,
     'CPU can resume when browser audio clock catches up');
   await h.device.init('audio_off');
