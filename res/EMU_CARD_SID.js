@@ -357,6 +357,14 @@ function SIDCard()
         telemetryText("lead",telemetryNumber(p.scheduledLeadMs,1," ms")+" / "+
             telemetryNumber(p.minLeadMs,1," ms")+" / "+
             telemetryNumber(p.maxLeadMs,1," ms"));
+        telemetryText("prelead",telemetryNumber(p.preScheduleLeadMs,1," ms")+" / "+
+            telemetryNumber(p.minPreScheduleLeadMs,1," ms"));
+        telemetryText("clock",String(p.smallClockBacksteps||0)+" / "+
+            String(p.clockRewinds||0)+" / "+
+            String(p.maxClockBackstepTicks||0)+" ticks");
+        telemetryText("discard",String(p.clearedSamples||0)+" / "+
+            String(p.skippedSamples||0)+" / "+String(p.queueClears||0));
+        telemetryText("events",String(p.recentAudioEvents||0));
         telemetryText("underrun",(p.underruns||0)+" / "+
             telemetryNumber(p.lastLateMs,1," ms")+" / "+
             telemetryNumber(p.worstLateMs,1," ms"));
@@ -374,7 +382,12 @@ function SIDCard()
             slot:snapshot.slot,
             sampleRate:snapshot.audio?snapshot.audio.sampleRate:null,
             capturedAt:new Date().toISOString(),
-            latest:snapshot,history:this.getAudioTelemetryHistory()};
+            latest:snapshot,history:this.getAudioTelemetryHistory(),
+            audioEvents:(function(){
+                var d=audioDevice();
+                return d&&typeof(d.getAudioEvents)==="function" ?
+                    d.getAudioEvents():[];
+            })()};
         oCOM.Download("SID_slot"+(data.slot===null?"x":data.slot)+
             "_audio_telemetry.json",
             new TextEncoder().encode(JSON.stringify(data,null,2)));
@@ -462,6 +475,10 @@ function SIDCard()
             ["pcm_rate","PCM PRODUCE / SCHEDULE RATE"],
             ["fifo","PCM FIFO / CAPACITY"],["fifo_peak","PCM FIFO HIGH WATER"],
             ["lead","BROWSER LEAD NOW / MIN / MAX"],
+            ["prelead","PRE-SERVICE LEAD LAST / MIN"],
+            ["clock","CLOCK BACKSTEPS / REWINDS / MAX"],
+            ["discard","PCM QUEUE-CLEARED / SKIPPED / EVENTS"],
+            ["events","AUDIO EXCEPTION EVENTS (JSON)"],
             ["underrun","UNDERRUNS / LAST LATE / WORST LATE"],
             ["sources","ACTIVE BROWSER SOURCES"],
             ["last","LAST SID WRITE / CPU TICK"]
@@ -487,7 +504,8 @@ function SIDCard()
             "Write bursts are clusters separated by more than 3.4 ms of "+
             "emulated CPU time; they are <b>not</b> exact music PLAY calls. "+
             "CPU wall pace can reveal emulator stalls; lead, underruns and "+
-            "dropped samples reveal browser audio starvation. The 120 most "+
+            "queue flushes reveal browser audio starvation. JSON includes the "+
+            "last 32 detailed audio exceptions. The 120 most "+
             "recent half-second snapshots can be exported as JSON."+
             "</div></div>";
         var close="<div class=appbut onclick=\""+access+
