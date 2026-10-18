@@ -1,0 +1,32 @@
+name: SID native 6502 regression tests
+
+on:
+  pull_request:
+    paths:
+      - 'asm/AUDIO/**'
+      - 'tools/SID_Phase2A_build.js'
+      - 'tools/SID_Phase2B1_build.js'
+      - 'tests/sid_phase*.test.js'
+      - 'tests/sid_card.test.js'
+      - 'res/ASM_core.js'
+      - 'res/EMU_cpu6502.js'
+      - 'res/EMU_CARD_SID.js'
+      - 'res/EMU_DEVICE_SID_audio.js'
+      - '.github/workflows/sid-native-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-psid:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run Phase 2A, Phase 2B.1 and SID peripheral regressions
+        run: node --test tests/sid_phase2a_mrheli.test.js tests/sid_phase2b1.test.js tests/sid_card.test.js

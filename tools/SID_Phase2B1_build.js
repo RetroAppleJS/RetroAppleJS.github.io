@@ -1,110 +1,185 @@
 #!/usr/bin/env node
 'use strict';
-// Phase 2B.1: conservative, unmodified native PSID execution on Apple II.
-// The staged PSID *file* may be read from any RAM address; the executable
-// has its own PSID-declared absolute load address and is never relocated.
+// Phase 2B.1: prepare a compatible PSID v1/v2 for the Apple II's native 6502.
+// Source PSID bytes remain intact. All C64 absolute instruction operands remain
+// intact; "load" in the header is the native EXECUTION address, not the address
+// where the complete PSID file is staged in Apple II RAM.
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
-const ROOT=path.resolve(__dirname,'..'),BASE=0x1C00,MIN=0x2000,END=0x9000;
+const ROOT=path.resolve(__dirname,'..');
 const DRIVER=path.join(ROOT,'asm/AUDIO/SID_PHASE2B1_PLAYER.S');
-const ASM=path.join(ROOT,'res/ASM_core.js');
-function fail(message){throw new Error('PSID incompatible: '+message);}
-function u16(a,i){return (a[i]<<8)|a[i+1];}
-function info(bytes,{subtune,clock}={}){
-  bytes=Uint8Array.from(bytes);
-  if(bytes.length<0x76)fail('truncated header');
-  const sig=String.fromCharCode(...bytes.subarray(0,4));
-  if(sig!=='PSID')fail(sig==='RSID'?'RSID requires a C64 environment':'not a PSID file');
-  const version=u16(bytes,4),off=u16(bytes,6);
-  if(version!==1&&version!==2)fail('PSID v'+version+' is not supported by Phase 2B.1');
-  if(off<(version===1?0x76:0x7C)||off>=bytes.length)fail('invalid data offset');
-  const songs=u16(bytes,14),first=u16(bytes,16);
-  if(songs<1||first<1||first>songs||songs>256)fail('invalid subtune count');
-  const selected=subtune===undefined?first:subtune;
-  if(!Number.isInteger(selected)||selected<1||selected>songs)fail('subtune outside song range');
-  const speed=((bytes[18]*0x1000000)+(bytes[19]<<16)+(bytes[20]<<8)+bytes[21])>>>0;
-  if(((speed>>>Math.min(selected-1,31))&1)!==0)
-    fail('CIA-timed subtune requires emulated CIA timer support');
-  let load=u16(bytes,8),dataAt=off;
-  if(load===0){
-    if(bytes.length-off<3)fail('missing embedded PRG load address');
-    load=bytes[off]|(bytes[off+1]<<8);dataAt+=2;
-  }
-  const payload=bytes.subarray(dataAt),end=load+payload.length;
-  if(!payload.length)fail('empty music program');
-  if(load<MIN||end>END)fail('original load range $'+load.toString(16)+'-$'+(end-1).toString(16)+' is outside $2000-$8FFF; code cannot safely be relocated');
-  const init=u16(bytes,10)||load,play=u16(bytes,12);
-  if(init<load||init>=end)fail('INIT is not inside executable payload');
-  if(play<load||play>=end)fail('PLAY=0 or PLAY outside payload requires unsupported C64 interrupt environment');
-  let suggested='PAL';
-  if(version>=2){
-    const flags=u16(bytes,0x76);
-    const chipClock=(flags>>2)&3;
-    if(chipClock===2)suggested='NTSC';
-  }
-  const selectedClock=clock||suggested;
-  if(selectedClock!=='PAL'&&selectedClock!=='NTSC')fail('clock must be PAL or NTSC');
-  // The Apple II nominal host clock is 1,021,800 Hz; NTSC 60 Hz=17030 ticks.
-  const period=selectedClock==='PAL'?20436:17030;
-  const title=Array.from(bytes.subarray(0x16,0x36)).map(c=>c>=32&&c<127?String.fromCharCode(c):'').join('').replace(/\0/g,'').trim();
-  return {version,title,songs,subtune:selected,clock:selectedClock,period,
-    load,end,init,play,data:payload,dataOffset:dataAt,sourceLength:bytes.length};
+const ASM_CORE=path.join(ROOT,'res/ASM_core.js');
+const REFERENCE=path.join(ROOT,'asm/AUDIO/SID2MB_prototype/Mr_Heli_original.sid');
+const STAGE_MIN=0x2000,STAGE_END=0x9000,MAX_FILE=STAGE_END-STAGE_MIN;
+const TRAMP=0x1C00,RUNTIME=0x9000,DESCRIPTOR=0x9400,ZP_BACKUP=0x9500;
+const RUNTIME_END=0x9600; // runtime, descriptor and 256-byte ZP backup
+const DESC_SIZE=18; // metadata through +15, payload checksum at +16/+17
+function hex(x,digits=4){return '$'+x.toString(16).toUpperCase().padStart(digits,'0')}
+function fail(code,explanation){const e=new Error(explanation);e.code=code;throw e}
+function numeric(value,name){
+    if(typeof value==='number'&&Number.isInteger(value))return value;
+    if(typeof value!=='string')fail('BAD_ARGUMENT',name+' must be an integer');
+    const s=value.trim(),n=s.startsWith('$')?parseInt(s.slice(1),16):
+        s.startsWith('0x')?parseInt(s.slice(2),16):Number(s);
+    if(!Number.isInteger(n))fail('BAD_ARGUMENT','Invalid '+name+': '+s);
+    return n;
 }
-function assembler(){
-  const c=vm.createContext({console});
-  vm.runInContext(fs.readFileSync(ASM,'utf8'),c);
-  const p=new c.ASM({dialect:'raJS'}).assemble(fs.readFileSync(DRIVER,'utf8'));
-  if(p.errors.length)throw Error(p.errors.map(e=>e.err||JSON.stringify(e)).join('\n'));
-  const out=Uint8Array.from(p.bytes.map(b=>b.val));
-  if(p.bytes.some((b,i)=>b.pc!==BASE+i))throw Error('noncontiguous player image');
-  if(BASE+out.length>MIN)throw Error('player exceeds reserved $1C00-$1FFF area');
-  return {bytes:out,symbols:p.symtab};
+function parsePSID(input,opts={}){
+    const data=Buffer.from(input);
+    if(data.length<0x76)fail('TRUNCATED_HEADER','PSID header is shorter than v1 minimum');
+    const sig=data.toString('ascii',0,4);
+    if(sig==='RSID')fail('RSID_UNSUPPORTED','RSID requires a C64 environment; native PSID only');
+    if(sig!=='PSID')fail('NOT_PSID','Missing PSID file signature');
+    const be16=x=>data.readUInt16BE(x);
+    const version=be16(4),offset=be16(6);
+    if(version!==1&&version!==2)
+        fail('PSID_VERSION','Only PSID v1/v2 are supported (got '+version+')');
+    if(offset<(version===1?0x76:0x7C)||offset>=data.length)
+        fail('DATA_OFFSET','PSID data offset is outside the file or header');
+    const songs=be16(14),startSong=be16(16),speed=data.readUInt32BE(18);
+    if(songs<1||songs>256||startSong<1||startSong>songs)
+        fail('BAD_SONGS','Invalid PSID songs/default subtune information');
+    const song=opts.subtune===undefined?startSong:numeric(opts.subtune,'subtune');
+    if(song<1||song>songs)fail('SUBTUNE_RANGE','Subtune must be 1–'+songs);
+    const flags=version===2?be16(0x76):0;
+    if(flags&1)fail('MUS_UNSUPPORTED','MUS player format requires a C64 driver');
+    // In PSID (unlike RSID), flag bit 1 means PlaySID-specific samples,
+    // NOT the C64 BASIC loader. It is outside the native MOS SID model.
+    if(flags&2)fail('PLAYSID_UNSUPPORTED','PlaySID-specific extensions are not supported');
+    // HVSC: v1 cycles speed bits; v2NG with normal C64-compatible PSID
+    // uses the 32nd speed flag for all subsequent tunes.
+    const speedIndex=version===1?((song-1)&31):Math.min(song-1,31);
+    const speedBit=(speed>>>speedIndex)&1;
+    if(speedBit)fail('CIA_TIMING','CIA-timed subtune requires a timer not supported in Phase 2B.1');
+    if(version===2&&(data[0x7A]||data[0x7B]))
+        fail('MULTISID','Second or third SID chips are not supported');
+    const clockBits=(flags>>2)&3; // 0 unspecified, 1 PAL, 2 NTSC, 3 both
+    const sidModelBits=(flags>>4)&3;
+    const preferredSIDModel=sidModelBits===1?6581:sidModelBits===2?8580:null;
+    let hz=opts.videoHz===undefined?(clockBits===2?60:50):numeric(opts.videoHz,'videoHz');
+    if(hz!==50&&hz!==60)fail('FRAME_RATE','Supported VBI music timing is 50 or 60 Hz');
+    if(clockBits===1&&hz!==50||clockBits===2&&hz!==60)
+        fail('CLOCK_MISMATCH','Selected music frame rate conflicts with PSID PAL/NTSC flags');
+    let loadAddress=be16(8),payloadOffset=offset;
+    if(!loadAddress){
+        if(offset+2>data.length)fail('TRUNCATED_PRG','Embedded PRG load address is absent');
+        loadAddress=data[offset]|data[offset+1]<<8;
+        payloadOffset+=2;
+    }
+    const length=data.length-payloadOffset;
+    if(length<1)fail('EMPTY_PAYLOAD','No executable PSID payload');
+    const end=loadAddress+length;
+    if(loadAddress<0x0C00||end>0xC000)
+        fail('EXECUTION_RANGE','C64 payload must fit in Apple II RAM $0C00–$BFFF');
+    if(loadAddress<RUNTIME_END&&end>RUNTIME)
+        fail('PLAYER_COLLISION','Original C64 load range overlaps protected SID runtime '+hex(RUNTIME)+'–'+hex(RUNTIME_END-1));
+    let init=be16(10)||loadAddress,play=be16(12);
+    if(!play)fail('IRQ_PLAY_UNSUPPORTED','PSID PLAY=$0000 relies on a C64 IRQ vector');
+    if(init<loadAddress||init>=end||play<loadAddress||play>=end)
+        fail('ENTRYPOINT_RANGE','INIT and PLAY must reside inside the executable payload');
+    const clean=s=>s.replace(/\0.*$/s,'').trim();
+    return {
+        format:'PSID',version,headerSize:offset,fileLength:data.length,
+        payloadOffset,payloadLength:length,loadAddress,executableEnd:end,
+        initAddress:init,playAddress:play,songs,defaultSong:startSong,
+        selectedSong:song,rateHz:hz,flags,speed,clockBits,
+        sidModelBits,preferredSIDModel,
+        title:clean(data.toString('latin1',0x16,0x36)),
+        author:clean(data.toString('latin1',0x36,0x56)),
+        released:clean(data.toString('latin1',0x56,0x76)),
+        warnings:[
+            'PSID headers cannot prove NMOS 6502 opcode compatibility, safe self-modification or independence from C64 ROM/CIA/VIC.',
+            'C64 ZP and RAM contents outside the payload are only approximated: start with a disposable Apple II snapshot.'
+        ]
+    };
 }
-function plan(file,options={}){
-  const parsed=info(file,options),a=assembler(),program=Uint8Array.from(a.bytes);
-  const put=(sym,offset,value)=>{const index=a.symbols[sym]-BASE+offset;
-    if(index<0||index>=program.length)throw Error('player symbol not present: '+sym);
-    program[index]=value&255;};
-  put('SONG_SELECT',1,parsed.subtune-1);
-  for(const [sym,addr] of [['INIT_CALL',parsed.init],['PLAY_CALL',parsed.play]]){
-    put(sym,1,addr&255);put(sym,2,addr>>8);
-  }
-  put('PERIODLO',0,parsed.period&255);
-  put('PERIODHI',0,parsed.period>>8);
-  return {meta:parsed,entry:BASE,driver:{address:BASE,bytes:program},
-    music:{address:parsed.load,bytes:Uint8Array.from(parsed.data)},
-    statusAddress:a.symbols.ERRORCD};
+function prepare(input,{stage=0x6000,subtune,videoHz}={}){
+    const bytes=Buffer.from(input);
+    stage=numeric(stage,'stage');
+    if(bytes.length>MAX_FILE||stage<STAGE_MIN||stage>=STAGE_END||
+       stage+bytes.length>STAGE_END)
+        fail('STAGING_RANGE','Complete PSID must fit in '+hex(STAGE_MIN)+'–'+hex(STAGE_END-1)+
+            ' (max 28 KiB including PSID header)');
+    const info=parsePSID(bytes,{subtune,videoHz});
+    const payloadAddress=stage+info.payloadOffset;
+    const desc=Buffer.alloc(DESC_SIZE,0);
+    desc.write('S2B1',0,'ascii');
+    desc.writeUInt16LE(payloadAddress,4);
+    desc.writeUInt16LE(info.loadAddress,6);
+    desc.writeUInt16LE(info.payloadLength,8);
+    desc.writeUInt16LE(info.initAddress,10);
+    desc.writeUInt16LE(info.playAddress,12);
+    desc[14]=info.selectedSong-1;
+    desc[15]=info.rateHz===60?1:0;
+    const payloadChecksum=bytes.subarray(info.payloadOffset).reduce(
+        (sum,value)=>(sum+value)&0xFFFF,0);
+    desc.writeUInt16LE(payloadChecksum,16);
+    return {...info,stage,payloadAddress,payloadChecksum,descriptor:desc,bytes};
 }
-function install(ram,file,options={}){
-  if(!(ram instanceof Uint8Array)||ram.length!==65536)
-    throw new TypeError('install needs a 65536-byte physical RAM Uint8Array');
-  // Parse, validate and fully copy both images BEFORE modifying RAM:
-  // the staged PSID can overlap its destination or the player.
-  const prepared=plan(file,options);
-  ram.set(prepared.music.bytes,prepared.music.address);
-  ram.set(prepared.driver.bytes,prepared.driver.address);
-  return prepared;
+function assemblePlayer(){
+    const ctx=vm.createContext({console});
+    vm.runInContext(fs.readFileSync(ASM_CORE,'utf8'),ctx,{filename:ASM_CORE});
+    const program=new ctx.ASM({dialect:'raJS'}).assemble(fs.readFileSync(DRIVER,'utf8'));
+    if(program.errors.length)
+        fail('ASSEMBLER',program.errors.map(x=>x.err||JSON.stringify(x)).join('\n'));
+    const sections=[{address:TRAMP,bytes:[]},{address:RUNTIME,bytes:[]}];
+    for(const {pc,val} of program.bytes){
+        if(pc>=TRAMP&&pc<TRAMP+12)sections[0].bytes.push(val);
+        else if(pc>=RUNTIME&&pc<DESCRIPTOR)sections[1].bytes.push(val);
+        else fail('PLAYER_LAYOUT','Assembly emitted an unexpected byte at '+hex(pc));
+    }
+    if(sections[0].bytes.length!==12)
+        fail('PLAYER_LAYOUT','Expected 12-byte $1C00 public jump table');
+    const runtime=Buffer.from(sections[1].bytes);
+    if(!runtime.length||runtime.length>=DESCRIPTOR-RUNTIME)
+        fail('PLAYER_LAYOUT','Native runtime exceeds protected $9000–$93FF');
+    for(let i=0;i<4;i++)
+        if(sections[0].bytes[3*i]!==0x4C)
+            fail('PLAYER_LAYOUT','Public entry '+i+' must be JMP');
+    for(let i=0;i<4;i++)
+        if(runtime[3*i]!==0x4C)
+            fail('PLAYER_LAYOUT','Resident entry '+i+' must be JMP');
+    return {bootstrap:Buffer.from(sections[0].bytes),runtime,
+        symbols:program.symtab};
 }
-function installStaged(ram,stagedAt,length,options={}){
-  if(!(ram instanceof Uint8Array)||ram.length!==65536)throw new TypeError('64K RAM required');
-  if(!Number.isInteger(stagedAt)||!Number.isInteger(length)||length<=0||
-     stagedAt<0||stagedAt+length>ram.length)throw new RangeError('staged PSID must fit in RAM');
-  return install(ram,ram.slice(stagedAt,stagedAt+length),options);
+function monitorHex(bytes,address){
+    const lines=['CALL-151','; Enter these hex bytes using the Apple II monitor'];
+    for(let i=0;i<bytes.length;i+=16)
+        lines.push((address+i).toString(16).toUpperCase().padStart(4,'0')+': '+
+            [...bytes.subarray(i,i+16)].map(x=>x.toString(16).toUpperCase().padStart(2,'0')).join(' '));
+    return lines.join('\n')+'\n';
 }
-function monitorHex(bytes,load){
-  const lines=['CALL-151'];
-  for(let i=0;i<bytes.length;i+=16)lines.push((load+i).toString(16).toUpperCase().padStart(4,'0')+
-    ': '+Array.from(bytes.subarray(i,i+16),b=>b.toString(16).toUpperCase().padStart(2,'0')).join(' '));
-  return lines.join('\n')+'\n';
+function main(args=process.argv.slice(2)){
+    if(args.includes('--help')||args.includes('-h')){
+        console.log('Usage: node tools/SID_Phase2B1_build.js [file.sid] [stage=$6000] [subtune=default] [out-dir]');
+        return;
+    }
+    const filename=args[0]?path.resolve(args[0]):REFERENCE;
+    const stage=args[1]===undefined?0x6000:numeric(args[1],'stage');
+    const subtune=args[2]===undefined?undefined:numeric(args[2],'subtune');
+    const dest=args[3]?path.resolve(args[3]):path.join(ROOT,'tools/music');
+    const meta=prepare(fs.readFileSync(filename),{stage,subtune}),driver=assemblePlayer();
+    fs.mkdirSync(dest,{recursive:true});
+    const out=(name,data)=>fs.writeFileSync(path.join(dest,'SID_Phase2B1_'+name),data);
+    out('bootstrap.bin',driver.bootstrap);
+    out('runtime.bin',driver.runtime);
+    out('descriptor.bin',meta.descriptor);
+    out('bootstrap_monitor.txt',monitorHex(driver.bootstrap,TRAMP));
+    out('runtime_monitor.txt',monitorHex(driver.runtime,RUNTIME));
+    out('descriptor_monitor.txt',monitorHex(meta.descriptor,DESCRIPTOR));
+    out('staged_psid_monitor.txt',monitorHex(meta.bytes,meta.stage));
+    const summary={input:filename,title:meta.title,author:meta.author,
+        stage:hex(meta.stage),fileBytes:meta.fileLength,
+        originalLoad:hex(meta.loadAddress),end:hex(meta.executableEnd-1),
+        executableBytes:meta.payloadLength,init:hex(meta.initAddress),
+        play:hex(meta.playAddress),song:meta.selectedSong,songs:meta.songs,
+        rateHz:meta.rateHz,preferredSIDModel:meta.preferredSIDModel,
+        playerStub:hex(TRAMP),runtime:hex(RUNTIME),
+        descriptor:hex(DESCRIPTOR),
+        payloadChecksum:hex(meta.payloadChecksum),warnings:meta.warnings};
+    out('manifest.json',JSON.stringify(summary,null,2)+'\n');
+    console.log(JSON.stringify(summary,null,2));
+    console.log('Load 4 memory images then CALL 7168; any key stops. No code relocation.');
 }
-if(require.main===module){
-  const file=process.argv[2],out=process.argv[3]||process.cwd();
-  if(!file)throw Error('Usage: node tools/SID_Phase2B1_build.js tune.sid [output-dir]');
-  const built=plan(fs.readFileSync(file));
-  fs.mkdirSync(out,{recursive:true});
-  fs.writeFileSync(path.join(out,'SID_Phase2B1_player.bin'),built.driver.bytes);
-  fs.writeFileSync(path.join(out,'SID_Phase2B1_music.bin'),built.music.bytes);
-  fs.writeFileSync(path.join(out,'SID_Phase2B1_player_monitor.txt'),monitorHex(built.driver.bytes,BASE));
-  fs.writeFileSync(path.join(out,'SID_Phase2B1_music_monitor.txt'),monitorHex(built.music.bytes,built.music.address));
-  console.log(built.meta.title+' ('+built.meta.clock+'): player $1C00, music $'+built.meta.load.toString(16)+', CALL 7168');
-}
-module.exports={info,assembler,plan,install,installStaged,monitorHex,BASE,MIN,END};
+if(require.main===module)main();
+module.exports={parsePSID,prepare,assemblePlayer,monitorHex,main,
+    STAGE_MIN,STAGE_END,MAX_FILE,TRAMP,RUNTIME,DESCRIPTOR,ZP_BACKUP,REFERENCE};

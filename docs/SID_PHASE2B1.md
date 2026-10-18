@@ -1,107 +1,176 @@
-# SID Phase 2B.1 — Safe-window generic PSID loader
+# Phase 2B.1 — Generic native PSID loader for Apple II
 
-Phase 2A is complete. Phase 2B.1 adds a **generic, conservative PSID v1/v2
-loader** and a **262-byte foreground 6502 player at $1C00**. The original
-music payload executes **unmodified** on the Apple II CPU and writes directly
-to the SID peripheral at $D400–$D41F.
+Phase 2A (Mr. Heli) is closed. Phase 2B.1 generalises **file loading and
+compatibility preflight**, while retaining native Apple II NMOS 6502 execution
+of original PSID INIT/PLAY code and native `$D400–$D41F` SID bus writes.
+This is **not** a C64/6510 emulator and does not translate SID writes to AY.
 
-## Memory contract
+## Staging versus original executable location
 
-| RAM | Purpose |
+These are **different addresses**. A PSID is a container: it carries a header
+and 6502 code/data. The **complete PSID file** may be staged anywhere inside
+`$2000–$8FFF` provided the last byte does not exceed `$8FFF`.
+This is **28,672 bytes (28 KiB) including the PSID header**. If the file uses
+the full 28 KiB, its only possible staging base is `$2000`.
+
+The file's PSID header (or two-byte embedded PRG prefix) specifies a *native
+C64 executable load address*. The 6502 player copies the payload to this
+**original absolute load address**, and executes the original INIT/PLAY
+instructions there. The program's internal absolute operands are **never
+relocated**. The copy is direction-aware (memmove semantics), even when the
+staged payload and target memory overlap. A successful copy can overwrite the
+original staged PSID header; to replay, the runner re-copies from staged
+memory, so reload the source if it was overwritten.
+
+### Protected memory layout
+
+| Apple II address | Role |
 |---|---|
-| $0000–$00FF | C64 music zero page while playback runs; original Apple II ZP restored on exit |
-| $1C00–$1D05 | Installed 262-byte native foreground driver |
-| $1D06–$1FFF | Reserved for future player growth |
-| $2000–$8FFF | **Music executable region: 28 KiB (28,672 bytes)** |
-| $9000–$90FF | Apple II zero-page backup while C64 music runs |
-| Anywhere else in 64 KiB, or even overlapping the target | Input PSID **file staging**, provided it is copied into a snapshot before installation |
+| `$1C00–$1C0B` | 12-byte public 6502 entry stub (may temporarily be overwritten by the tune and restored at exit) |
+| `$2000–$8FFF` | **Entire 28 KiB PSID staging window**; no resident runtime or scratch allocations within it |
+| `$9000–$92A3` | Native player runtime (676 bytes in this revision) |
+| `$9400–$9411` | Validated 18-byte playback descriptor |
+| `$9500–$95FF` | Original Apple II zero page backup |
+| `$0C00–$BFFF` | Permitted *original executable* range, except the protected `$9000–$95FF` runtime/descriptor/ZP workspace |
 
-The original PSID file can be loaded at **any start address** where the complete
-file fits in 64K RAM, including $0000 or $F000 for short files. The loader
-parses a **copy** of the PSID before writing memory, so input staging can even
-overlap the executable destination or the resident driver.
+The runtime is deliberately located above the staging window because
+**Mr. Heli's original code occupies `$0CA0–$1F0A`**, overlapping a full
+player resident at `$1C00`. The bootstrap at `$1C00` jumps to protected
+`$9000` code. After playback it restores the 12-byte public entry stub,
+the complete Apple II zero page and the previous CPU interrupt mask.
 
-**The PSID executable's original load address is not relocatable.** Its
-machine code generally contains absolute addresses. The current conservative
-native execution contract therefore requires the PSID-declared code range to
-fit entirely inside **$2000–$8FFF**, including INIT and PLAY. This provides
-28 KiB of executable capacity, but does not magically make all 28 KiB tunes
-compatible. Programs requiring data outside that region, C64 ROM/I/O or other
-C64 system behavior may still fail. Such dependencies are not yet discovered
-by static disassembly.
+All runs should use a **disposable Apple II memory snapshot**. This player
+can overwrite Applesoft program/workspace RAM and does not implement a
+complete Commodore 64 RAM/ROM/CIA/VIC environment. Start in TEXT mode, at
+100% Apple II CPU speed, without DOS/ProDOS, disk access or IRQ-dependent
+applications. Only the original zero page is backed up automatically;
+other overwritten RAM contents are **not** preserved.
 
-Mr. Heli's load address is **$0CA0**, so it is **not** eligible for this safe
-generic window. Phase 2A remains its supported player. Phase 2B.2 may add a
-legacy, separately isolated execution mode.
+## Supported PSIDs
 
-## Compatible PSID features
+The host-side preflight in `tools/SID_Phase2B1_build.js` accepts:
 
-- PSID **v1/v2**, with ordinary 16-bit header load, INIT and PLAY addresses;
-- zero load-header address with an embedded little-endian PRG load address;
-- default or explicit subtune (converted to zero-based accumulator for INIT);
-- PAL 50 Hz or NTSC 60 Hz, via PSID v2 clock flags or explicit override;
-- true 6502-compatible code that returns from INIT and PLAY normally.
+- PSID v1/v2 with a valid big-endian header and in-bounds data offset.
+- Either a header-specified C64 load address or a two-byte embedded PRG
+  little-endian load address when the header field is zero.
+- Selected subtune 1 through `songs` (one-based CLI argument, converted
+  to zero-based accumulator A for native INIT).
+- VBI-timed music at **50 Hz** (PAL/unspecified) or **60 Hz** (NTSC).
+  The SID chip oscillator clock is still independently chosen in the
+  peripheral toolbox; select PAL 985248 Hz for PAL tunes.
+- Explicit nonzero PLAY addresses, with INIT/PLAY inside the loaded code.
+  INIT=0 is resolved to the original load address.
 
-The loader deliberately **rejects** RSID, PSID v3/v4, CIA-timed subtunes,
-PLAY=0 (requires a C64 interrupt environment), invalid or out-of-window
-addresses, unsupported subtune values, and oversized payloads. For songs over
-32, the PSID speed bitmap's bit 31 convention is observed.
+For now the preflight *rejects* RSID, PSID v3/v4, CIA-timed subtunes
+(speed bit set for the selected song), MUS / PlaySID-specific flags,
+multiple SID chips, PLAY=0 IRQ-vector
+drivers, memory overlap with protected `$9000–$95FF`, executable code
+below `$0C00` or reaching `$C000`, and invalid or conflicting addresses.
 
-The host program parses and validates the file, then patches *only the
-resident player* at $1C00 with the subtune, INIT, PLAY and timer period.
-Original music data is unchanged. The SID card's emulator-only latched CPU
-clock indices $1E/$1F provide 20,436 CPU ticks/frame (50 Hz) or 17,030
-ticks/frame (60 Hz).
+**Compatibility cannot be fully determined from the PSID header.** Some
+nominal PSIDs still depend on C64 ROM calls, 6510-specific facilities,
+undocumented opcodes, screen/VIC/CIA memory or RAM initialisation assumptions.
+Such dependencies remain unimplemented; passing preflight means the layout
+and declared timing are compatible, *not* that the tune is guaranteed to play.
 
-## Build and test
+## Preparing an arbitrary PSID
 
-From the repository checkout:
+From a repository checkout:
 
 ```bash
-node tools/SID_Phase2B1_build.js path/to/compatible.sid output-dir
-node --test tests/sid_phase2b1.test.js
+node tools/SID_Phase2B1_build.js path/to/music.sid '$2000' 1
 ```
 
-The builder writes four files:
+Arguments: `[file.sid] [staging-address] [subtune] [output-folder]`.
+The staging address accepts `$2000`, `0x2000` or decimal `8192`.
+**Quote the dollar-sign syntax in a shell**, as in the example.
+Defaults are the existing original Mr. Heli file, stage `$6000`, its
+default subtune (5), and output directory `tools/music`.
 
-- `SID_Phase2B1_player.bin` — load at **$1C00**, then `CALL 7168`;
-- `SID_Phase2B1_music.bin` — original executable bytes, load at the
-  PSID's declared address (shown by the builder);
-- `SID_Phase2B1_player_monitor.txt` — monitor hex for the resident player;
-- `SID_Phase2B1_music_monitor.txt` — monitor hex for the original payload.
+After header and memory validation, the builder produces:
 
-Alternatively, JavaScript code with access to the emulator's **underlying
-physical 64K RAM Uint8Array** can invoke:
+| File | Load address |
+|---|---|
+| `SID_Phase2B1_bootstrap.bin` | `$1C00` (12 bytes) |
+| `SID_Phase2B1_runtime.bin` | `$9000` |
+| `SID_Phase2B1_descriptor.bin` | `$9400` (18 bytes) |
+| **Original, unmodified input `.sid`** | Your selected staging address |
 
-```js
-const psid = require('./tools/SID_Phase2B1_build.js');
-// The original complete PSID file was staged in RAM at some address:
-const prepared = psid.installStaged(ram, 0xA000, fileByteLength, {
-  subtune: 1, clock: 'PAL'
-});
-// prepared.entry === 0x1C00; launch through the emulated CPU, not JS execution.
+It also generates matching `*_monitor.txt` files for all four memory
+images (including the staged PSID file) and
+`SID_Phase2B1_manifest.json`, which lists the actual addresses, original
+title/author, subtune, frame rate, preferred SID model (where declared),
+and compatibility warnings.
+
+Load the four binary images at their respective addresses using the
+emulator's memory-loading facilities, or enter the monitor listings.
+**Do not load the SID payload alone at the staging address**: the descriptor
+expects the complete PSID container and points to its payload offset.
+
+### Ready-to-enter original Mr. Heli demonstration
+
+Three checked-in monitor listings are sufficient:
+
+1. `asm/AUDIO/SID_PHASE2B1_player_monitor.txt` — entry stub at `$1C00`
+   and runtime at `$9000`.
+2. `asm/AUDIO/SID_PHASE2B1_MrHeli_at_6000_descriptor.txt` — descriptor
+   at `$9400`, default subtune 5.
+3. `asm/AUDIO/SID2MB_prototype/Mr_Heli_PSID_at_6000_monitor.txt` —
+   untouched original PSID staged at `$6000`.
+
+With SID in any slot 1–7, audio enabled, PAL/6581, 100% CPU, run:
+
+```basic
+CALL 7168
 ```
 
-This API does **not** claim the UI has direct access to physical RAM in the
-browser; direct binary-memory upload and GUI tune selection will be integrated
-in a later Phase 2B delivery. This first implementation provides a validated
-data path, CLI, monitor listings and a real-6502 regression harness.
+Press **any key** to stop. The new player retains the 50 Hz absolute
+CPU-clock deadline from Phase 2A, using the RetroAppleJS-specific SID
+indexed SlotIO clock extension `$1E/$1F`. This extension is **not**
+part of physical MOS SID hardware.
 
-Use a **disposable text-mode emulator session**. Running arbitrary C64 machine
-code can overwrite Apple II memory, ROM-backed soft switches or the original
-tune's data. Do not run disk activity or Apple II operating systems alongside
-the foreground player. The driver only restores the 256-byte zero page, not
-arbitrary memory that a tune might have modified. The STOP entry at $1C03
-silences SID only after foreground playback exits; press any key to end.
+## Entrypoints and error codes
 
-## Validation
+| Address | Applesoft | Purpose |
+|---|---|---|
+| `$1C00` | `CALL 7168` | Validate descriptor/staged checksum, load, INIT, PLAY and wait for key |
+| `$1C03` | `CALL 7171` | Mute the SID after playback |
+| `$1C06` | `CALL 7174` | Restart (source PSID must still be staged intact) |
+| `$1C09` | `CALL 7177` | Return last error code in 6502 A |
+| `$929A` | `PRINT PEEK(37530)` | Error code variable (0 success, 1 bad descriptor, 2 SID not found, 3 RAM payload checksum mismatch) |
 
-Tests use the actual RetroAppleJS 6502 core to execute synthetic original
-PSID payloads at $2000, $4600 and $8E00, with slots 1, 4 and 7, PAL/NTSC
-music timing, subtune selection, native SID writes and zero-page restoration.
-Additional tests cover arbitrary input staging, PSID v1/v2 header handling,
-memory limits, full 28 KiB payloads and deliberate incompatibility rejection.
+The resident player verifies descriptor magic `S2B1`, positive
+payload length, and the **16-bit additive checksum of the staged executable
+payload** *before* installing it. The checksum is stored at
+`$9410–$9411` by the host builder. It detects many incomplete or damaged
+RAM transfers, but is not a cryptographic integrity check.
 
-Phase 2B.2 follows with tune selection in the UI, a curated compatibility
-matrix, and safe handling of additional memory layouts. Phase 2C covers
-background playback with true IRQ-aware host state preservation.
+Descriptor encoding (little-endian addresses and lengths):
+
+| Offset | Meaning |
+|---|---|
+| `$00–$03` | ASCII `S2B1` |
+| `$04–$05` | Start address of executable bytes inside the staged PSID |
+| `$06–$07` | Original absolute executable load address |
+| `$08–$09` | Executable payload length |
+| `$0A–$0B` | INIT routine |
+| `$0C–$0D` | PLAY routine |
+| `$0E` | Selected zero-based subtune |
+| `$0F` | VBI frame rate: 0=50 Hz, 1=60 Hz |
+| `$10–$11` | Executable payload additive checksum |
+
+## Regression testing
+
+```bash
+node --test tests/sid_phase2b1.test.js tests/sid_phase2a_mrheli.test.js
+```
+
+The Phase 2B.1 suite checks v1/v2 validation, the complete 28 KiB boundary,
+unsafe footprints, different staging origins, original Mr. Heli SID-write
+sequencing, forward/backward overlapping payload copies, correct 50/60 Hz
+native timing, zero-page restoration, overwritten entrypoint restoration and
+rejection of damaged staged bytes.
+
+This is **Phase 2B.1 (loading and validation)**. Phase 2B.2 will add
+a convenient browser-based PSID file picker and native subtune controls;
+Phase 2C will investigate safe asynchronous/interrupt playback.

@@ -35,7 +35,7 @@ unfinished SID-to-Mockingboard translation prototype.
    Mr_Heli_PSID_at_6000_monitor.txt is an alternative to a binary RAM loader.
    Do not stage the 4,715-byte code body alone, a Mockingboard driver, or SREG.
 5. Assemble SID_PHASE2A_MR_HELI.S with **ASM_core.js / raJS** and load it at
-   **$2000–$21F3** (596 bytes), or use the checked-in monitor hex listing.
+   **$2000–$2253** (596 bytes), or use the checked-in monitor hex listing.
 6. Run **CALL 8192**. Default subtune **5** (zero-based selector 4) plays in
    the foreground. **Press any key** to stop, restore Apple II zero page,
    and mute the SID master volume.
@@ -69,7 +69,7 @@ playback; STOP cannot be called asynchronously from another BASIC command.
 | $0100–$01FF | Shared 6502 stack; original INIT/PLAY return normally |
 | $0400–$07FF | Apple II text display |
 | $0CA0–$1F0A | Copied, **unmodified** 4,715-byte Mr. Heli music program |
-| $2000–$21F3 | Native foreground driver |
+| $2000–$2253 | Native foreground driver |
 | $5D00–$5DFF | Saved original Apple II zero page |
 | $6000–$72E8 | Staged original PSID file, including 126-byte header |
 | $D400–$D41F | Passive SID write observer; Apple II ROM mapping remains |
