@@ -198,45 +198,6 @@ clear the PCM queue, or alter 6581/8580 phase or envelope state. **Reset**
 resets only statistics, not playback.
 
 
-### Scheduler headroom and CPU clock diagnostics
-
-The SID Web Audio source scheduler operates independently of the SID sound
-model and the native Mr. Heli music code. At 10 display FPS the emulator can
-produce a full **100 ms** of samples in one processing cycle; scheduling
-callbacks can be delayed by unrelated browser work.
-
-The output scheduler now uses:
-
-| Parameter | Value | Purpose |
-|---|---|---|
-| Cold-start lead | 125 ms | Allow extra time for delayed processing cycles; **adds ~100 ms to audio latency** compared with the previous 25 ms setting |
-| Scheduling horizon | 250 ms | Drain available PCM to a bounded future time, without inventing new SID samples |
-| Recovery lead | 8 ms | When an underrun has already occurred, resume sound quickly rather than insert an additional 125 ms silence |
-| PCM buffer size | 2048 samples | Preserve multi-block scheduling, required at 10 FPS |
-| Minor CPU clock skew | up to 32 ticks | Ignore short backward timestamps caused by CPU bus instruction offsets, rather than silently discarding the PCM FIFO |
-
-The 250 ms horizon is **not a guarantee** that 250 ms of audio is always
-available: the device cannot generate samples ahead of future SID register
-writes. The initial playback lead establishes most of the safety margin.
-An AudioWorklet is a possible longer-term design for stronger isolation
-from main-thread scheduling interruptions.
-
-The live telemetry adds **PRE-SERVICE LEAD LAST / MIN** (actual lead measured
-*before* the processing cycle queues new audio), because post-scheduling
-lead alone hides low-margin periods. **CLOCK BACKSTEPS / REWINDS** reveals
-small instruction-offset timestamp reversals versus real epoch resets.
-**PCM QUEUE-CLEARED / SKIPPED / EVENTS** counts unscheduled PCM that was
-previously missing from `produced - scheduled` analysis. The JSON export
-includes `audioEvents`, a bounded list of the last 32 underrun, queue-flush
-and clock-rewind events with the CPU clock tick and browser audio clock
-timestamp.
-
-If a new trace reports **zero underruns but a PCM queue flush or clock
-rewind**, investigate the CPU timestamp path. If it reports new underruns
-with adequate CPU progress and regular write bursts, investigate browser
-main-thread stalls. Both situations can be distinguished without changing
-the SID voices, envelopes or native music code.
-
 ### Comparing against standalone SIDchipJS
 
 The reference page `tools/SIDchipJS.html` provides two playback selectors:
