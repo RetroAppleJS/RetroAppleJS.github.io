@@ -103,3 +103,79 @@ test('SIDchipJS exposes both selectors and restarts at the same subtune',()=>{
     assert.match(html,/else SIDplayer.loadinit_b64\(b64,st\)/);
     assert.match(html,/settings.sampleRate===22050\?8192:16384/);
 });
+
+
+test('changing selectors restarts the same subtune and preserves pause state',()=>{
+    const scripts=Array.from(html.matchAll(/<script>([\\s\\S]*?)<\\/script>/g),m=>m[1]);
+    const inline=scripts.at(-1);
+    assert.ok(inline && inline.includes('function applySIDPlaybackSettings'));
+    const elements={
+        sidVideoStandard:{value:'PAL'},
+        sidOutputRate:{value:'44100'},
+        setvol:{value:'100'},
+        sidRateStatus:{textContent:''},
+        sidPauseButton:{textContent:'Pause'}
+    };
+    const players=[];
+    class FakeSID {
+        constructor(frames,noise,options){
+            this.frames=frames;this.options=options;this.playing=false;
+            this.model=8580;players.push(this);
+        }
+        setloadcallback(cb){this.loadCallback=cb;}
+        setstartcallback(cb){this.startCallback=cb;}
+        loadstart_b64(data,tune){
+            this.tune=tune;this.loadCallback();this.playing=true;
+            this.startCallback();
+        }
+        loadinit_b64(data,tune){
+            this.tune=tune;this.loadCallback();this.playing=false;
+        }
+        getLiveTelemetryState(){
+            return {playing:this.playing,videoStandard:this.options.videoStandard,
+                audio:{sampleRate:this.options.sampleRate,
+                    requestedSampleRate:this.options.sampleRate}};
+        }
+        destroy(){this.destroyed=true;}
+        setmodel(model){this.model=model;}
+        setvolume(value){this.volume=value;}
+        getsubtunes(){return 5;}
+        getmodel(){return this.model;}
+        getprefmodel(){return 6581;}
+        gettitle(){return 'Test';}
+        getauthor(){return 'Test';}
+        getinfo(){return '';}
+        getplaytime(){return 0;}
+        pause(){this.playing=false;}
+        playcont(){this.playing=true;}
+    }
+    const sandbox=vm.createContext({
+        jsSID:FakeSID,document:{
+            getElementById(id){return elements[id]||(elements[id]={textContent:''});}
+        },oCOM:{writeText(target,value){target.textContent=String(value);}},
+        sidLiveTelemetry:{attach(){},reset(){}},sidAnalysisSchedule(){},
+        setInterval(){return 1;},alert(){},window:{}
+    });
+    vm.runInContext(inline,sandbox,{filename:'SIDchipJS inline script'});
+    sandbox.init();
+    assert.equal(players[0].options.videoStandard,'PAL');
+    assert.equal(players[0].options.sampleRate,44100);
+    assert.equal(players[0].frames,16384);
+    sandbox.st=4;
+    sandbox.sidVideoStandard='unused'; // the DOM selector is authoritative
+    elements.sidVideoStandard.value='NTSC';
+    elements.sidOutputRate.value='22050';
+    sandbox.applySIDPlaybackSettings();
+    assert.equal(players[0].destroyed,true);
+    assert.equal(players[1].options.videoStandard,'NTSC');
+    assert.equal(players[1].options.sampleRate,22050);
+    assert.equal(players[1].frames,8192);
+    assert.equal(players[1].tune,4);
+    assert.equal(players[1].playing,true);
+    sandbox.toggleSIDPause();
+    elements.sidVideoStandard.value='PAL';
+    sandbox.applySIDPlaybackSettings();
+    assert.equal(players[2].tune,4);
+    assert.equal(players[2].playing,false);
+    assert.equal(elements.sidPauseButton.textContent,'Continue');
+});
