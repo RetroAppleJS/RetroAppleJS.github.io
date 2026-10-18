@@ -11,7 +11,14 @@ function SIDAudio()
 {
     var device=this, owner=null, io=null;
     const SAMPLE_RATE=22050, FIFO_LENGTH=8192, MAX_BLOCK=2048;
-    const TARGET_AUDIO_LEAD=0.15, MAX_BLOCKS_PER_CYCLE=8, START_LEAD=0.025;
+    // At 10 FPS each processing cycle supplies 100 ms of PCM. A 25 ms cold
+    // start lead left too little protection against browser timer stalls.
+    // Startup buffering is intentionally larger; an actual underrun uses a
+    // shorter restart lead to avoid *adding* another audible gap.
+    const TARGET_AUDIO_LEAD=0.25, MAX_BLOCKS_PER_CYCLE=8;
+    const START_LEAD=0.125, RECOVERY_LEAD=0.008;
+    // Bus write timestamps may include an instruction-local cycle offset.
+    const MINOR_CLOCK_SKEW_TICKS=32, AUDIO_EVENT_LIMIT=32;
     // SID ADSR rate-counter periods, measured in SID clock cycles.
     // Levels are eight-bit, with stepped exponential decay/release.
     const RATE_PERIODS=[9,32,63,95,149,220,267,313,392,977,1954,3126,3907,11720,19532,31251];
@@ -27,6 +34,10 @@ function SIDAudio()
     // Pure presentation counters; resetting these must never flush the PCM
     // FIFO, stop sources, or change oscillator/envelope phase.
     var lastLateMs=0,worstLateMs=0,minLeadMs=null,maxLeadMs=0;
+    var preScheduleLeadMs=null,minPreScheduleLeadMs=null;
+    var smallClockBacksteps=0,maxClockBackstepTicks=0,clockRewinds=0;
+    var queueClears=0,clearedSamples=0,skippedSamples=0,offlineSamples=0;
+    var eventHistory=[];
     var filterLow=0,filterBand=0;
     this.id={DCODE:"SIDAUDIO",coID:"SIDAudio",hostPCODE:"SID",icon:"fa fa-volume-up"};
     this.audioDevice=true;
@@ -40,8 +51,21 @@ function SIDAudio()
     function clearVoices(){ voices=[newVoice(),newVoice(),newVoice()]; }
     clearVoices();
 
-    function clearQueue()
+    function noteEvent(type,detail)
     {
+        var event={type:type,cpuTick:lastTick,
+            audioTime:audio?audio.currentTime:null};
+        if(detail)for(var k in detail)event[k]=detail[k];
+        eventHistory.push(event);
+        if(eventHistory.length>AUDIO_EVENT_LIMIT)eventHistory.shift();
+    }
+    function clearQueue(reason)
+    {
+        if(queued){
+            clearedSamples+=queued;
+            queueClears++;
+            noteEvent("queue_flush",{reason:reason||"other",samples:queued});
+        }
         readIndex=writeIndex=queued=0;
         audioEpoch++;
     }
@@ -196,7 +220,8 @@ function SIDAudio()
                         if(queued>maxQueueDepth)maxQueueDepth=queued;
                     }else dropped++;
                 }
-            }else result[i]=value;
+                else skippedSamples++;
+            }else {result[i]=value;offlineSamples++;}
             produced++;
         }
         return result;
@@ -205,7 +230,24 @@ function SIDAudio()
     {
         tick=Math.floor(Number(tick));
         if(!Number.isFinite(tick)||tick<0)return;
-        if(tick<lastTick){lastTick=tick;fraction=0;clearQueue();return;}
+        if(tick<lastTick){
+            var backstep=lastTick-tick;
+            if(backstep<=MINOR_CLOCK_SKEW_TICKS){
+                // A per-instruction timestamp can legitimately be slightly
+                // ahead of the boundary clock. Never delete 100 ms of PCM
+                // just because an observation arrived a few cycles early.
+                smallClockBacksteps++;
+                maxClockBackstepTicks=Math.max(maxClockBackstepTicks,backstep);
+                return;
+            }
+            // A genuine CPU clock epoch rewind invalidates future audio.
+            clockRewinds++;
+            noteEvent("clock_rewind",{backstepTicks:backstep,samples:queued});
+            stopSources();
+            clearQueue("clock_rewind");
+            lastTick=tick;fraction=0;
+            return;
+        }
         var delta=tick-lastTick;
         if(!delta)return;
         lastTick=tick;
@@ -279,6 +321,14 @@ function SIDAudio()
             lastLateMs:lastLateMs,worstLateMs:worstLateMs,
             sampleRate:SAMPLE_RATE,outputSampleRate:audio?audio.sampleRate:null,
             capacityFrames:FIFO_LENGTH,activeSources:sources.length,
+            preScheduleLeadMs:preScheduleLeadMs,
+            minPreScheduleLeadMs:minPreScheduleLeadMs,
+            smallClockBacksteps:smallClockBacksteps,
+            maxClockBackstepTicks:maxClockBackstepTicks,
+            clockRewinds:clockRewinds,
+            queueClears:queueClears,clearedSamples:clearedSamples,
+            skippedSamples:skippedSamples,offlineSamples:offlineSamples,
+            recentAudioEvents:eventHistory.length,
             cpuTick:lastTick,
             sidModel:sidModel,sidClock:sidClock,hostClock:hostClock,
             contextState:audio?audio.state:"uninitialized",playbackEnabled:playing};
@@ -288,9 +338,14 @@ function SIDAudio()
         // No audio data/oscillator changes: this resets statistics ONLY.
         produced=dropped=scheduled=blocksScheduled=underruns=0;
         lateSeconds=lastLateMs=worstLateMs=maxLeadMs=0;
+        smallClockBacksteps=maxClockBackstepTicks=clockRewinds=0;
+        queueClears=clearedSamples=skippedSamples=offlineSamples=0;
         maxQueueDepth=queued;minLeadMs=null;
+        preScheduleLeadMs=minPreScheduleLeadMs=null;
+        eventHistory=[];
         return this.getAudioStats();
     };
+    this.getAudioEvents=function(){return eventHistory.map(e=>Object.assign({},e));};
     this.renderOffline=function(count)
     {
         count=Math.max(0,Math.floor(Number(count)||0));
@@ -322,17 +377,28 @@ function SIDAudio()
         if(!queued)return;
 
         var now=audio.currentTime;
-        if(nextStart<now){
-            // A short startup lead is needed only after an underrun or the
-            // initial audio-on. Do not inject a gap on every display cycle.
-            if(nextStart>0){
+        if(nextStart===0){
+            // A newly created AudioContext may report currentTime === 0.
+            // Always establish the cold-start headroom before first source.
+            nextStart=now+START_LEAD;
+            preScheduleLeadMs=null;
+        }else{
+            preScheduleLeadMs=1000*(nextStart-now);
+            minPreScheduleLeadMs=minPreScheduleLeadMs===null ?
+                preScheduleLeadMs : Math.min(minPreScheduleLeadMs,preScheduleLeadMs);
+            if(nextStart<now){
                 underruns++;
-                var lateMs=Math.max(0,1000*(now-nextStart));
+                var lateMs=1000*(now-nextStart);
                 lastLateMs=lateMs;
                 worstLateMs=Math.max(worstLateMs,lateMs);
                 lateSeconds+=now-nextStart;
+                noteEvent("underrun",{
+                    lateMs:lateMs,queuedFrames:queued,
+                    preLeadMs:preScheduleLeadMs});
+                // Playback already went silent. Restart promptly instead of
+                // adding a full cold-start buffer delay to that silence.
+                nextStart=now+RECOVERY_LEAD;
             }
-            nextStart=now+START_LEAD;
         }
         // One block represents 92.9 ms of audio at 22.05 kHz.
         // At 10 display FPS the CPU can generate ~100 ms between calls.
