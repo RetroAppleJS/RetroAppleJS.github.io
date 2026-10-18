@@ -127,6 +127,12 @@ test('SID telemetry snapshots are passive and reset never changes SID state or P
     assert.equal(stats.outputSampleRate,48000);
     assert.ok(stats.activeSources>=1);
     assert.ok(stats.scheduledLeadMs>0);
+    assert.ok(stats.minPreScheduleLeadMs<0,
+        'pre-service lead must show the missed deadline before recovery');
+    assert.equal(r.card.downloadAudioTelemetry(),true);
+    const exported=JSON.parse(Buffer.from(r.download().bytes).toString('utf8'));
+    assert.ok(exported.audioEvents.some(e=>e.type==='underrun'));
+    assert.ok(exported.audioEvents.every(e=>typeof e.cpuTick==='number'));
     await d.init('audio_off');
 });
 test('SID wall-time pace, compact popup, manual live refresh and JSON export',()=>{
