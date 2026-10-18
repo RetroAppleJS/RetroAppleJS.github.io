@@ -31,11 +31,14 @@ function setup({slot=4,frameLimit=12,corruptHeader=false,corruptPayload=false,wi
     audio.bindHost(card);
     audio.bindIO({getClockTicks(){return cpuTicks},refreshDeviceHooks(){}});
     card.reset();
+    const sidIOBase=0xC080+slot*16;
     const hw={
         irq_signal:0,nmi_signal:0,
         read(addr){
             if(addr>=0xC090&&addr<=0xC0F0&&(addr&15)===0)
-                return withSID&&slot>=1&&slot<=7&&addr===0xC080+slot*16?0x53:0xFF;
+                return withSID&&slot>=1&&slot<=7&&addr===sidIOBase?0x53:0xFF;
+            if(withSID&&addr===sidIOBase+3)
+                return card.readSlotIO(addr,{cpuTick:cpuTicks});
             if(addr===0xC000){
                 frameTicks.push(cpuTicks);frame++;
                 return frame>=frameLimit?0x80:0;
@@ -48,6 +51,8 @@ function setup({slot=4,frameLimit=12,corruptHeader=false,corruptPayload=false,wi
         write(addr,value,cycleOffset){
             addr&=0xFFFF;value&=0xFF;
             if(addr<0xC000)mem[addr]=value;
+            else if(withSID&&addr===sidIOBase+2)
+                card.writeSlotIO(addr,value,{cpuTick:cpuTicks});
             else if(addr>=0xD400&&addr<=0xD41F){
                 sidWrites.push({addr,value,frame,cpuTick:cpuTicks+(cycleOffset||0)});
                 card.observeBusWrite(addr,value,{cpuTick:cpuTicks+(cycleOffset||0)});
@@ -147,19 +152,25 @@ test('Phase 2A runs original subtune 5 on actual RetroAppleJS CPU, then restores
     assert.ok(audio.getAudioStats().produced>0,'SID audio render timeline advanced');
 });
 
-test('12 foreground PLAY calls have bounded near-50-Hz cadence',()=>{
-    const r=setup({slot:7,frameLimit:12}).run();
-    assert.equal(r.frame,12);
-    assert.equal(r.frameTicks.length,12);
-    const delays=r.frameTicks.slice(1).map((t,i)=>t-r.frameTicks[i]);
-    assert.ok(delays.every(n=>n>18000&&n<22000),
-        'expected ~20.4k 6502 ticks per frame; got '+delays.join(','));
+test('native Phase 2A music uses absolute 50 Hz CPU-clock deadlines in all slots',()=>{
+    for(const slot of [1,4,7]){
+        const r=setup({slot,frameLimit:101}).run(3500000);
+        assert.equal(r.frame,101);
+        const deltas=r.frameTicks.slice(1).map((t,i)=>t-r.frameTicks[i]);
+        const total=r.frameTicks.at(-1)-r.frameTicks[0];
+        // Individual calls vary in execution cost. Absolute CPU deadlines
+        // eliminate long-term PLAY runtime accumulation and tempo drift.
+        assert.ok(Math.abs(total-100*20436)<=140,
+            '100 PLAY intervals must average 50Hz (slot '+slot+', drift '+(total-100*20436)+' CPU ticks)');
+        assert.ok(deltas.every(n=>n>20150&&n<20720),
+            'no >~0.3ms 6502 music-frame jitter: '+Math.min(...deltas)+' / '+Math.max(...deltas));
+    }
 });
 
 test('bad PSID and missing SID never copy the payload or modify Applesoft zero page',()=>{
     for(const cfg of [{withSID:false,error:2},{corruptHeader:true,error:1},{corruptPayload:true,error:1}]){
         const f=setup(cfg),before=Array.from(f.mem.subarray(0,256));
-        const r=f.run(15000);
+        const r=f.run(160000);
         assert.equal(r.mem[r.driver.symbols.ERRORCD],cfg.error);
         assert.deepEqual(Array.from(r.mem.subarray(0,256)),before);
         assert.equal(r.mem[0x0CA0],0);
