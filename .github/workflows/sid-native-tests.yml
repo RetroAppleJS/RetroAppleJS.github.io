@@ -34,3 +34,12 @@ jobs:
           node-version: '22'
       - name: Run native PSID interpreter and raw transfer tests
         run: node --test tests/sid_phase2a_mrheli.test.js tests/sid_phase2b1.test.js tests/sid_phase2b2.test.js tests/sid_phase2b2_native.test.js tests/sid_card.test.js tests/sid_telemetry.test.js
+
+      - name: Assemble distributable Phase 2B.2 player binaries
+        run: node tools/SID_Phase2B2_build.js "$RUNNER_TEMP/sid-player"
+      - name: Publish native player binaries and monitor listings
+        uses: actions/upload-artifact@v4
+        with:
+          name: SID_Phase2B2_Native_6502
+          path: ${{ runner.temp }}/sid-player/*
+          if-no-files-found: error
