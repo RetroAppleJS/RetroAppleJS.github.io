@@ -368,9 +368,10 @@
            min="0"
            max="400"
            value="100"
-           step="20"
+           step="10"
            class="slider"
            data-speed-mode="pct400"
+           oninput="oEMUI.cpuSldPreview(this,'slider_1v')"
            onchange="oEMUI.cpuSld(this,'slider_1v')"
            style="
              flex:1 1 auto;
