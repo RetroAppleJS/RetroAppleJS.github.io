@@ -9,10 +9,10 @@ Mockingboard, SID-to-AY conversion, or SID instruction patching in this path.
 
 | Path | Function |
 |---|---|
-| asm/AUDIO/SID2MB_native_MrHeli_prototype/Mr_Heli_original.sid | **Original 4,841-byte PSID**, unchanged |
-| asm/AUDIO/SID_PHASE2A_MR_HELI.S | New **foreground 6502 driver** at $2000 |
-| asm/AUDIO/SID_PHASE2A_MR_HELI_monitor.txt | Ready-to-enter Apple II monitor listing |
-| asm/AUDIO/SID2MB_native_MrHeli_prototype/Mr_Heli_PSID_at_6000_monitor.txt | Original PSID bytes for entry at $6000 |
+| asm/AUDIO/SID2MB_prototype/Mr_Heli_original.sid | **Original 4,841-byte PSID**, unchanged |
+| asm/AUDIO/SID2MB_prototype/SID_PHASE2A_MR_HELI.S | New **foreground 6502 driver** at $2000 |
+| asm/AUDIO/SID2MB_prototype/SID_PHASE2A_MR_HELI_monitor.txt | Ready-to-enter Apple II monitor listing |
+| asm/AUDIO/SID2MB_prototype/Mr_Heli_PSID_at_6000_monitor.txt | Original PSID bytes for entry at $6000 |
 | tools/SID_Phase2A_build.js | Regenerate .bin and monitor image from the assembly source |
 | tests/sid_phase2a_mrheli.test.js | Execute actual 6502 and compare SID writes |
 
@@ -35,7 +35,7 @@ unfinished SID-to-Mockingboard translation prototype.
    Mr_Heli_PSID_at_6000_monitor.txt is an alternative to a binary RAM loader.
    Do not stage the 4,715-byte code body alone, a Mockingboard driver, or SREG.
 5. Assemble SID_PHASE2A_MR_HELI.S with **ASM_core.js / raJS** and load it at
-   **$2000–$21F3** (500 bytes), or use the checked-in monitor hex listing.
+   **$2000–$21F3** (596 bytes), or use the checked-in monitor hex listing.
 6. Run **CALL 8192**. Default subtune **5** (zero-based selector 4) plays in
    the foreground. **Press any key** to stop, restore Apple II zero page,
    and mute the SID master volume.
@@ -54,8 +54,8 @@ switches. This proof of concept assumes a controlled peripheral configuration.
 | $2006 | CALL 8198 | Restart same music in foreground |
 | $2009 | CALL 8201 | Return error code in 6502 A (observe in debugger) |
 
-ERRORCD is currently at **$21F0** (decimal 8688), inspect using
-**PRINT PEEK(8688)**: 0 = success, 1 = invalid/incomplete PSID, 2 = SID not
+ERRORCD is currently at **$224C** (decimal 8780), inspect using
+**PRINT PEEK(8780)**: 0 = success, 1 = invalid/incomplete PSID, 2 = SID not
 detected. Failure prints **SID 2A ERROR** through the Apple II monitor.
 
 The foreground player intentionally disables maskable IRQs until a key stops
@@ -88,11 +88,22 @@ Always use a disposable emulator snapshot.
 
 ## Playback cadence and accuracy
 
-The native foreground player calls the original code at **INIT=$1EF3**,
-then **PLAY=$0E34** approximately every 20,000 Apple II CPU ticks. This is an
-approximately 50 Hz busy-wait, independent of the display FPS setting.
-Measured 6502 frame intervals ranged **19,873–20,285 ticks** during an
-isolated 18-frame run. Tempo will change if CPU speed is not 100%.
+The native foreground player calls original INIT=$1EF3 then PLAY=$0E34.
+Rather than a fixed busy-wait delay, the driver reads a **latched 16-bit
+emulated CPU clock** through the SID card's SlotIO indexed data register:
+index $1E returns the low byte and latches the tick; index $1F returns
+the high byte from the same snapshot. The driver auto-discovers the card's
+slot, so slots 1–7 work without editing any operands. The clock read extension
+is provided by **RetroAppleJS's SID card**, not the original MOS SID hardware.
+An unmodified physical SID expansion card cannot be assumed to provide it.
+
+The player increments an **absolute deadline by 20,436 CPU ticks** (exactly
+50 Hz at 1,021,800 CPU ticks/s) before each PLAY callback, independent of
+the previous callback's execution time. A 100-interval run of the actual
+RetroAppleJS 6502 with subtune 5 measured **20,435.88 ticks per interval**
+(20,331–20,539 ticks, about ±0.1 ms jitter) across a 2-second window.
+This significantly improves the previous ~49.69 Hz music pace. The CPU-speed
+slider still scales the music tempo relative to real time.
 
 At 18 frames, the player generated **441 unmodified original SID register
 writes**, identical in address, value and order to direct execution of the
@@ -127,4 +138,7 @@ keypress exit, zero-page restoration, audio mute, and error handling.
 - No VIC, CIA, C64 ROM, 6510 banking, extra SID chips or undocumented 6502
   instruction support. Only original code already compatible with 6502 runs.
 - No background music, VBL or timer IRQ; those are Phase 2C.
+- The exact 50 Hz CPU clock extension is emulator-specific and is only
+  provided by this revision of the SID card. Older builds with the $1E/$1F
+  selector unimplemented cannot run this revised foreground player.
 - Existing card and SIDAUDIO are unchanged; no SID-to-AY translation.

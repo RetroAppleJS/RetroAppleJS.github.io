@@ -283,6 +283,13 @@ function Apple2Plus(context)
         var trapped = false;
         var timeCheck = 4096;
 
+        // A live audio consumer can request subframe service, independent of
+        // display FPS. Cache its quantum once, rather than querying attachments
+        // from the million-tick-per-second CPU hot path.
+        var realtimeQuantum=hw.io &&
+            typeof(hw.io.getRealtimeAudioQuantumTicks)==="function" ?
+            hw.io.getRealtimeAudioQuantumTicks():0;
+        var realtimeRemaining=realtimeQuantum;
         var audioBudget=0;
         while(remainingTicks>0)
         {
@@ -317,6 +324,12 @@ function Apple2Plus(context)
                 : remainingTicks;
             hw.io.tick(tickPhase);
             completedTicks++;
+            if(realtimeQuantum && --realtimeRemaining===0){
+                // Service sound after the completed tick and its SID bus writes:
+                // no synthesized samples may cross a register-write boundary.
+                hw.io.serviceRealtimeAudio();
+                realtimeRemaining=realtimeQuantum;
+            }
 
             if(deadline!==undefined && --timeCheck==0)
             {

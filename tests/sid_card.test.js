@@ -367,3 +367,75 @@ test('SID underrun recovery starts promptly and records precise deadline evidenc
   assert.equal(h.device.getAudioEvents().length,0);
   await h.device.init('audio_off');
 });
+
+
+test('SID card offers a latched 16-bit CPU clock through the two unused slot data indexes',()=>{
+  const {card,device}=rig();
+  const before=Array.from(device.getRegisters());
+  card.writeSlotIO(0xC0D2,0x1E);
+  assert.equal(card.readSlotIO(0xC0D3,{cpuTick:0x12AB}),0xAB);
+  card.writeSlotIO(0xC0D2,0x1F);
+  assert.equal(card.readSlotIO(0xC0D3,{cpuTick:0xBEEE}),0x12,
+    'high byte must belong to the same latched sample, not a later CPU tick');
+  card.writeSlotIO(0xC0D2,0x1E);
+  assert.equal(card.readSlotIO(0xC0D3,{cpuTick:0xAB00,bRO:true}),0x00);
+  card.writeSlotIO(0xC0D2,0x1F);
+  assert.equal(card.readSlotIO(0xC0D3,{cpuTick:0xAB00}),0x12,
+    'debugger safe-read must not update the clock latch');
+  assert.deepEqual(Array.from(device.getRegisters()),before);
+});
+
+test('SID realtime audio services each 10ms of CPU ticks without display-frame batching',async()=>{
+  for(const fps of [10,60]){
+    const h=sidSchedulerHarness();
+    await h.device.init('audio_on');
+    assert.equal(h.device.getRealtimeAudioQuantumTicks(),10218);
+    let serviceTick=0;
+    for(let step=1;step<=200;step++){
+      // Every 10ms, independent of whether display updates at 10 or 60 FPS.
+      serviceTick=step*10218;
+      h.tick(serviceTick);
+      h.device.audio.currentTime=step*.01;
+      const granted=h.device.getCpuSliceBudget(10218);
+      assert.ok(granted>0&&granted<=10218);
+      h.device.serviceRealtimeAudio();
+      if(step%(fps===10?10:2)===0)h.device.cycle();
+    }
+    const t=h.device.getAudioStats();
+    assert.equal(t.underruns,0);
+    assert.equal(t.dropped,0);
+    assert.ok(t.realtimeServices>=200);
+    assert.ok(t.maxQueueDepth<=250,
+      '10ms service should not accumulate entire 100ms frame bursts; peak='+t.maxQueueDepth);
+    assert.ok(t.cpuBudgetChecks>=200);
+    assert.ok(t.scheduledLeadMs>80 && t.scheduledLeadMs<175);
+    await h.device.init('audio_off');
+  }
+});
+
+test('SID FIFO overflow logs an onset event with CPU tick and audio state',async()=>{
+  const h=sidSchedulerHarness();
+  await h.device.init('audio_on');
+  // Drive the producer without output service, simulating an old long CPU batch
+  // or a very high turbo setting; this intentionally bypasses pacing.
+  h.tick(1021800);
+  h.device.advanceTo(1021800);
+  const t=h.device.getAudioStats();
+  assert.ok(t.dropped>10000);
+  assert.equal(t.overflowIncidents,1);
+  assert.equal(t.overflowLastCpuTick,1021800);
+  assert.ok(h.device.getAudioEvents().some(e=>
+    e.type==='fifo_overflow' && e.cpuTick===1021800 &&
+    e.queuedFrames===8192 && e.capacityFrames===8192));
+  // Force queued + already scheduled audio above the 500ms producer bound.
+  h.device.serviceRealtimeAudio();
+  h.tick(2043600);
+  h.device.advanceTo(2043600);
+  assert.equal(h.device.getCpuSliceBudget(10218),0,
+    'CPU producer should stop when scheduled plus pending PCM is excessive');
+  h.device.serviceRealtimeAudio();
+  h.device.audio.currentTime+=.40;
+  assert.ok(h.device.getCpuSliceBudget(10218)>0,
+    'CPU can resume when browser audio clock catches up');
+  await h.device.init('audio_off');
+});

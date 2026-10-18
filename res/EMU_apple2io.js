@@ -329,6 +329,10 @@ function Apple2IO(vid,hostHardware)
      */
     var tickCallbacks = [];
     var cycleCallbacks = [];
+    // Audio-only subframe callbacks: unlike io.cycle(), these never update
+    // mounted cards, video, or unrelated CPU-slice peripherals.
+    var realtimeAudioCallbacks = [];
+    var realtimeAudioQuantum=0;
     var cpuBudgetCallbacks = [];
     var presentationCallbacks = [];
     var presentationPaused = false;
@@ -353,6 +357,8 @@ function Apple2IO(vid,hostHardware)
     {
         tickCallbacks.length = 0;
         cycleCallbacks.length = 0;
+        realtimeAudioCallbacks.length=0;
+        realtimeAudioQuantum=0;
         cpuBudgetCallbacks.length = 0;
         presentationCallbacks.length = 0;
 
@@ -374,6 +380,16 @@ function Apple2IO(vid,hostHardware)
 
             if(typeof(device.cycle)=="function" && hookActive(device,"cycle"))
                 cycleCallbacks.push(device.cycle.bind(device));
+            if(typeof(device.serviceRealtimeAudio)=="function" &&
+               typeof(device.getRealtimeAudioQuantumTicks)=="function" &&
+               hookActive(device,"cycle")){
+                var quantum=Math.floor(Number(device.getRealtimeAudioQuantumTicks()));
+                if(Number.isFinite(quantum) && quantum>0){
+                    realtimeAudioCallbacks.push(device.serviceRealtimeAudio.bind(device));
+                    realtimeAudioQuantum=realtimeAudioQuantum ?
+                        Math.min(realtimeAudioQuantum,quantum):quantum;
+                }
+            }
         }
     }
 
@@ -388,6 +404,11 @@ function Apple2IO(vid,hostHardware)
         var budget=requested;
         for(var i=0;i<cpuBudgetCallbacks.length;i++)budget=Math.min(budget,cpuBudgetCallbacks[i](budget));
         return Math.max(0,Math.floor(budget));
+    };
+    this.getRealtimeAudioQuantumTicks=function(){return realtimeAudioQuantum;};
+    this.serviceRealtimeAudio=function(){
+        for(var i=0;i<realtimeAudioCallbacks.length;i++)
+            realtimeAudioCallbacks[i]();
     };
     this.refreshDeviceHooks = rebuildDeviceHooks;    
 

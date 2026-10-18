@@ -18,6 +18,10 @@ function SIDCard()
     var enabled=true,snoop=true,regIndex=0,model=6581,clock=985248,volume=100;
     var sniffedWrites=0,slotWrites=0;
     var lastWrite={address:0,value:0,tick:0};
+    // Emulator-only read-only extension: selecting $1E and reading slot
+    // data latches the low 16 bits of CPU ticks; selecting $1F reads its
+    // high byte from the *same* snapshot. Does not alter SID chip registers.
+    var clockLatch=0;
     const BURST_GAP_TICKS=3500,TELEMETRY_HISTORY_LIMIT=120;
     var burstCount=0,lastWriteTick=null,lastBurstTick=null;
     var currentBurstWrites=0,maxBurstWrites=0,periodCount=0,periodSum=0;
@@ -165,7 +169,15 @@ function SIDCard()
         if(r===0)return 0x53;                 // SID signature
         if(r===1)return status();
         if(r===2)return regIndex;
-        if(r===3)return d?d.readRegister(regIndex,ctx?.bRO?undefined:timestamp(ctx)):0xFF;
+        if(r===3){
+            if(regIndex===0x1E){
+                var sampled=timestamp(ctx)&0xFFFF;
+                if(ctx?.bRO!==true)clockLatch=sampled;
+                return sampled&0xFF;
+            }
+            if(regIndex===0x1F)return (clockLatch>>>8)&0xFF;
+            return d?d.readRegister(regIndex,ctx?.bRO?undefined:timestamp(ctx)):0xFF;
+        }
         if(r===4)return model===8580?1:0;
         if(r===5)return clock===1022727?1:0;
         if(r===6)return enabled?1:0;
@@ -365,6 +377,11 @@ function SIDCard()
         telemetryText("discard",String(p.clearedSamples||0)+" / "+
             String(p.skippedSamples||0)+" / "+String(p.queueClears||0));
         telemetryText("events",String(p.recentAudioEvents||0));
+        telemetryText("overflow",String(p.overflowIncidents||0)+" / "+
+            String(p.dropped||0)+" frames / last @ "+
+            (p.overflowLastCpuTick===null?"—":p.overflowLastCpuTick));
+        telemetryText("service",String(p.realtimeServices||0)+" / "+
+            String(p.cpuBudgetChecks||0)+" / "+String(p.cpuBudgetBlocked||0));
         telemetryText("underrun",(p.underruns||0)+" / "+
             telemetryNumber(p.lastLateMs,1," ms")+" / "+
             telemetryNumber(p.worstLateMs,1," ms"));
@@ -479,6 +496,8 @@ function SIDCard()
             ["clock","CLOCK BACKSTEPS / REWINDS / MAX"],
             ["discard","PCM QUEUE-CLEARED / SKIPPED / EVENTS"],
             ["events","AUDIO EXCEPTION EVENTS (JSON)"],
+            ["overflow","FIFO OVERFLOWS / DROPPED / LAST CPU TICK"],
+            ["service","AUDIO SERVICE / CPU BUDGET / BLOCKED"],
             ["underrun","UNDERRUNS / LAST LATE / WORST LATE"],
             ["sources","ACTIVE BROWSER SOURCES"],
             ["last","LAST SID WRITE / CPU TICK"]
@@ -536,6 +555,7 @@ function SIDCard()
         // Model, clock and user volume intentionally survive a soft reset.
         enabled=true;snoop=true;regIndex=0;sniffedWrites=slotWrites=0;
         lastWrite={address:0,value:0,tick:0};
+        clockLatch=0;
         resetBurstStats();telemetryBaseline=null;telemetryRates={};
         telemetryHistory=[];
         var d=audioDevice();
