@@ -281,18 +281,22 @@ execution and unchanged `$D400–$D41F` writes.
 See **[Phase 2B.1 user/developer guide](SID_PHASE2B1.md)** for memory
 layout, file preparation, error codes, first-play commands and limitations.
 
-## Phase 2B.2 — Play local PSID files through the browser
+## Phase 2B.2 — Native PSID v1/v2 player with raw file transfer
 
-No command-line build tools are needed: mount the SID card, open
-**Tools → Peripheral controls → SID → PSID**, select a `.sid` file,
-choose a subtune and a staging address, then click **Play** at an
-Applesoft BASIC prompt. The browser validates the file and loads the
-unmodified payload and Phase 2B.1 player directly into RAM. The Play
-control sends `CALL 7168` using the normal Apple II keyboard text
-pipe; **Stop** sends a keypress. The main CPU performs playback, with
-the same absolute 50/60 Hz deadlines and unchanged SID audio scheduler.
-Use a disposable TEXT-mode emulator session; original C64 code may
-overwrite other Apple II RAM and is not guaranteed to be compatible.
+**The Apple II assembly is the sole PSID parser and player.** The browser
+PSID window transfers a complete raw `.sid` file into available contiguous
+Apple II RAM and records only the file start address and exact byte count.
+It does not parse the file, choose subtunes or control playback.
 
-See **[Phase 2B.2 browser player guide](SID_PHASE2B2.md)** for detailed
-instructions, staging range and compatibility limitations.
+Load the assembled Phase 2B.2 player binaries at `$1C00` and `$9000`,
+transfer a PSID through **Tools → Peripheral controls → SID → PSID**,
+then type `CALL 7168` at the Applesoft prompt. The **Apple II itself**
+requests or confirms the file's start address, reads PSID v1/v2 metadata,
+displays the number of subtunes, requests the desired subtune, validates
+the executable payload, and runs its original INIT/PLAY code. Any key
+stops playback. No Node installation is needed: native player binary
+images and monitor listings are produced as GitHub CI artifacts from
+`asm/AUDIO/SID_PHASE2B2_NATIVE_PLAYER.S`.
+
+See **[Phase 2B.2 native player guide](SID_PHASE2B2.md)** for the memory
+map, eight-byte transfer record, supported formats and limitations.
