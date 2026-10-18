@@ -343,15 +343,21 @@ SILENCE
 ; No audio/SID waveform state is affected by clock-register reads.
 READ_CLOCK
             LDA #$1E
-CLOCKSEL
-            STA $C0C2
-CLOCKDATA
-            LDA $C0C3
+            JSR SELECT_SID
+            JSR READ_DATA
             STA NOWLO
             LDA #$1F
-            STA CLOCKSEL
-            LDA CLOCKDATA
+            JSR SELECT_SID
+            JSR READ_DATA
             STA NOWHI
+            RTS
+SELECT_SID
+CLOCKSEL
+            STA $C0C2
+            RTS
+READ_DATA
+CLOCKDATA
+            LDA $C0C3
             RTS
 
 ; Signed modulo-16-bit delta: while (now - deadline) < 0, wait.
