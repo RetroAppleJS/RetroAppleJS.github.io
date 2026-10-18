@@ -11,6 +11,7 @@ function cpuCode(){const c=vm.createContext({console,Uint8Array,Math,Number,oEMU
 test('native Phase 2B.2 title reaches physical text screen through real Apple II monitor ROM',()=>{
  const rom=realRom(),code=build.assemble(),mem=new Uint8Array(0x10000);
  assert.equal(rom.length,0x3000);
+ console.log('Native entry reference $92A1:', Array.from(code.runtime.subarray(0x2A1,0x2C1),x=>x.toString(16).toUpperCase().padStart(2,'0')).join(' '));
  mem.set(code.bootstrap,0x1C00);mem.set(code.runtime,0x9000);
  mem.set([0x53,0x49,0x44,0x46,0x00,0x60,0xE9,0x12],0x9E00);
  // Apple II monitor output: CSWL -> COUT1; KSWL -> KEYIN.
