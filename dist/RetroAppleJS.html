@@ -52958,7 +52958,7 @@ function SIDCard()
     var currentBurstWrites=0,maxBurstWrites=0,periodCount=0,periodSum=0;
     var lastPeriod=0,minPeriod=null,maxPeriod=0,shortPeriods=0,longPeriods=0;
     var telemetryBaseline=null,telemetryHistory=[],telemetryRates={};
-    var telemetryLastTime=null;
+    var telemetryLastTime=null,toolboxID=null;
 
     this.id={PCODE:"SID",icon:"fa fa-music"};
     this.state={active:true,irq:false};
@@ -53322,12 +53322,43 @@ function SIDCard()
         var el=typeof(document)==="object"?
             document.getElementById(telemetryID("sync")):null;
         if(el){
-            el.className=active?"fa fa-stop-circle":"fa fa-sync-alt";
-            el.title=active?"Pause SID live telemetry":"Resume SID live telemetry";
+            el.className=active?"fa fa-pause-circle":"fa fa-play-circle";
+            el.title=active?"Pause SID live telemetry":"Start SID live telemetry";
         }
+        var label=typeof(document)==="object"?
+            document.getElementById(telemetryID("sync_label")):null;
+        if(label)label.textContent=active?"Pause":"Start";
         if(active)this.audioTelemetryRefresh();
         return active;
     };
+    // Position within the Tools popup host, aligned with the SID toolbox.
+    // Use bounding rectangles so other floated toolboxes don't affect the
+    // placement; place below the toolbox if there isn't room alongside it.
+    function positionTelemetryPopup(popup,host)
+    {
+        var toolbox=toolboxID && document.getElementById(toolboxID);
+        if(!toolbox || typeof toolbox.getBoundingClientRect!=="function" ||
+           typeof host.getBoundingClientRect!=="function")return;
+        var box=toolbox.getBoundingClientRect();
+        var hostBox=host.getBoundingClientRect();
+        var vw=typeof(window)==="object" && Number(window.innerWidth)>0?
+            window.innerWidth:1200;
+        var vh=typeof(window)==="object" && Number(window.innerHeight)>0?
+            window.innerHeight:800;
+        var panelWidth=Math.min(560,Math.max(0,vw-24));
+        var panelHeight=Math.min(410,Math.max(0,vh-24));
+        var left=box.right+8,top=box.top;
+        if(left+panelWidth>vw-12){
+            if(box.left-panelWidth-8>=12)left=box.left-panelWidth-8;
+            else {
+                left=Math.max(12,Math.min(box.left,vw-panelWidth-12));
+                top=box.bottom+8;
+            }
+        }
+        top=Math.max(12,Math.min(top,vh-panelHeight-12));
+        popup.style.left=(left-hostBox.left+(host.scrollLeft||0))+"px";
+        popup.style.top=(top-hostBox.top+(host.scrollTop||0))+"px";
+    }
     this.openAudioTelemetry=function()
     {
         if(typeof(document)!=="object" || !document.createElement ||
@@ -53340,19 +53371,17 @@ function SIDCard()
             popup=document.createElement("div");
             popup.id=id;popup.hidden=true;
             popup.className="appbox com_popup_frame";
-            var left=typeof(window)==="object" && Number(window.innerWidth)>0 ?
-                Math.max(12,Math.min(800,window.innerWidth-820)):12;
-            popup.style.cssText="position:absolute;left:"+left+
-                "px;width:800px;max-width:calc(100vw - 24px);"+
-                "height:600px;max-height:calc(100vh - 24px);"+
+            popup.style.cssText="position:absolute;z-index:4;left:0;top:0;"+
+                "width:560px;max-width:calc(100vw - 24px);"+
+                "height:410px;max-height:calc(100vh - 24px);"+
                 "text-align:left;padding:0;margin:0";
         }
         if(popup.parentNode!==host)host.appendChild(popup);
         if(!popup.hidden){
-            oCOM.POPUP.toggle(id);
-            if(telemetryActive())oCOM.toggleRefreshEvent(eventName());
+            this.closeAudioTelemetry();
             return false;
         }
+        positionTelemetryPopup(popup,host);
         var access="apple2plus.hwObj().io.HASH2obj("+slotHash()+")";
         var sections=[
             ["model","SID MODEL / CLOCK"],["context","WEB AUDIO CONTEXT"],
@@ -53372,37 +53401,50 @@ function SIDCard()
             ["sources","ACTIVE BROWSER SOURCES"],
             ["last","LAST SID WRITE / CPU TICK"]
         ];
-        var html="<div style='font-family:monospace;font-size:12px'>"+
-            "<div style='display:flex;gap:8px;margin-bottom:10px'>"+
+        var html="<div style='padding:5px 7px;font-family:monospace;font-size:12px;text-align:left'>"+
+            "<div style='display:flex;gap:6px;margin-bottom:5px'>"+
             "<button class=appbut title='Pause or resume live SID telemetry' onclick='"+
                  access+"?.toggleAudioTelemetrySync()'>"+
-            "<i id='"+telemetryID("sync")+"' class='fa fa-stop-circle'></i></button>"+
+            "<i id='"+telemetryID("sync")+"' class='fa fa-play-circle'></i> "+
+            "<span id='"+telemetryID("sync_label")+"'>Start</span></button>"+
             "<button class=appbut title='Reset statistics without muting or resetting SID' onclick='"+
                  access+"?.resetAudioTelemetry();"+access+"?.audioTelemetryRefresh()'>"+
             "<i class='fa fa-undo'></i> Reset</button>"+
             "<button class=appbut title='Export SID telemetry (up to 60 s) as JSON' onclick='"+
                  access+"?.downloadAudioTelemetry()'>"+
             "<i class='fa fa-cloud-download-alt'></i> JSON</button></div>"+
-            "<table style='width:100%;border-collapse:collapse'>";
+            "<table style='width:100%;border-collapse:collapse;table-layout:fixed;text-align:left'>";
         for(var i=0;i<sections.length;i++)
-            html+="<tr><td style='padding:3px 10px 3px 0'>"+
-                sections[i][1]+"</td><td id='"+telemetryID(sections[i][0])+"'>—</td></tr>";
-        html+="</table><div style='margin-top:9px;font:11px Arial'>"+
+            html+="<tr><td style='width:47%;padding:2px 7px 2px 0;vertical-align:top;text-align:left'>"+
+                sections[i][1]+"</td><td style='padding:2px 0;vertical-align:top;text-align:left;overflow-wrap:anywhere' id='"+
+                telemetryID(sections[i][0])+"'>—</td></tr>";
+        html+="</table><div style='margin-top:6px;font:11px Arial'>"+
             "Write bursts are clusters separated by more than 3.4 ms of "+
             "emulated CPU time; they are <b>not</b> exact music PLAY calls. "+
             "CPU wall pace can reveal emulator stalls; lead, underruns and "+
             "dropped samples reveal browser audio starvation. The 120 most "+
             "recent half-second snapshots can be exported as JSON."+
             "</div></div>";
-        var close="<div class=appbut onclick=\"oCOM.POPUP.toggle('"+
-            id+"');event.stopPropagation()\" "+
+        var close="<div class=appbut onclick=\""+access+
+            "?.closeAudioTelemetry();event.stopPropagation()\" "+
             "style='text-align:center;float:right'>x</div>";
         popup.innerHTML=oCOM.POPUP.title_body_html(
             "SID LIVE AUDIO TELEMETRY"+close,html,
             telemetryID("body"),"com_popup_body com_scroll_xy");
+        // A newly opened panel shows one snapshot but does not run live
+        // sampling until the user explicitly presses Start.
+        if(telemetryActive())oCOM.toggleRefreshEvent(eventName());
         oCOM.POPUP.toggle(id);
-        if(!telemetryActive())this.toggleAudioTelemetrySync();
-        else this.audioTelemetryRefresh();
+        this.audioTelemetryRefresh();
+        return true;
+    };
+    this.closeAudioTelemetry=function()
+    {
+        var popup=typeof(document)==="object"?
+            document.getElementById(telemetryID("popup")):null;
+        if(!popup || popup.hidden)return false;
+        oCOM.POPUP.toggle(telemetryID("popup"));
+        if(telemetryActive())oCOM.toggleRefreshEvent(eventName());
         return true;
     };
 
@@ -53436,6 +53478,7 @@ function SIDCard()
     this.deviceToolSlotHTML=function(ctx)
     {
         ctx=ctx||{};
+        toolboxID=ctx.toolboxID||"device_tool_"+ctx.slotID;
         var access="apple2plus.hwObj().io.HASH2obj("+Number(this.mount?.hash||0)+")";
         var selModel="<select title='SID model' aria-label='SID model' onchange='"+access+"?.setModel(Number(this.value))'>"+
             "<option value='6581'"+(model===6581?" selected":"")+">6581</option>"+
@@ -53443,18 +53486,25 @@ function SIDCard()
         var selClock="<select title='SID clock' aria-label='SID clock' onchange='"+access+"?.setClock(Number(this.value))'>"+
             "<option value='985248'"+(clock===985248?" selected":"")+">PAL 985248 Hz</option>"+
             "<option value='1022727'"+(clock===1022727?" selected":"")+">NTSC 1022727 Hz</option></select>";
-        return "<div class='toolbox' id='"+(ctx.toolboxID||"device_tool_"+ctx.slotID)+"' hidden>"+
-            "<div class='appbox' style='padding:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap'>"+
-            "<label>SID "+selModel+"</label><label>Clock "+selClock+"</label>"+
-            "<label title='Intercept CPU writes to $D400-$D41F'>"+
+        return "<div class='toolbox' id='"+toolboxID+"' hidden>"+
+            "<div class='appbox' style='width:340px;height:80px;min-height:80px;"+
+            "box-sizing:border-box;padding:3px 7px;display:flex;flex-direction:column;"+
+            "justify-content:space-around;gap:1px;text-align:left'>"+
+            "<div class='sid-toolbox-row' style='display:flex;gap:7px;align-items:center;white-space:nowrap'>"+
+            "<label style='display:inline-flex;align-items:center;gap:3px;min-height:0'>SID "+selModel+"</label>"+
+            "<label style='display:inline-flex;align-items:center;gap:3px;min-height:0'>Clock "+selClock+"</label></div>"+
+            "<div class='sid-toolbox-row' style='display:flex;gap:7px;align-items:center;white-space:nowrap'>"+
+            "<label style='display:inline-flex;align-items:center;min-height:0' title='Intercept CPU writes to $D400-$D41F'>"+
             "<input type='checkbox' "+(snoop?"checked ":"")+"onchange='"+access+"?.setSnoopEnabled(this.checked)'>Native $D400 writes</label>"+
-            "<label>Volume <input type='range' min='0' max='100' value='"+volume+"' "+
-            "oninput='"+access+"?.setVolume(Number(this.value))' style='width:80px'></label>"+
+            "<label style='display:inline-flex;align-items:center;gap:3px;min-height:0'>Volume "+
+            "<input type='range' min='0' max='100' value='"+volume+"' "+
+            "oninput='"+access+"?.setVolume(Number(this.value))' style='width:80px'></label></div>"+
+            "<div class='sid-toolbox-row' style='display:flex;gap:7px;align-items:center;white-space:nowrap'>"+
             "<button class='appbut' title='SID live audio telemetry' aria-label='SID live audio telemetry' onclick='"+
             access+"?.openAudioTelemetry()'><i class='fa fa-chart-line'></i> Telemetry</button>"+
-            "<span title='Unchanged Apple II ROM and Language Card mapping'>"+
+            "<span style='font:11px Arial' title='Unchanged Apple II ROM and Language Card mapping'>"+
             "$D400–$D41F · "+(audioDevice()?"Audio attached":"Attach SIDAUDIO")+"</span>"+
-            "</div></div>";
+            "</div></div></div>";
     };
 }
 
