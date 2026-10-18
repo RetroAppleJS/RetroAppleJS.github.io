@@ -24,6 +24,9 @@ function SIDAudio()
     var audio=null,gain=null,sources=[],nextStart=0,playing=false,paused=false,volume=100;
     var audioEpoch=0,produced=0,dropped=0,scheduled=0;
     var underruns=0,lateSeconds=0,blocksScheduled=0,maxQueueDepth=0;
+    // Pure presentation counters; resetting these must never flush the PCM
+    // FIFO, stop sources, or change oscillator/envelope phase.
+    var lastLateMs=0,worstLateMs=0,minLeadMs=null,maxLeadMs=0;
     var filterLow=0,filterBand=0;
     this.id={DCODE:"SIDAUDIO",coID:"SIDAudio",hostPCODE:"SID",icon:"fa fa-volume-up"};
     this.audioDevice=true;
@@ -272,8 +275,21 @@ function SIDAudio()
             lateSeconds:lateSeconds,maxQueueDepth:maxQueueDepth,
             queuedMs:queued*1000/SAMPLE_RATE,
             scheduledLeadMs:audio?Math.max(0,(nextStart-now)*1000):0,
+            minLeadMs:minLeadMs,maxLeadMs:maxLeadMs,
+            lastLateMs:lastLateMs,worstLateMs:worstLateMs,
+            sampleRate:SAMPLE_RATE,outputSampleRate:audio?audio.sampleRate:null,
+            capacityFrames:FIFO_LENGTH,activeSources:sources.length,
+            cpuTick:lastTick,
             sidModel:sidModel,sidClock:sidClock,hostClock:hostClock,
             contextState:audio?audio.state:"uninitialized",playbackEnabled:playing};
+    };
+    this.resetAudioTelemetry=function()
+    {
+        // No audio data/oscillator changes: this resets statistics ONLY.
+        produced=dropped=scheduled=blocksScheduled=underruns=0;
+        lateSeconds=lastLateMs=worstLateMs=maxLeadMs=0;
+        maxQueueDepth=queued;minLeadMs=null;
+        return this.getAudioStats();
     };
     this.renderOffline=function(count)
     {
@@ -311,6 +327,9 @@ function SIDAudio()
             // initial audio-on. Do not inject a gap on every display cycle.
             if(nextStart>0){
                 underruns++;
+                var lateMs=Math.max(0,1000*(now-nextStart));
+                lastLateMs=lateMs;
+                worstLateMs=Math.max(worstLateMs,lateMs);
                 lateSeconds+=now-nextStart;
             }
             nextStart=now+START_LEAD;
@@ -335,6 +354,9 @@ function SIDAudio()
             source.connect(gain);
             source.start(nextStart);
             nextStart+=buffer.duration;
+            var lead=Math.max(0,1000*(nextStart-now));
+            minLeadMs=minLeadMs===null?lead:Math.min(minLeadMs,lead);
+            maxLeadMs=Math.max(maxLeadMs,lead);
             scheduled+=count;
             blocksScheduled++;
             blocks++;

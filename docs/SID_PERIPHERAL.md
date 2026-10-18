@@ -150,3 +150,49 @@ GATE retrigger, oscillator TEST, and sustain-change regressions.
 This is an **ADSR-focused** correction, not a complete reSID port. The SID
 analog filter, combined waveforms, some oscillator/noise details and possible
 subsample GATE transition effects remain approximations.
+
+
+## SID live audio telemetry
+
+The **Telemetry** button in the SID peripheral toolbox opens a live popup
+following the Mockingboard audio-control conventions: automatic refresh
+(nominally 500 ms), pause/resume, non-destructive statistics Reset, and JSON
+export of the latest 120 snapshots (approximately 60 seconds).
+
+Exports use the format **RetroAppleJS.SIDAudioTelemetry**, version 1, in a file
+named **SID_slot4_audio_telemetry.json** for a SID installed in physical slot 4.
+
+| Field | What it measures |
+|---|---|
+| CPU WALL PACE (%) | Emulated CPU ticks per wall-clock second relative to nominal 1.0218 MHz; a slowdown can indicate browser/emulator stalls |
+| CPU PC / INS | Most recently sampled 6502 instruction; does not reliably catch short PLAY calls |
+| NATIVE SID WRITES / RATE | Accepted $D400–$D41F writes and their wall-clock rate |
+| WRITE BURSTS / RATE | Clusters of SID writes separated by more than 3,500 emulated CPU ticks (~3.4 ms); NOT proof of a specific PLAY call |
+| BURST INTERVAL LAST / MIN / MAX | Emulated-CPU-time spacing between bursts; about 20 ms is typical for an active 50 Hz Mr. Heli music frame |
+| BURST INTERVAL SHORT / LONG | Number of gaps below 70% or above 140% of the nominal 20,436-tick frame; **heuristic only** |
+| VOICE GATE / ENVELOPE | GATE state and current 0–255 envelope level for each of the three voices |
+| PCM PRODUCED / SCHEDULED / DROPPED | Sample generation, Web Audio scheduling and overflow counts |
+| PCM FIFO / CAPACITY | Samples waiting for Web Audio |
+| BROWSER LEAD NOW / MIN / MAX | Milliseconds of sound already scheduled ahead of the browser clock |
+| UNDERRUNS / LAST / WORST | Count and severity of browser playback deadlines missed |
+| ACTIVE BROWSER SOURCES | Queued browser AudioBufferSource objects not yet finished |
+
+### Investigating rare tempo glitches
+
+Run Mr. Heli subtune 5 (CALL 8192), open **SID → Telemetry**, and export the
+JSON **after hearing a glitch**, preferably without resetting statistics.
+
+- If underruns increase, dropped samples rise, or browser lead collapses,
+  investigate the audio queue and scheduling path.
+- If CPU wall pace falls below its normal value while the intervals between
+  SID write bursts remain regular in *emulated* time, the host/emulator likely
+  stalled temporarily.
+- If SID write bursts show unusual gaps without any underrun, investigate CPU
+  scheduling and the original music calls. A legitimately silent music frame
+  or tempo change can produce the same burst pattern.
+- If timing is stable but sound still lingers, inspect voice GATE/envelope
+  levels and the remaining SID waveform/filter approximation.
+
+Telemetry refresh is passive: it must never render additional SID samples,
+clear the PCM queue, or alter 6581/8580 phase or envelope state. **Reset**
+resets only statistics, not playback.
