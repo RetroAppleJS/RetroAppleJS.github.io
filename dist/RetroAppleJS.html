@@ -23167,6 +23167,9 @@ function SIDAudio()
     var audio=null,gain=null,sources=[],nextStart=0,playing=false,paused=false,volume=100;
     var audioEpoch=0,produced=0,dropped=0,scheduled=0;
     var underruns=0,lateSeconds=0,blocksScheduled=0,maxQueueDepth=0;
+    // Pure presentation counters; resetting these must never flush the PCM
+    // FIFO, stop sources, or change oscillator/envelope phase.
+    var lastLateMs=0,worstLateMs=0,minLeadMs=null,maxLeadMs=0;
     var filterLow=0,filterBand=0;
     this.id={DCODE:"SIDAUDIO",coID:"SIDAudio",hostPCODE:"SID",icon:"fa fa-volume-up"};
     this.audioDevice=true;
@@ -23415,8 +23418,21 @@ function SIDAudio()
             lateSeconds:lateSeconds,maxQueueDepth:maxQueueDepth,
             queuedMs:queued*1000/SAMPLE_RATE,
             scheduledLeadMs:audio?Math.max(0,(nextStart-now)*1000):0,
+            minLeadMs:minLeadMs,maxLeadMs:maxLeadMs,
+            lastLateMs:lastLateMs,worstLateMs:worstLateMs,
+            sampleRate:SAMPLE_RATE,outputSampleRate:audio?audio.sampleRate:null,
+            capacityFrames:FIFO_LENGTH,activeSources:sources.length,
+            cpuTick:lastTick,
             sidModel:sidModel,sidClock:sidClock,hostClock:hostClock,
             contextState:audio?audio.state:"uninitialized",playbackEnabled:playing};
+    };
+    this.resetAudioTelemetry=function()
+    {
+        // No audio data/oscillator changes: this resets statistics ONLY.
+        produced=dropped=scheduled=blocksScheduled=underruns=0;
+        lateSeconds=lastLateMs=worstLateMs=maxLeadMs=0;
+        maxQueueDepth=queued;minLeadMs=null;
+        return this.getAudioStats();
     };
     this.renderOffline=function(count)
     {
@@ -23454,6 +23470,9 @@ function SIDAudio()
             // initial audio-on. Do not inject a gap on every display cycle.
             if(nextStart>0){
                 underruns++;
+                var lateMs=Math.max(0,1000*(now-nextStart));
+                lastLateMs=lateMs;
+                worstLateMs=Math.max(worstLateMs,lateMs);
                 lateSeconds+=now-nextStart;
             }
             nextStart=now+START_LEAD;
@@ -23478,6 +23497,9 @@ function SIDAudio()
             source.connect(gain);
             source.start(nextStart);
             nextStart+=buffer.duration;
+            var lead=Math.max(0,1000*(nextStart-now));
+            minLeadMs=minLeadMs===null?lead:Math.min(minLeadMs,lead);
+            maxLeadMs=Math.max(maxLeadMs,lead);
             scheduled+=count;
             blocksScheduled++;
             blocks++;
@@ -52931,6 +52953,12 @@ function SIDCard()
     var enabled=true,snoop=true,regIndex=0,model=6581,clock=985248,volume=100;
     var sniffedWrites=0,slotWrites=0;
     var lastWrite={address:0,value:0,tick:0};
+    const BURST_GAP_TICKS=3500,TELEMETRY_HISTORY_LIMIT=120;
+    var burstCount=0,lastWriteTick=null,lastBurstTick=null;
+    var currentBurstWrites=0,maxBurstWrites=0,periodCount=0,periodSum=0;
+    var lastPeriod=0,minPeriod=null,maxPeriod=0,shortPeriods=0,longPeriods=0;
+    var telemetryBaseline=null,telemetryHistory=[],telemetryRates={};
+    var telemetryLastTime=null;
 
     this.id={PCODE:"SID",icon:"fa fa-music"};
     this.state={active:true,irq:false};
@@ -53011,6 +53039,35 @@ function SIDCard()
         return {snoopWrites:sniffedWrites,slotWrites:slotWrites,
                 lastWrite:Object.assign({},lastWrite)};
     };
+    function recordWriteBurst(tick)
+    {
+        // A "burst" is a cluster of native SID writes separated by no more
+        // than 3500 emulated CPU ticks (~3.4 ms). It is an observation of bus
+        // traffic, NOT proof of a PLAY routine call or its exact cadence.
+        if(lastWriteTick===null || tick<lastWriteTick ||
+           tick-lastWriteTick>BURST_GAP_TICKS){
+            if(lastBurstTick!==null && tick>=lastBurstTick){
+                var period=tick-lastBurstTick;
+                lastPeriod=period;periodSum+=period;periodCount++;
+                minPeriod=minPeriod===null?period:Math.min(minPeriod,period);
+                maxPeriod=Math.max(maxPeriod,period);
+                if(period<0.70*20436)shortPeriods++;
+                if(period>1.40*20436)longPeriods++;
+            }
+            lastBurstTick=tick;
+            currentBurstWrites=0;
+            burstCount++;
+        }
+        currentBurstWrites++;
+        maxBurstWrites=Math.max(maxBurstWrites,currentBurstWrites);
+        lastWriteTick=tick;
+    }
+    function resetBurstStats()
+    {
+        burstCount=currentBurstWrites=maxBurstWrites=periodCount=periodSum=0;
+        lastWriteTick=lastBurstTick=null;
+        lastPeriod=maxPeriod=shortPeriods=longPeriods=0;minPeriod=null;
+    }
     function writeToSID(reg,value,addr,ctx,snooped)
     {
         if(!enabled||!card.state.active||ctx?.bRO===true)return false;
@@ -53019,7 +53076,8 @@ function SIDCard()
         var tick=timestamp(ctx);
         d.writeRegister(reg,value,tick);
         lastWrite={address:addr&0xFFFF,value:value&255,tick:tick};
-        if(snooped)sniffedWrites++;else slotWrites++;
+        if(snooped){sniffedWrites++;recordWriteBurst(tick);}
+        else slotWrites++;
         return true;
     }
     // Called by the Apple2Hw.write() bus observer after the ordinary
@@ -53066,11 +53124,295 @@ function SIDCard()
         if(r===7){this.setSnoopEnabled(!!(v&1));return true;}
         return false;
     };
+
+    function slotHash(){return Number(card.mount&&card.mount.hash)||0;}
+    function telemetryID(key){return "sid_audio_"+slotHash()+"_"+key;}
+    function eventName(){return telemetryID("refresh");}
+    function getDeviceTelemetry()
+    {
+        var d=audioDevice();
+        return d && typeof(d.getAudioStats)==="function"?d.getAudioStats():null;
+    }
+    function ensureTelemetryEvent()
+    {
+        if(typeof(oCOM)==="undefined" || !oCOM ||
+           typeof(oCOM.addRefreshEvent)!=="function")return false;
+        var key=eventName();
+        if(!oCOM.RefreshEvent_arr || !oCOM.RefreshEvent_arr[key])
+            oCOM.addRefreshEvent(function(){card.audioTelemetryRefresh();},key,false);
+        return !!(oCOM.RefreshEvent_arr && oCOM.RefreshEvent_arr[key]);
+    }
+    function telemetryActive()
+    {
+        return !!(typeof(oCOM)!=="undefined" && oCOM.RefreshEvent_arr &&
+            oCOM.RefreshEvent_arr[eventName()] &&
+            oCOM.RefreshEvent_arr[eventName()].active);
+    }
+    function telemetryNumber(v,decimals,suffix)
+    {
+        return Number.isFinite(v)?v.toFixed(decimals)+(suffix||""):"—";
+    }
+    function telemetryText(name,value)
+    {
+        if(typeof(document)!=="object" || !document.getElementById)return;
+        var target=document.getElementById(telemetryID(name));
+        if(target)target.textContent=String(value);
+    }
+    function cpuClockRate()
+    {
+        if(typeof(_o)!=="undefined" && Number(_o.CPU_ClocksTicks_s)>0)
+            return Number(_o.CPU_ClocksTicks_s);
+        return 1021800;
+    }
+    this.getAudioTelemetry=function()
+    {
+        // Passive snapshot ONLY. It must not call advanceTo, read a live SID
+        // register with timing side effects, or flush the browser PCM FIFO.
+        var d=audioDevice(),pcm=getDeviceTelemetry();
+        var cpuState=null;
+        try{
+            var cpu=typeof(apple2plus)!=="undefined" && apple2plus &&
+                typeof(apple2plus.cpuObj)==="function"?apple2plus.cpuObj():null;
+            if(cpu && typeof(cpu.watch)==="function"){
+                var state=cpu.watch();
+                cpuState={pc:state.pc,ic:state.ic,sp:state.sp};
+            }
+        }catch(e){}
+        var tick=io&&typeof(io.getClockTicks)==="function" ?
+            Number(io.getClockTicks()) : (pcm?pcm.cpuTick:0);
+        if(!Number.isFinite(tick))tick=0;
+        var now=typeof(performance)!=="undefined" &&
+            performance && typeof(performance.now)==="function" ?
+            performance.now() : Date.now();
+        if(telemetryBaseline && now>telemetryBaseline.time &&
+           tick>=telemetryBaseline.tick){
+            var seconds=(now-telemetryBaseline.time)/1000;
+            telemetryRates={
+                cpuPacePercent:100*(tick-telemetryBaseline.tick)/
+                    (cpuClockRate()*seconds),
+                nativeWritesPerSecond:(sniffedWrites-telemetryBaseline.writes)/seconds,
+                burstsPerSecond:(burstCount-telemetryBaseline.bursts)/seconds,
+                producedPerSecond:pcm?
+                    (pcm.produced-telemetryBaseline.produced)/seconds:0,
+                scheduledPerSecond:pcm?
+                    (pcm.scheduled-telemetryBaseline.scheduled)/seconds:0
+            };
+        }
+        telemetryBaseline={time:now,tick:tick,writes:sniffedWrites,
+            bursts:burstCount,produced:pcm?pcm.produced:0,
+            scheduled:pcm?pcm.scheduled:0};
+        var regs=d&&typeof d.getRegisters==="function"?d.getRegisters():null;
+        var env=d&&typeof d.getEnvelopeLevels==="function"?d.getEnvelopeLevels():null;
+        var voices=[];
+        for(var v=0;v<3;v++){
+            var control=regs?regs[7*v+4]:0;
+            voices.push({voice:v+1,gate:!!(control&1),control:control,
+                envelope:env?env[v]:null});
+        }
+        return {
+            // mount.slotN is the emulator's +1 internal slot index.
+            slot:card.mount&&Number.isInteger(Number(card.mount.slotN)) ?
+                Math.max(0,Number(card.mount.slotN)-1):null,
+            cpu:{tick:tick,clockHz:cpuClockRate(),state:cpuState,
+                timingMode:typeof(oApple2Video)!=="undefined" && oApple2Video ?
+                    oApple2Video.frameTiming:"unknown"},
+            sid:{model:model,clockHz:clock,volumePct:volume,
+                snooping:card.isSnoopEnabled(),voices:voices,
+                nativeWrites:sniffedWrites,slotWrites:slotWrites,
+                lastWrite:Object.assign({},lastWrite)},
+            bursts:{count:burstCount,gapThresholdTicks:BURST_GAP_TICKS,
+                currentWrites:currentBurstWrites,maxWrites:maxBurstWrites,
+                measuredPeriods:periodCount,lastTicks:lastPeriod,
+                minTicks:minPeriod,maxTicks:maxPeriod,
+                meanTicks:periodCount?periodSum/periodCount:null,
+                shortPeriods:shortPeriods,longPeriods:longPeriods,
+                // These intervals describe SID write activity, not true
+                // song PLAY frequency (silent frames can be omitted).
+                estimatedHz:periodCount&&periodSum>0 ?
+                    cpuClockRate()*periodCount/periodSum:null},
+            audio:pcm,rates:Object.assign({},telemetryRates)
+        };
+    };
+    this.resetAudioTelemetry=function()
+    {
+        // Never reset the actual SID chip, PCM source, or playback timeline.
+        var d=audioDevice();
+        if(d && typeof(d.resetAudioTelemetry)==="function")
+            d.resetAudioTelemetry();
+        resetBurstStats();
+        telemetryBaseline=null;telemetryHistory=[];telemetryRates={};
+        telemetryLastTime=null;
+        return this.getAudioTelemetry();
+    };
+    this.getAudioTelemetryHistory=function(){return telemetryHistory.slice();};
+    this.audioTelemetryRefresh=function()
+    {
+        if(typeof(document)!=="object" || !document.getElementById)return false;
+        var popup=document.getElementById(telemetryID("popup"));
+        if(!popup || popup.hidden){
+            // Closing with the frame's X also stops the refresh loop.
+            if(telemetryActive())oCOM.toggleRefreshEvent(eventName());
+            return false;
+        }
+        var t=this.getAudioTelemetry(),p=t.audio||{},b=t.bursts;
+        telemetryHistory.push({wallTime:Date.now(),...t});
+        if(telemetryHistory.length>TELEMETRY_HISTORY_LIMIT)
+            telemetryHistory.shift();
+        var ms=function(ticks){return ticks===null?"—":
+            telemetryNumber(1000*ticks/t.cpu.clockHz,2," ms");};
+        telemetryText("model",t.sid.model+" / "+(t.sid.clockHz===985248?"PAL":"NTSC")+
+            " / "+t.sid.clockHz+" Hz");
+        telemetryText("context",(p.contextState||"unavailable")+
+            " / "+(p.playbackEnabled?"ON":"off"));
+        telemetryText("rates",(p.sampleRate||"—")+" / "+
+            (p.outputSampleRate||"—")+" Hz");
+        telemetryText("cpu",telemetryNumber(t.rates.cpuPacePercent,1,"%"));
+        telemetryText("mode",t.cpu.timingMode||"unknown");
+        telemetryText("pc",t.cpu.state && Number.isFinite(t.cpu.state.pc)?
+            "$"+hex(t.cpu.state.pc&65535,4)+" / "+t.cpu.state.ic:"—");
+        telemetryText("writes",t.sid.nativeWrites+" / "+
+            telemetryNumber(t.rates.nativeWritesPerSecond,1," /s"));
+        telemetryText("burst",b.count+" / "+
+            telemetryNumber(t.rates.burstsPerSecond,1," /s"));
+        telemetryText("interval",ms(b.lastTicks)+" / "+
+            ms(b.minTicks)+" / "+ms(b.maxTicks));
+        telemetryText("burst_warn",b.shortPeriods+" / "+b.longPeriods+
+            " (under 14 / over 28 ms)");
+        telemetryText("burst_size",b.currentWrites+" / "+b.maxWrites);
+        telemetryText("envelopes",t.sid.voices.map(function(v){
+            return "V"+v.voice+" "+(v.gate?"GATE":"off")+" / "+
+                (v.envelope===null?"—":v.envelope);
+        }).join(" · "));
+        telemetryText("producer",p.produced+" / "+p.scheduled+" / "+p.dropped);
+        telemetryText("pcm_rate",telemetryNumber(t.rates.producedPerSecond,0," /s")+
+            " / "+telemetryNumber(t.rates.scheduledPerSecond,0," /s"));
+        telemetryText("fifo",p.queued+" / "+p.capacityFrames+
+            " ("+telemetryNumber(p.queuedMs,1," ms")+")");
+        telemetryText("fifo_peak",p.maxQueueDepth+" / "+p.capacityFrames);
+        telemetryText("lead",telemetryNumber(p.scheduledLeadMs,1," ms")+" / "+
+            telemetryNumber(p.minLeadMs,1," ms")+" / "+
+            telemetryNumber(p.maxLeadMs,1," ms"));
+        telemetryText("underrun",(p.underruns||0)+" / "+
+            telemetryNumber(p.lastLateMs,1," ms")+" / "+
+            telemetryNumber(p.worstLateMs,1," ms"));
+        telemetryText("sources",p.activeSources===undefined?"—":p.activeSources);
+        telemetryText("last","$"+hex(t.sid.lastWrite.address,4)+
+            "=$"+hex(t.sid.lastWrite.value,2)+" @ "+t.sid.lastWrite.tick);
+        return t;
+    };
+    this.downloadAudioTelemetry=function()
+    {
+        if(typeof(oCOM)==="undefined" || typeof(oCOM.Download)!=="function" ||
+           typeof(TextEncoder)==="undefined")return false;
+        var snapshot=this.getAudioTelemetry();
+        var data={format:"RetroAppleJS.SIDAudioTelemetry",version:1,
+            slot:snapshot.slot,
+            sampleRate:snapshot.audio?snapshot.audio.sampleRate:null,
+            capturedAt:new Date().toISOString(),
+            latest:snapshot,history:this.getAudioTelemetryHistory()};
+        oCOM.Download("SID_slot"+(data.slot===null?"x":data.slot)+
+            "_audio_telemetry.json",
+            new TextEncoder().encode(JSON.stringify(data,null,2)));
+        return true;
+    };
+    this.toggleAudioTelemetrySync=function()
+    {
+        if(!ensureTelemetryEvent())return false;
+        var active=oCOM.toggleRefreshEvent(eventName());
+        var el=typeof(document)==="object"?
+            document.getElementById(telemetryID("sync")):null;
+        if(el){
+            el.className=active?"fa fa-stop-circle":"fa fa-sync-alt";
+            el.title=active?"Pause SID live telemetry":"Resume SID live telemetry";
+        }
+        if(active)this.audioTelemetryRefresh();
+        return active;
+    };
+    this.openAudioTelemetry=function()
+    {
+        if(typeof(document)!=="object" || !document.createElement ||
+           typeof(oCOM)==="undefined" || !oCOM.POPUP)return false;
+        if(!ensureTelemetryEvent())return false;
+        var id=telemetryID("popup");
+        var host=document.getElementById("tab1.2")||document.body;
+        var popup=document.getElementById(id);
+        if(!popup){
+            popup=document.createElement("div");
+            popup.id=id;popup.hidden=true;
+            popup.className="appbox com_popup_frame";
+            var left=typeof(window)==="object" && Number(window.innerWidth)>0 ?
+                Math.max(12,Math.min(800,window.innerWidth-820)):12;
+            popup.style.cssText="position:absolute;left:"+left+
+                "px;width:800px;max-width:calc(100vw - 24px);"+
+                "height:600px;max-height:calc(100vh - 24px);"+
+                "text-align:left;padding:0;margin:0";
+        }
+        if(popup.parentNode!==host)host.appendChild(popup);
+        if(!popup.hidden){
+            oCOM.POPUP.toggle(id);
+            if(telemetryActive())oCOM.toggleRefreshEvent(eventName());
+            return false;
+        }
+        var access="apple2plus.hwObj().io.HASH2obj("+slotHash()+")";
+        var sections=[
+            ["model","SID MODEL / CLOCK"],["context","WEB AUDIO CONTEXT"],
+            ["rates","SAMPLE RATE (PCM / OUTPUT)"],["cpu","CPU WALL PACE"],
+            ["mode","VIDEO TIMING MODE"],["pc","CPU PC / INS"],
+            ["writes","NATIVE SID WRITES / RATE"],
+            ["burst","WRITE BURSTS / RATE (HEURISTIC)"],
+            ["interval","BURST INTERVAL LAST / MIN / MAX"],
+            ["burst_warn","BURST INTERVAL SHORT / LONG"],
+            ["burst_size","WRITES IN BURST / PEAK"],
+            ["envelopes","VOICE GATE / ENVELOPE (0–255)"],
+            ["producer","PCM PRODUCED / SCHEDULED / DROPPED"],
+            ["pcm_rate","PCM PRODUCE / SCHEDULE RATE"],
+            ["fifo","PCM FIFO / CAPACITY"],["fifo_peak","PCM FIFO HIGH WATER"],
+            ["lead","BROWSER LEAD NOW / MIN / MAX"],
+            ["underrun","UNDERRUNS / LAST LATE / WORST LATE"],
+            ["sources","ACTIVE BROWSER SOURCES"],
+            ["last","LAST SID WRITE / CPU TICK"]
+        ];
+        var html="<div style='font-family:monospace;font-size:12px'>"+
+            "<div style='display:flex;gap:8px;margin-bottom:10px'>"+
+            "<button class=appbut title='Pause or resume live SID telemetry' onclick='"+
+                 access+"?.toggleAudioTelemetrySync()'>"+
+            "<i id='"+telemetryID("sync")+"' class='fa fa-stop-circle'></i></button>"+
+            "<button class=appbut title='Reset statistics without muting or resetting SID' onclick='"+
+                 access+"?.resetAudioTelemetry();"+access+"?.audioTelemetryRefresh()'>"+
+            "<i class='fa fa-undo'></i> Reset</button>"+
+            "<button class=appbut title='Export SID telemetry (up to 60 s) as JSON' onclick='"+
+                 access+"?.downloadAudioTelemetry()'>"+
+            "<i class='fa fa-cloud-download-alt'></i> JSON</button></div>"+
+            "<table style='width:100%;border-collapse:collapse'>";
+        for(var i=0;i<sections.length;i++)
+            html+="<tr><td style='padding:3px 10px 3px 0'>"+
+                sections[i][1]+"</td><td id='"+telemetryID(sections[i][0])+"'>—</td></tr>";
+        html+="</table><div style='margin-top:9px;font:11px Arial'>"+
+            "Write bursts are clusters separated by more than 3.4 ms of "+
+            "emulated CPU time; they are <b>not</b> exact music PLAY calls. "+
+            "CPU wall pace can reveal emulator stalls; lead, underruns and "+
+            "dropped samples reveal browser audio starvation. The 120 most "+
+            "recent half-second snapshots can be exported as JSON."+
+            "</div></div>";
+        var close="<div class=appbut onclick=\"oCOM.POPUP.toggle('"+
+            id+"');event.stopPropagation()\" "+
+            "style='text-align:center;float:right'>x</div>";
+        popup.innerHTML=oCOM.POPUP.title_body_html(
+            "SID LIVE AUDIO TELEMETRY"+close,html,
+            telemetryID("body"),"com_popup_body com_scroll_xy");
+        oCOM.POPUP.toggle(id);
+        if(!telemetryActive())this.toggleAudioTelemetrySync();
+        else this.audioTelemetryRefresh();
+        return true;
+    };
+
     this.reset=function()
     {
         // Model, clock and user volume intentionally survive a soft reset.
         enabled=true;snoop=true;regIndex=0;sniffedWrites=slotWrites=0;
         lastWrite={address:0,value:0,tick:0};
+        resetBurstStats();telemetryBaseline=null;telemetryRates={};
+        telemetryHistory=[];
         var d=audioDevice();
         if(d&&typeof d.reset==="function")d.reset();
     };
@@ -53086,6 +53428,7 @@ function SIDCard()
     };
     this.onUnmount=function()
     {
+        if(telemetryActive())oCOM.toggleRefreshEvent(eventName());
         this.state.active=false;
         var d=audioDevice();
         if(d&&typeof d.onUnmount==="function")d.onUnmount();
@@ -53107,6 +53450,8 @@ function SIDCard()
             "<input type='checkbox' "+(snoop?"checked ":"")+"onchange='"+access+"?.setSnoopEnabled(this.checked)'>Native $D400 writes</label>"+
             "<label>Volume <input type='range' min='0' max='100' value='"+volume+"' "+
             "oninput='"+access+"?.setVolume(Number(this.value))' style='width:80px'></label>"+
+            "<button class='appbut' title='SID live audio telemetry' aria-label='SID live audio telemetry' onclick='"+
+            access+"?.openAudioTelemetry()'><i class='fa fa-chart-line'></i> Telemetry</button>"+
             "<span title='Unchanged Apple II ROM and Language Card mapping'>"+
             "$D400–$D41F · "+(audioDevice()?"Audio attached":"Attach SIDAUDIO")+"</span>"+
             "</div></div>";
