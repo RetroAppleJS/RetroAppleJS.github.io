@@ -24,13 +24,14 @@ function fixture({version=2,payloadLength=300,load=0x4000,rate=50,embedded=false
     bytes.fill(0xEA,start+12);
     return bytes;
 }
-function simulate(file,{stage=0x6000,slot=4,frames=14,subtune}={}){
+function simulate(file,{stage=0x6000,slot=4,frames=14,subtune,corruptTransfer=false}={}){
     const image=build.prepare(file,{stage,subtune}),player=build.assemblePlayer();
     const mem=new Uint8Array(65536);
     mem.set(image.bytes,image.stage);
     mem.set(player.bootstrap,build.TRAMP);
     mem.set(player.runtime,build.RUNTIME);
-    mem.set(player===null?[]:image.descriptor,build.DESCRIPTOR);
+    mem.set(image.descriptor,build.DESCRIPTOR);
+    if(corruptTransfer)mem[image.payloadAddress+20]^=0x11;
     const zp=Uint8Array.from({length:256},(_,i)=>(i*73+11)&255);
     mem.set(zp,0);mem[0x1FE]=0xFF;mem[0x1FF]=0xFE;
     const ioBase=0xC080+slot*16;
@@ -95,6 +96,8 @@ test('generic PSID v1/v2 parser accepts Mr. Heli and arbitrary safe staging addr
     assert.equal(info.payloadLength,4715);
     for(const start of [0x2000,0x3000,0x6000,0x7D00]){
         const p=build.prepare(original,{stage:start});
+        assert.equal(p.descriptor.length,18);
+        assert.equal(p.descriptor.readUInt16LE(16),0x3B46);
         assert.equal(p.payloadAddress,start+0x7E);
         assert.equal(p.descriptor.readUInt16LE(4),start+0x7E);
         assert.equal(p.descriptor.readUInt16LE(6),0x0CA0);
@@ -184,4 +187,13 @@ test('full 28 KiB PSID can stage at $2000, but not one byte higher',()=>{
     assert.equal(p.payloadLength,capacity-0x7C);
     assert.throws(()=>build.prepare(big,{stage:0x2001}),
         e=>e.code==='STAGING_RANGE');
+});
+
+test('native player rejects corrupted staged RAM before installing original executable',()=>{
+    const r=simulate(original,{stage:0x6000,corruptTransfer:true});
+    assert.equal(r.mem[r.player.symbols.ERRORCD],3);
+    assert.equal(r.hasCopyCheck,false,'bad staged bytes must never be executed');
+    assert.deepEqual(Array.from(r.mem.subarray(0,256)),Array.from(r.zp),
+        'ZP must be restored on checksum failure');
+    assert.equal(r.writes.length,0,'corrupted file cannot write to SID registers');
 });
