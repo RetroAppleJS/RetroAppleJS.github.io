@@ -364,6 +364,6 @@ test('SID underrun recovery starts promptly and records precise deadline evidenc
   h.device.resetAudioTelemetry();
   assert.equal(h.device.getAudioStats().queued,before,
     'clearing telemetry must not flush audio');
-  assert.deepEqual(h.device.getAudioEvents(),[]);
+  assert.equal(h.device.getAudioEvents().length,0);
   await h.device.init('audio_off');
 });
