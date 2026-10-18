@@ -17,6 +17,10 @@ function SIDAudio()
     // shorter restart lead to avoid *adding* another audible gap.
     const TARGET_AUDIO_LEAD=0.25, MAX_BLOCKS_PER_CYCLE=8;
     const START_LEAD=0.125, RECOVERY_LEAD=0.008;
+    // Audio service is independent of display FPS (about 10 ms CPU-time).
+    // Throttle unusually fast CPU production only when all pending audio
+    // would exceed half a second. VBLANK and nominal 10 FPS stay unaffected.
+    const SERVICE_QUANTUM_TICKS=10218, CPU_AUDIO_HIGH_WATER_SEC=0.50;
     // Bus write timestamps may include an instruction-local cycle offset.
     const MINOR_CLOCK_SKEW_TICKS=32, AUDIO_EVENT_LIMIT=32;
     // SID ADSR rate-counter periods, measured in SID clock cycles.
@@ -38,6 +42,9 @@ function SIDAudio()
     var smallClockBacksteps=0,maxClockBackstepTicks=0,clockRewinds=0;
     var queueClears=0,clearedSamples=0,skippedSamples=0,offlineSamples=0;
     var eventHistory=[];
+    var overflowIncidents=0,overflowActive=false,overflowStartDropped=0;
+    var overflowLastCpuTick=null,overflowLastAudioTime=null;
+    var realtimeServices=0,cpuBudgetChecks=0,cpuBudgetBlocked=0;
     var filterLow=0,filterBand=0;
     this.id={DCODE:"SIDAUDIO",coID:"SIDAudio",hostPCODE:"SID",icon:"fa fa-volume-up"};
     this.audioDevice=true;
@@ -59,8 +66,17 @@ function SIDAudio()
         eventHistory.push(event);
         if(eventHistory.length>AUDIO_EVENT_LIMIT)eventHistory.shift();
     }
+    function closeOverflow()
+    {
+        if(!overflowActive)return;
+        noteEvent("fifo_overflow_end",{
+            discarded:dropped-overflowStartDropped,queuedFrames:queued
+        });
+        overflowActive=false;
+    }
     function clearQueue(reason)
     {
+        closeOverflow();
         if(queued){
             clearedSamples+=queued;
             queueClears++;
@@ -218,12 +234,29 @@ function SIDAudio()
                     if(queued<FIFO_LENGTH){
                         queue[writeIndex]=value;writeIndex=(writeIndex+1)%FIFO_LENGTH;queued++;
                         if(queued>maxQueueDepth)maxQueueDepth=queued;
-                    }else dropped++;
+                    }else{
+                        // Record the onset once per continuous overflow,
+                        // before losing the first PCM frame. This is different
+                        // from a browser underrun: the source FIFO was full.
+                        if(!overflowActive){
+                            overflowActive=true;overflowIncidents++;
+                            overflowStartDropped=dropped;
+                            overflowLastCpuTick=lastTick;
+                            overflowLastAudioTime=audio.currentTime;
+                            noteEvent("fifo_overflow",{
+                                queuedFrames:queued,capacityFrames:FIFO_LENGTH,
+                                producedFrames:produced,scheduledFrames:scheduled,
+                                audioLeadMs:Math.max(0,1000*(nextStart-audio.currentTime))
+                            });
+                        }
+                        dropped++;
+                    }
                 }
                 else skippedSamples++;
             }else {result[i]=value;offlineSamples++;}
             produced++;
         }
+        if(overflowActive && queued<FIFO_LENGTH)closeOverflow();
         return result;
     }
     this.advanceTo=function(tick)
@@ -328,6 +361,11 @@ function SIDAudio()
             clockRewinds:clockRewinds,
             queueClears:queueClears,clearedSamples:clearedSamples,
             skippedSamples:skippedSamples,offlineSamples:offlineSamples,
+            overflowIncidents:overflowIncidents,
+            overflowLastCpuTick:overflowLastCpuTick,
+            overflowLastAudioTime:overflowLastAudioTime,
+            realtimeServices:realtimeServices,
+            cpuBudgetChecks:cpuBudgetChecks,cpuBudgetBlocked:cpuBudgetBlocked,
             recentAudioEvents:eventHistory.length,
             cpuTick:lastTick,
             sidModel:sidModel,sidClock:sidClock,hostClock:hostClock,
@@ -343,6 +381,9 @@ function SIDAudio()
         maxQueueDepth=queued;minLeadMs=null;
         preScheduleLeadMs=minPreScheduleLeadMs=null;
         eventHistory=[];
+        overflowIncidents=0;overflowLastCpuTick=overflowLastAudioTime=null;
+        overflowActive=false;overflowStartDropped=0;
+        realtimeServices=cpuBudgetChecks=cpuBudgetBlocked=0;
         return this.getAudioStats();
     };
     this.getAudioEvents=function(){return eventHistory.map(e=>Object.assign({},e));};
@@ -370,6 +411,29 @@ function SIDAudio()
     this.setPresentationPaused=function(v){paused=!!v;if(paused){stopSources();clearQueue();}};
     this.isCycleActive=function(){return !!(playing&&!paused);};
     this.isTickActive=function(){return false;};
+    this.getRealtimeAudioQuantumTicks=function(){
+        return playing&&!paused&&audio&&audio.state==="running"?
+            SERVICE_QUANTUM_TICKS:0;
+    };
+    this.serviceRealtimeAudio=function(){
+        realtimeServices++;
+        this.cycle(); // same exact scheduler, only invoked earlier
+    };
+    this.getCpuSliceBudget=function(requested){
+        if(!playing||paused||!audio||audio.state!=="running"||
+           !io||typeof io.getClockTicks!=="function")return requested;
+        cpuBudgetChecks++;
+        // Force accounting of any CPU time since the previous SID write.
+        // The high-water bound includes *both* scheduled and unscheduled PCM.
+        this.advanceTo(io.getClockTicks());
+        var lead=Math.max(0,nextStart-audio.currentTime);
+        var pending=queued/SAMPLE_RATE;
+        var room=Math.max(0,CPU_AUDIO_HIGH_WATER_SEC-lead-pending);
+        var budget=Math.min(requested,SERVICE_QUANTUM_TICKS,
+            Math.floor(room*hostClock));
+        if(budget<=0){cpuBudgetBlocked++;return 0;}
+        return Math.max(1,budget);
+    };
     this.cycle=function()
     {
         if(!playing||paused||!audio||audio.state!=="running")return;
