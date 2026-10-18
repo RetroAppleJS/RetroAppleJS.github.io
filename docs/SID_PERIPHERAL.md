@@ -247,3 +247,45 @@ The reference page `tools/SIDchipJS.html` provides two playback selectors:
 Changing either selection closes the old Web Audio context and reloads **the currently selected subtune**, preserving the active/paused playback state, volume, and explicitly selected SID model. It restarts song playback and resets tool telemetry history (rather than silently combining statistics from different timing/rate configurations).
 
 The standalone telemetry JSON retains the `RetroAppleJS.SIDAudioTelemetry` version 1 envelope and additionally stores `source: "SIDchipJS"`, `videoStandard`, `requestedSampleRate`, effective `audio.sampleRate`, `sid.frameRate`, and `sid.playCallHz`. Its CPU/burst times use the selected **C64 clock**, unlike the emulator's Apple II CPU ticks. Compare timings in milliseconds or hertz, not raw CPU ticks. The tool uses `ScriptProcessor`, so emulator FIFO/lead/AudioBufferSource underrun fields remain `null`; do not interpret them as zero.
+
+
+### SID 10 FPS audio flow control and 50 Hz native clock
+
+The SID output path services **Web Audio independently of screen refresh**
+using a lightweight audio-only callback after each **10,218 emulated CPU ticks**
+(approximately 10 ms at 1.0218 MHz). At 10 FPS, a 100 ms CPU slice offers
+approximately **10 opportunities** to drain pending PCM before the next
+screen refresh; VBLANK continues its regular per-frame service. Audio-only
+callbacks never update peripheral UIs, disk state or screen rendering, and
+preserve the original SID register-write ordering.
+
+The SID audio child also participates in the emulator's CPU audio budget.
+If browser-scheduled sound plus waiting PCM would exceed **500 ms**, an
+excessively fast CPU producer is temporarily restricted. This prevents
+repeated FIFO overflow under turbo execution without deleting, muting or
+reordering already-rendered samples. When enabled, audio flow control may
+intentionally limit maximum CPU speed.
+
+**FIFO overflow telemetry:** a new `fifo_overflow` event records the first
+lost sample of each continuous overflow with CPU tick, Web Audio timestamp,
+FIFO occupancy, scheduled lead and sample counters. A matching
+`fifo_overflow_end` event records the number of samples lost in that burst.
+The SID popup also displays overflow incidents and audio-service / CPU-budget
+counters. Download JSON after a suspected glitch to inspect `audioEvents`.
+
+**Phase 2A exact music clock:** A RetroAppleJS-specific **read-only 16-bit
+CPU tick snapshot** is exposed using the SID card's indexed SlotIO data
+register. Select index `$1E` through `$C0n2` then read `$C0n3` to
+latch/read the low byte; select `$1F` and read the same data register to
+retrieve the high byte of that snapshot (n = physical slot + 8 in hex, e.g.
+slot 4 uses `$C0C2/$C0C3`). This is **not** an original 6581/8580 feature
+and is **not** guaranteed by physical SID cards. The native driver
+auto-discovers the slot and advances its absolute playback deadline by
+**20,436 Apple II CPU cycles** each frame for 50.000 Hz music timing.
+Original `$D400–$D41F` code and SID audio synthesis are unchanged.
+
+Rebuild with `node tools/SID_Phase2A_build.js` and reload the new raw
+driver binary at `$2000`; the original staged Mr. Heli PSID at `$6000`
+remains unchanged. See [SID Phase 2A](SID_PHASE2A.md) for the updated memory
+map and entrypoints. Existing older 500-byte players still use the previous
+fixed-delay timing until replaced.
