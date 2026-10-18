@@ -12,7 +12,7 @@ const REFERENCE=path.join(ROOT,'asm/AUDIO/SID2MB_prototype/Mr_Heli_original.sid'
 const STAGE_MIN=0x2000,STAGE_END=0x9000,MAX_FILE=STAGE_END-STAGE_MIN;
 const TRAMP=0x1C00,RUNTIME=0x9000,DESCRIPTOR=0x9400,ZP_BACKUP=0x9500;
 const RUNTIME_END=0x9600; // runtime, descriptor and 256-byte ZP backup
-const DESC_SIZE=16;
+const DESC_SIZE=18; // metadata through +15, payload checksum at +16/+17
 function hex(x,digits=4){return '$'+x.toString(16).toUpperCase().padStart(digits,'0')}
 function fail(code,explanation){const e=new Error(explanation);e.code=code;throw e}
 function numeric(value,name){
@@ -102,7 +102,10 @@ function prepare(input,{stage=0x6000,subtune,videoHz}={}){
     desc.writeUInt16LE(info.playAddress,12);
     desc[14]=info.selectedSong-1;
     desc[15]=info.rateHz===60?1:0;
-    return {...info,stage,payloadAddress,descriptor:desc,bytes};
+    const payloadChecksum=bytes.subarray(info.payloadOffset).reduce(
+        (sum,value)=>(sum+value)&0xFFFF,0);
+    desc.writeUInt16LE(payloadChecksum,16);
+    return {...info,stage,payloadAddress,payloadChecksum,descriptor:desc,bytes};
 }
 function assemblePlayer(){
     const ctx=vm.createContext({console});
@@ -162,7 +165,8 @@ function main(args=process.argv.slice(2)){
         executableBytes:meta.payloadLength,init:hex(meta.initAddress),
         play:hex(meta.playAddress),song:meta.selectedSong,songs:meta.songs,
         rateHz:meta.rateHz,playerStub:hex(TRAMP),runtime:hex(RUNTIME),
-        descriptor:hex(DESCRIPTOR),warnings:meta.warnings};
+        descriptor:hex(DESCRIPTOR),
+        payloadChecksum:hex(meta.payloadChecksum),warnings:meta.warnings};
     out('manifest.json',JSON.stringify(summary,null,2)+'\n');
     console.log(JSON.stringify(summary,null,2));
     console.log('Load 4 memory images then CALL 7168; any key stops. No code relocation.');
