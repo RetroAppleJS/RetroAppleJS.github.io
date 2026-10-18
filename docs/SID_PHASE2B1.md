@@ -62,7 +62,8 @@ The host-side preflight in `tools/SID_Phase2B1_build.js` accepts:
   INIT=0 is resolved to the original load address.
 
 For now the preflight *rejects* RSID, PSID v3/v4, CIA-timed subtunes
-(speeds bit 1), MUS/BASIC flags, multiple SID chips, PLAY=0 IRQ-vector
+(speed bit set for the selected song), MUS / PlaySID-specific flags,
+multiple SID chips, PLAY=0 IRQ-vector
 drivers, memory overlap with protected `$9000–$95FF`, executable code
 below `$0C00` or reaching `$C000`, and invalid or conflicting addresses.
 
@@ -98,7 +99,8 @@ After header and memory validation, the builder produces:
 It also generates matching `*_monitor.txt` files for all four memory
 images (including the staged PSID file) and
 `SID_Phase2B1_manifest.json`, which lists the actual addresses, original
-title/author, subtune, frame rate and compatibility warnings.
+title/author, subtune, frame rate, preferred SID model (where declared),
+and compatibility warnings.
 
 Load the four binary images at their respective addresses using the
 emulator's memory-loading facilities, or enter the monitor listings.
