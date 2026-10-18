@@ -18,7 +18,7 @@ test('native Phase 2B.2 title reaches physical text screen through real Apple II
  mem[0x38]=0x1B;mem[0x39]=0xFD;
  mem[0x28]=0x00;mem[0x29]=0x04;mem[0x32]=0xFF;
  mem[0x1FE]=0xFF;mem[0x1FF]=0xFE;
- let cout=0,getln=false,trace=[];
+ let cout=0,getln=false,trace=[],output=[];
  const Cpu=cpuCode();
  const cpu=new Cpu({
   irq_signal:0,nmi_signal:0,lineDecode:a=>a>>12,
@@ -29,7 +29,7 @@ test('native Phase 2B.2 title reaches physical text screen through real Apple II
  for(let i=0;i<100000;i++){
     const pc=cpu.watch().pc;
     if(trace.length<50&&pc>=0x92A0&&pc<0x92D0)trace.push(pc.toString(16));
-    if(pc===0xFDED)cout++;
+    if(pc===0xFDED){cout++;if(output.length<110)output.push(String.fromCharCode(cpu.watch().a&127));}
     if(pc===0xFD6A){getln=true;break;}
     cpu.cycle();
  }
