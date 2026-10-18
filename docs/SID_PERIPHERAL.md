@@ -236,3 +236,14 @@ rewind**, investigate the CPU timestamp path. If it reports new underruns
 with adequate CPU progress and regular write bursts, investigate browser
 main-thread stalls. Both situations can be distinguished without changing
 the SID voices, envelopes or native music code.
+
+### Comparing against standalone SIDchipJS
+
+The reference page `tools/SIDchipJS.html` provides two playback selectors:
+
+- **PAL (50 Hz, 985,248 Hz SID clock)** or **NTSC (60 Hz, 1,022,727 Hz SID clock)**. This changes both the C64 CPU/SID clock and the VBI-driven PSID PLAY cadence. CIA-timed tunes instead use their timer period divided by the selected C64 clock.
+- **44.1 kHz (44,100 samples/s)** or **22.05 kHz (22,050 samples/s)**. The tool requests this sample rate from the Web Audio context before initializing the jsSID synthesis loop. It uses the browser's *actual* context rate for synthesis if the requested rate is unavailable.
+
+Changing either selection closes the old Web Audio context and reloads **the currently selected subtune**, preserving the active/paused playback state, volume, and explicitly selected SID model. It restarts song playback and resets tool telemetry history (rather than silently combining statistics from different timing/rate configurations).
+
+The standalone telemetry JSON retains the `RetroAppleJS.SIDAudioTelemetry` version 1 envelope and additionally stores `source: "SIDchipJS"`, `videoStandard`, `requestedSampleRate`, effective `audio.sampleRate`, `sid.frameRate`, and `sid.playCallHz`. Its CPU/burst times use the selected **C64 clock**, unlike the emulator's Apple II CPU ticks. Compare timings in milliseconds or hertz, not raw CPU ticks. The tool uses `ScriptProcessor`, so emulator FIFO/lead/AudioBufferSource underrun fields remain `null`; do not interpret them as zero.
