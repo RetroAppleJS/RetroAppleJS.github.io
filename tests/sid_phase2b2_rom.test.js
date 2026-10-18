@@ -79,3 +79,48 @@ test('Applesoft CALL 7168 reaches native start prompt through actual ROM, not a 
  assert.ok(charView.includes('SID PLAYER'),
     'Applesoft CALL reached prompt but screen failed to display title: '+charView.slice(0,100));
 });
+
+
+test('real Apple II monitor byte-code paste preserves both assembled regions before CALL',()=>{
+ const rom=realRom(),code=build.assemble(),mem=new Uint8Array(65536);
+ const song=fs.readFileSync(path.join(ROOT,'asm/AUDIO/SID2MB_prototype/Mr_Heli_original.sid'));
+ mem.set(song,0x6000);
+ mem.set([0x53,0x49,0x44,0x46,0x00,0x60,song.length&255,song.length>>>8],0x9E00);
+ function lines(data,start){
+   let result=[];
+   for(let i=0;i<data.length;i+=8)
+    result.push((start+i).toString(16).toUpperCase().padStart(4,'0')+': '+
+       Array.from(data.subarray(i,i+8),v=>v.toString(16).toUpperCase().padStart(2,'0')).join(' '));
+   return result;
+ }
+ const script=['CALL-151',...lines(code.bootstrap,0x1C00),...lines(code.runtime,0x9000),
+     'E003G','CALL 7168',''].join('\r');
+ const queue=Array.from(script,c=>c.charCodeAt(0)|0x80);
+ let latch=0,atEntry=false,steps=0,pc=0;
+ const Cpu=cpuCode();
+ const cpu=new Cpu({
+  irq_signal:0,nmi_signal:0,lineDecode:a=>a>>12,
+  read(addr){
+     if(addr>=0xD000)return rom[addr-0xD000];
+     if(addr===0xC000){if(!latch&&queue.length)latch=queue.shift();return latch;}
+     if(addr===0xC010){const ch=latch;latch=0;return ch;}
+     if(addr>=0xC000&&addr<0xD000)return 0;
+     return mem[addr];
+  },
+  write(addr,v){if(addr<0xC000)mem[addr]=v&255;}
+ });
+ cpu.reset();
+ for(steps=0;steps<16000000;steps++){
+   pc=cpu.watch().pc;
+   if(pc===code.symbols.NATIVE_ENTRY){atEntry=true;break;}
+   cpu.cycle();
+ }
+ const eq=(a,b)=>a.length===b.length&&a.every((v,i)=>v===b[i]);
+ const low=mem.subarray(0x1C00,0x1C0C),high=mem.subarray(0x9000,0x9000+code.runtime.length);
+ assert.ok(atEntry,'Never reached native entry after Monitor byte-code paste: '+
+   JSON.stringify({steps,pc:pc.toString(16),remaining:queue.length,
+                   low:Array.from(low),high:Array.from(high.subarray(0,12))}));
+ assert.ok(eq(low,code.bootstrap)&&eq(high,code.runtime),
+   'Monitor paste data differed from assembled bytes; first high entry '+
+    Array.from(mem.subarray(0x92A1,0x92C0)).map(x=>x.toString(16)).join(' '));
+});
