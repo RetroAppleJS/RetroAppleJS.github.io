@@ -123,7 +123,7 @@ test('original Mr Heli PSID metadata is validated and executable remains unmodif
     assert.equal(program.symbols.STOP,0x2003);
     assert.equal(program.symbols.RESTART,0x2006);
     assert.equal(program.symbols.STATUS,0x2009);
-    const monitor=fs.readFileSync(path.join(ROOT,'asm/AUDIO/SID_PHASE2A_MR_HELI_monitor.txt'),'utf8');
+    const monitor=fs.readFileSync(path.join(ROOT,'asm/AUDIO/SID2MB_prototype/SID_PHASE2A_MR_HELI_monitor.txt'),'utf8');
     assert.equal(monitor,build.monitorText(program.bytes,0x2000),
         'checked-in monitor image must match latest assembled source');
 });
