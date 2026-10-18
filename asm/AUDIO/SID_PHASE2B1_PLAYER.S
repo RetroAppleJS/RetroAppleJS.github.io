@@ -70,6 +70,14 @@ HAS_SID
             ADC #$01
             STA CLOCKDATA+1
             JSR SAVE_APPLE_ZP
+            JSR CHECK_PAYLOAD
+            BCC PAYLOAD_OK
+            ; Incomplete or corrupted transfer: never copy executable code.
+            JSR RESTORE_APPLE_ZP
+            LDA #$03
+            STA ERRORCD
+            JMP BAD_START
+PAYLOAD_OK
             JSR COPY_EXEC
             ; C64 zero-page environment while native music runs.
             LDA #$00
@@ -187,6 +195,48 @@ RESTORE_PUBLIC_LOOP
             RTS
 PUBLIC_IMAGE
             .BYTE $4C,$00,$90,$4C,$03,$90,$4C,$06,$90,$4C,$09,$90
+
+; Compute a 16-bit additive checksum before installing executable code.
+; The host builder stores the expected checksum in descriptor bytes 16/17.
+; It catches incomplete monitor transfers; it is not cryptographic.
+CHECK_PAYLOAD
+            LDA DESC+4
+            STA SRCZ
+            LDA DESC+5
+            STA SRCZ+1
+            LDA DESC+8
+            STA LEFT
+            LDA DESC+9
+            STA LEFT+1
+            LDA #$00
+            STA SUMLO
+            STA SUMHI
+            LDY #$00
+SUM_LOOP
+            LDA (SRCZ),Y
+            CLC
+            ADC SUMLO
+            STA SUMLO
+            BCC SUM_NO_CARRY
+            INC SUMHI
+SUM_NO_CARRY
+            INC SRCZ
+            BNE SUM_SRC_OK
+            INC SRCZ+1
+SUM_SRC_OK
+            JSR COUNT_DOWN
+            BNE SUM_LOOP
+            LDA SUMLO
+            CMP DESC+16
+            BNE BAD_PAYLOAD
+            LDA SUMHI
+            CMP DESC+17
+            BNE BAD_PAYLOAD
+            CLC
+            RTS
+BAD_PAYLOAD
+            SEC
+            RTS
 
 ; Copies executable payload from arbitrary staged address to the *original*
 ; absolute C64 load address. Use memmove direction so partial overlap is safe.
@@ -342,4 +392,6 @@ NOWLO       .BYTE $00
 NOWHI       .BYTE $00
 DEADLINELO  .BYTE $00
 DEADLINEHI  .BYTE $00
+SUMLO       .BYTE $00
+SUMHI       .BYTE $00
             .END
