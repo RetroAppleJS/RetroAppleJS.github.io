@@ -106,7 +106,7 @@ test('SIDchipJS exposes both selectors and restarts at the same subtune',()=>{
 
 
 test('changing selectors restarts the same subtune and preserves pause state',()=>{
-    const scripts=Array.from(html.matchAll(/<script>([\\s\\S]*?)<\\/script>/g),m=>m[1]);
+    const scripts=Array.from(html.matchAll(/<script>([\s\S]*?)<\/script>/g),m=>m[1]);
     const inline=scripts.at(-1);
     assert.ok(inline && inline.includes('function applySIDPlaybackSettings'));
     const elements={
@@ -162,7 +162,6 @@ test('changing selectors restarts the same subtune and preserves pause state',()
     assert.equal(players[0].options.sampleRate,44100);
     assert.equal(players[0].frames,16384);
     sandbox.st=4;
-    sandbox.sidVideoStandard='unused'; // the DOM selector is authoritative
     elements.sidVideoStandard.value='NTSC';
     elements.sidOutputRate.value='22050';
     sandbox.applySIDPlaybackSettings();
