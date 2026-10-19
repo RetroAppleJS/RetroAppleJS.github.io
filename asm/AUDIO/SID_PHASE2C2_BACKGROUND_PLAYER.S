@@ -770,13 +770,13 @@ LONG_SKIP_4
             LDA VALUE16+1
             STA FILELEN+1
 CHECK_FILE
-            ; Source range: $2000 <= start, end exclusive <= $9000.
+            ; Phase 2C: maximum 8 KiB raw PSID, staged at $6000-$7FFF.
             LDA FILEBASE+1
-            CMP #$20
+            CMP #$60
             BCS LONG_SKIP_5
             JMP INPUT_ERROR
 LONG_SKIP_5
-            CMP #$90
+            CMP #$80
             BCC LONG_SKIP_6
             JMP INPUT_ERROR
 LONG_SKIP_6
@@ -799,7 +799,7 @@ FILE_LENGTH_VALID
             JMP INPUT_ERROR
 LONG_SKIP_8
             LDA FILEEND+1
-            CMP #$90
+            CMP #$80
             BCC FILE_RANGE_OK
             BEQ LONG_SKIP_9
             JMP INPUT_ERROR
@@ -1547,4 +1547,8 @@ SELECT_TEXT .BYTE $53,$55,$42,$54,$55,$4E,$45,$20,$28,$44,$45,$43,$49,$4D,$41,$4
 READY_TEXT .BYTE $0D,$50,$4C,$41,$59,$49,$4E,$47,$20,$2D,$20,$50,$52,$45,$53,$53,$20,$41,$4E,$59,$20,$4B,$45,$59,$20,$54,$4F,$20,$53,$54,$4F,$50,$0D,$00
 CIA_TEXT .BYTE $0D,$43,$49,$41,$20,$54,$49,$4D,$49,$4E,$47,$20,$49,$53,$20,$4E,$4F,$54,$20,$53,$55,$50,$50,$4F,$52,$54,$45,$44,$0D,$00
 INVALID_TEXT .BYTE $0D,$49,$4E,$56,$41,$4C,$49,$44,$20,$4F,$52,$20,$55,$4E,$53,$55,$50,$50,$4F,$52,$54,$45,$44,$20,$50,$53,$49,$44,$20,$2F,$20,$4D,$45,$4D,$4F,$52,$59,$20,$52,$41,$4E,$47,$45,$0D,$00
+            ; 2C.2 single-BLOAD image identification, not part of PSID.
+            ; Loader detects this marker and constrains uploads to 8 KiB.
+            ORG $8FF0
+PLAYER_MAGIC .BYTE $53,$32,$43,$32  ; ASCII S2C2
             .END
