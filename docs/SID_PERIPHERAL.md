@@ -305,33 +305,28 @@ GitHub CI artifacts generated from the same `.S` source.
 See **[Phase 2B.2 native player guide](SID_PHASE2B2.md)** for the memory
 map, eight-byte transfer record, supported formats and limitations.
 
-## Phase 2C.2 — One-BLOAD native background PSID playback
+## Phase 2C.2 — Native resident background music (assembly-first)
 
-The native interactive PSID interpreter and IRQ music engine now form **one
-contiguous binary** starting at **$8000**, emitted from the authoritative
-`asm/AUDIO/SID_PHASE2C2_BACKGROUND_PLAYER.S`. No language card, low-RAM
-jump table, multiple binary loads or external assembly tool are required.
+The authoritative player is the **6502 assembly source**
+`asm/AUDIO/SID_PHASE2C2_BACKGROUND_PLAYER.S` — **not** a downloaded
+binary. Open the source in the RetroAppleJS Assembler, select the
+RetroAppleJS dialect, click **Assemble**, then **Tools → to emulator → Paste**.
+The source contains **one `ORG $8000`** and explicit `.RES` padding,
+so the assembler itself emits one contiguous byte-code stream. No
+Language Card or low-memory public jump table is required.
 
-Import the generated **SID_Phase2C2_player.bin** (or the DOS 3.3
-binary-file contents with the load-address/length header) into a ProntoDOS
-binary file named `SIDPLAYER`, then enter:
+The SID transfer tool places raw PSID files (maximum 8 KiB) in
+**$6000–$7FFF** and does not parse the file. Use `CALL 32768` to select
+the song and start native background playback.
 
-```text
-BLOAD SIDPLAYER
-```
+STOP, replay and next-subtune operations have **direct assembly label
+addresses**, not a fixed fabricated jump table. See your assembler's
+Symbols pane for `BG_STOP`, `BG_REPLAY` and `BG_NEXT_SUBTUNE`.
+The last verified build uses CALL 37738, 34816 and 35500 respectively;
+these numbers can move after edits.
 
-The entire player loads in one operation. The file-transfer popup recognises
-the installed `S2C2` marker at $8FF0 and only allows raw PSIDs fitting
-within **$6000–$7FFF** (8 KiB). The permanent parser is at $8000 and
-cannot be overwritten by compatible PSID executable destinations.
-
-Start the player with `CALL 32768`. The assembler-generated
-`SID_Phase2C2_manifest.json` lists the **direct resident CALL addresses**
-for STOP, replay of the selected subtune, and next-subtune selection.
-These addresses are derived from assembly labels; the old CALL 36867
-address is **not guaranteed** to remain valid.
-
-The original PSID INIT/PLAY and dual zero-page IRQ switching are unchanged.
-This remains experimental coexistence, not full C64 memory virtualization.
-Read **[Phase 2C.2 one-BLOAD instructions](SID_PHASE2C2.md)** for disk
-import formats, memory reservations and compatibility restrictions.
+If desired, use Apple DOS `BSAVE` **after** assembly and loading to
+save *your own compiled player* to disk for subsequent single-command
+`BLOAD`. The project does not distribute a precompiled Phase 2C.2
+binary. See **[Phase 2C.2 assembly guide](SID_PHASE2C2.md)** for the
+memory map, optional DOS workflow, safety rules and regression tests.
