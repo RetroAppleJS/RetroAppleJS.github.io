@@ -20,8 +20,14 @@ function assemble(){
   if(addresses.has(x.pc))throw Error('Duplicate code byte at $'+x.pc.toString(16));
   addresses.add(x.pc);end=Math.max(end,x.pc+1);
  }
- const player=Buffer.alloc(end-START,0);
- for(const x of a.bytes)player[x.pc-START]=x.val;
+ // Contiguity is now a requirement on the ASSEMBLY itself. Never fill
+ // missing bytes in JavaScript: .RES directives in the .S must emit them.
+ if(addresses.size!==end-START)
+  throw Error('Assembly has missing bytes within the $8000-origin image');
+ for(let i=0;i<a.bytes.length;i++)
+  if(a.bytes[i].pc!==START+i)
+   throw Error('Assembly output is not ordered contiguously at byte '+i);
+ const player=Buffer.from(a.bytes.map(x=>x.val));
  if(!player.subarray(MAGIC_AT-START,MAGIC_AT-START+4).equals(Buffer.from('S2C2')))
   throw Error('Missing $8FF0 installed-player marker');
  if(a.symtab.NATIVE_ENTRY!==START)throw Error('First-load entry is not $8000');
@@ -55,27 +61,24 @@ function makeDOSBinary(img,start=START){
  header.writeUInt16LE(start,0);header.writeUInt16LE(img.length,2);
  return Buffer.concat([header,img]);
 }
-function main(dir=path.join(ROOT,'tools/music')){
- const p=assemble(),out=path.resolve(dir);fs.mkdirSync(out,{recursive:true});
- fs.writeFileSync(path.join(out,'SID_Phase2C2_player.bin'),p.player);
- fs.writeFileSync(path.join(out,'SID_Phase2C2_DOS33_file_content.bin'),
-                  makeDOSBinary(p.player,p.start));
- fs.writeFileSync(path.join(out,'SID_Phase2C2_player_monitor.txt'),
-                  monitorListing(p.player,p.start));
+function main(){
+ // CI validation only. Do not publish or maintain any .bin file here.
+ // Users assemble the authoritative .S in RetroAppleJS and can later
+ // BSAVE its assembled bytes from the emulated Apple II.
+ const p=assemble();
  const manifest={
   source:path.relative(ROOT,SOURCE),
-  loadAddress:'$8000',endAddress:'$'+(p.end-1).toString(16).toUpperCase(),
-  imageBytes:p.player.length,assemblyBytes:p.assembledBytes,paddingBytes:p.paddingBytes,
-  stagingWindow:'$6000-$7FFF (8 KiB including PSID header)',
-  playerMarker:'S2C2 at $8FF0',prontoDOSProtectedFrom:'$9600',
+  origin:'$8000',end:'
+if(require.main===module)main(process.argv[2]);
+module.exports={assemble,monitorListing,makeDOSBinary,main,SOURCE,START,LIMIT,MAGIC_AT};
++(p.end-1).toString(16).toUpperCase(),
+  assemblerEmittedBytes:p.player.length,
+  contiguous:true,
   firstLoadCall:p.symbols.NATIVE_ENTRY,
   replayCall:p.symbols.BG_REPLAY,
   stopCall:p.symbols.BG_STOP,
-  nextSubtuneCall:p.symbols.BG_NEXT_SUBTUNE,
-  musicZeroPage:'$9400-$94FF',foregroundZeroPage:'$9500-$95FF'
+  nextSubtuneCall:p.symbols.BG_NEXT_SUBTUNE
  };
- fs.writeFileSync(path.join(out,'SID_Phase2C2_manifest.json'),
-   JSON.stringify(manifest,null,2)+'\n');
  console.log(manifest);
 }
 if(require.main===module)main(process.argv[2]);
