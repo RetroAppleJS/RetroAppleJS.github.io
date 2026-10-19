@@ -13,7 +13,9 @@
 ; NOT general-purpose zero-page-transparent background playback yet.
 ; Installer at $1800, IRQ handler at $9300, state in $93F0-$93F7.
 ; No writes to ProntoDOS RAM $9600+; don't remount/replace card while active.
-; Slot 4: $C0C2 index, $C0C3 data. Other slots come in a later phase.
+; Slot 4 timer writes: $C0C8 low, $C0C9 high, $C0CA enable,
+; $C0CB ACK. Status: select $1D at $C0C2, read $C0C3.
+; Original SID index/data reads and writes remain intact.
 ; ============================================================================
             ORG $1800
 PUBLIC      JMP INSTALL_PAL
@@ -23,6 +25,10 @@ PUB_STOP    JMP STOP_TIMER
 IRQLOC      EQU $03FE
 SID_INDEX   EQU $C0C2
 SID_DATA    EQU $C0C3
+TMR_LOW     EQU $C0C8
+TMR_HIGH    EQU $C0C9
+TMR_CTRL    EQU $C0CA
+TMR_ACK     EQU $C0CB
 IRQ_ENTRY   EQU $9300
 PREV_IRQ    EQU $93F0
 SELECT_SAVE EQU $93F2
@@ -62,22 +68,14 @@ INSTALL
             LDA #$01
             STA ACTIVE
             ; Set timer reload while disabled.
-            LDA #$1C
-            STA SID_INDEX
             LDA #$00
-            STA SID_DATA
-            LDA #$1A
-            STA SID_INDEX
+            STA TMR_CTRL
             LDA PERIOD_LO
-            STA SID_DATA
-            LDA #$1B
-            STA SID_INDEX
+            STA TMR_LOW
             LDA PERIOD_HI
-            STA SID_DATA
-            LDA #$1C
-            STA SID_INDEX
+            STA TMR_HIGH
             LDA #$01
-            STA SID_DATA
+            STA TMR_CTRL
 ALREADY_INSTALLED
             PLP
             RTS
@@ -85,10 +83,8 @@ ALREADY_INSTALLED
 STOP_TIMER
             PHP
             SEI
-            LDA #$1C
-            STA SID_INDEX
             LDA #$00
-            STA SID_DATA
+            STA TMR_CTRL
             LDA ACTIVE
             BEQ STOP_DONE
             ; Do not dismantle a handler installed later by another owner.
@@ -125,7 +121,7 @@ IRQ_HANDLER
             AND #$01
             BEQ NOT_OUR_IRQ
             LDA #$01
-            STA SID_DATA
+            STA TMR_ACK
             LDA SELECT_SAVE
             STA SID_INDEX
             INC IRQCOUNT
