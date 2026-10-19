@@ -62,24 +62,19 @@ function makeDOSBinary(img,start=START){
  return Buffer.concat([header,img]);
 }
 function main(){
- // CI validation only. Do not publish or maintain any .bin file here.
- // Users assemble the authoritative .S in RetroAppleJS and can later
- // BSAVE its assembled bytes from the emulated Apple II.
+ // Validation only. Assembly is the published program: no binary artifacts.
  const p=assemble();
- const manifest={
+ console.log({
   source:path.relative(ROOT,SOURCE),
-  origin:'$8000',end:'
-if(require.main===module)main(process.argv[2]);
-module.exports={assemble,monitorListing,makeDOSBinary,main,SOURCE,START,LIMIT,MAGIC_AT};
-+(p.end-1).toString(16).toUpperCase(),
+  origin:'$8000',
+  end:'$'+(p.end-1).toString(16).toUpperCase(),
   assemblerEmittedBytes:p.player.length,
   contiguous:true,
   firstLoadCall:p.symbols.NATIVE_ENTRY,
   replayCall:p.symbols.BG_REPLAY,
   stopCall:p.symbols.BG_STOP,
   nextSubtuneCall:p.symbols.BG_NEXT_SUBTUNE
- };
- console.log(manifest);
+ });
 }
-if(require.main===module)main(process.argv[2]);
+if(require.main===module)main();
 module.exports={assemble,monitorListing,makeDOSBinary,main,SOURCE,START,LIMIT,MAGIC_AT};
