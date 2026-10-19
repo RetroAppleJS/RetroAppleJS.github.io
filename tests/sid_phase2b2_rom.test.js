@@ -11,9 +11,9 @@ function cpuCode(){const c=vm.createContext({console,Uint8Array,Math,Number,oEMU
 test('native Phase 2B.2 title reaches physical text screen through real Apple II monitor ROM',()=>{
  const rom=realRom(),code=build.assemble(),mem=new Uint8Array(0x10000);
  assert.equal(rom.length,0x3000);
- console.log('Native entry reference $92A1:', Array.from(code.runtime.subarray(0x2A1,0x2C1),x=>x.toString(16).toUpperCase().padStart(2,'0')).join(' '));
- mem.set(code.bootstrap,0x1C00);mem.set(code.runtime,0x9000);
- mem.set([0x53,0x49,0x44,0x46,0x00,0x60,0xE9,0x12],0x9E00);
+ console.log('Native entry reference $1000:', Array.from(code.frontend.subarray(0,32),x=>x.toString(16).toUpperCase().padStart(2,'0')).join(' '));
+ mem.set(code.frontend,0x1000);mem.set(code.bootstrap,0x1C00);mem.set(code.runtime,0x9000);
+ mem.set([0x53,0x49,0x44,0x46,0x00,0x60,0xE9,0x12],0x9430);
  // Apple II monitor output: CSWL -> COUT1; KSWL -> KEYIN.
  mem[0x36]=0xF0;mem[0x37]=0xFD;
  mem[0x38]=0x1B;mem[0x39]=0xFD;
@@ -43,10 +43,10 @@ test('native Phase 2B.2 title reaches physical text screen through real Apple II
 
 test('Applesoft CALL 7168 reaches native start prompt through actual ROM, not a synthetic RTS',()=>{
  const rom=realRom(),code=build.assemble(),mem=new Uint8Array(65536);
- mem.set(code.bootstrap,0x1C00);mem.set(code.runtime,0x9000);
+ mem.set(code.frontend,0x1000);mem.set(code.bootstrap,0x1C00);mem.set(code.runtime,0x9000);
  const song=fs.readFileSync(path.join(ROOT,'asm/AUDIO/SID2MB_prototype/Mr_Heli_original.sid'));
  mem.set(song,0x6000);
- mem.set([0x53,0x49,0x44,0x46,0x00,0x60,song.length&255,song.length>>>8],0x9E00);
+ mem.set([0x53,0x49,0x44,0x46,0x00,0x60,song.length&255,song.length>>>8],0x9430);
  const queue=Array.from('CALL 7168\r\r3\r',c=>c.charCodeAt(0)|0x80);
  let latch=0,calls=0,gotNative=false,gotPrompt=false,gotBasic=false,steps=0,pc=0,history=[];
  const Cpu=cpuCode();
@@ -86,7 +86,7 @@ test('real Apple II monitor byte-code paste preserves both assembled regions bef
  const rom=realRom(),code=build.assemble(),mem=new Uint8Array(65536);
  const song=fs.readFileSync(path.join(ROOT,'asm/AUDIO/SID2MB_prototype/Mr_Heli_original.sid'));
  mem.set(song,0x6000);
- mem.set([0x53,0x49,0x44,0x46,0x00,0x60,song.length&255,song.length>>>8],0x9E00);
+ mem.set([0x53,0x49,0x44,0x46,0x00,0x60,song.length&255,song.length>>>8],0x9430);
  function lines(data,start){
    let result=[];
    for(let i=0;i<data.length;i+=8)
@@ -95,6 +95,7 @@ test('real Apple II monitor byte-code paste preserves both assembled regions bef
    return result;
  }
  const script=['CALL-151',...lines(code.bootstrap,0x1C00),...lines(code.runtime,0x9000),
+     ...lines(code.frontend,0x1000),
      'E003G','CALL 7168',''].join('\r');
  const queue=Array.from(script,c=>c.charCodeAt(0)|0x80);
  let latch=0,atEntry=false,steps=0,pc=0;
@@ -117,11 +118,12 @@ test('real Apple II monitor byte-code paste preserves both assembled regions bef
    cpu.cycle();
  }
  const eq=(a,b)=>a.length===b.length&&a.every((v,i)=>v===b[i]);
- const low=mem.subarray(0x1C00,0x1C0C),high=mem.subarray(0x9000,0x9000+code.runtime.length);
+ const low=mem.subarray(0x1C00,0x1C0C),high=mem.subarray(0x9000,0x9000+code.runtime.length),
+       front=mem.subarray(0x1000,0x1000+code.frontend.length);
  assert.ok(atEntry,'Never reached native entry after Monitor byte-code paste: '+
    JSON.stringify({steps,pc:pc.toString(16),remaining:queue.length,
                    low:Array.from(low),high:Array.from(high.subarray(0,12))}));
- assert.ok(eq(low,code.bootstrap)&&eq(high,code.runtime),
+ assert.ok(eq(low,code.bootstrap)&&eq(high,code.runtime)&&eq(front,code.frontend),
    'Monitor paste data differed from assembled bytes; first high entry '+
     Array.from(mem.subarray(0x92A1,0x92C0)).map(x=>x.toString(16)).join(' '));
 });
