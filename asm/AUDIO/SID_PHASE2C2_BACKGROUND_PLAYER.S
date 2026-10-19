@@ -86,14 +86,7 @@ HAS_SID
             STA ERRORCD
             JMP BAD_START
 SID_SLOT4_OK
-            ; X = physical slot*16; change clock access operands once.
-            TXA
-            CLC
-            ADC #$82
-            STA CLOCKSEL+1
-            CLC
-            ADC #$01
-            STA CLOCKDATA+1
+            ; Background timer uses fixed slot-4 I/O, not foreground latch.
             JSR CHECK_PAYLOAD
             BCC PAYLOAD_OK
             ; Incomplete or corrupted transfer: never copy executable code.
@@ -367,47 +360,8 @@ LEFT_LOW
             ORA LEFT+1
             RTS
 
-READ_CLOCK
-            LDA #$1E
-            JSR SELECT_SID
-            JSR READ_DATA
-            STA NOWLO
-            LDA #$1F
-            JSR SELECT_SID
-            JSR READ_DATA
-            STA NOWHI
-            RTS
-SELECT_SID
-CLOCKSEL
-            STA $C0C2
-            RTS
-READ_DATA
-CLOCKDATA
-            LDA $C0C3
-            RTS
-ADVANCE_DEADLINE_INITIAL
-            LDA NOWLO
-            STA DEADLINELO
-            LDA NOWHI
-            STA DEADLINEHI
-ADVANCE_DEADLINE
-            CLC
-            LDA DEADLINELO
-            ADC PERIODLO
-            STA DEADLINELO
-            LDA DEADLINEHI
-            ADC PERIODHI
-            STA DEADLINEHI
-            RTS
-WAIT_DEADLINE
-            JSR READ_CLOCK
-            SEC
-            LDA NOWLO
-            SBC DEADLINELO
-            LDA NOWHI
-            SBC DEADLINEHI
-            BMI WAIT_DEADLINE
-            RTS
+; Foreground Phase 2B.2 busy-wait clock/deadline scheduler removed.
+; Native PLAY is now invoked exclusively by hardware-timed IRQ.
 
 SILENCE
             LDA #$00
@@ -422,10 +376,6 @@ ERRORCD     .BYTE $00
 ACTIVE      .BYTE $00
 PERIODLO    .BYTE $00
 PERIODHI    .BYTE $00
-NOWLO       .BYTE $00
-NOWHI       .BYTE $00
-DEADLINELO  .BYTE $00
-DEADLINEHI  .BYTE $00
 SUMLO       .BYTE $00
 SUMHI       .BYTE $00
 
