@@ -152,12 +152,16 @@ function nativeScenario({mode=50,quantum=1,runTicks=125000}={}){
  assert.equal(h.card.getTimerState().enabled,true);
  assert.equal(h.card.getTimerState().period,mode===50?20436:17030);
  cpu.setState({pc:0x8200,sp:0xFF,p:0x20,a:0,x:0,y:0});
+ let previousPC=-1;
  for(let i=0;i<runTicks;i++){
    const pc=cpu.watch().pc;
-   if(pc===0xFA40)monitorIRQs++;
-   if(pc===0x9300)trackIRQ++;
-   if(pc===0x8200)foregroundSteps++;
+   // CPU.watch().pc stays at the opcode address throughout cycle_delay.
+   // Count entry EDGES, not repeated observations of one instruction.
+   if(pc===0xFA40&&previousPC!==0xFA40)monitorIRQs++;
+   if(pc===0x9300&&previousPC!==0x9300)trackIRQ++;
+   if(pc===0x8200&&previousPC!==0x8200)foregroundSteps++;
    cpu.cycle();h.io.tick();
+   previousPC=pc;
  }
  const result={h,cpu,mem,p,trackIRQ,monitorIRQs,foregroundSteps};
  return result;
