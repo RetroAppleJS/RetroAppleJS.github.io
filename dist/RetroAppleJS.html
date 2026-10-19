@@ -53720,7 +53720,7 @@ function SIDCard()
 // Apple II native assembly (SID_PHASE2B2_NATIVE_PLAYER.S) owns all PSID logic.
 var SIDPSID=(function(){
     "use strict";
-    var MIN=0x2000,END=0x9000,RECORD=0x9E00,current=null;
+    var MIN=0x2000,END=0x9000,RECORD=0x9430,current=null;
     function fail(message){throw new Error(message);}
     function number(value){
         if(typeof value==="number"&&Number.isInteger(value))return value;
