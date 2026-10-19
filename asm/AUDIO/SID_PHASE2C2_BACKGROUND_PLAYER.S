@@ -430,6 +430,34 @@ TMR_CTRL     EQU $C0CA
 TMR_ACK      EQU $C0CB
 MUSICZP      EQU $9400
 IRQ_HANDLER_ADDR EQU $9300
+BG_INSTALL
+            LDA IRQLOC
+            STA BG_OLD_IRQ
+            LDA IRQLOC+1
+            STA BG_OLD_IRQ+1
+            ; INSTALL entered with PHP; SEI. Capture its saved I bit.
+            TSX
+            LDA $0103,X        ; saved P below JSR return address
+            AND #$04
+            STA BG_OLD_I
+            LDA #$00
+            STA BG_IRQ_LO
+            STA BG_IRQ_HI
+            STA TMR_CTRL
+            LDA PERIODLO
+            STA TMR_LOW
+            LDA PERIODHI
+            STA TMR_HIGH
+            LDA #<IRQ_HANDLER
+            STA IRQLOC
+            LDA #>IRQ_HANDLER
+            STA IRQLOC+1
+            LDA #$01
+            STA BG_ACTIVE
+            STA TMR_CTRL
+            RTS
+
+
             ORG $9300
 IRQ_HANDLER
             TXA
@@ -491,33 +519,6 @@ IRQ_FOREIGN
             JMP (BG_OLD_IRQ)
 
 ; Install/stop run in foreground before and after the music IRQ context.
-BG_INSTALL
-            LDA IRQLOC
-            STA BG_OLD_IRQ
-            LDA IRQLOC+1
-            STA BG_OLD_IRQ+1
-            ; INSTALL entered with PHP; SEI. Capture its saved I bit.
-            TSX
-            LDA $0103,X        ; saved P below JSR return address
-            AND #$04
-            STA BG_OLD_I
-            LDA #$00
-            STA BG_IRQ_LO
-            STA BG_IRQ_HI
-            STA TMR_CTRL
-            LDA PERIODLO
-            STA TMR_LOW
-            LDA PERIODHI
-            STA TMR_HIGH
-            LDA #<IRQ_HANDLER
-            STA IRQLOC
-            LDA #>IRQ_HANDLER
-            STA IRQLOC+1
-            LDA #$01
-            STA BG_ACTIVE
-            STA TMR_CTRL
-            RTS
-
 BG_STOP
             PHP
             SEI
