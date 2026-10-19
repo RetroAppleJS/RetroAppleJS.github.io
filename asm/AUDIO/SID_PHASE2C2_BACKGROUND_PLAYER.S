@@ -1,7 +1,9 @@
 ; Phase 2C.2 — resident background PSID v1/v2 music on the Apple II 6502.
 ; The Phase 2B.2 native header interpreter remains authoritative. IRQ playback
 ; uses the Phase 2C.1 CPU-clock SID timer, NOT foreground polling.
-; Native interactive start at CALL 7168. Raw PSID and 8-byte transfer record in RAM.
+; Native interactive first start at CALL 7168. Subsequent CALL 7168 after
+; STOP restarts the SAME selected subtune via resident INIT, no parser needed.
+; Raw PSID and 8-byte transfer record are needed only for first start.
 ; The low stub can be overwritten by original C64 code; high runtime remains.
 ; DOS-safe: transient parser $1000, core $9000-$93FF, music ZP $9400,
 ; foreground ZP buffer $9500. $9400 is descriptor BEFORE INIT, then
@@ -17,9 +19,9 @@ PUB_RESTART JMP $9006
 PUB_STATUS  JMP $9009
 
             ORG $9000
-START       JMP NATIVE_ENTRY
+START       JMP BG_DISPATCH
 STOP        JMP BG_STOP
-RESTART     JMP NATIVE_ENTRY
+RESTART     JMP NATIVE_ENTRY  ; force fresh interactive load after re-paste
 STATUS      JMP GET_STATUS
 
 DESC        EQU $9400
@@ -48,6 +50,7 @@ INSTALL
             JMP INSTALL_REJECT
 INSTALL_FRESH
             LDA #$00
+            STA BG_REPLAY_READY
             STA ERRORCD
             STA ACTIVE
             ; Descriptor magic "S2B1". Host builder already preflights file.
@@ -128,8 +131,14 @@ PAL_MODE
             STA PERIODHI
 INIT_SONG
             LDA DESC+14         ; zero-based subtune, original C64 INIT ABI
+            STA BG_SELECTED
+            JSR RUN_INIT
+            JMP INIT_COMPLETE
+RUN_INIT
 INIT_CALL
             JSR $FFFF
+            RTS
+INIT_COMPLETE
             ; Snapshot persistent music zero page into $9400 AFTER INIT.
             ; Descriptor and transfer record are no longer needed.
             LDX #$00
@@ -142,6 +151,7 @@ BG_SAVE_MUSIC_ZP
             ; From here, the foreground zero page is live again.
             JSR BG_INSTALL
             LDA #$01
+            STA BG_REPLAY_READY
             STA ACTIVE
             ; Unmask IRQ after restoring the initial status frame. STOP
             ; restores the previous CPU interrupt-disable state.
@@ -430,6 +440,51 @@ TMR_CTRL     EQU $C0CA
 TMR_ACK      EQU $C0CB
 MUSICZP      EQU $9400
 IRQ_HANDLER_ADDR EQU $9300
+; CALL 7168 enters the resident dispatcher. On the first run,
+; use the transient native PSID parser. After STOP, that parser and transfer
+; record may have been overwritten by the original C64 program/music ZP.
+; Replay therefore uses the saved INIT entrypoint and subtune (not a new
+; PSID upload), reinitializes C64 zero page, and arms the existing timer.
+BG_DISPATCH
+            LDA BG_REPLAY_READY
+            BNE BG_DISPATCH_REPLAY
+            JMP NATIVE_ENTRY
+BG_DISPATCH_REPLAY
+            JMP BG_REPLAY
+
+BG_REPLAY
+            PHP
+            SEI
+            LDA BG_ACTIVE
+            BEQ BG_REPLAY_IDLE
+            PLP
+            RTS
+BG_REPLAY_IDLE
+            ; The interrupted BASIC ZP must survive native INIT, just as
+            ; on the original first playback; SAVEZP is free while stopped.
+            JSR SAVE_APPLE_ZP
+            LDA #$00
+            LDX #$00
+BG_REPLAY_CLEAR
+            STA $0000,X
+            INX
+            BNE BG_REPLAY_CLEAR
+            LDA BG_SELECTED
+            JSR RUN_INIT
+            LDX #$00
+BG_REPLAY_SNAPSHOT
+            LDA $0000,X
+            STA MUSICZP,X
+            INX
+            BNE BG_REPLAY_SNAPSHOT
+            JSR RESTORE_APPLE_ZP
+            JSR BG_INSTALL
+            LDA #$01
+            STA ACTIVE
+            PLP
+            CLI
+            RTS
+
 BG_INSTALL
             LDA IRQLOC
             STA BG_OLD_IRQ
@@ -564,11 +619,15 @@ BG_ACTIVE        .BYTE $00
 BG_OLD_I         .BYTE $00
 BG_IRQ_LO        .BYTE $00
 BG_IRQ_HI        .BYTE $00
+BG_REPLAY_READY   .BYTE $00
+BG_SELECTED       .BYTE $00
 
 ; ------------------ Phase 2B.2 transient native front end -------------
 ; This UI/parser lives at $1000, and is allowed to be overwritten by
 ; original C64 payload only AFTER it JMPs into high resident INSTALL.
-; A second CALL after such a tune requires re-pasting the assembly image.
+; CALL 7168 replays the saved subtune without using this temporary menu.
+; For a DIFFERENT SID/subtune, re-paste assembly + raw PSID first, and
+; use the fresh-menu entry $9006 (CALL 36870).
             ORG $1000
 ; The Apple II Monitor ROM handles text entry. All prompts run before
 ; CLEAR_C64_ZP; the full original Apple zero page has already been saved.
