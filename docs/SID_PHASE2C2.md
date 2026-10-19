@@ -40,10 +40,29 @@ PSID transfer tool nor JavaScript synthesizer implements an alternate player.
    and acknowledges the timer, restores the previous IRQ vector and
    original I-bit, silences SID, and restores the public $1C00 jump table.
 
-The `$9400` music zero-page shadow overwrites the original descriptor and
-the `$9430` host transfer record **after INIT**. To start again, re-transfer
-the raw PSID; if the original C64 code overwrote the transient native parser
-at $1000–$17xx, **reassemble and re-paste** the entire native source too.
+### Restart the same song after STOP
+
+After `CALL 36867`, use **`CALL 7168` again**. The resident code now
+remembers the original INIT address and selected subtune, so it **restarts
+the same subtune from the beginning**, reinitializes music zero page,
+and installs the timer IRQ again. It does not resume at the exact
+musical position where STOP occurred (that would require PAUSE/RESUME).
+The 12 original music bytes at $1C00–$1C0B are preserved before STOP
+restores the public entry stub, then restored before the next INIT.
+
+The temporary parser ($1000+) and `SIDF` transfer record ($9430) are
+not used for this same-song replay. They may have been overwritten by
+the music. Restart works only if the original executable remains intact
+and compatible foreground software has not overwritten its RAM.
+
+To **select a different PSID file or subtune**, stop playback, reload the
+native assembly program if the temporary parser was overwritten, transfer
+the new raw PSID file, and invoke the forced interactive entry at
+`CALL 36870` (resident $9006). The browser remains a raw-file transfer
+tool; it never parses the PSID.
+
+`$9400` remains the music zero-page shadow after INIT; it also consumes
+the previous native descriptor and host transfer record.
 
 ## Memory map
 
@@ -58,9 +77,9 @@ at $1000–$17xx, **reassemble and re-paste** the entire native source too.
 | $9600+ | Reserved ProntoDOS area, untouched by native code |
 
 The initial native PSID descriptor and eight-byte transfer record are also
-at $9400/$9430 but only live before INIT. Because the music player reuses
-them as a private ZP shadow afterward, another music initialization
-requires a fresh upload.
+at $9400/$9430 but only live before INIT. Restarting the **same** subtune
+uses resident saved metadata instead of re-parsing these records. Loading
+a **new** file or subtune requires a fresh upload and a restored parser.
 
 ### IRQ sequence
 
