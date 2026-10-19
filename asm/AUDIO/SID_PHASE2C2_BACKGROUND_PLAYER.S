@@ -1,26 +1,56 @@
 ; Phase 2C.2 — resident background PSID v1/v2 music on the Apple II 6502.
 ; The Phase 2B.2 native header interpreter remains authoritative. IRQ playback
 ; uses the Phase 2C.1 CPU-clock SID timer, NOT foreground polling.
-; Native interactive start at CALL 7168. Raw PSID and 8-byte transfer record in RAM.
-; The low stub can be overwritten by original C64 code; high runtime remains.
-; DOS-safe: transient parser $1000, core $9000-$93FF, music ZP $9400,
-; foreground ZP buffer $9500. $9400 is descriptor BEFORE INIT, then
+; First-time native header parsing enters at NATIVE_ENTRY ($8000).
+; Resident labels BG_REPLAY, BG_STOP and BG_NEXT_SUBTUNE are actual CALL
+; targets (printed by the assembler); there is NO $1C00 jump table.
+; Raw PSID and its 8-byte host record are needed only for first start.
+; After STOP, BG_REPLAY re-executes the saved original INIT from resident RAM.
+; DOS-safe single-load player image starts $8000, continues through $93xx,
+; with zero-filled assembly ORG gaps (one contiguous BLOAD from $8000).
+; The parser at $8000 is never overwritten by permitted music targets.
+; The music ZP shadow is $9400, foreground backup $9500.
+; $9400 is descriptor BEFORE INIT, then
 ; becomes the C64 music ZP shadow. Transfer record $9430 also becomes shadow.
 ; ProntoDOS $9600+ is never touched by our handler. Slot 4 is required.
 ; Original executable payload is copied, not relocated or translated.
 ; 6502 itself parses original PSID header, checks sizes, prompts for subtune.
 ; Host only transfers raw bytes and optional SIDF start/length record.
-            ORG $1C00
-PUBLIC      JMP $9000
-PUB_STOP    JMP $9003
-PUB_RESTART JMP $9006
-PUB_STATUS  JMP $9009
-
-            ORG $9000
-START       JMP NATIVE_ENTRY
-STOP        JMP BG_STOP
-RESTART     JMP NATIVE_ENTRY
-STATUS      JMP GET_STATUS
+            ORG $8800
+; Direct, callable resident entry: once installed, no lower jump table needed.
+BG_REPLAY
+            PHP
+            SEI
+            LDA BG_REPLAY_READY
+            BEQ BG_REPLAY_EXIT
+            LDA BG_ACTIVE
+            BEQ BG_REPLAY_IDLE
+BG_REPLAY_EXIT
+            PLP
+            RTS
+BG_REPLAY_IDLE
+            JSR SAVE_APPLE_ZP
+            LDA #$00
+            LDX #$00
+BG_REPLAY_CLEAR
+            STA $0000,X
+            INX
+            BNE BG_REPLAY_CLEAR
+            LDA BG_SELECTED
+            JSR RUN_INIT
+            LDX #$00
+BG_REPLAY_SNAPSHOT
+            LDA $0000,X
+            STA MUSICZP,X
+            INX
+            BNE BG_REPLAY_SNAPSHOT
+            JSR RESTORE_APPLE_ZP
+            JSR BG_INSTALL
+            LDA #$01
+            STA ACTIVE
+            PLP
+            CLI
+            RTS
 
 DESC        EQU $9400
 RECORD      EQU $9430
@@ -48,6 +78,7 @@ INSTALL
             JMP INSTALL_REJECT
 INSTALL_FRESH
             LDA #$00
+            STA BG_REPLAY_READY
             STA ERRORCD
             STA ACTIVE
             ; Descriptor magic "S2B1". Host builder already preflights file.
@@ -83,14 +114,7 @@ HAS_SID
             STA ERRORCD
             JMP BAD_START
 SID_SLOT4_OK
-            ; X = physical slot*16; change clock access operands once.
-            TXA
-            CLC
-            ADC #$82
-            STA CLOCKSEL+1
-            CLC
-            ADC #$01
-            STA CLOCKDATA+1
+            ; Background timer uses fixed slot-4 I/O, not foreground latch.
             JSR CHECK_PAYLOAD
             BCC PAYLOAD_OK
             ; Incomplete or corrupted transfer: never copy executable code.
@@ -98,7 +122,9 @@ SID_SLOT4_OK
             STA ERRORCD
             JMP BAD_START
 PAYLOAD_OK
+            JSR BG_SAVE_SONG_METADATA
             JSR COPY_EXEC
+            ; No $1C00 trampoline or restoration touches original C64 bytes.
             ; C64 zero-page environment while native music runs.
             LDA #$00
             LDX #$00
@@ -128,8 +154,14 @@ PAL_MODE
             STA PERIODHI
 INIT_SONG
             LDA DESC+14         ; zero-based subtune, original C64 INIT ABI
+            STA BG_SELECTED
+            JSR RUN_INIT
+            JMP INIT_COMPLETE
+RUN_INIT
 INIT_CALL
             JSR $FFFF
+            RTS
+INIT_COMPLETE
             ; Snapshot persistent music zero page into $9400 AFTER INIT.
             ; Descriptor and transfer record are no longer needed.
             LDX #$00
@@ -142,6 +174,7 @@ BG_SAVE_MUSIC_ZP
             ; From here, the foreground zero page is live again.
             JSR BG_INSTALL
             LDA #$01
+            STA BG_REPLAY_READY
             STA ACTIVE
             ; Unmask IRQ after restoring the initial status frame. STOP
             ; restores the previous CPU interrupt-disable state.
@@ -353,47 +386,8 @@ LEFT_LOW
             ORA LEFT+1
             RTS
 
-READ_CLOCK
-            LDA #$1E
-            JSR SELECT_SID
-            JSR READ_DATA
-            STA NOWLO
-            LDA #$1F
-            JSR SELECT_SID
-            JSR READ_DATA
-            STA NOWHI
-            RTS
-SELECT_SID
-CLOCKSEL
-            STA $C0C2
-            RTS
-READ_DATA
-CLOCKDATA
-            LDA $C0C3
-            RTS
-ADVANCE_DEADLINE_INITIAL
-            LDA NOWLO
-            STA DEADLINELO
-            LDA NOWHI
-            STA DEADLINEHI
-ADVANCE_DEADLINE
-            CLC
-            LDA DEADLINELO
-            ADC PERIODLO
-            STA DEADLINELO
-            LDA DEADLINEHI
-            ADC PERIODHI
-            STA DEADLINEHI
-            RTS
-WAIT_DEADLINE
-            JSR READ_CLOCK
-            SEC
-            LDA NOWLO
-            SBC DEADLINELO
-            LDA NOWHI
-            SBC DEADLINEHI
-            BMI WAIT_DEADLINE
-            RTS
+; Foreground Phase 2B.2 busy-wait clock/deadline scheduler removed.
+; Native PLAY is now invoked exclusively by hardware-timed IRQ.
 
 SILENCE
             LDA #$00
@@ -408,10 +402,6 @@ ERRORCD     .BYTE $00
 ACTIVE      .BYTE $00
 PERIODLO    .BYTE $00
 PERIODHI    .BYTE $00
-NOWLO       .BYTE $00
-NOWHI       .BYTE $00
-DEADLINELO  .BYTE $00
-DEADLINEHI  .BYTE $00
 SUMLO       .BYTE $00
 SUMHI       .BYTE $00
 
@@ -430,6 +420,117 @@ TMR_CTRL     EQU $C0CA
 TMR_ACK      EQU $C0CB
 MUSICZP      EQU $9400
 IRQ_HANDLER_ADDR EQU $9300
+; Preserve the selected PSID tune count and 32-bit speed bitmap before
+; the native parser is overwritten by the original executable. The bitmap
+; allows subtune changes without reloading or re-parsing PSID headers.
+BG_SAVE_SONG_METADATA
+            LDA SONGS
+            STA BG_SONGS
+            LDA SONGS+1
+            STA BG_SONGS+1
+            LDA VERSION
+            STA BG_VERSION
+            LDA FILEBASE
+            STA SRCZ
+            LDA FILEBASE+1
+            STA SRCZ+1
+            LDY #$12
+            LDX #$00
+BG_SPEED_COPY
+            LDA (SRCZ),Y
+            STA BG_SPEED,X
+            INY
+            INX
+            CPX #$04
+            BNE BG_SPEED_COPY
+            RTS
+
+; Advance one subtune (wrapping to the first), then restart original INIT.
+; If the destination subtune requires CIA scheduling, refuse the switch.
+; No transient parser or PSID transfer record is involved.
+BG_NEXT_SUBTUNE
+            PHP
+            SEI
+            LDA BG_REPLAY_READY
+            BNE BG_NEXT_READY
+            JMP BG_NEXT_EXIT
+BG_NEXT_READY
+            LDA BG_SELECTED
+            CLC
+            ADC #$01
+            STA BG_CANDIDATE
+            LDA #$00
+            ADC #$00
+            STA BG_CANDIDATE+1
+            LDA BG_CANDIDATE+1
+            CMP BG_SONGS+1
+            BCC BG_NEXT_CHECK_SPEED
+            BNE BG_NEXT_WRAP
+            LDA BG_CANDIDATE
+            CMP BG_SONGS
+            BCC BG_NEXT_CHECK_SPEED
+BG_NEXT_WRAP
+            LDA #$00
+            STA BG_CANDIDATE
+            STA BG_CANDIDATE+1
+BG_NEXT_CHECK_SPEED
+            ; PSID v1 repeats bit 0..31; v2 uses bit 31 for tune >= 32.
+            LDA BG_CANDIDATE+1
+            BNE BG_NEXT_BIT31
+            LDA BG_CANDIDATE
+            CMP #$20
+            BCC BG_NEXT_SMALL
+BG_NEXT_BIT31
+            LDA BG_VERSION
+            CMP #$01
+            BEQ BG_NEXT_SMALL
+            LDA #$1F
+            BNE BG_NEXT_SPEEDIDX
+BG_NEXT_SMALL
+            LDA BG_CANDIDATE
+            AND #$1F
+BG_NEXT_SPEEDIDX
+            STA BG_BIT_INDEX
+            LSR
+            LSR
+            LSR
+            TAX
+            LDA #$03
+            SEC
+            SBC BG_BIT_INDEX
+            ; Correct byte index is 3 - (bitindex / 8), not bitindex.
+            ; Recompute from X.
+            TXA
+            STA BG_BYTE_INDEX
+            LDA #$03
+            SEC
+            SBC BG_BYTE_INDEX
+            TAX
+            LDA BG_SPEED,X
+            STA BG_SPEED_BYTE
+            LDA BG_BIT_INDEX
+            AND #$07
+            TAX
+            LDA #$01
+BG_NEXT_SHIFT
+            CPX #$00
+            BEQ BG_NEXT_MASK
+            ASL
+            DEX
+            JMP BG_NEXT_SHIFT
+BG_NEXT_MASK
+            AND BG_SPEED_BYTE
+            BNE BG_NEXT_EXIT
+            ; Stop old frame service before switching INIT subtune.
+            JSR BG_STOP
+            LDA BG_CANDIDATE
+            STA BG_SELECTED
+            PLP
+            JMP BG_REPLAY
+BG_NEXT_EXIT
+            PLP
+            RTS
+
 BG_INSTALL
             LDA IRQLOC
             STA BG_OLD_IRQ
@@ -540,7 +641,7 @@ BG_STOP
             STA BG_ACTIVE
             STA ACTIVE
             JSR SILENCE
-            JSR RESTORE_PUBLIC
+            ; No low-memory public entry to restore; music owns $1C00.
             ; Preserve previous IRQ mask, as in the resident RTC example.
             LDA BG_OLD_I
             BEQ BG_STOP_CLI
@@ -564,12 +665,22 @@ BG_ACTIVE        .BYTE $00
 BG_OLD_I         .BYTE $00
 BG_IRQ_LO        .BYTE $00
 BG_IRQ_HI        .BYTE $00
+BG_REPLAY_READY   .BYTE $00
+BG_SELECTED      .BYTE $00
+BG_SONGS         .BYTE $00,$00
+BG_VERSION       .BYTE $00
+BG_SPEED         .BYTE $00,$00,$00,$00
+BG_CANDIDATE     .BYTE $00,$00
+BG_BIT_INDEX     .BYTE $00
+BG_BYTE_INDEX    .BYTE $00
+BG_SPEED_BYTE    .BYTE $00
 
 ; ------------------ Phase 2B.2 transient native front end -------------
 ; This UI/parser lives at $1000, and is allowed to be overwritten by
 ; original C64 payload only AFTER it JMPs into high resident INSTALL.
-; A second CALL after such a tune requires re-pasting the assembly image.
-            ORG $1000
+; Native parser remains at $8000 for repeated interactive entry.
+; Raw PSID files are capped to 8 KiB at $6000–$7FFF.
+            ORG $8000
 ; The Apple II Monitor ROM handles text entry. All prompts run before
 ; CLEAR_C64_ZP; the full original Apple zero page has already been saved.
 ; This file is fully authoritative: the host never parses the PSID header.
@@ -661,13 +772,13 @@ LONG_SKIP_4
             LDA VALUE16+1
             STA FILELEN+1
 CHECK_FILE
-            ; Source range: $2000 <= start, end exclusive <= $9000.
+            ; Phase 2C: maximum 8 KiB raw PSID, staged at $6000-$7FFF.
             LDA FILEBASE+1
-            CMP #$20
+            CMP #$60
             BCS LONG_SKIP_5
             JMP INPUT_ERROR
 LONG_SKIP_5
-            CMP #$90
+            CMP #$80
             BCC LONG_SKIP_6
             JMP INPUT_ERROR
 LONG_SKIP_6
@@ -690,7 +801,7 @@ FILE_LENGTH_VALID
             JMP INPUT_ERROR
 LONG_SKIP_8
             LDA FILEEND+1
-            CMP #$90
+            CMP #$80
             BCC FILE_RANGE_OK
             BEQ LONG_SKIP_9
             JMP INPUT_ERROR
@@ -1085,10 +1196,11 @@ LONG_SKIP_40
             JMP INPUT_ERROR
 LONG_SKIP_41
 EXEC_RANGE_OK
-            ; DOS-safe mode: reject any target intersecting RAM $9000 or above.
-; The range $9000-$95FF houses our engine; ProntoDOS starts at $9600.
+            ; DOS-safe: PSID executable must end at/below $8000.
+; Permanent parser begins at $8000; native IRQ code uses $9000+, and
+; ProntoDOS starts at $9600. Never overwrite the permanent player.
             LDA EXECEND+1
-            CMP #$90
+            CMP #$80
             BCC READ_ENTRIES
             BEQ DOS_TOP_EQUAL
             JMP INPUT_ERROR
@@ -1437,4 +1549,8 @@ SELECT_TEXT .BYTE $53,$55,$42,$54,$55,$4E,$45,$20,$28,$44,$45,$43,$49,$4D,$41,$4
 READY_TEXT .BYTE $0D,$50,$4C,$41,$59,$49,$4E,$47,$20,$2D,$20,$50,$52,$45,$53,$53,$20,$41,$4E,$59,$20,$4B,$45,$59,$20,$54,$4F,$20,$53,$54,$4F,$50,$0D,$00
 CIA_TEXT .BYTE $0D,$43,$49,$41,$20,$54,$49,$4D,$49,$4E,$47,$20,$49,$53,$20,$4E,$4F,$54,$20,$53,$55,$50,$50,$4F,$52,$54,$45,$44,$0D,$00
 INVALID_TEXT .BYTE $0D,$49,$4E,$56,$41,$4C,$49,$44,$20,$4F,$52,$20,$55,$4E,$53,$55,$50,$50,$4F,$52,$54,$45,$44,$20,$50,$53,$49,$44,$20,$2F,$20,$4D,$45,$4D,$4F,$52,$59,$20,$52,$41,$4E,$47,$45,$0D,$00
+            ; 2C.2 single-BLOAD image identification, not part of PSID.
+            ; Loader detects this marker and constrains uploads to 8 KiB.
+            ORG $8FF0
+PLAYER_MAGIC .BYTE $53,$32,$43,$32  ; ASCII S2C2
             .END

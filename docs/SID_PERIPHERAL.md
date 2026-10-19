@@ -305,25 +305,33 @@ GitHub CI artifacts generated from the same `.S` source.
 See **[Phase 2B.2 native player guide](SID_PHASE2B2.md)** for the memory
 map, eight-byte transfer record, supported formats and limitations.
 
-## Phase 2C.2 — Native background PSID playback (experimental)
+## Phase 2C.2 — One-BLOAD native background PSID playback
 
-The Phase 2C.1 CPU-clock timer now drives the original PSID PLAY routine
-from a **native, resident 6502 IRQ handler**, while compatible foreground
-Apple II programs continue to run. All PSID metadata and subtune selection
-remain in authoritative assembly source.
+The native interactive PSID interpreter and IRQ music engine now form **one
+contiguous binary** starting at **$8000**, emitted from the authoritative
+`asm/AUDIO/SID_PHASE2C2_BACKGROUND_PLAYER.S`. No language card, low-RAM
+jump table, multiple binary loads or external assembly tool are required.
 
-Use `asm/AUDIO/SID_PHASE2C2_BACKGROUND_PLAYER.S` in the built-in
-RetroAppleJS Assembler: **Assemble → Tools → to emulator → Paste**.
-The file provides separate `ORG` segments at $1000, $1C00 and $9000.
-Mount SID in **slot 4**, transfer a raw .sid through the existing PSID
-file window, and use `CALL 7168` to select a subtune and start background
-music. To stop from Applesoft, use **`CALL 36867`** (resident $9003),
-not the potentially overwritten low-memory entry.
+Import the generated **SID_Phase2C2_player.bin** (or the DOS 3.3
+binary-file contents with the load-address/length header) into a ProntoDOS
+binary file named `SIDPLAYER`, then enter:
 
-**Caution:** This is controlled foreground coexistence, not general
-memory virtualization. The music and foreground code may have conflicting
-RAM requirements, and Apple II Monitor IRQ handling modifies ZP $45.
-Do not assume arbitrary Applesoft, DOS or C64 music compatibility. See
-**[Phase 2C.2 native background player guide](SID_PHASE2C2.md)** for the
-DOS-safe memory layout, IRQ state switching, first acceptance tests and
-limitations.
+```text
+BLOAD SIDPLAYER
+```
+
+The entire player loads in one operation. The file-transfer popup recognises
+the installed `S2C2` marker at $8FF0 and only allows raw PSIDs fitting
+within **$6000–$7FFF** (8 KiB). The permanent parser is at $8000 and
+cannot be overwritten by compatible PSID executable destinations.
+
+Start the player with `CALL 32768`. The assembler-generated
+`SID_Phase2C2_manifest.json` lists the **direct resident CALL addresses**
+for STOP, replay of the selected subtune, and next-subtune selection.
+These addresses are derived from assembly labels; the old CALL 36867
+address is **not guaranteed** to remain valid.
+
+The original PSID INIT/PLAY and dual zero-page IRQ switching are unchanged.
+This remains experimental coexistence, not full C64 memory virtualization.
+Read **[Phase 2C.2 one-BLOAD instructions](SID_PHASE2C2.md)** for disk
+import formats, memory reservations and compatibility restrictions.
