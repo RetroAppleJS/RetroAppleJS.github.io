@@ -328,6 +328,27 @@ function Apple2IO(vid,hostHardware)
      * without rescanning attachments or testing method types.
      */
     var tickCallbacks = [];
+    // Clocked expansion cards may need instruction-independent IRQ edges.
+    // Explicit owner registration avoids rescanning slots every CPU tick.
+    var peripheralTickCallbacks = [];
+    this.registerPeripheralTick=function(owner,callback)
+    {
+        if(!owner || typeof(callback)!=="function")return false;
+        for(var i=0;i<peripheralTickCallbacks.length;i++)
+            if(peripheralTickCallbacks[i].owner===owner){
+                peripheralTickCallbacks[i].callback=callback;
+                return true;
+            }
+        peripheralTickCallbacks.push({owner:owner,callback:callback});
+        return true;
+    };
+    this.unregisterPeripheralTick=function(owner)
+    {
+        var count=peripheralTickCallbacks.length;
+        for(var i=count-1;i>=0;i--)
+            if(peripheralTickCallbacks[i].owner===owner)peripheralTickCallbacks.splice(i,1);
+        return count!==peripheralTickCallbacks.length;
+    };
     var cycleCallbacks = [];
     // Audio-only subframe callbacks: unlike io.cycle(), these never update
     // mounted cards, video, or unrelated CPU-slice peripherals.
@@ -1564,6 +1585,8 @@ function mergeActionMap(dst,src)
     {
         clockTicks++;
         if(hostHardware && typeof(hostHardware.tick)==="function") hostHardware.tick();
+        for(var i=0;i<peripheralTickCallbacks.length;i++)
+            peripheralTickCallbacks[i].callback(clockTicks);
         for(var i=0;i<tickCallbacks.length;i++)
             tickCallbacks[i](n);
     }
