@@ -16,7 +16,7 @@
 ; Original executable payload is copied, not relocated or translated.
 ; 6502 itself parses original PSID header, checks sizes, prompts for subtune.
 ; Host only transfers raw bytes and optional SIDF start/length record.
-            ORG $9000
+            ORG $8800
 ; Direct, callable resident entry: once installed, no lower jump table needed.
 BG_REPLAY
             PHP
