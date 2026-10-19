@@ -7,13 +7,18 @@ build descriptors, run a substitute player, or inject playback commands.
 ## What to do
 
 1. Mount the SID peripheral in any Apple II slot 1–7 with audio enabled.
-2. Load the **assembled native player images** from the Phase 2B.2 build:
-   - `SID_Phase2B2_bootstrap.bin` at **$1C00**
-   - `SID_Phase2B2_runtime.bin` at **$9000**
-   These are distinct RAM segments, generated exclusively from
-   `asm/AUDIO/SID_PHASE2B2_NATIVE_PLAYER.S`. Matching Apple II monitor
-   listings are generated for either segment. The native player needs a
-   disposable Apple II session; never execute alongside unsaved BASIC work.
+2. Open the **RetroAppleJS Assembler**, load
+   `asm/AUDIO/SID_PHASE2B2_NATIVE_PLAYER.S`, select the RetroAppleJS
+   dialect, then **Assemble → Tools → to emulator → Paste**.
+   The generated monitor byte-code transfers **three separate assembly
+   sections** automatically: transient front-end **$1000–$17CA**, public
+   entry jumps **$1C00–$1C0B**, and resident playback code **$9000–$92A0**.
+   `ORG` directives preserve these distinct addresses without filling gaps.
+   No Node installation or manual binary download is required.
+   The CI build also supplies optional binary and Monitor-format listings
+   for all three sections.
+   Use a disposable Apple II session: the parser overlaps possible Applesoft
+   program RAM and original C64 music will often overwrite the parser.
 3. In **Tools → Peripheral controls → SID → PSID**, choose a local raw
    `.sid` file and a hexadecimal start address in the **$2000–$8FFF**
    staging window. The transfer tool checks `start + file_length <= $9000`
@@ -41,7 +46,7 @@ Do **not** expect arbitrary C64 programs to work. This executes raw original
 
 ## Transfer record (not a PSID descriptor)
 
-A successful browser upload creates precisely eight bytes at **$9E00**:
+A successful browser upload creates precisely eight bytes at **$9430**:
 
 | Offset | Contents |
 |---|---|
@@ -61,21 +66,42 @@ The Apple II therefore computes:
 This is the length of data copied to its **original declared C64 address**.
 The music's *duration* is independent and is not used to determine copying.
 
-## Native memory contract
+## Native memory contract — compatible with ProntoDOS
+
+ProntoDOS begins at **$9600**. The previous monolithic Phase 2B.2 code
+reached $9A68 and wrote its descriptor, transfer record and zero-page
+backup into ProntoDOS memory. That layout must **not** be used with DOS.
+
+The revised assembler source uses two modules. The user-interface parser
+is transient: it runs at low RAM, prepares the descriptor and hands
+control to the high-memory playback core. The music executable is copied
+**only after the handoff**. It may then overwrite the transient parser.
 
 | Address | Role |
 |---|---|
-| $1C00–$1C0B | Public 12-byte jump table, reconstructed after playback |
-| $2000–$8FFF | Complete raw PSID file staging: 28 KiB including header |
-| $9000–$9CFF | Resident native assembly code and variables (builder checks end) |
-| $9D00–$9D11 | Native-generated 18-byte descriptor for existing playback core |
-| $9E00–$9E07 | Raw-transfer size/location record |
-| $9F00–$9FFF | Original Apple II zero-page backup |
+| $1000–$17CA | Transient PSID v1/v2 parser and interactive prompts |
+| $1C00–$1C0B | Public jump table, reconstructed after playback |
+| $2000–$8FFF | Unmodified raw PSID file staging, 28 KiB |
+| $9000–$92A0 | Resident original playback engine |
+| $9400–$9411 | Native-generated 18-byte descriptor |
+| $9430–$9437 | Host transfer start address and file length |
+| $9500–$95FF | Apple II zero-page backup |
+| $9600–$BFFF | ProntoDOS RAM: **not written by player or transfer utility** |
 
-The copy target must be entirely in $0C00–$BFFF and must **not** intersect
-$9000–$9FFF. Header processing and keyboard/ROM I/O run before music zero
-page is initialised. The original PLAY loop continues using the Phase 2B.1
-deadline logic and unmodified SID $D400–$D41F bus writes.
+The executable destination must lie in **$0C00–$8FFF**, wholly below
+$9000. The source PSID file can continue to reside anywhere within its
+staging window, regardless of its C64 executable destination.
+The original PLAY routine remains at its declared absolute address.
+
+**Replay limitation:** A SID executable that overwrites the transient
+parser at $1000–$17CA destroys the player menu. Stopping still returns
+to Applesoft through the resident high-memory engine, but another
+`CALL 7168` is **not safe** until the full native assembly has been
+reassembled/pasted again. The raw PSID can remain staged if its bytes
+have not been overwritten by the tune's executable or side effects.
+
+Avoid DOS variants or MAXFILES settings whose buffers extend below
+$9600; their actual RAM-reservation boundary must be checked separately.
 
 ## Compatibility and safety
 
@@ -99,7 +125,7 @@ The new **single source of truth** is
 `asm/AUDIO/SID_PHASE2B2_NATIVE_PLAYER.S`. The project CI assembles it with
 the existing `ASM_core.js` (RetroAppleJS dialect), verifies every emitted
 byte fits outside protected memory, and runs native emulator regressions.
-The build-time helper `tools/SID_Phase2B2_build.js` emits the two binary
+The build-time helper `tools/SID_Phase2B2_build.js` emits the three native binary
 images, their monitor listings and a memory manifest; CI can publish these
 as downloadable artifacts. You do not need to install Node.
 

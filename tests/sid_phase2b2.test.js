@@ -22,7 +22,7 @@ test('host PSID tool transfers raw bytes unchanged and publishes start and exact
   assert.deepEqual({start:out.start,length:out.length,end:out.end},
     {start:0x6000,length:7,end:0x6006});
   assert.deepEqual(Array.from(hw.bytes.subarray(0x6000,0x6007)),Array.from(file));
-  assert.deepEqual(Array.from(hw.bytes.subarray(0x9E00,0x9E08)),
+  assert.deepEqual(Array.from(hw.bytes.subarray(0x9430,0x9438)),
     [0x53,0x49,0x44,0x46,0x00,0x60,7,0]);
   assert.equal(hw.bytes[0xA000],0x4B);
   assert.equal(hw.count(),1);

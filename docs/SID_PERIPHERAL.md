@@ -288,15 +288,19 @@ PSID window transfers a complete raw `.sid` file into available contiguous
 Apple II RAM and records only the file start address and exact byte count.
 It does not parse the file, choose subtunes or control playback.
 
-Load the assembled Phase 2B.2 player binaries at `$1C00` and `$9000`,
-transfer a PSID through **Tools → Peripheral controls → SID → PSID**,
-then type `CALL 7168` at the Applesoft prompt. The **Apple II itself**
+Load the authoritative `asm/AUDIO/SID_PHASE2B2_NATIVE_PLAYER.S` into
+the RetroAppleJS Assembler and use **Assemble → Tools → to emulator → Paste**.
+The three `ORG` segments are installed at **$1000** (transient parser),
+**$1C00** (public jump table) and **$9000** (playback core), all below
+ProntoDOS's **$9600** boundary. Transfer a PSID through
+**Tools → Peripheral controls → SID → PSID**, then type `CALL 7168`
+at the Applesoft prompt. The **Apple II itself**
 requests or confirms the file's start address, reads PSID v1/v2 metadata,
 displays the number of subtunes, requests the desired subtune, validates
-the executable payload, and runs its original INIT/PLAY code. Any key
-stops playback. No Node installation is needed: native player binary
-images and monitor listings are produced as GitHub CI artifacts from
-`asm/AUDIO/SID_PHASE2B2_NATIVE_PLAYER.S`.
+the executable payload, and runs its original INIT/PLAY code. Any key stops playback. Tunes that overwrite the transient low-RAM parser
+require re-pasting the complete assembly before the next playback.
+No Node installation is needed; binaries and Monitor listings are optional
+GitHub CI artifacts generated from the same `.S` source.
 
 See **[Phase 2B.2 native player guide](SID_PHASE2B2.md)** for the memory
 map, eight-byte transfer record, supported formats and limitations.
