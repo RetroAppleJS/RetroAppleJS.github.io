@@ -41,6 +41,12 @@ function v1(){
  b.writeUInt16BE(1,4);b.writeUInt16BE(0x76,6);return b;
 }
 function run(tune,{rate=50,subtune='3',stage=0x6000,foregroundTicks=170000}={}){
+ if(rate===60){
+  tune=Buffer.from(tune);
+  // PSID v2 clock bits 2..3 of flags ($76-$77): NTSC is binary 10.
+  assert.equal(tune.readUInt16BE(4),2,'NTSC test needs PSID v2 flags');
+  tune[0x77]=(tune[0x77]&~0x0c)|0x08;
+ }
  const ctx=contexts(),asm=builder.assemble(),mem=ctx.memory;
  mem.set(asm.frontend,0x1000);mem.set(asm.bootstrap,0x1C00);
  mem.set(asm.runtime,0x9000);mem.set(tune,stage);
@@ -120,8 +126,9 @@ test('v2 Mr Heli plays via native IRQ while a foreground Apple II program contin
  assert.ok(r.foregroundSteps>1000,'foreground instructions should progress');
  assert.ok(r.monitorIRQs>=4&&r.irqEntries>=4,'hardware IRQ service did not run');
  assert.ok(r.playStarts.length>=4,'original PLAY did not run in timer handler');
- assert.equal(r.mem[r.asm.symbols.BG_IRQ_LO]+
-              256*r.mem[r.asm.symbols.BG_IRQ_HI],r.playStarts.length);
+ const completed=r.mem[r.asm.symbols.BG_IRQ_LO]+256*r.mem[r.asm.symbols.BG_IRQ_HI];
+ assert.ok(completed===r.playStarts.length||completed===r.playStarts.length-1,
+  'last PLAY entry may still be executing when the test window ends');
  assert.ok(r.sidWrites.length>50);
  assert.deepEqual(Array.from(r.mem.subarray(0,0x45)),Array.from(r.installedZP.subarray(0,0x45)));
  assert.equal(r.ctx.card.getTimerState().missed,0);
@@ -149,4 +156,13 @@ test('native STOP disables timer, restores previous IRQ vector and silences SID'
  assert.equal(r.mem[r.asm.symbols.BG_ACTIVE],0);
  assert.equal(r.sidWrites.at(-1)[0],0xD418);
  assert.equal(r.sidWrites.at(-1)[1],0);
+});
+
+test('native IRQ background player uses 60 Hz timer for NTSC PSID v2 without blocking foreground',()=>{
+ const r=run(psid,{rate:60,foregroundTicks:125000});
+ assert.equal(r.ctx.card.getTimerState().period,17030);
+ assert.ok(r.foregroundSteps>600);
+ assert.ok(r.playStarts.length>=5);
+ assert.ok(r.sidWrites.length>40);
+ assert.equal(r.ctx.card.getTimerState().missed,0);
 });
