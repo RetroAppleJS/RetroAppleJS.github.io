@@ -26,7 +26,7 @@ function assemble(){
   throw Error('Missing $8FF0 installed-player marker');
  if(a.symtab.NATIVE_ENTRY!==START)throw Error('First-load entry is not $8000');
  for(const [name,min,max] of [['BG_REPLAY',0x8800,0x9000],
-                              ['BG_STOP',0x8800,0x9000],
+                              ['BG_STOP',0x9300,0x93E0],
                               ['BG_NEXT_SUBTUNE',0x8800,0x9000],
                               ['IRQ_HANDLER',0x9300,0x93E0],
                               ['BG_OLD_IRQ',0x93E0,0x9400]]){
