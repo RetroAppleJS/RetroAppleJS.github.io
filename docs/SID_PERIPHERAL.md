@@ -318,7 +318,11 @@ The file provides separate `ORG` segments at $1000, $1C00 and $9000.
 Mount SID in **slot 4**, transfer a raw .sid through the existing PSID
 file window, and use `CALL 7168` to select a subtune and start background
 music. To stop from Applesoft, use **`CALL 36867`** (resident $9003),
-not the potentially overwritten low-memory entry.
+not the potentially overwritten low-memory entry. With the resident replay
+revision, **`CALL 7168` after STOP restarts the same selected subtune from
+the beginning**, without reloading the PSID or invoking the overwritten
+parser. To select a different tune, reload the native parser and raw file,
+then use `CALL 36870` (fresh interactive entry at $9006).
 
 **Caution:** This is controlled foreground coexistence, not general
 memory virtualization. The music and foreground code may have conflicting
