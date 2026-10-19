@@ -923,9 +923,12 @@ EXEC_RANGE_OK
             LDA EXECEND+1
             CMP #$90
             BCC READ_ENTRIES
-            BNE INPUT_ERROR
+            BEQ DOS_TOP_EQUAL
+            JMP INPUT_ERROR
+DOS_TOP_EQUAL
             LDA EXECEND
-            BNE INPUT_ERROR
+            BEQ READ_ENTRIES
+            JMP INPUT_ERROR
 READ_ENTRIES
             LDY #$0A
             LDA (SRCZ),Y
