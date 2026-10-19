@@ -23,8 +23,10 @@ function SIDCard()
     // high byte from the *same* snapshot. Does not alter SID chip registers.
     var clockLatch=0;
     // Emulator SID-card timer extension (not a MOS 6581/8580 register).
-    // Indexed I/O: $1A reload low, $1B high, $1C enable, $1D IRQ/ACK.
-    // The $1E/$1F clock-latch ABI and $00-$19 SID registers are untouched.
+    // Write-only SlotIO $8/$9/$A/$B: reload low/high, enable, ACK.
+    // All existing SlotIO reads (POT/OSC/ENV, telemetry, clock latch) and
+    // indexed original SID register reads/writes remain backward-compatible.
+    // Indexed selector $1D (unused MOS SID address) reads IRQ pending/status.
     var timerPeriod=20436,timerEnabled=false,timerPending=false;
     var timerDeadline=0,timerFired=0,timerMissed=0;
     var timerSource=null;
@@ -215,9 +217,6 @@ function SIDCard()
         if(r===1)return status();
         if(r===2)return regIndex;
         if(r===3){
-            if(regIndex===0x1A)return timerPeriod&255;
-            if(regIndex===0x1B)return (timerPeriod>>>8)&255;
-            if(regIndex===0x1C)return timerEnabled?1:0;
             if(regIndex===0x1D)return (timerPending?1:0)|(timerEnabled?2:0);
             if(regIndex===0x1E){
                 var sampled=timestamp(ctx)&0xFFFF;
@@ -243,18 +242,18 @@ function SIDCard()
         if(ctx?.bRO===true)return false;
         var r=Number(addr)&15,v=Number(data)&255;
         if(r===2){regIndex=v&31;return true;}
-        if(r===3){
-            if(regIndex===0x1A){if(!timerEnabled)timerPeriod=(timerPeriod&0xFF00)|v;return true;}
-            if(regIndex===0x1B){if(!timerEnabled)timerPeriod=(timerPeriod&0x00FF)|(v<<8);return true;}
-            if(regIndex===0x1C){
-                if(v&1)timerStart(timestamp(ctx));
-                else timerStop();
-                return true;
-            }
-            if(regIndex===0x1D){if(v&1)timerIRQ(false);return true;}
-            if(regIndex===0x1E||regIndex===0x1F)return true;
-            return writeToSID(regIndex,v,0xD400+regIndex,ctx,false);
+        if(r===3)return writeToSID(regIndex,v,0xD400+regIndex,ctx,false);
+        // New timer extension is WRITE-ONLY on previously unused slot writes:
+        // $C0n8 reload low, $C0n9 high, $C0nA control, $C0nB ACK.
+        // All existing read operations at these offsets remain SID reads.
+        if(r===8){if(!timerEnabled)timerPeriod=(timerPeriod&0xFF00)|v;return true;}
+        if(r===9){if(!timerEnabled)timerPeriod=(timerPeriod&0x00FF)|(v<<8);return true;}
+        if(r===10){
+            if(v&1)timerStart(timestamp(ctx));
+            else timerStop();
+            return true;
         }
+        if(r===11){if(v&1)timerIRQ(false);return true;}
         if(r===4){this.setModel((v&1)?8580:6581);return true;}
         if(r===5){this.setClock((v&1)?1022727:985248);return true;}
         if(r===6){this.setEnabled(!!(v&1));return true;}
