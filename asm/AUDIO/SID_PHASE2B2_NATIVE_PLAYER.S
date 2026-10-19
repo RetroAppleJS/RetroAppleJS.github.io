@@ -1,7 +1,8 @@
 ; Phase 2B.2 — native, interactive PSID v1/v2 interpreter on native Apple II 6502.
 ; Native interactive start at CALL 7168. Raw PSID and 8-byte transfer record in RAM.
 ; The low stub can be overwritten by original C64 code; high runtime remains.
-; Runtime $9000-$9CFF, metadata $9D00, transfer record $9E00, ZP backup $9F00.
+; DOS-safe layout: transient UI $1000+, execution core $9000+, metadata $9400,
+; transfer record $9430, Apple ZP backup $9500. No bytes >= $9600.
 ; Original executable payload is copied, not relocated or translated.
 ; 6502 itself parses original PSID header, checks sizes, prompts for subtune.
 ; Host only transfers raw bytes and optional SIDF start/length record.
@@ -17,9 +18,9 @@ STOP        JMP SILENCE
 RESTART     JMP NATIVE_ENTRY
 STATUS      JMP GET_STATUS
 
-DESC        EQU $9D00
-RECORD      EQU $9E00
-SAVEZP      EQU $9F00
+DESC        EQU $9400
+RECORD      EQU $9430
+SAVEZP      EQU $9500
 SRCZ        EQU $F0
 DSTZ        EQU $F2
 LEFT        EQU $F4
@@ -397,7 +398,11 @@ DEADLINEHI  .BYTE $00
 SUMLO       .BYTE $00
 SUMHI       .BYTE $00
 
-; ------------------ Phase 2B.2 native front end ---------------------
+; ------------------ Phase 2B.2 transient native front end -------------
+; This UI/parser lives at $1000, and is allowed to be overwritten by
+; original C64 payload only AFTER it JMPs into high resident INSTALL.
+; A second CALL after such a tune requires re-pasting the assembly image.
+            ORG $1000
 ; The Apple II Monitor ROM handles text entry. All prompts run before
 ; CLEAR_C64_ZP; the full original Apple zero page has already been saved.
 ; This file is fully authoritative: the host never parses the PSID header.
@@ -913,15 +918,14 @@ LONG_SKIP_40
             JMP INPUT_ERROR
 LONG_SKIP_41
 EXEC_RANGE_OK
-            ; protected resident player $9000-$9FFF.
-            LDA DESC+7
-            CMP #$A0
-            BCS READ_ENTRIES
+            ; DOS-safe mode: reject any target intersecting RAM $9000 or above.
+; The range $9000-$95FF houses our engine; ProntoDOS starts at $9600.
             LDA EXECEND+1
             CMP #$90
-            BCC LONG_SKIP_42
-            JMP INPUT_ERROR
-LONG_SKIP_42
+            BCC READ_ENTRIES
+            BNE INPUT_ERROR
+            LDA EXECEND
+            BNE INPUT_ERROR
 READ_ENTRIES
             LDY #$0A
             LDA (SRCZ),Y
