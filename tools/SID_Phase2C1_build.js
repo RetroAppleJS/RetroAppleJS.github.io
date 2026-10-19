@@ -20,7 +20,45 @@ function assemble(){
      if(seen.has(x.pc))throw Error('Duplicate emitted byte '+x.pc.toString(16));
      seen.add(x.pc);buffer[x.pc-start]=x.val;
    }
-   if(seen.size!==buffer.length)throw Error('Gap in assembled segment at $'+start.toString(16));
+   // A deliberate ORG gap separates the resident code from its fixed $93F0
+   // state block. Binary image gaps are zero-filled; monitor listings and
+   // assembler byte-code still use their original absolute locations.
+   if(n===0&&seen.size!==buffer.length)
+     throw Error('Gap in installer segment at 
+   result[n===0?'installer':'resident']=buffer;
+   result[n===0?'installerEnd':'residentEnd']=end;
+ }
+ if(bytes.length!==result.installer.length+result.resident.length)
+     throw Error('Assembly emitted bytes outside allowed $1800/$9300 segments');
+ if(result.installerEnd>0x1C00||result.residentEnd>0x9400)
+     throw Error('Phase 2C.1 crossed protected RAM boundary');
+ return result;
+}
+function format(bytes,base){
+ let out=['CALL-151'];
+ for(let i=0;i<bytes.length;i+=8)
+  out.push((base+i).toString(16).toUpperCase().padStart(4,'0')+': '+
+   Array.from(bytes.subarray(i,i+8),x=>x.toString(16).toUpperCase().padStart(2,'0')).join(' '));
+ return out.join('\n')+'\n';
+}
+function main(outDir=path.join(ROOT,'tools/music')){
+ let p=assemble();
+ fs.mkdirSync(outDir,{recursive:true});
+ for(const [part,base] of [['installer',0x1800],['resident',0x9300]]){
+  fs.writeFileSync(path.join(outDir,'SID_Phase2C1_'+part+'.bin'),p[part]);
+  fs.writeFileSync(path.join(outDir,'SID_Phase2C1_'+part+'_monitor.txt'),format(p[part],base));
+ }
+ const manifest={source:path.relative(ROOT,p.source),
+  installer:'$1800–$'+(p.installerEnd-1).toString(16).toUpperCase(),
+  resident:'$9300–$'+(p.residentEnd-1).toString(16).toUpperCase(),
+  call50Hz:6144,call60Hz:6147,callStop:6150,
+  irqCountLow:0x93F3,irqCountHigh:0x93F4,softIRQVector:0x03FE};
+ fs.writeFileSync(path.join(outDir,'SID_Phase2C1_manifest.json'),JSON.stringify(manifest,null,2)+'\n');
+ console.log(manifest);
+}
+if(require.main===module)main(process.argv[2]);
+module.exports={assemble,format,main,SOURCE};
++start.toString(16));
    result[n===0?'installer':'resident']=buffer;
    result[n===0?'installerEnd':'residentEnd']=end;
  }
