@@ -168,3 +168,47 @@ test('native IRQ background player uses 60 Hz timer for NTSC PSID v2 without blo
  assert.ok(r.sidWrites.length>40);
  assert.equal(r.ctx.card.getTimerState().missed,0);
 });
+
+test('CALL 7168 restarts saved subtune after STOP without temporary parser or SIDF record',()=>{
+ const r=run(psid,{foregroundTicks:83000});
+ const {cpu,mem,asm,ctx}=r;
+ assert.ok(r.playStarts.length>=3);
+ // The original Mr Heli executable overlaps the $1000 native menu.
+ // Music ZP also replaced the original SIDF descriptor record.
+ assert.notDeepEqual(Array.from(mem.subarray(0x1000,0x1010)),
+                     Array.from(asm.frontend.subarray(0,16)),
+  'the low native parser should no longer be available');
+ assert.notDeepEqual(Array.from(mem.subarray(0x9430,0x9434)),
+                     [0x53,0x49,0x44,0x46],
+  'the original SIDF transfer record was deliberately overwritten');
+ function callAt(address,expectedText){
+  mem[0x1FE]=0xFF;mem[0x1FF]=0xFE;
+  cpu.setState({pc:address,sp:0xFD,p:0x24,a:0,x:0,y:0});
+  let reached=false,initSeen=false;
+  for(let i=0;i<400000;i++){
+   const pc=cpu.watch().pc;
+   if(pc===0x1EF3)initSeen=true;
+   if(pc===0xFF00){reached=true;break;}
+   cpu.cycle();ctx.io.tick();
+  }
+  assert.ok(reached,expectedText+' did not return to BASIC');
+  return {initSeen};
+ }
+ callAt(0x9003,'STOP');
+ assert.equal(ctx.card.getTimerState().enabled,false);
+ assert.equal(mem[asm.symbols.BG_ACTIVE],0);
+ assert.equal(mem[asm.symbols.BG_REPLAY_READY],1);
+ assert.equal(mem[asm.symbols.BG_SELECTED],2,'original subtune 3 saved as zero-based 2');
+ const before=r.sidWrites.length;
+ const restarted=callAt(0x1C00,'CALL 7168 replay');
+ assert.equal(restarted.initSeen,true,'resident replay must execute original INIT again');
+ assert.equal(mem[asm.symbols.BG_ACTIVE],1);
+ assert.equal(ctx.card.getTimerState().enabled,true);
+ assert.equal(cpu.watch().p&4,0);
+ cpu.setState({pc:0x8200,sp:0xFF,p:cpu.watch().p,a:0,x:0,y:0});
+ const count=mem[asm.symbols.BG_IRQ_LO]+256*mem[asm.symbols.BG_IRQ_HI];
+ for(let i=0;i<65000;i++){cpu.cycle();ctx.io.tick();}
+ const now=mem[asm.symbols.BG_IRQ_LO]+256*mem[asm.symbols.BG_IRQ_HI];
+ assert.ok(now>count,'IRQ playback resumes after native resident reinitialization');
+ assert.ok(r.sidWrites.length>before,'PLAY writes continue after restart');
+});
