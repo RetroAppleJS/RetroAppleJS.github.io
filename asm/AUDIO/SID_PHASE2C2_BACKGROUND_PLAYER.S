@@ -1,10 +1,11 @@
 ; Phase 2C.2 — resident background PSID v1/v2 music on the Apple II 6502.
 ; The Phase 2B.2 native header interpreter remains authoritative. IRQ playback
 ; uses the Phase 2C.1 CPU-clock SID timer, NOT foreground polling.
-; Native interactive first start at CALL 7168. Subsequent CALL 7168 after
-; STOP restarts the SAME selected subtune via resident INIT, no parser needed.
-; Raw PSID and 8-byte transfer record are needed only for first start.
-; The low stub can be overwritten by original C64 code; high runtime remains.
+; First-time native header parsing enters directly at NATIVE_ENTRY ($1000).
+; Resident labels BG_REPLAY, BG_STOP and BG_NEXT_SUBTUNE are actual CALL
+; targets (printed by the assembler); there is NO $1C00 jump table.
+; Raw PSID and its 8-byte host record are needed only for first start.
+; After STOP, BG_REPLAY re-executes the saved original INIT from resident RAM.
 ; DOS-safe: transient parser $1000, core $9000-$93FF, music ZP $9400,
 ; foreground ZP buffer $9500. $9400 is descriptor BEFORE INIT, then
 ; becomes the C64 music ZP shadow. Transfer record $9430 also becomes shadow.
@@ -12,17 +13,41 @@
 ; Original executable payload is copied, not relocated or translated.
 ; 6502 itself parses original PSID header, checks sizes, prompts for subtune.
 ; Host only transfers raw bytes and optional SIDF start/length record.
-            ORG $1C00
-PUBLIC      JMP $9000
-PUB_STOP    JMP $9003
-PUB_RESTART JMP $9006
-PUB_STATUS  JMP $9009
-
             ORG $9000
-START       JMP BG_DISPATCH
-STOP        JMP BG_STOP
-RESTART     JMP NATIVE_ENTRY  ; force fresh interactive load after re-paste
-STATUS      JMP GET_STATUS
+; Direct, callable resident entry: once installed, no lower jump table needed.
+BG_REPLAY
+            PHP
+            SEI
+            LDA BG_REPLAY_READY
+            BEQ BG_REPLAY_EXIT
+            LDA BG_ACTIVE
+            BEQ BG_REPLAY_IDLE
+BG_REPLAY_EXIT
+            PLP
+            RTS
+BG_REPLAY_IDLE
+            JSR SAVE_APPLE_ZP
+            LDA #$00
+            LDX #$00
+BG_REPLAY_CLEAR
+            STA $0000,X
+            INX
+            BNE BG_REPLAY_CLEAR
+            LDA BG_SELECTED
+            JSR RUN_INIT
+            LDX #$00
+BG_REPLAY_SNAPSHOT
+            LDA $0000,X
+            STA MUSICZP,X
+            INX
+            BNE BG_REPLAY_SNAPSHOT
+            JSR RESTORE_APPLE_ZP
+            JSR BG_INSTALL
+            LDA #$01
+            STA ACTIVE
+            PLP
+            CLI
+            RTS
 
 DESC        EQU $9400
 RECORD      EQU $9430
@@ -94,11 +119,9 @@ SID_SLOT4_OK
             STA ERRORCD
             JMP BAD_START
 PAYLOAD_OK
+            JSR BG_SAVE_SONG_METADATA
             JSR COPY_EXEC
-            ; Preserve $1C00–$1C0B from the original C64 executable.
-            ; STOP later restores the low public jump table at this address,
-            ; so native replay must reconstruct the music bytes before INIT.
-            JSR BG_SAVE_LOW_BYTES
+            ; No $1C00 trampoline or restoration touches original C64 bytes.
             ; C64 zero-page environment while native music runs.
             LDA #$00
             LDX #$00
@@ -394,69 +417,113 @@ TMR_CTRL     EQU $C0CA
 TMR_ACK      EQU $C0CB
 MUSICZP      EQU $9400
 IRQ_HANDLER_ADDR EQU $9300
-; CALL 7168 enters the resident dispatcher. On the first run,
-; use the transient native PSID parser. After STOP, that parser and transfer
-; record may have been overwritten by the original C64 program/music ZP.
-; Replay therefore uses the saved INIT entrypoint and subtune (not a new
-; PSID upload), reinitializes C64 zero page, and arms the existing timer.
-BG_DISPATCH
-            LDA BG_REPLAY_READY
-            BNE BG_DISPATCH_REPLAY
-            JMP NATIVE_ENTRY
-BG_DISPATCH_REPLAY
-            JMP BG_REPLAY
+; Preserve the selected PSID tune count and 32-bit speed bitmap before
+; the native parser is overwritten by the original executable. The bitmap
+; allows subtune changes without reloading or re-parsing PSID headers.
+BG_SAVE_SONG_METADATA
+            LDA SONGS
+            STA BG_SONGS
+            LDA SONGS+1
+            STA BG_SONGS+1
+            LDA VERSION
+            STA BG_VERSION
+            LDA FILEBASE
+            STA SRCZ
+            LDA FILEBASE+1
+            STA SRCZ+1
+            LDY #$12
+            LDX #$00
+BG_SPEED_COPY
+            LDA (SRCZ),Y
+            STA BG_SPEED,X
+            INY
+            INX
+            CPX #$04
+            BNE BG_SPEED_COPY
+            RTS
 
-BG_REPLAY
+; Advance one subtune (wrapping to the first), then restart original INIT.
+; If the destination subtune requires CIA scheduling, refuse the switch.
+; No transient parser or PSID transfer record is involved.
+BG_NEXT_SUBTUNE
             PHP
             SEI
-            LDA BG_ACTIVE
-            BEQ BG_REPLAY_IDLE
-            PLP
-            RTS
-BG_REPLAY_IDLE
-            ; The interrupted BASIC ZP must survive native INIT, just as
-            ; on the original first playback; SAVEZP is free while stopped.
-            JSR SAVE_APPLE_ZP
-            JSR BG_RESTORE_LOW_BYTES
-            LDA #$00
-            LDX #$00
-BG_REPLAY_CLEAR
-            STA $0000,X
-            INX
-            BNE BG_REPLAY_CLEAR
+            LDA BG_REPLAY_READY
+            BEQ BG_NEXT_EXIT
             LDA BG_SELECTED
-            JSR RUN_INIT
-            LDX #$00
-BG_REPLAY_SNAPSHOT
-            LDA $0000,X
-            STA MUSICZP,X
-            INX
-            BNE BG_REPLAY_SNAPSHOT
-            JSR RESTORE_APPLE_ZP
-            JSR BG_INSTALL
+            CLC
+            ADC #$01
+            STA BG_CANDIDATE
+            LDA #$00
+            ADC #$00
+            STA BG_CANDIDATE+1
+            LDA BG_CANDIDATE+1
+            CMP BG_SONGS+1
+            BCC BG_NEXT_CHECK_SPEED
+            BNE BG_NEXT_WRAP
+            LDA BG_CANDIDATE
+            CMP BG_SONGS
+            BCC BG_NEXT_CHECK_SPEED
+BG_NEXT_WRAP
+            LDA #$00
+            STA BG_CANDIDATE
+            STA BG_CANDIDATE+1
+BG_NEXT_CHECK_SPEED
+            ; PSID v1 repeats bit 0..31; v2 uses bit 31 for tune >= 32.
+            LDA BG_CANDIDATE+1
+            BNE BG_NEXT_BIT31
+            LDA BG_CANDIDATE
+            CMP #$20
+            BCC BG_NEXT_SMALL
+BG_NEXT_BIT31
+            LDA BG_VERSION
+            CMP #$01
+            BEQ BG_NEXT_SMALL
+            LDA #$1F
+            BNE BG_NEXT_SPEEDIDX
+BG_NEXT_SMALL
+            LDA BG_CANDIDATE
+            AND #$1F
+BG_NEXT_SPEEDIDX
+            STA BG_BIT_INDEX
+            LSR
+            LSR
+            LSR
+            TAX
+            LDA #$03
+            SEC
+            SBC BG_BIT_INDEX
+            ; Correct byte index is 3 - (bitindex / 8), not bitindex.
+            ; Recompute from X.
+            TXA
+            STA BG_BYTE_INDEX
+            LDA #$03
+            SEC
+            SBC BG_BYTE_INDEX
+            TAX
+            LDA BG_SPEED,X
+            STA BG_SPEED_BYTE
+            LDA BG_BIT_INDEX
+            AND #$07
+            TAX
             LDA #$01
-            STA ACTIVE
+BG_NEXT_SHIFT
+            CPX #$00
+            BEQ BG_NEXT_MASK
+            ASL
+            DEX
+            JMP BG_NEXT_SHIFT
+BG_NEXT_MASK
+            AND BG_SPEED_BYTE
+            BNE BG_NEXT_EXIT
+            ; Stop old frame service before switching INIT subtune.
+            JSR BG_STOP
+            LDA BG_CANDIDATE
+            STA BG_SELECTED
             PLP
-            CLI
-            RTS
-
-BG_SAVE_LOW_BYTES
-            LDX #$00
-BG_LOW_SAVE_LOOP
-            LDA $1C00,X
-            STA BG_LOW_BYTES,X
-            INX
-            CPX #$0C
-            BNE BG_LOW_SAVE_LOOP
-            RTS
-BG_RESTORE_LOW_BYTES
-            LDX #$00
-BG_LOW_RESTORE_LOOP
-            LDA BG_LOW_BYTES,X
-            STA $1C00,X
-            INX
-            CPX #$0C
-            BNE BG_LOW_RESTORE_LOOP
+            JMP BG_REPLAY
+BG_NEXT_EXIT
+            PLP
             RTS
 
 BG_INSTALL
@@ -569,7 +636,7 @@ BG_STOP
             STA BG_ACTIVE
             STA ACTIVE
             JSR SILENCE
-            JSR RESTORE_PUBLIC
+            ; No low-memory public entry to restore; music owns $1C00.
             ; Preserve previous IRQ mask, as in the resident RTC example.
             LDA BG_OLD_I
             BEQ BG_STOP_CLI
@@ -594,16 +661,21 @@ BG_OLD_I         .BYTE $00
 BG_IRQ_LO        .BYTE $00
 BG_IRQ_HI        .BYTE $00
 BG_REPLAY_READY   .BYTE $00
-BG_SELECTED       .BYTE $00
-BG_LOW_BYTES      .BYTE $00,$00,$00,$00,$00,$00
-                  .BYTE $00,$00,$00,$00,$00,$00
+BG_SELECTED      .BYTE $00
+BG_SONGS         .BYTE $00,$00
+BG_VERSION       .BYTE $00
+BG_SPEED         .BYTE $00,$00,$00,$00
+BG_CANDIDATE     .BYTE $00,$00
+BG_BIT_INDEX     .BYTE $00
+BG_BYTE_INDEX    .BYTE $00
+BG_SPEED_BYTE    .BYTE $00
 
 ; ------------------ Phase 2B.2 transient native front end -------------
 ; This UI/parser lives at $1000, and is allowed to be overwritten by
 ; original C64 payload only AFTER it JMPs into high resident INSTALL.
-; CALL 7168 replays the saved subtune without using this temporary menu.
-; For a DIFFERENT SID/subtune, re-paste assembly + raw PSID first, and
-; use the fresh-menu entry $9006 (CALL 36870).
+ ; Native entry at $1000 is used ONLY for a first load.
+; For a different original PSID file, re-paste the assembly and transfer
+; the new raw file. For the same tune use resident BG_NEXT_SUBTUNE.
             ORG $1000
 ; The Apple II Monitor ROM handles text entry. All prompts run before
 ; CLEAR_C64_ZP; the full original Apple zero page has already been saved.
