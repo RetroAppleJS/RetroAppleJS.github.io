@@ -1,13 +1,16 @@
 ; Phase 2C.2 — resident background PSID v1/v2 music on the Apple II 6502.
 ; The Phase 2B.2 native header interpreter remains authoritative. IRQ playback
 ; uses the Phase 2C.1 CPU-clock SID timer, NOT foreground polling.
-; First-time native header parsing enters directly at NATIVE_ENTRY ($1000).
+; First-time native header parsing enters at NATIVE_ENTRY ($8000).
 ; Resident labels BG_REPLAY, BG_STOP and BG_NEXT_SUBTUNE are actual CALL
 ; targets (printed by the assembler); there is NO $1C00 jump table.
 ; Raw PSID and its 8-byte host record are needed only for first start.
 ; After STOP, BG_REPLAY re-executes the saved original INIT from resident RAM.
-; DOS-safe: transient parser $1000, core $9000-$93FF, music ZP $9400,
-; foreground ZP buffer $9500. $9400 is descriptor BEFORE INIT, then
+; DOS-safe single-load player image starts $8000, continues through $93xx,
+; with zero-filled assembly ORG gaps (one contiguous BLOAD from $8000).
+; The parser at $8000 is never overwritten by permitted music targets.
+; The music ZP shadow is $9400, foreground backup $9500.
+; $9400 is descriptor BEFORE INIT, then
 ; becomes the C64 music ZP shadow. Transfer record $9430 also becomes shadow.
 ; ProntoDOS $9600+ is never touched by our handler. Slot 4 is required.
 ; Original executable payload is copied, not relocated or translated.
@@ -673,10 +676,9 @@ BG_SPEED_BYTE    .BYTE $00
 ; ------------------ Phase 2B.2 transient native front end -------------
 ; This UI/parser lives at $1000, and is allowed to be overwritten by
 ; original C64 payload only AFTER it JMPs into high resident INSTALL.
- ; Native entry at $1000 is used ONLY for a first load.
-; For a different original PSID file, re-paste the assembly and transfer
-; the new raw file. For the same tune use resident BG_NEXT_SUBTUNE.
-            ORG $1000
+; Native parser remains at $8000 for repeated interactive entry.
+; Raw PSID files are capped to 8 KiB at $6000–$7FFF.
+            ORG $8000
 ; The Apple II Monitor ROM handles text entry. All prompts run before
 ; CLEAR_C64_ZP; the full original Apple zero page has already been saved.
 ; This file is fully authoritative: the host never parses the PSID header.
@@ -1192,10 +1194,11 @@ LONG_SKIP_40
             JMP INPUT_ERROR
 LONG_SKIP_41
 EXEC_RANGE_OK
-            ; DOS-safe mode: reject any target intersecting RAM $9000 or above.
-; The range $9000-$95FF houses our engine; ProntoDOS starts at $9600.
+            ; DOS-safe: PSID executable must end at/below $8000.
+; Permanent parser begins at $8000; native IRQ code uses $9000+, and
+; ProntoDOS starts at $9600. Never overwrite the permanent player.
             LDA EXECEND+1
-            CMP #$90
+            CMP #$80
             BCC READ_ENTRIES
             BEQ DOS_TOP_EQUAL
             JMP INPUT_ERROR
