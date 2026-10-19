@@ -56,28 +56,19 @@ function main(args=process.argv.slice(2)){
         fs.writeFileSync(path.join(destination,'SID_Phase2B2_'+part+'_monitor.txt'),
             listing(player[part],origin));
     }
-    const manifest={source:path.relative(ROOT,SOURCE),entry:'$1C00',
-        runtime:'$9000–};
+    const manifest={
+        source:path.relative(ROOT,SOURCE),
+        entry:'$1C00',
+        frontend:'$1000–$'+(player.frontendEnd-1).toString(16).toUpperCase(),
+        runtime:'$9000–$'+(player.highEnd-1).toString(16).toUpperCase(),
+        transferRecord:'$9430',
+        zeroPageBackup:'$9500',
+        runtimeBytes:player.runtime.length,
+        frontendBytes:player.frontend.length
+    };
     fs.writeFileSync(path.join(destination,'SID_Phase2B2_manifest.json'),
         JSON.stringify(manifest,null,2)+'\n');
     console.log(manifest);
 }
 if(require.main===module)main();
 module.exports={assemble,listing,main,SOURCE,FRONT,FRONT_LIMIT,STUB,RUNTIME,UPPER,TRANSFER,BACKUP};
-+(player.highEnd-1).toString(16).toUpperCase(),
-        frontend:'$1000–};
-    fs.writeFileSync(path.join(destination,'SID_Phase2B2_manifest.json'),
-        JSON.stringify(manifest,null,2)+'\n');
-    console.log(manifest);
-}
-if(require.main===module)main();
-module.exports={assemble,listing,main,SOURCE,STUB,RUNTIME,UPPER,TRANSFER,BACKUP};
-+(player.frontendEnd-1).toString(16).toUpperCase(),
-        transferRecord:'$9430',zeroPageBackup:'$9500',
-        runtimeBytes:player.runtime.length,frontendBytes:player.frontend.length};
-    fs.writeFileSync(path.join(destination,'SID_Phase2B2_manifest.json'),
-        JSON.stringify(manifest,null,2)+'\n');
-    console.log(manifest);
-}
-if(require.main===module)main();
-module.exports={assemble,listing,main,SOURCE,STUB,RUNTIME,UPPER,TRANSFER,BACKUP};
