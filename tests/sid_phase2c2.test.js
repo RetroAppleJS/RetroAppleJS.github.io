@@ -173,6 +173,7 @@ test('CALL 7168 restarts saved subtune after STOP without temporary parser or SI
  const r=run(psid,{foregroundTicks:83000});
  const {cpu,mem,asm,ctx}=r;
  assert.ok(r.playStarts.length>=3);
+ const musicLow=Array.from(mem.subarray(0x1C00,0x1C0C));
  // The original Mr Heli executable overlaps the $1000 native menu.
  // Music ZP also replaced the original SIDF descriptor record.
  assert.notDeepEqual(Array.from(mem.subarray(0x1000,0x1010)),
@@ -195,6 +196,8 @@ test('CALL 7168 restarts saved subtune after STOP without temporary parser or SI
   return {initSeen};
  }
  callAt(0x9003,'STOP');
+ assert.deepEqual(Array.from(mem.subarray(0x1C00,0x1C0C)),
+  Array.from(asm.bootstrap), 'STOP restored the public jump table');
  assert.equal(ctx.card.getTimerState().enabled,false);
  assert.equal(mem[asm.symbols.BG_ACTIVE],0);
  assert.equal(mem[asm.symbols.BG_REPLAY_READY],1);
@@ -202,6 +205,8 @@ test('CALL 7168 restarts saved subtune after STOP without temporary parser or SI
  const before=r.sidWrites.length;
  const restarted=callAt(0x1C00,'CALL 7168 replay');
  assert.equal(restarted.initSeen,true,'resident replay must execute original INIT again');
+ assert.deepEqual(Array.from(mem.subarray(0x1C00,0x1C0C)),musicLow,
+  'replay must restore $1C00 original music bytes before calling INIT');
  assert.equal(mem[asm.symbols.BG_ACTIVE],1);
  assert.equal(ctx.card.getTimerState().enabled,true);
  assert.equal(cpu.watch().p&4,0);
