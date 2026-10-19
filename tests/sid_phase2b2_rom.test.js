@@ -14,8 +14,10 @@ test('native Phase 2B.2 title reaches physical text screen through real Apple II
  console.log('Native entry reference $1000:', Array.from(code.frontend.subarray(0,32),x=>x.toString(16).toUpperCase().padStart(2,'0')).join(' '));
  mem.set(code.frontend,0x1000);mem.set(code.bootstrap,0x1C00);mem.set(code.runtime,0x9000);
  mem.set([0x53,0x49,0x44,0x46,0x00,0x60,0xE9,0x12],0x9430);
- // Apple II monitor output: CSWL -> COUT1; KSWL -> KEYIN.
- mem[0x36]=0xF0;mem[0x37]=0xFD;
+ // Simulated ProntoDOS COUT intercept at $9700, chaining to Monitor COUT1.
+ // Native SID code must preserve this region and still show a live prompt.
+ mem.set([0x4C,0xF0,0xFD],0x9700);
+ mem[0x36]=0x00;mem[0x37]=0x97;
  mem[0x38]=0x1B;mem[0x39]=0xFD;
  mem[0x20]=0;mem[0x21]=40;mem[0x22]=0;mem[0x23]=24;
  mem[0x24]=0;mem[0x25]=0;
@@ -38,6 +40,7 @@ test('native Phase 2B.2 title reaches physical text screen through real Apple II
  }
  const chars=Array.from(mem.subarray(0x400,0x800),b=>String.fromCharCode(b&0x7f)).join('');
  assert.ok(getln,'Expected to reach Apple II monitor GETLN; cout '+cout+' PC $'+cpu.watch().pc.toString(16)+' trace '+trace.join(' '));
+ assert.deepEqual(Array.from(mem.subarray(0x9700,0x9703)),[0x4C,0xF0,0xFD],'ProntoDOS output hook overwritten');
  assert.ok(chars.includes('SID PLAYER'),'Title absent from physical text page; COUT calls '+cout+' screen '+JSON.stringify(chars.slice(0,160))+' trace '+trace.join(' ')+' output '+JSON.stringify(output.join(''))+' vectors '+Array.from(mem.subarray(0x36,0x3A)).join(','));
 });
 
