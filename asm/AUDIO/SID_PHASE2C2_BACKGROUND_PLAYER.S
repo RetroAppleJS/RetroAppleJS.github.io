@@ -102,6 +102,10 @@ SID_SLOT4_OK
             JMP BAD_START
 PAYLOAD_OK
             JSR COPY_EXEC
+            ; Preserve $1C00–$1C0B from the original C64 executable.
+            ; STOP later restores the low public jump table at this address,
+            ; so native replay must reconstruct the music bytes before INIT.
+            JSR BG_SAVE_LOW_BYTES
             ; C64 zero-page environment while native music runs.
             LDA #$00
             LDX #$00
@@ -463,6 +467,7 @@ BG_REPLAY_IDLE
             ; The interrupted BASIC ZP must survive native INIT, just as
             ; on the original first playback; SAVEZP is free while stopped.
             JSR SAVE_APPLE_ZP
+            JSR BG_RESTORE_LOW_BYTES
             LDA #$00
             LDX #$00
 BG_REPLAY_CLEAR
@@ -483,6 +488,25 @@ BG_REPLAY_SNAPSHOT
             STA ACTIVE
             PLP
             CLI
+            RTS
+
+BG_SAVE_LOW_BYTES
+            LDX #$00
+BG_LOW_SAVE_LOOP
+            LDA $1C00,X
+            STA BG_LOW_BYTES,X
+            INX
+            CPX #$0C
+            BNE BG_LOW_SAVE_LOOP
+            RTS
+BG_RESTORE_LOW_BYTES
+            LDX #$00
+BG_LOW_RESTORE_LOOP
+            LDA BG_LOW_BYTES,X
+            STA $1C00,X
+            INX
+            CPX #$0C
+            BNE BG_LOW_RESTORE_LOOP
             RTS
 
 BG_INSTALL
@@ -621,6 +645,8 @@ BG_IRQ_LO        .BYTE $00
 BG_IRQ_HI        .BYTE $00
 BG_REPLAY_READY   .BYTE $00
 BG_SELECTED       .BYTE $00
+BG_LOW_BYTES      .BYTE $00,$00,$00,$00,$00,$00
+                  .BYTE $00,$00,$00,$00,$00,$00
 
 ; ------------------ Phase 2B.2 transient native front end -------------
 ; This UI/parser lives at $1000, and is allowed to be overwritten by
