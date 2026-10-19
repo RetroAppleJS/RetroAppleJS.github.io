@@ -140,7 +140,7 @@ function nativeScenario({mode=50,quantum=1,runTicks=125000}={}){
   }
  });
  cpu.reset();
- cpu.setState({pc:mode===50?0x1800:0x1803,sp:0xFD,p:0x20,a:0,x:0,y:0});
+ cpu.setState({pc:mode===50?0x1800:0x1803,sp:0xFD,p:0x24,a:0,x:0,y:0}); // ROM reset has I=1
  // The test drives precisely the same per-CPU-cycle clock as the live emulator.
  for(let i=0;i<8000;i++){
    if(cpu.watch().pc===0xFF00)break;
@@ -151,7 +151,9 @@ function nativeScenario({mode=50,quantum=1,runTicks=125000}={}){
  assert.equal(mem[0x03FF],0x93);
  assert.equal(h.card.getTimerState().enabled,true);
  assert.equal(h.card.getTimerState().period,mode===50?20436:17030);
- cpu.setState({pc:0x8200,sp:0xFF,p:0x20,a:0,x:0,y:0});
+ const flags=cpu.watch().p;
+ assert.equal(flags&0x04,0,'resident installer must explicitly enable IRQ even with I set on entry');
+ cpu.setState({pc:0x8200,sp:0xFF,p:flags,a:0,x:0,y:0});
  let previousPC=-1;
  for(let i=0;i<runTicks;i++){
    const pc=cpu.watch().pc;
