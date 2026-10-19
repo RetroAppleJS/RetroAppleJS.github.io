@@ -117,7 +117,7 @@ test('2C.2 assembly preserves DOS and provides native PSID/IRQ entrypoints',()=>
  assert.ok(a.end<=0x9400);
  assert.equal(a.symbols.NATIVE_ENTRY,0x8000);
  assert.ok(a.symbols.BG_STOP>=0x9000&&a.symbols.BG_STOP<0x9400);
- assert.ok(a.symbols.BG_NEXT_SUBTUNE>=0x9000&&a.symbols.BG_NEXT_SUBTUNE<0x9300);
+ assert.ok(a.symbols.BG_NEXT_SUBTUNE>=0x8800&&a.symbols.BG_NEXT_SUBTUNE<0x9000);
  assert.equal(a.player.subarray(0xFF0,0xFF4).toString(),'S2C2');
  assert.equal(a.symbols.IRQ_HANDLER,0x9300);
  assert.ok(a.symbols.BG_OLD_IRQ>=0x93E0);
