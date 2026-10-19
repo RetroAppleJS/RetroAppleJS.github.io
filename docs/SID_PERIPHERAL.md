@@ -304,3 +304,26 @@ GitHub CI artifacts generated from the same `.S` source.
 
 See **[Phase 2B.2 native player guide](SID_PHASE2B2.md)** for the memory
 map, eight-byte transfer record, supported formats and limitations.
+
+## Phase 2C.2 — Native background PSID playback (experimental)
+
+The Phase 2C.1 CPU-clock timer now drives the original PSID PLAY routine
+from a **native, resident 6502 IRQ handler**, while compatible foreground
+Apple II programs continue to run. All PSID metadata and subtune selection
+remain in authoritative assembly source.
+
+Use `asm/AUDIO/SID_PHASE2C2_BACKGROUND_PLAYER.S` in the built-in
+RetroAppleJS Assembler: **Assemble → Tools → to emulator → Paste**.
+The file provides separate `ORG` segments at $1000, $1C00 and $9000.
+Mount SID in **slot 4**, transfer a raw .sid through the existing PSID
+file window, and use `CALL 7168` to select a subtune and start background
+music. To stop from Applesoft, use **`CALL 36867`** (resident $9003),
+not the potentially overwritten low-memory entry.
+
+**Caution:** This is controlled foreground coexistence, not general
+memory virtualization. The music and foreground code may have conflicting
+RAM requirements, and Apple II Monitor IRQ handling modifies ZP $45.
+Do not assume arbitrary Applesoft, DOS or C64 music compatibility. See
+**[Phase 2C.2 native background player guide](SID_PHASE2C2.md)** for the
+DOS-safe memory layout, IRQ state switching, first acceptance tests and
+limitations.
