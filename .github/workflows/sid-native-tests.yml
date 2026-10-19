@@ -55,11 +55,5 @@ jobs:
           path: ${{ runner.temp }}/sid-irq/*
           if-no-files-found: error
 
-      - name: Assemble native 2C.2 background PSID player
-        run: node tools/SID_Phase2C2_build.js "$RUNNER_TEMP/sid-background"
-      - name: Publish native Phase 2C.2 assembly binaries
-        uses: actions/upload-artifact@v4
-        with:
-          name: SID_Phase2C2_Native_Background
-          path: ${{ runner.temp }}/sid-background/*
-          if-no-files-found: error
+      - name: Validate assembler-generated Phase 2C.2 contiguous image
+        run: node tools/SID_Phase2C2_build.js
