@@ -36,6 +36,7 @@ IRQCOUNT    EQU $93F3
 ACTIVE      EQU $93F5
 PERIOD_LO   EQU $93F6
 PERIOD_HI   EQU $93F7
+PRIOR_I     EQU $93F8
 
 INSTALL_PAL
             LDA #$D4     ; $4FD4 = 20436 Apple II CPU ticks
@@ -53,6 +54,12 @@ INSTALL
             SEI
             LDA ACTIVE
             BNE ALREADY_INSTALLED
+            ; Preserve the previous IRQ mask: installing the service must
+            ; explicitly enable maskable IRQ even after a ROM reset with I=1.
+            PLA
+            PHA
+            AND #$04
+            STA PRIOR_I
             ; Keep previous handler for foreign IRQ sources.
             LDA IRQLOC
             STA PREV_IRQ
@@ -78,6 +85,7 @@ INSTALL
             STA TMR_CTRL
 ALREADY_INSTALLED
             PLP
+            CLI
             RTS
 
 STOP_TIMER
@@ -100,6 +108,15 @@ STOP_TIMER
             STA IRQLOC+1
             LDA #$00
             STA ACTIVE
+            LDA PRIOR_I
+            BEQ RESTORE_UNMASKED
+            PLP
+            SEI
+            RTS
+RESTORE_UNMASKED
+            PLP
+            CLI
+            RTS
 STOP_DONE   PLP
             RTS
 
@@ -150,5 +167,6 @@ IRQ_STATE
             .BYTE $00        ; SELECT_SAVE
             .BYTE $00,$00    ; IRQCOUNT
             .BYTE $00        ; ACTIVE
-            .BYTE $D4,$4F    ; PERI0D_LO/HIGH PAL default
+            .BYTE $D4,$4F    ; PERIOD_LO/HIGH PAL default
+            .BYTE $00        ; PRIOR_I: original CPU interrupt-mask bit
             .END
