@@ -79,9 +79,19 @@ addresses from `SID_Phase2C2_manifest.json`** for the installed binary:
 | `replayCall` | Restart current subtune via original INIT |
 | `nextSubtuneCall` | Select the following subtune (wrap after last) and restart |
 
-The latter three call addresses are derived from assembler labels and
-should **not** be assumed to equal old Phase 2C.2 numeric constants
-(`36867`, etc.).
+The current assembled CI image (5,110 bytes, **$8000–$93F5**)
+exports these decimal addresses:
+
+| Applesoft command | Operation |
+|---|---|
+| `CALL 32768` | First PSID file/subtune selection |
+| `CALL 37738` | STOP and silence SID |
+| `CALL 34816` | Restart the same subtune from the beginning |
+| `CALL 35500` | Select the next subtune and restart |
+
+These values are **build-derived**, not a hardcoded jump table. Recheck the
+manifest when rebuilding or editing the assembly, since code motion can
+change the resident entrypoints.
 
 The native player saves original INIT and PLAY addresses, selected
 subtune, song count and speed bitmap in resident memory. Therefore STOP
@@ -101,8 +111,10 @@ require a new assembler run.
 | Addresses | Occupant |
 |---|---|
 | $6000–$7FFF | Raw PSID staging (8 KiB maximum) |
-| $8000–$8FFF | Permanent native parser and single-image loader marker |
-| $9000–$93FF | Permanent playback, IRQ and control routines |
+| $8000–$87FF | Permanent native PSID interpreter and menu |
+| $8800–$8FFF | Resident playback and lifecycle controls, plus S2C2 marker at $8FF0 |
+| $9000–$92FF | Zero-filled padding in the single BLOAD image |
+| $9300–$93FF | IRQ handler, STOP and resident state |
 | $9400–$94FF | Persistent C64 music-ZP shadow (initially descriptor/transfer record) |
 | $9500–$95FF | Foreground ZP backup |
 | $9600 and above | ProntoDOS, untouched by the player |
