@@ -53800,8 +53800,21 @@ var SIDPSID=(function(){
         if(!/^[0-9a-f]{1,4}$/i.test(s))fail("Enter a hexadecimal staging address");
         return parseInt(s,16);
     }
-    function plan(bytes,start){
+    function installed2C2(snapshot){
+        return !!(snapshot && snapshot.length>0x8FF3 &&
+            snapshot[0x8FF0]===0x53 && snapshot[0x8FF1]===0x32 &&
+            snapshot[0x8FF2]===0x43 && snapshot[0x8FF3]===0x32);
+    }
+    function plan(bytes,start,background){
         var address=number(start);
+        if(background){
+            var n=bytes&&bytes.length;
+            if(!Number.isSafeInteger(n)||n<1)fail("File is empty");
+            if(n>0x2000)fail("Phase 2C.2 accepts up to 8 KiB of raw PSID");
+            if(address<0x6000||address+n>0x8000)
+                fail("Background PSID file must fit within $6000–$7FFF");
+            return {start:address,length:n,end:address+n-1};
+        }
         var length=bytes&&bytes.length;
         if(!Number.isSafeInteger(length)||length<1)fail("File is empty");
         if(length>END-MIN)fail("File exceeds 28 KiB staging capacity");
@@ -53813,9 +53826,9 @@ var SIDPSID=(function(){
         if(!hw||typeof hw.safe_flashdump!=="function"||
            typeof hw.load_ram64k!=="function")fail("Apple II RAM loader unavailable");
         var bytes=raw instanceof Uint8Array?raw:new Uint8Array(raw);
-        var info=plan(bytes,start);
         var old=hw.safe_flashdump();
         if(!old||old.length<0xC000)fail("Cannot snapshot Apple II memory");
+        var info=plan(bytes,start,installed2C2(old));
         // Copy all main RAM, then only replace the chosen staged range and
         // an eight-byte transfer record. No changes to music or native player.
         var ram=new Uint8Array(0x10000);
@@ -53872,12 +53885,19 @@ var SIDPSID=(function(){
         function update(){
             if(!panel.bytes||!card.state.active){upload.disabled=true;return;}
             try{
-                var spec=plan(panel.bytes,address.value);
+                var hw=typeof apple2plus!=="undefined"&&apple2plus&&
+                    typeof apple2plus.hwObj==="function"?apple2plus.hwObj():null;
+                var physical=hw&&typeof hw.safe_flashdump==="function"?
+                    hw.safe_flashdump():null;
+                var background=installed2C2(physical);
+                var spec=plan(panel.bytes,address.value,background);
                 details.textContent=panel.name+" · "+spec.length+" bytes"+
                     "\n$"+spec.start.toString(16).toUpperCase().padStart(4,"0")+
                     "–$"+spec.end.toString(16).toUpperCase().padStart(4,"0");
                 upload.disabled=false;
-                status.textContent="Fits entirely in the 28 KiB staging window.";
+                status.textContent=background?
+                    "Phase 2C.2 detected: fits 8 KiB $6000–$7FFF.":
+                    "Fits entirely in the legacy 28 KiB staging window.";
             }catch(error){details.textContent=error.message;upload.disabled=true;}
         }
         file.onchange=async function(){
@@ -53888,7 +53908,10 @@ var SIDPSID=(function(){
                 var bytes=new Uint8Array(await selected.arrayBuffer());
                 if(current!==panel||!card.state.active)return;
                 panel.bytes=bytes;panel.name=selected.name;
-                if(bytes.length>END-0x6000)address.value="2000";
+                var hw=typeof apple2plus!=="undefined"&&apple2plus&&
+                    typeof apple2plus.hwObj==="function"?apple2plus.hwObj():null;
+                var snapshot=hw&&typeof hw.safe_flashdump==="function"?hw.safe_flashdump():null;
+                if(bytes.length>END-0x6000&&!installed2C2(snapshot))address.value="2000";
                 update();
             }catch(error){panel.bytes=null;upload.disabled=true;status.textContent=error.message;}
         };
@@ -53900,12 +53923,13 @@ var SIDPSID=(function(){
                 var copied=transfer(hw,panel.bytes,address.value);
                 status.textContent="Transferred "+copied.length+" bytes at $"+
                     copied.start.toString(16).toUpperCase().padStart(4,"0")+
-                    ". Start the native player with CALL 7168.";
+                    ". Start the native player using the assembly CALL entry address.";
             }catch(error){status.textContent="Transfer failed: "+error.message;}
         };
         return true;
     }
-    return {plan:plan,transfer:transfer,open:open,dispose:close,
+    return {plan:plan,transfer:transfer,installed2C2:installed2C2,
+        open:open,dispose:close,
         STAGE_MIN:MIN,STAGE_END:END,TRANSFER_RECORD:RECORD};
 })();
 
