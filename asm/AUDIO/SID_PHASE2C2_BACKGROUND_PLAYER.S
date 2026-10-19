@@ -452,7 +452,9 @@ BG_NEXT_SUBTUNE
             PHP
             SEI
             LDA BG_REPLAY_READY
-            BEQ BG_NEXT_EXIT
+            BNE BG_NEXT_READY
+            JMP BG_NEXT_EXIT
+BG_NEXT_READY
             LDA BG_SELECTED
             CLC
             ADC #$01
