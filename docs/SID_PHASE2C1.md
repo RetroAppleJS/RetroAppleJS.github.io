@@ -85,10 +85,11 @@ existing resident Serial Pro RTC NMI service.
 - Slot 4 is fixed for this diagnostic; later phases can use the mounted
   slot dynamically.
 - Other interrupt owners are chained, not acknowledged by the SID handler.
-- The timer uses the shared 6502 IRQ line and is masked while the CPU's
-  Interrupt Disable (I) flag is set. A foreground program with `SEI`
-  can suppress music interrupts; the next phase must specify a safe
-  configuration and install lifecycle before guaranteeing background audio.
+- The installer saves the initial CPU Interrupt Disable (I) bit and
+  explicitly executes `CLI` before returning to foreground software;
+  uninstall restores that saved I bit. A foreground program executing
+  `SEI` later can still suppress timer interrupts. This is a hardware
+  limitation to consider in Phase 2C.2.
 - Native handler uses the foreground hardware stack, briefly preserving X/Y.
 - This test does not protect music code/data regions, because it runs no
   music yet. Standard programs may still write the same RAM as the
