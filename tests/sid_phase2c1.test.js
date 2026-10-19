@@ -122,7 +122,11 @@ function nativeScenario({mode=50,quantum=1,runTicks=125000}={}){
  let trackIRQ=0,monitorIRQs=0,foregroundSteps=0,maxIRQDelay=0;
  const Cpu=cpuCtor();
  const cpu=new Cpu({
-  irq_signal:0,nmi_signal:0,lineDecode:a=>a>>12,
+  // IRQ must come from the SAME shared hardware line as the timer card,
+  // not a detached CPU-test object with a permanently inactive level.
+  get irq_signal(){return h.hw.irq_signal;},
+  set irq_signal(v){h.hw.irq_signal=v;},
+  nmi_signal:0,lineDecode:a=>a>>12,
   read(addr){
    if(addr>=0xD000)return rom[addr-0xD000];
    if(addr>=0xC0C0&&addr<=0xC0CF)return h.card.readSlotIO(addr&15,{cpuTick:h.now()});
