@@ -194,3 +194,24 @@ test('real 6502 and ROM handle 60 Hz with unchanged foreground execution',()=>{
  assert.equal(r.mem[0x93F4]*256+r.mem[0x93F3],r.trackIRQ);
  assert.equal(r.h.card.getTimerState().missed,0);
 });
+
+test('native STOP disables SID timer, restores prior IRQ owner and original I flag',()=>{
+ const r=nativeScenario({mode:50,runTicks:45000});
+ assert.ok(r.trackIRQ>=2);
+ assert.equal(r.mem[0x93F8],4,'installer remembers reset-time I=1');
+ // Enter STOP via its public CALL, as a normal BASIC invocation.
+ r.mem[0x01FE]=0xFF;r.mem[0x01FF]=0xFE;
+ r.cpu.setState({pc:0x1806,sp:0xFD,p:0x24,a:0,x:0,y:0});
+ let returned=false;
+ for(let i=0;i<5000;i++){
+  if(r.cpu.watch().pc===0xFF00){returned=true;break;}
+  r.cpu.cycle();r.h.io.tick();
+ }
+ assert.equal(returned,true,'STOP must return to Applesoft');
+ assert.equal(r.h.card.getTimerState().enabled,false);
+ assert.equal(r.h.hw.irq_signal,0);
+ assert.equal(r.mem[0x03FE],0x00);
+ assert.equal(r.mem[0x03FF],0x83);
+ assert.equal(r.mem[0x93F5],0);
+ assert.equal(r.cpu.watch().p&4,4,'original IRQ mask is restored');
+});
