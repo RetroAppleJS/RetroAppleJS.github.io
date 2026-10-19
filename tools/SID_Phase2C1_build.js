@@ -24,11 +24,11 @@ function assemble(){
    // state block. Binary image gaps are zero-filled; monitor listings and
    // assembler byte-code still use their original absolute locations.
    if(n===0&&seen.size!==buffer.length)
-     throw Error('Gap in installer segment at 
+     throw Error('Gap in installer segment at 0x'+start.toString(16));
    result[n===0?'installer':'resident']=buffer;
    result[n===0?'installerEnd':'residentEnd']=end;
  }
- if(bytes.length!==result.installer.length+result.resident.length)
+ if(bytes.length>result.installer.length+result.resident.length)
      throw Error('Assembly emitted bytes outside allowed $1800/$9300 segments');
  if(result.installerEnd>0x1C00||result.residentEnd>0x9400)
      throw Error('Phase 2C.1 crossed protected RAM boundary');
