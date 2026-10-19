@@ -47,3 +47,19 @@ test('peripheral toolbox retains three SID rows and offers only a raw-file trans
   assert.match(html,/Telemetry/);
   assert.equal((html.match(/class='sid-toolbox-row'/g)||[]).length,3);
 });
+
+test('single-BLOAD native 2C.2 player limits PSID upload to 8 KiB and protects code',()=>{
+ const h=loader(),hw=rig();
+ const compiled=require('../tools/SID_Phase2C2_build.js').assemble();
+ hw.bytes.set(compiled.player,0x8000);
+ assert.equal(h.installed2C2(hw.safe_flashdump()),true);
+ const data=new Uint8Array(0x2000);
+ const good=h.transfer(hw,data,'$6000');
+ assert.equal(good.length,8192);
+ assert.equal(hw.bytes[0x8FF0],0x53);
+ const before=hw.count();
+ assert.throws(()=>h.transfer(hw,new Uint8Array(8193),'$6000'),/8 KiB/);
+ assert.throws(()=>h.transfer(hw,new Uint8Array(512),'$8000'),/\$6000/);
+ assert.throws(()=>h.transfer(hw,new Uint8Array(256),'$5FFF'),/\$6000/);
+ assert.equal(hw.count(),before,'rejected files must not mutate Apple RAM');
+});
