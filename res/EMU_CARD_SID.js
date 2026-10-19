@@ -22,6 +22,53 @@ function SIDCard()
     // data latches the low 16 bits of CPU ticks; selecting $1F reads its
     // high byte from the *same* snapshot. Does not alter SID chip registers.
     var clockLatch=0;
+    // Emulator SID-card timer extension (not a MOS 6581/8580 register).
+    // Write-only SlotIO $8/$9/$A/$B: reload low/high, enable, ACK.
+    // All existing SlotIO reads (POT/OSC/ENV, telemetry, clock latch) and
+    // indexed original SID register reads/writes remain backward-compatible.
+    // Indexed selector $1D (unused MOS SID address) reads IRQ pending/status.
+    var timerPeriod=20436,timerEnabled=false,timerPending=false;
+    var timerDeadline=0,timerFired=0,timerMissed=0;
+    var timerSource=null;
+    function timerIRQ(active)
+    {
+        timerPending=!!active;
+        card.state.irq=timerPending;
+        var hw=io&&io.hostHardware;
+        if(!hw && typeof apple2plus!=="undefined" && apple2plus &&
+            typeof apple2plus.hwObj==="function")hw=apple2plus.hwObj();
+        if(hw && typeof(hw.setIRQSource)==="function" && timerSource)
+            hw.setIRQSource(timerSource,timerPending&&card.state.active);
+    }
+    function timerStop()
+    {
+        timerEnabled=false;timerIRQ(false);timerDeadline=0;
+    }
+    this.getTimerState=function()
+    {
+        return {period:timerPeriod,enabled:timerEnabled,pending:timerPending,
+            deadline:timerDeadline,fired:timerFired,missed:timerMissed,
+            source:timerSource};
+    };
+    // Called exactly once per completed emulated CPU tick, not per video frame.
+    this.timerTick=function(now)
+    {
+        if(!timerEnabled || !card.state.active)return;
+        now=Math.floor(Number(now));
+        if(!Number.isFinite(now) || now<timerDeadline)return;
+        var expired=Math.floor((now-timerDeadline)/timerPeriod)+1;
+        timerDeadline+=expired*timerPeriod;
+        timerMissed+=timerPending?expired:expired-1;
+        if(!timerPending){timerFired++;timerIRQ(true);}
+    };
+    function timerStart(tick)
+    {
+        if(timerPeriod<1)return false;
+        timerStop();
+        timerEnabled=true;
+        timerDeadline=Math.floor(Number(tick)||0)+timerPeriod;
+        return true;
+    }
     const BURST_GAP_TICKS=3500,TELEMETRY_HISTORY_LIMIT=120;
     var burstCount=0,lastWriteTick=null,lastBurstTick=null;
     var currentBurstWrites=0,maxBurstWrites=0,periodCount=0,periodSum=0;
@@ -170,6 +217,7 @@ function SIDCard()
         if(r===1)return status();
         if(r===2)return regIndex;
         if(r===3){
+            if(regIndex===0x1D)return (timerPending?1:0)|(timerEnabled?2:0);
             if(regIndex===0x1E){
                 var sampled=timestamp(ctx)&0xFFFF;
                 if(ctx?.bRO!==true)clockLatch=sampled;
@@ -195,6 +243,17 @@ function SIDCard()
         var r=Number(addr)&15,v=Number(data)&255;
         if(r===2){regIndex=v&31;return true;}
         if(r===3)return writeToSID(regIndex,v,0xD400+regIndex,ctx,false);
+        // New timer extension is WRITE-ONLY on previously unused slot writes:
+        // $C0n8 reload low, $C0n9 high, $C0nA control, $C0nB ACK.
+        // All existing read operations at these offsets remain SID reads.
+        if(r===8){if(!timerEnabled)timerPeriod=(timerPeriod&0xFF00)|v;return true;}
+        if(r===9){if(!timerEnabled)timerPeriod=(timerPeriod&0x00FF)|(v<<8);return true;}
+        if(r===10){
+            if(v&1)timerStart(timestamp(ctx));
+            else timerStop();
+            return true;
+        }
+        if(r===11){if(v&1)timerIRQ(false);return true;}
         if(r===4){this.setModel((v&1)?8580:6581);return true;}
         if(r===5){this.setClock((v&1)?1022727:985248);return true;}
         if(r===6){this.setEnabled(!!(v&1));return true;}
@@ -552,6 +611,7 @@ function SIDCard()
 
     this.reset=function()
     {
+        timerStop();timerPeriod=20436;timerFired=timerMissed=0;
         // Model, clock and user volume intentionally survive a soft reset.
         enabled=true;snoop=true;regIndex=0;sniffedWrites=slotWrites=0;
         lastWrite={address:0,value:0,tick:0};
@@ -566,7 +626,14 @@ function SIDCard()
         if(typeof apple2plus!=="undefined" && apple2plus &&
            typeof apple2plus.hwObj==="function"){
             var hw=apple2plus.hwObj();
+            if(io && io!==hw.io && typeof io.unregisterPeripheralTick==="function")
+                io.unregisterPeripheralTick(this);
             io=hw&&hw.io?hw.io:null;
+            if(io && typeof io.registerPeripheralTick==="function")
+                io.registerPeripheralTick(this,this.timerTick.bind(this));
+            if(timerSource && hw && typeof hw.setIRQSource==="function")
+                hw.setIRQSource(timerSource,false);
+            timerSource="SID_TIMER_"+String(this.mount&&this.mount.hash||this.mount&&this.mount.slotN||"unmounted");
         }
         this.state.active=true;
         this.reset();
@@ -575,6 +642,9 @@ function SIDCard()
     {
         if(typeof SIDPSID!=="undefined" && SIDPSID)SIDPSID.dispose(this);
         if(telemetryActive())oCOM.toggleRefreshEvent(eventName());
+        timerStop();
+        if(io && typeof io.unregisterPeripheralTick==="function")
+            io.unregisterPeripheralTick(this);
         this.state.active=false;
         var d=audioDevice();
         if(d&&typeof d.onUnmount==="function")d.onUnmount();
