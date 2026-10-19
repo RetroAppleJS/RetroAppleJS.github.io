@@ -16,6 +16,17 @@
 ; Original executable payload is copied, not relocated or translated.
 ; 6502 itself parses original PSID header, checks sizes, prompts for subtune.
 ; Host only transfers raw bytes and optional SIDF start/length record.
+
+; USAGE
+
+; CALL 32768	Select PSID and subtune
+; CALL 37738	Stop playback
+; CALL 34816	Replay selected subtune
+; CALL 35500	Play next subtune
+
+
+
+
             ORG $8000
 
 ; The Apple II Monitor ROM handles text entry. All prompts run before
