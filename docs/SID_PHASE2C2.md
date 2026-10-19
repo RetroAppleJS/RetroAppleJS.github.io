@@ -1,155 +1,109 @@
-# SID Phase 2C.2 — One-BLOAD native background PSID player
+# SID Phase 2C.2 — Assembly-first resident PSID player
 
-The complete **6502 assembly** program is authored in
-`asm/AUDIO/SID_PHASE2C2_BACKGROUND_PLAYER.S`. The browser copies original
-PSID bytes but **never parses or plays the music**. The SID card's CPU-clock
-IRQ continues calling the original C64 music PLAY routine while compatible
-foreground Apple II software runs.
+**Authoritative deliverable:** `asm/AUDIO/SID_PHASE2C2_BACKGROUND_PLAYER.S`.
 
-## Install using ONE BLOAD (no Language Card)
+This is a native 6502 Apple II+ program. All PSID v1/v2 header handling,
+subtune choice, original INIT/PLAY calls, resident IRQ handling and STOP/
+REPLAY/NEXT are implemented in **assembly**, not a browser-side music player.
+There is no maintained or downloadable Phase 2C.2 precompiled binary.
 
-The build creates **one contiguous binary**, starting at **$8000**,
-containing both the native interactive parser and resident playback/IRQ
-routines. Any gaps between the assembly ORGs are included as zero-filled
-padding. The binary file does not need multiple memory transfers.
+## Assemble and load with RetroAppleJS
 
-The GitHub Actions SID-native workflow publishes:
-- `SID_Phase2C2_player.bin`: raw 6502 image for disk import tools that
-  accept an explicit $8000 load address.
-- `SID_Phase2C2_DOS33_file_content.bin`: **DOS 3.3 binary file contents**,
-  beginning with the four-byte little-endian load-address/length header,
-  followed by the same player image. Import as DOS binary type **B** when
-  the importer expects full DOS file contents. Do **not** prepend this
-  header twice if a disk tool constructs it automatically.
-- `SID_Phase2C2_player_monitor.txt`: one continuous monitor-memory listing.
-- `SID_Phase2C2_manifest.json`: exact load extent and callable decimal
-  entry addresses derived **from the assembled symbols**.
+1. Boot a disposable Apple II+ session with the SID card in **slot 4**
+   and ProntoDOS beginning at $9600. No Language Card is required.
+2. In the built-in **RetroAppleJS Assembler**, load
+   `asm/AUDIO/SID_PHASE2C2_BACKGROUND_PLAYER.S`. Select the
+   **RetroAppleJS** dialect.
+3. Click **Assemble** (not *Byte encode source*). The assembler emits a
+   **single contiguous, ordered stream** beginning at **$8000**. The
+   source uses one `ORG $8000` and explicit `.RES` directives to emit
+   each intervening padding byte. No packaging script invents missing
+   bytes or relocates code.
+4. Use **Tools → to emulator**, then **Paste** in the emulator to load
+   the assembled machine code at its correct address.
+5. In **Peripheral controls → SID → PSID**, transfer an unchanged raw PSID
+   of up to **8 KiB** into **$6000–$7FFF** (for example, start $6000).
+   The host knows the actual file length and writes the 8-byte `SIDF`
+   transfer record. It does not parse or execute the tune.
+6. At Applesoft, start the interactive parser with:
+   ```basic
+   CALL 32768
+   ```
+   Select the subtune. The original INIT runs, then background IRQs invoke
+   the original PLAY while foreground Applesoft continues.
 
-After placing the program on your ProntoDOS/DOS-compatible disk as a
-**binary file named SIDPLAYER**, boot the Apple II and enter:
+The *source* is the project artifact. The compiled byte stream lives only
+as the output of the assembler or in emulator RAM.
+
+## Save your own program for later BLOAD (optional)
+
+When the assembled bytes are already loaded in emulator RAM, **you**
+can save them onto a writable DOS-compatible disk using Applesoft/DOS:
 
 ```text
-BLOAD SIDPLAYER
+BSAVE SIDPLAYER,A$8000,L$13F6
 ```
 
-This loads the entire player, starting at $8000, in one operation.
-The header carries its original loading address. You can also assemble
-the original `.S` directly in RetroAppleJS and paste the address-tagged
-byte code; disk/BLOAD is a convenience, **not** a build dependency.
+The length `$13F6` (5,110 bytes) describes the assembly image before
+future source edits; **always verify the new assembled length** before
+BSAVE. Later, `BLOAD SIDPLAYER` reloads your own assembled program in a
+single operation. These disk commands are optional: development and testing
+use source → Assemble → to emulator → Paste.
 
-The program requires **ordinary Apple II+ RAM**, no 16K Language Card.
-This layout assumes ProntoDOS and other reserved memory begin at $9600,
-and that no foreground program occupies the player's $8000–$95FF area.
+## Resident callable controls
 
-## PSID transfer and initial playback
+No artificial public jump table exists at $1C00. CALL targets correspond
+to actual 6502 assembly labels, which can move if the source changes:
 
-Mount SID in **slot 4** with audio enabled. The raw file transfer window
-automatically recognises the installed player via `S2C2` at $8FF0 and
-limits raw files to **8 KiB**, with staging entirely within **$6000–$7FFF**.
-This prevents the file upload from overwriting the resident interpreter.
-Other, older SID loaders retain their previous transfer-size rules.
+| Assembly label | Purpose | Last verified CALL address |
+|---|---|---|
+| `NATIVE_ENTRY` | Parse raw PSID and choose subtune | `CALL 32768` ($8000) |
+| `BG_STOP` | Stop timer and silence SID | `CALL 37738` |
+| `BG_REPLAY` | Restart same subtune from INIT | `CALL 34816` |
+| `BG_NEXT_SUBTUNE` | Advance one subtune and restart | `CALL 35500` |
 
-Upload the original PSID file at $6000. It remains unchanged. The native
-assembly asks for its start address and subtune, checks PSID v1/v2 header,
-file length, speed flags, original load address, INIT/PLAY and executable
-destination, and launches IRQ-driven music. All original 6502 code remains
-unmodified; its executable must fit below $8000 without colliding with
-allocated foreground RAM. The eight-byte `SIDF` transfer record is
-initially kept at $9430, and becomes part of the music-ZP shadow after
-successful INIT.
+The numbers reflect a previous validated layout; use the **Symbols**
+pane of your current RetroAppleJS assembly for the actual addresses.
+The CI assembly validator also prints these symbol-derived values.
 
-**The first-load entrypoint is at $8000:**
+## Fixed RAM requirements
 
-```basic
-CALL 32768
-```
-
-The command will return to Applesoft after INIT while original PLAY
-continues under the hardware timer's 50/60 Hz IRQ.
-
-## STOP, replay and subtune selection
-
-The program has no special $1C00 jump table. **Use the exact decimal
-addresses from `SID_Phase2C2_manifest.json`** for the installed binary:
-
-| Manifest key | Native call |
+| Address | Use |
 |---|---|
-| `startCall` | First-time interactive PSID loader at $8000 |
-| `stopCall` | Silence SID, stop timer and restore previous IRQ owner |
-| `replayCall` | Restart current subtune via original INIT |
-| `nextSubtuneCall` | Select the following subtune (wrap after last) and restart |
+| $6000–$7FFF | Complete raw PSID file, up to 8 KiB including PSID header |
+| $8000–$87FF | Native PSID interpreter and prompts |
+| $8800–$8FFF | Resident playback controls, $8FF0 `S2C2` marker |
+| $9000–$92FF | Source-assembled zero padding |
+| $9300–$93FF | Interrupt service, STOP and resident state |
+| $9400–$94FF | Persistent C64 music zero-page shadow |
+| $9500–$95FF | Foreground Apple II zero-page backup |
+| $9600+ | ProntoDOS, preserved |
 
-The current assembled CI image (5,110 bytes, **$8000–$93F5**)
-exports these decimal addresses:
+The assembly emits program bytes only at $8000–$93xx; context pages
+$9400–$95FF are reserved **RAM working storage**, not part of the
+assembled image. The original C64 tune's executable must remain entirely
+below $8000 and cannot overwrite the resident code. Also verify it does
+not conflict with BASIC program text, DOS buffers, or raw PSID staging.
 
-| Applesoft command | Operation |
-|---|---|
-| `CALL 32768` | First PSID file/subtune selection |
-| `CALL 37738` | STOP and silence SID |
-| `CALL 34816` | Restart the same subtune from the beginning |
-| `CALL 35500` | Select the next subtune and restart |
+## Timer, lifecycle and limitations
 
-These values are **build-derived**, not a hardcoded jump table. Recheck the
-manifest when rebuilding or editing the assembly, since code motion can
-change the resident entrypoints.
+The emulated SID expansion card provides a CPU-tick-driven IRQ timer at
+50 or 60 Hz, independent of display FPS. The resident assembly IRQ handler
+saves X and Y, acknowledges only its own timer, preserves the interrupted
+foreground zero page at $9500, restores the music zero page from $9400,
+runs original C64 PLAY, saves updated music ZP, restores Apple II ZP,
+then restores registers and uses `RTI`. Unrelated IRQs are chained.
 
-The native player saves original INIT and PLAY addresses, selected
-subtune, song count and speed bitmap in resident memory. Therefore STOP
-followed by REPLAY does **not** need the raw transfer record or reassembled
-player. NEXT SUBTUNE also uses resident metadata and refuses tunes marked
-CIA-timed (unsupported); it is not a request to parse the raw header on
-every music interrupt.
+This is **controlled compatibility**, not C64 memory virtualization.
+The Apple II Monitor IRQ dispatcher writes to zero-page $45 before
+invoking its software IRQ vector, so perfect foreground zero-page isolation
+is not yet guaranteed. Tunes relying on CIA-timed playback, arbitrary C64
+peripherals, incompatible memory ranges, or unusual stack behaviour remain
+unsupported. Original PLAY and music context switching may consume a large
+fraction of the CPU time available between timer interrupts.
 
-To choose a wholly different PSID, stop playback, upload another raw
-file, and use the interactive first-load entry. Because the descriptor at
-$9400 has been reused for the music ZP shadow, the full native player
-should be freshly BLOADed before loading a different tune. This does not
-require a new assembler run.
-
-## RAM map
-
-| Addresses | Occupant |
-|---|---|
-| $6000–$7FFF | Raw PSID staging (8 KiB maximum) |
-| $8000–$87FF | Permanent native PSID interpreter and menu |
-| $8800–$8FFF | Resident playback and lifecycle controls, plus S2C2 marker at $8FF0 |
-| $9000–$92FF | Zero-filled padding in the single BLOAD image |
-| $9300–$93FF | IRQ handler, STOP and resident state |
-| $9400–$94FF | Persistent C64 music-ZP shadow (initially descriptor/transfer record) |
-| $9500–$95FF | Foreground ZP backup |
-| $9600 and above | ProntoDOS, untouched by the player |
-
-The player image occupies a **contiguous physical range** from $8000 to
-the final assembled resident byte below $9400; code gaps in the single
-BLOAD image are harmless padding. Both runtime context pages ($9400,
-$9500) are RAM working buffers and are **not** part of the disk binary.
-
-An original tune's load region must fit below $8000, so that it cannot
-overwrite the parser or resident IRQ engine. A tune can still overlap
-Applesoft, DOS buffers below $8000, or raw PSID staging; such collisions
-are outside the player guarantees.
-
-## IRQ timing and limits
-
-The music service uses the proven CPU-clock SID timer, not display
-FPS, video VBLANK polling or browser audio callbacks. On each IRQ it
-acknowledges its own SID timer source, saves X/Y, saves 256 bytes of Apple II
-foreground zero page, swaps in 256 bytes of music zero page, executes the
-original PLAY, swaps the contexts back, restores CPU registers and RTI.
-It chains foreign IRQs to the previous soft vector.
-
-This is **experimental coexistence**, not arbitrary memory virtualisation:
-- Apple's Monitor IRQ path writes interrupted A to foreground ZP $45
-  before the soft IRQ handler gains control.
-- Music must use balanced 6502 stack operations and must not overwrite
-  foreground applications' RAM, the player's $8000–$95FF allocation,
-  or interrupts and hardware owned by DOS.
-- Music/foreground zero-page switching has substantial CPU overhead;
-  measure missed IRQ deadlines and foreground throughput under 60 Hz.
-- The first implementation requires slot 4, and PSID songs dependent on
-  CIA timing or other unsupported C64 hardware are rejected.
-
-The automated CI tests exercise native PSID v1/v2, repeated INIT/PLAY,
-STOP, replay, subtune selection, memory boundaries, one-image binary
-headers, and foreground program execution. Browser audio acceptance is
-still required for new tune families.
+Regression tests compile the same `.S` through `ASM_core.js`, require
+the resulting **assembly records themselves** to cover every byte of the
+single range (without JavaScript filling gaps), and exercise actual 6502
+background playback, STOP, replay, subtune changes and host transfer bounds.
+CI validates the source but does not publish a binary.
