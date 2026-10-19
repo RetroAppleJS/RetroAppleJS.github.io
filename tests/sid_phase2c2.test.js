@@ -95,6 +95,7 @@ function run(tune,{rate=50,subtune='3',stage=0x6000,foregroundTicks=170000}={}){
  assert.equal(queries,2);
  assert.equal(mem[asm.symbols.BG_ACTIVE],1);
  assert.equal(ctx.card.getTimerState().enabled,true);
+ assert.equal(mem[asm.symbols.BG_OLD_I],4,'installer must preserve the original IRQ mask');
  assert.equal(cpu.watch().p&4,0,'interrupt mask must be cleared by installer');
  assert.equal(mem[0x03FE],0);assert.equal(mem[0x03FF],0x93);
  assert.deepEqual(Array.from(mem.subarray(0,0x45)),Array.from(originalZP.subarray(0,0x45)));
@@ -143,7 +144,7 @@ test('native STOP disables timer, restores previous IRQ vector and silences SID'
  const r=run(psid,{foregroundTicks:70000});
  assert.ok(r.playStarts.length>=2);
  r.mem[0x1FE]=0xFF;r.mem[0x1FF]=0xFE;
- r.cpu.setState({pc:0x9003,sp:0xFD,p:0x24,a:0,x:0,y:0});
+ r.cpu.setState({pc:0x9003,sp:0xFD,p:0x20,a:0,x:0,y:0});
  let returned=false;
  for(let i=0;i<9000;i++){
   if(r.cpu.watch().pc===0xFF00){returned=true;break;}
@@ -154,6 +155,7 @@ test('native STOP disables timer, restores previous IRQ vector and silences SID'
  assert.equal(r.ctx.hardware.irq_signal,0);
  assert.equal(r.mem[0x03FE],0);assert.equal(r.mem[0x03FF],0x83);
  assert.equal(r.mem[r.asm.symbols.BG_ACTIVE],0);
+ assert.equal(r.cpu.watch().p&4,4,'STOP must restore the IRQ mask saved at installation');
  assert.equal(r.sidWrites.at(-1)[0],0xD418);
  assert.equal(r.sidWrites.at(-1)[1],0);
 });
