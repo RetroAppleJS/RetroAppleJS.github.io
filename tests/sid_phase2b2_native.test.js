@@ -12,11 +12,12 @@ function psidV1(){
 }
 function simulate(file,{stage=0x6000,subtune='3',record=true,slot=4,frames=12}={}){
     const code=build.assemble(),mem=new Uint8Array(65536);
+    mem.set(code.frontend,0x1000);
     mem.set(code.bootstrap,0x1C00);
     mem.set(code.runtime,0x9000);
     mem.set(file,stage);
     if(record)mem.set([0x53,0x49,0x44,0x46,stage&255,stage>>>8,
-                       file.length&255,file.length>>>8],0x9E00);
+                       file.length&255,file.length>>>8],0x9430);
     const originalZP=Uint8Array.from({length:256},(_,i)=>(i*73+11)&255);
     mem.set(originalZP,0);
     // JSR from BASIC with $FF00-1 as synthetic return-to-BASIC address.
@@ -75,10 +76,12 @@ function simulate(file,{stage=0x6000,subtune='3',record=true,slot=4,frames=12}={
 test('native Phase 2B.2 compiles as 6502, with protected runtime outside raw PSID window',()=>{
     const p=build.assemble();
     assert.equal(p.bootstrap.length,12);
-    assert.ok(p.runtime.length>676&&p.runtime.length<0xD00);
-    assert.ok(p.highEnd<=0x9D00);
+    assert.ok(p.runtime.length>500&&p.runtime.length<0x400);
+    assert.ok(p.frontend.length>1200&&p.frontend.length<=0xC00);
+    assert.ok(p.frontendEnd<=0x1C00);
+    assert.ok(p.highEnd<=0x9400);
     assert.equal(p.symbols.PUBLIC,0x1C00);
-    assert.ok(p.symbols.NATIVE_ENTRY>=0x900C&&p.symbols.NATIVE_ENTRY<p.highEnd); // in resident runtime
+    assert.ok(p.symbols.NATIVE_ENTRY>=0x1000&&p.symbols.NATIVE_ENTRY<p.frontendEnd); // transient front-end
 });
 test('native v1 and v2 headers, chosen subtune and real INIT/PLAY produce identical SID writes',()=>{
     const a=simulate(psidV1(),{stage:0x6000,subtune:'3'});
@@ -130,4 +133,16 @@ test('native parser rejects executable in the resident player workspace',()=>{
     assert.equal(r.executed,false);
     assert.equal(r.writes.length,0);
     assert.deepEqual(Array.from(r.mem.subarray(0,256)),Array.from(r.originalZP));
+});
+
+test('native player code, descriptor, transfer record and ZP backup never overlap ProntoDOS at $9600',()=>{
+  const p=build.assemble();
+  assert.ok(p.highEnd<=0x9400);
+  assert.ok(p.frontendEnd<=0x1C00);
+  assert.equal(build.TRANSFER,0x9430);
+  assert.equal(build.BACKUP,0x9500);
+  const ram=new Uint8Array(65536);ram.fill(0xCA,0x9600,0xC000);
+  ram.set(p.bootstrap,0x1C00);ram.set(p.frontend,0x1000);ram.set(p.runtime,0x9000);
+  ram.set([0x53,0x49,0x44,0x46,0x00,0x60,0xE9,0x12],build.TRANSFER);
+  assert.ok(ram.subarray(0x9600,0xC000).every(v=>v===0xCA));
 });
