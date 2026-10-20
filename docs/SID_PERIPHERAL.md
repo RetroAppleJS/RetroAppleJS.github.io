@@ -373,3 +373,16 @@ combined-waveform output and synchronized mode remain byte-identical.
 This keeps 22,050 Hz output and the native PSID player unchanged.
 Accept the optimisation based on same-machine older-Safari timing
 and live audio telemetry, not solely modern CI speed.
+
+## Phase 4C.0 — ADSR reference and envelope traces
+
+The [Phase 4C guide](SID_PHASE4C.md) documents our reference-first
+approach to envelope accuracy. The shared [SID Audio Bench](../tools/SID_AUDIO_BENCH.html)
+now includes eight targeted ADSR experiments and can export independent
+ENV1/ENV2/ENV3 level traces from both SID models, including $D41C ENV3
+readback checks. Trace capture runs **outside benchmark timings**.
+
+This initial Phase 4C.0 work does not change production SID sound,
+22,050 Hz output, the native 6502 player or audio scheduling. An
+independent slow cycle-stepped test oracle provides future correction
+targets without adding clock-by-clock CPU work to the emulator.
