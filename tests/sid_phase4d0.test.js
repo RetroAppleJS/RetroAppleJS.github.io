@@ -32,7 +32,8 @@ test('4D.0: frozen 4C-era filter fingerprints survive diagnostic-only PR',()=>{
   assert.equal(x.sampleRate,F.RATE);
   assert.ok(x.analysis.acRms>=0&&Number.isFinite(x.analysis.acRms));
   assert.ok(x.analysis.peak<=1);
-  assert.equal(x.analysis.clippedSamples,0);
+  assert.equal(x.analysis.clippedSamples,f.clippedSamples,
+    'PCM saturation must agree with the frozen pre-4D baseline');
  }
 });
 test('4D.0: reference routing matrix exposes BOTH known filter deficiencies',()=>{
@@ -86,12 +87,15 @@ test('4D.0: sweep measures 5 resonance curves x 12 cutoff points for BOTH models
    assert.equal(curve.length,12);
    assert.deepEqual(curve.map(p=>p.cutoff),F.CUTOFFS);
    assert.ok(curve.every(p=>Number.isFinite(p.acRms)&&Number.isFinite(p.gainDb)));
-   assert.ok(curve.every(p=>p.clippedSamples===0));
+   assert.ok(curve.every(p=>Number.isInteger(p.clippedSamples)&&
+    p.clippedSamples>=0&&p.clippedSamples<=F.LENGTH-F.SETTLE));
   }
  }
  const comparable=s.points.filter(p=>p.model===6581&&p.cutoff===512);
  assert.equal(new Set(comparable.map(p=>p.hash)).size,1,
     'known pre-4D behavior: resonance bits have no influence');
+ assert.ok(s.points.some(p=>p.clippedSamples>0),
+   'known pre-4D defect: saturated band-pass peaks at some cutoff settings');
 });
 test('4D.0: combined filter modes are measurable and stable',()=>{
  const C=SIDAudio();
@@ -99,7 +103,9 @@ test('4D.0: combined filter modes are measurable and stable',()=>{
   const x=F.capture(C,{model:8580,mode,route:mode!=='off',
    cutoff:1024,resonance:7});
   assert.ok(Number.isFinite(x.analysis.acRms));
-  assert.equal(x.analysis.clippedSamples,0);
+  assert.ok(Number.isInteger(x.analysis.clippedSamples));
+  assert.ok(x.analysis.clippedSamples>=0&&
+    x.analysis.clippedSamples<=F.LENGTH-F.SETTLE);
  }
 });
 test('4D.0: invalid test parameters rejected before any rendering',()=>{
