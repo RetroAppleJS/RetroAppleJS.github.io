@@ -348,6 +348,8 @@ assembly player, card timer or browser audio scheduling.** The bench
 cannot verify physical SID authenticity by itself; use matched
 hardware recordings and the live SID telemetry separately.
 
+The shared SID reference/performance tool is **Audio Bench v2** (Phase 4A original fixtures plus Phase 4B combined waveforms), with a phase-neutral result filename/schema. Its version number describes the measurement tool, not the SID synthesis engine.
+
 ## Phase 4B — Digital oscillator accuracy
 
 The [Phase 4B guide](SID_PHASE4B.md) describes changes to the
