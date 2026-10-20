@@ -60,6 +60,22 @@ External background:
 - [libsidplayfp SID internals — Envelope Overview](https://sourceforge.net/p/sidplay-residfp/wiki/SID%20internals%20-%20Envelope%20Overview/)
 - [reSID ChangeLog — ADSR rate-counter and envelope details](https://github.com/libsidplayfp/resid/blob/master/ChangeLog)
 
+### Reproducing independent discrepancy reports
+
+The development-only tool tools/SID_ADSR_REFERENCE_COMPARE.js can generate
+a deterministic JSON comparison of the current production envelope
+observations and the slow test oracle:
+
+    node tools/SID_ADSR_REFERENCE_COMPARE.js --fixture=adsr-rate-change --clock=PAL
+    node tools/SID_ADSR_REFERENCE_COMPARE.js --all --clock=NTSC
+
+Each voice reports the observation count, number of unequal envelope
+levels, mean and maximum absolute difference, and first mismatch with
+sample and SID clock position. The comparison uses exactly the same
+PCM-grid event ordering as the diagnostic trace. These numbers are
+**diagnostic**, not an independent silicon-accuracy percentage. The
+tool adds no code or runtime workload to the real emulator.
+
 Do not copy GPL reSID implementation code into the MIT project.
 
 ## Next development stages
