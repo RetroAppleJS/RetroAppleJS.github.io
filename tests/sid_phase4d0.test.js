@@ -22,19 +22,17 @@ test('4D.0: filter measurements use correct register, clock and PCM ranges',()=>
  assert.equal(F.CLOCKS.PAL,985248);assert.equal(F.CLOCKS.NTSC,1022727);
  assert.equal(Object.keys(F.MODES).length,8);
 });
-test('4D.0: frozen 4C-era filter fingerprints survive diagnostic-only PR',()=>{
+test('4D.0: pre-4D filter fingerprints remain immutable historical evidence',()=>{
  assert.equal(BASELINE.clock,'PAL');
+ assert.deepEqual(BASELINE.cases.map(x=>x.hash),[
+   'cd098be6','dba99996','097b82ca','148c8352','35758215'
+ ]);
+ assert.deepEqual(BASELINE.cases.map(x=>x.clippedSamples),[0,0,0,2112,0]);
+ assert.equal(BASELINE.knownBaselineDefects.resonanceInert,true);
+ assert.equal(BASELINE.knownBaselineDefects.filteredVoice3MutedWhenVoice3Off,true);
  const C=SIDAudio();
- for(const f of BASELINE.cases){
-  const x=F.capture(C,f.options);
-  assert.equal(x.hash,f.hash,JSON.stringify(f.options));
-  assert.equal(x.samples,F.LENGTH);
-  assert.equal(x.sampleRate,F.RATE);
-  assert.ok(x.analysis.acRms>=0&&Number.isFinite(x.analysis.acRms));
-  assert.ok(x.analysis.peak<=1);
-  assert.equal(x.analysis.clippedSamples,f.clippedSamples,
-    'PCM saturation must agree with the frozen pre-4D baseline');
- }
+ assert.ok(BASELINE.cases.some(f=>F.capture(C,f.options).hash!==f.hash),
+    'corrected 4D.1 filter must not reproduce all pre-4D filter PCM');
 });
 test('4D.0: reference routing matrix exposes BOTH known filter deficiencies',()=>{
  const C=SIDAudio();
@@ -46,12 +44,12 @@ test('4D.0: reference routing matrix exposes BOTH known filter deficiencies',()=
   assert.ok(d.filteredVoice3.analysis.acRms>0.01);
   assert.equal(e.filterPathDisabledWhenNoMode,true);
   assert.equal(e.voice3OffMutesDirect,true);
-  // Historical characterization ONLY. Phase 4D.1 must invert this defect.
-  assert.equal(e.voice3OffCurrentlyMutesFiltered,
-    BASELINE.knownBaselineDefects.filteredVoice3MutedWhenVoice3Off);
-  // Historical characterization ONLY. Phase 4D.1 must make resonance audible.
-  assert.equal(e.resonanceCurrentlyInert,
-    BASELINE.knownBaselineDefects.resonanceInert);
+  assert.equal(e.voice3OffCurrentlyMutesFiltered,false,
+    'filtered Voice 3 survives V3OFF');
+  assert.equal(e.resonanceCurrentlyInert,false,
+    'resonance must change filtered PCM');
+  assert.equal(d.filteredVoice3.hash,d.filteredVoice3Off.hash,
+    'V3OFF has no effect on filtered Voice 3');
   assert.notEqual(d.direct.hash,d.filtered.hash);
  }
 });
@@ -92,10 +90,10 @@ test('4D.0: sweep measures 5 resonance curves x 12 cutoff points for BOTH models
   }
  }
  const comparable=s.points.filter(p=>p.model===6581&&p.cutoff===512);
- assert.equal(new Set(comparable.map(p=>p.hash)).size,1,
-    'known pre-4D behavior: resonance bits have no influence');
- assert.ok(s.points.some(p=>p.clippedSamples>0),
-   'known pre-4D defect: saturated band-pass peaks at some cutoff settings');
+ assert.equal(new Set(comparable.map(p=>p.hash)).size,F.RESONANCES.length,
+    'corrected 4D.1 resonance must produce different outputs');
+ assert.equal(s.points.filter(p=>p.clippedSamples>0).length,0,
+    'single-voice steady-state band-pass must not reproduce old saturation');
 });
 test('4D.0: combined filter modes are measurable and stable',()=>{
  const C=SIDAudio();
