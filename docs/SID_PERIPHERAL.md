@@ -361,3 +361,13 @@ not a chip-measured 6581/8580 calibration.
 Use [SID Audio Bench](../tools/SID_AUDIO_BENCH.html) to compare the
 original Phase 4A fixtures and five new combined-waveform cases,
 and test live playback/telemetry separately at 10 FPS and VBLANK.
+
+## Phase 4B.1 — Low-cost oscillator clocking
+
+The [Phase 4B.1 optimisation guide](SID_PHASE4B1.md) explains the
+common-case oscillator fast path: ordinary waveforms bypass
+hard-sync event scanning, while the existing phase, noise LFSR,
+combined-waveform output and synchronized mode remain byte-identical.
+This keeps 22,050 Hz output and the native PSID player unchanged.
+Accept the optimisation based on same-machine older-Safari timing
+and live audio telemetry, not solely modern CI speed.
