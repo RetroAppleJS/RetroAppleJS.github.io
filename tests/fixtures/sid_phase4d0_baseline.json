@@ -13,7 +13,8 @@
         "resonance": 8,
         "cutoff": 256
       },
-      "hash": "cd098be6"
+      "hash": "cd098be6",
+      "clippedSamples": 0
     },
     {
       "options": {
@@ -22,7 +23,8 @@
         "resonance": 8,
         "cutoff": 256
       },
-      "hash": "dba99996"
+      "hash": "dba99996",
+      "clippedSamples": 0
     },
     {
       "options": {
@@ -31,7 +33,8 @@
         "resonance": 0,
         "cutoff": 1024
       },
-      "hash": "097b82ca"
+      "hash": "097b82ca",
+      "clippedSamples": 0
     },
     {
       "options": {
@@ -40,7 +43,8 @@
         "resonance": 15,
         "cutoff": 1536
       },
-      "hash": "148c8352"
+      "hash": "148c8352",
+      "clippedSamples": 2112
     },
     {
       "options": {
@@ -51,11 +55,13 @@
         "mode": "lp",
         "cutoff": 1024
       },
-      "hash": "35758215"
+      "hash": "35758215",
+      "clippedSamples": 0
     }
   ],
   "knownBaselineDefects": {
     "resonanceInert": true,
-    "filteredVoice3MutedWhenVoice3Off": true
+    "filteredVoice3MutedWhenVoice3Off": true,
+    "filterBandPassSaturation": true
   }
 }
