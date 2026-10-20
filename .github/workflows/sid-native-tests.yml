@@ -18,6 +18,9 @@ on:
       - 'res/EMU_cpu6502.js'
       - 'res/EMU_CARD_SID.js'
       - 'res/EMU_DEVICE_SID_audio.js'
+      - 'tools/SID_AUDIO_BENCH.html'
+      - 'tools/SID_AUDIO_BENCH_core.js'
+      - 'tests/sid_phase4a.test.js'
       - '.github/workflows/sid-native-tests.yml'
   workflow_dispatch:
 
@@ -35,7 +38,7 @@ jobs:
         with:
           node-version: '22'
       - name: Run native PSID interpreter and raw transfer tests
-        run: node --test tests/sid_phase2a_mrheli.test.js tests/sid_phase2b1.test.js tests/sid_phase2b2.test.js tests/sid_phase2b2_native.test.js tests/sid_phase2b2_rom.test.js tests/sid_phase2c1.test.js tests/sid_phase2c2.test.js tests/sid_card.test.js tests/sid_telemetry.test.js
+        run: node --test tests/sid_phase2a_mrheli.test.js tests/sid_phase2b1.test.js tests/sid_phase2b2.test.js tests/sid_phase2b2_native.test.js tests/sid_phase2b2_rom.test.js tests/sid_phase2c1.test.js tests/sid_phase2c2.test.js tests/sid_phase4a.test.js tests/sid_card.test.js tests/sid_telemetry.test.js
 
       - name: Assemble distributable Phase 2B.2 player binaries
         run: node tools/SID_Phase2B2_build.js "$RUNNER_TEMP/sid-player"
