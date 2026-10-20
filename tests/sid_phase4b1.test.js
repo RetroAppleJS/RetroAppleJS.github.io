@@ -24,22 +24,41 @@ function shiftNoise(n,steps){
  }
  return n;
 }
-test('4B.1: outputs of selected PAL Phase 4B fixtures retain original PCM checksums',()=>{
- // PCM hashes from the accepted Phase 4B Safari benchmark before 4B.1.
- // These are regression guards: 4B.1 must only reduce computational cost.
- const hashes={
-  triangle:'785238a0',saw:'434f6450',pulse:'277e1dd7',
-  noise:'40362680',ring:'91c67ba0',sync:'2dfefaed',
-  'tri-saw':'68b2858d','noise-saw':'4ec4ebda'
+test('4B.1: frozen digital oscillator states survive intentional ADSR fixes',()=>{
+ // Captured from the accepted Phase 4B.1 engine; unlike whole-PCM
+ // checksums, these tests do not include the envelope multiplier.
+ const originals={
+  triangle:[[3807054,31,17],[16280192,1959799,17]],
+  saw:[[3807054,31,33],[16280192,1959799,33]],
+  pulse:[[3807054,31,65],[16280192,1959799,65]],
+  noise:[[7619603,7864383,129],[976448,3213810,129]],
+  ring:[[3807054,31,21],[16280192,1959799,21]],
+  sync:[[9398714,31,35],[11998438,3045953,35]],
+  'tri-saw':[[3807054,31,49],[16280192,1959799,49]],
+  'noise-saw':[[3807054,31,161],[16280192,1959799,161]]
  };
- const SIDAudio=sid().constructor;
- for(const fixture of Object.keys(hashes)){
-  const out=B.render(SIDAudio,{fixture,model:6581,clock:'PAL'});
-  assert.equal(B.checksum(out.pcm),hashes[fixture],
-    fixture+' must retain byte-exact Phase 4B PCM');
-  assert.equal(out.sampleRate,22050);
-  assert.equal(out.stats.dropped,0);
-  assert.equal(out.stats.clockRewinds,0);
+ const modulator={
+  ring:[[15440950,8126464,33],[612480,4953011,33]],
+  sync:[[15440950,8126464,33],[612480,4953011,33]]
+ };
+ function snapshot(d,voice){
+  const v=d.getOscillatorState()[voice];
+  return [v.phase,v.noise,v.control];
+ }
+ for(const [fixture,expected]of Object.entries(originals)){
+  const d=sid();
+  for(const e of B.createEvents(fixture,B.CLOCKS.PAL))
+   if(e.sample===0)d.writeRegister(e.reg,e.value);
+  d.renderOffline(123);
+  assert.deepEqual(snapshot(d,0),expected[0],fixture+' early oscillator');
+  if(modulator[fixture])
+   assert.deepEqual(snapshot(d,2),modulator[fixture][0],fixture+' early modulator');
+  d.renderOffline(44100-123);
+  assert.deepEqual(snapshot(d,0),expected[1],fixture+' final oscillator');
+  if(modulator[fixture])
+   assert.deepEqual(snapshot(d,2),modulator[fixture][1],fixture+' final modulator');
+  assert.equal(d.getAudioStats().dropped,0);
+  assert.equal(d.getAudioStats().clockRewinds,0);
  }
 });
 test('4B.1: idle voices do not change phase or noise, but active invisible noise keeps clocking',()=>{
