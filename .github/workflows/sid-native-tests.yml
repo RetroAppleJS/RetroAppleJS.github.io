@@ -41,8 +41,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run SID synthesizer, telemetry, and Phase 4A–4C.0 tests
-        run: node --test tests/sid_card.test.js tests/sid_telemetry.test.js tests/sid_phase4a.test.js tests/sid_phase4b.test.js tests/sid_phase4b1.test.js tests/sid_phase4c0.test.js
+      - name: Run SID synthesizer, telemetry, and Phase 4A–4C.2 tests
+        run: node --test tests/sid_card.test.js tests/sid_telemetry.test.js tests/sid_phase4a.test.js tests/sid_phase4b.test.js tests/sid_phase4b1.test.js tests/sid_phase4c0.test.js tests/sid_phase4c12.test.js
       - name: Smoke-test independent Phase 4C ADSR discrepancy report
         run: |
           node tools/SID_ADSR_REFERENCE_COMPARE.js --fixture=adsr-rate-change --clock=PAL > "$RUNNER_TEMP/sid-adsr-comparison.json"
