@@ -145,6 +145,7 @@
             re[i]=pcm[start+i]*w;
         }
         // Deterministic in-place radix-2 FFT.
+        var j=0;
         for(i=1,j=0;i<N;i++){
             for(var bit=N>>1;(j&bit)!==0;bit>>=1)j^=bit;
             j^=bit;
