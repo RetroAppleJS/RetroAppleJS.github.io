@@ -23351,12 +23351,34 @@ function SIDAudio()
     // accumulator bit 19, not on every output sample or every bit toggle.
     function noiseAdvance(v,oldPhase,totalPhase)
     {
-        var edges=Math.floor((totalPhase+NOISE_RISE_OFFSET)/NOISE_CLOCK)-
-                  Math.floor((oldPhase+NOISE_RISE_OFFSET)/NOISE_CLOCK);
+        // Both values are below 2^25 in the bounded PCM tick window:
+        // an unsigned shift is exact here and avoids two Math.floor calls.
+        var edges=((totalPhase+NOISE_RISE_OFFSET)>>>20)-
+                  ((oldPhase+NOISE_RISE_OFFSET)>>>20);
         while(edges-->0){
             var feedback=((v.noise>>>22)^(v.noise>>>17))&1;
             v.noise=((v.noise<<1)|feedback)&0x7fffff;
         }
+    }
+    // Phase 4B.1: common case, with no enabled hard-sync targets.
+    // One batched advance per oscillator and PCM frame; no event-search
+    // loop, no temporary oscillator tables, and no work for zero frequency.
+    // Noise state still advances when its waveform is not currently active:
+    // a subsequent NOISE enable must observe the correct LFSR history.
+    function clockFreeOscillator(v,freq,ctrl,cycles)
+    {
+        if(ctrl&8){
+            v.phase=0;v.noise=0x7ffff8;v.wrap=false;
+            return;
+        }
+        if(!freq||!cycles){v.wrap=false;return;}
+        var before=v.phase,total=before+freq*cycles;
+        if(((total+NOISE_RISE_OFFSET)>>>20)!==
+           ((before+NOISE_RISE_OFFSET)>>>20)){
+            noiseAdvance(v,before,total);
+        }
+        v.phase=total&PHASE_MASK;
+        v.wrap=total>=PHASE;
     }
     // Exact (integer) SID clock count per PCM frame, with fractional cycles
     // carried across frames. No chip-clock-by-chip-clock sample synthesis.
@@ -23367,14 +23389,21 @@ function SIDAudio()
         var frameCycles=sidClock/SAMPLE_RATE+oscClockFraction;
         var remain=Math.floor(frameCycles);
         oscClockFraction=frameCycles-remain;
+        var ctrl0=registers[4],ctrl1=registers[11],ctrl2=registers[18];
         var freq0=registers[0]|registers[1]<<8,
             freq1=registers[7]|registers[8]<<8,
             freq2=registers[14]|registers[15]<<8;
+        if(!((ctrl0|ctrl1|ctrl2)&2)){
+            clockFreeOscillator(voices[0],freq0,ctrl0,remain);
+            clockFreeOscillator(voices[1],freq1,ctrl1,remain);
+            clockFreeOscillator(voices[2],freq2,ctrl2,remain);
+            return;
+        }
+        // Only synchronization requires event boundaries and extra scans.
         oscFreq[0]=freq0;oscFreq[1]=freq1;oscFreq[2]=freq2;
-        oscCtrl[0]=registers[4];oscCtrl[1]=registers[11];
-        oscCtrl[2]=registers[18];
+        oscCtrl[0]=ctrl0;oscCtrl[1]=ctrl1;oscCtrl[2]=ctrl2;
         var f0=oscFreq,controls=oscCtrl;
-        var syncActive=!!((controls[0]|controls[1]|controls[2])&2);
+        var syncActive=true;
         while(remain>0){
             var chunk=remain,i,v,source,phase,target;
             if(syncActive){
