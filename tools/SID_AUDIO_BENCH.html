@@ -1,10 +1,10 @@
 <!doctype html>
-<!-- SID Phase 4A: offline benchmark of the unmodified production synth. -->
+<!-- SID Audio Bench v2: permanent offline laboratory, 4A + 4B fixtures. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SID Audio Bench — Phase 4A</title>
+<title>SID Audio Reference &amp; Performance Bench v2</title>
 <style>
 :root{color-scheme:dark;background:#101721;color:#e5eaf0;font:14px/1.5 system-ui,Arial,sans-serif}
 *{box-sizing:border-box}
@@ -45,9 +45,9 @@ pre{max-height:180px;overflow:auto;font:12px/1.5 ui-monospace,monospace;backgrou
 <body>
 <header>
 <div>
-<div class="muted">RetroAppleJS · SID peripheral · Phase 4A</div>
+<div class="muted">RetroAppleJS · SID peripheral · Audio Bench v2</div>
 <h1>SID Audio Reference &amp; Performance Bench</h1>
-<p class="muted">Original production synthesizer · deterministic register sequences · offline only</p>
+<p class="muted">Phase 4A baseline + Phase 4B combined-waveform tests · production synthesizer · offline only</p>
 </div>
 <mark>Fixed 22,050 Hz · no oversampling</mark>
 </header>
@@ -64,11 +64,11 @@ pre{max-height:180px;overflow:auto;font:12px/1.5 ui-monospace,monospace;backgrou
 </select></div>
 <div class="actions">
 <button class="primary" id="run">Run selected</button>
-<button id="runall">Run entire suite</button>
+<button id="runall">Run entire suite (4A + 4B)</button>
 <button id="export" disabled>Export results JSON</button>
 </div>
 </div>
-<div id="status" role="status" aria-live="polite">Ready. Every run renders a fixed two seconds per SID model.</div>
+<div id="status" role="status" aria-live="polite">Ready. 10 original Phase 4A fixtures + 5 Phase 4B fixtures; two seconds per model.</div>
 <div id="error" role="alert"></div>
 </section>
 
@@ -116,7 +116,7 @@ pre{max-height:180px;overflow:auto;font:12px/1.5 ui-monospace,monospace;backgrou
 
 <section class="panel">
 <h2>Measurement interpretation</h2>
-<p class="ref-notes">A run starts a new SIDAudio instance for each fixture/model. It includes one untimed warm-up and a median of repeated 44,100-sample renders. The PCM hash confirms repeatability within this environment. Offline render performance is not a substitute for browser Web Audio underrun telemetry; use the existing peripheral audio telemetry for the live 10 FPS/VBLANK comparison. Performance comparisons are meaningful on the same computer and browser, with similar background load. This is a software baseline, not physical 6581/8580 certification.</p>
+<p class="ref-notes">Bench v2 tests the current production SID implementation; it does not claim the synth itself is in Phase 4A or 4B. A run starts a new SIDAudio instance for each fixture/model. It includes one untimed warm-up and a median of repeated 44,100-sample renders. The PCM hash confirms repeatability within this environment. Offline render performance is not a substitute for browser Web Audio underrun telemetry; use the existing peripheral audio telemetry for the live 10 FPS/VBLANK comparison. Performance comparisons are meaningful on the same computer and browser, with similar background load. This is a software baseline, not physical 6581/8580 certification.</p>
 </section>
 
 <script>
@@ -124,9 +124,17 @@ pre{max-height:180px;overflow:auto;font:12px/1.5 ui-monospace,monospace;backgrou
 "use strict";
 var B=window.SIDAudioBench,results={},selected=null,audioURLs={},external=null,refName="";
 var $=function(id){return document.getElementById(id);};
+var fixtureGroups={};
 B.FIXTURES.forEach(function(f){
+ var suite=B.fixtureSuite(f.id);
+ if(!fixtureGroups[suite]){
+  var group=document.createElement("optgroup");
+  group.label=suite==="4A"?"Phase 4A · original baseline":"Phase 4B · combined waveforms";
+  $("fixture").appendChild(group);fixtureGroups[suite]=group;
+ }
  var opt=document.createElement("option");opt.value=f.id;
- opt.textContent=f.label+" — "+f.description;$("fixture").appendChild(opt);
+ opt.textContent=f.label+" — "+f.description;
+ fixtureGroups[suite].appendChild(opt);
 });
 function key(f,m,c){return f+":"+m+":"+c;}
 function status(message,err){$("status").textContent=message;$("error").textContent=err||"";}
@@ -241,16 +249,19 @@ $("fixture").onchange=function(){inspect($("fixture").value,$("clock").value);re
 $("clock").onchange=function(){inspect($("fixture").value,$("clock").value);refresh();};
 $("export").onclick=function(){
  var stamp=new Date().toISOString(),all=Object.keys(results).sort().map(function(k){return B.report(results[k]);});
- var doc={schema:"retroapplejs.sid.phase4a.v1",createdAt:stamp,engine:"EMU_DEVICE_SID_audio.js",
+ // Version describes the benchmark format, not the evolving synthesizer.
+ // Retain all original run fields for comparisons with 4A-era JSON exports.
+ var doc={schema:B.SCHEMA,benchmarkVersion:B.VERSION,
+  fixtureSuites:["4A","4B"],createdAt:stamp,engine:"EMU_DEVICE_SID_audio.js",
  sampleRate:B.RATE,source:"offline production SIDAudio / no Web Audio",
  browser:navigator.userAgent,referenceMetadata:external?
   {name:refName,analysis:external.analysis,format:external.originalFormat}:null,runs:all};
- download(new Blob([JSON.stringify(doc,null,2)],{type:"application/json"}),"sid-phase4a-results.json");
+ download(new Blob([JSON.stringify(doc,null,2)],{type:"application/json"}),"sid-audio-bench-v2-results.json");
 };
 [6581,8580].forEach(function(m){
  $("wav"+m).onclick=function(){
   var r=results[key($("fixture").value,m,$("clock").value)];
-  if(r)download(waveBlob(r.pcm),"sid-4a-"+r.fixture+"-"+m+"-"+r.clock+"-22050.wav");
+  if(r)download(waveBlob(r.pcm),"sid-audio-"+r.fixture+"-"+m+"-"+r.clock+"-22050.wav");
  };
 });
 $("reference").onchange=async function(){
