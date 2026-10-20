@@ -29,6 +29,26 @@ function validate(options){
     assert(Object.prototype.hasOwnProperty.call(MODES,mode),"Select LP, BP or HP");
     return {clock:clock,mode:mode};
 }
+var STALE_FILTER_MESSAGE="Incompatible SID audio engine: Phase 4D.1 TPT filter not detected. "+
+    "The browser may have cached the old Phase 4D.0 JavaScript. "+
+    "Refresh the page without cache (Cmd+Shift+R) or check out the latest branch.";
+function checkEngine(SIDAudio){
+    assert(typeof SIDAudio==="function",STALE_FILTER_MESSAGE);
+    var d=new SIDAudio();
+    assert(typeof d.getFilterState==="function",STALE_FILTER_MESSAGE);
+    var initial=d.getFilterState();
+    assert(initial&&Number.isFinite(initial.coefficientUpdates)&&
+        Number.isFinite(initial.damping)&&Number.isFinite(initial.cutoffHz),
+        STALE_FILTER_MESSAGE);
+    d.writeRegister(0x17,0xf1);
+    var after=d.getFilterState();
+    assert(after&&after.resonance===15&&
+        after.coefficientUpdates>initial.coefficientUpdates,
+        STALE_FILTER_MESSAGE);
+    return {engine:"Phase 4D.1+ TPT state-variable filter",
+        check:"TPT state and resonance-coefficient update verified",
+        cutoffHz:after.cutoffHz,damping:after.damping};
+}
 // The signal is intentionally TRIANGLE rather than sawtooth (reduced
 // harmonic content). Its extracted fundamental is compared with the
 // *same* oscillator routed directly, so wavetable/harmonic leakage
@@ -41,7 +61,10 @@ function render(SIDAudio,params,bypass){
     var cfg=validate(params),clock=CLOCKS[cfg.clock];
     assert(params.hz>=90&&params.hz<=4000&&Number.isFinite(params.hz),"Invalid tone");
     var reg=hzToRegister(params.hz,clock),actualHz=reg*clock/16777216;
-    var d=new SIDAudio();d.setModel(params.model);d.setClock(clock);
+    var d=new SIDAudio();
+    // Reject silently mixed deployments in both browser and direct API use.
+    assert(typeof d.getFilterState==="function",STALE_FILTER_MESSAGE);
+    d.setModel(params.model);d.setClock(clock);
     d.writeRegister(0,reg&255);d.writeRegister(1,reg>>>8);
     d.writeRegister(5,0);d.writeRegister(6,0xf0);
     d.writeRegister(4,0x11); // TRIANGLE + GATE
@@ -126,6 +149,7 @@ function result(options,points){
         limitations:"Extracted fundamental of triangle input, not a perfectly pure sine or physical-chip calibration. Sample rate 22050 Hz, Nyquist 11025 Hz. Test frequencies 110–3520 Hz."};
 }
 function survey(SIDAudio,options){
+    checkEngine(SIDAudio);
     var q=jobs(options),cache=Object.create(null),points=[];
     for(var i=0;i<q.length;i++)points.push(measure(SIDAudio,q[i],cache));
     return result(options,points);
@@ -134,5 +158,6 @@ return {SCHEMA:SCHEMA,SAMPLE_RATE:SAMPLE_RATE,SAMPLES:SAMPLES,SETTLE:SETTLE,
     CLOCKS:CLOCKS,FREQUENCIES:FREQUENCIES,CUTOFFS:CUTOFFS,
     RESONANCES:RESONANCES,MODES:MODES,hzToRegister:hzToRegister,
     render:render,project:project,measure:measure,
-    jobs:jobs,result:result,survey:survey};
+    jobs:jobs,result:result,survey:survey,checkEngine:checkEngine,
+    STALE_FILTER_MESSAGE:STALE_FILTER_MESSAGE};
 });
