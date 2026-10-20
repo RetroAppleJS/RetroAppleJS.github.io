@@ -1663,6 +1663,12 @@ ____    ____          _
 */
 
 
+/* Keep document-level trackpad overscroll from triggering a page refresh.
+   Inner panes retain their own normal scrolling behavior. */
+html, body {
+  overscroll-behavior-y: none;
+}
+
 #tab1
 {
   background-size:1300px;
