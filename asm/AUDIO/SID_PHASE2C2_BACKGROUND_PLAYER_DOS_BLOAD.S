@@ -883,30 +883,30 @@ TENS        .BYTE $00
 
 ; All strings are 7-bit ASCII and NUL-terminated. PRINT_AX adds bit 7.
 ; Single-quoted ASC avoids the assembler's legacy high-bit conversion.
-HELLO_TEXT    ASC 'SID PLAYER 2B.2 - NATIVE PSID V1/V2'
+HELLO_TEXT    ASC 'SID PLAYER 2B.2'
               .BYTE $0D,$00
-START_TEXT    ASC 'PSID START ($HEX, BS=EDIT): '
+START_TEXT    ASC 'PSID START  ($HEX): '
               .BYTE $00
-LENGTH_TEXT   ASC 'PSID LENGTH ($HEX, BS=EDIT): '
+LENGTH_TEXT   ASC 'PSID LENGTH ($HEX): '
               .BYTE $00
 VERSION_TEXT  ASC 'PSID V'
               .BYTE $00
-TITLE_TEXT    ASC 'TITLE: '
+TITLE_TEXT    ASC 'TITLE:    '
               .BYTE $00
-SONGS_TEXT    ASC 'SUBTUNES AVAILABLE: '
+SONGS_TEXT    ASC 'SUBTUNES: '
               .BYTE $00
-DEFAULT_TEXT  ASC 'DEFAULT SUBTUNE: '
+DEFAULT_TEXT  ASC 'DEFAULT:  '
               .BYTE $00
-SELECT_TEXT   ASC 'SUBTUNE (DECIMAL, ENTER=DEFAULT): '
+SELECT_TEXT   ASC 'SUBTUNE:  '
               .BYTE $00
 READY_TEXT    .BYTE $0D
               ASC 'PLAYING - PRESS ANY KEY TO STOP'
               .BYTE $0D,$00
 CIA_TEXT      .BYTE $0D
-              ASC 'CIA TIMING IS NOT SUPPORTED'
+              ASC 'UNSUPPORTED CIA TIMING'
               .BYTE $0D,$00
 INVALID_TEXT  .BYTE $0D
-              ASC 'INVALID OR UNSUPPORTED PSID / MEMORY RANGE'
+              ASC 'INVALID/UNSUPPORTED PSID / MEM RANGE'
               .BYTE $0D,$00
 
 ; Padding belongs in the assembly source, never injected by packaging tools.
