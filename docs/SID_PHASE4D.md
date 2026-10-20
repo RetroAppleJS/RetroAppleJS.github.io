@@ -19,8 +19,14 @@ The Phase 4C ADSR envelope and Phase 4B.1 oscillators are accepted.
 | Per-sample coefficients | Math.pow and Math.exp each frame | Cache/recompute on relevant writes |
 
 The existing implementation clamps PCM to [-1,1], which can conceal
-filter-state instability; our future tests must inspect internal
-stability, clipping, DC and relative gain.
+filter-state instability. Phase 4D.0 CI discovered significant
+**pre-existing band-pass saturation**: for example, 8580 / 880 Hz /
+cutoff 1536 / resonance F clips **2,112 of the 8,820 analyzed PCM
+samples** (about 24%). This is a confirmed baseline defect of the
+existing filter approximation, not a new regression in Phase 4D.0.
+Clipped sweeps cannot be interpreted as unclipped filter gain.
+Future implementation must test internal numerical stability,
+clipping, DC and relative gain.
 
 ### How to run the Phase 4D.0 filter lab
 
