@@ -127,7 +127,7 @@ test('4D.0: browser laboratory is standalone, dependency-free, and syntax-valid'
  assert.match(html,/Export filter JSON/);
  assert.match(html,/Voice 3/);
  assert.doesNotMatch(html,/https?:\/\/[^"' ]+\.js/);
- const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
+ const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script\b[^>]*>/gi)]
   .map(x=>x[1]).filter(x=>x.trim());
  assert.equal(blocks.length,1);
  assert.doesNotThrow(()=>new vm.Script(blocks[0]));
