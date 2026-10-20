@@ -33,6 +33,7 @@ a{color:#8ccffc}
 <button id="export" disabled>Export filter JSON</button>
 </div>
 <p id="status" role="status" aria-live="polite">Ready: 12 cutoff settings × 5 resonance settings × 2 SID models. Each capture is 0.5 seconds at 22,050 Hz, excluding the initial 100 ms from analysis.</p>
+<p id="clipping" class="bad">Current filter output may clip at high cutoff/multimode settings. Saturated points are recorded, but their measured gain is not an unclipped filter response.</p>
 </section>
 <section class="panel">
 <h2>Gain versus cutoff, relative to unfiltered voice</h2>
@@ -116,6 +117,9 @@ a{color:#8ccffc}
       source:"unmodified production SIDAudio / offline",
       browser:navigator.userAgent,survey:survey,diagnostics:diagnostics};
     chart("curve6581",survey,6581);chart("curve8580",survey,8580);
+    var clipped=survey.points.filter(function(p){return p.clippedSamples>0;});
+    $("clipping").textContent=clipped.length+" / "+survey.points.length+
+      " sweep points include clipped PCM. Their gain curves are distorted by output saturation; see exported clippedSamples counts.";
     showDiagnostics(diagnostics);
     $("export").disabled=false;
     $("status").textContent="Completed 120 filter curve captures + 18 routing probes. Export the JSON for Phase 4D.1 design.";
