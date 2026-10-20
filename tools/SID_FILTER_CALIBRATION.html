@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SID Filter Calibration Laboratory — Phase 4D.2a</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif}
+body{margin:0;background:#101925;color:#e6edf8;padding:20px;line-height:1.5}
+main{max-width:1120px;margin:auto}
+h1{font-size:25px;margin:0 0 7px}h2{font-size:18px;margin:0 0 10px}
+p,summary{max-width:1000px}.muted{color:#adc1d2}
+.panel{background:#172536;border:1px solid #31465a;border-radius:10px;padding:16px;margin-top:15px}
+.row{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
+label{font-size:13px;color:#c5d7e9;display:flex;flex-direction:column;gap:5px}
+button,select{background:#253b52;color:#edf5ff;border:1px solid #4b6884;border-radius:6px;padding:9px;font:inherit}
+button:not(:disabled){cursor:pointer}button:disabled{opacity:.5}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+canvas{display:block;width:100%;background:#101b28;border:1px solid #345067;border-radius:6px}
+a{color:#8ccffc}
+code{font-size:.93em}
+</style></head>
+<body><main>
+<h1>SID Filter Calibration Laboratory · Phase 4D.2a</h1>
+<p class="muted">A <b>frequency-selective</b> measurement of the existing 4D.1 TPT filter. Uses the real SIDAudio offline renderer with a triangle oscillator and a matched unfiltered reference. Does not claim physical SID calibration or change the production synthesizer.</p>
+<section class="panel">
+<h2>Frequency-selective filter survey</h2>
+<div class="row">
+<label>Clock<select id="clock"><option value="PAL">PAL — 985,248 Hz</option><option value="NTSC">NTSC — 1,022,727 Hz</option></select></label>
+<label>Filter mode<select id="mode"><option value="lp">Low-pass</option><option value="bp">Band-pass</option><option value="hp">High-pass</option></select></label>
+<button id="run">Run frequency survey</button>
+<button id="export" disabled>Export calibration JSON</button>
+</div>
+<p id="status" role="status" aria-live="polite">Ready: 6 tones × 10 cutoff codes × 3 resonance codes × 2 models = 360 measurements. Each renders 0.5 seconds. This is NOT a CPU benchmark.</p>
+</section>
+<section class="panel">
+<h2>Fundamental transfer gain by cutoff</h2>
+<p class="muted">After the survey, choose an input tone and resonance to inspect. Frequency values refer to the actual rounded SID oscillator frequency. Gain in dB is the measured filtered fundamental relative to the same oscillator routed directly.</p>
+<div class="row">
+<label>Input fundamental<select id="frequency" disabled><option value="110">110 Hz</option><option value="220">220 Hz</option><option value="440">440 Hz</option><option value="880" selected>880 Hz</option><option value="1760">1,760 Hz</option><option value="3520">3,520 Hz</option></select></label>
+<label>Resonance<select id="resonance" disabled><option value="0">$0 — minimum</option><option value="8">$8 — medium</option><option value="15" selected>$F — maximum</option></select></label>
+</div>
+<div class="grid">
+<div><p><b>6581</b> <span class="muted"> — provisional TPT cutoff</span></p><canvas id="plot6581" width="590" height="290" aria-label="6581 fundamental gain versus cutoff"></canvas></div>
+<div><p><b>8580</b> <span class="muted"> — provisional TPT cutoff</span></p><canvas id="plot8580" width="590" height="290" aria-label="8580 fundamental gain versus cutoff"></canvas></div>
+</div>
+<p id="metrics" class="muted">Run the survey to see measured gain and clipping.</p>
+</section>
+<section class="panel">
+<h2>Sources and calibration boundaries</h2>
+<p>Published reSID documentation provides a circuit-model basis, including an approximate 8580 0–12.5 kHz cutoff mapping and its modeled resistor-ladder resonance law. These are <b>published emulator/circuit-model references</b>, not recordings of the user's actual chips. The 6581 filter varies among specimens and its op-amp behavior is nonlinear.</p>
+<p><a href="https://github.com/libsidplayfp/resid/blob/master/filter.cc" target="_blank" rel="noopener">reSID filter implementation</a> · <a href="https://sidplay-residfp.sourceforge.io/docs/classreSIDfp_1_1Filter6581.html" target="_blank" rel="noopener">reSIDfp filter model documentation</a> · <a href="../docs/SID_PHASE4D2.md">Phase 4D.2 methodology and reference limits</a></p>
+<p class="muted">The current tests use an actual triangle oscillator, not an ideal laboratory sine generator, and extract the fundamental with a Hann-window complex projection. This substantially reduces harmonic interference compared with Phase 4D.0's broadband RMS sweeps but does not equal a calibrated physical-chip frequency-response test. Above roughly 5 kHz, the 22,050 Hz sampling budget imposes additional limitations.</p>
+</section>
+<section class="panel">
+<h2>Compatibility</h2>
+<p>Earlier <a href="SID_FILTER_BENCH.html">SID Filter Lab (4D.1)</a> and <a href="SID_AUDIO_BENCH.html">SID Audio Bench v3</a> remain unchanged. No changes have been made to production filter coefficients, oscillator/ADSR behavior, audio FIFO or native PSID playback in 4D.2a.</p>
+</section>
+<script src="../res/EMU_DEVICE_SID_audio.js"></script>
+<script src="SID_FILTER_CALIBRATION_core.js"></script>
+<script>
+(function(){
+"use strict";
+var $=function(id){return document.getElementById(id);},C=window.SIDFilterCalibration;
+var latest=null;
+function plot(id,model){
+ var canvas=$(id),ctx=canvas.getContext("2d"),w=canvas.width,h=canvas.height;
+ ctx.fillStyle="#101b28";ctx.fillRect(0,0,w,h);
+ if(!latest)return;
+ var freq=Number($("frequency").value),res=Number($("resonance").value);
+ var points=latest.points.filter(function(x){return x.model===model&&x.requestedHz===freq&&x.resonance===res;});
+ if(!points.length)return;
+ var values=points.map(function(p){return p.gainDb;});
+ var lo=Math.floor(Math.min.apply(null,values)/5)*5-5;
+ var hi=Math.ceil(Math.max.apply(null,values)/5)*5+5;
+ lo=Math.max(-120,lo);hi=Math.min(80,hi);if(hi<=lo)hi=lo+5;
+ function xval(n){return 52+((w-70)*n/2047);}
+ function yval(db){return 22+(h-57)*(hi-db)/(hi-lo);}
+ ctx.font="12px ui-monospace,monospace";ctx.lineWidth=1;
+ for(var i=0;i<=5;i++){
+   var val=lo+(hi-lo)*i/5,y=yval(val);
+   ctx.strokeStyle="#334b63";ctx.beginPath();ctx.moveTo(52,y);ctx.lineTo(w-12,y);ctx.stroke();
+   ctx.fillStyle="#abbdd0";ctx.fillText(val.toFixed(1)+" dB",4,y+4);
+ }
+ [0,512,1024,1536,2047].forEach(function(c){
+   ctx.fillStyle="#abbdd0";ctx.fillText(String(c),xval(c)-13,h-6);
+ });
+ ctx.strokeStyle=model===6581?"#86dcbe":"#eeb574";ctx.lineWidth=3;ctx.beginPath();
+ points.forEach(function(p,i){var xx=xval(p.cutoff),yy=yval(p.gainDb);
+   if(!i)ctx.moveTo(xx,yy);else ctx.lineTo(xx,yy);});
+ ctx.stroke();
+ points.forEach(function(p){ctx.beginPath();ctx.arc(xval(p.cutoff),yval(p.gainDb),3,0,2*Math.PI);
+   ctx.fillStyle=model===6581?"#86dcbe":"#eeb574";ctx.fill();});
+}
+function redraw(){
+ plot("plot6581",6581);plot("plot8580",8580);
+ if(!latest)return;
+ var hz=Number($("frequency").value),res=Number($("resonance").value);
+ var subset=latest.points.filter(function(p){return p.requestedHz===hz&&p.resonance===res;});
+ var clipped=subset.filter(function(p){return p.clippedSamples>0;}).length;
+ var maxPeak=Math.max.apply(null,subset.map(function(p){return p.peak;}));
+ $("metrics").textContent="Selected "+hz+" Hz / resonance $"+res.toString(16).toUpperCase()+
+     ": "+subset.length+" cutoff points across both models; "+
+     clipped+" clipped; maximum PCM amplitude "+maxPeak.toFixed(4)+".";
+}
+$("frequency").onchange=redraw;$("resonance").onchange=redraw;
+$("run").onclick=function(){
+ var options={clock:$("clock").value,mode:$("mode").value};
+ var jobs=C.jobs(options),cache=Object.create(null),points=[],position=0;
+ $("run").disabled=true;$("export").disabled=true;
+ $("frequency").disabled=true;$("resonance").disabled=true;latest=null;
+ $("status").textContent="Starting "+jobs.length+" fundamental measurements…";
+ function chunk(){
+   try{
+     var end=Math.min(position+6,jobs.length);
+     for(;position<end;position++)points.push(C.measure(SIDAudio,jobs[position],cache));
+     $("status").textContent="Measuring… "+position+" / "+jobs.length;
+     if(position<jobs.length){setTimeout(chunk,0);return;}
+     latest=C.result(options,points);
+     latest.createdAt=new Date().toISOString();
+     latest.browser=navigator.userAgent;
+     latest.source="Phase 4D.1 production SIDAudio, frequency-selective offline capture";
+     $("frequency").disabled=false;$("resonance").disabled=false;
+     $("export").disabled=false;
+     redraw();
+     var bad=points.filter(function(p){return p.clippedSamples>0;}).length;
+     $("status").textContent="Completed "+points.length+" measurements; "+bad+
+       " clipped captures. Export JSON for model-reference comparison.";
+   }catch(error){
+     $("status").textContent="Survey failed at "+position+": "+String(error&&error.message||error);
+   }finally{if(position>=jobs.length||!latest&&$("status").textContent.indexOf("failed")!==-1)$("run").disabled=false;}
+ }
+ setTimeout(chunk,0);
+};
+$("export").onclick=function(){
+ if(!latest)return;
+ var blob=new Blob([JSON.stringify(latest,null,2)],{type:"application/json"});
+ var url=URL.createObjectURL(blob),link=document.createElement("a");
+ link.href=url;link.download="sid-filter-calibration-4d2a-"+latest.clock+"-"+latest.mode+".json";
+ link.click();setTimeout(function(){URL.revokeObjectURL(url);},1000);
+};
+})();
+</script></main></body></html>

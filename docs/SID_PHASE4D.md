@@ -178,3 +178,7 @@ must still be completed before final filter acceptance.
 A stable digital SVF is not the nonlinear 6581 transistor
 circuit. Hardware-calibrated cutoff, resonance and analog
 coloration are deferred to Phase 4D.2.
+
+## Beginning Phase 4D.2 — Frequency-response calibration
+
+A standalone [Phase 4D.2a frequency-selective calibration laboratory](../tools/SID_FILTER_CALIBRATION.html) and [measurement/reference methodology](SID_PHASE4D2.md) now complement the existing 4D.1 broadband-sweep tool. 4D.2a measures matched direct-versus-filtered **triangle fundamental gain and phase** at 6 frequencies, 10 cutoff settings and 3 resonance values for both chip models. It does not modify production filter coefficients or imply physical-chip calibration. A later 4D.2b PR will consider hardware-grounded coefficient changes after measurements have been collected.
