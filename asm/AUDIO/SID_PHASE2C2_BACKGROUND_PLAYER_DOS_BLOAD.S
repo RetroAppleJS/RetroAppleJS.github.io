@@ -24,9 +24,6 @@
 ; CALL 34816	Replay selected subtune
 ; CALL 35500	Play next subtune
 
-
-
-
             ORG $8000
 
 ; The Apple II Monitor ROM handles text entry. All prompts run before
@@ -899,9 +896,14 @@ DEFAULT_TEXT  ASC 'DEFAULT:  '
               .BYTE $00
 SELECT_TEXT   ASC 'SUBTUNE:  '
               .BYTE $00
-READY_TEXT    .BYTE $0D
-              ASC 'PLAYING - PRESS ANY KEY TO STOP'
-              .BYTE $0D,$00
+READY_TEXT    ASC 'PLAYING - CALL 32768 -> SELECT NEW PSID'
+              .BYTE $0D
+              ASC 'CALL 37738 -> STOP PLAYBACK'
+              .BYTE $0D
+              ASC 'CALL 34816 -> REPLAY SELECTED SUBTUNE'
+              .BYTE $0D
+              ASC 'CALL 35500 -> PLAY NEXT SUBTUNE'
+              .BYTE $00
 CIA_TEXT      .BYTE $0D
               ASC 'UNSUPPORTED CIA TIMING'
               .BYTE $0D,$00
@@ -1569,7 +1571,7 @@ BG_ACTIVE        .BYTE $00
 BG_OLD_I         .BYTE $00
 BG_IRQ_LO        .BYTE $00
 BG_IRQ_HI        .BYTE $00
-BG_REPLAY_READY   .BYTE $00
+BG_REPLAY_READY  .BYTE $00
 BG_SELECTED      .BYTE $00
 BG_SONGS         .BYTE $00,$00
 BG_VERSION       .BYTE $00
