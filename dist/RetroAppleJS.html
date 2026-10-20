@@ -23184,7 +23184,7 @@ function SIDAudio()
     // SID ADSR rate-counter periods, measured in SID clock cycles.
     // Levels are eight-bit, with stepped exponential decay/release.
     const RATE_PERIODS=[9,32,63,95,149,220,267,313,392,977,1954,3126,3907,11720,19532,31251];
-    const RATE_WRAP=0x8000;
+    const RATE_MAX=0x7fff;
     const PHASE=16777216, HALF_PHASE=8388608, PHASE_MASK=0xffffff;
     const NOISE_CLOCK=0x100000, NOISE_RISE_OFFSET=0x80000;
     var registers=new Uint8Array(32);
@@ -23236,7 +23236,8 @@ function SIDAudio()
     function newVoice()
     {
         return {phase:0,noise:0x7ffff8,level:0,stage:"release",
-                rateCounter:0,expCounter:0,wrap:false};
+                rateCounter:0,expCounter:0,expPeriod:1,
+                holdZero:true,wrap:false};
     }
     function clearVoices(){ voices=[newVoice(),newVoice(),newVoice()]; }
     clearVoices();
@@ -23290,55 +23291,59 @@ function SIDAudio()
         gain.connect(audio.destination);
         return audio;
     }
-    function expDivider(level)
+    // The SID loads its exponential divider only at these exact ENV
+    // transitions. Between transitions, preserve the previous divider.
+    function updateExpPeriod(v)
     {
-        // Exponential threshold stages from the established SID/reSID model.
-        if(level>=0x5d)return 1;
-        if(level>=0x36)return 2;
-        if(level>=0x1a)return 4;
-        if(level>=0x0e)return 8;
-        if(level>=0x06)return 16;
-        return 30;
+        switch(v.level){
+            case 255:v.expPeriod=1;break;
+            case 93:v.expPeriod=2;break;
+            case 54:v.expPeriod=4;break;
+            case 26:v.expPeriod=8;break;
+            case 14:v.expPeriod=16;break;
+            case 6:v.expPeriod=30;break;
+            case 0:v.expPeriod=1;v.holdZero=true;break;
+        }
     }
     function clockEnvelope(v,sustain)
     {
         if(v.stage==="attack"){
-            if(v.level<255)v.level++;
-            if(v.level===255){v.stage="decay";v.expCounter=0;}
-        }else if(v.stage==="decay" || v.stage==="release"){
-            if(v.stage==="decay" && v.level<=sustain){
-                v.stage="sustain";
-                return;
-            }
-            if(!v.level)return;
-            if(++v.expCounter>=expDivider(v.level)){
-                v.expCounter=0;
-                v.level--;
-                if(v.stage==="decay" && v.level<=sustain)
-                    v.stage="sustain";
-            }
+            // The first ATTACK step resets the exponential counter; GATE
+            // itself does not. This also reproduces $ff -> $00 hold-zero.
+            v.expCounter=0;
+            if(v.holdZero)return;
+            v.level=(v.level+1)&255;
+            if(v.level===255)v.stage="decay";
+        }else{
+            // Continue advancing the exponential divider even at sustain
+            // or during hold-zero: retrigger timing depends on its history.
+            if(++v.expCounter!==v.expPeriod)return;
+            v.expCounter=0;
+            if(v.holdZero)return;
+            // Sustain is a comparator within DECAY_SUSTAIN, not a state
+            // which freezes the counter after its current value is reached.
+            if(v.stage==="release" || v.level!==sustain)
+                v.level=(v.level-1)&255;
+            else return;
         }
+        updateExpPeriod(v);
     }
-    function envelopeStep(v,base)
+    function envelopeStep(v,base,cycles)
     {
         var ad=registers[base+5],sr=registers[base+6];
-        var sustain=((sr>>4)&15)*17;
-        if(v.stage==="sustain" && v.level>sustain)v.stage="decay";
-
-        // Each PCM sample spans ~45 SID clock cycles at PAL / 22.05 kHz.
-        // Clock the 15-bit rate counter and process multiple envelope steps
-        // where necessary, including the nine-cycle fastest attack.
-        // Changing a period does not reset the counter: if the new period
-        // is already passed, wait for 0x8000 wrap (SID ADSR delay behavior).
-        var remaining=sidClock/SAMPLE_RATE;
-        var guard=0;
-        while(remaining>0 && guard++<16){
-            var period=RATE_PERIODS[v.stage==="attack" ? (ad>>4)&15 :
-                         (v.stage==="decay"||v.stage==="sustain") ? ad&15 : sr&15];
-            var until=period>v.rateCounter ? period-v.rateCounter :
-                      RATE_WRAP-v.rateCounter+period;
+        var sustain=(sr>>>4)*17;
+        var remaining=cycles;
+        // Skip entire runs of SID clocks until the next rate-counter
+        // comparison. The 15-bit counter skips the 0x8000 position.
+        while(remaining>0){
+            var period=RATE_PERIODS[v.stage==="attack"?(ad>>>4):
+                          v.stage==="decay"?(ad&15):(sr&15)];
+            var until=period-v.rateCounter;
+            if(until<=0)until+=RATE_MAX;
             if(remaining<until){
-                v.rateCounter=(v.rateCounter+remaining)%RATE_WRAP;
+                var counter=v.rateCounter+remaining;
+                if(counter>RATE_MAX)counter-=RATE_MAX;
+                v.rateCounter=counter;
                 break;
             }
             remaining-=until;
@@ -23387,7 +23392,7 @@ function SIDAudio()
     function clockOscillators()
     {
         var frameCycles=sidClock/SAMPLE_RATE+oscClockFraction;
-        var remain=Math.floor(frameCycles);
+        var remain=Math.floor(frameCycles),elapsedCycles=remain;
         oscClockFraction=frameCycles-remain;
         var ctrl0=registers[4],ctrl1=registers[11],ctrl2=registers[18];
         var freq0=registers[0]|registers[1]<<8,
@@ -23397,7 +23402,7 @@ function SIDAudio()
             clockFreeOscillator(voices[0],freq0,ctrl0,remain);
             clockFreeOscillator(voices[1],freq1,ctrl1,remain);
             clockFreeOscillator(voices[2],freq2,ctrl2,remain);
-            return;
+            return elapsedCycles;
         }
         // Only synchronization requires event boundaries and extra scans.
         oscFreq[0]=freq0;oscFreq[1]=freq1;oscFreq[2]=freq2;
@@ -23446,6 +23451,7 @@ function SIDAudio()
             }
             remain-=chunk;
         }
+        return elapsedCycles;
     }
     function noiseBits(v)
     {
@@ -23456,10 +23462,10 @@ function SIDAudio()
                (((n>>>9)&1)<<3)|(((n>>>5)&1)<<2)|
                (((n>>>2)&1)<<1)|(n&1);
     }
-    function voiceOutput(index)
+    function voiceOutput(index,elapsedSidCycles)
     {
         var base=index*7,v=voices[index],ctrl=registers[base+4];
-        var env=envelopeStep(v,base);
+        var env=envelopeStep(v,base,elapsedSidCycles);
         if((ctrl&8)||!(ctrl&0xf0))return 0;
         var phase=v.phase,selected=0xfff,waves=0;
         if(ctrl&0x10){
@@ -23485,8 +23491,10 @@ function SIDAudio()
     }
     function sample()
     {
-        clockOscillators();
-        var raw=[voiceOutput(0),voiceOutput(1),voiceOutput(2)];
+        var elapsedSidCycles=clockOscillators();
+        var raw=[voiceOutput(0,elapsedSidCycles),
+                 voiceOutput(1,elapsedSidCycles),
+                 voiceOutput(2,elapsedSidCycles)];
         var i;
         var route=registers[0x17]&7;
         var direct=0,filtered=0;
@@ -23587,11 +23595,9 @@ function SIDAudio()
         var old=registers[reg];registers[reg]=value;
         if(reg<21 && reg%7===4){
             var v=voices[(reg/7)|0],gate=value&1,oldGate=old&1;
-            if(gate&&!oldGate){v.stage="attack";v.expCounter=0;}
-            if(!gate&&oldGate){
-                v.stage="release";
-                v.expCounter=0;
-            }
+            if(gate&&!oldGate){v.stage="attack";v.holdZero=false;}
+            if(!gate&&oldGate)v.stage="release";
+            // GATE edges never clear either internal timing counter.
             if(value&8){v.phase=0;v.noise=0x7ffff8;}
         }
         return true;
@@ -23608,6 +23614,14 @@ function SIDAudio()
     this.getRegisters=function(){return new Uint8Array(registers);};
     // Useful for per-voice ADSR regressions; these are raw ENV levels, 0..255.
     this.getEnvelopeLevels=function(){return new Uint8Array(voices.map(v=>v.level));};
+    // Passive Phase 4C diagnostic: neither advances time nor changes audio.
+    this.getEnvelopeState=function(){
+        return voices.map(function(v){return {
+            level:v.level,stage:v.stage,rateCounter:v.rateCounter,
+            expCounter:v.expCounter,expPeriod:v.expPeriod,
+            holdZero:v.holdZero
+        };});
+    };
     // Passive digital-state readout for Phase 4B regression/telemetry.
     // It never advances SID time and returns detached numeric values.
     this.getOscillatorState=function(){
