@@ -169,7 +169,7 @@ test('4C.0: browser exposes a non-timed ENV trace and v3 export schema',()=>{
  assert.match(html,/Export envelope trace/);
  assert.match(html,/sid-audio-bench-v3-results\.json/);
  assert.match(html,/schema:B\.SCHEMA/);
- const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
+ const blocks=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script\b[^>]*>/gi)]
   .map(x=>x[1]).filter(Boolean);
  assert.equal(blocks.length,1);
  assert.doesNotThrow(()=>new vm.Script(blocks[0]));
