@@ -87,3 +87,72 @@ Do not copy GPL reSID implementation code into the MIT project.
 **4C.3:** Run real tunes and 10 FPS/VBLANK telemetry. On the older Mac, compare with the 17.85 ms benchmark baseline. Where genuine ADSR improvements legitimately change complete PCM hashes, explicitly supersede old frozen hashes with independent oscillator/digital-state invariants and newly justified envelope tests rather than silently refreshing checksums.
 
 **Phase 4C.0 acceptance requires the tool, trace export, independent tests, and CI to work without altering production sound or performance.**
+
+## Phase 4C.1 + 4C.2 — Focused digital envelope correction
+
+Implementation: `res/EMU_DEVICE_SID_audio.js` with dedicated regressions
+in `tests/sid_phase4c12.test.js`. This corrects the digital envelope
+counter behavior without changing the 22,050 Hz PCM rate, oscillator
+algorithms, combined-waveform DAC, analog filter approximation, card
+register map, Web Audio FIFO or native 6502 music player.
+
+**Timing:** All three ADSR envelopes receive the *same integer SID
+cycle count per PCM frame* already computed for oscillators. The
+clock uses fractional-cycle carry across frames. The 15-bit envelope
+rate counter jumps directly to its next comparison event rather
+than stepping through every SID clock. The wrap traversal skips
+the 0x8000 state (0x7fff clocks). Rate changes preserve counter
+position and therefore reproduce the ADSR delay when a newly
+selected comparison point was already passed.
+
+**State:** GATE edges select ATTACK or RELEASE without resetting
+rate or exponential counters. ATTACK's next envelope tick resets
+the exponential divider. The exponential divider changes only
+when the eight-bit ENV level lands on the hardware threshold
+values 255, 93, 54, 26, 14, 6 or 0. DECAY/SUSTAIN is a single
+state: an envelope held at sustain remains subject to counting
+if the sustain register subsequently changes. Increasing sustain
+above the held level can therefore cause the note to count
+down toward zero, rather than incorrectly remaining frozen.
+
+**Zero behavior:** Once the eight-bit envelope reaches zero it
+holds until a new GATE rising edge clears the hold flag. An
+immediate GATE off/on while ENV is still 255 may wrap the next
+ATTACK tick to zero and re-engage hold, as on the SID.
+
+`getEnvelopeState()` is a *passive* diagnostic readout returning
+level, stage, rate counter, exponential counter and period, and
+zero-hold state for each voice; it never changes audio time.
+
+### Correct regression boundaries
+
+Complete Phase 4B.1 float32 PCM checksums legitimately change when
+the envelope multiplier changes. Instead of updating them blindly,
+the 4B.1 regression now asserts frozen, previously captured
+**oscillator states** at samples 123 and 44,100 for eight original
+fixtures. This guards accumulator, LFSR, hard-sync and control
+behavior independently of ADSR amplitude.
+
+The original Phase 4A/4B baseline recordings remain historical
+reference material. The new Phase 4C.1/4C.2 tests cover:
+- sustain raised/lowered while GATE remains on
+- release-to-zero, zero hold and unlock
+- immediate GATE off/on at ENV 255
+- GATE counter preservation
+- rate-switch wraparound timing
+- integer shared clocks on PAL and NTSC
+- agreement of 4C.0 envelope traces with the separate slow
+  SID-cycle reference model (allowing small PCM-grid quantization).
+
+**Performance gate:** Do not merge solely because CI passes. On
+the late-2014 MacBook Air i7 / Safari 16.6.1 rerun the original
+ten PAL fixtures for both models (five repetitions), comparing
+against **17.85 ms / two seconds of 22,050 Hz PCM**. A measured
+increase of approximately +5% or more calls for investigation.
+Confirm live SID tune behavior at 10 FPS and VBLANK. This pull
+request does not introduce optional WASM or per-SID-cycle
+production simulation.
+
+The independent oracle remains deliberately idealized and is
+not a physical 6581/8580 capture; unusual write-pipeline
+behavior still requires separate evidence.
