@@ -22,6 +22,8 @@ on:
       - 'tools/SID_AUDIO_BENCH_core.js'
       - 'tests/sid_phase4a.test.js'
       - 'tests/sid_phase4b.test.js'
+      - 'tests/helpers/sid_adsr_cycle_reference.js'
+      - 'tests/sid_phase4c0.test.js'
       - '.github/workflows/sid-native-tests.yml'
   workflow_dispatch:
 
@@ -38,8 +40,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run current SID synthesizer, telemetry, and Phase 4A tests
-        run: node --test tests/sid_card.test.js tests/sid_telemetry.test.js tests/sid_phase4a.test.js tests/sid_phase4b.test.js tests/sid_phase4b1.test.js
+      - name: Run SID synthesizer, telemetry, and Phase 4A–4C.0 tests
+        run: node --test tests/sid_card.test.js tests/sid_telemetry.test.js tests/sid_phase4a.test.js tests/sid_phase4b.test.js tests/sid_phase4b1.test.js tests/sid_phase4c0.test.js
       - name: Detect historical native PSID fixtures
         id: native-fixtures
         shell: bash
