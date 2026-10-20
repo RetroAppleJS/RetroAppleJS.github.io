@@ -115,11 +115,11 @@ test('4A: HTML loads the production synthesizer and shared core, without externa
  assert.doesNotMatch(html,/https?:\/\/[^"' ]+\.js/);
  assert.match(html,/Run entire suite/);
  assert.match(html,/Export results JSON/);
- assert.match(html,/SID Audio Reference &amp; Performance Bench v2/);
- assert.match(html,/Audio Bench v2/);
+ assert.match(html,/SID Audio Reference &amp; Performance Bench v3/);
+ assert.match(html,/Audio Bench v3/);
  assert.match(html,/schema:B\.SCHEMA/);
  assert.match(html,/benchmarkVersion:B\.VERSION/);
- assert.match(html,/sid-audio-bench-v2-results\.json/);
+ assert.match(html,/sid-audio-bench-v3-results\.json/);
  assert.doesNotMatch(html,/retroapplejs\.sid\.phase4a\.v1/);
  assert.doesNotMatch(html,/sid-phase4a-results\.json/);
  const inline=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
@@ -128,16 +128,18 @@ test('4A: HTML loads the production synthesizer and shared core, without externa
  assert.doesNotThrow(()=>new vm.Script(inline[0]));
 });
 
-test('SID Audio Bench v2: phase-neutral export identifies original 4A and newer 4B suites',()=>{
- assert.equal(B.VERSION,2);
- assert.equal(B.SCHEMA,'retroapplejs.sid.audio-bench.v2');
- assert.equal(B.FIXTURES.length,15);
+test('SID Audio Bench v3: phase-neutral export identifies original 4A and newer 4B suites',()=>{
+ assert.equal(B.VERSION,3);
+ assert.equal(B.SCHEMA,'retroapplejs.sid.audio-bench.v3');
+ assert.equal(B.FIXTURES.length,23);
  for(const fixture of B.FIXTURES.slice(0,10))
   assert.equal(B.fixtureSuite(fixture.id),'4A');
- for(const fixture of B.FIXTURES.slice(10))
+ for(const fixture of B.FIXTURES.slice(10,15))
   assert.equal(B.fixtureSuite(fixture.id),'4B');
+ for(const fixture of B.FIXTURES.slice(15))
+  assert.equal(B.fixtureSuite(fixture.id),'4C');
  assert.throws(()=>B.fixtureSuite('unknown'),/Unknown fixture/);
- // Historical v1 files are still directly comparable: each old run's
+ // Historical v1/v2 files are still comparable: each old run's
  // fields are unchanged; only the extra fixtureSuite metadata is added.
  const fake={fixture:'tri-saw',model:6581,clock:'PAL',
   sidClock:985248,events:1,eventSequence:[],analysis:{spectrum:[],rms:.1},
