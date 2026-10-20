@@ -1,0 +1,1588 @@
+; Phase 2C.2 — resident background PSID v1/v2 music on the Apple II 6502.
+; The Phase 2B.2 native header interpreter remains authoritative. IRQ playback
+; uses the Phase 2C.1 CPU-clock SID timer, NOT foreground polling.
+; First-time native header parsing enters at NATIVE_ENTRY ($8000).
+; Resident labels BG_REPLAY, BG_STOP and BG_NEXT_SUBTUNE are actual CALL
+; targets (printed by the assembler); there is NO $1C00 jump table.
+; Load the raw PSID via DOS 3.3 BLOAD before starting this player.
+; After STOP, BG_REPLAY re-executes the saved original INIT from resident RAM.
+; DOS-safe single-load player image starts $8000, continues through $93xx,
+; with explicit zero padding produced by the assembler itself.
+; The parser at $8000 is never overwritten by permitted music targets.
+; The music ZP shadow is $9400, foreground backup $9500.
+; $9400 is the native descriptor BEFORE INIT, then becomes the C64
+; music ZP shadow after INIT. No host transfer record is required.
+; ProntoDOS $9600+ is never touched by our handler. Slot 4 is required.
+; Original executable payload is copied, not relocated or translated.
+; 6502 itself parses original PSID header, checks sizes, prompts for subtune.
+; DOS BLOAD provides the source bytes and last binary address/length.
+
+; USAGE
+
+; CALL 32768	Select PSID and subtune
+; CALL 37738	Stop playback
+; CALL 34816	Replay selected subtune
+; CALL 35500	Play next subtune
+
+
+
+
+            ORG $8000
+
+; The Apple II Monitor ROM handles text entry. All prompts run before
+; CLEAR_C64_ZP; the full original Apple zero page has already been saved.
+; The 6502 interprets the PSID header without any host-side assistance.
+NATIVE_ENTRY
+            JSR SAVE_APPLE_ZP
+            JSR NATIVE_SETUP
+            BCC NATIVE_OK
+            JSR RESTORE_APPLE_ZP
+            RTS
+NATIVE_OK   JMP INSTALL
+
+NATIVE_SETUP
+            LDA #<HELLO_TEXT
+            LDX #>HELLO_TEXT
+            JSR PRINT_AX
+            ; Standard DOS 3.3/ProntoDOS binary metadata (48K system):
+            ; $AA72: last BLOAD destination address, $AA60: byte length.
+            ; Each 4-digit initial value is editable with BACKSPACE;
+            ; ENTER accepts the displayed value without retyping it.
+ASK_START
+            LDA #<START_TEXT
+            LDX #>START_TEXT
+            JSR PRINT_AX
+            LDA DOS_BLOAD_ADDR
+            STA VALUE16
+            LDA DOS_BLOAD_ADDR+1
+            STA VALUE16+1
+            JSR READ_HEX
+            BCC START_ACCEPTED
+            JMP INPUT_ERROR
+START_ACCEPTED
+            LDA VALUE16
+            STA FILEBASE
+            LDA VALUE16+1
+            STA FILEBASE+1
+ASK_LENGTH
+            LDA #<LENGTH_TEXT
+            LDX #>LENGTH_TEXT
+            JSR PRINT_AX
+            LDA DOS_BLOAD_LEN
+            STA VALUE16
+            LDA DOS_BLOAD_LEN+1
+            STA VALUE16+1
+            JSR READ_HEX
+            BCC LENGTH_ACCEPTED
+            JMP INPUT_ERROR
+LENGTH_ACCEPTED
+            LDA VALUE16
+            STA FILELEN
+            LDA VALUE16+1
+            STA FILELEN+1
+CHECK_FILE
+            ; Phase 2C: maximum 8 KiB raw PSID, staged at $6000-$7FFF.
+            LDA FILEBASE+1
+            CMP #$60
+            BCS LONG_SKIP_5
+            JMP INPUT_ERROR
+LONG_SKIP_5
+            CMP #$80
+            BCC LONG_SKIP_6
+            JMP INPUT_ERROR
+LONG_SKIP_6
+            LDA FILELEN+1
+            BNE FILE_LENGTH_VALID
+            LDA FILELEN
+            CMP #$76
+            BCS LONG_SKIP_7
+            JMP INPUT_ERROR
+LONG_SKIP_7
+FILE_LENGTH_VALID
+            CLC
+            LDA FILEBASE
+            ADC FILELEN
+            STA FILEEND
+            LDA FILEBASE+1
+            ADC FILELEN+1
+            STA FILEEND+1
+            BCC LONG_SKIP_8
+            JMP INPUT_ERROR
+LONG_SKIP_8
+            LDA FILEEND+1
+            CMP #$80
+            BCC FILE_RANGE_OK
+            BEQ LONG_SKIP_9
+            JMP INPUT_ERROR
+LONG_SKIP_9
+            LDA FILEEND
+            BEQ LONG_SKIP_10
+            JMP INPUT_ERROR
+LONG_SKIP_10
+FILE_RANGE_OK
+            LDA FILEBASE
+            STA SRCZ
+            LDA FILEBASE+1
+            STA SRCZ+1
+            LDY #$00
+            LDA (SRCZ),Y
+            CMP #$50            ; P
+            BEQ LONG_SKIP_11
+            JMP INPUT_ERROR
+LONG_SKIP_11
+            INY
+            LDA (SRCZ),Y
+            CMP #$53            ; S
+            BEQ LONG_SKIP_12
+            JMP INPUT_ERROR
+LONG_SKIP_12
+            INY
+            LDA (SRCZ),Y
+            CMP #$49            ; I
+            BEQ LONG_SKIP_13
+            JMP INPUT_ERROR
+LONG_SKIP_13
+            INY
+            LDA (SRCZ),Y
+            CMP #$44            ; D
+            BEQ LONG_SKIP_14 ; version, 16-bit big-endian at +4
+            JMP INPUT_ERROR
+LONG_SKIP_14
+            LDY #$04
+            LDA (SRCZ),Y
+            BEQ LONG_SKIP_15
+            JMP INPUT_ERROR
+LONG_SKIP_15
+            INY
+            LDA (SRCZ),Y
+            CMP #$01
+            BEQ VERSION_OK
+            CMP #$02
+            BEQ LONG_SKIP_16
+            JMP INPUT_ERROR
+LONG_SKIP_16
+VERSION_OK
+            STA VERSION
+            ; header data offset, 16-bit big-endian
+            LDY #$06
+            LDA (SRCZ),Y
+            STA OFFSET+1
+            INY
+            LDA (SRCZ),Y
+            STA OFFSET
+            LDA OFFSET+1
+            BNE MIN_HEADER_OK
+            LDA OFFSET
+            LDX VERSION
+            CPX #$02
+            BNE TEST_V1_HEADER
+            CMP #$7C
+            BCS LONG_SKIP_17
+            JMP INPUT_ERROR
+LONG_SKIP_17
+            JMP MIN_HEADER_OK
+TEST_V1_HEADER
+            CMP #$76
+            BCS LONG_SKIP_18
+            JMP INPUT_ERROR
+LONG_SKIP_18
+MIN_HEADER_OK
+            ; offset < file length, so payload can start inside the file
+            LDA OFFSET+1
+            CMP FILELEN+1
+            BCC HEADER_END_OK
+            BEQ LONG_SKIP_19
+            JMP INPUT_ERROR
+LONG_SKIP_19
+            LDA OFFSET
+            CMP FILELEN
+            BCC LONG_SKIP_20
+            JMP INPUT_ERROR
+LONG_SKIP_20
+HEADER_END_OK
+            ; flags, clock and multiple SIDs (v2 only)
+            LDA #$00
+            STA FRAME60
+            LDA VERSION
+            CMP #$02
+            BNE READ_SONGS
+            LDY #$77
+            LDA (SRCZ),Y
+            TAX
+            AND #$03
+            BEQ LONG_SKIP_21 ; MUS or PlaySID-specific samples
+            JMP INPUT_ERROR
+LONG_SKIP_21
+            TXA
+            AND #$0C
+            CMP #$08
+            BNE TEST_MULTISID
+            LDA #$01
+            STA FRAME60
+TEST_MULTISID
+            LDY #$7A
+            LDA (SRCZ),Y
+            BEQ LONG_SKIP_22
+            JMP INPUT_ERROR
+LONG_SKIP_22
+            INY
+            LDA (SRCZ),Y
+            BEQ LONG_SKIP_23
+            JMP INPUT_ERROR
+LONG_SKIP_23
+READ_SONGS
+            ; song count and default subtune are big-endian
+            LDY #$0E
+            LDA (SRCZ),Y
+            STA SONGS+1
+            INY
+            LDA (SRCZ),Y
+            STA SONGS
+            INY
+            LDA (SRCZ),Y
+            STA DEFAULT_SONG+1
+            INY
+            LDA (SRCZ),Y
+            STA DEFAULT_SONG
+            ; accepted count 1..256, default within that count
+            LDA SONGS+1
+            CMP #$02
+            BCC LONG_SKIP_24
+            JMP INPUT_ERROR
+LONG_SKIP_24
+            BNE LONG_SKIP_25
+            JMP INPUT_ERROR
+LONG_SKIP_25
+            CMP #$01
+            BNE TEST_COUNT_LOW
+            LDA SONGS
+            BEQ LONG_SKIP_26
+            JMP INPUT_ERROR
+LONG_SKIP_26
+TEST_COUNT_LOW
+            LDA SONGS
+            ORA SONGS+1
+            BNE LONG_SKIP_27
+            JMP INPUT_ERROR
+LONG_SKIP_27
+            LDA DEFAULT_SONG
+            ORA DEFAULT_SONG+1
+            BNE LONG_SKIP_28
+            JMP INPUT_ERROR
+LONG_SKIP_28
+            LDA DEFAULT_SONG+1
+            CMP SONGS+1
+            BCC DEFAULT_OK
+            BEQ LONG_SKIP_29
+            JMP INPUT_ERROR
+LONG_SKIP_29
+            LDA DEFAULT_SONG
+            CMP SONGS
+            BCC DEFAULT_OK
+            BEQ LONG_SKIP_30
+            JMP INPUT_ERROR
+LONG_SKIP_30
+DEFAULT_OK
+            LDA #<VERSION_TEXT
+            LDX #>VERSION_TEXT
+            JSR PRINT_AX
+            LDA VERSION
+            ORA #$B0
+            JSR $FDED
+            JSR NEWLINE
+            LDA #<TITLE_TEXT
+            LDX #>TITLE_TEXT
+            JSR PRINT_AX
+            LDY #$16
+            LDX #$20
+TITLE_LOOP
+            LDA (SRCZ),Y
+            BEQ TITLE_DONE
+            ORA #$80
+            JSR $FDED
+            INY
+            DEX
+            BNE TITLE_LOOP
+TITLE_DONE
+            JSR NEWLINE
+            LDA #<SONGS_TEXT
+            LDX #>SONGS_TEXT
+            JSR PRINT_AX
+            LDA SONGS
+            STA VALUE16
+            LDA SONGS+1
+            STA VALUE16+1
+            JSR PRINT_DECIMAL
+            JSR NEWLINE
+            LDA #<DEFAULT_TEXT
+            LDX #>DEFAULT_TEXT
+            JSR PRINT_AX
+            LDA DEFAULT_SONG
+            STA VALUE16
+            LDA DEFAULT_SONG+1
+            STA VALUE16+1
+            JSR PRINT_DECIMAL
+            JSR NEWLINE
+            LDA #<SELECT_TEXT
+            LDX #>SELECT_TEXT
+            JSR PRINT_AX
+            JSR READ_DECIMAL
+            BCC LONG_SKIP_31
+            JMP INPUT_ERROR
+LONG_SKIP_31
+            LDA DIGITS
+            BNE SELECTED_MANUALLY
+            LDA DEFAULT_SONG
+            STA SELECTED
+            LDA DEFAULT_SONG+1
+            STA SELECTED+1
+            JMP CHECK_SELECTION
+SELECTED_MANUALLY
+            LDA VALUE16
+            STA SELECTED
+            LDA VALUE16+1
+            STA SELECTED+1
+CHECK_SELECTION
+            LDA SELECTED
+            ORA SELECTED+1
+            BNE LONG_SKIP_32
+            JMP INPUT_ERROR
+LONG_SKIP_32
+            LDA SELECTED+1
+            CMP SONGS+1
+            BCC SONG_RANGE_OK
+            BEQ LONG_SKIP_33
+            JMP INPUT_ERROR
+LONG_SKIP_33
+            LDA SELECTED
+            CMP SONGS
+            BCC SONG_RANGE_OK
+            BEQ LONG_SKIP_34
+            JMP INPUT_ERROR
+LONG_SKIP_34
+SONG_RANGE_OK
+            ; PSID speed bitmap, v1 wraps every 32 tunes, v2 extends bit31.
+            LDA SELECTED
+            SEC
+            SBC #$01
+            STA INDEX
+            LDA VERSION
+            CMP #$01
+            BEQ MAP_SPEED
+            LDA SELECTED+1
+            BNE CLAMP_SPEED
+            LDA INDEX
+            CMP #$20
+            BCC MAP_SPEED
+CLAMP_SPEED
+            LDA #$1F
+            STA INDEX
+MAP_SPEED
+            LDA INDEX
+            AND #$1F
+            STA INDEX
+            LSR
+            LSR
+            LSR
+            STA BYTEINDEX
+            LDA #$15
+            SEC
+            SBC BYTEINDEX
+            TAY
+            LDA (SRCZ),Y
+            STA SPEEDBYTE
+            LDA INDEX
+            AND #$07
+            TAX
+            LDA #$01
+SPEED_SHIFT
+            CPX #$00
+            BEQ SPEED_MASK
+            ASL
+            DEX
+            JMP SPEED_SHIFT
+SPEED_MASK
+            AND SPEEDBYTE
+            BEQ LONG_SKIP_35 ; Copy original header metadata into native descriptor.
+            JMP CIA_ERROR
+LONG_SKIP_35
+            LDA #$53
+            STA DESC
+            LDA #$32
+            STA DESC+1
+            LDA #$42
+            STA DESC+2
+            LDA #$31
+            STA DESC+3
+            LDA FRAME60
+            STA DESC+15
+            LDA SELECTED
+            SEC
+            SBC #$01
+            STA DESC+14
+            ; source = staged base + original header payload offset
+            CLC
+            LDA FILEBASE
+            ADC OFFSET
+            STA DESC+4
+            LDA FILEBASE+1
+            ADC OFFSET+1
+            STA DESC+5
+            ; PSID original executable load address, big-endian
+            LDY #$08
+            LDA (SRCZ),Y
+            STA DESC+7
+            INY
+            LDA (SRCZ),Y
+            STA DESC+6
+            LDA DESC+6
+            ORA DESC+7
+            BNE HAVE_LOAD
+            ; Original load address stored as 2-byte LE PRG prefix.
+            LDA #$02
+            CLC
+            ADC OFFSET
+            STA OFFSET
+            BCC OFFSET_BUMP_DONE
+            INC OFFSET+1
+OFFSET_BUMP_DONE
+            LDY #$00
+            LDA DESC+4
+            STA DSTZ
+            LDA DESC+5
+            STA DSTZ+1
+            LDA (DSTZ),Y
+            STA DESC+6
+            INY
+            LDA (DSTZ),Y
+            STA DESC+7
+            CLC
+            LDA DESC+4
+            ADC #$02
+            STA DESC+4
+            BCC HAVE_LOAD
+            INC DESC+5
+HAVE_LOAD
+            ; executable length = full file length - data offset
+            SEC
+            LDA FILELEN
+            SBC OFFSET
+            STA DESC+8
+            LDA FILELEN+1
+            SBC OFFSET+1
+            STA DESC+9
+            BCS LONG_SKIP_36
+            JMP INPUT_ERROR
+LONG_SKIP_36
+            LDA DESC+8
+            ORA DESC+9
+            BNE LONG_SKIP_37 ; destination must be >= $0C00, end <= $C000
+            JMP INPUT_ERROR
+LONG_SKIP_37
+            LDA DESC+7
+            CMP #$0C
+            BCS LONG_SKIP_38
+            JMP INPUT_ERROR
+LONG_SKIP_38
+            CLC
+            LDA DESC+6
+            ADC DESC+8
+            STA EXECEND
+            LDA DESC+7
+            ADC DESC+9
+            STA EXECEND+1
+            BCC LONG_SKIP_39
+            JMP INPUT_ERROR
+LONG_SKIP_39
+            LDA EXECEND+1
+            CMP #$C0
+            BCC EXEC_RANGE_OK
+            BEQ LONG_SKIP_40
+            JMP INPUT_ERROR
+LONG_SKIP_40
+            LDA EXECEND
+            BEQ LONG_SKIP_41
+            JMP INPUT_ERROR
+LONG_SKIP_41
+EXEC_RANGE_OK
+            ; DOS-safe: PSID executable must end at/below $8000.
+; Permanent parser begins at $8000; native IRQ code uses $9000+, and
+; ProntoDOS starts at $9600. Never overwrite the permanent player.
+            LDA EXECEND+1
+            CMP #$80
+            BCC READ_ENTRIES
+            BEQ DOS_TOP_EQUAL
+            JMP INPUT_ERROR
+DOS_TOP_EQUAL
+            LDA EXECEND
+            BEQ READ_ENTRIES
+            JMP INPUT_ERROR
+READ_ENTRIES
+            LDY #$0A
+            LDA (SRCZ),Y
+            STA DESC+11
+            INY
+            LDA (SRCZ),Y
+            STA DESC+10
+            LDA DESC+10
+            ORA DESC+11
+            BNE INIT_NONZERO
+            LDA DESC+6
+            STA DESC+10
+            LDA DESC+7
+            STA DESC+11
+INIT_NONZERO
+            INY
+            LDA (SRCZ),Y
+            STA DESC+13
+            INY
+            LDA (SRCZ),Y
+            STA DESC+12
+            LDA DESC+12
+            ORA DESC+13
+            BNE LONG_SKIP_43
+            JMP INPUT_ERROR
+LONG_SKIP_43
+            LDA DESC+10
+            STA VALUE16
+            LDA DESC+11
+            STA VALUE16+1
+            JSR CHECK_ENTRY
+            BCC LONG_SKIP_44
+            JMP INPUT_ERROR
+LONG_SKIP_44
+            LDA DESC+12
+            STA VALUE16
+            LDA DESC+13
+            STA VALUE16+1
+            JSR CHECK_ENTRY
+            BCC LONG_SKIP_45 ; Descriptor checksum is computed by native 6502.
+            JMP INPUT_ERROR
+LONG_SKIP_45
+            JSR CALC_PAYLOAD_SUM
+            LDA SUMLO
+            STA DESC+16
+            LDA SUMHI
+            STA DESC+17
+            LDA #<READY_TEXT
+            LDX #>READY_TEXT
+            JSR PRINT_AX
+            CLC
+            RTS
+CIA_ERROR
+            LDA #<CIA_TEXT
+            LDX #>CIA_TEXT
+            JSR PRINT_AX
+            SEC
+            RTS
+INPUT_ERROR
+            LDA #<INVALID_TEXT
+            LDX #>INVALID_TEXT
+            JSR PRINT_AX
+            SEC
+            RTS
+
+; Carry set if VALUE16 falls outside [original LOAD, executable END).
+CHECK_ENTRY
+            LDA VALUE16+1
+            CMP DESC+7
+            BCC ENTRY_BAD
+            BNE CHECK_ENTRY_END
+            LDA VALUE16
+            CMP DESC+6
+            BCC ENTRY_BAD
+CHECK_ENTRY_END
+            LDA VALUE16+1
+            CMP EXECEND+1
+            BCC ENTRY_GOOD
+            BNE ENTRY_BAD
+            LDA VALUE16
+            CMP EXECEND
+            BCS ENTRY_BAD
+ENTRY_GOOD  CLC
+            RTS
+ENTRY_BAD   SEC
+            RTS
+
+; Pre-fill the native Monitor line buffer with VALUE16 as 4 hex digits.
+; Enter editing at Monitor NXTCHAR ($FD75), bypassing GETLN's reset of X.
+; Backspace removes digits from the end; ENTER keeps the visible value.
+; After input, the normal 7-bit hexadecimal parser validates the full line.
+READ_HEX
+            LDX #$00
+            LDA VALUE16+1
+            JSR HEX_BYTE_TO_INPUT
+            LDA VALUE16
+            JSR HEX_BYTE_TO_INPUT
+            LDX #$04
+            JSR $FD75
+            LDA #$00
+            STA VALUE16
+            STA VALUE16+1
+            STA DIGITS
+            LDY #$00
+HEX_LOOP
+            LDA $0200,Y
+            AND #$7F
+            CMP #$0D
+            BEQ HEX_DONE
+            CMP #$24             ; optional '
+            BEQ HEX_SKIP
+            CMP #$20
+            BEQ HEX_SKIP
+            JSR HEX_NIBBLE
+            BCC HEX_BAD
+            STA NIBBLE
+            LDA DIGITS
+            CMP #$04
+            BCS HEX_BAD
+            LDX #$04
+HEX_SHIFT
+            ASL VALUE16
+            ROL VALUE16+1
+            DEX
+            BNE HEX_SHIFT
+            LDA VALUE16
+            ORA NIBBLE
+            STA VALUE16
+            INC DIGITS
+HEX_SKIP
+            INY
+            CPY #$20
+            BCC HEX_LOOP
+HEX_BAD     SEC
+            RTS
+HEX_DONE    CLC
+            RTS
+; Expand A into two uppercase hex characters and append them to IN,X.
+; The Monitor input uses the high-bit keyboard encoding on the screen.
+HEX_BYTE_TO_INPUT
+            PHA
+            LSR
+            LSR
+            LSR
+            LSR
+            JSR HEX_DIGIT_TO_INPUT
+            PLA
+            AND #$0F
+            JSR HEX_DIGIT_TO_INPUT
+            RTS
+HEX_DIGIT_TO_INPUT
+            CMP #$0A
+            BCC HEX_DIGIT_NUMBER
+            CLC
+            ADC #$07
+HEX_DIGIT_NUMBER
+            CLC
+            ADC #$30
+            STA $0200,X
+            ORA #$80
+            JSR $FDED
+            INX
+            RTS
+
+HEX_NIBBLE
+            CMP #$30
+            BCC NIBBLE_BAD
+            CMP #$3A
+            BCC DIGIT_NIBBLE
+            CMP #$41
+            BCC NIBBLE_BAD
+            CMP #$47
+            BCS NIBBLE_BAD
+            SEC
+            SBC #$37
+            SEC
+            RTS
+DIGIT_NIBBLE
+            SEC
+            SBC #$30
+            SEC
+            RTS
+NIBBLE_BAD  CLC
+            RTS
+
+; Decimal subtune input. Only digits; max 3 (256 is the largest).
+READ_DECIMAL
+            JSR $FD6A
+            LDA #$00
+            STA VALUE16
+            STA VALUE16+1
+            STA DIGITS
+            LDY #$00
+DEC_LOOP
+            LDA $0200,Y
+            AND #$7F
+            CMP #$0D
+            BEQ DEC_DONE
+            CMP #$30
+            BCC DEC_BAD
+            CMP #$3A
+            BCS DEC_BAD
+            SEC
+            SBC #$30
+            STA NIBBLE
+            LDA DIGITS
+            CMP #$03
+            BCS DEC_BAD
+            ; Multiply VALUE16 by 10 = 2x + 8x.
+            ASL VALUE16
+            ROL VALUE16+1
+            LDA VALUE16
+            STA TMP16
+            LDA VALUE16+1
+            STA TMP16+1
+            LDX #$02
+DEC_X4
+            ASL VALUE16
+            ROL VALUE16+1
+            DEX
+            BNE DEC_X4
+            CLC
+            LDA VALUE16
+            ADC TMP16
+            STA VALUE16
+            LDA VALUE16+1
+            ADC TMP16+1
+            STA VALUE16+1
+            CLC
+            LDA VALUE16
+            ADC NIBBLE
+            STA VALUE16
+            LDA VALUE16+1
+            ADC #$00
+            STA VALUE16+1
+            INC DIGITS
+            INY
+            JMP DEC_LOOP
+DEC_BAD     SEC
+            RTS
+DEC_DONE    CLC
+            RTS
+
+; Display unsigned decimal 0..256 from VALUE16.
+PRINT_DECIMAL
+            LDA VALUE16
+            STA TMP16
+            LDA VALUE16+1
+            STA TMP16+1
+            LDA #$00
+            STA HUNDREDS
+            STA TENS
+DEC_HUND_LOOP
+            LDA TMP16+1
+            BNE SUB_HUNDRED
+            LDA TMP16
+            CMP #$64
+            BCC DEC_TEN_LOOP
+SUB_HUNDRED
+            SEC
+            LDA TMP16
+            SBC #$64
+            STA TMP16
+            LDA TMP16+1
+            SBC #$00
+            STA TMP16+1
+            INC HUNDREDS
+            JMP DEC_HUND_LOOP
+DEC_TEN_LOOP
+            LDA TMP16
+            CMP #$0A
+            BCC DEC_OUTPUT
+            SEC
+            SBC #$0A
+            STA TMP16
+            INC TENS
+            JMP DEC_TEN_LOOP
+DEC_OUTPUT
+            LDA HUNDREDS
+            BEQ NO_HUNDREDS
+            ORA #$B0
+            JSR $FDED
+NO_HUNDREDS
+            LDA HUNDREDS
+            BNE SHOW_TENS
+            LDA TENS
+            BEQ SHOW_UNITS
+SHOW_TENS
+            LDA TENS
+            ORA #$B0
+            JSR $FDED
+SHOW_UNITS
+            LDA TMP16
+            ORA #$B0
+            JSR $FDED
+            RTS
+
+PRINT_AX
+            STA PSTR
+            STX PSTR+1
+            LDY #$00
+PRINT_LOOP
+            LDA (PSTR),Y
+            BEQ PRINT_DONE
+            ORA #$80
+            JSR $FDED
+            INY
+            BNE PRINT_LOOP
+PRINT_DONE  RTS
+NEWLINE
+            JMP $FD8E
+
+; Calculate 16-bit additive checksum over exact executable payload.
+; Native INSTALL rechecks it immediately before the original copy.
+CALC_PAYLOAD_SUM
+            LDA DESC+4
+            STA SRCZ
+            LDA DESC+5
+            STA SRCZ+1
+            LDA DESC+8
+            STA LEFT
+            LDA DESC+9
+            STA LEFT+1
+            LDA #$00
+            STA SUMLO
+            STA SUMHI
+            LDY #$00
+CALC_LOOP
+            LDA (SRCZ),Y
+            CLC
+            ADC SUMLO
+            STA SUMLO
+            BCC CALC_NO_CARRY
+            INC SUMHI
+CALC_NO_CARRY
+            INC SRCZ
+            BNE CALC_NEXT
+            INC SRCZ+1
+CALC_NEXT
+            JSR COUNT_DOWN
+            BNE CALC_LOOP
+            RTS
+
+; State is outside all relocated original music RAM.
+FILEBASE    .BYTE $00,$00
+FILELEN     .BYTE $00,$00
+FILEEND     .BYTE $00,$00
+OFFSET      .BYTE $00,$00
+EXECEND     .BYTE $00,$00
+SONGS       .BYTE $00,$00
+DEFAULT_SONG .BYTE $00,$00
+SELECTED    .BYTE $00,$00
+VALUE16     .BYTE $00,$00
+TMP16       .BYTE $00,$00
+VERSION     .BYTE $00
+FRAME60     .BYTE $00
+INDEX       .BYTE $00
+BYTEINDEX   .BYTE $00
+SPEEDBYTE   .BYTE $00
+DIGITS      .BYTE $00
+NIBBLE      .BYTE $00
+HUNDREDS    .BYTE $00
+TENS        .BYTE $00
+
+; All strings are 7-bit ASCII and NUL-terminated. PRINT_AX adds bit 7.
+; Single-quoted ASC avoids the assembler's legacy high-bit conversion.
+HELLO_TEXT    ASC 'SID PLAYER 2B.2 - NATIVE PSID V1/V2'
+              .BYTE $0D,$00
+START_TEXT    ASC 'PSID START ($HEX, BS=EDIT): '
+              .BYTE $00
+LENGTH_TEXT   ASC 'PSID LENGTH ($HEX, BS=EDIT): '
+              .BYTE $00
+VERSION_TEXT  ASC 'PSID V'
+              .BYTE $00
+TITLE_TEXT    ASC 'TITLE: '
+              .BYTE $00
+SONGS_TEXT    ASC 'SUBTUNES AVAILABLE: '
+              .BYTE $00
+DEFAULT_TEXT  ASC 'DEFAULT SUBTUNE: '
+              .BYTE $00
+SELECT_TEXT   ASC 'SUBTUNE (DECIMAL, ENTER=DEFAULT): '
+              .BYTE $00
+READY_TEXT    .BYTE $0D
+              ASC 'PLAYING - PRESS ANY KEY TO STOP'
+              .BYTE $0D,$00
+CIA_TEXT      .BYTE $0D
+              ASC 'CIA TIMING IS NOT SUPPORTED'
+              .BYTE $0D,$00
+INVALID_TEXT  .BYTE $0D
+              ASC 'INVALID OR UNSUPPORTED PSID / MEMORY RANGE'
+              .BYTE $0D,$00
+
+; Padding belongs in the assembly source, never injected by packaging tools.
+PAD_TO_CONTROLS
+            .RES $8800-PAD_TO_CONTROLS,$00
+
+; Direct, callable resident entry: once installed, no lower jump table needed.
+BG_REPLAY
+            PHP
+            SEI
+            LDA BG_REPLAY_READY
+            BEQ BG_REPLAY_EXIT
+            LDA BG_ACTIVE
+            BEQ BG_REPLAY_IDLE
+BG_REPLAY_EXIT
+            PLP
+            RTS
+BG_REPLAY_IDLE
+            JSR SAVE_APPLE_ZP
+            LDA #$00
+            LDX #$00
+BG_REPLAY_CLEAR
+            STA $0000,X
+            INX
+            BNE BG_REPLAY_CLEAR
+            LDA BG_SELECTED
+            JSR RUN_INIT
+            LDX #$00
+BG_REPLAY_SNAPSHOT
+            LDA $0000,X
+            STA MUSICZP,X
+            INX
+            BNE BG_REPLAY_SNAPSHOT
+            JSR RESTORE_APPLE_ZP
+            JSR BG_INSTALL
+            LDA #$01
+            STA ACTIVE
+            PLP
+            CLI
+            RTS
+
+DESC        EQU $9400
+DOS_BLOAD_ADDR EQU $AA72       ; last DOS BLOAD start (little-endian)
+DOS_BLOAD_LEN  EQU $AA60       ; last DOS BLOAD length (little-endian)
+SAVEZP      EQU $9500
+SRCZ        EQU $F0
+DSTZ        EQU $F2
+LEFT        EQU $F4
+PSTR        EQU $F6
+READPTR     EQU $F8
+KBD         EQU $C000
+KBDSTRB     EQU $C010
+SIDCTRL1    EQU $D404
+SIDCTRL2    EQU $D40B
+SIDCTRL3    EQU $D412
+SIDVOL      EQU $D418
+
+INSTALL
+            PHP
+            SEI
+            LDA BG_ACTIVE
+            BEQ INSTALL_FRESH
+            ; Re-entering the bootstrap during active playback is unsafe.
+            LDA #$04
+            STA ERRORCD
+            JMP INSTALL_REJECT
+INSTALL_FRESH
+            LDA #$00
+            STA BG_REPLAY_READY
+            STA ERRORCD
+            STA ACTIVE
+            ; Descriptor magic "S2B1" is generated by the native parser.
+            LDA DESC
+            CMP #$53
+            BNE BAD_DESC
+            LDA DESC+1
+            CMP #$32
+            BNE BAD_DESC
+            LDA DESC+2
+            CMP #$42
+            BNE BAD_DESC
+            LDA DESC+3
+            CMP #$31
+            BNE BAD_DESC
+            LDA DESC+8
+            ORA DESC+9
+            BEQ BAD_DESC
+            JSR FIND_SID
+            BCC HAS_SID
+            LDA #$02
+            STA ERRORCD
+            JMP BAD_START
+BAD_DESC
+            LDA #$01
+            STA ERRORCD
+            JMP BAD_START
+HAS_SID
+            ; Phase 2C.2 timer ABI currently supports SID in slot 4 only.
+            CPX #$40
+            BEQ SID_SLOT4_OK
+            LDA #$02
+            STA ERRORCD
+            JMP BAD_START
+SID_SLOT4_OK
+            ; Background timer uses fixed slot-4 I/O, not foreground latch.
+            JSR CHECK_PAYLOAD
+            BCC PAYLOAD_OK
+            ; Invalid/corrupted staged PSID: never copy executable code.
+            LDA #$03
+            STA ERRORCD
+            JMP BAD_START
+PAYLOAD_OK
+            JSR BG_SAVE_SONG_METADATA
+            JSR COPY_EXEC
+            ; No $1C00 trampoline or restoration touches original C64 bytes.
+            ; C64 zero-page environment while native music runs.
+            LDA #$00
+            LDX #$00
+CLEAR_C64_ZP
+            STA $0000,X
+            INX
+            BNE CLEAR_C64_ZP
+            LDA DESC+10
+            STA INIT_CALL+1
+            LDA DESC+11
+            STA INIT_CALL+2
+            LDA DESC+12
+            STA IRQ_PLAY_CALL+1
+            LDA DESC+13
+            STA IRQ_PLAY_CALL+2
+            LDA DESC+15
+            BEQ PAL_MODE
+            LDA #$86            ; 60 Hz: 17030 = $4286 ticks
+            STA PERIODLO
+            LDA #$42
+            STA PERIODHI
+            JMP INIT_SONG
+PAL_MODE
+            LDA #$D4            ; 50 Hz: 20436 = $4FD4 ticks
+            STA PERIODLO
+            LDA #$4F
+            STA PERIODHI
+INIT_SONG
+            LDA DESC+14         ; zero-based subtune, original C64 INIT ABI
+            STA BG_SELECTED
+            JSR RUN_INIT
+            JMP INIT_COMPLETE
+RUN_INIT
+INIT_CALL
+            JSR $FFFF
+            RTS
+INIT_COMPLETE
+            ; Snapshot persistent music zero page into $9400 AFTER INIT.
+            ; The descriptor is no longer needed after INIT.
+            LDX #$00
+BG_SAVE_MUSIC_ZP
+            LDA $0000,X
+            STA MUSICZP,X
+            INX
+            BNE BG_SAVE_MUSIC_ZP
+            JSR RESTORE_APPLE_ZP
+            ; From here, the foreground zero page is live again.
+            JSR BG_INSTALL
+            LDA #$01
+            STA BG_REPLAY_READY
+            STA ACTIVE
+            ; Unmask IRQ after restoring the initial status frame. STOP
+            ; restores the previous CPU interrupt-disable state.
+            PLP
+            CLI
+            RTS
+
+INSTALL_REJECT
+            PLP
+            RTS
+
+BAD_START
+            JSR RESTORE_APPLE_ZP
+            LDX #$00
+BAD_MSG_LOOP
+            LDA ERROR_TEXT,X
+            BEQ BAD_DONE
+            ORA #$80
+            JSR $FDED
+            INX
+            BNE BAD_MSG_LOOP
+BAD_DONE
+            PLP
+            RTS
+GET_STATUS
+            LDA ERRORCD
+            RTS
+
+FIND_SID
+            LDX #$10
+FIND_NEXT
+            LDA $C080,X
+            CMP #$53
+            BEQ FOUND_SID
+            TXA
+            CLC
+            ADC #$10
+            TAX
+            CPX #$80
+            BCC FIND_NEXT
+            SEC
+            RTS
+FOUND_SID
+            CLC
+            RTS
+
+SAVE_APPLE_ZP
+            LDX #$00
+SAVE_NEXT
+            LDA $0000,X
+            STA SAVEZP,X
+            INX
+            BNE SAVE_NEXT
+            RTS
+RESTORE_APPLE_ZP
+            LDX #$00
+RESTORE_NEXT
+            LDA SAVEZP,X
+            STA $0000,X
+            INX
+            BNE RESTORE_NEXT
+            RTS
+RESTORE_PUBLIC
+            LDX #$00
+RESTORE_PUBLIC_LOOP
+            LDA PUBLIC_IMAGE,X
+            STA $1C00,X
+            INX
+            CPX #$0C
+            BNE RESTORE_PUBLIC_LOOP
+            RTS
+PUBLIC_IMAGE
+            .BYTE $4C,$00,$90,$4C,$03,$90,$4C,$06,$90,$4C,$09,$90
+
+; Compute a 16-bit additive checksum before installing executable code.
+; The native front-end stores the expected checksum in descriptor bytes 16/17.
+; It catches changes to staged PSID data; it is not cryptographic.
+CHECK_PAYLOAD
+            LDA DESC+4
+            STA SRCZ
+            LDA DESC+5
+            STA SRCZ+1
+            LDA DESC+8
+            STA LEFT
+            LDA DESC+9
+            STA LEFT+1
+            LDA #$00
+            STA SUMLO
+            STA SUMHI
+            LDY #$00
+SUM_LOOP
+            LDA (SRCZ),Y
+            CLC
+            ADC SUMLO
+            STA SUMLO
+            BCC SUM_NO_CARRY
+            INC SUMHI
+SUM_NO_CARRY
+            INC SRCZ
+            BNE SUM_SRC_OK
+            INC SRCZ+1
+SUM_SRC_OK
+            JSR COUNT_DOWN
+            BNE SUM_LOOP
+            LDA SUMLO
+            CMP DESC+16
+            BNE BAD_PAYLOAD
+            LDA SUMHI
+            CMP DESC+17
+            BNE BAD_PAYLOAD
+            CLC
+            RTS
+BAD_PAYLOAD
+            SEC
+            RTS
+
+; Copies executable payload from arbitrary staged address to the *original*
+; absolute C64 load address. Use memmove direction so partial overlap is safe.
+; Length is 1..28K; temporary ZP $F0-$F5 has already been backed up.
+COPY_EXEC
+            LDA DESC+4
+            STA SRCZ
+            LDA DESC+5
+            STA SRCZ+1
+            LDA DESC+6
+            STA DSTZ
+            LDA DESC+7
+            STA DSTZ+1
+            LDA DESC+8
+            STA LEFT
+            LDA DESC+9
+            STA LEFT+1
+            ; If dst > src, reverse copy is always safe, including overlap.
+            LDA DSTZ+1
+            CMP SRCZ+1
+            BCC COPY_FWD
+            BNE COPY_BACK
+            LDA DSTZ
+            CMP SRCZ
+            BCC COPY_FWD
+            BEQ COPY_DONE
+COPY_BACK
+            ; Advance both pointers to last byte (base+length-1).
+            CLC
+            LDA SRCZ
+            ADC LEFT
+            STA SRCZ
+            LDA SRCZ+1
+            ADC LEFT+1
+            STA SRCZ+1
+            CLC
+            LDA DSTZ
+            ADC LEFT
+            STA DSTZ
+            LDA DSTZ+1
+            ADC LEFT+1
+            STA DSTZ+1
+            LDA SRCZ
+            BNE BACK_SRC_DEC_LO
+            DEC SRCZ+1
+BACK_SRC_DEC_LO
+            DEC SRCZ
+            LDA DSTZ
+            BNE BACK_DST_DEC_LO
+            DEC DSTZ+1
+BACK_DST_DEC_LO
+            DEC DSTZ
+            LDY #$00
+BACK_LOOP
+            LDA (SRCZ),Y
+            STA (DSTZ),Y
+            LDA SRCZ
+            BNE BACK_SRC_NEXT
+            DEC SRCZ+1
+BACK_SRC_NEXT
+            DEC SRCZ
+            LDA DSTZ
+            BNE BACK_DST_NEXT
+            DEC DSTZ+1
+BACK_DST_NEXT
+            DEC DSTZ
+            JSR COUNT_DOWN
+            BNE BACK_LOOP
+COPY_DONE
+            RTS
+COPY_FWD
+            LDY #$00
+FORWARD_LOOP
+            LDA (SRCZ),Y
+            STA (DSTZ),Y
+            INC SRCZ
+            BNE SRC_FORWARD_OK
+            INC SRCZ+1
+SRC_FORWARD_OK
+            INC DSTZ
+            BNE DST_FORWARD_OK
+            INC DSTZ+1
+DST_FORWARD_OK
+            JSR COUNT_DOWN
+            BNE FORWARD_LOOP
+            RTS
+COUNT_DOWN
+            LDA LEFT
+            BNE LEFT_LOW
+            DEC LEFT+1
+LEFT_LOW
+            DEC LEFT
+            LDA LEFT
+            ORA LEFT+1
+            RTS
+
+; Foreground Phase 2B.2 busy-wait clock/deadline scheduler removed.
+; Native PLAY is now invoked exclusively by hardware-timed IRQ.
+
+SILENCE
+            LDA #$00
+            STA SIDCTRL1
+            STA SIDCTRL2
+            STA SIDCTRL3
+            STA SIDVOL
+            RTS
+ERROR_TEXT    ASC 'SID 2B1 ERROR'
+              .BYTE $0D,$00
+ERRORCD     .BYTE $00
+ACTIVE      .BYTE $00
+PERIODLO    .BYTE $00
+PERIODHI    .BYTE $00
+SUMLO       .BYTE $00
+SUMHI       .BYTE $00
+
+
+; ------------------ Phase 2C.2 background IRQ engine ----------------------
+; The descriptor at $9400 becomes the music ZP shadow after INIT.
+; Interrupt contexts: $9400 C64 ZP, $9500 foreground ZP (scratch each IRQ).
+; Monitor ROM saves interrupted A into $45 BEFORE soft IRQ vector dispatch.
+; Therefore full transparency of foreground $45 cannot be promised.
+IRQLOC       EQU $03FE
+SID_INDEX    EQU $C0C2
+SID_DATA     EQU $C0C3
+TMR_LOW      EQU $C0C8
+TMR_HIGH     EQU $C0C9
+TMR_CTRL     EQU $C0CA
+TMR_ACK      EQU $C0CB
+MUSICZP      EQU $9400
+IRQ_HANDLER_ADDR EQU $9300
+; Preserve the selected PSID tune count and 32-bit speed bitmap before
+; the native parser is overwritten by the original executable. The bitmap
+; allows subtune changes without reloading or re-parsing PSID headers.
+BG_SAVE_SONG_METADATA
+            LDA SONGS
+            STA BG_SONGS
+            LDA SONGS+1
+            STA BG_SONGS+1
+            LDA VERSION
+            STA BG_VERSION
+            LDA FILEBASE
+            STA SRCZ
+            LDA FILEBASE+1
+            STA SRCZ+1
+            LDY #$12
+            LDX #$00
+BG_SPEED_COPY
+            LDA (SRCZ),Y
+            STA BG_SPEED,X
+            INY
+            INX
+            CPX #$04
+            BNE BG_SPEED_COPY
+            RTS
+
+; Advance one subtune (wrapping to the first), then restart original INIT.
+; If the destination subtune requires CIA scheduling, refuse the switch.
+; No transient parser or host transfer record is involved.
+BG_NEXT_SUBTUNE
+            PHP
+            SEI
+            LDA BG_REPLAY_READY
+            BNE BG_NEXT_READY
+            JMP BG_NEXT_EXIT
+BG_NEXT_READY
+            LDA BG_SELECTED
+            CLC
+            ADC #$01
+            STA BG_CANDIDATE
+            LDA #$00
+            ADC #$00
+            STA BG_CANDIDATE+1
+            LDA BG_CANDIDATE+1
+            CMP BG_SONGS+1
+            BCC BG_NEXT_CHECK_SPEED
+            BNE BG_NEXT_WRAP
+            LDA BG_CANDIDATE
+            CMP BG_SONGS
+            BCC BG_NEXT_CHECK_SPEED
+BG_NEXT_WRAP
+            LDA #$00
+            STA BG_CANDIDATE
+            STA BG_CANDIDATE+1
+BG_NEXT_CHECK_SPEED
+            ; PSID v1 repeats bit 0..31; v2 uses bit 31 for tune >= 32.
+            LDA BG_CANDIDATE+1
+            BNE BG_NEXT_BIT31
+            LDA BG_CANDIDATE
+            CMP #$20
+            BCC BG_NEXT_SMALL
+BG_NEXT_BIT31
+            LDA BG_VERSION
+            CMP #$01
+            BEQ BG_NEXT_SMALL
+            LDA #$1F
+            BNE BG_NEXT_SPEEDIDX
+BG_NEXT_SMALL
+            LDA BG_CANDIDATE
+            AND #$1F
+BG_NEXT_SPEEDIDX
+            STA BG_BIT_INDEX
+            LSR
+            LSR
+            LSR
+            TAX
+            LDA #$03
+            SEC
+            SBC BG_BIT_INDEX
+            ; Correct byte index is 3 - (bitindex / 8), not bitindex.
+            ; Recompute from X.
+            TXA
+            STA BG_BYTE_INDEX
+            LDA #$03
+            SEC
+            SBC BG_BYTE_INDEX
+            TAX
+            LDA BG_SPEED,X
+            STA BG_SPEED_BYTE
+            LDA BG_BIT_INDEX
+            AND #$07
+            TAX
+            LDA #$01
+BG_NEXT_SHIFT
+            CPX #$00
+            BEQ BG_NEXT_MASK
+            ASL
+            DEX
+            JMP BG_NEXT_SHIFT
+BG_NEXT_MASK
+            AND BG_SPEED_BYTE
+            BNE BG_NEXT_EXIT
+            ; Stop old frame service before switching INIT subtune.
+            JSR BG_STOP
+            LDA BG_CANDIDATE
+            STA BG_SELECTED
+            PLP
+            JMP BG_REPLAY
+BG_NEXT_EXIT
+            PLP
+            RTS
+
+BG_INSTALL
+            LDA IRQLOC
+            STA BG_OLD_IRQ
+            LDA IRQLOC+1
+            STA BG_OLD_IRQ+1
+            ; INSTALL entered with PHP; SEI. Capture its saved I bit.
+            TSX
+            LDA $0103,X        ; saved P below JSR return address
+            AND #$04
+            STA BG_OLD_I
+            LDA #$00
+            STA BG_IRQ_LO
+            STA BG_IRQ_HI
+            STA TMR_CTRL
+            LDA PERIODLO
+            STA TMR_LOW
+            LDA PERIODHI
+            STA TMR_HIGH
+            LDA #<IRQ_HANDLER
+            STA IRQLOC
+            LDA #>IRQ_HANDLER
+            STA IRQLOC+1
+            LDA #$01
+            STA BG_ACTIVE
+            STA TMR_CTRL
+            RTS
+
+
+
+; No JavaScript transfer marker: this is an ordinary DOS-loadable program.
+PAD_TO_IRQ
+            .RES $9300-PAD_TO_IRQ,$00
+
+IRQ_HANDLER
+            TXA
+            PHA
+            TYA
+            PHA
+            ; Preserve SID register selector across status polling.
+            LDA SID_INDEX
+            STA IRQ_INDEX_SAVED
+            LDA #$1D
+            STA SID_INDEX
+            LDA SID_DATA
+            AND #$01
+            BEQ IRQ_FOREIGN
+            LDA #$01
+            STA TMR_ACK
+            LDA IRQ_INDEX_SAVED
+            STA SID_INDEX
+            LDA $45             ; original interrupted A, saved by Monitor
+            STA IRQ_SAVED_A
+            ; All 256 foreground ZP bytes saved before restoring music ZP.
+            LDX #$00
+IRQ_SWAP_IN
+            LDA $0000,X
+            STA SAVEZP,X
+            LDA MUSICZP,X
+            STA $0000,X
+            INX
+            BNE IRQ_SWAP_IN
+IRQ_PLAY_CALL
+            JSR $FFFF           ; original, unmodified C64 PSID PLAY routine
+            ; Persist the music ZP and restore foreground ZP before RTI.
+            LDX #$00
+IRQ_SWAP_OUT
+            LDA $0000,X
+            STA MUSICZP,X
+            LDA SAVEZP,X
+            STA $0000,X
+            INX
+            BNE IRQ_SWAP_OUT
+            INC BG_IRQ_LO
+            BNE IRQ_RESTORE_CPU
+            INC BG_IRQ_HI
+IRQ_RESTORE_CPU
+            PLA
+            TAY
+            PLA
+            TAX
+            LDA IRQ_SAVED_A
+            RTI
+IRQ_FOREIGN
+            LDA IRQ_INDEX_SAVED
+            STA SID_INDEX
+            PLA
+            TAY
+            PLA
+            TAX
+            LDA $45
+            JMP (BG_OLD_IRQ)
+
+; Install/stop run in foreground before and after the music IRQ context.
+BG_STOP
+            PHP
+            SEI
+            LDA #$00
+            STA TMR_CTRL
+            LDA BG_ACTIVE
+            BEQ BG_STOP_IDLE
+            LDA IRQLOC
+            CMP #<IRQ_HANDLER
+            BNE BG_STOP_IDLE
+            LDA IRQLOC+1
+            CMP #>IRQ_HANDLER
+            BNE BG_STOP_IDLE
+            LDA BG_OLD_IRQ
+            STA IRQLOC
+            LDA BG_OLD_IRQ+1
+            STA IRQLOC+1
+            LDA #$00
+            STA BG_ACTIVE
+            STA ACTIVE
+            JSR SILENCE
+            ; No low-memory public entry to restore; music owns $1C00.
+            ; Preserve previous IRQ mask, as in the resident RTC example.
+            LDA BG_OLD_I
+            BEQ BG_STOP_CLI
+            PLP
+            SEI
+            RTS
+BG_STOP_CLI
+            PLP
+            CLI
+            RTS
+BG_STOP_IDLE
+            PLP
+            RTS
+
+; Explicit fixed state block; verify assembled handler stays below it.
+
+PAD_TO_STATE
+            .RES $93E0-PAD_TO_STATE,$00
+
+BG_OLD_IRQ       .BYTE $00,$00
+IRQ_INDEX_SAVED  .BYTE $00
+IRQ_SAVED_A      .BYTE $00
+BG_ACTIVE        .BYTE $00
+BG_OLD_I         .BYTE $00
+BG_IRQ_LO        .BYTE $00
+BG_IRQ_HI        .BYTE $00
+BG_REPLAY_READY   .BYTE $00
+BG_SELECTED      .BYTE $00
+BG_SONGS         .BYTE $00,$00
+BG_VERSION       .BYTE $00
+BG_SPEED         .BYTE $00,$00,$00,$00
+BG_CANDIDATE     .BYTE $00,$00
+BG_BIT_INDEX     .BYTE $00
+BG_BYTE_INDEX    .BYTE $00
+BG_SPEED_BYTE    .BYTE $00
+
+; ------------------ Phase 2B.2 transient native front end -------------
+; This UI/parser lives at $1000, and is allowed to be overwritten by
+; original C64 payload only AFTER it JMPs into high resident INSTALL.
+; Native parser remains at $8000 for repeated interactive entry.
+; DOS-loaded raw PSID files are capped to 8 KiB at $6000–$7FFF.
+
+            .END
