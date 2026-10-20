@@ -1,0 +1,134 @@
+<!doctype html>
+<!-- Phase 4D.0: independent filter laboratory; production synthesizer untouched. -->
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SID Filter Lab — Phase 4D.0</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif}
+body{margin:0;background:#101925;color:#e5eef8;padding:20px;line-height:1.5}
+main{max-width:1140px;margin:auto}
+h1{font-size:25px;margin:0 0 6px}h2{font-size:18px;margin:0 0 10px}
+small,.muted{color:#adc1d2}
+.panel{background:#172536;border:1px solid #31465a;border-radius:10px;padding:16px;margin-top:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.row{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
+label{font-size:13px;color:#c5d7e9;display:flex;flex-direction:column;gap:5px}
+button,select{background:#253b52;color:#edf5ff;border:1px solid #4b6884;border-radius:6px;padding:9px;font:inherit}
+button:not(:disabled){cursor:pointer}button:disabled{opacity:.5}
+canvas{width:100%;background:#101b28;border:1px solid #345067;border-radius:6px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:7px 9px;text-align:left;border-bottom:1px solid #35495d}
+.bad{color:#f7bd7c}.good{color:#8fe0c5}
+a{color:#8ccffc}
+</style></head>
+<body><main>
+<h1>SID Filter Laboratory · Phase 4D.0</h1>
+<p class="muted">Characterize the existing production 6581/8580 approximation before replacing it. Results are <b>relative emulator measurements</b>, not physical SID calibration or a timed CPU benchmark.</p>
+<section class="panel">
+<h2>Filter stimulus and sweep</h2>
+<div class="row">
+<label>SID clock<select id="clock"><option value="PAL">PAL · 985,248 Hz</option><option value="NTSC">NTSC · 1,022,727 Hz</option></select></label>
+<label>Filter output<select id="mode"><option value="lp">Low-pass</option><option value="bp">Band-pass</option><option value="hp">High-pass</option><option value="lp+bp">Low-pass + band-pass</option><option value="bp+hp">Band-pass + high-pass</option><option value="lp+hp">Low-pass + high-pass</option><option value="all">All three</option></select></label>
+<label>Sawtooth tone<select id="tone"><option value="220">220 Hz</option><option value="880" selected>880 Hz</option><option value="3520">3,520 Hz</option></select></label>
+<button id="run">Run filter survey</button>
+<button id="export" disabled>Export filter JSON</button>
+</div>
+<p id="status" role="status" aria-live="polite">Ready: 12 cutoff settings × 5 resonance settings × 2 SID models. Each capture is 0.5 seconds at 22,050 Hz, excluding the initial 100 ms from analysis.</p>
+</section>
+<section class="panel">
+<h2>Gain versus cutoff, relative to unfiltered voice</h2>
+<p class="muted">Each colored line corresponds to a resonance setting ($0/$4/$8/$C/$F). Identical resonance curves are an expected deficiency of the current filter; they are not an indication that resonance is correct.</p>
+<div class="grid">
+<div><b>6581</b><canvas id="curve6581" width="650" height="250" aria-label="6581 cutoff and resonance curves"></canvas></div>
+<div><b>8580</b><canvas id="curve8580" width="650" height="250" aria-label="8580 cutoff and resonance curves"></canvas></div>
+</div></section>
+<section class="panel">
+<h2>Routing and known limitations</h2>
+<p class="muted">These diagnostics capture current behavior. “Observed” is not the same as “hardware correct”: a filtered Voice 3 disappearing under V3OFF and resonance having no effect are known defects to correct in 4D.1.</p>
+<table><thead><tr><th>Question</th><th>6581</th><th>8580</th></tr></thead><tbody id="diagnostics"><tr><td colspan="3">Run the survey to populate.</td></tr></tbody></table>
+</section>
+<section class="panel">
+<h2>Phase boundaries</h2>
+<p>4D.0 adds only laboratory files, tests and documentation. It does <b>not</b> modify <code>EMU_DEVICE_SID_audio.js</code>, ADSR, PCM scheduling, or the native PSID player.</p>
+<p>For CPU performance, use the existing <a href="SID_AUDIO_BENCH.html">SID Audio Bench v3</a> and compare the original 10 PAL fixture medians with the older Mac's 17.10 ms reference. This laboratory uses multiple fresh offline renders and is intentionally <b>not</b> a synthesis-performance measurement.</p>
+</section>
+<script src="../res/EMU_DEVICE_SID_audio.js"></script>
+<script src="SID_FILTER_BENCH_core.js"></script>
+<script>
+(function(){
+ "use strict";
+ var F=window.SIDFilterBench,latest=null,$=function(id){return document.getElementById(id);};
+ var colors=["#8ce0bb","#f3bc7d","#99c6ee","#d6a6f9","#e993aa"];
+ function chart(id,data,model){
+  var canvas=$(id),ctx=canvas.getContext("2d"),w=canvas.width,h=canvas.height;
+  ctx.fillStyle="#101b28";ctx.fillRect(0,0,w,h);
+  var p=data.points.filter(function(x){return x.model===model;});
+  var finite=p.map(function(x){return x.gainDb;}).filter(Number.isFinite);
+  if(!finite.length)return;
+  var lower=Math.floor(Math.min(-6,Math.min.apply(null,finite))-3);
+  var upper=Math.ceil(Math.max(6,Math.max.apply(null,finite))+3);
+  lower=Math.max(lower,-180);
+  function yy(x){return 15+(upper-x)/(upper-lower)*(h-42);}
+  function xx(x){return 52+(x/2047)*(w-65);}
+  ctx.font="11px ui-monospace,monospace";ctx.lineWidth=1;
+  for(var i=0;i<=5;i++){
+   var val=lower+(upper-lower)*i/5,y=yy(val);
+   ctx.strokeStyle="#35495d";ctx.beginPath();ctx.moveTo(50,y);ctx.lineTo(w-12,y);ctx.stroke();
+   ctx.fillStyle="#afc0d0";ctx.fillText(val.toFixed(0)+" dB",3,y+4);
+  }
+  [0,512,1024,1536,2047].forEach(function(cut){
+   ctx.fillStyle="#afc0d0";ctx.fillText(String(cut),Math.max(45,xx(cut)-16),h-5);
+  });
+  F.RESONANCES.forEach(function(res,index){
+   var pts=p.filter(function(x){return x.resonance===res;});
+   ctx.strokeStyle=colors[index];ctx.lineWidth=2;ctx.beginPath();
+   pts.forEach(function(x,k){if(k)ctx.lineTo(xx(x.cutoff),yy(x.gainDb));
+    else ctx.moveTo(xx(x.cutoff),yy(x.gainDb));});
+   ctx.stroke();ctx.fillStyle=colors[index];
+   ctx.fillText("RES "+res.toString(16).toUpperCase(),65+index*96,14);
+  });
+ }
+ function checkCell(value,isDefect){return '<span class="'+(isDefect&&value?"bad":"good")+'">'+
+   (value?"Observed":"Not observed")+"</span>";}
+ function showDiagnostics(entries){
+  var items=[
+   ["No filter mode → routed voice inaudible","filterPathDisabledWhenNoMode",false],
+   ["V3OFF mutes direct Voice 3","voice3OffMutesDirect",false],
+   ["V3OFF also mutes FILTERED Voice 3 (defect)","voice3OffCurrentlyMutesFiltered",true],
+   ["Changing resonance has NO effect (defect)","resonanceCurrentlyInert",true]
+  ];
+  $("diagnostics").innerHTML=items.map(function(item){
+   return "<tr><td>"+item[0]+"</td>"+entries.map(function(e){
+    return "<td>"+checkCell(e.observations[item[1]],item[2])+"</td>";
+   }).join("")+"</tr>";
+  }).join("");
+ }
+ $("run").onclick=function(){
+  var clock=$("clock").value,mode=$("mode").value,toneHz=Number($("tone").value);
+  $("run").disabled=true;$("export").disabled=true;latest=null;
+  $("status").textContent="Running 120 untimed filter captures and routing probes…";
+  setTimeout(function(){
+   try{
+    var survey=F.survey(SIDAudio,{clock:clock,mode:mode,toneHz:toneHz});
+    var diagnostics=[6581,8580].map(function(model){
+      return F.diagnostics(SIDAudio,{model:model,clock:clock,toneHz:toneHz});
+    });
+    latest={schema:F.SCHEMA,createdAt:new Date().toISOString(),
+      source:"unmodified production SIDAudio / offline",
+      browser:navigator.userAgent,survey:survey,diagnostics:diagnostics};
+    chart("curve6581",survey,6581);chart("curve8580",survey,8580);
+    showDiagnostics(diagnostics);
+    $("export").disabled=false;
+    $("status").textContent="Completed 120 filter curve captures + 18 routing probes. Export the JSON for Phase 4D.1 design.";
+   }catch(e){$("status").textContent="Survey error: "+String(e&&e.message||e);}
+   finally{$("run").disabled=false;}
+  },30);
+ };
+ $("export").onclick=function(){
+  if(!latest)return;
+  var blob=new Blob([JSON.stringify(latest,null,2)],{type:"application/json"});
+  var url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="sid-filter-4d0-"+latest.survey.clock+"-"+latest.survey.mode+".json";
+  a.click();setTimeout(function(){URL.revokeObjectURL(url);},1000);
+ };
+})();
+</script></main></body></html>
