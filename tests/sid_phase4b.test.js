@@ -133,3 +133,31 @@ test('4B: reset returns phase, noise and source-state readout to initial values'
  assert.equal(d.getOscillatorState()[2].noise,0x7ffff8);
  assert.equal(d.getAudioStats().sampleRate,22050);
 });
+
+test('4B: Phase 4A lab includes all new combined/noise wave stimuli with bounded PCM',()=>{
+ const ids=new Set(B.FIXTURES.map(x=>x.id));
+ for(const name of ['tri-saw','saw-pulse','tri-pulse','tri-saw-pulse','noise-saw']){
+  assert.ok(ids.has(name));
+  const a=B.render(sid().constructor,{fixture:name,model:6581,clock:'PAL'});
+  const b=B.render(sid().constructor,{fixture:name,model:8580,clock:'PAL'});
+  assert.equal(a.pcm.length,44100);
+  assert.equal(b.pcm.length,44100);
+  assert.ok(a.pcm.every(Number.isFinite));
+  assert.ok(b.pcm.every(Number.isFinite));
+  assert.ok(B.analyze(a.pcm).peak<=1);
+  assert.notEqual(B.checksum(a.pcm),B.checksum(b.pcm),
+    name+' must exercise model-dependent provisional combined DAC');
+ }
+});
+test('4B: changing model does not alter digital phase/noise, only DAC/filter output',()=>{
+ function trace(model){
+  const d=sid();d.setModel(model);
+  freq(d,0,0x2567);freq(d,14,0x7777);
+  d.writeRegister(4,0x31);d.writeRegister(18,0x80);
+  d.renderOffline(666);
+  return d.getOscillatorState();
+ }
+ const a=trace(6581),b=trace(8580);
+ assert.deepEqual(Array.from(a,x=>[x.phase,x.noise,x.control]),
+                  Array.from(b,x=>[x.phase,x.noise,x.control]));
+});
