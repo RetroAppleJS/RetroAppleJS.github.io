@@ -1,8 +1,8 @@
 <!doctype html>
-<!-- Phase 4D.0: independent filter laboratory; production synthesizer untouched. -->
+<!-- Phase 4D filter lab: consistent survey schema across original and TPT core. -->
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SID Filter Lab — Phase 4D.0</title>
+<title>SID Filter Lab — Phase 4D.1</title>
 <style>
 :root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif}
 body{margin:0;background:#101925;color:#e5eef8;padding:20px;line-height:1.5}
@@ -21,8 +21,8 @@ table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:7px 9px;t
 a{color:#8ccffc}
 </style></head>
 <body><main>
-<h1>SID Filter Laboratory · Phase 4D.0</h1>
-<p class="muted">Characterize the existing production 6581/8580 approximation before replacing it. Results are <b>relative emulator measurements</b>, not physical SID calibration or a timed CPU benchmark.</p>
+<h1>SID Filter Laboratory · Phase 4D.1</h1>
+<p class="muted">Compare the new TPT filter with the saved Phase 4D.0 measurements. Results are <b>relative emulator measurements</b>, not physical SID calibration or a timed CPU benchmark.</p>
 <section class="panel">
 <h2>Filter stimulus and sweep</h2>
 <div class="row">
@@ -37,19 +37,19 @@ a{color:#8ccffc}
 </section>
 <section class="panel">
 <h2>Gain versus cutoff, relative to unfiltered voice</h2>
-<p class="muted">Each colored line corresponds to a resonance setting ($0/$4/$8/$C/$F). Identical resonance curves are an expected deficiency of the current filter; they are not an indication that resonance is correct.</p>
+<p class="muted">Each colored line corresponds to a resonance setting ($0/$4/$8/$C/$F). Different resonance curves confirm that the RES/FILT high nibble now affects the filter.</p>
 <div class="grid">
 <div><b>6581</b><canvas id="curve6581" width="650" height="250" aria-label="6581 cutoff and resonance curves"></canvas></div>
 <div><b>8580</b><canvas id="curve8580" width="650" height="250" aria-label="8580 cutoff and resonance curves"></canvas></div>
 </div></section>
 <section class="panel">
-<h2>Routing and known limitations</h2>
-<p class="muted">These diagnostics capture current behavior. “Observed” is not the same as “hardware correct”: a filtered Voice 3 disappearing under V3OFF and resonance having no effect are known defects to correct in 4D.1.</p>
+<h2>Routing and corrected filter behavior</h2>
+<p class="muted">These checks distinguish correct routing from the two historical 4D.0 defects. The new filter remains a digital approximation, not a calibrated physical SID circuit.</p>
 <table><thead><tr><th>Question</th><th>6581</th><th>8580</th></tr></thead><tbody id="diagnostics"><tr><td colspan="3">Run the survey to populate.</td></tr></tbody></table>
 </section>
 <section class="panel">
 <h2>Phase boundaries</h2>
-<p>4D.0 adds only laboratory files, tests and documentation. It does <b>not</b> modify <code>EMU_DEVICE_SID_audio.js</code>, ADSR, PCM scheduling, or the native PSID player.</p>
+<p>4D.1 replaces only the production filter and its routing: oscillator, ADSR, 22,050 Hz output, FIFO and native PSID player are unchanged. Compare exports against the saved 4D.0 LP/BP/HP files.</p>
 <p>For CPU performance, use the existing <a href="SID_AUDIO_BENCH.html">SID Audio Bench v3</a> and compare the original 10 PAL fixture medians with the older Mac's 17.10 ms reference. This laboratory uses multiple fresh offline renders and is intentionally <b>not</b> a synthesis-performance measurement.</p>
 </section>
 <script src="../res/EMU_DEVICE_SID_audio.js"></script>
@@ -114,7 +114,7 @@ a{color:#8ccffc}
       return F.diagnostics(SIDAudio,{model:model,clock:clock,toneHz:toneHz});
     });
     latest={schema:F.SCHEMA,createdAt:new Date().toISOString(),
-      source:"unmodified production SIDAudio / offline",
+      source:"Phase 4D.1 TPT production SIDAudio / offline",phase:"4D.1",
       browser:navigator.userAgent,survey:survey,diagnostics:diagnostics};
     chart("curve6581",survey,6581);chart("curve8580",survey,8580);
     var clipped=survey.points.filter(function(p){return p.clippedSamples>0;});
@@ -122,7 +122,7 @@ a{color:#8ccffc}
       " sweep points include clipped PCM. Their gain curves are distorted by output saturation; see exported clippedSamples counts.";
     showDiagnostics(diagnostics);
     $("export").disabled=false;
-    $("status").textContent="Completed 120 filter curve captures + 18 routing probes. Export the JSON for Phase 4D.1 design.";
+    $("status").textContent="Completed 120 updated filter captures + 18 routing probes. Export JSON to compare against Phase 4D.0.";
    }catch(e){$("status").textContent="Survey error: "+String(e&&e.message||e);}
    finally{$("run").disabled=false;}
   },30);
@@ -131,7 +131,7 @@ a{color:#8ccffc}
   if(!latest)return;
   var blob=new Blob([JSON.stringify(latest,null,2)],{type:"application/json"});
   var url=URL.createObjectURL(blob),a=document.createElement("a");
-  a.href=url;a.download="sid-filter-4d0-"+latest.survey.clock+"-"+latest.survey.mode+".json";
+  a.href=url;a.download="sid-filter-4d1-"+latest.survey.clock+"-"+latest.survey.mode+".json";
   a.click();setTimeout(function(){URL.revokeObjectURL(url);},1000);
  };
 })();
