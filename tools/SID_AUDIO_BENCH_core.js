@@ -1,7 +1,7 @@
 /*
- * RetroAppleJS SID Phase 4A: deterministic 22,050 Hz reference and performance
- * bench. NO production synthesizer changes; the original SIDAudio is supplied
- * as an injected constructor. This module works in browsers and Node.js.
+ * RetroAppleJS SID Audio Bench v2: deterministic 22,050 Hz reference and
+ * performance measurements, including Phase 4A and Phase 4B fixtures.
+ * Tests the production SIDAudio via an injected constructor (browser/Node).
  */
 (function(root, factory) {
     var api=factory();
@@ -11,6 +11,9 @@
     "use strict";
     var RATE=22050, FRAME_SECONDS=2, COUNT=RATE*FRAME_SECONDS;
     var CLOCKS={PAL:985248,NTSC:1022727};
+    var SCHEMA="retroapplejs.sid.audio-bench.v2";
+    var VERSION=2;
+    var FIRST_4B_FIXTURE="tri-saw";
     var FIXTURES=[
         {id:"triangle",label:"Triangle — 220 Hz",description:"One gated triangle voice at constant pitch"},
         {id:"saw",label:"Sawtooth — 220 Hz",description:"One gated sawtooth voice and its harmonics"},
@@ -29,6 +32,12 @@
         {id:"tri-saw-pulse",label:"Triangle + saw + pulse",description:"Three simultaneous waveforms"},
         {id:"noise-saw",label:"Noise + saw",description:"Noise DAC combined with sawtooth"}
     ];
+    function fixtureSuite(id){
+        var index=FIXTURES.findIndex(function(f){return f.id===id;});
+        if(index<0)fail("Unknown fixture: "+id);
+        return index<FIXTURES.findIndex(function(f){return f.id===FIRST_4B_FIXTURE;})?
+            "4A":"4B";
+    }
     function finite(v){return typeof v==="number"&&Number.isFinite(v);}
     function fail(message){throw new Error(message);}
     function samples(seconds){return Math.round(seconds*RATE);}
@@ -303,12 +312,14 @@
     function report(result){
         // JSON has scalar analysis and event timestamps, not huge PCM/spectra.
         var a=Object.assign({},result.analysis);delete a.spectrum;
-        return {fixture:result.fixture,model:result.model,clock:result.clock,
+        return {fixture:result.fixture,fixtureSuite:fixtureSuite(result.fixture),
+            model:result.model,clock:result.clock,
             sidClock:result.sidClock,sampleRate:RATE,events:result.events,
             eventSequence:result.eventSequence,analysis:a,
             performance:result.performance,rendererStats:result.rendererStats};
     }
     return {RATE:RATE,COUNT:COUNT,CLOCKS:CLOCKS,FIXTURES:FIXTURES,
+        SCHEMA:SCHEMA,VERSION:VERSION,fixtureSuite:fixtureSuite,
         createEvents:createEvents,render:render,analyze:analyze,bench:bench,
         checksum:checksum,wav:wav,readWav:readWav,report:report};
 });
