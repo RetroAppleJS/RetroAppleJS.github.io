@@ -114,8 +114,19 @@ test('4D.2a: standalone UI provides a real survey/export and clear provenance',(
  assert.match(html,/latest\.engineCheck=engineCheck/);
  assert.match(html,/SID_FILTER_BENCH.html/);
  assert.match(html,/does not claim physical SID calibration/i);
- const inline=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
+ // This extracts scripts from our checked-in benchmark page, not arbitrary HTML.
+ // Match malformed-but-browser-accepted script end tags as well as </script>.
+ const scriptTag=/<script(?:\s[^>]*)?>([\s\S]*?)<\/script\b[^>]*>/gi;
+ const inline=[...html.matchAll(scriptTag)]
    .map(x=>x[1]).filter(x=>x.trim());
  assert.equal(inline.length,1);
  assert.doesNotThrow(()=>new vm.Script(inline[0]));
+ // Regression: HTML parsers also close script blocks on these variants.
+ for(const endTag of ['</script >','</script foo="bar">','</ScRiPt >']){
+  const variant=html.replace('\n</script></main>','\n'+endTag+'</main>');
+  assert.notEqual(variant,html);
+  const extracted=[...variant.matchAll(scriptTag)]
+   .map(x=>x[1]).filter(x=>x.trim());
+  assert.deepEqual(extracted,inline,endTag);
+ }
 });
