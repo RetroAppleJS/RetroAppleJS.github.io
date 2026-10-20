@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const B=require('../tools/SID_AUDIO_BENCH_core.js');
-const {Envelope,PERIODS,dividerAt}=require('./helpers/sid_adsr_cycle_reference.js');
+const {Envelope,PERIODS,dividerAt,compareTrace}=require('./helpers/sid_adsr_cycle_reference.js');
 const root=path.resolve(__dirname,'..');
 function SIDAudio(){
  const context=vm.createContext({console,Math,Number,Float32Array,Uint8Array,
@@ -149,6 +149,18 @@ test('4C.0: slow independent clock oracle can characterize current release witho
  // Existing engine uses fractional PCM clocks and simplified gate state:
  // differences are recorded for Phase 4C.1, not treated as pass/fail.
  assert.ok(nonZero>=0&&nonZero<=records);
+ const comparison=compareTrace(trace);
+ assert.equal(comparison.voices.length,3);
+ for(const voice of comparison.voices){
+  assert.equal(voice.observations,trace.points.length);
+  assert.ok(voice.mismatches>=0 && voice.mismatches<=voice.observations);
+  assert.ok(Number.isFinite(voice.meanAbsoluteError));
+  assert.ok(voice.maxAbsoluteError>=0 && voice.maxAbsoluteError<=255);
+  if(voice.firstMismatch){
+   assert.ok(voice.firstMismatch.sample>=0);
+   assert.ok(voice.firstMismatch.sample<=B.COUNT);
+  }
+ }
 });
 test('4C.0: browser exposes a non-timed ENV trace and v3 export schema',()=>{
  const html=fs.readFileSync(path.join(root,'tools/SID_AUDIO_BENCH.html'),'utf8');
