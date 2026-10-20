@@ -122,10 +122,19 @@ test('4A: HTML loads the production synthesizer and shared core, without externa
  assert.match(html,/sid-audio-bench-v3-results\.json/);
  assert.doesNotMatch(html,/retroapplejs\.sid\.phase4a\.v1/);
  assert.doesNotMatch(html,/sid-phase4a-results\.json/);
- const inline=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
+ // An HTML end tag may include whitespace or attributes before '>'.
+ // Keep the closing-tag matcher consistent with the Phase 4C benchmark test.
+ const scriptTag=/<script(?:\s[^>]*)?>([\s\S]*?)<\/script\b[^>]*>/gi;
+ const inline=[...html.matchAll(scriptTag)]
     .map(x=>x[1]).filter(s=>s.trim());
  assert.equal(inline.length,1);
  assert.doesNotThrow(()=>new vm.Script(inline[0]));
+ // Regression: browsers also treat </script > as a script end tag.
+ const spacedEnd=html.replace('\n</script>', '\n</script >');
+ assert.notEqual(spacedEnd,html);
+ const spacedInline=[...spacedEnd.matchAll(scriptTag)]
+    .map(x=>x[1]).filter(s=>s.trim());
+ assert.deepEqual(spacedInline,inline);
 });
 
 test('SID Audio Bench v3: phase-neutral export identifies original 4A and newer 4B suites',()=>{
