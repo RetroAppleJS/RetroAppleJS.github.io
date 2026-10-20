@@ -1,10 +1,10 @@
 <!doctype html>
-<!-- SID Audio Bench v2: permanent offline laboratory, 4A + 4B fixtures. -->
+<!-- SID Audio Bench v3: 4A/4B playback + Phase 4C.0 envelope traces. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SID Audio Reference &amp; Performance Bench v2</title>
+<title>SID Audio Reference &amp; Performance Bench v3</title>
 <style>
 :root{color-scheme:dark;background:#101721;color:#e5eaf0;font:14px/1.5 system-ui,Arial,sans-serif}
 *{box-sizing:border-box}
@@ -45,9 +45,9 @@ pre{max-height:180px;overflow:auto;font:12px/1.5 ui-monospace,monospace;backgrou
 <body>
 <header>
 <div>
-<div class="muted">RetroAppleJS · SID peripheral · Audio Bench v2</div>
-<h1>SID Audio Reference &amp; Performance Bench</h1>
-<p class="muted">Phase 4A baseline + Phase 4B combined-waveform tests · production synthesizer · offline only</p>
+<div class="muted">RetroAppleJS · SID peripheral · Audio Bench v3</div>
+<h1>SID Audio Reference &amp; Performance Bench v3</h1>
+<p class="muted">Phase 4A/4B experiments + Phase 4C ADSR characterization · production synthesizer · offline only</p>
 </div>
 <mark>Fixed 22,050 Hz · no oversampling</mark>
 </header>
@@ -64,11 +64,11 @@ pre{max-height:180px;overflow:auto;font:12px/1.5 ui-monospace,monospace;backgrou
 </select></div>
 <div class="actions">
 <button class="primary" id="run">Run selected</button>
-<button id="runall">Run entire suite (4A + 4B)</button>
+<button id="runall">Run entire suite (4A + 4B + 4C)</button>
 <button id="export" disabled>Export results JSON</button>
 </div>
 </div>
-<div id="status" role="status" aria-live="polite">Ready. 10 original Phase 4A fixtures + 5 Phase 4B fixtures; two seconds per model.</div>
+<div id="status" role="status" aria-live="polite">Ready. 10 Phase 4A, 5 Phase 4B and 8 Phase 4C fixtures; two seconds per model.</div>
 <div id="error" role="alert"></div>
 </section>
 
@@ -103,6 +103,18 @@ pre{max-height:180px;overflow:auto;font:12px/1.5 ui-monospace,monospace;backgrou
 <p class="ref-notes">Waveform: a 25 ms window around 50% of the rendered duration. Spectrum: 2,048-point Hann-windowed FFT of the middle segment. Different chip models need not produce identical PCM. Timing samples are quantized to the 22.05 kHz output grid (about 45 SID clock cycles per sample).</p>
 </section>
 
+<section class="panel" id="envelopeSection">
+<div class="row"><h2>Phase 4C.0 — Envelope level traces</h2>
+<div class="actions"><button id="runtrace">Trace selected experiment</button>
+<button id="exporttrace" disabled>Export envelope trace JSON</button></div></div>
+<p class="ref-notes">Diagnostic render only: sampled ENV1/ENV2/ENV3 levels versus SID CPU time, using the same register-write events. This trace runs separately from the timed performance benchmark. The ENV3 value is checked against $D41C. It is <strong>not</strong> a validated hardware reference.</p>
+<div class="cards">
+<article class="card"><strong>6581 envelopes</strong><canvas id="env6581" width="550" height="200" aria-label="6581 ADSR envelope traces"></canvas></article>
+<article class="card"><strong>8580 envelopes</strong><canvas id="env8580" width="550" height="200" aria-label="8580 ADSR envelope traces"></canvas></article>
+</div>
+<div id="traceStatus" class="muted">Select an ADSR experiment, then trace it independently of benchmark timing.</div>
+</section>
+
 <section class="panel">
 <h2>Optional external reference — WAV import</h2>
 <div class="controls">
@@ -116,20 +128,21 @@ pre{max-height:180px;overflow:auto;font:12px/1.5 ui-monospace,monospace;backgrou
 
 <section class="panel">
 <h2>Measurement interpretation</h2>
-<p class="ref-notes">Bench v2 tests the current production SID implementation; it does not claim the synth itself is in Phase 4A or 4B. A run starts a new SIDAudio instance for each fixture/model. It includes one untimed warm-up and a median of repeated 44,100-sample renders. The PCM hash confirms repeatability within this environment. Offline render performance is not a substitute for browser Web Audio underrun telemetry; use the existing peripheral audio telemetry for the live 10 FPS/VBLANK comparison. Performance comparisons are meaningful on the same computer and browser, with similar background load. This is a software baseline, not physical 6581/8580 certification.</p>
+<p class="ref-notes">Bench v3 tests the current production SID implementation, independent of development phase. Envelope traces are never part of rendering benchmarks. A run starts a new SIDAudio instance for each fixture/model. It includes one untimed warm-up and a median of repeated 44,100-sample renders. The PCM hash confirms repeatability within this environment. Offline render performance is not a substitute for browser Web Audio underrun telemetry; use the existing peripheral audio telemetry for the live 10 FPS/VBLANK comparison. Performance comparisons are meaningful on the same computer and browser, with similar background load. This is a software baseline, not physical 6581/8580 certification.</p>
 </section>
 
 <script>
 (function(){
 "use strict";
-var B=window.SIDAudioBench,results={},selected=null,audioURLs={},external=null,refName="";
+var B=window.SIDAudioBench,results={},selected=null,audioURLs={},external=null,refName="",traceResults=null;
 var $=function(id){return document.getElementById(id);};
 var fixtureGroups={};
 B.FIXTURES.forEach(function(f){
  var suite=B.fixtureSuite(f.id);
  if(!fixtureGroups[suite]){
   var group=document.createElement("optgroup");
-  group.label=suite==="4A"?"Phase 4A · original baseline":"Phase 4B · combined waveforms";
+  group.label=suite==="4A"?"Phase 4A · original baseline":
+  suite==="4B"?"Phase 4B · combined waveforms":"Phase 4C · ADSR characterization";
   $("fixture").appendChild(group);fixtureGroups[suite]=group;
  }
  var opt=document.createElement("option");opt.value=f.id;
@@ -179,6 +192,8 @@ function plot(id,pcm,isFFT){
 }
 function inspect(f,c){
  selected=f;
+ traceResults=null;$("exporttrace").disabled=true;
+ $("traceStatus").textContent="Select an ADSR experiment, then capture its envelope independently.";
  [6581,8580].forEach(function(model){
   var r=results[key(f,model,c)],button=$("wav"+model);
   button.disabled=!r;
@@ -243,6 +258,62 @@ function run(all){
   finally{$("run").disabled=$("runall").disabled=false;}
  },30);
 }
+
+function plotEnvelope(id,trace){
+ var canvas=$(id),ctx=canvas.getContext("2d"),w=canvas.width,h=canvas.height;
+ ctx.fillStyle="#0c1623";ctx.fillRect(0,0,w,h);
+ ctx.strokeStyle="#2b4559";ctx.lineWidth=1;
+ for(var q=0;q<=4;q++){
+  var y=15+(h-30)*q/4;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();
+ }
+ trace.events.forEach(function(ev){
+  if(ev.reg>=21||ev.reg%7!==4)return;
+  var x=ev.sample/B.COUNT*w;
+  ctx.strokeStyle="#496277";ctx.beginPath();
+  ctx.moveTo(x,18);ctx.lineTo(x,h-15);ctx.stroke();
+ });
+ var keys=["v1","v2","v3"],colors=["#65e1bc","#edb66b","#a6bdf5"];
+ keys.forEach(function(key,i){
+  ctx.strokeStyle=colors[i];ctx.lineWidth=1.5;ctx.beginPath();
+  trace.points.forEach(function(p,j){
+   var x=p.sample/B.COUNT*(w-1),y=h-15-p[key]/255*(h-30);
+   if(j===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+ });
+ ctx.font="11px ui-monospace,monospace";ctx.fillStyle="#adc1d2";
+ ctx.fillText("ENV 255",7,12);ctx.fillText("0",7,h-3);
+ ctx.fillStyle=colors[0];ctx.fillText("V1",w-95,13);
+ ctx.fillStyle=colors[1];ctx.fillText("V2",w-63,13);
+ ctx.fillStyle=colors[2];ctx.fillText("V3",w-31,13);
+}
+$("runtrace").onclick=function(){
+ var fixture=$("fixture").value,clock=$("clock").value,models={};
+ $("runtrace").disabled=true;$("exporttrace").disabled=true;
+ $("traceStatus").textContent="Tracing envelope levels (excluded from performance timings).";
+ setTimeout(function(){
+  try{
+   for(var model of [6581,8580]){
+    models[model]=B.traceEnvelope(SIDAudio,{fixture:fixture,clock:clock,model:model,stride:64});
+    plotEnvelope("env"+model,models[model]);
+   }
+   traceResults={fixture:fixture,clock:clock,models:models};
+   $("exporttrace").disabled=false;
+   $("traceStatus").textContent=fixture+" · "+clock+
+      " · both envelope traces captured; $D41C ENV3 readbacks verified.";
+  }catch(e){traceResults=null;$("traceStatus").textContent=String(e.message||e);}
+  finally{$("runtrace").disabled=false;}
+ },30);
+};
+$("exporttrace").onclick=function(){
+ if(!traceResults)return;
+ var doc={schema:"retroapplejs.sid.adsr-trace.v1",createdAt:new Date().toISOString(),
+   source:"non-timed production SIDAudio trace",sampleRate:B.RATE,
+   fixture:traceResults.fixture,clock:traceResults.clock,stride:64,
+   models:traceResults.models,browser:navigator.userAgent};
+ download(new Blob([JSON.stringify(doc,null,2)],{type:"application/json"}),
+   "sid-adsr-trace-"+traceResults.fixture+"-"+traceResults.clock+".json");
+};
 $("run").onclick=function(){run(false);};
 $("runall").onclick=function(){run(true);};
 $("fixture").onchange=function(){inspect($("fixture").value,$("clock").value);refresh();};
@@ -252,11 +323,11 @@ $("export").onclick=function(){
  // Version describes the benchmark format, not the evolving synthesizer.
  // Retain all original run fields for comparisons with 4A-era JSON exports.
  var doc={schema:B.SCHEMA,benchmarkVersion:B.VERSION,
-  fixtureSuites:["4A","4B"],createdAt:stamp,engine:"EMU_DEVICE_SID_audio.js",
+  fixtureSuites:["4A","4B","4C"],createdAt:stamp,engine:"EMU_DEVICE_SID_audio.js",
  sampleRate:B.RATE,source:"offline production SIDAudio / no Web Audio",
  browser:navigator.userAgent,referenceMetadata:external?
   {name:refName,analysis:external.analysis,format:external.originalFormat}:null,runs:all};
- download(new Blob([JSON.stringify(doc,null,2)],{type:"application/json"}),"sid-audio-bench-v2-results.json");
+ download(new Blob([JSON.stringify(doc,null,2)],{type:"application/json"}),"sid-audio-bench-v3-results.json");
 };
 [6581,8580].forEach(function(m){
  $("wav"+m).onclick=function(){
