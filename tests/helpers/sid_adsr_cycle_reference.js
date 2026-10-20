@@ -91,4 +91,48 @@ class Envelope {
       expPeriod:this.expPeriod,holdZero:this.holdZero};
   }
 }
-module.exports={Envelope,PERIODS,dividerAt};
+// Compare a sampled production trace to the independent cycle model.
+// Gate/register writes are interpreted at their recorded PCM boundary.
+// Phase 4C.0 produces discrepancy statistics, NOT a pass/fail hardware verdict.
+function compareTrace(trace){
+  const voices=[new Envelope(),new Envelope(),new Envelope()];
+  const stats=voices.map(()=>({observations:0,mismatches:0,
+    absoluteErrorSum:0,maxAbsoluteError:0,firstMismatch:null}));
+  let previousTick=0,index=0;
+  for(const point of trace.points){
+    const elapsed=point.cpuTick-previousTick;
+    if(elapsed<0)throw new Error('Nonmonotonic envelope trace');
+    for(const v of voices)v.advance(elapsed);
+    previousTick=point.cpuTick;
+    while(index<trace.events.length && trace.events[index].sample<=point.sample){
+      const ev=trace.events[index++];
+      if(ev.reg<21){
+        const voice=(ev.reg/7)|0,offset=ev.reg%7;
+        if(offset>=4&&offset<=6)voices[voice].write(offset,ev.value);
+      }
+    }
+    for(let i=0;i<3;i++){
+      const expected=voices[i].level,observed=point['v'+(i+1)];
+      const error=Math.abs(expected-observed),stat=stats[i];
+      stat.observations++;
+      stat.absoluteErrorSum+=error;
+      if(error>stat.maxAbsoluteError)stat.maxAbsoluteError=error;
+      if(error){
+        stat.mismatches++;
+        if(!stat.firstMismatch)stat.firstMismatch={
+          sample:point.sample,cpuTick:point.cpuTick,
+          expected:expected,observed:observed
+        };
+      }
+    }
+  }
+  return {fixture:trace.fixture,model:trace.model,clock:trace.clock,
+    sampleRate:trace.sampleRate,reference:'independent idealized per-cycle ADSR',
+    clockQuantization:'sample boundary / rounded SID cycle',
+    voices:stats.map(s=>({
+      observations:s.observations,mismatches:s.mismatches,
+      meanAbsoluteError:s.observations?+(s.absoluteErrorSum/s.observations).toFixed(5):0,
+      maxAbsoluteError:s.maxAbsoluteError,firstMismatch:s.firstMismatch
+    }))};
+}
+module.exports={Envelope,PERIODS,dividerAt,compareTrace};
