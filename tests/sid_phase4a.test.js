@@ -115,8 +115,37 @@ test('4A: HTML loads the production synthesizer and shared core, without externa
  assert.doesNotMatch(html,/https?:\/\/[^"' ]+\.js/);
  assert.match(html,/Run entire suite/);
  assert.match(html,/Export results JSON/);
+ assert.match(html,/SID Audio Reference &amp; Performance Bench v2/);
+ assert.match(html,/Audio Bench v2/);
+ assert.match(html,/schema:B\.SCHEMA/);
+ assert.match(html,/benchmarkVersion:B\.VERSION/);
+ assert.match(html,/sid-audio-bench-v2-results\.json/);
+ assert.doesNotMatch(html,/retroapplejs\.sid\.phase4a\.v1/);
+ assert.doesNotMatch(html,/sid-phase4a-results\.json/);
  const inline=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
     .map(x=>x[1]).filter(s=>s.trim());
  assert.equal(inline.length,1);
  assert.doesNotThrow(()=>new vm.Script(inline[0]));
+});
+
+test('SID Audio Bench v2: phase-neutral export identifies original 4A and newer 4B suites',()=>{
+ assert.equal(B.VERSION,2);
+ assert.equal(B.SCHEMA,'retroapplejs.sid.audio-bench.v2');
+ assert.equal(B.FIXTURES.length,15);
+ for(const fixture of B.FIXTURES.slice(0,10))
+  assert.equal(B.fixtureSuite(fixture.id),'4A');
+ for(const fixture of B.FIXTURES.slice(10))
+  assert.equal(B.fixtureSuite(fixture.id),'4B');
+ assert.throws(()=>B.fixtureSuite('unknown'),/Unknown fixture/);
+ // Historical v1 files are still directly comparable: each old run's
+ // fields are unchanged; only the extra fixtureSuite metadata is added.
+ const fake={fixture:'tri-saw',model:6581,clock:'PAL',
+  sidClock:985248,events:1,eventSequence:[],analysis:{spectrum:[],rms:.1},
+  performance:{medianMs:1},rendererStats:{}};
+ const report=B.report(fake);
+ assert.equal(report.fixtureSuite,'4B');
+ assert.equal(report.fixture,'tri-saw');
+ assert.equal(report.analysis.rms,.1);
+ assert.ok(!Object.hasOwn(report.analysis,'spectrum'));
+ assert.equal(B.report({...fake,fixture:'saw'}).fixtureSuite,'4A');
 });

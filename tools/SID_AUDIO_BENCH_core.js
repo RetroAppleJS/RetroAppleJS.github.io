@@ -1,7 +1,7 @@
 /*
- * RetroAppleJS SID Phase 4A: deterministic 22,050 Hz reference and performance
- * bench. NO production synthesizer changes; the original SIDAudio is supplied
- * as an injected constructor. This module works in browsers and Node.js.
+ * RetroAppleJS SID Audio Bench v2: deterministic 22,050 Hz reference and
+ * performance measurements, including Phase 4A and Phase 4B fixtures.
+ * Tests the production SIDAudio via an injected constructor (browser/Node).
  */
 (function(root, factory) {
     var api=factory();
@@ -11,24 +11,31 @@
     "use strict";
     var RATE=22050, FRAME_SECONDS=2, COUNT=RATE*FRAME_SECONDS;
     var CLOCKS={PAL:985248,NTSC:1022727};
+    var SCHEMA="retroapplejs.sid.audio-bench.v2";
+    var VERSION=2;
     var FIXTURES=[
-        {id:"triangle",label:"Triangle — 220 Hz",description:"One gated triangle voice at constant pitch"},
-        {id:"saw",label:"Sawtooth — 220 Hz",description:"One gated sawtooth voice and its harmonics"},
-        {id:"pulse",label:"Pulse — 220 Hz",description:"One gated 50% pulse waveform"},
-        {id:"noise",label:"Noise",description:"Gated noise oscillator and its spectral distribution"},
-        {id:"pwm",label:"Pulse-width modulation",description:"Original SID pulse-width register changes"},
-        {id:"adsr",label:"ADSR and release",description:"GATE release at one second, fixed A/D/S/R"},
-        {id:"ring",label:"Ring modulation",description:"Triangle voice with modulator oscillator"},
-        {id:"sync",label:"Hard synchronization",description:"Sawtooth with preceding oscillator sync"},
-        {id:"filter",label:"Filter cutoff sweep",description:"Low-pass filter sweep with resonance"},
-        {id:"volume",label:"Master volume steps",description:"Discrete $D418 volume changes"},
+        {suite:"4A",id:"triangle",label:"Triangle — 220 Hz",description:"One gated triangle voice at constant pitch"},
+        {suite:"4A",id:"saw",label:"Sawtooth — 220 Hz",description:"One gated sawtooth voice and its harmonics"},
+        {suite:"4A",id:"pulse",label:"Pulse — 220 Hz",description:"One gated 50% pulse waveform"},
+        {suite:"4A",id:"noise",label:"Noise",description:"Gated noise oscillator and its spectral distribution"},
+        {suite:"4A",id:"pwm",label:"Pulse-width modulation",description:"Original SID pulse-width register changes"},
+        {suite:"4A",id:"adsr",label:"ADSR and release",description:"GATE release at one second, fixed A/D/S/R"},
+        {suite:"4A",id:"ring",label:"Ring modulation",description:"Triangle voice with modulator oscillator"},
+        {suite:"4A",id:"sync",label:"Hard synchronization",description:"Sawtooth with preceding oscillator sync"},
+        {suite:"4A",id:"filter",label:"Filter cutoff sweep",description:"Low-pass filter sweep with resonance"},
+        {suite:"4A",id:"volume",label:"Master volume steps",description:"Discrete $D418 volume changes"},
         // Phase 4B additions (the original ten Phase 4A stimuli remain unchanged).
-        {id:"tri-saw",label:"Triangle + saw",description:"Shared-digital-DAC combined waveforms"},
-        {id:"saw-pulse",label:"Saw + pulse",description:"Pulse masks the sawtooth DAC bits"},
-        {id:"tri-pulse",label:"Triangle + pulse",description:"Combined triangle and 50% pulse"},
-        {id:"tri-saw-pulse",label:"Triangle + saw + pulse",description:"Three simultaneous waveforms"},
-        {id:"noise-saw",label:"Noise + saw",description:"Noise DAC combined with sawtooth"}
+        {suite:"4B",id:"tri-saw",label:"Triangle + saw",description:"Shared-digital-DAC combined waveforms"},
+        {suite:"4B",id:"saw-pulse",label:"Saw + pulse",description:"Pulse masks the sawtooth DAC bits"},
+        {suite:"4B",id:"tri-pulse",label:"Triangle + pulse",description:"Combined triangle and 50% pulse"},
+        {suite:"4B",id:"tri-saw-pulse",label:"Triangle + saw + pulse",description:"Three simultaneous waveforms"},
+        {suite:"4B",id:"noise-saw",label:"Noise + saw",description:"Noise DAC combined with sawtooth"}
     ];
+    function fixtureSuite(id){
+        var item=FIXTURES.find(function(f){return f.id===id;});
+        if(!item)fail("Unknown fixture: "+id);
+        return item.suite;
+    }
     function finite(v){return typeof v==="number"&&Number.isFinite(v);}
     function fail(message){throw new Error(message);}
     function samples(seconds){return Math.round(seconds*RATE);}
@@ -303,12 +310,14 @@
     function report(result){
         // JSON has scalar analysis and event timestamps, not huge PCM/spectra.
         var a=Object.assign({},result.analysis);delete a.spectrum;
-        return {fixture:result.fixture,model:result.model,clock:result.clock,
+        return {fixture:result.fixture,fixtureSuite:fixtureSuite(result.fixture),
+            model:result.model,clock:result.clock,
             sidClock:result.sidClock,sampleRate:RATE,events:result.events,
             eventSequence:result.eventSequence,analysis:a,
             performance:result.performance,rendererStats:result.rendererStats};
     }
     return {RATE:RATE,COUNT:COUNT,CLOCKS:CLOCKS,FIXTURES:FIXTURES,
+        SCHEMA:SCHEMA,VERSION:VERSION,fixtureSuite:fixtureSuite,
         createEvents:createEvents,render:render,analyze:analyze,bench:bench,
         checksum:checksum,wav:wav,readWav:readWav,report:report};
 });

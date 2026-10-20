@@ -23,6 +23,8 @@ writeRegister / setClock / setModel / renderOffline methods as the
 actual card synthesizer. It does not implement a replacement SID model
 or modify the native 6502 player.
 
+**Current bench:** The shared tool is now **SID Audio Reference & Performance Bench v2**, covering the ten original Phase 4A fixtures and five Phase 4B combined-waveform fixtures. New results use schema `retroapplejs.sid.audio-bench.v2` and filename `sid-audio-bench-v2-results.json`. Earlier `retroapplejs.sid.phase4a.v1` JSON exports remain valid historical baselines, with the original `runs[]` fields still comparable. The benchmark version is not the synthesis engine's version.
+
 ## Browser workflow
 
 Open tools/SID_AUDIO_BENCH.html on the RetroAppleJS website.
