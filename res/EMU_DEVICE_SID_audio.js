@@ -47,6 +47,8 @@ function SIDAudio()
     var overflowLastCpuTick=null,overflowLastAudioTime=null;
     var realtimeServices=0,cpuBudgetChecks=0,cpuBudgetBlocked=0;
     var filterLow=0,filterBand=0,oscClockFraction=0;
+    // Reused typed registers: no per-sample array allocations in audio path.
+    var oscFreq=new Uint16Array(3),oscCtrl=new Uint8Array(3);
     // Digital AND composition is closer to the SID's shared waveform DAC
     // than averaging independent waveforms. These small model-dependent
     // adjacent-bit coupling factors are *provisional approximations*, not
@@ -210,8 +212,10 @@ function SIDAudio()
         var freq0=registers[0]|registers[1]<<8,
             freq1=registers[7]|registers[8]<<8,
             freq2=registers[14]|registers[15]<<8;
-        var f0=[freq0,freq1,freq2],
-            controls=[registers[4],registers[11],registers[18]];
+        oscFreq[0]=freq0;oscFreq[1]=freq1;oscFreq[2]=freq2;
+        oscCtrl[0]=registers[4];oscCtrl[1]=registers[11];
+        oscCtrl[2]=registers[18];
+        var f0=oscFreq,controls=oscCtrl;
         var syncActive=!!((controls[0]|controls[1]|controls[2])&2);
         while(remain>0){
             var chunk=remain,i,v,source,phase,target;
@@ -417,6 +421,14 @@ function SIDAudio()
     this.getRegisters=function(){return new Uint8Array(registers);};
     // Useful for per-voice ADSR regressions; these are raw ENV levels, 0..255.
     this.getEnvelopeLevels=function(){return new Uint8Array(voices.map(v=>v.level));};
+    // Passive digital-state readout for Phase 4B regression/telemetry.
+    // It never advances SID time and returns detached numeric values.
+    this.getOscillatorState=function(){
+        return voices.map(function(v,i){return {
+            phase:v.phase,noise:v.noise,wrap:v.wrap,
+            control:registers[i*7+4]
+        };});
+    };
     this.setModel=function(model)
     {
         model=Number(model);
