@@ -93,7 +93,7 @@ test('4D.2a: standalone UI provides a real survey/export and clear provenance',(
  assert.match(html,/Export calibration JSON/);
  assert.match(html,/SID_FILTER_CALIBRATION_core.js/);
  assert.match(html,/SID_FILTER_BENCH.html/);
- assert.match(html,/not physical SID calibration/i);
+ assert.match(html,/does not claim physical SID calibration/i);
  const inline=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
    .map(x=>x[1]).filter(x=>x.trim());
  assert.equal(inline.length,1);
