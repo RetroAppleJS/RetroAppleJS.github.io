@@ -82,6 +82,8 @@ waveform hashes: an intentional Phase 4B digital change should be
 evaluated through waveform shape, spectra, test invariants, listening
 and cost, not exact equivalence to previous approximations.
 
+**Shared benchmark naming:** `tools/SID_AUDIO_BENCH.html` now identifies itself as **SID Audio Bench v2**, not Phase 4A. It groups both phases' stimuli and exports `retroapplejs.sid.audio-bench.v2` without changing the original sound measurements. Older Phase 4A result JSONs are still useful for comparison.
+
 ## How to verify
 
 1. On the Phase 4B branch, open **tools/SID_AUDIO_BENCH.html**.
