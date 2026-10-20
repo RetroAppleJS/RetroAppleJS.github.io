@@ -105,3 +105,76 @@ exercise all filter register combinations, and verify real tunes
 with both 10 FPS and VBLANK audio telemetry.
 
 Phase 4D.0 does not implement or pre-approve 4D.1 through 4D.3.
+
+
+## Phase 4D.1 — TPT state-variable filter implementation
+
+Scope: the production SID audio device, the filter correctness
+tests, and the existing standalone filter laboratory UI.
+The 4D.0 measurements and historical baseline JSON remain unchanged.
+
+### Production algorithm
+
+A two-integrator topology-preserving transform (TPT) state-variable
+filter replaces the old one-pole/derivative mixer. It computes LP,
+BP and HP from a single pair of integrator memories at 22,050 output
+samples per second, with no per-SID-cycle filter loop, new Web Audio
+resources, or mandatory oversampling.
+
+The input contains only the voices selected by $D417 bits 0–2.
+The filter still updates its integrators when no output filter
+mode is selected. $D418 bits 4, 5, 6 select computed LP, BP and
+HP output; simultaneous modes sum them. $D418 bit 7 (V3OFF)
+suppresses only the *direct* Voice 3 mixer path, not filtered V3.
+The master-volume nibble is unchanged, and the external analog
+input bit remains unsupported.
+
+The 6581 and 8580 cutoff mappings initially follow the earlier
+approximate curves. The TPT frequency coefficient uses
+tan(pi * Hz / 22050), with cutoff clamped below 45% of the
+sample rate. The full resonance nibble maps to bounded
+inverse damping. These are provisional Q and frequency curves,
+NOT silicon calibration. Hardware-based calibration is 4D.2.
+
+### CPU budget and diagnostics
+
+Expensive cutoff functions execute only when the 11-bit cutoff,
+four-bit resonance, or SID model changes. The audio-sample path
+uses only arithmetic on cached coefficients; routing-only writes
+and mode/volume writes do not recalculate them.
+
+Passive getFilterState() returns integrator memories,
+cutoff/resonance, approximate Hz/damping and cumulative
+coefficient-update count without advancing simulation.
+
+### Regression tests
+
+The new 4D.1 test suite verifies all 16 resonance codes, correct
+filtered Voice 3 OFF behavior, unchanged dry-path PCM, LP/BP/HP
+and combinations, PAL/NTSC, extremes of cutoff, rapid register
+changes, filter state bounds, coefficient caching and reset.
+
+The 4D.0 test file now treats old filter checksum and clipping
+data as immutable historical reference; it no longer insists
+the corrected filter reproduce documented defects. PCM hashes
+for active filtered signals should differ from 4D.0, while the
+unfiltered digital path and 4B/4C invariants remain unchanged.
+
+The lab now exports sid-filter-4d1-PAL-lp.json, etc, preserving
+the filter-lab.v1 survey format and adding a Phase 4D.1 marker.
+
+### Performance acceptance
+
+Rerun the ten original PAL Phase 4A Audio Bench v3 fixtures on the
+late-2014 MacBook Air i7 with Safari 16.6.1: both SID models,
+five repetitions. Compare the mean of twenty fixture medians
+against the **17.10 ms** accepted Phase 4C baseline for two seconds
+of 22,050 Hz PCM. Safari timer quantization requires caution;
+investigate consistent regressions around +5%.
+
+Phase 4D.3 listening tests and both 10 FPS and VBLANK telemetry
+must still be completed before final filter acceptance.
+
+A stable digital SVF is not the nonlinear 6581 transistor
+circuit. Hardware-calibrated cutoff, resonance and analog
+coloration are deferred to Phase 4D.2.
