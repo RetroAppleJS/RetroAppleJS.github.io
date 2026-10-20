@@ -330,3 +330,20 @@ save *your own compiled player* to disk for subsequent single-command
 `BLOAD`. The project does not distribute a precompiled Phase 2C.2
 binary. See **[Phase 2C.2 assembly guide](SID_PHASE2C2.md)** for the
 memory map, optional DOS workflow, safety rules and regression tests.
+
+
+## Phase 4A — SID sound reference and performance baseline
+
+**[Open Phase 4A instructions](SID_PHASE4A.md)** and launch
+[SID_AUDIO_BENCH.html](../tools/SID_AUDIO_BENCH.html) from RetroAppleJS.
+
+The standalone bench runs the original production SID synthesizer
+headlessly at **22,050 Hz** with reproducible SID register-write
+experiments, for both MOS 6581 and 8580. It reports independent sound
+measurements and render times, offers A/B WAV listening and JSON export,
+and can analyze an optional compatible external 22.05 kHz WAV recording.
+
+**No changes are made to the production SID audio device, native PSID
+assembly player, card timer or browser audio scheduling.** The bench
+cannot verify physical SID authenticity by itself; use matched
+hardware recordings and the live SID telemetry separately.
