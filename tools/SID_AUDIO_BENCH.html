@@ -1,0 +1,278 @@
+<!doctype html>
+<!-- SID Phase 4A: offline benchmark of the unmodified production synth. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SID Audio Bench — Phase 4A</title>
+<style>
+:root{color-scheme:dark;background:#101721;color:#e5eaf0;font:14px/1.5 system-ui,Arial,sans-serif}
+*{box-sizing:border-box}
+body{max-width:1240px;margin:0 auto;padding:24px}
+h1{font-size:26px;line-height:1.15;margin:0}h2{font-size:17px;margin:0 0 12px}
+small,.muted{color:#94a9bd}
+p{margin:8px 0 16px}button,select,input{font:inherit}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 22px}
+mark{background:#274f56;color:#d4f7ec;padding:3px 7px;border-radius:5px}
+.panel{background:#182332;border:1px solid #35465c;border-radius:12px;padding:18px;margin-bottom:16px}
+.controls{display:flex;flex-wrap:wrap;gap:14px;align-items:end}
+.control{display:flex;flex-direction:column;gap:5px;min-width:130px;flex:1}
+label{font-size:12px;color:#b8cbdc}
+button,select,input[type="file"]{background:#27374a;color:#f1f6fa;border:1px solid #4c647a;border-radius:7px;padding:9px}
+button{cursor:pointer}button:hover{border-color:#97c4e1}button.primary{background:#17687d;border-color:#2da5bf;font-weight:700}
+button:disabled{opacity:.4;cursor:default}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+#status{min-height:20px;margin-top:14px;color:#add9df}
+.results{overflow:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;white-space:nowrap}
+th,td{padding:9px 12px;text-align:right;border-bottom:1px solid #35465c}
+th:first-child,td:first-child{text-align:left}
+th{color:#bbd1dd;font-weight:600;background:#223044}
+tr.active{background:#264055}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.card{background:#12202f;border:1px solid #38536b;border-radius:8px;padding:13px;min-width:0}
+canvas{display:block;width:100%;height:180px;background:#0c1623;border-radius:6px}
+audio{width:100%;margin:9px 0 0;height:36px}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between}
+.ref-notes{font-size:12px;color:#b8cbdb;line-height:1.6}
+#error{color:#ffb4a7}
+pre{max-height:180px;overflow:auto;font:12px/1.5 ui-monospace,monospace;background:#101d2c;padding:12px;border-radius:7px}
+@media(max-width:800px){body{padding:14px}.cards{grid-template-columns:1fr}.panel{padding:12px}}
+</style>
+<script src="../res/EMU_DEVICE_SID_audio.js"></script>
+<script src="SID_AUDIO_BENCH_core.js"></script>
+</head>
+<body>
+<header>
+<div>
+<div class="muted">RetroAppleJS · SID peripheral · Phase 4A</div>
+<h1>SID Audio Reference &amp; Performance Bench</h1>
+<p class="muted">Original production synthesizer · deterministic register sequences · offline only</p>
+</div>
+<mark>Fixed 22,050 Hz · no oversampling</mark>
+</header>
+
+<section class="panel">
+<h2>Benchmark setup</h2>
+<div class="controls">
+<div class="control" style="flex:2"><label for="fixture">Sound experiment</label><select id="fixture"></select></div>
+<div class="control"><label for="clock">SID clock</label><select id="clock">
+<option value="PAL">PAL 985,248 Hz</option><option value="NTSC">NTSC 1,022,727 Hz</option>
+</select></div>
+<div class="control"><label for="reps">Timed repeats</label><select id="reps">
+<option value="3">3</option><option value="5" selected>5</option><option value="10">10</option>
+</select></div>
+<div class="actions">
+<button class="primary" id="run">Run selected</button>
+<button id="runall">Run entire suite</button>
+<button id="export" disabled>Export results JSON</button>
+</div>
+</div>
+<div id="status" role="status" aria-live="polite">Ready. Every run renders a fixed two seconds per SID model.</div>
+<div id="error" role="alert"></div>
+</section>
+
+<section class="panel" id="comparison">
+<div class="row"><h2>Measured output</h2><small>Median render time includes source rendering, not FFT / report calculations</small></div>
+<div class="results"><table>
+<thead><tr><th>Experiment</th><th>Model</th><th>RMS</th><th>Peak</th><th>DC</th>
+<th>Dominant Hz</th><th>Centroid Hz</th><th>Energy ≥5 kHz</th>
+<th>Render ms / 2 s</th><th>Real-time ×</th></tr></thead>
+<tbody id="rows"><tr><td colspan="10" class="muted">Run a fixture to capture the baseline.</td></tr></tbody>
+</table></div>
+</section>
+
+<section class="panel">
+<h2>Selected experiment — 6581 vs. 8580</h2>
+<div class="cards">
+<article class="card">
+<div class="row"><strong>6581</strong><button id="wav6581" disabled>Save WAV</button></div>
+<div id="metric6581" class="muted">Not rendered</div>
+<canvas id="wave6581" width="550" height="180" aria-label="6581 waveform"></canvas>
+<canvas id="fft6581" width="550" height="180" aria-label="6581 frequency spectrum"></canvas>
+<audio id="audio6581" controls aria-label="Listen to 6581 output"></audio>
+</article>
+<article class="card">
+<div class="row"><strong>8580</strong><button id="wav8580" disabled>Save WAV</button></div>
+<div id="metric8580" class="muted">Not rendered</div>
+<canvas id="wave8580" width="550" height="180" aria-label="8580 waveform"></canvas>
+<canvas id="fft8580" width="550" height="180" aria-label="8580 frequency spectrum"></canvas>
+<audio id="audio8580" controls aria-label="Listen to 8580 output"></audio>
+</article>
+</div>
+<p class="ref-notes">Waveform: a 25 ms window around 50% of the rendered duration. Spectrum: 2,048-point Hann-windowed FFT of the middle segment. Different chip models need not produce identical PCM. Timing samples are quantized to the 22.05 kHz output grid (about 45 SID clock cycles per sample).</p>
+</section>
+
+<section class="panel">
+<h2>Optional external reference — WAV import</h2>
+<div class="controls">
+<div class="control" style="flex:2"><label for="reference">Import matched test recording (not a commercial song)</label>
+<input id="reference" type="file" accept=".wav,audio/wav"></div>
+<div class="actions"><button id="clearref">Clear reference</button></div>
+</div>
+<p class="ref-notes">Supports 22,050 Hz, 16-bit PCM or 32-bit float, mono or stereo WAV. External recordings must be converted offline before import. The tool reports independent RMS and spectral metrics; it does <strong>not</strong> time-align recordings, compare PCM samples directly, or claim to verify a specific physical chip. A suitable recording should use the same register stimulus, PAL/NTSC clock and capture window.</p>
+<div id="referenceResult" class="muted">No reference selected.</div>
+</section>
+
+<section class="panel">
+<h2>Measurement interpretation</h2>
+<p class="ref-notes">A run starts a new SIDAudio instance for each fixture/model. It includes one untimed warm-up and a median of repeated 44,100-sample renders. The PCM hash confirms repeatability within this environment. Offline render performance is not a substitute for browser Web Audio underrun telemetry; use the existing peripheral audio telemetry for the live 10 FPS/VBLANK comparison. Performance comparisons are meaningful on the same computer and browser, with similar background load. This is a software baseline, not physical 6581/8580 certification.</p>
+</section>
+
+<script>
+(function(){
+"use strict";
+var B=window.SIDAudioBench,results={},selected=null,audioURLs={},external=null,refName="";
+var $=function(id){return document.getElementById(id);};
+B.FIXTURES.forEach(function(f){
+ var opt=document.createElement("option");opt.value=f.id;
+ opt.textContent=f.label+" — "+f.description;$("fixture").appendChild(opt);
+});
+function key(f,m,c){return f+":"+m+":"+c;}
+function status(message,err){$("status").textContent=message;$("error").textContent=err||"";}
+function fmt(value,digits){return Number.isFinite(value)?value.toFixed(digits||0):"—";}
+function download(blob,filename){
+ var url=URL.createObjectURL(blob),a=document.createElement("a");
+ a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+ setTimeout(function(){URL.revokeObjectURL(url);},5000);
+}
+function waveBlob(pcm){return new Blob([B.wav(pcm)],{type:"audio/wav"});}
+function plot(id,pcm,isFFT){
+ var el=$(id),ctx=el.getContext("2d"),w=el.width,h=el.height;
+ ctx.clearRect(0,0,w,h);ctx.fillStyle="#0c1623";ctx.fillRect(0,0,w,h);
+ ctx.strokeStyle="#233f55";ctx.lineWidth=1;
+ for(var i=1;i<4;i++){var y=i*h/4;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+ ctx.strokeStyle="#65e1bc";ctx.lineWidth=1.6;ctx.beginPath();
+ if(isFFT){
+  var s=B.analyze(pcm).spectrum,max=0;
+  var reduced=[];
+  for(i=0;i<w;i++){
+   var from=Math.max(0,Math.floor(i*s.length/w)),to=Math.max(from+1,Math.floor((i+1)*s.length/w)),val=0;
+   for(var j=from;j<to;j++)val=Math.max(val,s[j][1]);reduced.push(val);max=Math.max(max,val);
+  }
+  max=max||1;
+  for(i=0;i<w;i++){
+   var val=Math.log1p(reduced[i])/Math.log1p(max);
+   var yy=h-8-(h-20)*val;
+   if(!i)ctx.moveTo(i,yy);else ctx.lineTo(i,yy);
+  }
+ }else{
+  var duration=Math.round(B.RATE*.025);
+  var start=Math.floor(pcm.length/2),scale=1;
+  for(i=0;i<duration;i++)scale=Math.max(scale,Math.abs(pcm[start+i]));
+  for(i=0;i<w;i++){
+   var sample=pcm[start+Math.floor(i*duration/w)],yy=h/2-sample*(h*.42)/scale;
+   if(!i)ctx.moveTo(i,yy);else ctx.lineTo(i,yy);
+  }
+ }
+ ctx.stroke();
+ ctx.font="11px ui-monospace,monospace";ctx.fillStyle="#98afc4";
+ ctx.fillText(isFFT?"Spectrum · 0–11.025 kHz":"Waveform · 25 ms",10,16);
+}
+function inspect(f,c){
+ selected=f;
+ [6581,8580].forEach(function(model){
+  var r=results[key(f,model,c)],button=$("wav"+model);
+  button.disabled=!r;
+  var element=$("audio"+model);
+  element.pause();element.removeAttribute("src");element.load();
+  if(audioURLs[model])URL.revokeObjectURL(audioURLs[model]);
+  delete audioURLs[model];
+  if(r){
+   $("metric"+model).textContent="PCM hash "+r.analysis.fnvFloat32+
+    " · "+fmt(r.performance.medianMs,2)+" ms per 2 s · "+
+    fmt(r.analysis.rms,4)+" RMS";
+   plot("wave"+model,r.pcm,false);
+   plot("fft"+model,r.pcm,true);
+   audioURLs[model]=URL.createObjectURL(waveBlob(r.pcm));
+   element.src=audioURLs[model];
+  }else{
+   $("metric"+model).textContent="Not rendered";
+   var ctx=$("wave"+model).getContext("2d");ctx.clearRect(0,0,550,180);
+   ctx=$("fft"+model).getContext("2d");ctx.clearRect(0,0,550,180);
+  }
+ });
+}
+function refresh(){
+ var tbody=$("rows");tbody.textContent="";
+ var rows=Object.keys(results).map(function(k){return results[k];});
+ if(!rows.length){tbody.innerHTML="<tr><td colspan='10'>No results yet</td></tr>";return;}
+ rows.sort(function(a,b){return a.fixture.localeCompare(b.fixture)||a.model-b.model;});
+ for(var i=0;i<rows.length;i++){
+  var r=rows[i],a=r.analysis,tr=document.createElement("tr");
+  if(r.fixture===selected&&r.clock===$("clock").value)tr.className="active";
+  [r.fixture,r.model,fmt(a.rms,5),fmt(a.peak,5),fmt(a.dc,5),
+   fmt(a.dominantHz,1),fmt(a.spectralCentroidHz,0),
+   fmt(a.energyAbove5kHzRatio*100,2)+"%",
+   fmt(r.performance.medianMs,2),
+   fmt(r.performance.renderToAudioRatio,2)+"×"].forEach(function(value){
+    var td=document.createElement("td");td.textContent=value;tr.appendChild(td);
+   });
+   tbody.appendChild(tr);
+ }
+ $("export").disabled=false;
+}
+function run(all){
+ var names=all?B.FIXTURES.map(function(f){return f.id;}):[$("fixture").value],
+  clock=$("clock").value,reps=Number($("reps").value);
+ $("run").disabled=$("runall").disabled=true;
+ status("Running "+names.length+" fixture(s) at 22,050 Hz. This may take a few seconds.");
+ // Allow browser to paint progress before the synchronous benchmark.
+ setTimeout(function(){
+  var started=performance.now();
+  try{
+   for(var i=0;i<names.length;i++){
+    var fixture=names[i];
+    for(var model of [6581,8580]){
+     var r=B.bench(SIDAudio,{fixture:fixture,model:model,clock:clock,repetitions:reps},performance.now.bind(performance));
+     results[key(fixture,model,clock)]=r;
+    }
+   }
+   inspect($("fixture").value,clock);refresh();
+   status("Completed "+names.length+" fixture(s) for both models in "+
+     fmt((performance.now()-started)/1000,2)+" s. PCM repeatability verified.");
+  }catch(err){status("Benchmark error.",String(err&&err.message||err));}
+  finally{$("run").disabled=$("runall").disabled=false;}
+ },30);
+}
+$("run").onclick=function(){run(false);};
+$("runall").onclick=function(){run(true);};
+$("fixture").onchange=function(){inspect($("fixture").value,$("clock").value);refresh();};
+$("clock").onchange=function(){inspect($("fixture").value,$("clock").value);refresh();};
+$("export").onclick=function(){
+ var stamp=new Date().toISOString(),all=Object.keys(results).sort().map(function(k){return B.report(results[k]);});
+ var doc={schema:"retroapplejs.sid.phase4a.v1",createdAt:stamp,engine:"EMU_DEVICE_SID_audio.js",
+ sampleRate:B.RATE,source:"offline production SIDAudio / no Web Audio",
+ browser:navigator.userAgent,referenceMetadata:external?
+  {name:refName,analysis:external.analysis,format:external.originalFormat}:null,runs:all};
+ download(new Blob([JSON.stringify(doc,null,2)],{type:"application/json"}),"sid-phase4a-results.json");
+};
+[6581,8580].forEach(function(m){
+ $("wav"+m).onclick=function(){
+  var r=results[key($("fixture").value,m,$("clock").value)];
+  if(r)download(waveBlob(r.pcm),"sid-4a-"+r.fixture+"-"+m+"-"+r.clock+"-22050.wav");
+ };
+});
+$("reference").onchange=async function(){
+ var file=this.files&&this.files[0];if(!file)return;
+ try{
+  var decoded=B.readWav(await file.arrayBuffer());
+  var a=B.analyze(decoded.pcm);
+  var x=Object.assign({},a);delete x.spectrum;
+  external={analysis:x,originalFormat:decoded.originalFormat};
+  refName=file.name;
+  $("referenceResult").textContent=file.name+" ("+decoded.originalFormat+
+   " / "+decoded.channels+" channels): RMS="+fmt(a.rms,5)+
+   ", peak="+fmt(a.peak,5)+", dominant="+fmt(a.dominantHz,1)+
+   " Hz, centroid="+fmt(a.spectralCentroidHz,0)+
+   " Hz, energy ≥5 kHz="+fmt(100*a.energyAbove5kHzRatio,2)+
+   "%. Compare to the table above; time alignment is not assumed.";
+ }catch(err){external=null;$("referenceResult").textContent=String(err.message||err);}
+};
+$("clearref").onclick=function(){
+ external=null;refName="";$("reference").value="";$("referenceResult").textContent="No reference selected.";
+};
+inspect("triangle","PAL");
+})();
+</script>
+</body></html>
