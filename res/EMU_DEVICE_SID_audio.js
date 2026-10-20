@@ -4,7 +4,8 @@
 //
 // EMU_DEVICE_SID_audio.js
 // SID sound-chip emulation AND browser audio output. No WebAudio code lives
-// in EMU_CARD_SID.js. First-pass digital model, not analog 6581/8580 fidelity.
+// in EMU_CARD_SID.js. Phase 4B digital oscillators; analog filter remains an
+// approximation. SID clock events are batched, not per-cycle PCM oversampled.
 //
 
 function SIDAudio()
@@ -26,7 +27,8 @@ function SIDAudio()
     // Levels are eight-bit, with stepped exponential decay/release.
     const RATE_PERIODS=[9,32,63,95,149,220,267,313,392,977,1954,3126,3907,11720,19532,31251];
     const RATE_WRAP=0x8000;
-    const PHASE=16777216;
+    const PHASE=16777216, HALF_PHASE=8388608, PHASE_MASK=0xffffff;
+    const NOISE_CLOCK=0x100000, NOISE_RISE_OFFSET=0x80000;
     var registers=new Uint8Array(32);
     var voices=[], sidModel=6581, sidClock=1022727, hostClock=1021800;
     var lastTick=0, fraction=0;
@@ -44,7 +46,29 @@ function SIDAudio()
     var overflowIncidents=0,overflowActive=false,overflowStartDropped=0;
     var overflowLastCpuTick=null,overflowLastAudioTime=null;
     var realtimeServices=0,cpuBudgetChecks=0,cpuBudgetBlocked=0;
-    var filterLow=0,filterBand=0;
+    var filterLow=0,filterBand=0,oscClockFraction=0;
+    // Digital AND composition is closer to the SID's shared waveform DAC
+    // than averaging independent waveforms. These small model-dependent
+    // adjacent-bit coupling factors are *provisional approximations*, not
+    // measured 6581/8580 DAC curves or copied waveform tables.
+    function combinedDacTable(model){
+        var key=model===6581?"sidCombined6581":"sidCombined8580";
+        if(SIDAudio[key])return SIDAudio[key];
+        var out=new Float32Array(4096),loss=model===6581?0.24:0.10;
+        for(var bits=0;bits<4096;bits++){
+            var value=0;
+            for(var bit=0;bit<12;bit++){
+                if(!(bits&(1<<bit)))continue;
+                var n=(bit>0 && !(bits&(1<<(bit-1)))?1:0)+
+                    (bit<11 && !(bits&(1<<(bit+1)))?1:0);
+                value+=(1<<bit)*(1-loss*n);
+            }
+            out[bits]=value;
+        }
+        SIDAudio[key]=out;return out;
+    }
+    var combined6581=combinedDacTable(6581),
+        combined8580=combinedDacTable(8580);
     this.id={DCODE:"SIDAUDIO",coID:"SIDAudio",hostPCODE:"SID",icon:"fa fa-volume-up"};
     this.audioDevice=true;
     this.audio=undefined;
@@ -163,42 +187,116 @@ function SIDAudio()
         }
         return v.level/255;
     }
+    // 23-bit SID noise shift register. Clock on 0->1 transitions of
+    // accumulator bit 19, not on every output sample or every bit toggle.
+    function noiseAdvance(v,oldPhase,totalPhase)
+    {
+        var edges=Math.floor((totalPhase+NOISE_RISE_OFFSET)/NOISE_CLOCK)-
+                  Math.floor((oldPhase+NOISE_RISE_OFFSET)/NOISE_CLOCK);
+        while(edges-->0){
+            var feedback=((v.noise>>>22)^(v.noise>>>17))&1;
+            v.noise=((v.noise<<1)|feedback)&0x7fffff;
+        }
+    }
+    // Exact (integer) SID clock count per PCM frame, with fractional cycles
+    // carried across frames. No chip-clock-by-chip-clock sample synthesis.
+    // When sync is active, jump directly to the next source-MSB rising edge
+    // and process all oscillators at that event before continuing.
+    function clockOscillators()
+    {
+        var frameCycles=sidClock/SAMPLE_RATE+oscClockFraction;
+        var remain=Math.floor(frameCycles);
+        oscClockFraction=frameCycles-remain;
+        var freq0=registers[0]|registers[1]<<8,
+            freq1=registers[7]|registers[8]<<8,
+            freq2=registers[14]|registers[15]<<8;
+        var f0=[freq0,freq1,freq2],
+            controls=[registers[4],registers[11],registers[18]];
+        var syncActive=!!((controls[0]|controls[1]|controls[2])&2);
+        while(remain>0){
+            var chunk=remain,i,v,source,phase,target;
+            if(syncActive){
+                for(i=0;i<3;i++){
+                    if(!(controls[i]&2)||(controls[i]&8))continue;
+                    source=(i+2)%3;
+                    if((controls[source]&8)||!f0[source])continue;
+                    phase=voices[source].phase;
+                    target=phase<HALF_PHASE?HALF_PHASE:PHASE+HALF_PHASE;
+                    var until=Math.ceil((target-phase)/f0[source]);
+                    if(until<chunk)chunk=until;
+                }
+            }
+            // Snapshot source MSB-rise events BEFORE targets are reset.
+            var rise0=false,rise1=false,rise2=false;
+            for(i=0;i<3;i++){
+                v=voices[i];
+                if(controls[i]&8){
+                    v.phase=0;v.noise=0x7ffff8;v.wrap=false;continue;
+                }
+                var before=v.phase,total=before+f0[i]*chunk;
+                if(syncActive){
+                    target=before<HALF_PHASE?HALF_PHASE:PHASE+HALF_PHASE;
+                    var rise=f0[i]>0 && total>=target;
+                    if(i===0)rise0=rise;
+                    else if(i===1)rise1=rise;
+                    else rise2=rise;
+                }
+                noiseAdvance(v,before,total);
+                v.phase=total&PHASE_MASK;
+                v.wrap=total>=PHASE;
+            }
+            if(syncActive){
+                if((controls[0]&2) && !(controls[0]&8) && rise2)
+                    voices[0].phase=0;
+                if((controls[1]&2) && !(controls[1]&8) && rise0)
+                    voices[1].phase=0;
+                if((controls[2]&2) && !(controls[2]&8) && rise1)
+                    voices[2].phase=0;
+            }
+            remain-=chunk;
+        }
+    }
+    function noiseBits(v)
+    {
+        var n=v.noise;
+        // SID noise DAC tap mapping from 23-bit register to eight bits.
+        return (((n>>>20)&1)<<7)|(((n>>>18)&1)<<6)|
+               (((n>>>14)&1)<<5)|(((n>>>11)&1)<<4)|
+               (((n>>>9)&1)<<3)|(((n>>>5)&1)<<2)|
+               (((n>>>2)&1)<<1)|(n&1);
+    }
     function voiceOutput(index)
     {
         var base=index*7,v=voices[index],ctrl=registers[base+4];
         var env=envelopeStep(v,base);
-        if(ctrl&8){v.phase=0;v.noise=0x7ffff8;v.wrap=false;return 0;}
-        var freq=registers[base] | registers[base+1]<<8;
-        var step=freq*sidClock/SAMPLE_RATE,previous=v.phase;
-        v.phase=(previous+step)%PHASE;
-        v.wrap=v.phase<previous;
-        // SID noise LFSR is clocked by phase bit 19 (approximation).
-        if(Math.floor(previous/0x80000)!==Math.floor(v.phase/0x80000)){
-            var feedback=((v.noise>>22)^(v.noise>>17))&1;
-            v.noise=((v.noise<<1)|feedback)&0x7fffff;
+        if((ctrl&8)||!(ctrl&0xf0))return 0;
+        var phase=v.phase,selected=0xfff,waves=0;
+        if(ctrl&0x10){
+            // Triangle uses accumulator bits 22..11. Ring modulation
+            // XORs the triangle fold bit with the preceding voice MSB.
+            var fold=(phase&HALF_PHASE)?1:0;
+            if(ctrl&4)fold^=(voices[(index+2)%3].phase&HALF_PHASE)?1:0;
+            var triangle=(phase>>>11)&0xfff;
+            if(fold)triangle^=0xfff;
+            selected&=triangle;waves++;
         }
-        var p=v.phase/PHASE,waves=0,sum=0;
-        if(ctrl&0x10){sum+=1-4*Math.abs(p-.5);waves++;}
-        if(ctrl&0x20){sum+=2*p-1;waves++;}
+        if(ctrl&0x20){selected&=(phase>>>12)&0xfff;waves++;}
         if(ctrl&0x40){
             var width=((registers[base+3]&15)<<8)|registers[base+2];
-            sum+=p<width/4096?1:-1;waves++;
+            selected&=((phase>>>12)>=width)?0xfff:0;waves++;
         }
-        if(ctrl&0x80){sum+=((v.noise>>14)&1)?1:-1;waves++;}
-        if((ctrl&4) && (ctrl&0x10)){
-            var mod=voices[(index+2)%3].phase>=PHASE/2?-1:1;
-            sum*=mod;
+        if(ctrl&0x80){selected&=noiseBits(v)*0x11;waves++;}
+        if(waves>1){
+            // Model-dependent coupled 12-bit DAC, NOT mean-of-waves.
+            selected=(sidModel===6581?combined6581:combined8580)[selected];
         }
-        if(!waves)return 0;
-        return (sum/waves)*env;
+        return ((selected/4095)*2-1)*env;
     }
     function sample()
     {
+        clockOscillators();
         var raw=[voiceOutput(0),voiceOutput(1),voiceOutput(2)];
-        // SID sync: when the preceding oscillator wraps, zero its target.
-        for(var i=0;i<3;i++)
-            if((registers[i*7+4]&2) && voices[(i+2)%3].wrap)
-                voices[i].phase=0;
+        var i;
         var route=registers[0x17]&7;
         var direct=0,filtered=0;
         for(i=0;i<3;i++){
@@ -537,6 +635,7 @@ function SIDAudio()
     this.reset=function()
     {
         registers.fill(0);clearVoices();filterLow=filterBand=0;
+        oscClockFraction=0;
         fraction=0;lastTick=(io&&typeof io.getClockTicks==="function")?io.getClockTicks():0;
         stopSources();clearQueue();
     };
