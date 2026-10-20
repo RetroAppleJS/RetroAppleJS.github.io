@@ -886,17 +886,33 @@ NIBBLE      .BYTE $00
 HUNDREDS    .BYTE $00
 TENS        .BYTE $00
 
-HELLO_TEXT .BYTE $53,$49,$44,$20,$50,$4C,$41,$59,$45,$52,$20,$32,$42,$2E,$32,$20,$2D,$20,$4E,$41,$54,$49,$56,$45,$20,$50,$53,$49,$44,$20,$56,$31,$2F,$56,$32,$0D,$00
-START_TEXT .BYTE $50,$53,$49,$44,$20,$53,$54,$41,$52,$54,$20,$28,$24,$48,$45,$58,$2C,$20,$45,$4E,$54,$45,$52,$3D,$54,$52,$41,$4E,$53,$46,$45,$52,$29,$3A,$20,$00
-LENGTH_TEXT .BYTE $50,$53,$49,$44,$20,$46,$49,$4C,$45,$20,$4C,$45,$4E,$47,$54,$48,$20,$28,$24,$48,$45,$58,$29,$3A,$20,$00
-VERSION_TEXT .BYTE $50,$53,$49,$44,$20,$56,$00
-TITLE_TEXT .BYTE $54,$49,$54,$4C,$45,$3A,$20,$00
-SONGS_TEXT .BYTE $53,$55,$42,$54,$55,$4E,$45,$53,$20,$41,$56,$41,$49,$4C,$41,$42,$4C,$45,$3A,$20,$00
-DEFAULT_TEXT .BYTE $44,$45,$46,$41,$55,$4C,$54,$20,$53,$55,$42,$54,$55,$4E,$45,$3A,$20,$00
-SELECT_TEXT .BYTE $53,$55,$42,$54,$55,$4E,$45,$20,$28,$44,$45,$43,$49,$4D,$41,$4C,$2C,$20,$45,$4E,$54,$45,$52,$3D,$44,$45,$46,$41,$55,$4C,$54,$29,$3A,$20,$00
-READY_TEXT .BYTE $0D,$50,$4C,$41,$59,$49,$4E,$47,$20,$2D,$20,$50,$52,$45,$53,$53,$20,$41,$4E,$59,$20,$4B,$45,$59,$20,$54,$4F,$20,$53,$54,$4F,$50,$0D,$00
-CIA_TEXT .BYTE $0D,$43,$49,$41,$20,$54,$49,$4D,$49,$4E,$47,$20,$49,$53,$20,$4E,$4F,$54,$20,$53,$55,$50,$50,$4F,$52,$54,$45,$44,$0D,$00
-INVALID_TEXT .BYTE $0D,$49,$4E,$56,$41,$4C,$49,$44,$20,$4F,$52,$20,$55,$4E,$53,$55,$50,$50,$4F,$52,$54,$45,$44,$20,$50,$53,$49,$44,$20,$2F,$20,$4D,$45,$4D,$4F,$52,$59,$20,$52,$41,$4E,$47,$45,$0D,$00
+; All strings are 7-bit ASCII and NUL-terminated. PRINT_AX adds bit 7.
+; Single-quoted ASC avoids the assembler's legacy high-bit conversion.
+HELLO_TEXT    ASC 'SID PLAYER 2B.2 - NATIVE PSID V1/V2'
+              .BYTE $0D,$00
+START_TEXT    ASC 'PSID START ($HEX, ENTER=TRANSFER): '
+              .BYTE $00
+LENGTH_TEXT   ASC 'PSID FILE LENGTH ($HEX): '
+              .BYTE $00
+VERSION_TEXT  ASC 'PSID V'
+              .BYTE $00
+TITLE_TEXT    ASC 'TITLE: '
+              .BYTE $00
+SONGS_TEXT    ASC 'SUBTUNES AVAILABLE: '
+              .BYTE $00
+DEFAULT_TEXT  ASC 'DEFAULT SUBTUNE: '
+              .BYTE $00
+SELECT_TEXT   ASC 'SUBTUNE (DECIMAL, ENTER=DEFAULT): '
+              .BYTE $00
+READY_TEXT    .BYTE $0D
+              ASC 'PLAYING - PRESS ANY KEY TO STOP'
+              .BYTE $0D,$00
+CIA_TEXT      .BYTE $0D
+              ASC 'CIA TIMING IS NOT SUPPORTED'
+              .BYTE $0D,$00
+INVALID_TEXT  .BYTE $0D
+              ASC 'INVALID OR UNSUPPORTED PSID / MEMORY RANGE'
+              .BYTE $0D,$00
             ; 2C.2 single-BLOAD image identification, not part of PSID.
             ; Loader detects this marker and constrains uploads to 8 KiB.
 
@@ -1283,8 +1299,8 @@ SILENCE
             STA SIDCTRL3
             STA SIDVOL
             RTS
-ERROR_TEXT
-            .BYTE $53,$49,$44,$20,$32,$42,$31,$20,$45,$52,$52,$4F,$52,$0D,$00
+ERROR_TEXT    ASC 'SID 2B1 ERROR'
+              .BYTE $0D,$00
 ERRORCD     .BYTE $00
 ACTIVE      .BYTE $00
 PERIODLO    .BYTE $00

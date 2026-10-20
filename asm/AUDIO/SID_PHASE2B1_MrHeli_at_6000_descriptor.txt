@@ -1,4 +1,0 @@
-CALL-151
-; Phase 2B.1 — enter the memory bytes below in Apple II monitor
-9400: 53 32 42 31 7E 60 A0 0C 6B 12 F3 1E 34 0E 04 00
-9410: 46 3B
