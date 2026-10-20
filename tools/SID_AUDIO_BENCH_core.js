@@ -1,6 +1,6 @@
 /*
- * RetroAppleJS SID Audio Bench v2: deterministic 22,050 Hz reference and
- * performance measurements, including Phase 4A and Phase 4B fixtures.
+ * RetroAppleJS SID Audio Bench v3: deterministic 22,050 Hz reference,
+ * performance and non-timed ADSR envelope traces (Phase 4C.0).
  * Tests the production SIDAudio via an injected constructor (browser/Node).
  */
 (function(root, factory) {
@@ -11,8 +11,8 @@
     "use strict";
     var RATE=22050, FRAME_SECONDS=2, COUNT=RATE*FRAME_SECONDS;
     var CLOCKS={PAL:985248,NTSC:1022727};
-    var SCHEMA="retroapplejs.sid.audio-bench.v2";
-    var VERSION=2;
+    var SCHEMA="retroapplejs.sid.audio-bench.v3";
+    var VERSION=3;
     var FIXTURES=[
         {suite:"4A",id:"triangle",label:"Triangle — 220 Hz",description:"One gated triangle voice at constant pitch"},
         {suite:"4A",id:"saw",label:"Sawtooth — 220 Hz",description:"One gated sawtooth voice and its harmonics"},
@@ -29,7 +29,16 @@
         {suite:"4B",id:"saw-pulse",label:"Saw + pulse",description:"Pulse masks the sawtooth DAC bits"},
         {suite:"4B",id:"tri-pulse",label:"Triangle + pulse",description:"Combined triangle and 50% pulse"},
         {suite:"4B",id:"tri-saw-pulse",label:"Triangle + saw + pulse",description:"Three simultaneous waveforms"},
-        {suite:"4B",id:"noise-saw",label:"Noise + saw",description:"Noise DAC combined with sawtooth"}
+        {suite:"4B",id:"noise-saw",label:"Noise + saw",description:"Noise DAC combined with sawtooth"},
+        // Phase 4C.0 baseline characterization; production ADSR is unchanged.
+        {suite:"4C",id:"adsr-fast",label:"ADSR: fast A/R",description:"Fast attack and release"},
+        {suite:"4C",id:"adsr-slow",label:"ADSR: slow A/R",description:"Slow attack and release"},
+        {suite:"4C",id:"adsr-retrigger",label:"ADSR: gate retrigger",description:"Short gate pulses and retriggers"},
+        {suite:"4C",id:"adsr-sustain-down",label:"ADSR: sustain down",description:"Lower sustain while GATE stays on"},
+        {suite:"4C",id:"adsr-sustain-up",label:"ADSR: sustain up",description:"Raise sustain while GATE stays on"},
+        {suite:"4C",id:"adsr-rate-change",label:"ADSR: rate switch",description:"Long to short attack; delay-bug probe"},
+        {suite:"4C",id:"adsr-zero",label:"ADSR: zero hold",description:"Release to zero and restart"},
+        {suite:"4C",id:"adsr-voices",label:"ADSR: voice independence",description:"Three different envelopes and ENV3 readback"}
     ];
     function fixtureSuite(id){
         var item=FIXTURES.find(function(f){return f.id===id;});
@@ -105,6 +114,42 @@
             voice(0,220,0x21,0x02,0xf0);
             for(var j=0;j<8;j++)write(samples(j*0.25),0x18,(j%4)*5);
         }
+        if(name==="adsr-fast"){
+            voice(0,330,0x21,0x00,0x80);
+            write(samples(1),4,0x20);
+        }
+        if(name==="adsr-slow"){
+            voice(0,330,0x21,0x80,0xf8);
+            write(samples(1),4,0x20);
+        }
+        if(name==="adsr-retrigger"){
+            voice(0,330,0x21,0x40,0x85);
+            [0.12,0.35,1.0].forEach(function(t){write(samples(t),4,0x20);});
+            [0.15,0.40].forEach(function(t){write(samples(t),4,0x21);});
+        }
+        if(name==="adsr-sustain-down"||name==="adsr-sustain-up"){
+            var high=name==="adsr-sustain-down";
+            voice(0,220,0x21,0x02,high?0xf2:0x22);
+            write(samples(0.50),6,high?0x32:0xe2);
+        }
+        if(name==="adsr-rate-change"){
+            voice(0,220,0x21,0xc0,0xf0);
+            write(samples(0.10),5,0x00);
+            write(samples(1.0),4,0x20);
+        }
+        if(name==="adsr-zero"){
+            voice(0,330,0x21,0x00,0x00);
+            write(samples(0.25),4,0x20);
+            write(samples(1.0),4,0x21);
+        }
+        if(name==="adsr-voices"){
+            voice(0,220,0x21,0x02,0xa2);
+            voice(7,330,0x21,0x60,0x42);
+            voice(14,440,0x21,0x20,0xc3);
+            write(samples(.50),11,0x20);
+            write(samples(.75),18,0x20);
+            write(samples(1.0),4,0x20);
+        }
         if(["tri-saw","saw-pulse","tri-pulse","tri-saw-pulse","noise-saw"].includes(name)){
             var combinedControl={"tri-saw":0x31,"saw-pulse":0x61,
                 "tri-pulse":0x51,"tri-saw-pulse":0x71,"noise-saw":0xa1}[name];
@@ -144,6 +189,51 @@
         return {pcm:out,events:events,model:model,clock:settings.clock||"PAL",
             fixture:id,sampleRate:RATE,sidClock:clock,quantization:"nearest output sample",
             stats:device.getAudioStats()};
+    }
+    // Read-only diagnostic pass: never included in bench() timing.
+    // Render in short PCM batches and sample the public envelope readout.
+    // The fixture/event scheduling is identical to render(), but tracing
+    // never passes CPU ticks to writeRegister (no double advancement).
+    function traceEnvelope(SIDAudio,settings){
+        settings=settings||{};
+        if(typeof SIDAudio!=="function")fail("SIDAudio constructor missing");
+        var model=Number(settings.model||6581),name=settings.fixture||"adsr";
+        var clockName=settings.clock||"PAL",clock=CLOCKS[clockName];
+        var stride=settings.stride===undefined?64:Number(settings.stride);
+        if(model!==6581&&model!==8580)fail("Unknown SID model");
+        if(!clock)fail("Unknown SID clock");
+        if(!Number.isInteger(stride)||stride<1||stride>2048)
+            fail("Envelope stride must be 1–2048 samples");
+        var events=createEvents(name,clock),device=new SIDAudio();
+        device.setModel(model);device.setClock(clock);
+        if(typeof device.getEnvelopeLevels!=="function")
+            fail("SID envelope-level readout is missing");
+        var cursor=0,index=0,points=[];
+        function record(){
+            var levels=device.getEnvelopeLevels();
+            if(!levels||levels.length!==3)fail("Invalid SID envelope levels");
+            var row={sample:cursor,cpuTick:Math.round(cursor*clock/RATE),
+                v1:levels[0],v2:levels[1],v3:levels[2],
+                env3:device.readRegister(0x1c)};
+            if(row.v1>255||row.v2>255||row.v3>255||row.env3!==row.v3)
+                fail("Invalid ENV3 readback");
+            points.push(row);
+        }
+        while(cursor<COUNT){
+            while(index<events.length&&events[index].sample===cursor){
+                device.writeRegister(events[index].reg,events[index].value);index++;
+            }
+            if(!points.length)record();
+            var target=Math.min(COUNT,cursor+stride);
+            if(index<events.length)target=Math.min(target,events[index].sample);
+            if(target<=cursor)fail("Invalid envelope event order");
+            device.renderOffline(target-cursor);
+            cursor=target;record();
+        }
+        return {fixture:name,model:model,clock:clockName,sidClock:clock,
+            sampleRate:RATE,stride:stride,points:points,events:events,
+            quantization:"nearest PCM sample; levels observed after each rendered span",
+            rendererStats:device.getAudioStats()};
     }
     function checksum(pcm){
         // FNV-1a over little-endian PCM float32 representations.
@@ -318,6 +408,7 @@
     }
     return {RATE:RATE,COUNT:COUNT,CLOCKS:CLOCKS,FIXTURES:FIXTURES,
         SCHEMA:SCHEMA,VERSION:VERSION,fixtureSuite:fixtureSuite,
-        createEvents:createEvents,render:render,analyze:analyze,bench:bench,
+        createEvents:createEvents,render:render,traceEnvelope:traceEnvelope,
+        analyze:analyze,bench:bench,
         checksum:checksum,wav:wav,readWav:readWav,report:report};
 });
