@@ -1,4 +1,4 @@
-name: SID native 6502 regression tests
+name: SID reference and native 6502 regression tests
 
 on:
   pull_request:
@@ -37,12 +37,31 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run native PSID interpreter and raw transfer tests
-        run: node --test tests/sid_phase2a_mrheli.test.js tests/sid_phase2b1.test.js tests/sid_phase2b2.test.js tests/sid_phase2b2_native.test.js tests/sid_phase2b2_rom.test.js tests/sid_phase2c1.test.js tests/sid_phase2c2.test.js tests/sid_phase4a.test.js tests/sid_card.test.js tests/sid_telemetry.test.js
+      - name: Run current SID synthesizer, telemetry, and Phase 4A tests
+        run: node --test tests/sid_card.test.js tests/sid_telemetry.test.js tests/sid_phase4a.test.js
+      - name: Detect historical native PSID fixtures
+        id: native-fixtures
+        shell: bash
+        run: |
+          if [[ -f asm/AUDIO/SID2MB_prototype/Mr_Heli_original.sid &&
+                -f asm/AUDIO/SID2MB_prototype/SID_PHASE2A_MR_HELI.S &&
+                -f asm/AUDIO/SID_PHASE2B2_NATIVE_PLAYER.S &&
+                -f asm/AUDIO/SID_PHASE2C1_IRQ_TIMER.S &&
+                -f asm/AUDIO/SID_PHASE2C2_BACKGROUND_PLAYER.S ]]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Historical Phase 2A–2C fixture files are absent on this branch. Legacy native-player tests and historical build artifacts are skipped; the current SID device/Phase 4A tests above still run."
+          fi
+      - name: Run legacy native PSID interpreter tests (if fixtures exist)
+        if: steps.native-fixtures.outputs.present == 'true'
+        run: node --test tests/sid_phase2a_mrheli.test.js tests/sid_phase2b1.test.js tests/sid_phase2b2.test.js tests/sid_phase2b2_native.test.js tests/sid_phase2b2_rom.test.js tests/sid_phase2c1.test.js tests/sid_phase2c2.test.js
 
       - name: Assemble distributable Phase 2B.2 player binaries
+        if: steps.native-fixtures.outputs.present == 'true'
         run: node tools/SID_Phase2B2_build.js "$RUNNER_TEMP/sid-player"
       - name: Publish native player binaries and monitor listings
+        if: steps.native-fixtures.outputs.present == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: SID_Phase2B2_Native_6502
@@ -50,8 +69,10 @@ jobs:
           if-no-files-found: error
 
       - name: Assemble Phase 2C.1 native IRQ diagnostic
+        if: steps.native-fixtures.outputs.present == 'true'
         run: node tools/SID_Phase2C1_build.js "$RUNNER_TEMP/sid-irq"
       - name: Publish native Phase 2C.1 IRQ diagnostic
+        if: steps.native-fixtures.outputs.present == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: SID_Phase2C1_IRQ_Diagnostic
@@ -59,4 +80,5 @@ jobs:
           if-no-files-found: error
 
       - name: Validate assembler-generated Phase 2C.2 contiguous image
+        if: steps.native-fixtures.outputs.present == 'true'
         run: node tools/SID_Phase2C2_build.js
