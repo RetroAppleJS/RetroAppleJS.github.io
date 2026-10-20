@@ -347,3 +347,17 @@ and can analyze an optional compatible external 22.05 kHz WAV recording.
 assembly player, card timer or browser audio scheduling.** The bench
 cannot verify physical SID authenticity by itself; use matched
 hardware recordings and the live SID telemetry separately.
+
+## Phase 4B — Digital oscillator accuracy
+
+The [Phase 4B guide](SID_PHASE4B.md) describes changes to the
+production SID synthesizer's 24-bit oscillator clocks, bit-19 noise
+LFSR, MSB-edge hard sync, XOR ring modulation, and model-specific
+combined-waveform handling. The existing 22,050 Hz output rate,
+Web Audio scheduler, PSID assembly code, and SlotIO controls are
+preserved. The new combined-waveform DAC coupling is provisional,
+not a chip-measured 6581/8580 calibration.
+
+Use [SID Audio Bench](../tools/SID_AUDIO_BENCH.html) to compare the
+original Phase 4A fixtures and five new combined-waveform cases,
+and test live playback/telemetry separately at 10 FPS and VBLANK.

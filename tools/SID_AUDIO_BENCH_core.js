@@ -21,7 +21,13 @@
         {id:"ring",label:"Ring modulation",description:"Triangle voice with modulator oscillator"},
         {id:"sync",label:"Hard synchronization",description:"Sawtooth with preceding oscillator sync"},
         {id:"filter",label:"Filter cutoff sweep",description:"Low-pass filter sweep with resonance"},
-        {id:"volume",label:"Master volume steps",description:"Discrete $D418 volume changes"}
+        {id:"volume",label:"Master volume steps",description:"Discrete $D418 volume changes"},
+        // Phase 4B additions (the original ten Phase 4A stimuli remain unchanged).
+        {id:"tri-saw",label:"Triangle + saw",description:"Shared-digital-DAC combined waveforms"},
+        {id:"saw-pulse",label:"Saw + pulse",description:"Pulse masks the sawtooth DAC bits"},
+        {id:"tri-pulse",label:"Triangle + pulse",description:"Combined triangle and 50% pulse"},
+        {id:"tri-saw-pulse",label:"Triangle + saw + pulse",description:"Three simultaneous waveforms"},
+        {id:"noise-saw",label:"Noise + saw",description:"Noise DAC combined with sawtooth"}
     ];
     function finite(v){return typeof v==="number"&&Number.isFinite(v);}
     function fail(message){throw new Error(message);}
@@ -91,6 +97,12 @@
         if(name==="volume"){
             voice(0,220,0x21,0x02,0xf0);
             for(var j=0;j<8;j++)write(samples(j*0.25),0x18,(j%4)*5);
+        }
+        if(["tri-saw","saw-pulse","tri-pulse","tri-saw-pulse","noise-saw"].includes(name)){
+            var combinedControl={"tri-saw":0x31,"saw-pulse":0x61,
+                "tri-pulse":0x51,"tri-saw-pulse":0x71,"noise-saw":0xa1}[name];
+            write(0,2,0x00);write(0,3,0x08);
+            voice(0,220,combinedControl,0x02,0xf0);
         }
         events.sort(function(a,b){return a.sample-b.sample||a.order-b.order;});
         return events.map(function(e){return {sample:e.sample,reg:e.reg,value:e.value,cpuTick:e.cpuTick};});
