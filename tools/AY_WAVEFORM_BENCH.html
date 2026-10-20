@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AY Waveform Bench v1 · RetroAppleJS</title>
+<style>
+:root{color-scheme:dark;background:#0e1723;color:#edf3fa;font:14px/1.5 system-ui,-apple-system,sans-serif}
+*{box-sizing:border-box}body{margin:0 auto;padding:24px;max-width:1250px}
+h1{font-size:27px;margin:0}h2{font-size:18px;margin:0 0 10px}h3{font-size:14px;margin:0 0 8px}
+small,.muted{color:#aec1d3}p{margin:7px 0 15px}.eyebrow{color:#79c7d9;font-size:12px;text-transform:uppercase;letter-spacing:.09em}
+a{color:#98d8f2}.panel{background:#172638;border:1px solid #30495f;border-radius:12px;padding:17px;margin-top:16px}
+.row{display:flex;align-items:end;gap:10px;flex-wrap:wrap}.controls label{display:flex;flex-direction:column;gap:4px;flex:1 1 135px;color:#c7d9e9;font-size:12px}
+select,input,button{font:inherit}select,input{width:100%;min-height:38px;background:#243a50;border:1px solid #4b6881;color:#fff;border-radius:7px;padding:7px}
+button{background:#284258;color:#eef8ff;border:1px solid #547891;border-radius:7px;padding:9px 12px;cursor:pointer}button:disabled{opacity:.45;cursor:default}
+button.primary{background:#136b7f;border-color:#4db9c9;font-weight:700}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+canvas{width:100%;height:235px;display:block;background:#0c1825;border:1px solid #294357;border-radius:8px}
+#status{color:#a9e8d9;margin-top:12px;min-height:23px}#warning{color:#f3c98b}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+.kpi{background:#112132;padding:11px;border-radius:7px;border:1px solid #2d4457}
+.kpi b{font-size:20px;display:block;font-variant-numeric:tabular-nums}.kpi span{font-size:12px;color:#b9cee0}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{padding:9px 10px;border-bottom:1px solid #344b5e;text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}th{background:#20344a;color:#bdd6e5}
+.scroll{overflow-x:auto;max-height:370px}#registers{overflow:auto;max-height:150px;white-space:pre-wrap;background:#0c1825;padding:12px;border-radius:8px;font:12px/1.5 ui-monospace,monospace}
+audio{width:100%;margin-top:10px}footer{margin:16px 0;color:#adbed1;font-size:12px}
+@media(max-width:800px){body{padding:12px}.grid{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
+</style>
+<script src="../res/ayumi.js"></script>
+<script src="../res/EMU_CHIP_AY_JS.js"></script>
+<script src="../res/EMU_CHIP_AY_WASM.js"></script>
+<script src="../res/EMU_CHIP_AY.js"></script>
+<script src="AY_WAVEFORM_BENCH_core.js"></script>
+</head><body>
+<header><div class="eyebrow">RetroAppleJS · Mockingboard · Offline synthesis laboratory</div>
+<h1>AY Waveform Bench <small>v1</small></h1>
+<p class="muted">Real AYCore output · 22,050 Hz · economy renderer · two AY chips · register-level fixtures · no production changes</p></header>
+<section class="panel"><h2>Experiment setup</h2><div class="row controls">
+<label style="flex:2 1 250px">Waveform technique<select id="fixture"></select></label>
+<label>Requested pitch (Hz)<input id="hz" type="number" value="110" min="10" max="8000" step="1"></label>
+<label>AY clock (Hz)<input id="clock" type="number" value="1021800" min="500000" max="1800000" step="1"></label>
+<label>Duration<select id="duration"><option value="0.5">0.5 s</option><option value="1" selected>1 s</option><option value="2">2 s</option></select></label>
+<label>Volume (0–15)<input id="volume" type="number" value="13" min="0" max="15" step="1"></label>
+<label>Envelope:tone ratio<select id="ratio"><option value="0.25">0.25 ×</option><option value="0.5">0.5 ×</option><option value="1" selected>1 ×</option><option value="2">2 ×</option><option value="4">4 ×</option></select></label>
+<label>Noise period (1–31)<input id="noisePeriod" type="number" value="8" min="1" max="31" step="1"></label>
+<label>Renderer<select id="backend"><option value="js" selected>JavaScript / reference compatibility</option><option value="wasm">WASM</option></select></label>
+</div>
+<div class="actions"><button class="primary" id="run">Render selected waveform</button><button id="survey">Survey all techniques × 4 notes</button>
+<button id="savewav" disabled>Save WAV</button><button id="savejson" disabled>Export selected JSON</button><button id="savesurvey" disabled>Export survey JSON</button></div>
+<div id="status" role="status" aria-live="polite">Checking AYCore scripts…</div>
+<p class="muted">The waveform bench renders independent, freshly initialized AY chips for each experiment. Timings measure browser rendering, not Apple II 6502 execution or Mockingboard VIA bus overhead.</p>
+</section>
+<section class="panel"><h2>Measured audio</h2><div id="description" class="muted">Select an experiment and render.</div>
+<div class="kpis"><div class="kpi"><b id="actual">—</b><span>Actual fundamental (theoretical Hz)</span></div>
+<div class="kpi"><b id="cents">—</b><span>Pitch error (cents)</span></div><div class="kpi"><b id="rms">—</b><span>RMS amplitude</span></div>
+<div class="kpi"><b id="renderMs">—</b><span>Offline rendering time (ms)</span></div></div>
+<div id="warning" class="muted"></div>
+<div class="grid"><div><h3>Oscilloscope · approx. 4 waveform cycles</h3><canvas id="wave" width="570" height="235"></canvas></div>
+<div><h3>Frequency spectrum · Hann-windowed FFT</h3><canvas id="spectrum" width="570" height="235"></canvas></div></div>
+<audio id="player" controls aria-label="Listen to rendered AY waveform"></audio>
+<p id="stats" class="muted">Spectrum measurements use the central 2,048 samples; 10.77 Hz bin spacing. The dominant peak may be a harmonic rather than the fundamental.</p>
+</section>
+<section class="panel"><h2>AY register writes</h2><p class="muted">Recorded in exact order, including independent chip addresses and the envelope shape write that retriggers R13.</p>
+<pre id="registers">No experiment rendered yet.</pre></section>
+<section class="panel"><h2>Frequency-range survey</h2>
+<p class="muted">Renders every technique at 55, 110, 220 and 440 Hz, each for 0.5 s, with the chosen AY clock and JS/WASM backend. Exports exact parameters, theoretical tuning and measured spectra metrics. It is not calibrated against a physical AY or SID.</p>
+<div class="scroll"><table><thead><tr><th>Technique</th><th>Requested</th><th>Actual</th><th>Error</th><th>RMS</th><th>Peak Hz</th><th>Render ms</th></tr></thead><tbody id="rows"><tr><td colspan="7" class="muted">Run survey to fill the table.</td></tr></tbody></table></div>
+</section>
+<section class="panel"><h2>Technical interpretation</h2>
+<p><b>Audio-rate envelope limitation:</b> At a 1,021,800 Hz clock, a repeating saw reaches only about 249.5 Hz and a full triangle only about 124.7 Hz at envelope period 1. A higher requested pitch is <b>clamped</b>, not achieved. AY envelope shapes are 16-level stepped signals, affected by the real AY DAC curve.</p>
+<p><b>Two-chip experiment:</b> AY0 channel A is rendered on the left and AY1 channel A on the right, like the production Mockingboard; the plotted mono waveform averages those stereo outputs. Each AY has one shared envelope and one shared noise source.</p>
+<p><b>Boundaries:</b> This bench tests only the existing RetroAppleJS AYCore. It does not replace its DAC or waveform synthesis, perform a SID comparison, or measure physical hardware. The phase-1 goal is to quantify genuinely available AY timbres before designing SID-to-AY voice allocation.</p>
+<p class="muted"><a href="SID_AUDIO_BENCH.html">SID Audio Bench</a> · <a href="SID_FILTER_CALIBRATION.html">SID Filter Calibration</a> · <a href="MockingboardJS.html">Mockingboard Player</a></p>
+</section>
+<footer>AY Waveform Bench v1 · schema <code>retroapplejs.ay.waveform-bench.v1</code> · 22,050 Hz PCM · isolated test tool</footer>
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id);},B=window.AYWaveformBench,latest=null,survey=[],url=null,busy=false;
+function fmt(x,n){return Number.isFinite(x)?x.toFixed(n):'—';}
+function label(msg){$('status').textContent=msg;}
+function params(){return {fixture:$('fixture').value,hz:Number($('hz').value),clock:Number($('clock').value),
+ duration:Number($('duration').value),volume:Number($('volume').value),ratio:Number($('ratio').value),
+ noisePeriod:Number($('noisePeriod').value),backend:$('backend').value};}
+function clean(){if(url){URL.revokeObjectURL(url);url=null;}}
+function download(blob,name){var link=document.createElement('a');var tmp=URL.createObjectURL(blob);link.href=tmp;link.download=name;link.click();setTimeout(function(){URL.revokeObjectURL(tmp);},1500);}
+function line(ctx,x1,y1,x2,y2,color){ctx.strokeStyle=color;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
+function chartWave(r){
+ var cv=$('wave'),cx=cv.getContext('2d'),w=cv.width,h=cv.height;cx.fillStyle='#0c1825';cx.fillRect(0,0,w,h);
+ for(var j=0;j<=4;j++)line(cx,35,15+j*(h-35)/4,w-10,15+j*(h-35)/4,'#243c50');
+ line(cx,35,h/2,w-10,h/2,'#48647c');
+ var target=r.spec.pitch.actualHz||r.spec.hz,span=Math.max(150,Math.min(r.pcm.length,Math.round(4*r.rate/target)));
+ var center=Math.floor(r.pcm.length/2),start=Math.max(0,center-Math.floor(span/2)),max=Math.max(.025,r.metrics.peak*1.08);
+ cx.strokeStyle='#5cdbcc';cx.lineWidth=1.6;cx.beginPath();
+ for(var i=0;i<span;i++){var x=35+i/(span-1)*(w-47),y=h/2-r.pcm[start+i]/max*(h/2-18);
+ if(i===0)cx.moveTo(x,y);else cx.lineTo(x,y);}
+ cx.stroke();cx.fillStyle='#a8c0d4';cx.font='12px monospace';cx.fillText('±'+fmt(max,3),38,16);cx.fillText((span/r.rate*1000).toFixed(1)+' ms',w-105,h-9);
+}
+function chartSpectrum(r){
+ var cv=$('spectrum'),cx=cv.getContext('2d'),w=cv.width,h=cv.height;cx.fillStyle='#0c1825';cx.fillRect(0,0,w,h);
+ var left=45,right=w-15,top=18,bottom=h-24;
+ for(var db=-100;db<=0;db+=20){var y=top+(0-db)/100*(bottom-top);line(cx,left,y,right,y,'#243b50');cx.fillStyle='#a7b9ca';cx.font='11px monospace';cx.fillText(db+' dB',2,y+3);}
+ var bins=r.metrics.spectral;cx.beginPath();cx.strokeStyle='#78bbfa';cx.lineWidth=1.6;
+ for(var i=0;i<bins.length;i++){
+ var b=bins[i],x=left+b.hz/11025*(right-left),y=top+Math.max(0,Math.min(1,-b.db/100))*(bottom-top);
+ if(i===0)cx.moveTo(x,y);else cx.lineTo(x,y);}
+ cx.stroke();cx.fillStyle='#a7b9ca';for(var f=0;f<=10000;f+=2000){var px=left+f/11025*(right-left);cx.fillText(f===0?'0':f/1000+'k',px-8,h-7);}
+}
+function display(r){
+ latest=r;$('savewav').disabled=false;$('savejson').disabled=false;clean();
+ url=URL.createObjectURL(new Blob([B.wav(r.pcm,r.rate)],{type:'audio/wav'}));$('player').src=url;
+ var p=r.spec.pitch,m=r.metrics;$('description').textContent=r.spec.description;
+ $('actual').textContent=fmt(p.actualHz,2);$('cents').textContent=fmt(p.errorCents,1);
+ $('rms').textContent=fmt(m.rms,4);$('renderMs').textContent=fmt(r.renderMs,1);
+ $('warning').textContent=p.clamped?'Pitch CLAMPED to the available AY period range. Listen and compare the actual frequency.':'';
+ $('stats').textContent='Peak '+fmt(m.peak,4)+' · DC '+fmt(m.dc,5)+' · spectral peak '+fmt(m.dominantHz,1)+' Hz · centroid '+fmt(m.centroidHz,1)+' Hz · clipping samples '+m.clippedSamples+' · '+m.sampleCount+' PCM frames.';
+ $('registers').textContent=r.spec.events.map(function(e){return (e.tick/1e6).toFixed(3).padStart(9)+' ms  AY'+e.chip+'  R'+e.reg.toString().padStart(2,'0')+'  $'+e.value.toString(16).padStart(2,'0').toUpperCase();}).join('\n');
+ chartWave(r);chartSpectrum(r);
+}
+function lock(on){busy=on;$('run').disabled=on;$('survey').disabled=on;}
+$('run').onclick=async function(){if(busy)return;lock(true);try{label('Rendering real AYCore PCM…');await new Promise(requestAnimationFrame);
+ var r=await B.render(AYCore,params());display(r);label('Ready · '+r.spec.fixture+' · '+r.backend+' · '+r.rate+' Hz · '+fmt(r.renderMs,1)+' ms offline render.');}
+ catch(err){label('ERROR: '+(err.message||String(err)));}finally{lock(false);}};
+$('survey').onclick=async function(){if(busy)return;lock(true);survey=[];$('savesurvey').disabled=true;
+ try{var base=params(),jobs=[];B.FIXTURES.forEach(function(f){[55,110,220,440].forEach(function(hz){jobs.push(Object.assign({},base,{fixture:f.id,hz:hz,duration:.5}));});});
+ $('rows').textContent='';for(var i=0;i<jobs.length;i++){
+ label('Measuring '+(i+1)+'/'+jobs.length+' · '+jobs[i].fixture+' @ '+jobs[i].hz+' Hz');
+ await new Promise(function(resolve){setTimeout(resolve,0);});
+ var r=await B.render(AYCore,jobs[i]);survey.push(B.report(r));
+ var tr=document.createElement('tr');[r.spec.fixture,fmt(r.spec.hz,0),fmt(r.spec.pitch.actualHz,1),fmt(r.spec.pitch.errorCents,1),fmt(r.metrics.rms,4),fmt(r.metrics.dominantHz,1),fmt(r.renderMs,1)].forEach(function(cell){var td=document.createElement('td');td.textContent=cell;tr.appendChild(td);});$('rows').appendChild(tr);
+ }$('savesurvey').disabled=false;label('Survey completed: '+survey.length+' renderings. Export JSON for later comparisons.');}
+ catch(err){label('Survey stopped after '+survey.length+' results: '+(err.message||String(err)));if(survey.length)$('savesurvey').disabled=false;}
+ finally{lock(false);}};
+$('savewav').onclick=function(){if(latest)download(new Blob([B.wav(latest.pcm,latest.rate)],{type:'audio/wav'}),'ay-waveform-'+latest.spec.fixture+'-'+latest.spec.hz+'hz.wav');};
+$('savejson').onclick=function(){if(latest)download(new Blob([JSON.stringify(B.report(latest),null,2)],{type:'application/json'}),'ay-waveform-'+latest.spec.fixture+'-'+latest.spec.hz+'hz.json');};
+$('savesurvey').onclick=function(){if(survey.length)download(new Blob([JSON.stringify({schema:B.SCHEMA+'.survey',createdAt:new Date().toISOString(),count:survey.length,results:survey},null,2)],{type:'application/json'}),'ay-waveform-survey-v1.json');};
+if(window.AYCore&&window.AYWaveformBench&&typeof AYCore.create==='function'){
+ B.FIXTURES.forEach(function(f){var e=document.createElement('option');e.value=f.id;e.textContent=f.label;$('fixture').appendChild(e);});
+ label('AYCore detected. Ready for offline register-driven experiments.');
+}else{label('Missing AYCore scripts. Open this tool from the RetroAppleJS repository tools directory.');$('run').disabled=$('survey').disabled=true;}
+})();
+</script>
+</body></html>
