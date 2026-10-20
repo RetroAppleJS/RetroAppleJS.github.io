@@ -1,5 +1,48 @@
 # SID Phase 4D.2 — Hardware-guided filter calibration
 
+## 4D.2a filter-engine source verification (corrective follow-up)
+
+The first Safari PAL calibration exports from 20 October 2026 exposed a
+**stale or mismatched production SID audio JavaScript**. Their results
+matched the pre-4D.1 filter from PR #248 at floating-point precision:
+
+| Case | Uploaded / 4D.0 | Accepted 4D.1 TPT |
+|---|---:|---:|
+| 6581, BP, 110 Hz, cutoff 2047, resonance 0: gain | +7.9094 dB | -40.5568 dB |
+| Same case: phase | +52.216 degrees | +89.237 degrees |
+
+All 360 comparisons of resonance 0/8/15 (120 per mode) had **identical
+gain and phase** in the uploaded files; and 123 of 360 BP captures
+clipped. That is incompatible with the accepted 4D.1 resonant TPT
+synthesizer and repeats the historical Phase 4D.0 defects. The
+spectral data is valid for the *old* filter but **must not be used as
+4D.1 or hardware-reference calibration evidence**.
+
+Root cause is most likely stale script loading or a mixed checkout,
+not a failed calibration estimator. Until the browser's actual
+loaded script is inspected, the exact caching/deployment mechanism
+is unconfirmed.
+
+**Safeguard:** The calibration tool now uses a versioned URL for its
+production audio JS, checks for the TPT `getFilterState()` interface,
+verifies that writing the resonance register updates filter
+coefficients, and disables survey execution with an explicit error
+if those checks fail. Direct callers of the core API also reject
+engines missing the TPT state interface.
+
+Updated JSON exports include **engineCheck** and **audioScriptSource**
+fields identifying the verification that passed and the JavaScript
+resource URL used. These fields establish that the expected interface
+was loaded, **not** physical-chip fidelity, nor cryptographic
+attestation of executable source bytes.
+
+To retake a valid capture, refresh the updated lab without cached
+resources (on Safari: Cmd+Shift+R), verify the status
+"Phase 4D.1 TPT engine verified", then rerun PAL LP/BP/HP.
+Ensure `engineCheck` is present in all three exports, inspect
+resonance response, and confirm the old BP saturation is absent
+before starting any Phase 4D.2b tuning.
+
 ## 4D.2a — Frequency-selective emulator measurements (this PR)
 
 **This stage is instrumentation and evidence collection. It does not

@@ -87,11 +87,31 @@ test('4D.2a: invalid physical measurement claims are not silently accepted',()=>
  assert.equal(out.phase,'4D.2a');
  assert.ok(out.referenceSources.every(x=>x.role.includes('not ')));
 });
+test('4D.2a: reject old or incomplete SID filter engines before collecting data',()=>{
+ const C=SIDAudio();
+ const proof=CAL.checkEngine(C);
+ assert.match(proof.engine,/4D\.1\+ TPT/);
+ assert.ok(proof.cutoffHz>0);
+ assert.ok(proof.damping>0);
+ assert.throws(()=>CAL.checkEngine(function ObsoleteFilter(){}),
+   /Incompatible SID audio engine/);
+ function FakeTPT(){
+  this.getFilterState=()=>({coefficientUpdates:1,damping:1,cutoffHz:40,resonance:0});
+  this.writeRegister=()=>{};
+ }
+ assert.throws(()=>CAL.checkEngine(FakeTPT),/Incompatible SID audio engine/);
+ assert.throws(()=>CAL.render(function ObsoleteFilter(){},
+     {model:6581,clock:'PAL',mode:'bp',hz:880,cutoff:512,resonance:8},false),
+   /Incompatible SID audio engine/);
+});
 test('4D.2a: standalone UI provides a real survey/export and clear provenance',()=>{
  const html=fs.readFileSync(path.join(root,'tools/SID_FILTER_CALIBRATION.html'),'utf8');
  assert.match(html,/Run frequency survey/);
  assert.match(html,/Export calibration JSON/);
  assert.match(html,/SID_FILTER_CALIBRATION_core.js/);
+ assert.match(html,/EMU_DEVICE_SID_audio\.js\?sid-filter=4d2a-tpt-guard1/);
+ assert.match(html,/C\.checkEngine\(window\.SIDAudio\)/);
+ assert.match(html,/latest\.engineCheck=engineCheck/);
  assert.match(html,/SID_FILTER_BENCH.html/);
  assert.match(html,/does not claim physical SID calibration/i);
  const inline=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
