@@ -386,3 +386,13 @@ This initial Phase 4C.0 work does not change production SID sound,
 22,050 Hz output, the native 6502 player or audio scheduling. An
 independent slow cycle-stepped test oracle provides future correction
 targets without adding clock-by-clock CPU work to the emulator.
+
+## Phase 4D — Filter design and calibration
+
+See [Phase 4D filter guide](SID_PHASE4D.md) and the standalone
+[SID Filter Laboratory](../tools/SID_FILTER_BENCH.html).
+Phase 4D.0 establishes the existing 6581/8580 low-/band-/high-pass
+responses and routing baseline, including known defects in resonance
+and filtered Voice 3 OFF behavior. The lab exports untimed sweep
+measurements and does not alter the production filter, digital
+oscillators, ADSR, 22,050 Hz PCM output or Web Audio scheduling.
