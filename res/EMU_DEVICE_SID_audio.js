@@ -4,8 +4,8 @@
 //
 // EMU_DEVICE_SID_audio.js
 // SID sound-chip emulation AND browser audio output. No WebAudio code lives
-// in EMU_CARD_SID.js. Phase 4B digital oscillators; analog filter remains an
-// approximation. SID clock events are batched, not per-cycle PCM oversampled.
+// in EMU_CARD_SID.js. Phase 4D.1 uses a stable two-integrator TPT digital
+// filter with provisional 6581/8580 curves; no per-SID-cycle oversampling.
 //
 
 function SIDAudio()
@@ -46,7 +46,12 @@ function SIDAudio()
     var overflowIncidents=0,overflowActive=false,overflowStartDropped=0;
     var overflowLastCpuTick=null,overflowLastAudioTime=null;
     var realtimeServices=0,cpuBudgetChecks=0,cpuBudgetBlocked=0;
+    // TPT state-variable filter: filterBand/filterLow are trapezoidal
+    // integrator memories (ic1eq/ic2eq), NOT PCM band-/low-pass outputs.
     var filterLow=0,filterBand=0,oscClockFraction=0;
+    var filterK=1.42,filterA1=0,filterA2=0,filterA3=0;
+    var filterCachedCutoff=-1,filterCachedResonance=-1,filterCachedModel=0;
+    var filterCoefficientUpdates=0,filterHz=0;
     // Reused typed registers: no per-sample array allocations in audio path.
     var oscFreq=new Uint16Array(3),oscCtrl=new Uint8Array(3);
     // Digital AND composition is closer to the SID's shared waveform DAC
@@ -83,6 +88,7 @@ function SIDAudio()
     }
     function clearVoices(){ voices=[newVoice(),newVoice(),newVoice()]; }
     clearVoices();
+    updateFilterCoefficients();
 
     function noteEvent(type,detail)
     {
@@ -331,6 +337,32 @@ function SIDAudio()
         }
         return ((selected/4095)*2-1)*env;
     }
+    // Phase 4D.1: provisional model curves retained from the previous
+    // implementation. The 4D.2 phase will calibrate them against hardware.
+    // Only register/model updates use expensive transcendental functions.
+    function updateFilterCoefficients()
+    {
+        var code=(registers[0x16]<<3)|(registers[0x15]&7);
+        var res=registers[0x17]>>>4;
+        if(code===filterCachedCutoff && res===filterCachedResonance &&
+           sidModel===filterCachedModel)return;
+        filterCachedCutoff=code;filterCachedResonance=res;
+        filterCachedModel=sidModel;
+        var normalized=code/2047;
+        var hz=sidModel===6581 ? 40+7200*Math.pow(normalized,1.65) :
+                                 30+9500*normalized;
+        // Protect the upper edge of the 22.05 kHz discrete-time domain.
+        hz=Math.min(hz,SAMPLE_RATE*.45);
+        var g=Math.tan(Math.PI*hz/SAMPLE_RATE);
+        // The high nibble of RES/FILT is an inverse-damping control.
+        // These are bounded provisional values, not physical chip Q tables.
+        filterK=1.42-(res/15)*(sidModel===6581?.92:.82);
+        filterA1=1/(1+g*(g+filterK));
+        filterA2=g*filterA1;
+        filterA3=g*filterA2;
+        filterHz=hz;
+        filterCoefficientUpdates++;
+    }
     function sample()
     {
         var elapsedSidCycles=clockOscillators();
@@ -341,25 +373,25 @@ function SIDAudio()
         var route=registers[0x17]&7;
         var direct=0,filtered=0;
         for(i=0;i<3;i++){
-            var out=(i===2 && (registers[0x18]&0x80))?0:raw[i];
-            if(route&(1<<i))filtered+=out;else direct+=out;
+            if(route&(1<<i))filtered+=raw[i];
+            // V3OFF suppresses voice 3 ONLY when bypassing the filter.
+            else if(i!==2 || !(registers[0x18]&0x80))direct+=raw[i];
         }
-        // Simple stable filter placeholder, NOT an accurate analog SID filter.
-        var fc=((registers[0x16]<<3)|(registers[0x15]&7))/2047;
-        // An intentionally approximate model-dependent filter curve:
-        // the original 6581 varies widely between individual chips; the 8580
-        // is cleaner and more linear. Replace with an accurate analog core later.
-        var hz=sidModel===6581 ? 40+7200*Math.pow(fc,1.65) : 30+9500*fc;
-        var alpha=1-Math.exp(-2*Math.PI*hz/SAMPLE_RATE);
-        var oldLow=filterLow;
-        filterLow+=alpha*(filtered-filterLow);
-        filterBand=filterBand*.96+(filterLow-oldLow)*4;
+        // Two-integrator topology-preserving transform (TPT) SVF:
+        // LP, BP and HP share exactly one set of states per PCM sample.
+        var v3=filtered-filterLow;
+        var bp=filterA1*filterBand+filterA2*v3;
+        var lp=filterLow+filterA2*filterBand+filterA3*v3;
+        var hp=filtered-filterK*bp-lp;
+        filterBand=2*bp-filterBand;
+        filterLow=2*lp-filterLow;
         var mode=registers[0x18]&0x70,wet=0;
-        if(mode&0x10)wet+=filterLow;
-        if(mode&0x20)wet+=filterBand;
-        if(mode&0x40)wet+=filtered-filterLow;
-        if(!mode)wet=0;
+        if(mode&0x10)wet+=lp;
+        if(mode&0x20)wet+=bp;
+        if(mode&0x40)wet+=hp;
         var out=(direct+wet)/3*(registers[0x18]&15)/15;
+        // Preserve the existing output range; unlike the old derivative
+        // band-pass, a single filtered voice should not saturate routinely.
         return Math.max(-1,Math.min(1,out));
     }
     function makeSamples(count,toQueue)
@@ -435,6 +467,8 @@ function SIDAudio()
         if(tick!==undefined)this.advanceTo(tick);
         value=Number(value)&255;
         var old=registers[reg];registers[reg]=value;
+        if(reg===0x15||reg===0x16||(reg===0x17&&((old^value)&0xf0)))
+            updateFilterCoefficients();
         if(reg<21 && reg%7===4){
             var v=voices[(reg/7)|0],gate=value&1,oldGate=old&1;
             if(gate&&!oldGate){v.stage="attack";v.holdZero=false;}
@@ -472,11 +506,18 @@ function SIDAudio()
             control:registers[i*7+4]
         };});
     };
+    // Read-only filter diagnostics: independent of elapsed SID/PCM time.
+    this.getFilterState=function(){
+        return {lowMemory:filterLow,bandMemory:filterBand,
+            cutoff:filterCachedCutoff,resonance:filterCachedResonance,
+            cutoffHz:filterHz,damping:filterK,
+            coefficientUpdates:filterCoefficientUpdates};
+    };
     this.setModel=function(model)
     {
         model=Number(model);
         if(model!==6581&&model!==8580)throw new RangeError("SID model must be 6581 or 8580");
-        sidModel=model;return sidModel;
+        sidModel=model;updateFilterCoefficients();return sidModel;
     };
     this.getModel=function(){return sidModel;};
     this.setClock=function(hz)
@@ -690,6 +731,8 @@ function SIDAudio()
     this.reset=function()
     {
         registers.fill(0);clearVoices();filterLow=filterBand=0;
+        filterCachedCutoff=-1;filterCachedResonance=-1;
+        updateFilterCoefficients();
         oscClockFraction=0;
         fraction=0;lastTick=(io&&typeof io.getClockTicks==="function")?io.getClockTicks():0;
         stopSources();clearQueue();
