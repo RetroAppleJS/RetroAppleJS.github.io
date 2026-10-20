@@ -115,7 +115,7 @@ test('4A: HTML loads the production synthesizer and shared core, without externa
  assert.doesNotMatch(html,/https?:\/\/[^"' ]+\.js/);
  assert.match(html,/Run entire suite/);
  assert.match(html,/Export results JSON/);
- const inline=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
+ const inline=[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)]
     .map(x=>x[1]).filter(s=>s.trim());
  assert.equal(inline.length,1);
  assert.doesNotThrow(()=>new vm.Script(inline[0]));
