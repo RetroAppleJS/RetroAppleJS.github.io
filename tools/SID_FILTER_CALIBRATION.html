@@ -28,7 +28,8 @@ code{font-size:.93em}
 <button id="run">Run frequency survey</button>
 <button id="export" disabled>Export calibration JSON</button>
 </div>
-<p id="status" role="status" aria-live="polite">Ready: 6 tones × 10 cutoff codes × 3 resonance codes × 2 models = 360 measurements. Each renders 0.5 seconds. This is NOT a CPU benchmark.</p>
+<p id="status" role="status" aria-live="polite">Checking loaded SID synthesizer before allowing calibration…</p>
+<p class="muted">The lab refuses to run if it detects the obsolete Phase 4D.0 audio engine. This avoids silently attributing its incorrect resonance and clipping behavior to Phase 4D.1.</p>
 </section>
 <section class="panel">
 <h2>Fundamental transfer gain by cutoff</h2>
@@ -53,13 +54,20 @@ code{font-size:.93em}
 <h2>Compatibility</h2>
 <p>Earlier <a href="SID_FILTER_BENCH.html">SID Filter Lab (4D.1)</a> and <a href="SID_AUDIO_BENCH.html">SID Audio Bench v3</a> remain unchanged. No changes have been made to production filter coefficients, oscillator/ADSR behavior, audio FIFO or native PSID playback in 4D.2a.</p>
 </section>
-<script src="../res/EMU_DEVICE_SID_audio.js"></script>
-<script src="SID_FILTER_CALIBRATION_core.js"></script>
+<script src="../res/EMU_DEVICE_SID_audio.js?sid-filter=4d2a-tpt-guard1"></script>
+<script src="SID_FILTER_CALIBRATION_core.js?sid-filter=4d2a-tpt-guard1"></script>
 <script>
 (function(){
 "use strict";
 var $=function(id){return document.getElementById(id);},C=window.SIDFilterCalibration;
-var latest=null;
+var latest=null,engineCheck=null;
+try{
+    engineCheck=C.checkEngine(window.SIDAudio);
+    $("status").textContent="Phase 4D.1 TPT engine verified. Ready: 6 tones × 10 cutoff codes × 3 resonance codes × 2 models = 360 measurements. This is NOT a CPU benchmark.";
+}catch(e){
+    $("run").disabled=true;
+    $("status").textContent="Calibration BLOCKED: "+String(e&&e.message||e);
+}
 function plot(id,model){
  var canvas=$(id),ctx=canvas.getContext("2d"),w=canvas.width,h=canvas.height;
  ctx.fillStyle="#101b28";ctx.fillRect(0,0,w,h);
@@ -102,6 +110,10 @@ function redraw(){
 }
 $("frequency").onchange=redraw;$("resonance").onchange=redraw;
 $("run").onclick=function(){
+ try{engineCheck=C.checkEngine(window.SIDAudio);}
+ catch(e){$("run").disabled=true;
+     $("status").textContent="Calibration BLOCKED: "+String(e&&e.message||e);
+     return;}
  var options={clock:$("clock").value,mode:$("mode").value};
  var jobs=C.jobs(options),cache=Object.create(null),points=[],position=0;
  $("run").disabled=true;$("export").disabled=true;
@@ -117,6 +129,8 @@ $("run").onclick=function(){
      latest.createdAt=new Date().toISOString();
      latest.browser=navigator.userAgent;
      latest.source="Phase 4D.1 production SIDAudio, frequency-selective offline capture";
+     latest.engineCheck=engineCheck;
+     latest.audioScriptSource=document.querySelector('script[src*="EMU_DEVICE_SID_audio.js"]').src;
      $("frequency").disabled=false;$("resonance").disabled=false;
      $("export").disabled=false;
      redraw();
