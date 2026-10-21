@@ -42958,8 +42958,67 @@ function write(dsk,file) {
     return {image:image,name:file.name,kind:file.kind,sectors:need,
         bytes:file.bytes.length,loadAddress:file.loadAddress,unmapped:file.unmapped};
 }
+
+/*
+ * Read back imported DOS 3.3 file sectors as DOS would.
+ * A successful catalog write is not sufficient to prove a BLOAD can see the
+ * binary header; verify the actual payload after the mounted NIB roundtrip.
+ */
+function verify(dsk,file) {
+    check(dsk && dsk.length===SIZE,"Read-back requires a 140 KB DOS-order image.");
+    check(file && (file.kind==="B" || file.kind==="T"),"Only B/T files can be verified.");
+    var skew=[0,7,14,6,13,5,12,4,11,3,10,2,9,1,8,15];
+    var valid=function(t,s){return t>=0 && t<35 && s>=0 && s<16;};
+    var off=function(t,s){return t*4096+skew[s]*256;};
+    var vtoc=17*4096,ct=dsk[vtoc+1],cs=dsk[vtoc+2],entry=null,seen={};
+    check(dsk[vtoc+3]===3,"Read-back disk is not DOS 3.3.");
+    for(var n=0;ct!==0 && n<32;n++) {
+        check(valid(ct,cs) && ct===17,"Read-back catalog is corrupt.");
+        var k=ct+":"+cs;check(!seen[k],"Read-back catalog loop.");seen[k]=true;
+        var p=off(ct,cs);
+        for(var i=0;i<7;i++) {
+            var pos=p+0x0b+i*0x23,track=dsk[pos];
+            if(track===0 || track===255)continue;
+            var name="";
+            for(var j=0;j<30;j++)name+=String.fromCharCode(dsk[pos+3+j]&127);
+            if(name.trim()===file.name) {
+                check(!entry,"Duplicate catalog entries during read-back.");
+                entry={track:track,sector:dsk[pos+1],type:dsk[pos+2]};
+            }
+        }
+        ct=dsk[p+1];cs=dsk[p+2];
+    }
+    check(!!entry,"Imported file is missing from the catalog.");
+    check(entry.type==={B:4,T:0}[file.kind],"Wrong DOS file type after import.");
+    var recovered=new Uint8Array(file.bytes.length),copied=0,lsSeen={},listT=entry.track,listS=entry.sector;
+    for(var l=0;listT!==0 && l<32 && copied<recovered.length;l++) {
+        check(valid(listT,listS),"Invalid T/S list during read-back.");
+        var lk=listT+":"+listS;check(!lsSeen[lk],"Cyclic T/S list.");lsSeen[lk]=true;
+        var q=off(listT,listS),listOffset=dsk[q+5]|(dsk[q+6]<<8);
+        check(listOffset===l*122,"Unexpected T/S list sector offset.");
+        for(var k=0;k<122 && copied<recovered.length;k++) {
+            var t=dsk[q+0x0c+k*2],sect=dsk[q+0x0d+k*2];
+            check(valid(t,sect) && t!==0,"Missing or invalid file data sector.");
+            var take=Math.min(256,recovered.length-copied),data=off(t,sect);
+            for(var m=0;m<take;m++)recovered[copied+m]=dsk[data+m];
+            copied+=take;
+        }
+        listT=dsk[q+1];listS=dsk[q+2];
+    }
+    check(copied===recovered.length,"Read-back found fewer bytes than the imported file.");
+    for(var b=0;b<recovered.length;b++)check(recovered[b]===file.bytes[b],
+        "Disk read-back mismatch at file offset "+hex(b)+".");
+    if(file.kind==="B") {
+        var load=recovered[0]|(recovered[1]<<8),size=recovered[2]|(recovered[3]<<8);
+        check(load===file.loadAddress && size===file.bytes.length-4,
+            "DOS BLOAD header disagrees with selected load address or length.");
+        return {name:file.name,kind:"B",loadAddress:load,length:size,header:Array.from(recovered.slice(0,4))};
+    }
+    return {name:file.name,kind:"T",length:recovered.length};
+}
+
 var api={parseAddress:address,dosName:filename,encodeText:textBytes,
-    prepare:prepare,insert:write};
+    prepare:prepare,insert:write,verify:verify};
 root.DiskIIDOS33Import=api;
 if(typeof module!=="undefined" && module.exports)module.exports=api;
 })(typeof globalThis!=="undefined"?globalThis:this);
@@ -43036,11 +43095,26 @@ function toggle(card,slot,popupFactory){
             });
             var data=card.getDiskData(drive);
             var result=DiskIIDOS33Import.insert(data,file);
-            // A successful conversion is committed all at once via the existing
-            // nibblizer; failed conversions cannot change the mounted disk.
-            card.setDiskData(Array.from(result.image),drive,card.getDiskName(drive));
+            // Validate the new DOS structures before modifying the mounted
+            // disk, then verify again AFTER the .dsk -> .nib -> .dsk conversion.
+            DiskIIDOS33Import.verify(result.image,file);
+            var originalName=card.getDiskName(drive);
+            card.setDiskData(Array.from(result.image),drive,originalName);
+            var verified;
+            try {
+                verified=DiskIIDOS33Import.verify(card.getDiskData(drive),file);
+            } catch(readbackError) {
+                // Never leave a partial/corrupt import mounted.
+                card.setDiskData(Array.from(data),drive,originalName);
+                throw Error("Disk import was rolled back: "+readbackError.message);
+            }
+            if(by("diDrive").selectedOptions[0])
+                by("diDrive").selectedOptions[0].textContent=drive+" — mounted";
             status.textContent="Imported "+result.name+" ("+result.kind+"): "+
-                result.bytes+" bytes in "+result.sectors+" sectors"+
+                (verified.kind==="B"
+                    ? verified.length+" data bytes, DOS load $"+verified.loadAddress.toString(16).toUpperCase().padStart(4,"0")
+                    : verified.length+" bytes")+
+                " in "+result.sectors+" sectors (disk read-back verified)"+
                 (result.unmapped?"; "+result.unmapped+" unmappable character(s) replaced":"")+".";
             if(card.refreshVisibleSurfaceMap)card.refreshVisibleSurfaceMap();
         }catch(e){status.textContent="Import failed: "+e.message;}
