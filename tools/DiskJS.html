@@ -475,12 +475,12 @@ var oDISK = new function()
 
     function vtocIsFree(vtoc,t,s)
     {
-      var mapOff = 0x38 + t * 4 + Math.floor(s / 8);
+      // Sector F is the MSB of the first byte; sector 0 is the
+      // LSB of the second byte. A one means free, zero allocated.
+      var bit = 15 - s;
+      var mapOff = 0x38 + t * 4 + Math.floor(bit / 8);
       if(mapOff >= vtoc.length) return null;
-
-      // DOS 3.3 VTOC bitmap: bit set = free.
-      // Sector 0 is bit 7 of the first bitmap byte.
-      var mask = 0x80 >> (s % 8);
+      var mask = 0x80 >> (bit % 8);
       return (vtoc[mapOff] & mask) != 0;
     }
 
