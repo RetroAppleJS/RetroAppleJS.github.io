@@ -20,13 +20,13 @@ function toggle(card,slot,popupFactory){
     +"<b>Import file into Disk II</b><button class='appbut' id='diClose' title='Close'>&times;</button></div>"
     +"<div style='padding:10px;display:grid;gap:9px;font:14px sans-serif'>"
     +"<label>Drive <select id='diDrive'>"+drives.map(function(d){return "<option value='"+d+"'>"+d+(card.isDiskData(d)?" — mounted":" — empty")+"</option>";}).join("")+"</select></label>"
-    +"<label>Type <select id='diType'><option value='B'>Binary (B)</option><option value='T'>Text (T)</option><option value='A'>Applesoft BASIC (A)</option></select></label>"
+    +"<label>Type <select id='diType'><option value='B'>Binary (B)</option><option value='T'>Text (T)</option></select></label>"
     +"<label>Host file <input type='file' id='diFile' style='max-width:100%'></label>"
     +"<label>DOS filename <input id='diName' maxlength='30' placeholder='PROGRAM' style='width:95%'></label>"
     +"<label id='diAddrRow'>Binary load address <input id='diAddr' value='$2000' style='width:86px'> <small id='diRange'></small></label>"
     +"<label id='diFontRow' hidden>UTF-8 → Apple II <select id='diFont'>"
     +fonts.map(function(f){return "<option>"+safe(f)+"</option>";}).join("")+"</select></label>"
-    +"<small>Writes into an existing DOS 3.3 disk. Duplicate filenames are rejected. Stop the drive before importing.</small>"
+    +"<small>Writes to a mounted DOS 3.3 disk. Existing filenames are never overwritten. Stop the drive first. For BASIC source, use the emulator pasteboard instead.</small>"
     +"<button class='appbut' id='diSubmit'>Import into disk</button>"
     +"<div id='diStatus' role='status' aria-live='polite' style='font-size:12px;overflow-wrap:anywhere'></div></div>";
     by("diClose").onclick=function(){oCOM.POPUP.off(popup.id);};
@@ -46,7 +46,7 @@ function toggle(card,slot,popupFactory){
     input.onchange=function(){
         var f=input.files&&input.files[0];if(!f)return;
         by("diName").value=f.name.replace(/\.[^.]+$/,"").toUpperCase().replace(/[^A-Z0-9 ._-]/g,"_").slice(0,30);
-        type.value=/\.bas$/i.test(f.name)?"A":/\.txt$|\.text$/i.test(f.name)?"T":"B";
+        type.value=/\.txt$|\.text$/i.test(f.name)?"T":"B";
         refresh();
     };
     by("diSubmit").onclick=async function(){
