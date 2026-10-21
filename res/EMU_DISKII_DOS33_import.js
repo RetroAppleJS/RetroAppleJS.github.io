@@ -17,7 +17,7 @@ function address(raw) {
     return n;
 }
 function filename(raw) {
-    var base=String(raw || "").split(/[\\/]/).pop().replace(/\.[^.]+$/,"");
+    var base=String(raw || "").split(/[\\/]/).pop();
     base=base.toUpperCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"");
     base=base.replace(/[^A-Z0-9 ._\-]/g,"_").replace(/^\s+|\s+$/g,"");
     check(base.length>0 && base.length<=30,"DOS filename must contain 1–30 characters.");
@@ -70,6 +70,7 @@ function prepare(input) {
 }
 function write(dsk,file) {
     check(dsk && dsk.length===SIZE,"Import requires a 35-track DOS-order 140 KB disk image.");
+    check(file && (file.kind==="B" || file.kind==="T"),"Only binary and text DOS files are supported.");
     var image=Uint8Array.from(dsk), vtocOff=17*4096, vtoc=image.subarray(vtocOff,vtocOff+256);
     check(vtoc[3]===3 && vtoc[0x34]===35 && vtoc[0x35]===16 &&
         vtoc[0x36]===0 && vtoc[0x37]===1,
