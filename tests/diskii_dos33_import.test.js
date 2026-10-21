@@ -97,3 +97,40 @@ test("real DOS 3.3 disk retains BLOAD $2000 header after NIB conversion",()=>{
   bad[dataPos+1]=0;
   assert.throws(()=>imp.verify(bad,file),/mismatch/);
 });
+
+
+test("VTOC sector bits follow actual DOS 3.3 descending numbering",()=>{
+  const raw=disk(),vtoc=17*4096;
+  const bytes=new Uint8Array(8192);
+  const imported=imp.prepare({kind:"B",name:"HGR-BITMAP",address:"$2000",bytes});
+  const result=imp.insert(raw,imported);
+  // Import places 1 T/S list + 33 data sectors in physical order:
+  // all of tracks 3 and 4, then physical sectors 15 and 14 on track 5.
+  const bit=(track,sector)=>{
+    const index=vtoc+0x38+track*4+((15-sector)>>3);
+    return (result.image[index]&(0x80>>((15-sector)&7)))!==0;
+  };
+  for(let t=3;t<=4;t++)for(let s=0;s<16;s++)
+    assert.equal(bit(t,s),false,"allocated T"+t+" S"+s+" must be in use");
+  assert.equal(bit(5,15),false);
+  assert.equal(bit(5,14),false);
+  assert.equal(bit(5,13),true);
+  assert.equal(bit(5,0),true);
+  assert.deepEqual(Array.from(result.image.slice(vtoc+0x38+5*4,vtoc+0x38+5*4+4)),[0x3f,0xff,0,0]);
+  assert.equal(imp.verify(result.image,imported).loadAddress,0x2000);
+  // Previous importer wrote into the opposite bitmap bits; read-back must
+  // flag such a disk rather than blindly trusting its DOS file pointers.
+  const corrupted=Uint8Array.from(result.image);
+  corrupted[vtoc+0x38+5*4] |= 0xc0;
+  assert.throws(()=>imp.verify(corrupted,imported),/VTOC marks .* free/);
+});
+
+test("real DOS disk's existing HELLO allocation matches bitmap",()=>{
+  const fs=require("node:fs"),path=require("node:path");
+  const raw=new Uint8Array(fs.readFileSync(path.join(__dirname,"../disks/BLANK_DOS.DSK")));
+  const vtoc=17*4096;
+  const tr20=vtoc+0x38+20*4;
+  // HELLO has a T/S sector on T20/S15 and a data sector on T20/S14.
+  // The actual DOS-created disk marks these USED as 00111111 11111111.
+  assert.deepEqual(Array.from(raw.slice(tr20,tr20+4)),[0x3f,0xff,0,0]);
+});
