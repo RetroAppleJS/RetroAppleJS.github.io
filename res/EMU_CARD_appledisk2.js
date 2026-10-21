@@ -546,6 +546,7 @@ function AppleDisk2()
             + " data-volume=\""+diskNoisePct+"\" title=\"Disk noise volume: "+diskNoisePct+"%\""
             + " aria-label=\"Disk noise volume: "+diskNoisePct+"%\"><i class=\"fa "+diskNoiseIcon+"\"></i></button><br>"
             + "    <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'surfaceMap'})\" title=\"Disk Surface Map\"><i class=\"fa fa-th\"></i></button>"
+            + "    <button class=appbut onclick=\"apple2plus.hwObj().io.SLOT2obj("+slotN+").diskMenu_detail({id:'fileImport'})\" title=\"Import file into DOS 3.3 disk\"><i class=\"fa fa-upload\"></i></button>"
             + "  </div>"
             + "</div>";
     };
@@ -1533,6 +1534,13 @@ function AppleDisk2()
 
         return dskBytes;
     }
+
+    this.fileImportIsDriveBusy = function(deviceID)
+    {
+        var n=diskDeviceN(deviceID);
+        if(n===null) return true;
+        return !!(state.hw[n].motor || (state.drv===n && state.drive_enable));
+    };
 
     this.isDiskData = function(deviceID)
     {
@@ -2992,6 +3000,8 @@ this.detectDiskImageType = function(imageBytes, filepath)
     {
         switch(arg.id)
         {
+            case "fileImport":
+                return DiskIIDOS33ImportUI.toggle(this,ssSlotNumber(),diskOverlayPopup);
             case "softwareCat":
                 var io = apple2plus.hwObj().io;
                 var slotN = ssSlotNumber();
