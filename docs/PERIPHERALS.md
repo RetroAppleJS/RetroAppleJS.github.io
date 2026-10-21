@@ -53,6 +53,16 @@ Controls differ by peripheral. For example, Disk II exposes drive-related contro
 
 > **SCREENSHOT PLACEHOLDER U06 — Peripheral controls.** Capture the gauge button in slot details and a second view of the Tools popup with the active slot selector and card controls. Suggested filename: `docs/assets/PERIPHERALS-U06-controls.png`.
 
+### Import files into a Disk II drive
+
+With the Disk II controller selected under **Peripheral controls**, use the **Upload** pictogram (second row, beside the Disk Surface Map button). The popup is the same size as the surface map and can be toggled with the upload button. Select a drive with a mounted **DOS 3.3** disk, then select a host file.
+
+- **Binary (B):** specify a load address (for example `$2000`). The importer stores the DOS binary header and refuses an image whose bytes would extend beyond `$FFFF`. This imports a file onto the disk; it does not immediately write to Apple II RAM.
+- **Text (T):** UTF-8 input is converted into Apple II high-bit character bytes with CR line endings and a DOS text-file terminator. Character presets are approximate; unsupported characters are replaced.
+- **Applesoft BASIC source:** **not supported by disk import**. Paste numbered BASIC source through the existing emulator **Paste** control while the Apple II is running. Applesoft handles its own tokenization.
+
+The importer requires a recognized 35-track, 16-sector DOS 3.3 volume. Stop the relevant drive before importing. Existing filenames are not overwritten. The import changes the currently mounted disk image, which can subsequently be saved with the drive's normal **Save disk** control. ProDOS and nonstandard copy-protected disk layouts are not supported.
+
 ### Peripheral cards are not attached devices
 
 A **peripheral** is the slot-mounted controller. A **device** is a unit that the controller manages, such as a disk drive. Not every card exposes attachable devices.
