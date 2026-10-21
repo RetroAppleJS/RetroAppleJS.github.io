@@ -178,6 +178,12 @@ A **card** can also declare `deviceConfig` entries and host one or more attached
 
 > **SCREENSHOT PLACEHOLDER D09 — Overlays and device topology.** Capture an MS16K dynamic mapping row and a controller's child-device list. Suggested filename: `docs/assets/PERIPHERALS-D09-overlay-devices.png`.
 
+### Disk II DOS 3.3 image addressing
+
+The `.dsk` / `.do` sector image is in **DOS logical sector order**: byte offset `(track * 16 + logicalSector) * 256`. DOS catalog links, VTOC entries and file track/sector lists use DOS logical sector numbers. Do **not** apply `SECTOR_ORDER_DOS33` when indexing file and catalog sectors within a `.dsk`; `AppleDisk2.convertDsk2Nib()` performs the physical-sector skew while encoding the image. Applying the skew in both layers can silently create files visible in `CATALOG` whose `BLOAD` header appears as zero because DOS reads a different logical sector.
+
+The importer `res/EMU_DISKII_DOS33_import.js` must use direct logical offsets both when writing and when verifying mounted content; its tests must independently parse the first file sector at `track * 4096 + logicalSector * 256`. Validate not only catalog entries and VTOC allocations but actual bytes at the DOS address referenced by the T/S list. In a successful 8192-byte B file saved for `$2000`, DOS must read the header `00 20 00 20` followed by 8192 payload bytes.
+
 ### 2.6 Validation checklist before a peripheral PR
 
 1. Confirm the card's `id.PCODE` exactly matches `[PSLOT]` and its container is discoverable.

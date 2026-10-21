@@ -1,7 +1,7 @@
 /*
  * DOS 3.3 host-file importer for the Disk II controller.
  * Pure conversion routines: the controller commits the returned .dsk atomically.
- * .dsk bytes use DOS physical-sector ordering as returned by convertNib2Dsk().
+ * .dsk bytes use DOS logical-sector ordering as returned by convertNib2Dsk().
  */
 (function(root) {
 "use strict";
@@ -87,11 +87,11 @@ function write(dsk,file) {
         vtoc[0x36]===0 && vtoc[0x37]===1,
         "Disk is not a recognized DOS 3.3 35-track/16-sector volume.");
     function valid(t,s){return t>=0 && t<35 && s>=0 && s<16;}
-    // DOS image offsets are physically skewed; the catalog and T/S pointers
-    // contain physical sector numbers, unlike positions in a .dsk byte array.
-    // This must agree with AppleDisk2.SECTION_ORDER_DOS33.
-    var physicalToDOS=[0x0,0x7,0xe,0x6,0xd,0x5,0xc,0x4,0xb,0x3,0xa,0x2,0x9,0x1,0x8,0xf];
-    function off(t,s){return t*4096+physicalToDOS[s]*256;}
+    // DOS 3.3 .dsk/.do images store sectors in DOS LOGICAL order.
+    // The Disk II nibblizer independently maps that order to physical
+    // on-disk sectors. Applying physicalToDOS here would double-skew
+    // file and catalog sectors, producing a zero-length BLOAD header.
+    function off(t,s){return t*4096+s*256;}
     var ct=vtoc[1],cs=vtoc[2],seen={},target=-1;
     check(valid(ct,cs) && ct!==0,"Invalid DOS catalog pointer.");
     for(var count=0;ct!==0 && count<32;count++){
@@ -159,9 +159,10 @@ function write(dsk,file) {
 function verify(dsk,file) {
     check(dsk && dsk.length===SIZE,"Read-back requires a 140 KB DOS-order image.");
     check(file && (file.kind==="B" || file.kind==="T"),"Only B/T files can be verified.");
-    var skew=[0,7,14,6,13,5,12,4,11,3,10,2,9,1,8,15];
+    // Independent read-back must follow DOS's logical-sector offsets,
+    // not reuse a mistaken physical-sector address translation.
     var valid=function(t,s){return t>=0 && t<35 && s>=0 && s<16;};
-    var off=function(t,s){return t*4096+skew[s]*256;};
+    var off=function(t,s){return t*4096+s*256;};
     var vtoc=17*4096,ct=dsk[vtoc+1],cs=dsk[vtoc+2],entry=null,seen={};
     check(dsk[vtoc+3]===3,"Read-back disk is not DOS 3.3.");
     function requireAllocated(track,sector) {
