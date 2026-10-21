@@ -1,17 +1,20 @@
-/* RetroAppleJS · AY Waveform Laboratory 1.2 — isolated offline experiments. */
+/* RetroAppleJS · AY Waveform Laboratory 1.3 — isolated offline experiments. */
 (function(root, factory) {
   var api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.AYWaveformBench = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function() {
   'use strict';
-  var SCHEMA = 'retroapplejs.ay.waveform-bench.v1.2';
-  var RATE = 22050, TIMEBASE = 1000000000, BLOCK = 2048;
+  var SCHEMA = 'retroapplejs.ay.waveform-bench.v1.3';
+  var RATE = 22050, TIMEBASE = 1000000000, BLOCK = 256;
   var FIXTURES = [
     {id:'square',label:'Square / native tone',kind:'tone',description:'AY channel A, fixed 50% tone, R7=$3E'},
     {id:'saw-down',label:'Falling saw / envelope',kind:'saw',description:'Audio-rate envelope, shape $8; no tone/noise'},
     {id:'saw-up',label:'Rising saw / envelope',kind:'saw',description:'Audio-rate envelope, shape $C; no tone/noise'},
-    {id:'triangle',label:'Triangle / envelope',kind:'triangle',description:'Alternating envelope, shape $A; no tone/noise'},
+    {id:'triangle',label:'Triangle / AY envelope $A (baseline)',kind:'triangle',description:'Alternating envelope shape $A; hardware baseline'},
+    {id:'triangle-invert',label:'Triangle / AY envelope $E',kind:'triangle',description:'Inverted alternating envelope shape $E; compare DAC asymmetry'},
+    {id:'triangle-dac-raw',label:'Triangle / software 32-step (raw register levels)',kind:'triangle-dac',description:'32 software-timed volume changes/cycle; raw linear register indices (NOT linear amplitude)'},
+    {id:'triangle-dac',label:'Triangle / software 32-step (calibrated)',kind:'triangle-dac',description:'32 software-timed volume writes/cycle; inverse measured AY volume law'},
     {id:'buzzer',label:'Tone × envelope / buzzer',kind:'buzzer',description:'Tone gate multiplied by AY audio-rate envelope'},
     {id:'noise',label:'AY noise',kind:'noise',description:'Noise LFSR; no pitched oscillator'},
     {id:'tone-noise',label:'Square + noise',kind:'tone-noise',description:'AY tone and noise enabled on channel A'},
@@ -35,6 +38,7 @@
     if (!kind) throw new Error('Unknown fixture '+fixture);
     var divider = kind.kind==='saw'?256:kind.kind==='triangle'?512:16;
     if (kind.kind==='noise') return {period:null,actualHz:null,requestedHz:hz,errorCents:null,clamped:false};
+    if(kind.kind==='triangle-dac') return {period:null,actualHz:hz,requestedHz:hz,errorCents:0,clamped:false};
     if(kind.kind==='two-chip') divider=16;
     var p=nearestPeriod(clock,hz,divider,divider===16?4095:65535);
     if(kind.kind==='buzzer') p.envelope=nearestPeriod(clock,clamp(hz*ratio,1,18000),256,65535);
@@ -42,6 +46,7 @@
     if(kind.kind==='detune') p.secondary=nearestPeriod(clock,hz*Math.pow(2,12/1200),16,4095);
     return p;
   }
+  function kindSoftware(fixture){return fixture==='triangle-dac'||fixture==='triangle-dac-raw';}
   function generate(options) {
     options=options||{};
     var fixture=options.fixture||'square',hz=number(Number(options.hz===undefined?110:options.hz),'Hz',10,8000);
@@ -50,9 +55,17 @@
     var ratio=number(Number(options.ratio===undefined?1:options.ratio),'envelope ratio',0.125,8);
     var volume=Math.round(number(Number(options.volume===undefined?13:options.volume),'volume',0,15));
     var noisePeriod=Math.round(number(Number(options.noisePeriod===undefined?8:options.noisePeriod),'noise period',1,31));
+    var phaseOffset=number(Number(options.phaseOffset===undefined?0:options.phaseOffset),'phase offset',0,.875);
+    // Software volume DAC fixtures are limited so event arrays stay bounded; the 6502 cost is reported separately.
+    if((fixture==='triangle-dac'||fixture==='triangle-dac-raw') && hz*duration*32>48000)
+      throw new Error('Software triangle would exceed 48,000 volume writes; shorten the capture or lower its pitch.');
     var reference=options.reference===undefined?'auto':String(options.reference);
     if(['auto','square','saw','triangle'].indexOf(reference)<0)throw new Error('Invalid ideal reference');
     var desc=describe(fixture,hz,clock,ratio), f=FIXTURES.find(function(x){return x.id===fixture;});
+    var volumeCurve=options.volumeCurve;
+    if(volumeCurve!==undefined && (!Array.isArray(volumeCurve)||volumeCurve.length!==16||volumeCurve.some(function(v){return !Number.isFinite(v)||v<0;})))
+      throw new Error('Volume calibration must be an array of 16 nonnegative finite values');
+    var calibrationSource=volumeCurve?'measured AYCore tone RMS':'nominal approximation';
     var events=[], seq=0;
     function write(chip,reg,value,seconds) {
       seconds=seconds||0;
@@ -68,12 +81,40 @@
     for(var c=0;c<2;c++) {write(c,7,63);write(c,8,0);write(c,9,0);write(c,10,0);}
     switch(fixture) {
       case 'square': period(0,0,desc.period);write(0,7,0x3e);write(0,8,volume);break;
-      case 'saw-down': case 'saw-up': case 'triangle':
-        envelope(0,desc.period,fixture==='saw-down'?0x8:fixture==='saw-up'?0xc:0xa);
+      case 'saw-down': case 'saw-up': case 'triangle': case 'triangle-invert':
+        envelope(0,desc.period,fixture==='saw-down'?0x8:fixture==='saw-up'?0xc:fixture==='triangle-invert'?0xe:0xa);
         write(0,8,0x10);break;
       case 'buzzer':
-        period(0,0,desc.period);envelope(0,desc.envelope.period,0x8);
-        write(0,7,0x3e);write(0,8,0x10);break;
+        period(0,0,desc.period);
+        write(0,11,desc.envelope.period&255);write(0,12,(desc.envelope.period>>8)&255);
+        write(0,7,0x3e);
+        // Phase offset shifts the R13 envelope retrigger against the already-running tone.
+        // Initially muted until trigger; the measurement window is central and excludes this transient.
+        write(0,13,0x8,phaseOffset/desc.actualHz);
+        write(0,8,0x10,phaseOffset/desc.actualHz);break;
+      case 'triangle-dac': case 'triangle-dac-raw': {
+        // Volume register updates (R8): this is a software DAC technique, NOT an AY envelope.
+        // Use the empirical RMS-vs-volume curve to compensate for the AY logarithmic DAC.
+        var curve=volumeCurve||Array.from({length:16},function(_,i){return i===0?0:Math.pow(2,(i-15)/2);});
+        var ceiling=curve[volume],steps=32,cycles=Math.ceil(duration*hz);
+        write(0,7,0x3f);
+        for(var idx=0;idx<cycles*steps;idx++) {
+          var phase=(idx%steps)/steps;
+          var level01=1-Math.abs(2*phase-1); // low -> high -> low: symmetric triangle
+          var value;
+          if(fixture==='triangle-dac-raw') value=Math.round(volume*level01);
+          else {
+            var goal=level01*ceiling,bestDiff=Infinity;value=0;
+            for(var v=0;v<=volume;v++){
+              var diff=Math.abs(curve[v]-goal);
+              if(diff<bestDiff){bestDiff=diff;value=v;}
+            }
+          }
+          var t=idx/(steps*hz);
+          if(t<duration)write(0,8,value,t);
+        }
+        break;
+      }
       case 'noise': write(0,6,noisePeriod);write(0,7,0x37);write(0,8,volume);break;
       case 'tone-noise':
         period(0,0,desc.period);write(0,6,noisePeriod);write(0,7,0x36);write(0,8,volume);break;
@@ -88,7 +129,10 @@
     // Stable order at identical timestamps matters, especially for R13 retriggers.
     events.sort(function(a,b){return a.tick-b.tick||a.seq-b.seq;});
     return {fixture:fixture,kind:f.kind,description:f.description,hz:hz,clock:clock,duration:duration,
-      ratio:ratio,volume:volume,noisePeriod:noisePeriod,referencePreference:reference,pitch:desc,events:events};
+      ratio:ratio,volume:volume,noisePeriod:noisePeriod,phaseOffset:phaseOffset,
+      calibrationSource:(fixture==='triangle-dac'?calibrationSource:null),
+      softwareVolumeWritesPerSecond:kindSoftware(fixture)?32*hz:0,
+      referencePreference:reference,pitch:desc,events:events};
   }
   // Phase 1.2: ideal Fourier magnitudes, normalized so the fundamental is 1.0.
   // Magnitude-only spectra cannot distinguish upward from downward saw polarity.
@@ -110,7 +154,7 @@
   function referenceFor(fixture) {
     if(fixture==='square')return 'square';
     if(fixture==='saw-down'||fixture==='saw-up')return 'saw';
-    if(fixture==='triangle')return 'triangle';
+    if(fixture==='triangle'||fixture==='triangle-invert'||kindSoftware(fixture))return 'triangle';
     return null;
   }
   function comparisonPolicy(fixture,reference) {
@@ -215,7 +259,7 @@
     return {sampleCount:n,rms:Math.sqrt(squares/n),peak:peak,dc:sum/n,clippedSamples:clipped,
       dominantHz:spectral.dominantHz,fundamentalHz:spectral.fundamentalHz, fundamentalDb:spectral.fundamentalDb,
       harmonicDb:spectral.harmonicDb,thdPercent:spectral.thdPercent,aliasRisk:spectral.aliasRisk,
-      centroidHz:spectral.centroidHz,comparison:spectral.comparison,
+      centroidHz:spectral.centroidHz,comparison:spectral.comparison,fingerprint:spectral.fingerprint,
       spectral:spectral.bins};
   }
   function spectrum(samples,rate,expectedHz,policy) {
@@ -241,13 +285,31 @@
         }
       }
     }
-    var bins=[],magTotal=0,moment=0,best=0,bestIndex=1,dft=[];
+    var bins=[],magTotal=0,moment=0,best=0,bestIndex=1,dft=[],powerSum=0,logPowerSum=0,powerByBin=[],highPower=0;
     for(var k=1;k<=N/2;k++){
       var v=Math.hypot(re[k],im[k]);dft.push(v);
       if(v>best){best=v;bestIndex=k;}
       magTotal+=v;moment+=v*k*rate/N;
+      var power=v*v;powerSum+=power;powerByBin.push(power);
+      logPowerSum+=Math.log(Math.max(power,1e-24));
+      if(k*rate/N>=2000) highPower+=power;
       if(k%4===0)bins.push({hz:k*rate/N,db:20*Math.log10(Math.max(1e-9,v/N))});
     }
+    // Broadband descriptors are meaningful for noise and composite signals too.
+    var rollPower=0,rolloffHz=0;
+    for(var rp=0;rp<powerByBin.length;rp++){
+      rollPower+=powerByBin[rp];
+      if(rollPower>=powerSum*.85){rolloffHz=(rp+1)*rate/N;break;}
+    }
+    var peaks=[];
+    for(var pk=1;pk<dft.length-1;pk++){
+      if(dft[pk]>dft[pk-1]&&dft[pk]>=dft[pk+1]&&dft[pk]>best*.02)
+        peaks.push({hz:(pk+1)*rate/N,relativeDb:20*Math.log10(dft[pk]/Math.max(best,1e-12))});
+    }
+    peaks.sort(function(a,b){return b.relativeDb-a.relativeDb;});peaks=peaks.slice(0,8);
+    var fingerprint={spectralFlatness:powerSum>1e-16?Math.exp(logPowerSum/powerByBin.length)/(powerSum/powerByBin.length):null,
+      rolloff85Hz:rolloffHz,highBandEnergyPercent:powerSum?100*highPower/powerSum:0,
+      strongestPeaks:peaks,peakBinWidthHz:rate/N};
     var offset=0,j=bestIndex-1;
     if(j>0&&j<dft.length-1){
       var aa=Math.log(Math.max(dft[j-1],1e-12)),bb=Math.log(Math.max(dft[j],1e-12)),cc=Math.log(Math.max(dft[j+1],1e-12));
@@ -268,17 +330,39 @@
       'N/A: broadband, multi-oscillator or modulation spectrum';
     return {dominantHz:best>1e-9?(bestIndex+offset)*rate/N:0,
       fundamentalHz:fundamentalHz,fundamentalDb:fundamentalDb,harmonicDb:harmonics,
-      thdPercent:thd,aliasRisk:risk,comparison:comparison,
+      thdPercent:thd,aliasRisk:risk,comparison:comparison,fingerprint:fingerprint,
       centroidHz:magTotal?moment/magTotal:0,bins:bins};
   }
+  var calibratedCurves=Object.create(null);
+  async function calibrateVolumeCurve(coreAPI,options) {
+    options=options||{};
+    var backend=options.backend||'js',clock=options.clock||1021800,key=backend+':'+clock;
+    if(!options.force&&calibratedCurves[key])return calibratedCurves[key].slice();
+    var levels=[0];
+    for(var v=1;v<=15;v++){
+      // A tone, not a DC measurement, because the AYCore output can be AC coupled.
+      var trial=await render(coreAPI,{fixture:'square',hz:220,clock:clock,volume:v,duration:.2,backend:backend});
+      levels.push(trial.metrics.rms);
+    }
+    var max=levels[15];if(!(max>1e-6))throw new Error('AY volume calibration failed: silent output');
+    for(var n=1;n<16;n++)levels[n]=Math.min(1,levels[n]/max);
+    // Enforce monotonicity against small measurement noise.
+    for(var m=1;m<16;m++)levels[m]=Math.max(levels[m],levels[m-1]);
+    levels[15]=1;calibratedCurves[key]=levels.slice();return levels;
+  }
   async function render(coreAPI,options) {
-    var spec=generate(options),backend=options&&options.backend||'js';
+    options=options||{};
+    var backend=options.backend||'js';
+    if(options.fixture==='triangle-dac'&&!options.volumeCurve){
+      options=Object.assign({},options,{volumeCurve:await calibrateVolumeCurve(coreAPI,options)});
+    }
+    var spec=generate(options);
     if(!coreAPI||typeof coreAPI.create!=='function')throw new Error('AYCore missing');
     var engine=await coreAPI.create({backend:backend,chipCount:2,sampleRate:RATE,
-      renderProfile:'economy',timebaseHz:TIMEBASE,maxFrames:BLOCK,maxEvents:1024});
+      renderProfile:'economy',timebaseHz:TIMEBASE,maxFrames:BLOCK,maxEvents:4096});
     var floats=new Float32Array(Math.round(spec.duration*RATE));
     var temp={left:new Float32Array(BLOCK),right:new Float32Array(BLOCK)};
-    var packed=new Uint8Array(1024*16),view=new DataView(packed.buffer);
+    var packed=new Uint8Array(4096*16),view=new DataView(packed.buffer);
     var n=0,event=0,clock=spec.clock,now=0, actualBackend=engine.backend;
     var start=typeof performance!=='undefined'?performance.now():Date.now();
     try {
@@ -293,6 +377,7 @@
         var end=Math.ceil((n+nextFrames)*TIMEBASE/RATE),count=0;
         while(event<spec.events.length&&spec.events[event].tick<=end){
           var e=spec.events[event++];
+          if(count>=4096)throw new Error('AY event batch capacity exceeded');
           coreAPI.packEvent(view,count++,e.tick,e.chip,0,e.reg,e.value);
         }
         var produced=engine.renderUntil(end,{data:packed,count:count},temp);
@@ -303,8 +388,28 @@
     } finally {engine.destroy();}
     var endTime=typeof performance!=='undefined'?performance.now():Date.now();
     var pitch=spec.kind==='noise'?null:spec.pitch.actualHz;
+    var interaction={mode:spec.fixture,phaseOffsetCycles:spec.phaseOffset,
+      registerWrites:spec.events.length,softwareVolumeWritesPerSecond:spec.softwareVolumeWritesPerSecond,
+      feasibility:spec.softwareVolumeWritesPerSecond>3000?'Experimental only: extreme Mockingboard register-write load':
+        spec.softwareVolumeWritesPerSecond>500?'High Apple II CPU/VIA write load (unverified)':'No high-rate software volume writes'};
+    if(spec.fixture==='buzzer'){
+      interaction.toneHz=spec.pitch.actualHz;interaction.envelopeHz=spec.pitch.envelope.actualHz;
+      interaction.relativeFrequencyHz=spec.pitch.envelope.actualHz-spec.pitch.actualHz;
+      interaction.relativePhaseDriftCycles=interaction.relativeFrequencyHz*spec.duration;
+    } else if(spec.fixture==='detune'){
+      interaction.toneHz=spec.pitch.actualHz;interaction.secondaryHz=spec.pitch.secondary.actualHz;
+      interaction.beatHz=Math.abs(interaction.secondaryHz-interaction.toneHz);
+    }
     return {spec:spec,backend:actualBackend,renderMs:endTime-start,rate:RATE,pcm:floats,
-      metrics:pcmMetrics(floats,pitch,{fixture:spec.fixture,reference:spec.referencePreference})};
+      interaction:interaction,metrics:pcmMetrics(floats,pitch,{fixture:spec.fixture,reference:spec.referencePreference})};
+  }
+  function phaseSweepJobs(base) {
+    base=base||{};
+    var jobs=[];
+    [55,110,220,440].forEach(function(hz){
+      for(var i=0;i<8;i++)jobs.push(Object.assign({},base,{fixture:'buzzer',hz:hz,phaseOffset:i/8,duration:1,reference:'auto'}));
+    });
+    return jobs;
   }
   function wav(pcm,rate) {
     var n=pcm.length,b=new ArrayBuffer(44+n*2),dv=new DataView(b);
@@ -324,14 +429,16 @@
     return {schema:SCHEMA,createdAt:new Date().toISOString(),sampleRate:result.rate,
       renderProfile:'economy',backend:result.backend,renderMs:result.renderMs,
       spec:Object.assign({},result.spec,{events:result.spec.events.map(function(e){return {tick:e.tick,chip:e.chip,reg:e.reg,value:e.value};})}),
+      interaction:result.interaction||null,
       metrics:{sampleCount:m.sampleCount,rms:m.rms,peak:m.peak,dc:m.dc,clippedSamples:m.clippedSamples,
         dominantHz:m.dominantHz,fundamentalHz:m.fundamentalHz,fundamentalDb:m.fundamentalDb,
         harmonicDb:m.harmonicDb,thdPercent:m.thdPercent,aliasRisk:m.aliasRisk,centroidHz:m.centroidHz,
-        comparison:m.comparison}};
+        comparison:m.comparison,fingerprint:m.fingerprint}};
   }
   return {SCHEMA:SCHEMA,RATE:RATE,FIXTURES:FIXTURES,nearestPeriod:nearestPeriod,
     describe:describe,generate:generate,spectrum:spectrum,pcmMetrics:pcmMetrics,render:render,
     idealHarmonic:idealHarmonic,idealWaveform:idealWaveform,referenceFor:referenceFor,
-    scoreReference:scoreReference,harmonicAnalysis:harmonicAnalysis,
+    scoreReference:scoreReference,harmonicAnalysis:harmonicAnalysis,calibrateVolumeCurve:calibrateVolumeCurve,
+    phaseSweepJobs:phaseSweepJobs,
     wav:wav,report:report};
 });

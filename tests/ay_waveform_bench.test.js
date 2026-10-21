@@ -4,8 +4,8 @@ const assert=require('node:assert/strict');
 const B=require('../tools/AY_WAVEFORM_BENCH_core.js');
 
 test('metadata and fixed 22,050 Hz economy baseline',()=>{
- assert.equal(B.SCHEMA,'retroapplejs.ay.waveform-bench.v1.2');
- assert.equal(B.RATE,22050);assert.equal(B.FIXTURES.length,9);
+ assert.equal(B.SCHEMA,'retroapplejs.ay.waveform-bench.v1.3');
+ assert.equal(B.RATE,22050);assert.equal(B.FIXTURES.length,12);
 });
 test('12-bit tone periods are correctly rounded and clamped',()=>{
  const p=B.nearestPeriod(1021800,440,16,4095);
@@ -171,4 +171,129 @@ test('Phase 1.2: empty audio does not fabricate a valid comparison',()=>{
  assert.equal(m.comparison.status,'unmeasurable');
  assert.equal(m.thdPercent,null);
  assert.equal(m.dominantHz,0);
+});
+
+
+test('Phase 1.3: both AY envelope triangle polarities keep correct period but distinct shape',()=>{
+  const base=B.generate({fixture:'triangle',hz:220});
+  const inv=B.generate({fixture:'triangle-invert',hz:220});
+  assert.equal(base.pitch.period,9);assert.equal(inv.pitch.period,9);
+  assert.equal(base.events.find(e=>e.reg===13).value,10);
+  assert.equal(inv.events.find(e=>e.reg===13).value,14);
+  assert.equal(B.referenceFor('triangle-invert'),'triangle');
+});
+
+test('Phase 1.3: software triangles schedule exactly 32 volume writes per cycle',()=>{
+  const a=B.generate({fixture:'triangle-dac-raw',hz:100,duration:.5,volume:15});
+  const writes=a.events.filter(e=>e.chip===0&&e.reg===8);
+  assert.equal(writes.length,1601); // initial mute + 32*50 samples
+  assert.equal(a.pitch.actualHz,100);
+  assert.equal(a.pitch.period,null);
+  assert.equal(a.softwareVolumeWritesPerSecond,3200);
+  assert.equal(writes[1].value,0);
+  assert.equal(writes[9].value,8);
+  assert.equal(writes[17].value,15);
+  assert.equal(writes.at(-1).value,1);
+  assert.equal(writes[2].tick,312500);
+  assert.ok(a.events.every((e,i)=>i===0||e.tick>=a.events[i-1].tick));
+});
+
+test('Phase 1.3: inverted volume curve compensates exponential AY output',()=>{
+  const curve=Array.from({length:16},(_,v)=>v===0?0:Math.pow(v/15,2));
+  const raw=B.generate({fixture:'triangle-dac-raw',hz:55,duration:.5,volume:15});
+  const fixed=B.generate({fixture:'triangle-dac',hz:55,duration:.5,volume:15,volumeCurve:curve});
+  const r=raw.events.filter(e=>e.chip===0&&e.reg===8).slice(1,33).map(e=>e.value);
+  const f=fixed.events.filter(e=>e.chip===0&&e.reg===8).slice(1,33).map(e=>e.value);
+  assert.equal(r[0],0);assert.equal(f[0],0);
+  assert.equal(r[16],15);assert.equal(f[16],15);
+  assert.ok(f[8]>r[8]); // square-law DAC: midpoint needs a larger register value
+  assert.equal(f[8],11);
+  assert.equal(f[24],f[8]);
+  assert.equal(fixed.calibrationSource,'measured AYCore tone RMS');
+  assert.equal(B.referenceFor('triangle-dac'),'triangle');
+  assert.throws(()=>B.generate({fixture:'triangle-dac',volumeCurve:[0,1]}),/calibration/);
+});
+
+test('Phase 1.3: high-rate software volume writes are bounded',()=>{
+ assert.throws(()=>B.generate({fixture:'triangle-dac',hz:1000,duration:2}),/48,000/);
+ const spec=B.generate({fixture:'triangle-dac-raw',hz:440,duration:.5});
+ assert.equal(spec.softwareVolumeWritesPerSecond,14080);
+ assert.equal(spec.events.filter(e=>e.chip===0&&e.reg===8).length,7041);
+});
+
+test('Phase 1.3: buzzer phase sweep correctly shifts retrigger (not tone)',()=>{
+ const a=B.generate({fixture:'buzzer',hz:110,duration:1,phaseOffset:.25});
+ const b=B.generate({fixture:'buzzer',hz:110,duration:1,phaseOffset:0});
+ assert.equal(a.events.find(e=>e.chip===0&&e.reg===0).tick,0);
+ assert.equal(b.events.find(e=>e.chip===0&&e.reg===13).tick,0);
+ assert.equal(a.events.find(e=>e.chip===0&&e.reg===13).tick,Math.round(.25/a.pitch.actualHz*1e9));
+ assert.equal(a.events.filter(e=>e.chip===0&&e.reg===8).at(-1).tick,a.events.find(e=>e.chip===0&&e.reg===13).tick);
+ assert.throws(()=>B.generate({fixture:'buzzer',phaseOffset:1}),/phase offset/);
+});
+
+test('Phase 1.3: phase sweep prepares 8 phases for each of 4 tones',()=>{
+ const jobs=B.phaseSweepJobs({clock:1021800,backend:'wasm'});
+ assert.equal(jobs.length,32);
+ assert.deepEqual([...new Set(jobs.map(j=>j.hz))],[55,110,220,440]);
+ assert.deepEqual(jobs.slice(0,8).map(j=>j.phaseOffset),[0,.125,.25,.375,.5,.625,.75,.875]);
+ assert.equal(jobs.at(-1).duration,1);
+ assert.ok(jobs.every(j=>j.backend==='wasm'&&j.fixture==='buzzer'));
+});
+
+test('Phase 1.3: spectral fingerprint separates a sine and deterministic noisy texture',()=>{
+ const rate=22050;
+ const sine=Float32Array.from({length:rate},(_,i)=>.5*Math.sin(2*Math.PI*440*i/rate));
+ let seed=1234;const noise=Float32Array.from({length:rate},()=>{seed=(Math.imul(1664525,seed)+1013904223)>>>0;return (seed/4294967296-.5)*.7;});
+ const sa=B.pcmMetrics(sine,440,{fixture:'square'}).fingerprint;
+ const nb=B.pcmMetrics(noise,null,{fixture:'noise'}).fingerprint;
+ assert.ok(sa.spectralFlatness<.01);
+ assert.ok(nb.spectralFlatness>.1);
+ assert.ok(sa.highBandEnergyPercent<1);
+ assert.ok(nb.highBandEnergyPercent>30);
+ assert.ok(nb.rolloff85Hz>5000);
+ assert.ok(sa.strongestPeaks.length>=1);
+});
+
+test('Phase 1.3: mock AYCore render includes phase drift and fingerprint in export',async()=>{
+ let frames=0;
+ const api={create:async()=>{
+   frames=0;return {backend:'js',configureChip:()=>{},setMix:()=>{},
+     renderUntil:(end,batch,out)=>{
+       const expected=Math.floor(end*B.RATE/1e9)-frames;
+       out.left.fill(.07,0,expected);out.right.fill(.07,0,expected);frames+=expected;return expected;
+     },destroy:()=>{}};
+   },packEvent:()=>{}};
+ const r=await B.render(api,{fixture:'buzzer',hz:55,duration:.5,phaseOffset:.125});
+ assert.equal(r.spec.phaseOffset,.125);
+ assert.ok(r.interaction.relativeFrequencyHz<0);
+ assert.ok(r.interaction.relativePhaseDriftCycles<0);
+ assert.ok(Number.isFinite(r.metrics.fingerprint.rolloff85Hz));
+ const rep=B.report(r);
+ assert.equal(rep.interaction.phaseOffsetCycles,.125);
+ assert.ok(rep.metrics.fingerprint.spectralFlatness<.001); // DC-only mock spectrum is nearly flatness-free
+});
+
+test('Phase 1.3: calibrated curve is cached per backend + clock',async()=>{
+ let created=0;
+ const api={create:async()=>{
+   created++;let frames=0;return {backend:'js',configureChip:()=>{},setMix:()=>{},
+     renderUntil:(end,batch,out)=>{
+       const expected=Math.floor(end*B.RATE/1e9)-frames;
+       for(let i=0;i<expected;i++){out.left[i]=.05*Math.sin(2*Math.PI*220*(frames+i)/B.RATE);out.right[i]=out.left[i];}
+       frames+=expected;return expected;
+     },destroy:()=>{}};
+   },packEvent:()=>{}};
+ const o={backend:'js',clock:1030000};
+ const curve=await B.calibrateVolumeCurve(api,o);
+ assert.equal(curve.length,16);
+ assert.equal(curve[0],0);
+ assert.equal(curve[15],1);
+ assert.equal(created,15);
+ const curve2=await B.calibrateVolumeCurve(api,o);
+ assert.deepEqual(curve2,curve);
+ assert.equal(created,15);
+ const r=await B.render(api,{fixture:'triangle-dac',hz:110,duration:.2,...o});
+ assert.equal(r.interaction.softwareVolumeWritesPerSecond,3520);
+ assert.equal(created,16);
+ assert.equal(r.spec.calibrationSource,'measured AYCore tone RMS');
 });
