@@ -61,7 +61,7 @@ With the Disk II controller selected under **Peripheral controls**, use the **Up
 - **Text (T):** UTF-8 input is converted into Apple II high-bit character bytes with CR line endings and a DOS text-file terminator. Character presets are approximate; unsupported characters are replaced.
 - **Applesoft BASIC source:** **not supported by disk import**. Paste numbered BASIC source through the existing emulator **Paste** control while the Apple II is running. Applesoft handles its own tokenization.
 
-The importer requires a recognized 35-track, 16-sector DOS 3.3 volume. Stop the relevant drive before importing. Existing filenames are not overwritten. The import changes the currently mounted disk image, which can subsequently be saved with the drive's normal **Save disk** control. ProDOS and nonstandard copy-protected disk layouts are not supported.
+The importer requires a recognized 35-track, 16-sector DOS 3.3 volume. Stop the relevant drive before importing. Existing filenames are not overwritten. The import changes the currently mounted disk image, which can subsequently be saved with the drive's normal **Save disk** control. The importer verifies the saved file contents after Disk II nibblization and reports the DOS binary header's load address and data length; a failed read-back causes the image change to be rolled back. This verification does not test the live Apple DOS BLOAD command. ProDOS and nonstandard copy-protected disk layouts are not supported.
 
 ### Peripheral cards are not attached devices
 
