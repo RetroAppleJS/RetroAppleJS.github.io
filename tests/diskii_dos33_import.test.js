@@ -24,9 +24,9 @@ test("BASIC tokenization is not included in disk import",()=>{
   assert.equal(typeof imp.tokenizeApplesoft,"undefined");
   assert.throws(()=>imp.prepare({kind:"A",name:"BASIC",text:"10 PRINT 1"}),/Unsupported import type/);
 });
-test("catalog sectors use DOS 3.3 physical-to-file skew",()=>{
+test("catalog sectors are addressed in DOS logical .dsk order",()=>{
   const b=disk(),base=17*4096;
-  // The next physical catalog sector is $E, at DOS-order byte sector $8.
+  // Catalog T17/S14 is at byte sector 14, not physical-skew index 8.
   b[base+15*256+1]=17;
   b[base+15*256+2]=14;
   for(let i=0;i<7;i++){
@@ -37,14 +37,13 @@ test("catalog sectors use DOS 3.3 physical-to-file skew",()=>{
   }
   const f=imp.prepare({kind:"B",name:"SECOND",address:"$2000",bytes:[0xaa,0xbb]});
   const image=imp.insert(b,f).image;
-  assert.equal(image[base+8*256+0x0b+2],4);
-  assert.equal(image[base+14*256+0x0b+2],0);
-  const cat=base+8*256+0x0b;
+  assert.equal(image[base+14*256+0x0b+2],4);
+  assert.equal(image[base+8*256+0x0b+2],0);
+  const cat=base+14*256+0x0b;
   const listTrack=image[cat],listSec=image[cat+1];
-  const skew=[0,7,14,6,13,5,12,4,11,3,10,2,9,1,8,15];
-  const list=listTrack*4096+skew[listSec]*256;
+  const list=listTrack*4096+listSec*256;
   const dataTrack=image[list+0x0c],dataSec=image[list+0x0d];
-  const data=dataTrack*4096+skew[dataSec]*256;
+  const data=dataTrack*4096+dataSec*256;
   assert.deepEqual(Array.from(image.slice(data,data+6)),[0,0x20,2,0,0xaa,0xbb]);
 });
 test("insert into DOS 3.3 VTOC and catalog without mutating original",()=>{
@@ -79,9 +78,22 @@ test("real DOS 3.3 disk retains BLOAD $2000 header after NIB conversion",()=>{
   const card=new Function("var oEMU=undefined;"+cardSrc+"; return new AppleDisk2()")();
   const roundTrip=card.convertNib2Dsk(card.convertDsk2Nib(Array.from(inserted.image)));
   assert.deepEqual(imp.verify(roundTrip,file).header,[0,0x20,0,0x20]);
+  // Independent DOS logical-sector lookup of catalog -> T/S -> data:
+  // The previous double-skew bug put header bytes in a different sector,
+  // where DOS would see $0000 load address and zero bytes to load.
+  const cat=17*4096+15*256+0x0b+0x23; // HELLO is first, new file second
+  assert.equal(roundTrip[cat+2],4);
+  const ts=roundTrip[cat]*4096+roundTrip[cat+1]*256;
+  const data=roundTrip[ts+0x0c]*4096+roundTrip[ts+0x0d]*256;
+  assert.deepEqual(Array.from(roundTrip.slice(data,data+8)),
+    [0,0x20,0,0x20,0x12,0x34,0,0]);
+  const incorrectlySkewedData=roundTrip[ts+0x0c]*4096
+    +[0,7,14,6,13,5,12,4,11,3,10,2,9,1,8,15][roundTrip[ts+0x0d]]*256;
+  assert.notEqual(incorrectlySkewedData,data);
+
   // Verify a tampered stored header cannot be reported as a successful import.
   const bad=Uint8Array.from(roundTrip);
-  const skew=[0,7,14,6,13,5,12,4,11,3,10,2,9,1,8,15],at=(t,sec)=>t*4096+skew[sec]*256;
+  const at=(t,sec)=>t*4096+sec*256;
   let t=bad[17*4096+1],sector=bad[17*4096+2],list=null;
   for(let guard=0;t!==0 && guard<32;guard++){
     const pos=at(t,sector);
@@ -104,8 +116,8 @@ test("VTOC sector bits follow actual DOS 3.3 descending numbering",()=>{
   const bytes=new Uint8Array(8192);
   const imported=imp.prepare({kind:"B",name:"HGR-BITMAP",address:"$2000",bytes});
   const result=imp.insert(raw,imported);
-  // Import places 1 T/S list + 33 data sectors in physical order:
-  // all of tracks 3 and 4, then physical sectors 15 and 14 on track 5.
+  // Import allocates 1 T/S list + 33 data sectors in descending DOS
+  // logical sector order, filling tracks 3 and 4, then T5/S15 and S14.
   const bit=(track,sector)=>{
     const index=vtoc+0x38+track*4+((15-sector)>>3);
     return (result.image[index]&(0x80>>((15-sector)&7)))!==0;
