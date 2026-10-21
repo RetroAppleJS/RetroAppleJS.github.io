@@ -9,6 +9,9 @@ on:
       - 'res/EMU_CARD_appledisk2.js'
       - 'res/EMU_CARD_appledisk2_topology.js'
       - 'res/EMU_CARD_appledisk2_ui_state.js'
+      - 'res/EMU_DISKII_DOS33_import.js'
+      - 'res/EMU_DISKII_DOS33_import_ui.js'
+      - 'tests/diskii_dos33_import.test.js'
       - 'tests/appledisk2_sound.test.js'
       - '.github/workflows/diskii-ui-regression.yml'
   push:
@@ -16,6 +19,9 @@ on:
       - 'res/EMU_CARD_appledisk2.js'
       - 'res/EMU_CARD_appledisk2_topology.js'
       - 'res/EMU_CARD_appledisk2_ui_state.js'
+      - 'res/EMU_DISKII_DOS33_import.js'
+      - 'res/EMU_DISKII_DOS33_import_ui.js'
+      - 'tests/diskii_dos33_import.test.js'
       - 'tests/appledisk2_sound.test.js'
       - '.github/workflows/diskii-ui-regression.yml'
   workflow_dispatch:
@@ -32,5 +38,7 @@ jobs:
         run: |
           node --check res/EMU_CARD_appledisk2.js
           node --check res/EMU_CARD_appledisk2_topology.js
+          node --check res/EMU_DISKII_DOS33_import.js
+          node --check res/EMU_DISKII_DOS33_import_ui.js
       - name: Run Disk II sound and UI regressions
-        run: node --test tests/appledisk2_sound.test.js
+        run: node --test tests/appledisk2_sound.test.js tests/diskii_dos33_import.test.js
