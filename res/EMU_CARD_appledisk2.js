@@ -1535,6 +1535,13 @@ function AppleDisk2()
         return dskBytes;
     }
 
+    this.fileImportIsDriveBusy = function(deviceID)
+    {
+        var n=diskDeviceN(deviceID);
+        if(n===null) return true;
+        return !!(state.hw[n].motor || (state.drv===n && state.drive_enable));
+    };
+
     this.isDiskData = function(deviceID)
     {
         if(deviceID===undefined) return;
