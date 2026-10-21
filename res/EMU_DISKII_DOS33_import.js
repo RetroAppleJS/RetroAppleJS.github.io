@@ -6,19 +6,6 @@
 (function(root) {
 "use strict";
 var SIZE=143360, TRACKS=35, SECTORS=16, SECTOR_SIZE=256;
-var TOKENS=[
-"END","FOR","NEXT","DATA","INPUT","DEL","DIM","READ","GR","TEXT","PR#","IN#",
-"CALL","PLOT","HLIN","VLIN","HGR2","HGR","HCOLOR=","HPLOT","DRAW","XDRAW","HTAB",
-"HOME","ROT=","SCALE=","SHLOAD","TRACE","NOTRACE","NORMAL","INVERSE","FLASH",
-"COLOR=","POP","VTAB","HIMEM:","LOMEM:","ONERR","RESUME","RECALL","STORE",
-"SPEED=","LET","GOTO","RUN","IF","RESTORE","&","GOSUB","RETURN","REM","STOP",
-"ON","WAIT","LOAD","SAVE","DEF","POKE","PRINT","CONT","LIST","CLEAR","GET",
-"NEW","TAB(","TO","FN","SPC(","THEN","AT","NOT","STEP","+","-","*","/","^",
-"AND","OR",">","=","<","SGN","INT","ABS","USR","FRE","SCRN(","PDL","POS",
-"SQR","RND","LOG","EXP","COS","SIN","TAN","ATN","PEEK","LEN","STR$","VAL",
-"ASC","CHR$","LEFT$","RIGHT$","MID$"];
-var sorted=TOKENS.map(function(s,i){return {s:s,byte:0x80+i};})
-    .sort(function(a,b){return b.s.length-a.s.length;});
 function check(c,msg) { if(!c) throw Error(msg); }
 function hex(n) {return "$"+(n>>>0).toString(16).toUpperCase().padStart(4,"0");}
 function address(raw) {
@@ -61,49 +48,6 @@ function textBytes(source,preset) {
     out.push(0); // DOS sequential text EOF marker
     return {bytes:Uint8Array.from(out),unmapped:unmapped};
 }
-function tokenize(source) {
-    var rows=String(source).replace(/^\uFEFF/,"").split(/\r\n|\r|\n/);
-    var lines=[],last=-1;
-    rows.forEach(function(row) {
-        if(!row.trim()) return;
-        var m=/^\s*(\d{1,5})\s*(.*)$/.exec(row);
-        check(!!m,"Applesoft source requires numbered lines: "+row.slice(0,50));
-        var lineNo=Number(m[1]);
-        check(lineNo<=63999 && lineNo>last,"BASIC line numbers must be increasing and at most 63999.");
-        last=lineNo;
-        var raw=m[2],body=[],quoted=false,rem=false,data=false;
-        for(var i=0;i<raw.length;) {
-            var c=raw.charAt(i), up=raw.slice(i).toUpperCase(), matched=null;
-            if(c==='"') quoted=!quoted;
-            if(!quoted && !rem && !data) {
-                if(c==="?") {matched={s:"?",byte:0xba};}
-                else matched=sorted.find(function(token){return up.startsWith(token.s);}) || null;
-            }
-            if(matched) {
-                body.push(matched.byte);i+=matched.s.length;
-                if(matched.s==="REM") rem=true;
-                if(matched.s==="DATA") data=true;
-                continue;
-            }
-            if(!quoted && data && c===":") data=false;
-            var cp=c.charCodeAt(0);
-            check(cp>=0x20 && cp<=0x7e,"BASIC source contains non-ASCII character on line "+lineNo+".");
-            body.push(cp);i++;
-        }
-        lines.push({number:lineNo,body:body});
-    });
-    check(lines.length>0,"BASIC source has no numbered lines.");
-    var out=[],base=0x0801;
-    lines.forEach(function(line) {
-        var next=base+out.length+4+line.body.length+1;
-        check(next+2<=0x10000,"BASIC source is too large for Applesoft memory.");
-        out.push(next&255,(next>>8)&255,line.number&255,line.number>>8);
-        Array.prototype.push.apply(out,line.body);
-        out.push(0);
-    });
-    out.push(0,0);
-    return Uint8Array.from(out);
-}
 function prepare(input) {
     var kind=String(input.kind||"").toUpperCase();
     var bytes=input.bytes instanceof Uint8Array?input.bytes:new Uint8Array(input.bytes||[]);
@@ -121,12 +65,6 @@ function prepare(input) {
     } else if(kind==="T") {
         var transcoded=textBytes(input.text||"",input.preset||"A2_US");
         payload=transcoded.bytes;unmapped=transcoded.unmapped;
-    } else if(kind==="A") {
-        var program=tokenize(input.text||"");
-        check(program.length<=65535,"Applesoft file exceeds the DOS 3.3 length limit.");
-        payload=new Uint8Array(program.length+2);
-        payload[0]=program.length&255;payload[1]=program.length>>8;
-        payload.set(program,2);
     } else throw Error("Unsupported import type: "+kind);
     return {kind:kind,name:name,bytes:payload,loadAddress:start,unmapped:unmapped};
 }
@@ -137,7 +75,11 @@ function write(dsk,file) {
         vtoc[0x36]===0 && vtoc[0x37]===1,
         "Disk is not a recognized DOS 3.3 35-track/16-sector volume.");
     function valid(t,s){return t>=0 && t<35 && s>=0 && s<16;}
-    function off(t,s){return t*4096+s*256;}
+    // DOS image offsets are physically skewed; the catalog and T/S pointers
+    // contain physical sector numbers, unlike positions in a .dsk byte array.
+    // This must agree with AppleDisk2.SECTION_ORDER_DOS33.
+    var physicalToDOS=[0x0,0x7,0xe,0x6,0xd,0x5,0xc,0x4,0xb,0x3,0xa,0x2,0x9,0x1,0x8,0xf];
+    function off(t,s){return t*4096+physicalToDOS[s]*256;}
     var ct=vtoc[1],cs=vtoc[2],seen={},target=-1;
     check(valid(ct,cs) && ct!==0,"Invalid DOS catalog pointer.");
     for(var count=0;ct!==0 && count<32;count++){
@@ -189,7 +131,7 @@ function write(dsk,file) {
         }
     }
     image[target]=lists[0][0];image[target+1]=lists[0][1];
-    image[target+2]={T:0,A:2,B:4}[file.kind];
+    image[target+2]={T:0,B:4}[file.kind];
     for(var k=0;k<30;k++) image[target+3+k]=(k<file.name.length?
         file.name.charCodeAt(k):32)|0x80;
     image[target+0x21]=need&255;image[target+0x22]=(need>>8)&255;
@@ -197,7 +139,7 @@ function write(dsk,file) {
         bytes:file.bytes.length,loadAddress:file.loadAddress,unmapped:file.unmapped};
 }
 var api={parseAddress:address,dosName:filename,encodeText:textBytes,
-    tokenizeApplesoft:tokenize,prepare:prepare,insert:write};
+    prepare:prepare,insert:write};
 root.DiskIIDOS33Import=api;
 if(typeof module!=="undefined" && module.exports)module.exports=api;
 })(typeof globalThis!=="undefined"?globalThis:this);
