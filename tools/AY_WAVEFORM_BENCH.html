@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AY Waveform Bench v1 · RetroAppleJS</title>
+<title>AY Waveform Bench v1.1 · RetroAppleJS</title>
 <style>
 :root{color-scheme:dark;background:#0e1723;color:#edf3fa;font:14px/1.5 system-ui,-apple-system,sans-serif}
 *{box-sizing:border-box}body{margin:0 auto;padding:24px;max-width:1250px}
@@ -56,13 +56,13 @@ audio{width:100%;margin-top:10px}footer{margin:16px 0;color:#adbed1;font-size:12
 <div class="grid"><div><h3>Oscilloscope · approx. 4 waveform cycles</h3><canvas id="wave" width="570" height="235"></canvas></div>
 <div><h3>Frequency spectrum · Hann-windowed FFT</h3><canvas id="spectrum" width="570" height="235"></canvas></div></div>
 <audio id="player" controls aria-label="Listen to rendered AY waveform"></audio>
-<p id="stats" class="muted">Spectrum measurements use the central 2,048 samples; 10.77 Hz bin spacing. The dominant peak may be a harmonic rather than the fundamental.</p>
+<p id="stats" class="muted">Spectrum measurements use the central 2,048 samples; 10.77 Hz bin spacing. Fundamental amplitude is measured at the programmed oscillator frequency; the dominant peak can be a harmonic. THD is an approximate harmonic projection, not physical-chip calibration.</p>
 </section>
 <section class="panel"><h2>AY register writes</h2><p class="muted">Recorded in exact order, including independent chip addresses and the envelope shape write that retriggers R13.</p>
 <pre id="registers">No experiment rendered yet.</pre></section>
 <section class="panel"><h2>Frequency-range survey</h2>
 <p class="muted">Renders every technique at 55, 110, 220 and 440 Hz, each for 0.5 s, with the chosen AY clock and JS/WASM backend. Exports exact parameters, theoretical tuning and measured spectra metrics. It is not calibrated against a physical AY or SID.</p>
-<div class="scroll"><table><thead><tr><th>Technique</th><th>Requested</th><th>Actual</th><th>Error</th><th>RMS</th><th>Peak Hz</th><th>Render ms</th></tr></thead><tbody id="rows"><tr><td colspan="7" class="muted">Run survey to fill the table.</td></tr></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>Technique</th><th>Requested</th><th>Actual</th><th>Error</th><th>RMS</th><th>Peak Hz</th><th>THD %</th><th>Alias risk</th><th>Render ms</th></tr></thead><tbody id="rows"><tr><td colspan="9" class="muted">Run survey to fill the table.</td></tr></tbody></table></div>
 </section>
 <section class="panel"><h2>Technical interpretation</h2>
 <p><b>Audio-rate envelope limitation:</b> At a 1,021,800 Hz clock, a repeating saw reaches only about 249.5 Hz and a full triangle only about 124.7 Hz at envelope period 1. A higher requested pitch is <b>clamped</b>, not achieved. AY envelope shapes are 16-level stepped signals, affected by the real AY DAC curve.</p>
@@ -70,7 +70,7 @@ audio{width:100%;margin-top:10px}footer{margin:16px 0;color:#adbed1;font-size:12
 <p><b>Boundaries:</b> This bench tests only the existing RetroAppleJS AYCore. It does not replace its DAC or waveform synthesis, perform a SID comparison, or measure physical hardware. The phase-1 goal is to quantify genuinely available AY timbres before designing SID-to-AY voice allocation.</p>
 <p class="muted"><a href="SID_AUDIO_BENCH.html">SID Audio Bench</a> · <a href="SID_FILTER_CALIBRATION.html">SID Filter Calibration</a> · <a href="MockingboardJS.html">Mockingboard Player</a></p>
 </section>
-<footer>AY Waveform Bench v1 · schema <code>retroapplejs.ay.waveform-bench.v1</code> · 22,050 Hz PCM · isolated test tool</footer>
+<footer>AY Waveform Bench v1.1 · schema <code>retroapplejs.ay.waveform-bench.v1.1</code> · 22,050 Hz PCM · isolated test tool</footer>
 <script>
 (function(){
 'use strict';
@@ -125,13 +125,13 @@ $('survey').onclick=async function(){if(busy)return;lock(true);survey=[];$('save
  label('Measuring '+(i+1)+'/'+jobs.length+' · '+jobs[i].fixture+' @ '+jobs[i].hz+' Hz');
  await new Promise(function(resolve){setTimeout(resolve,0);});
  var r=await B.render(AYCore,jobs[i]);survey.push(B.report(r));
- var tr=document.createElement('tr');[r.spec.fixture,fmt(r.spec.hz,0),fmt(r.spec.pitch.actualHz,1),fmt(r.spec.pitch.errorCents,1),fmt(r.metrics.rms,4),fmt(r.metrics.dominantHz,1),fmt(r.renderMs,1)].forEach(function(cell){var td=document.createElement('td');td.textContent=cell;tr.appendChild(td);});$('rows').appendChild(tr);
+ var tr=document.createElement('tr');[r.spec.fixture,fmt(r.spec.hz,0),fmt(r.spec.pitch.actualHz,1),fmt(r.spec.pitch.errorCents,1),fmt(r.metrics.rms,4),fmt(r.metrics.dominantHz,1),fmt(r.metrics.thdPercent,1),r.metrics.aliasRisk||'—',fmt(r.renderMs,1)].forEach(function(cell){var td=document.createElement('td');td.textContent=cell;tr.appendChild(td);});$('rows').appendChild(tr);
  }$('savesurvey').disabled=false;label('Survey completed: '+survey.length+' renderings. Export JSON for later comparisons.');}
  catch(err){label('Survey stopped after '+survey.length+' results: '+(err.message||String(err)));if(survey.length)$('savesurvey').disabled=false;}
  finally{lock(false);}};
 $('savewav').onclick=function(){if(latest)download(new Blob([B.wav(latest.pcm,latest.rate)],{type:'audio/wav'}),'ay-waveform-'+latest.spec.fixture+'-'+latest.spec.hz+'hz.wav');};
 $('savejson').onclick=function(){if(latest)download(new Blob([JSON.stringify(B.report(latest),null,2)],{type:'application/json'}),'ay-waveform-'+latest.spec.fixture+'-'+latest.spec.hz+'hz.json');};
-$('savesurvey').onclick=function(){if(survey.length)download(new Blob([JSON.stringify({schema:B.SCHEMA+'.survey',createdAt:new Date().toISOString(),count:survey.length,results:survey},null,2)],{type:'application/json'}),'ay-waveform-survey-v1.json');};
+$('savesurvey').onclick=function(){if(survey.length)download(new Blob([JSON.stringify({schema:B.SCHEMA+'.survey',createdAt:new Date().toISOString(),count:survey.length,results:survey},null,2)],{type:'application/json'}),'ay-waveform-survey-v1.1.json');};
 if(window.AYCore&&window.AYWaveformBench&&typeof AYCore.create==='function'){
  B.FIXTURES.forEach(function(f){var e=document.createElement('option');e.value=f.id;e.textContent=f.label;$('fixture').appendChild(e);});
  label('AYCore detected. Ready for offline register-driven experiments.');

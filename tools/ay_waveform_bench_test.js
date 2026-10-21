@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const B=require('../tools/AY_WAVEFORM_BENCH_core.js');
 
 test('metadata and fixed 22,050 Hz economy baseline',()=>{
- assert.equal(B.SCHEMA,'retroapplejs.ay.waveform-bench.v1');
+ assert.equal(B.SCHEMA,'retroapplejs.ay.waveform-bench.v1.1');
  assert.equal(B.RATE,22050);assert.equal(B.FIXTURES.length,9);
 });
 test('12-bit tone periods are correctly rounded and clamped',()=>{
@@ -12,12 +12,12 @@ test('12-bit tone periods are correctly rounded and clamped',()=>{
  assert.equal(p.period,145);assert.ok(Math.abs(p.errorCents)<3);
  assert.equal(B.nearestPeriod(1021800,10000,16,4095).period,6);
 });
-test('audio-rate AY envelopes clamp above their maximum fundamental',()=>{
+test('audio-rate AY envelopes follow corrected period dividers',()=>{
  const s=B.generate({fixture:'saw-down',hz:440});
- assert.equal(s.pitch.period,1);assert.equal(s.pitch.clamped,true);
- assert.ok(Math.abs(s.pitch.actualHz-249.462890625)<.00001);
+ assert.equal(s.pitch.period,9);assert.equal(s.pitch.clamped,false);
+ assert.ok(Math.abs(s.pitch.actualHz-443.4895833333333)<.001);
  const t=B.generate({fixture:'triangle',hz:440});
- assert.equal(t.pitch.period,1);assert.ok(Math.abs(t.pitch.actualHz-124.7314453125)<.00001);
+ assert.equal(t.pitch.period,5);assert.ok(Math.abs(t.pitch.actualHz-399.140625)<.00001);
  assert.ok(t.events.some(e=>e.reg===13&&e.value===0x0a));
 });
 test('mixer settings and envelope retriggers encode correct register writes',()=>{
@@ -67,4 +67,17 @@ test('renderUntil honors timebase/block-size, ordered events, and destroys core'
  const r=await B.render(api,{fixture:'two-chip',duration:1});
  assert.equal(r.pcm.length,22050);assert.equal(r.metrics.sampleCount,22050);
  assert.ok(calls.filter(c=>c[0]==='render').length>=11);assert.equal(destroyed,true);
+});
+
+test('Phase 1.1: calibrated envelope tuning and harmonic metrics',()=>{
+ const saw=B.describe('saw-down',110,1021800,1);
+ assert.equal(saw.period,36);assert.ok(Math.abs(saw.actualHz-110.8724)<.01);
+ const tri=B.describe('triangle',110,1021800,1);
+ assert.equal(tri.period,18);assert.ok(Math.abs(tri.actualHz-110.8724)<.01);
+ const x=Float32Array.from({length:22050},(_,i)=>.4*Math.sin(2*Math.PI*440*i/22050)+.2*Math.sin(2*Math.PI*880*i/22050));
+ const m=B.pcmMetrics(x,440);
+ assert.ok(Math.abs(m.fundamentalHz-440)<.001);
+ assert.ok(m.thdPercent>40&&m.thdPercent<60);
+ assert.ok(m.harmonicDb.length>=3);
+ assert.notEqual(m.fundamentalDb,null);
 });

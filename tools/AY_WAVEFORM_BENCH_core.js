@@ -1,11 +1,11 @@
-/* RetroAppleJS · AY Waveform Laboratory 1.0 — isolated offline experiments. */
+/* RetroAppleJS · AY Waveform Laboratory 1.1 — isolated offline experiments. */
 (function(root, factory) {
   var api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.AYWaveformBench = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function() {
   'use strict';
-  var SCHEMA = 'retroapplejs.ay.waveform-bench.v1';
+  var SCHEMA = 'retroapplejs.ay.waveform-bench.v1.1';
   var RATE = 22050, TIMEBASE = 1000000000, BLOCK = 2048;
   var FIXTURES = [
     {id:'square',label:'Square / native tone',kind:'tone',description:'AY channel A, fixed 50% tone, R7=$3E'},
@@ -33,12 +33,12 @@
   function describe(fixture,hz,clock,ratio) {
     var kind = FIXTURES.find(function(x){return x.id===fixture;});
     if (!kind) throw new Error('Unknown fixture '+fixture);
-    var divider = kind.kind==='saw'?4096:kind.kind==='triangle'?8192:16;
+    var divider = kind.kind==='saw'?256:kind.kind==='triangle'?512:16;
     if (kind.kind==='noise') return {period:null,actualHz:null,requestedHz:hz,errorCents:null,clamped:false};
     if(kind.kind==='two-chip') divider=16;
     var p=nearestPeriod(clock,hz,divider,divider===16?4095:65535);
-    if(kind.kind==='buzzer') p.envelope=nearestPeriod(clock,clamp(hz*ratio,1,18000),4096,65535);
-    if(kind.kind==='two-chip') p.envelope=nearestPeriod(clock,hz,4096,65535);
+    if(kind.kind==='buzzer') p.envelope=nearestPeriod(clock,clamp(hz*ratio,1,18000),256,65535);
+    if(kind.kind==='two-chip') p.envelope=nearestPeriod(clock,hz,256,65535);
     if(kind.kind==='detune') p.secondary=nearestPeriod(clock,hz*Math.pow(2,12/1200),16,4095);
     return p;
   }
@@ -95,10 +95,12 @@
     }
     var spectral=spectrum(samples,RATE,pitchHz);
     return {sampleCount:n,rms:Math.sqrt(squares/n),peak:peak,dc:sum/n,clippedSamples:clipped,
-      dominantHz:spectral.dominantHz,centroidHz:spectral.centroidHz,
+      dominantHz:spectral.dominantHz,fundamentalHz:spectral.fundamentalHz, fundamentalDb:spectral.fundamentalDb,
+      harmonicDb:spectral.harmonicDb,thdPercent:spectral.thdPercent,aliasRisk:spectral.aliasRisk,
+      centroidHz:spectral.centroidHz,
       spectral:spectral.bins};
   }
-  function spectrum(samples,rate) {
+  function spectrum(samples,rate,expectedHz) {
     // Radix-2 FFT on a Hann-windowed central 2048-sample slice. No dependencies.
     var N=2048, start=Math.floor((samples.length-N)/2);
     if(start<0) throw new Error('Too few samples for FFT');
@@ -135,7 +137,40 @@
       var a=Math.log(Math.max(dft[j-1],1e-12)),b=Math.log(Math.max(dft[j],1e-12)),c=Math.log(Math.max(dft[j+1],1e-12));
       if(a-2*b+c!==0)offset=clamp(.5*(a-c)/(a-2*b+c),-0.5,0.5);
     }
+    // Matched-frequency Hann projection resolves a target fundamental between FFT bins.
+    // This is distinct from the strongest spectral peak (which may be a harmonic).
+    var fundamentalHz=null,fundamentalDb=null,harmonicDb=[],thdPercent=null,aliasRisk=null;
+    if(Number.isFinite(expectedHz)&&expectedHz>0&&expectedHz<rate/2){
+      var hannPower=0;
+      function projection(hz){
+        var rr=0,ii=0;
+        for(var q=0;q<N;q++){
+          var window=0.5-0.5*Math.cos(2*Math.PI*q/(N-1));
+          var phase=2*Math.PI*hz*q/rate;
+          rr+=samples[start+q]*window*Math.cos(phase);
+          ii-=samples[start+q]*window*Math.sin(phase);
+        }
+        return Math.hypot(rr,ii);
+      }
+      for(var q=0;q<N;q++)hannPower+=0.5-0.5*Math.cos(2*Math.PI*q/(N-1));
+      var fundamentalPower=projection(expectedHz);
+      fundamentalHz=expectedHz;
+      fundamentalDb=20*Math.log10(Math.max(1e-12,2*fundamentalPower/hannPower));
+      var harmonicSum=0;
+      for(var h=1;h*expectedHz<rate/2&&h<=32;h++){
+        var amplitude=2*projection(h*expectedHz)/hannPower;
+        harmonicDb.push({harmonic:h,hz:h*expectedHz,db:20*Math.log10(Math.max(1e-12,amplitude))});
+        if(h>1)harmonicSum+=amplitude*amplitude;
+      }
+      var fundamentalAmplitude=2*fundamentalPower/hannPower;
+      thdPercent=fundamentalAmplitude>1e-8?100*Math.sqrt(harmonicSum)/fundamentalAmplitude:null;
+      // Warning based on available harmonics and wave type, not proof of aliasing.
+      aliasRisk=expectedHz*32>=rate/2?'High: 32nd harmonic exceeds Nyquist':
+        expectedHz*8>=rate/2?'Moderate: 8th harmonic exceeds Nyquist':'Low at first 8 harmonics';
+    }
     return {dominantHz:best>1e-9?(bestIndex+offset)*rate/N:0,
+      fundamentalHz:fundamentalHz,fundamentalDb:fundamentalDb,harmonicDb:harmonicDb,
+      thdPercent:thdPercent,aliasRisk:aliasRisk,
       centroidHz:magTotal?moment/magTotal:0,bins:bins};
   }
   async function render(coreAPI,options) {
@@ -169,7 +204,7 @@
       }
     } finally {engine.destroy();}
     var endTime=typeof performance!=='undefined'?performance.now():Date.now();
-    var pitch=spec.pitch.actualHz;
+    var pitch=spec.kind==='noise'?null:spec.pitch.actualHz;
     return {spec:spec,backend:actualBackend,renderMs:endTime-start,rate:RATE,pcm:floats,
       metrics:pcmMetrics(floats,pitch)};
   }
@@ -192,7 +227,8 @@
       renderProfile:'economy',backend:result.backend,renderMs:result.renderMs,
       spec:Object.assign({},result.spec,{events:result.spec.events.map(function(e){return {tick:e.tick,chip:e.chip,reg:e.reg,value:e.value};})}),
       metrics:{sampleCount:m.sampleCount,rms:m.rms,peak:m.peak,dc:m.dc,clippedSamples:m.clippedSamples,
-        dominantHz:m.dominantHz,centroidHz:m.centroidHz}};
+        dominantHz:m.dominantHz,fundamentalHz:m.fundamentalHz,fundamentalDb:m.fundamentalDb,
+        harmonicDb:m.harmonicDb,thdPercent:m.thdPercent,aliasRisk:m.aliasRisk,centroidHz:m.centroidHz}};
   }
   return {SCHEMA:SCHEMA,RATE:RATE,FIXTURES:FIXTURES,nearestPeriod:nearestPeriod,
     describe:describe,generate:generate,spectrum:spectrum,pcmMetrics:pcmMetrics,render:render,

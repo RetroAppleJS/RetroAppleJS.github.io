@@ -83,3 +83,13 @@ outputs consist of only 16 amplitude levels, not a mathematically ideal ramp.
 Per-experiment JSON stores exact register writes and ticks, backend, render
 profile, output metrics, requested frequency and theoretical quantized pitch.
 No audio PCM is embedded in JSON. Use **Save WAV** for audio captures.
+
+## Phase 1.1 — corrected envelope pitch and spectral diagnostics
+
+- Audio-rate AY envelope period conversions use `fAY/(256*P)` for repeating saw and `fAY/(512*P)` for repeating triangle, fixing a 16× underprediction in v1.
+- Tone×envelope (`buzzer`) retains separate tone and envelope tuning; its spectral peak can represent modulation rather than the tone fundamental.
+- JSON schema is now `retroapplejs.ay.waveform-bench.v1.1`, with `fundamentalHz`, `fundamentalDb`, `harmonicDb`, `thdPercent` and `aliasRisk`.
+- Harmonic amplitudes use Hann-windowed, matched-frequency projections at the programmed oscillator fundamental and integer multiples. This estimates harmonic distortion, but transients, detuning, noise and modulation make `thdPercent` not a standard single-tone THD measurement. In two-chip and buzzer fixtures, treat it as descriptive only.
+- `aliasRisk` warns when integer multiples of the programmed fundamental cross 11,025 Hz. It is a **heuristic**, not a measurement of aliased energy. Broad-spectrum noise and products of modulation can alias without triggering a low harmonic-risk warning.
+- The FFT still reports the largest spectral peak separately as `dominantHz`; `fundamentalHz` represents the target expected oscillator frequency rather than an independently inferred fundamental pitch.
+- The standalone bench requires the existing repository AYCore JavaScript assets. Keep the `.js` core alongside the `.txt` copy when testing in a browser.
