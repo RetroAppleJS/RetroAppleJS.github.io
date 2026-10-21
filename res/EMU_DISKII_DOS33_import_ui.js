@@ -68,11 +68,26 @@ function toggle(card,slot,popupFactory){
             });
             var data=card.getDiskData(drive);
             var result=DiskIIDOS33Import.insert(data,file);
-            // A successful conversion is committed all at once via the existing
-            // nibblizer; failed conversions cannot change the mounted disk.
-            card.setDiskData(Array.from(result.image),drive,card.getDiskName(drive));
+            // Validate the new DOS structures before modifying the mounted
+            // disk, then verify again AFTER the .dsk -> .nib -> .dsk conversion.
+            DiskIIDOS33Import.verify(result.image,file);
+            var originalName=card.getDiskName(drive);
+            card.setDiskData(Array.from(result.image),drive,originalName);
+            var verified;
+            try {
+                verified=DiskIIDOS33Import.verify(card.getDiskData(drive),file);
+            } catch(readbackError) {
+                // Never leave a partial/corrupt import mounted.
+                card.setDiskData(Array.from(data),drive,originalName);
+                throw Error("Disk import was rolled back: "+readbackError.message);
+            }
+            if(by("diDrive").selectedOptions[0])
+                by("diDrive").selectedOptions[0].textContent=drive+" — mounted";
             status.textContent="Imported "+result.name+" ("+result.kind+"): "+
-                result.bytes+" bytes in "+result.sectors+" sectors"+
+                (verified.kind==="B"
+                    ? verified.length+" data bytes, DOS load $"+verified.loadAddress.toString(16).toUpperCase().padStart(4,"0")
+                    : verified.length+" bytes")+
+                " in "+result.sectors+" sectors (disk read-back verified)"+
                 (result.unmapped?"; "+result.unmapped+" unmappable character(s) replaced":"")+".";
             if(card.refreshVisibleSurfaceMap)card.refreshVisibleSurfaceMap();
         }catch(e){status.textContent="Import failed: "+e.message;}
