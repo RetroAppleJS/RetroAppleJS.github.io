@@ -62,3 +62,38 @@ test("reject unformatted volumes and full allocation maps",()=>{
   const b=disk();b.fill(0,17*4096+0x38,17*4096+0xc4);
   assert.throws(()=>imp.insert(b,imp.prepare({kind:"T",name:"TEXT",text:"hello"})),/Not enough/);
 });
+
+
+test("real DOS 3.3 disk retains BLOAD $2000 header after NIB conversion",()=>{
+  const fs=require("node:fs"),path=require("node:path");
+  const raw=new Uint8Array(fs.readFileSync(path.join(__dirname,"../disks/BLANK_DOS.DSK")));
+  const payload=new Uint8Array(8192);
+  payload[0]=0x12;payload[1]=0x34;payload[8191]=0x56;
+  const file=imp.prepare({kind:"B",name:"HGR-PAGE1",address:"$2000",bytes:payload});
+  const inserted=imp.insert(raw,file);
+  const check=imp.verify(inserted.image,file);
+  assert.deepEqual(check.header,[0,0x20,0,0x20]);
+  assert.equal(check.loadAddress,0x2000);
+  assert.equal(check.length,8192);
+  const cardSrc=fs.readFileSync(path.join(__dirname,"../res/EMU_CARD_appledisk2.js"),"utf8");
+  const card=new Function("var oEMU=undefined;"+cardSrc+"; return new AppleDisk2()")();
+  const roundTrip=card.convertNib2Dsk(card.convertDsk2Nib(Array.from(inserted.image)));
+  assert.deepEqual(imp.verify(roundTrip,file).header,[0,0x20,0,0x20]);
+  // Verify a tampered stored header cannot be reported as a successful import.
+  const bad=Uint8Array.from(roundTrip);
+  const skew=[0,7,14,6,13,5,12,4,11,3,10,2,9,1,8,15],at=(t,sec)=>t*4096+skew[sec]*256;
+  let t=bad[17*4096+1],sector=bad[17*4096+2],list=null;
+  for(let guard=0;t!==0 && guard<32;guard++){
+    const pos=at(t,sector);
+    for(let k=0;k<7;k++){
+      const p=pos+0x0b+k*0x23;
+      const name=Array.from(bad.slice(p+3,p+33),b=>String.fromCharCode(b&127)).join("").trim();
+      if(name==="HGR-PAGE1")list=[bad[p],bad[p+1]];
+    }
+    const nextT=bad[pos+1],nextS=bad[pos+2];t=nextT;sector=nextS;
+  }
+  assert.ok(list,"Imported DOS catalog entry missing");
+  const listPos=at(list[0],list[1]),dataPos=at(bad[listPos+0x0c],bad[listPos+0x0d]);
+  bad[dataPos+1]=0;
+  assert.throws(()=>imp.verify(bad,file),/mismatch/);
+});
