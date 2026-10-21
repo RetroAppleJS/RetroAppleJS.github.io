@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AY Waveform Bench v1.1 · RetroAppleJS</title>
+<title>AY Waveform Bench v1.2 · RetroAppleJS</title>
 <style>
 :root{color-scheme:dark;background:#0e1723;color:#edf3fa;font:14px/1.5 system-ui,-apple-system,sans-serif}
 *{box-sizing:border-box}body{margin:0 auto;padding:24px;max-width:1250px}
@@ -31,7 +31,7 @@ audio{width:100%;margin-top:10px}footer{margin:16px 0;color:#adbed1;font-size:12
 <script src="AY_WAVEFORM_BENCH_core.js"></script>
 </head><body>
 <header><div class="eyebrow">RetroAppleJS · Mockingboard · Offline synthesis laboratory</div>
-<h1>AY Waveform Bench <small>v1</small></h1>
+<h1>AY Waveform Bench <small>v1.2</small></h1>
 <p class="muted">Real AYCore output · 22,050 Hz · economy renderer · two AY chips · register-level fixtures · no production changes</p></header>
 <section class="panel"><h2>Experiment setup</h2><div class="row controls">
 <label style="flex:2 1 250px">Waveform technique<select id="fixture"></select></label>
@@ -41,6 +41,7 @@ audio{width:100%;margin-top:10px}footer{margin:16px 0;color:#adbed1;font-size:12
 <label>Volume (0–15)<input id="volume" type="number" value="13" min="0" max="15" step="1"></label>
 <label>Envelope:tone ratio<select id="ratio"><option value="0.25">0.25 ×</option><option value="0.5">0.5 ×</option><option value="1" selected>1 ×</option><option value="2">2 ×</option><option value="4">4 ×</option></select></label>
 <label>Noise period (1–31)<input id="noisePeriod" type="number" value="8" min="1" max="31" step="1"></label>
+<label>Ideal reference<select id="reference"><option value="auto" selected>Auto for single oscillator</option><option value="square">Ideal square</option><option value="saw">Ideal sawtooth</option><option value="triangle">Ideal triangle</option></select></label>
 <label>Renderer<select id="backend"><option value="js" selected>JavaScript / reference compatibility</option><option value="wasm">WASM</option></select></label>
 </div>
 <div class="actions"><button class="primary" id="run">Render selected waveform</button><button id="survey">Survey all techniques × 4 notes</button>
@@ -52,25 +53,37 @@ audio{width:100%;margin-top:10px}footer{margin:16px 0;color:#adbed1;font-size:12
 <div class="kpis"><div class="kpi"><b id="actual">—</b><span>Actual fundamental (theoretical Hz)</span></div>
 <div class="kpi"><b id="cents">—</b><span>Pitch error (cents)</span></div><div class="kpi"><b id="rms">—</b><span>RMS amplitude</span></div>
 <div class="kpi"><b id="renderMs">—</b><span>Offline rendering time (ms)</span></div></div>
+<div class="kpis"><div class="kpi"><b id="shapeScore">—</b><span>Ideal shape score / 100</span></div>
+<div class="kpi"><b id="shapeError">—</b><span>Weighted harmonic error (dB)</span></div>
+<div class="kpi"><b id="cosineScore">—</b><span>Harmonic cosine match (%)</span></div>
+<div class="kpi"><b id="idealBest">—</b><span>Nearest ideal spectral family</span></div></div>
 <div id="warning" class="muted"></div>
 <div class="grid"><div><h3>Oscilloscope · approx. 4 waveform cycles</h3><canvas id="wave" width="570" height="235"></canvas></div>
 <div><h3>Frequency spectrum · Hann-windowed FFT</h3><canvas id="spectrum" width="570" height="235"></canvas></div></div>
+<div class="grid" style="margin-top:15px"><div><h3>AY versus ideal · relative harmonics</h3><canvas id="harmonics" width="570" height="235"></canvas></div>
+<div><h3>Ideal reference waveform · four cycles</h3><canvas id="idealWave" width="570" height="235"></canvas></div></div>
+<p class="muted" id="referenceInfo">Comparison is available only for native square and pure envelope saw/triangle. Automatic selection is used in the frequency survey.</p>
 <audio id="player" controls aria-label="Listen to rendered AY waveform"></audio>
-<p id="stats" class="muted">Spectrum measurements use the central 2,048 samples; 10.77 Hz bin spacing. Fundamental amplitude is measured at the programmed oscillator frequency; the dominant peak can be a harmonic. THD is an approximate harmonic projection, not physical-chip calibration.</p>
+<p id="stats" class="muted">The broadband FFT uses 2,048 samples (10.77 Hz bins). Harmonic comparisons use up to 8,192 centered samples and the <em>actual programmed</em> frequency, so pitch error is separated from spectral-shape error. THD and ideal scores are N/A for modulated, detuned, mixed-noise, or multi-chip sounds.</p>
+</section>
+<section class="panel"><h2>Interpretation of spectral matching</h2>
+<p><b>Pitch-matched:</b> ideal square, sawtooth and triangle spectra are evaluated at each AY fixture's <em>programmed</em> fundamental, not the requested note. The curve comparison therefore isolates timbre from tuning. Saw-up and saw-down have the same ideal magnitude spectrum; direction/phase is not scored.</p>
+<p><b>Metrics:</b> the harmonic shape error is a weighted RMS difference of normalized harmonic levels, in dB, over up to 32 harmonics below Nyquist. Shape score = 100 × exp[−½(error / 12 dB)²]. Cosine match measures linear harmonic-spectrum similarity. Scores are analytic heuristics, not SID fidelity, perceptual quality, or a calibrated correlation.</p>
+<p><b>Composite fixtures:</b> buzzer, noise, tone+noise, detune and two-chip still have RMS, spectral centroid and dominant-peak measurements, but no single-oscillator THD or ideal shape score. The JSON includes an explicit reason.</p>
 </section>
 <section class="panel"><h2>AY register writes</h2><p class="muted">Recorded in exact order, including independent chip addresses and the envelope shape write that retriggers R13.</p>
 <pre id="registers">No experiment rendered yet.</pre></section>
 <section class="panel"><h2>Frequency-range survey</h2>
 <p class="muted">Renders every technique at 55, 110, 220 and 440 Hz, each for 0.5 s, with the chosen AY clock and JS/WASM backend. Exports exact parameters, theoretical tuning and measured spectra metrics. It is not calibrated against a physical AY or SID.</p>
-<div class="scroll"><table><thead><tr><th>Technique</th><th>Requested</th><th>Actual</th><th>Error</th><th>RMS</th><th>Peak Hz</th><th>THD %</th><th>Alias risk</th><th>Render ms</th></tr></thead><tbody id="rows"><tr><td colspan="9" class="muted">Run survey to fill the table.</td></tr></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>Technique</th><th>Requested</th><th>Actual</th><th>Error</th><th>RMS</th><th>Peak Hz</th><th>Ideal</th><th>Shape /100</th><th>Shape error dB</th><th>THD %</th><th>Alias risk</th><th>Render ms</th></tr></thead><tbody id="rows"><tr><td colspan="12" class="muted">Run survey to fill the table.</td></tr></tbody></table></div>
 </section>
 <section class="panel"><h2>Technical interpretation</h2>
-<p><b>Audio-rate envelope limitation:</b> At a 1,021,800 Hz clock, a repeating saw reaches only about 249.5 Hz and a full triangle only about 124.7 Hz at envelope period 1. A higher requested pitch is <b>clamped</b>, not achieved. AY envelope shapes are 16-level stepped signals, affected by the real AY DAC curve.</p>
+<p><b>Audio-rate envelope limitation:</b> At a 1,021,800 Hz clock, a repeating saw can reach about 3,991.4 Hz and a full triangle about 1,995.7 Hz at envelope period 1. A higher requested pitch is <b>clamped</b>, not achieved. AY envelope shapes are 16-level stepped signals, affected by the real AY DAC curve.</p>
 <p><b>Two-chip experiment:</b> AY0 channel A is rendered on the left and AY1 channel A on the right, like the production Mockingboard; the plotted mono waveform averages those stereo outputs. Each AY has one shared envelope and one shared noise source.</p>
-<p><b>Boundaries:</b> This bench tests only the existing RetroAppleJS AYCore. It does not replace its DAC or waveform synthesis, perform a SID comparison, or measure physical hardware. The phase-1 goal is to quantify genuinely available AY timbres before designing SID-to-AY voice allocation.</p>
+<p><b>Boundaries:</b> This bench renders audio using the existing RetroAppleJS AYCore. It does not replace its DAC or waveform synthesis, perform a SID comparison, or measure physical hardware. Phase 1.2 compares single-oscillator AY spectra against analytic, pitch-matched ideal references; this is not a physical SID reference recording.</p>
 <p class="muted"><a href="SID_AUDIO_BENCH.html">SID Audio Bench</a> · <a href="SID_FILTER_CALIBRATION.html">SID Filter Calibration</a> · <a href="MockingboardJS.html">Mockingboard Player</a></p>
 </section>
-<footer>AY Waveform Bench v1.1 · schema <code>retroapplejs.ay.waveform-bench.v1.1</code> · 22,050 Hz PCM · isolated test tool</footer>
+<footer>AY Waveform Bench v1.2 · schema <code>retroapplejs.ay.waveform-bench.v1.2</code> · 22,050 Hz PCM · isolated test tool</footer>
 <script>
 (function(){
 'use strict';
@@ -79,7 +92,7 @@ function fmt(x,n){return Number.isFinite(x)?x.toFixed(n):'—';}
 function label(msg){$('status').textContent=msg;}
 function params(){return {fixture:$('fixture').value,hz:Number($('hz').value),clock:Number($('clock').value),
  duration:Number($('duration').value),volume:Number($('volume').value),ratio:Number($('ratio').value),
- noisePeriod:Number($('noisePeriod').value),backend:$('backend').value};}
+ noisePeriod:Number($('noisePeriod').value),reference:$('reference').value,backend:$('backend').value};}
 function clean(){if(url){URL.revokeObjectURL(url);url=null;}}
 function download(blob,name){var link=document.createElement('a');var tmp=URL.createObjectURL(blob);link.href=tmp;link.download=name;link.click();setTimeout(function(){URL.revokeObjectURL(tmp);},1500);}
 function line(ctx,x1,y1,x2,y2,color){ctx.strokeStyle=color;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
@@ -104,34 +117,70 @@ function chartSpectrum(r){
  if(i===0)cx.moveTo(x,y);else cx.lineTo(x,y);}
  cx.stroke();cx.fillStyle='#a7b9ca';for(var f=0;f<=10000;f+=2000){var px=left+f/11025*(right-left);cx.fillText(f===0?'0':f/1000+'k',px-8,h-7);}
 }
+function chartHarmonics(r){
+ var cv=$('harmonics'),cx=cv.getContext('2d'),w=cv.width,h=cv.height;
+ cx.fillStyle='#0c1825';cx.fillRect(0,0,w,h);
+ var comp=r.metrics.comparison,left=50,right=w-18,top=18,bottom=h-30;
+ for(var db=-60;db<=0;db+=12){var y=top+(0-db)/60*(bottom-top);line(cx,left,y,right,y,'#243b50');cx.fillStyle='#a7b9ca';cx.font='11px monospace';cx.fillText(db+' dB',3,y+4);}
+ if(!comp||!comp.eligible){cx.fillStyle='#b7cbdc';cx.font='13px sans-serif';cx.fillText('N/A · composite or broadband source',65,h/2);return;}
+ var rows=comp.harmonics.slice(0,16),step=(right-left)/rows.length;
+ rows.forEach(function(row,i){
+   var x=left+(i+.5)*step,lim=function(v){return top+Math.max(0,Math.min(1,-v/60))*(bottom-top);};
+   var y1=lim(row.idealDb),y2=lim(row.measuredDb);
+   line(cx,x,y1,x,y2,'#687e97');
+   cx.fillStyle='#f5bd7e';cx.fillRect(x-3,y1-3,6,6);
+   cx.fillStyle='#6fe0d3';cx.beginPath();cx.arc(x,y2,3,0,2*Math.PI);cx.fill();
+   if(i%2===0||rows.length<=8){cx.fillStyle='#a7b9ca';cx.font='11px monospace';cx.fillText(i+1,x-4,h-12);}
+ });
+ cx.font='11px sans-serif';cx.fillStyle='#6fe0d3';cx.fillText('● AY measured',left+6,14);
+ cx.fillStyle='#f5bd7e';cx.fillText('■ ideal '+comp.reference,left+120,14);
+}
+function chartIdealWave(r){
+ var cv=$('idealWave'),cx=cv.getContext('2d'),w=cv.width,h=cv.height;
+ cx.fillStyle='#0c1825';cx.fillRect(0,0,w,h);line(cx,30,h/2,w-15,h/2,'#48647c');
+ var c=r.metrics.comparison;
+ if(!c||!c.eligible){cx.fillStyle='#b7cbdc';cx.font='13px sans-serif';cx.fillText('Not applicable to composite signals',55,h/2-15);return;}
+ cx.beginPath();cx.strokeStyle='#f5bd7e';cx.lineWidth=1.6;
+ for(var i=0;i<500;i++){
+   var x=30+i/499*(w-45),y=h/2-B.idealWaveform(c.reference,i/499*4)*(h/2-22);
+   if(i===0)cx.moveTo(x,y);else cx.lineTo(x,y);
+ }cx.stroke();cx.fillStyle='#a7b9ca';cx.font='12px monospace';
+ cx.fillText(c.reference+' • '+fmt(c.frequencyBasisHz,2)+' Hz • ideal math (not measured SID)',35,h-12);
+}
 function display(r){
  latest=r;$('savewav').disabled=false;$('savejson').disabled=false;clean();
  url=URL.createObjectURL(new Blob([B.wav(r.pcm,r.rate)],{type:'audio/wav'}));$('player').src=url;
  var p=r.spec.pitch,m=r.metrics;$('description').textContent=r.spec.description;
  $('actual').textContent=fmt(p.actualHz,2);$('cents').textContent=fmt(p.errorCents,1);
  $('rms').textContent=fmt(m.rms,4);$('renderMs').textContent=fmt(r.renderMs,1);
- $('warning').textContent=p.clamped?'Pitch CLAMPED to the available AY period range. Listen and compare the actual frequency.':'';
- $('stats').textContent='Peak '+fmt(m.peak,4)+' · DC '+fmt(m.dc,5)+' · spectral peak '+fmt(m.dominantHz,1)+' Hz · centroid '+fmt(m.centroidHz,1)+' Hz · clipping samples '+m.clippedSamples+' · '+m.sampleCount+' PCM frames.';
+ var c=m.comparison||{};
+ $('shapeScore').textContent=c.eligible?fmt(c.shapeScore,1):'N/A';
+ $('shapeError').textContent=c.eligible?fmt(c.shapeErrorDb,1):'N/A';
+ $('cosineScore').textContent=c.eligible?fmt(c.cosineSimilarity,1):'N/A';
+ $('idealBest').textContent=c.eligible?c.bestReference:'N/A';
+ $('referenceInfo').textContent=c.eligible?('Comparing to '+c.reference+' · '+fmt(c.frequencyBasisHz,2)+' Hz · '+c.harmonicCount+' harmonics below Nyquist · '+fmt(c.analysisWindowSeconds,3)+' s harmonic window · best match: '+c.bestReference+'.'):(c.reason||'No meaningful single-oscillator comparison.');
+ $('warning').textContent=(p.clamped?'Pitch CLAMPED. ':'')+(c.eligible?'':'No ideal/THD comparison: '+(c.reason||'not applicable'));
+ $('stats').textContent='Peak '+fmt(m.peak,4)+' · DC '+fmt(m.dc,5)+' · spectral peak '+fmt(m.dominantHz,1)+' Hz · centroid '+fmt(m.centroidHz,1)+' Hz · THD '+fmt(m.thdPercent,1)+'% · clipping samples '+m.clippedSamples+' · '+m.sampleCount+' PCM frames.';
  $('registers').textContent=r.spec.events.map(function(e){return (e.tick/1e6).toFixed(3).padStart(9)+' ms  AY'+e.chip+'  R'+e.reg.toString().padStart(2,'0')+'  $'+e.value.toString(16).padStart(2,'0').toUpperCase();}).join('\n');
- chartWave(r);chartSpectrum(r);
+ chartWave(r);chartSpectrum(r);chartHarmonics(r);chartIdealWave(r);
 }
 function lock(on){busy=on;$('run').disabled=on;$('survey').disabled=on;}
 $('run').onclick=async function(){if(busy)return;lock(true);try{label('Rendering real AYCore PCM…');await new Promise(requestAnimationFrame);
  var r=await B.render(AYCore,params());display(r);label('Ready · '+r.spec.fixture+' · '+r.backend+' · '+r.rate+' Hz · '+fmt(r.renderMs,1)+' ms offline render.');}
  catch(err){label('ERROR: '+(err.message||String(err)));}finally{lock(false);}};
 $('survey').onclick=async function(){if(busy)return;lock(true);survey=[];$('savesurvey').disabled=true;
- try{var base=params(),jobs=[];B.FIXTURES.forEach(function(f){[55,110,220,440].forEach(function(hz){jobs.push(Object.assign({},base,{fixture:f.id,hz:hz,duration:.5}));});});
+ try{var base=params(),jobs=[];B.FIXTURES.forEach(function(f){[55,110,220,440].forEach(function(hz){jobs.push(Object.assign({},base,{fixture:f.id,hz:hz,duration:.5,reference:'auto'}));});});
  $('rows').textContent='';for(var i=0;i<jobs.length;i++){
  label('Measuring '+(i+1)+'/'+jobs.length+' · '+jobs[i].fixture+' @ '+jobs[i].hz+' Hz');
  await new Promise(function(resolve){setTimeout(resolve,0);});
  var r=await B.render(AYCore,jobs[i]);survey.push(B.report(r));
- var tr=document.createElement('tr');[r.spec.fixture,fmt(r.spec.hz,0),fmt(r.spec.pitch.actualHz,1),fmt(r.spec.pitch.errorCents,1),fmt(r.metrics.rms,4),fmt(r.metrics.dominantHz,1),fmt(r.metrics.thdPercent,1),r.metrics.aliasRisk||'—',fmt(r.renderMs,1)].forEach(function(cell){var td=document.createElement('td');td.textContent=cell;tr.appendChild(td);});$('rows').appendChild(tr);
+ var tr=document.createElement('tr');[r.spec.fixture,fmt(r.spec.hz,0),fmt(r.spec.pitch.actualHz,1),fmt(r.spec.pitch.errorCents,1),fmt(r.metrics.rms,4),fmt(r.metrics.dominantHz,1),r.metrics.comparison.eligible?r.metrics.comparison.reference:'N/A',fmt(r.metrics.comparison.shapeScore,1),fmt(r.metrics.comparison.shapeErrorDb,1),fmt(r.metrics.thdPercent,1),r.metrics.aliasRisk||'—',fmt(r.renderMs,1)].forEach(function(cell){var td=document.createElement('td');td.textContent=cell;tr.appendChild(td);});$('rows').appendChild(tr);
  }$('savesurvey').disabled=false;label('Survey completed: '+survey.length+' renderings. Export JSON for later comparisons.');}
  catch(err){label('Survey stopped after '+survey.length+' results: '+(err.message||String(err)));if(survey.length)$('savesurvey').disabled=false;}
  finally{lock(false);}};
 $('savewav').onclick=function(){if(latest)download(new Blob([B.wav(latest.pcm,latest.rate)],{type:'audio/wav'}),'ay-waveform-'+latest.spec.fixture+'-'+latest.spec.hz+'hz.wav');};
 $('savejson').onclick=function(){if(latest)download(new Blob([JSON.stringify(B.report(latest),null,2)],{type:'application/json'}),'ay-waveform-'+latest.spec.fixture+'-'+latest.spec.hz+'hz.json');};
-$('savesurvey').onclick=function(){if(survey.length)download(new Blob([JSON.stringify({schema:B.SCHEMA+'.survey',createdAt:new Date().toISOString(),count:survey.length,results:survey},null,2)],{type:'application/json'}),'ay-waveform-survey-v1.1.json');};
+$('savesurvey').onclick=function(){if(survey.length)download(new Blob([JSON.stringify({schema:B.SCHEMA+'.survey',createdAt:new Date().toISOString(),count:survey.length,results:survey},null,2)],{type:'application/json'}),'ay-waveform-survey-v1.2.json');};
 if(window.AYCore&&window.AYWaveformBench&&typeof AYCore.create==='function'){
  B.FIXTURES.forEach(function(f){var e=document.createElement('option');e.value=f.id;e.textContent=f.label;$('fixture').appendChild(e);});
  label('AYCore detected. Ready for offline register-driven experiments.');

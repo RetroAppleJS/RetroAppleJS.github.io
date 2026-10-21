@@ -1,11 +1,11 @@
-/* RetroAppleJS · AY Waveform Laboratory 1.1 — isolated offline experiments. */
+/* RetroAppleJS · AY Waveform Laboratory 1.2 — isolated offline experiments. */
 (function(root, factory) {
   var api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.AYWaveformBench = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function() {
   'use strict';
-  var SCHEMA = 'retroapplejs.ay.waveform-bench.v1.1';
+  var SCHEMA = 'retroapplejs.ay.waveform-bench.v1.2';
   var RATE = 22050, TIMEBASE = 1000000000, BLOCK = 2048;
   var FIXTURES = [
     {id:'square',label:'Square / native tone',kind:'tone',description:'AY channel A, fixed 50% tone, R7=$3E'},
@@ -50,6 +50,8 @@
     var ratio=number(Number(options.ratio===undefined?1:options.ratio),'envelope ratio',0.125,8);
     var volume=Math.round(number(Number(options.volume===undefined?13:options.volume),'volume',0,15));
     var noisePeriod=Math.round(number(Number(options.noisePeriod===undefined?8:options.noisePeriod),'noise period',1,31));
+    var reference=options.reference===undefined?'auto':String(options.reference);
+    if(['auto','square','saw','triangle'].indexOf(reference)<0)throw new Error('Invalid ideal reference');
     var desc=describe(fixture,hz,clock,ratio), f=FIXTURES.find(function(x){return x.id===fixture;});
     var events=[], seq=0;
     function write(chip,reg,value,seconds) {
@@ -86,28 +88,142 @@
     // Stable order at identical timestamps matters, especially for R13 retriggers.
     events.sort(function(a,b){return a.tick-b.tick||a.seq-b.seq;});
     return {fixture:fixture,kind:f.kind,description:f.description,hz:hz,clock:clock,duration:duration,
-      ratio:ratio,volume:volume,noisePeriod:noisePeriod,pitch:desc,events:events};
+      ratio:ratio,volume:volume,noisePeriod:noisePeriod,referencePreference:reference,pitch:desc,events:events};
   }
-  function pcmMetrics(samples, pitchHz) {
+  // Phase 1.2: ideal Fourier magnitudes, normalized so the fundamental is 1.0.
+  // Magnitude-only spectra cannot distinguish upward from downward saw polarity.
+  var IDEAL_REFERENCES=['square','saw','triangle'];
+  var REFERENCE_FLOOR_DB=-48, MAX_HARMONICS=32, SCORE_SCALE_DB=12;
+  function idealHarmonic(reference,harmonic) {
+    if(IDEAL_REFERENCES.indexOf(reference)<0)throw new Error('Unknown ideal reference '+reference);
+    if(reference==='saw')return 1/harmonic;
+    if(harmonic%2===0)return 0;
+    return reference==='triangle'?1/(harmonic*harmonic):1/harmonic;
+  }
+  function idealWaveform(reference,phase) {
+    if(IDEAL_REFERENCES.indexOf(reference)<0)throw new Error('Unknown ideal reference '+reference);
+    phase=((phase%1)+1)%1;
+    if(reference==='square')return phase<.5?1:-1;
+    if(reference==='saw')return 1-2*phase;
+    return 1-4*Math.abs(phase-.5);
+  }
+  function referenceFor(fixture) {
+    if(fixture==='square')return 'square';
+    if(fixture==='saw-down'||fixture==='saw-up')return 'saw';
+    if(fixture==='triangle')return 'triangle';
+    return null;
+  }
+  function comparisonPolicy(fixture,reference) {
+    if(fixture==='noise')return {eligible:false,reason:'Broadband noise has no single pitched fundamental.'};
+    if(fixture==='tone-noise')return {eligible:false,reason:'Tone plus broadband noise is not a single harmonic oscillator.'};
+    if(fixture==='detune')return {eligible:false,reason:'Detuned oscillators have two independent fundamentals and beating.'};
+    if(fixture==='two-chip')return {eligible:false,reason:'Two independent AY chips produce multiple oscillator components.'};
+    if(fixture==='buzzer')return {eligible:false,reason:'Tone × envelope introduces modulation and sidebands; single-series THD is invalid.'};
+    var nativeReference=referenceFor(fixture);
+    if(!nativeReference)return {eligible:false,reason:'No defined single-oscillator reference.'};
+    return {eligible:true,reference:reference==='auto'?nativeReference:reference,automaticReference:nativeReference};
+  }
+  function harmonicAnalysis(samples,rate,frequency) {
+    // The FFT view remains 2,048 points; harmonic projections instead use up to
+    // 8,192 centred samples to resolve low notes and limit adjacent-bin leakage.
+    var length=Math.min(samples.length,8192);
+    var start=Math.floor((samples.length-length)/2);
+    if(length<2048)throw new Error('Insufficient samples for harmonic analysis');
+    var data=new Float64Array(length),windowSum=0,mean=0,signalSquares=0;
+    for(var i=0;i<length;i++)mean+=samples[start+i];
+    mean/=length;
+    for(var j=0;j<length;j++){
+      var w=.5-.5*Math.cos(2*Math.PI*j/(length-1));
+      var centered=samples[start+j]-mean;data[j]=centered*w;windowSum+=w;signalSquares+=centered*centered;
+    }
+    var harmonics=[],amplitudes=[],sum=0;
+    for(var h=1;h<=MAX_HARMONICS&&h*frequency<rate/2;h++) {
+      var a=2*Math.PI*h*frequency/rate, stepR=Math.cos(a),stepI=Math.sin(a),c=1,si=0,r=0,im=0;
+      for(var k=0;k<length;k++){
+        r+=data[k]*c;im-=data[k]*si;
+        var nextC=c*stepR-si*stepI;
+        si=si*stepR+c*stepI;c=nextC;
+      }
+      var amplitude=2*Math.hypot(r,im)/windowSum;
+      amplitudes.push(amplitude);
+      harmonics.push({harmonic:h,hz:h*frequency,db:20*Math.log10(Math.max(1e-12,amplitude))});
+      if(h>1)sum+=amplitude*amplitude;
+    }
+    var fundamental=amplitudes[0]||0;
+    return {amplitudes:amplitudes,harmonics:harmonics,fundamentalDb:harmonics[0]?harmonics[0].db:null,
+      thdPercent:fundamental>1e-7?100*Math.sqrt(sum)/fundamental:null,
+      windowSamples:length,windowSeconds:length/rate,rms:Math.sqrt(signalSquares/length)};
+  }
+  function scoreReference(analysis,reference) {
+    var amplitudes=analysis.amplitudes,base=amplitudes[0],count=amplitudes.length;
+    if(base<=Math.max(1e-7,analysis.rms*.05)||count<3)return null;
+    var weightedError=0,weightTotal=0,dot=0,ma=0,mb=0,rows=[];
+    for(var h=1;h<=count;h++){
+      var measured=amplitudes[h-1]/base,ideal=idealHarmonic(reference,h);
+      var measuredDb=Math.max(REFERENCE_FLOOR_DB,20*Math.log10(Math.max(1e-12,measured)));
+      var idealDb=Math.max(REFERENCE_FLOOR_DB,20*Math.log10(Math.max(1e-12,ideal)));
+      var weight=1/Math.sqrt(h),difference=measuredDb-idealDb;
+      if(h>1){weightedError+=weight*difference*difference;weightTotal+=weight;}
+      dot+=weight*measured*ideal;ma+=weight*measured*measured;mb+=weight*ideal*ideal;
+      rows.push({harmonic:h,hz:analysis.harmonics[h-1].hz,measuredDb:measuredDb,idealDb:idealDb,
+        deltaDb:difference});
+    }
+    var rmsDb=Math.sqrt(weightedError/weightTotal);
+    return {reference:reference,harmonicCount:count,shapeErrorDb:rmsDb,
+      shapeScore:100*Math.exp(-.5*Math.pow(rmsDb/SCORE_SCALE_DB,2)),
+      cosineSimilarity:ma>0&&mb>0?100*dot/Math.sqrt(ma*mb):null,
+      harmonics:rows};
+  }
+  function buildComparison(samples,rate,expectedHz,policy) {
+    if(!policy.eligible)return {eligible:false,status:'not-applicable',reason:policy.reason,
+      reference:null,shapeScore:null,shapeErrorDb:null,cosineSimilarity:null,
+      matches:[],harmonics:[],analysisWindowSamples:0,frequencyBasisHz:expectedHz||null};
+    if(!Number.isFinite(expectedHz)||expectedHz<=0||expectedHz>=rate/2)return {
+      eligible:false,status:'not-applicable',reason:'No valid fundamental below the sampling Nyquist limit.',
+      reference:null,shapeScore:null,shapeErrorDb:null,cosineSimilarity:null,matches:[],harmonics:[],
+      analysisWindowSamples:0,frequencyBasisHz:expectedHz||null};
+    var analysis=harmonicAnalysis(samples,rate,expectedHz);
+    var matches=IDEAL_REFERENCES.map(function(ref){return scoreReference(analysis,ref);}).filter(Boolean);
+    if(matches.length!==3)return {eligible:false,status:'unmeasurable',
+      reason:'Expected fundamental is too weak relative to the signal for a reliable shape comparison.',reference:null,
+      shapeScore:null,shapeErrorDb:null,cosineSimilarity:null,matches:[],harmonics:[],
+      analysisWindowSamples:analysis.windowSamples,frequencyBasisHz:expectedHz};
+    matches.sort(function(a,b){return b.shapeScore-a.shapeScore;});
+    var chosen=matches.find(function(m){return m.reference===policy.reference;});
+    return {eligible:true,status:'ok',reason:null,reference:policy.reference,
+      automaticReference:policy.automaticReference,bestReference:matches[0].reference,
+      shapeScore:chosen.shapeScore,shapeErrorDb:chosen.shapeErrorDb,
+      cosineSimilarity:chosen.cosineSimilarity,
+      harmonics:chosen.harmonics,matches:matches.map(function(m){return {
+        reference:m.reference,shapeScore:m.shapeScore,shapeErrorDb:m.shapeErrorDb,
+        cosineSimilarity:m.cosineSimilarity};}),
+      harmonicCount:chosen.harmonicCount,analysisWindowSamples:analysis.windowSamples,
+      analysisWindowSeconds:analysis.windowSeconds,frequencyBasisHz:expectedHz,
+      scoreDefinition:'100*exp(-0.5*(weighted-log-RMS-dB/12)^2)',
+      scoreFloorDb:REFERENCE_FLOOR_DB};
+  }
+  function pcmMetrics(samples,pitchHz,options) {
+    options=options||{};
     var n=samples.length,sum=0,squares=0,peak=0,clipped=0;
     for(var i=0;i<n;i++){
       var x=samples[i];sum+=x;squares+=x*x;peak=Math.max(peak,Math.abs(x));if(Math.abs(x)>1)clipped++;
     }
-    var spectral=spectrum(samples,RATE,pitchHz);
+    // Old callers without fixture metadata retain a single-oscillator analysis.
+    var policy=options.fixture?comparisonPolicy(options.fixture,options.reference||'auto'):
+      {eligible:!!pitchHz,reference:options.reference&&options.reference!=='auto'?options.reference:'square',automaticReference:'square'};
+    var spectral=spectrum(samples,RATE,pitchHz,policy);
     return {sampleCount:n,rms:Math.sqrt(squares/n),peak:peak,dc:sum/n,clippedSamples:clipped,
       dominantHz:spectral.dominantHz,fundamentalHz:spectral.fundamentalHz, fundamentalDb:spectral.fundamentalDb,
       harmonicDb:spectral.harmonicDb,thdPercent:spectral.thdPercent,aliasRisk:spectral.aliasRisk,
-      centroidHz:spectral.centroidHz,
+      centroidHz:spectral.centroidHz,comparison:spectral.comparison,
       spectral:spectral.bins};
   }
-  function spectrum(samples,rate,expectedHz) {
-    // Radix-2 FFT on a Hann-windowed central 2048-sample slice. No dependencies.
+  function spectrum(samples,rate,expectedHz,policy) {
+    // Radix-2 FFT on Hann-windowed central 2,048-sample slice for broadband view.
     var N=2048, start=Math.floor((samples.length-N)/2);
-    if(start<0) throw new Error('Too few samples for FFT');
+    if(start<0)throw new Error('Too few samples for FFT');
     var re=new Float64Array(N),im=new Float64Array(N);
-    for(var i=0;i<N;i++){
-      re[i]=samples[start+i]*(0.5-0.5*Math.cos(2*Math.PI*i/(N-1)));
-    }
+    for(var i=0;i<N;i++)re[i]=samples[start+i]*(.5-.5*Math.cos(2*Math.PI*i/(N-1)));
     for(var i=1,j=0;i<N;i++){
       var bit=N>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;
       if(i<j){var tmp=re[i];re[i]=re[j];re[j]=tmp;}
@@ -116,8 +232,8 @@
       var angle=-2*Math.PI/len,stepCos=Math.cos(angle),stepSin=Math.sin(angle);
       for(var startBin=0;startBin<N;startBin+=len){
         var cos=1,sin=0;
-        for(var j=0;j<len/2;j++){
-          var a=startBin+j,b=a+len/2;
+        for(var u=0;u<len/2;u++){
+          var a=startBin+u,b=a+len/2;
           var tr=cos*re[b]-sin*im[b],ti=cos*im[b]+sin*re[b];
           re[b]=re[a]-tr;im[b]=im[a]-ti;re[a]+=tr;im[a]+=ti;
           var nc=cos*stepCos-sin*stepSin;
@@ -134,43 +250,25 @@
     }
     var offset=0,j=bestIndex-1;
     if(j>0&&j<dft.length-1){
-      var a=Math.log(Math.max(dft[j-1],1e-12)),b=Math.log(Math.max(dft[j],1e-12)),c=Math.log(Math.max(dft[j+1],1e-12));
-      if(a-2*b+c!==0)offset=clamp(.5*(a-c)/(a-2*b+c),-0.5,0.5);
+      var aa=Math.log(Math.max(dft[j-1],1e-12)),bb=Math.log(Math.max(dft[j],1e-12)),cc=Math.log(Math.max(dft[j+1],1e-12));
+      if(aa-2*bb+cc!==0)offset=clamp(.5*(aa-cc)/(aa-2*bb+cc),-.5,.5);
     }
-    // Matched-frequency Hann projection resolves a target fundamental between FFT bins.
-    // This is distinct from the strongest spectral peak (which may be a harmonic).
-    var fundamentalHz=null,fundamentalDb=null,harmonicDb=[],thdPercent=null,aliasRisk=null;
-    if(Number.isFinite(expectedHz)&&expectedHz>0&&expectedHz<rate/2){
-      var hannPower=0;
-      function projection(hz){
-        var rr=0,ii=0;
-        for(var q=0;q<N;q++){
-          var window=0.5-0.5*Math.cos(2*Math.PI*q/(N-1));
-          var phase=2*Math.PI*hz*q/rate;
-          rr+=samples[start+q]*window*Math.cos(phase);
-          ii-=samples[start+q]*window*Math.sin(phase);
-        }
-        return Math.hypot(rr,ii);
-      }
-      for(var q=0;q<N;q++)hannPower+=0.5-0.5*Math.cos(2*Math.PI*q/(N-1));
-      var fundamentalPower=projection(expectedHz);
-      fundamentalHz=expectedHz;
-      fundamentalDb=20*Math.log10(Math.max(1e-12,2*fundamentalPower/hannPower));
-      var harmonicSum=0;
-      for(var h=1;h*expectedHz<rate/2&&h<=32;h++){
-        var amplitude=2*projection(h*expectedHz)/hannPower;
-        harmonicDb.push({harmonic:h,hz:h*expectedHz,db:20*Math.log10(Math.max(1e-12,amplitude))});
-        if(h>1)harmonicSum+=amplitude*amplitude;
-      }
-      var fundamentalAmplitude=2*fundamentalPower/hannPower;
-      thdPercent=fundamentalAmplitude>1e-8?100*Math.sqrt(harmonicSum)/fundamentalAmplitude:null;
-      // Warning based on available harmonics and wave type, not proof of aliasing.
-      aliasRisk=expectedHz*32>=rate/2?'High: 32nd harmonic exceeds Nyquist':
-        expectedHz*8>=rate/2?'Moderate: 8th harmonic exceeds Nyquist':'Low at first 8 harmonics';
+    if(!policy)policy={eligible:!!expectedHz,reference:'square',automaticReference:'square'};
+    var comparison=buildComparison(samples,rate,expectedHz,policy);
+    var single=policy.eligible&&comparison.status==='ok';
+    var harmonics=[],fundamentalDb=null,thd=null,fundamentalHz=null;
+    if(single){
+      var measured=harmonicAnalysis(samples,rate,expectedHz);
+      harmonics=measured.harmonics;fundamentalDb=measured.fundamentalDb;
+      thd=measured.thdPercent;fundamentalHz=expectedHz;
     }
+    // Heuristic only: infinitely sharp ideal waveforms can exceed Nyquist at any pitch.
+    var risk=single?(expectedHz*MAX_HARMONICS>=rate/2?'High: 32nd harmonic exceeds Nyquist':
+      expectedHz*8>=rate/2?'Moderate: 8th harmonic exceeds Nyquist':'Low at first 8 harmonics'):
+      'N/A: broadband, multi-oscillator or modulation spectrum';
     return {dominantHz:best>1e-9?(bestIndex+offset)*rate/N:0,
-      fundamentalHz:fundamentalHz,fundamentalDb:fundamentalDb,harmonicDb:harmonicDb,
-      thdPercent:thdPercent,aliasRisk:aliasRisk,
+      fundamentalHz:fundamentalHz,fundamentalDb:fundamentalDb,harmonicDb:harmonics,
+      thdPercent:thd,aliasRisk:risk,comparison:comparison,
       centroidHz:magTotal?moment/magTotal:0,bins:bins};
   }
   async function render(coreAPI,options) {
@@ -206,7 +304,7 @@
     var endTime=typeof performance!=='undefined'?performance.now():Date.now();
     var pitch=spec.kind==='noise'?null:spec.pitch.actualHz;
     return {spec:spec,backend:actualBackend,renderMs:endTime-start,rate:RATE,pcm:floats,
-      metrics:pcmMetrics(floats,pitch)};
+      metrics:pcmMetrics(floats,pitch,{fixture:spec.fixture,reference:spec.referencePreference})};
   }
   function wav(pcm,rate) {
     var n=pcm.length,b=new ArrayBuffer(44+n*2),dv=new DataView(b);
@@ -228,9 +326,12 @@
       spec:Object.assign({},result.spec,{events:result.spec.events.map(function(e){return {tick:e.tick,chip:e.chip,reg:e.reg,value:e.value};})}),
       metrics:{sampleCount:m.sampleCount,rms:m.rms,peak:m.peak,dc:m.dc,clippedSamples:m.clippedSamples,
         dominantHz:m.dominantHz,fundamentalHz:m.fundamentalHz,fundamentalDb:m.fundamentalDb,
-        harmonicDb:m.harmonicDb,thdPercent:m.thdPercent,aliasRisk:m.aliasRisk,centroidHz:m.centroidHz}};
+        harmonicDb:m.harmonicDb,thdPercent:m.thdPercent,aliasRisk:m.aliasRisk,centroidHz:m.centroidHz,
+        comparison:m.comparison}};
   }
   return {SCHEMA:SCHEMA,RATE:RATE,FIXTURES:FIXTURES,nearestPeriod:nearestPeriod,
     describe:describe,generate:generate,spectrum:spectrum,pcmMetrics:pcmMetrics,render:render,
+    idealHarmonic:idealHarmonic,idealWaveform:idealWaveform,referenceFor:referenceFor,
+    scoreReference:scoreReference,harmonicAnalysis:harmonicAnalysis,
     wav:wav,report:report};
 });
