@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HGR Script Studio · Apple II Graphics IDE</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1018;--panel:#111a26;--panel2:#162231;--ink:#e2edf7;--muted:#91a4b7;--line:#293747;--blue:#64c3e6;--orange:#ffbb77;--green:#94d8b0;--danger:#f2919c;--radius:12px}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:13px/1.5 system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+button,input,textarea,select{font:inherit}button,select{cursor:pointer}button{border:1px solid #35485a;border-radius:8px;padding:8px 11px;background:#1c2c3b;color:var(--ink);transition:background .12s,border-color .12s}button:hover{background:#294153;border-color:#54738a}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--blue);outline-offset:2px}button.primary{background:#197c97;border-color:#33b1d2;color:white;font-weight:700}button.primary:hover{background:#1995b6}button:disabled{opacity:.4;cursor:default}.small{font-size:12px;padding:6px 9px}.top{display:flex;gap:18px;align-items:center;justify-content:space-between;padding:11px 18px;background:#101927;border-bottom:1px solid var(--line);flex-wrap:wrap}.brand{display:flex;gap:12px;align-items:center}.logo{border:1px solid #385f70;border-radius:10px;color:#b8edfc;font-family:ui-monospace,monospace;font-weight:900;letter-spacing:-2px;font-size:18px;padding:8px 10px;background:#123346}.brand strong{font-size:18px;letter-spacing:.25px}.brand .sub{color:var(--muted);font-size:12px}.top-actions,.rowbtn{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.workspace{display:grid;grid-template-columns:190px minmax(400px,1fr) minmax(360px,510px);height:calc(100vh - 70px);min-height:590px}.side,.editorcol{min-height:0;background:var(--panel);overflow:auto}.side{border-right:1px solid var(--line);padding:15px 12px}.panel-title{font-size:10px;letter-spacing:1.65px;text-transform:uppercase;font-weight:800;color:#85a6bd;margin:18px 0 10px}.panel-title:first-child{margin-top:0}.toolgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}.tool{display:flex;align-items:center;justify-content:center;gap:7px;min-height:39px;font-size:12px}.tool.active{color:#cff4ff;background:#174458;border-color:#49bfdc;box-shadow:inset 0 0 0 1px #27829c}.tool .symbol{font:17px/1 ui-monospace,monospace;color:#b6ddea}.colors{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.swatch{height:32px;padding:0;position:relative;border:2px solid #556377;overflow:hidden}.swatch.active{outline:2px solid #c5edfa;outline-offset:2px}.swatch:after{content:attr(title);position:absolute;inset:auto 0 1px;color:#fff;text-shadow:0 1px 3px #000;font:9px ui-monospace,monospace;white-space:nowrap}.field{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:9px 0;color:var(--muted)}.field select,.field input{min-width:0;max-width:110px;background:#0b1522;border:1px solid #385063;color:var(--ink);border-radius:6px;padding:5px}.field input[type=range]{width:100px;accent-color:#52c5e1}.hint{color:var(--muted);font-size:11px;line-height:1.5}.stage{display:flex;flex-direction:column;min-width:0;min-height:0;background:radial-gradient(ellipse at 55% 36%,#182839 0,#0d1723 64%)}.stagehead{padding:11px 16px;display:flex;justify-content:space-between;gap:9px;flex-wrap:wrap;border-bottom:1px solid var(--line);align-items:center}.chip{border:1px solid #30475c;border-radius:6px;padding:4px 7px;background:#132537;color:#b1d7ea;font:11px ui-monospace,SFMono-Regular,Consolas,monospace}.canvaswrap{flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:flex-start;padding:28px;min-height:0;position:relative}.canvasframe{position:relative;flex:0 0 auto;background:#000;box-shadow:0 0 0 1px #7890a8,0 0 0 7px #070b10,0 18px 50px #0009;user-select:none}.canvasframe canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none}#hgrCanvas{background:#000}#overlay{position:absolute;left:0;top:0;pointer-events:none}.stagefoot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid var(--line);padding:9px 14px;background:#111c2a}.status{color:#b3c7d7;font:11px ui-monospace,monospace}.editorcol{display:flex;flex-direction:column;border-left:1px solid var(--line);overflow:hidden}.edtabs{display:flex;align-items:center;gap:0;border-bottom:1px solid var(--line);background:#101925}.edtab{border:0;border-radius:0;background:none;padding:14px 18px;color:var(--muted);border-bottom:2px solid transparent}.edtab.active{color:#a5edff;border-bottom-color:#55c6e5;background:#142232}.tabcontent{display:none;min-height:0;flex:1;flex-direction:column}.tabcontent.active{display:flex}.scriptbar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:11px 12px;border-bottom:1px solid var(--line)}.scriptbar select{color:var(--ink);background:#101d2d;border:1px solid #32485b;border-radius:6px;padding:7px;min-width:120px;flex:1}.codewrap{flex:1;min-height:230px;position:relative;overflow:hidden;background:#0c1622}.gutter{position:absolute;top:0;bottom:0;left:0;overflow:hidden;min-width:46px;width:46px;background:#0b131e;border-right:1px solid #27394a;color:#60788e;padding:14px 7px;text-align:right;pointer-events:none;font:12px/19px ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre}.codearea{position:absolute;left:46px;right:0;top:0;bottom:0;overflow:hidden}.highlight,.codeedit{position:absolute;inset:0;margin:0;padding:14px 14px 90px;border:0;tab-size:2;font:12px/19px ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre;letter-spacing:0;overflow:auto}.highlight{z-index:1;pointer-events:none;color:#d2e1ee;white-space:pre;word-wrap:normal}.codeedit{z-index:2;resize:none;outline:0!important;background:transparent;color:transparent;-webkit-text-fill-color:transparent;caret-color:#f2f8ff;white-space:pre;overflow-wrap:normal}.codeedit::selection{background:#357caa66}.tok-comment{color:#6b9986}.tok-string{color:#e7bd87}.tok-number{color:#cfb9fa}.tok-keyword{color:#82c6fd;font-weight:600}.tok-api{color:#a2dba8}.tok-fn{color:#d4b3f7}.console{height:150px;min-height:105px;border-top:1px solid var(--line);display:flex;flex-direction:column}.consolehead{padding:5px 12px;background:#142232;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#a5b9cd;font-weight:700;letter-spacing:1px}.log{flex:1;overflow:auto;padding:9px 12px;font:11px/1.5 ui-monospace,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;color:#acc3d6}.log .err{color:#ffc0bd}.log .ok{color:#9ed9b1}.log .muted{color:#7f91a3}.docs-toolbar{padding:11px;display:flex;gap:8px;border-bottom:1px solid var(--line)}.docs-toolbar input{flex:1;min-width:0;border:1px solid #3b5266;background:#0a1420;color:white;border-radius:6px;padding:8px}.docsview{flex:1;overflow:auto;padding:13px 19px 34px;color:#c4d4df}.docsview h1{font-size:23px;color:#f0f8fe;line-height:1.3}.docsview h2{font-size:17px;margin:27px 0 10px;padding-top:8px;border-top:1px solid #2e4254;color:#b1e6f7}.docsview h3{font-size:14px;color:#d3ebfa}.docsview code{color:#bce69f;background:#0c1823;border:1px solid #253848;border-radius:3px;padding:2px 4px}.docsview pre{background:#08131f;border:1px solid #273d50;border-radius:7px;padding:12px;overflow:auto;color:#bfe3f8;font:11px/1.6 ui-monospace,monospace}.docsview pre code{border:0;background:none;padding:0;color:inherit}.docsview table{border-collapse:collapse;display:block;overflow:auto;font-size:12px}.docsview th,.docsview td{border:1px solid #34485a;padding:6px 8px;text-align:left}.docsview th{background:#1d3042}.docsview p,.docsview li{line-height:1.65}.docsview blockquote{border-left:3px solid #5c9bb8;padding:2px 12px;color:#adbdcc;background:#162534;margin-left:0}.docsview a{color:#81d5f2}.docsview mark{background:#674827;color:white}.docsview .hide{display:none}.notice{background:#193041;color:#bfdfed;padding:9px 10px;border:1px solid #2e536b;border-radius:8px;font-size:11px;margin:8px 0}.hidden{display:none!important}
+@media(max-width:1200px){.workspace{grid-template-columns:155px minmax(350px,1fr) minmax(330px,430px)}.side{padding:12px 8px}.tool{font-size:11px}.canvaswrap{padding:22px}}
+@media(max-width:960px){.workspace{display:grid;grid-template-columns:150px minmax(0,1fr);grid-template-rows:minmax(430px,60vh) minmax(550px,auto);height:auto}.side{grid-row:1/3}.editorcol{grid-column:2;border-top:1px solid var(--line)}.canvaswrap{max-height:65vh}.codewrap{min-height:340px}}
+@media(max-width:580px){.top{padding:10px}.workspace{grid-template-columns:1fr;grid-template-rows:auto 520px 670px}.side{grid-row:auto;display:flex;gap:10px;align-items:start;flex-wrap:wrap}.side section{width:calc(50% - 5px)}.panel-title{margin:7px 0}.toolgrid{grid-template-columns:repeat(3,1fr)}.tool{min-height:30px}.editorcol{grid-column:1}.canvaswrap{padding:18px}.stagehead{padding:9px}.top-actions{gap:5px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><div class="logo">][</div><div><strong>HGR Script Studio</strong><div class="sub">Apple II Hi-Res Graphics · Offline JavaScript Workbench</div></div></div>
+  <div class="top-actions">
+    <select id="pageSelect" aria-label="HGR memory page" title="Export/load address"><option value="8192">HGR · $2000</option><option value="16384">HGR2 · $4000</option></select>
+    <button id="newBtn">New</button><button id="openBtn">Open HGR</button><button id="saveBtn">Export HGR</button><button id="pngBtn">PNG</button>
+    <button id="undoBtn" title="Ctrl/Cmd+Z">↶ Undo</button><button id="redoBtn" title="Ctrl/Cmd+Shift+Z">↷ Redo</button>
+  </div>
+</header>
+<div class="workspace">
+<aside class="side">
+<section><div class="panel-title">Drawing tools</div><div id="tools" class="toolgrid"></div></section>
+<section><div class="panel-title">Apple II colors</div><div id="colors" class="colors"></div><p class="hint">Artifact colors share bit 7 across each group of seven pixels.</p></section>
+<section><div class="panel-title">Brush &amp; pattern</div><label class="field">Thickness <select id="thickness"><option value="1">1 pixel</option><option value="2" selected>2 pixels</option><option value="3">3 pixels</option><option value="4">4 pixels</option><option value="6">6 pixels</option><option value="8">8 pixels</option></select></label><label class="field">Pattern <select id="pattern"><option value="solid">Solid</option><option value="checker">Checker</option><option value="scanline">Scanlines</option><option value="columns">Columns</option><option value="dots">Sparse dots</option></select></label><label class="field">View <select id="viewMode"><option value="color">Artifact color</option><option value="mono">Monochrome</option><option value="bits">Logical bits</option></select></label><label class="field">Zoom <select id="zoom"><option value="1" selected>1×</option><option value="2">2×</option><option value="3">3×</option><option value="4">4×</option><option value="6">6×</option></select></label></section>
+<section><div class="panel-title">Selection</div><div class="rowbtn"><button id="copyBtn" class="small">Copy</button><button id="cutBtn" class="small">Cut</button><button id="pasteBtn" class="small">Paste</button></div><p class="hint">Select a rectangle first. Paste at the last cursor position or selected corner. Ctrl/Cmd+C/X/V also works outside the code editor.</p></section>
+<section><div class="panel-title">Import / export</div><label class="field">File format <select id="exportFormat"><option value="raw">Raw 8192 B</option><option value="dos">DOS BLOAD 8196 B</option></select></label><p class="hint">Raw .hgr is a complete HGR page. DOS binary includes a 4-byte load address/length header. Drag a file onto the screen to load it.</p></section>
+</aside>
+<main class="stage">
+ <div class="stagehead"><div class="rowbtn"><span class="chip">280 × 192</span><span class="chip">40 bytes/row</span><span class="chip">8192 bytes/page</span></div><div class="rowbtn"><span id="modifiedBadge" class="chip">NEW IMAGE</span><button class="small" id="fitBtn">Fit 1×</button></div></div>
+ <div class="canvaswrap" id="canvasWrap"><div class="canvasframe" id="canvasFrame"><canvas id="hgrCanvas" width="560" height="384" aria-label="Apple II HGR drawing surface"></canvas><canvas id="overlay" width="560" height="384"></canvas></div></div>
+ <div class="stagefoot"><span id="coordinateStatus" class="status">X: — · Y: —</span><span id="byteStatus" class="status">Byte: —</span><span id="selectionStatus" class="status">No selection</span></div>
+</main>
+<aside class="editorcol">
+ <nav class="edtabs"><button class="edtab active" data-tab="scriptPanel">JavaScript IDE</button><button class="edtab" data-tab="docsPanel">API / Markdown</button></nav>
+ <div id="scriptPanel" class="tabcontent active">
+   <div class="scriptbar"><select id="examples" title="Load JavaScript example"><option value="welcome">Example · Retro title</option><option value="geometry">Example · Shapes</option><option value="wave">Example · Wave &amp; dithering</option><option value="sprite">Example · Sprite / blit</option></select><button id="runBtn" class="primary">▶ Run (⌘/Ctrl+Enter)</button><button id="resetCodeBtn" class="small">Reset code</button></div>
+   <div class="scriptbar"><button class="small" id="openJsBtn">Open .js</button><button class="small" id="saveJsBtn">Save .js</button><span class="hint">Tab inserts spaces · command output below</span></div>
+   <div class="codewrap"><div class="gutter" id="gutter">1</div><div class="codearea"><pre id="highlight" class="highlight" aria-hidden="true"></pre><textarea id="code" class="codeedit" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" wrap="off" aria-label="JavaScript source editor"></textarea></div></div>
+   <div class="console"><div class="consolehead"><span>CONSOLE / EXECUTION</span><button id="clearLogBtn" class="small">Clear</button></div><div id="log" class="log" role="log" aria-live="polite"></div></div>
+ </div>
+ <div id="docsPanel" class="tabcontent"><div class="docs-toolbar"><input id="docsSearch" placeholder="Search API docs…" aria-label="Search API documentation"><button id="downloadDocs" class="small">↓ API.md</button></div><div id="docsView" class="docsview"></div></div>
+</aside>
+</div>
+<input type="file" id="hgrFile" accept=".hgr,.bin,.raw,.hgr2,.pic" hidden>
+<input type="file" id="jsFile" accept=".js,.txt" hidden>
+<script>
+'use strict';
+// All drawing data is actual Apple II HGR memory. No external libraries or network requests.
+const W=280,H=192,SIZE=8192,SW=560,SH=384;
+const COLORS=[
+ {name:'black0',hex:'#000000',phase:0},{name:'green',hex:'#28d454',phase:0},
+ {name:'violet',hex:'#b654e8',phase:0},{name:'white0',hex:'#f2f5fc',phase:0},
+ {name:'black1',hex:'#000000',phase:1},{name:'orange',hex:'#ff922c',phase:1},
+ {name:'blue',hex:'#4b9dfa',phase:1},{name:'white1',hex:'#ffffff',phase:1}
+];
+const colorNames=new Map(COLORS.map((v,i)=>[v.name,i]));
+colorNames.set('purple',2);colorNames.set('white',3);colorNames.set('black',0);
+const el=id=>document.getElementById(id);
+const state={bytes:new Uint8Array(SIZE),color:2,pattern:'solid',thickness:2,zoom:1,view:'color',tool:'pencil',base:0x2000,selection:null,clipboard:null,hover:null,dirty:false};
+let undoStack=[],redoStack=[],drag=null,renderQueued=false,selectedCode='welcome';
+const snapshot=()=>state.bytes.slice();
+const integer=n=>Number.isFinite(n)?Math.round(n):0;
+const valid=(x,y)=>x>=0&&x<W&&y>=0&&y<H;
+const at=(x,y)=>((y&7)<<10)|((y&56)<<4)|((y>>6)*40)+(x/7|0);
+function resolveColor(c){if(c===undefined||c===null)c=state.color;if(typeof c==='number'&&Number.isInteger(c)&&c>=0&&c<8)return c;if(typeof c==='string'){const k=c.toLowerCase().trim();if(k==='phase0'||k==='phase1')return k;if(colorNames.has(k))return colorNames.get(k);}throw Error('Unknown color: '+String(c)+' (use 0–7, name, phase0, phase1)');}
+function bitAt(bytes,x,y){if(!valid(x,y))return 0;return(bytes[at(x,y)]>>(x%7))&1;}
+function colorAt(bytes,x,y){if(!valid(x,y))return -1;const b=bytes[at(x,y)],phase=b>>7;if(!(b&(1<<(x%7))))return phase?4:0;if(bitAt(bytes,x-1,y)||bitAt(bytes,x+1,y))return phase?7:3;return phase?((x&1)?5:6):((x&1)?1:2);}
+function patternAllows(x,y){switch(state.pattern){case'checker':return(x+y)%2===0;case'scanline':return(y&1)===0;case'columns':return(x&1)===0;case'dots':return (x&3)===0&&(y&3)===0;default:return true;}}
+function plot(x,y,c=state.color,patterned=true){x=integer(x);y=integer(y);if(!valid(x,y)||patterned&&!patternAllows(x,y))return;const col=resolveColor(c),o=at(x,y),mask=1<<(x%7);let b=state.bytes[o];if(col==='phase0'||col==='phase1'){state.bytes[o]=col==='phase1'?b|128:b&127;return;}b=(b&127)|(col>=4?128:0);const on=col===3||col===7||(col===1||col===5?!!(x&1):col===2||col===6?!(x&1):false);state.bytes[o]=on?b|mask:b&~mask;}
+function dot(x,y,c=state.color,size=1){size=Math.max(1,Math.min(64,integer(size)));const start=Math.floor((size-1)/2);for(let j=0;j<size;j++)for(let i=0;i<size;i++)plot(integer(x)-start+i,integer(y)-start+j,c);}
+function line(x0,y0,x1,y1,c=state.color,size=1){x0=integer(x0);y0=integer(y0);x1=integer(x1);y1=integer(y1);let dx=Math.abs(x1-x0),sx=x0<x1?1:-1,dy=-Math.abs(y1-y0),sy=y0<y1?1:-1,err=dx+dy,steps=0;while(true){dot(x0,y0,c,size);if(x0===x1&&y0===y1)break;const e2=err*2;if(e2>=dy){err+=dy;x0+=sx;}if(e2<=dx){err+=dx;y0+=sy;}if(++steps>20000)break;}}
+function rect(x,y,w,h,c=state.color,filled=true,size=1){x=integer(x);y=integer(y);w=integer(w);h=integer(h);if(w<0){x+=w;w=-w;}if(h<0){y+=h;h=-h;}if(w===0||h===0)return;const x0=Math.max(0,x),y0=Math.max(0,y),x1=Math.min(W-1,x+w-1),y1=Math.min(H-1,y+h-1);if(filled){for(let yy=y0;yy<=y1;yy++)for(let xx=x0;xx<=x1;xx++)plot(xx,yy,c);}else{line(x,y,x+w-1,y,c,size);line(x,y+h-1,x+w-1,y+h-1,c,size);line(x,y,x,y+h-1,c,size);line(x+w-1,y,x+w-1,y+h-1,c,size);}}
+function ellipse(x,y,w,h,c=state.color,filled=false,size=1){x=integer(x);y=integer(y);w=integer(w);h=integer(h);if(w<0){x+=w;w=-w;}if(h<0){y+=h;h=-h;}if(!w||!h)return;const cx=x+(w-1)/2,cy=y+(h-1)/2,rx=Math.max(.5,w/2),ry=Math.max(.5,h/2);if(filled){for(let yy=Math.max(y,0);yy<Math.min(y+h,H);yy++){const norm=((yy-cy)/ry)**2;if(norm>1)continue;const hw=rx*Math.sqrt(1-norm);for(let xx=Math.max(0,Math.ceil(cx-hw));xx<=Math.min(W-1,Math.floor(cx+hw));xx++)plot(xx,yy,c);}}else{const steps=Math.ceil(Math.PI*2*Math.max(rx,ry)*1.35);let last=null;for(let i=0;i<=steps;i++){const angle=i*2*Math.PI/steps,xx=Math.round(cx+rx*Math.cos(angle)),yy=Math.round(cy+ry*Math.sin(angle));if(last)line(last[0],last[1],xx,yy,c,size);last=[xx,yy];}}}
+function flood(x,y,c=state.color){x=integer(x);y=integer(y);if(!valid(x,y))return 0;const source=snapshot(),target=colorAt(source,x,y);const kind=n=>n===0||n===4?0:n===3||n===7?3:n;const wanted=kind(target),seen=new Uint8Array(W*H),queue=new Int32Array(W*H);let head=0,tail=0;const push=(i)=>{if(!seen[i]){seen[i]=1;queue[tail++]=i;}};push(y*W+x);while(head<tail){const p=queue[head++],px=p%W,py=(p/W)|0;if(px>0){const v=p-1;if(!seen[v]&&kind(colorAt(source,px-1,py))===wanted)push(v);}if(px<W-1){const v=p+1;if(!seen[v]&&kind(colorAt(source,px+1,py))===wanted)push(v);}if(py>0){const v=p-W;if(!seen[v]&&kind(colorAt(source,px,py-1))===wanted)push(v);}if(py<H-1){const v=p+W;if(!seen[v]&&kind(colorAt(source,px,py+1))===wanted)push(v);}}for(let i=0;i<tail;i++){const p=queue[i];plot(p%W,(p/W)|0,c);}return tail;}
+const GLYPHS={
+' ':['00000','00000','00000','00000','00000','00000','00000'],
+'A':['01110','10001','10001','11111','10001','10001','10001'],
+'B':['11110','10001','10001','11110','10001','10001','11110'],
+'C':['01111','10000','10000','10000','10000','10000','01111'],
+'D':['11110','10001','10001','10001','10001','10001','11110'],
+'E':['11111','10000','10000','11110','10000','10000','11111'],
+'F':['11111','10000','10000','11110','10000','10000','10000'],
+'G':['01111','10000','10000','10111','10001','10001','01111'],
+'H':['10001','10001','10001','11111','10001','10001','10001'],
+'I':['11111','00100','00100','00100','00100','00100','11111'],
+'J':['00111','00010','00010','00010','10010','10010','01100'],
+'K':['10001','10010','10100','11000','10100','10010','10001'],
+'L':['10000','10000','10000','10000','10000','10000','11111'],
+'M':['10001','11011','10101','10101','10001','10001','10001'],
+'N':['10001','11001','10101','10011','10001','10001','10001'],
+'O':['01110','10001','10001','10001','10001','10001','01110'],
+'P':['11110','10001','10001','11110','10000','10000','10000'],
+'Q':['01110','10001','10001','10001','10101','10010','01101'],
+'R':['11110','10001','10001','11110','10100','10010','10001'],
+'S':['01111','10000','10000','01110','00001','00001','11110'],
+'T':['11111','00100','00100','00100','00100','00100','00100'],
+'U':['10001','10001','10001','10001','10001','10001','01110'],
+'V':['10001','10001','10001','10001','10001','01010','00100'],
+'W':['10001','10001','10001','10101','10101','10101','01010'],
+'X':['10001','10001','01010','00100','01010','10001','10001'],
+'Y':['10001','10001','01010','00100','00100','00100','00100'],
+'Z':['11111','00001','00010','00100','01000','10000','11111'],
+'0':['01110','10001','10011','10101','11001','10001','01110'],
+'1':['00100','01100','00100','00100','00100','00100','01110'],
+'2':['01110','10001','00001','00010','00100','01000','11111'],
+'3':['11110','00001','00001','00110','00001','00001','11110'],
+'4':['00010','00110','01010','10010','11111','00010','00010'],
+'5':['11111','10000','10000','11110','00001','00001','11110'],
+'6':['01111','10000','10000','11110','10001','10001','01110'],
+'7':['11111','00001','00010','00100','01000','01000','01000'],
+'8':['01110','10001','10001','01110','10001','10001','01110'],
+'9':['01110','10001','10001','01111','00001','00001','11110'],
+'.':['00000','00000','00000','00000','00000','01100','01100'],
+',':['00000','00000','00000','00000','00110','00110','00100'],
+':':['00000','01100','01100','00000','01100','01100','00000'],
+'-':['00000','00000','00000','11111','00000','00000','00000'],
+'+':['00000','00100','00100','11111','00100','00100','00000'],
+'!':['00100','00100','00100','00100','00100','00000','00100'],
+'?':['01110','10001','00001','00010','00100','00000','00100'],
+'/':['00001','00010','00010','00100','01000','01000','10000'],
+'(':['00010','00100','01000','01000','01000','00100','00010'],
+')':['01000','00100','00010','00010','00010','00100','01000'],
+'=':['00000','11111','00000','11111','00000','00000','00000'],
+'_':['00000','00000','00000','00000','00000','00000','11111'],
+'*':['00000','10101','01110','11111','01110','10101','00000'],
+'#':['01010','11111','01010','11111','01010','00000','00000'],
+'[':['01110','01000','01000','01000','01000','01000','01110'],
+']':['01110','00010','00010','00010','00010','00010','01110'],
+'\'':['10001','10001','01010','00000','00000','00000','00000']
+};
+function textDraw(x,y,str,c=state.color,scale=1){x=integer(x);y=integer(y);scale=Math.max(1,Math.min(8,integer(scale)));const origin=x;for(const char of String(str).toUpperCase()){if(char==='\n'){x=origin;y+=8*scale;continue;}const glyph=GLYPHS[char]||GLYPHS['?'];for(let row=0;row<7;row++)for(let col=0;col<5;col++)if(glyph[row][col]==='1')for(let yy=0;yy<scale;yy++)for(let xx=0;xx<scale;xx++)plot(x+col*scale+xx,y+row*scale+yy,c);x+=6*scale;}}
+function copyRegion(x,y,w,h){x=integer(x);y=integer(y);w=Math.max(0,Math.min(W,integer(w)));h=Math.max(0,Math.min(H,integer(h)));if(!w||!h)throw Error('copy() expects a nonempty rectangle');const bits=new Uint8Array(w*h),phases=new Uint8Array(w*h);for(let j=0;j<h;j++)for(let i=0;i<w;i++){const xx=x+i,yy=y+j,n=j*w+i;if(valid(xx,yy)){const v=state.bytes[at(xx,yy)];bits[n]=!!(v&(1<<(xx%7)))?1:0;phases[n]=v>>7;}}return {width:w,height:h,bits,phases};}
+function pasteRegion(clip,x,y,mode='copy'){if(!clip||!Number.isInteger(clip.width)||!Number.isInteger(clip.height)||clip.width<1||clip.height<1||!clip.bits||clip.bits.length<clip.width*clip.height)throw Error('Invalid clipping');if(!['copy','or','xor'].includes(mode))throw Error('Paste mode must be copy, or, or xor');x=integer(x);y=integer(y);for(let j=0;j<clip.height;j++)for(let i=0;i<clip.width;i++){const xx=x+i,yy=y+j;if(!valid(xx,yy))continue;const k=j*clip.width+i,on=!!clip.bits[k],o=at(xx,yy),mask=1<<(xx%7);let v=state.bytes[o];if(mode==='copy'){v=on?v|mask:v&~mask;v=(v&127)|((clip.phases?.[k]?1:0)<<7);}else if(on){v=mode==='xor'?v^mask:v|mask;v=(v&127)|((clip.phases?.[k]?1:0)<<7);}state.bytes[o]=v;}}
+function clear(c='black0'){const col=resolveColor(c);if(col==='phase0'||col==='phase1'){for(let y=0;y<H;y++)for(let b=0;b<40;b++){const i=at(b*7,y);state.bytes[i]=col==='phase0'?state.bytes[i]&127:state.bytes[i]|128;}return;}for(let y=0;y<H;y++)for(let b=0;b<40;b++){let pattern=0;if(col===3||col===7)pattern=127;else if(col===1||col===5)pattern=(b&1)?0x55:0x2a;else if(col===2||col===6)pattern=(b&1)?0x2a:0x55;state.bytes[at(b*7,y)]=pattern|(col>=4?128:0);}}
+const bytesEqual=(a,b)=>a.every((v,i)=>v===b[i]);
+function registerChange(before){if(bytesEqual(before,state.bytes)){requestRender();return false;}undoStack.push(before);if(undoStack.length>50)undoStack.shift();redoStack=[];state.dirty=true;requestRender();updateToolbar();return true;}
+function transaction(fn){const before=snapshot();try{const result=fn();registerChange(before);return result;}catch(e){state.bytes.set(before);requestRender();throw e;}}
+const hgr=Object.freeze({
+ WIDTH:W,HEIGHT:H,BYTE_SIZE:SIZE,COLORS:Object.freeze(Object.fromEntries(COLORS.map((c,i)=>[c.name,i]))),
+ clear(c){clear(c);requestRender();},
+ pixel(x,y,c){plot(x,y,c);requestRender();},
+ getPixel(x,y){x=integer(x);y=integer(y);if(!valid(x,y))return null;const byte=state.bytes[at(x,y)],color=colorAt(state.bytes,x,y);return {x,y,on:!!(byte&(1<<(x%7))),phase:byte>>7,color,name:COLORS[color].name,address:state.base+at(x,y)};},
+ line(x0,y0,x1,y1,c,width=1){line(x0,y0,x1,y1,c,width);requestRender();},
+ rect(x,y,w,h,c,filled=true,width=1){rect(x,y,w,h,c,filled,width);requestRender();},
+ ellipse(x,y,w,h,c,filled=false,width=1){ellipse(x,y,w,h,c,filled,width);requestRender();},
+ circle(cx,cy,r,c,filled=false,width=1){r=Math.abs(integer(r));ellipse(cx-r,cy-r,2*r+1,2*r+1,c,filled,width);requestRender();},
+ fill(x,y,c){const count=flood(x,y,c);requestRender();return count;},
+ text(x,y,message,c,scale=1){textDraw(x,y,message,c,scale);requestRender();},
+ blit(bitmap,x,y,c='white0',transparent=true){if(!Array.isArray(bitmap))throw Error('blit() expects an array of strings or arrays');x=integer(x);y=integer(y);for(let j=0;j<bitmap.length;j++){const row=bitmap[j];for(let i=0;i<row.length;i++){const v=row[i];if(v==='1'||v===1||v===true||v==='#')plot(x+i,y+j,c);else if(!transparent)plot(x+i,y+j,'black0');}}requestRender();},
+ copy(x,y,w,h){return copyRegion(x,y,w,h);},
+ paste(clip,x,y,mode='copy'){pasteRegion(clip,x,y,mode);requestRender();},
+ shift(dx,dy,wrap=false,fillColor='black0'){dx=integer(dx);dy=integer(dy);const c=resolveColor(fillColor);if(typeof c!=='number')throw Error('shift fillColor must be a color');const original=copyRegion(0,0,W,H);clear(c);for(let yy=0;yy<H;yy++)for(let xx=0;xx<W;xx++){let nx=xx+dx,ny=yy+dy;if(wrap){nx=(nx%W+W)%W;ny=(ny%H+H)%H;}if(valid(nx,ny)){const k=yy*W+xx,o=at(nx,ny),mask=1<<(nx%7);let v=state.bytes[o];v=original.bits[k]?v|mask:v&~mask;state.bytes[o]=(v&127)|(original.phases[k]<<7);}}requestRender();},
+ setPattern(name){if(!['solid','checker','scanline','columns','dots'].includes(name))throw Error('Unknown pattern: '+name);state.pattern=name;el('pattern').value=name;},
+ setPhase(x,y,phase){x=integer(x);y=integer(y);if(valid(x,y)){const o=at(x,y);state.bytes[o]=(state.bytes[o]&127)|(phase?128:0);requestRender();}},
+ byteOffset(x,y){x=integer(x);y=integer(y);return valid(x,y)?at(x,y):-1;},
+ byteAddress(x,y){const o=this.byteOffset(x,y);return o===-1?-1:state.base+o;},
+ peek(offset){if(!Number.isInteger(offset)||offset<0||offset>=SIZE)throw Error('peek(): offset must be 0–8191');return state.bytes[offset];},
+ poke(offset,value){if(!Number.isInteger(offset)||offset<0||offset>=SIZE)throw Error('poke(): offset must be 0–8191');state.bytes[offset]=Number(value)&255;requestRender();},
+ getBytes(){return snapshot();},
+ loadBytes(input){if(!input||input.length!==SIZE)throw Error('loadBytes() requires exactly 8192 bytes');state.bytes.set(input);requestRender();},
+ batch(fn){if(typeof fn!=='function')throw Error('batch() requires a function');return transaction(fn);},
+ undo(){return undo();},redo(){return redo();},
+ getPage(){return state.base;},setPage(address){if(address!==0x2000&&address!==0x4000)throw Error('Page base must be 0x2000 or 0x4000');state.base=address;el('pageSelect').value=address;updateInspector();}
+});
+window.hgr=hgr;
+function undo(){if(!undoStack.length)return false;redoStack.push(snapshot());state.bytes.set(undoStack.pop());state.dirty=true;requestRender();updateToolbar();return true;}
+function redo(){if(!redoStack.length)return false;undoStack.push(snapshot());state.bytes.set(redoStack.pop());state.dirty=true;requestRender();updateToolbar();return true;}
+function requestRender(){if(!renderQueued){renderQueued=true;requestAnimationFrame(()=>{renderQueued=false;renderHGR();});}}
+const canvas=el('hgrCanvas'),ctx=canvas.getContext('2d',{alpha:false}),overlay=el('overlay'),octx=overlay.getContext('2d');
+const rgba=COLORS.map(v=>[parseInt(v.hex.slice(1,3),16),parseInt(v.hex.slice(3,5),16),parseInt(v.hex.slice(5,7),16)]);
+function renderHGR(){const picture=ctx.createImageData(SW,SH),d=picture.data,src=state.bytes;for(let i=0;i<d.length;i+=4)d[i+3]=255;for(let y=0;y<H;y++)for(let x=0;x<W;x++){const off=at(x,y),b=src[off],on=!!(b&(1<<(x%7)));if(!on)continue;const phase=b>>7,color=state.view==='mono'||state.view==='bits'?3:colorAt(src,x,y),rgb=rgba[color];const left=2*x+(state.view==='color'?phase:0),top=y*2;for(let yy=0;yy<2;yy++)for(let xx=0;xx<2;xx++){const p=(top+yy)*SW+left+xx;if(left+xx<SW){const k=p*4;d[k]=rgb[0];d[k+1]=rgb[1];d[k+2]=rgb[2];}}}ctx.putImageData(picture,0,0);renderOverlay();}
+function renderOverlay(){octx.clearRect(0,0,SW,SH);if(state.zoom>=3){octx.lineWidth=.35;octx.strokeStyle='#7d9bb02d';octx.beginPath();for(let x=0;x<=W;x++){octx.moveTo(x*2+.5,0);octx.lineTo(x*2+.5,SH);}for(let y=0;y<=H;y++){octx.moveTo(0,y*2+.5);octx.lineTo(SW,y*2+.5);}octx.stroke();}const r=drag&&drag.tool==='select'?normalizeDrag(drag.start,drag.last):state.selection;if(r){octx.setLineDash([6,4]);octx.strokeStyle='#ffffff';octx.lineWidth=1;octx.strokeRect(r.x*2+.5,r.y*2+.5,r.w*2,r.h*2);octx.setLineDash([]);}if(state.hover&&valid(state.hover.x,state.hover.y)){octx.strokeStyle='#83edff';octx.lineWidth=.7;octx.strokeRect(state.hover.x*2+.2,state.hover.y*2+.2,2,2);}}
+function setZoom(z){state.zoom=z;const width=SW*z,height=SH*z;canvas.style.width=overlay.style.width=width+'px';canvas.style.height=overlay.style.height=height+'px';el('canvasFrame').style.width=width+'px';el('canvasFrame').style.height=height+'px';el('zoom').value=z;requestRender();}
+function normalizeDrag(a,b){const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y);return{x,y,w:Math.abs(a.x-b.x)+1,h:Math.abs(a.y-b.y)+1};}
+function pointFromEvent(e){const r=canvas.getBoundingClientRect();return{x:Math.max(0,Math.min(W-1,Math.floor((e.clientX-r.left)*W/r.width))),y:Math.max(0,Math.min(H-1,Math.floor((e.clientY-r.top)*H/r.height)))};}
+function updateInspector(){const p=state.hover;if(!p){el('coordinateStatus').textContent='X: — · Y: —';el('byteStatus').textContent='Byte: —';return;}const n=at(p.x,p.y),v=state.bytes[n];el('coordinateStatus').textContent=`X: ${String(p.x).padStart(3,'0')} · Y: ${String(p.y).padStart(3,'0')} · ${hgr.getPixel(p.x,p.y).name}`;el('byteStatus').textContent=`$${(state.base+n).toString(16).toUpperCase().padStart(4,'0')} : $${v.toString(16).toUpperCase().padStart(2,'0')} · bit ${p.x%7}`;}
+function updateSelection(){const r=state.selection;el('selectionStatus').textContent=r?`Selection: ${r.x},${r.y} · ${r.w}×${r.h}`:'No selection';renderOverlay();}
+function currentShape(start,end,tool){const r=normalizeDrag(start,end),c=state.color,width=state.thickness;switch(tool){case'line':line(start.x,start.y,end.x,end.y,c,width);break;case'rect':rect(r.x,r.y,r.w,r.h,c,false,width);break;case'rectfill':rect(r.x,r.y,r.w,r.h,c,true,width);break;case'ellipse':ellipse(r.x,r.y,r.w,r.h,c,false,width);break;case'ellipsefill':ellipse(r.x,r.y,r.w,r.h,c,true,width);break;}}
+function setTool(t){state.tool=t;for(const b of el('tools').children)b.classList.toggle('active',b.dataset.tool===t);canvas.style.cursor=t==='pan'?'grab':t==='text'?'text':t==='eyedropper'?'crosshair':'crosshair';}
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+canvas.addEventListener('pointerdown',e=>{if(e.button!==0&&e.button!==1)return;e.preventDefault();const p=pointFromEvent(e);state.hover=p;updateInspector();canvas.setPointerCapture(e.pointerId);if(state.tool==='pan'||e.button===1){const wrap=el('canvasWrap');drag={tool:'pan',px:e.clientX,py:e.clientY,sx:wrap.scrollLeft,sy:wrap.scrollTop};return;}if(state.tool==='eyedropper'){setColor(colorAt(state.bytes,p.x,p.y));return;}if(state.tool==='fill'){const before=snapshot();flood(p.x,p.y);registerChange(before);updateInspector();return;}if(state.tool==='text'){const s=prompt('Text to draw (5×7 built-in font):','APPLE II');if(s){const before=snapshot();textDraw(p.x,p.y,s,state.color,1);registerChange(before);}return;}drag={tool:state.tool,start:p,last:p,before:snapshot()};if(state.tool==='pencil'||state.tool==='eraser'){dot(p.x,p.y,state.tool==='eraser'?'black0':state.color,state.thickness);requestRender();}else if(state.tool==='select'){state.selection=null;updateSelection();}else{currentShape(p,p,state.tool);requestRender();}});
+canvas.addEventListener('pointermove',e=>{const p=pointFromEvent(e);state.hover=p;updateInspector();if(!drag){renderOverlay();return;}if(drag.tool==='pan'){const wrap=el('canvasWrap');wrap.scrollLeft=drag.sx+drag.px-e.clientX;wrap.scrollTop=drag.sy+drag.py-e.clientY;return;}if(p.x===drag.last.x&&p.y===drag.last.y)return;if(drag.tool==='pencil'||drag.tool==='eraser'){line(drag.last.x,drag.last.y,p.x,p.y,drag.tool==='eraser'?'black0':state.color,state.thickness);}else if(drag.tool!=='select'){state.bytes.set(drag.before);currentShape(drag.start,p,drag.tool);}drag.last=p;requestRender();renderOverlay();});
+function finishDrag(){if(!drag)return;if(drag.tool==='select'){state.selection=normalizeDrag(drag.start,drag.last);updateSelection();}else if(drag.tool!=='pan')registerChange(drag.before);drag=null;updateInspector();renderOverlay();}
+canvas.addEventListener('pointerup',finishDrag);canvas.addEventListener('pointercancel',()=>{if(drag?.before)state.bytes.set(drag.before);drag=null;requestRender();});
+canvas.addEventListener('pointerleave',()=>{if(!drag){state.hover=null;updateInspector();renderOverlay();}});
+canvas.addEventListener('wheel',e=>{if(!e.ctrlKey&&!e.metaKey){e.preventDefault();const steps=[1,2,3,4,6],idx=steps.indexOf(state.zoom),next=steps[Math.max(0,Math.min(steps.length-1,idx+(e.deltaY>0?-1:1)))];setZoom(next);}}, {passive:false});
+function setColor(c){state.color=resolveColor(c);for(const b of el('colors').children)b.classList.toggle('active',Number(b.dataset.color)===state.color);}
+const tools=[['pencil','✎','Pencil'],['eraser','⌫','Eraser'],['line','╱','Line'],['rect','□','Rectangle'],['rectfill','▣','Filled rect'],['ellipse','◯','Ellipse'],['ellipsefill','●','Filled ellipse'],['fill','▨','Fill'],['select','⬚','Select'],['eyedropper','⌖','Sample'],['text','T','Text'],['pan','✥','Pan']];
+for(const [key,sym,label] of tools){const b=document.createElement('button');b.className='tool';b.dataset.tool=key;b.innerHTML=`<span class="symbol">${sym}</span><span>${label}</span>`;b.title=label;b.addEventListener('click',()=>setTool(key));el('tools').append(b);}
+COLORS.forEach((c,i)=>{const b=document.createElement('button');b.className='swatch';b.dataset.color=i;b.title=c.name;b.style.background=c.hex;b.style.borderColor=i===0||i===4?'#657b8f':c.hex;b.addEventListener('click',()=>setColor(i));el('colors').append(b);});
+el('thickness').addEventListener('change',e=>state.thickness=+e.target.value);el('pattern').addEventListener('change',e=>state.pattern=e.target.value);el('viewMode').addEventListener('change',e=>{state.view=e.target.value;requestRender();});el('zoom').addEventListener('change',e=>setZoom(+e.target.value));el('fitBtn').onclick=()=>{setZoom(1);el('canvasWrap').scrollTo(0,0);};
+el('pageSelect').onchange=e=>{state.base=+e.target.value;updateInspector();};
+function updateToolbar(){el('undoBtn').disabled=!undoStack.length;el('redoBtn').disabled=!redoStack.length;el('modifiedBadge').textContent=state.dirty?'MODIFIED ●':'CLEAN PAGE';}
+function doCopy(cut=false){const r=state.selection;if(!r){log('Select a rectangle first.','err');return;}state.clipboard=copyRegion(r.x,r.y,r.w,r.h);if(cut){const before=snapshot();rect(r.x,r.y,r.w,r.h,'black0');registerChange(before);}log(`${cut?'Cut':'Copied'} ${r.w}×${r.h} pixels.`, 'ok');}
+function doPaste(){if(!state.clipboard){log('Clipboard is empty.','err');return;}const p=state.hover||state.selection||{x:0,y:0};const before=snapshot();pasteRegion(state.clipboard,p.x,p.y);registerChange(before);log(`Pasted at (${p.x}, ${p.y}).`,'ok');}
+el('copyBtn').onclick=()=>doCopy(false);el('cutBtn').onclick=()=>doCopy(true);el('pasteBtn').onclick=doPaste;
+el('undoBtn').onclick=undo;el('redoBtn').onclick=redo;
+el('newBtn').onclick=()=>{if(state.dirty&&!confirm('Clear the current HGR page? (You can still undo.)'))return;const before=snapshot();state.bytes.fill(0);registerChange(before);state.selection=null;updateSelection();log('Cleared current screen.','ok');};
+function downloadBlob(data,name,type='application/octet-stream'){const blob=data instanceof Blob?data:new Blob([data],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
+function exportHGR(){const raw=snapshot(),format=el('exportFormat').value,base=state.base;let out=raw;if(format==='dos'){out=new Uint8Array(SIZE+4);out[0]=base&255;out[1]=base>>8;out[2]=SIZE&255;out[3]=SIZE>>8;out.set(raw,4);}downloadBlob(out,`hgr-page${base===0x2000?'1':'2'}.${format==='dos'?'bin':'hgr'}`);state.dirty=false;updateToolbar();log(`Exported ${out.length} bytes (${format==='dos'?'DOS BLOAD':'raw HGR'}).`,'ok');}
+el('saveBtn').onclick=exportHGR;
+el('pngBtn').onclick=()=>{canvas.toBlob(blob=>{if(blob){downloadBlob(blob,'hgr-preview.png','image/png');log('PNG preview exported.','ok');}},'image/png');};
+function importHGR(bytes,filename='file'){let data;if(bytes.length===SIZE)data=bytes;else if(bytes.length===SIZE+4){const addr=bytes[0]|(bytes[1]<<8),len=bytes[2]|(bytes[3]<<8);if(len!==SIZE||(addr!==0x2000&&addr!==0x4000))throw Error('Invalid DOS BLOAD header (expected $2000/$4000, length $2000)');state.base=addr;el('pageSelect').value=addr;data=bytes.subarray(4);}else throw Error('HGR import requires 8192 raw bytes or 8196-byte DOS binary');const before=snapshot();state.bytes.set(data);registerChange(before);state.dirty=false;updateToolbar();log(`Loaded ${filename}: ${data.length} HGR bytes.`,'ok');}
+async function readHGRFile(file){if(!file)return;try{importHGR(new Uint8Array(await file.arrayBuffer()),file.name);}catch(e){log(e.message,'err');}}
+el('openBtn').onclick=()=>el('hgrFile').click();el('hgrFile').onchange=e=>{readHGRFile(e.target.files[0]);e.target.value='';};
+for(const evt of ['dragenter','dragover'])el('canvasWrap').addEventListener(evt,e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';});el('canvasWrap').addEventListener('drop',e=>{e.preventDefault();readHGRFile(e.dataTransfer.files[0]);});
+function log(message,style=''){const row=document.createElement('div');row.className=style;row.textContent=String(message);el('log').append(row);el('log').scrollTop=el('log').scrollHeight;}
+el('clearLogBtn').onclick=()=>{el('log').replaceChildren();};
+const EXAMPLES={
+ welcome:`// Welcome to HGR Script Studio\n// Press Run to draw an Apple II title screen.\nhgr.clear('black0');\nhgr.rect(0, 0, 280, 192, 'blue', false, 2);\nhgr.rect(9, 9, 262, 174, 'violet', false, 2);\nhgr.line(15, 44, 264, 44, 'orange', 2);\nhgr.text(34, 22, 'APPLE II', 'white0', 3);\nhgr.text(34, 55, 'HGR SCRIPT STUDIO', 'green', 2);\nfor (let i = 0; i < 7; i++) {\n  hgr.circle(140, 130, 12 + i * 8,\n    i % 2 ? 'orange' : 'violet', false, 2);\n}\nhgr.text(47, 172, '280 X 192 / 8192 BYTES', 'white0');\nprint('Title screen rendered.');`,
+ geometry:`// Geometry playground: true Apple II HGR bytes\nhgr.clear();\nfor (let i = 0; i < 9; i++) {\n  hgr.rect(8+i*4, 8+i*4, 115-i*7, 84-i*7,\n           i%2 ? 'blue' : 'orange', false, 2);\n}\nfor (let r = 50; r >= 8; r -= 7) {\n  hgr.circle(202, 73, r, r%2 ? 'green' : 'violet');\n}\nhgr.rect(13, 122, 255, 47, 'white0', false, 2);\nhgr.text(28, 136, 'CIRCLES  LINES  BOXES', 'white0', 2);\nprint('Shapes drawn.');`,
+ wave:`// Trigonometry + dither patterns\nhgr.clear('black0');\nfor (let x = 0; x < 280; x++) {\n  const y = 93 + Math.round(39 * Math.sin(x / 21));\n  hgr.line(x, 96, x, y, 'violet');\n  hgr.pixel(x, y, 'white0');\n}\nhgr.setPattern('checker');\nhgr.rect(10, 151, 260, 28, 'orange');\nhgr.setPattern('solid');\nhgr.text(22, 157, 'SINE WAVE', 'white0', 2);\nprint('Generated 280 sine samples.');`,
+ sprite:`// Bitmap blitting and clipping\nhgr.clear('black0');\nconst sprite = [\n '0011100', '0111110', '1111111',\n '1101011', '1111111', '0111110', '0011100'\n];\nfor (let y = 10; y < 170; y += 17) {\n  for (let x = 12; x < 260; x += 20) {\n    hgr.blit(sprite, x, y, (x+y)%3 ? 'violet' : 'orange');\n  }\n}\nhgr.rect(20, 70, 240, 48, 'black0');\nhgr.text(27, 83, 'SPRITE  BLITTER', 'white0', 2);\nprint('Sprites drawn.');`
+};
+const code=el('code'),highlight=el('highlight');
+function escaped(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function highlightJS(source){const regex=/(\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\b(?:const|let|var|function|return|if|else|for|while|true|false|null|new|throw|try|catch|class|of|in|break|continue)\b|\b\d+(?:\.\d+)?\b|\bhgr\b|\b(?:print|Math|Array|Uint8Array)\b)/g;let cursor=0,result='',match;while((match=regex.exec(source))){result+=escaped(source.slice(cursor,match.index));const s=match[0],cls=s.startsWith('//')||s.startsWith('/*')?'comment':/^['"`]/.test(s)?'string':/^\d/.test(s)?'number':s==='hgr'?'api':s==='print'||s==='Math'||s==='Array'||s==='Uint8Array'?'fn':'keyword';result+=`<span class="tok-${cls}">${escaped(s)}</span>`;cursor=match.index+s.length;}return result+escaped(source.slice(cursor))+'\n';}
+function updateCodeView(){highlight.innerHTML=highlightJS(code.value);const count=code.value.split('\n').length;el('gutter').textContent=Array.from({length:count},(_,i)=>i+1).join('\n');el('gutter').scrollTop=code.scrollTop;}
+code.addEventListener('input',updateCodeView);code.addEventListener('scroll',()=>{highlight.scrollTop=code.scrollTop;highlight.scrollLeft=code.scrollLeft;el('gutter').scrollTop=code.scrollTop;});
+code.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const start=code.selectionStart,end=code.selectionEnd;code.setRangeText('  ',start,end,'end');updateCodeView();}else if(e.key==='Enter'&&!e.ctrlKey&&!e.metaKey){const pos=code.selectionStart,begin=code.value.lastIndexOf('\n',pos-1)+1,indent=(code.value.slice(begin,pos).match(/^\s*/)||[''])[0];if(indent){e.preventDefault();code.setRangeText('\n'+indent,pos,code.selectionEnd,'end');updateCodeView();}}});
+function loadExample(k){code.value=EXAMPLES[k];selectedCode=k;el('examples').value=k;updateCodeView();}
+el('examples').onchange=e=>loadExample(e.target.value);el('resetCodeBtn').onclick=()=>loadExample(selectedCode);
+function print(...args){log(args.map(a=>typeof a==='object'?JSON.stringify(a):String(a)).join(' '));}
+function runScript(){const source=code.value,before=snapshot(),start=performance.now();try{const func=new Function('hgr','print','"use strict";\n'+source+'\n//# sourceURL=HGR_STUDIO_USER_SCRIPT.js');const result=func(hgr,print);if(result&&typeof result.then==='function')throw Error('Async scripts are unsupported. Use synchronous drawing APIs.');registerChange(before);log(`✓ Script finished in ${(performance.now()-start).toFixed(1)} ms.`,'ok');}catch(e){state.bytes.set(before);requestRender();log(`✕ ${e.name}: ${e.message}${e.stack?'\n'+e.stack.split('\n').slice(1,3).join('\n'):''}`,'err');}}
+el('runBtn').onclick=runScript;
+el('openJsBtn').onclick=()=>el('jsFile').click();el('jsFile').onchange=async e=>{const file=e.target.files[0];if(file){code.value=await file.text();selectedCode='welcome';updateCodeView();log(`Opened ${file.name}.`,'ok');}e.target.value='';};
+el('saveJsBtn').onclick=()=>{downloadBlob(code.value,'hgr-script.js','text/javascript;charset=utf-8');log('Saved JavaScript program.','ok');};
+document.addEventListener('keydown',e=>{const editing=e.target===code||e.target instanceof HTMLInputElement||e.target instanceof HTMLSelectElement||e.target instanceof HTMLTextAreaElement;const cmd=e.ctrlKey||e.metaKey;if(cmd&&e.key==='Enter'){e.preventDefault();runScript();return;}if(cmd&&e.key.toLowerCase()==='s'){e.preventDefault();if(editing&&e.target===code)el('saveJsBtn').click();else exportHGR();return;}if(editing)return;if(cmd&&e.key.toLowerCase()==='z'){e.preventDefault();if(e.shiftKey)redo();else undo();}else if(cmd&&(e.key.toLowerCase()==='y')){e.preventDefault();redo();}else if(cmd&&e.key.toLowerCase()==='c'){e.preventDefault();doCopy();}else if(cmd&&e.key.toLowerCase()==='x'){e.preventDefault();doCopy(true);}else if(cmd&&e.key.toLowerCase()==='v'){e.preventDefault();doPaste();}else if(e.key==='Escape'){state.selection=null;updateSelection();}});
+for(const b of document.querySelectorAll('.edtab'))b.onclick=()=>{for(const v of document.querySelectorAll('.edtab,.tabcontent'))v.classList.remove('active');b.classList.add('active');el(b.dataset.tab).classList.add('active');};
+</script>
+<script id="apiMarkdown" type="text/plain">
+# HGR Script Studio — JavaScript API
+
+A **self-contained JavaScript graphics workbench** for the Apple II HGR screen. Every operation edits a real **8192-byte HGR memory page**, not an RGB replacement. Open the JavaScript IDE, type drawing commands, and press **Run** or **Ctrl/Cmd+Enter**.
+
+## Quick start
+
+```js
+hgr.clear('black0');
+hgr.line(10, 10, 260, 180, 'violet', 2);
+hgr.rect(30, 40, 120, 70, 'blue', false, 2);
+hgr.circle(180, 100, 30, 'orange', false, 2);
+hgr.text(35, 145, 'HELLO APPLE II', 'white0', 2);
+print('Done.');
+```
+
+The global object is **hgr**, and **print(...values)** appends messages to the console. A Run operation commits its successful drawing edits as **one undo step**; if JavaScript throws an exception, the image is restored to the pre-run bytes. Commands are synchronous.
+
+## Coordinate, byte, and color conventions
+
+| Item | Meaning |
+| --- | --- |
+| Coordinate system | Top-left `(0,0)`, X = `0..279`, Y = `0..191` |
+| HGR page | `8192` bytes, `$2000–$3FFF` or `$4000–$5FFF` |
+| Visible bytes | `40` bytes per scanline, `7` pixels per byte |
+| Byte phase | High bit (`$80`) selects color group for all seven bits |
+| Dimensions | `hgr.WIDTH = 280`, `hgr.HEIGHT = 192`, `hgr.BYTE_SIZE = 8192` |
+| Pixel addressing | `hgr.byteOffset(x,y)` uses Apple II non-linear HGR layout |
+
+```js
+const offset = ((y & 7) << 10)
+             | ((y & 56) << 4)
+             | ((y >> 6) * 40)
+             | Math.floor(x / 7);
+const bit = x % 7;    // Bit 0 is the leftmost of the 7 HGR pixels.
+```
+
+| ID | Color name | Bit-7 phase | Bit pattern on X |
+| --- | --- | --- | --- |
+| 0 | `black0` | 0 | off |
+| 1 | `green` | 0 | odd pixels lit |
+| 2 | `violet` | 0 | even pixels lit |
+| 3 | `white0` | 0 | all lit |
+| 4 | `black1` | 1 | off |
+| 5 | `orange` | 1 | odd pixels lit |
+| 6 | `blue` | 1 | even pixels lit |
+| 7 | `white1` | 1 | all lit |
+
+Names are case-insensitive; numeric IDs `0..7` also work. Aliases: `black`, `white`, `purple`. Special colors `phase0` and `phase1` modify only bit 7 without touching the seven pixel bits. **Color caveat:** phase is shared by all seven pixels of a memory byte. Placing blue near green may recolor previously written bits. Adjacent on-bits generally appear white. Color view is an artifact-color approximation, not a cycle-perfect NTSC decoder. `mono` renders individual set bits in white; `bits` ignores half-pixel phase shift.
+
+## Drawing API
+
+### hgr.clear(color = 'black0')
+
+Fill the visible 280×192 screen with an Apple II color. Does **not** change the 512 unused HGR memory bytes; use `hgr.loadBytes(new Uint8Array(8192))` to zero the entire page. For phase-only colors, changes phase on all bytes.
+
+```js
+hgr.clear();
+hgr.clear('blue');
+```
+
+### hgr.pixel(x, y, color)
+
+Draw one logical HGR pixel. Out-of-bounds pixels are ignored. `color` defaults to the selected palette color, and the current pattern controls whether a pixel is written. For artifact colors, use two-pixel-wide strokes for more consistent visibility.
+
+```js
+hgr.pixel(140, 96, 'violet');
+hgr.pixel(141, 96, 'violet');
+```
+
+### hgr.getPixel(x, y)
+
+Get `{x, y, on, phase, color, name, address}`, or `null` for out-of-bounds. The `color` and `name` fields describe the **displayed approximate color** after considering adjacent bits; they are not independent stored RGB values.
+
+```js
+print(hgr.getPixel(20, 30));
+```
+
+### hgr.line(x0, y0, x1, y1, color, width = 1)
+
+Draw a Bresenham line. `width` controls logical brush thickness, centered approximately on each plotted point. Default is one pixel in the API; the visual toolbar defaults to two.
+
+```js
+hgr.line(0, 0, 279, 191, 'white0', 2);
+```
+
+### hgr.rect(x, y, width, height, color, filled = true, lineWidth = 1)
+
+Draw a rectangle with `(x, y)` as the top-left corner. Width and height are **sizes**, not the opposite corner. Set `filled` to `false` for the outline.
+
+```js
+hgr.rect(12, 22, 60, 35, 'green');
+hgr.rect(12, 22, 60, 35, 'white0', false, 2);
+```
+
+### hgr.ellipse(x, y, width, height, color, filled = false, lineWidth = 1)
+
+Draw an outlined or filled ellipse bounded by a rectangle.
+
+```js
+hgr.ellipse(80, 40, 90, 55, 'orange', true);
+```
+
+### hgr.circle(cx, cy, radius, color, filled = false, lineWidth = 1)
+
+Draw a circle centered at `(cx, cy)` with integer radius.
+
+```js
+hgr.circle(140, 96, 32, 'violet', false, 2);
+```
+
+### hgr.fill(x, y, color)
+
+Flood-fill the connected region at `(x, y)` and return the number of examined logical pixels. Uses four-connected neighbors and the initial snapshot's approximate display-color class. Black phase 0/1 and white phase 0/1 count as equivalent. Dithered/striped regions can leak because the empty artifact pixels read as black.
+
+```js
+const n = hgr.fill(100, 80, 'green');
+print('Pixels visited', n);
+```
+
+### hgr.text(x, y, message, color, scale = 1)
+
+Draw built-in 5×7 bitmap glyphs, with one empty column per character. Supports A–Z, 0–9, common punctuation, and newline. Lowercase input is displayed uppercase. `scale` is an integer from 1 through 8. This is a compact built-in font, **not** the original Apple II character ROM.
+
+```js
+hgr.text(20, 30, 'RETRO APPLE II', 'white0', 2);
+```
+
+### hgr.blit(bitmap, x, y, color = 'white0', transparent = true)
+
+Stamp an array of strings/arrays as a monochrome sprite. `1`, `#`, or `true` plot the chosen color; `0` pixels remain transparent by default. When `transparent=false`, empty bits are drawn with `black0`. Sprite pixels obey the current pattern.
+
+```js
+const alien = ['01110', '11011', '11111', '10101'];
+hgr.blit(alien, 50, 100, 'green');
+```
+
+### hgr.shift(dx, dy, wrap = false, fillColor = 'black0')
+
+Shift all logical HGR bits; if `wrap=true`, pixels falling off one edge reappear at the opposite edge. The source pixel's high-bit phase is copied to each destination byte; moves not aligned to seven pixels can change neighboring artifact colors.
+
+```js
+hgr.shift(7, 0);      // shifts exactly one HGR byte to the right
+```
+
+## Patterns and phase
+
+### hgr.setPattern(name)
+
+Set the global drawing pattern. Options: `solid`, `checker`, `scanline`, `columns`, `dots`. Pattern holes leave existing pixels untouched. The API and mouse tools share the current pattern.
+
+```js
+hgr.setPattern('checker');
+hgr.rect(20, 30, 120, 70, 'blue');
+hgr.setPattern('solid');
+```
+
+### hgr.setPhase(x, y, phase)
+
+Set or clear bit `$80` of the byte containing `(x, y)`. Changing phase of **one** coordinate changes the entire group of seven HGR pixels.
+
+```js
+hgr.setPhase(50, 60, 1);
+hgr.pixel(50, 60, 'phase0'); // phase-only drawing also works
+```
+
+## Selection, sprites, and compositing
+
+### hgr.copy(x, y, width, height)
+
+Return an in-memory clipping `{width, height, bits, phases}`, where `bits` and `phases` are `Uint8Array`s of length `width * height`. This operation does not modify the screen.
+
+### hgr.paste(clip, x, y, mode = 'copy')
+
+Paste a clipping at destination `(x, y)`. Modes: `copy` overwrites bits (including zero bits), `or` sets only lit source bits, and `xor` toggles lit destination bits. Moved clips are logically pixel-aligned, but shared phase bits may make mixed-color content look different when not aligned on a seven-pixel byte boundary.
+
+```js
+const clip = hgr.copy(5, 5, 40, 30);
+hgr.paste(clip, 90, 60, 'or');
+```
+
+## Direct Apple II memory access
+
+### hgr.byteOffset(x, y)
+
+Return offset `0..8191` into the HGR page, or `-1` for an invalid coordinate.
+
+### hgr.byteAddress(x, y)
+
+Return absolute Apple II address, using the selected base (`0x2000` or `0x4000`), or `-1` for invalid coordinates.
+
+### hgr.peek(offset)
+
+Return the raw byte at a zero-based **page offset** `0..8191`; invalid offsets throw an error.
+
+### hgr.poke(offset, value)
+
+Write one raw HGR byte at offset `0..8191`. Low eight bits of `value` are used. This also permits editing the unused 512 page bytes.
+
+### hgr.getBytes()
+
+Return a fresh `Uint8Array(8192)` copy of the complete memory page. Editing the returned copy does not affect the screen until `loadBytes()`.
+
+### hgr.loadBytes(bytes)
+
+Replace all 8192 bytes (including unused locations) from an array-like object of **exactly 8192 bytes**. The visualizer and binary exporter use this exact layout. For file imports, the toolbar also recognizes the 4-byte DOS BLOAD binary header.
+
+```js
+print(hgr.byteAddress(0, 0).toString(16)); // "2000" on page 1
+const screen = hgr.getBytes();
+screen[hgr.byteOffset(0, 0)] = 0x7f;
+hgr.loadBytes(screen);
+```
+
+### hgr.getPage() and hgr.setPage(baseAddress)
+
+Read or change the export/load base address: `0x2000` for HGR1 or `0x4000` for HGR2. This does **not** shift or alter the underlying 8192 data bytes.
+
+```js
+hgr.setPage(0x4000);
+```
+
+## Undo, redo, and atomic batches
+
+### hgr.batch(fn)
+
+Run a synchronous drawing callback as one undoable transaction. If the callback throws, the drawing bytes are rolled back. IDE **Run** already wraps every script in its own transaction, so `batch()` is most useful from the browser's developer console or externally supplied code.
+
+### hgr.undo() and hgr.redo()
+
+Undo or redo the most recent committed transaction; return a boolean indicating whether anything changed. Do **not** call these inside a drawing script: they operate on historical committed screens, not the unfinished current transaction.
+
+```js
+hgr.batch(() => {
+  hgr.clear();
+  hgr.line(0, 0, 279, 191, 'white0');
+});
+hgr.undo();
+hgr.redo();
+```
+
+## File formats and interoperability
+
+| Toolbar action | Format |
+| --- | --- |
+| Open HGR | Exactly 8192-byte raw HGR or 8196-byte DOS binary |
+| Export HGR: Raw | 8192 bytes, directly suitable for `$2000` / `$4000` image memory |
+| Export HGR: DOS BLOAD | 4-byte little-endian load address/length header followed by 8192 bytes |
+| PNG | Raster preview of the active color/mono view; **not** reversible HGR bytes |
+| Open / Save .js | Plain JavaScript editor source |
+| API.md | This standalone Markdown documentation |
+
+The imported screen preserves the 512 non-visible padding bytes. Tool-based screen clearing changes visible bytes only; **New** explicitly zeroes the whole page. For RetroAppleJS, load raw bytes at `$2000` (HGR) or `$4000` (HGR2), then select the corresponding graphics page in the emulator.
+
+## Editor shortcuts and limitations
+
+| Shortcut | Effect |
+| --- | --- |
+| Ctrl/Cmd + Enter | Run the JavaScript program |
+| Ctrl/Cmd + S | Save .js when code has focus; otherwise export HGR |
+| Ctrl/Cmd + Z / Shift+Z | Undo / redo when outside the code editor |
+| Ctrl/Cmd + C, X, V | Copy, cut, paste HGR selection when outside code editor |
+| Tab inside IDE | Insert two spaces |
+| Mouse wheel on image | Adjust zoom |
+| Escape | Cancel selection |
+
+**Security:** The JavaScript editor uses `new Function` in this page's browser context. It is intended for **code you wrote or trust**; it is not a sandbox. Arbitrary imported JavaScript can access browser APIs. Avoid infinite loops, which may freeze the tab. No external libraries, CDNs, accounts, or network requests are required by the workbench itself.
+
+**Display accuracy:** This is a practical Apple II artifact preview, not a composite NTSC simulation. It models the byte phase and half-pixel shift approximately. Color conflicts and text/font appearance should be verified in the final target emulator or real Apple II.
+</script>
+<script>
+function mdInline(s){let h=escaped(s);h=h.replace(/`([^`]+)`/g,(_,v)=>`<code>${v}</code>`);h=h.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');h=h.replace(/\*([^*]+)\*/g,'<em>$1</em>');return h;}
+function markdownToHtml(md){const lines=md.trim().replace(/\r/g,'').split('\n');let html='',inCode=false,inTable=false,inList=false,paragraph=[];function flush(){if(paragraph.length){html+=`<p>${mdInline(paragraph.join(' '))}</p>`;paragraph=[];}}for(let i=0;i<lines.length;i++){const line=lines[i];if(line.startsWith('```')){flush();if(inList){html+='</ul>';inList=false;}if(inTable){html+='</tbody></table>';inTable=false;}if(!inCode){html+='<pre><code>';inCode=true;}else{html+='</code></pre>';inCode=false;}continue;}if(inCode){html+=escaped(line)+'\n';continue;}if(!line.trim()){flush();if(inList){html+='</ul>';inList=false;}if(inTable){html+='</tbody></table>';inTable=false;}continue;}const head=line.match(/^(#{1,3})\s+(.+)$/);if(head){flush();if(inTable){html+='</tbody></table>';inTable=false;}const n=head[1].length;html+=`<h${n}>${mdInline(head[2])}</h${n}>`;continue;}if(/^\|.*\|\s*$/.test(line)){flush();if(/^\|[-| :]+\|\s*$/.test(line))continue;const cells=line.trim().slice(1,-1).split('|').map(v=>v.trim());if(!inTable){html+='<table><tbody>';inTable=true;}html+='<tr>'+cells.map(c=>`<td>${mdInline(c)}</td>`).join('')+'</tr>';continue;}if(/^[-*] /.test(line)){flush();if(!inList){html+='<ul>';inList=true;}html+=`<li>${mdInline(line.slice(2))}</li>`;continue;}if(line.startsWith('> ')){flush();html+=`<blockquote>${mdInline(line.slice(2))}</blockquote>`;continue;}paragraph.push(line.trim());}flush();if(inList)html+='</ul>';if(inTable)html+='</tbody></table>';if(inCode)html+='</code></pre>';return html;}
+const markdown=el('apiMarkdown').textContent.trim();
+function renderDocs(){const query=el('docsSearch').value.toLowerCase().trim();if(!query){el('docsView').innerHTML=markdownToHtml(markdown);return;}const sections=markdown.split(/(?=^## )/m);const matches=sections.filter((s,i)=>i===0||s.toLowerCase().includes(query));el('docsView').innerHTML=markdownToHtml(matches.join('\n\n'))+(matches.length===1?'<p>No matching sections.</p>':'');}
+el('docsSearch').addEventListener('input',renderDocs);
+el('downloadDocs').onclick=()=>downloadBlob(markdown+'\n','HGR_SCRIPT_STUDIO_API.md','text/markdown;charset=utf-8');
+setTool('pencil');setColor(2);setZoom(1);loadExample('welcome');updateToolbar();renderDocs();requestRender();log('Ready. Select a drawing tool or press Run to execute the welcome script.','muted');
+</script>
+</body>
+</html>
