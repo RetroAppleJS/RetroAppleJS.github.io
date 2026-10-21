@@ -47,6 +47,9 @@ function toggle(card,slot,popupFactory){
         var f=input.files&&input.files[0];if(!f)return;
         by("diName").value=f.name.replace(/\.[^.]+$/,"").toUpperCase().replace(/[^A-Z0-9 ._-]/g,"_").slice(0,30);
         type.value=/\.txt$|\.text$/i.test(f.name)?"T":"B";
+        status.textContent=/\.bas$/i.test(f.name)
+            ?"For Applesoft BASIC source, copy the numbered lines to the emulator Paste control instead."
+            :"";
         refresh();
     };
     by("diSubmit").onclick=async function(){
