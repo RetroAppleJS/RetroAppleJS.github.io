@@ -42825,6 +42825,17 @@ if(typeof(oEMU)!=="undefined" && oEMU && oEMU.component && oEMU.component.IO)
 (function(root) {
 "use strict";
 var SIZE=143360, TRACKS=35, SECTORS=16, SECTOR_SIZE=256;
+
+// DOS 3.3 maps sector $F to the MSB of byte 0 and sector $0 to the
+// LSB of byte 1 (per track, starting at VTOC+$38). This is the inverse
+// of ascending sector indices: FF FF = all 16 sectors free.
+function sectorBit(track,sector) {
+    check(track>=0 && track<TRACKS && sector>=0 && sector<SECTORS,
+        "Invalid DOS 3.3 bitmap track/sector.");
+    var bit=15-sector;
+    return {index:0x38+track*4+(bit>>3),mask:0x80>>(bit&7)};
+}
+
 function check(c,msg) { if(!c) throw Error(msg); }
 function hex(n) {return "$"+(n>>>0).toString(16).toUpperCase().padStart(4,"0");}
 function address(raw) {
@@ -42924,8 +42935,8 @@ function write(dsk,file) {
     for(var t=3;t<TRACKS;t++) {
         if(t===17)continue; // keep VTOC and directory track untouched
         for(var s=SECTORS-1;s>=0;s--) {
-            var bitmap=0x38+t*4+(s>>3),mask=0x80>>(s&7);
-            if(vtoc[bitmap]&mask)available.push([t,s]);
+            var entry=sectorBit(t,s);
+            if(vtoc[entry.index]&entry.mask)available.push([t,s]);
         }
     }
     check(available.length>=need,"Not enough free DOS 3.3 sectors (need "+
@@ -42933,8 +42944,8 @@ function write(dsk,file) {
     var claimed=available.slice(0,need), lists=claimed.slice(0,numLists),
         blocks=claimed.slice(numLists);
     claimed.forEach(function(ts) {
-        var bitmap=vtocOff+0x38+ts[0]*4+(ts[1]>>3);
-        image[bitmap]&=~(0x80>>(ts[1]&7));
+        var entry=sectorBit(ts[0],ts[1]);
+        image[vtocOff+entry.index]&=~entry.mask;
         image.fill(0,off(ts[0],ts[1]),off(ts[0],ts[1])+256);
     });
     for(var d=0;d<numData;d++){
@@ -42972,6 +42983,11 @@ function verify(dsk,file) {
     var off=function(t,s){return t*4096+skew[s]*256;};
     var vtoc=17*4096,ct=dsk[vtoc+1],cs=dsk[vtoc+2],entry=null,seen={};
     check(dsk[vtoc+3]===3,"Read-back disk is not DOS 3.3.");
+    function requireAllocated(track,sector) {
+        var b=sectorBit(track,sector);
+        check((dsk[vtoc+b.index]&b.mask)===0,
+            "DOS VTOC marks T"+track+" S"+sector+" free although imported file references it.");
+    }
     for(var n=0;ct!==0 && n<32;n++) {
         check(valid(ct,cs) && ct===17,"Read-back catalog is corrupt.");
         var k=ct+":"+cs;check(!seen[k],"Read-back catalog loop.");seen[k]=true;
@@ -42994,11 +43010,13 @@ function verify(dsk,file) {
     for(var l=0;listT!==0 && l<32 && copied<recovered.length;l++) {
         check(valid(listT,listS),"Invalid T/S list during read-back.");
         var lk=listT+":"+listS;check(!lsSeen[lk],"Cyclic T/S list.");lsSeen[lk]=true;
+        requireAllocated(listT,listS);
         var q=off(listT,listS),listOffset=dsk[q+5]|(dsk[q+6]<<8);
         check(listOffset===l*122,"Unexpected T/S list sector offset.");
         for(var k=0;k<122 && copied<recovered.length;k++) {
             var t=dsk[q+0x0c+k*2],sect=dsk[q+0x0d+k*2];
             check(valid(t,sect) && t!==0,"Missing or invalid file data sector.");
+            requireAllocated(t,sect);
             var take=Math.min(256,recovered.length-copied),data=off(t,sect);
             for(var m=0;m<take;m++)recovered[copied+m]=dsk[data+m];
             copied+=take;
