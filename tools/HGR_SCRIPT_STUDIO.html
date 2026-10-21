@@ -18,7 +18,7 @@ button,input,textarea,select{font:inherit}button,select{cursor:pointer}button{bo
   <div class="brand"><div class="logo">][</div><div><strong>HGR Script Studio</strong><div class="sub">Apple II Hi-Res Graphics · Offline JavaScript Workbench</div></div></div>
   <div class="top-actions">
     <select id="pageSelect" aria-label="HGR memory page" title="Export/load address"><option value="8192">HGR · $2000</option><option value="16384">HGR2 · $4000</option></select>
-    <button id="newBtn">New</button><button id="openBtn">Open HGR</button><button id="saveBtn">Export HGR</button><button id="pngBtn">PNG</button>
+    <button id="newBtn">New</button><button id="openBtn">Open HGR</button><button id="saveBtn">Export HGR</button><button id="copyHexBtn" title="Copy all 8192 HGR bytes as Apple monitor hex lines to clipboard">Copy HGR Bytes</button><button id="pngBtn">PNG</button>
     <button id="undoBtn" title="Ctrl/Cmd+Z">↶ Undo</button><button id="redoBtn" title="Ctrl/Cmd+Shift+Z">↷ Redo</button>
   </div>
 </header>
@@ -64,6 +64,20 @@ const el=id=>document.getElementById(id);
 const state={bytes:new Uint8Array(SIZE),color:2,pattern:'solid',thickness:2,zoom:1,view:'color',tool:'pencil',base:0x2000,selection:null,clipboard:null,hover:null,dirty:false};
 let undoStack=[],redoStack=[],drag=null,renderQueued=false,selectedCode='welcome';
 const snapshot=()=>state.bytes.slice();
+// Format the actual HGR memory bytes like the RetroAppleJS assembler pasteboard.
+// Each line uses a four-digit hexadecimal origin followed by up to 8 bytes.
+function formatMonitorByteCode(bytes,base,bytesPerLine=8){
+ if(!Number.isInteger(bytesPerLine)||bytesPerLine<1||bytesPerLine>32)
+   throw Error('bytesPerLine must be an integer from 1 to 32');
+ const lines=[];
+ for(let i=0;i<bytes.length;i+=bytesPerLine){
+   const row=[];
+   for(let j=i;j<Math.min(i+bytesPerLine,bytes.length);j++)
+     row.push((bytes[j]&255).toString(16).toUpperCase().padStart(2,'0'));
+   lines.push(((base+i)&0xFFFF).toString(16).toUpperCase().padStart(4,'0')+': '+row.join(' '));
+ }
+ return lines.join('\n');
+}
 const integer=n=>Number.isFinite(n)?Math.round(n):0;
 const valid=(x,y)=>x>=0&&x<W&&y>=0&&y<H;
 const at=(x,y)=>((y&7)<<10)|((y&56)<<4)|((y>>6)*40)+(x/7|0);
@@ -162,6 +176,7 @@ const hgr=Object.freeze({
  peek(offset){if(!Number.isInteger(offset)||offset<0||offset>=SIZE)throw Error('peek(): offset must be 0–8191');return state.bytes[offset];},
  poke(offset,value){if(!Number.isInteger(offset)||offset<0||offset>=SIZE)throw Error('poke(): offset must be 0–8191');state.bytes[offset]=Number(value)&255;requestRender();},
  getBytes(){return snapshot();},
+ formatByteCode(bytesPerLine=8){return formatMonitorByteCode(snapshot(),state.base,bytesPerLine);},
  loadBytes(input){if(!input||input.length!==SIZE)throw Error('loadBytes() requires exactly 8192 bytes');state.bytes.set(input);requestRender();},
  batch(fn){if(typeof fn!=='function')throw Error('batch() requires a function');return transaction(fn);},
  undo(){return undo();},redo(){return redo();},
@@ -204,6 +219,35 @@ el('newBtn').onclick=()=>{if(state.dirty&&!confirm('Clear the current HGR page? 
 function downloadBlob(data,name,type='application/octet-stream'){const blob=data instanceof Blob?data:new Blob([data],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
 function exportHGR(){const raw=snapshot(),format=el('exportFormat').value,base=state.base;let out=raw;if(format==='dos'){out=new Uint8Array(SIZE+4);out[0]=base&255;out[1]=base>>8;out[2]=SIZE&255;out[3]=SIZE>>8;out.set(raw,4);}downloadBlob(out,`hgr-page${base===0x2000?'1':'2'}.${format==='dos'?'bin':'hgr'}`);state.dirty=false;updateToolbar();log(`Exported ${out.length} bytes (${format==='dos'?'DOS BLOAD':'raw HGR'}).`,'ok');}
 el('saveBtn').onclick=exportHGR;
+// Clipboard API in HTTPS browsers, with legacy fallback for local file:// use.
+async function copyTextToClipboard(text){
+ if(navigator.clipboard&&typeof navigator.clipboard.writeText==='function'){
+   try{await navigator.clipboard.writeText(text);return;}catch(_){/* fallback below */}
+ }
+ const field=document.createElement('textarea');
+ const prior=document.activeElement;
+ field.value=text;field.readOnly=true;
+ field.style.cssText='position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;z-index:-1';
+ document.body.appendChild(field);
+ let copied=false;
+ try{
+   field.focus();field.select();
+   copied=typeof document.execCommand==='function'&&document.execCommand('copy');
+ }finally{
+   field.remove();
+   if(prior&&typeof prior.focus==='function')prior.focus();
+ }
+ if(!copied)throw Error('Clipboard access was blocked by the browser');
+}
+el('copyHexBtn').onclick=async()=>{
+ const text=hgr.formatByteCode();
+ try{
+   await copyTextToClipboard(text);
+   const start=state.base.toString(16).toUpperCase().padStart(4,'0');
+   const end=(state.base+SIZE-1).toString(16).toUpperCase().padStart(4,'0');
+   log(`Copied ${SIZE} HGR bytes (${start}–${end}, ${SIZE/8} monitor lines) to clipboard.`,'ok');
+ }catch(err){log('Copy HGR Bytes failed: '+err.message,'err');}
+};
 el('pngBtn').onclick=()=>{canvas.toBlob(blob=>{if(blob){downloadBlob(blob,'hgr-preview.png','image/png');log('PNG preview exported.','ok');}},'image/png');};
 function importHGR(bytes,filename='file'){let data;if(bytes.length===SIZE)data=bytes;else if(bytes.length===SIZE+4){const addr=bytes[0]|(bytes[1]<<8),len=bytes[2]|(bytes[3]<<8);if(len!==SIZE||(addr!==0x2000&&addr!==0x4000))throw Error('Invalid DOS BLOAD header (expected $2000/$4000, length $2000)');state.base=addr;el('pageSelect').value=addr;data=bytes.subarray(4);}else throw Error('HGR import requires 8192 raw bytes or 8196-byte DOS binary');const before=snapshot();state.bytes.set(data);registerChange(before);state.dirty=false;updateToolbar();log(`Loaded ${filename}: ${data.length} HGR bytes.`,'ok');}
 async function readHGRFile(file){if(!file)return;try{importHGR(new Uint8Array(await file.arrayBuffer()),file.name);}catch(e){log(e.message,'err');}}
@@ -447,6 +491,17 @@ screen[hgr.byteOffset(0, 0)] = 0x7f;
 hgr.loadBytes(screen);
 ```
 
+### hgr.formatByteCode(bytesPerLine = 8)
+
+Return an Apple II **monitor-compatible hexadecimal byte dump** of the current HGR page. This is the exact format used by the emulator assembler's byte-code pasteboard: four-digit hexadecimal address, colon, then uppercase two-digit hex values separated by spaces. Default is **8 bytes per line**; valid widths are 1–32.
+
+The **Copy HGR Bytes** toolbar button (next to Export HGR) puts the formatted text on the system clipboard. For a full page, the text has **1024 lines** covering all **8192 bytes** in native, non-linear HGR memory order, including the non-visible padding bytes. There is no DOS BLOAD header. The address follows the selected HGR ($2000–$3FFF) or HGR2 ($4000–$5FFF) page. To send the lines through the emulator's pasteboard, enter the Apple II monitor first (e.g. `CALL-151` from BASIC).
+
+```js
+hgr.setPage(0x2000);
+print(hgr.formatByteCode().split('\n')[0]); // 2000: XX XX XX XX XX XX XX XX
+```
+
 ### hgr.getPage() and hgr.setPage(baseAddress)
 
 Read or change the export/load base address: `0x2000` for HGR1 or `0x4000` for HGR2. This does **not** shift or alter the underlying 8192 data bytes.
@@ -481,6 +536,7 @@ hgr.redo();
 | Open HGR | Exactly 8192-byte raw HGR or 8196-byte DOS binary |
 | Export HGR: Raw | 8192 bytes, directly suitable for `$2000` / `$4000` image memory |
 | Export HGR: DOS BLOAD | 4-byte little-endian load address/length header followed by 8192 bytes |
+| Copy HGR Bytes | 8-byte-per-line Apple monitor hex dump of the selected $2000/$4000 HGR page, copied to clipboard |
 | PNG | Raster preview of the active color/mono view; **not** reversible HGR bytes |
 | Open / Save .js | Plain JavaScript editor source |
 | API.md | This standalone Markdown documentation |
