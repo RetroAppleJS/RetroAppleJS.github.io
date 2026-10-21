@@ -206,7 +206,14 @@ canvas.addEventListener('pointerleave',()=>{if(!drag){state.hover=null;updateIns
 canvas.addEventListener('wheel',e=>{if(!e.ctrlKey&&!e.metaKey){e.preventDefault();const steps=[1,2,3,4,6],idx=steps.indexOf(state.zoom),next=steps[Math.max(0,Math.min(steps.length-1,idx+(e.deltaY>0?-1:1)))];setZoom(next);}}, {passive:false});
 function setColor(c){state.color=resolveColor(c);for(const b of el('colors').children)b.classList.toggle('active',Number(b.dataset.color)===state.color);}
 const tools=[['pencil','✎','Pencil'],['eraser','⌫','Eraser'],['line','╱','Line'],['rect','□','Rectangle'],['rectfill','▣','Filled rect'],['ellipse','◯','Ellipse'],['ellipsefill','●','Filled ellipse'],['fill','▨','Fill'],['select','⬚','Select'],['eyedropper','⌖','Sample'],['text','T','Text'],['pan','✥','Pan']];
-for(const [key,sym,label] of tools){const b=document.createElement('button');b.className='tool';b.dataset.tool=key;b.innerHTML=`<span class="symbol">${sym}</span><span>${label}</span>`;b.title=label;b.addEventListener('click',()=>setTool(key));el('tools').append(b);}
+for(const [key,sym,label] of tools){
+ const b=document.createElement('button');
+ b.className='tool';b.dataset.tool=key;
+ const icon=document.createElement('span');icon.className='symbol';icon.textContent=sym;
+ const caption=document.createElement('span');caption.textContent=label;
+ b.append(icon,caption);
+ b.title=label;b.addEventListener('click',()=>setTool(key));el('tools').append(b);
+}
 COLORS.forEach((c,i)=>{const b=document.createElement('button');b.className='swatch';b.dataset.color=i;b.title=c.name;b.style.background=c.hex;b.style.borderColor=i===0||i===4?'#657b8f':c.hex;b.addEventListener('click',()=>setColor(i));el('colors').append(b);});
 el('thickness').addEventListener('change',e=>state.thickness=+e.target.value);el('pattern').addEventListener('change',e=>state.pattern=e.target.value);el('viewMode').addEventListener('change',e=>{state.view=e.target.value;requestRender();});el('zoom').addEventListener('change',e=>setZoom(+e.target.value));el('fitBtn').onclick=()=>{setZoom(1);el('canvasWrap').scrollTo(0,0);};
 el('pageSelect').onchange=e=>{state.base=+e.target.value;updateInspector();};
@@ -262,9 +269,30 @@ const EXAMPLES={
  sprite:`// Bitmap blitting and clipping\nhgr.clear('black0');\nconst sprite = [\n '0011100', '0111110', '1111111',\n '1101011', '1111111', '0111110', '0011100'\n];\nfor (let y = 10; y < 170; y += 17) {\n  for (let x = 12; x < 260; x += 20) {\n    hgr.blit(sprite, x, y, (x+y)%3 ? 'violet' : 'orange');\n  }\n}\nhgr.rect(20, 70, 240, 48, 'black0');\nhgr.text(27, 83, 'SPRITE  BLITTER', 'white0', 2);\nprint('Sprites drawn.');`
 };
 const code=el('code'),highlight=el('highlight');
-function escaped(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function highlightJS(source){const regex=/(\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\b(?:const|let|var|function|return|if|else|for|while|true|false|null|new|throw|try|catch|class|of|in|break|continue)\b|\b\d+(?:\.\d+)?\b|\bhgr\b|\b(?:print|Math|Array|Uint8Array)\b)/g;let cursor=0,result='',match;while((match=regex.exec(source))){result+=escaped(source.slice(cursor,match.index));const s=match[0],cls=s.startsWith('//')||s.startsWith('/*')?'comment':/^['"`]/.test(s)?'string':/^\d/.test(s)?'number':s==='hgr'?'api':s==='print'||s==='Math'||s==='Array'||s==='Uint8Array'?'fn':'keyword';result+=`<span class="tok-${cls}">${escaped(s)}</span>`;cursor=match.index+s.length;}return result+escaped(source.slice(cursor))+'\n';}
-function updateCodeView(){highlight.innerHTML=highlightJS(code.value);const count=code.value.split('\n').length;el('gutter').textContent=Array.from({length:count},(_,i)=>i+1).join('\n');el('gutter').scrollTop=code.scrollTop;}
+function highlightJS(source){
+ const regex=/(\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\b(?:const|let|var|function|return|if|else|for|while|true|false|null|new|throw|try|catch|class|of|in|break|continue)\b|\b\d+(?:\.\d+)?\b|\bhgr\b|\b(?:print|Math|Array|Uint8Array)\b)/g;
+ const fragment=document.createDocumentFragment();
+ let cursor=0,match;
+ while((match=regex.exec(source))){
+  if(match.index>cursor)fragment.append(document.createTextNode(source.slice(cursor,match.index)));
+  const token=match[0];
+  let cls;
+  if(token.startsWith('//')||token.startsWith('/*'))cls='comment';
+  else if(token[0]==='"'||token[0]==="'"||token.charCodeAt(0)===96)cls='string';
+  else if(/^\d/.test(token))cls='number';
+  else if(token==='hgr')cls='api';
+  else if(['print','Math','Array','Uint8Array'].includes(token))cls='fn';
+  else cls='keyword';
+  const span=document.createElement('span');
+  span.className='tok-'+cls;
+  span.textContent=token;
+  fragment.append(span);
+  cursor=regex.lastIndex;
+ }
+ fragment.append(document.createTextNode(source.slice(cursor)+'\n'));
+ return fragment;
+}
+function updateCodeView(){highlight.replaceChildren(highlightJS(code.value));const count=code.value.split('\n').length;el('gutter').textContent=Array.from({length:count},(_,i)=>i+1).join('\n');el('gutter').scrollTop=code.scrollTop;}
 code.addEventListener('input',updateCodeView);code.addEventListener('scroll',()=>{highlight.scrollTop=code.scrollTop;highlight.scrollLeft=code.scrollLeft;el('gutter').scrollTop=code.scrollTop;});
 code.addEventListener('keydown',e=>{if(e.key==='Tab'){e.preventDefault();const start=code.selectionStart,end=code.selectionEnd;code.setRangeText('  ',start,end,'end');updateCodeView();}else if(e.key==='Enter'&&!e.ctrlKey&&!e.metaKey){const pos=code.selectionStart,begin=code.value.lastIndexOf('\n',pos-1)+1,indent=(code.value.slice(begin,pos).match(/^\s*/)||[''])[0];if(indent){e.preventDefault();code.setRangeText('\n'+indent,pos,code.selectionEnd,'end');updateCodeView();}}});
 function loadExample(k){code.value=EXAMPLES[k];selectedCode=k;el('examples').value=k;updateCodeView();}
@@ -560,10 +588,91 @@ The imported screen preserves the 512 non-visible padding bytes. Tool-based scre
 **Display accuracy:** This is a practical Apple II artifact preview, not a composite NTSC simulation. It models the byte phase and half-pixel shift approximately. Color conflicts and text/font appearance should be verified in the final target emulator or real Apple II.
 </script>
 <script>
-function mdInline(s){let h=escaped(s);h=h.replace(/`([^`]+)`/g,(_,v)=>`<code>${v}</code>`);h=h.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');h=h.replace(/\*([^*]+)\*/g,'<em>$1</em>');return h;}
-function markdownToHtml(md){const lines=md.trim().replace(/\r/g,'').split('\n');let html='',inCode=false,inTable=false,inList=false,paragraph=[];function flush(){if(paragraph.length){html+=`<p>${mdInline(paragraph.join(' '))}</p>`;paragraph=[];}}for(let i=0;i<lines.length;i++){const line=lines[i];if(line.startsWith('```')){flush();if(inList){html+='</ul>';inList=false;}if(inTable){html+='</tbody></table>';inTable=false;}if(!inCode){html+='<pre><code>';inCode=true;}else{html+='</code></pre>';inCode=false;}continue;}if(inCode){html+=escaped(line)+'\n';continue;}if(!line.trim()){flush();if(inList){html+='</ul>';inList=false;}if(inTable){html+='</tbody></table>';inTable=false;}continue;}const head=line.match(/^(#{1,3})\s+(.+)$/);if(head){flush();if(inTable){html+='</tbody></table>';inTable=false;}const n=head[1].length;html+=`<h${n}>${mdInline(head[2])}</h${n}>`;continue;}if(/^\|.*\|\s*$/.test(line)){flush();if(/^\|[-| :]+\|\s*$/.test(line))continue;const cells=line.trim().slice(1,-1).split('|').map(v=>v.trim());if(!inTable){html+='<table><tbody>';inTable=true;}html+='<tr>'+cells.map(c=>`<td>${mdInline(c)}</td>`).join('')+'</tr>';continue;}if(/^[-*] /.test(line)){flush();if(!inList){html+='<ul>';inList=true;}html+=`<li>${mdInline(line.slice(2))}</li>`;continue;}if(line.startsWith('> ')){flush();html+=`<blockquote>${mdInline(line.slice(2))}</blockquote>`;continue;}paragraph.push(line.trim());}flush();if(inList)html+='</ul>';if(inTable)html+='</tbody></table>';if(inCode)html+='</code></pre>';return html;}
+// Markdown and JavaScript can contain markup-looking text. Build nodes rather
+// than converting that text back into HTML (CodeQL js/xss-through-dom).
+function appendMarkdownInline(parent,source){
+ const text=String(source);
+ const token=/\x60[^\x60]+\x60|\*\*[^*]+\*\*|\*[^*]+\*/g;
+ let cursor=0,match;
+ while((match=token.exec(text))){
+  if(match.index>cursor)parent.append(document.createTextNode(text.slice(cursor,match.index)));
+  const value=match[0];
+  let tag='em',inner=value.slice(1,-1);
+  if(value.charCodeAt(0)===96){tag='code';}
+  else if(value.startsWith('**')){tag='strong';inner=value.slice(2,-2);}
+  const node=document.createElement(tag);
+  node.textContent=inner;
+  parent.append(node);
+  cursor=token.lastIndex;
+ }
+ if(cursor<text.length)parent.append(document.createTextNode(text.slice(cursor)));
+}
+function markdownToFragment(md){
+ const lines=String(md).trim().replace(/\r/g,'').split('\n');
+ const fragment=document.createDocumentFragment();
+ let code=null,table=null,list=null,paragraph=[];
+ const addInline=(tag,text,parent=fragment)=>{
+  const node=document.createElement(tag);
+  appendMarkdownInline(node,text);
+  parent.append(node);
+  return node;
+ };
+ function flush(){
+  if(paragraph.length){addInline('p',paragraph.join(' '));paragraph=[];}
+ }
+ for(const line of lines){
+  if(line.startsWith(String.fromCharCode(96,96,96))){
+   flush();table=null;list=null;
+   if(code){code=null;}
+   else {
+    const pre=document.createElement('pre');
+    code=document.createElement('code');
+    pre.append(code);fragment.append(pre);
+   }
+   continue;
+  }
+  if(code){code.append(document.createTextNode(line+'\n'));continue;}
+  if(!line.trim()){flush();table=null;list=null;continue;}
+  const head=line.match(/^(#{1,3})\s+(.+)$/);
+  if(head){flush();table=null;list=null;addInline('h'+head[1].length,head[2]);continue;}
+  if(/^\|.*\|\s*$/.test(line)){
+   flush();list=null;
+   if(/^\|[-| :]+\|\s*$/.test(line))continue;
+   if(!table){table=document.createElement('table');table.append(document.createElement('tbody'));fragment.append(table);}
+   const row=document.createElement('tr');
+   for(const cell of line.trim().slice(1,-1).split('|')){
+    addInline('td',cell.trim(),row);
+   }
+   table.firstChild.append(row);
+   continue;
+  }
+  table=null;
+  if(/^[-*] /.test(line)){
+   flush();
+   if(!list){list=document.createElement('ul');fragment.append(list);}
+   addInline('li',line.slice(2),list);
+   continue;
+  }
+  list=null;
+  if(line.startsWith('> ')){flush();addInline('blockquote',line.slice(2));continue;}
+  paragraph.push(line.trim());
+ }
+ flush();
+ return fragment;
+}
 const markdown=el('apiMarkdown').textContent.trim();
-function renderDocs(){const query=el('docsSearch').value.toLowerCase().trim();if(!query){el('docsView').innerHTML=markdownToHtml(markdown);return;}const sections=markdown.split(/(?=^## )/m);const matches=sections.filter((s,i)=>i===0||s.toLowerCase().includes(query));el('docsView').innerHTML=markdownToHtml(matches.join('\n\n'))+(matches.length===1?'<p>No matching sections.</p>':'');}
+function renderDocs(){
+ const query=el('docsSearch').value.toLowerCase().trim();
+ const sections=query?markdown.split(/(?=^## )/m):null;
+ const matches=sections?sections.filter((section,i)=>i===0||section.toLowerCase().includes(query)):null;
+ const fragment=markdownToFragment(matches?matches.join('\n\n'):markdown);
+ if(matches&&matches.length===1){
+  const notice=document.createElement('p');
+  notice.textContent='No matching sections.';
+  fragment.append(notice);
+ }
+ el('docsView').replaceChildren(fragment);
+}
 el('docsSearch').addEventListener('input',renderDocs);
 el('downloadDocs').onclick=()=>downloadBlob(markdown+'\n','HGR_SCRIPT_STUDIO_API.md','text/markdown;charset=utf-8');
 setTool('pencil');setColor(2);setZoom(1);loadExample('welcome');updateToolbar();renderDocs();requestRender();log('Ready. Select a drawing tool or press Run to execute the welcome script.','muted');
