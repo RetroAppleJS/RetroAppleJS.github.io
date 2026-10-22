@@ -1,10 +1,10 @@
-# AY Waveform Bench v1.3 — Phase 1.3
+# AY Waveform Bench v1.4 — Phase 1.4
 
 ## Purpose
 
-A self-contained browser **laboratory** (not a standalone AY synthesizer) using the existing RetroAppleJS production `AYCore`. Phase 1.3 extends the Phase 1.2 single-oscillator reference comparison, contrasting envelope and software-timed triangle reconstruction, testing tone–envelope phase dependence, and measuring composite spectral fingerprints against **mathematically ideal, pitch-matched square, sawtooth, and triangle waveforms**. It does **not** compare against SID 6581 recordings, physical AY hardware, or the complete SID signal path.
+A self-contained browser **laboratory** (not a standalone AY synthesizer) using the existing RetroAppleJS production `AYCore`. Phase 1.4 retains the v1.3 experiments and adds an exactly period-locked buzzer and practical triangle reconstruction tradeoffs (4/8/16/32 scheduled volume levels, plus 32-step redundant-write suppression) against **mathematically ideal, pitch-matched square, sawtooth, and triangle waveforms**. It does **not** compare against SID 6581 recordings, physical AY hardware, or the complete SID signal path.
 
-Phase 1.3 changes only the drop-in bench and tests; no emulator peripherals, SID player, audio scheduler, or AYCore files have been modified.
+Phase 1.4 changes only the drop-in bench and tests; no emulator peripherals, SID player, audio scheduler, or AYCore files have been modified.
 
 ## Installation
 
@@ -28,7 +28,7 @@ To test, serve the repository root over HTTP, e.g. `python3 -m http.server 8000`
 - Default backend: JavaScript; WASM option uses the project WASM AYCore.
 - Two AY chips: AY0 goes left and AY1 right with production-compatible equal channel mixing; the bench averages channels to mono for plots and WAV exports.
 - All fixture register writes are explicitly logged with chip, register, value, and nanosecond timestamps; a fresh AYCore instance is used for each measurement.
-- Twelve fixed techniques: square, saw-down, saw-up, triangle envelope $A, triangle envelope $E, raw 32-step software triangle, calibrated 32-step software triangle, buzzer (tone × envelope), noise, tone+noise, detuned tone pair, and two-chip layering.
+- Seventeen fixed techniques: square, saw-down, saw-up, triangle envelope $A, triangle envelope $E, raw 32-step software triangle, calibrated 32-step software triangle, buzzer (tone × envelope), noise, tone+noise, detuned tone pair, and two-chip layering.
 
 ## Pitch calculation
 
@@ -56,7 +56,7 @@ The default (**Auto**) reference for single-oscillator fixtures is:
 
 For a single render, **Ideal reference** also permits manually selecting square, sawtooth or triangle to evaluate alternative sound families. A frequency-range survey always uses **Auto** regardless of the selected reference, so exports remain consistent between runs.
 
-**Not applicable** to `buzzer`, `noise`, `tone-noise`, `detune`, and `two-chip`. Their scores, harmonic lists, and THD are absent/null rather than being misrepresented as a harmonic series. The JSON supplies `comparison.reason`. The ordinary FFT peak, RMS, spectral centroid and WAV export still work for all twelve fixtures.
+**Not applicable** to `buzzer`, `buzzer-locked`, `noise`, `tone-noise`, `detune`, and `two-chip`. Their scores, harmonic lists, and THD are absent/null rather than being misrepresented as a harmonic series. The JSON supplies `comparison.reason`. The ordinary FFT peak, RMS, spectral centroid and WAV export still work for all seventeen fixtures.
 
 ### Ideal harmonic reference (relative magnitude)
 
@@ -101,12 +101,12 @@ The table shows the shape score against the chosen reference. The JSON additiona
 3. Change Ideal reference manually to **Triangle**, render again, and compare score and harmonic differences. This changes only the *reference*, not the generated AY register writes or audio.
 4. Select **Triangle**. Watch for even-harmonic contamination and for much larger register-quantization error at higher notes.
 5. Select **Buzzer**. Shape/THD now read **N/A**, while the FFT and other measurable properties remain available.
-6. Run **Survey all techniques × 4 notes** (now 48 cases), export `ay-waveform-survey-v1.3.json`, and retain it for later JS/WASM comparison.
+6. Run **Survey all techniques × 4 notes** (now 68 cases), export `ay-waveform-survey-v1.4.json`, and retain it for later JS/WASM comparison.
 
 ## Export format
 
-- Single report schema: `retroapplejs.ay.waveform-bench.v1.3`.
-- Survey schema: `retroapplejs.ay.waveform-bench.v1.3.survey`.
+- Single report schema: `retroapplejs.ay.waveform-bench.v1.4`.
+- Survey schema: `retroapplejs.ay.waveform-bench.v1.4.survey`.
 - Existing fields such as `.spec.events`, `.metrics.rms`, `.metrics.dominantHz`, `.metrics.harmonicDb`, and `.metrics.aliasRisk` remain present.
 - Added `.spec.referencePreference`, and `.metrics.comparison` containing status, reason, selected reference, reference-match ranking, selected matched harmonic data, `shapeScore`, `shapeErrorDb`, `cosineSimilarity`, pitch basis and measurement-window metadata.
 - No waveform PCM is embedded in JSON; save the WAV separately.
@@ -115,7 +115,7 @@ Phase 1.1/1.2 survey exports remain valid historical baselines, but lack the new
 
 ## Testing and limitations
 
-Automated Node regression tests cover period calculations, register fixtures, WAV export, FFT, mocked AYCore rendering, harmonic reference generation, ideal harmonic ranking, deliberate reference mismatch, exclusion of composite sound, and export schema. A browser UI smoke test with a **mock AYCore** exercised calibrated triangle rendering, the 32-row phase sweep and the 48-row frequency survey. For an actual AY audio validation, run this bench inside a RetroAppleJS checkout with its real AYCore JS/WASM backend and export the survey results.
+Automated Node regression tests cover period calculations, register fixtures, WAV export, FFT, mocked AYCore rendering, harmonic reference generation, ideal harmonic ranking, deliberate reference mismatch, exclusion of composite sound, and export schema. A browser UI smoke test with a **mock AYCore** exercised calibrated triangle rendering, the 32-row phase sweep and the 48-row Phase 1.3 frequency survey. For an actual AY audio validation, run this bench inside a RetroAppleJS checkout with its real AYCore JS/WASM backend and export the survey results.
 
 The laboratory does not contain real 6581 oscillator recordings, model the SID analog filter or voice allocation, or claim that a high shape score automatically means close SID sound. Next phases can incorporate actual SID renderings at aligned pitches, phase/polarity comparisons, anti-aliasing measurement, and instrument-aware voice allocation.
 
@@ -132,7 +132,7 @@ The laboratory does not contain real 6581 oscillator recordings, model the SID a
 | `triangle-dac` | Same 32 software `R8` writes | Selects nearest output amplitude using measured inverse AY volume curve | Exact scheduled note Hz (nominal) |
 | `buzzer` | AY tone and envelope | Configurable R13 envelope-retrigger onset phase | Hardware tone & envelope periods |
 
-The raw and calibrated DAC approaches are deliberately **software-intensive laboratory experiments**. They are *not* proposed as an efficient in-game Apple II 6502 implementation. Normalization to a single ideal magnitude spectrum does not indicate CPU feasibility, output loudness, or accurate phase. Note that the capture sample rate is only 22,050 Hz; high update frequencies can lose resolution or alias.
+The original 32-step raw and calibrated DAC approaches are deliberately **software-intensive laboratory experiments**. They are *not* proposed as an efficient in-game Apple II 6502 implementation. Normalization to a single ideal magnitude spectrum does not indicate CPU feasibility, output loudness, or accurate phase. Note that the capture sample rate is only 22,050 Hz; high update frequencies can lose resolution or alias.
 
 ### Volume-law calibration
 
@@ -160,7 +160,7 @@ Each software triangle performs **32 timed R8 writes per oscillator cycle**. At 
 - `strongestPeaks`: up to eight local FFT maxima with `hz` and `relativeDb` relative to the strongest peak. FFT-bin spacing is 22050/2048 ≈ 10.77 Hz, too coarse to separate close detuned lines at low pitches.
 - `peakBinWidthHz`: 10.7666… Hz at the fixed sample rate; **do not claim sub-bin resolution for `strongestPeaks`**.
 
-The prior `comparison.eligible` and `thdPercent` rules remain unchanged: `buzzer`, `noise`, `tone-noise`, `detune`, and `two-chip` have explicit N/A single-fundamental ideal scores and THD. Their composite fingerprint is independent of this policy and requires **no invented fundamental**. Detuned and buzzer *programmed* beat/drift metadata appears separately under top-level `interaction`.
+The prior `comparison.eligible` and `thdPercent` rules remain unchanged: `buzzer`, `buzzer-locked`, `noise`, `tone-noise`, `detune`, and `two-chip` have explicit N/A single-fundamental ideal scores and THD. Their composite fingerprint is independent of this policy and requires **no invented fundamental**. Detuned and buzzer *programmed* beat/drift metadata appears separately under top-level `interaction`.
 
 ### Export additions
 
@@ -176,3 +176,108 @@ The prior `comparison.eligible` and `thdPercent` rules remain unchanged: `buzzer
 - 24 automated Node tests passed, including all 15 Phase 1.2 tests, shape $E selection, 32-step event scheduling, inverse volume mapping, write-budget safeguards, phase sweep, spectral fingerprint sanity, export metadata and calibration caching.
 - Chromium browser smoke test using an **explicitly synthetic mock AYCore**: one `triangle-dac` render, complete 32-case phase sweep and complete 48-case technique survey; no JavaScript exceptions.
 - The supplied package does **not** bundle or modify `res/ayumi.js`, JS AYCore, WASM backend or any real SID/AY chip implementations. Real backend waveform validation requires opening the tool in a RetroAppleJS repository checkout and uploading the generated v1.3 JSON surveys. Nothing in the mock-browser results is evidence of actual AY sound quality.
+
+
+---
+
+## Phase 1.4 — Period-locked buzzers and reduced-write triangle synthesis
+
+This section supersedes the Phase 1.3-only fixture count and survey sizes mentioned in historical sections above. **No AYCore, peripheral card, SID player, or emulator source changes are required.** The bench continues to load `../res/` scripts from the host RetroAppleJS checkout; the ZIP supplies the bench itself but not those production assets.
+
+### 1. Exactly period-locked buzzer
+
+The previous `buzzer` fixture programs independent period registers, using:
+
+- `P_tone = round(AYClock/(16*requestedHz))`, a 12-bit register, and
+- `P_env = round(AYClock/(256*requestedHz))`, a 16-bit register.
+
+This generally produces a small frequency difference and relative phase drift. The new `buzzer-locked` fixture first selects the envelope period and then programs `P_tone = 16 * P_env`, so:
+
+```
+F_tone = AYClock / (16 * (16 * P_env))
+       = AYClock / (256 * P_env)
+       = F_env
+```
+
+`spec.pitch.period` records the selected tone period, `spec.pitch.envelope.period` the envelope period, and `interaction.relativeFrequencyHz` and `interaction.relativePhaseDriftCycles` should be zero to floating-point precision.
+
+**Important distinction:** zero *frequency drift* is not the same thing as zero *phase sensitivity*. Different initial relative phases may still produce different steady-state volume and timbre, because the tone gate multiplies an audio-rate envelope. The sweep deliberately measures both:
+
+1. **Across-phase RMS range (dB):** maximum/minimum overall RMS across the 8 starting phases.
+2. **Within-capture RMS range (dB):** the difference between the largest and smallest steady RMS windows in each one-second capture, averaged over 8 starting phases. The first 1/8 of each recording is excluded from this statistic to reduce onset bias.
+
+The new **Locked vs unlocked buzzer · 64** button generates 8 phases × 4 pitches × 2 timing modes, interleaved in matched pairs. Each capture lasts 1 s. The export is `ay-buzzer-phase-lock-v1.4.json`, `experiment:'lock'`, with a top-level `summary` of eight `{fixture,pitch}` aggregates. The older 32-case unlocked-only sweep remains available.
+
+In the UI the ratio dropdown is disabled and fixed to 1 for the locked fixture. The lock is only representable when `16 * P_env <= 4095`. For lower requested notes the tool reports an explicit error rather than truncating the period; a locked rate above the divider limit is clamped and disclosed via the pitch metadata. `ratio` is forced to 1 for paired sweeps. This is a **theoretical divider-based lock**, not an assertion about resetting real AY oscillator phases or VIA register-write latency.
+
+### 2. Triangle variants and redundant-write elimination
+
+**Observed precondition from the user's real v1.3 JS AYCore export:** On the four 32-step calibrated runs at 55, 110, 220, and 440 Hz, approximately half of the scheduled R8 writes repeat the immediately previous value. Counting only transitions from those stored event records gives 441/880, 880/1,760, 1,760/3,520, and 3,520/7,040 changed writes, respectively, over 0.5 s. Thus, skipping repeats is well-motivated by earlier real output, although equivalence of the resulting audio has yet to be verified in v1.4.
+
+
+The 32-step calibrated `triangle-dac` and uncalibrated `triangle-dac-raw` fixtures are **unchanged baselines** from v1.3. Phase 1.4 adds four variants:
+
+| Fixture | Target steps per waveform cycle | Register strategy |
+| --- | ---: | --- |
+| `triangle-dac-4` | 4 | Calibrated, writes every step |
+| `triangle-dac-8` | 8 | Calibrated, writes every step |
+| `triangle-dac-16` | 16 | Calibrated, writes every step |
+| `triangle-dac-sparse` | 32 | Calibrated, writes **only when R8 changes** |
+
+The sparse technique computes the **same ideal 32-step level schedule** as `triangle-dac`, but removes consecutive identical R8 values. It should sound identical if redundant writes have no hardware or emulator side effects; this is a hypothesis to validate against real AYCore recordings. The algorithm preserves the first active step and retains transition timestamps, including changes at cycle boundaries. `spec.softwareVolumeWrites` counts **scheduled active writes**, excluding the one initial zero-volume reset. `spec.softwareVolumeWritesPerSecond` is the actual count divided by capture duration, whereas `spec.nominalStepRatePerSecond` is the uncompressed target step rate.
+
+All calibrated variants use the existing measured 16-level AY volume RMS curve; the curve is cached per `{backend,AYclock}` by `calibrateVolumeCurve()`. When only `generate()` is called without a curve, the nominal exponential approximation remains a fallback, identified in `spec.calibrationSource`. Source `.txt` copies are byte-identical to their `.js` versions.
+
+The new **Triangle quality vs CPU · 32** sweep measures 8 triangle families × 4 pitches (55, 110, 220, 440 Hz) at 0.5 s per capture. It exports `ay-triangle-budget-v1.4.json`, `experiment:'triangle-budget'` and a `summary` ranking the results by average spectral-shape scores and estimated write costs. The existing full technique survey now measures 17 fixtures × 4 notes = **68 recordings**.
+
+### 3. Configurable CPU budget model
+
+Two new bench inputs define a **scenario**, not a timing observation:
+
+- `cyclesPerWrite` (default **50**), assumed **6502 CPU cycles per logical AY R8 register update**, including whatever VIA/machine-code activity the investigator chooses to budget. This value has not been experimentally calibrated.
+- `cpuHz` (default **1,023,000**), assumed Apple II 6502 CPU cycles per second, configurable to match accelerated systems or alternative timing assumptions.
+
+The displayed CPU occupancy for steady-state software DAC output is:
+
+```
+estimatedCpuPercent = 100 * softwareVolumeWritesPerSecond * cyclesPerWrite / cpuHz
+```
+
+The estimate does **not** include initialization, note changes, game/rendering execution, scheduling jitter, contention, or physical bus timing. Lower estimated CPU occupancy cannot prove the deadlines between writes are attainable. To evaluate physical feasibility, measure or count the real 6502 code (including VIA handshakes) and use those cycles as `cyclesPerWrite`.
+
+**Worked example** (220 Hz, 8-step software triangle, 50 cycles/write, 1,023,000 CPU cycles/second): 1,760 writes/s, estimated CPU share `100 * 1760 * 50 / 1,023,000 = 8.60%`.
+
+The selected assumptions are serialized into `spec.cyclesPerWrite`, `spec.cpuHz`, `spec.estimatedCpuPercent`, and `.interaction`, so exports from different test settings cannot be confused.
+
+### 4. Temporal stability diagnostic
+
+All fixtures now return `metrics.temporal` with eight contiguous, non-overlapping RMS windows, the largest and smallest steady values (windows 2–8), and `steadyRangeDb`. This is useful for comparing the strength of amplitude beating over a fixed capture. It is **not** a direct phase measurement or measured instantaneous modulation frequency, and it must be compared using matched duration settings.
+
+The bench displays the eight-window amplitude plot and the steady RMS spread. A phase-locked buzzer can have near-zero spread within one capture and a **large** variation between captures using different fixed initial phases; the A/B summary shows both quantities separately.
+
+### 5. Phase 1.4 API additions
+
+```javascript
+const B = window.AYWaveformBench;
+B.lockedPeriods(1021800, 220); // returns tone + envelope period metadata
+B.stepsFor('triangle-dac-8');  // 8
+B.phaseLockSweepJobs({ backend: 'js' }); // 64 sweep job option objects
+B.triangleBudgetJobs({ backend: 'js' }); // 32 jobs
+B.temporalRms(samples, 22050, 8);       // temporal stability details
+B.summarizeSurvey(reports, 'lock');      // 8 paired groups
+B.summarizeSurvey(reports, 'triangle-budget'); // cost/quality groups
+
+await B.render(window.AYCore, {
+  fixture: 'triangle-dac-sparse', hz: 220, duration: 0.5,
+  backend: 'js', cyclesPerWrite: 50, cpuHz: 1023000
+});
+```
+
+The API is backwards-compatible with the v1.3 argument convention. `B.FIXTURES` now has 17 items. The schema is `retroapplejs.ay.waveform-bench.v1.4` and survey schema `.survey`. Each survey export contains `summary` plus individual `results`; all individual event logs and spectral metrics are retained.
+
+### 6. Limitations and validation status
+
+- The v1.4 Node test suite comprises **32 regression tests**, retaining the 24 v1.3 tests and adding 8 v1.4 tests: exact buzzer lock, scheduled step rates, sparse event equivalence, CPU-scenario scaling, sweep job cardinalities, temporal RMS, aggregate summaries, and export metadata.
+- A Chromium UI smoke test, with an explicitly **synthetic AYCore stub**, exercised one calibrated sparse triangle render and both complete v1.4 dedicated sweeps (64 paired phase measurements and 32 triangle measurements), with no JavaScript exceptions. The stub is **not evidence of acoustic similarity** or actual envelope phase behavior.
+- Run the benchmark in your RetroAppleJS checkout with the **real** production AYCore JS backend and export both specialized surveys. Optionally repeat using WASM to assess backend equivalence. No changes to production emulator files are included.
+- The ideal references are mathematical square/saw/triangle targets, not real SID 6581 recordings. This bench does not establish SID likeness, perceptual closeness, phase polarity, or 6502 cycle-accurate execution.

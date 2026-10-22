@@ -1,11 +1,11 @@
-/* RetroAppleJS · AY Waveform Laboratory 1.3 — isolated offline experiments. */
+/* RetroAppleJS · AY Waveform Laboratory 1.4 — isolated offline experiments. */
 (function(root, factory) {
   var api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.AYWaveformBench = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function() {
   'use strict';
-  var SCHEMA = 'retroapplejs.ay.waveform-bench.v1.3';
+  var SCHEMA = 'retroapplejs.ay.waveform-bench.v1.4';
   var RATE = 22050, TIMEBASE = 1000000000, BLOCK = 256;
   var FIXTURES = [
     {id:'square',label:'Square / native tone',kind:'tone',description:'AY channel A, fixed 50% tone, R7=$3E'},
@@ -14,8 +14,13 @@
     {id:'triangle',label:'Triangle / AY envelope $A (baseline)',kind:'triangle',description:'Alternating envelope shape $A; hardware baseline'},
     {id:'triangle-invert',label:'Triangle / AY envelope $E',kind:'triangle',description:'Inverted alternating envelope shape $E; compare DAC asymmetry'},
     {id:'triangle-dac-raw',label:'Triangle / software 32-step (raw register levels)',kind:'triangle-dac',description:'32 software-timed volume changes/cycle; raw linear register indices (NOT linear amplitude)'},
-    {id:'triangle-dac',label:'Triangle / software 32-step (calibrated)',kind:'triangle-dac',description:'32 software-timed volume writes/cycle; inverse measured AY volume law'},
-    {id:'buzzer',label:'Tone × envelope / buzzer',kind:'buzzer',description:'Tone gate multiplied by AY audio-rate envelope'},
+    {id:'triangle-dac',label:'Triangle / software 32-step (calibrated, baseline)',kind:'triangle-dac',description:'32 timed volume writes/cycle, including redundant repeated values; Phase 1.3 baseline'},
+    {id:'triangle-dac-16',label:'Triangle / software 16-step (calibrated)',kind:'triangle-dac',description:'16 inverse-DAC volume steps/cycle; reduced update load'},
+    {id:'triangle-dac-8',label:'Triangle / software 8-step (calibrated)',kind:'triangle-dac',description:'8 inverse-DAC volume steps/cycle; reduced update load'},
+    {id:'triangle-dac-4',label:'Triangle / software 4-step (calibrated)',kind:'triangle-dac',description:'4 inverse-DAC volume steps/cycle; low update load'},
+    {id:'triangle-dac-sparse',label:'Triangle / software 32-step (calibrated, skip repeats)',kind:'triangle-dac',description:'Same 32-step quantized amplitude pattern, but emits R8 only when it changes'},
+    {id:'buzzer',label:'Tone × envelope / buzzer (unlocked)',kind:'buzzer',description:'Tone and envelope independently rounded; phases drift at the difference frequency'},
+    {id:'buzzer-locked',label:'Tone × envelope / phase-locked buzzer',kind:'buzzer',description:'Envelope period first, tone period = 16 × envelope period, eliminating ongoing frequency drift'},
     {id:'noise',label:'AY noise',kind:'noise',description:'Noise LFSR; no pitched oscillator'},
     {id:'tone-noise',label:'Square + noise',kind:'tone-noise',description:'AY tone and noise enabled on channel A'},
     {id:'detune',label:'Two detuned square oscillators',kind:'detune',description:'Two tone channels, A and B, on AY0'},
@@ -39,6 +44,7 @@
     var divider = kind.kind==='saw'?256:kind.kind==='triangle'?512:16;
     if (kind.kind==='noise') return {period:null,actualHz:null,requestedHz:hz,errorCents:null,clamped:false};
     if(kind.kind==='triangle-dac') return {period:null,actualHz:hz,requestedHz:hz,errorCents:0,clamped:false};
+    if(fixture==='buzzer-locked')return lockedPeriods(clock,hz);
     if(kind.kind==='two-chip') divider=16;
     var p=nearestPeriod(clock,hz,divider,divider===16?4095:65535);
     if(kind.kind==='buzzer') p.envelope=nearestPeriod(clock,clamp(hz*ratio,1,18000),256,65535);
@@ -46,18 +52,35 @@
     if(kind.kind==='detune') p.secondary=nearestPeriod(clock,hz*Math.pow(2,12/1200),16,4095);
     return p;
   }
-  function kindSoftware(fixture){return fixture==='triangle-dac'||fixture==='triangle-dac-raw';}
+  var SOFTWARE_STEPS={'triangle-dac-raw':32,'triangle-dac':32,'triangle-dac-16':16,'triangle-dac-8':8,'triangle-dac-4':4,'triangle-dac-sparse':32};
+  function kindSoftware(fixture){return Object.prototype.hasOwnProperty.call(SOFTWARE_STEPS,fixture);}
+  function stepsFor(fixture){return SOFTWARE_STEPS[fixture]||0;}
+  function isCalibrated(fixture){return kindSoftware(fixture)&&fixture!=='triangle-dac-raw';}
+  function lockedPeriods(clock,hz){
+    // 16-bit AY envelope period provides the same rate as a tone period 16 times as long:
+    // f_tone=clock/(16*P_tone), f_env=clock/(256*P_env).
+    var env=nearestPeriod(clock,hz,256,65535),tonePeriod=env.period*16;
+    if(tonePeriod>4095)throw new Error('Exact tone/envelope frequency lock is impossible below '+(clock/(256*255)).toFixed(2)+' Hz at this AY clock (12-bit tone period limit).');
+    var actualHz=clock/(16*tonePeriod);
+    return {period:tonePeriod,actualHz:actualHz,requestedHz:hz,
+      errorCents:1200*Math.log2(actualHz/hz),clamped:env.clamped,
+      envelope:env,locked:true,frequencyLockErrorHz:actualHz-env.actualHz};
+  }
   function generate(options) {
     options=options||{};
     var fixture=options.fixture||'square',hz=number(Number(options.hz===undefined?110:options.hz),'Hz',10,8000);
     var clock=number(Number(options.clock===undefined?1021800:options.clock),'AY clock',500000,1800000);
     var duration=number(Number(options.duration===undefined?1:options.duration),'duration',0.1,3);
     var ratio=number(Number(options.ratio===undefined?1:options.ratio),'envelope ratio',0.125,8);
+    // Locked mode has no independent envelope:tone ratio; the exact frequency relationship is 1:1.
+    if(fixture==='buzzer-locked')ratio=1;
     var volume=Math.round(number(Number(options.volume===undefined?13:options.volume),'volume',0,15));
     var noisePeriod=Math.round(number(Number(options.noisePeriod===undefined?8:options.noisePeriod),'noise period',1,31));
     var phaseOffset=number(Number(options.phaseOffset===undefined?0:options.phaseOffset),'phase offset',0,.875);
+    var cyclesPerWrite=number(Number(options.cyclesPerWrite===undefined?50:options.cyclesPerWrite),'cycles per AY register write',1,500);
+    var cpuHz=number(Number(options.cpuHz===undefined?1023000:options.cpuHz),'6502 CPU clock',500000,4000000);
     // Software volume DAC fixtures are limited so event arrays stay bounded; the 6502 cost is reported separately.
-    if((fixture==='triangle-dac'||fixture==='triangle-dac-raw') && hz*duration*32>48000)
+    if(kindSoftware(fixture) && hz*duration*stepsFor(fixture)>48000)
       throw new Error('Software triangle would exceed 48,000 volume writes; shorten the capture or lower its pitch.');
     var reference=options.reference===undefined?'auto':String(options.reference);
     if(['auto','square','saw','triangle'].indexOf(reference)<0)throw new Error('Invalid ideal reference');
@@ -84,7 +107,7 @@
       case 'saw-down': case 'saw-up': case 'triangle': case 'triangle-invert':
         envelope(0,desc.period,fixture==='saw-down'?0x8:fixture==='saw-up'?0xc:fixture==='triangle-invert'?0xe:0xa);
         write(0,8,0x10);break;
-      case 'buzzer':
+      case 'buzzer': case 'buzzer-locked':
         period(0,0,desc.period);
         write(0,11,desc.envelope.period&255);write(0,12,(desc.envelope.period>>8)&255);
         write(0,7,0x3e);
@@ -92,11 +115,12 @@
         // Initially muted until trigger; the measurement window is central and excludes this transient.
         write(0,13,0x8,phaseOffset/desc.actualHz);
         write(0,8,0x10,phaseOffset/desc.actualHz);break;
-      case 'triangle-dac': case 'triangle-dac-raw': {
+      case 'triangle-dac': case 'triangle-dac-raw': case 'triangle-dac-16': case 'triangle-dac-8': case 'triangle-dac-4': case 'triangle-dac-sparse': {
         // Volume register updates (R8): this is a software DAC technique, NOT an AY envelope.
         // Use the empirical RMS-vs-volume curve to compensate for the AY logarithmic DAC.
         var curve=volumeCurve||Array.from({length:16},function(_,i){return i===0?0:Math.pow(2,(i-15)/2);});
-        var ceiling=curve[volume],steps=32,cycles=Math.ceil(duration*hz);
+        var ceiling=curve[volume],steps=stepsFor(fixture),cycles=Math.ceil(duration*hz);
+        var lastValue=null;
         write(0,7,0x3f);
         for(var idx=0;idx<cycles*steps;idx++) {
           var phase=(idx%steps)/steps;
@@ -111,7 +135,8 @@
             }
           }
           var t=idx/(steps*hz);
-          if(t<duration)write(0,8,value,t);
+          if(t<duration && (fixture!=='triangle-dac-sparse'||value!==lastValue))write(0,8,value,t);
+          lastValue=value;
         }
         break;
       }
@@ -126,12 +151,20 @@
         envelope(1,desc.envelope.period,0x8);write(1,8,0x10);break;
       default:throw new Error('Unknown fixture '+fixture);
     }
+    // Count only steady-state software R8 updates; exclude the initial reset mute at tick 0.
+    var softwareWrites=kindSoftware(fixture)?events.filter(function(e){return e.chip===0&&e.reg===8;}).length-1:0;
+    var writesPerSecond=softwareWrites/duration;
+    var stepRate=stepsFor(fixture)*hz;
+    var cpuCostPercent=100*writesPerSecond*cyclesPerWrite/cpuHz;
     // Stable order at identical timestamps matters, especially for R13 retriggers.
     events.sort(function(a,b){return a.tick-b.tick||a.seq-b.seq;});
     return {fixture:fixture,kind:f.kind,description:f.description,hz:hz,clock:clock,duration:duration,
       ratio:ratio,volume:volume,noisePeriod:noisePeriod,phaseOffset:phaseOffset,
       calibrationSource:(fixture==='triangle-dac'?calibrationSource:null),
-      softwareVolumeWritesPerSecond:kindSoftware(fixture)?32*hz:0,
+      softwareVolumeWritesPerSecond:writesPerSecond,
+      softwareVolumeWrites:softwareWrites,nominalStepRatePerSecond:stepRate,
+      stepsPerCycle:stepsFor(fixture),redundantWritesAvoided:kindSoftware(fixture)?Math.round(stepRate*duration)-softwareWrites:0,
+      cyclesPerWrite:cyclesPerWrite,cpuHz:cpuHz,estimatedCpuPercent:cpuCostPercent,
       referencePreference:reference,pitch:desc,events:events};
   }
   // Phase 1.2: ideal Fourier magnitudes, normalized so the fundamental is 1.0.
@@ -162,7 +195,7 @@
     if(fixture==='tone-noise')return {eligible:false,reason:'Tone plus broadband noise is not a single harmonic oscillator.'};
     if(fixture==='detune')return {eligible:false,reason:'Detuned oscillators have two independent fundamentals and beating.'};
     if(fixture==='two-chip')return {eligible:false,reason:'Two independent AY chips produce multiple oscillator components.'};
-    if(fixture==='buzzer')return {eligible:false,reason:'Tone × envelope introduces modulation and sidebands; single-series THD is invalid.'};
+    if(fixture==='buzzer'||fixture==='buzzer-locked')return {eligible:false,reason:'Tone × envelope introduces modulation and sidebands; single-series THD is invalid.'};
     var nativeReference=referenceFor(fixture);
     if(!nativeReference)return {eligible:false,reason:'No defined single-oscillator reference.'};
     return {eligible:true,reference:reference==='auto'?nativeReference:reference,automaticReference:nativeReference};
@@ -246,6 +279,21 @@
       scoreDefinition:'100*exp(-0.5*(weighted-log-RMS-dB/12)^2)',
       scoreFloorDb:REFERENCE_FLOOR_DB};
   }
+  function temporalRms(samples,rate,windowCount){
+    // Non-overlapping equal-duration windows. RMS amplitude variation is not a beat-frequency estimator.
+    windowCount=windowCount||8;
+    var parts=[];
+    for(var k=0;k<windowCount;k++){
+      var start=Math.floor(k*samples.length/windowCount),end=Math.floor((k+1)*samples.length/windowCount),sum=0;
+      for(var j=start;j<end;j++)sum+=samples[j]*samples[j];
+      parts.push({startSeconds:start/rate,endSeconds:end/rate,rms:Math.sqrt(sum/Math.max(1,end-start))});
+    }
+    var steady=parts.slice(1),values=steady.map(function(v){return v.rms;}),
+      min=Math.min.apply(null,values),max=Math.max.apply(null,values);
+    return {windowCount:windowCount,windows:parts,steadyMinRms:min,steadyMaxRms:max,
+      steadyRangeDb:min>1e-9?20*Math.log10(max/min):null,
+      note:'Eight equal windows; summary excludes first window to reduce onset bias. Not a direct phase measurement.'};
+  }
   function pcmMetrics(samples,pitchHz,options) {
     options=options||{};
     var n=samples.length,sum=0,squares=0,peak=0,clipped=0;
@@ -260,7 +308,7 @@
       dominantHz:spectral.dominantHz,fundamentalHz:spectral.fundamentalHz, fundamentalDb:spectral.fundamentalDb,
       harmonicDb:spectral.harmonicDb,thdPercent:spectral.thdPercent,aliasRisk:spectral.aliasRisk,
       centroidHz:spectral.centroidHz,comparison:spectral.comparison,fingerprint:spectral.fingerprint,
-      spectral:spectral.bins};
+      spectral:spectral.bins,temporal:temporalRms(samples,RATE,8)};
   }
   function spectrum(samples,rate,expectedHz,policy) {
     // Radix-2 FFT on Hann-windowed central 2,048-sample slice for broadband view.
@@ -353,7 +401,7 @@
   async function render(coreAPI,options) {
     options=options||{};
     var backend=options.backend||'js';
-    if(options.fixture==='triangle-dac'&&!options.volumeCurve){
+    if(isCalibrated(options.fixture)&&!options.volumeCurve){
       options=Object.assign({},options,{volumeCurve:await calibrateVolumeCurve(coreAPI,options)});
     }
     var spec=generate(options);
@@ -390,18 +438,48 @@
     var pitch=spec.kind==='noise'?null:spec.pitch.actualHz;
     var interaction={mode:spec.fixture,phaseOffsetCycles:spec.phaseOffset,
       registerWrites:spec.events.length,softwareVolumeWritesPerSecond:spec.softwareVolumeWritesPerSecond,
-      feasibility:spec.softwareVolumeWritesPerSecond>3000?'Experimental only: extreme Mockingboard register-write load':
-        spec.softwareVolumeWritesPerSecond>500?'High Apple II CPU/VIA write load (unverified)':'No high-rate software volume writes'};
-    if(spec.fixture==='buzzer'){
+      softwareVolumeWrites:spec.softwareVolumeWrites,nominalStepRatePerSecond:spec.nominalStepRatePerSecond,
+      stepsPerCycle:spec.stepsPerCycle,redundantWritesAvoided:spec.redundantWritesAvoided,
+      cyclesPerWrite:spec.cyclesPerWrite,cpuHz:spec.cpuHz,estimatedCpuPercent:spec.estimatedCpuPercent,
+      feasibility:spec.estimatedCpuPercent>100?'Estimated 6502 budget exceeded at assumed write cost':
+        spec.estimatedCpuPercent>40?'High estimated CPU load; feasibility unverified':
+        spec.estimatedCpuPercent>15?'Significant estimated CPU load; feasibility unverified':
+        spec.softwareVolumeWritesPerSecond>0?'Modest estimated write load; deadlines still unverified':'No high-rate software volume writes'};
+    if(spec.fixture==='buzzer'||spec.fixture==='buzzer-locked'){
       interaction.toneHz=spec.pitch.actualHz;interaction.envelopeHz=spec.pitch.envelope.actualHz;
       interaction.relativeFrequencyHz=spec.pitch.envelope.actualHz-spec.pitch.actualHz;
       interaction.relativePhaseDriftCycles=interaction.relativeFrequencyHz*spec.duration;
+      interaction.locked=spec.fixture==='buzzer-locked';
+      // No phase stability assertion is made from equality of register frequencies alone.
+      interaction.envelopePeriod=spec.pitch.envelope.period;
+      interaction.tonePeriod=spec.pitch.period;
     } else if(spec.fixture==='detune'){
       interaction.toneHz=spec.pitch.actualHz;interaction.secondaryHz=spec.pitch.secondary.actualHz;
       interaction.beatHz=Math.abs(interaction.secondaryHz-interaction.toneHz);
     }
     return {spec:spec,backend:actualBackend,renderMs:endTime-start,rate:RATE,pcm:floats,
       interaction:interaction,metrics:pcmMetrics(floats,pitch,{fixture:spec.fixture,reference:spec.referencePreference})};
+  }
+  function phaseLockSweepJobs(base){
+    base=base||{};
+    var jobs=[];
+    [55,110,220,440].forEach(function(hz){
+      for(var i=0;i<8;i++){
+        ['buzzer','buzzer-locked'].forEach(function(fixture){
+          jobs.push(Object.assign({},base,{fixture:fixture,hz:hz,ratio:1,phaseOffset:i/8,duration:1,reference:'auto'}));
+        });
+      }
+    });
+    return jobs;
+  }
+  function triangleBudgetJobs(base){
+    base=base||{};
+    var fixtures=['triangle','triangle-invert','triangle-dac-raw','triangle-dac','triangle-dac-16','triangle-dac-8','triangle-dac-4','triangle-dac-sparse'];
+    var jobs=[];
+    fixtures.forEach(function(fixture){[55,110,220,440].forEach(function(hz){
+      jobs.push(Object.assign({},base,{fixture:fixture,hz:hz,duration:.5,reference:'auto'}));
+    });});
+    return jobs;
   }
   function phaseSweepJobs(base) {
     base=base||{};
@@ -410,6 +488,47 @@
       for(var i=0;i<8;i++)jobs.push(Object.assign({},base,{fixture:'buzzer',hz:hz,phaseOffset:i/8,duration:1,reference:'auto'}));
     });
     return jobs;
+  }
+  // Survey summaries are pure post-processing and never override individual measurements.
+  function summarizePhaseLock(records){
+    var entries=records.map(function(x){return {spec:x.spec,metrics:x.metrics,interaction:x.interaction};});
+    var groups=[];
+    [55,110,220,440].forEach(function(hz){
+      ['buzzer','buzzer-locked'].forEach(function(fixture){
+        var rows=entries.filter(function(r){return r.spec.fixture===fixture&&r.spec.hz===hz;});
+        if(!rows.length)return;
+        var values=rows.map(function(r){return r.metrics.rms;}),low=Math.min.apply(null,values),high=Math.max.apply(null,values);
+        var variations=rows.map(function(r){return r.metrics.temporal&&r.metrics.temporal.steadyRangeDb;}).filter(Number.isFinite);
+        groups.push({fixture:fixture,hz:hz,count:rows.length,minRms:low,maxRms:high,
+          acrossPhaseRangeDb:low>1e-12?20*Math.log10(high/low):null,
+          avgWithinCaptureRangeDb:variations.length?variations.reduce(function(a,b){return a+b;},0)/variations.length:null,
+          relativeFrequencyHz:rows[0].interaction&&rows[0].interaction.relativeFrequencyHz,
+          theoreticalDriftCycles:rows[0].interaction&&rows[0].interaction.relativePhaseDriftCycles});
+      });
+    });
+    return {kind:'phase-lock-ab',groupCount:groups.length,groups:groups,
+      notes:'Across-phase range is the RMS spread among different starting offsets; within-capture range measures temporal amplitude variation. A locked buzzer may retain strong phase sensitivity even when theoretical frequency drift is zero.'};
+  }
+  function summarizeTriangleBudget(records){
+    var groups=[];
+    var fixtures=['triangle','triangle-invert','triangle-dac-raw','triangle-dac','triangle-dac-16','triangle-dac-8','triangle-dac-4','triangle-dac-sparse'];
+    fixtures.forEach(function(fixture){
+      var rows=records.filter(function(r){return r.spec.fixture===fixture;});
+      if(!rows.length)return;
+      function avg(fn){var vals=rows.map(fn).filter(Number.isFinite);return vals.length?vals.reduce(function(a,b){return a+b;},0)/vals.length:null;}
+      groups.push({fixture:fixture,count:rows.length,avgShapeScore:avg(function(r){return r.metrics.comparison.shapeScore;}),
+        avgShapeErrorDb:avg(function(r){return r.metrics.comparison.shapeErrorDb;}),
+        avgWriteRate:avg(function(r){return r.spec.softwareVolumeWritesPerSecond;}),
+        avgEstimatedCpuPercent:avg(function(r){return r.spec.estimatedCpuPercent;}),
+        maxEstimatedCpuPercent:Math.max.apply(null,rows.map(function(r){return r.spec.estimatedCpuPercent;}))});
+    });
+    return {kind:'triangle-budget',groupCount:groups.length,groups:groups,
+      notes:'CPU values are model assumptions, not cycle measurements; shape scores use the ideal reference at programmed frequency. Comparing curves requires matching clock/backend/calibration settings.'};
+  }
+  function summarizeSurvey(records,kind){
+    if(kind==='lock')return summarizePhaseLock(records);
+    if(kind==='triangle-budget')return summarizeTriangleBudget(records);
+    return {kind:kind,count:records.length};
   }
   function wav(pcm,rate) {
     var n=pcm.length,b=new ArrayBuffer(44+n*2),dv=new DataView(b);
@@ -433,12 +552,13 @@
       metrics:{sampleCount:m.sampleCount,rms:m.rms,peak:m.peak,dc:m.dc,clippedSamples:m.clippedSamples,
         dominantHz:m.dominantHz,fundamentalHz:m.fundamentalHz,fundamentalDb:m.fundamentalDb,
         harmonicDb:m.harmonicDb,thdPercent:m.thdPercent,aliasRisk:m.aliasRisk,centroidHz:m.centroidHz,
-        comparison:m.comparison,fingerprint:m.fingerprint}};
+        comparison:m.comparison,fingerprint:m.fingerprint,temporal:m.temporal}};
   }
   return {SCHEMA:SCHEMA,RATE:RATE,FIXTURES:FIXTURES,nearestPeriod:nearestPeriod,
     describe:describe,generate:generate,spectrum:spectrum,pcmMetrics:pcmMetrics,render:render,
     idealHarmonic:idealHarmonic,idealWaveform:idealWaveform,referenceFor:referenceFor,
     scoreReference:scoreReference,harmonicAnalysis:harmonicAnalysis,calibrateVolumeCurve:calibrateVolumeCurve,
-    phaseSweepJobs:phaseSweepJobs,
+    phaseSweepJobs:phaseSweepJobs,phaseLockSweepJobs:phaseLockSweepJobs,triangleBudgetJobs:triangleBudgetJobs,
+    temporalRms:temporalRms,lockedPeriods:lockedPeriods,stepsFor:stepsFor,summarizeSurvey:summarizeSurvey,
     wav:wav,report:report};
 });

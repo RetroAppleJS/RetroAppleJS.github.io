@@ -4,8 +4,8 @@ const assert=require('node:assert/strict');
 const B=require('../tools/AY_WAVEFORM_BENCH_core.js');
 
 test('metadata and fixed 22,050 Hz economy baseline',()=>{
- assert.equal(B.SCHEMA,'retroapplejs.ay.waveform-bench.v1.3');
- assert.equal(B.RATE,22050);assert.equal(B.FIXTURES.length,12);
+ assert.equal(B.SCHEMA,'retroapplejs.ay.waveform-bench.v1.4');
+ assert.equal(B.RATE,22050);assert.equal(B.FIXTURES.length,17);
 });
 test('12-bit tone periods are correctly rounded and clamped',()=>{
  const p=B.nearestPeriod(1021800,440,16,4095);
@@ -296,4 +296,111 @@ test('Phase 1.3: calibrated curve is cached per backend + clock',async()=>{
  assert.equal(r.interaction.softwareVolumeWritesPerSecond,3520);
  assert.equal(created,16);
  assert.equal(r.spec.calibrationSource,'measured AYCore tone RMS');
+});
+
+
+test('Phase 1.4: exact tone/envelope period lock removes computed frequency drift',()=>{
+ for(const hz of [55,110,220,440]){
+  const l=B.generate({fixture:'buzzer-locked',hz,phaseOffset:.125,duration:1});
+  const a=B.generate({fixture:'buzzer',hz,phaseOffset:.125,duration:1});
+  assert.equal(l.pitch.period,l.pitch.envelope.period*16);
+  assert.equal(B.generate({fixture:'buzzer-locked',hz,ratio:2}).ratio,1);
+  assert.ok(Math.abs(l.pitch.actualHz-l.pitch.envelope.actualHz)<1e-9);
+  assert.notEqual(l.pitch.period,a.pitch.period);
+  assert.ok(Math.abs(a.pitch.actualHz-a.pitch.envelope.actualHz)>.01);
+  assert.equal(l.events.find(e=>e.reg===13).tick,Math.round(.125/l.pitch.actualHz*1e9));
+  assert.equal(B.referenceFor('buzzer-locked'),null);
+ }
+ assert.throws(()=>B.generate({fixture:'buzzer-locked',hz:10}),/impossible below/);
+});
+
+test('Phase 1.4: all calibrated triangle step variants produce exact expected schedules',()=>{
+ const curve=Array.from({length:16},(_,i)=>i/15);
+ for(const [fixture,steps] of [['triangle-dac-4',4],['triangle-dac-8',8],['triangle-dac-16',16],['triangle-dac',32]]){
+  const s=B.generate({fixture,hz:100,duration:.5,volume:15,volumeCurve:curve});
+  assert.equal(B.stepsFor(fixture),steps);
+  assert.equal(s.softwareVolumeWrites,steps*50);
+  assert.equal(s.softwareVolumeWritesPerSecond,steps*100);
+  assert.equal(s.nominalStepRatePerSecond,steps*100);
+  assert.equal(s.stepsPerCycle,steps);
+  assert.equal(s.events.filter(e=>e.chip===0&&e.reg===8).length,steps*50+1);
+  assert.equal(s.estimatedCpuPercent,100*steps*100*50/1023000);
+  assert.equal(s.events.filter(e=>e.reg===8&&e.chip===0)[2].tick,Math.round(1e9/(steps*100)));
+  assert.equal(B.referenceFor(fixture),'triangle');
+ }
+});
+
+test('Phase 1.4: sparse triangle avoids redundant volume writes without changing desired level timeline',()=>{
+ const curve=Array.from({length:16},(_,i)=>i===0?0:Math.pow(i/15,2));
+ const baseline=B.generate({fixture:'triangle-dac',hz:220,duration:.5,volumeCurve:curve});
+ const sparse=B.generate({fixture:'triangle-dac-sparse',hz:220,duration:.5,volumeCurve:curve});
+ const b=baseline.events.filter(e=>e.chip===0&&e.reg===8).slice(1);
+ const a=sparse.events.filter(e=>e.chip===0&&e.reg===8).slice(1);
+ const changePoints=b.filter((e,i)=>i===0||e.value!==b[i-1].value);
+ assert.deepEqual(a.map(e=>[e.tick,e.value]),changePoints.map(e=>[e.tick,e.value]));
+ assert.ok(sparse.softwareVolumeWrites<baseline.softwareVolumeWrites);
+ assert.equal(sparse.redundantWritesAvoided,baseline.softwareVolumeWrites-sparse.softwareVolumeWrites);
+ assert.ok(sparse.estimatedCpuPercent<baseline.estimatedCpuPercent);
+ assert.equal(sparse.nominalStepRatePerSecond,7040);
+});
+
+test('Phase 1.4: cycle cost assumptions scale estimates, not audio event timing',()=>{
+ const a=B.generate({fixture:'triangle-dac-8',hz:220,duration:.5,cyclesPerWrite:40,cpuHz:1000000});
+ const b=B.generate({fixture:'triangle-dac-8',hz:220,duration:.5,cyclesPerWrite:80,cpuHz:1000000});
+ assert.equal(a.estimatedCpuPercent*2,b.estimatedCpuPercent);
+ assert.deepEqual(a.events,b.events);
+ assert.throws(()=>B.generate({fixture:'square',cyclesPerWrite:0}),/cycles per AY/);
+});
+
+test('Phase 1.4: pairwise phase-lock sweep and triangle budget jobs have correct cardinalities',()=>{
+ const a=B.phaseLockSweepJobs({backend:'wasm'});
+ assert.equal(a.length,64);
+ assert.equal(a[0].fixture,'buzzer');assert.equal(a[1].fixture,'buzzer-locked');
+ assert.equal(a[0].phaseOffset,0);assert.equal(a[2].phaseOffset,.125);
+ assert.ok(a.every(x=>x.ratio===1&&x.backend==='wasm'&&x.duration===1));
+ const b=B.triangleBudgetJobs({backend:'js'});
+ assert.equal(b.length,32);assert.ok(b.every(x=>x.duration===.5));
+ assert.deepEqual([...new Set(b.map(x=>x.fixture))],['triangle','triangle-invert','triangle-dac-raw','triangle-dac','triangle-dac-16','triangle-dac-8','triangle-dac-4','triangle-dac-sparse']);
+});
+
+test('Phase 1.4: temporal RMS eight windows detects amplitude drift without onset bias',()=>{
+ const samples=Float32Array.from({length:8000},(_,i)=>i<1000?1:.25);
+ const t=B.temporalRms(samples,8000,8);
+ assert.equal(t.windows.length,8);
+ assert.equal(t.windows[0].rms,1);
+ assert.ok(Math.abs(t.steadyMinRms-.25)<1e-6);
+ assert.equal(t.steadyRangeDb,0);
+ const v=B.temporalRms(Float32Array.from({length:8000},(_,i)=>i%2000<1000?.25:.5),8000,8);
+ assert.ok(v.steadyRangeDb>5.9&&v.steadyRangeDb<6.1);
+});
+
+test('Phase 1.4: summary compares initial phase sensitivity separately from within-capture drift',()=>{
+ const rows=[];
+ for(const hz of [55,110,220,440])for(const f of ['buzzer','buzzer-locked'])for(const phase of [0,.125])rows.push({
+   spec:{fixture:f,hz,phaseOffset:phase,softwareVolumeWritesPerSecond:0,estimatedCpuPercent:0},
+   metrics:{rms:phase===0?.02:.04,temporal:{steadyRangeDb:f==='buzzer'?4:0},comparison:{shapeScore:null,shapeErrorDb:null}},
+   interaction:{relativeFrequencyHz:f==='buzzer'?-.3:0,relativePhaseDriftCycles:f==='buzzer'?-.3:0}
+ });
+ const summary=B.summarizeSurvey(rows,'lock');
+ assert.equal(summary.groupCount,8);
+ assert.ok(Math.abs(summary.groups[0].acrossPhaseRangeDb-6.0206)<1e-3);
+ assert.equal(summary.groups[0].avgWithinCaptureRangeDb,4);
+ assert.equal(summary.groups[1].avgWithinCaptureRangeDb,0);
+ const triangles=[{spec:{fixture:'triangle-dac-8',softwareVolumeWritesPerSecond:1760,estimatedCpuPercent:10},metrics:{comparison:{shapeScore:80,shapeErrorDb:8}}}];
+ const tri=B.summarizeSurvey(triangles,'triangle-budget');
+ assert.equal(tri.groupCount,1);assert.equal(tri.groups[0].avgShapeScore,80);
+});
+
+test('Phase 1.4: mock AYCore report includes temporal and CPU estimates',async()=>{
+ let frames=0;
+ const api={create:async()=>{frames=0;return {backend:'js',configureChip:()=>{},setMix:()=>{},renderUntil:(end,batch,out)=>{
+   const n=Math.floor(end*B.RATE/1e9)-frames;
+   out.left.fill(.05,0,n);out.right.fill(.05,0,n);frames+=n;return n;
+ },destroy:()=>{}};},packEvent:()=>{}};
+ const r=await B.render(api,{fixture:'triangle-dac-4',hz:55,duration:.5,clock:1040000,cyclesPerWrite:40,cpuHz:1000000});
+ assert.equal(r.spec.stepsPerCycle,4);
+ assert.equal(r.interaction.softwareVolumeWritesPerSecond,220);
+ assert.ok(r.metrics.temporal.windows.length===8);
+ assert.equal(B.report(r).metrics.temporal.windows.length,8);
+ assert.equal(B.report(r).interaction.estimatedCpuPercent,r.interaction.estimatedCpuPercent);
 });
