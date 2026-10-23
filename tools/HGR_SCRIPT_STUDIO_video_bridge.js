@@ -89,6 +89,10 @@ function HGRStudioVideoBridge(displayCanvas)
             throw Error("HGR video bridge expects page $2000 or $4000");
 
         memory.set(hgrBytes,base);
+        // Wave/YIQ caches a 7680-byte linearized HGR page; bulk writes bypass
+        // its per-address write hook, so invalidate that cache explicitly.
+        const active = mux.getActiveRenderer();
+        if(active && typeof active.markDirty === "function") active.markDirty();
         const page2 = base === 0x4000;
         const chrome = view === "color" ? 0 : 1;
         if(page2 !== lastPage2) { mux.setPage2(page2); lastPage2 = page2; }
