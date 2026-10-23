@@ -40,6 +40,7 @@ function HGRStudioVideoBridge(canvas)
     this.video = mux;
     this.canvas = canvas;
 
+    let lastPage2 = false, lastChrome = 0;
     this.render = function(hgrBytes,base,view)
     {
         if(!hgrBytes || hgrBytes.length !== 0x2000)
@@ -47,9 +48,12 @@ function HGRStudioVideoBridge(canvas)
         if(base !== 0x2000 && base !== 0x4000)
             throw Error("HGR video bridge expects page $2000 or $4000");
 
+        // Copy first, then redraw. Unused HGR bytes are preserved exactly.
         memory.set(hgrBytes,base);
-        mux.setPage2(base === 0x4000);
-        mux.setMonitor(view === "color" ? 0 : 1);
+        const page2 = base === 0x4000;
+        const chrome = view === "color" ? 0 : 1;
+        if(page2 !== lastPage2) { mux.setPage2(page2); lastPage2=page2; }
+        if(chrome !== lastChrome) { mux.setMonitor(chrome); lastChrome=chrome; }
         mux.redraw();
     };
 
