@@ -27,7 +27,7 @@ button,input,textarea,select{font:inherit}button,select{cursor:pointer}button{bo
 <section><div class="panel-title">Drawing tools</div><div id="tools" class="toolgrid"></div></section>
 <section><div class="panel-title">Apple II colors</div><div id="colors" class="colors"></div><p class="hint">Artifact colors share bit 7 across each group of seven pixels.</p></section>
 <section><div class="panel-title">Brush &amp; pattern</div><label class="field">Thickness <select id="thickness"><option value="1">1 pixel</option><option value="2" selected>2 pixels</option><option value="3">3 pixels</option><option value="4">4 pixels</option><option value="6">6 pixels</option><option value="8">8 pixels</option></select></label><label class="field">Pattern <select id="pattern"><option value="solid">Solid</option><option value="checker">Checker</option><option value="scanline">Scanlines</option><option value="columns">Columns</option><option value="dots">Sparse dots</option></select></label><label class="field">View <select id="viewMode"><option value="color">Artifact color</option><option value="mono">Monochrome</option><option value="bits">Logical bits</option></select></label><label class="field">Zoom <select id="zoom"><option value="1" selected>1×</option><option value="2">2×</option><option value="3">3×</option><option value="4">4×</option><option value="6">6×</option></select></label></section>
-<section><div class="panel-title">Selection</div><div class="rowbtn"><button id="copyBtn" class="small">Copy</button><button id="cutBtn" class="small">Cut</button><button id="pasteBtn" class="small">Paste</button></div><p class="hint">Select a rectangle first. Paste at the last cursor position or selected corner. Ctrl/Cmd+C/X/V also works outside the code editor.</p></section>
+<section><div class="panel-title">Selection</div><div class="rowbtn"><button id="copyBtn" class="small">Copy</button><button id="cutBtn" class="small">Cut</button><button id="pasteBtn" class="small">Paste</button><button id="extractSpriteBtn" class="small" disabled title="Insert the selected HGR pixels as a reusable JavaScript sprite">Sprite → JS</button></div><p class="hint">Select a rectangle, then choose Sprite → JS to append editable HGR pixel data and a drawing command to the JavaScript editor. Copy / Cut / Paste edit HGR pixels.</p></section>
 <section><div class="panel-title">Import / export</div><label class="field">File format <select id="exportFormat"><option value="raw">Raw 8192 B</option><option value="dos">DOS BLOAD 8196 B</option></select></label><p class="hint">Raw .hgr is a complete HGR page. DOS binary includes a 4-byte load address/length header. Drag a file onto the screen to load it.</p></section>
 </aside>
 <main class="stage">
@@ -149,6 +149,35 @@ const GLYPHS={
 };
 function textDraw(x,y,str,c=state.color,scale=1){x=integer(x);y=integer(y);scale=Math.max(1,Math.min(8,integer(scale)));const origin=x;for(const char of String(str).toUpperCase()){if(char==='\n'){x=origin;y+=8*scale;continue;}const glyph=GLYPHS[char]||GLYPHS['?'];for(let row=0;row<7;row++)for(let col=0;col<5;col++)if(glyph[row][col]==='1')for(let yy=0;yy<scale;yy++)for(let xx=0;xx<scale;xx++)plot(x+col*scale+xx,y+row*scale+yy,c);x+=6*scale;}}
 function copyRegion(x,y,w,h){x=integer(x);y=integer(y);w=Math.max(0,Math.min(W,integer(w)));h=Math.max(0,Math.min(H,integer(h)));if(!w||!h)throw Error('copy() expects a nonempty rectangle');const bits=new Uint8Array(w*h),phases=new Uint8Array(w*h);for(let j=0;j<h;j++)for(let i=0;i<w;i++){const xx=x+i,yy=y+j,n=j*w+i;if(valid(xx,yy)){const v=state.bytes[at(xx,yy)];bits[n]=!!(v&(1<<(xx%7)))?1:0;phases[n]=v>>7;}}return {width:w,height:h,bits,phases};}
+// A reusable HGR sprite stores each pixel's on/off bit and the containing
+// byte's phase bit. 0=off/phase0, 1=on/phase0, 2=off/phase1, 3=on/phase1.
+function captureSpriteRows(x,y,w,h){
+ x=integer(x);y=integer(y);w=integer(w);h=integer(h);
+ if(x<0||y<0||w<1||h<1||x+w>W||y+h>H)
+   throw Error('captureSprite(): rectangle must fit inside 280x192');
+ const rows=[];
+ for(let j=0;j<h;j++){
+  let line='';
+  for(let i=0;i<w;i++){
+   const xx=x+i,v=state.bytes[at(xx,y+j)];
+   line+=String((v>>7)*2+((v>>(xx%7))&1));
+  }
+  rows.push(line);
+ }
+ return rows;
+}
+function drawSpriteRows(rows,x,y,transparentBlack=false){
+ if(!Array.isArray(rows)||!rows.length||!rows.every(row=>typeof row==='string'&&row.length===rows[0].length&&/^[0123.]+$/.test(row)))
+   throw Error('drawSprite(): expected nonempty equal-width strings containing 0, 1, 2, 3 or .');
+ if(!rows[0].length)throw Error('drawSprite(): rows cannot be empty');
+ x=integer(x);y=integer(y);
+ for(let j=0;j<rows.length;j++)for(let i=0;i<rows[j].length;i++){
+  const xx=x+i,yy=y+j,ch=rows[j][i];
+  if(!valid(xx,yy)||ch==='.'||(transparentBlack&&(ch==='0'||ch==='2')))continue;
+  const offset=at(xx,yy),mask=1<<(xx%7),old=state.bytes[offset],on=(ch==='1'||ch==='3'),phase=(ch==='2'||ch==='3');
+  state.bytes[offset]=((on?old|mask:old&~mask)&127)|(phase?128:0);
+ }
+}
 function pasteRegion(clip,x,y,mode='copy'){if(!clip||!Number.isInteger(clip.width)||!Number.isInteger(clip.height)||clip.width<1||clip.height<1||!clip.bits||clip.bits.length<clip.width*clip.height)throw Error('Invalid clipping');if(!['copy','or','xor'].includes(mode))throw Error('Paste mode must be copy, or, or xor');x=integer(x);y=integer(y);for(let j=0;j<clip.height;j++)for(let i=0;i<clip.width;i++){const xx=x+i,yy=y+j;if(!valid(xx,yy))continue;const k=j*clip.width+i,on=!!clip.bits[k],o=at(xx,yy),mask=1<<(xx%7);let v=state.bytes[o];if(mode==='copy'){v=on?v|mask:v&~mask;v=(v&127)|((clip.phases?.[k]?1:0)<<7);}else if(on){v=mode==='xor'?v^mask:v|mask;v=(v&127)|((clip.phases?.[k]?1:0)<<7);}state.bytes[o]=v;}}
 function clear(c='black0'){const col=resolveColor(c);if(col==='phase0'||col==='phase1'){for(let y=0;y<H;y++)for(let b=0;b<40;b++){const i=at(b*7,y);state.bytes[i]=col==='phase0'?state.bytes[i]&127:state.bytes[i]|128;}return;}for(let y=0;y<H;y++)for(let b=0;b<40;b++){let pattern=0;if(col===3||col===7)pattern=127;else if(col===1||col===5)pattern=(b&1)?0x55:0x2a;else if(col===2||col===6)pattern=(b&1)?0x2a:0x55;state.bytes[at(b*7,y)]=pattern|(col>=4?128:0);}}
 const bytesEqual=(a,b)=>a.every((v,i)=>v===b[i]);
@@ -165,6 +194,8 @@ const hgr=Object.freeze({
  circle(cx,cy,r,c,filled=false,width=1){r=Math.abs(integer(r));ellipse(cx-r,cy-r,2*r+1,2*r+1,c,filled,width);requestRender();},
  fill(x,y,c){const count=flood(x,y,c);requestRender();return count;},
  text(x,y,message,c,scale=1){textDraw(x,y,message,c,scale);requestRender();},
+ captureSprite(x,y,w,h){return captureSpriteRows(x,y,w,h);},
+ drawSprite(rows,x,y,transparentBlack=false){drawSpriteRows(rows,x,y,transparentBlack);requestRender();},
  blit(bitmap,x,y,c='white0',transparent=true){if(!Array.isArray(bitmap))throw Error('blit() expects an array of strings or arrays');x=integer(x);y=integer(y);for(let j=0;j<bitmap.length;j++){const row=bitmap[j];for(let i=0;i<row.length;i++){const v=row[i];if(v==='1'||v===1||v===true||v==='#')plot(x+i,y+j,c);else if(!transparent)plot(x+i,y+j,'black0');}}requestRender();},
  copy(x,y,w,h){return copyRegion(x,y,w,h);},
  paste(clip,x,y,mode='copy'){pasteRegion(clip,x,y,mode);requestRender();},
@@ -194,7 +225,7 @@ function setZoom(z){state.zoom=z;const width=SW*z,height=SH*z;canvas.style.width
 function normalizeDrag(a,b){const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y);return{x,y,w:Math.abs(a.x-b.x)+1,h:Math.abs(a.y-b.y)+1};}
 function pointFromEvent(e){const r=canvas.getBoundingClientRect();return{x:Math.max(0,Math.min(W-1,Math.floor((e.clientX-r.left)*W/r.width))),y:Math.max(0,Math.min(H-1,Math.floor((e.clientY-r.top)*H/r.height)))};}
 function updateInspector(){const p=state.hover;if(!p){el('coordinateStatus').textContent='X: — · Y: —';el('byteStatus').textContent='Byte: —';return;}const n=at(p.x,p.y),v=state.bytes[n];el('coordinateStatus').textContent=`X: ${String(p.x).padStart(3,'0')} · Y: ${String(p.y).padStart(3,'0')} · ${hgr.getPixel(p.x,p.y).name}`;el('byteStatus').textContent=`$${(state.base+n).toString(16).toUpperCase().padStart(4,'0')} : $${v.toString(16).toUpperCase().padStart(2,'0')} · bit ${p.x%7}`;}
-function updateSelection(){const r=state.selection;el('selectionStatus').textContent=r?`Selection: ${r.x},${r.y} · ${r.w}×${r.h}`:'No selection';renderOverlay();}
+function updateSelection(){const r=state.selection;el('selectionStatus').textContent=r?`Selection: ${r.x},${r.y} · ${r.w}×${r.h}`:'No selection';el('extractSpriteBtn').disabled=!r;renderOverlay();}
 function currentShape(start,end,tool){const r=normalizeDrag(start,end),c=state.color,width=state.thickness;switch(tool){case'line':line(start.x,start.y,end.x,end.y,c,width);break;case'rect':rect(r.x,r.y,r.w,r.h,c,false,width);break;case'rectfill':rect(r.x,r.y,r.w,r.h,c,true,width);break;case'ellipse':ellipse(r.x,r.y,r.w,r.h,c,false,width);break;case'ellipsefill':ellipse(r.x,r.y,r.w,r.h,c,true,width);break;}}
 function setTool(t){state.tool=t;for(const b of el('tools').children)b.classList.toggle('active',b.dataset.tool===t);canvas.style.cursor=t==='pan'?'grab':t==='text'?'text':t==='eyedropper'?'crosshair':'crosshair';}
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
@@ -221,6 +252,33 @@ function updateToolbar(){el('undoBtn').disabled=!undoStack.length;el('redoBtn').
 function doCopy(cut=false){const r=state.selection;if(!r){log('Select a rectangle first.','err');return;}state.clipboard=copyRegion(r.x,r.y,r.w,r.h);if(cut){const before=snapshot();rect(r.x,r.y,r.w,r.h,'black0');registerChange(before);}log(`${cut?'Cut':'Copied'} ${r.w}×${r.h} pixels.`, 'ok');}
 function doPaste(){if(!state.clipboard){log('Clipboard is empty.','err');return;}const p=state.hover||state.selection||{x:0,y:0};const before=snapshot();pasteRegion(state.clipboard,p.x,p.y);registerChange(before);log(`Pasted at (${p.x}, ${p.y}).`,'ok');}
 el('copyBtn').onclick=()=>doCopy(false);el('cutBtn').onclick=()=>doCopy(true);el('pasteBtn').onclick=doPaste;
+function spriteSource(rows,name,x,y){
+ // Only decimal pixel tokens are accepted by captureSpriteRows, so quoted row
+ // literals cannot contain executable JavaScript or HTML.
+ return '// HGR sprite: 0/1 = phase 0 (off/on), 2/3 = phase 1 (off/on); . = transparent\n'
+  + 'const '+name+' = [\n'
+  + rows.map(row=>'  '+JSON.stringify(row)).join(',\n')
+  + '\n];\n'
+  + 'hgr.drawSprite('+name+', '+x+', '+y+'); // Use true as 4th argument for transparent black\n';
+}
+function insertSelectedSprite(){
+ const r=state.selection;
+ if(!r){log('Select a rectangle with the Select tool first.','err');return;}
+ const rows=hgr.captureSprite(r.x,r.y,r.w,r.h);
+ // Generate a unique identifier even when multiple sprites are extracted.
+ let n=1,name;
+ do{name='sprite'+n++;}while(new RegExp('\\b'+name+'\\b').test(code.value));
+ const source=spriteSource(rows,name,r.x,r.y),cursor=code.value.length;
+ const prefix=cursor>0&&code.value[cursor-1]!=='\n'?'\n':'';
+ code.setRangeText(prefix+source+'\n',cursor,cursor,'end');
+ updateCodeView();
+ for(const tab of document.querySelectorAll('.edtab,.tabcontent'))tab.classList.remove('active');
+ document.querySelector('[data-tab="scriptPanel"]').classList.add('active');
+ el('scriptPanel').classList.add('active');
+ code.focus();
+ log(`Extracted ${r.w}×${r.h} HGR sprite "${name}" into JavaScript IDE. Change the hgr.drawSprite() coordinates to move it.`,'ok');
+}
+el('extractSpriteBtn').onclick=insertSelectedSprite;
 el('undoBtn').onclick=undo;el('redoBtn').onclick=redo;
 el('newBtn').onclick=()=>{if(state.dirty&&!confirm('Clear the current HGR page? (You can still undo.)'))return;const before=snapshot();state.bytes.fill(0);registerChange(before);state.selection=null;updateSelection();log('Cleared current screen.','ok');};
 function downloadBlob(data,name,type='application/octet-stream'){const blob=data instanceof Blob?data:new Blob([data],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
@@ -477,6 +535,24 @@ hgr.pixel(50, 60, 'phase0'); // phase-only drawing also works
 
 Return an in-memory clipping `{width, height, bits, phases}`, where `bits` and `phases` are `Uint8Array`s of length `width * height`. This operation does not modify the screen.
 
+### Sprite → JS (selection tool)
+
+Choose **Select** and drag a rectangle on the HGR screen, then click **Sprite → JS** beside Copy / Cut / Paste. The new code is appended after the existing IDE script (so any earlier `hgr.clear()` runs first). The IDE receives a reusable `const sprite1 = [...]` with one string per row and an `hgr.drawSprite(sprite1, x, y)` call at the selection's original coordinates. Modify those coordinates to stamp it elsewhere. Each selection produces a new uniquely named sprite definition. No file export or clipboard step is needed.
+
+### hgr.captureSprite(x, y, width, height)
+
+Return a string array of exact **logical HGR pixels** for the selected rectangle; no RGB conversion. Each character combines the pixel on/off bit with its HGR byte's phase: `0` = off/phase0, `1` = on/phase0, `2` = off/phase1, `3` = on/phase1. An optional `.` character in edited source indicates an always-transparent pixel.
+
+### hgr.drawSprite(rows, x, y, transparentBlack = false)
+
+Draw the captured rows at `(x,y)`, clipping to the HGR page. By default, the entire rectangular sprite is opaque (black pixels overwrite the destination), giving exact pixels at the original location. Set `transparentBlack=true` to skip off pixels, leaving the background visible; `.` always skips. The current brush pattern does not affect sprite data. Because the Apple II shares one phase bit among seven pixels, moving a sprite to a different **X modulo 7** alignment can change its artifact colors and the colors of adjoining pixels. Aligned positions preserve the bit/phase encoding most faithfully.
+
+```js
+const tiny = ['0110', '1331', '0220'];
+hgr.drawSprite(tiny, 100, 75);         // opaque
+hgr.drawSprite(tiny, 140, 75, true);   // skip black/off pixels
+```
+
 ### hgr.paste(clip, x, y, mode = 'copy')
 
 Paste a clipping at destination `(x, y)`. Modes: `copy` overwrites bits (including zero bits), `or` sets only lit source bits, and `xor` toggles lit destination bits. Moved clips are logically pixel-aligned, but shared phase bits may make mixed-color content look different when not aligned on a seven-pixel byte boundary.
@@ -567,6 +643,7 @@ hgr.redo();
 | Copy HGR Bytes | 8-byte-per-line Apple monitor hex dump of the selected $2000/$4000 HGR page, copied to clipboard |
 | PNG | Raster preview of the active color/mono view; **not** reversible HGR bytes |
 | Open / Save .js | Plain JavaScript editor source |
+| Sprite → JS | Insert HGR selection as editable sprite row strings and a drawing command |
 | API.md | This standalone Markdown documentation |
 
 The imported screen preserves the 512 non-visible padding bytes. Tool-based screen clearing changes visible bytes only; **New** explicitly zeroes the whole page. For RetroAppleJS, load raw bytes at `$2000` (HGR) or `$4000` (HGR2), then select the corresponding graphics page in the emulator.
