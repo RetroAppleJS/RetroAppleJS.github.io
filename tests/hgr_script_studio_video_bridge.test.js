@@ -133,9 +133,80 @@ test('studio has stable pointer canvas, selection overlay and working renderer p
   for(const mode of modes)assert.ok(studio.includes('option value="'+mode+'"'));
   assert.match(studio,/nativeVideoBridge\.render\(state\.bytes,state\.base,state\.view\)/);
   assert.match(studio,/new HGRStudioVideoBridge\(el\('applescreen'\)\)/);
-  assert.match(studio,/nativeVideoBridge\.getDisplayCanvas\(\):canvas/);
-  assert.match(studio,/renderHGRLegacy\(\)/);
+  assert.match(studio,/const source=nativeVideoBridge\.getDisplayCanvas\(\)/);
+  assert.doesNotMatch(studio,/renderHGRLegacy/);
+  assert.doesNotMatch(studio,/createImageData\(/);
+  assert.doesNotMatch(studio,/putImageData\(/);
+  assert.doesNotMatch(studio,/const rgba=COLORS/);
+  assert.doesNotMatch(studio,/getContext\('2d',\{alpha:true\}\)/);
+  assert.match(studio,/nativeVideoBridge\.setMode\('canvas'\)/);
+  assert.match(studio,/Video unavailable/);
   assert.match(studio,/setPage\(address\)[^\n]*requestRender\(\)/);
   assert.match(studio,/el\('pageSelect'\)\.onchange[^\n]*requestRender\(\)/);
   assert.match(muxSource,/if\(typeof Apple2VideoCanvas === "function"\)/);
+});
+
+
+test('emulator-only renderHGR recovers a failed accelerated backend using MUX Canvas',()=>{
+  const begin=studio.indexOf('function renderHGR(){');
+  const end=studio.indexOf('function renderOverlay(){',begin);
+  assert.ok(begin>=0 && end>begin);
+  const draws=[],logs=[],statuses=[];
+  let mode='gpu';
+  const bridgeMock={
+    getRendererName:()=>mode,
+    setMode:next=>{mode=next;statuses.push(next);},
+    render:()=>{draws.push(mode);if(mode==='gpu')throw Error('GPU failure');}
+  };
+  const context={
+    nativeVideoBridge:bridgeMock,
+    nativeVideoFailure:null,
+    HGRStudioVideoBridge:function(){},
+    state:{bytes:new Uint8Array(8192),base:0x2000,view:'color'},
+    el:()=>({}),
+    syncVideoRendererUI:mode=>statuses.push('sync:'+mode),
+    updateRendererOptions:()=>{},
+    renderOverlay:()=>statuses.push('overlay'),
+    log:(message,type)=>logs.push([message,type])
+  };
+  vm.createContext(context);
+  vm.runInContext(studio.slice(begin,end),context);
+  vm.runInContext('renderHGR()',context);
+  assert.deepEqual(draws,['gpu','canvas']);
+  assert.equal(mode,'canvas');
+  assert.equal(logs.length,1);
+  assert.match(logs[0][0],/switched to emulator Canvas/);
+  assert.equal(context.nativeVideoFailure,null);
+  assert.equal(statuses.at(-1),'overlay');
+});
+
+test('emulator-only renderHGR reports error if even MUX Canvas is unavailable',()=>{
+  const begin=studio.indexOf('function renderHGR(){');
+  const end=studio.indexOf('function renderOverlay(){',begin);
+  let mode='gpu',called=0,logs=[];
+  const badge={textContent:''};
+  const selector={disabled:false};
+  const context={
+    nativeVideoBridge:{
+      getRendererName:()=>mode,
+      setMode:next=>{mode=next;},
+      render:()=>{called++;throw Error('Video output unavailable');}
+    },
+    nativeVideoFailure:null,
+    HGRStudioVideoBridge:function(){},
+    state:{bytes:new Uint8Array(8192),base:0x2000,view:'color'},
+    el:id=>id==='videoBackendBadge'?badge:selector,
+    syncVideoRendererUI:()=>{},
+    renderOverlay:()=>{},
+    log:(message,type)=>logs.push([message,type])
+  };
+  vm.createContext(context);
+  vm.runInContext(studio.slice(begin,end),context);
+  vm.runInContext('renderHGR()',context);
+  assert.equal(called,2,'GPU and then Canvas recovery attempted');
+  assert.equal(badge.textContent,'Video unavailable');
+  assert.equal(selector.disabled,true);
+  assert.match(logs.at(-1)[0],/Emulator video preview unavailable/);
+  vm.runInContext('renderHGR()',context);
+  assert.equal(called,2,'do not repeatedly retry broken video devices');
 });
