@@ -27,7 +27,7 @@ button,input,textarea,select{font:inherit}button,select{cursor:pointer}button{bo
 <section><div class="panel-title">Drawing tools</div><div id="tools" class="toolgrid"></div></section>
 <section><div class="panel-title">Apple II colors</div><div id="colors" class="colors"></div><p class="hint">Artifact colors share bit 7 across each group of seven pixels.</p></section>
 <section><div class="panel-title">Brush &amp; pattern</div><label class="field">Thickness <select id="thickness"><option value="1">1 pixel</option><option value="2" selected>2 pixels</option><option value="3">3 pixels</option><option value="4">4 pixels</option><option value="6">6 pixels</option><option value="8">8 pixels</option></select></label><label class="field">Pattern <select id="pattern"><option value="solid">Solid</option><option value="checker">Checker</option><option value="scanline">Scanlines</option><option value="columns">Columns</option><option value="dots">Sparse dots</option></select></label><label class="field">View <select id="viewMode"><option value="color">Artifact color</option><option value="mono">Monochrome</option><option value="bits">Logical bits</option></select></label><label class="field">Zoom <select id="zoom"><option value="1" selected>1×</option><option value="2">2×</option><option value="3">3×</option><option value="4">4×</option><option value="6">6×</option></select></label></section>
-<section><div class="panel-title">Selection</div><div class="rowbtn"><button id="copyBtn" class="small">Copy</button><button id="cutBtn" class="small">Cut</button><button id="pasteBtn" class="small">Paste</button><button id="extractSpriteBtn" class="small" disabled title="Insert the selected HGR pixels as a reusable JavaScript sprite">Sprite → JS</button></div><p class="hint">Select a rectangle, then choose Sprite → JS to insert editable HGR pixel data and a drawing command at the JavaScript cursor. Copy / Cut / Paste edit HGR pixels.</p></section>
+<section><div class="panel-title">Selection</div><div class="rowbtn"><button id="copyBtn" class="small">Copy</button><button id="cutBtn" class="small">Cut</button><button id="pasteBtn" class="small">Paste</button><button id="extractSpriteBtn" class="small" disabled title="Insert the selected HGR pixels as a reusable JavaScript sprite">Sprite → JS</button></div><p class="hint">Select a rectangle, then choose Sprite → JS to append editable HGR pixel data and a drawing command to the JavaScript editor. Copy / Cut / Paste edit HGR pixels.</p></section>
 <section><div class="panel-title">Import / export</div><label class="field">File format <select id="exportFormat"><option value="raw">Raw 8192 B</option><option value="dos">DOS BLOAD 8196 B</option></select></label><p class="hint">Raw .hgr is a complete HGR page. DOS binary includes a 4-byte load address/length header. Drag a file onto the screen to load it.</p></section>
 </aside>
 <main class="stage">
@@ -268,7 +268,7 @@ function insertSelectedSprite(){
  // Generate a unique identifier even when multiple sprites are extracted.
  let n=1,name;
  do{name='sprite'+n++;}while(new RegExp('\\b'+name+'\\b').test(code.value));
- const source=spriteSource(rows,name,r.x,r.y),cursor=code.selectionEnd;
+ const source=spriteSource(rows,name,r.x,r.y),cursor=code.value.length;
  const prefix=cursor>0&&code.value[cursor-1]!=='\n'?'\n':'';
  code.setRangeText(prefix+source+'\n',cursor,cursor,'end');
  updateCodeView();
@@ -537,7 +537,7 @@ Return an in-memory clipping `{width, height, bits, phases}`, where `bits` and `
 
 ### Sprite → JS (selection tool)
 
-Choose **Select** and drag a rectangle on the HGR screen, then click **Sprite → JS** beside Copy / Cut / Paste. The IDE receives a reusable `const sprite1 = [...]` with one string per row and an `hgr.drawSprite(sprite1, x, y)` call at the selection's original coordinates. Modify those coordinates to stamp it elsewhere. Each selection produces a new uniquely named sprite definition. No file export or clipboard step is needed.
+Choose **Select** and drag a rectangle on the HGR screen, then click **Sprite → JS** beside Copy / Cut / Paste. The new code is appended after the existing IDE script (so any earlier `hgr.clear()` runs first). The IDE receives a reusable `const sprite1 = [...]` with one string per row and an `hgr.drawSprite(sprite1, x, y)` call at the selection's original coordinates. Modify those coordinates to stamp it elsewhere. Each selection produces a new uniquely named sprite definition. No file export or clipboard step is needed.
 
 ### hgr.captureSprite(x, y, width, height)
 
