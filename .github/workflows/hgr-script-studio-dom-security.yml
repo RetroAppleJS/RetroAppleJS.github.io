@@ -9,11 +9,18 @@ on:
       - 'tools/HGR_SCRIPT_STUDIO.html'
       - 'tests/hgr_script_studio_dom_security.test.js'
       - 'tests/hgr_script_studio_sprite_extraction.test.js'
+      - 'tests/hgr_script_studio_video_bridge.test.js'
+      - 'tools/HGR_SCRIPT_STUDIO_video_bridge.js'
+      - 'res/EMU_DEVICE_video_MUX.js'
       - '.github/workflows/hgr-script-studio-dom-security.yml'
   push:
     paths:
       - 'tools/HGR_SCRIPT_STUDIO.html'
       - 'tests/hgr_script_studio_dom_security.test.js'
+      - 'tests/hgr_script_studio_sprite_extraction.test.js'
+      - 'tests/hgr_script_studio_video_bridge.test.js'
+      - 'tools/HGR_SCRIPT_STUDIO_video_bridge.js'
+      - 'res/EMU_DEVICE_video_MUX.js'
       - '.github/workflows/hgr-script-studio-dom-security.yml'
   workflow_dispatch:
 
@@ -26,4 +33,4 @@ jobs:
         with:
           node-version: '22'
       - name: Verify DOM rendering and XSS regressions
-        run: node --test tests/hgr_script_studio_dom_security.test.js tests/hgr_script_studio_sprite_extraction.test.js
+        run: node --test tests/hgr_script_studio_dom_security.test.js tests/hgr_script_studio_sprite_extraction.test.js tests/hgr_script_studio_video_bridge.test.js
