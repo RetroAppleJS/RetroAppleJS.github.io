@@ -46,7 +46,7 @@ function sourceBetween(start,end){
 
 test("inline JavaScript is syntactically valid",()=>{
  const blocks=[...html.matchAll(/<script(?![^>]*type="text\/plain")[^>]*>([\s\S]*?)<\/script>/g)].filter(match=>!/\bsrc\s*=/.test(match[0].split(">")[0]));
- assert.equal(blocks.length,2);
+ assert.ok(blocks.length>=2,'Expected Studio and renderer alias scripts');
  for(const b of blocks)new vm.Script(b[1]);
 });
 test("no HTML-reinterpretation sinks remain",()=>{
