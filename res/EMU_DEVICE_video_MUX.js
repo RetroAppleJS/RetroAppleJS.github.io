@@ -83,14 +83,21 @@ function Apple2VideoMUX(canvas)
     this.state.charRomKey = defaultCharRomKey;
     this.state.charRom = Apple2CharROM_get(defaultCharRomKey);
 
-    this.renderModes = [
-        { name: "gpu",     ctor: Apple2VideoGPU,    context: "canvas" },
-        { name: "wave",    ctor: Apple2VideoWave,   context: "canvas" },
-        { name: "threejs", ctor: Apple2VideoTHREE,  context: "canvas" },
-        { name: "canvas",   ctor: Apple2VideoCanvas, context: "2d"     }
-    ];
-    if(typeof(Apple2VideoWebGPU)==="function")
-        this.renderModes.push({ name: "webgpu", ctor: Apple2VideoWebGPU, context: "canvas" });
+    // Standalone tools can load only the renderers they need. The full
+    // emulator still registers all five in its original display order.
+    this.renderModes = [];
+    if(typeof Apple2VideoGPU === "function")
+        this.renderModes.push({ name:"gpu", ctor:Apple2VideoGPU, context:"canvas" });
+    if(typeof Apple2VideoWave === "function")
+        this.renderModes.push({ name:"wave", ctor:Apple2VideoWave, context:"canvas" });
+    if(typeof Apple2VideoTHREE === "function")
+        this.renderModes.push({ name:"threejs", ctor:Apple2VideoTHREE, context:"canvas" });
+    if(typeof Apple2VideoCanvas === "function")
+        this.renderModes.push({ name:"canvas", ctor:Apple2VideoCanvas, context:"2d" });
+    if(typeof Apple2VideoWebGPU === "function")
+        this.renderModes.push({ name:"webgpu", ctor:Apple2VideoWebGPU, context:"canvas" });
+    if(!this.renderModes.length)
+        throw Error("Apple2VideoMUX: no available video renderer");
 
     this.getRenderModes = function()
     {
