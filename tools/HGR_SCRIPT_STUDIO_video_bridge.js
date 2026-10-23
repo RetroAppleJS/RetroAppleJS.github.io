@@ -1,5 +1,6 @@
-// HGR Script Studio - Phase 1: native Apple II video MUX / Canvas preview.
-// Runs without a CPU, slots, video raster scheduler, or Apple2Hw.
+// HGR Script Studio video bridge - shared MUX renderers without a CPU.
+// The editor owns its immutable 8K page; all renderers read the same mirrored
+// 24K video memory. The MUX swaps only the dedicated #applescreen canvas.
 if(typeof oEMU === "undefined")
     var oEMU = {component:{Video:{},ROM:{},IO:{}}};
 else if(!oEMU.component)
@@ -10,27 +11,30 @@ else {
     oEMU.component.IO ||= {};
 }
 
-function HGRStudioVideoBridge(canvas)
+function HGRStudioVideoBridge(displayCanvas)
 {
     if(typeof Apple2VideoMUX !== "function" ||
        typeof Apple2VideoCanvas !== "function" ||
        typeof Apple2CharROM_get !== "function")
-        throw Error("Native Canvas/MUX video dependencies are missing");
+        throw Error("Apple II video Canvas/MUX dependencies are missing");
 
-    // Addressed like the Apple II: page 1 $2000-$3FFF, page 2 $4000-$5FFF.
-    // No CPU or full Apple2Hw instance is needed for static HGR display.
     const memory = new Uint8Array(0x6000);
-    const mux = new Apple2VideoMUX(canvas);
+    const mux = new Apple2VideoMUX(displayCanvas);
     const hw = {
         safe_videodump(){return memory;},
         safe_flashdump(){return memory;}
     };
 
-    // Reuse the editor's canvas. MUX must not replace it with a clone because
-    // the editor's mouse handlers and selection overlay target this canvas.
-    mux.canvases.canvas = canvas;
+    // Important: the MUX clones new context-clean canvases for GPU backends.
+    // Only its Canvas renderer reuses our bootstrap display canvas.
+    // HGR Script Studio's #hgrCanvas is a separate transparent input layer.
+    mux.canvases.canvas = displayCanvas;
     mux.vidram = memory;
     mux.hw = hw;
+
+    // The emulator normally defaults to GPU.js. Standalone Studio must use
+    // Canvas first, even if optional GPU libraries have been loaded.
+    mux.modeIndex = mux.getRenderModeIndexByName("canvas");
     mux.reset();
     mux.setMix(false);
     mux.setGfx(true);
@@ -38,9 +42,45 @@ function HGRStudioVideoBridge(canvas)
 
     this.memory = memory;
     this.video = mux;
-    this.canvas = canvas;
+    this.canvas = displayCanvas;
+    this.onModeChange = null;
+
+    if(typeof mux.subscribeDeviceSelection === "function")
+        mux.subscribeDeviceSelection(event => {
+            if(typeof this.onModeChange === "function")
+                this.onModeChange(event.mode);
+        });
 
     let lastPage2 = false, lastChrome = 0;
+
+    this.getModes = function()
+    {
+        return mux.getRenderModes().map(spec => spec.name);
+    };
+
+    this.getRendererName = function()
+    {
+        return mux.getRenderMode();
+    };
+
+    this.getDisplayCanvas = function()
+    {
+        return mux.canvas || displayCanvas;
+    };
+
+    this.setMode = function(mode)
+    {
+        const spec = mux.getRenderModeSpec(mode);
+        if(!spec) throw Error("Unknown video renderer: "+mode);
+        const renderer = mux.getRendererInstance(mode,true);
+        if(!renderer || !renderer.id || !renderer.id.DCODE ||
+           !mux.setModeByDCODE(renderer.id.DCODE,null,false))
+            throw Error("Cannot activate renderer: "+mode);
+        // Both the current HGR bytes and the display mode were retained.
+        mux.redraw();
+        return mux.getRenderMode();
+    };
+
     this.render = function(hgrBytes,base,view)
     {
         if(!hgrBytes || hgrBytes.length !== 0x2000)
@@ -48,14 +88,15 @@ function HGRStudioVideoBridge(canvas)
         if(base !== 0x2000 && base !== 0x4000)
             throw Error("HGR video bridge expects page $2000 or $4000");
 
-        // Copy first, then redraw. Unused HGR bytes are preserved exactly.
         memory.set(hgrBytes,base);
+        // Wave/YIQ caches a 7680-byte linearized HGR page; bulk writes bypass
+        // its per-address write hook, so invalidate that cache explicitly.
+        const active = mux.getActiveRenderer();
+        if(active && typeof active.markDirty === "function") active.markDirty();
         const page2 = base === 0x4000;
         const chrome = view === "color" ? 0 : 1;
-        if(page2 !== lastPage2) { mux.setPage2(page2); lastPage2=page2; }
-        if(chrome !== lastChrome) { mux.setMonitor(chrome); lastChrome=chrome; }
+        if(page2 !== lastPage2) { mux.setPage2(page2); lastPage2 = page2; }
+        if(chrome !== lastChrome) { mux.setMonitor(chrome); lastChrome = chrome; }
         mux.redraw();
     };
-
-    this.getRendererName = function(){return mux.getRenderMode();};
 }
