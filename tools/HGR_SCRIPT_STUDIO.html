@@ -464,7 +464,7 @@ for(const b of document.querySelectorAll('.edtab'))b.onclick=()=>{for(const v of
 <script id="apiMarkdown" type="text/plain">
 # HGR Script Studio — JavaScript API
 
-A JavaScript graphics workbench for the Apple II HGR screen. Every operation edits a real **8192-byte HGR memory page**, not an RGB replacement. **Phase 2:** the preview uses the emulator's `Apple2VideoMUX` with a selectable Canvas, GPU.js, Wave/YIQ, WebGPU or THREE.js video device. No internal HGR preview renderer remains. If all emulator video devices fail, the studio reports a video error but preserves the HGR page and binary exports. Open the JavaScript IDE, type drawing commands, and press **Run** or **Ctrl/Cmd+Enter**.
+A JavaScript graphics workbench for the Apple II HGR screen. Every operation edits a real **8192-byte HGR memory page**, not an RGB replacement. **Phase 3:** the preview is rendered exclusively by the emulator's `Apple2VideoMUX`, using a selectable Canvas, GPU.js, Wave/YIQ, WebGPU or THREE.js device. No internal HGR preview renderer remains. If all emulator video devices fail, the studio reports a video error but preserves the HGR page and binary exports. Open the JavaScript IDE, type drawing commands, and press **Run** or **Ctrl/Cmd+Enter**.
 
 ## Quick start
 
@@ -760,7 +760,7 @@ The imported screen preserves the 512 non-visible padding bytes. Tool-based scre
 
 **Security:** The JavaScript editor uses `new Function` in this page's browser context. It is intended for **code you wrote or trust**; it is not a sandbox. Arbitrary imported JavaScript can access browser APIs. Avoid infinite loops, which may freeze the tab. No external libraries, CDNs, accounts, or network requests are required by the workbench itself.
 
-**Display accuracy:** The Phase 2 renderer selector uses the emulator's Canvas, GPU.js, Wave/YIQ, WebGPU or THREE.js display devices. Switch modes without changing native HGR bytes, sprite data, drawings, or selection. GPU / Wave require GPU.js, WebGPU requires a secure browser context and WebGPU support, and THREE requires the optional Three.js library (loaded from a CDN). Unavailable modes are disabled; the emulator may automatically fall back to Canvas if acceleration is lost. Monochrome and Logical bits both use the emulator's B&W monitor setting; the studio never falls back to a separate HGR pixel renderer; PNG previews capture the selected emulator renderer.
+**Display accuracy:** The renderer selector uses the emulator's Canvas, GPU.js, Wave/YIQ, WebGPU or THREE.js display devices. Switch modes without changing native HGR bytes, sprite data, drawings, or selection. GPU / Wave require GPU.js, WebGPU requires a secure browser context and WebGPU support, and THREE requires the optional Three.js library (loaded from a CDN). Unavailable modes are disabled; the emulator may automatically fall back to Canvas if acceleration is lost. Monochrome and Logical bits both use the emulator's B&W monitor setting; the studio never falls back to a separate HGR pixel renderer; PNG previews capture the selected emulator renderer.
 </script>
 <script>
 // Markdown and JavaScript can contain markup-looking text. Build nodes rather
