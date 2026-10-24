@@ -364,7 +364,31 @@ function insertSelectedSprite(){
 el('extractSpriteBtn').onclick=insertSelectedSprite;
 el('undoBtn').onclick=undo;el('redoBtn').onclick=redo;
 el('newBtn').onclick=()=>{if(state.dirty&&!confirm('Clear the current HGR page? (You can still undo.)'))return;const before=snapshot();state.bytes.fill(0);registerChange(before);state.selection=null;updateSelection();log('Cleared current screen.','ok');};
-function downloadBlob(data,name,type='application/octet-stream'){const blob=data instanceof Blob?data:new Blob([data],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
+// Downloads are created only from a locally constructed Blob URL.
+// Never interpret source text as HTML or allow arbitrary URL schemes.
+function downloadBlob(data, name, type='application/octet-stream'){
+ const blob=data instanceof Blob ? data : new Blob([data],{type});
+ const filename=String(name).replace(/[\x00-\x1f\x7f/\\<>:"|?*]/g,'_').slice(0,180);
+ if(!filename)throw Error('Download filename is empty');
+ const objectURL=URL.createObjectURL(blob);
+ if(!objectURL.startsWith('blob:')){
+  URL.revokeObjectURL(objectURL);
+  throw Error('Expected a browser-generated blob URL');
+ }
+ const link=document.createElement('a');
+ try{
+  link.setAttribute('href',objectURL);
+  link.setAttribute('download',filename);
+  link.setAttribute('rel','noopener noreferrer');
+  link.hidden=true;
+  document.body.appendChild(link);
+  link.click();
+ }finally{
+  link.remove();
+  // Keep the generated URL alive until the browser has started the download.
+  setTimeout(()=>URL.revokeObjectURL(objectURL),5000);
+ }
+}
 function exportHGR(){const raw=snapshot(),format=el('exportFormat').value,base=state.base;let out=raw;if(format==='dos'){out=new Uint8Array(SIZE+4);out[0]=base&255;out[1]=base>>8;out[2]=SIZE&255;out[3]=SIZE>>8;out.set(raw,4);}downloadBlob(out,`hgr-page${base===0x2000?'1':'2'}.${format==='dos'?'bin':'hgr'}`);state.dirty=false;updateToolbar();log(`Exported ${out.length} bytes (${format==='dos'?'DOS BLOAD':'raw HGR'}).`,'ok');}
 el('saveBtn').onclick=exportHGR;
 // Clipboard API in HTTPS browsers, with legacy fallback for local file:// use.

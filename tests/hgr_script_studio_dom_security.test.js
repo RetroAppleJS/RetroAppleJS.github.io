@@ -114,3 +114,70 @@ test("Markdown docs render formatting without parsing embedded HTML",()=>{
  assert.ok(nodes.docsView.textContent.includes("No matching sections."));
  assert.ok(collectTags(nodes.docsView).every(t=>t!=="img"&&t!=="svg"&&t!=="script"));
 });
+
+
+test("HGR download creates only a trusted blob URL and treats the filename as data",()=>{
+ const src=sourceBetween("function downloadBlob(","function exportHGR()");
+ const calls=[],timers=[],links=[];
+ class TestBlob {
+  constructor(parts,options){this.parts=parts;this.type=options.type;}
+ }
+ const context={
+  Blob:TestBlob,
+  URL:{
+   createObjectURL(blob){calls.push(["blob",blob]);return "blob:https://example.test/generated-123";},
+   revokeObjectURL(url){calls.push(["revoke",url]);}
+  },
+  document:{
+   createElement(tag){
+    assert.equal(tag,"a");
+    const attrs=new Map();
+    const link={
+     attrs,
+     setAttribute(k,v){attrs.set(k,v);calls.push(["attribute",k,v]);},
+     click(){calls.push(["click"]);},
+     remove(){calls.push(["remove"]);}
+    };
+    links.push(link);return link;
+   },
+   body:{appendChild(link){calls.push(["append",link]);}}
+  },
+  setTimeout(fn,delay){timers.push({fn,delay});}
+ };
+ vm.createContext(context);vm.runInContext(src,context);
+ context.downloadBlob("HGR content","../<script>.js","text/javascript;charset=utf-8");
+ assert.equal(links.length,1);
+ const attrs=links[0].attrs;
+ assert.equal(attrs.get("href"),"blob:https://example.test/generated-123");
+ assert.equal(attrs.get("download"),"..__script_.js");
+ assert.equal(attrs.get("rel"),"noopener noreferrer");
+ assert.equal(calls.filter(([kind])=>kind==="click").length,1);
+ assert.ok(calls.findIndex(([kind])=>kind==="append")<calls.findIndex(([kind])=>kind==="click"));
+ assert.ok(calls.findIndex(([kind])=>kind==="click")<calls.findIndex(([kind])=>kind==="remove"));
+ assert.equal(timers.length,1);
+ assert.equal(timers[0].delay,5000);
+ timers[0].fn();
+ assert.deepEqual(calls.at(-1),["revoke","blob:https://example.test/generated-123"]);
+ assert.equal(calls[0][1].type,"text/javascript;charset=utf-8");
+ assert.doesNotMatch(src,/\.innerHTML\s*=/);
+ assert.doesNotMatch(src,/\.href\s*=/);
+});
+
+test("HGR export rejects unexpected URL schemes and empty filenames before clicking",()=>{
+ const src=sourceBetween("function downloadBlob(","function exportHGR()");
+ const calls=[];
+ const context={
+  Blob:class TestBlob {constructor(parts,opts){this.parts=parts;this.type=opts.type;}},
+  URL:{
+   createObjectURL(){return "javascript:alert(1)";},
+   revokeObjectURL(u){calls.push("revoke:"+u);}
+  },
+  document:{createElement(){calls.push("createAnchor");return {};}},
+  setTimeout(){calls.push("timer");}
+ };
+ vm.createContext(context);vm.runInContext(src,context);
+ assert.throws(()=>context.downloadBlob("data","test.hgr"),/Expected a browser-generated blob URL/);
+ assert.deepEqual(calls,["revoke:javascript:alert(1)"]);
+ assert.throws(()=>context.downloadBlob("data",""),/Download filename is empty/);
+ assert.deepEqual(calls,["revoke:javascript:alert(1)"]);
+});
