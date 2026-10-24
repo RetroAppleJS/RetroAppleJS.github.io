@@ -1,0 +1,178 @@
+TAP version 13
+# Subtest: public API and stable format identity
+ok 1 - public API and stable format identity
+  ---
+  duration_ms: 1.055736
+  type: 'test'
+  ...
+# Subtest: six deterministic scenarios produce note and AY activity
+ok 2 - six deterministic scenarios produce note and AY activity
+  ---
+  duration_ms: 32.575247
+  type: 'test'
+  ...
+# Subtest: changing the seed changes mixed score
+ok 3 - changing the seed changes mixed score
+  ---
+  duration_ms: 2.569934
+  type: 'test'
+  ...
+# Subtest: E0, E1, E2, E3, E4 exact roundtrips on five scenarios
+ok 4 - E0, E1, E2, E3, E4 exact roundtrips on five scenarios
+  ---
+  duration_ms: 96.003608
+  type: 'test'
+  ...
+# Subtest: E3 rejects free AY writes; E4 supports mixed VM/direct
+ok 5 - E3 rejects free AY writes; E4 supports mixed VM/direct
+  ---
+  duration_ms: 30.743488
+  type: 'test'
+  ...
+# Subtest: sustained notes strongly compress with E3
+ok 6 - sustained notes strongly compress with E3
+  ---
+  duration_ms: 7.81356
+  type: 'test'
+  ...
+# Subtest: pattern backreferences occur and reduce a repeated DAC workload
+ok 7 - pattern backreferences occur and reduce a repeated DAC workload
+  ---
+  duration_ms: 9.365425
+  type: 'test'
+  ...
+# Subtest: E2 block boundaries 64, 128, 256, 512, 1024, 2048
+ok 8 - E2 block boundaries 64, 128, 256, 512, 1024, 2048
+  ---
+  duration_ms: 47.491503
+  type: 'test'
+  ...
+# Subtest: E2 and delta handle zero-time collocated events
+ok 9 - E2 and delta handle zero-time collocated events
+  ---
+  duration_ms: 0.78705
+  type: 'test'
+  ...
+# Subtest: E4 handles event-only imports via LZ fallback
+ok 10 - E4 handles event-only imports via LZ fallback
+  ---
+  duration_ms: 0.55601
+  type: 'test'
+  ...
+# Subtest: empty event stream remains valid
+ok 11 - empty event stream remains valid
+  ---
+  duration_ms: 0.373034
+  type: 'test'
+  ...
+# Subtest: midi, parameters, bounds and malformed input fail clearly
+ok 12 - midi, parameters, bounds and malformed input fail clearly
+  ---
+  duration_ms: 0.294344
+  type: 'test'
+  ...
+# Subtest: decode rejects tampered header, checksum, length and event count
+ok 13 - decode rejects tampered header, checksum, length and event count
+  ---
+  duration_ms: 0.453425
+  type: 'test'
+  ...
+# Subtest: binary reader rejects unsupported version or flag
+ok 14 - binary reader rejects unsupported version or flag
+  ---
+  duration_ms: 0.283839
+  type: 'test'
+  ...
+# Subtest: import Waveform Bench uses correct nanosecond-to-cycle rounding
+ok 15 - import Waveform Bench uses correct nanosecond-to-cycle rounding
+  ---
+  duration_ms: 0.445473
+  type: 'test'
+  ...
+# Subtest: import selected fixture by result index
+ok 16 - import selected fixture by result index
+  ---
+  duration_ms: 0.142936
+  type: 'test'
+  ...
+# Subtest: event sorting stable at identical timestamp
+ok 17 - event sorting stable at identical timestamp
+  ---
+  duration_ms: 0.285752
+  type: 'test'
+  ...
+# Subtest: score encodings preserve two-chip AY coordinates
+ok 18 - score encodings preserve two-chip AY coordinates
+  ---
+  duration_ms: 0.281485
+  type: 'test'
+  ...
+# Subtest: schedule is deterministic and higher CPU caps help
+ok 19 - schedule is deterministic and higher CPU caps help
+  ---
+  duration_ms: 10.504327
+  type: 'test'
+  ...
+# Subtest: increasing VIA cycles raises demand and misses
+ok 20 - increasing VIA cycles raises demand and misses
+  ---
+  duration_ms: 4.763861
+  type: 'test'
+  ...
+# Subtest: graphics action profile constrains available frame capacity
+ok 21 - graphics action profile constrains available frame capacity
+  ---
+  duration_ms: 5.315334
+  type: 'test'
+  ...
+# Subtest: memory includes score + decoder + state in resident mode
+ok 22 - memory includes score + decoder + state in resident mode
+  ---
+  duration_ms: 1.856787
+  type: 'test'
+  ...
+# Subtest: benchmark reports all codecs and Pareto labels
+ok 23 - benchmark reports all codecs and Pareto labels
+  ---
+  duration_ms: 24.507012
+  type: 'test'
+  ...
+# Subtest: hex preview truncates safely
+ok 24 - hex preview truncates safely
+  ---
+  duration_ms: 0.267234
+  type: 'test'
+  ...
+# Subtest: roundtrip against genuine v1.4 generated events from upload
+ok 25 - roundtrip against genuine v1.4 generated events from upload
+  ---
+  duration_ms: 2.678858
+  type: 'test'
+  ...
+# Subtest: score importer roundtrips high-density Waveform Bench DAC events
+ok 26 - score importer roundtrips high-density Waveform Bench DAC events
+  ---
+  duration_ms: 32.675349
+  type: 'test'
+  ...
+# Subtest: stream buffers are independent of pattern token block size
+ok 27 - stream buffers are independent of pattern token block size
+  ---
+  duration_ms: 3.85717
+  type: 'test'
+  ...
+# Subtest: no available CPU reports scheduling failure without mislabeling codec
+ok 28 - no available CPU reports scheduling failure without mislabeling codec
+  ---
+  duration_ms: 0.687659
+  type: 'test'
+  ...
+1..28
+# tests 28
+# suites 0
+# pass 28
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 396.619648
