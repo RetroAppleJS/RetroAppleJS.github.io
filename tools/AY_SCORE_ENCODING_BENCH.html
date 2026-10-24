@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AY Score Encoding Bench v0.1 · RetroAppleJS</title>
+<title>AY Score Encoding Bench v0.1.1 · RetroAppleJS</title>
 <style>
 :root{color-scheme:dark;font:14px/1.48 system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0b1622;color:#eef5fc}
 *{box-sizing:border-box}body{max-width:1320px;padding:22px;margin:auto}h1{font-size:29px;letter-spacing:-.5px;margin:0}h2{font-size:18px;margin:0 0 10px}h3{font-size:14px;margin:0 0 8px}.muted,small{color:#aec3d7}p{margin:6px 0 13px}.eyebrow{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:#89d6df}
@@ -14,9 +14,9 @@ input,select,button{font:inherit}input,select{min-height:37px;border:1px solid #
 </style>
 <script src="AY_SCORE_ENCODING_BENCH_core.js"></script>
 </head><body>
-<header><div class="eyebrow">RetroAppleJS · SID → AY compiler research · Phase 1.5A</div>
-<h1>AY Score Encoding Bench <small>v0.1</small></h1>
-<p class="muted">Deterministic multivoice workloads · five binary representations · exact event round-trip · modeled 6502 scheduling · RAM and score-size comparisons. No AY audio rendering or production emulator modifications.</p></header>
+<header><div class="eyebrow">RetroAppleJS · SID → AY compiler research · Phase 1.5A.1</div>
+<h1>AY Score Encoding Bench <small>v0.1.1</small></h1>
+<p class="muted">Deterministic multivoice workloads · five binary representations · exact event round-trip · interrupt/cooperative CPU windows · RAM and score-size comparisons. No AY audio rendering or production emulator modifications.</p></header>
 <section class="panel"><h2>Score generation or import</h2>
 <div class="controls">
 <label style="grid-column:span 2">Workload<select id="scenario"><option value="mixed" selected>Mixed triangle + square + buzzer</option><option value="chord">Sustained 3-voice chord</option><option value="arpeggio">Fast arpeggio</option><option value="bass">Repeated bassline</option><option value="ambient">Sparse ambient passage</option><option value="action">Game action + direct AY writes</option></select></label>
@@ -28,10 +28,12 @@ input,select,button{font:inherit}input,select{min-height:37px;border:1px solid #
 <label style="grid-column:span 2">Import Waveform Bench JSON / canonical events / .aysb<input id="import" type="file" accept=".json,.aysb,.bin,application/json,application/octet-stream"></label><label style="grid-column:span 2">Imported survey fixture<select id="importResult" disabled><option value="0">No survey imported</option></select></label>
 </div>
 <div class="actions"><button class="primary" id="run">Generate and benchmark</button><button id="rerun">Re-run cost model</button><button id="reset">Return to generated score</button><button id="exportBin" disabled>Save selected binary</button><button id="exportJson" disabled>Export benchmark JSON</button><button id="exportCsv" disabled>Export CSV</button><button id="exportEvents" disabled>Export canonical events JSON</button></div>
-<p id="status" role="status" aria-live="polite">Ready · six deterministic scenarios available.</p><p id="sourceInfo" class="muted">Generated score. Import a Waveform Bench survey to benchmark one selected fixture, or upload a prior .aysb file.</p>
+<p id="status" role="status" aria-live="polite">Ready · six deterministic scenarios, two scheduling modes, and browser-based regression tests.</p><p id="sourceInfo" class="muted">Generated score. Import a Waveform Bench survey to benchmark one selected fixture, or upload a prior .aysb file.</p>
 </section>
 <section class="panel"><h2>6502 execution and memory assumptions</h2>
 <div class="controls">
+<label style="grid-column:span 2">Playback scheduling mode<select id="schedulerMode"><option value="irq" selected>Interrupt priority · full CPU speed</option><option value="cooperative">Cooperative · graphics-driven CPU windows</option></select></label>
+<label>IRQ dispatch cycles<input id="interruptOverheadCycles" type="number" min="0" max="500" value="32" step="1"></label>
 <label>Cycles / logical AY write<input id="cyclesPerWrite" type="number" min="1" max="500" value="50"></label>
 <label>Music CPU cap (%)<input id="musicBudget" type="number" min="1" max="95" value="15"></label>
 <label>Graphics load baseline (%)<input id="graphicsPercent" type="number" min="0" max="95" value="55"></label>
@@ -41,8 +43,8 @@ input,select,button{font:inherit}input,select{min-height:37px;border:1px solid #
 <label>Music RAM budget (KiB)<input id="memoryBudgetKiB" type="number" min="1" max="64" value="16" step="1"></label>
 <label>Stream buffer per half (bytes)<select id="streamBufferBytes"><option value="256">256 bytes</option><option value="512" selected>512 bytes</option><option value="1024">1024 bytes</option><option value="2048">2048 bytes</option></select></label>
 <label>E2 event block size<select id="chunkSize"><option value="128">128 events</option><option value="256">256 events</option><option value="512" selected>512 events</option><option value="1024">1024 events</option></select></label>
-</div>
-<p class="muted" style="margin-top:12px"><strong>Modeled, not hardware-measured:</strong> All decoder code sizes, cycle costs, memory footprints and CPU availability profiles are estimates. Timing uses a conservative fluid-share model across 20 ms windows; it is not a cycle-accurate 6502/VIA emulator. Binary sizes and round-trip event comparisons are actual measurements.</p>
+</div><div class="actions"><button id="selfTest">Run browser scheduler checks (7)</button></div><pre id="selfTestResults" style="display:none" aria-live="polite"></pre>
+<p class="muted" style="margin-top:12px"><strong>Modeled, not hardware-measured:</strong> All decoder code sizes, cycle costs, memory footprints and CPU availability profiles are estimates. IRQ playback runs at nominal CPU speed, preempting graphics and reporting frame-budget conflicts. Cooperative playback runs at nominal speed only in a contiguous tail window of each hypothetical 20 ms graphics frame. Neither model simulates actual instruction interleaving, interrupts, or VIA hardware. Binary sizes and round-trip event comparisons are actual measurements.</p>
 </section>
 <section class="panel"><h2>Comparison</h2><div class="kpis">
 <div class="kpi"><b id="kEvent">—</b><span>Canonical AY writes</span></div>
@@ -51,12 +53,13 @@ input,select,button{font:inherit}input,select{min-height:37px;border:1px solid #
 <div class="kpi"><b id="kPareto">—</b><span>Non-dominated options</span></div>
 <div class="kpi"><b id="kDuration">—</b><span>Score duration</span></div>
 </div>
-<div class="scroll" style="margin-top:15px"><table><thead><tr><th>Encoder</th><th>Score bytes</th><th>Average encoded B/s</th><th>vs raw</th><th>Fully resident</th><th>Streaming resident</th><th>RAM fit (resident / streamed)</th><th>Avg CPU</th><th>Peak demand / 20 ms</th><th>Deadline misses</th><th>Validation</th><th>Pareto</th></tr></thead><tbody id="results"><tr><td colspan="12" class="muted">Run the experiment to populate this table.</td></tr></tbody></table></div>
+<div class="scroll" style="margin-top:15px"><table><thead><tr><th>Encoder</th><th>Score bytes</th><th>Average encoded B/s</th><th>vs raw</th><th>Fully resident</th><th>Streaming resident</th><th>RAM fit (resident / streamed)</th><th>Avg CPU</th><th>Peak demand / 20 ms</th><th>Deadline misses</th><th>Budget conflicts</th><th>Validation</th><th>Pareto</th></tr></thead><tbody id="results"><tr><td colspan="13" class="muted">Run the experiment to populate this table.</td></tr></tbody></table></div>
 <p id="availability" class="muted"></p>
 </section>
-<section class="panel"><div class="cols"><div><h2>Timing pressure · selected encoder</h2><canvas id="cpuChart" width="640" height="245" role="img" aria-label="CPU demand and available CPU by frame"></canvas><p class="muted">Estimated total work due in each 20 ms frame versus the music CPU cap after graphics/reserve. A frame can be over budget without every event missing the user-selected deadline, and vice versa.</p></div>
+<section class="panel"><div class="cols"><div><h2>Timing pressure · selected encoder</h2><canvas id="cpuChart" width="640" height="245" role="img" aria-label="CPU demand and available CPU by frame"></canvas><p class="muted">Estimated total work due in each 20 ms frame versus the music CPU cap after graphics/reserve. In interrupt mode, an exceeded CPU budget predicts pressure on graphics, not necessarily an audio deadline miss. In cooperative mode, a music slot is located at the end of each modeled frame.</p></div>
 <div><h2>Memory footprint across encoders</h2><canvas id="memoryChart" width="640" height="245" role="img" aria-label="Fully resident and streamed memory footprint of five codecs"></canvas><p class="muted">Includes modeled code, instrument tables, working RAM, and optional two-block buffer. Does not include Apple II application/graphics memory.</p></div></div></section>
 <section class="panel"><h2>Selected encoding: detailed inspection</h2><div class="details"><div><h3 id="selectedLabel">Select a row above</h3><pre id="detail">Decoder and memory analysis will appear here.</pre></div><div><h3>Binary header and hex preview</h3><pre id="hex">No encoded data.</pre></div></div>
+<h3 style="margin-top:15px">Missed-deadline examples · first twelve AY writes</h3><pre id="missExamples">No score generated.</pre>
 <h3 style="margin-top:15px">Canonical AY write preview</h3><pre id="events">No score generated.</pre>
 </section>
 <section class="panel"><h2>Technical scope</h2>
@@ -64,12 +67,12 @@ input,select,button{font:inherit}input,select{min-height:37px;border:1px solid #
 <p>Exact equivalence means the decoded <em>cycle-ordered chip/register/value writes</em> match the canonical timeline. It does not certify identical audible output or real-hardware VIA bus timing. Imported nanosecond event times are rounded to the configured 6502 cycle clock. E3 intentionally rejects arbitrary register-write input rather than inventing missing musical semantics.</p>
 <p>Resident and streamed memory numbers are architectural planning estimates. The prototype does not yet implement a real 6502 assembler player, disk streaming, external-memory support, or PSID ingestion; these belong to subsequent implementation phases.</p>
 </section>
-<footer>AY Score Encoding Bench v0.1 · <code>retroapplejs.ay.score-encoding-bench.v0.1</code> · isolated research prototype · all computation offline in browser</footer>
+<footer>AY Score Encoding Bench v0.1.1 · <code>retroapplejs.ay.score-encoding-bench.v0.1</code> · Phase 1.5A.1 · isolated research prototype · all computation offline in browser</footer>
 <script>
 (function(){'use strict';
 var B=window.AYScoreEncodingBench,score=null,report=null,selection='E4',selectedImport=null,selectedImportData=null,$=function(id){return document.getElementById(id);};
 function value(id){return Number($(id).value);}function setText(id,v){$(id).textContent=v;}function fmt(n,d){return Number.isFinite(n)?n.toFixed(d):'—';}function count(n){return Number.isFinite(n)?Math.round(n).toLocaleString('en-US'):'—';}
-function makeOptions(){return {scenario:$('scenario').value,seconds:value('seconds'),seed:value('seed'),bpm:value('bpm'),cpuHz:value('cpuHz'),ayHz:value('ayHz'),cyclesPerWrite:value('cyclesPerWrite'),musicBudget:value('musicBudget'),graphicsPercent:value('graphicsPercent'),reservePercent:value('reservePercent'),graphicsProfile:$('graphicsProfile').value,toleranceUs:value('toleranceUs'),memoryBudgetKiB:value('memoryBudgetKiB'),streamBufferBytes:value('streamBufferBytes'),chunkSize:value('chunkSize')};}
+function makeOptions(){return {scenario:$('scenario').value,seconds:value('seconds'),seed:value('seed'),bpm:value('bpm'),cpuHz:value('cpuHz'),ayHz:value('ayHz'),cyclesPerWrite:value('cyclesPerWrite'),musicBudget:value('musicBudget'),graphicsPercent:value('graphicsPercent'),reservePercent:value('reservePercent'),graphicsProfile:$('graphicsProfile').value,schedulerMode:$('schedulerMode').value,interruptOverheadCycles:value('interruptOverheadCycles'),toleranceUs:value('toleranceUs'),memoryBudgetKiB:value('memoryBudgetKiB'),streamBufferBytes:value('streamBufferBytes'),chunkSize:value('chunkSize')};}
 function setBusy(b){['run','rerun','reset','import'].forEach(function(id){$(id).disabled=b;});}
 function download(binary,name,type){var blob=new Blob([binary],{type:type||'application/octet-stream'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.download=name;a.setAttribute('href',url);a.style.display='none';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},2000);}
 function colorCanvas(id){var c=$(id),cx=c.getContext('2d');cx.fillStyle='#0d1d2c';cx.fillRect(0,0,c.width,c.height);return cx;}
@@ -103,22 +106,32 @@ function renderDetail(){var r=selected();if(!r)return;selection=r.codec;var m=r.
   'Working RAM / 2×buffers: '+count(m.workingRamBytes)+' / '+count(m.streamBuffersBytes)+' bytes',
   'Fully resident: '+count(m.fullyResidentBytes)+' bytes'+(m.fullyResidentFitsBudget?' (within RAM budget)':' (EXCEEDS RAM budget)'),
   'Streamed resident: '+count(m.streamingResidentBytes)+' bytes'+(m.streamingFitsBudget?' (within RAM budget)':' (EXCEEDS RAM budget)'),
+  'Scheduler mode: '+(c.schedulerMode==='irq'?'Interrupt-priority (preemptive audio)':'Cooperative (end-of-frame music window)'),
   'Estimated decoding cycles per write: '+fmt(c.estimatedDecodeCyclesPerEvent,1),
   'Total music work: '+count(c.estimatedTotalCycles)+' cycles',
   'Average music CPU: '+fmt(c.avgMusicCpuPercent,2)+'%',
   'Peak scheduled 20ms demand: '+fmt(c.peakFrameDemandPercent,2)+'%',
   'Deadline misses at '+c.deadlineToleranceUs+' μs: '+count(c.missedDeadlines)+' / '+count(c.eventCount),
+  'Misses with physical bus serialization alone: '+count(c.missesBusSerialization),
+  'Additional misses from decoding / dispatch: '+count(c.missesDecodeAndDispatch),
+  'Additional misses when graphics defers work: '+count(c.missesGraphicsContention),
+  'Maximum bus-only lateness: '+fmt(c.maximumBusSerializationUs,1)+' μs',
+  'Maximum extra decoding/dispatch lateness: '+fmt(c.maximumDecodeAndDispatchUs,1)+' μs',
+  'Maximum additional graphics waiting: '+fmt(c.maximumGraphicsWaitUs,1)+' μs',
+  'Frames exceeding music CPU allowance: '+count(c.overBudgetFrames),
+  'IRQ dispatches / estimated graphics-displacing cycles: '+count(c.irqDispatches)+' / '+count(c.graphicsBudgetOvercommitCycles),
   'Max modeled completion delay: '+fmt(c.maxLatenessUs,1)+' μs',
   'Pareto-optimal under model: '+(r.pareto?'yes':'no'),
   'Model warning: Not a measured 6502/VIA timing result.'
  ].join('\n'));
  setText('hex',B.hex(r.encoded.binary,320));cpuChart(r);
+ setText('missExamples',c.missedExamples.length?c.missedExamples.map(function(x){return '#'+x.eventIndex+' @cycle '+x.cycle+' (chip '+x.chip+', R'+x.reg+')  total '+fmt(x.totalUs,1)+' μs; physical '+fmt(x.busUs,1)+' μs, decode/ISR '+fmt(x.decoderUs,1)+' μs, graphics '+fmt(x.graphicsWaitUs,1)+' μs';}).join('\n'):'No modeled deadline misses for this codec and mode.');
  Array.from($('results').children).forEach(function(row){row.classList.toggle('selected',row.dataset.codec===r.codec);});
 }
 function render(){if(!report)return;var valid=report.results.filter(function(r){return r.status==='ok';});setText('kEvent',count(score.events.length));setText('kBest',valid.length?count(Math.min.apply(null,valid.map(function(r){return r.encoded.bytes;})))+' B':'—');setText('kMem',valid.length?fmt(Math.min.apply(null,valid.map(function(r){return r.memory.fullyResidentBytes;}))/1024,2)+' KiB':'—');setText('kPareto',count(valid.filter(function(r){return r.pareto;}).length));setText('kDuration',fmt(score.durationCycles/score.cpuHz,2)+' s');
  var table=$('results');table.textContent='';report.results.forEach(function(r){var tr=document.createElement('tr');tr.dataset.codec=r.codec;addCell(tr,r.codec+' · '+B.CODECS.find(function(c){return c.key===r.codec;}).name);
-  if(r.status!=='ok'){var td=addCell(tr,'Not applicable');td.colSpan=10;td.className='fail';addCell(tr,'—');return table.appendChild(tr);}
-  addCell(tr,count(r.encoded.bytes));addCell(tr,fmt(r.scoreBytesPerSecond,0));addCell(tr,fmt(r.compressionRatio,1)+'×');addCell(tr,fmt(r.memory.fullyResidentBytes/1024,1)+' KiB');addCell(tr,fmt(r.memory.streamingResidentBytes/1024,1)+' KiB');addCell(tr,(r.memory.fullyResidentFitsBudget?'✓':'✗')+' / '+(r.memory.streamingFitsBudget?'✓':'✗')).className=r.memory.fullyResidentFitsBudget?'success':'hint';addCell(tr,fmt(r.cycles.avgMusicCpuPercent,1)+'%');addCell(tr,fmt(r.cycles.peakFrameDemandPercent,1)+'%');addCell(tr,count(r.cycles.missedDeadlines));addCell(tr,r.validation.equal?'EXACT':'FAIL').className=r.validation.equal?'success':'fail';addCell(tr,r.pareto?'✓ Pareto':'—').className=r.pareto?'success':'';
+  if(r.status!=='ok'){var td=addCell(tr,'Not applicable');td.colSpan=11;td.className='fail';addCell(tr,'—');return table.appendChild(tr);}
+  addCell(tr,count(r.encoded.bytes));addCell(tr,fmt(r.scoreBytesPerSecond,0));addCell(tr,fmt(r.compressionRatio,1)+'×');addCell(tr,fmt(r.memory.fullyResidentBytes/1024,1)+' KiB');addCell(tr,fmt(r.memory.streamingResidentBytes/1024,1)+' KiB');addCell(tr,(r.memory.fullyResidentFitsBudget?'✓':'✗')+' / '+(r.memory.streamingFitsBudget?'✓':'✗')).className=r.memory.fullyResidentFitsBudget?'success':'hint';addCell(tr,fmt(r.cycles.avgMusicCpuPercent,1)+'%');addCell(tr,fmt(r.cycles.peakFrameDemandPercent,1)+'%');addCell(tr,count(r.cycles.missedDeadlines));addCell(tr,count(r.cycles.overBudgetFrames));addCell(tr,r.validation.equal?'EXACT':'FAIL').className=r.validation.equal?'success':'fail';addCell(tr,r.pareto?'✓ Pareto':'—').className=r.pareto?'success':'';
   tr.setAttribute('role','button');tr.tabIndex=0;tr.addEventListener('click',function(){selection=r.codec;renderDetail();});tr.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();selection=r.codec;renderDetail();}});table.appendChild(tr);
  });
  var failures=report.results.filter(function(r){return r.status!=='ok';});setText('availability',failures.map(function(r){return r.codec+': '+r.reason;}).join('  |  ')||'All five codecs reproduce the canonical timeline exactly.');
@@ -130,6 +143,7 @@ async function run(mode){setBusy(true);setText('status','Running deterministic e
  if(mode==='generate'||!score){score=B.generate(makeOptions());selectedImport=null;selectedImportData=null;var sr=$('importResult');sr.disabled=true;sr.textContent='';var oo=document.createElement('option');oo.value='0';oo.textContent='No survey imported';sr.appendChild(oo);setText('sourceInfo','Synthetic '+score.scenario+' · '+score.actions.length+' actions · '+score.events.length+' canonical writes');}
  report=B.benchmark(score,makeOptions());render();setText('status','Complete · '+count(score.events.length)+' AY writes · '+report.results.filter(function(r){return r.status==='ok';}).length+' lossless codecs · '+report.elapsedMs+' ms host analysis (not Apple II performance).');
  }catch(e){setText('status','Error: '+e.message);console.error(e);}finally{setBusy(false);}}
+$('selfTest').addEventListener('click',function(){var r=B.schedulerChecks();var panel=$('selfTestResults');panel.style.display='block';panel.textContent='BROWSER SCHEDULER CHECKS: '+r.passed+' / '+r.total+' passed\n'+r.results.map(function(x){return (x.pass?'PASS':'FAIL')+'  '+x.name+' — '+x.detail;}).join('\n');setText('status','Browser scheduler checks: '+r.passed+' / '+r.total+' passed.');});
 $('run').addEventListener('click',function(){run('generate');});$('rerun').addEventListener('click',function(){run('model');});$('reset').addEventListener('click',function(){score=null;selectedImport=null;selectedImportData=null;$('import').value='';run('generate');});
 $('import').addEventListener('change',async function(){var f=this.files&&this.files[0];if(!f)return;try{if(f.size>18*1024*1024)throw Error('Import limited to 18 MB');var s;if(/\.aysb$|\.bin$/i.test(f.name)){var buf=new Uint8Array(await f.arrayBuffer()),d=B.decode(buf);s=B.fromEventJson({events:d.events,durationCycles:d.durationCycles,cpuHz:d.cpuHz,ayHz:d.ayHz,name:'Binary '+d.codec});}
  else{var data=JSON.parse(await f.text());if(data.results||data.spec&&data.spec.events){selectedImportData=data;s=B.fromWaveformSurvey(data,{cpuHz:value('cpuHz')});var tests=data.results||[data],sel=$('importResult');sel.textContent='';tests.forEach(function(r,i){var o=document.createElement('option');o.value=String(i);o.textContent='#'+i+' · '+(r.spec?.fixture||'unknown')+' · '+(r.spec?.hz||'—')+' Hz · '+(r.spec?.events?.length||0)+' writes';sel.appendChild(o);});sel.disabled=false;}else{selectedImportData=null;$('importResult').disabled=true;s=B.fromEventJson(data,{cpuHz:value('cpuHz')});}}
@@ -137,8 +151,8 @@ $('import').addEventListener('change',async function(){var f=this.files&&this.fi
  }catch(e){setText('status','Import error: '+e.message);console.error(e);}});
 $('importResult').addEventListener('change',function(){if(!selectedImportData)return;try{score=B.fromWaveformSurvey(selectedImportData,{cpuHz:value('cpuHz'),resultIndex:Number(this.value)});setText('sourceInfo','Imported '+selectedImport+' · '+count(score.events.length)+' events · fixture '+score.importInfo.fixture+', result #'+score.importInfo.resultIndex+'.');run('model');}catch(e){setText('status','Fixture selection error: '+e.message);}});
 $('exportBin').addEventListener('click',function(){var r=selected();if(r)download(r.encoded.binary,'ay-score-'+r.codec.toLowerCase()+'.aysb');});
-$('exportJson').addEventListener('click',function(){if(report)download(JSON.stringify(B.exportReport(report),null,2),'ay-score-benchmark-v0.1.json','application/json');});
-$('exportCsv').addEventListener('click',function(){if(report)download(B.csv(report),'ay-score-benchmark-v0.1.csv','text/csv');});
+$('exportJson').addEventListener('click',function(){if(report)download(JSON.stringify(B.exportReport(report),null,2),'ay-score-benchmark-v0.1.1.json','application/json');});
+$('exportCsv').addEventListener('click',function(){if(report)download(B.csv(report),'ay-score-benchmark-v0.1.1.csv','text/csv');});
 $('exportEvents').addEventListener('click',function(){if(score)download(JSON.stringify({schema:'retroapplejs.ay.canonical-events.v1',cpuHz:score.cpuHz,ayHz:score.ayHz,durationCycles:score.durationCycles,events:score.events}), 'ay-score-canonical-events.json','application/json');});
 if(!B){setText('status','Error: companion AY_SCORE_ENCODING_BENCH_core.js not found.');$('run').disabled=true;}else run('generate');
 })();

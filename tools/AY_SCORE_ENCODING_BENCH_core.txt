@@ -1,9 +1,9 @@
-/* RetroAppleJS research tool - AY Score Encoding Bench v0.1 (Phase 1.5A).
+/* RetroAppleJS research tool - AY Score Encoding Bench v0.1.1 (Phase 1.5A.1).
  * Standalone UMD; no dependencies; no production emulator modifications.
  */
 (function(root,factory){'use strict';if(typeof module==='object'&&module.exports)module.exports=factory();else root.AYScoreEncodingBench=factory();})(typeof globalThis==='object'?globalThis:this,function(){
 'use strict';
-var SCHEMA='retroapplejs.ay.score-encoding-bench.v0.1', VERSION=1;
+var SCHEMA='retroapplejs.ay.score-encoding-bench.v0.1', VERSION=1; // unchanged binary/report schema family
 var CPUHZ=1023000, AYHZ=1021800, MAX_EVENTS=220000, MAX_ACTIONS=40000;
 var CODECS=[{id:0,key:'E0',name:'Raw absolute events'},{id:1,key:'E1',name:'Delta varint events'},{id:2,key:'E2',name:'LZ pattern events'},{id:3,key:'E3',name:'Instrument VM'},{id:4,key:'E4',name:'Hybrid auto'}];
 var INST={square:0,saw:1,triangle:2,buzzer:3,dac8:4,dac32s:5};
@@ -201,10 +201,24 @@ function decode(binary){assert(binary instanceof Uint8Array,'Uint8Array required
  }
  assert(events.length===h.eventCount,'decoded event count differs from header');return {codec:kind,mode:mode,events:events,actions:actions,cpuHz:h.cpuHz,ayHz:h.ayHz,durationCycles:h.durationCycles};
 }
-function defaultCost(opts){opts=opts||{};var via=Number(opts.cyclesPerWrite==null?50:opts.cyclesPerWrite),budget=Number(opts.musicBudget==null?15:opts.musicBudget),graphics=Number(opts.graphicsPercent==null?55:opts.graphicsPercent),reserve=Number(opts.reservePercent==null?10:opts.reservePercent),toleranceUs=Number(opts.toleranceUs==null?1000:opts.toleranceUs),memoryBudgetKiB=Number(opts.memoryBudgetKiB==null?16:opts.memoryBudgetKiB),streamBufferBytes=Number(opts.streamBufferBytes==null?512:opts.streamBufferBytes);
- assert(Number.isFinite(via)&&via>=1&&via<=500,'cycles/write out of range');assert(Number.isFinite(budget)&&budget>0&&budget<=95,'music budget out of range');assert(Number.isFinite(graphics)&&graphics>=0&&graphics<=95,'graphics fraction out of range');assert(Number.isFinite(reserve)&&reserve>=0&&reserve<=75,'host reserve out of range');assert(Number.isFinite(toleranceUs)&&toleranceUs>=0&&toleranceUs<=100000,'tolerance invalid');assert(Number.isFinite(memoryBudgetKiB)&&memoryBudgetKiB>=1&&memoryBudgetKiB<=64,'memory budget invalid');int(streamBufferBytes,'stream buffer bytes',64,8192);return {cyclesPerWrite:via,musicBudget:budget,graphicsPercent:graphics,reservePercent:reserve,toleranceUs:toleranceUs,memoryBudgetKiB:memoryBudgetKiB,streamBufferBytes:streamBufferBytes,graphicsProfile:opts.graphicsProfile||'steady',chunkSize:Number(opts.chunkSize||512)};
+function defaultCost(opts){
+ opts=opts||{};
+ var via=Number(opts.cyclesPerWrite==null?50:opts.cyclesPerWrite),budget=Number(opts.musicBudget==null?15:opts.musicBudget),graphics=Number(opts.graphicsPercent==null?55:opts.graphicsPercent),reserve=Number(opts.reservePercent==null?10:opts.reservePercent),toleranceUs=Number(opts.toleranceUs==null?1000:opts.toleranceUs),memoryBudgetKiB=Number(opts.memoryBudgetKiB==null?16:opts.memoryBudgetKiB),streamBufferBytes=Number(opts.streamBufferBytes==null?512:opts.streamBufferBytes);
+ var mode=opts.schedulerMode||'irq',interruptOverheadCycles=Number(opts.interruptOverheadCycles==null?32:opts.interruptOverheadCycles);
+ assert(Number.isFinite(via)&&via>=1&&via<=500,'cycles/write out of range');
+ assert(Number.isFinite(budget)&&budget>0&&budget<=95,'music budget out of range');
+ assert(Number.isFinite(graphics)&&graphics>=0&&graphics<=95,'graphics fraction out of range');
+ assert(Number.isFinite(reserve)&&reserve>=0&&reserve<=75,'host reserve out of range');
+ assert(Number.isFinite(toleranceUs)&&toleranceUs>=0&&toleranceUs<=100000,'tolerance invalid');
+ assert(Number.isFinite(memoryBudgetKiB)&&memoryBudgetKiB>=1&&memoryBudgetKiB<=64,'memory budget invalid');
+ int(streamBufferBytes,'stream buffer bytes',64,8192);
+ assert(mode==='irq'||mode==='cooperative','scheduler mode must be irq or cooperative');
+ int(interruptOverheadCycles,'IRQ entry cycles',0,500);
+ assert(['idle','steady','action','bursty'].indexOf(opts.graphicsProfile||'steady')>=0,'invalid graphics profile');
+ return {cyclesPerWrite:via,musicBudget:budget,graphicsPercent:graphics,reservePercent:reserve,toleranceUs:toleranceUs,memoryBudgetKiB:memoryBudgetKiB,streamBufferBytes:streamBufferBytes,graphicsProfile:opts.graphicsProfile||'steady',chunkSize:Number(opts.chunkSize||512),schedulerMode:mode,interruptOverheadCycles:interruptOverheadCycles};
 }
 function graphicsAt(frame,model){var base=model.graphicsPercent;if(model.graphicsProfile==='idle')return Math.min(95,base*.45);if(model.graphicsProfile==='action')return Math.min(98,base+(frame%6>=3&&frame%6<=4?30:0));if(model.graphicsProfile==='bursty')return Math.min(98,base+(frame%8===0?45:frame%8===1?20:0));return base;}
+function availableAt(frame,model){return Math.min(model.musicBudget,Math.max(0,100-graphicsAt(frame,model)-model.reservePercent));}
 function eventDecodeCycles(codec,enc){var s=enc.stats||{},n=s.literals+s.copied;if(codec==='E0')return 12;
  if(codec==='E1')return 18+(s.deltaBytes/Math.max(1,n))*6;
  if(codec==='E2')return ((s.literals*24+s.copied*11+s.backrefs*26+s.blocks*30)/Math.max(1,n));
@@ -212,40 +226,112 @@ function eventDecodeCycles(codec,enc){var s=enc.stats||{},n=s.literals+s.copied;
  if(codec==='E4')return s.hybridMode==='LZ event fallback'?((s.literals*24+s.copied*11+s.backrefs*26+s.blocks*30)/Math.max(1,n)):15+(s.actions||0)*70/Math.max(1,n);
  return 20;
 }
-function simulateSchedule(score,encoded,model){
- model=defaultCost(model);var ev=score.events,chunk=score.cpuHz*.02,frame=0,now=0,work=0,missed=0,maxLate=0,totalLate=0,tolerance=Math.round(score.cpuHz*model.toleranceUs/1e6),dpc=eventDecodeCycles(encoded.codec,encoded),frameDemand=new Map(),frameMiss=new Map(),timeEnd=score.durationCycles;
- // VM commands are real scheduled work at note boundaries, not uniformly spread over DAC events.
- var vm=(encoded.codec==='E3'||(encoded.codec==='E4'&&encoded.stats.hybridMode==='VM with direct escapes'));
- var tasks=ev.map(function(e,i){return {cycle:e.cycle,kind:'write',order:i,cost:model.cyclesPerWrite+(vm?12:dpc)};});
- if(vm)(score.actions||[]).forEach(function(a,i){tasks.push({cycle:a.cycle,kind:'command',order:i,cost:a.type==='on'?95:a.type==='off'?55:40});});
- tasks.sort(function(a,b){return a.cycle-b.cycle||(a.kind===b.kind?a.order-b.order:a.kind==='command'?-1:1);});
- // Never confuse an entirely exhausted graphics/host schedule with codec incompatibility.
- var anyCapacity=false;for(var ck=0;ck<24;ck++)if(Math.min(model.musicBudget,100-graphicsAt(ck,model)-model.reservePercent)>0)anyCapacity=true;
- if(!anyCapacity){
-  tasks.forEach(function(t){work+=t.cost;var frameDue=Math.floor(t.cycle/chunk);frameDemand.set(frameDue,(frameDemand.get(frameDue)||0)+t.cost);if(t.kind==='write')frameMiss.set(frameDue,(frameMiss.get(frameDue)||0)+1);});
-  var emptyFrames=Math.ceil(timeEnd/chunk),emptyTimeline=[],maxDemand=0;
-  for(var emptyI=0;emptyI<emptyFrames;emptyI++){var demand=(frameDemand.get(emptyI)||0)/chunk*100;maxDemand=Math.max(maxDemand,demand);emptyTimeline.push({frame:emptyI,timeSeconds:emptyI*.02,demandPercent:demand,availablePercent:0,missed:frameMiss.get(emptyI)||0});}
-  return {estimatedDecodeCyclesPerEvent:dpc,estimatedTotalCycles:work,avgMusicCpuPercent:work/score.durationCycles*100,peakFrameDemandPercent:maxDemand,overBudgetFrames:emptyTimeline.filter(function(t){return t.demandPercent>0;}).length,frames:emptyFrames,missedDeadlines:ev.length,eventCount:ev.length,commandCount:vm?(score.actions||[]).length:0,maxLatenessUs:null,meanLatenessUs:null,deadlineToleranceUs:model.toleranceUs,finishSeconds:null,capacityExhausted:true,frameTimeline:emptyTimeline,model:model};
- }
+/* A deterministic service-window model, NOT cycle-accurate graphics emulation.
+ * Tasks always execute at nominal 6502 speed. In cooperative mode the last N%
+ * of each 20ms frame forms one uninterrupted CPU window for music. An IRQ can
+ * preempt graphics at task release; its budget cost is charged against graphics.
+ * modelOnlyBus omits decode, notes and IRQ entry costs for the physical lower
+ * bound. All three runs share exactly the same task order and due timestamps.
+ */
+function serviceTasks(tasks,score,model,variant){
+ var frameLen=score.cpuHz/50,now=0,finishes=new Array(tasks.length),totalCycles=0,irqEntries=0;
+ var byFrame=new Map(),canRun=variant!=='cooperative'||Array.from({length:24},function(_,i){return availableAt(i,model)>0;}).some(Boolean);
+ if(!canRun)return {capacityExhausted:true,finishes:finishes,now:null,totalCycles:0,irqEntries:0,frameWork:byFrame};
  for(var i=0;i<tasks.length;i++){
-  var task=tasks[i],due=task.cycle,cost=task.cost;
-  if(now<due)now=due;
-  var remaining=cost,guard=0;
-  while(remaining>1e-8){assert(++guard<100000,'no CPU available: scheduling guard triggered');frame=Math.floor(now/chunk);var frameEnd=(frame+1)*chunk,available=Math.min(model.musicBudget,Math.max(0,100-graphicsAt(frame,model)-model.reservePercent))/100;
-   if(available<.000001){now=frameEnd;continue;}
-   var capacity=(frameEnd-now)*available;
-   if(capacity>=remaining){now+=remaining/available;remaining=0;}
-   else{remaining-=capacity;now=frameEnd;}
+  var t=tasks[i],due=t.cycle;
+  var cost=variant==='bus'?(t.kind==='write'?model.cyclesPerWrite:0):t.cost;
+  if(cost===0){finishes[i]=Math.max(now,due);continue;}
+  // IRQ dispatch is once per contiguous processing burst, not once per AY write.
+  if(variant==='irq'&&now<=due){cost+=model.interruptOverheadCycles;irqEntries++;}
+  var fDue=Math.floor(due/frameLen);byFrame.set(fDue,(byFrame.get(fDue)||0)+cost);
+  totalCycles+=cost;now=Math.max(now,due);
+  if(variant==='cooperative'){
+   var remaining=cost,guard=0;
+   while(remaining>1e-7){
+    if(++guard>200000)throw new Error('cooperative scheduler ran out of frame windows');
+    var f=Math.floor(now/frameLen),start=f*frameLen,end=start+frameLen,cap=availableAt(f,model);
+    if(cap<=0){now=end;continue;}
+    var windowStart=end-frameLen*cap/100;
+    if(now<windowStart)now=windowStart;
+    if(now>=end-1e-7){now=end;continue;}
+    var grant=Math.min(remaining,end-now);
+    now+=grant;remaining-=grant;
+    if(remaining>1e-7&&now>=end-1e-7)now=end;
+   }
+  }else{now+=cost;}
+  finishes[i]=now;
+ }
+ return {capacityExhausted:false,finishes:finishes,now:now,totalCycles:totalCycles,irqEntries:irqEntries,frameWork:byFrame};
+}
+function simulateSchedule(score,encoded,model){
+ model=defaultCost(model);
+ var ev=score.events,frameLen=score.cpuHz/50,tolerance=score.cpuHz*model.toleranceUs/1e6;
+ var dpc=eventDecodeCycles(encoded.codec,encoded);
+ var vm=(encoded.codec==='E3'||(encoded.codec==='E4'&&encoded.stats.hybridMode==='VM with direct escapes'));
+ var tasks=ev.map(function(e,i){return {cycle:e.cycle,kind:'write',order:i,eventIndex:i,cost:model.cyclesPerWrite+(vm?12:dpc)};});
+ if(vm)(score.actions||[]).forEach(function(a,i){tasks.push({cycle:a.cycle,kind:'command',order:i,eventIndex:null,cost:a.type==='on'?95:a.type==='off'?55:40});});
+ tasks.sort(function(a,b){return a.cycle-b.cycle||(a.kind===b.kind?a.order-b.order:a.kind==='command'?-1:1);});
+ // Three synchronized simulations: physical writes only, ideal music at full
+ // speed including decoder/dispatch, and actual mode with graphics windows.
+ var bus=serviceTasks(tasks,score,model,'bus');
+ var intrinsic=serviceTasks(tasks,score,model,model.schedulerMode==='irq'?'irq':'full');
+ var actual=model.schedulerMode==='irq'?intrinsic:serviceTasks(tasks,score,model,'cooperative');
+ var frameDemand=new Map(),frameMiss=new Map(),eventDetails=[],missed=0,missBus=0,missDecode=0,missGraphics=0,maxLate=0,maxBus=0,maxDecode=0,maxGraphics=0,totalLate=0;
+ var budgetConflictCycles=0,missExamples=[];
+ var frames=Math.ceil(score.durationCycles/frameLen),timeline=[],peak=0,overBudget=0;
+ for(var i=0;i<tasks.length;i++){
+  var t=tasks[i];if(t.kind!=='write')continue;
+  var desired=t.cycle,busLate=Math.max(0,bus.finishes[i]-desired),intrinsicLate=Math.max(0,intrinsic.finishes[i]-desired);
+  var totalLate=actual.capacityExhausted?null:Math.max(0,actual.finishes[i]-desired);
+  var decodeLate=Math.max(0,intrinsicLate-busLate),graphicsLate=totalLate===null?null:Math.max(0,totalLate-intrinsicLate);
+  maxBus=Math.max(maxBus,busLate);maxDecode=Math.max(maxDecode,decodeLate);
+  if(busLate>tolerance)missBus++;
+  if(intrinsicLate>tolerance&&busLate<=tolerance)missDecode++;
+  if(totalLate===null||totalLate>tolerance){missed++;var fDue=Math.floor(desired/frameLen);frameMiss.set(fDue,(frameMiss.get(fDue)||0)+1);
+   if(totalLate===null||(intrinsicLate<=tolerance&&totalLate>tolerance))missGraphics++;
+   if(missExamples.length<12)missExamples.push({eventIndex:t.eventIndex,cycle:desired,chip:ev[t.eventIndex].chip,reg:ev[t.eventIndex].reg,totalUs:totalLate===null?null:totalLate/score.cpuHz*1e6,busUs:busLate/score.cpuHz*1e6,decoderUs:decodeLate/score.cpuHz*1e6,graphicsWaitUs:graphicsLate===null?null:graphicsLate/score.cpuHz*1e6});
   }
-  var late=Math.max(0,now-due),frameDue=Math.floor(due/chunk);work+=cost;
-  frameDemand.set(frameDue,(frameDemand.get(frameDue)||0)+cost);
-  if(task.kind==='write'){totalLate+=late;maxLate=Math.max(maxLate,late);if(late>tolerance){missed++;frameMiss.set(frameDue,(frameMiss.get(frameDue)||0)+1);}}
+  if(totalLate!==null){maxLate=Math.max(maxLate,totalLate);maxGraphics=Math.max(maxGraphics,graphicsLate);}
+  eventDetails.push({totalLate:totalLate,busLate:busLate,decoderLate:decodeLate,graphicsLate:graphicsLate});
  }
- var frames=Math.ceil(timeEnd/chunk),plots=[],peakDemand=0,overBudget=0;for(var f=0;f<frames;f++){
-  var demand=(frameDemand.get(f)||0)/chunk*100,capacity=Math.min(model.musicBudget,Math.max(0,100-graphicsAt(f,model)-model.reservePercent));peakDemand=Math.max(demand,peakDemand);if(demand>capacity)overBudget++;
-  plots.push({frame:f,timeSeconds:Math.round(f*chunk/score.cpuHz*1000)/1000,demandPercent:demand,availablePercent:capacity,missed:frameMiss.get(f)||0});
+ var totalLateSum=0;for(var j=0;j<eventDetails.length;j++)if(eventDetails[j].totalLate!==null)totalLateSum+=eventDetails[j].totalLate;
+ for(var f=0;f<frames;f++){
+  var demand=(actual.frameWork.get(f)||0)/frameLen*100,capacity=availableAt(f,model);
+  peak=Math.max(peak,demand);if(demand>capacity+1e-7){overBudget++;budgetConflictCycles+=((demand-capacity)/100)*frameLen;}
+  timeline.push({frame:f,timeSeconds:f/50,demandPercent:demand,availablePercent:capacity,missed:frameMiss.get(f)||0});
  }
- return {estimatedDecodeCyclesPerEvent:dpc,estimatedTotalCycles:work,avgMusicCpuPercent:work/score.durationCycles*100,peakFrameDemandPercent:peakDemand,overBudgetFrames:overBudget,frames:frames,missedDeadlines:missed,eventCount:ev.length,commandCount:vm?(score.actions||[]).length:0,maxLatenessUs:maxLate/score.cpuHz*1e6,meanLatenessUs:ev.length?totalLate/ev.length/score.cpuHz*1e6:0,deadlineToleranceUs:model.toleranceUs,finishSeconds:now/score.cpuHz,frameTimeline:plots,model:model};
+ return {
+  schedulerMode:model.schedulerMode,estimatedDecodeCyclesPerEvent:dpc,estimatedTotalCycles:actual.capacityExhausted?tasks.reduce(function(n,t){return n+t.cost;},0):actual.totalCycles,
+  avgMusicCpuPercent:(actual.capacityExhausted?tasks.reduce(function(n,t){return n+t.cost;},0):actual.totalCycles)/score.durationCycles*100,
+  peakFrameDemandPercent:peak,overBudgetFrames:overBudget,frames:frames,missedDeadlines:missed,eventCount:ev.length,
+  commandCount:vm?(score.actions||[]).length:0,maximumBusSerializationUs:maxBus/score.cpuHz*1e6,
+  maximumDecodeAndDispatchUs:maxDecode/score.cpuHz*1e6,maximumGraphicsWaitUs:actual.capacityExhausted?null:maxGraphics/score.cpuHz*1e6,
+  missesBusSerialization:missBus,missesDecodeAndDispatch:missDecode,missesGraphicsContention:missGraphics,
+  maxLatenessUs:actual.capacityExhausted?null:maxLate/score.cpuHz*1e6,
+  meanLatenessUs:actual.capacityExhausted?null:(ev.length?totalLateSum/ev.length/score.cpuHz*1e6:0),
+  deadlineToleranceUs:model.toleranceUs,finishSeconds:actual.capacityExhausted?null:actual.now/score.cpuHz,
+  capacityExhausted:actual.capacityExhausted,irqDispatches:actual.irqEntries,graphicsBudgetOvercommitCycles:model.schedulerMode==='irq'?budgetConflictCycles:0,
+  missedExamples:missExamples,frameTimeline:timeline,model:model
+ };
+}
+function schedulerChecks(){
+ var results=[],sc=fromEventJson({cpuHz:1023000,ayHz:1021800,durationCycles:1023000,events:Array.from({length:15},function(_,i){return {cycle:0,chip:0,reg:8,value:i};})});
+ var encoded=encode('E0',sc),base={cyclesPerWrite:50,musicBudget:30,graphicsPercent:55,reservePercent:10,graphicsProfile:'action',toleranceUs:1000};
+ var irq=simulateSchedule(sc,encoded,Object.assign({},base,{schedulerMode:'irq'}));
+ var coop=simulateSchedule(sc,encoded,Object.assign({},base,{schedulerMode:'cooperative'}));
+ function check(name,ok,details){results.push({name:name,pass:!!ok,detail:details});}
+ check('IRQ uses nominal CPU speed',irq.missedDeadlines===0&&irq.maxLatenessUs<1000,'15 same-cycle writes, IRQ maximum '+irq.maxLatenessUs.toFixed(1)+' us');
+ check('Cooperative blocking adds delay',coop.missedDeadlines>irq.missedDeadlines&&coop.maximumGraphicsWaitUs>0,'Cooperative '+coop.missedDeadlines+' misses vs IRQ '+irq.missedDeadlines);
+ check('Intrinsically serial writes are accounted separately',irq.maximumBusSerializationUs>0&&irq.maximumDecodeAndDispatchUs>0&&irq.missesGraphicsContention===0,'Physical and decoder components are reported independently');
+ var quiet=simulateSchedule(sc,encoded,Object.assign({},base,{schedulerMode:'irq',graphicsPercent:5,graphicsProfile:'steady'}));
+ check('IRQ deadlines independent of graphics profile',quiet.missedDeadlines===irq.missedDeadlines&&quiet.maxLatenessUs===irq.maxLatenessUs,'Different graphics utilization does not slow an interrupt-driven 6502');
+ var more=simulateSchedule(sc,encoded,Object.assign({},base,{schedulerMode:'irq',cyclesPerWrite:120}));
+ check('Higher bus cost increases intrinsic lateness',more.maximumBusSerializationUs>irq.maximumBusSerializationUs,'Bus serialization cost increases when VIA cost increases');
+ var exhausted=simulateSchedule(sc,encoded,Object.assign({},base,{schedulerMode:'cooperative',graphicsPercent:95,reservePercent:10,graphicsProfile:'steady'}));
+ check('Exhausted cooperative CPU is explicit',exhausted.capacityExhausted&&exhausted.missedDeadlines===15,'No cooperative CPU window; codec remains valid');
+ var report=benchmark(sc,Object.assign({},base,{schedulerMode:'irq'}));
+ check('All E0/E1/E2/E4 preserve the same score',report.results.filter(function(r){return r.status==='ok';}).length===4&&report.results.every(function(r){return r.status!=='ok'||r.validation.equal;}),'Codec round-trips unchanged');
+ return {passed:results.filter(function(r){return r.pass;}).length,total:results.length,results:results};
 }
 function memoryModel(score,enc,opts){var model=defaultCost(opts),code=CODE_BYTES[enc.codec],instructions=0,types=new Set();(score.actions||[]).forEach(function(a){if(a.type==='on')types.add(a.instrument);});
  if(enc.codec==='E3'||(enc.codec==='E4'&&enc.stats.hybridMode==='VM with direct escapes'))types.forEach(function(k){instructions+=INSTR_BYTES[k]||0;});
@@ -264,7 +350,7 @@ function benchmark(score,options){options=options||{};validateScore(score);var c
  return {schema:SCHEMA,version:VERSION,score:{kind:score.kind,scenario:score.scenario,durationSeconds:score.durationCycles/score.cpuHz,events:score.events.length,actions:(score.actions||[]).length,cpuHz:score.cpuHz,ayHz:score.ayHz,seed:score.seed,bpm:score.bpm,importInfo:score.importInfo||null},model:defaultCost(options),modelsAreEstimates:true,elapsedMs:Date.now()-start,results:out};
 }
 function exportReport(report){return {schema:report.schema,version:report.version,score:report.score,model:report.model,modelsAreEstimates:true,elapsedMs:report.elapsedMs,results:report.results.map(function(r){if(r.status!=='ok')return {codec:r.codec,status:r.status,reason:r.reason};return {codec:r.codec,status:r.status,pareto:r.pareto,bytes:r.encoded.bytes,compressionRatio:r.compressionRatio,scoreBytesPerSecond:r.scoreBytesPerSecond,codecStats:r.encoded.stats,validation:r.validation,memory:r.memory,cycles:Object.assign({},r.cycles,{frameTimeline:r.cycles.frameTimeline})};})};}
-function csv(report){var headings=['codec','status','scoreBytes','ratio','fullyResidentBytes','streamingResidentBytes','avgMusicCpuPercent','peakFrameDemandPercent','missedDeadlines','estimatedTotalCycles','pareto'];var lines=[headings.join(',')];report.results.forEach(function(r){lines.push([r.codec,r.status,r.encoded?r.encoded.bytes:'',r.compressionRatio||'',r.memory?r.memory.fullyResidentBytes:'',r.memory?r.memory.streamingResidentBytes:'',r.cycles?r.cycles.avgMusicCpuPercent:'',r.cycles?r.cycles.peakFrameDemandPercent:'',r.cycles?r.cycles.missedDeadlines:'',r.cycles?r.cycles.estimatedTotalCycles:'',r.pareto===true?'true':'false'].join(','));});return lines.join('\n')+'\n';}
+function csv(report){var headings=['codec','status','scoreBytes','ratio','fullyResidentBytes','streamingResidentBytes','schedulerMode','avgMusicCpuPercent','peakFrameDemandPercent','missedDeadlines','missesBusSerialization','missesDecodeAndDispatch','missesGraphicsContention','maximumBusSerializationUs','maximumDecodeAndDispatchUs','maximumGraphicsWaitUs','graphicsBudgetOvercommitCycles','estimatedTotalCycles','pareto'];var lines=[headings.join(',')];report.results.forEach(function(r){lines.push([r.codec,r.status,r.encoded?r.encoded.bytes:'',r.compressionRatio||'',r.memory?r.memory.fullyResidentBytes:'',r.memory?r.memory.streamingResidentBytes:'',r.cycles?r.cycles.schedulerMode:'',r.cycles?r.cycles.avgMusicCpuPercent:'',r.cycles?r.cycles.peakFrameDemandPercent:'',r.cycles?r.cycles.missedDeadlines:'',r.cycles?r.cycles.missesBusSerialization:'',r.cycles?r.cycles.missesDecodeAndDispatch:'',r.cycles?r.cycles.missesGraphicsContention:'',r.cycles?r.cycles.maximumBusSerializationUs:'',r.cycles?r.cycles.maximumDecodeAndDispatchUs:'',r.cycles?r.cycles.maximumGraphicsWaitUs:'',r.cycles?r.cycles.graphicsBudgetOvercommitCycles:'',r.cycles?r.cycles.estimatedTotalCycles:'',r.pareto===true?'true':'false'].join(','));});return lines.join('\n')+'\n';}
 function hex(binary,limit){limit=limit||256;var lines=[];for(var i=0;i<Math.min(binary.length,limit);i+=16){var slice=Array.from(binary.slice(i,i+16));lines.push(i.toString(16).padStart(6,'0')+': '+slice.map(function(x){return x.toString(16).padStart(2,'0');}).join(' '));}if(binary.length>limit)lines.push('… '+(binary.length-limit)+' more bytes');return lines.join('\n');}
-return {SCHEMA:SCHEMA,VERSION:VERSION,CODECS:CODECS,INST:INST,VOICES:VOICES,generate:generate,fromWaveformSurvey:fromWaveformSurvey,fromEventJson:fromEventJson,normalizeEvents:normalizeEvents,compileActions:compileActions,encode:encode,decode:decode,benchmark:benchmark,simulateSchedule:simulateSchedule,memoryModel:memoryModel,exportReport:exportReport,csv:csv,hex:hex,compareEvents:compareEvents,defaultCost:defaultCost};
+return {SCHEMA:SCHEMA,VERSION:VERSION,CODECS:CODECS,INST:INST,VOICES:VOICES,generate:generate,fromWaveformSurvey:fromWaveformSurvey,fromEventJson:fromEventJson,normalizeEvents:normalizeEvents,compileActions:compileActions,encode:encode,decode:decode,benchmark:benchmark,simulateSchedule:simulateSchedule,memoryModel:memoryModel,exportReport:exportReport,csv:csv,hex:hex,compareEvents:compareEvents,defaultCost:defaultCost,schedulerChecks:schedulerChecks};
 });

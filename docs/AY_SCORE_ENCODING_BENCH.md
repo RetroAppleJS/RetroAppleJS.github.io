@@ -150,18 +150,58 @@ One variant marker followed by its payload:
 
 For the reference encoder, E4 selects whichever complete payload is smaller. It chooses the E2 fallback for event-only imports.
 
-## 5. CPU and graphics scheduling model
+## 5. CPU and graphics scheduling — Phase 1.5A.1 (v0.1.1)
 
-`simulateSchedule` uses a **fluid-share approximation**, not instruction-level 6502 timing:
+Version v0.1 used a **fluid-share** approach which continuously slowed work when graphics utilized the CPU. In reality, a 6502 executes instructions at its nominal clock rate **when it has control of the CPU**. v0.1.1 replaces the fluid-share model with two explicit, illustrative scheduling modes. **They are not yet cycle-accurate emulator traces.**
 
-1. A write event becomes due at its `cycle` timestamp.
-2. Each write requires the configurable VIA/AY cost (default **50 cycles per logical AY write**) plus an assumed decoding/scheduling cost.
-3. Instrument-VM commands additionally require modeled execution at their command timestamps; NOTE_ON defaults to 95 cycles, NOTE_OFF to 55, direct write escape to 40.
-4. CPU availability is capped at `min(musicBudget, 100% - graphicsLoad - reserveLoad)` per 20 ms frame. The action and burst profiles vary graphics load periodically.
-5. Work can run only when due; queued work is processed in order. The scheduler measures elapsed cycles before completing each write and counts a deadline miss if completion exceeds `event.cycle + tolerance`.
-6. The tool reports average consumed cycles, average CPU %, **peak 20 ms demanded CPU %**, frames over their budget, completion lateness and missed deadlines.
+### 5.1 Interrupt priority (`schedulerMode: "irq"`, default)
 
-**Interpret cautiously:** Fluid-share service produces useful upper-level stress tests but cannot model exact ISR ordering, 6502 instruction latency, graphics blanking intervals, co-processor behaviour, disk stalls, VIA handshake sequences or bus conflicts. The E2 per-event decoding cost is an **amortized model**; E3/E4 note command costs are individually placed at command timestamps. The tool does not guarantee real-time playback, even when it reports no misses.
+- AY tasks are released at their canonical CPU-cycle timestamps and execute serially at **full CPU speed**, whether graphics load is high or low.
+- Model an interrupt-dispatch overhead of `interruptOverheadCycles` (default 32) **once per burst** following an idle interval. The 32-cycle value is an assumption, not measured 6502 IRQ overhead.
+- Graphics can be preempted: a music task that completes within its deadline may nevertheless cause a graphics frame to lose its planned CPU allocation.
+- `overBudgetFrames` and `graphicsBudgetOvercommitCycles` flag this *graphics displacement*. In IRQ mode, `musicBudget` is a **planning cap**, not a physical throttle. A value of zero available budget does not forbid a preemptive interrupt.
+- This model does not represent interrupt masking, interrupt nesting, timer reload error, graphics section criticality, or individual 6502 instruction boundaries.
+
+### 5.2 Cooperative (`schedulerMode: "cooperative"`)
+
+- The music player can run only during a dedicated contiguous tail window of each hypothetical 20 ms frame, with full-speed instructions inside that window.
+- The window length is `min(musicBudget, 100% - graphicsLoad - reserveLoad)` of the frame. Graphics occupies the earlier portion; its action/bursty profiles change the window length.
+- Queued music tasks wait until the next available window, preserving register order and never moving before their release timestamp.
+- **This is an intentionally simple contention model, not a claim that the actual RetroAppleJS graphics renderer runs at the beginning of a frame.** A real cooperative main loop may offer many shorter scheduling opportunities. Explicitly model or measure these when available.
+- If no CPU windows exist during the repeating graphics pattern, the score is still codec-valid but the scheduler returns `capacityExhausted: true`, with null lateness and a missed deadline for every AY write.
+
+### 5.3 Three independent lateness contributions
+
+For each AY register write the scheduler computes three synchronized timelines:
+
+1. **Physical bus lower bound:** VIA writes only, at nominal speed. All writes with the same timestamp execute sequentially; `maximumBusSerializationUs` records worst lateness. Non-write commands are omitted from this baseline.
+2. **Intrinsic music processing:** nominal-speed VIA writes plus codec-decoding and procedural command work, and IRQ entry cost in interrupt mode. The *difference* from the physical baseline is `maximumDecodeAndDispatchUs` (maximum per-event additional lateness).
+3. **Actual modeled schedule:** interrupt-priority service or graphics-gated cooperative windows. The *difference* from intrinsic processing is `maximumGraphicsWaitUs` (maximum per-event additional lateness).
+
+The three maxima may correspond to **different events**, so they must not be added together to infer maximum total lateness. Individual missed-event examples are included in `missedExamples` with all contributions for that exact write.
+
+The miss counters are mutually exclusive by **the first threshold-crossing cause** at the selected tolerance: `missesBusSerialization`, `missesDecodeAndDispatch`, and `missesGraphicsContention`. The total `missedDeadlines` is the sum of those three counters, except for exhausted schedules (classified as graphics contention). Graphics may add lateness to an event that was already a miss; such an event stays in the earlier category. These counters are diagnostic classifications, not independent totals of all events touched by each cause.
+
+### 5.4 Model settings and result fields
+
+| Field | Meaning |
+|---|---|
+| `schedulerMode` | `irq` or `cooperative`; included in JSON/CSV exports |
+| `interruptOverheadCycles` | Assumed per-IRQ-burst entry cost, default 32; not relevant in cooperative mode |
+| `cyclesPerWrite` | Full-speed logical AY/VIA cost, default 50 cycles |
+| `musicBudget` | Music CPU cap / resource budget, not an IRQ execution-speed multiplier |
+| `graphicsPercent`, `graphicsProfile`, `reservePercent` | Configured competing CPU demand, updated at 20 ms boundaries |
+| `toleranceUs` | Allowed completion lateness from the nominal register-write timestamp |
+| `irqDispatches` | Modeled interrupt dispatch count (0 in cooperative mode) |
+| `graphicsBudgetOvercommitCycles` | Approximate budget conflict in IRQ mode, **not** observed dropped graphics frames |
+| `overBudgetFrames` | Count of frames with scheduled audio demand beyond configured available capacity |
+| `missedExamples` | First 12 missed AY writes with cycle, register, bus/decoder/graphics/total lateness |
+
+Cycle costs for codecs, IRQ entry and logical VIA writes, CPU reserve, waveform routines, player code and memory are assumptions until a 6502 driver has been assembled and instrumented. No actual 6502 instructions or graphics rendering are run by the bench.
+
+### 5.5 Browser acceptance (no Node.js required)
+
+Open `AY_SCORE_ENCODING_BENCH_standalone.html`, click **Run browser scheduler checks (7)** and verify seven PASS lines. Switch playback mode and click **Re-run cost model**. The same workload must keep identical score bytes and exact codec validation, but timing misses and budget-conflict metrics may change. Export a JSON or CSV for each mode; the selected scheduler is recorded in the output.
 
 ## 6. Memory model
 
@@ -221,3 +261,10 @@ The `examples` folder includes deterministic generated benchmark reports, CSV, a
 ### Phase 1.5B hand-off
 
 The next optimizer can use Phase 1.5A's Pareto comparisons to choose among codec + instrument combinations, considering RAM limits, music CPU cap, peak timing, shared AY resources and application-specific graphics demands. The next prerequisite for dependable figures is a small 6502 decoder microbenchmark exercising realistic Mockingboard VIA register writes.
+
+## Phase 1.5A.1 compatibility notes
+
+- **The AYSB binary encoding, header, payloads and codec identities E0–E4 are unchanged.** Existing `.aysb` files remain valid.
+- The JSON schema identifier remains `retroapplejs.ay.score-encoding-bench.v0.1` (family version 1) for backward import compatibility. New `model.schedulerMode`, `model.interruptOverheadCycles` and diagnostic cycle fields extend its content; consumers should ignore unknown result fields.
+- The previous v0.1 `missedDeadlines` results are **not comparable** with v0.1.1 timing results without acknowledging the scheduler model change. Compression and score-memory measurements remain comparable.
+- All tests can be run in a browser. The optional Node test suite is for source contributors only.
