@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AY Score Timing Bench — Mockingboard Register History Verifier</title>
+<style>
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark;--bg:#112234;--panel:#172c40;--bg2:#102032;--border:#31516a;--muted:#adc5d8;--link:#82d4ff;--ok:#79e0b8;--bad:#ff9e9e;--warn:#f5cc88}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#eff6fb;line-height:1.5}main{max-width:1180px;margin:auto;padding:25px 22px 60px}h1{font-size:1.7rem;margin:0 0 5px}h2{font-size:1.15rem;margin:0 0 12px}p{margin:0 0 12px}.muted{color:var(--muted)}.kicker{letter-spacing:.08em;text-transform:uppercase;color:#90bddb;font-size:.75rem;font-weight:700}.layout{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;margin:19px 0}.panel{background:var(--panel);border:1px solid var(--border);padding:18px;border-radius:12px}.steps{margin:8px 0;padding-left:22px}.steps li{margin:4px 0}code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#b5ddff;overflow-wrap:anywhere}.cmd{background:var(--bg2);padding:11px;border-radius:8px;white-space:pre-wrap;font-size:.85rem;line-height:1.5;border:1px solid var(--border);position:relative}button,select,input[type=number]{background:#23445c;color:white;border:1px solid #466881;border-radius:7px;padding:9px 12px;font:inherit;cursor:pointer}button:hover{background:#2b546f}button:disabled{opacity:.45;cursor:not-allowed}button.primary{background:#1c6e7f;border-color:#58a8a9}button.primary:hover{background:#22889b}input[type=file]{font:inherit;max-width:100%}input[type=number]{width:76px;cursor:text}.controls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:12px 0}.controls label{display:flex;gap:8px;align-items:center}.drop{border:2px dashed #52768d;border-radius:11px;padding:20px;transition:.15s;background:#11263a}.drop.over{border-color:#89e0ff;background:#1b4055}.table-scroll{overflow:auto;width:100%}table{border-collapse:collapse;min-width:810px;width:100%}th,td{text-align:left;padding:10px 11px;border-bottom:1px solid #335066;font-size:.88rem;white-space:nowrap}th{color:#c7ddeb;background:#223e54}tr:last-child td{border-bottom:0}.good{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}.chip{display:inline-block;font-size:.72rem;border:1px solid #426985;border-radius:100px;padding:3px 10px;font-weight:700;letter-spacing:.03em} .chip.good{border-color:#437e6c}.chip.bad{border-color:#955254}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}.stat{background:#102439;border:1px solid var(--border);border-radius:10px;padding:12px}.stat strong{font-size:1.6rem;display:block}.stat span{font-size:.8rem;color:var(--muted)}.wrap{overflow-wrap:anywhere}.small{font-size:.82rem}.feedback{padding:13px 14px;border-radius:8px;background:#10283c;border:1px solid #41677e;margin:12px 0;white-space:pre-wrap}.subtle{background:#10283a}.row{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}details{margin-top:9px}summary{cursor:pointer;color:#b5ddff}.checks{font-size:.87rem;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 16px}footer{font-size:.8rem;color:var(--muted);margin-top:23px}@media(max-width:760px){.layout{grid-template-columns:1fr}.summary{grid-template-columns:repeat(2,1fr)}.checks{grid-template-columns:1fr}main{padding:15px}}@media(prefers-color-scheme:light){:root{color-scheme:dark}}
+</style>
+</head>
+<body><main>
+<div class="kicker">RetroAppleJS • Phase 1.5A.2 • Validation companion</div>
+<h1>Mockingboard AY History Verifier</h1>
+<p class="muted">Compare the register writes and CPU-cycle spacings from <code>AY_SCORE_TIMING_BENCH.S v0.1</code> against a real RetroAppleJS history export. Legacy exports from physical slot 4 may be tagged slot 5. Runs locally in your browser; no Node or Python required.</p>
+<div class="summary" id="expectationCards">
+ <div class="stat"><strong>64</strong><span>MB-01 body R8 writes</span></div><div class="stat"><strong>64</strong><span>MB-02 body R8 writes</span></div><div class="stat"><strong>32</strong><span>MB-03 body R8 writes</span></div><div class="stat"><strong>169</strong><span>Expected AY writes for a combined RUN (includes setup &amp; mute)</span></div>
+</div>
+<div class="layout">
+ <section class="panel">
+ <h2>1. Capture the register history</h2>
+ <ol class="steps">
+  <li>Open RetroAppleJS with a Mockingboard in <strong>slot 4</strong>, with no other AY player running. Load the existing BASIC timing benchmark.</li>
+  <li>Open the Mockingboard peripheral controls. Set history to at least <strong>64 KB</strong> and click the <strong>coffee-cup history capture</strong> control to start recording.</li>
+  <li>Run <code>RUN</code> for all three tests, or run <code>CALL 24576</code>, <code>CALL 24579</code>, and <code>CALL 24582</code> individually in separate capture sessions.</li>
+  <li>Click the coffee-cup control again to stop capture. Do not reset the Mockingboard before exporting.</li>
+  <li>Export JSON using the console snippet below. The standard Mockingboard UI currently has a JSON export method, but its download button is not displayed.</li>
+ </ol>
+ <div class="row"><strong class="small">Console command — exports currently visible Mockingboard</strong><button type="button" id="copyCommand">Copy</button></div>
+ <pre class="cmd" id="exportCommand">const b = [...document.querySelectorAll('button[title="Start/stop Mockingboard history capture"]')].find(x => x.getClientRects().length);
+if (!b) throw Error('Open the Mockingboard controls first');
+const match = b.getAttribute('onclick').match(/HASH2obj\((\d+)\)/);
+if (!match) throw Error('Mockingboard card was not found');
+apple2plus.hwObj().io.HASH2obj(Number(match[1])).downloadHistory();</pre>
+ <p class="small muted">In Chrome: <strong>View → Developer → JavaScript Console</strong> (or F12 → Console). Paste and press Enter. A legacy download may be named <code>mockingboard-slot5-history.json</code>; v0.1.1 explains the slot metadata interpretation. If capturing was already stopped, running this code does not restart it.</p>
+ </section>
+ <section class="panel">
+  <h2>2. Analyze export</h2>
+  <div class="drop" id="dropZone"><strong>Drop history JSON files here</strong><p class="muted small">or select one combined capture or three separate captures</p><input id="fileInput" type="file" accept=".json,application/json" multiple aria-label="Choose Mockingboard history JSON"></div>
+  <div class="controls"><label for="tolerance">Cycle tolerance <input type="number" id="tolerance" value="2" min="0" max="100" step="1"></label><button id="rerun" type="button" disabled>Re-check files</button></div>
+  <div class="feedback" id="status" aria-live="polite">No emulator capture imported yet.</div>
+  <button id="exportReport" disabled type="button">Download validation report JSON</button>
+  <hr style="border:0;border-top:1px solid #3b5b72;margin:19px 0">
+  <h2>Built-in validation (synthetic only)</h2>
+  <p class="muted small">Checks the verifier against simulated reference histories and deliberately corrupt cases. These tests <strong>do not</strong> validate RetroAppleJS hardware telemetry.</p>
+  <button id="runSelfChecks" type="button">Run 12 browser self-checks</button>
+  <div id="selfChecks" class="checks" style="margin-top:12px"></div>
+ </section>
+</div>
+<section class="panel">
+ <div class="row"><h2>3. Results</h2><span class="chip" id="overall">No capture</span></div>
+ <div class="table-scroll"><table><thead><tr><th>Capture</th><th>Mode</th><th>Body R8 writes</th><th>All AY writes</th><th>R8 spacing (cycles)</th><th>Worst timestamp error</th><th>Sequence</th><th>Timing</th><th>Status</th></tr></thead><tbody id="resultRows"><tr><td colspan="9" class="muted">Import a capture to begin.</td></tr></tbody></table></div>
+ <div id="details"></div>
+</section>
+<section class="panel" style="margin-top:16px">
+<h2>Expected instruction-level reference</h2>
+<p class="muted">The reference is derived by executing the assembled 548-byte benchmark in an independent 6502 instruction model. It predicts <em>relative</em> CPU-cycle timestamps, aligned to the first AY0 R7=$3F write. Exact absolute CPU ticks are not expected to match across emulator runs.</p>
+<div class="table-scroll"><table><thead><tr><th>Mode</th><th>Full AY writes</th><th>Expected body updates</th><th>Body R8 spacing</th><th>R7 → first R8 body</th><th>Final R8 mute after last body write</th></tr></thead><tbody><tr><td>MB-01 Full</td><td>67</td><td>64</td><td>47 cycles</td><td>228 cycles</td><td>142 cycles</td></tr><tr><td>MB-02 Retained</td><td>67</td><td>64</td><td>29 cycles</td><td>240 cycles</td><td>142 cycles</td></tr><tr><td>MB-03 E1</td><td>35</td><td>32</td><td>53 cycles initially, then 57</td><td>263 cycles</td><td>136 cycles</td></tr></tbody></table></div>
+<p class="small muted" style="margin-top:12px">Each run includes <strong>one R7=$3F setup write</strong>, <strong>one initial R8=$00</strong>, the measured R8 updates, and <strong>one final R8=$00 mute</strong>. Thus the full three-test capture should contain 67 + 67 + 35 = <strong>169 AY writes</strong>, assuming no unrelated sound activity. MB-03's longer 57-cycle intervals reflect indexed-page crossing in the specific decoder fixture. The E1 delta values are <em>parsed, not waited for</em>; expected write intervals are instruction execution times, not encoded delays of 200 cycles.</p>
+</section>
+<footer>Read-only browser verification. No modifications to RetroAppleJS's peripheral driver or the 6502 benchmark. A PASS requires exact chip/register/value order and timestamps within the chosen cycle tolerance. Emulator export remains the source of observed measurements.</footer>
+</main>
+<script src="AY_SCORE_HISTORY_VERIFY_core.js"></script>
+<script>
+(function(){'use strict';
+const core=window.AYScoreHistoryVerify;
+const files=[];let reports=[];
+const $=(id)=>document.getElementById(id);
+function el(tag,text,className){const n=document.createElement(tag);if(text!==undefined)n.textContent=String(text);if(className)n.className=className;return n;}
+function wipe(node){while(node.firstChild)node.removeChild(node.firstChild);}
+function fmt(n){return typeof n==='number'&&Number.isFinite(n)?n.toLocaleString('en-US'):'—';}
+function severity(result){return result.status==='PASS'?'good':'bad';}
+function resultLine(tr,values){values.forEach((v,i)=>{const td=el('td',v);tr.appendChild(td)});return tr;}
+function makeDetails(report,fileName){
+ const n=$('details');const section=el('details');const head=el('summary',fileName+' — diagnostics');section.appendChild(head);
+ const p=el('p',`Captured ${fmt(report.capturedEvents)} event(s) across ${report.identifiedRuns} recognized run(s). Tagged slot: ${report.source.slot??'unknown'}; interpreted physical slot: ${report.source.physicalSlot??'unknown'}; CPU clock: ${fmt(report.source.clockHz)} Hz; buffer wrapped: ${report.source.wrapped}.`,'small muted');section.appendChild(p);
+ [...report.errors.map(s=>'ERROR: '+s),...report.warnings.map(s=>'NOTE: '+s)].forEach(s=>section.appendChild(el('p',s,'small '+(s.startsWith('ERROR')?'bad':'warn'))));
+ report.analyses.forEach(x=>{
+  section.appendChild(el('p',`${x.label}: predicted ${x.counts.expectedBodyWrites} body writes, observed ${x.counts.actualBodyWrites}. Sequence mismatches: ${x.sequenceErrors.length}. Timing mismatches: ${x.timingErrors.length}.`,'small'));
+  if(x.sequenceErrors.length){const ul=el('ul');x.sequenceErrors.slice(0,6).forEach(y=>ul.appendChild(el('li',`Write ${y.index+1}: expected ${y.expected}; observed ${y.actual}`,'small bad')));section.appendChild(ul);}
+  if(x.timingErrors.length){const ul=el('ul');x.timingErrors.slice(0,6).forEach(y=>ul.appendChild(el('li',`Write ${y.index+1}: predicted +${fmt(y.expectedCycles)} cycles, observed +${fmt(y.observedCycles)} (${y.deviationCycles>=0?'+':''}${fmt(y.deviationCycles)})`,'small bad')));section.appendChild(ul);}
+  if(x.counts.expectedAll!==x.counts.actualAll)section.appendChild(el('p',`CAPTURE COUNT MISMATCH: expected ${x.counts.expectedAll}, observed ${x.counts.actualAll}.`,'small bad'));
+ });
+ n.appendChild(section);
+}
+function render(){
+ reports=[];wipe($('resultRows'));wipe($('details'));
+ let allPass=true,runCount=0;
+ for(const item of files){
+   try{
+     const report=core.verify(item.data,{toleranceCycles:Number($('tolerance').value)});reports.push({file:item.name,report});
+     if(report.status!=='PASS')allPass=false;
+     runCount+=report.analyses.length;
+     if(!report.analyses.length){const tr=el('tr');resultLine(tr,[item.name,'—','—',fmt(report.capturedEvents),'—','—','—','—','FAIL']);$('resultRows').appendChild(tr);}
+     report.analyses.forEach((x,i)=>{
+       const tr=el('tr');const label=item.name+(report.analyses.length>1?` / ${i+1}`:'');
+       const freq=[...new Set(x.spacings)].sort((a,b)=>a-b).map(String).join(' / ')||'—';
+       resultLine(tr,[label,x.label,`${fmt(x.counts.actualBodyWrites)} / ${fmt(x.counts.expectedBodyWrites)}`,`${fmt(x.counts.actualAll)} / ${fmt(x.counts.expectedAll)}`,
+         freq,`${fmt(x.maxTimingError)} cycles`,x.exactSequence?'PASS':'FAIL',x.matchedTiming?'PASS':'FAIL',x.pass?'PASS':'FAIL']);
+       tr.lastChild.className=x.pass?'good':'bad';$('resultRows').appendChild(tr);
+     });
+     makeDetails(report,item.name);
+   }catch(err){allPass=false;reports.push({file:item.name,error:String(err.message||err)});const tr=el('tr');resultLine(tr,[item.name,'INVALID','—','—','—','—','—','—','FAIL']);tr.lastChild.className='bad';$('resultRows').appendChild(tr);$('details').appendChild(el('p',item.name+': '+err.message,'small bad'));}
+ }
+ const status=files.length?(allPass?`PASS: ${runCount} run(s) across ${files.length} file(s), all predicted register values and cycle intervals validated.`:`FAIL / REVIEW: ${files.length} file(s), ${runCount} identified run(s). Inspect diagnostics below.`):'No emulator capture imported yet.';
+ $('status').textContent=status;$('overall').textContent=files.length?(allPass?'PASS':'REVIEW'):'No capture';$('overall').className='chip '+(files.length?allPass?'good':'bad':'');
+ $('rerun').disabled=files.length===0;$('exportReport').disabled=files.length===0;
+ if(files.length===0){const tr=el('tr');resultLine(tr,['Import a capture to begin.','','','','','','','','']);$('resultRows').appendChild(tr);}
+}
+async function addFiles(incoming){
+ for(const f of Array.from(incoming)){
+  if(!f.name.toLowerCase().endsWith('.json'))continue;
+  try{const data=JSON.parse(await f.text());files.push({name:f.name,data});}
+  catch(err){files.push({name:f.name,data:{invalidJSON:String(err)}})}
+ }
+ render();
+}
+$('fileInput').addEventListener('change',e=>addFiles(e.target.files));
+$('rerun').addEventListener('click',render);$('tolerance').addEventListener('change',render);
+const dz=$('dropZone');dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over')});dz.addEventListener('dragleave',()=>dz.classList.remove('over'));dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');addFiles(e.dataTransfer.files)});
+$('copyCommand').addEventListener('click',()=>{const txt=$('exportCommand').textContent;if(navigator.clipboard?.writeText)navigator.clipboard.writeText(txt).then(()=>{$('copyCommand').textContent='Copied'}).catch(()=>{window.prompt('Copy the console command:',txt)});else window.prompt('Copy the console command:',txt)});
+$('runSelfChecks').addEventListener('click',()=>{const r=core.selfCheck();wipe($('selfChecks'));r.checks.forEach(c=>$('selfChecks').appendChild(el('div',(c.pass?'PASS':'FAIL')+'  '+c.name,c.pass?'good':'bad')));$('runSelfChecks').textContent=`${r.passed} / ${r.total} browser checks passed`;});
+$('exportReport').addEventListener('click',()=>{const payload={schema:'retroapplejs.ay-score-timing-history.multi-validation.v1',generatedUTC:new Date().toISOString(),reports};const blob=new Blob([JSON.stringify(payload,null,2)+'\n'],{type:'application/json'});const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download='AY_SCORE_TIMING_HISTORY_VALIDATION.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)});
+})();
+</script></body></html>
