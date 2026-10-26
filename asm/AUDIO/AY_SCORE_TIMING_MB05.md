@@ -1,6 +1,6 @@
 # MB-05 / Phase 1.5A.4 — 6502 E1 score scheduling under Timer 1 IRQ and HGR load
 
-**Status:** v0.1 executable candidate; **actual RetroAppleJS acceptance pending**. MB-01–03 were merged and MB-04 cycle/timestamp acceptance was completed separately. This package changes neither.
+**Status:** MB-05 functional acceptance passed on RetroAppleJS; MB-05.1 coherent Timer 2 sampling has passed local 6502/VIA simulation and is awaiting fresh RetroAppleJS acceptance. MB-01–03 were merged and MB-04 cycle/timestamp acceptance was completed separately. This package changes neither.
 
 ## Objective
 
@@ -12,7 +12,7 @@ This first test is a deliberately **narrow, deterministic E1 subset**, not a gen
 
 - Machine: Apple II/II+ NMOS 6502 with Mockingboard at **physical PR#4**. RetroAppleJS internal `SlotN=5` correctly refers to PR#4 because `SlotN=0` represents the host/motherboard.
 - Assembly source of truth: `asm/AY_SCORE_TIMING_MB05.S`, single `*=$6000` origin.
-- Machine code: **1,327 bytes** at `$6000–$652E`, checksum **124100**. These numbers must match the generated loader; if source changes, regenerate both.
+- Machine code: **1,379 bytes** at `$6000–$6562`, checksum **128910**. These numbers must match the generated loader; if source changes, regenerate both.
 - Input: **232-byte E1 payload**, embedded as literal `HEX` bytes in the assembly. The E1 format is `ULEB128(deltaCycles), packedAYRegisterID, value` as used by the Phase 1.5A encoding bench. The 64-token reference is derived from the same payload and checked during the build.
 - First-version constraints: chip0, registers R8/R9, delta **0, 1024, or 2048 CPU cycles**, at most 64 events. Delta 0 means multiple writes on one deadline, executed sequentially rather than at identical CPU timestamps.
 - Timer 1 free-run `ACR.bit6=1`, latch `$03FE`. RetroAppleJS models a 6522 interval as `latch + 2` cycles, so the period is **1024 cycles**. A smaller 256-cycle heartbeat was deliberately rejected after the limited simulator showed that some two-event IRQ bursts could overrun a timer tick.
@@ -47,12 +47,18 @@ Every mode performs two setup writes (R7=$3F, R8=$00) and two cleanup writes (R8
 | `$6C00/$6C80/$6D00` | Timer 2 **entry high-byte** samples |
 | `$6D80/$6E00/$6E80` | Timer 2 **exit high-byte** samples |
 | `$7000/$7040/$7080` | Decode-span samples, 63 bytes each; excludes the first predecoded token |
-| `$6F00–$6F1B` | Working state |
+| `$6F00–$6F1E` | Working state; `$6F1C/$6F1D` coherent snapshot, `$6F1E` retry count |
 | `$6F40/$6F50/$6F60` | 16-byte result records for A/B/C |
 
-The Timer 2 entry/exit samples are captured at slightly different instruction offsets; their differences include sample-instrumentation overhead and potential 16-bit low/high counter-read incoherence around byte rollover. They characterize the **sampled handler interior**, not the full 7-cycle CPU IRQ entry, Apple Monitor ROM dispatch, RTI or the entire CPU cost of an interrupt.
+MB-05.1 takes coherent Timer 2 snapshots through `READ_T2_COHERENT`, reading high–low–high and retrying if the high byte changes during the low read. The same method is used at IRQ entry, IRQ exit and the final elapsed-cycle snapshot. The reported sampled handler interior includes the updated instrumentation overhead, but does not include IRQ entry, Monitor ROM dispatch or RTI. Record offset 12 contains the total number of rollover retries in that mode. They characterize the **sampled handler interior**, not the full 7-cycle CPU IRQ entry, Apple Monitor ROM dispatch, RTI or the entire CPU cost of an interrupt.
 
 The per-token decoder sample is the difference between two Timer 2 low-byte reads surrounding `JSR NEXT_TOKEN`. It includes the measuring instructions and the call/return, not solely the decoder's arithmetic. The 63 measured calls exclude the initial predecode performed before enabling Timer 1.
+
+## MB-05.1 Timer 2 snapshot regression
+
+The earlier, accepted MB-05 v0.1 Safari diagnostic revealed 17 of 48 MB-05A exit samples whose high byte changed between low and high reads, inflating the average from **320.29** to **410.96 cycles**. The corrected 320.29-cycle value was a retrospective analysis of the old binary, **not** a predicted result for MB-05.1. The new coherent routine changes handler cost, so comparing unadjusted MB-05.1 averages directly to MB-05 v0.1 is invalid.
+
+`READ_T2_COHERENT` preserves X/Y, reads T2 high then low then high and repeats whenever those high reads differ. `$6F1C` and `$6F1D` store the snapshot; `$6F1E` counts retries, copied into byte 12 of the 16-byte result record. The 6502/VIA simulator executes the compiled bytes and includes a targeted rollover regression that forces a high-byte transition during the read. On emulator, a fresh history capture must still confirm event timing and actual throughput. In a disposable session, the result printout includes `T2 SNAP RETRIES` for each mode.
 
 ## Browser-only acceptance workflow
 
@@ -63,12 +69,12 @@ The per-token decoder sample is the difference between two Timer 2 low-byte read
 
    ```text
    LOADING MB-05 AT $6000...
-   LOADED 1327 BYTES. CHECKSUM OK
+   LOADED 1379 BYTES. CHECKSUM OK
    E1 SCORE, THREE IRQ MODES...
    ```
 
    The program calls `$6000` in HGR mode, returns to `TEXT`, and reports mode-specific IRQ counts, E1 events, HGR writes, Timer 2 cycles, late event counts, sampled handler interiors and decoder spans.
-5. Stop history capture before resetting or starting other sound. In Chrome Developer Tools console, export the history as JSON:
+5. Stop history capture before resetting or starting other sound. In your browser developer console (Safari: Develop → Show JavaScript Console),, export the history as JSON:
 
    ```javascript
    apple2plus.hwObj().io.SLOT2obj(5).downloadHistory();
@@ -94,6 +100,7 @@ Result records are at `$6F40` (=28480), `$6F50` (=28496), `$6F60` (=28512), with
 | 9 | Maximum overdue amount in **256-cycle units**, not 1024-cycle timer ticks |
 | 10 | E1 score payload bytes consumed (232 expected) |
 | 11 | Error: 0=OK, 2=IRQ count limit, 3=invalid E1 token, 4=existing active VIA Timer1/2 interrupt source |
+| 12 | MB-05.1 coherent Timer 2 snapshot retries (incremented when high1 != high2) |
 
 `LATE_N` and `MAX_LATE` measure **whole-256-cycle overdue events**; subtick jitter must be measured from Mockingboard history. A regular test should produce 0; a deliberately masked IRQ can produce positive counts and fewer than 48 serviced IRQs because underflows may coalesce.
 
@@ -106,7 +113,7 @@ Result records are at `$6F40` (=28480), `$6F50` (=28496), `$6F60` (=28512), with
 - HGR throughput differs between dry E1 decoding and E1+AY writes in the direction suggested by the model, without skipped score events.
 - IRQ software vector and VIA1 Timer 1 interrupt enable are restored/masked at completion; no resident IRQ remains.
 
-## Independent model predictions (NOT measured RetroAppleJS)
+## MB-05.1 independent model predictions (NOT measured RetroAppleJS)
 
 The included `tests/simulate_mb05.py` is a deliberately limited independent 6502/VIA instruction simulator. It is **not** the RetroAppleJS emulator or an original 6522 physical device.
 
@@ -114,13 +121,13 @@ The included `tests/simulate_mb05.py` is a deliberately limited independent 6502
 |---|---:|---:|---:|
 | IRQ services | 48 | 48 | 48 |
 | Dispatched E1 events | 64 | 64 | 64 |
-| HGR writes | 842 | 759 | 0 |
-| Timer 2 elapsed cycles | 49,651 | 49,734 | 49,736 |
+| HGR writes | 726 | 642 | 0 |
+| Timer 2 elapsed cycles | 49,748 | 49,859 | 49,826 |
 | Late events | 0 | 0 | 0 |
-| Sampled handler interior, average cycles | 320.29 | 375.88 | 382.50 |
+| Sampled handler interior, average cycles | 360.88 | 417.19 | 423.08 |
 | Decoder span, average cycles | 85.79 | 85.79 | 85.79 |
 
-The model predicts **~9.9% fewer HGR writes** in B than in A at similar elapsed time. The exact figures may differ in RetroAppleJS. Both A and B spend time parsing E1 tokens; B additionally drives the AY. The comparison isolates incremental decoder-to-AY bus processing better than directly comparing different timer periods in MB-04.
+The updated model predicts **~11.6% fewer HGR writes** in B than in A at similar elapsed time. The exact figures may differ in RetroAppleJS. Both A and B spend time parsing E1 tokens; B additionally drives the AY. The comparison isolates incremental decoder-to-AY bus processing better than directly comparing different timer periods in MB-04.
 
 An additional **fault-injection stress test** masks timer IRQ acceptance for about 2,400 CPU cycles in one model run: it detects 5 overdue events, maximum lateness 6 × 256 cycles, and 47 serviced IRQs, while dispatching all 64 score events and completing. This demonstrates that the Timer 2 absolute timeline can detect coalesced IRQs; it is not a claim about RetroAppleJS under equivalent load.
 
@@ -143,3 +150,11 @@ node tests/test_mb05_verifier.cjs
 ```
 
 Developer-side Python/Node tooling is **not required** for the browser acceptance procedure. The generated machine-code loader and standalone verifier are fully self-contained.
+
+## MB-05.1 build and safety notes
+
+- Native assembly is the source of truth; the 1,379-byte loader checksum is 128910. The E1 payload remains 232 bytes with the same 64 events and 40 deadlines.
+- The Timer2 snapshot needs access to live T2 high/low registers. The updated testing model and current RetroAppleJS VIA implementation expose these registers live; this is **not** a blanket claim of cross-hardware 6522 register-read compatibility.
+- `READ_T2_COHERENT` is called from the IRQ handler (I flag set) and from the foreground with `SEI`; the `$6F1C–$6F1E` scratch bytes are not re-entrant.
+- The loader's result byte 12 is preserved across modes and does not change the existing 12-byte record prefix. Existing telemetry verifiers therefore continue to work.
+- This is an instrumentation revision, **not** a new E1 scheduler architecture, and does not alter production Mockingboard code.
