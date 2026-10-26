@@ -173,7 +173,7 @@ const _CFG_IOADDR = {
 
 const _CFG_PSLOT = {
  "A2BO":{"NAME":"Motherboard peripheral" ,"HostIO":"X" ,"SlotIO":"" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"H*" ,"SYScode":"A2,A2P,A2e" ,"Manuals":""}
-,"MS16K":{"NAME":"Microsoft 16K Language card" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"0*" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/ftp.apple.asimov.net/documentation/hardware/storage/memory/Microsoft%20RAMCard%20-%20Manual.pdf)"}
+,"MS16K":{"NAME":"Microsoft 16K Language card" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"0*" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/MS16K_user_manual.md)"}
 ,"SATURN":{"NAME":"Saturn RAM card" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"0$,1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](http://www.applelogic.org/files/SATURN128MAN.pdf)"}
 ,"LEGEND":{"NAME":"Legend RAM card" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"" ,"HostROM":"" ,"SLOTrange":"0$,1,2,3,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Memory/Legend%20S-Card/Manuals/Legend%20Industries%20RAM%20Card%20Operation%20Manual.pdf)"}
 ,"RAMFAC":{"NAME":"Ramfactor/Slinky RAM card (slot limit: UCSD Pascal)" ,"HostIO":"" ,"SlotIO":"X" ,"SlotROM":"X" ,"HostROM":"X" ,"SLOTrange":"1,2,4,5,6,7" ,"SYScode":"A2,A2P,A2e" ,"Manuals":"[user_manual](https://garrettsworkshop.com/files/GR8RAM/ae_ramfactor_manual.pdf)"}

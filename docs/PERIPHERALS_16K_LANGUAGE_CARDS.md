@@ -6,7 +6,7 @@ This is a **card-specific reference**, split out of the general [Peripheral User
 
 A 16K language card replaces the CPU's normal read/write view of part of the system ROM address range with bank-switched RAM. Its familiar variants include:
 
-- [Apple Language Card](http://www.applelogic.org/files/LANGCARDMAN.pdf)
+- [Apple Language Card — converted manual](MS16K_user_manual.md)
 - [Microsoft 16K RAM Card](https://mirrors.apple2.org.za/Apple%20II%20Documentation%20Project/Interface%20Cards/Language%20Cards/Microsoft%2016K%20RAM%20Card/Manuals/Microsoft%20RAMCard%20-%20Manual.pdf)
 - [Applied Engineering Pocket Rocket](https://usermanual.wiki/Document/ae16kpocketrocketbrochure.1819483971.pdf)
 
