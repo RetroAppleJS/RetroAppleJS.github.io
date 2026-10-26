@@ -1,6 +1,6 @@
 # MB-05 / Phase 1.5A.4 — 6502 E1 score scheduling under Timer 1 IRQ and HGR load
 
-**Status:** MB-05 functional acceptance passed on RetroAppleJS; MB-05.1 coherent Timer 2 sampling has passed local 6502/VIA simulation and is awaiting fresh RetroAppleJS acceptance. MB-01–03 were merged and MB-04 cycle/timestamp acceptance was completed separately. This package changes neither.
+**Status:** MB-05 and MB-05.1 **accepted in RetroAppleJS (Safari)** on 26 October 2026, following local 6502/VIA regression. MB-05.1's instrumentation correction was merged in PR #267. MB-01–03 and MB-04 remain separately validated.
 
 ## Objective
 
@@ -59,6 +59,33 @@ The per-token decoder sample is the difference between two Timer 2 low-byte read
 The earlier, accepted MB-05 v0.1 Safari diagnostic revealed 17 of 48 MB-05A exit samples whose high byte changed between low and high reads, inflating the average from **320.29** to **410.96 cycles**. The corrected 320.29-cycle value was a retrospective analysis of the old binary, **not** a predicted result for MB-05.1. The new coherent routine changes handler cost, so comparing unadjusted MB-05.1 averages directly to MB-05 v0.1 is invalid.
 
 `READ_T2_COHERENT` preserves X/Y, reads T2 high then low then high and repeats whenever those high reads differ. `$6F1C` and `$6F1D` store the snapshot; `$6F1E` counts retries, copied into byte 12 of the 16-byte result record. The 6502/VIA simulator executes the compiled bytes and includes a targeted rollover regression that forces a high-byte transition during the read. On emulator, a fresh history capture must still confirm event timing and actual throughput. In a disposable session, the result printout includes `T2 SNAP RETRIES` for each mode.
+
+## MB-05.1 — Actual RetroAppleJS/Safari acceptance (26 October 2026)
+
+After the coherent Timer 2 correction was merged via [PR #267](https://github.com/RetroAppleJS/RetroAppleJS.github.io/pull/267), the **1,379-byte** loader was run in RetroAppleJS with a Mockingboard in physical PR#4 (internal SlotN=5). The user-provided Applesoft results were cross-checked against an exported `RetroAppleJS.MockingboardHistory` capture and the E1 reference verifier.
+
+**Verdict: PASS.** All modes returned `ERR0`, **48 Timer 1 IRQs and 64 decoded E1 events each**, **no late events**, and 232 E1 bytes consumed. The history recorded **140/140 expected AY register writes** (4 dry-mode setup/cleanup writes and 68 writes for each AY-output mode), correct R7/R8/R9 register and value sequences, and all 40 score-deadline groups in each AY-output mode. No capture-buffer wrapping, verifier errors or warnings occurred.
+
+| Metric | MB-05A (dry E1/HGR) | MB-05B (E1+AY/HGR) | MB-05C (E1+AY/NOP) |
+|---|---:|---:|---:|
+| IRQ services / decoded E1 events | 48 / 64 | 48 / 64 | 48 / 64 |
+| Predicted IRQ interior mean, cycles | 360.875 | 417.188 | 423.083 |
+| Actual IRQ interior mean, cycles | **360.875** | **416.458** | **423.813** |
+| Actual IRQ interior range, cycles | 120–484 | 122–567 | 126–575 |
+| Coherent Timer 2 snapshot retries | 0 | 0 | 1 |
+| E1 decoder span average, cycles | 87.317 | 87.317 | 87.317 |
+| E1 decoder span range, cycles | 67–102 | 67–102 | 67–102 |
+| Late events | 0 | 0 | 0 |
+| Captured AY writes | 4 | 68 | 68 |
+| Maximum relative score-deadline group deviation, cycles | — | 23 | 21 |
+
+The independent instruction/VIA model predicted **one** 35-cycle snapshot retry in *Mode B* (0 in C); the actual Safari run recorded **one** in *Mode C* (0 in B). This explains the **−35/48 and +35/48 cycle differences** in their respective IRQ-interior means. No unexplained 256-cycle rollover errors remain.
+
+The supplied result excerpt also reported **671 HGR writes in 49,792 cycles** for Mode B (**13.47 writes per 1,000 cycles**), versus the model's 642 HGR writes. Mode C elapsed time was 49,837 cycles with no HGR writes. The excerpt **did not include the earlier Mode A HGR-write and total-cycle lines**, so an actual Mode A throughput comparison is not claimed here. The coherent snapshot instrumentation itself has measurable CPU overhead and is not intended as the production music engine's permanent hot path.
+
+For Mode B the observed same-deadline second-event separation was **196–222 cycles**, and for C **198–224 cycles**. The maximum relative score-group deviations remained well within the existing verifier's 128-cycle provisional acceptance bound. These are *relative-to-first-event* measurements, not absolute Timer 1 underflow latencies.
+
+**Scope:** These results validate the *RetroAppleJS emulator*, not real 6502/6522 hardware. The earlier MB-05 v0.1 17-sample ×256-cycle mismeasurement has been closed; MB-05.1 acceptance is now complete.
 
 ## Browser-only acceptance workflow
 
