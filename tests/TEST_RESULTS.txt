@@ -1,220 +1,43 @@
-TAP version 13
-# Subtest: public API and stable format identity
-ok 1 - public API and stable format identity
-  ---
-  duration_ms: 1.23135
-  type: 'test'
-  ...
-# Subtest: six deterministic scenarios produce note and AY activity
-ok 2 - six deterministic scenarios produce note and AY activity
-  ---
-  duration_ms: 30.229896
-  type: 'test'
-  ...
-# Subtest: changing the seed changes mixed score
-ok 3 - changing the seed changes mixed score
-  ---
-  duration_ms: 1.992923
-  type: 'test'
-  ...
-# Subtest: E0, E1, E2, E3, E4 exact roundtrips on five scenarios
-ok 4 - E0, E1, E2, E3, E4 exact roundtrips on five scenarios
-  ---
-  duration_ms: 88.022352
-  type: 'test'
-  ...
-# Subtest: E3 rejects free AY writes; E4 supports mixed VM/direct
-ok 5 - E3 rejects free AY writes; E4 supports mixed VM/direct
-  ---
-  duration_ms: 31.207194
-  type: 'test'
-  ...
-# Subtest: sustained notes strongly compress with E3
-ok 6 - sustained notes strongly compress with E3
-  ---
-  duration_ms: 7.53756
-  type: 'test'
-  ...
-# Subtest: pattern backreferences occur and reduce a repeated DAC workload
-ok 7 - pattern backreferences occur and reduce a repeated DAC workload
-  ---
-  duration_ms: 9.861399
-  type: 'test'
-  ...
-# Subtest: E2 block boundaries 64, 128, 256, 512, 1024, 2048
-ok 8 - E2 block boundaries 64, 128, 256, 512, 1024, 2048
-  ---
-  duration_ms: 42.986593
-  type: 'test'
-  ...
-# Subtest: E2 and delta handle zero-time collocated events
-ok 9 - E2 and delta handle zero-time collocated events
-  ---
-  duration_ms: 0.744227
-  type: 'test'
-  ...
-# Subtest: E4 handles event-only imports via LZ fallback
-ok 10 - E4 handles event-only imports via LZ fallback
-  ---
-  duration_ms: 0.372038
-  type: 'test'
-  ...
-# Subtest: empty event stream remains valid
-ok 11 - empty event stream remains valid
-  ---
-  duration_ms: 0.295824
-  type: 'test'
-  ...
-# Subtest: midi, parameters, bounds and malformed input fail clearly
-ok 12 - midi, parameters, bounds and malformed input fail clearly
-  ---
-  duration_ms: 0.202404
-  type: 'test'
-  ...
-# Subtest: decode rejects tampered header, checksum, length and event count
-ok 13 - decode rejects tampered header, checksum, length and event count
-  ---
-  duration_ms: 0.280892
-  type: 'test'
-  ...
-# Subtest: binary reader rejects unsupported version or flag
-ok 14 - binary reader rejects unsupported version or flag
-  ---
-  duration_ms: 0.176325
-  type: 'test'
-  ...
-# Subtest: import Waveform Bench uses correct nanosecond-to-cycle rounding
-ok 15 - import Waveform Bench uses correct nanosecond-to-cycle rounding
-  ---
-  duration_ms: 0.357397
-  type: 'test'
-  ...
-# Subtest: import selected fixture by result index
-ok 16 - import selected fixture by result index
-  ---
-  duration_ms: 0.103976
-  type: 'test'
-  ...
-# Subtest: event sorting stable at identical timestamp
-ok 17 - event sorting stable at identical timestamp
-  ---
-  duration_ms: 0.173591
-  type: 'test'
-  ...
-# Subtest: score encodings preserve two-chip AY coordinates
-ok 18 - score encodings preserve two-chip AY coordinates
-  ---
-  duration_ms: 0.271979
-  type: 'test'
-  ...
-# Subtest: schedule is deterministic and higher CPU caps help
-ok 19 - schedule is deterministic and higher CPU caps help
-  ---
-  duration_ms: 14.640195
-  type: 'test'
-  ...
-# Subtest: increasing VIA cycles raises demand and misses
-ok 20 - increasing VIA cycles raises demand and misses
-  ---
-  duration_ms: 5.287721
-  type: 'test'
-  ...
-# Subtest: graphics action profile constrains available frame capacity
-ok 21 - graphics action profile constrains available frame capacity
-  ---
-  duration_ms: 6.255774
-  type: 'test'
-  ...
-# Subtest: memory includes score + decoder + state in resident mode
-ok 22 - memory includes score + decoder + state in resident mode
-  ---
-  duration_ms: 1.375546
-  type: 'test'
-  ...
-# Subtest: benchmark reports all codecs and Pareto labels
-ok 23 - benchmark reports all codecs and Pareto labels
-  ---
-  duration_ms: 41.075553
-  type: 'test'
-  ...
-# Subtest: hex preview truncates safely
-ok 24 - hex preview truncates safely
-  ---
-  duration_ms: 0.356536
-  type: 'test'
-  ...
-# Subtest: roundtrip against genuine v1.4 generated events from upload
-ok 25 - roundtrip against genuine v1.4 generated events from upload
-  ---
-  duration_ms: 2.637461
-  type: 'test'
-  ...
-# Subtest: score importer roundtrips high-density Waveform Bench DAC events
-ok 26 - score importer roundtrips high-density Waveform Bench DAC events
-  ---
-  duration_ms: 28.903103
-  type: 'test'
-  ...
-# Subtest: stream buffers are independent of pattern token block size
-ok 27 - stream buffers are independent of pattern token block size
-  ---
-  duration_ms: 2.957531
-  type: 'test'
-  ...
-# Subtest: no available CPU reports scheduling failure without mislabeling codec
-ok 28 - no available CPU reports scheduling failure without mislabeling codec
-  ---
-  duration_ms: 1.210598
-  type: 'test'
-  ...
-# Subtest: seven browser acceptance checks are available without Node
-ok 29 - seven browser acceptance checks are available without Node
-  ---
-  duration_ms: 0.927332
-  type: 'test'
-  ...
-# Subtest: preemptive IRQ does not artificially slow 6502 by CPU-share fraction
-ok 30 - preemptive IRQ does not artificially slow 6502 by CPU-share fraction
-  ---
-  duration_ms: 0.247892
-  type: 'test'
-  ...
-# Subtest: cooperative mode exhibits graphics-caused lateness with identical binary
-ok 31 - cooperative mode exhibits graphics-caused lateness with identical binary
-  ---
-  duration_ms: 0.214582
-  type: 'test'
-  ...
-# Subtest: IRQ budget overcommit flags graphics displacement instead of audio misses
-ok 32 - IRQ budget overcommit flags graphics displacement instead of audio misses
-  ---
-  duration_ms: 3.797933
-  type: 'test'
-  ...
-# Subtest: IRQ entry overhead is applied once per contiguous burst and exported
-ok 33 - IRQ entry overhead is applied once per contiguous burst and exported
-  ---
-  duration_ms: 0.561653
-  type: 'test'
-  ...
-# Subtest: E0-E4 binary encoding unaffected by scheduler choice
-ok 34 - E0-E4 binary encoding unaffected by scheduler choice
-  ---
-  duration_ms: 63.855962
-  type: 'test'
-  ...
-# Subtest: CSV includes the mode and separate lateness origins
-ok 35 - CSV includes the mode and separate lateness origins
-  ---
-  duration_ms: 0.699781
-  type: 'test'
-  ...
-1..35
-# tests 35
-# suites 0
-# pass 35
-# fail 0
-# cancelled 0
-# skipped 0
-# todo 0
-# duration_ms 458.951182
+MB-05 v0.1 — local developer checks (2026-10-26)
+================================================
+All results below are from an INDEPENDENT LIMITED CPU/VIA SIMULATOR,
+not from actual RetroAppleJS and not from physical 6502/6522 hardware.
+
+Assembler (source is authoritative):
+- output 1327 bytes, $6000-$652E, checksum 124100
+- inline E1 stream 232 bytes, 64 events, 49,152 CPU cycles
+- 5 entry points at $6000/$6003/$6006/$6009/$600C
+- 0 assembly-range and assembler-mode errors
+
+Applesoft loader:
+- 42 quoted hex DATA rows
+- reconstructs the source binary byte-for-byte, checksum 124100
+- 4,813 bytes plain text, 1,330 bytes below $2000 if positioned at $0801
+- AppleSoft execution itself still needs in-emulator acceptance
+
+Independent NMOS 6502+VIA execution model:
+Mode A: 48 IRQs; 64 decoded events; HGR writes 842; T2 cycles 49651;
+        sampled handler interior mean 320.29 CPU cycles; late events 0
+Mode B: 48 IRQs; 64 decoded events; HGR writes 759; T2 cycles 49734;
+        sampled handler interior mean 375.88 CPU cycles; late events 0
+Mode C: 48 IRQs; 64 decoded events; HGR writes 0; T2 cycles 49736;
+        sampled handler interior mean 382.50 CPU cycles; late events 0
+- 140 AY writes total, no IRQ source left enabled, saved soft IRQ vector restored
+- 144 IRQs and 144 Timer1 underflows in combined default simulation
+- 63 measured decoder calls per mode, per-call span 67-102 cycles
+
+Synthetic forced IRQ delay test (model only):
+- 2,400-cycle forced IRQ-acceptance hold during mode A
+- 47 observed IRQs, 64 events dispatched, 5 late events,
+  peak 6*256 cycles late, verified successful shutdown
+
+History verifier:
+- 12/12 tests passed
+- Correctly recognises synthetic 4/68/68 AY writes
+- Rejects wrong values/AY, missing writes, bad slot, wrapped capture,
+  artificially delayed events and MB-04 old history
+- Standalone HTML JavaScript parsed successfully in Node syntax check
+
+ACCEPTANCE STILL REQUIRED:
+Run `build/AY_SCORE_TIMING_MB05_LOADER.bas` in RetroAppleJS with
+Mockingboard physical PR#4, export history, and verify real output.

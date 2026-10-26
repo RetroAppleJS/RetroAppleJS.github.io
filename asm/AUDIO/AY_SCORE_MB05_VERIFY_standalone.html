@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RetroAppleJS — MB-05 E1 IRQ/HGR History Verifier</title>
+<style>
+:root{color-scheme:dark;--bg:#0d1320;--panel:#182233;--border:#35455f;--txt:#eff3fa;--muted:#aebbd0;--teal:#69d7c1;--red:#ffabaf;--yellow:#f8cf78}*{box-sizing:border-box}body{margin:0;padding:27px;font:15px/1.5 system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--txt)}main{max-width:1050px;margin:auto}h1{font-size:26px;margin:0 0 5px}h2{font-size:17px;margin:0 0 10px}p{color:var(--muted);margin:5px 0 16px}code{color:var(--teal)}.sub{color:var(--muted)}.row{display:flex;flex-wrap:wrap;align-items:center;gap:12px}.card{border:1px solid var(--border);background:var(--panel);padding:16px 18px;border-radius:12px;margin:16px 0}.action{background:#274c64;border:1px solid #4a7b91;color:white;cursor:pointer;padding:10px 14px;border-radius:8px;font:inherit}.action.secondary{background:#253047}input{font:inherit}input[type=file]{padding:10px;max-width:100%;background:#0d1725;border:1px solid var(--border);border-radius:8px}pre{background:#09121d;border:1px solid var(--border);border-radius:7px;overflow:auto;padding:12px;font:12px/1.5 ui-monospace,SFMono-Regular,monospace;white-space:pre-wrap}.status{display:inline-block;padding:6px 11px;border-radius:7px;border:1px solid var(--border);color:var(--teal);font-weight:650}.bad{color:var(--red)}.warn{color:var(--yellow)}table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}th,td{padding:10px 8px;border-bottom:1px solid var(--border);text-align:right}th:first-child,td:first-child{text-align:left}th{color:var(--muted);font-weight:550}b.ok{color:var(--teal)}b.bad{color:var(--red)}.hint{color:var(--yellow)}canvas{display:block;width:100%;height:190px;border:1px solid var(--border);background:#0b1422;border-radius:8px}footer{margin:23px 0;color:var(--muted);font-size:12px}@media(max-width:600px){body{padding:13px}table{font-size:12px}th,td{padding:7px 3px}}</style>
+</head>
+<body><main>
+<h1>MB-05 — E1 IRQ &amp; HGR History Verifier</h1>
+<p>Offline browser verification of actual 6502 E1 event scheduling on the Mockingboard (physical PR#4 / internal SlotN 5). Expected values are generated from the <code>.S</code> score payload.</p>
+<div class="card"><h2>1. Import history</h2>
+<div class="row"><input aria-label="Mockingboard history JSON" id="upload" type="file" accept=".json,application/json"><button id="selftests" class="action secondary" type="button">Run verifier self-tests</button></div>
+<p style="margin-top:13px">Record from the Mockingboard history capture control, run the MB-05 BASIC loader, stop capture and export with <code>apple2plus.hwObj().io.SLOT2obj(5).downloadHistory()</code>. Do not import the old MB-04 trace.</p>
+<div class="row"><span id="status" class="status">No history loaded</span><button id="save" class="action" type="button" disabled>Export validation JSON</button></div>
+</div>
+<div class="card"><h2>2. Register-write and score-timing checks</h2>
+<div style="overflow-x:auto"><table><thead><tr><th>Test</th><th>Writes</th><th>Score events</th><th>First-write jitter (max)</th><th>Same-tick burst (max)</th><th>Result</th></tr></thead><tbody id="results"><tr><td colspan="6" class="sub" style="text-align:left">Import a history file to view measurements.</td></tr></tbody></table></div>
+<div id="messages" class="sub" style="margin-top:14px"></div></div>
+<div class="card"><h2>3. E1 deadline-group timing deviation</h2><p>Offset from each group's encoded deadline, normalized to the first event. Same-deadline writes are sequential and are assessed separately as a burst.</p><canvas id="plot" width="920" height="190" role="img" aria-label="Relative E1 score timing deviations"></canvas></div>
+<div class="card"><h2>4. Full report</h2><pre id="json">No result yet.</pre></div>
+<footer>All checks run locally. Synthetic self-tests are not emulator measurements. Test limits: AY0 R8/R9, 64 E1 tokens, 1,024-cycle scheduling tick, one 232-byte inline score. MB-05 is a diagnostic, not a production score player.</footer>
+<script type="application/json" id="reference">{"schema":"retroapplejs.ay-score-mb05.reference.v1","tickCycles":1024,"events":[{"cycle":1024,"register":8,"value":15},{"cycle":1024,"register":8,"value":0},{"cycle":3072,"register":8,"value":9},{"cycle":4096,"register":9,"value":3},{"cycle":4096,"register":9,"value":0},{"cycle":5120,"register":8,"value":15},{"cycle":6144,"register":8,"value":0},{"cycle":6144,"register":9,"value":0},{"cycle":7168,"register":8,"value":15},{"cycle":7168,"register":8,"value":0},{"cycle":9216,"register":8,"value":9},{"cycle":10240,"register":9,"value":3},{"cycle":10240,"register":9,"value":0},{"cycle":11264,"register":8,"value":15},{"cycle":12288,"register":8,"value":0},{"cycle":12288,"register":9,"value":0},{"cycle":13312,"register":8,"value":15},{"cycle":13312,"register":8,"value":0},{"cycle":15360,"register":8,"value":9},{"cycle":16384,"register":9,"value":3},{"cycle":16384,"register":9,"value":0},{"cycle":17408,"register":8,"value":15},{"cycle":18432,"register":8,"value":0},{"cycle":18432,"register":9,"value":0},{"cycle":19456,"register":8,"value":15},{"cycle":19456,"register":8,"value":0},{"cycle":21504,"register":8,"value":9},{"cycle":22528,"register":9,"value":3},{"cycle":22528,"register":9,"value":0},{"cycle":23552,"register":8,"value":15},{"cycle":24576,"register":8,"value":0},{"cycle":24576,"register":9,"value":0},{"cycle":25600,"register":8,"value":15},{"cycle":25600,"register":8,"value":0},{"cycle":27648,"register":8,"value":9},{"cycle":28672,"register":9,"value":3},{"cycle":28672,"register":9,"value":0},{"cycle":29696,"register":8,"value":15},{"cycle":30720,"register":8,"value":0},{"cycle":30720,"register":9,"value":0},{"cycle":31744,"register":8,"value":15},{"cycle":31744,"register":8,"value":0},{"cycle":33792,"register":8,"value":9},{"cycle":34816,"register":9,"value":3},{"cycle":34816,"register":9,"value":0},{"cycle":35840,"register":8,"value":15},{"cycle":36864,"register":8,"value":0},{"cycle":36864,"register":9,"value":0},{"cycle":37888,"register":8,"value":15},{"cycle":37888,"register":8,"value":0},{"cycle":39936,"register":8,"value":9},{"cycle":40960,"register":9,"value":3},{"cycle":40960,"register":9,"value":0},{"cycle":41984,"register":8,"value":15},{"cycle":43008,"register":8,"value":0},{"cycle":43008,"register":9,"value":0},{"cycle":44032,"register":8,"value":15},{"cycle":44032,"register":8,"value":0},{"cycle":46080,"register":8,"value":9},{"cycle":47104,"register":9,"value":3},{"cycle":47104,"register":9,"value":0},{"cycle":48128,"register":8,"value":15},{"cycle":49152,"register":8,"value":0},{"cycle":49152,"register":9,"value":0}]}</script>
+<script>
+/* AY_SCORE_MB05_VERIFY_core.js — standalone/browser + optional Node developer tests.
+   The E1 reference is passed in from the generated manifest, never fetched remotely. */
+(function(root,factory){
+  var API=factory();
+  if (typeof module==='object' && module.exports) module.exports=API;
+  root.MB05Verifier=API;
+})(typeof window!=='undefined'?window:this,function(){
+ 'use strict';
+ function requireTrue(condition,message){if(!condition)throw Error(message);}
+ function median(a){if(!a.length)return null;const x=a.slice().sort((a,b)=>a-b);return x.length%2?x[(x.length-1)/2]:(x[x.length/2-1]+x[x.length/2])/2;}
+ function numbers(xs){return {min:xs.length?Math.min(...xs):null,max:xs.length?Math.max(...xs):null,mean:xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:null,median:median(xs)};}
+ function snapshot(hist){
+  requireTrue(hist&&hist.format==='RetroAppleJS.MockingboardHistory','Expected RetroAppleJS.MockingboardHistory JSON');
+  requireTrue(Array.isArray(hist.events),'Missing events array');
+  var t=Number(hist.baseTick)||0;
+  var rows=[];
+  hist.events.forEach(function(e,i){
+   requireTrue(Array.isArray(e)&&e.length>=4&&e.every(Number.isFinite),'Invalid history event '+i);
+   requireTrue(e[0]>=0,'Negative cycle delta at event '+i);
+   t+=e[0];
+   rows.push({tick:t,chip:e[1],reg:e[2],value:e[3],sourceIndex:i});
+  });
+  return rows;
+ }
+ function splitRuns(rows){
+   const markers=[];
+   for(let i=0;i<rows.length;i++)if(rows[i].chip===0&&rows[i].reg===7&&rows[i].value===63)markers.push(i);
+   return {markers,groups:markers.map((start,i)=>rows.slice(start,markers[i+1]===undefined?rows.length:markers[i+1])),pre:markers.length?rows.slice(0,markers[0]):rows};
+ }
+ function analyze(history,reference,opts){
+  opts=opts||{};
+  const tolerance=Number.isFinite(opts.maxGroupDeviationCycles)?opts.maxGroupDeviationCycles:128;
+  requireTrue(reference&&Array.isArray(reference.events)&&reference.events.length===64,'Expected 64 reference E1 events');
+  const rows=snapshot(history),split=splitRuns(rows),issues=[],warnings=[];
+  const isSynthetic=/synthetic|simulat|model/i.test(String(history.provenance||''));
+  if(history.wrapped) issues.push('History ring buffer wrapped');
+  if(split.markers.length!==3)issues.push('Expected exactly 3 mode markers R7=63; found '+split.markers.length);
+  const physicalSlot=history.physicalSlot!==undefined?Number(history.physicalSlot):Number(history.slot)-1;
+  if(physicalSlot!==4)issues.push('Expected Mockingboard at physical PR#4; history indicates '+physicalSlot);
+  if(split.pre.length)warnings.push(split.pre.length+' pre-mode events ignored (e.g. reset)');
+  if(isSynthetic)warnings.push('Synthetic history: useful for verifier self-tests, not emulator acceptance');
+  const perMode=[];
+  for(let mode=1;mode<=3;mode++){
+    const actual=split.groups[mode-1]||[];
+    const score=mode===1?[]:reference.events;
+    const expect=[{register:7,value:63},{register:8,value:0},...score,{register:8,value:0},{register:9,value:0}];
+    const errors=[];
+    if(actual.length!==expect.length)errors.push('Expected '+expect.length+' writes; captured '+actual.length);
+    const mismatches=[];
+    for(let i=0;i<Math.min(actual.length,expect.length);i++){
+      if(actual[i].chip!==0||actual[i].reg!==expect[i].register||actual[i].value!==expect[i].value){
+        mismatches.push({index:i,expected:[0,expect[i].register,expect[i].value],actual:[actual[i].chip,actual[i].reg,actual[i].value]});
+      }
+    }
+    if(mismatches.length)errors.push(mismatches.length+' register/value mismatches');
+    const body=mode===1?[]:actual.slice(2,2+64);
+    let groupDeviations=[],bursts=[],firstByCycle=[],bodyPass=body.length===64;
+    if(body.length===64&&score.length===64){
+      let firstIndex=null;
+      for(let i=0;i<score.length;i++){
+        if(i===0||score[i].cycle!==score[i-1].cycle){
+          firstByCycle.push(i);
+          if(firstIndex===null)firstIndex=i;
+          groupDeviations.push((body[i].tick-body[firstIndex].tick)-(score[i].cycle-score[firstIndex].cycle));
+        }else{
+          bursts.push(body[i].tick-body[i-1].tick);
+        }
+      }
+      if(Math.max(...groupDeviations.map(Math.abs))>tolerance)errors.push('Score group timing deviates by more than '+tolerance+' cycles');
+      if(bursts.some(x=>x<0||x>=reference.tickCycles))errors.push('Same-deadline burst spans a full timer tick');
+    }
+    const allPass=!errors.length;
+    perMode.push({mode,name:['','E1 dry + HGR','E1 AY + HGR','E1 AY + NOP'][mode],expectedWrites:expect.length,actualWrites:actual.length,scoreEvents:body.length,sequencePass:!mismatches.length&&actual.length===expect.length,pass:allPass,errors,mismatches:mismatches.slice(0,15),scoreGroupCount:firstByCycle.length,groupTimingError:numbers(groupDeviations),maxAbsGroupDeviation:groupDeviations.length?Math.max(...groupDeviations.map(Math.abs)):null,burstWidthCycles:numbers(bursts),scoreFirstWriteTick:body[0]?body[0].tick:null,groupDeviations});
+  }
+  const allWrites=rows.filter(e=>e.reg>=0&&e.reg<14).length;
+  if(allWrites!==140)issues.push('Expected 140 AY register writes, found '+allWrites);
+  const testsPassed=perMode.filter(x=>x.pass).length;
+  const pass=testsPassed===3&&issues.length===0;
+  return {schema:'retroapplejs.ay-score-mb05.validation.v1',verifier:'MB05 v0.1',provenance:isSynthetic?'SYNTHETIC instruction/VIA model':'Imported RetroAppleJS history',status:pass?'PASS':'FAIL',acceptance:isSynthetic?'NOT ACTUAL EMULATOR ACCEPTANCE':pass?'HISTORY ACCEPTANCE':'REVIEW REQUIRED',source:{physicalSlot,legacySlot:history.slot,clockHz:history.clockHz,wrapped:history.wrapped||false,totalRecords:rows.length,ayWrites:allWrites,preEvents:split.pre.length},expected:{tickCycles:reference.tickCycles,scoreEvents:64,expectedModeWrites:[4,68,68],totalWrites:140},issues,warnings,modeResults:perMode};
+ }
+ return {analyze,snapshot,splitRuns};
+});
+
+</script>
+<script>
+(function(){'use strict';
+ const ref=JSON.parse(document.getElementById('reference').textContent);
+ const $=id=>document.getElementById(id);
+ let current=null;
+ function download(name,data){const blob=new Blob([JSON.stringify(data,null,2)+'\n'],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),300);}
+ function fmt(n){return n==null?'—':Number(n).toFixed(1).replace(/\.0$/,'');}
+ function draw(report){const canvas=$('plot'),ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height;ctx.clearRect(0,0,w,h);ctx.fillStyle='#0b1422';ctx.fillRect(0,0,w,h);const l=42,r=w-16,top=24,bottom=h-27;ctx.strokeStyle='#506074';ctx.beginPath();ctx.moveTo(l,top);ctx.lineTo(l,bottom);ctx.lineTo(r,bottom);ctx.stroke();const range=128;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(l,(top+bottom)/2);ctx.lineTo(r,(top+bottom)/2);ctx.stroke();ctx.setLineDash([]);ctx.font='13px ui-monospace,monospace';ctx.fillStyle='#aebbd0';ctx.fillText('+128',3,top+6);ctx.fillText('0',17,(top+bottom)/2+4);ctx.fillText('-128',3,bottom);const series=report.modeResults.slice(1),cols=['#69d7c1','#e6c17c'];series.forEach((m,si)=>{if(!m.groupDeviations.length)return;ctx.strokeStyle=cols[si];ctx.lineWidth=2;ctx.beginPath();m.groupDeviations.forEach((v,i)=>{let x=l+(r-l)*i/Math.max(1,m.groupDeviations.length-1),y=(top+bottom)/2-v/range*((bottom-top)/2);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();});ctx.fillStyle='#69d7c1';ctx.fillText('AY + HGR',l+6,15);ctx.fillStyle='#e6c17c';ctx.fillText('AY + NOP',l+130,15);}
+ function render(report){current=report;$('status').textContent=report.status+' — '+report.modeResults.filter(x=>x.pass).length+'/3 modes; '+report.source.ayWrites+' AY writes';$('status').className='status'+(report.status==='PASS'?'':' bad');$('save').disabled=false;
+ $('results').innerHTML=report.modeResults.map(m=>'<tr><td>'+m.name+'</td><td>'+m.actualWrites+'/'+m.expectedWrites+'</td><td>'+m.scoreEvents+'</td><td>'+fmt(m.maxAbsGroupDeviation)+' cycles</td><td>'+fmt(m.burstWidthCycles.max)+' cycles</td><td><b class="'+(m.pass?'ok':'bad')+'">'+(m.pass?'PASS':'FAIL')+'</b></td></tr>').join('');
+ $('messages').textContent=[...report.issues.map(s=>'ERROR: '+s),...report.warnings.map(s=>'NOTE: '+s),...report.modeResults.flatMap(m=>m.errors.map(e=>m.name+': '+e))].join('\n')||'All structure and relative score timing checks passed.';
+ $('json').textContent=JSON.stringify(report,null,2);draw(report);
+ }
+ $('upload').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{const parsed=JSON.parse(await file.text());render(MB05Verifier.analyze(parsed,ref));}catch(err){current=null;$('status').textContent='Cannot analyze: '+err.message;$('status').className='status bad';$('save').disabled=true;$('json').textContent=String(err.stack||err);}});
+ $('save').addEventListener('click',()=>{if(current)download('AY_SCORE_MB05_HISTORY_VALIDATION.json',current)});
+ $('selftests').addEventListener('click',()=>{
+  const events=[];let tick=0;const add=(dt,reg,value,chip=0)=>events.push([dt,chip,reg,value]);
+  for(let mode=1;mode<=3;mode++){
+   add(mode===1?0:10000,7,63);add(42,8,0);
+   if(mode!==1){let anchor=0;for(let i=0;i<ref.events.length;i++){const expected=ref.events[i];const dt=expected.cycle-anchor;add(dt,expected.register,expected.value);anchor=expected.cycle;}}
+   add(300,8,0);add(36,9,0);
+  }
+  const base={format:'RetroAppleJS.MockingboardHistory',slot:5,clockHz:1021800,wrapped:false,provenance:'SYNTHETIC verifier test',events};
+  // Internal tests deliberately omit the real timing offsets for same-tick bursts. Synthetic grouping should pass.
+  let passed=0,total=0;function check(name,result){total++;if(result){passed++;}else{console.error('Self test failed: '+name);}}
+  let a=MB05Verifier.analyze(base,ref);check('fixture passes',a.status==='PASS');
+  const corrupt=JSON.parse(JSON.stringify(base));corrupt.events[6][3]=123;check('corrupt value rejected',MB05Verifier.analyze(corrupt,ref).status==='FAIL');
+  const missing=JSON.parse(JSON.stringify(base));missing.events.splice(10,1);check('missing write rejected',MB05Verifier.analyze(missing,ref).status==='FAIL');
+  const drift=JSON.parse(JSON.stringify(base));drift.events[30][0]+=500;check('timing drift rejected',MB05Verifier.analyze(drift,ref).status==='FAIL');
+  const chip=JSON.parse(JSON.stringify(base));chip.events[15][1]=1;check('wrong AY chip rejected',MB05Verifier.analyze(chip,ref).status==='FAIL');
+  const reset=JSON.parse(JSON.stringify(base));reset.events.unshift([1,0,-1,0]);check('pre-capture reset accepted',MB05Verifier.analyze(reset,ref).status==='PASS');
+  const wrongSlot=JSON.parse(JSON.stringify(base));wrongSlot.slot=6;check('wrong physical slot rejected',MB05Verifier.analyze(wrongSlot,ref).status==='FAIL');
+  const done=Object.assign({},a,{status:passed===total?'PASS':'FAIL',testsPassed:passed,testCount:total,acceptance:'SYNTHETIC ONLY'});render(done);$('status').textContent='SELF-TESTS '+passed+'/'+total+' — not actual emulator telemetry';$('status').className='status'+(passed===total?'':' bad');
+ });
+})();
+</script>
+</main></body></html>

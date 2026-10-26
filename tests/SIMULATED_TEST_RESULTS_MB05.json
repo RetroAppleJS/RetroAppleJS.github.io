@@ -1,0 +1,51 @@
+{
+  "provenance": "Limited Python instruction+VIA simulator, NOT actual RetroAppleJS measurements",
+  "records": [
+    [
+      165,
+      1,
+      48,
+      64,
+      74,
+      3,
+      243,
+      193,
+      0,
+      0,
+      232,
+      0
+    ],
+    [
+      165,
+      2,
+      48,
+      64,
+      247,
+      2,
+      70,
+      194,
+      0,
+      0,
+      232,
+      0
+    ],
+    [
+      165,
+      3,
+      48,
+      64,
+      0,
+      0,
+      72,
+      194,
+      0,
+      0,
+      232,
+      0
+    ]
+  ],
+  "ayWrites": 140,
+  "irqs": 144,
+  "t1Underflows": 144,
+  "lostIrqSignals": 0
+}
