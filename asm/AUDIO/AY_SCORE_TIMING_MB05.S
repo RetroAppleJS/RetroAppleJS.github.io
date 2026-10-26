@@ -1,4 +1,4 @@
-; AY_SCORE_TIMING_MB05.S — Phase 1.5A.4 / MB-05 v0.1
+; AY_SCORE_TIMING_MB05.S — Phase 1.5A.4 / MB-05.1 v0.1.1
 ; NMOS 6502 / Apple II or II+ / Mockingboard in physical PR#4.
 ; Internal RetroAppleJS SlotN=5 (host motherboard occupies SlotN=0).
 ;
@@ -26,6 +26,8 @@
 ; 16-bit Timer2 IRQ samples: entry low $6800/$6880/$6900,
 ; entry high $6C00/$6C80/$6D00, exit low $6A00/$6A80/$6B00,
 ; exit high $6D80/$6E00/$6E80; decode spans $7000/$7040/$7080.
+; 16-bit samples use coherent high/low/high retries to avoid rollover skew.
+; SNAP_RETRIES at $6F1E and result record byte 12 count retries.
 ; 16-bit samples allow >255-cycle interrupt service measurements.
 ; 16-byte result records at $6F40/$6F50/$6F60; scratch at $6F00-$6F1F.
 ; Never execute another IRQ player simultaneously. Timer 1/2 existing
@@ -76,6 +78,9 @@ DEC_START = $6F18
 DEC_STOP  = $6F19
 ERROR     = $6F1A
 EVENT_TMP = $6F1B
+SNAP_HI   = $6F1C
+SNAP_LO   = $6F1D
+SNAP_RETRIES = $6F1E
 RESULTS   = $6F40
 
 ENTRY_ALL JMP RUN_ALL
@@ -118,6 +123,9 @@ PHASE_RUN
          STA ERROR
          STA T2_LO
          STA T2_HI
+         STA SNAP_HI
+         STA SNAP_LO
+         STA SNAP_RETRIES
          LDA MB_IER
          STA OLD_IER
          AND #$60
@@ -242,10 +250,11 @@ PHASE_END
          LDA #$40
          STA MB_IER            ; mask T1
          LDA MB_T1CL           ; acknowledge any pending T1
-         LDA MB_T2CL
+         JSR READ_T2_COHERENT
+         LDA SNAP_LO
          EOR #$FF
          STA T2_LO
-         LDA MB_T2CH
+         LDA SNAP_HI
          EOR #$FF
          STA T2_HI
          JSR REMOVE_HOOK
@@ -339,6 +348,9 @@ STORE_WRITE
          INX
          LDA ERROR
          STA RESULTS,X
+         INX
+         LDA SNAP_RETRIES
+         STA RESULTS,X
          RTS
 
 REMOVE_HOOK
@@ -387,7 +399,8 @@ IRQ_SERVICE
          JMP FOREIGN_IRQ
 OWN_IRQ
          LDA MB_T1CL          ; ACK T1 (only once per IRQ)
-         LDA MB_T2CL          ; CPU-cycle-resolution sample, low
+         JSR READ_T2_COHERENT
+         LDA SNAP_LO          ; coherent CPU-cycle-resolution entry low
          LDX IRQ_N
          LDY MODE
          CPY #$01
@@ -402,7 +415,7 @@ ENTRY_A_SAMPLE
 ENTRY_B_SAMPLE
          STA $6880,X
 ENTRY_DONE
-         LDA MB_T2CH          ; entry high, near entry low
+         LDA SNAP_HI          ; high byte belonging to the entry low
          LDY MODE
          CPY #$01
          BEQ ENTRY_HA
@@ -509,7 +522,8 @@ COMPARE_NEXT_DUE
          BCC IRQ_EXIT_SAMPLE
          JMP EVENT_DUE
 IRQ_EXIT_SAMPLE
-         LDA MB_T2CL
+         JSR READ_T2_COHERENT
+         LDA SNAP_LO
          LDX IRQ_N
          DEX
          LDY MODE
@@ -525,7 +539,7 @@ EXIT_A_SAMPLE
 EXIT_B_SAMPLE
          STA $6A80,X
 IRQ_RETURN
-         LDA MB_T2CH
+         LDA SNAP_HI
          LDX IRQ_N
          DEX
          LDY MODE
@@ -554,6 +568,23 @@ FOREIGN_IRQ
          TAX
          LDA MON_A
          JMP (OLD_IRQL)
+
+; Read the 6522 Timer 2 counter as one coherent 16-bit snapshot.
+; The counter keeps running: low-before-high can straddle a 256-cycle
+; boundary. Read high/low/high, retry when high changed during sampling.
+; Preserves X and Y; A and processor flags are scratch. Called only with
+; IRQ masked (or from within the IRQ handler) to protect shared scratch.
+READ_T2_COHERENT
+         LDA MB_T2CH
+         STA SNAP_HI
+         LDA MB_T2CL
+         STA SNAP_LO
+         LDA MB_T2CH
+         CMP SNAP_HI
+         BEQ SNAP_OK
+         INC SNAP_RETRIES
+         JMP READ_T2_COHERENT
+SNAP_OK  RTS
 
 ; READ NEXT E1 token. Strict subset ULEB128: 0 or $80,(2|4|6),
 ; representing delta 0/1024/2048 cycles. All are exact tick multiples.
