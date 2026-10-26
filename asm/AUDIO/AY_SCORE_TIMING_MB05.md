@@ -50,7 +50,7 @@ Every mode performs two setup writes (R7=$3F, R8=$00) and two cleanup writes (R8
 | `$6F00–$6F1E` | Working state; `$6F1C/$6F1D` coherent snapshot, `$6F1E` retry count |
 | `$6F40/$6F50/$6F60` | 16-byte result records for A/B/C |
 
-MB-05.1 takes coherent Timer 2 snapshots through `READ_T2_COHERENT`, reading high–low–high and retrying if the high byte changes during the low read. The same method is used at IRQ entry, IRQ exit and the final elapsed-cycle snapshot. The reported sampled handler interior includes the updated instrumentation overhead, but does not include IRQ entry, Monitor ROM dispatch or RTI. Record offset 12 contains the total number of rollover retries in that mode. They characterize the **sampled handler interior**, not the full 7-cycle CPU IRQ entry, Apple Monitor ROM dispatch, RTI or the entire CPU cost of an interrupt.
+MB-05.1 takes coherent Timer 2 snapshots through `READ_T2_COHERENT`, reading high–low–high and retrying if the high byte changes during the low read. The same method is used at IRQ entry, IRQ exit and the final elapsed-cycle snapshot. The reported sampled handler interior includes the updated instrumentation overhead, but does not include IRQ entry, Monitor ROM dispatch or RTI. Record offset 12 contains the total number of rollover retries in that mode. These samples characterize the **sampled handler interior**, not the full 7-cycle CPU IRQ entry, Apple Monitor ROM dispatch, RTI or the entire CPU cost of an interrupt.
 
 The per-token decoder sample is the difference between two Timer 2 low-byte reads surrounding `JSR NEXT_TOKEN`. It includes the measuring instructions and the call/return, not solely the decoder's arithmetic. The 63 measured calls exclude the initial predecode performed before enabling Timer 1.
 
@@ -74,7 +74,7 @@ The earlier, accepted MB-05 v0.1 Safari diagnostic revealed 17 of 48 MB-05A exit
    ```
 
    The program calls `$6000` in HGR mode, returns to `TEXT`, and reports mode-specific IRQ counts, E1 events, HGR writes, Timer 2 cycles, late event counts, sampled handler interiors and decoder spans.
-5. Stop history capture before resetting or starting other sound. In your browser developer console (Safari: Develop → Show JavaScript Console),, export the history as JSON:
+5. Stop history capture before resetting or starting other sound. In your browser developer console (Safari: Develop → Show JavaScript Console), export the history as JSON:
 
    ```javascript
    apple2plus.hwObj().io.SLOT2obj(5).downloadHistory();
@@ -115,7 +115,7 @@ Result records are at `$6F40` (=28480), `$6F50` (=28496), `$6F60` (=28512), with
 
 ## MB-05.1 independent model predictions (NOT measured RetroAppleJS)
 
-The included `tests/simulate_mb05.py` is a deliberately limited independent 6502/VIA instruction simulator. It is **not** the RetroAppleJS emulator or an original 6522 physical device.
+The accompanying developer regression package includes `tests/simulate_mb05.py`, a deliberately limited independent 6502/VIA instruction simulator. It is **not** the RetroAppleJS emulator or an original 6522 physical device.
 
 | Metric | A — Dry E1 / HGR | B — E1 AY / HGR | C — E1 AY / NOP |
 |---|---:|---:|---:|
@@ -125,7 +125,7 @@ The included `tests/simulate_mb05.py` is a deliberately limited independent 6502
 | Timer 2 elapsed cycles | 49,748 | 49,859 | 49,826 |
 | Late events | 0 | 0 | 0 |
 | Sampled handler interior, average cycles | 360.88 | 417.19 | 423.08 |
-| Decoder span, average cycles | 85.79 | 85.79 | 85.79 |
+| Decoder span, average cycles | 87.32 | 87.32 | 87.32 |
 
 The updated model predicts **~11.6% fewer HGR writes** in B than in A at similar elapsed time. The exact figures may differ in RetroAppleJS. Both A and B spend time parsing E1 tokens; B additionally drives the AY. The comparison isolates incremental decoder-to-AY bus processing better than directly comparing different timer periods in MB-04.
 
