@@ -1,0 +1,40 @@
+{
+  "schema": "retroapplejs.mb06a4.ideal-math-probes.v1",
+  "purpose": "Ideal waveform shape comparison, not AYCore PCM",
+  "sampleRate": 22050,
+  "clockHz": 1021800,
+  "files": [
+    {
+      "name": "MB06A4_IDEAL_square_C4_probe_NOT_AYCORE.wav",
+      "type": "square",
+      "registerPeriodMatch": 244,
+      "expectedActualPitchHz": 261.73155737704917,
+      "detuningCents": 0.7012309042530134,
+      "durationSeconds": 0.6459410430839002
+    },
+    {
+      "name": "MB06A4_IDEAL_sawdown_C4_probe_NOT_AYCORE.wav",
+      "type": "sawdown",
+      "registerPeriodMatch": 15,
+      "expectedActualPitchHz": 266.09375,
+      "detuningCents": 29.31732124949421,
+      "durationSeconds": 0.6459410430839002
+    },
+    {
+      "name": "MB06A4_IDEAL_sawup_C4_probe_NOT_AYCORE.wav",
+      "type": "sawup",
+      "registerPeriodMatch": 15,
+      "expectedActualPitchHz": 266.09375,
+      "detuningCents": 29.31732124949421,
+      "durationSeconds": 0.6459410430839002
+    },
+    {
+      "name": "MB06A4_IDEAL_triangle_C4_probe_NOT_AYCORE.wav",
+      "type": "triangle",
+      "registerPeriodMatch": 8,
+      "expectedActualPitchHz": 249.462890625,
+      "detuningCents": -82.4139640202835,
+      "durationSeconds": 0.6459410430839002
+    }
+  ]
+}

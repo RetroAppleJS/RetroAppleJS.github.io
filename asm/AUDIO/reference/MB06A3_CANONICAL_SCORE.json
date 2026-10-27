@@ -1,0 +1,1408 @@
+{
+  "format": "retroapplejs.mb06a3.reference.v1",
+  "clockHz": 1021800,
+  "eventsMusic": [
+    {
+      "cycle": 1024,
+      "chip": 0,
+      "register": 7,
+      "value": 63,
+      "deltaCycles": 1024,
+      "purpose": "disable tone and noise during setup"
+    },
+    {
+      "cycle": 2048,
+      "chip": 0,
+      "register": 8,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "mute melody A"
+    },
+    {
+      "cycle": 3072,
+      "chip": 0,
+      "register": 9,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "mute bass B"
+    },
+    {
+      "cycle": 4096,
+      "chip": 0,
+      "register": 10,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "mute accent C"
+    },
+    {
+      "cycle": 5120,
+      "chip": 0,
+      "register": 11,
+      "value": 24,
+      "deltaCycles": 1024,
+      "purpose": "percussion envelope period fine"
+    },
+    {
+      "cycle": 6144,
+      "chip": 0,
+      "register": 12,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "percussion envelope period coarse"
+    },
+    {
+      "cycle": 7168,
+      "chip": 0,
+      "register": 13,
+      "value": 9,
+      "deltaCycles": 1024,
+      "purpose": "one-shot falling envelope shape"
+    },
+    {
+      "cycle": 8192,
+      "chip": 0,
+      "register": 6,
+      "value": 9,
+      "deltaCycles": 1024,
+      "purpose": "noise frequency"
+    },
+    {
+      "cycle": 9216,
+      "chip": 0,
+      "register": 2,
+      "value": 232,
+      "deltaCycles": 1024,
+      "purpose": "initial bass B: C3 tone fine"
+    },
+    {
+      "cycle": 10240,
+      "chip": 0,
+      "register": 3,
+      "value": 1,
+      "deltaCycles": 1024,
+      "purpose": "initial bass B: C3 tone coarse"
+    },
+    {
+      "cycle": 11264,
+      "chip": 0,
+      "register": 4,
+      "value": 70,
+      "deltaCycles": 1024,
+      "purpose": "initial chord C: G3 tone fine"
+    },
+    {
+      "cycle": 12288,
+      "chip": 0,
+      "register": 5,
+      "value": 1,
+      "deltaCycles": 1024,
+      "purpose": "initial chord C: G3 tone coarse"
+    },
+    {
+      "cycle": 13312,
+      "chip": 0,
+      "register": 9,
+      "value": 6,
+      "deltaCycles": 1024,
+      "purpose": "bass volume"
+    },
+    {
+      "cycle": 14336,
+      "chip": 0,
+      "register": 10,
+      "value": 3,
+      "deltaCycles": 1024,
+      "purpose": "chord volume"
+    },
+    {
+      "cycle": 15360,
+      "chip": 0,
+      "register": 7,
+      "value": 56,
+      "deltaCycles": 1024,
+      "purpose": "three tone channels enabled, noise disabled"
+    },
+    {
+      "cycle": 65536,
+      "chip": 0,
+      "register": 8,
+      "value": 0,
+      "deltaCycles": 50176,
+      "purpose": "0: note-off to avoid pitch-change click"
+    },
+    {
+      "cycle": 66560,
+      "chip": 0,
+      "register": 0,
+      "value": 244,
+      "deltaCycles": 1024,
+      "purpose": "0: melody A: C4 tone fine"
+    },
+    {
+      "cycle": 67584,
+      "chip": 0,
+      "register": 1,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "0: melody A: C4 tone coarse"
+    },
+    {
+      "cycle": 68608,
+      "chip": 0,
+      "register": 8,
+      "value": 12,
+      "deltaCycles": 1024,
+      "purpose": "0: melody note-on"
+    },
+    {
+      "cycle": 70656,
+      "chip": 0,
+      "register": 9,
+      "value": 0,
+      "deltaCycles": 2048,
+      "purpose": "0: bass change mute"
+    },
+    {
+      "cycle": 71680,
+      "chip": 0,
+      "register": 2,
+      "value": 232,
+      "deltaCycles": 1024,
+      "purpose": "0: bass B: C3 tone fine"
+    },
+    {
+      "cycle": 72704,
+      "chip": 0,
+      "register": 3,
+      "value": 1,
+      "deltaCycles": 1024,
+      "purpose": "0: bass B: C3 tone coarse"
+    },
+    {
+      "cycle": 73728,
+      "chip": 0,
+      "register": 9,
+      "value": 6,
+      "deltaCycles": 1024,
+      "purpose": "0: bass resume"
+    },
+    {
+      "cycle": 76800,
+      "chip": 0,
+      "register": 4,
+      "value": 70,
+      "deltaCycles": 3072,
+      "purpose": "0: harmony C: G3 tone fine"
+    },
+    {
+      "cycle": 77824,
+      "chip": 0,
+      "register": 5,
+      "value": 1,
+      "deltaCycles": 1024,
+      "purpose": "0: harmony C: G3 tone coarse"
+    },
+    {
+      "cycle": 84992,
+      "chip": 0,
+      "register": 10,
+      "value": 16,
+      "deltaCycles": 7168,
+      "purpose": "0: envelope enable for C"
+    },
+    {
+      "cycle": 86016,
+      "chip": 0,
+      "register": 7,
+      "value": 28,
+      "deltaCycles": 1024,
+      "purpose": "0: tone C disabled, noise C enabled"
+    },
+    {
+      "cycle": 87040,
+      "chip": 0,
+      "register": 13,
+      "value": 9,
+      "deltaCycles": 1024,
+      "purpose": "0: R13 envelope retrigger"
+    },
+    {
+      "cycle": 173056,
+      "chip": 0,
+      "register": 7,
+      "value": 56,
+      "deltaCycles": 86016,
+      "purpose": "0: tone C restored, noise disabled"
+    },
+    {
+      "cycle": 174080,
+      "chip": 0,
+      "register": 10,
+      "value": 3,
+      "deltaCycles": 1024,
+      "purpose": "0: channel C sustained volume restored"
+    },
+    {
+      "cycle": 180224,
+      "chip": 0,
+      "register": 8,
+      "value": 9,
+      "deltaCycles": 6144,
+      "purpose": "0: melody decay step"
+    },
+    {
+      "cycle": 276480,
+      "chip": 0,
+      "register": 8,
+      "value": 7,
+      "deltaCycles": 96256,
+      "purpose": "0: melody release"
+    },
+    {
+      "cycle": 294912,
+      "chip": 0,
+      "register": 8,
+      "value": 0,
+      "deltaCycles": 18432,
+      "purpose": "1: note-off to avoid pitch-change click"
+    },
+    {
+      "cycle": 295936,
+      "chip": 0,
+      "register": 0,
+      "value": 217,
+      "deltaCycles": 1024,
+      "purpose": "1: melody A: D4 tone fine"
+    },
+    {
+      "cycle": 296960,
+      "chip": 0,
+      "register": 1,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "1: melody A: D4 tone coarse"
+    },
+    {
+      "cycle": 297984,
+      "chip": 0,
+      "register": 8,
+      "value": 11,
+      "deltaCycles": 1024,
+      "purpose": "1: melody note-on"
+    },
+    {
+      "cycle": 409600,
+      "chip": 0,
+      "register": 8,
+      "value": 9,
+      "deltaCycles": 111616,
+      "purpose": "1: melody decay step"
+    },
+    {
+      "cycle": 505856,
+      "chip": 0,
+      "register": 8,
+      "value": 7,
+      "deltaCycles": 96256,
+      "purpose": "1: melody release"
+    },
+    {
+      "cycle": 524288,
+      "chip": 0,
+      "register": 8,
+      "value": 0,
+      "deltaCycles": 18432,
+      "purpose": "2: note-off to avoid pitch-change click"
+    },
+    {
+      "cycle": 525312,
+      "chip": 0,
+      "register": 0,
+      "value": 194,
+      "deltaCycles": 1024,
+      "purpose": "2: melody A: E4 tone fine"
+    },
+    {
+      "cycle": 526336,
+      "chip": 0,
+      "register": 1,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "2: melody A: E4 tone coarse"
+    },
+    {
+      "cycle": 527360,
+      "chip": 0,
+      "register": 8,
+      "value": 11,
+      "deltaCycles": 1024,
+      "purpose": "2: melody note-on"
+    },
+    {
+      "cycle": 638976,
+      "chip": 0,
+      "register": 8,
+      "value": 9,
+      "deltaCycles": 111616,
+      "purpose": "2: melody decay step"
+    },
+    {
+      "cycle": 735232,
+      "chip": 0,
+      "register": 8,
+      "value": 7,
+      "deltaCycles": 96256,
+      "purpose": "2: melody release"
+    },
+    {
+      "cycle": 753664,
+      "chip": 0,
+      "register": 8,
+      "value": 0,
+      "deltaCycles": 18432,
+      "purpose": "3: note-off to avoid pitch-change click"
+    },
+    {
+      "cycle": 754688,
+      "chip": 0,
+      "register": 0,
+      "value": 244,
+      "deltaCycles": 1024,
+      "purpose": "3: melody A: C4 tone fine"
+    },
+    {
+      "cycle": 755712,
+      "chip": 0,
+      "register": 1,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "3: melody A: C4 tone coarse"
+    },
+    {
+      "cycle": 756736,
+      "chip": 0,
+      "register": 8,
+      "value": 11,
+      "deltaCycles": 1024,
+      "purpose": "3: melody note-on"
+    },
+    {
+      "cycle": 868352,
+      "chip": 0,
+      "register": 8,
+      "value": 9,
+      "deltaCycles": 111616,
+      "purpose": "3: melody decay step"
+    },
+    {
+      "cycle": 964608,
+      "chip": 0,
+      "register": 8,
+      "value": 7,
+      "deltaCycles": 96256,
+      "purpose": "3: melody release"
+    },
+    {
+      "cycle": 983040,
+      "chip": 0,
+      "register": 8,
+      "value": 0,
+      "deltaCycles": 18432,
+      "purpose": "4: note-off to avoid pitch-change click"
+    },
+    {
+      "cycle": 984064,
+      "chip": 0,
+      "register": 0,
+      "value": 244,
+      "deltaCycles": 1024,
+      "purpose": "4: melody A: C4 tone fine"
+    },
+    {
+      "cycle": 985088,
+      "chip": 0,
+      "register": 1,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "4: melody A: C4 tone coarse"
+    },
+    {
+      "cycle": 986112,
+      "chip": 0,
+      "register": 8,
+      "value": 12,
+      "deltaCycles": 1024,
+      "purpose": "4: melody note-on"
+    },
+    {
+      "cycle": 988160,
+      "chip": 0,
+      "register": 9,
+      "value": 0,
+      "deltaCycles": 2048,
+      "purpose": "4: bass change mute"
+    },
+    {
+      "cycle": 989184,
+      "chip": 0,
+      "register": 2,
+      "value": 140,
+      "deltaCycles": 1024,
+      "purpose": "4: bass B: G2 tone fine"
+    },
+    {
+      "cycle": 990208,
+      "chip": 0,
+      "register": 3,
+      "value": 2,
+      "deltaCycles": 1024,
+      "purpose": "4: bass B: G2 tone coarse"
+    },
+    {
+      "cycle": 991232,
+      "chip": 0,
+      "register": 9,
+      "value": 6,
+      "deltaCycles": 1024,
+      "purpose": "4: bass resume"
+    },
+    {
+      "cycle": 994304,
+      "chip": 0,
+      "register": 4,
+      "value": 131,
+      "deltaCycles": 3072,
+      "purpose": "4: harmony C: E3 tone fine"
+    },
+    {
+      "cycle": 995328,
+      "chip": 0,
+      "register": 5,
+      "value": 1,
+      "deltaCycles": 1024,
+      "purpose": "4: harmony C: E3 tone coarse"
+    },
+    {
+      "cycle": 999424,
+      "chip": 0,
+      "register": 11,
+      "value": 28,
+      "deltaCycles": 4096,
+      "purpose": "4: envelope speed"
+    },
+    {
+      "cycle": 1002496,
+      "chip": 0,
+      "register": 10,
+      "value": 16,
+      "deltaCycles": 3072,
+      "purpose": "4: envelope enable for C"
+    },
+    {
+      "cycle": 1003520,
+      "chip": 0,
+      "register": 7,
+      "value": 28,
+      "deltaCycles": 1024,
+      "purpose": "4: tone C disabled, noise C enabled"
+    },
+    {
+      "cycle": 1004544,
+      "chip": 0,
+      "register": 13,
+      "value": 9,
+      "deltaCycles": 1024,
+      "purpose": "4: R13 envelope retrigger"
+    },
+    {
+      "cycle": 1090560,
+      "chip": 0,
+      "register": 7,
+      "value": 56,
+      "deltaCycles": 86016,
+      "purpose": "4: tone C restored, noise disabled"
+    },
+    {
+      "cycle": 1091584,
+      "chip": 0,
+      "register": 10,
+      "value": 3,
+      "deltaCycles": 1024,
+      "purpose": "4: channel C sustained volume restored"
+    },
+    {
+      "cycle": 1097728,
+      "chip": 0,
+      "register": 8,
+      "value": 9,
+      "deltaCycles": 6144,
+      "purpose": "4: melody decay step"
+    },
+    {
+      "cycle": 1193984,
+      "chip": 0,
+      "register": 8,
+      "value": 7,
+      "deltaCycles": 96256,
+      "purpose": "4: melody release"
+    },
+    {
+      "cycle": 1212416,
+      "chip": 0,
+      "register": 8,
+      "value": 0,
+      "deltaCycles": 18432,
+      "purpose": "5: note-off to avoid pitch-change click"
+    },
+    {
+      "cycle": 1213440,
+      "chip": 0,
+      "register": 0,
+      "value": 217,
+      "deltaCycles": 1024,
+      "purpose": "5: melody A: D4 tone fine"
+    },
+    {
+      "cycle": 1214464,
+      "chip": 0,
+      "register": 1,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "5: melody A: D4 tone coarse"
+    },
+    {
+      "cycle": 1215488,
+      "chip": 0,
+      "register": 8,
+      "value": 11,
+      "deltaCycles": 1024,
+      "purpose": "5: melody note-on"
+    },
+    {
+      "cycle": 1327104,
+      "chip": 0,
+      "register": 8,
+      "value": 9,
+      "deltaCycles": 111616,
+      "purpose": "5: melody decay step"
+    },
+    {
+      "cycle": 1423360,
+      "chip": 0,
+      "register": 8,
+      "value": 7,
+      "deltaCycles": 96256,
+      "purpose": "5: melody release"
+    },
+    {
+      "cycle": 1441792,
+      "chip": 0,
+      "register": 8,
+      "value": 0,
+      "deltaCycles": 18432,
+      "purpose": "6: note-off to avoid pitch-change click"
+    },
+    {
+      "cycle": 1442816,
+      "chip": 0,
+      "register": 0,
+      "value": 194,
+      "deltaCycles": 1024,
+      "purpose": "6: melody A: E4 tone fine"
+    },
+    {
+      "cycle": 1443840,
+      "chip": 0,
+      "register": 1,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "6: melody A: E4 tone coarse"
+    },
+    {
+      "cycle": 1444864,
+      "chip": 0,
+      "register": 8,
+      "value": 11,
+      "deltaCycles": 1024,
+      "purpose": "6: melody note-on"
+    },
+    {
+      "cycle": 1556480,
+      "chip": 0,
+      "register": 8,
+      "value": 9,
+      "deltaCycles": 111616,
+      "purpose": "6: melody decay step"
+    },
+    {
+      "cycle": 1652736,
+      "chip": 0,
+      "register": 8,
+      "value": 7,
+      "deltaCycles": 96256,
+      "purpose": "6: melody release"
+    },
+    {
+      "cycle": 1671168,
+      "chip": 0,
+      "register": 8,
+      "value": 0,
+      "deltaCycles": 18432,
+      "purpose": "7: note-off to avoid pitch-change click"
+    },
+    {
+      "cycle": 1672192,
+      "chip": 0,
+      "register": 0,
+      "value": 244,
+      "deltaCycles": 1024,
+      "purpose": "7: melody A: C4 tone fine"
+    },
+    {
+      "cycle": 1673216,
+      "chip": 0,
+      "register": 1,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "7: melody A: C4 tone coarse"
+    },
+    {
+      "cycle": 1674240,
+      "chip": 0,
+      "register": 8,
+      "value": 11,
+      "deltaCycles": 1024,
+      "purpose": "7: melody note-on"
+    },
+    {
+      "cycle": 1785856,
+      "chip": 0,
+      "register": 8,
+      "value": 9,
+      "deltaCycles": 111616,
+      "purpose": "7: melody decay step"
+    },
+    {
+      "cycle": 1882112,
+      "chip": 0,
+      "register": 8,
+      "value": 7,
+      "deltaCycles": 96256,
+      "purpose": "7: melody release"
+    },
+    {
+      "cycle": 1900544,
+      "chip": 0,
+      "register": 8,
+      "value": 0,
+      "deltaCycles": 18432,
+      "purpose": "8: note-off to avoid pitch-change click"
+    },
+    {
+      "cycle": 1901568,
+      "chip": 0,
+      "register": 0,
+      "value": 194,
+      "deltaCycles": 1024,
+      "purpose": "8: melody A: E4 tone fine"
+    },
+    {
+      "cycle": 1902592,
+      "chip": 0,
+      "register": 1,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "8: melody A: E4 tone coarse"
+    },
+    {
+      "cycle": 1903616,
+      "chip": 0,
+      "register": 8,
+      "value": 12,
+      "deltaCycles": 1024,
+      "purpose": "8: melody note-on"
+    },
+    {
+      "cycle": 1905664,
+      "chip": 0,
+      "register": 9,
+      "value": 0,
+      "deltaCycles": 2048,
+      "purpose": "8: bass change mute"
+    },
+    {
+      "cycle": 1906688,
+      "chip": 0,
+      "register": 2,
+      "value": 232,
+      "deltaCycles": 1024,
+      "purpose": "8: bass B: C3 tone fine"
+    },
+    {
+      "cycle": 1907712,
+      "chip": 0,
+      "register": 3,
+      "value": 1,
+      "deltaCycles": 1024,
+      "purpose": "8: bass B: C3 tone coarse"
+    },
+    {
+      "cycle": 1908736,
+      "chip": 0,
+      "register": 9,
+      "value": 6,
+      "deltaCycles": 1024,
+      "purpose": "8: bass resume"
+    },
+    {
+      "cycle": 1911808,
+      "chip": 0,
+      "register": 4,
+      "value": 70,
+      "deltaCycles": 3072,
+      "purpose": "8: harmony C: G3 tone fine"
+    },
+    {
+      "cycle": 1912832,
+      "chip": 0,
+      "register": 5,
+      "value": 1,
+      "deltaCycles": 1024,
+      "purpose": "8: harmony C: G3 tone coarse"
+    },
+    {
+      "cycle": 1916928,
+      "chip": 0,
+      "register": 11,
+      "value": 32,
+      "deltaCycles": 4096,
+      "purpose": "8: envelope speed"
+    },
+    {
+      "cycle": 1920000,
+      "chip": 0,
+      "register": 10,
+      "value": 16,
+      "deltaCycles": 3072,
+      "purpose": "8: envelope enable for C"
+    },
+    {
+      "cycle": 1921024,
+      "chip": 0,
+      "register": 7,
+      "value": 28,
+      "deltaCycles": 1024,
+      "purpose": "8: tone C disabled, noise C enabled"
+    },
+    {
+      "cycle": 1922048,
+      "chip": 0,
+      "register": 13,
+      "value": 9,
+      "deltaCycles": 1024,
+      "purpose": "8: R13 envelope retrigger"
+    },
+    {
+      "cycle": 2008064,
+      "chip": 0,
+      "register": 7,
+      "value": 56,
+      "deltaCycles": 86016,
+      "purpose": "8: tone C restored, noise disabled"
+    },
+    {
+      "cycle": 2009088,
+      "chip": 0,
+      "register": 10,
+      "value": 3,
+      "deltaCycles": 1024,
+      "purpose": "8: channel C sustained volume restored"
+    },
+    {
+      "cycle": 2015232,
+      "chip": 0,
+      "register": 8,
+      "value": 9,
+      "deltaCycles": 6144,
+      "purpose": "8: melody decay step"
+    },
+    {
+      "cycle": 2111488,
+      "chip": 0,
+      "register": 8,
+      "value": 7,
+      "deltaCycles": 96256,
+      "purpose": "8: melody release"
+    },
+    {
+      "cycle": 2129920,
+      "chip": 0,
+      "register": 8,
+      "value": 0,
+      "deltaCycles": 18432,
+      "purpose": "9: note-off to avoid pitch-change click"
+    },
+    {
+      "cycle": 2130944,
+      "chip": 0,
+      "register": 0,
+      "value": 183,
+      "deltaCycles": 1024,
+      "purpose": "9: melody A: F4 tone fine"
+    },
+    {
+      "cycle": 2131968,
+      "chip": 0,
+      "register": 1,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "9: melody A: F4 tone coarse"
+    },
+    {
+      "cycle": 2132992,
+      "chip": 0,
+      "register": 8,
+      "value": 11,
+      "deltaCycles": 1024,
+      "purpose": "9: melody note-on"
+    },
+    {
+      "cycle": 2244608,
+      "chip": 0,
+      "register": 8,
+      "value": 9,
+      "deltaCycles": 111616,
+      "purpose": "9: melody decay step"
+    },
+    {
+      "cycle": 2340864,
+      "chip": 0,
+      "register": 8,
+      "value": 7,
+      "deltaCycles": 96256,
+      "purpose": "9: melody release"
+    },
+    {
+      "cycle": 2359296,
+      "chip": 0,
+      "register": 8,
+      "value": 0,
+      "deltaCycles": 18432,
+      "purpose": "10: note-off to avoid pitch-change click"
+    },
+    {
+      "cycle": 2360320,
+      "chip": 0,
+      "register": 0,
+      "value": 163,
+      "deltaCycles": 1024,
+      "purpose": "10: melody A: G4 tone fine"
+    },
+    {
+      "cycle": 2361344,
+      "chip": 0,
+      "register": 1,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "10: melody A: G4 tone coarse"
+    },
+    {
+      "cycle": 2362368,
+      "chip": 0,
+      "register": 8,
+      "value": 11,
+      "deltaCycles": 1024,
+      "purpose": "10: melody note-on"
+    },
+    {
+      "cycle": 2588672,
+      "chip": 0,
+      "register": 8,
+      "value": 9,
+      "deltaCycles": 226304,
+      "purpose": "10: melody decay step"
+    },
+    {
+      "cycle": 2799616,
+      "chip": 0,
+      "register": 8,
+      "value": 7,
+      "deltaCycles": 210944,
+      "purpose": "10: melody release"
+    },
+    {
+      "cycle": 2818048,
+      "chip": 0,
+      "register": 8,
+      "value": 0,
+      "deltaCycles": 18432,
+      "purpose": "11: note-off to avoid pitch-change click"
+    },
+    {
+      "cycle": 2819072,
+      "chip": 0,
+      "register": 0,
+      "value": 194,
+      "deltaCycles": 1024,
+      "purpose": "11: melody A: E4 tone fine"
+    },
+    {
+      "cycle": 2820096,
+      "chip": 0,
+      "register": 1,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "11: melody A: E4 tone coarse"
+    },
+    {
+      "cycle": 2821120,
+      "chip": 0,
+      "register": 8,
+      "value": 12,
+      "deltaCycles": 1024,
+      "purpose": "11: melody note-on"
+    },
+    {
+      "cycle": 2823168,
+      "chip": 0,
+      "register": 9,
+      "value": 0,
+      "deltaCycles": 2048,
+      "purpose": "11: bass change mute"
+    },
+    {
+      "cycle": 2824192,
+      "chip": 0,
+      "register": 2,
+      "value": 140,
+      "deltaCycles": 1024,
+      "purpose": "11: bass B: G2 tone fine"
+    },
+    {
+      "cycle": 2825216,
+      "chip": 0,
+      "register": 3,
+      "value": 2,
+      "deltaCycles": 1024,
+      "purpose": "11: bass B: G2 tone coarse"
+    },
+    {
+      "cycle": 2826240,
+      "chip": 0,
+      "register": 9,
+      "value": 6,
+      "deltaCycles": 1024,
+      "purpose": "11: bass resume"
+    },
+    {
+      "cycle": 2829312,
+      "chip": 0,
+      "register": 4,
+      "value": 131,
+      "deltaCycles": 3072,
+      "purpose": "11: harmony C: E3 tone fine"
+    },
+    {
+      "cycle": 2830336,
+      "chip": 0,
+      "register": 5,
+      "value": 1,
+      "deltaCycles": 1024,
+      "purpose": "11: harmony C: E3 tone coarse"
+    },
+    {
+      "cycle": 2834432,
+      "chip": 0,
+      "register": 11,
+      "value": 32,
+      "deltaCycles": 4096,
+      "purpose": "11: envelope speed"
+    },
+    {
+      "cycle": 2837504,
+      "chip": 0,
+      "register": 10,
+      "value": 16,
+      "deltaCycles": 3072,
+      "purpose": "11: envelope enable for C"
+    },
+    {
+      "cycle": 2838528,
+      "chip": 0,
+      "register": 7,
+      "value": 28,
+      "deltaCycles": 1024,
+      "purpose": "11: tone C disabled, noise C enabled"
+    },
+    {
+      "cycle": 2839552,
+      "chip": 0,
+      "register": 13,
+      "value": 9,
+      "deltaCycles": 1024,
+      "purpose": "11: R13 envelope retrigger"
+    },
+    {
+      "cycle": 2925568,
+      "chip": 0,
+      "register": 7,
+      "value": 56,
+      "deltaCycles": 86016,
+      "purpose": "11: tone C restored, noise disabled"
+    },
+    {
+      "cycle": 2926592,
+      "chip": 0,
+      "register": 10,
+      "value": 3,
+      "deltaCycles": 1024,
+      "purpose": "11: channel C sustained volume restored"
+    },
+    {
+      "cycle": 2932736,
+      "chip": 0,
+      "register": 8,
+      "value": 9,
+      "deltaCycles": 6144,
+      "purpose": "11: melody decay step"
+    },
+    {
+      "cycle": 3028992,
+      "chip": 0,
+      "register": 8,
+      "value": 7,
+      "deltaCycles": 96256,
+      "purpose": "11: melody release"
+    },
+    {
+      "cycle": 3047424,
+      "chip": 0,
+      "register": 8,
+      "value": 0,
+      "deltaCycles": 18432,
+      "purpose": "12: note-off to avoid pitch-change click"
+    },
+    {
+      "cycle": 3048448,
+      "chip": 0,
+      "register": 0,
+      "value": 183,
+      "deltaCycles": 1024,
+      "purpose": "12: melody A: F4 tone fine"
+    },
+    {
+      "cycle": 3049472,
+      "chip": 0,
+      "register": 1,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "12: melody A: F4 tone coarse"
+    },
+    {
+      "cycle": 3050496,
+      "chip": 0,
+      "register": 8,
+      "value": 11,
+      "deltaCycles": 1024,
+      "purpose": "12: melody note-on"
+    },
+    {
+      "cycle": 3162112,
+      "chip": 0,
+      "register": 8,
+      "value": 9,
+      "deltaCycles": 111616,
+      "purpose": "12: melody decay step"
+    },
+    {
+      "cycle": 3258368,
+      "chip": 0,
+      "register": 8,
+      "value": 7,
+      "deltaCycles": 96256,
+      "purpose": "12: melody release"
+    },
+    {
+      "cycle": 3276800,
+      "chip": 0,
+      "register": 8,
+      "value": 0,
+      "deltaCycles": 18432,
+      "purpose": "13: note-off to avoid pitch-change click"
+    },
+    {
+      "cycle": 3277824,
+      "chip": 0,
+      "register": 0,
+      "value": 163,
+      "deltaCycles": 1024,
+      "purpose": "13: melody A: G4 tone fine"
+    },
+    {
+      "cycle": 3278848,
+      "chip": 0,
+      "register": 1,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "13: melody A: G4 tone coarse"
+    },
+    {
+      "cycle": 3279872,
+      "chip": 0,
+      "register": 8,
+      "value": 11,
+      "deltaCycles": 1024,
+      "purpose": "13: melody note-on"
+    },
+    {
+      "cycle": 3506176,
+      "chip": 0,
+      "register": 8,
+      "value": 9,
+      "deltaCycles": 226304,
+      "purpose": "13: melody decay step"
+    },
+    {
+      "cycle": 3717120,
+      "chip": 0,
+      "register": 8,
+      "value": 7,
+      "deltaCycles": 210944,
+      "purpose": "13: melody release"
+    },
+    {
+      "cycle": 3735552,
+      "chip": 0,
+      "register": 8,
+      "value": 0,
+      "deltaCycles": 18432,
+      "purpose": "final melody off"
+    },
+    {
+      "cycle": 3736576,
+      "chip": 0,
+      "register": 9,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "final bass off"
+    },
+    {
+      "cycle": 3737600,
+      "chip": 0,
+      "register": 10,
+      "value": 0,
+      "deltaCycles": 1024,
+      "purpose": "final chord/noise off"
+    },
+    {
+      "cycle": 3738624,
+      "chip": 0,
+      "register": 7,
+      "value": 63,
+      "deltaCycles": 1024,
+      "purpose": "all sound generators disabled"
+    }
+  ],
+  "melodyNotes": [
+    {
+      "index": 0,
+      "note": "C4",
+      "midi": 60,
+      "startTick": 64,
+      "durationTicks": 224,
+      "startCycles": 65536,
+      "durationCycles": 229376,
+      "expectedHz": 261.6255653005986,
+      "ayPeriod": 244,
+      "realizedHz": 261.73155737704917
+    },
+    {
+      "index": 1,
+      "note": "D4",
+      "midi": 62,
+      "startTick": 288,
+      "durationTicks": 224,
+      "startCycles": 294912,
+      "durationCycles": 229376,
+      "expectedHz": 293.6647679174076,
+      "ayPeriod": 217,
+      "realizedHz": 294.2972350230415
+    },
+    {
+      "index": 2,
+      "note": "E4",
+      "midi": 64,
+      "startTick": 512,
+      "durationTicks": 224,
+      "startCycles": 524288,
+      "durationCycles": 229376,
+      "expectedHz": 329.6275569128699,
+      "ayPeriod": 194,
+      "realizedHz": 329.1881443298969
+    },
+    {
+      "index": 3,
+      "note": "C4",
+      "midi": 60,
+      "startTick": 736,
+      "durationTicks": 224,
+      "startCycles": 753664,
+      "durationCycles": 229376,
+      "expectedHz": 261.6255653005986,
+      "ayPeriod": 244,
+      "realizedHz": 261.73155737704917
+    },
+    {
+      "index": 4,
+      "note": "C4",
+      "midi": 60,
+      "startTick": 960,
+      "durationTicks": 224,
+      "startCycles": 983040,
+      "durationCycles": 229376,
+      "expectedHz": 261.6255653005986,
+      "ayPeriod": 244,
+      "realizedHz": 261.73155737704917
+    },
+    {
+      "index": 5,
+      "note": "D4",
+      "midi": 62,
+      "startTick": 1184,
+      "durationTicks": 224,
+      "startCycles": 1212416,
+      "durationCycles": 229376,
+      "expectedHz": 293.6647679174076,
+      "ayPeriod": 217,
+      "realizedHz": 294.2972350230415
+    },
+    {
+      "index": 6,
+      "note": "E4",
+      "midi": 64,
+      "startTick": 1408,
+      "durationTicks": 224,
+      "startCycles": 1441792,
+      "durationCycles": 229376,
+      "expectedHz": 329.6275569128699,
+      "ayPeriod": 194,
+      "realizedHz": 329.1881443298969
+    },
+    {
+      "index": 7,
+      "note": "C4",
+      "midi": 60,
+      "startTick": 1632,
+      "durationTicks": 224,
+      "startCycles": 1671168,
+      "durationCycles": 229376,
+      "expectedHz": 261.6255653005986,
+      "ayPeriod": 244,
+      "realizedHz": 261.73155737704917
+    },
+    {
+      "index": 8,
+      "note": "E4",
+      "midi": 64,
+      "startTick": 1856,
+      "durationTicks": 224,
+      "startCycles": 1900544,
+      "durationCycles": 229376,
+      "expectedHz": 329.6275569128699,
+      "ayPeriod": 194,
+      "realizedHz": 329.1881443298969
+    },
+    {
+      "index": 9,
+      "note": "F4",
+      "midi": 65,
+      "startTick": 2080,
+      "durationTicks": 224,
+      "startCycles": 2129920,
+      "durationCycles": 229376,
+      "expectedHz": 349.2282314330039,
+      "ayPeriod": 183,
+      "realizedHz": 348.9754098360656
+    },
+    {
+      "index": 10,
+      "note": "G4",
+      "midi": 67,
+      "startTick": 2304,
+      "durationTicks": 448,
+      "startCycles": 2359296,
+      "durationCycles": 458752,
+      "expectedHz": 391.99543598174927,
+      "ayPeriod": 163,
+      "realizedHz": 391.79447852760734
+    },
+    {
+      "index": 11,
+      "note": "E4",
+      "midi": 64,
+      "startTick": 2752,
+      "durationTicks": 224,
+      "startCycles": 2818048,
+      "durationCycles": 229376,
+      "expectedHz": 329.6275569128699,
+      "ayPeriod": 194,
+      "realizedHz": 329.1881443298969
+    },
+    {
+      "index": 12,
+      "note": "F4",
+      "midi": 65,
+      "startTick": 2976,
+      "durationTicks": 224,
+      "startCycles": 3047424,
+      "durationCycles": 229376,
+      "expectedHz": 349.2282314330039,
+      "ayPeriod": 183,
+      "realizedHz": 348.9754098360656
+    },
+    {
+      "index": 13,
+      "note": "G4",
+      "midi": 67,
+      "startTick": 3200,
+      "durationTicks": 448,
+      "startCycles": 3276800,
+      "durationCycles": 458752,
+      "expectedHz": 391.99543598174927,
+      "ayPeriod": 163,
+      "realizedHz": 391.79447852760734
+    }
+  ],
+  "scoreLength": {
+    "music": 643
+  },
+  "expectedWrites": [
+    156,
+    156
+  ],
+  "expectedIrqs": [
+    3651,
+    3651
+  ],
+  "expectedEvents": [
+    150,
+    150
+  ],
+  "permittedRegisters": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13
+  ],
+  "musicR13Retriggers": 5
+}
