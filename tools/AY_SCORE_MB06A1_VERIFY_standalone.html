@@ -1,0 +1,112 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MB-06A.1 History Verifier</title><style>
+body{font:16px system-ui,sans-serif;margin:2rem auto;padding:0 1.5rem;max-width:850px;color:#15202d;background:#fafbfd}h1{font-size:1.7rem}p{line-height:1.5}section{padding:1rem;border:1px solid #ccd4de;border-radius:10px;background:#fff;margin-top:1rem}button,input{font:inherit}button{padding:.5rem .9rem;cursor:pointer}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f4f6f8;padding:1rem;border-radius:6px}table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #ddd;padding:.4rem;text-align:left}.note{color:#586575}</style></head><body>
+<h1>MB-06A.1 · Extended E1 history verifier</h1><p>Choose <code>mockingboard-slot5-history.json</code> exported after running the complete 4-mode benchmark. This local verifier checks 272 expected AY writes, the preserved R8/R9 stream, the 128-event long score and its relative timing.</p>
+<section><input type="file" accept=".json,application/json" id="file"><button id="export" disabled>Save validation report</button><div id="status" role="status"></div><div id="detail"></div></section><p class="note">History alone does not prove CPU IRQ counts or Timer 2 epochs. Confirm MODE4 reports IRQ159, EVENTS128, E1 BYTES465, EPOCH2 and ERR0.</p>
+<script>
+/* MB-06A.1 history verifier: external JSON + generated canonical E1 reference.
+   Compatible with Node.js and local browser. No unsafe HTML insertion. */
+(function(root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports=api;
+  root.MB06A1Verifier=api;
+})(typeof window!=='undefined'?window:this,function(){
+ 'use strict';
+ function ensure(test, message){if(!test)throw Error(message);}
+ function stats(a){if(!a.length)return {min:null,max:null,mean:null};return {min:Math.min(...a),max:Math.max(...a),mean:a.reduce((x,y)=>x+y,0)/a.length};}
+ function decode(hist){
+   ensure(hist&&hist.format==='RetroAppleJS.MockingboardHistory','Not a RetroAppleJS MockingboardHistory');
+   ensure(Array.isArray(hist.events),'Missing history events');
+   let tick=Number(hist.baseTick)||0;
+   return hist.events.map((e,i)=>{
+     ensure(Array.isArray(e)&&e.length>=4 && e.slice(0,4).every(Number.isFinite),'Malformed event '+i);
+     ensure(e[0]>=0&&Number.isInteger(e[0]),'Invalid cycle delta '+i);
+     tick+=e[0];return {tick,chip:e[1],reg:e[2],value:e[3]};
+   });
+ }
+ function checkMode(rows,mode,reference,limit){
+   const expectedEvents = mode===4 ? reference.eventsLong : reference.eventsShort;
+   const scoreWrites = mode===1 ? [] : expectedEvents;
+   const expected=[{chip:0,reg:7,value:63},{chip:0,reg:8,value:0}]
+     .concat(scoreWrites.map(e=>({chip:e.chip,reg:e.register,value:e.value})),
+             [{chip:0,reg:8,value:0},{chip:0,reg:9,value:0}]);
+   const errors=[];
+   if(rows.length!==expected.length)errors.push(`Expected ${expected.length} AY writes, observed ${rows.length}`);
+   for(let i=0;i<Math.min(expected.length,rows.length);i++){
+     const a=rows[i],e=expected[i];
+     if(a.chip!==e.chip||a.reg!==e.reg||a.value!==e.value){errors.push(`Write ${i}: expected AY${e.chip} R${e.reg}=${e.value}, actual AY${a.chip} R${a.reg}=${a.value}`);break;}
+   }
+   const groups=[];const widths=[];const jitter=[];
+   if(mode!==1&&rows.length===expected.length&&errors.length===0){
+     const scoreStart=rows[2].tick;
+     let lastDeadline=null, group=null;
+     expectedEvents.forEach((event,i)=>{
+       const a=rows[i+2],due=event.cycle;
+       if(due!==lastDeadline){group={due,first:a.tick,last:a.tick,count:1};groups.push(group);lastDeadline=due;}
+       else {group.last=a.tick;group.count++;}
+     });
+     const first=groups[0];
+     for(const g of groups){
+       g.relativeError=(g.first-first.first)-(g.due-first.due);
+       g.burstWidth=g.last-g.first;
+       jitter.push(g.relativeError);
+       if(g.count>1)widths.push(g.burstWidth);
+     }
+     const peak=Math.max(...jitter.map(Math.abs));
+     if(peak>limit)errors.push(`Maximum relative event-group deviation ${peak} cycles exceeds ${limit}`);
+     const maxBurst=Math.max(0,...widths);
+     if(maxBurst>512)errors.push(`Excessive same-deadline burst separation ${maxBurst} cycles`);
+   }
+   return {mode,name:['','E1 dry/HGR','E1 AY/HGR','E1 AY/NOP','E1 AY/HGR long-wrap'][mode],
+     expectedWrites:expected.length,observedWrites:rows.length,
+     expectedScoreEvents:scoreWrites.length,scoreGroups:groups.length,
+     maxAbsRelativeGroupDeviation:jitter.length?Math.max(...jitter.map(Math.abs)):null,
+     groupDeviationCycles:stats(jitter),sameDeadlineBurstCycles:stats(widths),
+     success:errors.length===0,errors};
+ }
+ function analyze(hist,reference,opts){
+   ensure(reference&&reference.format==='retroapplejs.mb06a1.reference.v1','Invalid MB06A1 reference');
+   const rows=decode(hist);const markers=[];
+   rows.forEach((r,i)=>{if(r.chip===0&&r.reg===7&&r.value===63)markers.push(i);});
+   const errors=[];const limit=opts&&Number.isFinite(opts.maxGroupDeviation)?opts.maxGroupDeviation:128;
+   if(hist.wrapped)errors.push('History buffer wrapped; capture is incomplete');
+   if(hist.slot!==5)errors.push(`Expected internal SlotN=5 (physical PR#4), observed ${hist.slot}`);
+   if(markers.length!==4)errors.push(`Expected four mode markers (AY0 R7=$3F); observed ${markers.length}`);
+   const beforeFirst=markers.length?rows.slice(0,markers[0]):rows;
+   if(beforeFirst.some(x=>x.reg!==-1))errors.push('Unexpected AY register writes before first marker');
+   const results=[];
+   for(let i=0;i<Math.min(markers.length,4);i++){
+      const windowRows=rows.slice(markers[i],i+1<markers.length?markers[i+1]:rows.length);
+      if(windowRows.some(x=>x.reg===-1)) errors.push(`Unexpected AY reset inside mode ${i+1}`);
+      const modeRows=windowRows.filter(x=>x.reg!==-1);
+      results.push(checkMode(modeRows,i+1,reference,limit));
+   }
+   for(const result of results)errors.push(...result.errors.map(e=>`Mode ${result.mode}: ${e}`));
+   const observedWrites=rows.filter(x=>x.reg>=0).length;
+   if(observedWrites!==272)errors.push(`Expected 272 AY writes, observed ${observedWrites}`);
+   return {schema:'retroapplejs.mb06a1.history.validation.v1',status:errors.length?'REVIEW':'PASS',
+      source:{slot:hist.slot,physicalSlot:hist.slot===5?4:null,clockHz:hist.clockHz,wrapped:!!hist.wrapped,
+              observedEvents:rows.length,observedAYWrites:observedWrites},
+      expected:{modeCount:4,ayWrites:272,scoreEvents:[64,64,64,128],scoreBytes:[232,232,232,465]},
+      modes:results,errors,
+      notes:['Timing is measured relative to the first score write, not absolute T1 underflow.',
+             'No missing IRQs or clock epoch count can be proven from AY history alone: verify the BASIC record.']};
+ }
+ return {analyze};
+});
+
+</script><script type="application/json" id="reference">{"format":"retroapplejs.mb06a1.reference.v1","clockHz":1021800,"eventsShort":[{"cycle":1024,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":1024,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":3072,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":4096,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":4096,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":5120,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":6144,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":6144,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":7168,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":7168,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":9216,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":10240,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":10240,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":11264,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":12288,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":12288,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":13312,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":13312,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":15360,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":16384,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":16384,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":17408,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":18432,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":18432,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":19456,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":19456,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":21504,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":22528,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":22528,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":23552,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":24576,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":24576,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":25600,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":25600,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":27648,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":28672,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":28672,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":29696,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":30720,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":30720,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":31744,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":31744,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":33792,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":34816,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":34816,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":35840,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":36864,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":36864,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":37888,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":37888,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":39936,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":40960,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":40960,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":41984,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":43008,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":43008,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":44032,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":44032,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":46080,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":47104,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":47104,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":48128,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":49152,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":49152,"chip":0,"register":9,"value":0,"deltaCycles":0}],"eventsLong":[{"cycle":1024,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":1024,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":3072,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":4096,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":4096,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":5120,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":6144,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":6144,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":7168,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":7168,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":9216,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":10240,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":10240,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":11264,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":12288,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":12288,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":13312,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":13312,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":15360,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":16384,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":16384,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":17408,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":18432,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":18432,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":19456,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":19456,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":21504,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":22528,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":22528,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":23552,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":24576,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":24576,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":25600,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":25600,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":27648,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":28672,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":28672,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":29696,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":30720,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":30720,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":31744,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":31744,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":33792,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":34816,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":34816,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":35840,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":36864,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":36864,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":37888,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":37888,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":39936,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":40960,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":40960,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":41984,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":43008,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":43008,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":44032,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":44032,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":46080,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":47104,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":47104,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":48128,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":49152,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":49152,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":114688,"chip":0,"register":8,"value":15,"deltaCycles":65536},{"cycle":114688,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":116736,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":117760,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":117760,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":118784,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":119808,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":119808,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":120832,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":120832,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":122880,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":123904,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":123904,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":124928,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":125952,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":125952,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":126976,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":126976,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":129024,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":130048,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":130048,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":131072,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":132096,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":132096,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":133120,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":133120,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":135168,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":136192,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":136192,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":137216,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":138240,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":138240,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":139264,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":139264,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":141312,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":142336,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":142336,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":143360,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":144384,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":144384,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":145408,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":145408,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":147456,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":148480,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":148480,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":149504,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":150528,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":150528,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":151552,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":151552,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":153600,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":154624,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":154624,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":155648,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":156672,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":156672,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":157696,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":157696,"chip":0,"register":8,"value":0,"deltaCycles":0},{"cycle":159744,"chip":0,"register":8,"value":9,"deltaCycles":2048},{"cycle":160768,"chip":0,"register":9,"value":3,"deltaCycles":1024},{"cycle":160768,"chip":0,"register":9,"value":0,"deltaCycles":0},{"cycle":161792,"chip":0,"register":8,"value":15,"deltaCycles":1024},{"cycle":162816,"chip":0,"register":8,"value":0,"deltaCycles":1024},{"cycle":162816,"chip":0,"register":9,"value":0,"deltaCycles":0}],"scoreLength":{"short":232,"long":465},"expectedWrites":[4,68,68,132],"expectedIrqs":[48,48,48,159],"expectedEvents":[64,64,64,128]}</script><script>
+(()=>{'use strict';const ref=JSON.parse(document.getElementById('reference').textContent);let last=null;
+const status=document.getElementById('status'),detail=document.getElementById('detail'),save=document.getElementById('export');
+function td(tr,str){let el=document.createElement('td');el.textContent=String(str);tr.appendChild(el);}
+function show(report){last=report;status.textContent='Result: '+report.status;
+ detail.replaceChildren();const table=document.createElement('table');
+ let header=document.createElement('tr');for(let h of ['Mode','AY writes','Groups','Max deviation','Result']){let th=document.createElement('th');th.textContent=h;header.appendChild(th);}table.appendChild(header);
+ for(let m of report.modes){let row=document.createElement('tr');for(let v of [m.mode,m.observedWrites+'/'+m.expectedWrites,m.scoreGroups,m.maxAbsRelativeGroupDeviation??'—',m.success?'PASS':'REVIEW'])td(row,v);table.appendChild(row);}detail.appendChild(table);
+ if(report.errors.length){let p=document.createElement('pre');p.textContent=report.errors.join('\n');detail.appendChild(p);}save.disabled=false;}
+ document.getElementById('file').addEventListener('change',async ev=>{
+  last=null;save.disabled=true;detail.replaceChildren();const file=ev.target.files[0];if(!file)return;
+  try{show(MB06A1Verifier.analyze(JSON.parse(await file.text()),ref));}catch(e){status.textContent='ERROR: '+e.message;}
+ });
+ save.addEventListener('click',()=>{if(!last)return;let blob=new Blob([JSON.stringify(last,null,2)+'\n'],{type:'application/json'});let url=URL.createObjectURL(blob);let a=document.createElement('a');a.href=url;a.download='MB06A1_HISTORY_VALIDATION.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+})();
+</script></body></html>
