@@ -51,6 +51,8 @@ After moving a peripheral, software already running may still refer to its old s
 
 Controls differ by peripheral. For example, Disk II exposes drive-related controls and Mockingboard exposes sound controls; memory expansion cards can expose bank/memory monitoring. Some cards provide very few controls.
 
+For Mockingboard, the second control row offers **source-rate WAV recording** (22,050 Hz, unsigned 8-bit mono). Arm with the grey record circle, choose the duration in seconds, then play sound; recording begins at the first audible output. When finished, use the download button to save the WAV and release its sample buffer. The first row's music-note control remains the independent **register-history/FYM** capture. See [Mockingboard WAV Capture](MOCKINGBOARD_WAV_CAPTURE.md) for details.
+
 > **SCREENSHOT PLACEHOLDER U06 — Peripheral controls.** Capture the gauge button in slot details and a second view of the Tools popup with the active slot selector and card controls. Suggested filename: `docs/assets/PERIPHERALS-U06-controls.png`.
 
 ### Import files into a Disk II drive
