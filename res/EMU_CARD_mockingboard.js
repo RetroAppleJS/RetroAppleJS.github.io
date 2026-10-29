@@ -57,6 +57,7 @@ function mockingboard()
     var timingRefresh=null;
     var voiceUIRequest=0;
     var history=new MockingboardHistory(64);
+    var wavCapture=new MockingboardWavCapture(SAMPLE_RATE);
     this.history=history;
     var historyRefreshRegistered=false;
     var ayDevices=[makeAYDevice(0),makeAYDevice(1)];
@@ -609,6 +610,90 @@ function mockingboard()
         if(fym0) fym0.title="Download AY0 as a 60 Hz FYM playback file";
         if(fym1) fym1.title="Download AY1 as a 60 Hz FYM playback file";
     }
+    function syncWAVControls()
+    {
+        if(typeof(document)!=="object" || !document.getElementById)return;
+        var state=wavCapture.getState();
+        var button=document.getElementById(historyID("wav_record"));
+        var icon=document.getElementById(historyID("wav_record_icon"));
+        var seconds=document.getElementById(historyID("wav_seconds"));
+        var download=document.getElementById(historyID("wav_download"));
+        var titles={
+            idle:"Arm Mockingboard 8-bit mono WAV recording (22,050 Hz)",
+            armed:"Armed: waiting for the first audible Mockingboard output (click to cancel)",
+            recording:"Recording Mockingboard WAV (click to cancel)",
+            ready:"WAV recording complete; download before starting another capture"
+        };
+        if(button)
+        {
+            button.title=titles[state.state];
+            button.setAttribute("aria-label",titles[state.state]);
+            button.setAttribute("aria-pressed",state.state==="armed" || state.state==="recording" ? "true":"false");
+            button.setAttribute("data-wav-state",state.state);
+        }
+        if(icon)
+        {
+            icon.style.color=state.state==="recording"?"#d22":
+                state.state==="armed"?"#bf8700":"#999";
+            icon.style.opacity=state.state==="ready"?"0.6":"1";
+        }
+        if(seconds)
+        {
+            seconds.disabled=state.state!=="idle";
+            if(state.state==="idle")seconds.value=state.seconds;
+        }
+        if(download)
+        {
+            download.disabled=state.state!=="ready";
+            download.title=state.state==="ready"
+                ? "Download "+state.capturedFrames+" frames of 8-bit mono WAV; release buffer afterward"
+                : "Download WAV when recording has finished";
+        }
+    }
+    this.getWAVCaptureState=function(){return wavCapture.getState();};
+    this.setWAVCaptureSeconds=function(value)
+    {
+        try { wavCapture.setSeconds(Number(value)); }
+        catch(error){syncWAVControls();return false;}
+        syncWAVControls();
+        return true;
+    };
+    this.toggleWAVCapture=function()
+    {
+        if(!this.state.active)return false;
+        var state=wavCapture.toggle();
+        syncWAVControls();
+        return state;
+    };
+    this.downloadWAVCapture=function()
+    {
+        if(wavCapture.getState().state!=="ready")return false;
+        if(typeof(document)!=="object" || !document.createElement ||
+            typeof(Blob)!=="function" || typeof(window)!=="object" ||
+            !window.URL || typeof(window.URL.createObjectURL)!=="function")
+            return false;
+        var data=wavCapture.makeWav();
+        var url=window.URL.createObjectURL(new Blob([data],{type:"audio/wav"}));
+        var anchor=document.createElement("a");
+        anchor.href=url;
+        anchor.download="mockingboard-slot"+(historySlotNumber()===null?"x":historySlotNumber())+
+            "-"+wavCapture.getState().seconds+"s-22050Hz-mono-u8.wav";
+        try
+        {
+            document.body.appendChild(anchor);
+            anchor.click();
+        }
+        catch(error)
+        {
+            window.URL.revokeObjectURL(url);
+            return false; // Retain completed buffer on failed download initiation.
+        }
+        finally { if(anchor.parentNode)anchor.parentNode.removeChild(anchor); }
+        wavCapture.release(); // Retain no PCM after initiating the download.
+        syncWAVControls();
+        setTimeout(function(){window.URL.revokeObjectURL(url);},1000);
+        return true;
+    };
     function enqueueFrame(left,right)
     {
         if(audioCount===AUDIO_CAPACITY)
@@ -649,6 +734,9 @@ function mockingboard()
             }
             audioRenderCalls++;
             voiceDevice.mixFrames(startTick,startPhase,frames,pcm,end);
+            // Source PCM, after AY0/AY1 and speech mixing but before browser output.
+            if(wavCapture.isActive() && wavCapture.appendFrames(pcm.left,pcm.right,frames))
+                syncWAVControls();
             pendingEvents.copyWithin(0,consumed*16,pendingCount*16);pendingCount-=consumed;
             audioStats.producedFrames+=frames;
             if(audioConsumerActive && sourceTarget!==0)for(var i=0;i<frames;i++)enqueueFrame(pcm.left[i],pcm.right[i]);
@@ -686,6 +774,7 @@ function mockingboard()
             var candidate=await AYCore.create({backend:requested,chipCount:2,sampleRate:SAMPLE_RATE,renderProfile:RENDER_PROFILE,timebaseHz:AUDIO_TIMEBASE,maxFrames:CORE_FRAMES,maxEvents:CORE_EVENTS});
             if(request!==coreRequest){candidate.destroy();return false;}
             if(history.isCapturing())history.stop(lastCpuTick);
+            wavCapture.release();syncWAVControls(); // A new sound core starts a new audio epoch.
             this.clearAudioQueue();buildSoundChips(candidate,true);syncBus(0);syncBus(1);
             backendChoice=core.backend;syncHistoryControls();
             if(timingRefresh)timingRefresh();return true;
@@ -710,17 +799,14 @@ function mockingboard()
     {
         if(typeof(document)!=="object")return;
         var select=document.getElementById(historyID("backend"));
-        var status=document.getElementById(historyID("backend_status"));
-        if(select){select.value=requested||backendChoice;select.disabled=backendLoading;}
-        if(status)
+        if(select)
         {
-            status.textContent=backendStatusText();
-            status.style.color=backendError?"#a00":"";
+            select.value=requested||backendChoice;
+            select.disabled=backendLoading;
+            // Avoid duplicate selected-backend text; keep errors in the tooltip.
+            select.title=backendLoading?"Loading AY core…":
+                backendError?"AY core: "+backendError:"Sound backend for AY0 and AY1";
         }
-    }
-    function backendStatusText()
-    {
-        return backendLoading?"Loading…":backend.toUpperCase()+(backendError?" — "+backendError:"");
     }
     this.getAudioEpoch=function(){return transportEpoch;};
     this.flushAudio=flushAudio;
@@ -1007,6 +1093,8 @@ function mockingboard()
     };
     this.reset=function()
     {
+        wavCapture.release();
+        syncWAVControls();
         voiceUIRequest++;
         coreRequest++;
         var resetTick=resolveTick(null);
@@ -1046,6 +1134,8 @@ function mockingboard()
     };
     this.onUnmount=function()
     {
+        wavCapture.release();
+        syncWAVControls();
         voiceUIRequest++;
         coreRequest++;
         if(history.isCapturing()) history.stop(resolveTick(null));
@@ -1077,9 +1167,8 @@ function mockingboard()
             +"<select id='"+historyID("backend")+"' onchange='"+access+"?.deviceToolAYBackendChange(this.value)' title='Sound backend for AY0 and AY1'"+(backendLoading?" disabled":"")+">"
             +'<option value="wasm"'+(backendChoice==="wasm"?' selected':'')+'>WASM</option>'
             +'<option value="js"'+(backendChoice==="js"?' selected':'')+'>JS</option></select>'
-            +"<span id='"+historyID("backend_status")+"' role=status aria-live=polite style='font-size:10px"+(backendError?";color:#a00":"")+"'>"+backendStatusText().replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")+"</span>"
-            +"<button class=appbut title='Start/stop Mockingboard history capture' onclick='"+access+"?.toggleHistoryCapture()'>"
-            +"<i id='"+historyID("toggle")+"' class='fa fa-coffee' style='opacity:"+(state.capturing?"1":".35")+"'></i></button>"
+            +"<button class=appbut title='Start/stop Mockingboard register-history capture for FYM export' aria-label='Toggle Mockingboard music history capture' onclick='"+access+"?.toggleHistoryCapture()'>"
+            +"<i id='"+historyID("toggle")+"' class='fa fa-music' style='opacity:"+(state.capturing?"1":".35")+"'></i></button>"
             +"<span id='"+historyID("kbwrap")+"' style='display:"+(state.capturing?"none":"inline-flex")+";align-items:center;gap:3px'>"
             +"<input id='"+historyID("kb")+"' type=number min=1 max=1024 step=1 value='"+state.capacityKB+"' "
             +(state.capturing?"disabled ":"")+"title='History ring-buffer length in Kbytes' style='width:58px;height:24px;padding:0 4px;box-sizing:border-box;border-radius:7px' "
@@ -1119,6 +1208,13 @@ function mockingboard()
             +"<i class='"+volumeIcon()+"'></i></button>"
             +"<button class=appbut title='Mockingboard live audio telemetry' aria-label='Mockingboard live audio telemetry' onclick='"+access+"?.openAudioTelemetry()'>"
             +"<i class='fa fa-sliders-h'></i></button>"
+            +"<button class=appbut id='"+historyID("wav_record")+"' data-wav-state='"+wavCapture.getState().state+"' aria-pressed='"+(wavCapture.isActive()?"true":"false")+"' title='Arm 8-bit mono WAV recording at 22,050 Hz' aria-label='Arm Mockingboard WAV recording' onclick='"+access+"?.toggleWAVCapture()'>"
+            +"<i class='fa fa-circle' id='"+historyID("wav_record_icon")+"' style='color:"+(wavCapture.getState().state==="recording"?"#d22":wavCapture.getState().state==="armed"?"#bf8700":"#999")+"'></i></button>"
+            +"<label for='"+historyID("wav_seconds")+"' style='font-size:10px'>WAV</label>"
+            +"<input id='"+historyID("wav_seconds")+"' type=number min=1 max=60 step=1 value='"+wavCapture.getState().seconds+"' "+(wavCapture.getState().state==="idle"?"":"disabled ")+"title='WAV capture duration in seconds (1–60)' aria-label='WAV duration in seconds' style='width:54px;height:24px;padding:0 4px;box-sizing:border-box;border-radius:7px' onchange='"+access+"?.setWAVCaptureSeconds(this.value)'>"
+            +"<span style='font-size:10px'>s</span>"
+            +"<button class=appbut id='"+historyID("wav_download")+"' "+(wavCapture.getState().state==="ready"?"":"disabled ")+"title='Download WAV when capture finishes' aria-label='Download recorded WAV' onclick='"+access+"?.downloadWAVCapture()'>"
+            +"<i class='fa fa-download'></i></button>"
             +"</div></div></div>";
     };
 }
@@ -1854,3 +1950,69 @@ MockingboardHistory.toFYM=function(history,ay,frameRate)
     }
     return out;
 };
+
+/**
+ * PCM recorder independent of FYM/register history and browser output rate.
+ * Mono mix of AY0+AY1+speech, before browser gain and resampling. No sample
+ * allocation occurs while armed and silent. A source PCM frame (not a wall
+ * timer) determines both the starting instant and the recording duration.
+ */
+function MockingboardWavCapture(sampleRate)
+{
+    if(!Number.isInteger(sampleRate) || sampleRate<1)throw new RangeError("Invalid sample rate");
+    var seconds=5,state="idle",samples=null,captured=0;
+    this.getState=function(){return {
+        state:state,seconds:seconds,capturedFrames:captured,
+        targetFrames:seconds*sampleRate,allocatedBytes:samples?samples.byteLength:0
+    };};
+    this.isActive=function(){return state==="armed" || state==="recording";};
+    this.setSeconds=function(value)
+    {
+        if(state!=="idle" || !Number.isInteger(value) || value<1 || value>60)
+            throw new RangeError("WAV duration must be an integer from 1 to 60 seconds while idle");
+        seconds=value;
+    };
+    this.release=function(){samples=null;captured=0;state="idle";};
+    this.toggle=function()
+    {
+        if(state==="idle")state="armed";
+        else if(state==="armed" || state==="recording")this.release();
+        // Never discard a completed recording before its download.
+        return state;
+    };
+    this.appendFrames=function(left,right,count)
+    {
+        if(!this.isActive())return false;
+        var previous=state;
+        for(var i=0;i<count;i++)
+        {
+            var mono=(left[i]+right[i])*0.5;
+            if(state==="armed")
+            {
+                if(!Number.isFinite(mono) || Math.abs(mono)<1/255)continue;
+                samples=new Uint8Array(seconds*sampleRate);
+                captured=0;state="recording";
+            }
+            var clamped=Number.isFinite(mono)?Math.max(-1,Math.min(1,mono)):0;
+            samples[captured++]=Math.max(0,Math.min(255,Math.round((clamped+1)*127.5)));
+            if(captured===samples.length){state="ready";break;}
+        }
+        return state!==previous;
+    };
+    this.makeWav=function()
+    {
+        if(state!=="ready" || !samples)throw new Error("No completed WAV recording");
+        var wav=new Uint8Array(44+captured),view=new DataView(wav.buffer);
+        function word(pos,str){for(var i=0;i<str.length;i++)wav[pos+i]=str.charCodeAt(i);}
+        word(0,"RIFF");view.setUint32(4,36+captured,true);
+        word(8,"WAVE");word(12,"fmt ");view.setUint32(16,16,true);
+        view.setUint16(20,1,true); // PCM
+        view.setUint16(22,1,true); // mono
+        view.setUint32(24,sampleRate,true);view.setUint32(28,sampleRate,true);
+        view.setUint16(32,1,true); // block align
+        view.setUint16(34,8,true); // unsigned PCM
+        word(36,"data");view.setUint32(40,captured,true);
+        wav.set(samples,44);
+        return wav;
+    };
+}
