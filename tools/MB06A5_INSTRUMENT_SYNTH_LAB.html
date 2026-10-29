@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MB-06A.5 · AY alternative instrument synthesis lab</title>
+<style>
+:root{color-scheme:dark;background:#101820;color:#e8f1fa;font:14px/1.45 system-ui,-apple-system,sans-serif}
+*{box-sizing:border-box}body{max-width:1280px;margin:auto;padding:24px}h1{font-size:27px;margin:.1em 0 .3em}h2{font-size:19px;margin:0 0 12px}p{margin:.4em 0 1em}small,.muted{color:#a5bace}.subtitle{font-size:12px;color:#7bcad8;letter-spacing:.09em;text-transform:uppercase}.panel{border:1px solid #385166;background:#1c2a38;border-radius:12px;margin:14px 0;padding:17px}.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px}button{border:1px solid #71a7bc;background:#24536a;color:white;border-radius:7px;padding:9px 13px;cursor:pointer;font:inherit}button:hover{background:#377390}button.primary{background:#087b88;font-weight:700}button:disabled{opacity:.4;cursor:not-allowed}input,select{color:inherit;background:#13212e;border:1px solid #536e80;border-radius:6px;font:inherit;padding:7px}input[type=number]{width:76px}label{display:flex;align-items:center;gap:7px}#status{white-space:pre-wrap;padding:10px;background:#102230;border-radius:7px;margin-top:12px;color:#abe8ce}table{width:100%;border-collapse:collapse;min-width:850px}td,th{padding:9px;border-bottom:1px solid #344b5c;text-align:right;font-variant-numeric:tabular-nums}th:first-child,td:first-child{text-align:left}th{color:#a5c7d8}td:first-child{max-width:270px}.scroll{overflow-x:auto}.warn{color:#ffc58b}.good{color:#85e0bf}.chip{font-size:11px;border:1px solid #486a83;border-radius:5px;padding:2px 6px;color:#bde8f2}.player{display:grid;grid-template-columns: minmax(130px,1fr) minmax(190px,2fr) auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid #364f62}.player audio{width:100%;height:38px}.download{color:#91dced;text-decoration:underline}.small-btn{font-size:12px;padding:5px 10px}#scope{display:block;width:100%;height:190px;border:1px solid #3e5d70;background:#101e2c;border-radius:9px}.subgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.note{border-left:3px solid #d79a49;padding:8px 12px;background:#2b2b2f}.hint{font-size:12px;color:#a5bace}code{background:#122333;padding:2px 4px;border-radius:4px}ol li{margin:7px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#97d9f2}@media(max-width:760px){body{padding:12px}.subgrid{grid-template-columns:1fr}.player{grid-template-columns:1fr}}
+</style>
+<script src="../res/ayumi.js"></script>
+<script src="../res/EMU_CHIP_AY_JS.js"></script>
+<script src="../res/EMU_CHIP_AY_WASM.js"></script>
+<script src="../res/EMU_CHIP_AY.js"></script>
+<script src="AY_WAVEFORM_BENCH_core.js"></script>
+<script src="MB06A5_INSTRUMENT_SYNTH_LAB_core.js"></script>
+</head>
+<body>
+<div class="subtitle">RetroAppleJS · AY waveform research · software and hardware instrument options</div>
+<h1>MB-06A.5 — Alternative instrument-synthesis laboratory</h1>
+<p class="muted">A pitch-controlled experiment following MB-06A.4's detuned hardware-envelope saw/triangle. The same C4 pitch and the same 14-note <em>Frère Jacques</em> timing are used for all instruments. WAVs are rendered from the <b>production AYCore</b> in your local RetroAppleJS checkout, at <b>22,050 Hz</b>. No 6502 machine code is modified.</p>
+<section class="panel">
+<h2>Render experiments</h2>
+<div class="toolbar">
+ <button id="probes" class="primary">Generate 10 C4 probes</button>
+ <label>Melody instrument <select id="candidate"></select></label>
+ <button id="melody">Generate melody</button>
+ <label>Backend <select id="backend"><option value="js">JS</option><option value="wasm">WASM</option></select></label>
+ <label>Cost model <input type="number" id="cpu" min="1" max="500" value="50" step="1"> cycles/write</label>
+ <button id="downloadzip" disabled>Download WAV + JSON ZIP</button>
+</div>
+<div id="status" role="status" aria-live="polite">Checking AYCore scripts…</div>
+<p class="hint">All WAVs are mono 16-bit PCM, useful for examining wave shapes in Audacity. To compare your new <b>8-bit mono Mockingboard peripheral capture</b>, select 8-bit on the Audacity export; do not expect the two bit depths to look identical. Audio calibration, if available, uses measured RMS of the local AYCore sound core.</p>
+</section>
+<section class="panel">
+<h2>Candidate costs — 14-note melody</h2>
+<p class="muted">All pitches in the table use the correctly quantized AY tone period, or the same period-derived frequency for the software DAC. <b>Pitch is programmed, not yet acoustically verified.</b> CPU share is a model assuming the chosen cycles/write, and excludes IRQ, decoding, VIA register selection, HGR, and audio overhead.</p>
+<div class="scroll"><table><thead><tr><th>Instrument</th><th>AY writes</th><th>Writes/s</th><th>CPU share*</th><th>Programmed C4 error</th><th>6502 assessment</th></tr></thead><tbody id="costs"></tbody></table></div>
+<p class="hint">*The CPU-share estimate is an illustrative planning metric, <strong>not an actual 6502 benchmark</strong>. In particular, software-DAC writes at 8–16 times the note frequency cannot be scheduled by the current 1,024-cycle MB-06A.3 IRQ heartbeat without a new high-resolution player. Other candidates use far fewer writes, but need separate native confirmation.</p>
+</section>
+<div class="subgrid">
+<section class="panel"><h2>C4 Audacity probes</h2><p class="muted">1 second each, with about 50 ms initial silence. Use these to compare timbre and steady-state waveforms at the same programmed C4 pitch.</p><div id="probeRows">Generate the probes to listen and download.</div></section>
+<section class="panel"><h2>Frère Jacques melodies</h2><p class="muted">Same 14-note timing as MB-06A.3; monophonic except for the detuned 2-tone candidate. Compare instrument character without the bass, harmony or percussion masking it.</p><div id="melodyRows">Generate a melody to listen and download.</div></section>
+</div>
+<section class="panel"><h2>Actual AYCore waveform — C4 probe</h2><div class="toolbar"><label>Inspect <select id="scopeSelect"><option value="">Generate probes first</option></select></label><span class="muted" id="scopeNote">Displays the rendered waveform, not an ideal schematic.</span></div><canvas id="scope" width="1200" height="260"></canvas><p class="hint">View starts approximately 0.30 seconds into the C4 note and shows 5 expected periods. With the detuned or buzzer composite, there may be no single steady waveform period.</p></section>
+<section class="panel"><h2>What to look for in Audacity</h2>
+<ol><li><b>Pitch:</b> Select a steady C4 interval and measure its principal frequency with Analyze → Plot Spectrum. For modulated or detuned sounds there may be multiple peaks; do not treat the highest peak as necessarily the note pitch.</li>
+<li><b>Shape:</b> Zoom around 0.30–0.32 s of each probe. The software DAC saw/triangle should be stepped. A plucked square remains rectangular at its core; its envelope changes amplitude, not the oscillator shape.</li>
+<li><b>Amplitude:</b> Compare RMS/peak levels in the exported JSON. No automatic loudness normalization is applied.</li>
+<li><b>CPU feasibility:</b> Look at the register-write rates and costs before proposing any waveform for the 6502 IRQ player.</li>
+<li><b>Real-emulator repeat:</b> For candidates worth pursuing, make a native E1 loader and record its real WAV through the Mockingboard peripheral. Only that establishes the full timing cost and waveform under HGR load.</li></ol>
+<div class="note">The AY cannot generate native triangle or sawtooth tone oscillators. Software-DAC waves use rapid R8 volume updates and are <b>not suitable for the existing MB-06A.3 1,024-cycle scheduler</b> as-is. The buzzer candidate may change perceived pitch or create sidebands; it is an exploratory effect rather than a guaranteed pitch-perfect oscillator.</div>
+</section>
+<script type="application/json" id="notes-reference">{"schema":"retroapplejs.mb06a5.notes.v1","clockHz":1021800,"melodyNotes":[{"index":0,"note":"C4","midi":60,"startTick":64,"durationTicks":224,"startCycles":65536,"durationCycles":229376,"expectedHz":261.6255653005986,"ayPeriod":244,"realizedHz":261.73155737704917},{"index":1,"note":"D4","midi":62,"startTick":288,"durationTicks":224,"startCycles":294912,"durationCycles":229376,"expectedHz":293.6647679174076,"ayPeriod":217,"realizedHz":294.2972350230415},{"index":2,"note":"E4","midi":64,"startTick":512,"durationTicks":224,"startCycles":524288,"durationCycles":229376,"expectedHz":329.6275569128699,"ayPeriod":194,"realizedHz":329.1881443298969},{"index":3,"note":"C4","midi":60,"startTick":736,"durationTicks":224,"startCycles":753664,"durationCycles":229376,"expectedHz":261.6255653005986,"ayPeriod":244,"realizedHz":261.73155737704917},{"index":4,"note":"C4","midi":60,"startTick":960,"durationTicks":224,"startCycles":983040,"durationCycles":229376,"expectedHz":261.6255653005986,"ayPeriod":244,"realizedHz":261.73155737704917},{"index":5,"note":"D4","midi":62,"startTick":1184,"durationTicks":224,"startCycles":1212416,"durationCycles":229376,"expectedHz":293.6647679174076,"ayPeriod":217,"realizedHz":294.2972350230415},{"index":6,"note":"E4","midi":64,"startTick":1408,"durationTicks":224,"startCycles":1441792,"durationCycles":229376,"expectedHz":329.6275569128699,"ayPeriod":194,"realizedHz":329.1881443298969},{"index":7,"note":"C4","midi":60,"startTick":1632,"durationTicks":224,"startCycles":1671168,"durationCycles":229376,"expectedHz":261.6255653005986,"ayPeriod":244,"realizedHz":261.73155737704917},{"index":8,"note":"E4","midi":64,"startTick":1856,"durationTicks":224,"startCycles":1900544,"durationCycles":229376,"expectedHz":329.6275569128699,"ayPeriod":194,"realizedHz":329.1881443298969},{"index":9,"note":"F4","midi":65,"startTick":2080,"durationTicks":224,"startCycles":2129920,"durationCycles":229376,"expectedHz":349.2282314330039,"ayPeriod":183,"realizedHz":348.9754098360656},{"index":10,"note":"G4","midi":67,"startTick":2304,"durationTicks":448,"startCycles":2359296,"durationCycles":458752,"expectedHz":391.99543598174927,"ayPeriod":163,"realizedHz":391.79447852760734},{"index":11,"note":"E4","midi":64,"startTick":2752,"durationTicks":224,"startCycles":2818048,"durationCycles":229376,"expectedHz":329.6275569128699,"ayPeriod":194,"realizedHz":329.1881443298969},{"index":12,"note":"F4","midi":65,"startTick":2976,"durationTicks":224,"startCycles":3047424,"durationCycles":229376,"expectedHz":349.2282314330039,"ayPeriod":183,"realizedHz":348.9754098360656},{"index":13,"note":"G4","midi":67,"startTick":3200,"durationTicks":448,"startCycles":3276800,"durationCycles":458752,"expectedHz":391.99543598174927,"ayPeriod":163,"realizedHz":391.79447852760734}],"reference":"MB-06A.3 / Fr\u00e8re Jacques (14 notes)","endCycle":3738624}</script>
+<script>
+(function(){
+'use strict';
+const lab=window.MB06A5Lab,notes=JSON.parse(document.getElementById('notes-reference').textContent).melodyNotes;
+const $=id=>document.getElementById(id),status=$('status');let generated=[],urls=[],backend='js',curve=null,calibration='not calibrated';
+function inform(txt){status.textContent=txt;}
+function releaseUrls(){for(const u of urls)URL.revokeObjectURL(u);urls=[];}
+function makeUrl(data,type){const u=URL.createObjectURL(new Blob([data],{type}));urls.push(u);return u;}
+function escapeText(t){return String(t).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+function cost(){
+ const cpw=Number($('cpu').value)||50,$tbody=$('costs');$tbody.textContent='';
+ for(const c of lab.CANDIDATES){
+  const spec=lab.makeSpec(c.id,notes,{cyclesPerWrite:cpw,curve});
+  const group=c.group==='high'?'High write rate — needs new player':c.group==='explore'?'Perceived pitch unverified':'Promising for native trial';
+  const tr=document.createElement('tr');tr.innerHTML='<td><b>'+escapeText(c.label)+'</b><div class="hint">'+escapeText(c.usage)+'</div></td>'+
+    '<td>'+spec.writes.toLocaleString()+'</td><td>'+spec.writeRate.toFixed(0)+'</td><td class="'+(spec.cpuShare>20?'warn':'')+'">'+spec.cpuShare.toFixed(1)+'%</td><td>'+spec.notes[0].cents.toFixed(2)+' cents</td><td class="'+(c.group==='high'?'warn':'')+'">'+group+'</td>';
+  $tbody.appendChild(tr);
+ }
+}
+function soundRow(result,place){
+ const spec=result.spec,format='MB06A5_'+(result.probe?'probe':'melody')+'_'+spec.id+'_AYCore_22050Hz.wav';
+ const href=makeUrl(lab.wav(result.samples), 'audio/wav');
+ const wrap=document.createElement('div');wrap.className='player';wrap.innerHTML='<div><b>'+escapeText(spec.label)+'</b><div class="hint">'+spec.writes+' writes · '+spec.writeRate.toFixed(0)+' /s · RMS '+result.stats.rms.toFixed(4)+'</div></div><audio controls preload="none"></audio><a class="download" download="'+format+'">WAV ↓</a>';
+ wrap.querySelector('audio').src=href;wrap.querySelector('a').href=href;$(place).appendChild(wrap);
+}
+function draw(){
+ const id=$('scopeSelect').value,result=generated.find(r=>r.probe&&r.spec.id===id);
+ const canvas=$('scope'),ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height;
+ ctx.clearRect(0,0,w,h);ctx.strokeStyle='#385a71';ctx.lineWidth=1;
+ for(let i=1;i<6;i++){ctx.beginPath();ctx.moveTo(0,i*h/6);ctx.lineTo(w,i*h/6);ctx.stroke();}
+ if(!result)return;
+ const f=result.spec.notes[0].programmedHz,frames=Math.round(5*result.rate/f),start=Math.round(.30*result.rate);
+ const pcm=result.samples.subarray(start,Math.min(start+frames,result.samples.length));
+ const peak=Math.max(.015,...pcm.map(Math.abs));ctx.strokeStyle='#80dfe6';ctx.lineWidth=2;ctx.beginPath();
+ for(let i=0;i<pcm.length;i++){const x=i/(pcm.length-1)*w,y=h/2-pcm[i]/peak*(h*.40);if(i)ctx.lineTo(x,y);else ctx.moveTo(x,y);}ctx.stroke();
+ $('scopeNote').textContent=specLabel(id)+' · '+f.toFixed(2)+' Hz programmed · '+(peak>0?peak.toFixed(4):'0')+' peak in view';
+}
+function specLabel(id){return lab.CANDIDATES.find(x=>x.id===id)?.label||id;}
+async function calibrate(){
+ if(!window.AYWaveformBench?.calibrateVolumeCurve){calibration='nominal AY volume approximation (bench unavailable)';curve=lab.nominalCurve();return;}
+ try{inform('Calibrating AYCore channel amplitude levels (15 short RMS samples)…');curve=await AYWaveformBench.calibrateVolumeCurve(AYCore,{backend:backend,clock:lab.CLOCK});calibration='Measured AYCore RMS-vs-volume curve';}
+ catch(e){curve=lab.nominalCurve();calibration='Nominal fallback: calibration failed — '+e.message;}
+}
+async function generate(kind,id){
+ const cpw=Number($('cpu').value)||50;
+ const spec=lab.makeSpec(id,kind==='probe'?lab.buildProbeNotes():notes,{probe:kind==='probe',curve,cyclesPerWrite:cpw});
+ const actual=await lab.render(AYCore,spec,{backend});
+ return {...actual,probe:kind==='probe'};
+}
+async function run(all){
+ if(!window.AYCore||!lab){inform('AYCore script missing. Copy HTML and core JS into RetroAppleJS/tools/, serve the repository, reload.');return;}
+ $('probes').disabled=$('melody').disabled=true;
+ try{
+  backend=$('backend').value;await calibrate();cost();let done=0;
+  const ids=all?lab.CANDIDATES.map(x=>x.id):[$('candidate').value];
+  if(all){$('probeRows').textContent='';$('scopeSelect').textContent='';}
+  else if(!generated.some(r=>!r.probe))$('melodyRows').textContent='';
+  for(const id of ids){
+   inform('Rendering '+(++done)+'/'+ids.length+': '+specLabel(id)+'…');
+   const result=await generate(all?'probe':'melody',id);
+   const prev=generated.findIndex(r=>r.probe===result.probe&&r.spec.id===result.spec.id);
+   if(prev>=0)generated.splice(prev,1);
+   generated.push(result);
+   if(all){soundRow(result,'probeRows');const opt=document.createElement('option');opt.value=id;opt.textContent=specLabel(id);$('scopeSelect').appendChild(opt);}
+   else soundRow(result,'melodyRows');
+   await new Promise(resolve=>setTimeout(resolve,0));
+  }
+  $('downloadzip').disabled=!generated.length;
+  if(all){$('scopeSelect').value='triangle8';draw();}
+  inform('Done: '+ids.length+' AYCore '+backend.toUpperCase()+' render(s). '+calibration+'.\nWAVs are 16-bit mono, 22,050 Hz. Software-DAC results are offline experiments, not native 6502 scores.');
+ }catch(e){console.error(e);inform('ERROR: '+(e?.stack||e));}
+ finally{$('probes').disabled=$('melody').disabled=false;}
+}
+$('probes').addEventListener('click',()=>run(true));$('melody').addEventListener('click',()=>run(false));$('scopeSelect').addEventListener('change',draw);
+$('cpu').addEventListener('change',cost);
+$('downloadzip').addEventListener('click',()=>{
+ if(!generated.length)return;
+ const te=new TextEncoder(),files=[],manifest={schema:'retroapplejs.mb06a5.report.v1',clockHz:lab.CLOCK,rate:lab.RATE,backend,calibration,
+ note:'CPU share uses only assumed cycles per AY write, not full native 6502 execution.',candidates:[]};
+ for(const r of generated){const tag=r.probe?'probe':'melody',stem='MB06A5_'+tag+'_'+r.spec.id;
+  files.push({name:stem+'_22050Hz_16bit_mono.wav',bytes:lab.wav(r.samples)});
+  const {events,...withoutEvents}=r.spec;
+  manifest.candidates.push({kind:tag,...withoutEvents,stats:r.stats});
+  files.push({name:stem+'_register_events.json',bytes:te.encode(JSON.stringify({events,rendertype:'AYCore source PCM',...withoutEvents},null,2))});
+ }
+ files.push({name:'MB06A5_manifest.json',bytes:te.encode(JSON.stringify(manifest,null,2))});
+ const out=lab.zipFiles(files),u=makeUrl(out,'application/zip'),a=document.createElement('a');a.href=u;a.download='MB06A5_AYCore_instrument_experiments.zip';document.body.appendChild(a);a.click();a.remove();
+});
+for(const c of lab.CANDIDATES){const o=document.createElement('option');o.value=c.id;o.textContent=c.label;$('candidate').appendChild(o);}
+$('candidate').value='pluck';cost();
+inform(window.AYCore?'AYCore is available. Start with Generate 10 C4 probes.':'AYCore not loaded. Open this page from the RetroAppleJS/tools/ directory in your checkout.');
+window.addEventListener('pagehide',releaseUrls,{once:true});
+})();
+</script>
+</body>
+</html>
