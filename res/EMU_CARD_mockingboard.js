@@ -1208,12 +1208,12 @@ function mockingboard()
             +"<i class='"+volumeIcon()+"'></i></button>"
             +"<button class=appbut title='Mockingboard live audio telemetry' aria-label='Mockingboard live audio telemetry' onclick='"+access+"?.openAudioTelemetry()'>"
             +"<i class='fa fa-sliders-h'></i></button>"
-            +"<button class=appbut id='"+historyID("wav_record")+"' data-wav-state='"+wavCapture.getState().state+"' aria-pressed='false' title='Arm 8-bit mono WAV recording at 22,050 Hz' aria-label='Arm Mockingboard WAV recording' onclick='"+access+"?.toggleWAVCapture()'>"
-            +"<i class='fa fa-circle' id='"+historyID("wav_record_icon")+"' style='color:#999'></i></button>"
+            +"<button class=appbut id='"+historyID("wav_record")+"' data-wav-state='"+wavCapture.getState().state+"' aria-pressed='"+(wavCapture.isActive()?"true":"false")+"' title='Arm 8-bit mono WAV recording at 22,050 Hz' aria-label='Arm Mockingboard WAV recording' onclick='"+access+"?.toggleWAVCapture()'>"
+            +"<i class='fa fa-circle' id='"+historyID("wav_record_icon")+"' style='color:"+(wavCapture.getState().state==="recording"?"#d22":wavCapture.getState().state==="armed"?"#bf8700":"#999")+"'></i></button>"
             +"<label for='"+historyID("wav_seconds")+"' style='font-size:10px'>WAV</label>"
-            +"<input id='"+historyID("wav_seconds")+"' type=number min=1 max=60 step=1 value='"+wavCapture.getState().seconds+"' title='WAV capture duration in seconds (1–60)' aria-label='WAV duration in seconds' style='width:54px;height:24px;padding:0 4px;box-sizing:border-box;border-radius:7px' onchange='"+access+"?.setWAVCaptureSeconds(this.value)'>"
+            +"<input id='"+historyID("wav_seconds")+"' type=number min=1 max=60 step=1 value='"+wavCapture.getState().seconds+"' "+(wavCapture.getState().state==="idle"?"":"disabled ")+"title='WAV capture duration in seconds (1–60)' aria-label='WAV duration in seconds' style='width:54px;height:24px;padding:0 4px;box-sizing:border-box;border-radius:7px' onchange='"+access+"?.setWAVCaptureSeconds(this.value)'>"
             +"<span style='font-size:10px'>s</span>"
-            +"<button class=appbut id='"+historyID("wav_download")+"' disabled title='Download WAV when capture finishes' aria-label='Download recorded WAV' onclick='"+access+"?.downloadWAVCapture()'>"
+            +"<button class=appbut id='"+historyID("wav_download")+"' "+(wavCapture.getState().state==="ready"?"":"disabled ")+"title='Download WAV when capture finishes' aria-label='Download recorded WAV' onclick='"+access+"?.downloadWAVCapture()'>"
             +"<i class='fa fa-download'></i></button>"
             +"</div></div></div>";
     };
