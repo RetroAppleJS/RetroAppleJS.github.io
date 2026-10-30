@@ -7,17 +7,22 @@
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
 'use strict';
 const CLOCK=1021800,RATE=22050,TIMEBASE=1000000000,BLOCK=256;
+const DAC_STEPS=[2,4,8,16];
 const CANDIDATES=[
  {id:'square',label:'Native square — pitch reference',family:'tone',group:'low',usage:'Direct AY tone; most accurate control'},
  {id:'pluck',label:'Plucked square — hardware decay envelope',family:'tone',group:'low',usage:'Tone sets pitch; R13 shapes amplitude attack/decay'},
  {id:'adsr',label:'Expressive square — low-rate software volume',family:'tone',group:'low',usage:'Tone pitch, 5–8 volume writes per note'},
  {id:'tone-noise',label:'Reed — square mixed with noise',family:'tone',group:'low',usage:'Tone fundamental plus noisy timbre'},
  {id:'detune',label:'Chorus — two gently detuned squares',family:'tone',group:'low',usage:'Uses two of three AY channels'},
- {id:'buzzer',label:'Buzzer — tone × audio-rate envelope',family:'tone',group:'explore',usage:'Modulated sound; sidebands/beat pitch may be ambiguous'},
- {id:'saw8',label:'Software sawtooth — 8 DAC steps',family:'dac',group:'high',steps:8,usage:'R8 volume writes at 8× note rate'},
- {id:'saw16',label:'Software sawtooth — 16 DAC steps',family:'dac',group:'high',steps:16,usage:'R8 volume writes at 16× note rate'},
- {id:'triangle8',label:'Software triangle — 8 DAC steps',family:'dac',group:'high',steps:8,usage:'R8 volume writes at 8× note rate'},
- {id:'triangle16',label:'Software triangle — 16 DAC steps',family:'dac',group:'high',steps:16,usage:'R8 volume writes at 16× note rate'}
+ {id:'buzzer',label:'Buzzer — tone × audio-rate envelope',family:'tone',group:'explore',usage:'Modulated sound; compare perceived pitch and sidebands'},
+ {id:'saw2',label:'Software sawtooth — 2 DAC steps',family:'dac',group:'high',shape:'saw',steps:2,usage:'Two-level very coarse saw; close to a square timbre'},
+ {id:'saw4',label:'Software sawtooth — 4 DAC steps',family:'dac',group:'high',shape:'saw',steps:4,usage:'Four-step stepped rising ramp'},
+ {id:'saw8',label:'Software sawtooth — 8 DAC steps',family:'dac',group:'high',shape:'saw',steps:8,usage:'Accepted 8-step falling-edge saw variant'},
+ {id:'saw16',label:'Software sawtooth — 16 DAC steps',family:'dac',group:'high',shape:'saw',steps:16,usage:'Accepted 16-step falling-edge saw variant'},
+ {id:'triangle2',label:'Software triangle — 2 DAC steps',family:'dac',group:'high',shape:'triangle',steps:2,usage:'Two levels: mathematically not a true triangle; square-like timbre'},
+ {id:'triangle4',label:'Software triangle — 4 DAC steps',family:'dac',group:'high',shape:'triangle',steps:4,usage:'Four-step rising/falling staircase'},
+ {id:'triangle8',label:'Software triangle — 8 DAC steps',family:'dac',group:'high',shape:'triangle',steps:8,usage:'Accepted 8-step triangle variant'},
+ {id:'triangle16',label:'Software triangle — 16 DAC steps',family:'dac',group:'high',shape:'triangle',steps:16,usage:'Accepted 16-step triangle variant'}
 ];
 function check(c,m){if(!c)throw Error(m);}
 function nearestTone(frequency){check(Number.isFinite(frequency)&&frequency>0,'Bad note frequency');
@@ -44,7 +49,7 @@ function makeSpec(id,notes,{probe=false,curve=null,skipDuplicates=true,cyclesPer
  // AY0 is silent until the first note. No AY1 access at any time.
  add(0,7,0x3f);add(0,8,0);add(0,9,0);add(0,10,0);
  const isDac=candidate.family==='dac';
- let potentialDacWrites=0,skippedDuplicates=0;
+ let potentialDacWrites=0,skippedDuplicates=0,minDacStepCycles=null;
  for(const n of notes){
   check(Number.isInteger(n.startCycles)&&Number.isInteger(n.durationCycles)&&n.durationCycles>0,'Invalid note timeline');
   const target=n.expectedHz,p=nearestTone(target),t=n.startCycles;
@@ -53,9 +58,11 @@ function makeSpec(id,notes,{probe=false,curve=null,skipDuplicates=true,cyclesPer
   add(t,8,0);
   if(isDac){
    add(t+128,7,0x3f); // disable tone/noise on A: software R8 DAC output
-   const s=candidate.steps,isTriangle=id.startsWith('triangle');
+   const s=candidate.steps,isTriangle=candidate.shape==='triangle';
    const start=t+1024,finish=release;
    const cyclesPerWave=CLOCK/p.realizedHz;
+   const minStep=Math.floor(cyclesPerWave/s);
+   minDacStepCycles=minDacStepCycles===null?minStep:Math.min(minStep,minDacStepCycles);
    let previous=0;
    for(let k=0;;k++){
     const cycle=Math.round(start+k*cyclesPerWave/s);
@@ -105,11 +112,48 @@ function makeSpec(id,notes,{probe=false,curve=null,skipDuplicates=true,cyclesPer
  const duration=endCycle/CLOCK,writeRate=list.length/duration,softwareRate=potentialDacWrites/duration;
  const cpuShare=100*list.length*cyclesPerWrite/endCycle;
  return {id,label:candidate.label,candidate,events:list,notes:pitches,endCycle,duration,
-    writes:list.length,writeRate,softwareRate,potentialDacWrites,skippedDuplicates,
+    writes:list.length,writeRate,softwareRate,potentialDacWrites,skippedDuplicates,minDacStepCycles,
     maxSameCycle,cyclesPerWrite,cpuShare,
     // Cost model is illustrative: excludes IRQ and multi-event serialization.
     cpuCostNote:'Planning assumption: '+cyclesPerWrite+' cycles/AY write; excludes E1 decoding, IRQ entry/exit, register select and timer maintenance.',
     limitNote:isDac?'Software volume updates are NOT executable at this rate by the existing 1024-cycle MB-06A.3 IRQ scheduler.':'Native 6502 viability not measured yet.'};
+}
+function dacCandidates(){return CANDIDATES.filter(c=>c.family==='dac');}
+/* One deliberately simple ranking framework for future offline composer substitution.
+   Musical taste is not inferred from write count; listen before choosing a substitute. */
+function fallbackOrder(id,{preferSameFamily=true}={}){
+ const base=CANDIDATES.find(c=>c.id===id);check(base,'Unknown candidate '+id);
+ if(base.family!=='dac')return [id,'square'].filter((x,i,a)=>a.indexOf(x)===i);
+ const same=DAC_STEPS.filter(n=>n<=base.steps).sort((a,b)=>b-a).map(n=>base.shape+n);
+ const opposite=DAC_STEPS.filter(n=>n<=base.steps).sort((a,b)=>b-a).map(n=>(base.shape==='saw'?'triangle':'saw')+n);
+ return [...new Set(preferSameFamily?[...same,...opposite,'square']:[id,'square',...same,...opposite])];
+}
+/* Relative amplitude of harmonics at the programmed fundamental, using
+   windowed direct Fourier coefficients over the rendered (not theoretical) PCM.
+   This is a spectral descriptor, not a claim of measured musical pitch. */
+function harmonics(samples,{rate=RATE,frequency,startSeconds=.30,seconds=.22,count=8}={}){
+ check(Number.isFinite(frequency)&&frequency>0&&frequency<rate/2,'Bad analysis frequency');
+ check(Number.isInteger(count)&&count>=1&&count<=32,'Bad harmonic count');
+ const start=Math.max(0,Math.round(startSeconds*rate));
+ const n=Math.min(Math.round(seconds*rate),samples.length-start);
+ check(n>=rate/frequency*8,'Not enough PCM for stable harmonic analysis');
+ let mean=0;for(let j=0;j<n;j++)mean+=samples[start+j];mean/=n;
+ const magnitudes=[];
+ for(let h=1;h<=count;h++){
+  if(h*frequency>=rate/2){magnitudes.push(null);continue;}
+  let re=0,im=0,winSum=0;
+  for(let j=0;j<n;j++){
+   const theta=2*Math.PI*h*frequency*j/rate;
+   const win=.5-.5*Math.cos(2*Math.PI*j/(n-1));
+   const v=(samples[start+j]-mean)*win;
+   re+=v*Math.cos(theta);im-=v*Math.sin(theta);winSum+=win;
+  }
+  magnitudes.push(2*Math.hypot(re,im)/winSum);
+ }
+ const fund=magnitudes[0]||0;
+ return {fundamentalHz:frequency,analysisStartSeconds:start/rate,windowSeconds:n/rate,
+    magnitudes,relativeDb:magnitudes.map(v=>v===null?null:(fund>1e-9&&v>1e-9?20*Math.log10(v/fund):null)),
+    note:'AYCore PCM harmonic coefficients around programmed fundamental; no peak-search or hardware FFT; use Audacity to verify pitch and spectral aliasing.'};
 }
 function toTick(cycle){return Math.round(cycle*TIMEBASE/CLOCK);}
 function pcmStats(pcm){let rms=0,peak=0,dc=0;for(const x of pcm){peak=Math.max(peak,Math.abs(x));rms+=x*x;dc+=x;}return {rms:Math.sqrt(rms/pcm.length),peak,dc:dc/pcm.length};}
@@ -170,5 +214,5 @@ function zipFiles(files){
  fd.setUint32(0,0x06054b50,true);fd.setUint16(8,files.length,true);fd.setUint16(10,files.length,true);fd.setUint32(12,csSize,true);fd.setUint32(16,offset,true);
  const all=new Uint8Array(offset+csSize+22);let k=0;for(const item of [...ls,...cs,foot]){all.set(item,k);k+=item.length;}return all;
 }
-return {CLOCK,RATE,CANDIDATES,nearestTone,nominalCurve,volumeLevel,buildProbeNotes,makeSpec,render,pcmStats,wav,zipFiles};
+return {CLOCK,RATE,DAC_STEPS,CANDIDATES,dacCandidates,fallbackOrder,harmonics,nearestTone,nominalCurve,volumeLevel,buildProbeNotes,makeSpec,render,pcmStats,wav,zipFiles};
 });
