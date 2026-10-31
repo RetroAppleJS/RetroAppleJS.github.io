@@ -32,9 +32,8 @@ if(!actual.equals(expected)){
     off+' ($'+(0x6000+off).toString(16)+'), ASM_core='+actual[off]+
     ', ca65='+expected[off]);
 }
-const symbols=assembled.symtab||{};
-assert.equal(symbols.PT3_02A_START>=0x6000,true);
-assert.ok(symbols.PT3_02A_FOREGROUND>=0x6000);
-assert.ok(symbols.PT3_02A_STOP>=0x6000);
+// Three entry points must remain JMP vectors at $6000/$6003/$6006.
+for(const offset of [0,3,6])
+  assert.equal(actual[offset],0x4c,'Expected JMP at entry offset '+offset);
 console.log('PASS: ASM_core.js matches ca65 byte for byte;',actual.length,
  'bytes at $6000; source lines',source.split('\n').length);
