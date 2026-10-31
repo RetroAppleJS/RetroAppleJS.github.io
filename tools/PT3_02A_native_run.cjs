@@ -158,7 +158,7 @@ for(const e of ay0){
     frameRegisters[e.reg]=e.value&0xff;
     if(e.reg!==12 || e.tick<raised[0])continue;
     const tonePeriods=[0,2,4].map(r=>frameRegisters[r]+((frameRegisters[r+1]&15)<<8));
-    const ayHz=tonePeriods.map(p=>p>0?1000000/(16*p):null);
+    const ayHz=tonePeriods.map(p=>p>0?CYCLES_PER_SECOND/(16*p):null);
     const musicalTime=(e.tick-raised[0])/CYCLES_PER_SECOND;
     nativeFrames.push({
         time:+musicalTime.toFixed(4),
@@ -175,19 +175,32 @@ const expectedNotes=[
 ];
 const musicalAudit=[];
 for(let sampleIndex=0;sampleIndex<24;sampleIndex++){
-    const target=sampleIndex*0.25+0.14;
+    // Spectrumizer rounds 120 BPM / 250ms source to 125 BPM / 240ms,
+    // i.e. two 50Hz PT3 rows per MIDI note (6 ticks per row).
+    const target=sampleIndex*0.24+0.12;
     const frame=nativeFrames.reduce((best,f)=>
       !best||Math.abs(f.time-target)<Math.abs(best.time-target)?f:best,null);
-    const expected=expectedNotes.map(ch=>ch[sampleIndex%12]);
+    // Spectrumizer deliberately arranges tracks A<-MIDI2, B<-MIDI1, C<-MIDI0.
+    const expected=[2,1,0].map(ch=>expectedNotes[ch][sampleIndex%12]);
     const cents=expected.map((n,v)=>frame?.midi[v]===null?null:
        Math.round((frame.midi[v]-n)*100));
     musicalAudit.push({second:+target.toFixed(2),expected,
         midi:frame?.midi,volumes:frame?.volumes,mixer:frame?.mixer,
         cents});
 }
+// Musical accuracy is a hard acceptance gate, not just IRQ/register activity.
+for(const sample of musicalAudit) {
+    for(let ch=0;ch<3;ch++) {
+        const error=sample.cents[ch];
+        assert.ok(error!==null && Number.isFinite(error) && Math.abs(error)<=15,
+            'Native PT3 frequency error exceeds 15 cents: '+
+            JSON.stringify({second:sample.second,channel:ch,expected:sample.expected[ch],
+                measured:sample.midi?.[ch],errorCents:error}));
+    }
+}
 const pitchDiagnostic={
     source:'original 12-second MIDI, 0.25 s per note, 3 channels',
-    noteTableAyClockHz:1000000,
+    noteTableAyClockHz:CYCLES_PER_SECOND,
     firstIrqTick:raised[0],
     firstFrames:nativeFrames.slice(0,40),
     sampledNotes:musicalAudit,

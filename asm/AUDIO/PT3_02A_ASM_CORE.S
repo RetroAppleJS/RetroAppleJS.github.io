@@ -92,6 +92,7 @@ pt3_02a_start:
     jsr reset_ay_both
     jsr clear_ay_both
     jsr pt3_init_song
+    jsr pt3_02b_calibrate_tone_table
     ; Use original 12-second fixture for this nonlooping smoke test.
     lda #$00
     sta LOOP
@@ -196,6 +197,48 @@ pt3_02a_halted:
     jmp pt3_02a_halted
 
 ; Upstream dependency order is intentionally identical to pt3_test.s.
+
+; PT3-02B calibrated pitch for Spectrumizer's PT3 tone-table #1 only.
+; Standard native pt3_lib converts tracker periods by 9/16 (~1.77MHz
+; to 1MHz). ST table #1 is based on a 2MHz reference instead, making
+; table-1 notes flat when sent through that path. Keep the upstream
+; 9/16 converter unchanged, but provide compensated raw periods here.
+; Exact target AY period = round(1021800 / (16 * equal-tempered frequency)).
+; Upstream uses floor(raw * 9 / 16), so raw = ceil(target * 16 / 9).
+; Index 0 is MIDI C1 (24), 36 is MIDI C4 (60), 48 is C5 (72).
+pt3_02b_calibrate_tone_table:
+    lda PT3_LOC+PT3_HEADER_FREQUENCY
+    cmp #$01
+    bne pt3_02b_calibrate_done
+    ldy #95
+pt3_02b_calibrate_loop:
+    lda pt3_02b_tone_table_lo,y
+    sta NoteTable_low,y
+    lda pt3_02b_tone_table_hi,y
+    sta NoteTable_high,y
+    dey
+    bpl pt3_02b_calibrate_loop
+pt3_02b_calibrate_done:
+    rts
+
+pt3_02b_tone_table_lo:
+    .byte $90,$CD,$16,$68,$C4,$29,$98,$0D,$8B,$10,$9D,$2F
+    .byte $C8,$68,$0B,$B4,$62,$14,$CB,$88,$46,$09,$CF,$98
+    .byte $64,$34,$06,$DB,$B0,$8B,$66,$44,$24,$04,$E8,$CD
+    .byte $B2,$99,$82,$6D,$59,$46,$34,$22,$12,$02,$F4,$E6
+    .byte $D9,$CD,$C2,$B8,$AD,$A2,$99,$90,$89,$82,$79,$74
+    .byte $6D,$68,$60,$5B,$56,$52,$4D,$49,$44,$40,$3D,$39
+    .byte $38,$34,$30,$2F,$2B,$29,$28,$24,$22,$20,$1F,$1D
+    .byte $1B,$19,$19,$18,$16,$14,$14,$12,$12,$10,$10,$0F
+pt3_02b_tone_table_hi:
+    .byte $0D,$0C,$0C,$0B,$0A,$0A,$09,$09,$08,$08,$07,$07
+    .byte $06,$06,$06,$05,$05,$05,$04,$04,$04,$04,$03,$03
+    .byte $03,$03,$03,$02,$02,$02,$02,$02,$02,$02,$01,$01
+    .byte $01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+    .byte $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
 
 ; ----- BEGIN pt3_lib_core.s (pinned Weaver 0BSD) -----
 ;===========================================
