@@ -114,6 +114,12 @@ for(let i=0;i<ay0.length;i++) {
 }
 assert.ok(new Set(ay0.filter(e=>e.reg===0).map(e=>e.value)).size>2,
     'No changing tone periods from PT3 decode');
+const nonZeroAmpWrites=ay0.filter(e=>e.reg>=8&&e.reg<=10&&(e.value&15)>0).length;
+const toneEnableWrites=ay0.filter(e=>e.reg===7&&(e.value&7)!==7).length;
+assert.ok(nonZeroAmpWrites>30,
+    'Decoded PT3 is silent: no nonzero AY amplitude programming');
+assert.ok(toneEnableWrites>30,
+    'Decoded PT3 has no enabled tone channels');
 const intervals=raised.slice(1).map((t,i)=>t-raised[i]);
 assert.ok(intervals.every(n=>n===T1_PERIOD),
     'Unstable VIA Timer1 period: '+[...new Set(intervals)]);
@@ -145,6 +151,7 @@ const report={
     foregroundCounter:fgProgress,
     hgrByte: hgrProgress,
     ayWrites:[ay0.length,ay1.length],
+    nonZeroAmpWrites,toneEnableWrites,
     totalWritesDuringPlayback:writesDuringMusic,
     stopSuccess:true,
     notes:'No browser AudioContext, full Apple II Monitor ROM, or native HGR rasterization; those remain integration checks.'
