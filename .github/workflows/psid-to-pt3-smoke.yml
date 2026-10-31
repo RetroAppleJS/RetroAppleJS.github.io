@@ -1,0 +1,82 @@
+name: PSID to PT3 conversion smoke test
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/psid-to-pt3-smoke.yml'
+      - 'docs/PSID_TO_PT3_SMOKE.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conversion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install converters
+        run: |
+          gem install sidtool --no-document
+          python -m pip install 'spectrumizer>=0.2.1'
+      - name: Prepare original diagnostic PSID
+        run: |
+          mkdir -p build/psid_pt3/fixtures
+          printf '%s' 'UFNJRAACAHwAABAAEAcAAQABAAAAAE9yaWdpbmFsIFNhdyBTY2FsZQAAAAAAAAAAAAAAAAAAUmV0cm9BcHBsZUpTIE9SSUdJTkFMAAAAAAAAAAAAAAAyMDI2IENDMCB0ZXN0IGZpeHR1cmUAAAAAAAAAAAAAAAAEAAAAAAAQqQCF+oX7YKX6KQ/QI6b7iikHqr1AEI0A1L1IEI0B1KkAjQXUqfCNBtSpIY0E1Ob7pfopD8kM0AWpII0E1Ob6YGeJ7TsTRdrOERMVFxodICI=' | base64 -d > build/psid_pt3/fixtures/01_saw_scale.sid
+          printf '%s' 'UFNJRAACAHwAABAAEAcAAQABAAAAAE9yaWdpbmFsIFRocmVlIFZvaWNlcwAAAAAAAAAAAAAAUmV0cm9BcHBsZUpTIE9SSUdJTkFMAAAAAAAAAAAAAAAyMDI2IENDMCB0ZXN0IGZpeHR1cmUAAAAAAAAAAAAAAAAEAAAAAAAQqQCF+oX7YKX6KQ/QWab7iikHqr2AEI0A1L2IEI0B1KkAjQXUqfCNBtSpIY0E1L2QEI0H1L2YEI0I1KkAjQzUqfCNDdSpQY0L1L2gEI0O1L2oEI0P1KkAjRPUqfCNFNSpEY0S1Ob7pfopD8kM0A+pII0E1KlAjQvUqRCNEtTm+mBnie07E0XazhETFRcaHSAitMT3nQqibWcICQoLDQ4QEQqibWeJ7TsTDQ4QERMVFxo=' | base64 -d > build/psid_pt3/fixtures/02_three_voices.sid
+          printf '%s' 'UFNJRAACAHwAABAAEAcAAQABAAAAAE9yaWdpbmFsIE5vaXNlIFBlcmN1c3Npb24AAAAAAAAAUmV0cm9BcHBsZUpTIE9SSUdJTkFMAAAAAAAAAAAAAAAyMDI2IENDMCB0ZXN0IGZpeHR1cmUAAAAAAAAAAAAAAAAEAAAAAAAQqQCF+oX7YKX6KQ/QWab7iikHqr2AEI0A1L2IEI0B1KkAjQXUqfCNBtSpIY0E1L2QEI0H1L2YEI0I1KkAjQzUqfCNDdSpQY0L1L2gEI0O1L2oEI0P1KkAjRPUqfCNFNSpgY0S1Ob7pfopD8kM0A+pII0E1KlAjQvUqYCNEtTm+mBnie07E0XazhETFRcaHSAiWlqFhc/PhYUEBAYGBQUGBlon4sFaJ+LBBAYEBwQGBAc=' | base64 -d > build/psid_pt3/fixtures/03_noise_percussion.sid
+      - name: Convert PSID files to PT3 and render AY previews
+        shell: bash
+        run: |
+          mkdir -p build/psid_pt3
+          printf '| PSID input | Status | MIDI note-ons | PT3 bytes |\n|---|---|---:|---:|\n' >> "$GITHUB_STEP_SUMMARY"
+          succeeded=0
+          for sid in build/psid_pt3/fixtures/*.sid tools/music/B-land_Scrapbook.sid tools/music/Funtempo.sid tools/music/Irish_Dream.sid; do
+            base="$(basename "$sid" .sid)"
+            dir="build/psid_pt3/$base"
+            mkdir -p "$dir"
+            if ! sidtool --info "$sid" > "$dir/metadata.log" 2>&1; then
+              echo "| $base | Sidtool unsupported header | — | — |" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+            if ! sidtool --frames 800 --format midi --out "$dir/$base.mid" "$sid" > "$dir/sidtool.log" 2>&1; then
+              echo "| $base | Sidtool extraction failed | — | — |" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+            notes="$(python -c 'import mido,sys; m=mido.MidiFile(sys.argv[1]); print(sum(1 for t in m.tracks for e in t if e.type=="note_on" and e.velocity>0))' "$dir/$base.mid")"
+            if [ "$notes" -eq 0 ]; then
+              echo "| $base | MIDI empty | 0 | — |" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+            if ! spectrumizer "$dir/$base.mid" --style faithful -o "$dir/$base.pt3" > "$dir/spectrumizer.log" 2>&1; then
+              echo "| $base | PT3 encoding failed | $notes | — |" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+            size="$(wc -c < "$dir/$base.pt3" | tr -d ' ')"
+            if ! spectrumizer-play "$dir/$base.pt3" --no-play --seconds 15 -o "$dir/$base.wav" > "$dir/render.log" 2>&1; then
+              echo "| $base | PT3 created; render failed | $notes | $size |" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+            if ! spectrumizer-export "$dir/$base.pt3" -o "$dir/$base.roundtrip.mid" > "$dir/roundtrip.log" 2>&1; then
+              echo "| $base | PT3 rendered; reverse parse failed | $notes | $size |" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+            succeeded=$((succeeded + 1))
+            echo "| $base | PT3 + software AY render OK | $notes | $size |" >> "$GITHUB_STEP_SUMMARY"
+          done
+          echo "Software-validated conversions: $succeeded. Native 6502 Mockingboard playback: NOT TESTED." >> "$GITHUB_STEP_SUMMARY"
+          [ "$succeeded" -ge 1 ]
+      - name: Publish diagnostic MIDI/PT3/WAV files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: psid-pt3-smoke-output
+          path: build/psid_pt3/
+          retention-days: 7
+          if-no-files-found: warn
