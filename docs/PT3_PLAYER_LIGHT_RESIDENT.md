@@ -2,9 +2,10 @@
 
 **Source:** `asm/AUDIO/PT3_PLAYER_LIGHT_ASM_CORE.S`
 
-**Status:** Candidate implementation. ASM_core assembler + native 6502/VIA/AY
-CI verifies the executable; real RetroAppleJS browser and physical Mockingboard
-acceptance remain separate gates.
+**Status:** Native CPU/VIA/AY harness **PASS** ([GitHub Actions run 41218850528](https://github.com/RetroAppleJS/RetroAppleJS.github.io/actions/runs/41218850528)). Full-browser and physical Mockingboard acceptance remain separate gates.
+The compiled resident player is **3,720 bytes**, the test PT3 is **862 bytes**,
+and the native lifecycle test recorded **80 Timer 1 IRQ assertions** and
+**763 register writes per AY** across play/pause/resume/restart (no HGR code).
 
 This derives from the existing `PT3_02B_ASM_CORE.S`, retaining Vince
 Weaver's native PT3 library (0BSD license option, pinned upstream commit
@@ -103,8 +104,9 @@ Generated files appear under `build/pt3_light/`, including a raw
 2. Install Mockingboard in physical slot 4. Use the Apple II Monitor or BASIC
    to invoke `CALL 24576`; **it must return** to the prompt or caller
    while the PT3 continues playing.
-3. With player active, perform independent HGR work. Monitor AY/FYM history
-   and record 8-bit 22,050 Hz WAV if desired.
+3. With player active, continue ordinary BASIC or 6502 host instructions;
+   the player itself has **no** HGR setup, drawing loop, or foreground work.
+   Record AY/FYM history or 8-bit 22,050 Hz WAV if desired.
 4. Try `CALL 24582` to pause, `CALL 24585` to resume and
    `CALL 24579` to stop; after STOP, no further music IRQ writes should occur.
 5. Call START again and confirm a clean restart. Confirm slot changes/reboots
