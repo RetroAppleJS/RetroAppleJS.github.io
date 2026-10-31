@@ -49,6 +49,23 @@ the same as native Mockingboard verification.**
 
 ---
 
+### Native experiment — 31 October 2026
+
+[GitHub Actions run 41183305734](https://github.com/RetroAppleJS/RetroAppleJS.github.io/actions/runs/41183305734) executed the native register-capture pipeline. **6/6** inputs converted to PT3, rendered to a 15-second WAV preview, and passed Spectrumizer's reverse PT3 parsing. All six Node regression tests passed.
+
+| Input | Native MIDI note-ons | PT3 reverse-export note-ons | PT3 bytes |
+|---|---:|---:|---:|
+| Original saw scale | 50 | 50 | 898 |
+| Original 3-voice | 150 | 150 | 1,288 |
+| Original noise/percussion | 150 | 150 | 1,331 |
+| B-land Scrapbook | 536 | 286 | 1,159 |
+| Funtempo | 531 | 256 | 1,289 |
+| Irish Dream | 565 | 277 | 1,079 |
+
+The **original fixtures** preserve the per-channel note-on pitch distribution and total count after PT3 conversion and reverse export. Their PSID master-volume register is zero, meaning they test **event recovery**, not audible equivalence to the source SID (which is muted). The generated AY WAVs are non-silent. The three repository songs are not close to lossless: Spectrumizer's 3-voice arrangement/quantization reduces note-on counts markedly, and SID instrument/filter fidelity has not been established by listening. Those reductions are not solely attributable to extraction.
+
+The native extractor succeeds on **Funtempo** and **Irish Dream**, where the prior Sidtool-based extraction failed with \`pokeDigi\` errors. Noise-to-drums mapping is heuristic; some fast pitch motion creates frequent MIDI note changes. This is a proof of feasibility, **not** a claim of faithful SID-to-AY transcoding or native Apple II 6502 playback.
+
 ## Historical Sidtool baseline (PR #270)
 
 The section below documents the earlier Sidtool experiment and is retained
