@@ -62,7 +62,18 @@ function MockingboardAudio()
     }
     function ensureAudio()
     {
-        if(device.audio!==undefined) return device.audio;
+        if(device.audio!==undefined && device.audio?.state!=="closed") return device.audio;
+        // A closed context cannot be resumed. Recreate the entire sink chain
+        // instead of retaining an unreachable output until a page reload.
+        if(device.audio?.state==="closed")
+        {
+            stopSources();
+            device.audio=undefined;
+            gain=null;
+            contextRunning=null;
+            ownerEpoch=null;
+            nextStartTime=0;
+        }
         if(typeof(AudioContext)!="function") return null;
         // PCM rate belongs to the card. Web Audio resamples its buffers to
         // the browser's output rate without rebuilding either AY instance.
