@@ -1540,16 +1540,30 @@ async function EMU_audio_try_unlock(forceButtonState)
 {
     if (_o.EMU_audio.trying) return _o.EMU_audio.unlocked;
 
+    // The cached global "unlocked" flag is not sufficient: browsers may
+    // suspend/close a context, and a reattached Mockingboard may still own a
+    // valid AudioContext object while playbackEnabled is false.
+    // Without this check the early return makes the sound button report
+    // success while audio cannot be resumed (often until a browser restart).
     var pendingAudioDevice = EMU_attachedAudioDevices().some(function(audioDevice)
     {
-        return !audioDevice.audio;
+        if (!audioDevice.audio || audioDevice.audio.state !== "running") return true;
+        if (typeof(audioDevice.getStats)==="function")
+        {
+            var status=audioDevice.getStats();
+            if(status && status.playbackEnabled===false) return true;
+        }
+        return false;
     });
-
-    // Preserve the normal fast path once all currently attached audio devices
-    // have inherited the browser-audio lifecycle. A newly attached device has
-    // no AudioContext yet and must be allowed through even when the global
-    // speaker/Disk II state was unlocked earlier.
-    if (_o.EMU_audio.unlocked && !pendingAudioDevice) return true;
+    var speakerReady=!!(oEMU.component.IO.AppleSpeaker.audio &&
+        oEMU.component.IO.AppleSpeaker.audio.state==="running");
+    var disksReady=EMU_diskIIObjects().every(function(disk2)
+    {
+        return !!(disk2.audio && disk2.audio.state==="running");
+    });
+    // Only skip restoration if *every* audio endpoint is really operational.
+    if (_o.EMU_audio.unlocked && speakerReady && disksReady &&
+        !pendingAudioDevice) return true;
 
     _o.EMU_audio.trying = true;
 
