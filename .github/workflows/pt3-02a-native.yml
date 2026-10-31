@@ -56,6 +56,7 @@ jobs:
             build/pt3_02a/PT3_02A_PLAYER.bin
             build/pt3_02a/PT3_02A_ORIGINAL.pt3
             build/pt3_02a/original.mid
+            build/pt3_02a/PT3_02A_MONITOR.txt
             build/pt3_02a/PT3_02A_build.json
             build/pt3_02a/PT3_02A_native_results.json
             build/pt3_02a/player.map
