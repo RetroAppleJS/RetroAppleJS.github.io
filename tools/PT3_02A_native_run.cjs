@@ -12,12 +12,13 @@ const out = process.argv[2] || path.join(root, 'build/pt3_02a');
 const player = fs.readFileSync(path.join(out, 'PT3_02A_PLAYER.bin'));
 const tune = fs.readFileSync(path.join(out, 'PT3_02A_ORIGINAL.pt3'));
 const CYCLES_PER_SECOND = 1021800;
-const DURATION_CYCLES = CYCLES_PER_SECOND * 3;
+const DURATION_CYCLES = CYCLES_PER_SECOND * 6;
 const T1_LATCH = 0x4fe7;
 const T1_PERIOD = T1_LATCH + 2;
 const ram = new Uint8Array(65536);
 const events = [];
 const raised = [];
+const graphicsSwitches = new Set();
 let cpuTick = 0;
 let interrupts = 0;
 
@@ -69,6 +70,7 @@ function viaDecode(addr) {
 function read(addr) {
     addr&=0xffff;
     const d=viaDecode(addr);
+    if (addr>=0xc050 && addr<=0xc057) graphicsSwitches.add(addr);
     return d ? vias[d.index].readRegister(d.reg) : ram[addr];
 }
 function write(addr,value) {
@@ -97,11 +99,27 @@ function cycle() {
     vias[1].tick(1);
 }
 function advanceTo(target) { while(cpuTick<target) cycle(); }
-advanceTo(DURATION_CYCLES);
+const foregroundSamples=[];
+for (let seconds=1; seconds<=6; seconds++) {
+    advanceTo(CYCLES_PER_SECOND*seconds);
+    foregroundSamples.push({
+        second:seconds,position:ram[0x7002],
+        counterLow:ram[0x7000],counterHigh:ram[0x7001],
+        irqCount:interrupts
+    });
+}
+for (const address of [0xc050,0xc052,0xc054,0xc057])
+    assert.ok(graphicsSwitches.has(address),
+        'Native player failed to activate HGR soft switch '+address.toString(16));
+assert.ok(new Set(foregroundSamples.map(x=>x.position)).size>=3,
+    'Foreground marker did not move while music interrupts continued');
+assert.ok(foregroundSamples.every((x,i)=>i===0||x.irqCount>foregroundSamples[i-1].irqCount),
+    'No ongoing IRQ service between visible foreground samples');
+assert.equal(ram[0x2000],0x7f,'Visible HGR status bar not rendered');
 const fgProgress=ram[0x7000];
 const hgrProgress=ram[0x2000];
-assert.ok(interrupts>100 && interrupts<170,
-    'Expected about 150 native T1 IRQs in three seconds, got '+interrupts);
+assert.ok(interrupts>270 && interrupts<320,
+    'Expected about 300 native T1 IRQs in six seconds, got '+interrupts);
 assert.ok(fgProgress !== 0 && hgrProgress !== 0,
     'Foreground loop not progressing during music');
 const ay0=events.filter(e=>e.ay===0&&e.reg>=0);
@@ -116,6 +134,13 @@ assert.ok(new Set(ay0.filter(e=>e.reg===0).map(e=>e.value)).size>2,
     'No changing tone periods from PT3 decode');
 const nonZeroAmpWrites=ay0.filter(e=>e.reg>=8&&e.reg<=10&&(e.value&15)>0).length;
 const toneEnableWrites=ay0.filter(e=>e.reg===7&&(e.value&7)!==7).length;
+const ampAfterFourSec=ay0.filter(e=>e.tick>4*CYCLES_PER_SECOND &&
+    e.reg>=8&&e.reg<=10&&(e.value&15)>0).length;
+assert.ok(ampAfterFourSec>30,
+    'PT3 output ended at ~3s; expected loop to continue after 4s; '+JSON.stringify({
+        ampAfterFourSec,loop:ram[0x64],donePlaying:ram[0x68],doneSong:ram[0x69],
+        foregroundSamples,latestAY:ay0.slice(-5)
+    }));
 assert.ok(nonZeroAmpWrites>30,
     'Decoded PT3 is silent: no nonzero AY amplitude programming');
 assert.ok(toneEnableWrites>30,
@@ -151,7 +176,8 @@ const report={
     foregroundCounter:fgProgress,
     hgrByte: hgrProgress,
     ayWrites:[ay0.length,ay1.length],
-    nonZeroAmpWrites,toneEnableWrites,
+    nonZeroAmpWrites,toneEnableWrites,ampAfterFourSec,
+    foregroundSamples,graphicsSwitches:[...graphicsSwitches].map(x=>x.toString(16)),
     totalWritesDuringPlayback:writesDuringMusic,
     stopSuccess:true,
     notes:'No browser AudioContext, full Apple II Monitor ROM, or native HGR rasterization; those remain integration checks.'

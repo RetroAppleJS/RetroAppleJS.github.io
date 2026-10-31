@@ -1,7 +1,7 @@
 ; PT3-02A: complete standalone source for RetroAppleJS ASM_core.js
 ; Source of truth: PT3_02A_NATIVE_PLAYER.s and original pt3_lib (0BSD),
 ; upstream commit cb0546ede762646196169f1517735cedca72ddfe.
-; User-entered assembly — no opaque hex code, ca65 directives or includes.
+; User-entered assembly - no opaque hex code, ca65 directives or includes.
 ; SINGLE binary output at $6000; separately load PT3 data at $8000.
 ; Entrypoints: $6000 START | $6003 STOP | $6006 FOREGROUND.
 ; HGR1 display + foreground marker; Timer1 50 Hz drives native PT3.
@@ -56,6 +56,7 @@ ENVELOPE_SHAPE  = $7D
 
 PATTERN_L	= $7E
 PATTERN_H	= $7F
+
 
 ; ----- END zp.inc -----
 
@@ -2198,6 +2199,7 @@ VolumeTable:
 
 
 pt3_lib_end:
+
 ; ----- END pt3_lib_core.s -----
 
 
@@ -2777,6 +2779,7 @@ table3_v4_adjust:
 ;.byte $0,$1,$2,$3,$3,$4,$5,$6,$7,$8,$9,$A,$A,$B,$C,$D
 ;.byte $0,$1,$2,$3,$4,$5,$6,$7,$7,$8,$9,$A,$B,$C,$D,$E
 ;.byte $0,$1,$2,$3,$4,$5,$6,$7,$8,$9,$A,$B,$C,$D,$E,$F
+
 ; ----- END pt3_lib_init.s -----
 
 
@@ -3010,6 +3013,7 @@ setup_irq_smc6:
 				; clear interrupt and start counting
 
 	rts
+
 ; ----- END pt3_lib_mockingboard_setup.s -----
 
 
@@ -3167,6 +3171,7 @@ mb_skip_13:
 	;=================================
 
 done_pt3_irq_handler:
+
 ; ----- END pt3_lib_irq_handler.s -----
 
 
@@ -3203,5 +3208,7 @@ interrupt_smc:
 								; typical
 								; ???? cycles
 
+
 ; ----- END interrupt_handler.s -----
+
 

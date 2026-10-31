@@ -20,6 +20,14 @@ if [[ "$(git -C "$UPSTREAM" rev-parse HEAD)" != "$UPSTREAM_SHA" ]]; then
 fi
 U="$UPSTREAM/music/pt3_lib"
 test -s "$U/LICENSE"
+# Preserve complete, matching source alongside the compiled binary for review.
+mkdir -p "$OUT/asm_source/upstream"
+cp "$ROOT/asm/AUDIO/PT3_02A_NATIVE_PLAYER.s" "$OUT/asm_source/"
+cp "$ROOT/asm/AUDIO/PT3_02A_LINK.cfg" "$OUT/asm_source/"
+for name in zp.inc pt3_lib_core.s pt3_lib_init.s pt3_lib_mockingboard_setup.s pt3_lib_irq_handler.s interrupt_handler.s LICENSE; do
+  cp "$U/$name" "$OUT/asm_source/upstream/$name"
+done
+printf "Pinned source commit: %s\n" "$UPSTREAM_SHA" > "$OUT/asm_source/upstream/SOURCE_COMMIT.txt"
 ca65 -I "$U" "$ROOT/asm/AUDIO/PT3_02A_NATIVE_PLAYER.s" -o "$OUT/player.o" -l "$OUT/player.lst"
 ld65 -C "$ROOT/asm/AUDIO/PT3_02A_LINK.cfg" -o "$OUT/PT3_02A_PLAYER.bin" -m "$OUT/player.map" "$OUT/player.o"
 python3 "$ROOT/tools/PT3_02A_fixture.py" "$OUT/original.mid"

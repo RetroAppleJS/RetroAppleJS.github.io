@@ -5,6 +5,7 @@ on:
       - '.github/workflows/pt3-02a-native.yml'
       - 'asm/AUDIO/PT3_02A_*'
       - 'tools/PT3_02A_*'
+      - 'asm/AUDIO/PT3_02A_ASM_CORE.S'
   workflow_dispatch:
 
 permissions:
@@ -29,6 +30,8 @@ jobs:
           python -m pip install 'spectrumizer>=0.2.1'
       - name: Assemble pinned 6502 PT3 library and original fixture
         run: bash tools/PT3_02A_build.sh
+      - name: Verify ASM_core source produces identical 6502 binary
+        run: node tools/PT3_02A_ASM_CORE_verify.cjs
       - name: Run actual 6502 + Mockingboard VIA/AY core smoke test
         run: node tools/PT3_02A_native_run.cjs
       - name: Report native results
@@ -53,6 +56,7 @@ jobs:
         with:
           name: pt3-02a-native-evidence
           path: |
+            build/pt3_02a/asm_source/
             build/pt3_02a/PT3_02A_PLAYER.bin
             build/pt3_02a/PT3_02A_ORIGINAL.pt3
             build/pt3_02a/original.mid
