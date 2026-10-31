@@ -38,5 +38,12 @@ manifest={
  "song":{"load":0x8000,"bytes":len(song),"sha256":hashlib.sha256(song).hexdigest()}
 }
 (out/"PT3_02A_build.json").write_text(json.dumps(manifest,indent=2)+"\n")
+# Apple II Monitor import listing: load both binaries before the final 6000G.
+lines=["CALL-151"]
+for address,data in ((0x6000,player),(0x8000,song)):
+    for i in range(0,len(data),16):
+        lines.append(f"{address+i:04X}: "+' '.join(f"{v:02X}" for v in data[i:i+16]))
+lines += ["6000G"]
+(out/"PT3_02A_MONITOR.txt").write_text("\n".join(lines)+"\n")
 print(json.dumps(manifest,indent=2))
 PY
