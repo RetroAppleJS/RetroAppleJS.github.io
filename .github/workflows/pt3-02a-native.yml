@@ -1,0 +1,65 @@
+name: PT3-02A native 6502 Mockingboard IRQ smoke
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/pt3-02a-native.yml'
+      - 'asm/AUDIO/PT3_02A_*'
+      - 'tools/PT3_02A_*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-pt3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install ca65/ld65 and Spectrumizer
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y cc65
+          python -m pip install 'spectrumizer>=0.2.1'
+      - name: Assemble pinned 6502 PT3 library and original fixture
+        run: bash tools/PT3_02A_build.sh
+      - name: Run actual 6502 + Mockingboard VIA/AY core smoke test
+        run: node tools/PT3_02A_native_run.cjs
+      - name: Report native results
+        if: success()
+        run: |
+          python - <<'PY'
+          import json,os
+          r=json.load(open('build/pt3_02a/PT3_02A_native_results.json'))
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as o:
+              o.write('## PT3-02A — '+r['status']+'\n\n')
+              o.write('| Property | Measured |\n|---|---:|\n')
+              for name,key in [('6502 IRQs', 'irqCount'), ('Player bytes','playerBytes'),
+                               ('PT3 bytes','songBytes'),('VIA period (cycles)','timerPeriodCycles'),
+                               ('Foreground counter','foregroundCounter')]:
+                  o.write(f'| {name} | {r[key]} |\n')
+              o.write(f"| AY0/AY1 writes | {r['ayWrites']} |\n")
+              o.write('\nActual native 6502, 6522 and AY bus cores. Full browser peripheral and physical hardware testing remain pending.\n')
+          PY
+      - name: Preserve player and telemetry
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pt3-02a-native-evidence
+          path: |
+            build/pt3_02a/PT3_02A_PLAYER.bin
+            build/pt3_02a/PT3_02A_ORIGINAL.pt3
+            build/pt3_02a/original.mid
+            build/pt3_02a/PT3_02A_MONITOR.txt
+            build/pt3_02a/PT3_02A_build.json
+            build/pt3_02a/PT3_02A_native_results.json
+            build/pt3_02a/player.map
+            build/pt3_02a/player.lst
+          retention-days: 14
+          if-no-files-found: warn
