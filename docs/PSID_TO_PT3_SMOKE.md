@@ -2,7 +2,77 @@
 
 This experiment evaluates conversion of Commodore 64 PSID music to Vortex Tracker PT3 for prospective playback through the Apple II Mockingboard.
 
-## Test pipeline
+## Native RetroAppleJS extraction (PR #271)
+
+The replacement removes Sidtool and the Ruby/MOS6510 dependency:
+
+\`\`\`text
+PSID -> RetroAppleJS res/jsSID.js (headless 6510 execution)
+     -> 25 SID-register snapshots per 20 ms at 50 Hz
+     -> tools/SID_Register_To_MIDI.cjs (MIDI type 1, three voices + noise drums)
+     -> Spectrumizer -> PT3 -> software AY WAV and PT3->MIDI cross-check
+\`\`\`
+
+The capture runs in a separate headless VM with **the repository's own**
+\`jsSID.captureSIDFrames()\`. MIDI note pitches are derived from the PAL SID
+register frequency and CPU clock, not guessed by FFT. SID voices stay on MIDI
+channels 1–3; pure SID noise is emitted on percussion channel 10. Repeated
+frequency changes only retrigger when the rounded pitch changes substantially;
+small vibrato is ignored. Noise mapping (kick/snare/hat) and velocity are
+heuristic.
+
+Requirements: Node 22+, Python 3.10+ for Spectrumizer. No Ruby required.
+
+\`\`\`sh
+python3 -m pip install spectrumizer
+node --test tests/psid_to_midi.test.cjs
+node tools/SID_PSID_TO_MIDI.cjs tools/music/B-land_Scrapbook.sid \
+  --seconds 16 --out /tmp/B-land.mid
+spectrumizer /tmp/B-land.mid --style faithful -o /tmp/B-land.pt3
+spectrumizer-play /tmp/B-land.pt3 --no-play -o /tmp/B-land.wav
+\`\`\`
+
+The converter creates a machine-readable \`.mid.json\` report containing
+per-voice note and modulation counts, and warnings such as active filters or
+a muted master volume. A silent master volume is **not** used to discard gate
+events, so musical information can be recovered from intentionally muted or
+incomplete test files.
+
+This version deliberately rejects RSID, CIA-clocked subtunes and explicit
+NTSC-only PSID; the current capture is a PAL 50 Hz snapshot path, not a
+cycle-exact bus-write recorder. Transient gates between snapshots, PWM,
+SID filtering, ring modulation, hard sync, detailed ADSR and waveform
+transitions cannot be faithfully reproduced in the resulting MIDI.
+The workflow does not yet independently validate Vincent Weaver's Apple II
+PT3 assembly decoder or hardware pitch. **Passing software PT3 playback is not
+the same as native Mockingboard verification.**
+
+---
+
+### Native experiment — 31 October 2026
+
+[GitHub Actions run 41183305734](https://github.com/RetroAppleJS/RetroAppleJS.github.io/actions/runs/41183305734) executed the native register-capture pipeline. **6/6** inputs converted to PT3, rendered to a 15-second WAV preview, and passed Spectrumizer's reverse PT3 parsing. All six Node regression tests passed.
+
+| Input | Native MIDI note-ons | PT3 reverse-export note-ons | PT3 bytes |
+|---|---:|---:|---:|
+| Original saw scale | 50 | 50 | 898 |
+| Original 3-voice | 150 | 150 | 1,288 |
+| Original noise/percussion | 150 | 150 | 1,331 |
+| B-land Scrapbook | 536 | 286 | 1,159 |
+| Funtempo | 531 | 256 | 1,289 |
+| Irish Dream | 565 | 277 | 1,079 |
+
+The **original fixtures** preserve the per-channel note-on pitch distribution and total count after PT3 conversion and reverse export. Their PSID master-volume register is zero, meaning they test **event recovery**, not audible equivalence to the source SID (which is muted). The generated AY WAVs are non-silent. The three repository songs are not close to lossless: Spectrumizer's 3-voice arrangement/quantization reduces note-on counts markedly, and SID instrument/filter fidelity has not been established by listening. Those reductions are not solely attributable to extraction.
+
+The native extractor succeeds on **Funtempo** and **Irish Dream**, where the prior Sidtool-based extraction failed with \`pokeDigi\` errors. Noise-to-drums mapping is heuristic; some fast pitch motion creates frequent MIDI note changes. This is a proof of feasibility, **not** a claim of faithful SID-to-AY transcoding or native Apple II 6502 playback.
+
+## Historical Sidtool baseline (PR #270)
+
+The section below documents the earlier Sidtool experiment and is retained
+only to compare extraction quality; the active CI pipeline no longer uses
+Sidtool.
+
+## Test pipeline (historical)
 
 ```text
 PSID -> Sidtool (6502 playback/extraction) -> MIDI
@@ -11,7 +81,7 @@ PSID -> Sidtool (6502 playback/extraction) -> MIDI
      -> Spectrumizer PT3-to-MIDI round-trip
 ```
 
-The workflow `.github/workflows/psid-to-pt3-smoke.yml` runs three original, synthetic PSID fixtures (single voice, three pitched voices, and noise/percussion) and three existing repository files:
+The original workflow `.github/workflows/psid-to-pt3-smoke.yml` runs three original, synthetic PSID fixtures (single voice, three pitched voices, and noise/percussion) and three existing repository files:
 
 - `tools/music/B-land_Scrapbook.sid`
 - `tools/music/Funtempo.sid`
@@ -23,7 +93,7 @@ The original synthetic fixtures are CC0. **Other music files and converted deriv
 
 ## What passing means
 
-Passing means: at least one PSID file executes in Sidtool, produces a nonempty MIDI file, is encoded as a PT3 module, is rendered by Spectrumizer's software AY implementation, and is decoded by Spectrumizer's reverse converter.
+For the historical baseline, passing meant: at least one PSID file executed in Sidtool, produces a nonempty MIDI file, is encoded as a PT3 module, is rendered by Spectrumizer's software AY implementation, and is decoded by Spectrumizer's reverse converter.
 
 **It does not establish** native compatibility with Vincent Weaver's 6502 [pt3_lib](https://github.com/deater/dos33fsprogs/tree/master/music/pt3_lib), accurate pitch on the 1 MHz Mockingboard, matching timbres, CPU use, or IRQ/HGR coexistence.
 

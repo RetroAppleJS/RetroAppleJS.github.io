@@ -1,9 +1,13 @@
-name: PSID to PT3 conversion smoke test
+name: Native PSID register to PT3 conversion smoke test
 on:
   pull_request:
     paths:
       - '.github/workflows/psid-to-pt3-smoke.yml'
       - 'docs/PSID_TO_PT3_SMOKE.md'
+      - 'tools/SID_Register_To_MIDI.cjs'
+      - 'tools/SID_PSID_TO_MIDI.cjs'
+      - 'tests/psid_to_midi.test.cjs'
+      - 'res/jsSID.js'
   workflow_dispatch:
 
 permissions:
@@ -15,15 +19,14 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
+      - uses: actions/setup-node@v4
         with:
-          ruby-version: '3.3'
+          node-version: '22'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Install converters
         run: |
-          gem install sidtool --no-document
           python -m pip install 'spectrumizer>=0.2.1'
       - name: Prepare original diagnostic PSID
         run: |
@@ -31,6 +34,8 @@ jobs:
           printf '%s' 'UFNJRAACAHwAABAAEAcAAQABAAAAAE9yaWdpbmFsIFNhdyBTY2FsZQAAAAAAAAAAAAAAAAAAUmV0cm9BcHBsZUpTIE9SSUdJTkFMAAAAAAAAAAAAAAAyMDI2IENDMCB0ZXN0IGZpeHR1cmUAAAAAAAAAAAAAAAAEAAAAAAAQqQCF+oX7YKX6KQ/QI6b7iikHqr1AEI0A1L1IEI0B1KkAjQXUqfCNBtSpIY0E1Ob7pfopD8kM0AWpII0E1Ob6YGeJ7TsTRdrOERMVFxodICI=' | base64 -d > build/psid_pt3/fixtures/01_saw_scale.sid
           printf '%s' 'UFNJRAACAHwAABAAEAcAAQABAAAAAE9yaWdpbmFsIFRocmVlIFZvaWNlcwAAAAAAAAAAAAAAUmV0cm9BcHBsZUpTIE9SSUdJTkFMAAAAAAAAAAAAAAAyMDI2IENDMCB0ZXN0IGZpeHR1cmUAAAAAAAAAAAAAAAAEAAAAAAAQqQCF+oX7YKX6KQ/QWab7iikHqr2AEI0A1L2IEI0B1KkAjQXUqfCNBtSpIY0E1L2QEI0H1L2YEI0I1KkAjQzUqfCNDdSpQY0L1L2gEI0O1L2oEI0P1KkAjRPUqfCNFNSpEY0S1Ob7pfopD8kM0A+pII0E1KlAjQvUqRCNEtTm+mBnie07E0XazhETFRcaHSAitMT3nQqibWcICQoLDQ4QEQqibWeJ7TsTDQ4QERMVFxo=' | base64 -d > build/psid_pt3/fixtures/02_three_voices.sid
           printf '%s' 'UFNJRAACAHwAABAAEAcAAQABAAAAAE9yaWdpbmFsIE5vaXNlIFBlcmN1c3Npb24AAAAAAAAAUmV0cm9BcHBsZUpTIE9SSUdJTkFMAAAAAAAAAAAAAAAyMDI2IENDMCB0ZXN0IGZpeHR1cmUAAAAAAAAAAAAAAAAEAAAAAAAQqQCF+oX7YKX6KQ/QWab7iikHqr2AEI0A1L2IEI0B1KkAjQXUqfCNBtSpIY0E1L2QEI0H1L2YEI0I1KkAjQzUqfCNDdSpQY0L1L2gEI0O1L2oEI0P1KkAjRPUqfCNFNSpgY0S1Ob7pfopD8kM0A+pII0E1KlAjQvUqYCNEtTm+mBnie07E0XazhETFRcaHSAiWlqFhc/PhYUEBAYGBQUGBlon4sFaJ+LBBAYEBwQGBAc=' | base64 -d > build/psid_pt3/fixtures/03_noise_percussion.sid
+      - name: Test SID register conversion core
+        run: node --test tests/psid_to_midi.test.cjs
       - name: Convert PSID files to PT3 and render AY previews
         shell: bash
         run: |
@@ -41,12 +46,8 @@ jobs:
             base="$(basename "$sid" .sid)"
             dir="build/psid_pt3/$base"
             mkdir -p "$dir"
-            if ! sidtool --info "$sid" > "$dir/metadata.log" 2>&1; then
-              echo "| $base | Sidtool unsupported header | — | — |" >> "$GITHUB_STEP_SUMMARY"
-              continue
-            fi
-            if ! sidtool --frames 800 --format midi --out "$dir/$base.mid" "$sid" > "$dir/sidtool.log" 2>&1; then
-              echo "| $base | Sidtool extraction failed | — | — |" >> "$GITHUB_STEP_SUMMARY"
+            if ! node tools/SID_PSID_TO_MIDI.cjs "$sid" --seconds 16 --out "$dir/$base.mid" > "$dir/native-capture.log" 2>&1; then
+              echo "| $base | Native SID capture failed (see log) | — | — |" >> "$GITHUB_STEP_SUMMARY"
               continue
             fi
             notes="$(python -c 'import mido,sys; m=mido.MidiFile(sys.argv[1]); print(sum(1 for t in m.tracks for e in t if e.type=="note_on" and e.velocity>0))' "$dir/$base.mid")"
@@ -71,7 +72,25 @@ jobs:
             echo "| $base | PT3 + software AY render OK | $notes | $size |" >> "$GITHUB_STEP_SUMMARY"
           done
           echo "Software-validated conversions: $succeeded. Native 6502 Mockingboard playback: NOT TESTED." >> "$GITHUB_STEP_SUMMARY"
-          [ "$succeeded" -ge 1 ]
+          [ "$succeeded" -eq 6 ]
+      - name: Verify original note pitches through PT3 round-trip
+        run: |
+          python - <<'PY'
+          from collections import Counter
+          from pathlib import Path
+          import mido
+          for name in ("01_saw_scale", "02_three_voices", "03_noise_percussion"):
+              directory = Path("build/psid_pt3") / name
+              def notes(path):
+                  midi = mido.MidiFile(str(path))
+                  return Counter((message.channel, message.note)
+                      for track in midi.tracks for message in track
+                      if message.type == "note_on" and message.velocity > 0)
+              original = notes(directory / (name + ".mid"))
+              result = notes(directory / (name + ".roundtrip.mid"))
+              assert original and original == result, name + ": pitch/note mismatch"
+              print(name, "preserved", sum(original.values()), "note-ons and pitches")
+          PY
       - name: Publish diagnostic MIDI/PT3/WAV files
         if: always()
         uses: actions/upload-artifact@v4
