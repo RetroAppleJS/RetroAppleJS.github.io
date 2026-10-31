@@ -50,7 +50,10 @@ pt3_02a_foreground:
 
 pt3_02a_stop:
     sei
-    jsr mockingboard_disable_interrupt
+    ; Pinned Jan-2024 upstream has no disable helper; mask owned T1 here.
+    lda #$7f
+    sta MOCK_6522_IER
+    lda MOCK_6522_T1CL          ; acknowledge any pending T1
     lda OLD_IRQ_LO
     sta $03fe
     lda OLD_IRQ_HI
