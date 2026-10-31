@@ -72,7 +72,25 @@ jobs:
             echo "| $base | PT3 + software AY render OK | $notes | $size |" >> "$GITHUB_STEP_SUMMARY"
           done
           echo "Software-validated conversions: $succeeded. Native 6502 Mockingboard playback: NOT TESTED." >> "$GITHUB_STEP_SUMMARY"
-          [ "$succeeded" -ge 1 ]
+          [ "$succeeded" -eq 6 ]
+      - name: Verify original note pitches through PT3 round-trip
+        run: |
+          python - <<'PY'
+          from collections import Counter
+          from pathlib import Path
+          import mido
+          for name in ("01_saw_scale", "02_three_voices", "03_noise_percussion"):
+              directory = Path("build/psid_pt3") / name
+              def notes(path):
+                  midi = mido.MidiFile(str(path))
+                  return Counter((message.channel, message.note)
+                      for track in midi.tracks for message in track
+                      if message.type == "note_on" and message.velocity > 0)
+              original = notes(directory / (name + ".mid"))
+              result = notes(directory / (name + ".roundtrip.mid"))
+              assert original and original == result, name + ": pitch/note mismatch"
+              print(name, "preserved", sum(original.values()), "note-ons and pitches")
+          PY
       - name: Publish diagnostic MIDI/PT3/WAV files
         if: always()
         uses: actions/upload-artifact@v4
