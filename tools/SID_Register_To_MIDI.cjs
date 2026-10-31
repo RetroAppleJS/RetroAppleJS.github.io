@@ -74,6 +74,7 @@ function convertFramesToMidi(frames, options = {}) {
         if (!registers || registers.length < 25)
             throw new Error('SID frame ' + frame + ' needs 25 registers');
         const master = registers[24] & 0x0f;
+        if (master === 0) warnings.add('sid-master-volume-zero');
         for (let v = 0; v < 3; v++) {
             const base = 7 * v, state = voices[v];
             const freq = registers[base] | (registers[base + 1] << 8);
@@ -82,7 +83,7 @@ function convertFramesToMidi(frames, options = {}) {
             const hasNoise = (waveform & 0x80) !== 0;
             if (hasNoise) state.noiseFrames++;
             const active = !!(ctrl & 0x01) && !(ctrl & 0x08) &&
-                waveform !== 0 && master !== 0 && freq !== 0;
+                waveform !== 0 && freq !== 0;
             if (!active) { off(state, frame); continue; }
             // Mixed waveforms and unsupported SID effects cannot be preserved in MIDI.
             if ((waveform & (waveform - 1)) !== 0) warnings.add('combined-waveforms');
@@ -96,7 +97,7 @@ function convertFramesToMidi(frames, options = {}) {
             const chan = drum ? 9 : v;
             const sustain = (registers[base + 6] >>> 4) & 15;
             const velocity = Math.max(1, Math.min(127,
-                Math.round(36 + 80 * (0.3 + 0.7 * sustain / 15) * master / 15)));
+                Math.round(36 + 80 * (0.3 + 0.7 * sustain / 15) * Math.max(1, master) / 15)));
             const prev = state.active;
             if (prev && prev.waveform !== waveform) state.waveformChanges++;
             // Approximate large/real semitone changes as new notes;
