@@ -21,6 +21,8 @@ PT3_DISABLE_SWITCHABLE_FREQ_CONVERSION = 1
 OLD_IRQ_LO = $7004
 OLD_IRQ_HI = $7005
 FG_COUNT   = $7000
+FG_COUNT_HI = $7001
+FG_POS      = $7002
 FG_HGR     = $2000
 STOP_MARK  = $7006
 
@@ -32,21 +34,99 @@ pt3_02a_start:
     sta OLD_IRQ_HI
     lda #$00
     sta FG_COUNT
+    sta FG_COUNT_HI
+    sta FG_POS
     sta STOP_MARK
     sta DONE_PLAYING
-    sta LOOP
     jsr mockingboard_init
     jsr reset_ay_both
     jsr clear_ay_both
     jsr pt3_init_song
+    ; Original diagnostic tune is ~3s long: enable PT3 repeat.
+    lda #$01
+    sta LOOP
+    ; Foreground must be visible in the actual emulator, not just RAM.
+    jsr pt3_02a_hgr_init
     jsr mockingboard_setup_interrupt
     cli
     jmp pt3_02a_foreground
 
 pt3_02a_foreground:
+    ; Work between interrupts is fully independent of the 50Hz music IRQ.
     inc FG_COUNT
-    inc FG_HGR
+    bne pt3_02a_foreground
+    inc FG_COUNT_HI
+    lda FG_COUNT_HI
+    and #$1f                 ; ~10-15 visible marker steps per second
+    bne pt3_02a_foreground
+    jsr pt3_02a_move_marker
     jmp pt3_02a_foreground
+
+pt3_02a_hgr_init:
+    ; Soft switches: graphics, full screen, page 1, high resolution.
+    bit $c050
+    bit $c052
+    bit $c054
+    bit $c057
+    ; Clear HGR1 ($2000-$3FFF) before enabling the timer.
+    lda #$00
+    ldy #$20
+pt3_02a_clear_page:
+    sty pt3_02a_clear_byte+2
+    ldx #$00
+pt3_02a_clear_loop:
+pt3_02a_clear_byte:
+    sta $2000,x
+    inx
+    bne pt3_02a_clear_loop
+    iny
+    cpy #$40
+    bne pt3_02a_clear_page
+    ; Top status bar makes the foreground mode visually identifiable.
+    lda #$7f
+    ldx #$00
+pt3_02a_banner:
+    sta $2000,x
+    inx
+    cpx #40
+    bne pt3_02a_banner
+    rts
+
+pt3_02a_move_marker:
+    ; 16 high-resolution scanlines at y=80..95. Each byte = 7 pixels.
+    ldx FG_POS
+    lda #$00
+    jsr pt3_02a_marker_rows
+    inx
+    cpx #40
+    bcc pt3_02a_next_position
+    ldx #$00
+pt3_02a_next_position:
+    stx FG_POS
+    lda #$7f
+    jsr pt3_02a_marker_rows
+    rts
+
+pt3_02a_marker_rows:
+    ; True Apple II HGR scanline interleave: successive row bases are
+    ; $2128/$2528/.../$3D28 then $21A8/$25A8/.../$3DA8.
+    sta $2128,x
+    sta $2528,x
+    sta $2928,x
+    sta $2d28,x
+    sta $3128,x
+    sta $3528,x
+    sta $3928,x
+    sta $3d28,x
+    sta $21a8,x
+    sta $25a8,x
+    sta $29a8,x
+    sta $2da8,x
+    sta $31a8,x
+    sta $35a8,x
+    sta $39a8,x
+    sta $3da8,x
+    rts
 
 pt3_02a_stop:
     sei
