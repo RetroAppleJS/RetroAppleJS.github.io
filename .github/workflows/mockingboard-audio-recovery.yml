@@ -1,0 +1,22 @@
+name: Mockingboard browser audio lifecycle recovery
+on:
+  pull_request:
+    paths:
+      - 'res/EMU_apple2main.js'
+      - 'res/EMU_DEVICE_mockingboard_audio.js'
+      - 'tests/mockingboard_audio_recovery.test.cjs'
+      - '.github/workflows/mockingboard-audio-recovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audio-recovery:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/mockingboard_audio_recovery.test.cjs
