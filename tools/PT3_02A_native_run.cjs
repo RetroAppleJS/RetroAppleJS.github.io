@@ -175,7 +175,9 @@ const expectedNotes=[
 ];
 const musicalAudit=[];
 for(let sampleIndex=0;sampleIndex<24;sampleIndex++){
-    const target=sampleIndex*0.25+0.14;
+    // Spectrumizer rounds 120 BPM / 250ms source to 125 BPM / 240ms,
+    // i.e. two 50Hz PT3 rows per MIDI note (6 ticks per row).
+    const target=sampleIndex*0.24+0.12;
     const frame=nativeFrames.reduce((best,f)=>
       !best||Math.abs(f.time-target)<Math.abs(best.time-target)?f:best,null);
     // Spectrumizer deliberately arranges tracks A<-MIDI2, B<-MIDI1, C<-MIDI0.
