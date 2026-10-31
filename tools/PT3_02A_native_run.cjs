@@ -110,7 +110,13 @@ for (let seconds=1; seconds<=6; seconds++) {
 }
 for (const address of [0xc050,0xc052,0xc054,0xc057])
     assert.ok(graphicsSwitches.has(address),
-        'Native player failed to activate HGR soft switch =ram[0x7000];
+        'Native player failed to activate HGR soft switch '+address.toString(16));
+assert.ok(new Set(foregroundSamples.map(x=>x.position)).size>=3,
+    'Foreground marker did not move while music interrupts continued');
+assert.ok(foregroundSamples.every((x,i)=>i===0||x.irqCount>foregroundSamples[i-1].irqCount),
+    'No ongoing IRQ service between visible foreground samples');
+assert.equal(ram[0x2000],0x7f,'Visible HGR status bar not rendered');
+const fgProgress=ram[0x7000];
 const hgrProgress=ram[0x2000];
 assert.ok(interrupts>270 && interrupts<320,
     'Expected about 300 native T1 IRQs in six seconds, got '+interrupts);
