@@ -23,6 +23,7 @@ test -s "$U/LICENSE"
 # Preserve complete, matching source alongside the compiled binary for review.
 mkdir -p "$OUT/asm_source/upstream"
 cp "$ROOT/asm/AUDIO/PT3_02A_NATIVE_PLAYER.s" "$OUT/asm_source/"
+cp "$ROOT/asm/AUDIO/PT3_02A_ASM_CORE.S" "$OUT/asm_source/"
 cp "$ROOT/asm/AUDIO/PT3_02A_LINK.cfg" "$OUT/asm_source/"
 for name in zp.inc pt3_lib_core.s pt3_lib_init.s pt3_lib_mockingboard_setup.s pt3_lib_irq_handler.s interrupt_handler.s LICENSE; do
   cp "$U/$name" "$OUT/asm_source/upstream/$name"
