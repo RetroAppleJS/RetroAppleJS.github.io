@@ -63,6 +63,7 @@ jobs:
             build/pt3_02a/PT3_02A_MONITOR.txt
             build/pt3_02a/PT3_02A_build.json
             build/pt3_02a/PT3_02A_native_results.json
+            build/pt3_02a/PT3_02A_pitch_diagnostic.json
             build/pt3_02a/player.map
             build/pt3_02a/player.lst
           retention-days: 14
