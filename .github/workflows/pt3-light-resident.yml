@@ -1,0 +1,48 @@
+name: PT3 resident LIGHT — ASM_core and native 6502 validation
+on:
+  pull_request:
+    paths:
+      - 'asm/AUDIO/PT3_PLAYER_LIGHT_ASM_CORE.S'
+      - 'tools/PT3_PLAYER_LIGHT_*'
+      - '.github/workflows/pt3-light-resident.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  resident-pt3-light:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install PT3 fixture encoder
+        run: python -m pip install 'spectrumizer>=0.2.1' 'mido'
+      - name: Assemble resident player using repository ASM_core.js
+        run: node tools/PT3_PLAYER_LIGHT_verify.cjs
+      - name: Generate original PT3 test module
+        run: |
+          python tools/PT3_02A_fixture.py build/pt3_light/original.mid
+          spectrumizer build/pt3_light/original.mid --style faithful -o build/pt3_light/PT3_PLAYER_LIGHT_TEST.pt3
+          test -s build/pt3_light/PT3_PLAYER_LIGHT_TEST.pt3
+      - name: Execute native 6502 resident playback and lifecycle
+        run: node tools/PT3_PLAYER_LIGHT_native_run.cjs
+      - name: Preserve binary, fixture and native telemetry
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pt3-light-resident-validation
+          path: |
+            build/pt3_light/PT3_PLAYER_LIGHT.bin
+            build/pt3_light/PT3_PLAYER_LIGHT_build.json
+            build/pt3_light/PT3_PLAYER_LIGHT_TEST.pt3
+            build/pt3_light/original.mid
+            build/pt3_light/PT3_PLAYER_LIGHT_native.json
+          retention-days: 14
+          if-no-files-found: warn
