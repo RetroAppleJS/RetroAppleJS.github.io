@@ -53,6 +53,7 @@ jobs:
         with:
           name: pt3-02a-native-evidence
           path: |
+            build/pt3_02a/asm_source/
             build/pt3_02a/PT3_02A_PLAYER.bin
             build/pt3_02a/PT3_02A_ORIGINAL.pt3
             build/pt3_02a/original.mid
