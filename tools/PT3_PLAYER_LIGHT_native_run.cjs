@@ -125,7 +125,11 @@ function command(n,expect){
   // HOST_LOOP may be momentarily interrupted; allow enough cycles to return.
   let count=0;
   while(ram[0x7102]!==0 && count++<150000)tick();
-  assert.equal(ram[0x7102],0,'Host did not process command '+n);
+  assert.equal(ram[0x7102],0,'Host did not process command '+n+
+    ' CPU='+JSON.stringify(cpu.watch())+' tick='+cycleCount+
+    ' irq='+irqCount+' IER='+vias[0].ier.toString(16)+
+    ' IFR='+vias[0].ifr.toString(16)+
+    ' state='+ram[0x600f].toString(16));
   assert.equal(ram[0x7103],expect,'Unexpected API return for command '+n);
 }
 advance(120000);
