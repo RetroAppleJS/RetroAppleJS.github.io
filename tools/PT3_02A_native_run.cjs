@@ -148,6 +148,55 @@ assert.ok(toneEnableWrites>30,
 const intervals=raised.slice(1).map((t,i)=>t-raised[i]);
 assert.ok(intervals.every(n=>n===T1_PERIOD),
     'Unstable VIA Timer1 period: '+[...new Set(intervals)]);
+// Independent musical audit: rebuild the instantaneous AY register image for
+// each 50Hz frame, and compare the observed tone periods to the original
+// three-voice MIDI *note numbers*. This is distinct from timing/IRQ assertions.
+const frameRegisters=new Array(14).fill(0);
+const nativeFrames=[];
+for(const e of ay0){
+    if(e.reg<0||e.reg>13)continue;
+    frameRegisters[e.reg]=e.value&0xff;
+    if(e.reg!==12 || e.tick<raised[0])continue;
+    const tonePeriods=[0,2,4].map(r=>frameRegisters[r]+((frameRegisters[r+1]&15)<<8));
+    const ayHz=tonePeriods.map(p=>p>0?1000000/(16*p):null);
+    const musicalTime=(e.tick-raised[0])/CYCLES_PER_SECOND;
+    nativeFrames.push({
+        time:+musicalTime.toFixed(4),
+        tonePeriods,ayHz:ayHz.map(f=>f===null?null:+f.toFixed(2)),
+        midi:ayHz.map(f=>f===null?null:+(69+12*Math.log2(f/440)).toFixed(2)),
+        volumes:frameRegisters.slice(8,11),mixer:frameRegisters[7],
+        noisePeriod:frameRegisters[6],envelopeShape:frameRegisters[13]
+    });
+}
+const expectedNotes=[
+  [60,62,64,67,69,67,64,62,60,64,67,72],
+  [48,48,53,53,55,55,53,53,48,53,55,48],
+  [72,76,79,76,72,76,79,76,72,76,79,72]
+];
+const musicalAudit=[];
+for(let sampleIndex=0;sampleIndex<24;sampleIndex++){
+    const target=sampleIndex*0.25+0.14;
+    const frame=nativeFrames.reduce((best,f)=>
+      !best||Math.abs(f.time-target)<Math.abs(best.time-target)?f:best,null);
+    const expected=expectedNotes.map(ch=>ch[sampleIndex%12]);
+    const cents=expected.map((n,v)=>frame?.midi[v]===null?null:
+       Math.round((frame.midi[v]-n)*100));
+    musicalAudit.push({second:+target.toFixed(2),expected,
+        midi:frame?.midi,volumes:frame?.volumes,mixer:frame?.mixer,
+        cents});
+}
+const pitchDiagnostic={
+    source:'original 12-second MIDI, 0.25 s per note, 3 channels',
+    noteTableAyClockHz:1000000,
+    firstIrqTick:raised[0],
+    firstFrames:nativeFrames.slice(0,40),
+    sampledNotes:musicalAudit,
+    activeToneRegisters:ay0.filter(e=>e.reg===0).length
+};
+fs.writeFileSync(path.join(out,'PT3_02A_pitch_diagnostic.json'),
+    JSON.stringify(pitchDiagnostic,null,2)+'\n');
+console.log('PT3_02A musical audit:\n'+JSON.stringify(musicalAudit,null,2));
+
 const writesDuringMusic=events.length;
 // Redirect execution to explicit cleanup entry, preserving CPU state.
 cpu.setState({...cpu.watch(),pc:0x6003,cycle_delay:0});
