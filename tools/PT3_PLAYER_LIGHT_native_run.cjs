@@ -62,7 +62,7 @@ function write(addr,value){
   else if(addr<0xc000)ram[addr]=value&255;
 }
 ram.set(player,0x6000);ram.set(tune,0x8000);
-// Executable host program: use JSR APIs while independent foreground counter runs.
+// Executable host program: JSR APIs and a tiny independent loop counter only. No HGR setup or drawing.
 const host=`ORG $5000
     jsr $6000
     sta $7103
@@ -185,6 +185,10 @@ ram[0x8000]=0;
 command(4,2);
 assert.equal(ram[0x03fe],0x40,'Bad module changed IRQ vector');
 ram[0x8000]=0x50;
+// Earlier T1 was stopped with its counter still running. Clear stale T1 IFR
+// before enabling a deliberately foreign IER bit; otherwise this artificial
+// collision would immediately interrupt the host's minimal RTI-only handler.
+vias[0].writeRegister(13,0x40);
 vias[0].writeRegister(14,0xc0);
 command(4,3);
 vias[0].writeRegister(14,0x40);
