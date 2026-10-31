@@ -42,8 +42,8 @@ pt3_02a_start:
     jsr reset_ay_both
     jsr clear_ay_both
     jsr pt3_init_song
-    ; Original diagnostic tune is ~3s long: enable PT3 repeat.
-    lda #$01
+    ; Use original 12-second fixture for this nonlooping smoke test.
+    lda #$00
     sta LOOP
     ; Foreground must be visible in the actual emulator, not just RAM.
     jsr pt3_02a_hgr_init
