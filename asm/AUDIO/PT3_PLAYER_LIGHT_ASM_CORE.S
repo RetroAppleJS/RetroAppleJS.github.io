@@ -92,6 +92,8 @@ pt3_light_saved_ddrb1:
     .byte $00
 pt3_light_saved_ddra1:
     .byte $00
+pt3_light_initial_i:
+    .byte $00
 
 ; START is callable by JSR, including Applesoft CALL: preserves incoming I.
 pt3_light_start:
@@ -142,6 +144,12 @@ pt3_light_bad_song:
     rts
 
 pt3_light_install:
+    ; START is entered via PHP/SEI. Its original P is on the stack.
+    ; Save the caller's I bit before enabling music interrupts.
+    pla
+    pha
+    and #$04
+    sta pt3_light_initial_i
     lda $03FE
     sta pt3_light_old_irq
     lda $03FF
@@ -169,6 +177,7 @@ pt3_light_install:
     sta pt3_light_state
     jsr mockingboard_setup_interrupt
     plp
+    cli                  ; allow T1 music IRQ even from Applesoft RESET I=1
     lda #$00
     rts
 
@@ -177,7 +186,11 @@ pt3_light_stop:
     php
     sei
     lda pt3_light_state
-    beq pt3_light_stop_done
+    bne pt3_light_stop_active
+    plp
+    lda #$00
+    rts
+pt3_light_stop_active:
     lda #$40
     sta MOCK_6522_IER
     lda MOCK_6522_T1CL
@@ -198,8 +211,15 @@ pt3_light_stop:
     sta MOCK_6522_DDRA2
     lda #$00
     sta pt3_light_state
-pt3_light_stop_done:
     plp
+    ; Return to the global interrupt policy in effect before START.
+    lda pt3_light_initial_i
+    beq pt3_light_stop_enable
+    sei
+    lda #$00
+    rts
+pt3_light_stop_enable:
+    cli
     lda #$00
     rts
 

@@ -66,7 +66,6 @@ ram.set(player,0x6000);ram.set(tune,0x8000);
 const host=`ORG $5000
     jsr $6000
     sta $7103
-    cli
 HOST_LOOP:
     inc $7100
     lda $7102
@@ -134,6 +133,8 @@ function command(n,expect){
 }
 advance(120000);
 assert.equal(ram[0x7103],0,'START did not return A=0');
+assert.equal(cpu.watch().p&4,0,
+    'START did not clear I for VIA Timer1 playback from a masked caller');
 const runningVector=ram[0x03fe]+256*ram[0x03ff];
 assert.ok(runningVector>=0x6000 && runningVector<0x7000,'IRQ not installed');
 assert.equal(vias[0].ier&0x40,0x40,'VIA0 T1 not enabled');
@@ -171,6 +172,8 @@ advance(250000);
 assert.ok(events.length>eventsBeforeResume+40,'RESUME did not restore music');
 const irqsBeforeStop=irqCount;
 command(3,0);
+assert.equal(cpu.watch().p&4,4,
+    'STOP did not restore the CPU interrupt-disable state from original START');
 command(5,0);
 assert.equal(vias[0].ier&0x40,0,'STOP left T1 interrupt enabled');
 assert.equal(ram[0x03fe],0x40,'STOP failed to restore previous IRQ low');
@@ -194,10 +197,14 @@ command(4,3);
 vias[0].writeRegister(14,0x40);
 assert.equal(ram[0x03fe],0x40,'Busy timer changed IRQ vector');
 command(4,0);
+assert.equal(cpu.watch().p&4,0,
+    'Restart START did not clear I for T1');
 command(5,1);
 advance(300000);
 assert.ok(irqCount>irqsBeforeStop+5,'Restart after STOP failed');
 command(3,0);
+assert.equal(cpu.watch().p&4,4,
+    'Restart STOP did not restore original I');
 assert.equal(ram[0x03fe],0x40);
 const report={
   status:'PASS',schema:'retroapplejs.pt3.light.native.v1',
@@ -205,7 +212,7 @@ const report={
   cpuCycles:cycleCount,sourceTickAfterStart:t0,IRQCount:irqCount,
   ayWrites:events.filter(e=>e.ay===0&&e.reg>=0).length,
   pausedCycles:300000,
-  tested:['START returns to host','50Hz Timer1','square-only','AY0/AY1 mirror','PAUSE retains decoder state',
+  tested:['START enables masked caller interrupts','STOP restores caller I flag','START returns to host','50Hz Timer1','square-only','AY0/AY1 mirror','PAUSE retains decoder state',
   'RESUME returns music','STOP releases IRQ/vector/DDRs','invalid song rejected','T1 busy rejected','restart']
 };
 fs.writeFileSync(path.join(out,'PT3_PLAYER_LIGHT_native.json'),JSON.stringify(report,null,2)+'\n');
