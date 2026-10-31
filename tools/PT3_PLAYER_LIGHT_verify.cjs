@@ -18,6 +18,10 @@ assert.ok(result.bytes.length>2700 && result.bytes.length<=4096,'Resident binary
 for(let i=0;i<result.bytes.length;i++){
   assert.equal(result.bytes[i].pc,0x6000+i,'Noncontiguous assembly at '+i);
 }
+assert.doesNotMatch(source,/pt3_02a_(?:hgr|foreground|marker)|pt3_02a_move_marker|pt3_02a_clear_page/i,
+ 'Resident player must not contain legacy HGR demo or foreground routines');
+assert.doesNotMatch(source,/\\b(?:bit|sta|stx|sty|lda)\\s+\\$c05[0-7]\\b/i,
+ 'Resident player must not switch graphics modes');
 const bytes=Buffer.from(result.bytes.map(x=>x.val));
 for(const off of [0,3,6,9,12])assert.equal(bytes[off],0x4c,'Missing public JMP entry at $'+(0x6000+off).toString(16));
 assert.equal(bytes.indexOf(Buffer.from('ProTracker','ascii')),-1,'Unexpected embedded PT3 song');
