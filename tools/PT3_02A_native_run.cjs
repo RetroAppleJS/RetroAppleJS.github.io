@@ -137,7 +137,10 @@ const toneEnableWrites=ay0.filter(e=>e.reg===7&&(e.value&7)!==7).length;
 const ampAfterFourSec=ay0.filter(e=>e.tick>4*CYCLES_PER_SECOND &&
     e.reg>=8&&e.reg<=10&&(e.value&15)>0).length;
 assert.ok(ampAfterFourSec>30,
-    'PT3 output ended at ~3s; expected loop to continue after 4s');
+    'PT3 output ended at ~3s; expected loop to continue after 4s; '+JSON.stringify({
+        ampAfterFourSec,loop:ram[0x64],donePlaying:ram[0x68],doneSong:ram[0x69],
+        foregroundSamples,latestAY:ay0.slice(-5)
+    }));
 assert.ok(nonZeroAmpWrites>30,
     'Decoded PT3 is silent: no nonzero AY amplitude programming');
 assert.ok(toneEnableWrites>30,
