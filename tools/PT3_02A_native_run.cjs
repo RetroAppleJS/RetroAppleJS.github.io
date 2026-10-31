@@ -12,12 +12,13 @@ const out = process.argv[2] || path.join(root, 'build/pt3_02a');
 const player = fs.readFileSync(path.join(out, 'PT3_02A_PLAYER.bin'));
 const tune = fs.readFileSync(path.join(out, 'PT3_02A_ORIGINAL.pt3'));
 const CYCLES_PER_SECOND = 1021800;
-const DURATION_CYCLES = CYCLES_PER_SECOND * 3;
+const DURATION_CYCLES = CYCLES_PER_SECOND * 6;
 const T1_LATCH = 0x4fe7;
 const T1_PERIOD = T1_LATCH + 2;
 const ram = new Uint8Array(65536);
 const events = [];
 const raised = [];
+const graphicsSwitches = new Set();
 let cpuTick = 0;
 let interrupts = 0;
 
@@ -69,6 +70,7 @@ function viaDecode(addr) {
 function read(addr) {
     addr&=0xffff;
     const d=viaDecode(addr);
+    if (addr>=0xc050 && addr<=0xc057) graphicsSwitches.add(addr);
     return d ? vias[d.index].readRegister(d.reg) : ram[addr];
 }
 function write(addr,value) {
@@ -97,7 +99,89 @@ function cycle() {
     vias[1].tick(1);
 }
 function advanceTo(target) { while(cpuTick<target) cycle(); }
-advanceTo(DURATION_CYCLES);
+const foregroundSamples=[];
+for (let seconds=1; seconds<=6; seconds++) {
+    advanceTo(CYCLES_PER_SECOND*seconds);
+    foregroundSamples.push({
+        second:seconds,position:ram[0x7002],
+        counterLow:ram[0x7000],counterHigh:ram[0x7001],
+        irqCount:interrupts
+    });
+}
+for (const address of [0xc050,0xc052,0xc054,0xc057])
+    assert.ok(graphicsSwitches.has(address),
+        'Native player failed to activate HGR soft switch =ram[0x7000];
+const hgrProgress=ram[0x2000];
+assert.ok(interrupts>270 && interrupts<320,
+    'Expected about 300 native T1 IRQs in six seconds, got '+interrupts);
+assert.ok(fgProgress !== 0 && hgrProgress !== 0,
+    'Foreground loop not progressing during music');
+const ay0=events.filter(e=>e.ay===0&&e.reg>=0);
+const ay1=events.filter(e=>e.ay===1&&e.reg>=0);
+assert.ok(ay0.length>100,'Native 6502 did not program AY0 (observed '+ay0.length+')');
+assert.equal(ay0.length,ay1.length,'Mirrored AY registers have different counts');
+for(let i=0;i<ay0.length;i++) {
+    assert.equal(ay0[i].reg,ay1[i].reg,'AY mirror register mismatch '+i);
+    assert.equal(ay0[i].value,ay1[i].value,'AY mirror value mismatch '+i);
+}
+assert.ok(new Set(ay0.filter(e=>e.reg===0).map(e=>e.value)).size>2,
+    'No changing tone periods from PT3 decode');
+const nonZeroAmpWrites=ay0.filter(e=>e.reg>=8&&e.reg<=10&&(e.value&15)>0).length;
+const toneEnableWrites=ay0.filter(e=>e.reg===7&&(e.value&7)!==7).length;
+const ampAfterFourSec=ay0.filter(e=>e.tick>4*CYCLES_PER_SECOND &&
+    e.reg>=8&&e.reg<=10&&(e.value&15)>0).length;
+assert.ok(ampAfterFourSec>30,
+    'PT3 output ended at ~3s; expected loop to continue after 4s');
+assert.ok(nonZeroAmpWrites>30,
+    'Decoded PT3 is silent: no nonzero AY amplitude programming');
+assert.ok(toneEnableWrites>30,
+    'Decoded PT3 has no enabled tone channels');
+const intervals=raised.slice(1).map((t,i)=>t-raised[i]);
+assert.ok(intervals.every(n=>n===T1_PERIOD),
+    'Unstable VIA Timer1 period: '+[...new Set(intervals)]);
+const writesDuringMusic=events.length;
+// Redirect execution to explicit cleanup entry, preserving CPU state.
+cpu.setState({...cpu.watch(),pc:0x6003,cycle_delay:0});
+for(let i=0;i<6000;i++) cycle();
+assert.equal(ram[0x7006],0xa5,'Native PT3 stop did not complete');
+assert.equal(ram[0x03fe],0x40,'Soft IRQ low vector not restored');
+assert.equal(ram[0x03ff],0xff,'Soft IRQ high vector not restored');
+assert.equal(hw.irq_signal,0,'VIA IRQ line remains asserted after stop');
+const finalWrites=events.length;
+for(let i=0;i<100000;i++) cycle();
+assert.equal(events.length,finalWrites,'AY register writes continue after shutdown');
+assert.equal(hw.irq_signal,0,'VIA IRQ reasserted after shutdown');
+
+const report={
+    format:'retroapplejs.pt3-02a.native.6502.v1',
+    status:'PASS',
+    core:'RetroAppleJS Cpu6502 + MockingboardR6522 + MockingboardAYBus',
+    peripheralIntegration:'Actual VIA and AY bus cores; standalone deterministic CPU bus harness',
+    cpuClockHz:CYCLES_PER_SECOND,
+    playerLoad:0x6000,playerBytes:player.length,
+    songLoad:0x8000,songBytes:tune.length,
+    measuredCycles:DURATION_CYCLES,timerLatch:T1_LATCH,timerPeriodCycles:T1_PERIOD,
+    irqCount:interrupts,
+    firstIRQCycle:raised[0],
+    lastIRQCycle:raised.at(-1),
+    foregroundCounter:fgProgress,
+    hgrByte: hgrProgress,
+    ayWrites:[ay0.length,ay1.length],
+    nonZeroAmpWrites,toneEnableWrites,ampAfterFourSec,
+    foregroundSamples,graphicsSwitches:[...graphicsSwitches].map(x=>x.toString(16)),
+    totalWritesDuringPlayback:writesDuringMusic,
+    stopSuccess:true,
+    notes:'No browser AudioContext, full Apple II Monitor ROM, or native HGR rasterization; those remain integration checks.'
+};
+fs.writeFileSync(path.join(out,'PT3_02A_native_results.json'),
+    JSON.stringify(report,null,2)+'\n');
+console.log(JSON.stringify(report,null,2));
++address.toString(16));
+assert.ok(new Set(foregroundSamples.map(x=>x.position)).size>=3,
+    'Foreground marker did not move while music interrupts continued');
+assert.ok(foregroundSamples.every((x,i)=>i===0||x.irqCount>foregroundSamples[i-1].irqCount),
+    'No ongoing IRQ service between visible foreground samples');
+assert.equal(ram[0x2000],0x7f,'Visible HGR status bar not rendered');
 const fgProgress=ram[0x7000];
 const hgrProgress=ram[0x2000];
 assert.ok(interrupts>100 && interrupts<170,
