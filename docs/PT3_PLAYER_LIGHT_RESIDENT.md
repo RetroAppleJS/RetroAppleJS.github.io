@@ -29,8 +29,11 @@ the original Apple II Monitor IRQ interface also uses **$45** and
 | `$600C` | STATUS | 0 stopped, 1 playing, 2 paused, 3 ended | Non-blocking status |
 
 Call with **JSR** (or Applesoft BASIC `CALL`), not a bare `JMP`.
-START/STOP/PAUSE/RESUME preserve the caller's original processor interrupt-enable
-flag via PHP/SEI/PLP. All calls may modify A/X/Y; STATUS returns a value in A.
+After successful START, the player explicitly enables 6502 interrupts using
+`CLI`, including when called from Applesoft with the I flag set. It remembers
+the original interrupt-disable state and restores that state on STOP. Failed
+START attempts preserve the caller's I flag. PAUSE and RESUME leave it
+unchanged. All calls may modify A/X/Y; STATUS returns a value in A.
 While playback runs, the caller owns the foreground and can update HGR,
 execute game logic or access memory outside the reserved regions.
 
@@ -88,7 +91,9 @@ node tools/PT3_PLAYER_LIGHT_native_run.cjs
 ```
 
 The test executes the genuine `Cpu6502`, `MockingboardR6522` and
-`MockingboardAYBus` components. It verifies START/host foreground concurrency,
+`MockingboardAYBus` components. The host no longer calls `CLI` itself,
+so START must enable playback from a masked CPU RESET state, and STOP must
+restore that original state. It verifies START/host foreground concurrency,
 50 Hz IRQs, no noise or envelope output, mirrored AY0/AY1 writes, pause/resume,
 STOP restoration, bad module detection, busy T1 detection, and restarting.
 The test's minimal Monitor IRQ bridge does not reproduce a complete browser
