@@ -30,6 +30,25 @@ jobs:
           python -m pip install 'spectrumizer>=0.2.1'
       - name: Assemble pinned 6502 PT3 library and original fixture
         run: bash tools/PT3_02A_build.sh
+      - name: Compare Spectrumizer PT3 reverse MIDI with source pitch and channel assignment
+        run: |
+          spectrumizer-export build/pt3_02a/PT3_02A_ORIGINAL.pt3 -o build/pt3_02a/PT3_02A_reverse.mid
+          python - <<'PY'
+          import mido,json
+          from pathlib import Path
+          root=Path('build/pt3_02a')
+          def collect(file):
+              m=mido.MidiFile(file)
+              out={}
+              for t in m.tracks:
+                  for e in t:
+                      if e.type=='note_on' and e.velocity>0:
+                          out.setdefault(int(e.channel),[]).append(int(e.note))
+              return {str(k):v[:30] for k,v in sorted(out.items())}
+          result={'source':collect(root/'original.mid'),'reverse':collect(root/'PT3_02A_reverse.mid')}
+          (root/'PT3_02A_roundtrip_notes.json').write_text(json.dumps(result,indent=2)+'\n')
+          print(json.dumps(result,indent=2))
+          PY
       - name: Verify ASM_core source produces identical 6502 binary
         run: node tools/PT3_02A_ASM_CORE_verify.cjs
       - name: Run actual 6502 + Mockingboard VIA/AY core smoke test
@@ -64,6 +83,8 @@ jobs:
             build/pt3_02a/PT3_02A_build.json
             build/pt3_02a/PT3_02A_native_results.json
             build/pt3_02a/PT3_02A_pitch_diagnostic.json
+            build/pt3_02a/PT3_02A_reverse.mid
+            build/pt3_02a/PT3_02A_roundtrip_notes.json
             build/pt3_02a/player.map
             build/pt3_02a/player.lst
           retention-days: 14
