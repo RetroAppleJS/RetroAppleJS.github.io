@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
-<title>PAY Compiler v0.6 — Mockingboard PAY-Light</title>
+<title>PAY Compiler v0.7 — Mockingboard PAY-Light</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1120;--card:#14223a;--line:#344763;--muted:#b4c4da;--txt:#f0f6ff;--blue:#70bbff;--ok:#6dd7a2;--err:#ffa7a7}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 20% 0%,#1c2e4a,var(--bg) 60%);color:var(--txt);font:15px/1.5 system-ui,sans-serif}
@@ -12,9 +12,9 @@ input,select,textarea{background:#081527;border:1px solid #435776;border-radius:
 @media(max-width:860px){.layout{grid-template-columns:1fr}main{padding:14px}textarea{min-height:300px}}
 </style>
 </head>
-<body><main><span class="tag">RETROAPPLEJS · PAY-00.6 · DETERMINISTIC COMPILER</span>
+<body><main><span class="tag">RETROAPPLEJS · PAY-00.7 · DETERMINISTIC COMPILER</span>
 <h1>PAY Compiler</h1>
-<p>Complete PAY report JSON → native Apple II 6502 <code>PAY_INIT</code>, <code>PAY_TICK</code> and <code>PAY_STOP</code> → AY0 Mockingboard output. Fully local and standalone; no OpenAI API key or server required.</p>
+<p>Complete PAY report JSON → native Apple II 6502 <code>PAY_INIT</code>, <code>PAY_TICK</code>, <code>PAY_STOP</code>, and opt-in VIA1 Timer1 IRQ playback → AY0 Mockingboard output. Fully local and standalone; no OpenAI API key or server required.</p>
 <div id="status" role="status" aria-live="polite">Choose a PAY v0.5.1 complete-report JSON to begin.</div>
 <div class="layout"><div>
 <section class="card"><h2>1 · Import evidence</h2><label for="reportFile">Complete report JSON</label><input id="reportFile" type="file" accept=".json,.txt,application/json,text/plain"><p class="small">Uses the observed frame snapshots and runtime completeness checks. Does not trust GPT hypotheses as executable song instructions.</p></section>
@@ -22,34 +22,39 @@ input,select,textarea{background:#081527;border:1px solid #435776;border-radius:
 <label for="slot">Mockingboard physical slot</label><select id="slot"><option value="4" selected>Slot 4 — VIA0 $C400</option><option value="5">Slot 5 — VIA0 $C500</option><option value="3">Slot 3 — VIA0 $C300</option><option value="2">Slot 2 — VIA0 $C200</option><option value="1">Slot 1 — VIA0 $C100</option><option value="6">Slot 6 — VIA0 $C600</option><option value="7">Slot 7 — VIA0 $C700</option></select>
 <label for="mode">Output policy</label><select id="mode"><option value="faithful" selected>Source-volume-respecting (default; muted sources stay muted)</option><option value="diagnostic">Audible diagnostic (explicitly overrides muted SID volume)</option></select>
 <label for="diagnosticVolume">Diagnostic AY amplitude (1–15)</label><input id="diagnosticVolume" type="number" min="1" max="15" value="10">
+<label for="endPolicy">When captured evidence ends</label><select id="endPolicy"><option value="stop" selected>Stop and mute (faithful bounded evidence)</option><option value="repeat-observed">Repeat captured window (explicit audition; NOT proven source loop)</option></select>
+<label for="irqHz">Resident timer frequency</label><select id="irqHz"><option value="50" selected>50 Hz (PAL / 50-tick score)</option><option value="60">60 Hz (60-tick score)</option></select>
+<label for="cpuHz">Apple II CPU clock for VIA Timer1 latch (Hz)</label><input id="cpuHz" type="number" min="500000" max="2000000" step="1" value="1023000">
+<p class="small">IRQ is opt-in: first call PAY_INIT, then PAY_IRQ_INSTALL. PAY_STOP mutes and unhooks it. Do not share VIA1 Timer1 with other drivers.</p>
 <div class="buttons"><button class="primary" id="compile" disabled>Compile native PAY-Light</button></div>
-<p class="small">No original SID CPU player, zero-page variables, self-modifying instructions or GPT dependency in the generated song program.</p></section>
-<section class="card"><h2>3 · Export</h2><div class="buttons"><button id="saveAsm" disabled>Download symbolic .S</button><button id="saveBin" disabled>Download raw .bin</button><button id="saveBytes" disabled>Download DB-only .txt</button><button id="saveMeta" disabled>Download compile report .json</button></div><p class="small">Load the raw binary at the selected start address. At <code>$6000</code>: INIT = <code>CALL 24576</code>, TICK = <code>CALL 24579</code>, STOP = <code>CALL 24582</code>. TICK requires a caller-provided 50/60-Hz scheduler; it does not install an IRQ.</p></section>
-<section class="card"><h2>Limits</h2><div class="warn">This compiler emits a <strong>finite approximation of observed AY frame states</strong>, not a proven score or full song loop. It accepts only 3 voices / SID1 and up to 255 changed-AY frames. It mutes on the first tick beyond the captured trace. SID analog envelopes, filters and PWM are not reproduced. The diagnostic mode is not source-faithful.</div></section>
+<p class="small">No original SID CPU player, PAY-owned zero-page bytes, executable-code patching or GPT dependency in the generated song program. Full Mockingboard/emulator audio verification remains pending.</p></section>
+<section class="card"><h2>3 · Export</h2><div class="buttons"><button id="saveAsm" disabled>Download symbolic .S</button><button id="saveBin" disabled>Download raw .bin</button><button id="saveBytes" disabled>Download DB-only .txt</button><button id="saveMeta" disabled>Download compile report .json</button></div><p class="small">Load the raw binary at the selected start address. At <code>$6000</code>: INIT = <code>CALL 24576</code>, TICK = <code>CALL 24579</code>, STOP = <code>CALL 24582</code>. Manual tick remains available. Opt-in resident IRQ entry points: INSTALL = <code>CALL 24585</code> and REMOVE = <code>CALL 24588</code> for $6000. The resident hook uses the Apple Monitor soft vector ($03FE) and VIA1 Timer1 exclusively.</p></section>
+<section class="card"><h2>Limits</h2><div class="warn">This compiler emits a <strong>finite approximation of observed AY frame states</strong>, not a proven score or full song loop. It accepts three voices / SID1 and up to 65,534 observed frames (actual capacity also depends on Apple II RAM). Repeated update programs are deduplicated from exact evidence, but original source pattern grammar and genuine musical loops are <strong>not</strong> established. Default output mutes on the first tick beyond the captured trace; repeat-observed is an explicit non-authentic audition feature. SID analog envelopes, filters and PWM are not reproduced. The diagnostic mode is not source-faithful.</div></section>
 </div><div>
 <section class="card"><h2>Generated PAY result</h2><div id="summary" class="small">No binary generated.</div></section>
 <section class="card"><h2>Native 6502 symbolic source</h2><textarea id="asm" readonly spellcheck="false" placeholder="Generated assembler source appears here."></textarea></section>
 </div></div>
 <script>
-/* PAY-00.6 deterministic frame-evidence compiler (UMD; browser + Node, no dependencies).
+/* PAY-00.7 deterministic extended-frame compiler (UMD; browser + Node, no dependencies).
  * Translates bounded PSID frame snapshots to absolute-RAM native 6502 + AY0 VIA0 bus writes.
  * This is an evidence-bounded register-state compiler, NOT a recovered SID pattern grammar.
  */
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.PAYCompiler=api;})(typeof globalThis!=='undefined'?globalThis:this,function(){
 'use strict';
-const OPC={JMP:0x4c,JSR:0x20,RTS:0x60,PHA:0x48,PLA:0x68,TXA:0x8a,TAX:0xaa,TYA:0x98,TAY:0xa8,LDX_IMM:0xa2,LDA_IMM:0xa9,LDA_ABSX:0xbd,LDA_ABS:0xad,STA_ABS:0x8d,STX_ABS:0x8e,CPX_IMM:0xe0,CMP_IMM:0xc9,CMP_ABS:0xcd,INC_ABS:0xee,DEC_ABS:0xce,DEX:0xca,BEQ:0xf0,BNE:0xd0,BCS:0xb0};
+const OPC={PHP:0x08,PLP:0x28,SEI:0x78,CLI:0x58,RTI:0x40,JMP_IND:0x6c,AND_IMM:0x29,ORA_IMM:0x09,JMP:0x4c,JSR:0x20,RTS:0x60,PHA:0x48,PLA:0x68,TXA:0x8a,TAX:0xaa,TYA:0x98,TAY:0xa8,LDX_IMM:0xa2,LDA_IMM:0xa9,LDA_ABSX:0xbd,LDA_ABS:0xad,STA_ABS:0x8d,STX_ABS:0x8e,CPX_IMM:0xe0,CMP_IMM:0xc9,CMP_ABS:0xcd,INC_ABS:0xee,DEC_ABS:0xce,DEX:0xca,BEQ:0xf0,BNE:0xd0,BCS:0xb0};
 const hex=(n,nib=4)=>'$'+(n>>>0).toString(16).toUpperCase().padStart(nib,'0');
 class Emitter{
  constructor(base){this.base=base;this.b=[];this.labels={};this.fix=[];this.lines=[];}
  label(n){if(this.labels[n]!==undefined)throw Error('Duplicate label '+n);this.labels[n]=this.base+this.b.length;this.lines.push(n+':');}
  emit(m,...vals){const off=this.b.length;this.b.push(OPC[m],...(m.endsWith('_ABS')||m.endsWith('_ABSX')?[vals[0]&255,(vals[0]>>8)&255]:vals.map(v=>typeof v==='number'?v&255:0)));this.lines.push('  '+m.replace(/_(ABSX|IMM|ABS)$/,'')+' '+(m.endsWith('IMM')?'#':'')+vals.map((x,i)=>typeof x==='string'?x:hex(x,2)).join(','));return off;}
- abs(m,l){const off=this.b.length;this.b.push(OPC[m],0,0);this.fix.push({at:off+1,name:l,kind:'word'});this.lines.push('  '+m.replace('_ABS','')+' '+l);}
+ abs(m,l){const off=this.b.length;this.b.push(OPC[m],typeof l==='number'?l&255:0,typeof l==='number'?(l>>8)&255:0);if(typeof l!=='number')this.fix.push({at:off+1,name:l,kind:'word'});this.lines.push('  '+m.replace(/_(ABS|IND)$/,'')+' '+(m==='JMP_IND'?'(':'')+(typeof l==='number'?hex(l):l)+(m==='JMP_IND'?')':''));}
  absx(m,l){const off=this.b.length;this.b.push(OPC[m],0,0);this.fix.push({at:off+1,name:l,kind:'word'});this.lines.push('  '+m.replace('_ABSX','')+' '+l+',X');}
  branch(m,l){const off=this.b.length;this.b.push(OPC[m],0);this.fix.push({at:off+1,name:l,kind:'rel'});this.lines.push('  '+m+' '+l);}
+ immLabel(name,part){const at=this.b.length;this.b.push(0xa9,0);this.fix.push({at:at+1,name,kind:part});this.lines.push('  LDA #'+(part==='lo' ? '<' : '>')+name);}
  word(l,minus=0){const at=this.b.length;this.b.push(0,0);this.fix.push({at,name:l,kind:'word',minus});}
  byte(v){this.b.push(v&255);}
  bytes(label,a){this.label(label);if(!a.length){this.lines.push('  ; empty');return;}for(let i=0;i<a.length;i+=16){const row=a.slice(i,i+16);this.lines.push('  DB '+row.map(n=>hex(n,2)).join(','));this.b.push(...row);}}
- finish(){for(const f of this.fix){const a=this.labels[f.name];if(a===undefined)throw Error('Undefined label: '+f.name);if(f.kind==='word'){const w=(a-(f.minus||0))&65535;this.b[f.at]=w&255;this.b[f.at+1]=w>>8;}else {const d=a-(this.base+f.at+1);if(d< -128||d>127)throw Error('Branch out of range to '+f.name+': '+d);this.b[f.at]=d&255;}}
+ finish(){for(const f of this.fix){const a=this.labels[f.name];if(a===undefined)throw Error('Undefined label: '+f.name);if(f.kind==='lo'||f.kind==='hi'){this.b[f.at]=f.kind==='lo'?a&255:a>>8;}else if(f.kind==='word'){const w=(a-(f.minus||0))&65535;this.b[f.at]=w&255;this.b[f.at+1]=w>>8;}else {const d=a-(this.base+f.at+1);if(d< -128||d>127)throw Error('Branch out of range to '+f.name+': '+d);this.b[f.at]=d&255;}}
  return {bytes:Uint8Array.from(this.b),labels:this.labels,assembly:'ORG '+hex(this.base)+'\n\n'+this.lines.join('\n')+'\n'};}
 }
 function validateReport(report){if(!report||report.format!=='PAY_Complete_Report_v0.5.1')throw Error('Expected PAY_Complete_Report_v0.5.1');const c=report.completeness||{},t=report.runtimeTrace,ir=report.musicalIR;if(!t||!ir||!c.runtimeAvailable||!c.musicalIRAvailable)throw Error('Complete report has no runtime trace / musical IR');const s=t.summary||{},frames=t.frameSnapshots||[];
@@ -85,71 +90,92 @@ function makeActions(frames,mode,level){const actions=[],previous=new Array(14).
  }
  return actions;
 }
+function finiteMotifs(actions){
+ // Repeated concrete AY-update blocks, not asserted source-level pattern or endless music loop.
+ const groups=new Map();for(const a of actions){const key=JSON.stringify(a.updates);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(a.frame);}
+ return [...groups.entries()].filter(([k,v])=>v.length>=2).map(([k,v])=>({updates:JSON.parse(k),occurrences:v.length,observedFrames:v.slice(0,20),evidence:'repeated captured AY updates only; not a source loop'})).sort((a,b)=>b.occurrences-a.occurrences);
+}
+function observedPatterns(actions){
+ // Window equality requires identical AY update sequences and identical relative frame offsets.
+ // This is finite captured evidence. It cannot establish the source composition's loop grammar.
+ const found=[];for(const size of [2,3,4,6,8,12,16]){
+  if(actions.length<size*2)continue;const buckets=new Map();
+  for(let i=0;i<=actions.length-size;i++){
+   const start=actions[i].frame,key=JSON.stringify(actions.slice(i,i+size).map(x=>[x.frame-start,x.updates]));
+   if(!buckets.has(key))buckets.set(key,[]);buckets.get(key).push(i);
+  }
+  for(const indexes of buckets.values()){
+   const disjoint=[];let last=-size;for(const i of indexes){if(i>=last+size){disjoint.push(i);last=i;}}
+   if(disjoint.length<2)continue;
+   found.push({actionLength:size,occurrences:disjoint.length,firstFrame:actions[disjoint[0]].frame,relativeFrameSpan:actions[disjoint[0]+size-1].frame-actions[disjoint[0]].frame+1,startFrames:disjoint.slice(0,12).map(i=>actions[i].frame),evidence:'exact finite AY delta/relative timing sequence; not a proven original pattern or infinite source loop'});
+  }
+ }
+ return found.sort((a,b)=>b.actionLength*b.occurrences-a.actionLength*a.occurrences).slice(0,24);
+}
 function compile(report,options={}){
- const frames=validateReport(report),base=options.base===undefined?0x6000:Number(options.base),slot=options.slot===undefined?4:Number(options.slot),mode=options.mode||'faithful',level=options.diagnosticVolume===undefined?10:Number(options.diagnosticVolume);
- if(!Number.isInteger(base)||base<0x1000||base>0xb000||!Number.isInteger(slot)||slot<1||slot>7||!['faithful','diagnostic'].includes(mode)||!Number.isInteger(level)||level<1||level>15)throw Error('Invalid base (RAM $1000-$B000), physical slot (1-7), mode or diagnostic volume (1-15)');
- if(frames.length>65534)throw Error('Frame limit exceeds 16-bit counter');
- const actions=makeActions(frames,mode,level);if(actions.length>255)throw Error('PAY-00.6 capacity: 255 distinct AY action frames; this report needs '+actions.length+'. Further pattern/RLE compilation required.');
- const VIA=0xc000+(slot<<8),e=new Emitter(base),w=(name,n)=>{e.emit('LDA_IMM',n);e.emit('STA_ABS',VIA+name);};
- // First 9 bytes are stable entrypoint JMP vectors at $6000/6003/6006.
- e.label('PAY_INIT');e.abs('JMP','PAY_INIT_IMPL');e.label('PAY_TICK');e.abs('JMP','PAY_TICK_IMPL');e.label('PAY_STOP');e.abs('JMP','PAY_STOP_IMPL');
+ const frames=validateReport(report),base=options.base===undefined?0x6000:Number(options.base),slot=options.slot===undefined?4:Number(options.slot),mode=options.mode||'faithful',level=options.diagnosticVolume===undefined?10:Number(options.diagnosticVolume),endPolicy=options.endPolicy||'stop',irqHz=options.irqHz===undefined?50:Number(options.irqHz),cpuHz=options.cpuHz===undefined?1023000:Number(options.cpuHz);
+ if(!Number.isInteger(base)||base<0x1000||base>0xb000||!Number.isInteger(slot)||slot<1||slot>7||!['faithful','diagnostic'].includes(mode)||!Number.isInteger(level)||level<1||level>15||!['stop','repeat-observed'].includes(endPolicy)||![50,60].includes(irqHz)||!Number.isInteger(cpuHz)||cpuHz<500000||cpuHz>2000000)throw Error('Invalid base, slot, volume, end policy or timer frequency');
+ if(frames.length>65534)throw Error('Frame count exceeds 16-bit counter');
+ const actions=makeActions(frames,mode,level),motifs=finiteMotifs(actions),patterns=observedPatterns(actions),VIA=0xc000+(slot<<8),TIMER=VIA+0x80,softIRQ=0x03fe,timerLatch=Math.round(cpuHz/irqHz)-2;
+ if(timerLatch<1||timerLatch>65535)throw Error('Unsupported timer latch');
+ const e=new Emitter(base),h=(n,p)=>e.immLabel(n,p),zero=n=>{e.emit('LDA_IMM',0);e.abs('STA_ABS',n);},put=(n,v)=>{e.emit('LDA_IMM',v);e.abs('STA_ABS',n);},w=(reg,val)=>{e.emit('LDA_IMM',val);e.emit('STA_ABS',VIA+reg);};
+ const j=m=>e.abs('JMP',m);
+ // Preserve legacy API and add opt-in IRQ install/remove: $6000/$6003/$6006/$6009/$600C.
+ for(const [name,dst] of [['PAY_INIT','PAY_INIT_IMPL'],['PAY_TICK','PAY_TICK_IMPL'],['PAY_STOP','PAY_STOP_IMPL'],['PAY_IRQ_INSTALL','PAY_IRQ_INSTALL_IMPL'],['PAY_IRQ_REMOVE','PAY_IRQ_REMOVE_IMPL']]){e.label(name);j(dst);}
  function enter(){e.emit('PHA');e.emit('TXA');e.emit('PHA');e.emit('TYA');e.emit('PHA');}
  function leave(){e.emit('PLA');e.emit('TAY');e.emit('PLA');e.emit('TAX');e.emit('PLA');e.emit('RTS');}
- e.label('PAY_INIT_IMPL');enter();e.emit('LDA_IMM',0);for(const state of ['FRAME_LO','FRAME_HI','ACTION_IDX','PAY_DONE'])e.abs('STA_ABS',state);
- w(3,0xff);w(2,0x07);w(0,0x04);e.abs('JSR','PAY_MUTE');leave();
- e.label('PAY_TICK_IMPL');enter();e.abs('LDA_ABS','PAY_DONE');e.branch('BNE','PAY_TICK_RETURN');
- // When a trace ends, silence instead of silently implying a loop / indefinite sustain.
- e.abs('LDA_ABS','FRAME_HI');e.emit('CMP_IMM',frames.length>>8);e.branch('BNE','PAY_TICK_ACTION');
- e.abs('LDA_ABS','FRAME_LO');e.emit('CMP_IMM',frames.length&255);e.branch('BNE','PAY_TICK_ACTION');
- e.emit('LDA_IMM',1);e.abs('STA_ABS','PAY_DONE');e.abs('JSR','PAY_MUTE');e.abs('JMP','PAY_TICK_RETURN');
- e.label('PAY_TICK_ACTION');e.abs('LDX_IMM','ACTION_IDX'); // replaced below: LDX abs (custom op)
- // Fix LDX ABS opcode / listing at emitted placeholder location above.
- {const pos=e.b.length-3;e.b[pos]=0xae;e.lines[e.lines.length-1]='  LDX ACTION_IDX';}
- e.emit('CPX_IMM',actions.length);e.branch('BCS','PAY_TICK_ADVANCE');
- e.absx('LDA_ABSX','PAY_FRAME_HI_TABLE');e.abs('CMP_ABS','FRAME_HI');e.branch('BNE','PAY_TICK_ADVANCE');
- e.absx('LDA_ABSX','PAY_FRAME_LO_TABLE');e.abs('CMP_ABS','FRAME_LO');e.branch('BNE','PAY_TICK_ADVANCE');
- e.abs('INC_ABS','ACTION_IDX');e.abs('JSR','PAY_DISPATCH');
- e.label('PAY_TICK_ADVANCE');e.abs('INC_ABS','FRAME_LO');e.branch('BNE','PAY_TICK_RETURN');e.abs('INC_ABS','FRAME_HI');
- e.label('PAY_TICK_RETURN');leave();
- e.label('PAY_STOP_IMPL');enter();e.emit('LDA_IMM',1);e.abs('STA_ABS','PAY_DONE');e.abs('JSR','PAY_MUTE');leave();
+ function setNext(i){if(i<actions.length){h('PAY_EVENT_'+i,'lo');e.abs('STA_ABS','NEXT_LO');h('PAY_EVENT_'+i,'hi');e.abs('STA_ABS','NEXT_HI');put('NEXT_FRAME_LO',actions[i].frame&255);put('NEXT_FRAME_HI',actions[i].frame>>8);}else{put('NEXT_FRAME_LO',255);put('NEXT_FRAME_HI',255);}}
+ e.label('PAY_RESET_WINDOW');for(const name of ['FRAME_LO','FRAME_HI','PAY_DONE'])zero(name);setNext(0);e.emit('RTS');
+ e.label('PAY_INIT_IMPL');e.emit('PHP');e.emit('SEI');enter();w(3,0xff);w(2,0x07);w(0,0x04);e.abs('JSR','PAY_MUTE');e.abs('JSR','PAY_RESET_WINDOW');e.emit('PLA');e.emit('TAY');e.emit('PLA');e.emit('TAX');e.emit('PLA');e.emit('PLP');e.emit('RTS');
+ e.label('PAY_TICK_IMPL');enter();e.abs('LDA_ABS','PAY_DONE');e.branch('BEQ','PAY_CHECK_END');j('PAY_RETURN');
+ e.label('PAY_CHECK_END');e.abs('LDA_ABS','FRAME_HI');e.emit('CMP_IMM',frames.length>>8);e.branch('BNE','PAY_CHECK_EVENT');e.abs('LDA_ABS','FRAME_LO');e.emit('CMP_IMM',frames.length&255);e.branch('BNE','PAY_CHECK_EVENT');j('PAY_AT_END');
+ e.label('PAY_CHECK_EVENT');e.abs('LDA_ABS','FRAME_HI');e.abs('CMP_ABS','NEXT_FRAME_HI');e.branch('BNE','PAY_ADVANCE');e.abs('LDA_ABS','FRAME_LO');e.abs('CMP_ABS','NEXT_FRAME_LO');e.branch('BNE','PAY_ADVANCE');e.abs('JSR','PAY_DISPATCH');
+ e.label('PAY_ADVANCE');e.abs('INC_ABS','FRAME_LO');e.branch('BNE','PAY_RETURN');e.abs('INC_ABS','FRAME_HI');
+ e.label('PAY_RETURN');leave();
+ e.label('PAY_AT_END');if(endPolicy==='repeat-observed'){e.abs('JSR','PAY_MUTE');e.abs('JSR','PAY_RESET_WINDOW');j('PAY_CHECK_EVENT');}else{put('PAY_DONE',1);e.abs('JSR','PAY_MUTE');j('PAY_RETURN');}
+ e.label('PAY_STOP_IMPL');e.emit('PHP');e.emit('SEI');enter();e.abs('JSR','PAY_IRQ_OFF_CORE');put('PAY_DONE',1);e.abs('JSR','PAY_MUTE');e.emit('PLA');e.emit('TAY');e.emit('PLA');e.emit('TAX');e.emit('PLA');e.emit('PLP');e.emit('RTS');
  e.label('PAY_MUTE');e.emit('LDX_IMM',7);e.emit('LDA_IMM',0x3f);e.abs('JSR','PAY_AY_WRITE');for(let v=8;v<=10;v++){e.emit('LDX_IMM',v);e.emit('LDA_IMM',0);e.abs('JSR','PAY_AY_WRITE');}e.emit('RTS');
- // AX write API. Clobbers A and flags; leaves X, Y unchanged. Writes through VIA0 only.
  e.label('PAY_AY_WRITE');e.abs('STA_ABS','PAY_TMP');e.emit('STX_ABS',VIA+1);w(0,7);w(0,4);e.abs('LDA_ABS','PAY_TMP');e.emit('STA_ABS',VIA+1);w(0,6);w(0,4);e.emit('RTS');
- // Dispatch trick: push (event handler - 1) return address, RTS into it, then RTS back to TICK.
- e.label('PAY_DISPATCH');e.abs('LDX_IMM','ACTION_IDX');{let pos=e.b.length-3;e.b[pos]=0xae;e.lines[e.lines.length-1]='  LDX ACTION_IDX';}e.emit('DEX');e.absx('LDA_ABSX','PAY_ADDR_HI_TABLE');e.emit('PHA');e.absx('LDA_ABSX','PAY_ADDR_LO_TABLE');e.emit('PHA');e.emit('RTS');
- actions.forEach((a,i)=>{e.label('PAY_EVENT_'+i);for(const u of a.updates){e.emit('LDX_IMM',u.reg);e.emit('LDA_IMM',u.value);e.abs('JSR','PAY_AY_WRITE');}e.emit('RTS');});
- e.bytes('PAY_FRAME_LO_TABLE',actions.map(x=>x.frame&255));e.bytes('PAY_FRAME_HI_TABLE',actions.map(x=>x.frame>>8));
- e.label('PAY_ADDR_LO_TABLE');actions.forEach((_,i)=>e.word('PAY_EVENT_'+i,1));
- e.label('PAY_ADDR_HI_TABLE'); // these tables need high byte only, not words; fix dedicated single byte symbolic patches
- // remove previously emitted word table and replace with bytes after relocation, at finish step
- const tblLoStart=e.labels.PAY_ADDR_LO_TABLE-base;
- e.b.splice(tblLoStart,actions.length*2);e.fix=e.fix.filter(f=>f.at<tblLoStart);e.b.length=tblLoStart;e.labels.PAY_ADDR_HI_TABLE=base+tblLoStart+actions.length;
- e.fix.push(...actions.map((_,i)=>({at:tblLoStart+i,name:'PAY_EVENT_'+i,kind:'lowminus1'})));
- for(let i=0;i<actions.length;i++)e.b.push(0);
- e.fix.push(...actions.map((_,i)=>({at:e.b.length+i,name:'PAY_EVENT_'+i,kind:'highminus1'})));
- for(let i=0;i<actions.length;i++)e.b.push(0);
- e.lines.push('  ; table values are event handler addresses minus one for RTS dispatch');
- e.bytes('PAY_STATE',new Array(5).fill(0)); // LABEL aliases below; all writable dedicated RAM
- const stateStart=e.labels.PAY_STATE;['FRAME_LO','FRAME_HI','ACTION_IDX','PAY_DONE','PAY_TMP'].forEach((k,i)=>{e.labels[k]=stateStart+i;});
- // fix lowminus1/highminus1 before generic finish
- for(const f of e.fix.filter(f=>f.kind==='lowminus1'||f.kind==='highminus1')){const a=(e.labels[f.name]-1)&65535;e.b[f.at]=f.kind==='lowminus1'?a&255:a>>8;}
- e.fix=e.fix.filter(f=>f.kind!=='lowminus1'&&f.kind!=='highminus1');
- const obj=e.finish();if(base+obj.bytes.length>0xc000)throw Error('Generated code crosses Apple II IO/ROM boundary');
- // render clean parseable DB data, trace evidence summary. Raw binary is authoritative.
- const header=[`; PAY-00.6 deterministic generated PAY-Light native 6502`,`; SOURCE ${JSON.stringify(report.source.title||'')}  frames=${frames.length}`,`; PROFILE ${mode}  VIA0=${hex(VIA)}  code=${hex(base)}..${hex(base+obj.bytes.length-1)}`,`; TEST-ONLY bounded source playback. Does not infer a full-song loop.`,`; INIT ${hex(base)} TICK ${hex(base+3)} STOP ${hex(base+6)}.`,`; Zero PAY-owned zero-page bytes. PAY_STATE is dedicated absolute RAM.`,`; AY0 VIA0/PORTA and PORTB; physical slot ${slot}. No IRQ ownership. Caller schedules PAY_TICK.`,`; Program terminates and mutes on first tick after ${frames.length} observed frames.`,`; Source analog SID envelope/filter/PWM are not reproduced.`,``];
- // Symbolic assembler source plus byte-exact binary. Reconstruct event pointer tables.
- const symbolic=[];for(const line of e.lines){symbolic.push(line);if(line==='PAY_ADDR_LO_TABLE:'||line==='PAY_ADDR_HI_TABLE:'){
-  const label=line.slice(0,-1),start=obj.labels[label]-base;
-  const data=Array.from(obj.bytes.slice(start,start+actions.length));
-  for(let j=0;j<data.length;j+=16)symbolic.push('  DB '+data.slice(j,j+16).map(v=>hex(v,2)).join(','));
- }}
- const aliases=['FRAME_LO','FRAME_HI','ACTION_IDX','PAY_DONE','PAY_TMP'].map((n,i)=>n+' = PAY_STATE'+(i?'+'+i:'')).join('\n');
- const symbolicSource=header.join('\n')+`ORG ${hex(base)}\n\n`+aliases+'\n\n'+symbolic.join('\n')+'\n';
- const db=[`ORG ${hex(base)}`,`PAY_INIT:`,...Array.from({length:Math.ceil(obj.bytes.length/16)},(_,i)=>'  DB '+Array.from(obj.bytes.slice(i*16,i*16+16)).map(n=>hex(n,2)).join(','))].join('\n');
- const result={format:'PAY_Light_Compiler_Output_v0.6',source:{title:report.source.title,sha256:null,traceFrames:frames.length,sourceModeVolumeValues:[...new Set(frames.map(f=>f.globals[0].modeVolume&15))]},configuration:{base,slot,mode,diagnosticVolume:mode==='diagnostic'?level:null,noOwnedZeroPage:true,playbackPolicy:'finite-observation-stop-and-mute',driver:'AY0 VIA0 register-select/write'},entry:{init:base,tick:base+3,stop:base+6},memory:{start:base,end:base+obj.bytes.length-1,byteLength:obj.bytes.length,stateStart,states:Object.fromEntries(['FRAME_LO','FRAME_HI','ACTION_IDX','PAY_DONE','PAY_TMP'].map(k=>[k,obj.labels[k]]))},actions,metrics:{distinctActionFrames:actions.length,registerWrites:actions.reduce((s,a)=>s+a.updates.length,0),rawSIDWrites:report.runtimeTrace.summary.sidWrites,sourceFrameCount:frames.length},asm:symbolicSource,binaryAssembly:header.join('\n')+db+'\n',binary:obj.bytes,disclaimer:'Deterministic frame-snapshot AY adaptation, not decoded pattern grammar. Source volume 0 remains muted in faithful mode; diagnostic mode is an explicit nonfaithful override.'};
- return result;
+ // Absolute RAM JMP indirect is legal on NMOS 6502, zero-page-free, and not self-modifying.
+ e.label('PAY_DISPATCH');e.abs('JMP_IND','NEXT_LO');
+ // IRQ service is entered via Apple Monitor soft vector $03FE; ROM saved interrupted A in system $45.
+ e.label('PAY_IRQ_HANDLER');e.emit('TXA');e.emit('PHA');e.emit('TYA');e.emit('PHA');e.emit('LDA_ABS',TIMER+0x0d);e.emit('AND_IMM',0x40);e.branch('BNE','PAY_IRQ_OWNED');j('PAY_IRQ_FOREIGN');
+ e.label('PAY_IRQ_OWNED');e.emit('LDA_ABS',TIMER+4);e.abs('JSR','PAY_TICK');e.abs('INC_ABS','IRQ_COUNT_LO');e.branch('BNE','PAY_IRQ_EXIT');e.abs('INC_ABS','IRQ_COUNT_HI');
+ e.label('PAY_IRQ_EXIT');e.emit('PLA');e.emit('TAY');e.emit('PLA');e.emit('TAX');e.emit('LDA_ABS',0x0045);e.emit('RTI');
+ e.label('PAY_IRQ_FOREIGN');e.emit('PLA');e.emit('TAY');e.emit('PLA');e.emit('TAX');e.emit('LDA_ABS',0x0045);e.abs('JMP_IND','OLD_IRQ_LO');
+ e.label('PAY_IRQ_INSTALL_IMPL');e.emit('PHP');e.emit('SEI');enter();e.abs('LDA_ABS','IRQ_ACTIVE');e.branch('BEQ','PAY_IRQ_START');j('PAY_IRQ_START_DONE');
+ e.label('PAY_IRQ_START');e.abs('LDA_ABS',softIRQ);e.abs('STA_ABS','OLD_IRQ_LO');e.abs('LDA_ABS',softIRQ+1);e.abs('STA_ABS','OLD_IRQ_HI');e.abs('LDA_ABS',TIMER+0x0b);e.abs('STA_ABS','OLD_ACR');
+ put('IRQ_ACTIVE',1);zero('IRQ_COUNT_LO');zero('IRQ_COUNT_HI');
+ // Install handler before enabling timer. Hook only the Monitor soft vector.
+ h('PAY_IRQ_HANDLER','lo');e.emit('STA_ABS',softIRQ);h('PAY_IRQ_HANDLER','hi');e.emit('STA_ABS',softIRQ+1);
+ w(0x8e,0x40);e.emit('LDA_ABS',TIMER+4);e.abs('LDA_ABS','OLD_ACR');e.emit('ORA_IMM',0x40);e.emit('STA_ABS',TIMER+0x0b);
+ w(0x84,timerLatch&255);w(0x85,timerLatch>>8);w(0x8e,0xc0);
+ e.label('PAY_IRQ_START_DONE');e.emit('PLA');e.emit('TAY');e.emit('PLA');e.emit('TAX');e.emit('PLA');e.emit('PLP');e.emit('RTS');
+ e.label('PAY_IRQ_REMOVE_IMPL');e.emit('PHP');e.emit('SEI');enter();e.abs('JSR','PAY_IRQ_OFF_CORE');e.emit('PLA');e.emit('TAY');e.emit('PLA');e.emit('TAX');e.emit('PLA');e.emit('PLP');e.emit('RTS');
+ e.label('PAY_IRQ_OFF_CORE');e.abs('LDA_ABS','IRQ_ACTIVE');e.branch('BNE','PAY_IRQ_OFF_ACTIVE');e.emit('RTS');
+ e.label('PAY_IRQ_OFF_ACTIVE');w(0x8e,0x40);e.emit('LDA_ABS',TIMER+4);e.abs('LDA_ABS','OLD_ACR');e.emit('STA_ABS',TIMER+0x0b);
+ e.emit('LDA_ABS',softIRQ);e.emit('CMP_IMM',0);let k=e.b.length-1;e.fix.push({at:k,name:'PAY_IRQ_HANDLER',kind:'lo'});e.lines[e.lines.length-1]='  CMP #<PAY_IRQ_HANDLER';e.branch('BEQ','PAY_IRQ_OFF_CHECK_HI');j('PAY_IRQ_OFF_FINISH');
+ e.label('PAY_IRQ_OFF_CHECK_HI');e.emit('LDA_ABS',softIRQ+1);e.emit('CMP_IMM',0);k=e.b.length-1;e.fix.push({at:k,name:'PAY_IRQ_HANDLER',kind:'hi'});e.lines[e.lines.length-1]='  CMP #>PAY_IRQ_HANDLER';e.branch('BEQ','PAY_IRQ_OFF_RESTORE');j('PAY_IRQ_OFF_FINISH');
+ e.label('PAY_IRQ_OFF_RESTORE');e.abs('LDA_ABS','OLD_IRQ_LO');e.emit('STA_ABS',softIRQ);e.abs('LDA_ABS','OLD_IRQ_HI');e.emit('STA_ABS',softIRQ+1);
+ e.label('PAY_IRQ_OFF_FINISH');zero('IRQ_ACTIVE');e.emit('RTS');
+ // Reuse identical register-update fragments as finite code subroutines: verified data dedup, not inferred loop.
+ const groupMap=new Map();for(const a of actions){const key=JSON.stringify(a.updates);if(!groupMap.has(key))groupMap.set(key,groupMap.size);}
+ actions.forEach((a,i)=>{e.label('PAY_EVENT_'+i);e.abs('JSR','PAY_UPDATE_'+groupMap.get(JSON.stringify(a.updates)));setNext(i+1);e.emit('RTS');});
+ for(const [key,i] of groupMap){e.label('PAY_UPDATE_'+i);for(const u of JSON.parse(key)){e.emit('LDX_IMM',u.reg);e.emit('LDA_IMM',u.value);e.abs('JSR','PAY_AY_WRITE');}e.emit('RTS');}
+ // RAM state is placed after code, aligned to avoid NMOS JMP ($xxFF) high-byte wrap bug.
+ let padding=[];while((base+e.b.length+padding.length)%16!==0)padding.push(0);if((base+e.b.length+padding.length)%256===0xf0)padding.push(...new Array(16).fill(0));if(padding.length)e.bytes('PAY_ALIGN_PADDING',padding);
+ e.bytes('PAY_STATE',new Array(14).fill(0));const stateStart=e.labels.PAY_STATE;
+ const keys=['FRAME_LO','FRAME_HI','NEXT_LO','NEXT_HI','NEXT_FRAME_LO','NEXT_FRAME_HI','PAY_DONE','PAY_TMP','IRQ_ACTIVE','OLD_IRQ_LO','OLD_IRQ_HI','OLD_ACR','IRQ_COUNT_LO','IRQ_COUNT_HI'];keys.forEach((key,i)=>e.labels[key]=stateStart+i);
+ if((e.labels.NEXT_LO&255)===255||(e.labels.OLD_IRQ_LO&255)===255)throw Error('JMP indirection pointer would trigger 6502 page wrap');
+ const obj=e.finish();if(base+obj.bytes.length>0xc000)throw Error('Native image crosses Apple II I/O / ROM boundary');
+ // Known unsupported edge cases are flagged in metadata rather than presented as recovered source grammar.
+ const asmHeader=[`; PAY-00.7 native PAY-Light; executable 6502, absolute state, no PAY-owned zero-page`,`; SOURCE ${JSON.stringify(report.source.title||'')}  ${frames.length} observed frames`,`; Physical slot=${slot} VIA0=${hex(VIA)} VIA1=${hex(TIMER)}`,`; Source fidelity=${mode}; endPolicy=${endPolicy}; ${irqHz}Hz, T1 latch=${hex(timerLatch)}`,`; INIT=${hex(base)} TICK=${hex(base+3)} STOP=${hex(base+6)} IRQ_INSTALL=${hex(base+9)} IRQ_REMOVE=${hex(base+12)}`,`; Repeated captured AY updates are deduplicated; original source looping/pattern grammar NOT inferred.`,`; IRQ owns VIA1 T1 and Apple Monitor soft vector $03FE/$03FF while installed.`,`; Environment prerequisites: Apple II+ ROM Monitor IRQ convention (A saved at system $45); no other T1 owner.`,`; Does NOT own PAY zero-page; Monitor uses $45 (not PAY-owned). No cycle-accurate SID/AY analog conversion.`,``,];
+ const aliases=keys.map((n,i)=>n+' = PAY_STATE'+(i?'+'+i:'')).join('\n');
+ const symbolic=asmHeader.join('\n')+'ORG '+hex(base)+'\n\n'+aliases+'\n\n'+e.lines.join('\n')+'\n';
+ const db=asmHeader.join('\n')+'ORG '+hex(base)+'\nPAY_INIT:\n'+Array.from({length:Math.ceil(obj.bytes.length/16)},(_,i)=>' DB '+Array.from(obj.bytes.slice(i*16,i*16+16)).map(b=>hex(b,2)).join(',')).join('\n')+'\n';
+ return {format:'PAY_Light_Compiler_Output_v0.7',source:{title:report.source.title,traceFrames:frames.length,observedRepetition:report.musicalIR?.observedRepetition||null},configuration:{base,slot,mode,diagnosticVolume:mode==='diagnostic'?level:null,endPolicy,irqHz,cpuHz,timerLatch,irqOwnership:'Apple Monitor soft vector $03FE + VIA1 Timer1 (exclusive)'},entry:{init:base,tick:base+3,stop:base+6,irqInstall:base+9,irqRemove:base+12,irqHandler:obj.labels.PAY_IRQ_HANDLER},memory:{start:base,end:base+obj.bytes.length-1,byteLength:obj.bytes.length,stateStart,states:Object.fromEntries(keys.map(k=>[k,obj.labels[k]])),zeroPageOwnership:0},actions,observedMotifs:motifs,observedPatterns:patterns,metrics:{distinctActionFrames:actions.length,distinctUpdatePrograms:groupMap.size,registerWrites:actions.reduce((n,a)=>n+a.updates.length,0),rawSIDWrites:report.runtimeTrace.summary.sidWrites,sourceFrameCount:frames.length},asm:symbolic,binaryAssembly:db,binary:obj.bytes,disclaimer:'Finite observed AY-state compilation, not recovered SID song grammar. Repeat-observed is user-requested audition, not a proven source music loop.'};
 }
-return {compile,validateReport,frameRegs,makeActions,hex};
+return {compile,validateReport,frameRegs,makeActions,finiteMotifs,observedPatterns,hex};
 });
 
 </script>
@@ -160,10 +186,20 @@ const $=id=>document.getElementById(id);const controls=['saveAsm','saveBin','sav
 function status(msg,kind=''){const x=$('status');x.textContent=msg;x.dataset.kind=kind;}
 function dl(bytes,name,type){const b=new Blob([bytes],{type:type||'application/octet-stream'}),url=URL.createObjectURL(b);const a=document.createElement('a');a.href=url;a.download=name;a.style.display='none';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 $('reportFile').addEventListener('change',async e=>{try{const file=e.target.files?.[0];if(!file)return;report=JSON.parse(await file.text());PAYCompiler.validateReport(report);compiled=null;controls.forEach(id=>$(id).disabled=true);$('compile').disabled=false;$('asm').value='';$('summary').textContent=`Validated: ${report.source.title}; ${report.runtimeTrace.summary.framesCompleted} complete frames; source SID writes=${report.runtimeTrace.summary.sidWrites}.`;status('Complete report loaded; ready to compile.','success');}catch(err){report=null;compiled=null;$('compile').disabled=true;controls.forEach(id=>$(id).disabled=true);status(err.message,'error');}});
-$('compile').addEventListener('click',()=>{if(!report)return;try{const opt={base:Number($('base').value),slot:Number($('slot').value),mode:$('mode').value,diagnosticVolume:Number($('diagnosticVolume').value)};compiled=PAYCompiler.compile(report,opt);const c=compiled;controls.forEach(id=>$(id).disabled=false);$('asm').value=c.asm;$('summary').textContent=`Source: ${c.source.title}\nNative: $${c.memory.start.toString(16).toUpperCase()}..$${c.memory.end.toString(16).toUpperCase()} (${c.memory.byteLength} bytes)\nEntrypoints: INIT $${c.entry.init.toString(16)}, TICK $${c.entry.tick.toString(16)}, STOP $${c.entry.stop.toString(16)}\nPLAY frames: ${c.metrics.sourceFrameCount}; changed AY frames: ${c.metrics.distinctActionFrames}; AY delta writes: ${c.metrics.registerWrites}\nSource SID writes: ${c.metrics.rawSIDWrites}; Zero-page owned: 0 bytes\nMode: ${c.configuration.mode}; Slot: ${c.configuration.slot}\nSource SID master volumes: ${c.source.sourceModeVolumeValues.join(', ')}\nFinite evidence: mutes on first tick after captured frames.`;status('Native PAY-Light binary compiled. Output requires external PLAY tick scheduling.','success');}catch(err){compiled=null;controls.forEach(id=>$(id).disabled=true);status('Compilation failed: '+err.message,'error');}});
+$('compile').addEventListener('click',()=>{if(!report)return;try{const opt={base:Number($('base').value),slot:Number($('slot').value),mode:$('mode').value,diagnosticVolume:Number($('diagnosticVolume').value),endPolicy:$('endPolicy').value,irqHz:Number($('irqHz').value),cpuHz:Number($('cpuHz').value)};compiled=PAYCompiler.compile(report,opt);const c=compiled;controls.forEach(id=>$(id).disabled=false);$('asm').value=c.asm;$('summary').textContent=`Source: ${c.source.title}
+Native image: $${c.memory.start.toString(16).toUpperCase()}..$${c.memory.end.toString(16).toUpperCase()} (${c.memory.byteLength} bytes)
+Entry: INIT $${c.entry.init.toString(16)}, TICK $${c.entry.tick.toString(16)}, STOP $${c.entry.stop.toString(16)}
+IRQ: INSTALL $${c.entry.irqInstall.toString(16)}, REMOVE $${c.entry.irqRemove.toString(16)}, handler $${c.entry.irqHandler.toString(16)}
+Frames: ${c.metrics.sourceFrameCount}; AY actions: ${c.metrics.distinctActionFrames}; distinct shared update fragments: ${c.metrics.distinctUpdatePrograms}
+AY delta writes: ${c.metrics.registerWrites}; SID source writes: ${c.metrics.rawSIDWrites}; PAY zero-page owned: ${c.memory.zeroPageOwnership} bytes
+Mode: ${c.configuration.mode}; end: ${c.configuration.endPolicy}; physical slot: ${c.configuration.slot}
+VIA1 T1: ${c.configuration.irqHz} Hz, latch $${c.configuration.timerLatch.toString(16).toUpperCase()}; CPU clock: ${c.configuration.cpuHz} Hz
+Observed repeated update patterns: ${c.observedMotifs.length} (not proof of original song loop)
+WARNING: resident IRQ assumes Apple II Monitor soft IRQ vector, exclusive VIA1 T1, no competing sound player.
+Audio verification: native Mockingboard playback not yet performed.`;status('PAY-00.7 compiled. Manual TICK or opt-in resident IRQ. Check IRQ ownership before running.','success');}catch(err){compiled=null;controls.forEach(id=>$(id).disabled=true);status('Compilation failed: '+err.message,'error');}});
 function baseName(){return String(report?.source?.fileName||report?.source?.title||'song').replace(/\.(sid|json|txt)$/i,'').replace(/[^A-Za-z0-9_-]+/g,'_')||'song';}
-$('saveAsm').addEventListener('click',()=>compiled&&dl(compiled.asm,baseName()+'_PAY06.S','text/plain'));
-$('saveBin').addEventListener('click',()=>compiled&&dl(compiled.binary,baseName()+'_PAY06.bin'));
-$('saveBytes').addEventListener('click',()=>compiled&&dl(compiled.binaryAssembly,baseName()+'_PAY06.txt','text/plain'));
-$('saveMeta').addEventListener('click',()=>{if(!compiled)return;const c=compiled;const {binary,asm,binaryAssembly,...metadata}=c;dl(JSON.stringify({...metadata,binaryByteLength:binary.length},null,2),baseName()+'_PAY06.json','application/json');});
+$('saveAsm').addEventListener('click',()=>compiled&&dl(compiled.asm,baseName()+'_PAY07.S','text/plain'));
+$('saveBin').addEventListener('click',()=>compiled&&dl(compiled.binary,baseName()+'_PAY07.bin'));
+$('saveBytes').addEventListener('click',()=>compiled&&dl(compiled.binaryAssembly,baseName()+'_PAY07.txt','text/plain'));
+$('saveMeta').addEventListener('click',()=>{if(!compiled)return;const c=compiled;const {binary,asm,binaryAssembly,...metadata}=c;dl(JSON.stringify({...metadata,binaryByteLength:binary.length},null,2),baseName()+'_PAY07.json','application/json');});
 </script></main></body></html>
