@@ -1,0 +1,974 @@
+; PAY INTERPRETER v0.3 | STATIC REACHABILITY DISASSEMBLY (NOT A COMPLETE SOURCE MAP)
+; SOURCE: PSID v2; "Pinball Fantasies - Partyland" / "Benjamin Dibbert (Nordischsound)"
+; LOAD=$1000 INIT=$1000 PLAY=$1003 PAYLOAD=2997 bytes
+; SUBTUNES=1 DEFAULT=1 SPEEDMASK=$00000000 FLAGS=$0024 SID_BASES=$D400
+; Reachable decoded bytes: 891/2997; code entry points: 370; direct SID write sites: 13; reads: 0
+; WARNING: This is a static CFG, not runtime tracing. Direct SID sites are syntactic; indexed/indirect/self-modifying accesses can be missing.
+; WARNING: Unreached payload bytes are rendered as data candidates, not proven noncode.
+
+L_1000:
+1000  4C B6 10   JMP   $10B6       
+L_1003:
+1003  4C BA 10   JMP   $10BA       
+L_1006:
+1006  B9 2B 15   LDA   $152B,Y     
+1009  4C 13 10   JMP   $1013       
+100C  .byte  $A8, $A9, $00, $9D, $E8, $13, $98 ; unreachable/unclassified bytes
+L_1013:
+1013  9D BF 13   STA   $13BF,X     
+1016  BD AE 13   LDA   $13AE,X     
+1019  9D BE 13   STA   $13BE,X     
+101C  60         RTS               
+101D  .byte  $9D, $05, $D4, $60, $9D, $06, $D4, $60, $8D, $D5, $13, $8D, $DC, $13, $8D, $E3 ; unreachable/unclassified bytes
+102D  .byte  $13, $60 ; unreachable/unclassified bytes
+L_102F:
+102F  DE E9 13   DEC   $13E9,X     
+L_1032:
+1032  4C A9 12   JMP   $12A9       
+L_1035:
+1035  F0 FB      BEQ   $1032       ; conditional branch to $1032
+1037  BD E9 13   LDA   $13E9,X     
+103A  D0 F3      BNE   $102F       ; conditional branch to $102F
+103C  B9 EC 15   LDA   $15EC,Y     
+103F  30 04      BMI   $1045       ; conditional branch to $1045
+1041  A0 00      LDY   #$00        
+1043  84 FF      STY   $FF         
+L_1045:
+1045  29 7F      AND   #$7F        
+1047  8D 50 10   STA   $1050       
+104A  BD E8 13   LDA   $13E8,X     
+104D  30 08      BMI   $1057       ; conditional branch to $1057
+104F  C9 00      CMP   #$00        
+1051  90 05      BCC   $1058       ; conditional branch to $1058
+1053  F0 02      BEQ   $1057       ; conditional branch to $1057
+1055  49 FF      EOR   #$FF        
+L_1057:
+1057  18         CLC               
+L_1058:
+1058  69 02      ADC   #$02        
+105A  9D E8 13   STA   $13E8,X     
+105D  4A         LSR   A           
+105E  90 29      BCC   $1089       ; conditional branch to $1089
+1060  B0 3E      BCS   $10A0       ; conditional branch to $10A0
+1062  98         TYA               
+1063  F0 4B      BEQ   $10B0       ; conditional branch to $10B0
+1065  BD BE 13   LDA   $13BE,X     
+1068  C9 02      CMP   #$02        
+106A  90 1D      BCC   $1089       ; conditional branch to $1089
+106C  F0 32      BEQ   $10A0       ; conditional branch to $10A0
+106E  BC D7 13   LDY   $13D7,X     
+1071  BD EB 13   LDA   $13EB,X     
+1074  F9 11 14   SBC   $1411,Y     
+1077  48         PHA               
+1078  BD EC 13   LDA   $13EC,X     
+107B  F9 70 14   SBC   $1470,Y     
+107E  A8         TAY               
+107F  68         PLA               
+1080  B0 17      BCS   $1099       ; conditional branch to $1099
+1082  65 FE      ADC   $FE         
+1084  98         TYA               
+1085  65 FF      ADC   $FF         
+1087  10 27      BPL   $10B0       ; conditional branch to $10B0
+L_1089:
+1089  BD EB 13   LDA   $13EB,X     
+108C  65 FE      ADC   $FE         
+108E  9D EB 13   STA   $13EB,X     
+1091  BD EC 13   LDA   $13EC,X     
+1094  65 FF      ADC   $FF         
+1096  4C A6 12   JMP   $12A6       
+L_1099:
+1099  E5 FE      SBC   $FE         
+109B  98         TYA               
+109C  E5 FF      SBC   $FF         
+109E  30 10      BMI   $10B0       ; conditional branch to $10B0
+L_10A0:
+10A0  BD EB 13   LDA   $13EB,X     
+10A3  E5 FE      SBC   $FE         
+10A5  9D EB 13   STA   $13EB,X     
+10A8  BD EC 13   LDA   $13EC,X     
+10AB  E5 FF      SBC   $FF         
+10AD  4C A6 12   JMP   $12A6       
+L_10B0:
+10B0  BD D7 13   LDA   $13D7,X     
+10B3  4C 94 12   JMP   $1294       
+L_10B6:
+10B6  8D BD 10   STA   $10BD       
+10B9  60         RTS               
+L_10BA:
+10BA  A2 00      LDX   #$00        
+10BC  A0 00      LDY   #$00        
+10BE  30 30      BMI   $10F0       ; conditional branch to $10F0
+10C0  8A         TXA               
+10C1  A2 29      LDX   #$29        
+L_10C3:
+10C3  9D A9 13   STA   $13A9,X     
+10C6  CA         DEX               
+10C7  10 FA      BPL   $10C3       ; conditional branch to $10C3
+10C9  8D 15 D4   STA   $D415       ; write SID1 filter cutoff low
+10CC  8D 3F 11   STA   $113F       
+10CF  8D F1 10   STA   $10F1       
+10D2  8E BD 10   STX   $10BD       
+10D5  AA         TAX               
+10D6  20 E0 10   JSR   $10E0       ; subroutine $10E0
+10D9  A2 07      LDX   #$07        
+10DB  20 E0 10   JSR   $10E0       ; subroutine $10E0
+10DE  A2 0E      LDX   #$0E        
+L_10E0:
+10E0  A9 05      LDA   #$05        
+10E2  9D D5 13   STA   $13D5,X     
+10E5  A9 01      LDA   #$01        
+10E7  9D D6 13   STA   $13D6,X     
+10EA  9D D8 13   STA   $13D8,X     
+10ED  4C 8A 13   JMP   $138A       
+L_10F0:
+10F0  A0 00      LDY   #$00        
+10F2  F0 45      BEQ   $1139       ; conditional branch to $1139
+10F4  A9 00      LDA   #$00        
+10F6  D0 23      BNE   $111B       ; conditional branch to $111B
+10F8  B9 C9 15   LDA   $15C9,Y     
+10FB  F0 12      BEQ   $110F       ; conditional branch to $110F
+10FD  10 19      BPL   $1118       ; conditional branch to $1118
+10FF  0A         ASL   A           
+1100  8D 44 11   STA   $1144       
+1103  B9 DA 15   LDA   $15DA,Y     
+1106  8D 3F 11   STA   $113F       
+1109  B9 CA 15   LDA   $15CA,Y     
+110C  D0 1F      BNE   $112D       ; conditional branch to $112D
+110E  C8         INY               
+L_110F:
+110F  B9 DA 15   LDA   $15DA,Y     
+1112  8D 3A 11   STA   $113A       
+1115  4C 2A 11   JMP   $112A       
+L_1118:
+1118  8D F5 10   STA   $10F5       
+L_111B:
+111B  B9 DA 15   LDA   $15DA,Y     
+111E  18         CLC               
+111F  6D 3A 11   ADC   $113A       
+1122  8D 3A 11   STA   $113A       
+1125  CE F5 10   DEC   $10F5       
+1128  D0 11      BNE   $113B       ; conditional branch to $113B
+L_112A:
+112A  B9 CA 15   LDA   $15CA,Y     
+L_112D:
+112D  C9 FF      CMP   #$FF        
+112F  C8         INY               
+1130  98         TYA               
+1131  90 03      BCC   $1136       ; conditional branch to $1136
+1133  B9 DA 15   LDA   $15DA,Y     
+L_1136:
+1136  8D F1 10   STA   $10F1       
+L_1139:
+1139  A9 00      LDA   #$00        
+L_113B:
+113B  8D 16 D4   STA   $D416       ; write SID1 filter cutoff high
+113E  A9 00      LDA   #$00        
+1140  8D 17 D4   STA   $D417       ; write SID1 resonance/filter routing
+1143  A9 00      LDA   #$00        
+1145  09 0F      ORA   #$0F        
+1147  8D 18 D4   STA   $D418       ; write SID1 filter mode/master volume
+114A  20 54 11   JSR   $1154       ; subroutine $1154
+114D  A2 07      LDX   #$07        
+114F  20 54 11   JSR   $1154       ; subroutine $1154
+1152  A2 0E      LDX   #$0E        
+L_1154:
+1154  DE D6 13   DEC   $13D6,X     
+1157  F0 0B      BEQ   $1164       ; conditional branch to $1164
+1159  10 06      BPL   $1161       ; conditional branch to $1161
+115B  BD D5 13   LDA   $13D5,X     
+115E  9D D6 13   STA   $13D6,X     
+L_1161:
+1161  4C 0C 12   JMP   $120C       
+L_1164:
+1164  BC AE 13   LDY   $13AE,X     
+1167  B9 94 13   LDA   $1394,Y     
+116A  8D 01 12   STA   $1201       
+116D  8D 0A 12   STA   $120A       
+1170  BD AC 13   LDA   $13AC,X     
+1173  D0 24      BNE   $1199       ; conditional branch to $1199
+1175  BC D3 13   LDY   $13D3,X     
+1178  B9 D0 14   LDA   $14D0,Y     
+117B  85 FE      STA   $FE         
+117D  B9 D3 14   LDA   $14D3,Y     
+1180  85 FF      STA   $FF         
+1182  BC A9 13   LDY   $13A9,X     
+1185  B1 FE      LDA   ($FE),Y     ; indirect pointer: effective address unknown statically
+1187  C9 FF      CMP   #$FF        
+1189  90 06      BCC   $1191       ; conditional branch to $1191
+118B  C8         INY               
+118C  B1 FE      LDA   ($FE),Y     ; indirect pointer: effective address unknown statically
+118E  A8         TAY               
+118F  B1 FE      LDA   ($FE),Y     ; indirect pointer: effective address unknown statically
+L_1191:
+1191  9D D4 13   STA   $13D4,X     
+1194  C8         INY               
+1195  98         TYA               
+1196  9D A9 13   STA   $13A9,X     
+L_1199:
+1199  BC D8 13   LDY   $13D8,X     
+119C  B9 3F 15   LDA   $153F,Y     
+119F  9D 02 14   STA   $1402,X     
+11A2  BD C0 13   LDA   $13C0,X     
+11A5  F0 5F      BEQ   $1206       ; conditional branch to $1206
+11A7  38         SEC               
+11A8  E9 60      SBC   #$60        
+11AA  9D D7 13   STA   $13D7,X     
+11AD  A9 00      LDA   #$00        
+11AF  9D BE 13   STA   $13BE,X     
+11B2  9D C0 13   STA   $13C0,X     
+11B5  B9 35 15   LDA   $1535,Y     
+11B8  9D E9 13   STA   $13E9,X     
+11BB  B9 2B 15   LDA   $152B,Y     
+11BE  9D BF 13   STA   $13BF,X     
+11C1  BD AE 13   LDA   $13AE,X     
+11C4  C9 03      CMP   #$03        
+11C6  F0 3E      BEQ   $1206       ; conditional branch to $1206
+11C8  B9 49 15   LDA   $1549,Y     
+11CB  9D C2 13   STA   $13C2,X     
+11CE  FE D9 13   INC   $13D9,X     
+11D1  B9 17 15   LDA   $1517,Y     
+11D4  F0 08      BEQ   $11DE       ; conditional branch to $11DE
+11D6  9D C3 13   STA   $13C3,X     
+11D9  A9 00      LDA   #$00        
+11DB  9D C4 13   STA   $13C4,X     
+L_11DE:
+11DE  B9 21 15   LDA   $1521,Y     
+11E1  F0 08      BEQ   $11EB       ; conditional branch to $11EB
+11E3  8D F1 10   STA   $10F1       
+11E6  A9 00      LDA   #$00        
+11E8  8D F5 10   STA   $10F5       
+L_11EB:
+11EB  B9 0D 15   LDA   $150D,Y     
+11EE  9D C1 13   STA   $13C1,X     
+11F1  B9 03 15   LDA   $1503,Y     
+11F4  9D 06 D4   STA   $D406,X     ; write SID1 voice 1 sustain/release (indexed base; actual target depends on index)
+11F7  B9 F9 14   LDA   $14F9,Y     
+11FA  9D 05 D4   STA   $D405,X     ; write SID1 voice 1 attack/decay (indexed base; actual target depends on index)
+11FD  BD AF 13   LDA   $13AF,X     
+1200  20 06 10   JSR   $1006       ; subroutine $1006
+1203  4C 8A 13   JMP   $138A       
+L_1206:
+1206  BD AF 13   LDA   $13AF,X     
+1209  20 06 10   JSR   $1006       ; subroutine $1006
+L_120C:
+120C  BC C1 13   LDY   $13C1,X     
+120F  F0 30      BEQ   $1241       ; conditional branch to $1241
+1211  B9 53 15   LDA   $1553,Y     
+1214  C9 10      CMP   #$10        
+1216  B0 0A      BCS   $1222       ; conditional branch to $1222
+1218  DD EA 13   CMP   $13EA,X     
+121B  F0 0A      BEQ   $1227       ; conditional branch to $1227
+121D  FE EA 13   INC   $13EA,X     
+1220  D0 1F      BNE   $1241       ; conditional branch to $1241
+L_1222:
+1222  E9 10      SBC   #$10        
+1224  9D C2 13   STA   $13C2,X     
+L_1227:
+1227  B9 54 15   LDA   $1554,Y     
+122A  C9 FF      CMP   #$FF        
+122C  C8         INY               
+122D  98         TYA               
+122E  90 04      BCC   $1234       ; conditional branch to $1234
+1230  18         CLC               
+1231  B9 7D 15   LDA   $157D,Y     
+L_1234:
+1234  9D C1 13   STA   $13C1,X     
+1237  A9 00      LDA   #$00        
+1239  9D EA 13   STA   $13EA,X     
+123C  B9 7C 15   LDA   $157C,Y     
+123F  D0 4C      BNE   $128D       ; conditional branch to $128D
+L_1241:
+1241  BD D6 13   LDA   $13D6,X     
+1244  F0 63      BEQ   $12A9       ; conditional branch to $12A9
+1246  BC BE 13   LDY   $13BE,X     
+1249  B9 A4 13   LDA   $13A4,Y     
+124C  8D 8B 12   STA   $128B       
+124F  BC BF 13   LDY   $13BF,X     
+1252  B9 EC 15   LDA   $15EC,Y     
+1255  30 0A      BMI   $1261       ; conditional branch to $1261
+1257  85 FF      STA   $FF         
+1259  B9 F8 15   LDA   $15F8,Y     
+125C  85 FE      STA   $FE         
+125E  4C 8A 12   JMP   $128A       
+L_1261:
+1261  B9 F8 15   LDA   $15F8,Y     
+1264  8D 7D 12   STA   $127D       
+1267  8C 87 12   STY   $1287       
+126A  BC 03 14   LDY   $1403,X     
+126D  B9 12 14   LDA   $1412,Y     
+1270  38         SEC               
+1271  F9 11 14   SBC   $1411,Y     
+1274  85 FE      STA   $FE         
+1276  B9 71 14   LDA   $1471,Y     
+1279  F9 70 14   SBC   $1470,Y     
+127C  A0 00      LDY   #$00        
+127E  F0 06      BEQ   $1286       ; conditional branch to $1286
+L_1280:
+1280  4A         LSR   A           
+1281  66 FE      ROR   $FE         
+1283  88         DEY               
+1284  D0 FA      BNE   $1280       ; conditional branch to $1280
+L_1286:
+1286  A0 00      LDY   #$00        
+1288  85 FF      STA   $FF         
+L_128A:
+128A  4C 35 10   JMP   $1035       
+L_128D:
+128D  10 05      BPL   $1294       ; conditional branch to $1294
+128F  7D D7 13   ADC   $13D7,X     
+1292  29 7F      AND   #$7F        
+L_1294:
+1294  9D 03 14   STA   $1403,X     
+1297  A8         TAY               
+1298  A9 00      LDA   #$00        
+129A  9D E8 13   STA   $13E8,X     
+129D  B9 11 14   LDA   $1411,Y     
+12A0  9D EB 13   STA   $13EB,X     
+12A3  B9 70 14   LDA   $1470,Y     
+L_12A6:
+12A6  9D EC 13   STA   $13EC,X     
+L_12A9:
+12A9  BC C3 13   LDY   $13C3,X     
+12AC  F0 4D      BEQ   $12FB       ; conditional branch to $12FB
+12AE  BD C4 13   LDA   $13C4,X     
+12B1  D0 14      BNE   $12C7       ; conditional branch to $12C7
+12B3  B9 A7 15   LDA   $15A7,Y     
+12B6  10 0C      BPL   $12C4       ; conditional branch to $12C4
+12B8  9D EE 13   STA   $13EE,X     
+12BB  B9 B8 15   LDA   $15B8,Y     
+12BE  9D ED 13   STA   $13ED,X     
+12C1  4C E0 12   JMP   $12E0       
+L_12C4:
+12C4  9D C4 13   STA   $13C4,X     
+L_12C7:
+12C7  B9 B8 15   LDA   $15B8,Y     
+12CA  18         CLC               
+12CB  10 03      BPL   $12D0       ; conditional branch to $12D0
+12CD  DE EE 13   DEC   $13EE,X     
+L_12D0:
+12D0  7D ED 13   ADC   $13ED,X     
+12D3  9D ED 13   STA   $13ED,X     
+12D6  90 03      BCC   $12DB       ; conditional branch to $12DB
+12D8  FE EE 13   INC   $13EE,X     
+L_12DB:
+12DB  DE C4 13   DEC   $13C4,X     
+12DE  D0 12      BNE   $12F2       ; conditional branch to $12F2
+L_12E0:
+12E0  B9 A8 15   LDA   $15A8,Y     
+12E3  C9 FF      CMP   #$FF        
+12E5  C8         INY               
+12E6  98         TYA               
+12E7  90 03      BCC   $12EC       ; conditional branch to $12EC
+12E9  B9 B8 15   LDA   $15B8,Y     
+L_12EC:
+12EC  9D C3 13   STA   $13C3,X     
+12EF  BD ED 13   LDA   $13ED,X     
+L_12F2:
+12F2  9D 02 D4   STA   $D402,X     ; write SID1 voice 1 pulse width low (indexed base; actual target depends on index)
+12F5  BD EE 13   LDA   $13EE,X     
+12F8  9D 03 D4   STA   $D403,X     ; write SID1 voice 1 pulse width high (indexed base; actual target depends on index)
+L_12FB:
+12FB  BD D6 13   LDA   $13D6,X     
+12FE  DD 02 14   CMP   $1402,X     
+1301  F0 03      BEQ   $1306       ; conditional branch to $1306
+1303  4C 7E 13   JMP   $137E       
+L_1306:
+1306  BC D4 13   LDY   $13D4,X     
+1309  B9 D6 14   LDA   $14D6,Y     
+130C  85 FE      STA   $FE         
+130E  B9 E8 14   LDA   $14E8,Y     
+1311  85 FF      STA   $FF         
+1313  BC AC 13   LDY   $13AC,X     
+1316  B1 FE      LDA   ($FE),Y     ; indirect pointer: effective address unknown statically
+1318  C9 40      CMP   #$40        
+131A  90 18      BCC   $1334       ; conditional branch to $1334
+131C  C9 60      CMP   #$60        
+131E  90 1E      BCC   $133E       ; conditional branch to $133E
+1320  C9 C0      CMP   #$C0        
+1322  90 2E      BCC   $1352       ; conditional branch to $1352
+1324  BD AD 13   LDA   $13AD,X     
+1327  D0 02      BNE   $132B       ; conditional branch to $132B
+1329  B1 FE      LDA   ($FE),Y     ; indirect pointer: effective address unknown statically
+L_132B:
+132B  69 00      ADC   #$00        
+132D  9D AD 13   STA   $13AD,X     
+1330  F0 43      BEQ   $1375       ; conditional branch to $1375
+1332  D0 4A      BNE   $137E       ; conditional branch to $137E
+L_1334:
+1334  9D D8 13   STA   $13D8,X     
+1337  C8         INY               
+1338  B1 FE      LDA   ($FE),Y     ; indirect pointer: effective address unknown statically
+133A  C9 60      CMP   #$60        
+133C  B0 14      BCS   $1352       ; conditional branch to $1352
+L_133E:
+133E  C9 50      CMP   #$50        
+1340  29 0F      AND   #$0F        
+1342  9D AE 13   STA   $13AE,X     
+1345  F0 06      BEQ   $134D       ; conditional branch to $134D
+1347  C8         INY               
+1348  B1 FE      LDA   ($FE),Y     ; indirect pointer: effective address unknown statically
+134A  9D AF 13   STA   $13AF,X     
+L_134D:
+134D  B0 26      BCS   $1375       ; conditional branch to $1375
+134F  C8         INY               
+1350  B1 FE      LDA   ($FE),Y     ; indirect pointer: effective address unknown statically
+L_1352:
+1352  C9 BD      CMP   #$BD        
+1354  90 06      BCC   $135C       ; conditional branch to $135C
+1356  F0 1D      BEQ   $1375       ; conditional branch to $1375
+1358  09 F0      ORA   #$F0        
+135A  D0 16      BNE   $1372       ; conditional branch to $1372
+L_135C:
+135C  9D C0 13   STA   $13C0,X     
+135F  BD AE 13   LDA   $13AE,X     
+1362  C9 03      CMP   #$03        
+1364  F0 0F      BEQ   $1375       ; conditional branch to $1375
+1366  A9 00      LDA   #$00        
+1368  9D 06 D4   STA   $D406,X     ; write SID1 voice 1 sustain/release (indexed base; actual target depends on index)
+136B  A9 0F      LDA   #$0F        
+136D  9D 05 D4   STA   $D405,X     ; write SID1 voice 1 attack/decay (indexed base; actual target depends on index)
+1370  A9 FE      LDA   #$FE        
+L_1372:
+1372  9D D9 13   STA   $13D9,X     
+L_1375:
+1375  C8         INY               
+1376  B1 FE      LDA   ($FE),Y     ; indirect pointer: effective address unknown statically
+1378  F0 01      BEQ   $137B       ; conditional branch to $137B
+137A  98         TYA               
+L_137B:
+137B  9D AC 13   STA   $13AC,X     
+L_137E:
+137E  BD EB 13   LDA   $13EB,X     
+1381  9D 00 D4   STA   $D400,X     ; write SID1 voice 1 frequency low (indexed base; actual target depends on index)
+1384  BD EC 13   LDA   $13EC,X     
+1387  9D 01 D4   STA   $D401,X     ; write SID1 voice 1 frequency high (indexed base; actual target depends on index)
+L_138A:
+138A  BD C2 13   LDA   $13C2,X     
+138D  3D D9 13   AND   $13D9,X     
+1390  9D 04 D4   STA   $D404,X     ; write SID1 voice 1 control (indexed base; actual target depends on index)
+1393  60         RTS               
+1394  .byte  $06, $0C, $0C, $13, $13, $1D, $21, $25, $25, $25, $25, $25, $25, $25, $25, $25 ; unreachable/unclassified bytes
+13A4  .byte  $35, $65, $65, $62, $3C, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00 ; unreachable/unclassified bytes
+13B4  .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00 ; unreachable/unclassified bytes
+13C4  .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00 ; unreachable/unclassified bytes
+13D4  .byte  $00, $00, $00, $00, $01, $FE, $01, $00, $00, $00, $00, $01, $FE, $02, $00, $00 ; unreachable/unclassified bytes
+13E4  .byte  $00, $00, $01, $FE, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00 ; unreachable/unclassified bytes
+13F4  .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00 ; unreachable/unclassified bytes
+1404  .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $27, $39 ; unreachable/unclassified bytes
+1414  .byte  $4B, $5F, $74, $8A, $A1, $BA, $D4, $F0, $0E, $2D, $4E, $71, $96, $BE, $E8, $14 ; unreachable/unclassified bytes
+1424  .byte  $43, $74, $A9, $E1, $1C, $5A, $9C, $E2, $2D, $7C, $CF, $28, $85, $E8, $52, $C1 ; unreachable/unclassified bytes
+1434  .byte  $37, $B4, $39, $C5, $5A, $F7, $9E, $4F, $0A, $D1, $A3, $82, $6E, $68, $71, $8A ; unreachable/unclassified bytes
+1444  .byte  $B3, $EE, $3C, $9E, $15, $A2, $46, $04, $DC, $D0, $E2, $14, $67, $DD, $79, $3C ; unreachable/unclassified bytes
+1454  .byte  $29, $44, $8D, $08, $B8, $A1, $C5, $28, $CD, $BA, $F1, $78, $53, $87, $1A, $10 ; unreachable/unclassified bytes
+1464  .byte  $71, $42, $89, $4F, $9B, $74, $E2, $F0, $A6, $0E, $33, $20, $FF, $01, $01, $01 ; unreachable/unclassified bytes
+1474  .byte  $01, $01, $01, $01, $01, $01, $01, $02, $02, $02, $02, $02, $02, $02, $03, $03 ; unreachable/unclassified bytes
+1484  .byte  $03, $03, $03, $04, $04, $04, $04, $05, $05, $05, $06, $06, $06, $07, $07, $08 ; unreachable/unclassified bytes
+1494  .byte  $08, $09, $09, $0A, $0A, $0B, $0C, $0D, $0D, $0E, $0F, $10, $11, $12, $13, $14 ; unreachable/unclassified bytes
+14A4  .byte  $15, $17, $18, $1A, $1B, $1D, $1F, $20, $22, $24, $27, $29, $2B, $2E, $31, $34 ; unreachable/unclassified bytes
+14B4  .byte  $37, $3A, $3E, $41, $45, $49, $4E, $52, $57, $5C, $62, $68, $6E, $75, $7C, $83 ; unreachable/unclassified bytes
+14C4  .byte  $8B, $93, $9C, $A5, $AF, $B9, $C4, $D0, $DD, $EA, $F8, $FF, $04, $17, $39, $16 ; unreachable/unclassified bytes
+14D4  .byte  $16, $16, $4C, $CE, $59, $C3, $45, $68, $8A, $08, $6C, $EE, $10, $5C, $AD, $E6 ; unreachable/unclassified bytes
+14E4  .byte  $0C, $2B, $57, $87, $16, $16, $17, $17, $18, $18, $18, $19, $19, $19, $1A, $1A ; unreachable/unclassified bytes
+14F4  .byte  $1A, $1A, $1B, $1B, $1B, $1B, $08, $0F, $00, $08, $00, $00, $0C, $00, $00, $00 ; unreachable/unclassified bytes
+1504  .byte  $F5, $F5, $A6, $67, $22, $C8, $E9, $EA, $C9, $F4, $01, $05, $0A, $0E, $12, $17 ; unreachable/unclassified bytes
+1514  .byte  $1C, $20, $22, $28, $01, $05, $00, $0A, $00, $0C, $0A, $00, $05, $0E, $01, $07 ; unreachable/unclassified bytes
+1524  .byte  $00, $00, $00, $0A, $00, $00, $07, $00, $00, $00, $00, $01, $00, $00, $02, $07 ; unreachable/unclassified bytes
+1534  .byte  $00, $00, $00, $00, $00, $00, $00, $00, $00, $06, $00, $00, $02, $02, $02, $02 ; unreachable/unclassified bytes
+1544  .byte  $02, $02, $02, $02, $02, $02, $09, $09, $09, $09, $09, $09, $09, $09, $09, $05 ; unreachable/unclassified bytes
+1554  .byte  $51, $51, $51, $FF, $91, $51, $21, $20, $FF, $91, $90, $15, $FF, $51, $01, $01 ; unreachable/unclassified bytes
+1564  .byte  $FF, $91, $00, $15, $01, $FF, $91, $51, $00, $90, $FF, $71, $71, $41, $FF, $31 ; unreachable/unclassified bytes
+1574  .byte  $FF, $21, $51, $21, $91, $90, $FF, $91, $90, $FF, $82, $20, $80, $00, $5F, $18 ; unreachable/unclassified bytes
+1584  .byte  $25, $20, $00, $52, $5F, $5F, $00, $80, $83, $88, $00, $52, $01, $80, $80, $12 ; unreachable/unclassified bytes
+1594  .byte  $5F, $2B, $27, $5F, $00, $8C, $8C, $80, $00, $80, $00, $20, $18, $25, $5F, $5F ; unreachable/unclassified bytes
+15A4  .byte  $00, $5F, $41, $00, $96, $3C, $3C, $FF, $88, $02, $83, $5F, $FF, $85, $FF, $87 ; unreachable/unclassified bytes
+15B4  .byte  $FF, $89, $05, $05, $FF, $00, $15, $EB, $02, $00, $00, $00, $FE, $00, $00, $00 ; unreachable/unclassified bytes
+15C4  .byte  $80, $00, $00, $02, $FE, $0F, $98, $00, $88, $00, $02, $FF, $90, $00, $FF, $98 ; unreachable/unclassified bytes
+15D4  .byte  $00, $B0, $00, $00, $00, $00, $FF, $A1, $45, $A1, $08, $0A, $00, $F3, $54, $01 ; unreachable/unclassified bytes
+15E4  .byte  $F3, $68, $F3, $04, $03, $04, $03, $00, $00, $01, $02, $01, $00, $00, $00, $03 ; unreachable/unclassified bytes
+15F4  .byte  $00, $00, $80, $00, $00, $45, $75, $80, $08, $40, $02, $35, $20, $09, $25, $03 ; unreachable/unclassified bytes
+1604  .byte  $0C, $00, $00, $03, $00, $08, $00, $00, $03, $00, $08, $00, $00, $03, $00, $08 ; unreachable/unclassified bytes
+1614  .byte  $0E, $FF, $00, $10, $02, $04, $02, $04, $02, $05, $02, $04, $02, $09, $02, $04 ; unreachable/unclassified bytes
+1624  .byte  $02, $04, $02, $05, $02, $04, $02, $09, $02, $04, $02, $04, $02, $05, $02, $04 ; unreachable/unclassified bytes
+1634  .byte  $02, $09, $0D, $FF, $00, $11, $0B, $01, $06, $0A, $07, $0B, $01, $06, $0A, $07 ; unreachable/unclassified bytes
+1644  .byte  $0B, $01, $06, $0A, $07, $0F, $FF, $00, $01, $40, $74, $56, $48, $40, $80, $56 ; unreachable/unclassified bytes
+1654  .byte  $48, $40, $6F, $56, $48, $40, $7B, $56, $48, $40, $74, $56, $48, $40, $6F, $56 ; unreachable/unclassified bytes
+1664  .byte  $48, $40, $71, $56, $48, $40, $73, $56, $48, $40, $74, $56, $48, $40, $80, $56 ; unreachable/unclassified bytes
+1674  .byte  $48, $40, $6F, $56, $48, $40, $7B, $56, $48, $40, $74, $56, $48, $40, $6F, $56 ; unreachable/unclassified bytes
+1684  .byte  $48, $40, $71, $56, $48, $40, $73, $56, $48, $40, $74, $56, $48, $40, $80, $56 ; unreachable/unclassified bytes
+1694  .byte  $48, $40, $6F, $56, $48, $40, $7B, $56, $48, $40, $74, $56, $48, $40, $80, $56 ; unreachable/unclassified bytes
+16A4  .byte  $48, $40, $6F, $56, $48, $40, $7B, $56, $48, $40, $72, $56, $48, $40, $7E, $56 ; unreachable/unclassified bytes
+16B4  .byte  $48, $40, $6D, $56, $48, $40, $79, $56, $48, $40, $72, $56, $48, $40, $6D, $56 ; unreachable/unclassified bytes
+16C4  .byte  $48, $40, $6F, $56, $48, $40, $71, $56, $48, $00, $07, $41, $04, $9F, $40, $BE ; unreachable/unclassified bytes
+16D4  .byte  $41, $04, $9F, $9C, $98, $40, $BE, $41, $04, $9D, $9F, $A1, $40, $BE, $41, $04 ; unreachable/unclassified bytes
+16E4  .byte  $9D, $40, $BE, $41, $04, $9F, $40, $BE, $41, $04, $9C, $40, $BE, $41, $04, $98 ; unreachable/unclassified bytes
+16F4  .byte  $43, $00, $9A, $9C, $40, $BE, $41, $04, $9D, $50, $43, $03, $9A, $BE, $41, $04 ; unreachable/unclassified bytes
+1704  .byte  $9B, $9C, $A2, $40, $BE, $41, $04, $9B, $9C, $A2, $40, $BE, $41, $04, $9F, $40 ; unreachable/unclassified bytes
+1714  .byte  $BE, $41, $04, $9F, $9C, $98, $40, $BE, $41, $04, $9D, $9F, $A1, $40, $BE, $41 ; unreachable/unclassified bytes
+1724  .byte  $04, $9D, $40, $BE, $41, $04, $9F, $40, $BE, $41, $04, $98, $40, $BE, $41, $04 ; unreachable/unclassified bytes
+1734  .byte  $9D, $40, $BE, $41, $04, $9D, $9A, $96, $40, $BE, $41, $04, $99, $41, $00, $9A ; unreachable/unclassified bytes
+1744  .byte  $41, $04, $A0, $40, $BE, $41, $04, $99, $41, $00, $9A, $41, $04, $A0, $40, $BE ; unreachable/unclassified bytes
+1754  .byte  $41, $04, $9C, $9D, $00, $02, $4F, $05, $73, $03, $40, $A8, $04, $9C, $05, $9C ; unreachable/unclassified bytes
+1764  .byte  $06, $A8, $03, $B0, $04, $9C, $03, $A8, $02, $73, $03, $A8, $04, $9C, $05, $9C ; unreachable/unclassified bytes
+1774  .byte  $06, $A8, $03, $B0, $04, $9C, $03, $A8, $02, $4F, $05, $73, $03, $40, $A8, $04 ; unreachable/unclassified bytes
+1784  .byte  $9C, $05, $9C, $06, $A8, $03, $B0, $04, $9C, $03, $A8, $02, $73, $03, $A8, $04 ; unreachable/unclassified bytes
+1794  .byte  $9C, $05, $9C, $06, $A8, $03, $B0, $04, $9C, $03, $A8, $02, $4F, $05, $73, $03 ; unreachable/unclassified bytes
+17A4  .byte  $40, $A8, $04, $9C, $05, $9C, $06, $A8, $03, $B0, $04, $9C, $03, $A8, $02, $73 ; unreachable/unclassified bytes
+17B4  .byte  $03, $A8, $04, $9C, $05, $9C, $06, $A8, $03, $B0, $04, $9C, $03, $A8, $00, $01 ; unreachable/unclassified bytes
+17C4  .byte  $40, $74, $56, $48, $40, $80, $56, $48, $40, $6F, $56, $48, $40, $7B, $56, $48 ; unreachable/unclassified bytes
+17D4  .byte  $40, $74, $56, $48, $40, $6F, $56, $48, $40, $71, $56, $48, $40, $73, $56, $48 ; unreachable/unclassified bytes
+17E4  .byte  $40, $74, $56, $48, $40, $80, $56, $48, $40, $6F, $56, $48, $40, $7B, $56, $48 ; unreachable/unclassified bytes
+17F4  .byte  $40, $74, $56, $48, $40, $73, $56, $48, $40, $72, $56, $48, $40, $71, $56, $48 ; unreachable/unclassified bytes
+1804  .byte  $40, $6F, $56, $48, $40, $7B, $56, $48, $40, $6C, $56, $48, $40, $78, $56, $48 ; unreachable/unclassified bytes
+1814  .byte  $40, $6F, $56, $48, $40, $7B, $56, $48, $40, $6C, $56, $48, $40, $78, $56, $48 ; unreachable/unclassified bytes
+1824  .byte  $40, $76, $56, $48, $40, $82, $56, $48, $40, $71, $56, $48, $40, $7D, $56, $48 ; unreachable/unclassified bytes
+1834  .byte  $40, $7B, $56, $48, $40, $6F, $56, $48, $40, $71, $56, $48, $40, $73, $56, $48 ; unreachable/unclassified bytes
+1844  .byte  $00, $02, $4F, $05, $73, $03, $40, $A8, $04, $9A, $05, $9C, $06, $A8, $03, $B0 ; unreachable/unclassified bytes
+1854  .byte  $04, $9A, $03, $A8, $02, $73, $03, $A8, $04, $9A, $05, $9C, $06, $A8, $03, $A3 ; unreachable/unclassified bytes
+1864  .byte  $06, $9A, $A8, $00, $02, $4F, $05, $73, $03, $40, $A8, $04, $9A, $05, $9C, $06 ; unreachable/unclassified bytes
+1874  .byte  $A8, $03, $B0, $04, $9A, $03, $A8, $02, $73, $03, $A8, $06, $9A, $9C, $02, $A8 ; unreachable/unclassified bytes
+1884  .byte  $03, $A3, $06, $9A, $A8, $00, $07, $41, $04, $9F, $40, $BE, $41, $04, $9F, $9C ; unreachable/unclassified bytes
+1894  .byte  $98, $40, $BE, $41, $04, $9D, $9F, $A1, $40, $BE, $41, $04, $9D, $40, $BE, $41 ; unreachable/unclassified bytes
+18A4  .byte  $04, $9F, $40, $BE, $41, $04, $9C, $40, $BE, $98, $43, $00, $9A, $9C, $40, $BE ; unreachable/unclassified bytes
+18B4  .byte  $9D, $BE, $42, $05, $98, $BD, $43, $01, $93, $FC, $56, $BA, $40, $BE, $BD, $41 ; unreachable/unclassified bytes
+18C4  .byte  $04, $93, $98, $9A, $9F, $51, $06, $BE, $41, $04, $9C, $9F, $A1, $40, $BE, $41 ; unreachable/unclassified bytes
+18D4  .byte  $04, $9F, $40, $BE, $41, $04, $9B, $40, $BE, $9A, $BD, $41, $05, $A3, $43, $01 ; unreachable/unclassified bytes
+18E4  .byte  $A4, $41, $05, $A3, $41, $04, $A4, $A3, $40, $BE, $41, $04, $A1, $40, $BE, $41 ; unreachable/unclassified bytes
+18F4  .byte  $04, $9F, $40, $BE, $41, $04, $9E, $40, $BE, $41, $04, $9D, $40, $BE, $41, $04 ; unreachable/unclassified bytes
+1904  .byte  $9A, $40, $BE, $00, $08, $41, $09, $8C, $50, $56, $BA, $50, $41, $09, $90, $50 ; unreachable/unclassified bytes
+1914  .byte  $BD, $41, $09, $8C, $93, $50, $BD, $56, $BA, $50, $BD, $41, $09, $90, $91, $93 ; unreachable/unclassified bytes
+1924  .byte  $50, $56, $BA, $50, $41, $09, $98, $50, $BD, $41, $09, $97, $9F, $50, $FE, $56 ; unreachable/unclassified bytes
+1934  .byte  $BA, $50, $FE, $41, $09, $9F, $50, $BD, $56, $BA, $50, $BD, $41, $09, $A1, $50 ; unreachable/unclassified bytes
+1944  .byte  $41, $05, $9B, $43, $00, $9C, $50, $41, $05, $9B, $43, $00, $9C, $51, $09, $9A ; unreachable/unclassified bytes
+1954  .byte  $50, $41, $08, $97, $43, $00, $98, $51, $09, $50, $BD, $56, $CA, $50, $BD, $56 ; unreachable/unclassified bytes
+1964  .byte  $AA, $50, $FE, $56, $5A, $50, $FE, $00, $01, $40, $74, $56, $48, $40, $80, $56 ; unreachable/unclassified bytes
+1974  .byte  $48, $40, $6F, $56, $48, $40, $7B, $56, $48, $40, $74, $56, $48, $40, $6F, $56 ; unreachable/unclassified bytes
+1984  .byte  $48, $40, $71, $56, $48, $40, $73, $56, $48, $40, $74, $56, $48, $40, $80, $56 ; unreachable/unclassified bytes
+1994  .byte  $48, $40, $6F, $56, $48, $40, $7B, $56, $48, $40, $74, $56, $48, $40, $73, $56 ; unreachable/unclassified bytes
+19A4  .byte  $48, $40, $72, $56, $48, $40, $71, $56, $48, $40, $6F, $56, $48, $40, $7B, $56 ; unreachable/unclassified bytes
+19B4  .byte  $48, $40, $6C, $56, $48, $40, $78, $56, $48, $40, $77, $56, $48, $40, $83, $56 ; unreachable/unclassified bytes
+19C4  .byte  $48, $40, $76, $56, $48, $40, $82, $56, $48, $40, $74, $56, $48, $40, $80, $56 ; unreachable/unclassified bytes
+19D4  .byte  $48, $40, $6F, $56, $48, $40, $7B, $56, $48, $40, $74, $56, $48, $40, $6F, $56 ; unreachable/unclassified bytes
+19E4  .byte  $48, $40, $71, $56, $48, $40, $73, $56, $48, $00, $02, $4F, $05, $73, $03, $40 ; unreachable/unclassified bytes
+19F4  .byte  $A8, $04, $9C, $05, $9C, $06, $A8, $03, $B0, $04, $9C, $03, $A8, $02, $73, $03 ; unreachable/unclassified bytes
+1A04  .byte  $A8, $06, $9A, $9C, $02, $A8, $03, $A3, $06, $9A, $A8, $00, $08, $41, $09, $8C ; unreachable/unclassified bytes
+1A14  .byte  $50, $56, $BA, $50, $41, $09, $90, $50, $BD, $41, $09, $8C, $93, $50, $BD, $56 ; unreachable/unclassified bytes
+1A24  .byte  $BA, $50, $BD, $41, $09, $90, $91, $93, $50, $56, $BA, $50, $41, $09, $98, $50 ; unreachable/unclassified bytes
+1A34  .byte  $BD, $41, $09, $97, $9C, $50, $BD, $56, $BA, $50, $BD, $9A, $98, $91, $FD, $95 ; unreachable/unclassified bytes
+1A44  .byte  $FE, $91, $90, $FD, $93, $FE, $92, $91, $FE, $8E, $8A, $BD, $87, $BD, $85, $FE ; unreachable/unclassified bytes
+1A54  .byte  $56, $BA, $50, $BD, $56, $8A, $50, $00, $09, $40, $88, $F9, $56, $00, $50, $FC ; unreachable/unclassified bytes
+1A64  .byte  $02, $46, $58, $84, $40, $BE, $09, $84, $EF, $0A, $7F, $46, $34, $7F, $40, $7F ; unreachable/unclassified bytes
+1A74  .byte  $7F, $46, $34, $7F, $40, $7F, $46, $34, $7F, $40, $7F, $46, $34, $7F, $40, $7F ; unreachable/unclassified bytes
+1A84  .byte  $7F, $46, $34, $7F, $40, $7F, $46, $34, $7F, $46, $14, $7D, $50, $7F, $46, $34 ; unreachable/unclassified bytes
+1A94  .byte  $7F, $46, $14, $7F, $40, $7F, $46, $34, $7F, $46, $14, $7F, $40, $7F, $46, $34 ; unreachable/unclassified bytes
+1AA4  .byte  $7F, $46, $14, $7F, $50, $09, $7F, $FD, $00, $06, $4F, $03, $84, $40, $84, $84 ; unreachable/unclassified bytes
+1AB4  .byte  $BD, $84, $BD, $46, $58, $84, $50, $01, $71, $43, $00, $78, $7C, $7D, $82, $84 ; unreachable/unclassified bytes
+1AC4  .byte  $82, $7D, $7B, $78, $76, $71, $40, $6F, $43, $00, $71, $76, $78, $76, $71, $7B ; unreachable/unclassified bytes
+1AD4  .byte  $78, $76, $74, $6F, $7D, $43, $0B, $7B, $BD, $53, $04, $FA, $7D, $FB, $50, $BE ; unreachable/unclassified bytes
+1AE4  .byte  $F1, $00, $07, $41, $04, $9F, $51, $09, $52, $09, $51, $09, $43, $00, $A1, $51 ; unreachable/unclassified bytes
+1AF4  .byte  $09, $52, $09, $41, $04, $9F, $9C, $BD, $43, $00, $9A, $51, $04, $43, $00, $98 ; unreachable/unclassified bytes
+1B04  .byte  $51, $09, $56, $B9, $40, $BE, $F0, $00, $01, $40, $74, $56, $48, $40, $80, $56 ; unreachable/unclassified bytes
+1B14  .byte  $48, $40, $6F, $56, $48, $40, $7B, $BD, $74, $56, $48, $40, $6F, $56, $48, $40 ; unreachable/unclassified bytes
+1B24  .byte  $74, $56, $48, $50, $BE, $F0, $00, $02, $4F, $05, $73, $03, $40, $A8, $04, $9C ; unreachable/unclassified bytes
+1B34  .byte  $05, $9C, $06, $A8, $03, $B0, $04, $9C, $03, $A8, $02, $73, $03, $A8, $9A, $9C ; unreachable/unclassified bytes
+1B44  .byte  $06, $46, $8A, $A8, $56, $88, $56, $58, $55, $38, $56, $28, $56, $18, $56, $00 ; unreachable/unclassified bytes
+1B54  .byte  $50, $F4, $00, $02, $40, $7C, $FD, $7C, $FC, $07, $9F, $BE, $9F, $BE, $9B, $BE ; unreachable/unclassified bytes
+1B64  .byte  $98, $BE, $98, $BE, $98, $BE, $9B, $BE, $9F, $BE, $A4, $BE, $9F, $BE, $9F, $BE ; unreachable/unclassified bytes
+1B74  .byte  $9A, $BE, $93, $BD, $43, $00, $A1, $43, $0A, $9B, $FC, $A1, $FC, $40, $95, $BD ; unreachable/unclassified bytes
+1B84  .byte  $BE, $F1, $00, $02, $40, $7C, $FD, $7C, $FD, $07, $A1, $BE, $9C, $BE, $9C, $BE ; unreachable/unclassified bytes
+1B94  .byte  $9A, $BE, $9A, $BE, $95, $BE, $9A, $BE, $9C, $BE, $A1, $BE, $A1, $BE, $A1, $BE ; unreachable/unclassified bytes
+1BA4  .byte  $9C, $BE, $98, $BE, $95, $43, $08, $92, $FB, $95, $FC, $40, $90, $BD, $BE, $F1 ; unreachable/unclassified bytes
+1BB4  .byte  $00 ; unreachable/unclassified bytes
+
+
+# Batch 1/3
+
+SID-to-AY static semantic report (Batch 1/3 only)
+
+Code regions and evidence
+- Entry/init/play stubs
+  - $1000: JMP $10B6 (init entry). High confidence.
+  - $1003: JMP $10BA (play/driver entry). High confidence.
+  - $10B6: STA $10BD; RTS. Likely stores subtune or init param. Medium confidence.
+- Global init and per-voice bootstrap
+  - $10BA–$10DE: Clear $13A9..$13D2 via loop ($10C3), set SID filter base ($D415), store to $113F/$10F1, call $10E0 with X={0,7,0E}. High confidence.
+  - $10E0–$10ED: Set tick/speed counters: $13D5,X = #$05; $13D6,X = #$01; $13D8,X = #$01; JMP $138A. High confidence (entry to main per-voice engine continues beyond batch).
+- Filter/volume program (global per frame)
+  - $10F0–$114A: Table-driven filter sweep/envelope using tables at $15C9/$15DA/$15CA, with counters $10F5, accumulator $113A; results written to:
+    - $D416 (cutoff hi) at $113B
+    - $D417 (resonance/routing) at $1140
+    - $D418 (mode/master volume, forced ORA #$0F) at $1147
+    - Also temp state: $113F, $1144, $10F1. High confidence for writes; medium for exact musical intent (see Unknowns).
+- Per-voice tick
+  - $1154–$1161: Decrement speed counter $13D6,X; reload from $13D5,X if negative; else continue. High confidence.
+  - Pattern/note fetch on counter expiry
+    - $1164–$1196: Y=$13AE,X selects instrument header at $1394..; if $13AC,X==0 then pattern progression via pointer table at $14D0/$14D3 into (FE/FF), indexed by $13A9,X. Bytes < $FF are note/events; $FF triggers indirection/branch ($118B–$118F). Store row byte to $13D4,X and advance index. High confidence for control/data flow; actual data unresolved statically.
+  - Tick rate per row and new-row setup
+    - $1199–$1206: $13D8,X indexes $153F.. to $1402,X (row length). If $13C0,X != 0, start-of-note setup:
+      - $13D7,X = A - #$60 (A previously $13C0,X) at $11A7–$11AD (likely transpose or key base). Medium confidence.
+      - Clear $13BE/$13C0; copy various per-instrument row params:
+        - $1535,Y -> $13E9,X (portamento/slide time or gate delay?). Low/medium.
+        - $152B,Y -> $13BF,X (likely waveform/control selector). Medium (see also $1006/$1013).
+        - $1549,Y -> $13C2,X (effect code). Medium.
+        - $1517,Y -> $13C3,X and clear $13C4,X (effect duration/counter). Medium.
+        - $1521,Y -> $10F1 and clear $10F5 (global filter program hook). Low/medium.
+        - $150D,Y -> $13C1,X (effect sequence pointer). Medium.
+      - ADSR tables to SID:
+        - $1503,Y -> $D406+X (SR) at $11F4–$11F6
+        - $14F9,Y -> $D405+X (AD) at $11F7–$11FA
+      - Instrument/voice header move via $1006/$1013 (see below). High confidence for writes; medium for semantics.
+    - $1206–$1209: Always call $1006 on $13AF,X (instrument/voice select). High confidence.
+  - Effect sequencing per tick
+    - $120C–$1240: $13C1,X indexes effect stream ($1553+). If value < $10: compare to/increment $13EA,X to delay; else subtract #$10 -> $13C2,X (current effect). Then fetch next $1554+ (with FF sentinel expanding from $157D+) to $13C1,X, clear $13EA,X; check $157C+ to possibly branch to $128D (note add/transposition). High confidence structurally.
+  - Pitch/portamento accumulator and target computation
+    - $1241–$128A then $1035–$10B0 core
+      - $1249 loads $128B from $13A4[ $13BE,X ] (per-instrument/arpeggio table selector).
+      - $1252–$1261: $13BF,X selects pitch control: If $15EC,Y non-negative, load step FE/FF from $15F8,Y; else compute FE/FF via frequency deltas from tables at $1411/$1470 using index Y=$1403,X (current semitone) and difference of consecutive frequencies ($126A–$1286). Medium/high.
+      - $128A JMP $1035 into slide engine:
+        - $1045..$105A: adjust $13E8,X with FE/FF step and clamp/flip based on sign/threshold bits; several branches for up/down and bounds. Store back to $13E8,X.
+        - $1089 path: add FE/FF to current frequency $13EB/$13EC and JMP $12A6 to write back $13EC.
+        - $10A0 path: subtract FE/FF from $13EB/$13EC and JMP $12A6.
+        - $10B0: if bounds reached, load new note index from $13D7,X and JMP $1294 to reset frequency from tables.
+        - $1294–$12A6: Set $1403,X = current semitone; clear $13E8,X; load base frequency from $1411/$1470 indexed by Y; store to $13EB/$13EC. High confidence for dataflow; medium for exact bound logic without runtime.
+  - Pulse width modulation
+    - $12A9–$12F8: Effect $13C3,X/$13C4,X drives 16-bit PW accumulator $13ED/$13EE by per-step value from $15B8,Y with optional signed add, reload via stream $15A7/$15A8 (FF sentinel) and finally writes:
+      - $D402+X (PW low) at $12F2–$12F4
+      - $D403+X (PW high) at $12F5–$12F8
+    - High confidence for write and mechanism; musical intent: PWM LFO/step envelope. High.
+- Pending next stage
+  - $12FB–$1306: Compare $13D6,X to $1402,X; equal branches to $1306 then loads Y=$13D4,X (row byte), else JMP $137E (unseen). Execution continues beyond batch (frequency/control/gate writes likely there). Medium.
+
+Musical dependencies (tables/state -> SID/timing)
+- Global filter and master volume
+  - Tables $15C9/$15CA/$15DA feed counters $113A/$10F1/$10F5 and write $D416/$D417/$D418 each frame ($113B–$1147). Audible: filter sweeps and volume at SID level.
+- ADSR per new row/note
+  - $14F9/$1503 -> $D405/$D406 at $11F4–$11FA. Audible: attack/decay/sustain/release changes.
+- Frequency and portamento/vibrato
+  - Base semitone index from pattern ($13D4,X) and $13D7,X into tables $1411/$1470 → $13EB/$13EC ($129D–$12A6).
+  - Step FE/FF from $15F8 or computed diff of $1411/$1470 entries ($126A–$1286).
+  - Per-tick add/sub FE/FF to $13EB/$13EC with bounds via $105D–$10AD. Audible: slides/portamento; possibly vibrato if bounds oscillate (uncertain).
+- Effect streams
+  - $1553/$1554 (with $157D extension) drive $13C2 (effect code), $13C1 (next position), $13EA (delay). Audible: time-based per-voice effects (likely waveform/arpeggio/transpose). Exact effect codes not resolved here.
+- PWM
+  - $15A7/$15A8/$15B8 sequence drives $D402/$D403. Audible: pulse width modulation on SID; no AY equivalent PWM.
+
+Flow/loop hypotheses
+- Per-frame driver likely:
+  - Global filter step ($10F0–$114A) → per-voice tick for X=0,7,0E via $1154 path → unseen mixers/writes at $137E/$138A. High-level loop inferred but not proven without play-caller context. Medium confidence.
+- Note progression loop:
+  - When $13D6,X reaches zero, fetch next row from pattern pointer (FE/FF) and reload $13D6,X from $13D5,X; otherwise continue effect/pitch updates. High confidence.
+- Portamento bounds:
+  - $105E BCC $1089 vs $1060 BCS $10A0 branch uses carry from LSR to choose direction; subsequent comparisons against targets at $1074/$107B and $1099..$10AD enforce stop/flip. Exact oscillation behavior uncertain. Medium.
+
+AY/PAY simplifications (recommended)
+- Keep
+  - Note timing, row speeds ($13D5/$13D6 vs $1402): map to AY tick scheduler.
+  - Base pitch and portamento FE/FF accumulator to AY tone period. Sid tables $1411/$1470 map to AY period table (C-accurate), preserving slides.
+  - Simple arpeggio/transpose if $13A4/$13BE select chord steps: implement as per-tick semitone offsets on AY.
+  - Software volume envelopes per instrument/row to emulate ADSR shape; approximate using discrete steps as AY has no true ADSR.
+- Replace/approximate
+  - PWM ($D402/$D403): AY has fixed 50% duty; emulate timbral movement using:
+    - Periodic volume tremolo or
+    - Fast arpeggio between nearby semitones for buzz; document timbre difference.
+  - SID filter ($D416–$D418): AY has no filter. Optionally map master volume changes to AY global volume if available, else distribute as per-channel volume scaling. Document loss of filter color.
+- Remove if necessary
+  - SID waveform mixing/ring/sync (not seen in batch but typical): ignore or approximate via noise/square selection on AY.
+
+Unknowns and required traces
+- Unseen frequency/control writes
+  - No direct writes to $D400/$D401 (freq) or $D404 (control/GATE) in this batch; likely at $137E/$138A or later. Need next batches or trace to confirm note-on/off and waveform usage.
+- Pattern/event encoding
+  - ($FE),Y dereferences at $1185/$118C/$118F: contents and meaning of $FF sentinel and subsequent indirection require data inspection or runtime logging.
+  - Effect codes at $13C2 and streams $1553/$1554/$157D: semantics unknown without further code paths (e.g., switch at $137E). Trace needed.
+- Filter program
+  - Tables $15C9/$15CA/$15DA and temps $113A/$10F1/$10F5 determine cutoff/resonance schedule; audible intent (sweep vs stepped) unclear. Trace write sequences to $D416/$D417/$D418 each frame.
+- Portamento behavior
+  - Bound/flip logic around $105E–$10B0 determines up/down, target crossing, and possible vibrato bounce. Capture $13EB/$13EC over time during slides to validate AY portamento equivalence.
+- Subroutine targets
+  - $138A and $137E not present. They likely perform SID freq/control writes and per-voice effect dispatch. Next batch required.
+- RSID/IRQ
+  - No explicit CIA/IRQ code visible yet; play called at $1003 likely per frame. Confirm calling convention and timing externally.
+
+Candidate PAY IR (minimal, zero-page-free; placeholders only)
+- Global
+  - filter_prog: ignored or mapped to master volume envelope
+  - tick() per frame:
+    - for v in 0..2: voice_tick(v)
+- Voice state (absolute RAM arrays by voice index)
+  - seq_ptr[v], seq_idx[v]
+  - instr_id[v], eff_pos[v], eff_code[v], eff_delay[v]
+  - row_len[v], row_counter[v]
+  - semitone[v], transpose[v]
+  - port_step_frac[v] (16-bit), port_accum[v] (8-bit), freq_lo[v], freq_hi[v]
+  - pwm_lo[v], pwm_hi[v] (to be ignored on AY)
+- Voice logic per tick (pseudocode)
+  - if --row_counter[v] == 0:
+    - row = fetch_row(seq_ptr[v], seq_idx[v])  // via pointer table; handle 0xFF indirections
+    - semitone[v] = decode_note(row)           // do not fabricate values; from data
+    - load_instrument(instr_id[v])             // sets ADSR/effects, ignored PWM on AY
+    - row_len[v] = table153F[?]                // from $13D8-based index
+    - row_counter[v] = row_len[v]
+  - // Effect stream step (timed)
+    - step_effect_stream(v)                    // from 1553/1554/157D; sets eff_code/delay
+  - // Portamento/pitch
+    - target = freq_table[semitone[v] + transpose[v]]
+    - step = port_step_from_tables(eff_code or 15F8/derived)
+    - freq[v] = slide_towards(freq[v], target, step, bounds_logic_like_1045..10AD)
+  - // AY output
+    - ay_period[v] = map_sid_freq_to_ay(freq[v])
+    - ay_gate[v] = derived from unseen control writes (TBD)
+    - ay_vol[v]  = software envelope from ADSR approximation
+
+Verification/traces to request
+- Log per frame per voice:
+  - $D400/$D401/$D404 writes (or equivalent internal vars if earlier in code): to reconstruct note on/off, waveform.
+  - $13D6 vs $1402 transitions, $13D4 note bytes, $13D7 transpose, $13EB/$13EC freq.
+  - $D416/$D417/$D418 sequences for a few seconds to assess filter audibility.
+- Dump tables referenced in this batch: $1394, $13A4, $14D0/$14D3, $1411/$1470, $14F9, $1503, $150D, $1517, $1521, $152B, $1535, $153F, $1549, $1553, $1554, $157C, $157D, $15A7, $15A8, $15B8, $15C9, $15CA, $15DA, $15EC, $15F8.
+
+AY/PAY implementation notes
+- Do not allocate PAY-owned zero-page. Place arrays like seq_idx[], row_counter[], semitone[], freq_lo/hi[] in a caller-provided absolute RAM block; document required addresses.
+- Single lightweight IRQ or polled tick at 50/60 Hz; scale row counters accordingly if original uses different speed.
+- Document compromises:
+  - No SID filter or PWM on AY; approximate with volume envelopes and optional tremolo.
+  - Waveforms beyond square/noise not represented.
+
+Confidence summary
+- High: per-voice tick structure, row counter mechanism, portamento accumulator with tables $1411/$1470, PWM write mechanism, ADSR writes, global filter/volume write sites.
+- Medium: exact meaning of many per-row/per-instrument tables; effect stream semantics; direction/bounds nuances of slide engine.
+- Low: waveform/GATE usage (not visible yet), complete control flow (targets $137E/$138A missing).
+
+---
+
+# Batch 2/3
+
+SID-to-AY static semantic report — Batch 2/3
+
+Code regions and evidence
+- Pattern row decoder and per-voice SID write-out
+  - $1309–$1311: Build 16-bit indirect pointer (FE/FF) from tables $14D6,Y (low) and $14E8,Y (high). High confidence that these are pattern/page pointer tables (two parallel tables). Evidence: immediate STA FE/FF and subsequent LDA ($FE),Y at $1316, $1338, $1348, $1350, $1376.
+  - $1313: LDY $13AC,X selects per-voice pattern position/row index. Medium/high: value is later rewritten by Y or 0 at $1375–$137B.
+  - $1316–$1322: Token class dispatch by thresholds of first pattern byte A = ($FE),Y:
+    - < $40 → $1334
+    - $40..$5F → $133E
+    - $60..$BF → $1352
+    - ≥ $C0 → $1324
+    High confidence for control partitioning (explicit CMP/branches).
+  - ≥ $C0 case ($1324–$1332):
+    - Uses/updates $13AD,X as an accumulator/counter. If $13AD,X!=0, skips reloading A, otherwise reloads A from ($FE),Y at $1329.
+    - ADC #$00 ($132B) leverages CMP’s carry (set since A≥$C0) to optionally add 1; stores to $13AD,X; if result==0 → $1375; else → $137E. Medium: counter/flow-control semantics plausible; exact musical role unknown statically.
+  - < $40 case ($1334–$133C):
+    - STA $13D8,X ($1334), then consume next byte at $1338; if ≥$60 jump into the $1352 handler, else fall through to $133E. Interpreted as row/tick length or speed reload ($13D8 used as a counter elsewhere in Batch 1 at $1199–$1206). High.
+  - $40..$5F case ($133E–$134D):
+    - A compared to $50 then AND #$0F; result → $13AE,X (instrument/program selector) at $1342. If nonzero, next byte → $13AF,X ($1347–$134A). Medium/high: instrument/program select matches Batch 1 use of $13AE/$13AF.
+    - If earlier C≥ (from $133A CMP #$60) were set, BCS $1375 ($134D). Unusual but consistent with prior compare. Low/medium for exact intent.
+    - Optional extra data fetch at $134F–$1350 then fall into $1352.
+  - $1352–$1372 general event/note/control:
+    - If A < $BD → $13C0,X = A ($135C). Likely new note code (Batch 1: $13C0 nonzero triggered start-of-note logic). High.
+    - If A == $BD → skip to $1375. Possibly a tie/hold or NOP. Low/medium.
+    - If A > $BD → ORA #$F0 and store to $13D9,X via $1372. $13D9 later ANDed with $13C2 to form SID control at $138A–$1390, so this path programs a control mask/latch (waveform/GATE bits) per event. High (dataflow).
+    - When a new note code stored ($135C), and if $13AE,X != #$03 ($135F–$1364), perform an ADSR pre-load:
+      - $D406+X = #$00 (SR) at $1368
+      - $D405+X = #$0F (AD) at $136D
+      - Then A=#$FE and store to $13D9,X at $1372 (control mask preset). High for writes; medium for musical rationale (special casing instrument 3).
+  - Pattern position update ($1375–$137B):
+    - Next pattern byte → A at $1376. If nonzero, A=Y (TYA) at $137A; store A → $13AC,X at $137B. So $13AC,X is either a direct next-row index (A=Y) or reset to 0 if the fetched byte was 0. High for mechanism; medium for exact encoding of control-flow/end-of-row.
+  - Per-voice SID frequency/control writes ($137E–$1393):
+    - $D400+X = $13EB,X (freq lo) at $1381
+    - $D401+X = $13EC,X (freq hi) at $1387
+    - $D404+X = ($13C2,X AND $13D9,X) at $1390 (control: GATE/waveform). High.
+
+Musical dependencies
+- Pattern/page addressing:
+  - Tables at $14D6/$14E8 (low/high) feed indirect fetches ($1316, $1338, $1348, $1350, $1376). These tables are therefore a primary pattern/song structure source. Confidence: high for pointer role, medium for exact indexing semantics without all call-sites.
+- Timing/row length:
+  - $13D8,X set by < $40 tokens ($1334). Batch 1 showed $13D8 used to reload per-row tick length at $1199–$1206 from table $153F.. into $1402,X. This creates a dependency chain: pattern token → $13D8 → row length/tick rate → when new rows/triggers occur. Confidence: high.
+- Instrument/program select:
+  - $13AE,X ($1342) and $13AF,X ($1348) are set by $40..$5F tokens and consumed elsewhere (Batch 1 at $1164–$1196 and $1206–$1209 call $1006 on $13AF,X). Confidence: high.
+- Note event:
+  - A < $BD → $13C0,X = note code ($135C). Batch 1 uses $13C0 to initiate new-note setup, frequency target computation and portamento engine ($1199–$12A6). Confidence: high.
+- Control/GATE/waveform:
+  - A > $BD → $13D9,X updated mask ($1358–$1372), later combined with $13C2,X to D404 ($138A–$1390). $13C2,X is “current effect or instrument control bits” per Batch 1. Audible dependency: updates will change waveform and GATE. Confidence: high.
+- ADSR handling on new note:
+  - Unless $13AE,X == #$03, ADSR preset writes occur at $1368/$136D (SR=0, AD=0F). Audible impact: ensures hard-attack on new note for most instruments. Confidence: high for write; medium for special-case semantics.
+- Frequency output:
+  - $13EB/$13EC to D400/D401 each tick ($137E–$1387). These are maintained by the portamento/pitch engine traced in Batch 1. Confidence: high.
+
+Flow/loop hypotheses
+- Per-voice pattern row decode loop is driven by:
+  - Y initialized from $13AC,X ($1313), which is updated at the end ($1375–$137B), either to Y (continue within same page) or 0 (signal page/sequence step end). High-level hypothesis: 0 sentinel triggers a pattern step transition via outer logic (observed in Batch 1 around $1164–$1196 progressing through pointer tables at $14D0/$14D3). Confidence: medium.
+- Token classes likely encode:
+  - < $40: row duration/speed set.
+  - $40..$4F/$5F: instrument/program select with optional parameter.
+  - $60..$BC: note or effect argument falling into $1352 handler; values below $BD take the “note” path. Confidence: medium/high for note; low/medium for any non-note within $60..$BC without traces.
+  - ≥ $C0: flow-control or repeat counter using $13AD,X (ADC with carry trick). Confidence: medium, mechanism visible; semantics not confirmed.
+- Control-mask staging:
+  - $13D9,X acts as a per-voice control gate/waveform mask that is ANDed with the current instrument-defined control $13C2,X to produce SID control. This allows tokens to clear or set GATE independently. Confidence: high.
+
+SID writes confirmed in this batch
+- Per voice:
+  - $D400+X (freq lo) at $1381
+  - $D401+X (freq hi) at $1387
+  - $D404+X (control) at $1390
+  - $D405+X (AD) at $136D
+  - $D406+X (SR) at $1368
+Note: indexed base; actual voice register depends on X stride 7 (standard SID voice layout). Static-only: presence of STA does not prove execution on every tick.
+
+Data/table evidence in this batch
+- $14D6/$14E8: pointer tables used to form ($FE),Y. High for role.
+- $1414–$146F: likely frequency table pairs (lo/hi) referenced earlier in Batch 1 as $1411/$1470; these bytes look like ascending non-linear steps typical for SID pitch. Medium/high (not directly referenced in this snippet).
+- $1554–$15B? and $1600+ blocks appear to be effect/program streams referenced in Batch 1 for PWM and effect sequencing. Not directly dereferenced in this snippet; confidence low/medium here but supported by earlier batch.
+
+AY/PAY simplifications and recommendations
+- Pattern decoding
+  - Retain the token classes and their side effects: row length, instrument select, note set, control mask, and pattern index update. This maps cleanly to AY control/state.
+- GATE/Control
+  - Replace SID D404 waveform/GATE mechanism with AY tone/noise enables plus software-managed gate:
+    - Interpret $13C2 & $13D9 “GATE on” as AY channel enable with square tone; ignore SID triangle/saw/pulse distinctions. If control indicates NOISE only, route to AY noise on, tone off. Expect audible differences: no SID-specific waveforms or ring/sync.
+- ADSR
+  - Map the hard-attack behavior (AD=0F, SR=00) to a short software volume envelope on AY (fast attack to target, possibly immediate decay hold). The special-case $13AE==#03 should keep existing envelope (skip re-trigger). Document that exact SID envelope curves are not reproduced.
+- Frequency
+  - Use PAY’s semitone-to-AY period conversion from the same note indices driving $13EB/$13EC. If original uses portamento (Batch 1), keep continuous slide by updating AY period each tick with the computed delta. Minor tuning deviations vs SID are acceptable; verify by trace.
+- Zero-page policy
+  - No PAY-owned zero-page. Mirror $13C0/$13C2/$13D8/$13D9/$13AC/$13AE/$13AF, and pitch $13EB/$13EC in fixed absolute RAM chosen at integration time.
+
+Unknowns and required traces
+- ≥ $C0 tokens and $13AD,X
+  - Purpose of the counter/increment (ADC #$00 with carry) unclear. It likely implements repeat/transpose or flow control. Required: capture sequences of ($FE),Y bytes including ≥$C0 and observe $13AD evolution and any jumps in $13AC.
+- Boundary between $60..$BC “notes” vs “effects”
+  - We infer A < $BD is treated as a note code. Confirm by tracing when $13C0 is set and whether any values in that range should be rests/ties. Needed: a few runtime pattern bytes with their downstream effect on $13C0 and pitch.
+- Meaning of $13AE range and special-case == #$03
+  - Determine if #$03 selects a legato/no-retrigger instrument. Needed: trace instrument changes and correlate with presence/absence of ADSR writes.
+- End-of-row/next-index encoding via $1375–$137B
+  - The second fetched byte deciding between storing Y or 0 into $13AC controls inner-page flow. Needed: capture ($FE),Y at this point and resulting $13AC to reconstruct exact stepping rules.
+- Tables beyond pointers
+  - Large data blocks $1650–$18CF resemble encoded patterns or sequences but are not referenced here. Dynamic reachability mapping would help classify them.
+
+Candidate PAY IR (static, testable skeleton; values symbolic)
+- Per frame, per voice V:
+  - If speed counter expired:
+    - Read token t = PatternFetch(V.pagePtr, V.rowIdx)
+    - If t < 0x40:
+      - V.rowTicks = t
+      - t2 = PatternFetch(...)
+      - If t2 < 0x60: handle as below ($40..$5F); else goto general handler
+    - Else if 0x40 <= t < 0x60:
+      - V.instrument = (t & 0x0F)
+      - If V.instrument != 0: V.instParam = PatternFetch(...)
+      - Optionally fetch extra byte per encoding; continue
+    - Else if 0x60 <= t < 0xBD:
+      - V.noteCode = t
+      - If V.instrument != 3:
+        - V.env = HardAttackPreset (AY fast attack)
+        - V.ctrlMask = 0xFE (from $1370–$1372)
+    - Else if t == 0xBD:
+      - No-op/tie (no new note); keep gate/ctrl
+    - Else if t >= 0xC0:
+      - Update V.counter = IncWithCarry(t, V.counter)  // exact rule TBD
+    - After handling token class:
+      - next = PatternFetch(...)
+      - If next != 0: V.rowIdx = currentY  // continue within page
+        else V.rowIdx = 0                  // signal page/step end
+  - Every frame (or when pitch updated by portamento engine from Batch 1):
+    - AY.period = ConvertSIDFreqToAY(V.freqLoHi or from noteCode)
+    - AY.control = MapControl(V.ctrlBits & V.ctrlMask)  // gate on/off, tone/noise
+
+Proposed regression/trace checks
+- Log per tick: X(voice), Y(rowIdx), A(token), $13C0/$13D8/$13D9/$13AE/$13AF/$13AD, and SID writes to D400–D406/D404 to validate:
+  - Token class boundaries and side effects
+  - ADSR write suppression when instrument==3
+  - Control mask AND behavior to D404
+  - Row index update rule via $1375–$137B
+
+Confidence summary
+- High: Pointer use ($14D6/$14E8), note-token path to $13C0, SID writes at $1368/$136D/$1381/$1387/$1390, role of $13D8 as row length, control mask AND at $138A–$1390.
+- Medium: Instrument select fields $13AE/$13AF and their special-case behavior; ≥$C0 flow-control counter in $13AD.
+- Low/medium: Exact meaning of $0xBD token; nuanced semantics of $40..$5F extra bytes and the BCS at $134D without full upstream context.
+
+---
+
+# Batch 3/3
+
+SID-to-AY static semantic report — Batch 3/3
+
+Code regions and evidence
+- No new executable code confirmed in this batch
+  - The bytes at $18D4–$1BB4 are rendered by the disassembler as “unreachable/unclassified.” There are no decoded opcodes or control-flow links into this region in the provided static CFG. Confidence: high that this batch is data-only within the current static reachability.
+
+- Pattern/page-like data candidates
+  - Repeated token shapes consistent with Batch 2 pattern decoder thresholds:
+    - Values in $40..$5F range appear very frequently (e.g., $40, $41, $43, $50, $56, $48). Batch 2 showed $40..$5F is dispatched as an “instrument/program selector” token at $133E–$134A. Confidence: medium/high that many bytes in this range are instrument/program events rather than code.
+    - Values well below $BD occur in dense melodic-looking runs (e.g., $1964–$19D4 has many $6C–$83), consistent with “note code A < $BD → $13C0,X” at $135C (Batch 2). Confidence: medium for note data presence.
+    - Occurrences of $BD and $BE (e.g., $190C=$BD, $1914=$BD, $1B73=$BD) match Batch 2 special cases: $A==$BD falls through without setting new note (possible tie/hold), $A>$BD maps to control-mask programming via $13D9,X. Confidence: medium.
+  - Indirection/sentinel-like bytes
+    - $FE, $FD, $FC, $FB, $F9, $F4, $F1, $F0 appear embedded (e.g., $192E=$FE, $1A35=$FD, $1A54=$00,$09,$40,$88,$F9..., $1B54=$F4,$00,$02,..., $1AE4=$F1). Batch 1 and 2 discussed FF/FE sentinel use in streams (e.g., effect streams and control mask preset to $FE). Static role of these specific values here is unconfirmed; they plausibly encode pattern control (loop/jump/repeat) or effect stream markers. Confidence: low/medium without a pointer path proving usage.
+  - “Page/pattern” clustering
+    - Multiple blocks show repeating “$40 <note> $56 $48 …” forms (e.g., $1964–$19D4, $1974–$19E7), resembling structured event lists aligned to the Batch 2 indirect fetch scheme via (FE/FF) with base tables at $14D6/$14E8. Confidence: medium that these are pattern pages referenced by the decoder at $1309–$137B.
+
+Musical dependencies
+- If/when these regions are reached through the pattern decoder (Batch 2, $1316–$137B), the following dependencies would apply:
+  - Instrument/program tokens ($40..$5F):
+    - Would set $13AE,X (instrument/program selector) and optionally $13AF,X (parameter) per $133E–$134A. Many observed pairs like $41,$04 (e.g., $18D4), $43,$00 (e.g., $1AB6), $51,$09 (e.g., $1AE9) match “token then one data byte” shape. Confidence: medium.
+  - Note tokens (A < $BD):
+    - Values such as $6F, $71, $73, $7B, $80, $83 across $1964–$19D4 likely feed $13C0,X (new note) per $135C and trigger the start-of-note pipeline outlined in Batches 1–2 (row setup, frequency target load, optional slide). Confidence: medium.
+  - Special markers:
+    - $BD encountered inline likely acts as tie/hold/no-op per $135F–$1364/$1375 in Batch 2. $BE would program control mask bits via $13D9,X ($1372 path). Confidence: low/medium for exact audible consequence without seeing mask tables ($13C2,X).
+  - Timing:
+    - Any instances of bytes < $40 in these blocks would reload $13D8,X (row/tick length seed) per $1334; explicit examples here are rare because most small values are part of multi-byte sequences starting with a $40..$5F token. Confidence: low pending exact parses of each stream.
+
+Flow/loop hypotheses
+- Pattern indirection and row advance are controlled by the decoder in Batch 2; this batch likely supplies its data:
+  - Byte streams appear structured as: [instrument token][$param][note][optional control or follow-on tokens] … with occasional high-$F? control bytes indicating loop/repeat/jump. Examples:
+    - $1B54: F4 00 02 40 7C FD 7C FC 07 9F BE … could encode “loop x2” (F4 00 02?), a note $7C under instrument $40, then FD/FC repeat controls, then a control-mask update via $9F,$BE. This is a tentative parse; no decoder site for $F4/FD/FC is statically confirmed in earlier batches. Confidence: low.
+    - $1A54: 00 09 40 88 F9 56 00 50 FC 02 … may encode speed change (00 09) then instrument select (40), a note (88), some effect/control (F9), another instrument token (56), a small literal (00), instrument $50, and FC 02 (repeat/jump). Confidence: low.
+- End-of-row and pattern position update likely still follow Batch 2’s rule: next fetched byte decides whether to store Y or 0 into $13AC,X at $1376–$137B. Some occurrences of literal 00 immediately after $43 tokens could be consistent with “program parameter = 00,” not necessarily row control. Confidence: low/medium.
+
+AY/PAY simplifications
+- Retain
+  - Three-voice tone output: Map SID frequency writes (Batch 2: $137E–$1387) to AY channel A/B/C tone periods.
+  - Basic GATE on/off per event: Use $13C2 AND $13D9 mask semantics to drive AY channel enable and a simple per-note software volume envelope. Limitation: SID waveforms (triangle/saw/pulse) collapse to AY square; ring/sync ignored.
+  - Note/row timing: Preserve tick/row counters ($13D8 → $1402,X in Batch 1) as AY IRQ timing.
+- Simplify/remove
+  - Filters and SID test/sync/ring: Not supported on AY; discard effects carried via $D417–$D418 or control bits 1–3. Audible change: no filtering/sync artifacts.
+  - Complex PWM: Convert $12A9–$12F8 pulse-width LFO to a soft volume LFO if audibly important, or ignore if minor. Audible change: loss of pulse timbre movement.
+  - Portamento/vibrato: Keep slide engine semantics (Batch 1: $1035–$10B0) if clearly driven by tables ($15F8/1411/1470). If ambiguous, approximate by target-step per tick; document rate units.
+
+Unknowns and required traces
+- Required dynamic traces to disambiguate this batch:
+  - Confirm which entries in $14D6/$14E8 point into $18D4–$1BB4 and at what offsets. Capture ($FE),Y fetch sequences at $1316/$1338/$1348/$1350/$1376 to map token boundaries precisely. Evidence needed to classify each high-$Fx code path if any decoder exists for them.
+  - Observe $13AE/$13AF values as set by bytes like $41,$04; $43,$00; $50; $56… and confirm whether single-byte or two-byte instrument tokens are in use per instrument ID nibble ($1342–$134A).
+  - Log $13C0 note codes pulled from this region and compare to frequency table indices at $1411/$1470 via the $1294–$12A6 reset path.
+  - Verify whether $BD and $BE in this data actually reach the “tie” and “control-mask” paths at $135F–$1372.
+  - Check for any decoder handling of $F0–$F9/$FB–$FE beyond the already known FE usage; no static code for these control bytes has been shown in Batches 1–2.
+
+Candidate PAY IR
+- Structural IR skeleton (placeholders; do not fabricate note values)
+  - Voices: 3
+  - State per voice (AY/PAY-Light, no zero-page ownership):
+    - instr_id, instr_param
+    - note_index
+    - control_mask
+    - row_ticks, row_len
+    - slide_target, slide_step, freq_lo, freq_hi
+  - Event stream model (to be populated from traced parses of $18D4–$1BB4):
+    - Token INSTR(id, param?) when byte in $40..$5F
+    - Token NOTE(n) when byte < $BD
+    - Token TIE when byte == $BD
+    - Token CTRL_MASK_UPDATE(mask_src?) when byte > $BD (likely pairs like <val> then $BE)
+    - Token SPEED(seed) when byte < $40
+    - Token LOOP/REPEAT/JUMP(args) for high-$F? bytes once decoder is located and confirmed
+  - Tick procedure (mirrors prior batches; simplified for AY):
+    - If row_ticks == 0:
+      - Decode next tokens until NOTE/TIE or explicit row-advance seen
+      - Apply INSTR, SPEED, CTRL updates to state
+      - On NOTE: set note_index, reset slide accumulators, load base frequency from 12-bit SID-to-AY converter
+      - row_ticks = row_len (from instrument/row table)
+    - Else:
+      - row_ticks--
+    - Apply slide/portamento step to target freq if configured
+    - AY write-out:
+      - Tone periods from freq_lo/hi
+      - Channel enable from control_mask (GATE on → start/maintain envelope)
+      - Volume from soft ADSR/PWM approximation
+
+Notes
+- This batch likely contains substantial portions of the song’s pattern data, but static proof of how each control byte is interpreted requires linking via the pointer tables used at $1309–$1311. Please provide a trace of ($FE),Y reads and the A values at $1316/$1338/$1348/$1350/$1376 over several rows to solidify token boundaries and confirm semantics before finalizing PAY IR parsing rules.
