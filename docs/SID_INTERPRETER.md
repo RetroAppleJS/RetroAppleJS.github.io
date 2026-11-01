@@ -65,3 +65,23 @@ A batch of disassembly is only part of the file unless explicitly stated otherwi
 ## PAY Interpreter v0.5.1 — consolidated evidence export
 
 Use **Download Complete Report JSON** after tracing and GPT analysis to export a versioned `PAY_Complete_Report_v0.5.1` object containing the original PSID bytes, static and dynamic analysis, full raw captured events, musical IR, all completed GPT reports, the complete currently visible GPT output (including partial results), the guide text, and API diagnostics. The `completeness` field explicitly identifies missing analysis stages and dropped records. The exporter does not invent observations, trigger additional API requests, or include OpenAI API credentials. A source may have been truncated by the runtime trace's capacity bounds, and GPT interpretations remain hypotheses.
+
+## PAY-00.8B normative interpreter-to-compiler contract
+
+The earlier v0.5 and v0.5.1 chapters document source evidence and human-facing analysis; they are retained for compatibility. This new chapter is the **normative interface** for semantic transpilation.
+
+**See [`PAY_SEMANTIC_API_v0.8.1.md`](PAY_SEMANTIC_API_v0.8.1.md) for the complete field-level contract, type system, cross-reference validation, capability negotiation and conformance policy.**
+
+The Interpreter **MUST** export a versioned structured `PAY_Semantic_Program_v0.8.1` containing the original PSID identity, selected subtune, verified source bytes, trace completeness and dropped-record warnings, a source-addressed evidence graph, typed source variables and tables, and mechanisms specified as explicit state transitions with source clock, predicates, effects, dependencies, intent IDs and target lowering requirements.
+
+A semantic mechanism **MUST** distinguish a verified source fact, a reasoned interpretation, an unverified GPT hypothesis and an unresolved gap. Previous GPT analysis alone does not prove source behaviour. The Interpreter **MUST NOT** promote output-register trajectories, repeated audio frames or periodic SID state into recovered musical commands or loops without source-state/branch evidence.
+
+The Interpreter **MUST** provide each mechanism's operational inputs, state effects, precise ordering, candidate translation to AY with explicit losses and an actionable verification probe. If these are not known, it **MUST** export an unresolved typed operation and indicate which compiler actions it blocks. A model's claim of human validation is not proof of a human review.
+
+The Compiler **MUST** advertise supported, planned and unsupported lowering capabilities in its own versioned manifest. Every semantic intent is retained even when the Compiler cannot implement it. Unsupported intents **MUST NOT** be silently replaced by register-playback events. Omissions or approximations require reviewed explicit audible-loss contracts. The Compiler's primary deliverable is inspectable Apple II 6502 `.S` and a source-to-target intent map; direct conversion of traced register snapshots remains an acceptance/reference mode only.
+
+To learn from multiple PSID players, intent IDs are namespaced and independently versioned. New encodings/grammars do not redefine existing semantic intent meanings. Every added intent needs a grounded source fixture, explicit schema and capability/version negotiation test; a new unidentified opcode should initially become `unknown` plus a focused trace probe.
+
+### Initial case: Bomberland
+
+The 3,000-frame capture supports indirect data reads at `$1205/$1385/$13A7/$13EC` in three voice contexts but not yet a complete token grammar. A focused follow-up probe has **observed** pointer-byte writers `$11FB/$1200` feeding `$1205`, and `$137B/$1380` feeding `$1385/$13A7/$13EC` in 420 sampled fetch contexts, with exact effective pointer+Y matching. For `$1385`, the executed `$40` threshold branch is also verified. These findings do **not** yet resolve the source command meanings or loops. See `examples/PAY/Bomberland_source_pointer_dispatch_probe_v081.json`, `examples/PAY/Bomberland_pattern_grammar_observations_v081.json` and `docs/BOMBERLAND_GRAMMAR_FINDINGS_v081.md`. The next probe must link post-fetch branch paths to state-machine changes and command operand widths. This remains a source-semantic task rather than a register-stream optimisation.
