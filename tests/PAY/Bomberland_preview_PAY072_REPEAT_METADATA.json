@@ -1,0 +1,558 @@
+{
+  "format": "PAY_Light_Compiler_Output_v0.7.2",
+  "source": {
+    "title": "Bomberland (preview)",
+    "traceFrames": 300,
+    "observedRepetition": null
+  },
+  "configuration": {
+    "base": 24576,
+    "slot": 4,
+    "mode": "faithful",
+    "diagnosticVolume": null,
+    "endPolicy": "repeat-observed",
+    "irqHz": 50,
+    "cpuHz": 1023000,
+    "timerLatch": 20458,
+    "irqOwnership": "Apple Monitor soft vector $03FE + VIA1 Timer1 (exclusive)"
+  },
+  "entry": {
+    "init": 24576,
+    "tick": 24579,
+    "stop": 24582,
+    "irqInstall": 24585,
+    "irqRemove": 24588,
+    "irqHandler": 24824
+  },
+  "memory": {
+    "start": 24576,
+    "end": 31085,
+    "byteLength": 6510,
+    "stateStart": 31072,
+    "states": {
+      "FRAME_LO": 31072,
+      "FRAME_HI": 31073,
+      "NEXT_LO": 31074,
+      "NEXT_HI": 31075,
+      "NEXT_FRAME_LO": 31076,
+      "NEXT_FRAME_HI": 31077,
+      "PAY_DONE": 31078,
+      "PAY_TMP": 31079,
+      "IRQ_ACTIVE": 31080,
+      "OLD_IRQ_LO": 31081,
+      "OLD_IRQ_HI": 31082,
+      "OLD_ACR": 31083,
+      "IRQ_COUNT_LO": 31084,
+      "IRQ_COUNT_HI": 31085
+    },
+    "zeroPageOwnership": 0
+  },
+  "evidenceCaps": {
+    "codeVariants": 8,
+    "stateGraphNodes": 136
+  },
+  "metrics": {
+    "distinctActionFrames": 145,
+    "distinctUpdatePrograms": 82,
+    "registerWrites": 660,
+    "rawSIDWrites": 7198,
+    "sourceFrameCount": 300
+  },
+  "disclaimer": "Finite observed AY-state compilation, not recovered SID song grammar. Repeat-observed is user-requested audition, not a proven source music loop.",
+  "songReportSHA256": "bb7dd2a6319fd3743cc3145999a351d03d9e27af4c15cb55eb8f17300df4b035",
+  "firstActions": [
+    {
+      "frame": 7,
+      "updates": [
+        {
+          "reg": 4,
+          "value": 179
+        },
+        {
+          "reg": 5,
+          "value": 1
+        },
+        {
+          "reg": 10,
+          "value": 15
+        },
+        {
+          "reg": 7,
+          "value": 27
+        }
+      ]
+    },
+    {
+      "frame": 8,
+      "updates": [
+        {
+          "reg": 0,
+          "value": 17
+        },
+        {
+          "reg": 2,
+          "value": 68
+        },
+        {
+          "reg": 3,
+          "value": 2
+        },
+        {
+          "reg": 4,
+          "value": 0
+        },
+        {
+          "reg": 5,
+          "value": 0
+        },
+        {
+          "reg": 8,
+          "value": 15
+        },
+        {
+          "reg": 9,
+          "value": 15
+        },
+        {
+          "reg": 10,
+          "value": 0
+        },
+        {
+          "reg": 7,
+          "value": 53
+        }
+      ]
+    },
+    {
+      "frame": 9,
+      "updates": [
+        {
+          "reg": 0,
+          "value": 137
+        },
+        {
+          "reg": 1,
+          "value": 4
+        },
+        {
+          "reg": 4,
+          "value": 17
+        },
+        {
+          "reg": 10,
+          "value": 15
+        },
+        {
+          "reg": 7,
+          "value": 28
+        }
+      ]
+    },
+    {
+      "frame": 10,
+      "updates": [
+        {
+          "reg": 4,
+          "value": 0
+        },
+        {
+          "reg": 10,
+          "value": 0
+        },
+        {
+          "reg": 7,
+          "value": 60
+        }
+      ]
+    },
+    {
+      "frame": 15,
+      "updates": [
+        {
+          "reg": 0,
+          "value": 0
+        },
+        {
+          "reg": 1,
+          "value": 0
+        },
+        {
+          "reg": 2,
+          "value": 0
+        },
+        {
+          "reg": 3,
+          "value": 0
+        },
+        {
+          "reg": 8,
+          "value": 0
+        },
+        {
+          "reg": 9,
+          "value": 0
+        },
+        {
+          "reg": 7,
+          "value": 63
+        }
+      ]
+    },
+    {
+      "frame": 17,
+      "updates": [
+        {
+          "reg": 4,
+          "value": 103
+        },
+        {
+          "reg": 5,
+          "value": 2
+        },
+        {
+          "reg": 10,
+          "value": 15
+        },
+        {
+          "reg": 7,
+          "value": 27
+        }
+      ]
+    },
+    {
+      "frame": 18,
+      "updates": [
+        {
+          "reg": 0,
+          "value": 17
+        },
+        {
+          "reg": 2,
+          "value": 68
+        },
+        {
+          "reg": 3,
+          "value": 2
+        },
+        {
+          "reg": 4,
+          "value": 0
+        },
+        {
+          "reg": 5,
+          "value": 0
+        },
+        {
+          "reg": 8,
+          "value": 15
+        },
+        {
+          "reg": 9,
+          "value": 15
+        },
+        {
+          "reg": 10,
+          "value": 0
+        },
+        {
+          "reg": 7,
+          "value": 53
+        }
+      ]
+    },
+    {
+      "frame": 19,
+      "updates": [
+        {
+          "reg": 0,
+          "value": 137
+        },
+        {
+          "reg": 1,
+          "value": 4
+        },
+        {
+          "reg": 4,
+          "value": 17
+        },
+        {
+          "reg": 10,
+          "value": 15
+        },
+        {
+          "reg": 7,
+          "value": 28
+        }
+      ]
+    },
+    {
+      "frame": 20,
+      "updates": [
+        {
+          "reg": 0,
+          "value": 0
+        },
+        {
+          "reg": 1,
+          "value": 0
+        },
+        {
+          "reg": 2,
+          "value": 0
+        },
+        {
+          "reg": 3,
+          "value": 0
+        },
+        {
+          "reg": 4,
+          "value": 0
+        },
+        {
+          "reg": 8,
+          "value": 0
+        },
+        {
+          "reg": 9,
+          "value": 0
+        },
+        {
+          "reg": 10,
+          "value": 0
+        },
+        {
+          "reg": 7,
+          "value": 63
+        }
+      ]
+    },
+    {
+      "frame": 28,
+      "updates": [
+        {
+          "reg": 0,
+          "value": 17
+        },
+        {
+          "reg": 2,
+          "value": 34
+        },
+        {
+          "reg": 3,
+          "value": 1
+        },
+        {
+          "reg": 4,
+          "value": 17
+        },
+        {
+          "reg": 8,
+          "value": 15
+        },
+        {
+          "reg": 9,
+          "value": 15
+        },
+        {
+          "reg": 10,
+          "value": 15
+        },
+        {
+          "reg": 7,
+          "value": 21
+        }
+      ]
+    },
+    {
+      "frame": 29,
+      "updates": [
+        {
+          "reg": 0,
+          "value": 68
+        },
+        {
+          "reg": 1,
+          "value": 2
+        },
+        {
+          "reg": 4,
+          "value": 0
+        },
+        {
+          "reg": 10,
+          "value": 0
+        },
+        {
+          "reg": 7,
+          "value": 60
+        }
+      ]
+    },
+    {
+      "frame": 35,
+      "updates": [
+        {
+          "reg": 0,
+          "value": 0
+        },
+        {
+          "reg": 1,
+          "value": 0
+        },
+        {
+          "reg": 2,
+          "value": 0
+        },
+        {
+          "reg": 3,
+          "value": 0
+        },
+        {
+          "reg": 8,
+          "value": 0
+        },
+        {
+          "reg": 9,
+          "value": 0
+        },
+        {
+          "reg": 7,
+          "value": 63
+        }
+      ]
+    }
+  ],
+  "lastActions": [
+    {
+      "frame": 289,
+      "updates": [
+        {
+          "reg": 0,
+          "value": 208
+        },
+        {
+          "reg": 1,
+          "value": 3
+        },
+        {
+          "reg": 4,
+          "value": 244
+        },
+        {
+          "reg": 7,
+          "value": 56
+        }
+      ]
+    },
+    {
+      "frame": 291,
+      "updates": [
+        {
+          "reg": 2,
+          "value": 31
+        }
+      ]
+    },
+    {
+      "frame": 292,
+      "updates": [
+        {
+          "reg": 2,
+          "value": 0
+        },
+        {
+          "reg": 4,
+          "value": 0
+        },
+        {
+          "reg": 9,
+          "value": 0
+        },
+        {
+          "reg": 10,
+          "value": 0
+        },
+        {
+          "reg": 7,
+          "value": 62
+        }
+      ]
+    },
+    {
+      "frame": 295,
+      "updates": [
+        {
+          "reg": 0,
+          "value": 0
+        },
+        {
+          "reg": 1,
+          "value": 0
+        },
+        {
+          "reg": 8,
+          "value": 0
+        },
+        {
+          "reg": 7,
+          "value": 63
+        }
+      ]
+    },
+    {
+      "frame": 298,
+      "updates": [
+        {
+          "reg": 0,
+          "value": 17
+        },
+        {
+          "reg": 2,
+          "value": 61
+        },
+        {
+          "reg": 4,
+          "value": 17
+        },
+        {
+          "reg": 8,
+          "value": 15
+        },
+        {
+          "reg": 9,
+          "value": 15
+        },
+        {
+          "reg": 10,
+          "value": 15
+        },
+        {
+          "reg": 7,
+          "value": 21
+        }
+      ]
+    },
+    {
+      "frame": 299,
+      "updates": [
+        {
+          "reg": 0,
+          "value": 137
+        },
+        {
+          "reg": 1,
+          "value": 4
+        },
+        {
+          "reg": 4,
+          "value": 244
+        },
+        {
+          "reg": 7,
+          "value": 56
+        }
+      ]
+    }
+  ],
+  "binarySize": 6510
+}

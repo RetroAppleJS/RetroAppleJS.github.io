@@ -23,7 +23,13 @@ class Emitter{
 function validateReport(report){if(!report||report.format!=='PAY_Complete_Report_v0.5.1')throw Error('Expected PAY_Complete_Report_v0.5.1');const c=report.completeness||{},t=report.runtimeTrace,ir=report.musicalIR;if(!t||!ir||!c.runtimeAvailable||!c.musicalIRAvailable)throw Error('Complete report has no runtime trace / musical IR');const s=t.summary||{},frames=t.frameSnapshots||[];
  if(!Number.isInteger(s.framesCompleted)||s.framesCompleted<1||s.framesCompleted!==s.framesRequested||frames.length!==s.framesCompleted)throw Error('Runtime frames are missing or incomplete');
  if(s.errors?.length||t.musicalEvents?.some(e=>e?.type==='ERROR'))throw Error('Runtime execution reported errors');
- const drops=c.droppedRecords||{};if(Object.values(drops).some(n=>Number(n)>0)||s.dropSidEvents>0)throw Error('Runtime evidence was truncated; cannot compile as complete');
+ const drops=c.droppedRecords||{};
+ // PAY-00.7.2: only non-audio explanatory indexes may be capped. The compiler
+ // consumes frameSnapshots, NOT instruction variants or the state graph.
+ const advisoryCaps=['codeVariants','stateGraphNodes','stateGraphEdges'];
+ const fatalCapped=Object.entries(drops).filter(([key,value])=>Number(value)>0&&!advisoryCaps.includes(key));
+ if(fatalCapped.length||s.dropSidEvents>0||Number(ir.metrics?.droppedSIDWrites)>0)throw Error('Audio/runtime evidence was truncated: '+fatalCapped.map(([k,v])=>k+'='+v).join(', '));
+ if(Array.isArray(t.sidEvents)&&t.sidEvents.length!==s.sidWrites)throw Error('SID register history length differs from recorded write count');
  if(report.source?.magic!=='PSID')throw Error('Only bounded PSID traces supported');
  if(t.source?.title!==report.source.title||ir.source?.title!==report.source.title)throw Error('Source, runtime trace and musical IR titles disagree');
  if(!Array.isArray(report.source.sidBases)||report.source.sidBases.length!==1||report.source.sidBases[0]!==0xD400)throw Error('PAY-00.6 supports only SID1 three voices (multi-SID requires allocation)');
@@ -89,8 +95,8 @@ function compile(report,options={}){
  function leave(){e.emit('PLA');e.emit('TAY');e.emit('PLA');e.emit('TAX');e.emit('PLA');e.emit('RTS');}
  function setNext(i){if(i<actions.length){h('PAY_EVENT_'+i,'lo');e.abs('STA_ABS','NEXT_LO');h('PAY_EVENT_'+i,'hi');e.abs('STA_ABS','NEXT_HI');put('NEXT_FRAME_LO',actions[i].frame&255);put('NEXT_FRAME_HI',actions[i].frame>>8);}else{put('NEXT_FRAME_LO',255);put('NEXT_FRAME_HI',255);}}
  e.label('PAY_RESET_WINDOW');for(const name of ['FRAME_LO','FRAME_HI','PAY_DONE'])zero(name);setNext(0);e.emit('RTS');
- e.label('PAY_INIT_IMPL');e.emit('PHP');e.emit('SEI');enter();w(3,0xff);w(2,0x07);w(0,0x04);e.abs('JSR','PAY_MUTE');e.abs('JSR','PAY_RESET_WINDOW');e.emit('PLA');e.emit('TAY');e.emit('PLA');e.emit('TAX');e.emit('PLA');e.emit('PLP');e.emit('RTS');
- e.label('PAY_TICK_IMPL');enter();e.abs('LDA_ABS','PAY_DONE');e.branch('BEQ','PAY_CHECK_END');j('PAY_RETURN');
+ e.label('PAY_INIT_IMPL');e.lines.push('  ; Preserve caller registers and P; configure VIA0 and reset AY/state.');e.emit('PHP');e.emit('SEI');enter();w(3,0xff);w(2,0x07);w(0,0x04);e.abs('JSR','PAY_MUTE');e.abs('JSR','PAY_RESET_WINDOW');e.emit('PLA');e.emit('TAY');e.emit('PLA');e.emit('TAX');e.emit('PLA');e.emit('PLP');e.emit('RTS');
+ e.label('PAY_TICK_IMPL');e.lines.push('  ; Non-IRQ entry: schedule exactly one captured 50/60Hz frame.');enter();e.abs('LDA_ABS','PAY_DONE');e.branch('BEQ','PAY_CHECK_END');j('PAY_RETURN');
  e.label('PAY_CHECK_END');e.abs('LDA_ABS','FRAME_HI');e.emit('CMP_IMM',frames.length>>8);e.branch('BNE','PAY_CHECK_EVENT');e.abs('LDA_ABS','FRAME_LO');e.emit('CMP_IMM',frames.length&255);e.branch('BNE','PAY_CHECK_EVENT');j('PAY_AT_END');
  e.label('PAY_CHECK_EVENT');e.abs('LDA_ABS','FRAME_HI');e.abs('CMP_ABS','NEXT_FRAME_HI');e.branch('BNE','PAY_ADVANCE');e.abs('LDA_ABS','FRAME_LO');e.abs('CMP_ABS','NEXT_FRAME_LO');e.branch('BNE','PAY_ADVANCE');e.abs('JSR','PAY_DISPATCH');
  e.label('PAY_ADVANCE');e.abs('INC_ABS','FRAME_LO');e.branch('BNE','PAY_RETURN');e.abs('INC_ABS','FRAME_HI');
@@ -102,18 +108,22 @@ function compile(report,options={}){
  // Absolute RAM JMP indirect is legal on NMOS 6502, zero-page-free, and not self-modifying.
  e.label('PAY_DISPATCH');e.abs('JMP_IND','NEXT_LO');
  // IRQ service is entered via Apple Monitor soft vector $03FE; ROM saved interrupted A in system $45.
- e.label('PAY_IRQ_HANDLER');e.emit('TXA');e.emit('PHA');e.emit('TYA');e.emit('PHA');e.emit('LDA_ABS',TIMER+0x0d);e.emit('AND_IMM',0x40);e.branch('BNE','PAY_IRQ_OWNED');j('PAY_IRQ_FOREIGN');
+ e.label('PAY_IRQ_HANDLER');e.lines.push('  ; Apple II Monitor soft IRQ entry: interrupted A held at system $45.');e.emit('TXA');e.emit('PHA');e.emit('TYA');e.emit('PHA');e.emit('LDA_ABS',TIMER+0x0d);e.emit('AND_IMM',0x40);e.branch('BNE','PAY_IRQ_OWNED');j('PAY_IRQ_FOREIGN');
  e.label('PAY_IRQ_OWNED');e.emit('LDA_ABS',TIMER+4);e.abs('JSR','PAY_TICK');e.abs('INC_ABS','IRQ_COUNT_LO');e.branch('BNE','PAY_IRQ_EXIT');e.abs('INC_ABS','IRQ_COUNT_HI');
  e.label('PAY_IRQ_EXIT');e.emit('PLA');e.emit('TAY');e.emit('PLA');e.emit('TAX');e.emit('LDA_ABS',0x0045);e.emit('RTI');
  e.label('PAY_IRQ_FOREIGN');e.emit('PLA');e.emit('TAY');e.emit('PLA');e.emit('TAX');e.emit('LDA_ABS',0x0045);e.abs('JMP_IND','OLD_IRQ_LO');
- e.label('PAY_IRQ_INSTALL_IMPL');e.emit('PHP');e.emit('SEI');enter();e.abs('LDA_ABS','IRQ_ACTIVE');e.branch('BEQ','PAY_IRQ_START');j('PAY_IRQ_START_DONE');
+ e.label('PAY_IRQ_INSTALL_IMPL');e.lines.push('  ; Install soft vector, arm VIA1 T1, then enable 6502 IRQ with CLI.');e.emit('PHP');e.emit('SEI');enter();e.abs('LDA_ABS','IRQ_ACTIVE');e.branch('BEQ','PAY_IRQ_START');j('PAY_IRQ_START_DONE');
  e.label('PAY_IRQ_START');e.abs('LDA_ABS',softIRQ);e.abs('STA_ABS','OLD_IRQ_LO');e.abs('LDA_ABS',softIRQ+1);e.abs('STA_ABS','OLD_IRQ_HI');e.abs('LDA_ABS',TIMER+0x0b);e.abs('STA_ABS','OLD_ACR');
  put('IRQ_ACTIVE',1);zero('IRQ_COUNT_LO');zero('IRQ_COUNT_HI');
  // Install handler before enabling timer. Hook only the Monitor soft vector.
  h('PAY_IRQ_HANDLER','lo');e.emit('STA_ABS',softIRQ);h('PAY_IRQ_HANDLER','hi');e.emit('STA_ABS',softIRQ+1);
  w(0x8e,0x40);e.emit('LDA_ABS',TIMER+4);e.abs('LDA_ABS','OLD_ACR');e.emit('ORA_IMM',0x40);e.emit('STA_ABS',TIMER+0x0b);
  w(0x84,timerLatch&255);w(0x85,timerLatch>>8);w(0x8e,0xc0);
- e.label('PAY_IRQ_START_DONE');e.emit('PLA');e.emit('TAY');e.emit('PLA');e.emit('TAX');e.emit('PLA');e.emit('PLP');e.emit('RTS');
+ // The installer must enable CPU maskable interrupts after restoring the caller's
+ // saved P register. PHP/SEI ... PLP alone would restore I=1 when Applesoft/
+ // Monitor entered with interrupts disabled, leaving VIA T1 configured but idle.
+ // Intentional API side effect: PAY_IRQ_INSTALL returns with I=0 (CLI).
+ e.label('PAY_IRQ_START_DONE');e.lines.push('  ; CLI is deliberate: PLP may restore I=1 from Applesoft.');e.emit('PLA');e.emit('TAY');e.emit('PLA');e.emit('TAX');e.emit('PLA');e.emit('PLP');e.emit('CLI');e.emit('RTS');
  e.label('PAY_IRQ_REMOVE_IMPL');e.emit('PHP');e.emit('SEI');enter();e.abs('JSR','PAY_IRQ_OFF_CORE');e.emit('PLA');e.emit('TAY');e.emit('PLA');e.emit('TAX');e.emit('PLA');e.emit('PLP');e.emit('RTS');
  e.label('PAY_IRQ_OFF_CORE');e.abs('LDA_ABS','IRQ_ACTIVE');e.branch('BNE','PAY_IRQ_OFF_ACTIVE');e.emit('RTS');
  e.label('PAY_IRQ_OFF_ACTIVE');w(0x8e,0x40);e.emit('LDA_ABS',TIMER+4);e.abs('LDA_ABS','OLD_ACR');e.emit('STA_ABS',TIMER+0x0b);
@@ -123,8 +133,8 @@ function compile(report,options={}){
  e.label('PAY_IRQ_OFF_FINISH');zero('IRQ_ACTIVE');e.emit('RTS');
  // Reuse identical register-update fragments as finite code subroutines: verified data dedup, not inferred loop.
  const groupMap=new Map();for(const a of actions){const key=JSON.stringify(a.updates);if(!groupMap.has(key))groupMap.set(key,groupMap.size);}
- actions.forEach((a,i)=>{e.label('PAY_EVENT_'+i);e.abs('JSR','PAY_UPDATE_'+groupMap.get(JSON.stringify(a.updates)));setNext(i+1);e.emit('RTS');});
- for(const [key,i] of groupMap){e.label('PAY_UPDATE_'+i);for(const u of JSON.parse(key)){e.emit('LDX_IMM',u.reg);e.emit('LDA_IMM',u.value);e.abs('JSR','PAY_AY_WRITE');}e.emit('RTS');}
+ actions.forEach((a,i)=>{e.label('PAY_EVENT_'+i);e.lines.push('  ; Captured frame '+a.frame+' updates: '+a.updates.map(u=>'AY R'+u.reg+'='+hex(u.value,2)).join(', '));e.abs('JSR','PAY_UPDATE_'+groupMap.get(JSON.stringify(a.updates)));setNext(i+1);e.emit('RTS');});
+ for(const [key,i] of groupMap){e.label('PAY_UPDATE_'+i);e.lines.push('  ; Shared AY-write fragment, compiler deduplicated identical evidence.');for(const u of JSON.parse(key)){e.emit('LDX_IMM',u.reg);e.emit('LDA_IMM',u.value);e.abs('JSR','PAY_AY_WRITE');}e.emit('RTS');}
  // RAM state is placed after code, aligned to avoid NMOS JMP ($xxFF) high-byte wrap bug.
  let padding=[];while((base+e.b.length+padding.length)%16!==0)padding.push(0);if((base+e.b.length+padding.length)%256===0xf0)padding.push(...new Array(16).fill(0));if(padding.length)e.bytes('PAY_ALIGN_PADDING',padding);
  e.bytes('PAY_STATE',new Array(14).fill(0));const stateStart=e.labels.PAY_STATE;
@@ -132,11 +142,13 @@ function compile(report,options={}){
  if((e.labels.NEXT_LO&255)===255||(e.labels.OLD_IRQ_LO&255)===255)throw Error('JMP indirection pointer would trigger 6502 page wrap');
  const obj=e.finish();if(base+obj.bytes.length>0xc000)throw Error('Native image crosses Apple II I/O / ROM boundary');
  // Known unsupported edge cases are flagged in metadata rather than presented as recovered source grammar.
- const asmHeader=[`; PAY-00.7 native PAY-Light; executable 6502, absolute state, no PAY-owned zero-page`,`; SOURCE ${JSON.stringify(report.source.title||'')}  ${frames.length} observed frames`,`; Physical slot=${slot} VIA0=${hex(VIA)} VIA1=${hex(TIMER)}`,`; Source fidelity=${mode}; endPolicy=${endPolicy}; ${irqHz}Hz, T1 latch=${hex(timerLatch)}`,`; INIT=${hex(base)} TICK=${hex(base+3)} STOP=${hex(base+6)} IRQ_INSTALL=${hex(base+9)} IRQ_REMOVE=${hex(base+12)}`,`; Repeated captured AY updates are deduplicated; original source looping/pattern grammar NOT inferred.`,`; IRQ owns VIA1 T1 and Apple Monitor soft vector $03FE/$03FF while installed.`,`; Environment prerequisites: Apple II+ ROM Monitor IRQ convention (A saved at system $45); no other T1 owner.`,`; Does NOT own PAY zero-page; Monitor uses $45 (not PAY-owned). No cycle-accurate SID/AY analog conversion.`,``,];
+ const advisoryDrops=Object.fromEntries(Object.entries(report.completeness?.droppedRecords||{}).filter(([key,value])=>Number(value)>0));
+ const asmHeader=[`; PAY-00.7.2 PAY-Light (SOURCE-FIRST, BOUNDED TRACE); absolute state, no PAY-owned zero-page`,`; SOURCE ${JSON.stringify(report.source.title||'')}  ${frames.length} observed frames`,
+`; ANALYSIS LIMITS ${JSON.stringify(advisoryDrops)}; capped code/state annotations NOT used for AY frame compilation`,`; Physical slot=${slot} VIA0=${hex(VIA)} VIA1=${hex(TIMER)}`,`; Source fidelity=${mode}; endPolicy=${endPolicy}; ${irqHz}Hz, T1 latch=${hex(timerLatch)}`,`; INIT=${hex(base)} TICK=${hex(base+3)} STOP=${hex(base+6)} IRQ_INSTALL=${hex(base+9)} IRQ_REMOVE=${hex(base+12)}`,`; Repeated captured AY updates are deduplicated; original source looping/pattern grammar NOT inferred.`,`; IRQ owns VIA1 T1 and Apple Monitor soft vector $03FE/$03FF while installed.`,`; Environment prerequisites: Apple II+ ROM Monitor IRQ convention (A saved at system $45); no other T1 owner.`,`; Does NOT own PAY zero-page; Monitor uses $45 (not PAY-owned). No cycle-accurate SID/AY analog conversion.`,`; IMPORTANT: PAY_IRQ_INSTALL explicitly executes CLI after PLP so a pre-disabled CPU can accept VIA1 T1 IRQs.`,`; Verify frame/IRQ counters from compile metadata; no synthetic interrupt delivery is assumed.`,``,];
  const aliases=keys.map((n,i)=>n+' = PAY_STATE'+(i?'+'+i:'')).join('\n');
  const symbolic=asmHeader.join('\n')+'ORG '+hex(base)+'\n\n'+aliases+'\n\n'+e.lines.join('\n')+'\n';
  const db=asmHeader.join('\n')+'ORG '+hex(base)+'\nPAY_INIT:\n'+Array.from({length:Math.ceil(obj.bytes.length/16)},(_,i)=>' DB '+Array.from(obj.bytes.slice(i*16,i*16+16)).map(b=>hex(b,2)).join(',')).join('\n')+'\n';
- return {format:'PAY_Light_Compiler_Output_v0.7',source:{title:report.source.title,traceFrames:frames.length,observedRepetition:report.musicalIR?.observedRepetition||null},configuration:{base,slot,mode,diagnosticVolume:mode==='diagnostic'?level:null,endPolicy,irqHz,cpuHz,timerLatch,irqOwnership:'Apple Monitor soft vector $03FE + VIA1 Timer1 (exclusive)'},entry:{init:base,tick:base+3,stop:base+6,irqInstall:base+9,irqRemove:base+12,irqHandler:obj.labels.PAY_IRQ_HANDLER},memory:{start:base,end:base+obj.bytes.length-1,byteLength:obj.bytes.length,stateStart,states:Object.fromEntries(keys.map(k=>[k,obj.labels[k]])),zeroPageOwnership:0},actions,observedMotifs:motifs,observedPatterns:patterns,metrics:{distinctActionFrames:actions.length,distinctUpdatePrograms:groupMap.size,registerWrites:actions.reduce((n,a)=>n+a.updates.length,0),rawSIDWrites:report.runtimeTrace.summary.sidWrites,sourceFrameCount:frames.length},asm:symbolic,binaryAssembly:db,binary:obj.bytes,disclaimer:'Finite observed AY-state compilation, not recovered SID song grammar. Repeat-observed is user-requested audition, not a proven source music loop.'};
+ return {format:'PAY_Light_Compiler_Output_v0.7.2',source:{title:report.source.title,traceFrames:frames.length,observedRepetition:report.musicalIR?.observedRepetition||null},configuration:{base,slot,mode,diagnosticVolume:mode==='diagnostic'?level:null,endPolicy,irqHz,cpuHz,timerLatch,irqOwnership:'Apple Monitor soft vector $03FE + VIA1 Timer1 (exclusive)'},entry:{init:base,tick:base+3,stop:base+6,irqInstall:base+9,irqRemove:base+12,irqHandler:obj.labels.PAY_IRQ_HANDLER},memory:{start:base,end:base+obj.bytes.length-1,byteLength:obj.bytes.length,stateStart,states:Object.fromEntries(keys.map(k=>[k,obj.labels[k]])),zeroPageOwnership:0},actions,observedMotifs:motifs,observedPatterns:patterns,evidenceCaps:advisoryDrops,metrics:{distinctActionFrames:actions.length,distinctUpdatePrograms:groupMap.size,registerWrites:actions.reduce((n,a)=>n+a.updates.length,0),rawSIDWrites:report.runtimeTrace.summary.sidWrites,sourceFrameCount:frames.length},asm:symbolic,binaryAssembly:db,binary:obj.bytes,disclaimer:'Finite observed AY-state compilation, not recovered SID song grammar. Repeat-observed is user-requested audition, not a proven source music loop.'};
 }
 return {compile,validateReport,frameRegs,makeActions,finiteMotifs,observedPatterns,hex};
 });
