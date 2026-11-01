@@ -1,0 +1,137 @@
+{
+  "format": "PAY_Compiler_Regression_Manifest_v0.6-draft",
+  "purpose": "Source-grounded reference expectations for future PAY compiler regression tests; not compiled PAY output.",
+  "sourceReports": {
+    "selfmod_gate": {
+      "sourceTitle": "SELFMOD_GATE",
+      "sourceSID_SHA256": "f8eb52e5db24996daf19097ed6c16ebe94dcab5341cba64cdfcb8f2dd962356f",
+      "requestedFrames": 300,
+      "completedFrames": 300,
+      "sidWrites": 300,
+      "sidWriteAddresses": {
+        "$D404": 300
+      },
+      "codePatchWrites": 300,
+      "indirectReads": 0,
+      "observedFrameEndPeriod": 2,
+      "semanticEventTypes": {
+        "GATE_ON_UNPITCHED": 150,
+        "GATE_OFF_OBSERVED": 150
+      },
+      "sourceMasterVolumeRegisterValues": [
+        0
+      ],
+      "sourceVolumeCaveat": "No observed nonzero SID master volume; an audible AY translation is an explicit, nonfaithful test mode.",
+      "tests": {
+        "frames_completed": true,
+        "no_drop": true,
+        "no_runtime_error": true,
+        "sid_write_consistency": true,
+        "gate_edge_consistency": true,
+        "semantic_event_consistency": true,
+        "gpt_completed": true,
+        "original_sid_embedded": true,
+        "selfmod_site": true,
+        "two_jsr_variants": true,
+        "gate_alternates": true,
+        "zero_note_candidates": true
+      },
+      "testsPassed": 12,
+      "testsTotal": 12
+    },
+    "pitched": {
+      "sourceTitle": "PITCHED",
+      "sourceSID_SHA256": "fee212b9a9a97eb1c68aab3a471e8883cff4b17e34506f411db2d7bc96a1b4b8",
+      "requestedFrames": 300,
+      "completedFrames": 300,
+      "sidWrites": 901,
+      "sidWriteAddresses": {
+        "$D404": 301,
+        "$D400": 300,
+        "$D401": 300
+      },
+      "codePatchWrites": 0,
+      "indirectReads": 0,
+      "observedFrameEndPeriod": 1,
+      "semanticEventTypes": {
+        "NOTE_ON_CANDIDATE": 1
+      },
+      "sourceMasterVolumeRegisterValues": [
+        0
+      ],
+      "sourceVolumeCaveat": "No observed nonzero SID master volume; an audible AY translation is an explicit, nonfaithful test mode.",
+      "tests": {
+        "frames_completed": true,
+        "no_drop": true,
+        "no_runtime_error": true,
+        "sid_write_consistency": true,
+        "gate_edge_consistency": true,
+        "semantic_event_consistency": true,
+        "gpt_completed": true,
+        "original_sid_embedded": true,
+        "no_code_patch": true,
+        "ay_period133": true,
+        "single_pitch_candidate": true
+      },
+      "testsPassed": 11,
+      "testsTotal": 11
+    },
+    "indirect_read": {
+      "sourceTitle": "INDIRECT_READ",
+      "sourceSID_SHA256": "78fd68104bc7142502c016ea5b100d272f3021f3b66eec2a866372fb3835131b",
+      "requestedFrames": 300,
+      "completedFrames": 300,
+      "sidWrites": 900,
+      "sidWriteAddresses": {
+        "$D400": 300,
+        "$D401": 300,
+        "$D404": 300
+      },
+      "codePatchWrites": 0,
+      "indirectReads": 300,
+      "observedFrameEndPeriod": 1,
+      "semanticEventTypes": {
+        "NOTE_ON_CANDIDATE": 1
+      },
+      "sourceMasterVolumeRegisterValues": [
+        0
+      ],
+      "sourceVolumeCaveat": "No observed nonzero SID master volume; an audible AY translation is an explicit, nonfaithful test mode.",
+      "tests": {
+        "frames_completed": true,
+        "no_drop": true,
+        "no_runtime_error": true,
+        "sid_write_consistency": true,
+        "gate_edge_consistency": true,
+        "semantic_event_consistency": true,
+        "gpt_completed": true,
+        "original_sid_embedded": true,
+        "indirect_300": true,
+        "constant_read_all": true,
+        "ay_period132": true
+      },
+      "testsPassed": 11,
+      "testsTotal": 11
+    }
+  },
+  "compilerConstraints": {
+    "ownZeroPageBytes": 0,
+    "doNotPreserve6502SelfModificationAsRequirement": true,
+    "doNotEquateRepeatedSIDRegisterWritesWithRepeatedNotes": true,
+    "doNotInferCompleteSongLoopFromFrameEndStateRepeat": true,
+    "doNotForceAudibleOutputInFaithfulMode": true,
+    "preserveObservedEventOrder": true,
+    "traceSamplingFrames": 300
+  },
+  "futureCoverageGaps": [
+    "Audible source fixture with nonzero master volume and suitable pulse width/ADSR",
+    "Multiple note-onsets and offs",
+    "Multivoice song",
+    "Looped/nested pattern and instrument effects",
+    "Native Apple II Mockingboard IRQ and zero-page/Applesoft tests"
+  ],
+  "overall": {
+    "passed": 34,
+    "total": 34
+  }
+}
