@@ -61,3 +61,7 @@ Provide a concise Markdown report with:
 - **Candidate PAY IR:** minimal structured pseudocode or JSON-like musical events/state (do not fabricate missing note values).
 
 A batch of disassembly is only part of the file unless explicitly stated otherwise. Keep references local and do not claim complete song analysis based on one batch.
+
+## PAY Interpreter v0.5.1 — consolidated evidence export
+
+Use **Download Complete Report JSON** after tracing and GPT analysis to export a versioned `PAY_Complete_Report_v0.5.1` object containing the original PSID bytes, static and dynamic analysis, full raw captured events, musical IR, all completed GPT reports, the complete currently visible GPT output (including partial results), the guide text, and API diagnostics. The `completeness` field explicitly identifies missing analysis stages and dropped records. The exporter does not invent observations, trigger additional API requests, or include OpenAI API credentials. A source may have been truncated by the runtime trace's capacity bounds, and GPT interpretations remain hypotheses.

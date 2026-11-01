@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>PAY Interpreter v0.5 — PSID → musical-state extraction</title>
+<title>PAY Interpreter v0.5.1 — Complete Report Export</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1120;--card:#141f34;--card2:#101b30;--line:#2d405e;--txt:#edf3fc;--muted:#aabbd0;--blue:#78baff;--green:#66e0b2;--danger:#ffa5a5}
 *{box-sizing:border-box}
@@ -45,7 +45,7 @@ dialog::backdrop{background:#02060cbd}dialog h2{font-size:21px}
 <body>
 <main>
 <header>
-<span class="tag">RETROAPPLEJS · EXPERIMENTAL PAY-00.5</span>
+<span class="tag">RETROAPPLEJS · PAY-00.5 · v0.5.1</span>
 <h1>PAY Interpreter</h1>
 <p class="subtitle">PSID → static disassembly + bounded 6502 runtime / self-modifying-code trace → GPT-assisted musical interpretation. Self-contained browser tool; no external JavaScript or framework required. This phase additionally extracts a trace-grounded PAY musical intermediate representation (IR), read-table evidence, and observed state transitions. <strong>It does not yet produce playable PAY machine code.</strong></p>
 </header>
@@ -57,7 +57,9 @@ dialog::backdrop{background:#02060cbd}dialog h2{font-size:21px}
    <label for="sidFile">Source .sid file</label>
    <input id="sidFile" type="file" accept=".sid,.psid,.rsid,application/octet-stream">
    <p class="small">Reads the binary locally. Static CFG uses official NMOS 6502 instructions. Bounded execution below supports PSID with normal subroutine INIT/PLAY; RSID and C64-specific IRQ hardware remain unsupported.</p>
-   <div class="actions"><button id="saveAsm" disabled>Export annotated .asm</button><button id="saveJson" disabled>Export analysis .json</button></div>
+   <div class="actions"><button id="saveComplete" class="primary" disabled>Download Complete Report JSON</button></div>
+   <p class="small" id="completeState" role="status" aria-live="polite">Load a SID to enable the consolidated export. Run a trace and GPT analysis first to include those findings.</p>
+   <div class="actions"><button id="saveAsm" disabled>Export annotated .asm</button><button id="saveJson" disabled>Export compact analysis .json</button></div>
   </section>
   <section class="card">
    <h2>2 · Execute and trace 6502</h2>
@@ -384,6 +386,7 @@ function formatFile(h,res){
 }
 let traceInProgress=false,traceCancel=false;
 let current=null,guide=$('fallback-doc').textContent.trim(),guideSource='embedded',guideVersion=0,reportParts=[],aborter=null;
+const apiHistory=[]; // Diagnostics only. Never store API keys, authorization headers, or request bodies.
 function setStatus(message,kind='info'){const el=$('status');el.textContent=message;el.dataset.kind=kind;}
 function fmt(n){return Number(n).toLocaleString('en-US');}
 function textFile(content,name,type='text/plain;charset=utf-8'){
@@ -408,7 +411,8 @@ function updateSummary(h,r){
  $('summary').textContent=`${h.magic} v${h.version} · ${h.title||'(untitled)'} · ${fmt(h.payload.length)} payload bytes · ${fmt(r.code.size)} instruction starts · ${fmt(r.soundCount)} direct SID write sites · ${fmt(r.warnings.length)} warnings`;
  $('warnings').value=r.warnings.join('\n')||'No additional warnings (static analysis is still incomplete by design).';
  $('asm').value=formatFile(h,r);
- $('send').disabled=false;$('saveAsm').disabled=false;$('saveJson').disabled=false;
+ $('send').disabled=false;$('saveAsm').disabled=false;$('saveJson').disabled=false;$('saveComplete').disabled=false;
+ $('completeState').textContent='Static analysis ready. Run 6502 trace and GPT analysis to include those findings; export is also available for partial runs.';
  $('batchInfo').textContent=`Estimated GPT requests: ${batchRows(r.rows).length} batch(es); one billable request per batch.`;
  $('gpt').value='';reportParts=[];
  $('runTrace').disabled=h.magic!=='PSID';$('saveTrace').disabled=true;$('saveReport').disabled=true;$('saveIR').disabled=true;$('saveReads').disabled=true;$('irText').value='';$('irState').textContent='Run a 6502 trace to extract PAY-IR.';
@@ -461,7 +465,9 @@ function responseText(json){
 // Log only public operational metadata; never log a bearer token, request body or headers.
 function apiLog(message){
  const output=$('apiLog');
- output.value += `[${new Date().toLocaleTimeString()}] ${message}\n`;
+ const entry=`[${new Date().toLocaleTimeString()}] ${message}`;
+ apiHistory.push(entry); // Untruncated log, scoped to this browser session. No credential-bearing input is logged.
+ output.value += entry+'\n';
  if(output.value.length>16000)output.value=output.value.slice(-14000);
  output.scrollTop=output.scrollHeight;
 }
@@ -614,6 +620,7 @@ async function runGPT(){
    apiLog(`Analysis batch ${i+1}/${batches.length}: readable response received (${result.length} chars).`);
    previousSummary=reportParts.slice(-2).map(o=>`Batch ${o.batch}: ${o.text.slice(0,4800)}`).join('\n\n').slice(-8500);
    $('gpt').value=reportParts.map(p=>`# Batch ${p.batch}/${batches.length}\n\n${p.text}`).join('\n\n---\n\n');
+   $('completeState').textContent=`${reportParts.length} GPT batch(es) completed. Complete JSON export includes full text and runtime evidence.`;
   }
   setStatus(`GPT finished ${batches.length} batch(es). Review each finding against the annotated source.`,'success');
  }catch(e){setStatus(e.name==='AbortError'?`Cancelled after ${reportParts.length} completed batch(es).`:`GPT stopped after ${reportParts.length}/${batches.length} batch(es): ${e.message}`,'error');}
@@ -1121,7 +1128,7 @@ async function runTraceUI(){
  if(aborter)throw Error('An API call is in progress; cancel it before starting a trace.');
  if(traceInProgress)throw Error('A trace is already running.');
  const source=current;traceInProgress=true;traceCancel=false;
- const controls=['runTrace','sidFile','send','testApi','traceFrames','subtune'];for(const id of controls)$(id).disabled=true;
+ const controls=['runTrace','sidFile','send','testApi','traceFrames','subtune','saveComplete'];for(const id of controls)$(id).disabled=true;
  $('stopTrace').disabled=false;$('saveTrace').disabled=true;$('saveReport').disabled=true;
  $('traceState').textContent='Starting INIT and PLAY execution…';
  try{
@@ -1132,6 +1139,7 @@ async function runTraceUI(){
   $('irText').value=PAYIRReport(source.musicalIR);
   $('irState').textContent=`${fmt(source.musicalIR.metrics.semanticEvents)} semantic events · ${fmt(source.musicalIR.metrics.indirectReads)} indirect payload reads · ${source.musicalIR.observedRepetition?('sound-state period '+source.musicalIR.observedRepetition.period+' frames (observed only)'):'no verified sound-state period'}; ${source.musicalIR.metrics.noteCandidates} pitched-state candidate(s).`;
   $('saveIR').disabled=false;$('saveReads').disabled=false;
+  $('completeState').textContent='Runtime trace and musical IR ready for consolidated export. GPT analysis is optional.';
   source.mergedAsm=mergePAYAssembly(source.h,source.res,t);
   source.mergedRows=source.mergedAsm.split('\n').map(s=>({text:s}));
   $('asm').value=source.mergedAsm;
@@ -1143,20 +1151,95 @@ async function runTraceUI(){
   $('batchInfo').textContent=`Updated GPT input: ${batchRows(source.mergedRows).length} annotated code batch(es), each with runtime trace context.`;
   $('saveTrace').disabled=false;$('saveReport').disabled=false;
   setStatus(s.errors.length?`Trace stopped: ${s.errors[0]}. Partial evidence retained.`:`Runtime tracing completed: ${s.framesCompleted} frames. Annotated assembly now includes live code and register events.`,s.errors.length?'error':'success');
- }finally{traceInProgress=false;for(const id of controls)$(id).disabled=false;$('stopTrace').disabled=true;$('runTrace').disabled=!current||current.h.magic!=='PSID';}
+ }finally{traceInProgress=false;for(const id of controls)$(id).disabled=false;$('stopTrace').disabled=true;$('runTrace').disabled=!current||current.h.magic!=='PSID';$('saveComplete').disabled=!current;}
 }
 
+// PAY v0.5.1 Complete Report: deterministic snapshot, no fresh API requests.
+// Source bytes are optional for manually constructed test contexts; for GUI imports
+// the original .sid is embedded in base64 for exact reproducibility.
+function payBase64(bytes){
+ const abc='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+ let s='';for(let i=0;i<bytes.length;i+=3){
+  const a=bytes[i],b=i+1<bytes.length?bytes[i+1]:0,c=i+2<bytes.length?bytes[i+2]:0;
+  s+=abc[a>>2]+abc[((a&3)<<4)|(b>>4)]+(i+1<bytes.length?abc[((b&15)<<2)|(c>>6)]:'=')+(i+2<bytes.length?abc[c&63]:'=');
+ }return s;
+}
+function buildCompletePAYReport(source=current){
+ if(!source)throw Error('Load a SID file before exporting.');
+ if(traceInProgress)throw Error('Stop or finish the active 6502 trace before exporting a complete snapshot.');
+ const h=source.h,r=source.res,t=source.trace||null;
+ const hasGPT=reportParts.length>0,visibleGPT=$('gpt').value||'';
+ const traceJSON=t?toPAYTraceJSON(h,t):null,ir=source.musicalIR||null;
+ const dropped=t?{
+  sidWrites:t.obs.droppedEvents||0,
+  dataReads:t.obs.droppedDataReads||0,
+  flowEdges:t.obs.droppedFlowEdges||0,
+  codeVariants:t.obs.droppedVariants||0,
+  stateGraphNodes:ir?.metrics?.truncatedSoundStates||0,
+  stateGraphEdges:ir?.metrics?.truncatedSoundEdges||0
+ }:null;
+ const missing=[];
+ if(!t)missing.push('Runtime trace has not been run');
+ else if(t.obs.errors.length)missing.push('Runtime trace was interrupted or returned execution errors');
+ if(!ir)missing.push('Musical IR unavailable (requires a completed or partial trace)');
+ if(!hasGPT)missing.push('No completed GPT interpretation batches');
+ if((aborter!==null))missing.push('GPT request currently active; export is a point-in-time snapshot');
+ if(dropped&&Object.values(dropped).some(n=>n>0))missing.push('Some runtime records were dropped or capped; consult droppedRecords');
+ const model=$('model').value.trim();
+ const payload={
+  format:'PAY_Complete_Report_v0.5.1',
+  generatedAt:new Date().toISOString(),
+  generator:'PAY Interpreter v0.5.1',
+  scope:'All captured evidence and user-visible reports for the currently loaded PSID; analysis may still be incomplete.',
+  completeness:{static:true,runtimeAvailable:!!t,musicalIRAvailable:!!ir,completedGPTBatches:reportParts.length,gptReportHasVisibleText:!!visibleGPT,requestedFrames:t?t.obs.framesRequested:null,completedFrames:t?t.obs.framesCompleted:null,droppedRecords:dropped,missingStagesOrLimits:missing},
+  source:{fileName:source.name,title:h.title,author:h.author,released:h.released,magic:h.magic,version:h.version,dataOffset:h.dataOffset,totalBytes:h.bytes,loadAddress:h.load,initAddress:h.init,playAddress:h.play,songs:h.songs,defaultSong:h.startSong,selectedSubtune:t?t.obs.subtune:Number($('subtune').value)||null,speedMask:h.speed,flags:h.flags,sidBases:[0xD400,...h.sidBases],payloadBytes:h.payload.length,
+    originalSID:{encoding:source.sourceBytes?'base64':'not-available',base64:source.sourceBytes?payBase64(source.sourceBytes):null,whyMissing:source.sourceBytes?null:'Original .sid bytes not retained in this test/session; original payload is included instead.'},
+    originalExecutablePayload:{loadAddress:h.load,encoding:'base64',base64:payBase64(h.payload)}
+  },
+  staticAnalysis:{instructionCount:r.code.size,reachableBytes:r.codeBytes,codeEntryPoints:r.entrypoints,edges:r.edges,writeSites:r.soundCount,readSites:r.readCount,warnings:r.warnings,
+   instructions:[...r.code.values()].map(d=>({pc:d.pc,bytes:d.bytes,mnemonic:d.m,mode:d.mode,operand:d.operand,target:d.target})),
+   initialDisassembly:formatFile(h,r)},
+  runtimeTrace:traceJSON,
+  musicalIR:ir,
+  gpt:{model,reasoningEffort:$('reasonEffort').value,maxOutputTokensPerBatch:Number($('outputTokens').value)||null,autoRetry:$('autoRetry').checked,
+   completedBatches:reportParts.map(p=>({batch:p.batch,text:p.text,responseId:p.id,status:p.status,usage:p.usage})),
+   fullVisibleReport:visibleGPT,
+   note:'Only completed batches appear in completedBatches; incomplete and cancelled batch text, when available, is retained in fullVisibleReport.'},
+  interpretationGuide:{url:DOC_URL,source:guideSource,text:guide},
+  readableReports:{annotatedAssembly:$('asm').value,traceOverview:$('traceText').value,musicalIROverview:$('irText').value,
+   observedDataReadsCSV:t?PAYReadCSV(t.obs):null,staticRuntimeWarnings:$('warnings').value,gptSemanticReport:visibleGPT},
+  diagnostics:{currentStatus:$('status').textContent,apiTestStatus:$('apiState').textContent,
+   sessionAPILog:apiHistory.slice(),visibleAPILog:$('apiLog').value,traceStatus:$('traceState').textContent,musicalIRStatus:$('irState').textContent,
+   note:'Diagnostic messages are collected separately from authentication; this report intentionally excludes OpenAI API keys, HTTP Authorization headers, and raw request bodies.'},
+  limitations:[
+   'Runtime observation is bounded and does not establish exhaustive C64 execution coverage or complete song-loop detection.',
+   'CPU cycles are approximate; external C64 peripherals and undocumented opcodes are not faithfully emulated.',
+   'Pitch-bearing states are candidates rather than verified audible notes.',
+   'Full raw evidence is retained only up to internal trace/event capacity limits; droppedRecords and warnings must be reviewed.',
+   'GPT output is model-generated interpretation and does not independently validate inferred musical behaviour.'
+  ]
+ };
+ return payload;
+}
+function exportCompleteJSON(){
+ try{
+  const report=buildCompletePAYReport();
+  const name=(current.name||'music').replace(/\.sid$/i,'')+'.pay-complete-report.json';
+  textFile(JSON.stringify(report,null,2),name,'application/json;charset=utf-8');
+  $('completeState').textContent=`Complete JSON downloaded (${fmt(report.source.payloadBytes)} payload bytes; ${report.completeness.completedGPTBatches} GPT batches). ${report.completeness.missingStagesOrLimits.length?'Some sections are missing/limited — see completeness.':'All available stages included.'}`;
+ }catch(e){setStatus('Complete report export failed: '+e.message,'error');}
+}
 function exportJSON(){if(!current)return;
  const h=current.h,r=current.res;
  const payload={format:'PAY_Interpreter_Analysis_v0.5',source:{fileName:current.name,magic:h.magic,version:h.version,loadAddress:h.load,initAddress:h.init,playAddress:h.play,songs:h.songs,startSong:h.startSong,speedMask:h.speed,flags:h.flags,sidBases:[0xD400,...h.sidBases]},static:{instructionCount:r.code.size,reachableBytes:r.codeBytes,payloadBytes:h.payload.length,sidWriteSites:r.soundCount,sidReadSites:r.readCount,edges:r.edges,warnings:r.warnings,annotatedAssembly:$('asm').value},runtime:current.trace?toPAYTraceJSON(h,current.trace):null,musicalIR:current.musicalIR||null,guide:{url:DOC_URL,source:guideSource},gpt:{model:$('model').value,results:reportParts}};
  textFile(JSON.stringify(payload,null,2),(current.name||'music').replace(/\.sid$/i,'')+'.pay-analysis.json','application/json');
 }
-window.PAYTest={parseSID,disassemble,formatFile,sidRegisterName,batchRows,opcodes:OP,outputBudget,reasoningOptions,usageSummary,responseText, PAYCPU,executePAYTrace,newPAYObservation,actualCodeCoverage,mergePAYAssembly,dynamicOverview,toPAYTraceJSON,buildPAYMusicalIR,detectObservedRepetition,PAYIRReport};
+window.PAYTest={parseSID,disassemble,formatFile,sidRegisterName,batchRows,opcodes:OP,outputBudget,reasoningOptions,usageSummary,responseText, PAYCPU,executePAYTrace,newPAYObservation,actualCodeCoverage,mergePAYAssembly,dynamicOverview,toPAYTraceJSON,buildPAYMusicalIR,detectObservedRepetition,PAYIRReport,buildCompletePAYReport,payBase64};
 $('sidFile').addEventListener('change',async e=>{
  if(traceInProgress){setStatus('Stop the active trace before replacing the SID file.','error');return;}
  const file=e.target.files?.[0];if(!file)return;
- try{const h=parseSID(await file.arrayBuffer()),res=disassemble(h);current={name:file.name,h,res};updateSummary(h,res)}
- catch(err){current=null;$('send').disabled=true;$('saveAsm').disabled=true;$('saveJson').disabled=true;$('runTrace').disabled=true;$('saveTrace').disabled=true;$('saveReport').disabled=true;$('saveIR').disabled=true;$('saveReads').disabled=true;setStatus(err.message,'error');}
+ try{const sourceBytes=new Uint8Array(await file.arrayBuffer()),h=parseSID(sourceBytes.buffer),res=disassemble(h);current={name:file.name,h,res,sourceBytes};updateSummary(h,res)}
+ catch(err){current=null;$('send').disabled=true;$('saveAsm').disabled=true;$('saveJson').disabled=true;$('saveComplete').disabled=true;$('completeState').textContent='Load a valid SID before exporting a report.';$('runTrace').disabled=true;$('saveTrace').disabled=true;$('saveReport').disabled=true;$('saveIR').disabled=true;$('saveReads').disabled=true;setStatus(err.message,'error');}
 });
 $('reloadGuide').addEventListener('click',loadGuide);
 $('runTrace').addEventListener('click',()=>runTraceUI().catch(e=>setStatus('Trace failed: '+e.message,'error')));
@@ -1175,6 +1258,7 @@ $('testApi').addEventListener('click',()=>testAPI().catch(e=>setStatus(e.message
 $('cancel').addEventListener('click',()=>aborter?.abort());
 $('saveAsm').addEventListener('click',()=>current&&textFile($('asm').value,current.name.replace(/\.sid$/i,'')+'.annotated.asm'));
 $('saveJson').addEventListener('click',exportJSON);
+$('saveComplete').addEventListener('click',exportCompleteJSON);
 loadGuide();
 
 </script>
