@@ -1,4 +1,4 @@
-# SID Interpreter — PAY semantic analysis contract (v0.4)
+# SID Interpreter — PAY semantic analysis contract (v0.5)
 
 Canonical URL: https://retroapplejs.github.io/docs/SID_INTERPRETER.md
 
@@ -27,6 +27,20 @@ The HTML tool can run INIT and repeated PLAY calls in a self-contained official 
 Do not confuse the tracer with a cycle-accurate C64. It does not provide KERNAL/CIA/VIC behavior, actual SID envelope/filter analog state, authentic SID readback, full IRQ bootstrap, undocumented NMOS opcodes, or complete subtune interaction. The cycle counter is approximate; trust PLAY frame indexes and write ordering, not microsecond timing. The caller may stop when unsupported hardware or opcodes occur; analyze partial traces explicitly rather than treating them as a complete song.
 
 When runtime code patches are identified, cite the source PC, patched byte address, before/after value, and the actual instruction variants. Distinguish data initialization or writeable player state from writes to executed instruction bytes. Where more tracing is required, specify the exact observable state rather than filling in musical gaps.
+
+## PAY-00.5 trace-grounded musical-state extraction
+
+PAY Interpreter v0.5 deterministically derives **observations**, not a fully decoded original composition, from completed frame traces:
+
+- **Effective program data reads**, including runtime-resolved `LDA ($FE),Y` and other indirect/indexed references into the original payload. Each read retains source PC, absolute effective address, read value, frame, X and Y. The CSV export provides raw order; the PAY-IR export aggregates read sites and provides ordered samples grouped by (frame, X). Reads from original payload into later-mutated state remain observations, not guaranteed pattern tokens.
+- **Executed control-flow edges** for JSR, JMP, conditional branches and returns. Dynamic JSR/JMP targets reflect live patched code. Repeated edge visits do not prove that a source-level musical loop has been recovered.
+- **Voice/state evidence** from SID writes and frame-end register snapshots. Classify gate changes, ADSR changes, pitched-state entries, possible pitch changes, and raw bus-level GATE edges. Importantly, gate-on with zero frequency is `GATE_ON_UNPITCHED`, **not a note**. `PITCHED_STATE_ENTERED` is not necessarily a new note: the source may have held GATE on while enabling a waveform later. Waveform TEST disables oscillator output, so mere gate+pitch is insufficient for audible note proof.
+- **Observed state graph / exact periodicity** from SID register snapshots. Repetition over sampled frames can conceal different internal CPU state; it must never be called an infinite loop or treated as a confirmed complete song structure.
+- **PAY-Light planning policy** (not generated code): three source voices provisionally map to AY0 A/B/C; no PAY-owned zero-page state; future native 6502 compiler must place state in explicitly reserved absolute RAM.
+
+The PAY IR (`PAY_Musical_IR_v0.5`) includes source metadata, observed semantic events with source-PC evidence, ordered raw SID bus writes, frame-end state runs, a bounded state graph, read-site summaries and ordered decoder-read examples, executed flow edges, and limitations. Raw effective data reads can be exported as a CSV, while the broader trace JSON retains all captured effective reads. Resource limits and dropped records are reported; no implicit claim of complete path or pattern coverage is valid.
+
+**GPT contract for v0.5:** Explain musical behaviour only where events/reads/edges substantiate it; distinguish source-note encoding from an observed register state; never interpret control-word GATE alternations as notes without pitch and waveform evidence; do not invent missing opcode/token meanings. Propose next decoder steps and tests, not a fake compiled PAY song. It is acceptable to recommend discarding the original self-modifying SID driver once the musical semantics are independently reconstructed.
 
 ## Priority for PAY-Light generation
 
