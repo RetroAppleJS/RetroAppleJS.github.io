@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>PAY Interpreter v0.5.1 — Complete Report Export</title>
+<title>PAY Interpreter v0.5.2 — Extended Duration Trace</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1120;--card:#141f34;--card2:#101b30;--line:#2d405e;--txt:#edf3fc;--muted:#aabbd0;--blue:#78baff;--green:#66e0b2;--danger:#ffa5a5}
 *{box-sizing:border-box}
@@ -45,7 +45,7 @@ dialog::backdrop{background:#02060cbd}dialog h2{font-size:21px}
 <body>
 <main>
 <header>
-<span class="tag">RETROAPPLEJS · PAY-00.5 · v0.5.1</span>
+<span class="tag">RETROAPPLEJS · PAY-00.5 · v0.5.2 LONG TRACE</span>
 <h1>PAY Interpreter</h1>
 <p class="subtitle">PSID → static disassembly + bounded 6502 runtime / self-modifying-code trace → GPT-assisted musical interpretation. Self-contained browser tool; no external JavaScript or framework required. This phase additionally extracts a trace-grounded PAY musical intermediate representation (IR), read-table evidence, and observed state transitions. <strong>It does not yet produce playable PAY machine code.</strong></p>
 </header>
@@ -63,9 +63,9 @@ dialog::backdrop{background:#02060cbd}dialog h2{font-size:21px}
   </section>
   <section class="card">
    <h2>2 · Execute and trace 6502</h2>
-   <p class="small">Runs INIT then PLAY in a bounded offline 6502 interpreter. Captures runtime-only instructions, self-modifying code, concrete SID writes, effective memory reads (including indirect pattern fetches), actual branch destinations, and a per-frame 3-voice AY pitch preview. <strong>Not cycle-accurate and not full C64 hardware.</strong> No API key required.</p>
+   <p class="small">Runs INIT then PLAY in a bounded offline 6502 interpreter. Captures runtime-only instructions, self-modifying code, concrete SID writes, effective memory reads (including indirect pattern fetches), actual branch destinations, and a per-frame 3-voice AY pitch preview. <strong>Not cycle-accurate and not full C64 hardware.</strong> No API key required. Up to 6000 observed PLAY frames; large traces may require substantial browser memory. Up to 6000 observed PLAY frames; large traces may require substantial browser memory.</p>
    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
-    <div><label for="traceFrames">PLAY frames</label><input id="traceFrames" type="number" min="1" max="1200" value="300"></div>
+    <div><label for="traceFrames">PLAY frames</label><input id="traceFrames" type="number" min="1" max="6000" value="300"></div>
     <div><label for="subtune">Subtune (1-based)</label><input id="subtune" type="number" min="1" max="256" value="1"></div>
    </div>
    <div class="actions"><button id="runTrace" class="primary" disabled>Run 6502 trace</button><button id="stopTrace" disabled>Stop trace</button></div>
@@ -824,8 +824,8 @@ class PAYCPU {
 }
 function newPAYObservation(h,frames,subtune){
  return {framesRequested:frames,framesCompleted:0,subtune,executed:new Map(),payloadWriteGroups:new Map(),sidPC:new Map(),sidValues:new Map(),sidEvents:[],frameSummary:[],ioReads:new Map(),dataReads:[],flowEdges:new Map(),
- maxDataReads:75000,maxFlowEdges:10000,droppedDataReads:0,droppedFlowEdges:0,
- maxExecuted:20000,maxVariants:12,maxEvents:35000,maxGroups:15000,droppedEvents:0,droppedVariants:0,cancelled:false,warnings:[],initSteps:0,totalSteps:0,errors:[],sidClockHz:(h.flags&0x0c)===0x08?1022727:985248};
+ maxDataReads:1000000,maxFlowEdges:10000,droppedDataReads:0,droppedFlowEdges:0,
+ maxExecuted:20000,maxVariants:12,maxEvents:220000,maxGroups:15000,droppedEvents:0,droppedVariants:0,cancelled:false,warnings:[],initSteps:0,totalSteps:0,errors:[],sidClockHz:(h.flags&0x0c)===0x08?1022727:985248};
 }
 function actualCodeCoverage(h,obs){const covered=new Uint8Array(h.payload.length);for(const [pc,v] of obs.executed)for(const vv of v.variants.values())for(let i=0;i<vv.bytes.length;i++){const a=pc+i-h.load;if(a>=0&&a<covered.length)covered[a]=1;}return covered;}
 function dynamicOverview(h,obs,staticRes){
@@ -879,7 +879,7 @@ function capturePAYFrame(cpu,obs,frame){const sounds=[];
 async function executePAYTrace(h,staticRes,settings={},onProgress=()=>{}){
  if(h.magic!=='PSID')throw Error('RSID requires C64 boot/peripheral emulation and is not supported by this bounded PSID tracer.');
  const frames=Number(settings.frames||300),subtune=Number(settings.subtune||h.startSong||1);
- if(!Number.isInteger(frames)||frames<1||frames>1200)throw Error('Frames must be between 1 and 1200.');
+ if(!Number.isInteger(frames)||frames<1||frames>6000)throw Error('Frames must be between 1 and 6000.');
  if(!Number.isInteger(subtune)||subtune<1||subtune>h.songs)throw Error('Subtune number is outside the file.');
  const obs=newPAYObservation(h,frames,subtune);const cpu=new PAYCPU(h,obs);
  if(h.sidBases.length)obs.warnings.push('Additional SID chips present; all are logged, but no AY voice assignment is attempted.');
@@ -1189,7 +1189,7 @@ function buildCompletePAYReport(source=current){
  const payload={
   format:'PAY_Complete_Report_v0.5.1',
   generatedAt:new Date().toISOString(),
-  generator:'PAY Interpreter v0.5.1',
+  generator:'PAY Interpreter v0.5.2',
   scope:'All captured evidence and user-visible reports for the currently loaded PSID; analysis may still be incomplete.',
   completeness:{static:true,runtimeAvailable:!!t,musicalIRAvailable:!!ir,completedGPTBatches:reportParts.length,gptReportHasVisibleText:!!visibleGPT,requestedFrames:t?t.obs.framesRequested:null,completedFrames:t?t.obs.framesCompleted:null,droppedRecords:dropped,missingStagesOrLimits:missing},
   source:{fileName:source.name,title:h.title,author:h.author,released:h.released,magic:h.magic,version:h.version,dataOffset:h.dataOffset,totalBytes:h.bytes,loadAddress:h.load,initAddress:h.init,playAddress:h.play,songs:h.songs,defaultSong:h.startSong,selectedSubtune:t?t.obs.subtune:Number($('subtune').value)||null,speedMask:h.speed,flags:h.flags,sidBases:[0xD400,...h.sidBases],payloadBytes:h.payload.length,
