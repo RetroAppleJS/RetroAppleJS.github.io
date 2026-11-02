@@ -1,0 +1,387 @@
+{
+  "format": "PAY_Semantic_Candidate_v0.8",
+  "mechanismId": "player_entry",
+  "reviewStatus": "needs_human_validation",
+  "claims": [
+    {
+      "statement": "INIT at $1000 JMPs to $10F1; PLAY at $1003 JMPs to $1126.",
+      "confidence": "observed",
+      "evidenceIds": [
+        "code:$1000",
+        "flow:$1000->$10F1",
+        "code:$10F1",
+        "code:$1003",
+        "flow:$1003->$1126",
+        "code:$1126"
+      ],
+      "contradictingEvidenceIds": [],
+      "howToVerify": "Check entry JMP operands and executed control-flow edges."
+    },
+    {
+      "statement": "STA $10F6 at $10F1 writes the immediate operand of ADC at $10F5; $10F6 is executable code storage, not a stand-alone source state byte. For A=0, it writes the existing value $00.",
+      "confidence": "observed",
+      "evidenceIds": [
+        "code:$10F1",
+        "static:$10F5",
+        "operand_write:$10F6<-$10F1"
+      ],
+      "contradictingEvidenceIds": [],
+      "howToVerify": "Verify $10F5=[69 00] and the executed absolute store at $10F1; instrument writes including unchanged-value writes."
+    },
+    {
+      "statement": "For subtune-selector A values 0,1,2, $10F4 ASL A followed by $10F5 ADC #(original A) computes 3*A (0,3,6) and $10F7 stores that byte at $1129. This is source-code arithmetic; only A=0 was traced.",
+      "confidence": "supported_inference",
+      "evidenceIds": [
+        "static:$10F4",
+        "code:$10F5",
+        "static:$10F7",
+        "code:$10F7",
+        "code:$10F7",
+        "patch:$1129<-$10F7",
+        "static:$1128"
+      ],
+      "contradictingEvidenceIds": [],
+      "howToVerify": "Run INIT(A=0), INIT(A=1), INIT(A=2) on independent resets; observe $1129=0,3,6 and carry/flags."
+    },
+    {
+      "statement": "Byte $1129 is the immediate operand of LDY #$FF at $1128 in the PLAY routine; INIT changes it to $00 for the observed subtune.",
+      "confidence": "observed",
+      "evidenceIds": [
+        "code:$10F7",
+        "patch:$1129<-$10F7",
+        "static:$1128"
+      ],
+      "contradictingEvidenceIds": [],
+      "howToVerify": "Inspect initial bytes [A0 FF], operand write from $10F7, and first runtime LDY variant [A0 00]."
+    },
+    {
+      "statement": "The first PLAY executes LDY #$00; BMI at $112A is NOT taken and execution enters $112C, whereas on the next 299 observed PLAY calls LDY #$FF makes BMI taken to $1161.",
+      "confidence": "observed",
+      "evidenceIds": [
+        "code:$1128",
+        "code:$112A",
+        "flow:$112A->$112C",
+        "flow:$112A->$1161",
+        "operand_read:$1129@PLAY"
+      ],
+      "contradictingEvidenceIds": [],
+      "howToVerify": "Check actual executed LDY variants and both BMI edge counts for the 300-frame trace."
+    },
+    {
+      "statement": "At $113E, the one-time initialization path executes STX $1129, restoring the LDY immediate operand to $FF and causing later PLAY calls to skip that path.",
+      "confidence": "observed",
+      "evidenceIds": [
+        "code:$113E",
+        "patch:$1129<-$113E",
+        "operand_read:$1129@PLAY"
+      ],
+      "contradictingEvidenceIds": [],
+      "howToVerify": "Verify X=$FF after the 42-iteration DEX/BPL clear loop, the recorded $1129 operand patch $00->$FF, and later LDY #$FF variants."
+    },
+    {
+      "statement": "The one-time setup selects voice-table offsets X=0,7,14 on three linked initialization paths; the exact semantic identities of the referenced tables still require separate evidence.",
+      "confidence": "supported_inference",
+      "evidenceIds": [
+        "static:$1142",
+        "static:$1145",
+        "static:$1147",
+        "static:$114A",
+        "static:$114C",
+        "code:$1126"
+      ],
+      "contradictingEvidenceIds": [],
+      "howToVerify": "Trace the paths through $1142/$1145/$1147/$114A and memory effects downstream of $114C."
+    },
+    {
+      "statement": "The source uses instruction-operand patching as a deferred one-time initialization mechanism; generated PAY code can preserve its behaviour with a dedicated absolute-RAM pending-init flag and subtune-derived index instead.",
+      "confidence": "supported_inference",
+      "evidenceIds": [
+        "code:$10F1",
+        "static:$10F5",
+        "operand_write:$10F6<-$10F1",
+        "code:$10F7",
+        "patch:$1129<-$10F7",
+        "static:$1128",
+        "code:$113E",
+        "patch:$1129<-$113E",
+        "operand_read:$1129@PLAY"
+      ],
+      "contradictingEvidenceIds": [],
+      "howToVerify": "Compare reconstructed first and subsequent PLAY state changes for all subtunes against source traces."
+    }
+  ],
+  "stateMachine": {
+    "stateVariables": [
+      {
+        "name": "source_init_subtune_A",
+        "sourceAddress": "A at PSID INIT entry $1000",
+        "evidenceIds": [
+          "code:$1000",
+          "flow:$1000->$10F1",
+          "code:$10F1"
+        ]
+      },
+      {
+        "name": "source_init_ADC_operand",
+        "sourceAddress": "$10F6 (operand of $10F5)",
+        "evidenceIds": [
+          "code:$10F1",
+          "static:$10F5",
+          "operand_write:$10F6<-$10F1"
+        ]
+      },
+      {
+        "name": "source_PLAY_LDY_operand",
+        "sourceAddress": "$1129 (operand of $1128)",
+        "evidenceIds": [
+          "code:$10F7",
+          "patch:$1129<-$10F7",
+          "static:$1128"
+        ]
+      },
+      {
+        "name": "pay_subtune_table_start",
+        "sourceAddress": "Derived from source INIT; PAY absolute RAM (not allocated yet)",
+        "evidenceIds": [
+          "static:$10F4",
+          "code:$10F5",
+          "static:$10F7",
+          "code:$10F7"
+        ]
+      },
+      {
+        "name": "pay_first_play_pending",
+        "sourceAddress": "Derived from source $1128/$112A/$113E; PAY absolute RAM (not allocated yet)",
+        "evidenceIds": [
+          "code:$1128",
+          "code:$112A",
+          "flow:$112A->$112C",
+          "flow:$112A->$1161",
+          "code:$113E",
+          "patch:$1129<-$113E",
+          "operand_read:$1129@PLAY"
+        ]
+      }
+    ],
+    "transitions": [
+      {
+        "when": "PLAYER_INIT(A = selected zero-based subtune)",
+        "effect": "Save PAY subtune index = 3*A for A=0..2; set first_play_pending=true. Do not patch instruction bytes in PAY. Source uses operand patches at $10F6 and $1129.",
+        "evidenceIds": [
+          "code:$10F1",
+          "static:$10F5",
+          "operand_write:$10F6<-$10F1",
+          "static:$10F4",
+          "code:$10F5",
+          "static:$10F7",
+          "code:$10F7",
+          "code:$10F7",
+          "patch:$1129<-$10F7",
+          "static:$1128"
+        ]
+      },
+      {
+        "when": "PLAYER_TICK && first_play_pending=true",
+        "effect": "Run the one-time voice-table and channel-state setup using subtune index (0,3,6); then set first_play_pending=false. Source takes BMI not-taken path $112C and patches $1129 back to $FF.",
+        "evidenceIds": [
+          "code:$1128",
+          "code:$112A",
+          "flow:$112A->$112C",
+          "flow:$112A->$1161",
+          "code:$113E",
+          "patch:$1129<-$113E",
+          "operand_read:$1129@PLAY",
+          "static:$1142",
+          "static:$1145",
+          "static:$1147",
+          "static:$114A",
+          "static:$114C"
+        ]
+      },
+      {
+        "when": "PLAYER_TICK && first_play_pending=false",
+        "effect": "Execute regular per-tick player path corresponding to BMI taken at $112A->$1161. Further semantics delegated to other mechanisms.",
+        "evidenceIds": [
+          "code:$1128",
+          "code:$112A",
+          "flow:$112A->$112C",
+          "flow:$112A->$1161"
+        ]
+      }
+    ],
+    "notYetResolved": [
+      "Complete effects and table layouts of first-tick setup for all subtunes",
+      "Independent runtime coverage for subtunes 2 and 3",
+      "Original hardware-dependent PLAY cadence (PAL/NTSC/CIA specifics)",
+      "Downstream channel sequencer and pattern decoder semantics"
+    ]
+  },
+  "decoderGrammar": {
+    "tokenClasses": [],
+    "pointerRules": [],
+    "callReturnRules": [],
+    "loopRules": []
+  },
+  "targetPlan": {
+    "operations": [
+      {
+        "op": "PLAYER_INIT",
+        "inputs": [
+          "zero-based subtune A",
+          "known range 0..2"
+        ],
+        "outputs": [
+          "pay_subtune_table_start = 3*A",
+          "pay_first_play_pending = true"
+        ],
+        "evidenceIds": [
+          "code:$1000",
+          "flow:$1000->$10F1",
+          "code:$10F1",
+          "static:$10F4",
+          "code:$10F5",
+          "static:$10F7",
+          "code:$10F7",
+          "code:$10F7",
+          "patch:$1129<-$10F7",
+          "static:$1128"
+        ]
+      },
+      {
+        "op": "SET_STATE",
+        "inputs": [
+          "initial subtune index and first-play latch"
+        ],
+        "outputs": [
+          "two absolute RAM state values, not patches of $10F6 or $1129"
+        ],
+        "evidenceIds": [
+          "code:$10F1",
+          "static:$10F5",
+          "operand_write:$10F6<-$10F1",
+          "code:$113E",
+          "patch:$1129<-$113E",
+          "operand_read:$1129@PLAY"
+        ]
+      },
+      {
+        "op": "PLAYER_TICK",
+        "inputs": [
+          "first_play_pending"
+        ],
+        "outputs": [
+          "one-time setup or steady PLAY path"
+        ],
+        "evidenceIds": [
+          "code:$1003",
+          "flow:$1003->$1126",
+          "code:$1126",
+          "code:$1128",
+          "code:$112A",
+          "flow:$112A->$112C",
+          "flow:$112A->$1161"
+        ]
+      },
+      {
+        "op": "DISPATCH_STATE",
+        "inputs": [
+          "first_play_pending",
+          "subtune_table_start"
+        ],
+        "outputs": [
+          "first-play state initializer or steady tick sequencer"
+        ],
+        "evidenceIds": [
+          "code:$1128",
+          "code:$112A",
+          "flow:$112A->$112C",
+          "flow:$112A->$1161",
+          "code:$113E",
+          "patch:$1129<-$113E",
+          "operand_read:$1129@PLAY",
+          "static:$1142",
+          "static:$1145",
+          "static:$1147",
+          "static:$114A",
+          "static:$114C"
+        ]
+      },
+      {
+        "op": "UNRESOLVED",
+        "inputs": [
+          "downstream table interpretation / channel and effects"
+        ],
+        "outputs": [
+          "no claimed AY note scheduling without further evidence"
+        ],
+        "evidenceIds": []
+      }
+    ],
+    "soundTranslation": [
+      {
+        "sourceIntent": "Deferred subtune setup and first-PLAY initialization, implemented by source code-operand patches.",
+        "AYStrategy": "Replace source self-modification with explicit absolute-RAM selected-subtune index and first-tick-pending state; retain source state-transition order. No AY writes are implied by this mechanism alone.",
+        "limitations": "Table semantics, full 3-subtune coverage, and source clock cadence remain unverified. Do not generate a standalone song from this mechanism.",
+        "evidenceIds": [
+          "code:$10F1",
+          "static:$10F5",
+          "operand_write:$10F6<-$10F1",
+          "code:$10F7",
+          "patch:$1129<-$10F7",
+          "static:$1128",
+          "code:$113E",
+          "patch:$1129<-$113E",
+          "operand_read:$1129@PLAY"
+        ]
+      }
+    ],
+    "noZeroPage": true,
+    "noSelfModifiedCode": true
+  },
+  "unknowns": [
+    "Exact channel/instrument table semantics of the subtune-selected initial values",
+    "Runtime confirmation of A=1 and A=2 before first and second PLAY",
+    "Clock source and tick duration separate from INIT/PLAY control",
+    "Downstream pitch/command/loop mechanisms after entry"
+  ],
+  "proposedTests": [
+    {
+      "experiment": "RESET source memory; INIT(A=0), INIT(A=1), INIT(A=2) separately, then inspect $10F6/$1129 before any PLAY.",
+      "expectedObservables": "$10F6 is 0/1/2 and $1129 is 0/3/6, respectively; the byte at $10F5 remains opcode $69 and $1128 remains opcode $A0.",
+      "evidenceIds": [
+        "code:$10F1",
+        "static:$10F5",
+        "operand_write:$10F6<-$10F1",
+        "static:$10F4",
+        "code:$10F5",
+        "static:$10F7",
+        "code:$10F7"
+      ]
+    },
+    {
+      "experiment": "For each subtune, execute exactly first PLAY then second PLAY with operand writes (including same-value writes) and branch edges instrumented.",
+      "expectedObservables": "First PLAY reads initial patched LDY value, takes BMI fall-through, and resets operand to $FF; second PLAY takes BMI $1161.",
+      "evidenceIds": [
+        "code:$1128",
+        "code:$112A",
+        "flow:$112A->$112C",
+        "flow:$112A->$1161",
+        "code:$113E",
+        "patch:$1129<-$113E",
+        "operand_read:$1129@PLAY"
+      ]
+    },
+    {
+      "experiment": "Trace source writes from first-PLAY setup, including accesses for X=0,7,14, for all three subtunes.",
+      "expectedObservables": "Identify the selected three-table-entry ranges and their effects on subsequent voice state; explain whether the grouped indices 0..2,3..5,6..8 represent separate song setups.",
+      "evidenceIds": [
+        "static:$1142",
+        "static:$1145",
+        "static:$1147",
+        "static:$114A",
+        "static:$114C"
+      ]
+    }
+  ],
+  "sourceLoopProven": false
+}
