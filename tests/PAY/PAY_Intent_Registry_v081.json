@@ -1,0 +1,1046 @@
+{
+  "format": "PAY_Intent_Registry_v0.8.1",
+  "policy": "Open namespaced vocabulary. The catalog lists possible meanings, not demonstrated Bomberland effects. Extend per PSID as needed. Every new intent needs typed parameters, timing semantics, source fixture and compiler support decision. A registry-only entry without a typed signature cannot be lowered; it is a discovery category, not an executable command.",
+  "intents": [
+    {
+      "id": "player.init",
+      "category": "player",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "player.tick",
+      "category": "player",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "player.subtune_select",
+      "category": "player",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "player.reset",
+      "category": "player",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "player.stop",
+      "category": "player",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "schedule.source_irq",
+      "category": "schedule",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "schedule.tempo_divider",
+      "category": "schedule",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "schedule.tick_delay",
+      "category": "schedule",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "schedule.channel_clock",
+      "category": "schedule",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "schedule.variable_tempo",
+      "category": "schedule",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "schedule.swing",
+      "category": "schedule",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "sequence.token_fetch",
+      "category": "sequence",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signature": {
+        "inputs": [
+          {
+            "name": "sourcePointer",
+            "type": "pointer16",
+            "unit": "source memory address"
+          },
+          {
+            "name": "offset",
+            "type": "u8",
+            "unit": "bytes"
+          },
+          {
+            "name": "voice",
+            "type": "channel_ref"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "token",
+            "type": "u8",
+            "unit": "source byte"
+          }
+        ],
+        "mustSpecify": [
+          "source table bounds",
+          "pointer advance rule",
+          "branch/dispatch after fetch"
+        ]
+      }
+    },
+    {
+      "id": "sequence.decode",
+      "category": "sequence",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "sequence.note",
+      "category": "sequence",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signature": {
+        "inputs": [
+          {
+            "name": "pitch",
+            "type": "u16",
+            "unit": "explicitly declared SID frequency word or musical note ID"
+          },
+          {
+            "name": "duration",
+            "type": "u16",
+            "unit": "source ticks"
+          },
+          {
+            "name": "voice",
+            "type": "channel_ref"
+          }
+        ],
+        "mustSpecify": [
+          "note onset vs gate edge",
+          "source frequency-to-note interpretation",
+          "tempo domain"
+        ]
+      }
+    },
+    {
+      "id": "sequence.rest",
+      "category": "sequence",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "sequence.pattern_call",
+      "category": "sequence",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "sequence.pattern_return",
+      "category": "sequence",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "sequence.pattern_advance",
+      "category": "sequence",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "sequence.transpose",
+      "category": "sequence",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "control.branch",
+      "category": "control",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "control.repeat_count",
+      "category": "control",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "control.pattern_loop",
+      "category": "control",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signature": {
+        "inputs": [
+          {
+            "name": "loopTarget",
+            "type": "pointer16",
+            "unit": "source memory address"
+          },
+          {
+            "name": "remaining",
+            "type": "u8",
+            "unit": "iterations"
+          }
+        ],
+        "mustSpecify": [
+          "source-state proof of branch",
+          "entry and exit conditions",
+          "counter reload and wrap semantics"
+        ]
+      }
+    },
+    {
+      "id": "control.song_loop",
+      "category": "control",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signature": {
+        "inputs": [
+          {
+            "name": "sourceState",
+            "type": "table_ref"
+          }
+        ],
+        "mustSpecify": [
+          "equivalent complete source state",
+          "matching future execution",
+          "noninterference of untraced inputs"
+        ]
+      }
+    },
+    {
+      "id": "control.nested_loop",
+      "category": "control",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signature": {
+        "inputs": [
+          {
+            "name": "depth",
+            "type": "u8"
+          }
+        ],
+        "mustSpecify": [
+          "stack rule",
+          "independent iteration counters",
+          "nested return and overflow handling"
+        ]
+      }
+    },
+    {
+      "id": "control.conditional_jump",
+      "category": "control",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "control.pattern_pointer",
+      "category": "control",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "control.channel_sync",
+      "category": "control",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "pitch.frequency_word",
+      "category": "pitch",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "pitch.set",
+      "category": "pitch",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "pitch.slide",
+      "category": "pitch",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signature": {
+        "inputs": [
+          {
+            "name": "sourceDelta",
+            "type": "s16",
+            "unit": "SID frequency word per source update"
+          },
+          {
+            "name": "destination",
+            "type": "u16",
+            "unit": "SID frequency word"
+          },
+          {
+            "name": "updateEvery",
+            "type": "u16",
+            "unit": "source ticks"
+          }
+        ],
+        "mustSpecify": [
+          "rounding and saturation",
+          "termination condition",
+          "clock phase",
+          "conversion to AY period"
+        ]
+      }
+    },
+    {
+      "id": "pitch.portamento",
+      "category": "pitch",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "pitch.vibrato",
+      "category": "pitch",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signature": {
+        "inputs": [
+          {
+            "name": "depth",
+            "type": "u16",
+            "unit": "SID frequency word delta"
+          },
+          {
+            "name": "rate",
+            "type": "u16",
+            "unit": "source ticks or phase increments"
+          }
+        ],
+        "mustSpecify": [
+          "waveform/table",
+          "signedness",
+          "phase continuity"
+        ]
+      }
+    },
+    {
+      "id": "pitch.arpeggio",
+      "category": "pitch",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "pitch.detune",
+      "category": "pitch",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "pitch.glissando",
+      "category": "pitch",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "articulation.gate",
+      "category": "articulation",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signature": {
+        "inputs": [
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "voice",
+            "type": "channel_ref"
+          }
+        ],
+        "mustSpecify": [
+          "level vs edge",
+          "source TEST and waveform interaction"
+        ]
+      }
+    },
+    {
+      "id": "articulation.retrigger",
+      "category": "articulation",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "articulation.release",
+      "category": "articulation",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "articulation.legato",
+      "category": "articulation",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "instrument.select",
+      "category": "instrument",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signature": {
+        "inputs": [
+          {
+            "name": "instrumentId",
+            "type": "u8",
+            "unit": "source table index"
+          },
+          {
+            "name": "voice",
+            "type": "channel_ref"
+          }
+        ],
+        "mustSpecify": [
+          "source instrument table proof",
+          "initial envelope/waveform state",
+          "retriggers"
+        ]
+      }
+    },
+    {
+      "id": "instrument.table_lookup",
+      "category": "instrument",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "instrument.step",
+      "category": "instrument",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "instrument.modulation_macro",
+      "category": "instrument",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "envelope.attack",
+      "category": "envelope",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signature": {
+        "inputs": [
+          {
+            "name": "attack",
+            "type": "u8",
+            "unit": "SID ADSR nibble or explicit source parameter"
+          }
+        ],
+        "mustSpecify": [
+          "source envelope clock",
+          "AY approximation and resolution"
+        ]
+      }
+    },
+    {
+      "id": "envelope.decay",
+      "category": "envelope",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "envelope.sustain",
+      "category": "envelope",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "envelope.release",
+      "category": "envelope",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "envelope.step",
+      "category": "envelope",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "envelope.hardware",
+      "category": "envelope",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "waveform.select",
+      "category": "waveform",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "waveform.square",
+      "category": "waveform",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "waveform.triangle",
+      "category": "waveform",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "waveform.saw",
+      "category": "waveform",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "waveform.noise",
+      "category": "waveform",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "waveform.pulse_width",
+      "category": "waveform",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signature": {
+        "inputs": [
+          {
+            "name": "width",
+            "type": "u16",
+            "unit": "SID 12-bit pulse duty"
+          }
+        ],
+        "mustSpecify": [
+          "source modulation rule",
+          "AY duty unavailable without software approximation"
+        ]
+      }
+    },
+    {
+      "id": "waveform.sync",
+      "category": "waveform",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signature": {
+        "inputs": [
+          {
+            "name": "enabled",
+            "type": "bool"
+          }
+        ],
+        "mustSpecify": [
+          "source oscillator phase dependency",
+          "AY unsupported/approximate rule"
+        ]
+      }
+    },
+    {
+      "id": "waveform.ring",
+      "category": "waveform",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "waveform.oscillator_test",
+      "category": "waveform",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "modulation.pwm",
+      "category": "modulation",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "modulation.tremolo",
+      "category": "modulation",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "modulation.pitch_lfo",
+      "category": "modulation",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "modulation.envelope_lfo",
+      "category": "modulation",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "filter.cutoff",
+      "category": "filter",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signature": {
+        "inputs": [
+          {
+            "name": "cutoff",
+            "type": "u16",
+            "unit": "SID cutoff word"
+          }
+        ],
+        "mustSpecify": [
+          "filter mode and routing",
+          "translation to AY or explicit omission"
+        ]
+      }
+    },
+    {
+      "id": "filter.resonance",
+      "category": "filter",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signature": {
+        "inputs": [
+          {
+            "name": "resonance",
+            "type": "u8",
+            "unit": "SID resonance nibble"
+          }
+        ],
+        "mustSpecify": [
+          "filter routing",
+          "AY approximation and audible loss"
+        ]
+      }
+    },
+    {
+      "id": "filter.mode",
+      "category": "filter",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "filter.routing",
+      "category": "filter",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "volume.voice",
+      "category": "volume",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signature": {
+        "inputs": [
+          {
+            "name": "amplitude",
+            "type": "u8",
+            "unit": "source envelope level (state unit explicit)"
+          }
+        ],
+        "mustSpecify": [
+          "amplitude mapping to AY 4-bit level",
+          "mute vs gate distinction"
+        ]
+      }
+    },
+    {
+      "id": "volume.global",
+      "category": "volume",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signature": {
+        "inputs": [
+          {
+            "name": "level",
+            "type": "u8",
+            "unit": "SID global volume nibble"
+          }
+        ],
+        "mustSpecify": [
+          "per-voice vs global handling",
+          "AY mapping and clipping"
+        ]
+      }
+    },
+    {
+      "id": "volume.automation",
+      "category": "volume",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "volume.duck",
+      "category": "volume",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "mix.voice_route",
+      "category": "mix",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "mix.mute",
+      "category": "mix",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "mix.balance",
+      "category": "mix",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "mix.noise_enable",
+      "category": "mix",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "hardware.sid_write",
+      "category": "hardware",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "hardware.ay_commit",
+      "category": "hardware",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "hardware.multi_sid",
+      "category": "hardware",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "hardware.extra_ay",
+      "category": "hardware",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "hardware.external_dependency",
+      "category": "hardware",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "source_state.store",
+      "category": "source_state",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "source_state.load",
+      "category": "source_state",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "source_state.patch_operand",
+      "category": "source_state",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signature": {
+        "inputs": [
+          {
+            "name": "sourceAddress",
+            "type": "pointer16"
+          },
+          {
+            "name": "newByte",
+            "type": "u8"
+          }
+        ],
+        "mustSpecify": [
+          "is patch a mutable variable, jump target or actual code mutation",
+          "replacement normal PAY state"
+        ]
+      }
+    },
+    {
+      "id": "source_state.dispatch_patch",
+      "category": "source_state",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "unknown.token",
+      "category": "unknown",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "unknown.hardware_effect",
+      "category": "unknown",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    },
+    {
+      "id": "unknown.control",
+      "category": "unknown",
+      "version": "1.0.0",
+      "status": "registry_only",
+      "parameterSchema": "To be supplied by the particular mechanism or newly versioned registry entry",
+      "clockRequired": true,
+      "signatureStatus": "requires_declared_typed_signature_before_compilation"
+    }
+  ],
+  "typedSignaturesProvided": 17
+}

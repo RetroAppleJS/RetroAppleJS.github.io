@@ -1,0 +1,89 @@
+{
+  "format": "PAY_Compiler_Capabilities_v0.8.1",
+  "compiler": "PAY native 6502 semantic backend (planned; register-event reference exists)",
+  "target": {
+    "machine": "Apple II",
+    "cpu": "NMOS 6502",
+    "audio": "Mockingboard VIA/AY-3-8910",
+    "zeroPageOwned": 0,
+    "selfModifyingTarget": false
+  },
+  "capabilities": [
+    {
+      "id": "pay.irq.timer1.v1",
+      "status": "implemented",
+      "notes": "Observed PAY-00.7.3 clock wrapper; real emulator acceptance passed for bounded register-event song; not a semantic sequencer",
+      "timing": "one external tick per timer IRQ"
+    },
+    {
+      "id": "pay.ay.register_write.v1",
+      "status": "implemented",
+      "notes": "AY register write primitive; not a semantic mapping of source intent"
+    },
+    {
+      "id": "pay.sequence.token_decoder.v1",
+      "status": "planned",
+      "notes": "Needs verified source command grammar and pointer semantics"
+    },
+    {
+      "id": "pay.sequence.channel_machine.v1",
+      "status": "planned"
+    },
+    {
+      "id": "pay.control.branch.v1",
+      "status": "planned"
+    },
+    {
+      "id": "pay.control.loop.v1",
+      "status": "planned"
+    },
+    {
+      "id": "pay.pitch.slide.v1",
+      "status": "planned"
+    },
+    {
+      "id": "pay.pitch.frequency.v1",
+      "status": "planned"
+    },
+    {
+      "id": "pay.instrument.select.v1",
+      "status": "planned"
+    },
+    {
+      "id": "pay.envelope.software.v1",
+      "status": "planned"
+    },
+    {
+      "id": "pay.filter.approx.v1",
+      "status": "planned"
+    },
+    {
+      "id": "pay.volume.ay.v1",
+      "status": "planned"
+    },
+    {
+      "id": "pay.state.absolute_ram.v1",
+      "status": "planned"
+    },
+    {
+      "id": "pay.sound.noise.v1",
+      "status": "planned"
+    },
+    {
+      "id": "pay.sound.square.v1",
+      "status": "planned"
+    }
+  ],
+  "constraints": [
+    "No PAY-owned zero-page",
+    "No self-modifying generated code",
+    "Memory placement must be specified per machine configuration",
+    "Heavy IRQ work must be cycle-budgeted",
+    "No semantic lowering from unreviewed GPT inference"
+  ],
+  "knownLimitations": [
+    "SID analog filters cannot be preserved exactly on AY",
+    "ADSR and waveform implementations require explicit approximation plans",
+    "Multi-SID requires mapping and routing decision"
+  ]
+}

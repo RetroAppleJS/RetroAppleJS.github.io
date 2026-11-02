@@ -1,0 +1,1495 @@
+{
+  "format": "PAY_Bomberland_Semantic_Grammar_Slice_v0.8.2",
+  "source": {
+    "sha256PSID": "65c3874b9f529c9adac45852f6e216eef2307a325051471d8b58290c38f71a68",
+    "title": "Bomberland (preview)",
+    "subtune": 1,
+    "initAddress": 4096,
+    "playAddress": 4099
+  },
+  "trace": {
+    "frames": 3000,
+    "decoderTransactions": 1525,
+    "inductionFrames": [
+      0,
+      1499
+    ],
+    "holdoutFrames": [
+      1500,
+      2999
+    ],
+    "inductionTransactions": 753,
+    "holdoutTransactions": 772,
+    "noDroppedCriticalRecords": true,
+    "allTransactionsReachSourceExit": true
+  },
+  "verifiedStructuralRules": [
+    {
+      "ruleId": "selector_config",
+      "tokenIntervalHex": [
+        "00",
+        "3F"
+      ],
+      "observedTransactions": 331,
+      "observedTokenValues": [
+        "01",
+        "02",
+        "03",
+        "04",
+        "05",
+        "06",
+        "07",
+        "08",
+        "09",
+        "0A",
+        "0B",
+        "0C"
+      ],
+      "sourceInstructions": [
+        "$13A3 STA $14DB,X",
+        "$1219 LDY $14DB,X",
+        "$121C LDA $16A1,Y"
+      ],
+      "proof": "verified_machine_transition",
+      "tentativeIntent": "instrument.select_or_configuration",
+      "intentStatus": "hypothesis",
+      "state": "source_memory[$14DB+X]",
+      "payload": "token",
+      "downstream": "table[$16A1+selectedId] used at $121C; other related source tables need mapping",
+      "capability": "pay.sequence.configuration_decode.v1",
+      "evidenceContexts": [
+        {
+          "recordId": 0,
+          "frame": 5,
+          "voiceX": 0,
+          "sourceToken": "04",
+          "sourceAddress": "197F",
+          "stateDelta": [
+            {
+              "address": 5376,
+              "before": 0,
+              "after": 255
+            },
+            {
+              "address": 5377,
+              "before": 200,
+              "after": 0
+            },
+            {
+              "address": 5295,
+              "before": 0,
+              "after": 4
+            },
+            {
+              "address": 5297,
+              "before": 0,
+              "after": 9
+            },
+            {
+              "address": 5298,
+              "before": 0,
+              "after": 3
+            },
+            {
+              "address": 5315,
+              "before": 0,
+              "after": 117
+            },
+            {
+              "address": 5339,
+              "before": 1,
+              "after": 4
+            },
+            {
+              "address": 5340,
+              "before": 255,
+              "after": 254
+            }
+          ]
+        },
+        {
+          "recordId": 1,
+          "frame": 5,
+          "voiceX": 7,
+          "sourceToken": "0B",
+          "sourceAddress": "19BB",
+          "stateDelta": [
+            {
+              "address": 5376,
+              "before": 0,
+              "after": 255
+            },
+            {
+              "address": 5377,
+              "before": 234,
+              "after": 0
+            },
+            {
+              "address": 5295,
+              "before": 0,
+              "after": 4
+            },
+            {
+              "address": 5297,
+              "before": 0,
+              "after": 15
+            },
+            {
+              "address": 5298,
+              "before": 0,
+              "after": 4
+            },
+            {
+              "address": 5315,
+              "before": 0,
+              "after": 129
+            },
+            {
+              "address": 5339,
+              "before": 1,
+              "after": 11
+            },
+            {
+              "address": 5340,
+              "before": 255,
+              "after": 254
+            }
+          ]
+        },
+        {
+          "recordId": 2,
+          "frame": 5,
+          "voiceX": 14,
+          "sourceToken": "05",
+          "sourceAddress": "19E0",
+          "stateDelta": [
+            {
+              "address": 5376,
+              "before": 0,
+              "after": 255
+            },
+            {
+              "address": 5377,
+              "before": 148,
+              "after": 0
+            },
+            {
+              "address": 5295,
+              "before": 0,
+              "after": 4
+            },
+            {
+              "address": 5297,
+              "before": 0,
+              "after": 15
+            },
+            {
+              "address": 5298,
+              "before": 0,
+              "after": 137
+            },
+            {
+              "address": 5315,
+              "before": 0,
+              "after": 120
+            },
+            {
+              "address": 5339,
+              "before": 1,
+              "after": 5
+            },
+            {
+              "address": 5340,
+              "before": 255,
+              "after": 254
+            }
+          ]
+        },
+        {
+          "recordId": 756,
+          "frame": 1508,
+          "voiceX": 0,
+          "sourceToken": "06",
+          "sourceAddress": "1A56",
+          "stateDelta": [
+            {
+              "address": 5376,
+              "before": 0,
+              "after": 255
+            },
+            {
+              "address": 5377,
+              "before": 200,
+              "after": 0
+            },
+            {
+              "address": 5295,
+              "before": 24,
+              "after": 27
+            },
+            {
+              "address": 5297,
+              "before": 3,
+              "after": 0
+            },
+            {
+              "address": 5315,
+              "before": 0,
+              "after": 120
+            },
+            {
+              "address": 5339,
+              "before": 4,
+              "after": 6
+            },
+            {
+              "address": 5340,
+              "before": 255,
+              "after": 254
+            }
+          ]
+        },
+        {
+          "recordId": 1105,
+          "frame": 2088,
+          "voiceX": 7,
+          "sourceToken": "07",
+          "sourceAddress": "1975",
+          "stateDelta": [
+            {
+              "address": 5376,
+              "before": 0,
+              "after": 255
+            },
+            {
+              "address": 5377,
+              "before": 102,
+              "after": 0
+            },
+            {
+              "address": 5295,
+              "before": 0,
+              "after": 3
+            },
+            {
+              "address": 5297,
+              "before": 2,
+              "after": 0
+            },
+            {
+              "address": 5315,
+              "before": 0,
+              "after": 149
+            },
+            {
+              "address": 5339,
+              "before": 1,
+              "after": 7
+            },
+            {
+              "address": 5340,
+              "before": 255,
+              "after": 254
+            }
+          ]
+        },
+        {
+          "recordId": 1082,
+          "frame": 2048,
+          "voiceX": 14,
+          "sourceToken": "06",
+          "sourceAddress": "1CE6",
+          "stateDelta": [
+            {
+              "address": 5376,
+              "before": 0,
+              "after": 255
+            },
+            {
+              "address": 5377,
+              "before": 65,
+              "after": 0
+            },
+            {
+              "address": 5295,
+              "before": 167,
+              "after": 171
+            },
+            {
+              "address": 5297,
+              "before": 0,
+              "after": 10
+            },
+            {
+              "address": 5298,
+              "before": 0,
+              "after": 13
+            },
+            {
+              "address": 5315,
+              "before": 0,
+              "after": 156
+            },
+            {
+              "address": 5339,
+              "before": 11,
+              "after": 6
+            },
+            {
+              "address": 5340,
+              "before": 255,
+              "after": 254
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "Only observed first 3000 PLAY frames of subtune 1",
+        "Compiler target semantics are unapproved until decoded transitions and cross-driver validation"
+      ]
+    },
+    {
+      "ruleId": "selector_effect",
+      "tokenIntervalHex": [
+        "40",
+        "5F"
+      ],
+      "observedTransactions": 470,
+      "observedTokenValues": [
+        "40",
+        "41",
+        "43",
+        "45",
+        "46",
+        "48",
+        "4C",
+        "4F",
+        "50",
+        "51",
+        "52",
+        "53",
+        "54",
+        "56",
+        "59",
+        "5C",
+        "5F"
+      ],
+      "sourceInstructions": [
+        "$13AD CMP #$50",
+        "$13AF AND #$0F",
+        "$13B1 STA $14B1,X",
+        "$11E4 LDY $14B1,X",
+        "$11E7 LDA $1495,Y",
+        "$11EA STA $1281",
+        "$11ED STA $128A"
+      ],
+      "proof": "verified_machine_transition",
+      "tentativeIntent": "effect.dispatch",
+      "intentStatus": "inferred",
+      "state": "source_memory[$14B1+X]",
+      "payload": "token & $0F",
+      "downstream": "table[$1495+selector] supplies executable operand bytes at $1281/$128A",
+      "capability": "pay.control.effect_dispatch.v1",
+      "evidenceContexts": [
+        {
+          "recordId": 3,
+          "frame": 10,
+          "voiceX": 0,
+          "sourceToken": "50",
+          "sourceAddress": "1983",
+          "stateDelta": [
+            {
+              "address": 5295,
+              "before": 4,
+              "after": 5
+            },
+            {
+              "address": 5297,
+              "before": 9,
+              "after": 0
+            }
+          ]
+        },
+        {
+          "recordId": 4,
+          "frame": 10,
+          "voiceX": 7,
+          "sourceToken": "50",
+          "sourceAddress": "19BF",
+          "stateDelta": [
+            {
+              "address": 5295,
+              "before": 4,
+              "after": 5
+            },
+            {
+              "address": 5297,
+              "before": 15,
+              "after": 0
+            }
+          ]
+        },
+        {
+          "recordId": 7,
+          "frame": 15,
+          "voiceX": 14,
+          "sourceToken": "40",
+          "sourceAddress": "19E4",
+          "stateDelta": [
+            {
+              "address": 5376,
+              "before": 0,
+              "after": 255
+            },
+            {
+              "address": 5377,
+              "before": 68,
+              "after": 0
+            },
+            {
+              "address": 5295,
+              "before": 4,
+              "after": 6
+            },
+            {
+              "address": 5297,
+              "before": 15,
+              "after": 0
+            },
+            {
+              "address": 5315,
+              "before": 0,
+              "after": 120
+            },
+            {
+              "address": 5340,
+              "before": 255,
+              "after": 254
+            }
+          ]
+        },
+        {
+          "recordId": 753,
+          "frame": 1503,
+          "voiceX": 0,
+          "sourceToken": "43",
+          "sourceAddress": "1A53",
+          "stateDelta": [
+            {
+              "address": 5295,
+              "before": 21,
+              "after": 24
+            },
+            {
+              "address": 5297,
+              "before": 0,
+              "after": 3
+            },
+            {
+              "address": 5315,
+              "before": 0,
+              "after": 132
+            }
+          ]
+        },
+        {
+          "recordId": 754,
+          "frame": 1503,
+          "voiceX": 7,
+          "sourceToken": "56",
+          "sourceAddress": "1ABF",
+          "stateDelta": [
+            {
+              "address": 5295,
+              "before": 17,
+              "after": 19
+            },
+            {
+              "address": 5297,
+              "before": 0,
+              "after": 6
+            },
+            {
+              "address": 5298,
+              "before": 49,
+              "after": 33
+            }
+          ]
+        },
+        {
+          "recordId": 761,
+          "frame": 1513,
+          "voiceX": 14,
+          "sourceToken": "43",
+          "sourceAddress": "1C51",
+          "stateDelta": [
+            {
+              "address": 5295,
+              "before": 18,
+              "after": 21
+            },
+            {
+              "address": 5297,
+              "before": 0,
+              "after": 3
+            },
+            {
+              "address": 5315,
+              "before": 0,
+              "after": 119
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "Only observed first 3000 PLAY frames of subtune 1",
+        "Compiler target semantics are unapproved until decoded transitions and cross-driver validation"
+      ]
+    },
+    {
+      "ruleId": "pitch_code",
+      "tokenIntervalHex": [
+        "60",
+        "BC"
+      ],
+      "observedTransactions": 379,
+      "observedTokenValues": [
+        "6C",
+        "6E",
+        "75",
+        "78",
+        "79",
+        "7A",
+        "7E",
+        "7F",
+        "81",
+        "82",
+        "83",
+        "84",
+        "85",
+        "86",
+        "88",
+        "8A",
+        "8B",
+        "8D",
+        "8E",
+        "8F",
+        "90",
+        "91",
+        "92",
+        "93",
+        "95",
+        "96",
+        "99",
+        "9B",
+        "9C",
+        "9E",
+        "A0",
+        "A3",
+        "A5",
+        "A6",
+        "A7",
+        "A8",
+        "AA",
+        "AC",
+        "AF",
+        "B1"
+      ],
+      "sourceInstructions": [
+        "$13C1 CMP #$BD",
+        "$13CB STA $14C3,X",
+        "$1222 LDA $14C3,X",
+        "$1227 SEC",
+        "$1228 SBC #$60",
+        "$122A STA $14DA,X"
+      ],
+      "proof": "verified_machine_transition",
+      "tentativeIntent": "pitch.note_index",
+      "intentStatus": "inferred",
+      "state": "source_memory[$14C3+X]",
+      "payload": "token",
+      "downstream": "$1228 subtracts $60, stores resulting index to $14DA+X; $1515/$1575 later read as frequency tables",
+      "capability": "pay.pitch.note_from_table.v1",
+      "evidenceContexts": [
+        {
+          "recordId": 5,
+          "frame": 15,
+          "voiceX": 0,
+          "sourceToken": "75",
+          "sourceAddress": "1984",
+          "stateDelta": [
+            {
+              "address": 5376,
+              "before": 0,
+              "after": 255
+            },
+            {
+              "address": 5377,
+              "before": 200,
+              "after": 0
+            },
+            {
+              "address": 5295,
+              "before": 5,
+              "after": 6
+            },
+            {
+              "address": 5315,
+              "before": 0,
+              "after": 117
+            },
+            {
+              "address": 5340,
+              "before": 255,
+              "after": 254
+            }
+          ]
+        },
+        {
+          "recordId": 6,
+          "frame": 15,
+          "voiceX": 7,
+          "sourceToken": "81",
+          "sourceAddress": "19C0",
+          "stateDelta": [
+            {
+              "address": 5376,
+              "before": 0,
+              "after": 255
+            },
+            {
+              "address": 5377,
+              "before": 65,
+              "after": 0
+            },
+            {
+              "address": 5295,
+              "before": 5,
+              "after": 6
+            },
+            {
+              "address": 5315,
+              "before": 0,
+              "after": 129
+            },
+            {
+              "address": 5340,
+              "before": 255,
+              "after": 254
+            }
+          ]
+        },
+        {
+          "recordId": 90,
+          "frame": 185,
+          "voiceX": 14,
+          "sourceToken": "92",
+          "sourceAddress": "1B9C",
+          "stateDelta": [
+            {
+              "address": 5376,
+              "before": 0,
+              "after": 255
+            },
+            {
+              "address": 5377,
+              "before": 148,
+              "after": 0
+            },
+            {
+              "address": 5295,
+              "before": 5,
+              "after": 6
+            },
+            {
+              "address": 5315,
+              "before": 0,
+              "after": 146
+            },
+            {
+              "address": 5340,
+              "before": 255,
+              "after": 254
+            }
+          ]
+        },
+        {
+          "recordId": 777,
+          "frame": 1543,
+          "voiceX": 0,
+          "sourceToken": "6C",
+          "sourceAddress": "1A64",
+          "stateDelta": [
+            {
+              "address": 5376,
+              "before": 0,
+              "after": 255
+            },
+            {
+              "address": 5377,
+              "before": 200,
+              "after": 0
+            },
+            {
+              "address": 5295,
+              "before": 38,
+              "after": 39
+            },
+            {
+              "address": 5315,
+              "before": 0,
+              "after": 108
+            },
+            {
+              "address": 5340,
+              "before": 255,
+              "after": 254
+            }
+          ]
+        },
+        {
+          "recordId": 775,
+          "frame": 1538,
+          "voiceX": 7,
+          "sourceToken": "A6",
+          "sourceAddress": "1AC9",
+          "stateDelta": [
+            {
+              "address": 5376,
+              "before": 0,
+              "after": 255
+            },
+            {
+              "address": 5377,
+              "before": 33,
+              "after": 0
+            },
+            {
+              "address": 5295,
+              "before": 27,
+              "after": 28
+            },
+            {
+              "address": 5315,
+              "before": 0,
+              "after": 166
+            }
+          ]
+        },
+        {
+          "recordId": 758,
+          "frame": 1508,
+          "voiceX": 14,
+          "sourceToken": "83",
+          "sourceAddress": "1C50",
+          "stateDelta": [
+            {
+              "address": 5376,
+              "before": 0,
+              "after": 255
+            },
+            {
+              "address": 5377,
+              "before": 65,
+              "after": 0
+            },
+            {
+              "address": 5295,
+              "before": 17,
+              "after": 18
+            },
+            {
+              "address": 5315,
+              "before": 0,
+              "after": 131
+            },
+            {
+              "address": 5340,
+              "before": 255,
+              "after": 254
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "Only observed first 3000 PLAY frames of subtune 1",
+        "Compiler target semantics are unapproved until decoded transitions and cross-driver validation"
+      ]
+    },
+    {
+      "ruleId": "special_bd",
+      "tokenIntervalHex": [
+        "BD",
+        "BD"
+      ],
+      "observedTransactions": 234,
+      "observedTokenValues": [
+        "BD"
+      ],
+      "sourceInstructions": [
+        "$13C1 CMP #$BD",
+        "$13C5 BEQ $13EB"
+      ],
+      "proof": "verified_machine_transition",
+      "tentativeIntent": "sequence.special_skip",
+      "intentStatus": "hypothesis",
+      "state": "no write to $14C3+X",
+      "payload": "token=$BD",
+      "downstream": "takes $13EB to advance stream position",
+      "capability": "pay.sequence.special_token.v1",
+      "evidenceContexts": [
+        {
+          "recordId": 13,
+          "frame": 30,
+          "voiceX": 0,
+          "sourceToken": "BD",
+          "sourceAddress": "198A",
+          "stateDelta": [
+            {
+              "address": 5295,
+              "before": 11,
+              "after": 12
+            }
+          ]
+        },
+        {
+          "recordId": 14,
+          "frame": 30,
+          "voiceX": 7,
+          "sourceToken": "BD",
+          "sourceAddress": "19C3",
+          "stateDelta": [
+            {
+              "address": 5295,
+              "before": 8,
+              "after": 9
+            }
+          ]
+        },
+        {
+          "recordId": 341,
+          "frame": 810,
+          "voiceX": 14,
+          "sourceToken": "BD",
+          "sourceAddress": "1BA6",
+          "stateDelta": [
+            {
+              "address": 5295,
+              "before": 3,
+              "after": 4
+            }
+          ]
+        },
+        {
+          "recordId": 771,
+          "frame": 1533,
+          "voiceX": 0,
+          "sourceToken": "BD",
+          "sourceAddress": "1A61",
+          "stateDelta": [
+            {
+              "address": 5295,
+              "before": 35,
+              "after": 36
+            }
+          ]
+        },
+        {
+          "recordId": 760,
+          "frame": 1513,
+          "voiceX": 7,
+          "sourceToken": "BD",
+          "sourceAddress": "1AC3",
+          "stateDelta": [
+            {
+              "address": 5295,
+              "before": 21,
+              "after": 22
+            }
+          ]
+        },
+        {
+          "recordId": 755,
+          "frame": 1503,
+          "voiceX": 14,
+          "sourceToken": "BD",
+          "sourceAddress": "1C4F",
+          "stateDelta": [
+            {
+              "address": 5295,
+              "before": 16,
+              "after": 17
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "Only observed first 3000 PLAY frames of subtune 1",
+        "Compiler target semantics are unapproved until decoded transitions and cross-driver validation"
+      ]
+    },
+    {
+      "ruleId": "special_be",
+      "tokenIntervalHex": [
+        "BE",
+        "BF"
+      ],
+      "observedTransactions": 43,
+      "observedTokenValues": [
+        "BE"
+      ],
+      "sourceInstructions": [
+        "$13C7 ORA #$F0",
+        "$13E8 STA $14DC,X"
+      ],
+      "proof": "verified_machine_transition",
+      "tentativeIntent": "articulation.control_mask",
+      "intentStatus": "hypothesis",
+      "state": "source_memory[$14DC+X]",
+      "payload": "$FE",
+      "downstream": "$13F9 AND $14DC,X then STA $D404,X; exact audible articulation needs source-state/gate proof",
+      "capability": "pay.articulation.gate_control.v1",
+      "evidenceContexts": [
+        {
+          "recordId": 345,
+          "frame": 820,
+          "voiceX": 0,
+          "sourceToken": "BE",
+          "sourceAddress": "1D3A",
+          "stateDelta": [
+            {
+              "address": 5295,
+              "before": 6,
+              "after": 7
+            },
+            {
+              "address": 5340,
+              "before": 255,
+              "after": 254
+            }
+          ]
+        },
+        {
+          "recordId": 9,
+          "frame": 20,
+          "voiceX": 7,
+          "sourceToken": "BE",
+          "sourceAddress": "19C1",
+          "stateDelta": [
+            {
+              "address": 5295,
+              "before": 6,
+              "after": 7
+            },
+            {
+              "address": 5340,
+              "before": 255,
+              "after": 254
+            }
+          ]
+        },
+        {
+          "recordId": 1369,
+          "frame": 2743,
+          "voiceX": 0,
+          "sourceToken": "BE",
+          "sourceAddress": "1D3A",
+          "stateDelta": [
+            {
+              "address": 5295,
+              "before": 6,
+              "after": 7
+            },
+            {
+              "address": 5340,
+              "before": 255,
+              "after": 254
+            }
+          ]
+        },
+        {
+          "recordId": 767,
+          "frame": 1523,
+          "voiceX": 14,
+          "sourceToken": "BE",
+          "sourceAddress": "1C55",
+          "stateDelta": [
+            {
+              "address": 5295,
+              "before": 22,
+              "after": 23
+            },
+            {
+              "address": 5340,
+              "before": 255,
+              "after": 254
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "Only observed first 3000 PLAY frames of subtune 1",
+        "Compiler target semantics are unapproved until decoded transitions and cross-driver validation"
+      ]
+    },
+    {
+      "ruleId": "repeat_counter",
+      "tokenIntervalHex": [
+        "C0",
+        "FF"
+      ],
+      "observedTransactions": 68,
+      "observedTokenValues": [
+        "FB",
+        "FD",
+        "FE"
+      ],
+      "sourceInstructions": [
+        "$1393 LDA $14B0,X",
+        "$1396 BNE $139A",
+        "$1398 LDA ($FD),Y",
+        "$139A ADC #$00",
+        "$139C STA $14B0,X",
+        "$139F BEQ $13EB",
+        "$13EB INY",
+        "$13EC LDA ($FD),Y"
+      ],
+      "proof": "verified_machine_transition",
+      "tentativeIntent": "control.local_token_repeat",
+      "intentStatus": "inferred",
+      "state": "source_memory[$14B0+X]",
+      "payload": "((oldCounter != 0 ? oldCounter : token) + 1) & $FF",
+      "downstream": "stream pointer index at $14AF+X stays when nonzero; $13EC executed on wrap to zero",
+      "capability": "pay.control.local_token_repeat.v1",
+      "evidenceContexts": [
+        {
+          "recordId": 387,
+          "frame": 890,
+          "voiceX": 0,
+          "sourceToken": "FE",
+          "sourceAddress": "1D4D",
+          "stateDelta": [
+            {
+              "address": 5296,
+              "before": 0,
+              "after": 255
+            }
+          ]
+        },
+        {
+          "recordId": 203,
+          "frame": 470,
+          "voiceX": 7,
+          "sourceToken": "FD",
+          "sourceAddress": "1A3C",
+          "stateDelta": [
+            {
+              "address": 5296,
+              "before": 0,
+              "after": 254
+            }
+          ]
+        },
+        {
+          "recordId": 759,
+          "frame": 1513,
+          "voiceX": 0,
+          "sourceToken": "FE",
+          "sourceAddress": "1A59",
+          "stateDelta": [
+            {
+              "address": 5296,
+              "before": 0,
+              "after": 255
+            }
+          ]
+        },
+        {
+          "recordId": 769,
+          "frame": 1528,
+          "voiceX": 7,
+          "sourceToken": "FE",
+          "sourceAddress": "1AC8",
+          "stateDelta": [
+            {
+              "address": 5296,
+              "before": 0,
+              "after": 255
+            }
+          ]
+        }
+      ],
+      "limits": [
+        "Only observed first 3000 PLAY frames of subtune 1",
+        "Compiler target semantics are unapproved until decoded transitions and cross-driver validation"
+      ]
+    }
+  ],
+  "downstreamEvidence": {
+    "noteIndexTransform": {
+      "sourcePC": "$1228",
+      "$14C3_to_$14DA": "sourceNoteCode minus $60",
+      "observedExecutions": 916,
+      "allSourceComputationsMatch": true
+    },
+    "instrumentCandidate": {
+      "sourcePC": "$121C",
+      "indexSource": "$14DB+X",
+      "sourceTableAddress": "$16A1",
+      "observedExecutions": 1525,
+      "allIndexAccessesMatch": true
+    },
+    "effectCandidate": {
+      "sourcePC": "$11E7",
+      "indexSource": "$14B1+X",
+      "sourceTableAddress": "$1495",
+      "observedExecutions": 1525,
+      "allIndexAccessesMatch": true
+    },
+    "localRepeat": {
+      "sourcePCs": [
+        "$1398",
+        "$139C",
+        "$139F",
+        "$13EC"
+      ],
+      "completedGroups": 28,
+      "verifiedExamples": [
+        {
+          "voiceX": 7,
+          "sourceAddress": "1A3C",
+          "sourceByte": "FD",
+          "visits": 3,
+          "frames": [
+            470,
+            475,
+            480
+          ]
+        },
+        {
+          "voiceX": 7,
+          "sourceAddress": "1A3C",
+          "sourceByte": "FD",
+          "visits": 3,
+          "frames": [
+            790,
+            795,
+            800
+          ]
+        },
+        {
+          "voiceX": 7,
+          "sourceAddress": "1A3C",
+          "sourceByte": "FD",
+          "visits": 3,
+          "frames": [
+            2393,
+            2398,
+            2403
+          ]
+        },
+        {
+          "voiceX": 7,
+          "sourceAddress": "1A3C",
+          "sourceByte": "FD",
+          "visits": 3,
+          "frames": [
+            2713,
+            2718,
+            2723
+          ]
+        },
+        {
+          "voiceX": 0,
+          "sourceAddress": "1D4D",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            890,
+            895
+          ]
+        },
+        {
+          "voiceX": 0,
+          "sourceAddress": "1D4D",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            1213,
+            1218
+          ]
+        },
+        {
+          "voiceX": 0,
+          "sourceAddress": "1D4D",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            2813,
+            2818
+          ]
+        },
+        {
+          "voiceX": 7,
+          "sourceAddress": "189B",
+          "sourceByte": "FB",
+          "visits": 5,
+          "frames": [
+            930,
+            935,
+            940,
+            945,
+            950
+          ]
+        },
+        {
+          "voiceX": 7,
+          "sourceAddress": "189B",
+          "sourceByte": "FB",
+          "visits": 5,
+          "frames": [
+            2853,
+            2858,
+            2863,
+            2868,
+            2873
+          ]
+        },
+        {
+          "voiceX": 0,
+          "sourceAddress": "1D65",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            970,
+            975
+          ]
+        },
+        {
+          "voiceX": 0,
+          "sourceAddress": "1D65",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            1293,
+            1298
+          ]
+        },
+        {
+          "voiceX": 0,
+          "sourceAddress": "1D65",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            2893,
+            2898
+          ]
+        },
+        {
+          "voiceX": 0,
+          "sourceAddress": "1854",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            1050,
+            1055
+          ]
+        },
+        {
+          "voiceX": 0,
+          "sourceAddress": "1854",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            2973,
+            2978
+          ]
+        },
+        {
+          "voiceX": 7,
+          "sourceAddress": "1907",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            1263,
+            1268
+          ]
+        },
+        {
+          "voiceX": 7,
+          "sourceAddress": "190A",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            1278,
+            1283
+          ]
+        },
+        {
+          "voiceX": 0,
+          "sourceAddress": "195D",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            1373,
+            1378
+          ]
+        },
+        {
+          "voiceX": 0,
+          "sourceAddress": "1A59",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            1513,
+            1518
+          ]
+        },
+        {
+          "voiceX": 0,
+          "sourceAddress": "1A59",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            1833,
+            1838
+          ]
+        },
+        {
+          "voiceX": 7,
+          "sourceAddress": "1AC8",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            1528,
+            1533
+          ]
+        },
+        {
+          "voiceX": 0,
+          "sourceAddress": "1A79",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            1593,
+            1598
+          ]
+        },
+        {
+          "voiceX": 0,
+          "sourceAddress": "1A79",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            1913,
+            1918
+          ]
+        },
+        {
+          "voiceX": 0,
+          "sourceAddress": "1A99",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            1673,
+            1678
+          ]
+        },
+        {
+          "voiceX": 0,
+          "sourceAddress": "1A99",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            1993,
+            1998
+          ]
+        },
+        {
+          "voiceX": 7,
+          "sourceAddress": "1AFA",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            1688,
+            1693
+          ]
+        },
+        {
+          "voiceX": 0,
+          "sourceAddress": "1D2E",
+          "sourceByte": "FE",
+          "visits": 2,
+          "frames": [
+            1753,
+            1758
+          ]
+        },
+        {
+          "voiceX": 0,
+          "sourceAddress": "1B92",
+          "sourceByte": "FD",
+          "visits": 3,
+          "frames": [
+            2053,
+            2058,
+            2063
+          ]
+        },
+        {
+          "voiceX": 0,
+          "sourceAddress": "1B95",
+          "sourceByte": "FD",
+          "visits": 3,
+          "frames": [
+            2073,
+            2078,
+            2083
+          ]
+        }
+      ],
+      "originalSongLoopProven": false
+    },
+    "candidateConfigurationTableMatrix": {
+      "sourcePSID": "originalExecutablePayload",
+      "selectedIds": 12,
+      "observedTableBases": [
+        5759,
+        5776,
+        5793,
+        5810,
+        5708,
+        5725,
+        5742,
+        5674,
+        5691
+      ],
+      "csvFile": "Bomberland_Source_Config_Tables_v082.csv",
+      "note": "Only byte values and their indexed relation are verified; per-table purpose must be proven."
+    }
+  },
+  "compilerContract": {
+    "transportVersion": "PAY_Semantic_Program_v0.8.1",
+    "sliceVersion": "0.8.2",
+    "compilationAuthorized": false,
+    "notCompiledReason": "Machine-level token classification is verified but instrument/effect/note timing semantics, full stream grammar, original loop scope and review approval are incomplete.",
+    "requiredCapabilities": [
+      "pay.sequence.configuration_decode.v1",
+      "pay.control.effect_dispatch.v1",
+      "pay.pitch.note_from_table.v1",
+      "pay.sequence.special_token.v1",
+      "pay.articulation.gate_control.v1",
+      "pay.control.local_token_repeat.v1"
+    ],
+    "sourceTablesPolicy": "Do not copy source RAM/zero-page instructions to Apple II; reconstruct typed state in absolute RAM, preserve source table byte identity until decoded, emit only independently reviewed intents.",
+    "requiredNextProbes": [
+      "Correlate $14DA note-index use with frequency tables $1515 and $1575 and SID register commits",
+      "Decode table $16A1 plus related source instrument tables including ADSR and waveform behaviour",
+      "Explain each $1495 selector target and source state changes through full call/return paths",
+      "Determine $BD/$BE articulation semantics from subsequent SID GATE/waveform writes",
+      "Trace pattern selection, indirect $1205 stream changes and source loop scope across subtunes",
+      "Review GPT candidates against held-out source execution and separate human approval"
+    ]
+  },
+  "disclaimer": "This document proves byte-to-machine-state transitions in a bounded source trace, not complete musical meanings. No AY event stream or native semantic music code is generated."
+}

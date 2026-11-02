@@ -1,0 +1,211 @@
+{
+  "format": "PAY_Semantic_Program_v0.8.1",
+  "source": {
+    "sha256PSID": "65c3874b9f529c9adac45852f6e216eef2307a325051471d8b58290c38f71a68",
+    "title": "Bomberland (preview)",
+    "subtune": 1,
+    "loadAddress": 4096,
+    "initAddress": 4096,
+    "playAddress": 4099
+  },
+  "capture": {
+    "frames": 3000,
+    "limitations": [
+      "Only first 3000 PLAY calls for subtune 1, not entire score",
+      "Source state graph/code variants were capped; effective data reads retained",
+      "Interpreter C64 timing and SID analog behaviour not cycle-accurate"
+    ],
+    "droppedRecords": {
+      "sidWrites": 0,
+      "dataReads": 0
+    }
+  },
+  "analysis": {
+    "scope": "partial",
+    "uncoveredRegions": [
+      "Token grammar unknown",
+      "Pointer-population write paths not correlated to each read",
+      "Per-channel loop and source-song loop states unproven"
+    ],
+    "sourceLoopStatus": "unresolved"
+  },
+  "evidenceRefs": [
+    {
+      "id": "code:$1385",
+      "kind": "runtime"
+    },
+    {
+      "id": "static:$1385",
+      "kind": "static"
+    },
+    {
+      "id": "read:$1385:X0",
+      "kind": "runtime"
+    },
+    {
+      "id": "read:$1385:X7",
+      "kind": "runtime"
+    },
+    {
+      "id": "read:$1385:X14",
+      "kind": "runtime"
+    },
+    {
+      "id": "code:$13EC",
+      "kind": "runtime"
+    },
+    {
+      "id": "read:$13EC:X0",
+      "kind": "runtime"
+    },
+    {
+      "id": "read:$13EC:X7",
+      "kind": "runtime"
+    },
+    {
+      "id": "read:$13EC:X14",
+      "kind": "runtime"
+    }
+  ],
+  "state": [
+    {
+      "id": "source_indirect_pointer",
+      "type": "pointer16",
+      "initial": {
+        "kind": "unresolved"
+      },
+      "sourceAddresses": [
+        253,
+        254
+      ],
+      "targetPlan": "absolute RAM pointer, never Apple II zero page",
+      "sourceEvidenceIds": [
+        "static:$1385"
+      ]
+    },
+    {
+      "id": "stream_y",
+      "type": "u8",
+      "initial": {
+        "kind": "unresolved"
+      },
+      "sourceAddresses": [],
+      "sourceEvidenceIds": [
+        "code:$1385"
+      ]
+    }
+  ],
+  "tables": [
+    {
+      "id": "candidate_command_stream",
+      "address": 6527,
+      "length": 60,
+      "encoding": "source_bytes",
+      "semanticStatus": "unresolved",
+      "evidenceIds": [
+        "read:$1385:X0"
+      ],
+      "note": "Sample observed pointer base, NOT a proven 60-byte table boundary or complete stream"
+    }
+  ],
+  "mechanisms": [
+    {
+      "id": "pointer_stream",
+      "intent": {
+        "category": "sequence",
+        "intentId": "sequence.token_fetch",
+        "version": "1.0.0",
+        "parameters": {
+          "sourceReadPCs": [
+            "$1385",
+            "$13EC"
+          ],
+          "voiceIndexX": [
+            0,
+            7,
+            14
+          ]
+        }
+      },
+      "proof": {
+        "level": "inferred",
+        "review": "candidate",
+        "evidenceIds": [
+          "code:$1385",
+          "static:$1385",
+          "read:$1385:X0",
+          "read:$1385:X7",
+          "read:$1385:X14",
+          "code:$13EC",
+          "read:$13EC:X0",
+          "read:$13EC:X7",
+          "read:$13EC:X14"
+        ],
+        "sourceKnown": "Executed indirect reads are proven; interpreting them as an encoded musical command stream remains inferred."
+      },
+      "behavior": {
+        "clock": "play_tick",
+        "transitions": [],
+        "comment": "Missing pointer load, condition and token decoding prevent executable transitions"
+      },
+      "inputs": [
+        {
+          "id": "selected_voice_x",
+          "type": "u8"
+        },
+        {
+          "id": "source_y",
+          "type": "u8"
+        }
+      ],
+      "dependencies": [],
+      "lowering": {
+        "mode": "unresolved",
+        "capabilityId": "pay.sequence.token_decoder.v1",
+        "parameters": {
+          "memoryPointer": "absolute_ram",
+          "noZP": true
+        },
+        "constraints": [
+          "Recover pointer-base creation and bounds",
+          "Determine command and operand byte grammar before lowering"
+        ],
+        "knownLosses": []
+      },
+      "acceptance": {
+        "probes": [
+          {
+            "name": "source_pointer_and_dispatch",
+            "sourcePCs": [
+              "$1385",
+              "$13EC"
+            ],
+            "assertions": [
+              "Actual $FD/$FE writes agree with effective address",
+              "Every candidate token is matched to a subsequent executed branch/state mutation",
+              "At least one new, unseen trace predicts the next transition"
+            ],
+            "status": "not_run"
+          }
+        ]
+      }
+    }
+  ],
+  "unknowns": [
+    {
+      "id": "pattern_token_grammar",
+      "question": "What is the token and operand grammar and its impact on note, duration, instrument and loop state?",
+      "blocks": [
+        "pointer_stream"
+      ],
+      "requiredProbe": [
+        "Trace $FD/$FE writes, next executed conditional/dispatch and changed source variables on each $1385/$13EC indirect read",
+        "Cross-check inferred grammar on an unseen range of Bomberland frames and at least one alternate subtune"
+      ]
+    }
+  ],
+  "extensions": {
+    "provenSourceSongLoop": false,
+    "inputType": "source_code_semantics_not_frame_snapshots"
+  }
+}
