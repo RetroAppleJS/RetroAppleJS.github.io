@@ -11,7 +11,7 @@
 const EXPECTED_SHA='65c3874b9f529c9adac45852f6e216eef2307a325051471d8b58290c38f71a68';
 const REQUIRED={
   subtune_init:['code:$1000','code:$10F1','operand_write:$10F6<-$10F1','static:$10F4','code:$10F5','patch:$1129<-$10F7'],
-  first_play_dispatch:['static:$1128','flow:$112A->$112C','flow:$112A->$1161','patch:$1129<-$113E','operand_read:$1129@PLAY'],
+  first_play_dispatch:['static:$1128','flow:$112A->$112C','flow:$112A->$1161','patch:$1129<-$113E','operand_read:$1129@$1128'],
   tick_observation:['code:$1003','flow:$1003->$1126','code:$1126']
 };
 function need(x,msg){if(!x)throw Error(msg)}

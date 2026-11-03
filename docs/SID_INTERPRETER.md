@@ -104,30 +104,10 @@ The PAY compiler must reconstruct these effects as explicitly typed absolute RAM
 
 Partial semantic compilation is **allowed for isolated regression tests**, provided the generated `.S` labels its incomplete downstream semantics, never inserts register-event-derived musical substitutions, and does not claim to be a complete player. The current slice only performs subtune index selection, the first-PLAY dispatch choice and diagnostic state updates. It does not clear the original channel tables or produce AY sound. A source-grounded normal-play branch must be implemented in a later phase before the full semantic player can be approved.
 
+## PAY-00.8G — Interpreter-to-Compiler first-PLAY extension
 
-## PAY-00.8F2 — Two-tool, intent-bearing handoff (normative)
+The user-facing architecture consists of exactly **PAY Interpreter → one semantic contract → PAY Compiler**. The Interpreter now includes evidence extraction and structured GPT/manual frontier-model interpretation. It may attach a source-verified `PAY_First_Play_Executable_Extension_v0.8G` to a structurally valid `PAY_Semantic_Contract_v0.8F2` when the original static instructions and execution evidence fully support the operation. See `PAY_00_8G_SEMANTIC_CONTRACT.md` for the typed data structure and exact proof requirements.
 
-PAY contains **two user-facing applications**:
+**Evidence ID canonicalisation:** For a store from source `$113E` into the operand at `$1129`, use `operand_write:$1129<-$113E`. For the consuming instruction at `$1128`, use `operand_read:$1129@$1128`. The formerly hand-authored alias `operand_read:$1129@PLAY` is **not** a canonical extractor output and must not be required by the compiler. Source evidence links must not be invented to satisfy validation.
 
-1. **PAY Interpreter** — PSID import and bounded execution, static/runtime evidence extraction, GPT or manual frontier-model semantic reconstruction, candidate validation, and contract export. All formerly separate Semantic Workbench functions belong inside this app.
-2. **PAY Compiler** — import one `PAY_Semantic_Contract_v0.8F2`, check provenance, supported typed operations and target hardware capability, emit source-first 6502 assembly and diagnostics.
-
-No additional user-facing Semantic Workbench is part of the official pipeline. An internal evidence index and a typed executable projection may still exist as objects in the contract. **The existence of an internal stage does not justify a separate application or another user-managed import/export step.**
-
-### Contract required fields
-
-`format`, `source` (including full original PSID SHA-256), `mechanismId`, `intents` (typed operation names and provenance), `candidate` (original model-derived semantic claims), `evidence` (bounded deterministic records and source dependency IDs), `validation` (separate structural and human review status), `targetPolicy` (no PAY-owned zero page, no self-modifying target code), and `compilerModule` (a narrow, deterministic, compiler-supported typed projection or `null`). The raw 12 MB trace should **not** be duplicated inside the contract; it remains in the Interpreter's audit report.
-
-### Review versus compilation
-
-A structurally valid `PAY_Semantic_Candidate_v0.8` is **not** equivalent to a verified semantic program. The Interpreter may emit a typed projection only when it can prove the relevant opcode pattern, operand-owner chain, branches, source identity, and an explicitly implemented target capability. The compiler validates this projection again and refuses unsupported mechanisms, unsupported target operations, mismatched source evidence, missing dependency IDs, or altered source arithmetic. The browser compiler currently emits only *experimental silent research fixtures*; external approval is still required for production compilation.
-
-### Bomberland supported slice
-
-The only implemented projection in this version is the `player_entry` source slice for the exact known Bomberland PSID identity. INIT uses source accumulator `A` and source code `STA $10F6; ASL A; ADC #imm` to derive an index **3 × A** for valid subtunes A=0,1,2. `STA $1129` patches the first PLAY's `LDY`; the `$112A BMI` chooses the one-time path, and `$113E STX $1129` causes later calls to take the ordinary path. Lowering uses absolute PAY state and never reproduces source self-modification. Instrument tables, notes, duration scheduling, waveforms, AY output and original song loops are NOT compiled.
-
-The model's expression that `$1129` is always set to `$00` applies to the observed default subtune only, NOT to all three subtunes. The bytes at `$10F6`, `$1129`, and `$1162` are instruction operands, NOT musical score-token classes; treating them as `decoderGrammar.tokenClasses` is a semantic classification issue. The `$1162` dynamic operand and downstream PLAY loop remain unresolved in this fixture.
-
-### Extendability
-
-As additional PSIDs expose new command families (pattern calls, channel-local loops, envelopes, pitch modulation, SID filters, source-driven volume control), version the corresponding intent and target capability. Never silently reinterpret unknown commands as simple AY register playback. A compiler that does not support an intent must produce an explicit blocker. Cross-song and cross-subtune tests are required before generalising a source-specific lowering.
+The first-PLAY setup uses a source-derived 42-byte zero range, three voice records, a one-time SID `$D415=0` write and explicit state in target RAM. A separately callable pitch-token diagnostic implements observed arithmetic `$60..$BC → 0..92`. Neither operation establishes complete note scheduling, instrument/timbre generation, source music looping or full SID writer equivalence. The research fixture remains `semanticReview: needs_human_validation`, `compilerApproval: false`.
