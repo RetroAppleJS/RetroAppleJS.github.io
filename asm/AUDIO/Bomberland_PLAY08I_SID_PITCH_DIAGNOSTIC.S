@@ -1,0 +1,304 @@
+; PLAY-00.8I / SID REFERENCE BACKEND — SEMANTIC CONTROL FIXTURE ONLY
+; Generated deterministically from typed PAY semantic contract, never from SID writes.
+; Original PSID SHA256: 65c3874b9f529c9adac45852f6e216eef2307a325051471d8b58290c38f71a68
+; FIRST PLAY STATE + one $D415=0 global-init write. No notes, gates, effects, song loops or SID voice writer.
+; INIT=$1000, PLAY=$1003; $1006 is an OPTIONAL test-only STOP entry.
+; No PAY-owned zero page, no self-modifying code. Source semantics hold in absolute RAM.
+ORG $1000
+SID_REF_INIT:
+  JMP SID_REF_INIT_CORE
+SID_REF_PLAY:
+  JMP SID_REF_PLAY_CORE
+SID_REF_STOP:
+  JMP SID_REF_STOP_CORE
+
+SID_REF_INIT_CORE:
+  STA SR_INPUT_A
+  PHA
+  TXA
+  PHA
+  TYA
+  PHA
+  LDA SR_INPUT_A
+  CMP #$03
+  BCC SR_INIT_VALID
+  LDA #$01
+  STA SR_ERROR
+  JMP SR_INIT_DONE
+SR_INIT_VALID:
+  LDA #$00
+  STA SR_ERROR
+  STA SR_FRAME_LO
+  STA SR_FRAME_HI
+  STA SR_FIRST_COUNT
+  STA SR_REGULAR_LO
+  STA SR_REGULAR_HI
+  STA SR_PATH
+  LDA #$01
+  STA SR_RUNNING
+  STA SR_FIRST_PENDING
+  LDA SR_INPUT_A
+  STA SR_SUBTUNE_A
+  CLC
+  ADC SR_INPUT_A
+  ADC SR_INPUT_A
+  STA SR_SETUP_INDEX
+SR_INIT_DONE:
+  PLA
+  TAY
+  PLA
+  TAX
+  PLA
+  RTS
+
+SID_REF_PLAY_CORE:
+  PHA
+  TXA
+  PHA
+  TYA
+  PHA
+  LDA SR_RUNNING
+  BEQ SR_TICK_DONE
+  LDA SR_FIRST_PENDING
+  BEQ SR_TICK_STEADY
+  LDA #$00
+  STA SR_FIRST_PENDING
+  INC SR_FIRST_COUNT
+  LDA #$01
+  STA SR_PATH
+  JSR SR_FIRST_PLAY_SETUP
+  JMP SR_TICK_ADVANCE
+SR_TICK_STEADY:
+  INC SR_REGULAR_LO
+  BNE SR_STEADY_DONE
+  INC SR_REGULAR_HI
+SR_STEADY_DONE:
+  LDA #$02
+  STA SR_PATH
+SR_TICK_ADVANCE:
+  INC SR_FRAME_LO
+  BNE SR_TICK_DONE
+  INC SR_FRAME_HI
+SR_TICK_DONE:
+  PLA
+  TAY
+  PLA
+  TAX
+  PLA
+  RTS
+
+SID_REF_STOP_CORE:
+  PHA
+  LDA #$00
+  STA SR_RUNNING
+  STA SR_FIRST_PENDING
+  PLA
+  RTS
+
+
+; Source $112C-$115E: first-PLAY state only (not sound engine).
+; 42-byte source clear $14AC..$14D5 mapped to SR_CLEAR_AREA.
+SR_FIRST_PLAY_SETUP:
+  LDA #$00
+  LDX #$29
+SR_CLEAR_42:
+  STA SR_CLEAR_AREA,X
+  DEX
+  BPL SR_CLEAR_42
+  STA SR_DYNAMIC_11B0
+  STA SR_DYNAMIC_1162
+  STA $D415
+  LDX #$14
+SR_ZERO_VOICE_REC:
+  STA SR_VOICE_RECORDS,X
+  DEX
+  BPL SR_ZERO_VOICE_REC
+; First-play Y initially = 3*subtune, and INY once per channel.
+  LDA SR_SETUP_INDEX
+  STA SR_V0_ORD
+  CLC
+  ADC #$01
+  STA SR_V1_ORD
+  ADC #$01
+  STA SR_V2_ORD
+  LDA #$05
+  STA SR_V0_2
+  STA SR_V1_2
+  STA SR_V2_2
+  LDA #$01
+  STA SR_V0_3
+  STA SR_V1_3
+  STA SR_V2_3
+  STA SR_V0_5
+  STA SR_V1_5
+  STA SR_V2_5
+  RTS
+
+; Test-only semantic command: source $13CB -> $1222/$1227/$1228/$122A.
+; Converts a SOURCE PITCH CODE to a 0..92 index. Does NOT play a note.
+SID_REF_PITCH_INDEX:
+  PHA
+  LDA SR_TEST_TOKEN
+  CMP #$60
+  BCC SR_PITCH_INVALID
+  CMP #$BD
+  BCS SR_PITCH_INVALID
+  SEC
+  SBC #$60
+  STA SR_TEST_PITCH_INDEX
+  LDA #$01
+  STA SR_TEST_PITCH_VALID
+  JMP SR_PITCH_DONE
+SR_PITCH_INVALID:
+  LDA #$00
+  STA SR_TEST_PITCH_VALID
+SR_PITCH_DONE:
+  PLA
+  RTS
+
+; PLAY-00.8I: source $1318 / $131E table lookup after pitch-index calculation.
+; Callable diagnostic ONLY. Not called by SID_REF_PLAY; no SID register writes.
+SID_REF_PITCH_FROM_TOKEN:
+  JSR SID_REF_PITCH_INDEX
+  LDA SR_TEST_PITCH_VALID
+  BEQ SR_PITCH_INPUT_INVALID
+  JSR SID_REF_PITCH_WORD
+  RTS
+SR_PITCH_INPUT_INVALID:
+  LDA #$00
+  STA SR_TEST_FREQ_VALID
+  RTS
+SID_REF_PITCH_WORD:
+  PHA
+  TXA
+  PHA
+  LDA SR_TEST_PITCH_INDEX
+  CMP #$5D
+  BCS SR_PITCH_WORD_INVALID
+  TAX
+  LDA SR_PITCH_TABLE_LO,X
+  STA SR_TEST_FREQ_LO
+  LDA SR_PITCH_TABLE_HI,X
+  STA SR_TEST_FREQ_HI
+  LDA #$01
+  STA SR_TEST_FREQ_VALID
+  JMP SR_PITCH_WORD_DONE
+SR_PITCH_WORD_INVALID:
+  LDA #$00
+  STA SR_TEST_FREQ_VALID
+SR_PITCH_WORD_DONE:
+  PLA
+  TAX
+  PLA
+  RTS
+
+SR_STATE:
+SR_INPUT_A:
+  DB $00
+SR_SUBTUNE_A:
+  DB $00
+SR_SETUP_INDEX:
+  DB $00
+SR_FIRST_PENDING:
+  DB $00
+SR_RUNNING:
+  DB $00
+SR_ERROR:
+  DB $00
+SR_FRAME_LO:
+  DB $00
+SR_FRAME_HI:
+  DB $00
+SR_FIRST_COUNT:
+  DB $00
+SR_REGULAR_LO:
+  DB $00
+SR_REGULAR_HI:
+  DB $00
+SR_PATH:
+  DB $00
+
+; Source $14AC..$14D5 clearing, absolute target RAM state.
+SR_CLEAR_AREA:
+  DB $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; PAY version of source operand state at $11B0 and $1162.
+SR_DYNAMIC_11B0:
+  DB $00
+SR_DYNAMIC_1162:
+  DB $00
+; Source pitch-code conversion test inputs/outputs.
+SR_TEST_TOKEN:
+  DB $00
+SR_TEST_PITCH_INDEX:
+  DB $00
+SR_TEST_PITCH_VALID:
+  DB $00
+; Original $14D6+[0,7,14] voice records; translated as 3 * 7 bytes.
+SR_VOICE_RECORDS:
+SR_V0_ORD:
+  DB $00
+SR_V0_1:
+  DB $00
+SR_V0_2:
+  DB $00
+SR_V0_3:
+  DB $00
+SR_V0_4:
+  DB $00
+SR_V0_5:
+  DB $00
+SR_V0_6:
+  DB $00
+SR_V1_ORD:
+  DB $00
+SR_V1_1:
+  DB $00
+SR_V1_2:
+  DB $00
+SR_V1_3:
+  DB $00
+SR_V1_4:
+  DB $00
+SR_V1_5:
+  DB $00
+SR_V1_6:
+  DB $00
+SR_V2_ORD:
+  DB $00
+SR_V2_1:
+  DB $00
+SR_V2_2:
+  DB $00
+SR_V2_3:
+  DB $00
+SR_V2_4:
+  DB $00
+SR_V2_5:
+  DB $00
+SR_V2_6:
+  DB $00
+
+
+; Verified original SID note-frequency data: low/high bytes, index 0..92.
+SR_PITCH_TABLE_LO:
+  DB $17,$27,$39,$4B,$5F,$74,$8A,$A1,$BA,$D4,$F0,$0E,$2D,$4E,$71,$96
+  DB $BE,$E8,$14,$43,$74,$A9,$E1,$1C,$5A,$9C,$E2,$2D,$7C,$CF,$28,$85
+  DB $E8,$52,$C1,$37,$B4,$39,$C5,$5A,$F7,$9E,$4F,$0A,$D1,$A3,$82,$6E
+  DB $68,$71,$8A,$B3,$EE,$3C,$9E,$15,$A2,$46,$04,$DC,$D0,$E2,$14,$67
+  DB $DD,$79,$3C,$29,$44,$8D,$08,$B8,$A1,$C5,$28,$CD,$BA,$F1,$78,$53
+  DB $87,$1A,$10,$71,$42,$89,$4F,$9B,$74,$E2,$F0,$A6,$0E
+SR_PITCH_TABLE_HI:
+  DB $01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$02,$02,$02,$02,$02
+  DB $02,$02,$03,$03,$03,$03,$03,$04,$04,$04,$04,$05,$05,$05,$06,$06
+  DB $06,$07,$07,$08,$08,$09,$09,$0A,$0A,$0B,$0C,$0D,$0D,$0E,$0F,$10
+  DB $11,$12,$13,$14,$15,$17,$18,$1A,$1B,$1D,$1F,$20,$22,$24,$27,$29
+  DB $2B,$2E,$31,$34,$37,$3A,$3E,$41,$45,$49,$4E,$52,$57,$5C,$62,$68
+  DB $6E,$75,$7C,$83,$8B,$93,$9C,$A5,$AF,$B9,$C4,$D0,$DD
+SR_TEST_FREQ_LO:
+  DB $00
+SR_TEST_FREQ_HI:
+  DB $00
+SR_TEST_FREQ_VALID:
+  DB $00
+
+; END — first-PLAY state only; no source player transplanted or register-event score.

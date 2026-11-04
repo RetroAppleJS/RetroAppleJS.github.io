@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>PAY Interpreter 00.8G -  + Semantic Analysis v0.5.2 — Extended Duration Trace</title>
+<title>PLAY Interpreter 00.8H — Semantic Analysis v0.5.2 — Extended Duration Trace</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1120;--card:#141f34;--card2:#101b30;--line:#2d405e;--txt:#edf3fc;--muted:#aabbd0;--blue:#78baff;--green:#66e0b2;--danger:#ffa5a5}
 *{box-sizing:border-box}
@@ -41,62 +41,88 @@ dialog{background:#14243c;color:var(--txt);border:1px solid #7599bd;border-radiu
 dialog::backdrop{background:#02060cbd}dialog h2{font-size:21px}
 @media(max-width:930px){.layout{grid-template-columns:1fr}main{padding:16px 11px 35px}#asm{min-height:340px}}
 #semanticIntentArea select,#semanticIntentArea input{max-width:100%}#semClock{font-variant-numeric:tabular-nums;color:#70d9a8}
+
+.api-session{max-width:1400px;margin-bottom:16px;background:#11253a}
+.api-session-head{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.api-session-head h2{margin:0}.api-session-head p{margin:4px 0 10px}
+.api-session-fields{display:grid;grid-template-columns:minmax(260px,2.1fr) minmax(170px,1fr) auto;align-items:end;gap:12px}
+.api-session-fields label{margin-top:0}
+.key-actions{padding-bottom:0}.key-actions button{white-space:nowrap}
+.key-session-state{font-size:12px;padding:5px 10px;border-radius:30px;border:1px solid #64768a;color:#becbdc}
+.key-session-state[data-ready=yes]{color:#86dfb2;border-color:#347856}
+.workflow-steps{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 18px}
+.workflow-steps span{background:#15283e;border:1px solid #36516d;border-radius:40px;padding:7px 11px;font-weight:650;font-size:13px;color:#c5dfff}
+.advanced>summary,.api-help>summary{cursor:pointer;font-size:13px;color:#b7d7f9;font-weight:650}
+.advanced[open]>summary{margin-bottom:14px}.advanced textarea{min-height:160px}
+#semanticIntentArea{border-color:#4874ab!important}
+#semanticIntentArea .advanced{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
+@media(max-width:850px){.api-session-fields{grid-template-columns:1fr}.key-actions{justify-self:start}.workflow-steps span{flex:1 0 125px;text-align:center}}
+
+/* Progressive disclosure: show cancellation and downloads only when usable. */
+#stopTrace:disabled,#semCancel:disabled,#cancel:disabled,#diffExport:disabled,#diffCounterExport:disabled,#semSaveRaw:disabled{display:none}
+
+/* One work area instead of an empty two-column layout when advanced panels are collapsed. */
+main{max-width:1160px}.layout{grid-template-columns:minmax(0,1fr)}
 </style>
 </head>
 <body>
 <main>
 <header>
-<span class="tag">RETROAPPLEJS · PAY-00.8F2 · Integrated Semantic Interpreter</span>
-<h1>PAY Interpreter · Semantic Analysis</h1>
-<p class="subtitle">PSID → static disassembly + bounded 6502 runtime / self-modifying-code trace → GPT-assisted musical interpretation. Self-contained browser tool; no external JavaScript or framework required. This phase additionally extracts a trace-grounded PAY musical intermediate representation (IR), read-table evidence, and observed state transitions. <strong>It does not yet produce playable PAY machine code.</strong></p>
+<span class="tag">RETROAPPLEJS · PLAY-00.8I · Simplified semantic workflow + pitch proof + differential validation</span>
+<h1>PLAY Interpreter</h1>
+<p class="subtitle">Load a PSID or saved Complete Report, interpret source intent, export one compiler contract, and compare the source against regenerated SID behaviour. The Compiler remains deterministic. <strong>Musical playback equivalence is not yet established.</strong></p>
 </header>
+<section class="card api-session" id="apiSessionSettings">
+ <div class="api-session-head"><div><h2>AI connection — enter your key once</h2><p class="small">Shared by both GPT analysis passes. The key stays only in this open page, never in exports or browser storage.</p></div><span id="keySessionState" class="key-session-state">No key entered</span></div>
+ <div class="api-session-fields"><div><label for="apiSessionKey">OpenAI API key</label><input id="apiSessionKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="sk-… (session only)"></div><div><label for="model">GPT model for both passes</label><input id="model" type="text" value="gpt-5" spellcheck="false" autocomplete="off"></div><div class="key-actions"><button id="clearSessionKey" type="button">Forget key</button></div></div>
+ <details class="api-help"><summary>API usage &amp; security</summary><p class="small">This self-contained page sends requests directly to api.openai.com. API requests may incur charges; source code and evidence are transmitted when GPT is invoked. Use only a trusted local page. No proxy or account-level key storage is implemented. The key is automatically lost when the page is reloaded or closed.</p></details>
+</section>
+<div class="workflow-steps" aria-label="Workflow"><span>1 · Source</span><span>2 · Trace</span><span>3 · Interpret &amp; export</span><span>4 · Compare</span></div>
 <div id="status" role="status" aria-live="polite">Load a .sid file to begin.</div>
 <div class="layout" style="margin-top:16px">
  <div class="col">
   <section class="card">
-   <h2>1 · Import PSID</h2>
-   <label for="sidFile">Source .sid file</label>
+   <h2>1 · Load source</h2>
+   <label for="sidFile">Original PSID (.sid)</label>
    <input id="sidFile" type="file" accept=".sid,.psid,.rsid,application/octet-stream">
-   <p class="small">Reads the binary locally. Static CFG uses official NMOS 6502 instructions. Bounded execution below supports PSID with normal subroutine INIT/PLAY; RSID and C64-specific IRQ hardware remain unsupported.</p>
-   <div class="actions"><button id="saveComplete" class="primary" disabled>Download Complete Report JSON</button></div>
+   <p class="small">Or resume from a saved 12 MB Complete Report—no repeat trace or GPT request needed.</p>
+   <label for="semInputReport">Existing Complete Report (.json)</label><input id="semInputReport" type="file" accept=".json,application/json">
+   <div class="actions"><button id="saveComplete" disabled>Save Complete Report (.json)</button></div>
    <p class="small" id="completeState" role="status" aria-live="polite">Load a SID to enable the consolidated export. Run a trace and GPT analysis first to include those findings.</p>
-   <div class="actions"><button id="saveAsm" disabled>Export annotated .asm</button><button id="saveJson" disabled>Export compact analysis .json</button></div>
+   <details class="advanced"><summary>Other source exports</summary><div class="actions"><button id="saveAsm" disabled>Annotated assembly</button><button id="saveJson" disabled>Compact analysis</button></div></details>
   </section>
   <section class="card">
-   <h2>2 · Execute and trace 6502</h2>
-   <p class="small">Runs INIT then PLAY in a bounded offline 6502 interpreter. Captures runtime-only instructions, self-modifying code, concrete SID writes, effective memory reads (including indirect pattern fetches), actual branch destinations, and a per-frame 3-voice AY pitch preview. <strong>Not cycle-accurate and not full C64 hardware.</strong> No API key required. Up to 6000 observed PLAY frames; large traces may require substantial browser memory. Up to 6000 observed PLAY frames; large traces may require substantial browser memory.</p>
+   <h2>2 · Trace source (skip if restoring a report)</h2>
+   <p class="small">Runs INIT and PLAY locally, extracting code paths, operand patches, data reads and SID writes. No API key required. Bounded CPU model, not a cycle-accurate C64.</p>
    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
     <div><label for="traceFrames">PLAY frames</label><input id="traceFrames" type="number" min="1" max="6000" value="300"></div>
     <div><label for="subtune">Subtune (1-based)</label><input id="subtune" type="number" min="1" max="256" value="1"></div>
    </div>
    <div class="actions"><button id="runTrace" class="primary" disabled>Run 6502 trace</button><button id="stopTrace" disabled>Stop trace</button></div>
-   <div class="actions"><button id="saveTrace" disabled>Export runtime trace .json</button><button id="saveReport" disabled>Export trace summary .txt</button></div>
+   <details class="advanced"><summary>Trace exports and details</summary><div class="actions"><button id="saveTrace" disabled>Runtime trace .json</button><button id="saveReport" disabled>Trace summary .txt</button></div><label for="traceText">Runtime findings</label><textarea id="traceText" readonly style="min-height:200px" spellcheck="false" placeholder="Trace results."></textarea></details>
    <p class="small" id="traceState" role="status" aria-live="polite">No runtime trace yet. Static listing is still available.</p>
-   <label for="traceText">Runtime findings</label>
-   <textarea id="traceText" readonly style="min-height:300px" spellcheck="false" placeholder="Trace results: executed instructions, modified executable bytes, SID writes and frame summaries."></textarea>
   </section>
-  <section class="card">
-   <h2>PAY-00.5 · Musical state / pattern evidence (NEW)</h2>
+  <details class="card advanced"><summary>Advanced · Musical IR and raw read evidence</summary>
+   <h2>Musical state / pattern evidence</h2>
    <p class="small">Built automatically after a successful trace. Separates actual control-register changes from pitched-note <em>candidates</em>; summarizes repeated observable states without asserting that program loops have been proven. Captures executed indirect data reads and dynamic branch destinations.</p>
    <p class="small" id="irState" role="status" aria-live="polite">Run a 6502 trace to extract PAY-IR.</p>
    <div class="actions"><button id="saveIR" disabled>Export PAY musical IR .json</button><button id="saveReads" disabled>Export observed data reads .csv</button></div>
    <label for="irText">Musical IR overview / evidence</label>
    <textarea id="irText" readonly spellcheck="false" style="min-height:300px" placeholder="PAY musical state transitions, observed repetition, note candidates, indirect data reads, control-flow evidence and unanswered questions."></textarea>
    <p class="small">Evidence is bounded to the frames executed. Exported IR is an analysis artifact, <strong>not</strong> playable Mockingboard code. A repeated sound state is not proof of an infinite source-code loop.</p>
-  </section>
-  <section class="card">
-   <h2>3 · Interpreter reference</h2>
+  </details>
+  <details class="card advanced"><summary>Advanced · Interpreter reference guide</summary>
+   <h2>Interpreter reference</h2>
    <p><a class="link" href="https://retroapplejs.github.io/docs/SID_INTERPRETER.md" target="_blank" rel="noopener noreferrer">docs/SID_INTERPRETER.md</a></p>
    <div class="small" id="docStatus">Checking published documentation…</div>
    <div class="actions"><button id="reloadGuide">Refresh published guide</button></div>
    <label for="docFile">Or provide an updated guide manually</label>
    <input id="docFile" type="file" accept=".md,.txt,text/markdown,text/plain">
    <p class="small">The actual guide text, not only its URL, is included with every GPT request. If unavailable, the embedded starter guide is used and disclosed.</p>
-  </section>
-  <section class="card">
-   <h2>4 · GPT interpretation</h2>
-   <label for="model">OpenAI model</label>
-   <input id="model" type="text" value="gpt-5" spellcheck="false" autocomplete="off">
+  </details>
+  <details class="card advanced" id="fullSourceGPT"><summary>Optional · Full-source, multi-batch GPT analysis</summary>
+   <h2>Full-source GPT analysis (optional)</h2>
+   <p class="small">Most users can skip this. The primary workflow is focused semantic analysis in Step 3.</p>
    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
     <div><label for="reasonEffort">Reasoning effort</label><select id="reasonEffort"><option value="low" selected>Low (recommended)</option><option value="medium">Medium</option><option value="default">Model default</option></select></div>
     <div><label for="outputTokens">Output-token budget / batch</label><input id="outputTokens" type="number" min="1024" max="32000" step="512" value="12000"></div>
@@ -109,42 +135,53 @@ dialog::backdrop{background:#02060cbd}dialog h2{font-size:21px}
    <p class="small" id="resumeInfo">If a batch fails, completed batches remain available. Export the Complete Report immediately. A manual resume can retry an uncertain request and may incur a second charge if the server already processed it. Do not close or reload the page before resuming.</p>
    <label for="apiLog">API diagnostic log (no credentials)</label>
    <textarea id="apiLog" readonly spellcheck="false" style="min-height:140px" aria-label="OpenAI API diagnostic log" placeholder="A real HTTP request will be made when you click Test GPT API. HTTP status, response ID, model and token usage will appear here."></textarea>
-   <p class="small">Requests log HTTP status, response ID, total output tokens, and reasoning tokens (when supplied). Both buttons request your API key in a masked prompt. <strong>Test GPT API</strong> makes one short, live Responses API request using the selected model; a successful response ID proves the server answered. The key is held in memory for the request only, never saved or shown in the diagnostic log.</p>
-   <div class="notice"><strong>Important:</strong> API usage can incur charges. Full source batches and the guide are sent to OpenAI. Only use the direct-browser key flow on a device and page you trust. For distributed production use, replace it with a secure backend/proxy. No key is stored in cookies or browser storage.</div>
-  </section>
+   <p class="small">Full source batches may be billed separately. The shared API key is entered once at the top of the page. Partial results are preserved for session-only resume.</p>
+  </details>
   
 <section class="card" id="semanticIntentArea" style="border:2px solid #4874ab">
- <h2>5 · Semantic intent &amp; compiler handoff</h2>
+ <h2>3 · Interpret intent and export to Compiler</h2>
  <p class="small"><strong>Integrated into PAY Interpreter:</strong> source tracing → deterministic evidence extraction → GPT/manual interpretation → candidate validation → one semantic-contract JSON. The Compiler consumes this contract. No third tool.</p>
- <div class="actions"><button id="semFromSession" type="button">Extract evidence from current PSID session</button><label for="semInputReport" class="small">Or import an existing Complete Report JSON</label><input id="semInputReport" type="file" accept=".json,application/json"></div>
+ <p class="small">Evidence is extracted automatically after tracing or importing a Complete Report.</p>
  <p id="semSourceStatus" class="small" role="status">Run a trace, or load a previously exported Complete Report. The original PSID is identified by its SHA-256.</p>
  <div><label for="semMechanism">Source mechanism</label><select id="semMechanism"></select></div>
- <div class="actions"><button id="semSaveEvidence" disabled>Export evidence (audit)</button><button id="semCopyBrief" disabled>Copy full GPT briefing</button><button id="semSaveBrief" disabled>Download full GPT briefing (.txt)</button></div>
- <div class="actions" style="align-items:center;gap:12px"><label for="semApiModel">Semantic API model</label><input id="semApiModel" value="gpt-5" style="width:160px"><label for="semBudget">Output-token budget</label><input id="semBudget" type="number" min="4096" max="32000" step="1024" value="20000" style="width:110px"><label for="semApiKey">Key (request only)</label><input id="semApiKey" type="password" autocomplete="off" placeholder="API key" style="width:250px"><button id="semRequest" disabled>Interpret with GPT API</button><button id="semCancel" disabled>Cancel</button><strong id="semClock" aria-live="off" role="timer">Roundtrip: —</strong></div>
+ <details class="advanced"><summary>Advanced · Evidence and manual-model briefing</summary><div class="actions"><button id="semFromSession" type="button">Re-extract current trace</button><button id="semSaveEvidence" disabled>Evidence JSON</button><button id="semCopyBrief" disabled>Copy briefing</button><button id="semSaveBrief" disabled>Download briefing</button></div><label for="semEvidencePreview">Evidence summary</label><textarea id="semEvidencePreview" readonly style="min-height:100px"></textarea></details>
+ <div class="actions"><button id="semRequest" class="primary" disabled>Interpret with GPT</button><button id="semCancel" disabled>Cancel</button><strong id="semClock" class="small" aria-live="off" role="timer">Roundtrip: —</strong></div><details class="advanced"><summary>Semantic API output budget (advanced)</summary><label for="semBudget">Output-token budget</label><input id="semBudget" type="number" min="4096" max="32000" step="1024" value="20000" style="max-width:170px"></details>
  <div id="semApiStatus" class="small">Or submit the downloaded briefing to any frontier model manually, then paste its JSON below.</div>
- <label for="semEvidencePreview">Source evidence summary</label><textarea id="semEvidencePreview" readonly style="min-height:125px"></textarea>
- <label for="semCandidateInput">Model's semantic candidate (paste JSON or load file)</label><input id="semCandidateFile" type="file" accept=".json,.txt"><textarea id="semCandidateInput" spellcheck="false" style="min-height:310px" placeholder="Paste PAY_Semantic_Candidate_v0.8 JSON here"></textarea>
- <div class="actions"><button id="semValidate" type="button">Validate candidate against evidence</button><button id="semSaveRaw" disabled>Download raw candidate (.txt)</button><button id="semSaveContract" class="primary" disabled>Download semantic contract for PAY Compiler</button></div>
+ <label for="semCandidateInput">Semantic candidate — generated or imported</label><input id="semCandidateFile" type="file" accept=".json,.txt"><textarea id="semCandidateInput" spellcheck="false" style="min-height:185px" placeholder="The model result will appear here. You can also paste or import a saved candidate."></textarea>
+ <div class="actions"><button id="semValidate" type="button">Validate</button><button id="semSaveContract" class="primary" disabled>Export compiler contract</button><button id="semSaveRaw" disabled>Save raw candidate</button></div>
+ <p class="small">Raw candidate download preserves exactly what GPT returned, even when it is incomplete or invalid JSON. It becomes available when the candidate text box contains text.</p>
  <p id="semValidateStatus" class="small" role="status">No candidate validated. Validation checks schema and evidence references; it does not constitute independent semantic approval.</p>
 </section>
-<section class="card"><h2>Static / runtime warnings</h2><textarea id="warnings" readonly spellcheck="false" aria-label="Static analysis warnings" placeholder="Warnings will appear after import."></textarea></section>
+
+<section class="card" id="diff08h" style="border:2px solid #478d92">
+  <h2>4 · Compare original and regenerated SID</h2>
+  <p class="small">Runs original and generated 6502 under identical INIT/PLAY schedules. For a regenerated 00.8I SID, also compares all 93 source-derived pitch words. No GPT or API key required. Note timing and instruments remain out of scope.</p>
+  <label for="diffOriginal">Original PSID .sid OR Complete Report .json (with original SID embedded)</label>
+  <input id="diffOriginal" type="file" accept=".sid,.psid,.json,application/json,application/octet-stream">
+  <p class="small">You may leave this empty if you loaded the original .sid in Section 1; otherwise select the original Bomberland .sid or its 12 MB Complete Report.</p>
+  <label for="diffGenerated">Regenerated .sid from PLAY Compiler 00.8G or 00.8I</label>
+  <input id="diffGenerated" type="file" accept=".sid,.psid,application/octet-stream">
+  <label for="diffContract">Matching semantic contract .json (00.8G/00.8I research)</label>
+  <input id="diffContract" type="file" accept=".json,application/json">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div><label for="diffFrames">PLAY calls / subtune</label><input id="diffFrames" type="number" value="3" min="1" max="64" style="width:120px"></div>
+    <div><label for="diffSubtunes">Subtunes (1-based)</label><select id="diffSubtunes" style="max-width:160px"><option value="all">1, 2, 3 (all)</option><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+  </div>
+  <div class="actions"><button id="diffRun" class="primary" type="button">Run comparison</button><button id="diffExport" disabled type="button">Save comparison</button><button id="diffCounterExport" disabled type="button">Save counterexample</button></div>
+  <p id="diffStatus" class="small" role="status">No comparison executed. The Compiler must produce the same source-verified SID reference as the imported contract.</p>
+  <label for="diffReportText">Comparison results / first divergence</label><textarea id="diffReportText" readonly spellcheck="false" style="min-height:235px"></textarea>
+  <details class="advanced"><summary>Adversarial counterexample (if a mismatch is found)</summary><textarea id="diffCounterText" readonly spellcheck="false" style="min-height:155px"></textarea></details>
+  <p class="small"><strong>Scope:</strong> first-PLAY dispatch, subtune indices, 42-byte clear, verified 3 × 4 voice fields, two patched-state defaults and SID $D415 initialization. Excludes notes, full SID register streams, pattern loops, audio and AY behavior. A PASS means <em>partial-scope match only</em>.</p>
+</section>
+<details class="card advanced"><summary>Advanced · Static/runtime warnings</summary><textarea id="warnings" readonly spellcheck="false" aria-label="Static analysis warnings" placeholder="Warnings will appear after import."></textarea></details>
  </div>
  <div class="col">
-  <section class="card"><h2>Annotated assembly · static + observed</h2><div id="summary">No PSID loaded.</div><textarea id="asm" readonly spellcheck="false" aria-label="Annotated 6502 assembly" placeholder="Import a SID file, then Run 6502 trace to enrich the disassembly with executed instructions, self-modifications and real SID register events."></textarea></section>
-  <section class="card"><h2>GPT semantic report</h2><p class="small">The model reports evidence-backed musical logic, possible simplifications for AY, unknowns, and candidate PAY intermediate representation. Multiple batches are processed sequentially; any partial report is kept on cancellation or failure.</p><textarea id="gpt" readonly spellcheck="false" aria-label="GPT semantic analysis result" placeholder="GPT results will appear here after you supply your API key and approve the requests."></textarea></section>
+  <details class="card advanced"><summary>Advanced · Annotated source assembly</summary><div id="summary">No PSID loaded.</div><textarea id="asm" readonly spellcheck="false" aria-label="Annotated 6502 assembly" placeholder="Import a SID file, then Run 6502 trace to enrich the disassembly."></textarea></details>
+  <details class="card advanced"><summary>Advanced · Full-source GPT batch results</summary><p class="small">Optional full-source GPT batch analysis results. Unfinished batches can be resumed without overwriting completed ones.</p><textarea id="gpt" readonly spellcheck="false" aria-label="GPT semantic analysis result" placeholder="Optional GPT batch results appear here."></textarea></details>
  </div>
 </div>
-<footer>PAY-00.4 prototype · Observed instruction paths and SID register writes reflect bounded PSID subroutine execution, not full C64 hardware emulation. Timing is frame-based; no PAY executable is produced yet.</footer>
+<footer>PLAY-00.8I · Bounded non-cycle-accurate NMOS 6502 tracing. The source-verified SID pitch table is a callable diagnostic; full music, AY sound and song loops are not yet reconstructed.</footer>
 </main>
-<dialog id="keyDialog" aria-labelledby="keyTitle">
- <form id="keyForm" method="dialog">
-  <h2 id="keyTitle">OpenAI API key</h2>
-  <p id="keyPurpose">The key will be used only for this request and will not be saved. Closing or cancelling sends nothing.</p>
-  <label for="keyInput">Secret API key</label>
-  <input id="keyInput" type="password" required autocomplete="off" spellcheck="false" placeholder="sk-…">
-  <div class="actions" style="justify-content:flex-end"><button type="button" id="keyCancel">Cancel</button><button type="submit" class="primary" id="keySubmit">Start analysis</button></div>
- </form>
-</dialog>
 <script type="text/plain" id="fallback-doc">
 # SID Interpreter — PAY semantic analysis contract (v0.5)
 
@@ -460,21 +497,20 @@ function makeBatches(){
  return results;
 }
 function keyPrompt(purpose='analysis'){
- $('keyTitle').textContent=purpose==='test'?'Test OpenAI API connection':'OpenAI API key';
- $('keySubmit').textContent=purpose==='test'?'Send test request':'Start analysis';
- $('keyPurpose').textContent=purpose==='test'
-  ?'Sends a short, potentially billable request to the selected model. The key is held in memory only, not stored or logged.'
-  :'Sends your annotated source and guide to the selected model. An incomplete batch may be retried once if enabled (each attempt is billed). The key is held in memory only, not stored or logged.';
- return new Promise(resolve=>{
-  const dlg=$('keyDialog'),form=$('keyForm'),input=$('keyInput'),cancel=$('keyCancel');
-  let settled=false;
-  const finish=(value)=>{if(settled)return;settled=true;form.removeEventListener('submit',submit);cancel.removeEventListener('click',stop);dlg.removeEventListener('cancel',escape);input.value='';dlg.close();resolve(value);};
-  const submit=e=>{e.preventDefault();finish(input.value.trim());};
-  const stop=()=>finish(null),escape=e=>{e.preventDefault();finish(null);};
-  form.addEventListener('submit',submit);cancel.addEventListener('click',stop);dlg.addEventListener('cancel',escape);
-  dlg.showModal();input.focus();
- });
+ const key=$('apiSessionKey').value.trim();
+ if(!key)throw Error('Enter your OpenAI API key once in the AI connection panel at the top.');
+ return Promise.resolve(key);
 }
+// The only credential location is an in-memory password input. Never export or persist it.
+const sessionKeyInput=$('apiSessionKey');
+const sessionKeyState=$('keySessionState');
+function refreshSessionKeyState(){
+ sessionKeyState.textContent=sessionKeyInput.value.trim()?'Key ready for this session':'No key entered';
+ sessionKeyState.dataset.ready=sessionKeyInput.value.trim()?'yes':'no';
+}
+sessionKeyInput.addEventListener('input',refreshSessionKeyState);
+$('clearSessionKey').addEventListener('click',()=>{sessionKeyInput.value='';refreshSessionKeyState();setStatus('API key cleared from this page. No stored copy.');});
+refreshSessionKeyState();
 function responseText(json){
  if(json.output_text&&typeof json.output_text==='string')return json.output_text;
  return (json.output||[]).flatMap(item=>(item.content||[]).filter(c=>c.type==='output_text').map(c=>c.text||'')).join('\n').trim();
@@ -1193,6 +1229,7 @@ async function runTraceUI(){
   $('batchInfo').textContent=`Updated GPT input: ${batchRows(source.mergedRows).length} annotated code batch(es), each with runtime trace context.`;
   $('saveTrace').disabled=false;$('saveReport').disabled=false;
   setStatus(s.errors.length?`Trace stopped: ${s.errors[0]}. Partial evidence retained.`:`Runtime tracing completed: ${s.framesCompleted} frames. Annotated assembly now includes live code and register events.`,s.errors.length?'error':'success');
+   if(!s.errors.length && !$('semCandidateInput').value) $('semFromSession').click();
  }finally{traceInProgress=false;for(const id of controls)$(id).disabled=false;$('stopTrace').disabled=true;$('runTrace').disabled=!current||current.h.magic!=='PSID';$('saveComplete').disabled=!current;}
 }
 
@@ -1276,7 +1313,7 @@ function exportJSON(){if(!current)return;
  const payload={format:'PAY_Interpreter_Analysis_v0.5',source:{fileName:current.name,magic:h.magic,version:h.version,loadAddress:h.load,initAddress:h.init,playAddress:h.play,songs:h.songs,startSong:h.startSong,speedMask:h.speed,flags:h.flags,sidBases:[0xD400,...h.sidBases]},static:{instructionCount:r.code.size,reachableBytes:r.codeBytes,payloadBytes:h.payload.length,sidWriteSites:r.soundCount,sidReadSites:r.readCount,edges:r.edges,warnings:r.warnings,annotatedAssembly:$('asm').value},runtime:current.trace?toPAYTraceJSON(h,current.trace):null,musicalIR:current.musicalIR||null,guide:{url:DOC_URL,source:guideSource},gpt:{model:$('model').value,results:reportParts}};
  textFile(JSON.stringify(payload,null,2),(current.name||'music').replace(/\.sid$/i,'')+'.pay-analysis.json','application/json');
 }
-window.PAYTest={getGPTProgress:()=>({count:reportParts.length,completed:reportParts.map(p=>({batch:p.batch,id:p.id})),resumeReady:!$('resumeGPT').disabled}),parseSID,disassemble,formatFile,sidRegisterName,batchRows,opcodes:OP,outputBudget,reasoningOptions,usageSummary,responseText, PAYCPU,executePAYTrace,newPAYObservation,actualCodeCoverage,mergePAYAssembly,dynamicOverview,toPAYTraceJSON,buildPAYMusicalIR,detectObservedRepetition,PAYIRReport,buildCompletePAYReport,payBase64};
+window.PAYTest={getCurrentSourceBytes:()=>current?.sourceBytes?new Uint8Array(current.sourceBytes):null,getGPTProgress:()=>({count:reportParts.length,completed:reportParts.map(p=>({batch:p.batch,id:p.id})),resumeReady:!$('resumeGPT').disabled}),parseSID,disassemble,formatFile,sidRegisterName,batchRows,opcodes:OP,outputBudget,reasoningOptions,usageSummary,responseText, PAYCPU,executePAYTrace,newPAYObservation,actualCodeCoverage,mergePAYAssembly,dynamicOverview,toPAYTraceJSON,buildPAYMusicalIR,detectObservedRepetition,PAYIRReport,buildCompletePAYReport,payBase64};
 $('sidFile').addEventListener('change',async e=>{
  if(traceInProgress){setStatus('Stop the active trace before replacing the SID file.','error');return;}
  const file=e.target.files?.[0];if(!file)return;
@@ -1640,6 +1677,76 @@ return {buildExtension,validateExtension,attach};
 </script>
 
 <script>
+/* PLAY-00.8I: source-verified SID pitch word lookup, callable diagnostic only.
+ * Literal frequency table bytes below were extracted from the ORIGINAL Bomberland PSID,
+ * not from frame captures or AY conversions. Future songs require their own verified table operations.
+ * Browser/Node UMD. No GPT requests.
+ */
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.PAYPitch08I=api;})(typeof globalThis==='object'?globalThis:this,function(){
+'use strict';
+const SOURCE_SHA='65c3874b9f529c9adac45852f6e216eef2307a325051471d8b58290c38f71a68';
+const LOW=[23,39,57,75,95,116,138,161,186,212,240,14,45,78,113,150,190,232,20,67,116,169,225,28,90,156,226,45,124,207,40,133,232,82,193,55,180,57,197,90,247,158,79,10,209,163,130,110,104,113,138,179,238,60,158,21,162,70,4,220,208,226,20,103,221,121,60,41,68,141,8,184,161,197,40,205,186,241,120,83,135,26,16,113,66,137,79,155,116,226,240,166,14];
+const HIGH=[1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,3,3,3,3,3,4,4,4,4,5,5,5,6,6,6,7,7,8,8,9,9,10,10,11,12,13,13,14,15,16,17,18,19,20,21,23,24,26,27,29,31,32,34,36,39,41,43,46,49,52,55,58,62,65,69,73,78,82,87,92,98,104,110,117,124,131,139,147,156,165,175,185,196,208,221];
+const SOURCE_OPS={
+ '$1228':[0xE9,0x60], '$122A':[0x9D,0xDA,0x14], '$13CB':[0x9D,0xC3,0x14],
+ '$130F':[0x9D,0x06,0x15], '$1312':[0xA8],
+ '$1318':[0xB9,0x15,0x15], '$131B':[0x9D,0xEE,0x14],
+ '$131E':[0xB9,0x75,0x15], '$1321':[0x9D,0xEF,0x14]
+};
+const COUNT=93;
+function need(b,m){if(!b)throw Error(m);}
+function verifySourceProof(contract){
+ need(contract?.source?.sha256PSID===SOURCE_SHA,'Unexpected source PSID SHA');
+ need(contract?.validation?.structure==='passed'&&contract?.semanticExtension,'Missing verified 00.8G foundation');
+ const e=contract?.evidence?.evidence;need(e,'Missing source evidence index');
+ for(const [pc,bytes] of Object.entries(SOURCE_OPS)){
+  const x=e['static:'+pc]?.bytes;
+  need(Array.isArray(x)&&x.length===bytes.length&&x.every((b,i)=>b===bytes[i]),'Pitch source instruction mismatch at '+pc);
+  need(e['code:'+pc],'Pitch source execution proof missing '+pc);
+ }
+ // This operation claims only source table lookup. Timing/instrument and SID writes not implied.
+ return Object.keys(SOURCE_OPS).flatMap(pc=>['static:'+pc,'code:'+pc]);
+}
+function tablesFromSID(sourceBytes){
+ const s=sourceBytes instanceof Uint8Array?sourceBytes:new Uint8Array(sourceBytes);
+ need(s.length>0x7c&&String.fromCharCode(...s.slice(0,4))==='PSID','Expected original PSID bytes');
+ const offset=(s[6]<<8)|s[7];need(offset>=0x7c&&offset<s.length,'Invalid PSID data offset');
+ let load=(s[8]<<8)|s[9],index=offset;
+ if(!load){load=s[index]|(s[index+1]<<8);index+=2;}
+ need(load===0x1000,'Only the original Bomberland load address supported');
+ const get=(addr)=>{const n=index+addr-load;need(n>=index&&n+COUNT<=s.length,'Missing source pitch table');return Array.from(s.slice(n,n+COUNT));};
+ const low=get(0x1515),high=get(0x1575);
+ need(low.every((v,i)=>v===LOW[i])&&high.every((v,i)=>v===HIGH[i]),'PSID source table differs from the verified Bomberland reference');
+ return {low,high};
+}
+function buildExtension(contract,sourceSID){
+ const ids=verifySourceProof(contract),tables=tablesFromSID(sourceSID);
+ return {format:'PAY_SID_Pitch_Word_v0.8I',sourceSHA256:SOURCE_SHA,
+  operation:{kind:'source_pitch_table_lookup_v1',scope:'callable_diagnostic_only',pitchTokenMin:0x60,pitchTokenMax:0xBC,indexSubtract:0x60,
+    noteCount:COUNT,lowTableSourceAddress:0x1515,highTableSourceAddress:0x1575,
+    sourceLowOutputAddress:0x14EE,sourceHighOutputAddress:0x14EF,
+    tables,doesNotEmitSIDWrites:true,doesNotScheduleNotes:true},
+  proof:{kind:'static_plus_executed_source_and_psid_data',evidenceIds:ids},
+  limitations:['No determination of note onset or duration','The source pitch can be transposed or modulated before lookup','No gate, ADSR, waveform or SID-register musical update','Diagnostic lookup is not called from PLAY','Tables are verified only for this exact original Bomberland PSID']};
+}
+function validateExtension(contract,ext){
+ const proof=verifySourceProof(contract);
+ need(ext?.format==='PAY_SID_Pitch_Word_v0.8I'&&ext.sourceSHA256===SOURCE_SHA,'Unrecognised pitch extension identity');
+ const op=ext.operation;
+ need(op?.kind==='source_pitch_table_lookup_v1'&&op.scope==='callable_diagnostic_only'&&op.pitchTokenMin===0x60&&op.pitchTokenMax===0xBC&&op.indexSubtract===0x60&&op.noteCount===COUNT,'Unsupported pitch operation');
+ need(op.lowTableSourceAddress===0x1515&&op.highTableSourceAddress===0x1575&&op.sourceLowOutputAddress===0x14EE&&op.sourceHighOutputAddress===0x14EF,'Unverified source pitch table locations');
+ need(op.doesNotEmitSIDWrites===true&&op.doesNotScheduleNotes===true,'Pitch operation cannot imply sound or scheduling');
+ need(Array.isArray(op.tables?.low)&&op.tables.low.length===COUNT&&op.tables.low.every((v,i)=>v===LOW[i]),'Low table source bytes altered');
+ need(Array.isArray(op.tables?.high)&&op.tables.high.length===COUNT&&op.tables.high.every((v,i)=>v===HIGH[i]),'High table source bytes altered');
+ need(Array.isArray(ext.proof?.evidenceIds)&&proof.every(id=>ext.proof.evidenceIds.includes(id)),'Pitch proof references incomplete');
+ return {sourceSHA256:SOURCE_SHA,operation:op,proof:ext.proof};
+}
+return {buildExtension,validateExtension,verifySourceProof,tablesFromSID,sourceTableBytes:{low:LOW.slice(),high:HIGH.slice()},sourceSHA256:SOURCE_SHA};
+});
+
+</script>
+
+<script>
 (function(){'use strict';
 const el=id=>document.getElementById(id), core=window.PAYSemantic08,extractor=window.PAYFullReportEvidence;
 let bundle=null,rawReport=null,candidate=null,requestCtl=null,clock=null,started=0;
@@ -1657,8 +1764,18 @@ function digestBytes(bytes){
  return Array.from(h,v=>v.toString(16).padStart(8,'0')).join('');
 }
 function shaReport(r){if(!r?.source?.originalSID?.base64)throw Error('Complete report missing originalSID bytes; source provenance cannot be verified');const binary=atob(r.source.originalSID.base64),bytes=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);return digestBytes(bytes);}
+function originalSIDForPitch(){
+ if(rawReport?.source?.originalSID?.base64){
+  const str=atob(rawReport.source.originalSID.base64),b=new Uint8Array(str.length);
+  for(let i=0;i<str.length;i++)b[i]=str.charCodeAt(i);
+  return b;
+ }
+ const b=window.PAYTest.getCurrentSourceBytes();
+ if(!b)throw Error('Original PSID bytes are not available: load the source or Complete Report first.');
+ return b;
+}
 function refresh(){const m=bundle?.mechanisms.find(m=>m.id===selected());if(!m)return;el('semEvidencePreview').value=JSON.stringify({mechanism:m.id,semanticObligations:m.semanticObligations||[],evidenceItems:m.evidenceIds.length,unknowns:m.unknowns},null,2);candidate=null;el('semCandidateInput').value='';el('semSaveContract').disabled=true;setStatus('Choose API or manual briefing, then validate the returned candidate.');}
-function importReport(r){rawReport=r;bundle=core.verifyEvidence(extractor.extract(r));bundle.source.sha256PSID=shaReport(r);populate();el('semSourceStatus').textContent=`${bundle.source.title}: ${bundle.capture.longFrames} frames, ${Object.keys(bundle.evidence).length} evidence records, ${bundle.mechanisms.length} mechanisms. PSID SHA-256 ${bundle.source.sha256PSID}. Source evidence is a bounded observation.`;}
+function importReport(r){rawReport=r;bundle=core.verifyEvidence(extractor.extract(r));bundle.source.sha256PSID=shaReport(r);populate();el('semSourceStatus').textContent=`${bundle.source.title}: ${bundle.capture.longFrames} frames, ${Object.keys(bundle.evidence).length} evidence records, ${bundle.mechanisms.length} mechanisms. PSID SHA-256 ${bundle.source.sha256PSID}. Source evidence is a bounded observation.`;const top=el('status');top.textContent='Complete Report loaded — evidence ready. Skip tracing, select a mechanism, and interpret or import a saved candidate.';top.dataset.kind='success';}
 function populate(){el('semMechanism').innerHTML='';for(const m of bundle.mechanisms){let opt=document.createElement('option');opt.value=m.id;opt.textContent=m.id+' — '+m.label;el('semMechanism').appendChild(opt);}for(const id of ['semSaveEvidence','semCopyBrief','semSaveBrief','semRequest'])el(id).disabled=false;refresh();}
 function briefing(){if(!bundle)throw Error('First create source evidence');const p=core.buildPrompt(bundle,selected());return p.instructions+'\n\n=== EVIDENCE DATA (JSON) ===\n'+p.data+'\n\n=== RESPONSE REQUIREMENT ===\nReturn only one JSON object with the requested mechanismId. This is not approved machine code.\n';}
 function typedProjection(b,c){
@@ -1703,10 +1820,10 @@ el('semCandidateFile').addEventListener('change',async e=>{const f=e.target.file
 el('semCandidateInput').addEventListener('input',()=>{candidate=null;el('semSaveContract').disabled=true;el('semSaveRaw').disabled=!el('semCandidateInput').value;});
 el('semSaveRaw').addEventListener('click',()=>{const text=el('semCandidateInput').value;if(!text)return;save(text,baseName()+'_'+selected()+'_raw_model_response.txt','text/plain');});
 el('semValidate').addEventListener('click',()=>{try{parseAndValidate();}catch(e){candidate=null;el('semSaveContract').disabled=true;displayError(e);}});
-el('semSaveContract').addEventListener('click',()=>{try{parseAndValidate();const projection=typedProjection(bundle,candidate);const contract={format:'PAY_Semantic_Contract_v0.8F2',compilerModule:projection,source:bundle.source,mechanismId:candidate.mechanismId,intents:candidate.targetPlan.operations.map(x=>({operation:x.op,inputs:x.inputs,outputs:x.outputs,evidenceIds:x.evidenceIds,status:x.op==='UNRESOLVED'?'unresolved':'candidate'})),candidate,evidence:bundle,validation:{structure:'passed',semanticReview:'needs_human_validation',compilerApproval:false,compilerModuleStatus:projection?'supported_partial_fixture':'not_implemented'},targetPolicy:{noZeroPage:true,noSelfModifiedCode:true},limitations:['Evidence/source-intent validation is incomplete. Compiler may only generate explicitly marked research fixtures for supported source mechanisms.']};if(projection){try{contract.semanticExtension=PAYFirstPlay08G.buildExtension(contract);setStatus('Semantic contract exported with source-verified first-PLAY setup and diagnostic pitch conversion.',true)}catch(extError){setStatus('Foundation exported; extended source proof blocked: '+extError.message);}}save(JSON.stringify(contract,null,2)+'\n',baseName()+'_'+selected()+'_PAY_Semantic_Contract.json');}catch(e){displayError(e);}});
+el('semSaveContract').addEventListener('click',()=>{try{parseAndValidate();const projection=typedProjection(bundle,candidate);const contract={format:'PAY_Semantic_Contract_v0.8F2',compilerModule:projection,source:bundle.source,mechanismId:candidate.mechanismId,intents:candidate.targetPlan.operations.map(x=>({operation:x.op,inputs:x.inputs,outputs:x.outputs,evidenceIds:x.evidenceIds,status:x.op==='UNRESOLVED'?'unresolved':'candidate'})),candidate,evidence:bundle,validation:{structure:'passed',semanticReview:'needs_human_validation',compilerApproval:false,compilerModuleStatus:projection?'supported_partial_fixture':'not_implemented'},targetPolicy:{noZeroPage:true,noSelfModifiedCode:true},limitations:['Evidence/source-intent validation is incomplete. Compiler may only generate explicitly marked research fixtures for supported source mechanisms.']};if(projection){try{contract.semanticExtension=PAYFirstPlay08G.buildExtension(contract);contract.pitchExtension=PAYPitch08I.buildExtension(contract,originalSIDForPitch());setStatus('PLAY-00.8I contract: first-PLAY and source-verified 93-word SID pitch lookup included (diagnostic only).',true)}catch(extError){setStatus('Foundation exported, but 00.8I pitch extension is unavailable: '+extError.message);}}save(JSON.stringify(contract,null,2)+'\n',baseName()+'_'+selected()+'_PAY_Semantic_Contract.json');}catch(e){displayError(e);}});
 el('semRequest').addEventListener('click',async()=>{
  if(!bundle)return;
- const key=el('semApiKey').value.trim(),model=el('semApiModel').value.trim();
+ const key=$('apiSessionKey').value.trim(),model=$('model').value.trim();
  const budget=Number(el('semBudget').value);
  if(!key||!model)return displayError(Error('Provide a model and an API key for this request'));
  if(!Number.isInteger(budget)||budget<4096||budget>32000)return displayError(Error('Output-token budget must be from 4096 to 32000.'));
@@ -1743,12 +1860,615 @@ el('semRequest').addEventListener('click',async()=>{
  finally{
   clearInterval(clock);clock=null;
   el('semClock').textContent='Roundtrip: '+((performance.now()-started)/1000).toFixed(1)+' s';
-  el('semApiKey').value='';requestCtl=null;
+  requestCtl=null;
   el('semRequest').disabled=false;el('semCancel').disabled=true;el('semBudget').disabled=false;
  }
 });
 el('semCancel').addEventListener('click',()=>requestCtl?.abort());
-window.PAYSemanticIntegrationTest={importReport,getBundle:()=>bundle,getContract:()=>{parseAndValidate();return {source:bundle.source,candidate,evidence:bundle}},digestBytes,shaReport,parseAndValidate};
+window.PAYSemanticIntegrationTest={importReport,getOriginalSourceSIDBytes:()=>{try{return originalSIDForPitch()}catch{return null}},getBundle:()=>bundle,getContract:()=>{parseAndValidate();return {source:bundle.source,candidate,evidence:bundle}},digestBytes,shaReport,parseAndValidate};
+})();
+</script>
+<script>
+/* PAY-00.8H deterministic differential comparison of source-derived first-PLAY semantics.
+ * No GPT calls, no frame recording as compiler input, no invented music equality.
+ * Uses the SAME bounded NMOS 6502 model for original and generated programs.
+ * CPU execution is not cycle-accurate C64/SID emulation.
+ */
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.PAYDifferential08H=api;})(typeof globalThis==='object'?globalThis:this,function(){
+'use strict';
+const FORMAT='PAY_Differential_Report_v0.8H';
+const NEVER_TESTED=['complete source SID write sequence','note and pitch playback','instruments, ADSR and filters','effects and song/pattern loops','cycles, CIA/VIC interrupts and analogue SID output','Apple II Mockingboard AY output'];
+function need(x,msg){if(!x)throw Error(msg)}
+const hex=(n,w=4)=>'$'+Number(n).toString(16).toUpperCase().padStart(w,'0');
+function bytesMatch(a,b){if(!a||!b||a.length!==b.length)return false;for(let i=0;i<a.length;i++)if(a[i]!==b[i])return false;return true;}
+function plainValue(v){return v===undefined?null:v;}
+function firstDiff(x,y){const n=Math.min(x.length,y.length);for(let i=0;i<n;i++)if(x[i]!==y[i])return i;return x.length===y.length?-1:n;}
+function verify({originalBytes,generatedBytes,expectedGeneratedBytes,contract,sourceHash,parseSID,symbols,frames,subtunes}){
+ need(contract?.format==='PAY_Semantic_Contract_v0.8F2','Expected canonical PAY semantic contract');
+ need(contract?.candidate?.mechanismId==='player_entry'&&contract.semanticExtension?.format==='PAY_First_Play_Executable_Extension_v0.8G','Only source-proven 00.8G player_entry scope is supported');
+ need(contract.validation?.structure==='passed'&&contract.validation?.compilerApproval===false,'Research fixture must retain unapproved status');
+ need(sourceHash===contract.source?.sha256PSID,'Original SID SHA-256 differs from semantic contract');
+ need(bytesMatch(generatedBytes,expectedGeneratedBytes), 'Generated SID bytes differ from the deterministic 00.8G Compiler output (byte '+firstDiff(generatedBytes,expectedGeneratedBytes)+'). Recompile or inspect before comparing.');
+ const original=parseSID(originalBytes.buffer.slice(originalBytes.byteOffset,originalBytes.byteOffset+originalBytes.byteLength));
+ const generated=parseSID(generatedBytes.buffer.slice(generatedBytes.byteOffset,generatedBytes.byteOffset+generatedBytes.byteLength));
+ need(original.magic==='PSID'&&generated.magic==='PSID','PSID (not RSID) required');
+ need(original.load===0x1000&&original.init===0x1000&&original.play===0x1003,'Original entry points differ from the verified source');
+ need(generated.load===0x1000&&generated.init===0x1000&&generated.play===0x1003,'Reference entry points differ');
+ need(original.songs>=3&&generated.songs>=3,'Expected all three subtunes');
+ need(Number.isInteger(frames)&&frames>=1&&frames<=64,'Frames must be between 1 and 64 (bounded source interpreter)');
+ need(Array.isArray(subtunes)&&subtunes.length>0&&subtunes.every(x=>Number.isInteger(x)&&x>=0&&x<=2)&&new Set(subtunes).size===subtunes.length,'Subtunes must be distinct zero-based indices 0..2');
+ for(const s of ['SR_SETUP_INDEX','SR_FIRST_PENDING','SR_PATH','SR_FIRST_COUNT','SR_REGULAR_LO','SR_REGULAR_HI','SR_CLEAR_AREA','SR_V0_ORD','SR_V1_ORD','SR_V2_ORD','SR_DYNAMIC_11B0','SR_DYNAMIC_1162'])need(Number.isInteger(symbols[s]),'Required generated symbol missing: '+s);
+ return {original,generated};
+}
+function run(arg){
+ const {originalBytes,generatedBytes,expectedGeneratedBytes,contract,sourceHash,parseSID,CPU,observationFactory,symbols}=arg;
+ const frames=arg.frames??3,subtunes=arg.subtunes??[0,1,2],stepLimit=arg.stepLimit??180000;
+ need(typeof CPU==='function'&&typeof observationFactory==='function'&&typeof parseSID==='function','Interpreter CPU, observation factory and PSID parser required');
+ const {original,generated}=verify({originalBytes,generatedBytes,expectedGeneratedBytes,contract,sourceHash,parseSID,symbols,frames,subtunes});
+ const evidence=contract.evidence?.evidence||{};
+ const proof=(ids)=>ids.filter(id=>Object.hasOwn(evidence,id));
+ const all=[],perSubtune=[],sourcePCs={init:0x10F7,first:0x112A,clear:0x112D,voice:0x114E,patch:0x113B,filter:0x1135,restore:0x113E};
+ const mapping={
+   'setupIndex':['static:$10F4','code:$10F5','operand_write:$1129<-$10F7'],
+   'firstPlayGate':['flow:$112A->$112C','flow:$112A->$1161','operand_write:$1129<-$113E'],
+   'firstPlayCounter':['flow:$112A->$112C','flow:$112A->$1161'],
+   'branchPath':['flow:$112A->$112C','flow:$112A->$1161'],
+   'clearRegion':['static:$112D','code:$112D','code:$1132','code:$1133'],
+   'voiceDefault':['static:$114E','code:$114E','code:$114C','code:$1158'],
+   'dynamicState':['operand_write:$1162<-$113B','code:$113B','static:$1138'],
+   'sidInit':['static:$1135','code:$1135']
+ };
+ function check(sub,checkpoint,frame,kind,field,expected,actual,sourceAddress,targetSymbol,details={}){
+  const good=expected===actual;
+  const meta={subtune:sub+1,subtuneA:sub,checkpoint,frame,kind,observable:field,expected:plainValue(expected),actual:plainValue(actual),sourceAddress:sourceAddress==null?null:hex(sourceAddress),targetSymbol:targetSymbol||null,targetAddress:targetSymbol&&Number.isInteger(symbols[targetSymbol])?hex(symbols[targetSymbol]):null,evidenceIds:proof(mapping[kind]||[]),...details,pass:good};
+  all.push(meta);
+ }
+ function cpu(h,n,a){return new CPU(h,observationFactory(h,n,a+1));}
+ const read=(r,s)=>r.mem[symbols[s]];
+ const edgeCount=(c,src,dst)=>c.o.flowEdges.get(src+':'+dst)?.count||0;
+ for(const sub of subtunes){
+  const o=cpu(original,frames,sub),r=cpu(generated,frames,sub);const begin=all.length;let sourceInitSIDCompared=0;
+  o.run(original.init,sub,stepLimit,-1);r.run(generated.init,sub,stepLimit,-1);
+  if(arg.testHook)arg.testHook({stage:'after_init',subtune:sub,source:o,reference:r,symbols});
+  check(sub,'INIT',-1,'setupIndex','selectedVoiceBankBase',o.mem[0x1129],read(r,'SR_SETUP_INDEX'),0x1129,'SR_SETUP_INDEX');
+  check(sub,'INIT',-1,'firstPlayGate','firstPLAY_pending',o.mem[0x1129]<0x80?1:0,read(r,'SR_FIRST_PENDING'),0x1129,'SR_FIRST_PENDING');
+  for(let frame=0;frame<frames;frame++){
+   const beforeFirst=edgeCount(o,0x112A,0x112C),beforeSteady=edgeCount(o,0x112A,0x1161);
+   const sidOriginalStart=o.o.sidEvents.length,sidRefStart=r.o.sidEvents.length;
+   o.run(original.play,0,stepLimit,frame);r.run(generated.play,0,stepLimit,frame);
+   if(arg.testHook)arg.testHook({stage:'after_play',subtune:sub,frame,source:o,reference:r,symbols});
+   const c=frame===0?'FIRST_PLAY':'STEADY_PLAY';
+   const firstDelta=edgeCount(o,0x112A,0x112C)-beforeFirst,steadyDelta=edgeCount(o,0x112A,0x1161)-beforeSteady;
+   const path=firstDelta===1&&steadyDelta===0?1:(firstDelta===0&&steadyDelta===1?2:-1);
+   check(sub,c,frame,'branchPath','dispatchPath',path,read(r,'SR_PATH'),0x112A,'SR_PATH',{sourcePC:hex(0x112A),sourceEdge:path===1?'$112A->$112C':path===2?'$112A->$1161':'unexpected edge count'});
+   check(sub,c,frame,'firstPlayGate','firstPLAY_consumed',o.mem[0x1129]===0xFF?0:1,read(r,'SR_FIRST_PENDING'),0x1129,'SR_FIRST_PENDING');
+   check(sub,c,frame,'firstPlayCounter','firstPLAY_count',edgeCount(o,0x112A,0x112C),read(r,'SR_FIRST_COUNT'),0x112A,'SR_FIRST_COUNT');
+   check(sub,c,frame,'firstPlayCounter','steadyPLAY_count',edgeCount(o,0x112A,0x1161),(read(r,'SR_REGULAR_HI')<<8)|read(r,'SR_REGULAR_LO'),0x112A,'SR_REGULAR_LO');
+   if(frame===0){
+    // Only compare the initialised state at the first complete PLAY, never later,
+    // because the original *continues its uncompiled music engine* on later ticks.
+    const zero=contract.semanticExtension.operation.zeroRegion;
+    need(zero.sourceBase===0x14AC&&zero.length===42,'Unrecognised clear-state mapping');
+    for(let k=0;k<42;k++)check(sub,c,frame,'clearRegion','clearArea['+k+']',o.mem[0x14AC+k],r.mem[symbols.SR_CLEAR_AREA+k],0x14AC+k,'SR_CLEAR_AREA',{byteOffset:k});
+    for(let v=0;v<3;v++)for(const offset of [0,2,3,5]){
+     const sym='SR_V'+v+'_'+(offset===0?'ORD':offset);
+     need(Number.isInteger(symbols[sym]),'Missing voice symbol '+sym);
+     const src=0x14D6+7*v+offset;
+     check(sub,c,frame,'voiceDefault','voice['+v+'].field['+offset+']',o.mem[src],read(r,sym),src,sym,{voice:v,fieldOffset:offset});
+    }
+    for(const [src,sym] of [[0x11B0,'SR_DYNAMIC_11B0'],[0x1162,'SR_DYNAMIC_1162']])check(sub,c,frame,'dynamicState','patchedState('+hex(src)+')',o.mem[src],read(r,sym),src,sym);
+    const srcInit=o.o.sidEvents.slice(sidOriginalStart).filter(x=>x.address===0xD415);
+    const genInit=r.o.sidEvents.slice(sidRefStart).filter(x=>x.address===0xD415);
+    sourceInitSIDCompared=srcInit.length?1:0;
+    // Compare supported initialization event only. Other writes are intentionally uncompiled.
+    check(sub,c,frame,'sidInit','SID $D415 initial value',srcInit[0]?.value??null,genInit[0]?.value??null,0xD415,null,{sourcePC:srcInit[0]?hex(srcInit[0].pc):null,sourceEventCount:srcInit.length,generatedEventCount:genInit.length});
+    check(sub,c,frame,'sidInit','SID $D415 emitted exactly once',1,genInit.length,0xD415,null);
+   }
+  }
+  perSubtune.push({subtune:sub+1,passed:all.slice(begin).every(x=>x.pass),checkCount:all.length-begin,sourceSIDWrites:o.o.sidEvents.length,generatedSIDWrites:r.o.sidEvents.length,sourceSIDWritesNotCompared:o.o.sidEvents.length-sourceInitSIDCompared,generatedNoSMC:[...r.o.payloadWriteGroups.values()].filter(x=>x.addr<symbols.SR_STATE).length===0});
+ }
+ const failed=all.filter(x=>!x.pass),first=failed[0]||null;
+ const report={format:FORMAT,mechanismId:'player_entry',source:{fileName:contract.source.fileName||null,sha256:sourceHash,entryInit:hex(original.init),entryPlay:hex(original.play)},reference:{backend:'PAY 00.8G SID',load:hex(generated.load),init:hex(generated.init),play:hex(generated.play),deterministicallyRegenerated:true},execution:{subtunes:subtunes.map(x=>x+1),framesPerSubtune:frames,playCallsAreExternal:true,cpuTiming:'bounded non-cycle-accurate NMOS 6502'},scope:{compared:['subtune setup index','first/steady branch path and dispatch counters','one-time first PLAY 42-byte cleared region','four verified fields per each of three voices','two first-play patched-state defaults','SID $D415=0 initialization only'],notCompared:NEVER_TESTED},summary:{status:first?'FIRST_DIVERGENCE':'PASS_PARTIAL_SCOPE',passed:all.length-failed.length,failed:failed.length,total:all.length,subtunesTested:subtunes.length,allSourceSIDWritesMatched:false,musicalEquivalenceClaimed:false},perSubtune,firstDivergence:first,checks:all};
+ report.counterexample=first?counterexample(report,contract):null;
+ return report;
+}
+function counterexample(report,contract){
+ need(report?.format===FORMAT&&report.firstDivergence,'Counterexample requires a failed differential check');
+ const d=report.firstDivergence;
+ const evidence=Object.fromEntries(d.evidenceIds.map(id=>[id,contract.evidence?.evidence?.[id]||null]));
+ return {format:'PAY_Differential_Counterexample_v0.8H',kind:'source_vs_semantic_reference',status:'candidate_for_adversarial_review',subtune:d.subtune,frame:d.frame,checkpoint:d.checkpoint,observable:d.observable,kindOfState:d.kind,expectedSourceValue:d.expected,actualCompiledValue:d.actual,sourceAddress:d.sourceAddress,targetSymbol:d.targetSymbol,targetAddress:d.targetAddress,sourcePC:d.sourcePC||null,sourceEdge:d.sourceEdge||null,sourceSIDHash:report.source.sha256,compilerBackend:'PAY 00.8G SID',evidence,reproduce:{steps:['Load original PSID matching sourceSIDHash','Import canonical PAY semantic contract','Deterministically regenerate SID reference from that contract','Run INIT with A='+d.subtuneA+'; call PLAY '+Math.max(0,d.frame+1)+' time(s)','Observe '+d.observable+' at '+d.checkpoint],framesPerSubtune:report.execution.framesPerSubtune},limits:['Discrepancy does not establish whether interpretation, compiler, proof extraction or CPU model is responsible','Only implemented first-PLAY mechanisms are compared','No full-song SID or audio comparison is implied'],adversarialPrompt:'Investigate the FIRST observable divergence only. Compare its cited original 6502 source evidence with the typed semantic operation and generated source. Identify the earliest source-state transition that could explain the mismatch. Propose a minimal, falsifiable corrected semantic contract operation or additional source trace. Do not insert SID register recordings, infer missing musical logic or claim a source song loop.'};
+}
+return {run,counterexample,verify,bytesMatch,format:FORMAT};
+});
+
+</script>
+<script>
+/* PAY-00.8G source-first minimal assembler + PSIDv2 packager.
+ * Independent implementation, suited to emitted 6502 subset. No hidden binary player.
+ * Fails closed on unsupported syntax, branches out of range or overlap.
+ */
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.PAYPSIDPackager08G=api;})(typeof globalThis==='object'?globalThis:this,function(){
+'use strict';
+// Encodes NMOS 6502 instructions used by the semantic reference backend.
+const OPCODE={
+'JMP.abs':0x4C,'JSR.abs':0x20,'RTS.imp':0x60,
+'PHA.imp':0x48,'PLA.imp':0x68,'TXA.imp':0x8A,'TAX.imp':0xAA,'TYA.imp':0x98,'TAY.imp':0xA8,
+'CLC.imp':0x18,'SEC.imp':0x38,'INX.imp':0xE8,'DEX.imp':0xCA,
+'ADC.imm':0x69,'ADC.abs':0x6D,'CMP.imm':0xC9,'SBC.imm':0xE9,
+'LDA.imm':0xA9,'LDA.abs':0xAD,'LDA.abx':0xBD,'LDX.imm':0xA2,'LDY.imm':0xA0,
+'STA.abs':0x8D,'STA.abx':0x9D,'STX.abs':0x8E,
+'INC.abs':0xEE,'BEQ.rel':0xF0,'BNE.rel':0xD0,'BMI.rel':0x30,'BPL.rel':0x10,'BCC.rel':0x90,'BCS.rel':0xB0
+};
+function num(s,symbols,missing=false){
+ s=s.trim();if(/^\$[0-9A-F]+$/i.test(s))return parseInt(s.slice(1),16);
+ if(/^\d+$/.test(s))return Number(s);
+ if(Object.hasOwn(symbols,s))return symbols[s];
+ if(missing)return 0;throw Error('Unresolved expression '+s);
+}
+function assemble(source){
+ const rows=source.split(/\r?\n/).map((s,i)=>({text:s.split(';')[0].trim(),line:i+1})).filter(x=>x.text);
+ let symbols={},memory=new Uint8Array(65536),occupied=new Uint8Array(65536),start=65536,end=0;
+ for(let pass=0;pass<2;pass++){
+  let pc=0,orgSeen=false;
+  for(const {text,line} of rows){let s=text;
+   const label=s.match(/^([A-Z_][A-Z0-9_]*):\s*(.*)$/i);
+   if(label){if(pass===0){if(Object.hasOwn(symbols,label[1]))throw Error('Duplicate label '+label[1]);symbols[label[1]]=pc;}s=label[2];if(!s)continue;}
+   const mt=s.match(/^([A-Z]+)(?:\s+(.*))?$/i);if(!mt)throw Error('Invalid assembler source line '+line+': '+s);
+   const op=mt[1].toUpperCase(),arg=(mt[2]||'').trim();
+   if(op==='ORG') {pc=num(arg,symbols,pass===0);if(pc<0||pc>=65536)throw Error('ORG out of range at '+line);orgSeen=true;start=Math.min(start,pc);continue;}
+   if(!orgSeen)throw Error('Expected ORG before code line '+line);
+   let mode,vals=[];
+   if(op==='DB'){mode='db';vals=arg.split(',').map(x=>x.trim());if(vals.some(x=>!x))throw Error('Empty DB literal on line '+line);}
+   else if(!arg){mode='imp';}
+   else if(Object.hasOwn(OPCODE,op+'.rel')){mode='rel';}
+   else if(arg.startsWith('#')){mode='imm';}
+   else if(/,X$/i.test(arg)){mode='abx';}
+   else {mode='abs';}
+   if(mode!=='db'&&!Object.hasOwn(OPCODE,op+'.'+mode))throw Error('Unsupported instruction '+op+' '+arg+' at '+line);
+   const len=mode==='db'?vals.length:(mode==='imp'?1:(mode==='abs'||mode==='abx'?3:2));
+   if(pc+len>65536)throw Error('Memory overflow at line '+line);
+   if(pass===1){
+    for(let i=0;i<len;i++){if(occupied[pc+i])throw Error('Address overlap at $'+(pc+i).toString(16));occupied[pc+i]=1;}
+    if(mode==='db')vals.forEach((v,i)=>{const n=num(v,symbols);if(n<0||n>255)throw Error('DB out of range line '+line);memory[pc+i]=n;});
+    else {memory[pc]=OPCODE[op+'.'+mode];if(len>1){let n=num(arg.replace(/^#/,'').replace(/,X$/i,''),symbols);
+      if(mode==='rel'){n-=(pc+2);if(n<-128||n>127)throw Error('Branch too far at '+line+': '+arg+' = '+n);memory[pc+1]=n&255;}
+      else {if(n<0||n>65535)throw Error('Operand out of range at '+line);memory[pc+1]=n&255;if(len===3)memory[pc+2]=(n>>>8)&255;}
+    }}
+   }
+   pc+=len;end=Math.max(end,pc);
+  }
+ }
+ if(start>=end)throw Error('No emitted code');
+ return {load:start,end,bytes:memory.slice(start,end),symbols};
+}
+function psidBytes(asm,settings={}){
+ if(asm.load!==0x1000)throw Error('This SID-reference packager expects ORG $1000');
+ if(asm.symbols.SID_REF_INIT!==0x1000||asm.symbols.SID_REF_PLAY!==0x1003)throw Error('SID entry addresses differ');
+ const output=new Uint8Array(0x7C+asm.bytes.length),dv=new DataView(output.buffer);
+ ['P','S','I','D'].forEach((x,i)=>output[i]=x.charCodeAt(0));
+ dv.setUint16(4,2,false);dv.setUint16(6,0x7C,false);
+ dv.setUint16(8,0x1000,false);dv.setUint16(10,0x1000,false);dv.setUint16(12,0x1003,false);
+ dv.setUint16(14,3,false);dv.setUint16(16,1,false);dv.setUint32(18,0,false);
+ const str=(off,value)=>{const t=String(value).slice(0,31);for(let i=0;i<t.length;i++)output[off+i]=t.charCodeAt(i)&127;};
+ str(0x16,settings.title||'PAY 08G first PLAY reference');str(0x36,settings.author||'PAY deterministic compiler');str(0x56,settings.release||'2026 research, silent fixture');
+ dv.setUint16(0x76,0x04,false); // PAL clock. Timing supplied by test harness, not verified C64 IRQ.
+ output.set(asm.bytes,0x7C);return output;
+}
+return {assemble,psidBytes};
+});
+
+</script>
+<script>
+/* PAY-00.8G. From verified semantic contract -> independent first-PLAY SID reference code.
+ * Frontend/Node, deterministic, no GPT, no SID or AY register stream input.
+ */
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.PAYSID08G=api;})(typeof globalThis==='object'?globalThis:this,function(){
+'use strict';
+function requireModules(){
+ const old=typeof PAYSIDReference08F3!=='undefined'?PAYSIDReference08F3:require('./PAY_SID_Reference_Backend_00_8F3.js');
+ const first=typeof PAYFirstPlay08G!=='undefined'?PAYFirstPlay08G:require('./PAY_First_Play_00_8G.js');
+ return {old,first};
+}
+function need(x,msg){if(!x)throw Error(msg)}
+function emitSource(ir,extension){
+ const {old}=requireModules();const op=extension.operation;
+ need(op?.kind==='first_play_voice_state_setup','Unsupported semantic extension');
+ need(op.zeroRegion?.sourceBase===0x14AC&&op.zeroRegion?.length===42&&op.zeroRegion.value===0,'Only proven 42-byte source clear supported');
+ need(op.voices?.sourceBase===0x14D6&&op.voices?.offsets?.join(',')==='0,7,14','Unrecognised source voice layout');
+ need(op.voices.ordinal?.stride===3,'Unrecognised subtune stride');
+ need(op.voices.defaults?.map(v=>v.indexOffset+':'+v.value).join(',')==='2:5,3:1,5:1','Unrecognised voice defaults');
+ need(op.sidInit?.length===1&&op.sidInit[0].address===0xD415&&op.sidInit[0].value===0,'Unverified SID initialisation');
+ need(op.optionalDiagnostic?.kind==='pitch_token_index_v1'&&op.optionalDiagnostic.tokenMin===0x60&&op.optionalDiagnostic.tokenMax===0xBC&&op.optionalDiagnostic.subtract===0x60,'Unverified pitch token interpretation');
+ const base=old.generateSource(ir);
+ need(base.includes('  JMP SR_TICK_ADVANCE') && base.includes('SR_STATE:'),'Unexpected old backend revision');
+ const initialize=['','; Source $112C-$115E: first-PLAY state only (not sound engine).','; 42-byte source clear $14AC..$14D5 mapped to SR_CLEAR_AREA.','SR_FIRST_PLAY_SETUP:',
+  '  LDA #$00','  LDX #$29','SR_CLEAR_42:','  STA SR_CLEAR_AREA,X','  DEX','  BPL SR_CLEAR_42',
+  '  STA SR_DYNAMIC_11B0','  STA SR_DYNAMIC_1162',
+  '  STA $D415',
+  '  LDX #$14','SR_ZERO_VOICE_REC:','  STA SR_VOICE_RECORDS,X','  DEX','  BPL SR_ZERO_VOICE_REC',
+  '; First-play Y initially = 3*subtune, and INY once per channel.',
+  '  LDA SR_SETUP_INDEX','  STA SR_V0_ORD','  CLC','  ADC #$01','  STA SR_V1_ORD','  ADC #$01','  STA SR_V2_ORD',
+  '  LDA #$05','  STA SR_V0_2','  STA SR_V1_2','  STA SR_V2_2',
+  '  LDA #$01','  STA SR_V0_3','  STA SR_V1_3','  STA SR_V2_3',
+  '  STA SR_V0_5','  STA SR_V1_5','  STA SR_V2_5',
+  '  RTS','',
+  '; Test-only semantic command: source $13CB -> $1222/$1227/$1228/$122A.',
+  '; Converts a SOURCE PITCH CODE to a 0..92 index. Does NOT play a note.',
+  'SID_REF_PITCH_INDEX:',
+  '  PHA','  LDA SR_TEST_TOKEN','  CMP #$60','  BCC SR_PITCH_INVALID',
+  '  CMP #$BD','  BCS SR_PITCH_INVALID',
+  '  SEC','  SBC #$60','  STA SR_TEST_PITCH_INDEX',
+  '  LDA #$01','  STA SR_TEST_PITCH_VALID','  JMP SR_PITCH_DONE',
+  'SR_PITCH_INVALID:','  LDA #$00','  STA SR_TEST_PITCH_VALID',
+  'SR_PITCH_DONE:','  PLA','  RTS',''];
+ const state=['; Source $14AC..$14D5 clearing, absolute target RAM state.','SR_CLEAR_AREA:',
+  '  DB '+Array.from({length:42},()=>'$00').join(','),
+  '; PAY version of source operand state at $11B0 and $1162.','SR_DYNAMIC_11B0:','  DB $00','SR_DYNAMIC_1162:','  DB $00',
+  '; Source pitch-code conversion test inputs/outputs.','SR_TEST_TOKEN:','  DB $00',
+  'SR_TEST_PITCH_INDEX:','  DB $00','SR_TEST_PITCH_VALID:','  DB $00',
+  '; Original $14D6+[0,7,14] voice records; translated as 3 * 7 bytes.','SR_VOICE_RECORDS:'];
+ for(let v=0;v<3;v++)for(let i=0;i<7;i++)state.push(`SR_V${v}_${i===0?'ORD':i}:`,`  DB $00`);
+ let source=base.replace('  JMP SR_TICK_ADVANCE','  JSR SR_FIRST_PLAY_SETUP\n  JMP SR_TICK_ADVANCE');
+ source=source.replace('SR_STATE:',initialize.join('\n')+'\nSR_STATE:');
+ source=source.replace('; END — no original SID driver code or register-event data embedded.',state.join('\n')+'\n\n; END — first-PLAY state only; no source player transplanted or register-event score.');
+ source=source.replace(/PAY-00\.8F3 \/ SID REFERENCE BACKEND/, 'PAY-00.8G / SID REFERENCE BACKEND');
+ source=source.replace(/This is NOT a musical conversion\. No SID writes, notes, gates, effects, tables or song loops\./,
+   'FIRST PLAY STATE + one $D415=0 global-init write. No notes, gates, effects, song loops or SID voice writer.');
+ return source;
+}
+function compileContract(c){
+ const {old,first}=requireModules();
+ const ir=old.validate(c);
+ const ext=first.validateExtension(c,c.semanticExtension);
+ return {semanticIR:ir,extension:ext,assembly:emitSource(ir,ext),diagnostics:{status:'PARTIAL_SOURCE_EQUIVALENT',
+  covered:['INIT subtune index','first/steady dispatch','first PLAY clear 42 bytes','three 7-byte voice defaults','global SID $D415=0','test-only pitch-token -> pitch-index'],
+  blocked:['source SID voice writer','musical instruments','notes/duration','effect dispatch','song loop'],audio:false}};
+}
+return {compileContract,emitSource};
+});
+
+</script>
+<script>
+/* PAY-00.8F3: deterministic SID-reference code generation for verified, partial
+ * player_entry semantic slice. Shared source for browser Compiler and Node.
+ * No AI calls, no register-stream fallback, no original executable copied.
+ */
+(function(root,factory){
+  const api=factory();
+  if(typeof module==='object'&&module.exports)module.exports=api;
+  root.PAYSIDReference08F3=api;
+})(typeof globalThis==='object'?globalThis:this,function(){
+'use strict';
+const EXPECTED_SHA='65c3874b9f529c9adac45852f6e216eef2307a325051471d8b58290c38f71a68';
+const REQUIRED={
+  subtune_init:['code:$1000','code:$10F1','operand_write:$10F6<-$10F1','static:$10F4','code:$10F5','patch:$1129<-$10F7'],
+  first_play_dispatch:['static:$1128','flow:$112A->$112C','flow:$112A->$1161','patch:$1129<-$113E','operand_read:$1129@$1128'],
+  tick_observation:['code:$1003','flow:$1003->$1126','code:$1126']
+};
+function need(x,msg){if(!x)throw Error(msg)}
+function hex2(v){return '$'+v.toString(16).toUpperCase().padStart(2,'0')}
+function validate(contract){
+  need(contract?.format==='PAY_Semantic_Contract_v0.8F2','Expected PAY_Semantic_Contract_v0.8F2');
+  need(contract.validation?.structure==='passed','Unvalidated candidate: contract validation.structure must be passed');
+  need(contract.validation?.compilerApproval===false,'Research fixture only: production approval not implemented');
+  need(contract.mechanismId==='player_entry'&&contract.candidate?.mechanismId==='player_entry','Only player_entry supported');
+  need(contract.candidate?.sourceLoopProven===false,'Unproven whole-song loop is prohibited');
+  need(contract.candidate?.targetPlan?.noZeroPage===true && contract.candidate?.targetPlan?.noSelfModifiedCode===true,'Expected explicit target safety constraints');
+  const m=contract.compilerModule,e=contract.evidence;
+  need(m?.format==='PAY_Semantic_Executable_Module_v0.8F','Missing typed executable semantic projection');
+  need(e?.format==='PAY_Semantic_Evidence_v0.8','Expected indexed PAY semantic evidence');
+  need(m.source?.sha256PSID===EXPECTED_SHA&&e.source?.sha256PSID===EXPECTED_SHA&&contract.source?.sha256PSID===EXPECTED_SHA,'PSID identity mismatch');
+  need(m.scope==='player_entry'&&m.coverage==='partial_mechanism','Only bounded control mechanism may be compiled');
+  need(m.containsAYEvents===false&&m.containsSourcePatternLoop===false,'No register-history data or unproven loops allowed');
+  need(m.target?.noZeroPage===true&&m.target?.noSelfModifyingCode===true,'No zero page or self-modifying generated code');
+  need(m.runtime?.firstPlayPending===true&&m.runtime?.tickClock==='external_50hz_assumption','Unrecognised control/timing semantics');
+  need(m.source?.initAddress===0x1000&&m.source?.playAddress===0x1003,'Source INIT/PLAY addresses not verified');
+  need(m.source?.subtunes===3&&m.source?.subtuneIndexBase===0,'Unexpected source subtune contract');
+  const x=m.mechanisms;
+  need(Array.isArray(x)&&x.length===3,'Expected precisely three verified semantic mechanisms');
+  for(const [i,key] of Object.keys(REQUIRED).entries()){
+    const it=x[i];
+    need(it?.id===key,'Unexpected or out-of-order operation '+key);
+    need(['observed','supported_inference'].includes(it?.proof?.confidence),'Operation not source-proven '+key);
+    const ids=it?.proof?.evidenceIds||[];
+    for(const r of REQUIRED[key])need(ids.includes(r) && !!e.evidence?.[r],'Missing evidence dependency '+r+' for '+key);
+  }
+  need(x[0].operation==='PLAYER_INIT'&&x[1].operation==='DISPATCH_STATE'&&x[2].operation==='PLAYER_TICK','Unsupported semantic operation');
+  const tr=x[0].transform;
+  need(tr?.kind==='op'&&tr.op==='mul'&&tr.type==='u8'&&tr.args?.[0]?.kind==='input'&&tr.args[0].id==='subtuneA'&&tr.args[1]?.kind==='const'&&tr.args[1]?.value===3,'Untyped/unproven subtune transform');
+  need(e.evidence?.['static:$1000']?.bytes?.join(',')==='76,241,16','Original INIT trampoline not verified');
+  need(e.evidence?.['static:$1003']?.bytes?.join(',')==='76,38,17','Original PLAY trampoline not verified');
+  need(e.evidence?.['static:$10F1']?.bytes?.join(',')==='141,246,16','Original INIT patch opcode not verified');
+  need(e.evidence?.['static:$1126']?.bytes?.join(',')==='162,0','Original PLAY prologue not verified');
+  const candidate=contract.candidate;
+  need((candidate?.targetPlan?.operations||[]).some(op=>op.op==='PLAYER_INIT') && (candidate?.targetPlan?.operations||[]).some(op=>op.op==='PLAYER_TICK'),'Candidate omits required semantic operations');
+  for(const [i,claim] of (candidate.claims||[]).entries()){
+    need(typeof claim.statement==='string' && Array.isArray(claim.evidenceIds),'Malformed candidate claim '+i);
+    for(const id of claim.evidenceIds)need(!!e.evidence?.[id],'Candidate claims cite unknown evidence '+id);
+  }
+  for(const [i,op] of (candidate.targetPlan.operations||[]).entries()){
+    need(Array.isArray(op.evidenceIds),'Candidate operation lacks evidence '+i);
+    for(const id of op.evidenceIds)need(!!e.evidence?.[id],'Candidate operation cites unknown evidence '+id);
+  }
+  for(const id of ['operand_write:$10F6<-$10F1','operand_write:$1129<-$10F7','operand_write:$1129<-$113E','operand_read:$1129@$1128','flow:$112A->$112C','flow:$112A->$1161']){
+    need((candidate.claims||[]).some(cl=>cl.evidenceIds.includes(id)),'Candidate omitted mandatory dependency '+id);
+  }
+  return {
+    format:'PAY_Executable_Semantics_v0.8F3',
+    sourceSHA256:EXPECTED_SHA,
+    sourceAddresses:{init:0x1000,play:0x1003},
+    scope:'player_entry',
+    completeness:'control_slice_only',
+    clock:'external_50hz_assumption',
+    input:{name:'subtuneA',type:'u8',allowed:[0,1,2]},
+    state:[{name:'subtuneA',type:'u8'},{name:'setupIndex',type:'u8'},{name:'firstPending',type:'bool'},{name:'firstCount',type:'u8'},{name:'regularCount',type:'u16'},{name:'tickCount',type:'u16'}],
+    operations:[
+      {id:'init',kind:'init_with_subtune_stride',stride:tr.args[1].value,firstPlayPending:true},
+      {id:'tick',kind:'first_tick_dispatch',firstPath:1,steadyPath:2,firstFlagResets:true},
+      {id:'count',kind:'tick_observation',width:16}
+    ],
+    unresolved:m.unresolved||[],
+    evidenceIds:Object.values(REQUIRED).flat()
+  };
+}
+function generateSource(ir){
+  need(ir?.format==='PAY_Executable_Semantics_v0.8F3'&&ir.scope==='player_entry'&&ir.completeness==='control_slice_only','Unrecognised executable semantics');
+  need(ir.operations?.[0]?.kind==='init_with_subtune_stride'&&ir.operations[0].stride===3,'Unsupported INIT lowering');
+  need(ir.operations?.[1]?.kind==='first_tick_dispatch'&&ir.operations[1].firstFlagResets===true,'Unsupported PLAY lowering');
+  need(ir.operations?.[2]?.kind==='tick_observation'&&ir.operations[2].width===16,'Unsupported counter lowering');
+  const lines=[
+    '; PAY-00.8F3 / SID REFERENCE BACKEND — SEMANTIC CONTROL FIXTURE ONLY',
+    '; Generated deterministically from typed PAY semantic contract, never from SID writes.',
+    '; Original PSID SHA256: '+ir.sourceSHA256,
+    '; This is NOT a musical conversion. No SID writes, notes, gates, effects, tables or song loops.',
+    '; INIT=$1000, PLAY=$1003; $1006 is an OPTIONAL test-only STOP entry.',
+    '; No PAY-owned zero page, no self-modifying code. Source semantics hold in absolute RAM.',
+    'ORG $1000',
+    'SID_REF_INIT:','  JMP SID_REF_INIT_CORE',
+    'SID_REF_PLAY:','  JMP SID_REF_PLAY_CORE',
+    'SID_REF_STOP:','  JMP SID_REF_STOP_CORE',
+    '',
+    'SID_REF_INIT_CORE:',
+    '  STA SR_INPUT_A',
+    '  PHA','  TXA','  PHA','  TYA','  PHA',
+    '  LDA SR_INPUT_A',
+    '  CMP #$03',
+    '  BCC SR_INIT_VALID',
+    '  LDA #$01','  STA SR_ERROR',
+    '  JMP SR_INIT_DONE',
+    'SR_INIT_VALID:',
+    '  LDA #$00','  STA SR_ERROR','  STA SR_FRAME_LO','  STA SR_FRAME_HI',
+    '  STA SR_FIRST_COUNT','  STA SR_REGULAR_LO','  STA SR_REGULAR_HI','  STA SR_PATH',
+    '  LDA #$01','  STA SR_RUNNING','  STA SR_FIRST_PENDING',
+    '  LDA SR_INPUT_A','  STA SR_SUBTUNE_A',
+    '  CLC','  ADC SR_INPUT_A','  ADC SR_INPUT_A',
+    '  STA SR_SETUP_INDEX',
+    'SR_INIT_DONE:','  PLA','  TAY','  PLA','  TAX','  PLA','  RTS',
+    '',
+    'SID_REF_PLAY_CORE:',
+    '  PHA','  TXA','  PHA','  TYA','  PHA',
+    '  LDA SR_RUNNING','  BEQ SR_TICK_DONE',
+    '  LDA SR_FIRST_PENDING','  BEQ SR_TICK_STEADY',
+    '  LDA #$00','  STA SR_FIRST_PENDING',
+    '  INC SR_FIRST_COUNT',
+    '  LDA #$01','  STA SR_PATH',
+    '  JMP SR_TICK_ADVANCE',
+    'SR_TICK_STEADY:',
+    '  INC SR_REGULAR_LO',
+    '  BNE SR_STEADY_DONE',
+    '  INC SR_REGULAR_HI',
+    'SR_STEADY_DONE:',
+    '  LDA #$02','  STA SR_PATH',
+    'SR_TICK_ADVANCE:',
+    '  INC SR_FRAME_LO','  BNE SR_TICK_DONE','  INC SR_FRAME_HI',
+    'SR_TICK_DONE:','  PLA','  TAY','  PLA','  TAX','  PLA','  RTS',
+    '',
+    'SID_REF_STOP_CORE:',
+    '  PHA','  LDA #$00','  STA SR_RUNNING','  STA SR_FIRST_PENDING','  PLA','  RTS',
+    '',
+    'SR_STATE:',
+    'SR_INPUT_A:','  DB $00',
+    'SR_SUBTUNE_A:','  DB $00',
+    'SR_SETUP_INDEX:','  DB $00',
+    'SR_FIRST_PENDING:','  DB $00',
+    'SR_RUNNING:','  DB $00',
+    'SR_ERROR:','  DB $00',
+    'SR_FRAME_LO:','  DB $00',
+    'SR_FRAME_HI:','  DB $00',
+    'SR_FIRST_COUNT:','  DB $00',
+    'SR_REGULAR_LO:','  DB $00',
+    'SR_REGULAR_HI:','  DB $00',
+    'SR_PATH:','  DB $00',
+    '', '; END — no original SID driver code or register-event data embedded.'
+  ];
+  return lines.join('\n')+'\n';
+}
+function compileContract(contract){
+  const semanticIR=validate(contract);
+  return {semanticIR,assembly:generateSource(semanticIR),diagnostics:{status:'PASS',scope:'partial_control',audible:false,sidWritesExpected:0,requires:['assembler','source-control oracle'],warning:'This reference SID has no musical output until downstream semantics are reconstructed.'}};
+}
+return {validate,generateSource,compileContract};
+});
+
+</script>
+<script>
+/* PLAY-00.8I: deterministic SID reference extension, source pitch-table lookup only.
+ * Retains exact 00.8G INIT/PLAY and first-play differential scope.
+ * Does NOT schedule notes, emit new SID writes, or claim audible music.
+ */
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.PAYSID08I=api;})(typeof globalThis==='object'?globalThis:this,function(){
+'use strict';
+function modules(){
+ const base=typeof PAYSID08G!=='undefined'?PAYSID08G:require('./PAY_SID_Backend_00_8G.js');
+ const pitch=typeof PAYPitch08I!=='undefined'?PAYPitch08I:require('./PAY_Pitch_00_8I.js');
+ return {base,pitch};
+}
+function byte(v){return '$'+v.toString(16).toUpperCase().padStart(2,'0')}
+function table(rows){const out=[];for(let i=0;i<rows.length;i+=16)out.push('  DB '+rows.slice(i,i+16).map(byte).join(','));return out.join('\n')}
+function emitSource(baseSource,op){
+ if(!baseSource.includes('SR_STATE:')||!baseSource.includes('SR_TEST_PITCH_INDEX:'))throw Error('Unsupported 00.8G SID backend revision');
+ const code=[
+ '; PLAY-00.8I: source $1318 / $131E table lookup after pitch-index calculation.',
+ '; Callable diagnostic ONLY. Not called by SID_REF_PLAY; no SID register writes.',
+ 'SID_REF_PITCH_FROM_TOKEN:',
+ '  JSR SID_REF_PITCH_INDEX',
+ '  LDA SR_TEST_PITCH_VALID',
+ '  BEQ SR_PITCH_INPUT_INVALID',
+ '  JSR SID_REF_PITCH_WORD',
+ '  RTS',
+ 'SR_PITCH_INPUT_INVALID:',
+ '  LDA #$00',
+ '  STA SR_TEST_FREQ_VALID',
+ '  RTS',
+ 'SID_REF_PITCH_WORD:',
+ '  PHA',
+ '  TXA',
+ '  PHA',
+ '  LDA SR_TEST_PITCH_INDEX',
+ '  CMP #$5D',
+ '  BCS SR_PITCH_WORD_INVALID',
+ '  TAX',
+ '  LDA SR_PITCH_TABLE_LO,X',
+ '  STA SR_TEST_FREQ_LO',
+ '  LDA SR_PITCH_TABLE_HI,X',
+ '  STA SR_TEST_FREQ_HI',
+ '  LDA #$01',
+ '  STA SR_TEST_FREQ_VALID',
+ '  JMP SR_PITCH_WORD_DONE',
+ 'SR_PITCH_WORD_INVALID:',
+ '  LDA #$00',
+ '  STA SR_TEST_FREQ_VALID',
+ 'SR_PITCH_WORD_DONE:',
+ '  PLA',
+ '  TAX',
+ '  PLA',
+ '  RTS',
+ '',
+ ].join('\n');
+ let source=baseSource.replace('\nSR_STATE:', '\n'+code+'\nSR_STATE:');
+ const data=['','; Verified original SID note-frequency data: low/high bytes, index 0..92.',
+ 'SR_PITCH_TABLE_LO:',table(op.tables.low),'SR_PITCH_TABLE_HI:',table(op.tables.high),
+ 'SR_TEST_FREQ_LO:','  DB $00','SR_TEST_FREQ_HI:','  DB $00','SR_TEST_FREQ_VALID:','  DB $00',''];
+ const end='; END — first-PLAY state only; no source player transplanted or register-event score.';
+ if(!source.includes(end))throw Error('Expected 00.8G footer missing');
+ source=source.replace(end,data.join('\n')+'\n'+end);
+ return source.replace('PAY-00.8G / SID REFERENCE BACKEND','PLAY-00.8I / SID REFERENCE BACKEND');
+}
+function compileContract(contract){
+ const {base,pitch}=modules();
+ const f=base.compileContract(contract);
+ const ext=pitch.validateExtension(contract,contract.pitchExtension);
+ return {semanticIR:f.semanticIR,firstPlay:f.extension,pitch:ext,
+  assembly:emitSource(f.assembly,ext.operation),
+  diagnostics:{status:'PARTIAL_SOURCE_EQUIVALENT_PITCH_LOOKUP',
+    covered:[...f.diagnostics.covered,'test-only original 93-entry SID frequency low/high lookup'],
+    blocked:['source SID voice writer','note scheduling and duration','gate and ADSR','instrument effects','song/pattern repeats'],
+    audio:false,notMusicalEquivalence:true}};
+}
+return {compileContract,emitSource};
+});
+
+</script>
+
+<script>
+/* PLAY-00.8I source-derived SID pitch table comparison.
+ * This is a diagnostic of the pure, callable token->frequency word operation.
+ * It does NOT prove note onset, scheduling, envelopes, gate, or audio equivalence.
+ * No GPT, no recorded SID stream, no new application.
+ */
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.PAYPitchDifferential08I=api;})(typeof globalThis==='object'?globalThis:this,function(){
+'use strict';
+function need(x,msg){if(!x)throw Error(msg)}
+const hex=(n,w=4)=>'$'+Number(n).toString(16).toUpperCase().padStart(w,'0');
+function run(arg){
+ const {originalBytes,generatedBytes,contract,parseSID,CPU,observationFactory,symbols}=arg;
+ const pitch=typeof PAYPitch08I!=='undefined'?PAYPitch08I:require('./PAY_Pitch_00_8I.js');
+ pitch.validateExtension(contract,contract?.pitchExtension);
+ need(typeof CPU==='function'&&typeof parseSID==='function'&&typeof observationFactory==='function','Missing CPU / PSID parser');
+ const origin=parseSID(originalBytes.buffer.slice(originalBytes.byteOffset,originalBytes.byteOffset+originalBytes.byteLength));
+ const ref=parseSID(generatedBytes.buffer.slice(generatedBytes.byteOffset,generatedBytes.byteOffset+generatedBytes.byteLength));
+ for(const key of ['SID_REF_PITCH_FROM_TOKEN','SR_TEST_TOKEN','SR_TEST_PITCH_INDEX','SR_TEST_PITCH_VALID','SR_TEST_FREQ_LO','SR_TEST_FREQ_HI','SR_TEST_FREQ_VALID'])need(Number.isInteger(symbols[key]),'Missing pitch diagnostic symbol '+key);
+ const o=new CPU(origin,observationFactory(origin,1,1));
+ const r=new CPU(ref,observationFactory(ref,1,1));
+ const checks=[];
+ function check(token,expectValid,index=null){
+  r.mem[symbols.SR_TEST_TOKEN]=token;
+  r.run(symbols.SID_REF_PITCH_FROM_TOKEN,0,2000,-1);
+  const valid=r.mem[symbols.SR_TEST_PITCH_VALID]===1&&r.mem[symbols.SR_TEST_FREQ_VALID]===1;
+  const actualIndex=r.mem[symbols.SR_TEST_PITCH_INDEX];
+  const actualWord=r.mem[symbols.SR_TEST_FREQ_LO]|(r.mem[symbols.SR_TEST_FREQ_HI]<<8);
+  const expectedWord=index===null?null:o.mem[0x1515+index]|(o.mem[0x1575+index]<<8);
+  const good=expectValid===valid && (index===null||(index===actualIndex&&expectedWord===actualWord));
+  checks.push({token:hex(token,2),pitchIndex:index,kind:'callable_source_pitch_word',expected:expectValid?expectedWord:null,actual:valid?actualWord:null,valid,expectedValid:expectValid,sourceLow: index===null?null:hex(0x1515+index),sourceHigh:index===null?null:hex(0x1575+index),targetIndexSymbol:'SR_TEST_PITCH_INDEX',targetLowSymbol:'SR_TEST_FREQ_LO',targetHighSymbol:'SR_TEST_FREQ_HI',evidenceIds:['static:$1318','code:$1318','static:$131E','code:$131E','static:$1228','code:$1228'],pass:good});
+ }
+ for(let i=0;i<93;i++)check(0x60+i,true,i);
+ check(0x5F,false);check(0xBD,false);
+ need(r.o.sidEvents.length===0,'Pitch diagnostic unexpectedly wrote SID register(s)');
+ const first=checks.find(x=>!x.pass)||null,failed=checks.filter(x=>!x.pass).length;
+ const report={format:'PLAY_Pitch_Differential_v0.8I',sourceSHA256:contract.source.sha256PSID,scope:'callable_source_pitch_word_only',sourceLookupPCs:['$1318','$131E'],testedInputs:95,validPitchTokens:93,invalidBoundaryTokens:2,doesNotWriteSIDRegisters:true,noNoteScheduleTested:true,status:first?'FIRST_DIVERGENCE':'PASS_DIAGNOSTIC_ONLY',summary:{passed:checks.length-failed,failed,total:checks.length},firstDivergence:first,checks};
+ report.counterexample=first?{format:'PLAY_Pitch_Counterexample_v0.8I',kind:'callable_source_pitch_lookup',token:first.token,pitchIndex:first.pitchIndex,expected:first.expected,actual:first.actual,sourceLow:first.sourceLow,sourceHigh:first.sourceHigh,evidenceIds:first.evidenceIds,interpretation:'Diagnostic lookup mismatch; no inference about note or sound timing',task:'Check source table bytes, token subtract semantics, compiler table index, and native CPU implementation; propose a minimal evidence-supported correction. Do not replay SID events.'}:null;
+ return report;
+}
+return {run};
+});
+
+</script>
+
+<script>
+(function(){'use strict';
+const el=id=>document.getElementById(id);
+let last=null,busy=false;
+function textStatus(t,ok){const e=el('diffStatus');e.textContent=t;e.style.color=ok===false?'#ffa5a5':ok===true?'#66e0b2':'';}
+function dl(name,text){const blob=new Blob([text],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1200)}
+async function originalFile(){const f=el('diffOriginal').files?.[0];
+ if(f){if(/\.json$/i.test(f.name)){const r=JSON.parse(await f.text());const b64=r?.source?.originalSID?.base64;if(!b64)throw Error('Complete Report missing original .sid bytes');const s=atob(b64),bytes=new Uint8Array(s.length);for(let i=0;i<s.length;i++)bytes[i]=s.charCodeAt(i);return bytes;}return new Uint8Array(await f.arrayBuffer());}
+ const bytes=window.PAYTest.getCurrentSourceBytes?.()||window.PAYSemanticIntegrationTest.getOriginalSourceSIDBytes?.();if(bytes?.length)return bytes;
+ throw Error('Choose the original .sid or Complete Report (or load the original .sid in Section 1).');
+}
+async function run(){if(busy)return;busy=true;el('diffRun').disabled=true;el('diffExport').disabled=el('diffCounterExport').disabled=true;el('diffReportText').value=el('diffCounterText').value='';last=null;textStatus('Validating source identity, recompiling reference deterministically, then running two 6502 instances…');
+ try{const [originalBytes,generatedBytes,ctext]=await Promise.all([originalFile(),(async()=>{const f=el('diffGenerated').files?.[0];if(!f)throw Error('Choose regenerated Compiler 00.8G or 00.8I .sid');return new Uint8Array(await f.arrayBuffer())})(),(async()=>{const f=el('diffContract').files?.[0];if(!f)throw Error('Choose matching research semantic contract');return f.text()})()]);
+ const contract=JSON.parse(ctext),old=PAYSID08G.compileContract(contract),oldAssembly=PAYPSIDPackager08G.assemble(old.assembly),oldBytes=PAYPSIDPackager08G.psidBytes(oldAssembly);
+ const equal=(a,b)=>a.length===b.length&&a.every((x,i)=>x===b[i]);
+ let assembled=oldAssembly,expected=oldBytes,version='00.8G';
+ if(contract.pitchExtension){
+   const cur=PAYSID08I.compileContract(contract),newAsm=PAYPSIDPackager08G.assemble(cur.assembly),newBytes=PAYPSIDPackager08G.psidBytes(newAsm);
+   if(equal(generatedBytes,newBytes)){assembled=newAsm;expected=newBytes;version='00.8I';}
+   else if(!equal(generatedBytes,oldBytes))throw Error('Generated SID differs from both deterministic 00.8G and 00.8I reference outputs; recompile from this exact contract.');
+ }
+ const hash=window.PAYSemanticIntegrationTest.digestBytes(originalBytes),frames=Number(el('diffFrames').value),s=el('diffSubtunes').value,subtunes=s==='all'?[0,1,2]:[Number(s)-1];
+ // Refuse mismatched binaries; source and generated both execute on the same bounded CPU model.
+ last=PAYDifferential08H.run({originalBytes,generatedBytes,expectedGeneratedBytes:expected,sourceHash:hash,contract,parseSID:window.PAYTest.parseSID,CPU:window.PAYTest.PAYCPU,observationFactory:window.PAYTest.newPAYObservation,symbols:assembled.symbols,frames,subtunes});
+ if(version==='00.8I'){
+   const pitchReport=PAYPitchDifferential08I.run({originalBytes,generatedBytes,contract,parseSID:window.PAYTest.parseSID,CPU:window.PAYTest.PAYCPU,observationFactory:window.PAYTest.newPAYObservation,symbols:assembled.symbols});
+   last.pitchDiagnostic=pitchReport;
+   last.format='PLAY_Differential_Report_v0.8I';
+   last.reference.backend='PLAY 00.8I SID (first-play + callable pitch)';
+   last.scope.compared.push('93 source-derived SID frequency words, callable diagnostic only');
+   last.summary.passed+=pitchReport.summary.passed;
+   last.summary.failed+=pitchReport.summary.failed;
+   last.summary.total+=pitchReport.summary.total;
+   if(pitchReport.firstDivergence&&!last.firstDivergence){
+      last.firstDivergence={...pitchReport.firstDivergence,checkpoint:'PITCH_DIAGNOSTIC',frame:null,subtune:null};
+      last.counterexample=pitchReport.counterexample;
+      last.summary.status='FIRST_DIVERGENCE';
+   }
+ }
+ const lines=[last.summary.status+': '+last.summary.passed+'/'+last.summary.total+' SUPPORTED-SCOPE checks matched; '+last.summary.failed+' mismatches.',
+  'Source PSID SHA256 '+last.source.sha256,'Subtunes '+last.execution.subtunes.join(', ')+', '+last.execution.framesPerSubtune+' PLAY calls each.',
+  ...last.perSubtune.map(x=>'Subtune '+x.subtune+': '+(x.passed?'PASS_PARTIAL':'DIVERGENCE')+', '+x.checkCount+' checks; original SID writes '+x.sourceSIDWrites+', regenerated SID writes '+x.generatedSIDWrites+', uncompiled original SID writes '+x.sourceSIDWritesNotCompared),
+  ...(last.pitchDiagnostic?['', 'PITCH: '+last.pitchDiagnostic.summary.passed+'/'+last.pitchDiagnostic.summary.total+' callable token→SID frequency checks (not PLAY scheduling).']:[]),
+  '',last.firstDivergence?'FIRST DIVERGENCE: '+JSON.stringify(last.firstDivergence,null,2):'First divergence: none within supported scope.',
+  '', 'NOT COMPARED: '+last.scope.notCompared.join('; ')];
+ el('diffReportText').value=lines.join('\n');
+ el('diffCounterText').value=last.counterexample?JSON.stringify(last.counterexample,null,2):'No supported-scope divergence. No adversarial counterexample generated.';
+ el('diffExport').disabled=false;el('diffCounterExport').disabled=!last.counterexample;
+ textStatus(last.summary.status==='PASS_PARTIAL_SCOPE'?'PASS_PARTIAL: source-verified first-PLAY and optional 00.8I callable pitch lookup matched; note scheduling remains out of scope.':'FIRST DIVERGENCE: inspect the mismatch and export its evidence package.',last.summary.status==='PASS_PARTIAL_SCOPE');
+ }catch(e){textStatus('DIFFERENTIAL BLOCKED: '+e.message,false);el('diffReportText').value=e.stack||String(e);}finally{busy=false;el('diffRun').disabled=false;}
+}
+el('diffRun').addEventListener('click',run);
+el('diffExport').addEventListener('click',()=>{if(last)dl('Bomberland_PLAY08I_differential_report.json',JSON.stringify(last,null,2)+'\n')});
+el('diffCounterExport').addEventListener('click',()=>{if(last?.counterexample)dl('Bomberland_PLAY08I_counterexample.json',JSON.stringify(last.counterexample,null,2)+'\n')});
+window.PAYDifferentialUITest={getResult:()=>last,run};
 })();
 </script>
 </body>

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>PLAY Compiler 00.8G — Deterministic SID reference and AY backends</title>
+<title>PLAY Compiler 00.8I — Deterministic pitch lookup and SID reference</title>
 <style>
 :root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#10161f;color:#e6eaf0;font:14px/1.5 system-ui,Arial,sans-serif}
 main{max-width:1160px;margin:auto;padding:26px}.muted{color:#9aa6b8}h1{margin-bottom:2px;font-size:26px}h2{font-size:17px;margin:24px 0 8px}
@@ -12,19 +12,29 @@ label{display:block;font-weight:600;margin-bottom:7px}textarea,pre{width:100%;bo
 textarea{height:370px;resize:vertical}pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:250px}.warning{border-left:4px solid #c99e41;padding:9px 12px;background:#382e1e}
 .status{min-height:50px}.ok{color:#a4e5ba}.bad{color:#ffb9ac}.pill{border:1px solid #6f829a;border-radius:4px;padding:2px 7px}
 </style></head><body><main>
-<h1>PLAY Compiler <span class="pill">00.8G</span></h1>
-<p class="muted">Deterministic compiler from the PAY semantic contract. Current 00.8G scope: source-derived INIT, first-PLAY state setup, one global SID initialization write, and an isolated pitch-token diagnostic. Apple II/AY output remains an earlier control-only fixture.</p>
-<div class="warning"><strong>00.8G: first-PLAY source-state reference, not a complete music player.</strong> The SID backend implements the 42-byte clear, three 7-byte voice records, first-PLAY dispatch and one verified $D415=0 write. Pitch-code conversion is diagnostic only. No note playback, instruments, effects, song loop or AY register-stream output is claimed.</div>
+<h1>PLAY Compiler <span class="pill">00.8I</span></h1>
+<p class="muted">Deterministic compiler from the PAY semantic contract. 00.8I adds verified source SID pitch-frequency tables and an isolated diagnostic lookup; first-PLAY state checks remain unchanged. No new AI inference or SID-register recording is used.</p>
+<div class="warning"><strong>00.8I research boundary:</strong> Source-derived 93-entry pitch lookup is callable and testable, but is not connected to the song PLAY loop. This is still a silent PSID; no musical timing, instrument, gate, full-song equivalence or AY playback is claimed.</div>
 <section class="panel" style="border:2px solid #4787ad"><h2>1 · Import the Interpreter semantic contract</h2>
 <p class="muted">Choose <code>Bomberland_player_entry_RECOVERED_00_8G_RESEARCH_CONTRACT.json</code> (contract format <code>PAY_Semantic_Contract_v0.8F2</code> and extension <code>PAY_First_Play_Executable_Extension_v0.8G</code>). This is the <strong>PAY</strong> contract identifier exported by the PLAY Interpreter; the old repository Compiler incorrectly required <code>PLAY_Semantic_Contract_v0.8F2</code>.</p>
 <input type="file" id="semanticContract" accept=".json,application/json"><p id="contractStatus" class="muted">No semantic contract imported. The existing reference fixture remains available separately below.</p></section>
+<section class="panel" style="border:2px solid #7b9e63">
+<h2>2 · Compile PLAY-00.8I SID pitch-reference source</h2>
+<p class="muted">Import the <strong>00.8I semantic contract</strong> from the Interpreter. This new 6502 program has verified first-PLAY state plus a callable 93-note SID frequency lookup. It is <strong>silent</strong> and intended for differential diagnostics.</p>
+<nav><button id="buildSID08I" disabled>Compile 00.8I SID .S</button><button id="saveSID08IS" disabled>Save readable .S</button><button id="saveSID08Isid" disabled>Save reference .sid</button></nav>
+<div id="statusSID08I" class="status muted" style="margin:10px 0">Import a contract with the source-derived pitchExtension.</div>
+<textarea id="sourceSID08I" readonly placeholder="00.8I source-derived pitch-word assembly appears here."></textarea>
+</section>
+<details class="panel"><summary>Previous 00.8G first-PLAY reference (optional)</summary>
 <section class="panel" style="border:2px solid #4f8f7f">
-<h2>2 · Compile 00.8G SID reference (.S and .sid)</h2>
+<h2>00.8G SID reference (.S and .sid)</h2>
 <p class="muted">Import <strong>one semantic contract</strong> from PAY Interpreter 00.8G above. This backend needs a verified first-PLAY extension. It compiles a new 6502 program, not a SID event recording. The source includes one original global-init SID write ($D415=0) and a callable pitch-code conversion diagnostic; <strong>not yet a musical player</strong>.</p>
 <nav><button id="buildSID08G" disabled>Compile 00.8G SID .S</button><button id="saveSID08GS" disabled>Download readable .S</button><button id="saveSID08Gsid" disabled>Download packaged .sid</button></nav>
 <div id="statusSID08G" class="status muted" style="margin:10px 0">Import a semantic contract with first-PLAY source proof.</div>
 <textarea id="sourceSID08G" readonly placeholder="Readable 6502 source for 00.8G first-PLAY semantics appears here."></textarea>
 </section>
+</details>
+<details class="panel"><summary>Legacy research-fixture inputs (optional)</summary>
 <section class="panel"><h2>Legacy research-fixture inputs (optional)</h2><p class="muted">Built-in Bomberland fixtures load automatically. Import replacement module, evidence and compiler capabilities as needed; nothing leaves the browser.</p>
 <div class="grid"><div><label for="model">Semantic module JSON</label><input id="model" type="file" accept=".json"></div><div><label for="evidence">Enriched evidence JSON</label><input id="evidence" type="file" accept=".json"></div><div><label for="capabilities">Capability manifest JSON</label><input id="capabilities" type="file" accept=".json"></div></div></section>
 <section class="panel"><nav><button id="compile">Compile research fixture</button><button id="reset">Restore built-in fixtures</button><button id="exportS" disabled>Download .S</button><button id="exportMap" disabled>Download source map</button><button id="exportDiag" disabled>Download diagnostics</button><button id="copy" disabled>Copy assembly</button></nav><div id="status" class="status muted" style="margin-top:10px">Ready.</div></section>
@@ -40,6 +50,7 @@ textarea{height:370px;resize:vertical}pre{white-space:pre-wrap;overflow-wrap:any
 <textarea id="sidRefSource" readonly placeholder="Generated SID reference assembly will appear here."></textarea>
 </section>
 
+</details>
 
 </main>
 <script type="application/json" id="builtin-model">{
@@ -6162,7 +6173,7 @@ const OPCODE={
 'PHA.imp':0x48,'PLA.imp':0x68,'TXA.imp':0x8A,'TAX.imp':0xAA,'TYA.imp':0x98,'TAY.imp':0xA8,
 'CLC.imp':0x18,'SEC.imp':0x38,'INX.imp':0xE8,'DEX.imp':0xCA,
 'ADC.imm':0x69,'ADC.abs':0x6D,'CMP.imm':0xC9,'SBC.imm':0xE9,
-'LDA.imm':0xA9,'LDA.abs':0xAD,'LDX.imm':0xA2,'LDY.imm':0xA0,
+'LDA.imm':0xA9,'LDA.abs':0xAD,'LDA.abx':0xBD,'LDX.imm':0xA2,'LDY.imm':0xA0,
 'STA.abs':0x8D,'STA.abx':0x9D,'STX.abs':0x8E,
 'INC.abs':0xEE,'BEQ.rel':0xF0,'BNE.rel':0xD0,'BMI.rel':0x30,'BPL.rel':0x10,'BCC.rel':0x90,'BCS.rel':0xB0
 };
@@ -6374,6 +6385,153 @@ return {buildExtension,validateExtension,attach};
 </script>
 
 <script>
+/* PLAY-00.8I: source-verified SID pitch word lookup, callable diagnostic only.
+ * Literal frequency table bytes below were extracted from the ORIGINAL Bomberland PSID,
+ * not from frame captures or AY conversions. Future songs require their own verified table operations.
+ * Browser/Node UMD. No GPT requests.
+ */
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.PAYPitch08I=api;})(typeof globalThis==='object'?globalThis:this,function(){
+'use strict';
+const SOURCE_SHA='65c3874b9f529c9adac45852f6e216eef2307a325051471d8b58290c38f71a68';
+const LOW=[23,39,57,75,95,116,138,161,186,212,240,14,45,78,113,150,190,232,20,67,116,169,225,28,90,156,226,45,124,207,40,133,232,82,193,55,180,57,197,90,247,158,79,10,209,163,130,110,104,113,138,179,238,60,158,21,162,70,4,220,208,226,20,103,221,121,60,41,68,141,8,184,161,197,40,205,186,241,120,83,135,26,16,113,66,137,79,155,116,226,240,166,14];
+const HIGH=[1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,3,3,3,3,3,4,4,4,4,5,5,5,6,6,6,7,7,8,8,9,9,10,10,11,12,13,13,14,15,16,17,18,19,20,21,23,24,26,27,29,31,32,34,36,39,41,43,46,49,52,55,58,62,65,69,73,78,82,87,92,98,104,110,117,124,131,139,147,156,165,175,185,196,208,221];
+const SOURCE_OPS={
+ '$1228':[0xE9,0x60], '$122A':[0x9D,0xDA,0x14], '$13CB':[0x9D,0xC3,0x14],
+ '$130F':[0x9D,0x06,0x15], '$1312':[0xA8],
+ '$1318':[0xB9,0x15,0x15], '$131B':[0x9D,0xEE,0x14],
+ '$131E':[0xB9,0x75,0x15], '$1321':[0x9D,0xEF,0x14]
+};
+const COUNT=93;
+function need(b,m){if(!b)throw Error(m);}
+function verifySourceProof(contract){
+ need(contract?.source?.sha256PSID===SOURCE_SHA,'Unexpected source PSID SHA');
+ need(contract?.validation?.structure==='passed'&&contract?.semanticExtension,'Missing verified 00.8G foundation');
+ const e=contract?.evidence?.evidence;need(e,'Missing source evidence index');
+ for(const [pc,bytes] of Object.entries(SOURCE_OPS)){
+  const x=e['static:'+pc]?.bytes;
+  need(Array.isArray(x)&&x.length===bytes.length&&x.every((b,i)=>b===bytes[i]),'Pitch source instruction mismatch at '+pc);
+  need(e['code:'+pc],'Pitch source execution proof missing '+pc);
+ }
+ // This operation claims only source table lookup. Timing/instrument and SID writes not implied.
+ return Object.keys(SOURCE_OPS).flatMap(pc=>['static:'+pc,'code:'+pc]);
+}
+function tablesFromSID(sourceBytes){
+ const s=sourceBytes instanceof Uint8Array?sourceBytes:new Uint8Array(sourceBytes);
+ need(s.length>0x7c&&String.fromCharCode(...s.slice(0,4))==='PSID','Expected original PSID bytes');
+ const offset=(s[6]<<8)|s[7];need(offset>=0x7c&&offset<s.length,'Invalid PSID data offset');
+ let load=(s[8]<<8)|s[9],index=offset;
+ if(!load){load=s[index]|(s[index+1]<<8);index+=2;}
+ need(load===0x1000,'Only the original Bomberland load address supported');
+ const get=(addr)=>{const n=index+addr-load;need(n>=index&&n+COUNT<=s.length,'Missing source pitch table');return Array.from(s.slice(n,n+COUNT));};
+ const low=get(0x1515),high=get(0x1575);
+ need(low.every((v,i)=>v===LOW[i])&&high.every((v,i)=>v===HIGH[i]),'PSID source table differs from the verified Bomberland reference');
+ return {low,high};
+}
+function buildExtension(contract,sourceSID){
+ const ids=verifySourceProof(contract),tables=tablesFromSID(sourceSID);
+ return {format:'PAY_SID_Pitch_Word_v0.8I',sourceSHA256:SOURCE_SHA,
+  operation:{kind:'source_pitch_table_lookup_v1',scope:'callable_diagnostic_only',pitchTokenMin:0x60,pitchTokenMax:0xBC,indexSubtract:0x60,
+    noteCount:COUNT,lowTableSourceAddress:0x1515,highTableSourceAddress:0x1575,
+    sourceLowOutputAddress:0x14EE,sourceHighOutputAddress:0x14EF,
+    tables,doesNotEmitSIDWrites:true,doesNotScheduleNotes:true},
+  proof:{kind:'static_plus_executed_source_and_psid_data',evidenceIds:ids},
+  limitations:['No determination of note onset or duration','The source pitch can be transposed or modulated before lookup','No gate, ADSR, waveform or SID-register musical update','Diagnostic lookup is not called from PLAY','Tables are verified only for this exact original Bomberland PSID']};
+}
+function validateExtension(contract,ext){
+ const proof=verifySourceProof(contract);
+ need(ext?.format==='PAY_SID_Pitch_Word_v0.8I'&&ext.sourceSHA256===SOURCE_SHA,'Unrecognised pitch extension identity');
+ const op=ext.operation;
+ need(op?.kind==='source_pitch_table_lookup_v1'&&op.scope==='callable_diagnostic_only'&&op.pitchTokenMin===0x60&&op.pitchTokenMax===0xBC&&op.indexSubtract===0x60&&op.noteCount===COUNT,'Unsupported pitch operation');
+ need(op.lowTableSourceAddress===0x1515&&op.highTableSourceAddress===0x1575&&op.sourceLowOutputAddress===0x14EE&&op.sourceHighOutputAddress===0x14EF,'Unverified source pitch table locations');
+ need(op.doesNotEmitSIDWrites===true&&op.doesNotScheduleNotes===true,'Pitch operation cannot imply sound or scheduling');
+ need(Array.isArray(op.tables?.low)&&op.tables.low.length===COUNT&&op.tables.low.every((v,i)=>v===LOW[i]),'Low table source bytes altered');
+ need(Array.isArray(op.tables?.high)&&op.tables.high.length===COUNT&&op.tables.high.every((v,i)=>v===HIGH[i]),'High table source bytes altered');
+ need(Array.isArray(ext.proof?.evidenceIds)&&proof.every(id=>ext.proof.evidenceIds.includes(id)),'Pitch proof references incomplete');
+ return {sourceSHA256:SOURCE_SHA,operation:op,proof:ext.proof};
+}
+return {buildExtension,validateExtension,verifySourceProof,tablesFromSID,sourceTableBytes:{low:LOW.slice(),high:HIGH.slice()},sourceSHA256:SOURCE_SHA};
+});
+
+</script>
+<script>
+/* PLAY-00.8I: deterministic SID reference extension, source pitch-table lookup only.
+ * Retains exact 00.8G INIT/PLAY and first-play differential scope.
+ * Does NOT schedule notes, emit new SID writes, or claim audible music.
+ */
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.PAYSID08I=api;})(typeof globalThis==='object'?globalThis:this,function(){
+'use strict';
+function modules(){
+ const base=typeof PAYSID08G!=='undefined'?PAYSID08G:require('./PAY_SID_Backend_00_8G.js');
+ const pitch=typeof PAYPitch08I!=='undefined'?PAYPitch08I:require('./PAY_Pitch_00_8I.js');
+ return {base,pitch};
+}
+function byte(v){return '$'+v.toString(16).toUpperCase().padStart(2,'0')}
+function table(rows){const out=[];for(let i=0;i<rows.length;i+=16)out.push('  DB '+rows.slice(i,i+16).map(byte).join(','));return out.join('\n')}
+function emitSource(baseSource,op){
+ if(!baseSource.includes('SR_STATE:')||!baseSource.includes('SR_TEST_PITCH_INDEX:'))throw Error('Unsupported 00.8G SID backend revision');
+ const code=[
+ '; PLAY-00.8I: source $1318 / $131E table lookup after pitch-index calculation.',
+ '; Callable diagnostic ONLY. Not called by SID_REF_PLAY; no SID register writes.',
+ 'SID_REF_PITCH_FROM_TOKEN:',
+ '  JSR SID_REF_PITCH_INDEX',
+ '  LDA SR_TEST_PITCH_VALID',
+ '  BEQ SR_PITCH_INPUT_INVALID',
+ '  JSR SID_REF_PITCH_WORD',
+ '  RTS',
+ 'SR_PITCH_INPUT_INVALID:',
+ '  LDA #$00',
+ '  STA SR_TEST_FREQ_VALID',
+ '  RTS',
+ 'SID_REF_PITCH_WORD:',
+ '  PHA',
+ '  TXA',
+ '  PHA',
+ '  LDA SR_TEST_PITCH_INDEX',
+ '  CMP #$5D',
+ '  BCS SR_PITCH_WORD_INVALID',
+ '  TAX',
+ '  LDA SR_PITCH_TABLE_LO,X',
+ '  STA SR_TEST_FREQ_LO',
+ '  LDA SR_PITCH_TABLE_HI,X',
+ '  STA SR_TEST_FREQ_HI',
+ '  LDA #$01',
+ '  STA SR_TEST_FREQ_VALID',
+ '  JMP SR_PITCH_WORD_DONE',
+ 'SR_PITCH_WORD_INVALID:',
+ '  LDA #$00',
+ '  STA SR_TEST_FREQ_VALID',
+ 'SR_PITCH_WORD_DONE:',
+ '  PLA',
+ '  TAX',
+ '  PLA',
+ '  RTS',
+ '',
+ ].join('\n');
+ let source=baseSource.replace('\nSR_STATE:', '\n'+code+'\nSR_STATE:');
+ const data=['','; Verified original SID note-frequency data: low/high bytes, index 0..92.',
+ 'SR_PITCH_TABLE_LO:',table(op.tables.low),'SR_PITCH_TABLE_HI:',table(op.tables.high),
+ 'SR_TEST_FREQ_LO:','  DB $00','SR_TEST_FREQ_HI:','  DB $00','SR_TEST_FREQ_VALID:','  DB $00',''];
+ const end='; END — first-PLAY state only; no source player transplanted or register-event score.';
+ if(!source.includes(end))throw Error('Expected 00.8G footer missing');
+ source=source.replace(end,data.join('\n')+'\n'+end);
+ return source.replace('PAY-00.8G / SID REFERENCE BACKEND','PLAY-00.8I / SID REFERENCE BACKEND');
+}
+function compileContract(contract){
+ const {base,pitch}=modules();
+ const f=base.compileContract(contract);
+ const ext=pitch.validateExtension(contract,contract.pitchExtension);
+ return {semanticIR:f.semanticIR,firstPlay:f.extension,pitch:ext,
+  assembly:emitSource(f.assembly,ext.operation),
+  diagnostics:{status:'PARTIAL_SOURCE_EQUIVALENT_PITCH_LOOKUP',
+    covered:[...f.diagnostics.covered,'test-only original 93-entry SID frequency low/high lookup'],
+    blocked:['source SID voice writer','note scheduling and duration','gate and ADSR','instrument effects','song/pattern repeats'],
+    audio:false,notMusicalEquivalence:true}};
+}
+return {compileContract,emitSource};
+});
+
+</script>
+<script>
 'use strict';
 (function(){
 const id=k=>document.getElementById(k),input=id('semanticContract'),run=id('buildSID08G'),saveS=id('saveSID08GS'),saveSid=id('saveSID08Gsid');
@@ -6392,6 +6550,26 @@ run.addEventListener('click',()=>{
 });
 saveS.addEventListener('click',()=>{if(compiled)download('Bomberland_PAY08G_SID_FIRST_PLAY.S',compiled.assembly,'text/plain;charset=utf-8')});
 saveSid.addEventListener('click',()=>{if(packed)download('Bomberland_PAY08G_SID_FIRST_PLAY.sid',packed,'application/octet-stream')});
+})();
+</script>
+<script>
+(function(){'use strict';
+const id=k=>document.getElementById(k),input=id('semanticContract'),run=id('buildSID08I'),saveS=id('saveSID08IS'),saveSid=id('saveSID08Isid');
+let contract=null,compiled=null,packed=null;
+function status(msg,ok){id('statusSID08I').className='status '+(ok?'ok':'bad');id('statusSID08I').textContent=msg;}
+function download(name,data,mime){const url=URL.createObjectURL(new Blob([data],{type:mime})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);}
+input.addEventListener('change',async()=>{
+ run.disabled=saveS.disabled=saveSid.disabled=true;contract=compiled=packed=null;id('sourceSID08I').value='';
+ if(!input.files?.length)return;
+ try{const c=JSON.parse(await input.files[0].text());PAYSID08I.compileContract(c);contract=c;run.disabled=false;status('Source-verified pitch lookup and 00.8G first-PLAY mechanism ready for deterministic compilation.',true);}
+ catch(e){status('00.8I BLOCKED: '+e.message+' — export a fresh semantic contract from Interpreter 00.8I (00.8G remains available below).',false);}
+});
+run.addEventListener('click',()=>{
+ try{if(!contract)throw Error('Import a compatible 00.8I contract first');compiled=PAYSID08I.compileContract(contract);const a=PAYPSIDPackager08G.assemble(compiled.assembly);packed=PAYPSIDPackager08G.psidBytes(a);id('sourceSID08I').value=compiled.assembly;saveS.disabled=saveSid.disabled=false;status('PASS: '+a.bytes.length+' 6502 bytes, '+packed.length+' PSID bytes, 93 source pitch words. Diagnostic only; SILENT.',true);}
+ catch(e){saveS.disabled=saveSid.disabled=true;status('00.8I compile blocked: '+e.message,false);}
+});
+saveS.addEventListener('click',()=>{if(compiled)download('Bomberland_PLAY08I_SID_PITCH_DIAGNOSTIC.S',compiled.assembly,'text/plain;charset=utf-8');});
+saveSid.addEventListener('click',()=>{if(packed)download('Bomberland_PLAY08I_SID_PITCH_DIAGNOSTIC.sid',packed,'application/octet-stream');});
 })();
 </script>
 </body></html>
