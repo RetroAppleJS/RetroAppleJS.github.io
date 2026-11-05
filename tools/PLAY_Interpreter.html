@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>PLAY Interpreter 00.8H — Semantic Analysis v0.5.2 — Extended Duration Trace</title>
+<title>PLAY Interpreter 00.8I.1 — Evidence Contract Safety</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1120;--card:#141f34;--card2:#101b30;--line:#2d405e;--txt:#edf3fc;--muted:#aabbd0;--blue:#78baff;--green:#66e0b2;--danger:#ffa5a5}
 *{box-sizing:border-box}
@@ -1539,7 +1539,8 @@ unknowns = string[]; proposedTests = [{experiment,expectedObservables,evidenceId
 Address $ notation follows the source PSID's original $1000 load map; do not mistake source memory for Apple II target memory. Distinguish confirmed instruction execution from inferred musical intent. If evidence is inadequate, return unresolved mechanism, not a replacement based on frameSamples.\n
 Before classifying ANY memory write as generic state, check whether the target byte is inside the opcode or operand of an executed instruction. Trace the owner instruction, effective operand value, following consumption, and later restoration; include source write operations that leave byte values unchanged. A state-change-only modification log cannot prove a store did not occur. Use explicit target RAM state when replacing original self-modifying control logic.\n
 All mechanism semanticObligations shown in the provided evidence must be explained in claims with the referenced evidence IDs. Do not satisfy obligations by merely listing unrelated evidence. If an obligation cannot be resolved, explain the blocker instead of writing compilable operations.\n
-Do not treat the existence of repeated AY output as proof of a SID pattern/song loop. No fictitious 'nested loops' or tempo values.\n`;
+Do not treat the existence of repeated AY output as proof of a SID pattern/song loop. No fictitious 'nested loops' or tempo values.\n
+The report's capture object is metadata, not a source evidence ID. Never cite \"capture\" (or section names) inside evidenceIds. State limitations such as \"the capture does not prove a whole-song loop\" under unknowns, and set sourceLoopProven=false. Do NOT create an affirmative observed claim about the absence of evidence. Only cite exact keys from the supplied evidence object, and cite source instruction records for source-behaviour claims.\n`;
  return {instructions,data:JSON.stringify(c)};
 }
 function parseCandidate(text){
@@ -1554,6 +1555,41 @@ function parseCandidate(text){
   throw Error(`Semantic candidate JSON is invalid (${source.length.toLocaleString()} characters): ${err.message}. ${hint} Last 100 characters: ${JSON.stringify(source.slice(-100))}`);
  }
 }
+/** Deterministic boundary reconciliation; this is NOT semantic interpretation.
+ * A bounded capture's absence of loop proof is metadata, not an executed-code fact.
+ * Only the precisely recognised metadata citation is rewritten. Unknown source IDs
+ * are NEVER guessed, fuzzy-matched or silently accepted.
+ * The raw GPT response stays untouched in the editor and downloads.
+ */
+function reconcileCandidate(candidate,evidence){
+ verifyEvidence(evidence);
+ const c=JSON.parse(JSON.stringify(candidate));
+ const changes=[],deferred=[];
+ if(Array.isArray(c.claims) && c.sourceLoopProven===false && evidence.capture?.sourceSongLoopProven===false){
+  const kept=[];
+  for(let i=0;i<c.claims.length;i++){
+   const claim=c.claims[i],ids=claim?.evidenceIds;
+   const statement=String(claim?.statement||'');
+   const isScopeClaim=/\b(?:capture|trace|observed (?:run|window)|bounded)\b/i.test(statement)
+     && /\b(?:loop|cycle|coverage)\b/i.test(statement)
+     && /\b(?:not|does not|cannot|doesn.t|not yet|unproven|insufficient)\b/i.test(statement);
+   if(Array.isArray(ids) && ids.length===1 && ids[0]==='capture' && isScopeClaim){
+    if(!Array.isArray(c.scopeLimitations))c.scopeLimitations=[];
+    c.scopeLimitations.push({statement,source:'report.capture',captureFrames:evidence.capture.longFrames,
+      sourceSongLoopProven:false,originalModelEvidenceIds:['capture'],
+      treatment:'scope_metadata_not_source_evidence'});
+    if(!Array.isArray(c.unknowns))c.unknowns=[];
+    if(!c.unknowns.includes(statement))c.unknowns.push(statement);
+    changes.push('Claim '+(i+1)+': moved a capture-only, negative loop-coverage statement to scopeLimitations and unknowns. No source evidence was added.');
+   }else kept.push(claim);
+  }
+  c.claims=kept;
+ }
+ for(const [i,op] of (c.targetPlan?.operations||[]).entries()){
+  if(op?.op==='NEXT_STEP')deferred.push({index:i,op:'NEXT_STEP',reason:'No executable lowering defined; remains outside the research fixture',evidenceIds:op.evidenceIds||[]});
+ }
+ return {candidate:c,changes,deferred};
+}
 function validateCandidate(candidate,evidence){
  verifyEvidence(evidence); const errors=[];
  if(!candidate||typeof candidate!=='object')return ['Candidate not an object'];
@@ -1567,7 +1603,7 @@ function validateCandidate(candidate,evidence){
  function checkIds(ids,context,claim){
   if(!Array.isArray(ids)) {errors.push(context+' has no evidenceIds array');return;}
   if(claim && !ids.length)errors.push(context+' lacks evidence');
-  for(const id of ids){if(!known[id])errors.push(context+' unknown evidence ID '+id);if(claim && known[id]?.kind==='prior_model_interpretation' && !ids.some(k=>known[k]&&known[k].kind!=='prior_model_interpretation'))errors.push(context+' cites only previous GPT claims');}
+  for(const id of ids){if(!known[id])errors.push(context+(id==='capture'?' cites report metadata \"capture\", not an evidence ID. Put capture/loop limitations in unknowns; do not invent a source citation.':' unknown evidence ID '+id));if(claim && known[id]?.kind==='prior_model_interpretation' && !ids.some(k=>known[k]&&known[k].kind!=='prior_model_interpretation'))errors.push(context+' cites only previous GPT claims');}
  }
  if(m && Array.isArray(m.semanticObligations)) {
    const proofClaims=Array.isArray(candidate.claims)?candidate.claims:[];
@@ -1580,21 +1616,41 @@ function validateCandidate(candidate,evidence){
  for(const [i,c] of (candidate.claims||[]).entries()){
   if(!c||!c.statement)errors.push('Claim '+i+' missing statement');
   if(!['observed','supported_inference','hypothesis','unresolved'].includes(c.confidence))errors.push('Claim '+i+' invalid confidence');
-  checkIds(c.evidenceIds,'Claim '+i,c.confidence!=='unresolved');
-  if(c.contradictingEvidenceIds)checkIds(c.contradictingEvidenceIds,'Claim '+i+' counterevidence');
+  checkIds(c.evidenceIds,'Claim '+(i+1),c.confidence!=='unresolved');
+  if(c.contradictingEvidenceIds)checkIds(c.contradictingEvidenceIds,'Claim '+(i+1)+' counterevidence');
  }
  if(!candidate.stateMachine||!Array.isArray(candidate.stateMachine.transitions))errors.push('Missing stateMachine.transitions');
  if(!candidate.decoderGrammar||!Array.isArray(candidate.decoderGrammar.tokenClasses))errors.push('Missing decoderGrammar.tokenClasses');
  if(!candidate.targetPlan||candidate.targetPlan.noZeroPage!==true||candidate.targetPlan.noSelfModifiedCode!==true||!Array.isArray(candidate.targetPlan.operations))errors.push('Target plan must be zero-page-free, no SMC, with operations');
  for(const [i,o] of (candidate.targetPlan?.operations||[]).entries()){
   if(!OPS.has(o.op))errors.push('Illegal target operation '+o.op);
-  checkIds(o.evidenceIds,'Operation '+i,o.op!=='UNRESOLVED');
+  checkIds(o.evidenceIds,'Operation '+(i+1),o.op!=='UNRESOLVED');
  }
+ // The older validator checked only claims + target operations. That allowed
+ // unindexed references inside state-machine and decoder objects through.
+ // Traverse remaining evidence-bearing sections, with exact JSON paths.
+ function checkNested(node,path){
+  if(!node || typeof node!=='object')return;
+  if(Array.isArray(node)){node.forEach((v,i)=>checkNested(v,path+'['+i+']'));return;}
+  for(const [key,value] of Object.entries(node)){
+   const loc=path+'.'+key;
+   if(key==='evidenceIds'||key==='contradictingEvidenceIds'){
+    if(!Array.isArray(value)){errors.push(loc+' must be an evidence-ID array');continue;}
+    for(const id of value){
+     if(!known[id])errors.push(loc+(id==='capture'?' references capture metadata, not a source evidence ID': ' unknown evidence ID '+id));
+    }
+    if(value.length && value.every(id=>known[id]?.kind==='prior_model_interpretation'))
+     errors.push(loc+' cannot cite only prior GPT prose as source proof');
+   }else checkNested(value,loc);
+  }
+ }
+ for(const field of ['stateMachine','decoderGrammar','proposedTests'])checkNested(candidate[field],field);
+ if(candidate.targetPlan?.soundTranslation)checkNested(candidate.targetPlan.soundTranslation,'targetPlan.soundTranslation');
  if(!Array.isArray(candidate.unknowns))errors.push('Missing unknowns array');
  if(!Array.isArray(candidate.proposedTests))errors.push('Missing proposedTests array');
  return errors;
 }
-return {FORMAT,OPS:Array.from(OPS),verifyEvidence,contextFor,buildPrompt,parseCandidate,validateCandidate};
+return {FORMAT,OPS:Array.from(OPS),verifyEvidence,contextFor,buildPrompt,parseCandidate,reconcileCandidate,validateCandidate};
 });
 </script>
 
@@ -1786,7 +1842,9 @@ function typedProjection(b,c){
  const e=b.evidence,eq=(pc,bytes)=>JSON.stringify(e['static:'+pc]?.bytes)===JSON.stringify(bytes);
  const ops=new Set(c.targetPlan.operations.map(o=>o.op));
  if(!['PLAYER_INIT','PLAYER_TICK','SET_STATE','DISPATCH_STATE'].every(o=>ops.has(o)))return null;
- for(const op of ops)if(!['PLAYER_INIT','PLAYER_TICK','SET_STATE','DISPATCH_STATE','UNRESOLVED'].includes(op))return null;
+ // NEXT_STEP is an uncompiled intention placeholder. It can travel through the
+ // partial research contract only if explicitly deferred, NEVER compiled as music.
+ for(const op of ops)if(!['PLAYER_INIT','PLAYER_TICK','SET_STATE','DISPATCH_STATE','UNRESOLVED','NEXT_STEP'].includes(op))return null;
  for(const [pc,bytes] of Object.entries({'$1000':[76,241,16],'$1003':[76,38,17],'$10F1':[141,246,16],'$10F4':[10],'$10F5':[105,0],'$10F7':[141,41,17],'$1128':[160,255],'$112A':[48,53],'$113E':[142,41,17]}))if(!eq(pc,bytes))return null;
  for(const id of ['operand_write:$10F6<-$10F1','operand_write:$1129<-$10F7','operand_write:$1129<-$113E','operand_read:$1129@$1128','patch:$1129<-$113E','flow:$112A->$112C','flow:$112A->$1161'])if(!e[id])return null;
  const proof=[
@@ -1805,11 +1863,24 @@ function typedProjection(b,c){
  unresolved:[{id:'first_play_voice_table_initialization',blocks:'full PLAYER_TICK',description:'First-tick memory and voice tables not yet semantically lowered'},
  {id:'steady_state_music',blocks:'audible playback',description:'No verified channel commands, notes, duration or instrument lowering'},
  {id:'timing',blocks:'clock equivalence',description:'Target 50Hz assumption is not source CIA timing'},
- {id:'source_intent_unknowns',blocks:'additional semantic capabilities',description:'Other candidate source mechanisms remain uncompiled: '+(c.unknowns||[]).join(' | ')}]};
+ {id:'source_intent_unknowns',blocks:'additional semantic capabilities',description:'Other candidate source mechanisms remain uncompiled: '+(c.unknowns||[]).join(' | ')},
+ ...(c.targetPlan.operations||[]).filter(o=>o.op==='NEXT_STEP').map((o,i)=>({id:'deferred_next_step_'+i,blocks:'NEXT_STEP executable lowering',description:'Model declared NEXT_STEP without a deterministic implementation: '+(o.outputs||[]).join(' | ')}))]};
  return module;
 }
 function displayError(e){setStatus(e.message||String(e));}
-function parseAndValidate(){if(!bundle)throw Error('Extract evidence first');const c=core.parseCandidate(el('semCandidateInput').value);const errors=core.validateCandidate(c,bundle);if(errors.length)throw Error(errors.join('\n'));candidate=c;el('semSaveContract').disabled=false;setStatus('Candidate STRUCTURALLY VALID; no automatic proof of source intent. Export contract for compiler capability checks.',true);}
+let lastReconciliation={changes:[],deferred:[]};
+function parseAndValidate(){
+ if(!bundle)throw Error('Extract evidence first');
+ const original=core.parseCandidate(el('semCandidateInput').value);
+ const result=core.reconcileCandidate(original,bundle);
+ const errors=core.validateCandidate(result.candidate,bundle);
+ if(errors.length)throw Error(errors.join('\n'));
+ candidate=result.candidate;lastReconciliation={changes:result.changes,deferred:result.deferred};
+ el('semSaveContract').disabled=false;
+ const note=result.changes.length?(' Metadata reconciled: '+result.changes.join(' ')) : '';
+ const deferred=result.deferred.length?(' '+result.deferred.length+' NEXT_STEP operation(s) remain UNCOMPILED; partial fixture only.') : '';
+ setStatus('Candidate STRUCTURALLY VALID (not semantically approved).'+note+deferred+' Export contract for capability checks.',true);
+} 
 el('semInputReport').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{el('semSourceStatus').textContent='Extracting source evidence from '+f.name+'…';let report;try{report=JSON.parse(await f.text());}catch(e){throw Error('Imported Complete Report is not valid JSON ('+f.size.toLocaleString()+' bytes): '+e.message+'. If the file was truncated during copying or download, export a fresh Complete Report from the Interpreter.');}importReport(report);}catch(err){el('semSourceStatus').textContent='Full report import failed: '+err.message;}});
 el('semFromSession').addEventListener('click',()=>{try{importReport(window.PAYTest.buildCompletePAYReport());}catch(e){el('semSourceStatus').textContent='No completed trace/report yet: '+e.message;}});
 el('semMechanism').addEventListener('change',refresh);
@@ -1820,7 +1891,7 @@ el('semCandidateFile').addEventListener('change',async e=>{const f=e.target.file
 el('semCandidateInput').addEventListener('input',()=>{candidate=null;el('semSaveContract').disabled=true;el('semSaveRaw').disabled=!el('semCandidateInput').value;});
 el('semSaveRaw').addEventListener('click',()=>{const text=el('semCandidateInput').value;if(!text)return;save(text,baseName()+'_'+selected()+'_raw_model_response.txt','text/plain');});
 el('semValidate').addEventListener('click',()=>{try{parseAndValidate();}catch(e){candidate=null;el('semSaveContract').disabled=true;displayError(e);}});
-el('semSaveContract').addEventListener('click',()=>{try{parseAndValidate();const projection=typedProjection(bundle,candidate);const contract={format:'PAY_Semantic_Contract_v0.8F2',compilerModule:projection,source:bundle.source,mechanismId:candidate.mechanismId,intents:candidate.targetPlan.operations.map(x=>({operation:x.op,inputs:x.inputs,outputs:x.outputs,evidenceIds:x.evidenceIds,status:x.op==='UNRESOLVED'?'unresolved':'candidate'})),candidate,evidence:bundle,validation:{structure:'passed',semanticReview:'needs_human_validation',compilerApproval:false,compilerModuleStatus:projection?'supported_partial_fixture':'not_implemented'},targetPolicy:{noZeroPage:true,noSelfModifiedCode:true},limitations:['Evidence/source-intent validation is incomplete. Compiler may only generate explicitly marked research fixtures for supported source mechanisms.']};if(projection){try{contract.semanticExtension=PAYFirstPlay08G.buildExtension(contract);contract.pitchExtension=PAYPitch08I.buildExtension(contract,originalSIDForPitch());setStatus('PLAY-00.8I contract: first-PLAY and source-verified 93-word SID pitch lookup included (diagnostic only).',true)}catch(extError){setStatus('Foundation exported, but 00.8I pitch extension is unavailable: '+extError.message);}}save(JSON.stringify(contract,null,2)+'\n',baseName()+'_'+selected()+'_PAY_Semantic_Contract.json');}catch(e){displayError(e);}});
+el('semSaveContract').addEventListener('click',()=>{try{parseAndValidate();const projection=typedProjection(bundle,candidate);const contract={format:'PAY_Semantic_Contract_v0.8F2',compilerModule:projection,source:bundle.source,mechanismId:candidate.mechanismId,intents:candidate.targetPlan.operations.map(x=>({operation:x.op,inputs:x.inputs,outputs:x.outputs,evidenceIds:x.evidenceIds,status:['UNRESOLVED','NEXT_STEP'].includes(x.op)?'unresolved':'candidate'})),candidate,evidence:bundle,validation:{structure:'passed',semanticReview:'needs_human_validation',compilerApproval:false,compilerModuleStatus:projection?'supported_partial_fixture':'not_implemented',evidenceReconciliation:lastReconciliation},targetPolicy:{noZeroPage:true,noSelfModifiedCode:true},limitations:['Evidence/source-intent validation is incomplete. Compiler may only generate explicitly marked research fixtures for supported source mechanisms.','NEXT_STEP intentions remain deferred and are not generated as executable music.','Capture limitations are metadata, not source proof.']};if(projection){try{contract.semanticExtension=PAYFirstPlay08G.buildExtension(contract);contract.pitchExtension=PAYPitch08I.buildExtension(contract,originalSIDForPitch());setStatus('PLAY-00.8I contract: first-PLAY and source-verified 93-word SID pitch lookup included (diagnostic only).',true)}catch(extError){setStatus('Foundation exported, but 00.8I pitch extension is unavailable: '+extError.message);}}save(JSON.stringify(contract,null,2)+'\n',baseName()+'_'+selected()+'_PAY_Semantic_Contract.json');}catch(e){displayError(e);}});
 el('semRequest').addEventListener('click',async()=>{
  if(!bundle)return;
  const key=$('apiSessionKey').value.trim(),model=$('model').value.trim();
