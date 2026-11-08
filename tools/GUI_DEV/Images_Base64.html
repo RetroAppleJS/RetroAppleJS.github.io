@@ -1,0 +1,457 @@
+<!--
+  Images_Base64.html
+  Batch image to Base64 converter.
+  Copyright (c) 2025 Freddy Vandriessche.
+  License: https://raw.githubusercontent.com/RetroAppleJS/AppleII-IDE/main/LICENSE.md
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Convert multiple images to Base64 and export a JSON manifest">
+  <meta name="author" content="Freddy Vandriessche">
+  <title>Images / Base64 Converter</title>
+  <script src="../TOOLS_Header.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    #main {
+      height: 100%;
+      overflow-x: hidden;
+      overflow-y: auto;
+      background: linear-gradient(180deg, #dcdcdc 0%, #fbfbfb 55%);
+    }
+    .page { max-width: 1100px; margin: 0 auto; padding: 20px 22px 42px; }
+    .intro { margin: 0 0 16px; line-height: 1.5; color: #3c4652; }
+    .dropzone {
+      border: 2px dashed #8b9aa9;
+      border-radius: 12px;
+      background: #f7fafc;
+      padding: 25px 18px;
+      text-align: center;
+      transition: border-color .15s, background .15s;
+      outline-offset: 3px;
+    }
+    .dropzone.dragover { border-color: #20659c; background: #e9f3ff; }
+    .dropzone p { margin: 0 0 12px; }
+    .dropzone small { display: block; margin-top: 10px; color: #526071; }
+    button {
+      padding: 9px 14px;
+      border: 1px solid #9ca8b5;
+      border-radius: 6px;
+      background: white;
+      color: #172838;
+      font: inherit;
+      cursor: pointer;
+    }
+    button:hover:not(:disabled) { background: #e8f1fa; }
+    button:focus-visible { outline: 2px solid #20659c; outline-offset: 2px; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .primary { background: #245f8b; color: white; border-color: #245f8b; }
+    .primary:hover:not(:disabled) { background: #1c4c71; }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 18px 0 10px;
+    }
+    .toolbar h2 { font-size: 1.05rem; margin: 0 auto 0 0; }
+    .status { min-height: 1.5em; margin: 8px 0 12px; color: #274b65; }
+    .status.error { color: #9e2828; }
+    .image-list { display: flex; flex-direction: column; gap: 9px; }
+    .image-row {
+      display: grid;
+      grid-template-columns: 86px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 14px;
+      padding: 12px;
+      border: 1px solid #d0d9e1;
+      border-radius: 8px;
+      background: white;
+    }
+    .thumbnail {
+      display: block;
+      width: 80px;
+      height: 66px;
+      object-fit: contain;
+      background: #f0f2f4;
+      border: 1px solid #e0e5ea;
+      border-radius: 5px;
+    }
+    .filename { font-weight: bold; overflow-wrap: anywhere; }
+    .metadata { margin-top: 5px; font-size: .87rem; color: #5a6774; }
+    .row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .empty {
+      padding: 25px 16px;
+      border: 1px dashed #b5bdc5;
+      border-radius: 8px;
+      text-align: center;
+      color: #68727c;
+    }
+    .footnote { margin-top: 15px; line-height: 1.5; font-size: .88rem; color: #4c5b69; }
+    @media (max-width: 680px) {
+      .page { padding: 14px 10px 30px; }
+      .image-row { grid-template-columns: 70px minmax(0, 1fr); gap: 10px; }
+      .thumbnail { width: 65px; height: 60px; }
+      .row-actions { grid-column: 1 / -1; }
+      .row-actions button { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div id="slider_title"></div>
+  <div class="slider_overlay">
+    <div id="topmenu"></div>
+    <div id="main">
+      <main class="page">
+        <h1>Images → Base64</h1>
+        <p class="intro">
+          Drag and drop several image files, or select them from your computer.
+          Each image gets its own thumbnail and a button to copy its Base64 data URL.
+        </p>
+        <div id="dropzone" class="dropzone" tabindex="0" role="button"
+             aria-label="Drop images here or press Enter to choose images">
+          <p><strong>Drop images here</strong></p>
+          <button id="chooseButton" type="button" class="primary">Choose images…</button>
+          <input id="fileInput" type="file" multiple
+                 accept="image/png,image/jpeg,image/gif,image/webp,image/bmp"
+                 hidden>
+          <small>PNG, JPEG, GIF, WebP and BMP · Multiple files supported</small>
+        </div>
+
+        <div class="toolbar">
+          <h2 id="count">Images (0)</h2>
+          <button id="downloadButton" type="button" class="primary" disabled>Download JSON</button>
+          <button id="clearButton" type="button" disabled>Clear all</button>
+        </div>
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+        <div id="imageList" class="image-list" aria-label="Converted images">
+          <div class="empty">No images loaded yet.</div>
+        </div>
+        <p class="footnote">
+          Copy Base64 copies the complete <code>data:image/…;base64,…</code> string,
+          compatible with the existing single-image tool. The JSON export includes
+          filename, file size in bytes, width, height, format, MIME type and Base64
+          data URL for every successfully converted image. Everything runs locally
+          in your browser; images are not uploaded.
+        </p>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    var CONF_version = "0.1.0";
+    var CONF_builddate = "20261108";
+
+    (function () {
+      "use strict";
+
+      var formats = {
+        "image/png": "PNG",
+        "image/jpeg": "JPEG",
+        "image/gif": "GIF",
+        "image/webp": "WebP",
+        "image/bmp": "BMP"
+      };
+      var images = [];
+      var nextId = 1;
+      var dropzone = document.getElementById("dropzone");
+      var input = document.getElementById("fileInput");
+      var list = document.getElementById("imageList");
+      var status = document.getElementById("status");
+      var downloadButton = document.getElementById("downloadButton");
+      var clearButton = document.getElementById("clearButton");
+
+      if (typeof _TITLE === "function") {
+        document.getElementById("slider_title").outerHTML = _TITLE();
+      }
+
+      function setStatus(message, isError) {
+        status.textContent = message;
+        status.classList.toggle("error", !!isError);
+      }
+
+      function isCurrent(item) {
+        return images.indexOf(item) !== -1;
+      }
+
+      function mimeFromSignature(dataURL) {
+        var encoded = dataURL.slice(dataURL.indexOf(",") + 1, dataURL.indexOf(",") + 65);
+        var binary = atob(encoded.slice(0, Math.floor(encoded.length / 4) * 4));
+        if (binary.slice(0, 8) === "\x89PNG\r\n\x1a\n") return "image/png";
+        if (binary.slice(0, 3) === "\xff\xd8\xff") return "image/jpeg";
+        if (binary.slice(0, 6) === "GIF87a" || binary.slice(0, 6) === "GIF89a") return "image/gif";
+        if (binary.slice(0, 4) === "RIFF" && binary.slice(8, 12) === "WEBP") return "image/webp";
+        if (binary.slice(0, 2) === "BM") return "image/bmp";
+        return "";
+      }
+
+      function fail(item, message) {
+        if (!isCurrent(item)) return;
+        item.state = "error";
+        item.error = message;
+        item.base64 = "";
+        render();
+        setStatus(item.filename + ": " + message, true);
+      }
+
+      function addFiles(fileList) {
+        var files = Array.from(fileList || []);
+        if (!files.length) return;
+        var accepted = 0;
+        var rejected = 0;
+
+        files.forEach(function (file) {
+          if (file.type && !formats[file.type]) {
+            rejected++;
+            return;
+          }
+          if (!file.size) {
+            rejected++;
+            return;
+          }
+          accepted++;
+          var item = {
+            id: nextId++,
+            filename: file.name,
+            sizeBytes: file.size,
+            width: 0,
+            height: 0,
+            format: "",
+            mimeType: "",
+            base64: "",
+            state: "loading",
+            error: ""
+          };
+          images.push(item);
+
+          var reader = new FileReader();
+          reader.onload = function () {
+            if (!isCurrent(item)) return;
+            try {
+              var dataURL = reader.result;
+              if (typeof dataURL !== "string" || dataURL.indexOf(";base64,") === -1) {
+                throw new Error("Could not encode this file.");
+              }
+              var actualMime = mimeFromSignature(dataURL);
+              if (!formats[actualMime]) throw new Error("Unsupported or invalid image format.");
+              if (file.type && file.type !== actualMime) {
+                throw new Error("File type does not match its contents.");
+              }
+              var encoded = dataURL.slice(dataURL.indexOf(",") + 1);
+              var normalizedURL = "data:" + actualMime + ";base64," + encoded;
+              var preview = new Image();
+              preview.onload = function () {
+                if (!isCurrent(item)) return;
+                item.width = preview.naturalWidth;
+                item.height = preview.naturalHeight;
+                item.format = formats[actualMime];
+                item.mimeType = actualMime;
+                item.base64 = normalizedURL;
+                item.state = "ready";
+                render();
+              };
+              preview.onerror = function () { fail(item, "Image could not be decoded."); };
+              preview.src = normalizedURL;
+            } catch (error) {
+              fail(item, error.message);
+            }
+          };
+          reader.onerror = function () { fail(item, "File could not be read."); };
+          reader.readAsDataURL(file);
+        });
+
+        render();
+        if (rejected) {
+          setStatus(accepted + " image(s) added; " + rejected + " unsupported or empty file(s) skipped.", true);
+        } else {
+          setStatus(accepted + " image(s) added. Converting locally…");
+        }
+      }
+
+      function makeButton(label, onClick, disabled) {
+        var button = document.createElement("button");
+        button.type = "button";
+        button.textContent = label;
+        button.disabled = !!disabled;
+        button.addEventListener("click", onClick);
+        return button;
+      }
+
+      function formatBytes(bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+        return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+      }
+
+      function render() {
+        list.replaceChildren();
+        var ready = images.filter(function (item) { return item.state === "ready"; });
+        document.getElementById("count").textContent = "Images (" + images.length + ")";
+        downloadButton.disabled = ready.length === 0;
+        clearButton.disabled = images.length === 0;
+
+        if (!images.length) {
+          var empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = "No images loaded yet.";
+          list.appendChild(empty);
+          return;
+        }
+
+        images.forEach(function (item) {
+          var row = document.createElement("div");
+          row.className = "image-row";
+
+          var thumb = document.createElement("img");
+          thumb.className = "thumbnail";
+          thumb.alt = item.state === "ready" ? "Thumbnail of " + item.filename : "";
+          if (item.state === "ready") thumb.src = item.base64;
+          row.appendChild(thumb);
+
+          var info = document.createElement("div");
+          var filename = document.createElement("div");
+          filename.className = "filename";
+          filename.textContent = item.filename;
+          info.appendChild(filename);
+
+          var metadata = document.createElement("div");
+          metadata.className = "metadata";
+          if (item.state === "ready") {
+            metadata.textContent = item.format + " · " +
+              item.width + " × " + item.height + " px · " + formatBytes(item.sizeBytes);
+          } else if (item.state === "loading") {
+            metadata.textContent = "Converting… " + formatBytes(item.sizeBytes);
+          } else {
+            metadata.textContent = "Error: " + item.error;
+          }
+          info.appendChild(metadata);
+          row.appendChild(info);
+
+          var actions = document.createElement("div");
+          actions.className = "row-actions";
+          actions.appendChild(makeButton("Copy Base64", function () {
+            copyItem(item);
+          }, item.state !== "ready"));
+          actions.appendChild(makeButton("Remove", function () {
+            var index = images.indexOf(item);
+            if (index !== -1) images.splice(index, 1);
+            render();
+            setStatus(item.filename + " removed.");
+          }));
+          row.appendChild(actions);
+          list.appendChild(row);
+        });
+      }
+
+      function fallbackCopy(value) {
+        var area = document.createElement("textarea");
+        area.value = value;
+        area.setAttribute("readonly", "");
+        area.style.position = "fixed";
+        area.style.opacity = "0";
+        area.style.left = "0";
+        document.body.appendChild(area);
+        area.focus();
+        area.select();
+        var succeeded = false;
+        try { succeeded = document.execCommand("copy"); }
+        finally { document.body.removeChild(area); }
+        if (!succeeded) throw new Error("Browser clipboard access is unavailable.");
+      }
+
+      async function copyItem(item) {
+        if (!isCurrent(item) || item.state !== "ready") return;
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            try {
+              await navigator.clipboard.writeText(item.base64);
+            } catch (error) {
+              fallbackCopy(item.base64);
+            }
+          } else {
+            fallbackCopy(item.base64);
+          }
+          setStatus("Copied Base64 data URL for " + item.filename + ".");
+        } catch (error) {
+          setStatus("Copy failed: " + error.message, true);
+        }
+      }
+
+      function downloadJSON() {
+        var ready = images.filter(function (item) { return item.state === "ready"; });
+        if (!ready.length) return;
+        var exportData = {
+          version: 1,
+          generatedAt: new Date().toISOString(),
+          images: ready.map(function (item) {
+            return {
+              filename: item.filename,
+              sizeBytes: item.sizeBytes,
+              width: item.width,
+              height: item.height,
+              format: item.format,
+              mimeType: item.mimeType,
+              base64: item.base64
+            };
+          })
+        };
+        var json = JSON.stringify(exportData, null, 2);
+        var url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+        var anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = "images_base64.json";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        setStatus("Downloaded JSON with " + ready.length + " image(s).");
+      }
+
+      document.getElementById("chooseButton").addEventListener("click", function () {
+        input.click();
+      });
+      input.addEventListener("change", function () {
+        addFiles(input.files);
+        input.value = "";
+      });
+      dropzone.addEventListener("keydown", function (event) {
+        if (event.target === dropzone && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          input.click();
+        }
+      });
+      dropzone.addEventListener("dragover", function (event) {
+        event.preventDefault();
+        dropzone.classList.add("dragover");
+      });
+      dropzone.addEventListener("dragleave", function (event) {
+        if (!dropzone.contains(event.relatedTarget)) dropzone.classList.remove("dragover");
+      });
+      dropzone.addEventListener("drop", function (event) {
+        event.preventDefault();
+        dropzone.classList.remove("dragover");
+        addFiles(event.dataTransfer.files);
+      });
+      window.addEventListener("dragover", function (event) {
+        if (event.dataTransfer && Array.from(event.dataTransfer.types).indexOf("Files") !== -1) {
+          event.preventDefault();
+        }
+      });
+      window.addEventListener("drop", function (event) {
+        if (event.dataTransfer && Array.from(event.dataTransfer.types).indexOf("Files") !== -1) {
+          event.preventDefault();
+        }
+      });
+      downloadButton.addEventListener("click", downloadJSON);
+      clearButton.addEventListener("click", function () {
+        images.length = 0;
+        render();
+        setStatus("All images cleared.");
+      });
+      render();
+    }());
+  </script>
+</body>
+</html>
