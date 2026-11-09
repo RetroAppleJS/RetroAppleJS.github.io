@@ -9,7 +9,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Convert multiple images to Base64 and export a JSON manifest">
+  <meta name="description" content="Convert multiple images to Base64 or decode Base64 into an image preview and file">
   <meta name="author" content="Freddy Vandriessche">
   <title>Images / Base64 Converter</title>
   <script src="../TOOLS_Header.js"></script>
@@ -90,6 +90,61 @@
       color: #68727c;
     }
     .footnote { margin-top: 15px; line-height: 1.5; font-size: .88rem; color: #4c5b69; }
+
+    /* Reverse converter: Base64 text -> validated image preview and download. */
+    .decode-section {
+      margin-top: 30px;
+      padding: 18px;
+      border: 1px solid #c4d0da;
+      border-radius: 10px;
+      background: #f7fafc;
+    }
+    .decode-section h2 { margin: 0 0 8px; font-size: 1.2rem; }
+    .decode-section label { display: block; font-weight: bold; margin: 11px 0 6px; }
+    .decode-input {
+      display: block;
+      width: 100%;
+      min-height: 120px;
+      padding: 10px;
+      border: 1px solid #9ca8b5;
+      border-radius: 6px;
+      resize: vertical;
+      font: 0.9rem/1.45 monospace;
+      background: white;
+      color: #182b38;
+    }
+    .decode-input:focus-visible, .decode-filename:focus-visible {
+      outline: 2px solid #20659c;
+      outline-offset: 2px;
+    }
+    .decode-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0 4px; }
+    .decode-result {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      padding: 13px;
+      background: white;
+      border: 1px solid #d0d9e1;
+      border-radius: 8px;
+    }
+    .decode-result[hidden] { display: none; }
+    .decode-thumbnail {
+      width: 160px;
+      height: 135px;
+      object-fit: contain;
+      background: #f0f2f4;
+      border: 1px solid #e0e5ea;
+      border-radius: 5px;
+    }
+    .decode-details { flex: 1 1 220px; min-width: 0; }
+    .decode-filename {
+      width: min(100%, 400px);
+      padding: 8px;
+      border: 1px solid #9ca8b5;
+      border-radius: 6px;
+      font: inherit;
+    }
     @media (max-width: 680px) {
       .page { padding: 14px 10px 30px; }
       .image-row { grid-template-columns: 70px minmax(0, 1fr); gap: 10px; }
@@ -136,13 +191,43 @@
           data URL for every successfully converted image. Everything runs locally
           in your browser; images are not uploaded.
         </p>
+
+        <section class="decode-section" aria-labelledby="decodeHeading">
+          <h2 id="decodeHeading">Base64 → Image</h2>
+          <p class="intro">
+            Paste a complete <code>data:image/…;base64,…</code> URL or raw Base64 data.
+            Preview the decoded image and save it in its original image format.
+          </p>
+          <label for="decodeInput">Base64 image data</label>
+          <textarea id="decodeInput" class="decode-input" spellcheck="false"
+                    placeholder="data:image/png;base64,iVBORw0KGgo…"></textarea>
+          <div class="decode-toolbar">
+            <button id="decodeButton" class="primary" type="button">Preview image</button>
+            <button id="decodeDownload" type="button" disabled>Download image</button>
+            <button id="decodeClear" type="button">Clear</button>
+          </div>
+          <p id="decodeStatus" class="status" role="status" aria-live="polite"></p>
+          <div id="decodeResult" class="decode-result" hidden>
+            <img id="decodeThumbnail" class="decode-thumbnail" alt="Decoded image thumbnail">
+            <div class="decode-details">
+              <p id="decodeMetadata" class="metadata"></p>
+              <label for="decodeFilename">File name</label>
+              <input id="decodeFilename" class="decode-filename" type="text"
+                     value="decoded-image" autocomplete="off">
+            </div>
+          </div>
+          <p class="footnote">
+            Supports PNG, JPEG, GIF, WebP and BMP. Invalid or non-image Base64
+            is rejected. Conversion runs entirely in your browser.
+          </p>
+        </section>
       </main>
     </div>
   </div>
 
   <script>
-    var CONF_version = "0.1.0";
-    var CONF_builddate = "20261108";
+    var CONF_version = "0.2.0";
+    var CONF_builddate = "20261109";
 
     (function () {
       "use strict";
@@ -408,6 +493,147 @@
         setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
         setStatus("Downloaded JSON with " + ready.length + " image(s).");
       }
+
+
+      // Decode Base64 without re-encoding; downloads preserve the original bytes.
+      var decodeInput = document.getElementById("decodeInput");
+      var decodeButton = document.getElementById("decodeButton");
+      var decodeDownload = document.getElementById("decodeDownload");
+      var decodeClear = document.getElementById("decodeClear");
+      var decodeStatus = document.getElementById("decodeStatus");
+      var decodeResult = document.getElementById("decodeResult");
+      var decodeThumbnail = document.getElementById("decodeThumbnail");
+      var decodeMetadata = document.getElementById("decodeMetadata");
+      var decodeFilename = document.getElementById("decodeFilename");
+      var decodedURL = "";
+      var decodedMime = "";
+      var decodeGeneration = 0;
+      var imageExtensions = {
+        "image/png": "png",
+        "image/jpeg": "jpg",
+        "image/gif": "gif",
+        "image/webp": "webp",
+        "image/bmp": "bmp"
+      };
+
+      function setDecodeStatus(message, isError) {
+        decodeStatus.textContent = message;
+        decodeStatus.classList.toggle("error", !!isError);
+      }
+
+      function clearDecodeResult() {
+        decodeGeneration++;
+        decodeThumbnail.onload = null;
+        decodeThumbnail.onerror = null;
+        decodeThumbnail.removeAttribute("src");
+        if (decodedURL) URL.revokeObjectURL(decodedURL);
+        decodedURL = "";
+        decodedMime = "";
+        decodeMetadata.textContent = "";
+        decodeResult.hidden = true;
+        decodeDownload.disabled = true;
+      }
+
+      function parseBase64Image(source) {
+        var value = source.trim();
+        if (!value) throw new Error("Paste Base64 image data first.");
+        var declaredMime = "";
+        var match = /^data:([^;,]+);base64,([\s\S]*)$/i.exec(value);
+        if (match) {
+          declaredMime = match[1].toLowerCase();
+          if (declaredMime === "image/jpg") declaredMime = "image/jpeg";
+          if (declaredMime === "image/x-ms-bmp") declaredMime = "image/bmp";
+          value = match[2];
+        } else if (/^data:/i.test(value)) {
+          throw new Error("Only Base64-encoded image data URLs are supported.");
+        }
+        var encoded = value.replace(/\s+/g, "");
+        if (!encoded || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded) ||
+            encoded.length % 4 === 1) {
+          throw new Error("Invalid Base64 characters or length.");
+        }
+        while (encoded.length % 4) encoded += "=";
+        var binary;
+        try {
+          binary = atob(encoded);
+        } catch (error) {
+          throw new Error("Invalid Base64 encoding.");
+        }
+        var detected = mimeFromSignature("data:image/png;base64," + encoded);
+        if (!formats[detected]) throw new Error("Unsupported or invalid image content.");
+        if (declaredMime && declaredMime !== detected) {
+          throw new Error("The data URL image type does not match the image content.");
+        }
+        var bytes = new Uint8Array(binary.length);
+        for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return { bytes: bytes, mime: detected };
+      }
+
+      function previewBase64Image() {
+        clearDecodeResult();
+        var generation = decodeGeneration;
+        var parsed;
+        try {
+          parsed = parseBase64Image(decodeInput.value);
+        } catch (error) {
+          setDecodeStatus(error.message, true);
+          return;
+        }
+        decodedMime = parsed.mime;
+        decodedURL = URL.createObjectURL(new Blob([parsed.bytes], { type: parsed.mime }));
+        var size = parsed.bytes.length;
+        decodeThumbnail.onload = function () {
+          if (generation !== decodeGeneration) return;
+          decodeMetadata.textContent = formats[parsed.mime] + " · " +
+            decodeThumbnail.naturalWidth + " × " + decodeThumbnail.naturalHeight +
+            " px · " + formatBytes(size);
+          decodeResult.hidden = false;
+          decodeDownload.disabled = false;
+          setDecodeStatus("Image decoded. Choose Download image to save it.");
+        };
+        decodeThumbnail.onerror = function () {
+          if (generation !== decodeGeneration) return;
+          clearDecodeResult();
+          setDecodeStatus("The data does not contain a decodable image.", true);
+        };
+        decodeThumbnail.src = decodedURL;
+      }
+
+      function downloadedImageName() {
+        var extension = imageExtensions[decodedMime];
+        var filename = decodeFilename.value.trim()
+          .replace(/[\/\\:*?"<>|\x00-\x1f]/g, "_")
+          .replace(/^\.+/, "");
+        if (!filename) filename = "decoded-image";
+        var existing = filename.match(/\.(png|jpe?g|gif|webp|bmp)$/i);
+        if (existing) filename = filename.slice(0, -existing[0].length);
+        return filename + "." + extension;
+      }
+
+      function downloadDecodedImage() {
+        if (!decodedURL || decodeDownload.disabled) return;
+        var anchor = document.createElement("a");
+        anchor.href = decodedURL;
+        anchor.download = downloadedImageName();
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        setDecodeStatus("Downloaded " + anchor.download + ".");
+      }
+
+      decodeButton.addEventListener("click", previewBase64Image);
+      decodeDownload.addEventListener("click", downloadDecodedImage);
+      decodeClear.addEventListener("click", function () {
+        decodeInput.value = "";
+        decodeFilename.value = "decoded-image";
+        clearDecodeResult();
+        setDecodeStatus("");
+      });
+      decodeInput.addEventListener("input", function () {
+        clearDecodeResult();
+        setDecodeStatus("");
+      });
+      window.addEventListener("pagehide", clearDecodeResult);
 
       document.getElementById("chooseButton").addEventListener("click", function () {
         input.click();
