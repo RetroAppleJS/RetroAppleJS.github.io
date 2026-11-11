@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>PLAY Interpreter 00.8I.1 — Evidence Contract Safety</title>
+<title>PLAY Interpreter 00.8I.3 — SIDchipJS clipboard listening</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1120;--card:#141f34;--card2:#101b30;--line:#2d405e;--txt:#edf3fc;--muted:#aabbd0;--blue:#78baff;--green:#66e0b2;--danger:#ffa5a5}
 *{box-sizing:border-box}
@@ -63,30 +63,161 @@ dialog::backdrop{background:#02060cbd}dialog h2{font-size:21px}
 
 /* One work area instead of an empty two-column layout when advanced panels are collapsed. */
 main{max-width:1160px}.layout{grid-template-columns:minmax(0,1fr)}
+
+/* PLAY-00.8I.2 guided facade. All primary inputs below ARE the existing input IDs. */
+#guidedWorkflow{margin:12px 0 20px}
+.guide-intro{margin:0 0 15px;color:#b9cce4;font-size:14px}
+.guide-card{border:1px solid #416180;background:linear-gradient(145deg,#172d45,#101e31);border-radius:13px;padding:18px 21px;min-width:0}
+.guide-card h2{font-size:18px;margin:0 0 7px}
+.guide-card .g-desc{font-size:13px;color:#a9c2dd;margin:0 0 10px}
+.guide-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.guide-input-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.guide-input-grid label{margin:0 0 4px}
+.guide-input-grid input{min-width:0}
+.guide-or{display:flex;align-items:center;justify-content:center;opacity:.7;min-height:35px;text-transform:uppercase;letter-spacing:.1em;font-size:11px}
+.guide-arrow{display:flex;justify-content:center;align-items:center;color:#76b4ef;font-size:25px;margin:5px 0;height:29px}
+.guide-arrow::after{content:'↓';font-weight:600}
+.guide-fork{height:28px;display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:center;color:#79b6ed;text-align:center;font-size:22px}
+.guide-fork span::after{content:'↙';display:block}.guide-fork span:nth-child(2)::after{content:'↘'}
+.guide-status{font-size:12px;border-left:3px solid #527694;padding:9px 11px;margin:9px 0 4px;background:#101d2e;color:#c1d8ee;border-radius:4px;min-height:33px;white-space:pre-wrap;overflow-wrap:anywhere}
+.guide-status[data-kind='ok']{border-color:#4caa87;color:#a8ead1}
+.guide-status[data-kind='error']{border-color:#e17b77;color:#ffcdcb}
+.guide-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0 6px}
+.guide-actions button:disabled{opacity:.42}
+.guide-subtle{color:#a9bcd5;font-size:12px}
+.guide-badge{display:inline-block;border-radius:20px;border:1px solid #567084;padding:3px 9px;margin-bottom:7px;color:#afcce8;font-size:11px;font-weight:700}
+.guide-source-settings{display:grid;grid-template-columns: minmax(0,1.6fr) minmax(0,1fr) auto;gap:11px;align-items:end}
+.guide-source-settings label{margin-top:0}
+.guide-branch{display:flex;flex-direction:column;gap:7px}
+.guide-branch .guide-card{flex:1}
+.guide-audio-rows{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.guide-audio-rows label{margin:3px 0 6px}
+.guide-audio-rows input[type=file]{padding:7px;font-size:12px}
+.guide-audio-rows audio{width:100%;height:32px;margin:8px 0}
+.guide-quality-notes{min-height:76px;font:13px/1.4 system-ui,sans-serif}
+.guide-quality-output{min-height:165px;max-height:320px;white-space:pre-wrap}
+#guideBriefing{min-height:95px;font:13px/1.45 system-ui,sans-serif}
+#guideMechanismHint{font-size:12px}
+.guide-output-links{display:flex;gap:9px;flex-wrap:wrap}
+.guide-output-links button:disabled{display:none}
+#engineeringDetails{margin-top:24px;border:1px solid #29445e;border-radius:12px;background:#101b2a;padding:14px}
+#engineeringDetails>summary{cursor:pointer;color:#bfe1ff;font-weight:700;font-size:15px}
+#engineeringDetails[open]>summary{margin-bottom:16px}
+.guide-help{margin-top:9px}
+.guide-help summary{cursor:pointer;color:#adcfed;font-size:12px}
+#guidedWorkflow .guide-card input:focus-visible,#guidedWorkflow .guide-card button:focus-visible{outline:2px solid #7ec2ff;outline-offset:2px}
+@media(max-width:840px){.guide-grid,.guide-input-grid,.guide-audio-rows,.guide-source-settings{grid-template-columns:1fr}.guide-fork{display:none}.guide-branch+.guide-branch{margin-top:12px}}
 </style>
 </head>
 <body>
 <main>
 <header>
-<span class="tag">RETROAPPLEJS · PLAY-00.8I · Simplified semantic workflow + pitch proof + differential validation</span>
+<span class="tag">RETROAPPLEJS · PLAY-00.8I.3 · SIDchipJS clipboard handoff</span>
 <h1>PLAY Interpreter</h1>
 <p class="subtitle">Load a PSID or saved Complete Report, interpret source intent, export one compiler contract, and compare the source against regenerated SID behaviour. The Compiler remains deterministic. <strong>Musical playback equivalence is not yet established.</strong></p>
 </header>
-<section class="card api-session" id="apiSessionSettings">
- <div class="api-session-head"><div><h2>AI connection — enter your key once</h2><p class="small">Shared by both GPT analysis passes. The key stays only in this open page, never in exports or browser storage.</p></div><span id="keySessionState" class="key-session-state">No key entered</span></div>
- <div class="api-session-fields"><div><label for="apiSessionKey">OpenAI API key</label><input id="apiSessionKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="sk-… (session only)"></div><div><label for="model">GPT model for both passes</label><input id="model" type="text" value="gpt-5" spellcheck="false" autocomplete="off"></div><div class="key-actions"><button id="clearSessionKey" type="button">Forget key</button></div></div>
- <details class="api-help"><summary>API usage &amp; security</summary><p class="small">This self-contained page sends requests directly to api.openai.com. API requests may incur charges; source code and evidence are transmitted when GPT is invoked. Use only a trusted local page. No proxy or account-level key storage is implemented. The key is automatically lost when the page is reloaded or closed.</p></details>
+<section id="guidedWorkflow" aria-label="Guided PSID interpretation, compilation and quality review">
+ <p class="guide-intro">One interpretation, one evidence-backed semantic contract, two deterministic targets. The original engineering controls remain below in <strong>Advanced details</strong>. A key is needed only for GPT requests, not tracing or compiling.</p>
+ <div class="guide-card" id="guideSourceCard">
+  <span class="guide-badge">STEP 1 · SOURCE &amp; INTERPRETER BRIEFING</span>
+  <h2>Load PSID or resume a Complete Report</h2>
+  <div class="guide-input-grid">
+   <div><label for="sidFile">Original PSID (.sid)</label><input id="sidFile" type="file" accept=".sid,.psid,.rsid,application/octet-stream"><p class="guide-subtle">New analysis: trace the source before interpreting it.</p></div>
+   <div><label for="semInputReport">Existing Complete Report (.json) — alternative</label><input id="semInputReport" type="file" accept=".json,application/json"><p class="guide-subtle">Restores evidence without repeating the trace. Use one source route.</p></div>
+  </div>
+  <div class="guide-source-settings" style="margin-top:9px">
+   <div><label for="apiSessionKey">OpenAI API key — session only</label><input id="apiSessionKey" type="password" autocomplete="new-password" spellcheck="false" placeholder="Only needed for GPT; never exported"></div>
+   <div><label for="model">Model (both GPT passes)</label><input id="model" type="text" value="gpt-5" spellcheck="false" autocomplete="off"></div>
+   <div><button id="clearSessionKey" type="button">Forget key</button></div>
+  </div>
+  <div class="guide-actions"><span id="keySessionState" class="key-session-state">No key entered</span><button type="button" id="guideDownloadReport" disabled>Save Complete Report</button></div>
+  <details class="guide-help"><summary>Optional · Extra interpreter briefing and previous quality report</summary>
+   <label for="guideBriefing">Additional interpretation guidance (not source evidence)</label><textarea id="guideBriefing" maxlength="6000" placeholder="Optional: focus on a specific source mechanism or a discrepancy from an earlier run. The Interpreter builds its own source-grounded briefing automatically."></textarea>
+   <label for="guidePriorReport">Previous quality report (.json / .txt / .md)</label><input id="guidePriorReport" type="file" accept=".json,.txt,.md,application/json,text/plain,text/markdown"><p class="guide-subtle" id="guidePriorState">Optional feedback for the NEXT GPT interpretation. Never treated as verified source evidence.</p>
+  </details>
+  <details class="guide-help"><summary>API security and costs</summary><p class="guide-subtle">Requests are made directly from this page to the OpenAI API and may incur charges. The key remains in this password field for the current open page only. Audio files stay local; GPT receives only computed metrics and textual observations.</p></details>
+  <div class="guide-status" id="guideSourceStatus" role="status">Choose a PSID or a saved Complete Report to begin.</div>
+ </div>
+ <div class="guide-arrow" aria-hidden="true"></div>
+ <div class="guide-card" id="guideInterpretCard">
+  <span class="guide-badge">STEP 2 · RECONSTRUCT SOURCE INTENT</span>
+  <h2>Trace → GPT interpretation → evidence-checked contract</h2>
+  <p class="g-desc">Evidence extraction is deterministic. GPT proposes semantics; source-reference checks determine what can be compiled. The Compiler never makes a second inference.</p>
+  <label for="semMechanism">Source mechanism</label><select id="semMechanism"><option value="">Import source evidence first</option></select>
+  <div class="guide-actions"><button id="guideTrace" type="button" class="primary" disabled>1 · Trace &amp; extract</button><button id="guideInterpret" type="button" disabled>2 · Interpret with GPT</button><button id="guideValidate" type="button" disabled>3 · Validate contract</button></div>
+  <details class="guide-help"><summary>Already have a semantic candidate?</summary><label for="semCandidateFile">Import its JSON instead of calling GPT again</label><input id="semCandidateFile" type="file" accept=".json,.txt"><p class="guide-subtle">The raw candidate is also editable in Advanced details.</p></details>
+  <div class="guide-actions"><button id="guideDownloadContract" type="button" disabled>Download semantic contract (.json)</button></div>
+  <div id="guideInterpretStatus" class="guide-status" role="status">No evidence extracted.</div>
+ </div>
+ <div class="guide-fork" aria-hidden="true"><span></span><span></span></div>
+ <div class="guide-grid">
+  <div class="guide-branch">
+   <div class="guide-card" id="guideSIDCard">
+    <span class="guide-badge">PATH A · SID ROUND TRIP</span>
+    <h2>Regenerate PSID for verification</h2>
+    <p class="g-desc">Deterministically compile the supported semantic slice back to SID, then run original ↔ generated execution comparison.</p>
+    <div class="guide-actions"><button id="guideCompileSID" type="button" class="primary" disabled>Compile SID reference</button><button id="guideRunDiff" type="button" disabled>Run deterministic comparison</button></div>
+    <div class="guide-output-links"><button type="button" id="guideSaveSID" disabled>Download .sid</button><button type="button" id="guideSaveASM" disabled>Download .S</button></div>
+    <p class="guide-subtle">Current 00.8I compiler emits a <strong>silent diagnostic reference</strong> (first-PLAY + pitch lookup), not reconstructed musical playback.</p>
+    <div id="guideSIDStatus" class="guide-status" role="status">Validate a supported contract to enable compilation.</div>
+   </div>
+   <div class="guide-arrow" aria-hidden="true"></div>
+   <div class="guide-card">
+    <span class="guide-badge">STEP 4A · LISTEN / ASSESS</span>
+    <h2>Source vs regenerated SID</h2>
+    <p class="g-desc">Listen in <strong>SIDchipJS</strong>: copy the original or generated PSID as Base64 and open the SID player. In the player, choose <strong>Paste Base64 from clipboard</strong>. The current generated SID reference is a silent diagnostic.</p>
+    <div class="guide-actions" aria-label="Send PSID to SIDchipJS player">
+      <button type="button" id="guideListenOriginalSID" disabled>Listen to original in SIDchipJS</button>
+      <button type="button" id="guideListenGeneratedSID" disabled>Listen to compiled in SIDchipJS</button>
+      <a id="guideOpenSIDPlayer" class="link" href="SIDchipJS.html" target="_blank" rel="noopener">Open SIDchipJS manually</a>
+    </div>
+    <div id="guideClipboardStatus" class="guide-status" role="status" aria-live="polite">Choose the original source or compile the reference, then send it to the SID player. Clipboard access may require HTTPS or localhost.</div>
+    <details class="guide-help"><summary>Optional audio recordings for numerical comparison</summary>
+      <p class="guide-subtle">You can still load WAV/MP3 captures below for synchronized reference and numerical quality measurements. GPT does not listen to these files directly.</p>
+    <div class="guide-audio-rows">
+     <div><label for="guideSIDOriginalAudio">Original capture</label><input id="guideSIDOriginalAudio" type="file" accept="audio/*,.wav,.mp3,.ogg"><audio id="guideSIDOriginalPlayer" controls preload="metadata"></audio></div>
+     <div><label for="guideSIDGeneratedAudio">Regenerated capture</label><input id="guideSIDGeneratedAudio" type="file" accept="audio/*,.wav,.mp3,.ogg"><audio id="guideSIDGeneratedPlayer" controls preload="metadata"></audio></div>
+    </div>
+    </details>
+    <label for="guideSIDNotes">Listening observations (optional)</label><textarea id="guideSIDNotes" class="guide-quality-notes" placeholder="What did you hear? Audio is not sent to GPT."></textarea>
+    <div class="guide-actions"><button id="guideSIDQuality" type="button" disabled>Generate GPT quality assessment</button><button id="guideSIDQualitySave" type="button" disabled>Save quality report</button></div>
+    <div id="guideSIDQualityStatus" class="guide-status" role="status">Generate a deterministic comparison before requesting a technical quality assessment.</div>
+    <details class="guide-help"><summary>Quality report details</summary><textarea id="guideSIDQualityText" class="guide-quality-output" readonly></textarea></details>
+   </div>
+  </div>
+  <div class="guide-branch">
+   <div class="guide-card" id="guidePLAYCard">
+    <span class="guide-badge">PATH B · APPLE II / PLAY TARGET</span>
+    <h2>Compile to Mockingboard / PLAY</h2>
+    <p class="g-desc">Same semantic contract, different deterministic backend. The current version has only partial, silent Apple II control semantics.</p>
+    <p><a class="link" href="PLAY_Compiler.html" target="_blank" rel="noopener">Open PLAY Compiler (supported partial output)</a></p>
+    <p class="guide-subtle">Full musical PLAY output is <strong>not implemented</strong> yet. No playable AY score is generated by this guided panel.</p>
+    <div id="guidePLAYStatus" class="guide-status">Waiting for a validated contract. The PLAY backend currently cannot reconstruct audible music.</div>
+   </div>
+   <div class="guide-arrow" aria-hidden="true"></div>
+   <div class="guide-card">
+    <span class="guide-badge">STEP 4B · LISTEN / ASSESS</span>
+    <h2>Source SID vs PLAY capture</h2>
+    <p class="g-desc">When a PLAY player is available, load its recorded output and a recording of the original SID for side-by-side playback.</p>
+    <div class="guide-audio-rows">
+     <div><label for="guidePLAYOriginalAudio">Original SID capture</label><input id="guidePLAYOriginalAudio" type="file" accept="audio/*,.wav,.mp3,.ogg"><audio id="guidePLAYOriginalPlayer" controls preload="metadata"></audio></div>
+     <div><label for="guidePLAYGeneratedAudio">PLAY / Mockingboard capture</label><input id="guidePLAYGeneratedAudio" type="file" accept="audio/*,.wav,.mp3,.ogg"><audio id="guidePLAYGeneratedPlayer" controls preload="metadata"></audio></div>
+    </div>
+    <label for="guidePLAYNotes">Listening observations (optional)</label><textarea id="guidePLAYNotes" class="guide-quality-notes" placeholder="Describe the most audible differences."></textarea>
+    <div class="guide-actions"><button id="guidePLAYQuality" type="button" disabled>Generate GPT quality assessment</button><button id="guidePLAYQualitySave" type="button" disabled>Save quality report</button></div>
+    <div id="guidePLAYQualityStatus" class="guide-status" role="status">Both audio captures are required; no compiled PLAY track is available in this milestone.</div>
+    <details class="guide-help"><summary>Quality report details</summary><textarea id="guidePLAYQualityText" class="guide-quality-output" readonly></textarea></details>
+   </div>
+  </div>
+ </div>
 </section>
-<div class="workflow-steps" aria-label="Workflow"><span>1 · Source</span><span>2 · Trace</span><span>3 · Interpret &amp; export</span><span>4 · Compare</span></div>
+<details id="engineeringDetails"><summary>Advanced details · Source evidence, raw GPT, contract, differential reports, diagnostics</summary>
 <div id="status" role="status" aria-live="polite">Load a .sid file to begin.</div>
 <div class="layout" style="margin-top:16px">
  <div class="col">
   <section class="card">
    <h2>1 · Load source</h2>
-   <label for="sidFile">Original PSID (.sid)</label>
-   <input id="sidFile" type="file" accept=".sid,.psid,.rsid,application/octet-stream">
-   <p class="small">Or resume from a saved 12 MB Complete Report—no repeat trace or GPT request needed.</p>
-   <label for="semInputReport">Existing Complete Report (.json)</label><input id="semInputReport" type="file" accept=".json,application/json">
+   <p class="small">The original PSID and Complete Report input controls are in Step 1 of the guided workflow above.</p>
    <div class="actions"><button id="saveComplete" disabled>Save Complete Report (.json)</button></div>
    <p class="small" id="completeState" role="status" aria-live="polite">Load a SID to enable the consolidated export. Run a trace and GPT analysis first to include those findings.</p>
    <details class="advanced"><summary>Other source exports</summary><div class="actions"><button id="saveAsm" disabled>Annotated assembly</button><button id="saveJson" disabled>Compact analysis</button></div></details>
@@ -143,11 +274,11 @@ main{max-width:1160px}.layout{grid-template-columns:minmax(0,1fr)}
  <p class="small"><strong>Integrated into PAY Interpreter:</strong> source tracing → deterministic evidence extraction → GPT/manual interpretation → candidate validation → one semantic-contract JSON. The Compiler consumes this contract. No third tool.</p>
  <p class="small">Evidence is extracted automatically after tracing or importing a Complete Report.</p>
  <p id="semSourceStatus" class="small" role="status">Run a trace, or load a previously exported Complete Report. The original PSID is identified by its SHA-256.</p>
- <div><label for="semMechanism">Source mechanism</label><select id="semMechanism"></select></div>
+ <p class="small">Select the source mechanism in the guided workflow above.</p>
  <details class="advanced"><summary>Advanced · Evidence and manual-model briefing</summary><div class="actions"><button id="semFromSession" type="button">Re-extract current trace</button><button id="semSaveEvidence" disabled>Evidence JSON</button><button id="semCopyBrief" disabled>Copy briefing</button><button id="semSaveBrief" disabled>Download briefing</button></div><label for="semEvidencePreview">Evidence summary</label><textarea id="semEvidencePreview" readonly style="min-height:100px"></textarea></details>
  <div class="actions"><button id="semRequest" class="primary" disabled>Interpret with GPT</button><button id="semCancel" disabled>Cancel</button><strong id="semClock" class="small" aria-live="off" role="timer">Roundtrip: —</strong></div><details class="advanced"><summary>Semantic API output budget (advanced)</summary><label for="semBudget">Output-token budget</label><input id="semBudget" type="number" min="4096" max="32000" step="1024" value="20000" style="max-width:170px"></details>
  <div id="semApiStatus" class="small">Or submit the downloaded briefing to any frontier model manually, then paste its JSON below.</div>
- <label for="semCandidateInput">Semantic candidate — generated or imported</label><input id="semCandidateFile" type="file" accept=".json,.txt"><textarea id="semCandidateInput" spellcheck="false" style="min-height:185px" placeholder="The model result will appear here. You can also paste or import a saved candidate."></textarea>
+ <label for="semCandidateInput">Semantic candidate — generated or imported (import from guided workflow)</label><textarea id="semCandidateInput" spellcheck="false" style="min-height:185px" placeholder="The model result will appear here. You can also paste or import a saved candidate."></textarea>
  <div class="actions"><button id="semValidate" type="button">Validate</button><button id="semSaveContract" class="primary" disabled>Export compiler contract</button><button id="semSaveRaw" disabled>Save raw candidate</button></div>
  <p class="small">Raw candidate download preserves exactly what GPT returned, even when it is incomplete or invalid JSON. It becomes available when the candidate text box contains text.</p>
  <p id="semValidateStatus" class="small" role="status">No candidate validated. Validation checks schema and evidence references; it does not constitute independent semantic approval.</p>
@@ -180,7 +311,8 @@ main{max-width:1160px}.layout{grid-template-columns:minmax(0,1fr)}
   <details class="card advanced"><summary>Advanced · Full-source GPT batch results</summary><p class="small">Optional full-source GPT batch analysis results. Unfinished batches can be resumed without overwriting completed ones.</p><textarea id="gpt" readonly spellcheck="false" aria-label="GPT semantic analysis result" placeholder="Optional GPT batch results appear here."></textarea></details>
  </div>
 </div>
-<footer>PLAY-00.8I · Bounded non-cycle-accurate NMOS 6502 tracing. The source-verified SID pitch table is a callable diagnostic; full music, AY sound and song loops are not yet reconstructed.</footer>
+</details>
+<footer>PLAY-00.8I.2 · Bounded non-cycle-accurate NMOS 6502 tracing. The source-verified SID pitch table is a callable diagnostic; full music, AY sound and song loops are not yet reconstructed.</footer>
 </main>
 <script type="text/plain" id="fallback-doc">
 # SID Interpreter — PAY semantic analysis contract (v0.5)
@@ -1205,7 +1337,7 @@ async function runTraceUI(){
  if(!current)throw Error('Load a SID file first.');
  if(aborter)throw Error('An API call is in progress; cancel it before starting a trace.');
  if(traceInProgress)throw Error('A trace is already running.');
- const source=current;traceInProgress=true;traceCancel=false;
+ const source=current;traceInProgress=true;traceCancel=false;let autoEvidenceReady=false;
  const controls=['runTrace','sidFile','send','testApi','traceFrames','subtune','saveComplete'];for(const id of controls)$(id).disabled=true;
  $('stopTrace').disabled=false;$('saveTrace').disabled=true;$('saveReport').disabled=true;
  $('traceState').textContent='Starting INIT and PLAY execution…';
@@ -1229,8 +1361,9 @@ async function runTraceUI(){
   $('batchInfo').textContent=`Updated GPT input: ${batchRows(source.mergedRows).length} annotated code batch(es), each with runtime trace context.`;
   $('saveTrace').disabled=false;$('saveReport').disabled=false;
   setStatus(s.errors.length?`Trace stopped: ${s.errors[0]}. Partial evidence retained.`:`Runtime tracing completed: ${s.framesCompleted} frames. Annotated assembly now includes live code and register events.`,s.errors.length?'error':'success');
-   if(!s.errors.length && !$('semCandidateInput').value) $('semFromSession').click();
+   autoEvidenceReady=!s.errors.length && !$('semCandidateInput').value;
  }finally{traceInProgress=false;for(const id of controls)$(id).disabled=false;$('stopTrace').disabled=true;$('runTrace').disabled=!current||current.h.magic!=='PSID';$('saveComplete').disabled=!current;}
+ if(autoEvidenceReady) $('semFromSession').click();
 }
 
 // PAY v0.5.1 Complete Report: deterministic snapshot, no fresh API requests.
@@ -1317,6 +1450,7 @@ window.PAYTest={getCurrentSourceBytes:()=>current?.sourceBytes?new Uint8Array(cu
 $('sidFile').addEventListener('change',async e=>{
  if(traceInProgress){setStatus('Stop the active trace before replacing the SID file.','error');return;}
  const file=e.target.files?.[0];if(!file)return;
+ window.PAYSemanticIntegrationTest?.resetSource?.();
  try{const sourceBytes=new Uint8Array(await file.arrayBuffer()),h=parseSID(sourceBytes.buffer),res=disassemble(h);current={name:file.name,h,res,sourceBytes};updateSummary(h,res)}
  catch(err){current=null;$('send').disabled=true;$('saveAsm').disabled=true;$('saveJson').disabled=true;$('saveComplete').disabled=true;$('completeState').textContent='Load a valid SID before exporting a report.';$('runTrace').disabled=true;$('saveTrace').disabled=true;$('saveReport').disabled=true;$('saveIR').disabled=true;$('saveReads').disabled=true;setStatus(err.message,'error');}
 });
@@ -1831,6 +1965,7 @@ function originalSIDForPitch(){
  return b;
 }
 function refresh(){const m=bundle?.mechanisms.find(m=>m.id===selected());if(!m)return;el('semEvidencePreview').value=JSON.stringify({mechanism:m.id,semanticObligations:m.semanticObligations||[],evidenceItems:m.evidenceIds.length,unknowns:m.unknowns},null,2);candidate=null;el('semCandidateInput').value='';el('semSaveContract').disabled=true;setStatus('Choose API or manual briefing, then validate the returned candidate.');}
+function resetSource(){rawReport=null;bundle=null;candidate=null;lastReconciliation={changes:[],deferred:[]};el('semInputReport').value='';el('semMechanism').innerHTML='<option value="">Extract evidence from new PSID</option>';el('semCandidateInput').value='';for(const id of ['semRequest','semSaveContract','semSaveRaw','semSaveEvidence','semSaveBrief','semCopyBrief'])el(id).disabled=true;el('semSourceStatus').textContent='New PSID selected; run trace to extract its evidence.';}
 function importReport(r){rawReport=r;bundle=core.verifyEvidence(extractor.extract(r));bundle.source.sha256PSID=shaReport(r);populate();el('semSourceStatus').textContent=`${bundle.source.title}: ${bundle.capture.longFrames} frames, ${Object.keys(bundle.evidence).length} evidence records, ${bundle.mechanisms.length} mechanisms. PSID SHA-256 ${bundle.source.sha256PSID}. Source evidence is a bounded observation.`;const top=el('status');top.textContent='Complete Report loaded — evidence ready. Skip tracing, select a mechanism, and interpret or import a saved candidate.';top.dataset.kind='success';}
 function populate(){el('semMechanism').innerHTML='';for(const m of bundle.mechanisms){let opt=document.createElement('option');opt.value=m.id;opt.textContent=m.id+' — '+m.label;el('semMechanism').appendChild(opt);}for(const id of ['semSaveEvidence','semCopyBrief','semSaveBrief','semRequest'])el(id).disabled=false;refresh();}
 function briefing(){if(!bundle)throw Error('First create source evidence');const p=core.buildPrompt(bundle,selected());return p.instructions+'\n\n=== EVIDENCE DATA (JSON) ===\n'+p.data+'\n\n=== RESPONSE REQUIREMENT ===\nReturn only one JSON object with the requested mechanismId. This is not approved machine code.\n';}
@@ -1881,7 +2016,7 @@ function parseAndValidate(){
  const deferred=result.deferred.length?(' '+result.deferred.length+' NEXT_STEP operation(s) remain UNCOMPILED; partial fixture only.') : '';
  setStatus('Candidate STRUCTURALLY VALID (not semantically approved).'+note+deferred+' Export contract for capability checks.',true);
 } 
-el('semInputReport').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{el('semSourceStatus').textContent='Extracting source evidence from '+f.name+'…';let report;try{report=JSON.parse(await f.text());}catch(e){throw Error('Imported Complete Report is not valid JSON ('+f.size.toLocaleString()+' bytes): '+e.message+'. If the file was truncated during copying or download, export a fresh Complete Report from the Interpreter.');}importReport(report);}catch(err){el('semSourceStatus').textContent='Full report import failed: '+err.message;}});
+el('semInputReport').addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;try{el('sidFile').value='';el('semSourceStatus').textContent='Extracting source evidence from '+f.name+'…';let report;try{report=JSON.parse(await f.text());}catch(e){throw Error('Imported Complete Report is not valid JSON ('+f.size.toLocaleString()+' bytes): '+e.message+'. If the file was truncated during copying or download, export a fresh Complete Report from the Interpreter.');}importReport(report);}catch(err){resetSource();el('semSourceStatus').textContent='Full report import failed: '+err.message;}});
 el('semFromSession').addEventListener('click',()=>{try{importReport(window.PAYTest.buildCompletePAYReport());}catch(e){el('semSourceStatus').textContent='No completed trace/report yet: '+e.message;}});
 el('semMechanism').addEventListener('change',refresh);
 el('semSaveEvidence').addEventListener('click',()=>{if(bundle)save(JSON.stringify(bundle,null,2)+'\n',baseName()+'_semantic_evidence.json');});
@@ -1891,7 +2026,16 @@ el('semCandidateFile').addEventListener('change',async e=>{const f=e.target.file
 el('semCandidateInput').addEventListener('input',()=>{candidate=null;el('semSaveContract').disabled=true;el('semSaveRaw').disabled=!el('semCandidateInput').value;});
 el('semSaveRaw').addEventListener('click',()=>{const text=el('semCandidateInput').value;if(!text)return;save(text,baseName()+'_'+selected()+'_raw_model_response.txt','text/plain');});
 el('semValidate').addEventListener('click',()=>{try{parseAndValidate();}catch(e){candidate=null;el('semSaveContract').disabled=true;displayError(e);}});
-el('semSaveContract').addEventListener('click',()=>{try{parseAndValidate();const projection=typedProjection(bundle,candidate);const contract={format:'PAY_Semantic_Contract_v0.8F2',compilerModule:projection,source:bundle.source,mechanismId:candidate.mechanismId,intents:candidate.targetPlan.operations.map(x=>({operation:x.op,inputs:x.inputs,outputs:x.outputs,evidenceIds:x.evidenceIds,status:['UNRESOLVED','NEXT_STEP'].includes(x.op)?'unresolved':'candidate'})),candidate,evidence:bundle,validation:{structure:'passed',semanticReview:'needs_human_validation',compilerApproval:false,compilerModuleStatus:projection?'supported_partial_fixture':'not_implemented',evidenceReconciliation:lastReconciliation},targetPolicy:{noZeroPage:true,noSelfModifiedCode:true},limitations:['Evidence/source-intent validation is incomplete. Compiler may only generate explicitly marked research fixtures for supported source mechanisms.','NEXT_STEP intentions remain deferred and are not generated as executable music.','Capture limitations are metadata, not source proof.']};if(projection){try{contract.semanticExtension=PAYFirstPlay08G.buildExtension(contract);contract.pitchExtension=PAYPitch08I.buildExtension(contract,originalSIDForPitch());setStatus('PLAY-00.8I contract: first-PLAY and source-verified 93-word SID pitch lookup included (diagnostic only).',true)}catch(extError){setStatus('Foundation exported, but 00.8I pitch extension is unavailable: '+extError.message);}}save(JSON.stringify(contract,null,2)+'\n',baseName()+'_'+selected()+'_PAY_Semantic_Contract.json');}catch(e){displayError(e);}});
+function buildCompilerContract(){
+ parseAndValidate();
+ const projection=typedProjection(bundle,candidate);
+ const contract={format:'PAY_Semantic_Contract_v0.8F2',compilerModule:projection,source:bundle.source,mechanismId:candidate.mechanismId,intents:candidate.targetPlan.operations.map(x=>({operation:x.op,inputs:x.inputs,outputs:x.outputs,evidenceIds:x.evidenceIds,status:['UNRESOLVED','NEXT_STEP'].includes(x.op)?'unresolved':'candidate'})),candidate,evidence:bundle,validation:{structure:'passed',semanticReview:'needs_human_validation',compilerApproval:false,compilerModuleStatus:projection?'supported_partial_fixture':'not_implemented',evidenceReconciliation:lastReconciliation},targetPolicy:{noZeroPage:true,noSelfModifiedCode:true},limitations:['Evidence/source-intent validation is incomplete. Compiler may only generate explicitly marked research fixtures for supported source mechanisms.','NEXT_STEP intentions remain deferred and are not generated as executable music.','Capture limitations are metadata, not source proof.']};if(projection){try{contract.semanticExtension=PAYFirstPlay08G.buildExtension(contract);contract.pitchExtension=PAYPitch08I.buildExtension(contract,originalSIDForPitch());setStatus('PLAY-00.8I contract: first-PLAY and source-verified 93-word SID pitch lookup included (diagnostic only).',true)}catch(extError){setStatus('Foundation exported, but 00.8I pitch extension is unavailable: '+extError.message);}}
+ return contract;
+}
+el('semSaveContract').addEventListener('click',()=>{try{
+ const contract=buildCompilerContract();
+ save(JSON.stringify(contract,null,2)+'\n',baseName()+'_'+selected()+'_PAY_Semantic_Contract.json');
+}catch(e){displayError(e);}});
 el('semRequest').addEventListener('click',async()=>{
  if(!bundle)return;
  const key=$('apiSessionKey').value.trim(),model=$('model').value.trim();
@@ -1899,6 +2043,7 @@ el('semRequest').addEventListener('click',async()=>{
  if(!key||!model)return displayError(Error('Provide a model and an API key for this request'));
  if(!Number.isInteger(budget)||budget<4096||budget>32000)return displayError(Error('Output-token budget must be from 4096 to 32000.'));
  const p=core.buildPrompt(bundle,selected()),id=selected();
+ const supplemental=window.PLAYGuided?.interpretationContext?.()||'';
  requestCtl=new AbortController();started=performance.now();
  el('semClock').textContent='Roundtrip: 0.0 s';
  clock=setInterval(()=>el('semClock').textContent='Roundtrip: '+((performance.now()-started)/1000).toFixed(1)+' s',100);
@@ -1909,7 +2054,7 @@ el('semRequest').addEventListener('click',async()=>{
   const res=await fetch('https://api.openai.com/v1/responses',{
    method:'POST',signal:requestCtl.signal,
    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-   body:JSON.stringify({model,input:[{role:'system',content:p.instructions},{role:'user',content:p.data}],max_output_tokens:budget,store:false})
+   body:JSON.stringify({model,input:[{role:'system',content:p.instructions},{role:'user',content:p.data + (supplemental?'\n\n--- OPTIONAL USER GUIDANCE / UNVERIFIED PRIOR QUALITY (NOT SOURCE PROOF) ---\n'+supplemental:'')}],max_output_tokens:budget,store:false})
   });
   const o=await res.json();
   if(!res.ok)throw Error('API HTTP '+res.status+': '+(o.error?.message||'request failed'));
@@ -1936,7 +2081,7 @@ el('semRequest').addEventListener('click',async()=>{
  }
 });
 el('semCancel').addEventListener('click',()=>requestCtl?.abort());
-window.PAYSemanticIntegrationTest={importReport,getOriginalSourceSIDBytes:()=>{try{return originalSIDForPitch()}catch{return null}},getBundle:()=>bundle,getContract:()=>{parseAndValidate();return {source:bundle.source,candidate,evidence:bundle}},digestBytes,shaReport,parseAndValidate};
+window.PAYSemanticIntegrationTest={importReport,getOriginalSourceSIDBytes:()=>{try{return originalSIDForPitch()}catch{return null}},getBundle:()=>bundle,resetSource,buildContract:buildCompilerContract,getContract:()=>{parseAndValidate();return {source:bundle.source,candidate,evidence:bundle}},digestBytes,shaReport,parseAndValidate};
 })();
 </script>
 <script>
@@ -2493,11 +2638,11 @@ function textStatus(t,ok){const e=el('diffStatus');e.textContent=t;e.style.color
 function dl(name,text){const blob=new Blob([text],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1200)}
 async function originalFile(){const f=el('diffOriginal').files?.[0];
  if(f){if(/\.json$/i.test(f.name)){const r=JSON.parse(await f.text());const b64=r?.source?.originalSID?.base64;if(!b64)throw Error('Complete Report missing original .sid bytes');const s=atob(b64),bytes=new Uint8Array(s.length);for(let i=0;i<s.length;i++)bytes[i]=s.charCodeAt(i);return bytes;}return new Uint8Array(await f.arrayBuffer());}
- const bytes=window.PAYTest.getCurrentSourceBytes?.()||window.PAYSemanticIntegrationTest.getOriginalSourceSIDBytes?.();if(bytes?.length)return bytes;
+ const bytes=window.PAYSemanticIntegrationTest.getOriginalSourceSIDBytes?.()||window.PAYTest.getCurrentSourceBytes?.();if(bytes?.length)return bytes;
  throw Error('Choose the original .sid or Complete Report (or load the original .sid in Section 1).');
 }
 async function run(){if(busy)return;busy=true;el('diffRun').disabled=true;el('diffExport').disabled=el('diffCounterExport').disabled=true;el('diffReportText').value=el('diffCounterText').value='';last=null;textStatus('Validating source identity, recompiling reference deterministically, then running two 6502 instances…');
- try{const [originalBytes,generatedBytes,ctext]=await Promise.all([originalFile(),(async()=>{const f=el('diffGenerated').files?.[0];if(!f)throw Error('Choose regenerated Compiler 00.8G or 00.8I .sid');return new Uint8Array(await f.arrayBuffer())})(),(async()=>{const f=el('diffContract').files?.[0];if(!f)throw Error('Choose matching research semantic contract');return f.text()})()]);
+ try{const [originalBytes,generatedBytes,ctext]=await Promise.all([originalFile(),(async()=>{const f=el('diffGenerated').files?.[0];if(f)return new Uint8Array(await f.arrayBuffer());const guided=window.PLAYGuided?.getCompiled?.();if(guided?.sidBytes)return guided.sidBytes;throw Error('Compile a SID reference above or choose regenerated 00.8I .sid')})(),(async()=>{const f=el('diffContract').files?.[0];if(f)return f.text();const guided=window.PLAYGuided?.getCompiled?.();if(guided?.contract)return JSON.stringify(guided.contract);throw Error('Validate and compile a matching semantic contract above or choose contract .json')})()]);
  const contract=JSON.parse(ctext),old=PAYSID08G.compileContract(contract),oldAssembly=PAYPSIDPackager08G.assemble(old.assembly),oldBytes=PAYPSIDPackager08G.psidBytes(oldAssembly);
  const equal=(a,b)=>a.length===b.length&&a.every((x,i)=>x===b[i]);
  let assembled=oldAssembly,expected=oldBytes,version='00.8G';
@@ -2541,6 +2686,240 @@ el('diffExport').addEventListener('click',()=>{if(last)dl('Bomberland_PLAY08I_di
 el('diffCounterExport').addEventListener('click',()=>{if(last?.counterexample)dl('Bomberland_PLAY08I_counterexample.json',JSON.stringify(last.counterexample,null,2)+'\n')});
 window.PAYDifferentialUITest={getResult:()=>last,run};
 })();
+</script>
+<script>
+/* PLAY-00.8I.2: guided UI only. The Interpreter remains source-of-truth for
+ * tracing, evidence validation and semantic contract construction. The
+ * existing deterministic SID backend remains source-of-truth for codegen.
+ * No binary score replay and no inferred PLAY audio output.
+ */
+(function(){'use strict';
+ const $=id=>document.getElementById(id);
+ const source=()=>window.PAYSemanticIntegrationTest?.getBundle?.();
+ let compiled=null,priorQuality='',qualityReports={SID:null,PLAY:null};
+ const audioUrls=new Map();
+ const set=(id,msg,kind='')=>{const el=$(id);el.textContent=msg;el.dataset.kind=kind;};
+ const bytesFromBuffer=bytes=>bytes instanceof Uint8Array?bytes:new Uint8Array(bytes);
+ function download(filename,contents,mime){
+  const blob=new Blob([contents],{type:mime}),url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+ }
+ function currentSourceBytes(){return window.PAYSemanticIntegrationTest?.getOriginalSourceSIDBytes?.()||window.PAYTest?.getCurrentSourceBytes?.()||null;}
+ function context(){
+  const briefing=$('guideBriefing').value.trim();
+  if(briefing.length>6000)throw Error('Additional briefing is too long (max 6000 characters).');
+  // The report is feedback, never treated as code evidence. Keep request bounded.
+  return [briefing?'USER INTERPRETATION PRIORITY (NOT SOURCE EVIDENCE):\n'+briefing:'',priorQuality?'PREVIOUS QUALITY REPORT (UNVERIFIED FEEDBACK — CHECK ALL CLAIMS AGAINST SOURCE):\n'+priorQuality.slice(0,12000):''].filter(Boolean).join('\n\n');
+ }
+ function ready(){
+  const b=source(),key=!!$('apiSessionKey').value.trim();
+  const raw=!!$('semCandidateInput').value.trim();
+  const contractReady=b&&!$('semSaveContract').disabled;
+  const sidAudio=$('guideSIDOriginalAudio').files?.length&&$('guideSIDGeneratedAudio').files?.length;
+  const playAudio=$('guidePLAYOriginalAudio').files?.length&&$('guidePLAYGeneratedAudio').files?.length;
+  $('guideDownloadReport').disabled=$('saveComplete').disabled;
+  $('guideTrace').disabled=!!b||$('runTrace').disabled;
+  $('guideInterpret').disabled=!b||!key||$('semRequest').disabled;
+  $('guideValidate').disabled=!b||!raw;
+  $('guideDownloadContract').disabled=!contractReady;
+  $('guideCompileSID').disabled=!contractReady;
+  $('guideSaveSID').disabled=!compiled;
+  $('guideSaveASM').disabled=!compiled;
+  $('guideListenOriginalSID').disabled=!currentSourceBytes()?.length;
+  $('guideListenGeneratedSID').disabled=!compiled?.sidBytes?.length;
+  $('guideRunDiff').disabled=!compiled||$('diffRun').disabled;
+  $('guideSIDQuality').disabled=!key||(!window.PAYDifferentialUITest?.getResult?.()&&!sidAudio);
+  $('guidePLAYQuality').disabled=!key||!playAudio;
+  $('guideSIDQualitySave').disabled=!qualityReports.SID;
+  $('guidePLAYQualitySave').disabled=!qualityReports.PLAY;
+  const name=b?.source?.title||'';
+  if(b)set('guideSourceStatus',`Evidence ready · ${name} · ${b.capture.longFrames} traced frame(s). No re-trace needed.`,'ok');
+  else if($('sidFile').files?.length)set('guideSourceStatus',`PSID selected: ${$('sidFile').files[0].name}. Run trace & extract before interpreting.`);
+  else if($('semInputReport').files?.length)set('guideSourceStatus',`Importing saved report: ${$('semInputReport').files[0].name}…`);
+  else set('guideSourceStatus','Choose a PSID or saved Complete Report to begin.');
+  if(b){
+    const mechanism=$('semMechanism').value;
+    set('guideInterpretStatus',contractReady?`Contract ready · ${mechanism} · structural evidence checks passed; human semantic review still required.`:`Evidence indexed · ${mechanism}. ${raw?'Candidate present: validate it.':'Interpret with GPT or import a saved candidate.'}`,contractReady?'ok':'');
+  }else set('guideInterpretStatus','No source evidence loaded.');
+  if(!compiled)set('guideSIDStatus',contractReady?'Contract available. Compile a source-verified diagnostic SID reference.':'Validate a supported contract to enable compilation.');
+  set('guidePLAYStatus',contractReady?'Contract available in PLAY Compiler. Only silent control-level Apple II output is currently implemented.':'The PLAY backend cannot yet reconstruct audible music.');
+ }
+ const watchId=['semSourceStatus','semValidateStatus','traceState','status','diffStatus','semApiStatus'];
+ for(const id of watchId){const el=$(id);if(el)new MutationObserver(()=>{queueMicrotask(ready)}).observe(el,{childList:true,characterData:true,subtree:true});}
+ for(const id of ['apiSessionKey','sidFile','semInputReport','semCandidateInput','semCandidateFile','semMechanism','guideSIDOriginalAudio','guideSIDGeneratedAudio','guidePLAYOriginalAudio','guidePLAYGeneratedAudio']){
+  $(id).addEventListener('input',ready);$(id).addEventListener('change',ready);
+ }
+ for(const id of ['sidFile','semInputReport','semCandidateFile','semCandidateInput']){
+  $(id).addEventListener('change',()=>{compiled=null;qualityReports={SID:null,PLAY:null};ready()});
+ }
+ $('guideDownloadReport').addEventListener('click',()=>$('saveComplete').click());
+ $('guideTrace').addEventListener('click',()=>{
+  if(source())return set('guideInterpretStatus','Source evidence is already available. No new trace is required.','ok');
+  if(!$('sidFile').files?.length)return set('guideInterpretStatus','Choose a PSID first.','error');
+  $('runTrace').click();set('guideInterpretStatus','Running bounded source trace, then indexing evidence…');
+ });
+ $('guideInterpret').addEventListener('click',()=>{
+  if(!source())return set('guideInterpretStatus','Trace or import evidence first.','error');
+  if(!$('apiSessionKey').value.trim())return set('guideInterpretStatus','Enter the API key in Step 1.','error');
+  $('semRequest').click();
+ });
+ $('guideValidate').addEventListener('click',()=>{$('semValidate').click();queueMicrotask(ready)});
+ $('guideDownloadContract').addEventListener('click',()=>{$('semSaveContract').click();queueMicrotask(ready)});
+ function makeContract(){
+  const api=window.PAYSemanticIntegrationTest;
+  if(!api?.buildContract)throw Error('Contract builder not available. Load the updated 00.8I.2 Interpreter.');
+  return api.buildContract();
+ }
+ async function compileSID(){
+  const btn=$('guideCompileSID');btn.disabled=true;
+  set('guideSIDStatus','Compiling the validated semantic contract with the deterministic 00.8I SID backend…');
+  try{
+   const contract=makeContract();
+   if(!contract.compilerModule||!contract.semanticExtension||!contract.pitchExtension)throw Error('This candidate has no source-verified 00.8I SID extension. Only the proven player_entry slice is supported.');
+   const product=PAYSID08I.compileContract(contract);
+   const asm=PAYPSIDPackager08G.assemble(product.assembly);
+   const sidBytes=bytesFromBuffer(PAYPSIDPackager08G.psidBytes(asm));
+   if(!sidBytes.length||!product.assembly)throw Error('Compiler returned empty output.');
+   compiled={contract,assembly:product.assembly,sidBytes,symbols:asm.symbols};
+   set('guideSIDStatus',`Compiled ${sidBytes.length}-byte PSID. It is a SILENT control/pitch diagnostic—not a complete listening-test tune. The deterministic comparison is now ready.`,'ok');
+  }catch(e){compiled=null;set('guideSIDStatus',`Compilation blocked: ${e.message}`,'error');}
+  finally{ready()}
+ }
+ // Handoff transfers the *file bytes*, not frame captures or a URL query string.
+ // Clipboard access is intentionally made only from a user click. The player
+ // opens during that gesture to avoid popup blockers; it never reads the source
+ // automatically without a second user gesture in SIDchipJS.
+ function psidBase64(bytes){
+  const b=bytesFromBuffer(bytes);
+  if(b.length<4||!(String.fromCharCode(...b.subarray(0,4))==='PSID'||String.fromCharCode(...b.subarray(0,4))==='RSID'))
+   throw Error('Source is not a PSID/RSID file.');
+  let bin='';const chunk=0x4000;
+  for(let i=0;i<b.length;i+=chunk)bin+=String.fromCharCode(...b.subarray(i,i+chunk));
+  return btoa(bin);
+ }
+ function copyLegacy(value){
+  const el=document.createElement('textarea');
+  el.value=value;el.setAttribute('readonly','');el.style.position='fixed';el.style.top='-9999px';el.style.left='-9999px';
+  document.body.appendChild(el);el.select();
+  try{return document.execCommand('copy')}finally{el.remove()}
+ }
+ async function openInSIDchipJS(which){
+  const original=which==='original';
+  const bytes=original?currentSourceBytes():compiled?.sidBytes;
+  if(!bytes?.length)return set('guideClipboardStatus',original?'Load a source PSID or Complete Report first.':'Compile the supported SID reference first.','error');
+  let encoded;
+  try{encoded=psidBase64(bytes)}catch(e){return set('guideClipboardStatus',e.message,'error')}
+  // Initiate the async clipboard write while this tab still has focus.
+  // No raw PSID data is put in the URL or browser storage.
+  const canWrite=!!(window.isSecureContext&&navigator.clipboard?.writeText);
+  let write;
+  if(canWrite){try{write=navigator.clipboard.writeText(encoded)}catch(e){write=Promise.reject(e)}}
+  else{try{write=Promise.resolve(copyLegacy(encoded))}catch(e){write=Promise.reject(e)}}
+  const playerUrl=new URL('SIDchipJS.html',window.location.href).href;
+  const player=window.open(playerUrl,'_blank');
+  if(player)player.opener=null;
+  try{
+   const ok=await write;
+   if(ok===false)throw Error('Legacy clipboard copy did not succeed');
+   set('guideClipboardStatus',`${original?'Original':'Compiled'} PSID copied as Base64 (${bytes.length.toLocaleString()} bytes). ${player?'In SIDchipJS click “Paste Base64 from clipboard”.':'Popup blocked: use the Open SIDchipJS link, then click “Paste Base64 from clipboard”.'}${!window.isSecureContext?' The browser may require a secure context for the player to read the clipboard.':''}`,'ok');
+  }catch(e){
+   set('guideClipboardStatus',`SIDchipJS ${player?'opened':'could not open'} but Base64 clipboard copy failed (${e.message}). For secure clipboard access use HTTPS/localhost; you can alternatively download the .sid and use SIDchipJS “Load from File”.`,'error');
+  }
+ }
+ $('guideListenOriginalSID').addEventListener('click',()=>openInSIDchipJS('original'));
+ $('guideListenGeneratedSID').addEventListener('click',()=>openInSIDchipJS('compiled'));
+ $('guideCompileSID').addEventListener('click',compileSID);
+ $('guideSaveSID').addEventListener('click',()=>{if(compiled)download('PLAY_00_8I2_SID_REFERENCE_DIAGNOSTIC.sid',compiled.sidBytes,'application/octet-stream')});
+ $('guideSaveASM').addEventListener('click',()=>{if(compiled)download('PLAY_00_8I2_SID_REFERENCE_DIAGNOSTIC.S',compiled.assembly,'text/plain;charset=utf-8')});
+ $('guideRunDiff').addEventListener('click',async()=>{
+  if(!compiled)return;
+  // Explicitly use the just-compiled in-memory pair, not stale detailed-panel uploads.
+  $('diffOriginal').value='';$('diffGenerated').value='';$('diffContract').value='';
+  set('guideSIDStatus','Executing deterministic original ↔ generated SID comparison…');
+  try{
+   await window.PAYDifferentialUITest.run();
+   const report=window.PAYDifferentialUITest.getResult();
+   if(!report){set('guideSIDStatus',$('diffStatus').textContent,'error');return}
+   const status=report.summary?.status||'UNKNOWN';
+   const kind=status==='PASS_PARTIAL_SCOPE'?'ok':'error';
+   set('guideSIDStatus',`${status}: ${report.summary.passed}/${report.summary.total} supported-scope checks passed. ${report.firstDivergence?'First divergence available in Advanced details.':'No divergence within implemented scope.'} Music is not yet compared.`,kind);
+  }catch(e){set('guideSIDStatus',`Differential test failed: ${e.message}`,'error')}
+  finally{ready()}
+ });
+ $('guidePriorReport').addEventListener('change',async()=>{
+  const f=$('guidePriorReport').files?.[0];priorQuality='';if(!f){$('guidePriorState').textContent='No prior report selected.';return}
+  if(f.size>512*1024){$('guidePriorState').textContent='Prior report exceeds 512 KiB; please use a concise quality report. Not imported.';return}
+  priorQuality=await f.text();
+  $('guidePriorState').textContent=`Feedback loaded: ${f.name} (${priorQuality.length} characters). GPT will receive up to 12,000 characters as unverified context.`;
+ });
+ // Audio stays local. Decode using browser WebAudio for basic, nonperceptual measurements.
+ async function audioMetrics(f){
+  if(!f)return null;
+  if(f.size>50*1024*1024)throw Error(`${f.name} exceeds 50 MiB; provide a shorter listening capture.`);
+  const AudioCtor=window.AudioContext||window.webkitAudioContext;
+  if(!AudioCtor)throw Error('AudioContext is unavailable in this browser.');
+  const ctx=new AudioCtor();let buf;
+  try{buf=await ctx.decodeAudioData(await f.arrayBuffer())}finally{await ctx.close()}
+  const channels=Array.from({length:buf.numberOfChannels},(_,i)=>buf.getChannelData(i));
+  const frames=buf.length,step=Math.max(1,Math.floor(buf.sampleRate/6000)),windowSamples=Math.max(1,Math.floor(buf.sampleRate*0.1));
+  let sq=0,peak=0,count=0;const env=[];
+  for(let start=0;start<frames;start+=windowSamples){let wsum=0,wn=0;
+   for(let i=start;i<Math.min(start+windowSamples,frames);i+=step){let value=0;for(const c of channels)value+=c[i]/channels.length;const a=Math.abs(value);peak=Math.max(peak,a);sq+=value*value;count++;wsum+=value*value;wn++;}
+   env.push(wn?Math.sqrt(wsum/wn):0);
+  }
+  const rms=Math.sqrt(sq/Math.max(1,count));
+  return {filename:f.name,durationSeconds:Number(buf.duration.toFixed(3)),sampleRate:buf.sampleRate,channels:buf.numberOfChannels,peak:Number(peak.toFixed(5)),rmsDbFS:Number((20*Math.log10(Math.max(1e-9,rms))).toFixed(2)),envelope100ms:env.map(x=>Number(x.toFixed(5)))};
+ }
+ function corr(a,b){const n=Math.min(a.length,b.length);if(n<5)return null;let sa=0,sb=0,sa2=0,sb2=0,sab=0;for(let i=0;i<n;i++){let x=a[i],y=b[i];sa+=x;sb+=y;sa2+=x*x;sb2+=y*y;sab+=x*y}let den=Math.sqrt(Math.max(0,n*sa2-sa*sa)*Math.max(0,n*sb2-sb*sb));return den?Number(((n*sab-sa*sb)/den).toFixed(4)):null}
+ function summarizeAudioPair(a,b){if(!a||!b)return null;return {source:{...a,envelope100ms:undefined},generated:{...b,envelope100ms:undefined},comparison:{durationDeltaSeconds:Number((b.durationSeconds-a.durationSeconds).toFixed(3)),rmsDeltaDb:Number((b.rmsDbFS-a.rmsDbFS).toFixed(2)),envelopeCorrelation100ms:corr(a.envelope100ms,b.envelope100ms),description:'Numerical audio measurements only; cannot establish perceptual similarity, sound design or song equivalence.'}}}
+ function updateAudio(inputId,playerId){
+  const f=$(inputId).files?.[0];const player=$(playerId);
+  const old=audioUrls.get(inputId);if(old)URL.revokeObjectURL(old);
+  if(!f){player.removeAttribute('src');player.load();audioUrls.delete(inputId)}
+  else{const url=URL.createObjectURL(f);player.src=url;audioUrls.set(inputId,url)}
+  ready();
+ }
+ for(const [a,b] of [['guideSIDOriginalAudio','guideSIDOriginalPlayer'],['guideSIDGeneratedAudio','guideSIDGeneratedPlayer'],['guidePLAYOriginalAudio','guidePLAYOriginalPlayer'],['guidePLAYGeneratedAudio','guidePLAYGeneratedPlayer']])$(a).addEventListener('change',()=>updateAudio(a,b));
+ function shortDiff(report){if(!report)return null;return {status:report.summary?.status,summary:report.summary,scope:report.scope,firstDivergence:report.firstDivergence||null,sourceSHA256:report.source?.sha256||null,pitchSummary:report.pitchDiagnostic?.summary||null,verifiedOnlyWithinScope:true}}
+ async function quality(branch){
+  const statusId=branch==='SID'?'guideSIDQualityStatus':'guidePLAYQualityStatus',outId=branch==='SID'?'guideSIDQualityText':'guidePLAYQualityText';
+  const prefix=branch==='SID'?'guideSID':'guidePLAY';
+  const inputA=$(prefix+'OriginalAudio').files?.[0],inputB=$(prefix+'GeneratedAudio').files?.[0];
+  const diff=branch==='SID'?window.PAYDifferentialUITest.getResult():null;
+  if(branch==='PLAY'&&(!inputA||!inputB)){set(statusId,'Both audio recordings are required for PLAY quality analysis.','error');return}
+  if(branch==='SID'&&!diff&&(!inputA||!inputB)){set(statusId,'Run a differential check or supply both audio recordings first.','error');return}
+  const key=$('apiSessionKey').value.trim(),model=$('model').value.trim();
+  if(!key||!model){set(statusId,'Provide an API key and model in Step 1.','error');return}
+  const btn=$(prefix+'Quality');btn.disabled=true;set(statusId,'Measuring local audio (if supplied), then requesting an evidence-limited GPT assessment (billable)…');
+  try{
+   const a=await audioMetrics(inputA),b=await audioMetrics(inputB),pair=summarizeAudioPair(a,b);
+   const payload={format:'PLAY_Quality_Input_v0.8I2',branch,
+    reconstructionStatus:branch==='SID'?'partial_source_control_and_pitch_diagnostic':'PLAY_audio_export_unavailable_in_00_8I',
+    source:source()?.source?.title||'Unknown source',
+    semanticMechanism:source()?$('semMechanism').value:null,
+    deterministicDifferential:shortDiff(diff),audioMeasurements:pair,
+    humanListeningObservations:$(prefix+'Notes').value.slice(0,5000),
+    previousQualityFeedback:priorQuality.slice(0,5000),
+    limits:['No audio bytes provided to GPT; no independent listening performed','Numerical amplitude/timing metrics are not perceptual judgments','SID reference in 00.8I is silent and does not represent full music','No PLAY audio compiler output is supplied by this version']};
+   const instructions='You are a cautious PSID-to-PLAY differential quality analyst. The attached JSON contains deterministic checks, optional numerical audio features and a human observation. You cannot hear the audio. Never claim to have listened, never claim musical equivalence from partial checks, never invent instrument or timing behavior, and never treat prior GPT feedback as verified source proof. Explain evidenced differences, partial scope, and a prioritized actionable list of semantic tests to run next. Keep source-intent findings separate from target-chip approximation. Use short headings, and specify what cannot be assessed.';
+   const res=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,instructions,input:JSON.stringify(payload),max_output_tokens:2400,store:false})});
+   const o=await res.json();if(!res.ok)throw Error('HTTP '+res.status+': '+(o.error?.message||'API error'));
+   const text=o.output_text||(o.output||[]).flatMap(x=>(x.content||[]).filter(z=>z.type==='output_text').map(z=>z.text||'')).join('\n');
+   if(o.status!=='completed'||!text.trim())throw Error('API response incomplete or empty ('+(o.incomplete_details?.reason||o.status||'unknown')+'). No quality report was accepted.');
+   const report={format:'PLAY_Quality_Report_v0.8I2',branch,model,responseId:o.id||null,source:payload,assessment:text,origin:'GPT assessed textual evidence and audio metrics only, not raw sound',reviewStatus:'needs_human_validation'};
+   qualityReports[branch]=report;$(outId).value=text;
+   set(statusId,'GPT assessment available. Audio files were not transmitted. Scope and limitations are included in the saved report.','ok');
+  }catch(e){set(statusId,'Quality assessment blocked: '+e.message,'error')}
+  finally{ready()}
+ }
+ $('guideSIDQuality').addEventListener('click',()=>quality('SID'));
+ $('guidePLAYQuality').addEventListener('click',()=>quality('PLAY'));
+ for(const branch of ['SID','PLAY'])$('guide'+branch+'QualitySave').addEventListener('click',()=>{if(qualityReports[branch])download(`PLAY_00_8I2_${branch}_quality_report.json`,JSON.stringify(qualityReports[branch],null,2)+'\n','application/json;charset=utf-8')});
+ window.PLAYGuided={getCompiled:()=>compiled,interpretationContext:context,compileSID,refresh:ready,quality,qualityReports:()=>qualityReports};
+ ready();
+})();
+
 </script>
 </body>
 </html>
