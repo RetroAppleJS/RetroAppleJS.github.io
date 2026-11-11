@@ -1,0 +1,617 @@
+; PLAY-00.8J / First audible source-token reconstruction: EXPERIMENTAL
+; Generated deterministically from typed PAY semantic contract, never from SID writes.
+; Original PSID SHA256: 65c3874b9f529c9adac45852f6e216eef2307a325051471d8b58290c38f71a68
+; Source stream parser + source pitch tables + provisional SID instrument policy; NOT sound-equivalent.
+; INIT=$1000, PLAY=$1003; $1006 is an OPTIONAL test-only STOP entry.
+; No PAY-owned zero page, no self-modifying code. Source semantics hold in absolute RAM.
+ORG $1000
+SID_REF_INIT:
+  JMP SID_REF_INIT_CORE
+SID_REF_PLAY:
+  JMP SID_REF_PLAY_CORE
+SID_REF_STOP:
+  JMP SID_REF_STOP_CORE
+
+SID_REF_INIT_CORE:
+  STA SR_INPUT_A
+  PHA
+  TXA
+  PHA
+  TYA
+  PHA
+  LDA SR_INPUT_A
+  CMP #$03
+  BCC SR_INIT_VALID
+  LDA #$01
+  STA SR_ERROR
+  JMP SR_INIT_DONE
+SR_INIT_VALID:
+  LDA #$00
+  STA SR_ERROR
+  STA SR_FRAME_LO
+  STA SR_FRAME_HI
+  STA SR_FIRST_COUNT
+  STA SR_REGULAR_LO
+  STA SR_REGULAR_HI
+  STA SR_PATH
+  LDA #$01
+  STA SR_RUNNING
+  STA SR_FIRST_PENDING
+  LDA SR_INPUT_A
+  STA SR_SUBTUNE_A
+  CLC
+  ADC SR_INPUT_A
+  ADC SR_INPUT_A
+  STA SR_SETUP_INDEX
+SR_INIT_DONE:
+  PLA
+  TAY
+  PLA
+  TAX
+  PLA
+  RTS
+
+SID_REF_PLAY_CORE:
+  PHA
+  TXA
+  PHA
+  TYA
+  PHA
+  LDA SR_RUNNING
+  BEQ SR_TICK_DONE
+  LDA SR_FIRST_PENDING
+  BEQ SR_TICK_STEADY
+  LDA #$00
+  STA SR_FIRST_PENDING
+  INC SR_FIRST_COUNT
+  LDA #$01
+  STA SR_PATH
+  JSR SR_FIRST_PLAY_SETUP
+  JMP SR_TICK_ADVANCE
+SR_TICK_STEADY:
+  INC SR_REGULAR_LO
+  BNE SR_STEADY_DONE
+  INC SR_REGULAR_HI
+SR_STEADY_DONE:
+  LDA #$02
+  STA SR_PATH
+SR_TICK_ADVANCE:
+  JSR SJ_MUSIC_TICK
+  INC SR_FRAME_LO
+  BNE SR_TICK_DONE
+  INC SR_FRAME_HI
+SR_TICK_DONE:
+  PLA
+  TAY
+  PLA
+  TAX
+  PLA
+  RTS
+
+SID_REF_STOP_CORE:
+  PHA
+  LDA #$00
+  STA SR_RUNNING
+  STA SR_FIRST_PENDING
+  PLA
+  RTS
+
+
+; Source $112C-$115E: first-PLAY state only (not sound engine).
+; 42-byte source clear $14AC..$14D5 mapped to SR_CLEAR_AREA.
+SR_FIRST_PLAY_SETUP:
+  LDA #$00
+  LDX #$29
+SR_CLEAR_42:
+  STA SR_CLEAR_AREA,X
+  DEX
+  BPL SR_CLEAR_42
+  STA SR_DYNAMIC_11B0
+  STA SR_DYNAMIC_1162
+  STA $D415
+  LDX #$14
+SR_ZERO_VOICE_REC:
+  STA SR_VOICE_RECORDS,X
+  DEX
+  BPL SR_ZERO_VOICE_REC
+; First-play Y initially = 3*subtune, and INY once per channel.
+  LDA SR_SETUP_INDEX
+  STA SR_V0_ORD
+  CLC
+  ADC #$01
+  STA SR_V1_ORD
+  ADC #$01
+  STA SR_V2_ORD
+  LDA #$05
+  STA SR_V0_2
+  STA SR_V1_2
+  STA SR_V2_2
+  LDA #$01
+  STA SR_V0_3
+  STA SR_V1_3
+  STA SR_V2_3
+  STA SR_V0_5
+  STA SR_V1_5
+  STA SR_V2_5
+  JSR SJ_INIT_ENGINE
+  RTS
+
+; Test-only semantic command: source $13CB -> $1222/$1227/$1228/$122A.
+; Converts a SOURCE PITCH CODE to a 0..92 index. Does NOT play a note.
+SID_REF_PITCH_INDEX:
+  PHA
+  LDA SR_TEST_TOKEN
+  CMP #$60
+  BCC SR_PITCH_INVALID
+  CMP #$BD
+  BCS SR_PITCH_INVALID
+  SEC
+  SBC #$60
+  STA SR_TEST_PITCH_INDEX
+  LDA #$01
+  STA SR_TEST_PITCH_VALID
+  JMP SR_PITCH_DONE
+SR_PITCH_INVALID:
+  LDA #$00
+  STA SR_TEST_PITCH_VALID
+SR_PITCH_DONE:
+  PLA
+  RTS
+
+; PLAY-00.8I: source $1318 / $131E table lookup after pitch-index calculation.
+; Callable diagnostic ONLY. Not called by SID_REF_PLAY; no SID register writes.
+SID_REF_PITCH_FROM_TOKEN:
+  JSR SID_REF_PITCH_INDEX
+  LDA SR_TEST_PITCH_VALID
+  BEQ SR_PITCH_INPUT_INVALID
+  JSR SID_REF_PITCH_WORD
+  RTS
+SR_PITCH_INPUT_INVALID:
+  LDA #$00
+  STA SR_TEST_FREQ_VALID
+  RTS
+SID_REF_PITCH_WORD:
+  PHA
+  TXA
+  PHA
+  LDA SR_TEST_PITCH_INDEX
+  CMP #$5D
+  BCS SR_PITCH_WORD_INVALID
+  TAX
+  LDA SR_PITCH_TABLE_LO,X
+  STA SR_TEST_FREQ_LO
+  LDA SR_PITCH_TABLE_HI,X
+  STA SR_TEST_FREQ_HI
+  LDA #$01
+  STA SR_TEST_FREQ_VALID
+  JMP SR_PITCH_WORD_DONE
+SR_PITCH_WORD_INVALID:
+  LDA #$00
+  STA SR_TEST_FREQ_VALID
+SR_PITCH_WORD_DONE:
+  PLA
+  TAX
+  PLA
+  RTS
+
+
+; PLAY-00.8J: SOURCE TOKEN DECODER, experimental SID synthesis. No recorded SID writes.
+; This pass understands original token classes but does not emulate source effects,
+; original instrument envelopes, full song-level loops, or multi-subtune patterns.
+SJ_INIT_ENGINE:
+  LDA #$00
+  STA SJ_POS0
+  STA SJ_POS1
+  STA SJ_POS2
+  STA SJ_REPEATS
+  STA SJ_REP1
+  STA SJ_REP2
+  STA SJ_EOF
+  STA SJ_INST
+  STA SJ_INST1
+  STA SJ_INST2
+  STA SJ_NOTES_LO
+  STA SJ_NOTES_HI
+  LDA #$06
+  STA SJ_WAIT
+  LDA #$0F
+  STA $D418
+  RTS
+
+; One original source decoder transaction every five PLAY calls (subtune 1 only).
+SJ_MUSIC_TICK:
+  LDA SR_SUBTUNE_A
+  BEQ SJ_TICK_OK
+  RTS
+SJ_TICK_OK:
+  DEC SJ_WAIT
+  BEQ SJ_PROCESS
+  RTS
+SJ_PROCESS:
+  LDA #$05
+  STA SJ_WAIT
+  LDA #$00
+  STA SJ_VOICE
+  JSR SJ_STEP
+  LDA #$01
+  STA SJ_VOICE
+  JSR SJ_STEP
+  LDA #$02
+  STA SJ_VOICE
+  JSR SJ_STEP
+  RTS
+
+; A parser operation corresponds to one executed $1385..$13F4 transaction.
+; Score bytes below are original PSID pattern bytes, NOT SID-register updates.
+SJ_STEP:
+  LDA #$08
+  STA SJ_GUARD
+SJ_SCAN:
+  DEC SJ_GUARD
+  BEQ SJ_STEP_DONE
+  JSR SJ_READ
+  STA SJ_TOKEN
+SJ_CLASSIFY:
+  CMP #$40
+  BCC SJ_INSTRUMENT
+  CMP #$60
+  BCC SJ_EFFECT
+  CMP #$BD
+  BCC SJ_NOTE
+  CMP #$BD
+  BEQ SJ_STEP_DONE
+  CMP #$BE
+  BNE SJ_NOT_SPECIAL
+  JMP SJ_SPECIAL
+SJ_NOT_SPECIAL:
+  CMP #$C0
+  BCC SJ_STEP_DONE
+  JMP SJ_REPEAT
+SJ_STEP_DONE:
+  RTS
+
+SJ_INSTRUMENT:
+  LDX SJ_VOICE
+  LDA SJ_TOKEN
+  STA SJ_INST,X
+  JSR SJ_READ
+  STA SJ_TOKEN
+  JMP SJ_CLASSIFY
+
+; $40..$4F: optional parameter then one inline follow-on command.
+; $50..$5F: optional parameter then end this source transaction.
+SJ_EFFECT:
+  LDA SJ_TOKEN
+  CMP #$50
+  BCS SJ_EFFECT_5X
+  AND #$0F
+  BEQ SJ_EFFECT_INLINE
+  JSR SJ_READ
+SJ_EFFECT_INLINE:
+  JSR SJ_READ
+  STA SJ_TOKEN
+  JMP SJ_CLASSIFY
+SJ_EFFECT_5X:
+  AND #$0F
+  BEQ SJ_STEP_DONE
+  JSR SJ_READ
+  RTS
+
+SJ_NOTE:
+  LDA SJ_TOKEN
+  SEC
+  SBC #$60
+  TAX
+  LDA SR_PITCH_TABLE_LO,X
+  STA SJ_FREQ_LO
+  LDA SR_PITCH_TABLE_HI,X
+  STA SJ_FREQ_HI
+  INC SJ_NOTES_LO
+  BNE SJ_WRITE_NOTE
+  INC SJ_NOTES_HI
+SJ_WRITE_NOTE:
+  LDA SJ_VOICE
+  BEQ SJ_VOICE0
+  CMP #$01
+  BEQ SJ_VOICE1
+  JMP SJ_VOICE2
+SJ_VOICE0:
+  LDA #$40
+  STA $D404
+  LDA SJ_FREQ_LO
+  STA $D400
+  LDA SJ_FREQ_HI
+  STA $D401
+  LDA #$00
+  STA $D402
+  LDA #$08
+  STA $D403
+  LDA #$00
+  STA $D405
+  LDA #$F8
+  STA $D406
+  LDA #$41
+  STA $D404
+  RTS
+SJ_VOICE1:
+  LDA #$40
+  STA $D40B
+  LDA SJ_FREQ_LO
+  STA $D407
+  LDA SJ_FREQ_HI
+  STA $D408
+  LDA #$00
+  STA $D409
+  LDA #$08
+  STA $D40A
+  LDA #$00
+  STA $D40C
+  LDA #$F8
+  STA $D40D
+  LDA #$41
+  STA $D40B
+  RTS
+SJ_VOICE2:
+  LDA #$40
+  STA $D412
+  LDA SJ_FREQ_LO
+  STA $D40E
+  LDA SJ_FREQ_HI
+  STA $D40F
+  LDA #$00
+  STA $D410
+  LDA #$08
+  STA $D411
+  LDA #$00
+  STA $D413
+  LDA #$F8
+  STA $D414
+  LDA #$41
+  STA $D412
+  RTS
+
+; Source $BD is a hold/continuation; $BE sets an original mask.
+; Diagnostic policy approximates $BE as gate-off (not source-equivalent).
+SJ_SPECIAL:
+  LDA SJ_VOICE
+  BEQ SJ_MUTE0
+  CMP #$01
+  BEQ SJ_MUTE1
+  LDA #$40
+  STA $D412
+  RTS
+SJ_MUTE0:
+  LDA #$40
+  STA $D404
+  RTS
+SJ_MUTE1:
+  LDA #$40
+  STA $D40B
+  RTS
+
+; Source local repetition: c = ((c || token) + 1) & 255.
+; Keep token position while counter is nonzero.
+SJ_REPEAT:
+  LDX SJ_VOICE
+  LDA SJ_REPEATS,X
+  BNE SJ_REPEAT_ADV
+  LDA SJ_TOKEN
+SJ_REPEAT_ADV:
+  CLC
+  ADC #$01
+  STA SJ_REPEATS,X
+  BNE SJ_REPEAT_ACTIVE
+  RTS
+SJ_REPEAT_ACTIVE:
+  LDA SJ_VOICE
+  BEQ SJ_REWIND0
+  CMP #$01
+  BEQ SJ_REWIND1
+  DEC SJ_POS2
+  RTS
+SJ_REWIND0:
+  DEC SJ_POS0
+  RTS
+SJ_REWIND1:
+  DEC SJ_POS1
+  RTS
+
+; Original three source stream regions: $197F, $19BB, $19E0.
+; Read limits are intentionally finite: unknown follow-on pattern pointers do
+; not get silently invented or replaced with an observed SID-register trace.
+SJ_READ:
+  LDA SJ_VOICE
+  BEQ SJ_READ0
+  CMP #$01
+  BEQ SJ_READ1
+  JMP SJ_READ2
+SJ_READ0:
+  LDX SJ_POS0
+  CPX #$3C
+  BCC SJ_READ0_GO
+  LDA #$01
+  STA SJ_EOF
+  LDA #$40
+  STA $D404
+  LDA #$BD
+  RTS
+SJ_READ0_GO:
+  LDA SJ_STREAM0,X
+  INC SJ_POS0
+  RTS
+SJ_READ1:
+  LDX SJ_POS1
+  CPX #$25
+  BCC SJ_READ1_GO
+  LDA #$01
+  STA SJ_EOF
+  LDA #$40
+  STA $D40B
+  LDA #$BD
+  RTS
+SJ_READ1_GO:
+  LDA SJ_STREAM1,X
+  INC SJ_POS1
+  RTS
+SJ_READ2:
+  LDX SJ_POS2
+  CPX #$5E
+  BCC SJ_READ2_GO
+  LDA #$01
+  STA SJ_EOF
+  LDA #$40
+  STA $D412
+  LDA #$BD
+  RTS
+SJ_READ2_GO:
+  LDA SJ_STREAM2,X
+  INC SJ_POS2
+  RTS
+
+SJ_WAIT: DB $00
+SJ_VOICE: DB $00
+SJ_GUARD: DB $00
+SJ_TOKEN: DB $00
+SJ_FREQ_LO: DB $00
+SJ_FREQ_HI: DB $00
+SJ_EOF: DB $00
+SJ_POS0: DB $00
+SJ_POS1: DB $00
+SJ_POS2: DB $00
+SJ_INST:
+SJ_INST0: DB $00
+SJ_INST1: DB $00
+SJ_INST2: DB $00
+SJ_REPEATS:
+SJ_REP0: DB $00
+SJ_REP1: DB $00
+SJ_REP2: DB $00
+SJ_NOTES_LO: DB $00
+SJ_NOTES_HI: DB $00
+
+SJ_STREAM0:
+  DB $04,$49,$03,$75,$50,$75,$4C,$FF,$BE,$40,$81,$BD,$75,$5C,$4F,$40
+  DB $79,$BD,$4C,$30,$BE,$5C,$FF,$40,$7C,$BD,$7E,$5C,$6F,$40,$7F,$BD
+  DB $4C,$30,$BE,$40,$7F,$7E,$5C,$FF,$02,$40,$7F,$BD,$81,$04,$7C,$5C
+  DB $FF,$40,$79,$02,$75,$5C,$10,$5C,$40,$52,$05,$00
+SJ_STREAM1:
+  DB $0B,$4F,$04,$81,$50,$81,$BE,$8D,$BD,$81,$BD,$85,$BD,$BE,$BD,$88
+  DB $BD,$8A,$BD,$8B,$BD,$BE,$8B,$8A,$BD,$8B,$BD,$8D,$88,$BD,$85,$81
+  DB $BD,$52,$05,$BD,$00
+SJ_STREAM2:
+  DB $05,$4F,$89,$78,$40,$78,$0C,$78,$09,$59,$0A,$00,$50,$51,$05,$52
+  DB $05,$07,$40,$9E,$BD,$51,$05,$52,$05,$51,$05,$52,$05,$51,$05,$52
+  DB $05,$40,$9E,$BD,$A0,$BD,$9E,$BD,$9C,$BD,$9C,$9B,$99,$BD,$9B,$BD
+  DB $99,$BD,$51,$05,$52,$05,$51,$05,$52,$05,$40,$97,$BD,$51,$05,$52
+  DB $05,$51,$05,$52,$05,$51,$05,$52,$05,$51,$05,$52,$05,$08,$40,$9E
+  DB $9E,$A8,$9E,$A7,$BD,$A5,$A7,$9E,$BD,$A8,$BD,$A7,$FD,$00
+SR_STATE:
+SR_INPUT_A:
+  DB $00
+SR_SUBTUNE_A:
+  DB $00
+SR_SETUP_INDEX:
+  DB $00
+SR_FIRST_PENDING:
+  DB $00
+SR_RUNNING:
+  DB $00
+SR_ERROR:
+  DB $00
+SR_FRAME_LO:
+  DB $00
+SR_FRAME_HI:
+  DB $00
+SR_FIRST_COUNT:
+  DB $00
+SR_REGULAR_LO:
+  DB $00
+SR_REGULAR_HI:
+  DB $00
+SR_PATH:
+  DB $00
+
+; Source $14AC..$14D5 clearing, absolute target RAM state.
+SR_CLEAR_AREA:
+  DB $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+; PAY version of source operand state at $11B0 and $1162.
+SR_DYNAMIC_11B0:
+  DB $00
+SR_DYNAMIC_1162:
+  DB $00
+; Source pitch-code conversion test inputs/outputs.
+SR_TEST_TOKEN:
+  DB $00
+SR_TEST_PITCH_INDEX:
+  DB $00
+SR_TEST_PITCH_VALID:
+  DB $00
+; Original $14D6+[0,7,14] voice records; translated as 3 * 7 bytes.
+SR_VOICE_RECORDS:
+SR_V0_ORD:
+  DB $00
+SR_V0_1:
+  DB $00
+SR_V0_2:
+  DB $00
+SR_V0_3:
+  DB $00
+SR_V0_4:
+  DB $00
+SR_V0_5:
+  DB $00
+SR_V0_6:
+  DB $00
+SR_V1_ORD:
+  DB $00
+SR_V1_1:
+  DB $00
+SR_V1_2:
+  DB $00
+SR_V1_3:
+  DB $00
+SR_V1_4:
+  DB $00
+SR_V1_5:
+  DB $00
+SR_V1_6:
+  DB $00
+SR_V2_ORD:
+  DB $00
+SR_V2_1:
+  DB $00
+SR_V2_2:
+  DB $00
+SR_V2_3:
+  DB $00
+SR_V2_4:
+  DB $00
+SR_V2_5:
+  DB $00
+SR_V2_6:
+  DB $00
+
+
+; Verified original SID note-frequency data: low/high bytes, index 0..92.
+SR_PITCH_TABLE_LO:
+  DB $17,$27,$39,$4B,$5F,$74,$8A,$A1,$BA,$D4,$F0,$0E,$2D,$4E,$71,$96
+  DB $BE,$E8,$14,$43,$74,$A9,$E1,$1C,$5A,$9C,$E2,$2D,$7C,$CF,$28,$85
+  DB $E8,$52,$C1,$37,$B4,$39,$C5,$5A,$F7,$9E,$4F,$0A,$D1,$A3,$82,$6E
+  DB $68,$71,$8A,$B3,$EE,$3C,$9E,$15,$A2,$46,$04,$DC,$D0,$E2,$14,$67
+  DB $DD,$79,$3C,$29,$44,$8D,$08,$B8,$A1,$C5,$28,$CD,$BA,$F1,$78,$53
+  DB $87,$1A,$10,$71,$42,$89,$4F,$9B,$74,$E2,$F0,$A6,$0E
+SR_PITCH_TABLE_HI:
+  DB $01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$02,$02,$02,$02,$02
+  DB $02,$02,$03,$03,$03,$03,$03,$04,$04,$04,$04,$05,$05,$05,$06,$06
+  DB $06,$07,$07,$08,$08,$09,$09,$0A,$0A,$0B,$0C,$0D,$0D,$0E,$0F,$10
+  DB $11,$12,$13,$14,$15,$17,$18,$1A,$1B,$1D,$1F,$20,$22,$24,$27,$29
+  DB $2B,$2E,$31,$34,$37,$3A,$3E,$41,$45,$49,$4E,$52,$57,$5C,$62,$68
+  DB $6E,$75,$7C,$83,$8B,$93,$9C,$A5,$AF,$B9,$C4,$D0,$DD
+SR_TEST_FREQ_LO:
+  DB $00
+SR_TEST_FREQ_HI:
+  DB $00
+SR_TEST_FREQ_VALID:
+  DB $00
+
+; END — first-PLAY state only; no source player transplanted or register-event score.

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>PLAY Interpreter 00.8I.3 — SIDchipJS clipboard listening</title>
+<title>PLAY Interpreter 00.8J — First audible source-token reconstruction</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1120;--card:#141f34;--card2:#101b30;--line:#2d405e;--txt:#edf3fc;--muted:#aabbd0;--blue:#78baff;--green:#66e0b2;--danger:#ffa5a5}
 *{box-sizing:border-box}
@@ -112,7 +112,7 @@ main{max-width:1160px}.layout{grid-template-columns:minmax(0,1fr)}
 <body>
 <main>
 <header>
-<span class="tag">RETROAPPLEJS · PLAY-00.8I.3 · SIDchipJS clipboard handoff</span>
+<span class="tag">RETROAPPLEJS · PLAY-00.8J.2 · Robust quality reports</span>
 <h1>PLAY Interpreter</h1>
 <p class="subtitle">Load a PSID or saved Complete Report, interpret source intent, export one compiler contract, and compare the source against regenerated SID behaviour. The Compiler remains deterministic. <strong>Musical playback equivalence is not yet established.</strong></p>
 </header>
@@ -156,16 +156,16 @@ main{max-width:1160px}.layout{grid-template-columns:minmax(0,1fr)}
     <span class="guide-badge">PATH A · SID ROUND TRIP</span>
     <h2>Regenerate PSID for verification</h2>
     <p class="g-desc">Deterministically compile the supported semantic slice back to SID, then run original ↔ generated execution comparison.</p>
-    <div class="guide-actions"><button id="guideCompileSID" type="button" class="primary" disabled>Compile SID reference</button><button id="guideRunDiff" type="button" disabled>Run deterministic comparison</button></div>
+    <div class="guide-actions"><button id="guideCompileSID" type="button" class="primary" disabled>Compile first audible PSID</button><button id="guideRunDiff" type="button" disabled>Run deterministic comparison</button></div>
     <div class="guide-output-links"><button type="button" id="guideSaveSID" disabled>Download .sid</button><button type="button" id="guideSaveASM" disabled>Download .S</button></div>
-    <p class="guide-subtle">Current 00.8I compiler emits a <strong>silent diagnostic reference</strong> (first-PLAY + pitch lookup), not reconstructed musical playback.</p>
+    <p class="guide-subtle">00.8J emits an <strong>audible experimental source-token passage for subtune 1</strong>. The instrument, effect and gate synthesis are approximations, not a SID-equivalent reconstruction.</p>
     <div id="guideSIDStatus" class="guide-status" role="status">Validate a supported contract to enable compilation.</div>
    </div>
    <div class="guide-arrow" aria-hidden="true"></div>
    <div class="guide-card">
     <span class="guide-badge">STEP 4A · LISTEN / ASSESS</span>
     <h2>Source vs regenerated SID</h2>
-    <p class="g-desc">Listen in <strong>SIDchipJS</strong>: copy the original or generated PSID as Base64 and open the SID player. In the player, choose <strong>Paste Base64 from clipboard</strong>. The current generated SID reference is a silent diagnostic.</p>
+    <p class="g-desc">Listen in <strong>SIDchipJS</strong>: copy the original or generated PSID as Base64 and open the SID player. In the player, choose <strong>Paste Base64 from clipboard</strong>. The 00.8J generated SID plays an experimental source-token passage, not the complete original score.</p>
     <div class="guide-actions" aria-label="Send PSID to SIDchipJS player">
       <button type="button" id="guideListenOriginalSID" disabled>Listen to original in SIDchipJS</button>
       <button type="button" id="guideListenGeneratedSID" disabled>Listen to compiled in SIDchipJS</button>
@@ -180,8 +180,8 @@ main{max-width:1160px}.layout{grid-template-columns:minmax(0,1fr)}
     </div>
     </details>
     <label for="guideSIDNotes">Listening observations (optional)</label><textarea id="guideSIDNotes" class="guide-quality-notes" placeholder="What did you hear? Audio is not sent to GPT."></textarea>
-    <div class="guide-actions"><button id="guideSIDQuality" type="button" disabled>Generate GPT quality assessment</button><button id="guideSIDQualitySave" type="button" disabled>Save quality report</button></div>
-    <div id="guideSIDQualityStatus" class="guide-status" role="status">Generate a deterministic comparison before requesting a technical quality assessment.</div>
+    <div class="guide-actions"><button id="guideSIDQuality" type="button" disabled>Generate / enrich quality report</button><button id="guideSIDQualitySave" type="button" disabled>Save quality report</button></div>
+    <div id="guideSIDQualityStatus" class="guide-status" role="status">A local report can be saved even without an API key. GPT enhancement is optional and may incur API charges.</div>
     <details class="guide-help"><summary>Quality report details</summary><textarea id="guideSIDQualityText" class="guide-quality-output" readonly></textarea></details>
    </div>
   </div>
@@ -204,8 +204,8 @@ main{max-width:1160px}.layout{grid-template-columns:minmax(0,1fr)}
      <div><label for="guidePLAYGeneratedAudio">PLAY / Mockingboard capture</label><input id="guidePLAYGeneratedAudio" type="file" accept="audio/*,.wav,.mp3,.ogg"><audio id="guidePLAYGeneratedPlayer" controls preload="metadata"></audio></div>
     </div>
     <label for="guidePLAYNotes">Listening observations (optional)</label><textarea id="guidePLAYNotes" class="guide-quality-notes" placeholder="Describe the most audible differences."></textarea>
-    <div class="guide-actions"><button id="guidePLAYQuality" type="button" disabled>Generate GPT quality assessment</button><button id="guidePLAYQualitySave" type="button" disabled>Save quality report</button></div>
-    <div id="guidePLAYQualityStatus" class="guide-status" role="status">Both audio captures are required; no compiled PLAY track is available in this milestone.</div>
+    <div class="guide-actions"><button id="guidePLAYQuality" type="button" disabled>Generate / enrich quality report</button><button id="guidePLAYQualitySave" type="button" disabled>Save quality report</button></div>
+    <div id="guidePLAYQualityStatus" class="guide-status" role="status">Both audio captures are required. Local assessment works without an API key; GPT enrichment is optional.</div>
     <details class="guide-help"><summary>Quality report details</summary><textarea id="guidePLAYQualityText" class="guide-quality-output" readonly></textarea></details>
    </div>
   </div>
@@ -2030,6 +2030,8 @@ function buildCompilerContract(){
  parseAndValidate();
  const projection=typedProjection(bundle,candidate);
  const contract={format:'PAY_Semantic_Contract_v0.8F2',compilerModule:projection,source:bundle.source,mechanismId:candidate.mechanismId,intents:candidate.targetPlan.operations.map(x=>({operation:x.op,inputs:x.inputs,outputs:x.outputs,evidenceIds:x.evidenceIds,status:['UNRESOLVED','NEXT_STEP'].includes(x.op)?'unresolved':'candidate'})),candidate,evidence:bundle,validation:{structure:'passed',semanticReview:'needs_human_validation',compilerApproval:false,compilerModuleStatus:projection?'supported_partial_fixture':'not_implemented',evidenceReconciliation:lastReconciliation},targetPolicy:{noZeroPage:true,noSelfModifiedCode:true},limitations:['Evidence/source-intent validation is incomplete. Compiler may only generate explicitly marked research fixtures for supported source mechanisms.','NEXT_STEP intentions remain deferred and are not generated as executable music.','Capture limitations are metadata, not source proof.']};if(projection){try{contract.semanticExtension=PAYFirstPlay08G.buildExtension(contract);contract.pitchExtension=PAYPitch08I.buildExtension(contract,originalSIDForPitch());setStatus('PLAY-00.8I contract: first-PLAY and source-verified 93-word SID pitch lookup included (diagnostic only).',true)}catch(extError){setStatus('Foundation exported, but 00.8I pitch extension is unavailable: '+extError.message);}}
+ if(contract.pitchExtension){try{contract.musicExtension=PLAYMusic08J.buildExtension(contract,originalSIDForPitch());}
+  catch(error){contract.limitations.push('00.8J audio extension unavailable: '+error.message);}}
  return contract;
 }
 el('semSaveContract').addEventListener('click',()=>{try{
@@ -2210,6 +2212,7 @@ const OPCODE={
 'JMP.abs':0x4C,'JSR.abs':0x20,'RTS.imp':0x60,
 'PHA.imp':0x48,'PLA.imp':0x68,'TXA.imp':0x8A,'TAX.imp':0xAA,'TYA.imp':0x98,'TAY.imp':0xA8,
 'CLC.imp':0x18,'SEC.imp':0x38,'INX.imp':0xE8,'DEX.imp':0xCA,
+'LDX.abs':0xAE,'DEC.abs':0xCE,'CPX.imm':0xE0,'AND.imm':0x29,
 'ADC.imm':0x69,'ADC.abs':0x6D,'CMP.imm':0xC9,'SBC.imm':0xE9,
 'LDA.imm':0xA9,'LDA.abs':0xAD,'LDA.abx':0xBD,'LDX.imm':0xA2,'LDY.imm':0xA0,
 'STA.abs':0x8D,'STA.abx':0x9D,'STX.abs':0x8E,
@@ -2260,15 +2263,16 @@ function assemble(source){
 function psidBytes(asm,settings={}){
  if(asm.load!==0x1000)throw Error('This SID-reference packager expects ORG $1000');
  if(asm.symbols.SID_REF_INIT!==0x1000||asm.symbols.SID_REF_PLAY!==0x1003)throw Error('SID entry addresses differ');
- const output=new Uint8Array(0x7C+asm.bytes.length),dv=new DataView(output.buffer);
+ const output=new Uint8Array(0x7C+2+asm.bytes.length),dv=new DataView(output.buffer);
  ['P','S','I','D'].forEach((x,i)=>output[i]=x.charCodeAt(0));
  dv.setUint16(4,2,false);dv.setUint16(6,0x7C,false);
- dv.setUint16(8,0x1000,false);dv.setUint16(10,0x1000,false);dv.setUint16(12,0x1003,false);
+ dv.setUint16(8,0x0000,false);dv.setUint16(10,0x1000,false);dv.setUint16(12,0x1003,false);
  dv.setUint16(14,3,false);dv.setUint16(16,1,false);dv.setUint32(18,0,false);
  const str=(off,value)=>{const t=String(value).slice(0,31);for(let i=0;i<t.length;i++)output[off+i]=t.charCodeAt(i)&127;};
  str(0x16,settings.title||'PAY 08G first PLAY reference');str(0x36,settings.author||'PAY deterministic compiler');str(0x56,settings.release||'2026 research, silent fixture');
  dv.setUint16(0x76,0x04,false); // PAL clock. Timing supplied by test harness, not verified C64 IRQ.
- output.set(asm.bytes,0x7C);return output;
+ output[0x7C]=0x00;output[0x7D]=0x10; // little-endian C64 load address ($1000)
+ output.set(asm.bytes,0x7E);return output;
 }
 return {assemble,psidBytes};
 });
@@ -2688,6 +2692,359 @@ window.PAYDifferentialUITest={getResult:()=>last,run};
 })();
 </script>
 <script>
+/* PLAY-00.8J: deterministic experimental first-audible token decoder.
+ * Source-backed stream bytes are verified against the known PSID SHA-256.
+ * Instrument/gate synthesis is an explicitly INEXACT test policy, not
+ * an inferred original SID writer or a captured SID register score.
+ * No GPT call, zero-page allocation, or self-modifying instructions. */
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;root.PLAYMusic08J=api;})(typeof globalThis==='object'?globalThis:this,function(){
+'use strict';
+const SOURCE_SHA='65c3874b9f529c9adac45852f6e216eef2307a325051471d8b58290c38f71a68';
+const STREAMS=[[4,73,3,117,80,117,76,255,190,64,129,189,117,92,79,64,121,189,76,48,190,92,255,64,124,189,126,92,111,64,127,189,76,48,190,64,127,126,92,255,2,64,127,189,129,4,124,92,255,64,121,2,117,92,16,92,64,82,5,0],[11,79,4,129,80,129,190,141,189,129,189,133,189,190,189,136,189,138,189,139,189,190,139,138,189,139,189,141,136,189,133,129,189,82,5,189,0],[5,79,137,120,64,120,12,120,9,89,10,0,80,81,5,82,5,7,64,158,189,81,5,82,5,81,5,82,5,81,5,82,5,64,158,189,160,189,158,189,156,189,156,155,153,189,155,189,153,189,81,5,82,5,81,5,82,5,64,151,189,81,5,82,5,81,5,82,5,81,5,82,5,81,5,82,5,8,64,158,158,168,158,167,189,165,167,158,189,168,189,167,253,0]];
+const SOURCE_RANGES=[[6527,6587],[6587,6624],[6624,6718]];
+const POLICY={kind:'SID_AUDIBLE_DIAGNOSTIC_V1',tickPeriodFrames:5,firstReadFrame:5,voices:3,sidWaveformGate:0x41,attackDecay:0x00,sustainRelease:0xF8,pulseWidth:0x0800,volume:0x0f,releaseAtSourceBoundary:true,originalInstrumentSemanticsProven:false};
+function need(x,m){if(!x)throw Error('PLAY-00.8J: '+m)}
+function bytesFromSource(src){
+ const source=src instanceof Uint8Array?src:new Uint8Array(src);
+ need(source.length>=0x7c+0x1a3e-0x1000,'Source PSID too short');
+ need(String.fromCharCode(...source.subarray(0,4))==='PSID','Source must be PSID');
+ const headerLoad=source[0x08]*256+source[0x09];
+ const load=headerLoad || (source[0x7c] | (source[0x7d]<<8));
+ const dataStart=headerLoad ? 0x7c : 0x7e;
+ need(load===0x1000,'Unexpected source PSID load address');
+ return SOURCE_RANGES.map(x=>Array.from(source.slice(dataStart+x[0]-load,dataStart+x[1]-load)));
+}
+function buildExtension(contract,source){
+ need(contract?.source?.sha256PSID===SOURCE_SHA,'Source identity mismatch');
+ need(contract.pitchExtension?.format==='PAY_SID_Pitch_Word_v0.8I','Pitch extension missing');
+ const buffers=bytesFromSource(source);
+ buffers.forEach((x,i)=>need(JSON.stringify(x)===JSON.stringify(STREAMS[i]),'Original musical stream mismatch at '+SOURCE_RANGES[i][0].toString(16)));
+ return {format:'PLAY_First_Audible_v0.8J',sourceSHA256:SOURCE_SHA,semanticStatus:'experimental_approximation_not_equivalent',subtuneIndex:0,streamDefinition:'source_bytes_not_sid_writes',streams:buffers.map((data,i)=>({voice:i,sourceStart:SOURCE_RANGES[i][0],sourceEndExclusive:SOURCE_RANGES[i][1],bytes:data})),tokenGrammar:{instrument:[0,0x3f],effect:[0x40,0x5f],note:[0x60,0xbc],hold:0xbd,specialMask:0xbe,repeat:[0xc0,0xff]},synthesisPolicy:{...POLICY},limitations:['Only subtune 1; no verified pattern switching at stream boundaries','5-frame source cadence observed, but detailed duration/cycle scheduling is incomplete','No source-faithful instrument or effect implementation','Gate, envelope, pulse and source-boundary release are deliberately audible approximations','SID register event equivalence not claimed']};
+}
+function validateExtension(c){
+ need(c?.source?.sha256PSID===SOURCE_SHA,'Unexpected PSID identity');
+ const x=c.musicExtension;
+ need(x?.format==='PLAY_First_Audible_v0.8J'&&x.sourceSHA256===SOURCE_SHA,'Missing 00.8J typed music extension');
+ need(x.semanticStatus==='experimental_approximation_not_equivalent'&&x.subtuneIndex===0,'Unapproved fidelity/scope claim');
+ need(x.streamDefinition==='source_bytes_not_sid_writes','Unrecognised stream representation');
+ need(JSON.stringify(x.tokenGrammar)===JSON.stringify({instrument:[0,0x3f],effect:[0x40,0x5f],note:[0x60,0xbc],hold:0xbd,specialMask:0xbe,repeat:[0xc0,0xff]}),'Unsupported source token grammar');
+ need(x.streams?.length===3,'Expected three source streams');
+ x.streams.forEach((s,i)=>need(s.voice===i&&s.sourceStart===SOURCE_RANGES[i][0]&&s.sourceEndExclusive===SOURCE_RANGES[i][1]&&JSON.stringify(s.bytes)===JSON.stringify(STREAMS[i]),'Tampered or unknown source stream '+i));
+ need(JSON.stringify(x.synthesisPolicy)===JSON.stringify(POLICY),'Unreviewed SID approximations');
+ return x;
+}
+function asmStream(name,bytes){const out=[name+':'];for(let i=0;i<bytes.length;i+=16)out.push('  DB '+bytes.slice(i,i+16).map(x=>'$'+x.toString(16).toUpperCase().padStart(2,'0')).join(','));return out.join('\n');}
+function emitSource(base,x){
+ need(base.includes('SR_TICK_ADVANCE:')&&base.includes('SR_STATE:')&&base.includes('SR_PITCH_TABLE_LO:'),'Unexpected 00.8I assembly layout');
+ need(base.includes('  STA SR_V2_5\n  RTS'),'First-play setup layout changed');
+ let source=base.replace('SR_TICK_ADVANCE:\n','SR_TICK_ADVANCE:\n  JSR SJ_MUSIC_TICK\n');
+ source=source.replace('  STA SR_V2_5\n  RTS','  STA SR_V2_5\n  JSR SJ_INIT_ENGINE\n  RTS');
+ const core=`
+; PLAY-00.8J: SOURCE TOKEN DECODER, experimental SID synthesis. No recorded SID writes.
+; This pass understands original token classes but does not emulate source effects,
+; original instrument envelopes, full song-level loops, or multi-subtune patterns.
+SJ_INIT_ENGINE:
+  LDA #$00
+  STA SJ_POS0
+  STA SJ_POS1
+  STA SJ_POS2
+  STA SJ_REPEATS
+  STA SJ_REP1
+  STA SJ_REP2
+  STA SJ_EOF
+  STA SJ_INST
+  STA SJ_INST1
+  STA SJ_INST2
+  STA SJ_NOTES_LO
+  STA SJ_NOTES_HI
+  LDA #$06
+  STA SJ_WAIT
+  LDA #$0F
+  STA $D418
+  RTS
+
+; One original source decoder transaction every five PLAY calls (subtune 1 only).
+SJ_MUSIC_TICK:
+  LDA SR_SUBTUNE_A
+  BEQ SJ_TICK_OK
+  RTS
+SJ_TICK_OK:
+  DEC SJ_WAIT
+  BEQ SJ_PROCESS
+  RTS
+SJ_PROCESS:
+  LDA #$05
+  STA SJ_WAIT
+  LDA #$00
+  STA SJ_VOICE
+  JSR SJ_STEP
+  LDA #$01
+  STA SJ_VOICE
+  JSR SJ_STEP
+  LDA #$02
+  STA SJ_VOICE
+  JSR SJ_STEP
+  RTS
+
+; A parser operation corresponds to one executed $1385..$13F4 transaction.
+; Score bytes below are original PSID pattern bytes, NOT SID-register updates.
+SJ_STEP:
+  LDA #$08
+  STA SJ_GUARD
+SJ_SCAN:
+  DEC SJ_GUARD
+  BEQ SJ_STEP_DONE
+  JSR SJ_READ
+  STA SJ_TOKEN
+SJ_CLASSIFY:
+  CMP #$40
+  BCC SJ_INSTRUMENT
+  CMP #$60
+  BCC SJ_EFFECT
+  CMP #$BD
+  BCC SJ_NOTE
+  CMP #$BD
+  BEQ SJ_STEP_DONE
+  CMP #$BE
+  BNE SJ_NOT_SPECIAL
+  JMP SJ_SPECIAL
+SJ_NOT_SPECIAL:
+  CMP #$C0
+  BCC SJ_STEP_DONE
+  JMP SJ_REPEAT
+SJ_STEP_DONE:
+  RTS
+
+SJ_INSTRUMENT:
+  LDX SJ_VOICE
+  LDA SJ_TOKEN
+  STA SJ_INST,X
+  JSR SJ_READ
+  STA SJ_TOKEN
+  JMP SJ_CLASSIFY
+
+; $40..$4F: optional parameter then one inline follow-on command.
+; $50..$5F: optional parameter then end this source transaction.
+SJ_EFFECT:
+  LDA SJ_TOKEN
+  CMP #$50
+  BCS SJ_EFFECT_5X
+  AND #$0F
+  BEQ SJ_EFFECT_INLINE
+  JSR SJ_READ
+SJ_EFFECT_INLINE:
+  JSR SJ_READ
+  STA SJ_TOKEN
+  JMP SJ_CLASSIFY
+SJ_EFFECT_5X:
+  AND #$0F
+  BEQ SJ_STEP_DONE
+  JSR SJ_READ
+  RTS
+
+SJ_NOTE:
+  LDA SJ_TOKEN
+  SEC
+  SBC #$60
+  TAX
+  LDA SR_PITCH_TABLE_LO,X
+  STA SJ_FREQ_LO
+  LDA SR_PITCH_TABLE_HI,X
+  STA SJ_FREQ_HI
+  INC SJ_NOTES_LO
+  BNE SJ_WRITE_NOTE
+  INC SJ_NOTES_HI
+SJ_WRITE_NOTE:
+  LDA SJ_VOICE
+  BEQ SJ_VOICE0
+  CMP #$01
+  BEQ SJ_VOICE1
+  JMP SJ_VOICE2
+SJ_VOICE0:
+  LDA #$40
+  STA $D404
+  LDA SJ_FREQ_LO
+  STA $D400
+  LDA SJ_FREQ_HI
+  STA $D401
+  LDA #$00
+  STA $D402
+  LDA #$08
+  STA $D403
+  LDA #$00
+  STA $D405
+  LDA #$F8
+  STA $D406
+  LDA #$41
+  STA $D404
+  RTS
+SJ_VOICE1:
+  LDA #$40
+  STA $D40B
+  LDA SJ_FREQ_LO
+  STA $D407
+  LDA SJ_FREQ_HI
+  STA $D408
+  LDA #$00
+  STA $D409
+  LDA #$08
+  STA $D40A
+  LDA #$00
+  STA $D40C
+  LDA #$F8
+  STA $D40D
+  LDA #$41
+  STA $D40B
+  RTS
+SJ_VOICE2:
+  LDA #$40
+  STA $D412
+  LDA SJ_FREQ_LO
+  STA $D40E
+  LDA SJ_FREQ_HI
+  STA $D40F
+  LDA #$00
+  STA $D410
+  LDA #$08
+  STA $D411
+  LDA #$00
+  STA $D413
+  LDA #$F8
+  STA $D414
+  LDA #$41
+  STA $D412
+  RTS
+
+; Source $BD is a hold/continuation; $BE sets an original mask.
+; Diagnostic policy approximates $BE as gate-off (not source-equivalent).
+SJ_SPECIAL:
+  LDA SJ_VOICE
+  BEQ SJ_MUTE0
+  CMP #$01
+  BEQ SJ_MUTE1
+  LDA #$40
+  STA $D412
+  RTS
+SJ_MUTE0:
+  LDA #$40
+  STA $D404
+  RTS
+SJ_MUTE1:
+  LDA #$40
+  STA $D40B
+  RTS
+
+; Source local repetition: c = ((c || token) + 1) & 255.
+; Keep token position while counter is nonzero.
+SJ_REPEAT:
+  LDX SJ_VOICE
+  LDA SJ_REPEATS,X
+  BNE SJ_REPEAT_ADV
+  LDA SJ_TOKEN
+SJ_REPEAT_ADV:
+  CLC
+  ADC #$01
+  STA SJ_REPEATS,X
+  BNE SJ_REPEAT_ACTIVE
+  RTS
+SJ_REPEAT_ACTIVE:
+  LDA SJ_VOICE
+  BEQ SJ_REWIND0
+  CMP #$01
+  BEQ SJ_REWIND1
+  DEC SJ_POS2
+  RTS
+SJ_REWIND0:
+  DEC SJ_POS0
+  RTS
+SJ_REWIND1:
+  DEC SJ_POS1
+  RTS
+
+; Original three source stream regions: $197F, $19BB, $19E0.
+; Read limits are intentionally finite: unknown follow-on pattern pointers do
+; not get silently invented or replaced with an observed SID-register trace.
+SJ_READ:
+  LDA SJ_VOICE
+  BEQ SJ_READ0
+  CMP #$01
+  BEQ SJ_READ1
+  JMP SJ_READ2
+SJ_READ0:
+  LDX SJ_POS0
+  CPX #$3C
+  BCC SJ_READ0_GO
+  LDA #$01
+  STA SJ_EOF
+  LDA #$40
+  STA $D404
+  LDA #$BD
+  RTS
+SJ_READ0_GO:
+  LDA SJ_STREAM0,X
+  INC SJ_POS0
+  RTS
+SJ_READ1:
+  LDX SJ_POS1
+  CPX #$25
+  BCC SJ_READ1_GO
+  LDA #$01
+  STA SJ_EOF
+  LDA #$40
+  STA $D40B
+  LDA #$BD
+  RTS
+SJ_READ1_GO:
+  LDA SJ_STREAM1,X
+  INC SJ_POS1
+  RTS
+SJ_READ2:
+  LDX SJ_POS2
+  CPX #$5E
+  BCC SJ_READ2_GO
+  LDA #$01
+  STA SJ_EOF
+  LDA #$40
+  STA $D412
+  LDA #$BD
+  RTS
+SJ_READ2_GO:
+  LDA SJ_STREAM2,X
+  INC SJ_POS2
+  RTS
+
+SJ_WAIT: DB $00
+SJ_VOICE: DB $00
+SJ_GUARD: DB $00
+SJ_TOKEN: DB $00
+SJ_FREQ_LO: DB $00
+SJ_FREQ_HI: DB $00
+SJ_EOF: DB $00
+SJ_POS0: DB $00
+SJ_POS1: DB $00
+SJ_POS2: DB $00
+SJ_INST:\nSJ_INST0: DB $00\nSJ_INST1: DB $00\nSJ_INST2: DB $00
+SJ_REPEATS:\nSJ_REP0: DB $00\nSJ_REP1: DB $00\nSJ_REP2: DB $00
+SJ_NOTES_LO: DB $00
+SJ_NOTES_HI: DB $00
+`;
+ const streams=x.streams.map((s,i)=>asmStream('SJ_STREAM'+i,s.bytes)).join('\n');
+ source=source.replace('SR_STATE:',core+'\n'+streams+'\nSR_STATE:');
+ source=source.replace('; PLAY-00.8I / SID REFERENCE BACKEND — SEMANTIC CONTROL FIXTURE ONLY','; PLAY-00.8J / First audible source-token reconstruction: EXPERIMENTAL')
+ .replace('; FIRST PLAY STATE + one $D415=0 global-init write. No notes, gates, effects, song loops or SID voice writer.','; Source stream parser + source pitch tables + provisional SID instrument policy; NOT sound-equivalent.');
+ return source;
+}
+function compileContract(contract){
+ // Existing 00.8I is the authoritative deterministic foundation.
+ need(typeof PAYSID08I!=='undefined'&&typeof PAYSID08I.compileContract==='function','00.8I compiler not loaded');
+ const f=PAYSID08I.compileContract(contract);const x=validateExtension(contract);
+ return {assembly:emitSource(f.assembly,x),semanticIR:f.semanticIR,music:x,diagnostics:{status:'AUDIBLE_EXPERIMENTAL_PARTIAL',audible:true,musicalEquivalence:false,sourceTokenDecoder:true,covered:['source instrument/configuration selection tokens','source inline effect-argument grammar','source 93-word pitch table','three source stream segments','5-frame observed decoder cadence','source local token repeats'],notYetImplemented:['source-faithful effect execution','original SID waveform/gate control','ADSR and pitch slides','source pattern advancement and all subtunes','cycle-accurate SID comparison']}};
+}
+return {SOURCE_SHA,SOURCE_RANGES,STREAMS,POLICY,bytesFromSource,buildExtension,validateExtension,emitSource,compileContract};
+});
+
+</script>
+<script>
 /* PLAY-00.8I.2: guided UI only. The Interpreter remains source-of-truth for
  * tracing, evidence validation and semantic contract construction. The
  * existing deterministic SID backend remains source-of-truth for codegen.
@@ -2728,9 +3085,9 @@ window.PAYDifferentialUITest={getResult:()=>last,run};
   $('guideSaveASM').disabled=!compiled;
   $('guideListenOriginalSID').disabled=!currentSourceBytes()?.length;
   $('guideListenGeneratedSID').disabled=!compiled?.sidBytes?.length;
-  $('guideRunDiff').disabled=!compiled||$('diffRun').disabled;
-  $('guideSIDQuality').disabled=!key||(!window.PAYDifferentialUITest?.getResult?.()&&!sidAudio);
-  $('guidePLAYQuality').disabled=!key||!playAudio;
+  $('guideRunDiff').disabled=!compiled||compiled.music08J||$('diffRun').disabled;
+  $('guideSIDQuality').disabled=!compiled?.music08J&&!window.PAYDifferentialUITest?.getResult?.()&&!sidAudio;
+  $('guidePLAYQuality').disabled=!playAudio;
   $('guideSIDQualitySave').disabled=!qualityReports.SID;
   $('guidePLAYQualitySave').disabled=!qualityReports.PLAY;
   const name=b?.source?.title||'';
@@ -2742,7 +3099,7 @@ window.PAYDifferentialUITest={getResult:()=>last,run};
     const mechanism=$('semMechanism').value;
     set('guideInterpretStatus',contractReady?`Contract ready · ${mechanism} · structural evidence checks passed; human semantic review still required.`:`Evidence indexed · ${mechanism}. ${raw?'Candidate present: validate it.':'Interpret with GPT or import a saved candidate.'}`,contractReady?'ok':'');
   }else set('guideInterpretStatus','No source evidence loaded.');
-  if(!compiled)set('guideSIDStatus',contractReady?'Contract available. Compile a source-verified diagnostic SID reference.':'Validate a supported contract to enable compilation.');
+  if(!compiled)set('guideSIDStatus',contractReady?'Contract available. Compile the experimental first-audible source-token passage.':'Validate a supported contract to enable compilation.');
   set('guidePLAYStatus',contractReady?'Contract available in PLAY Compiler. Only silent control-level Apple II output is currently implemented.':'The PLAY backend cannot yet reconstruct audible music.');
  }
  const watchId=['semSourceStatus','semValidateStatus','traceState','status','diffStatus','semApiStatus'];
@@ -2773,16 +3130,17 @@ window.PAYDifferentialUITest={getResult:()=>last,run};
  }
  async function compileSID(){
   const btn=$('guideCompileSID');btn.disabled=true;
-  set('guideSIDStatus','Compiling the validated semantic contract with the deterministic 00.8I SID backend…');
+  set('guideSIDStatus','Compiling original stream grammar, source frequency tables and provisional SID instrument policy…');
   try{
    const contract=makeContract();
    if(!contract.compilerModule||!contract.semanticExtension||!contract.pitchExtension)throw Error('This candidate has no source-verified 00.8I SID extension. Only the proven player_entry slice is supported.');
-   const product=PAYSID08I.compileContract(contract);
+   if(!contract.musicExtension)throw Error('00.8J requires verified source score bytes. Import Bomberland source or Complete Report and revalidate.');
+   const product=PLAYMusic08J.compileContract(contract);
    const asm=PAYPSIDPackager08G.assemble(product.assembly);
-   const sidBytes=bytesFromBuffer(PAYPSIDPackager08G.psidBytes(asm));
+   const sidBytes=bytesFromBuffer(PAYPSIDPackager08G.psidBytes(asm,{title:'Bomberland 08J audible test',author:'PLAY semantic compiler',release:'Experimental - partial score'}));
    if(!sidBytes.length||!product.assembly)throw Error('Compiler returned empty output.');
-   compiled={contract,assembly:product.assembly,sidBytes,symbols:asm.symbols};
-   set('guideSIDStatus',`Compiled ${sidBytes.length}-byte PSID. It is a SILENT control/pitch diagnostic—not a complete listening-test tune. The deterministic comparison is now ready.`,'ok');
+   compiled={contract,assembly:product.assembly,sidBytes,symbols:asm.symbols,music08J:true};
+   set('guideSIDStatus',`Compiled ${sidBytes.length}-byte PSID with SIDchipJS-compatible load-address encoding. Source-derived notes and gates are written by the generated CPU. Actual audible playback still requires a listening test; instrument/effect timing remains provisional.`,'ok');
   }catch(e){compiled=null;set('guideSIDStatus',`Compilation blocked: ${e.message}`,'error');}
   finally{ready()}
  }
@@ -2830,8 +3188,8 @@ window.PAYDifferentialUITest={getResult:()=>last,run};
  $('guideListenOriginalSID').addEventListener('click',()=>openInSIDchipJS('original'));
  $('guideListenGeneratedSID').addEventListener('click',()=>openInSIDchipJS('compiled'));
  $('guideCompileSID').addEventListener('click',compileSID);
- $('guideSaveSID').addEventListener('click',()=>{if(compiled)download('PLAY_00_8I2_SID_REFERENCE_DIAGNOSTIC.sid',compiled.sidBytes,'application/octet-stream')});
- $('guideSaveASM').addEventListener('click',()=>{if(compiled)download('PLAY_00_8I2_SID_REFERENCE_DIAGNOSTIC.S',compiled.assembly,'text/plain;charset=utf-8')});
+ $('guideSaveSID').addEventListener('click',()=>{if(compiled)download('Bomberland_PLAY08J_FIRST_AUDIBLE.sid',compiled.sidBytes,'application/octet-stream')});
+ $('guideSaveASM').addEventListener('click',()=>{if(compiled)download('Bomberland_PLAY08J_FIRST_AUDIBLE.S',compiled.assembly,'text/plain;charset=utf-8')});
  $('guideRunDiff').addEventListener('click',async()=>{
   if(!compiled)return;
   // Explicitly use the just-compiled in-memory pair, not stale detailed-panel uploads.
@@ -2882,40 +3240,115 @@ window.PAYDifferentialUITest={getResult:()=>last,run};
  }
  for(const [a,b] of [['guideSIDOriginalAudio','guideSIDOriginalPlayer'],['guideSIDGeneratedAudio','guideSIDGeneratedPlayer'],['guidePLAYOriginalAudio','guidePLAYOriginalPlayer'],['guidePLAYGeneratedAudio','guidePLAYGeneratedPlayer']])$(a).addEventListener('change',()=>updateAudio(a,b));
  function shortDiff(report){if(!report)return null;return {status:report.summary?.status,summary:report.summary,scope:report.scope,firstDivergence:report.firstDivergence||null,sourceSHA256:report.source?.sha256||null,pitchSummary:report.pitchDiagnostic?.summary||null,verifiedOnlyWithinScope:true}}
+ // This report is independent of the API and preserves user observations verbatim.
+ // Source-policy statements come from the typed compiler contract, not from GPT.
+ function localQualityAssessment(payload){
+  const notes=payload.humanListeningObservations.trim();
+  const lines=['PLAY quality assessment — locally generated (no GPT audio listening)',
+   '', 'Scope: '+payload.branch+'; '+payload.reconstructionStatus+'.',
+   'Listening observations (reported by user, not independently measured):',
+   notes || '(none provided)', ''];
+  const policy=payload.compilerPolicy;
+  if(payload.branch==='SID' && policy){
+   lines.push('Compiler-defined sound and timing policy (verified against generated semantic contract):',
+    `- SID volume: ${policy.volume}/15; waveform/control: ${policy.sidWaveformGate}; attack/decay: ${policy.attackDecay}; sustain/release: ${policy.sustainRelease}.`,
+    `- Decoder interval: ${policy.tickPeriodFrames} PLAY calls (global approximation, not the recovered independent per-voice scheduler).`,
+    '- Note timing, instruments and effects are not yet sound-equivalent to Bomberland.',
+    '', 'Plausible causes to investigate (not proven perceptual causes):',
+    '- High master volume and sustain can contribute to very loud output.',
+    '- A shared decoder cadence and different command densities can produce unequal apparent melodic speeds.',
+    '');
+  }
+  if(payload.sourceTokenCounterexample){lines.push('Known source scheduling discrepancy:',
+   `- Frame ${payload.sourceTokenCounterexample.firstDivergenceFrame}, voice ${payload.sourceTokenCounterexample.voice}: regenerated pitch advances before the original.`, '');}
+  if(payload.deterministicDifferential)lines.push('Deterministic comparison (scope-limited):', JSON.stringify(payload.deterministicDifferential.summary||{}), '');
+  if(payload.audioMeasurements)lines.push('Numerical audio comparison (not perceptual judgment):', JSON.stringify(payload.audioMeasurements.comparison||{}), '');
+  else lines.push('No paired audio measurement was provided. Perceived loudness and speed are not independently quantified.', '');
+  lines.push('Recommended next verification:',
+   '1. Capture the original and regenerated audio at the same SID player volume, sample rate and subtune; compare RMS/peak.',
+   '2. Trace and implement source per-voice delay counters before claiming temporal alignment.',
+   '3. Reconstruct instrument table, gate and ADSR processing; lower the experimental output level only as an explicitly declared test policy.',
+   '4. Re-run the deterministic first-divergence check, then repeat the listening test.',
+   '', 'Limit: This is an evidence-based local diagnostic, not an independently performed listening test or GPT opinion.');
+  return lines.join('\n');
+ }
+ function apiVisibleOutput(o){
+  // Responses REST API supplies output content as an array. Some environments
+  // additionally supply output_text as a convenience property.
+  return [typeof o.output_text==='string'?o.output_text:'',
+   ...(Array.isArray(o.output)?o.output:[]).flatMap(item=>
+    (Array.isArray(item.content)?item.content:[])
+     .filter(content=>content?.type==='output_text' && typeof content.text==='string')
+     .map(content=>content.text))].filter(Boolean).join('\n').trim();
+ }
+ function qualityRequestBody(model,payload){
+  // A concise brief avoids spending reasoning tokens re-analyzing giant reports.
+  // For reasoning models, request low effort to leave space for visible output.
+  const body={model,
+   instructions:'Write a short, technical PSID reconstruction quality report (max 350 words). Use headings: Observations, Evidence, Likely Causes, Next Tests, Limits. Clearly mark user listening observations as subjective. Never claim to have listened to audio; audio bytes are not supplied. Distinguish measured facts from hypotheses. Do not claim musical equivalence. Do not output JSON or repeat the input. Cite frame numbers only when the input supplies them.',
+   input:JSON.stringify({format:payload.format,branch:payload.branch,reconstructionStatus:payload.reconstructionStatus,
+    source:payload.source,deterministicDifferential:payload.deterministicDifferential,
+    sourceTokenCounterexample:payload.sourceTokenCounterexample,compilerPolicy:payload.compilerPolicy,
+    audioMeasurements:payload.audioMeasurements,humanListeningObservations:payload.humanListeningObservations,
+    previousQualityFeedback:payload.previousQualityFeedback?.slice(0,1200),limits:payload.limits}),
+   max_output_tokens:6000,store:false};
+  if(/^(gpt-[56](?:[.-]|$)|o[1-9](?:[.-]|$))/i.test(model))body.reasoning={effort:'low'};
+  return body;
+ }
  async function quality(branch){
   const statusId=branch==='SID'?'guideSIDQualityStatus':'guidePLAYQualityStatus',outId=branch==='SID'?'guideSIDQualityText':'guidePLAYQualityText';
   const prefix=branch==='SID'?'guideSID':'guidePLAY';
   const inputA=$(prefix+'OriginalAudio').files?.[0],inputB=$(prefix+'GeneratedAudio').files?.[0];
-  const diff=branch==='SID'?window.PAYDifferentialUITest.getResult():null;
+  const diff=branch==='SID'?window.PAYDifferentialUITest?.getResult?.():null;
   if(branch==='PLAY'&&(!inputA||!inputB)){set(statusId,'Both audio recordings are required for PLAY quality analysis.','error');return}
-  if(branch==='SID'&&!diff&&(!inputA||!inputB)){set(statusId,'Run a differential check or supply both audio recordings first.','error');return}
+  if(branch==='SID'&&!compiled?.music08J&&!diff&&(!inputA||!inputB)){set(statusId,'Compile the SID, run the deterministic comparison or supply paired audio recordings.','error');return}
   const key=$('apiSessionKey').value.trim(),model=$('model').value.trim();
-  if(!key||!model){set(statusId,'Provide an API key and model in Step 1.','error');return}
-  const btn=$(prefix+'Quality');btn.disabled=true;set(statusId,'Measuring local audio (if supplied), then requesting an evidence-limited GPT assessment (billable)…');
+  const btn=$(prefix+'Quality');btn.disabled=true;set(statusId,'Preparing local quality report from the listening observations and available evidence…');
   try{
    const a=await audioMetrics(inputA),b=await audioMetrics(inputB),pair=summarizeAudioPair(a,b);
-   const payload={format:'PLAY_Quality_Input_v0.8I2',branch,
-    reconstructionStatus:branch==='SID'?'partial_source_control_and_pitch_diagnostic':'PLAY_audio_export_unavailable_in_00_8I',
+   const policy=compiled?.music08J?compiled.contract?.musicExtension?.synthesisPolicy:null;
+   const payload={format:'PLAY_Quality_Input_v0.8J2',branch,
+    reconstructionStatus:branch==='SID'?(compiled?.music08J?'first_audible_experimental_source_token_decoder':'partial_source_control_and_pitch_diagnostic'):'PLAY_audio_export_unavailable',
     source:source()?.source?.title||'Unknown source',
     semanticMechanism:source()?$('semMechanism').value:null,
-    deterministicDifferential:shortDiff(diff),audioMeasurements:pair,
-    humanListeningObservations:$(prefix+'Notes').value.slice(0,5000),
-    previousQualityFeedback:priorQuality.slice(0,5000),
-    limits:['No audio bytes provided to GPT; no independent listening performed','Numerical amplitude/timing metrics are not perceptual judgments','SID reference in 00.8I is silent and does not represent full music','No PLAY audio compiler output is supplied by this version']};
-   const instructions='You are a cautious PSID-to-PLAY differential quality analyst. The attached JSON contains deterministic checks, optional numerical audio features and a human observation. You cannot hear the audio. Never claim to have listened, never claim musical equivalence from partial checks, never invent instrument or timing behavior, and never treat prior GPT feedback as verified source proof. Explain evidenced differences, partial scope, and a prioritized actionable list of semantic tests to run next. Keep source-intent findings separate from target-chip approximation. Use short headings, and specify what cannot be assessed.';
-   const res=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,instructions,input:JSON.stringify(payload),max_output_tokens:2400,store:false})});
-   const o=await res.json();if(!res.ok)throw Error('HTTP '+res.status+': '+(o.error?.message||'API error'));
-   const text=o.output_text||(o.output||[]).flatMap(x=>(x.content||[]).filter(z=>z.type==='output_text').map(z=>z.text||'')).join('\n');
-   if(o.status!=='completed'||!text.trim())throw Error('API response incomplete or empty ('+(o.incomplete_details?.reason||o.status||'unknown')+'). No quality report was accepted.');
-   const report={format:'PLAY_Quality_Report_v0.8I2',branch,model,responseId:o.id||null,source:payload,assessment:text,origin:'GPT assessed textual evidence and audio metrics only, not raw sound',reviewStatus:'needs_human_validation'};
-   qualityReports[branch]=report;$(outId).value=text;
-   set(statusId,'GPT assessment available. Audio files were not transmitted. Scope and limitations are included in the saved report.','ok');
-  }catch(e){set(statusId,'Quality assessment blocked: '+e.message,'error')}
-  finally{ready()}
+    deterministicDifferential:compiled?.music08J?null:shortDiff(diff),
+    sourceTokenCounterexample:compiled?.music08J?{firstDivergenceFrame:10,voice:3,originalNoteOnset:null,regeneratedPitchToken:'$78',cause:'The regenerated diagnostic advances each voice on a fixed 5-frame cadence, whereas the source per-voice timer can hold this voice longer.',source:'00.8C $13CB source note writes versus 00.8J decoder schedule',claim:'Known approximate scheduling; NOT a SID-audio equivalence test'}:null,
+    compilerPolicy:policy?{tickPeriodFrames:policy.tickPeriodFrames,volume:policy.volume,sidWaveformGate:policy.sidWaveformGate,attackDecay:policy.attackDecay,sustainRelease:policy.sustainRelease,originalInstrumentSemanticsProven:policy.originalInstrumentSemanticsProven}:null,
+    audioMeasurements:pair,humanListeningObservations:$(prefix+'Notes').value.slice(0,5000),
+    previousQualityFeedback:priorQuality.slice(0,1200),
+    limits:['No audio bytes are transmitted to GPT; GPT has not listened to the PSID','User listening impressions are not independent acoustic measurements','Source instrument/timing/scheduling remain incomplete','PLAY audio compiler output is unavailable']};
+   const assessment=localQualityAssessment(payload);
+   const report={format:'PLAY_Quality_Report_v0.8J2',branch,model:key&&model?model:null,responseId:null,
+    source:payload,assessment,localAssessment:assessment,gptAssessment:null,
+    apiStatus:key?'pending':'not_requested',origin:'Deterministic compiler policy, known source counterexample and unverified human listening observations; optional GPT text does not hear audio',reviewStatus:'needs_human_validation'};
+   qualityReports[branch]=report;$(outId).value=assessment;ready();
+   if(!key){set(statusId,'Local quality report ready to save. No API key supplied, so no GPT request was made.','ok');return;}
+   if(!model){report.apiStatus='not_requested';set(statusId,'Local quality report ready. Enter a model name to request optional GPT enhancement.','ok');return;}
+   set(statusId,'Local report saved in this page. Requesting optional short GPT explanation (one billable API call)…');
+   const body=qualityRequestBody(model,payload);
+   const res=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(body)});
+   let o;try{o=await res.json()}catch{o={}};
+   if(!res.ok)throw Error(`HTTP ${res.status}: ${String(o.error?.message||'API error').slice(0,300)}`);
+   report.responseId=o.id||null;
+   const visible=apiVisibleOutput(o);
+   if(o.status!=='completed'||!visible){
+    const reason=o.incomplete_details?.reason||o.status||'empty_output';
+    report.apiStatus='incomplete';report.apiFailure={reason,responseId:o.id||null,outputTokens:o.usage?.output_tokens??null,reasoningTokens:o.usage?.output_tokens_details?.reasoning_tokens??null};
+    if(visible)report.unverifiedPartialGPTText=visible.slice(0,12000);
+    set(statusId,`GPT response incomplete (${reason}); your observations and the local diagnostic are preserved and can be saved. One request was made; no automatic paid retry. You may retry manually.`, 'error');
+    return;
+   }
+   report.apiStatus='completed';report.gptAssessment=visible;report.assessment=assessment+'\n\n--- OPTIONAL GPT INTERPRETATION (NOT DIRECT AUDIO LISTENING) ---\n'+visible;
+   $(outId).value=report.assessment;
+   set(statusId,'Local quality report and GPT enhancement are ready. Both can be saved; no audio files were sent to GPT.','ok');
+  }catch(e){
+   const report=qualityReports[branch];if(report){report.apiStatus='error';report.apiFailure={message:String(e?.message||e).slice(0,500)};}
+   set(statusId,'GPT quality enrichment failed: '+e.message+'. Local report remains available; Save quality report is enabled.','error');
+  }finally{ready()}
  }
  $('guideSIDQuality').addEventListener('click',()=>quality('SID'));
  $('guidePLAYQuality').addEventListener('click',()=>quality('PLAY'));
- for(const branch of ['SID','PLAY'])$('guide'+branch+'QualitySave').addEventListener('click',()=>{if(qualityReports[branch])download(`PLAY_00_8I2_${branch}_quality_report.json`,JSON.stringify(qualityReports[branch],null,2)+'\n','application/json;charset=utf-8')});
+ for(const branch of ['SID','PLAY'])$('guide'+branch+'QualitySave').addEventListener('click',()=>{if(qualityReports[branch])download(`PLAY_00_8J2_${branch}_quality_report.json`,JSON.stringify(qualityReports[branch],null,2)+'\n','application/json;charset=utf-8')});
  window.PLAYGuided={getCompiled:()=>compiled,interpretationContext:context,compileSID,refresh:ready,quality,qualityReports:()=>qualityReports};
  ready();
 })();
