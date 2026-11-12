@@ -3235,7 +3235,18 @@ return {SOURCE_SHA,SOURCE_RANGES,STREAMS,POLICY,bytesFromSource,buildExtension,v
   const f=$(inputId).files?.[0];const player=$(playerId);
   const old=audioUrls.get(inputId);if(old)URL.revokeObjectURL(old);
   if(!f){player.removeAttribute('src');player.load();audioUrls.delete(inputId)}
-  else{const url=URL.createObjectURL(f);player.src=url;audioUrls.set(inputId,url)}
+   else{
+   // A file input is DOM-controlled; do not allow it to determine the URL scheme.
+   // createObjectURL must return a browser-generated blob: URL, never executable HTML/JS.
+   const url=URL.createObjectURL(f);
+   if(!url.startsWith('blob:')){
+    URL.revokeObjectURL(url);
+    throw new Error('Unexpected audio object URL scheme');
+   }
+   player.src=url;
+   audioUrls.set(inputId,url);
+  }
+
   ready();
  }
  for(const [a,b] of [['guideSIDOriginalAudio','guideSIDOriginalPlayer'],['guideSIDGeneratedAudio','guideSIDGeneratedPlayer'],['guidePLAYOriginalAudio','guidePLAYOriginalPlayer'],['guidePLAYGeneratedAudio','guidePLAYGeneratedPlayer']])$(a).addEventListener('change',()=>updateAudio(a,b));
