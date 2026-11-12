@@ -377,9 +377,11 @@ function downloadBlob(data, name, type='application/octet-stream'){
  }
  const link=document.createElement('a');
  try{
-  link.setAttribute('href',objectURL);
-  link.setAttribute('download',filename);
-  link.setAttribute('rel','noopener noreferrer');
+  // Use typed DOM properties rather than reparsing dynamic text as HTML attributes.
+  // The href is only a browser-generated blob: URL, checked above.
+  link.href=objectURL;
+  link.download=filename;
+  link.rel='noopener noreferrer';
   link.hidden=true;
   document.body.appendChild(link);
   link.click();
