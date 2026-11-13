@@ -204,6 +204,28 @@ test("captured raster path uses identical glyphs and legacy default",()=>{
     assert.equal(render(0xC5,2,5,2),0);
 });
 
+test("Canvas preserves J-Plus and classic font pixel orientation",()=>{
+    const sourceText=source("EMU_DEVICE_video_canvas.js");
+    const from=sourceText.indexOf("function text_Draw(");
+    const to=sourceText.indexOf("function lores_Draw(",from);
+    const builder=new Function("ctx","charRom","video","Apple2CharROM_glyphIndex","text_PixelColor","flash_on",
+        sourceText.slice(from,to)+"\nreturn text_Draw;");
+    const render=(rom,key,ann2,d)=>{
+        const points=new Set();
+        const ctx={fillStyle:null,fillRect(x,y,w,h){if(w===2&&h===2)points.add(x+","+y);}};
+        builder(ctx,rom,{charRomKey:key,annunciator2:ann2},index,x=>x,false)(0,0,d);
+        return points;
+    };
+    const jp=render(jPlusROM,"A2_JP",true,0xC5);
+    assert.equal(jp.has("2,4"),true,"J-Plus E left stroke");
+    assert.equal(jp.has("10,4"),false,"J-Plus E must not be mirrored");
+    const us=new Uint8Array(512);
+    us[0x25*8+2]=0x02;
+    const original=render(us,"A2_US",true,0xC5);
+    assert.equal(original.has("2,4"),true,"Apple II+ left stroke");
+    assert.equal(original.has("10,4"),false,"Apple II+ orientation unchanged");
+});
+
 test("every video renderer has an explicit J-Plus glyph path",()=>{
     const raster=source("EMU_VIDEO_raster.js");
     const wave=source("EMU_DEVICE_video_wave.js");
