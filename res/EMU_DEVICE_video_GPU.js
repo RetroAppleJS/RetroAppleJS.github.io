@@ -636,7 +636,7 @@ queuedFrames.add(request);
       if (JPLUS > 0) {
           glyph = d8;
           if ((d8 & 0xC0) == 0x40) glyph = d8 & 0x3F;
-          if (JPLUS == 2) glyph |= 0x80;                                    // AN2 ON: Roman
+          if (JPLUS == 2) glyph = glyph | 0x80;                                    // AN2 ON: Roman
       }
       const cbyte = rom[(glyph << 3) + (yp&7)];                             // J-Plus: full 2 KB ROM
       const infl  = d8>>6 & 3;                                              // inv/flash modifier
