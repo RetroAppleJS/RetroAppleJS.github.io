@@ -855,6 +855,10 @@ function LAYOUT(rootWindow)
                 // Select the machine body before creating the DOM images,
                 // so both chassis layers are never exposed simultaneously.
                 var model = self.systemModel;
+                // Preselect from the startup URL even if the emulator has
+                // not yet applied its system configuration at window.load.
+                if(!model && rootWindow.oCOM && rootWindow.oCOM.URL && rootWindow.oCOM.URL.uri)
+                    model = rootWindow.oCOM.URL.uri.sys;
                 if(!model && typeof(rootWindow.EMU_system_get)==="function")
                     model = rootWindow.EMU_system_get();
                 selectSystemChassis(layout,model || "A2P");
