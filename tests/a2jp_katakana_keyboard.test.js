@@ -62,10 +62,20 @@ test("reference legends map 41 keys, 77 front-face glyphs",()=>{
     assert.equal(map["54BF"],undefined);
     assert.equal(map["E555"],undefined);
 });
+test("every key in the Katakana reference exists in the unchanged virtual key HTML",()=>{
+    const fixtureObj=fixture("A2JP");
+    fixtureObj.keyboard.KbdHTML({id:"kbd",kbd_events:"",key_events:""});
+    const html=fixtureObj.elements.kbd.innerHTML;
+    const ids=[...html.matchAll(/class="keylabels" id="([A-F0-9]{4})"/g)].map(x=>x[1]);
+    assert.equal(ids.length,53);
+    for(const id of Object.keys(fixtureObj.ctx.A2JP_KEYCAP_LEGENDS))
+        assert.ok(ids.includes(id),"missing physical key for "+id);
+});
+
 test("decorations use the original key IDs, positions, and are idempotent",()=>{
     const f=fixture("A2JP");
     f.add("34D8");f.add("BC7E");f.add("757F");f.add("54BF");
-    assert.equal(f.keyboard.installKatakanaKeycaps(f.elements.glyphScroller),8);
+    assert.equal(f.keyboard.installKatakanaKeycaps(f.elements.glyphScroller),7);
     assert.equal(f.keyboard.installKatakanaKeycaps(f.elements.glyphScroller),0);
     const x=f.elements["34D8"].children;
     assert.deepEqual(x.map(e=>e.className.match(/keylabel(?:9|10|11)/)[0]),
@@ -96,8 +106,8 @@ test("startup A2JP shows Kana legends; switching to A2P hides them",()=>{
     const f=fixture("A2JP");
     f.keyboard.KbdHTML({id:"kbd",kbd_events:"",key_events:""});
     assert.equal(f.elements.glyphScroller.classList.contains("a2jp-keyboard"),true);
-    assert.match(f.elements.kbd.innerHTML,/id=\\"34D8\\"/);
-    assert.match(f.elements.kbd.innerHTML,/id=\\"FFFF\\"/);
+    assert.match(f.elements.kbd.innerHTML,/id="34D8"/);
+    assert.match(f.elements.kbd.innerHTML,/id="FFFF"/);
     f.keyboard.setSystemModel("A2P");
     assert.equal(f.elements.glyphScroller.classList.contains("a2jp-keyboard"),false);
     f.keyboard.setSystemModel("A2JP");
