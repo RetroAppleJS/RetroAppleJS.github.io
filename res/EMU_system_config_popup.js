@@ -113,7 +113,7 @@ var EMU_SYSTEM_CONFIG = (function()
            +fields.map(function(field){return '<th scope="col">'+html(headings[field])+'</th>';}).join("")
            +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
            +'<div class="sysconfig-footer">'
-           +'<div class="sysconfig-note">A2P_RL uses the LIRON autostart patch. A2P_RJ and J-Plus keyboard hardware are not yet implemented.</div>'
+           +'<div class="sysconfig-note">A2P_RL uses the LIRON patch. A2P_RJ installs the J-Plus monitor; dedicated J-Plus keyboard mapping is not yet implemented.</div>'
            +'<div class="sysconfig-notice" role="status" aria-live="polite">'+html(notice)+'</div>'
            +'<div class="sysconfig-actions">'
            +'<button type="button" class="appbut" data-action="close">Cancel</button>'
