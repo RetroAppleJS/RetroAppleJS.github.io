@@ -66,13 +66,13 @@ Rules:
 - URL-selected cards use the normal peripheral discovery, `mount()`, address mapping and device setup, and persist through ordinary emulator restarts. The URL must be reloaded to change its initial slot plan.
 - For a disk-image URL such as `D1_DIR`, keep a `DISKII` card mounted in a compatible slot so there is a drive-1 target.
 
-## Standalone tools
+## Assembler and standalone tools
 
 These keys are handled by individual tools, not by the main emulator's URL switch.
 
 | Page / URL key | Argument(s) | Description / effect | Example |
 | --- | --- | --- | --- |
-| Assembler integration / `asm` | Deflate-compressed Base64 UTF-8 assembler source | `ASM_init()` decompresses the source and populates the assembler source editor. | `index.html?asm=<compressed-base64-source>` (where the assembler GUI is initialized) |
+| Main assembler (`index.html`) / `asm` | zlib/Deflate-compressed Base64 UTF-8 assembly source | `ASM_importSourceFromURL()` inflates the source and loads it through `ASM_loadSourceText()` into `ASM_sourcePane`. Without an explicit `#tab...` fragment, the Assembler tab opens. Invalid data leaves the default source unchanged and reports an error. | `index.html?asm=eJzzD3JXUDEzMDDgUlDwcXFUUFYxMAQyg0KCuQBKWwUj` |
 | `tools/SIDchipJS.html` / `sid` | Encoded SID content | Loads SID data in the standalone SID tool. | `tools/SIDchipJS.html?sid=<encoded-sid>` |
 | `tools/SIDchipJS_v2.html` / `sid` | Encoded SID content | Same URL-key convention as the earlier SID tool. | `tools/SIDchipJS_v2.html?sid=<encoded-sid>` |
 | `tools/MockingboardJS.html` / `fym`, `fym2` | Encoded sound streams | Loads one or two streams in the standalone Mockingboard experiment. | `tools/MockingboardJS.html?fym=<stream1>&fym2=<stream2>` |
@@ -85,7 +85,7 @@ The placeholders between angle brackets above represent data that must be genera
 
 - Multiple arguments use `?` for the first argument and `&` for subsequent arguments. Parameter names are **case-sensitive** (`CAT`, `D1`, and `D1_DIR` are uppercase; `boot` and `mute` are lowercase).
 - The main parser (`oCOM.URL.parse` in `res/COM_MAIN.js`) performs simple splits at `?`, `&`, and `=`. It does **not** call `decodeURIComponent` or `URLSearchParams`. A value such as `Apple%20DOS%203.3.dsk` therefore remains percent-encoded when passed to the disk URL builder; HTTP handling may interpret that encoding downstream. Keep reserved separators out of values.
-- The parser retains only the first substring following `=` and overwrites duplicate keys with the last occurrence. Avoid literal `=` padding in payloads unless the encoding and consumer behavior have been verified.
+- The parser retains only the first substring following `=` and overwrites duplicate keys with the last occurrence. Avoid literal `=` padding in payloads unless the encoding and consumer behavior have been verified. **Exception:** the `asm` handler uses `URLSearchParams` and supports standard Base64 padding and URL-encoded `+` / `/` characters (as well as unescaped `+`).
 - The implementation enumerates parsed arguments in the order inserted; in particular, put `addr` **before** `paste`.
 - `D1` and `D1_DIR` both populate the same staged drive-1 buffer. Do not combine them: the result depends on processing and asynchronous completion order.
 - `boot` and `mute` have a shared initialization branch that also attempts to stage a built-in DOS image. Avoid combining multiple disk-source options until startup precedence is explicitly defined.
@@ -98,7 +98,7 @@ The placeholders between angle brackets above represent data that must be genera
 - `res/COM_MAIN.js` — `oCOM.URL.parse` parser, `getURI`, `addURI`.
 - `res/EMU_apple2main.js` — `EMU_init()` URL dispatch, disk loading, startup and restart behavior.
 - `res/EMU_apple2io.js` — `EMU_applyURLSlotOverrides()` and initial `Apple2IO` slot planning and mounts.
-- `res/ASM_6502_gui.js` — `ASM_init()` loading the `asm` argument.
+- `index.html` — `ASM_importSourceFromURL()` handles `asm` and loads source into the modern assembler GUI. `res/ASM_6502_gui.js` contains only the historical, no-longer-loaded importer.
 - `tools/SIDchipJS.html`, `tools/SIDchipJS_v2.html`, `tools/MockingboardJS.html`, `tools/MockingboardJS_v0.html`, `tools/MochaJS_test.html` — tool-specific keys.
 - `README.md` and `docs/BOOT.md` — existing boot-link examples.
 
