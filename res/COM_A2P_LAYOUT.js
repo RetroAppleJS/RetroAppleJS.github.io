@@ -557,6 +557,23 @@ function LAYOUT(rootWindow)
     this.lastCanvas = null;
     this.lastComposition = null;
 
+    // The Composer scene contains both system cases. Its images are embedded
+    // in COM_LAYOUT_CONFIG.js; no additional PNG download is necessary.
+    // The new J-Plus body is currently authored as SYSTEM.LAYER2, so select
+    // by asset filename rather than relying on a generated layer ID.
+    this.systemModel = null;
+
+    function selectSystemChassis(layout,model)
+    {
+        if(!layout || !Array.isArray(layout.layers)) return;
+        var jplus = model === "A2JP";
+        layout.layers.forEach(function(layer)
+        {
+            if(layer.file === "A2P_Body.png") layer.visible = !jplus;
+            else if(layer.file === "A2JP_Body.png") layer.visible = jplus;
+        });
+    }
+
     function attachToRoot(target)
     {
         if(!target) return;
@@ -778,6 +795,21 @@ function LAYOUT(rootWindow)
     };
 
     this.setVisible = this.visible;
+
+    // Called by the system selector on startup, on live model changes and
+    // during rollback. It also remembers selections made before the async
+    // layout installation (e.g. index.html?sys=A2JP).
+    this.setSystemModel = function(model)
+    {
+        this.systemModel = String(model || "A2P");
+        if(this.lastLayout)
+        {
+            this.visibleByFile("A2P_Body.png",this.systemModel !== "A2JP");
+            this.visibleByFile("A2JP_Body.png",this.systemModel === "A2JP");
+        }
+        return this.systemModel;
+    };
+
     this.visibleByFile = function(filename,state)
     {
         filename = String(filename || "");
@@ -816,6 +848,13 @@ function LAYOUT(rootWindow)
         return self.loadLayout(rootWindow)
             .then(function(layout)
             {
+                // Select the machine body before creating the DOM images,
+                // so both chassis layers are never exposed simultaneously.
+                var model = self.systemModel;
+                if(!model && typeof(rootWindow.EMU_system_get)==="function")
+                    model = rootWindow.EMU_system_get();
+                selectSystemChassis(layout,model || "A2P");
+
                 var oldHost = doc.getElementById("a2p-system-layout");
                 if(oldHost && oldHost.parentNode) oldHost.parentNode.removeChild(oldHost);
 
