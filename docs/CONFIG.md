@@ -97,10 +97,11 @@ choices are rejected by the Apply action, leaving the running system
 unchanged. `KeyFont` changes the available video character ROM (not the
 physical keyboard mapping). `A2P_RL` is operational: it applies the one-byte
 `$FABB: $07 → $05` LIRON autostart patch to the bundled Apple II+ ROM
-and restores `$07` for `A2P_R`. `A2P_RJ` is a placeholder: a dedicated
-Japanese motherboard ROM and the J-Plus keyboard behavior are not yet
-implemented, so J-Plus continues to use the unmodified Apple II+ motherboard
-ROM, with the `A2_JP` character ROM.
+and restores `$07` for `A2P_R`. `A2P_RJ` now installs the original
+J-Plus 2 KB Monitor ROM at `$F800-$FFFF`, preserving Applesoft BASIC at
+`$D000-$F7FF`. Switching back restores the full original monitor; the
+`A2_JP` character ROM is selected separately. Dedicated J-Plus keyboard
+hardware mapping is not yet implemented.
 
 **ROM selection and Language Cards:** The `ROM` entry in `_CFG_SYSCODE`
 may be a comma-separated list of **alternatives**, not a key into
@@ -108,8 +109,9 @@ may be a comma-separated list of **alternatives**, not a key into
 `EMU_system_romRangeID()`, including during early MS16K discovery and
 subsequent card restart. MS16K, SaturnRAM and LegendRAM must never index
 `_CFG_ROMRANGES` with the unparsed configuration list. The physical ROM
-byte patch is centralized in `Apple2ROM(hw)`, which switches the Monitor ROM
-byte at `$FABB` to `$05` for `A2P_RL` and restores `$07` for `A2P_R`.
+selection is centralized in `Apple2ROM(hw)`: `A2P_RL` patches `$FABB`
+to `$05`, `A2P_RJ` replaces the 2 KB monitor at `$F800`, and `A2P_R`
+restores the original monitor.
 
 ## ROM RANGES
 
@@ -117,6 +119,7 @@ byte at `$FABB` to `$05` for `A2P_RL` and restores `$07` for `A2P_R`.
 | :--------: | :----------: | :---: | :----------------------: |
 | A2P_R      | $D000-$FFFF  | $CF45 | Apple II+ Autostart ROM  |
 | A2P_RL     | $D000-$FFFF  | $CF45 | Apple II+ LIRON Autostart ROM |
+| A2P_RJ     | $D000-$FFFF  | $C5C4 | Apple II J-Plus Autostart ROM |
 
 
 ## I/O RANGES
