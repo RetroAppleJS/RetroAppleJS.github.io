@@ -329,8 +329,8 @@ function Apple2Video(ctx)
                 ,"DIM_H":[vidContext.height>>1]
                 ,"GFX_FLG":[video.register_mode()]
                 ,"FLASH":[false]
-                ,"JPLUS":[video.jplusMode]
-                ,"PALETTE":[video.INTCols]});
+                ,"PALETTE":[video.INTCols]
+                ,"JPLUS":[video.jplusMode]});
         }
             //console.log( video.ser8_map() )
     }
@@ -598,7 +598,7 @@ queuedFrames.add(request);
 
   this.kProcess_v6 =  function(mem,rom,cfg)
   { 
-    const CHROME_MODE=cfg[0]<<2,DIM_H=cfg[1],GFX_FLG=cfg[2],FLASH=cfg[3],JPLUS=cfg[4],PALETTE=5
+    const CHROME_MODE=cfg[0]<<2,DIM_H=cfg[1],GFX_FLG=cfg[2],FLASH=cfg[3],JPLUS=cfg[260]||0,PALETTE=4
 
     const xp = (this.thread.x>>1);
     const yp = DIM_H-(this.thread.y>>1)-1;
@@ -633,7 +633,7 @@ queuedFrames.add(request);
       const adr   = (PAGE>>3) + adr_ofs + x7;                               // locate hardware address
       const d8    = mem[adr];                                               // read byte from memory
       let glyph = (d8 & 0x3F) ^ 0x20;                                        // Apple II+ 64-glyph decoder
-      if (JPLUS != 0) {
+      if (JPLUS > 0) {
           glyph = d8;
           if ((d8 & 0xC0) == 0x40) glyph = d8 & 0x3F;
           if (JPLUS == 2) glyph |= 0x80;                                    // AN2 ON: Roman
