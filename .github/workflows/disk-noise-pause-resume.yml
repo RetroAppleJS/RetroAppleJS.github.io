@@ -1,0 +1,28 @@
+name: Disk II pause / resume noise regression
+
+on:
+  pull_request:
+    paths:
+      - 'res/EMU_apple2main.js'
+      - 'res/EMU_CARD_appledisk2.js'
+      - 'tests/disk_noise_pause_resume.test.js'
+      - '.github/workflows/disk-noise-pause-resume.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  disk-noise:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: |
+          node --check res/EMU_apple2main.js
+          node --check res/EMU_CARD_appledisk2.js
+      - name: Run disk noise pause / resume regression
+        run: node --test tests/disk_noise_pause_resume.test.js
