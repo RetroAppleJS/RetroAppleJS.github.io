@@ -101,8 +101,7 @@ function SaturnRAM()
     {
         hw = apple2plus.hwObj();
         io = hw.io;
-        var model = typeof(EMU_system_get)=="function" ? EMU_system_get() : "A2P";
-        ROM_ID = (_CFG_SYSCODE[model] || _CFG_SYSCODE.A2P).ROM || _CFG_SYSCODE.A2P.ROM;
+        ROM_ID = EMU_system_romRangeID();
         ROM_CFG = _CFG_ROMRANGES[ROM_ID];
         ROM_RANGE = oCOM.parseRngExpr(ROM_CFG.ROM);
         this.state.active = true;
