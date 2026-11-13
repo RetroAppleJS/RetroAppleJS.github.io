@@ -30,6 +30,7 @@ function Apple2VideoWebGPU(canvas)
     this.frameTiming = "timer";
     this.charRom = Apple2CharROM_get("A2_US");
     this.charRomKey = "A2_US";
+    this.jplusMode = 0;
     this.onStatusChange = null;
     this.INTCols = new Uint8Array(Apple2VideoWebGPU.PALETTE);
     var names = ["Black","Magenta","Dark Blue","Purple","Dark Green","Grey 1",
@@ -291,7 +292,7 @@ function Apple2VideoWebGPU(canvas)
                 romDirty = false;
             }
             if(paletteDirty) uploadColors(current);
-            params.set([captured?1:0,gfx?1:0,mix?1:0,page2?1:0,hires?1:0,monitor,flashOn?1:0,0]);
+            params.set([captured?1:0,gfx?1:0,mix?1:0,page2?1:0,hires?1:0,monitor,flashOn?1:0,video.jplusMode]);
             queue.writeBuffer(current.input,0,input);
             queue.writeBuffer(current.params,0,params);
             var encoder = current.device.createCommandEncoder();
@@ -417,12 +418,14 @@ function Apple2VideoWebGPU(canvas)
         return {color:_CFG_CHROMA[chrome].COL_num || "#000000", name:_CFG_CHROMA[chrome].COL_name};
     };
     this.getChromeMode = function() { return chrome; };
-    this.setCharRom = function(rom,key)
+    this.setCharRom = function(rom,key,annunciator2)
     {
-        if(video.charRom!==rom || video.charRomKey!==key)
+        var mode = key==="A2_JP" ? (annunciator2===false ? 1 : 2) : 0;
+        if(video.charRom!==rom || video.charRomKey!==key || video.jplusMode!==mode)
         {
             video.charRom = rom;
             video.charRomKey = key;
+            video.jplusMode = mode;
             romDirty = dirty = true;
         }
         return key;
@@ -510,7 +513,7 @@ Apple2VideoWebGPU.ctrl_dlg = function() { return Apple2VideoWebGPU.controls(null
 Apple2VideoWebGPU.SHADER = `
 struct Parameters {
     captured: u32, gfx: u32, mix: u32, page2: u32,
-    hires: u32, chrome: u32, flash: u32, padding: u32,
+    hires: u32, chrome: u32, flash: u32, jplusMode: u32,
 };
 @group(0) @binding(0) var<storage, read> inputWords: array<u32>;
 @group(0) @binding(1) var<storage, read> romWords: array<u32>;
@@ -567,7 +570,13 @@ fn byteAt(col: u32, y: u32, mode: u32) -> u32 {
     } else if (mode == 1u) {
         color = (d>>(((y>>2u)&1u)*4u))&15u;
     } else {
-        let glyph = romByte((((d&63u)^32u)*8u)+(y&7u));
+        var code = (d&63u)^32u;
+        if (params.jplusMode != 0u) {
+            code = d;
+            if ((d&192u) == 64u) { code = d&63u; }
+            if (params.jplusMode == 2u) { code = code|128u; }
+        }
+        let glyph = romByte((code*8u)+(y&7u));
         let attr = d>>6u;
         let on = ((glyph>>bit)&1u)^((1u>>attr)&1u)^((2u>>attr)&params.flash);
         color = on*15u;
