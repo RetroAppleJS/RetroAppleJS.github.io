@@ -195,6 +195,17 @@ function Apple2Video(ctx)
     this.hw = null;     // reserved for possible future direct hardware binding
 
     this.gpu = null;
+    this.charRom = Apple2CharROM_get("A2_US");
+    this.charRomKey = "A2_US";
+    this.jplusMode = 0;
+    this.setCharRom = function(rom,key,annunciator2)
+    {
+        this.charRom = rom;
+        this.charRomKey = key;
+        this.jplusMode = key==="A2_JP" ? (annunciator2===false ? 1 : 2) : 0;
+        frame_redraw = true;
+        return key;
+    };
     this.waveKernel = null;
     this.renderKernel = null;       // full-screen HGR wave renderer
     this.mixedWaveKernel = null;    // HGR top via wave + mixed-mode text bottom
@@ -664,7 +675,7 @@ function Apple2Video(ctx)
             graphical:true
         });
 
-        this.mixedWaveKernel = this.gpu.createKernel(function(wave, mem, rom, pal, cfg, GFX_FLG, CHROME_MODE, FLASH, rasterBytes, rasterModes, RASTER)
+        this.mixedWaveKernel = this.gpu.createKernel(function(wave, mem, rom, pal, cfg, GFX_FLG, CHROME_MODE, FLASH, rasterBytes, rasterModes, RASTER, JPLUS)
         {
             // Composite renderer used only for HIRES mixed mode:
             // - top 160 native scanlines are HGR wave/YIQ
@@ -730,7 +741,13 @@ function Apple2Video(ctx)
             {
                 const adr   = (PAGE>>3) + adr_ofs + x7;
                 const d8    = RASTER==1 ? rasterBytes[rasterIndex] : mem[adr];
-                const offs  = ((d8 & 0x3F) ^ 0x20) << 3;
+                let glyph = (d8 & 0x3F) ^ 0x20;
+                if (JPLUS != 0) {
+                    glyph = d8;
+                    if ((d8 & 0xC0) == 0x40) glyph = d8 & 0x3F;
+                    if (JPLUS == 2) glyph |= 0x80;
+                }
+                const offs = glyph << 3;
                 const cbyte = rom[offs + (yp&7)];
                 const infl  = d8>>6 & 3;
                 const rgb   = (cbyte>>m7&1) ^ (0b001>>infl&1) ^ (0b010>>infl&FLASH);
@@ -743,7 +760,7 @@ function Apple2Video(ctx)
             graphical:true
         });
 
-        this.deterministicKernel = this.gpu.createKernel(function(mem, rom, pal, GFX_FLG, CHROME_MODE, FLASH)
+        this.deterministicKernel = this.gpu.createKernel(function(mem, rom, pal, GFX_FLG, CHROME_MODE, FLASH, JPLUS)
         {
             // Deterministic TEXT/LORES renderer, adapted from EMU_DEVICE_video_GPU.js
             // but using the same 1120x768 v10_2 output geometry as the wave
@@ -785,7 +802,13 @@ function Apple2Video(ctx)
             {
                 const adr   = (PAGE>>3) + adr_ofs + x7;
                 const d8    = mem[adr];
-                const offs  = ((d8 & 0x3F) ^ 0x20) << 3;
+                let glyph = (d8 & 0x3F) ^ 0x20;
+                if (JPLUS != 0) {
+                    glyph = d8;
+                    if ((d8 & 0xC0) == 0x40) glyph = d8 & 0x3F;
+                    if (JPLUS == 2) glyph |= 0x80;
+                }
+                const offs = glyph << 3;
                 const cbyte = rom[offs + (yp&7)];
                 const infl  = d8>>6 & 3;
                 const rgb   = (cbyte>>m7&1) ^ (0b001>>infl&1) ^ (0b010>>infl&FLASH);
@@ -826,7 +849,7 @@ function Apple2Video(ctx)
 
             if (mix_mode)
                 this.mixedWaveKernel(wave, mem, chr, this.INTCols, this.cfg, mode, chrome_mode, flash,
-                    new Uint8Array(7680),new Uint8Array(7680),0);
+                    new Uint8Array(7680),new Uint8Array(7680),0,this.jplusMode);
             else
                 this.renderKernel(wave, this.cfg);
         }
@@ -834,7 +857,7 @@ function Apple2Video(ctx)
         {
             // TEXT, LORES, and mixed LORES use the deterministic GPU renderer.
             // No waveform/YIQ pass is submitted for these modes.
-            this.deterministicKernel(mem, chr, this.INTCols, mode, chrome_mode, flash);
+            this.deterministicKernel(mem, chr, this.INTCols, mode, chrome_mode, flash, this.jplusMode);
         }
 
         frame_redraw = false;
@@ -848,7 +871,7 @@ function Apple2Video(ctx)
         var wave=this.waveKernel(hires,this.cfg);
         var rom=this.charRom instanceof Uint8Array ? this.charRom : Apple2CharROM_get("A2_US");
         this.mixedWaveKernel(wave,new Uint8Array(0x6000),rom,this.INTCols,this.cfg,0,state.chrome,
-            frame.flash?1:0,frame.bytes,frame.modes,1);
+            frame.flash?1:0,frame.bytes,frame.modes,1,this.jplusMode);
     };
 
     this.ensureLinearHgr = function()
