@@ -100,6 +100,9 @@ var EMU_SYSTEM_CONFIG = (function()
                     return '<td>'+cell(code,field)+'</td>';
                 }).join("")+'</tr>';
         }).join("");
+        var oldScroller=p.querySelector(".sysconfig-table-scroller");
+        var oldLeft=oldScroller ? oldScroller.scrollLeft : 0;
+        var oldTop=oldScroller ? oldScroller.scrollTop : 0;
         p.innerHTML='<div class="sysconfig-header">'
            +'<strong id="sysconfig-title">SYSTEM CONFIGURATION</strong>'
            +'<button type="button" class="appbut sysconfig-close" data-action="close" title="Close system configuration">×</button>'
@@ -116,6 +119,8 @@ var EMU_SYSTEM_CONFIG = (function()
            +'<button type="button" class="appbut" data-action="close">Cancel</button>'
            +'<button type="button" class="appbut" data-action="apply">Apply &amp; cold boot</button>'
            +'</div></div>';
+        var scroller=p.querySelector(".sysconfig-table-scroller");
+        if(scroller) { scroller.scrollLeft=oldLeft; scroller.scrollTop=oldTop; }
         position();
     }
 
@@ -138,7 +143,16 @@ var EMU_SYSTEM_CONFIG = (function()
             model=code; // Choosing an option selects its owning system.
         }
         notice="";
+        var name=input.name,value=input.value;
         render();
+        // Preserve keyboard navigation while refreshing selected-row styles.
+        var radios=document.getElementById(popupID).querySelectorAll('input[type="radio"]');
+        for(var i=0;i<radios.length;i++)
+            if(radios[i].name===name && radios[i].value===value)
+            {
+                radios[i].focus({preventScroll:true});
+                break;
+            }
     }
 
     function onClick(event)
@@ -169,12 +183,19 @@ var EMU_SYSTEM_CONFIG = (function()
         return p;
     }
 
+    function expanded(open)
+    {
+        var gear=document.getElementById("system_model_button");
+        if(gear) gear.setAttribute("aria-expanded",open?"true":"false");
+    }
+
     function open()
     {
         ensure();
         snapshot();
         render();
         oCOM.POPUP.on(popupID);
+        expanded(true);
         position();
         return true;
     }
@@ -183,6 +204,7 @@ var EMU_SYSTEM_CONFIG = (function()
     {
         if(document.getElementById(popupID)) oCOM.POPUP.off(popupID);
         draft=null;
+        expanded(false);
         return true;
     }
 
