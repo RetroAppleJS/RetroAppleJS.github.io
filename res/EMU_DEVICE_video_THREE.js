@@ -400,7 +400,11 @@ var APPLE2_THREE_CFG_DEFAULT =
         this.hw = null;
 
         this.video2D = null;                 // Previous renderer, usually EMU_DEVICE_video_GPU.js.
-        this.charRom = Apple2CharROM_get("A2_US");
+        // THREE's standalone framebuffer tests do not load the ROM library.
+        // The full emulator supplies it before video renderer initialization.
+        this.charRom = typeof(Apple2CharROM_get)==="function"
+            ? Apple2CharROM_get("A2_US")
+            : null;
         this.charRomKey = "A2_US";
         this.annunciator2 = true;
         this.setCharRom = function(rom,key,annunciator2)
