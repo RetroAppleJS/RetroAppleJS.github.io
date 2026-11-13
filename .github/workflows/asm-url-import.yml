@@ -1,0 +1,23 @@
+name: ASM URL import
+
+on:
+  push:
+    paths:
+      - 'index.html'
+      - 'tests/asm_url_import.test.cjs'
+      - '.github/workflows/asm-url-import.yml'
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'tests/asm_url_import.test.cjs'
+      - '.github/workflows/asm-url-import.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/asm_url_import.test.cjs
