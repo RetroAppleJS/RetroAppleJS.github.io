@@ -118,6 +118,17 @@ all video renderers reverse the seven-pixel bit order only when `A2_JP`
 is selected. The standard Apple II Plus character lookup and bit order
 remain unchanged.
 
+**J-Plus interactive keycaps:** When the system model is `A2JP`, the virtual
+keyboard shows the Katakana legends from `tools/KeyboardJS_katakana.html`
+on the front faces of the existing keys. All 41 keycap mappings (77 front
+legend positions) are rendered separately from their Roman/Shift legends.
+Switching to `A2P` hides the Japanese legends again; startup
+(`?sys=A2JP`) and failed-restart rollback update the keyboard as well.
+The underlying `A2KBD` event codes, key hash identities, and modifier
+semantics remain unchanged: the J-Plus monitor and the `$C05C/$C05D`
+character-generator selection perform Katakana output; keycaps are a visual
+representation, not Unicode text injection.
+
 **J-Plus body case:** The Composer v3 export in `res/COM_LAYOUT_CONFIG.js`
 embeds `A2P_Body.png` as `SYSTEM.CHASSIS_A2P` and `A2JP_Body.png`
 as `SYSTEM.CHASSIS_A2JP`. The runtime compositor now selects these
