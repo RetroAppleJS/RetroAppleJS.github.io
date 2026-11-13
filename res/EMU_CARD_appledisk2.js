@@ -1076,13 +1076,37 @@ function AppleDisk2()
                     this.dNd.enable = false;
                 }
             break;
+            case "audio_on":
+                if(this.audio===undefined)
+                    await this.init("audio_ctx");
+                else if(this.audio.state!=="running")
+                    await this.audio.resume();
+
+                this.dNd.enable = true;
+                // Muting/pausing stops the Web Audio loop, but does not change
+                // the emulated controller's MOTOR_ON latch. On resume the ROM
+                // may never issue another MOTOR_ON, so restore from hardware.
+                var drive = state.hw[state.drv];
+                if(state.drive_enable && drive && drive.motor &&
+                    this.dNd.motor!=="ON" && dN_samples.DiskII_spin.audio)
+                {
+                    if(this.dNd.motorOffTimer)
+                    {
+                        clearTimeout(this.dNd.motorOffTimer);
+                        this.dNd.motorOffTimer = null;
+                    }
+                    this.dNd.motor = "ON";
+                    this.dN_play("DiskII_spin");
+                }
+            break;
             case "audio_off":
                 this.dNd.enable = false;
+                // Preserve the emulated motor state; reset only the sound loop.
+                this.dNd.motor = "OFF";
                 if(this.audio===undefined) return;
                 // Stop loops so repeated mute is safe and unmute can start fresh noise.
                 for(var name in this.AUD_buffer)
                     if(this.AUD_buffer[name].loop) this.dN_stop(name);
-                this.dNd.motor = "OFF";
 
                 await this.audio.suspend();
             break;
