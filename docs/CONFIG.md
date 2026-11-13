@@ -113,8 +113,10 @@ selects Katakana for inverse/flashing screen codes `$00-$7F`;
 switches, except debugger read-only scans. Reset selects Roman mode.
 Ctrl-T changes the monitor's output mask at `$32`; it does not replace
 the character ROM or set annunciator 2 itself. GPU, WebGPU, Canvas, Wave,
-and Three.js video all use the same J-Plus glyph decoder. The standard
-Apple II Plus character lookup remains unchanged.
+and Three.js video all use the same J-Plus glyph decoder. The J-Plus ROM stores the leftmost glyph pixel in bit 6 (not bit 0);
+all video renderers reverse the seven-pixel bit order only when `A2_JP`
+is selected. The standard Apple II Plus character lookup and bit order
+remain unchanged.
 
 **ROM selection and Language Cards:** The `ROM` entry in `_CFG_SYSCODE`
 may be a comma-separated list of **alternatives**, not a key into
