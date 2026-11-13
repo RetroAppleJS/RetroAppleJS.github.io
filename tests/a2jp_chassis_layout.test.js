@@ -15,6 +15,8 @@ vm.runInNewContext(source("COM_LAYOUT_CONFIG.js"),composerContext);
 const authored = composerContext.composer;
 const chassisName = "A2P_Body.png";
 const jplusName = "A2JP_Body.png";
+const chassisId = "SYSTEM.CHASSIS_A2P";
+const jplusId = "SYSTEM.CHASSIS_A2JP";
 
 function fakeRoot(config = authored, model = "A2P", urlModel = null)
 {
@@ -89,7 +91,7 @@ function layoutFixture(options)
 
 function layerState(layout,filename)
 {
-    const layer=layout.lastLayout.layers.find(item=>item.file===filename);
+    const layer=layout.lastLayout.layers.find(item=>item.id===filename || item.file===filename);
     if(!layer) return null;
     const entry=layout.getLayer(layer.address);
     assert.ok(entry,"registered Composer layer: "+filename);
@@ -107,8 +109,8 @@ test("generated Composer layout embeds both authentic system body assets",()=>{
     const jp=authored.layers.filter(layer=>layer.file===jplusName);
     assert.equal(base.length,1);
     assert.equal(jp.length,1);
-    assert.equal(base[0].id,"SYSTEM.CHASSIS");
-    assert.equal(jp[0].id,"SYSTEM.LAYER2");
+    assert.equal(base[0].id,chassisId);
+    assert.equal(jp[0].id,jplusId);
     assert.equal(base[0].y,jp[0].y);
     const url=authored.assets[jplusName];
     assert.ok(url.startsWith("data:image/png;base64,"));
@@ -127,7 +129,7 @@ test("default Apple II Plus install shows only the original chassis",async()=>{
     assert.equal(layerState(layout,jplusName).css,"hidden");
     assert.equal(tab.children.filter(e=>e.id==="a2p-system-layout").length,1);
     const image=layerState(layout,jplusName);
-    assert.equal(image.id,"SYSTEM.LAYER2");
+    assert.equal(image.id,jplusId);
     assert.equal(image.imgSource,authored.assets[jplusName]);
 });
 
@@ -199,6 +201,49 @@ test("reinstalling the same layout retains model selection without duplicated ch
     assert.equal(layerState(layout,jplusName).css,"visible");
     assert.equal(layerState(layout,chassisName).css,"hidden");
     layout.setSystemModel("A2P");
+    assert.equal(layerState(layout,chassisName).css,"visible");
+});
+
+test("semantic chassis IDs work even if the PNG filenames are renamed",async()=>{
+    const standardFile="System_Classic_Renamed.png";
+    const japaneseFile="System_Japanese_Renamed.png";
+    const renamed={
+        ...authored,
+        layers:authored.layers.map(layer=>{
+            if(layer.id===chassisId) return {...layer,file:standardFile};
+            if(layer.id===jplusId) return {...layer,file:japaneseFile};
+            return layer;
+        }),
+        assets:{
+            ...authored.assets,
+            [standardFile]:authored.assets[chassisName],
+            [japaneseFile]:authored.assets[jplusName]
+        }
+    };
+    const {layout,root}=layoutFixture({composer:renamed,model:"A2JP"});
+    assert.equal(await layout.install(root),true);
+    assert.equal(layerState(layout,jplusId).css,"visible");
+    assert.equal(layerState(layout,chassisId).css,"hidden");
+    layout.setSystemModel("A2P");
+    assert.equal(layerState(layout,jplusId).css,"hidden");
+    assert.equal(layerState(layout,chassisId).css,"visible");
+});
+
+test("legacy Composer layer IDs remain usable via filename fallback",async()=>{
+    const previous={
+        ...authored,
+        layers:authored.layers.map(layer=>{
+            if(layer.id===chassisId) return {...layer,id:"SYSTEM.CHASSIS"};
+            if(layer.id===jplusId) return {...layer,id:"SYSTEM.LAYER2"};
+            return layer;
+        })
+    };
+    const {layout,root}=layoutFixture({composer:previous,model:"A2JP"});
+    assert.equal(await layout.install(root),true);
+    assert.equal(layerState(layout,jplusName).css,"visible");
+    assert.equal(layerState(layout,chassisName).css,"hidden");
+    layout.setSystemModel("A2P");
+    assert.equal(layerState(layout,jplusName).css,"hidden");
     assert.equal(layerState(layout,chassisName).css,"visible");
 });
 
