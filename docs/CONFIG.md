@@ -118,6 +118,16 @@ all video renderers reverse the seven-pixel bit order only when `A2_JP`
 is selected. The standard Apple II Plus character lookup and bit order
 remain unchanged.
 
+**J-Plus body case:** The Composer v3 export in `res/COM_LAYOUT_CONFIG.js`
+embeds both `A2P_Body.png` (`SYSTEM.CHASSIS`) and `A2JP_Body.png`
+(currently `SYSTEM.LAYER2`). Only one case is displayed: `A2JP` selects
+`A2JP_Body.png`, and all other supported models display `A2P_Body.png`.
+The runtime compositor selects by filename, preserving the generated
+layout JSON, image positions, and unrelated peripheral layers. The
+selection applies on initial `?sys=A2JP` startup, live system changes,
+failed-restart rollback, and layout reinstallation. Older layouts
+without the J-Plus image retain their original chassis.
+
 **ROM selection and Language Cards:** The `ROM` entry in `_CFG_SYSCODE`
 may be a comma-separated list of **alternatives**, not a key into
 `_CFG_ROMRANGES`. The selected single ROM ID is resolved by
