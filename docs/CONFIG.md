@@ -48,7 +48,7 @@ We aim to have all the documentation available in markdown format, for easy onli
 | :---:   | :----------------- | :-------- | :-------- | :------- | :---------: | :---- | :------------ |
 | A1      | Apple I            |6502       | 1.023     | A1_txt   |             |       | A1_US         |
 | A2      | Apple II           |6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A2_US         |
-| A2P     | Apple II Plus      |6502       | 1.023     | A2_hgr   | [0-7] [0-7] | A2P_R | A2_US         |
+| A2P     | Apple II Plus      |6502       | 1.023     | A2_hgr   | [0-7] [0-7] | A2P_R,A2P_RL | A2_US         |
 | A2PE    | Apple II EuroPlus  |6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A2_US         |
 | A2JP    | Apple II J-Plus    |6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A2_JP         |
 | A2B     | Bell & Howell      |6502       | 1.023     | A2_hgr   | [0-7] [0-7] |       | A2B_US_blk    |
