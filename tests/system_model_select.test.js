@@ -15,7 +15,7 @@ const romSelector=motherboard.slice(motherboard.indexOf("function Apple2ROM(hw)"
                                     motherboard.indexOf("const apple2Rom = new Uint8Array"));
 const popupSource=fs.readFileSync(path.join(root,"res/EMU_system_config_popup.js"),"utf8");
 
-function makeSystem(query="")
+function makeSystem(query="",skipStartup=false)
 {
     let boots=0,redraws=0;
     const warnings=[];
@@ -51,7 +51,7 @@ function makeSystem(query="")
     context.EMU_system_get=()=>Object.keys(context.oEMU.system)
         .find(code=>context.oEMU.system[code] &&
               context.oEMU.system[code].active===true);
-    if(!arguments[1]) context.EMU_system_configStartup();
+    if(!skipStartup) context.EMU_system_configStartup();
     return {context,rom,video,location,uri,warnings,
         get boots(){return boots;},
         get redraws(){return redraws;}};
@@ -205,7 +205,7 @@ test("MS16K discovery mounts before EMU_init when ROM options are a comma-separa
     const ms16k=fs.readFileSync(path.join(root,"res/EMU_CARD_ramcard.js"),"utf8");
     assert.doesNotThrow(()=>vm.runInContext(ms16k,s.context,{filename:"EMU_CARD_ramcard.js"}));
     assert.equal(s.context.oEMU.component.IO.RamCard.id.PCODE,"MS16K");
-    assert.equal(s.context._CFG_SYSCODE.A2P.ROM,"A2P_R, A2P_RL");
+    assert.equal(vm.runInContext("_CFG_SYSCODE.A2P.ROM",s.context),"A2P_R, A2P_RL");
 });
 
 test("Saturn/Legend and MS16K use an individual ROM key, never the option list",()=>{
