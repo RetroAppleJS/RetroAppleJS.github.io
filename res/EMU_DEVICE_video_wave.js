@@ -745,7 +745,7 @@ function Apple2Video(ctx)
                 if (JPLUS > 0) {
                     glyph = d8;
                     if ((d8 & 0xC0) == 0x40) glyph = d8 & 0x3F;
-                    if (JPLUS == 2) glyph |= 0x80;
+                    if (JPLUS == 2) glyph = glyph | 0x80;
                 }
                 const offs = glyph << 3;
                 const cbyte = rom[offs + (yp&7)];
@@ -806,7 +806,7 @@ function Apple2Video(ctx)
                 if (JPLUS > 0) {
                     glyph = d8;
                     if ((d8 & 0xC0) == 0x40) glyph = d8 & 0x3F;
-                    if (JPLUS == 2) glyph |= 0x80;
+                    if (JPLUS == 2) glyph = glyph | 0x80;
                 }
                 const offs = glyph << 3;
                 const cbyte = rom[offs + (yp&7)];
