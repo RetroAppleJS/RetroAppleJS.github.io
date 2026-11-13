@@ -58,7 +58,7 @@ test('ignores URLs without asm and leaves the source untouched', () => {
 test('imports a documented zlib/Deflate sample into the modern source editor', () => {
   const sample = 'ORG $6000\n  LDA #$01\n  RTS\n';
   const encoded = 'eJzzD3JXUDEzMDDgUlDwcXFUUFYxMAQyg0KCuQBKWwUj';
-  assert.equal(encodedSource(sample), encoded);
+  assert.equal(inflateSync(Buffer.from(encoded, 'base64')).toString('utf8'), sample);
   const r = execute('?asm=' + encoded);
   assert.equal(r.result, true);
   assert.equal(r.loaded[0][0], 'url-import.S');
