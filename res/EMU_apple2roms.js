@@ -32,21 +32,22 @@ function Apple2ROM(hw)
         throw new Error("Unexpected Monitor ROM byte at $FABB: $" +
             previous.toString(16));
 
+    // Preserve the original 2 KB monitor for later model/ROM switching.
+    if (!Apple2ROM.originalF8Rom)
+        Apple2ROM.originalF8Rom = apple2Rom.slice(0x2800);
+
     switch (romID)
     {
         case "A2P_RL":   // LIRON-compatible Apple II+ autostart ROM
+            apple2Rom.set(Apple2ROM.originalF8Rom, 0x2800);
             apple2Rom[offset] = 0x05;
             break;
 
         case "A2P_R":    // Original Apple II+ autostart ROM
+            apple2Rom.set(Apple2ROM.originalF8Rom, 0x2800);
             apple2Rom[offset] = 0x07;
             break;
-        case "A2P_RJ":   // J-Plus ROM not yet supplied; use A2P_R fallback
-
-            var i = 10240;
-            for (var j = 0; j < A2P_RJ.length; j++)
-                apple2Rom[j + 0x2800] = A2P_RJ[j];
-
+        case "A2P_RJ":   // Original J-Plus AutoStart monitor at $F800
             const A2P_RJ = new Uint8Array([
                 0x4A, 0x08, 0x20, 0x47, 0xF8, 0x28, 0xA9, 0x0F,
                 0x90, 0x02, 0x69, 0xE0, 0x85, 0x2E, 0xB1, 0x26,
@@ -304,6 +305,10 @@ function Apple2ROM(hw)
                 0x8C, 0xC4, 0x96, 0xAF, 0x17, 0x17, 0x2B, 0x1F,
                 0x83, 0x7F, 0x5D, 0xCC, 0xB5, 0xFC, 0x17, 0x17,
                 0xF5, 0x03, 0xFB, 0x03, 0x62, 0xFA, 0x40, 0xFA]);
+            if (A2P_RJ.length !== 0x800)
+                throw new Error("J-Plus Monitor ROM must be exactly 2 KB");
+            // apple2Rom starts at $D000; $F800-$D000 = $2800.
+            apple2Rom.set(A2P_RJ, 0x2800);
             break;
 
         default:
