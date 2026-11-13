@@ -341,6 +341,7 @@ function Apple2Video(ctx)
         ctx.fillStyle = text_PixelColor(1);
 
         var offs = 8 * Apple2CharROM_glyphIndex(d8, video.charRomKey, video.annunciator2);
+        var jplus = video.charRomKey === "A2_JP";
         for (var y = 0; y < 8; y++) {
             var bits = charRom[offs + y];
             
@@ -350,9 +351,10 @@ function Apple2Video(ctx)
                 bits ^= 0xff;
 
             for (var x = 0; x < 7; x++) {
-                if ((bits & 0x01) != 0)
+                // The J-Plus ROM stores the left pixel in bit 6, unlike
+                // the classic Apple II character ROM (left pixel in bit 0).
+                if ((bits & (1 << (jplus ? 6-x : x))) != 0)
                     ctx.fillRect(col * 14 + x * 2, row * 16 + y * 2, 2, 2);
-                bits >>= 1;
             }
         }
     }
