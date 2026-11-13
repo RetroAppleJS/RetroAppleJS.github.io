@@ -65,6 +65,23 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 * log / phy: logical slots = accessible via software (e.g. PR#n), physcial slot = real plug-in card slot
 
+### SYSTEM toolbox model selection
+
+In the Emulator's SYSTEM toolbox (tab 1.1), the cog and the adjacent model
+selector list only entries whose `SYSCODE` does **not** begin with `-`.
+Currently the options are **A2P** (Apple II Plus) and **A2JP** (Apple II
+J-Plus). Changing the model asks for confirmation, cold-restarts the emulator
+(clearing RAM), updates the active system code and character ROM, and records
+`sys=A2P` or `sys=A2JP` in the URL. Unsupported `?sys=` values are ignored.
+
+**Current emulation scope:** The Japanese `A2_JP` character ROM is present
+and can be selected. The motherboard still uses the bundled Apple II+ ROM
+(`apple2Rom` in `EMU_apple2roms.js`); the `A2P_RJ` variant named in the
+system table is not yet provided as a separate selectable ROM image.
+The keyboard handler still uses the `A2_US` mapping, so the J-Plus-specific
+keyboard behavior is not yet implemented. The model selector must not be
+mistaken for complete J-Plus hardware fidelity.
+
 
 ## ROM RANGES
 

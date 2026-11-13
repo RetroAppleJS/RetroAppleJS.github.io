@@ -504,9 +504,9 @@ function EMU_init()
         switch(uri)
         {
             case "sys":
-                for(var i in oEMU.system) oEMU.system[i]["active"] = false;
-                oEMU.system[oCOM.URL.uri[uri]] = {active:true};
-                for(var i in _TABS) _TABS[i].DEF_SYS = oCOM.URL.uri[uri];
+                // Never enable entries marked unavailable in COM_CONFIG.js.
+                if(!EMU_system_applyModel(oCOM.URL.uri[uri]))
+                    console.warn("Unsupported Apple II model: "+oCOM.URL.uri[uri]);
             break;
             case "disp":
                 // TODO select graphics mode (gpu, wave, threejs, canvas)
