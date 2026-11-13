@@ -146,6 +146,53 @@ test("GPU.js raster kernel obeys J-Plus bank while preserving classic lookup",()
                 "GPU d=$"+d.toString(16)+" bank="+mode);
         }
     }
+    // The flashing ($40-$7F) region must invert on alternating frames.
+    for(const mode of [0,1,2])
+    {
+        const mem=new Uint8Array(0x6000);
+        mem[0x400]=0x41;
+        const cfg=new Uint8Array(261);
+        cfg[1]=192;cfg[2]=86;cfg[244]=255;cfg[260]=mode;
+        const frame=(flash)=>{
+            cfg[3]=flash;
+            let color;
+            kernel.call({thread:{x:0,y:382},color:r=>{color=r;}},mem,jPlusROM,cfg);
+            return color;
+        };
+        assert.ok(frame(0)!==frame(1),"flashing must toggle for mode "+mode);
+    }
+});
+
+test("captured raster path uses identical glyphs and legacy default",()=>{
+    const rasterSource=source("EMU_VIDEO_raster.js");
+    const body=rasterSource.slice(
+        rasterSource.indexOf("function Apple2RasterKernel"),
+        rasterSource.indexOf("function Apple2RasterCreateKernel"));
+    const makeKernel=new Function(body+"\\nreturn Apple2RasterKernel;");
+    const kernel=makeKernel();
+    const bytes=new Uint8Array(7680),modes=new Uint8Array(7680);
+    const pal=new Uint8Array(256);
+    pal[240]=255;
+    const render=(d,bank)=>{
+        bytes[0]=d;
+        let result;
+        kernel.call({
+            constants:{scale:2},
+            thread:{x:0,y:382},
+            color:(r)=>{result=r;}
+        },bytes,modes,jPlusROM,pal,0,0,bank);
+        return result;
+    };
+    for(const d of [0x00,0x01,0x41,0x61,0x80,0x81,0xC1,0xE1])
+        for(const bank of [undefined,0,1,2])
+        {
+            const indexByte=bank>0?index(d,"A2_JP",bank===2):
+                index(d,"A2_US",true);
+            const inverse=d<0x40?1:0;
+            const expected=(jPlusROM[indexByte*8]&1)^inverse;
+            assert.equal(render(d,bank),expected?255/256:0,
+                "captured raster d=$"+d.toString(16)+" bank="+bank);
+        }
 });
 
 test("every video renderer has an explicit J-Plus glyph path",()=>{
