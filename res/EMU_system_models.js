@@ -89,14 +89,12 @@ function EMU_system_validateConfiguration(config)
 
 function EMU_system_effectiveRom(config)
 {
-    // A2P_RJ is currently only a config-table placeholder; until a genuine
-    // Japanese motherboard ROM is available, the original Apple II+ image
-    // remains the fallback, exactly as in the existing J-Plus mode.
-    return config && config.ROM==="A2P_RL" ? "A2P_RL" : "A2P_R";
+    // Retain the selected motherboard ROM, including A2P_RJ for J-Plus.
+    return config && config.ROM ? config.ROM : "A2P_R";
 }
 
-// A ROM option list in _CFG_SYSCODE is NOT a ROM range key. Resolve the
-// one active alternative, with J-Plus mapping to the existing A2P range.
+// A ROM option list in _CFG_SYSCODE is NOT a ROM range key.
+// Resolve the active alternative, including the distinct J-Plus ROM range.
 function EMU_system_romRangeID(config)
 {
     var selected=config || EMU_system_configState.active
@@ -205,6 +203,7 @@ function EMU_system_selectConfiguration(code,choices)
     var video=typeof(apple2plus.vidObj)==="function" ? apple2plus.vidObj() : null;
     var oldFont=video && typeof(video.getCharRomKey)==="function" ? video.getCharRomKey() : null;
     var oldRomByte=null;
+    var oldRomID=EMU_system_romRangeID(current);
     var oldActive=EMU_system_configState.active;
     try
     {
@@ -221,7 +220,7 @@ function EMU_system_selectConfiguration(code,choices)
     catch(ex)
     {
         if(oldRomByte!==null)
-            Apple2ROM(oldRomByte===0x05 ? "A2P_RL" : "A2P_R");
+            Apple2ROM(oldRomID);
         EMU_system_configState.active=oldActive;
         EMU_system_applyModel(oldModel);
         if(oldFont && video && typeof(video.setCharRom)==="function")
