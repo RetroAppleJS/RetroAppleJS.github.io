@@ -1076,13 +1076,37 @@ function AppleDisk2()
                     this.dNd.enable = false;
                 }
             break;
+            case "audio_on":
+                if(this.audio===undefined)
+                    await this.init("audio_ctx");
+                else if(this.audio.state!=="running")
+                    await this.audio.resume();
+
+                this.dNd.enable = true;
+                // Muting/pausing stops the Web Audio loop, but does not change
+                // the emulated controller's MOTOR_ON latch. On resume the ROM
+                // may never issue another MOTOR_ON, so restore from hardware.
+                var drive = state.hw[state.drv];
+                if(state.drive_enable && drive && drive.motor &&
+                    this.dNd.motor!=="ON" && dN_samples.DiskII_spin.audio)
+                {
+                    if(this.dNd.motorOffTimer)
+                    {
+                        clearTimeout(this.dNd.motorOffTimer);
+                        this.dNd.motorOffTimer = null;
+                    }
+                    this.dNd.motor = "ON";
+                    this.dN_play("DiskII_spin");
+                }
+            break;
             case "audio_off":
                 this.dNd.enable = false;
+                // Preserve the emulated motor state; reset only the sound loop.
+                this.dNd.motor = "OFF";
                 if(this.audio===undefined) return;
                 // Stop loops so repeated mute is safe and unmute can start fresh noise.
                 for(var name in this.AUD_buffer)
                     if(this.AUD_buffer[name].loop) this.dN_stop(name);
-                this.dNd.motor = "OFF";
 
                 await this.audio.suspend();
             break;
@@ -2396,7 +2420,7 @@ this.detectDiskImageType = function(imageBytes, filepath)
     // the previous 25% loudness (0.025 gain). 75% remains the default.
     const DISK_NOISE_MAX_GAIN = 0.025;
     this.dN_volume_levels = [0,25,75,100];
-    this.dNd = {enable:false,volumePct:75,motor:"OFF",status:"",detune:0,rept:0,motorOffTimer:null,last:{}};  // disk Noise data
+    this.dNd = {enable:false,emulatorPaused:false,volumePct:75,motor:"OFF",status:"",detune:0,rept:0,motorOffTimer:null,last:{}};  // disk Noise data
     this.AUD_buffer={};
 
     this.dN_volume_get = function()
@@ -2417,7 +2441,16 @@ this.detectDiskImageType = function(imageBytes, filepath)
 
     this.dN_volume_gain = function()
     {
-        return DISK_NOISE_MAX_GAIN * this.dNd.volumePct / 100;
+        return this.dNd.emulatorPaused ? 0 : DISK_NOISE_MAX_GAIN * this.dNd.volumePct / 100;
+    }
+
+    // Immediately silence the disk on CPU Pause, even if an asynchronous
+    // browser audio-unlock operation resumes its AudioContext afterward.
+    // This does not change motor state or the user's selected volume.
+    this.dN_setEmulatorPaused = function(paused)
+    {
+        this.dNd.emulatorPaused = !!paused;
+        this.dN_volume_apply();
     }
 
     this.dN_volume_apply = function()
