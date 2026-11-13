@@ -20,6 +20,7 @@ const _CFG_SYSCODE = {
 const _CFG_ROMRANGES = {
  "A2P_R":{"ROM":"$D000-$FFFF" ,"CRC16":"$CF45" ,"Description":"Apple II+ Autostart ROM"}
 ,"A2P_RL":{"ROM":"$D000-$FFFF" ,"CRC16":"$CF45" ,"Description":"Apple II+ LIRON Autostart ROM"}
+,"A2P_RJ":{"ROM":"$D000-$FFFF" ,"CRC16":"$C5C4" ,"Description":"Apple II J-Plus Autostart ROM"}
 }
 
 const _CFG_IORANGES = {
