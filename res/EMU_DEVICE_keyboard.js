@@ -10,6 +10,54 @@ if(typeof(oEMU)=="undefined")
     var oEMU = {"component":{"Keyboard":new A2Pkeys()}};
 var keycap_over,keycap_out,keycap_click;
 
+// Authentic J-Plus keycap legends from tools/KeyboardJS_katakana.html.
+// Index 0/1/2 corresponds to front-left/center/right (keylabel9/10/11).
+// The keys' existing IDs are kept as the input-mapping identity; this table
+// adds only visual legends and does not encode or inject Unicode Katakana.
+var A2JP_KEYCAP_LEGENDS = {
+    "34D8": ["｡", "/", "ア"],
+    "C598": ["イ", "/", "「"],
+    "9558": ["ウ", "/", "」"],
+    "671B": ["エ", "/", "、"],
+    "37DB": ["オ", "/", "・"],
+    "8434": ["カ", "/", "ヲ"],
+    "965B": ["キ", "/", "ァ"],
+    "621E": ["ク", "/", "ィ"],
+    "32DE": ["ケ", "/", "ロ"],
+    "C39E": ["コ", "/", "ワ"],
+    "3DD1": ["ュ", "/", "ス"],
+    "BC7E": [null, "ム", null],
+    "BEFE": [null, "ラ", null],
+    "B37E": [null, "ナ", null],
+    "BD3E": [null, "メ", null],
+    "BFBE": [null, "ヤ", null],
+    "7A7F": [null, "ル", null],
+    "7F7F": [null, "ユ", null],
+    "B67E": [null, "ノ", null],
+    "B4FE": [null, "マ", null],
+    "4C30": ["タ", "/", "ミ"],
+    "707F": [null, "チ", null],
+    "7DFF": [null, "モ", null],
+    "73BF": [null, "ト", null],
+    "B23E": [null, "ニ", null],
+    "26FC": [null, "ヌ", null],
+    "76BF": [null, "ネ", null],
+    "B73E": [null, "ハ", null],
+    "77FF": [null, "ヒ", null],
+    "B5BE": [null, "フ", null],
+    "935E": ["゜", "/", "サ"],
+    "7B3F": [null, "レ", null],
+    "BABE": [null, "リ", null],
+    "B1FE": [null, "テ", null],
+    "7E3F": [null, "ヨ", null],
+    "713F": [null, "ツ", null],
+    "E4B9": ["゛", "/", "ホ"],
+    "757F": ["ン", "/", "ヘ"],
+    "6062": ["シ", "/", "ャ"],
+    "85E1": ["セ", "/", "ョ"],
+    "9C51": ["ソ", "/", "ッ"]
+};
+
 function A2Pkeys()
 {
     this.id = {"DCODE":"A2KBD", "hostPCODE":"A2BO", "icon":"fa fa-keyboard"};
@@ -61,6 +109,56 @@ function A2Pkeys()
     ,"KBD_Yoff":-50   
     }:_o;
     this.o.kbd_map = new Array();
+    this.keycapModel = null;
+
+    // Add the lower/front-facing Japanese keycap legends as decorative DOM
+    // nodes. They must not alter the original US keyboard's click hash,
+    // modifier state, or the Apple II $C000 keyboard latch.
+    this.installKatakanaKeycaps = function(root)
+    {
+        if(!root || typeof(root.querySelectorAll)!="function" ||
+           typeof(document)==="undefined") return 0;
+        var keycaps=root.querySelectorAll(".keylabels[id]");
+        var added=0;
+        for(var i=0;i<keycaps.length;i++)
+        {
+            var labels=keycaps[i];
+            var legends=A2JP_KEYCAP_LEGENDS[labels.id];
+            if(!legends || labels.querySelector(".a2jp-kana-label")) continue;
+            for(var j=0;j<3;j++)
+            {
+                if(legends[j]===null) continue;
+                var outer=document.createElement("div");
+                outer.className="keylabel keylabel"+(9+j)+
+                    " textsize"+(labels.id==="26FC" ? "5" : "6")+
+                    " a2jp-kana-label";
+                outer.style.color="#ffffff";
+                outer.style.width="36px";
+                outer.style.height="36px";
+                var text=document.createElement("div");
+                text.style.width="36px";
+                text.style.maxWidth="36px";
+                text.style.height="36px";
+                text.textContent=legends[j];
+                outer.appendChild(text);
+                labels.appendChild(outer);
+                added++;
+            }
+        }
+        return added;
+    };
+
+    this.setSystemModel = function(code)
+    {
+        this.keycapModel=code==="A2JP" ? "A2JP" : "A2P";
+        if(typeof(document)!="undefined")
+        {
+            var root=document.getElementById("glyphScroller");
+            if(root && root.classList)
+                root.classList.toggle("a2jp-keyboard",this.keycapModel==="A2JP");
+        }
+        return this.keycapModel;
+    };
     // basic keystroke event handler without hardwired buttons
     // hardwiring should be done by letting hardware class override this method
 
@@ -449,6 +547,8 @@ function A2Pkeys()
         code += "<style>"
         code += "@import url(https://fonts.googleapis.com/css?family=Fragment+Mono);"
         code += "#glyphScroller { opacity:1 }"
+        code += "#glyphScroller .a2jp-kana-label { display:none; font-family:Arial,sans-serif; }"
+        code += "#glyphScroller.a2jp-keyboard .a2jp-kana-label { display:block; }"
         code += "#keyboard .keycap .keylabel, #glyphScroller .keylabel { font-family: 'Fragment Mono'; font-weight: 400;}"
         code += "#keyboard .keycap .slightup, #glyphScroller .slightup { font-weight: 600; position: relative; top: -5px;}"
         code += "#keyboard .keycap .altfont,  #glyphScroller .altfont { font-family: 'Arial'; position: relative; top: -3px;}"
@@ -550,6 +650,10 @@ function A2Pkeys()
             document.getElementById(args.id).innerHTML = code;
         else
             document.write(code);
+
+        this.installKatakanaKeycaps(document.getElementById("glyphScroller"));
+        this.setSystemModel(this.keycapModel ||
+            (typeof(EMU_system_get)==="function" ? EMU_system_get() : "A2P"));
     }
 
     this.KbdCSS = function()
@@ -861,7 +965,7 @@ padding: 0;
     this.getKeyContent = function(el)
     {
         var s = new Array(); if(el === undefined) { console.warn("this.getKeyContent did not receive element") }
-        for(const match of el.innerHTML.matchAll(/keylabel (keylabel[0-9]{1,2})/gm))                      // loop through all 'keylabel' (class names) in HTML
+        for(const match of el.innerHTML.matchAll(/keylabel (keylabel[0-8])\b/gm))                      // loop through all 'keylabel' (class names) in HTML
             s.push( oCOM.stripHTML(el.getElementsByClassName(match[1])[0].firstElementChild.innerHTML) ); // add enclosed HTML tag content
         return s.join("")  
     }

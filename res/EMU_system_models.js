@@ -57,6 +57,22 @@ function EMU_system_applyModel(code)
     if(typeof(oLAYOUT)!=="undefined" && oLAYOUT &&
        typeof(oLAYOUT.setSystemModel)==="function")
         oLAYOUT.setSystemModel(code);
+
+    // The J-Plus has additional Kana legends on its physical keycaps.
+    // Only switch the virtual keyboard artwork; its ASCII key events remain
+    // identical. When booting, the keyboard may not be attached yet and
+    // KbdHTML() will read the already selected EMU_system_get() instead.
+    if(typeof(apple2plus)!=="undefined" && apple2plus &&
+       typeof(apple2plus.keysObj)==="function")
+    {
+        try
+        {
+            var keyboard=apple2plus.keysObj();
+            if(keyboard && typeof(keyboard.setSystemModel)==="function")
+                keyboard.setSystemModel(code);
+        }
+        catch(err) {} // No A2KBD attached yet during early startup.
+    }
     return true;
 }
 
