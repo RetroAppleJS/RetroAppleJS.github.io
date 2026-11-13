@@ -83,7 +83,9 @@ function Apple2VideoMUX(canvas)
          * Apple annunciator zero is an input to the optional Videx Soft Video
          * Switch. Firmware 2.4 drives it through $C058/$C059.
          */
-        annunciator0: false
+        annunciator0: false,
+        // J-Plus AN2 ON ($C05D) selects Roman; AN2 OFF ($C05C) selects Kana.
+        annunciator2: true
     };
 
     this.state.charRomKey = defaultCharRomKey;
@@ -800,6 +802,7 @@ function Apple2VideoMUX(canvas)
         this.state.page2 = false;
         this.state.hires = false;
         this.state.chrome = 0;
+        this.state.annunciator2 = true;
 
         this.setMode(this.modeIndex, null, true);
     };
@@ -952,6 +955,23 @@ function Apple2VideoMUX(canvas)
         return this.state.charRom;
     };
 
+    this.setAnnunciator2 = function(flag)
+    {
+        var next = !!flag;
+        if(this.state.annunciator2 === next) return next;
+        this.state.annunciator2 = next;
+        // The physical character ROM never changes: AN2 selects its bank.
+        // Keep every existing renderer, including inactive ones, synchronized.
+        for(var name in this.renderers)
+        {
+            var renderer = this.renderers[name];
+            if(renderer && typeof(renderer.setCharRom)==="function")
+                renderer.setCharRom(this.state.charRom,this.state.charRomKey,next);
+        }
+        this.redraw();
+        return next;
+    };
+
     this.setCharRom = function(key, uiEl)
     {
         if (!apple2CharRom[key])
@@ -972,7 +992,7 @@ function Apple2VideoMUX(canvas)
             var renderer = this.renderers[name];
 
             if (renderer && typeof(renderer.setCharRom) == "function")
-                renderer.setCharRom(this.state.charRom, key);
+                renderer.setCharRom(this.state.charRom, key, this.state.annunciator2);
         }
 
         this.redraw();
@@ -1010,7 +1030,7 @@ function Apple2VideoMUX(canvas)
         applyFrameTiming(r,this.frameTiming);
 
         if (typeof(r.setCharRom) == "function")
-            r.setCharRom(this.state.charRom, this.state.charRomKey);
+            r.setCharRom(this.state.charRom, this.state.charRomKey, this.state.annunciator2);
 
         if (typeof(r.setGfx) == "function")     r.setGfx(this.state.gfx);
         if (typeof(r.setMix) == "function")     r.setMix(this.state.mix);
