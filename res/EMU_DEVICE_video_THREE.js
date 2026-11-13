@@ -400,6 +400,19 @@ var APPLE2_THREE_CFG_DEFAULT =
         this.hw = null;
 
         this.video2D = null;                 // Previous renderer, usually EMU_DEVICE_video_GPU.js.
+        this.charRom = Apple2CharROM_get("A2_US");
+        this.charRomKey = "A2_US";
+        this.annunciator2 = true;
+        this.setCharRom = function(rom,key,annunciator2)
+        {
+            this.charRom = rom;
+            this.charRomKey = key;
+            this.annunciator2 = annunciator2 !== false;
+            if(this.video2D && typeof(this.video2D.setCharRom)==="function")
+                this.video2D.setCharRom(rom,key,this.annunciator2);
+            this.textureDirty = true;
+            return key;
+        };
         this.serial8 = new Uint8Array();
 
         this.renderer = null;
@@ -491,6 +504,8 @@ var APPLE2_THREE_CFG_DEFAULT =
             }
 
             this.video2D = new Apple2VideoTHREE_2D(this.videoCanvas);
+            if(typeof(this.video2D.setCharRom)==="function")
+                this.video2D.setCharRom(this.charRom,this.charRomKey,this.annunciator2);
             if(typeof(this.video2D.setActive)==="function") this.video2D.setActive(rendererActive);
             this.video2D.vidram = this.vidram;
             this.video2D.hw = this.hw;
