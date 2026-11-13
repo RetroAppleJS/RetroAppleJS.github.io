@@ -329,7 +329,7 @@ var composer =
       }
     },
     {
-      "id": "SYSTEM.CHASSIS",
+      "id": "SYSTEM.CHASSIS_A2P",
       "labels": {
         "ROLE": "CHASSIS"
       },
@@ -346,14 +346,14 @@ var composer =
       }
     },
     {
-      "id": "SYSTEM.LAYER2",
+      "id": "SYSTEM.CHASSIS_A2JP",
       "labels": {},
       "file": "A2JP_Body.png",
       "x": 4,
       "y": 489,
-      "visible": true,
+      "visible": false,
       "shadow": {
-        "enabled": false,
+        "enabled": true,
         "offsetX": 0,
         "offsetY": 15,
         "blur": 12,
@@ -371,7 +371,7 @@ var composer =
         "DISKII.D2.BODY",
         "DISKII.D1.BODY",
         "DISKII.GAP",
-        "SYSTEM.CHASSIS",
+        "SYSTEM.CHASSIS_A2P",
         "DISKII.D1.LED",
         "LIRON.HD20.1.BODY"
       ]
@@ -381,7 +381,7 @@ var composer =
       "title": "LIRON",
       "visible": [
         "SYSTEM.MONITOR",
-        "SYSTEM.CHASSIS",
+        "SYSTEM.CHASSIS_A2P",
         "LIRON.UNIDISK.1.BODY",
         "LIRON.UNIDISK.2",
         "LIRON.HD20.2.BODY"
@@ -392,7 +392,7 @@ var composer =
       "title": "TAPE",
       "visible": [
         "SYSTEM.MONITOR",
-        "SYSTEM.CHASSIS",
+        "SYSTEM.CHASSIS_A2P",
         "SYSTEM.TAPE"
       ]
     }
