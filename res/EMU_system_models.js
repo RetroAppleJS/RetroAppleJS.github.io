@@ -95,16 +95,23 @@ function EMU_system_effectiveRom(config)
     return config && config.ROM==="A2P_RL" ? "A2P_RL" : "A2P_R";
 }
 
+// A ROM option list in _CFG_SYSCODE is NOT a ROM range key. Resolve the
+// one active alternative, with J-Plus mapping to the existing A2P range.
+function EMU_system_romRangeID(config)
+{
+    var selected=config || EMU_system_configState.active
+        || EMU_system_getConfiguration();
+    var romID=EMU_system_effectiveRom(selected);
+    if(typeof(_CFG_ROMRANGES)==="undefined" || !_CFG_ROMRANGES[romID])
+        throw new Error("No configured motherboard ROM range for "+romID);
+    return romID;
+}
+
+// Keep the existing entry point, but centralize every ROM-byte mutation
+// inside Apple2ROM() in EMU_apple2roms.js.
 function EMU_system_patchRom(config)
 {
-    if(typeof(apple2Rom)==="undefined" || apple2Rom.length!==12288)
-        throw new Error("Apple II+ 12 KB motherboard ROM is unavailable");
-    var index=0xFABB-0xD000;
-    var original=apple2Rom[index];
-    if(original!==0x07 && original!==0x05)
-        throw new Error("Unexpected $FABB boot signature byte $"+original.toString(16));
-    apple2Rom[index]=EMU_system_effectiveRom(config)==="A2P_RL" ? 0x05 : 0x07;
-    return original;
+    return Apple2ROM(EMU_system_romRangeID(config));
 }
 
 function EMU_system_configPersist(config)
@@ -198,10 +205,14 @@ function EMU_system_selectConfiguration(code,choices)
     var video=typeof(apple2plus.vidObj)==="function" ? apple2plus.vidObj() : null;
     var oldFont=video && typeof(video.getCharRomKey)==="function" ? video.getCharRomKey() : null;
     var oldRomByte=null;
+    var oldActive=EMU_system_configState.active;
     try
     {
         oldRomByte=EMU_system_patchRom(config);
         EMU_system_applyModel(code);
+        // Peripheral restart() routines must see the NEW selected ROM range,
+        // not the previously running configuration.
+        EMU_system_configState.active=Object.assign({},config);
         if(config.KeyFont && video && typeof(video.setCharRom)==="function" &&
            video.setCharRom(config.KeyFont)===false)
             throw new Error("Cannot activate character ROM "+config.KeyFont);
@@ -209,8 +220,9 @@ function EMU_system_selectConfiguration(code,choices)
     }
     catch(ex)
     {
-        if(oldRomByte!==null && typeof(apple2Rom)!=="undefined")
-            apple2Rom[0xFABB-0xD000]=oldRomByte;
+        if(oldRomByte!==null)
+            Apple2ROM(oldRomByte===0x05 ? "A2P_RL" : "A2P_R");
+        EMU_system_configState.active=oldActive;
         EMU_system_applyModel(oldModel);
         if(oldFont && video && typeof(video.setCharRom)==="function")
             video.setCharRom(oldFont);
