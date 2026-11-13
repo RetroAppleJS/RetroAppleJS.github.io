@@ -8,8 +8,11 @@ const vm=require("node:vm");
 
 const root=path.join(__dirname,"..");
 const config=fs.readFileSync(path.join(root,"res/COM_CONFIG.js"),"utf8")
-    .split("const _CFG_ROMRANGES =")[0];
+    .split("const _CFG_IORANGES =")[0];
 const helper=fs.readFileSync(path.join(root,"res/EMU_system_models.js"),"utf8");
+const motherboard=fs.readFileSync(path.join(root,"res/EMU_apple2roms.js"),"utf8");
+const romSelector=motherboard.slice(motherboard.indexOf("function Apple2ROM(hw)"),
+                                    motherboard.indexOf("const apple2Rom = new Uint8Array"));
 const popupSource=fs.readFileSync(path.join(root,"res/EMU_system_config_popup.js"),"utf8");
 
 function makeSystem(query="")
@@ -32,8 +35,8 @@ function makeSystem(query="")
         URL,window:{location,history,confirm:()=>true,addEventListener(){}},
         apple2Rom:rom,
         apple2CharRom:{A2_US:new Uint8Array(1),A2_JP:new Uint8Array(1)},
-        oCOM:{URL:{uri}},
-        oEMU:{system:{A2P:{active:true}}},
+        oCOM:{URL:{uri},parseRngExpr(){return {from:0xD000,to:0xFFFF};}},
+        oEMU:{system:{A2P:{active:true}},component:{IO:{}}},
         _TABS:{tab1:{DEF_SYS:"A2P"},tab2:{DEF_SYS:"A2P"}},
         apple2plus:{
             vidObj(){return video;},
@@ -44,10 +47,11 @@ function makeSystem(query="")
     vm.createContext(context);
     vm.runInContext(config,context,{filename:"COM_CONFIG.js"});
     vm.runInContext(helper,context,{filename:"EMU_system_models.js"});
+    vm.runInContext(romSelector,context,{filename:"EMU_apple2roms.js:Apple2ROM"});
     context.EMU_system_get=()=>Object.keys(context.oEMU.system)
         .find(code=>context.oEMU.system[code] &&
               context.oEMU.system[code].active===true);
-    context.EMU_system_configStartup();
+    if(!arguments[1]) context.EMU_system_configStartup();
     return {context,rom,video,location,uri,warnings,
         get boots(){return boots;},
         get redraws(){return redraws;}};
@@ -192,4 +196,56 @@ test("index uses only the gear and compact model label, not inline dropdown",()=
     assert.match(html,/id="system_model_name"/);
     assert.doesNotMatch(html,/id="system_model_select"/);
     assert.match(html,/res\/EMU_system_config_popup\.css/);
+});
+
+test("MS16K discovery mounts before EMU_init when ROM options are a comma-separated list",()=>{
+    const s=makeSystem("",true); // before EMU_system_configStartup()
+    assert.equal(s.context.EMU_system_configState.active,null);
+    assert.equal(s.context.EMU_system_romRangeID(),"A2P_R");
+    const ms16k=fs.readFileSync(path.join(root,"res/EMU_CARD_ramcard.js"),"utf8");
+    assert.doesNotThrow(()=>vm.runInContext(ms16k,s.context,{filename:"EMU_CARD_ramcard.js"}));
+    assert.equal(s.context.oEMU.component.IO.RamCard.id.PCODE,"MS16K");
+    assert.equal(s.context._CFG_SYSCODE.A2P.ROM,"A2P_R, A2P_RL");
+});
+
+test("Saturn/Legend and MS16K use an individual ROM key, never the option list",()=>{
+    for(const name of ["ramcard","saturnRAM","legendRAM"])
+    {
+        const source=fs.readFileSync(path.join(root,"res/EMU_CARD_"+name+".js"),"utf8");
+        assert.match(source,/EMU_system_romRangeID\(\)/);
+        assert.doesNotMatch(source,/_CFG_ROMRANGES\[\(_CFG_SYSCODE\[/);
+    }
+});
+
+test("Apple2ROM switch only patches $FABB, reversibly, and rejects invalid IDs",()=>{
+    const s=makeSystem();
+    const before=Uint8Array.from(s.rom);
+    assert.equal(s.context.Apple2ROM("A2P_RL"),0x07);
+    assert.equal(s.rom[0xFABB-0xD000],0x05);
+    for(let i=0;i<s.rom.length;i++)
+        if(i!==0xFABB-0xD000) assert.equal(s.rom[i],before[i],"unexpected ROM patch at "+i);
+    assert.equal(s.context.Apple2ROM("A2P_R"),0x05);
+    assert.deepEqual(s.rom,before);
+    assert.throws(()=>s.context.Apple2ROM("NONEXISTENT"),/Unknown Apple II motherboard ROM/);
+    assert.deepEqual(s.rom,before);
+});
+
+test("selected ROM range is visible during peripheral restart, and rollback restores it",()=>{
+    const s=makeSystem();
+    let duringRestart=null;
+    s.context.apple2plus.restart=()=>{
+        duringRestart=s.context.EMU_system_romRangeID();
+    };
+    assert.equal(s.context.EMU_system_selectConfiguration("A2P",{ROM:"A2P_RL"}),true);
+    assert.equal(duringRestart,"A2P_RL");
+    assert.equal(s.context.EMU_system_romRangeID(),"A2P_RL");
+
+    s.context.apple2plus.restart=()=>{
+        duringRestart=s.context.EMU_system_romRangeID();
+        throw new Error("fail after range selection");
+    };
+    assert.equal(s.context.EMU_system_selectConfiguration("A2P",{ROM:"A2P_R"}),false);
+    assert.equal(duringRestart,"A2P_R");
+    assert.equal(s.context.EMU_system_romRangeID(),"A2P_RL");
+    assert.equal(s.rom[0xFABB-0xD000],0x05);
 });
