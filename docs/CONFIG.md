@@ -68,9 +68,10 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 ## ROM RANGES
 
-|[ROMRANGES] | ROM          | CRC16 |
-| :--------: | :----------: | :---: |
-| A2P_R      | $D000-$FFFF  | $CF45 |
+|[ROMRANGES] | ROM          | CRC16 | Description              |
+| :--------: | :----------: | :---: | :----------------------: |
+| A2P_R      | $D000-$FFFF  | $CF45 | Apple II+ Autostart ROM  |
+| A2P_RL     | $D000-$FFFF  | $CF45 | Apple II+ LIRON Autostart ROM |
 
 
 ## I/O RANGES
