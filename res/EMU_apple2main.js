@@ -1348,6 +1348,15 @@ function EMUI()
             document.getElementById(arg.id).innerHTML = '<i class="fa '+arg.class1+'"></i>';
         }
 
+        // Hardware is frozen as soon as Pause takes effect. Apply an
+        // immediate disk-noise gain gate, independent of async AudioContext
+        // suspend/resume and any in-flight browser audio-unlock callback.
+        EMU_diskIIObjects().forEach(function(disk2)
+        {
+            if(typeof(disk2.dN_setEmulatorPaused)=="function")
+                disk2.dN_setEmulatorPaused(bPause);
+        });
+
         if(typeof(apple2plus.CPU_pace_reset)=="function")
             apple2plus.CPU_pace_reset();
         this.cpuPaceIndicator(null);
@@ -1543,6 +1552,9 @@ async function EMU_audio_prepare()
 
 async function EMU_audio_try_unlock(forceButtonState)
 {
+    // User gestures while paused (for example loading a disk) must not
+    // silently re-enable audio or alter the sound-button preference.
+    if (appleIntervalHandle == null) return false;
     if (_o.EMU_audio.trying) return _o.EMU_audio.unlocked;
 
     // The cached global "unlocked" flag is not sufficient: browsers may
