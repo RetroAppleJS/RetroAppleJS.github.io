@@ -120,7 +120,7 @@ test("GPU.js raster kernel obeys J-Plus bank while preserving classic lookup",()
         .replace("this.kProcess_v6 =  ","");
     const literal=tail.slice(0,tail.lastIndexOf("\n}")).trim();
     const kernel=new Function("return ("+literal+")")();
-    const glyphByte=(d,mode)=>{
+    const glyphByte=(d,mode,x=0,y=0)=>{
         const mem=new Uint8Array(0x6000);
         mem[0x400]=d;
         const cfg=new Uint8Array(261);
@@ -130,22 +130,26 @@ test("GPU.js raster kernel obeys J-Plus bank while preserving classic lookup",()
         cfg[244]=255; // white
         cfg[260]=mode;
         let out;
-        kernel.call({thread:{x:0,y:382},color:(r)=>{out=r;}},mem,jPlusROM,cfg);
+        kernel.call({thread:{x:x*2,y:(191-y)*2},color:(r)=>{out=r;}},mem,jPlusROM,cfg);
         return out;
     };
-    for(const d of [0x00,0x01,0x41,0x61,0x80,0x81,0xA1,0xC1,0xE1])
-    {
+    for(const d of [0x00,0x01,0x41,0x61,0x80,0x81,0xA1,0xC1,0xC5,0xE1])
         for(const mode of [0,1,2])
-        {
-            const glyph=mode===0?index(d,"A2_US",true):
-                index(d,"A2_JP",mode===2);
-            const bit=jPlusROM[glyph*8]&1;
-            const invert=(d<0x40)?1:0; // FLASH=0, so flashing remains normal
-            const expected=(bit^invert)?255/256:0;
-            assert.equal(glyphByte(d,mode),expected,
-                "GPU d=$"+d.toString(16)+" bank="+mode);
-        }
-    }
+            for(const x of [0,1,3,5,6])
+                for(const y of [0,2,4,7])
+                {
+                    const glyph=mode===0?index(d,"A2_US",true):
+                        index(d,"A2_JP",mode===2);
+                    const pixelBit=mode===0?x:6-x;
+                    const bit=(jPlusROM[glyph*8+y]>>pixelBit)&1;
+                    const invert=(d<0x40)?1:0; // FLASH=0, so flashing remains normal
+                    const expected=(bit^invert)?255/256:0;
+                    assert.equal(glyphByte(d,mode,x,y),expected,
+                        "GPU d=$"+d.toString(16)+" bank="+mode+" x="+x+" y="+y);
+                }
+    // 'E' has an asymmetric vertical stroke: the J-Plus left edge is x=1.
+    assert.equal(glyphByte(0xC5,2,1,2),255/256);
+    assert.equal(glyphByte(0xC5,2,5,2),0);
     // The flashing ($40-$7F) region must invert on alternating frames.
     for(const mode of [0,1,2])
     {
@@ -173,26 +177,53 @@ test("captured raster path uses identical glyphs and legacy default",()=>{
     const bytes=new Uint8Array(7680),modes=new Uint8Array(7680);
     const pal=new Uint8Array(256);
     pal[240]=255;
-    const render=(d,bank)=>{
-        bytes[0]=d;
+    const render=(d,bank,x=0,y=0)=>{
+        bytes[y*40]=d;
         let result;
         kernel.call({
             constants:{scale:2},
-            thread:{x:0,y:382},
+            thread:{x:x*2,y:(191-y)*2},
             color:(r)=>{result=r;}
         },bytes,modes,jPlusROM,pal,0,0,bank);
         return result;
     };
-    for(const d of [0x00,0x01,0x41,0x61,0x80,0x81,0xC1,0xE1])
+    for(const d of [0x00,0x01,0x41,0x61,0x80,0x81,0xC1,0xC5,0xE1])
         for(const bank of [undefined,0,1,2])
-        {
-            const indexByte=bank>0?index(d,"A2_JP",bank===2):
-                index(d,"A2_US",true);
-            const inverse=d<0x40?1:0;
-            const expected=(jPlusROM[indexByte*8]&1)^inverse;
-            assert.equal(render(d,bank),expected?255/256:0,
-                "captured raster d=$"+d.toString(16)+" bank="+bank);
-        }
+            for(const x of [0,1,3,5,6])
+                for(const y of [0,2,4,7])
+                {
+                    const glyph=bank>0?index(d,"A2_JP",bank===2):
+                        index(d,"A2_US",true);
+                    const pixelBit=bank>0?6-x:x;
+                    const inverse=d<0x40?1:0;
+                    const expected=((jPlusROM[glyph*8+y]>>pixelBit)&1)^inverse;
+                    assert.equal(render(d,bank,x,y),expected?255/256:0,
+                        "captured raster d=$"+d.toString(16)+" bank="+bank+" x="+x+" y="+y);
+                }
+    assert.equal(render(0xC5,2,1,2),255/256);
+    assert.equal(render(0xC5,2,5,2),0);
+});
+
+test("Canvas preserves J-Plus and classic font pixel orientation",()=>{
+    const sourceText=source("EMU_DEVICE_video_canvas.js");
+    const from=sourceText.indexOf("function text_Draw(");
+    const to=sourceText.indexOf("function lores_Draw(",from);
+    const builder=new Function("ctx","charRom","video","Apple2CharROM_glyphIndex","text_PixelColor","flash_on",
+        sourceText.slice(from,to)+"\nreturn text_Draw;");
+    const render=(rom,key,ann2,d)=>{
+        const points=new Set();
+        const ctx={fillStyle:null,fillRect(x,y,w,h){if(w===2&&h===2)points.add(x+","+y);}};
+        builder(ctx,rom,{charRomKey:key,annunciator2:ann2},index,x=>x,false)(0,0,d);
+        return points;
+    };
+    const jp=render(jPlusROM,"A2_JP",true,0xC5);
+    assert.equal(jp.has("2,4"),true,"J-Plus E left stroke");
+    assert.equal(jp.has("10,4"),false,"J-Plus E must not be mirrored");
+    const us=new Uint8Array(512);
+    us[0x25*8+2]=0x02;
+    const original=render(us,"A2_US",true,0xC5);
+    assert.equal(original.has("2,4"),true,"Apple II+ left stroke");
+    assert.equal(original.has("10,4"),false,"Apple II+ orientation unchanged");
 });
 
 test("every video renderer has an explicit J-Plus glyph path",()=>{
@@ -202,12 +233,17 @@ test("every video renderer has an explicit J-Plus glyph path",()=>{
     const canvas=source("EMU_DEVICE_video_canvas.js");
     const three=source("EMU_DEVICE_video_THREE.js");
     assert.match(canvas,/Apple2CharROM_glyphIndex\(d8/);
+    assert.match(canvas,/jplus \? 6-x : x/);
     assert.match(raster,/jplusMode>0/);
     assert.match(raster,/code\*8/);
+    assert.match(raster,/6-bit : bit/);
     assert.match(wave,/JPLUS > 0/g);
     assert.match(wave,/this\.jplusMode/);
+    assert.equal((wave.match(/JPLUS > 0 \? 6-m7 : m7/g)||[]).length,2);
     assert.match(webgpu,/params\.jplusMode/);
     assert.match(webgpu,/code\*8u/);
+    assert.match(webgpu,/select\(bit,6u-bit,params\.jplusMode != 0u\)/);
     assert.match(three,/this\.video2D\.setCharRom\(rom,key,this\.annunciator2\)/);
     assert.match(gpuSource,/JPLUS=cfg\[260\]/);
+    assert.match(gpuSource,/JPLUS > 0 \? 6-m7 : m7/);
 });

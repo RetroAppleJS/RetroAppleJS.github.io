@@ -61,7 +61,8 @@ function Apple2RasterKernel(bytes,modes,rom,pal,chrome,flash,jplusMode)
         }
         var glyph=rom[(code*8)+(y&7)];
         var attr=d>>6;
-        var on=((glyph>>bit)&1)^((1>>attr)&1)^((2>>attr)&flash);
+        var pixelBit=jplusMode>0 ? 6-bit : bit;
+        var on=((glyph>>pixelBit)&1)^((1>>attr)&1)^((2>>attr)&flash);
         cp+=on*240;
     }
     this.color(pal[cp]/256,pal[cp+1]/256,pal[cp+2]/256,1);

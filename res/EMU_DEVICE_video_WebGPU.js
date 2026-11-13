@@ -578,7 +578,8 @@ fn byteAt(col: u32, y: u32, mode: u32) -> u32 {
         }
         let glyph = romByte((code*8u)+(y&7u));
         let attr = d>>6u;
-        let on = ((glyph>>bit)&1u)^((1u>>attr)&1u)^((2u>>attr)&params.flash);
+        let pixelBit = select(bit,6u-bit,params.jplusMode != 0u);
+        let on = ((glyph>>pixelBit)&1u)^((1u>>attr)&1u)^((2u>>attr)&params.flash);
         color = on*15u;
     }
     return palette[color*4u+params.chrome];

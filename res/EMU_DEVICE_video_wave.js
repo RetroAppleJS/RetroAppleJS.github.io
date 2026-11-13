@@ -750,7 +750,9 @@ function Apple2Video(ctx)
                 const offs = glyph << 3;
                 const cbyte = rom[offs + (yp&7)];
                 const infl  = d8>>6 & 3;
-                const rgb   = (cbyte>>m7&1) ^ (0b001>>infl&1) ^ (0b010>>infl&FLASH);
+                // J-Plus video ROM bits run from 6 (left) to 0 (right).
+                const pixelBit = JPLUS > 0 ? 6-m7 : m7;
+                const rgb   = (cbyte>>pixelBit&1) ^ (0b001>>infl&1) ^ (0b010>>infl&FLASH);
                 let cp = (CHROME_MODE << 2);
                 cp += (rgb<<8) - (rgb<<4);
                 this.color(pal[cp]/256.0, pal[cp+1]/256.0, pal[cp+2]/256.0, 1.0);
@@ -811,7 +813,9 @@ function Apple2Video(ctx)
                 const offs = glyph << 3;
                 const cbyte = rom[offs + (yp&7)];
                 const infl  = d8>>6 & 3;
-                const rgb   = (cbyte>>m7&1) ^ (0b001>>infl&1) ^ (0b010>>infl&FLASH);
+                // J-Plus video ROM bits run from 6 (left) to 0 (right).
+                const pixelBit = JPLUS > 0 ? 6-m7 : m7;
+                const rgb   = (cbyte>>pixelBit&1) ^ (0b001>>infl&1) ^ (0b010>>infl&FLASH);
                 cp += (rgb<<8) - (rgb<<4);
             }
 
