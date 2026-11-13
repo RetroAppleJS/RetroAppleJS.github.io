@@ -72,6 +72,7 @@ Completed items remain checked; unchecked items are planned or still need furthe
 - [ ] EMULATOR: HGR/HGR2/GR screen capture (.bin / .png / .animgif with timer or variable interval stopframe)
 - [x] EMULATOR: VIDEO vaporlock compatibility (detect and display vertical blank)
 - [x] EMULATOR: Peripherals optionally expose a generic scriptable port facade together with a machine-readable API contract. EMU_PORT_SCRIPT consumes that interface and provides a reusable JavaScript scripting console. Serial Pro should be the first peripheral using it.
+- [x] EMULATOR: simplify docs/CONFIG.md and all its dependencies
 - [ ] ASSEMBLER - disassembler tool
 - [x] RETRO LAB: Real-time camera processing and a configurable [ConvertHGR tool](tools/ConvertHGR.html)
 - [ ] RETRO LAB: HGR paint tool (https://hgrtool.art/imgedit.html)
