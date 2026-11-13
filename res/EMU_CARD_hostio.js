@@ -134,7 +134,11 @@ function AppleBoard()
              * PR#3/PR#0 commands.
              */
             "AN0OFF":   function(ctx){ if(!isRO(ctx) && ctx.vid && typeof(ctx.vid.setAnnunciator0)=="function") ctx.vid.setAnnunciator0(false); return ctx.io.FLOATING_BUS; },
-            "AN0ON":    function(ctx){ if(!isRO(ctx) && ctx.vid && typeof(ctx.vid.setAnnunciator0)=="function") ctx.vid.setAnnunciator0(true);  return ctx.io.FLOATING_BUS; }
+            "AN0ON":    function(ctx){ if(!isRO(ctx) && ctx.vid && typeof(ctx.vid.setAnnunciator0)=="function") ctx.vid.setAnnunciator0(true);  return ctx.io.FLOATING_BUS; },
+            // J-Plus Video ROM: $C05C = AN2 OFF = Kana, $C05D = AN2 ON = Roman.
+            // Both access types operate as soft switches; debugger bRO scans must not.
+            "AN2OFF":   function(ctx){ if(!isRO(ctx) && ctx.vid && typeof(ctx.vid.setAnnunciator2)=="function") ctx.vid.setAnnunciator2(false); return ctx.io.FLOATING_BUS; },
+            "AN2ON":    function(ctx){ if(!isRO(ctx) && ctx.vid && typeof(ctx.vid.setAnnunciator2)=="function") ctx.vid.setAnnunciator2(true);  return ctx.io.FLOATING_BUS; }
         };
   
         var IOMAP_ID = null;
@@ -255,7 +259,9 @@ function AppleBoard()
             0x6: IOMAP_CALLS["LORES"],
             0x7: IOMAP_CALLS["HIRES"],
             0x8: IOMAP_CALLS["AN0OFF"],
-            0x9: IOMAP_CALLS["AN0ON"]
+            0x9: IOMAP_CALLS["AN0ON"],
+            0xC: IOMAP_CALLS["AN2OFF"],
+            0xD: IOMAP_CALLS["AN2ON"]
         };
 
         var output = {
@@ -287,7 +293,7 @@ function AppleBoard()
         
     }
 
-    function resetAnnunciator0()
+    function resetAnnunciators()
     {
         var video =
             typeof(oApple2Video)!="undefined"
@@ -296,11 +302,13 @@ function AppleBoard()
 
         if(video && typeof(video.setAnnunciator0)=="function")
             video.setAnnunciator0(false);
+        if(video && typeof(video.setAnnunciator2)=="function")
+            video.setAnnunciator2(true);
     }
 
     this.reset = function()
     {
-        resetAnnunciator0();
+        resetAnnunciators();
         return true;
     };
 
@@ -312,7 +320,7 @@ function AppleBoard()
                 : null;
 
         this.bindVideoSelection(video);
-        resetAnnunciator0();
+        resetAnnunciators();
         return true;
     };
 

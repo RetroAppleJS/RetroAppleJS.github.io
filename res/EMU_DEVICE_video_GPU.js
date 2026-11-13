@@ -185,8 +185,16 @@ function Apple2Video(ctx)
 
     this.charRom = Apple2CharROM_get("A2_US");
     this.charRomKey = "A2_US";
+    this.jplusMode = 0;
     this.ctrl_dlg = function() { return Apple2VideoGPU_controls(this); };
-    this.setCharRom = function(rom, key) { this.charRom = rom; this.charRomKey = key; frame_redraw = true; return key; };
+    this.setCharRom = function(rom, key, annunciator2)
+    {
+        this.charRom = rom;
+        this.charRomKey = key;
+        this.jplusMode = key==="A2_JP" ? (annunciator2===false ? 1 : 2) : 0;
+        frame_redraw = true;
+        return key;
+    };
     this.vidram = null; // apple2hw.js sets this to give me reference to ram
     this.hw = null;     // apple2hw provides its reference during initialisation
     this.gpu = null;    // keep one GPU.js/WebGL owner for the lifetime of this renderer
@@ -321,7 +329,8 @@ function Apple2Video(ctx)
                 ,"DIM_H":[vidContext.height>>1]
                 ,"GFX_FLG":[video.register_mode()]
                 ,"FLASH":[false]
-                ,"PALETTE":[video.INTCols]});
+                ,"PALETTE":[video.INTCols]
+                ,"JPLUS":[video.jplusMode]});
         }
             //console.log( video.ser8_map() )
     }
@@ -370,6 +379,7 @@ function Apple2Video(ctx)
       this.serial8[ this.idx8("CHROME_MODE") ] = chrome_mode;
       this.serial8[ this.idx8("GFX_FLG") ]     = this.register_mode();
       this.serial8[ this.idx8("FLASH") ]       = flash_on ? 1 : 0;
+      this.serial8[ this.idx8("JPLUS") ]       = this.jplusMode;
 
       const video = this;
 
@@ -400,7 +410,7 @@ queuedFrames.add(request);
     {
         if(!rendererActive || !this.gpu) return;
         if(!this.rasterKernel) this.rasterKernel=Apple2RasterCreateKernel(this.gpu,2);
-        this.rasterKernel(frame.bytes,frame.modes,this.charRom,this.INTCols,state.chrome,frame.flash?1:0);
+        this.rasterKernel(frame.bytes,frame.modes,this.charRom,this.INTCols,state.chrome,frame.flash?1:0,this.jplusMode);
         this.recordFrameSubmit(this.nowMs());
     };
 
@@ -588,7 +598,7 @@ queuedFrames.add(request);
 
   this.kProcess_v6 =  function(mem,rom,cfg)
   { 
-    const CHROME_MODE=cfg[0]<<2,DIM_H=cfg[1],GFX_FLG=cfg[2],FLASH=cfg[3],PALETTE=4
+    const CHROME_MODE=cfg[0]<<2,DIM_H=cfg[1],GFX_FLG=cfg[2],FLASH=cfg[3],JPLUS=cfg[260],PALETTE=4
 
     const xp = (this.thread.x>>1);
     const yp = DIM_H-(this.thread.y>>1)-1;
@@ -622,8 +632,13 @@ queuedFrames.add(request);
     {
       const adr   = (PAGE>>3) + adr_ofs + x7;                               // locate hardware address
       const d8    = mem[adr];                                               // read byte from memory
-      const offs  = ((d8 & 0x3F) ^ 0x20) << 3;                              // character offset (not inversed or flashing)
-      const cbyte = rom[ offs + (yp&7) ];                                   // read byte from character ROM
+      let glyph = (d8 & 0x3F) ^ 0x20;                                        // Apple II+ 64-glyph decoder
+      if (JPLUS > 0) {
+          glyph = d8;
+          if ((d8 & 0xC0) == 0x40) glyph = d8 & 0x3F;
+          if (JPLUS == 2) glyph = glyph | 0x80;                                    // AN2 ON: Roman
+      }
+      const cbyte = rom[(glyph << 3) + (yp&7)];                             // J-Plus: full 2 KB ROM
       const infl  = d8>>6 & 3;                                              // inv/flash modifier
       const rgb   = (cbyte>>m7&1) ^ (0b001>>infl&1) ^ (0b010>>infl&FLASH);  // color 1 or 0 with FLASH modifier
       cp += (rgb<<8) - (rgb<<4);                                            // color pointer
