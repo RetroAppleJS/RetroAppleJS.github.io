@@ -51,6 +51,12 @@ function EMU_system_applyModel(code)
             _TABS[tab].DEF_SYS=code;
             _TABS[tab].SYS=code;
         }
+
+    // Keep the Composer body case in sync with the selected machine.
+    // Also used by startup and failed-restart rollback paths.
+    if(typeof(oLAYOUT)!=="undefined" && oLAYOUT &&
+       typeof(oLAYOUT.setSystemModel)==="function")
+        oLAYOUT.setSystemModel(code);
     return true;
 }
 
