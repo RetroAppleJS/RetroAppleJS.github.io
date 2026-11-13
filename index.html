@@ -21,7 +21,9 @@
     <script type="text/javascript" src="res/DBG_steptrace_scenario.js"></script>
     <script type="text/javascript" src="res/DBG_steptrace_scenario_layout.js"></script>
     <script type="text/javascript" src="res/COM_CONFIG.js"></script>
-    <script type="text/javascript" src="res/EMU_system_models.js"></script>  <!-- load all the help, documentation & configuration data-->
+    <script type="text/javascript" src="res/EMU_system_models.js"></script>
+    <script type="text/javascript" src="res/EMU_system_config_popup.js"></script>
+    <link rel="stylesheet" href="res/EMU_system_config_popup.css">  <!-- load all the help, documentation & configuration data-->
     <script type="text/javascript" src="res/pako.min.js"></script>    <!-- compression/decompression library -->
     <!--script type="text/javascript" src="res/purify.min.js"></script-->  <!-- safely filter out all HTML tags -->
     <script type="text/javascript" src="res/ayumi.js"></script>    <!-- AY numerical reference -->
@@ -445,16 +447,6 @@
                             system_tab_update();
                         }
 
-                        function system_model_open()
-                        {
-                            var selector=document.getElementById("system_model_select");
-                            if(!selector) return;
-                            selector.focus();
-                            if(typeof(selector.showPicker)==="function")
-                            {
-                                try { selector.showPicker(); } catch(e) {}
-                            }
-                        }
 
                         function system_tab_update()
                         {
@@ -465,14 +457,10 @@
                             var driverName = video.getRenderMode();
                             var modelName = EMU_system_get() || "A2P";
                             var modelInfo = _CFG_SYSCODE[modelName] || _CFG_SYSCODE.A2P;
-                            var modelOptions = EMU_system_modelCodes().map(function(code)
-                            {
-                                return '<option value="' + code + '"' +
-                                    (code===modelName ? ' selected' : '') + '>' + code + '</option>';
-                            }).join("");
+                            var liveConfig=EMU_system_getConfiguration(modelName);
 
                             document.getElementById("cpu_component").textContent =
-                                modelInfo.CPU;
+                                liveConfig ? liveConfig.CPU : modelInfo.CPU;
 
                             // Keep the original toolbox font; the screenshot
                             // supplies placement, not typography or icon sizes.
@@ -494,12 +482,11 @@
                                 + ' onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();apple2plus.vidObj().nextCharRom(this);system_tab_update()}"></i>'
                                 + '<button type="button" id="system_model_button"'
                                 + ' style="width:16px;padding:0;border:0;background:transparent;color:inherit;cursor:pointer"'
-                                + ' title="Select Apple II model" aria-label="Select Apple II model"'
-                                + ' onclick="system_model_open()"><i class="fa fa-cog"></i></button>'
-                                + '<select id="system_model_select" aria-label="Apple II model"'
-                                + ' style="width:100%;min-width:0;font:inherit;font-size:11px;padding:0;border:0;background:transparent;color:inherit;cursor:pointer"'
-                                + ' title="' + modelInfo.Model + '" onchange="EMU_system_selectModel(this.value)">'
-                                + modelOptions + '</select>';
+                                + ' aria-expanded="false" aria-controls="EMU_system_config_popup"'
+                                + ' title="Configure Apple II system" aria-label="Configure Apple II system"'
+                                + ' onclick="EMU_SYSTEM_CONFIG.toggle()"><i class="fa fa-cog"></i></button>'
+                                + '<span id="system_model_name" style="white-space:nowrap;text-align:left"'
+                                + ' title="' + modelInfo.Model + '">' + modelName + '</span>';
                         }
                       </script>
                     </div>
