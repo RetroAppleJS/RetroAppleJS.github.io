@@ -742,7 +742,7 @@ function Apple2Video(ctx)
                 const adr   = (PAGE>>3) + adr_ofs + x7;
                 const d8    = RASTER==1 ? rasterBytes[rasterIndex] : mem[adr];
                 let glyph = (d8 & 0x3F) ^ 0x20;
-                if (JPLUS != 0) {
+                if (JPLUS > 0) {
                     glyph = d8;
                     if ((d8 & 0xC0) == 0x40) glyph = d8 & 0x3F;
                     if (JPLUS == 2) glyph |= 0x80;
@@ -803,7 +803,7 @@ function Apple2Video(ctx)
                 const adr   = (PAGE>>3) + adr_ofs + x7;
                 const d8    = mem[adr];
                 let glyph = (d8 & 0x3F) ^ 0x20;
-                if (JPLUS != 0) {
+                if (JPLUS > 0) {
                     glyph = d8;
                     if ((d8 & 0xC0) == 0x40) glyph = d8 & 0x3F;
                     if (JPLUS == 2) glyph |= 0x80;
