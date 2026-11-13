@@ -53,7 +53,7 @@ function Apple2RasterKernel(bytes,modes,rom,pal,chrome,flash,jplusMode)
     else
     {
         var code=(d&63)^32;
-        if(jplusMode!==0)
+        if(jplusMode>0)
         {
             code=d;
             if((d&192)===64) code=d&63;
