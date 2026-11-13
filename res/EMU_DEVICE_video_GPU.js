@@ -640,7 +640,9 @@ queuedFrames.add(request);
       }
       const cbyte = rom[(glyph << 3) + (yp&7)];                             // J-Plus: full 2 KB ROM
       const infl  = d8>>6 & 3;                                              // inv/flash modifier
-      const rgb   = (cbyte>>m7&1) ^ (0b001>>infl&1) ^ (0b010>>infl&FLASH);  // color 1 or 0 with FLASH modifier
+      // J-Plus 2 KB video ROM stores the leftmost pixel in bit 6.
+      const pixelBit = JPLUS > 0 ? 6-m7 : m7;
+      const rgb   = (cbyte>>pixelBit&1) ^ (0b001>>infl&1) ^ (0b010>>infl&FLASH);  // color 1 or 0 with FLASH modifier
       cp += (rgb<<8) - (rgb<<4);                                            // color pointer
     }
 
