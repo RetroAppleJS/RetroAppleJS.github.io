@@ -1,0 +1,58 @@
+/* SYSTEM configuration popup: STEP TRACE footprint, independently scrolling
+ * grid. It is deliberately not an in-line select in the 110 px SYSTEM row. */
+.sysconfig-popup {
+    position:fixed !important;
+    z-index:2100 !important;
+    box-sizing:border-box;
+    padding:4px !important;
+    margin:0 !important;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    overflow:hidden;
+    font:10px/1.35 Arial,Helvetica,sans-serif;
+    text-align:left;
+}
+.sysconfig-popup[hidden] { display:none !important; }
+.sysconfig-header {
+    flex:none;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    min-height:20px;
+}
+.sysconfig-header strong {font-size:12px;font-weight:normal;}
+.sysconfig-close {font-size:12px;min-width:18px;cursor:pointer;}
+.sysconfig-intro {flex:none;line-height:1.3;}
+.sysconfig-table-scroller {
+    flex:1 1 auto;
+    min-height:60px;
+    max-width:100%;
+    overflow:auto;
+    border:1px solid #aaa;
+    background:rgba(255,255,255,.5);
+}
+.sysconfig-table {border-collapse:collapse;min-width:840px;width:max-content;font:10px/1.35 Arial,Helvetica,sans-serif;}
+.sysconfig-table th,.sysconfig-table td {
+    text-align:left;vertical-align:top;
+    border:1px solid #aaa;
+    padding:5px 6px;
+    min-width:80px;
+    white-space:nowrap;
+}
+.sysconfig-table thead th {position:sticky;top:0;z-index:2;background:#e5e5e5;color:#222;}
+.sysconfig-table .sysconfig-model {position:sticky;left:0;z-index:1;min-width:125px;background:#f3f3f3;}
+.sysconfig-table thead th:first-child {left:0;z-index:3;}
+.sysconfig-table .sysconfig-selected .sysconfig-model {background:#d1e6f7;}
+.sysconfig-table .sysconfig-selected td {background:rgba(180,210,235,.12);}
+.sysconfig-model-label {display:flex;gap:4px;align-items:flex-start;cursor:pointer;}
+.sysconfig-model-label small {display:block;font-size:9px;font-weight:normal;white-space:normal;max-width:120px;}
+.sysconfig-option {display:flex;gap:4px;align-items:flex-start;cursor:pointer;white-space:nowrap;line-height:1.35;}
+.sysconfig-option+.sysconfig-option {margin-top:4px;}
+.sysconfig-option input,.sysconfig-model-label input {margin:1px 1px 0 0;flex:none;}
+.sysconfig-empty {opacity:.6;}
+.sysconfig-footer {flex:none;}
+.sysconfig-note {font-size:9px;opacity:.8;line-height:1.25;}
+.sysconfig-notice {font-size:10px;min-height:13px;line-height:1.3;}
+.sysconfig-actions {display:flex;align-items:center;justify-content:flex-end;gap:6px;}
+.sysconfig-actions button {cursor:pointer;font:inherit;padding:3px 7px;}
