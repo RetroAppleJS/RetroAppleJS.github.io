@@ -566,6 +566,9 @@ function LAYOUT(rootWindow)
     function selectSystemChassis(layout,model)
     {
         if(!layout || !Array.isArray(layout.layers)) return;
+        // Older Composer exports do not include the J-Plus artwork. Keep
+        // their original body visible instead of hiding the only chassis.
+        if(!layout.layers.some(function(layer){ return layer.file === "A2JP_Body.png"; })) return;
         var jplus = model === "A2JP";
         layout.layers.forEach(function(layer)
         {
@@ -802,7 +805,8 @@ function LAYOUT(rootWindow)
     this.setSystemModel = function(model)
     {
         this.systemModel = String(model || "A2P");
-        if(this.lastLayout)
+        if(this.lastLayout && this.lastLayout.layers.some(function(layer)
+            { return layer.file === "A2JP_Body.png"; }))
         {
             this.visibleByFile("A2P_Body.png",this.systemModel !== "A2JP");
             this.visibleByFile("A2JP_Body.png",this.systemModel === "A2JP");
