@@ -668,6 +668,10 @@ function Apple2VideoMUX(canvas)
         {
             if(!stillSelected()) return;
             mux.attachCanvas(c);
+            // Three.js was initialized while its canvas was detached.
+            // Re-evaluate its actual CSS size only after it becomes visible.
+            if(renderer && typeof(renderer.resizeRenderer)==="function")
+                renderer.resizeRenderer();
             if(mux.frameTiming==="vblank") mux.presentRasterFrame();
             else if(typeof(renderer.redraw)==="function") renderer.redraw();
         }

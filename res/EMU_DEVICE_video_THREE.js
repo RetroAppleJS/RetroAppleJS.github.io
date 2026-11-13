@@ -374,6 +374,7 @@ var APPLE2_THREE_CFG_DEFAULT =
         var renderLoopStarted = false;
         var renderLoopRequest = null;
         var rendererActive = true;
+        var webglContextLost = false;
         var resizeListenerInstalled = false;
         var lastTextureUpdate = 0;
         var lastRenderUpdate = 0;
@@ -680,11 +681,26 @@ var APPLE2_THREE_CFG_DEFAULT =
 
             this.renderer = new THREE.WebGLRenderer({
                 canvas: this.canvas,
-                antialias: true,
+                // Avoid an extra multisampled framebuffer on memory-limited GPUs.
+                antialias: false,
                 alpha: false
             });
 
-            this.renderer.setPixelRatio(window.devicePixelRatio || 1);
+            // Three.js handles WebGL resource restoration internally. Do not
+            // submit frames while its context is lost; refresh the Apple II
+            // texture once the browser restores it.
+            this.canvas.addEventListener("webglcontextlost",function()
+            {
+                webglContextLost = true;
+            });
+            this.canvas.addEventListener("webglcontextrestored",function()
+            {
+                webglContextLost = false;
+                video3D.textureDirty = true;
+                if(video3D.screenTexture) video3D.screenTexture.needsUpdate = true;
+                video3D.resizeRenderer();
+            });
+
             this.resizeRenderer();
             this.resizeTextureCanvas();
 
@@ -722,9 +738,20 @@ var APPLE2_THREE_CFG_DEFAULT =
         {
             if (!this.renderer || !this.canvas) return;
 
-            var w = this.canvas.clientWidth  || this.canvas.width  || DISPLAY_W;
-            var h = this.canvas.clientHeight || this.canvas.height || DISPLAY_H;
+            // The MUX initializes Three.js before attaching its canvas to the
+            // DOM. A detached canvas has clientWidth/Height == 0. Never fall
+            // back to canvas.width/height: setSize() has already multiplied
+            // those *backing store* dimensions by devicePixelRatio, and doing
+            // so again grows the framebuffer exponentially on each resize.
+            var w = this.canvas.clientWidth > 0 ? this.canvas.clientWidth : DISPLAY_W;
+            var h = this.canvas.clientHeight > 0 ? this.canvas.clientHeight : DISPLAY_H;
 
+            // Keep the drawing buffer bounded even on Retina/large displays.
+            // CSS layout and perspective remain at the intended logical size.
+            var deviceRatio = Number(window.devicePixelRatio) || 1;
+            var pixelRatio = Math.min(Math.max(1,deviceRatio),1.5,
+                2048 / w,2048 / h,Math.sqrt((2048*2048)/(w*h)));
+            this.renderer.setPixelRatio(pixelRatio);
             this.renderer.setSize(w, h, false);
 
             if (this.camera && this.camera.isPerspectiveCamera)
@@ -1063,6 +1090,30 @@ var APPLE2_THREE_CFG_DEFAULT =
             return texture;
         };
 
+        // Embedded defaults contain 4096x4096 PNG maps. Limit their actual
+        // GPU upload to 1024px on the longest side (with mipmaps, this cuts
+        // each RGBA texture from ~85 MiB to ~5 MiB).
+        this.downsampleDefaultTexture = function(texture)
+        {
+            var image = texture && texture.image;
+            if (!image) return false;
+            var width = image.naturalWidth || image.width || 0;
+            var height = image.naturalHeight || image.height || 0;
+            var longest = Math.max(width,height);
+            if (longest <= 1024) return false;
+
+            var scale = 1024 / longest;
+            var reduced = document.createElement("canvas");
+            reduced.width = Math.max(1,Math.round(width*scale));
+            reduced.height = Math.max(1,Math.round(height*scale));
+            var context = reduced.getContext("2d");
+            if (!context) return false;
+            context.imageSmoothingQuality = "high";
+            context.drawImage(image,0,0,reduced.width,reduced.height);
+            texture.image = reduced;
+            return true;
+        };
+
         this.getDefaultMaterialTexture = function(slot)
         {
             var maps = Apple2VideoTHREE_getEmbeddedDefaultImageMaps();
@@ -1080,6 +1131,9 @@ var APPLE2_THREE_CFG_DEFAULT =
 
             var texture = new THREE.TextureLoader().load(url,function(tex)
             {
+                // The image has decoded, but Three.js has not yet uploaded it.
+                // Shrink it before marking this texture for GPU upload.
+                video3D.downsampleDefaultTexture(tex);
                 video3D.applyDefaultTextureProfile(tex,slot);
                 video3D.applyScreenTextureMaterialSlots();
                 video3D.textureDirty = true;
@@ -1180,9 +1234,12 @@ var APPLE2_THREE_CFG_DEFAULT =
         this.renderTHREEScene = function()
         {
             if (!rendererActive || !this.renderer || !this.scene || !this.camera) return;
+            var gl = this.renderer.getContext();
+            if (webglContextLost || !gl ||
+                (typeof(gl.isContextLost)==="function" && gl.isContextLost())) return;
 
             this.renderer.setRenderTarget(null);
-            this.renderer.render(this.scene,this.camera);           
+            this.renderer.render(this.scene,this.camera);
         };
 
 
