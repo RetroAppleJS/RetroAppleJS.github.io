@@ -2225,6 +2225,18 @@ const apple2CharRom =
     ])
 };
 
+// In the J-Plus, AN2 OFF ($C05C) selects Katakana for inverse/flashing
+// characters (screen codes $00-$7F); AN2 ON ($C05D) selects Roman.
+// Normal $80-$FF characters always use the ASCII portion of the 2 KB ROM.
+// Keep the classic Apple II+ 64-glyph decoder for all other character ROMs.
+function Apple2CharROM_glyphIndex(screenByte, key, annunciator2)
+{
+    var code = screenByte & 0xFF;
+    if (key !== "A2_JP") return (code & 0x3F) ^ 0x20;
+    if (code >= 0x40 && code < 0x80) code &= 0x3F;
+    return annunciator2 ? (code | 0x80) : code;
+}
+
 function Apple2CharROM_get(key) { return apple2CharRom[key] || apple2CharRom.A2_US; }
 function Apple2CharROM_keys() { return Object.keys(apple2CharRom); }
 
