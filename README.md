@@ -77,6 +77,7 @@ Completed items remain checked; unchecked items are planned or still need furthe
 - [ ] RETRO LAB: HGR paint tool (https://hgrtool.art/imgedit.html)
 - [ ] RETRO LAB: Mockinboard PoC & C64 SID song to mockingboard exporter
 - [ ] ASSEMBLER: Bomberman game (using the Mockingboard card)
+- [ ] Disassemble all available peripheral ROMs
 - [ ] DOCUMENTATION: Expand the documentation and examples in [asm](asm/)
 - [ ] TOOLS: Integrate number-base conversion, binary-file conversion, and pasteboard byte-stream generation into a common popup tool
 
