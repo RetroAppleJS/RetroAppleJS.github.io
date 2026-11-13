@@ -16,7 +16,7 @@ const authored = composerContext.composer;
 const chassisName = "A2P_Body.png";
 const jplusName = "A2JP_Body.png";
 
-function fakeRoot(config = authored, model = "A2P")
+function fakeRoot(config = authored, model = "A2P", urlModel = null)
 {
     let doc;
     function node(tag)
@@ -73,12 +73,14 @@ function fakeRoot(config = authored, model = "A2P")
         requestAnimationFrame(cb){cb();return 1;}
     };
     doc.defaultView=root;
+    if(urlModel) root.oCOM={URL:{uri:{sys:urlModel}}};
     return {root,tab,app};
 }
 
 function layoutFixture(options)
 {
-    const env=fakeRoot(options && options.composer,options && options.model);
+    const env=fakeRoot(options && options.composer,options && options.model,
+        options && options.urlModel);
     const sandbox={console,setTimeout(fn){fn();}};
     vm.runInNewContext(source("COM_A2P_LAYOUT.js"),sandbox);
     const layout=new sandbox.LAYOUT(env.root);
@@ -143,6 +145,16 @@ test("startup can detect an already selected A2JP system even without explicit c
     assert.equal(await layout.install(root),true);
     assert.equal(layerState(layout,jplusName).css,"visible");
     assert.equal(layerState(layout,chassisName).css,"hidden");
+});
+
+test("startup URL selects J-Plus chassis before emulator model state is applied",async()=>{
+    const {layout,root}=layoutFixture({model:"A2P",urlModel:"A2JP"});
+    assert.equal(await layout.install(root),true);
+    assert.equal(layerState(layout,jplusName).css,"visible");
+    assert.equal(layerState(layout,chassisName).css,"hidden");
+    layout.setSystemModel("A2P");
+    assert.equal(layerState(layout,jplusName).css,"hidden");
+    assert.equal(layerState(layout,chassisName).css,"visible");
 });
 
 test("system model changes, restores, and selects chassis without reloading the page",async()=>{
