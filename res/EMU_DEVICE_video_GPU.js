@@ -598,7 +598,7 @@ queuedFrames.add(request);
 
   this.kProcess_v6 =  function(mem,rom,cfg)
   { 
-    const CHROME_MODE=cfg[0]<<2,DIM_H=cfg[1],GFX_FLG=cfg[2],FLASH=cfg[3],JPLUS=cfg[260]||0,PALETTE=4
+    const CHROME_MODE=cfg[0]<<2,DIM_H=cfg[1],GFX_FLG=cfg[2],FLASH=cfg[3],JPLUS=cfg[260],PALETTE=4
 
     const xp = (this.thread.x>>1);
     const yp = DIM_H-(this.thread.y>>1)-1;
