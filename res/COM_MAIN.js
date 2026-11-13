@@ -2453,7 +2453,8 @@ function prettyJsonAllman(value, indent) {
     var def = _TABS[tab]["SYS"];
     var s = "<select onchange=\"document.getElementById('"+id+"').innerHTML=oCOM.onSystemSelect(this.value,'"+tab+"')\">";
     for(var i in _CFG_SYSCODE)
-      s+= "<option value='"+i+"' "+(i==def?"selected":"")+">"+_CFG_SYSCODE[i].Model+"</option>";
+      if(i.charAt(0)!=="-")
+        s+= "<option value='"+i+"' "+(i==def?"selected":"")+">"+_CFG_SYSCODE[i].Model+"</option>";
     return(s+"</select>");
   }
 
