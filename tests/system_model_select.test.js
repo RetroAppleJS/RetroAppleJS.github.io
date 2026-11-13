@@ -89,7 +89,7 @@ test("A2P_RL applies exactly the single-byte LIRON boot-ROM patch",()=>{
     assert.ok(!s.location.href.includes("sys_rom"));
 });
 
-test("J-Plus selection changes the character ROM and falls back transparently to base motherboard ROM",()=>{
+test("J-Plus selection activates distinct motherboard and character ROMs",()=>{
     const s=makeSystem();
     assert.equal(s.context.EMU_system_selectModel("A2JP"),true);
     assert.equal(s.context.EMU_system_get(),"A2JP");
@@ -97,13 +97,60 @@ test("J-Plus selection changes the character ROM and falls back transparently to
     assert.equal(s.video.font,"A2_JP");
     assert.equal(s.boots,1);
     assert.equal(s.context.EMU_system_getConfiguration("A2JP").ROM,"A2P_RJ");
-    assert.equal(s.context.EMU_system_effectiveRom(s.context.EMU_system_getConfiguration("A2JP")),"A2P_R");
+    assert.equal(s.context.EMU_system_effectiveRom(s.context.EMU_system_getConfiguration("A2JP")),"A2P_RJ");
+    assert.equal(s.context.EMU_system_romRangeID(),"A2P_RJ");
+    assert.equal(s.rom[0x2800],0x4A);
+    assert.equal(s.rom[0x2FFF],0xFA);
     assert.equal(s.context.EMU_system_selectModel("A2JP"),true);
     assert.equal(s.boots,1);
     assert.equal(s.context.EMU_system_selectModel("A2P"),true);
     assert.equal(s.context.EMU_system_get(),"A2P");
     assert.equal(s.video.font,"A2_US");
+    assert.equal(s.rom[0x2800],0x00); // Test fixture's original monitor restored
+    assert.equal(s.rom[0x2FFF],0x00);
     assert.equal(s.boots,2);
+});
+
+test("J-Plus monitor CRC32 matches the original and switching preserves Applesoft",()=>{
+    const s=makeSystem();
+    const original=Uint8Array.from(s.rom);
+    const applesoft=Uint8Array.from(s.rom.slice(0,0x2800));
+    assert.equal(s.context.EMU_system_selectModel("A2JP"),true);
+    let crc=0xFFFFFFFF;
+    for(const b of s.rom.slice(0x2800))
+    {
+        crc^=b;
+        for(let k=0;k<8;k++)
+            crc=(crc>>>1)^((crc&1)?0xEDB88320:0);
+    }
+    assert.equal((crc^0xFFFFFFFF)>>>0,0x6EA8379B);
+    assert.deepEqual(s.rom.slice(0,0x2800),applesoft);
+    assert.equal(s.context.EMU_system_selectConfiguration("A2P",{ROM:"A2P_RL"}),true);
+    assert.equal(s.rom[0xFABB-0xD000],0x05);
+    assert.equal(s.rom[0x2800],original[0x2800]);
+    assert.deepEqual(s.rom.slice(0,0x2800),applesoft);
+    assert.equal(s.context.EMU_system_selectConfiguration("A2P",{ROM:"A2P_R"}),true);
+    assert.deepEqual(s.rom,original);
+});
+
+test("J-Plus ROM ID resolves before startup for sys=A2JP",()=>{
+    const s=makeSystem("&sys=A2JP",true);
+    s.context.EMU_system_applyModel("A2JP");
+    assert.equal(s.context.EMU_system_romRangeID(),"A2P_RJ");
+    assert.equal(s.context.EMU_system_configStartup().ROM,"A2P_RJ");
+    assert.equal(s.rom[0x2800],0x4A);
+    assert.equal(s.context.EMU_system_romRangeID(),"A2P_RJ");
+});
+
+test("failed switch away from J-Plus restores its complete monitor",()=>{
+    const s=makeSystem();
+    assert.equal(s.context.EMU_system_selectModel("A2JP"),true);
+    const before=Uint8Array.from(s.rom);
+    s.context.apple2plus.restart=()=>{throw new Error("synthetic boot failure");};
+    assert.equal(s.context.EMU_system_selectModel("A2P"),false);
+    assert.equal(s.context.EMU_system_romRangeID(),"A2P_RJ");
+    assert.equal(s.context.EMU_system_get(),"A2JP");
+    assert.deepEqual(s.rom,before);
 });
 
 test("declining a cold boot preserves active configuration and ROM",()=>{
