@@ -321,7 +321,13 @@ function Apple2Video(ctx)
 
     var charRom = Apple2CharROM_get("A2_US");
     this.charRomKey = "A2_US";
-    this.setCharRom = function(rom, key) { charRom = rom; this.charRomKey = key; return key; };
+    this.setCharRom = function(rom, key, annunciator2)
+    {
+        charRom = rom;
+        this.charRomKey = key;
+        this.annunciator2 = annunciator2 !== false;
+        return key;
+    };
 
     // Draw a text character from character ROM.
     // col is [0..39], row is [0..23], d8 is video memory contents
@@ -334,7 +340,7 @@ function Apple2Video(ctx)
         // Color for character pixels.
         ctx.fillStyle = text_PixelColor(1);
 
-        var offs = 8 * ((d8 & 0x3f) ^ 0x20);
+        var offs = 8 * Apple2CharROM_glyphIndex(d8, video.charRomKey, video.annunciator2);
         for (var y = 0; y < 8; y++) {
             var bits = charRom[offs + y];
             
