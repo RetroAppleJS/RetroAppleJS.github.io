@@ -168,7 +168,7 @@ test("captured raster path uses identical glyphs and legacy default",()=>{
     const body=rasterSource.slice(
         rasterSource.indexOf("function Apple2RasterKernel"),
         rasterSource.indexOf("function Apple2RasterCreateKernel"));
-    const makeKernel=new Function(body+"\\nreturn Apple2RasterKernel;");
+    const makeKernel=new Function(body+"\nreturn Apple2RasterKernel;");
     const kernel=makeKernel();
     const bytes=new Uint8Array(7680),modes=new Uint8Array(7680);
     const pal=new Uint8Array(256);
