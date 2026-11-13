@@ -557,24 +557,32 @@ function LAYOUT(rootWindow)
     this.lastCanvas = null;
     this.lastComposition = null;
 
-    // The Composer scene contains both system cases. Its images are embedded
-    // in COM_LAYOUT_CONFIG.js; no additional PNG download is necessary.
-    // The new J-Plus body is currently authored as SYSTEM.LAYER2, so select
-    // by asset filename rather than relying on a generated layer ID.
+    // The Composer scene embeds both chassis images. Prefer the stable v3
+    // semantic IDs; filename fallbacks support older Composer exports.
     this.systemModel = null;
 
-    function selectSystemChassis(layout,model)
+    function systemChassisLayer(layout,id,legacyFilename)
     {
-        if(!layout || !Array.isArray(layout.layers)) return;
-        // Older Composer exports do not include the J-Plus artwork. Keep
-        // their original body visible instead of hiding the only chassis.
-        if(!layout.layers.some(function(layer){ return layer.file === "A2JP_Body.png"; })) return;
-        var jplus = model === "A2JP";
-        layout.layers.forEach(function(layer)
+        if(!layout || !Array.isArray(layout.layers)) return null;
+        return layout.layers.find(function(layer){ return layer.id === id; })
+            || layout.layers.find(function(layer){ return layer.file === legacyFilename; })
+            || null;
+    }
+
+    function selectSystemChassis(layout,model,apply)
+    {
+        var standard=systemChassisLayer(layout,"SYSTEM.CHASSIS_A2P","A2P_Body.png");
+        var japanese=systemChassisLayer(layout,"SYSTEM.CHASSIS_A2JP","A2JP_Body.png");
+        // A legacy layout may contain only the standard Apple II chassis.
+        if(!japanese) return;
+        var isJapanese=model==="A2JP";
+        if(standard)
         {
-            if(layer.file === "A2P_Body.png") layer.visible = !jplus;
-            else if(layer.file === "A2JP_Body.png") layer.visible = jplus;
-        });
+            if(apply) apply(standard,!isJapanese);
+            else standard.visible=!isJapanese;
+        }
+        if(apply) apply(japanese,isJapanese);
+        else japanese.visible=isJapanese;
     }
 
     function attachToRoot(target)
@@ -805,12 +813,11 @@ function LAYOUT(rootWindow)
     this.setSystemModel = function(model)
     {
         this.systemModel = String(model || "A2P");
-        if(this.lastLayout && this.lastLayout.layers.some(function(layer)
-            { return layer.file === "A2JP_Body.png"; }))
-        {
-            this.visibleByFile("A2P_Body.png",this.systemModel !== "A2JP");
-            this.visibleByFile("A2JP_Body.png",this.systemModel === "A2JP");
-        }
+        if(this.lastLayout)
+            selectSystemChassis(this.lastLayout,this.systemModel,function(layer,visible)
+            {
+                self.visible(layer.address || layoutAddress(layer.slotN,layer.id),visible);
+            });
         return this.systemModel;
     };
 
