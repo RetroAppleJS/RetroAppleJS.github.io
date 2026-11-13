@@ -10,7 +10,7 @@
 | Inputs | PSID binary, static code and data analysis, bounded runtime traces, indexed evidence, human review |
 | Outputs | Evidence-linked musical intent, **target-agnostic restricted-JavaScript SIL**, common typed IR and control-state/event traces; **target-specific** reviewed `.S` + 6502 binaries for PSID/PLAY, or MIDI event map + `.mid` for MIDI; validation reports for each target |
 | Design baseline | Prior `PAY_Semantic_Contract_v0.8F2` is research evidence, **not** a sufficient executable musical specification |
-| Revision | **v0.7.0** — Retains Chapters 1–10 and replaces Chapter 11 with a sound assurance model: qualified 6510 oracle, cycle-stamped traces, explicit source↔SIL state alignment, grammar-valid adversarial mutations, counterexample-guided testing plus bounded/inductive SMT proof, human review and post-lowering SID/PLAY/MIDI validation. PSID is the input scope; RSID is deferred. All new components remain proposed. |
+| Revision | **v0.8.0** — Retains Chapters 1–10. Chapter 11 replaces circular grammar-valid mutation claims with oracle-admitted execution-safe mutations, tests four executable semantics against each other, defines three observation levels, restricts bounded proof to reachable states, declares the trusted computing base and separates source assurance from target validation. Companion versioned JSON Schema and illustrative synthetic records are supplied. PSID remains in scope; RSID is deferred. All new capabilities remain proposed. |
 
 ## 1. Architectural decision
 
@@ -1142,246 +1142,304 @@ These are external reference sources, not parts of `RetroAppleJS`. Chip datashee
 **Revision note:** Chapter 10 is an orientation and reference addition. It makes **no new claim** that the proposed SIL front end, all three target backends or a complete source-faithful Bomberland reconstruction have already been implemented.
 
 
-## 11. Adversarial semantic reconstruction, state alignment and qualified verification
+## 11. Source-driven adversarial SIL reconstruction and qualified verification — v0.8.0
 
-**Design status — v0.7.0:** Proposed, not an implemented or validated Bomberland reconstruction. The original input scope is **PSID**, with explicit review of each PSID's environment and player conventions. **RSID is deferred** to a separately scoped full-C64 runtime project; do not imply that a PSID INIT/PLAY harness is adequate for RSID.
+**Design status:** Proposed specification. Nothing in this chapter implies a completed Bomberland semantic reconstruction, a formally qualified C64 6510 oracle, or a successful SMT proof. Unless explicitly promoted by test evidence, all design objects are *candidate* objects. **Input scope remains PSID**. RSID requires a separate complete-machine project and manifest.
 
-**Normative rule:** Observable SID-register equivalence is not proof of a unique instrument, score, or loop interpretation. Every musical label needs separate source-linked evidence, and every assurance claim must state its scope and method. Never describe finite differential tests as a formal proof.
+### 11.1 Fundamental separation: executable behaviour, music interpretation and output fidelity
 
-### 11.1 Definitions and two different notions of correctness
+A reconstruction has three distinct claims, which shall not inherit each other's assurance:
 
-1. **Source behavioural equivalence:** SIL and the original program generate the same specified observable events, for equivalent inputs and related states, under an explicitly defined CPU, environment and timing model.
-2. **Semantic interpretation validity:** SIL's descriptions of notes, pattern boundaries, instrument selectors, loop scopes, and arbitrary macros follow the *cause* of those actions in source code and data. A register trace is only a behavioral observation and cannot establish interpretation uniqueness.
-3. **Target correctness:** A compiled output correctly implements the portable SIL subset under a target capability manifest; when fidelity is impossible, any approximation is explicit, measured, reviewable and never presented as an exact proof.
+- **Execution equivalence:** given related, *reachable* source/SIL states and controlled inputs, the programs generate the same observations within a declared abstraction and bound.
+- **Musical interpretation validity:** names such as `pattern`, `instrument`, `arpeggio`, `macro`, `repeat`, and `loop` are supported by causal source evidence. Behavioural equivalence alone cannot prove that such a classification is unique.
+- **Target implementation:** generated SID/PSID, PLAY/AY and MIDI artifacts implement the accepted portable SIL semantics within each target's explicit fidelity and resource constraints. Target verification is separately reported.
 
-A held note with arpeggio macro and a stream of rapid note events can produce the same writes. Even complete observational equivalence does not automatically distinguish those explanations. Where two hypotheses cannot be separated by valid source-data mutations or source-dependency evidence, retain both or preserve a source-exact `opaqueMacro` without an invented musical label.
+If two descriptions of a tune cannot be observationally distinguished, preserve the ambiguity in the evidence graph and optionally lower a source-faithful opaque macro. Prefer compact passing hypotheses for engineering economy, not as a proof of composer intent.
 
-### 11.2 Assurance model: testing is not proof
-
-| Assurance level | Meaning | Required evidence | Must NOT imply |
-|---|---|---|---|
-| A0 `HYPOTHESIZED` | Candidate classification | Source region and explicit hypothesis | Correct interpretation |
-| A1 `SOURCE_SUPPORTED` | Static/dynamic provenance backs a classification | PCs, memory offsets, dependency edges and alternatives | Full correctness |
-| A2 `DIFFERENTIALLY_TESTED` | Tested equality over specified seeds/traces | Exact corpus, timebase, mutations, branch/path coverage and first-difference records | Universal equivalence |
-| A3 `BOUNDED_PROVED` | SMT-based equivalence for a *bounded* transition system | Solver, theory, hypotheses, bounded state/input domain, timeout policy, proof status | Unbounded or real-hardware equivalence |
-| A4 `INDUCTIVELY_PROVED` | A checked invariant plus transition-preservation establishes a relation for the declared reachable domain | Initial-state proof, preservation proof, observational-equality theorem, model assumptions | Uniqueness of musical interpretation |
-| A5 `TARGET_VALIDATED` | Target-specific tested/proved conditions and measured losses | Generated artifact hashes, ABI checks, timing and hardware tests, capability manifest | A5 is not stronger than A4: it is an independent dimension |
-
-Use **independent fields** `semanticEvidence`, `behavioralAssurance`, `proofScope`, `stateAlignment`, `targetValidation`, plus `uncertainties`. For level A2 report coverage of original CPU branches, score grammar productions, score regions, macro/instrument selectors, subtunes, timebases, interrupts, and modified-code paths. A numeric percentage alone is meaningless without its denominator and domain definition. Preserve solver `UNKNOWN` and `TIMEOUT` as *unproved*, never as passes.
-
-**Terminology:** ordinary counterexample-producing differential tests are **counterexample-guided testing**. The **formal CEGIS track** uses a verifier able to search the declared symbolic domain and return either a concrete distinguishing input/state or an UNSAT result for that bounded model. `UNSAT` proves the absence of a counterexample only under the exact stated constraints. This is compatible with the classic CEGIS framework but does not imply global correctness.
-
-### 11.3 The verification architecture and mandatory post-SIL loops
+### 11.2 Revised architecture and verification boundaries
 
 ```mermaid
 flowchart TD
-    P[PSID original + hash + environment manifest] --> O[Qualified 6510 execution oracle]
-    P --> A[Static analysis + executable-memory versioning]
-    O --> E[Cycle-stamped evidence and causal dependency graph]
-    A --> E
-    E --> R[Source-to-SIL state relation candidates]
-    E --> H[Competing hypotheses: score instruments macros loops]
-    R --> H
-    H --> G[Restricted JS SIL candidate]
-    G --> I[Typed IR + independent SIL interpreter]
-    I --> T[Counterexample-guided tests + grammar-valid mutations]
-    O --> T
-    T -->|counterexample| H
-    I --> V[Bounded SMT equivalence of source and SIL transitions]
-    O --> V
-    V -->|model counterexample| H
-    T -->|scope pass| U[Evidence and scope report]
-    V -->|proved to scope or unresolved| U
-    U --> M{Human review gate: accept, revise, unresolved}
-    M -->|accepted| C[Reviewed portable SIL and typed IR]
-    C --> S[SID lowerer + annotated reviewed .S + ASM_core.js]
-    C --> Y[AY lowerer + annotated reviewed .S + ASM_core.js]
-    C --> D[MIDI lowerer + annotated timeline + SMF encoder]
-    S --> Q[Post-lowering SID differential + target-state tests]
-    Y --> W[Post-lowering AY timing and effect tests]
-    D --> N[Post-lowering MIDI event and quantization tests]
-    Q --> F[Independent review and artifact acceptance]
-    W --> F
-    N --> F
-    F -->|regression or uncovered behavior| H
+ P[Original PSID + hash + input/environment manifest] --> Q[Qualified NMOS 6510 oracle + independent cross-check]
+ P --> ST[Versioned static/control-flow and code/data analysis]
+ Q --> C[Cycle and bus event trace + snapshots]
+ ST --> C
+ C --> E[Causal evidence graph + source-state candidates]
+ E --> H[Competing score/instrument/macro/loop hypotheses]
+ E --> R[Explicit source ↔ SIL state relation]
+ H --> M[Restricted JS SIL candidate]
+ M --> I[Typed IR + concrete SIL interpreter]
+ Q --> AD[Source-validated mutation admission]
+ AD --> D[Distinguishing search + differential and metamorphic testing]
+ I --> D
+ R --> D
+ Q --> L[6510 bounded lifter + SMT]
+ I --> K[SIL bounded encoding + SMT]
+ L --> S[Concrete ↔ symbolic consistency gate]
+ K --> S
+ S --> F[Reachability-constrained bounded equivalence]
+ D --> F
+ F -->|SAT replayable counterexample| H
+ D -->|replayable mismatch| H
+ F -->|bounded UNSAT / unknown + scope| G[Evidence + assurance report]
+ D --> G
+ G --> V{Human review: accept or unresolved}
+ V -->|accept| T[Reviewed portable SIL + typed IR]
+ T --> PS[SID lowerer + annotated .S + ASM_core.js]
+ T --> AY[PLAY/AY lowerer + annotated .S + ASM_core.js]
+ T --> MD[MIDI timeline + SMF encoder]
+ PS --> VP[Regenerated PSID differential validation]
+ AY --> VA[AY timing/capability validation]
+ MD --> VM[MIDI event and serialization validation]
+ VP --> A[Target-specific acceptance reports]
+ VA --> A
+ VM --> A
+ A -->|classified regression| H
 ```
 
-The reference SIL interpreter is a separate **verification boundary**. Independently test its width/sign/flag/timing semantics and do not use the candidate-generating rules as its oracle. The original PSID, SIL interpreter, generated SID target, AY target, and MIDI event timeline have separate validation reports. Each human review gate records who approved what evidence and what remains unresolved.
+**Important:** The two SMT translations are not accepted as proof machinery until their **concrete predictions agree with their respective execution semantics** on the qualified subset. A shared declarative instruction-semantics definition may generate both CPU interpreter and lifter for consistency, but shared-code agreement is not independent validation; a separately implemented CPU/reference, ISA tests, and known-answer bus traces remain mandatory.
 
-### 11.4 Oracle qualification must precede inference
+### 11.3 Qualified oracle and concrete/SMT consistency gates
 
-A C64 uses an NMOS 6510-compatible execution model, with 6510 I/O banking, CIA and VIC-related timing where applicable. Apple II emulation and a C64 SID driver have distinct memory maps and peripheral rules. The same 6502 mnemonic names do **not** establish execution-model equivalence.
+The source CPU is an **NMOS 6510-compatible C64 execution model**, not automatically the Apple II emulator's 6502 or a 65C02 implementation. A qualifying manifest identifies opcode support (including unstable/undocumented instructions), decimal mode, I/O banking, memory mapping, IRQ/CIA/VIC assumptions, SID read and write behaviour, clock, reset, and INIT/PLAY invocation semantics. Unsupported modes are `ORACLE_UNQUALIFIED`, not SIL mismatches.
 
-**Observed repository risk as of the reviewed `main` sources:** `res/EMU_cpu6502.js` contains explicit NMOS decimal-mode ADC/SBC logic and cycle-offset-aware bus access, but also contains `unofficial(opcode,pc)` handlers for some undocumented instructions. `res/jsSID.js` labels BCD mode and parts of CIA/VIC IRQ/NMI/reset behavior as TODO. This is a source-code finding, **not** a completed conformance assessment. `res/EMU_SID_PSID.js` is a host transfer utility, not an independent 6510 reference oracle.
+**Oracle gate O1:** run applicable Klaus Dormann tests, Wolfgang Lorenz tests, and bus-cycle reference tests (for example Tom Harte's ProcessorTests where the chosen CPU model is applicable). Confirm emulator-versus-independent reference agreement for tested cases. In RetroAppleJS `EMU_cpu6502.js`, NMOS decimal-mode logic exists, but `unofficial(...)` handling for some opcodes means no blanket 6510 compatibility assertion is currently justified. `res/jsSID.js` documents unfinished BCD and CIA/VIC CPU-system behaviours. These observations are implementation inspection, *not* validated test verdicts.
 
-Qualification gates, in order:
+**Source-lifter gate O2:** for each supported executed opcode or bounded decoded handler, sample well-formed concrete CPU states including relevant flags, pointer targets, RAM/code versions, bus state and peripherals; evaluate the lifted bit-vector formula on those states; demand identical next state and observable bus events, including order and supported cycle offsets. Use boundary-value partitions and random states, not random CPU bytes alone. Require replayable counterexamples for failures. Instruction-level tests do not automatically validate lifted whole-handler path merging or IRQ scheduling.
 
-1. Pin each actual CPU implementation and configuration to a commit hash; enumerate all 256 opcode behaviors, undocumented-opcode variants, JAM/lockups, decimal-mode corner cases, read-modify-write dummy accesses, page-crossing cycle counts and interrupt semantics. Record gaps openly.
-2. Run [Klaus Dormann 6502/65C02 functional tests](https://github.com/Klaus2m5/6502_65C02_functional_tests) in the **NMOS** configuration, including decimal and interrupt programs. These do **not** comprehensively validate undocumented opcodes or the C64 system bus.
-3. Run the Wolfgang Lorenz C64 test suite for unofficial opcodes and 6510-specific behavior, plus separate CIA/VIC/IRQ and bank-switching tests. Save every test ID, result, emulator version and expected trap address. Passing a CPU test does not prove cycle-correct SID accesses.
-4. Establish an independent reference via [VICE](https://vice-emu.sourceforge.io/), subject to an **early instrumentation feasibility spike**: obtain ordered SID writes with validated cycle offsets, and independently reproduce first-PLAY, IRQ and timer scenarios. The VICE monitor supports watchpoints, but efficient per-cycle write export may require an instrumented build; do not claim it works without a demonstrated trace.
-5. If VICE tracing proves impractical, evaluate [libsidplayfp](https://github.com/libsidplayfp/libsidplayfp) with an instrumented SID-register interface and [libresidfp](https://github.com/libsidplayfp/libresidfp). A second audio renderer is useful but does not substitute for independent CPU and bus behavior.
-6. Cross-check both environments using a synthetic fixture suite: same-value SID writes; consecutive gate/test toggles; digi write bursts; multiple SID banks if supported; CIA tempo; custom interrupts; and reproducible initial RAM. Define test admissibility by the qualified feature subset. Unsupported instructions or peripherals yield `ORACLE_UNQUALIFIED`, not a verdict on SIL.
+**SIL-encoder gate O3:** sample typed, reachable or well-formed SIL states, evaluate the concrete restricted-JS interpreter and the SIL-to-SMT formula, and compare state updates and emitted ordered events. Prefer generating evaluator and SMT encoder from a shared *declarative* width/operation semantics specification, but test against independent known-answer fixtures to guard shared bugs. Any concrete/formula disagreement disables A3 for the affected operation.
 
-**Timing:** compare ordered **cycle-stamped writes** `(cpuCycle, chip, register, value, pc)` with declared clock, invocation convention and deterministic synchronization, not frame snapshots. Preserve repeated writes and read/write-side effects. For source-meaning checks, also compare instruction-level branch decisions, selected data reads and state transitions. Cycle identity across original 6510 and SIL is not a universal requirement for musical events when an explicit scheduler abstraction changes instruction timing; specify whether proving event timestamp equality, beat/tick equality or value-only equality. Reconstructed PSID hardware-level fidelity has the strongest cycle-timestamp requirements.
+**Composition gate O4:** replay selected multi-instruction source slices and SIL handlers with actual memory accesses, pointer aliasing, self-modified code versions, interrupts and event queues; compare composed concrete and symbolic execution. Record a feature-specific coverage matrix. The trusted base still includes the SMT solver, symbolic execution/expression builder, trace-to-formula bridge and environment abstraction.
 
-### 11.5 First-class state-alignment relation
+### 11.4 Three explicitly distinct observation functions
 
-Make state alignment an explicit data product, not a hidden inference. The source may store one semantic variable in RAM, split bytes, modified immediate operands, CPU flags or implicit call context, and may alias those locations. The SIL may normalize these into `ctx.voice[0].patternPos`, `ctx.voice[0].instrument`, `ctx.voice[0].wait`, etc.
+Every comparison names an `observationContract` with a **domain**, event normalization rule, equivalence predicate and declared exceptions. The following contracts must not be conflated.
 
-For source state `S` and SIL state `I`, define a partial, versioned relation `R(S,I)`. For example:
+| Contract | Compared executions | Observable equality | Clock rule |
+|---|---|---|---|
+| `SOURCE_BUS_CYCLES` | Source emulator against independently qualified C64 reference | Same bus access type/address/value, SID chip/register, repeated writes, read side effects, and cycle offset for the selected system model | Match absolute or INIT/PLAY-relative machine cycles after explicitly defined synchronization |
+| `MUSICAL_ORDERED_WRITES` | Source PSID PLAY-call behavior against concrete SIL interpretation | Same **ordered** per-call write sequence `(chip, register, value)` including duplicates and ordering of gate/test-bit toggles; declared semantic state correspondence | Compare ordinal write order within PLAY invocation, not identical 6510 instruction cycle stamps |
+| `TARGET_SEMANTIC_EVENTS` | Accepted SIL against lowered PSID, AY, or MIDI target | Backend-specific projected notes, timing, control events, ordered chip writes when applicable, and explicit losses/tolerances | Define target timebase, jitter bounds and permissible losses in capability manifest |
 
-```text
-R(S,I) :=
-  I.voice[0].patternPos == read8(S.mem, pointerVar(S))
-  AND I.voice[0].wait == S.mem[WAIT_ADDR]
-  AND I.voice[0].instrument == decodeSelector(S.codeVersion, S.reg, S.mem)
-  AND I.scheduler.phase == decodeTimer(S.CIA, S.mem, S.flags)
-  AND mapped invariants over pointers, flags, timer and memory aliasing
+**Digi and other high-frequency protocols:** A digi source may encode information in intra-call timing rather than only ordered write values. `MUSICAL_ORDERED_WRITES` is **insufficient** for such a case; use a stricter relative-cycle/time-series observation contract or mark the corresponding source feature **uncovered / target-unsupported**. Do not filter frequent volume writes and then claim equivalence. Similarly flag SID test-bit timing, OSC/ENV reads, feedback-dependent filters, IRQ interference and multi-SID interactions where their behaviour depends on sub-tick timing.
+
+**SIL event contract:** `ctx.source.sid` is a source-compatibility **semantic sidecar**, not a table of prerecorded frames. Its `emit(chip, register, value, causeId)` adds an event with a monotonically increasing `sequence` inside the current invocation. The interpreter produces `OrderedSIDEvent[]` deterministically. A semantically meaningful internal operation may emit multiple writes; output ordering is therefore explicit, not reconstructed from the final register snapshot or unordered `ctx` fields. The sidecar may provide chip-specific fallback semantics with source evidence and dependencies, but cannot silently encode a frame-indexed register tape.
+
+Example (illustrative, not a recovered source):
+
+```javascript
+function tick(ctx) {
+  const v = ctx.voice[0];
+  if (v.notePending) {
+    ctx.source.sid.emit(0, 4, v.control & 0xFE, "gate-off");
+    ctx.source.sid.emit(0, 0, v.pitchWord & 0xFF, "pitch-lo");
+    ctx.source.sid.emit(0, 1, (v.pitchWord >>> 8) & 0xFF, "pitch-hi");
+    ctx.source.sid.emit(0, 4, v.control | 1, "gate-on");
+  }
+  v.notePending = false;
+}
 ```
 
-These addresses are *illustrative placeholders*, not observed Bomberland addresses. A state map stores `sourceExpressions`, `silPath`, `bitWidth`, `endianness`, `preconditions`, `proofObligations`, `evidenceRefs`, `aliasSet`, `codeVersion`, `confidence`, and `status` for every field. Model `ctx.*` variables that have no source equivalent as derived or ghost state, and explicitly track source variables that SIL intentionally abstracts away.
+The validator records ordinal events; the PSID backend has a separate test for its cycle-level timing promises. The input domain includes subtune number, call cadence, effective memory map, source patch bytes, clock and relevant scheduler/peripheral state.
 
-**Evidence collection:** dynamic taint for value dependencies, *control dependencies* for conditional decoding and timing, pointer/index provenance for indirect addressing, and code-write provenance for self-modified operands. Track provenance from original file byte through load address and any relocation or patch to observed instruction. Perform backward slices from SID writes and score-pointer transitions. An over-approximate taint relation can reveal possibilities; it cannot itself certify the map. Reject or flag inconsistent candidate maps using differential traces and bounded SMT.
+### 11.5 Noncircular source-validated mutation admission
 
-**Proof obligation:** Let `Fsrc` advance one specified source logical step and `Fsil` advance the corresponding SIL step (possibly one source step to multiple SIL microsteps), with equal admissible input/environment `u` and relation `R`. Establish:
+**Never use the inferred score grammar to decide which mutations are legal.** Candidate grammar is an *object under test*. The input generator may use static memory maps, observed reads, user-approved source ranges, concolic dependency slices or random patch proposals. All candidates pass through the original *qualified* player before they can challenge a SIL interpretation.
 
-```text
-1. Initialization:  InitSrc(S,u) ∧ InitSIL(I,u) => R(S,I)
-2. Preservation:    R(S,I) ∧ preconditions
-                    => R(Fsrc(S,u), Fsil(I,u))
-3. Observations:    R(S,I) => ObsSrc(S,u) == ObsSIL(I,u)
-4. Termination / interruption / time:
-                    matched under the declared scheduling and stutter policy
-```
+Implement the admission protocol:
 
-For a meaningful general proof, discharge the initial and inductive preservation obligations (plus observation equality) for an invariant covering the declared reachable states. A bounded-unrolling `UNSAT` result alone is only A3. For code patches, include executable byte versions in the symbolic state and invalidate/rebuild affected decoded blocks. If the lifting cannot express the relevant hardware or modified code correctly, report `UNPROVED` and use the qualified differential track without changing its label.
+1. **Create candidate patch** `M={offset, oldByte, newByte}` against the original PSID's byte-accurate load image. Keep the INIT routine, declared environment and selected subtune fixed unless the test explicitly concerns them. Reject unapproved writes to source code segments at this stage; use a separately labelled code-mutation campaign if required.
+2. **Execute the original** with the patch under a reset/init seed, deterministic environment and bounded call/cycle budget. Instrument instruction fetches, data reads, writes, pointer targets, ROM/I/O mapping, interrupts and code-byte versions.
+3. **Admit as execution-safe** only when the source terminates within budget or continues through known legitimate loop boundaries, dereferences mapped/allowed memory, and never executes an address classified as data under the current versioned memory map. Recognized and qualified self-modifying/generated code is allowed after code-version validation; it is not falsely treated as static data execution.
+4. **Coverage expansion:** code paths outside *qualified known code coverage* enter `QUARANTINED_NEW_PATH`, not automatic acceptance. They may be promoted after independent qualification. Sticking to existing coverage makes the initial adversary conservative; it does not guarantee score legality.
+5. **Admit for behavioral falsification** as `SOURCE_EXECUTION_ADMITTED`. A separate stronger field `MUSICAL_GRAMMAR_VALIDATED` requires independent score-format knowledge or source-level semantic evidence, not the SIL candidate's own grammar. A safe but musically meaningless mutation may still demonstrate a behavioral mismatch, but cannot alone establish a claim about musical intent.
+6. Apply the identical load-image patch to both the source and SIL through the **source-byte mapping**. If the SIL has no mapping for a relevant input byte, record `UNMAPPED_SOURCE_INPUT`; it is a reconstruction gap, not silently replaced by an unrelated semantic edit.
 
-### 11.6 Bounded source-to-SIL SMT verification
+Mutation admission produces a source snapshot, checked code/data map, trace, coverage, seed, environment hash and candidate disposition. Unknown pointers, unsupported opcodes, mismatched map revisions and timeouts yield `INCONCLUSIVE` / `QUARANTINED`, never a proof of incorrect SIL.
 
-Use exact bit vectors (`BV8`, `BV16`) for 6502 data and address arithmetic; model carry, overflow, zero, negative, stack effects, indexed loads, branch conditions, and memory arrays (including banked memory and self-modification) as needed. Model bus/device operations and interrupt scheduling explicitly or exclude them under a stated harness assumption.
+### 11.6 Actively find distinguishing mutations
 
-The core bounded counterexample query for a candidate is:
+For competing hypotheses `H1` and `H2`, construct a **bounded miter** that asks whether they can produce different observations from the *same* source admissible input/patched load image:
 
-```text
-SAT?  assumptions(S0,I0,u) ∧ R(S0,I0) ∧
-      EXISTS j IN [0..K]:
-        [ObsSrc(Fsrc^j(S0,u)) != ObsSIL(Fsil^j(I0,u))
-         OR NOT R(Fsrc^j(S0,u), Fsil^j(I0,u))]
-```
+\[
+\exists m,u,s_0:\ \mathrm{CandidateDomain}(m,u)\ \land\ \mathrm{ReachableInit}(s_0,m,u)\ \land\ \mathrm{Obs}(H_1,m,u)\neq\mathrm{Obs}(H_2,m,u).
+\]
 
-- `SAT`: extract an explicit source-state/input mutation and the earliest divergent step; replay it against both concrete implementations before accepting it as a counterexample.
-- `UNSAT`: no counterexample within the exact modeled bounds, constraints and environmental assumptions; record `BOUNDED_PROVED`, **not** whole-song proof.
-- `UNKNOWN`, timeout, unsupported opcode or incomplete source-to-SIL mapping: **no proof**.
+`CandidateDomain` is a **necessary inexpensive prefilter**, not authority over score legality. SMT or concolic execution identifies promising values and boundary conditions; **the original source then executes and admits or rejects the candidate**. If the source does not admit it, refine the constraints using the observed invalid path, timeout, unsupported CPU behaviour or pointer range. This creates a sound two-level loop: symbolic proposal → **source admission** → differential falsification.
 
-Use *selective* per-routine or per-tick lifting before whole-song proof. Long arbitrary 6510 code with indirect control flow, interrupts, time-dependent I/O and self-modification may remain in `opaqueMacro` blocks with narrower proof scopes. Feed discovered invariants and state relations into an inductive check where possible. Solver versions, query hashes, bounds and proof results are permanent artifacts.
+Search priority: (i) one-byte, fewest-modified-bytes edits; (ii) boundary values around pointer, note-token, counter, repeat and instrument branch decisions *suggested by evidence*; (iii) new branch/selector coverage; (iv) high expected disagreement; (v) minimized trace and patch size. Save first-divergence call, write ordinal, branch, source PC, evidence node and mutated bytes. When hypotheses are observationally equivalent on the bounded domain, report `INDISTINGUISHABLE_WITHIN_SCOPE` rather than arbitrarily choosing one.
 
-### 11.7 Explicit adversaries and metamorphic contracts
+**Fuzzers:** begin with raw mapped-data patch proposals and source-derived concolic constraints. A recovered grammar may be used as an *additional biased proposal distribution*, but must never be the admission oracle. Maintain counters for proposed, admitted, quarantined, unsafe, unsupported, non-distinguishing and distinguishing mutations. Use AFL-style coverage feedback only where implementation instrumentation actually supports it; keep browser-compatible modules and a Node headless runner for corpus campaigns.
 
-**Mutation tests must run on both sides.** Start from a grammar-valid original score/instrument input `d`, apply a mutation `m` to produce `m(d)`, modify the **original** loaded source bytes (including checksums/load or relocation as needed), and apply the *corresponding semantic mutation* to the SIL input. Execute the two programs with aligned initial state and the same environment. The mutation is admissible only if all source grammar invariants and harness conditions hold. Raw arbitrary fuzzed bytes must not be treated as valid music score data.
+### 11.7 State alignment as a machine-checked relation, not a suggestive table
 
-| Adversary | Source/SIL intervention | Mistake exposed |
+A `stateMap` record includes source address expression or registers/flags/SMC operand bytes, bit width, byte ordering, valid memory version, SIL path, transform AST/bit-vector expression, provenance edges, known aliasing, preconditions and admitted scope. Examples such as `src[$36] ↔ ctx.voice[0].wait` are *hypotheses* until they survive trace checks or bounded proof. Prove or test the mapping on **every covered transition**, not just at an initial snapshot.
+
+Use a restricted typed expression DSL for transforms, not opaque arbitrary JS callbacks. If `decodeSelector`, `decodeTimer` or a custom lookup is required, it must be either **expanded into checked bit-vector operations** or explicitly listed as an **assumed trusted abstraction** in the proof's TCB. Hash code, table contents, widths and firmware mapping; a proof only establishes behaviour under these assumptions, not the intended musical label of the transform.
+
+Representative relation:
+
+\[
+R(S,I,M) \equiv \bigwedge_{j=1}^k\left(I[p_j]=f_j(S,\mathrm{MemVersion},M)\right)\land\mathrm{Invariants}(S,I,M).
+\]
+
+`M` contains the initial patch and environment state. If a source variable is genuinely irrelevant, document a bounded noninterference argument or explicit justification; do not drop unmapped source memory because it is inconvenient. Alias/SMC provenance, RAM overlaps, flags, side-effect reads and carry propagation must be modeled where reachable and observable.
+
+### 11.8 Reachability-constrained bounded proof, replay and proof trust
+
+**Default A3 starting state:** execute a qualified `INIT` concretely with chosen PSID load image, environment seed and subtune; snapshot the complete relevant source state `S_INIT`. Create the corresponding SIL state `I_INIT`, check `R(S_INIT,I_INIT)`, and permit only explicitly symbolic inputs that are valid for both programs (for example admitted patch bytes, intended external events or scheduler inputs). Other initial CPU flags/RAM/PC are not universally symbolic.
+
+For each bounded handler/call sequence `0..k`, search for a mismatch in ordered observations or in the relation:
+
+\[
+\exists m,u:\ \mathrm{Admitted}(m,u)\land\mathrm{ReachableFromInit}(S_0,m,u)\land R(S_0,I_0)\land
+\bigvee_{j=0}^{k} \left[\mathrm{ObsSrc}_j\ne\mathrm{ObsSIL}_j \lor \neg R(S_j,I_j)\right].
+\]
+
+`Admitted(m,u)` in an SMT query is only valid when representable with verified constraints. Usually the solver searches a **conservative candidate domain**, and each SAT result must be admitted by executing the source. If a proposed SAT model fails admission or concrete replay, it is `SPURIOUS_OR_UNQUALIFIED`, prompting constraint strengthening or an encoding fix, not an automatic A3 counterexample.
+
+**A3 award conditions:** (1) original CPU and symbolic translation qualified for supported subset; (2) SIL interpreter and SMT encoding consistency gate passed; (3) initial state relation and symbolic domain clearly documented; (4) solver returns `UNSAT` for the exact bounded miter; (5) all normalizations and allowed inputs have a reviewed TCB; (6) witness-replay and negative-control tests succeed. `UNKNOWN`, `TIMEOUT` or unsupported operations are never A3 passes.
+
+**Reaching beyond a bound:** An inductive relation requires separate base, step/invariant preservation and output consistency obligations for the **declared reachable domain**. Whole-song inductive A4 is **aspirational and off the critical path**; aim first for bounded per-decoder/per-handler A3 proofs. Do not infer inductiveness from many loop iterations or an UNSAT result for one fixed number of ticks.
+
+**TCB manifest minimum:** exact source and checksum, source execution model and peripheral assumptions, opcode semantics and lift implementation hashes, SMT solver/version/options, interpreter and encoding hashes, typed semantics definition, input-domain predicates, normalized observation function, state-relation transforms and approved lookup tables, memory/code-version model, external oracle instrumentation, proof bound and environmental assumptions, human-reviewed musical labels. Classify which parts are *validated*, *assumed*, *unverified* or *out of scope*.
+
+### 11.9 Assurance is multidimensional
+
+Do not retain a misleading A0–A5 **linear** ladder. **Source reconstruction assurance:**
+
+| Tier | Identifier | Claim | Critical gate |
+|---|---|---|---|
+| A0 | `HYPOTHESIZED` | Candidate structure | Alternative hypotheses preserved |
+| A1 | `SOURCE_SUPPORTED` | Causal source evidence | Trace/taint graph points to original bytes and code |
+| A2 | `TESTED` | Differential and adversarial tests passed in the declared execution domain | Report tests, mutation admission counts, call coverage, code/branch/SMC coverage and first divergence |
+| A3 | `BOUNDED_PROVED` | Within an explicit qualified reachable bounded model no counterexample exists | Concrete/SMT consistency, INIT state, UNSAT, scope/TCB |
+| A4 | `INDUCTIVE_PROVED_RESEARCH` | Inductive invariant for a declared reachable model | Base/preservation/output obligations; **aspirational, not a release gate** |
+
+**Independent target validation dimension:**
+
+| Tier | Identifier | Claim |
 |---|---|---|
-| Note transposition | Valid, range-safe pitch token update and corresponding SIL score edit | Frame-lookup memorization, incorrect pitch table indexing |
-| Pattern reorder | Legal order-table permutation, matching SIL arrangement edit | Hard-coded global sequencing, hidden fixed pattern pointer |
-| Tempo divider mutation | Legal timer/divider change in the original and portable scheduler control | Incorrect timing model or assumed constant tick length |
-| Instrument substitution | Legal selector change to a different instrument definition | Instrument conflation, hard-coded envelope/waveform |
-| Macro edit | Valid step/parameter/repeat edit in a source macro and SIL definition | Misclassified pitch effect or fixed register-write log |
-| Loop counter/pointer change | Legal repeat count and jump target changes | Incorrect nesting, per-voice versus global loop scope |
-| Snapshot resume | Save full CPU/RAM/I/O/SIL state; continue from an aligned state pair | Hidden global time counters, bad call-stack/phase alignment |
-| Subtune change | Different supported init selection and corresponding SIL entry | Single-subtune overfitting |
-| Timing stress | Gate/test toggles, repeated writes, short delays, digi write bursts | Lost cycle order, frame-only comparator |
-| Code mutation | Intentional validated self-modifying operand change and equivalent SIL state/dispatch | Incorrect cached CFG, unmodeled patched jumps |
-| Grammar-guided fuzzing | Enumerate and mutate valid instruction/score productions; prioritize unvisited branches | Weak discovery and overfit to one song |
-| Differential replay | Rerun same fixture using independently qualified reference engines | Shared CPU/emulator errors |
+| T0 | `NOT_BUILT` | No generated target |
+| T1 | `BUILT` | Valid generated assembly or MIDI artifact with recorded hash and toolchain |
+| T2 | `BACKEND_TESTED` | Concrete backend semantics and documented losses tested |
+| T3 | `INDEPENDENT_TARGET_TESTED` | Executed and differentially evaluated in the appropriate independent runtime and timebase |
+| T4 | `HARDWARE_VALIDATED` | Measured on the stated physical or hardware-equivalent environment, with reproducible limits |
 
-Metamorphic properties have **preconditions**, not universal truth: transposition can hit frequency range/overflow limits; tempo changes can affect hardware envelope rates and IRQ behavior; reordering can alter carried instrument state. Specify properties with guarded transformations and compare *correspondingly transformed outputs*, not blindly identical outputs.
+None of `T0..T4` implies A3; neither A3 nor A4 implies acoustic identity, target timing compliance, or uniqueness of musical meaning. Each musical label also carries its own source-evidence status and uncertainties.
 
-**Anti-memorization rule:** Reject unrestricted tables indexed solely by global frame/tick to replay observed SID events. Permit genuine source-derived sample payloads, order tables, instrument macros, pitch tables and time-dependent algorithms when supported by provenance. Prevent a table of known register-write events from posing as a musical algorithm. Rank passing candidates by Minimum Description Length or another deterministic complexity penalty **only after** semantic and test obligations are met; simplicity is a tie-breaker, not evidence of intent.
+### 11.10 Adversarial campaign design and counterexample classes
 
-Corpus campaigns use coverage-guided fuzzing with grammar constraints, deterministic seeds, minimized counterexamples, branch/state coverage reports and reproducible checkpoint replay. Reject any test case whose source grammar or harness validity is unknown rather than counting it as a semantic failure.
+Run the following *separate* campaigns: source-admitted byte mutation; concolic distinguishing queries; metamorphic transformations (transpose, tempo divider, pattern order, instrument selection) only when the transformation's original-source meaning is independently shown; snapshot/seek/resume from the same qualified source state; conditional and nested loops; indirect jump tables; self-modifying JSR/JMP; CPU flags and decimal mode; signed/wrapping arithmetic; repeated SID writes including gate/test order; high-frequency digi; many subtunes and PAL/NTSC; clock-peripheral dependency; deliberately hard-coded frame-tape negative control; minimum-description-length ranking among equivalently passing candidates.
 
-### 11.8 Causal reconstruction, competing hypotheses and semantic uniqueness
+The anti-replay policy bans a **frame-indexed SID event tape masquerading as musical structure**. It does *not* ban ordinary frame counters, tempo dividers, time-based algorithms or source-derived tables: such structures are legitimate if causally linked to the source. Penalize or reject arbitrary event lookup by absolute frame index without source evidence and mutation responsiveness; report any legitimate exceptions explicitly.
 
-The inference engine emits alternatives for notes, rests, ties, arpeggios, pitch slides, instrument records, arbitrary instrument macros, patterns, per-voice/global loops, jump tables and state-dependent self-modifying dispatch. Each alternative names a source dependency hypothesis, the expected state variables, candidate SIL implementation and an admissible distinguishing mutation.
+A `snapshot` must contain RAM, PC, registers, flags, stack, code versions, SID/CIA/VIC state as applicable, scheduler phase and source-input patches. Restoring SIL from `ctx` alone when the original still has hidden hardware state is not a valid seek/resume comparison. Save the test oracle, seed and environment alongside the snapshot.
 
-Example: a source pitch trajectory might be (a) three note tokens or (b) one note plus an instrument arpeggio macro. Query whether the source decoder reads three score tokens, or one token followed by macro cursor updates; mutate the macro definition without changing the note and observe causal changes. A matching register trace without these source probes leaves both labels open. When ambiguous, keep an explicitly typed `opaqueMacro` with deterministic source-linked control logic, not a serialized trace.
+### 11.11 Two independent ground-truth families and corpus policy
 
-A source-derived score can be semantically incomplete yet behaviorally exact under the tested domain; report those dimensions separately. Recorded SID writes and tools that classify them (e.g. `desidulate`) may **suggest** candidates but cannot establish source-side musical causality. Assembly recovery tools (e.g. `SIDdecompiler`) can cross-check code shape, not attest score/instrument semantics.
+First benchmark family: minimal **self-authored, transparent synthetic PSID** whose true score grammar, instruments and loop operations are known from source. Include false hypotheses and metamorphic golden tests; this is a unit-test reference, not generalization evidence.
 
-### 11.9 Target validation is mandatory *after* SIL generation
+Second benchmark family: **independently authored published player engine** with known score encoding. A concrete candidate is [GoatTracker 2's player routine (`src/player.s`)](https://github.com/leafo/goattracker2/blob/master/src/player.s) plus documented/exported song structures. The source reveals pattern commands such as `ENDPATT`, `INS`, and `FX`. Pin a public source revision and a legally distributable fixture, and independently decode known patterns/instruments/loop orders to create ground truth *without using PLAY inference output*. Check the player file's specific license notice rather than assuming the repository's license covers that file. Do not train or tune mutation rules on the held-out engine prior to evaluation.
 
-**Shared typed IR and independent reference interpreter:** check arithmetic, arrays, loops, effects, control state and timing; include golden examples and known deliberately wrong implementations. Every target uses the *same* reviewed SIL/IR, but may carry explicit capability mapping and declared losses.
+Add one additional distinct player architecture before claiming corpus-level transfer (for example a separate open-source C64 tracker/player with independently inspectable format). Report per-engine-family accuracy, abstentions, mutation admission rates, and verified versus unverified coverage. An HVSC-scale corpus may later stress generalization, but bulk tunes without known musical-source truth are not automatically ground-truth examples.
 
-| Target | Independent checks after lowering | Evidence and review gate |
+### 11.12 Implementation/technology and planned milestones
+
+Maintain browser-compatible modules for RetroAppleJS interactive evidence exploration and an independent **Node.js headless campaign runner** for batching, worker isolation and CI. Use typed JS modules, deterministic seed logs, content-addressed fixtures and JSON Schema validation. Use `ASM_core.js` only at the reviewed 6502 lowering/assembly boundary; keep MIDI serialization separate. Pin independent 6510 and SID runtime reference versions. Use bit-vector SMT (e.g., Z3 WASM/Node), incremental push/pop, explicit memory arrays only where needed, bounded unrolling with selective slicing, and per-handler path-budget limits. Avoid claiming large whole-song symbolic execution is tractable.
+
+| Milestone | Concrete deliverable | Demonstration / stop-go |
 |---|---|---|
-| Regenerated PSID | Assemble annotated `.S` with [`ASM_core.js`](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/res/ASM_core.js); run target 6510/SID emulator with cycle-stamped write comparison, initialization, memory safety, subtunes and loop progression | Source-to-IR and IR-to-binary tests; human review of annotated assembly; machine/clock and hash manifest |
-| PLAY / AY | Assemble annotated Apple II `.S` with `ASM_core.js`; execute with actual Apple II slot/mockingboard timing and memory map; compare pitch/duration/command semantics and resource budgets | Explicit unsupported SID effects, AY approximation policy, voice routing, timing jitter and register-write cost; no false acoustic-equivalence claims |
-| MIDI | Review deterministic annotated event timeline then serialize SMF; parse it independently; compare events, durations, controllers, bends, tempo and loop expansion within defined quantization tolerances | Declared timbral losses, controller mappings and rounding; no claim of SID waveform equivalence |
+| M0: schema and observation contract | Versioned schema bundle; source and target manifest; stable ordered-event trace | Reject malformed/nonversioned records and compare ordered gate toggles correctly |
+| M1: CPU/SMT consistency | Executable NMOS/6510 subset qualification; instruction/slice lifter; cross-semantics test harness | Random and edge-case concrete states agree; inject a deliberately wrong flag/overflow rule and catch it |
+| M2: source admission | Memory-version/PC classifier; source-driven patch admission + corpus runner | A mutation rejected by the source cannot serve as a SIL falsification; admitted counterexamples can be replayed |
+| M3: state mapping | Typed source↔`ctx.*` map with checkable transforms, alias/SMC version support and TCB report | A broken decoder transform or omitted carry dependency fails trace/proof gate |
+| M4: hypothesis separator | Incremental SMT miter and concrete replay loop; minimize patch and divergence | Find a one-byte mutation that distinguishes two plausible instrument/loop hypotheses, or report bounded indistinguishability |
+| M5: bounded proof | Post-INIT reachability constrained proof for one small handler | UNSAT with preserved assumptions and verified concrete encodings, or explicit UNKNOWN |
+| M6: independent benchmark | Known-format independently authored GoatTracker-style player + frozen fixtures | Score/instrument/loop recovery evaluated without using the inferred grammar as admission oracle |
+| M7: reviewed SIL and targets | Portable typed SIL and PSID/PLAY/MIDI backends + three target reports | Human review and post-lowering tests; timebase/loss declarations preserved |
 
-For each: emit provenance pointers to SIL AST node, source PCs/file offsets, instruction trace IDs and reviewer decision; preserve artifact and compiler hashes. Later failing target tests **do not** retroactively establish that the source model was wrong: classify the failure as source inference, SIL interpreter, lowerer, packager, emulator or declared target limitation before updating hypotheses.
+M1–M5 are scoped to **one handler/pattern transition** before whole-song ambitions. `A4` remains explicitly off the release critical path. Machine-learning model **weight fine-tuning**, if pursued, remains a separate later project with verified pairs, held-out player-engine splits and verifier-derived feedback; it is not required to refine SIL hypotheses.
 
-### 11.10 Implementation and execution technology
+### 11.13 Concrete, versioned record schemas
 
-- **Primary interactive editor:** browser-first, self-contained RetroAppleJS-integrated JavaScript/HTML workflow, preserving offline usability and source inspection.
-- **Batch and CI:** headless **Node.js runner** using the same parser, instrumenter, state-map checker, mutation grammar and differential comparator modules. Use shardable corpus/seed jobs, reproducible failing fixtures, finite resource limits, state checkpoints and downloadable JSON evidence packages. One `test/index.html` is useful for interactive smoke tests, not sufficient for an HVSC-scale fuzz/proof campaign.
-- **CPU and reference:** audit [`res/EMU_cpu6502.js`](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/res/EMU_cpu6502.js) and [`res/jsSID.js`](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/res/jsSID.js) before selecting an in-process reference. Use a tested C64-specific execution environment for qualifying source PSID. Establish an independent external oracle early (VICE or libsidplayfp with write trace instrumentation).
-- **SIL parser:** pinned `Acorn` or comparable parser, a strict allowed-AST subset, exact-width integer semantics, deterministic typed IR and reference interpreter.
-- **SMT:** Z3 WASM or equivalent in a separate verification worker/Node module; bounded symbolic lifting and relation/invariant checking. The formal-verification feature is optional for playback **but required to award A3/A4**.
-- **Fuzzing:** grammar-guided generators, coverage feedback, mutation harness, first-difference detection, snapshot replay and minimization. Never fuzz by unconstrained corruption and call a crashed original a proof of a wrong SIL.
-- **Lowering:** target-specific code emitters with readable commented `.S`, `ASM_core.js` for 6502 outputs; target-specific MIDI serialization; independent post-lowering execution and human review.
-- **Source files and compatibility:** preserve historical `PAY_*` contract IDs and PLAY-00.8J findings as evidence, not verified full reconstruction. Do not silently rewrite old contracts or remove existing test tools.
+This chapter ships a companion Draft 2020-12 JSON Schema bundle `PLAY_SIL_Verification_Schemas_v0.8.0.json`, with `$defs` for: `EvidenceRecord`, `StateMap`, `ObservationContract`, `MutationCase`, `AssuranceRecord`, `TCBManifest`, and `SemanticConsistencyReport`. An accompanying `PLAY_SIL_Verification_Example_v0.8.0.json` contains **illustrative synthetic** records validated against those definitions. These records are not evidence about Bomberland.
 
-Useful test and verification resources:
+**Core evidence record** (minimal example):
 
-- [Klaus Dormann 6502/65C02 functional, decimal and interrupt tests](https://github.com/Klaus2m5/6502_65C02_functional_tests)
-- [Wolfgang Lorenz CPU/6510 test suite context](https://www.zimmers.net/anonftp/pub/cbm/crossplatform/emulators/msdos/pc64/)
-- [VICE monitor reference](https://www.cs.cmu.edu/~dsladic/vice/doc/html/vice_9.html)
-- [libsidplayfp](https://github.com/libsidplayfp/libsidplayfp) and [libresidfp](https://github.com/libsidplayfp/libresidfp)
-- [CEGIS tutorial, Solar-Lezama](https://people.csail.mit.edu/asolar/SynthesisCourse/Lecture17.htm)
-- [RetroAppleJS coding conventions](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/CODING_STYLE.md) and [6502 assembler](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/res/ASM_core.js)
+```json
+{
+  "schemaVersion": "0.8.0", "recordType": "evidence",
+  "id": "ev-synthetic-001",
+  "sourceSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "sourceRegion": {"fileOffsetStart": 256, "fileOffsetEndExclusive": 257},
+  "sourcePc": 8192,
+  "observationId": "obs-001",
+  "kind": "candidate-score-byte",
+  "claim": "Source byte influences the next voice selector",
+  "status": "CANDIDATE",
+  "traceIds": ["trace-synthetic-01"],
+  "dependencyEdges": [{"from": "file:0x100", "to": "ram:0x20", "kind": "data"}],
+  "alternatives": ["possible instrument-selector", "possible macro-selector"]
+}
+```
 
-### 11.11 Practical roadmap and stop/go criteria
+**State-map record** (illustrative transform DSL, subject to formal encoding):
 
-| Phase | Deliverables | Gate |
-|---|---|---|
-| **0. Scope and oracle qualification** | PSID-only manifest, executable CPU test report, cycle-SID trace prototype in independent engine | Reliable evidence for exact tested CPU/peripheral scope; no unsupported instruction quietly accepted |
-| **1. Causal data engine** | Versioned CFG, source-to-event taint slices, cycle-stamped trace, bounded snapshot/resume | Can locate source data/control for selected SID writes and explain unknowns |
-| **2. State relation** | Typed `ctx.*` ↔ memory/flags/SMC mappings, candidate invariants, alignment replay | Each selected source transition has a checked state pair, or explicitly marked unmapped |
-| **3. Musical inference** | Competing note/instrument/pattern/loop hypotheses; grammar-valid input domain | Valid synthetic engines recovered; ambiguous meanings retained as alternatives |
-| **4. Adversarial testing** | Dual-side mutations, grammar coverage fuzzing, metamorphic tests, hold-out patterns, counterexample minimizer | Known incorrect hard-coded replay candidate rejected; legitimate source table remains allowed |
-| **5. Bounded proof** | Bit-vector lifter, SMT mismatch query, solver/counterexample artifacts, conditional invariant checks | At least one small decoder/controller proven in a stated bounded domain; unsupported cases remain A2 or lower |
-| **6. Reviewed portable SIL** | Parser/typed IR, independent interpreter, first section of Bomberland with human-reviewed labels | A/B and source-vs-SIL alignment separately reported and accepted |
-| **7. Three target gates** | PSID/PLAY/MIDI lowers, annotated source/event maps, post-lowering differential tests | No target labeled equivalent without independent target-specific proof/tests |
-| **8. Corpus evaluation** | Pinned representative PSIDs, disjoint player engines, adversarial and negative controls | Reproducible generalization results, failure taxonomy, quality/coverage dashboards |
+```json
+{
+  "schemaVersion": "0.8.0", "recordType": "stateMap", "id": "map-synthetic-01",
+  "sourceSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "source": {"kind": "ram", "address": 32, "width": 8, "endian": "little", "codeVersion": "init-v1"},
+  "silPath": "ctx.voice[0].wait", "silWidth": 8,
+  "transform": {"op": "and", "args": [{"op": "source"}, {"op": "const", "value": 255, "width": 8}]},
+  "preconditions": ["post-INIT", "subtune=0"],
+  "traceIds": ["trace-synthetic-01"],
+  "assumptionIds": [], "status": "CANDIDATE"
+}
+```
 
-**First executable milestone:** choose a tiny synthetic PSID containing one note stream, an instrument macro and a legal local loop. Build source/macro mutations and snapshot replay, trace cycle-stamped writes, infer a typed state map and automatically reject a deliberately hard-coded frame-indexed SIL replay. Only then move to the later Bomberland pattern transition and selected instrument macros. Add per-tick SMT proof to one bounded subsystem before attempting large-scale lifting.
+**Proof/assurance record** (illustrative incomplete finding, not an A3 proof):
 
-### 11.12 Machine-learning fine-tuning is a distinct optional project
+```json
+{
+  "schemaVersion": "0.8.0", "recordType": "assuranceRecord", "id": "assurance-synthetic-01",
+  "sourceSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "sourceTier": "A2", "targetTier": "T0",
+  "claim": "One handler tested over a bounded source-admitted corpus",
+  "observationContractId": "obs-001", "stateMapIds": ["map-synthetic-01"],
+  "reachableStart": {"kind": "concrete-post-init", "snapshotId": "snap-synthetic-01", "symbolicInputIds": []},
+  "proof": {"status": "NOT_ATTEMPTED", "boundCalls": 2, "solver": null, "tcbManifestId": "tcb-synthetic-01"},
+  "testing": {"executions": 100, "admittedMutations": 50, "quarantinedMutations": 10,
+    "coverage": {"metric": "reachable-handler-branches", "covered": 8, "total": 10}},
+  "humanReview": {"status": "PENDING", "reviewer": null, "decisionId": null},
+  "openIssues": ["state-map transform lacks proof"]
+}
+```
 
-Here, **fine-tuning SIL** initially means refining a *candidate semantic program and inference rules*, **not** adjusting neural-network weights. A learned model is optional and should come after a deterministic corpus and verifier exist.
+**Schema invariants enforced by application code in addition to structural JSON Schema:**
 
-If ML is adopted:
+- A3 cannot be awarded when `proof.status != UNSAT`, the solver version/TCB/hash is absent, the consistency report lacks a pass, or reachable initial-state alignment is unproved.
+- All `sourceSha256` identifiers, source offsets, code versions, `traceIds`, state mapping IDs, snapshots and evidence graph nodes must resolve to the **same source version** and independently stored immutable fixtures.
+- A mutation marked `SOURCE_EXECUTION_ADMITTED` must have an original-source trace, safe data/code execution classification and a named qualified oracle version. `MUSICAL_GRAMMAR_VALIDATED` is a separate field.
+- An SMT SAT counterexample is not `REPLAY_CONFIRMED` until concrete execution under the same patch/environment/snapshot reproduces the mismatch.
+- Coverage percentages must include explicit numerator, denominator, source code-region/subtune/timebase and instrumentation settings; user interfaces should not aggregate incomparable percentages.
+- Every TCB assumption must be exposed in the report; `decodeSelector`/`decodeTimer` must be checked DSL expressions or explicitly marked trusted, not hidden callbacks.
+- T0–T4 target tier claims must refer to a specific generated artifact hash and target capability manifest (except T0, when no artifact exists).
 
-1. Collect a consent/license-compliant dataset of original tune hashes, engine-family labels, disassembly, trace/taint graphs, known source score formats, *reviewed* SIL, mapping proof scopes, and negative/adversarial hypotheses. Do not treat arbitrary pseudo-labels as ground truth.
-2. Train a model to **propose** candidate classifications, source/SIL mappings and test mutations, not to certify correctness. Require every proposal to pass independent source-derived and target-verification gates.
-3. Use verifier outcomes as multi-component feedback: (i) test passes and coverage, (ii) bounded proofs where available, (iii) source-semantic provenance review, (iv) minimized complexity and (v) penalties for hard-coded logs. Do **not** reward waveform similarity alone or a pass count without branch/grammar coverage.
-4. Evaluate on held-out **player engines and composers/implementations**, not just different songs sharing the same player. Prevent near-duplicate data leakage and report results stratified by engine, complexity, SMC, timing, illegal opcodes and level of manual intervention.
-5. Separate model accuracy (`correctly proposes a grounded hypothesis`), verifier accuracy (`catches deliberately wrong SIL`), musical structure accuracy (`matches known-source patterns and instruments`) and target fidelity (`measured events and timing`). Maintain non-neural baselines and allow abstention.
+### 11.14 Non-negotiable release invariants
 
-A verified corpus of synthetic ground-truth players plus a growing, human-reviewed collection of real tunes is the prerequisite. No amount of model fine-tuning can replace a qualified source oracle or sound state-alignment relation.
+1. Never use an inferred score grammar as the sole validity oracle for that grammar's own adversarial mutations.
+2. Never award A3/A4 based on an unqualified or untested concrete/SMT translation.
+3. Never hide intra-tick write order, repeated SID writes or digi timing in an unordered frame snapshot.
+4. Never claim a bounded proof from arbitrary symbolic starting states without a justified reachable-state model.
+5. Never conceal assumed decoding functions, source environment approximations or code/data classifications outside the TCB.
+6. Never require a whole-song inductive proof to ship a documented, tested partial reconstruction; A4 is aspirational.
+7. Never claim independent verification from only self-authored synthetic samples or hold-out songs sharing the same player engine.
+8. Never declare two hypotheses distinct without either a replayed source-admitted distinguishing witness or explicitly conditional SMT result.
+9. Never promote a tentative semantic label on the strength of observational equivalence alone.
+10. Never promote source assurance into SID, AY or MIDI target assurance without artifact-specific validation and human review.
+11. Never treat `UNKNOWN`, `TIMEOUT`, invalid mutation, unqualified CPU feature or unreplayable model as a proof or counterexample.
+12. Always keep hashes, immutable evidence, versioned schemas, solver reports, source-admission decisions and unresolved ambiguities alongside the released SIL.
 
-### 11.13 Invariants and prohibitions
-
-1. Never infer an instrument or loop solely from waveform similarity or register-write repetition.
-2. Never grant A3/A4 from a finite set of concrete traces or an unqualified 6510 model.
-3. Never lose cycle/order information by replacing the oracle with frame snapshots.
-4. Never declare an unmapped source variable irrelevant without a dependency or proof obligation.
-5. Never accept unbounded frame-indexed replay as SIL musical structure.
-6. Never use invalid score-byte mutations as proof of a semantic error.
-7. Never silently extend PSID scope to RSID or assume Apple II and C64 share CPU/peripheral semantics.
-8. Never promote source verification to compiled-target verification without executing the generated target.
-9. Never collapse unknown/timeout into solver success.
-10. Always keep provenance, assumptions, tests, counterexamples, manual approvals, and uncertainty with every released artifact.
-
-**Revision note:** This replaces the earlier Chapter 11's informal 'CEGIS' label and weak oracle assumptions with precise CEGIS/proof levels, a source-to-SIL state-relation contract, explicit mutation adversaries and post-lowering target gates. Chapters 1–10 remain intact; no claim is made that these proposed facilities have been implemented or verified for Bomberland.
+**Revision note (v0.8.0):** Replaces Chapter 11 from v0.7.0 to address nine adversarial-review findings. Chapters 1–10 are unchanged other than the revision descriptor in the document header. No implementation or proof success is asserted.
