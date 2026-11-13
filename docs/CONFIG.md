@@ -103,6 +103,19 @@ J-Plus 2 KB Monitor ROM at `$F800-$FFFF`, preserving Applesoft BASIC at
 `A2_JP` character ROM is selected separately. Dedicated J-Plus keyboard
 hardware mapping is not yet implemented.
 
+**J-Plus character generator and soft switches:** The bundled `A2_JP`
+character ROM is the original 2,048-byte, 256-glyph Apple II J-Plus image
+(CRC32 `487104B5`). Its first 64 glyphs are Katakana; the next three
+64-glyph blocks contain Roman characters. Accessing `$C05C` (AN2 OFF)
+selects Katakana for inverse/flashing screen codes `$00-$7F`;
+`$C05D` (AN2 ON) selects Roman glyphs. Normal screen codes
+`$80-$FF` remain Roman in both modes. Reads and writes trigger these
+switches, except debugger read-only scans. Reset selects Roman mode.
+Ctrl-T changes the monitor's output mask at `$32`; it does not replace
+the character ROM or set annunciator 2 itself. GPU, WebGPU, Canvas, Wave,
+and Three.js video all use the same J-Plus glyph decoder. The standard
+Apple II Plus character lookup remains unchanged.
+
 **ROM selection and Language Cards:** The `ROM` entry in `_CFG_SYSCODE`
 may be a comma-separated list of **alternatives**, not a key into
 `_CFG_ROMRANGES`. The selected single ROM ID is resolved by
