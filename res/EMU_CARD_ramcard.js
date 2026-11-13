@@ -37,9 +37,12 @@ function RamCard()
     var bDebug_mon = false;     // debug RAM Write monitor
     var bDebug     = false;     // debug all RAM R/W operations   
 
-    const ROM_ID        = _CFG_SYSCODE["A2P"].ROM;
-    const ROM_CFG       = _CFG_ROMRANGES[ROM_ID];
-    const ROM_RANGE     = oCOM.parseRngExpr(ROM_CFG.ROM);
+    // The SYSCODE ROM cell is a comma-separated list of *alternatives*.
+    // Resolve one configured ROM range, even in the early discovery instance
+    // created before EMU_init() selects the user's startup configuration.
+    var ROM_ID    = EMU_system_romRangeID();
+    var ROM_CFG   = _CFG_ROMRANGES[ROM_ID];
+    var ROM_RANGE = oCOM.parseRngExpr(ROM_CFG.ROM);
 
     const BANK_SIZE     = 0x1000;                     // 4K bank memory size = contiguous bank offset  = 4Kbytes  
     const CONT_SIZE     = 0x2000;                     // 8K contiguous memory size
@@ -124,6 +127,11 @@ function RamCard()
     {
         hw = apple2plus.hwObj();
         io = apple2plus.hwObj().io;
+        // Cold restarts may switch A2P_R <-> A2P_RL; both use the same
+        // $D000-$FFFF window, but the mapping metadata must remain accurate.
+        ROM_ID = EMU_system_romRangeID();
+        ROM_CFG = _CFG_ROMRANGES[ROM_ID];
+        ROM_RANGE = oCOM.parseRngExpr(ROM_CFG.ROM);
         debug_flush();
         this.state.softswitch_pos = 0x1;
         this.state.bMapped        = false;

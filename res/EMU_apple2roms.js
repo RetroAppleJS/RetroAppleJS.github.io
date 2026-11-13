@@ -14,8 +14,40 @@ else oEMU.component.ROM["A2P"] = true;
 
 function Apple2ROM(hw)
 {
+    // The motherboard ROM is shared by CPU reads at $D000-$FFFF.
+    // Accept an explicit ROM identifier (or configuration object); callers
+    // without an override use the active system configuration.
+    var romID = typeof(hw)==="string" ? hw
+        : hw && typeof(hw.ROM)==="string" ? hw.ROM
+        : typeof(EMU_system_romRangeID)==="function"
+            ? EMU_system_romRangeID()
+            : "A2P_R";
 
+    const offset = 0xFABB - 0xD000;
+    if(apple2Rom.length!==0x3000)
+        throw new Error("Apple II+ motherboard ROM must contain 12 KB");
 
+    var previous = apple2Rom[offset];
+    if(previous!==0x07 && previous!==0x05)
+        throw new Error("Unexpected Monitor ROM byte at $FABB: $"+
+                        previous.toString(16));
+
+    switch(romID)
+    {
+        case "A2P_RL":   // LIRON-compatible Apple II+ autostart ROM
+            apple2Rom[offset] = 0x05;
+            break;
+
+        case "A2P_R":    // Original Apple II+ autostart ROM
+        case "A2P_RJ":   // J-Plus ROM not yet supplied; use A2P_R fallback
+            apple2Rom[offset] = 0x07;
+            break;
+
+        default:
+            throw new Error("Unknown Apple II motherboard ROM: "+romID);
+    }
+
+    return previous;
 }
 
 const apple2Rom = new Uint8Array([

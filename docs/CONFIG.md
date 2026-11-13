@@ -102,6 +102,15 @@ Japanese motherboard ROM and the J-Plus keyboard behavior are not yet
 implemented, so J-Plus continues to use the unmodified Apple II+ motherboard
 ROM, with the `A2_JP` character ROM.
 
+**ROM selection and Language Cards:** The `ROM` entry in `_CFG_SYSCODE`
+may be a comma-separated list of **alternatives**, not a key into
+`_CFG_ROMRANGES`. The selected single ROM ID is resolved by
+`EMU_system_romRangeID()`, including during early MS16K discovery and
+subsequent card restart. MS16K, SaturnRAM and LegendRAM must never index
+`_CFG_ROMRANGES` with the unparsed configuration list. The physical ROM
+byte patch is centralized in `Apple2ROM(hw)`, which switches the Monitor ROM
+byte at `$FABB` to `$05` for `A2P_RL` and restores `$07` for `A2P_R`.
+
 ## ROM RANGES
 
 |[ROMRANGES] | ROM          | CRC16 | Description              |
