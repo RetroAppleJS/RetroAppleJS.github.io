@@ -2870,6 +2870,58 @@ Label1 TXA
               }
             }
 
+            // Import the legacy zlib/Deflate + Base64 ?asm= links into the modern assembler.
+            // Use URLSearchParams so %2B, %2F and Base64 '=' padding survive parsing.
+            function ASM_importSourceFromURL()
+            {
+              var params = new URLSearchParams(window.location.search || "");
+              if(!params.has("asm")) return false;
+
+              try
+              {
+                var base64 = String(params.get("asm") || "")
+                  .replace(/\s/g,"+") // URLSearchParams treats unescaped '+' as a space.
+                  .replace(/-/g,"+")
+                  .replace(/_/g,"/");
+
+                if(!base64 || !/^[A-Za-z0-9+/]*={0,2}$/.test(base64)
+                   || base64.length % 4 === 1)
+                  throw new Error("invalid Base64 source");
+
+                if(typeof pako == "undefined" || typeof pako.inflate != "function")
+                  throw new Error("Deflate decoder is unavailable");
+
+                // Standard padded Base64 and URL-safe unpadded Base64 are both accepted.
+                base64 += "===".slice(0,(4 - base64.length % 4) % 4);
+                var encoded = atob(base64);
+                var compressed = new Uint8Array(encoded.length);
+                for(var i = 0; i < encoded.length; i++)
+                  compressed[i] = encoded.charCodeAt(i);
+
+                var bytes = pako.inflate(compressed);
+                if(!bytes || !bytes.length || bytes.length > 2 * 1024 * 1024)
+                  throw new Error("empty or oversized decompressed source");
+
+                var source = new TextDecoder("utf-8",{fatal:true}).decode(bytes);
+                if(!source.trim()) throw new Error("empty assembler source");
+
+                ASM_loadSourceText("url-import.S",source);
+                ASM_setStatus("Imported source from ?asm=. Click assemble to generate output.","ok");
+
+                // Respect explicit fragments; otherwise show the tab containing the import.
+                if(!window.location.hash) window.location.hash = "#tab2";
+                return true;
+              }
+              catch(err)
+              {
+                ASM_setStatus(
+                  "Could not import ?asm= source: " + (err && err.message ? err.message : String(err)),
+                  "bad"
+                );
+                return false;
+              }
+            }
+
             function ASM_loadSourceText(name,text)
             {
               ASM_setCurrentFileName(name || "source.S");
@@ -4248,6 +4300,7 @@ Label1 TXA
             ASM_loadManualPane();
             ASM_toggleIncludePane(false);
             ASM_clearOutputs("Sample source loaded. Click assemble to generate output.","");
+            ASM_importSourceFromURL();
             ASM_updateSourceByteCodeRangeInfo(ASM_sourceByteCodeOrigin(false),0);
             ASM_resizeSourceListingPanes();
             ASM_refreshFindReplaceOverlay();
