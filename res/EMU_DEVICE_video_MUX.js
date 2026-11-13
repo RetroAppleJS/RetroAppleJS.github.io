@@ -6,11 +6,12 @@ function Apple2VideoMUX(canvas)
     const DISPLAY_H = 384;
 
     var mux = this;
-    var defaultCharRomKey =
-    typeof(_CFG_SYSCODE) != "undefined" &&
-    _CFG_SYSCODE.A2P &&
-    _CFG_SYSCODE.A2P.KeyFont
-        ? _CFG_SYSCODE.A2P.KeyFont
+    var systemCode=typeof(EMU_system_get)==="function" ? EMU_system_get() : "A2P";
+    var systemConfig=typeof(_CFG_SYSCODE)!=="undefined"
+        ? (_CFG_SYSCODE[systemCode] || _CFG_SYSCODE.A2P)
+        : null;
+    var defaultCharRomKey=systemConfig && systemConfig.KeyFont
+        ? String(systemConfig.KeyFont).split(",")[0].trim()
         : "A2_US";
 
     this.id = "MUX";
