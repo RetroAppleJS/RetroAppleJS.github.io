@@ -638,6 +638,10 @@ function EMU_init()
         
     //console.log(JSON.stringify(oEMU,null,"  "));
 
+    // Resolve selected system and any ?sys_rom / ?sys_keyfont overrides
+    // before the motherboard ROM or the video MUX is instantiated.
+    EMU_system_configStartup();
+
     // INITIALISE APPLE II+ EMULATOR
     var vidContext = document.getElementById('applescreen');
     if(typeof(apple2plus)!="object")

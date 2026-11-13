@@ -1,13 +1,35 @@
-// Supported motherboard models for the SYSTEM toolbox (tab 1.1).
-// Entries prefixed with "-" in COM_CONFIG.js are documentation only.
+// System model/configuration state for the SYSTEM toolbox.
+// Only non-"-" SYSCODEs are emulatable. A multi-value field is a comma-
+// separated set of *alternatives*, never a composite string.
+
+var EMU_system_configState = { byModel:Object.create(null), active:null, error:"" };
+var EMU_system_configFields = ["CPU","Speeds","Display","Slotslogphy","ROM","KeyFont"];
 
 function EMU_system_modelCodes()
 {
     if(typeof(_CFG_SYSCODE)==="undefined") return [];
-    return Object.keys(_CFG_SYSCODE).filter(function(code)
+    return Object.keys(_CFG_SYSCODE).filter(function(code){return code.charAt(0)!=="-";});
+}
+
+function EMU_system_options(code,field)
+{
+    if(EMU_system_modelCodes().indexOf(code)<0 || !EMU_system_configFields.includes(field)) return [];
+    return String(_CFG_SYSCODE[code][field] || "")
+        .split(",").map(function(s){return s.trim();}).filter(Boolean);
+}
+
+function EMU_system_getConfiguration(code)
+{
+    code=String(code || (typeof(EMU_system_get)==="function" ? EMU_system_get() : "A2P"));
+    if(EMU_system_modelCodes().indexOf(code)<0) return null;
+    var stored=EMU_system_configState.byModel[code] || {};
+    var config={model:code};
+    EMU_system_configFields.forEach(function(field)
     {
-        return code.charAt(0)!=="-";
+        var opts=EMU_system_options(code,field);
+        config[field]=opts.indexOf(stored[field])>=0 ? stored[field] : (opts[0] || "");
     });
+    return config;
 }
 
 function EMU_system_applyModel(code)
@@ -23,7 +45,6 @@ function EMU_system_applyModel(code)
             oEMU.system[name]={};
         oEMU.system[name].active=(name===code);
     }
-
     if(typeof(_TABS)!=="undefined")
         for(var tab in _TABS)
         {
@@ -33,65 +54,179 @@ function EMU_system_applyModel(code)
     return true;
 }
 
-function EMU_system_selectModel(code)
+function EMU_system_configError(message)
+{
+    EMU_system_configState.error=String(message || "");
+    if(message) console.warn("Apple II system configuration: "+message);
+    return false;
+}
+
+function EMU_system_validateConfiguration(config)
+{
+    if(!config || EMU_system_modelCodes().indexOf(config.model)<0)
+        return "Unsupported Apple II system.";
+    for(var i=0;i<EMU_system_configFields.length;i++)
+    {
+        var field=EMU_system_configFields[i],options=EMU_system_options(config.model,field);
+        if(options.length && options.indexOf(config[field])<0)
+            return "Invalid "+field+" option: "+config[field]+".";
+    }
+    // The current core implements the NMOS 6502 and Apple II/II+ hardware.
+    // Advertising an alternative in COM_CONFIG does not add a CPU emulator.
+    if(config.CPU!=="6502") return "CPU "+config.CPU+" is not yet emulated.";
+    if(config.Speeds!=="1.023") return "Motherboard speed "+config.Speeds+" MHz is not yet emulated.";
+    if(config.Display!=="A2_hgr") return "Display hardware "+config.Display+" is not yet emulated.";
+    if(config.Slotslogphy!=="[0-7] [0-7]")
+        return "Slot layout "+config.Slotslogphy+" is not yet emulated.";
+    if(config.KeyFont &&
+       (typeof(apple2CharRom)==="undefined" || !apple2CharRom[config.KeyFont]))
+        return "Character ROM "+config.KeyFont+" is not loaded.";
+    if(config.ROM && config.ROM!=="A2P_R" && config.ROM!=="A2P_RL" &&
+       !(config.model==="A2JP" && config.ROM==="A2P_RJ"))
+        return "Motherboard ROM "+config.ROM+" is not available.";
+    return "";
+}
+
+function EMU_system_effectiveRom(config)
+{
+    // A2P_RJ is currently only a config-table placeholder; until a genuine
+    // Japanese motherboard ROM is available, the original Apple II+ image
+    // remains the fallback, exactly as in the existing J-Plus mode.
+    return config && config.ROM==="A2P_RL" ? "A2P_RL" : "A2P_R";
+}
+
+function EMU_system_patchRom(config)
+{
+    if(typeof(apple2Rom)==="undefined" || apple2Rom.length!==12288)
+        throw new Error("Apple II+ 12 KB motherboard ROM is unavailable");
+    var index=0xFABB-0xD000;
+    var original=apple2Rom[index];
+    if(original!==0x07 && original!==0x05)
+        throw new Error("Unexpected $FABB boot signature byte $"+original.toString(16));
+    apple2Rom[index]=EMU_system_effectiveRom(config)==="A2P_RL" ? 0x05 : 0x07;
+    return original;
+}
+
+function EMU_system_configPersist(config)
+{
+    if(typeof(window)==="undefined" || !window.location || !window.history ||
+       typeof(window.history.replaceState)!=="function") return;
+    var next=new URL(window.location.href);
+    next.searchParams.set("sys",config.model);
+    EMU_system_configFields.forEach(function(field)
+    {
+        var param="sys_"+field.toLowerCase(),options=EMU_system_options(config.model,field);
+        if(config[field] && config[field]!==options[0])
+            next.searchParams.set(param,config[field]);
+        else next.searchParams.delete(param);
+    });
+    window.history.replaceState(null,"",next.pathname+next.search+next.hash);
+    if(typeof(oCOM)!=="undefined" && oCOM.URL && oCOM.URL.uri)
+    {
+        oCOM.URL.uri.sys=config.model;
+        EMU_system_configFields.forEach(function(field)
+        {
+            var param="sys_"+field.toLowerCase(),options=EMU_system_options(config.model,field);
+            if(config[field] && config[field]!==options[0]) oCOM.URL.uri[param]=config[field];
+            else delete oCOM.URL.uri[param];
+        });
+    }
+}
+
+function EMU_system_configStartup()
+{
+    var model=typeof(EMU_system_get)==="function" ? EMU_system_get() : "A2P";
+    if(EMU_system_modelCodes().indexOf(model)<0) model="A2P";
+    var config=EMU_system_getConfiguration(model);
+    var args=(typeof(oCOM)!=="undefined" && oCOM.URL) ? oCOM.URL.uri || {} : {};
+    EMU_system_configFields.forEach(function(field)
+    {
+        var value=args["sys_"+field.toLowerCase()];
+        if(value!==undefined && EMU_system_options(model,field).indexOf(value)>=0)
+            config[field]=value;
+    });
+    var error=EMU_system_validateConfiguration(config);
+    if(error)
+    {
+        EMU_system_configError(error+" Using model defaults.");
+        config=EMU_system_getConfiguration(model);
+    }
+    EMU_system_applyModel(model);
+    EMU_system_patchRom(config);
+    EMU_system_configState.byModel[model]=Object.assign({},config);
+    EMU_system_configState.active=Object.assign({},config);
+    return config;
+}
+
+function EMU_system_selectConfiguration(code,choices)
 {
     code=String(code || "");
+    EMU_system_configState.error="";
     if(EMU_system_modelCodes().indexOf(code)<0)
-    {
-        if(typeof(system_tab_update)==="function") system_tab_update();
-        return false;
-    }
+        return EMU_system_configError("Unsupported Apple II system "+code+".");
 
-    var previous=typeof(EMU_system_get)==="function" ? EMU_system_get() : "A2P";
-    if(previous===code) return true;
+    var config=EMU_system_getConfiguration(code);
+    choices=choices || {};
+    EMU_system_configFields.forEach(function(field)
+    {
+        if(Object.prototype.hasOwnProperty.call(choices,field)) config[field]=String(choices[field]);
+    });
+    var error=EMU_system_validateConfiguration(config);
+    if(error) return EMU_system_configError(error);
     if(typeof(apple2plus)==="undefined" || !apple2plus ||
        typeof(apple2plus.restart)!=="function")
-        return false;
+        return EMU_system_configError("The emulator is not running.");
 
-    // A model change must not leave RAM, ProDOS or peripherals running under
-    // a different machine definition. Ask first because restart clears RAM.
-    if(typeof(window)!=="undefined" && typeof(window.confirm)==="function" &&
-       !window.confirm("Change to "+_CFG_SYSCODE[code].Model+
-                       "? This cold-boots the Apple II and clears RAM. Continue?"))
+    var current=EMU_system_configState.active ||
+                EMU_system_getConfiguration(typeof(EMU_system_get)==="function"?EMU_system_get():"A2P");
+    var changes=!current || EMU_system_configFields.some(function(field)
     {
-        if(typeof(system_tab_update)==="function") system_tab_update();
-        return false;
+        return current[field]!==config[field];
+    }) || current.model!==config.model;
+    if(!changes)
+    {
+        EMU_system_configPersist(config);
+        return true;
     }
 
-    var video=typeof(apple2plus.vidObj)==="function" ? apple2plus.vidObj() : null;
-    var previousFont=video && typeof(video.getCharRomKey)==="function" ? video.getCharRomKey() : null;
-    var modelFont=String(_CFG_SYSCODE[code].KeyFont || "").split(",")[0].trim();
+    if(typeof(window)!=="undefined" && typeof(window.confirm)==="function" &&
+       !window.confirm("Apply "+_CFG_SYSCODE[code].Model+
+          " configuration? This cold-boots the Apple II and clears RAM."))
+        return EMU_system_configError("Configuration change cancelled.");
 
-    EMU_system_applyModel(code);
+    var oldModel=typeof(EMU_system_get)==="function" ? EMU_system_get() : "A2P";
+    var video=typeof(apple2plus.vidObj)==="function" ? apple2plus.vidObj() : null;
+    var oldFont=video && typeof(video.getCharRomKey)==="function" ? video.getCharRomKey() : null;
+    var oldRomByte=null;
     try
     {
-        if(modelFont && video && typeof(video.setCharRom)==="function" &&
-           video.setCharRom(modelFont)===false)
-            throw new Error("Character ROM not available: "+modelFont);
+        oldRomByte=EMU_system_patchRom(config);
+        EMU_system_applyModel(code);
+        if(config.KeyFont && video && typeof(video.setCharRom)==="function" &&
+           video.setCharRom(config.KeyFont)===false)
+            throw new Error("Cannot activate character ROM "+config.KeyFont);
         apple2plus.restart();
     }
-    catch(error)
+    catch(ex)
     {
-        EMU_system_applyModel(previous);
-        if(previousFont && video && typeof(video.setCharRom)==="function")
-            video.setCharRom(previousFont);
+        if(oldRomByte!==null && typeof(apple2Rom)!=="undefined")
+            apple2Rom[0xFABB-0xD000]=oldRomByte;
+        EMU_system_applyModel(oldModel);
+        if(oldFont && video && typeof(video.setCharRom)==="function")
+            video.setCharRom(oldFont);
         if(typeof(system_tab_update)==="function") system_tab_update();
-        console.error("Apple II model change failed",error);
-        return false;
+        return EMU_system_configError("Could not apply configuration: "+(ex.message || ex));
     }
 
-    // Keep the selected model across an ordinary page reload without losing
-    // other URL settings (disk image, slots, selected tab, etc.).
-    if(typeof(window)!=="undefined" && window.history &&
-       typeof(window.history.replaceState)==="function" && window.location)
-    {
-        var next=new URL(window.location.href);
-        next.searchParams.set("sys",code);
-        window.history.replaceState(null,"",next.pathname+next.search+next.hash);
-        if(typeof(oCOM)!=="undefined" && oCOM.URL && oCOM.URL.uri)
-            oCOM.URL.uri.sys=code;
-    }
-
+    EMU_system_configState.byModel[code]=Object.assign({},config);
+    EMU_system_configState.active=Object.assign({},config);
+    EMU_system_configPersist(config);
     if(typeof(system_tab_update)==="function") system_tab_update();
     return true;
+}
+
+// Existing callers can still select by model alone.
+function EMU_system_selectModel(code)
+{
+    return EMU_system_selectConfiguration(code);
 }

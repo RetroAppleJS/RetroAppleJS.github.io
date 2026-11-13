@@ -65,23 +65,42 @@ We aim to have all the documentation available in markdown format, for easy onli
 
 * log / phy: logical slots = accessible via software (e.g. PR#n), physcial slot = real plug-in card slot
 
-### SYSTEM toolbox model selection
+### SYSTEM configuration popup
 
-In the Emulator's SYSTEM toolbox (tab 1.1), the cog and the adjacent model
-selector list only entries whose `SYSCODE` does **not** begin with `-`.
-Currently the options are **A2P** (Apple II Plus) and **A2JP** (Apple II
-J-Plus). Changing the model asks for confirmation, cold-restarts the emulator
-(clearing RAM), updates the active system code and character ROM, and records
-`sys=A2P` or `sys=A2JP` in the URL. Unsupported `?sys=` values are ignored.
+The **cog** in Emulator → SYSTEM (tab 1.1) toggles a separate floating
+configuration window via `oCOM.POPUP`, scoped to tab 1.1. It matches the
+STEP TRACE popup position and footprint; the wide settings table scrolls
+inside the window (including horizontally) rather than enlarging the narrow
+SYSTEM toolbox.
 
-**Current emulation scope:** The Japanese `A2_JP` character ROM is present
-and can be selected. The motherboard still uses the bundled Apple II+ ROM
-(`apple2Rom` in `EMU_apple2roms.js`); the `A2P_RJ` variant named in the
-system table is not yet provided as a separate selectable ROM image.
-The keyboard handler still uses the `A2_US` mapping, so the J-Plus-specific
-keyboard behavior is not yet implemented. The model selector must not be
-mistaken for complete J-Plus hardware fidelity.
+The table is generated from `_CFG_SYSCODE`. Only systems whose code does **not**
+begin with `-` appear (currently **A2P** and **A2JP**). Each row has a system
+radio button. Every other cell displays its configured value. For fields
+containing multiple comma-separated values (for example
+`ROM: A2P_R, A2P_RL`), each alternative receives a separate, vertically
+stacked radio button and label within the cell. Choosing a cell option also
+selects its model row. Choices remain **draft** until **Apply & cold boot**;
+Cancel discards the draft. Switching models or options asks for confirmation
+because a cold boot clears RAM.
 
+Applied deviations are retained in URL options `sys_rom`, `sys_keyfont`,
+`sys_cpu`, `sys_speeds`, `sys_display`, and `sys_slotslogphy` when
+different from the selected model's first listed defaults. The selected
+system remains in `sys=A2P` or `sys=A2JP`. Existing URL parameters are
+preserved.
+
+**Implementation limits:** The current CPU core is an NMOS 6502, with
+`1.023` MHz motherboard speed, `A2_hgr` display, and the Apple II/II+
+slot topology. Other values can be listed by the table but must not be
+reported as emulated until the relevant hardware/backend exists. Unsupported
+choices are rejected by the Apply action, leaving the running system
+unchanged. `KeyFont` changes the available video character ROM (not the
+physical keyboard mapping). `A2P_RL` is operational: it applies the one-byte
+`$FABB: $07 → $05` LIRON autostart patch to the bundled Apple II+ ROM
+and restores `$07` for `A2P_R`. `A2P_RJ` is a placeholder: a dedicated
+Japanese motherboard ROM and the J-Plus keyboard behavior are not yet
+implemented, so J-Plus continues to use the unmodified Apple II+ motherboard
+ROM, with the `A2_JP` character ROM.
 
 ## ROM RANGES
 
