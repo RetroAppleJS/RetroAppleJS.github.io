@@ -31,7 +31,7 @@ function Apple2RasterCapture(fetch,present,startTick)
 }
 
 // GPU.js graphical kernel: immutable per-beam byte/mode planes, never live RAM.
-function Apple2RasterKernel(bytes,modes,rom,pal,chrome,flash)
+function Apple2RasterKernel(bytes,modes,rom,pal,chrome,flash,jplusMode)
 {
     var xp=Math.floor(this.thread.x/this.constants.scale);
     var y=191-Math.floor(this.thread.y/this.constants.scale);
@@ -52,7 +52,14 @@ function Apple2RasterKernel(bytes,modes,rom,pal,chrome,flash)
     else if(mode===1) cp+=((d>>((y>>2&1)*4))&15)<<4;
     else
     {
-        var glyph=rom[(((d&63)^32)*8)+(y&7)];
+        var code=(d&63)^32;
+        if(jplusMode!==0)
+        {
+            code=d;
+            if((d&192)===64) code=d&63;
+            if(jplusMode===2) code|=128;
+        }
+        var glyph=rom[(code*8)+(y&7)];
         var attr=d>>6;
         var on=((glyph>>bit)&1)^((1>>attr)&1)^((2>>attr)&flash);
         cp+=on*240;
