@@ -10,9 +10,14 @@ function Apple2VideoMUX(canvas)
     var systemConfig=typeof(_CFG_SYSCODE)!=="undefined"
         ? (_CFG_SYSCODE[systemCode] || _CFG_SYSCODE.A2P)
         : null;
-    var defaultCharRomKey=systemConfig && systemConfig.KeyFont
-        ? String(systemConfig.KeyFont).split(",")[0].trim()
-        : "A2_US";
+    var selectedSystemConfig=typeof(EMU_system_getConfiguration)==="function"
+        ? EMU_system_getConfiguration(systemCode)
+        : null;
+    var defaultCharRomKey=selectedSystemConfig && selectedSystemConfig.KeyFont
+        ? selectedSystemConfig.KeyFont
+        : systemConfig && systemConfig.KeyFont
+            ? String(systemConfig.KeyFont).split(",")[0].trim()
+            : "A2_US";
 
     this.id = "MUX";
     this.baseCanvas = canvas || null;
