@@ -1313,7 +1313,8 @@ function EMUI()
             disks.forEach(function(disk2)
             {
                 disk2.init("audio_ctx")
-                    .then(function(){ return disk2.init("audio_buffer"); });
+                    .then(function(){ return disk2.init("audio_buffer"); })
+                    .then(function(){ return disk2.init("audio_on"); });
             });
         }
         else
@@ -1353,13 +1354,17 @@ function EMUI()
 
         var bMuted = oCOM.POPUP.get_state("mutebutton")=="fa-volume-mute";
         if (bPause) {
-            // RUN->PAUSE: ONLY MUTE IF UNMUTED
-            var o = oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:!bMuted,disabled:false})
+            // Pause must actually turn sound off, while remembering the user's
+            // mute preference so Resume cannot unexpectedly enable sound.
+            this.audioMutedBeforePause = bMuted;
+            var o = oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:false,disabled:false});
             if(!bMuted) o.muteAct();
         } else {
-            // PAUSE->RUN: ALWAYS UNMUTE
-            oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:!bMuted,disabled:true})
-                .muteAct();
+            // Resume restores sound only if it was enabled before Pause.
+            var restoreAudio = this.audioMutedBeforePause === false;
+            var o = oEMUI.muteBtn({id:'mutebutton',class1:'fa-volume-up',class2:'fa-volume-mute',override:restoreAudio,disabled:true});
+            this.audioMutedBeforePause = undefined;
+            if(restoreAudio) o.muteAct();
         }
     }
 
@@ -1624,9 +1629,10 @@ async function EMU_audio_try_unlock(forceButtonState)
 
             // Ensure normal sound-on logic is active.
             await oEMU.component.IO.AppleSpeaker.init("audio_on");
-            await Promise.all(disks.map(function(disk2)
+            await Promise.all(disks.map(async function(disk2)
             {
-                return disk2.init("audio_buffer");
+                await disk2.init("audio_buffer");
+                await disk2.init("audio_on");
             }));
             await Promise.all(audioDevices.map(function(audioDevice)
             {
