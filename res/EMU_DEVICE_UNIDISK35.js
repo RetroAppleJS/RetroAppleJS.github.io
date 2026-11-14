@@ -137,6 +137,30 @@ function UniDisk35Device(options)
     this.getUnit = function() { return state.unit; };
     this.getBlockSize = function() { return BLOCK_SIZE; };
     this.getBlockCount = function() { return BLOCK_COUNT; };
+    // Read a single sector's density from the compressed track cache.
+    // Do not call readBlock() here: it updates the emulator's head position.
+    this.getBlockDensity = function(blockNumber)
+    {
+        blockNumber=Number(blockNumber);
+        if(!media || !Number.isInteger(blockNumber) ||
+           blockNumber<0 || blockNumber>=BLOCK_COUNT)
+            return {"pct":0,"nonzero":0,"avg":0};
+        if(typeof(media.rangeDensity)==="function")
+            return media.rangeDensity(blockNumber,blockNumber);
+        var offset=blockNumber*BLOCK_SIZE;
+        var nonzero=0,sum=0;
+        for(var i=0;i<BLOCK_SIZE;i++)
+        {
+            var value=media[offset+i]&0xFF;
+            if(value!==0) nonzero++;
+            sum+=value;
+        }
+        return {
+            "pct":Math.round(nonzero*100/BLOCK_SIZE),
+            "nonzero":nonzero,
+            "avg":Math.round(sum/BLOCK_SIZE)
+        };
+    };
     this.getLastBlock = function() { return state.lastBlock; };
     this.getHeadSurfacePosition = function()
     {
