@@ -12,7 +12,7 @@ Back in 1980, a few young curious minds like me were passionate about coding on 
 - **w/o install:**  ==> [Run last version directly](https://retroapplejs.github.io)
 - **portable:**  ==> [Run as one file](https://retroapplejs.github.io/dist/RetroAppleJS.html)
 - **floppy bootable** ==> [Run last version (incl. DOS3.3 bootdisk) directly](https://retroapplejs.github.io/index.html?D1_DIR=Apple%20DOS%203.3.dsk&boot=true)  (booting takes avg. ~90s)
-- **harddisk bootable** ==> [Autoboot on HD20 (using modified ROM) directly](https://retroapplejs.github.io/index.html?sys=A2P&sys_rom=A2P_RL&slots=3:VIDEX,5:DISKII,6:LIRON&HD20_SLOT=6&HD20_UNIT=1&HD20_DIR=disks/ProDos/BLANK_HD20.po.gz)
+- **harddisk bootable** ==> [Autoboot on HD20 (using modified ROM and ProDOS) directly](https://retroapplejs.github.io/index.html?sys=A2P&sys_rom=A2P_RL&slots=3:VIDEX,5:DISKII,6:LIRON&HD20_SLOT=6&HD20_UNIT=1&HD20_DIR=disks/ProDos/BLANK_HD20.po.gz)
 
 ## Getting started
 
