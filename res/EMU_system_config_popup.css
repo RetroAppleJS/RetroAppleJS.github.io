@@ -1,5 +1,6 @@
-/* SYSTEM configuration popup: STEP TRACE footprint, independently scrolling
- * grid. It is deliberately not an in-line select in the 110 px SYSTEM row. */
+/* SYSTEM configuration popup: STEP TRACE position, content-sized dialog.
+ * Keep independent table scrolling without stretching cells or adding blank
+ * space below the configured systems. */
 .sysconfig-popup {
     position:fixed !important;
     z-index:2100 !important;
@@ -9,7 +10,7 @@
     display:flex;
     flex-direction:column;
     gap:4px;
-    overflow:hidden;
+    overflow:auto;
     font:10px/1.35 Arial,Helvetica,sans-serif;
     text-align:left;
 }
@@ -25,30 +26,36 @@
 .sysconfig-close {font-size:12px;min-width:18px;cursor:pointer;}
 .sysconfig-intro {flex:none;line-height:1.3;}
 .sysconfig-table-scroller {
-    flex:1 1 auto;
-    min-height:60px;
+    box-sizing:border-box;
+    flex:0 1 auto;
+    min-height:0;
+    max-height:min(55vh,420px);
+    width:100%;
     max-width:100%;
     overflow:auto;
     border:1px solid #aaa;
     background:rgba(255,255,255,.5);
 }
-.sysconfig-table {border-collapse:collapse;min-width:840px;width:max-content;font:10px/1.35 Arial,Helvetica,sans-serif;}
+.sysconfig-table {border-collapse:collapse;table-layout:auto;min-width:0;width:max-content;font:10px/1.35 Arial,Helvetica,sans-serif;}
 .sysconfig-table th,.sysconfig-table td {
     text-align:left;vertical-align:top;
     border:1px solid #aaa;
-    padding:5px 6px;
-    min-width:80px;
+    padding:3px 4px;
+    min-width:0;
+    width:auto;
     white-space:nowrap;
+    font-size:10px;
+    line-height:1.25;
 }
 .sysconfig-table thead th {position:sticky;top:0;z-index:2;background:#e5e5e5;color:#222;}
-.sysconfig-table .sysconfig-model {position:sticky;left:0;z-index:1;min-width:125px;background:#f3f3f3;}
+.sysconfig-table .sysconfig-model {position:sticky;left:0;z-index:1;min-width:0;background:#f3f3f3;}
 .sysconfig-table thead th:first-child {left:0;z-index:3;}
 .sysconfig-table .sysconfig-selected .sysconfig-model {background:#d1e6f7;}
 .sysconfig-table .sysconfig-selected td {background:rgba(180,210,235,.12);}
 .sysconfig-model-label {display:flex;gap:4px;align-items:flex-start;cursor:pointer;}
-.sysconfig-model-label small {display:block;font-size:9px;font-weight:normal;white-space:normal;max-width:120px;}
+.sysconfig-model-label small {display:block;font-size:9px;font-weight:normal;white-space:nowrap;max-width:none;}
 .sysconfig-option {display:flex;gap:4px;align-items:flex-start;cursor:pointer;white-space:nowrap;line-height:1.35;}
-.sysconfig-option+.sysconfig-option {margin-top:4px;}
+.sysconfig-option+.sysconfig-option {margin-top:2px;}
 .sysconfig-option input,.sysconfig-model-label input {margin:1px 1px 0 0;flex:none;}
 .sysconfig-empty {opacity:.6;}
 .sysconfig-footer {flex:none;}

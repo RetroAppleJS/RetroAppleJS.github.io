@@ -222,6 +222,8 @@ test("popup renders one system radio per row and only multi-choice radios within
     assert.equal(panel.style.width,"360px");
     assert.equal(panel.style.left,"720px");
     assert.equal(panel.style.top,"140px");
+    assert.equal(panel.style.height,"auto","popup height follows actual table content");
+    assert.equal(panel.style.maxHeight,"756px","popup remains within the viewport");
     assert.match(panel.innerHTML,/name="sysconfig_model"/);
     assert.equal((panel.innerHTML.match(/name="sysconfig_model"/g)||[]).length,2);
     assert.equal((panel.innerHTML.match(/name="sysconfig_A2P_ROM"/g)||[]).length,2);
@@ -235,6 +237,28 @@ test("popup renders one system radio per row and only multi-choice radios within
     assert.equal(s.context.EMU_SYSTEM_CONFIG.apply(),true);
     assert.equal(s.rom[0xFABB-0xD000],0x05);
     assert.equal(panel.hidden,true);
+});
+
+test("SYSTEM table uses intrinsic column sizes and a nonstretching scroller",()=>{
+    const css=fs.readFileSync(path.join(root,"res/EMU_system_config_popup.css"),"utf8");
+    const rule=name=>{
+        const start=css.indexOf(name+" {");
+        assert.ok(start>=0,"missing CSS rule: "+name);
+        return css.slice(start,css.indexOf("}",start)+1);
+    };
+    const table=rule(".sysconfig-table");
+    const cells=rule(".sysconfig-table th,.sysconfig-table td");
+    const scroller=rule(".sysconfig-table-scroller");
+    const popup=rule(".sysconfig-popup");
+    assert.match(table,/min-width:0;/);
+    assert.match(table,/width:max-content;/);
+    assert.doesNotMatch(table,/min-width:840px/);
+    assert.match(cells,/min-width:0;/);
+    assert.match(cells,/width:auto;/);
+    assert.doesNotMatch(cells,/min-width:80px/);
+    assert.match(scroller,/flex:0 1 auto;/,"table must not fill the height of STEP TRACE");
+    assert.match(scroller,/max-height:/,"large option lists can still scroll");
+    assert.match(popup,/overflow:auto;/,"dialog must scroll on a small screen");
 });
 
 test("index uses only the gear and compact model label, not inline dropdown",()=>{
