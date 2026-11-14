@@ -85,7 +85,7 @@ test("only repository-local sector images and valid SmartPort unit 1 are allowed
         "ProDos/../../escape.po.gz","/root.po.gz",
         "ProDos/a.po.gz?query=1","ProDos/a%252e%252e.po.gz",
         "ProDos/evil\\name.po.gz","ProDos/a.dsk"
-    ]) assert.throws(()=>parse({HD20_DIR:bad}),Error,bad);
+    ]) assert.throws(()=>parse({HD20_DIR:bad}),/HD20_DIR/,bad);
     assert.throws(()=>parse({HD20_DIR:"ProDos/BLANK_HD20.po.gz",HD20_UNIT:"2"}));
     assert.throws(()=>parse({HD20_DIR:"ProDos/BLANK_HD20.po.gz",HD20_SLOT:"8"}));
     assert.throws(()=>parse({HD20_DIR:"ProDos/BLANK_HD20.po.gz",HD20_SLOT:"3.5"}));
