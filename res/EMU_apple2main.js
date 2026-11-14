@@ -773,12 +773,32 @@ function EMU_init()
         }
     }
 
-    apple2plus.restart(); // restart the AppleII+
+    // A LIRON + HD20 startup must not execute the first 6502 instruction
+    // until the compressed 20 MiB hard disk has been fetched and installed.
+    var hd20Startup=null;
+    try { hd20Startup=EMU_HD20_urlRequest(oCOM.URL.uri); }
+    catch(err) { console.error("HD20 startup URL rejected:",err); }
+
+    apple2plus.restart(); // mounts LIRON and its auto-attached HD20 unit 1
+
+    if(hd20Startup)
+    {
+        EMU_HD20_loadFromURL(hd20Startup).then(
+            function(){ appleIntervalHandle=EMU_systemSchedulerStart(); },
+            function(err)
+            {
+                console.error("HD20 startup image could not be preloaded:",err);
+                // Keep the emulator usable even when an image URL is invalid.
+                appleIntervalHandle=EMU_systemSchedulerStart();
+            }
+        );
+    }
+    else appleIntervalHandle=EMU_systemSchedulerStart();
+
     // Display every initial compatibility rejection in one acknowledgement
     // dialog after the first mount pass.  Never interrupt mount() per card.
     if(apple2plus.hwObj()?.io?.showStartupMountWarnings)
         apple2plus.hwObj().io.showStartupMountWarnings();
-    appleIntervalHandle = EMU_systemSchedulerStart();
 
 
 
@@ -794,7 +814,7 @@ function EMU_init()
 
     var diskSlotN = EMU_defaultDiskIISlot();
     var disk2 = EMU_slotPeripheral(diskSlotN,"DISKII");
-    if(!disk2) console.error("DISKII not found in slotN="+diskSlotN);
+    if(!disk2) console.info("No Disk II controller mounted (LIRON-only setup is supported)");
 
     if(_o.EMU_disk_cat === true && disk2 && typeof(disk2.diskMenu_detail) == "function")
     {
@@ -897,7 +917,7 @@ function EMU_init()
         };
     });
 
-    disk2.GUI_update = function(cmd)  // override (called continuously from oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);)
+    if(disk2) disk2.GUI_update = function(cmd)  // optional: LIRON may replace Disk II completely
     {
         // CATCH CHANGES ONLY
         var state = this.getState();
