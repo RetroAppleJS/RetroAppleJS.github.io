@@ -251,12 +251,18 @@ test("SYSTEM table uses intrinsic column sizes and a nonstretching scroller",()=
     const scroller=rule(".sysconfig-table-scroller");
     const popup=rule(".sysconfig-popup");
     assert.match(table,/min-width:0;/);
-    assert.match(table,/width:max-content;/);
+    assert.match(table,/display:inline-table;/);
+    assert.match(table,/width:min-content;/);
+    assert.match(table,/max-width:none;/);
     assert.doesNotMatch(table,/min-width:840px/);
     assert.match(cells,/min-width:0;/);
     assert.match(cells,/width:auto;/);
     assert.doesNotMatch(cells,/min-width:80px/);
     assert.match(scroller,/flex:0 1 auto;/,"table must not fill the height of STEP TRACE");
+    assert.match(scroller,/align-self:flex-start;/,"scroller should not stretch across the dialog");
+    assert.match(scroller,/width:max-content;/,"scroller should hug the table when it fits");
+    assert.doesNotMatch(scroller,/(?:^|\n)\s*width:100%;/,"scroller must not force full-width table layout");
+    assert.match(scroller,/max-width:100%;/,"scroller must be viewport-bounded");
     assert.match(scroller,/max-height:/,"large option lists can still scroll");
     assert.match(popup,/overflow:auto;/,"dialog must scroll on a small screen");
 });
@@ -266,7 +272,8 @@ test("index uses only the gear and compact model label, not inline dropdown",()=
     assert.match(html,/onclick="EMU_SYSTEM_CONFIG\.toggle\(\)"/);
     assert.match(html,/id="system_model_name"/);
     assert.doesNotMatch(html,/id="system_model_select"/);
-    assert.match(html,/res\/EMU_system_config_popup\.css/);
+    assert.match(html,/res\/EMU_system_config_popup\.css\?v=20261114-compact-columns/,
+        "browser must fetch the corrected CSS rather than reusing an older cached stylesheet");
 });
 
 test("MS16K discovery mounts before EMU_init when ROM options are a comma-separated list",()=>{
