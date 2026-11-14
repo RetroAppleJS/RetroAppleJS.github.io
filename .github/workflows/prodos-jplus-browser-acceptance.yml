@@ -1,0 +1,41 @@
+name: ProDOS J-Plus browser acceptance
+
+on:
+  push:
+    paths:
+      - 'tools/patch_prodos25_jplus.mjs'
+      - 'tests/prodos_jplus_browser_acceptance.mjs'
+      - 'disks/ProDOS 8.dsk'
+      - '.github/workflows/prodos-jplus-browser-acceptance.yml'
+  pull_request:
+    paths:
+      - 'tools/patch_prodos25_jplus.mjs'
+      - 'tests/prodos_jplus_browser_acceptance.mjs'
+      - 'disks/ProDOS 8.dsk'
+      - '.github/workflows/prodos-jplus-browser-acceptance.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  prodos-jplus-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Prepare J-Plus-specific boot floppy
+        run: node tools/patch_prodos25_jplus.mjs 'disks/ProDOS 8.dsk' ProDOS_8_JPlus.dsk
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Compare A2P, A2JP and patched A2JP boots
+        run: |
+          python3 -m http.server 8000 >/tmp/retroapple-prodos-jplus.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 2
+          RETROAPPLE_URL=http://127.0.0.1:8000 node tests/prodos_jplus_browser_acceptance.mjs

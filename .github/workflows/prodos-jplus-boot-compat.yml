@@ -1,0 +1,37 @@
+name: ProDOS 2.5 J-Plus boot compatibility
+
+on:
+  push:
+    paths:
+      - 'tools/patch_prodos25_jplus.mjs'
+      - 'tests/prodos_jplus_patch.test.mjs'
+      - 'disks/ProDOS 8.dsk'
+      - '.github/workflows/prodos-jplus-boot-compat.yml'
+  pull_request:
+    paths:
+      - 'tools/patch_prodos25_jplus.mjs'
+      - 'tests/prodos_jplus_patch.test.mjs'
+      - 'disks/ProDOS 8.dsk'
+      - '.github/workflows/prodos-jplus-boot-compat.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  prodos-25-jplus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate ProDOS J-Plus loader signature and exact byte patch
+        run: node --test tests/prodos_jplus_patch.test.mjs
+      - name: Build separate J-Plus-compatible ProDOS 2.5 disk image
+        run: node tools/patch_prodos25_jplus.mjs 'disks/ProDOS 8.dsk' ProDOS_8_JPlus.dsk
+      - name: Publish J-Plus ProDOS disk as an optional downloadable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ProDOS_8_JPlus
+          path: ProDOS_8_JPlus.dsk
+          retention-days: 30
