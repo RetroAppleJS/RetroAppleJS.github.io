@@ -31,7 +31,21 @@ function HD20Device(options)
         ,lastBlock:null
     };
 
-    var media = new Uint8Array(BLOCK_SIZE * BLOCK_COUNT);
+    // Virtual 8 KiB tracks correspond exactly to HD20 surface-map cells.
+    // When the shared track store or pako is unavailable (e.g. a standalone
+    // device test), the historical raw Uint8Array remains a safe fallback.
+    function blankMedia()
+    {
+        return typeof(TrackCompressedMedia)==="function"
+            ? new TrackCompressedMedia({
+                blockSize:BLOCK_SIZE,blockCount:BLOCK_COUNT,
+                blocksPerTrack:SURFACE_BLOCKS_PER_CELL,
+                codec:typeof(pako)!=="undefined" ? pako : null
+            })
+            : new Uint8Array(BLOCK_SIZE*BLOCK_COUNT);
+    }
+    var media=blankMedia();
+    var cachedVolumeName="";
     var host = null;
 
     this.id = {
@@ -90,18 +104,25 @@ function HD20Device(options)
         return out;
     }
 
-    function volumeName()
+    // Volume label lives exclusively in ProDOS block 2. Cache it so the
+    // dashboard/getState() never evicts the active SmartPort track just to
+    // discover a filename; refresh on load and writes to block 2.
+    function volumeName() { return cachedVolumeName; }
+
+    function readVolumeName()
     {
         if(media===null || media.length<(3*BLOCK_SIZE)) return "";
-        var offset=(2*BLOCK_SIZE)+4;
-        var storageAndLength=media[offset]&0xFF;
+        var directory=typeof(media.readBlock)==="function"
+            ? media.readBlock(2) : media.subarray(2*BLOCK_SIZE,3*BLOCK_SIZE);
+        var offset=4;
+        var storageAndLength=directory[offset]&0xFF;
         if((storageAndLength&0xF0)!==0xF0) return "";
         var length=storageAndLength&0x0F;
         if(length<1 || length>15) return "";
         var name="";
         for(var i=0;i<length;i++)
         {
-            var ch=media[offset+1+i]&0x7F;
+            var ch=directory[offset+1+i]&0x7F;
             if(ch<0x20 || ch>0x7E) return "";
             name+=String.fromCharCode(ch);
         }
@@ -170,6 +191,11 @@ function HD20Device(options)
         var bytes=end-start;
         var nonzero=0, sum=0;
         if(!media || start<0 || end>media.length || bytes<=0) return {"pct":0,"nonzero":0,"avg":0};
+        // The compressed store records exact per-track byte statistics while
+        // loading and writing, so rendering all 2560 cells does not inflate
+        // the entire 20 MiB image (or allocate a second full-size buffer).
+        if(typeof(media.rangeDensity)==="function")
+            return media.rangeDensity(startBlock,endBlock);
         for(var i=start;i<end;i++)
         {
             var value=media[i]&0xFF;
@@ -418,7 +444,12 @@ function HD20Device(options)
     this.getDeviceSubtype = function() { return DEVICE_SUBTYPE; };
     this.getFirmwareVersion = function() { return FW_VERSION; };
     this.getName = function() { return DEVICE_NAME; };
-    this.getImage = function() { return media===null ? new Uint8Array(BLOCK_SIZE*BLOCK_COUNT) : media.slice(); };
+    // Explicit export is the only operation that materializes all 20 MiB.
+    this.getImage = function()
+    {
+        if(media===null) return null;
+        return typeof(media.getImage)==="function" ? media.getImage() : media.slice();
+    };
     this.getVolumeName = function() { return volumeName(); };
     this.getSuggestedFilename = function() { return suggestedFilename(); };
 
@@ -428,9 +459,13 @@ function HD20Device(options)
     this.loadImage = function(data,metadata)
     {
         var previous=suggestedFilename();
-        var bytes = Uint8Array.from(data || []);
-        if(bytes.length!==BLOCK_SIZE*BLOCK_COUNT) throw new RangeError("Apple Hard Disk 20 image must be exactly 20971520 bytes");
-        media=bytes;
+        if(!data || data.length!==BLOCK_SIZE*BLOCK_COUNT)
+            throw new RangeError("Apple Hard Disk 20 image must be exactly 20971520 bytes");
+        var next=blankMedia();
+        if(typeof(next.loadImage)==="function") next.loadImage(data);
+        else next.set(data);
+        media=next;
+        cachedVolumeName=readVolumeName();
         state.online=true;
         state.dirty=false;
         state.lastBlock=null;
@@ -442,9 +477,26 @@ function HD20Device(options)
     this.ejectImage = function()
     {
         var previous=suggestedFilename();
-        if(media===null || media.length!==BLOCK_SIZE*BLOCK_COUNT) media=new Uint8Array(BLOCK_SIZE*BLOCK_COUNT);
+        if(media===null || media.length!==BLOCK_SIZE*BLOCK_COUNT) media=blankMedia();
+        else if(typeof(media.format)==="function") media.format();
         else media.fill(0);
+        cachedVolumeName="";
         state.online=true;
+        state.mediaFilename="";
+        state.dirty=false;
+        state.lastBlock=null;
+        notifyFilenameChange(previous);
+        return true;
+    };
+
+    // Full media release is required when removing a SmartPort child.
+    // No runtime source-rewriting HD20 patch is needed by the topology layer.
+    this.releaseMedia = function()
+    {
+        var previous=suggestedFilename();
+        media=null;
+        cachedVolumeName="";
+        state.online=false;
         state.mediaFilename="";
         state.dirty=false;
         state.lastBlock=null;
@@ -458,7 +510,8 @@ function HD20Device(options)
         if(!state.online || media===null || !Number.isInteger(blockNumber) || blockNumber<0 || blockNumber>=BLOCK_COUNT) return {"error":0x27,"data":new Uint8Array(0)};
         var offset=blockNumber*BLOCK_SIZE;
         state.lastBlock=blockNumber;
-        return {"error":0x00,"data":media.slice(offset,offset+BLOCK_SIZE)};
+        return {"error":0x00,"data":typeof(media.readBlock)==="function"
+            ? media.readBlock(blockNumber) : media.slice(offset,offset+BLOCK_SIZE)};
     };
 
     this.writeBlock = function(blockNumber,data)
@@ -469,7 +522,9 @@ function HD20Device(options)
         if(!Number.isInteger(blockNumber) || blockNumber<0 || blockNumber>=BLOCK_COUNT) return {"error":0x2D};
         if(!data || typeof(data.length)!=="number" || data.length!==BLOCK_SIZE) return {"error":0x27};
         var previous=blockNumber===2 ? suggestedFilename() : null;
-        media.set(data,blockNumber*BLOCK_SIZE);
+        if(typeof(media.writeBlock)==="function") media.writeBlock(blockNumber,data);
+        else media.set(data,blockNumber*BLOCK_SIZE);
+        if(blockNumber===2) cachedVolumeName=readVolumeName();
         state.dirty=true;
         state.lastBlock=blockNumber;
         if(previous!==null) notifyFilenameChange(previous);
@@ -481,7 +536,9 @@ function HD20Device(options)
         if(!state.online || media===null) return {"error":0x2F};
         if(state.writeProtected) return {"error":0x2B};
         var previous=suggestedFilename();
-        media.fill(0);
+        if(typeof(media.format)==="function") media.format();
+        else media.fill(0);
+        cachedVolumeName="";
         state.dirty=true;
         state.lastBlock=null;
         notifyFilenameChange(previous);
@@ -513,6 +570,8 @@ function HD20Device(options)
             ,"status":statusByte()
             ,"mediaLoaded":media!==null
             ,"mediaBytes":media===null ? 0 : media.length
+            ,"mediaStorage":media && typeof(media.stats)==="function"
+                ? media.stats() : null
             ,"mediaFilename":state.mediaFilename
             ,"logicalFilename":suggestedFilename()
             ,"volumeName":volumeName()
