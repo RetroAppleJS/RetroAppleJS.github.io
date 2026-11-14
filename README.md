@@ -62,13 +62,13 @@ Note that the markdown files here above must be compiled by a tool called [Docs_
 Completed items remain checked; unchecked items are planned or still need further development.
 
 - [x] EMULATOR: Experimental DITHER2 color HGR capture
-- [ ] EMULATOR: KATAKANA apple][ J-plus keyboard & font logic
+- [x] EMULATOR: KATAKANA apple][ J-plus keyboard & font logic
 - [ ] EMULATOR: Pasteboard macro scripting with keyboard/paddle/mouse recording, playback, and conditional stops
-- [ ] EMULATOR: Switch between US and Japanese Apple II keyboard layouts
+- [x] EMULATOR: Switch between US and Japanese Apple II keyboard layouts
 - [x] EMULATOR: Mockingboard sound emulation
 - [x] EMULATOR: Extend Mockingboard with voice emulation
 - [x] EMULATOR: Add memory expansion peripherals to complete compatibility (MS16K, SATURN, LEGEND, RAMFAC)
-- [ ] EMULATOR: Extended URL instant configuration options
+- [x] EMULATOR: Extended URL instant configuration options
 - [ ] EMULATOR: LIRON HD20 & UNIDISK - track-by-track compression/decompression (saving browser RAM)
 - [ ] EMULATOR: HGR/HGR2/GR screen capture (.bin / .png / .animgif with timer or variable interval stopframe)
 - [x] EMULATOR: VIDEO vaporlock compatibility (detect and display vertical blank)
@@ -76,7 +76,7 @@ Completed items remain checked; unchecked items are planned or still need furthe
 - [x] EMULATOR: SYSTEM selector for all implemented APPLE II models, with OS ROM or character ROM picker
 - [ ] ASSEMBLER - disassembler tool
 - [x] RETRO LAB: Real-time camera processing and a configurable [ConvertHGR tool](tools/ConvertHGR.html)
-- [ ] RETRO LAB: HGR paint tool (https://hgrtool.art/imgedit.html)
+- [x] RETRO LAB: HGR paint tool (https://hgrtool.art/imgedit.html)
 - [ ] RETRO LAB: Mockinboard PoC & C64 SID song to mockingboard exporter
 - [ ] ASSEMBLER: Bomberman game (using the Mockingboard card)
 - [ ] Disassemble all available peripheral ROMs
