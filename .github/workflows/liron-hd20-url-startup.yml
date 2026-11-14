@@ -1,0 +1,27 @@
+name: LIRON HD20 URL startup
+
+on:
+  push:
+    paths:
+      - "res/EMU_apple2main.js"
+      - "tests/liron_hd20_url_startup.test.js"
+      - ".github/workflows/liron-hd20-url-startup.yml"
+  pull_request:
+    paths:
+      - "res/EMU_apple2main.js"
+      - "tests/liron_hd20_url_startup.test.js"
+      - ".github/workflows/liron-hd20-url-startup.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  hd20-url-startup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate LIRON HD20 URL startup
+        run: node --test tests/liron_hd20_url_startup.test.js

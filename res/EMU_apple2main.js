@@ -487,6 +487,95 @@ function EMU_loadRAM64KFile(input)
     reader.readAsArrayBuffer(file);
 }
 
+/*
+ * Optional startup HD20 image (URL-driven).
+ *
+ * Example:
+ * ?sys=A2P&sys_rom=A2P_RL&slots=6:LIRON
+ * &HD20_SLOT=6&HD20_UNIT=1&HD20_DIR=ProDos/BLANK_HD20.po.gz
+ *
+ * Slot numbers in the URL are PHYSICAL PR# numbers (0..7); Apple2IO uses
+ * internal slotN=physical+1. LIRON automatically attaches its first HD20
+ * as SmartPort unit 1. Mount after Apple2Plus.restart() attaches devices,
+ * but before starting the emulated CPU scheduler (deterministic autoboot).
+ */
+function EMU_HD20_urlRequest(uri)
+{
+    if(!uri || uri.HD20_DIR===undefined) return null;
+    // COM_MAIN.URL.parse() intentionally leaves percent-encoding intact.
+    var filename=decodeURIComponent(String(uri.HD20_DIR || "").trim());
+    if(filename.indexOf("disks/")===0) filename=filename.slice(6);
+    var parts=filename.split("/");
+    if(!/\.po(?:\.gz)?$/i.test(filename) ||
+       parts.some(function(part){ return !part || part==="." || part===".."; }) ||
+       /[\\:?#%]/.test(filename))
+        throw new Error("HD20_DIR must be a relative .po or .po.gz file under disks/");
+
+    var slot=uri.HD20_SLOT===undefined || uri.HD20_SLOT===""
+        ? null : Number(uri.HD20_SLOT);
+    if(slot!==null && (!Number.isInteger(slot) || slot<1 || slot>7))
+        throw new Error("HD20_SLOT must be a physical Apple II slot (1-7)");
+
+    var unit=uri.HD20_UNIT===undefined || uri.HD20_UNIT===""
+        ? 1 : Number(uri.HD20_UNIT);
+    if(unit!==1)
+        throw new Error("HD20_UNIT currently must be 1 (LIRON's auto-attached HD20)");
+
+    return {filename:filename,slot:slot,unit:unit};
+}
+
+function EMU_HD20_targetSlot(request)
+{
+    if(typeof(apple2plus)!=="object" || !apple2plus)
+        throw new Error("Apple II has not been initialized");
+    var io=apple2plus.hwObj().io;
+    var matches=[];
+    for(var physical=1;physical<=7;physical++)
+    {
+        if(request.slot!==null && request.slot!==physical) continue;
+        var internal=physical+1;
+        var owner=io.SLOT2obj(internal);
+        if(owner && owner.id?.PCODE==="LIRON")
+            matches.push(internal);
+    }
+    if(matches.length!==1)
+        throw new Error("HD20_DIR requires exactly one LIRON card"+
+            (request.slot!==null ? " in slot "+request.slot : "")+
+            "; use slots=6:LIRON and optionally HD20_SLOT=6");
+
+    if(!EMU_smartportDevice(matches[0],request.unit,"HD20"))
+        throw new Error("LIRON slot "+(matches[0]-1)+
+            " has no HD20 device attached at SmartPort unit "+request.unit);
+    return matches[0];
+}
+
+async function EMU_HD20_loadFromURL(request)
+{
+    // Never use arbitrary URLs supplied by the query string. Use the same
+    // deployment's disks/ directory (also works in branch previews).
+    var url="disks/"+request.filename.split("/").map(encodeURIComponent).join("/");
+    var slotN=EMU_HD20_targetSlot(request);
+    var response=await fetch(url);
+    if(!response.ok) throw new Error("HD20 image HTTP "+response.status+": "+url);
+    var bytes=new Uint8Array(await response.arrayBuffer());
+    if(/\.gz$/i.test(request.filename))
+    {
+        var inflater=new pako.Inflate();
+        inflater.push(bytes,true); // pako auto-detects gzip (RFC 1952).
+        if(inflater.err || !inflater.result)
+            throw new Error("HD20 gzip decompression failed: "+(inflater.msg || inflater.err));
+        bytes=inflater.result;
+    }
+    if(bytes.length!==20971520)
+        throw new Error("HD20 image is "+bytes.length+" bytes; expected 20971520");
+    var imageName=request.filename.replace(/\.gz$/i,"");
+    if(EMU_mountDiskImage(bytes,slotN,"HD20",imageName,request.unit)!==true)
+        throw new Error("HD20 image rejected by LIRON unit "+request.unit);
+    console.log("HD20 startup preload ready; slot "+(slotN-1)+
+        ", unit "+request.unit+": "+imageName);
+    return true;
+}
+
 function EMU_init()
 {
     document.getElementById("LEDS").innerHTML =
@@ -685,12 +774,32 @@ function EMU_init()
         }
     }
 
-    apple2plus.restart(); // restart the AppleII+
+    // A LIRON + HD20 startup must not execute the first 6502 instruction
+    // until the compressed 20 MiB hard disk has been fetched and installed.
+    var hd20Startup=null;
+    try { hd20Startup=EMU_HD20_urlRequest(oCOM.URL.uri); }
+    catch(err) { console.error("HD20 startup URL rejected:",err); }
+
+    apple2plus.restart(); // mounts LIRON and its auto-attached HD20 unit 1
+
+    if(hd20Startup)
+    {
+        EMU_HD20_loadFromURL(hd20Startup).then(
+            function(){ appleIntervalHandle=EMU_systemSchedulerStart(); },
+            function(err)
+            {
+                console.error("HD20 startup image could not be preloaded:",err);
+                // Keep the emulator usable even when an image URL is invalid.
+                appleIntervalHandle=EMU_systemSchedulerStart();
+            }
+        );
+    }
+    else appleIntervalHandle=EMU_systemSchedulerStart();
+
     // Display every initial compatibility rejection in one acknowledgement
     // dialog after the first mount pass.  Never interrupt mount() per card.
     if(apple2plus.hwObj()?.io?.showStartupMountWarnings)
         apple2plus.hwObj().io.showStartupMountWarnings();
-    appleIntervalHandle = EMU_systemSchedulerStart();
 
 
 
@@ -706,7 +815,7 @@ function EMU_init()
 
     var diskSlotN = EMU_defaultDiskIISlot();
     var disk2 = EMU_slotPeripheral(diskSlotN,"DISKII");
-    if(!disk2) console.error("DISKII not found in slotN="+diskSlotN);
+    if(!disk2) console.info("No Disk II controller mounted (LIRON-only setup is supported)");
 
     if(_o.EMU_disk_cat === true && disk2 && typeof(disk2.diskMenu_detail) == "function")
     {
@@ -809,7 +918,7 @@ function EMU_init()
         };
     });
 
-    disk2.GUI_update = function(cmd)  // override (called continuously from oCOM.addRefreshEvent(apple2plus.DSK_monitoring,"DSK_monitoring",true);)
+    if(disk2) disk2.GUI_update = function(cmd)  // optional: LIRON may replace Disk II completely
     {
         // CATCH CHANGES ONLY
         var state = this.getState();
