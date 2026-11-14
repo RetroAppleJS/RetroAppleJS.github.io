@@ -45,6 +45,7 @@ function HD20Device(options)
             : new Uint8Array(BLOCK_SIZE*BLOCK_COUNT);
     }
     var media=blankMedia();
+    var cachedVolumeName="";
     var host = null;
 
     this.id = {
@@ -103,7 +104,12 @@ function HD20Device(options)
         return out;
     }
 
-    function volumeName()
+    // Volume label lives exclusively in ProDOS block 2. Cache it so the
+    // dashboard/getState() never evicts the active SmartPort track just to
+    // discover a filename; refresh on load and writes to block 2.
+    function volumeName() { return cachedVolumeName; }
+
+    function readVolumeName()
     {
         if(media===null || media.length<(3*BLOCK_SIZE)) return "";
         var directory=typeof(media.readBlock)==="function"
@@ -459,6 +465,7 @@ function HD20Device(options)
         if(typeof(next.loadImage)==="function") next.loadImage(data);
         else next.set(data);
         media=next;
+        cachedVolumeName=readVolumeName();
         state.online=true;
         state.dirty=false;
         state.lastBlock=null;
@@ -473,6 +480,7 @@ function HD20Device(options)
         if(media===null || media.length!==BLOCK_SIZE*BLOCK_COUNT) media=blankMedia();
         else if(typeof(media.format)==="function") media.format();
         else media.fill(0);
+        cachedVolumeName="";
         state.online=true;
         state.mediaFilename="";
         state.dirty=false;
@@ -487,6 +495,7 @@ function HD20Device(options)
     {
         var previous=suggestedFilename();
         media=null;
+        cachedVolumeName="";
         state.online=false;
         state.mediaFilename="";
         state.dirty=false;
@@ -515,6 +524,7 @@ function HD20Device(options)
         var previous=blockNumber===2 ? suggestedFilename() : null;
         if(typeof(media.writeBlock)==="function") media.writeBlock(blockNumber,data);
         else media.set(data,blockNumber*BLOCK_SIZE);
+        if(blockNumber===2) cachedVolumeName=readVolumeName();
         state.dirty=true;
         state.lastBlock=blockNumber;
         if(previous!==null) notifyFilenameChange(previous);
@@ -528,6 +538,7 @@ function HD20Device(options)
         var previous=suggestedFilename();
         if(typeof(media.format)==="function") media.format();
         else media.fill(0);
+        cachedVolumeName="";
         state.dirty=true;
         state.lastBlock=null;
         notifyFilenameChange(previous);
