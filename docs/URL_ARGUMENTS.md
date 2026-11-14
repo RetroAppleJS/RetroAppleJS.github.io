@@ -22,7 +22,7 @@ Reference for URL query-string arguments used by RetroAppleJS. This document dis
 
 **LIRON / HD20 startup example**
 
-[Boot an Apple II Plus with LIRON in slot 6 and a preloaded ProDOS HD20 disk](https://retroapplejs.github.io/index.html?sys=A2P&sys_rom=A2P_RL&slots=6:LIRON&HD20_SLOT=6&HD20_UNIT=1&HD20_DIR=ProDos%2FBLANK_HD20.po.gz):
+[Open an Apple II Plus with LIRON in slot 6 and a preloaded HD20 disk](https://retroapplejs.github.io/index.html?sys=A2P&sys_rom=A2P_RL&slots=6:LIRON&HD20_SLOT=6&HD20_UNIT=1&HD20_DIR=ProDos%2FBLANK_HD20.po.gz):
 
 ```text
 index.html?sys=A2P&sys_rom=A2P_RL&slots=6:LIRON&HD20_SLOT=6&HD20_UNIT=1&HD20_DIR=ProDos/BLANK_HD20.po.gz
@@ -31,7 +31,7 @@ index.html?sys=A2P&sys_rom=A2P_RL&slots=6:LIRON&HD20_SLOT=6&HD20_UNIT=1&HD20_DIR
 The `slots` override mounts LIRON **instead of** the default Disk II controller.
 LIRON's existing auto-attach logic provisions HD20 at SmartPort **unit 1**. The
 image is loaded after the card and device mount but before CPU execution;
-booting uses the `A2P_RL` AutoStart ROM and does **not** need `boot=true`.
+the `A2P_RL` AutoStart ROM performs the usual card scan and does **not** need `boot=true`. A blank formatted HD20 volume may not contain the ProDOS boot files.
 Use `HD20_DIR` only for HD20 media; `D1_DIR` still targets Disk II. Failure
 to download, decompress, validate or mount the HD20 image is reported in
 the JavaScript console; the emulator remains usable (but the requested
@@ -51,7 +51,7 @@ disk is not installed). When no `HD20_DIR` is supplied, startup is unchanged.
 | Replace the default 16K language card with Saturn RAM | [`index.html?slots=0:SATURN`](https://retroapplejs.github.io/index.html?slots=0:SATURN) | Apple II physical slot 0 replaces the `MS16K` default; the motherboard remains mounted. |
 | Leave slot 6 empty | [`index.html?slots=6:NONE`](https://retroapplejs.github.io/index.html?slots=6:NONE) | Removes the default Disk II card without mounting another card there. |
 | Configure slots and boot DOS 3.3 | [`index.html?slots=2:SPC,4:MOCK,6:DISKII&D1_DIR=Apple%20DOS%203.3.dsk&boot=true`](https://retroapplejs.github.io/index.html?slots=2:SPC,4:MOCK,6:DISKII&D1_DIR=Apple%20DOS%203.3.dsk&boot=true) | URL slot placement is resolved before the first boot, so drive 1 uses the configured controller. |
-| Replace slot 6 Disk II with LIRON, boot HD20 unit 1 | [`index.html?sys=A2P&sys_rom=A2P_RL&slots=6:LIRON&HD20_SLOT=6&HD20_UNIT=1&HD20_DIR=ProDos%2FBLANK_HD20.po.gz`](https://retroapplejs.github.io/index.html?sys=A2P&sys_rom=A2P_RL&slots=6:LIRON&HD20_SLOT=6&HD20_UNIT=1&HD20_DIR=ProDos%2FBLANK_HD20.po.gz) | The CPU waits until the 20 MiB ProDOS disk image is installed, then the LIRON ROM can autoboot. |
+| Replace slot 6 Disk II with LIRON, preload HD20 unit 1 | [`index.html?sys=A2P&sys_rom=A2P_RL&slots=6:LIRON&HD20_SLOT=6&HD20_UNIT=1&HD20_DIR=ProDos%2FBLANK_HD20.po.gz`](https://retroapplejs.github.io/index.html?sys=A2P&sys_rom=A2P_RL&slots=6:LIRON&HD20_SLOT=6&HD20_UNIT=1&HD20_DIR=ProDos%2FBLANK_HD20.po.gz) | The CPU waits until the 20 MiB disk image is installed, then the LIRON boot scan runs. A blank HD20 volume may not contain a bootable ProDOS system. |
 
 ## Pre-mounted peripherals: `slots`
 
