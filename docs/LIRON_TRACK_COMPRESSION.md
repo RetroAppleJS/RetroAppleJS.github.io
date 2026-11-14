@@ -71,6 +71,42 @@ releasing the returned array allows it to be garbage-collected.
 The `storedBytes` field accounts for retained media payloads, **not** array,
 JavaScript object, cache or pako runtime overhead.
 
+## Live compressed-size footer in LIRON surface maps
+
+Both HD20 and UniDisk 3.5 surface-map popups show a live line **beneath the
+track/sector map and device metadata**, such as:
+
+```text
+Compressed payload: 1.27 MiB / 20 MiB · 6.35% stored · 93.65% saved
+```
+
+The capacity is the full uncompressed device size, respectively **20 MiB**
+and **800 KiB**. The stored payload is the current
+`getState().mediaStorage.storedBytes`, which flushes any dirty cached track
+before measuring. The percentages are:
+
+- Stored = `100 × storedBytes / logicalBytes`
+- Saved = `100 − storedPercent`
+
+This is **compressed track payload**, not an estimate of the browser process's
+total memory usage. Track-directory objects, JavaScript engine overhead,
+pako's workspace and the one-track decompression cache are not included.
+The footer's tooltip explicitly makes this distinction; the cache size is
+reported separately.
+
+The footer updates as the surface map is monitored, including after HD20
+writes, formatting, loading and ejecting media. It stays current **even when
+the surface-map head/cell synchronisation toggle is off**; the expensive
+sector-grid redraw remains opt-in. No full `.po` image is reconstructed for
+initial surface-map drawing or periodic density updates: HD20 and UniDisk
+expose `getBlockDensity(block)` to inspect the relevant compressed track
+without changing their guest-visible head position. The existing `getImage()`
+API remains available for explicit export.
+
+```sh
+node --test tests/liron_surface_compression_footer.test.js
+```
+
 ## Compatibility and testing
 
 The implementation preserves device block counts, status and error codes,
