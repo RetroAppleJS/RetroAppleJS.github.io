@@ -61,7 +61,7 @@ test("patched ROM detection now recognises authentic A2JP bytes",()=>{
     const a2p={fbb3:0xEA,fb1e:0xAD};
     const accepted=({fbb3,fb1e},source)=>{
         const immediate=source[0x4EA5];
-        return fbb3===immediate && fb1e===source[0x4EAB];
+        return fbb3===immediate && fb1e===source[0x4EAC];
     };
     assert.equal(accepted(a2p,original),true);
     assert.equal(accepted(jp,original),false);
