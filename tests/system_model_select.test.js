@@ -261,7 +261,7 @@ test("SYSTEM table uses intrinsic column sizes and a nonstretching scroller",()=
     assert.match(scroller,/flex:0 1 auto;/,"table must not fill the height of STEP TRACE");
     assert.match(scroller,/align-self:flex-start;/,"scroller should not stretch across the dialog");
     assert.match(scroller,/width:max-content;/,"scroller should hug the table when it fits");
-    assert.doesNotMatch(scroller,/width:100%;/,"scroller must not force full-width table layout");
+    assert.doesNotMatch(scroller,/(?:^|\n)\s*width:100%;/,"scroller must not force full-width table layout");
     assert.match(scroller,/max-width:100%;/,"scroller must be viewport-bounded");
     assert.match(scroller,/max-height:/,"large option lists can still scroll");
     assert.match(popup,/overflow:auto;/,"dialog must scroll on a small screen");
