@@ -1,6 +1,6 @@
 /* SYSTEM configuration popup: STEP TRACE position, content-sized dialog.
- * Keep independent table scrolling without stretching cells or adding blank
- * space below the configured systems. */
+ * Use intrinsic minimum column widths, not the wide old table minima.
+ * The scroller is independently bounded by the popup's available width. */
 .sysconfig-popup {
     position:fixed !important;
     z-index:2100 !important;
@@ -30,13 +30,24 @@
     flex:0 1 auto;
     min-height:0;
     max-height:min(55vh,420px);
-    width:100%;
+    align-self:flex-start;
+    width:max-content;
     max-width:100%;
     overflow:auto;
     border:1px solid #aaa;
     background:rgba(255,255,255,.5);
 }
-.sysconfig-table {border-collapse:collapse;table-layout:auto;min-width:0;width:max-content;font:10px/1.35 Arial,Helvetica,sans-serif;}
+.sysconfig-table {
+    display:inline-table;
+    border-collapse:collapse;
+    table-layout:auto;
+    min-width:0;
+    /* All cells prohibit wrapping: min-content is therefore the natural
+       width of each header/option, with no surplus distributed to columns. */
+    width:min-content;
+    max-width:none;
+    font:10px/1.35 Arial,Helvetica,sans-serif;
+}
 .sysconfig-table th,.sysconfig-table td {
     text-align:left;vertical-align:top;
     border:1px solid #aaa;
