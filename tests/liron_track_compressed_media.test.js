@@ -92,6 +92,27 @@ test("HD20 randomly ordered writes are retained across cache evictions",()=>{
     assert.ok(disk.getState().mediaStorage.storedBytes<150000);
 });
 
+test("HD20 caches its ProDOS volume name and refreshes it on block-2 writes",()=>{
+    const disk=device("HD20");
+    const image=new Uint8Array(HD20_BYTES);
+    image[1028]=0xF3;
+    image.set(Buffer.from("OLD"),1029);
+    disk.loadImage(image,{filename:"original.po"});
+    assert.equal(disk.getVolumeName(),"OLD");
+    checkBlock(disk,image,40959);
+    for(let i=0;i<20;i++)
+        assert.equal(disk.getState().volumeName,"OLD");
+
+    const replacement=new Uint8Array(BLOCK_SIZE);
+    replacement[4]=0xF3;
+    replacement.set(Buffer.from("NEW"),5);
+    assert.equal(disk.writeBlock(2,replacement).error,0);
+    assert.equal(disk.getVolumeName(),"NEW");
+    assert.equal(disk.getSuggestedFilename(),"NEW.po");
+    assert.equal(disk.format().error,0);
+    assert.equal(disk.getVolumeName(),"");
+});
+
 test("HD20 surface-map 8 KiB density uses exact track statistics",()=>{
     const disk=device("HD20");
     const filled=new Uint8Array(BLOCK_SIZE).fill(0xAA);
