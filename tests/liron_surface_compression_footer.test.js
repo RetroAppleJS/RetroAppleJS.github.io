@@ -63,10 +63,11 @@ function createFixture()
         return disk;
     };
     const select=(unit,hash)=>{
+        // Use the device-neutral map toggle: setPage intentionally accepts
+        // HD20 only, so it must not be used to select a UniDisk.
         popup.hidden=true;
-        assert.equal(liron.deviceToolSurfaceMapSetPage(0,unit,hash),0);
-        popup.hidden=false;
-        assert.equal(liron.deviceToolSurfaceMapRefresh(),true);
+        liron.deviceToolSurfaceMapPosition=()=>true;
+        assert.equal(liron.deviceToolSurfaceMapToggle(unit,hash),true);
         assert.ok(storageElement,"footer should be present in generated HTML");
     };
     return {
