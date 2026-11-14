@@ -21,6 +21,26 @@ function UniDisk35Device(options)
         ,lastBlock:null
     };
 
+    // UniDisk 3.5 records are stored one real track/side at a time.
+    // Apple 800 KiB media uses five speed zones of 16 cylinders each,
+    // with 12/11/10/9/8 sectors per track and two independent sides.
+    function blankMedia()
+    {
+        if(typeof(TrackCompressedMedia)!=="function")
+            return new Uint8Array(BLOCK_SIZE*BLOCK_COUNT);
+        var zone=[12,11,10,9,8],tracks=[];
+        for(var track=0;track<80;track++)
+        {
+            var sectors=zone[Math.floor(track/16)];
+            tracks.push(sectors,sectors);
+        }
+        return new TrackCompressedMedia({
+            blockSize:BLOCK_SIZE,blockCount:BLOCK_COUNT,
+            blocksPerTrack:tracks,
+            codec:typeof(pako)!=="undefined" ? pako : null
+        });
+    }
+
     var media = null;
     var host = null;
 
@@ -178,7 +198,11 @@ function UniDisk35Device(options)
     this.getDeviceSubtype = function() { return DEVICE_SUBTYPE; };
     this.getFirmwareVersion = function() { return FW_VERSION; };
     this.getName = function() { return DEVICE_NAME; };
-    this.getImage = function() { return media===null ? null : media.slice(); };
+    this.getImage = function()
+    {
+        if(media===null) return null;
+        return typeof(media.getImage)==="function" ? media.getImage() : media.slice();
+    };
     this.getSuggestedFilename = function()
     {
         var name=String(state.mediaFilename || "").split(/[\\/]/).pop();
@@ -199,13 +223,15 @@ function UniDisk35Device(options)
 
     this.loadImage = function(data,metadata)
     {
-        // Uint8Array.from is deliberately used here because it accepts typed
-        // arrays and Buffers from another JavaScript realm as well.
-        var bytes = Uint8Array.from(data || []);
-        if(bytes.length!==BLOCK_SIZE*BLOCK_COUNT)
+        if(!data || data.length!==BLOCK_SIZE*BLOCK_COUNT)
             throw new RangeError("UniDisk 3.5 image must be exactly 819200 bytes");
 
-        media=bytes;
+        // Commit only after all tracks were compressed successfully.
+        // The raw fallback also makes an independent image copy.
+        var next=blankMedia();
+        if(typeof(next.loadImage)==="function") next.loadImage(data);
+        else next.set(data);
+        media=next;
         state.online=true;
         state.lastBlock=null;
         state.mediaFilename = metadata && metadata.filename
@@ -222,6 +248,9 @@ function UniDisk35Device(options)
         return true;
     };
 
+    // Topology detach also releases any cached decompressed track.
+    this.releaseMedia = function() { return this.ejectImage(); };
+
     this.readBlock = function(blockNumber)
     {
         blockNumber=Number(blockNumber);
@@ -231,7 +260,8 @@ function UniDisk35Device(options)
 
         var offset=blockNumber*BLOCK_SIZE;
         state.lastBlock=blockNumber;
-        return {"error":0x00,"data":media.slice(offset,offset+BLOCK_SIZE)};
+        return {"error":0x00,"data":typeof(media.readBlock)==="function"
+            ? media.readBlock(blockNumber) : media.slice(offset,offset+BLOCK_SIZE)};
     };
 
     this.status = function(statusCode)
@@ -259,6 +289,8 @@ function UniDisk35Device(options)
             ,"status":statusByte()
             ,"mediaLoaded":media!==null
             ,"mediaBytes":media===null ? 0 : media.length
+            ,"mediaStorage":media && typeof(media.stats)==="function"
+                ? media.stats() : null
             ,"mediaFilename":state.mediaFilename
             ,"lastBlock":state.lastBlock
         };
