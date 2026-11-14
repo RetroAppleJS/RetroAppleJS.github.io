@@ -35,7 +35,8 @@ function fixture(model="A2P")
     elements.kbd=make("kbd");
     const ctx={
         console:{log(){},warn(){}},document:doc,
-        oCOM:{stripHTML:s=>s.replace(/<[^>]+>/g,"")},
+        // Test keycaps contain plain text; HTML parsing is not part of this fixture.
+        oCOM:{stripHTML:s=>s},
         EMU_system_get(){return model;}
     };
     vm.runInNewContext(keyboardSrc,ctx);
