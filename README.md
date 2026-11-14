@@ -69,7 +69,7 @@ Completed items remain checked; unchecked items are planned or still need furthe
 - [x] EMULATOR: Extend Mockingboard with voice emulation
 - [x] EMULATOR: Add memory expansion peripherals to complete compatibility (MS16K, SATURN, LEGEND, RAMFAC)
 - [x] EMULATOR: Extended URL instant configuration options
-- [ ] EMULATOR: LIRON HD20 & UNIDISK - track-by-track compression/decompression (saving browser RAM)
+- [x] EMULATOR: LIRON HD20 & UNIDISK - lossless pako track-by-track compression/decompression (see [implementation and RAM limits](docs/LIRON_TRACK_COMPRESSION.md))
 - [ ] EMULATOR: HGR/HGR2/GR screen capture (.bin / .png / .animgif with timer or variable interval stopframe)
 - [x] EMULATOR: VIDEO vaporlock compatibility (detect and display vertical blank)
 - [x] EMULATOR: Peripherals optionally expose a generic scriptable port facade together with a machine-readable API contract. EMU_PORT_SCRIPT consumes that interface and provides a reusable JavaScript scripting console. Serial Pro should be the first peripheral using it.
