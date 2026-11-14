@@ -141,6 +141,14 @@ changes, failed-restart rollback, and reinstallation. Older Composer exports
 can still use the original filenames as a compatibility fallback; layouts
 without J-Plus artwork retain their only chassis.
 
+**ProDOS 2.5 on J-Plus:** The authentic J-Plus monitor uses `$FBB3=$C9`,
+while the ProDOS 2.5 alpha 8 startup on `disks/ProDOS 8.dsk` expects
+`$FBB3=$EA` (Apple II Plus), resulting in a misleading `REQUIRES 64K`
+message even with MS16K installed. See the [J-Plus ProDOS compatibility
+boot-disk guide](A2JP_PRODOS25_COMPAT.md) for the independently verified,
+one-byte patch to a *copy of the ProDOS floppy*. No motherboard ROM or
+language-card changes are necessary.
+
 **ROM selection and Language Cards:** The `ROM` entry in `_CFG_SYSCODE`
 may be a comma-separated list of **alternatives**, not a key into
 `_CFG_ROMRANGES`. The selected single ROM ID is resolved by
