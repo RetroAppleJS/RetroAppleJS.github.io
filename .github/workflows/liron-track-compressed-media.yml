@@ -1,0 +1,31 @@
+name: LIRON track-compressed media
+
+on:
+  push:
+    paths:
+      - 'res/EMU_DEVICE_track_compressed_media.js'
+      - 'res/EMU_DEVICE_HD20.js'
+      - 'res/EMU_DEVICE_UNIDISK35.js'
+      - 'tests/liron_track_compressed_media.test.js'
+      - '.github/workflows/liron-track-compressed-media.yml'
+  pull_request:
+    paths:
+      - 'res/EMU_DEVICE_track_compressed_media.js'
+      - 'res/EMU_DEVICE_HD20.js'
+      - 'res/EMU_DEVICE_UNIDISK35.js'
+      - 'tests/liron_track_compressed_media.test.js'
+      - '.github/workflows/liron-track-compressed-media.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  compressed-media:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test pako track compression and SmartPort behavior
+        run: node --test tests/liron_track_compressed_media.test.js
