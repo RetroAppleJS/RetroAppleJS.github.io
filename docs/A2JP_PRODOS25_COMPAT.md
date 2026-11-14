@@ -91,15 +91,28 @@ also builds the same generated floppy as an artifact named
 `ProDOS_8_JPlus`. You can download its `.dsk` file from the workflow
 run without needing Node on your computer.
 
-## Status and limitation
+## Verified browser boot comparison
 
-The test suite checks that the source image exactly matches the known
-ProDOS 2.5a8 bytes, only one byte changes, and the J-Plus identification
-sequence now reaches the same language-card probe as the Apple II Plus.
-**Booting the generated floppy in a real browser emulator remains the
-final integration acceptance check.** If it still displays a 64K error,
-capture a debugger trace around the ROM-ID routine and `$C080–$C08F`
-soft switches; do not assume a second ROM or MS16K issue without evidence.
+The `ProDOS J-Plus browser acceptance` workflow boots all three
+combinations in real headless Chromium, with the same Disk II D1 image and
+the same mounted MS16K in physical slot 0:
+
+| Boot test | ProDOS screen | ProDOS MACHID (`$BF98`) | MS16K switch |
+| --- | --- | --- | --- |
+| A2P + unmodified disk | No 64K error | `$60` | `$0B` |
+| A2JP + unmodified disk | **REQUIRES 64K** | `$85` | `$02` |
+| A2JP + patched disk | **No 64K error** | `$60` | `$0B` |
+
+The original ROM fingerprint is still `$FBB3=$C9`, `$FB1E=$AD`.
+The patched disk reaches the same 64K/MS16K configuration as A2P.
+The explicit browser test script is
+`tests/prodos_jplus_browser_acceptance.mjs` and the independent byte-level
+tests run via `node --test tests/prodos_jplus_patch.test.mjs`.
+
+This verifies the ProDOS memory check and banking transition. It does not
+claim every subsequent ProDOS program on the disk has been tested.
+The workaround is deliberately software-specific and does not change
+authentic J-Plus hardware emulation.
 
 ```sh
 node --test tests/prodos_jplus_patch.test.mjs
