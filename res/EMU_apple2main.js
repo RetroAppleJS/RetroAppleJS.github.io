@@ -505,9 +505,9 @@ function EMU_HD20_urlRequest(uri)
     var filename=String(uri.HD20_DIR || "").trim();
     if(filename.indexOf("disks/")===0) filename=filename.slice(6);
     var parts=filename.split("/");
-    if(!/\\.po(?:\\.gz)?$/i.test(filename) ||
+    if(!/\.po(?:\.gz)?$/i.test(filename) ||
        parts.some(function(part){ return !part || part==="." || part===".."; }) ||
-       /[\\\\:?#%]/.test(filename))
+       /[\\:?#%]/.test(filename))
         throw new Error("HD20_DIR must be a relative .po or .po.gz file under disks/");
 
     var slot=uri.HD20_SLOT===undefined || uri.HD20_SLOT===""
@@ -557,7 +557,7 @@ async function EMU_HD20_loadFromURL(request)
     var response=await fetch(url);
     if(!response.ok) throw new Error("HD20 image HTTP "+response.status+": "+url);
     var bytes=new Uint8Array(await response.arrayBuffer());
-    if(/\\.gz$/i.test(request.filename))
+    if(/\.gz$/i.test(request.filename))
     {
         var inflater=new pako.Inflate();
         inflater.push(bytes,true); // pako auto-detects gzip (RFC 1952).
@@ -567,7 +567,7 @@ async function EMU_HD20_loadFromURL(request)
     }
     if(bytes.length!==20971520)
         throw new Error("HD20 image is "+bytes.length+" bytes; expected 20971520");
-    var imageName=request.filename.replace(/\\.gz$/i,"");
+    var imageName=request.filename.replace(/\.gz$/i,"");
     if(EMU_mountDiskImage(bytes,slotN,"HD20",imageName,request.unit)!==true)
         throw new Error("HD20 image rejected by LIRON unit "+request.unit);
     console.log("HD20 startup preload ready; slot "+(slotN-1)+
