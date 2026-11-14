@@ -2,6 +2,15 @@
 
 This is a **card-specific reference**, split out of the general [Peripheral User Guide](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS.md) and [Peripheral Developer Reference](https://github.com/RetroAppleJS/RetroAppleJS.github.io/blob/main/docs/PERIPHERALS_DEV.md). It is useful when writing 6502 software that controls language-card banks, or when examining the RetroAppleJS `MS16K` driver.
 
+
+|Configuration|	Result | ProDOS machine ID|
+|-------------|----------|----------------------|
+|A2P + original ProDOS disk	|Boots normally|	$60|
+|A2JP + original ProDOS disk	|REQUIRES 64K  |	$85|
+|A2JP + patched ProDOS disk	|Passes the 64K| check	$60|
+
+
+
 ## What the card adds
 
 A 16K language card replaces the CPU's normal read/write view of part of the system ROM address range with bank-switched RAM. Its familiar variants include:
