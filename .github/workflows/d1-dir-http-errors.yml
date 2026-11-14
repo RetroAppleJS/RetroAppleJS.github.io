@@ -1,0 +1,27 @@
+name: Disk II D1 URL error reporting
+
+on:
+  push:
+    paths:
+      - 'res/EMU_apple2main.js'
+      - 'tests/d1_dir_http_errors.test.js'
+      - '.github/workflows/d1-dir-http-errors.yml'
+  pull_request:
+    paths:
+      - 'res/EMU_apple2main.js'
+      - 'tests/d1_dir_http_errors.test.js'
+      - '.github/workflows/d1-dir-http-errors.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  d1-url-errors:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test Disk II URL failures and successful boot
+        run: node --test tests/d1_dir_http_errors.test.js
