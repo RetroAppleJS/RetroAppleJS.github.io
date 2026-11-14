@@ -6,12 +6,16 @@ on:
       - 'tools/patch_prodos25_jplus.mjs'
       - 'tests/prodos_jplus_patch.test.mjs'
       - 'disks/ProDOS 8.dsk'
+      - 'disks/ProDOS_8_JPlus.dsk'
+      - 'tests/prodos_jplus_committed_disk.test.mjs'
       - '.github/workflows/prodos-jplus-boot-compat.yml'
   pull_request:
     paths:
       - 'tools/patch_prodos25_jplus.mjs'
       - 'tests/prodos_jplus_patch.test.mjs'
       - 'disks/ProDOS 8.dsk'
+      - 'disks/ProDOS_8_JPlus.dsk'
+      - 'tests/prodos_jplus_committed_disk.test.mjs'
       - '.github/workflows/prodos-jplus-boot-compat.yml'
 
 permissions:
@@ -26,7 +30,7 @@ jobs:
         with:
           node-version: '24'
       - name: Validate ProDOS J-Plus loader signature and exact byte patch
-        run: node --test tests/prodos_jplus_patch.test.mjs
+        run: node --test tests/prodos_jplus_patch.test.mjs tests/prodos_jplus_committed_disk.test.mjs
       - name: Build separate J-Plus-compatible ProDOS 2.5 disk image
         run: node tools/patch_prodos25_jplus.mjs 'disks/ProDOS 8.dsk' ProDOS_8_JPlus.dsk
       - name: Publish J-Plus ProDOS disk as an optional downloadable artifact
