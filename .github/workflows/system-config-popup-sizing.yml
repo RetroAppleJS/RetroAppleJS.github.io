@@ -1,0 +1,29 @@
+name: SYSTEM configuration popup sizing
+
+on:
+  push:
+    paths:
+      - 'res/EMU_system_config_popup.js'
+      - 'res/EMU_system_config_popup.css'
+      - 'tests/system_model_select.test.js'
+      - '.github/workflows/system-config-popup-sizing.yml'
+  pull_request:
+    paths:
+      - 'res/EMU_system_config_popup.js'
+      - 'res/EMU_system_config_popup.css'
+      - 'tests/system_model_select.test.js'
+      - '.github/workflows/system-config-popup-sizing.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  system-popup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Check SYSTEM configuration popup and model selection
+        run: node --test tests/system_model_select.test.js
