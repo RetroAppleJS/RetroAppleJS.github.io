@@ -26,6 +26,7 @@
 .sysconfig-close {font-size:12px;min-width:18px;cursor:pointer;}
 .sysconfig-intro {flex:none;line-height:1.3;}
 .sysconfig-table-scroller {
+    box-sizing:border-box;
     flex:0 1 auto;
     min-height:0;
     max-height:min(55vh,420px);
