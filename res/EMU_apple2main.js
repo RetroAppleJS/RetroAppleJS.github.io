@@ -502,7 +502,8 @@ function EMU_loadRAM64KFile(input)
 function EMU_HD20_urlRequest(uri)
 {
     if(!uri || uri.HD20_DIR===undefined) return null;
-    var filename=String(uri.HD20_DIR || "").trim();
+    // COM_MAIN.URL.parse() intentionally leaves percent-encoding intact.
+    var filename=decodeURIComponent(String(uri.HD20_DIR || "").trim());
     if(filename.indexOf("disks/")===0) filename=filename.slice(6);
     var parts=filename.split("/");
     if(!/\.po(?:\.gz)?$/i.test(filename) ||
