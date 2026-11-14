@@ -1857,6 +1857,10 @@ function AppleLiron()
 
     function deviceToolSurfaceDensity(image,block)
     {
+        // HD20 and UniDisk expose a sector density from compressed tracks.
+        // Do not construct the entire uncompressed image for the surface map.
+        if(image && typeof(image.getBlockDensity)==="function")
+            return image.getBlockDensity(block);
         var offset=Number(block)*512;
         if(!image || offset<0 || offset+512>image.length)
             return {"pct":0,"nonzero":0,"avg":0};
@@ -1874,6 +1878,66 @@ function AppleLiron()
             ,"nonzero":nonzero
             ,"avg":Math.round(sum/512)
         };
+    }
+
+    // Stored track payload excludes JS metadata and the decompression cache.
+    // mediaStorage.stats() flushes pending dirty-track writes before reporting.
+    function deviceToolSurfaceStorageFormat(bytes)
+    {
+        bytes=Number(bytes)||0;
+        if(bytes<1024) return Math.round(bytes)+" B";
+        if(bytes<1024*1024) return (bytes/1024).toFixed(2).replace(/\.?0+$/,"")+" KiB";
+        return (bytes/(1024*1024)).toFixed(2).replace(/\.?0+$/,"")+" MiB";
+    }
+
+    function deviceToolSurfaceStorageInfo(state)
+    {
+        if(!state || state.mediaLoaded===false)
+            return {"label":"No media loaded","title":"No media is attached"};
+        var storage=state.mediaStorage || null;
+        var total=Number(storage && storage.logicalBytes || state.mediaBytes ||
+            (Number(state.blockSize)*Number(state.blockCount)));
+        if(!Number.isFinite(total) || total<=0)
+            return {"label":"Storage unavailable","title":"Disk capacity unknown"};
+        // Older device instances with raw arrays have no compression stats.
+        var hasStats=!!(storage && Number.isFinite(Number(storage.storedBytes)));
+        var stored=hasStats ? Number(storage.storedBytes) : total;
+        stored=Math.max(0,stored);
+        var retained=100*stored/total;
+        var saved=100-retained;
+        var label=(hasStats ? "Compressed payload: " : "Stored media: ")+
+            deviceToolSurfaceStorageFormat(stored)+" / "+
+            deviceToolSurfaceStorageFormat(total)+" · "+
+            retained.toFixed(2)+"% stored · "+saved.toFixed(2)+"% saved";
+        var cache=hasStats ? Number(storage.cacheBytes)||0 : 0;
+        return {
+            "label":label,
+            "title":hasStats
+                ? "Compressed track payload only; excludes JavaScript metadata and "+
+                  "the "+deviceToolSurfaceStorageFormat(cache)+" decompressed track cache"
+                : "Raw disk image; compression statistics are not available"
+        };
+    }
+
+    function deviceToolSurfaceStorageHTML(state)
+    {
+        var info=deviceToolSurfaceStorageInfo(state);
+        return '<div class="liron-surface-storage" data-surface-storage="1" '+
+            'role="status" title="'+deviceToolSurfaceEscape(info.title)+'" '+
+            'style="font-size:10px;line-height:14px;color:#444;'+
+            'margin-top:3px;white-space:nowrap">'+
+            deviceToolSurfaceEscape(info.label)+'</div>';
+    }
+
+    function deviceToolSurfaceStorageUpdate(text,state)
+    {
+        var element=text && typeof(text.querySelector)==="function"
+            ? text.querySelector('[data-surface-storage="1"]') : null;
+        if(!element) return false;
+        var info=deviceToolSurfaceStorageInfo(state);
+        if(element.textContent!==info.label) element.textContent=info.label;
+        element.title=info.title;
+        return true;
     }
 
     function deviceToolSurfaceDensityCellStyle(pct,active)
@@ -1904,7 +1968,9 @@ function AppleLiron()
         var geometry=device.getSurfaceMapGeometry();
         var page=Math.max(0,Math.min(geometry.pageCount-1,Number(deviceSurfaceMapState.page)||0));
         deviceSurfaceMapState.page=page;
-        var image=typeof(device.getImage)==="function" ? device.getImage() : null;
+        var state=typeof(device.getState)==="function" ? device.getState() || {} : {};
+        var image=typeof(device.getBlockDensity)==="function" ? device :
+            (typeof(device.getImage)==="function" ? device.getImage() : null);
         var head=typeof(device.getHeadSurfacePosition)==="function" ? device.getHeadSurfacePosition() : null;
         var unit=Number(device.getUnit ? device.getUnit() : device.id?.deviceN);
         var hash=Number(device.attach?.hash);
@@ -1947,10 +2013,10 @@ function AppleLiron()
             }
             out += "</div></section>";
         }
-        return out+"</div>"+meta;
+        return out+"</div>"+meta+deviceToolSurfaceStorageHTML(state);
     }
 
-    function deviceToolHD20SurfaceMapUpdate(device,text)
+    function deviceToolHD20SurfaceMapUpdate(device,text,state)
     {
         var head=typeof(device.getHeadSurfacePosition)==="function" ? device.getHeadSurfacePosition() : null;
         if(deviceSurfaceMapSyncEnabled && head && Number(head.page)!==Number(deviceSurfaceMapState.page))
@@ -1959,7 +2025,8 @@ function AppleLiron()
             text.innerHTML=liron.deviceToolSurfaceMapHTML(deviceSurfaceMapState.unit,deviceSurfaceMapState.hash);
             return true;
         }
-        var image=typeof(device.getImage)==="function" ? device.getImage() : null;
+        var image=typeof(device.getBlockDensity)==="function" ? device :
+            (typeof(device.getImage)==="function" ? device.getImage() : null);
         var cells=typeof(text.querySelectorAll)==="function" ? text.querySelectorAll('[data-surface-cell="1"][data-active="1"]') : [];
         for(var i=0;i<cells.length;i++)
         {
@@ -1982,6 +2049,7 @@ function AppleLiron()
                 if(headCell.dataset) headCell.dataset.head="1";
             }
         }
+        deviceToolSurfaceStorageUpdate(text,state || (typeof(device.getState)==="function" ? device.getState() : {}));
         return true;
     }
 
@@ -2049,9 +2117,11 @@ function AppleLiron()
             "</div>";
 
         if(!state.mediaLoaded)
-            return header+"<div class=\"liron-surface-status\">No media loaded.</div>"+meta;
+            return header+"<div class=\"liron-surface-status\">No media loaded.</div>"+
+                meta+deviceToolSurfaceStorageHTML(state);
 
-        var image=typeof(device.getImage)==="function" ? device.getImage() : null;
+        var image=typeof(device.getBlockDensity)==="function" ? device :
+            (typeof(device.getImage)==="function" ? device.getImage() : null);
         var head=typeof(device.getHeadSurfacePosition)==="function" ? device.getHeadSurfacePosition() : null;
         var out=header+"<div class=\"liron-surface-panels\" style=\"display:inline-flex;align-items:flex-start;gap:8px;width:max-content\">";
 
@@ -2090,7 +2160,7 @@ function AppleLiron()
             }
             out += "</div></section>";
         }
-        return out+"</div>"+meta;
+        return out+"</div>"+meta+deviceToolSurfaceStorageHTML(state);
     };
 
     this.deviceToolSurfaceMapUpdate = function()
@@ -2104,12 +2174,16 @@ function AppleLiron()
         if(!device || !popup || !text || popup.hidden!==false) return false;
 
         var state=typeof(device.getState)==="function" ? device.getState() || {} : {};
+        // The storage footer updates even when the cell/head sync is off.
+        // A fresh getState() flushes any dirty compressed track before display.
+        deviceToolSurfaceStorageUpdate(text,state);
         if(!state.mediaLoaded) return false;
 
         if(device.id?.DCODE==="HD20")
-            return deviceToolHD20SurfaceMapUpdate(device,text);
+            return deviceToolHD20SurfaceMapUpdate(device,text,state);
 
-        var image=typeof(device.getImage)==="function" ? device.getImage() : null;
+        var image=typeof(device.getBlockDensity)==="function" ? device :
+            (typeof(device.getImage)==="function" ? device.getImage() : null);
         var cells=typeof(text.querySelectorAll)==="function"
             ? text.querySelectorAll('[data-surface-cell="1"][data-active="1"]')
             : [];
@@ -2156,16 +2230,21 @@ function AppleLiron()
         return deviceSurfaceMapSyncEnabled;
     };
 
-    // Invoked by the shared surface-map dashboard refresh event used by Disk II.
+    // The disk-size footer always refreshes while the popup is visible.
+    // The optional sync toggle still governs the expensive cells/head update.
     this.deviceToolSurfaceMapMonitoring = function()
     {
-        if(!deviceSurfaceMapSyncEnabled || typeof(document)==="undefined" || !document.getElementById)
+        if(typeof(document)==="undefined" || !document.getElementById)
             return false;
-
         var popup=document.getElementById("lironSurfaceMap_popup");
         if(!popup || popup.hidden!==false) return false;
+        if(deviceSurfaceMapSyncEnabled) return liron.deviceToolSurfaceMapUpdate();
 
-        return liron.deviceToolSurfaceMapUpdate();
+        var device=deviceToolSurfaceTarget(deviceSurfaceMapState.unit,deviceSurfaceMapState.hash);
+        var text=document.getElementById("lironSurfaceMap_popup_text");
+        if(!device || !text) return false;
+        return deviceToolSurfaceStorageUpdate(text,
+            typeof(device.getState)==="function" ? device.getState() : {});
     };
 
     this.deviceToolSurfaceMapPosition = function(unit)

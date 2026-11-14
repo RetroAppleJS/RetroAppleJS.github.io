@@ -1,0 +1,31 @@
+name: LIRON surface compression footer
+
+on:
+  push:
+    paths:
+      - 'res/EMU_CARD_LIRON.js'
+      - 'res/EMU_DEVICE_HD20.js'
+      - 'res/EMU_DEVICE_UNIDISK35.js'
+      - 'tests/liron_surface_compression_footer.test.js'
+      - '.github/workflows/liron-surface-compression-footer.yml'
+  pull_request:
+    paths:
+      - 'res/EMU_CARD_LIRON.js'
+      - 'res/EMU_DEVICE_HD20.js'
+      - 'res/EMU_DEVICE_UNIDISK35.js'
+      - 'tests/liron_surface_compression_footer.test.js'
+      - '.github/workflows/liron-surface-compression-footer.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  compressed-size-footer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify live compression footer, disk writes and zero-copy surface density
+        run: node --test tests/liron_surface_compression_footer.test.js

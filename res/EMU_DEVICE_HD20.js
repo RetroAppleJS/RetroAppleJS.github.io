@@ -390,6 +390,12 @@ function HD20Device(options)
     this.getUnit = function() { return state.unit; };
     this.getBlockSize = function() { return BLOCK_SIZE; };
     this.getBlockCount = function() { return BLOCK_COUNT; };
+    // Surface-map density access must not export a full uncompressed image
+    // or change the SmartPort-visible lastBlock/head position.
+    this.getBlockDensity = function(blockNumber)
+    {
+        return surfaceRangeDensity(blockNumber,blockNumber);
+    };
     this.getLastBlock = function() { return state.lastBlock; };
     this.getHeadSurfacePosition = function()
     {
