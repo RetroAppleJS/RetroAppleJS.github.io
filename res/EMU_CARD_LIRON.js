@@ -1857,6 +1857,10 @@ function AppleLiron()
 
     function deviceToolSurfaceDensity(image,block)
     {
+        // HD20 and UniDisk expose a sector density from compressed tracks.
+        // Do not construct the entire uncompressed image for the surface map.
+        if(image && typeof(image.getBlockDensity)==="function")
+            return image.getBlockDensity(block);
         var offset=Number(block)*512;
         if(!image || offset<0 || offset+512>image.length)
             return {"pct":0,"nonzero":0,"avg":0};
@@ -1874,6 +1878,66 @@ function AppleLiron()
             ,"nonzero":nonzero
             ,"avg":Math.round(sum/512)
         };
+    }
+
+    // Stored track payload excludes JS metadata and the decompression cache.
+    // mediaStorage.stats() flushes pending dirty-track writes before reporting.
+    function deviceToolSurfaceStorageFormat(bytes)
+    {
+        bytes=Number(bytes)||0;
+        if(bytes<1024) return Math.round(bytes)+" B";
+        if(bytes<1024*1024) return (bytes/1024).toFixed(2).replace(/\.?0+$/,"")+" KiB";
+        return (bytes/(1024*1024)).toFixed(2).replace(/\.?0+$/,"")+" MiB";
+    }
+
+    function deviceToolSurfaceStorageInfo(state)
+    {
+        if(!state || state.mediaLoaded===false)
+            return {"label":"No media loaded","title":"No media is attached"};
+        var storage=state.mediaStorage || null;
+        var total=Number(storage && storage.logicalBytes || state.mediaBytes ||
+            (Number(state.blockSize)*Number(state.blockCount)));
+        if(!Number.isFinite(total) || total<=0)
+            return {"label":"Storage unavailable","title":"Disk capacity unknown"};
+        // Older device instances with raw arrays have no compression stats.
+        var hasStats=!!(storage && Number.isFinite(Number(storage.storedBytes)));
+        var stored=hasStats ? Number(storage.storedBytes) : total;
+        stored=Math.max(0,stored);
+        var retained=100*stored/total;
+        var saved=100-retained;
+        var label=(hasStats ? "Compressed payload: " : "Stored media: ")+
+            deviceToolSurfaceStorageFormat(stored)+" / "+
+            deviceToolSurfaceStorageFormat(total)+" · "+
+            retained.toFixed(2)+"% stored · "+saved.toFixed(2)+"% saved";
+        var cache=hasStats ? Number(storage.cacheBytes)||0 : 0;
+        return {
+            "label":label,
+            "title":hasStats
+                ? "Compressed track payload only; excludes JavaScript metadata and "+
+                  "the "+deviceToolSurfaceStorageFormat(cache)+" decompressed track cache"
+                : "Raw disk image; compression statistics are not available"
+        };
+    }
+
+    function deviceToolSurfaceStorageHTML(state)
+    {
+        var info=deviceToolSurfaceStorageInfo(state);
+        return '<div class="liron-surface-storage" data-surface-storage="1" '+
+            'role="status" title="'+deviceToolSurfaceEscape(info.title)+'" '+
+            'style="font-size:10px;line-height:14px;color:#444;'+
+            'margin-top:3px;white-space:nowrap">'+
+            deviceToolSurfaceEscape(info.label)+'</div>';
+    }
+
+    function deviceToolSurfaceStorageUpdate(text,state)
+    {
+        var element=text && typeof(text.querySelector)==="function"
+            ? text.querySelector('[data-surface-storage="1"]') : null;
+        if(!element) return false;
+        var info=deviceToolSurfaceStorageInfo(state);
+        if(element.textContent!==info.label) element.textContent=info.label;
+        element.title=info.title;
+        return true;
     }
 
     function deviceToolSurfaceDensityCellStyle(pct,active)
