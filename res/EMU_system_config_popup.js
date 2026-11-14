@@ -1,5 +1,6 @@
 /* Configurable SYSTEM popup, attached to the shared oCOM.POPUP state machine.
- * Uses STEP TRACE's measured rectangle; wide table scrolls inside that frame.
+ * Uses STEP TRACE's anchor and maximum width; content determines height.
+ * Wide tables scroll inside the compact dialog.
  */
 var EMU_SYSTEM_CONFIG = (function()
 {
@@ -56,13 +57,15 @@ var EMU_SYSTEM_CONFIG = (function()
         var left=r && Number.isFinite(r.left) ? r.left : 700;
         var top=r && Number.isFinite(r.top) ? r.top : 120;
         var width=r && r.width>=280 ? Math.round(r.width) : 350;
-        var height=r && r.height>=300 ? Math.round(r.height) : 450;
         left=Math.max(4,Math.min(left,vw-Math.min(width,vw-8)-4));
         top=Math.max(4,Math.min(top,vh-160));
         p.style.left=Math.round(left)+"px";
         p.style.top=Math.round(top)+"px";
         p.style.width=Math.min(width,vw-8)+"px";
-        p.style.height=Math.max(160,Math.min(height,vh-top-4))+"px";
+        // Do not stretch a two-row table to STEP TRACE's fixed height.
+        // CSS caps the scroll region if more model options become available.
+        p.style.height="auto";
+        p.style.maxHeight=Math.max(160,vh-top-4)+"px";
     }
 
     function cell(code,field)
