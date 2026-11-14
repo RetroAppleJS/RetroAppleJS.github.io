@@ -78,6 +78,12 @@ try
     const compatible=await scenario("A2JP",patchedBytes,"A2JP patched");
     if(compatible.sample.requires)
         throw new Error("J-Plus compatibility image still reports REQUIRES 64K");
-    console.log("PASS: A2P original, A2JP original regression, A2JP compatible image");
+    if(a2p.sample.machid!==0x60 || compatible.sample.machid!==a2p.sample.machid)
+        throw new Error("Patched J-Plus must enter the same ProDOS 64K configuration as A2P");
+    if(compatible.inserted.romB3!==0xC9 || compatible.inserted.rom1E!==0xAD)
+        throw new Error("The authentic J-Plus motherboard ROM must not be changed");
+    if(compatible.sample.ms16k!==a2p.sample.ms16k)
+        throw new Error("Patched J-Plus must reach the same MS16K banking state as A2P");
+    console.log("PASS: original A2P and patched A2JP both identify 64K with MS16K; authentic J-Plus ROM is unchanged");
 }
 finally{await browser.close();}
