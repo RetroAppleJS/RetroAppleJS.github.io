@@ -1,0 +1,40 @@
+name: Validate standalone RetroAppleJS.html
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - "index.html"
+      - "res/**"
+      - "build/**"
+      - ".github/scripts/inline.cjs"
+      - ".github/workflows/build-standalone.yml"
+      - ".github/workflows/validate-standalone.yml"
+      - "tests/inline_build_security.test.js"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check test syntax
+        run: node --check tests/inline_build_security.test.js
+
+      - name: Test standalone include transformations
+        run: node --test tests/inline_build_security.test.js
+
+      - name: Build standalone without committing on PR
+        run: node .github/scripts/inline.cjs
+
+      - name: Verify generated output
+        run: test -s dist/RetroAppleJS.html
