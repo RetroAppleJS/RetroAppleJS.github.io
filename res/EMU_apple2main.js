@@ -1849,6 +1849,8 @@ function ejectDisk(el,slotN,deviceID)
   var st = o.getState();
   if(st.diskData && oDevice.deviceN !== undefined)
       st.diskData[oDevice.deviceN] = null;
+  if(st.diskName && oDevice.deviceN !== undefined)
+      st.diskName[oDevice.deviceN] = null;
 
   if(typeof(o.GUI_update)=="function")
       o.GUI_update();
