@@ -131,14 +131,14 @@ test("assembler manual fixes only standalone image URLs, even before emulator in
             + '<img src="https://example.org/remote.png">'
     };
 
-    function render(address)
+    function render(address, manualDocs = docs)
     {
         const manual = {innerHTML:"", textContent:""};
         const oCOM = {URL:appURLParser()};
         const document = {location:{toString:() => address}};
         const loader = makeLoader(
             id => id === "ASM_manual" ? manual : null,
-            key => docs[key] || "",
+            key => manualDocs[key] || "",
             oCOM, document);
         loader();
         return {html:manual.innerHTML, filename:oCOM.URL.name};
@@ -160,4 +160,22 @@ test("assembler manual fixes only standalone image URLs, even before emulator in
 
     const hosted = render("https://example.org/RetroAppleJS.html");
     assert.match(hosted.html, /src="\.\.\/res\/MOS_6502AD_300\.png"/);
-}
+
+
+    // Reproduce the real documentation source, not only hand-written image tags.
+    // COM_CONFIG.js stores the CPU reference as a generated JavaScript string
+    // containing full GitHub URLs; ASM_manualDocHTML strips that URL prefix.
+    const config = fs.readFileSync(path.join(__dirname, "../res/COM_CONFIG.js"), "utf8");
+    const cpuEntry = config.match(/^_DOCS\["6502"\]\s*=\s*(".*")$/m);
+    assert.ok(cpuEntry, "the generated 6502 documentation must be present");
+    const cpuHTML = JSON.parse(cpuEntry[1])
+        .replace(/https:\/\/github\.com\/RetroAppleJS\/RetroAppleJS\.github\.io\/raw\/main\//g, "");
+    const realManual = render("file:///project/dist/RetroAppleJS.html", {"6502":cpuHTML});
+    for(const filename of [
+        "MOS_6502AD_300.png",
+        "mcs6502-interrupt-ops_340.png",
+        "mcs6502-jsr-rts-ops_340.png"
+    ])
+        assert.ok(realManual.html.includes('src="../res/' + filename + '"'),
+            "the standalone manual must resolve " + filename + " outside dist/");
+});
