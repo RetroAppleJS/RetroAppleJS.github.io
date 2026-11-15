@@ -48,28 +48,83 @@ function normalizeTraceWidth(gap)
   }
   return delta;
 }
-function positionPopup()
+/*
+ * Both companion windows use STEP TRACE as their layout reference, even
+ * while SETTINGS is closed. Measuring the TOOLS pasteboard instead produces
+ * unrelated coordinates and does not survive opening Script first.
+ *
+ * While measuring a closed SETTINGS panel, expose its layout invisibly and
+ * synchronously restore both original hidden states. No popup visibility
+ * preferences or running debugger state are changed.
+ */
+function companionPlacement()
 {
-  var p=E('DBG_steptraceScenarioPopup'),dbg=E('cpuDbg_popup');
-  if(!p||!dbg||p.hidden||!dbg.getBoundingClientRect)return false;
-  var gap=toolboxReferenceGap(),vw=g.innerWidth||(D.documentElement&&D.documentElement.clientWidth)||1024;
-  normalizeTracePosition(gap);
-  normalizeTraceWidth(gap);
-  var r=dbg.getBoundingClientRect(),preferred=460;
-  var rightRoom=Math.max(0,vw-gap-r.right),pw=Math.min(preferred,rightRoom);
-  var left;
-  if(pw>=320) left=r.right+gap;
-  else
+  var settings=E('tab1.1'),dbg=E('cpuDbg_popup');
+  if(!settings||!dbg||!dbg.getBoundingClientRect)return null;
+
+  var settingsHidden=!!settings.hidden,dbgHidden=!!dbg.hidden;
+  var previousVisibility=settings.style.visibility;
+  try
   {
-    pw=Math.min(preferred,Math.max(320,r.left-gap*2));
-    left=Math.max(gap,r.left-pw-gap);
+    if(settingsHidden)
+    {
+      settings.style.visibility='hidden';
+      settings.hidden=false;
+    }
+    if(dbgHidden)dbg.hidden=false;
+
+    var gap=toolboxReferenceGap();
+    normalizeTracePosition(gap);
+    normalizeTraceWidth(gap);
+
+    var r=dbg.getBoundingClientRect();
+    if(!r.width||!r.height)return null;
+    var vw=g.innerWidth||(D.documentElement&&D.documentElement.clientWidth)||1024;
+    var preferred=460;
+    var rightRoom=Math.max(0,vw-gap-r.right),pw=Math.min(preferred,rightRoom);
+    var left;
+    if(pw>=320)left=r.right+gap;
+    else
+    {
+      pw=Math.min(preferred,Math.max(320,r.left-gap*2));
+      left=Math.max(gap,r.left-pw-gap);
+    }
+    // Both windows are position:absolute under document.body.
+    var sx=g.pageXOffset||0,sy=g.pageYOffset||0;
+    return {
+      left:Math.round(left+sx),
+      top:Math.round(r.top+sy),
+      width:Math.round(pw),
+      maxWidth:'calc(100vw - '+(gap*2)+'px)'
+    };
   }
-  p.style.width=Math.round(pw)+'px';
-  p.style.maxWidth='calc(100vw - '+(gap*2)+'px)';
-  p.style.left=Math.round(left)+'px';
-  p.style.top=Math.round(r.top)+'px';
+  finally
+  {
+    if(dbgHidden)dbg.hidden=true;
+    if(settingsHidden)
+    {
+      settings.hidden=true;
+      settings.style.visibility=previousVisibility;
+    }
+  }
+}
+function positionCompanion(p)
+{
+  if(!p||p.hidden)return false;
+  var placement=companionPlacement();
+  if(!placement)return false;
+  p.style.width=placement.width+'px';
+  p.style.maxWidth=placement.maxWidth;
+  p.style.left=placement.left+'px';
+  p.style.top=placement.top+'px';
   return true;
 }
+function positionPopup()
+{
+  return positionCompanion(E('DBG_steptraceScenarioPopup'));
+}
+// The Pasteboard Script popup reuses the same exact geometry function.
+g.EMU_COMPANION_LAYOUT={placement:companionPlacement,position:positionCompanion};
 function scopePopup()
 {
   var p=E('DBG_steptraceScenarioPopup');
