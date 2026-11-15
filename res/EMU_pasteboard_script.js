@@ -319,28 +319,13 @@
         return p;
     }
     function position() {
-        var p = el(POPUP), tools = el("tab1.2");
-        if(!p || p.hidden || !tools) return false;
-        var reference = el("DBG_steptraceScenarioPopup");
-        var rect = tools.querySelector(".toolbox");
-        var box = rect && rect.getBoundingClientRect();
-        if(!box) return false;
-        var gap = 4, width = Math.min(460, g.innerWidth - gap * 2);
-        var sx = g.pageXOffset || 0, sy = g.pageYOffset || 0;
-        var left = box.right + gap + sx, top = box.top + sy;
-        // If STEP TRACE SCENARIO was positioned earlier, reuse its exact
-        // anchor. Otherwise apply the same right/left responsive fallback.
-        if(reference && reference.style.left && reference.style.top) {
-            left = parseFloat(reference.style.left);
-            top = parseFloat(reference.style.top);
-        } else if(g.innerWidth - box.right < 320) {
-            left = Math.max(gap + sx, box.left + sx - width - gap);
-        }
-        left = Math.max(gap + sx, Math.min(left, sx + g.innerWidth - width - gap));
-        p.style.width = Math.max(280, width) + "px";
-        p.style.left = Math.round(left) + "px";
-        p.style.top = Math.round(top) + "px";
-        return true;
+        var popup = el(POPUP);
+        var layout = g.EMU_COMPANION_LAYOUT;
+        // STEP TRACE SCENARIO provides the authoritative companion geometry.
+        // Never anchor to the pasteboard toolbox or depend on the scenario
+        // popup having been opened previously.
+        return !!(popup && layout && typeof layout.position === "function" &&
+            layout.position(popup));
     }
     function open() {
         var p = makePopup();
