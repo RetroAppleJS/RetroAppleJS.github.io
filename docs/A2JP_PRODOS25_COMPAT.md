@@ -47,17 +47,35 @@ the J-Plus (`$C9`). The J-Plus passes the second check (`$AD`).
 Apple's published machine-identification technical note separately
 describes ROM fingerprinting and probing for the 16K language card.
 
-## Safe workaround: separate J-Plus boot disk
+## J-Plus boot disk included in the repository
 
-This repository supplies a **version- and CRC-guarded offline patcher**
-that changes just the immediate operand of that ProDOS comparison,
-`CPX #$EA` → `CPX #$C9`, and writes a **new copy** of the image.
+The ready-to-mount compatibility disk is now **committed directly** at
+[`disks/ProDOS_8_JPlus.dsk`](../disks/ProDOS_8_JPlus.dsk). It is a
+143,360-byte disk image, *not* merely a GitHub Actions artifact.
+
+To boot it with the J-Plus and normal Disk II slot configuration, open:
+
+```text
+index.html?sys=A2JP&D1_DIR=ProDOS_8_JPlus.dsk&boot=1
+```
+
+The `D1_DIR` loader fetches disk images from the repository's `disks/`
+directory. If Disk II has been relocated, mount the same image in its
+appropriate drive.
+
+The repository also retains a **version- and CRC-guarded offline patcher**
+that changes only the immediate operand of the ProDOS comparison,
+`CPX #$EA` → `CPX #$C9`. To reproduce the committed image, choose
+a *different output filename* so it cannot overwrite the existing one:
 
 ```sh
 node tools/patch_prodos25_jplus.mjs \
   "disks/ProDOS 8.dsk" \
-  "disks/ProDOS_8_JPlus.dsk"
+  "ProDOS_8_JPlus_rebuilt.dsk"
 ```
+
+The repository tests regenerate the image in memory and compare it
+byte-for-byte against the committed `.dsk`, catching accidental changes.
 
 The tool only accepts the exact repository disk version:
 
@@ -82,14 +100,14 @@ memory mapping and disk controller implementation remain unchanged.
 
 1. Open `index.html?sys=A2JP`.
 2. Keep the MS16K language card in **PR#0**.
-3. Mount the generated `ProDOS_8_JPlus.dsk` in Disk II's D1 drive
+3. Mount the checked-in `disks/ProDOS_8_JPlus.dsk` in Disk II's D1 drive
    (typically PR#6, or PR#5 if your `slots` URL relocates Disk II).
 4. Cold boot from that floppy.
 
 The GitHub Actions workflow **ProDOS 2.5 J-Plus boot compatibility**
-also builds the same generated floppy as an artifact named
-`ProDOS_8_JPlus`. You can download its `.dsk` file from the workflow
-run without needing Node on your computer.
+also generates an optional short-lived `ProDOS_8_JPlus` artifact.
+The committed `disks/ProDOS_8_JPlus.dsk` is the permanent source;
+a workflow artifact is **not required** after merging.
 
 ## Verified browser boot comparison
 
@@ -107,7 +125,7 @@ The original ROM fingerprint is still `$FBB3=$C9`, `$FB1E=$AD`.
 The patched disk reaches the same 64K/MS16K configuration as A2P.
 The explicit browser test script is
 `tests/prodos_jplus_browser_acceptance.mjs` and the independent byte-level
-tests run via `node --test tests/prodos_jplus_patch.test.mjs`.
+tests run via `node --test tests/prodos_jplus_patch.test.mjs tests/prodos_jplus_committed_disk.test.mjs`.
 
 This verifies the ProDOS memory check and banking transition. It does not
 claim every subsequent ProDOS program on the disk has been tested.
@@ -115,7 +133,7 @@ The workaround is deliberately software-specific and does not change
 authentic J-Plus hardware emulation.
 
 ```sh
-node --test tests/prodos_jplus_patch.test.mjs
+node --test tests/prodos_jplus_patch.test.mjs tests/prodos_jplus_committed_disk.test.mjs
 ```
 
 This is a deliberately software-specific compatibility disk, not a change
