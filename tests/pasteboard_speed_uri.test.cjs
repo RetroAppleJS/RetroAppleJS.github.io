@@ -167,6 +167,10 @@ test("pscript URL import opens the editor but never auto-executes source", () =>
 test("Copy URI preserves other query parameters and URL fragment", async () => {
     const fixture=hostFixture("await apple.cpu.setSpeed(200);",
         "https://example.test/index.html?model=A2P#tab1");
+    fixture.api.ui.open();
+    // A real user edits the source after opening the IDE (which initially
+    // populates its bundled starter script).
+    fixture.elements.EMU_pasteboardScriptEditor.value="await apple.cpu.setSpeed(200);";
     const uri=fixture.api.uri.current();
     const parsed=new URL(uri);
     assert.equal(parsed.searchParams.get("model"),"A2P");
