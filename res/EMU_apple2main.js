@@ -1383,6 +1383,33 @@ function EMUI()
         console.log("CPU clock : "+_o.CPU_ClockTicks+" ticks in "+_o.EMU_IntervalTime_ms/1000+" s = "+(1000*_o.CPU_ClockTicks/_o.EMU_IntervalTime_ms)+" ticks/s");
     }
 
+    // Public percentage API shared by the CPU slider and Pasteboard Script.
+    // Keep the CPU scheduler, disk speed, pace indicator and slider in sync.
+    this.cpuGetPercent = function()
+    {
+        return Math.round(100 * _o.CPU_TargetTicks_s / _o.CPU_ClocksTicks_s);
+    };
+    this.cpuSetPercent = function(percent)
+    {
+        if(!Number.isInteger(percent) || percent<0 || percent>400)
+            throw new RangeError("CPU speed must be an integer from 0% to 400%.");
+
+        var slider = document.getElementById("myRange");
+        if(slider)
+        {
+            slider.setAttribute("data-speed-mode","pct400");
+            slider.min = 0;
+            slider.max = 400;
+            // Allow scripts to set any integer percentage while preserving
+            // the full 0–400% mode and its ordinary UI change handlers.
+            slider.step = 1;
+            slider.value = percent;
+            this.cpuSldPreview(slider,"slider_1v");
+        }
+        this.cpuSpd(percent/100);
+        return this.cpuGetPercent();
+    };
+
     // MODIFY CPU SPEED
     this.cpuSpd = function(pct)
     {
