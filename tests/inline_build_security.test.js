@@ -87,3 +87,77 @@ test("step-trace scenario stylesheet is a static app include and bundled inline"
     assert.ok(!output.includes(cssInclude), "the standalone must not fetch the CSS separately");
     assert.ok(!output.includes(scriptInclude), "the standalone must not fetch the layout script separately");
 });
+
+
+function appURLParser()
+{
+    const source = fs.readFileSync(path.join(__dirname, "../res/COM_MAIN.js"), "utf8");
+    const start = source.indexOf("  this.URL =\n  {");
+    const end = source.indexOf("\n  /////////////////////\n  // EVENT SEQUENCER", start);
+    assert.ok(start >= 0 && end > start, "COM.URL parser definition must exist");
+    return new Function(source.slice(start, end) + "\nreturn this.URL;").call({});
+}
+
+test("COM.URL.parse exposes the entry-point filename independently of query and hash", () =>
+{
+    const parser = appURLParser();
+    for(const [address, name] of [
+        ["file:///project/index.html", "index.html"],
+        ["file:///project/dist/RetroAppleJS.html?sys=A2JP#tab1", "RetroAppleJS.html"],
+        ["https://example.org/RetroAppleJS.html?boot=true", "RetroAppleJS.html"],
+        ["https://example.org/project/", ""]
+    ])
+    {
+        parser.parse(address);
+        assert.equal(parser.name, name, address);
+        assert.equal(parser.url, address.split(/[?#]/)[0], "preserve the original URL field");
+    }
+});
+
+test("assembler manual fixes only standalone image URLs, even before emulator initialization", () =>
+{
+    const source = fs.readFileSync(path.join(__dirname, "../index.html"), "utf8");
+    const start = source.indexOf("            function ASM_loadManualPane()");
+    const end = source.indexOf("            function ASM_registerPopupRules()", start);
+    assert.ok(start >= 0 && end > start, "assembler manual loader must exist");
+
+    const makeLoader = new Function("ASM_el", "ASM_manualDocHTML", "oCOM", "document",
+        source.slice(start, end) + "\nreturn ASM_loadManualPane;");
+
+    const docs = {
+        ASSEMBLER: '<img src="res/MOS_6502AD_300.png"><a href="res/guide.html">Guide</a>',
+        "6502": "<img alt='interrupts' src='res/mcs6502-interrupt-ops_340.png'>"
+            + '<img src="res/mcs6502-jsr-rts-ops_340.png">'
+            + '<img src="https://example.org/remote.png">'
+    };
+
+    function render(address)
+    {
+        const manual = {innerHTML:"", textContent:""};
+        const oCOM = {URL:appURLParser()};
+        const document = {location:{toString:() => address}};
+        const loader = makeLoader(
+            id => id === "ASM_manual" ? manual : null,
+            key => docs[key] || "",
+            oCOM, document);
+        loader();
+        return {html:manual.innerHTML, filename:oCOM.URL.name};
+    }
+
+    const normal = render("file:///project/index.html");
+    assert.equal(normal.filename, "index.html");
+    assert.match(normal.html, /src="res\/MOS_6502AD_300\.png"/);
+    assert.match(normal.html, /src='res\/mcs6502-interrupt-ops_340\.png'/);
+
+    const standalone = render("file:///project/dist/RetroAppleJS.html?sys=A2JP#tab2");
+    assert.equal(standalone.filename, "RetroAppleJS.html");
+    assert.match(standalone.html, /src="\.\.\/res\/MOS_6502AD_300\.png"/);
+    assert.match(standalone.html, /src='\.\.\/res\/mcs6502-interrupt-ops_340\.png'/);
+    assert.match(standalone.html, /src="\.\.\/res\/mcs6502-jsr-rts-ops_340\.png"/);
+    assert.match(standalone.html, /href="res\/guide\.html"/, "do not rewrite links");
+    assert.match(standalone.html, /src="https:\/\/example\.org\/remote\.png"/, "do not rewrite remote images");
+    assert.doesNotMatch(standalone.html, /src=["']res\/(?:MOS_|mcs6502)/);
+
+    const hosted = render("https://example.org/RetroAppleJS.html");
+    assert.match(hosted.html, /src="\.\.\/res\/MOS_6502AD_300\.png"/);
+}
