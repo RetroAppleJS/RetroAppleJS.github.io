@@ -46,10 +46,10 @@ function fixture(model="A2P")
         add(id){elements[id]=make(id);elements[id].keycap=true;return elements[id];}
     };
 }
-test("reference legends map 41 keys, 77 front-face glyphs",()=>{
+test("reference legends map 42 keys, 78 front-face glyphs",()=>{
     const map=fixture("A2JP").ctx.A2JP_KEYCAP_LEGENDS;
-    assert.equal(Object.keys(map).length,41);
-    assert.equal(Object.values(map).flat().filter(v=>v!==null).length,77);
+    assert.equal(Object.keys(map).length,42);
+    assert.equal(Object.values(map).flat().filter(v=>v!==null).length,78);
     const check=(key,expected)=>assert.deepEqual(Array.from(map[key]),expected);
     check("34D8",["｡","/","ア"]);
     check("C598",["イ","/","「"]);
@@ -60,7 +60,7 @@ test("reference legends map 41 keys, 77 front-face glyphs",()=>{
     check("E4B9",["゛","/","ホ"]);
     check("757F",["ン","/","ヘ"]);
     check("9C51",["ソ","/","ッ"]);
-    assert.equal(map["54BF"],undefined);
+    check("54BF",[null,"ー",null]);
     assert.equal(map["E555"],undefined);
 });
 test("every key in the Katakana reference exists in the unchanged virtual key HTML",()=>{
@@ -76,7 +76,7 @@ test("every key in the Katakana reference exists in the unchanged virtual key HT
 test("decorations use the original key IDs, positions, and are idempotent",()=>{
     const f=fixture("A2JP");
     f.add("34D8");f.add("BC7E");f.add("757F");f.add("54BF");
-    assert.equal(f.keyboard.installKatakanaKeycaps(f.elements.glyphScroller),7);
+    assert.equal(f.keyboard.installKatakanaKeycaps(f.elements.glyphScroller),8);
     assert.equal(f.keyboard.installKatakanaKeycaps(f.elements.glyphScroller),0);
     const x=f.elements["34D8"].children;
     assert.deepEqual(x.map(e=>e.className.match(/keylabel(?:9|10|11)/)[0]),
@@ -84,7 +84,8 @@ test("decorations use the original key IDs, positions, and are idempotent",()=>{
     assert.deepEqual(x.map(e=>e.children[0].textContent),["｡","/","ア"]);
     assert.deepEqual(f.elements["757F"].children.map(e=>e.children[0].textContent),
         ["ン","/","ヘ"]);
-    assert.equal(f.elements["54BF"].children.length,0);
+    assert.deepEqual(f.elements["54BF"].children.map(e=>e.className.match(/keylabel(?:9|10|11)/)[0]),["keylabel10"]);
+    assert.deepEqual(f.elements["54BF"].children.map(e=>e.children[0].textContent),["ー"]);
 });
 test("Kana legends cannot change original click hash or virtual key mapping",()=>{
     const f=fixture("A2JP");
