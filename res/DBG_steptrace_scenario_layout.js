@@ -39,8 +39,12 @@ function normalizeTraceWidth(gap)
   var dbg=E('cpuDbg_popup');
   if(!dbg||!dbg.getBoundingClientRect)return 0;
   var delta=Math.max(0,8-gap);
-  if(dbg._stepTraceScenarioBaseWidth==null)
-    dbg._stepTraceScenarioBaseWidth=dbg.getBoundingClientRect().width;
+  // Do not cache a zero width while SETTINGS/STEP TRACE are hidden at
+  // startup; the companion layout may be measured before Debugger opens.
+  var measured=dbg.getBoundingClientRect().width;
+  if(dbg._stepTraceScenarioBaseWidth==null ||
+     (dbg._stepTraceScenarioBaseWidth===0 && measured>0))
+    dbg._stepTraceScenarioBaseWidth=measured;
   if(dbg._stepTraceScenarioBaseWidth>0)
   {
     dbg.style.boxSizing='border-box';
