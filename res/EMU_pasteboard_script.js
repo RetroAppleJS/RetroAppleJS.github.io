@@ -13,6 +13,8 @@
     var DEFAULT_SCRIPT = [
         "// PASTEBOARD SCRIPT — Ctrl/Cmd+Enter to run",
         "// Commands are async: always await device operations.",
+        "// Optional: await apple.script.hide();  // Reveal the Apple II screen",
+        "// Optional: await apple.script.show();  // Restore the IDE",
         "console.log('Current screen:');",
         "console.log(await apple.text.capture());",
         "console.log(await apple.memory.dump(0x0400, 64));",
@@ -115,6 +117,8 @@
             return true;
         case "emulator.pause": return setPause(true);
         case "emulator.resume": return setPause(false);
+        case "script.hide": return close();
+        case "script.show": return open();
         default: throw new Error("Unknown pasteboard script operation: " + method);
         }
     }
@@ -319,31 +323,19 @@
         return p;
     }
     function position() {
-        var p = el(POPUP), tools = el("tab1.2");
-        if(!p || p.hidden || !tools) return false;
-        var reference = el("DBG_steptraceScenarioPopup");
-        var rect = tools.querySelector(".toolbox");
-        var box = rect && rect.getBoundingClientRect();
-        if(!box) return false;
-        var gap = 4, width = Math.min(460, g.innerWidth - gap * 2);
-        var sx = g.pageXOffset || 0, sy = g.pageYOffset || 0;
-        var left = box.right + gap + sx, top = box.top + sy;
-        // If STEP TRACE SCENARIO was positioned earlier, reuse its exact
-        // anchor. Otherwise apply the same right/left responsive fallback.
-        if(reference && reference.style.left && reference.style.top) {
-            left = parseFloat(reference.style.left);
-            top = parseFloat(reference.style.top);
-        } else if(g.innerWidth - box.right < 320) {
-            left = Math.max(gap + sx, box.left + sx - width - gap);
-        }
-        left = Math.max(gap + sx, Math.min(left, sx + g.innerWidth - width - gap));
-        p.style.width = Math.max(280, width) + "px";
-        p.style.left = Math.round(left) + "px";
-        p.style.top = Math.round(top) + "px";
-        return true;
+        var popup = el(POPUP);
+        var layout = g.EMU_COMPANION_LAYOUT;
+        // STEP TRACE SCENARIO provides the authoritative companion geometry.
+        // Never anchor to the pasteboard toolbox or depend on the scenario
+        // popup having been opened previously.
+        return !!(popup && layout && typeof layout.position === "function" &&
+            layout.position(popup));
     }
     function open() {
         var p = makePopup();
+        // The editor is a document-positioned companion, not an overlay
+        // anchored inside the monitor or pasteboard toolbox.
+        p.style.position = "absolute";
         if(g.oCOM && g.oCOM.POPUP && g.oCOM.POPUP.on)
             g.oCOM.POPUP.on(POPUP);
         else p.hidden = false;

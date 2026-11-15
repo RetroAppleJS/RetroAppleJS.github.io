@@ -108,6 +108,10 @@
             },
             script:Object.freeze({
                 running:function() { return active; },
+                // Hide/show only the editor overlay. The Worker and guest CPU
+                // continue running; the toolbar Script button can reopen it.
+                hide:function() { return host("script.hide"); },
+                show:function() { return host("script.show"); },
                 stop:function() {
                     active = false;
                     scope.postMessage({type:"selfStop"});

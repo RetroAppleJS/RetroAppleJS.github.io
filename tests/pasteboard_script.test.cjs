@@ -132,3 +132,170 @@ test("index loads the IDE and exposes Script instead of pasteboard Clear", () =>
     assert.match(html, /res\/EMU_pasteboard_script\.css/);
     assert.doesNotMatch(html, /value="Clear"\s+onclick="javascript:onEMUBoardClear\(\)"/);
 });
+
+
+test("Pasteboard and STEP TRACE use identical popup placement when Settings is hidden", () => {
+    const layoutSource = fs.readFileSync(
+        path.join(ROOT, "res/DBG_steptrace_scenario_layout.js"), "utf8"
+    );
+    function rect(left, top, width, height) {
+        return {left, top, width, height, right:left+width, bottom:top+height};
+    }
+    const settings = {hidden:true, style:{visibility:""}, children:[]};
+    const systemBox = {
+        id:"systemToolbox",
+        classList:{contains(name) { return name === "toolbox"; }},
+        getBoundingClientRect() { return settings.hidden ? rect(0,0,0,0) : rect(0,64,144,100); }
+    };
+    const slotsBox = {
+        id:"slotsToolbox",
+        classList:{contains(name) { return name === "toolbox"; }},
+        getBoundingClientRect() { return settings.hidden ? rect(0,0,0,0) : rect(148,64,488,100); }
+    };
+    settings.children.push(systemBox, slotsBox);
+    const dbg = {
+        hidden:true, style:{},
+        getBoundingClientRect() {
+            if(settings.hidden || this.hidden) return rect(0,0,0,0);
+            return rect(640 + Number.parseFloat(this.style.left || "0"), 64,
+                Number.parseFloat(this.style.width || "260"), 300);
+        }
+    };
+    const elements = {"tab1.1":settings, "cpuDbg_popup":dbg};
+    const globalObject = {
+        innerWidth:1400, pageXOffset:0, pageYOffset:0,
+        document:{
+            getElementById(id) { return elements[id] || null; },
+            documentElement:{clientWidth:1400}
+        },
+        addEventListener() {}
+    };
+    vm.runInNewContext(layoutSource, {window:globalObject}, {
+        filename:"DBG_steptrace_scenario_layout.js"
+    });
+    const layout = globalObject.EMU_COMPANION_LAYOUT;
+    assert.ok(layout);
+    const pasteboard = {hidden:false, style:{}};
+    assert.equal(layout.position(pasteboard), true);
+    assert.equal(settings.hidden, true);
+    assert.equal(dbg.hidden, true);
+    assert.equal(settings.style.visibility, "");
+    assert.equal(pasteboard.style.top, "64px");
+    const pasteboardCoordinates = {
+        left:pasteboard.style.left,
+        top:pasteboard.style.top,
+        width:pasteboard.style.width
+    };
+
+    settings.hidden = false;
+    dbg.hidden = false;
+    const steptrace = {hidden:false, style:{}};
+    assert.equal(layout.position(steptrace), true);
+    assert.deepEqual({
+        left:steptrace.style.left,
+        top:steptrace.style.top,
+        width:steptrace.style.width
+    }, pasteboardCoordinates);
+
+    // Narrow viewports must also select the same left-hand fallback.
+    globalObject.innerWidth = 760;
+    const smallPasteboard = {hidden:false, style:{}};
+    const smallSteptrace = {hidden:false, style:{}};
+    settings.hidden = true;
+    dbg.hidden = true;
+    assert.equal(layout.position(smallPasteboard), true);
+    settings.hidden = false;
+    dbg.hidden = false;
+    assert.equal(layout.position(smallSteptrace), true);
+    assert.equal(smallPasteboard.style.left, smallSteptrace.style.left);
+    assert.equal(smallPasteboard.style.width, smallSteptrace.style.width);
+});
+
+test("Pasteboard uses shared STEP TRACE layout rather than Tools anchor", () => {
+    assert.match(hostSource, /layout\.position\(popup\)/);
+    const begin = hostSource.indexOf("function position()");
+    const end = hostSource.indexOf("function open()", begin);
+    assert.ok(begin > 0 && end > begin);
+    assert.doesNotMatch(hostSource.slice(begin, end), /tab1\.2|DBG_steptraceScenarioPopup/);
+});
+
+test("Worker scripts can hide and restore their IDE without interrupting execution", async () => {
+    const observed = [];
+    const {messages,calls} = await mockWorker(
+        [
+            "await apple.script.hide();",
+            "await apple.wait(2);",
+            "console.log('Guest screen visible');",
+            "await apple.script.show();",
+            "console.log('Macro completed');"
+        ].join("\n"),
+        method => {
+            observed.push(method);
+            return true;
+        }
+    );
+    assert.deepEqual(observed, ["script.hide", "script.show"]);
+    assert.deepEqual(calls.map(c => c.method), ["script.hide", "script.show"]);
+    assert.equal(messages.at(-1).type, "done");
+    assert.ok(messages.some(m => m.type === "console" && m.text === "Guest screen visible"));
+    assert.ok(messages.some(m => m.type === "console" && m.text === "Macro completed"));
+});
+
+test("Script hide/show only changes popup state and uses absolute companion geometry", () => {
+    const popup = {hidden:false, style:{position:"absolute"}, id:"EMU_pasteboardScriptPopup"};
+    const attrs = {};
+    const button = {setAttribute(key,val) { attrs[key] = val; }};
+    const elements = {
+        EMU_pasteboardScriptPopup:popup,
+        EMU_pasteboardScriptToggle:button
+    };
+    const popupController = {
+        states:{EMU_pasteboardScriptPopup:false},
+        on(id) { assert.equal(id,popup.id); popup.hidden=false; this.states[id]=false; },
+        off(id) { assert.equal(id,popup.id); popup.hidden=true; this.states[id]=true; }
+    };
+    let positions=0;
+    const globalObject = {
+        document:{getElementById(id) { return elements[id] || null; }},
+        oCOM:{POPUP:popupController},
+        EMU_COMPANION_LAYOUT:{
+            position(target) {
+                assert.equal(target,popup);
+                positions++;
+                target.style.left="812px";
+                target.style.top="64px";
+                target.style.width="460px";
+                return true;
+            }
+        }
+    };
+    vm.runInNewContext(hostSource, {window:globalObject}, {
+        filename:"EMU_pasteboard_script.js"
+    });
+    const api = globalObject.EMU_PASTEBOARD_SCRIPT;
+    assert.equal(api.invoke("script.hide"),true);
+    assert.equal(popup.hidden,true);
+    assert.equal(attrs["aria-pressed"],"false");
+    // A Script-button press must restore a script-hidden IDE.
+    assert.equal(api.ui.toggle(),true);
+    assert.equal(popup.hidden,false);
+    assert.equal(attrs["aria-pressed"],"true");
+    assert.equal(positions,1);
+    assert.equal(popup.style.position,"absolute");
+    assert.equal(popup.style.left,"812px");
+    assert.equal(popup.style.top,"64px");
+    // Script APIs must be idempotent when the dialog is already in that state.
+    assert.equal(api.invoke("script.show"),true);
+    assert.equal(popup.hidden,false);
+    assert.equal(api.invoke("script.hide"),true);
+    assert.equal(popup.hidden,true);
+    assert.equal(api.invoke("script.show"),true);
+    assert.equal(popup.hidden,false);
+    assert.equal(positions,3);
+});
+
+test("Pasteboard companion must retain absolute document positioning", () => {
+    const css = fs.readFileSync(path.join(ROOT,"res/EMU_pasteboard_script.css"),"utf8");
+    assert.match(css,/\.EMU_pasteboardScriptPopup\s*\{[^}]*position:\s*absolute\s*!important/);
+    assert.match(hostSource,/p\.style\.position\s*=\s*"absolute"/);
+});

@@ -11,6 +11,11 @@ Apple II runtime through a small, named command bridge. There is no second
 6502 CPU scheduler, no synthetic host-keyboard events, and no duplicate disk
 or peripheral model.
 
+The editor is a **document-absolutely positioned companion**, not a fixed
+window or an overlay tied to the Apple II screen. Macros can temporarily hide
+it to let users watch the screen and show it again without interrupting
+execution.
+
 ## Getting started
 
 1. Select **Emulator > Tools > Script**.
@@ -18,7 +23,11 @@ or peripheral model.
 3. Watch the console for output, errors, and completion.
 4. Use **STOP** to terminate a running script, even if its JavaScript loop
    does not yield. Closing the popup does not terminate it.
-5. **Example** restores the starter script; **Clear** clears only the script
+5. Use `await apple.script.hide()` and `await apple.script.show()` to control
+   the popup during a running demonstration. The same **Script** toolbar
+   button can always reopen it while the macro runs. Hiding does not cancel
+   the Worker or pause the Apple II.
+6. **Example** restores the starter script; **Clear** clears only the script
    console, not the pasteboard's main textarea.
 
 The current script text is retained when the popup is hidden and reopened,
@@ -44,6 +53,8 @@ Every operation that reaches the emulator is asynchronous. Use `await`.
 | `await apple.resume()` | Resume emulator execution through the existing Pause control |
 | `apple.assert(boolean, message)` | Log PASS or throw on FAIL |
 | `apple.script.running()` | Whether this Worker script is active |
+| `await apple.script.hide()` | Hide the Script IDE/console without stopping the macro or guest CPU |
+| `await apple.script.show()` | Redisplay the Script IDE/console at its absolute companion position |
 | `apple.script.stop()` | Request self-termination of the Worker script |
 | `console.log/info/warn/error(...)` | Write to the script console |
 | `print(...)` | Alias of console logging |
@@ -83,6 +94,30 @@ console.log(bytes);
 console.log(await apple.memory.dump(0x0400, 64));
 apple.assert(bytes.length === 64, "text-page memory capture");
 ```
+
+### Example: hide the IDE while showing the Apple II screen
+
+```javascript
+// Show the emulator screen unobstructed while the demonstration runs.
+await apple.script.hide();
+
+try {
+  await apple.text.type("HOME\r");
+  await apple.text.type('PRINT "HELLO"\r');
+  await apple.text.waitFor("HELLO", {timeout:10000});
+  await apple.wait(2000);
+} finally {
+  // This runs on normal completion or script errors, but not after STOP
+  // forcibly terminates the Worker. The Script toolbar button is always
+  // available to restore the window manually.
+  await apple.script.show();
+}
+```
+
+`hide()` and `show()` affect only the Script popup; they do not change
+the main pasteboard textarea, emulator run state, or script execution. The
+popup remains document-absolutely positioned using the STEP TRACE SCENARIO
+companion layout, and restoring it does not focus the editor or inject keys.
 
 ## Safety, timing, and cancellation
 
