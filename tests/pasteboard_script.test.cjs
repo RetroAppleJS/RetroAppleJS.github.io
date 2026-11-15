@@ -72,7 +72,7 @@ test("pasteboard host adapter uses PASTEBO and side-effect-free memory", () => {
     assert.equal(api.invoke("text.type", {text:"10 PRINT 1\r"}), true);
     assert.equal(api.invoke("text.capture"), "APPLE II\n]");
     assert.deepEqual(Array.from(api.invoke("memory.capture", {start:0x400,length:3})), [0,1,2]);
-    assert.match(api.invoke("memory.dump", {start:0x400,length:4}), /\\$0400  00 01 02 03/);
+    assert.match(api.invoke("memory.dump", {start:0x400,length:4}), /\$0400  00 01 02 03/);
     assert.deepEqual(calls.slice(0,3), [
         ["text","10 PRINT 1\r"], ["memory",0x400,0x402], ["memory",0x400,0x403]
     ]);
@@ -92,7 +92,7 @@ test("host adapter reuses reset/reboot and pause/resume controls", () => {
 
 test("Worker executes asynchronous text, memory, assertions and timers", async () => {
     const {messages,calls} = await mockWorker(
-        String.raw`await apple.text.type("CATALOG\\r");
+        String.raw`await apple.text.type("CATALOG\r");
         const screen = await apple.text.waitFor("READY", {timeout:200,interval:50});
         const bytes = await apple.memory.capture(0x400, 2);
         apple.assert(screen === "READY" && bytes[1] === 2, "capture");
@@ -128,7 +128,7 @@ test("Worker rejects unsupported or invalid timing arguments", async () => {
 test("index loads the IDE and exposes Script instead of pasteboard Clear", () => {
     const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
     assert.match(html, /id="EMU_pasteboardScriptToggle"/);
-    assert.match(html, /res\\/EMU_pasteboard_script\\.js/);
-    assert.match(html, /res\\/EMU_pasteboard_script\\.css/);
-    assert.doesNotMatch(html, /value="Clear"\\s+onclick="javascript:onEMUBoardClear\\(\\)"/);
+    assert.match(html, /res\/EMU_pasteboard_script\.js/);
+    assert.match(html, /res\/EMU_pasteboard_script\.css/);
+    assert.doesNotMatch(html, /value="Clear"\s+onclick="javascript:onEMUBoardClear\(\)"/);
 });
