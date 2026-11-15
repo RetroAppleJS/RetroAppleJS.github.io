@@ -398,9 +398,23 @@ function EMU_mountDiskImage(arr_buffer,slotN,deviceID,filepath,unit)
     if(diskBytes.length===143360)
     {
         disk2.setDiskData(diskBytes,deviceID,filepath);
-        return true;
     }
-    return apple2plus.loadDisk(diskBytes,deviceID,slotN)!==false;
+    else
+    {
+        if(apple2plus.loadDisk(diskBytes,deviceID,slotN)===false)
+            return false;
+        if(typeof(disk2.setDiskName)==="function")
+            disk2.setDiskName(deviceID,filepath);
+    }
+
+    // The file picker cannot be assigned a remote URL for security reasons.
+    // Display the mounted image name next to a functional Choose File label.
+    // The name is also retained in diskName for subsequent toolbox re-renders.
+    if(typeof(disk2.setDriveCatalogFile)==="function")
+        disk2.setDriveCatalogFile(deviceID,
+            typeof(disk2.getDiskName)==="function"
+                ? disk2.getDiskName(deviceID) : filepath);
+    return true;
 }
 
 /*
@@ -694,6 +708,9 @@ function EMU_init()
                             // async call to load disk into buffer mem and restart if boot
                             try{
                                 _o["D1_buffer"] = new Uint8Array(arraybuffer);
+                                // Preserve the URL pathname for the Drive 1
+                                // filename label after its asynchronous mount.
+                                _o["D1_filename"] = dir_filename;
 
                                     const deflator = new pako.Deflate( { level: 9} );
                                     deflator.push(new Uint8Array(arraybuffer), true);
@@ -746,8 +763,10 @@ function EMU_init()
                  _o.D1_buffer
                 ,EMU_defaultDiskIISlot()
                 ,"D1"
+                ,_o.D1_filename
             );
             delete _o.D1_buffer;
+            delete _o.D1_filename;
             //oCOM.POPUP.html("loadDisk success");
         }
     }
@@ -764,8 +783,10 @@ function EMU_init()
                      _o.D1_buffer
                     ,EMU_defaultDiskIISlot()
                     ,"D1"
+                    ,_o.D1_filename
                 );
                 delete _o.D1_buffer;
+                delete _o.D1_filename;
             }
             catch(e)
             {
