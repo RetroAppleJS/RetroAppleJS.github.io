@@ -190,7 +190,9 @@ display.
 
 ## ProDOS 8 BASIC.SYSTEM demonstration
 
-Open PASTEBOARD SCRIPT, click **ProDOS Demo**, then **RUN**. The example:
+Open PASTEBOARD SCRIPT, click **ProDOS Demo**, then **RUN**. The exact
+same macro is available as [`docs/examples/PASTEBOARD_ProDOS8_Offline_Boot.js`](examples/PASTEBOARD_ProDOS8_Offline_Boot.js)
+for inspection and copying into the editor. The example:
 
 1. Hides the Script companion so the Apple II display is unobstructed.
 2. Mounts embedded \`disks/ProDOS 8.dsk\` in S6,D1 and cold-boots.
