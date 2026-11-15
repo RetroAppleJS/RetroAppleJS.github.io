@@ -140,6 +140,39 @@ test("D1_DIR asynchronous callback preserves filename and disk bytes",()=>{
     assert.equal(restarted,1);
 });
 
+test("D1_DIR displays decoded URL filenames without changing the fetch URL",()=>{
+    const handler=methodsBetween(main,'case "D1_DIR":',"            break;");
+    for(const [encoded,decoded] of [
+        ["ProDOS%208.dsk","ProDOS 8.dsk"],
+        ["Japanese%20%26%20DOS.dsk","Japanese & DOS.dsk"],
+        ["ProDOS%2520.dsk","ProDOS%20.dsk"],
+        ["broken%ZZ.dsk","broken%ZZ.dsk"],
+    ])
+    {
+        const output={};
+        let seenURL="";
+        const oCOM={
+            URL:{uri:{D1_DIR:encoded}},
+            GetHTTP(url,type,callback){
+                seenURL=url;
+                assert.equal(type,"arraybuffer");
+                callback.call({status:200,response:new ArrayBuffer(143360)});
+            },
+            POPUP:{set_class(){}}
+        };
+        const pako={Deflate:class {
+            constructor(){this.result=new Uint8Array([1]);}
+            push(){}
+        }};
+        new Function("oCOM","_o","pako","btoa","document","apple2plus",
+            '"use strict"; switch("D1_DIR"){\\n'+handler+'break;\\n}')(oCOM,output,pako,()=>"",
+            {getElementById(){return {};}},{});
+        assert.equal(output.D1_filename,decoded);
+        assert.equal(output.D1_buffer.byteLength,143360);
+        assert.equal(seenURL,"https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/disks/"+encoded);
+    }
+});
+
 test("both startup paths forward D1_filename into loadDisk_fromBuffer",()=>{
     const calls=main.match(/loadDisk_fromBuffer\(\s*_o\.D1_buffer[\s\S]*?_o\.D1_filename\s*\)/g)||[];
     assert.equal(calls.length,2,"legacy and onrestart paths must both retain the name");
