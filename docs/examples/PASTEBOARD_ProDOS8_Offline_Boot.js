@@ -2,6 +2,7 @@
 // Requires an Apple II configuration with DISKII in physical S6.
 await apple.script.hide();
 try {
+  await apple.cpu.setSpeed(400); // 4× CPU throttle for boot
   console.log('Mounting embedded ProDOS 8 image in S6,D1...');
   console.log(await apple.disk.loadOffline({
     slot: 6, drive: 1, path: 'disks/ProDOS 8.dsk'
@@ -20,5 +21,6 @@ try {
   await apple.text.waitForReady({timeout:15000});
   console.log('BASIC.SYSTEM demonstration complete.');
 } finally {
+  await apple.cpu.setSpeed(100); // restore normal CPU speed
   await apple.script.show();
 }
