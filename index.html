@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="res/EMU_PORT_SCRIPT.css">
     <link rel="stylesheet" href="res/DBG_testbench.css">
     <link rel="stylesheet" href="res/DBG_steptrace_scenario_layout.css">
+    <link rel="stylesheet" href="res/EMU_pasteboard_script.css">
     <script type="text/javascript" src="res/COM_MAIN.js"></script>
     <script type="text/javascript" src="res/COM_A2P_LAYOUT.js"></script>
     <script type="text/javascript" src="res/COM_LAYOUT_CONFIG.js"></script>
@@ -21,6 +22,7 @@
     <script type="text/javascript" src="res/DBG_testbench.js"></script>
     <script type="text/javascript" src="res/DBG_steptrace_scenario.js"></script>
     <script type="text/javascript" src="res/DBG_steptrace_scenario_layout.js"></script>
+    <script type="text/javascript" src="res/EMU_pasteboard_script.js"></script>
     <script type="text/javascript" src="res/COM_CONFIG.js"></script>
     <script type="text/javascript" src="res/EMU_system_models.js"></script>
     <script type="text/javascript" src="res/EMU_system_config_popup.js"></script>
@@ -257,7 +259,7 @@
                   <input type="button"  value="TxtCap" id=TxtCapture onclick="javascript:onTxtCapture(this)">
                   <input type="button"  value="MemCap" id=MemCapture onclick="javascript:onMemCapture('CapF','CapT')">
                   <input type="text"    value="$0000" size=5 id="CapF" onkeyup="onCaptureAddr(this)"><font color="#FFFFF">►</font><input type="text" value="$FFFF" size=5 id="CapT" onkeyup="onCaptureAddr(this)">
-                  <input type="button"  value="Clear"              onclick="javascript:onEMUBoardClear()">
+                  <input type="button"  value="Script" id="EMU_pasteboardScriptToggle" title="Open Pasteboard Script IDE" aria-pressed="false" onclick="javascript:EMU_PASTEBOARD_SCRIPT.ui.toggle()">
                   <input type="button"  value="X"                  onclick="javascript:oCOM.POPUP.off('tab1.2')">
                 </form>
                 </div>
