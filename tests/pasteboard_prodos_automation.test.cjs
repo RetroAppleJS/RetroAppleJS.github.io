@@ -197,3 +197,15 @@ test("built-in ProDOS demonstration types two RIGHT arrows, RETURN, then HELLO W
     assert.ok(events.filter(x=>x==="ready").length>=2);
     assert.equal(events.at(-1),"show");
 });
+
+
+test("checked-in ProDOS test script matches the IDE ProDOS Demo", () => {
+    const match=ui.match(/var PRODOS_BOOT_SCRIPT = (\[[\s\S]*?\]\.join\("\\n"\));/);
+    assert.ok(match);
+    const bundled=vm.runInNewContext(match[1]);
+    const pathToScript=path.join(ROOT,"docs/examples/PASTEBOARD_ProDOS8_Offline_Boot.js");
+    const standalone=fs.readFileSync(pathToScript,"utf8");
+    assert.equal(standalone.trimEnd(),bundled);
+    const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
+    assert.doesNotThrow(()=>new AsyncFunction("apple","console",standalone));
+});
