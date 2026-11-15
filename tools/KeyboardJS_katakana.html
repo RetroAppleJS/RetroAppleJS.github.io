@@ -16,12 +16,69 @@ var c_body =
 +"2A==";
 const inflator = new pako.Inflate();
 inflator.push( Uint8Array.from(window.atob(c_body),(v)=>v.charCodeAt(0)));
+// Match the live A2JP keyboard's front-face legend convention:
+// front-left = unshifted, front-right = Shift. The original compressed
+// prototype artwork has eight exceptions. Fix the decoded HTML as well as
+// the HTML exported to the textarea, without altering keycap event wiring.
+function correctKatakanaKeycaps(markup)
+{
+    const root=document.createElement("div");
+    root.innerHTML=markup;
+    const pairs={
+        "1":["ア","｡"],
+        "P":["ミ","タ"],
+        ";":["サ","゜"],
+        "N":["ホ","゛"],
+        "M":["ヘ","ン"],
+        ",":["ャ","シ"],
+        ".":["ョ","セ"],
+        "/":["ッ","ソ"]
+    };
+    let corrected=0;
+    let prolonged=0;
+    for(const cap of root.querySelectorAll(".keycap"))
+    {
+        const labels=cap.querySelector(".keylabels");
+        const key=labels && labels.querySelector(".keylabel7");
+        if(!key) continue;
+        const name=key.textContent.trim();
+        if(Object.prototype.hasOwnProperty.call(pairs,name))
+        {
+            const left=labels.querySelector(".keylabel9 > div");
+            const right=labels.querySelector(".keylabel11 > div");
+            if(!left || !right)
+                throw new Error("Missing Katakana pair on "+name);
+            left.textContent=pairs[name][0];
+            right.textContent=pairs[name][1];
+            corrected++;
+        }
+        if(name==="0")
+        {
+            if(!labels.querySelector(".keylabel10"))
+            {
+                const center=document.createElement("div");
+                center.className="keylabel keylabel10 textsize6";
+                center.style.cssText="color:#ffffff; width:36px; height:36px;";
+                const text=document.createElement("div");
+                text.style.cssText="width:36px; max-width:36px; height:36px;";
+                text.textContent="ー";
+                center.appendChild(text);
+                labels.appendChild(center);
+            }
+            prolonged++;
+        }
+    }
+    if(corrected!==8 || prolonged!==1)
+        throw new Error("Unexpected j-Plus prototype keycap count: "+corrected+"/"+prolonged);
+    return root.innerHTML;
+}
+
 function doit()
 {
 var s = "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n"
        //+"<style>\n"+custom_css+"\n</style>\n"
        +"<div id=\"glyphScroller\">"
-       +new TextDecoder().decode(inflator.result)
+       +correctKatakanaKeycaps(new TextDecoder().decode(inflator.result))
        +"</div>"
 document.getElementById("body").innerHTML = s;
 document.getElementById("code").value = s;
