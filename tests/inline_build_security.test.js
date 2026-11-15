@@ -63,3 +63,27 @@ test("exclusions do not read missing assets and do not skip adjacent includes", 
     assert.ok(output.includes("var two = 2;"));
     assert.ok(!output.includes('src="'));
 });
+
+test("step-trace scenario stylesheet is a static app include and bundled inline", t =>
+{
+    const root = path.resolve(__dirname, "..");
+    const cssFile = "res/DBG_steptrace_scenario_layout.css";
+    const scriptFile = "res/DBG_steptrace_scenario_layout.js";
+    const index = fs.readFileSync(path.join(root, "index.html"), "utf8");
+    const css = fs.readFileSync(path.join(root, cssFile), "utf8");
+    const js = fs.readFileSync(path.join(root, scriptFile), "utf8");
+    const cssInclude = '<link rel="stylesheet" href="' + cssFile + '">';
+    const scriptInclude = '<script type="text/javascript" src="' + scriptFile + '"></script>';
+
+    assert.equal(index.split(cssInclude).length, 2, "the CSS must be included exactly once in index.html");
+    assert.equal(index.split(scriptInclude).length, 2, "the JavaScript must be included exactly once in index.html");
+    assert.doesNotMatch(js, /\bloadStyle\s*\(|\bcreateElement\s*\(\s*['"]link['"]\s*\)/,
+        "built-in CSS must not be injected by JavaScript");
+
+    const output = build(t, cssInclude + "\n" + scriptInclude,
+        { [cssFile]: css, [scriptFile]: js });
+    assert.ok(output.includes("<style>\n" + css + "\n</style>"), "the standalone must inline the stylesheet");
+    assert.ok(output.includes(js), "the standalone must inline the debugger layout script");
+    assert.ok(!output.includes(cssInclude), "the standalone must not fetch the CSS separately");
+    assert.ok(!output.includes(scriptInclude), "the standalone must not fetch the layout script separately");
+});
