@@ -726,7 +726,10 @@ function EMU_init()
                                 _o["D1_buffer"] = new Uint8Array(arraybuffer);
                                 // Preserve the URL pathname for the Drive 1
                                 // filename label after its asynchronous mount.
-                                _o["D1_filename"] = dir_filename;
+                                // Decode URL escapes for the UI only; retain the original
+                                // encoded pathname for the HTTP request.
+                                try { _o["D1_filename"] = decodeURIComponent(dir_filename); }
+                                catch(e) { _o["D1_filename"] = dir_filename; }
 
                                     const deflator = new pako.Deflate( { level: 9} );
                                     deflator.push(new Uint8Array(arraybuffer), true);
