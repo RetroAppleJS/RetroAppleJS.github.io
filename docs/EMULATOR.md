@@ -17,7 +17,7 @@ __Pasteboard__
 * **Paste** any text into the emulator. This function senses the keyboard strobe address which reveals exactly when the Apple II hardware is ready to take a character from the keyboard, assuring the fastest data transfer rate.
 * **txtCap** to capture text screen #1 in the pasteboard.  This is actually a memory dump between $400-$5FF, but bytes are reordered logically to overcome the Apple II's chip saving design.
 * **MemCap** to bulk capture any byte stream between two addresses.
-* **Clear** as the text area can be used in both directions (import/export), it is important to clear it quickly.
+* **Script** opens a JavaScript macro editor and console for automated text entry, text/memory capture, timers, and emulator control. See [Pasteboard Script](PASTEBOARD_SCRIPT.md).
 
 __CPU & Sound enablement__
 <br>
