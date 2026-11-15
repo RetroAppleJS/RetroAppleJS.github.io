@@ -1,0 +1,30 @@
+name: Pasteboard Script
+on:
+  push:
+    paths:
+      - 'index.html'
+      - 'res/EMU_pasteboard_script*'
+      - 'tests/pasteboard_script.test.cjs'
+      - '.github/workflows/pasteboard-script.yml'
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'res/EMU_pasteboard_script*'
+      - 'tests/pasteboard_script.test.cjs'
+      - '.github/workflows/pasteboard-script.yml'
+permissions:
+  contents: read
+jobs:
+  script-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check Worker and UI adapter
+        run: |
+          node --check res/EMU_pasteboard_script.js
+          node --check res/EMU_pasteboard_script_worker.js
+      - name: Pasteboard Script unit tests
+        run: node --test tests/pasteboard_script.test.cjs
