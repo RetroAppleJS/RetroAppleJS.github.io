@@ -2517,6 +2517,7 @@ function prettyJsonAllman(value, indent) {
   this.URL =
   {
     url:"",
+    name:"",
     uri:{},
     hash:"",
     merge: function (_uri1,_uri2)
@@ -2553,6 +2554,9 @@ function prettyJsonAllman(value, indent) {
       var _urlarr = _url?_url.split("?"):new Array("","");
       var _urlargs = _urlarr[1]?_urlarr[1].split("&"):new Array(_urlarr[0],"");
       this.url = _urlarr[0];
+      // Keep the original URL for existing callers and expose its filename separately.
+      // Query arguments and fragments have already been removed above.
+      this.name = this.url.substring(this.url.lastIndexOf("/") + 1);
   
       this.uri = {};
       for(var _i=0;_i<_urlargs.length;_i++)
