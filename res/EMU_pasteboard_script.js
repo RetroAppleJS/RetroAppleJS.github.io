@@ -22,6 +22,35 @@
         "// Optional: await apple.script.show(); // Restore the IDE"
     ].join("\n");
 
+    // Demonstrates the embedded catalog, genuine guest keyboard polling,
+    // menu navigation ($15 = Apple II right-arrow) and BASIC.SYSTEM startup.
+    var PRODOS_BOOT_SCRIPT = [
+        "// ProDOS 8 embedded-offline boot demonstration (DISKII S6,D1)",
+        "// Requires an Apple II configuration with DISKII in physical S6.",
+        "await apple.script.hide();",
+        "try {",
+        "  console.log('Mounting embedded ProDOS 8 image in S6,D1...');",
+        "  console.log(await apple.disk.loadOffline({",
+        "    slot: 6, drive: 1, path: 'disks/ProDOS 8.dsk'",
+        "  }));",
+        "  await apple.reboot();",
+        "  console.log('Waiting for boot menu keyboard polling...');",
+        "  await apple.text.waitForReady({timeout:60000,stableMs:300,minPolls:8});",
+        "  // Apple II right-arrow = $15 (CTRL-U); RETURN = $0D.",
+        "  await apple.text.type('\\x15\\x15\\r');",
+        "  await apple.text.waitForDrain({timeout:20000});",
+        "  console.log('Waiting for the BASIC.SYSTEM prompt...');",
+        "  await apple.text.waitFor(/(?:^|\\n)\\s*]/, {timeout:60000});",
+        "  await apple.text.waitForReady({timeout:20000,stableMs:250,minPolls:5});",
+        "  await apple.text.type('PRINT \"HELLO WORLD\"\\r');",
+        "  await apple.text.waitForDrain({timeout:20000});",
+        "  await apple.text.waitForReady({timeout:15000});",
+        "  console.log('BASIC.SYSTEM demonstration complete.');",
+        "} finally {",
+        "  await apple.script.show();",
+        "}"
+    ].join("\n");
+
     function el(id) { return D && D.getElementById(id); }
     function io() {
         var machine = g.apple2plus;
@@ -81,6 +110,43 @@
         });
         return true;
     }
+    function keyboardStatus()
+    {
+        var router = io();
+        var target = router.getTextInputTargetAddress
+            ? router.getTextInputTargetAddress()
+            : "0:A2KBD:text";
+        var endpoint = router.pipeResolve && router.pipeResolve("0:A2KBD:text");
+        var keyboard = endpoint && endpoint.device;
+        if(!keyboard || typeof keyboard.getInputState !== "function")
+            throw new Error("A2KBD input telemetry is unavailable.");
+
+        // The VideoTerm text port ultimately injects through A2KBD's
+        // keyboard latch, so the same CPU polling handshake applies.
+        var state = keyboard.getInputState();
+        return Object.assign({},state,{
+             target:target
+            ,available:!!state.active && state.queued===0 && !state.latched
+                && state.lastPollMs>0
+                && Date.now()-state.lastPollMs<1000
+        });
+    }
+
+    function offlineDiskController(slot)
+    {
+        if(!Number.isInteger(slot) || slot<1 || slot>7)
+            throw new RangeError("Disk II physical slot must be S1 through S7.");
+        var internalSlot = slot+1;
+        var controller = io().SLOT2obj(internalSlot);
+        if(!controller || controller.id?.PCODE !== "DISKII" ||
+           controller.getState?.().active===false)
+            throw new Error("No active DISKII peripheral in physical slot S"+slot+".");
+        if(typeof controller.getOfflineDisks!=="function" ||
+           typeof controller.getOfflineDiskBytes!=="function")
+            throw new Error("This DISKII controller does not expose embedded offline disks.");
+        return {controller:controller,internalSlot:internalSlot};
+    }
+
     function invoke(method, args) {
         args = args || {};
         var router, board, value;
@@ -94,6 +160,28 @@
                 throw new Error("PASTEBO rejected the text transfer.");
             if(typeof g.onBoardPasteRefresh === "function") g.onBoardPasteRefresh();
             return true;
+        case "text.status": return keyboardStatus();
+        case "disk.listOffline":
+            return offlineDiskController(args.slot).controller.getOfflineDisks();
+        case "disk.loadOffline":
+            var dest = offlineDiskController(args.slot);
+            var drive = args.drive;
+            var driveID = drive===1 || drive==="D1" ? "D1"
+                : drive===2 || drive==="D2" ? "D2" : null;
+            if(!driveID) throw new RangeError("DISKII drive must be 1/D1 or 2/D2.");
+            var path = String(args.path || "");
+            var known = dest.controller.getOfflineDisks().some(function(disk) {
+                return disk.path===path;
+            });
+            if(!known) throw new Error("Not an embedded offline DISKII image: "+path);
+            var bytes = dest.controller.getOfflineDiskBytes({path:path},null);
+            if(!bytes || bytes.length!==143360)
+                throw new Error("Embedded offline disk is unavailable or invalid: "+path);
+            if(typeof g.EMU_mountDiskImage!=="function")
+                throw new Error("The existing DISKII mount function is unavailable.");
+            if(g.EMU_mountDiskImage(bytes,dest.internalSlot,driveID,path)!==true)
+                throw new Error("Mounting offline image failed: "+path);
+            return {slot:args.slot,drive:driveID,path:path,bytes:bytes.length};
         case "text.capture":
             router = io();
             board = pasteboard(router);
@@ -255,6 +343,77 @@
                 throw new Error("Timed out waiting for screen text: " + String(pattern));
             }
         };
+        // $C000 polls only count when issued by the emulated CPU.
+        // Port acceptance is not the same as guest readiness: require several
+        // *fresh* polls in a sustained interval and an empty keyboard latch.
+        textAPI.status = function() {
+            return call("text.status");
+        };
+        textAPI.waitForReady = async function(options) {
+            options = options || {};
+            var timeout = integer(options.timeout === undefined ? 30000 : options.timeout,
+                "Ready timeout (ms)", 0, 180000);
+            var interval = integer(options.interval === undefined ? 75 : options.interval,
+                "Polling interval (ms)", 25, 60000);
+            var stableMs = integer(options.stableMs === undefined ? 250 : options.stableMs,
+                "Stable polling period (ms)", 0, 10000);
+            var minPolls = integer(options.minPolls === undefined ? 4 : options.minPolls,
+                "Minimum fresh polls", 1, 1000000);
+            var deadline=Date.now()+timeout, lastCount=null;
+            var first=null, lastProgress=null, accumulated=0;
+            while(true) {
+                var status = await textAPI.status(), now = Date.now();
+                var count = status.pollCount;
+                if(lastCount===null || count<lastCount) {
+                    lastCount=count;
+                    first=null;
+                    lastProgress=null;
+                    accumulated=0;
+                }
+                var fresh = Math.max(0,count-lastCount);
+                lastCount=count;
+                // The CPU runs in scheduler batches (often around 100ms).
+                // A poll snapshot may legitimately stay unchanged for one
+                // or two samples; do not reset the stability window merely
+                // because no new poll occurred in this particular sample.
+                var receptive = status.lastPollMs>0 &&
+                    now-status.lastPollMs<=Math.max(750,interval*4) &&
+                    status.active && status.queued===0 && !status.latched;
+                if(receptive) {
+                    if(fresh>0) {
+                        if(first===null) first=now;
+                        lastProgress=now;
+                        accumulated+=fresh;
+                    }
+                    // Distinct CPU-polling updates must span the stability
+                    // window. One short burst followed by silence is not a
+                    // reliable sign that the guest has finished booting.
+                    if(first!==null && lastProgress-first>=stableMs &&
+                       accumulated>=minPolls)
+                        return status;
+                } else {
+                    first=null; lastProgress=null; accumulated=0;
+                }
+                if(now>=deadline)throw new Error("Timed out waiting for guest keyboard polling.");
+                await wait(Math.min(interval,Math.max(0,deadline-now)));
+            }
+        };
+        textAPI.waitForDrain = async function(options) {
+            options = options || {};
+            var timeout = integer(options.timeout === undefined ? 20000 : options.timeout,
+                "Drain timeout (ms)", 0, 180000);
+            var interval = integer(options.interval === undefined ? 50 : options.interval,
+                "Polling interval (ms)", 25, 60000);
+            var deadline=Date.now()+timeout;
+            while(true) {
+                var status=await textAPI.status();
+                if(status.queued===0 && !status.latched) return status;
+                var now=Date.now();
+                if(now>=deadline) throw new Error("Timed out waiting for keyboard queue/strobe drain.");
+                await wait(Math.min(interval,Math.max(0,deadline-now)));
+            }
+        };
+
         var memoryAPI = {
             capture:function(start, length) {
                 return call("memory.capture", {start:start, length:length});
@@ -273,6 +432,17 @@
             wait:wait,
             text:Object.freeze(textAPI),
             memory:Object.freeze(memoryAPI),
+            disk:Object.freeze({
+                listOffline:function(slot) {
+                    return call("disk.listOffline", {slot:slot});
+                },
+                loadOffline:function(options) {
+                    options=options||{};
+                    return call("disk.loadOffline", {
+                        slot:options.slot, drive:options.drive, path:options.path
+                    });
+                }
+            }),
             reset:function() { return call("emulator.reset"); },
             reboot:function() { return call("emulator.reboot"); },
             pause:function() { return call("emulator.pause"); },
@@ -379,6 +549,7 @@
             '        <button class="appbut" type="button" id="EMU_pasteboardScriptRun">▶ RUN</button>',
             '        <button class="appbut" type="button" id="EMU_pasteboardScriptStop" disabled>■ STOP</button>',
             '        <button class="appbut" type="button" id="EMU_pasteboardScriptExample">Example</button>',
+            '        <button class="appbut" type="button" id="EMU_pasteboardScriptProDOS">ProDOS Demo</button>',
             '      </div>',
             '    </div>',
             '    <div class="DBG_testbenchSection">',
@@ -412,6 +583,11 @@
         el("EMU_pasteboardScriptExample").onclick = function() {
             if(currentRun) return;
             editor.value = DEFAULT_SCRIPT;
+            editor.focus();
+        };
+        el("EMU_pasteboardScriptProDOS").onclick = function() {
+            if(currentRun) return;
+            editor.value = PRODOS_BOOT_SCRIPT;
             editor.focus();
         };
         if(typeof g.TERMINAL === "function") {

@@ -4,13 +4,19 @@ on:
     paths:
       - 'index.html'
       - 'res/EMU_pasteboard_script*'
+      - 'res/EMU_DEVICE_keyboard.js'
+      - 'res/EMU_CARD_appledisk2.js'
       - 'tests/pasteboard_script.test.cjs'
+      - 'tests/pasteboard_prodos_automation.test.cjs'
       - '.github/workflows/pasteboard-script.yml'
   pull_request:
     paths:
       - 'index.html'
       - 'res/EMU_pasteboard_script*'
+      - 'res/EMU_DEVICE_keyboard.js'
+      - 'res/EMU_CARD_appledisk2.js'
       - 'tests/pasteboard_script.test.cjs'
+      - 'tests/pasteboard_prodos_automation.test.cjs'
       - '.github/workflows/pasteboard-script.yml'
 permissions:
   contents: read
@@ -25,5 +31,7 @@ jobs:
       - name: Syntax check page-context script runner
         run: |
           node --check res/EMU_pasteboard_script.js
+          node --check res/EMU_DEVICE_keyboard.js
+          node --check res/EMU_CARD_appledisk2.js
       - name: Pasteboard Script unit tests
-        run: node --test tests/pasteboard_script.test.cjs
+        run: node --test tests/pasteboard_script.test.cjs tests/pasteboard_prodos_automation.test.cjs

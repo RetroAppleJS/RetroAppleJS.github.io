@@ -95,6 +95,11 @@ function A2Pkeys()
     this._pipePos = 0;
     this._pipeShift = false;
     this._latchedShift = false;
+    // Observational counters for guest keyboard-poll/consumption detection.
+    // These are updated by real CPU I/O only, never by bRO (safe) reads.
+    this._guestPollCount = 0;
+    this._guestStrobeCount = 0;
+    this._guestLastPollMs = 0;
     var pipeIO = null;
 
     //this.hw = hw;
@@ -263,6 +268,9 @@ function A2Pkeys()
 
     this.reset = function()
     {
+        this._guestPollCount = 0;
+        this._guestStrobeCount = 0;
+        this._guestLastPollMs = 0;
         this.lastkey = 0x00;
         this._pipeQueue.length = 0;
         this._pipePos = 0;
@@ -387,6 +395,21 @@ function A2Pkeys()
     this.isLatchedShiftPressed = function() { return this._latchedShift===true; };
     this.hasLatchedKey = function() { return (this.lastkey & 0x80)!==0; };
 
+    // Used by pasteboard automation to distinguish "accepted by port" from
+    // "consumed by the emulated program". A queue can accept text during boot
+    // even when the guest has not started polling $C000 yet.
+    this.getInputState = function()
+    {
+        return {
+             "active":this.isActive()
+            ,"pollCount":this._guestPollCount
+            ,"strobeCount":this._guestStrobeCount
+            ,"lastPollMs":this._guestLastPollMs
+            ,"queued":Math.max(0,this._pipeQueue.length-this._pipePos)
+            ,"latched":this.hasLatchedKey()
+        };
+    };
+
     this.read = function(rel_addr,ctx)
     {
         return ctx && ctx.bRO===true
@@ -396,6 +419,9 @@ function A2Pkeys()
 
     this.polling = function(key)
     {
+        // Polling is called by a real, side-effecting $C000 CPU read.
+        this._guestPollCount++;
+        this._guestLastPollMs = Date.now();
         // A physical/host keystroke already in the latch always wins.
         if(key & 0x80) return key;
 
@@ -437,6 +463,7 @@ function A2Pkeys()
     }
     this.strobe = function()
     {
+        this._guestStrobeCount++;
         this.lastkey &= 0x7f;
         this._pipeShift = false;
         return 0x00;

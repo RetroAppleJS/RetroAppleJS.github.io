@@ -3350,6 +3350,21 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
     this.GitHubDirCache = {};
 
     /*
+     * Public read-only index of the predictable, embedded offline images.
+     * Automation never needs the GitHub catalog or an HTTPS fallback.
+     */
+    this.getOfflineDisks = function()
+    {
+        var keys = Object.keys(GitHubDirOffline);
+        var entry = keys.length ? GitHubDirOffline[keys[0]] : null;
+        return entry && Array.isArray(entry.list)
+            ? entry.list.map(function(disk) {
+                return {name:disk.name,path:disk.path,size:disk.size};
+            })
+            : [];
+    };
+
+    /*
      * Use the embedded catalog only for a confirmed GitHub API rate limit.
      *
      * GitHub normally reports rate limits as HTTP 403/429.  A primary limit

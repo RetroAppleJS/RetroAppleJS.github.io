@@ -136,10 +136,91 @@ companion layout, and restoring it does not focus the editor or inject keys.
 - Text and memory use the existing host device and safe mapped-memory
   interfaces, rather than directly inspecting an emulated device's internals.
 
+
+## Guest keyboard readiness (A2KBD)
+
+The emulator's pasteboard accepts a whole text payload, then A2KBD releases
+one key at a time as the **guest CPU reads $C000**. The guest clears the keyboard
+latch by accessing $C010. Therefore a successful \`apple.text.type()\` call means
+only *queued for input*, not necessarily *processed by the guest*.
+
+The Script API now offers:
+
+| Method | Meaning |
+| --- | --- |
+| \`await apple.text.status()\` | Snapshot of actual keyboard polling and queue state |
+| \`await apple.text.waitForReady(options)\` | Wait for fresh, sustained guest $C000 polling with an empty keyboard latch and input queue |
+| \`await apple.text.waitForDrain(options)\` | Wait until queued characters and the latched key are consumed (strobe cleared) |
+
+\`status()\` returns \`target\`, \`active\`, \`pollCount\`,
+\`strobeCount\`, \`lastPollMs\`, \`queued\`, \`latched\`, and an
+instantaneous \`available\` flag. The counters are observational: reading
+these fields **does not itself read $C000 or generate any keystrokes**. Safe
+debugger reads never increment them.
+
+\`waitForReady({timeout:30000, interval:75, stableMs:250, minPolls:4})\`
+requires fresh polls across a window of at least \`stableMs\` milliseconds.
+It accommodates the emulator's batched CPU scheduler by allowing unchanged
+counter samples. This proves the guest is polling the keyboard; it does **not
+by itself prove that an operating system has fully booted**. Combine it with
+\`text.waitFor()\` when the guest has a recognizable menu or command prompt.
+
+\`waitForDrain({timeout:20000, interval:50})\` is useful after sending
+a sequence such as \`await apple.text.type("\x15\x15\r")\`. The two
+\`0x15\` bytes correspond to **two Apple II right-arrow keystrokes** and
+\`0x0D\` is RETURN.
+
+## Embedded offline Disk II images
+
+\`EMU_CARD_appledisk2.js\` contains compressed, embedded disk images and
+their catalog. Scripts can use those exact bytes, without sending an HTTPS
+request or depending on GitHub availability.
+
+| Method | Description |
+| --- | --- |
+| \`await apple.disk.listOffline(6)\` | List embedded images from the Disk II controller in physical slot 6 |
+| \`await apple.disk.loadOffline({slot:6, drive:1, path:"disks/ProDOS 8.dsk"})\` | Decode the embedded disk and mount it in Disk II S6,D1 |
+
+The public \`slot\` is the **physical slot number**, so S6 maps to
+Apple2IO's internal slot index 7. The public \`drive\` accepts \`1\`, \`2\`,
+\`"D1"\`, or \`"D2"\`. Only catalogued embedded images are accepted; the
+API deliberately does not fall back to a remote URL. Loading uses the normal
+\`EMU_mountDiskImage()\` path, preserving disk format handling and filename
+display.
+
+## ProDOS 8 BASIC.SYSTEM demonstration
+
+Open PASTEBOARD SCRIPT, click **ProDOS Demo**, then **RUN**. The exact
+same macro is available as [`docs/examples/PASTEBOARD_ProDOS8_Offline_Boot.js`](examples/PASTEBOARD_ProDOS8_Offline_Boot.js)
+for inspection and copying into the editor. The example:
+
+1. Hides the Script companion so the Apple II display is unobstructed.
+2. Mounts embedded \`disks/ProDOS 8.dsk\` in S6,D1 and cold-boots.
+3. Waits for keyboard polling to stabilize during the ProDOS boot menu.
+4. Sends two right-arrow keys and RETURN (the selected menu option should
+   launch BASIC.SYSTEM for this particular disk image).
+5. Waits for an Applesoft \`]\` prompt and fresh keyboard polling.
+6. Enters \`PRINT "HELLO WORLD"\` followed by RETURN, waits for the
+   keyboard queue and latch to clear, and stops after restoring the editor.
+
+The macro is included directly in the editor's built-in example selector.
+A physical S6 Disk II controller and the expected menu layout are required.
+The selected image and exact guest boot behavior should be validated in a
+browser session, since the automated tests verify device routing and command
+order, not a complete real-time Apple II boot.
+
+### Troubleshooting
+
+If boot stalls at \`waitForReady()\`, print \`await apple.text.status()\`
+to inspect \`pollCount\`, \`queued\` and \`latched\`. If the operating system
+presents a different boot menu, inspect \`await apple.text.capture()\` and
+adjust the menu navigation before the BASIC.SYSTEM prompt check.
+
 ## Planned API extensions
 
-Phase 2 will add paddle/mouse capture, DISKII and LIRON disk loading, and
-compatible peripheral provisioning/deprovisioning. Phase 3 will add script
+Disk II embedded offline mounting and keyboard-poll readiness are now available.
+Future work includes paddle/mouse capture, LIRON disk loading, remote disk
+URLs, and compatible peripheral provisioning/deprovisioning. Phase 3 will add script
 import/export, persistence, reusable example macros and more elaborate
 automation/regression helpers.
 
@@ -147,7 +228,7 @@ automation/regression helpers.
 
 ```sh
 node --check res/EMU_pasteboard_script.js
-node --test tests/pasteboard_script.test.cjs
+node --test tests/pasteboard_script.test.cjs tests/pasteboard_prodos_automation.test.cjs
 ```
 
 The accompanying GitHub workflow runs these checks when scripting files change.
