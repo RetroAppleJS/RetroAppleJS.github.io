@@ -12,14 +12,14 @@
     var POPUP = "EMU_pasteboardScriptPopup";
     var DEFAULT_SCRIPT = [
         "// PASTEBOARD SCRIPT — Ctrl/Cmd+Enter to run",
-        "// Commands are async: always await device operations.",
-        "// Optional: await apple.script.hide();  // Reveal the Apple II screen",
-        "// Optional: await apple.script.show();  // Restore the IDE",
-        "console.log('Current screen:');",
-        "console.log(await apple.text.capture());",
-        "console.log(await apple.memory.dump(0x0400, 64));",
-        "await apple.wait(250);",
-        "console.log('Ready. Try apple.text.type(\\\"CATALOG\\\\r\\\");');"
+        "// Start at the Apple II Applesoft BASIC ] prompt.",
+        "// Optional: await apple.script.hide(); // Reveal the Apple II screen",
+        "console.log('Typing PRINT 6*7 through PASTEBO...');",
+        "await apple.text.type('PRINT 6*7\\r');",
+        "console.log('Waiting for the computed result 42...');",
+        "console.log(await apple.text.waitFor('42', {timeout:10000}));",
+        "console.log(await apple.memory.dump(0x0400, 32));",
+        "// Optional: await apple.script.show(); // Restore the IDE"
     ].join("\n");
 
     function el(id) { return D && D.getElementById(id); }
@@ -410,7 +410,7 @@
         el("EMU_pasteboardScriptClear").onclick = clearConsole;
         el("EMU_pasteboardScriptCopy").onclick = copyConsole;
         el("EMU_pasteboardScriptExample").onclick = function() {
-            if(worker) return;
+            if(currentRun) return;
             editor.value = DEFAULT_SCRIPT;
             editor.focus();
         };
@@ -492,7 +492,7 @@
     g.EMU_PASTEBOARD_SCRIPT = {
         ui:{init:init, open:open, close:close, toggle:toggle, position:position},
         run:run, stop:stop,
-        // Public only for testing/integration; scripts use the Worker bridge.
+        // Public only for testing/integration; macros invoke the page-context adapter.
         invoke:invoke
     };
     if(g.oCOM && g.oCOM.addToEventStack)

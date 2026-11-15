@@ -348,3 +348,106 @@ test("Pasteboard companion must retain absolute document positioning", () => {
     assert.match(css,/\.EMU_pasteboardScriptPopup\s*\{[^}]*position:\s*absolute\s*!important/);
     assert.match(hostSource,/p\.style\.position\s*=\s*"absolute"/);
 });
+
+
+test("bundled starter macro sends a real BASIC command, not just a console hint", async () => {
+    const found=hostSource.match(/var DEFAULT_SCRIPT = (\[[\s\S]*?\]\.join\("\\n"\));/);
+    assert.ok(found,"Starter macro source is present");
+    const script=vm.runInNewContext(found[1]);
+    const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
+    const fn=new AsyncFunction("apple","console","print",script);
+    const typed=[],captured=[];
+    const apple={
+        text:{
+            async type(text) {typed.push(text);return true;},
+            async waitFor(phrase,options) {
+                captured.push({phrase,timeout:options.timeout});
+                return "42";
+            }
+        },
+        memory:{async dump() {return "$0400  A0";}}
+    };
+    await fn(apple,{log(){}},()=>{});
+    assert.deepEqual(typed,["PRINT 6*7\r"]);
+    assert.deepEqual(captured,[{phrase:"42",timeout:10000}]);
+});
+
+test("real PasteBoard routes scripted text to the active A2KBD device", () => {
+    const pasteboardSource=fs.readFileSync(
+        path.join(ROOT,"res/EMU_DEVICE_pasteboard.js"),"utf8"
+    );
+    const context={};
+    vm.runInNewContext(pasteboardSource,context);
+    const device=new context.PasteBoard();
+    const packets=[];
+    const router={
+        getTextInputTargetAddress() {return "0:A2KBD:text";},
+        pipeResolve(address) {
+            assert.equal(address,"0:PASTEBO:text");
+            return {device};
+        },
+        pipeSend(source,target,message) {
+            packets.push({source,target,mime:message.mime,data:message.data});
+            return true;
+        }
+    };
+    const host={
+        document:{getElementById() {return null;}},
+        apple2plus:{hwObj() {return {io:router};}}
+    };
+    vm.runInNewContext(hostSource,{window:host});
+    assert.equal(host.EMU_PASTEBOARD_SCRIPT.invoke("text.type",{text:"PRINT 6*7\r"}),true);
+    assert.deepEqual(packets,[{
+        source:"0:PASTEBO:text",
+        target:"0:A2KBD:text",
+        mime:"text/plain",
+        data:"PRINT 6*7\r"
+    }]);
+});
+
+test("Example button restores the starter script and never references the removed worker", () => {
+    const nodes={};
+    function makeElement(tag) {
+        const element={
+            tagName:tag,
+            style:{},
+            children:[],
+            hidden:false,
+            value:"",
+            addEventListener(){},
+            setAttribute(){},
+            focus(){},
+            querySelector(){return null;},
+            appendChild(child){this.children.push(child);}
+        };
+        Object.defineProperty(element,"innerHTML",{
+            set(markup) {
+                const ids=/\bid="(EMU_pasteboardScript[^"]+)"/g;
+                let match;
+                while((match=ids.exec(markup))!==null)
+                    if(!nodes[match[1]]) nodes[match[1]]=makeElement("button");
+            }
+        });
+        return element;
+    }
+    const dom={
+        getElementById(id){return nodes[id]||null;},
+        createElement:makeElement,
+        body:{appendChild(node){nodes[node.id]=node;}}
+    };
+    nodes.EMU_pasteboardScriptToggle=makeElement("button");
+    const host={
+        document:dom,
+        EMU_COMPANION_LAYOUT:{position(){return true;}}
+    };
+    vm.runInNewContext(hostSource,{window:host});
+    const script=host.EMU_PASTEBOARD_SCRIPT;
+    assert.equal(script.ui.open(),true);
+    const editor=nodes.EMU_pasteboardScriptEditor;
+    const example=nodes.EMU_pasteboardScriptExample;
+    assert.match(editor.value,/await apple\.text\.type/);
+    editor.value="// Changed manually";
+    assert.doesNotThrow(()=>example.onclick());
+    assert.match(editor.value,/PRINT 6\*7/);
+    assert.doesNotMatch(hostSource,/\bif\s*\(\s*worker\s*\)/);
+});
