@@ -410,7 +410,7 @@
         el("EMU_pasteboardScriptClear").onclick = clearConsole;
         el("EMU_pasteboardScriptCopy").onclick = copyConsole;
         el("EMU_pasteboardScriptExample").onclick = function() {
-            if(worker) return;
+            if(currentRun) return;
             editor.value = DEFAULT_SCRIPT;
             editor.focus();
         };
@@ -492,7 +492,7 @@
     g.EMU_PASTEBOARD_SCRIPT = {
         ui:{init:init, open:open, close:close, toggle:toggle, position:position},
         run:run, stop:stop,
-        // Public only for testing/integration; scripts use the Worker bridge.
+        // Public only for testing/integration; macros invoke the page-context adapter.
         invoke:invoke
     };
     if(g.oCOM && g.oCOM.addToEventStack)
