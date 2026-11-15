@@ -11799,14 +11799,14 @@ else if(g.addEventListener)g.addEventListener('load',init);
 /*
  * PASTEBOARD SCRIPT — user-facing automation IDE and emulator API adapter.
  *
- * Script execution lives in EMU_pasteboard_script_worker.js, never in the
- * main emulator's CPU scheduler. Only these named operations reach Apple2IO.
- * This is intended for user-authored/trusted JavaScript macros.
+ * Trusted user-authored macros execute directly in the page with async/await.
+ * They reuse the existing Apple2IO device model without a Worker or a second
+ * CPU scheduler. STOP cooperatively cancels pending waits and future actions.
  */
 (function (g) {
     "use strict";
 
-    var D = g.document, worker = null, generation = 0, terminal = null;
+    var D = g.document, currentRun = null, generation = 0, terminal = null;
     var POPUP = "EMU_pasteboardScriptPopup";
     var DEFAULT_SCRIPT = [
         "// PASTEBOARD SCRIPT — Ctrl/Cmd+Enter to run",
@@ -11936,83 +11936,203 @@ else if(g.addEventListener)g.addEventListener('load',init);
     function setStatus(value) {
         var node = el("EMU_pasteboardScriptStatus");
         if(node) node.textContent = value;
-        var run = el("EMU_pasteboardScriptRun"), stop = el("EMU_pasteboardScriptStop");
-        if(run) run.disabled = !!worker;
-        if(stop) stop.disabled = !worker;
+        var runButton = el("EMU_pasteboardScriptRun");
+        var stopButton = el("EMU_pasteboardScriptStop");
+        if(runButton) runButton.disabled = !!currentRun;
+        if(stopButton) stopButton.disabled = !currentRun;
     }
-    function terminate(status, message, channel) {
-        if(worker) worker.terminate();
-        worker = null;
-        generation++;
+
+    function cancelledError() {
+        var error = new Error("Script stopped.");
+        error.name = "AbortError";
+        return error;
+    }
+
+    function checkRun(runState) {
+        if(!runState || runState.cancelled || currentRun !== runState)
+            throw cancelledError();
+    }
+
+    function finish(status, message, channel) {
+        var state = currentRun;
+        if(!state) return false;
+        state.cancelled = true;
+        currentRun = null;
+        state.waits.forEach(function(waiter) {
+            g.clearTimeout(waiter.timer);
+            waiter.reject(cancelledError());
+        });
+        state.waits.clear();
         setStatus(status);
         if(message) log(message, channel);
-    }
-    function stop() {
-        if(!worker) return false;
-        terminate("stopped", "■ Script stopped.", "warn");
         return true;
     }
-    function handleMessage(source, token, message) {
-        if(source !== worker || token !== generation) return;
-        message = message || {};
-        if(message.type === "console") {
-            log(message.text, message.level);
-            return;
-        }
-        if(message.type === "done") {
-            terminate("ready", "✓ Script completed.", "result");
-            return;
-        }
-        if(message.type === "failure") {
-            terminate("error", "ERROR " + message.error, "error");
-            return;
-        }
-        if(message.type === "selfStop") {
-            terminate("stopped", "■ Script stopped.", "warn");
-            return;
-        }
-        if(message.type !== "call") return;
-        var id = message.id;
-        // Only the current worker is allowed to receive a result.  A stopped
-        // worker cannot cause a deferred host mutation on a subsequent run.
-        Promise.resolve().then(function() {
-            if(source !== worker || token !== generation) return;
-            return invoke(message.method, message.args);
-        }).then(function(result) {
-            if(source === worker && token === generation)
-                source.postMessage({type:"response", id:id, result:result});
-        }).catch(function(error) {
-            if(source === worker && token === generation)
-                source.postMessage({type:"response", id:id,
-                    error:error && error.message || String(error)});
-        });
+
+    function stop() {
+        // A running synchronous loop cannot be preempted on the main thread.
+        // STOP cancels waits and prevents all subsequent awaited host actions.
+        return finish("stopped", "■ Script stopped.", "warn");
     }
+
+    function formatValue(value) {
+        if(typeof value === "string") return value;
+        if(value instanceof Error) return value.stack || value.message;
+        if(value === undefined) return "undefined";
+        try { return JSON.stringify(value); }
+        catch(_) { return String(value); }
+    }
+
+    function makeAPI(runState) {
+        function printAs(level, values) {
+            if(currentRun !== runState) return;
+            log(Array.from(values).map(formatValue).join(" "), level);
+        }
+
+        function call(method, args) {
+            checkRun(runState);
+            return Promise.resolve().then(function() {
+                checkRun(runState);
+                return invoke(method, args || {});
+            }).then(function(result) {
+                checkRun(runState);
+                return result;
+            });
+        }
+
+        function integer(value, name, min, max) {
+            if(!Number.isInteger(value) || value < min || value > max)
+                throw new RangeError(name + " must be an integer between " + min + " and " + max + ".");
+            return value;
+        }
+
+        function wait(ms) {
+            integer(ms, "Wait duration (ms)", 0, 60000);
+            checkRun(runState);
+            return new Promise(function(resolve, reject) {
+                var entry = {timer:null, reject:reject};
+                entry.timer = g.setTimeout(function() {
+                    runState.waits.delete(entry);
+                    if(runState.cancelled || currentRun !== runState)
+                        reject(cancelledError());
+                    else resolve();
+                }, ms);
+                runState.waits.add(entry);
+            });
+        }
+
+        var scriptConsole = {
+            log:function() { printAs("log", arguments); },
+            info:function() { printAs("info", arguments); },
+            warn:function() { printAs("warn", arguments); },
+            error:function() { printAs("error", arguments); }
+        };
+        var textAPI = {
+            type:function(value) {
+                return call("text.type", {text:String(value == null ? "" : value)});
+            },
+            capture:function() { return call("text.capture"); },
+            waitFor:async function(pattern, options) {
+                options = options || {};
+                var timeout = integer(options.timeout === undefined ? 10000 : options.timeout,
+                    "Text timeout (ms)", 0, 120000);
+                var interval = integer(options.interval === undefined ? 100 : options.interval,
+                    "Polling interval (ms)", 50, 60000);
+                if(typeof pattern !== "string" && !(pattern instanceof RegExp))
+                    throw new TypeError("waitFor expects a string or regular expression.");
+                var deadline = Date.now() + timeout;
+                do {
+                    checkRun(runState);
+                    var screen = await textAPI.capture();
+                    if(pattern instanceof RegExp) pattern.lastIndex = 0;
+                    if(typeof pattern === "string" ? screen.includes(pattern) : pattern.test(screen))
+                        return screen;
+                    var remaining = deadline - Date.now();
+                    if(remaining <= 0) break;
+                    await wait(Math.min(interval, remaining));
+                } while(true);
+                throw new Error("Timed out waiting for screen text: " + String(pattern));
+            }
+        };
+        var memoryAPI = {
+            capture:function(start, length) {
+                return call("memory.capture", {start:start, length:length});
+            },
+            read:async function(address) {
+                var bytes = await memoryAPI.capture(address, 1);
+                return bytes[0];
+            },
+            dump:function(start, length) {
+                return call("memory.dump", {
+                    start:start, length:length === undefined ? 128 : length
+                });
+            }
+        };
+        var apple = {
+            wait:wait,
+            text:Object.freeze(textAPI),
+            memory:Object.freeze(memoryAPI),
+            reset:function() { return call("emulator.reset"); },
+            reboot:function() { return call("emulator.reboot"); },
+            pause:function() { return call("emulator.pause"); },
+            resume:function() { return call("emulator.resume"); },
+            assert:function(condition, description) {
+                checkRun(runState);
+                if(typeof condition !== "boolean")
+                    throw new TypeError("assert requires a boolean.");
+                printAs(condition ? "pass" : "error",
+                    [(condition ? "PASS " : "FAIL ") + (description || "assertion")]);
+                if(!condition)
+                    throw new Error("Assertion failed: " + (description || "assertion"));
+                return true;
+            },
+            script:Object.freeze({
+                running:function() { return currentRun === runState && !runState.cancelled; },
+                stop:function() {
+                    checkRun(runState);
+                    stop();
+                    throw cancelledError();
+                },
+                hide:function() { return call("script.hide"); },
+                show:function() { return call("script.show"); }
+            })
+        };
+        return {apple:Object.freeze(apple), console:scriptConsole,
+            print:function() { printAs("log", arguments); }};
+    }
+
     function run() {
-        if(worker) return false;
+        if(currentRun) return false;
         var editor = el("EMU_pasteboardScriptEditor");
         if(!editor) return false;
-        if(typeof g.Worker !== "function") {
-            log("ERROR Web Workers are not supported by this browser.", "error");
-            setStatus("error");
-            return false;
-        }
+        var fn;
         try {
-            var source = new g.Worker("res/EMU_pasteboard_script_worker.js");
-            worker = source;
-            var token = ++generation;
-            source.onmessage = function(ev) { handleMessage(source, token, ev.data); };
-            source.onerror = function(ev) {
-                if(source !== worker || token !== generation) return;
-                terminate("error", "ERROR Worker: " + (ev.message || "script failed"), "error");
-            };
-            setStatus("running");
-            log("▶ Running script", "command");
-            source.postMessage({type:"run", code:editor.value});
-            return true;
+            var AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
+            fn = new AsyncFunction("apple", "console", "print",
+                '"use strict";\n' + editor.value);
         } catch(error) {
-            terminate("error", "ERROR " + (error.message || String(error)), "error");
+            setStatus("error");
+            log("ERROR " + (error.stack || error.message || String(error)), "error");
             return false;
         }
+
+        var state = {id:++generation, cancelled:false, waits:new Set()};
+        currentRun = state;
+        var api = makeAPI(state);
+        setStatus("running");
+        log("▶ Running script", "command");
+
+        // Yield once so normal browser painting and event processing can occur.
+        // Subsequent awaited operations/timers run on the page's event loop.
+        Promise.resolve().then(function() {
+            checkRun(state);
+            return fn(api.apple, api.console, api.print);
+        }).then(function() {
+            if(currentRun === state) finish("ready", "✓ Script completed.", "result");
+        }).catch(function(error) {
+            if(currentRun !== state) return; // Already stopped by user/macro.
+            finish("error", "ERROR " + (error.stack || error.message || String(error)), "error");
+        });
+        return true;
     }
     function clearConsole() {
         if(terminal && typeof terminal.clear === "function") terminal.clear();
@@ -12051,7 +12171,7 @@ else if(g.addEventListener)g.addEventListener('load',init);
             '  <div class="DBG_testbenchGrid">',
             '    <div class="DBG_testbenchSection">',
             '      <div class="DBG_testbenchSectionHeader"><span>JavaScript IDE</span>',
-            '        <span>Worker · async/await</span></div>',
+            '        <span>async/await · page context</span></div>',
             '      <textarea id="EMU_pasteboardScriptEditor" spellcheck="false" aria-label="Pasteboard JavaScript editor"></textarea>',
             '      <div class="EMU_pasteboardScriptActions">',
             '        <button class="appbut" type="button" id="EMU_pasteboardScriptRun">▶ RUN</button>',
