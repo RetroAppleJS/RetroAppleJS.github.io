@@ -119,6 +119,82 @@ the main pasteboard textarea, emulator run state, or script execution. The
 popup remains document-absolutely positioned using the STEP TRACE SCENARIO
 companion layout, and restoring it does not focus the editor or inject keys.
 
+## CPU speed: 0–400%
+
+The Script API can set the same **CPU speed percentage** controlled by the
+Emulator's CPU throttle slider. This is the requested CPU clock rate, not a
+guaranteed measured throughput (host CPU load can reduce the achieved pace).
+
+| Method | Behavior |
+| --- | --- |
+| \`await apple.cpu.getSpeed()\` | Read the currently selected target percentage |
+| \`await apple.cpu.setSpeed(400)\` | Target 400% (4× normal CPU speed) |
+| \`await apple.cpu.setSpeed(100)\` | Restore the normal 100% target |
+| \`await apple.cpu.setSpeed(0)\` | Select the existing 0%/step-trace CPU speed |
+
+Only integer percentages from 0 through 400 are accepted. The API uses
+\`oEMUI.cpuSpd()\` through its new percentage adapter, so it updates the
+actual CPU scheduler, Disk II speed notifications, CPU speed readout, and
+slider together. It does not manipulate CPU tick counters directly.
+
+For a demonstration that temporarily accelerates boot:
+
+\`\`\`javascript
+await apple.cpu.setSpeed(400);
+try {
+  await apple.disk.loadOffline({
+    slot: 6, drive: 1, path: "disks/ProDOS 8.dsk"
+  });
+  await apple.reboot();
+  await apple.text.waitForReady({timeout:60000});
+} finally {
+  await apple.cpu.setSpeed(100);
+}
+\`\`\`
+
+The built-in **ProDOS Demo** sets 400% at the beginning of its \`try\`
+block and restores **100%** in \`finally\` (before reopening the Script
+window). If STOP cancels a pending wait so the \`finally\` block cannot
+call the script API, the runner additionally restores the CPU speed that
+was selected before the macro changed it.
+
+## Compressed \`?pscript=\` URLs
+
+Script source can be loaded via a compressed URI parameter, matching the
+existing assembler source URL encoding: **zlib/Deflate + UTF-8 +
+URL-safe Base64**, without padding.
+
+For example, an encoded URL has the form:
+
+\`\`\`text
+index.html?pscript=eN...
+\`\`\`
+
+The parameter contains the *JavaScript source*, not a filename or
+external script URL. Spaces, Unicode, and newline characters are preserved.
+
+To create a link, open PASTEBOARD SCRIPT, edit the source, and click
+**Copy URI**. The URL is copied to the clipboard, preserving unrelated
+query parameters and the current fragment. The exported script is
+compressed with the already-installed \`pako\` library.
+
+Opening an \`index.html?pscript=...\` link:
+
+- Decodes and validates the compressed source on page load.
+- Opens the Script popup and fills the editor with the decoded JavaScript.
+- **Does not execute anything automatically**; RUN is always explicit.
+- Reports malformed Base64, Deflate errors, or oversized sources in the
+  Script console without executing the payload.
+
+The uncompressed script limit is **64 KiB**, and the compressed Base64URL
+parameter is limited to 32,768 characters. The decoder uses bounded,
+chunked expansion to avoid unbounded decompression.
+
+Programmatic helpers are available for integration/testing:
+\`EMU_PASTEBOARD_SCRIPT.uri.encode(source)\`,
+\`EMU_PASTEBOARD_SCRIPT.uri.decode(payload)\`, and
+\`EMU_PASTEBOARD_SCRIPT.uri.current()\`.
+
 ## Safety, timing, and cancellation
 
 - Scripts run directly in the browser page and are **trusted user-authored
@@ -196,12 +272,14 @@ for inspection and copying into the editor. The example:
 
 1. Hides the Script companion so the Apple II display is unobstructed.
 2. Mounts embedded \`disks/ProDOS 8.dsk\` in S6,D1 and cold-boots.
-3. Waits for keyboard polling to stabilize during the ProDOS boot menu.
+3. Sets the CPU throttle to **400%** while booting, then waits for keyboard
+   polling to stabilize during the ProDOS boot menu.
 4. Sends two right-arrow keys and RETURN (the selected menu option should
    launch BASIC.SYSTEM for this particular disk image).
 5. Waits for an Applesoft \`]\` prompt and fresh keyboard polling.
 6. Enters \`PRINT "HELLO WORLD"\` followed by RETURN, waits for the
-   keyboard queue and latch to clear, and stops after restoring the editor.
+   keyboard queue and latch to clear, restores the CPU to **100%**,
+   and stops after reopening the editor.
 
 The macro is included directly in the editor's built-in example selector.
 A physical S6 Disk II controller and the expected menu layout are required.
@@ -228,7 +306,7 @@ automation/regression helpers.
 
 ```sh
 node --check res/EMU_pasteboard_script.js
-node --test tests/pasteboard_script.test.cjs tests/pasteboard_prodos_automation.test.cjs
+node --test tests/pasteboard_script.test.cjs tests/pasteboard_prodos_automation.test.cjs tests/pasteboard_speed_uri.test.cjs
 ```
 
 The accompanying GitHub workflow runs these checks when scripting files change.
