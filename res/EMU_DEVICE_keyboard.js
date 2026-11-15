@@ -12,24 +12,25 @@ var keycap_over,keycap_out,keycap_click;
 
 // Authentic J-Plus keycap legends from tools/KeyboardJS_katakana.html.
 // Index 0/1/2 corresponds to front-left/center/right (keylabel9/10/11).
-// Dual legends use front-left for the unshifted key and front-right for Shift.
-// This follows the actual A2JP ROM glyphs for the ASCII codes produced by
-// HTMLmap_A2_US; the original physical keyboard artwork is not uniform.
+// Physical Apple II J-Plus arrangement: front-left = Shift character,
+// front-right = unshifted character. The original keyboard photograph
+// establishes the placement; HTMLmap_A2_US provides the ASCII codes.
+// Single-character labels (including ー under 0) are front-center.
 // The keys' existing IDs are kept as the input-mapping identity; this table
 // adds only visual legends and does not encode or inject Unicode Katakana.
 var A2JP_KEYCAP_LEGENDS = {
-    "34D8": ["ア", "/", "｡"],
-    "C598": ["イ", "/", "「"],
-    "9558": ["ウ", "/", "」"],
-    "671B": ["エ", "/", "、"],
-    "37DB": ["オ", "/", "・"],
-    "8434": ["カ", "/", "ヲ"],
-    "965B": ["キ", "/", "ァ"],
-    "621E": ["ク", "/", "ィ"],
-    "32DE": ["ケ", "/", "ロ"],
+    "34D8": ["｡", "/", "ア"],
+    "C598": ["「", "/", "イ"],
+    "9558": ["」", "/", "ウ"],
+    "671B": ["、", "/", "エ"],
+    "37DB": ["・", "/", "オ"],
+    "8434": ["ヲ", "/", "カ"],
+    "965B": ["ァ", "/", "キ"],
+    "621E": ["ィ", "/", "ク"],
+    "32DE": ["ロ", "/", "ケ"],
     "54BF": [null, "ー", null],
-    "C39E": ["コ", "/", "ワ"],
-    "3DD1": ["ュ", "/", "ス"],
+    "C39E": ["ワ", "/", "コ"],
+    "3DD1": ["ス", "/", "ュ"],
     "BC7E": [null, "ム", null],
     "BEFE": [null, "ラ", null],
     "B37E": [null, "ナ", null],
@@ -39,7 +40,7 @@ var A2JP_KEYCAP_LEGENDS = {
     "7F7F": [null, "ユ", null],
     "B67E": [null, "ノ", null],
     "B4FE": [null, "マ", null],
-    "4C30": ["ミ", "/", "タ"],
+    "4C30": ["タ", "/", "ミ"],
     "707F": [null, "チ", null],
     "7DFF": [null, "モ", null],
     "73BF": [null, "ト", null],
@@ -49,17 +50,17 @@ var A2JP_KEYCAP_LEGENDS = {
     "B73E": [null, "ハ", null],
     "77FF": [null, "ヒ", null],
     "B5BE": [null, "フ", null],
-    "935E": ["サ", "/", "゜"],
+    "935E": ["゜", "/", "サ"],
     "7B3F": [null, "レ", null],
     "BABE": [null, "リ", null],
     "B1FE": [null, "テ", null],
     "7E3F": [null, "ヨ", null],
     "713F": [null, "ツ", null],
-    "E4B9": ["ホ", "/", "゛"],
-    "757F": ["ヘ", "/", "ン"],
-    "6062": ["ャ", "/", "シ"],
-    "85E1": ["ョ", "/", "セ"],
-    "9C51": ["ッ", "/", "ソ"]
+    "E4B9": ["゛", "/", "ホ"],
+    "757F": ["ン", "/", "ヘ"],
+    "6062": ["シ", "/", "ャ"],
+    "85E1": ["セ", "/", "ョ"],
+    "9C51": ["ソ", "/", "ッ"]
 };
 
 function A2Pkeys()
