@@ -32,6 +32,7 @@
         "// Requires an Apple II configuration with DISKII in physical S6.",
         "await apple.script.hide();",
         "try {",
+        "  await apple.cpu.setSpeed(400); // 4× CPU throttle for boot",
         "  console.log('Mounting embedded ProDOS 8 image in S6,D1...');",
         "  console.log(await apple.disk.loadOffline({",
         "    slot: 6, drive: 1, path: 'disks/ProDOS 8.dsk'",
@@ -50,6 +51,7 @@
         "  await apple.text.waitForReady({timeout:15000});",
         "  console.log('BASIC.SYSTEM demonstration complete.');",
         "} finally {",
+        "  await apple.cpu.setSpeed(100); // restore normal CPU speed",
         "  await apple.script.show();",
         "}"
     ].join("\n");
@@ -378,6 +380,16 @@
         if(!state) return false;
         state.cancelled = true;
         currentRun = null;
+        // Cooperative STOP interrupts macro finally-block API calls.
+        // Restore the throttle on its behalf so a stopped boot demo cannot
+        // leave the emulator accidentally running at 400%.
+        if(status==="stopped" && state.originalCpuSpeed!==undefined)
+        {
+            try { invoke("cpu.setSpeed",{percent:state.originalCpuSpeed}); }
+            catch(error) {
+                log("Could not restore CPU speed: "+(error.message || error),"error");
+            }
+        }
         state.waits.forEach(function(waiter) {
             g.clearTimeout(waiter.timer);
             waiter.reject(cancelledError());
@@ -412,6 +424,8 @@
             checkRun(runState);
             return Promise.resolve().then(function() {
                 checkRun(runState);
+                if(method==="cpu.setSpeed" && runState.originalCpuSpeed===undefined)
+                    runState.originalCpuSpeed=invoke("cpu.getSpeed");
                 return invoke(method, args || {});
             }).then(function(result) {
                 checkRun(runState);
