@@ -683,10 +683,26 @@ function EMU_init()
                     function()
                     {
                         var arraybuffer = this.response;
-                        if(arraybuffer.byteLength<100)
+                        if(this.status<200 || this.status>=300 ||
+                           !arraybuffer || arraybuffer.byteLength<100)
                         {
-                            var enc = new TextDecoder("utf-8");
-                            console.warn("ERROR LOADING DISK: "+enc.decode(ui8));
+                            // XHR onload also fires for HTTP 404. The old
+                            // handler referenced an undefined 'ui8' variable,
+                            // masking the actual missing-file error in Safari.
+                            var reason="HTTP "+this.status;
+                            if(arraybuffer && arraybuffer.byteLength>0 &&
+                               arraybuffer.byteLength<4096)
+                            {
+                                try
+                                {
+                                    var body = new TextDecoder("utf-8").decode(
+                                        new Uint8Array(arraybuffer)).trim();
+                                    if(body) reason+=": "+body.slice(0,160);
+                                }
+                                catch(e) { /* An error response need not be UTF-8. */ }
+                            }
+                            console.error("ERROR LOADING DISK "+dir+": "+reason+
+                                " (check the case-sensitive path under disks/)");
                         }
                         else
                         {
@@ -714,12 +730,17 @@ function EMU_init()
                                 }
                                 //oCOM.POPUP.html("async call succeeded, boot="+ oCOM.URL.uri["boot"]);
                             }
-                            catch({ name, message })
+                            catch(e)
                             {
-                                //oCOM.POPUP.html("restart 1.0 failed: "+name+" "+message);
+                                console.error("ERROR LOADING DISK "+dir+
+                                    " during staging/restart:",e);
                             }
                         }
-                    })
+                    },null,function()
+                    {
+                        console.error("ERROR LOADING DISK "+dir+
+                            ": network error or request timeout");
+                    });
                 }
             break;
         }

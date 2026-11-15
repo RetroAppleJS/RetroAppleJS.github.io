@@ -98,6 +98,23 @@ memory mapping and disk controller implementation remain unchanged.
 
 ### Loading it in RetroAppleJS
 
+The ready-to-mount disk is **already available on `main`** at
+[`disks/ProDos/ProDOS_8_JPlus.dsk`](../disks/ProDos/ProDOS_8_JPlus.dsk)
+(143,360 bytes, CRC32 `97D3B457`). The directory name is
+`ProDos`—not `ProDOS`—and GitHub file paths are case-sensitive.
+
+Open the following URL to select A2JP, install VIDEX in physical slot 3,
+keep Disk II in slot 6, preload the J-Plus-compatible disk in D1 and boot:
+
+```text
+index.html?sys=A2JP&slots=3:VIDEX,6:DISKII&D1_DIR=ProDos/ProDOS_8_JPlus.dsk&boot=1
+```
+
+The `D1_DIR` parameter is relative to the repository's `disks/` directory.
+A 404 means the supplied path is absent on `main`, not that MS16K is missing.
+
+For manual mounting:
+
 1. Open `index.html?sys=A2JP`.
 2. Keep the MS16K language card in **PR#0**.
 3. Mount the checked-in `disks/ProDOS_8_JPlus.dsk` in Disk II's D1 drive
