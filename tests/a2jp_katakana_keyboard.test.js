@@ -92,6 +92,19 @@ test("all two-character legends consistently show unshifted left, Shift right",(
     assert.deepEqual(Array.from(legends["54BF"]),[null,"ー",null]);
 });
 
+test("0 key remains prolonged vowel and 1 key has the ア / ｡ pair",()=>{
+    const f=fixture("A2JP"), map=f.keyboard.events_data.HTMLmap_A2_US;
+    assert.equal(map["54BF"].val,"0");
+    assert.equal(map["54BF"].Shift,undefined);
+    assert.equal(f.keyboard.KeyCodeHandler({type:"click",key:map["54BF"].val},"A2_US"),0xB0);
+    assert.deepEqual(Array.from(f.ctx.A2JP_KEYCAP_LEGENDS["54BF"]),[null,"ー",null]);
+    assert.equal(map["34D8"].val,"1");
+    assert.equal(map["34D8"].Shift,"!");
+    assert.equal(f.keyboard.KeyCodeHandler({type:"click",key:map["34D8"].val},"A2_US"),0xB1);
+    assert.equal(f.keyboard.KeyCodeHandler({type:"click",key:map["34D8"].Shift},"A2_US"),0xA1);
+    assert.deepEqual(Array.from(f.ctx.A2JP_KEYCAP_LEGENDS["34D8"]),["ア","/","｡"]);
+});
+
 test("every key in the Katakana reference exists in the unchanged virtual key HTML",()=>{
     const fixtureObj=fixture("A2JP");
     fixtureObj.keyboard.KbdHTML({id:"kbd",kbd_events:"",key_events:""});
