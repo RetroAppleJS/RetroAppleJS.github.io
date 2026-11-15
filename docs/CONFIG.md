@@ -120,8 +120,10 @@ remain unchanged.
 
 **J-Plus interactive keycaps:** When the system model is `A2JP`, the virtual
 keyboard shows the Katakana legends from `tools/KeyboardJS_katakana.html`
-on the front faces of the existing keys. All 41 keycap mappings (77 front
+on the front faces of the existing keys. All 42 keycap mappings (78 front
 legend positions) are rendered separately from their Roman/Shift legends.
+For dual-Katakana keys, the physical j-Plus keycap convention is SHIFT on
+front-left and unshifted on front-right; `0` has a centered `ー` legend.
 Switching to `A2P` hides the Japanese legends again; startup
 (`?sys=A2JP`) and failed-restart rollback update the keyboard as well.
 The underlying `A2KBD` event codes, key hash identities, and modifier
