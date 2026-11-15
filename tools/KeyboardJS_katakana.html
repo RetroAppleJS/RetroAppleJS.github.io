@@ -16,12 +16,131 @@ var c_body =
 +"2A==";
 const inflator = new pako.Inflate();
 inflator.push( Uint8Array.from(window.atob(c_body),(v)=>v.charCodeAt(0)));
+// Apply the photographed J-Plus legend order to the decompressed layout.
+// Shift is printed at front-left; the unshifted Katakana is front-right.
+// Keep the original US key names, positions, click handlers and markup.
+function correctKatakanaKeycaps(markup)
+{
+    const root=document.createElement("div");
+    root.innerHTML=markup;
+    const photographedPairs = {
+        "1": [
+                "｡",
+                "ア"
+        ],
+        "2": [
+                "「",
+                "イ"
+        ],
+        "3": [
+                "」",
+                "ウ"
+        ],
+        "4": [
+                "、",
+                "エ"
+        ],
+        "5": [
+                "・",
+                "オ"
+        ],
+        "6": [
+                "ヲ",
+                "カ"
+        ],
+        "7": [
+                "ァ",
+                "キ"
+        ],
+        "8": [
+                "ィ",
+                "ク"
+        ],
+        "9": [
+                "ロ",
+                "ケ"
+        ],
+        ",": [
+                "シ",
+                "ャ"
+        ],
+        ":": [
+                "ワ",
+                "コ"
+        ],
+        "-": [
+                "ス",
+                "ュ"
+        ],
+        "P": [
+                "タ",
+                "ミ"
+        ],
+        ";": [
+                "゜",
+                "サ"
+        ],
+        "N": [
+                "゛",
+                "ホ"
+        ],
+        "M": [
+                "ン",
+                "ヘ"
+        ],
+        ".": [
+                "セ",
+                "ョ"
+        ],
+        "/": [
+                "ソ",
+                "ッ"
+        ]
+};
+    let pairsUpdated=0,zeroFound=0;
+    for(const cap of root.querySelectorAll(".keycap"))
+    {
+        const labels=cap.querySelector(".keylabels");
+        const key=labels && labels.querySelector(".keylabel7");
+        if(!key) continue;
+        const name=key.textContent.trim();
+        if(Object.prototype.hasOwnProperty.call(photographedPairs,name))
+        {
+            const left=labels.querySelector(".keylabel9 > div");
+            const right=labels.querySelector(".keylabel11 > div");
+            if(!left || !right)
+                throw new Error("Incomplete j-Plus keycap "+name);
+            left.textContent=photographedPairs[name][0];
+            right.textContent=photographedPairs[name][1];
+            pairsUpdated++;
+        }
+        if(name==="0")
+        {
+            if(!labels.querySelector(".keylabel10"))
+            {
+                const center=document.createElement("div");
+                center.className="keylabel keylabel10 textsize6";
+                center.style.cssText="color:#ffffff; width:36px; height:36px;";
+                const text=document.createElement("div");
+                text.style.cssText="width:36px; max-width:36px; height:36px;";
+                text.textContent="ー";
+                center.appendChild(text);
+                labels.appendChild(center);
+            }
+            zeroFound++;
+        }
+    }
+    if(pairsUpdated!==18 || zeroFound!==1)
+        throw new Error("Unexpected Katakana keyboard layout: "+pairsUpdated+" pairs, "+zeroFound+" zero keys");
+    return root.innerHTML;
+}
+
 function doit()
 {
 var s = "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">\n"
        //+"<style>\n"+custom_css+"\n</style>\n"
        +"<div id=\"glyphScroller\">"
-       +new TextDecoder().decode(inflator.result)
+       +correctKatakanaKeycaps(new TextDecoder().decode(inflator.result))
        +"</div>"
 document.getElementById("body").innerHTML = s;
 document.getElementById("code").value = s;
