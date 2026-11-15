@@ -137,6 +137,30 @@ test("text.waitForReady waits for sustained new guest polling even with idle sch
     assert.ok(n>=5);
 });
 
+
+test("one brief burst of boot-time keyboard polling is not mistaken for ready", async () => {
+    let samples=0;
+    const when=Date.now();
+    const runner=mockDeviceHost({
+        editor:"await apple.text.waitForReady({stableMs:100,minPolls:4,interval:25,timeout:200});",
+        status() {
+            samples++;
+            return {
+                active:true,
+                pollCount:samples===1?0:12,
+                strobeCount:0,
+                lastPollMs:when,
+                queued:0,latched:false
+            };
+        }
+    });
+    assert.equal(runner.api.run(),true);
+    await new Promise(resolve=>setTimeout(resolve,270));
+    assert.equal(runner.elements.EMU_pasteboardScriptStatus.textContent,"error");
+    assert.match(runner.elements.EMU_pasteboardScriptConsoleFallback.value,
+        /Timed out waiting for guest keyboard polling/);
+});
+
 test("built-in ProDOS demonstration types two RIGHT arrows, RETURN, then HELLO WORLD", async () => {
     const match=ui.match(/var PRODOS_BOOT_SCRIPT = (\[[\s\S]*?\]\.join\("\\n"\));/);
     assert.ok(match,"ProDOS demo should be present in the Script IDE");
