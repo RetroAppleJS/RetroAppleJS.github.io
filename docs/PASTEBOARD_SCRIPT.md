@@ -6,10 +6,9 @@ matching the STEP TRACE SCENARIO shell and width (460 px). The popup is scoped
 to the Emulator Tools tab, retaining its previous open/closed state while
 navigating tabs. Closing the editor **does not stop a running script**.
 
-Scripts execute in a dedicated Web Worker; the Worker talks to the existing
-Apple II runtime through a small, named command bridge. There is no second
-6502 CPU scheduler, no synthetic host-keyboard events, and no duplicate disk
-or peripheral model.
+Scripts execute directly in the page as asynchronous JavaScript functions.
+The pasteboard API uses the existing Apple II device model without a Web Worker,
+secondary CPU scheduler, synthetic keyboard events, or external worker fetch.
 
 The editor is a **document-absolutely positioned companion**, not a fixed
 window or an overlay tied to the Apple II screen. Macros can temporarily hide
@@ -21,12 +20,13 @@ execution.
 1. Select **Emulator > Tools > Script**.
 2. Edit the example JavaScript. Use **RUN** or **Ctrl/Cmd+Enter**.
 3. Watch the console for output, errors, and completion.
-4. Use **STOP** to terminate a running script, even if its JavaScript loop
-   does not yield. Closing the popup does not terminate it.
+4. Use **STOP** to cancel pending waits and subsequent awaited device actions.
+   Like other main-thread JavaScript, a tight synchronous loop blocks the UI
+   and cannot be interrupted by STOP. Closing the popup does not stop a macro.
 5. Use `await apple.script.hide()` and `await apple.script.show()` to control
    the popup during a running demonstration. The same **Script** toolbar
    button can always reopen it while the macro runs. Hiding does not cancel
-   the Worker or pause the Apple II.
+   the macro or pause the Apple II.
 6. **Example** restores the starter script; **Clear** clears only the script
    console, not the pasteboard's main textarea.
 
@@ -52,10 +52,10 @@ Every operation that reaches the emulator is asynchronous. Use `await`.
 | `await apple.pause()` | Pause emulator execution through the existing Pause control |
 | `await apple.resume()` | Resume emulator execution through the existing Pause control |
 | `apple.assert(boolean, message)` | Log PASS or throw on FAIL |
-| `apple.script.running()` | Whether this Worker script is active |
+| `apple.script.running()` | Whether the current macro is active |
 | `await apple.script.hide()` | Hide the Script IDE/console without stopping the macro or guest CPU |
 | `await apple.script.show()` | Redisplay the Script IDE/console at its absolute companion position |
-| `apple.script.stop()` | Request self-termination of the Worker script |
+| `apple.script.stop()` | Cooperatively cancel the active macro |
 | `console.log/info/warn/error(...)` | Write to the script console |
 | `print(...)` | Alias of console logging |
 
@@ -107,9 +107,9 @@ try {
   await apple.text.waitFor("HELLO", {timeout:10000});
   await apple.wait(2000);
 } finally {
-  // This runs on normal completion or script errors, but not after STOP
-  // forcibly terminates the Worker. The Script toolbar button is always
-  // available to restore the window manually.
+  // This runs on normal completion or script errors. With cooperative STOP,
+  // the macro is cancelled at its next awaited operation. The Script button
+  // is always available to restore the window manually.
   await apple.script.show();
 }
 ```
@@ -121,15 +121,17 @@ companion layout, and restoring it does not focus the editor or inject keys.
 
 ## Safety, timing, and cancellation
 
-- A Worker runs **trusted user-authored JavaScript**; it is an isolation
-  mechanism for UI responsiveness, **not a security sandbox**. Do not paste
-  unknown or untrusted scripts.
-- Worker CPU-bound loops do not block the main-thread emulator UI; STOP
-  terminates the Worker. Operations that were already applied to the emulator
-  (such as a reset or text sent to a device) are **not rolled back**.
-- After STOP, old Worker messages and deferred calls cannot be applied to a
-  subsequent run; each run has a generation token.
-- The macro runner uses wall-clock `setTimeout` and does not manipulate
+- Scripts run directly in the browser page and are **trusted user-authored
+  JavaScript**, not isolated from other page objects. Do not paste unknown or
+  untrusted scripts.
+- A tight synchronous loop blocks the page, including the Apple II emulator.
+  The RUN/STOP controls are **cooperative**: STOP cancels pending waits and
+  prevents subsequent awaited API operations, but cannot preempt CPU-bound
+  synchronous code.
+- Completed operations (such as a reset or keyboard transfer) cannot be
+  rolled back by STOP. Cancelled script continuations cannot issue further
+  awaited API operations on their old run handle.
+- The runner uses wall-clock `setTimeout` for waits and does not manipulate
   emulator CPU tick scheduling or STEP TRACE breakpoint ownership.
 - Text and memory use the existing host device and safe mapped-memory
   interfaces, rather than directly inspecting an emulated device's internals.
@@ -145,7 +147,6 @@ automation/regression helpers.
 
 ```sh
 node --check res/EMU_pasteboard_script.js
-node --check res/EMU_pasteboard_script_worker.js
 node --test tests/pasteboard_script.test.cjs
 ```
 

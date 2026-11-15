@@ -22,9 +22,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Syntax check Worker and UI adapter
+      - name: Syntax check page-context script runner
         run: |
           node --check res/EMU_pasteboard_script.js
-          node --check res/EMU_pasteboard_script_worker.js
       - name: Pasteboard Script unit tests
         run: node --test tests/pasteboard_script.test.cjs
