@@ -10,6 +10,9 @@
 
     var D = g.document, currentRun = null, generation = 0, terminal = null;
     var POPUP = "EMU_pasteboardScriptPopup";
+    // Same zlib/Deflate + Base64URL encoding used by index.html?asm=.
+    var MAX_SCRIPT_BYTES = 65536, MAX_COMPRESSED_CHARS = 32768;
+    var uriImportHandled = false;
     var DEFAULT_SCRIPT = [
         "// PASTEBOARD SCRIPT — Ctrl/Cmd+Enter to run",
         "// Start at the Apple II Applesoft BASIC ] prompt.",
@@ -205,6 +208,14 @@
             return true;
         case "emulator.pause": return setPause(true);
         case "emulator.resume": return setPause(false);
+        case "cpu.getSpeed":
+            if(!g.oEMUI || typeof g.oEMUI.cpuGetPercent !== "function")
+                throw new Error("CPU speed control is unavailable.");
+            return g.oEMUI.cpuGetPercent();
+        case "cpu.setSpeed":
+            if(!g.oEMUI || typeof g.oEMUI.cpuSetPercent !== "function")
+                throw new Error("CPU speed control is unavailable.");
+            return g.oEMUI.cpuSetPercent(args.percent);
         case "script.hide": return close();
         case "script.show": return open();
         default: throw new Error("Unknown pasteboard script operation: " + method);
@@ -447,6 +458,12 @@
             reboot:function() { return call("emulator.reboot"); },
             pause:function() { return call("emulator.pause"); },
             resume:function() { return call("emulator.resume"); },
+            cpu:Object.freeze({
+                getSpeed:function() { return call("cpu.getSpeed"); },
+                setSpeed:function(percent) {
+                    return call("cpu.setSpeed", {percent:percent});
+                }
+            }),
             assert:function(condition, description) {
                 checkRun(runState);
                 if(typeof condition !== "boolean")
@@ -550,6 +567,7 @@
             '        <button class="appbut" type="button" id="EMU_pasteboardScriptStop" disabled>■ STOP</button>',
             '        <button class="appbut" type="button" id="EMU_pasteboardScriptExample">Example</button>',
             '        <button class="appbut" type="button" id="EMU_pasteboardScriptProDOS">ProDOS Demo</button>',
+            '        <button class="appbut" type="button" id="EMU_pasteboardScriptShareURI">Copy URI</button>',
             '      </div>',
             '    </div>',
             '    <div class="DBG_testbenchSection">',
@@ -590,6 +608,7 @@
             editor.value = PRODOS_BOOT_SCRIPT;
             editor.focus();
         };
+        el("EMU_pasteboardScriptShareURI").onclick = shareURI;
         if(typeof g.TERMINAL === "function") {
             try {
                 terminal = new g.TERMINAL({
