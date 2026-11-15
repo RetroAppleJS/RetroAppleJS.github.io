@@ -4,20 +4,19 @@ This document defines the basic coding conventions for contributing to RetroAppl
 
 ## 1. File Loading
 
-All JavaScript and CSS include files must be declared explicitly in `index.html`.
+All first-party JavaScript and CSS required by the **emulator, assembler, debugger, and built-in UI** must be declared explicitly as static `<script src="...">` and `<link rel="stylesheet" href="...">` includes in `index.html`. This includes code and styles for optional built-in features: an optional UI may be initialized on demand, but its application files are still included statically.
 
-Do not dynamically inject `<script>` or `<link>` elements unless there is a specific runtime requirement.
+**Do not dynamically load any integral project code or styles.** In particular, do not create script or stylesheet elements at runtime, use dynamic `import()`, or retrieve bundled JavaScript/CSS through `fetch()` or XHR. A built-in module must not load other built-in modules or styles behind the scenes. The explicit declarations in `index.html` are also what the standalone `dist/RetroAppleJS.html` builder uses to inline local code and CSS.
 
 ```html
-<script src="js/CPU.js"></script>
-<script src="js/DISKII.js"></script>
-<script src="js/EMU.js"></script>
+<link rel="stylesheet" href="res/DBG_steptrace_scenario_layout.css">
+<script src="res/DBG_steptrace_scenario.js"></script>
+<script src="res/DBG_steptrace_scenario_layout.js"></script>
 ```
 
-The loading order in `index.html` must reflect dependencies between modules.
+The loading order in `index.html` must reflect dependencies between modules. Avoid hidden dependencies on files loaded indirectly by another module. JSON configuration belonging to the application should be declared in an appropriate static JavaScript source file rather than fetched as another application include.
 
-Avoid hidden dependencies on files being loaded indirectly by another module.
-JSON files should not be loaded or included, better declare a JSON in a separate .js file. 
+**User-loaded code is a separate, ephemeral mechanism.** Users may upload their own source code or programs and run scripts inside the application through its dedicated user-facing tools. Such user-supplied content is runtime input, not part of the application's integral codebase: do not add it to `index.html`, bundle it into the standalone distribution, or treat its dynamic execution as an exception permitting the dynamic loading of built-in project modules. 
 
 ---
 

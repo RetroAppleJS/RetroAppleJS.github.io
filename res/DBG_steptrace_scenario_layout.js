@@ -70,15 +70,6 @@ function positionPopup()
   p.style.top=Math.round(r.top)+'px';
   return true;
 }
-function loadStyle()
-{
-  if(!D||E('DBG_steptraceScenarioLayoutStyle'))return;
-  var link=D.createElement('link');
-  link.id='DBG_steptraceScenarioLayoutStyle';
-  link.rel='stylesheet';
-  link.href='res/DBG_steptrace_scenario_layout.css';
-  (D.head||D.documentElement).appendChild(link);
-}
 function scopePopup()
 {
   var p=E('DBG_steptraceScenarioPopup');
@@ -123,7 +114,6 @@ function wrapUi()
 }
 function apply()
 {
-  loadStyle();
   var S=g.DBG_STEPTRACE_SCENARIO||g.STB;
   if(S&&S.ui&&typeof S.ui.init==='function')S.ui.init();
   scopePopup();
