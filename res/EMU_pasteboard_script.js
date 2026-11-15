@@ -359,13 +359,15 @@
                 "Stable polling period (ms)", 0, 10000);
             var minPolls = integer(options.minPolls === undefined ? 4 : options.minPolls,
                 "Minimum fresh polls", 1, 1000000);
-            var deadline = Date.now()+timeout, lastCount=null, first=null, accumulated=0;
+            var deadline=Date.now()+timeout, lastCount=null;
+            var first=null, lastProgress=null, accumulated=0;
             while(true) {
                 var status = await textAPI.status(), now = Date.now();
                 var count = status.pollCount;
                 if(lastCount===null || count<lastCount) {
                     lastCount=count;
                     first=null;
+                    lastProgress=null;
                     accumulated=0;
                 }
                 var fresh = Math.max(0,count-lastCount);
@@ -380,13 +382,17 @@
                 if(receptive) {
                     if(fresh>0) {
                         if(first===null) first=now;
+                        lastProgress=now;
                         accumulated+=fresh;
                     }
-                    if(first!==null && now-first>=stableMs &&
+                    // Distinct CPU-polling updates must span the stability
+                    // window. One short burst followed by silence is not a
+                    // reliable sign that the guest has finished booting.
+                    if(first!==null && lastProgress-first>=stableMs &&
                        accumulated>=minPolls)
                         return status;
                 } else {
-                    first=null; accumulated=0;
+                    first=null; lastProgress=null; accumulated=0;
                 }
                 if(now>=deadline)throw new Error("Timed out waiting for guest keyboard polling.");
                 await wait(Math.min(interval,Math.max(0,deadline-now)));
