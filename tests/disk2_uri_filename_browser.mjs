@@ -26,7 +26,7 @@ try
         "&D1_DIR=ProDos/ProDOS_8_JPlus.dsk&boot=1";
     await page.goto(start,{waitUntil:"domcontentloaded",timeout:35000});
     await page.waitForFunction(()=>document.getElementById("file_7_D1_name")?.textContent==="ProDOS_8_JPlus.dsk",
-        {timeout:45000});
+        null,{timeout:45000});
     const state=await page.evaluate(()=>{
         const io=apple2plus.hwObj().io;
         const disk2=io.SLOT2obj(7);
@@ -58,7 +58,7 @@ try
     });
     await page.waitForFunction(()=>
         document.getElementById("file_7_D1_name")?.textContent==="replacement.dsk",
-        {timeout:20000});
+        null,{timeout:20000});
     console.log("LOCAL REPLACEMENT OK");
 
     // Eject clears both media data and its UI filename, restoring native input.
