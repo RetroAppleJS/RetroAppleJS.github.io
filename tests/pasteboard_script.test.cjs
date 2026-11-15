@@ -1,5 +1,5 @@
 /*
- * Unit-level checks for the Pasteboard Script Worker and its device adapter.
+ * Unit-level checks for the page-context Pasteboard Script runner and device adapter.
  * Run with: node --test tests/pasteboard_script.test.cjs
  */
 "use strict";
@@ -11,7 +11,6 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const ROOT = path.resolve(__dirname, "..");
-const workerSource = fs.readFileSync(path.join(ROOT, "res/EMU_pasteboard_script_worker.js"), "utf8");
 const hostSource = fs.readFileSync(path.join(ROOT, "res/EMU_pasteboard_script.js"), "utf8");
 
 function mockHost() {
@@ -47,26 +46,6 @@ function mockHost() {
     return {api:globalObject.EMU_PASTEBOARD_SCRIPT, calls, textDevice, router};
 }
 
-async function mockWorker(code, dispatch) {
-    const messages = [], calls = [];
-    const scope = {
-        setTimeout:setTimeout,
-        postMessage(message) {
-            if(message.type !== "call") { messages.push(message); return; }
-            calls.push(message);
-            Promise.resolve().then(() => dispatch(message.method, message.args)).then(
-                result => scope.onmessage({data:{type:"response",id:message.id,result}}),
-                error => scope.onmessage({data:{type:"response",id:message.id,error:String(error.message || error)}})
-            );
-        }
-    };
-    vm.runInNewContext(workerSource, {self:scope, setTimeout:setTimeout, Uint8Array:Uint8Array}, {
-        filename:"EMU_pasteboard_script_worker.js"
-    });
-    await scope.onmessage({data:{type:"run", code}});
-    return {messages,calls};
-}
-
 test("pasteboard host adapter uses PASTEBO and side-effect-free memory", () => {
     const {api, calls} = mockHost();
     assert.equal(api.invoke("text.type", {text:"10 PRINT 1\r"}), true);
@@ -90,39 +69,131 @@ test("host adapter reuses reset/reboot and pause/resume controls", () => {
     assert.deepEqual(calls, [["reset"],["reboot"],["pause",true],["pause",false]]);
 });
 
-test("Worker executes asynchronous text, memory, assertions and timers", async () => {
-    const {messages,calls} = await mockWorker(
-        String.raw`await apple.text.type("CATALOG\r");
-        const screen = await apple.text.waitFor("READY", {timeout:200,interval:50});
-        const bytes = await apple.memory.capture(0x400, 2);
-        apple.assert(screen === "READY" && bytes[1] === 2, "capture");
-        await apple.wait(1);
-        console.log(await apple.memory.read(0x400));
-        `,
-        (method) => {
-            if(method === "text.capture") return "READY";
-            if(method === "memory.capture") return Uint8Array.of(1,2);
-            return true;
+
+function makeRunner(sourceText) {
+    const calls = [];
+    const elements = {
+        EMU_pasteboardScriptEditor:{value:sourceText},
+        EMU_pasteboardScriptStatus:{textContent:"ready"},
+        EMU_pasteboardScriptRun:{disabled:false},
+        EMU_pasteboardScriptStop:{disabled:true},
+        EMU_pasteboardScriptConsoleFallback:{value:"",scrollTop:0},
+        EMU_pasteboardScriptToggle:{setAttribute(){}},
+        EMU_pasteboardScriptPopup:{hidden:false,style:{position:"absolute"}}
+    };
+    const popup = {
+        states:{EMU_pasteboardScriptPopup:false},
+        on(id) { elements[id].hidden=false; this.states[id]=false; },
+        off(id) { elements[id].hidden=true; this.states[id]=true; }
+    };
+    const router = {
+        pipeResolve() {
+            return {device:{
+                sendText(_io,text) { calls.push(["type",text]); return true; },
+                captureText() { calls.push(["capture"]); return "READY"; }
+            }};
         }
-    );
-    assert.deepEqual(calls.map(c => c.method), [
-        "text.type", "text.capture", "memory.capture", "memory.capture"
-    ]);
-    assert.equal(messages.at(-1).type, "done");
-    assert.ok(messages.some(m => m.type === "console" && /PASS capture/.test(m.text)));
+    };
+    const globalObject = {
+        document:{getElementById(id) { return elements[id] || null; }},
+        setTimeout:setTimeout,
+        clearTimeout:clearTimeout,
+        oCOM:{POPUP:popup},
+        EMU_COMPANION_LAYOUT:{position(el) { el.style.left="760px"; return true; }},
+        apple2plus:{
+            hwObj() {
+                return {
+                    io:router,
+                    safe_dump(start,end) {
+                        calls.push(["memory",start,end]);
+                        return Uint8Array.from({length:end-start+1},(_,i)=>(start+i)&255);
+                    }
+                };
+            },
+            reset() { calls.push(["reset"]); },
+            restart() { calls.push(["reboot"]); }
+        },
+        oEMUI:{pauseBtn(arg) { calls.push(["pause",arg.pause]); }}
+    };
+    vm.runInNewContext(hostSource, {window:globalObject}, {filename:"EMU_pasteboard_script.js"});
+    return {api:globalObject.EMU_PASTEBOARD_SCRIPT, calls, elements, popup};
+}
+
+function flushRunner() {
+    return new Promise(resolve => setTimeout(resolve, 20));
+}
+
+test("page-context async macro executes text/memory/timers without Worker", async () => {
+    const code = [
+        'console.log("Start");',
+        'await apple.text.type("CATALOG\\r");',
+        'const screen = await apple.text.waitFor("READY", {timeout:500});',
+        'const bytes = await apple.memory.capture(0x0400,2);',
+        'apple.assert(screen === "READY" && bytes[1] === 1,"memory capture");',
+        'await apple.wait(1);',
+        'console.log("End");'
+    ].join("\n");
+    const run = makeRunner(code);
+    assert.equal(run.api.run(),true);
+    assert.equal(run.elements.EMU_pasteboardScriptRun.disabled,true);
+    await flushRunner();
+    assert.equal(run.elements.EMU_pasteboardScriptStatus.textContent,"ready");
+    assert.equal(run.elements.EMU_pasteboardScriptStop.disabled,true);
+    assert.ok(run.calls.some(x=>x[0]==="type" && x[1]==="CATALOG\r"));
+    assert.ok(run.calls.some(x=>x[0]==="memory" && x[1]===0x0400 && x[2]===0x0401));
+    assert.match(run.elements.EMU_pasteboardScriptConsoleFallback.value,/PASS memory capture/);
+    assert.match(run.elements.EMU_pasteboardScriptConsoleFallback.value,/Script completed/);
 });
 
-test("Worker catches user errors without claiming completion", async () => {
-    const {messages} = await mockWorker('apple.assert(false,"expected failure");', () => true);
-    assert.equal(messages.at(-1).type, "failure");
-    assert.match(messages.at(-1).error, /Assertion failed/);
-    assert.equal(messages.some(m => m.type === "done"), false);
+test("macro hide/show keeps executing and does not affect emulator run state", async () => {
+    const run = makeRunner([
+        'await apple.script.hide();',
+        'console.log("Screen visible");',
+        'await apple.wait(1);',
+        'await apple.script.show();',
+        'console.log("Back in editor");'
+    ].join("\n"));
+    assert.equal(run.api.run(),true);
+    await flushRunner();
+    assert.equal(run.elements.EMU_pasteboardScriptStatus.textContent,"ready");
+    assert.equal(run.elements.EMU_pasteboardScriptPopup.hidden,false);
+    assert.equal(run.elements.EMU_pasteboardScriptPopup.style.left,"760px");
+    assert.match(run.elements.EMU_pasteboardScriptConsoleFallback.value,/Screen visible/);
+    assert.match(run.elements.EMU_pasteboardScriptConsoleFallback.value,/Back in editor/);
+    assert.equal(run.calls.some(x=>x[0]==="pause"),false);
 });
 
-test("Worker rejects unsupported or invalid timing arguments", async () => {
-    const {messages} = await mockWorker("await apple.wait(-1);", () => true);
-    assert.equal(messages.at(-1).type, "failure");
-    assert.match(messages.at(-1).error, /Wait duration/);
+test("STOP cooperatively interrupts pending waits and future actions", async () => {
+    const run = makeRunner('await apple.wait(60000); await apple.text.type("SHOULD-NOT-RUN");');
+    assert.equal(run.api.run(),true);
+    await new Promise(resolve=>setTimeout(resolve,5));
+    assert.equal(run.api.stop(),true);
+    assert.equal(run.elements.EMU_pasteboardScriptStatus.textContent,"stopped");
+    run.elements.EMU_pasteboardScriptEditor.value='await apple.text.type("AFTER-STOP");';
+    assert.equal(run.api.run(),true);
+    await flushRunner();
+    assert.equal(run.elements.EMU_pasteboardScriptStatus.textContent,"ready");
+    assert.equal(run.calls.some(x=>x[1]==="SHOULD-NOT-RUN"),false);
+    assert.equal(run.calls.some(x=>x[1]==="AFTER-STOP"),true);
+});
+
+test("synchronous errors report their stack and allow a new run", async () => {
+    const run=makeRunner('apple.assert(false,"expected failure");');
+    assert.equal(run.api.run(),true);
+    await flushRunner();
+    assert.equal(run.elements.EMU_pasteboardScriptStatus.textContent,"error");
+    assert.match(run.elements.EMU_pasteboardScriptConsoleFallback.value,/Assertion failed/);
+    run.elements.EMU_pasteboardScriptEditor.value="await apple.wait(-1);";
+    run.api.run();
+    await flushRunner();
+    assert.match(run.elements.EMU_pasteboardScriptConsoleFallback.value,/Wait duration/);
+});
+
+test("no Worker is constructed or loaded and source editor uses page context", () => {
+    assert.doesNotMatch(hostSource,/new\s+(?:g\.)?Worker\s*\(/);
+    assert.doesNotMatch(hostSource,/EMU_pasteboard_script_worker/);
+    assert.match(hostSource,/new AsyncFunction\(/);
+    assert.equal(fs.existsSync(path.join(ROOT,"res/EMU_pasteboard_script_worker.js")),false);
 });
 
 test("index loads the IDE and exposes Script instead of pasteboard Clear", () => {
@@ -217,28 +288,6 @@ test("Pasteboard uses shared STEP TRACE layout rather than Tools anchor", () => 
     const end = hostSource.indexOf("function open()", begin);
     assert.ok(begin > 0 && end > begin);
     assert.doesNotMatch(hostSource.slice(begin, end), /tab1\.2|DBG_steptraceScenarioPopup/);
-});
-
-test("Worker scripts can hide and restore their IDE without interrupting execution", async () => {
-    const observed = [];
-    const {messages,calls} = await mockWorker(
-        [
-            "await apple.script.hide();",
-            "await apple.wait(2);",
-            "console.log('Guest screen visible');",
-            "await apple.script.show();",
-            "console.log('Macro completed');"
-        ].join("\n"),
-        method => {
-            observed.push(method);
-            return true;
-        }
-    );
-    assert.deepEqual(observed, ["script.hide", "script.show"]);
-    assert.deepEqual(calls.map(c => c.method), ["script.hide", "script.show"]);
-    assert.equal(messages.at(-1).type, "done");
-    assert.ok(messages.some(m => m.type === "console" && m.text === "Guest screen visible"));
-    assert.ok(messages.some(m => m.type === "console" && m.text === "Macro completed"));
 });
 
 test("Script hide/show only changes popup state and uses absolute companion geometry", () => {
