@@ -54,6 +54,125 @@
         "}"
     ].join("\n");
 
+    function ensureCompression()
+    {
+        if(!g.pako || typeof g.pako.deflate!=="function" ||
+           typeof g.pako.Inflate!=="function")
+            throw new Error("Deflate compression library (pako) is unavailable.");
+        if(typeof g.TextEncoder!=="function" || typeof g.TextDecoder!=="function" ||
+           typeof g.btoa!=="function" || typeof g.atob!=="function")
+            throw new Error("Browser text/Base64 codecs are unavailable.");
+    }
+
+    function encodeCompressedScript(source)
+    {
+        ensureCompression();
+        var text=String(source==null ? "" : source);
+        var bytes=new g.TextEncoder().encode(text);
+        if(!text.trim() || !bytes.length || bytes.length>MAX_SCRIPT_BYTES)
+            throw new RangeError("Script must be nonempty and at most 64 KiB.");
+        var packed=g.pako.deflate(bytes,{level:9}), binary="";
+        for(var i=0;i<packed.length;i+=8192)
+            binary+=String.fromCharCode.apply(null,packed.subarray(i,i+8192));
+        var value=g.btoa(binary).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+        if(value.length>MAX_COMPRESSED_CHARS)
+            throw new RangeError("Compressed script is too long for a URI.");
+        return value;
+    }
+
+    function decodeCompressedScript(value)
+    {
+        ensureCompression();
+        // Match the existing ?asm= zlib/Deflate + Base64 link format.
+        // URL-safe, unpadded Base64 is preferred, but standard Base64 is
+        // accepted, including + characters changed to spaces by URL parsing.
+        var data=String(value==null ? "" : value);
+        if(!data || data.length>MAX_COMPRESSED_CHARS)
+            throw new RangeError("Invalid or oversized pscript parameter.");
+        data=data.replace(/\s/g,"+").replace(/-/g,"+").replace(/_/g,"/");
+        if(!/^[A-Za-z0-9+/]*={0,2}$/.test(data) || data.length%4===1)
+            throw new Error("Invalid Base64 pscript payload.");
+        data+="===".slice(0,(4-data.length%4)%4);
+        var binary=g.atob(data), compressed=Uint8Array.from(binary,function(c) {
+            return c.charCodeAt(0);
+        });
+
+        // Stream decoded chunks so a small malicious compression bomb cannot
+        // allocate an arbitrarily large script before the size check.
+        var inflater=new g.pako.Inflate({chunkSize:8192});
+        var parts=[],size=0;
+        inflater.onData=function(chunk) {
+            size+=chunk.length;
+            if(size>MAX_SCRIPT_BYTES)
+                throw new RangeError("Expanded pscript exceeds 64 KiB.");
+            parts.push(chunk);
+        };
+        inflater.push(compressed,true);
+        if(inflater.err || !inflater.ended)
+            throw new Error("Invalid Deflate pscript payload: "+(inflater.msg || "incomplete data"));
+        if(!size)throw new Error("Empty pscript payload.");
+        var bytes=new Uint8Array(size),offset=0;
+        parts.forEach(function(part){bytes.set(part,offset);offset+=part.length;});
+        var decoded=new g.TextDecoder("utf-8",{fatal:true}).decode(bytes);
+        if(!decoded.trim())throw new Error("Empty pscript source.");
+        return decoded;
+    }
+
+    function currentScriptURI()
+    {
+        var editor=el("EMU_pasteboardScriptEditor");
+        if(!editor)throw new Error("Open the Script IDE before sharing a URI.");
+        if(!g.URL || !g.location)
+            throw new Error("Browser URL APIs are unavailable.");
+        var url=new g.URL(g.location.href);
+        url.searchParams.set("pscript",encodeCompressedScript(editor.value));
+        return url.toString();
+    }
+
+    function shareURI()
+    {
+        var url;
+        try { url=currentScriptURI(); }
+        catch(error) {
+            log("ERROR creating script URI: "+(error.message || String(error)),"error");
+            return Promise.resolve(false);
+        }
+        if(g.navigator && g.navigator.clipboard &&
+           typeof g.navigator.clipboard.writeText==="function")
+            return g.navigator.clipboard.writeText(url).then(function(){
+                log("Compressed script URI copied to clipboard ("+url.length+" characters).","result");
+                return true;
+            }).catch(function(error){
+                log("Clipboard failed: "+(error.message || error)+". URI: "+url,"error");
+                return false;
+            });
+        log("Copy this URI: "+url,"info");
+        return Promise.resolve(false);
+    }
+
+    function importScriptFromURI()
+    {
+        if(uriImportHandled) return false;
+        uriImportHandled=true;
+        if(!g.location || !g.URLSearchParams) return false;
+        var params=new g.URLSearchParams(g.location.search || "");
+        if(!params.has("pscript"))return false;
+        try {
+            var source=decodeCompressedScript(params.get("pscript"));
+            makePopup();
+            el("EMU_pasteboardScriptEditor").value=source;
+            open();
+            log("Imported compressed script from ?pscript= (not executed).","info");
+            return true;
+        } catch(error) {
+            makePopup();
+            open();
+            setStatus("error");
+            log("ERROR importing ?pscript=: "+(error.message || String(error)),"error");
+            return false;
+        }
+    }
+
     function el(id) { return D && D.getElementById(id); }
     function io() {
         var machine = g.apple2plus;
@@ -682,11 +801,19 @@
         if(!button) return false;
         button.setAttribute("aria-pressed", "false");
         if(g.addEventListener) g.addEventListener("resize", position);
+        // Import only; never execute JavaScript automatically from a URL.
+        importScriptFromURI();
         return true;
     }
     g.EMU_PASTEBOARD_SCRIPT = {
         ui:{init:init, open:open, close:close, toggle:toggle, position:position},
         run:run, stop:stop,
+        uri:{
+            encode:encodeCompressedScript,
+            decode:decodeCompressedScript,
+            current:currentScriptURI,
+            importFromLocation:importScriptFromURI
+        },
         // Public only for testing/integration; macros invoke the page-context adapter.
         invoke:invoke
     };
