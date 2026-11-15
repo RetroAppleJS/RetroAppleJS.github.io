@@ -3719,15 +3719,29 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
         return document.getElementById(this.driveElementID("f",drv));
     }
 
-    this.diskFileInputHTML = function(drv)
+    this.diskFileInputHTML = function(drv, mountedName)
     {
         if(typeof drv == "number") drv = "D" + drv;
         var slotN = (this.mount && this.mount.slotN !== undefined) ? this.mount.slotN : 7;
-        return "        <input type=\"file\""
+        var inputID = this.driveElementID("file",drv);
+        var hasMountedName = mountedName!==undefined && mountedName!==null &&
+            String(mountedName)!=="";
+        var input = "        <input type=\"file\""
             +" name=\"" + drv + "\""
-            +" id=\"" + this.driveElementID("file",drv) + "\""
-            +" style=\"display:inline-block\""
-            +" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this," + slotN + ",'" + drv + "')\">"
+            +" id=\"" + inputID + "\""
+            +" style=\"display:" + (hasMountedName ? "none" : "inline-block") + "\""
+            +" onchange=\"javascript:EMU_audio_event_unlock();loadDisk_fromFile(this," + slotN + ",'" + drv + "')\">";
+        if(!hasMountedName) return input;
+
+        // A remote image cannot populate native input.files; keep the picker
+        // accessible and display the *mounted* filename as ordinary text.
+        var safeName = oCOM.escapeHTML(String(mountedName));
+        return input
+            +"<label class=\"appbut\" for=\"" + inputID + "\""
+            +" style=\"display:inline-block;cursor:pointer\">Choose File</label>"
+            +"<span id=\"" + inputID + "_name\""
+            +" title=\"" + safeName + "\""
+            +" style=\"padding-left:6px\">" + safeName + "</span>";
     }
 
     this.diskCatalogLabelHTML = function(drv, fileName)
@@ -3756,7 +3770,9 @@ data:"eNrt2gt4FEW+KPCeZyaTACHxEVSgQQwBYR2IsDGykIQMTLCTQHgICti6oiMHXFZhF3wsoAw3ct
 
             var el = this.diskMiddleEl(drv);
             if(el == null) return;
-            el.innerHTML = this.diskCatalogLabelHTML(drv, fileName);
+            // Keep the file picker working after URL/catalog mounting.
+            // The previous catalog label disabled the chooser entirely.
+            el.innerHTML = this.diskFileInputHTML(drv, fileName);
             var btn = this.diskButtonEl(drv);
             if(btn != null)
             {

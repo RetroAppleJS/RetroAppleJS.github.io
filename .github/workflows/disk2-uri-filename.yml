@@ -1,0 +1,51 @@
+name: Disk II URI-mounted filename
+
+on:
+  push:
+    paths:
+      - 'res/EMU_apple2main.js'
+      - 'res/EMU_CARD_appledisk2.js'
+      - 'tests/disk2_uri_filename_control.test.js'
+      - 'tests/disk2_uri_filename_browser.mjs'
+      - '.github/workflows/disk2-uri-filename.yml'
+  pull_request:
+    paths:
+      - 'res/EMU_apple2main.js'
+      - 'res/EMU_CARD_appledisk2.js'
+      - 'tests/disk2_uri_filename_control.test.js'
+      - 'tests/disk2_uri_filename_browser.mjs'
+      - '.github/workflows/disk2-uri-filename.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  filename-unit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test Disk II URI filenames and replaceable picker
+        run: node --test tests/disk2_uri_filename_control.test.js
+
+  filename-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Boot J-Plus with URI-loaded Disk II and test filename, replace, eject
+        run: |
+          python3 -m http.server 8000 >/tmp/retroapple-uri-disk.log 2>&1 &
+          server=$!
+          trap 'kill $server || true' EXIT
+          sleep 2
+          RETROAPPLE_URL=http://127.0.0.1:8000 node tests/disk2_uri_filename_browser.mjs
