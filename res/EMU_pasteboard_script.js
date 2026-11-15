@@ -13,6 +13,8 @@
     var DEFAULT_SCRIPT = [
         "// PASTEBOARD SCRIPT — Ctrl/Cmd+Enter to run",
         "// Commands are async: always await device operations.",
+        "// Optional: await apple.script.hide();  // Reveal the Apple II screen",
+        "// Optional: await apple.script.show();  // Restore the IDE",
         "console.log('Current screen:');",
         "console.log(await apple.text.capture());",
         "console.log(await apple.memory.dump(0x0400, 64));",
@@ -115,6 +117,8 @@
             return true;
         case "emulator.pause": return setPause(true);
         case "emulator.resume": return setPause(false);
+        case "script.hide": return close();
+        case "script.show": return open();
         default: throw new Error("Unknown pasteboard script operation: " + method);
         }
     }
@@ -329,6 +333,9 @@
     }
     function open() {
         var p = makePopup();
+        // The editor is a document-positioned companion, not an overlay
+        // anchored inside the monitor or pasteboard toolbox.
+        p.style.position = "absolute";
         if(g.oCOM && g.oCOM.POPUP && g.oCOM.POPUP.on)
             g.oCOM.POPUP.on(POPUP);
         else p.hidden = false;
