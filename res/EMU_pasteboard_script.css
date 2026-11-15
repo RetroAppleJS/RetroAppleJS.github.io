@@ -1,5 +1,7 @@
 /* PASTEBOARD SCRIPT companion: same shell/density as STEP TRACE SCENARIO. */
 .EMU_pasteboardScriptPopup {
+    /* Always document-absolute, never fixed to or inside the Apple II screen. */
+    position: absolute !important;
     margin: 0 !important;
     box-sizing: border-box;
     max-width: calc(100vw - 8px);
