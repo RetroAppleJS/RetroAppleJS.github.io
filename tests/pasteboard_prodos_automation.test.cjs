@@ -171,6 +171,7 @@ test("built-in ProDOS demonstration types two RIGHT arrows, RETURN, then HELLO W
             async hide(){events.push("hide");},
             async show(){events.push("show");}
         },
+        cpu:{async setSpeed(pct){events.push(["speed",pct]);return pct;}},
         disk:{
             async loadOffline(opts){events.push(["disk",opts]);return opts;}
         },
@@ -187,14 +188,16 @@ test("built-in ProDOS demonstration types two RIGHT arrows, RETURN, then HELLO W
         apple,{log(){}}
     );
     assert.equal(events[0],"hide");
-    assert.deepEqual(events[1],["disk",{
+    assert.deepEqual(events[1],["speed",400]);
+    assert.deepEqual(events[2],["disk",{
         slot:6,drive:1,path:"disks/ProDOS 8.dsk"
     }]);
-    assert.equal(events[2],"reboot");
+    assert.equal(events[3],"reboot");
     assert.deepEqual(events.filter(x=>Array.isArray(x)&&x[0]==="type"),[
         ["type","\x15\x15\r"],["type",'PRINT "HELLO WORLD"\r']
     ]);
     assert.ok(events.filter(x=>x==="ready").length>=2);
+    assert.deepEqual(events.at(-2),["speed",100]);
     assert.equal(events.at(-1),"show");
 });
 
