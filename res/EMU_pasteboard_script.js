@@ -370,14 +370,20 @@
                 }
                 var fresh = Math.max(0,count-lastCount);
                 lastCount=count;
-                var polling = fresh>0 &&
-                    status.lastPollMs>0 &&
-                    now-status.lastPollMs<=Math.max(500,interval*3) &&
+                // The CPU runs in scheduler batches (often around 100ms).
+                // A poll snapshot may legitimately stay unchanged for one
+                // or two samples; do not reset the stability window merely
+                // because no new poll occurred in this particular sample.
+                var receptive = status.lastPollMs>0 &&
+                    now-status.lastPollMs<=Math.max(750,interval*4) &&
                     status.active && status.queued===0 && !status.latched;
-                if(polling) {
-                    if(first===null) first=now;
-                    accumulated+=fresh;
-                    if(now-first>=stableMs && accumulated>=minPolls)
+                if(receptive) {
+                    if(fresh>0) {
+                        if(first===null) first=now;
+                        accumulated+=fresh;
+                    }
+                    if(first!==null && now-first>=stableMs &&
+                       accumulated>=minPolls)
                         return status;
                 } else {
                     first=null; accumulated=0;
