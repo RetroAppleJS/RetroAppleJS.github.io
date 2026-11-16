@@ -252,12 +252,21 @@
         if(!keyboard || typeof keyboard.getInputState !== "function")
             throw new Error("A2KBD input telemetry is unavailable.");
 
-        // The VideoTerm text port ultimately injects through A2KBD's
-        // keyboard latch, so the same CPU polling handshake applies.
+        // A2KBD.isActive() only controls *host keyboard capture*. Its
+        // boolean may be false when Script/Debugger owns focus, even while
+        // ProDOS is actively reading the emulated keyboard at $C000.
+        // Scripted text uses the independent semantic input port.
         var state = keyboard.getInputState();
+        var endpointOpen = router.pipeIsOpen
+            ? router.pipeIsOpen(target)
+            : !!(router.pipeResolve && router.pipeResolve(target));
+        var inputOpen = !!endpointOpen;
         return Object.assign({},state,{
              target:target
-            ,available:!!state.active && state.queued===0 && !state.latched
+            ,hostCaptureActive:!!state.active
+            ,active:inputOpen
+            ,inputOpen:inputOpen
+            ,available:inputOpen && state.queued===0 && !state.latched
                 && state.lastPollMs>0
                 && Date.now()-state.lastPollMs<1000
         });
@@ -541,8 +550,9 @@
                         "; screen="+JSON.stringify(captured.slice(0,320)));
                 }
                 var readyState=await textAPI.status();
-                if(!readyState.active)
-                    throw new Error("The guest prompt is visible, but A2KBD is inactive.");
+                if(!readyState.inputOpen)
+                    throw new Error("The guest prompt is visible, but the text input port "+
+                        readyState.target+" is closed or unavailable.");
                 return readyState;
             }
             var stableMs = integer(options.stableMs === undefined ? 250 : options.stableMs,
