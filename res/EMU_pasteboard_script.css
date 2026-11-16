@@ -112,3 +112,22 @@
     color: #555;
     font: 10px/14px arial,sans-serif;
 }
+
+
+.EMU_pasteboardScriptModeLabel {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font: 10px/16px Arial,sans-serif;
+    white-space: nowrap;
+}
+#EMU_pasteboardScriptMode {
+    max-width: 132px;
+    font: 10px/17px Arial,sans-serif;
+    padding: 1px 3px;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    background: rgba(255,255,255,.92);
+    color: #222;
+}
+#EMU_pasteboardScriptMode:disabled { opacity: .6; }
