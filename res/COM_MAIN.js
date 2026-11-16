@@ -2184,8 +2184,16 @@ function prettyJsonAllman(value, indent) {
         return true;
       }
 
+      // Cards with embedded catalogs can opt in to a network-free default.
+      // navigator.onLine is unreliable (notably under file://), so the
+      // local catalog must be selected before even creating an XHR.
+      if(inst.cfg.offlineFirst===true && arg.source!=="github")
+      {
+        if(useFallback("embedded catalog preferred")) return true;
+      }
+
       if(this.isOffline())
-      {  
+      {
         if(useFallback("navigator.onLine=false")) return true;
         callback({
            status:0
