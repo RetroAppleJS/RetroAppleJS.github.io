@@ -227,7 +227,7 @@ test("A2KBD queues and consumes pasteboard keys even when host-key capture is di
     const keyboard=loadKeyboard();
     keyboard.isActive(false);
     assert.equal(keyboard.getInputState().active,false);
-    assert.equal(keyboard.receiveText({data:"\\x15\\x15\\r"}),true);
+    assert.equal(keyboard.receiveText({data:"\x15\x15\r"}),true);
     assert.equal(keyboard.getInputState().queued,3);
     for(const key of [0x15,0x15,0x0d]) {
         assert.equal(keyboard.read(0,{}),key);
