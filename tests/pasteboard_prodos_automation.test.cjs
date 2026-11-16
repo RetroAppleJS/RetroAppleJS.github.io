@@ -66,7 +66,10 @@ function mockDeviceHost(opts={}) {
             calls.push({event:"slot",index});
             return index===7?disk:null;
         },
-        getTextInputTargetAddress() {return "0:A2KBD:text";},
+        getTextInputTargetAddress() {return opts.target || "0:A2KBD:text";},
+        pipeIsOpen(addr) {
+            return opts.portOpen === undefined ? true : !!opts.portOpen;
+        },
         pipeResolve(addr) {
             return {device:addr==="0:A2KBD:text"?keyboard:{
                 captureText(){return opts.screen ? opts.screen() : "]";},
@@ -155,6 +158,83 @@ test("prompt readiness proceeds with no A2KBD polls when the boot menu is visibl
     await new Promise(resolve=>setTimeout(resolve,120));
     assert.equal(query.elements.EMU_pasteboardScriptStatus.textContent,"ready");
     assert.ok(samples>0);
+});
+
+
+test("visible ProDOS menu is ready when host keyboard capture is inactive but text port is open", async () => {
+    // This is the real browser failure: opening the Script IDE can disable
+    // window.onkeypress capture, but the A2KBD:text port remains functional.
+    const query=mockDeviceHost({
+        editor:"await apple.text.waitForReady({prompt:/RETURN\\s*:/i,timeout:500});",
+        screen(){return "BITSY BYE\\nRETURN:SELECT\\nBASIC.SYSTEM";},
+        status(){
+            return {active:false,pollCount:0,strobeCount:0,
+                lastPollMs:0,queued:0,latched:false};
+        },
+        portOpen:true
+    });
+    const input=query.api.invoke("text.status");
+    assert.equal(input.hostCaptureActive,false);
+    assert.equal(input.active,true,"script input must not inherit window.onkeypress focus");
+    assert.equal(input.inputOpen,true);
+    assert.equal(input.target,"0:A2KBD:text");
+    assert.equal(query.api.run(),true);
+    await new Promise(resolve=>setTimeout(resolve,110));
+    assert.equal(query.elements.EMU_pasteboardScriptStatus.textContent,"ready");
+    assert.doesNotMatch(query.elements.EMU_pasteboardScriptConsoleFallback.value,
+        /A2KBD is inactive/);
+});
+
+test("readiness uses active VIDEXTXT port instead of motherboard host focus", async () => {
+    const query=mockDeviceHost({
+        editor:"await apple.text.waitForReady({prompt:'RETURN:SELECT',timeout:500});",
+        target:"3:VIDEXTXT:text",
+        status(){
+            return {active:false,pollCount:0,strobeCount:0,
+                lastPollMs:0,queued:0,latched:false};
+        },
+        screen(){return "RETURN:SELECT";},
+        portOpen:true
+    });
+    const status=query.api.invoke("text.status");
+    assert.equal(status.target,"3:VIDEXTXT:text");
+    assert.equal(status.inputOpen,true);
+    assert.equal(status.hostCaptureActive,false);
+    query.api.run();
+    await new Promise(resolve=>setTimeout(resolve,110));
+    assert.equal(query.elements.EMU_pasteboardScriptStatus.textContent,"ready");
+});
+
+test("visible prompt does not incorrectly declare readiness when input port is closed", async () => {
+    const query=mockDeviceHost({
+        editor:"await apple.text.waitForReady({prompt:/RETURN\\s*:/i,timeout:500});",
+        screen(){return "BITSY BYE\\nRETURN:SELECT";},
+        status(){
+            return {active:true,pollCount:12,strobeCount:0,
+                lastPollMs:Date.now(),queued:0,latched:false};
+        },
+        portOpen:false
+    });
+    assert.equal(query.api.invoke("text.status").active,false);
+    query.api.run();
+    await new Promise(resolve=>setTimeout(resolve,110));
+    assert.equal(query.elements.EMU_pasteboardScriptStatus.textContent,"error");
+    assert.match(query.elements.EMU_pasteboardScriptConsoleFallback.value,
+        /text input port 0:A2KBD:text is closed or unavailable/);
+});
+
+test("A2KBD queues and consumes pasteboard keys even when host-key capture is disabled", () => {
+    const keyboard=loadKeyboard();
+    keyboard.isActive(false);
+    assert.equal(keyboard.getInputState().active,false);
+    assert.equal(keyboard.receiveText({data:"\\x15\\x15\\r"}),true);
+    assert.equal(keyboard.getInputState().queued,3);
+    for(const key of [0x15,0x15,0x0d]) {
+        assert.equal(keyboard.read(0,{}),key);
+        keyboard.strobe();
+    }
+    assert.equal(keyboard.getInputState().queued,0);
+    assert.equal(keyboard.getInputState().latched,false);
 });
 
 test("prompt readiness times out with keyboard and screen diagnostics", async () => {
