@@ -174,6 +174,42 @@ test("GIF encoder round-trips HGR, GR and HGR2 pixels with a separate GIF decode
     }
 });
 
+test("HGR artifact colors use the canvas HGR palette (white/orange stay correct)",()=>{
+    // EMU_DEVICE_video_canvas.js maps the six artifact color IDs
+    // to INTCols palette entries 0,3,6,9,12,15, not entries 0..5.
+    const rgb=(gif,index)=>Array.from(gif.slice(13+index*3,16+index*3));
+
+    for(const mode of ["HGR","HGR2"]) {
+        const white=new Uint8Array(7680).fill(0x7f);
+        const whitePixels=G.render(mode,white);
+        assert.ok(whitePixels.every(x=>x===15),mode+" solid white must be index 15");
+        const recorder=new G.Recorder();
+        recorder.capture(mode,white);
+        const whiteGif=recorder.gif({animated:false}).bytes;
+        assert.ok(readGif(whiteGif).frames[0].every(x=>x===15));
+        assert.deepEqual(rgb(whiteGif,15),[255,255,255]);
+
+        const artifacts=new Uint8Array(7680).fill(0xaa);
+        const artifactPixels=G.render(mode,artifacts);
+        assert.ok(artifactPixels.includes(9),mode+" should contain orange index 9");
+        assert.ok(artifactPixels.includes(6),mode+" should contain blue index 6");
+        const r2=new G.Recorder();
+        r2.capture(mode,artifacts);
+        const artifactGif=r2.gif({animated:false}).bytes;
+        const decoded=readGif(artifactGif).frames[0];
+        assert.ok(decoded.includes(9),mode+" GIF orange pixels");
+        assert.ok(decoded.includes(6),mode+" GIF blue pixels");
+        assert.deepEqual(rgb(artifactGif,9),[0xd0,0x6a,0x1a]);
+        assert.deepEqual(rgb(artifactGif,6),[0x2f,0x95,0xe5]);
+    }
+
+    // Low-resolution graphics are indexed directly into the 16-color table.
+    // They must NOT use the six-color HGR remapping.
+    const lores=new Uint8Array(960).fill(0x33);
+    assert.ok(G.render("GR",lores).every(x=>x===3));
+    assert.ok(G.render("GR2",lores).every(x=>x===3));
+});
+
 test("animated GIF uses real time delta, global 16-color palette and looping",()=>{
     const r=new G.Recorder({now:()=>100});
     const a=new Uint8Array(960);const b=a.slice();b[0]=0x21;
