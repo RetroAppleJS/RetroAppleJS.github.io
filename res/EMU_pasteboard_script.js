@@ -10,6 +10,7 @@
 
     var D = g.document, currentRun = null, generation = 0, terminal = null;
     var POPUP = "EMU_pasteboardScriptPopup";
+    var graphicsRecorder = null; // retained between RUN/STOP until explicit clear
     // Same zlib/Deflate + Base64URL encoding used by index.html?asm=.
     var MAX_SCRIPT_BYTES = 65536, MAX_COMPRESSED_CHARS = 32768;
     var uriImportHandled = false;
@@ -390,6 +391,99 @@
         return {controller:controller,internalSlot:internalSlot};
     }
 
+
+    function graphicsContext() {
+        var codec=g.EMU_PASTEBOARD_GIF;
+        if(!codec || typeof codec.Recorder!=="function")
+            throw new Error("Pasteboard GIF recorder is unavailable.");
+        if(!graphicsRecorder)graphicsRecorder=new codec.Recorder();
+        return {codec:codec,recorder:graphicsRecorder};
+    }
+
+    function graphicsMode(mode) {
+        var value=String(mode==null ? "active" : mode).toUpperCase();
+        if(value!=="ACTIVE")return value;
+        var hw=g.apple2plus && g.apple2plus.hwObj && g.apple2plus.hwObj();
+        var flags=hw && hw.getVideoMode && hw.getVideoMode();
+        if(!flags || !flags.gfx)
+            throw new Error("Active video mode is not graphics; select GR, GR2, HGR or HGR2 explicitly.");
+        return flags.hires ? (flags.page2 ? "HGR2" : "HGR")
+            : (flags.page2 ? "GR2" : "GR");
+    }
+
+    function graphicsBytes(mode) {
+        var context=graphicsContext(),spec=context.codec.modes[mode];
+        if(!spec)throw new RangeError("Graphics mode must be GR, GR2, HGR or HGR2.");
+        var hw=g.apple2plus && g.apple2plus.hwObj && g.apple2plus.hwObj();
+        if(!hw)throw new Error("Apple II hardware is unavailable.");
+        var page;
+        if(typeof hw.safe_videoPage==="function") {
+            page=hw.safe_videoPage(spec.base,spec.size);
+        } else if(typeof hw.safe_videodump==="function") {
+            // Older emulator builds can still use this slower but safe path.
+            page=hw.safe_videodump().subarray(spec.base,spec.base+spec.size);
+        } else throw new Error("Safe graphics memory capture is unavailable.");
+        return context.codec.visibleBytes(mode,page);
+    }
+
+    function graphicsFilename(value,animated) {
+        var fallback=animated?"apple2-animation.gif":"apple2-snapshot.gif";
+        var filename=String(value || fallback).replace(/[/\\:*?"<>|\x00-\x1f]/g,"_");
+        filename=filename.slice(0,128);
+        if(!filename || filename==="." || filename==="..")
+            filename=fallback;
+        return /\.gif$/i.test(filename)?filename:filename+".gif";
+    }
+
+    function graphicsExport(options) {
+        options=options || {};
+        var session=graphicsContext().recorder;
+        var animated=options.animated===true;
+        var config={
+            animated:animated,index:options.index,loop:options.loop,
+            frameDelayMs:options.frameDelayMs,
+            lastDelayMs:options.lastDelayMs
+        };
+        // If the script stopped recording a while ago, retain that visual
+        // hold on the last image rather than truncating the animation.
+        if(animated && config.lastDelayMs===undefined) {
+            var last=session.status().lastTimestamp;
+            if(last!==null)
+                config.lastDelayMs=Math.min(655350,Math.max(100,Date.now()-last));
+        }
+        var output=session.gif(config);
+        var filename=graphicsFilename(options.filename,animated);
+        var result={
+            filename:filename,mime:"image/gif",width:output.width,
+            height:output.height,frames:output.frameCount,
+            bytes:output.bytes.length,downloaded:false
+        };
+        if(options.download===false) {
+            // Useful for tests and browser integrations; no silent download.
+            result.data=output.bytes;
+            return result;
+        }
+        if(typeof g.Blob!=="function" || !g.URL ||
+           typeof g.URL.createObjectURL!=="function" || !D ||
+           typeof D.createElement!=="function")
+            throw new Error("Browser GIF download APIs are unavailable.");
+        var blob=new g.Blob([output.bytes],{type:"image/gif"});
+        var url=g.URL.createObjectURL(blob);
+        var link=D.createElement("a");
+        link.href=url;
+        link.download=filename;
+        try {
+            if(D.body)D.body.appendChild(link);
+            link.click();
+        } finally {
+            if(link.remove)link.remove();
+            // Keep the URL alive until the click's download is dispatched.
+            g.setTimeout(function(){g.URL.revokeObjectURL(url);},1000);
+        }
+        result.downloaded=true;
+        return result;
+    }
+
     function invoke(method, args) {
         args = args || {};
         var router, board, value;
@@ -404,6 +498,21 @@
             if(typeof g.onBoardPasteRefresh === "function") g.onBoardPasteRefresh();
             return true;
         case "text.status": return keyboardStatus();
+        case "graphics.capture": {
+            var mode=graphicsMode(args.mode),session=graphicsContext().recorder;
+            return session.capture(mode,graphicsBytes(mode),{
+                changedOnly:args.changedOnly!==false,
+                timestampMs:Date.now()
+            });
+        }
+        case "graphics.changed": {
+            var gfxMode=graphicsMode(args.mode);
+            return graphicsContext().recorder.changed(gfxMode,graphicsBytes(gfxMode));
+        }
+        case "graphics.status": return graphicsContext().recorder.status();
+        case "graphics.clear": return graphicsContext().recorder.clear();
+        case "graphics.exportGIF": return graphicsExport(Object.assign({},args,{animated:false}));
+        case "graphics.exportAnimatedGIF": return graphicsExport(Object.assign({},args,{animated:true}));
         case "disk.listOffline":
             return offlineDiskController(args.slot).controller.getOfflineDisks();
         case "disk.loadOffline":
@@ -820,6 +929,23 @@
             wait:wait,
             text:Object.freeze(textAPI),
             memory:Object.freeze(memoryAPI),
+            graphics:Object.freeze({
+                // Compact graphics-RAM snapshots; no GIF work until export.
+                capture:function(options) {
+                    return call("graphics.capture",options || {});
+                },
+                changed:function(options) {
+                    return call("graphics.changed",options || {});
+                },
+                status:function() {return call("graphics.status");},
+                clear:function() {return call("graphics.clear");},
+                exportGIF:function(options) {
+                    return call("graphics.exportGIF",options || {});
+                },
+                exportAnimatedGIF:function(options) {
+                    return call("graphics.exportAnimatedGIF",options || {});
+                }
+            }),
             disk:Object.freeze({
                 listOffline:function(slot) {
                     return call("disk.listOffline", {slot:slot});
