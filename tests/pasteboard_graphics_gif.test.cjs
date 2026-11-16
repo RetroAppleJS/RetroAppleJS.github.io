@@ -194,13 +194,15 @@ test("animated GIF uses real time delta, global 16-color palette and looping",()
 
 function hostFixture() {
     const graphics=new Uint8Array(0x6000),calls=[];
+    const flags={gfx:true,mix:false,page2:false,hires:true};
+    const font=new Uint8Array(2048);
     const hw={
         safe_videoPage(start,length){
             calls.push(["snapshot",start,length]);
             return graphics.slice(start,start+length);
         },
         getVideoMode(){
-            return {gfx:true,mix:false,page2:false,hires:true};
+            return {...flags};
         }
     };
     const nodes={
@@ -230,10 +232,15 @@ function hostFixture() {
     const browser={
         document:doc,apple2plus:{hwObj(){return hw;}},
         EMU_PASTEBOARD_GIF:G,
+        oApple2Video:{
+            state:{annunciator2:true},
+            getCharRom(){return font;},
+            getCharRomKey(){return "A2_US";}
+        },
         Blob,URL:urlAPI,setTimeout,clearTimeout
     };
     vm.runInNewContext(scripts,{window:browser},{filename:"EMU_pasteboard_script.js"});
-    return {api:browser.EMU_PASTEBOARD_SCRIPT,graphics,calls,links,uris,nodes};
+    return {api:browser.EMU_PASTEBOARD_SCRIPT,graphics,calls,links,uris,nodes,flags,font};
 }
 
 test("Script API snapshots visible HGR bytes and skips offscreen writes",()=>{
@@ -288,4 +295,73 @@ test("capture works across script runs until explicitly cleared",async()=>{
     assert.equal(h.api.run(),true);
     await new Promise(resolve=>setTimeout(resolve,15));
     assert.equal(h.api.invoke("graphics.status").frames,1);
+});
+
+test("active TEXT mode uses the character ROM, not stale HGR memory",()=>{
+    const h=hostFixture();
+    h.flags.gfx=false;
+    h.graphics[0x400]=0xa0; // classic ROM code 0 is the space glyph
+    h.font[0]=0x7f; // recognizable white first scanline
+    h.graphics[0x2000]=0x7f; // off-screen graphics should not matter
+    assert.equal(h.api.invoke("graphics.mode"),"TEXT");
+    const first=h.api.invoke("graphics.capture",{});
+    assert.equal(first.mode,"TEXT");
+    assert.equal(first.activeMode,"TEXT");
+    assert.equal(first.displayed,true);
+    const decoded=readGif(h.api.invoke("graphics.exportGIF",{download:false}).data);
+    assert.deepEqual(Array.from(decoded.frames[0].slice(0,7)),Array(7).fill(15));
+    assert.deepEqual(Array.from(decoded.frames[0].slice(280,287)),Array(7).fill(0));
+    h.graphics[0x2000]^=1;
+    assert.equal(h.api.invoke("graphics.changed",{}),false,
+        "off-screen HGR writes are not visible changes");
+    const offscreen=h.api.invoke("graphics.capture",{mode:"HGR"});
+    assert.equal(offscreen.displayed,false);
+    assert.match(offscreen.warning,/off-screen HGR/);
+    assert.throws(()=>h.api.invoke("graphics.capture",{
+        mode:"HGR",requireVisible:true
+    }),/not displayed/);
+});
+
+test("active HGR2 mixed mode includes only top HGR and bottom text RAM",()=>{
+    const h=hostFixture();
+    Object.assign(h.flags,{gfx:true,hires:true,page2:true,mix:true});
+    h.font[0]=0x7f;
+    h.graphics[0x4000]=0x7f;
+    const bottomTextOffset=((20&7)<<7)+((20&0x18)*5);
+    h.graphics[0x800+bottomTextOffset]=0xa0;
+    assert.equal(h.api.invoke("graphics.mode"),"HGR2MIX");
+    const first=h.api.invoke("graphics.capture",{});
+    assert.equal(first.mode,"HGR2MIX");
+    assert.equal(first.displayed,true);
+    assert.equal(h.api.invoke("graphics.changed",{}),false);
+    // HGR y=160 is hidden by bottom text in mixed mode.
+    const hidden=((160&7)<<10)+((160&0x38)<<4)+
+        ((160&0xc0)>>1)+((160&0xc0)>>3);
+    h.graphics[0x4000+hidden]^=0x01;
+    assert.equal(h.api.invoke("graphics.changed",{}),false);
+    // But bottom text writes are visible and recorded.
+    h.graphics[0x800+bottomTextOffset]=0xa1;
+    assert.equal(h.api.invoke("graphics.changed",{}),true);
+    const next=h.api.invoke("graphics.capture",{});
+    assert.equal(next.captured,true);
+    const frames=readGif(h.api.invoke("graphics.exportAnimatedGIF",{
+        download:false,frameDelayMs:100
+    }).data).frames;
+    assert.equal(frames.length,2);
+    assert.deepEqual(Array.from(frames[0].slice(160*280,160*280+7)),
+        Array(7).fill(15));
+    assert.equal(frames[1].length,280*192);
+});
+
+test("TEXT2 and GR mixed modes track the page and text/graphics switches",()=>{
+    const h=hostFixture();
+    Object.assign(h.flags,{gfx:false,page2:true,hires:false,mix:false});
+    assert.equal(h.api.invoke("graphics.capture",{}).mode,"TEXT2");
+    h.flags.gfx=true;
+    h.flags.mix=true;
+    const second=h.api.invoke("graphics.capture",{});
+    assert.equal(second.mode,"GR2MIX");
+    assert.equal(second.captured,true);
+    h.flags.page2=false;
+    assert.equal(h.api.invoke("graphics.capture",{}).mode,"GRMIX");
 });
