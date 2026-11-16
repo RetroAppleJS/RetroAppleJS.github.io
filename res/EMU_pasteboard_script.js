@@ -165,6 +165,7 @@
             throw new Error("Browser URL APIs are unavailable.");
         var url=new g.URL(g.location.href);
         url.searchParams.set("pscript",encodeCompressedScript(editor.value));
+        url.searchParams.set("pscriptMode",editorMode);
         return url.toString();
     }
 
@@ -199,7 +200,14 @@
         try {
             var source=decodeCompressedScript(params.get("pscript"));
             makePopup();
+            // Old ?pscript= links were always Program scripts. New links
+            // include pscriptMode; keep existing shared links compatible.
+            var incoming=params.get("pscriptMode") || "program";
+            if(incoming!=="state" && incoming!=="program")
+                throw new Error("Invalid pscriptMode (expected state or program).");
+            setMode(incoming);
             el("EMU_pasteboardScriptEditor").value=source;
+            modeSources[incoming]=source;
             open();
             log("Imported compressed script from ?pscript= (not executed).","info");
             return true;
@@ -421,6 +429,8 @@
         var stopButton = el("EMU_pasteboardScriptStop");
         if(runButton) runButton.disabled = !!currentRun;
         if(stopButton) stopButton.disabled = !currentRun;
+        var modeControl=el("EMU_pasteboardScriptMode");
+        if(modeControl) modeControl.disabled=!!currentRun;
     }
 
     function cancelledError() {
@@ -945,7 +955,12 @@
             '  <div class="DBG_testbenchGrid">',
             '    <div class="DBG_testbenchSection">',
             '      <div class="DBG_testbenchSectionHeader"><span>JavaScript IDE</span>',
-            '        <span>async/await · page context</span></div>',
+            '        <label class="EMU_pasteboardScriptModeLabel" for="EMU_pasteboardScriptMode">Mode',
+            '          <select id="EMU_pasteboardScriptMode" aria-label="Script execution mode">',
+            '            <option value="state">State Machine</option>',
+            '            <option value="program">Program</option>',
+            '          </select>',
+            '        </label></div>',
             '      <textarea id="EMU_pasteboardScriptEditor" spellcheck="false" aria-label="Pasteboard JavaScript editor"></textarea>',
             '      <div class="EMU_pasteboardScriptActions">',
             '        <button class="appbut" type="button" id="EMU_pasteboardScriptRun">▶ RUN</button>',
@@ -971,7 +986,16 @@
         (D.body || D.documentElement).appendChild(p);
 
         var editor = el("EMU_pasteboardScriptEditor");
-        editor.value = DEFAULT_SCRIPT;
+        if(modeSources.state===null) modeSources.state=DEFAULT_STATE_SCRIPT;
+        if(modeSources.program===null) modeSources.program=DEFAULT_SCRIPT;
+        editor.value=modeSources[editorMode];
+        var selector=el("EMU_pasteboardScriptMode");
+        if(selector) {
+            selector.value=editorMode;
+            selector.addEventListener("change",function(){
+                setMode(selector.value);
+            });
+        }
         editor.addEventListener("keydown", function(ev) {
             if((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") {
                 ev.preventDefault();
@@ -985,12 +1009,15 @@
         el("EMU_pasteboardScriptCopy").onclick = copyConsole;
         el("EMU_pasteboardScriptExample").onclick = function() {
             if(currentRun) return;
-            editor.value = DEFAULT_SCRIPT;
+            editor.value=editorMode==="state" ? DEFAULT_STATE_SCRIPT : DEFAULT_SCRIPT;
+            modeSources[editorMode]=editor.value;
             editor.focus();
         };
         el("EMU_pasteboardScriptProDOS").onclick = function() {
             if(currentRun) return;
-            editor.value = PRODOS_BOOT_SCRIPT;
+            setMode("program");
+            editor.value=PRODOS_BOOT_SCRIPT;
+            modeSources.program=editor.value;
             editor.focus();
         };
         el("EMU_pasteboardScriptShareURI").onclick = shareURI;
@@ -1072,8 +1099,22 @@
         return true;
     }
     g.EMU_PASTEBOARD_SCRIPT = {
-        ui:{init:init, open:open, close:close, toggle:toggle, position:position},
-        run:run, stop:stop,
+        ui:{init:init, open:open, close:close, toggle:toggle, position:position, setMode:setMode},
+        run:run, stop:stop, onFrame:onFrame,
+        stateMachine:{
+            inspect:function(){
+                var state=currentRun;
+                if(!state || state.mode!=="state")return null;
+                return {
+                    state:state.stateName,
+                    frame:state.frame,
+                    stateFrame:state.stateFrame,
+                    transitions:state.transitions,
+                    skippedFrames:state.skippedFrames,
+                    data:state.data
+                };
+            }
+        },
         uri:{
             encode:encodeCompressedScript,
             decode:decodeCompressedScript,
