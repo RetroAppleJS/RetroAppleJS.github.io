@@ -180,3 +180,49 @@ test("initial D1_DIR URL is deferred until after Disk II initialization", () => 
     const offline=body.indexOf("EMU_D1_DIR_load(_o.D1_DIR_filename)");
     assert.ok(reboot>=0 && offline>reboot);
 });
+
+
+test("software catalog callback uses the actual Disk II instance", () => {
+    const fn=section(card,"    this.getSoftwareCatRows = function(arg)","    this.getFile = function(arg)");
+    let created=null,rendered=null;
+    const disk={
+        getDiskCatalogContext(){return {slotN:7,DCODE:"D1",arg:{source:"embedded"}};},
+        setDiskCatalogPath(arg){rendered=arg;},
+        getOfflineDir(url){
+            assert.match(url,/api\.github\.com/);
+            return {list:[{name:"BLANK_DOS.DSK",path:"disks/BLANK_DOS.DSK",type:"file",size:143360}]};
+        },
+        diskCatalogLoad(){return true;},
+        diskCatalogToggleSource(){return true;},
+        diskCatalogCycleDrive(){return true;},
+        diskCatalogCycleSlot(){return true;}
+    };
+    const io={SLOT2obj(){return disk;},slot2ID(){return 6;}};
+    const env={
+        disk,
+        apple2plus:{hwObj(){return {io};}},
+        ssSlotNumber(){return 7;},
+        console:{warn(){},log(){}},
+        oCOM:{
+            CATALOG:{
+                create(cfg){
+                    created=cfg;
+                    return {render(arg){
+                        assert.equal(arg.source,"embedded");
+                        const data=cfg.offlineProvider(
+                            "https://api.github.com/repos/RetroAppleJS/RetroAppleJS.github.io/contents/disks?ref=main"
+                        );
+                        assert.equal(data.list[0].name,"BLANK_DOS.DSK");
+                        return true;
+                    }};
+                }
+            },
+            escapeHTML(str){return String(str);}
+        }
+    };
+    vm.runInNewContext("(function(){"+fn+"}).call(disk);",env);
+    assert.equal(disk.getSoftwareCatRows(),true);
+    assert.equal(created.offlineFirst,true);
+    assert.equal(rendered.source,"embedded");
+    assert.match(created.titleHTML(),/Offline/);
+});
