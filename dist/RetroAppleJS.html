@@ -11831,8 +11831,9 @@ else if(g.addEventListener)g.addEventListener('load',init);
         "// Optional: await apple.script.show(); // Restore the IDE"
     ].join("\n");
 
-    // Demonstrates the embedded catalog, genuine guest keyboard polling,
-    // menu navigation ($15 = Apple II right-arrow) and BASIC.SYSTEM startup.
+    // Uses Bitsy Bye's visible boot-menu prompt rather than requiring
+    // continuous $C000 polling, which is not guaranteed by that menu.
+    // A2KBD still serializes arrow/RETURN input through the guest strobe.
     var PRODOS_BOOT_SCRIPT = [
         "// ProDOS 8 embedded-offline boot demonstration (DISKII S6,D1)",
         "// Requires an Apple II configuration with DISKII in physical S6.",
@@ -11844,17 +11845,23 @@ else if(g.addEventListener)g.addEventListener('load',init);
         "    slot: 6, drive: 1, path: 'disks/ProDOS 8.dsk'",
         "  }));",
         "  await apple.reboot();",
-        "  console.log('Waiting for boot menu keyboard polling...');",
-        "  await apple.text.waitForReady({timeout:60000,stableMs:300,minPolls:8});",
+        "  console.log('Waiting for the Bitsy Bye boot-menu prompt...');",
+        "  await apple.text.waitForReady({",
+        "    prompt: /RETURN\\s*:/i, timeout: 60000",
+        "  });",
+        "  console.log('Boot menu visible; keyboard:', await apple.text.status());",
         "  // Apple II right-arrow = $15 (CTRL-U); RETURN = $0D.",
         "  await apple.text.type('\\x15\\x15\\r');",
         "  await apple.text.waitForDrain({timeout:20000});",
         "  console.log('Waiting for the BASIC.SYSTEM prompt...');",
-        "  await apple.text.waitFor(/(?:^|\\n)\\s*]/, {timeout:60000});",
-        "  await apple.text.waitForReady({timeout:20000,stableMs:250,minPolls:5});",
+        "  await apple.text.waitForReady({",
+        "    prompt: /(?:^|\\n)\\s*]/, timeout: 60000",
+        "  });",
         "  await apple.text.type('PRINT \"HELLO WORLD\"\\r');",
         "  await apple.text.waitForDrain({timeout:20000});",
-        "  await apple.text.waitForReady({timeout:15000});",
+        "  await apple.text.waitFor(/(?:^|\\n)\\s*HELLO WORLD\\s*(?:\\n|$)/i, {",
+        "    timeout: 15000",
+        "  });",
         "  console.log('BASIC.SYSTEM demonstration complete.');",
         "} finally {",
         "  await apple.cpu.setSpeed(100); // restore normal CPU speed",
@@ -12318,6 +12325,32 @@ else if(g.addEventListener)g.addEventListener('load',init);
                 "Ready timeout (ms)", 0, 180000);
             var interval = integer(options.interval === undefined ? 75 : options.interval,
                 "Polling interval (ms)", 25, 60000);
+
+            // A boot menu or BASIC prompt is a more reliable sign of
+            // application-level readiness than continuously reading $C000.
+            // When explicitly supplied, a visible prompt is the readiness
+            // condition. It never injects test keystrokes or modifies the
+            // guest's keyboard latch.
+            if(options.prompt !== undefined) {
+                var pattern = options.prompt;
+                if(typeof pattern !== "string" && !(pattern instanceof RegExp))
+                    throw new TypeError("Ready prompt must be a string or regular expression.");
+                try {
+                    await textAPI.waitFor(pattern,{
+                        timeout:timeout, interval:Math.max(50,interval)
+                    });
+                } catch(error) {
+                    if(error && error.name==="AbortError") throw error;
+                    var state=await textAPI.status(), captured=await textAPI.capture();
+                    throw new Error("Timed out waiting for guest prompt "+String(pattern)+
+                        "; keyboard="+JSON.stringify(state)+
+                        "; screen="+JSON.stringify(captured.slice(0,320)));
+                }
+                var readyState=await textAPI.status();
+                if(!readyState.active)
+                    throw new Error("The guest prompt is visible, but A2KBD is inactive.");
+                return readyState;
+            }
             var stableMs = integer(options.stableMs === undefined ? 250 : options.stableMs,
                 "Stable polling period (ms)", 0, 10000);
             var minPolls = integer(options.minPolls === undefined ? 4 : options.minPolls,
