@@ -138,6 +138,46 @@ test("text.waitForReady waits for sustained new guest polling even with idle sch
 });
 
 
+test("prompt readiness proceeds without a single A2KBD poll", async () => {
+    let samples=0;
+    const query=mockDeviceHost({
+        editor:"await apple.text.waitForReady({prompt:/RETURN\\s*:/i,timeout:500,interval:50});",
+        status(){
+            samples++;
+            return {active:true,pollCount:0,strobeCount:0,
+                lastPollMs:0,queued:0,latched:false};
+        }
+    });
+    const rawStatus=query.api.invoke("text.status");
+    assert.equal(rawStatus.pollCount,0);
+    // The screen fixture below injects the characteristic Bitsy Bye menu
+    // into text.capture, independently of keyboard polling counters.
+    const runnerCode=query.elements.EMU_pasteboardScriptEditor.value;
+    query.elements.EMU_pasteboardScriptEditor.value=runnerCode.replace(
+        "/RETURN\\s*:/i", "/]/");
+    assert.equal(query.api.run(),true);
+    await new Promise(resolve=>setTimeout(resolve,120));
+    assert.equal(query.elements.EMU_pasteboardScriptStatus.textContent,"ready");
+    assert.ok(samples>0);
+});
+
+test("prompt readiness times out with keyboard and screen diagnostics", async () => {
+    const query=mockDeviceHost({
+        editor:"await apple.text.waitForReady({prompt:/UNAVAILABLE_MENU/,timeout:100,interval:50});",
+        status(){
+            return {active:true,pollCount:0,strobeCount:0,
+                lastPollMs:0,queued:0,latched:false};
+        }
+    });
+    query.api.run();
+    await new Promise(resolve=>setTimeout(resolve,180));
+    assert.equal(query.elements.EMU_pasteboardScriptStatus.textContent,"error");
+    assert.match(query.elements.EMU_pasteboardScriptConsoleFallback.value,
+        /keyboard=.*pollCount/);
+    assert.match(query.elements.EMU_pasteboardScriptConsoleFallback.value,
+        /screen=.*]/);
+});
+
 test("one brief burst of boot-time keyboard polling is not mistaken for ready", async () => {
     let samples=0;
     const when=Date.now();
@@ -177,7 +217,12 @@ test("built-in ProDOS demonstration types two RIGHT arrows, RETURN, then HELLO W
         },
         async reboot(){events.push("reboot");},
         text:{
-            async waitForReady(){events.push("ready");},
+            async waitForReady(options){
+                events.push("ready");
+                assert.ok(options.prompt instanceof RegExp,
+                    "ProDOS demo should wait for visible menu or BASIC prompt");
+            },
+            async status(){events.push("status");return {active:true,pollCount:0};},
             async type(value){events.push(["type",value]);},
             async waitForDrain(){events.push("drain");},
             async waitFor(pattern){events.push(["screen",String(pattern)]);return "]";}
@@ -196,7 +241,11 @@ test("built-in ProDOS demonstration types two RIGHT arrows, RETURN, then HELLO W
     assert.deepEqual(events.filter(x=>Array.isArray(x)&&x[0]==="type"),[
         ["type","\x15\x15\r"],["type",'PRINT "HELLO WORLD"\r']
     ]);
-    assert.ok(events.filter(x=>x==="ready").length>=2);
+    // The boot-menu and Applesoft prompt now synchronize via visible text,
+    // not by demanding continuous $C000 CPU keyboard polling.
+    assert.equal(events.filter(x=>x==="ready").length,2);
+    assert.ok(events.some(x=>Array.isArray(x) && x[0]==="screen" &&
+        /HELLO WORLD/.test(x[1])));
     assert.deepEqual(events.at(-2),["speed",100]);
     assert.equal(events.at(-1),"show");
 });
