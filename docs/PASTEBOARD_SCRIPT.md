@@ -21,7 +21,7 @@ PASTEBOARD SCRIPT defaults to **State Machine**. A compact **Mode** selector
 switches between:
 
 - **State Machine** — one named state handler is invoked after each frame of
-  the existing \`EMU_systemSchedulerWake()\` / \`apple2plus.cycle()\` processing
+  the existing `EMU_systemSchedulerWake()` / `apple2plus.cycle()` processing
   loop. The normal 10 FPS setting produces up to 10 state-handler calls/sec.
   Changing the existing FPS setting changes the state-machine call cadence,
   without creating another timer.
@@ -31,19 +31,19 @@ switches between:
 Switching modes preserves each mode's editor contents separately for the
 current page session. The **Example** button resets the current mode's
 example. **ProDOS Demo** selects Program mode and loads the boot script.
-New compressed \`?pscript=\` links include \`pscriptMode=state|program\`;
+New compressed `?pscript=` links include `pscriptMode=state|program`;
 legacy links without that flag remain in Program mode. No URI script runs
 automatically.
 
-### Persistent process data — \`ctx.data\`
+### Persistent process data — `ctx.data`
 
-**Every State Machine RUN creates exactly one plain JavaScript \`data\` object.**
-The same reference is passed as \`ctx.data\` to the handler at every eligible
+**Every State Machine RUN creates exactly one plain JavaScript `data` object.**
+The same reference is passed as `ctx.data` to the handler at every eligible
 processing frame and after transitions between states. Data is **not** cleared
-on state entry or every tick. Store counters, arrays, nested objects, \`Map\`,
-\`Set\`, and other application variables as needed.
+on state entry or every tick. Store counters, arrays, nested objects, `Map`,
+`Set`, and other application variables as needed.
 
-\`\`\`javascript
+```javascript
 const initialState = "counting";
 const stateTimeoutMs = 30000; // Maximum time in any one state.
 const traceFrames = false;     // true logs every frame, not just transitions.
@@ -61,11 +61,11 @@ const states = {
     return { done: true };
   }
 };
-\`\`\`
+```
 
 A handler receives one persistent context reference whose properties include
-\`{ apple, console, print, data, state, frame, stateFrame, elapsedMs,
-stateElapsedMs }\`. The \`data\` object is exclusively for process-owned
+`{ apple, console, print, data, state, frame, stateFrame, elapsedMs,
+stateElapsedMs }`. The `data` object is exclusively for process-owned
 mutable variables; engine bookkeeping stays separate. The context's frame
 and timing metadata are updated before each state invocation.
 
@@ -75,16 +75,16 @@ normal JavaScript promises; the scheduler simply skips that state's
 invocation while it remains pending, without blocking the Apple II CPU.
 
 A handler can return another existing state name to transition, return
-\`undefined\`/\`null\` to remain in its current state, or return
-\`{done:true}\` to complete. The console logs state startup, transitions,
-completion, errors, and per-state timeouts. Set \`traceFrames=true\` if a
+`undefined`/`null` to remain in its current state, or return
+`{done:true}` to complete. The console logs state startup, transitions,
+completion, errors, and per-state timeouts. Set `traceFrames=true` if a
 per-frame trace is useful. By default each state has a 60-second timeout;
-\`stateTimeoutMs\` can set another value from 100 to 3,600,000 ms.
+`stateTimeoutMs` can set another value from 100 to 3,600,000 ms.
 
-The persistent \`data\` object is **fresh for each RUN** and is discarded
+The persistent `data` object is **fresh for each RUN** and is discarded
 when that execution ends. It is not automatically persisted across page
 reloads. During a run, integration/debugger code can inspect it through
-\`EMU_PASTEBOARD_SCRIPT.stateMachine.inspect().data\`.
+`EMU_PASTEBOARD_SCRIPT.stateMachine.inspect().data`.
 
 ### Pause / Resume / Stop
 
