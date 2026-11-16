@@ -128,7 +128,7 @@
     // The ROM is borrowed from the live video MUX; no canvas is sampled.
     function drawTextRow(pixels,row,bytes,offset,style) {
         var rom=style && style.font;
-        if(!(rom instanceof Uint8Array))
+        if(!rom || !ArrayBuffer.isView(rom) || rom.BYTES_PER_ELEMENT!==1)
             throw new Error("Text GIF export needs the active Apple II character ROM.");
         var jplus=style.romKey==="A2_JP",flash=!!style.flashOn;
         for(var col=0;col<40;col++) {
