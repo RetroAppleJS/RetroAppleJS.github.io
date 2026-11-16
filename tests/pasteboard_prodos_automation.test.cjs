@@ -68,7 +68,8 @@ function mockDeviceHost(opts={}) {
         },
         getTextInputTargetAddress() {return "0:A2KBD:text";},
         pipeResolve(addr) {
-            return {device:addr==="0:A2KBD:text"?keyboard:{captureText(){return "]";},
+            return {device:addr==="0:A2KBD:text"?keyboard:{
+                captureText(){return opts.screen ? opts.screen() : "]";},
                 sendText(_io,value){calls.push({event:"type",value});return true;}}};
         }
     };
@@ -138,23 +139,18 @@ test("text.waitForReady waits for sustained new guest polling even with idle sch
 });
 
 
-test("prompt readiness proceeds without a single A2KBD poll", async () => {
+test("prompt readiness proceeds with no A2KBD polls when the boot menu is visible", async () => {
     let samples=0;
     const query=mockDeviceHost({
-        editor:"await apple.text.waitForReady({prompt:/RETURN\\s*:/i,timeout:500,interval:50});",
+        editor:"await apple.text.waitForReady({prompt:/RETURN\\s*:\\s*SELECT/i,timeout:500,interval:50});",
+        screen(){return "BITSY BYE\nRETURN:SELECT\nBASIC.SYSTEM";},
         status(){
             samples++;
             return {active:true,pollCount:0,strobeCount:0,
                 lastPollMs:0,queued:0,latched:false};
         }
     });
-    const rawStatus=query.api.invoke("text.status");
-    assert.equal(rawStatus.pollCount,0);
-    // The screen fixture below injects the characteristic Bitsy Bye menu
-    // into text.capture, independently of keyboard polling counters.
-    const runnerCode=query.elements.EMU_pasteboardScriptEditor.value;
-    query.elements.EMU_pasteboardScriptEditor.value=runnerCode.replace(
-        "/RETURN\\s*:/i", "/]/");
+    assert.equal(query.api.invoke("text.status").pollCount,0);
     assert.equal(query.api.run(),true);
     await new Promise(resolve=>setTimeout(resolve,120));
     assert.equal(query.elements.EMU_pasteboardScriptStatus.textContent,"ready");
