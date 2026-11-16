@@ -431,6 +431,13 @@
         if(stopButton) stopButton.disabled = !currentRun;
         var modeControl=el("EMU_pasteboardScriptMode");
         if(modeControl) modeControl.disabled=!!currentRun;
+        var pauseButton=el("EMU_pasteboardScriptPause");
+        if(pauseButton) {
+            var st=currentRun, enabled=!!(st && st.mode==="state");
+            pauseButton.disabled=!enabled;
+            pauseButton.textContent=enabled && st.paused ? "▶ RESUME" : "Ⅱ PAUSE";
+            pauseButton.setAttribute("aria-pressed",String(!!(enabled && st.paused)));
+        }
     }
 
     function cancelledError() {
@@ -464,11 +471,57 @@
             waiter.reject(cancelledError());
         });
         state.waits.clear();
+        if(state.pauseWaiters) {
+            state.pauseWaiters.forEach(function(w){w.reject(cancelledError());});
+            state.pauseWaiters.clear();
+        }
         setStatus(status);
         if(message) log(message, channel);
         return true;
     }
 
+    function clockNow(state) {
+        var now=Date.now();
+        return now-(state.pausedTotalMs||0)-
+            (state.paused ? now-state.pauseStartedAt : 0);
+    }
+    function waitForResumption(state) {
+        checkRun(state);
+        if(!state.paused)return Promise.resolve();
+        return new Promise(function(resolve,reject) {
+            state.pauseWaiters.add({resolve:resolve,reject:reject});
+        });
+    }
+    // Pause script execution without pausing the emulated 6502 CPU.
+    function pauseOrResume() {
+        var state=currentRun;
+        if(!state || state.mode!=="state" || state.cancelled)return false;
+        var now=Date.now();
+        if(!state.paused) {
+            state.paused=true;
+            state.pauseStartedAt=now;
+            state.waits.forEach(function(entry){
+                if(entry.timer!==null) {
+                    g.clearTimeout(entry.timer);
+                    entry.remaining=Math.max(0,entry.deadline-now);
+                    entry.timer=null;
+                }
+            });
+            log("[SM] PAUSE "+state.stateName+" (frame "+state.frame+")","info");
+        } else {
+            state.paused=false;
+            state.pausedTotalMs+=now-state.pauseStartedAt;
+            state.pauseStartedAt=null;
+            state.waits.forEach(function(entry){
+                if(typeof entry.start==="function")entry.start();
+            });
+            state.pauseWaiters.forEach(function(w){w.resolve();});
+            state.pauseWaiters.clear();
+            log("[SM] RESUME "+state.stateName+" (frame "+state.frame+")","info");
+        }
+        setStatus(state.paused?"paused":"running");
+        return true;
+    }
     function stop() {
         // A running synchronous loop cannot be preempted on the main thread.
         // STOP cancels waits and prevents all subsequent awaited host actions.
@@ -770,9 +823,9 @@
 
     function onFrame() {
         var state=currentRun;
-        if(!state || state.mode!=="state" || state.cancelled)
+        if(!state || state.mode!=="state" || state.cancelled || state.paused)
             return false;
-        var now=Date.now();
+        var now=clockNow(state);
         // This is evaluated even when the previous async handler is pending.
         if(now-state.stateEnteredAt>=state.stateTimeoutMs) {
             finish("error","ERROR [SM] Timeout after "+state.stateTimeoutMs+
@@ -806,7 +859,9 @@
                     formatScriptError(error),"error");
             return false;
         }
-        Promise.resolve(result).then(function(next) {
+        Promise.resolve(result).then(async function(next) {
+            // Completion/transition waits for RESUME if handler finishes paused.
+            await waitForResumption(state);
             if(currentRun!==state || state.cancelled)return;
             if(next===undefined || next===null) return;
             if(typeof next==="object" && next.done===true) {
@@ -823,7 +878,7 @@
                 log("[SM] "+executedState+" → "+next+
                     " (frame "+state.frame+")","info");
                 state.stateName=next;
-                state.stateEnteredAt=Date.now();
+                state.stateEnteredAt=clockNow(state);
                 state.stateFrame=0;
                 state.context.state=next;
             }
@@ -862,6 +917,7 @@
 
         var state={
             id:++generation,cancelled:false,waits:new Set(),
+            pauseWaiters:new Set(),paused:false,pauseStartedAt:null,pausedTotalMs:0,
             mode:selected,startedAt:Date.now(),data:{}
         };
         currentRun=state;
@@ -871,7 +927,7 @@
                 var config=compileStateMachine(editor.value,api,state.data);
                 state.states=config.states;
                 state.stateName=config.initialState;
-                state.stateEnteredAt=Date.now();
+                state.stateEnteredAt=clockNow(state);
                 state.stateTimeoutMs=config.stateTimeoutMs;
                 state.traceFrames=config.traceFrames;
                 state.transitions=0;
@@ -964,6 +1020,7 @@
             '      <textarea id="EMU_pasteboardScriptEditor" spellcheck="false" aria-label="Pasteboard JavaScript editor"></textarea>',
             '      <div class="EMU_pasteboardScriptActions">',
             '        <button class="appbut" type="button" id="EMU_pasteboardScriptRun">▶ RUN</button>',
+            '        <button class="appbut" type="button" id="EMU_pasteboardScriptPause" disabled aria-pressed="false">Ⅱ PAUSE</button>',
             '        <button class="appbut" type="button" id="EMU_pasteboardScriptStop" disabled>■ STOP</button>',
             '        <button class="appbut" type="button" id="EMU_pasteboardScriptExample">Example</button>',
             '        <button class="appbut" type="button" id="EMU_pasteboardScriptProDOS">ProDOS Demo</button>',
@@ -1005,6 +1062,7 @@
         el("EMU_pasteboardScriptClose").onclick = close;
         el("EMU_pasteboardScriptRun").onclick = run;
         el("EMU_pasteboardScriptStop").onclick = stop;
+        el("EMU_pasteboardScriptPause").onclick = pauseOrResume;
         el("EMU_pasteboardScriptClear").onclick = clearConsole;
         el("EMU_pasteboardScriptCopy").onclick = copyConsole;
         el("EMU_pasteboardScriptExample").onclick = function() {
@@ -1100,13 +1158,14 @@
     }
     g.EMU_PASTEBOARD_SCRIPT = {
         ui:{init:init, open:open, close:close, toggle:toggle, position:position, setMode:setMode},
-        run:run, stop:stop, onFrame:onFrame,
+        run:run, stop:stop, pause:pauseOrResume, onFrame:onFrame,
         stateMachine:{
             inspect:function(){
                 var state=currentRun;
                 if(!state || state.mode!=="state")return null;
                 return {
                     state:state.stateName,
+                    paused:!!state.paused,
                     frame:state.frame,
                     stateFrame:state.stateFrame,
                     transitions:state.transitions,
