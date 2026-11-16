@@ -38,6 +38,8 @@ function hostFixture(script="console.log('Hello');",url="https://example.test/in
     }
     elements.EMU_pasteboardScriptToggle=node("button");
     elements.EMU_pasteboardScriptEditor=node("textarea");
+    elements.EMU_pasteboardScriptMode=node("select");
+    elements.EMU_pasteboardScriptMode.value="program";
     elements.EMU_pasteboardScriptEditor.value=script;
     elements.EMU_pasteboardScriptStatus=node("span");
     elements.EMU_pasteboardScriptRun=node("button");
