@@ -19,6 +19,7 @@ function fixture(script,mode="state") {
         EMU_pasteboardScriptStatus:{textContent:"ready"},
         EMU_pasteboardScriptRun:{disabled:false},
         EMU_pasteboardScriptStop:{disabled:true},
+        EMU_pasteboardScriptPause:{disabled:true,textContent:"Ⅱ PAUSE",setAttribute(){}},
         EMU_pasteboardScriptConsoleFallback:{value:"",scrollTop:0}
     };
     const texts=[];
@@ -149,4 +150,102 @@ test("unknown state transitions report errors",async()=>{
     f.api.run();f.api.onFrame();await flush();
     assert.equal(f.elements.EMU_pasteboardScriptStatus.textContent,"error");
     assert.match(f.output,/Invalid state transition/);
+});
+
+
+test("PAUSE prevents new frame handlers and RESUME retains ctx.data",async()=>{
+    const f=fixture([
+        "const states={start:({data})=>{data.count=(data.count||0)+1;",
+        " if(data.count>=3)return {done:true};}};"
+    ].join("\n"));
+    assert.equal(f.api.run(),true);
+    assert.equal(f.elements.EMU_pasteboardScriptPause.disabled,false);
+    f.api.onFrame();await flush();
+    const data=f.api.stateMachine.inspect().data;
+    assert.equal(data.count,1);
+    assert.equal(f.api.pause(),true);
+    assert.equal(f.elements.EMU_pasteboardScriptStatus.textContent,"paused");
+    assert.equal(f.elements.EMU_pasteboardScriptPause.textContent,"▶ RESUME");
+    for(let n=0;n<25;n++)assert.equal(f.api.onFrame(),false);
+    assert.equal(data.count,1);
+    assert.strictEqual(f.api.stateMachine.inspect().data,data);
+    assert.equal(f.api.pause(),true);
+    assert.equal(f.elements.EMU_pasteboardScriptPause.textContent,"Ⅱ PAUSE");
+    f.api.onFrame();await flush();
+    f.api.onFrame();await flush();
+    assert.equal(data.count,3);
+    assert.equal(f.elements.EMU_pasteboardScriptStatus.textContent,"ready");
+    assert.match(f.output,/\[SM\] PAUSE start/);
+    assert.match(f.output,/\[SM\] RESUME start/);
+});
+
+test("PAUSE freezes outstanding apple.wait and the state timeout clock",async()=>{
+    const f=fixture([
+        "const initialState='waiting';const stateTimeoutMs=120;",
+        "const states={",
+        " waiting:async ({apple,data})=>{data.started=true;",
+        "   await apple.wait(35);data.finished=true;return 'done';},",
+        " done:()=>({done:true})};"
+    ].join("\n"));
+    f.api.run();f.api.onFrame();await flush();
+    const data=f.api.stateMachine.inspect().data;
+    assert.equal(data.started,true);
+    f.api.pause();
+    await new Promise(resolve=>setTimeout(resolve,150));
+    assert.equal(data.finished,undefined,"wall-clock paused time must not finish a wait");
+    assert.equal(f.api.stateMachine.inspect().state,"waiting");
+    assert.equal(f.api.onFrame(),false);
+    f.api.pause();
+    await new Promise(resolve=>setTimeout(resolve,48));
+    assert.equal(data.finished,true);
+    assert.equal(f.api.stateMachine.inspect().state,"done");
+    f.api.onFrame();await flush();
+    assert.equal(f.elements.EMU_pasteboardScriptStatus.textContent,"ready");
+});
+
+test("PAUSE defers completion of in-flight asynchronous state until RESUME",async()=>{
+    const f=fixture("const states={first:({data})=>new Promise(resolve=>{data.release=()=>resolve('second');}),second:()=>({done:true})};const initialState='first';");
+    f.api.run();f.api.onFrame();
+    const data=f.api.stateMachine.inspect().data;
+    f.api.pause();
+    data.release();
+    await flush();
+    assert.equal(f.api.stateMachine.inspect().state,"first");
+    assert.equal(f.api.onFrame(),false);
+    f.api.pause();
+    await flush();
+    assert.equal(f.api.stateMachine.inspect().state,"second");
+    f.api.onFrame();await flush();
+    assert.equal(f.api.stateMachine.inspect(),null);
+});
+
+test("STOP while paused cancels pending actions and next RUN starts fresh",async()=>{
+    const f=fixture([
+        "const states={",
+        " wait:async ({apple,data})=>{data.counter=1;",
+        "   await apple.wait(60000);data.counter=99;return {done:true};}",
+        "};const initialState='wait';"
+    ].join("\n"));
+    f.api.run();f.api.onFrame();await flush();
+    const data=f.api.stateMachine.inspect().data;
+    f.api.pause();
+    assert.equal(f.api.stop(),true);
+    assert.equal(f.api.stateMachine.inspect(),null);
+    assert.equal(f.elements.EMU_pasteboardScriptStatus.textContent,"stopped");
+    assert.equal(f.elements.EMU_pasteboardScriptPause.disabled,true);
+    assert.equal(f.elements.EMU_pasteboardScriptStop.disabled,true);
+    assert.equal(data.counter,1);
+    assert.equal(f.api.pause(),false);
+    f.api.run();
+    assert.notStrictEqual(f.api.stateMachine.inspect().data,data);
+    f.api.stop();
+});
+
+test("Program mode keeps its STOP but does not enable State Machine PAUSE",async()=>{
+    const f=fixture("await apple.wait(2000);","program");
+    f.api.run();
+    assert.equal(f.elements.EMU_pasteboardScriptPause.disabled,true);
+    assert.equal(f.api.pause(),false);
+    assert.equal(f.api.onFrame(),false);
+    assert.equal(f.api.stop(),true);
 });
