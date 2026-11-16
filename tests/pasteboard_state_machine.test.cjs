@@ -117,6 +117,7 @@ test("new RUN creates new data and Program ignores frame callbacks",async()=>{
 
 test("pending async state handler is never invoked concurrently",async()=>{
     const f=fixture([
+      "const initialState='pending';",
       "const states={",
       " pending:({data})=>{",
       "   data.calls=(data.calls||0)+1;",
