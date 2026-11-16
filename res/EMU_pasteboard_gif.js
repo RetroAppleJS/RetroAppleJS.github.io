@@ -1,7 +1,8 @@
 /*
  * PASTEBOARD GIF — renderer-independent Apple II graphics recorder.
  *
- * Captures only the 960/7680 visible bytes of GR/GR2 or HGR/HGR2.
+ * Captures compact visible video RAM for TEXT, GR, HGR and mixed displays,
+ * on either page. Explicit raw graphics-page snapshots remain supported.
  * Frame payloads are raw or zero-run-length encoded XOR deltas. GIF pixels,
  * LZW and a downloadable Blob are created only on explicit export.
  * No browser canvas and no additional timer/Worker are required.
@@ -16,10 +17,17 @@
 
     var WIDTH=280, HEIGHT=192, MAX_FRAMES=2000, MAX_STORAGE=16*1024*1024;
     var MODES={
+        TEXT:{base:0x0400,size:0x0400,visible:960,text:true},
+        TEXT2:{base:0x0800,size:0x0400,visible:960,text:true},
         GR:{base:0x0400,size:0x0400,visible:960,hires:false},
         GR2:{base:0x0800,size:0x0400,visible:960,hires:false},
+        GRMIX:{base:0x0400,size:0x0400,visible:960,hires:false,mix:true},
+        GR2MIX:{base:0x0800,size:0x0400,visible:960,hires:false,mix:true},
         HGR:{base:0x2000,size:0x2000,visible:7680,hires:true},
-        HGR2:{base:0x4000,size:0x2000,visible:7680,hires:true}
+        HGR2:{base:0x4000,size:0x2000,visible:7680,hires:true},
+        // 160 visible HGR scanlines plus four text rows (6400 + 160 bytes).
+        HGRMIX:{base:0x2000,size:0x2000,visible:6560,hires:true,mix:true,textBase:0x0400},
+        HGR2MIX:{base:0x4000,size:0x2000,visible:6560,hires:true,mix:true,textBase:0x0800}
     };
     // The base RGB triples used by the emulator Canvas video INTCols table.
     // The HGR phase/neighbor index is computed with its hgr_PixelColor formula.
@@ -34,7 +42,7 @@
     function modeInfo(mode) {
         var id=String(mode || "").toUpperCase();
         if(!Object.prototype.hasOwnProperty.call(MODES,id))
-            throw new RangeError("Graphics mode must be GR, GR2, HGR or HGR2.");
+            throw new RangeError("Unknown Apple II video mode: "+id);
         return {id:id,...MODES[id]};
     }
 
@@ -45,15 +53,23 @@
         return ((y&7)<<10)+((y&0x38)<<4)+((y&0xc0)>>1)+((y&0xc0)>>3);
     }
 
-    function visibleBytes(mode,page) {
+    function visibleBytes(mode,page,textPage) {
         var spec=modeInfo(mode);
         if(!(page instanceof Uint8Array) || page.length<spec.size)
             throw new RangeError(spec.id+" requires a "+spec.size+"-byte RAM page.");
+        if(spec.textBase && (!(textPage instanceof Uint8Array) || textPage.length<1024))
+            throw new RangeError(spec.id+" requires a separate 1024-byte text page.");
         var output=new Uint8Array(spec.visible);
-        var rows=spec.hires?192:24;
+        var rows=spec.hires?(spec.mix?160:192):24;
         for(var row=0;row<rows;row++) {
-            var address=spec.hires?hiresRowOffset(row):textRowOffset(row);
-            output.set(page.subarray(address,address+40),row*40);
+            var offset=spec.hires?hiresRowOffset(row):textRowOffset(row);
+            output.set(page.subarray(offset,offset+40),row*40);
+        }
+        if(spec.textBase) {
+            for(var textRow=20;textRow<24;textRow++) {
+                var offset=textRowOffset(textRow);
+                output.set(textPage.subarray(offset,offset+40),6400+(textRow-20)*40);
+            }
         }
         return output;
     }
@@ -108,13 +124,43 @@
             : {encoding:"raw",data:bytes.slice()};
     }
 
-    function render(mode,bytes) {
+    // Mirrors EMU_DEVICE_video_canvas.js text_Draw and hgr_PixelColor.
+    // The ROM is borrowed from the live video MUX; no canvas is sampled.
+    function drawTextRow(pixels,row,bytes,offset,style) {
+        var rom=style && style.font;
+        if(!(rom instanceof Uint8Array))
+            throw new Error("Text GIF export needs the active Apple II character ROM.");
+        var jplus=style.romKey==="A2_JP",flash=!!style.flashOn;
+        for(var col=0;col<40;col++) {
+            var code=bytes[offset+col],index;
+            if(jplus) {
+                var mapped=code;
+                if(mapped>=0x40 && mapped<0x80)mapped&=0x3f;
+                index=style.annunciator2!==false?(mapped|0x80):mapped;
+            } else index=(code&0x3f)^0x20;
+            for(var yy=0;yy<8;yy++) {
+                var bits=rom[index*8+yy]||0;
+                if((code&0xc0)===0 || ((code&0xc0)===0x40 && flash))
+                    bits^=0xff;
+                var base=(row*8+yy)*WIDTH+col*7;
+                for(var xx=0;xx<7;xx++)
+                    pixels[base+xx]=(bits&(1<<(jplus?6-xx:xx)))?15:0;
+            }
+        }
+    }
+
+    function render(mode,bytes,style) {
         var spec=modeInfo(mode);
         if(bytes.length!==spec.visible)
             throw new RangeError("Incorrect visible byte count for "+spec.id);
         var pixels=new Uint8Array(WIDTH*HEIGHT);
+        if(spec.text) {
+            for(var textRow=0;textRow<24;textRow++)
+                drawTextRow(pixels,textRow,bytes,textRow*40,style);
+            return pixels;
+        }
         if(!spec.hires) {
-            for(var row=0;row<24;row++) {
+            for(var row=0;row<(spec.mix?20:24);row++) {
                 for(var col=0;col<40;col++) {
                     var value=bytes[row*40+col];
                     for(var half=0;half<2;half++) {
@@ -126,25 +172,30 @@
                     }
                 }
             }
-            return pixels;
+        } else {
+            // The same HGR phase-and-neighbor calculation as the canvas
+            // renderer, with 280 indexed pixels rather than a 560px canvas.
+            for(var y=0;y<(spec.mix?160:HEIGHT);y++) {
+                var off=y*40,dst=y*WIDTH;
+                for(var x=0;x<WIDTH;x++) {
+                    var col=(x/7)|0,bit=x%7,value=bytes[off+col];
+                    var m=(value>>bit)&1;
+                    var l=bit ? (value>>(bit-1))&1 :
+                        (col ? (bytes[off+col-1]>>6)&1 : 0);
+                    var r=bit<6 ? (value>>(bit+1))&1 :
+                        (col<39 ? bytes[off+col+1]&1 : 0);
+                    var b=(x<<4)|(l<<3)|(((m<<2)|(m<<1))&4)|
+                        (((r<<1)|(r>>1))&2)|((value&128)>>7);
+                    pixels[dst+x]=(0xf4e0f8d0>>>b&1)|
+                        (0x08200820>>>(b-1)&2)|
+                        (0xf0d0f4c0>>>(b-2)&4);
+                }
+            }
         }
-        // Match Apple2Video.hgr_PixelColor's bit-neighborhood calculation.
-        // All 280 HGR source pixels are represented; the display's 2x
-        // canvas stretching belongs to CSS/display, not image storage.
-        for(var y=0;y<HEIGHT;y++) {
-            var off=y*40,dst=y*WIDTH;
-            for(var x=0;x<WIDTH;x++) {
-                var col=(x/7)|0,bit=x%7,value=bytes[off+col];
-                var m=(value>>bit)&1;
-                var l=bit ? (value>>(bit-1))&1 :
-                    (col ? (bytes[off+col-1]>>6)&1 : 0);
-                var r=bit<6 ? (value>>(bit+1))&1 :
-                    (col<39 ? bytes[off+col+1]&1 : 0);
-                var b=(x<<4)|(l<<3)|(((m<<2)|(m<<1))&4)|
-                    (((r<<1)|(r>>1))&2)|((value&128)>>7);
-                pixels[dst+x]=(0xf4e0f8d0>>>b&1)|
-                    (0x08200820>>>(b-1)&2)|
-                    (0xf0d0f4c0>>>(b-2)&4);
+        if(spec.mix) {
+            for(var row=20;row<24;row++) {
+                var offset=spec.hires ? 6400+(row-20)*40 : row*40;
+                drawTextRow(pixels,row,bytes,offset,style);
             }
         }
         return pixels;
@@ -229,7 +280,7 @@
             out.push(0x2c);
             u16(0);u16(0);u16(WIDTH);u16(HEIGHT);
             out.push(0,4); // no local palette; min LZW code size 4
-            var lzw=gifLZW(render(current.mode,current.bytes));
+            var lzw=gifLZW(render(current.mode,current.bytes,current.style));
             for(var start=0;start<lzw.length;start+=255) {
                 var end=Math.min(lzw.length,start+255);
                 out.push(end-start);
@@ -244,10 +295,10 @@
     function Recorder(options) {
         options=options||{};
         var now=typeof options.now==="function"?options.now:Date.now;
-        var frames=[],stored=0,lastRaw=null,lastMode=null;
+        var frames=[],stored=0,lastRaw=null,lastMode=null,lastStyleKey=null;
         function last(){return frames.length?frames[frames.length-1]:null;}
         this.clear=function() {
-            frames=[];stored=0;lastRaw=null;lastMode=null;
+            frames=[];stored=0;lastRaw=null;lastMode=null;lastStyleKey=null;
             return true;
         };
         this.status=function() {
@@ -258,18 +309,19 @@
                 lastTimestamp:last()?last().timestamp:null
             };
         };
-        this.changed=function(mode,bytes) {
+        this.changed=function(mode,bytes,style) {
             var spec=modeInfo(mode);
             if(!(bytes instanceof Uint8Array)||bytes.length!==spec.visible)
                 throw new RangeError("Invalid compact graphics frame for "+spec.id);
-            return lastMode!==spec.id || !same(lastRaw,bytes);
+            return lastMode!==spec.id || !same(lastRaw,bytes) ||
+                lastStyleKey!==(style && style.key || null);
         };
         this.capture=function(mode,bytes,options) {
             options=options||{};
             var spec=modeInfo(mode);
             if(!(bytes instanceof Uint8Array)||bytes.length!==spec.visible)
                 throw new RangeError("Invalid compact graphics frame for "+spec.id);
-            var changed=this.changed(spec.id,bytes);
+            var changed=this.changed(spec.id,bytes,options.style);
             if(options.changedOnly!==false && !changed)
                 return {captured:false,changed:false,frames:frames.length,
                     storedBytes:stored,mode:spec.id};
@@ -284,9 +336,10 @@
                 throw new RangeError("Invalid frame timestamp.");
             stamp=Math.max(last()?last().timestamp:0,stamp);
             frames.push({mode:spec.id,encoding:enc.encoding,
-                data:enc.data,timestamp:stamp});
+                data:enc.data,timestamp:stamp,style:options.style||null});
             stored+=enc.data.length;
             lastRaw=bytes.slice(); lastMode=spec.id;
+            lastStyleKey=options.style && options.style.key || null;
             return {captured:true,changed:changed,frames:frames.length,
                 storedBytes:stored,mode:spec.id,encoding:enc.encoding};
         };
@@ -310,7 +363,8 @@
                         raw[j]=delta[j]^(base?base[j]:0);
                 } else throw new Error("Unknown graphics frame encoding.");
                 if(animated || i===hi-1)
-                    selected.push({mode:frame.mode,bytes:raw,timestamp:frame.timestamp});
+                    selected.push({mode:frame.mode,bytes:raw,timestamp:frame.timestamp,
+                        style:frame.style});
                 previous=raw;previousMode=frame.mode;
             }
             return selected;
