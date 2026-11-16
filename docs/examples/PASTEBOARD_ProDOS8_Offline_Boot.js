@@ -10,7 +10,7 @@ try {
   await apple.reboot();
   console.log('Waiting for the Bitsy Bye boot-menu prompt...');
   await apple.text.waitForReady({
-    prompt: /RETURN\s*:\s*SELECT|BITSY BYE/i, timeout: 60000
+    prompt: /RETURN\s*:/i, timeout: 60000
   });
   console.log('Boot menu visible; keyboard:', await apple.text.status());
   // Apple II right-arrow = $15 (CTRL-U); RETURN = $0D.
