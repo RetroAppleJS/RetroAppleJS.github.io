@@ -289,10 +289,12 @@ order, not a complete real-time Apple II boot.
 
 ### Troubleshooting
 
-The embedded offline images are now checked byte-for-byte against the
-corresponding files in `disks/` during CI. This includes ProDOS 8, whose
-previous compressed payload was incomplete and caused the Script runner to
-fail while mounting S6,D1 (before any guest boot). If a mount still fails,
+CI now validates that every embedded offline disk decompresses to a complete
+143,360-byte image. For ProDOS 8 it additionally verifies that the result
+matches `disks/ProDOS 8.dsk` byte-for-byte. The other embedded images may
+represent older offline snapshots. The previous ProDOS 8 compressed payload
+was incomplete and caused the Script runner to fail mounting S6,D1,
+before any guest boot. If a mount still fails,
 the console includes the exception name, message, stack location and the
 observed decoded byte length rather than just a Safari stack trace.
 
