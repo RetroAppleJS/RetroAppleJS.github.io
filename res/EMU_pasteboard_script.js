@@ -521,14 +521,23 @@
         if(!state) return false;
         state.cancelled = true;
         currentRun = null;
-        // Cooperative STOP interrupts macro finally-block API calls.
-        // Restore the throttle on its behalf so a stopped boot demo cannot
-        // leave the emulator accidentally running at 400%.
-        if(status==="stopped" && state.originalCpuSpeed!==undefined)
+        // A failed state machine has no finally block. Restore host UI/CPU
+        // changes on STOP *or* ERROR (including state timeouts), before
+        // rejecting outstanding operations. Successful runs perform cleanup
+        // explicitly in their final state.
+        if(status!=="ready")
         {
-            try { invoke("cpu.setSpeed",{percent:state.originalCpuSpeed}); }
-            catch(error) {
-                log("Could not restore CPU speed: "+(error.message || error),"error");
+            if(state.originalCpuSpeed!==undefined) {
+                try { invoke("cpu.setSpeed",{percent:state.originalCpuSpeed}); }
+                catch(error) {
+                    log("Could not restore CPU speed: "+(error.message || error),"error");
+                }
+            }
+            if(state.windowHiddenByScript) {
+                try { open(); }
+                catch(error) {
+                    log("Could not restore Script window: "+(error.message || error),"error");
+                }
             }
         }
         state.waits.forEach(function(waiter) {
@@ -616,6 +625,8 @@
                 if(method==="cpu.setSpeed" && runState.originalCpuSpeed===undefined)
                     runState.originalCpuSpeed=invoke("cpu.getSpeed");
                 var result=await invoke(method,args || {});
+                if(method==="script.hide")runState.windowHiddenByScript=true;
+                if(method==="script.show")runState.windowHiddenByScript=false;
                 await waitForResumption(runState);
                 checkRun(runState);
                 return result;
