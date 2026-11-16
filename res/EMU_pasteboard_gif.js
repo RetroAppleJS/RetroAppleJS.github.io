@@ -202,6 +202,10 @@
         var lastDelay=options.lastDelayMs===undefined?100:options.lastDelayMs;
         if(!Number.isFinite(lastDelay)||lastDelay<20||lastDelay>655350)
             throw new RangeError("lastDelayMs must be 20–655350.");
+        var fixedDelay=options.frameDelayMs;
+        if(fixedDelay!==undefined &&
+           (!Number.isFinite(fixedDelay)||fixedDelay<20||fixedDelay>655350))
+            throw new RangeError("frameDelayMs must be 20–655350.");
         var out=[];
         function u16(n){out.push(n&255,(n>>8)&255);}
         function chars(s){for(var i=0;i<s.length;i++)out.push(s.charCodeAt(i));}
@@ -216,7 +220,9 @@
         }
         for(var fi=0;fi<frames.length;fi++) {
             var current=frames[fi],next=frames[fi+1];
-            var delay=next ? next.timestamp-current.timestamp : lastDelay;
+            var delay=fixedDelay===undefined
+                ? (next ? next.timestamp-current.timestamp : lastDelay)
+                : fixedDelay;
             var cs=Math.min(65535,Math.max(2,Math.round(Math.max(20,delay)/10)));
             out.push(0x21,0xf9,4,4);
             u16(cs);out.push(0,0); // disposal=1, no transparency
@@ -315,6 +321,7 @@
             var list=selectedFrames(animated,options.index);
             var bytes=encodeGif(list,{
                 animated:animated,loop:options.loop,
+                frameDelayMs:options.frameDelayMs,
                 lastDelayMs:options.lastDelayMs
             });
             return {bytes:bytes,frameCount:list.length,
