@@ -221,6 +221,117 @@ the main pasteboard textarea, emulator run state, or script execution. The
 popup remains document-absolutely positioned using the STEP TRACE SCENARIO
 companion layout, and restoring it does not focus the editor or inject keys.
 
+## Graphics snapshots and GIF / animated GIF
+
+The script runner can capture Apple II graphics pages **independently of the
+active Canvas, GPU, Wave or WebGPU renderer**. Supported modes:
+
+| \`mode\` | Main RAM | Visible captured bytes | GIF raster |
+| --- | --- | ---: | --- |
+| \`"GR"\` | $0400–$07FF | 960 | 280 × 192 |
+| \`"GR2"\` | $0800–$0BFF | 960 | 280 × 192 |
+| \`"HGR"\` | $2000–$3FFF | 7,680 | 280 × 192 |
+| \`"HGR2"\` | $4000–$5FFF | 7,680 | 280 × 192 |
+| \`"active"\` (default) | Current graphics page | Depends on mode | 280 × 192 |
+
+**Memory snapshot API:**
+
+| Script call | Description |
+| --- | --- |
+| \`await apple.graphics.capture({mode:"HGR",changedOnly:true})\` | Append a compact frame only if visible graphics bytes changed |
+| \`await apple.graphics.changed({mode:"HGR"})\` | Ask whether this page currently differs from the last captured frame, without appending |
+| \`await apple.graphics.status()\` | Report frame count, compressed bytes and remaining limits |
+| \`await apple.graphics.clear()\` | Clear recording and reset the change baseline |
+| \`await apple.graphics.exportGIF({filename:"still.gif"})\` | Download the last captured frame as a standalone GIF |
+| \`await apple.graphics.exportGIF({filename:"first.gif",index:0})\` | Download a specific zero-based frame |
+| \`await apple.graphics.exportAnimatedGIF({filename:"movie.gif",loop:0})\` | Download all frames as an animated GIF89a |
+
+The recorder is retained across RUN/STOP cycles until explicitly cleared,
+allowing a stopped or failed macro's captured frames to be exported in a later
+script. Both **Program** and **State Machine** modes use the same API.
+
+### Buffering and reliable change detection
+
+Each capture copies at most one native page (1 KiB GR or 8 KiB HGR) and packs
+only **visible bytes** in scanline order (960 or 7,680 bytes). Memory addresses
+that are not displayed (including HGR row padding) cannot generate false
+changed frames.
+
+When \`changedOnly:true\` (the default), an unchanged frame returns
+\`{captured:false,changed:false,...}\`. A changed frame is stored either raw
+or as **XOR differences followed by a tiny zero-run-length encoder**,
+whichever takes fewer bytes. Per-run GIF pixels are *not* buffered.
+
+Renderer-specific dirty flags are deliberately not consumed: Canvas's dirty
+lists are drained by its draw cycle; Wave and WebGPU keep separate dirty
+flags. A byte-for-byte comparison of the actual screen content is
+renderer-independent and avoids counting writes that leave the visible
+image unchanged. The comparison checks the graphics page on the **current
+emulator frame**, so it cannot capture transient intermediate pictures
+between processing frames.
+
+The buffer is limited to **2,000 frames** and **16 MiB** of compressed image
+data. Both limits raise clear errors when reached.
+
+### GIF encoding and timing
+
+Conversion to indexed 280 × 192 pixels, a shared 16-color Apple II palette,
+and standard GIF LZW happens **only at export**, followed by the download.
+The encoder is self-contained JavaScript and does not load a remote library
+or use a Worker. GR nibble colors and HGR pixel phases are reproduced using
+the existing Canvas renderer's palette and neighbor-color formula.
+
+Animated GIF timing defaults to the actual **wall-clock intervals between
+changed captures**, so skipped duplicate frames extend the previous frame's
+display duration. The final frame's hold defaults to the elapsed time until
+export, at least 100 ms, or can be specified. You may override all frame
+intervals with \`frameDelayMs\`:
+
+\`\`\`javascript
+await apple.graphics.exportAnimatedGIF({
+  filename:"hgr-animation.gif",
+  loop:0,             // 0 = forever
+  frameDelayMs:100,   // optional fixed duration; omit to use capture times
+  lastDelayMs:250     // optional final-frame hold in milliseconds
+});
+\`\`\`
+
+Exports trigger a browser download by default and return a short metadata
+object (filename, dimensions, frame count, output size). With
+\`download:false\`, the returned object also contains \`data\`, a
+\`Uint8Array\` of the GIF bytes for tests and integrations.
+
+**Renderer limitations:** The GIF is an indexed reconstruction from the
+chosen graphics page, not a pixel grab of the displayed monitor. It does
+not include the text section of mixed mode, flashing text, non-graphics
+overlays, or monitor-specific analog/NTSC/CRT effects. It works even when
+the page is not currently visible on the monitor.
+
+### State Machine recording example
+
+The sample
+[\`docs/examples/PASTEBOARD_Graphics_AnimatedGIF.js\`](examples/PASTEBOARD_Graphics_AnimatedGIF.js)
+records changed HGR frames over five seconds using the existing frame
+scheduler, then exports an animation. Its \`ctx.data\` counters show how
+many frames were stored and how many were ignored.
+
+\`\`\`javascript
+const initialState = "record";
+const states = {
+  record: async ({apple,data,stateElapsedMs}) => {
+    const sample = await apple.graphics.capture({mode:"HGR"});
+    if(sample.captured)data.count = (data.count || 0) + 1;
+    if(stateElapsedMs >= 5000)return "export";
+  },
+  export: async ({apple}) => {
+    await apple.graphics.exportAnimatedGIF({
+      filename:"hgr.gif",loop:0
+    });
+    return {done:true};
+  }
+};
+\`\`\`
+
 ## CPU speed: 0–400%
 
 The Script API can set the same **CPU speed percentage** controlled by the
