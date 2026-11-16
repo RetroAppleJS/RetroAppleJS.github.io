@@ -86,6 +86,31 @@ when that execution ends. It is not automatically persisted across page
 reloads. During a run, integration/debugger code can inspect it through
 \`EMU_PASTEBOARD_SCRIPT.stateMachine.inspect().data\`.
 
+### Pause / Resume / Stop
+
+State Machine mode provides **RUN**, **Ⅱ PAUSE / ▶ RESUME**, and **■ STOP**
+controls below the editor. PAUSE is enabled only while a State Machine is
+running; Program mode retains RUN/STOP without the state-machine PAUSE.
+
+- **PAUSE** freezes further frame-handler invocations and prevents pending
+  asynchronous state transitions. The current state, counters, arrays and
+  nested objects in `ctx.data` are retained.
+- The state timeout clock and outstanding `apple.wait()` delays are frozen
+  while paused, and resume with their remaining time.
+- **RESUME** continues the same state machine on the next eligible emulator
+  processing frame. It does not reinitialize data or repeat completed states.
+- **STOP** cancels the entire run, including pending waits and deferred state
+  transitions, and disables PAUSE and STOP until another RUN. A subsequent
+  RUN creates fresh process data.
+- These buttons control **the script process only**. The Apple II CPU and
+  display scheduler continue normally, so the screen remains visible during
+  a paused demonstration.
+
+The console reports `[SM] PAUSE <state>` and `[SM] RESUME <state>`
+along with state transitions and completion. The current runtime status,
+including `paused`, remains inspectable through
+`EMU_PASTEBOARD_SCRIPT.stateMachine.inspect()`.
+
 The existing **STOP** remains cooperative. State timeouts prevent a macro
 from remaining forever in an unchanging state *while frames continue*,
 but as with Program mode, an infinite synchronous loop inside a handler
