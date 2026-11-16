@@ -13,6 +13,36 @@
     // Same zlib/Deflate + Base64URL encoding used by index.html?asm=.
     var MAX_SCRIPT_BYTES = 65536, MAX_COMPRESSED_CHARS = 32768;
     var uriImportHandled = false;
+    var editorMode = "state";
+    var modeSources = {state:null,program:null};
+    var DEFAULT_STATE_SCRIPT = [
+        "// STATE MACHINE MODE — one handler per emulator processing frame",
+        "// Every handler gets ctx.data: one persistent object per RUN.",
+        "// At 10 FPS, handlers are eligible roughly ten times per second.",
+        "// Return a state name to transition, undefined to stay, or {done:true}.",
+        "const initialState = 'observe';",
+        "const stateTimeoutMs = 60000; // Inactivity deadline per state.",
+        "const states = {",
+        "  observe: async ({apple, data}) => {",
+        "    data.polls = (data.polls || 0) + 1;",
+        "    const screen = await apple.text.capture();",
+        "    if (!/(?:^|\\n)\\s*]/.test(screen)) return;",
+        "    return 'type';",
+        "  },",
+        "  type: async ({apple, data}) => {",
+        "    data.commands = data.commands || [];",
+        "    data.commands.push('PRINT \"HELLO WORLD\"');",
+        "    await apple.text.type('PRINT \"HELLO WORLD\"\\r');",
+        "    return 'verify';",
+        "  },",
+        "  verify: async ({apple, data, console}) => {",
+        "    const screen = await apple.text.capture();",
+        "    if (!/(?:^|\\n)\\s*HELLO WORLD\\s*(?:\\n|$)/i.test(screen)) return;",
+        "    console.log('Persistent process data:', data);",
+        "    return {done:true};",
+        "  }",
+        "};"
+    ].join("\n");
     var DEFAULT_SCRIPT = [
         "// PASTEBOARD SCRIPT — Ctrl/Cmd+Enter to run",
         "// Start at the Apple II Applesoft BASIC ] prompt.",
@@ -135,6 +165,7 @@
             throw new Error("Browser URL APIs are unavailable.");
         var url=new g.URL(g.location.href);
         url.searchParams.set("pscript",encodeCompressedScript(editor.value));
+        url.searchParams.set("pscriptMode",editorMode);
         return url.toString();
     }
 
@@ -169,7 +200,14 @@
         try {
             var source=decodeCompressedScript(params.get("pscript"));
             makePopup();
+            // Old ?pscript= links were always Program scripts. New links
+            // include pscriptMode; keep existing shared links compatible.
+            var incoming=params.get("pscriptMode") || "program";
+            if(incoming!=="state" && incoming!=="program")
+                throw new Error("Invalid pscriptMode (expected state or program).");
+            setMode(incoming);
             el("EMU_pasteboardScriptEditor").value=source;
+            modeSources[incoming]=source;
             open();
             log("Imported compressed script from ?pscript= (not executed).","info");
             return true;
@@ -391,6 +429,15 @@
         var stopButton = el("EMU_pasteboardScriptStop");
         if(runButton) runButton.disabled = !!currentRun;
         if(stopButton) stopButton.disabled = !currentRun;
+        var modeControl=el("EMU_pasteboardScriptMode");
+        if(modeControl) modeControl.disabled=!!currentRun;
+        var pauseButton=el("EMU_pasteboardScriptPause");
+        if(pauseButton) {
+            var st=currentRun, enabled=!!(st && st.mode==="state");
+            pauseButton.disabled=!enabled;
+            pauseButton.textContent=enabled && st.paused ? "▶ RESUME" : "Ⅱ PAUSE";
+            pauseButton.setAttribute("aria-pressed",String(!!(enabled && st.paused)));
+        }
     }
 
     function cancelledError() {
@@ -424,11 +471,57 @@
             waiter.reject(cancelledError());
         });
         state.waits.clear();
+        if(state.pauseWaiters) {
+            state.pauseWaiters.forEach(function(w){w.reject(cancelledError());});
+            state.pauseWaiters.clear();
+        }
         setStatus(status);
         if(message) log(message, channel);
         return true;
     }
 
+    function clockNow(state) {
+        var now=Date.now();
+        return now-(state.pausedTotalMs||0)-
+            (state.paused ? now-state.pauseStartedAt : 0);
+    }
+    function waitForResumption(state) {
+        checkRun(state);
+        if(!state.paused)return Promise.resolve();
+        return new Promise(function(resolve,reject) {
+            state.pauseWaiters.add({resolve:resolve,reject:reject});
+        });
+    }
+    // Pause script execution without pausing the emulated 6502 CPU.
+    function pauseOrResume() {
+        var state=currentRun;
+        if(!state || state.mode!=="state" || state.cancelled)return false;
+        var now=Date.now();
+        if(!state.paused) {
+            state.paused=true;
+            state.pauseStartedAt=now;
+            state.waits.forEach(function(entry){
+                if(entry.timer!==null) {
+                    g.clearTimeout(entry.timer);
+                    entry.remaining=Math.max(0,entry.deadline-now);
+                    entry.timer=null;
+                }
+            });
+            log("[SM] PAUSE "+state.stateName+" (frame "+state.frame+")","info");
+        } else {
+            state.paused=false;
+            state.pausedTotalMs+=now-state.pauseStartedAt;
+            state.pauseStartedAt=null;
+            state.waits.forEach(function(entry){
+                if(typeof entry.start==="function")entry.start();
+            });
+            state.pauseWaiters.forEach(function(w){w.resolve();});
+            state.pauseWaiters.clear();
+            log("[SM] RESUME "+state.stateName+" (frame "+state.frame+")","info");
+        }
+        setStatus(state.paused?"paused":"running");
+        return true;
+    }
     function stop() {
         // A running synchronous loop cannot be preempted on the main thread.
         // STOP cancels waits and prevents all subsequent awaited host actions.
@@ -451,12 +544,14 @@
 
         function call(method, args) {
             checkRun(runState);
-            return Promise.resolve().then(function() {
+            return Promise.resolve().then(async function() {
+                // A paused state machine cannot begin a new host command.
+                await waitForResumption(runState);
                 checkRun(runState);
                 if(method==="cpu.setSpeed" && runState.originalCpuSpeed===undefined)
                     runState.originalCpuSpeed=invoke("cpu.getSpeed");
-                return invoke(method, args || {});
-            }).then(function(result) {
+                var result=await invoke(method,args || {});
+                await waitForResumption(runState);
                 checkRun(runState);
                 return result;
             });
@@ -469,17 +564,34 @@
         }
 
         function wait(ms) {
-            integer(ms, "Wait duration (ms)", 0, 60000);
+            integer(ms,"Wait duration (ms)",0,60000);
             checkRun(runState);
-            return new Promise(function(resolve, reject) {
-                var entry = {timer:null, reject:reject};
-                entry.timer = g.setTimeout(function() {
-                    runState.waits.delete(entry);
-                    if(runState.cancelled || currentRun !== runState)
+            return new Promise(function(resolve,reject) {
+                var entry={
+                    timer:null,remaining:ms,deadline:null,
+                    reject:reject,resolve:resolve
+                };
+                entry.start=function() {
+                    if(runState.cancelled || currentRun!==runState) {
+                        runState.waits.delete(entry);
                         reject(cancelledError());
-                    else resolve();
-                }, ms);
+                        return;
+                    }
+                    if(runState.paused)return;
+                    entry.deadline=Date.now()+entry.remaining;
+                    entry.timer=g.setTimeout(function() {
+                        entry.timer=null;
+                        runState.waits.delete(entry);
+                        if(runState.cancelled || currentRun!==runState)
+                            reject(cancelledError());
+                        else if(runState.paused) {
+                            entry.remaining=0;
+                            runState.waits.add(entry);
+                        } else resolve();
+                    },entry.remaining);
+                };
                 runState.waits.add(entry);
+                entry.start();
             });
         }
 
@@ -502,14 +614,14 @@
                     "Polling interval (ms)", 50, 60000);
                 if(typeof pattern !== "string" && !(pattern instanceof RegExp))
                     throw new TypeError("waitFor expects a string or regular expression.");
-                var deadline = Date.now() + timeout;
+                var deadline = clockNow(runState) + timeout;
                 do {
                     checkRun(runState);
                     var screen = await textAPI.capture();
                     if(pattern instanceof RegExp) pattern.lastIndex = 0;
                     if(typeof pattern === "string" ? screen.includes(pattern) : pattern.test(screen))
                         return screen;
-                    var remaining = deadline - Date.now();
+                    var remaining = deadline - clockNow(runState);
                     if(remaining <= 0) break;
                     await wait(Math.min(interval, remaining));
                 } while(true);
@@ -594,7 +706,7 @@
                 } else {
                     first=null; lastProgress=null; accumulated=0;
                 }
-                if(now>=deadline)throw new Error("Timed out waiting for guest keyboard polling.");
+                if(clockNow(runState)>=deadline)throw new Error("Timed out waiting for guest keyboard polling.");
                 await wait(Math.min(interval,Math.max(0,deadline-now)));
             }
         };
@@ -604,12 +716,12 @@
                 "Drain timeout (ms)", 0, 180000);
             var interval = integer(options.interval === undefined ? 50 : options.interval,
                 "Polling interval (ms)", 25, 60000);
-            var deadline=Date.now()+timeout;
+            var deadline=clockNow(runState)+timeout;
             while(true) {
                 var status=await textAPI.status();
                 if(status.queued===0 && !status.latched) return status;
                 var now=Date.now();
-                if(now>=deadline) throw new Error("Timed out waiting for keyboard queue/strobe drain.");
+                if(clockNow(runState)>=deadline) throw new Error("Timed out waiting for keyboard queue/strobe drain.");
                 await wait(Math.min(interval,Math.max(0,deadline-now)));
             }
         };
@@ -678,37 +790,206 @@
             print:function() { printAs("log", arguments); }};
     }
 
+
+    // Editor source is preserved independently for each execution mode.
+    function setMode(nextMode) {
+        if(nextMode!=="state" && nextMode!=="program")
+            throw new RangeError("Unsupported script execution mode.");
+        var editor=el("EMU_pasteboardScriptEditor");
+        var selector=el("EMU_pasteboardScriptMode");
+        if(currentRun) {
+            if(selector) selector.value=editorMode;
+            return false;
+        }
+        if(editor) modeSources[editorMode]=editor.value;
+        editorMode=nextMode;
+        if(editor) {
+            if(modeSources[nextMode]===null)
+                modeSources[nextMode]=nextMode==="state" ?
+                    DEFAULT_STATE_SCRIPT : DEFAULT_SCRIPT;
+            editor.value=modeSources[nextMode];
+        }
+        if(selector) selector.value=nextMode;
+        return true;
+    }
+
+    function compileStateMachine(source,api,data) {
+        var compiled=new Function("apple","console","print","data",
+            '"use strict";\n'+source+'\nreturn {'+
+            ' initialState: typeof initialState==="undefined" ? "start" : initialState,'+
+            ' states: typeof states==="undefined" ? null : states,'+
+            ' stateTimeoutMs: typeof stateTimeoutMs==="undefined" ? 60000 : stateTimeoutMs,'+
+            ' traceFrames: typeof traceFrames==="undefined" ? false : traceFrames'+
+            '};');
+        var config=compiled(api.apple,api.console,api.print,data);
+        if(!config.states || typeof config.states!=="object" ||
+           Array.isArray(config.states))
+            throw new TypeError("State machine script must define an object named states.");
+        if(typeof config.initialState!=="string" || !config.initialState.trim() ||
+           !Object.prototype.hasOwnProperty.call(config.states,config.initialState))
+            throw new Error("Invalid initialState: no matching state handler.");
+        Object.keys(config.states).forEach(function(name) {
+            if(typeof config.states[name]!=="function")
+                throw new TypeError("State '"+name+"' is not a function.");
+        });
+        if(!Number.isInteger(config.stateTimeoutMs) ||
+           config.stateTimeoutMs<100 || config.stateTimeoutMs>3600000)
+            throw new RangeError("stateTimeoutMs must be an integer from 100 to 3600000.");
+        if(typeof config.traceFrames!=="boolean")
+            throw new TypeError("traceFrames must be a boolean.");
+        return config;
+    }
+
+    function onFrame() {
+        var state=currentRun;
+        if(!state || state.mode!=="state" || state.cancelled || state.paused)
+            return false;
+        var now=clockNow(state);
+        // This is evaluated even when the previous async handler is pending.
+        if(now-state.stateEnteredAt>=state.stateTimeoutMs) {
+            finish("error","ERROR [SM] Timeout after "+state.stateTimeoutMs+
+                "ms in state '"+state.stateName+"'","error");
+            return false;
+        }
+        // Never run overlapping handlers if one is awaiting an emulator
+        // operation. The existing SYSTEM FPS clock remains authoritative.
+        if(state.busy) {
+            state.skippedFrames++;
+            return false;
+        }
+        state.busy=true;
+        state.frame++;
+        state.stateFrame++;
+        state.context.frame=state.frame;
+        state.context.stateFrame=state.stateFrame;
+        state.context.state=state.stateName;
+        state.context.elapsedMs=now-state.startedAt;
+        state.context.stateElapsedMs=now-state.stateEnteredAt;
+        var executedState=state.stateName;
+        if(state.traceFrames)
+            log("[SM] frame "+state.frame+" state="+executedState+
+                " stateFrame="+state.stateFrame,"info");
+        var result;
+        try {
+            result=state.states[executedState](state.context);
+        } catch(error) {
+            if(currentRun===state)
+                finish("error","ERROR [SM] "+executedState+": "+
+                    formatScriptError(error),"error");
+            return false;
+        }
+        Promise.resolve(result).then(async function(next) {
+            // Completion/transition waits for RESUME if handler finishes paused.
+            await waitForResumption(state);
+            if(currentRun!==state || state.cancelled)return;
+            if(next===undefined || next===null) return;
+            if(typeof next==="object" && next.done===true) {
+                log("[SM] COMPLETE state="+executedState+
+                    " frames="+state.frame+" transitions="+state.transitions,"result");
+                finish("ready","✓ State machine completed.","result");
+                return;
+            }
+            if(typeof next!=="string" || !Object.prototype.hasOwnProperty.call(state.states,next))
+                throw new Error("Invalid state transition from '"+executedState+
+                    "': "+String(next));
+            if(next!==executedState) {
+                state.transitions++;
+                log("[SM] "+executedState+" → "+next+
+                    " (frame "+state.frame+")","info");
+                state.stateName=next;
+                state.stateEnteredAt=clockNow(state);
+                state.stateFrame=0;
+                state.context.state=next;
+            }
+        }).catch(function(error) {
+            if(currentRun===state)
+                finish("error","ERROR [SM] "+executedState+": "+
+                    formatScriptError(error),"error");
+        }).finally(function() {
+            if(currentRun===state)state.busy=false;
+        });
+        return true;
+    }
+
     function run() {
         if(currentRun) return false;
-        var editor = el("EMU_pasteboardScriptEditor");
+        var editor=el("EMU_pasteboardScriptEditor");
         if(!editor) return false;
+        var mode=el("EMU_pasteboardScriptMode");
+        var selected=mode ? mode.value : editorMode;
+        if(selected!=="program" && selected!=="state")
+            selected=editorMode;
+        editorMode=selected;
+        modeSources[editorMode]=editor.value;
         var fn;
         try {
-            var AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-            fn = new AsyncFunction("apple", "console", "print",
-                '"use strict";\n' + editor.value);
+            if(selected==="program") {
+                var AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
+                fn=new AsyncFunction("apple","console","print",
+                    '"use strict";\n'+editor.value);
+            }
         } catch(error) {
             setStatus("error");
-            log("ERROR " + formatScriptError(error), "error");
+            log("ERROR "+formatScriptError(error),"error");
             return false;
         }
 
-        var state = {id:++generation, cancelled:false, waits:new Set()};
-        currentRun = state;
-        var api = makeAPI(state);
-        setStatus("running");
-        log("▶ Running script", "command");
+        var state={
+            id:++generation,cancelled:false,waits:new Set(),
+            pauseWaiters:new Set(),paused:false,pauseStartedAt:null,pausedTotalMs:0,
+            mode:selected,startedAt:Date.now(),data:{}
+        };
+        currentRun=state;
+        var api=makeAPI(state);
+        if(selected==="state") {
+            try {
+                var config=compileStateMachine(editor.value,api,state.data);
+                state.states=config.states;
+                state.stateName=config.initialState;
+                state.stateEnteredAt=clockNow(state);
+                state.stateTimeoutMs=config.stateTimeoutMs;
+                state.traceFrames=config.traceFrames;
+                state.transitions=0;
+                state.frame=0;
+                state.stateFrame=0;
+                state.skippedFrames=0;
+                state.busy=false;
+                // Stable context and stable data object for this entire run.
+                // State handlers may freely update data, including Maps,
+                // arrays, nested objects and custom process variables.
+                state.context={
+                    apple:api.apple,
+                    console:api.console,
+                    print:api.print,
+                    data:state.data,
+                    state:state.stateName,
+                    frame:0,
+                    stateFrame:0,
+                    elapsedMs:0,
+                    stateElapsedMs:0
+                };
+            } catch(error) {
+                currentRun=null;
+                state.cancelled=true;
+                setStatus("error");
+                log("ERROR [SM] "+formatScriptError(error),"error");
+                return false;
+            }
+            setStatus("running");
+            log("▶ State machine started: "+state.stateName+" (frame-driven)","command");
+            return true;
+        }
 
-        // Yield once so normal browser painting and event processing can occur.
-        // Subsequent awaited operations/timers run on the page's event loop.
+        setStatus("running");
+        log("▶ Running script","command");
         Promise.resolve().then(function() {
             checkRun(state);
-            return fn(api.apple, api.console, api.print);
+            return fn(api.apple,api.console,api.print);
         }).then(function() {
-            if(currentRun === state) finish("ready", "✓ Script completed.", "result");
+            if(currentRun===state)finish("ready","✓ Script completed.","result");
         }).catch(function(error) {
-            if(currentRun !== state) return; // Already stopped by user/macro.
-            finish("error", "ERROR " + formatScriptError(error), "error");
+            if(currentRun!==state)return;
+            finish("error","ERROR "+formatScriptError(error),"error");
         });
         return true;
     }
@@ -749,10 +1030,16 @@
             '  <div class="DBG_testbenchGrid">',
             '    <div class="DBG_testbenchSection">',
             '      <div class="DBG_testbenchSectionHeader"><span>JavaScript IDE</span>',
-            '        <span>async/await · page context</span></div>',
+            '        <label class="EMU_pasteboardScriptModeLabel" for="EMU_pasteboardScriptMode">Mode',
+            '          <select id="EMU_pasteboardScriptMode" aria-label="Script execution mode">',
+            '            <option value="state">State Machine</option>',
+            '            <option value="program">Program</option>',
+            '          </select>',
+            '        </label></div>',
             '      <textarea id="EMU_pasteboardScriptEditor" spellcheck="false" aria-label="Pasteboard JavaScript editor"></textarea>',
             '      <div class="EMU_pasteboardScriptActions">',
             '        <button class="appbut" type="button" id="EMU_pasteboardScriptRun">▶ RUN</button>',
+            '        <button class="appbut" type="button" id="EMU_pasteboardScriptPause" disabled aria-pressed="false">Ⅱ PAUSE</button>',
             '        <button class="appbut" type="button" id="EMU_pasteboardScriptStop" disabled>■ STOP</button>',
             '        <button class="appbut" type="button" id="EMU_pasteboardScriptExample">Example</button>',
             '        <button class="appbut" type="button" id="EMU_pasteboardScriptProDOS">ProDOS Demo</button>',
@@ -775,7 +1062,16 @@
         (D.body || D.documentElement).appendChild(p);
 
         var editor = el("EMU_pasteboardScriptEditor");
-        editor.value = DEFAULT_SCRIPT;
+        if(modeSources.state===null) modeSources.state=DEFAULT_STATE_SCRIPT;
+        if(modeSources.program===null) modeSources.program=DEFAULT_SCRIPT;
+        editor.value=modeSources[editorMode];
+        var selector=el("EMU_pasteboardScriptMode");
+        if(selector) {
+            selector.value=editorMode;
+            selector.addEventListener("change",function(){
+                setMode(selector.value);
+            });
+        }
         editor.addEventListener("keydown", function(ev) {
             if((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") {
                 ev.preventDefault();
@@ -785,16 +1081,20 @@
         el("EMU_pasteboardScriptClose").onclick = close;
         el("EMU_pasteboardScriptRun").onclick = run;
         el("EMU_pasteboardScriptStop").onclick = stop;
+        el("EMU_pasteboardScriptPause").onclick = pauseOrResume;
         el("EMU_pasteboardScriptClear").onclick = clearConsole;
         el("EMU_pasteboardScriptCopy").onclick = copyConsole;
         el("EMU_pasteboardScriptExample").onclick = function() {
             if(currentRun) return;
-            editor.value = DEFAULT_SCRIPT;
+            editor.value=editorMode==="state" ? DEFAULT_STATE_SCRIPT : DEFAULT_SCRIPT;
+            modeSources[editorMode]=editor.value;
             editor.focus();
         };
         el("EMU_pasteboardScriptProDOS").onclick = function() {
             if(currentRun) return;
-            editor.value = PRODOS_BOOT_SCRIPT;
+            setMode("program");
+            editor.value=PRODOS_BOOT_SCRIPT;
+            modeSources.program=editor.value;
             editor.focus();
         };
         el("EMU_pasteboardScriptShareURI").onclick = shareURI;
@@ -876,8 +1176,23 @@
         return true;
     }
     g.EMU_PASTEBOARD_SCRIPT = {
-        ui:{init:init, open:open, close:close, toggle:toggle, position:position},
-        run:run, stop:stop,
+        ui:{init:init, open:open, close:close, toggle:toggle, position:position, setMode:setMode},
+        run:run, stop:stop, pause:pauseOrResume, onFrame:onFrame,
+        stateMachine:{
+            inspect:function(){
+                var state=currentRun;
+                if(!state || state.mode!=="state")return null;
+                return {
+                    state:state.stateName,
+                    paused:!!state.paused,
+                    frame:state.frame,
+                    stateFrame:state.stateFrame,
+                    transitions:state.transitions,
+                    skippedFrames:state.skippedFrames,
+                    data:state.data
+                };
+            }
+        },
         uri:{
             encode:encodeCompressedScript,
             decode:decodeCompressedScript,

@@ -11,6 +11,7 @@ on:
       - 'tests/pasteboard_script.test.cjs'
       - 'tests/pasteboard_prodos_automation.test.cjs'
       - 'tests/pasteboard_speed_uri.test.cjs'
+      - 'tests/pasteboard_state_machine.test.cjs'
       - 'tests/diskii_offline_embedded_images.test.cjs'
       - 'disks/*.dsk'
       - 'disks/*.DSK'
@@ -26,6 +27,7 @@ on:
       - 'tests/pasteboard_script.test.cjs'
       - 'tests/pasteboard_prodos_automation.test.cjs'
       - 'tests/pasteboard_speed_uri.test.cjs'
+      - 'tests/pasteboard_state_machine.test.cjs'
       - 'tests/diskii_offline_embedded_images.test.cjs'
       - 'disks/*.dsk'
       - 'disks/*.DSK'
@@ -47,4 +49,4 @@ jobs:
           node --check res/EMU_DEVICE_keyboard.js
           node --check res/EMU_CARD_appledisk2.js
       - name: Pasteboard Script unit tests
-        run: node --test tests/pasteboard_script.test.cjs tests/pasteboard_prodos_automation.test.cjs tests/pasteboard_speed_uri.test.cjs tests/diskii_offline_embedded_images.test.cjs
+        run: node --test tests/pasteboard_script.test.cjs tests/pasteboard_prodos_automation.test.cjs tests/pasteboard_speed_uri.test.cjs tests/diskii_offline_embedded_images.test.cjs tests/pasteboard_state_machine.test.cjs

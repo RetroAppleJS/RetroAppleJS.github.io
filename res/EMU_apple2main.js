@@ -124,6 +124,13 @@ function EMU_systemSchedulerWake()
     {
         // Each frame retains its own IO/audio-cycle boundary.
         apple2plus.cycle(_o.CPU_ClockTicks);
+        // Optional Pasteboard state machines subscribe to the *existing*
+        // SYSTEM processing-frame cadence, never a second timer. The hook
+        // is called once per completed slice, including catch-up frames;
+        // its own runner prevents overlapping asynchronous state handlers.
+        if(window.EMU_PASTEBOARD_SCRIPT &&
+           typeof window.EMU_PASTEBOARD_SCRIPT.onFrame==="function")
+            window.EMU_PASTEBOARD_SCRIPT.onFrame();
         systemScheduler.accumulated_ms-=frameMs;
         executed++;
     }

@@ -78,6 +78,7 @@ function mockDeviceHost(opts={}) {
     };
     const elements=opts.editor? {
         EMU_pasteboardScriptEditor:{value:opts.editor},
+        EMU_pasteboardScriptMode:{value:"program",disabled:false},
         EMU_pasteboardScriptStatus:{textContent:"ready"},
         EMU_pasteboardScriptRun:{disabled:false},
         EMU_pasteboardScriptStop:{disabled:true},

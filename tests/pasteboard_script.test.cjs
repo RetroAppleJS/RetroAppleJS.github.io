@@ -74,6 +74,7 @@ function makeRunner(sourceText) {
     const calls = [];
     const elements = {
         EMU_pasteboardScriptEditor:{value:sourceText},
+        EMU_pasteboardScriptMode:{value:"program",disabled:false},
         EMU_pasteboardScriptStatus:{textContent:"ready"},
         EMU_pasteboardScriptRun:{disabled:false},
         EMU_pasteboardScriptStop:{disabled:true},
@@ -445,10 +446,18 @@ test("Example button restores the starter script and never references the remove
     assert.equal(script.ui.open(),true);
     const editor=nodes.EMU_pasteboardScriptEditor;
     const example=nodes.EMU_pasteboardScriptExample;
-    assert.match(editor.value,/await apple\.text\.type/);
+    assert.match(editor.value,/const states =/);
+    assert.match(editor.value,/data\.polls/);
     editor.value="// Changed manually";
     assert.doesNotThrow(()=>example.onclick());
+    assert.match(editor.value,/const states =/);
+    assert.equal(script.ui.setMode("program"),true);
     assert.match(editor.value,/PRINT 6\*7/);
+    editor.value="// Modified Program";
+    assert.doesNotThrow(()=>example.onclick());
+    assert.match(editor.value,/PRINT 6\*7/);
+    assert.equal(script.ui.setMode("state"),true);
+    assert.match(editor.value,/const states =/);
     assert.doesNotMatch(hostSource,/\bif\s*\(\s*worker\s*\)/);
 });
 
