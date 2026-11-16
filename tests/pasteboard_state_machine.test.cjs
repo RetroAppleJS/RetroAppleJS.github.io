@@ -20,6 +20,8 @@ function fixture(script,mode="state") {
         EMU_pasteboardScriptRun:{disabled:false},
         EMU_pasteboardScriptStop:{disabled:true},
         EMU_pasteboardScriptPause:{disabled:true,textContent:"Ⅱ PAUSE",setAttribute(){}},
+        EMU_pasteboardScriptPopup:{hidden:false,style:{}},
+        EMU_pasteboardScriptToggle:{setAttribute(){}},
         EMU_pasteboardScriptConsoleFallback:{value:"",scrollTop:0}
     };
     const texts=[];
@@ -28,15 +30,17 @@ function fixture(script,mode="state") {
         captureText(){return screen;},
         sendText(_router,value){texts.push(value);return true;}
     };
+    let cpuSpeed=100;
     const win={
         document:{getElementById(id){return elements[id]||null;}},
         setTimeout,clearTimeout,
         apple2plus:{hwObj(){return {io:{pipeResolve(){return {device};}}};}},
-        oEMUI:{cpuGetPercent(){return 100;},cpuSetPercent(p){return p;}}
+        oEMUI:{cpuGetPercent(){return cpuSpeed;},cpuSetPercent(p){cpuSpeed=p;return p;}}
     };
     vm.runInNewContext(source,{window:win},{filename:"EMU_pasteboard_script.js"});
     return {
         api:win.EMU_PASTEBOARD_SCRIPT,elements,texts,
+        getCpuSpeed(){return cpuSpeed;},
         setScreen(value){screen=value;},
         get output(){return elements.EMU_pasteboardScriptConsoleFallback.value;}
     };
@@ -249,4 +253,49 @@ test("Program mode keeps its STOP but does not enable State Machine PAUSE",async
     assert.equal(f.api.pause(),false);
     assert.equal(f.api.onFrame(),false);
     assert.equal(f.api.stop(),true);
+});
+
+
+test("STOP while paused restores CPU speed and Script popup after state-machine boot",async()=>{
+    const script=[
+        "const states={",
+        " start:async ({apple})=>{",
+        "   await apple.script.hide();await apple.cpu.setSpeed(400);",
+        "   return 'wait';},",
+        " wait:()=>undefined",
+        "};"
+    ].join("\n");
+    const f=fixture(script);
+    f.api.run();
+    f.api.onFrame();await flush();
+    assert.equal(f.getCpuSpeed(),400);
+    assert.equal(f.elements.EMU_pasteboardScriptPopup.hidden,true);
+    assert.equal(f.api.stateMachine.inspect().state,"wait");
+    assert.equal(f.api.pause(),true);
+    assert.equal(f.api.stop(),true);
+    assert.equal(f.getCpuSpeed(),100);
+    assert.equal(f.elements.EMU_pasteboardScriptPopup.hidden,false);
+    assert.equal(f.api.stateMachine.inspect(),null);
+    assert.match(f.output,/Script stopped/);
+});
+
+test("state-machine boot failure restores CPU throttle and Script popup",async()=>{
+    const script=[
+        "const states={",
+        " start:async ({apple})=>{",
+        "   await apple.script.hide();await apple.cpu.setSpeed(400);",
+        "   return 'fail';},",
+        " fail:()=>{throw new Error('boot failed');}",
+        "};"
+    ].join("\n");
+    const f=fixture(script);
+    f.api.run();
+    f.api.onFrame();await flush();
+    assert.equal(f.getCpuSpeed(),400);
+    assert.equal(f.elements.EMU_pasteboardScriptPopup.hidden,true);
+    f.api.onFrame();await flush();
+    assert.equal(f.elements.EMU_pasteboardScriptStatus.textContent,"error");
+    assert.equal(f.getCpuSpeed(),100);
+    assert.equal(f.elements.EMU_pasteboardScriptPopup.hidden,false);
+    assert.match(f.output,/boot failed/);
 });
