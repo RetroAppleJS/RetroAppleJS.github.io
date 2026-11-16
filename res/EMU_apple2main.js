@@ -590,6 +590,102 @@ async function EMU_HD20_loadFromURL(request)
     return true;
 }
 
+/*
+ * D1_DIR startup uses the same embedded disk table as the software catalog.
+ * file:// browsers can report navigator.onLine=true without a network, so
+ * known images must not trigger any GitHub HTTP request at all.
+ */
+function EMU_D1_DIR_load(fileName)
+{
+    if(!fileName) return false;
+    var filename;
+    try { filename = decodeURIComponent(String(fileName)); }
+    catch(error) { filename = String(fileName); }
+
+    var path = filename.startsWith("disks/") ? filename : "disks/" + filename;
+    var slotN = EMU_defaultDiskIISlot();
+    var disk2 = EMU_slotPeripheral(slotN,"DISKII");
+
+    function mountStartup(bytes,source)
+    {
+        if(!bytes || bytes.length!==143360)
+            throw new Error("Invalid DISKII image size for "+path+": "+
+                (bytes ? bytes.length : "no bytes"));
+        _o.D1_buffer = new Uint8Array(bytes);
+        _o.D1_filename = filename.split("/").pop();
+
+        if(oCOM.URL.uri["boot"])
+        {
+            // The onrestart hook mounts this pending D1 buffer before CPU
+            // execution, matching the existing remote D1_DIR boot sequence.
+            apple2plus.restart();
+        }
+        else
+        {
+            if(!loadDisk_fromBuffer(_o.D1_buffer,slotN,"D1",_o.D1_filename))
+                throw new Error("Unable to mount "+path+" in DISKII D1.");
+            delete _o.D1_buffer;
+            delete _o.D1_filename;
+        }
+        console.info("Loaded D1_DIR image from "+source+": "+path);
+        return true;
+    }
+
+    try
+    {
+        if(disk2 && typeof disk2.getOfflineDisks==="function" &&
+           typeof disk2.getOfflineDiskBytes==="function" &&
+           disk2.getOfflineDisks().some(function(item){return item.path===path;}))
+        {
+            // Local-first regardless of navigator.onLine or GitHub reachability.
+            return mountStartup(disk2.getOfflineDiskBytes({path:path},null),"embedded");
+        }
+    }
+    catch(error)
+    {
+        console.error("Embedded D1_DIR load failed: "+path,error);
+        return false; // A corrupted embedded image must be reported explicitly.
+    }
+
+    if(oCOM.CATALOG && oCOM.CATALOG.isOffline())
+    {
+        console.error("D1_DIR image unavailable offline (not embedded): "+path);
+        return false;
+    }
+
+    var uri = oCOM.CATALOG && oCOM.CATALOG.githubRawURL
+        ? oCOM.CATALOG.githubRawURL({
+            owner:"RetroAppleJS",repo:"RetroAppleJS.github.io",
+            ref:"main",path:path
+        })
+        : "https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/"+
+            path.split("/").map(encodeURIComponent).join("/");
+
+    oCOM.GetHTTP(uri,"arraybuffer",function()
+    {
+        try
+        {
+            var bytes=this.response && this.response.byteLength!==undefined
+                ? new Uint8Array(this.response) : null;
+            if(this.status<200 || this.status>=300 || !bytes || bytes.length<100)
+            {
+                console.error("ERROR LOADING DISK "+uri+": HTTP "+this.status+
+                    " (verify the case-sensitive disk path)");
+                return;
+            }
+            mountStartup(bytes,"GitHub");
+        }
+        catch(error)
+        {
+            console.error("ERROR LOADING DISK "+uri+" during mount:",error);
+        }
+    },null,function()
+    {
+        console.error("ERROR LOADING DISK "+uri+": network error or request timeout");
+    });
+    return true;
+}
+
 function EMU_init()
 {
     document.getElementById("LEDS").innerHTML =
@@ -687,81 +783,9 @@ function EMU_init()
                 }
             break;
             case "D1_DIR":
-                var dir_filename = oCOM.URL.uri["D1_DIR"];
-                if(typeof(dir_filename)!="undefined" && dir_filename!=0)
-                {
-                    var dir = "https://raw.githubusercontent.com/RetroAppleJS/RetroAppleJS.github.io/main/disks/"
-                    dir += dir_filename;
-            
-                    oCOM.GetHTTP(dir,"arraybuffer",
-                    function()
-                    {
-                        var arraybuffer = this.response;
-                        if(this.status<200 || this.status>=300 ||
-                           !arraybuffer || arraybuffer.byteLength<100)
-                        {
-                            // XHR onload also fires for HTTP 404. The old
-                            // handler referenced an undefined 'ui8' variable,
-                            // masking the actual missing-file error in Safari.
-                            var reason="HTTP "+this.status;
-                            if(arraybuffer && arraybuffer.byteLength>0 &&
-                               arraybuffer.byteLength<4096)
-                            {
-                                try
-                                {
-                                    var body = new TextDecoder("utf-8").decode(
-                                        new Uint8Array(arraybuffer)).trim();
-                                    if(body) reason+=": "+body.slice(0,160);
-                                }
-                                catch(e) { /* An error response need not be UTF-8. */ }
-                            }
-                            console.error("ERROR LOADING DISK "+dir+": "+reason+
-                                " (check the case-sensitive path under disks/)");
-                        }
-                        else
-                        {
-                            //alert("async call succeeded "+ oCOM.URL.uri["boot"] + "*");
-                            // async call to load disk into buffer mem and restart if boot
-                            try{
-                                _o["D1_buffer"] = new Uint8Array(arraybuffer);
-                                // Preserve the URL pathname for the Drive 1
-                                // filename label after its asynchronous mount.
-                                // Decode URL escapes for the UI only; retain the original
-                                // encoded pathname for the HTTP request.
-                                try { _o["D1_filename"] = decodeURIComponent(dir_filename); }
-                                catch(e) { _o["D1_filename"] = dir_filename; }
-
-                                    const deflator = new pako.Deflate( { level: 9} );
-                                    deflator.push(new Uint8Array(arraybuffer), true);
-                                    var b64 = btoa(deflator.result);
-
-                                //var b64 = oCOM.ArrayBufferTobase64(arraybuffer);
-                                //alert(b64.length/1024)
-
-                                //oCOM.POPUP.html( oCOM.DumpBase64(b64,1024,"<br>") );
-
-                                oCOM.POPUP.set_class(document.getElementById("restartbutton"),"appbut","appbut_flash",false);
-                                if(oCOM.URL.uri["boot"])
-                                {
-                                    var vidContext = document.getElementById('applescreen');
-
-                                    if(typeof(apple2plus)!="object") apple2plus     = new Apple2Plus(vidContext); // allow instantiating other systems
-                                    apple2plus.restart();
-                                }
-                                //oCOM.POPUP.html("async call succeeded, boot="+ oCOM.URL.uri["boot"]);
-                            }
-                            catch(e)
-                            {
-                                console.error("ERROR LOADING DISK "+dir+
-                                    " during staging/restart:",e);
-                            }
-                        }
-                    },null,function()
-                    {
-                        console.error("ERROR LOADING DISK "+dir+
-                            ": network error or request timeout");
-                    });
-                }
+                // Defer until Disk II has been mounted by the first restart:
+                // its embedded disk table does not exist during URI parsing.
+                _o.D1_DIR_filename = oCOM.URL.uri["D1_DIR"];
             break;
         }
     }
@@ -826,6 +850,12 @@ function EMU_init()
     catch(err) { console.error("HD20 startup URL rejected:",err); }
 
     apple2plus.restart(); // mounts LIRON and its auto-attached HD20 unit 1
+
+    if(_o.D1_DIR_filename)
+    {
+        EMU_D1_DIR_load(_o.D1_DIR_filename);
+        delete _o.D1_DIR_filename;
+    }
 
     if(hd20Startup)
     {
