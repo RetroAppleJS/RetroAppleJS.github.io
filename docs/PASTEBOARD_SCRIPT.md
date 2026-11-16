@@ -246,6 +246,8 @@ a sequence such as \`await apple.text.type("\x15\x15\r")\`. The two
 \`0x15\` bytes correspond to **two Apple II right-arrow keystrokes** and
 \`0x0D\` is RETURN.
 
+**Visible-prompt readiness:** `await apple.text.waitForReady({prompt:/RETURN\\s*:/i,timeout:60000})` waits for a recognizable text prompt, using the already existing semantic text capture port. It does not send any probe keys. This is preferred for the ProDOS menu, which need not poll `$C000` continuously. Without `prompt`, `waitForReady()` retains its existing sustained-polling requirement.
+
 ## Embedded offline Disk II images
 
 \`EMU_CARD_appledisk2.js\` contains compressed, embedded disk images and
@@ -272,14 +274,16 @@ for inspection and copying into the editor. The example:
 
 1. Hides the Script companion so the Apple II display is unobstructed.
 2. Mounts embedded \`disks/ProDOS 8.dsk\` in S6,D1 and cold-boots.
-3. Sets the CPU throttle to **400%** while booting, then waits for keyboard
-   polling to stabilize during the ProDOS boot menu.
+3. Sets the CPU throttle to **400%** during boot, then waits until the
+   **Bitsy Bye** menu displays its `RETURN:` selection prompt. The menu
+   need not poll `$C000` continuously to be considered ready.
 4. Sends two right-arrow keys and RETURN (the selected menu option should
    launch BASIC.SYSTEM for this particular disk image).
-5. Waits for an Applesoft \`]\` prompt and fresh keyboard polling.
-6. Enters \`PRINT "HELLO WORLD"\` followed by RETURN, waits for the
-   keyboard queue and latch to clear, restores the CPU to **100%**,
-   and stops after reopening the editor.
+5. Waits for an Applesoft `]` prompt to be visible; it does not require
+   artificial, sustained keyboard polling before sending the next line.
+6. Enters `PRINT "HELLO WORLD"` followed by RETURN, waits for the
+   queue and latch to clear and verifies the standalone `HELLO WORLD`
+   output line. Restores the CPU to **100%** and reopens the editor.
 
 The macro is included directly in the editor's built-in example selector.
 A physical S6 Disk II controller and the expected menu layout are required.
@@ -299,10 +303,13 @@ the console includes the exception name, message, stack location and the
 observed decoded byte length rather than just a Safari stack trace.
 
 
-If boot stalls at \`waitForReady()\`, print \`await apple.text.status()\`
-to inspect \`pollCount\`, \`queued\` and \`latched\`. If the operating system
-presents a different boot menu, inspect \`await apple.text.capture()\` and
-adjust the menu navigation before the BASIC.SYSTEM prompt check.
+With `await apple.text.waitForReady({prompt:/RETURN\\s*:/i})`, the script
+waits for a **visible application prompt** rather than continuous keyboard
+polling. `await apple.text.waitForReady()` without `prompt` retains the
+strict hardware-polling behavior for programs where it is appropriate.
+On timeout, the error now includes keyboard counters and a screen excerpt.
+If the disk presents a different menu, examine `await apple.text.capture()`
+and update the prompt pattern.
 
 ## Planned API extensions
 
