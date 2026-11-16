@@ -228,11 +228,17 @@ The Script API now offers:
 | \`await apple.text.waitForReady(options)\` | Wait for fresh, sustained guest $C000 polling with an empty keyboard latch and input queue |
 | \`await apple.text.waitForDrain(options)\` | Wait until queued characters and the latched key are consumed (strobe cleared) |
 
-\`status()\` returns \`target\`, \`active\`, \`pollCount\`,
-\`strobeCount\`, \`lastPollMs\`, \`queued\`, \`latched\`, and an
-instantaneous \`available\` flag. The counters are observational: reading
-these fields **does not itself read $C000 or generate any keystrokes**. Safe
-debugger reads never increment them.
+\`status()\` returns \`target\`, \`active\` / \`inputOpen\`,
+\`hostCaptureActive\`, \`pollCount\`, \`strobeCount\`, \`lastPollMs\`,
+\`queued\`, \`latched\`, and an instantaneous \`available\` flag.
+
+**Script input readiness is independent of browser keyboard focus:**
+\`active\` / \`inputOpen\` report whether the semantic text input port is
+open through Apple2IO. \`hostCaptureActive\` reports whether the Emulator
+tab currently captures physical host keyboard events. The latter may be
+false while the Script IDE is open, but it must not block a macro from
+sending keystrokes. Counters remain observational and never themselves
+read $C000 or generate keystrokes. Safe debugger reads do not increment them.
 
 \`waitForReady({timeout:30000, interval:75, stableMs:250, minPolls:4})\`
 requires fresh polls across a window of at least \`stableMs\` milliseconds.
@@ -245,6 +251,10 @@ by itself prove that an operating system has fully booted**. Combine it with
 a sequence such as \`await apple.text.type("\x15\x15\r")\`. The two
 \`0x15\` bytes correspond to **two Apple II right-arrow keystrokes** and
 \`0x0D\` is RETURN.
+
+For a visible prompt, `waitForReady({prompt})` confirms that the selected
+text input **port** is open. It must not require the browser's physical
+keyboard capture to be enabled while PASTEBOARD SCRIPT is open.
 
 **Visible-prompt readiness:** `await apple.text.waitForReady({prompt:/RETURN\\s*:/i,timeout:60000})` waits for a recognizable text prompt, using the already existing semantic text capture port. It does not send any probe keys. This is preferred for the ProDOS menu, which need not poll `$C000` continuously. Without `prompt`, `waitForReady()` retains its existing sustained-polling requirement.
 
