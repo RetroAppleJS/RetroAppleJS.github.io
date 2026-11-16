@@ -3458,6 +3458,9 @@ data:"eNrtun1cU+f9/3+4NeId6m5kre1p56zt7EZlpdR2LVhpoYto7c1qrV26TWT9AuvWO93WT9VBfy
 
     this.getSoftwareCatRows = function(arg)
     {
+        // Capture the live controller for catalog callbacks: a free variable
+        // named "disk2" is not reliable here (and may be undefined).
+        var disk2 = this;
         var io = apple2plus.hwObj().io;
         var catalog = this.getDiskCatalogContext();
         var slotN = catalog ? catalog.slotN : ssSlotNumber();
