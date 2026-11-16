@@ -406,6 +406,14 @@ function Apple2Hw(vid,keys)
 
     this.safe_flashdump = function() { return new Uint8Array(ram); }
     this.safe_videodump = function() { return ram.slice(0,0x6000); } // 0xC100
+    // Snapshot only the requested graphics page (1 KiB GR / 8 KiB HGR).
+    // This never invokes CPU memory-mapped I/O or changes the video state.
+    this.safe_videoPage = function(base,length) {
+        if(!Number.isInteger(base) || !Number.isInteger(length) ||
+           base<0 || length<=0 || base+length>0x6000)
+            throw new RangeError("Invalid graphics RAM snapshot range.");
+        return ram.slice(base,base+length);
+    };
 
 
     /*
