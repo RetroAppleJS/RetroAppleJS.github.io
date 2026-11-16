@@ -437,6 +437,20 @@ function AppleDisk2()
         return io ? diskUI.catalogCycleDrive(io) : false;
     };
 
+    // The same catalog supports predictable offline images or the larger
+    // remote directory, but remote HTTP must be an explicit choice.
+    this.diskCatalogToggleSource = function()
+    {
+        var context = this.getDiskCatalogContext();
+        if(!context) return false;
+        var previous = context.arg || {};
+        return this.diskCatalogNavigate(Object.assign({},previous,{
+            source:previous.source==="github" ? "embedded" : "github",
+            path:"disks",
+            type:"dir"
+        }));
+    };
+
     this.getSurfaceMapContext = function()
     {
         var io = mountedIO();
@@ -3461,6 +3475,7 @@ data:"eNrtun1cU+f9/3+4NeId6m5kre1p56zt7EZlpdR2LVhpoYto7c1qrV26TWT9AuvWO93WT9VBfy
             ,basepath:"disks"
             ,path:"disks"
             ,ref:"main"
+            ,source:"embedded"
         },arg || {});        
 
         this.setDiskCatalogPath(arg);
@@ -3475,6 +3490,7 @@ data:"eNrtun1cU+f9/3+4NeId6m5kre1p56zt7EZlpdR2LVhpoYto7c1qrV26TWT9AuvWO93WT9VBfy
             ,path:arg.path
             ,ref:arg.ref
             ,fileIcon:"fa fa-cloud-upload-alt"
+            ,offlineFirst:true
             ,offlineProvider:function(url)       
             {
                 var offline = disk2.getOfflineDir(url);
@@ -3496,7 +3512,13 @@ data:"eNrtun1cU+f9/3+4NeId6m5kre1p56zt7EZlpdR2LVhpoYto7c1qrV26TWT9AuvWO93WT9VBfy
                 var current = disk2.getDiskCatalogContext();
                 if(!current || current.slotN!==slotN) return "<span>SOFTWARE CATALOG</span>";
                 var slotID = io.slot2ID(current.slotN);
+                var mode = current.arg && current.arg.source==="github" ? "github" : "embedded";
                 return "<span>SOFTWARE CATALOG</span>"
+                    + "<button class=\"appbut\" type=\"button\""
+                    + " title=\"Switch between offline embedded disks and GitHub catalog\""
+                    + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.SLOT2obj("+slotN+").diskCatalogToggleSource()\">"
+                    + (mode==="github" ? "GitHub" : "Offline")
+                    + "</button>"
                     + "<button class=\"appbut\" type=\"button\""
                     + " title=\"Target Disk II slot; click to select the next mounted Disk II\""
                     + " onclick=\"event.stopPropagation();apple2plus.hwObj().io.SLOT2obj("+slotN+").diskCatalogCycleSlot()\">"
@@ -3613,8 +3635,24 @@ data:"eNrtun1cU+f9/3+4NeId6m5kre1p56zt7EZlpdR2LVhpoYto7c1qrV26TWT9AuvWO93WT9VBfy
                 }
             }
 
-            // Fast path when the browser knows it is offline.
-            if(disk2.isLikelyOffline()) { if(loadOfflineDisk("navigator.onLine=false")) return; }
+            // A browser opened from file:// may report navigator.onLine=true
+            // without any Internet. Avoid HTTP entirely for embedded images.
+            var offlineKnown = disk2.getOfflineDisks().some(function(entry) {
+                return entry.path===arg.path;
+            });
+            if(offlineKnown && arg.source!=="github")
+            {
+                loadOfflineDisk("embedded disk preferred");
+                return;
+            }
+
+            if(disk2.isLikelyOffline())
+            {
+                if(loadOfflineDisk("navigator.onLine=false")) return;
+                console.warn("Offline: no embedded disk for "+arg.path);
+                oCOM.POPUP.html("Offline: no embedded disk for "+arg.path);
+                return;
+            }
 
             oCOM.GetHTTP(full_path, "arraybuffer",
                 function()
@@ -3667,6 +3705,12 @@ data:"eNrtun1cU+f9/3+4NeId6m5kre1p56zt7EZlpdR2LVhpoYto7c1qrV26TWT9AuvWO93WT9VBfy
                             + name + " " + message
                         );
                     }
+                },null,function()
+                {
+                    // XHR onerror/ontimeout do not invoke the onload fallback.
+                    if(loadOfflineDisk("network error or request timeout")) return;
+                    console.error("ERROR LOADING DISK "+full_path+": network unavailable");
+                    oCOM.POPUP.html("Disk image is unavailable offline: "+arg.path);
                 }
             )
         }
