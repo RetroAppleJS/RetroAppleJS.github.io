@@ -400,30 +400,47 @@
         return {codec:codec,recorder:graphicsRecorder};
     }
 
-    function graphicsMode(mode) {
-        var value=String(mode==null ? "active" : mode).toUpperCase();
-        if(value!=="ACTIVE")return value;
+    // Soft-switch state is authoritative; a raw HGR page may be off-screen.
+    function activeVideoMode() {
         var hw=g.apple2plus && g.apple2plus.hwObj && g.apple2plus.hwObj();
         var flags=hw && hw.getVideoMode && hw.getVideoMode();
-        if(!flags || !flags.gfx)
-            throw new Error("Active video mode is not graphics; select GR, GR2, HGR or HGR2 explicitly.");
-        return flags.hires ? (flags.page2 ? "HGR2" : "HGR")
-            : (flags.page2 ? "GR2" : "GR");
+        if(!flags)throw new Error("Apple II video mode switches are unavailable.");
+        var page=flags.page2?"2":"";
+        if(!flags.gfx)return "TEXT"+page;
+        return (flags.hires?"HGR":"GR")+page+(flags.mix?"MIX":"");
     }
-
+    function graphicsMode(mode) {
+        var value=String(mode==null ? "active" : mode).toUpperCase();
+        return value==="ACTIVE"?activeVideoMode():value;
+    }
+    function graphicsReadPage(hw,base,size) {
+        if(typeof hw.safe_videoPage==="function")
+            return hw.safe_videoPage(base,size);
+        if(typeof hw.safe_videodump==="function")
+            return hw.safe_videodump().subarray(base,base+size);
+        throw new Error("Side-effect-free graphics memory capture is unavailable.");
+    }
     function graphicsBytes(mode) {
         var context=graphicsContext(),spec=context.codec.modes[mode];
-        if(!spec)throw new RangeError("Graphics mode must be GR, GR2, HGR or HGR2.");
+        if(!spec)throw new RangeError("Unknown Apple II video mode: "+mode);
         var hw=g.apple2plus && g.apple2plus.hwObj && g.apple2plus.hwObj();
         if(!hw)throw new Error("Apple II hardware is unavailable.");
-        var page;
-        if(typeof hw.safe_videoPage==="function") {
-            page=hw.safe_videoPage(spec.base,spec.size);
-        } else if(typeof hw.safe_videodump==="function") {
-            // Older emulator builds can still use this slower but safe path.
-            page=hw.safe_videodump().subarray(spec.base,spec.base+spec.size);
-        } else throw new Error("Safe graphics memory capture is unavailable.");
-        return context.codec.visibleBytes(mode,page);
+        var page=graphicsReadPage(hw,spec.base,spec.size);
+        var textPage=spec.textBase?graphicsReadPage(hw,spec.textBase,1024):null;
+        return context.codec.visibleBytes(mode,page,textPage);
+    }
+    function graphicsStyle(mode) {
+        // The video MUX supplies the same ROM as EMU_DEVICE_video_canvas.js.
+        if(!/TEXT|MIX/.test(mode))return null;
+        var mux=g.oApple2Video;
+        var rom=mux && typeof mux.getCharRom==="function" && mux.getCharRom();
+        if(!(rom instanceof Uint8Array))
+            throw new Error("Text GIF capture requires the active Apple II character ROM.");
+        var state=mux.state||{};
+        var key=typeof mux.getCharRomKey==="function"?mux.getCharRomKey():"A2_US";
+        var an2=state.annunciator2!==false;
+        return {font:rom,romKey:key,annunciator2:an2,
+            flashOn:false,key:key+":"+Number(an2)};
     }
 
     function graphicsFilename(value,animated) {
@@ -500,15 +517,26 @@
         case "text.status": return keyboardStatus();
         case "graphics.capture": {
             var mode=graphicsMode(args.mode),session=graphicsContext().recorder;
-            return session.capture(mode,graphicsBytes(mode),{
+            var current=activeVideoMode(),style=graphicsStyle(mode);
+            if(args.requireVisible && current!==mode)
+                throw new Error(mode+" is not displayed (active mode: "+current+").");
+            var captured=session.capture(mode,graphicsBytes(mode),{
                 changedOnly:args.changedOnly!==false,
-                timestampMs:Date.now()
+                timestampMs:Date.now(),style:style
             });
+            captured.activeMode=current;
+            captured.displayed=mode===current;
+            if(!captured.displayed)
+                captured.warning="Captured off-screen "+mode+" memory; active display is "+current+
+                    ". Use {mode:'active'} to capture the visible screen.";
+            return captured;
         }
         case "graphics.changed": {
             var gfxMode=graphicsMode(args.mode);
-            return graphicsContext().recorder.changed(gfxMode,graphicsBytes(gfxMode));
+            return graphicsContext().recorder.changed(gfxMode,
+                graphicsBytes(gfxMode),graphicsStyle(gfxMode));
         }
+        case "graphics.mode": return activeVideoMode();
         case "graphics.status": return graphicsContext().recorder.status();
         case "graphics.clear": return graphicsContext().recorder.clear();
         case "graphics.exportGIF": return graphicsExport(Object.assign({},args,{animated:false}));
@@ -930,7 +958,10 @@
             text:Object.freeze(textAPI),
             memory:Object.freeze(memoryAPI),
             graphics:Object.freeze({
-                // Compact graphics-RAM snapshots; no GIF work until export.
+                // Captures active TEXT/GR/HGR/mixed video by default.
+                // Explicit modes select physical RAM pages (even off-screen).
+                // Buffer compact changed frames; build GIF only on export.
+                mode:function() { return call("graphics.mode"); },
                 capture:function(options) {
                     return call("graphics.capture",options || {});
                 },
