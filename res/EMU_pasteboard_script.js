@@ -434,7 +434,7 @@
         if(!/TEXT|MIX/.test(mode))return null;
         var mux=g.oApple2Video;
         var rom=mux && typeof mux.getCharRom==="function" && mux.getCharRom();
-        if(!(rom instanceof Uint8Array))
+        if(!rom || !ArrayBuffer.isView(rom) || rom.BYTES_PER_ELEMENT!==1)
             throw new Error("Text GIF capture requires the active Apple II character ROM.");
         var state=mux.state||{};
         var key=typeof mux.getCharRomKey==="function"?mux.getCharRomKey():"A2_US";
