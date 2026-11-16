@@ -708,37 +708,203 @@
             print:function() { printAs("log", arguments); }};
     }
 
+
+    // Editor source is preserved independently for each execution mode.
+    function setMode(nextMode) {
+        if(nextMode!=="state" && nextMode!=="program")
+            throw new RangeError("Unsupported script execution mode.");
+        var editor=el("EMU_pasteboardScriptEditor");
+        var selector=el("EMU_pasteboardScriptMode");
+        if(currentRun) {
+            if(selector) selector.value=editorMode;
+            return false;
+        }
+        if(editor) modeSources[editorMode]=editor.value;
+        editorMode=nextMode;
+        if(editor) {
+            if(modeSources[nextMode]===null)
+                modeSources[nextMode]=nextMode==="state" ?
+                    DEFAULT_STATE_SCRIPT : DEFAULT_SCRIPT;
+            editor.value=modeSources[nextMode];
+        }
+        if(selector) selector.value=nextMode;
+        return true;
+    }
+
+    function compileStateMachine(source,api,data) {
+        var compiled=new Function("apple","console","print","data",
+            '"use strict";\n'+source+'\nreturn {'+
+            ' initialState: typeof initialState==="undefined" ? "start" : initialState,'+
+            ' states: typeof states==="undefined" ? null : states,'+
+            ' stateTimeoutMs: typeof stateTimeoutMs==="undefined" ? 60000 : stateTimeoutMs,'+
+            ' traceFrames: typeof traceFrames==="undefined" ? false : traceFrames'+
+            '};');
+        var config=compiled(api.apple,api.console,api.print,data);
+        if(!config.states || typeof config.states!=="object" ||
+           Array.isArray(config.states))
+            throw new TypeError("State machine script must define an object named states.");
+        if(typeof config.initialState!=="string" || !config.initialState.trim() ||
+           !Object.prototype.hasOwnProperty.call(config.states,config.initialState))
+            throw new Error("Invalid initialState: no matching state handler.");
+        Object.keys(config.states).forEach(function(name) {
+            if(typeof config.states[name]!=="function")
+                throw new TypeError("State '"+name+"' is not a function.");
+        });
+        if(!Number.isInteger(config.stateTimeoutMs) ||
+           config.stateTimeoutMs<100 || config.stateTimeoutMs>3600000)
+            throw new RangeError("stateTimeoutMs must be an integer from 100 to 3600000.");
+        if(typeof config.traceFrames!=="boolean")
+            throw new TypeError("traceFrames must be a boolean.");
+        return config;
+    }
+
+    function onFrame() {
+        var state=currentRun;
+        if(!state || state.mode!=="state" || state.cancelled)
+            return false;
+        var now=Date.now();
+        // This is evaluated even when the previous async handler is pending.
+        if(now-state.stateEnteredAt>=state.stateTimeoutMs) {
+            finish("error","ERROR [SM] Timeout after "+state.stateTimeoutMs+
+                "ms in state '"+state.stateName+"'","error");
+            return false;
+        }
+        // Never run overlapping handlers if one is awaiting an emulator
+        // operation. The existing SYSTEM FPS clock remains authoritative.
+        if(state.busy) {
+            state.skippedFrames++;
+            return false;
+        }
+        state.busy=true;
+        state.frame++;
+        state.stateFrame++;
+        state.context.frame=state.frame;
+        state.context.stateFrame=state.stateFrame;
+        state.context.state=state.stateName;
+        state.context.elapsedMs=now-state.startedAt;
+        state.context.stateElapsedMs=now-state.stateEnteredAt;
+        var executedState=state.stateName;
+        if(state.traceFrames)
+            log("[SM] frame "+state.frame+" state="+executedState+
+                " stateFrame="+state.stateFrame,"info");
+        var result;
+        try {
+            result=state.states[executedState](state.context);
+        } catch(error) {
+            if(currentRun===state)
+                finish("error","ERROR [SM] "+executedState+": "+
+                    formatScriptError(error),"error");
+            return false;
+        }
+        Promise.resolve(result).then(function(next) {
+            if(currentRun!==state || state.cancelled)return;
+            if(next===undefined || next===null) return;
+            if(typeof next==="object" && next.done===true) {
+                log("[SM] COMPLETE state="+executedState+
+                    " frames="+state.frame+" transitions="+state.transitions,"result");
+                finish("ready","✓ State machine completed.","result");
+                return;
+            }
+            if(typeof next!=="string" || !Object.prototype.hasOwnProperty.call(state.states,next))
+                throw new Error("Invalid state transition from '"+executedState+
+                    "': "+String(next));
+            if(next!==executedState) {
+                state.transitions++;
+                log("[SM] "+executedState+" → "+next+
+                    " (frame "+state.frame+")","info");
+                state.stateName=next;
+                state.stateEnteredAt=Date.now();
+                state.stateFrame=0;
+                state.context.state=next;
+            }
+        }).catch(function(error) {
+            if(currentRun===state)
+                finish("error","ERROR [SM] "+executedState+": "+
+                    formatScriptError(error),"error");
+        }).finally(function() {
+            if(currentRun===state)state.busy=false;
+        });
+        return true;
+    }
+
     function run() {
         if(currentRun) return false;
-        var editor = el("EMU_pasteboardScriptEditor");
+        var editor=el("EMU_pasteboardScriptEditor");
         if(!editor) return false;
+        var mode=el("EMU_pasteboardScriptMode");
+        var selected=mode ? mode.value : editorMode;
+        if(selected!=="program" && selected!=="state")
+            selected=editorMode;
+        editorMode=selected;
+        modeSources[editorMode]=editor.value;
         var fn;
         try {
-            var AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-            fn = new AsyncFunction("apple", "console", "print",
-                '"use strict";\n' + editor.value);
+            if(selected==="program") {
+                var AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
+                fn=new AsyncFunction("apple","console","print",
+                    '"use strict";\n'+editor.value);
+            }
         } catch(error) {
             setStatus("error");
-            log("ERROR " + formatScriptError(error), "error");
+            log("ERROR "+formatScriptError(error),"error");
             return false;
         }
 
-        var state = {id:++generation, cancelled:false, waits:new Set()};
-        currentRun = state;
-        var api = makeAPI(state);
-        setStatus("running");
-        log("▶ Running script", "command");
+        var state={
+            id:++generation,cancelled:false,waits:new Set(),
+            mode:selected,startedAt:Date.now(),data:{}
+        };
+        currentRun=state;
+        var api=makeAPI(state);
+        if(selected==="state") {
+            try {
+                var config=compileStateMachine(editor.value,api,state.data);
+                state.states=config.states;
+                state.stateName=config.initialState;
+                state.stateEnteredAt=Date.now();
+                state.stateTimeoutMs=config.stateTimeoutMs;
+                state.traceFrames=config.traceFrames;
+                state.transitions=0;
+                state.frame=0;
+                state.stateFrame=0;
+                state.skippedFrames=0;
+                state.busy=false;
+                // Stable context and stable data object for this entire run.
+                // State handlers may freely update data, including Maps,
+                // arrays, nested objects and custom process variables.
+                state.context={
+                    apple:api.apple,
+                    console:api.console,
+                    print:api.print,
+                    data:state.data,
+                    state:state.stateName,
+                    frame:0,
+                    stateFrame:0,
+                    elapsedMs:0,
+                    stateElapsedMs:0
+                };
+            } catch(error) {
+                currentRun=null;
+                state.cancelled=true;
+                setStatus("error");
+                log("ERROR [SM] "+formatScriptError(error),"error");
+                return false;
+            }
+            setStatus("running");
+            log("▶ State machine started: "+state.stateName+" (frame-driven)","command");
+            return true;
+        }
 
-        // Yield once so normal browser painting and event processing can occur.
-        // Subsequent awaited operations/timers run on the page's event loop.
+        setStatus("running");
+        log("▶ Running script","command");
         Promise.resolve().then(function() {
             checkRun(state);
-            return fn(api.apple, api.console, api.print);
+            return fn(api.apple,api.console,api.print);
         }).then(function() {
-            if(currentRun === state) finish("ready", "✓ Script completed.", "result");
+            if(currentRun===state)finish("ready","✓ Script completed.","result");
         }).catch(function(error) {
-            if(currentRun !== state) return; // Already stopped by user/macro.
-            finish("error", "ERROR " + formatScriptError(error), "error");
+            if(currentRun!==state)return;
+            finish("error","ERROR "+formatScriptError(error),"error");
         });
         return true;
     }
