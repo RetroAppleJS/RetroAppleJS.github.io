@@ -289,6 +289,16 @@ order, not a complete real-time Apple II boot.
 
 ### Troubleshooting
 
+CI now validates that every embedded offline disk decompresses to a complete
+143,360-byte image. For ProDOS 8 it additionally verifies that the result
+matches `disks/ProDOS 8.dsk` byte-for-byte. The other embedded images may
+represent older offline snapshots. The previous ProDOS 8 compressed payload
+was incomplete and caused the Script runner to fail mounting S6,D1,
+before any guest boot. If a mount still fails,
+the console includes the exception name, message, stack location and the
+observed decoded byte length rather than just a Safari stack trace.
+
+
 If boot stalls at \`waitForReady()\`, print \`await apple.text.status()\`
 to inspect \`pollCount\`, \`queued\` and \`latched\`. If the operating system
 presents a different boot menu, inspect \`await apple.text.capture()\` and
@@ -306,7 +316,7 @@ automation/regression helpers.
 
 ```sh
 node --check res/EMU_pasteboard_script.js
-node --test tests/pasteboard_script.test.cjs tests/pasteboard_prodos_automation.test.cjs tests/pasteboard_speed_uri.test.cjs
+node --test tests/pasteboard_script.test.cjs tests/pasteboard_prodos_automation.test.cjs tests/pasteboard_speed_uri.test.cjs tests/diskii_offline_embedded_images.test.cjs
 ```
 
 The accompanying GitHub workflow runs these checks when scripting files change.

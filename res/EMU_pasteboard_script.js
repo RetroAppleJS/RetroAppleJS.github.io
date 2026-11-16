@@ -300,7 +300,8 @@
             if(!known) throw new Error("Not an embedded offline DISKII image: "+path);
             var bytes = dest.controller.getOfflineDiskBytes({path:path},null);
             if(!bytes || bytes.length!==143360)
-                throw new Error("Embedded offline disk is unavailable or invalid: "+path);
+                throw new Error("Embedded offline disk is unavailable or invalid: "+path+
+                    " (expected 143360 bytes, decoded "+(bytes ? bytes.length : "none")+")");
             if(typeof g.EMU_mountDiskImage!=="function")
                 throw new Error("The existing DISKII mount function is unavailable.");
             if(g.EMU_mountDiskImage(bytes,dest.internalSlot,driveID,path)!==true)
@@ -343,6 +344,18 @@
         }
     }
 
+    // Safari's Error.stack can omit the exception message entirely and only
+    // display invoke@...:line. Always show name/message first, then location.
+    function formatScriptError(error) {
+        if(error===null || error===undefined) return String(error);
+        var name=error.name || "Error";
+        var message=error.message || String(error);
+        var description=name+": "+message;
+        var stack=typeof error.stack==="string" ? error.stack : "";
+        return stack && stack.indexOf(message)<0
+            ? description+"\n"+stack
+            : (stack || description);
+    }
     function log(text, channel) {
         text = String(text == null ? "" : text);
         if(terminal && typeof terminal.write === "function")
@@ -633,7 +646,7 @@
                 '"use strict";\n' + editor.value);
         } catch(error) {
             setStatus("error");
-            log("ERROR " + (error.stack || error.message || String(error)), "error");
+            log("ERROR " + formatScriptError(error), "error");
             return false;
         }
 
@@ -652,7 +665,7 @@
             if(currentRun === state) finish("ready", "✓ Script completed.", "result");
         }).catch(function(error) {
             if(currentRun !== state) return; // Already stopped by user/macro.
-            finish("error", "ERROR " + (error.stack || error.message || String(error)), "error");
+            finish("error", "ERROR " + formatScriptError(error), "error");
         });
         return true;
     }
