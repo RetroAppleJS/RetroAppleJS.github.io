@@ -12011,9 +12011,14 @@ else if(g.addEventListener)g.addEventListener('load',init);
                         (col<39 ? bytes[off+col+1]&1 : 0);
                     var b=(x<<4)|(l<<3)|(((m<<2)|(m<<1))&4)|
                         (((r<<1)|(r>>1))&2)|((value&128)>>7);
-                    pixels[dst+x]=(0xf4e0f8d0>>>b&1)|
+                    // Canvas hgr_PixelColor produces six color IDs (0..5).
+                    // Their RGB entries in the shared 16-color INTCols table
+                    // are 0,3,6,9,12,15 -- not 0,1,2,3,4,5.
+                    // In particular, HGR 5 is white, not lores grey.
+                    var hgrColor=(0xf4e0f8d0>>>b&1)|
                         (0x08200820>>>(b-1)&2)|
                         (0xf0d0f4c0>>>(b-2)&4);
+                    pixels[dst+x]=hgrColor*3;
                 }
             }
         }
