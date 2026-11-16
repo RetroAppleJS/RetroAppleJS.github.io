@@ -544,12 +544,14 @@
 
         function call(method, args) {
             checkRun(runState);
-            return Promise.resolve().then(function() {
+            return Promise.resolve().then(async function() {
+                // A paused state machine cannot begin a new host command.
+                await waitForResumption(runState);
                 checkRun(runState);
                 if(method==="cpu.setSpeed" && runState.originalCpuSpeed===undefined)
                     runState.originalCpuSpeed=invoke("cpu.getSpeed");
-                return invoke(method, args || {});
-            }).then(function(result) {
+                var result=await invoke(method,args || {});
+                await waitForResumption(runState);
                 checkRun(runState);
                 return result;
             });
@@ -562,17 +564,34 @@
         }
 
         function wait(ms) {
-            integer(ms, "Wait duration (ms)", 0, 60000);
+            integer(ms,"Wait duration (ms)",0,60000);
             checkRun(runState);
-            return new Promise(function(resolve, reject) {
-                var entry = {timer:null, reject:reject};
-                entry.timer = g.setTimeout(function() {
-                    runState.waits.delete(entry);
-                    if(runState.cancelled || currentRun !== runState)
+            return new Promise(function(resolve,reject) {
+                var entry={
+                    timer:null,remaining:ms,deadline:null,
+                    reject:reject,resolve:resolve
+                };
+                entry.start=function() {
+                    if(runState.cancelled || currentRun!==runState) {
+                        runState.waits.delete(entry);
                         reject(cancelledError());
-                    else resolve();
-                }, ms);
+                        return;
+                    }
+                    if(runState.paused)return;
+                    entry.deadline=Date.now()+entry.remaining;
+                    entry.timer=g.setTimeout(function() {
+                        entry.timer=null;
+                        runState.waits.delete(entry);
+                        if(runState.cancelled || currentRun!==runState)
+                            reject(cancelledError());
+                        else if(runState.paused) {
+                            entry.remaining=0;
+                            runState.waits.add(entry);
+                        } else resolve();
+                    },entry.remaining);
+                };
                 runState.waits.add(entry);
+                entry.start();
             });
         }
 
@@ -595,14 +614,14 @@
                     "Polling interval (ms)", 50, 60000);
                 if(typeof pattern !== "string" && !(pattern instanceof RegExp))
                     throw new TypeError("waitFor expects a string or regular expression.");
-                var deadline = Date.now() + timeout;
+                var deadline = clockNow(runState) + timeout;
                 do {
                     checkRun(runState);
                     var screen = await textAPI.capture();
                     if(pattern instanceof RegExp) pattern.lastIndex = 0;
                     if(typeof pattern === "string" ? screen.includes(pattern) : pattern.test(screen))
                         return screen;
-                    var remaining = deadline - Date.now();
+                    var remaining = deadline - clockNow(runState);
                     if(remaining <= 0) break;
                     await wait(Math.min(interval, remaining));
                 } while(true);
@@ -687,7 +706,7 @@
                 } else {
                     first=null; lastProgress=null; accumulated=0;
                 }
-                if(now>=deadline)throw new Error("Timed out waiting for guest keyboard polling.");
+                if(clockNow(runState)>=deadline)throw new Error("Timed out waiting for guest keyboard polling.");
                 await wait(Math.min(interval,Math.max(0,deadline-now)));
             }
         };
@@ -697,12 +716,12 @@
                 "Drain timeout (ms)", 0, 180000);
             var interval = integer(options.interval === undefined ? 50 : options.interval,
                 "Polling interval (ms)", 25, 60000);
-            var deadline=Date.now()+timeout;
+            var deadline=clockNow(runState)+timeout;
             while(true) {
                 var status=await textAPI.status();
                 if(status.queued===0 && !status.latched) return status;
                 var now=Date.now();
-                if(now>=deadline) throw new Error("Timed out waiting for keyboard queue/strobe drain.");
+                if(clockNow(runState)>=deadline) throw new Error("Timed out waiting for keyboard queue/strobe drain.");
                 await wait(Math.min(interval,Math.max(0,deadline-now)));
             }
         };
