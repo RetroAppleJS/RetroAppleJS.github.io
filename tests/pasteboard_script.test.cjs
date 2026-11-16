@@ -458,6 +458,11 @@ test("Example button restores the starter script and never references the remove
     assert.match(editor.value,/PRINT 6\*7/);
     assert.equal(script.ui.setMode("state"),true);
     assert.match(editor.value,/const states =/);
+    assert.doesNotThrow(()=>nodes.EMU_pasteboardScriptProDOS.onclick());
+    assert.equal(nodes.EMU_pasteboardScriptMode.value,"state");
+    assert.match(editor.value,/const initialState = "mountDisk"/);
+    assert.match(editor.value,/waitForBootMenu:/);
+    assert.match(editor.value,/verifyOutput:/);
     assert.doesNotMatch(hostSource,/\bif\s*\(\s*worker\s*\)/);
 });
 

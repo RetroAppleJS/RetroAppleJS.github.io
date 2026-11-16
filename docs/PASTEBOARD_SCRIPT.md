@@ -26,11 +26,12 @@ switches between:
   Changing the existing FPS setting changes the state-machine call cadence,
   without creating another timer.
 - **Program** — the established, one-shot async JavaScript macro runner.
-  Existing ProDOS Demo macros use Program mode.
+  Previously shared ProDOS Program-mode macros remain compatible.
 
 Switching modes preserves each mode's editor contents separately for the
 current page session. The **Example** button resets the current mode's
-example. **ProDOS Demo** selects Program mode and loads the boot script.
+example. **ProDOS Demo** now selects State Machine mode and loads the
+frame-driven ProDOS boot script.
 New compressed `?pscript=` links include `pscriptMode=state|program`;
 legacy links without that flag remain in Program mode. No URI script runs
 automatically.
@@ -253,11 +254,12 @@ try {
 }
 \`\`\`
 
-The built-in **ProDOS Demo** sets 400% at the beginning of its \`try\`
-block and restores **100%** in \`finally\` (before reopening the Script
-window). If STOP cancels a pending wait so the \`finally\` block cannot
-call the script API, the runner additionally restores the CPU speed that
-was selected before the macro changed it.
+The built-in **ProDOS Demo** uses State Machine mode: its `mountDisk`
+state selects **400%**, and its `finish` state restores **100%**
+before reopening the Script window. If STOP, an exception, or a state
+timeout interrupts the process, the runner restores the previous CPU
+speed and reopens the editor if the macro hid it. The `try/finally`
+example above remains suitable for **Program** mode.
 
 ## Compressed \`?pscript=\` URLs
 
@@ -379,9 +381,10 @@ display.
 
 ## ProDOS 8 BASIC.SYSTEM demonstration
 
-Open PASTEBOARD SCRIPT, click **ProDOS Demo**, then **RUN**. The exact
-same macro is available as [`docs/examples/PASTEBOARD_ProDOS8_Offline_Boot.js`](examples/PASTEBOARD_ProDOS8_Offline_Boot.js)
-for inspection and copying into the editor. The example:
+Open PASTEBOARD SCRIPT, click **ProDOS Demo** (which automatically
+selects **State Machine**), then **RUN**. The same source is available as
+[`docs/examples/PASTEBOARD_ProDOS8_Offline_Boot.js`](examples/PASTEBOARD_ProDOS8_Offline_Boot.js)
+and can be shared through a compressed `?pscriptMode=state` URI. The demo:
 
 1. Hides the Script companion so the Apple II display is unobstructed.
 2. Mounts embedded \`disks/ProDOS 8.dsk\` in S6,D1 and cold-boots.
@@ -396,11 +399,18 @@ for inspection and copying into the editor. The example:
    queue and latch to clear and verifies the standalone `HELLO WORLD`
    output line. Restores the CPU to **100%** and reopens the editor.
 
-The macro is included directly in the editor's built-in example selector.
-A physical S6 Disk II controller and the expected menu layout are required.
-The selected image and exact guest boot behavior should be validated in a
-browser session, since the automated tests verify device routing and command
-order, not a complete real-time Apple II boot.
+The demonstration has ten traceable states: `mountDisk`, `reboot`,
+`waitForBootMenu`, `selectBasicSystem`, `drainMenuKeys`,
+`waitForBasicPrompt`, `typeHelloWorld`, `drainBasicKeys`,
+`verifyOutput`, and `finish`. Each runs once per eligible processing
+frame, with no JavaScript polling loop. The console traces transitions,
+and persistent `ctx.data` stores progress counters, command history,
+disk details and output verification. **PAUSE**, **RESUME**, and **STOP**
+remain available throughout the demonstration.
+
+A physical S6 Disk II controller and the expected Bitsy Bye menu are
+required. Automated tests simulate the complete sequence; the real
+ProDOS boot and timing still require browser verification.
 
 ### Troubleshooting
 

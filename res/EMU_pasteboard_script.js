@@ -55,42 +55,107 @@
         "// Optional: await apple.script.show(); // Restore the IDE"
     ].join("\n");
 
-    // Uses Bitsy Bye's visible boot-menu prompt rather than requiring
-    // continuous $C000 polling, which is not guaranteed by that menu.
-    // A2KBD still serializes arrow/RETURN input through the guest strobe.
-    var PRODOS_BOOT_SCRIPT = [
-        "// ProDOS 8 embedded-offline boot demonstration (DISKII S6,D1)",
-        "// Requires an Apple II configuration with DISKII in physical S6.",
-        "await apple.script.hide();",
-        "try {",
-        "  await apple.cpu.setSpeed(400); // 4× CPU throttle for boot",
-        "  console.log('Mounting embedded ProDOS 8 image in S6,D1...');",
-        "  console.log(await apple.disk.loadOffline({",
-        "    slot: 6, drive: 1, path: 'disks/ProDOS 8.dsk'",
-        "  }));",
-        "  await apple.reboot();",
-        "  console.log('Waiting for the Bitsy Bye boot-menu prompt...');",
-        "  await apple.text.waitForReady({",
-        "    prompt: /RETURN\\s*:/i, timeout: 60000",
-        "  });",
-        "  console.log('Boot menu visible; keyboard:', await apple.text.status());",
-        "  // Apple II right-arrow = $15 (CTRL-U); RETURN = $0D.",
-        "  await apple.text.type('\\x15\\x15\\r');",
-        "  await apple.text.waitForDrain({timeout:20000});",
-        "  console.log('Waiting for the BASIC.SYSTEM prompt...');",
-        "  await apple.text.waitForReady({",
-        "    prompt: /(?:^|\\n)\\s*]/, timeout: 60000",
-        "  });",
-        "  await apple.text.type('PRINT \"HELLO WORLD\"\\r');",
-        "  await apple.text.waitForDrain({timeout:20000});",
-        "  await apple.text.waitFor(/(?:^|\\n)\\s*HELLO WORLD\\s*(?:\\n|$)/i, {",
-        "    timeout: 15000",
-        "  });",
-        "  console.log('BASIC.SYSTEM demonstration complete.');",
-        "} finally {",
-        "  await apple.cpu.setSpeed(100); // restore normal CPU speed",
-        "  await apple.script.show();",
-        "}"
+    // The offline ProDOS demonstration runs in State Machine mode.
+    var PRODOS_STATE_SCRIPT = [
+        "// ProDOS 8 offline boot: frame-driven State Machine (DISKII S6,D1).",
+        "// A new RUN creates ctx.data; it persists across every frame and state.",
+        "// PAUSE freezes process execution; STOP cancels it.",
+        "// A 60-second per-state deadline prevents indefinite waits.",
+        "const initialState = \"mountDisk\";",
+        "const stateTimeoutMs = 60000;",
+        "const states = {",
+        "    mountDisk: async ({ apple, data, console }) => {",
+        "        data.disk = \"disks/ProDOS 8.dsk\";",
+        "        data.history = [];",
+        "        data.menuChecks = 0;",
+        "        data.basicChecks = 0;",
+        "        data.outputChecks = 0;",
+        "        await apple.script.hide();",
+        "        await apple.cpu.setSpeed(400);",
+        "        console.log(\"Mounting embedded ProDOS 8 in S6,D1 (CPU 400%)...\");",
+        "        data.diskInfo = await apple.disk.loadOffline({",
+        "            slot: 6, drive: 1, path: data.disk",
+        "        });",
+        "        data.history.push(\"mounted\");",
+        "        return \"reboot\";",
+        "    },",
+        "",
+        "    reboot: async ({ apple, data, console }) => {",
+        "        await apple.reboot();",
+        "        console.log(\"Rebooting; waiting for the Bitsy Bye RETURN: menu...\");",
+        "        data.history.push(\"reboot\");",
+        "        return \"waitForBootMenu\";",
+        "    },",
+        "",
+        "    waitForBootMenu: async ({ apple, data, console }) => {",
+        "        data.menuChecks++;",
+        "        // Bitsy Bye need not poll $C000 continuously. Inspect visible",
+        "        // screen text instead of inserting probe keys or blocking.",
+        "        const screen = await apple.text.capture();",
+        "        if (!/RETURN\\s*:/i.test(screen)) return;",
+        "        const status = await apple.text.status();",
+        "        if (!status.inputOpen)",
+        "            throw new Error(\"Bitsy Bye is visible, but the text input port is closed.\");",
+        "        console.log(\"Bitsy Bye menu detected; input port:\", status.target);",
+        "        data.history.push(\"menu ready\");",
+        "        return \"selectBasicSystem\";",
+        "    },",
+        "",
+        "    selectBasicSystem: async ({ apple, data, console }) => {",
+        "        // Apple II RIGHT = $15 (CTRL-U). Select BASIC.SYSTEM.",
+        "        await apple.text.type(\"\\x15\\x15\\r\");",
+        "        data.history.push(\"right, right, return\");",
+        "        console.log(\"Sent RIGHT, RIGHT, RETURN\");",
+        "        return \"drainMenuKeys\";",
+        "    },",
+        "",
+        "    drainMenuKeys: async ({ apple }) => {",
+        "        const status = await apple.text.status();",
+        "        if (status.queued !== 0 || status.latched) return;",
+        "        return \"waitForBasicPrompt\";",
+        "    },",
+        "",
+        "    waitForBasicPrompt: async ({ apple, data, console }) => {",
+        "        data.basicChecks++;",
+        "        const screen = await apple.text.capture();",
+        "        if (!/(?:^|\\n)\\s*]/.test(screen)) return;",
+        "        const status = await apple.text.status();",
+        "        if (!status.inputOpen)",
+        "            throw new Error(\"BASIC prompt is visible, but the text input port is closed.\");",
+        "        console.log(\"BASIC.SYSTEM is ready\");",
+        "        data.history.push(\"BASIC.SYSTEM prompt\");",
+        "        return \"typeHelloWorld\";",
+        "    },",
+        "",
+        "    typeHelloWorld: async ({ apple, data }) => {",
+        "        await apple.text.type('PRINT \"HELLO WORLD\"\\r');",
+        "        data.history.push('PRINT \"HELLO WORLD\"');",
+        "        return \"drainBasicKeys\";",
+        "    },",
+        "",
+        "    drainBasicKeys: async ({ apple }) => {",
+        "        const status = await apple.text.status();",
+        "        if (status.queued !== 0 || status.latched) return;",
+        "        return \"verifyOutput\";",
+        "    },",
+        "",
+        "    verifyOutput: async ({ apple, data }) => {",
+        "        data.outputChecks++;",
+        "        const screen = await apple.text.capture();",
+        "        // Match the output line, not the echoed PRINT command.",
+        "        if (!/(?:^|\\n)\\s*HELLO WORLD\\s*(?:\\n|$)/i.test(screen)) return;",
+        "        data.outputVerified = true;",
+        "        data.history.push(\"HELLO WORLD verified\");",
+        "        return \"finish\";",
+        "    },",
+        "",
+        "    finish: async ({ apple, data, console }) => {",
+        "        await apple.cpu.setSpeed(100);",
+        "        await apple.script.show();",
+        "        console.log(\"ProDOS BASIC.SYSTEM demonstration complete.\", data.history);",
+        "        return { done: true };",
+        "    }",
+        "};"
     ].join("\n");
 
     function ensureCompression()
@@ -456,14 +521,23 @@
         if(!state) return false;
         state.cancelled = true;
         currentRun = null;
-        // Cooperative STOP interrupts macro finally-block API calls.
-        // Restore the throttle on its behalf so a stopped boot demo cannot
-        // leave the emulator accidentally running at 400%.
-        if(status==="stopped" && state.originalCpuSpeed!==undefined)
+        // A failed state machine has no finally block. Restore host UI/CPU
+        // changes on STOP *or* ERROR (including state timeouts), before
+        // rejecting outstanding operations. Successful runs perform cleanup
+        // explicitly in their final state.
+        if(status!=="ready")
         {
-            try { invoke("cpu.setSpeed",{percent:state.originalCpuSpeed}); }
-            catch(error) {
-                log("Could not restore CPU speed: "+(error.message || error),"error");
+            if(state.originalCpuSpeed!==undefined) {
+                try { invoke("cpu.setSpeed",{percent:state.originalCpuSpeed}); }
+                catch(error) {
+                    log("Could not restore CPU speed: "+(error.message || error),"error");
+                }
+            }
+            if(state.windowHiddenByScript) {
+                try { open(); }
+                catch(error) {
+                    log("Could not restore Script window: "+(error.message || error),"error");
+                }
             }
         }
         state.waits.forEach(function(waiter) {
@@ -551,6 +625,8 @@
                 if(method==="cpu.setSpeed" && runState.originalCpuSpeed===undefined)
                     runState.originalCpuSpeed=invoke("cpu.getSpeed");
                 var result=await invoke(method,args || {});
+                if(method==="script.hide")runState.windowHiddenByScript=true;
+                if(method==="script.show")runState.windowHiddenByScript=false;
                 await waitForResumption(runState);
                 checkRun(runState);
                 return result;
@@ -1092,9 +1168,9 @@
         };
         el("EMU_pasteboardScriptProDOS").onclick = function() {
             if(currentRun) return;
-            setMode("program");
-            editor.value=PRODOS_BOOT_SCRIPT;
-            modeSources.program=editor.value;
+            setMode("state");
+            editor.value=PRODOS_STATE_SCRIPT;
+            modeSources.state=editor.value;
             editor.focus();
         };
         el("EMU_pasteboardScriptShareURI").onclick = shareURI;
