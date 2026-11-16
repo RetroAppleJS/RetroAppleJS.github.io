@@ -278,11 +278,24 @@ test("one brief burst of boot-time keyboard polling is not mistaken for ready", 
         /Timed out waiting for guest keyboard polling/);
 });
 
-test("built-in ProDOS demonstration types two RIGHT arrows, RETURN, then HELLO WORLD", async () => {
-    const match=ui.match(/var PRODOS_BOOT_SCRIPT = (\[[\s\S]*?\]\.join\("\\n"\));/);
-    assert.ok(match,"ProDOS demo should be present in the Script IDE");
-    const code=vm.runInNewContext(match[1]);
-    const events=[];
+test("frame-driven ProDOS demo mounts S6,D1, navigates Bitsy Bye and verifies HELLO WORLD", async () => {
+    const match=ui.match(/var PRODOS_STATE_SCRIPT = (\[[\s\S]*?\]\.join\("\\n"\));/);
+    assert.ok(match,"ProDOS state-machine source must be present in the editor");
+    const source=vm.runInNewContext(match[1]);
+    const config=new Function("apple","console","print","data",
+        '"use strict";\n'+source+'\nreturn {initialState,states,stateTimeoutMs};'
+    )({}, {log(){}}, ()=>{}, {});
+    const expected=[
+        "mountDisk","reboot","waitForBootMenu","selectBasicSystem",
+        "drainMenuKeys","waitForBasicPrompt","typeHelloWorld",
+        "drainBasicKeys","verifyOutput","finish"
+    ];
+    assert.deepEqual(Object.keys(config.states),expected);
+    assert.equal(config.initialState,"mountDisk");
+    assert.equal(config.stateTimeoutMs,60000);
+
+    const events=[],data={},printed=[];
+    let screen="BOOTING",queued=0;
     const apple={
         script:{
             async hide(){events.push("hide");},
@@ -294,47 +307,68 @@ test("built-in ProDOS demonstration types two RIGHT arrows, RETURN, then HELLO W
         },
         async reboot(){events.push("reboot");},
         text:{
-            async waitForReady(options){
-                events.push("ready");
-                assert.ok(options.prompt instanceof RegExp,
-                    "ProDOS demo should wait for visible menu or BASIC prompt");
-            },
-            async status(){events.push("status");return {active:true,pollCount:0};},
-            async type(value){events.push(["type",value]);},
-            async waitForDrain(){events.push("drain");},
-            async waitFor(pattern){events.push(["screen",String(pattern)]);return "]";}
+            async capture(){return screen;},
+            async status(){return {inputOpen:true,target:"0:A2KBD:text",
+                queued,latched:false};},
+            async type(value){events.push(["type",value]);queued=value.length;}
         }
     };
-    const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
-    await new AsyncFunction("apple","console",'"use strict";\n'+code)(
-        apple,{log(){}}
-    );
-    assert.equal(events[0],"hide");
-    assert.deepEqual(events[1],["speed",400]);
-    assert.deepEqual(events[2],["disk",{
+    const log={log(...args){printed.push(args.join(" "));}};
+    const step=async (name)=>{
+        const result=await config.states[name]({apple,data,console:log});
+        return result;
+    };
+    assert.equal(await step("mountDisk"),"reboot");
+    assert.deepEqual(events.slice(0,3),["hide",["speed",400],["disk",{
         slot:6,drive:1,path:"disks/ProDOS 8.dsk"
-    }]);
-    assert.equal(events[3],"reboot");
+    }]]);
+    assert.equal(await step("reboot"),"waitForBootMenu");
+    assert.equal(await step("waitForBootMenu"),undefined);
+    assert.equal(data.menuChecks,1);
+    screen="BITSY BYE\nRETURN:SELECT\nBASIC.SYSTEM";
+    assert.equal(await step("waitForBootMenu"),"selectBasicSystem");
+    assert.equal(await step("selectBasicSystem"),"drainMenuKeys");
+    assert.equal(await step("drainMenuKeys"),undefined);
+    queued=0;
+    assert.equal(await step("drainMenuKeys"),"waitForBasicPrompt");
+    assert.equal(await step("waitForBasicPrompt"),undefined);
+    screen="READY\n]";
+    assert.equal(await step("waitForBasicPrompt"),"typeHelloWorld");
+    assert.equal(await step("typeHelloWorld"),"drainBasicKeys");
+    assert.equal(await step("drainBasicKeys"),undefined);
+    queued=0;
+    assert.equal(await step("drainBasicKeys"),"verifyOutput");
+    screen='PRINT "HELLO WORLD"\n]';
+    assert.equal(await step("verifyOutput"),undefined,
+        "echo of PRINT command must not count as verified output");
+    screen='PRINT "HELLO WORLD"\nHELLO WORLD\n]';
+    assert.equal(await step("verifyOutput"),"finish");
+    assert.equal(data.outputVerified,true);
+    assert.equal(data.menuChecks,2);
+    assert.equal(data.basicChecks,2);
+    assert.equal(data.outputChecks,2);
+    assert.deepEqual(Array.from(data.history),[
+        "mounted","reboot","menu ready","right, right, return",
+        "BASIC.SYSTEM prompt",'PRINT "HELLO WORLD"',"HELLO WORLD verified"
+    ]);
     assert.deepEqual(events.filter(x=>Array.isArray(x)&&x[0]==="type"),[
         ["type","\x15\x15\r"],["type",'PRINT "HELLO WORLD"\r']
     ]);
-    // The boot-menu and Applesoft prompt now synchronize via visible text,
-    // not by demanding continuous $C000 CPU keyboard polling.
-    assert.equal(events.filter(x=>x==="ready").length,2);
-    assert.ok(events.some(x=>Array.isArray(x) && x[0]==="screen" &&
-        /HELLO WORLD/.test(x[1])));
-    assert.deepEqual(events.at(-2),["speed",100]);
-    assert.equal(events.at(-1),"show");
+    assert.deepEqual(await step("finish"),{done:true});
+    assert.deepEqual(events.slice(-2),[["speed",100],"show"]);
+    assert.ok(printed.some(x=>x.includes("demonstration complete")));
 });
 
-
 test("checked-in ProDOS test script matches the IDE ProDOS Demo", () => {
-    const match=ui.match(/var PRODOS_BOOT_SCRIPT = (\[[\s\S]*?\]\.join\("\\n"\));/);
+    const match=ui.match(/var PRODOS_STATE_SCRIPT = (\[[\s\S]*?\]\.join\("\\n"\));/);
     assert.ok(match);
     const bundled=vm.runInNewContext(match[1]);
     const pathToScript=path.join(ROOT,"docs/examples/PASTEBOARD_ProDOS8_Offline_Boot.js");
     const standalone=fs.readFileSync(pathToScript,"utf8");
     assert.equal(standalone.trimEnd(),bundled);
-    const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
-    assert.doesNotThrow(()=>new AsyncFunction("apple","console",standalone));
+    const factory=new Function("apple","console","print","data",
+        '"use strict";\n'+standalone+'\nreturn {initialState,states};');
+    const cfg=factory({}, {log(){}},()=>{}, {});
+    assert.equal(cfg.initialState,"mountDisk");
+    assert.equal(typeof cfg.states.waitForBootMenu,"function");
 });
