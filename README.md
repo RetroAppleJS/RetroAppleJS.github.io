@@ -63,7 +63,7 @@ Completed items remain checked; unchecked items are planned or still need furthe
 
 - [x] EMULATOR: Experimental DITHER2 color HGR capture
 - [x] EMULATOR: KATAKANA apple][ J-plus keyboard & font logic
-- [ ] EMULATOR: Pasteboard macro scripting with keyboard/paddle/mouse recording, playback, and conditional stops
+- [x] EMULATOR: Pasteboard macro scripting with keyboard/paddle/mouse recording, playback, and conditional stops
 - [x] EMULATOR: Switch between US and Japanese Apple II keyboard layouts
 - [x] EMULATOR: Mockingboard sound emulation
 - [x] EMULATOR: Extend Mockingboard with voice emulation
