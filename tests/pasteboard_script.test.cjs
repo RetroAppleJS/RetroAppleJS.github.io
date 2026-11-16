@@ -451,3 +451,18 @@ test("Example button restores the starter script and never references the remove
     assert.match(editor.value,/PRINT 6\*7/);
     assert.doesNotMatch(hostSource,/\bif\s*\(\s*worker\s*\)/);
 });
+
+test("Safari-style message-free stack still shows exception name and reason", async () => {
+    const runner=makeRunner(
+        'const error = new Error("Embedded offline disk is unavailable or invalid");'+
+        'error.stack = "invoke@file:///res/EMU_pasteboard_script.js:303:32";'+
+        'throw error;'
+    );
+    assert.equal(runner.api.run(),true);
+    await flushRunner();
+    assert.equal(runner.elements.EMU_pasteboardScriptStatus.textContent,"error");
+    const output=runner.elements.EMU_pasteboardScriptConsoleFallback.value;
+    assert.match(output,/Error: Embedded offline disk is unavailable or invalid/);
+    assert.match(output,/invoke@file:\/\/\/res\/EMU_pasteboard_script\.js:303:32/);
+});
+
