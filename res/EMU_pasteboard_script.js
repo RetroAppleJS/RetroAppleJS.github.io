@@ -13,6 +13,32 @@
     // Same zlib/Deflate + Base64URL encoding used by index.html?asm=.
     var MAX_SCRIPT_BYTES = 65536, MAX_COMPRESSED_CHARS = 32768;
     var uriImportHandled = false;
+    var editorMode = "state";
+    var modeSources = {state:null,program:null};
+    var DEFAULT_STATE_SCRIPT = [
+        "// STATE MACHINE MODE — one state handler per emulator processing frame",
+        "// Default cadence: 10 fps. Changing the FPS control changes this rate.",
+        "// Return the next state name, or nothing to remain in the same state.",
+        "// Return {done:true} to finish; stalled states time out automatically.",
+        "const initialState = 'observe';",
+        "const stateTimeoutMs = 60000;",
+        "const states = {",
+        "  observe: async ({apple}) => {",
+        "    const screen = await apple.text.capture();",
+        "    if (!/(?:^|\\n)\\s*]/.test(screen)) return; // Wait for BASIC",
+        "    return 'type';",
+        "  },",
+        "  type: async ({apple}) => {",
+        "    await apple.text.type('PRINT \"HELLO WORLD\"\\r');",
+        "    return 'verify';",
+        "  },",
+        "  verify: async ({apple}) => {",
+        "    const screen = await apple.text.capture();",
+        "    if (!/(?:^|\\n)\\s*HELLO WORLD\\s*(?:\\n|$)/i.test(screen)) return;",
+        "    return {done:true};",
+        "  }",
+        "};"
+    ].join("\n");
     var DEFAULT_SCRIPT = [
         "// PASTEBOARD SCRIPT — Ctrl/Cmd+Enter to run",
         "// Start at the Apple II Applesoft BASIC ] prompt.",
